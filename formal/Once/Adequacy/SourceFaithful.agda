@@ -57,15 +57,16 @@ open import Once.Surface.Elaborate using (elaborate; elaborateFull; proj; projUs
                                           envˡ; envʳ; restrictEnv; bindEnv)
 open import Once.Denotation.Phase using (lookupᴰUsed; restrictᴰ; bindᴰ; bindᴰ0; env0)
 open import Data.Bool using (Bool; true; false)
-open import Once.Denotation.TraceMonad using (T; mkT; atT; Stopped; stoppedT; returnT; _>>=T_; >>=T-assoc; >>=T-identityʳ; join-es-idʳ; join-st-idʳ; valueT; projTrace; join-es; join-st)
-open import Once.IR using (_∘_; ⟨_,_⟩; apply; fst; snd; curry; SigOp; terminal; case) renaming (id to idIR)
+open import Once.Denotation.TraceMonad using (T; mkT; atT; Stopped; stoppedT; returnT; _>>=T_; >>=T-assoc; >>=T-identityʳ; bindRes-idʳ; bindRes-mapʳ; bindRes-trʳ; >>=T-mapʳ; valueT; projTrace; bindRes; resT-lift)
+open import Once.Res using (Res; stopped; returns; is-stopped; mapRes; mapRes-id; mapRes-∘; mapRes-cong)
+open import Once.IR using (_∘_; ⟨_,_⟩; apply; fst; snd; curry; SigOp; terminal; case; initial) renaming (id to idIR)
 open import Once.Arith.SigOp.Builders using (arrow-info; value-info; internal-info;
                                              add-info; sub-info; mul-info; div-info; mod-info; fadd-info; fsub-info; fmul-info; fdiv-info; lt-info; le-info; gt-info; ge-info; eq-info; ne-info)
 open import Once.Adequacy.CataErased fmt using (liftFn-SigOp)
 open import Once.Adequacy.LiftFnReduce fmt using (liftFn-id; liftFn-fst; liftFn-snd; liftFn-∘; liftFn-pair;
                                                   liftFn-terminal)
 open import Once.SigOp.Info using (SigOpInfo; semM)
-open import Once.Denotation.DenotTrace using (emit-D; emit-Dᵇ; emit-Dᵇ-[]; stops-D)
+open import Once.Denotation.DenotTrace using (emit-D; emit-Dᵇ; emit-Dᵇ-[])
 open import Once.CanonicalName using (bare)
 open import Once.Denotation.DenotTrace using (⟦_⟧ᴰ; evalᴰ; inject; forget; liftFn; cohᴰ)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰᴵ)
@@ -117,23 +118,25 @@ subst-T-returnT refl g = refl
 -- END of a multi-line expression — which is exactly where the old
 -- juxtaposition sat. Binds tighter than `≡`, looser than application.
 infixl 5 _⟨$⟩_
-_⟨$⟩_ : ∀ {X : Set} → T X → ℕ → List SigOpEvent × Stopped × X
+_⟨$⟩_ : ∀ {X : Set} → T X → ℕ → List SigOpEvent × Res X
 _⟨$⟩_ = atT
 
+-- plan 0.98: the view is a PAIR again. 0.97 made it a TRIPLE — trace, stop
+-- flag, value — and the last two were one fact written twice: a computation
+-- that stopped has no value to compare, yet the triple demanded one anyway.
+-- `Res` merges them, so extensionality has two components, not three.
 T-ext-at : ∀ {X : Set} {l r : T X} → (∀ n → l ⟨$⟩ n ≡ r ⟨$⟩ n) → l ≡ r
-T-ext-at {l = mkT t₁ s₁ v₁} {r = mkT t₂ s₂ v₂} h =
-  cong₃ mkT (extensionality (λ n → cong proj₁ (h n)))
-            (cong (λ z → proj₁ (proj₂ z)) (h 0))
-            (cong (λ z → proj₂ (proj₂ z)) (h 0))
-  where
-    cong₃ : ∀ {A B C D : Set} (f : A → B → C → D) {a a' b b' c c'}
-          → a ≡ a' → b ≡ b' → c ≡ c' → f a b c ≡ f a' b' c'
-    cong₃ f refl refl refl = refl
+T-ext-at {l = mkT t₁ r₁} {r = mkT t₂ r₂} h =
+  cong₂ mkT (extensionality (λ n → cong proj₁ (h n)))
+            (cong proj₂ (h 0))
 
+-- plan 0.98: the budget view is a PAIR, so transporting a computation moves
+-- the trace not at all and the RESULT by `mapRes` — a stopped computation
+-- transports to a stopped one, which is the case the old triple had to state
+-- separately by carrying the flag through the middle untouched.
 subst-T-apply : ∀ {X Y : Set} (eq : X ≡ Y) (h : T X) (n : ℕ)
-  → subst T eq h ⟨$⟩ n ≡ (proj₁ (h ⟨$⟩ n) , proj₁ (proj₂ (h ⟨$⟩ n))
-                          , subst id eq (proj₂ (proj₂ (h ⟨$⟩ n))))
-subst-T-apply refl h n = refl
+  → subst T eq h ⟨$⟩ n ≡ (proj₁ (h ⟨$⟩ n) , mapRes (subst id eq) (proj₂ (h ⟨$⟩ n)))
+subst-T-apply refl h n = sym (cong (proj₁ (h ⟨$⟩ n) ,_) (mapRes-id (proj₂ (h ⟨$⟩ n))))
 
 pair-subst⁻ : ∀ {A A' B B' : Set} (p : A ≡ A') (q : B ≡ B') (a : A') (b : B')
   → subst id (sym (cong₂ _×_ p q)) (a , b) ≡ (subst id (sym p) a , subst id (sym q) b)
@@ -206,13 +209,16 @@ ihᴰ {A = A} e dγ ih = trans (sym (subst-sym-subst (cohᴰ A))) (cong (subst T
 -- — no context, and in particular no usage, appears.
 sigop-value : ∀ {X : Type} {A : Type} (info : SigOpInfo Unit A) (dγ : ⟦ X ⟧ᴰ) (k : ℕ)
   → liftFn fmt {X} {A} (SigOp info ∘ terminal) dγ ⟨$⟩ k
-    ≡ (emit-Dᵇ info tt k , stops-D info , inject (semM info fmt tt))
+    ≡ (emit-Dᵇ info tt k , mapRes inject (semM info fmt tt))
 sigop-value {A = A} info dγ k =
-  -- plan 0.97: the budget view is a TRIPLE now — the stop flag sits between
-  -- the trace and the value, and `subst T` leaves it alone.
+  -- plan 0.98: the budget view is a PAIR again, and the SigOp's own result is
+  -- already a `mapRes` — `semM` says whether there is a value at all, and the
+  -- denotation only re-types it. The stop flag that sat in the middle is gone
+  -- because `Res` carries it.
   trans (subst-T-apply (cohᴰ A) (evalᴰ fmt (SigOp info) tt) k)
-        (cong (λ v → (emit-Dᵇ info tt k , stops-D info , v))
-              (subst-subst-sym (cohᴰ A)))
+        (cong (emit-Dᵇ info tt k ,_)
+              (trans (mapRes-∘ _ _ (semM info fmt tt))
+                     (mapRes-cong (λ v → subst-subst-sym (cohᴰ A)) (semM info fmt tt))))
 
 -- D143: a variable's RUNTIME environment is a SINGLETON — `var i` has usage
 -- `singleUse i One`, so `↾` has already dropped every other slot. `projUsed`
@@ -318,28 +324,31 @@ restrictEnv-trace {Γ = Γ , A ^ q} (z≤z ⊑∷ ule) dγ' k = restrictEnv-trac
 restrictEnv-trace {Γ = Γ , A ^ q} (z≤o ⊑∷ ule) dγ' k = restrictEnv-trace {Γ = Γ} ule (proj₁ dγ') k
 restrictEnv-trace {Γ = Γ , A ^ q} (z≤m ⊑∷ ule) dγ' k = restrictEnv-trace {Γ = Γ} ule (proj₁ dγ') k
 restrictEnv-trace {Γ = Γ , A ^ q} (o≤o ⊑∷ ule) dγ' k =
-  -- plan 0.97: `join-es b _ []`, the monad's RIGHT identity — not a bare
-  -- `++ []`. On the stopped branch there is nothing to drop at all. Both
-  -- arguments are PINNED: `trans`'s middle type is a meta, so the unifier has
-  -- nothing to read them off.
-  trans (join-es-idʳ (stoppedT (evalᴰ fmt (restrictEnv {Γ = Γ} C.Heap ule) (proj₁ dγ')) k)
-                     (projTrace (evalᴰ fmt (restrictEnv {Γ = Γ} C.Heap ule) (proj₁ dγ')) k))
+  -- plan 0.98: the pair-build's residual, as a TRACE statement. On the
+  -- stopped branch nothing was appended — the sequel was never built — so
+  -- there is no `++ []` to drop, which is why this is a lemma and not
+  -- `++-identityʳ`. The head is PINNED: `trans`'s middle type is a meta, so
+  -- the unifier has nothing to read it off.
+  trans (bindRes-trʳ (T.trT (evalᴰ fmt (restrictEnv {Γ = Γ} C.Heap ule) (proj₁ dγ')))
+                     (T.resT (evalᴰ fmt (restrictEnv {Γ = Γ} C.Heap ule) (proj₁ dγ'))) _ k)
         (restrictEnv-trace {Γ = Γ} ule (proj₁ dγ') k)
 restrictEnv-trace {Γ = Γ , A ^ q} (o≤m ⊑∷ ule) dγ' k =
-  -- plan 0.97: `join-es b _ []`, the monad's RIGHT identity — not a bare
-  -- `++ []`. On the stopped branch there is nothing to drop at all. Both
-  -- arguments are PINNED: `trans`'s middle type is a meta, so the unifier has
-  -- nothing to read them off.
-  trans (join-es-idʳ (stoppedT (evalᴰ fmt (restrictEnv {Γ = Γ} C.Heap ule) (proj₁ dγ')) k)
-                     (projTrace (evalᴰ fmt (restrictEnv {Γ = Γ} C.Heap ule) (proj₁ dγ')) k))
+  -- plan 0.98: the pair-build's residual, as a TRACE statement. On the
+  -- stopped branch nothing was appended — the sequel was never built — so
+  -- there is no `++ []` to drop, which is why this is a lemma and not
+  -- `++-identityʳ`. The head is PINNED: `trans`'s middle type is a meta, so
+  -- the unifier has nothing to read it off.
+  trans (bindRes-trʳ (T.trT (evalᴰ fmt (restrictEnv {Γ = Γ} C.Heap ule) (proj₁ dγ')))
+                     (T.resT (evalᴰ fmt (restrictEnv {Γ = Γ} C.Heap ule) (proj₁ dγ'))) _ k)
         (restrictEnv-trace {Γ = Γ} ule (proj₁ dγ') k)
 restrictEnv-trace {Γ = Γ , A ^ q} (m≤m ⊑∷ ule) dγ' k =
-  -- plan 0.97: `join-es b _ []`, the monad's RIGHT identity — not a bare
-  -- `++ []`. On the stopped branch there is nothing to drop at all. Both
-  -- arguments are PINNED: `trans`'s middle type is a meta, so the unifier has
-  -- nothing to read them off.
-  trans (join-es-idʳ (stoppedT (evalᴰ fmt (restrictEnv {Γ = Γ} C.Heap ule) (proj₁ dγ')) k)
-                     (projTrace (evalᴰ fmt (restrictEnv {Γ = Γ} C.Heap ule) (proj₁ dγ')) k))
+  -- plan 0.98: the pair-build's residual, as a TRACE statement. On the
+  -- stopped branch nothing was appended — the sequel was never built — so
+  -- there is no `++ []` to drop, which is why this is a lemma and not
+  -- `++-identityʳ`. The head is PINNED: `trans`'s middle type is a meta, so
+  -- the unifier has nothing to read it off.
+  trans (bindRes-trʳ (T.trT (evalᴰ fmt (restrictEnv {Γ = Γ} C.Heap ule) (proj₁ dγ')))
+                     (T.resT (evalᴰ fmt (restrictEnv {Γ = Γ} C.Heap ule) (proj₁ dγ'))) _ k)
         (restrictEnv-trace {Γ = Γ} ule (proj₁ dγ') k)
 
 -- `ihᴰ` for an arbitrary IR morphism (not just an elaborated `Expr`).
@@ -374,87 +383,147 @@ inject-BB (inj₂ _) = refl
 arith-body-II : ∀ {X : Type} (info : SigOpInfo (Int * Int) Int)
                (ea : C.IR ⌊ X ⌋ ⌊ Int ⌋) (eb : C.IR ⌊ X ⌋ ⌊ Int ⌋)
                (sa : T ⟦ Int ⟧ᴰ) (sb : T ⟦ Int ⟧ᴰ) (dγ : ⟦ X ⟧ᴰ) (n : ℕ)
-             -- plan 0.97: an arith SigOp is `Pure`, so it neither EMITS nor
-             -- STOPS. The old statement said only the first because there was
-             -- nothing else for a SigOp to do; `noStop` is the other half, and
-             -- it comes in as an equation for the same reason `noEmit` does —
-             -- `stops-D info` is stuck on an abstract `effect info`.
+             -- plan 0.98: `noStop` is DELETED, not migrated. 0.97 carried it
+             -- ("this SigOp does not stop") only because the proof named the
+             -- operands’ values OUTSIDE the binds — `valueT sa n` — where
+             -- nothing says they exist. After 0.98 that `valueT` cannot be
+             -- written at all: an abstract computation has no `Returns?`
+             -- witness. Nothing replaces the premise; associativity moves the
+             -- SigOp INSIDE both binds, where each value is BOUND, and a
+             -- stopped operand never builds the sequel that would fire it.
              → (noEmit : ∀ v → emit-D info v ≡ [])
-             → (noStop : stops-D info ≡ false)
              → (∀ j → liftFn fmt {X} {Int} ea dγ ⟨$⟩ j ≡ sa ⟨$⟩ j)
              → (∀ j → liftFn fmt {X} {Int} eb dγ ⟨$⟩ j ≡ sb ⟨$⟩ j)
              → liftFn fmt {X} {Int} (SigOp info ∘ ⟨ ea , eb ⟩) dγ ⟨$⟩ n
-               ≡ (sa >>=T (λ va → sb >>=T (λ vb → returnT (semM info fmt (va , vb))))) ⟨$⟩ n
-arith-body-II {X = X} info ea eb sa sb dγ n noEmit noStop iha ihb
-  rewrite noStop | ihᴰgen {X} {Int} ea sa dγ iha | ihᴰgen {X} {Int} eb sb dγ ihb
-        | noEmit (valueT sa n , valueT sb (n ∸ length (projTrace sa n))) =
-  -- plan 0.97: the budget view is a TRIPLE, and where the inner `returnT`
-  -- left a bare `++ []` it now leaves `join-es b _ []` / `join-st b false` —
-  -- the monad's two RIGHT identities. Both are PINNED: `cong₂`'s motive
-  -- leaves the flag and the trace as metas the unifier cannot read back out
-  -- of `join-st`/`join-es`.
-  cong₂ _,_ (join-es-idʳ BB ESS) (cong₂ _,_ (join-st-idʳ BB) refl)
+               ≡ (sa >>=T (λ va → sb >>=T (λ vb → resT-lift (semM info fmt (va , vb))))) ⟨$⟩ n
+arith-body-II {X = X} info ea eb sa sb dγ n noEmit iha ihb
+  rewrite ihᴰgen {X} {Int} ea sa dγ iha | ihᴰgen {X} {Int} eb sb dγ ihb =
+  trans (reassoc n)
+        (cong (λ h → (sa >>=T h) ⟨$⟩ n)
+              (extensionality (λ va → T-ext-at (λ j →
+                 cong (λ g → (sb >>=T g) ⟨$⟩ j)
+                      (extensionality (λ vb → step va vb))))))
   where
-    BB  = join-st (stoppedT sa n) (join-st (stoppedT sb n) false)
-    ESS = join-es (stoppedT sa n) (projTrace sa n)
-            (join-es (stoppedT sb n) (projTrace sb (n ∸ length (projTrace sa n))) [])
+    -- The SigOp is applied to the PAIR the two binds build, so moving it
+    -- inside them is exactly associativity, twice; the `returnT (va , vb)`
+    -- that sat between then collapses by left identity (definitional).
+    reassoc : ∀ m
+            → ((sa >>=T (λ b → sb >>=T (λ c → returnT (b , c))))
+                 >>=T evalᴰ fmt (SigOp info)) ⟨$⟩ m
+              ≡ (sa >>=T (λ va → sb >>=T (λ vb →
+                   evalᴰ fmt (SigOp info) (va , vb)))) ⟨$⟩ m
+    reassoc m =
+      trans (>>=T-assoc sa (λ b → sb >>=T (λ c → returnT (b , c)))
+                        (evalᴰ fmt (SigOp info)) m)
+            (cong (λ h → (sa >>=T h) ⟨$⟩ m)
+                  (extensionality (λ va → T-ext-at (λ j →
+                     >>=T-assoc sb (λ c → returnT (va , c))
+                                (evalᴰ fmt (SigOp info)) j))))
+    -- ...and once inside, the SigOp step IS its own result: it emits nothing
+    -- (`noEmit`), and the denotation only re-types what `semM` returned.
+    step : ∀ (va vb : ⟦ Int ⟧ᴰ)
+         → evalᴰ fmt (SigOp info) (va , vb) ≡ resT-lift (semM info fmt (va , vb))
+    step va vb =
+      cong₂ mkT (extensionality (λ j →
+                   emit-Dᵇ-[] info (va , vb) j (noEmit (va , vb))))
+                (mapRes-id (semM info fmt (va , vb)))
 
 arith-body-FF : ∀ {X : Type} (info : SigOpInfo (Float * Float) Float)
                (ea : C.IR ⌊ X ⌋ ⌊ Float ⌋) (eb : C.IR ⌊ X ⌋ ⌊ Float ⌋)
                (sa : T ⟦ Float ⟧ᴰ) (sb : T ⟦ Float ⟧ᴰ) (dγ : ⟦ X ⟧ᴰ) (n : ℕ)
-             -- plan 0.97: an arith SigOp is `Pure`, so it neither EMITS nor
-             -- STOPS. The old statement said only the first because there was
-             -- nothing else for a SigOp to do; `noStop` is the other half, and
-             -- it comes in as an equation for the same reason `noEmit` does —
-             -- `stops-D info` is stuck on an abstract `effect info`.
+             -- plan 0.98: `noStop` is DELETED, not migrated. 0.97 carried it
+             -- ("this SigOp does not stop") only because the proof named the
+             -- operands’ values OUTSIDE the binds — `valueT sa n` — where
+             -- nothing says they exist. After 0.98 that `valueT` cannot be
+             -- written at all: an abstract computation has no `Returns?`
+             -- witness. Nothing replaces the premise; associativity moves the
+             -- SigOp INSIDE both binds, where each value is BOUND, and a
+             -- stopped operand never builds the sequel that would fire it.
              → (noEmit : ∀ v → emit-D info v ≡ [])
-             → (noStop : stops-D info ≡ false)
              → (∀ j → liftFn fmt {X} {Float} ea dγ ⟨$⟩ j ≡ sa ⟨$⟩ j)
              → (∀ j → liftFn fmt {X} {Float} eb dγ ⟨$⟩ j ≡ sb ⟨$⟩ j)
              → liftFn fmt {X} {Float} (SigOp info ∘ ⟨ ea , eb ⟩) dγ ⟨$⟩ n
-               ≡ (sa >>=T (λ va → sb >>=T (λ vb → returnT (semM info fmt (va , vb))))) ⟨$⟩ n
-arith-body-FF {X = X} info ea eb sa sb dγ n noEmit noStop iha ihb
-  rewrite noStop | ihᴰgen {X} {Float} ea sa dγ iha | ihᴰgen {X} {Float} eb sb dγ ihb
-        | noEmit (valueT sa n , valueT sb (n ∸ length (projTrace sa n))) =
-  -- plan 0.97: the budget view is a TRIPLE, and where the inner `returnT`
-  -- left a bare `++ []` it now leaves `join-es b _ []` / `join-st b false` —
-  -- the monad's two RIGHT identities. Both are PINNED: `cong₂`'s motive
-  -- leaves the flag and the trace as metas the unifier cannot read back out
-  -- of `join-st`/`join-es`.
-  cong₂ _,_ (join-es-idʳ BB ESS) (cong₂ _,_ (join-st-idʳ BB) refl)
+               ≡ (sa >>=T (λ va → sb >>=T (λ vb → resT-lift (semM info fmt (va , vb))))) ⟨$⟩ n
+arith-body-FF {X = X} info ea eb sa sb dγ n noEmit iha ihb
+  rewrite ihᴰgen {X} {Float} ea sa dγ iha | ihᴰgen {X} {Float} eb sb dγ ihb =
+  trans (reassoc n)
+        (cong (λ h → (sa >>=T h) ⟨$⟩ n)
+              (extensionality (λ va → T-ext-at (λ j →
+                 cong (λ g → (sb >>=T g) ⟨$⟩ j)
+                      (extensionality (λ vb → step va vb))))))
   where
-    BB  = join-st (stoppedT sa n) (join-st (stoppedT sb n) false)
-    ESS = join-es (stoppedT sa n) (projTrace sa n)
-            (join-es (stoppedT sb n) (projTrace sb (n ∸ length (projTrace sa n))) [])
+    -- The SigOp is applied to the PAIR the two binds build, so moving it
+    -- inside them is exactly associativity, twice; the `returnT (va , vb)`
+    -- that sat between then collapses by left identity (definitional).
+    reassoc : ∀ m
+            → ((sa >>=T (λ b → sb >>=T (λ c → returnT (b , c))))
+                 >>=T evalᴰ fmt (SigOp info)) ⟨$⟩ m
+              ≡ (sa >>=T (λ va → sb >>=T (λ vb →
+                   evalᴰ fmt (SigOp info) (va , vb)))) ⟨$⟩ m
+    reassoc m =
+      trans (>>=T-assoc sa (λ b → sb >>=T (λ c → returnT (b , c)))
+                        (evalᴰ fmt (SigOp info)) m)
+            (cong (λ h → (sa >>=T h) ⟨$⟩ m)
+                  (extensionality (λ va → T-ext-at (λ j →
+                     >>=T-assoc sb (λ c → returnT (va , c))
+                                (evalᴰ fmt (SigOp info)) j))))
+    -- ...and once inside, the SigOp step IS its own result: it emits nothing
+    -- (`noEmit`), and the denotation only re-types what `semM` returned.
+    step : ∀ (va vb : ⟦ Float ⟧ᴰ)
+         → evalᴰ fmt (SigOp info) (va , vb) ≡ resT-lift (semM info fmt (va , vb))
+    step va vb =
+      cong₂ mkT (extensionality (λ j →
+                   emit-Dᵇ-[] info (va , vb) j (noEmit (va , vb))))
+                (mapRes-id (semM info fmt (va , vb)))
 
 arith-body-IB : ∀ {X : Type} (info : SigOpInfo (Int * Int) (Unit + Unit))
                (ea : C.IR ⌊ X ⌋ ⌊ Int ⌋) (eb : C.IR ⌊ X ⌋ ⌊ Int ⌋)
                (sa : T ⟦ Int ⟧ᴰ) (sb : T ⟦ Int ⟧ᴰ) (dγ : ⟦ X ⟧ᴰ) (n : ℕ)
-             -- plan 0.97: an arith SigOp is `Pure`, so it neither EMITS nor
-             -- STOPS. The old statement said only the first because there was
-             -- nothing else for a SigOp to do; `noStop` is the other half, and
-             -- it comes in as an equation for the same reason `noEmit` does —
-             -- `stops-D info` is stuck on an abstract `effect info`.
+             -- plan 0.98: `noStop` is DELETED, not migrated. 0.97 carried it
+             -- ("this SigOp does not stop") only because the proof named the
+             -- operands’ values OUTSIDE the binds — `valueT sa n` — where
+             -- nothing says they exist. After 0.98 that `valueT` cannot be
+             -- written at all: an abstract computation has no `Returns?`
+             -- witness. Nothing replaces the premise; associativity moves the
+             -- SigOp INSIDE both binds, where each value is BOUND, and a
+             -- stopped operand never builds the sequel that would fire it.
              → (noEmit : ∀ v → emit-D info v ≡ [])
-             → (noStop : stops-D info ≡ false)
              → (∀ j → liftFn fmt {X} {Int} ea dγ ⟨$⟩ j ≡ sa ⟨$⟩ j)
              → (∀ j → liftFn fmt {X} {Int} eb dγ ⟨$⟩ j ≡ sb ⟨$⟩ j)
              → liftFn fmt {X} {(Unit + Unit)} (SigOp info ∘ ⟨ ea , eb ⟩) dγ ⟨$⟩ n
-               ≡ (sa >>=T (λ va → sb >>=T (λ vb → returnT (semM info fmt (va , vb))))) ⟨$⟩ n
-arith-body-IB {X = X} info ea eb sa sb dγ n noEmit noStop iha ihb
-  rewrite noStop | ihᴰgen {X} {Int} ea sa dγ iha | ihᴰgen {X} {Int} eb sb dγ ihb
-        | noEmit (valueT sa n , valueT sb (n ∸ length (projTrace sa n)))
-        | inject-BB (semM info fmt (valueT sa n , valueT sb (n ∸ length (projTrace sa n)))) =
-  -- plan 0.97: the budget view is a TRIPLE, and where the inner `returnT`
-  -- left a bare `++ []` it now leaves `join-es b _ []` / `join-st b false` —
-  -- the monad's two RIGHT identities. Both are PINNED: `cong₂`'s motive
-  -- leaves the flag and the trace as metas the unifier cannot read back out
-  -- of `join-st`/`join-es`.
-  cong₂ _,_ (join-es-idʳ BB ESS) (cong₂ _,_ (join-st-idʳ BB) refl)
+               ≡ (sa >>=T (λ va → sb >>=T (λ vb → resT-lift (semM info fmt (va , vb))))) ⟨$⟩ n
+arith-body-IB {X = X} info ea eb sa sb dγ n noEmit iha ihb
+  rewrite ihᴰgen {X} {Int} ea sa dγ iha | ihᴰgen {X} {Int} eb sb dγ ihb =
+  trans (reassoc n)
+        (cong (λ h → (sa >>=T h) ⟨$⟩ n)
+              (extensionality (λ va → T-ext-at (λ j →
+                 cong (λ g → (sb >>=T g) ⟨$⟩ j)
+                      (extensionality (λ vb → step va vb))))))
   where
-    BB  = join-st (stoppedT sa n) (join-st (stoppedT sb n) false)
-    ESS = join-es (stoppedT sa n) (projTrace sa n)
-            (join-es (stoppedT sb n) (projTrace sb (n ∸ length (projTrace sa n))) [])
+    -- The SigOp is applied to the PAIR the two binds build, so moving it
+    -- inside them is exactly associativity, twice; the `returnT (va , vb)`
+    -- that sat between then collapses by left identity (definitional).
+    reassoc : ∀ m
+            → ((sa >>=T (λ b → sb >>=T (λ c → returnT (b , c))))
+                 >>=T evalᴰ fmt (SigOp info)) ⟨$⟩ m
+              ≡ (sa >>=T (λ va → sb >>=T (λ vb →
+                   evalᴰ fmt (SigOp info) (va , vb)))) ⟨$⟩ m
+    reassoc m =
+      trans (>>=T-assoc sa (λ b → sb >>=T (λ c → returnT (b , c)))
+                        (evalᴰ fmt (SigOp info)) m)
+            (cong (λ h → (sa >>=T h) ⟨$⟩ m)
+                  (extensionality (λ va → T-ext-at (λ j →
+                     >>=T-assoc sb (λ c → returnT (va , c))
+                                (evalᴰ fmt (SigOp info)) j))))
+    -- ...and once inside, the SigOp step IS its own result: it emits nothing
+    -- (`noEmit`), and the denotation only re-types what `semM` returned.
+    step : ∀ (va vb : ⟦ Int ⟧ᴰ)
+         → evalᴰ fmt (SigOp info) (va , vb) ≡ resT-lift (semM info fmt (va , vb))
+    step va vb =
+      cong₂ mkT (extensionality (λ j →
+                   emit-Dᵇ-[] info (va , vb) j (noEmit (va , vb))))
+                (trans (mapRes-cong inject-BB (semM info fmt (va , vb)))
+                       (mapRes-id (semM info fmt (va , vb))))
 
 -- Narrowing along a witness whose two usages are the SAME is the identity. The
 -- off-diagonal constructors (`z≤o`, `z≤m`, `o≤m`) cannot occur: they demand
@@ -705,25 +774,27 @@ comp-body {X = X} {A = A} {B = B} {C = C} {π = π} ef eg sf sg dγ n ihf ihg =
     -- Under threading it is not enough to fix the trace (`comp-trace`): the
     -- residual `++ []` also sits inside the continuation's BUDGET, so the
     -- whole inner computation has to be rewritten, not just its trace.
+    -- plan 0.98: TWO ASSOCIATIVITY STEPS, not a patch on the trace. 0.97 could
+    -- read each arm's value as a projection and repair the `++ []` residual on
+    -- the trace and the flag separately. With `Res` the result is ONE
+    -- component that a stopped arm owns outright, so the `returnT (vf , vg)`
+    -- sitting between the pair and `compIR` has to be moved by the LAW.
     evalᴰ-comp-reduce = T-ext-at (λ m →
-      cong₂ _,_ (join-es-idʳ (BBof m) (ESof m)) (cong₂ _,_ (join-st-idʳ (BBof m))
-      (extensionality (λ a →
-         cong (_>>=T (valueT (evalᴰ fmt ef dγ') m))
-              (T-ext-at (λ k →
-                 >>=T-identityʳ
-                   (valueT (evalᴰ fmt eg dγ')
-                             (m ∸ length (projTrace (evalᴰ fmt ef dγ') m)) a) k))))))
-      where
-        -- plan 0.97: PINNED — `cong₂`'s motive leaves the flag and the trace
-        -- as metas the unifier cannot read back out of `join-st`/`join-es`.
-        BBof : ℕ → Stopped
-        BBof m = join-st (stoppedT (evalᴰ fmt ef dγ') m)
-                         (join-st (stoppedT (evalᴰ fmt eg dγ') m) false)
-        ESof : ℕ → List SigOpEvent
-        ESof m = join-es (stoppedT (evalᴰ fmt ef dγ') m) (projTrace (evalᴰ fmt ef dγ') m)
-                   (join-es (stoppedT (evalᴰ fmt eg dγ') m)
-                            (projTrace (evalᴰ fmt eg dγ')
-                              (m ∸ length (projTrace (evalᴰ fmt ef dγ') m))) [])
+      trans (>>=T-assoc (evalᴰ fmt ef dγ')
+                        (λ b → evalᴰ fmt eg dγ' >>=T λ c → returnT (b , c))
+                        (evalᴰ fmt (compIR {⌊ A ⌋} {⌊ B ⌋} {⌊ C ⌋} C.Heap)) m)
+            (cong (λ h → (evalᴰ fmt ef dγ' >>=T h) ⟨$⟩ m)
+                  (extensionality (λ vf → T-ext-at (λ j →
+                     trans (>>=T-assoc (evalᴰ fmt eg dγ') (λ c → returnT (vf , c))
+                                       (evalᴰ fmt (compIR {⌊ A ⌋} {⌊ B ⌋} {⌊ C ⌋} C.Heap)) j)
+                           (cong (λ g → (evalᴰ fmt eg dγ' >>=T g) ⟨$⟩ j)
+                                 (extensionality (λ vg →
+                                    -- `compIR` is a `curry`: it BUILDS the
+                                    -- composite and emits nothing, and the
+                                    -- per-call `apply` is one more assoc step.
+                                    cong returnT (extensionality (λ a → T-ext-at (λ k →
+                                      >>=T-assoc (vg a) (λ c → returnT (vf , c))
+                                                 (evalᴰ fmt (apply {⌊ B ⌋} {⌊ C ⌋})) k)))))))))))
 
 curry-transport : ∀ {AI AT BI BT CI CT : Set}
     (pA : AI ≡ AT) (pB : BI ≡ BT) (pC : CI ≡ CT)
@@ -797,20 +868,17 @@ fork-body {X = X} {A = A} {B = B} {C = C} ef eg sf sg dγ n ihf ihg =
     evalᴰ-fork-reduce : evalᴰ fmt (forkIR C.Heap ∘ ⟨ ef , eg ⟩) dγ'
                         ≡ (evalᴰ fmt ef dγ' >>=T (λ vf → evalᴰ fmt eg dγ' >>=T (λ vg →
                            returnT (λ a → vf a >>=T (λ b → vg a >>=T (λ c → returnT (b , c)))))))
+    -- plan 0.98: the two associativity steps and nothing else — once the
+    -- `returnT (vf , vg)` is moved inside both binds, `forkIR`'s `curry` body
+    -- IS the denotation's closure, so there is no residual left to repair.
     evalᴰ-fork-reduce = T-ext-at (λ m →
-      cong₂ _,_ (join-es-idʳ (BBof m) (ESof m)) (cong₂ _,_ (join-st-idʳ (BBof m))
-      (extensionality (λ a → T-ext-at (λ k → refl)))))
-      where
-        -- plan 0.97: PINNED — `cong₂`'s motive leaves the flag and the trace
-        -- as metas the unifier cannot read back out of `join-st`/`join-es`.
-        BBof : ℕ → Stopped
-        BBof m = join-st (stoppedT (evalᴰ fmt ef dγ') m)
-                         (join-st (stoppedT (evalᴰ fmt eg dγ') m) false)
-        ESof : ℕ → List SigOpEvent
-        ESof m = join-es (stoppedT (evalᴰ fmt ef dγ') m) (projTrace (evalᴰ fmt ef dγ') m)
-                   (join-es (stoppedT (evalᴰ fmt eg dγ') m)
-                            (projTrace (evalᴰ fmt eg dγ')
-                              (m ∸ length (projTrace (evalᴰ fmt ef dγ') m))) [])
+      trans (>>=T-assoc (evalᴰ fmt ef dγ')
+                        (λ b → evalᴰ fmt eg dγ' >>=T λ c → returnT (b , c))
+                        (evalᴰ fmt (forkIR {⌊ A ⌋} {⌊ B ⌋} {⌊ C ⌋} C.Heap)) m)
+            (cong (λ h → (evalᴰ fmt ef dγ' >>=T h) ⟨$⟩ m)
+                  (extensionality (λ vf → T-ext-at (λ j →
+                     >>=T-assoc (evalᴰ fmt eg dγ') (λ c → returnT (vf , c))
+                                (evalᴰ fmt (forkIR {⌊ A ⌋} {⌊ B ⌋} {⌊ C ⌋} C.Heap)) j)))))
 
 
 copair-transport : ∀ {AI AT BI BT CI CT : Set}
@@ -855,26 +923,29 @@ copair-body {X = X} {A = A} {B = B} {C = C} {π = π} ef eg sf sg dγ n ihf ihg 
     -- The elaborated side goes through `distribIR` and then `case`, which is
     -- STUCK on an abstract sum value — so the per-call step case-splits on the
     -- argument. That is the only structural difference from the other three.
-    branch : ∀ (m : ℕ) (ab : ⟦ ⌊ A ⌋ ⟧ᴰᴵ ⊎ ⟦ ⌊ B ⌋ ⟧ᴰᴵ)
-           → valueT (evalᴰ fmt (copairIR C.Heap ∘ ⟨ ef , eg ⟩) dγ') m ab
-             ≡ valueT (evalᴰ fmt ef dγ' >>=T (λ vf → evalᴰ fmt eg dγ' >>=T (λ vg →
-                       returnT (λ x → [ vf , vg ]′ x)))) m ab
-    branch m (inj₁ x) = T-ext-at (λ k → refl)
-    branch m (inj₂ y) = T-ext-at (λ k → refl)
+    -- plan 0.98: the two associativity steps, then the branch split. 0.97
+    -- could state the split on the VALUE alone (`valueT … m ab`) because the
+    -- value was a projection that always existed; with `Res` there is no such
+    -- projection, so the split happens where the arms are BOUND — under the
+    -- `returnT` `copairIR`'s `curry` builds.
     evalᴰ-copair-reduce = T-ext-at (λ m →
-      cong₂ _,_ (join-es-idʳ (BBof m) (ESof m)) (cong₂ _,_ (join-st-idʳ (BBof m))
-                (extensionality (branch m))))
-      where
-        -- plan 0.97: PINNED — `cong₂`'s motive leaves the flag and the trace
-        -- as metas the unifier cannot read back out of `join-st`/`join-es`.
-        BBof : ℕ → Stopped
-        BBof m = join-st (stoppedT (evalᴰ fmt ef dγ') m)
-                         (join-st (stoppedT (evalᴰ fmt eg dγ') m) false)
-        ESof : ℕ → List SigOpEvent
-        ESof m = join-es (stoppedT (evalᴰ fmt ef dγ') m) (projTrace (evalᴰ fmt ef dγ') m)
-                   (join-es (stoppedT (evalᴰ fmt eg dγ') m)
-                            (projTrace (evalᴰ fmt eg dγ')
-                              (m ∸ length (projTrace (evalᴰ fmt ef dγ') m))) [])
+      trans (>>=T-assoc (evalᴰ fmt ef dγ')
+                        (λ b → evalᴰ fmt eg dγ' >>=T λ c → returnT (b , c))
+                        (evalᴰ fmt (copairIR {⌊ A ⌋} {⌊ B ⌋} {⌊ C ⌋} C.Heap)) m)
+            (cong (λ h → (evalᴰ fmt ef dγ' >>=T h) ⟨$⟩ m)
+                  (extensionality (λ vf → T-ext-at (λ j →
+                     trans (>>=T-assoc (evalᴰ fmt eg dγ') (λ c → returnT (vf , c))
+                                       (evalᴰ fmt (copairIR {⌊ A ⌋} {⌊ B ⌋} {⌊ C ⌋} C.Heap)) j)
+                           (cong (λ g → (evalᴰ fmt eg dγ' >>=T g) ⟨$⟩ j)
+                                 (extensionality (λ vg →
+                                    -- The branch split, written as a
+                                    -- pattern-matching lambda so the IR
+                                    -- objects stay solved by the goal rather
+                                    -- than restated (and left as metas) in a
+                                    -- `where`-signature.
+                                    cong returnT (extensionality
+                                      (λ { (inj₁ x) → refl
+                                         ; (inj₂ y) → refl }))))))))))
 
 
 -- D143: `apply` needs `⌊A ⇒[k] B⌋ ≡ ⌊A⌋ ⇛ ⌊B⌋`, so the arrow must be NON-erased
@@ -959,6 +1030,18 @@ subst-arrow₀ᴰ : ∀ {U B B' : Set} (q : B ≡ B') (g : U → T B)
   → subst id (cong (λ y → U → T y) q) g ≡ (λ u → subst T q (g u))
 subst-arrow₀ᴰ refl g = refl
 
+-- plan 0.98: THE `Void`-CONTINUATION BIND. Both `elaborate (absurd v)` and
+-- `⟦ absurd v ⟧ˢ` bind the same `Void`-valued computation to a continuation
+-- that can never run. Generalised over the RESULT so the split is available:
+-- `stopped` is the only inhabited branch (both sides are the head's trace, and
+-- transporting a stopped result leaves it stopped), and `returns` is refuted by
+-- the value it would have to carry.
+void-bind : ∀ {A : Type} (tr : ℕ → List SigOpEvent) (r : Res ⟦ Void ⟧ᴰ)
+              (f : ⟦ Void ⟧ᴰ → T ⟦ ⌊ A ⌋ ⟧ᴰᴵ) (g : ⟦ Void ⟧ᴰ → T ⟦ A ⟧ᴰ) (n : ℕ)
+          → subst T (cohᴰ A) (bindRes tr r f) ⟨$⟩ n ≡ bindRes tr r g ⟨$⟩ n
+void-bind {A} tr stopped     f g n = subst-T-apply (cohᴰ A) (bindRes tr stopped f) n
+void-bind     tr (returns ()) f g n
+
 -- D143: over the RUNTIME environment `Γ ↾ Ψ`. `elaborate` and `⟦_⟧ˢ` are both
 -- phase-indexed, so faithfulness is a statement about the variables the term
 -- actually uses — the full environment never appears.
@@ -976,7 +1059,7 @@ faithful (arr' f) dγ k = faithful f dγ k
 -- agree only after `liftFn-∘`/`liftFn-fst` discard it — that is `drop` below.
 faithful (lam {Γ = Γ} {Ψ = Ψ} {q' = Zero} {A = A} {B = B} Zero _ e) dγ k =
   trans (cong (λ t → t ⟨$⟩ k) red)
-        (cong (λ v → ([] , false , v)) (extensionality (λ u → T-ext-at (λ k′ →
+        (cong (λ v → ([] , returns v)) (extensionality (λ u → T-ext-at (λ k′ →
           trans (drop u k′) (faithful e (bindᴰ0 {Γ = Γ} {A = A} dγ) k′)))))
   where
     dγ' = subst id (sym (cohᴰ ⟦ Γ ↾ Ψ ⟧ᶜ)) dγ
@@ -1000,7 +1083,7 @@ faithful (lam {Γ = Γ} {Ψ = Ψ} {q' = Zero} {A = A} {B = B} Zero _ e) dγ k =
                             (sym (pair-subst⁻ (cohᴰ ⟦ Γ ↾ Ψ ⟧ᶜ) (cohᴰ Unit) dγ u))))))
 faithful (lam {Γ = Γ} {Ψ = Ψ} {q' = Zero} {A = A} {B = B} One _ e) dγ k =
   trans (cong (λ t → t ⟨$⟩ k) red)
-        (cong (λ v → ([] , false , v)) (extensionality (λ a → T-ext-at (λ k′ →
+        (cong (λ v → ([] , returns v)) (extensionality (λ a → T-ext-at (λ k′ →
           trans (drop a k′) (faithful e (bindᴰ0 {Γ = Γ} {A = A} dγ) k′)))))
   where
     dγ' = subst id (sym (cohᴰ ⟦ Γ ↾ Ψ ⟧ᶜ)) dγ
@@ -1024,7 +1107,7 @@ faithful (lam {Γ = Γ} {Ψ = Ψ} {q' = Zero} {A = A} {B = B} One _ e) dγ k =
                             (sym (pair-subst⁻ (cohᴰ ⟦ Γ ↾ Ψ ⟧ᶜ) (cohᴰ A) dγ a))))))
 faithful (lam {Γ = Γ} {Ψ = Ψ} {q' = Zero} {A = A} {B = B} Many _ e) dγ k =
   trans (cong (λ t → t ⟨$⟩ k) red)
-        (cong (λ v → ([] , false , v)) (extensionality (λ a → T-ext-at (λ k′ →
+        (cong (λ v → ([] , returns v)) (extensionality (λ a → T-ext-at (λ k′ →
           trans (drop a k′) (faithful e (bindᴰ0 {Γ = Γ} {A = A} dγ) k′)))))
   where
     dγ' = subst id (sym (cohᴰ ⟦ Γ ↾ Ψ ⟧ᶜ)) dγ
@@ -1048,7 +1131,7 @@ faithful (lam {Γ = Γ} {Ψ = Ψ} {q' = Zero} {A = A} {B = B} Many _ e) dγ k =
                             (sym (pair-subst⁻ (cohᴰ ⟦ Γ ↾ Ψ ⟧ᶜ) (cohᴰ A) dγ a))))))
 faithful (lam {Γ = Γ} {Ψ = Ψ} {q' = One} {A = A} {B = B} One _ e) dγ k =
   trans (cong (λ t → t ⟨$⟩ k) red)
-        (cong (λ v → ([] , false , v)) (extensionality (λ a → T-ext-at (λ k′ →
+        (cong (λ v → ([] , returns v)) (extensionality (λ a → T-ext-at (λ k′ →
           faithful e (bindᴰ {Γ = Γ} {A = A} One dγ a) k′))))
   where
     dγ' = subst id (sym (cohᴰ ⟦ Γ ↾ Ψ ⟧ᶜ)) dγ
@@ -1064,7 +1147,7 @@ faithful (lam {Γ = Γ} {Ψ = Ψ} {q' = One} {A = A} {B = B} One _ e) dγ k =
                             (sym (pair-subst⁻ (cohᴰ ⟦ Γ ↾ Ψ ⟧ᶜ) (cohᴰ A) dγ a))))))
 faithful (lam {Γ = Γ} {Ψ = Ψ} {q' = One} {A = A} {B = B} Many _ e) dγ k =
   trans (cong (λ t → t ⟨$⟩ k) red)
-        (cong (λ v → ([] , false , v)) (extensionality (λ a → T-ext-at (λ k′ →
+        (cong (λ v → ([] , returns v)) (extensionality (λ a → T-ext-at (λ k′ →
           faithful e (bindᴰ {Γ = Γ} {A = A} One dγ a) k′))))
   where
     dγ' = subst id (sym (cohᴰ ⟦ Γ ↾ Ψ ⟧ᶜ)) dγ
@@ -1080,7 +1163,7 @@ faithful (lam {Γ = Γ} {Ψ = Ψ} {q' = One} {A = A} {B = B} Many _ e) dγ k =
                             (sym (pair-subst⁻ (cohᴰ ⟦ Γ ↾ Ψ ⟧ᶜ) (cohᴰ A) dγ a))))))
 faithful (lam {Γ = Γ} {Ψ = Ψ} {q' = Many} {A = A} {B = B} Many _ e) dγ k =
   trans (cong (λ t → t ⟨$⟩ k) red)
-        (cong (λ v → ([] , false , v)) (extensionality (λ a → T-ext-at (λ k′ →
+        (cong (λ v → ([] , returns v)) (extensionality (λ a → T-ext-at (λ k′ →
           faithful e (bindᴰ {Γ = Γ} {A = A} Many dγ a) k′))))
   where
     dγ' = subst id (sym (cohᴰ ⟦ Γ ↾ Ψ ⟧ᶜ)) dγ
@@ -1154,7 +1237,7 @@ faithful (app {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {A = A} {B = B} {q = Man
 -- app-body, lifted through extensionality (over the discarded Unit arg + depth).
 faithful (effApp {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {A = A} {B = B} f x) dγ k =
   trans (cong (λ t → t ⟨$⟩ k) liftFn-curry-reduce-effApp)
-        (cong (λ v → ([] , false , v)) (extensionality (λ _ → T-ext-at (λ n →
+        (cong (λ v → ([] , returns v)) (extensionality (λ _ → T-ext-at (λ n →
           app-body {⟦ Γ ↾ (Ψ₁ +ᵘ Ψ₂) ⟧ᶜ} {A} {B} {eff}
                    (elaborate C.Heap f ∘ restrictEnv {Γ = Γ} C.Heap leF)
                    (elaborate C.Heap x ∘ restrictEnv {Γ = Γ} C.Heap leX)
@@ -1180,8 +1263,16 @@ faithful (effApp {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {A = A} {B = B} f x) 
       trans (subst-T-returnT (cong₂ (λ u v → u → T v) (cohᴰ Unit) (cohᴰ B))
                              (λ u → evalᴰ fmt body (dγ' , u)))
             (cong returnT (subst-arrowᴰ (cohᴰ Unit) (cohᴰ B) (λ u → evalᴰ fmt body (dγ' , u))))
--- absurd v : v has type Void, so `proj₂ (⟦v⟧ˢ dγ n) : ⊥` — vacuous.
-faithful (absurd v) dγ n = ⊥-elim (valueT ((SD.⟦ v ⟧ˢ fmt) dγ) n)
+-- plan 0.98: `absurd v` — the subterm has type `Void`, so IF it returns, its
+-- value inhabits `⊥`. But it may STOP first, and then there is no value to
+-- eliminate: both sides are just the subterm's trace, stopped. The old clause
+-- read `valueT (⟦v⟧ˢ dγ) n` unconditionally, which after 0.98 cannot even be
+-- written — an abstract computation carries no `Returns?` witness. Splitting on
+-- the RESULT is the honest form, and it is where the two reachable facts live.
+faithful (absurd {A = A} v) dγ n
+  rewrite ihᴰ v dγ (λ j → faithful v dγ j) =
+  void-bind {A} (T.trT (SD.⟦ v ⟧ˢ fmt dγ)) (T.resT (SD.⟦ v ⟧ˢ fmt dγ))
+            (evalᴰ fmt (initial {⌊ A ⌋})) (λ x → ⊥-elim x) n
 faithful unit    dγ k = refl
 faithful (int n) dγ k = refl   -- both sides are `fromℤ (int-bits fmt) n` (the `absℤ` this
                                -- comment used to describe is gone; D054/D115)
@@ -1259,7 +1350,7 @@ faithful (add {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) dγ n =
     (elaborate C.Heap b ∘ restrictEnv {Γ = Γ} C.Heap leB)
     (SD.⟦ a ⟧ˢ fmt (restrictᴰ {Γ = Γ} leA dγ))
     (SD.⟦ b ⟧ˢ fmt (restrictᴰ {Γ = Γ} leB dγ))
-    dγ n (λ v → refl) refl
+    dγ n (λ v → refl)
     (λ j → trans (liftFn-∘-restrictEnv {Γ = Γ} {A = Int} leA (elaborate C.Heap a) dγ j)
                  (faithful a (restrictᴰ {Γ = Γ} leA dγ) j))
     (λ j → trans (liftFn-∘-restrictEnv {Γ = Γ} {A = Int} leB (elaborate C.Heap b) dγ j)
@@ -1273,7 +1364,7 @@ faithful (sub {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) dγ n =
     (elaborate C.Heap b ∘ restrictEnv {Γ = Γ} C.Heap leB)
     (SD.⟦ a ⟧ˢ fmt (restrictᴰ {Γ = Γ} leA dγ))
     (SD.⟦ b ⟧ˢ fmt (restrictᴰ {Γ = Γ} leB dγ))
-    dγ n (λ v → refl) refl
+    dγ n (λ v → refl)
     (λ j → trans (liftFn-∘-restrictEnv {Γ = Γ} {A = Int} leA (elaborate C.Heap a) dγ j)
                  (faithful a (restrictᴰ {Γ = Γ} leA dγ) j))
     (λ j → trans (liftFn-∘-restrictEnv {Γ = Γ} {A = Int} leB (elaborate C.Heap b) dγ j)
@@ -1287,7 +1378,7 @@ faithful (mul {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) dγ n =
     (elaborate C.Heap b ∘ restrictEnv {Γ = Γ} C.Heap leB)
     (SD.⟦ a ⟧ˢ fmt (restrictᴰ {Γ = Γ} leA dγ))
     (SD.⟦ b ⟧ˢ fmt (restrictᴰ {Γ = Γ} leB dγ))
-    dγ n (λ v → refl) refl
+    dγ n (λ v → refl)
     (λ j → trans (liftFn-∘-restrictEnv {Γ = Γ} {A = Int} leA (elaborate C.Heap a) dγ j)
                  (faithful a (restrictᴰ {Γ = Γ} leA dγ) j))
     (λ j → trans (liftFn-∘-restrictEnv {Γ = Γ} {A = Int} leB (elaborate C.Heap b) dγ j)
@@ -1302,7 +1393,7 @@ faithful (fadd {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) dγ n =
     (elaborate C.Heap b ∘ restrictEnv {Γ = Γ} C.Heap leB)
     (SD.⟦ a ⟧ˢ fmt (restrictᴰ {Γ = Γ} leA dγ))
     (SD.⟦ b ⟧ˢ fmt (restrictᴰ {Γ = Γ} leB dγ))
-    dγ n (λ v → refl) refl
+    dγ n (λ v → refl)
     (λ j → trans (liftFn-∘-restrictEnv {Γ = Γ} {A = Float} leA (elaborate C.Heap a) dγ j)
                  (faithful a (restrictᴰ {Γ = Γ} leA dγ) j))
     (λ j → trans (liftFn-∘-restrictEnv {Γ = Γ} {A = Float} leB (elaborate C.Heap b) dγ j)
@@ -1316,7 +1407,7 @@ faithful (fsub {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) dγ n =
     (elaborate C.Heap b ∘ restrictEnv {Γ = Γ} C.Heap leB)
     (SD.⟦ a ⟧ˢ fmt (restrictᴰ {Γ = Γ} leA dγ))
     (SD.⟦ b ⟧ˢ fmt (restrictᴰ {Γ = Γ} leB dγ))
-    dγ n (λ v → refl) refl
+    dγ n (λ v → refl)
     (λ j → trans (liftFn-∘-restrictEnv {Γ = Γ} {A = Float} leA (elaborate C.Heap a) dγ j)
                  (faithful a (restrictᴰ {Γ = Γ} leA dγ) j))
     (λ j → trans (liftFn-∘-restrictEnv {Γ = Γ} {A = Float} leB (elaborate C.Heap b) dγ j)
@@ -1330,7 +1421,7 @@ faithful (fmul {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) dγ n =
     (elaborate C.Heap b ∘ restrictEnv {Γ = Γ} C.Heap leB)
     (SD.⟦ a ⟧ˢ fmt (restrictᴰ {Γ = Γ} leA dγ))
     (SD.⟦ b ⟧ˢ fmt (restrictᴰ {Γ = Γ} leB dγ))
-    dγ n (λ v → refl) refl
+    dγ n (λ v → refl)
     (λ j → trans (liftFn-∘-restrictEnv {Γ = Γ} {A = Float} leA (elaborate C.Heap a) dγ j)
                  (faithful a (restrictᴰ {Γ = Γ} leA dγ) j))
     (λ j → trans (liftFn-∘-restrictEnv {Γ = Γ} {A = Float} leB (elaborate C.Heap b) dγ j)
@@ -1344,7 +1435,7 @@ faithful (fdiv {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) dγ n =
     (elaborate C.Heap b ∘ restrictEnv {Γ = Γ} C.Heap leB)
     (SD.⟦ a ⟧ˢ fmt (restrictᴰ {Γ = Γ} leA dγ))
     (SD.⟦ b ⟧ˢ fmt (restrictᴰ {Γ = Γ} leB dγ))
-    dγ n (λ v → refl) refl
+    dγ n (λ v → refl)
     (λ j → trans (liftFn-∘-restrictEnv {Γ = Γ} {A = Float} leA (elaborate C.Heap a) dγ j)
                  (faithful a (restrictᴰ {Γ = Γ} leA dγ) j))
     (λ j → trans (liftFn-∘-restrictEnv {Γ = Γ} {A = Float} leB (elaborate C.Heap b) dγ j)
@@ -1359,7 +1450,7 @@ faithful (div {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) dγ n =
     (elaborate C.Heap b ∘ restrictEnv {Γ = Γ} C.Heap leB)
     (SD.⟦ a ⟧ˢ fmt (restrictᴰ {Γ = Γ} leA dγ))
     (SD.⟦ b ⟧ˢ fmt (restrictᴰ {Γ = Γ} leB dγ))
-    dγ n (λ v → refl) refl
+    dγ n (λ v → refl)
     (λ j → trans (liftFn-∘-restrictEnv {Γ = Γ} {A = Int} leA (elaborate C.Heap a) dγ j)
                  (faithful a (restrictᴰ {Γ = Γ} leA dγ) j))
     (λ j → trans (liftFn-∘-restrictEnv {Γ = Γ} {A = Int} leB (elaborate C.Heap b) dγ j)
@@ -1373,7 +1464,7 @@ faithful (mod' {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) dγ n =
     (elaborate C.Heap b ∘ restrictEnv {Γ = Γ} C.Heap leB)
     (SD.⟦ a ⟧ˢ fmt (restrictᴰ {Γ = Γ} leA dγ))
     (SD.⟦ b ⟧ˢ fmt (restrictᴰ {Γ = Γ} leB dγ))
-    dγ n (λ v → refl) refl
+    dγ n (λ v → refl)
     (λ j → trans (liftFn-∘-restrictEnv {Γ = Γ} {A = Int} leA (elaborate C.Heap a) dγ j)
                  (faithful a (restrictᴰ {Γ = Γ} leA dγ) j))
     (λ j → trans (liftFn-∘-restrictEnv {Γ = Γ} {A = Int} leB (elaborate C.Heap b) dγ j)
@@ -1387,7 +1478,7 @@ faithful (lt {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) dγ n =
     (elaborate C.Heap b ∘ restrictEnv {Γ = Γ} C.Heap leB)
     (SD.⟦ a ⟧ˢ fmt (restrictᴰ {Γ = Γ} leA dγ))
     (SD.⟦ b ⟧ˢ fmt (restrictᴰ {Γ = Γ} leB dγ))
-    dγ n (λ v → refl) refl
+    dγ n (λ v → refl)
     (λ j → trans (liftFn-∘-restrictEnv {Γ = Γ} {A = Int} leA (elaborate C.Heap a) dγ j)
                  (faithful a (restrictᴰ {Γ = Γ} leA dγ) j))
     (λ j → trans (liftFn-∘-restrictEnv {Γ = Γ} {A = Int} leB (elaborate C.Heap b) dγ j)
@@ -1401,7 +1492,7 @@ faithful (le {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) dγ n =
     (elaborate C.Heap b ∘ restrictEnv {Γ = Γ} C.Heap leB)
     (SD.⟦ a ⟧ˢ fmt (restrictᴰ {Γ = Γ} leA dγ))
     (SD.⟦ b ⟧ˢ fmt (restrictᴰ {Γ = Γ} leB dγ))
-    dγ n (λ v → refl) refl
+    dγ n (λ v → refl)
     (λ j → trans (liftFn-∘-restrictEnv {Γ = Γ} {A = Int} leA (elaborate C.Heap a) dγ j)
                  (faithful a (restrictᴰ {Γ = Γ} leA dγ) j))
     (λ j → trans (liftFn-∘-restrictEnv {Γ = Γ} {A = Int} leB (elaborate C.Heap b) dγ j)
@@ -1415,7 +1506,7 @@ faithful (gt {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) dγ n =
     (elaborate C.Heap b ∘ restrictEnv {Γ = Γ} C.Heap leB)
     (SD.⟦ a ⟧ˢ fmt (restrictᴰ {Γ = Γ} leA dγ))
     (SD.⟦ b ⟧ˢ fmt (restrictᴰ {Γ = Γ} leB dγ))
-    dγ n (λ v → refl) refl
+    dγ n (λ v → refl)
     (λ j → trans (liftFn-∘-restrictEnv {Γ = Γ} {A = Int} leA (elaborate C.Heap a) dγ j)
                  (faithful a (restrictᴰ {Γ = Γ} leA dγ) j))
     (λ j → trans (liftFn-∘-restrictEnv {Γ = Γ} {A = Int} leB (elaborate C.Heap b) dγ j)
@@ -1429,7 +1520,7 @@ faithful (ge {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) dγ n =
     (elaborate C.Heap b ∘ restrictEnv {Γ = Γ} C.Heap leB)
     (SD.⟦ a ⟧ˢ fmt (restrictᴰ {Γ = Γ} leA dγ))
     (SD.⟦ b ⟧ˢ fmt (restrictᴰ {Γ = Γ} leB dγ))
-    dγ n (λ v → refl) refl
+    dγ n (λ v → refl)
     (λ j → trans (liftFn-∘-restrictEnv {Γ = Γ} {A = Int} leA (elaborate C.Heap a) dγ j)
                  (faithful a (restrictᴰ {Γ = Γ} leA dγ) j))
     (λ j → trans (liftFn-∘-restrictEnv {Γ = Γ} {A = Int} leB (elaborate C.Heap b) dγ j)
@@ -1443,7 +1534,7 @@ faithful (eq {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) dγ n =
     (elaborate C.Heap b ∘ restrictEnv {Γ = Γ} C.Heap leB)
     (SD.⟦ a ⟧ˢ fmt (restrictᴰ {Γ = Γ} leA dγ))
     (SD.⟦ b ⟧ˢ fmt (restrictᴰ {Γ = Γ} leB dγ))
-    dγ n (λ v → refl) refl
+    dγ n (λ v → refl)
     (λ j → trans (liftFn-∘-restrictEnv {Γ = Γ} {A = Int} leA (elaborate C.Heap a) dγ j)
                  (faithful a (restrictᴰ {Γ = Γ} leA dγ) j))
     (λ j → trans (liftFn-∘-restrictEnv {Γ = Γ} {A = Int} leB (elaborate C.Heap b) dγ j)
@@ -1457,7 +1548,7 @@ faithful (ne {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) dγ n =
     (elaborate C.Heap b ∘ restrictEnv {Γ = Γ} C.Heap leB)
     (SD.⟦ a ⟧ˢ fmt (restrictᴰ {Γ = Γ} leA dγ))
     (SD.⟦ b ⟧ˢ fmt (restrictᴰ {Γ = Γ} leB dγ))
-    dγ n (λ v → refl) refl
+    dγ n (λ v → refl)
     (λ j → trans (liftFn-∘-restrictEnv {Γ = Γ} {A = Int} leA (elaborate C.Heap a) dγ j)
                  (faithful a (restrictᴰ {Γ = Γ} leA dγ) j))
     (λ j → trans (liftFn-∘-restrictEnv {Γ = Γ} {A = Int} leB (elaborate C.Heap b) dγ j)
