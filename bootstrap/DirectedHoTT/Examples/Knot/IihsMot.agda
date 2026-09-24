@@ -28,6 +28,7 @@
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Knot.IihsMot where
 
+open import DirectedHoTT.Lib.Lkp using ( ∋lkp; vsⁿ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; _∙; RTm; RTy; var; vz; vs; pair; snd; Π; Σ'; Nat; εwkTy; IMu )
 open import DirectedHoTT.Spec.Typing
@@ -56,11 +57,11 @@ iihsMotK =
             ((Γ ▹ εwkTy IPair) ▹ IMu KnotD IPair (var vz)) ⊢ty iihsMotK
 ⊢iihsMotK =
   ty-Π ty-Nat
-   (ty-Π (ty-SubTy (⊢snd (⊢var (there (there here)))) (⊢var here))
+   (ty-Π (ty-SubTy (⊢snd (⊢var (∋lkp _ (vsⁿ 2 vz)))) (⊢var here))
     (ty-Π (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sIDesc (⊢var (there here))))
-                (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var (there (there here))))))
-     (ty-Π (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var (there (there here)))))
-        (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var (there (there (there here))))))))) 
+                (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var (∋lkp _ (vsⁿ 2 vz))))))
+     (ty-Π (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var (∋lkp _ (vsⁿ 2 vz)))))
+        (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var (∋lkp _ (vsⁿ 3 vz)))))))) 
 
 ------------------------------------------------------------------------
 -- ★ THE JUNK METHOD — and for `cICon-i` it is the RIGHT answer:
@@ -91,9 +92,9 @@ iihsJunk = lam (lam (lam (lam (lam (lam (lam Tm-unitK))))))
 ⊢iihsJunk k C wC =
   ⊢methLam KnotD IPair k C KnotWf wC ⊢IPair ⊢iihsMotK
     (⊢lam ty-Nat
-      (⊢lam (ty-SubTy (⊢snd (⊢var (there (there (there here))))) (⊢var here))
+      (⊢lam (ty-SubTy (⊢snd (⊢var (∋lkp _ (vsⁿ 3 vz)))) (⊢var here))
         (⊢lam (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sIDesc (⊢var (there here))))
-                    (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var (there (there here))))))
-          (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var (there (there here)))))
+                    (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var (∋lkp _ (vsⁿ 2 vz))))))
+          (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var (∋lkp _ (vsⁿ 2 vz)))))
             (⊢Tm-unitKv (var (vs (vs (vs vz))))
-                        (⊢var (there (there (there here)))))))))
+                        (⊢var (∋lkp _ (vsⁿ 3 vz))))))))

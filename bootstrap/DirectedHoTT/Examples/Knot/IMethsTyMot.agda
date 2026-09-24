@@ -27,6 +27,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Knot.IMethsTyMot where
+open import DirectedHoTT.Lib.Lkp using ( ∋lkp; vsⁿ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; vz; vs; RTy; RTm; var; lam; snd; pair; Π; Nat
@@ -66,10 +67,10 @@ imethsTyMotK =
    (ty-Π (ty-IMu KnotWf (⊢ixP ⊢sIDesc (⊢var here)))
     (ty-Π (ty-IMu KnotWf (⊢ixP ⊢sTy ⊢nzero))
      (ty-Π (ty-IMu KnotWf
-              (⊢ixP ⊢sTy (⊢nsuc (⊢nsuc (⊢var (there (there here)))))))
+              (⊢ixP ⊢sTy (⊢nsuc (⊢nsuc (⊢var (∋lkp _ (vsⁿ 2 vz)))))))
       (ty-Π ty-Nat
          (ty-IMu KnotWf
-            (⊢ixP ⊢sTy (⊢var (there (there (there (there here)))))))))))
+            (⊢ixP ⊢sTy (⊢var (∋lkp _ (vsⁿ 4 vz)))))))))
 
 -- ★ for `cIDesc-nil` the junk IS the answer: `Unit`.
 imethsTyJunk : {Γ : Cx} → RTm Γ
@@ -84,10 +85,10 @@ imethsTyJunk = lam (lam (lam (lam (lam (lam (lam (lam Ty-UnitK)))))))
       (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sIDesc (⊢var here)))
         (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sTy ⊢nzero))
           (⊢lam (ty-IMu KnotWf
-                   (⊢ixP ⊢sTy (⊢nsuc (⊢nsuc (⊢var (there (there here)))))))
+                   (⊢ixP ⊢sTy (⊢nsuc (⊢nsuc (⊢var (∋lkp _ (vsⁿ 2 vz)))))))
             (⊢lam ty-Nat
               (⊢Ty-UnitKv _
-                 (⊢var (there (there (there (there here))))))))))) 
+                 (⊢var (∋lkp _ (vsⁿ 4 vz))))))))) 
 
 ------------------------------------------------------------------------
 -- ★★★ THE DESCENT THROUGH THE FIVE Π BINDERS.

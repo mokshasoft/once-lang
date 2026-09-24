@@ -43,6 +43,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Knot.CtxD where
+open import DirectedHoTT.Lib.Lkp using ( ∋lkp; vsⁿ )
 open import normalizer.Syntax.Types using ( _≡_; sym; trans; cong; cong₂ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
@@ -129,8 +130,8 @@ cCtx-extWf =
            (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTy (fromI (⊢var (there here)))))
      (iwf-κ (⌜Id⌝ ⌜Nat⌝ (var (vs (vs (vs vz)))) (nsuc (var (vs (vs vz)))))
             (icw-ford ⌜Nat⌝ (var (vs (vs (vs vz)))) (nsuc (var (vs (vs vz)))))
-            (⊢⌜Id⌝ ⊢⌜Nat⌝ (⊢var (there (there (there here))))
-                          (toI (⊢nsuc (fromI (⊢var (there (there here)))))))
+            (⊢⌜Id⌝ ⊢⌜Nat⌝ (⊢var (∋lkp _ (vsⁿ 3 vz)))
+                          (toI (⊢nsuc (fromI (⊢var (∋lkp _ (vsⁿ 2 vz)))))))
             iwf-ι)))
 
 CtxWf : IDescWf INat CtxD
@@ -202,7 +203,7 @@ Ctx-extK m g a =
              (ty-Σ (ty-El (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTy (fromI (⊢var (there here))))))
                (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝
                               (toI (⊢nsuc (⊢wk (⊢wk (⊢wk dx)))))
-                              (toI (⊢nsuc (fromI (⊢var (there (there here))))))))
+                              (toI (⊢nsuc (fromI (⊢var (∋lkp _ (vsⁿ 2 vz))))))))
                      ty-Unit)))
            (toI dx)
       (⊢pair (ty-Σ (ty-El (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTy dw1)))

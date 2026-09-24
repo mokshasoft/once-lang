@@ -29,6 +29,7 @@
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Knot.IhsMot where
 
+open import DirectedHoTT.Lib.Lkp using ( ∋lkp; vsⁿ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; _∙; RTm; RTy; var; vz; vs; pair; snd; Π; Nat; εwkTy; IMu )
 open import DirectedHoTT.Spec.Typing
@@ -77,8 +78,8 @@ ihsMotK =
   ty-Π ty-Nat
    (ty-Π (ty-IMu KnotWf (⊢ixP ⊢sDesc (⊢var here)))
     (ty-Π (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var (there here))))
-     (ty-Π (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var (there (there here)))))
-        (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var (there (there (there here)))))))))
+     (ty-Π (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var (∋lkp _ (vsⁿ 2 vz)))))
+        (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var (∋lkp _ (vsⁿ 3 vz))))))))
 
 ------------------------------------------------------------------------
 -- ★ ROW `dι` — `ihs D ms dι p = unit`.  SEVEN lams: `⊢methLam`'s three
@@ -95,8 +96,8 @@ ihsIota = lam (lam (lam (lam (lam (lam (lam Tm-unitK))))))
     (⊢lam ty-Nat
       (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sDesc (⊢var here)))
         (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var (there here))))
-          (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var (there (there here)))))
-            (⊢Tm-unitKv (var (vs (vs (vs vz)))) (⊢var (there (there (there here)))))))))
+          (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var (∋lkp _ (vsⁿ 2 vz)))))
+            (⊢Tm-unitKv (var (vs (vs (vs vz)))) (⊢var (∋lkp _ (vsⁿ 3 vz))))))))
 
 ------------------------------------------------------------------------
 -- ★ ROW `dρ` — `ihs D ms (dρ C) p = pair (elim D ms (fst p)) (ihs D ms C (snd p))`.

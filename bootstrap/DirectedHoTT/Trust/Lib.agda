@@ -53,6 +53,7 @@ import DirectedHoTT.Lib.ISzSort
 import DirectedHoTT.Lib.IWk
 import DirectedHoTT.Lib.Id
 import DirectedHoTT.Lib.IdSuc
+import DirectedHoTT.Lib.Lkp
 import DirectedHoTT.Lib.Max
 import DirectedHoTT.Lib.Monus
 import DirectedHoTT.Lib.MonusArith

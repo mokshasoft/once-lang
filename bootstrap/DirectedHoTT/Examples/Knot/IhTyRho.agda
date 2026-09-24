@@ -13,6 +13,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Knot.IhTyRho where
+open import DirectedHoTT.Lib.Lkp using ( ∋lkp; vsⁿ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; vz; vs; RTy; RTm; var; lam; snd; pair; Π; Nat
@@ -64,16 +65,16 @@ ihTyRho =
 ⊢ihTyRho =
   ⊢methLam KnotD IPair tagDCon-rho cDCon-rho KnotWf cDCon-rhoWf
            ⊢IPair ⊢ihTyMotK
-    (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢var (there (there here))))))
+    (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢var (∋lkp _ (vsⁿ 2 vz))))))
       (⊢lam (ty-IMu KnotWf
-               (⊢ixP ⊢sTy (⊢nsuc (⊢snd (⊢var (there (there (there here))))))))
+               (⊢ixP ⊢sTy (⊢nsuc (⊢snd (⊢var (∋lkp _ (vsⁿ 3 vz)))))))
         (⊢ihRowρ dn dq dM
           (⊢wkTyK dn
             (⊢ihAppK {dd = snd (var (vs (vs (vs (vs vz))))) }
                      {u = fst (var (vs (vs (vs vz)))) }
                      dIH (⊢Tm-sndKv _ dn dq) dM)))))
   where
-    dn = ⊢snd (⊢var (there (there (there (there here)))))
+    dn = ⊢snd (⊢var (∋lkp _ (vsⁿ 4 vz)))
     dq = ⊢var (there here)
     dM = ⊢var here
     dIH = ⊢ihHere
@@ -82,4 +83,4 @@ ihTyRho =
             {j = pair sDCon (snd (var vz))}
             (iκ (⌜Id⌝ ⌜Nat⌝ (fst (var (vs vz))) sDCon) iι)
             {q = var (vs (vs (vs vz)))} {M = ihTyMotK}
-            (⊢var (there (there here)))
+            (⊢var (∋lkp _ (vsⁿ 2 vz)))

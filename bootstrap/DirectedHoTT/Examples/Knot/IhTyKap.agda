@@ -9,6 +9,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Knot.IhTyKap where
+open import DirectedHoTT.Lib.Lkp using ( ∋lkp; vsⁿ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; vz; vs; RTy; RTm; var; lam; snd; pair; Π; Nat
@@ -53,14 +54,14 @@ ihTyKap =
 ⊢ihTyKap =
   ⊢methLam KnotD IPair tagDCon-kap cDCon-kap KnotWf cDCon-kapWf
            ⊢IPair ⊢ihTyMotK
-    (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢var (there (there here))))))
+    (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢var (∋lkp _ (vsⁿ 2 vz))))))
       (⊢lam (ty-IMu KnotWf
-               (⊢ixP ⊢sTy (⊢nsuc (⊢snd (⊢var (there (there (there here))))))))
+               (⊢ixP ⊢sTy (⊢nsuc (⊢snd (⊢var (∋lkp _ (vsⁿ 3 vz)))))))
         (⊢ihAppK {dd = snd (var (vs (vs (vs (vs vz)))))}
                  {u = fst (snd (var (vs (vs (vs vz))))) }
                  dIH (⊢Tm-sndKv _ dn dq) dM)))
   where
-    dn = ⊢snd (⊢var (there (there (there (there here)))))
+    dn = ⊢snd (⊢var (∋lkp _ (vsⁿ 4 vz)))
     dq = ⊢var (there here)
     dM = ⊢var here
     dIH = ⊢ihHere
@@ -77,4 +78,4 @@ ihTyKap =
                (iρ (pair sDCon (snd (var (vs vz))))
                  (iκ (⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs vz)))) sDCon) iι))
                {q = var (vs (vs (vs vz)))} {M = ihTyMotK}
-               (⊢var (there (there here))))
+               (⊢var (∋lkp _ (vsⁿ 2 vz))))

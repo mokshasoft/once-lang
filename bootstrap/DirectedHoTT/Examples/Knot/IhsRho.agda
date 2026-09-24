@@ -14,6 +14,7 @@
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Knot.IhsRho where
 
+open import DirectedHoTT.Lib.Lkp using ( ∋lkp; vsⁿ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; _∙; RTm; RTy; var; vz; vs; pair; snd; Π; Nat; εwkTy; IMu )
 open import DirectedHoTT.Spec.Typing
@@ -71,19 +72,19 @@ ihsRho = lam (lam (lam (lam (lam (lam (lam
     (⊢lam ty-Nat
       (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sDesc (⊢var here)))
         (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var (there here))))
-          (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var (there (there here)))))
-            (⊢ihsStep (⊢var (there (there (there here))))
-                      (⊢var (there (there here))) (⊢var (there here)) (⊢var here)
+          (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var (∋lkp _ (vsⁿ 2 vz)))))
+            (⊢ihsStep (⊢var (∋lkp _ (vsⁿ 3 vz)))
+                      (⊢var (∋lkp _ (vsⁿ 2 vz))) (⊢var (there here)) (⊢var here)
                (⊢app (⊢app (⊢app (⊢app
                         (⊢ihHere {D = KnotD} {I = IPair}
                           {σ = isingle (var (vs (vs (vs (vs (vs (vs vz)))))))}
                           {j = pair sDCon (snd (var vz))}
                           (iκ (⌜Id⌝ ⌜Nat⌝ (fst (var (vs vz))) sDCon) iι)
                           {q = var (vs (vs (vs (vs (vs vz)))))} {M = ihsMotK}
-                          (⊢var (there (there (there (there here))))))
-                        (⊢var (there (there (there here)))))
-                        (⊢var (there (there here))))
+                          (⊢var (∋lkp _ (vsⁿ 4 vz))))
+                        (⊢var (∋lkp _ (vsⁿ 3 vz))))
+                        (⊢var (∋lkp _ (vsⁿ 2 vz))))
                         (⊢var (there here)))
-                     (⊢Tm-sndKv (var (vs (vs (vs vz)))) (⊢var (there (there (there here)))) (⊢var here)))))))) 
+                     (⊢Tm-sndKv (var (vs (vs (vs vz)))) (⊢var (∋lkp _ (vsⁿ 3 vz))) (⊢var here)))))))) 
 
 ------------------------------------------------------------------------

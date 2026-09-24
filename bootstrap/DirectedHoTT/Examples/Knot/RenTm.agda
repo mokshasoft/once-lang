@@ -43,6 +43,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Knot.RenTm where
+open import DirectedHoTT.Lib.Lkp using ( ∋lkp; vsⁿ )
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
@@ -129,10 +130,10 @@ renMotK =
            ((Γ ▹ εwkTy IPair) ▹ IMu KnotD IPair (var vz)) ⊢ty renMotK
 ⊢renMotK =
   ty-Π ty-Nat
-    (ty-Π (ty-Π (ty-IMu KnotWf (⊢ixP ⊢sVar (⊢snd (⊢var (there (there here))))))
+    (ty-Π (ty-Π (ty-IMu KnotWf (⊢ixP ⊢sVar (⊢snd (⊢var (∋lkp _ (vsⁿ 2 vz))))))
                 (ty-IMu KnotWf (⊢ixP ⊢sVar (⊢var (there here)))))
           (ty-IMu KnotWf
-             (⊢ixP (⊢fst (⊢var (there (there (there here)))))
+             (⊢ixP (⊢fst (⊢var (∋lkp _ (vsⁿ 3 vz))))
                    (⊢var (there here)))))
 
 ------------------------------------------------------------------------
@@ -251,15 +252,15 @@ renVarM =
   ⊢methLam KnotD IPair tagTm-var cTm-var KnotWf cTm-varWf ⊢IPair ⊢renMotK
     (⊢lam ty-Nat
       (⊢lam (ty-Π (ty-IMu KnotWf
-                     (⊢ixP ⊢sVar (⊢snd (⊢var (there (there (there here)))))))
+                     (⊢ixP ⊢sVar (⊢snd (⊢var (∋lkp _ (vsⁿ 3 vz))))))
                   (ty-IMu KnotWf (⊢ixP ⊢sVar (⊢var (there here)))))
-        (renConv (⊢fst (⊢var (there (there (there (there here))))))
+        (renConv (⊢fst (⊢var (∋lkp _ (vsⁿ 4 vz))))
                  ⊢sTm
                  (⊢var (there here))
-                 (fordAs (⊢fst (⊢snd (⊢var (there (there (there here)))))))
+                 (fordAs (⊢fst (⊢snd (⊢var (∋lkp _ (vsⁿ 3 vz))))))
                  (⊢Tm-varKv _ (⊢var (there here))
                             (⊢app (⊢var here)
-                                  (⊢fst (⊢var (there (there (there here)))))))))) 
+                                  (⊢fst (⊢var (∋lkp _ (vsⁿ 3 vz))))))))) 
 
 ------------------------------------------------------------------------
 -- ★★★ ROWS 51 AND 52 — `ρ` applied to the rebuilt variable.
@@ -287,17 +288,17 @@ renVzM =
   ⊢methLam KnotD IPair tagVar-vz cVar-vz KnotWf cVar-vzWf ⊢IPair ⊢renMotK
     (⊢lam ty-Nat
       (⊢lam (ty-Π (ty-IMu KnotWf
-                     (⊢ixP ⊢sVar (⊢snd (⊢var (there (there (there here)))))))
+                     (⊢ixP ⊢sVar (⊢snd (⊢var (∋lkp _ (vsⁿ 3 vz))))))
                   (ty-IMu KnotWf (⊢ixP ⊢sVar (⊢var (there here)))))
-        (renConv (⊢fst (⊢var (there (there (there (there here))))))
+        (renConv (⊢fst (⊢var (∋lkp _ (vsⁿ 4 vz))))
                  ⊢sVar
                  (⊢var (there here))
-                 (fordAs (⊢fst (⊢snd (⊢var (there (there (there here)))))))
+                 (fordAs (⊢fst (⊢snd (⊢var (∋lkp _ (vsⁿ 3 vz))))))
                  (⊢app (⊢var here)
-                       (renVarAt (⊢snd (⊢var (there (there (there (there here))))))
-                                 (elAsNat (⊢fst (⊢var (there (there (there here))))))
-                                 (fordAs (⊢fst (⊢snd (⊢snd (⊢var (there (there (there here))))))))
-                                 (⊢Var-vzKt (elAsNat (⊢fst (⊢var (there (there (there here))))))))))))
+                       (renVarAt (⊢snd (⊢var (∋lkp _ (vsⁿ 4 vz))))
+                                 (elAsNat (⊢fst (⊢var (∋lkp _ (vsⁿ 3 vz)))))
+                                 (fordAs (⊢fst (⊢snd (⊢snd (⊢var (∋lkp _ (vsⁿ 3 vz)))))))
+                                 (⊢Var-vzKt (elAsNat (⊢fst (⊢var (∋lkp _ (vsⁿ 3 vz)))))))))))
 
 renVsM : {Γ : Cx} → RTm Γ
 renVsM =
@@ -316,18 +317,18 @@ renVsM =
   ⊢methLam KnotD IPair tagVar-vs cVar-vs KnotWf cVar-vsWf ⊢IPair ⊢renMotK
     (⊢lam ty-Nat
       (⊢lam (ty-Π (ty-IMu KnotWf
-                     (⊢ixP ⊢sVar (⊢snd (⊢var (there (there (there here)))))))
+                     (⊢ixP ⊢sVar (⊢snd (⊢var (∋lkp _ (vsⁿ 3 vz))))))
                   (ty-IMu KnotWf (⊢ixP ⊢sVar (⊢var (there here)))))
-        (renConv (⊢fst (⊢var (there (there (there (there here))))))
+        (renConv (⊢fst (⊢var (∋lkp _ (vsⁿ 4 vz))))
                  ⊢sVar
                  (⊢var (there here))
-                 (fordAs (⊢fst (⊢snd (⊢snd (⊢var (there (there (there here))))))))
+                 (fordAs (⊢fst (⊢snd (⊢snd (⊢var (∋lkp _ (vsⁿ 3 vz)))))))
                  (⊢app (⊢var here)
-                       (renVarAt (⊢snd (⊢var (there (there (there (there here))))))
-                                 (elAsNat (⊢fst (⊢var (there (there (there here))))))
-                                 (fordAs (⊢fst (⊢snd (⊢snd (⊢snd (⊢var (there (there (there here)))))))))
-                                 (⊢Var-vsKt (elAsNat (⊢fst (⊢var (there (there (there here))))))
-                                            (⊢fst (⊢snd (⊢var (there (there (there here)))))))))))) 
+                       (renVarAt (⊢snd (⊢var (∋lkp _ (vsⁿ 4 vz))))
+                                 (elAsNat (⊢fst (⊢var (∋lkp _ (vsⁿ 3 vz)))))
+                                 (fordAs (⊢fst (⊢snd (⊢snd (⊢snd (⊢var (∋lkp _ (vsⁿ 3 vz))))))))
+                                 (⊢Var-vsKt (elAsNat (⊢fst (⊢var (∋lkp _ (vsⁿ 3 vz)))))
+                                            (⊢fst (⊢snd (⊢var (∋lkp _ (vsⁿ 3 vz))))))))))) 
 
 ------------------------------------------------------------------------
 -- ★★★ THE TUPLE — 50 COMPUTED, 3 GIVEN, and the mask is `Knot/SubMot`'s
@@ -386,20 +387,20 @@ ihRenR v q C M =
                       (⊢-cast (payRenR (var vz) C) (⊢var here)))
         (⊢lam ty-Nat
           (⊢lam (ty-Π (ty-IMu KnotWf
-                         (⊢ixP ⊢sVar (⊢snd (⊢var (there (there (there here)))))))
+                         (⊢ixP ⊢sVar (⊢snd (⊢var (∋lkp _ (vsⁿ 3 vz))))))
                       (ty-IMu KnotWf (⊢ixP ⊢sVar (⊢var (there here)))))
             (⊢icon KnotWf mem
-                   (⊢ixP ((⊢fst (⊢var (there (there (there (there here))))))) (⊢var (there here)))
+                   (⊢ixP ((⊢fst (⊢var (∋lkp _ (vsⁿ 4 vz))))) (⊢var (there here)))
                    (⊢-cast (cong (ipayTy KnotD IPair
                                     (isingle (pair (fst (var (vs (vs (vs (vs vz))))))
                                                    (var (vs vz)))))
                                  (sym look))
                      (⊢isubPay w wC KnotWf
-                       (isingle-Sub⊢ (⊢var (there (there (there (there here))))))
-                       (isingle-Sub⊢ (⊢ixP ((⊢fst (⊢var (there (there (there (there here)))))))
+                       (isingle-Sub⊢ (⊢var (∋lkp _ (vsⁿ 4 vz))))
+                       (isingle-Sub⊢ (⊢ixP ((⊢fst (⊢var (∋lkp _ (vsⁿ 4 vz)))))
                                            (⊢var (there here))))
                        refl (step (βfst _ _) done) refl (step (βsnd _ _) done)
-                       (⊢fst (⊢var (there (there (there (there here)))))) (⊢snd (⊢var (there (there (there (there here)))))) (⊢var (there here))
+                       (⊢fst (⊢var (∋lkp _ (vsⁿ 4 vz)))) (⊢snd (⊢var (∋lkp _ (vsⁿ 4 vz)))) (⊢var (there here))
                        (⊢var here)
                        (var (vs (vs (vs vz)))) (var (vs (vs vz)))
                        -- ⚠ FOUR RENAMINGS, not three: a binder's TYPE
@@ -412,7 +413,7 @@ ihRenR v q C M =
                                           (payRenR (var (vs vz)) C)))
                                    (payRenR (var (vs (vs vz))) C)))
                                  (payRenR (var (vs (vs (vs vz)))) C))
-                               (⊢var (there (there (there here)))))
+                               (⊢var (∋lkp _ (vsⁿ 3 vz))))
                        -- ⚠ THREE, for the same reason the payload took
                        --   four: `ih` is weakened past itself, `n` and
                        --   `σ`.  ★ And the MOTIVE cancels by `refl` —
@@ -422,7 +423,7 @@ ihRenR v q C M =
                                           (ihRenR (var (vs vz)) (var vz) C renMotK))
                                         (ihRenR (var (vs (vs vz))) (var (vs vz)) C renMotK)))
                                  (ihRenR (var (vs (vs (vs vz)))) (var (vs (vs vz))) C renMotK))
-                               (⊢var (there (there here)))))))))))
+                               (⊢var (∋lkp _ (vsⁿ 2 vz)))))))))))
 
 -- ★ the method TYPE's well-formedness, `Knot/SubMot`'s with the motive
 --   swapped and `⊢sortMap` gone from the result index.
@@ -442,10 +443,10 @@ imethTySubR-wf {Γ = Γ} k C wC =
                       ⊢renMotK
                       (⊢-cast (payRenR (var vz) C) (⊢var here)))
             (ty-Π ty-Nat
-              (ty-Π (ty-Π (ty-IMu KnotWf (⊢ixP ⊢sVar (⊢snd (⊢var (there (there (there here)))))))
+              (ty-Π (ty-Π (ty-IMu KnotWf (⊢ixP ⊢sVar (⊢snd (⊢var (∋lkp _ (vsⁿ 3 vz))))))
                           (ty-IMu KnotWf (⊢ixP ⊢sVar (⊢var (there here)))))
                     (ty-IMu KnotWf
-                       (⊢ixP (⊢fst (⊢var (there (there (there (there here)))))) (⊢var (there here))))))))
+                       (⊢ixP (⊢fst (⊢var (∋lkp _ (vsⁿ 4 vz)))) (⊢var (there here))))))))
 
 imethsTyFromSubR-wf : {Γ : Ctx} (j : ℕ) (E : IDesc) →
                       IDescWfFrom KnotD IPair E →

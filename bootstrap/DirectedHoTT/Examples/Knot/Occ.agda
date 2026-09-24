@@ -23,6 +23,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Knot.Occ where
+open import DirectedHoTT.Lib.Lkp using ( ∋lkp; vsⁿ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; vz; vs; var; lam; app; fst; pair; unit; RTm; IDesc
@@ -64,7 +65,7 @@ occVz = lam (lam (lam (lam (eqNatTm (var vz) (fst (var (vs (vs vz))))))))
   ⊢methLam KnotD IPair tagVar-vz cVar-vz KnotWf cVar-vzWf ⊢IPair ty-OccTy
     (⊢lam ty-Nat
       (⊢eqNat (⊢var here)
-              (elAsNat (⊢fst (⊢var (there (there here)))))))
+              (elAsNat (⊢fst (⊢var (∋lkp _ (vsⁿ 2 vz)))))))
 
 ------------------------------------------------------------------------
 -- ★ THE TUPLE — 51 computed rows, the spliced `cVar-vz`, then `cVar-vs`

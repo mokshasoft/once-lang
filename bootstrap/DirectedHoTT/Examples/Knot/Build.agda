@@ -44,6 +44,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Knot.Build where
+open import DirectedHoTT.Lib.Lkp using ( ∋lkp; vsⁿ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; vz; vs; Var
         ; RTy; RTm; El; Unit; Nat; Σ'; IMu
@@ -232,7 +233,7 @@ Var-vsK m x = icon tagVar-vs
                             (toI ⊢sVar)))
                (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝
                               (toI (⊢snd (⊢ixP ⊢sVar (⊢numAt (suc n) r3))))
-                              (toI (⊢nsuc (fromI (⊢var (there (there here))))))))
+                              (toI (⊢nsuc (fromI (⊢var (∋lkp _ (vsⁿ 2 vz))))))))
                      ty-Unit)))
            (toI (⊢num n))
       (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝
@@ -331,7 +332,7 @@ Var-vsK m x = icon tagVar-vs
                             (toI ⊢sVar)))
                (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝
                               (toI (⊢snd (⊢ixP ⊢sVar (⊢nsuc (⊢wk (⊢wk (⊢wk dy)))))))
-                              (toI (⊢nsuc (fromI (⊢var (there (there here))))))))
+                              (toI (⊢nsuc (fromI (⊢var (∋lkp _ (vsⁿ 2 vz))))))))
                      ty-Unit)))
            (toI dy)
       (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝
@@ -439,7 +440,7 @@ tmCast refl d = d
                             (toI ⊢sVar)))
                (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝
                               (toI (⊢snd (⊢ixP ⊢sVar (⊢nsuc (⊢wk (⊢wk (⊢wk dd)))))))
-                              (toI (⊢nsuc (fromI (⊢var (there (there here))))))))
+                              (toI (⊢nsuc (fromI (⊢var (∋lkp _ (vsⁿ 2 vz))))))))
                      ty-Unit)))
            (toI dd)
       (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝

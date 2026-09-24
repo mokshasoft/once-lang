@@ -16,6 +16,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Knot.MethsTyCons where
+open import DirectedHoTT.Lib.Lkp using ( ∋lkp; vsⁿ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; vz; vs; RTy; RTm; var; lam; snd; pair; Π; Nat
         ; ICon; IMu; app; fst; iρ; iκ; iι
@@ -55,9 +56,9 @@ methsTyCons =
 ⊢methsTyCons =
   ⊢methLam KnotD IPair tagDesc-cons cDesc-cons KnotWf cDesc-consWf
            ⊢IPair ⊢methsTyMotK
-    (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sDesc (⊢snd (⊢var (there (there here))))))
+    (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sDesc (⊢snd (⊢var (∋lkp _ (vsⁿ 2 vz))))))
       (⊢lam (ty-IMu KnotWf
-               (⊢ixP ⊢sTy (⊢nsuc (⊢snd (⊢var (there (there (there here))))))))
+               (⊢ixP ⊢sTy (⊢nsuc (⊢snd (⊢var (∋lkp _ (vsⁿ 3 vz)))))))
         (⊢lam ty-Nat
           (⊢methsRowCons dn dj dD dC dM
             -- ⚠ `dd`/`u` PINNED.  They appear only under `iinst`, a
@@ -67,11 +68,11 @@ methsTyCons =
                         {u = fst (snd (var (vs (vs (vs (vs vz)))))) }
                         dIH dD dM (⊢nsuc dj))))))
   where
-    dn = ⊢snd (⊢var (there (there (there (there (there here))))))
-    dD = ⊢var (there (there here))
+    dn = ⊢snd (⊢var (∋lkp _ (vsⁿ 5 vz)))
+    dD = ⊢var (∋lkp _ (vsⁿ 2 vz))
     dM = ⊢var (there here)
     dj = ⊢var here
-    dC = ⊢fst (⊢var (there (there (there (there here)))))
+    dC = ⊢fst (⊢var (∋lkp _ (vsⁿ 4 vz)))
     -- ★ SKIP the `sDCon` child's IH, THEN take `E`'s.
     dIH = ⊢ihHere
             {D = KnotD} {I = IPair}
@@ -87,4 +88,4 @@ methsTyCons =
                (iρ (pair sDesc (snd (var (vs vz))))
                    (iκ (⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs vz)))) sDesc) iι))
                {q = var (vs (vs (vs (vs vz))))} {M = methsTyMotK}
-               (⊢var (there (there (there here)))))
+               (⊢var (∋lkp _ (vsⁿ 3 vz))))

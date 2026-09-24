@@ -34,6 +34,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Knot.Wf where
+open import DirectedHoTT.Lib.Lkp using ( ∋lkp; vsⁿ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; vz; vs
         ; RTm; var; pair; fst; snd; nzero; nsuc; ⌜Nat⌝; ⌜Id⌝
@@ -118,14 +119,14 @@ cTy-PiWf : IConWf KnotD IPair (◇ ▹ IPair) cTy-Pi
 cTy-PiWf =
   iwf-ρ (pair sTy (snd (var vz))) (⊢ixP ⊢sTy (⊢snd (⊢var here)))
    (iwf-ρ (pair sTy (nsuc (snd (var (vs vz))))) (⊢ixP ⊢sTy (⊢nsuc (⊢snd (⊢var (there here)))))
-    (iwf-κ (⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs vz)))) sTy) (icw-ford ⌜Nat⌝ (fst (var (vs (vs vz)))) sTy) (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (there (there here))))) (toI ⊢sTy))
+    (iwf-κ (⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs vz)))) sTy) (icw-ford ⌜Nat⌝ (fst (var (vs (vs vz)))) sTy) (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (∋lkp _ (vsⁿ 2 vz))))) (toI ⊢sTy))
      iwf-ι))
 
 cTy-SgWf : IConWf KnotD IPair (◇ ▹ IPair) cTy-Sg
 cTy-SgWf =
   iwf-ρ (pair sTy (snd (var vz))) (⊢ixP ⊢sTy (⊢snd (⊢var here)))
    (iwf-ρ (pair sTy (nsuc (snd (var (vs vz))))) (⊢ixP ⊢sTy (⊢nsuc (⊢snd (⊢var (there here)))))
-    (iwf-κ (⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs vz)))) sTy) (icw-ford ⌜Nat⌝ (fst (var (vs (vs vz)))) sTy) (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (there (there here))))) (toI ⊢sTy))
+    (iwf-κ (⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs vz)))) sTy) (icw-ford ⌜Nat⌝ (fst (var (vs (vs vz)))) sTy) (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (∋lkp _ (vsⁿ 2 vz))))) (toI ⊢sTy))
      iwf-ι))
 
 cTy-ElWf : IConWf KnotD IPair (◇ ▹ IPair) cTy-El
@@ -138,8 +139,8 @@ cTy-HomWf : IConWf KnotD IPair (◇ ▹ IPair) cTy-Hom
 cTy-HomWf =
   iwf-ρ (pair sTy (snd (var vz))) (⊢ixP ⊢sTy (⊢snd (⊢var here)))
    (iwf-ρ (pair sTm (snd (var (vs vz)))) (⊢ixP ⊢sTm (⊢snd (⊢var (there here))))
-    (iwf-ρ (pair sTm (snd (var (vs (vs vz))))) (⊢ixP ⊢sTm (⊢snd (⊢var (there (there here)))))
-     (iwf-κ (⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs (vs vz))))) sTy) (icw-ford ⌜Nat⌝ (fst (var (vs (vs (vs vz))))) sTy) (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (there (there (there here)))))) (toI ⊢sTy))
+    (iwf-ρ (pair sTm (snd (var (vs (vs vz))))) (⊢ixP ⊢sTm (⊢snd (⊢var (∋lkp _ (vsⁿ 2 vz)))))
+     (iwf-κ (⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs (vs vz))))) sTy) (icw-ford ⌜Nat⌝ (fst (var (vs (vs (vs vz))))) sTy) (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (∋lkp _ (vsⁿ 3 vz))))) (toI ⊢sTy))
       iwf-ι)))
 
 cTy-UnitWf : IConWf KnotD IPair (◇ ▹ IPair) cTy-Unit
@@ -156,8 +157,8 @@ cTy-IdWf : IConWf KnotD IPair (◇ ▹ IPair) cTy-Id
 cTy-IdWf =
   iwf-ρ (pair sTy (snd (var vz))) (⊢ixP ⊢sTy (⊢snd (⊢var here)))
    (iwf-ρ (pair sTm (snd (var (vs vz)))) (⊢ixP ⊢sTm (⊢snd (⊢var (there here))))
-    (iwf-ρ (pair sTm (snd (var (vs (vs vz))))) (⊢ixP ⊢sTm (⊢snd (⊢var (there (there here)))))
-     (iwf-κ (⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs (vs vz))))) sTy) (icw-ford ⌜Nat⌝ (fst (var (vs (vs (vs vz))))) sTy) (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (there (there (there here)))))) (toI ⊢sTy))
+    (iwf-ρ (pair sTm (snd (var (vs (vs vz))))) (⊢ixP ⊢sTm (⊢snd (⊢var (∋lkp _ (vsⁿ 2 vz)))))
+     (iwf-κ (⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs (vs vz))))) sTy) (icw-ford ⌜Nat⌝ (fst (var (vs (vs (vs vz))))) sTy) (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (∋lkp _ (vsⁿ 3 vz))))) (toI ⊢sTy))
       iwf-ι)))
 
 cTy-MuWf : IConWf KnotD IPair (◇ ▹ IPair) cTy-Mu
@@ -170,8 +171,8 @@ cTy-IMuWf : IConWf KnotD IPair (◇ ▹ IPair) cTy-IMu
 cTy-IMuWf =
   iwf-ρ (pair sIDesc (snd (var vz))) (⊢ixP ⊢sIDesc (⊢snd (⊢var here)))
    (iwf-ρ (pair sTy nzero) (⊢ixP ⊢sTy ⊢nzero)
-    (iwf-ρ (pair sTm (snd (var (vs (vs vz))))) (⊢ixP ⊢sTm (⊢snd (⊢var (there (there here)))))
-     (iwf-κ (⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs (vs vz))))) sTy) (icw-ford ⌜Nat⌝ (fst (var (vs (vs (vs vz))))) sTy) (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (there (there (there here)))))) (toI ⊢sTy))
+    (iwf-ρ (pair sTm (snd (var (vs (vs vz))))) (⊢ixP ⊢sTm (⊢snd (⊢var (∋lkp _ (vsⁿ 2 vz)))))
+     (iwf-κ (⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs (vs vz))))) sTy) (icw-ford ⌜Nat⌝ (fst (var (vs (vs (vs vz))))) sTy) (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (∋lkp _ (vsⁿ 3 vz))))) (toI ⊢sTy))
       iwf-ι)))
 
 cTm-varWf : IConWf KnotD IPair (◇ ▹ IPair) cTm-var
@@ -190,31 +191,31 @@ cTm-appWf : IConWf KnotD IPair (◇ ▹ IPair) cTm-app
 cTm-appWf =
   iwf-ρ (pair sTm (snd (var vz))) (⊢ixP ⊢sTm (⊢snd (⊢var here)))
    (iwf-ρ (pair sTm (snd (var (vs vz)))) (⊢ixP ⊢sTm (⊢snd (⊢var (there here))))
-    (iwf-κ (⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs vz)))) sTm) (icw-ford ⌜Nat⌝ (fst (var (vs (vs vz)))) sTm) (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (there (there here))))) (toI ⊢sTm))
+    (iwf-κ (⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs vz)))) sTm) (icw-ford ⌜Nat⌝ (fst (var (vs (vs vz)))) sTm) (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (∋lkp _ (vsⁿ 2 vz))))) (toI ⊢sTm))
      iwf-ι))
 
 cTm-pairWf : IConWf KnotD IPair (◇ ▹ IPair) cTm-pair
 cTm-pairWf =
   iwf-ρ (pair sTm (snd (var vz))) (⊢ixP ⊢sTm (⊢snd (⊢var here)))
    (iwf-ρ (pair sTm (snd (var (vs vz)))) (⊢ixP ⊢sTm (⊢snd (⊢var (there here))))
-    (iwf-κ (⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs vz)))) sTm) (icw-ford ⌜Nat⌝ (fst (var (vs (vs vz)))) sTm) (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (there (there here))))) (toI ⊢sTm))
+    (iwf-κ (⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs vz)))) sTm) (icw-ford ⌜Nat⌝ (fst (var (vs (vs vz)))) sTm) (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (∋lkp _ (vsⁿ 2 vz))))) (toI ⊢sTm))
      iwf-ι))
 
 cTm-absurdWf : IConWf KnotD IPair (◇ ▹ IPair) cTm-absurd
 cTm-absurdWf =
   iwf-ρ (pair sTm (snd (var vz))) (⊢ixP ⊢sTm (⊢snd (⊢var here)))
    (iwf-ρ (pair sTm (snd (var (vs vz)))) (⊢ixP ⊢sTm (⊢snd (⊢var (there here))))
-    (iwf-κ (⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs vz)))) sTm) (icw-ford ⌜Nat⌝ (fst (var (vs (vs vz)))) sTm) (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (there (there here))))) (toI ⊢sTm))
+    (iwf-κ (⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs vz)))) sTm) (icw-ford ⌜Nat⌝ (fst (var (vs (vs vz)))) sTm) (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (∋lkp _ (vsⁿ 2 vz))))) (toI ⊢sTm))
      iwf-ι))
 
 cTm-ordtrWf : IConWf KnotD IPair (◇ ▹ IPair) cTm-ordtr
 cTm-ordtrWf =
   iwf-ρ (pair sTm (snd (var vz))) (⊢ixP ⊢sTm (⊢snd (⊢var here)))
    (iwf-ρ (pair sTm (snd (var (vs vz)))) (⊢ixP ⊢sTm (⊢snd (⊢var (there here))))
-    (iwf-ρ (pair sTm (snd (var (vs (vs vz))))) (⊢ixP ⊢sTm (⊢snd (⊢var (there (there here)))))
-     (iwf-ρ (pair sTm (snd (var (vs (vs (vs vz)))))) (⊢ixP ⊢sTm (⊢snd (⊢var (there (there (there here))))))
-      (iwf-ρ (pair sTm (snd (var (vs (vs (vs (vs vz))))))) (⊢ixP ⊢sTm (⊢snd (⊢var (there (there (there (there here)))))))
-       (iwf-κ (⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs (vs (vs (vs vz))))))) sTm) (icw-ford ⌜Nat⌝ (fst (var (vs (vs (vs (vs (vs vz))))))) sTm) (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (there (there (there (there (there here)))))))) (toI ⊢sTm))
+    (iwf-ρ (pair sTm (snd (var (vs (vs vz))))) (⊢ixP ⊢sTm (⊢snd (⊢var (∋lkp _ (vsⁿ 2 vz)))))
+     (iwf-ρ (pair sTm (snd (var (vs (vs (vs vz)))))) (⊢ixP ⊢sTm (⊢snd (⊢var (∋lkp _ (vsⁿ 3 vz)))))
+      (iwf-ρ (pair sTm (snd (var (vs (vs (vs (vs vz))))))) (⊢ixP ⊢sTm (⊢snd (⊢var (∋lkp _ (vsⁿ 4 vz)))))
+       (iwf-κ (⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs (vs (vs (vs vz))))))) sTm) (icw-ford ⌜Nat⌝ (fst (var (vs (vs (vs (vs (vs vz))))))) sTm) (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (∋lkp _ (vsⁿ 5 vz))))) (toI ⊢sTm))
         iwf-ι)))))
 
 cTm-fstWf : IConWf KnotD IPair (◇ ▹ IPair) cTm-fst
@@ -238,68 +239,68 @@ cTm-cPiWf : IConWf KnotD IPair (◇ ▹ IPair) cTm-cPi
 cTm-cPiWf =
   iwf-ρ (pair sTm (snd (var vz))) (⊢ixP ⊢sTm (⊢snd (⊢var here)))
    (iwf-ρ (pair sTm (nsuc (snd (var (vs vz))))) (⊢ixP ⊢sTm (⊢nsuc (⊢snd (⊢var (there here)))))
-    (iwf-κ (⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs vz)))) sTm) (icw-ford ⌜Nat⌝ (fst (var (vs (vs vz)))) sTm) (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (there (there here))))) (toI ⊢sTm))
+    (iwf-κ (⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs vz)))) sTm) (icw-ford ⌜Nat⌝ (fst (var (vs (vs vz)))) sTm) (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (∋lkp _ (vsⁿ 2 vz))))) (toI ⊢sTm))
      iwf-ι))
 
 cTm-cSgWf : IConWf KnotD IPair (◇ ▹ IPair) cTm-cSg
 cTm-cSgWf =
   iwf-ρ (pair sTm (snd (var vz))) (⊢ixP ⊢sTm (⊢snd (⊢var here)))
    (iwf-ρ (pair sTm (nsuc (snd (var (vs vz))))) (⊢ixP ⊢sTm (⊢nsuc (⊢snd (⊢var (there here)))))
-    (iwf-κ (⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs vz)))) sTm) (icw-ford ⌜Nat⌝ (fst (var (vs (vs vz)))) sTm) (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (there (there here))))) (toI ⊢sTm))
+    (iwf-κ (⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs vz)))) sTm) (icw-ford ⌜Nat⌝ (fst (var (vs (vs vz)))) sTm) (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (∋lkp _ (vsⁿ 2 vz))))) (toI ⊢sTm))
      iwf-ι))
 
 cTm-cHomWf : IConWf KnotD IPair (◇ ▹ IPair) cTm-cHom
 cTm-cHomWf =
   iwf-ρ (pair sTm (snd (var vz))) (⊢ixP ⊢sTm (⊢snd (⊢var here)))
    (iwf-ρ (pair sTm (snd (var (vs vz)))) (⊢ixP ⊢sTm (⊢snd (⊢var (there here))))
-    (iwf-ρ (pair sTm (snd (var (vs (vs vz))))) (⊢ixP ⊢sTm (⊢snd (⊢var (there (there here)))))
-     (iwf-κ (⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs (vs vz))))) sTm) (icw-ford ⌜Nat⌝ (fst (var (vs (vs (vs vz))))) sTm) (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (there (there (there here)))))) (toI ⊢sTm))
+    (iwf-ρ (pair sTm (snd (var (vs (vs vz))))) (⊢ixP ⊢sTm (⊢snd (⊢var (∋lkp _ (vsⁿ 2 vz)))))
+     (iwf-κ (⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs (vs vz))))) sTm) (icw-ford ⌜Nat⌝ (fst (var (vs (vs (vs vz))))) sTm) (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (∋lkp _ (vsⁿ 3 vz))))) (toI ⊢sTm))
       iwf-ι)))
 
 cTm-hreflWf : IConWf KnotD IPair (◇ ▹ IPair) cTm-hrefl
 cTm-hreflWf =
   iwf-ρ (pair sTm (snd (var vz))) (⊢ixP ⊢sTm (⊢snd (⊢var here)))
    (iwf-ρ (pair sTm (snd (var (vs vz)))) (⊢ixP ⊢sTm (⊢snd (⊢var (there here))))
-    (iwf-κ (⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs vz)))) sTm) (icw-ford ⌜Nat⌝ (fst (var (vs (vs vz)))) sTm) (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (there (there here))))) (toI ⊢sTm))
+    (iwf-κ (⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs vz)))) sTm) (icw-ford ⌜Nat⌝ (fst (var (vs (vs vz)))) sTm) (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (∋lkp _ (vsⁿ 2 vz))))) (toI ⊢sTm))
      iwf-ι))
 
 cTm-trWf : IConWf KnotD IPair (◇ ▹ IPair) cTm-tr
 cTm-trWf =
   iwf-ρ (pair sTm (nsuc (snd (var vz)))) (⊢ixP ⊢sTm (⊢nsuc (⊢snd (⊢var here))))
    (iwf-ρ (pair sTm (snd (var (vs vz)))) (⊢ixP ⊢sTm (⊢snd (⊢var (there here))))
-    (iwf-ρ (pair sTm (snd (var (vs (vs vz))))) (⊢ixP ⊢sTm (⊢snd (⊢var (there (there here)))))
-     (iwf-κ (⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs (vs vz))))) sTm) (icw-ford ⌜Nat⌝ (fst (var (vs (vs (vs vz))))) sTm) (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (there (there (there here)))))) (toI ⊢sTm))
+    (iwf-ρ (pair sTm (snd (var (vs (vs vz))))) (⊢ixP ⊢sTm (⊢snd (⊢var (∋lkp _ (vsⁿ 2 vz)))))
+     (iwf-κ (⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs (vs vz))))) sTm) (icw-ford ⌜Nat⌝ (fst (var (vs (vs (vs vz))))) sTm) (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (∋lkp _ (vsⁿ 3 vz))))) (toI ⊢sTm))
       iwf-ι)))
 
 cTm-apWf : IConWf KnotD IPair (◇ ▹ IPair) cTm-ap
 cTm-apWf =
   iwf-ρ (pair sTm (snd (var vz))) (⊢ixP ⊢sTm (⊢snd (⊢var here)))
    (iwf-ρ (pair sTm (nsuc (snd (var (vs vz))))) (⊢ixP ⊢sTm (⊢nsuc (⊢snd (⊢var (there here)))))
-    (iwf-ρ (pair sTm (snd (var (vs (vs vz))))) (⊢ixP ⊢sTm (⊢snd (⊢var (there (there here)))))
-     (iwf-κ (⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs (vs vz))))) sTm) (icw-ford ⌜Nat⌝ (fst (var (vs (vs (vs vz))))) sTm) (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (there (there (there here)))))) (toI ⊢sTm))
+    (iwf-ρ (pair sTm (snd (var (vs (vs vz))))) (⊢ixP ⊢sTm (⊢snd (⊢var (∋lkp _ (vsⁿ 2 vz)))))
+     (iwf-κ (⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs (vs vz))))) sTm) (icw-ford ⌜Nat⌝ (fst (var (vs (vs (vs vz))))) sTm) (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (∋lkp _ (vsⁿ 3 vz))))) (toI ⊢sTm))
       iwf-ι)))
 
 cTm-cIdWf : IConWf KnotD IPair (◇ ▹ IPair) cTm-cId
 cTm-cIdWf =
   iwf-ρ (pair sTm (snd (var vz))) (⊢ixP ⊢sTm (⊢snd (⊢var here)))
    (iwf-ρ (pair sTm (snd (var (vs vz)))) (⊢ixP ⊢sTm (⊢snd (⊢var (there here))))
-    (iwf-ρ (pair sTm (snd (var (vs (vs vz))))) (⊢ixP ⊢sTm (⊢snd (⊢var (there (there here)))))
-     (iwf-κ (⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs (vs vz))))) sTm) (icw-ford ⌜Nat⌝ (fst (var (vs (vs (vs vz))))) sTm) (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (there (there (there here)))))) (toI ⊢sTm))
+    (iwf-ρ (pair sTm (snd (var (vs (vs vz))))) (⊢ixP ⊢sTm (⊢snd (⊢var (∋lkp _ (vsⁿ 2 vz)))))
+     (iwf-κ (⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs (vs vz))))) sTm) (icw-ford ⌜Nat⌝ (fst (var (vs (vs (vs vz))))) sTm) (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (∋lkp _ (vsⁿ 3 vz))))) (toI ⊢sTm))
       iwf-ι)))
 
 cTm-idreflWf : IConWf KnotD IPair (◇ ▹ IPair) cTm-idrefl
 cTm-idreflWf =
   iwf-ρ (pair sTm (snd (var vz))) (⊢ixP ⊢sTm (⊢snd (⊢var here)))
    (iwf-ρ (pair sTm (snd (var (vs vz)))) (⊢ixP ⊢sTm (⊢snd (⊢var (there here))))
-    (iwf-κ (⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs vz)))) sTm) (icw-ford ⌜Nat⌝ (fst (var (vs (vs vz)))) sTm) (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (there (there here))))) (toI ⊢sTm))
+    (iwf-κ (⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs vz)))) sTm) (icw-ford ⌜Nat⌝ (fst (var (vs (vs vz)))) sTm) (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (∋lkp _ (vsⁿ 2 vz))))) (toI ⊢sTm))
      iwf-ι))
 
 cTm-jsubWf : IConWf KnotD IPair (◇ ▹ IPair) cTm-jsub
 cTm-jsubWf =
   iwf-ρ (pair sTm (nsuc (snd (var vz)))) (⊢ixP ⊢sTm (⊢nsuc (⊢snd (⊢var here))))
    (iwf-ρ (pair sTm (snd (var (vs vz)))) (⊢ixP ⊢sTm (⊢snd (⊢var (there here))))
-    (iwf-ρ (pair sTm (snd (var (vs (vs vz))))) (⊢ixP ⊢sTm (⊢snd (⊢var (there (there here)))))
-     (iwf-κ (⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs (vs vz))))) sTm) (icw-ford ⌜Nat⌝ (fst (var (vs (vs (vs vz))))) sTm) (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (there (there (there here)))))) (toI ⊢sTm))
+    (iwf-ρ (pair sTm (snd (var (vs (vs vz))))) (⊢ixP ⊢sTm (⊢snd (⊢var (∋lkp _ (vsⁿ 2 vz)))))
+     (iwf-κ (⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs (vs vz))))) sTm) (icw-ford ⌜Nat⌝ (fst (var (vs (vs (vs vz))))) sTm) (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (∋lkp _ (vsⁿ 3 vz))))) (toI ⊢sTm))
       iwf-ι)))
 
 cTm-unitWf : IConWf KnotD IPair (◇ ▹ IPair) cTm-unit
@@ -322,39 +323,39 @@ cTm-natrecWf : IConWf KnotD IPair (◇ ▹ IPair) cTm-natrec
 cTm-natrecWf =
   iwf-ρ (pair sTm (snd (var vz))) (⊢ixP ⊢sTm (⊢snd (⊢var here)))
    (iwf-ρ (pair sTm (nsuc (nsuc (snd (var (vs vz)))))) (⊢ixP ⊢sTm (⊢nsuc (⊢nsuc (⊢snd (⊢var (there here))))))
-    (iwf-ρ (pair sTm (snd (var (vs (vs vz))))) (⊢ixP ⊢sTm (⊢snd (⊢var (there (there here)))))
-     (iwf-κ (⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs (vs vz))))) sTm) (icw-ford ⌜Nat⌝ (fst (var (vs (vs (vs vz))))) sTm) (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (there (there (there here)))))) (toI ⊢sTm))
+    (iwf-ρ (pair sTm (snd (var (vs (vs vz))))) (⊢ixP ⊢sTm (⊢snd (⊢var (∋lkp _ (vsⁿ 2 vz)))))
+     (iwf-κ (⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs (vs vz))))) sTm) (icw-ford ⌜Nat⌝ (fst (var (vs (vs (vs vz))))) sTm) (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (∋lkp _ (vsⁿ 3 vz))))) (toI ⊢sTm))
       iwf-ι)))
 
 cTm-conWf : IConWf KnotD IPair (◇ ▹ IPair) cTm-con
 cTm-conWf =
   iwf-κ ⌜Nat⌝ (icw-clo ⌜Nat⌝ ⊢⌜Nat⌝) ⊢⌜Nat⌝
    (iwf-ρ (pair sTm (snd (var (vs vz)))) (⊢ixP ⊢sTm (⊢snd (⊢var (there here))))
-    (iwf-κ (⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs vz)))) sTm) (icw-ford ⌜Nat⌝ (fst (var (vs (vs vz)))) sTm) (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (there (there here))))) (toI ⊢sTm))
+    (iwf-κ (⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs vz)))) sTm) (icw-ford ⌜Nat⌝ (fst (var (vs (vs vz)))) sTm) (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (∋lkp _ (vsⁿ 2 vz))))) (toI ⊢sTm))
      iwf-ι))
 
 cTm-elimWf : IConWf KnotD IPair (◇ ▹ IPair) cTm-elim
 cTm-elimWf =
   iwf-ρ (pair sDesc (snd (var vz))) (⊢ixP ⊢sDesc (⊢snd (⊢var here)))
    (iwf-ρ (pair sTm (snd (var (vs vz)))) (⊢ixP ⊢sTm (⊢snd (⊢var (there here))))
-    (iwf-ρ (pair sTm (snd (var (vs (vs vz))))) (⊢ixP ⊢sTm (⊢snd (⊢var (there (there here)))))
-     (iwf-κ (⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs (vs vz))))) sTm) (icw-ford ⌜Nat⌝ (fst (var (vs (vs (vs vz))))) sTm) (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (there (there (there here)))))) (toI ⊢sTm))
+    (iwf-ρ (pair sTm (snd (var (vs (vs vz))))) (⊢ixP ⊢sTm (⊢snd (⊢var (∋lkp _ (vsⁿ 2 vz)))))
+     (iwf-κ (⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs (vs vz))))) sTm) (icw-ford ⌜Nat⌝ (fst (var (vs (vs (vs vz))))) sTm) (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (∋lkp _ (vsⁿ 3 vz))))) (toI ⊢sTm))
       iwf-ι)))
 
 cTm-iconWf : IConWf KnotD IPair (◇ ▹ IPair) cTm-icon
 cTm-iconWf =
   iwf-κ ⌜Nat⌝ (icw-clo ⌜Nat⌝ ⊢⌜Nat⌝) ⊢⌜Nat⌝
    (iwf-ρ (pair sTm (snd (var (vs vz)))) (⊢ixP ⊢sTm (⊢snd (⊢var (there here))))
-    (iwf-κ (⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs vz)))) sTm) (icw-ford ⌜Nat⌝ (fst (var (vs (vs vz)))) sTm) (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (there (there here))))) (toI ⊢sTm))
+    (iwf-κ (⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs vz)))) sTm) (icw-ford ⌜Nat⌝ (fst (var (vs (vs vz)))) sTm) (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (∋lkp _ (vsⁿ 2 vz))))) (toI ⊢sTm))
      iwf-ι))
 
 cTm-ielimWf : IConWf KnotD IPair (◇ ▹ IPair) cTm-ielim
 cTm-ielimWf =
   iwf-ρ (pair sIDesc (snd (var vz))) (⊢ixP ⊢sIDesc (⊢snd (⊢var here)))
    (iwf-ρ (pair sTm (snd (var (vs vz)))) (⊢ixP ⊢sTm (⊢snd (⊢var (there here))))
-    (iwf-ρ (pair sTm (snd (var (vs (vs vz))))) (⊢ixP ⊢sTm (⊢snd (⊢var (there (there here)))))
-     (iwf-ρ (pair sTm (snd (var (vs (vs (vs vz)))))) (⊢ixP ⊢sTm (⊢snd (⊢var (there (there (there here))))))
-      (iwf-κ (⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs (vs (vs vz)))))) sTm) (icw-ford ⌜Nat⌝ (fst (var (vs (vs (vs (vs vz)))))) sTm) (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (there (there (there (there here))))))) (toI ⊢sTm))
+    (iwf-ρ (pair sTm (snd (var (vs (vs vz))))) (⊢ixP ⊢sTm (⊢snd (⊢var (∋lkp _ (vsⁿ 2 vz)))))
+     (iwf-ρ (pair sTm (snd (var (vs (vs (vs vz)))))) (⊢ixP ⊢sTm (⊢snd (⊢var (∋lkp _ (vsⁿ 3 vz)))))
+      (iwf-κ (⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs (vs (vs vz)))))) sTm) (icw-ford ⌜Nat⌝ (fst (var (vs (vs (vs (vs vz)))))) sTm) (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (∋lkp _ (vsⁿ 4 vz))))) (toI ⊢sTm))
        iwf-ι))))
 
 cTm-cNatWf : IConWf KnotD IPair (◇ ▹ IPair) cTm-cNat
@@ -372,8 +373,8 @@ cTm-cIMuWf : IConWf KnotD IPair (◇ ▹ IPair) cTm-cIMu
 cTm-cIMuWf =
   iwf-ρ (pair sIDesc (snd (var vz))) (⊢ixP ⊢sIDesc (⊢snd (⊢var here)))
    (iwf-ρ (pair sTy nzero) (⊢ixP ⊢sTy ⊢nzero)
-    (iwf-ρ (pair sTm (snd (var (vs (vs vz))))) (⊢ixP ⊢sTm (⊢snd (⊢var (there (there here)))))
-     (iwf-κ (⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs (vs vz))))) sTm) (icw-ford ⌜Nat⌝ (fst (var (vs (vs (vs vz))))) sTm) (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (there (there (there here)))))) (toI ⊢sTm))
+    (iwf-ρ (pair sTm (snd (var (vs (vs vz))))) (⊢ixP ⊢sTm (⊢snd (⊢var (∋lkp _ (vsⁿ 2 vz)))))
+     (iwf-κ (⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs (vs vz))))) sTm) (icw-ford ⌜Nat⌝ (fst (var (vs (vs (vs vz))))) sTm) (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (∋lkp _ (vsⁿ 3 vz))))) (toI ⊢sTm))
       iwf-ι)))
 
 cTm-cUnitWf : IConWf KnotD IPair (◇ ▹ IPair) cTm-cUnit
@@ -390,7 +391,7 @@ cDesc-consWf : IConWf KnotD IPair (◇ ▹ IPair) cDesc-cons
 cDesc-consWf =
   iwf-ρ (pair sDCon (snd (var vz))) (⊢ixP ⊢sDCon (⊢snd (⊢var here)))
    (iwf-ρ (pair sDesc (snd (var (vs vz)))) (⊢ixP ⊢sDesc (⊢snd (⊢var (there here))))
-    (iwf-κ (⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs vz)))) sDesc) (icw-ford ⌜Nat⌝ (fst (var (vs (vs vz)))) sDesc) (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (there (there here))))) (toI ⊢sDesc))
+    (iwf-κ (⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs vz)))) sDesc) (icw-ford ⌜Nat⌝ (fst (var (vs (vs vz)))) sDesc) (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (∋lkp _ (vsⁿ 2 vz))))) (toI ⊢sDesc))
      iwf-ι))
 
 cDCon-iWf : IConWf KnotD IPair (◇ ▹ IPair) cDCon-i
@@ -408,7 +409,7 @@ cDCon-kapWf : IConWf KnotD IPair (◇ ▹ IPair) cDCon-kap
 cDCon-kapWf =
   iwf-ρ (pair sTy nzero) (⊢ixP ⊢sTy ⊢nzero)
    (iwf-ρ (pair sDCon (snd (var (vs vz)))) (⊢ixP ⊢sDCon (⊢snd (⊢var (there here))))
-    (iwf-κ (⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs vz)))) sDCon) (icw-ford ⌜Nat⌝ (fst (var (vs (vs vz)))) sDCon) (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (there (there here))))) (toI ⊢sDCon))
+    (iwf-κ (⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs vz)))) sDCon) (icw-ford ⌜Nat⌝ (fst (var (vs (vs vz)))) sDCon) (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (∋lkp _ (vsⁿ 2 vz))))) (toI ⊢sDCon))
      iwf-ι))
 
 cIDesc-nilWf : IConWf KnotD IPair (◇ ▹ IPair) cIDesc-nil
@@ -420,7 +421,7 @@ cIDesc-consWf : IConWf KnotD IPair (◇ ▹ IPair) cIDesc-cons
 cIDesc-consWf =
   iwf-ρ (pair sICon (nsuc (nzero))) (⊢ixP ⊢sICon (⊢nsuc (⊢nzero)))
    (iwf-ρ (pair sIDesc (snd (var (vs vz)))) (⊢ixP ⊢sIDesc (⊢snd (⊢var (there here))))
-    (iwf-κ (⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs vz)))) sIDesc) (icw-ford ⌜Nat⌝ (fst (var (vs (vs vz)))) sIDesc) (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (there (there here))))) (toI ⊢sIDesc))
+    (iwf-κ (⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs vz)))) sIDesc) (icw-ford ⌜Nat⌝ (fst (var (vs (vs vz)))) sIDesc) (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (∋lkp _ (vsⁿ 2 vz))))) (toI ⊢sIDesc))
      iwf-ι))
 
 cICon-iWf : IConWf KnotD IPair (◇ ▹ IPair) cICon-i
@@ -432,29 +433,29 @@ cICon-rhoWf : IConWf KnotD IPair (◇ ▹ IPair) cICon-rho
 cICon-rhoWf =
   iwf-ρ (pair sTm (snd (var vz))) (⊢ixP ⊢sTm (⊢snd (⊢var here)))
    (iwf-ρ (pair sICon (nsuc (snd (var (vs vz))))) (⊢ixP ⊢sICon (⊢nsuc (⊢snd (⊢var (there here)))))
-    (iwf-κ (⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs vz)))) sICon) (icw-ford ⌜Nat⌝ (fst (var (vs (vs vz)))) sICon) (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (there (there here))))) (toI ⊢sICon))
+    (iwf-κ (⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs vz)))) sICon) (icw-ford ⌜Nat⌝ (fst (var (vs (vs vz)))) sICon) (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (∋lkp _ (vsⁿ 2 vz))))) (toI ⊢sICon))
      iwf-ι))
 
 cICon-kapWf : IConWf KnotD IPair (◇ ▹ IPair) cICon-kap
 cICon-kapWf =
   iwf-ρ (pair sTm (snd (var vz))) (⊢ixP ⊢sTm (⊢snd (⊢var here)))
    (iwf-ρ (pair sICon (nsuc (snd (var (vs vz))))) (⊢ixP ⊢sICon (⊢nsuc (⊢snd (⊢var (there here)))))
-    (iwf-κ (⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs vz)))) sICon) (icw-ford ⌜Nat⌝ (fst (var (vs (vs vz)))) sICon) (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (there (there here))))) (toI ⊢sICon))
+    (iwf-κ (⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs vz)))) sICon) (icw-ford ⌜Nat⌝ (fst (var (vs (vs vz)))) sICon) (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (∋lkp _ (vsⁿ 2 vz))))) (toI ⊢sICon))
      iwf-ι))
 
 cVar-vzWf : IConWf KnotD IPair (◇ ▹ IPair) cVar-vz
 cVar-vzWf =
   iwf-κ ⌜Nat⌝ (icw-clo ⌜Nat⌝ ⊢⌜Nat⌝) ⊢⌜Nat⌝
    (iwf-κ (⌜Id⌝ ⌜Nat⌝ (fst (var (vs vz))) sVar) (icw-ford ⌜Nat⌝ (fst (var (vs vz))) sVar) (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (there here)))) (toI ⊢sVar))
-    (iwf-κ (⌜Id⌝ ⌜Nat⌝ (snd (var (vs (vs vz)))) (nsuc (var (vs vz)))) (icw-ford ⌜Nat⌝ (snd (var (vs (vs vz)))) (nsuc (var (vs vz)))) (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢snd (⊢var (there (there here))))) (toI (⊢nsuc (fromI (⊢var (there here))))))
+    (iwf-κ (⌜Id⌝ ⌜Nat⌝ (snd (var (vs (vs vz)))) (nsuc (var (vs vz)))) (icw-ford ⌜Nat⌝ (snd (var (vs (vs vz)))) (nsuc (var (vs vz)))) (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢snd (⊢var (∋lkp _ (vsⁿ 2 vz))))) (toI (⊢nsuc (fromI (⊢var (there here))))))
      iwf-ι))
 
 cVar-vsWf : IConWf KnotD IPair (◇ ▹ IPair) cVar-vs
 cVar-vsWf =
   iwf-κ ⌜Nat⌝ (icw-clo ⌜Nat⌝ ⊢⌜Nat⌝) ⊢⌜Nat⌝
    (iwf-ρ (pair sVar (var vz)) (⊢ixP ⊢sVar (fromI (⊢var here)))
-    (iwf-κ (⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs vz)))) sVar) (icw-ford ⌜Nat⌝ (fst (var (vs (vs vz)))) sVar) (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (there (there here))))) (toI ⊢sVar))
-     (iwf-κ (⌜Id⌝ ⌜Nat⌝ (snd (var (vs (vs (vs vz))))) (nsuc (var (vs (vs vz))))) (icw-ford ⌜Nat⌝ (snd (var (vs (vs (vs vz))))) (nsuc (var (vs (vs vz))))) (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢snd (⊢var (there (there (there here)))))) (toI (⊢nsuc (fromI (⊢var (there (there here)))))))
+    (iwf-κ (⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs vz)))) sVar) (icw-ford ⌜Nat⌝ (fst (var (vs (vs vz)))) sVar) (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (∋lkp _ (vsⁿ 2 vz))))) (toI ⊢sVar))
+     (iwf-κ (⌜Id⌝ ⌜Nat⌝ (snd (var (vs (vs (vs vz))))) (nsuc (var (vs (vs vz))))) (icw-ford ⌜Nat⌝ (snd (var (vs (vs (vs vz))))) (nsuc (var (vs (vs vz))))) (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢snd (⊢var (∋lkp _ (vsⁿ 3 vz))))) (toI (⊢nsuc (fromI (⊢var (∋lkp _ (vsⁿ 2 vz)))))))
       iwf-ι)))
 
 -- ★★★ …AND THE WHOLE KNOT IS WELL-FORMED.

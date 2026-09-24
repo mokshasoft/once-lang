@@ -31,6 +31,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Knot.PayTy where
+open import DirectedHoTT.Lib.Lkp using ( ∋lkp; vsⁿ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; vz; vs; RTy; RTm; var; lam; snd; pair; Π; Nat
@@ -76,7 +77,7 @@ payTyMotK =
              ((Γ ▹ εwkTy IPair) ▹ IMu KnotD IPair (var vz)) ⊢ty payTyMotK
 ⊢payTyMotK =
   ty-Π (ty-IMu KnotWf (⊢ixP ⊢sDesc (⊢snd (⊢var (there here)))))
-       (ty-IMu KnotWf (⊢ixP ⊢sTy (⊢snd (⊢var (there (there here))))))
+       (ty-IMu KnotWf (⊢ixP ⊢sTy (⊢snd (⊢var (∋lkp _ (vsⁿ 2 vz))))))
 
 ------------------------------------------------------------------------
 -- ★ THE CONSTANT ROWS.  ⚠ `dι`'s own answer IS `Unit`, so the junk
@@ -92,8 +93,8 @@ payTyJunk = lam (lam (lam (lam Ty-UnitK)))
              Γ ⊢ payTyJunk ∷ imethTy KnotD IPair k C payTyMotK
 ⊢payTyJunk k C wC =
   ⊢methLam KnotD IPair k C KnotWf wC ⊢IPair ⊢payTyMotK
-    (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sDesc (⊢snd (⊢var (there (there here))))))
-          (⊢Ty-UnitKv _ (⊢snd (⊢var (there (there (there here)))))))
+    (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sDesc (⊢snd (⊢var (∋lkp _ (vsⁿ 2 vz))))))
+          (⊢Ty-UnitKv _ (⊢snd (⊢var (∋lkp _ (vsⁿ 3 vz))))))
 
 ------------------------------------------------------------------------
 -- ★★★ `dρ` — `Σ' (Mu D) (payTy D C)`.  ⚠ `Σ'`'s second component sits
@@ -113,10 +114,10 @@ payTyRho =
 ⊢payTyRho =
   ⊢methLam KnotD IPair tagDCon-rho cDCon-rho KnotWf cDCon-rhoWf
            ⊢IPair ⊢payTyMotK
-    (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sDesc (⊢snd (⊢var (there (there here))))))
-      (⊢Ty-SgKv _ (⊢snd (⊢var (there (there (there here)))))
-        (⊢Ty-MuKv _ (⊢snd (⊢var (there (there (there here))))) (⊢var here))
-        (⊢wkAtK ⊢sTy (⊢snd (⊢var (there (there (there here)))))
+    (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sDesc (⊢snd (⊢var (∋lkp _ (vsⁿ 2 vz))))))
+      (⊢Ty-SgKv _ (⊢snd (⊢var (∋lkp _ (vsⁿ 3 vz))))
+        (⊢Ty-MuKv _ (⊢snd (⊢var (∋lkp _ (vsⁿ 3 vz)))) (⊢var here))
+        (⊢wkAtK ⊢sTy (⊢snd (⊢var (∋lkp _ (vsⁿ 3 vz))))
           (muFwd (ξ-pairʳ (βsnd sDCon (snd (var (vs (vs (vs vz))))))) 
             (⊢app (⊢ihHere
                      {D = KnotD} {I = IPair}
@@ -149,11 +150,11 @@ payTyKap =
 ⊢payTyKap =
   ⊢methLam KnotD IPair tagDCon-kap cDCon-kap KnotWf cDCon-kapWf
            ⊢IPair ⊢payTyMotK
-    (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sDesc (⊢snd (⊢var (there (there here))))))
-      (⊢Ty-SgKv _ (⊢snd (⊢var (there (there (there here)))))
-        (⊢εwkK ⊢sTy sortMap-ty (⊢snd (⊢var (there (there (there here)))))
-               (⊢fst (⊢var (there (there here)))))
-        (⊢wkAtK ⊢sTy (⊢snd (⊢var (there (there (there here)))))
+    (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sDesc (⊢snd (⊢var (∋lkp _ (vsⁿ 2 vz))))))
+      (⊢Ty-SgKv _ (⊢snd (⊢var (∋lkp _ (vsⁿ 3 vz))))
+        (⊢εwkK ⊢sTy sortMap-ty (⊢snd (⊢var (∋lkp _ (vsⁿ 3 vz))))
+               (⊢fst (⊢var (∋lkp _ (vsⁿ 2 vz)))))
+        (⊢wkAtK ⊢sTy (⊢snd (⊢var (∋lkp _ (vsⁿ 3 vz))))
           (muFwd (ξ-pairʳ (βsnd sDCon (snd (var (vs (vs (vs vz)))))))
             (⊢app (⊢ihHere
                      {D = KnotD} {I = IPair}

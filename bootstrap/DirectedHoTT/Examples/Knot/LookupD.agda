@@ -31,6 +31,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Knot.LookupD where
+open import DirectedHoTT.Lib.Lkp using ( ∋lkp; vsⁿ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; vz; vs; RTy; RTm; var; lam; snd; pair; Π; Nat
@@ -72,7 +73,7 @@ lookupMotK = Π Nat (IMu KnotD IPair (pair sDCon (snd (var (vs (vs vz))))))
               ((Γ ▹ εwkTy IPair) ▹ IMu KnotD IPair (var vz)) ⊢ty lookupMotK
 ⊢lookupMotK =
   ty-Π ty-Nat
-       (ty-IMu KnotWf (⊢ixP ⊢sDCon (⊢snd (⊢var (there (there here))))))
+       (ty-IMu KnotWf (⊢ixP ⊢sDCon (⊢snd (⊢var (∋lkp _ (vsⁿ 2 vz))))))
 
 ------------------------------------------------------------------------
 -- ★ THE 51 UNREACHABLE ROWS.  `dι` inhabits the codomain at EVERY index,
@@ -88,7 +89,7 @@ lookupJunk = lam (lam (lam (lam DCon-iK)))
               Γ ⊢ lookupJunk ∷ imethTy KnotD IPair k C lookupMotK
 ⊢lookupJunk k C wC =
   ⊢methLam KnotD IPair k C KnotWf wC ⊢IPair ⊢lookupMotK
-    (⊢lam ty-Nat (⊢DCon-iKv _ (⊢snd (⊢var (there (there (there here)))))))
+    (⊢lam ty-Nat (⊢DCon-iKv _ (⊢snd (⊢var (∋lkp _ (vsⁿ 3 vz))))))
 
 ------------------------------------------------------------------------
 -- ★★★ THE ONE REAL ROW — and there is only one, which is the first
@@ -161,8 +162,8 @@ lookupCons =
            ⊢IPair ⊢lookupMotK
     (⊢lam ty-Nat
       (⊢natrec (ty-IMu KnotWf
-                  (⊢ixP ⊢sDCon (⊢snd (⊢var (there (there (there (there here))))))))
-               (⊢fst (⊢var (there (there here))))
+                  (⊢ixP ⊢sDCon (⊢snd (⊢var (∋lkp _ (vsⁿ 4 vz))))))
+               (⊢fst (⊢var (∋lkp _ (vsⁿ 2 vz))))
                -- ⚠ `s` lives under TWO more binders (the predecessor and
                --   `natrec`'s own IH), so the method's IH tuple is THREE
                --   back, not four.
@@ -197,7 +198,7 @@ lookupCons =
                                     (iκ (⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs vz)))) sDesc)
                                      iι))
                            {q = var (vs (vs (vs (vs vz))))} {M = lookupMotK}
-                           (⊢var (there (there (there here))))))
+                           (⊢var (∋lkp _ (vsⁿ 3 vz)))))
                      (⊢var (there here))))
                (⊢var here)))
 

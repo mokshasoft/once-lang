@@ -6,6 +6,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Knot.IhsMeths where
+open import DirectedHoTT.Lib.Lkp using ( ∋lkp; vsⁿ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; _∙; RTm; RTy; var; vz; vs; pair; snd; Π; Nat; εwkTy; IMu )
 open import DirectedHoTT.Spec.Typing
@@ -60,8 +61,8 @@ ihsJunk = lam (lam (lam (lam (lam (lam (lam Tm-unitK))))))
     (⊢lam ty-Nat
       (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sDesc (⊢var here)))
         (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var (there here))))
-          (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var (there (there here)))))
-            (⊢Tm-unitKv (var (vs (vs (vs vz)))) (⊢var (there (there (there here)))))))))
+          (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var (∋lkp _ (vsⁿ 2 vz)))))
+            (⊢Tm-unitKv (var (vs (vs (vs vz)))) (⊢var (∋lkp _ (vsⁿ 3 vz))))))))
 
 ------------------------------------------------------------------------
 -- ★ THE TUPLE — `Knot/IhTy`'s assembly, one description over.

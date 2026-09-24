@@ -20,6 +20,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Knot.IhITyRows where
+open import DirectedHoTT.Lib.Lkp using ( ∋lkp; vsⁿ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; vz; vs; RTy; RTm; var; lam; snd; pair; Π; Nat
@@ -87,22 +88,22 @@ iihTyRho =
   ⊢methLam KnotD IPair tagICon-rho cICon-rho KnotWf cICon-rhoWf
            ⊢IPair ⊢iihTyMotK
     (⊢lam ty-Nat
-      (⊢lam (ty-SubTy (⊢snd (⊢var (there (there (there here))))) (⊢var here))
+      (⊢lam (ty-SubTy (⊢snd (⊢var (∋lkp _ (vsⁿ 3 vz)))) (⊢var here))
         (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var (there here))))
           (⊢lam (ty-IMu KnotWf
-                   (⊢ixP ⊢sTy (⊢nsuc (⊢nsuc (⊢var (there (there here)))))))
+                   (⊢ixP ⊢sTy (⊢nsuc (⊢nsuc (⊢var (∋lkp _ (vsⁿ 2 vz)))))))
             (⊢iihRowρ dn ddd dsb dj (⊢Tm-fstKv _ dn dq) dM
               (⊢iihAppK {dd = nsuc (snd (var (vs (vs (vs (vs (vs (vs vz)))))))) }
                         {u = fst (snd (var (vs (vs (vs (vs (vs vz))))))) }
                         dIH dn (⊢iextK ddd dn dsb (⊢Tm-fstKv _ dn dq))
                         (⊢Tm-sndKv _ dn dq) dM))))))
   where
-    dn  = ⊢var (there (there (there here)))
-    dsb = ⊢var (there (there here))
+    dn  = ⊢var (∋lkp _ (vsⁿ 3 vz))
+    dsb = ⊢var (∋lkp _ (vsⁿ 2 vz))
     dq  = ⊢var (there here)
     dM  = ⊢var here
-    ddd = ⊢snd (⊢var (there (there (there (there (there (there here)))))))
-    dj  = ⊢fst (⊢var (there (there (there (there (there here))))))
+    ddd = ⊢snd (⊢var (∋lkp _ (vsⁿ 6 vz)))
+    dj  = ⊢fst (⊢var (∋lkp _ (vsⁿ 5 vz)))
     dIH = ⊢ihHere
             {D = KnotD} {I = IPair}
             {σ = iext (isingle (var (vs (vs (vs (vs (vs (vs vz))))))))
@@ -117,7 +118,7 @@ iihTyRho =
                (iρ (pair sICon (nsuc (snd (var (vs vz)))))
                  (iκ (⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs vz)))) sICon) iι))
                {q = var (vs (vs (vs (vs (vs vz)))))} {M = iihTyMotK}
-               (⊢var (there (there (there (there here))))))
+               (⊢var (∋lkp _ (vsⁿ 4 vz))))
 
 ------------------------------------------------------------------------
 -- ★ `iκ` — the IH and nothing else.
@@ -132,20 +133,20 @@ iihTyKap = lam (lam (lam (lam (lam (lam (lam ihApp))))))
   ⊢methLam KnotD IPair tagICon-kap cICon-kap KnotWf cICon-kapWf
            ⊢IPair ⊢iihTyMotK
     (⊢lam ty-Nat
-      (⊢lam (ty-SubTy (⊢snd (⊢var (there (there (there here))))) (⊢var here))
+      (⊢lam (ty-SubTy (⊢snd (⊢var (∋lkp _ (vsⁿ 3 vz)))) (⊢var here))
         (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var (there here))))
           (⊢lam (ty-IMu KnotWf
-                   (⊢ixP ⊢sTy (⊢nsuc (⊢nsuc (⊢var (there (there here)))))))
+                   (⊢ixP ⊢sTy (⊢nsuc (⊢nsuc (⊢var (∋lkp _ (vsⁿ 2 vz)))))))
             (⊢iihAppK {dd = nsuc (snd (var (vs (vs (vs (vs (vs (vs vz)))))))) }
                       {u = fst (snd (var (vs (vs (vs (vs (vs vz))))))) }
                       dIH dn (⊢iextK ddd dn dsb (⊢Tm-fstKv _ dn dq))
                       (⊢Tm-sndKv _ dn dq) dM)))))
   where
-    dn  = ⊢var (there (there (there here)))
-    dsb = ⊢var (there (there here))
+    dn  = ⊢var (∋lkp _ (vsⁿ 3 vz))
+    dsb = ⊢var (∋lkp _ (vsⁿ 2 vz))
     dq  = ⊢var (there here)
     dM  = ⊢var here
-    ddd = ⊢snd (⊢var (there (there (there (there (there (there here)))))))
+    ddd = ⊢snd (⊢var (∋lkp _ (vsⁿ 6 vz)))
     dIH = ⊢ihHere
             {D = KnotD} {I = IPair}
             {σ = iext (isingle (var (vs (vs (vs (vs (vs (vs vz))))))))
@@ -160,4 +161,4 @@ iihTyKap = lam (lam (lam (lam (lam (lam (lam ihApp))))))
                (iρ (pair sICon (nsuc (snd (var (vs vz)))))
                  (iκ (⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs vz)))) sICon) iι))
                {q = var (vs (vs (vs (vs (vs vz)))))} {M = iihTyMotK}
-               (⊢var (there (there (there (there here))))))
+               (⊢var (∋lkp _ (vsⁿ 4 vz))))

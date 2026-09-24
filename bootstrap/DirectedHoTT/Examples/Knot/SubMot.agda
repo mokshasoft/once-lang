@@ -49,6 +49,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Knot.SubMot where
+open import DirectedHoTT.Lib.Lkp using ( ∋lkp; vsⁿ )
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
@@ -125,7 +126,7 @@ extMotK =
 ⊢extMotK =
   ty-Π ty-Nat
     (ty-Π (ty-Π (ty-IMu KnotWf
-                   (⊢ixP ⊢sVar (⊢pred (⊢snd (⊢var (there (there here)))))))
+                   (⊢ixP ⊢sVar (⊢pred (⊢snd (⊢var (∋lkp _ (vsⁿ 2 vz)))))))
                 (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var (there here)))))
           (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢nsuc (⊢var (there here))))))
 
@@ -187,7 +188,7 @@ constMeth = lam (lam (lam (lam (lam Tm-nzeroK))))
   ⊢methLam KnotD IPair k C KnotWf wC ⊢IPair ⊢extMotK
     (⊢lam ty-Nat
       (⊢lam (ty-Π (ty-IMu KnotWf
-                     (⊢ixP ⊢sVar (⊢pred (⊢snd (⊢var (there (there (there here))))))))
+                     (⊢ixP ⊢sVar (⊢pred (⊢snd (⊢var (∋lkp _ (vsⁿ 3 vz)))))))
                   (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var (there here)))))
         (⊢Tm-nzeroKv (⊢nsuc (⊢var (there here))))))
 
@@ -224,7 +225,7 @@ imethTyK-wf {Γ = Γ} k C wC =
                                        (λ { vz → refl ; (vs ()) })))
                               (⊢var here)))
             (ty-Π ty-Nat
-              (ty-Π (ty-Π (ty-IMu KnotWf (⊢ixP ⊢sVar (⊢pred (⊢snd (⊢var (there (there (there here))))))))
+              (ty-Π (ty-Π (ty-IMu KnotWf (⊢ixP ⊢sVar (⊢pred (⊢snd (⊢var (∋lkp _ (vsⁿ 3 vz)))))))
                           (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var (there here)))))
                     (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢nsuc (⊢var (there here)))))))))
 
@@ -344,7 +345,7 @@ extVz = lam (lam (lam (lam (lam (Tm-varK (Var-vzK (var (vs vz))))))))
                       (⊢var here))
         (⊢lam ty-Nat
           (⊢lam (ty-Π (ty-IMu KnotWf
-                         (⊢ixP ⊢sVar (⊢pred (⊢snd (⊢var (there (there (there here))))))))
+                         (⊢ixP ⊢sVar (⊢pred (⊢snd (⊢var (∋lkp _ (vsⁿ 3 vz)))))))
                       (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var (there here)))))
             -- ⚠ PINNED: `K` is a DEFINED function, so the goal
             --   `K (pair sTm _)` does not solve the depth by unification.
@@ -398,7 +399,7 @@ extVs =
                       (⊢var here))
         (⊢lam ty-Nat
           (⊢lam (ty-Π (ty-IMu KnotWf
-                         (⊢ixP ⊢sVar (⊢pred (⊢snd (⊢var (there (there (there here))))))))
+                         (⊢ixP ⊢sVar (⊢pred (⊢snd (⊢var (∋lkp _ (vsⁿ 3 vz)))))))
                       (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var (there here)))))
             -- ⚠ TWO β STEPS, INNERMOST FIRST: `sh i` projects `i` twice
             --   and both projections are redexes at `pair sTm n`.
@@ -415,13 +416,13 @@ extVs =
             (⊢wkTmK (⊢var (there here)) (⊢app (⊢var here) tx))))))
   where
     -- the payload binder, and the two components the method needs
-    dp = ⊢var (there (there (there here)))
+    dp = ⊢var (∋lkp _ (vsⁿ 3 vz))
     dm = elAsNat (⊢fst dp)
-    dsi = ⊢pred (⊢snd (⊢var (there (there (there (there here))))))
+    dsi = ⊢pred (⊢snd (⊢var (∋lkp _ (vsⁿ 4 vz))))
     -- ★ THE FORD, INVERTED AND ORIENTED.
-    deq = ⊢symN (⊢pred (⊢snd (⊢var (there (there (there (there here)))))))
+    deq = ⊢symN (⊢pred (⊢snd (⊢var (∋lkp _ (vsⁿ 4 vz)))))
                 dm
-                (⊢fordPredN (⊢snd (⊢var (there (there (there (there here))))))
+                (⊢fordPredN (⊢snd (⊢var (∋lkp _ (vsⁿ 4 vz))))
                             dm
                             (fordAs (⊢fst (⊢snd (⊢snd (⊢snd dp))))))
     -- ⚠ `⊢jsub`'s ENDPOINTS live at `El ⌜Nat⌝` (that is `IdN`'s carrier)
@@ -587,10 +588,10 @@ subMotK =
            ((Γ ▹ εwkTy IPair) ▹ IMu KnotD IPair (var vz)) ⊢ty subMotK
 ⊢subMotK =
   ty-Π ty-Nat
-    (ty-Π (ty-Π (ty-IMu KnotWf (⊢ixP ⊢sVar (⊢snd (⊢var (there (there here))))))
+    (ty-Π (ty-Π (ty-IMu KnotWf (⊢ixP ⊢sVar (⊢snd (⊢var (∋lkp _ (vsⁿ 2 vz))))))
                 (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var (there here)))))
           (ty-IMu KnotWf
-             (⊢ixP (⊢sortMap (⊢fst (⊢var (there (there (there here))))))
+             (⊢ixP (⊢sortMap (⊢fst (⊢var (∋lkp _ (vsⁿ 3 vz)))))
                    (⊢var (there here)))))
 
 ------------------------------------------------------------------------
@@ -838,14 +839,14 @@ subVarM =
                       (⊢var here))
         (⊢lam ty-Nat
           (⊢lam (ty-Π (ty-IMu KnotWf
-                         (⊢ixP ⊢sVar (⊢snd (⊢var (there (there (there here)))))))
+                         (⊢ixP ⊢sVar (⊢snd (⊢var (∋lkp _ (vsⁿ 3 vz))))))
                       (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var (there here)))))
-            (sortConv (⊢fst (⊢var (there (there (there (there here))))))
+            (sortConv (⊢fst (⊢var (∋lkp _ (vsⁿ 4 vz))))
                       ⊢sTm
                       (⊢var (there here))
-                      (fordAs (⊢fst (⊢snd (⊢var (there (there (there here)))))))
+                      (fordAs (⊢fst (⊢snd (⊢var (∋lkp _ (vsⁿ 3 vz))))))
                       sortMap-tm
-                      (⊢app (⊢var here) (⊢fst (⊢var (there (there (there here)))))))))))
+                      (⊢app (⊢var here) (⊢fst (⊢var (∋lkp _ (vsⁿ 3 vz))))))))))
 
 ------------------------------------------------------------------------
 -- ★ THE SECOND TRANSPORT, shared by both `Var` rows.
@@ -919,18 +920,18 @@ subVzM =
                       (⊢var here))
         (⊢lam ty-Nat
           (⊢lam (ty-Π (ty-IMu KnotWf
-                         (⊢ixP ⊢sVar (⊢snd (⊢var (there (there (there here)))))))
+                         (⊢ixP ⊢sVar (⊢snd (⊢var (∋lkp _ (vsⁿ 3 vz))))))
                       (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var (there here)))))
-            (sortConv (⊢fst (⊢var (there (there (there (there here))))))
+            (sortConv (⊢fst (⊢var (∋lkp _ (vsⁿ 4 vz))))
                       ⊢sVar
                       (⊢var (there here))
-                      (fordAs (⊢fst (⊢snd (⊢var (there (there (there here)))))))
+                      (fordAs (⊢fst (⊢snd (⊢var (∋lkp _ (vsⁿ 3 vz))))))
                       sortMap-var
                       (⊢app (⊢var here)
-                            (varAt (⊢snd (⊢var (there (there (there (there here))))))
-                                   (elAsNat (⊢fst (⊢var (there (there (there here))))))
-                                   (fordAs (⊢fst (⊢snd (⊢snd (⊢var (there (there (there here))))))))
-                                   (⊢Var-vzKt (elAsNat (⊢fst (⊢var (there (there (there here))))))))))))))
+                            (varAt (⊢snd (⊢var (∋lkp _ (vsⁿ 4 vz))))
+                                   (elAsNat (⊢fst (⊢var (∋lkp _ (vsⁿ 3 vz)))))
+                                   (fordAs (⊢fst (⊢snd (⊢snd (⊢var (∋lkp _ (vsⁿ 3 vz)))))))
+                                   (⊢Var-vzKt (elAsNat (⊢fst (⊢var (∋lkp _ (vsⁿ 3 vz)))))))))))))
 
 subVsM : {Γ : Cx} → RTm Γ
 subVsM =
@@ -959,18 +960,18 @@ subVsM =
                       (⊢var here))
         (⊢lam ty-Nat
           (⊢lam (ty-Π (ty-IMu KnotWf
-                         (⊢ixP ⊢sVar (⊢snd (⊢var (there (there (there here)))))))
+                         (⊢ixP ⊢sVar (⊢snd (⊢var (∋lkp _ (vsⁿ 3 vz))))))
                       (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var (there here)))))
-            (sortConv (⊢fst (⊢var (there (there (there (there here))))))
+            (sortConv (⊢fst (⊢var (∋lkp _ (vsⁿ 4 vz))))
                       ⊢sVar
                       (⊢var (there here))
-                      (fordAs (⊢fst (⊢snd (⊢snd (⊢var (there (there (there here))))))))
+                      (fordAs (⊢fst (⊢snd (⊢snd (⊢var (∋lkp _ (vsⁿ 3 vz)))))))
                       sortMap-var
                       (⊢app (⊢var here)
-                            (varAt (⊢snd (⊢var (there (there (there (there here))))))
-                                   (elAsNat (⊢fst (⊢var (there (there (there here))))))
-                                   (fordAs (⊢fst (⊢snd (⊢snd (⊢snd (⊢var (there (there (there here)))))))))
-                                   (⊢Var-vsKt (elAsNat (⊢fst (⊢var (there (there (there here)))))) (⊢fst (⊢snd (⊢var (there (there (there here))))))))))))))
+                            (varAt (⊢snd (⊢var (∋lkp _ (vsⁿ 4 vz))))
+                                   (elAsNat (⊢fst (⊢var (∋lkp _ (vsⁿ 3 vz)))))
+                                   (fordAs (⊢fst (⊢snd (⊢snd (⊢snd (⊢var (∋lkp _ (vsⁿ 3 vz))))))))
+                                   (⊢Var-vsKt (elAsNat (⊢fst (⊢var (∋lkp _ (vsⁿ 3 vz))))) (⊢fst (⊢snd (⊢var (∋lkp _ (vsⁿ 3 vz)))))))))))))
 
 ------------------------------------------------------------------------
 -- ⬜ THE 50 COMPUTED ROWS' TYPING — statement first.
@@ -1270,20 +1271,20 @@ ihRenK v q C M =
                       (⊢-cast (payRenK (var vz) C) (⊢var here)))
         (⊢lam ty-Nat
           (⊢lam (ty-Π (ty-IMu KnotWf
-                         (⊢ixP ⊢sVar (⊢snd (⊢var (there (there (there here)))))))
+                         (⊢ixP ⊢sVar (⊢snd (⊢var (∋lkp _ (vsⁿ 3 vz))))))
                       (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var (there here)))))
             (⊢icon KnotWf mem
-                   (⊢ixP (⊢sortMap (⊢fst (⊢var (there (there (there (there here))))))) (⊢var (there here)))
+                   (⊢ixP (⊢sortMap (⊢fst (⊢var (∋lkp _ (vsⁿ 4 vz))))) (⊢var (there here)))
                    (⊢-cast (cong (ipayTy KnotD IPair
                                     (isingle (pair (sortMap (fst (var (vs (vs (vs (vs vz)))))))
                                                    (var (vs vz)))))
                                  (sym look))
                      (⊢isubPay w wC KnotWf
-                       (isingle-Sub⊢ (⊢var (there (there (there (there here))))))
-                       (isingle-Sub⊢ (⊢ixP (⊢sortMap (⊢fst (⊢var (there (there (there (there here)))))))
+                       (isingle-Sub⊢ (⊢var (∋lkp _ (vsⁿ 4 vz))))
+                       (isingle-Sub⊢ (⊢ixP (⊢sortMap (⊢fst (⊢var (∋lkp _ (vsⁿ 4 vz)))))
                                            (⊢var (there here))))
                        refl (step (βfst _ _) done) refl (step (βsnd _ _) done)
-                       (⊢fst (⊢var (there (there (there (there here)))))) (⊢snd (⊢var (there (there (there (there here)))))) (⊢var (there here))
+                       (⊢fst (⊢var (∋lkp _ (vsⁿ 4 vz)))) (⊢snd (⊢var (∋lkp _ (vsⁿ 4 vz)))) (⊢var (there here))
                        (⊢var here)
                        (var (vs (vs (vs vz)))) (var (vs (vs vz)))
                        -- ⚠ FOUR RENAMINGS, not three: a binder's TYPE
@@ -1296,7 +1297,7 @@ ihRenK v q C M =
                                           (payRenK (var (vs vz)) C)))
                                    (payRenK (var (vs (vs vz))) C)))
                                  (payRenK (var (vs (vs (vs vz)))) C))
-                               (⊢var (there (there (there here)))))
+                               (⊢var (∋lkp _ (vsⁿ 3 vz))))
                        -- ⚠ THREE, for the same reason the payload took
                        --   four: `ih` is weakened past itself, `n` and
                        --   `σ`.  ★ And the MOTIVE cancels by `refl` —
@@ -1306,7 +1307,7 @@ ihRenK v q C M =
                                           (ihRenK (var (vs vz)) (var vz) C subMotK))
                                         (ihRenK (var (vs (vs vz))) (var (vs vz)) C subMotK)))
                                  (ihRenK (var (vs (vs (vs vz)))) (var (vs (vs vz))) C subMotK))
-                               (⊢var (there (there here)))))))))))
+                               (⊢var (∋lkp _ (vsⁿ 2 vz)))))))))))
 
 ------------------------------------------------------------------------
 -- ★★★ STEP 5 OF SIX: THE TUPLE, AT THE MASK.
@@ -1342,10 +1343,10 @@ imethTySubK-wf {Γ = Γ} k C wC =
                       ⊢subMotK
                       (⊢-cast (payRenK (var vz) C) (⊢var here)))
             (ty-Π ty-Nat
-              (ty-Π (ty-Π (ty-IMu KnotWf (⊢ixP ⊢sVar (⊢snd (⊢var (there (there (there here)))))))
+              (ty-Π (ty-Π (ty-IMu KnotWf (⊢ixP ⊢sVar (⊢snd (⊢var (∋lkp _ (vsⁿ 3 vz))))))
                           (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var (there here)))))
                     (ty-IMu KnotWf
-                       (⊢ixP (⊢sortMap (⊢fst (⊢var (there (there (there (there here))))))) (⊢var (there here))))))))
+                       (⊢ixP (⊢sortMap (⊢fst (⊢var (∋lkp _ (vsⁿ 4 vz))))) (⊢var (there here))))))))
 
 imethsTyFromSubK-wf : {Γ : Ctx} (j : ℕ) (E : IDesc) →
                       IDescWfFrom KnotD IPair E →
