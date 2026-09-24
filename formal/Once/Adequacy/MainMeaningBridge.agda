@@ -52,6 +52,7 @@ import Once.Adequacy.ModuleComplete as MC
 import Once.Adequacy.MainExtract fmt as ME
 import Once.Denotation.MainMeaning as MM
 open import Once.Adequacy.MeaningBridge fmt using (bridge-c; RelEnv; RelEnv↾; mk↾; rel-env0)
+open import Once.Adequacy.MeaningRelation fmt using (RelT-bind)
 open import Once.Denotation.Phase using (env0)
 open import Once.Parser using (FunInfo)
 open FunInfo
@@ -67,16 +68,14 @@ main-bridge-leaf : ∀ {polys sigEffs nm bdy ctx Ψ}
   (n : ℕ)
   → ME.runMainˢ (realize deriv) n
     ≡ MM.runMainᵈ (λ _ → ⟦ deriv ⟧ᶜ fmt (env0 {Ψ} tt)) n
--- D179: the continuation observes what the head LEFT of the budget, so the
--- second half of the relation is instantiated at `n ∸ length (head trace)`,
--- not at `n`. The `rewrite` is what makes the two sides' budgets the SAME
--- term: they are equal only because the head traces are.
-main-bridge-leaf {Ψ = Ψ} deriv n
-  rewrite sym (proj₁ (bridge-c deriv {env0 {Ψ} tt} {env0 {Ψ} tt} rel-env0 n)) =
-  sym (cong (projTrace (⟦ deriv ⟧ᶜ fmt (env0 {Ψ} tt)) n ++_)
-        (proj₁ (proj₂ (bridge-c deriv {env0 {Ψ} tt} {env0 {Ψ} tt} rel-env0 n)
-                  {tt} {tt} tt
-                  (n ∸ length (projTrace (⟦ deriv ⟧ᶜ fmt (env0 {Ψ} tt)) n)))))
+-- plan 0.98: `RelT-bind`. The head relation is `bridge-c` at the empty
+-- environment, and the continuation applies the `EffUU` arrow relation at the
+-- unit thunk; the composite's trace half, read at `n`, is the goal. The old
+-- proof threaded the head's value and the budget `n ∸ length …` it left by
+-- hand — `RelT-bind` splits on the head's RESULT, so neither is named here.
+main-bridge-leaf {Ψ = Ψ} deriv n =
+  sym (proj₁ (RelT-bind {A = EffUU} {B = Unit} (bridge-c deriv {env0 {Ψ} tt} {env0 {Ψ} tt} rel-env0)
+                        (λ rf → rf {tt} {tt} tt) n))
 
 ------------------------------------------------------------------------
 -- The parallel dispatch — identical branching to `mrg-dispatch`/`mmd-dispatch`.
