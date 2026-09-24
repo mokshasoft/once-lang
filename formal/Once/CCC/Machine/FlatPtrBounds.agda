@@ -39,7 +39,7 @@
 -- (2026-08-01, `FrameFreeI`), so its route is `⊥`-elim.
 ------------------------------------------------------------------------
 
-open import Once.CCC.FrameSemantics using (FrameSemantics)
+open import Once.CCC.FrameSemantics using (FrameSemantics; fs-numerics)
 
 module Once.CCC.Machine.FlatPtrBounds (FS : FrameSemantics) where
 
@@ -59,7 +59,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 
 open import Once.Memory.HeapAddress
   using (HeapLocation; heap-loc; mkHeapRef; heap-ref; heap-offset; ref-id; _≟HL_)
-open import Once.SigOp.Info using (SigOpInfo; effect; EffectShape; Pure; Emits; Halts)
+open import Once.SigOp.Info using (SigOpInfo; effect; EffectShape; Pure; Emits; Halts; semM)
+open import Once.Res using (Res; stopped; returns)
 open import Once.Type using (Type; FitsInReg; fits-in-reg?)
 open import Once.Semantics.Machine using (⟦_⟧)
 open import Once.CCC.Machine.SMCore
@@ -330,13 +331,21 @@ postulate
     ∀ (bs : ℕ → ℕ) {A B} (si : SigOpInfo A B) (ls : LocState FS)
     → PtrB bs (structured-pure-sigop-output si ls)
 
+-- plan 0.98: `res-sv` dispatches on the `Res`, so a Pure SigOp's output is
+-- not a literal on the nose any more and `PtrB bs …` cannot reduce. Split the
+-- result: neither `SV-Lit` nor `unit-storedvalue` is a heap pointer.
+res-sv-pb : ∀ (bs : ℕ → ℕ) {B} (fitB : FitsInReg B) (r : Res ⟦ B ⟧)
+          → PtrB bs (res-sv fitB r)
+res-sv-pb bs fitB (returns v) = tt
+res-sv-pb bs fitB stopped     = tt
+
 sigop-output-pb : ∀ (bs : ℕ → ℕ) {A B} (si : SigOpInfo A B) (ls : LocState FS)
                 → PtrB bs (exec-sigop-output si ls)
 sigop-output-pb bs {A} {B} si ls = go (effect si)
   where
     pov : ∀ (fitB : FitsInReg B) (ma : Maybe ⟦ A ⟧)
         → PtrB bs (pure-sigop-out-val si fitB ma)
-    pov fitB (just a) = tt
+    pov fitB (just a) = res-sv-pb bs fitB (semM si (fs-numerics FS) a)
     pov fitB nothing  = tt
     aux : ∀ (mf : Maybe (FitsInReg B)) (ml : Maybe (ValueLocation FS))
         → PtrB bs (pure-sigop-out-aux si ls mf ml)

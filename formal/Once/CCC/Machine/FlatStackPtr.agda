@@ -41,7 +41,7 @@
 -- set, taking the `lea-indexed-wf` residual with it.)
 ------------------------------------------------------------------------
 
-open import Once.CCC.FrameSemantics using (FrameSemantics)
+open import Once.CCC.FrameSemantics using (FrameSemantics; fs-numerics)
 
 module Once.CCC.Machine.FlatStackPtr (FS : FrameSemantics) where
 
@@ -61,7 +61,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 
 open import Once.Memory.HeapAddress using (HeapLocation; _≟HL_)
 import Once.Allocator.AbstractInstance as AI
-open import Once.SigOp.Info using (SigOpInfo; effect; EffectShape; Pure; Emits; Halts)
+open import Once.SigOp.Info using (SigOpInfo; effect; EffectShape; Pure; Emits; Halts; semM)
+open import Once.Res using (Res; stopped; returns)
 open import Once.Type using (Type; FitsInReg; fits-in-reg?)
 open import Once.Semantics.Machine using (⟦_⟧)
 open import Once.CCC.Machine.SMCore
@@ -399,13 +400,22 @@ postulate
     ∀ {A B} (si : SigOpInfo A B) (ls : LocState FS)
     → StackPtrOK (structured-pure-sigop-output si ls)
 
+-- plan 0.98: a Pure SigOp's output is `res-sv fitB (semM …)`, and `res-sv`
+-- dispatches on the `Res` — so the output is no longer a literal on the nose
+-- and `StackPtrOK …` cannot reduce. Splitting the result restores it: neither
+-- `SV-Lit` nor `unit-storedvalue` is a stack pointer.
+res-sv-stack-ok : ∀ {B} (fitB : FitsInReg B) (r : Res ⟦ B ⟧)
+                → StackPtrOK (res-sv fitB r)
+res-sv-stack-ok fitB (returns v) = tt
+res-sv-stack-ok fitB stopped     = tt
+
 sigop-output-ok : ∀ {A B} (si : SigOpInfo A B) (ls : LocState FS)
                 → StackPtrOK (exec-sigop-output si ls)
 sigop-output-ok {A} {B} si ls = go (effect si)
   where
     pov : ∀ (fitB : FitsInReg B) (ma : Maybe ⟦ A ⟧)
         → StackPtrOK (pure-sigop-out-val si fitB ma)
-    pov fitB (just a) = tt
+    pov fitB (just a) = res-sv-stack-ok fitB (semM si (fs-numerics FS) a)
     pov fitB nothing  = tt
     aux : ∀ (mf : Maybe (FitsInReg B)) (ml : Maybe (ValueLocation FS))
         → StackPtrOK (pure-sigop-out-aux si ls mf ml)
