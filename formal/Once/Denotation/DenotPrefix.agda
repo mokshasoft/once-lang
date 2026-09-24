@@ -26,7 +26,7 @@ module Once.Denotation.DenotPrefix where
 open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥)
 open import Data.Nat using (ℕ; z≤n)
-open import Data.List using ([])
+open import Data.List using (List; [])
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
@@ -34,10 +34,11 @@ open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Once.Type
 open import Once.Word using (Carrier)
 open import Once.Semantics.Functor using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF)
-open import Once.Denotation.TraceMonad using (T; mkT; valueT; PrefixFamily; prefixFamily; returnT; returnT-pf)
-open import Data.Bool using (false)
+open import Once.Denotation.TraceMonad using (T; mkT; bindRes; PrefixFamily; prefixFamily; returnT; returnT-pf)
+open import Once.Denotation.Trace using (SigOpEvent)
+open import Once.Res using (Res; stopped; returns; mapRes)
 open import Once.Denotation.ValueDomain
-  using (⟦_⟧ᴰ; νᵈ; forceᵈ; inject; forget; injectν; mapInjectν)
+  using (⟦_⟧ᴰ; νᵈ; forceᵈ; inject; forget; injectν; injectLayer; mapInjectν)
 open import Once.Semantics.Functor using (νS; unfoldS)
 import Once.Semantics.Machine as Val
 open import Once.IR using (IR)
@@ -53,6 +54,20 @@ open import Once.Denotation.TraceMonad using (_>>=T_; >>=T-pf)
 open Once.IR.IR
 
 ------------------------------------------------------------------------
+-- A computation whose trace is CONSTANTLY EMPTY is a prefix family, and all
+-- three conditions are immediate: `length [] ≤ k` is `z≤n`, saturation compares
+-- two identical traces, and coherence extends `[]` by `[]`.
+--
+-- plan 0.98: it takes the RESULT, not a value. The silent computations it
+-- covers (`In`, `out-μ`, `const`, and every `inject`ed closure) are
+-- `mkT (λ _ → []) r` for a result `r` that need not be a `returns` — an
+-- injected closure's result is `mapRes inject …`, which is stuck. None of the
+-- three conditions looks at the result, so nothing is lost by not knowing it.
+------------------------------------------------------------------------
+const-empty-pf : ∀ {X : Set} (r : Res X) → PrefixFamily {X} (mkT (λ _ → []) r)
+const-empty-pf r = prefixFamily (λ k → z≤n) (λ k _ → refl) (λ k → ([] , refl))
+
+------------------------------------------------------------------------
 -- The relation.
 ------------------------------------------------------------------------
 
@@ -63,7 +78,18 @@ mutual
     coinductive
     field
       force-pf   : PrefixFamily (forceᵈ v)
-      force-good : ∀ k → GoodLayer H H (valueT (forceᵈ v) k)
+      -- plan 0.98: the forced layer is a `Res`, and forcing can STOP — there
+      -- is then no layer to be good. The old field read `valueT (forceᵈ v) k`,
+      -- which now demands a proof that forcing returns; no such proof exists
+      -- in general (a ν driven by a halting coalgebra stops mid-unfold). The
+      -- budget also disappears: the layer never depended on it, only the trace
+      -- did.
+      force-good : GoodLayerRes H H (T.resT (forceᵈ v))
+
+  -- "the layer, if there is one, is good" — `⊤` when the unfold stopped.
+  GoodLayerRes : ∀ (H G : SFunctor) → Res (⟦ G ⟧SF (νᵈ H)) → Set
+  GoodLayerRes H G stopped     = ⊤
+  GoodLayerRes H G (returns l) = GoodLayer H G l
 
   -- `SK` holds a Set of BASE data (`WellFormedF` puts `K` only at base
   -- types), which carries no closures and no suspensions — so the layer
@@ -77,8 +103,9 @@ mutual
 
 open Goodν public
 
-Good  : ∀ (A : Type) → ⟦ A ⟧ᴰ → Set
-GoodT : ∀ (B : Type) → T ⟦ B ⟧ᴰ → Set
+Good    : ∀ (A : Type) → ⟦ A ⟧ᴰ → Set
+GoodT   : ∀ (B : Type) → T ⟦ B ⟧ᴰ → Set
+GoodRes : ∀ (B : Type) → Res ⟦ B ⟧ᴰ → Set
 
 Good Unit        _        = ⊤
 Good Void        ()
@@ -97,8 +124,36 @@ Good Float       _        = ⊤
 Good Str         _        = ⊤
 Good Buffer      _        = ⊤
 
--- A good computation: a prefix family whose value is good at every budget.
-GoodT B m = PrefixFamily m × (∀ k → Good B (valueT m k))
+-- plan 0.98: "the value, if there is one, is good". A computation that STOPS
+-- has no value, and demanding one was exactly the lie this plan removes: the
+-- old form quantified over the budget only so it could write `valueT m k`, and
+-- `valueT` now requires a proof that the computation returns. Stating it on the
+-- result discharges that obligation by construction and drops the budget, which
+-- the value never depended on.
+GoodRes B stopped     = ⊤
+GoodRes B (returns v) = Good B v
+
+-- A good computation: a prefix family whose result is good.
+GoodT B m = PrefixFamily m × GoodRes B (T.resT m)
+
+-- Reading the value back out of a result known to be `returns`. Matching the
+-- equation to `refl` IS the whole proof — no transport survives.
+GoodRes-at : ∀ (B : Type) {r : Res ⟦ B ⟧ᴰ} {v : ⟦ B ⟧ᴰ}
+           → r ≡ returns v → GoodRes B r → Good B v
+GoodRes-at B refl g = g
+
+-- Sequencing preserves goodness of the result, and the stopped branch needs
+-- NOTHING: `bindRes tr stopped f` never mentions `f`, so there is no sequel
+-- whose value could be bad. The continuation hypothesis is therefore owed only
+-- at the value the head actually produces — the same weakening `>>=T-pf` makes.
+-- Both types are EXPLICIT: they appear only under `⟦_⟧ᴰ`, which the unifier
+-- cannot invert, so leaving them implicit strands them as unsolved metas.
+good-bindRes : ∀ (B C : Type) (tr : ℕ → List SigOpEvent) (r : Res ⟦ B ⟧ᴰ)
+                 (g : ⟦ B ⟧ᴰ → T ⟦ C ⟧ᴰ)
+             → (∀ v → r ≡ returns v → GoodRes C (T.resT (g v)))
+             → GoodRes C (T.resT (bindRes tr r g))
+good-bindRes B C tr stopped     g h = tt
+good-bindRes B C tr (returns v) g h = h v refl
 
 ------------------------------------------------------------------------
 -- A PURE value is good.
@@ -110,12 +165,20 @@ GoodT B m = PrefixFamily m × (∀ k → Good B (valueT m k))
 ------------------------------------------------------------------------
 
 mutual
-  -- `forceᵈ (injectν v)` IS `returnT (mapInjectν …)`, so the prefix-family
-  -- half is `returnT-pf`; the layer half recurses. Corecursive, so the map is
-  -- inlined (D062) rather than routed through a defined function.
+  -- plan 0.98: `forceᵈ (injectν v)` is `mkT (λ _ → []) (injectLayer F F …)` —
+  -- SILENT but not necessarily returning, because the pure model's own unfold
+  -- (`unfoldS`) is `Res`-valued. So the prefix-family half is `const-empty-pf`
+  -- (which does not look at the result) rather than `returnT-pf`, and the layer
+  -- half goes through a NAMED mutual member that splits the result: a partial
+  -- application handed to `mapRes` would be opaque to the guardedness checker.
   injectν-Good : ∀ {F : SFunctor} (v : νS F) → Goodν (injectν v)
-  force-pf   (injectν-Good v)     = returnT-pf _
-  force-good (injectν-Good {F} v) k = injectν-layer F F (unfoldS v)
+  force-pf   (injectν-Good v)     = const-empty-pf _
+  force-good (injectν-Good {F} v) = injectν-layer-res F F (unfoldS v)
+
+  injectν-layer-res : ∀ (F G : SFunctor) (r : Res (⟦ G ⟧SF (νS F)))
+                    → GoodLayerRes F G (injectLayer F G r)
+  injectν-layer-res F G stopped     = tt
+  injectν-layer-res F G (returns l) = injectν-layer F G l
 
   injectν-layer : ∀ (F G : SFunctor) (x : ⟦ G ⟧SF (νS F))
                 → GoodLayer F G (mapInjectν F G x)
@@ -125,31 +188,32 @@ mutual
   injectν-layer F (G₁ S⊕ G₂) (inj₂ y) = injectν-layer F G₂ y
   injectν-layer F (G₁ S⊗ G₂) (x , y)  = (injectν-layer F G₁ x , injectν-layer F G₂ y)
 
--- A computation whose trace is CONSTANTLY EMPTY is a prefix family, and all
--- three conditions are immediate: `length [] ≤ k` is `z≤n`, saturation compares
--- two identical pairs, and coherence extends `[]` by `[]`.
---
--- This is the shape of `evalᴰ`'s `eval`-backed fallback
--- (DenotTrace.agda:202) at every constructor whose `rec-trace-D` is `[]` —
--- `In`, `out-μ` and `const` (:206, :208, :230).
-const-empty-pf : ∀ {X : Set} (v : X) → PrefixFamily {X} (mkT (λ _ → []) false v)
-const-empty-pf v = prefixFamily (λ k → z≤n) (λ k _ → refl) (λ k → ([] , refl))
+mutual
+ inject-Good : ∀ (A : Type) (v : Val.⟦ A ⟧) → Good A (inject {A} v)
+ inject-Good Unit        v        = tt
+ inject-Good Void        ()
+ inject-Good (A * B)     (a , b)  = (inject-Good A a , inject-Good B b)
+ inject-Good (A + B)     (inj₁ a) = inject-Good A a
+ inject-Good (A + B)     (inj₂ b) = inject-Good B b
+ -- plan 0.98: an injected closure is `resT-lift (mapRes inject …)` — silent,
+ -- but its result is the PURE closure's result mapped, which is stuck until
+ -- that result is split. So the family is `const-empty-pf` and the value half
+ -- goes through `inject-GoodRes`, which does the split. The budget is gone.
+ inject-Good (A ⇒[ mk-kind Zero π ] B) pf = λ u  → (const-empty-pf _ , inject-GoodRes B (pf u))
+ inject-Good (A ⇒[ mk-kind One  π ] B) pf = λ a _ → (const-empty-pf _ , inject-GoodRes B (pf (forget a)))
+ inject-Good (A ⇒[ mk-kind Many π ] B) pf = λ a _ → (const-empty-pf _ , inject-GoodRes B (pf (forget a)))
+ inject-Good (μ-type F)  v        = tt
+ inject-Good (ν-type F)  v        = injectν-Good v
+ inject-Good Int         v        = tt
+ inject-Good Float       v        = tt
+ inject-Good Str         v        = tt
+ inject-Good Buffer      v        = tt
 
-inject-Good : ∀ (A : Type) (v : Val.⟦ A ⟧) → Good A (inject {A} v)
-inject-Good Unit        v        = tt
-inject-Good Void        ()
-inject-Good (A * B)     (a , b)  = (inject-Good A a , inject-Good B b)
-inject-Good (A + B)     (inj₁ a) = inject-Good A a
-inject-Good (A + B)     (inj₂ b) = inject-Good B b
-inject-Good (A ⇒[ mk-kind Zero π ] B) pf = λ u  → (returnT-pf _ , λ k → inject-Good B _)
-inject-Good (A ⇒[ mk-kind One  π ] B) pf = λ a _ → (returnT-pf _ , λ k → inject-Good B _)
-inject-Good (A ⇒[ mk-kind Many π ] B) pf = λ a _ → (returnT-pf _ , λ k → inject-Good B _)
-inject-Good (μ-type F)  v        = tt
-inject-Good (ν-type F)  v        = injectν-Good v
-inject-Good Int         v        = tt
-inject-Good Float       v        = tt
-inject-Good Str         v        = tt
-inject-Good Buffer      v        = tt
+ -- The `Res` companion: `inject` maps over a pure result, and a pure
+ -- computation that stopped has no value to be good.
+ inject-GoodRes : ∀ (B : Type) (r : Res Val.⟦ B ⟧) → GoodRes B (mapRes inject r)
+ inject-GoodRes B stopped     = tt
+ inject-GoodRes B (returns v) = inject-Good B v
 
 ------------------------------------------------------------------------
 -- THE theorem: `evalᴰ` lands in the prefix-family class.
@@ -219,12 +283,15 @@ postulate
 
 evalᴰ-good : ∀ (fmt : TargetNum) {A B : IRTy} (ir : IR A B) (a : ⟦ A ⟧ᴰᴵ)
            → Good ⌈ A ⌉ a → GoodT ⌈ B ⌉ (evalᴰ fmt ir a)
-evalᴰ-good fmt id        a ga = (returnT-pf a , λ k → ga)
-evalᴰ-good fmt fst       p ga = (returnT-pf _ , λ k → proj₁ ga)
-evalᴰ-good fmt snd       p ga = (returnT-pf _ , λ k → proj₂ ga)
-evalᴰ-good fmt inl       a ga = (returnT-pf _ , λ k → ga)
-evalᴰ-good fmt inr       b gb = (returnT-pf _ , λ k → gb)
-evalᴰ-good fmt terminal  _ _  = (returnT-pf _ , λ k → tt)
+-- plan 0.98: every one of these RETURNS, so `GoodRes` reduces to `Good` and
+-- the value half is handed over directly — the `λ k` that used to feed
+-- `valueT` a budget has nothing left to bind.
+evalᴰ-good fmt id        a ga = (returnT-pf a , ga)
+evalᴰ-good fmt fst       p ga = (returnT-pf _ , proj₁ ga)
+evalᴰ-good fmt snd       p ga = (returnT-pf _ , proj₂ ga)
+evalᴰ-good fmt inl       a ga = (returnT-pf _ , ga)
+evalᴰ-good fmt inr       b gb = (returnT-pf _ , gb)
+evalᴰ-good fmt terminal  _ _  = (returnT-pf _ , tt)
 evalᴰ-good fmt initial   ()
 -- `case` dispatches to a sub-morphism; the payload's goodness comes straight
 -- from the scrutinee's.
@@ -233,31 +300,42 @@ evalᴰ-good fmt (case f g) (inj₂ b) gb = evalᴰ-good fmt g b gb
 -- `curry` ESTABLISHES the arrow clause: the closure is good because the body
 -- is, for every good argument.
 evalᴰ-good fmt (curry f) a ga =
-  (returnT-pf _ , λ k b gb → evalᴰ-good fmt f (a , b) (ga , gb))
+  (returnT-pf _ , λ b gb → evalᴰ-good fmt f (a , b) (ga , gb))
 -- `apply` CONSUMES it: the pair carries a good closure and a good argument.
 evalᴰ-good fmt apply p ga = proj₁ ga (proj₂ p) (proj₂ ga)
 -- Composition: `>>=T-pf` with the continuation hypothesis at exactly the
 -- values `f` produces — which is why that hypothesis had to be weakened.
 evalᴰ-good fmt (_∘_ {A} {B} {C} g f) a ga =
-  -- plan 0.97: the budget on the right is now FREE — `valueT` ignores it —
-  -- so it has to be named rather than inferred.
-  ( >>=T-pf (evalᴰ fmt f a) (evalᴰ fmt g) (proj₁ ihf) (λ k → proj₁ (ihg k))
-  , λ k → proj₂ (ihg k) 0 )
+  -- plan 0.98: the induction hypothesis for `g` is owed at the value `f`
+  -- RETURNS, and is indexed by the proof that it returned — not by a budget.
+  -- If `f` stopped there is no second computation at all, which is what makes
+  -- the result half (`good-bindRes`) discharge that branch with nothing.
+  ( >>=T-pf (evalᴰ fmt f a) (evalᴰ fmt g) (proj₁ ihf) (λ b eq → proj₁ (ihg b eq))
+  , good-bindRes ⌈ B ⌉ ⌈ C ⌉ (T.trT (evalᴰ fmt f a)) (T.resT (evalᴰ fmt f a))
+      (evalᴰ fmt g) (λ b eq → proj₂ (ihg b eq)) )
   where
     ihf : GoodT ⌈ B ⌉ (evalᴰ fmt f a)
     ihf = evalᴰ-good fmt f a ga
 
-    ihg : ∀ k → GoodT ⌈ C ⌉ (evalᴰ fmt g (valueT (evalᴰ fmt f a) k))
-    ihg k = evalᴰ-good fmt g (valueT (evalᴰ fmt f a) k) (proj₂ ihf k)
+    ihg : ∀ b → T.resT (evalᴰ fmt f a) ≡ returns b → GoodT ⌈ C ⌉ (evalᴰ fmt g b)
+    ihg b eq = evalᴰ-good fmt g b (GoodRes-at ⌈ B ⌉ eq (proj₂ ihf))
 
 -- Pairing: two nested binds over the SAME argument, closed by `returnT`.
 evalᴰ-good fmt (⟨_,_⟩ {A} {B} {C} f g) a ga =
   ( >>=T-pf (evalᴰ fmt f a)
       (λ b → evalᴰ fmt g a >>=T λ c → returnT (b , c)) (proj₁ ihf)
-      (λ k → >>=T-pf (evalᴰ fmt g a)
-               (λ c → returnT (valueT (evalᴰ fmt f a) k , c)) (proj₁ ihg)
-               (λ j → returnT-pf _))
-  , λ k → (proj₂ ihf 0 , proj₂ ihg 0) )
+      (λ b eqb → >>=T-pf (evalᴰ fmt g a)
+               (λ c → returnT (b , c)) (proj₁ ihg)
+               (λ c eqc → returnT-pf _))
+  -- The pair is good only where BOTH components exist: two nested
+  -- `good-bindRes`, each reading its own component out of its own result.
+  , good-bindRes ⌈ B ⌉ ⌈ B IT.* C ⌉ (T.trT (evalᴰ fmt f a)) (T.resT (evalᴰ fmt f a))
+      (λ b → evalᴰ fmt g a >>=T λ c → returnT (b , c))
+      (λ b eqb → good-bindRes ⌈ C ⌉ ⌈ B IT.* C ⌉
+        (T.trT (evalᴰ fmt g a)) (T.resT (evalᴰ fmt g a))
+        (λ c → returnT (b , c))
+        (λ c eqc → (GoodRes-at ⌈ B ⌉ eqb (proj₂ ihf)
+                  , GoodRes-at ⌈ C ⌉ eqc (proj₂ ihg)))) )
   where
     ihf : GoodT ⌈ B ⌉ (evalᴰ fmt f a)
     ihf = evalᴰ-good fmt f a ga
@@ -265,11 +343,11 @@ evalᴰ-good fmt (⟨_,_⟩ {A} {B} {C} f g) a ga =
     ihg : GoodT ⌈ C ⌉ (evalᴰ fmt g a)
     ihg = evalᴰ-good fmt g a ga
 
-evalᴰ-good fmt (In {F} wf) a ga = (const-empty-pf _ , λ k → inject-Good ⌈ IT.μ-type F ⌉ (in-val F (forget a)))
-evalᴰ-good fmt (out-μ {F} wf) a ga = (const-empty-pf _ , λ k → inject-Good ⌈ (IT.⟦ F ⟧TI (IT.μ-type F)) ⌉ (out-μ-val F wf (forget a)))
+evalᴰ-good fmt (In {F} wf) a ga = (const-empty-pf _ , inject-Good ⌈ IT.μ-type F ⌉ (in-val F (forget a)))
+evalᴰ-good fmt (out-μ {F} wf) a ga = (const-empty-pf _ , inject-Good ⌈ (IT.⟦ F ⟧TI (IT.μ-type F)) ⌉ (out-μ-val F wf (forget a)))
 evalᴰ-good fmt (Cata wf alg)       a ga = evalᴰ-good-Cata  fmt wf alg a ga
 evalᴰ-good fmt (Out wf)            a ga = evalᴰ-good-Out   fmt wf a ga
 evalᴰ-good fmt (in-ν wf)           a ga = evalᴰ-good-in-ν  fmt wf a ga
 evalᴰ-good fmt (Ana wf coalg)      a ga = evalᴰ-good-Ana   fmt wf coalg a ga
-evalᴰ-good fmt (const {A} fits v) a ga = (const-empty-pf _ , λ k → inject-Good ⌈ A ⌉ (const-val fmt fits v))
+evalᴰ-good fmt (const {A} fits v) a ga = (const-empty-pf _ , inject-Good ⌈ A ⌉ (const-val fmt fits v))
 evalᴰ-good fmt (SigOp si)          a ga = evalᴰ-good-SigOp fmt si a ga
