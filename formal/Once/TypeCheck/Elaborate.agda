@@ -1947,12 +1947,19 @@ mutual
   ext-arrow-info : ∀ {A B} → NamedCtx → (alias name : String) → Purity
                  → IsBaseType A → IsConcrete B → SigOpInfo A B
   ext-arrow-info ctx alias name pure bA cB = mk-info' (bare (alias ++ "." ++ name)) (pureV (generic-semM (alias ++ "." ++ name))) bA (ffi-concrete cB)
-  ext-arrow-info {A} {B} ctx alias name eff bA cB with B ≟T Unit
-  ... | no _ = mk-info' (bare (alias ++ "." ++ name)) (pureV (generic-semM (alias ++ "." ++ name))) bA (ffi-concrete cB)
-  ... | yes refl with lookupSigEffect (NamedCtx.sigEffects ctx) (alias ++ "." ++ name)
-  ...   | just se-halts = mk-info' (bare (alias ++ "." ++ name)) (haltsV refl) bA (ffi-concrete cB)
-  ...   | just se-emits = mk-info' (bare (alias ++ "." ++ name)) (emitsV refl) bA (ffi-concrete cB)
-  ...   | nothing       = mk-info' (bare (alias ++ "." ++ name)) (emitsV refl) bA (ffi-concrete cB)
+  -- plan 0.98 stage E: THE CODOMAIN DECIDES. 0.97 asked a name-keyed side
+  -- table (`lookupSigEffect (NamedCtx.sigEffects ctx)`) whether an op halts,
+  -- because `Emits` and `Halts` carried the SAME index (`B ≡ Unit`) and the
+  -- type could not tell them apart — §1's finding, and the root cause of
+  -- `masq`'s `true != false`. `Halts` carries `B ≡ Void` now, so the
+  -- distinction is in the type and the table has nothing left to say. An
+  -- external op that returns nothing HALTS; one that returns `Unit` EMITS;
+  -- anything else is a value contract.
+  ext-arrow-info {A} {B} ctx alias name eff bA cB with B ≟T Void
+  ... | yes refl = mk-info' (bare (alias ++ "." ++ name)) (haltsV refl) bA (ffi-concrete cB)
+  ... | no _ with B ≟T Unit
+  ...   | yes refl = mk-info' (bare (alias ++ "." ++ name)) (emitsV refl) bA (ffi-concrete cB)
+  ...   | no _     = mk-info' (bare (alias ++ "." ++ name)) (pureV (generic-semM (alias ++ "." ++ name))) bA (ffi-concrete cB)
 
   -- Aux helper bodies (placed after all main mutual members so that the
   -- `... | pat` continuations of inferElabV/checkElabV clauses don't
@@ -1996,23 +2003,28 @@ mutual
   -- straight into the `SigOpInfo` (NO `bare`, NO String render) — so the
   -- realize/elaborator/trace/codegen names agree by construction. Mirrors
   -- `ext-arrow-info`/`inferElabV-RQualified-aux` but keyed by `cn`.
-  -- De-withed (so the realize-agrees masquerade can fold it): the `B ≟T Unit`
-  -- decision + the `lookupSigEffect` result are explicit args.
+  -- De-withed (so the realize-agrees masquerade can fold it): the two
+  -- codomain decisions are explicit args.
+  --
+  -- plan 0.98 stage E: the second argument was `Maybe SigEffect` — the
+  -- name-keyed side table. It is `Dec (B ≡ Unit)` now, because the codomain
+  -- is what decides: `Void` HALTS, `Unit` EMITS, anything else is a value
+  -- contract. Nothing is keyed by name any more, which is what lets `masq`
+  -- fold: the elaborator and `⟦_⟧ˢ` read the SAME thing.
   ext-resolved-info-aux : ∀ {A B} → CanonicalName → Purity
-                        → Dec (B ≡ Unit) → Maybe SigEffect
+                        → Dec (B ≡ Void) → Dec (B ≡ Unit)
                         → IsBaseType A → IsConcrete B → SigOpInfo A B
   ext-resolved-info-aux cn pure _ _ bA cB = mk-info' cn (pureV (generic-semM (showCanonical cn))) bA (ffi-concrete cB)
-  ext-resolved-info-aux cn eff (no _) _ bA cB = mk-info' cn (pureV (generic-semM (showCanonical cn))) bA (ffi-concrete cB)
-  ext-resolved-info-aux cn eff (yes refl) (just se-halts) bA cB = mk-info' cn (haltsV refl) bA (ffi-concrete cB)
-  ext-resolved-info-aux cn eff (yes refl) (just se-emits) bA cB = mk-info' cn (emitsV refl) bA (ffi-concrete cB)
-  ext-resolved-info-aux cn eff (yes refl) nothing         bA cB = mk-info' cn (emitsV refl) bA (ffi-concrete cB)
+  ext-resolved-info-aux cn eff (yes refl) _ bA cB = mk-info' cn (haltsV refl) bA (ffi-concrete cB)
+  ext-resolved-info-aux cn eff (no _) (yes refl) bA cB = mk-info' cn (emitsV refl) bA (ffi-concrete cB)
+  ext-resolved-info-aux cn eff (no _) (no _)     bA cB = mk-info' cn (pureV (generic-semM (showCanonical cn))) bA (ffi-concrete cB)
 
   ext-resolved-info : ∀ {A B} → NamedCtx → CanonicalName → Purity
                     → IsBaseType A → IsConcrete B → SigOpInfo A B
   ext-resolved-info {A} {B} ctx cn π bA cB =
     -- Use the SHARED low `isUnit?` (same decision SD's `arrow-info` uses), so
     -- the realize-agrees masquerade folds both with one case-split.
-    ext-resolved-info-aux cn π (Once.Type.isUnit? B) (lookupSigEffect (NamedCtx.sigEffects ctx) (showCanonical cn)) bA cB
+    ext-resolved-info-aux cn π (Once.Type.isVoid? B) (Once.Type.isUnit? B) bA cB
 
   inferElabV-RResolved-aux ctx cn ng
     (just (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B)) eq =
