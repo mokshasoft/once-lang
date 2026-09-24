@@ -18,14 +18,16 @@
 module Once.Adequacy.SeqRel where
 
 open import Data.Empty using (⊥)
+open import Data.Unit using (⊤; tt)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
 
 open import Once.Type using (Functor; K; Id; _⊕_; _⊗_)
+open import Once.Res using (Res; stopped; returns; mapRes)
 open import Once.Semantics.Machine using (⟦_⟧F)
 open import Once.Denotation.TraceMonad
-  using (T; returnT; fmapT; _>>=T_; projTrace; valueT; RelT′; RelT′-bind)
+  using (T; returnT; fmapT; _>>=T_; projTrace; RelRes; RelT′; RelT′-bind)
 open import Once.Denotation.ValueDomain using (seqF)
 
 ------------------------------------------------------------------------
@@ -47,14 +49,39 @@ RelF (G ⊗ H) R (x₁ , y₁) (x₂ , y₂) = RelF G R x₁ x₂ × RelF H R y�
 -- computation relation along any value-relation morphism.
 ------------------------------------------------------------------------
 
+-- plan 0.98: `mapRes` is what `fmapT` does to the result, and a related pair
+-- of results maps to a related pair. The two mixed clauses are absurd rather
+-- than merely unproved — `RelRes` reduces to `⊥` there.
+RelRes-map : ∀ {X Y X′ Y′ : Set} (R : X → X′ → Set) (S : Y → Y′ → Set)
+             (g : X → Y) (g′ : X′ → Y′) (r : Res X) (r′ : Res X′)
+           → (∀ x x′ → R x x′ → S (g x) (g′ x′))
+           → RelRes R r r′ → RelRes S (mapRes g r) (mapRes g′ r′)
+RelRes-map R S g g′ stopped     stopped     h rr = tt
+RelRes-map R S g g′ stopped     (returns _) h ()
+RelRes-map R S g g′ (returns _) stopped     h ()
+RelRes-map R S g g′ (returns x) (returns y) h rr = h x y rr
+
+-- plan 0.98: the old statement of this proof produced a TRIPLE (trace, stop
+-- flag, value) because `RelT′` was one; the flag and the value were always the
+-- single fact "these two results agree", which is now `RelRes`. So the value
+-- component is no longer `h` applied directly — `h` only speaks about values
+-- that EXIST, and whether they do is what `RelRes-map` splits on.
 RelT′-fmap : ∀ {X Y X′ Y′ : Set} (R : X → X′ → Set) (S : Y → Y′ → Set)
              (g : X → Y) (g′ : X′ → Y′) {m : T X} {m′ : T X′}
            → (∀ x x′ → R x x′ → S (g x) (g′ x′))
            → RelT′ R m m′ → RelT′ S (fmapT g m) (fmapT g′ m′)
--- plan 0.97: `fmapT` touches neither the trace NOR the stop flag, so both
--- carry over unchanged; only the value is mapped.
-RelT′-fmap R S g g′ h rm k = (proj₁ (rm k) , proj₁ (proj₂ (rm k))
-                             , h _ _ (proj₂ (proj₂ (rm k))))
+-- plan 0.98: the two `Res` arguments are PINNED rather than left to the
+-- unifier — `RelRes-map`'s conclusion mentions them under `mapRes`, which the
+-- unifier cannot read back out.
+RelT′-fmap R S g g′ {m} {m′} h rm k =
+  (proj₁ (rm k) , RelRes-map R S g g′ (T.resT m) (T.resT m′) h (proj₂ (rm k)))
+
+-- Reading a `RelRes` at the two values it relates. The premises SUPPLY the
+-- values, which is what `RelT′-bind`'s continuation hypothesis now hands over
+-- (plan 0.98: a sequel exists only where both sides returned).
+relRes-at : ∀ {X Y : Set} {R : X → Y → Set} {r : Res X} {r′ : Res Y} {x : X} {y : Y}
+          → r ≡ returns x → r′ ≡ returns y → RelRes R r r′ → R x y
+relRes-at refl refl rr = rr
 
 ------------------------------------------------------------------------
 -- THE lemma. At `⊗` the two children share one budget on each side, and the
@@ -66,24 +93,34 @@ seqF-rel : ∀ (G : Functor) {X Y : Set} (R : X → Y → Set)
            {l : ⟦ G ⟧F (T X)} {r : ⟦ G ⟧F (T Y)}
          → RelF G (RelT′ R) l r
          → RelT′ (RelF G R) (seqF G l) (seqF G r)
-seqF-rel (K A)   R {x} {y} eq k = (refl , refl , eq)
+seqF-rel (K A)   R {x} {y} eq k = (refl , eq)
 seqF-rel Id      R         rel  = rel
+-- plan 0.98: the two computations are PINNED. `RelT′-fmap`'s conclusion now
+-- names its results only under `mapRes`, so the unifier cannot recover `m`
+-- from the goal the way it could when the flag and the value were separate.
 seqF-rel (G ⊕ H) R {inj₁ x} {inj₁ y} rel =
-  RelT′-fmap (RelF G R) (RelF (G ⊕ H) R) inj₁ inj₁ (λ _ _ z → z) (seqF-rel G R rel)
+  RelT′-fmap (RelF G R) (RelF (G ⊕ H) R) inj₁ inj₁ {seqF G x} {seqF G y}
+    (λ _ _ z → z) (seqF-rel G R rel)
 seqF-rel (G ⊕ H) R {inj₂ x} {inj₂ y} rel =
-  RelT′-fmap (RelF H R) (RelF (G ⊕ H) R) inj₂ inj₂ (λ _ _ z → z) (seqF-rel H R rel)
+  RelT′-fmap (RelF H R) (RelF (G ⊕ H) R) inj₂ inj₂ {seqF H x} {seqF H y}
+    (λ _ _ z → z) (seqF-rel H R rel)
 seqF-rel (G ⊗ H) R {x₁ , y₁} {x₂ , y₂} (rG , rH) =
   RelT′-bind (RelF G R) (RelF (G ⊗ H) R)
     (seqF G x₁) (seqF G x₂)
     (λ u → seqF H y₁ >>=T λ v → returnT (u , v))
     (λ u → seqF H y₂ >>=T λ v → returnT (u , v))
     (seqF-rel G R rG)
-    (λ k →
+    -- plan 0.98: the continuation is owed only where BOTH heads returned, and
+    -- the premises NAME the two values — so the old `valueT (seqF G x₁) k`,
+    -- which had to guess that a value existed at budget `k`, is replaced by the
+    -- bound `u`/`u′`, and the budget index disappears with it.
+    (λ u u′ eu eu′ →
       RelT′-bind (RelF H R) (RelF (G ⊗ H) R)
         (seqF H y₁) (seqF H y₂)
-        (λ v → returnT (valueT (seqF G x₁) k , v))
-        (λ v → returnT (valueT (seqF G x₂) k , v))
+        (λ v → returnT (u , v))
+        (λ v → returnT (u′ , v))
         (seqF-rel H R rH)
-        (λ j _ → (refl , refl
-                 , ( proj₂ (proj₂ (seqF-rel G R rG k))
-                   , proj₂ (proj₂ (seqF-rel H R rH j))))))
+        (λ v v′ ev ev′ j →
+          ( refl
+          , ( relRes-at eu eu′ (proj₂ (seqF-rel G R rG 0))
+            , relRes-at ev ev′ (proj₂ (seqF-rel H R rH 0)) ))))
