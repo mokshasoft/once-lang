@@ -15,7 +15,7 @@ module Once.CCC.Codegen.IRObsCorrect.SigOp (o : CanonicalName) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o
 open import Once.Denotation.Trace using (mkEvent; mk-event)
-open import Once.Type using () renaming (Unit to Unitᵀ)
+open import Once.Type using () renaming (Unit to Unitᵀ; Void to Voidᵀ)
 open import Once.Functor.Translate using (IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Str; base-Buffer; base-Prod; base-Sum)
 
 import Once.CCC.FrameSemantics
@@ -26,7 +26,8 @@ import Once.Semantics.Machine as EvV
 import Once.CCC.Machine.ReadTypedAdequate as RTA
 import Once.Denotation.DenotTrace as DT
 import Once.Denotation.TraceMonad as TM
-import Once.Denotation.ValueDomain as VD
+open import Once.Res using (Res; stopped; returns; is-stopped; is-stopped-mapRes; returns-inj; mapRes)
+open import Once.SigOp.Info using (stops-shape; semM-stops; semM)
 
 module SigOpC {FS : FrameSemantics} where
 
@@ -66,7 +67,7 @@ module SigOpC {FS : FrameSemantics} where
   -- `pure-sigop-output si s = SV-Lit fitB (semM si (readTyped A input-loc s))`
   -- (SMCore), and `readTyped-adequate` (ReadTypedAdequate) turns the `ValidAtWF`
   -- hypothesis into `readTyped A input-loc s ≡ just (subst id (coh A) x)`; with
-  -- `TM.valueT (evalᴰ (SigOp si) x) 0 = subst (sym (coh B)) (semM si (subst id (coh A) x))`
+  -- `pure-val si pure-eq {x} = subst (sym (coh B)) (semM si (subst id (coh A) x))`
   -- (CCC.Eval:83) the two sides coincide modulo the `coh` transports (which are
   -- `refl` on the fits-in-reg base types). Discharge = the next step; stated
   -- here so the apex chain is verified end-to-end against ONE named equation.
@@ -75,7 +76,7 @@ module SigOpC {FS : FrameSemantics} where
   -- writes `pure-sigop-output si s = SV-Lit fit (semM si (readTyped A input-loc s))`
   -- (SMCore, Plan 0.54 A4) and `readTyped-adequate` turns the `ValidAtWF`
   -- hypothesis into `readTyped A input-loc s ≡ just (subst id (coh A) x)`, which
-  -- with `TM.valueT (evalᴰ (SigOp si) x) 0 = subst (sym (coh B)) (semM si (subst id (coh A) x))`
+  -- with `pure-val si pure-eq {x} = subst (sym (coh B)) (semM si (subst id (coh A) x))`
   -- (CCC.Eval:83) makes the two sides equal. Verified as far as
   --   `pure-sigop-output si s | just fits-intˢ | sv-as-loc (input1 (regs s))`
   -- (i.e. the codomain and input-pointer dispatches both reduce). The residual is
@@ -95,29 +96,85 @@ module SigOpC {FS : FrameSemantics} where
                     → (s : LocState FS) → exec-sigop-halts si s ≡ false
   sigop-halts-false si pure-eq s = cong (λ e → exec-sigop-halts-of e si s) pure-eq
 
-  -- plan 0.97: the SPEC side of the very same dispatch. `stops-D si` is
-  -- `stops-D-of (effect si)` for exactly this reason — a `with` would leave it
-  -- stuck on an abstract `effect si`. Pure and Emits do not stop the program;
-  -- `Halts` is the only shape that does, and it has no discharge here.
+  -- plan 0.97: the SPEC side of the very same dispatch. 0.97 could `cong`
+  -- straight from `effect si` because `stops-D si` was DEFINED as
+  -- `stops-D-of (effect si)` — the two could not disagree by construction.
+  --
+  -- plan 0.98: THEY CAN NOW, so the step is a LEMMA. Stoppedness is
+  -- `is-stopped (semM si fmt …)`, and `semM-stops` (Once/SigOp/Info.agda) is
+  -- what carries a consumer who matched on the CONTRACT'S SHAPE over to the
+  -- computation's result. `is-stopped-mapRes` strips the denotation's
+  -- coercion, which cannot change whether it stopped.
+  sigop-stops-of : ∀ {A B} (si : SigOpInfo A B) {x : ⟦ ⌊ A ⌋ ⟧} {k : ℕ}
+                 → TM.stoppedT (evalᴰ (SigOp si) x) k ≡ stops-shape (effect si)
+  sigop-stops-of si = trans (is-stopped-mapRes _ _) (semM-stops si _ _)
+
+  -- Pure and Emits do not stop the program; `Halts` is the only shape that
+  -- does, and it has no discharge here.
   sigop-stops-pure : ∀ {A B} (si : SigOpInfo A B) → effect si ≡ Pure
-                   → VD.stops-D si ≡ false
-  sigop-stops-pure si pure-eq = cong VD.stops-D-of pure-eq
+                   → ∀ {x : ⟦ ⌊ A ⌋ ⟧} {k : ℕ}
+                   → TM.stoppedT (evalᴰ (SigOp si) x) k ≡ false
+  sigop-stops-pure si pure-eq {x} {k} =
+    trans (sigop-stops-of si {x} {k}) (cong stops-shape pure-eq)
 
   sigop-stops-emits : ∀ {A} (si : SigOpInfo A Unitᵀ) → effect si ≡ Emits refl
-                    → VD.stops-D si ≡ false
-  sigop-stops-emits si emits-eq = cong VD.stops-D-of emits-eq
+                    → ∀ {x : ⟦ ⌊ A ⌋ ⟧} {k : ℕ}
+                    → TM.stoppedT (evalᴰ (SigOp si) x) k ≡ false
+  sigop-stops-emits si emits-eq {x} {k} =
+    trans (sigop-stops-of si {x} {k}) (cong stops-shape emits-eq)
 
   -- …and the absurdity form the record's `stops` field wants: a shape that
   -- does not stop cannot have stopped.
   no-stop-pure : ∀ {A B} (si : SigOpInfo A B) → effect si ≡ Pure
-               → ∀ {X : Set} → VD.stops-D si ≡ true → X
-  no-stop-pure si pure-eq st with trans (sym (sigop-stops-pure si pure-eq)) st
+               → ∀ {x : ⟦ ⌊ A ⌋ ⟧} {k : ℕ} {X : Set}
+               → TM.stoppedT (evalᴰ (SigOp si) x) k ≡ true → X
+  no-stop-pure si pure-eq {x} {k} st
+    with trans (sym (sigop-stops-pure si pure-eq {x} {k})) st
   ... | ()
 
   no-stop-emits : ∀ {A} (si : SigOpInfo A Unitᵀ) → effect si ≡ Emits refl
-                → ∀ {X : Set} → VD.stops-D si ≡ true → X
-  no-stop-emits si emits-eq st with trans (sym (sigop-stops-emits si emits-eq)) st
+                → ∀ {x : ⟦ ⌊ A ⌋ ⟧} {k : ℕ} {X : Set}
+                → TM.stoppedT (evalᴰ (SigOp si) x) k ≡ true → X
+  no-stop-emits si emits-eq {x} {k} st
+    with trans (sym (sigop-stops-emits si emits-eq {x} {k})) st
   ... | ()
+
+  -- THE MACHINE'S READ-BACK AND THE DENOTATION'S VALUE AGREE, once we know
+  -- there IS one. `res-sv` (SMCore) dispatches on the `Res` because the
+  -- machine must write SOMETHING to `Output` even for a halting contract —
+  -- an ABI fact, not a semantic claim (plan 0.98 §4). `valueT`/`resVal` reads
+  -- the value only where one exists. So the two coincide exactly on
+  -- `returns`, and this one-clause split is the whole bridge.
+  -- Stated at `SV-Lit`, entirely in the MACHINE value domain — `prim-sv` is
+  -- IRTy-indexed and its value lives in the denotational domain, so a
+  -- statement mentioning both is ill-typed while `B` is abstract. The two
+  -- domains coincide at a register-fitting base type, which is where the
+  -- consumer spends this.
+  res-sv-val : ∀ {B} (fitB : FitsInReg B) {r : Res EvV.⟦ B ⟧} (p : TM.Returns? r)
+             → AbstractExec.res-sv {FS} fitB r ≡ SV-Lit fitB (TM.resVal r p)
+  res-sv-val fitB {returns v} _ = refl
+
+  -- …and the denotation's coercion at a register-fitting codomain is the
+  -- identity, so it does not change the value read back either.
+  resVal-mapRes-id : ∀ {X} (r : Res X) (p : TM.Returns? (mapRes (λ y → y) r))
+                       (q : TM.Returns? r)
+                   → TM.resVal (mapRes (λ y → y) r) p ≡ TM.resVal r q
+  resVal-mapRes-id (returns v) _ _ = refl
+
+  -- A `Pure` contract's `semM` RETURNS, stated on the machine's own result
+  -- (not the denotation's `mapRes` of it) — that is what `res-sv-val` wants.
+  pure-semM-returns : ∀ {A B} (si : SigOpInfo A B) → effect si ≡ Pure
+                    → ∀ (a : EvV.⟦ A ⟧)
+                    → TM.Returns? (semM si (Once.CCC.FrameSemantics.fs-numerics FS) a)
+  pure-semM-returns si pure-eq a =
+    TM.Returns?-of (trans (semM-stops si _ a) (cong stops-shape pure-eq))
+
+  -- THE VALUE A PURE SigOp PRODUCES. `valueT` needs a witness that there IS
+  -- one; for a `Pure` contract that witness is exactly "it does not stop".
+  pure-val : ∀ {A B} (si : SigOpInfo A B) → effect si ≡ Pure
+           → {x : ⟦ ⌊ A ⌋ ⟧} → ⟦ ⌊ B ⌋ ⟧
+  pure-val si pure-eq {x} =
+    TM.valueT (evalᴰ (SigOp si) x) 0 {TM.Returns?-of (sigop-stops-pure si pure-eq {x} {0})}
 
   -- Same shape at the input-pointer dispatch: state the equation at exactly the
   -- form the goal holds (`sv-as-loc (readReg …)`), so `rewrite` matches.
@@ -144,25 +201,39 @@ module SigOpC {FS : FrameSemantics} where
   -- arises.)
   pure-sigop-value-reg :
       ∀ {A B} (n l : ℕ) (si : SigOpInfo A B) (fitness : FitsInReg B) (rA : Readable A)
-      → effect si ≡ Pure
+      -- plan 0.98: the premise is NAMED now — the conclusion mentions it,
+      -- because `pure-val` needs it to supply `valueT`'s witness.
+      → (pure-eq : effect si ≡ Pure)
       → ∀ (x : ⟦ ⌊ A ⌋ ⟧) (s : LocState FS) (alloc : AllocState {FS})
           (fit : FitsInRegI ⌊ A ⌋)
       → readReg (regs s) Input1 ≡ prim-sv fit x
       → halted s ≡ false
       → readReg (regs (proj₁ (exec-abstract (instr-sigop si) s alloc))) Output
-          ≡ prim-sv (fits-erase fitness) (TM.valueT (evalᴰ (SigOp si) x) 0)
+          ≡ prim-sv (fits-erase fitness) (pure-val si pure-eq {x})
   pure-sigop-value-reg n l si fits-intˢ r-int pure-eq x s alloc fits-int rdi-eq nh
     rewrite nh | sigop-halts-false si pure-eq s =
     trans (cong (λ e → exec-sigop-output-of e si s) pure-eq) step2
     where
-      step2 : exec-sigop-output-of Pure si s ≡ prim-sv fits-int (TM.valueT (evalᴰ (SigOp si) x) 0)
-      step2 rewrite cong sv-as-loc rdi-eq | cong (readReg-typed Intˢ) rdi-eq = refl
+      step2 : exec-sigop-output-of Pure si s ≡ prim-sv fits-int (pure-val si pure-eq {x})
+      step2 rewrite cong sv-as-loc rdi-eq | cong (readReg-typed Intˢ) rdi-eq =
+        trans (res-sv-val _ (pure-semM-returns si pure-eq _))
+              (cong (SV-Lit _)
+                      -- PINNED: `cong`'s motive leaves the `Res` a meta the
+                      -- unifier cannot read back out of `SV-Lit`.
+                      (sym (resVal-mapRes-id (semM si _ _) _
+                              (pure-semM-returns si pure-eq _))))
   pure-sigop-value-reg n l si fits-floatˢ r-int pure-eq x s alloc fits-int rdi-eq nh
     rewrite nh | sigop-halts-false si pure-eq s =
     trans (cong (λ e → exec-sigop-output-of e si s) pure-eq) step2
     where
-      step2 : exec-sigop-output-of Pure si s ≡ prim-sv fits-float (TM.valueT (evalᴰ (SigOp si) x) 0)
-      step2 rewrite cong sv-as-loc rdi-eq | cong (readReg-typed Intˢ) rdi-eq = refl
+      step2 : exec-sigop-output-of Pure si s ≡ prim-sv fits-float (pure-val si pure-eq {x})
+      step2 rewrite cong sv-as-loc rdi-eq | cong (readReg-typed Intˢ) rdi-eq =
+        trans (res-sv-val _ (pure-semM-returns si pure-eq _))
+              (cong (SV-Lit _)
+                      -- PINNED: `cong`'s motive leaves the `Res` a meta the
+                      -- unifier cannot read back out of `SV-Lit`.
+                      (sym (resVal-mapRes-id (semM si _ _) _
+                              (pure-semM-returns si pure-eq _))))
   pure-sigop-value-reg n l si fitness r-unit       pure-eq x s alloc () rdi-eq nh
   pure-sigop-value-reg n l si fitness (r-pair _ _) pure-eq x s alloc () rdi-eq nh
 
@@ -181,13 +252,13 @@ module SigOpC {FS : FrameSemantics} where
 
   pure-sigop-value-correct :
       ∀ {A B} (n l : ℕ) (si : SigOpInfo A B) (fitness : FitsInReg B) (rA : Readable A)
-      → effect si ≡ Pure
+      → (pure-eq : effect si ≡ Pure)
       → ∀ {mIn} (x : ⟦ ⌊ A ⌋ ⟧)
           (s : LocState FS) (alloc : AllocState {FS})
       → halted s ≡ false
       → InputAt {⌊ A ⌋} mIn alloc x s
       → readReg (regs (proj₁ (exec-abstract (instr-sigop si) s alloc))) Output
-          ≡ prim-sv (fits-erase fitness) (TM.valueT (evalᴰ (SigOp si) x) 0)
+          ≡ prim-sv (fits-erase fitness) (pure-val si pure-eq {x})
   pure-sigop-value-correct n l si fits-intˢ rA pure-eq x s alloc nh (in-reg fit rdi-eq) =
     pure-sigop-value-reg n l si fits-intˢ rA pure-eq x s alloc fit rdi-eq nh
   pure-sigop-value-correct n l si fits-floatˢ rA pure-eq x s alloc nh (in-reg fit rdi-eq) =
@@ -196,24 +267,48 @@ module SigOpC {FS : FrameSemantics} where
     rewrite nh | sigop-halts-false si pure-eq s =
     trans (cong (λ e → exec-sigop-output-of e si s) pure-eq) step2
     where
-      step2 : exec-sigop-output-of Pure si s ≡ prim-sv fits-int (TM.valueT (evalᴰ (SigOp si) x) 0)
-      step2 rewrite sv-loc-of s input-loc rdi-eq | readTyped-adequate {A = A} rA {v = x} valid = refl
+      step2 : exec-sigop-output-of Pure si s ≡ prim-sv fits-int (pure-val si pure-eq {x})
+      step2 rewrite sv-loc-of s input-loc rdi-eq | readTyped-adequate {A = A} rA {v = x} valid =
+        trans (res-sv-val _ (pure-semM-returns si pure-eq _))
+              (cong (SV-Lit _)
+                      -- PINNED: `cong`'s motive leaves the `Res` a meta the
+                      -- unifier cannot read back out of `SV-Lit`.
+                      (sym (resVal-mapRes-id (semM si _ _) _
+                              (pure-semM-returns si pure-eq _))))
   pure-sigop-value-correct {A} n l si fits-floatˢ rA pure-eq x s alloc nh (in-loc input-loc valid _ rdi-eq)
     rewrite nh | sigop-halts-false si pure-eq s =
     trans (cong (λ e → exec-sigop-output-of e si s) pure-eq) step2
     where
-      step2 : exec-sigop-output-of Pure si s ≡ prim-sv fits-float (TM.valueT (evalᴰ (SigOp si) x) 0)
-      step2 rewrite sv-loc-of s input-loc rdi-eq | readTyped-adequate {A = A} rA {v = x} valid = refl
+      step2 : exec-sigop-output-of Pure si s ≡ prim-sv fits-float (pure-val si pure-eq {x})
+      step2 rewrite sv-loc-of s input-loc rdi-eq | readTyped-adequate {A = A} rA {v = x} valid =
+        trans (res-sv-val _ (pure-semM-returns si pure-eq _))
+              (cong (SV-Lit _)
+                      -- PINNED: `cong`'s motive leaves the `Res` a meta the
+                      -- unifier cannot read back out of `SV-Lit`.
+                      (sym (resVal-mapRes-id (semM si _ _) _
+                              (pure-semM-returns si pure-eq _))))
   -- D074: the unit-input route. `r-unit` pins `A ≡ Unitˢ`, so `⌊A⌋ ≡ Unit`
   -- holds by `refl` and the other two readable shapes refute the equality.
   pure-sigop-value-correct n l si fits-intˢ r-unit pure-eq x s alloc nh (in-unit refl)
     rewrite nh | sigop-halts-false si pure-eq s =
     trans (cong (λ e → exec-sigop-output-of e si s) pure-eq)
-          (pure-sigop-out-unit si fits-intˢ s (sv-as-loc (readReg (regs s) Input1)))
+          (trans (pure-sigop-out-unit si fits-intˢ s (sv-as-loc (readReg (regs s) Input1)))
+                 (trans (res-sv-val _ (pure-semM-returns si pure-eq _))
+                        (cong (SV-Lit _)
+                      -- PINNED: `cong`'s motive leaves the `Res` a meta the
+                      -- unifier cannot read back out of `SV-Lit`.
+                      (sym (resVal-mapRes-id (semM si _ _) _
+                              (pure-semM-returns si pure-eq _))))))
   pure-sigop-value-correct n l si fits-floatˢ r-unit pure-eq x s alloc nh (in-unit refl)
     rewrite nh | sigop-halts-false si pure-eq s =
     trans (cong (λ e → exec-sigop-output-of e si s) pure-eq)
-          (pure-sigop-out-unit si fits-floatˢ s (sv-as-loc (readReg (regs s) Input1)))
+          (trans (pure-sigop-out-unit si fits-floatˢ s (sv-as-loc (readReg (regs s) Input1)))
+                 (trans (res-sv-val _ (pure-semM-returns si pure-eq _))
+                        (cong (SV-Lit _)
+                      -- PINNED: `cong`'s motive leaves the `Res` a meta the
+                      -- unifier cannot read back out of `SV-Lit`.
+                      (sym (resVal-mapRes-id (semM si _ _) _
+                              (pure-semM-returns si pure-eq _))))))
   pure-sigop-value-correct n l si fitness r-int pure-eq x s alloc nh (in-unit ())
   pure-sigop-value-correct n l si fitness (r-pair _ _) pure-eq x s alloc nh (in-unit ())
 
@@ -233,10 +328,19 @@ module SigOpC {FS : FrameSemantics} where
                    -- A `Pure` SigOp does not halt, so the settle state is LIVE
                    -- (which is what the sequel's `halted s ≡ false` needs).
                    (λ _ → sigop-halts-false si pure-eq s) (λ _ → refl)
-                   (no-stop-pure si pure-eq) refl refl
-                   (λ _ → at-reg (fits-erase fitness)
-                     (pure-sigop-value-correct n l si fitness rA pure-eq x s alloc
-                        not-halted rdi-eq))
+                   (no-stop-pure si pure-eq {x} {k}) refl refl
+                   -- plan 0.98: `place`'s premise BINDS the value, and
+                   -- `pure-val` is the one this clause placed. `resVal-returns`
+                   -- says the result IS `returns` of what `valueT` reads, so
+                   -- `returns-inj` identifies the two. The producer and the
+                   -- obligation can no longer name different values.
+                   (λ p → subst (λ w → ResultPlace _ _ _ _ w _)
+                            (returns-inj
+                              (trans (sym (TM.resVal-returns _
+                                            (TM.Returns?-of (sigop-stops-pure si pure-eq {x} {0})))) p))
+                            (at-reg (fits-erase fitness)
+                              (pure-sigop-value-correct n l si fitness rA pure-eq x s alloc
+                                 not-halted rdi-eq)))
                    -- D204: `exec-abstract (instr-sigop si)` writes the Output
                    -- register and the halt flag and nothing else — memory is
                    -- untouched whatever the SigOp means.
@@ -350,7 +454,7 @@ module SigOpC {FS : FrameSemantics} where
       ; value-realized =
           realized 1 fs₁ Stack (falloc fs₁) ((not-halted , span 0 _ refl) ∷ [])
                    (λ _ → emits-halts-false si emits-eq s) (λ _ → refl)
-                   (no-stop-emits si emits-eq) refl refl
+                   (no-stop-emits si emits-eq {x} {k}) refl refl
                    (λ _ → unit-result)
                    (λ fr j _ → mem-untouched (instr-sigop si) s alloc (AtStack fr j)
                                  nhw-instr-sigop refl)
@@ -375,8 +479,11 @@ module SigOpC {FS : FrameSemantics} where
   -- — `ev-of-loc` and `emit-D` treat the two shapes identically — so only the
   -- halting facts are new.
   ------------------------------------------------------------------------
+  -- plan 0.98: the codomain is `Void`. `Halts` carries `B ≡ Void` now, so a
+  -- halting SigOp declared at `Unit` is not merely unusual — it is
+  -- UNTYPEABLE, which is the whole point of the plan.
   halts-trace-agree :
-    ∀ {A} (si : SigOpInfo A Unitᵀ) → effect si ≡ Halts refl
+    ∀ {A} (si : SigOpInfo A Voidᵀ) → effect si ≡ Halts refl
     → ∀ {mIn alloc} (x : ⟦ ⌊ A ⌋ ⟧) (s : LocState FS) (k : ℕ)
     → InputAt {⌊ A ⌋} mIn alloc x s
     → take k (ev-of-loc (instr-sigop si) s ++ [])
@@ -398,27 +505,40 @@ module SigOpC {FS : FrameSemantics} where
   halts-halts-true si halts-eq s = cong (λ z → exec-sigop-halts-of z si s) halts-eq
 
   sigop-stops-halts : ∀ {A B} (si : SigOpInfo A B) {e} → effect si ≡ Halts e
-                    → VD.stops-D si ≡ true
-  sigop-stops-halts si halts-eq = cong VD.stops-D-of halts-eq
+                    → ∀ {x : ⟦ ⌊ A ⌋ ⟧} {k : ℕ}
+                    → TM.stoppedT (evalᴰ (SigOp si) x) k ≡ true
+  sigop-stops-halts si halts-eq {x} {k} =
+    trans (sigop-stops-of si {x} {k}) (cong stops-shape halts-eq)
 
   -- …and the refutation the three conditioned fields want: a shape that
   -- STOPS cannot be live.
   no-live-halts : ∀ {A B} (si : SigOpInfo A B) {e} → effect si ≡ Halts e
-                → ∀ {X : Set} → VD.stops-D si ≡ false → X
-  no-live-halts si halts-eq p with trans (sym (sigop-stops-halts si halts-eq)) p
+                → ∀ {x : ⟦ ⌊ A ⌋ ⟧} {k : ℕ} {X : Set}
+                → TM.stoppedT (evalᴰ (SigOp si) x) k ≡ false → X
+  no-live-halts si halts-eq {x} {k} p
+    with trans (sym (sigop-stops-halts si halts-eq {x} {k})) p
+  ... | ()
+
+  -- plan 0.98: a HALTING SigOp has NO RESULT, so `place`'s premise refutes
+  -- itself outright — the field costs nothing and cannot be misused.
+  no-place-halts : ∀ {A B} (si : SigOpInfo A B) {e} → effect si ≡ Halts e
+                 → ∀ {x : ⟦ ⌊ A ⌋ ⟧} {v} {X : Set}
+                 → TM.T.resT (evalᴰ (SigOp si) x) ≡ returns v → X
+  no-place-halts si halts-eq {x} p
+    with trans (sym (sigop-stops-halts si halts-eq {x} {0})) (cong is-stopped p)
   ... | ()
 
   halts-obs-correct-sigop :
-    ∀ {A} (si : SigOpInfo A Unitᵀ) → effect si ≡ Halts refl → IRObsCorrectF (SigOp si)
+    ∀ {A} (si : SigOpInfo A Voidᵀ) → effect si ≡ Halts refl → IRObsCorrectF (SigOp si)
   halts-obs-correct-sigop {A} si halts-eq
     n l prog base _ cr span _ _ mIn x s alloc cl _ not-halted inp k =
     record
       { traces-agree = halts-trace-agree si halts-eq x s k inp
       ; value-realized =
           realized 1 fs₁ Stack (falloc fs₁) ((not-halted , span 0 _ refl) ∷ [])
-                   (no-live-halts si halts-eq) (no-live-halts si halts-eq)
+                   (no-live-halts si halts-eq {x} {k}) (no-live-halts si halts-eq {x} {k})
                    (λ _ → halts-halts-true si halts-eq s) refl refl
-                   (no-live-halts si halts-eq)
+                   (no-place-halts si halts-eq)
                    (λ fr j _ → mem-untouched (instr-sigop si) s alloc (AtStack fr j)
                                  nhw-instr-sigop refl)
                    (λ hl _ → mem-untouched (instr-sigop si) s alloc (AtDynamic hl)
