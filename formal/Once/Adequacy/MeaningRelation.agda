@@ -39,7 +39,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong
 open import Once.Type using (Type; Unit; Void; Int; Float; Str; Buffer;
                              _*_; _+_; _⇒[_]_; μ-type; ν-type;
                              mk-kind; Zero; One; Many)
-open import Once.Denotation.TraceMonad using (T; projTrace; valueT; stoppedT; returnT; _>>=T_; join-es; join-st)
+open import Once.Denotation.TraceMonad using (T; projTrace; valueT; stoppedT; returnT; _>>=T_; bindRes-rel)
+open import Once.Res using (Res; stopped; returns; Res-rel)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ)
 open import Once.Denotation.ValueDomainLaws using (_∼ᵈ_)
 
@@ -51,14 +52,18 @@ open import Once.Denotation.ValueDomainLaws using (_∼ᵈ_)
 RelV : ∀ (A : Type) → ⟦ A ⟧ᴰ → ⟦ A ⟧ᴰ → Set
 RelT : ∀ (A : Type) → T ⟦ A ⟧ᴰ → T ⟦ A ⟧ᴰ → Set
 
--- A computation relation: equal event traces + related values at EVERY budget.
--- plan 0.97: …and equal STOP FLAGS. Not decoration: `_>>=T_`'s trace is
--- `join-es (stT t) …`, so `RelT-bind` below cannot conclude the two composite
--- traces agree without it. Adding the stop channel to `T` forced the relation
--- to carry it.
+-- A computation relation: equal event traces at EVERY budget, and related
+-- RESULTS.
+--
+-- plan 0.97 made this a TRIPLE — trace, stop flag, value — because `_>>=T_`'s
+-- trace was a `join-es` of the two and `RelT-bind` could not conclude the
+-- composite traces agreed without the flag. plan 0.98: the flag and the value
+-- were always ONE fact, "did this return, and with what", and `Res-rel` is
+-- that fact. Two related computations stop together or return related values;
+-- there is no state in which one has a value and the other does not, which is
+-- exactly what the triple could express and should not have been able to.
 RelT A t₁ t₂ = ∀ n → (projTrace t₁ n ≡ projTrace t₂ n)
-                   × (stoppedT t₁ n ≡ stoppedT t₂ n)
-                   × RelV A (valueT t₁ n) (valueT t₂ n)
+                   × Res-rel (RelV A) (T.resT t₁) (T.resT t₂)
 
 -- First-order (pure `Val`) payloads: observational = propositional equality.
 RelV Unit        _ _ = ⊤
@@ -96,7 +101,7 @@ RelV (A ⇒[ mk-kind Many π ] B) f g = ∀ {a b} → RelV A a b → RelT B (f a
 -- `returnT` has empty trace and carries its value, so related values give
 -- related pure computations.
 RelT-return : ∀ {A} {x y : ⟦ A ⟧ᴰ} → RelV A x y → RelT A (returnT x) (returnT y)
-RelT-return rv n = refl , refl , rv
+RelT-return rv n = refl , rv
 
 -- Bind preserves the relation: related computations sequenced with related
 -- continuations stay related. `_>>=T_` concatenates the two traces, so the
@@ -111,30 +116,12 @@ RelT-bind : ∀ {A B} {t₁ t₂ : T ⟦ A ⟧ᴰ} {f g : ⟦ A ⟧ᴰ → T ⟦
           → RelT A t₁ t₂
           → (∀ {a b} → RelV A a b → RelT B (f a) (g b))
           → RelT B (t₁ >>=T f) (t₂ >>=T g)
+-- plan 0.98: the whole body is `bindRes-rel`. 0.97 had to thread the value
+-- out of the head (`valueT t₁ n`) in order to APPLY the continuation, and then
+-- transport the result along the budget equation — three components moved by
+-- hand. Splitting on the head's RESULT instead means the value is bound by the
+-- constructor: the stopped case has no continuation to mention at all, and the
+-- returning case is the one that carries the budget transport.
 RelT-bind {A} {B} {t₁} {t₂} {f} {g} rt rk n =
-    trans (cong₂ (λ b es → join-es b es (projTrace fa k₁)) st-eq tr-eq)
-          (cong (join-es (stoppedT t₂ n) (projTrace t₂ n))
-                (trans (proj₁ inner) (cong (projTrace gb) keq)))
-  , cong₂ join-st st-eq (trans (proj₁ (proj₂ inner))
-                               (cong (stoppedT gb) keq))
-  , subst (λ k → RelV B (valueT fa k₁) (valueT gb k)) keq (proj₂ (proj₂ inner))
-  where
-    tr-eq : projTrace t₁ n ≡ projTrace t₂ n
-    tr-eq = proj₁ (rt n)
-
-    st-eq : stoppedT t₁ n ≡ stoppedT t₂ n
-    st-eq = proj₁ (proj₂ (rt n))
-
-    fa = f (valueT t₁ n)
-    gb = g (valueT t₂ n)
-
-    k₁ = n ∸ length (projTrace t₁ n)
-    k₂ = n ∸ length (projTrace t₂ n)
-
-    keq : k₁ ≡ k₂
-    keq = cong (λ es → n ∸ length es) tr-eq
-
-    inner : (projTrace fa k₁ ≡ projTrace gb k₁)
-          × (stoppedT fa k₁ ≡ stoppedT gb k₁)
-          × RelV B (valueT fa k₁) (valueT gb k₁)
-    inner = rk (proj₂ (proj₂ (rt n))) k₁
+  bindRes-rel (RelV A) (RelV B) (T.trT t₁) (T.trT t₂) (T.resT t₁) (T.resT t₂)
+              f g n (proj₁ (rt n)) (proj₂ (rt n)) (λ r j → rk r j)

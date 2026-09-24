@@ -31,11 +31,13 @@ open import Data.Nat using (ℕ)
 open import Data.List using (List)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Sum using (inj₁; inj₂)
+open import Data.Unit using (⊤; tt)
+open import Once.Res using (Res; stopped; returns; Res-rel)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 open import Once.Denotation.Trace using (SigOpEvent)
 open import Once.Denotation.TraceMonad using (T; valueT; projTrace)
-open import Once.Denotation.ValueDomain using (νᵈ; forceᵈ; anaᵈ; mapAnaᵈ)
+open import Once.Denotation.ValueDomain using (νᵈ; forceᵈ; anaᵈ; mapAnaᵈ; anaLayer)
 open import Once.Semantics.Functor using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF)
 open import Once.Semantics.Functor.Laws using (⟦_⟧SF-rel)
 
@@ -54,8 +56,14 @@ record _∼ᵈ_ {F : SFunctor} (x y : νᵈ F) : Set where
   coinductive
   field
     traceᵈ-∼ : ∀ k → projTrace (forceᵈ x) k ≡ projTrace (forceᵈ y) k
-    layerᵈ-∼ : ∀ k → ⟦ F ⟧SF-rel (_∼ᵈ_ {F}) (valueT (forceᵈ x) k)
-                                            (valueT (forceᵈ y) k)
+    -- plan 0.98: the LAYER field is `Res`-relational and budget-free. Forcing
+    -- a ν need not produce a layer at all — a halting coalgebra stops — so
+    -- "the layers are related" is the wrong statement; "they stop together,
+    -- or produce related layers" is the right one, and that is `Res-rel`.
+    -- The budget drops out with it: the result does not depend on it, only
+    -- the trace does.
+    layerᵈ-∼ : Res-rel (⟦ F ⟧SF-rel (_∼ᵈ_ {F}))
+                       (T.resT (forceᵈ x)) (T.resT (forceᵈ y))
 
 open _∼ᵈ_ public
 
@@ -88,8 +96,14 @@ open _∼ᵈ_ public
 -- structural in the SHAPE functor, so guardedness sees it.
 mutual
   ∼ᵈ-refl : ∀ {H : SFunctor} (x : νᵈ H) → x ∼ᵈ x
-  traceᵈ-∼ (∼ᵈ-refl x)     k = refl
-  layerᵈ-∼ (∼ᵈ-refl {H} x) k = SF-rel-refl H H (valueT (forceᵈ x) k)
+  traceᵈ-∼ (∼ᵈ-refl x)   k = refl
+  layerᵈ-∼ (∼ᵈ-refl {H} x) = Res-rel-refl H H (T.resT (forceᵈ x))
+
+  -- A stopped force is related to itself with nothing to say.
+  Res-rel-refl : ∀ (H G : SFunctor) (r : Res (⟦ G ⟧SF (νᵈ H)))
+               → Res-rel (⟦ G ⟧SF-rel (_∼ᵈ_ {H})) r r
+  Res-rel-refl H G stopped     = tt
+  Res-rel-refl H G (returns x) = SF-rel-refl H G x
 
   SF-rel-refl : ∀ (H G : SFunctor) (x : ⟦ G ⟧SF (νᵈ H))
               → ⟦ G ⟧SF-rel (_∼ᵈ_ {H}) x x
@@ -112,7 +126,7 @@ CoalgRel : ∀ (H : SFunctor) {A B : Set} (R : A → B → Set)
 CoalgRel H R c₁ c₂ =
   ∀ {a b} → R a b
   → (∀ k → projTrace (c₁ a) k ≡ projTrace (c₂ b) k)
-  × (∀ k → ⟦ H ⟧SF-rel R (valueT (c₁ a) k) (valueT (c₂ b) k))
+  × Res-rel (⟦ H ⟧SF-rel R) (T.resT (c₁ a)) (T.resT (c₂ b))
 
 -- Related seeds unfold to bisimilar values. The coinductive core, and the
 -- one place the guardedness checker is doing real work: `anaᵈ-∼`'s corecursive
@@ -124,8 +138,22 @@ mutual
          → CoalgRel H R c₁ c₂
          → ∀ {a b} → R a b → anaᵈ H c₁ a ∼ᵈ anaᵈ H c₂ b
   traceᵈ-∼ (anaᵈ-∼ H cr r) k = proj₁ (cr r) k
-  layerᵈ-∼ (anaᵈ-∼ H {R = R} {c₁ = c₁} {c₂ = c₂} cr {a} {b} r) k =
-    mapAnaᵈ-∼ H H cr (proj₂ (cr r) k)
+  layerᵈ-∼ (anaᵈ-∼ H {R = R} {c₁ = c₁} {c₂ = c₂} cr {a} {b} r) =
+    anaLayer-∼ H cr (T.resT (c₁ a)) (T.resT (c₂ b)) (proj₂ (cr r))
+
+  -- The layer STEP preserves the relation. Split on both results: a stopped
+  -- unfold builds no layer, so there is nothing to map and nothing to relate —
+  -- and a mixed pair is refuted by `Res-rel` itself, which is what makes
+  -- "they stop together" part of the statement rather than an afterthought.
+  anaLayer-∼ : ∀ (H : SFunctor) {A B : Set} {R : A → B → Set}
+               {c₁ : A → T (⟦ H ⟧SF A)} {c₂ : B → T (⟦ H ⟧SF B)}
+             → CoalgRel H R c₁ c₂
+             → ∀ (r₁ : Res (⟦ H ⟧SF A)) (r₂ : Res (⟦ H ⟧SF B))
+             → Res-rel (⟦ H ⟧SF-rel R) r₁ r₂
+             → Res-rel (⟦ H ⟧SF-rel (_∼ᵈ_ {H}))
+                       (anaLayer H c₁ r₁) (anaLayer H c₂ r₂)
+  anaLayer-∼ H cr stopped     stopped     rr = tt
+  anaLayer-∼ H cr (returns x) (returns y) rr = mapAnaᵈ-∼ H H cr rr
 
   -- The layer map preserves the relation, structurally in the SHAPE functor
   -- `G` while the coalgebra stays at `H`. Mirrors `mapAnaᵈ`'s own recursion.
