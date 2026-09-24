@@ -20,7 +20,8 @@
 -- `CataRel`/`CataBridge`, to keep the transport proof clear of `⟦_⟧`-mixfix soup.
 ------------------------------------------------------------------------
 
-open import Once.Res using (mapRes)
+open import Data.Unit using (⊤; tt)
+open import Once.Res using (Res; stopped; returns; mapRes; mapRes-id; mapRes-∘; mapRes-cong)
 open import Once.Target.Arch using (TargetNum; int-bits; float-format)
 
 -- Plan 0.73 (D113): this module's statements mention a denotation that is
@@ -39,7 +40,7 @@ open import Relation.Binary.PropositionalEquality
   using (_≡_; refl; cong; cong₂; sym; trans; subst; subst-subst-sym; subst-sym-subst)
 
 open import Once.Semantics.Functor using (SFunctor; SK; SId; _S⊕_; _S⊗_; μS; cataS; ⟦_⟧SF)
-open import Once.Denotation.TraceMonad using (T; mkT; projTrace; valueT; stoppedT; returnT; _>>=T_; fmapT; RelT′; RelT′-bind)
+open import Once.Denotation.TraceMonad using (T; mkT; projTrace; valueT; stoppedT; returnT; _>>=T_; fmapT; RelT′; RelT′-bind; RelRes; Returns?)
 open import Once.IRTy using (IRTy; IRFunctor; ⌊_⌋; ⌈_⌉; ⌈_⌉F; ⟦_⟧TI; ⌈⟧TI-commute)
 open import Once.Denotation.DenotTrace
   using (⟦_⟧ᴰᴵ; ⟦_⟧ᴰ; evalᴰ; cata-ev-algᴰ; coerce-functor⁻¹-D)
@@ -73,28 +74,64 @@ import Once.IR as IR
 
 -- plan 0.97: `T` is a RECORD now, so a computation is no longer a function of
 -- the budget and `subst-T-apply` (which applied one) has no statement. Its
--- role is taken by record eta: two computations are equal when their three
--- fields are — the trace family pointwise, the stop flag and the value at any
--- budget (both are budget-free).
+-- plan 0.98: `RelRes (λ x y → f x ≡ y)` and `mapRes f r₁ ≡ r₂` say the same
+-- thing — the first pointwise, the second as one equation. Both directions are
+-- one clause each; the stopped case carries no value to relate.
+RelRes-of-mapRes : ∀ {X Y : Set} (f : X → Y) (r₁ : Res X) (r₂ : Res Y)
+                 → mapRes f r₁ ≡ r₂ → RelRes (λ x y → f x ≡ y) r₁ r₂
+RelRes-of-mapRes f stopped     .stopped            refl = tt
+RelRes-of-mapRes f (returns x) .(returns (f x))    refl = refl
+
+-- The value half of a `RelRes`, once both sides are known to return.
+RelRes-value : ∀ {X Y : Set} {R : X → Y → Set} {r : Res X} {r′ : Res Y} {x y}
+             → RelRes R r r′ → r ≡ returns x → r′ ≡ returns y → R x y
+RelRes-value rr refl refl = rr
+
+mapRes-of-RelRes : ∀ {X Y : Set} (f : X → Y) (r₁ : Res X) (r₂ : Res Y)
+                 → RelRes (λ x y → f x ≡ y) r₁ r₂ → mapRes f r₁ ≡ r₂
+mapRes-of-RelRes f stopped     stopped     _  = refl
+mapRes-of-RelRes f (returns x) (returns y) eq = cong returns eq
+
+-- role is taken by record eta: two computations are equal when their TWO
+-- fields are — the trace family pointwise, and the result.
+--
+-- plan 0.98: the stop flag and the value were separate premises, and a caller
+-- had to supply both while `valueT` quietly assumed a value existed. `Res` is
+-- the one fact, so this takes one premise where it took two.
 T-ext : ∀ {X : Set} {l r : T X}
       → (∀ n → projTrace l n ≡ projTrace r n)
-      → stoppedT l 0 ≡ stoppedT r 0
-      → valueT   l 0 ≡ valueT   r 0
+      → T.resT l ≡ T.resT r
       → l ≡ r
-T-ext {l = mkT t₁ s₁ v₁} {r = mkT t₂ .s₁ .v₁} tr refl refl =
-  cong (λ t → mkT t s₁ v₁) (extensionality tr)
+T-ext {l = mkT t₁ r₁} {r = mkT t₂ .r₁} tr refl =
+  cong (λ t → mkT t r₁) (extensionality tr)
 
 subst-T-stoppedT : ∀ {X Y : Set} (eq : X ≡ Y) (h : T X) (n : ℕ)
   → stoppedT (subst T eq h) n ≡ stoppedT h n
 subst-T-stoppedT refl h n = refl
 
+-- plan 0.98: transport moves the RESULT by `mapRes` and the trace not at all.
+subst-T-resT : ∀ {X Y : Set} (eq : X ≡ Y) (h : T X)
+  → T.resT (subst T eq h) ≡ mapRes (subst (λ z → z) eq) (T.resT h)
+subst-T-resT refl h = sym (mapRes-id (T.resT h))
+
 subst-T-projTrace : ∀ {X Y : Set} (eq : X ≡ Y) (h : T X) (n : ℕ)
   → projTrace (subst T eq h) n ≡ projTrace h n
 subst-T-projTrace refl h n = refl
 
+-- plan 0.98: `valueT` needs a witness that there IS a value, and the two
+-- sides need DIFFERENT ones — `Returns? (T.resT (subst T eq h))` on the left,
+-- `Returns? (T.resT h)` on the right. `subst-Returns` transports one to the
+-- other so the statement can mention a single assumption, which is what makes
+-- it writable at all for an abstract `h`.
+subst-Returns : ∀ {X Y : Set} (eq : X ≡ Y) (h : T X)
+              → Returns? (T.resT h) → Returns? (T.resT (subst T eq h))
+subst-Returns refl h q = q
+
 subst-T-valueT : ∀ {X Y : Set} (eq : X ≡ Y) (h : T X) (n : ℕ)
-  → valueT (subst T eq h) n ≡ subst (λ z → z) eq (valueT h n)
-subst-T-valueT refl h n = refl
+                 (q : Returns? (T.resT h))
+               → valueT (subst T eq h) n {subst-Returns eq h q}
+                 ≡ subst (λ z → z) eq (valueT h n {q})
+subst-T-valueT refl h n q = refl
 
 subst-cong-μS : ∀ {G₁ G₂ : SFunctor} (eq : G₁ ≡ G₂) (x : μS G₁)
   → subst (λ z → z) (cong μS eq) x ≡ subst μS eq x
@@ -340,10 +377,11 @@ module _ {A' : Type} where
           -- `layer-z` replaced by `layer-rel`'s value half at budget `k`.
           from-subst-eq : ∀ {l : T ⟦ ⌊ A' ⌋ ⟧ᴰᴵ} {r : T ⟦ A' ⟧ᴰ}
                         → subst T (cohᴰ A') l ≡ r → RelC l r
+          -- plan 0.98: a PAIR — the flag and the value were one fact.
           from-subst-eq {l} eq j =
             ( trans (sym (subst-T-projTrace (cohᴰ A') l j)) (cong (λ t → projTrace t j) eq)
-            , trans (sym (subst-T-stoppedT (cohᴰ A') l j)) (cong (λ t → stoppedT t j) eq)
-            , trans (sym (subst-T-valueT (cohᴰ A') l j)) (cong (λ t → valueT t j) eq) )
+            , RelRes-of-mapRes (subst (λ z → z) (cohᴰ A')) (T.resT l) _
+                (trans (sym (subst-T-resT (cohᴰ A') l)) (cong T.resT eq)) )
 
           -- …and its converse, which is what the clause's own conclusion is:
           -- an EQUATION of computations, assembled from the relation by eta.
@@ -351,14 +389,17 @@ module _ {A' : Type} where
                       → RelC l r → subst T (cohᴰ A') l ≡ r
           to-subst-eq {l} rel =
             T-ext (λ n → trans (subst-T-projTrace (cohᴰ A') l n) (proj₁ (rel n)))
-                  (trans (subst-T-stoppedT (cohᴰ A') l 0) (proj₁ (proj₂ (rel 0))))
-                  (trans (subst-T-valueT (cohᴰ A') l 0) (proj₂ (proj₂ (rel 0))))
+                  (trans (subst-T-resT (cohᴰ A') l)
+                         (mapRes-of-RelRes (subst (λ z → z) (cohᴰ A')) (T.resT l) _
+                            (proj₂ (rel 0))))
 
           algR-full : ∀ {y₁ y₂} → RelSF (translateF Carrier Carrier F) RelC y₁ y₂ → RelC (algL' y₁) (algM y₂)
           algR-full {y₁} {y₂} rsf =
             RelT′-bind (LayerRel F) (λ l r → subst (λ z → z) (cohᴰ A') l ≡ r) mL mM contL contM
               (layer-rel wfF rsf)
-              (λ k → from-subst-eq (step-eq k (proj₂ (proj₂ (layer-rel wfF rsf k)))))
+              (λ x y eqL eqM →
+                 from-subst-eq (step-eq x y
+                   (RelRes-value (proj₂ (layer-rel wfF rsf 0)) eqL eqM)))
             where
               mL : T (⟦ ⌈ eraseF F ⌉F ⟧F ⟦ ⌊ A' ⌋ ⟧ᴰᴵ)
               mL = seqF ⌈ eraseF F ⌉F
@@ -371,14 +412,17 @@ module _ {A' : Type} where
               contM = λ layer → liftFn fmt {Eˢ TT.* ⟦ F ⟧T A'} {A'} mir
                                   (env , coerce-functor⁻¹-D F A' layer)
 
-              step-eq : ∀ k → LayerRel F (valueT mL k) (valueT mM k)
-                      → subst T (cohᴰ A') (contL (valueT mL k)) ≡ contM (valueT mM k)
-              step-eq k lr =
+              -- plan 0.98: stated at the VALUES. The budget was only ever a way to
+              -- NAME them, and `valueT` cannot name a value that may not
+              -- exist — the caller now supplies the two the head returned.
+              step-eq : ∀ x y → LayerRel F x y
+                      → subst T (cohᴰ A') (contL (x)) ≡ contM (y)
+              step-eq x y lr =
                 trans (cong (subst T (cohᴰ A'))
                         (evalᴰ-subst-dom-pair (⌊⟧T-commute F A') mir
                            (subst (λ t → t) (sym (cohᴰ Eˢ)) env)
                            (subst ⟦_⟧ᴰ (sym (⌈⟧TI-commute (eraseF F) ⌊ A' ⌋))
-                                  (coerce-functor⁻¹-D ⌈ eraseF F ⌉F ⌈ ⌊ A' ⌋ ⌉ (valueT mL k)))))
+                                  (coerce-functor⁻¹-D ⌈ eraseF F ⌉F ⌈ ⌊ A' ⌋ ⌉ (x)))))
                   (trans (cong (λ Z → subst T (cohᴰ A')
                                   (evalᴰ fmt mir (subst (λ t → t) (sym (cohᴰ Eˢ)) env , Z))) lr)
                          (cong (λ W → subst T (cohᴰ A') (evalᴰ fmt mir W))
@@ -442,9 +486,13 @@ liftFn-SigOp {A} {B} info bA = extensionality λ arg →
   T-ext (λ n → trans (subst-T-projTrace (cohᴰ B)
                         (evalᴰ fmt (IR.SigOp info) (subst (λ z → z) (sym (cohᴰ A)) arg)) n)
                      (cong (λ w → emit-Dᵇ info w n) (forget-coh bA arg)))
-        (subst-T-stoppedT (cohᴰ B)
-           (evalᴰ fmt (IR.SigOp info) (subst (λ z → z) (sym (cohᴰ A)) arg)) 0)
-        (trans (subst-T-valueT (cohᴰ B)
-                  (evalᴰ fmt (IR.SigOp info) (subst (λ z → z) (sym (cohᴰ A)) arg)) 0)
-               (trans (subst-subst-sym {P = λ z → z} (cohᴰ B))
-                      (cong (λ w → inject (semM info fmt w)) (forget-coh bA arg))))
+        -- plan 0.98: ONE premise. The SigOp's result is already a `mapRes`
+        -- (`semM` decides whether there is a value; the denotation only
+        -- re-types it), so the transport fuses with it and the subst pair
+        -- cancels under the map.
+        (trans (subst-T-resT (cohᴰ B)
+                  (evalᴰ fmt (IR.SigOp info) (subst (λ z → z) (sym (cohᴰ A)) arg)))
+        (trans (mapRes-∘ _ _ (semM info fmt _))
+        (trans (mapRes-cong (λ v → subst-subst-sym {P = λ z → z} (cohᴰ B))
+                            (semM info fmt _))
+               (cong (λ w → mapRes inject (semM info fmt w)) (forget-coh bA arg)))))
