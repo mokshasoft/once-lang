@@ -9,8 +9,9 @@
 -- meaning uses the SURFACE functor `F` (`in-value = sem-In F ∘ coerce-functor`).
 -- `liftFn-In` reduces the transported `In` denotation to `returnT (in-value v)`.
 -- Framed as a combinator reduction (like `LiftFnReduce.liftFn-fst`): the TRACE
--- is `[]` (`rec-trace-D (In) = []`), the VALUE is the coherence `in-value-erase`
--- (the μ-twin of `AnaErased.coerce-νin-erase`, wrapped by `sem-In = ⟨_⟩∘coerce-μ-in`).
+-- is `[]` (`rec-trace-D (In) = []`), the RESULT is `returns` of the coherence
+-- `in-res` (the μ-twin of `AnaErased.coerce-νin-erase`, wrapped by
+-- `sem-In = ⟨_⟩∘coerce-μ-in`).
 ------------------------------------------------------------------------
 
 open import Once.Target.Arch using (TargetNum; int-bits; float-format)
@@ -38,12 +39,12 @@ open import Once.IRTy using (eraseF; ⌈_⌉F; ⌈_⌉; ⌊_⌋; ⌊⟧T-commute
 open import Once.IRTy.WF using (wf-⌊⌋)
 open import Once.Semantics.Functor using (μS; ⟨_⟩; ⟦_⟧SF)
 open import Once.Semantics.Machine using (sem-In; coerce-functor; coh; tF-coh; ⟦_⟧; ⟦_⟧F; ⟦μ⟧; coerce-μ-in)
-open import Data.Bool using (false)
-open import Once.Denotation.TraceMonad using (T; returnT; projTrace; valueT; stoppedT)
+open import Once.Res using (Res; returns; mapRes)
+open import Once.Denotation.TraceMonad using (T; returnT; projTrace)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; ⟦_⟧ᴰᴵ; forget; inject; cohᴰ)
 open import Once.Denotation.DenotTrace using (evalᴰ; liftFn)
 open import Once.Denotation.Meaning using (in-value)
-open import Once.Adequacy.CataErased fmt using (subst-T-projTrace; subst-T-valueT; subst-T-stoppedT; T-ext; evalᴰ-subst-dom)
+open import Once.Adequacy.CataErased fmt using (subst-T-projTrace; subst-T-resT; T-ext; evalᴰ-subst-dom)
 open import Once.Adequacy.AnaErased fmt using (coerce-νin-erase)
 open import Once.Postulates using (extensionality)
 import Once.IR as IR
@@ -99,49 +100,46 @@ in-trace {F} wfF v n =
           (evalᴰ-subst-dom (sym (⌊⟧T-commute F (μ-type F))) (IR.In (wf-⌊⌋ wfF))
                            (subst id (sym (cohᴰ (⟦ F ⟧T (μ-type F)))) v)))
 
--- plan 0.97: the STOP flag, the same peel as the trace. `evalᴰ` is stuck under
--- the domain `subst`, so the flag no longer reduces on its own — the same
--- reason `in-trace` cannot be `refl` either.
-in-stopped : ∀ {F : Functor} (wfF : WellFormedF F) (v : ⟦ ⟦ F ⟧T (μ-type F) ⟧ᴰ) (n : ℕ)
-  → stoppedT (liftFn fmt {⟦ F ⟧T (μ-type F)} {μ-type F} (In-ir wfF) v) n ≡ false
-in-stopped {F} wfF v n =
-  trans (subst-T-stoppedT (cong μS (tF-coh F))
-          (evalᴰ fmt (In-ir wfF) (subst id (sym (cohᴰ (⟦ F ⟧T (μ-type F)))) v)) n)
-        (cong (λ hh → stoppedT hh n)
-          (evalᴰ-subst-dom (sym (⌊⟧T-commute F (μ-type F))) (IR.In (wf-⌊⌋ wfF))
-                           (subst id (sym (cohᴰ (⟦ F ⟧T (μ-type F)))) v)))
-
--- VALUE half — the coherence (PROBE: refl to read the goal).
-in-value-erase : ∀ {F : Functor} (wfF : WellFormedF F) (v : ⟦ ⟦ F ⟧T (μ-type F) ⟧ᴰ) (n : ℕ)
-  → valueT (liftFn fmt {⟦ F ⟧T (μ-type F)} {μ-type F} (In-ir wfF) v) n ≡ in-value v
-in-value-erase {F} wfF v n =
-  trans (subst-T-valueT (cong μS (tF-coh F))
-                      (evalᴰ fmt (In-ir wfF) (subst id (sym (cohᴰ (⟦ F ⟧T (μ-type F)))) v)) n)
-  (trans (cong (λ hh → subst id (cong μS (tF-coh F)) (valueT hh n))
+-- RESULT half — one fact, not two. Before plan 0.98 this was a pair of
+-- lemmas: `in-stopped` said the flag was `false` and `in-value-erase` said
+-- the value was `in-value v`. `Res` makes "it returned" and "what it
+-- returned" the same statement, so the flag half is gone and the coherence
+-- (the μ-twin of `AnaErased.coerce-νin-erase`) sits under one `returns`.
+--
+-- The budget index went with it: the old value lemma took an `n` only
+-- because `valueT` did, and the RESULT never depended on the budget — only
+-- the trace does. `evalᴰ` is still stuck under the domain `subst`, which is
+-- why this is not `refl` (the same reason `in-trace` is not).
+in-res : ∀ {F : Functor} (wfF : WellFormedF F) (v : ⟦ ⟦ F ⟧T (μ-type F) ⟧ᴰ)
+  → T.resT (liftFn fmt {⟦ F ⟧T (μ-type F)} {μ-type F} (In-ir wfF) v)
+    ≡ returns (in-value v)
+in-res {F} wfF v =
+  trans (subst-T-resT (cong μS (tF-coh F))
+                      (evalᴰ fmt (In-ir wfF) (subst id (sym (cohᴰ (⟦ F ⟧T (μ-type F)))) v)))
+  (trans (cong (λ hh → mapRes (subst id (cong μS (tF-coh F))) (T.resT hh))
                (evalᴰ-subst-dom (sym (⌊⟧T-commute F (μ-type F))) (IR.In (wf-⌊⌋ wfF))
                                 (subst id (sym (cohᴰ (⟦ F ⟧T (μ-type F)))) v)))
-  (trans (cong (λ arg → subst id (cong μS (tF-coh F))
-                         (valueT (evalᴰ fmt (IR.In (wf-⌊⌋ wfF)) arg) n))
+  (trans (cong (λ arg → mapRes (subst id (cong μS (tF-coh F)))
+                          (T.resT (evalᴰ fmt (IR.In (wf-⌊⌋ wfF)) arg)))
                (subst-⟦⟧ᴰᴵ-fix (⌊⟧T-commute F (μ-type F)) (subst id (sym (cohᴰ (⟦ F ⟧T (μ-type F)))) v)))
-  (trans (subst-id-μS (tF-coh F) _)
-  (trans (⟨⟩-subst-nat (tF-coh F) _)
-         (cong ⟨_⟩
-           (trans (subst-diag (tF-coh F) _)
-           (trans (cong (subst (λ H → ⟦ H ⟧SF ⟦ μ-type F ⟧) (tF-coh F))
-                        (sym (coerce-μ-in-subst ⌈ eraseF F ⌉F (coh (μ-type F)) _)))
-                  (trans (coerce-νin-erase F (μ-type F) (subst id (sym (cohᴰ (⟦ F ⟧T (μ-type F)))) v))
-                         (cong (λ x → coerce-μ-in F ⟦ μ-type F ⟧ (coerce-functor F (μ-type F) (forget x)))
-                               (subst-subst-sym (cohᴰ (⟦ F ⟧T (μ-type F)))))))))))))
+  (cong returns
+    (trans (subst-id-μS (tF-coh F) _)
+    (trans (⟨⟩-subst-nat (tF-coh F) _)
+           (cong ⟨_⟩
+             (trans (subst-diag (tF-coh F) _)
+             (trans (cong (subst (λ H → ⟦ H ⟧SF ⟦ μ-type F ⟧) (tF-coh F))
+                          (sym (coerce-μ-in-subst ⌈ eraseF F ⌉F (coh (μ-type F)) _)))
+                    (trans (coerce-νin-erase F (μ-type F) (subst id (sym (cohᴰ (⟦ F ⟧T (μ-type F)))) v))
+                           (cong (λ x → coerce-μ-in F ⟦ μ-type F ⟧ (coerce-functor F (μ-type F) (forget x)))
+                                 (subst-subst-sym (cohᴰ (⟦ F ⟧T (μ-type F))))))))))))))
 
 -- The combinator reduction (like `LiftFnReduce.liftFn-fst`): `liftFn` of the
--- transported `In` is `returnT (in-value v)` — trace `[]`, value `in-value-erase`
--- (the value is n-independent, so `in-value-erase` at 0 covers every `n`).
+-- transported `In` is `returnT (in-value v)` — trace `[]`, result `in-res`.
 liftFn-In : ∀ {F : Functor} (wfF : WellFormedF F) (v : ⟦ ⟦ F ⟧T (μ-type F) ⟧ᴰ)
   → liftFn fmt {⟦ F ⟧T (μ-type F)} {μ-type F} (In-ir wfF) v ≡ returnT (in-value v)
 liftFn-In {F} wfF v =
-  -- plan 0.97: record eta, not extensionality on a budget — and the stop
-  -- flag is the third field. The introduction form emits nothing and does
-  -- not stop, so it is `returnT`'s `false` on both sides.
+  -- plan 0.98: record eta over the TWO fields — trace family and result.
+  -- The introduction form emits nothing and cannot end the program, so its
+  -- result is `returnT`'s `returns` on both sides.
   T-ext (in-trace wfF v)
-        (in-stopped wfF v 0)
-        (in-value-erase wfF v 0)
+        (in-res wfF v)
