@@ -22,7 +22,7 @@
 -- decreases). Lifted to the flat machine's `flat-exec-instr` at the end.
 ------------------------------------------------------------------------
 
-open import Once.CCC.FrameSemantics using (FrameSemantics)
+open import Once.CCC.FrameSemantics using (FrameSemantics; fs-numerics)
 
 module Once.CCC.Machine.FlatStoreWF (FS : FrameSemantics) where
 
@@ -39,7 +39,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 
 open import Once.CCC.Label using (LabelId)
 open import Once.Memory.HeapAddress using (HeapLocation; heap-loc; mkHeapRef; heap-ref; ref-id; sucHL)
-open import Once.SigOp.Info using (SigOpInfo; effect; EffectShape; Pure; Emits; Halts)
+open import Once.SigOp.Info using (SigOpInfo; effect; EffectShape; Pure; Emits; Halts; semM)
+open import Once.Res using (Res; stopped; returns)
 open import Once.Type using (Type; FitsInReg; fits-in-reg?)
 open import Once.Semantics.Machine using (⟦_⟧)
 open import Once.CCC.Machine.SMCore
@@ -312,9 +313,19 @@ postulate
     ∀ (n : ℕ) {A B} (si : SigOpInfo A B) (ls : LocState FS)
     → sv-below n (structured-pure-sigop-output si ls)
 
+-- plan 0.98: a Pure SigOp's output is `res-sv fitB (semM …)`, and `res-sv`
+-- dispatches on the `Res` — so the output value is no longer a literal on the
+-- nose and `tt` alone is stuck. Both branches ARE unconstrained (`SV-Lit` and
+-- `unit-storedvalue` hold no pointer), so splitting the result restores it.
+res-sv-below : ∀ (n : ℕ) {B} (fitB : FitsInReg B) (r : Res ⟦ B ⟧)
+             → sv-below n (res-sv fitB r)
+res-sv-below n fitB (returns v) = tt
+res-sv-below n fitB stopped     = tt
+
 pure-out-val-below : ∀ (n : ℕ) {A B} (si : SigOpInfo A B) (fitB : FitsInReg B) (ma : Maybe ⟦ A ⟧)
                    → sv-below n (pure-sigop-out-val si fitB ma)
-pure-out-val-below n si fitB (just a) = tt
+pure-out-val-below n si fitB (just a) =
+  res-sv-below n fitB (semM si (fs-numerics FS) a)
 pure-out-val-below n si fitB nothing  = tt
 
 sigop-output-below : ∀ (n : ℕ) {A B} (si : SigOpInfo A B) (ls : LocState FS)
