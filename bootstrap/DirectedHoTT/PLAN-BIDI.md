@@ -90,10 +90,52 @@ the follow-on question.
 | S1 | **SPIKE: `natrecᴹ M z s n`, ADDITIVE** — alongside `natrec`, the way indexed descriptions were brought up. Measure the cascade through reduction, substitution, confluence, SR, LR. | ⬜ **next** |
 | S2 | Decide from S1: annotate in place, former by former (`natrec`, `elim`, `ielim`, `lam`, `pair`, then the §1 audit of the code-carrying formers); delete the unannotated forms | ⬜ |
 | S3 | Core `infer : Γ → t → Maybe (Σ A (Γ ⊢ t ∷ A))` — certifying, so sound by construction. Then COMPLETENESS: needs uniqueness of types up to conversion (absent today) | ⬜ |
-| S4 | Decide TYPE conversion `≅ᵀ` completely: a normal form for types (today `fund-ty` gives weak-head forms only; `poc/OCP0009/NbEPDirDBSNU` is a template on a toy model) | ⬜ |
+| S4 | Decide TYPE conversion `≅ᵀ` completely: a normal form for types — by ROUTE C (§3b): ① validity + `srᵀ` (`Metatheory/Validity`), ② inversion, ③ type normaliser on a measure | 🟡 ① in progress |
 | S5 | The signature: constants, δ, and the conservativity theorem | ⬜ |
 | S6 | The bidirectional SURFACE → annotated core elaborator. `Algorithm/Check`'s slice 1 is its seed; the Once compiler's `formal/Once/TypeCheck` is the shape template | ⬜ |
 | S7 | The Knot: `gen-knot.py` emits core terms + signature references and asks `infer` for the wf derivations; measure against `HANDOFF-2026-09-24` §4's split | ⬜ |
+
+## 3b. ★ DECISION 3 — S4 by ROUTE C: normalise types BECAUSE they are well-typed
+
+Found on the `natrecᴹ` spike (`SPIKE-NATRECM.md` §3, 2026-09-25). Type
+normalisation is structural for every former EXCEPT one rule:
+
+    Hom (Π A B) f g ⟶ᵀ Π A (Hom B (app (renTm vs f) (var vz)) (app (renTm vs g) (var vz)))
+
+It CREATES terms. For an ill-typed "junk" `f` (a non-λ value) the
+application is stuck — genuinely SN — but the untyped JM predicate has no
+row for it, so an untyped structural `SNᵀ` is not closed under normal forms.
+
+| route | verdict |
+|---|---|
+| A · make untyped SN treat "application of a non-λ value" as neutral | sound, cheapest; unlocks NOTHING beyond S4 |
+| B · a local predicate inside `SNᵀ` only | ⛔ a patch — the same fact known at types, denied at terms |
+| C · **normalise types via typing** — validity, SR for types, inversion, recursion on a measure | ✅ **CHOSEN** |
+
+★ **Why C, recorded because the cost argument points the other way:**
+1. **Its prerequisites are owed anyway.** Validity, SR for types and
+   inversion are what S3's `infer` (well-formed results — slice 1 re-checks
+   every inferred domain without it), S3 completeness (uniqueness of types)
+   and S6's elaborator need.
+2. **It is the η foundation.** G4 (2026-08-04) kept the kernel β-only
+   *because* η "would force a typed-conversion re-foundation" (untyped η +
+   surjective pairing is not confluent — Klop). C is that re-foundation's
+   first step. It does NOT reopen G4; it makes the re-evaluation "at the
+   welding" start from typed infrastructure. η is the largest use-site lever
+   identified: `f ≡ λx. f x`, surjective pairing, unit-η definitional.
+
+⚠ **Validity is UP TO CONVERSION (V2)**, not a choice of convenience:
+`⊢conv` has no `⊢ty B` premise, so the plain statement is FALSE
+(`El (fst (pair ⌜base⌝ junk))` is convertible to `base` but ill-formed).
+V1 — adding the premise, as Abel–Öhman–Vezzosi do — is a separate kernel
+decision touching every `⊢conv` in Lib and the Knot; not taken.
+
+★ **A homotopy-inspired alternative, recorded for the axes question.** The
+difficulty exists only because `Hom` COMPUTES at `Π` (directed funext as a
+TYPE reduction). Simplicial type theory (Riehl–Shulman) presents
+`hom_A(x,y)` as an extension type over a directed interval `Δ¹`, where
+`hom` at `Π` is argument-swapping between terms — types never grow, and
+type normalisation is structural. A kernel redesign; not now.
 
 ## 4. Open questions, recorded not answered
 

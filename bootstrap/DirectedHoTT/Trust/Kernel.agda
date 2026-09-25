@@ -41,6 +41,7 @@ import DirectedHoTT.Metatheory.RedCong
 import DirectedHoTT.Metatheory.SubjectReduction
 import DirectedHoTT.Metatheory.SubjectReductionBase
 import DirectedHoTT.Metatheory.TySub
+import DirectedHoTT.Metatheory.Validity
 import DirectedHoTT.Spec.Syntax
 import DirectedHoTT.Spec.Typing
 import DirectedHoTT.Spec.Variance
