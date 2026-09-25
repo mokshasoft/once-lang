@@ -12,9 +12,10 @@
 --   dummy (`IxNoneK`) instead of six at six different sorts.
 --
 -- ★★★ INDEXED BY THE **DEPTH**, NOT BY THE TAG — counted, in §11.2.
---   Across all seven merged judgements the payload carries at most THREE
---   fields and exactly ONE of them is depth-dependent (`IConWf`'s
---   `C : ICon ⌊ Θ ⌋`).  A `(tag , depth)` pair index is NOT needed: each
+--   Across all seven merged judgements the payload carries at most FIVE
+--   fields (`IConWf`'s, under A-math: `I`, the constructor scope's depth
+--   `dΔ`, the thinning `ρ`, the family variable `x` and `C : ICon Δ`), and
+--   `ρ`/`x` are the ones that read the depth.  A `(tag , depth)` pair index is NOT needed: each
 --   judgement ROW Fords its payload slot to a specific `icon k …`, so
 --   the tag is already pinned where it matters.
 --
@@ -25,8 +26,8 @@
 --   symmetric:
 --
 --     AMBIENT  `⊢icon`/`⊢elim` agree with the knot's own fields, but
---              `idwf-cons` reads `D` at its premise's depth 1 AND at the
---              row's variable `n`.  Relating those needs `n → 1`, a
+--              `idwf-cons` read `D` at its premise's depth AND at the
+--              row's variable `n` (before A-math removed `D` from it).  Relating those needs `n → 1`, a
 --              STRENGTHENING.  Nothing provides one.
 --     CLOSED   `idwf-cons` reads one field, at 0, in both places; and
 --              `⊢icon` recovers the knot's ambient copy with
@@ -44,16 +45,20 @@ open import DirectedHoTT.Lib.Lkp using ( ∋lkp; vsⁿ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; RTy; RTm; var; vz; vs; pair; unit; nzero; icon; IMu
-        ; ⌜IMu⌝; Nat; ICon; IDesc; iι; iκ; inil; _◂_; εwkTy
+        ; ⌜IMu⌝; ⌜Nat⌝; Nat; ICon; IDesc; iι; iκ; inil; _◂_; εwkTy
         ; _∈ID_; hereID; thereID; subTm )
 open import DirectedHoTT.Spec.Typing
-  using ( Ctx; ◇; _▹_; ⌊_⌋; _⊢_∷_; ⊢unit; ⊢icon; ⊢pair; ⊢nzero; ⊢⌜IMu⌝
+  using ( Ctx; ◇; _▹_; ⌊_⌋; _⊢_∷_; ⊢unit; ⊢icon; ⊢pair; ⊢nzero; ⊢⌜IMu⌝; ⊢⌜Nat⌝
         ; ty-Unit; ty-Σ; ty-El; ⊢var; here; there; single; wk-single
-        ; IConWf; iwf-ι; iwf-κ; ICodeWf; icw-imu
-        ; IDescWf; idwf-nil; idwf-cons )
+        ; IConWf; iwf-ι; iwf-κ; ICodeWf; icw-imu; icw-clo
+        ; IDescWf; idwf-nil; idwf-cons; _,,_; Θ₀; ρ₀; x₀ )
+open import DirectedHoTT.Metatheory.TySub using ( xenv₀; xenv-κ )
+open import DirectedHoTT.Lib.IPay using ( ⊢payκ; icwTailκ )
+open import DirectedHoTT.Lib.ICast using ( toMu )
+open import DirectedHoTT.Examples.Knot.ThinD using ( ThinD; ThinK; ThinWf )
 open import DirectedHoTT.Examples.Knot.Sorts
-  using ( IPair; sTy; sDesc; sDCon; sIDesc; sICon
-        ; ⊢sTy; ⊢sDesc; ⊢sDCon; ⊢sIDesc; ⊢sICon; toI; fromI; ⊢ixP )
+  using ( IPair; sTy; sDesc; sDCon; sIDesc; sICon; sVar
+        ; ⊢sTy; ⊢sDesc; ⊢sDCon; ⊢sIDesc; ⊢sICon; ⊢sVar; toI; fromI; ⊢ixP )
 open import DirectedHoTT.Examples.Knot.Desc using ( KnotD; K )
 open import DirectedHoTT.Examples.Knot.Wf using ( KnotWf )
 open import DirectedHoTT.Examples.Knot.CtxD using ( INat; toKn )
@@ -80,100 +85,86 @@ cIxDCon = iκ (⌜IMu⌝ KnotD IPair (pair sDCon nzero)) iι
 cIxDesc : ICon (ε ∙)
 cIxDesc = iκ (⌜IMu⌝ KnotD IPair (pair sDesc nzero)) iι
 
--- ★ IConWf D I Θ C — `Θ` is the flat `Ctx` slot and `len ⌊ Θ ⌋` the flat
---   depth, so only `D`, `I` and `C` land here.  ⚠ `C : ICon ⌊ Θ ⌋` is
---   THE ONE depth-dependent field in the whole payload; after two
---   binders the ambient index sits at `vs (vs vz)`.
+-- ★ IConWf I {Δ} Θ ρ x C — A-MATH.  `I` closed; `dΔ` the constructor
+--   scope's depth; the thinning `ρ : Thin (dΔ , n)`; the family variable
+--   `x : Var n`; and `C : ICon (dΔ)` — at the SCOPE's depth, not Θ's.
 cIxICon : ICon (ε ∙)
 cIxICon =
-  iκ (⌜IMu⌝ KnotD IPair (pair sIDesc nzero))
-   (iκ (⌜IMu⌝ KnotD IPair (pair sTy nzero))
-    (iκ (⌜IMu⌝ KnotD IPair (pair sICon (var (vs (vs vz)))))
-     iι))
+  iκ (⌜IMu⌝ KnotD IPair (pair sTy nzero))
+   (iκ ⌜Nat⌝
+    (iκ (⌜IMu⌝ ThinD IPair (pair (var vz) (var (vs (vs vz)))))
+     (iκ (⌜IMu⌝ KnotD IPair (pair sVar (var (vs (vs (vs vz))))))
+      (iκ (⌜IMu⌝ KnotD IPair (pair sICon (var (vs (vs vz)))))
+       iι))))
 
--- IDescWfFrom D I E — all three CLOSED
+-- IDescWfFrom I E — both CLOSED (A-math: no description in the judgment)
 cIxIDesc : ICon (ε ∙)
 cIxIDesc =
-  iκ (⌜IMu⌝ KnotD IPair (pair sIDesc nzero))
-   (iκ (⌜IMu⌝ KnotD IPair (pair sTy nzero))
-    (iκ (⌜IMu⌝ KnotD IPair (pair sIDesc nzero))
-     iι))
+  iκ (⌜IMu⌝ KnotD IPair (pair sTy nzero))
+   (iκ (⌜IMu⌝ KnotD IPair (pair sIDesc nzero))
+    iι)
 
 IxD : IDesc
 IxD = cIxNone ◂ (cIxDCon ◂ (cIxDesc ◂ (cIxICon ◂ (cIxIDesc ◂ inil))))
 
 ------------------------------------------------------------------------
--- 2. WELL-FORMEDNESS.  Every field is a foreign `IMu` code, so every
---    rung is `icw-imu` — PLAN-INDEXED §12's row, and the reason a
---    payload can carry knot terms at all.
+-- 2. WELL-FORMEDNESS.
 ------------------------------------------------------------------------
 
-Θ₀ : Ctx
-Θ₀ = ◇ ▹ εwkTy INat
-
-cIxNoneWf : IConWf IxD INat Θ₀ cIxNone
+cIxNoneWf : IConWf INat (Θ₀ INat) ρ₀ x₀ cIxNone
 cIxNoneWf = iwf-ι
 
-cIxDConWf : IConWf IxD INat Θ₀ cIxDCon
+cIxDConWf : IConWf INat (Θ₀ INat) ρ₀ x₀ cIxDCon
 cIxDConWf =
   iwf-κ (⌜IMu⌝ KnotD IPair (pair sDCon nzero))
         (icw-imu (pair sDCon nzero) KnotWf)
         (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sDCon ⊢nzero))
         iwf-ι
 
-cIxDescWf : IConWf IxD INat Θ₀ cIxDesc
+cIxDescWf : IConWf INat (Θ₀ INat) ρ₀ x₀ cIxDesc
 cIxDescWf =
   iwf-κ (⌜IMu⌝ KnotD IPair (pair sDesc nzero))
         (icw-imu (pair sDesc nzero) KnotWf)
         (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sDesc ⊢nzero))
         iwf-ι
 
-cIxIConWf : IConWf IxD INat Θ₀ cIxICon
+cIxIConWf : IConWf INat (Θ₀ INat) ρ₀ x₀ cIxICon
 cIxIConWf =
-  iwf-κ (⌜IMu⌝ KnotD IPair (pair sIDesc nzero))
-        (icw-imu (pair sIDesc nzero) KnotWf)
-        (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sIDesc ⊢nzero))
-   (iwf-κ (⌜IMu⌝ KnotD IPair (pair sTy nzero))
-          (icw-imu (pair sTy nzero) KnotWf)
-          (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTy ⊢nzero))
-    (iwf-κ (⌜IMu⌝ KnotD IPair (pair sICon (var (vs (vs vz)))))
-           (icw-imu (pair sICon (var (vs (vs vz)))) KnotWf)
-           (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sICon (fromI (⊢var (∋lkp _ (vsⁿ 2 vz))))))
-     iwf-ι))
+  iwf-κ (⌜IMu⌝ KnotD IPair (pair sTy nzero))
+        (icw-imu (pair sTy nzero) KnotWf)
+        (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTy ⊢nzero))
+   (iwf-κ ⌜Nat⌝ (icw-clo ⌜Nat⌝ ⊢⌜Nat⌝) ⊢⌜Nat⌝
+    (iwf-κ (⌜IMu⌝ ThinD IPair (pair (var vz) (var (vs (vs vz)))))
+           (icw-imu (pair (var vz) (var (vs (vs vz)))) ThinWf)
+           (⊢⌜IMu⌝ ThinWf (⊢ixP (fromI (⊢var here))
+                                (fromI (⊢var (∋lkp _ (vsⁿ 2 vz))))))
+     (iwf-κ (⌜IMu⌝ KnotD IPair (pair sVar (var (vs (vs (vs vz))))))
+            (icw-imu (pair sVar (var (vs (vs (vs vz))))) KnotWf)
+            (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sVar (fromI (⊢var (∋lkp _ (vsⁿ 3 vz))))))
+      (iwf-κ (⌜IMu⌝ KnotD IPair (pair sICon (var (vs (vs vz)))))
+             (icw-imu (pair sICon (var (vs (vs vz)))) KnotWf)
+             (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sICon (fromI (⊢var (∋lkp _ (vsⁿ 2 vz))))))
+       iwf-ι))))
 
-cIxIDescWf : IConWf IxD INat Θ₀ cIxIDesc
+cIxIDescWf : IConWf INat (Θ₀ INat) ρ₀ x₀ cIxIDesc
 cIxIDescWf =
-  iwf-κ (⌜IMu⌝ KnotD IPair (pair sIDesc nzero))
-        (icw-imu (pair sIDesc nzero) KnotWf)
-        (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sIDesc ⊢nzero))
-   (iwf-κ (⌜IMu⌝ KnotD IPair (pair sTy nzero))
-          (icw-imu (pair sTy nzero) KnotWf)
-          (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTy ⊢nzero))
-    (iwf-κ (⌜IMu⌝ KnotD IPair (pair sIDesc nzero))
-           (icw-imu (pair sIDesc nzero) KnotWf)
-           (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sIDesc ⊢nzero))
-     iwf-ι))
+  iwf-κ (⌜IMu⌝ KnotD IPair (pair sTy nzero))
+        (icw-imu (pair sTy nzero) KnotWf)
+        (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTy ⊢nzero))
+   (iwf-κ (⌜IMu⌝ KnotD IPair (pair sIDesc nzero))
+          (icw-imu (pair sIDesc nzero) KnotWf)
+          (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sIDesc ⊢nzero))
+    iwf-ι)
 
 IxWf : IDescWf INat IxD
 IxWf =
+  ty-El ⊢⌜Nat⌝ ,,
   idwf-cons cIxNoneWf
    (idwf-cons cIxDConWf
     (idwf-cons cIxDescWf
      (idwf-cons cIxIConWf
       (idwf-cons cIxIDescWf idwf-nil))))
 
-------------------------------------------------------------------------
--- 3. THE SMART CONSTRUCTORS.  ⚠ Each takes the index `n` EXPLICITLY and
---    then its derivation — the emitter's `DX` role, which is what every
---    nullary `…Kv` lemma already takes.  The payload's own fields never
---    mention `n` except `IxIConK`'s third.
-------------------------------------------------------------------------
-
--- ⚠ EVERY ONE TAKES THE INDEX AS ITS FIRST ARGUMENT AND IGNORES IT.
---   `icon k p` does not mention the index, but the EMITTER threads the
---   term and its derivation together (`DD`), so naming it here keeps the
---   two in step — and the emitted `RTm` is unchanged, the argument being
---   discarded.
 IxNoneK : {Γ : Cx} → RTm Γ → RTm Γ
 IxNoneK _ = icon zero unit
 
@@ -202,52 +193,51 @@ IxDescK _ d = icon (suc (suc zero)) (pair d unit)
     (⊢pair ty-Unit (toKn dd) ⊢unit)
 
 -- ★ the ONE constructor whose last field reads the index
-IxIConK : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ → RTm Γ → RTm Γ
-IxIConK _ d i c = icon (suc (suc (suc zero))) (pair d (pair i (pair c unit)))
+-- ★ A-MATH: `IConWf I {Δ} Θ ρ x C`'s payload, one field at a time.
+IxIConK : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ → RTm Γ → RTm Γ → RTm Γ → RTm Γ
+IxIConK _ i d r x c =
+  icon (suc (suc (suc zero))) (pair i (pair d (pair r (pair x (pair c unit)))))
 
-⊢IxIConK : {Δ : Ctx} {n d i c : RTm ⌊ Δ ⌋} →
+⊢IxIConK : {Δ : Ctx} {n i d r x c : RTm ⌊ Δ ⌋} →
            Δ ⊢ n ∷ Nat →
-           Δ ⊢ d ∷ K (pair sIDesc nzero) →
            Δ ⊢ i ∷ K (pair sTy nzero) →
-           Δ ⊢ c ∷ K (pair sICon n) →
-           Δ ⊢ IxIConK n d i c ∷ IMu IxD INat n
-⊢IxIConK {n = n} {d = d} {i = i} dn dd di dc =
+           Δ ⊢ d ∷ Nat →
+           Δ ⊢ r ∷ ThinK (pair d n) →
+           Δ ⊢ x ∷ K (pair sVar n) →
+           Δ ⊢ c ∷ K (pair sICon d) →
+           Δ ⊢ IxIConK n i d r x c ∷ IMu IxD INat n
+⊢IxIConK dn di dd dr dx dc =
   ⊢icon IxWf (thereID (thereID (thereID hereID))) (toI dn)
-    (⊢pair (ty-Σ (ty-El (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTy ⊢nzero)))
-             (ty-Σ (ty-El (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sICon (⊢wk (⊢wk dn)))))
-                   ty-Unit))
-           (toKn dd)
-      (⊢pair (ty-Σ (ty-El (⊢⌜IMu⌝ KnotWf
-                            (⊢ixP ⊢sICon (tmCast (sym (sub-w-single {v = d} n))
-                                                 (⊢wk dn)))))
-                   ty-Unit)
-             (toKn di)
-        (⊢pair ty-Unit
-               -- ⚠ THE FULL DESCENT, both fields' substitutions composed.
-               --   `sub-w-single` clears the first, `wk-single` the second
-               --   — `⊢Var-vsKt`'s `rt₄`, at a three-field telescope.
-               (toKn (kCast (sym (trans (cong (subTm (single i))
-                                              (sub-w-single {v = d} n))
-                                        (wk-single {v = i} n)))
-                            dc))
-               ⊢unit)))
+    (⊢payκ IxD INat _ _ _ IxWf cIxIConWf e₀ (toKn di)
+     (⊢payκ IxD INat _ _ _ IxWf w₁ e₁ (toI dd)
+      (⊢payκ IxD INat _ _ _ IxWf w₂ e₂ (toMu dr)
+       (⊢payκ IxD INat _ _ _ IxWf w₃ e₃ (toKn dx)
+        (⊢payκ IxD INat _ _ _ IxWf w₄ e₄ (toKn dc)
+         ⊢unit)))))
+  where
+    e₀ = xenv₀ IxWf (toI dn)
+    w₁ = icwTailκ cIxIConWf
+    w₂ = icwTailκ w₁
+    w₃ = icwTailκ w₂
+    w₄ = icwTailκ w₃
+    e₁ = xenv-κ e₀ _ (toKn di)
+    e₂ = xenv-κ e₁ ⌜Nat⌝ (toI dd)
+    e₃ = xenv-κ e₂ _ (toMu dr)
+    e₄ = xenv-κ e₃ _ (toKn dx)
 
-IxIDescK : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ → RTm Γ → RTm Γ
-IxIDescK _ d i e = icon (suc (suc (suc (suc zero)))) (pair d (pair i (pair e unit)))
+IxIDescK : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ → RTm Γ
+IxIDescK _ i e = icon (suc (suc (suc (suc zero)))) (pair i (pair e unit))
 
-⊢IxIDescK : {Δ : Ctx} {n d i e : RTm ⌊ Δ ⌋} →
+⊢IxIDescK : {Δ : Ctx} {n i e : RTm ⌊ Δ ⌋} →
             Δ ⊢ n ∷ Nat →
-            Δ ⊢ d ∷ K (pair sIDesc nzero) →
             Δ ⊢ i ∷ K (pair sTy nzero) →
             Δ ⊢ e ∷ K (pair sIDesc nzero) →
-            Δ ⊢ IxIDescK n d i e ∷ IMu IxD INat n
-⊢IxIDescK dn dd di de =
+            Δ ⊢ IxIDescK n i e ∷ IMu IxD INat n
+⊢IxIDescK dn di de =
   ⊢icon IxWf (thereID (thereID (thereID (thereID hereID)))) (toI dn)
-    (⊢pair (ty-Σ (ty-El (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTy ⊢nzero)))
-             (ty-Σ (ty-El (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sIDesc ⊢nzero)))
-                   ty-Unit))
-           (toKn dd)
-      (⊢pair (ty-Σ (ty-El (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sIDesc ⊢nzero)))
-                   ty-Unit)
-             (toKn di)
-        (⊢pair ty-Unit (toKn de) ⊢unit)))
+    (⊢payκ IxD INat _ _ _ IxWf cIxIDescWf e₀ (toKn di)
+     (⊢payκ IxD INat _ _ _ IxWf (icwTailκ cIxIDescWf) (xenv-κ e₀ _ (toKn di)) (toKn de)
+      ⊢unit))
+  where
+    e₀ = xenv₀ IxWf (toI dn)
+

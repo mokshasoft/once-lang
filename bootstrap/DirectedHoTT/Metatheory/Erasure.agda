@@ -64,7 +64,7 @@ erase-ty : {A : ATy ⌊ Γ ⌋ᴬ} → Γ ⊢tyᴬ A → ⌈ Γ ⌉ᶜ ⊢ty ⌈
 erase-dc   : {C : ADCon} → ADConWf C → DConWf ⌈ C ⌉ᴰᶜ
 erase-d    : {D : ADesc} → ADescWf D → DescWf ⌈ D ⌉ᴰ
 erase-icw  : {Θ : Cx} {κ : ATm Θ} → AICodeWf κ → ICodeWf ⌈ κ ⌉
-erase-iwf  : {I : ATy ε} {Δ : Cx} {Θ : ACtx} {ρ : Ren Δ ⌊ Θ ⌋ᴬ} {x : Var ⌊ Θ ⌋ᴬ} {C : AICon Δ} →
+erase-iwf  : {I : ATy ε} {Δ : Cx} {Θ : ACtx} {ρ : Thin Δ ⌊ Θ ⌋ᴬ} {x : Var ⌊ Θ ⌋ᴬ} {C : AICon Δ} →
              AIConWf I Θ ρ x C → IConWf ⌈ I ⌉ᵀ ⌈ Θ ⌉ᶜ ρ x ⌈ C ⌉ᴵᶜ
 erase-idwf : {I : ATy ε} {E : AIDesc} →
              AIDescWfFrom I E → IDescWfFrom ⌈ I ⌉ᵀ ⌈ E ⌉ᴵᴰ
@@ -85,15 +85,15 @@ erase-icw (icw-imu i w) = icw-imu ⌈ i ⌉ (erase-idw w)
 erase-iwf iwf-ι = iwf-ι
 erase-iwf {I = I} {Θ = Θ} {ρ = ρ} {x = x} (iwf-ρ {C = C} j dj w) =
   iwf-ρ ⌈ j ⌉
-        (subst (λ z → ⌈ Θ ⌉ᶜ ⊢ z ∷ εwkTy ⌈ I ⌉ᵀ) (era-renTm ρ j)
+        (subst (λ z → ⌈ Θ ⌉ᶜ ⊢ z ∷ εwkTy ⌈ I ⌉ᵀ) (era-renTm (thinR ρ) j)
                (⊢-cast (era-εwkTy I) (erase dj)))
-        (subst (λ z → IConWf ⌈ I ⌉ᵀ (⌈ Θ ⌉ᶜ ▹ El (app (var x) z)) (extR ρ) (vs x) ⌈ C ⌉ᴵᶜ)
-               (era-renTm ρ j) (erase-iwf w))
+        (subst (λ z → IConWf ⌈ I ⌉ᵀ (⌈ Θ ⌉ᶜ ▹ El (app (var x) z)) (keep ρ) (vs x) ⌈ C ⌉ᴵᶜ)
+               (era-renTm (thinR ρ) j) (erase-iwf w))
 erase-iwf {I = I} {Θ = Θ} {ρ = ρ} {x = x} (iwf-κ {C = C} κ cw dk w) =
   iwf-κ ⌈ κ ⌉ (erase-icw cw)
-        (subst (λ z → ⌈ Θ ⌉ᶜ ⊢ z ∷ U) (era-renTm ρ κ) (erase dk))
-        (subst (λ z → IConWf ⌈ I ⌉ᵀ (⌈ Θ ⌉ᶜ ▹ El z) (extR ρ) (vs x) ⌈ C ⌉ᴵᶜ)
-               (era-renTm ρ κ) (erase-iwf w))
+        (subst (λ z → ⌈ Θ ⌉ᶜ ⊢ z ∷ U) (era-renTm (thinR ρ) κ) (erase dk))
+        (subst (λ z → IConWf ⌈ I ⌉ᵀ (⌈ Θ ⌉ᶜ ▹ El z) (keep ρ) (vs x) ⌈ C ⌉ᴵᶜ)
+               (era-renTm (thinR ρ) κ) (erase-iwf w))
 
 erase-idwf idwf-nil = idwf-nil
 erase-idwf {I = I} (idwf-cons c w) =

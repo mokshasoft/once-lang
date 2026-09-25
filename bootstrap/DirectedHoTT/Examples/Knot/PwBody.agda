@@ -34,6 +34,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Knot.PwBody where
+open import DirectedHoTT.Spec.Typing using ( IDescWf-cons )
 open import DirectedHoTT.Lib.Lkp using ( ∋lkp; vsⁿ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
@@ -42,7 +43,7 @@ open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing
   using ( Ctx; ◇; _▹_; ⌊_⌋; _⊢_∷_; _⊢ty_; ⊢var; here; there
         ; ⊢fst; ⊢snd; ⊢nsuc; ⊢jsub; ⊢⌜IMu⌝; imethTy
-        ; βfst; βsnd; ξ-nsuc; ξ-pairˡ; ξ-pairʳ )
+        ; βfst; βsnd; ξ-nsuc; ξ-pairˡ; ξ-pairʳ ; Θ₀; ρ₀; x₀ )
 open import DirectedHoTT.Lib.IPay using ( ⊢methLam )
 open import DirectedHoTT.Lib.IWk
 -- ★ ONLY `Mot`/`sh` NOW.  The weakening METHODS and the `WkIx`
@@ -246,7 +247,7 @@ pwDefault k =
          (vsRenK (snd (var (vs (vs vz))))))))
 
 ⊢pwDefault : {Γ : Ctx} (k : ℕ) (C : ICon (ε ∙)) →
-             IConWf KnotD IPair (◇ ▹ εwkTy IPair) C →
+             IConWf IPair (Θ₀ IPair) ρ₀ x₀ C →
              k ∈ID KnotD → ilookupD KnotD k ≡ C →
              Γ ⊢ pwDefault k ∷ imethTy KnotD IPair k C (Mot KnotD IPair)
 ⊢pwDefault k C wC mem look =
@@ -313,7 +314,7 @@ pwTail = methsAt (cdTake 30 PD23) pwDefault 23 unit
 ⊢pwTail : {Γ : Ctx} →
           Γ ⊢ pwTail ∷ imethsTyFrom KnotD IPair (Mot KnotD IPair) 23 PD23
 ⊢pwTail =
-  ⊢methsAt KnotD IPair 23 (cdTake 30 PD23) KnotWf (idwfDrop pspl23 KnotWf)
+  ⊢methsAt KnotD IPair 23 (cdTake 30 PD23) KnotWf (idwfDrop pspl23 (IDescWf-cons KnotWf))
            pspl23 ⊢IPair ⊢MotK
            (λ {k} {C} wC mem look → ⊢pwDefault k C wC mem look) unit ⊢unit
 
@@ -324,7 +325,7 @@ pwMid22 = pair pwHom pwTail
            Γ ⊢ pwMid22 ∷ imethsTyFrom KnotD IPair (Mot KnotD IPair) 22 PD22
 ⊢pwMid22 =
   ⊢methsCons KnotD IPair 22 {C = cTm-cHom} PD23 KnotWf
-             (idwfDrop pspl23 KnotWf) pspl23 ⊢IPair ⊢MotK ⊢pwHom ⊢pwTail
+             (idwfDrop pspl23 (IDescWf-cons KnotWf)) pspl23 ⊢IPair ⊢MotK ⊢pwHom ⊢pwTail
 
 pwMid21 : {Γ : Cx} → RTm Γ
 pwMid21 = methsAt (cdTake 1 PD21) pwDefault 21 pwMid22
@@ -332,7 +333,7 @@ pwMid21 = methsAt (cdTake 1 PD21) pwDefault 21 pwMid22
 ⊢pwMid21 : {Γ : Ctx} →
            Γ ⊢ pwMid21 ∷ imethsTyFrom KnotD IPair (Mot KnotD IPair) 21 PD21
 ⊢pwMid21 =
-  ⊢methsAt KnotD IPair 21 (cdTake 1 PD21) KnotWf (idwfDrop pspl21 KnotWf)
+  ⊢methsAt KnotD IPair 21 (cdTake 1 PD21) KnotWf (idwfDrop pspl21 (IDescWf-cons KnotWf))
            pspl21 ⊢IPair ⊢MotK
            (λ {k} {C} wC mem look → ⊢pwDefault k C wC mem look)
            pwMid22 ⊢pwMid22
@@ -345,7 +346,7 @@ pwMid20 = pair pwPi pwMid21
                                       (cdRest (cdTake 20 KnotD))
 ⊢pwMid20 =
   ⊢methsCons KnotD IPair 20 {C = cTm-cPi} PD21 KnotWf
-             (idwfDrop pspl21 KnotWf) pspl21 ⊢IPair ⊢MotK ⊢pwPi ⊢pwMid21
+             (idwfDrop pspl21 (IDescWf-cons KnotWf)) pspl21 ⊢IPair ⊢MotK ⊢pwPi ⊢pwMid21
 
 pwBodyMethsK : {Γ : Cx} → RTm Γ
 pwBodyMethsK = methsAt (cdTake 20 KnotD) pwDefault 0 pwMid20
@@ -353,7 +354,7 @@ pwBodyMethsK = methsAt (cdTake 20 KnotD) pwDefault 0 pwMid20
 ⊢pwBodyMethsK : {Γ : Ctx} →
                 Γ ⊢ pwBodyMethsK ∷ imethsTy KnotD IPair (Mot KnotD IPair) KnotD
 ⊢pwBodyMethsK =
-  ⊢methsAt KnotD IPair 0 (cdTake 20 KnotD) KnotWf KnotWf spl-nil ⊢IPair ⊢MotK
+  ⊢methsAt KnotD IPair 0 (cdTake 20 KnotD) KnotWf (IDescWf-cons KnotWf) spl-nil ⊢IPair ⊢MotK
            (λ {k} {C} wC mem look → ⊢pwDefault k C wC mem look)
            pwMid20 ⊢pwMid20
 

@@ -22,7 +22,7 @@
 --   only that each subject it builds is the one the rule names.  A full
 --   `enDeriv` would subsume it.
 --
--- ★ 32 checks.  ⚠ 16 subject(s) SKIPPED and named — a
+-- ★ 32 checks.  ⚠ 17 subject(s) SKIPPED and named — a
 --   translation mentioning the row's DEPTH has no meta-level depth to be
 --   instantiated at, and an `ICon` binder's scope is not named by its
 --   rule:
@@ -38,6 +38,7 @@
 --     ⊢elim        applies subTyAtK
 --     ⊢icon        _Undepthed
 --     ⊢ielim       applies iinstK
+--     iwf-ι        _Undepthed
 --     iwf-ρ        _Undepthed
 --     iwf-κ        _Undepthed
 --     icw-clo      applies εwkK
@@ -73,6 +74,9 @@
 --     IxIConK    ✅ not owed — a constructor of `IxD`.
 --     IxIDescK   ✅ not owed — a constructor of `IxD`.
 --     IxNoneK    ✅ not owed — a constructor of `IxD`.
+--     Thin-doneK ✅ not owed — a constructor of `ThinD`.
+--     Thin-dropK ✅ not owed — a constructor of `ThinD`.
+--     Thin-keepK ✅ not owed — a constructor of `ThinD`.
 --     atConK     ✅ DISCHARGED — `Knot/ConSAgree.atCon-agree`:
 --                `atConK ⌈|Γ|⌉ ⟨k⟩ ⌈M⌉ ⟶* ⌈ atCon k M ⌉`.  A ONE-LINE
 --                corollary of `conS-Represents` and
@@ -592,6 +596,13 @@
 --     szTm       ✅ `Knot/SzProbe` — same-sort counts, per row, by `refl`.
 --     szsTm      ✅ `Knot/SzAgree` — `szsTm i ⌈t⌉ ⟶* num (sz t)`, all 30 rows,
 --                GENERATED.  THE model for every ⬜ below.
+--     thinTmK    ⬜ OWED — A-math's `renTm (thinR θ) t`.  `thinRenK` folds a
+--                `ThinD` value to a `RenTy` clause for clause with the
+--                kernel's `thinR` (keep = `extRNK`, drop = `Var-vsK`, done =
+--                the variable transported along both Fords), then
+--                `renTmAtK` applies it.  ⇒ owed: an `enThin` map (`ThinD`
+--                is a STRATUM, like `CtxD`), `thinRenK (enThin θ) v ⟶*
+--                enVar (thinR θ x)`, and then `ren-agree` closes it.
 --     wkAtK      ✅ DISCHARGED via `wkTmK`/`wkTyK` — `wkAtK s n t` IS
 --                `renTmAtK s n (nsuc n) (vsRenK n) t`, the sort-generic
 --                form they are instances of, so its adequacy at a sort is
@@ -663,7 +674,7 @@ _ : {Γ Δ : Cx} {D : Desc} → (Ty-MuK (enDesc {Γ' = Δ} D)) ≡ enTy {Γ = Γ
 _ = refl
 
 -- ty-IMu
-_ : {Γ Δ : Cx} {i : RTm Γ} {D : IDesc} {I : RTy ε} → (Ty-IMuK (enIDesc {Γ' = Δ} D) (enTy {Γ' = Δ} I) (enTm {Γ' = Δ} i)) ≡ enTy {Γ = Γ} {Γ' = Δ} (IMu D I i)
+_ : {Γ Δ : Cx} {I : RTy ε} {i : RTm Γ} {D : IDesc} → (Ty-IMuK (enIDesc {Γ' = Δ} D) (enTy {Γ' = Δ} I) (enTm {Γ' = Δ} i)) ≡ enTy {Γ = Γ} {Γ' = Δ} (IMu D I i)
 _ = refl
 
 -- ty-Hom
@@ -725,7 +736,7 @@ _ : {Γ Δ : Cx} {D : Desc} → (Tm-cMuK (enDesc {Γ' = Δ} D)) ≡ enTm {Γ = �
 _ = refl
 
 -- ⊢⌜IMu⌝
-_ : {Γ Δ : Cx} {i : RTm Γ} {D : IDesc} {I : RTy ε} → (Tm-cIMuK (enIDesc {Γ' = Δ} D) (enTy {Γ' = Δ} I) (enTm {Γ' = Δ} i)) ≡ enTm {Γ = Γ} {Γ' = Δ} (⌜IMu⌝ D I i)
+_ : {Γ Δ : Cx} {I : RTy ε} {i : RTm Γ} {D : IDesc} → (Tm-cIMuK (enIDesc {Γ' = Δ} D) (enTy {Γ' = Δ} I) (enTm {Γ' = Δ} i)) ≡ enTm {Γ = Γ} {Γ' = Δ} (⌜IMu⌝ D I i)
 _ = refl
 
 -- ⊢idrefl

@@ -18,6 +18,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.ScopedSz where
+open import DirectedHoTT.Spec.Typing using ( IDescWf-cons )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; RTy; RTm; Nat; El; ⌜Nat⌝; ielim )
@@ -32,7 +33,7 @@ szMethsTm : {Γ : Cx} → RTm Γ
 szMethsTm = szMeths TmD
 
 ⊢szMethsTm : {Γ : Ctx} → Γ ⊢ szMethsTm ∷ imethsTy TmD INat Nat TmD
-⊢szMethsTm = ⊢szMeths TmD INat zero TmD TmWf TmWf spl-nil (ty-El ⊢⌜Nat⌝)
+⊢szMethsTm = ⊢szMeths TmD INat zero TmD TmWf (IDescWf-cons TmWf) spl-nil (ty-El ⊢⌜Nat⌝)
 
 -- ★ `size` for the scoped λ-calculus, from the SAME library that does
 --   the 53-constructor knot.

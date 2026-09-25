@@ -36,7 +36,7 @@ open import DirectedHoTT.Spec.Typing
   using ( Ctx; ◇; _▹_; ⌊_⌋; _⊢_∷_; _⊢ty_; ⊢var; here; there
         ; ⊢snd; ⊢lam; ⊢app; ⊢nzero; ⊢nsuc
         ; ty-Π; ty-Nat; ty-IMu; IConWf; imethTy
-        ; single; wk-single; iinst )
+        ; single; wk-single; iinst ; Θ₀; ρ₀; x₀ )
 open import DirectedHoTT.Metatheory.TySub using ( ⊢-cast )
 open import normalizer.Syntax.Types using ( cong; sym )
 open import DirectedHoTT.Lib.IPay using ( ⊢methLam )
@@ -77,7 +77,7 @@ imethsTyJunk : {Γ : Cx} → RTm Γ
 imethsTyJunk = lam (lam (lam (lam (lam (lam (lam (lam Ty-UnitK)))))))
 
 ⊢imethsTyJunk : {Γ : Ctx} (k : ℕ) (C : ICon (ε ∙)) →
-                IConWf KnotD IPair (◇ ▹ IPair) C →
+                IConWf IPair (Θ₀ IPair) ρ₀ x₀ C →
                 Γ ⊢ imethsTyJunk ∷ imethTy KnotD IPair k C imethsTyMotK
 ⊢imethsTyJunk k C wC =
   ⊢methLam KnotD IPair k C KnotWf wC ⊢IPair ⊢imethsTyMotK

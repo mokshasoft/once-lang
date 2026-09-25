@@ -17,6 +17,8 @@
 module DirectedHoTT.Examples.Knot.NoNatCWf where
 open import DirectedHoTT.Lib.Lkp using ( ∋lkp; vsⁿ )
 open import normalizer.Syntax.Types using ( _≡_; refl )
+open import DirectedHoTT.Spec.Typing using ( Θ₀; ρ₀; x₀; _,,_ )
+open import DirectedHoTT.Spec.Syntax using ( thinR; keep; app; renTm )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; RTy; RTm; var; vz; vs; pair; fst; snd; nsuc; nzero
@@ -56,12 +58,29 @@ open import DirectedHoTT.Examples.Knot.NoNatCRows
 
 
 -- nnc-base
-aNoNatCΑ2 : NoNatCΑ2 ⊢ fst (var (vs (vs vz))) ∷ Nat
+-- ★ the telescope: the family, the index, then each field
+--   read through the thinning that skips the family.
+TelNoNatCΑ0 : Ctx
+TelNoNatCΑ0 = Θ₀ INoNatC
+GNoNatCΑ0 : RTm ⌊ TelNoNatCΑ0 ⌋
+GNoNatCΑ0 = ⌜Nat⌝
+TelNoNatCΑ1 : Ctx
+TelNoNatCΑ1 = TelNoNatCΑ0 ▹ El GNoNatCΑ0
+GNoNatCΑ1 : RTm ⌊ TelNoNatCΑ1 ⌋
+GNoNatCΑ1 = ⌜Id⌝ ⌜Nat⌝ (fst (var (vs vz))) (var vz)
+TelNoNatCΑ2 : Ctx
+TelNoNatCΑ2 = TelNoNatCΑ1 ▹ El GNoNatCΑ1
+GNoNatCΑ2 : RTm ⌊ TelNoNatCΑ2 ⌋
+GNoNatCΑ2 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTm (fst (var (vs (vs vz)))))) (snd (var (vs (vs vz)))) (jsub (⌜IMu⌝ KnotD IPair (pair sTm (var vz))) (symN (fst (var (vs (vs vz)))) (var vz)) Tm-cbaseK)
+TelNoNatCΑ3 : Ctx
+TelNoNatCΑ3 = TelNoNatCΑ2 ▹ El GNoNatCΑ2
+
+aNoNatCΑ2 : TelNoNatCΑ2 ⊢ fst (var (vs (vs vz))) ∷ Nat
 aNoNatCΑ2 = ⊢fst (⊢var (∋lkp _ (vsⁿ 2 vz)))
 CNoNatCΑ2 : ICon ⌊ NoNatCΑ2 ⌋
 CNoNatCΑ2 = iκ kNoNatCΑ2 iι
-W_NoNatCΑ2 : (D : IDesc) → IConWf D INoNatC NoNatCΑ2 CNoNatCΑ2
-W_NoNatCΑ2 D =
+W_NoNatCΑ2 : IConWf INoNatC TelNoNatCΑ2 (keep (keep ρ₀)) (vs (vs x₀)) CNoNatCΑ2
+W_NoNatCΑ2 =
   iwf-κ kNoNatCΑ2 (icw-ford _ _ _)
     (⊢⌜Id⌝ (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTm aNoNatCΑ2))
            (toMu (⊢snd (⊢var (∋lkp _ (vsⁿ 2 vz)))))
@@ -71,33 +90,50 @@ W_NoNatCΑ2 D =
                   (⊢symN aNoNatCΑ2 (fromI (⊢var (there here)))
                          (fordAs (⊢var here)))
                   (toMu (⊢Tm-cbaseKv (var (vs vz)) (fromI (⊢var (there here)))))))
-    (iwf-ι)
+    iwf-ι
 
 CNoNatCΑ1 : ICon ⌊ NoNatCΑ1 ⌋
 CNoNatCΑ1 = iκ kNoNatCΑ1 CNoNatCΑ2
-W_NoNatCΑ1 : (D : IDesc) → IConWf D INoNatC NoNatCΑ1 CNoNatCΑ1
-W_NoNatCΑ1 D =
+W_NoNatCΑ1 : IConWf INoNatC TelNoNatCΑ1 (keep ρ₀) (vs x₀) CNoNatCΑ1
+W_NoNatCΑ1 =
   iwf-κ kNoNatCΑ1 (icw-ford _ _ _)
     (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (there here)))) (toI (fromI (⊢var here))))
-    (W_NoNatCΑ2 D)
+    W_NoNatCΑ2
 
 CNoNatCΑ0 : ICon ⌊ NoNatCΑ0 ⌋
 CNoNatCΑ0 = iκ kNoNatCΑ0 CNoNatCΑ1
-W_NoNatCΑ0 : (D : IDesc) → IConWf D INoNatC NoNatCΑ0 CNoNatCΑ0
-W_NoNatCΑ0 D =
+W_NoNatCΑ0 : IConWf INoNatC TelNoNatCΑ0 (ρ₀) (x₀) CNoNatCΑ0
+W_NoNatCΑ0 =
   iwf-κ kNoNatCΑ0 (icw-clo ⌜Nat⌝ ⊢⌜Nat⌝) ⊢⌜Nat⌝
-    (W_NoNatCΑ1 D)
+    W_NoNatCΑ1
 
-rdnnc-baseWf : (D : IDesc) → IConWf D INoNatC NoNatCΑ0 rdnnc-base
+rdnnc-baseWf : IConWf INoNatC (Θ₀ INoNatC) ρ₀ x₀ rdnnc-base
 rdnnc-baseWf = W_NoNatCΑ0
 
 -- nnc-Unit
-aNoNatCΒ2 : NoNatCΒ2 ⊢ fst (var (vs (vs vz))) ∷ Nat
+-- ★ the telescope: the family, the index, then each field
+--   read through the thinning that skips the family.
+TelNoNatCΒ0 : Ctx
+TelNoNatCΒ0 = Θ₀ INoNatC
+GNoNatCΒ0 : RTm ⌊ TelNoNatCΒ0 ⌋
+GNoNatCΒ0 = ⌜Nat⌝
+TelNoNatCΒ1 : Ctx
+TelNoNatCΒ1 = TelNoNatCΒ0 ▹ El GNoNatCΒ0
+GNoNatCΒ1 : RTm ⌊ TelNoNatCΒ1 ⌋
+GNoNatCΒ1 = ⌜Id⌝ ⌜Nat⌝ (fst (var (vs vz))) (var vz)
+TelNoNatCΒ2 : Ctx
+TelNoNatCΒ2 = TelNoNatCΒ1 ▹ El GNoNatCΒ1
+GNoNatCΒ2 : RTm ⌊ TelNoNatCΒ2 ⌋
+GNoNatCΒ2 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTm (fst (var (vs (vs vz)))))) (snd (var (vs (vs vz)))) (jsub (⌜IMu⌝ KnotD IPair (pair sTm (var vz))) (symN (fst (var (vs (vs vz)))) (var vz)) Tm-cUnitK)
+TelNoNatCΒ3 : Ctx
+TelNoNatCΒ3 = TelNoNatCΒ2 ▹ El GNoNatCΒ2
+
+aNoNatCΒ2 : TelNoNatCΒ2 ⊢ fst (var (vs (vs vz))) ∷ Nat
 aNoNatCΒ2 = ⊢fst (⊢var (∋lkp _ (vsⁿ 2 vz)))
 CNoNatCΒ2 : ICon ⌊ NoNatCΒ2 ⌋
 CNoNatCΒ2 = iκ kNoNatCΒ2 iι
-W_NoNatCΒ2 : (D : IDesc) → IConWf D INoNatC NoNatCΒ2 CNoNatCΒ2
-W_NoNatCΒ2 D =
+W_NoNatCΒ2 : IConWf INoNatC TelNoNatCΒ2 (keep (keep ρ₀)) (vs (vs x₀)) CNoNatCΒ2
+W_NoNatCΒ2 =
   iwf-κ kNoNatCΒ2 (icw-ford _ _ _)
     (⊢⌜Id⌝ (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTm aNoNatCΒ2))
            (toMu (⊢snd (⊢var (∋lkp _ (vsⁿ 2 vz)))))
@@ -107,33 +143,54 @@ W_NoNatCΒ2 D =
                   (⊢symN aNoNatCΒ2 (fromI (⊢var (there here)))
                          (fordAs (⊢var here)))
                   (toMu (⊢Tm-cUnitKv (var (vs vz)) (fromI (⊢var (there here)))))))
-    (iwf-ι)
+    iwf-ι
 
 CNoNatCΒ1 : ICon ⌊ NoNatCΒ1 ⌋
 CNoNatCΒ1 = iκ kNoNatCΒ1 CNoNatCΒ2
-W_NoNatCΒ1 : (D : IDesc) → IConWf D INoNatC NoNatCΒ1 CNoNatCΒ1
-W_NoNatCΒ1 D =
+W_NoNatCΒ1 : IConWf INoNatC TelNoNatCΒ1 (keep ρ₀) (vs x₀) CNoNatCΒ1
+W_NoNatCΒ1 =
   iwf-κ kNoNatCΒ1 (icw-ford _ _ _)
     (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (there here)))) (toI (fromI (⊢var here))))
-    (W_NoNatCΒ2 D)
+    W_NoNatCΒ2
 
 CNoNatCΒ0 : ICon ⌊ NoNatCΒ0 ⌋
 CNoNatCΒ0 = iκ kNoNatCΒ0 CNoNatCΒ1
-W_NoNatCΒ0 : (D : IDesc) → IConWf D INoNatC NoNatCΒ0 CNoNatCΒ0
-W_NoNatCΒ0 D =
+W_NoNatCΒ0 : IConWf INoNatC TelNoNatCΒ0 (ρ₀) (x₀) CNoNatCΒ0
+W_NoNatCΒ0 =
   iwf-κ kNoNatCΒ0 (icw-clo ⌜Nat⌝ ⊢⌜Nat⌝) ⊢⌜Nat⌝
-    (W_NoNatCΒ1 D)
+    W_NoNatCΒ1
 
-rdnnc-UnitWf : (D : IDesc) → IConWf D INoNatC NoNatCΒ0 rdnnc-Unit
+rdnnc-UnitWf : IConWf INoNatC (Θ₀ INoNatC) ρ₀ x₀ rdnnc-Unit
 rdnnc-UnitWf = W_NoNatCΒ0
 
 -- nnc-Mu
-aNoNatCΓ3 : NoNatCΓ3 ⊢ fst (var (vs (vs (vs vz)))) ∷ Nat
+-- ★ the telescope: the family, the index, then each field
+--   read through the thinning that skips the family.
+TelNoNatCΓ0 : Ctx
+TelNoNatCΓ0 = Θ₀ INoNatC
+GNoNatCΓ0 : RTm ⌊ TelNoNatCΓ0 ⌋
+GNoNatCΓ0 = ⌜Nat⌝
+TelNoNatCΓ1 : Ctx
+TelNoNatCΓ1 = TelNoNatCΓ0 ▹ El GNoNatCΓ0
+GNoNatCΓ1 : RTm ⌊ TelNoNatCΓ1 ⌋
+GNoNatCΓ1 = ⌜IMu⌝ KnotD IPair (pair sDesc (var vz))
+TelNoNatCΓ2 : Ctx
+TelNoNatCΓ2 = TelNoNatCΓ1 ▹ El GNoNatCΓ1
+GNoNatCΓ2 : RTm ⌊ TelNoNatCΓ2 ⌋
+GNoNatCΓ2 = ⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs vz)))) (var (vs vz))
+TelNoNatCΓ3 : Ctx
+TelNoNatCΓ3 = TelNoNatCΓ2 ▹ El GNoNatCΓ2
+GNoNatCΓ3 : RTm ⌊ TelNoNatCΓ3 ⌋
+GNoNatCΓ3 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTm (fst (var (vs (vs (vs vz))))))) (snd (var (vs (vs (vs vz))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTm (var vz))) (symN (fst (var (vs (vs (vs vz))))) (var vz)) (Tm-cMuK (var (vs vz))))
+TelNoNatCΓ4 : Ctx
+TelNoNatCΓ4 = TelNoNatCΓ3 ▹ El GNoNatCΓ3
+
+aNoNatCΓ3 : TelNoNatCΓ3 ⊢ fst (var (vs (vs (vs vz)))) ∷ Nat
 aNoNatCΓ3 = ⊢fst (⊢var (∋lkp _ (vsⁿ 3 vz)))
 CNoNatCΓ3 : ICon ⌊ NoNatCΓ3 ⌋
 CNoNatCΓ3 = iκ kNoNatCΓ3 iι
-W_NoNatCΓ3 : (D : IDesc) → IConWf D INoNatC NoNatCΓ3 CNoNatCΓ3
-W_NoNatCΓ3 D =
+W_NoNatCΓ3 : IConWf INoNatC TelNoNatCΓ3 (keep (keep (keep ρ₀))) (vs (vs (vs x₀))) CNoNatCΓ3
+W_NoNatCΓ3 =
   iwf-κ kNoNatCΓ3 (icw-ford _ _ _)
     (⊢⌜Id⌝ (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTm aNoNatCΓ3))
            (toMu (⊢snd (⊢var (∋lkp _ (vsⁿ 3 vz)))))
@@ -143,41 +200,66 @@ W_NoNatCΓ3 D =
                   (⊢symN aNoNatCΓ3 (fromI (⊢var (∋lkp _ (vsⁿ 2 vz))))
                          (fordAs (⊢var here)))
                   (toMu (⊢Tm-cMuKv (var (vs (vs vz))) (fromI (⊢var (∋lkp _ (vsⁿ 2 vz)))) (fromMu (⊢var (there here)))))))
-    (iwf-ι)
+    iwf-ι
 
 CNoNatCΓ2 : ICon ⌊ NoNatCΓ2 ⌋
 CNoNatCΓ2 = iκ kNoNatCΓ2 CNoNatCΓ3
-W_NoNatCΓ2 : (D : IDesc) → IConWf D INoNatC NoNatCΓ2 CNoNatCΓ2
-W_NoNatCΓ2 D =
+W_NoNatCΓ2 : IConWf INoNatC TelNoNatCΓ2 (keep (keep ρ₀)) (vs (vs x₀)) CNoNatCΓ2
+W_NoNatCΓ2 =
   iwf-κ kNoNatCΓ2 (icw-ford _ _ _)
     (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (∋lkp _ (vsⁿ 2 vz))))) (toI (fromI (⊢var (there here)))))
-    (W_NoNatCΓ3 D)
+    W_NoNatCΓ3
 
 CNoNatCΓ1 : ICon ⌊ NoNatCΓ1 ⌋
 CNoNatCΓ1 = iκ kNoNatCΓ1 CNoNatCΓ2
-W_NoNatCΓ1 : (D : IDesc) → IConWf D INoNatC NoNatCΓ1 CNoNatCΓ1
-W_NoNatCΓ1 D =
+W_NoNatCΓ1 : IConWf INoNatC TelNoNatCΓ1 (keep ρ₀) (vs x₀) CNoNatCΓ1
+W_NoNatCΓ1 =
   iwf-κ kNoNatCΓ1 (icw-imu (pair sDesc (var vz)) KnotWf)
     (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sDesc (fromI (⊢var here))))
-    (W_NoNatCΓ2 D)
+    W_NoNatCΓ2
 
 CNoNatCΓ0 : ICon ⌊ NoNatCΓ0 ⌋
 CNoNatCΓ0 = iκ kNoNatCΓ0 CNoNatCΓ1
-W_NoNatCΓ0 : (D : IDesc) → IConWf D INoNatC NoNatCΓ0 CNoNatCΓ0
-W_NoNatCΓ0 D =
+W_NoNatCΓ0 : IConWf INoNatC TelNoNatCΓ0 (ρ₀) (x₀) CNoNatCΓ0
+W_NoNatCΓ0 =
   iwf-κ kNoNatCΓ0 (icw-clo ⌜Nat⌝ ⊢⌜Nat⌝) ⊢⌜Nat⌝
-    (W_NoNatCΓ1 D)
+    W_NoNatCΓ1
 
-rdnnc-MuWf : (D : IDesc) → IConWf D INoNatC NoNatCΓ0 rdnnc-Mu
+rdnnc-MuWf : IConWf INoNatC (Θ₀ INoNatC) ρ₀ x₀ rdnnc-Mu
 rdnnc-MuWf = W_NoNatCΓ0
 
 -- nnc-Σ
-aNoNatCΔ4 : NoNatCΔ4 ⊢ fst (var (vs (vs (vs (vs vz))))) ∷ Nat
+-- ★ the telescope: the family, the index, then each field
+--   read through the thinning that skips the family.
+TelNoNatCΔ0 : Ctx
+TelNoNatCΔ0 = Θ₀ INoNatC
+GNoNatCΔ0 : RTm ⌊ TelNoNatCΔ0 ⌋
+GNoNatCΔ0 = ⌜Nat⌝
+TelNoNatCΔ1 : Ctx
+TelNoNatCΔ1 = TelNoNatCΔ0 ▹ El GNoNatCΔ0
+GNoNatCΔ1 : RTm ⌊ TelNoNatCΔ1 ⌋
+GNoNatCΔ1 = ⌜IMu⌝ KnotD IPair (pair sTm (var vz))
+TelNoNatCΔ2 : Ctx
+TelNoNatCΔ2 = TelNoNatCΔ1 ▹ El GNoNatCΔ1
+GNoNatCΔ2 : RTm ⌊ TelNoNatCΔ2 ⌋
+GNoNatCΔ2 = ⌜IMu⌝ KnotD IPair (pair sTm (nsuc (var (vs vz))))
+TelNoNatCΔ3 : Ctx
+TelNoNatCΔ3 = TelNoNatCΔ2 ▹ El GNoNatCΔ2
+GNoNatCΔ3 : RTm ⌊ TelNoNatCΔ3 ⌋
+GNoNatCΔ3 = ⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs (vs vz))))) (var (vs (vs vz)))
+TelNoNatCΔ4 : Ctx
+TelNoNatCΔ4 = TelNoNatCΔ3 ▹ El GNoNatCΔ3
+GNoNatCΔ4 : RTm ⌊ TelNoNatCΔ4 ⌋
+GNoNatCΔ4 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTm (fst (var (vs (vs (vs (vs vz)))))))) (snd (var (vs (vs (vs (vs vz)))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTm (var vz))) (symN (fst (var (vs (vs (vs (vs vz)))))) (var vz)) (Tm-cSgK (var (vs (vs vz))) (var (vs vz))))
+TelNoNatCΔ5 : Ctx
+TelNoNatCΔ5 = TelNoNatCΔ4 ▹ El GNoNatCΔ4
+
+aNoNatCΔ4 : TelNoNatCΔ4 ⊢ fst (var (vs (vs (vs (vs vz))))) ∷ Nat
 aNoNatCΔ4 = ⊢fst (⊢var (∋lkp _ (vsⁿ 4 vz)))
 CNoNatCΔ4 : ICon ⌊ NoNatCΔ4 ⌋
 CNoNatCΔ4 = iκ kNoNatCΔ4 iι
-W_NoNatCΔ4 : (D : IDesc) → IConWf D INoNatC NoNatCΔ4 CNoNatCΔ4
-W_NoNatCΔ4 D =
+W_NoNatCΔ4 : IConWf INoNatC TelNoNatCΔ4 (keep (keep (keep (keep ρ₀)))) (vs (vs (vs (vs x₀)))) CNoNatCΔ4
+W_NoNatCΔ4 =
   iwf-κ kNoNatCΔ4 (icw-ford _ _ _)
     (⊢⌜Id⌝ (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTm aNoNatCΔ4))
            (toMu (⊢snd (⊢var (∋lkp _ (vsⁿ 4 vz)))))
@@ -187,49 +269,78 @@ W_NoNatCΔ4 D =
                   (⊢symN aNoNatCΔ4 (fromI (⊢var (∋lkp _ (vsⁿ 3 vz))))
                          (fordAs (⊢var here)))
                   (toMu (⊢Tm-cSgKv (var (vs (vs (vs vz)))) (fromI (⊢var (∋lkp _ (vsⁿ 3 vz)))) (fromMu (⊢var (∋lkp _ (vsⁿ 2 vz)))) (fromMu (⊢var (there here)))))))
-    (iwf-ι)
+    iwf-ι
 
 CNoNatCΔ3 : ICon ⌊ NoNatCΔ3 ⌋
 CNoNatCΔ3 = iκ kNoNatCΔ3 CNoNatCΔ4
-W_NoNatCΔ3 : (D : IDesc) → IConWf D INoNatC NoNatCΔ3 CNoNatCΔ3
-W_NoNatCΔ3 D =
+W_NoNatCΔ3 : IConWf INoNatC TelNoNatCΔ3 (keep (keep (keep ρ₀))) (vs (vs (vs x₀))) CNoNatCΔ3
+W_NoNatCΔ3 =
   iwf-κ kNoNatCΔ3 (icw-ford _ _ _)
     (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (∋lkp _ (vsⁿ 3 vz))))) (toI (fromI (⊢var (∋lkp _ (vsⁿ 2 vz))))))
-    (W_NoNatCΔ4 D)
+    W_NoNatCΔ4
 
 CNoNatCΔ2 : ICon ⌊ NoNatCΔ2 ⌋
 CNoNatCΔ2 = iκ kNoNatCΔ2 CNoNatCΔ3
-W_NoNatCΔ2 : (D : IDesc) → IConWf D INoNatC NoNatCΔ2 CNoNatCΔ2
-W_NoNatCΔ2 D =
+W_NoNatCΔ2 : IConWf INoNatC TelNoNatCΔ2 (keep (keep ρ₀)) (vs (vs x₀)) CNoNatCΔ2
+W_NoNatCΔ2 =
   iwf-κ kNoNatCΔ2 (icw-imu (pair sTm (nsuc (var (vs vz)))) KnotWf)
     (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTm (⊢nsuc (fromI (⊢var (there here))))))
-    (W_NoNatCΔ3 D)
+    W_NoNatCΔ3
 
 CNoNatCΔ1 : ICon ⌊ NoNatCΔ1 ⌋
 CNoNatCΔ1 = iκ kNoNatCΔ1 CNoNatCΔ2
-W_NoNatCΔ1 : (D : IDesc) → IConWf D INoNatC NoNatCΔ1 CNoNatCΔ1
-W_NoNatCΔ1 D =
+W_NoNatCΔ1 : IConWf INoNatC TelNoNatCΔ1 (keep ρ₀) (vs x₀) CNoNatCΔ1
+W_NoNatCΔ1 =
   iwf-κ kNoNatCΔ1 (icw-imu (pair sTm (var vz)) KnotWf)
     (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTm (fromI (⊢var here))))
-    (W_NoNatCΔ2 D)
+    W_NoNatCΔ2
 
 CNoNatCΔ0 : ICon ⌊ NoNatCΔ0 ⌋
 CNoNatCΔ0 = iκ kNoNatCΔ0 CNoNatCΔ1
-W_NoNatCΔ0 : (D : IDesc) → IConWf D INoNatC NoNatCΔ0 CNoNatCΔ0
-W_NoNatCΔ0 D =
+W_NoNatCΔ0 : IConWf INoNatC TelNoNatCΔ0 (ρ₀) (x₀) CNoNatCΔ0
+W_NoNatCΔ0 =
   iwf-κ kNoNatCΔ0 (icw-clo ⌜Nat⌝ ⊢⌜Nat⌝) ⊢⌜Nat⌝
-    (W_NoNatCΔ1 D)
+    W_NoNatCΔ1
 
-rdnnc-ΣWf : (D : IDesc) → IConWf D INoNatC NoNatCΔ0 rdnnc-Σ
+rdnnc-ΣWf : IConWf INoNatC (Θ₀ INoNatC) ρ₀ x₀ rdnnc-Σ
 rdnnc-ΣWf = W_NoNatCΔ0
 
 -- nnc-Id
-aNoNatCΕ5 : NoNatCΕ5 ⊢ fst (var (vs (vs (vs (vs (vs vz)))))) ∷ Nat
+-- ★ the telescope: the family, the index, then each field
+--   read through the thinning that skips the family.
+TelNoNatCΕ0 : Ctx
+TelNoNatCΕ0 = Θ₀ INoNatC
+GNoNatCΕ0 : RTm ⌊ TelNoNatCΕ0 ⌋
+GNoNatCΕ0 = ⌜Nat⌝
+TelNoNatCΕ1 : Ctx
+TelNoNatCΕ1 = TelNoNatCΕ0 ▹ El GNoNatCΕ0
+GNoNatCΕ1 : RTm ⌊ TelNoNatCΕ1 ⌋
+GNoNatCΕ1 = ⌜IMu⌝ KnotD IPair (pair sTm (var vz))
+TelNoNatCΕ2 : Ctx
+TelNoNatCΕ2 = TelNoNatCΕ1 ▹ El GNoNatCΕ1
+GNoNatCΕ2 : RTm ⌊ TelNoNatCΕ2 ⌋
+GNoNatCΕ2 = ⌜IMu⌝ KnotD IPair (pair sTm (var (vs vz)))
+TelNoNatCΕ3 : Ctx
+TelNoNatCΕ3 = TelNoNatCΕ2 ▹ El GNoNatCΕ2
+GNoNatCΕ3 : RTm ⌊ TelNoNatCΕ3 ⌋
+GNoNatCΕ3 = ⌜IMu⌝ KnotD IPair (pair sTm (var (vs (vs vz))))
+TelNoNatCΕ4 : Ctx
+TelNoNatCΕ4 = TelNoNatCΕ3 ▹ El GNoNatCΕ3
+GNoNatCΕ4 : RTm ⌊ TelNoNatCΕ4 ⌋
+GNoNatCΕ4 = ⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs (vs (vs vz)))))) (var (vs (vs (vs vz))))
+TelNoNatCΕ5 : Ctx
+TelNoNatCΕ5 = TelNoNatCΕ4 ▹ El GNoNatCΕ4
+GNoNatCΕ5 : RTm ⌊ TelNoNatCΕ5 ⌋
+GNoNatCΕ5 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTm (fst (var (vs (vs (vs (vs (vs vz))))))))) (snd (var (vs (vs (vs (vs (vs vz))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTm (var vz))) (symN (fst (var (vs (vs (vs (vs (vs vz))))))) (var vz)) (Tm-cIdK (var (vs (vs (vs vz)))) (var (vs (vs vz))) (var (vs vz))))
+TelNoNatCΕ6 : Ctx
+TelNoNatCΕ6 = TelNoNatCΕ5 ▹ El GNoNatCΕ5
+
+aNoNatCΕ5 : TelNoNatCΕ5 ⊢ fst (var (vs (vs (vs (vs (vs vz)))))) ∷ Nat
 aNoNatCΕ5 = ⊢fst (⊢var (∋lkp _ (vsⁿ 5 vz)))
 CNoNatCΕ5 : ICon ⌊ NoNatCΕ5 ⌋
 CNoNatCΕ5 = iκ kNoNatCΕ5 iι
-W_NoNatCΕ5 : (D : IDesc) → IConWf D INoNatC NoNatCΕ5 CNoNatCΕ5
-W_NoNatCΕ5 D =
+W_NoNatCΕ5 : IConWf INoNatC TelNoNatCΕ5 (keep (keep (keep (keep (keep ρ₀))))) (vs (vs (vs (vs (vs x₀))))) CNoNatCΕ5
+W_NoNatCΕ5 =
   iwf-κ kNoNatCΕ5 (icw-ford _ _ _)
     (⊢⌜Id⌝ (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTm aNoNatCΕ5))
            (toMu (⊢snd (⊢var (∋lkp _ (vsⁿ 5 vz)))))
@@ -239,64 +350,85 @@ W_NoNatCΕ5 D =
                   (⊢symN aNoNatCΕ5 (fromI (⊢var (∋lkp _ (vsⁿ 4 vz))))
                          (fordAs (⊢var here)))
                   (toMu (⊢Tm-cIdKv (var (vs (vs (vs (vs vz))))) (fromI (⊢var (∋lkp _ (vsⁿ 4 vz)))) (fromMu (⊢var (∋lkp _ (vsⁿ 3 vz)))) (fromMu (⊢var (∋lkp _ (vsⁿ 2 vz)))) (fromMu (⊢var (there here)))))))
-    (iwf-ι)
+    iwf-ι
 
 CNoNatCΕ4 : ICon ⌊ NoNatCΕ4 ⌋
 CNoNatCΕ4 = iκ kNoNatCΕ4 CNoNatCΕ5
-W_NoNatCΕ4 : (D : IDesc) → IConWf D INoNatC NoNatCΕ4 CNoNatCΕ4
-W_NoNatCΕ4 D =
+W_NoNatCΕ4 : IConWf INoNatC TelNoNatCΕ4 (keep (keep (keep (keep ρ₀)))) (vs (vs (vs (vs x₀)))) CNoNatCΕ4
+W_NoNatCΕ4 =
   iwf-κ kNoNatCΕ4 (icw-ford _ _ _)
     (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (∋lkp _ (vsⁿ 4 vz))))) (toI (fromI (⊢var (∋lkp _ (vsⁿ 3 vz))))))
-    (W_NoNatCΕ5 D)
+    W_NoNatCΕ5
 
 CNoNatCΕ3 : ICon ⌊ NoNatCΕ3 ⌋
 CNoNatCΕ3 = iκ kNoNatCΕ3 CNoNatCΕ4
-W_NoNatCΕ3 : (D : IDesc) → IConWf D INoNatC NoNatCΕ3 CNoNatCΕ3
-W_NoNatCΕ3 D =
+W_NoNatCΕ3 : IConWf INoNatC TelNoNatCΕ3 (keep (keep (keep ρ₀))) (vs (vs (vs x₀))) CNoNatCΕ3
+W_NoNatCΕ3 =
   iwf-κ kNoNatCΕ3 (icw-imu (pair sTm (var (vs (vs vz)))) KnotWf)
     (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTm (fromI (⊢var (∋lkp _ (vsⁿ 2 vz))))))
-    (W_NoNatCΕ4 D)
+    W_NoNatCΕ4
 
 CNoNatCΕ2 : ICon ⌊ NoNatCΕ2 ⌋
 CNoNatCΕ2 = iκ kNoNatCΕ2 CNoNatCΕ3
-W_NoNatCΕ2 : (D : IDesc) → IConWf D INoNatC NoNatCΕ2 CNoNatCΕ2
-W_NoNatCΕ2 D =
+W_NoNatCΕ2 : IConWf INoNatC TelNoNatCΕ2 (keep (keep ρ₀)) (vs (vs x₀)) CNoNatCΕ2
+W_NoNatCΕ2 =
   iwf-κ kNoNatCΕ2 (icw-imu (pair sTm (var (vs vz))) KnotWf)
     (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTm (fromI (⊢var (there here)))))
-    (W_NoNatCΕ3 D)
+    W_NoNatCΕ3
 
 CNoNatCΕ1 : ICon ⌊ NoNatCΕ1 ⌋
 CNoNatCΕ1 = iκ kNoNatCΕ1 CNoNatCΕ2
-W_NoNatCΕ1 : (D : IDesc) → IConWf D INoNatC NoNatCΕ1 CNoNatCΕ1
-W_NoNatCΕ1 D =
+W_NoNatCΕ1 : IConWf INoNatC TelNoNatCΕ1 (keep ρ₀) (vs x₀) CNoNatCΕ1
+W_NoNatCΕ1 =
   iwf-κ kNoNatCΕ1 (icw-imu (pair sTm (var vz)) KnotWf)
     (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTm (fromI (⊢var here))))
-    (W_NoNatCΕ2 D)
+    W_NoNatCΕ2
 
 CNoNatCΕ0 : ICon ⌊ NoNatCΕ0 ⌋
 CNoNatCΕ0 = iκ kNoNatCΕ0 CNoNatCΕ1
-W_NoNatCΕ0 : (D : IDesc) → IConWf D INoNatC NoNatCΕ0 CNoNatCΕ0
-W_NoNatCΕ0 D =
+W_NoNatCΕ0 : IConWf INoNatC TelNoNatCΕ0 (ρ₀) (x₀) CNoNatCΕ0
+W_NoNatCΕ0 =
   iwf-κ kNoNatCΕ0 (icw-clo ⌜Nat⌝ ⊢⌜Nat⌝) ⊢⌜Nat⌝
-    (W_NoNatCΕ1 D)
+    W_NoNatCΕ1
 
-rdnnc-IdWf : (D : IDesc) → IConWf D INoNatC NoNatCΕ0 rdnnc-Id
+rdnnc-IdWf : IConWf INoNatC (Θ₀ INoNatC) ρ₀ x₀ rdnnc-Id
 rdnnc-IdWf = W_NoNatCΕ0
 
 -- nnc-Π
--- ★ the telescope, back at `Ctx` level: `emit_jrow` had to
---   drop to a bare `Cx` at the premise to stay writable
---   before `NoNatCD` existed.
-NoNatCΖ4 NoNatCΖ5 NoNatCΖ6 : Ctx
-NoNatCΖ4 = NoNatCΖ3 ▹ IMu NoNatCD INoNatC kNoNatCΖ3
-NoNatCΖ5 = NoNatCΖ4 ▹ El kNoNatCΖ4
-NoNatCΖ6 = NoNatCΖ5 ▹ El kNoNatCΖ5
+-- ★ the telescope: the family, the index, then each field
+--   read through the thinning that skips the family.
+TelNoNatCΖ0 : Ctx
+TelNoNatCΖ0 = Θ₀ INoNatC
+GNoNatCΖ0 : RTm ⌊ TelNoNatCΖ0 ⌋
+GNoNatCΖ0 = ⌜Nat⌝
+TelNoNatCΖ1 : Ctx
+TelNoNatCΖ1 = TelNoNatCΖ0 ▹ El GNoNatCΖ0
+GNoNatCΖ1 : RTm ⌊ TelNoNatCΖ1 ⌋
+GNoNatCΖ1 = ⌜IMu⌝ KnotD IPair (pair sTm (var vz))
+TelNoNatCΖ2 : Ctx
+TelNoNatCΖ2 = TelNoNatCΖ1 ▹ El GNoNatCΖ1
+GNoNatCΖ2 : RTm ⌊ TelNoNatCΖ2 ⌋
+GNoNatCΖ2 = ⌜IMu⌝ KnotD IPair (pair sTm (nsuc (var (vs vz))))
+TelNoNatCΖ3 : Ctx
+TelNoNatCΖ3 = TelNoNatCΖ2 ▹ El GNoNatCΖ2
+GNoNatCΖ3 : RTm ⌊ TelNoNatCΖ3 ⌋
+GNoNatCΖ3 = pair (nsuc (var (vs (vs vz)))) (var vz)
+TelNoNatCΖ4 : Ctx
+TelNoNatCΖ4 = TelNoNatCΖ3 ▹ El (app (var (vs (vs (vs x₀)))) GNoNatCΖ3)
+GNoNatCΖ4 : RTm ⌊ TelNoNatCΖ4 ⌋
+GNoNatCΖ4 = ⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs (vs (vs vz)))))) (var (vs (vs (vs vz))))
+TelNoNatCΖ5 : Ctx
+TelNoNatCΖ5 = TelNoNatCΖ4 ▹ El GNoNatCΖ4
+GNoNatCΖ5 : RTm ⌊ TelNoNatCΖ5 ⌋
+GNoNatCΖ5 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTm (fst (var (vs (vs (vs (vs (vs vz))))))))) (snd (var (vs (vs (vs (vs (vs vz))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTm (var vz))) (symN (fst (var (vs (vs (vs (vs (vs vz))))))) (var vz)) (Tm-cPiK (var (vs (vs (vs vz)))) (var (vs (vs vz)))))
+TelNoNatCΖ6 : Ctx
+TelNoNatCΖ6 = TelNoNatCΖ5 ▹ El GNoNatCΖ5
 
-aNoNatCΖ5 : NoNatCΖ5 ⊢ fst (var (vs (vs (vs (vs (vs vz)))))) ∷ Nat
+aNoNatCΖ5 : TelNoNatCΖ5 ⊢ fst (var (vs (vs (vs (vs (vs vz)))))) ∷ Nat
 aNoNatCΖ5 = ⊢fst (⊢var (∋lkp _ (vsⁿ 5 vz)))
-CNoNatCΖ5 : ICon ⌊ NoNatCΖ5 ⌋
+CNoNatCΖ5 : ICon XNoNatCΖ5
 CNoNatCΖ5 = iκ kNoNatCΖ5 iι
-W_NoNatCΖ5 : IConWf NoNatCD INoNatC NoNatCΖ5 CNoNatCΖ5
+W_NoNatCΖ5 : IConWf INoNatC TelNoNatCΖ5 (keep (keep (keep (keep (keep ρ₀))))) (vs (vs (vs (vs (vs x₀))))) CNoNatCΖ5
 W_NoNatCΖ5 =
   iwf-κ kNoNatCΖ5 (icw-ford _ _ _)
     (⊢⌜Id⌝ (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTm aNoNatCΖ5))
@@ -309,9 +441,9 @@ W_NoNatCΖ5 =
                   (toMu (⊢Tm-cPiKv (var (vs (vs (vs (vs vz))))) (fromI (⊢var (∋lkp _ (vsⁿ 4 vz)))) (fromMu (⊢var (∋lkp _ (vsⁿ 3 vz)))) (fromMu (⊢var (∋lkp _ (vsⁿ 2 vz))))))))
     iwf-ι
 
-CNoNatCΖ4 : ICon ⌊ NoNatCΖ4 ⌋
+CNoNatCΖ4 : ICon XNoNatCΖ4
 CNoNatCΖ4 = iκ kNoNatCΖ4 CNoNatCΖ5
-W_NoNatCΖ4 : IConWf NoNatCD INoNatC NoNatCΖ4 CNoNatCΖ4
+W_NoNatCΖ4 : IConWf INoNatC TelNoNatCΖ4 (keep (keep (keep (keep ρ₀)))) (vs (vs (vs (vs x₀)))) CNoNatCΖ4
 W_NoNatCΖ4 =
   iwf-κ kNoNatCΖ4 (icw-ford _ _ _)
     (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (∋lkp _ (vsⁿ 4 vz))))) (toI (fromI (⊢var (∋lkp _ (vsⁿ 3 vz))))))
@@ -319,7 +451,7 @@ W_NoNatCΖ4 =
 
 CNoNatCΖ3 : ICon ⌊ NoNatCΖ3 ⌋
 CNoNatCΖ3 = iρ kNoNatCΖ3 CNoNatCΖ4
-W_NoNatCΖ3 : IConWf NoNatCD INoNatC NoNatCΖ3 CNoNatCΖ3
+W_NoNatCΖ3 : IConWf INoNatC TelNoNatCΖ3 (keep (keep (keep ρ₀))) (vs (vs (vs x₀))) CNoNatCΖ3
 W_NoNatCΖ3 =
   iwf-ρ kNoNatCΖ3
     (⊢pair (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var here))) (⊢nsuc (fromI (⊢var (∋lkp _ (vsⁿ 2 vz))))) (fromMu (⊢var here)))
@@ -327,7 +459,7 @@ W_NoNatCΖ3 =
 
 CNoNatCΖ2 : ICon ⌊ NoNatCΖ2 ⌋
 CNoNatCΖ2 = iκ kNoNatCΖ2 CNoNatCΖ3
-W_NoNatCΖ2 : IConWf NoNatCD INoNatC NoNatCΖ2 CNoNatCΖ2
+W_NoNatCΖ2 : IConWf INoNatC TelNoNatCΖ2 (keep (keep ρ₀)) (vs (vs x₀)) CNoNatCΖ2
 W_NoNatCΖ2 =
   iwf-κ kNoNatCΖ2 (icw-imu (pair sTm (nsuc (var (vs vz)))) KnotWf)
     (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTm (⊢nsuc (fromI (⊢var (there here))))))
@@ -335,7 +467,7 @@ W_NoNatCΖ2 =
 
 CNoNatCΖ1 : ICon ⌊ NoNatCΖ1 ⌋
 CNoNatCΖ1 = iκ kNoNatCΖ1 CNoNatCΖ2
-W_NoNatCΖ1 : IConWf NoNatCD INoNatC NoNatCΖ1 CNoNatCΖ1
+W_NoNatCΖ1 : IConWf INoNatC TelNoNatCΖ1 (keep ρ₀) (vs x₀) CNoNatCΖ1
 W_NoNatCΖ1 =
   iwf-κ kNoNatCΖ1 (icw-imu (pair sTm (var vz)) KnotWf)
     (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTm (fromI (⊢var here))))
@@ -343,28 +475,53 @@ W_NoNatCΖ1 =
 
 CNoNatCΖ0 : ICon ⌊ NoNatCΖ0 ⌋
 CNoNatCΖ0 = iκ kNoNatCΖ0 CNoNatCΖ1
-W_NoNatCΖ0 : IConWf NoNatCD INoNatC NoNatCΖ0 CNoNatCΖ0
+W_NoNatCΖ0 : IConWf INoNatC TelNoNatCΖ0 (ρ₀) (x₀) CNoNatCΖ0
 W_NoNatCΖ0 =
   iwf-κ kNoNatCΖ0 (icw-clo ⌜Nat⌝ ⊢⌜Nat⌝) ⊢⌜Nat⌝
     W_NoNatCΖ1
 
-rdnnc-ΠWf : IConWf NoNatCD INoNatC NoNatCΖ0 rdnnc-Π
+rdnnc-ΠWf : IConWf INoNatC (Θ₀ INoNatC) ρ₀ x₀ rdnnc-Π
 rdnnc-ΠWf = W_NoNatCΖ0
 
 -- nnc-Hom
--- ★ the telescope, back at `Ctx` level: `emit_jrow` had to
---   drop to a bare `Cx` at the premise to stay writable
---   before `NoNatCD` existed.
-NoNatCΗ5 NoNatCΗ6 NoNatCΗ7 : Ctx
-NoNatCΗ5 = NoNatCΗ4 ▹ IMu NoNatCD INoNatC kNoNatCΗ4
-NoNatCΗ6 = NoNatCΗ5 ▹ El kNoNatCΗ5
-NoNatCΗ7 = NoNatCΗ6 ▹ El kNoNatCΗ6
+-- ★ the telescope: the family, the index, then each field
+--   read through the thinning that skips the family.
+TelNoNatCΗ0 : Ctx
+TelNoNatCΗ0 = Θ₀ INoNatC
+GNoNatCΗ0 : RTm ⌊ TelNoNatCΗ0 ⌋
+GNoNatCΗ0 = ⌜Nat⌝
+TelNoNatCΗ1 : Ctx
+TelNoNatCΗ1 = TelNoNatCΗ0 ▹ El GNoNatCΗ0
+GNoNatCΗ1 : RTm ⌊ TelNoNatCΗ1 ⌋
+GNoNatCΗ1 = ⌜IMu⌝ KnotD IPair (pair sTm (var vz))
+TelNoNatCΗ2 : Ctx
+TelNoNatCΗ2 = TelNoNatCΗ1 ▹ El GNoNatCΗ1
+GNoNatCΗ2 : RTm ⌊ TelNoNatCΗ2 ⌋
+GNoNatCΗ2 = ⌜IMu⌝ KnotD IPair (pair sTm (var (vs vz)))
+TelNoNatCΗ3 : Ctx
+TelNoNatCΗ3 = TelNoNatCΗ2 ▹ El GNoNatCΗ2
+GNoNatCΗ3 : RTm ⌊ TelNoNatCΗ3 ⌋
+GNoNatCΗ3 = ⌜IMu⌝ KnotD IPair (pair sTm (var (vs (vs vz))))
+TelNoNatCΗ4 : Ctx
+TelNoNatCΗ4 = TelNoNatCΗ3 ▹ El GNoNatCΗ3
+GNoNatCΗ4 : RTm ⌊ TelNoNatCΗ4 ⌋
+GNoNatCΗ4 = pair (var (vs (vs (vs vz)))) (var (vs (vs vz)))
+TelNoNatCΗ5 : Ctx
+TelNoNatCΗ5 = TelNoNatCΗ4 ▹ El (app (var (vs (vs (vs (vs x₀))))) GNoNatCΗ4)
+GNoNatCΗ5 : RTm ⌊ TelNoNatCΗ5 ⌋
+GNoNatCΗ5 = ⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs (vs (vs (vs vz))))))) (var (vs (vs (vs (vs vz)))))
+TelNoNatCΗ6 : Ctx
+TelNoNatCΗ6 = TelNoNatCΗ5 ▹ El GNoNatCΗ5
+GNoNatCΗ6 : RTm ⌊ TelNoNatCΗ6 ⌋
+GNoNatCΗ6 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTm (fst (var (vs (vs (vs (vs (vs (vs vz)))))))))) (snd (var (vs (vs (vs (vs (vs (vs vz)))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTm (var vz))) (symN (fst (var (vs (vs (vs (vs (vs (vs vz)))))))) (var vz)) (Tm-cHomK (var (vs (vs (vs (vs vz))))) (var (vs (vs (vs vz)))) (var (vs (vs vz)))))
+TelNoNatCΗ7 : Ctx
+TelNoNatCΗ7 = TelNoNatCΗ6 ▹ El GNoNatCΗ6
 
-aNoNatCΗ6 : NoNatCΗ6 ⊢ fst (var (vs (vs (vs (vs (vs (vs vz))))))) ∷ Nat
+aNoNatCΗ6 : TelNoNatCΗ6 ⊢ fst (var (vs (vs (vs (vs (vs (vs vz))))))) ∷ Nat
 aNoNatCΗ6 = ⊢fst (⊢var (∋lkp _ (vsⁿ 6 vz)))
-CNoNatCΗ6 : ICon ⌊ NoNatCΗ6 ⌋
+CNoNatCΗ6 : ICon XNoNatCΗ6
 CNoNatCΗ6 = iκ kNoNatCΗ6 iι
-W_NoNatCΗ6 : IConWf NoNatCD INoNatC NoNatCΗ6 CNoNatCΗ6
+W_NoNatCΗ6 : IConWf INoNatC TelNoNatCΗ6 (keep (keep (keep (keep (keep (keep ρ₀)))))) (vs (vs (vs (vs (vs (vs x₀)))))) CNoNatCΗ6
 W_NoNatCΗ6 =
   iwf-κ kNoNatCΗ6 (icw-ford _ _ _)
     (⊢⌜Id⌝ (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTm aNoNatCΗ6))
@@ -377,9 +534,9 @@ W_NoNatCΗ6 =
                   (toMu (⊢Tm-cHomKv (var (vs (vs (vs (vs (vs vz)))))) (fromI (⊢var (∋lkp _ (vsⁿ 5 vz)))) (fromMu (⊢var (∋lkp _ (vsⁿ 4 vz)))) (fromMu (⊢var (∋lkp _ (vsⁿ 3 vz)))) (fromMu (⊢var (∋lkp _ (vsⁿ 2 vz))))))))
     iwf-ι
 
-CNoNatCΗ5 : ICon ⌊ NoNatCΗ5 ⌋
+CNoNatCΗ5 : ICon XNoNatCΗ5
 CNoNatCΗ5 = iκ kNoNatCΗ5 CNoNatCΗ6
-W_NoNatCΗ5 : IConWf NoNatCD INoNatC NoNatCΗ5 CNoNatCΗ5
+W_NoNatCΗ5 : IConWf INoNatC TelNoNatCΗ5 (keep (keep (keep (keep (keep ρ₀))))) (vs (vs (vs (vs (vs x₀))))) CNoNatCΗ5
 W_NoNatCΗ5 =
   iwf-κ kNoNatCΗ5 (icw-ford _ _ _)
     (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (∋lkp _ (vsⁿ 5 vz))))) (toI (fromI (⊢var (∋lkp _ (vsⁿ 4 vz))))))
@@ -387,7 +544,7 @@ W_NoNatCΗ5 =
 
 CNoNatCΗ4 : ICon ⌊ NoNatCΗ4 ⌋
 CNoNatCΗ4 = iρ kNoNatCΗ4 CNoNatCΗ5
-W_NoNatCΗ4 : IConWf NoNatCD INoNatC NoNatCΗ4 CNoNatCΗ4
+W_NoNatCΗ4 : IConWf INoNatC TelNoNatCΗ4 (keep (keep (keep (keep ρ₀)))) (vs (vs (vs (vs x₀)))) CNoNatCΗ4
 W_NoNatCΗ4 =
   iwf-ρ kNoNatCΗ4
     (⊢pair (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var here))) (fromI (⊢var (∋lkp _ (vsⁿ 3 vz)))) (fromMu (⊢var (∋lkp _ (vsⁿ 2 vz)))))
@@ -395,7 +552,7 @@ W_NoNatCΗ4 =
 
 CNoNatCΗ3 : ICon ⌊ NoNatCΗ3 ⌋
 CNoNatCΗ3 = iκ kNoNatCΗ3 CNoNatCΗ4
-W_NoNatCΗ3 : IConWf NoNatCD INoNatC NoNatCΗ3 CNoNatCΗ3
+W_NoNatCΗ3 : IConWf INoNatC TelNoNatCΗ3 (keep (keep (keep ρ₀))) (vs (vs (vs x₀))) CNoNatCΗ3
 W_NoNatCΗ3 =
   iwf-κ kNoNatCΗ3 (icw-imu (pair sTm (var (vs (vs vz)))) KnotWf)
     (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTm (fromI (⊢var (∋lkp _ (vsⁿ 2 vz))))))
@@ -403,7 +560,7 @@ W_NoNatCΗ3 =
 
 CNoNatCΗ2 : ICon ⌊ NoNatCΗ2 ⌋
 CNoNatCΗ2 = iκ kNoNatCΗ2 CNoNatCΗ3
-W_NoNatCΗ2 : IConWf NoNatCD INoNatC NoNatCΗ2 CNoNatCΗ2
+W_NoNatCΗ2 : IConWf INoNatC TelNoNatCΗ2 (keep (keep ρ₀)) (vs (vs x₀)) CNoNatCΗ2
 W_NoNatCΗ2 =
   iwf-κ kNoNatCΗ2 (icw-imu (pair sTm (var (vs vz))) KnotWf)
     (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTm (fromI (⊢var (there here)))))
@@ -411,7 +568,7 @@ W_NoNatCΗ2 =
 
 CNoNatCΗ1 : ICon ⌊ NoNatCΗ1 ⌋
 CNoNatCΗ1 = iκ kNoNatCΗ1 CNoNatCΗ2
-W_NoNatCΗ1 : IConWf NoNatCD INoNatC NoNatCΗ1 CNoNatCΗ1
+W_NoNatCΗ1 : IConWf INoNatC TelNoNatCΗ1 (keep ρ₀) (vs x₀) CNoNatCΗ1
 W_NoNatCΗ1 =
   iwf-κ kNoNatCΗ1 (icw-imu (pair sTm (var vz)) KnotWf)
     (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTm (fromI (⊢var here))))
@@ -419,12 +576,12 @@ W_NoNatCΗ1 =
 
 CNoNatCΗ0 : ICon ⌊ NoNatCΗ0 ⌋
 CNoNatCΗ0 = iκ kNoNatCΗ0 CNoNatCΗ1
-W_NoNatCΗ0 : IConWf NoNatCD INoNatC NoNatCΗ0 CNoNatCΗ0
+W_NoNatCΗ0 : IConWf INoNatC TelNoNatCΗ0 (ρ₀) (x₀) CNoNatCΗ0
 W_NoNatCΗ0 =
   iwf-κ kNoNatCΗ0 (icw-clo ⌜Nat⌝ ⊢⌜Nat⌝) ⊢⌜Nat⌝
     W_NoNatCΗ1
 
-rdnnc-HomWf : IConWf NoNatCD INoNatC NoNatCΗ0 rdnnc-Hom
+rdnnc-HomWf : IConWf INoNatC (Θ₀ INoNatC) ρ₀ x₀ rdnnc-Hom
 rdnnc-HomWf = W_NoNatCΗ0
 
 ------------------------------------------------------------------------
@@ -432,11 +589,12 @@ rdnnc-HomWf = W_NoNatCΗ0
 ------------------------------------------------------------------------
 NoNatCWf : IDescWf INoNatC NoNatCD
 NoNatCWf =
-  idwf-cons (rdnnc-baseWf NoNatCD)
-   (idwf-cons (rdnnc-UnitWf NoNatCD)
-    (idwf-cons (rdnnc-MuWf NoNatCD)
-     (idwf-cons (rdnnc-ΣWf NoNatCD)
-      (idwf-cons (rdnnc-IdWf NoNatCD)
+  (ty-Σ ty-Nat (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var here)))) ,,
+  idwf-cons rdnnc-baseWf
+   (idwf-cons rdnnc-UnitWf
+    (idwf-cons rdnnc-MuWf
+     (idwf-cons rdnnc-ΣWf
+      (idwf-cons rdnnc-IdWf
        (idwf-cons rdnnc-ΠWf
         (idwf-cons rdnnc-HomWf
          idwf-nil))))))

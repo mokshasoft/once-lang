@@ -26,6 +26,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Knot.Single where
+open import DirectedHoTT.Spec.Typing using ( IDescWf-cons )
 open import DirectedHoTT.Lib.Lkp using ( ∋lkp; vsⁿ )
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
@@ -37,7 +38,7 @@ open import DirectedHoTT.Spec.Typing
   using ( Ctx; ◇; _▹_; ⌊_⌋; _⊢_∷_; _⊢ty_; ⊢var; here; there
         ; ⊢lam; ⊢app; ⊢pair; ⊢unit; ⊢conv; ty-Π; ty-IMu; ty-Nat
         ; IConWf; IDescWf; IDescWfFrom; idwf-nil; idwf-cons
-        ; imethTy; imethsTy; imethsTyFrom; ⊢ielim; ⊢snd; ⊢fst )
+        ; imethTy; imethsTy; imethsTyFrom; ⊢ielim; ⊢snd; ⊢fst ; Θ₀; ρ₀; x₀ )
 open import DirectedHoTT.Lib.IMeths using ( CDesc; cdTake; cdRest; cdPos; methsFrom )
 open import DirectedHoTT.Lib.IPay using ( ⊢methLam; ⊢methsFrom; imethsTyFrom-wf
                                         ; Split; spl-nil )
@@ -101,7 +102,7 @@ singleId : {Γ : Cx} → RTm Γ
 singleId = lam (lam (lam (lam (var vz))))
 
 ⊢singleId : {Γ : Ctx} (k : ℕ) (C : ICon (ε ∙)) →
-            IConWf KnotD IPair (◇ ▹ εwkTy IPair) C →
+            IConWf IPair (Θ₀ IPair) ρ₀ x₀ C →
             Γ ⊢ singleId ∷ imethTy KnotD IPair k C singleMotK
 ⊢singleId k C wC =
   ⊢methLam KnotD IPair k C KnotWf wC ⊢IPair ⊢singleMotK
@@ -221,7 +222,7 @@ splK51 = splTake spl-nil (cdTake 51 KnotD)
 
 ⊢singleMethsK : {Γ : Ctx} → Γ ⊢ singleMethsK ∷ imethsTy KnotD IPair singleMotK KnotD
 ⊢singleMethsK =
-  ⊢methsFrom KnotD IPair 0 (cdTake 51 KnotD) KnotWf KnotWf spl-nil
+  ⊢methsFrom KnotD IPair 0 (cdTake 51 KnotD) KnotWf (IDescWf-cons KnotWf) spl-nil
              ⊢IPair ⊢singleMotK
              (λ {k} {C} wC _ _ → ⊢singleId k C wC)
              singleTail ⊢singleTail

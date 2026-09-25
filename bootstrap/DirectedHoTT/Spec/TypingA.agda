@@ -91,7 +91,7 @@ data ADescWf : ADesc → Set
 --   telescope is typed against an abstract family at `x`, the carried
 --   terms live in the X-free scope `Δ` reached by `ρ`, and NO description
 --   appears in the judgment.
-data AIConWf : ATy ε → {Δ : Cx} (Θ : ACtx) → Ren Δ ⌊ Θ ⌋ᴬ → Var ⌊ Θ ⌋ᴬ → AICon Δ → Set
+data AIConWf : ATy ε → {Δ : Cx} (Θ : ACtx) → Thin Δ ⌊ Θ ⌋ᴬ → Var ⌊ Θ ⌋ᴬ → AICon Δ → Set
 data AIDescWfFrom : ATy ε → AIDesc → Set
 data AICodeWf : {Θ : Cx} → ATm Θ → Set
 
@@ -219,12 +219,12 @@ data ADescWf where
 data AIConWf where
   iwf-ι : ∀ {I Δ Θ ρ x} → AIConWf I {Δ} Θ ρ x iι
   iwf-ρ : ∀ {I Δ Θ ρ x} {C : AICon (Δ ∙)} (j : ATm Δ) →
-          Θ ⊢ᴬ renTmᴬ ρ j ∷ εwkTyᴬ I →
-          AIConWf I (Θ ▹ᴬ El (app (var x) (renTmᴬ ρ j))) (extR ρ) (vs x) C →
+          Θ ⊢ᴬ renTmᴬ (thinR ρ) j ∷ εwkTyᴬ I →
+          AIConWf I (Θ ▹ᴬ El (app (var x) (renTmᴬ (thinR ρ) j))) (keep ρ) (vs x) C →
           AIConWf I Θ ρ x (iρ j C)
   iwf-κ : ∀ {I Δ Θ ρ x} {C : AICon (Δ ∙)} (κ : ATm Δ) →
-          AICodeWf κ → Θ ⊢ᴬ renTmᴬ ρ κ ∷ U →
-          AIConWf I (Θ ▹ᴬ El (renTmᴬ ρ κ)) (extR ρ) (vs x) C →
+          AICodeWf κ → Θ ⊢ᴬ renTmᴬ (thinR ρ) κ ∷ U →
+          AIConWf I (Θ ▹ᴬ El (renTmᴬ (thinR ρ) κ)) (keep ρ) (vs x) C →
           AIConWf I Θ ρ x (iκ κ C)
 
 data AICodeWf where

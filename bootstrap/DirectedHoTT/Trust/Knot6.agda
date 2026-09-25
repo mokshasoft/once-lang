@@ -24,16 +24,6 @@
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Trust.Knot6 where
 
-import DirectedHoTT.Examples.Knot.LookupGen
-import DirectedHoTT.Examples.Knot.Map
-import DirectedHoTT.Examples.Knot.MethTy
-import DirectedHoTT.Examples.Knot.MethTyAgree
-import DirectedHoTT.Examples.Knot.MethsTy
-import DirectedHoTT.Examples.Knot.MethsTyAgree
-import DirectedHoTT.Examples.Knot.MethsTyCons
-import DirectedHoTT.Examples.Knot.MethsTyMot
-import DirectedHoTT.Examples.Knot.NoNatCRows
-import DirectedHoTT.Examples.Knot.NoNatCWf
 import DirectedHoTT.Examples.Knot.Nrs
 import DirectedHoTT.Examples.Knot.Occ
 import DirectedHoTT.Examples.Knot.OccAgree
@@ -47,4 +37,16 @@ import DirectedHoTT.Examples.Knot.PwAgree
 import DirectedHoTT.Examples.Knot.PwBody
 import DirectedHoTT.Examples.Knot.PwBodyAgree
 import DirectedHoTT.Examples.Knot.RedRows
-import DirectedHoTT.Examples.Knot.RedWfA
+import DirectedHoTT.Examples.Knot.RedWf
+import DirectedHoTT.Examples.Knot.RedWfAp
+import DirectedHoTT.Examples.Knot.RedWfCode
+import DirectedHoTT.Examples.Knot.RedWfFun
+import DirectedHoTT.Examples.Knot.RedWfId
+import DirectedHoTT.Examples.Knot.RedWfInd
+import DirectedHoTT.Examples.Knot.RedWfNat
+import DirectedHoTT.Examples.Knot.RedWfOrd
+import DirectedHoTT.Examples.Knot.RedWfTr
+import DirectedHoTT.Examples.Knot.RenAgree
+import DirectedHoTT.Examples.Knot.RenAgreeTie
+import DirectedHoTT.Examples.Knot.RenAgreeTy
+import DirectedHoTT.Examples.Knot.RenAgreeTyTie

@@ -28,7 +28,7 @@ open import normalizer.Syntax.Types
   using ( _≡_; refl; sym; trans; subst; cong; cong₂; Σ; _,_; _×_ ; ⊥ )
 open import Agda.Builtin.Nat using ( zero; suc; _+_ ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
-  using ( Cx; ε; _∙; Var; vz; vs; RTy; base; U; Π; Σ'; El; Hom; RTm; var
+  using ( Cx; ε; _∙; Var; Thin; vz; vs; RTy; base; U; Π; Σ'; El; Hom; RTm; var
         ; lam; app; pair; fst; snd; absurd; ordtr; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝; ⌜Hom⌝
         ; hrefl; tr; ap; Id; ⌜Id⌝; idrefl; jsub; Id-cong₃; ⌜Id⌝-cong₃
         ; jsub-cong₃; Unit; Nat; unit; nzero; nsuc; natrec; ⌜Nat⌝; ⌜Unit⌝
@@ -1086,7 +1086,7 @@ ihs-ty {Γ} D M ms (dκ A C) p w dM hms hp =
 --   — that is what turns `IConWf`'s `Θ ⊢ j ∷ εwkTy I` into the
 --   `Γ ⊢ subTm σ j ∷ εwkTy I` that `⊢ielim` demands.
 iihs-ty : {Γ Θ : Ctx} {Δ : Cx} (D : IDesc) (I : RTy ε) (M : RTy ((⌊ Γ ⌋ ∙) ∙))
-          (ms : RTm ⌊ Γ ⌋) {ρ : Ren Δ ⌊ Θ ⌋} {x : Var ⌊ Θ ⌋}
+          (ms : RTm ⌊ Γ ⌋) {ρ : Thin Δ ⌊ Θ ⌋} {x : Var ⌊ Θ ⌋}
           (τ : Sub Δ ⌊ Γ ⌋) (C : ICon Δ) (p : RTm ⌊ Γ ⌋) →
           IDescWf I D →
           IConWf I Θ ρ x C →

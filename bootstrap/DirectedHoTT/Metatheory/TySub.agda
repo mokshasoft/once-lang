@@ -64,7 +64,7 @@ open import normalizer.Syntax.Types
   using ( _≡_; refl; sym; trans; subst; cong; cong₂; Σ; _,_; _×_ ; ⊥ )
 open import Agda.Builtin.Nat using ( zero; suc; _+_ ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
-  using ( Cx; ε; _∙; Var; vz; vs; RTy; base; U; Π; Σ'; El; Hom; RTm; var
+  using ( Cx; ε; _∙; Var; Thin; keep; thinR; vz; vs; RTy; base; U; Π; Σ'; El; Hom; RTm; var
         ; lam; app; pair; fst; snd; absurd; ordtr; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝; ⌜Hom⌝
         ; hrefl; tr; ap; Id; ⌜Id⌝; idrefl; jsub; Id-cong₃; ⌜Id⌝-cong₃
         ; jsub-cong₃; Unit; Nat; unit; nzero; nsuc; natrec; ⌜Nat⌝; ⌜Unit⌝
@@ -125,7 +125,7 @@ open import DirectedHoTT.Spec.Typing
         ; wk-single; iinst; iihTy; iconS; iatCon; iatCon-inst
         ; imethTy; imethsTy; imethsTyFrom; IDescWf
         ; ty-IMu; ⊢icon; ⊢ielim; ⊢⌜IMu⌝; IConWf; iwf-ρ; iwf-κ; IDescWfFrom; idwf-cons; idwf-nil; _≅_; csym; ctrn; cred; crfl
-        ; Θ₀; ρ₀; x₀; IDescWf-I; IDescWf-cons; Xinst; Xconv; ⊢lam; ⊢app; ⊢conv; csymᵀ; ⊢var; here; there; ⊢fst )
+        ; Θ₀; ρ₀; x₀; IDescWf-I; IDescWf-cons; Xinst; Xconv )
 open import DirectedHoTT.Metatheory.SubjectReductionBase using ( ≅ᵀ-sub; ⟶-sub )
 open import DirectedHoTT.Metatheory.RedCong
   using ( ⟶-ren; ⟶*-ren; ⟶*-appʳ; ren-comm; subTm-monoˢ; extS-mono; single-mono
@@ -1413,7 +1413,7 @@ xsingle D I i (vs vz)      = Xinst D I
 xsingle D I i (vs (vs ()))
 
 xsingle-ρ₀ : {Γ : Cx} (D : IDesc) (I : RTy ε) (i : RTm Γ) →
-             ∀ y → xsingle D I i (ρ₀ y) ≡ isingle i y
+             ∀ y → xsingle D I i (thinR ρ₀ y) ≡ isingle i y
 xsingle-ρ₀ D I i vz      = refl
 xsingle-ρ₀ D I i (vs ())
 
@@ -1448,50 +1448,50 @@ isingle-Sub⊢ di (there ())
 -- payload and the IH are computed with.
 ------------------------------------------------------------------------
 
-record XEnv {Δ : Cx} (D : IDesc) (I : RTy ε) (Θ : Ctx) (ρ : Ren Δ ⌊ Θ ⌋)
+record XEnv {Δ : Cx} (D : IDesc) (I : RTy ε) (Θ : Ctx) (ρ : Thin Δ ⌊ Θ ⌋)
             (x : Var ⌊ Θ ⌋) (Γ : Ctx) (τ : Sub Δ ⌊ Γ ⌋) : Set where
   constructor xenv
   field
     env  : Sub ⌊ Θ ⌋ ⌊ Γ ⌋
     env⊢ : Sub⊢ Θ Γ env
     envX : env x ≡ Xinst D I
-    envτ : (y : Var Δ) → env (ρ y) ≡ τ y
+    envτ : (y : Var Δ) → env (thinR ρ y) ≡ τ y
 open XEnv public
 
-module _ {Δ : Cx} {D : IDesc} {I : RTy ε} {Θ : Ctx} {ρ : Ren Δ ⌊ Θ ⌋}
+module _ {Δ : Cx} {D : IDesc} {I : RTy ε} {Θ : Ctx} {ρ : Thin Δ ⌊ Θ ⌋}
          {x : Var ⌊ Θ ⌋} {Γ : Ctx} {τ : Sub Δ ⌊ Γ ⌋} (e : XEnv D I Θ ρ x Γ τ) where
 
   -- a carried term, read through the telescope, is the X-free one.
-  xenv-tm : (t : RTm Δ) → subTm (env e) (renTm ρ t) ≡ subTm τ t
+  xenv-tm : (t : RTm Δ) → subTm (env e) (renTm (thinR ρ) t) ≡ subTm τ t
   xenv-tm t = trans (subTm-renTm t) (subTm-cong (envτ e) t)
 
   -- a recursive field's INDEX, moved from the telescope to `Γ`.
-  xenv-idx : (j : RTm Δ) → Θ ⊢ renTm ρ j ∷ εwkTy I → Γ ⊢ subTm τ j ∷ εwkTy I
+  xenv-idx : (j : RTm Δ) → Θ ⊢ renTm (thinR ρ) j ∷ εwkTy I → Γ ⊢ subTm τ j ∷ εwkTy I
   xenv-idx j dj = subst (λ z → Γ ⊢ z ∷ εwkTy I) (xenv-tm j)
                         (⊢-cast (εwk-sub (env e) I) (sub-lemma dj (env⊢ e)))
 
   -- a constant field's CODE, likewise.
-  xenv-code : (κ : RTm Δ) → Θ ⊢ renTm ρ κ ∷ U → Γ ⊢ subTm τ κ ∷ U
+  xenv-code : (κ : RTm Δ) → Θ ⊢ renTm (thinR ρ) κ ∷ U → Γ ⊢ subTm τ κ ∷ U
   xenv-code κ dk = subst (λ z → Γ ⊢ z ∷ U) (xenv-tm κ) (sub-lemma dk (env⊢ e))
 
   -- ★ the family at a recursive field, read through the environment, IS
   --   the fixed point there — one conversion, `Xconv`.
   xenv-fam : (j : RTm Δ) →
-             subTy (env e) (El (app (var x) (renTm ρ j))) ≅ᵀ IMu D I (subTm τ j)
+             subTy (env e) (El (app (var x) (renTm (thinR ρ) j))) ≅ᵀ IMu D I (subTm τ j)
   xenv-fam j =
-    subst (λ z → El (app z (subTm (env e) (renTm ρ j))) ≅ᵀ IMu D I (subTm τ j)) (sym (envX e))
+    subst (λ z → El (app z (subTm (env e) (renTm (thinR ρ) j))) ≅ᵀ IMu D I (subTm τ j)) (sym (envX e))
       (subst (λ z → El (app (Xinst D I) z) ≅ᵀ IMu D I (subTm τ j)) (sym (xenv-tm j))
              (Xconv D I (subTm τ j)))
 
   -- ★ EXTENSION BY A VALUE (`iext`) — how `iihTy`/`iihs` walk.
   xenv-ρ : (j : RTm Δ) {v : RTm ⌊ Γ ⌋} → Γ ⊢ v ∷ IMu D I (subTm τ j) →
-           XEnv D I (Θ ▹ El (app (var x) (renTm ρ j))) (extR ρ) (vs x) Γ (iext τ v)
+           XEnv D I (Θ ▹ El (app (var x) (renTm (thinR ρ) j))) (keep ρ) (vs x) Γ (iext τ v)
   xenv-ρ j {v} dv =
     xenv (iext (env e) v) (iext-Sub⊢ (env⊢ e) (⊢conv dv (csymᵀ (xenv-fam j))))
          (envX e) (λ { vz → refl ; (vs y) → envτ e y })
 
   xenv-κ : (κ : RTm Δ) {v : RTm ⌊ Γ ⌋} → Γ ⊢ v ∷ El (subTm τ κ) →
-           XEnv D I (Θ ▹ El (renTm ρ κ)) (extR ρ) (vs x) Γ (iext τ v)
+           XEnv D I (Θ ▹ El (renTm (thinR ρ) κ)) (keep ρ) (vs x) Γ (iext τ v)
   xenv-κ κ {v} dv =
     xenv (iext (env e) v)
          (iext-Sub⊢ (env⊢ e) (subst (λ z → Γ ⊢ v ∷ El z) (sym (xenv-tm κ)) dv))
@@ -1499,17 +1499,17 @@ module _ {Δ : Cx} {D : IDesc} {I : RTy ε} {Θ : Ctx} {ρ : Ren Δ ⌊ Θ ⌋}
 
   -- ★ EXTENSION UNDER A BINDER (`extS`) — how `ipayTy` walks.
   xenv-ρ↑ : (j : RTm Δ) →
-            XEnv D I (Θ ▹ El (app (var x) (renTm ρ j))) (extR ρ) (vs x)
+            XEnv D I (Θ ▹ El (app (var x) (renTm (thinR ρ) j))) (keep ρ) (vs x)
                  (Γ ▹ IMu D I (subTm τ j)) (extS τ)
   xenv-ρ↑ j =
     xenv (extS (env e)) (Sub⊢-ext-conv (env⊢ e) (xenv-fam j))
          (cong (renTm vs) (envX e)) (λ { vz → refl ; (vs y) → cong (renTm vs) (envτ e y) })
 
   xenv-κ↑ : (κ : RTm Δ) →
-            XEnv D I (Θ ▹ El (renTm ρ κ)) (extR ρ) (vs x) (Γ ▹ El (subTm τ κ)) (extS τ)
+            XEnv D I (Θ ▹ El (renTm (thinR ρ) κ)) (keep ρ) (vs x) (Γ ▹ El (subTm τ κ)) (extS τ)
   xenv-κ↑ κ =
     xenv (extS (env e))
-         (Sub⊢-ext-conv (env⊢ e) (subst (λ z → El (subTm (env e) (renTm ρ κ)) ≅ᵀ El z)
+         (Sub⊢-ext-conv (env⊢ e) (subst (λ z → El (subTm (env e) (renTm (thinR ρ) κ)) ≅ᵀ El z)
                                         (xenv-tm κ) crflᵀ))
          (cong (renTm vs) (envX e)) (λ { vz → refl ; (vs y) → cong (renTm vs) (envτ e y) })
 
@@ -1522,7 +1522,7 @@ xenv₀ {D = D} {I = I} {i = i} wD di =
 -- the IH TUPLE'S TYPE is well-formed.  Mirrors `ihTy-wf`; the `iρ` row's
 -- first component is the motive instantiated at the recursive field.
 iihTy-wf : {Γ Θ : Ctx} {Δ : Cx} (D : IDesc) (I : RTy ε) (M : RTy ((⌊ Γ ⌋ ∙) ∙))
-           {ρ : Ren Δ ⌊ Θ ⌋} {x : Var ⌊ Θ ⌋}
+           {ρ : Thin Δ ⌊ Θ ⌋} {x : Var ⌊ Θ ⌋}
            (τ : Sub Δ ⌊ Γ ⌋) (C : ICon Δ) (p : RTm ⌊ Γ ⌋) →
            IConWf I Θ ρ x C → XEnv D I Θ ρ x Γ τ →
            ((Γ ▹ εwkTy I) ▹ IMu D I (var vz)) ⊢ty M →

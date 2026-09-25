@@ -25,6 +25,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Knot.IPayTy where
+open import DirectedHoTT.Spec.Typing using ( IDescWf-cons )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; RTm; RTy; IDesc; app; pair; unit; _◂_; ielim; nzero; Nat )
@@ -61,11 +62,11 @@ ID49' = cICon-rho ◂ ID50'
 ispl49 : Split KnotD 49 ID49'
 ispl49 = splTake spl-nil (cdTake 49 KnotD)
 
-iwf50 : IDescWfFrom KnotD IPair ID50'
-iwf50 = idwfDrop (spl-step ispl49) KnotWf
+iwf50 : IDescWfFrom IPair ID50'
+iwf50 = idwfDrop (spl-step ispl49) (IDescWf-cons KnotWf)
 
-iwf51 : IDescWfFrom KnotD IPair ID51
-iwf51 = idwfDrop (spl-step (spl-step ispl49)) KnotWf
+iwf51 : IDescWfFrom IPair ID51
+iwf51 = idwfDrop (spl-step (spl-step ispl49)) (IDescWf-cons KnotWf)
 
 ipayTyTail : {Γ : Cx} → RTm Γ
 ipayTyTail = methsFrom (cdTake 2 ID51) ipayTyJunk unit
@@ -104,7 +105,7 @@ ipayTyMethsK = methsFrom (cdTake 49 KnotD) ipayTyJunk ipayTyMid49
 ⊢ipayTyMethsK : {Γ : Ctx} →
                 Γ ⊢ ipayTyMethsK ∷ imethsTy KnotD IPair ipayTyMotK KnotD
 ⊢ipayTyMethsK =
-  ⊢methsFrom KnotD IPair 0 (cdTake 49 KnotD) KnotWf KnotWf spl-nil
+  ⊢methsFrom KnotD IPair 0 (cdTake 49 KnotD) KnotWf (IDescWf-cons KnotWf) spl-nil
              ⊢IPair ⊢ipayTyMotK (λ {k} {C} wC _ _ → ⊢ipayTyJunk k C wC)
              ipayTyMid49 ⊢ipayTyMid49
 

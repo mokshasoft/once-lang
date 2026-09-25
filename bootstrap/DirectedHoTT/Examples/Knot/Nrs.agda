@@ -22,6 +22,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Knot.Nrs where
+open import DirectedHoTT.Spec.Typing using ( IDescWf-cons )
 open import DirectedHoTT.Lib.Lkp using ( ∋lkp; vsⁿ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
@@ -30,7 +31,7 @@ open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing
   using ( Ctx; ◇; _▹_; ⌊_⌋; _⊢_∷_; _⊢ty_; ⊢var; here; there
         ; ⊢snd; ⊢nsuc; ty-IMu; IConWf; imethTy; imethsTy; imethsTyFrom
-        ; ⊢unit; ⊢ielim; IDescWfFrom; ⊢lam; βsnd; ξ-nsuc; ξ-pairʳ )
+        ; ⊢unit; ⊢ielim; IDescWfFrom; ⊢lam; βsnd; ξ-nsuc; ξ-pairʳ ; Θ₀; ρ₀; x₀ )
 open import DirectedHoTT.Lib.IPay
   using ( ⊢methLam; ⊢methsFrom; ⊢methsCons; imethsTyFrom-wf; idwfDrop
         ; splTake; Split; spl-nil; spl-step )
@@ -81,7 +82,7 @@ nrsJunk : {Γ : Cx} → RTm Γ
 nrsJunk = lam (lam (lam Tm-nzeroK))
 
 ⊢nrsJunk : {Γ : Ctx} (k : ℕ) (C : ICon (ε ∙)) →
-           IConWf KnotD IPair (◇ ▹ εwkTy IPair) C →
+           IConWf IPair (Θ₀ IPair) ρ₀ x₀ C →
            Γ ⊢ nrsJunk ∷ imethTy KnotD IPair k C nrsMotK
 ⊢nrsJunk k C wC =
   ⊢methLam KnotD IPair k C KnotWf wC ⊢IPair ⊢nrsMotK
@@ -186,10 +187,10 @@ sp51 = splTake spl-nil (cdTake 51 KnotD)
            Γ ⊢ nrsTail ∷ imethsTyFrom KnotD IPair nrsMotK 51 D51
 ⊢nrsTail =
   ⊢methsCons KnotD IPair 51 {C = cVar-vz} _ KnotWf
-             (idwfDrop (spl-step sp51) KnotWf) (spl-step sp51)
+             (idwfDrop (spl-step sp51) (IDescWf-cons KnotWf)) (spl-step sp51)
              ⊢IPair ⊢nrsMotK ⊢nrsVz
     (⊢methsCons KnotD IPair 52 {C = cVar-vs} _ KnotWf
-                (idwfDrop (spl-step (spl-step sp51)) KnotWf)
+                (idwfDrop (spl-step (spl-step sp51)) (IDescWf-cons KnotWf))
                 (spl-step (spl-step sp51))
                 ⊢IPair ⊢nrsMotK ⊢nrsVs ⊢unit)
 
@@ -198,7 +199,7 @@ nrsMeths = methsFrom (cdTake 51 KnotD) nrsJunk nrsTail
 
 ⊢nrsMeths : {Γ : Ctx} → Γ ⊢ nrsMeths ∷ imethsTy KnotD IPair nrsMotK KnotD
 ⊢nrsMeths =
-  ⊢methsFrom KnotD IPair 0 (cdTake 51 KnotD) KnotWf KnotWf spl-nil
+  ⊢methsFrom KnotD IPair 0 (cdTake 51 KnotD) KnotWf (IDescWf-cons KnotWf) spl-nil
              ⊢IPair ⊢nrsMotK (λ {k} {C} wC _ _ → ⊢nrsJunk k C wC)
              nrsTail ⊢nrsTail
 

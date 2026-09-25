@@ -31,6 +31,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Knot.LookupD where
+open import DirectedHoTT.Spec.Typing using ( IDescWf-cons )
 open import DirectedHoTT.Lib.Lkp using ( ∋lkp; vsⁿ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
@@ -41,7 +42,7 @@ open import DirectedHoTT.Spec.Typing
   using ( Ctx; ◇; _▹_; ⌊_⌋; _⊢_∷_; _⊢ty_; ⊢var; here; there
         ; ⊢snd; ⊢lam; ty-Π; ty-Nat; ty-IMu; IConWf; imethTy
         ; ⊢natrec; ⊢app; ⊢fst; ξ-pairʳ; βsnd; ⊢unit
-        ; imethsTy; imethsTyFrom; IDescWfFrom; ⊢ielim; single; wk-single )
+        ; imethsTy; imethsTyFrom; IDescWfFrom; ⊢ielim; single; wk-single ; Θ₀; ρ₀; x₀ )
 open import DirectedHoTT.Lib.IPay
   using ( ⊢methLam; ⊢ihHere; ⊢ihSkipρ; ⊢methsFrom; ⊢methsCons
         ; idwfDrop; splTake; Split; spl-nil; spl-step )
@@ -85,7 +86,7 @@ lookupJunk : {Γ : Cx} → RTm Γ
 lookupJunk = lam (lam (lam (lam DCon-iK)))
 
 ⊢lookupJunk : {Γ : Ctx} (k : ℕ) (C : ICon (ε ∙)) →
-              IConWf KnotD IPair (◇ ▹ εwkTy IPair) C →
+              IConWf IPair (Θ₀ IPair) ρ₀ x₀ C →
               Γ ⊢ lookupJunk ∷ imethTy KnotD IPair k C lookupMotK
 ⊢lookupJunk k C wC =
   ⊢methLam KnotD IPair k C KnotWf wC ⊢IPair ⊢lookupMotK
@@ -229,8 +230,8 @@ D42' = cDesc-cons ◂ D43
 spl42 : Split KnotD 42 D42'
 spl42 = splTake spl-nil (cdTake 42 KnotD)
 
-wf43 : IDescWfFrom KnotD IPair D43
-wf43 = idwfDrop (spl-step spl42) KnotWf
+wf43 : IDescWfFrom IPair D43
+wf43 = idwfDrop (spl-step spl42) (IDescWf-cons KnotWf)
 
 -- ★ the last ten rows, all `dι`.
 lookupTail : {Γ : Cx} → RTm Γ
@@ -260,7 +261,7 @@ lookupMethsK = methsFrom (cdTake 42 KnotD) lookupJunk lookupMid
 ⊢lookupMethsK : {Γ : Ctx} →
                 Γ ⊢ lookupMethsK ∷ imethsTy KnotD IPair lookupMotK KnotD
 ⊢lookupMethsK =
-  ⊢methsFrom KnotD IPair 0 (cdTake 42 KnotD) KnotWf KnotWf spl-nil
+  ⊢methsFrom KnotD IPair 0 (cdTake 42 KnotD) KnotWf (IDescWf-cons KnotWf) spl-nil
              ⊢IPair ⊢lookupMotK (λ {k} {C} wC _ _ → ⊢lookupJunk k C wC)
              lookupMid ⊢lookupMid
 

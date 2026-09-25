@@ -44,7 +44,7 @@ open import DirectedHoTT.Spec.Typing
         ; ⊢snd; ⊢fst; ⊢lam; ⊢app; ⊢unit; ⊢nzero; ⊢nsuc
         ; ty-Π; ty-Nat; ty-IMu; IConWf; imethTy
         ; imethsTy; imethsTyFrom; IDescWfFrom; ⊢ielim
-        ; ξ-pairʳ; βsnd; done; step; single; wk-single; iinst )
+        ; ξ-pairʳ; βsnd; done; step; single; wk-single; iinst ; Θ₀; ρ₀; x₀ )
 open import DirectedHoTT.Metatheory.TySub using ( ⊢-cast )
 open import normalizer.Syntax.Types using ( cong; trans; sym )
 open import DirectedHoTT.Lib.IPay
@@ -98,7 +98,7 @@ ipayTyJunk : {Γ : Cx} → RTm Γ
 ipayTyJunk = lam (lam (lam (lam (lam (lam (lam Ty-UnitK))))))
 
 ⊢ipayTyJunk : {Γ : Ctx} (k : ℕ) (C : ICon (ε ∙)) →
-              IConWf KnotD IPair (◇ ▹ IPair) C →
+              IConWf IPair (Θ₀ IPair) ρ₀ x₀ C →
               Γ ⊢ ipayTyJunk ∷ imethTy KnotD IPair k C ipayTyMotK
 ⊢ipayTyJunk k C wC =
   ⊢methLam KnotD IPair k C KnotWf wC ⊢IPair ⊢ipayTyMotK

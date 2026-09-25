@@ -15,6 +15,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Knot.IihsMeths where
+open import DirectedHoTT.Spec.Typing using ( IDescWf-cons )
 
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
@@ -45,11 +46,11 @@ IHD49' = cICon-rho ◂ IHD50'
 ihspl49 : Split KnotD 49 IHD49'
 ihspl49 = splTake spl-nil (cdTake 49 KnotD)
 
-ihwf50 : IDescWfFrom KnotD IPair IHD50'
-ihwf50 = idwfDrop (spl-step ihspl49) KnotWf
+ihwf50 : IDescWfFrom IPair IHD50'
+ihwf50 = idwfDrop (spl-step ihspl49) (IDescWf-cons KnotWf)
 
-ihwf51 : IDescWfFrom KnotD IPair IHD51
-ihwf51 = idwfDrop (spl-step (spl-step ihspl49)) KnotWf
+ihwf51 : IDescWfFrom IPair IHD51
+ihwf51 = idwfDrop (spl-step (spl-step ihspl49)) (IDescWf-cons KnotWf)
 
 -- ★ THE TAIL — rows 51 and 52 (`cVar-vz`, `cVar-vs`), both junk.
 iihsTail : {Γ : Cx} → RTm Γ
@@ -89,6 +90,6 @@ iihsMethsK = methsFrom (cdTake 49 KnotD) iihsJunk iihsMid49
 ⊢iihsMethsK : {Γ : Ctx} →
               Γ ⊢ iihsMethsK ∷ imethsTy KnotD IPair iihsMotK KnotD
 ⊢iihsMethsK =
-  ⊢methsFrom KnotD IPair 0 (cdTake 49 KnotD) KnotWf KnotWf spl-nil
+  ⊢methsFrom KnotD IPair 0 (cdTake 49 KnotD) KnotWf (IDescWf-cons KnotWf) spl-nil
              ⊢IPair ⊢iihsMotK (λ {k} {C} wC _ _ → ⊢iihsJunk k C wC)
              iihsMid49 ⊢iihsMid49

@@ -20,7 +20,7 @@ module DirectedHoTT.Lib.IPay where
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; subst )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
-  using ( Cx; ε; _∙; Var; Ren; vz; vs; var; RTy; RTm; Unit; Σ'; El; IMu; Nat; Π
+  using ( Cx; ε; _∙; Var; Ren; Thin; keep; thinR; renTm; app; vz; vs; var; RTy; RTm; Unit; Σ'; El; IMu; Nat; Π
         ; renTy; extR; isingle; ipayTy-ren; ipayTy-cong
         ; ICon; IDesc; iι; iρ; iκ; ipayTy; Sub; extS; subTm; subTy
         ; εwkTy; εwk-sub; εwk-ren; _◂_; inil
@@ -36,13 +36,14 @@ open import DirectedHoTT.Spec.Typing
         ; ⊢fst; ⊢snd; iinst; Θ₀; ρ₀; x₀ )
 open import DirectedHoTT.Metatheory.TySub
   using ( Sub⊢; Sub⊢-ext; sub-lemma; sub-ty; ⊢-cast; ren-ty; ⊢wk; Ren⊢-ext
-        ; isingle-Sub⊢; iihTy-wf; XEnv; xenv₀; xenv-idx; xenv-code; xenv-ρ↑; xenv-κ↑ )
+        ; isingle-Sub⊢; iihTy-wf; XEnv; xenv₀; xenv-idx; xenv-code; xenv-ρ↑; xenv-κ↑
+        ; ipayTy-sub-single )
 open import DirectedHoTT.Lib.Wk using ( ren-subTy; Ren⊢-ins²; wk-singleTy )
 open import DirectedHoTT.Lib.IMeths using ( CDesc; cd-stop; cd-cons; cdRest; cdPos; methsFrom; methsAt )
 
 -- ★ A-MATH: the telescope is walked with an `XEnv` UNDER BINDERS
 --   (`xenv-ρ↑`/`xenv-κ↑`), because `ipayTy` extends with `extS`.
-ipayTy-wf : {Γ Θ : Ctx} {Δ : Cx} (D : IDesc) (I : RTy ε) {ρ : Ren Δ ⌊ Θ ⌋} {x : Var ⌊ Θ ⌋}
+ipayTy-wf : {Γ Θ : Ctx} {Δ : Cx} (D : IDesc) (I : RTy ε) {ρ : Thin Δ ⌊ Θ ⌋} {x : Var ⌊ Θ ⌋}
             (τ : Sub Δ ⌊ Γ ⌋) (C : ICon Δ) →
             IDescWf I D → IConWf I Θ ρ x C → XEnv D I Θ ρ x Γ τ →
             Γ ⊢ty ipayTy D I τ C
@@ -53,6 +54,51 @@ ipayTy-wf D I τ (iρ j C) wD (iwf-ρ .j dj wC) e =
 ipayTy-wf D I τ (iκ κ C) wD (iwf-κ .κ _ dcode wC) e =
   ty-Σ (ty-El (xenv-code e κ dcode))
        (ipayTy-wf D I (extS τ) C wD wC (xenv-κ↑ e κ))
+
+------------------------------------------------------------------------
+-- ★★ A PAYLOAD, ONE FIELD AT A TIME.
+--
+-- `⊢icon` wants its payload at `ipayTy D I (isingle i) C`, and that is a
+--   Σ-chain whose TAIL types are only statable with `ipayTy-wf`.  These
+--   two peel one field: the head at its own type, the rest at the
+--   environment EXTENDED BY THE HEAD (`iext`), which is where every later
+--   field's code computes without `renTm vs` towers — `iext σ v (vs x)`
+--   is `σ x` on the nose.  ⇒ a constructor's typing is a chain of these,
+--   with no substitution lemma at any field.
+------------------------------------------------------------------------
+
+-- the TAIL of a telescope's well-formedness — what the next field's
+-- `⊢payκ`/`⊢payρ` is handed.  ⚠ Projections, not `_`: a `where` binding
+-- left to a meta never solves (`unsolved-meta-means-missing-pin`).
+icwTailκ : {I : RTy ε} {Δ : Cx} {Θ : Ctx} {ρ : Thin Δ ⌊ Θ ⌋} {x : Var ⌊ Θ ⌋}
+           {κ : RTm Δ} {C : ICon (Δ ∙)} →
+           IConWf I Θ ρ x (iκ κ C) →
+           IConWf I (Θ ▹ El (renTm (thinR ρ) κ)) (keep ρ) (vs x) C
+icwTailκ (iwf-κ _ _ _ w) = w
+
+icwTailρ : {I : RTy ε} {Δ : Cx} {Θ : Ctx} {ρ : Thin Δ ⌊ Θ ⌋} {x : Var ⌊ Θ ⌋}
+           {j : RTm Δ} {C : ICon (Δ ∙)} →
+           IConWf I Θ ρ x (iρ j C) →
+           IConWf I (Θ ▹ El (app (var x) (renTm (thinR ρ) j))) (keep ρ) (vs x) C
+icwTailρ (iwf-ρ _ _ w) = w
+
+⊢payκ : {Γ Θ : Ctx} {Δ : Cx} (D : IDesc) (I : RTy ε) {ρ : Thin Δ ⌊ Θ ⌋} {x : Var ⌊ Θ ⌋}
+        (τ : Sub Δ ⌊ Γ ⌋) (κ : RTm Δ) (C : ICon (Δ ∙)) {a r : RTm ⌊ Γ ⌋} →
+        IDescWf I D → IConWf I Θ ρ x (iκ κ C) → XEnv D I Θ ρ x Γ τ →
+        Γ ⊢ a ∷ El (subTm τ κ) → Γ ⊢ r ∷ ipayTy D I (iext τ a) C →
+        Γ ⊢ pair a r ∷ ipayTy D I τ (iκ κ C)
+⊢payκ D I τ κ C {a = a} wD (iwf-κ .κ _ _ wC) e da dr =
+  ⊢pair (ipayTy-wf D I (extS τ) C wD wC (xenv-κ↑ e κ)) da
+        (⊢-cast (sym (ipayTy-sub-single D I τ a C)) dr)
+
+⊢payρ : {Γ Θ : Ctx} {Δ : Cx} (D : IDesc) (I : RTy ε) {ρ : Thin Δ ⌊ Θ ⌋} {x : Var ⌊ Θ ⌋}
+        (τ : Sub Δ ⌊ Γ ⌋) (j : RTm Δ) (C : ICon (Δ ∙)) {a r : RTm ⌊ Γ ⌋} →
+        IDescWf I D → IConWf I Θ ρ x (iρ j C) → XEnv D I Θ ρ x Γ τ →
+        Γ ⊢ a ∷ IMu D I (subTm τ j) → Γ ⊢ r ∷ ipayTy D I (iext τ a) C →
+        Γ ⊢ pair a r ∷ ipayTy D I τ (iρ j C)
+⊢payρ D I τ j C {a = a} wD (iwf-ρ .j _ wC) e da dr =
+  ⊢pair (ipayTy-wf D I (extS τ) C wD wC (xenv-ρ↑ e j)) da
+        (⊢-cast (sym (ipayTy-sub-single D I τ a C)) dr)
 
 ------------------------------------------------------------------------
 -- ★★★ …AND THE SAME FOR A METHOD, AND FOR A WHOLE METHOD TUPLE.

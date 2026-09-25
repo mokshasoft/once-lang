@@ -60,7 +60,7 @@ open import DirectedHoTT.Spec.Typing
         ; IConWf; iwf-ι; iwf-ρ; iwf-κ
         ; ICodeWf; icw-clo; icw-ford; icw-imu
         ; IDescWf; idwf-nil; idwf-cons
-        ; _≅ᵀ_; csymᵀ; credᵀ; El-⌜Id⌝; El-⌜IMu⌝ )
+        ; _≅ᵀ_; csymᵀ; credᵀ; El-⌜Id⌝; El-⌜IMu⌝ ; Θ₀; ρ₀; x₀; _,,_ )
 open import DirectedHoTT.Metatheory.TySub using ( ⊢-cast; ⊢wk )
 open import DirectedHoTT.Examples.Knot.Sorts
   using ( IPair; sTy; ⊢sTy; toI; fromI; ⊢ixP; num; ⊢num )
@@ -111,14 +111,14 @@ CtxK d = IMu CtxD INat d
 --    `cCtx-extWf` and it is the whole point of the file.
 ------------------------------------------------------------------------
 
-cCtx-empWf : IConWf CtxD INat (◇ ▹ INat) cCtx-emp
+cCtx-empWf : IConWf INat (Θ₀ INat) ρ₀ x₀ cCtx-emp
 cCtx-empWf =
   iwf-κ (⌜Id⌝ ⌜Nat⌝ (var vz) nzero)
         (icw-ford ⌜Nat⌝ (var vz) nzero)
         (⊢⌜Id⌝ ⊢⌜Nat⌝ (⊢var here) (toI ⊢nzero))
         iwf-ι
 
-cCtx-extWf : IConWf CtxD INat (◇ ▹ INat) cCtx-ext
+cCtx-extWf : IConWf INat (Θ₀ INat) ρ₀ x₀ cCtx-ext
 cCtx-extWf =
   iwf-κ ⌜Nat⌝ (icw-clo ⌜Nat⌝ ⊢⌜Nat⌝) ⊢⌜Nat⌝
    (iwf-ρ (var vz) (⊢var here)
@@ -135,7 +135,7 @@ cCtx-extWf =
             iwf-ι)))
 
 CtxWf : IDescWf INat CtxD
-CtxWf = idwf-cons cCtx-empWf (idwf-cons cCtx-extWf idwf-nil)
+CtxWf = ty-El ⊢⌜Nat⌝ ,, idwf-cons cCtx-empWf (idwf-cons cCtx-extWf idwf-nil)
 
 ------------------------------------------------------------------------
 -- 3. THE TWO CONVERSIONS.  ⚠ NOTE WHAT IS ABSENT: there is no `fordFst`

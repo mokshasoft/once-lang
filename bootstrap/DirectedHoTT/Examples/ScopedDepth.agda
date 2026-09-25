@@ -15,6 +15,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.ScopedDepth where
+open import DirectedHoTT.Spec.Typing using ( IDescWf-cons )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; RTy; RTm; Nat; El; ⌜Nat⌝; ielim )
@@ -29,7 +30,7 @@ dpMethsTm : {Γ : Cx} → RTm Γ
 dpMethsTm = dpMeths TmD
 
 ⊢dpMethsTm : {Γ : Ctx} → Γ ⊢ dpMethsTm ∷ imethsTy TmD INat Nat TmD
-⊢dpMethsTm = ⊢dpMeths TmD INat zero TmD TmWf TmWf spl-nil (ty-El ⊢⌜Nat⌝)
+⊢dpMethsTm = ⊢dpMeths TmD INat zero TmD TmWf (IDescWf-cons TmWf) spl-nil (ty-El ⊢⌜Nat⌝)
 
 -- ★ `depth : Tm n → Nat`, at the object level.
 dpTm : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ

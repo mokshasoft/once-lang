@@ -23,6 +23,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Knot.Occ where
+open import DirectedHoTT.Spec.Typing using ( IDescWf-cons )
 open import DirectedHoTT.Lib.Lkp using ( ∋lkp; vsⁿ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
@@ -31,7 +32,7 @@ open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing
   using ( Ctx; ◇; _▹_; ⌊_⌋; _⊢_∷_; ⊢var; here; there; ⊢fst; ⊢lam; ⊢app
         ; ⊢unit; ⊢ielim; ty-Nat; imethTy; imethsTy; imethsTyFrom
-        ; IConWf; IDescWfFrom; ⊢snd )
+        ; IConWf; IDescWfFrom; ⊢snd ; Θ₀; ρ₀; x₀ )
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; subst )
 open import DirectedHoTT.Lib.IPay
   using ( ⊢methLam; ⊢methsAt; ⊢methsCons; Split; spl-nil; spl-step
@@ -89,10 +90,10 @@ occTail = pair occVz (pair (occMethod cVar-vs) unit)
            Γ ⊢ occTail ∷ imethsTyFrom KnotD IPair OccTy 51 OD51
 ⊢occTail =
   ⊢methsCons KnotD IPair 51 {C = cVar-vz} _ KnotWf
-             (idwfDrop (spl-step ospl51) KnotWf) (spl-step ospl51)
+             (idwfDrop (spl-step ospl51) (IDescWf-cons KnotWf)) (spl-step ospl51)
              ⊢IPair ty-OccTy ⊢occVz
     (⊢methsCons KnotD IPair 52 {C = cVar-vs} _ KnotWf
-                (idwfDrop (spl-step (spl-step ospl51)) KnotWf)
+                (idwfDrop (spl-step (spl-step ospl51)) (IDescWf-cons KnotWf))
                 (spl-step (spl-step ospl51))
                 ⊢IPair ty-OccTy
                 (⊢occMethod KnotD IPair 52 cVar-vs KnotWf cVar-vsWf ⊢IPair)
@@ -103,7 +104,7 @@ occMethsK = methsAt (cdTake 51 KnotD) occAt 0 occTail
 
 ⊢occMethsK : {Γ : Ctx} → Γ ⊢ occMethsK ∷ imethsTy KnotD IPair OccTy KnotD
 ⊢occMethsK =
-  ⊢methsAt KnotD IPair 0 (cdTake 51 KnotD) KnotWf KnotWf spl-nil
+  ⊢methsAt KnotD IPair 0 (cdTake 51 KnotD) KnotWf (IDescWf-cons KnotWf) spl-nil
            ⊢IPair ty-OccTy
            -- ⚠ THE PER-ROW DERIVATION MOVES ALONG `look`.  `methsAt`
            --   addresses a row by its INDEX, so the term is
@@ -114,7 +115,7 @@ occMethsK = methsAt (cdTake 51 KnotD) occAt 0 occTail
               subst (λ z → _ ⊢ occAt k ∷ imethTy KnotD IPair k z OccTy)
                     look
                     (⊢occMethod KnotD IPair k (ilookupD KnotD k) KnotWf
-                       (subst (IConWf KnotD IPair (◇ ▹ εwkTy IPair))
+                       (subst (IConWf IPair (Θ₀ IPair) ρ₀ x₀)
                               (sym look) wC)
                        ⊢IPair))
            occTail ⊢occTail

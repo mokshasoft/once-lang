@@ -6,12 +6,13 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Knot.IhsMeths where
+open import DirectedHoTT.Spec.Typing using ( IDescWf-cons )
 open import DirectedHoTT.Lib.Lkp using ( ∋lkp; vsⁿ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; _∙; RTm; RTy; var; vz; vs; pair; snd; Π; Nat; εwkTy; IMu )
 open import DirectedHoTT.Spec.Typing
   using ( Ctx; ◇; _▹_; ⌊_⌋; _⊢ty_; _⊢_∷_; ⊢var; here; there; ⊢snd; ty-Π; ty-IMu
-        ; ⊢lam; imethTy; ty-Nat )
+        ; ⊢lam; imethTy; ty-Nat ; Θ₀; ρ₀; x₀ )
 open import DirectedHoTT.Spec.Syntax using ( lam )
 open import DirectedHoTT.Lib.IPay using ( ⊢methLam )
 open import DirectedHoTT.Examples.Knot.Desc using ( cDCon-i; cDCon-rho; cDCon-kap )
@@ -54,7 +55,7 @@ ihsJunk : {Γ : Cx} → RTm Γ
 ihsJunk = lam (lam (lam (lam (lam (lam (lam Tm-unitK))))))
 
 ⊢ihsJunk : {Γ : Ctx} (k : ℕ) (C : ICon (ε ∙)) →
-           IConWf KnotD IPair (◇ ▹ εwkTy IPair) C →
+           IConWf IPair (Θ₀ IPair) ρ₀ x₀ C →
            Γ ⊢ ihsJunk ∷ imethTy KnotD IPair k C ihsMotK
 ⊢ihsJunk k C wC =
   ⊢methLam KnotD IPair k C KnotWf wC ⊢IPair ⊢ihsMotK
@@ -80,11 +81,11 @@ HD44' = cDCon-rho ◂ HD45'
 hspl44 : Split KnotD 44 HD44'
 hspl44 = splTake spl-nil (cdTake 44 KnotD)
 
-hwf45 : IDescWfFrom KnotD IPair HD45'
-hwf45 = idwfDrop (spl-step hspl44) KnotWf
+hwf45 : IDescWfFrom IPair HD45'
+hwf45 = idwfDrop (spl-step hspl44) (IDescWf-cons KnotWf)
 
-hwf46 : IDescWfFrom KnotD IPair HD46
-hwf46 = idwfDrop (spl-step (spl-step hspl44)) KnotWf
+hwf46 : IDescWfFrom IPair HD46
+hwf46 = idwfDrop (spl-step (spl-step hspl44)) (IDescWf-cons KnotWf)
 
 ihsTail : {Γ : Cx} → RTm Γ
 ihsTail = methsFrom (cdTake 7 HD46) ihsJunk unit
@@ -123,7 +124,7 @@ ihsMethsK = methsFrom (cdTake 44 KnotD) ihsJunk ihsMid44
 ⊢ihsMethsK : {Γ : Ctx} →
              Γ ⊢ ihsMethsK ∷ imethsTy KnotD IPair ihsMotK KnotD
 ⊢ihsMethsK =
-  ⊢methsFrom KnotD IPair 0 (cdTake 44 KnotD) KnotWf KnotWf spl-nil
+  ⊢methsFrom KnotD IPair 0 (cdTake 44 KnotD) KnotWf (IDescWf-cons KnotWf) spl-nil
              ⊢IPair ⊢ihsMotK (λ {k} {C} wC _ _ → ⊢ihsJunk k C wC)
              ihsMid44 ⊢ihsMid44
 

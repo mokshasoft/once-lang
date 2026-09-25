@@ -12,6 +12,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Knot.IhITy where
+open import DirectedHoTT.Spec.Typing using ( IDescWf-cons )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; RTm; IDesc; app; pair; unit; _◂_; ielim; nsuc; Nat )
@@ -44,11 +45,11 @@ HID49' = cICon-rho ◂ HID50'
 hispl49 : Split KnotD 49 HID49'
 hispl49 = splTake spl-nil (cdTake 49 KnotD)
 
-hiwf50 : IDescWfFrom KnotD IPair HID50'
-hiwf50 = idwfDrop (spl-step hispl49) KnotWf
+hiwf50 : IDescWfFrom IPair HID50'
+hiwf50 = idwfDrop (spl-step hispl49) (IDescWf-cons KnotWf)
 
-hiwf51 : IDescWfFrom KnotD IPair HID51
-hiwf51 = idwfDrop (spl-step (spl-step hispl49)) KnotWf
+hiwf51 : IDescWfFrom IPair HID51
+hiwf51 = idwfDrop (spl-step (spl-step hispl49)) (IDescWf-cons KnotWf)
 
 iihTyTail : {Γ : Cx} → RTm Γ
 iihTyTail = methsFrom (cdTake 2 HID51) iihTyJunk unit
@@ -87,7 +88,7 @@ iihTyMethsK = methsFrom (cdTake 49 KnotD) iihTyJunk iihTyMid49
 ⊢iihTyMethsK : {Γ : Ctx} →
                Γ ⊢ iihTyMethsK ∷ imethsTy KnotD IPair iihTyMotK KnotD
 ⊢iihTyMethsK =
-  ⊢methsFrom KnotD IPair 0 (cdTake 49 KnotD) KnotWf KnotWf spl-nil
+  ⊢methsFrom KnotD IPair 0 (cdTake 49 KnotD) KnotWf (IDescWf-cons KnotWf) spl-nil
              ⊢IPair ⊢iihTyMotK (λ {k} {C} wC _ _ → ⊢iihTyJunk k C wC)
              iihTyMid49 ⊢iihTyMid49
 

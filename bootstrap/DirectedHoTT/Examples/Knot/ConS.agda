@@ -27,6 +27,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Knot.ConS where
+open import DirectedHoTT.Spec.Typing using ( IDescWf-cons )
 open import DirectedHoTT.Lib.Lkp using ( ∋lkp; vsⁿ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
@@ -35,7 +36,7 @@ open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing
   using ( Ctx; ◇; _▹_; ⌊_⌋; _⊢_∷_; _⊢ty_; ⊢var; here; there
         ; ⊢snd; ⊢nsuc; ty-IMu; IConWf; imethTy; imethsTy; imethsTyFrom
-        ; ⊢unit; ⊢ielim; IDescWfFrom; ⊢lam; βsnd; ξ-nsuc; ξ-pairʳ )
+        ; ⊢unit; ⊢ielim; IDescWfFrom; ⊢lam; βsnd; ξ-nsuc; ξ-pairʳ ; Θ₀; ρ₀; x₀ )
 open import DirectedHoTT.Lib.IPay
   using ( ⊢methLam; ⊢methsFrom; ⊢methsCons; imethsTyFrom-wf; idwfDrop
         ; splTake; Split; spl-nil; spl-step )
@@ -93,7 +94,7 @@ conSJunk : {Γ : Cx} → RTm Γ
 conSJunk = lam (lam (lam (lam Tm-nzeroK)))
 
 ⊢conSJunk : {Γ : Ctx} (k : ℕ) (C : ICon (ε ∙)) →
-            IConWf KnotD IPair (◇ ▹ εwkTy IPair) C →
+            IConWf IPair (Θ₀ IPair) ρ₀ x₀ C →
             Γ ⊢ conSJunk ∷ imethTy KnotD IPair k C conSMotK
 ⊢conSJunk k C wC =
   ⊢methLam KnotD IPair k C KnotWf wC ⊢IPair ⊢conSMotK
@@ -175,10 +176,10 @@ csp51 = splTake spl-nil (cdTake 51 KnotD)
             Γ ⊢ conSTail ∷ imethsTyFrom KnotD IPair conSMotK 51 CD51
 ⊢conSTail =
   ⊢methsCons KnotD IPair 51 {C = cVar-vz} _ KnotWf
-             (idwfDrop (spl-step csp51) KnotWf) (spl-step csp51)
+             (idwfDrop (spl-step csp51) (IDescWf-cons KnotWf)) (spl-step csp51)
              ⊢IPair ⊢conSMotK ⊢conSVz
     (⊢methsCons KnotD IPair 52 {C = cVar-vs} _ KnotWf
-                (idwfDrop (spl-step (spl-step csp51)) KnotWf)
+                (idwfDrop (spl-step (spl-step csp51)) (IDescWf-cons KnotWf))
                 (spl-step (spl-step csp51))
                 ⊢IPair ⊢conSMotK ⊢conSVs ⊢unit)
 
@@ -187,7 +188,7 @@ conSMeths = methsFrom (cdTake 51 KnotD) conSJunk conSTail
 
 ⊢conSMeths : {Γ : Ctx} → Γ ⊢ conSMeths ∷ imethsTy KnotD IPair conSMotK KnotD
 ⊢conSMeths =
-  ⊢methsFrom KnotD IPair 0 (cdTake 51 KnotD) KnotWf KnotWf spl-nil
+  ⊢methsFrom KnotD IPair 0 (cdTake 51 KnotD) KnotWf (IDescWf-cons KnotWf) spl-nil
              ⊢IPair ⊢conSMotK (λ {k} {C} wC _ _ → ⊢conSJunk k C wC)
              conSTail ⊢conSTail
 

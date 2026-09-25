@@ -35,6 +35,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Knot.IConS where
+open import DirectedHoTT.Spec.Typing using ( IDescWf-cons )
 open import DirectedHoTT.Lib.Lkp using ( ∋lkp; vsⁿ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
@@ -119,10 +120,10 @@ iconSTail = pair iconSVz (pair conSVs unit)
              Γ ⊢ iconSTail ∷ imethsTyFrom KnotD IPair conSMotK 51 ID51
 ⊢iconSTail =
   ⊢methsCons KnotD IPair 51 {C = cVar-vz} _ KnotWf
-             (idwfDrop (spl-step isp51) KnotWf) (spl-step isp51)
+             (idwfDrop (spl-step isp51) (IDescWf-cons KnotWf)) (spl-step isp51)
              ⊢IPair ⊢conSMotK ⊢iconSVz
     (⊢methsCons KnotD IPair 52 {C = cVar-vs} _ KnotWf
-                (idwfDrop (spl-step (spl-step isp51)) KnotWf)
+                (idwfDrop (spl-step (spl-step isp51)) (IDescWf-cons KnotWf))
                 (spl-step (spl-step isp51))
                 ⊢IPair ⊢conSMotK ⊢conSVs ⊢unit)
 
@@ -131,7 +132,7 @@ iconSMeths = methsFrom (cdTake 51 KnotD) conSJunk iconSTail
 
 ⊢iconSMeths : {Γ : Ctx} → Γ ⊢ iconSMeths ∷ imethsTy KnotD IPair conSMotK KnotD
 ⊢iconSMeths =
-  ⊢methsFrom KnotD IPair 0 (cdTake 51 KnotD) KnotWf KnotWf spl-nil
+  ⊢methsFrom KnotD IPair 0 (cdTake 51 KnotD) KnotWf (IDescWf-cons KnotWf) spl-nil
              ⊢IPair ⊢conSMotK (λ {k} {C} wC _ _ → ⊢conSJunk k C wC)
              iconSTail ⊢iconSTail
 

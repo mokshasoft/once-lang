@@ -27,13 +27,13 @@ open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; vz; vs; var; RTy; RTm; Nat; Σ'; El; U; IMu; pair
         ; fst; snd; nsuc; nzero; unit; ⌜Nat⌝; ⌜Id⌝; ⌜IMu⌝; jsub; icon; idrefl
         ; ICon; IDesc; iι; iρ; iκ; inil; _◂_; _∈ID_; hereID
-        ; isingle; iext; extS; subTm; εwkTy )
+        ; isingle; iext; extS; subTm; εwkTy; app; renTm; thinR; keep )
 open import DirectedHoTT.Spec.Typing
   using ( Ctx; ◇; _▹_; ⌊_⌋; _⊢_∷_; _⊢ty_; ⊢var; here; there
         ; ⊢conv; ⊢fst; ⊢snd; ⊢nsuc; ⊢pair; ⊢unit; ⊢icon; ⊢⌜Nat⌝; ⊢⌜Id⌝; ⊢⌜IMu⌝; ⊢jsub
         ; ty-Nat; ty-Unit; ty-Σ; ty-IMu; ⊢nzero
         ; IConWf; iwf-ι; iwf-ρ; iwf-κ; ICodeWf; icw-clo; icw-ford; icw-imu
-        ; IDescWf; idwf-nil; idwf-cons
+        ; IDescWf; idwf-nil; idwf-cons; _,,_; Θ₀; ρ₀; x₀
         ; _≅ᵀ_; csymᵀ; credᵀ; El-⌜IMu⌝; ξ-IMu; ξ-El
         ; _⟶_; _⟶*_; done; step; βfst; βsnd; ξ-fst; ξ-snd
         ; ξ-pairˡ; ξ-pairʳ; ξ-nsuc
@@ -44,9 +44,8 @@ open import DirectedHoTT.Examples.Knot.Desc using ( KnotD; K )
 open import DirectedHoTT.Examples.Knot.Wf using ( KnotWf )
 open import DirectedHoTT.Lib.ArithComm using ( IdN; symN; ⊢symN; elIdN )
 open import DirectedHoTT.Metatheory.TySub
-  using ( ⊢wk; ⊢-cast; Sub⊢; Sub⊢-ext; isingle-Sub⊢; iext-Sub⊢ )
-open import DirectedHoTT.Lib.IPay using ( ipayTy-wf )
-open import DirectedHoTT.Lib.IWk using ( payStep )
+  using ( ⊢wk; ⊢-cast; xenv₀; xenv-κ )
+open import DirectedHoTT.Lib.IPay using ( ⊢payκ )
 open import DirectedHoTT.Examples.WkFin using ( transport-fires )
 open import DirectedHoTT.Examples.Knot.CtxD
   using ( CtxD; CtxK; CtxWf; INat; Ctx-extK; ⊢Ctx-extKv
@@ -224,16 +223,26 @@ C₁ = iκ κ₁ C₂
 lkHere : ICon (ε ∙)
 lkHere = iκ κ₀ C₁
 
+-- ★ A-MATH: the TELESCOPE `here` is typed in — the abstract family, the
+--   index, then each code read through the thinning that skips the family.
+TΘ0 TΘ1 TΘ2 TΘ3 TΘ4 TΘ5 TΘ6 : Ctx
+TΘ0 = Θ₀ ILk
+TΘ1 = TΘ0 ▹ El (renTm (thinR (ρ₀)) κ₀)
+TΘ2 = TΘ1 ▹ El (renTm (thinR (keep ρ₀)) κ₁)
+TΘ3 = TΘ2 ▹ El (renTm (thinR (keep (keep ρ₀))) κ₂)
+TΘ4 = TΘ3 ▹ El (renTm (thinR (keep (keep (keep ρ₀)))) κ₃)
+TΘ5 = TΘ4 ▹ El (renTm (thinR (keep (keep (keep (keep ρ₀))))) κ₄)
+TΘ6 = TΘ5 ▹ El (renTm (thinR (keep (keep (keep (keep (keep ρ₀)))))) κ₅)
+
 ------------------------------------------------------------------------
 -- 3. ★ ONE WELL-FORMEDNESS LEMMA PER FIELD, innermost first.
 --
--- `D` is a PARAMETER: `IConWf` uses it only at `iwf-ρ`, and `here` has no
--- recursive field, so none of these needs redoing when `there` joins the
--- description.
+-- ★ A-MATH: `IConWf` names no description at all, so neither `here` nor
+--   `there` needs one — each lemma is proved once, at its telescope.
 ------------------------------------------------------------------------
 
-W₆ : (D : IDesc) → IConWf D ILk Θ6 C₆
-W₆ D =
+W₆ : IConWf ILk TΘ6 (keep (keep (keep (keep (keep (keep ρ₀)))))) (vs (vs (vs (vs (vs (vs x₀)))))) C₆
+W₆ =
   iwf-κ κ₆ (icw-ford _ _ _)
     (⊢⌜Id⌝ (⊢⌜IMu⌝ KnotWf
               (⊢ixP ⊢sTy (⊢fst (⊢var (∋lkp _ (vsⁿ 6 vz))))))
@@ -249,8 +258,8 @@ W₆ D =
                                 (fromMu (⊢var (∋lkp _ (vsⁿ 3 vz))))))))
     iwf-ι
 
-W₅ : (D : IDesc) → IConWf D ILk Θ5 C₅
-W₅ D =
+W₅ : IConWf ILk TΘ5 (keep (keep (keep (keep (keep ρ₀))))) (vs (vs (vs (vs (vs x₀))))) C₅
+W₅ =
   iwf-κ κ₅ (icw-ford _ _ _)
     (⊢⌜Id⌝ (⊢⌜IMu⌝ KnotWf
               (⊢ixP ⊢sVar (⊢fst (⊢var (∋lkp _ (vsⁿ 5 vz))))))
@@ -264,10 +273,10 @@ W₅ D =
                          (fordAs (⊢var (there here))))
                   (toMu (⊢Var-vzKv
                            (fromI (⊢var (∋lkp _ (vsⁿ 4 vz))))))))
-    (W₆ D)
+    W₆
 
-W₄ : (D : IDesc) → IConWf D ILk Θ4 C₄
-W₄ D =
+W₄ : IConWf ILk TΘ4 (keep (keep (keep (keep ρ₀)))) (vs (vs (vs (vs x₀)))) C₄
+W₄ =
   iwf-κ κ₄ (icw-ford _ _ _)
     (⊢⌜Id⌝ (⊢⌜IMu⌝ CtxWf
               (toI (⊢fst (⊢var (∋lkp _ (vsⁿ 4 vz))))))
@@ -282,29 +291,29 @@ W₄ D =
                            (fromI (⊢var (∋lkp _ (vsⁿ 3 vz))))
                            (fromMu (⊢var (∋lkp _ (vsⁿ 2 vz))))
                            (fromMu (⊢var (there here)))))))
-    (W₅ D)
+    W₅
 
-W₃ : (D : IDesc) → IConWf D ILk Θ3 C₃
-W₃ D =
+W₃ : IConWf ILk TΘ3 (keep (keep (keep ρ₀))) (vs (vs (vs x₀))) C₃
+W₃ =
   iwf-κ κ₃ (icw-ford _ _ _)
     (⊢⌜Id⌝ ⊢⌜Nat⌝
       (toI (⊢fst (⊢var (∋lkp _ (vsⁿ 3 vz)))))
       (toI (⊢nsuc (fromI (⊢var (∋lkp _ (vsⁿ 2 vz)))))))
-    (W₄ D)
+    W₄
 
-W₂ : (D : IDesc) → IConWf D ILk Θ2 C₂
-W₂ D =
+W₂ : IConWf ILk TΘ2 (keep (keep ρ₀)) (vs (vs x₀)) C₂
+W₂ =
   iwf-κ κ₂ (icw-imu (pair sTy (var (vs vz))) KnotWf)
     (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTy (fromI (⊢var (there here)))))
-    (W₃ D)
+    W₃
 
-W₁ : (D : IDesc) → IConWf D ILk Θ1 C₁
-W₁ D =
-  iwf-κ κ₁ (icw-imu (var vz) CtxWf) (⊢⌜IMu⌝ CtxWf (⊢var here)) (W₂ D)
+W₁ : IConWf ILk TΘ1 (keep ρ₀) (vs x₀) C₁
+W₁ =
+  iwf-κ κ₁ (icw-imu (var vz) CtxWf) (⊢⌜IMu⌝ CtxWf (⊢var here)) W₂
 
 -- ★★★ `here` IS WELL FORMED.
-lkHereWf : (D : IDesc) → IConWf D ILk Θ0 lkHere
-lkHereWf D = iwf-κ κ₀ (icw-clo ⌜Nat⌝ ⊢⌜Nat⌝) ⊢⌜Nat⌝ (W₁ D)
+lkHereWf : IConWf ILk (Θ₀ ILk) ρ₀ x₀ lkHere
+lkHereWf = iwf-κ κ₀ (icw-clo ⌜Nat⌝ ⊢⌜Nat⌝) ⊢⌜Nat⌝ W₁
 
 ------------------------------------------------------------------------
 -- 4. `there` — the same shape plus ONE RECURSIVE FIELD.
@@ -420,18 +429,25 @@ Lk i = IMu LkD ILk i
 ------------------------------------------------------------------------
 -- 5. `there`'s WELL-FORMEDNESS, one lemma per field.
 --
--- ⚠ THE TELESCOPES ARE `Ctx` AGAIN HERE, because `LkD` now exists — and
---   Ξ6 is where the recursive premise enters, extending by
---   `IMu LkD ILk ρ₅` rather than by an `El`.
+-- ★ A-MATH: the telescope `TΞ` is the family, the index, and each code
+--   read through the family-skipping thinning; the recursive premise
+--   enters as the FAMILY at its index, `El (app (var x) …)` — so it no
+--   longer mentions `LkD`, and could be stated before it.
 ------------------------------------------------------------------------
 
-Ξ6 Ξ7 Ξ8 Ξ9 : Ctx
-Ξ6 = Ξ5 ▹ IMu LkD ILk ρ₅
-Ξ7 = Ξ6 ▹ El λ₆
-Ξ8 = Ξ7 ▹ El λ₇
-Ξ9 = Ξ8 ▹ El λ₈
+TΞ0 TΞ1 TΞ2 TΞ3 TΞ4 TΞ5 TΞ6 TΞ7 TΞ8 TΞ9 : Ctx
+TΞ0 = Θ₀ ILk
+TΞ1 = TΞ0 ▹ El (renTm (thinR (ρ₀)) λ₀)
+TΞ2 = TΞ1 ▹ El (renTm (thinR (keep ρ₀)) λ₁)
+TΞ3 = TΞ2 ▹ El (renTm (thinR (keep (keep ρ₀))) λ₂)
+TΞ4 = TΞ3 ▹ El (renTm (thinR (keep (keep (keep ρ₀)))) λ₃)
+TΞ5 = TΞ4 ▹ El (renTm (thinR (keep (keep (keep (keep ρ₀))))) λ₄)
+TΞ6 = TΞ5 ▹ El (app (var (vs (vs (vs (vs (vs x₀)))))) (renTm (thinR (keep (keep (keep (keep (keep ρ₀)))))) ρ₅))
+TΞ7 = TΞ6 ▹ El (renTm (thinR (keep (keep (keep (keep (keep (keep ρ₀))))))) λ₆)
+TΞ8 = TΞ7 ▹ El (renTm (thinR (keep (keep (keep (keep (keep (keep (keep ρ₀)))))))) λ₇)
+TΞ9 = TΞ8 ▹ El (renTm (thinR (keep (keep (keep (keep (keep (keep (keep (keep ρ₀))))))))) λ₈)
 
-V₉ : IConWf LkD ILk Ξ9 (iκ λ₉ iι)
+V₉ : IConWf ILk TΞ9 (keep (keep (keep (keep (keep (keep (keep (keep (keep ρ₀))))))))) (vs (vs (vs (vs (vs (vs (vs (vs (vs x₀))))))))) (iκ λ₉ iι)
 V₉ =
   iwf-κ λ₉ (icw-ford _ _ _)
     (⊢⌜Id⌝ (⊢⌜IMu⌝ KnotWf
@@ -448,7 +464,7 @@ V₉ =
                                 (fromMu (⊢var (∋lkp _ (vsⁿ 5 vz))))))))
     iwf-ι
 
-V₈ : IConWf LkD ILk Ξ8 (iκ λ₈ (iκ λ₉ iι))
+V₈ : IConWf ILk TΞ8 (keep (keep (keep (keep (keep (keep (keep (keep ρ₀)))))))) (vs (vs (vs (vs (vs (vs (vs (vs x₀)))))))) (iκ λ₈ (iκ λ₉ iι))
 V₈ =
   iwf-κ λ₈ (icw-ford _ _ _)
     (⊢⌜Id⌝ (⊢⌜IMu⌝ KnotWf
@@ -466,7 +482,7 @@ V₈ =
                            (fromMu (⊢var (∋lkp _ (vsⁿ 5 vz))))))))
     V₉
 
-V₇ : IConWf LkD ILk Ξ7 (iκ λ₇ (iκ λ₈ (iκ λ₉ iι)))
+V₇ : IConWf ILk TΞ7 (keep (keep (keep (keep (keep (keep (keep ρ₀))))))) (vs (vs (vs (vs (vs (vs (vs x₀))))))) (iκ λ₇ (iκ λ₈ (iκ λ₉ iι)))
 V₇ =
   iwf-κ λ₇ (icw-ford _ _ _)
     (⊢⌜Id⌝ (⊢⌜IMu⌝ CtxWf
@@ -484,7 +500,7 @@ V₇ =
                            (fromMu (⊢var (∋lkp _ (vsⁿ 2 vz))))))))
     V₈
 
-V₆ : IConWf LkD ILk Ξ6 (iκ λ₆ (iκ λ₇ (iκ λ₈ (iκ λ₉ iι))))
+V₆ : IConWf ILk TΞ6 (keep (keep (keep (keep (keep (keep ρ₀)))))) (vs (vs (vs (vs (vs (vs x₀)))))) (iκ λ₆ (iκ λ₇ (iκ λ₈ (iκ λ₉ iι))))
 V₆ =
   iwf-κ λ₆ (icw-ford _ _ _)
     (⊢⌜Id⌝ ⊢⌜Nat⌝
@@ -497,7 +513,7 @@ V₆ =
 --   the telescope §1 built, now carrying actual field values.
 --
 -- ⚠ `⊢pair`'s FIRST argument is the ⊢ty of the TAIL, not of the head.
-V₅ : IConWf LkD ILk Ξ5 (iρ ρ₅ (iκ λ₆ (iκ λ₇ (iκ λ₈ (iκ λ₉ iι)))))
+V₅ : IConWf ILk TΞ5 (keep (keep (keep (keep (keep ρ₀))))) (vs (vs (vs (vs (vs x₀))))) (iρ ρ₅ (iκ λ₆ (iκ λ₇ (iκ λ₈ (iκ λ₉ iι)))))
 V₅ =
   iwf-ρ ρ₅
     (⊢pair (ty-Σ (ty-IMu CtxWf (toI (⊢var here)))
@@ -515,32 +531,32 @@ V₅ =
                (fromMu (⊢var (there here))))))
     V₆
 
-V₄ : IConWf LkD ILk Ξ4 (iκ λ₄ (iρ ρ₅ (iκ λ₆ (iκ λ₇ (iκ λ₈ (iκ λ₉ iι))))))
+V₄ : IConWf ILk TΞ4 (keep (keep (keep (keep ρ₀)))) (vs (vs (vs (vs x₀)))) (iκ λ₄ (iρ ρ₅ (iκ λ₆ (iκ λ₇ (iκ λ₈ (iκ λ₉ iι))))))
 V₄ =
   iwf-κ λ₄ (icw-imu (pair sTy (var (vs (vs (vs vz))))) KnotWf)
     (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTy (fromI (⊢var (∋lkp _ (vsⁿ 3 vz))))))
     V₅
 
-V₃ : IConWf LkD ILk Ξ3 (iκ λ₃ (iκ λ₄ (iρ ρ₅ (iκ λ₆ (iκ λ₇ (iκ λ₈ (iκ λ₉ iι)))))))
+V₃ : IConWf ILk TΞ3 (keep (keep (keep ρ₀))) (vs (vs (vs x₀))) (iκ λ₃ (iκ λ₄ (iρ ρ₅ (iκ λ₆ (iκ λ₇ (iκ λ₈ (iκ λ₉ iι)))))))
 V₃ =
   iwf-κ λ₃ (icw-imu (pair sTy (var (vs (vs vz)))) KnotWf)
     (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTy (fromI (⊢var (∋lkp _ (vsⁿ 2 vz))))))
     V₄
 
-V₂ : IConWf LkD ILk Ξ2
+V₂ : IConWf ILk TΞ2 (keep (keep ρ₀)) (vs (vs x₀))
        (iκ λ₂ (iκ λ₃ (iκ λ₄ (iρ ρ₅ (iκ λ₆ (iκ λ₇ (iκ λ₈ (iκ λ₉ iι))))))))
 V₂ =
   iwf-κ λ₂ (icw-imu (pair sVar (var (vs vz))) KnotWf)
     (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sVar (fromI (⊢var (there here)))))
     V₃
 
-V₁ : IConWf LkD ILk Ξ1
+V₁ : IConWf ILk TΞ1 (keep ρ₀) (vs x₀)
        (iκ λ₁ (iκ λ₂ (iκ λ₃ (iκ λ₄ (iρ ρ₅ (iκ λ₆ (iκ λ₇ (iκ λ₈ (iκ λ₉ iι)))))))))
 V₁ =
   iwf-κ λ₁ (icw-imu (var vz) CtxWf) (⊢⌜IMu⌝ CtxWf (⊢var here)) V₂
 
 -- ★★★ `there` IS WELL FORMED.
-lkThereWf : IConWf LkD ILk Ξ0 lkThere
+lkThereWf : IConWf ILk (Θ₀ ILk) ρ₀ x₀ lkThere
 lkThereWf = iwf-κ λ₀ (icw-clo ⌜Nat⌝ ⊢⌜Nat⌝) ⊢⌜Nat⌝ V₁
 
 ------------------------------------------------------------------------
@@ -553,7 +569,12 @@ lkThereWf = iwf-κ λ₀ (icw-clo ⌜Nat⌝ ⊢⌜Nat⌝) ⊢⌜Nat⌝ V₁
 ------------------------------------------------------------------------
 
 LkWf : IDescWf ILk LkD
-LkWf = idwf-cons (lkHereWf LkD) (idwf-cons lkThereWf idwf-nil)
+LkWf =
+  -- ★ the index type IS a type — `IDescWf` carries it (A-math)
+  ty-Σ ty-Nat (ty-Σ (ty-IMu CtxWf (toI (⊢var here)))
+                (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sVar (⊢var (there here))))
+                      (ty-IMu KnotWf (⊢ixP ⊢sTy (⊢var (∋lkp _ (vsⁿ 2 vz))))))) ,,
+  idwf-cons lkHereWf (idwf-cons lkThereWf idwf-nil)
 
 ------------------------------------------------------------------------
 -- 7. ⚠⚠ AND IT IS INHABITED — without this, §6 is
@@ -650,7 +671,7 @@ lkVz = icon zero
                             (wkTyK nzero Ty-NatK))
                     unit)))))))
 
--- ⚠ AND `ipayTy-wf`'s `Θ` IS PINNED.  It is a `Ctx` reached only through
+-- (HISTORY, pre-A-math) ⚠ `ipayTy-wf`'s `Θ` WAS PINNED.  It is a `Ctx` reached only through
 --   `⌊ Θ ⌋` in the explicit arguments, and `⌊_⌋` is not injective — the
 --   hazard `Lib/IFold` records from the other side.  Left implicit the
 --   constraint comes back "blocked on _i".
@@ -662,25 +683,15 @@ lkVz = icon zero
 ⊢lkVz : {Δ : Ctx} → Δ ⊢ lkVz ∷ Lk i₀
 ⊢lkVz {Δ = Δ} =
   ⊢icon LkWf hereID ⊢i₀
-    (⊢pair (ipayTy-wf {Θ = Θ1} LkD ILk (extS σ₀) C₁ LkWf (W₁ LkD) (Sub⊢-ext h0))
-           (toI ⊢nzero)
-      (⊢-cast (sym (payStep LkD ILk σ₀ nzero C₁))
-        (⊢pair (ipayTy-wf {Θ = Θ2} LkD ILk (extS σ₁) C₂ LkWf (W₂ LkD) (Sub⊢-ext h1))
-               (toMu ⊢Ctx-empK)
-          (⊢-cast (sym (payStep LkD ILk σ₁ Ctx-empK C₂))
-            (⊢pair (ipayTy-wf {Θ = Θ3} LkD ILk (extS σ₂) C₃ LkWf (W₃ LkD) (Sub⊢-ext h2))
-                   (toMu (⊢Ty-NatK 0))
-              (⊢-cast (sym (payStep LkD ILk σ₂ Ty-NatK C₃))
-                (⊢pair (ipayTy-wf {Θ = Θ4} LkD ILk (extS σ₃) C₄ LkWf (W₄ LkD) (Sub⊢-ext h3))
-                       f₃
-                  (⊢-cast (sym (payStep LkD ILk σ₃ v₃ C₄))
-                    (⊢pair (ipayTy-wf {Θ = Θ5} LkD ILk (extS σ₄) C₅ LkWf (W₅ LkD) (Sub⊢-ext h4))
-                           f₄
-                      (⊢-cast (sym (payStep LkD ILk σ₄ v₄ C₅))
-                        (⊢pair (ipayTy-wf {Θ = Θ6} LkD ILk (extS σ₅) C₆ LkWf (W₆ LkD) (Sub⊢-ext h5))
-                               f₅
-                          (⊢-cast (sym (payStep LkD ILk σ₅ v₅ C₆))
-                            (⊢pair ty-Unit f₆ ⊢unit)))))))))))))
+    -- ★ A-MATH: the payload one field at a time (`Lib/IPay.⊢payκ`), each
+    --   against its telescope's `XEnv` — no `Sub⊢` bookkeeping, no casts.
+    (⊢payκ LkD ILk σ₀ κ₀ C₁ LkWf lkHereWf e₀ (toI ⊢nzero)
+     (⊢payκ LkD ILk σ₁ κ₁ C₂ LkWf W₁ e₁ (toMu ⊢Ctx-empK)
+      (⊢payκ LkD ILk σ₂ κ₂ C₃ LkWf W₂ e₂ (toMu (⊢Ty-NatK 0))
+       (⊢payκ LkD ILk σ₃ κ₃ C₄ LkWf W₃ e₃ f₃
+        (⊢payκ LkD ILk σ₄ κ₄ C₅ LkWf W₄ e₄ f₄
+         (⊢payκ LkD ILk σ₅ κ₅ C₆ LkWf W₅ e₅ f₅
+          (⊢payκ LkD ILk σ₆ κ₆ iι LkWf W₆ e₆ f₆ ⊢unit)))))))
   where
     v₃ = idrefl ⌜Nat⌝ (nsuc nzero)
     v₄ = idrefl (⌜IMu⌝ CtxD INat (nsuc nzero)) (Ctx-extK nzero Ctx-empK Ty-NatK)
@@ -694,17 +705,14 @@ lkVz = icon zero
     σ₆ = iext σ₅ v₅
     v₆ = idrefl (⌜IMu⌝ KnotD IPair (pair sTy (nsuc nzero)))
                 (wkTyK nzero Ty-NatK)
-    -- ⚠ `{I = ILk}` PINNED: `isingle-Sub⊢`'s conclusion mentions `I` only
-    --   under `εwkTy`, a DEFINED function, so it never solves on its own.
-    h0 : Sub⊢ Θ0 Δ σ₀
-    h0 = isingle-Sub⊢ {I = ILk} ⊢i₀
-    h1 = iext-Sub⊢ h0 (toI ⊢nzero)
-    h2 = iext-Sub⊢ h1 (toMu ⊢Ctx-empK)
-    h3 = iext-Sub⊢ h2 (toMu (⊢Ty-NatK 0))
+    e₀ = xenv₀ {D = LkD} {I = ILk} LkWf ⊢i₀
+    e₁ = xenv-κ e₀ κ₀ (toI ⊢nzero)
+    e₂ = xenv-κ e₁ κ₁ (toMu ⊢Ctx-empK)
+    e₃ = xenv-κ e₂ κ₂ (toMu (⊢Ty-NatK 0))
     -- the DEPTH ford: both sides reduce to `suc 0`
     f₃ : Δ ⊢ v₃ ∷ El (subTm σ₃ κ₃)
     f₃ = idCˡ (βfst _ _) (reflAt ⊢⌜Nat⌝ (toI (⊢nsuc ⊢nzero)))
-    h4 = iext-Sub⊢ h3 f₃
+    e₄ = xenv-κ e₃ κ₃ f₃
     -- ★ the CONTEXT ford, and ★★ THE TRANSPORT EVAPORATES: at a concrete
     --   index the ford witness IS an `idrefl`, so `transport-fires`
     --   collapses the `jsub` in two steps.
@@ -714,7 +722,7 @@ lkVz = icon zero
             (idCʳ* (transport-fires _ _ _ _)
               (reflAt (⊢⌜IMu⌝ CtxWf (toI (⊢nsuc ⊢nzero)))
                       (toMu (⊢Ctx-extK 0 ⊢Ctx-empK (⊢Ty-NatK 0))))))
-    h5 = iext-Sub⊢ h4 f₄
+    e₅ = xenv-κ e₄ κ₄ f₄
     f₅ : Δ ⊢ v₅ ∷ El (subTm σ₅ κ₅)
     f₅ = idCᶜ (ξ-⌜IMu⌝ (ξ-pairʳ (βfst _ _)))
           (idCˡ* (step (ξ-fst (ξ-snd (βsnd _ _)))
@@ -722,6 +730,7 @@ lkVz = icon zero
             (idCʳ* (transport-fires _ _ _ _)
               (reflAt (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sVar (⊢nsuc ⊢nzero)))
                       (toMu (⊢Var-vzK 0)))))
+    e₆ = xenv-κ e₅ κ₅ f₅
     f₆ : Δ ⊢ v₆ ∷ El (subTm σ₆ κ₆)
     f₆ = idCᶜ (ξ-⌜IMu⌝ (ξ-pairʳ (βfst _ _)))
           (idCˡ* (step (ξ-snd (ξ-snd (βsnd _ _)))
