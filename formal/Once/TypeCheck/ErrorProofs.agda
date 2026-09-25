@@ -40,10 +40,11 @@ import Once.Type as T
 open import Once.TypeCheck.Raw as Raw
   using (RawExpr; RVar; RLam; RQualified)
 open import Once.TypeCheck.Elaborate
+open import Once.Type.DecEq using (_≟T_; _≟F_)
+open import Once.Type.Sub using (_<:_; _<:?_; <:-refl; sub-int; sub-unit; sub-str)
   using (NamedCtx; inferElab; checkElab; InferElabResult; CheckElabResult;
          success; failure; lookupLocal; lookupImport;
          inferElabV; checkElabV; _≟T_;
-         embedOrSubsume-no;
          -- the negation dispatch's literal view (plan 0.74 J6 step 3 for
          -- `RInt`, plan 0.73 F3 for `RFloat`) — the CONSTRUCTORS have to be
          -- listed, the qualified name alone does not bring them into pattern
@@ -318,59 +319,17 @@ check-RInt-type-mismatch :
 -- infer-and-match — no `isRIntVliftTarget?` dispatch to mirror. An arrow target
 -- is no longer a success to refute; it is one more `TypeMismatch T Int`.
 check-RInt-type-mismatch ctx n T ¬eq eq
-  with T ≟T Int
-... | yes refl = ⊥-elim (¬eq refl)
-... | no _ with eq
-...   | refl = refl
+  with Int <:? T | eq
+... | yes sub-int | _    = ⊥-elim (¬eq refl)
+... | no _        | refl = refl
 
 -- D127: `cl-err` is deleted with `closed-lift-aux`. There is no lift left to
 -- walk: at an arrow target the elaborator reports `TypeMismatch` directly, so
 -- every leaf below is `refl`.
 
--- | `embedOrSubsume-no`'s error is `TypeMismatch T A` for EVERY expected `T`.
--- The clauses are the expected type, because that is what it matches first.
-embedOrSubsume-no-err :
-  ∀ (ctx : NamedCtx) (e : RawExpr) (T A : Type)
-    {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    (eE : SExpr (NamedCtx.debruijn ctx) Ψ A) (d fr : ℕ)
-    (w : ctx ⊢ᵢ e ∶ A ⨾ Ψ) {err : TypeError}
-  → proj₁ (embedOrSubsume-no ctx e T A eE d fr w) ≡ failure err
-  → err ≡ TypeMismatch T A
-embedOrSubsume-no-err ctx e Unit A eE d fr w refl = refl
-embedOrSubsume-no-err ctx e T.Void A eE d fr w refl = refl
-embedOrSubsume-no-err ctx e T.Int A eE d fr w refl = refl
-embedOrSubsume-no-err ctx e T.Float A eE d fr w refl = refl
-embedOrSubsume-no-err ctx e T.Str A eE d fr w refl = refl
-embedOrSubsume-no-err ctx e T.Buffer A eE d fr w refl = refl
-embedOrSubsume-no-err ctx e (P T.* Q) A eE d fr w refl = refl
-embedOrSubsume-no-err ctx e (P T.+ Q) A eE d fr w refl = refl
-embedOrSubsume-no-err ctx e (T.μ-type F) A eE d fr w refl = refl
-embedOrSubsume-no-err ctx e (T.ν-type F) A eE d fr w refl = refl
-embedOrSubsume-no-err ctx e (P T.⇒[ T.mk-kind T.One q ] Q) A eE d fr w refl = refl
-embedOrSubsume-no-err ctx e (P T.⇒[ T.mk-kind T.Zero q ] Q) A eE d fr w refl = refl
--- PURE arrow: subsumption needs an eff target, so this is the catch-all.
-embedOrSubsume-no-err ctx e (X T.⇒[ T.mk-kind T.Many T.pure ] B) A eE d fr w refl = refl
--- EFF arrow with an inferred MANY-PURE arrow: subsumption first.
-embedOrSubsume-no-err ctx e (X T.⇒[ T.mk-kind T.Many T.eff ] B)
-                      (A' T.⇒[ T.mk-kind T.Many T.pure ] B') eE d fr w eq
-  with X ≟T A' | B ≟T B' | eq
-... | yes refl | yes refl | ()
-... | yes refl | no _     | refl = refl
-... | no _     | _        | refl = refl
--- …every other inferred type at an eff arrow is the catch-all too.
-embedOrSubsume-no-err ctx e (X T.⇒[ T.mk-kind T.Many T.eff ] B) Unit eE d fr w refl = refl
-embedOrSubsume-no-err ctx e (X T.⇒[ T.mk-kind T.Many T.eff ] B) T.Void eE d fr w refl = refl
-embedOrSubsume-no-err ctx e (X T.⇒[ T.mk-kind T.Many T.eff ] B) T.Int eE d fr w refl = refl
-embedOrSubsume-no-err ctx e (X T.⇒[ T.mk-kind T.Many T.eff ] B) T.Float eE d fr w refl = refl
-embedOrSubsume-no-err ctx e (X T.⇒[ T.mk-kind T.Many T.eff ] B) T.Str eE d fr w refl = refl
-embedOrSubsume-no-err ctx e (X T.⇒[ T.mk-kind T.Many T.eff ] B) T.Buffer eE d fr w refl = refl
-embedOrSubsume-no-err ctx e (X T.⇒[ T.mk-kind T.Many T.eff ] B) (P T.* Q) eE d fr w refl = refl
-embedOrSubsume-no-err ctx e (X T.⇒[ T.mk-kind T.Many T.eff ] B) (P T.+ Q) eE d fr w refl = refl
-embedOrSubsume-no-err ctx e (X T.⇒[ T.mk-kind T.Many T.eff ] B) (T.μ-type F) eE d fr w refl = refl
-embedOrSubsume-no-err ctx e (X T.⇒[ T.mk-kind T.Many T.eff ] B) (T.ν-type F) eE d fr w refl = refl
-embedOrSubsume-no-err ctx e (X T.⇒[ T.mk-kind T.Many T.eff ] B) (A' T.⇒[ T.mk-kind T.Many T.eff ] B') eE d fr w refl = refl
-embedOrSubsume-no-err ctx e (X T.⇒[ T.mk-kind T.Many T.eff ] B) (A' T.⇒[ T.mk-kind T.One q ] B') eE d fr w refl = refl
-embedOrSubsume-no-err ctx e (X T.⇒[ T.mk-kind T.Many T.eff ] B) (A' T.⇒[ T.mk-kind T.Zero q ] B') eE d fr w refl = refl
+-- D226: the mode switch fails only on `no` to `A <:? T`, and then its error is
+-- `TypeMismatch T A`. A literal's inferred type admits one supertype — itself —
+-- so `yes` pins `T` and contradicts the premise.
 
 check-RUnit-type-mismatch :
   ∀ (ctx : NamedCtx) (T : Type) {err : TypeError}
@@ -378,9 +337,9 @@ check-RUnit-type-mismatch :
   → checkElab ctx Raw.RUnit T ≡ failure err
   → err ≡ TypeMismatch T Unit
 check-RUnit-type-mismatch ctx T ¬eq eq
-  with T ≟T Unit
-... | yes refl = ⊥-elim (¬eq refl)
-... | no _     = embedOrSubsume-no-err ctx Raw.RUnit T Unit Surface.unit 0 _ t-unit eq
+  with Unit <:? T | eq
+... | yes sub-unit | _    = ⊥-elim (¬eq refl)
+... | no _         | refl = refl
 
 check-RStringLit-type-mismatch :
   ∀ (ctx : NamedCtx) (s : _) (T : Type) {err : TypeError}
@@ -388,9 +347,9 @@ check-RStringLit-type-mismatch :
   → checkElab ctx (Raw.RStringLit s) T ≡ failure err
   → err ≡ TypeMismatch T Str
 check-RStringLit-type-mismatch ctx s T ¬eq eq
-  with T ≟T Str
-... | yes refl = ⊥-elim (¬eq refl)
-... | no _     = embedOrSubsume-no-err ctx (Raw.RStringLit s) T Str (Surface.str s) 0 _ (t-str s) eq
+  with Str <:? T | eq
+... | yes sub-str | _    = ⊥-elim (¬eq refl)
+... | no _        | refl = refl
 lam-usage-violation-is-UsageViolation :
   ∀ (ctx : NamedCtx) (x : String) (body : Raw.RawExpr)
     (A : Type) (q : _) (B : Type)
