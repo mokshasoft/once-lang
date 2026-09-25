@@ -3062,6 +3062,25 @@ the standard semantic-environment construction, so the SHAPE is known.
 cost last time — *"with no cumulativity that means `Lift`-wrapping every
 `⊩₁` clause across five modules."*
 
+### ⛔ REFUTED 2026-09-25 — the existential is NOT strictly positive against the REAL `⊩₀`
+
+The positivity spike below (`ExistLiftPos`) modelled `⊩₀` with only a
+`Unit` and an `IMu` clause. The real `⊩₀` has a **`Π` clause**, and there
+`_⊩₀∋_` occurs to the LEFT of an arrow (`(r : ⊩F ⊩₀∋ u) → …`). With that
+one clause added (`bootstrap/tmp/ExistLiftPi.agda`) Agda rejects it:
+
+    IMuMem is not strictly positive, because it occurs … in the definition
+    of _⊩₀∋_, which occurs to the left of an arrow in the type of the
+    constructor ⊩₀Π … in the definition of ILift … imm-icon … IMuMem.
+
+Control (`ExistLiftPiCtl`, the same module with the κ clause reverted to a
+predicate-free one): accepted. ⇒ the existential is the cause. This is the
+SAME wall `LogicalRelation`'s own header records for gates 6/6b ("carrying
+witnesses INTO it … `_⊩₀∋_` is negative at Π"). The section below stays for
+the record; its conclusion does not hold. ⚠ Lesson: a positivity spike must
+include every clause of the relation that can reach the new occurrence —
+here, any `⊩₀` clause, because the κ code is arbitrary once `ICodeWf` is gone.
+
 ### ★★★ AND THEN IT INVERTED — THE CHANGE IS A *REMOVAL*
 
 `bootstrap/tmp/ExistLiftPos.agda` (rc=0) + `ExistLiftNeg.agda` (control,
