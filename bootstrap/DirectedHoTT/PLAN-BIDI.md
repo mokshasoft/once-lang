@@ -89,7 +89,7 @@ the follow-on question.
 | S0 | `Algorithm/DecEq` (`Dec` equality, all sorts); `Algorithm/DecideConversionTyped` (term conversion, no parameters); `Algorithm/Check` slice 1 (certifying bidirectional checker, Π/Σ/U/El/Nat/Unit/Hom/Id) | ✅ `e4135b26` |
 | S1 | SPIKE `natrecᴹ` inside `RTm` (branch `ocp-0009-spike-natrecM`) | ✅ done — superseded by §3c/§3d; it showed (a) needs a mutual SN theorem to be decided |
 | S2 | The annotated layer (§3d): `Spec/Annotated` (`ATm`/`ATy`, ren/sub, erasure + commutation), `⊢ᴬ`, erasure-soundness | 🟡 **next** |
-| S3 | Core `infer : Γ → t → Maybe (Σ A (Γ ⊢ t ∷ A))` — certifying, so sound by construction. Then COMPLETENESS: needs uniqueness of types up to conversion (absent today) | ⬜ |
+| S3 | The checker for `⊢ᴬ` (`Algorithm/CheckA`): certifying, STRUCTURAL (every former infers — no fuel); the term's own annotations checked with `⊢ᴬ`, all type reasoning on ERASURES (`validity`, `normTy`, `decConvᵀ`), annotated views of inferred types LIFTED from erased normal forms. Slice 1 ✅ (all but the inductive formers). Then COMPLETENESS (uniqueness of types up to conversion) | 🟡 slice 1 ✅ |
 | S4 | Decide TYPE conversion `≅ᵀ` completely — ROUTE C (§3b): ① validity + `srᵀ` (`Metatheory/Validity`) ✅; ② inversion — the existing `gen-*` sufficed ✅; ③ `normTy`/`decConvᵀ` (`Metatheory/NormTy`) ✅ — **structural, NO measure needed**: `homNF` recurses on the NORMAL ambient (`G` ⊂ `Π F G`), the created `app f↑ vz` go through the typed `wnorm`, and a `NoU` witness breaks the harmless `elNF ↔ homNF` cycle | ✅ |
 | S5 | The signature: constants, δ, and the conservativity theorem | ⬜ |
 | S6 | The bidirectional SURFACE → annotated core elaborator. `Algorithm/Check`'s slice 1 is its seed; the Once compiler's `formal/Once/TypeCheck` is the shape template | ⬜ |
@@ -194,7 +194,11 @@ annotations live with WHICH judgment is trusted: here the trusted judgment
 is the annotated, decidable `⊢ᴬ`, and plain `⊢` is its semantics — §0 holds.
 
 Annotations `ATm` carries (each is what `⊢` takes from the derivation):
-`lam A`, `pair B`, `natrec M`, `con D`, `elim M`, `icon D I i`, `ielim I M`.
+`lam A`, `pair B`, `natrec M`, `con D`, `elim M`, `icon D I i`, `ielim I M`,
+and — the §1 AUDIT's finding, made while writing the checker — `jsub A t u`,
+`tr A t u`, `ap cA t u`: these took their ambient and ENDPOINTS from the
+derivation, and a checker cannot recover them (`Hom` computes away at
+`U`/`Π`/`Nat`, and a recovered endpoint has no annotated derivation).
 ⬜ Descriptions (`Desc`/`IDesc`) stay erased-level for now: their
 well-formedness premises are the `⊢`-level ones — an annotated description
 layer is a follow-up before `⊢ᴬ` is fully decidable.

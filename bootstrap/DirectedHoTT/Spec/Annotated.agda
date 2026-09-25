@@ -6,7 +6,12 @@
 --   `RTm`/`RTy` plus exactly the annotations the typing judgment would
 --   otherwise take from the DERIVATION —
 --       lam A · pair B · natrec M · con D · elim M · icon D I i · ielim I M
+--       jsub A t u · tr A t u · ap cA t u
 --   so that a kernel term determines its type (PLAN-BIDI §0).
+--   ⚠ The last row is the §1 AUDIT's finding: `jsub`/`tr`/`ap` took their
+--   ambient and ENDPOINTS from the derivation, and a checker cannot recover
+--   them — `Hom` computes away at `U`/`Π`/`Nat`, and a recovered endpoint
+--   has no annotated derivation.
 --
 -- ★ WHAT IT MEANS.  Erasure `⌈_⌉` to `RTm`.  Annotations are typing data,
 --   not computation (decision (c)): conversion in `⊢ᴬ` is conversion of
@@ -80,11 +85,11 @@ data ATm where
   ⌜Σ⌝ : ∀ {Γ} → ATm Γ → ATm (Γ ∙) → ATm Γ
   ⌜Hom⌝ : ∀ {Γ} → ATm Γ → ATm Γ → ATm Γ → ATm Γ
   hrefl : ∀ {Γ} → ATm Γ → ATm Γ → ATm Γ
-  tr : ∀ {Γ} → ATm (Γ ∙) → ATm Γ → ATm Γ → ATm Γ
-  ap : ∀ {Γ} → ATm Γ → ATm (Γ ∙) → ATm Γ → ATm Γ
+  tr : ∀ {Γ} → ATy Γ → ATm Γ → ATm Γ → ATm (Γ ∙) → ATm Γ → ATm Γ → ATm Γ
+  ap : ∀ {Γ} → ATm Γ → ATm Γ → ATm Γ → ATm Γ → ATm (Γ ∙) → ATm Γ → ATm Γ
   ⌜Id⌝ : ∀ {Γ} → ATm Γ → ATm Γ → ATm Γ → ATm Γ
   idrefl : ∀ {Γ} → ATm Γ → ATm Γ → ATm Γ
-  jsub : ∀ {Γ} → ATm (Γ ∙) → ATm Γ → ATm Γ → ATm Γ
+  jsub : ∀ {Γ} → ATy Γ → ATm Γ → ATm Γ → ATm (Γ ∙) → ATm Γ → ATm Γ → ATm Γ
   unit : ∀ {Γ} → ATm Γ
   nzero : ∀ {Γ} → ATm Γ
   nsuc : ∀ {Γ} → ATm Γ → ATm Γ
@@ -124,11 +129,11 @@ renTmᴬ ρ (⌜Π⌝ x0 x1) = ⌜Π⌝ (renTmᴬ ρ x0) (renTmᴬ (extR ρ) x1)
 renTmᴬ ρ (⌜Σ⌝ x0 x1) = ⌜Σ⌝ (renTmᴬ ρ x0) (renTmᴬ (extR ρ) x1)
 renTmᴬ ρ (⌜Hom⌝ x0 x1 x2) = ⌜Hom⌝ (renTmᴬ ρ x0) (renTmᴬ ρ x1) (renTmᴬ ρ x2)
 renTmᴬ ρ (hrefl x0 x1) = hrefl (renTmᴬ ρ x0) (renTmᴬ ρ x1)
-renTmᴬ ρ (tr x0 x1 x2) = tr (renTmᴬ (extR ρ) x0) (renTmᴬ ρ x1) (renTmᴬ ρ x2)
-renTmᴬ ρ (ap x0 x1 x2) = ap (renTmᴬ ρ x0) (renTmᴬ (extR ρ) x1) (renTmᴬ ρ x2)
+renTmᴬ ρ (tr x0 x1 x2 x3 x4 x5) = tr (renTyᴬ ρ x0) (renTmᴬ ρ x1) (renTmᴬ ρ x2) (renTmᴬ (extR ρ) x3) (renTmᴬ ρ x4) (renTmᴬ ρ x5)
+renTmᴬ ρ (ap x0 x1 x2 x3 x4 x5) = ap (renTmᴬ ρ x0) (renTmᴬ ρ x1) (renTmᴬ ρ x2) (renTmᴬ ρ x3) (renTmᴬ (extR ρ) x4) (renTmᴬ ρ x5)
 renTmᴬ ρ (⌜Id⌝ x0 x1 x2) = ⌜Id⌝ (renTmᴬ ρ x0) (renTmᴬ ρ x1) (renTmᴬ ρ x2)
 renTmᴬ ρ (idrefl x0 x1) = idrefl (renTmᴬ ρ x0) (renTmᴬ ρ x1)
-renTmᴬ ρ (jsub x0 x1 x2) = jsub (renTmᴬ (extR ρ) x0) (renTmᴬ ρ x1) (renTmᴬ ρ x2)
+renTmᴬ ρ (jsub x0 x1 x2 x3 x4 x5) = jsub (renTyᴬ ρ x0) (renTmᴬ ρ x1) (renTmᴬ ρ x2) (renTmᴬ (extR ρ) x3) (renTmᴬ ρ x4) (renTmᴬ ρ x5)
 renTmᴬ ρ unit = unit
 renTmᴬ ρ nzero = nzero
 renTmᴬ ρ (nsuc x0) = nsuc (renTmᴬ ρ x0)
@@ -175,11 +180,11 @@ subTmᴬ σ (⌜Π⌝ x0 x1) = ⌜Π⌝ (subTmᴬ σ x0) (subTmᴬ (extSᴬ σ) 
 subTmᴬ σ (⌜Σ⌝ x0 x1) = ⌜Σ⌝ (subTmᴬ σ x0) (subTmᴬ (extSᴬ σ) x1)
 subTmᴬ σ (⌜Hom⌝ x0 x1 x2) = ⌜Hom⌝ (subTmᴬ σ x0) (subTmᴬ σ x1) (subTmᴬ σ x2)
 subTmᴬ σ (hrefl x0 x1) = hrefl (subTmᴬ σ x0) (subTmᴬ σ x1)
-subTmᴬ σ (tr x0 x1 x2) = tr (subTmᴬ (extSᴬ σ) x0) (subTmᴬ σ x1) (subTmᴬ σ x2)
-subTmᴬ σ (ap x0 x1 x2) = ap (subTmᴬ σ x0) (subTmᴬ (extSᴬ σ) x1) (subTmᴬ σ x2)
+subTmᴬ σ (tr x0 x1 x2 x3 x4 x5) = tr (subTyᴬ σ x0) (subTmᴬ σ x1) (subTmᴬ σ x2) (subTmᴬ (extSᴬ σ) x3) (subTmᴬ σ x4) (subTmᴬ σ x5)
+subTmᴬ σ (ap x0 x1 x2 x3 x4 x5) = ap (subTmᴬ σ x0) (subTmᴬ σ x1) (subTmᴬ σ x2) (subTmᴬ σ x3) (subTmᴬ (extSᴬ σ) x4) (subTmᴬ σ x5)
 subTmᴬ σ (⌜Id⌝ x0 x1 x2) = ⌜Id⌝ (subTmᴬ σ x0) (subTmᴬ σ x1) (subTmᴬ σ x2)
 subTmᴬ σ (idrefl x0 x1) = idrefl (subTmᴬ σ x0) (subTmᴬ σ x1)
-subTmᴬ σ (jsub x0 x1 x2) = jsub (subTmᴬ (extSᴬ σ) x0) (subTmᴬ σ x1) (subTmᴬ σ x2)
+subTmᴬ σ (jsub x0 x1 x2 x3 x4 x5) = jsub (subTyᴬ σ x0) (subTmᴬ σ x1) (subTmᴬ σ x2) (subTmᴬ (extSᴬ σ) x3) (subTmᴬ σ x4) (subTmᴬ σ x5)
 subTmᴬ σ unit = unit
 subTmᴬ σ nzero = nzero
 subTmᴬ σ (nsuc x0) = nsuc (subTmᴬ σ x0)
@@ -220,11 +225,11 @@ subTmᴬ σ ⌜Unit⌝ = ⌜Unit⌝
 ⌈ (⌜Σ⌝ x0 x1) ⌉ = ⌜Σ⌝ (⌈ x0 ⌉) (⌈ x1 ⌉)
 ⌈ (⌜Hom⌝ x0 x1 x2) ⌉ = ⌜Hom⌝ (⌈ x0 ⌉) (⌈ x1 ⌉) (⌈ x2 ⌉)
 ⌈ (hrefl x0 x1) ⌉ = hrefl (⌈ x0 ⌉) (⌈ x1 ⌉)
-⌈ (tr x0 x1 x2) ⌉ = tr (⌈ x0 ⌉) (⌈ x1 ⌉) (⌈ x2 ⌉)
-⌈ (ap x0 x1 x2) ⌉ = ap (⌈ x0 ⌉) (⌈ x1 ⌉) (⌈ x2 ⌉)
+⌈ (tr x0 x1 x2 x3 x4 x5) ⌉ = tr (⌈ x3 ⌉) (⌈ x4 ⌉) (⌈ x5 ⌉)
+⌈ (ap x0 x1 x2 x3 x4 x5) ⌉ = ap (⌈ x3 ⌉) (⌈ x4 ⌉) (⌈ x5 ⌉)
 ⌈ (⌜Id⌝ x0 x1 x2) ⌉ = ⌜Id⌝ (⌈ x0 ⌉) (⌈ x1 ⌉) (⌈ x2 ⌉)
 ⌈ (idrefl x0 x1) ⌉ = idrefl (⌈ x0 ⌉) (⌈ x1 ⌉)
-⌈ (jsub x0 x1 x2) ⌉ = jsub (⌈ x0 ⌉) (⌈ x1 ⌉) (⌈ x2 ⌉)
+⌈ (jsub x0 x1 x2 x3 x4 x5) ⌉ = jsub (⌈ x3 ⌉) (⌈ x4 ⌉) (⌈ x5 ⌉)
 ⌈ unit ⌉ = unit
 ⌈ nzero ⌉ = nzero
 ⌈ (nsuc x0) ⌉ = nsuc (⌈ x0 ⌉)
@@ -265,11 +270,11 @@ era-renTm ρ (⌜Π⌝ x0 x1) = cong2 (λ a0 a1 → ⌜Π⌝ a0 a1) (era-renTm �
 era-renTm ρ (⌜Σ⌝ x0 x1) = cong2 (λ a0 a1 → ⌜Σ⌝ a0 a1) (era-renTm ρ x0) (era-renTm (extR ρ) x1)
 era-renTm ρ (⌜Hom⌝ x0 x1 x2) = cong3 (λ a0 a1 a2 → ⌜Hom⌝ a0 a1 a2) (era-renTm ρ x0) (era-renTm ρ x1) (era-renTm ρ x2)
 era-renTm ρ (hrefl x0 x1) = cong2 (λ a0 a1 → hrefl a0 a1) (era-renTm ρ x0) (era-renTm ρ x1)
-era-renTm ρ (tr x0 x1 x2) = cong3 (λ a0 a1 a2 → tr a0 a1 a2) (era-renTm (extR ρ) x0) (era-renTm ρ x1) (era-renTm ρ x2)
-era-renTm ρ (ap x0 x1 x2) = cong3 (λ a0 a1 a2 → ap a0 a1 a2) (era-renTm ρ x0) (era-renTm (extR ρ) x1) (era-renTm ρ x2)
+era-renTm ρ (tr x0 x1 x2 x3 x4 x5) = cong3 (λ a0 a1 a2 → tr a0 a1 a2) (era-renTm (extR ρ) x3) (era-renTm ρ x4) (era-renTm ρ x5)
+era-renTm ρ (ap x0 x1 x2 x3 x4 x5) = cong3 (λ a0 a1 a2 → ap a0 a1 a2) (era-renTm ρ x3) (era-renTm (extR ρ) x4) (era-renTm ρ x5)
 era-renTm ρ (⌜Id⌝ x0 x1 x2) = cong3 (λ a0 a1 a2 → ⌜Id⌝ a0 a1 a2) (era-renTm ρ x0) (era-renTm ρ x1) (era-renTm ρ x2)
 era-renTm ρ (idrefl x0 x1) = cong2 (λ a0 a1 → idrefl a0 a1) (era-renTm ρ x0) (era-renTm ρ x1)
-era-renTm ρ (jsub x0 x1 x2) = cong3 (λ a0 a1 a2 → jsub a0 a1 a2) (era-renTm (extR ρ) x0) (era-renTm ρ x1) (era-renTm ρ x2)
+era-renTm ρ (jsub x0 x1 x2 x3 x4 x5) = cong3 (λ a0 a1 a2 → jsub a0 a1 a2) (era-renTm (extR ρ) x3) (era-renTm ρ x4) (era-renTm ρ x5)
 era-renTm ρ unit = refl
 era-renTm ρ nzero = refl
 era-renTm ρ (nsuc x0) = cong1 (λ a0 → nsuc a0) (era-renTm ρ x0)
@@ -318,11 +323,11 @@ era-subTm σ τ h (⌜Π⌝ x0 x1) = cong2 (λ a0 a1 → ⌜Π⌝ a0 a1) (era-su
 era-subTm σ τ h (⌜Σ⌝ x0 x1) = cong2 (λ a0 a1 → ⌜Σ⌝ a0 a1) (era-subTm σ τ h x0) (era-subTm (extSᴬ σ) (extS τ) (era-ext h) x1)
 era-subTm σ τ h (⌜Hom⌝ x0 x1 x2) = cong3 (λ a0 a1 a2 → ⌜Hom⌝ a0 a1 a2) (era-subTm σ τ h x0) (era-subTm σ τ h x1) (era-subTm σ τ h x2)
 era-subTm σ τ h (hrefl x0 x1) = cong2 (λ a0 a1 → hrefl a0 a1) (era-subTm σ τ h x0) (era-subTm σ τ h x1)
-era-subTm σ τ h (tr x0 x1 x2) = cong3 (λ a0 a1 a2 → tr a0 a1 a2) (era-subTm (extSᴬ σ) (extS τ) (era-ext h) x0) (era-subTm σ τ h x1) (era-subTm σ τ h x2)
-era-subTm σ τ h (ap x0 x1 x2) = cong3 (λ a0 a1 a2 → ap a0 a1 a2) (era-subTm σ τ h x0) (era-subTm (extSᴬ σ) (extS τ) (era-ext h) x1) (era-subTm σ τ h x2)
+era-subTm σ τ h (tr x0 x1 x2 x3 x4 x5) = cong3 (λ a0 a1 a2 → tr a0 a1 a2) (era-subTm (extSᴬ σ) (extS τ) (era-ext h) x3) (era-subTm σ τ h x4) (era-subTm σ τ h x5)
+era-subTm σ τ h (ap x0 x1 x2 x3 x4 x5) = cong3 (λ a0 a1 a2 → ap a0 a1 a2) (era-subTm σ τ h x3) (era-subTm (extSᴬ σ) (extS τ) (era-ext h) x4) (era-subTm σ τ h x5)
 era-subTm σ τ h (⌜Id⌝ x0 x1 x2) = cong3 (λ a0 a1 a2 → ⌜Id⌝ a0 a1 a2) (era-subTm σ τ h x0) (era-subTm σ τ h x1) (era-subTm σ τ h x2)
 era-subTm σ τ h (idrefl x0 x1) = cong2 (λ a0 a1 → idrefl a0 a1) (era-subTm σ τ h x0) (era-subTm σ τ h x1)
-era-subTm σ τ h (jsub x0 x1 x2) = cong3 (λ a0 a1 a2 → jsub a0 a1 a2) (era-subTm (extSᴬ σ) (extS τ) (era-ext h) x0) (era-subTm σ τ h x1) (era-subTm σ τ h x2)
+era-subTm σ τ h (jsub x0 x1 x2 x3 x4 x5) = cong3 (λ a0 a1 a2 → jsub a0 a1 a2) (era-subTm (extSᴬ σ) (extS τ) (era-ext h) x3) (era-subTm σ τ h x4) (era-subTm σ τ h x5)
 era-subTm σ τ h unit = refl
 era-subTm σ τ h nzero = refl
 era-subTm σ τ h (nsuc x0) = cong1 (λ a0 → nsuc a0) (era-subTm σ τ h x0)
