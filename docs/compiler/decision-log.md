@@ -15269,3 +15269,37 @@ synthesize. So:
 * Runtime is unchanged: the conversion involved is grade-only (void-free, no code)
   and `cata` still compiles to `IR.Cata`; the elaborator's synthesis path must emit
   the SAME term as the checking path.
+
+## D229 — ELIMINATIONS CONSUME THEIR PRINCIPAL ARGUMENT UP TO SUBTYPING (2026-09-25)
+
+**Status**: Accepted; implementation in plan 0.94 (phase A′).
+**Relates**: D226 (subsumption at the mode switch), D228 (`cata` synthesizes), plan
+0.94 §9 (the middle type needs narrowing), System F<:'s narrowing lemma.
+
+### Decision
+
+The typing judgment is to have the standard metatheory of subtyping as THEOREMS:
+subsumption (D226), NARROWING (this entry) and substitution (plan 0.94). A
+derivation denotes a morphism `⟦Γ⟧ → T⟦A⟧` and `A <: B` a coercion, and the
+semantics is closed under post-composition (subsumption) and pre-composition on the
+context (narrowing); the judgment presents it faithfully only if it is closed too.
+
+Narrowing fails today because twelve eliminators demand their principal argument at
+an EXACT shape, while two of `<:`'s generators do not preserve shape: `Void` sits
+below every shape, and `pure ⊑ eff` changes an arrow's grade. So every eliminator
+infers its principal argument and matches it UP TO `<:`:
+
+* **Grades.** An eliminator that needs an `eff` head accepts any grade `π ⊑ eff`
+  (`t-effApp`, `t-apply-eff-app-infer`); `pure`-requiring eliminators are unaffected
+  (narrowing only lowers grades).
+* **`Void`.** An eliminator whose principal argument synthesizes `Void` synthesizes
+  `Void` (`¡` is unique, so this is canonical), and places NO requirement on its other
+  subterms. That is ex falso: a `Void`-typed principal argument means the term
+  denotes `¡` and the other subterms are dead. Requiring them to type would break
+  narrowing (their expected types came from the non-`Void` shape) or force the
+  checker to guess. Consequence, stated because it is visible: with `x ∶ Void`,
+  `x + "s"` and `case x of …` with ill-typed branches are accepted, and mean `¡`.
+
+Every principle lines up: eliminations consume their principal argument up to
+subtyping; introductions check; conversion happens at the mode switch. Meanings and
+runtime are unchanged.
