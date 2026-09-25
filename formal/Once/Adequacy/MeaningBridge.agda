@@ -573,25 +573,12 @@ SD-subst-usage : ∀ {n} {Γ : Ctx n} {A} {Ψ Ψ' : Usage n} (eq : Ψ ≡ Ψ')
     ≡ (SD.⟦ e ⟧ˢ fmt) (subst (λ u → ⟦ ⟦ Γ ↾ u ⟧ᶜᵗ ⟧ᴰ) (sym eq) dγ)
 SD-subst-usage refl dγ = refl
 
--- D143: over the RUNTIME environment. `RelEnv` needs no change — it is already
--- generic in the context, and the runtime context IS `debruijn ctx ↾ Ψ`.
-bridge-i : ∀ {ctx : NamedCtx} {e A Ψ} (d : ctx ⊢ᵢ e ∶ A ⨾ Ψ)
-           {dγ₁ dγ₂ : EnvRun ctx Ψ}
-           (re : RelEnv↾ (NamedCtx.debruijn ctx) Ψ dγ₁ dγ₂)
-         → RelT A ((⟦ d ⟧ᵢ fmt) dγ₁) ((SD.⟦ realize-infer d ⟧ˢ fmt) dγ₂)
 ------------------------------------------------------------------------
 -- D226: the relation respects conversions. `⟦ p ⟧<:` is applied to BOTH sides,
 -- so related values stay related: `Void` has none, base types are equal,
 -- an arrow's relation is a Π over related arguments (converted backwards) to
 -- related results (converted forwards), and products/sums are componentwise.
 ------------------------------------------------------------------------
-
-Res-rel-map : ∀ {X Y X′ Y′ : Set} {R : X → Y → Set} {S : X′ → Y′ → Set}
-                {h₁ : X → X′} {h₂ : Y → Y′}
-            → (∀ {x y} → R x y → S (h₁ x) (h₂ y))
-            → ∀ {r₁ r₂} → Res-rel R r₁ r₂ → Res-rel S (mapRes h₁ r₁) (mapRes h₂ r₂)
-Res-rel-map k rel-stopped     = rel-stopped
-Res-rel-map k (rel-returns r) = rel-returns (k r)
 
 mutual
   RelV-sub : ∀ {A B} (p : A <: B) {x y : ⟦ A ⟧ᴰ} → RelV A x y → RelV B (⟦ p ⟧<: x) (⟦ p ⟧<: y)
@@ -614,8 +601,14 @@ mutual
 
   RelT-sub : ∀ {A B} (p : A <: B) {t₁ t₂ : T ⟦ A ⟧ᴰ}
            → RelT A t₁ t₂ → RelT B (fmapT ⟦ p ⟧<: t₁) (fmapT ⟦ p ⟧<: t₂)
-  RelT-sub p rt n = proj₁ (rt n) , Res-rel-map (RelV-sub p) (proj₂ (rt n))
+  RelT-sub p {t₁} {t₂} rt n = proj₁ (rt n) , Res-rel-map (RelV-sub p) (T.resT t₁) (T.resT t₂) (proj₂ (rt n))
 
+-- D143: over the RUNTIME environment. `RelEnv` needs no change — it is already
+-- generic in the context, and the runtime context IS `debruijn ctx ↾ Ψ`.
+bridge-i : ∀ {ctx : NamedCtx} {e A Ψ} (d : ctx ⊢ᵢ e ∶ A ⨾ Ψ)
+           {dγ₁ dγ₂ : EnvRun ctx Ψ}
+           (re : RelEnv↾ (NamedCtx.debruijn ctx) Ψ dγ₁ dγ₂)
+         → RelT A ((⟦ d ⟧ᵢ fmt) dγ₁) ((SD.⟦ realize-infer d ⟧ˢ fmt) dγ₂)
 bridge-c : ∀ {ctx : NamedCtx} {e A Ψ} (d : ctx ⊢ᶜ e ∶ A ⨾ Ψ)
            {dγ₁ dγ₂ : EnvRun ctx Ψ}
            (re : RelEnv↾ (NamedCtx.debruijn ctx) Ψ dγ₁ dγ₂)

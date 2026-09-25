@@ -47,7 +47,8 @@ open import Once.Spec.Module
          AllMainEffUU; MainExists; ModuleMainEffUU-ef;
          ModuleMainExists-ef; HasValidMain-decl)
 open import Once.TypeCheck.Elaborate
-  using (checkElab; ctxWithImportsAndSelfAndPolys; PolyCtx; _≟T_)
+  using (checkElab; ctxWithImportsAndSelfAndPolys; PolyCtx)
+open import Once.Type.DecEq using (_≟T_)
 open import Once.TypeCheck.ElaborateProofs using (resolveExpr)
 open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_)
 open import Once.TypeCheck.Completeness using (check-complete)
