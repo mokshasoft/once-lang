@@ -15303,3 +15303,22 @@ infers its principal argument and matches it UP TO `<:`:
 Every principle lines up: eliminations consume their principal argument up to
 subtyping; introductions check; conversion happens at the mode switch. Meanings and
 runtime are unchanged.
+
+### Amendment (2026-09-25): NARROWING FOR `Void` ONLY — grades are not narrowed (β)
+
+The grade bullet above is WITHDRAWN. Application's result type depends on the
+head's grade: `t-app` (pure head) gives `f x ∶ B`, `t-effApp` (eff head) gives the
+suspension `f x ∶ Unit ⇒[eff] B` (D018). Lowering a variable from `eff` to `pure`
+changes that result's TYPE with no conversion between the two (`B </: Unit ⇒[eff] B`),
+and letting `t-effApp` also accept pure heads would give `f x` two inferred types,
+breaking the uniqueness `TypeCheck/Determinism` proves.
+
+So narrowing is a theorem for `Void` only: `Γ , x ∶ A ⊢ e ∶ T` and `Void`-narrowing
+(`x ∶ Void`) gives `Γ , x ∶ Void ⊢ e ∶ T`. Grades are never lowered by the checker;
+where plan 0.94 chooses a middle type, the grade is the one the programs fix. This is
+all 0.94 needs (`compose f initial`).
+
+Open for later (not decided): grade narrowing as a theorem. Two routes, each
+reversing an earlier decision — (α) admit `B <: Unit ⇒[eff] B` (the Kleisli unit `η`;
+reverses D127's removal of value-as-arrow lifting), or (γ) redesign effectful
+application as sequencing instead of suspension (reopens D018).
