@@ -15120,3 +15120,49 @@ derives ⊥ at `B = Void` (`generic-semM {Unit} {Void} "exit" tn tt : ⊥`
 typechecks; present on master since plan 0.2.4.1). D225 removes the Spec's USE
 of it at `Void` on the effectful path, not the postulate's type. Fixing the type
 (land it in `Res`, as `semM` did) is its own plan.
+
+## D226 — ONCE HAS ONE SUBTYPING JUDGMENT (2026-09-25)
+
+**Status**: Accepted; implementation in plan 0.99.
+**Relates**: D068 (`t-subsume`, `arr` retired), D069, D125 (subsumption belongs in
+CHECK mode; `Int`→`Float` stays local), D219 (Freyd structure), D225, plan 0.94
+§2/§4, plan 0.98 stage E.
+
+### Context
+
+0.98 stage E needs `exit : Eff Int Void` to be usable where `Unit` is expected
+(`main = exit@S (g 42)`, ~95 programs). A second standalone subsumption rule
+beside `t-subsume` would work, and would be the second special case of a
+structure Once does not state.
+
+### Decision
+
+One judgment on types, `A <: B`, and one check-mode rule
+`t-sub : ctx ⊢ᶜ e ∶ A ⨾ Ψ → A <: B → ctx ⊢ᶜ e ∶ B ⨾ Ψ`, replacing `t-subsume`.
+
+**Admission criterion**: a generator enters `<:` iff its conversion is CANONICAL
+(forced, not chosen) and OBSERVATION-FREE (can never lose anything observable).
+Admitted: `Void <: B` (`¡`, unique and vacuous) and the grade `pure ⊑ eff` (the
+Freyd embedding; erased by `⟦_⟧`). Rejected: `A <: Unit` (`!` is unique too, but it
+ERASES a value and breaks linearity) and `Int <: Float` (chosen, and not injective
+at fixed width — D125 stands). Closed under the type formers: arrows contravariant
+in the domain and covariant in the codomain and grade, products and sums
+covariant; `μ`/`ν` reflexive only; quantities not varied.
+
+**Coherence by construction**: the rules are syntax-directed with no transitivity
+rule, so each `A <: B` has at most one derivation (`<:-unique`). Transitivity is
+admissible. Every derivation therefore denotes the same conversion, which is what
+makes an IMPLICIT conversion sound (Reynolds; Curien–Ghelli).
+
+**Inference is untouched**: `⊢ᵢ` reports the least (principal) type; conversion
+happens only in checking mode (D125). Every premise is a judgment on types, never a
+computation on syntax (plan 0.94 §2). The non-unique middle type plan 0.94 §4
+flags becomes harmless: all choices denote the same map, and the principal one is
+the elaborator's.
+
+### Why `Void`, not a polymorphic `∀B`
+
+A family of maps `A → T B` natural in `B` is, by Yoneda, the same thing as one map
+`A → T 0`: `Void` is the representing object. So `Eff Int Void` is the canonical
+single statement of "never returns", `<:` supplies the instances, and FFI
+signatures keep concrete codomains.
