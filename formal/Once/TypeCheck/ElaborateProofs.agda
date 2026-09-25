@@ -134,96 +134,99 @@ checkElab-fallback-RUnit {ctx} with Unit <:? Unit
 
 -- RQualified: inferElab ≡ success ⇒ checkElab at the same type ≡ success.
 checkElab-fallback-RQualified :
-  ∀ {ctx : NamedCtx} (name alias : String) (T : Type)
+  ∀ {ctx : NamedCtx} {τ : Type} (name alias : String) (T : Type)
     {Ψ : Surface.Usage (NamedCtx.size ctx)}
     {eE : SExpr (NamedCtx.debruijn ctx) Ψ T}
     {d f : ℕ}
   → inferElab ctx (Raw.RQualified name alias) ≡ success T Ψ eE d f
+  → T <: τ
   → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f' →
-      checkElab ctx (Raw.RQualified name alias) T ≡ success Ψ eE' d' f')))
-checkElab-fallback-RQualified {ctx} name alias T eqInf
+      checkElab ctx (Raw.RQualified name alias) τ ≡ success Ψ eE' d' f')))
+checkElab-fallback-RQualified {ctx} {τ} name alias T eqInf sb
   with inferElabV ctx (Raw.RQualified name alias)
 ... | failure _ , _ with eqInf
 ...   | ()
-checkElab-fallback-RQualified {ctx} name alias T eqInf
+checkElab-fallback-RQualified {ctx} {τ} name alias T eqInf sb
   | success T' Ψ' eE' d' fr' , w with eqInf
-... | refl with T <:? T
+... | refl with T <:? τ
 ...   | yes _    = _ , _ , _ , refl
-...   | no ¬eq   = ⊥-elim (¬eq (<:-refl T))
+...   | no ¬eq   = ⊥-elim (¬eq sb)
 
 -- RResolved (Plan 0.50): same generic fallback as RQualified.
 checkElab-fallback-RResolved :
-  ∀ {ctx : NamedCtx} (cn : CanonicalName) (T : Type)
+  ∀ {ctx : NamedCtx} {τ : Type} (cn : CanonicalName) (T : Type)
     {Ψ : Surface.Usage (NamedCtx.size ctx)}
     {eE : SExpr (NamedCtx.debruijn ctx) Ψ T}
     {d f : ℕ}
   → inferElab ctx (Raw.RResolved cn) ≡ success T Ψ eE d f
+  → T <: τ
   → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f' →
-      checkElab ctx (Raw.RResolved cn) T ≡ success Ψ eE' d' f')))
+      checkElab ctx (Raw.RResolved cn) τ ≡ success Ψ eE' d' f')))
 -- D136: the view has to be split before `checkElabV (RResolved cn)` reduces —
 -- the dispatch is a single clause now, so an abstract `cn` leaves it stuck.
 -- Every branch is then the SAME proof: on an infer SUCCESS the generator auxes
 -- route through `embedOrSubsume` exactly as the generic path does, so the
 -- conclusion never depended on which view it was.
-checkElab-fallback-RResolved {ctx} cn T eqInf
+checkElab-fallback-RResolved {ctx} {τ} cn T eqInf sb
   with classifyGen cn | inferElabV ctx (Raw.RResolved cn) | eqInf
 ... | gv-id | failure _ , _ | ()
-checkElab-fallback-RResolved {ctx} cn T eqInf | gv-id | success T' Ψ' eE' d' fr' , w | refl with T <:? T
+checkElab-fallback-RResolved {ctx} {τ} cn T eqInf sb | gv-id | success T' Ψ' eE' d' fr' , w | refl with T <:? τ
 ... | yes _    = _ , _ , _ , refl
-... | no ¬eq   = ⊥-elim (¬eq (<:-refl T))
-checkElab-fallback-RResolved {ctx} cn T eqInf | gv-fst | failure _ , _ | ()
-checkElab-fallback-RResolved {ctx} cn T eqInf | gv-fst | success T' Ψ' eE' d' fr' , w | refl with T <:? T
+... | no ¬eq   = ⊥-elim (¬eq sb)
+checkElab-fallback-RResolved {ctx} {τ} cn T eqInf sb | gv-fst | failure _ , _ | ()
+checkElab-fallback-RResolved {ctx} {τ} cn T eqInf sb | gv-fst | success T' Ψ' eE' d' fr' , w | refl with T <:? τ
 ... | yes _    = _ , _ , _ , refl
-... | no ¬eq   = ⊥-elim (¬eq (<:-refl T))
-checkElab-fallback-RResolved {ctx} cn T eqInf | gv-snd | failure _ , _ | ()
-checkElab-fallback-RResolved {ctx} cn T eqInf | gv-snd | success T' Ψ' eE' d' fr' , w | refl with T <:? T
+... | no ¬eq   = ⊥-elim (¬eq sb)
+checkElab-fallback-RResolved {ctx} {τ} cn T eqInf sb | gv-snd | failure _ , _ | ()
+checkElab-fallback-RResolved {ctx} {τ} cn T eqInf sb | gv-snd | success T' Ψ' eE' d' fr' , w | refl with T <:? τ
 ... | yes _    = _ , _ , _ , refl
-... | no ¬eq   = ⊥-elim (¬eq (<:-refl T))
-checkElab-fallback-RResolved {ctx} cn T eqInf | gv-terminal | failure _ , _ | ()
-checkElab-fallback-RResolved {ctx} cn T eqInf | gv-terminal | success T' Ψ' eE' d' fr' , w | refl with T <:? T
+... | no ¬eq   = ⊥-elim (¬eq sb)
+checkElab-fallback-RResolved {ctx} {τ} cn T eqInf sb | gv-terminal | failure _ , _ | ()
+checkElab-fallback-RResolved {ctx} {τ} cn T eqInf sb | gv-terminal | success T' Ψ' eE' d' fr' , w | refl with T <:? τ
 ... | yes _    = _ , _ , _ , refl
-... | no ¬eq   = ⊥-elim (¬eq (<:-refl T))
-checkElab-fallback-RResolved {ctx} cn T eqInf | gv-initial | failure _ , _ | ()
-checkElab-fallback-RResolved {ctx} cn T eqInf | gv-initial | success T' Ψ' eE' d' fr' , w | refl with T <:? T
+... | no ¬eq   = ⊥-elim (¬eq sb)
+checkElab-fallback-RResolved {ctx} {τ} cn T eqInf sb | gv-initial | failure _ , _ | ()
+checkElab-fallback-RResolved {ctx} {τ} cn T eqInf sb | gv-initial | success T' Ψ' eE' d' fr' , w | refl with T <:? τ
 ... | yes _    = _ , _ , _ , refl
-... | no ¬eq   = ⊥-elim (¬eq (<:-refl T))
-checkElab-fallback-RResolved {ctx} cn T eqInf | gv-inl | failure _ , _ | ()
-checkElab-fallback-RResolved {ctx} cn T eqInf | gv-inl | success T' Ψ' eE' d' fr' , w | refl with T <:? T
+... | no ¬eq   = ⊥-elim (¬eq sb)
+checkElab-fallback-RResolved {ctx} {τ} cn T eqInf sb | gv-inl | failure _ , _ | ()
+checkElab-fallback-RResolved {ctx} {τ} cn T eqInf sb | gv-inl | success T' Ψ' eE' d' fr' , w | refl with T <:? τ
 ... | yes _    = _ , _ , _ , refl
-... | no ¬eq   = ⊥-elim (¬eq (<:-refl T))
-checkElab-fallback-RResolved {ctx} cn T eqInf | gv-inr | failure _ , _ | ()
-checkElab-fallback-RResolved {ctx} cn T eqInf | gv-inr | success T' Ψ' eE' d' fr' , w | refl with T <:? T
+... | no ¬eq   = ⊥-elim (¬eq sb)
+checkElab-fallback-RResolved {ctx} {τ} cn T eqInf sb | gv-inr | failure _ , _ | ()
+checkElab-fallback-RResolved {ctx} {τ} cn T eqInf sb | gv-inr | success T' Ψ' eE' d' fr' , w | refl with T <:? τ
 ... | yes _    = _ , _ , _ , refl
-... | no ¬eq   = ⊥-elim (¬eq (<:-refl T))
-checkElab-fallback-RResolved {ctx} cn T eqInf | gv-unit | failure _ , _ | ()
-checkElab-fallback-RResolved {ctx} cn T eqInf | gv-unit | success T' Ψ' eE' d' fr' , w | refl with T <:? T
+... | no ¬eq   = ⊥-elim (¬eq sb)
+checkElab-fallback-RResolved {ctx} {τ} cn T eqInf sb | gv-unit | failure _ , _ | ()
+checkElab-fallback-RResolved {ctx} {τ} cn T eqInf sb | gv-unit | success T' Ψ' eE' d' fr' , w | refl with T <:? τ
 ... | yes _    = _ , _ , _ , refl
-... | no ¬eq   = ⊥-elim (¬eq (<:-refl T))
-checkElab-fallback-RResolved {ctx} cn T eqInf | gv-other _ | failure _ , _ | ()
-checkElab-fallback-RResolved {ctx} cn T eqInf | gv-other _ | success T' Ψ' eE' d' fr' , w | refl with T <:? T
+... | no ¬eq   = ⊥-elim (¬eq sb)
+checkElab-fallback-RResolved {ctx} {τ} cn T eqInf sb | gv-other _ | failure _ , _ | ()
+checkElab-fallback-RResolved {ctx} {τ} cn T eqInf sb | gv-other _ | success T' Ψ' eE' d' fr' , w | refl with T <:? τ
 ... | yes _    = _ , _ , _ , refl
-... | no ¬eq   = ⊥-elim (¬eq (<:-refl T))
+... | no ¬eq   = ⊥-elim (¬eq sb)
 
 -- RAnnot T: check-mode check at T falls to generic fallback (no
 -- specialised RAnnot check clause). inferElab ctx (RAnnot e T) succeeds
 -- exactly when checkElab ctx e T succeeds at the annotated type.
 checkElab-fallback-RAnnot :
-  ∀ {ctx : NamedCtx} (e : RawExpr) (T : Type)
+  ∀ {ctx : NamedCtx} {τ : Type} (e : RawExpr) (T : Type)
     {Ψ : Surface.Usage (NamedCtx.size ctx)}
     {eE : SExpr (NamedCtx.debruijn ctx) Ψ T}
     {d f : ℕ}
   → inferElab ctx (Raw.RAnnot e T) ≡ success T Ψ eE d f
+  → T <: τ
   → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f' →
-      checkElab ctx (Raw.RAnnot e T) T ≡ success Ψ eE' d' f')))
-checkElab-fallback-RAnnot {ctx} e T eqInf
+      checkElab ctx (Raw.RAnnot e T) τ ≡ success Ψ eE' d' f')))
+checkElab-fallback-RAnnot {ctx} {τ} e T eqInf sb
   with inferElabV ctx (Raw.RAnnot e T)
 ... | failure _ , _ with eqInf
 ...   | ()
-checkElab-fallback-RAnnot {ctx} e T eqInf
+checkElab-fallback-RAnnot {ctx} {τ} e T eqInf sb
   | success T' Ψ' eE' d' fr' , w with eqInf
-... | refl with T <:? T
+... | refl with T <:? τ
 ...   | yes _    = _ , _ , _ , refl
-...   | no ¬eq   = ⊥-elim (¬eq (<:-refl T))
+...   | no ¬eq   = ⊥-elim (¬eq sb)
 
 -- Plan 0.36 Phase 2a: `checkElab-fallback-RPair` removed. RPair check-mode
 -- now goes through the bidirectional `checkPairLit` clause, so the old
@@ -233,43 +236,45 @@ checkElab-fallback-RAnnot {ctx} e T eqInf
 
 -- RLet: no specialised check clause.
 checkElab-fallback-RLet :
-  ∀ {ctx : NamedCtx} (x : String) (e₁ e₂ : RawExpr) (T : Type)
+  ∀ {ctx : NamedCtx} {τ : Type} (x : String) (e₁ e₂ : RawExpr) (T : Type)
     {Ψ : Surface.Usage (NamedCtx.size ctx)}
     {eE : SExpr (NamedCtx.debruijn ctx) Ψ T}
     {d f : ℕ}
   → inferElab ctx (Raw.RLet x e₁ e₂) ≡ success T Ψ eE d f
+  → T <: τ
   → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f' →
-      checkElab ctx (Raw.RLet x e₁ e₂) T ≡ success Ψ eE' d' f')))
-checkElab-fallback-RLet {ctx} x e₁ e₂ T eqInf
+      checkElab ctx (Raw.RLet x e₁ e₂) τ ≡ success Ψ eE' d' f')))
+checkElab-fallback-RLet {ctx} {τ} x e₁ e₂ T eqInf sb
   with inferElabV ctx (Raw.RLet x e₁ e₂)
 ... | failure _ , _ with eqInf
 ...   | ()
-checkElab-fallback-RLet {ctx} x e₁ e₂ T eqInf
+checkElab-fallback-RLet {ctx} {τ} x e₁ e₂ T eqInf sb
   | success T' Ψ' eE' d' fr' , w with eqInf
-... | refl with T <:? T
+... | refl with T <:? τ
 ...   | yes _    = _ , _ , _ , refl
-...   | no ¬eq   = ⊥-elim (¬eq (<:-refl T))
+...   | no ¬eq   = ⊥-elim (¬eq sb)
 
 -- RDestruct: no specialised check clause.
 checkElab-fallback-RDestruct :
-  ∀ {ctx : NamedCtx} (scrut : RawExpr) (xL : String) (eL : RawExpr)
+  ∀ {ctx : NamedCtx} {τ : Type} (scrut : RawExpr) (xL : String) (eL : RawExpr)
     (xR : String) (eR : RawExpr) (T : Type)
     {Ψ : Surface.Usage (NamedCtx.size ctx)}
     {eE : SExpr (NamedCtx.debruijn ctx) Ψ T}
     {d f : ℕ}
   → inferElab ctx (Raw.RDestruct scrut xL eL xR eR) ≡ success T Ψ eE d f
+  → T <: τ
   → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f' →
-      checkElab ctx (Raw.RDestruct scrut xL eL xR eR) T
+      checkElab ctx (Raw.RDestruct scrut xL eL xR eR) τ
         ≡ success Ψ eE' d' f')))
-checkElab-fallback-RDestruct {ctx} scrut xL eL xR eR T eqInf
+checkElab-fallback-RDestruct {ctx} {τ} scrut xL eL xR eR T eqInf sb
   with inferElabV ctx (Raw.RDestruct scrut xL eL xR eR)
 ... | failure _ , _ with eqInf
 ...   | ()
-checkElab-fallback-RDestruct {ctx} scrut xL eL xR eR T eqInf
+checkElab-fallback-RDestruct {ctx} {τ} scrut xL eL xR eR T eqInf sb
   | success T' Ψ' eE' d' fr' , w with eqInf
-... | refl with T <:? T
+... | refl with T <:? τ
 ...   | yes _    = _ , _ , _ , refl
-...   | no ¬eq   = ⊥-elim (¬eq (<:-refl T))
+...   | no ¬eq   = ⊥-elim (¬eq sb)
 
 -- RUnaryOp: a specialised check clause EXISTS NOW (plan 0.73 F3) — a negated
 -- literal at a pure-arrow target is its constant morphism — so this proof
@@ -572,44 +577,47 @@ checkElab-fallback-RApp-In {ctx} arg F {wfF} eqWF eqArg =
 -- checkElab-successes through the simplified dispatch chain.
 
 checkElab-fallback-RApp-apply :
-  ∀ {ctx : NamedCtx} (p : RawExpr) (A B : Type)
+  ∀ {ctx : NamedCtx} {τ : Type} (p : RawExpr) (A B : Type)
     {Ψ : Surface.Usage (NamedCtx.size ctx)}
     {eE : SExpr (NamedCtx.debruijn ctx) Ψ ((A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) Once.Type.* A)}
     {d fr : ℕ}
   → inferElab ctx p ≡ success ((A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) Once.Type.* A) Ψ eE d fr
+  → B <: τ
   → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f' →
-      checkElab ctx (Raw.RApp (Raw.RResolved (gen "apply")) p) B
+      checkElab ctx (Raw.RApp (Raw.RResolved (gen "apply")) p) τ
         ≡ success (Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ)) eE' d' f')))
-checkElab-fallback-RApp-apply {ctx} p A B eqInf
+checkElab-fallback-RApp-apply {ctx} {τ} p A B eqInf sb
   with inferElabV ctx p | eqInf
 ... | success ((_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] _) Once.Type.* _) _ _ _ _ , _ | refl
     with A ≟T A
 ...   | no  ¬eq  = ⊥-elim (¬eq refl)
-...   | yes refl with B <:? B
+...   | yes refl with B <:? τ
 ...     | yes _    = _ , _ , _ , refl
-...     | no  ¬eq  = ⊥-elim (¬eq (<:-refl B))
+...     | no  ¬eq  = ⊥-elim (¬eq sb)
 
 -- D222 / plan 0.95 A′: the EFF-closure twin. `apply` at an effectful closure
 -- infers the SUSPENSION `Unit ⇒[eff] B`, so that is the type it is re-checked
 -- at; the `with`-chase is otherwise the pure helper's, verbatim.
 checkElab-fallback-RApp-apply-effclosure :
-  ∀ {ctx : NamedCtx} (p : RawExpr) (A B : Type)
+  ∀ {ctx : NamedCtx} {τ : Type} (p : RawExpr) (A B : Type)
     {Ψ : Surface.Usage (NamedCtx.size ctx)}
     {eE : SExpr (NamedCtx.debruijn ctx) Ψ ((A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B) Once.Type.* A)}
     {d fr : ℕ}
   → inferElab ctx p ≡ success ((A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B) Once.Type.* A) Ψ eE d fr
+  → (Once.Type.Unit Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B) <: τ
   → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f' →
       checkElab ctx (Raw.RApp (Raw.RResolved (gen "apply")) p)
-                (Once.Type.Unit Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B)
+                τ
         ≡ success (Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ)) eE' d' f')))
-checkElab-fallback-RApp-apply-effclosure {ctx} p A B eqInf
+checkElab-fallback-RApp-apply-effclosure {ctx} {τ} p A B eqInf sb
   with inferElabV ctx p | eqInf
 ... | success ((_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] _) Once.Type.* _) _ _ _ _ , _ | refl
     with A ≟T A
 ...   | no  ¬eq  = ⊥-elim (¬eq refl)
-...   | yes refl with B <:? B
+...   | yes refl with (Once.Type.Unit Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B) <:? τ
 ...     | yes _    = _ , _ , _ , refl
-...     | no  ¬eq  = ⊥-elim (¬eq (<:-refl B))
+...     | no  ¬eq  = ⊥-elim (¬eq sb)
+
 resolveExprWF : ∀ {n} {Γ : Surface.Ctx n} {Ψ : Surface.Usage n} {A}
               → (polys : PolyCtx) → Acc _<_ (length polys)
               → Imports → Imports → ℕ
@@ -1133,44 +1141,47 @@ checkElab-fallback-RVar-poly-infer {ctx} x eqLoc eqImp eqPoly eqG =
            (inferElabV-RVar-poly-aux-success ctx x eqPoly eqG))
   where open import Data.Product using (proj₁)
 checkElab-fallback-RApp-id :
-  ∀ {ctx : NamedCtx} (arg : RawExpr) (T : Type)
+  ∀ {ctx : NamedCtx} {τ : Type} (arg : RawExpr) (T : Type)
     {Ψ : Surface.Usage (NamedCtx.size ctx)}
     {eE : SExpr (NamedCtx.debruijn ctx) Ψ T}
     {d f : ℕ}
   → inferElab ctx (Raw.RApp (Raw.RResolved (gen "id")) arg) ≡ success T Ψ eE d f
+  → T <: τ
   → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f' →
-      checkElab ctx (Raw.RApp (Raw.RResolved (gen "id")) arg) T ≡ success Ψ eE' d' f')))
-checkElab-fallback-RApp-id {ctx} arg T eqInf
+      checkElab ctx (Raw.RApp (Raw.RResolved (gen "id")) arg) τ ≡ success Ψ eE' d' f')))
+checkElab-fallback-RApp-id {ctx} {τ} arg T eqInf sb
   with inferElabV ctx (Raw.RApp (Raw.RResolved (gen "id")) arg) | eqInf
-... | success T' _ _ _ _ , _ | refl with T' <:? T
+... | success T' _ _ _ _ , _ | refl with T <:? τ
 ...   | yes _    = _ , _ , _ , refl
-...   | no ¬eq   = ⊥-elim (¬eq (<:-refl T))
+...   | no ¬eq   = ⊥-elim (¬eq sb)
 checkElab-fallback-RApp-fst :
-  ∀ {ctx : NamedCtx} (arg : RawExpr) (T : Type)
+  ∀ {ctx : NamedCtx} {τ : Type} (arg : RawExpr) (T : Type)
     {Ψ : Surface.Usage (NamedCtx.size ctx)}
     {eE : SExpr (NamedCtx.debruijn ctx) Ψ T}
     {d f : ℕ}
   → inferElab ctx (Raw.RApp (Raw.RResolved (gen "fst")) arg) ≡ success T Ψ eE d f
+  → T <: τ
   → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f' →
-      checkElab ctx (Raw.RApp (Raw.RResolved (gen "fst")) arg) T ≡ success Ψ eE' d' f')))
-checkElab-fallback-RApp-fst {ctx} arg T eqInf
+      checkElab ctx (Raw.RApp (Raw.RResolved (gen "fst")) arg) τ ≡ success Ψ eE' d' f')))
+checkElab-fallback-RApp-fst {ctx} {τ} arg T eqInf sb
   with inferElabV ctx (Raw.RApp (Raw.RResolved (gen "fst")) arg) | eqInf
-... | success T' _ _ _ _ , _ | refl with T' <:? T
+... | success T' _ _ _ _ , _ | refl with T <:? τ
 ...   | yes _    = _ , _ , _ , refl
-...   | no ¬eq   = ⊥-elim (¬eq (<:-refl T))
+...   | no ¬eq   = ⊥-elim (¬eq sb)
 checkElab-fallback-RApp-snd :
-  ∀ {ctx : NamedCtx} (arg : RawExpr) (T : Type)
+  ∀ {ctx : NamedCtx} {τ : Type} (arg : RawExpr) (T : Type)
     {Ψ : Surface.Usage (NamedCtx.size ctx)}
     {eE : SExpr (NamedCtx.debruijn ctx) Ψ T}
     {d f : ℕ}
   → inferElab ctx (Raw.RApp (Raw.RResolved (gen "snd")) arg) ≡ success T Ψ eE d f
+  → T <: τ
   → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f' →
-      checkElab ctx (Raw.RApp (Raw.RResolved (gen "snd")) arg) T ≡ success Ψ eE' d' f')))
-checkElab-fallback-RApp-snd {ctx} arg T eqInf
+      checkElab ctx (Raw.RApp (Raw.RResolved (gen "snd")) arg) τ ≡ success Ψ eE' d' f')))
+checkElab-fallback-RApp-snd {ctx} {τ} arg T eqInf sb
   with inferElabV ctx (Raw.RApp (Raw.RResolved (gen "snd")) arg) | eqInf
-... | success T' _ _ _ _ , _ | refl with T' <:? T
+... | success T' _ _ _ _ , _ | refl with T <:? τ
 ...   | yes _    = _ , _ , _ , refl
-...   | no ¬eq   = ⊥-elim (¬eq (<:-refl T))
+...   | no ¬eq   = ⊥-elim (¬eq sb)
 private
   open import Data.Product using () renaming (proj₁ to checkProj₁)
   checkViewBridge : ∀ {ctx f x T} (vw : AppHeadView f) (eq : classifyAppHeadView f ≡ vw)
@@ -1179,153 +1190,22 @@ private
   checkViewBridge _ refl = refl
 
 checkElab-fallback-RApp-generic :
-  ∀ {ctx : NamedCtx} (f x : RawExpr) (T : Type)
+  ∀ {ctx : NamedCtx} {τ : Type} (f x : RawExpr) (T : Type)
     {Ψ : Surface.Usage (NamedCtx.size ctx)}
     {eE : SExpr (NamedCtx.debruijn ctx) Ψ T}
     {d f' : ℕ}
   → classifyAppHead f ≡ nothing
   → inferElab ctx (Raw.RApp f x) ≡ success T Ψ eE d f'
+  → T <: τ
   → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f'' →
-      checkElab ctx (Raw.RApp f x) T ≡ success Ψ eE' d' f'')))
-checkElab-fallback-RApp-generic {ctx} f x T eqAH eqInf
-  rewrite cong checkProj₁ (checkViewBridge {ctx} {f} {x} {T} ahv-other (classifyAppHead-nothing⇒view-other eqAH))
+      checkElab ctx (Raw.RApp f x) τ ≡ success Ψ eE' d' f'')))
+checkElab-fallback-RApp-generic {ctx} {τ} f x T eqAH eqInf sb
+  rewrite cong checkProj₁ (checkViewBridge {ctx} {f} {x} {τ} ahv-other (classifyAppHead-nothing⇒view-other eqAH))
   with inferElabV ctx (Raw.RApp f x) | eqInf
 ... | success _ _ _ _ _ , _ | refl
-    with T <:? T
+    with T <:? τ
 ...   | yes _    = _ , _ , _ , refl
-...   | no ¬eq   = ⊥-elim (¬eq (<:-refl T))
-
--- Plan 0.52: the eff (SUBSUME) variant — a generic app that INFERS at a pure
--- arrow also CHECKS at the corresponding eff arrow. Since ahv-other now routes
--- through the named embedOrSubsume, the eff-arrow ≠ inferred pure-arrow, so it
--- takes embedOrSubsume-no's subsume branch (A/B reflexive).
-checkElab-fallback-RApp-generic-eff :
-  ∀ {ctx : NamedCtx} (f x : RawExpr) (A B : Type)
-    {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    {eE : SExpr (NamedCtx.debruijn ctx) Ψ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B)}
-    {d f' : ℕ}
-  → classifyAppHead f ≡ nothing
-  → inferElab ctx (Raw.RApp f x) ≡ success (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) Ψ eE d f'
-  → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f'' →
-      checkElab ctx (Raw.RApp f x) (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B)
-        ≡ success Ψ eE' d' f'')))
-checkElab-fallback-RApp-generic-eff {ctx} f x A B eqAH eqInf
-  rewrite cong checkProj₁ (checkViewBridge {ctx} {f} {x} {A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B} ahv-other (classifyAppHead-nothing⇒view-other eqAH))
-  with inferElabV ctx (Raw.RApp f x) | eqInf
-... | success _ _ _ _ _ , _ | refl
-    with A <:? A | B <:? B
-...   | yes _ | yes _ = _ , _ , _ , refl
-...   | no ¬a | _     = ⊥-elim (¬a (<:-refl A))
-...   | yes _ | no ¬b = ⊥-elim (¬b (<:-refl B))
-
--- Plan 0.52: eff (subsume) fallbacks for the infer-then-check builtin-app heads
--- (id/fst/snd). Their head is CONCRETE so the view reduces without a bridge;
--- the dispatch now routes infer-success through the named embedOrSubsume, so
--- the eff arrow ≠ inferred pure arrow takes the subsume branch (A/B reflexive).
-checkElab-fallback-RApp-id-eff :
-  ∀ {ctx : NamedCtx} (arg : RawExpr) (A B : Type)
-    {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    {eE : SExpr (NamedCtx.debruijn ctx) Ψ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B)}
-    {d f' : ℕ}
-  → inferElab ctx (Raw.RApp (Raw.RResolved (gen "id")) arg) ≡ success (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) Ψ eE d f'
-  → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f'' →
-      checkElab ctx (Raw.RApp (Raw.RResolved (gen "id")) arg) (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B)
-        ≡ success Ψ eE' d' f'')))
-checkElab-fallback-RApp-id-eff {ctx} arg A B eqInf
-  with inferElabV ctx (Raw.RApp (Raw.RResolved (gen "id")) arg) | eqInf
-... | success _ _ _ _ _ , _ | refl
-    with A <:? A | B <:? B
-...   | yes _ | yes _ = _ , _ , _ , refl
-...   | no ¬a | _     = ⊥-elim (¬a (<:-refl A))
-...   | yes _ | no ¬b = ⊥-elim (¬b (<:-refl B))
-
-checkElab-fallback-RApp-fst-eff :
-  ∀ {ctx : NamedCtx} (arg : RawExpr) (A B : Type)
-    {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    {eE : SExpr (NamedCtx.debruijn ctx) Ψ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B)}
-    {d f' : ℕ}
-  → inferElab ctx (Raw.RApp (Raw.RResolved (gen "fst")) arg) ≡ success (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) Ψ eE d f'
-  → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f'' →
-      checkElab ctx (Raw.RApp (Raw.RResolved (gen "fst")) arg) (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B)
-        ≡ success Ψ eE' d' f'')))
-checkElab-fallback-RApp-fst-eff {ctx} arg A B eqInf
-  with inferElabV ctx (Raw.RApp (Raw.RResolved (gen "fst")) arg) | eqInf
-... | success _ _ _ _ _ , _ | refl
-    with A <:? A | B <:? B
-...   | yes _ | yes _ = _ , _ , _ , refl
-...   | no ¬a | _     = ⊥-elim (¬a (<:-refl A))
-...   | yes _ | no ¬b = ⊥-elim (¬b (<:-refl B))
-
-checkElab-fallback-RApp-snd-eff :
-  ∀ {ctx : NamedCtx} (arg : RawExpr) (A B : Type)
-    {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    {eE : SExpr (NamedCtx.debruijn ctx) Ψ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B)}
-    {d f' : ℕ}
-  → inferElab ctx (Raw.RApp (Raw.RResolved (gen "snd")) arg) ≡ success (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) Ψ eE d f'
-  → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f'' →
-      checkElab ctx (Raw.RApp (Raw.RResolved (gen "snd")) arg) (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B)
-        ≡ success Ψ eE' d' f'')))
-checkElab-fallback-RApp-snd-eff {ctx} arg A B eqInf
-  with inferElabV ctx (Raw.RApp (Raw.RResolved (gen "snd")) arg) | eqInf
-... | success _ _ _ _ _ , _ | refl
-    with A <:? A | B <:? B
-...   | yes _ | yes _ = _ , _ , _ , refl
-...   | no ¬a | _     = ⊥-elim (¬a (<:-refl A))
-...   | yes _ | no ¬b = ⊥-elim (¬b (<:-refl B))
-
--- Plan 0.52: eff (subsume) fallback for an RVar whose infer SUCCEEDS (local /
--- import var). The dispatch routes infer-success through the named
--- embedOrSubsume BEFORE the bbc split, so this reduces for an abstract `x`.
-checkElab-fallback-RVar-eff :
-  ∀ {ctx : NamedCtx} (x : String) (A B : Type)
-    {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    {eE : SExpr (NamedCtx.debruijn ctx) Ψ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B)}
-    {d f' : ℕ}
-  → inferElab ctx (Raw.RVar x) ≡ success (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) Ψ eE d f'
-  → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f'' →
-      checkElab ctx (Raw.RVar x) (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B)
-        ≡ success Ψ eE' d' f'')))
-checkElab-fallback-RVar-eff {ctx} x A B eqInf
-  with inferElabV ctx (Raw.RVar x) | eqInf
-... | success _ _ _ _ _ , _ | refl
-    with A <:? A | B <:? B
-...   | yes _ | yes _ = _ , _ , _ , refl
-...   | no ¬a | _     = ⊥-elim (¬a (<:-refl A))
-...   | yes _ | no ¬b = ⊥-elim (¬b (<:-refl B))
-
--- Plan 0.52: `initial arg` checks at ANY target (the `initial` morphism is
--- Void → T grade-agnostically), so given `arg : Void` it checks at the eff arrow.
-checkElab-fallback-RApp-initial-eff :
-  ∀ {ctx : NamedCtx} (arg : RawExpr) (T : Type)
-    {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    {argE : SExpr (NamedCtx.debruijn ctx) Ψ Once.Type.Void}
-    {d fr : ℕ}
-  → checkElab ctx arg Once.Type.Void ≡ success Ψ argE d fr
-  → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f'' →
-      checkElab ctx (Raw.RApp (Raw.RResolved (gen "initial")) arg) T
-        ≡ success (Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ)) eE' d' f'')))
-checkElab-fallback-RApp-initial-eff {ctx} arg T eqArg
-  with checkElabV ctx arg Once.Type.Void | eqArg
-... | success _ _ _ _ , _ | refl = _ , _ , _ , refl
-
--- Plan 0.52: `apply p` now routes its check through the named embedOrSubsume, so
--- (like the other infer-then-check heads) it subsumes from the inferred result.
-checkElab-fallback-RApp-apply-eff :
-  ∀ {ctx : NamedCtx} (p : RawExpr) (A B : Type)
-    {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    {eE : SExpr (NamedCtx.debruijn ctx) Ψ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B)}
-    {d f' : ℕ}
-  → inferElab ctx (Raw.RApp (Raw.RResolved (gen "apply")) p) ≡ success (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) Ψ eE d f'
-  → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f'' →
-      checkElab ctx (Raw.RApp (Raw.RResolved (gen "apply")) p) (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B)
-        ≡ success Ψ eE' d' f'')))
-checkElab-fallback-RApp-apply-eff {ctx} p A B eqInf
-  with inferElabV ctx (Raw.RApp (Raw.RResolved (gen "apply")) p) | eqInf
-... | success _ _ _ _ _ , _ | refl
-    with A <:? A | B <:? B
-...   | yes _ | yes _ = _ , _ , _ , refl
-...   | no ¬a | _     = ⊥-elim (¬a (<:-refl A))
-...   | yes _ | no ¬b = ⊥-elim (¬b (<:-refl B))
+...   | no ¬eq   = ⊥-elim (¬eq sb)
 
 -- D194: the J bridge for `inferOutGo`'s decision argument — `checkCataGo-J`'s
 -- analogue, and needed for its reason: the completeness proof must move from
@@ -1342,26 +1222,6 @@ inferOutGo-J :
   → inferOutGo ctx arg F Ψ argE d fr w (wellFormedF? F) refl
     ≡ inferOutGo ctx arg F Ψ argE d fr w mw eq
 inferOutGo-J ctx arg F Ψ argE d fr w .(wellFormedF? F) refl = refl
-
--- D194: the eff twin for `Out`. Reachable because `⟦ F ⟧T (ν-type F)` CAN be
--- a pure arrow — at `F = K (A ⇒ B)` — so forcing a layer can synthesise a
--- function, and checking it at an eff arrow is the ordinary subsumption.
-checkElab-fallback-RApp-Out-eff :
-  ∀ {ctx : NamedCtx} (v : RawExpr) (A B : Type)
-    {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    {eE : SExpr (NamedCtx.debruijn ctx) Ψ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B)}
-    {d f' : ℕ}
-  → inferElab ctx (Raw.RApp (Raw.RResolved (gen "Out")) v) ≡ success (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) Ψ eE d f'
-  → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f'' →
-      checkElab ctx (Raw.RApp (Raw.RResolved (gen "Out")) v) (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B)
-        ≡ success Ψ eE' d' f'')))
-checkElab-fallback-RApp-Out-eff {ctx} v A B eqInf
-  with inferElabV ctx (Raw.RApp (Raw.RResolved (gen "Out")) v) | eqInf
-... | success _ _ _ _ _ , _ | refl
-    with A <:? A | B <:? B
-...   | yes _ | yes _ = _ , _ , _ , refl
-...   | no ¬a | _     = ⊥-elim (¬a (<:-refl A))
-...   | yes _ | no ¬b = ⊥-elim (¬b (<:-refl B))
 
 -- Plan 0.54: relate the two `(mw, eq)` instantiations of `checkCataGo` by
 -- singleton contractibility (mirrors compose's `go-canonical`). Used to bridge
@@ -1500,52 +1360,55 @@ checkCata-eff-strong-hlp ctx alg F A (failure err , _) eqr eqStrong
 -- nothing to recover and nothing to state.
 
 checkElab-fallback-RApp-terminal :
-  ∀ {ctx : NamedCtx} (arg : RawExpr) (T : Type)
+  ∀ {ctx : NamedCtx} {τ : Type} (arg : RawExpr) (T : Type)
     {Ψ : Surface.Usage (NamedCtx.size ctx)}
     {eE : SExpr (NamedCtx.debruijn ctx) Ψ T}
     {d f : ℕ}
   → inferElab ctx (Raw.RApp (Raw.RResolved (gen "terminal")) arg) ≡ success T Ψ eE d f
+  → T <: τ
   → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f' →
-      checkElab ctx (Raw.RApp (Raw.RResolved (gen "terminal")) arg) T ≡ success Ψ eE' d' f')))
-checkElab-fallback-RApp-terminal {ctx} arg T eqInf
+      checkElab ctx (Raw.RApp (Raw.RResolved (gen "terminal")) arg) τ ≡ success Ψ eE' d' f')))
+checkElab-fallback-RApp-terminal {ctx} {τ} arg T eqInf sb
   with inferElabV ctx (Raw.RApp (Raw.RResolved (gen "terminal")) arg) | eqInf
-... | success T' _ _ _ _ , _ | refl with T' <:? T
+... | success T' _ _ _ _ , _ | refl with T <:? τ
 ...   | yes _    = _ , _ , _ , refl
-...   | no ¬eq   = ⊥-elim (¬eq (<:-refl T))
+...   | no ¬eq   = ⊥-elim (¬eq sb)
 -- D194: the `Out` fallback — `terminal`'s verbatim. Both are infer-mode heads
 -- whose CHECK routes through `embedOrSubsume`, so the check reduces to the
 -- infer result matched against the expected type.
 checkElab-fallback-RApp-Out :
-  ∀ {ctx : NamedCtx} (arg : RawExpr) (T : Type)
+  ∀ {ctx : NamedCtx} {τ : Type} (arg : RawExpr) (T : Type)
     {Ψ : Surface.Usage (NamedCtx.size ctx)}
     {eE : SExpr (NamedCtx.debruijn ctx) Ψ T}
     {d f : ℕ}
   → inferElab ctx (Raw.RApp (Raw.RResolved (gen "Out")) arg) ≡ success T Ψ eE d f
+  → T <: τ
   → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f' →
-      checkElab ctx (Raw.RApp (Raw.RResolved (gen "Out")) arg) T ≡ success Ψ eE' d' f')))
-checkElab-fallback-RApp-Out {ctx} arg T eqInf
+      checkElab ctx (Raw.RApp (Raw.RResolved (gen "Out")) arg) τ ≡ success Ψ eE' d' f')))
+checkElab-fallback-RApp-Out {ctx} {τ} arg T eqInf sb
   with inferElabV ctx (Raw.RApp (Raw.RResolved (gen "Out")) arg) | eqInf
-... | success T' _ _ _ _ , _ | refl with T' <:? T
+... | success T' _ _ _ _ , _ | refl with T <:? τ
 ...   | yes _    = _ , _ , _ , refl
-...   | no ¬eq   = ⊥-elim (¬eq (<:-refl T))
+...   | no ¬eq   = ⊥-elim (¬eq sb)
 
 checkElab-fallback-RBinOp :
-  ∀ {ctx : NamedCtx} (op : Raw.BinOp) (e₁ e₂ : RawExpr) (T : Type)
+  ∀ {ctx : NamedCtx} {τ : Type} (op : Raw.BinOp) (e₁ e₂ : RawExpr) (T : Type)
     {Ψ : Surface.Usage (NamedCtx.size ctx)}
     {eE : SExpr (NamedCtx.debruijn ctx) Ψ T}
     {d f : ℕ}
   → inferElab ctx (Raw.RBinOp op e₁ e₂) ≡ success T Ψ eE d f
+  → T <: τ
   → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f' →
-      checkElab ctx (Raw.RBinOp op e₁ e₂) T ≡ success Ψ eE' d' f')))
-checkElab-fallback-RBinOp {ctx} op e₁ e₂ T eqInf
+      checkElab ctx (Raw.RBinOp op e₁ e₂) τ ≡ success Ψ eE' d' f')))
+checkElab-fallback-RBinOp {ctx} {τ} op e₁ e₂ T eqInf sb
   with inferElabV ctx (Raw.RBinOp op e₁ e₂)
 ... | failure _ , _ with eqInf
 ...   | ()
-checkElab-fallback-RBinOp {ctx} op e₁ e₂ T eqInf
+checkElab-fallback-RBinOp {ctx} {τ} op e₁ e₂ T eqInf sb
   | success T' Ψ' eE' d' fr' , w with eqInf
-... | refl with T <:? T
+... | refl with T <:? τ
 ...   | yes _    = _ , _ , _ , refl
-...   | no ¬eq   = ⊥-elim (¬eq (<:-refl T))
+...   | no ¬eq   = ⊥-elim (¬eq sb)
 
 ------------------------------------------------------------------------
 -- Top-level Compilation

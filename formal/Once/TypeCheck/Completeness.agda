@@ -76,6 +76,8 @@ open import Once.IRTy.WF using (wf-⌊⌋)
 open import Once.Denotation.Realize using ()
 open import Once.Surface.Syntax as Srf using (Expr; lift-morphism)
 open import Once.Type using (Functor; μ-type; ⟦_⟧T)
+open import Once.Type.Sub using (_<:_; _<:?_; <:-refl; sub-int; sub-float; sub-str; sub-unit; sub-prod; sub-sum)
+open import Once.Type.DecEq using (_≟T_; _≟F_)
 open import Once.TypeCheck.Classify using (lookupLocal; lookupImport; lookupPolyPrefix⇒lookupPoly;
   inspectLookupLocal; inspectLookupImport; llv-found; llv-not-found; liv-found; liv-not-found;
   GenView; classifyGen; gv-id; gv-fst; gv-snd; gv-terminal; gv-initial; gv-inl; gv-inr;
@@ -803,37 +805,16 @@ check-complete-RLam :
     {Ψ' : Surface.Usage (NamedCtx.size ctx)}
     {eE' : SExpr (NamedCtx.debruijn (Once.TypeCheck.ElaborateProofs.extendNamedCtx ctx x A))
                  (q' Surface.Usage.∷ Ψ') B}
-    {d' f' : ℕ}
+    {d' f' : ℕ} {π : T.Purity}
   → (q' T.≤q q) ≡ true
   → checkElab (Once.TypeCheck.ElaborateProofs.extendNamedCtx ctx x A) body B
       ≡ success (q' Surface.Usage.∷ Ψ') eE' d' f'
   → ∃[ eE ] ∃[ d ] ∃[ f ]
-      checkElab ctx (Raw.RLam x body) (A T.⇒[ T.mk-kind q T.pure ] B) ≡ success Ψ' eE d f
+      checkElab ctx (Raw.RLam x body) (A T.⇒[ T.mk-kind q π ] B) ≡ success Ψ' eE d f
 check-complete-RLam ctx x body A q q' B leqEq eqC
   with checkElabV (Once.TypeCheck.ElaborateProofs.extendNamedCtx ctx x A) body B | eqC
 ... | success (_ Surface.Usage.∷ _) _ _ _ , _ | refl
     with Once.TypeCheck.ElaborateProofs.decideLeq q' q | decideLeq-just q' q leqEq
-...   | just _ | _ , refl = _ , _ , _ , refl
-
--- Plan 0.52: the eff-arrow RLam (the subsumed lambda). Same body check +
--- `decideLeq q' Many` as the pure clause; the eff clause only adds the
--- `arr'`/`t-subsume` wrapper (Elaborate). Quantity is `Many` (the eff target).
-check-complete-RLam-eff :
-  ∀ (ctx : NamedCtx) (x : String) (body : RawExpr)
-    (A : Type) (q' : Quantity) (B : Type)
-    {Ψ' : Surface.Usage (NamedCtx.size ctx)}
-    {eE' : SExpr (NamedCtx.debruijn (Once.TypeCheck.ElaborateProofs.extendNamedCtx ctx x A))
-                 (q' Surface.Usage.∷ Ψ') B}
-    {d' f' : ℕ}
-  → (q' T.≤q T.Many) ≡ true
-  → checkElab (Once.TypeCheck.ElaborateProofs.extendNamedCtx ctx x A) body B
-      ≡ success (q' Surface.Usage.∷ Ψ') eE' d' f'
-  → ∃[ eE ] ∃[ d ] ∃[ f ]
-      checkElab ctx (Raw.RLam x body) (A T.⇒[ T.mk-kind T.Many T.eff ] B) ≡ success Ψ' eE d f
-check-complete-RLam-eff ctx x body A q' B leqEq eqC
-  with checkElabV (Once.TypeCheck.ElaborateProofs.extendNamedCtx ctx x A) body B | eqC
-... | success (_ Surface.Usage.∷ _) _ _ _ , _ | refl
-    with Once.TypeCheck.ElaborateProofs.decideLeq q' T.Many | decideLeq-just q' T.Many leqEq
 ...   | just _ | _ , refl = _ , _ , _ , refl
 
 ------------------------------------------------------------------------
@@ -999,11 +980,8 @@ open Once.TypeCheck.ElaborateProofs
          checkElab-fallback-RDestruct; checkElab-fallback-RUnaryOp;
          checkElab-fallback-RBinOp;
          checkElab-fallback-RApp-id; checkElab-fallback-RApp-fst;
-         checkElab-fallback-RApp-snd; checkElab-fallback-RApp-terminal; checkElab-fallback-RApp-Out; checkElab-fallback-RApp-Out-eff;
-         checkElab-fallback-RApp-generic; checkElab-fallback-RApp-generic-eff;
-         checkElab-fallback-RApp-id-eff; checkElab-fallback-RApp-fst-eff; checkElab-fallback-RApp-snd-eff;
-         checkElab-fallback-RVar-eff; checkElab-fallback-RApp-initial-eff;
-         checkElab-fallback-RApp-apply-eff)
+         checkElab-fallback-RApp-snd; checkElab-fallback-RApp-terminal; checkElab-fallback-RApp-Out;
+         checkElab-fallback-RApp-generic)
 
 -- RVar case: covers both local and import lookups (and "unit"). The
 -- fallback lemma takes the inferElab-success equation uniformly.
@@ -1016,21 +994,22 @@ open Once.TypeCheck.ElaborateProofs
 -- uniform across all specialised names because each specialised
 -- clause's lookup-success branch is identical in shape.
 checkElab-fallback-RVar :
-  ∀ {ctx : NamedCtx} (x : String) (T : Type)
+  ∀ {ctx : NamedCtx} {τ : Type} (x : String) (T : Type)
     {Ψ : Surface.Usage (NamedCtx.size ctx)}
     {eE : _} {d f : ℕ}
   → inferElab ctx (Raw.RVar x) ≡ success T Ψ eE d f
+  → T <: τ
   → ∃[ eE' ] ∃[ d' ] ∃[ f' ]
-      checkElab ctx (Raw.RVar x) T ≡ success Ψ eE' d' f'
+      checkElab ctx (Raw.RVar x) τ ≡ success Ψ eE' d' f'
 -- D136: the bare-`RVar` check path no longer dispatches on
 -- `classifyBareBuiltin` (a generator is `RResolved (gen g)`, never a bare
 -- name), so the nine-way split this proof used to mirror collapses to the
 -- single `embedOrSubsume` reduction.
-checkElab-fallback-RVar {ctx} x T eqInf
+checkElab-fallback-RVar {ctx} {τ} x T eqInf sb
   with inferElabV ctx (Raw.RVar x) | eqInf
-... | success _ _ _ _ _ , _ | refl with T ≟T T
-...   | yes refl = _ , _ , _ , refl
-...   | no ¬eq   = ⊥-elim (¬eq refl)
+... | success _ _ _ _ _ , _ | refl with T <:? τ
+...   | yes _    = _ , _ , _ , refl
+...   | no ¬eq   = ⊥-elim (¬eq sb)
 
 -- Plan 0.4 T0 (2026-04-30): completeness gaps for t-embed of
 -- t-arr-app-infer / t-apply-app-infer. The elaborator's check-mode
@@ -1102,58 +1081,6 @@ checkElabV-RResolved-J :
                  ctx cn T gv (inferElabV ctx (RResolved cn)))
 checkElabV-RResolved-J ctx cn T .(classifyGen cn) refl = refl
 
-embedOrSubsume-lifts : ∀ (ctx : NamedCtx) (e : RawExpr) (A B : Type)
-    (r : VerifiedInferResult ctx e)
-    {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    {eE : SExpr (NamedCtx.debruijn ctx) Ψ (A T.⇒[ T.mk-kind T.Many T.pure ] B)} {d f : ℕ}
-  → proj₁ (embedOrSubsume ctx e (A T.⇒[ T.mk-kind T.Many T.pure ] B) r) ≡ success Ψ eE d f
-  → ∃[ eE' ] ∃[ d' ] ∃[ f' ]
-      proj₁ (embedOrSubsume ctx e (A T.⇒[ T.mk-kind T.Many T.eff ] B) r) ≡ success Ψ eE' d' f'
-embedOrSubsume-lifts ctx e A B (failure _ , _) ()
-embedOrSubsume-lifts ctx e A B (success T' Ψ' eE' d' f' , w) eqP
-  with (A T.⇒[ T.mk-kind T.Many T.pure ] B) ≟T T' | eqP
-... | yes refl | refl
-      -- embed at pure; at eff: eff-arrow ≠ inferred pure-arrow, then A/B reflexive.
-      with (A T.⇒[ T.mk-kind T.Many T.eff ] B) ≟T (A T.⇒[ T.mk-kind T.Many T.pure ] B)
-...     | yes ()
-...     | no _ with A ≟T A | B ≟T B
-...       | yes refl | yes refl = _ , _ , _ , refl
-...       | no ¬a    | _        = ⊥-elim (¬a refl)
-...       | yes _     | no ¬b    = ⊥-elim (¬b refl)
--- D127 PUTS THE GROUND BACK. D126's closed-expression lift made
--- `embedOrSubsume-no` succeed at a PURE arrow target, so this lemma had to
--- enumerate every inferred `T'` and route each through `closed-lift-aux-lifts`
--- — sixteen rows. With the lift deleted, `embedOrSubsume-no` at a pure arrow
--- target only ever FAILS, so the `no` case is absurd again and the enumeration
--- collapses to this one clause.
-embedOrSubsume-lifts ctx e A B (success T' Ψ' eE' d' f' , w) eqP | no _ | ()
-
--- The `RResolved` instance of the lift, view-parameterised so the dispatch
--- reduces. The eight generator branches are refuted by the rule's own
--- `NotGenerator` premise — the disjointness D136 introduced it for.
-resolved-eff-lift :
-  ∀ (ctx : NamedCtx) (cn : CanonicalName) (A B : Type)
-    (gv : GenView cn) → classifyGen cn ≡ gv → NotGenerator cn
-  → ∀ {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    {eE : SExpr (NamedCtx.debruijn ctx) Ψ (A T.⇒[ T.mk-kind T.Many T.pure ] B)} {d f : ℕ}
-  → checkElab ctx (RResolved cn) (A T.⇒[ T.mk-kind T.Many T.pure ] B) ≡ success Ψ eE d f
-  → ∃[ eE' ] ∃[ d' ] ∃[ f' ]
-      checkElab ctx (RResolved cn) (A T.⇒[ T.mk-kind T.Many T.eff ] B) ≡ success Ψ eE' d' f'
-resolved-eff-lift ctx cn A B gv-id       _ (e ∷ᴬ _) _ = ⊥-elim (e refl)
-resolved-eff-lift ctx cn A B gv-fst      _ (_ ∷ᴬ e ∷ᴬ _) _ = ⊥-elim (e refl)
-resolved-eff-lift ctx cn A B gv-snd      _ (_ ∷ᴬ _ ∷ᴬ e ∷ᴬ _) _ = ⊥-elim (e refl)
-resolved-eff-lift ctx cn A B gv-terminal _ (_ ∷ᴬ _ ∷ᴬ _ ∷ᴬ e ∷ᴬ _) _ = ⊥-elim (e refl)
-resolved-eff-lift ctx cn A B gv-initial  _ (_ ∷ᴬ _ ∷ᴬ _ ∷ᴬ _ ∷ᴬ e ∷ᴬ _) _ = ⊥-elim (e refl)
-resolved-eff-lift ctx cn A B gv-inl      _ (_ ∷ᴬ _ ∷ᴬ _ ∷ᴬ _ ∷ᴬ _ ∷ᴬ e ∷ᴬ _) _ = ⊥-elim (e refl)
-resolved-eff-lift ctx cn A B gv-inr      _ (_ ∷ᴬ _ ∷ᴬ _ ∷ᴬ _ ∷ᴬ _ ∷ᴬ _ ∷ᴬ e ∷ᴬ _) _ = ⊥-elim (e refl)
-resolved-eff-lift ctx cn A B gv-unit     _ (_ ∷ᴬ _ ∷ᴬ _ ∷ᴬ _ ∷ᴬ _ ∷ᴬ _ ∷ᴬ _ ∷ᴬ e ∷ᴬ _) _ = ⊥-elim (e refl)
-resolved-eff-lift ctx cn A B (gv-other _) eqv _ eqC =
-  let (eE' , d' , f' , eqE) =
-        embedOrSubsume-lifts ctx (RResolved cn) A B (inferElabV ctx (RResolved cn))
-          (trans (sym (checkElabV-RResolved-J ctx cn (A T.⇒[ T.mk-kind T.Many T.pure ] B) _ eqv)) eqC)
-  in eE' , d' , f' ,
-     trans (checkElabV-RResolved-J ctx cn (A T.⇒[ T.mk-kind T.Many T.eff ] B) _ eqv) eqE
-
 -- The two arg-driven-app completeness gaps (pre-existing, not D127's).
 postulate
   completeness-gap-arg-driven-app-check :
@@ -1164,20 +1091,6 @@ postulate
     → ctx ⊢ᶜ f ∶ (X T.⇒[ T.mk-kind T.Many T.pure ] T) ⨾ Ψ₁
     → ∃[ eE ] ∃[ d ] ∃[ fr ]
         checkElab ctx (Raw.RApp f arg) T
-          ≡ success (Ψ₁ +ᵘ (T.Many *ᵘ Ψ₂)) eE d fr
-  -- Plan 0.52: the eff-analog (pure⊑eff at an arg-driven app), the exact twin of
-  -- the pure gap above — inherits the same known argdriven-reduction difficulty
-  -- (checkElab (f arg) reduces through inferElab (f arg) ≡ failure, hard to
-  -- establish for an abstract argdriven app). The eff argdriven clause checks f
-  -- at its pure codomain and wraps in arr'/t-subsume.
-  completeness-gap-arg-driven-app-check-eff :
-    ∀ {ctx : NamedCtx} {f arg : RawExpr} {X A B : Type}
-      {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
-    → Once.TypeCheck.ElaborateProofs.classifyAppHead f ≡ nothing
-    → ctx ⊢ᵢ arg ∶ X ⨾ Ψ₂
-    → ctx ⊢ᶜ f ∶ (X T.⇒[ T.mk-kind T.Many T.pure ] (A T.⇒[ T.mk-kind T.Many T.pure ] B)) ⨾ Ψ₁
-    → ∃[ eE ] ∃[ d ] ∃[ fr ]
-        checkElab ctx (Raw.RApp f arg) (A T.⇒[ T.mk-kind T.Many T.eff ] B)
           ≡ success (Ψ₁ +ᵘ (T.Many *ᵘ Ψ₂)) eE d fr
 
 private
@@ -1256,22 +1169,6 @@ mutual
   check-completeV {ctx} {e} {A} d with checkElabV ctx e A | check-complete d
   ... | r , w0 | eE , d' , f , eq rewrite eq = eE , d' , f , w0 , refl
 
-  -- D127: the witness-carrying form of `subsume-complete`, built the same way.
-  -- This is what lets a combinator's EFF case feed its own arms to the eff
-  -- `Go`: the arms at eff come from the RECURSIVE `subsume-complete`, so they
-  -- carry the PURE derivation's usages, and the eff branch fires with exactly
-  -- the `Ψ` the conclusion needs.
-  subsume-completeV : ∀ {ctx : NamedCtx} {e : RawExpr} {A B : Type}
-      {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    → ctx ⊢ᶜ e ∶ (A T.⇒[ T.mk-kind T.Many T.pure ] B) ⨾ Ψ
-    → ∃[ eE ] ∃[ d ] ∃[ f ]
-        Σ-syntax (ctx ⊢ᶜ e ∶ (A T.⇒[ T.mk-kind T.Many T.eff ] B) ⨾ Ψ) (λ w →
-          checkElabV ctx e (A T.⇒[ T.mk-kind T.Many T.eff ] B)
-            ≡ (success Ψ eE d f , w))
-  subsume-completeV {ctx} {e} {A} {B} d
-    with checkElabV ctx e (A T.⇒[ T.mk-kind T.Many T.eff ] B) | subsume-complete d
-  ... | r , w0 | eE , d' , f , eq rewrite eq = eE , d' , f , w0 , refl
-
   -- The bidirectional SWITCH lemma `infer ⊆ check`, by structural recursion on the
   -- INFER derivation (genuine subterms — NO `t-embed` re-wrap). `check-complete
   -- (t-embed d)` is now ONE clause delegating here, so this is the single, uniform
@@ -1280,21 +1177,25 @@ mutual
   -- `t-pair` RECURSES (its components, synthesized in the derivation, must be
   -- re-CHECKED by `checkPairLit`) — the sub-derivations d₁/d₂ are genuine subterms,
   -- so the recursion is structural (this is what the postulate could not express).
-  iFromInfer : ∀ {ctx : NamedCtx} {e : RawExpr} {A : Type}
+  -- D226: the switch lands at any SUPERTYPE of the inferred type. Where the
+  -- inferred type is concrete, matching the derivation `p` fixes the target;
+  -- elsewhere the fallback lemmas take `p` and the elaborator's `A <:? B`
+  -- decides yes.
+  iFromInferSub : ∀ {ctx : NamedCtx} {e : RawExpr} {A B : Type}
       {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    → ctx ⊢ᵢ e ∶ A ⨾ Ψ
+    → ctx ⊢ᵢ e ∶ A ⨾ Ψ → A <: B
     → ∃[ eE ] ∃[ d ] ∃[ f ]
-        checkElab ctx e A ≡ success Ψ eE d f
+        checkElab ctx e B ≡ success Ψ eE d f
 
   -- Strong (paired `checkElabV`) view of the switch — mirrors `check-completeV`
   -- over `check-complete`, but from the INFER derivation (so a pair's components
   -- are reached without a re-wrap). Feeds `checkPairLit`'s two scrutinees.
-  check-completeV-from-infer : ∀ {ctx : NamedCtx} {e : RawExpr} {A : Type}
+  check-completeV-from-infer : ∀ {ctx : NamedCtx} {e : RawExpr} {A B : Type}
       {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    → ctx ⊢ᵢ e ∶ A ⨾ Ψ
+    → ctx ⊢ᵢ e ∶ A ⨾ Ψ → A <: B
     → ∃[ eE ] ∃[ d ] ∃[ f ]
-        Σ-syntax (ctx ⊢ᶜ e ∶ A ⨾ Ψ) (λ w →
-          checkElabV ctx e A ≡ (success Ψ eE d f , w))
+        Σ-syntax (ctx ⊢ᶜ e ∶ B ⨾ Ψ) (λ w →
+          checkElabV ctx e B ≡ (success Ψ eE d f , w))
 
   -- `checkElabV (RPair a b) (A * B)` reduces via `checkPairLit` (checkElabV a A /
   -- checkElabV b B). Given the two paired component equations, `rewrite` drives it
@@ -1309,44 +1210,52 @@ mutual
         checkElab ctx (Raw.RPair a b) (A * B)
           ≡ success (Ψ₁ +ᵘ Ψ₂) eE d f
 
-  check-completeV-from-infer {ctx} {e} {A} d
-    with checkElabV ctx e A | iFromInfer d
+  check-completeV-from-infer {ctx} {e} {A} {B} d p
+    with checkElabV ctx e B | iFromInferSub d p
   ... | r , w0 | eE , d' , f , eq rewrite eq = eE , d' , f , w0 , refl
 
   pair-lit-reduce eqA eqB rewrite eqA | eqB = _ , _ , _ , refl
 
+  -- The reflexive instance (the former `t-embed` switch).
+  iFromInfer : ∀ {ctx : NamedCtx} {e : RawExpr} {A : Type}
+      {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    → ctx ⊢ᵢ e ∶ A ⨾ Ψ
+    → ∃[ eE ] ∃[ d ] ∃[ f ]
+        checkElab ctx e A ≡ success Ψ eE d f
+  iFromInfer {A = A} d = iFromInferSub d (<:-refl A)
+
   -- Leaves.
-  iFromInfer {ctx} (t-int n)   = checkElab-fallback-RInt {ctx} n
-  iFromInfer {ctx} (t-float i f l p) = checkElab-fallback-RFloat {ctx} i f l p
-  iFromInfer {ctx} (t-str s)   = checkElab-fallback-RStringLit {ctx} s
-  iFromInfer {ctx} t-unit      = checkElab-fallback-RUnit {ctx}
-  iFromInfer {ctx} t-unit-var  = checkElab-fallback-RVar-unit {ctx}
-  iFromInfer {ctx} (t-var-local {x = x} {A = T} eqLocal) =
+  iFromInferSub {ctx} (t-int n) sub-int = checkElab-fallback-RInt {ctx} n
+  iFromInferSub {ctx} (t-float i f l p) sub-float = checkElab-fallback-RFloat {ctx} i f l p
+  iFromInferSub {ctx} (t-str s) sub-str = checkElab-fallback-RStringLit {ctx} s
+  iFromInferSub {ctx} t-unit sub-unit = checkElab-fallback-RUnit {ctx}
+  iFromInferSub {ctx} t-unit-var sub-unit = checkElab-fallback-RVar-unit {ctx}
+  iFromInferSub {ctx} (t-var-local {x = x} {A = T} eqLocal) sb =
     let (_ , _ , _ , eqI) = infer-complete {ctx} (t-var-local eqLocal)
-    in checkElab-fallback-RVar {ctx} x T eqI
-  iFromInfer {ctx} (t-var-qualified {name = n} {alias = a} {T = T} eqImp conc) =
+    in checkElab-fallback-RVar {ctx} x T eqI sb
+  iFromInferSub {ctx} (t-var-qualified {name = n} {alias = a} {T = T} eqImp conc) sb =
     let (_ , _ , _ , eqI) = infer-complete {ctx} (t-var-qualified eqImp conc)
-    in checkElab-fallback-RQualified {ctx} n a T eqI
-  iFromInfer {ctx} (t-var-resolved {cn = cn} {T = T} ng eqImp conc) =
+    in checkElab-fallback-RQualified {ctx} n a T eqI sb
+  iFromInferSub {ctx} (t-var-resolved {cn = cn} {T = T} ng eqImp conc) sb =
     let (_ , _ , _ , eqI) = infer-complete {ctx} (t-var-resolved ng eqImp conc)
-    in checkElab-fallback-RResolved {ctx} cn T eqI
-  iFromInfer {ctx} (t-var-import {x = x} {T = T} ¬gw eqLoc eqImp conc) =
+    in checkElab-fallback-RResolved {ctx} cn T eqI sb
+  iFromInferSub {ctx} (t-var-import {x = x} {T = T} ¬gw eqLoc eqImp conc) sb =
     let (_ , _ , _ , eqI) = infer-complete {ctx} (t-var-import ¬gw eqLoc eqImp conc)
-    in checkElab-fallback-RVar {ctx} x T eqI
+    in checkElab-fallback-RVar {ctx} x T eqI sb
   -- Plan 0.58 / D071: infer-mode ground telescope reference — same shape as
   -- t-var-import (infer at the declared type, embed at the same type).
-  iFromInfer {ctx} dd@(t-var-poly-instantiate-infer {x = x} {T = T} _ _ _ _ _ _) =
+  iFromInferSub {ctx} dd@(t-var-poly-instantiate-infer {x = x} {T = T} _ _ _ _ _ _) sb =
     let (_ , _ , _ , eqI) = infer-complete dd
-    in checkElab-fallback-RVar {ctx} x T eqI
-  iFromInfer (t-annot {e = e} {T = T} d) =
+    in checkElab-fallback-RVar {ctx} x T eqI sb
+  iFromInferSub (t-annot {e = e} {T = T} d) sb =
     let (_ , _ , _ , eqI) = infer-complete (t-annot d)
-    in checkElab-fallback-RAnnot e T eqI
+    in checkElab-fallback-RAnnot e T eqI sb
   -- INTRO form: pair components were synthesized (d₁/d₂ : ⊢ᵢ) but `checkPairLit`
   -- re-CHECKS them — recurse the SWITCH on the genuine sub-derivations.
-  iFromInfer (t-pair {a = a} {b = b} {A = A} {B = B} d₁ d₂)
-    with check-completeV-from-infer d₁ | check-completeV-from-infer d₂
+  iFromInferSub (t-pair {a = a} {b = b} {A = A} {B = B} d₁ d₂) (sub-prod pa pb)
+    with check-completeV-from-infer d₁ pa | check-completeV-from-infer d₂ pb
   ... | (_ , _ , _ , _ , eqA) | (_ , _ , _ , _ , eqB) = pair-lit-reduce eqA eqB
-  iFromInfer (t-neg {e = e} d) =
+  iFromInferSub (t-neg {e = e} d) sub-int =
     let (_ , _ , _ , eqI) = infer-complete (t-neg d)
     in checkElab-fallback-RUnaryOp Raw.OpNeg e T.Int eqI
   -- PLAN 0.73 F3: the switch for `-3.14` is the generic infer→check fallback,
@@ -1355,118 +1264,59 @@ mutual
   -- reduces, so `inferElab ctx (RUnaryOp OpNeg (RFloat i f l p))` is already
   -- the folded literal. Routing through `infer-complete` instead would leave
   -- its three existential witnesses as metas with nothing to solve them.
-  iFromInfer {ctx} (t-neg-float i f l p) =
+  iFromInferSub {ctx} (t-neg-float i f l p) sub-float =
     checkElab-fallback-RUnaryOp {ctx} Raw.OpNeg (Raw.RFloat i f l p) T.Float refl
-  iFromInfer (t-let {x = x} {e₁ = e₁} {e₂ = e₂} {B = B} d₁ d₂) =
+  iFromInferSub (t-let {x = x} {e₁ = e₁} {e₂ = e₂} {B = B} d₁ d₂) sb =
     let (_ , _ , _ , eqI) = infer-complete (t-let d₁ d₂)
-    in checkElab-fallback-RLet x e₁ e₂ B eqI
-  iFromInfer (t-case {scrut = scrut} {eL = eL} {eR = eR}
+    in checkElab-fallback-RLet x e₁ e₂ B eqI sb
+  iFromInferSub (t-case {scrut = scrut} {eL = eL} {eR = eR}
                      {xL = xL} {xR = xR} {C = C} dS dL dR) =
     let (_ , _ , _ , eqI) = infer-complete (t-case dS dL dR)
     in checkElab-fallback-RDestruct scrut xL eL xR eR C eqI
-  iFromInfer (t-binop-arith {op = op} {e₁ = e₁} {e₂ = e₂} arithEq d₁ d₂) =
+  iFromInferSub (t-binop-arith {op = op} {e₁ = e₁} {e₂ = e₂} arithEq d₁ d₂) sb =
     let (_ , _ , _ , eqI) = infer-complete (t-binop-arith arithEq d₁ d₂)
-    in checkElab-fallback-RBinOp op e₁ e₂ T.Int eqI
-  iFromInfer (t-binop-arith-float {op = op} {e₁ = e₁} {e₂ = e₂} arithEq d₁ d₂) =
+    in checkElab-fallback-RBinOp op e₁ e₂ T.Int eqI sb
+  iFromInferSub (t-binop-arith-float {op = op} {e₁ = e₁} {e₂ = e₂} arithEq d₁ d₂) sb =
     let (_ , _ , _ , eqI) = infer-complete (t-binop-arith-float arithEq d₁ d₂)
-    in checkElab-fallback-RBinOp op e₁ e₂ T.Float eqI
-  iFromInfer (t-binop-arith-float-il {op = op} {e₁ = e₁} {e₂ = e₂} arithEq d₁ d₂) =
+    in checkElab-fallback-RBinOp op e₁ e₂ T.Float eqI sb
+  iFromInferSub (t-binop-arith-float-il {op = op} {e₁ = e₁} {e₂ = e₂} arithEq d₁ d₂) sb =
     let (_ , _ , _ , eqI) = infer-complete (t-binop-arith-float-il arithEq d₁ d₂)
-    in checkElab-fallback-RBinOp op e₁ e₂ T.Float eqI
-  iFromInfer (t-binop-arith-float-ir {op = op} {e₁ = e₁} {e₂ = e₂} arithEq d₁ d₂) =
+    in checkElab-fallback-RBinOp op e₁ e₂ T.Float eqI sb
+  iFromInferSub (t-binop-arith-float-ir {op = op} {e₁ = e₁} {e₂ = e₂} arithEq d₁ d₂) sb =
     let (_ , _ , _ , eqI) = infer-complete (t-binop-arith-float-ir arithEq d₁ d₂)
-    in checkElab-fallback-RBinOp op e₁ e₂ T.Float eqI
-  iFromInfer (t-binop-cmp {op = op} {e₁ = e₁} {e₂ = e₂} cmpEq d₁ d₂) =
+    in checkElab-fallback-RBinOp op e₁ e₂ T.Float eqI sb
+  iFromInferSub (t-binop-cmp {op = op} {e₁ = e₁} {e₂ = e₂} cmpEq d₁ d₂) sb =
     let (_ , _ , _ , eqI) = infer-complete (t-binop-cmp cmpEq d₁ d₂)
-    in checkElab-fallback-RBinOp op e₁ e₂ (Unit T.+ Unit) eqI
-  iFromInfer (t-id-app {e = e} {T = T} d) =
+    in checkElab-fallback-RBinOp op e₁ e₂ (Unit T.+ Unit) eqI sb
+  iFromInferSub (t-id-app {e = e} {T = T} d) sb =
     let (_ , _ , _ , eqI) = infer-complete (t-id-app d)
-    in checkElab-fallback-RApp-id e T eqI
-  iFromInfer (t-fst-app {e = e} {A = A} d) =
+    in checkElab-fallback-RApp-id e T eqI sb
+  iFromInferSub (t-fst-app {e = e} {A = A} d) sb =
     let (_ , _ , _ , eqI) = infer-complete (t-fst-app d)
-    in checkElab-fallback-RApp-fst e A eqI
-  iFromInfer (t-snd-app {e = e} {B = B} d) =
+    in checkElab-fallback-RApp-fst e A eqI sb
+  iFromInferSub (t-snd-app {e = e} {B = B} d) sb =
     let (_ , _ , _ , eqI) = infer-complete (t-snd-app d)
-    in checkElab-fallback-RApp-snd e B eqI
-  iFromInfer (t-terminal-app {e = e} d) =
+    in checkElab-fallback-RApp-snd e B eqI sb
+  iFromInferSub (t-terminal-app {e = e} d) sb =
     let (_ , _ , _ , eqI) = infer-complete (t-terminal-app d)
-    in checkElab-fallback-RApp-terminal e Unit eqI
+    in checkElab-fallback-RApp-terminal e Unit eqI sb
   -- D194: `Out` is an infer head whose check routes through `embedOrSubsume`,
   -- so its switch is `terminal`'s.
-  iFromInfer (t-Out-app-infer {v = v} {F = F} wfF refl d) =
+  iFromInferSub (t-Out-app-infer {v = v} {F = F} wfF refl d) sb =
     let (_ , _ , _ , eqI) = infer-complete (t-Out-app-infer wfF refl d)
-    in checkElab-fallback-RApp-Out v (T.⟦ F ⟧T (T.ν-type F)) eqI
-  iFromInfer (t-apply-app-infer {p = p} {A = A} {B = B} d) =
+    in checkElab-fallback-RApp-Out v (T.⟦ F ⟧T (T.ν-type F)) eqI sb
+  iFromInferSub (t-apply-app-infer {p = p} {A = A} {B = B} d) sb =
     let (_ , _ , _ , eqI) = infer-complete d
-    in checkElab-fallback-RApp-apply p A B eqI
-  iFromInfer (t-apply-eff-app-infer {p = p} {A = A} {B = B} d) =
+    in checkElab-fallback-RApp-apply p A B eqI sb
+  iFromInferSub (t-apply-eff-app-infer {p = p} {A = A} {B = B} d) sb =
     let (_ , _ , _ , eqI) = infer-complete d
-    in checkElab-fallback-RApp-apply-effclosure p A B eqI
-  iFromInfer (t-app {f = f} {x = x} {B = B} notPoly dF dX) =
+    in checkElab-fallback-RApp-apply-effclosure p A B eqI sb
+  iFromInferSub (t-app {f = f} {x = x} {B = B} notPoly dF dX) sb =
     let (_ , _ , _ , eqI) = infer-complete (t-app notPoly dF dX)
-    in checkElab-fallback-RApp-generic f x B notPoly eqI
-  iFromInfer (t-effApp {f = f} {x = x} {B = B} notPoly dF dX) =
+    in checkElab-fallback-RApp-generic f x B notPoly eqI sb
+  iFromInferSub (t-effApp {f = f} {x = x} {B = B} notPoly dF dX) sb =
     let (_ , _ , _ , eqI) = infer-complete (t-effApp notPoly dF dX)
-    in checkElab-fallback-RApp-generic f x (T.Unit T.⇒[ T.mk-kind T.Many T.eff ] B) notPoly eqI
-
-  -- The EFF-mode SWITCH (pure⊑eff twin of `iFromInfer`): an expr synthesizing a
-  -- PURE arrow elaborates at the EFF arrow. Recurses on the INFER derivation — the
-  -- catch-all-expr heads lift the pure `iFromInfer` result through
-  -- `embedOrSubsume-lifts` (embed at pure, subsume at eff); the app/var heads use
-  -- their per-head eff fallback. `subsume-complete (t-embed d)` collapses to ONE
-  -- clause delegating here (parity with `check-complete (t-embed d) = iFromInfer d`),
-  -- so the bidirectional switch is a single named two-mode concept (pure + eff).
-  iFromInferEff : ∀ {ctx : NamedCtx} {e : RawExpr} {A B : Type}
-      {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    → ctx ⊢ᵢ e ∶ (A T.⇒[ T.mk-kind T.Many T.pure ] B) ⨾ Ψ
-    → ∃[ eE ] ∃[ d ] ∃[ f ]
-        checkElab ctx e (A T.⇒[ T.mk-kind T.Many T.eff ] B) ≡ success Ψ eE d f
-  -- catch-all-expr heads: lift the pure switch result through embedOrSubsume.
-  iFromInferEff {ctx} {_} {A} {B} d@(t-var-resolved {cn = cn} ng eqImp _) =
-    let (_ , _ , _ , eqC) = iFromInfer d
-    in resolved-eff-lift ctx cn A B (classifyGen cn) refl ng eqC
-  iFromInferEff {ctx} {_} {A} {B} d@(t-var-qualified {name = name} {alias = alias} eqImp _) =
-    let (_ , _ , _ , eqC) = iFromInfer d
-    in embedOrSubsume-lifts ctx (Raw.RQualified name alias) A B (inferElabV ctx (Raw.RQualified name alias)) eqC
-  iFromInferEff {ctx} {_} {A} {B} d@(t-let {x = x} {e₁ = e₁} {e₂ = e₂} d₁ d₂) =
-    let (_ , _ , _ , eqC) = iFromInfer d
-    in embedOrSubsume-lifts ctx (Raw.RLet x e₁ e₂) A B (inferElabV ctx (Raw.RLet x e₁ e₂)) eqC
-  iFromInferEff {ctx} {_} {A} {B} d@(t-case {scrut = scrut} {eL = eL} {eR = eR} {xL = xL} {xR = xR} dS dL dR) =
-    let (_ , _ , _ , eqC) = iFromInfer d
-    in embedOrSubsume-lifts ctx (Raw.RDestruct scrut xL eL xR eR) A B (inferElabV ctx (Raw.RDestruct scrut xL eL xR eR)) eqC
-  iFromInferEff {ctx} {_} {A} {B} d@(t-annot {e = e} {T = T} d₀) =
-    let (_ , _ , _ , eqC) = iFromInfer d
-    in embedOrSubsume-lifts ctx (Raw.RAnnot e T) A B (inferElabV ctx (Raw.RAnnot e T)) eqC
-  -- app / var heads: per-head eff fallback from the infer equation.
-  iFromInferEff {ctx} {_} {A} {B} dd@(t-app {f = f} {x = x} notPoly dF dX) =
-    let (_ , _ , _ , eqI) = infer-complete dd
-    in checkElab-fallback-RApp-generic-eff f x A B notPoly eqI
-  iFromInferEff {ctx} {_} {A} {B} dd@(t-id-app {e = e} d) =
-    let (_ , _ , _ , eqI) = infer-complete dd
-    in checkElab-fallback-RApp-id-eff e A B eqI
-  iFromInferEff {ctx} {_} {A} {B} dd@(t-fst-app {e = e} d) =
-    let (_ , _ , _ , eqI) = infer-complete dd
-    in checkElab-fallback-RApp-fst-eff e A B eqI
-  iFromInferEff {ctx} {_} {A} {B} dd@(t-snd-app {e = e} d) =
-    let (_ , _ , _ , eqI) = infer-complete dd
-    in checkElab-fallback-RApp-snd-eff e A B eqI
-  iFromInferEff {ctx} {_} {A} {B} dd@(t-var-local {x = x} _) =
-    let (_ , _ , _ , eqI) = infer-complete dd
-    in checkElab-fallback-RVar-eff {ctx} x A B eqI
-  iFromInferEff {ctx} {_} {A} {B} dd@(t-var-import {x = x} _ _ _ _) =
-    let (_ , _ , _ , eqI) = infer-complete dd
-    in checkElab-fallback-RVar-eff {ctx} x A B eqI
-  -- Plan 0.58 / D071: infer-mode ground telescope reference at a pure arrow —
-  -- same eff fallback as t-var-import (infer, then arr'/t-subsume lift).
-  iFromInferEff {ctx} {_} {A} {B} dd@(t-var-poly-instantiate-infer {x = x} _ _ _ _ _ _) =
-    let (_ , _ , _ , eqI) = infer-complete dd
-    in checkElab-fallback-RVar-eff {ctx} x A B eqI
-  iFromInferEff {ctx} {_} {A} {B} dd@(t-Out-app-infer {v = v} wfF ceq d) =
-    let (_ , _ , _ , eqI) = infer-complete dd
-    in checkElab-fallback-RApp-Out-eff v A B eqI
-  iFromInferEff {ctx} {_} {A} {B} dd@(t-apply-app-infer {p = p} d) =
-    let (_ , _ , _ , eqI) = infer-complete dd
-    in checkElab-fallback-RApp-apply-eff p A B eqI
+    in checkElab-fallback-RApp-generic f x (T.Unit T.⇒[ T.mk-kind T.Many T.eff ] B) notPoly eqI sb
 
   infer-complete :
     ∀ {ctx : NamedCtx} {e : RawExpr} {A : Type}
@@ -1620,7 +1470,7 @@ mutual
   -- recurses structurally on the INFER derivation (the 22 former per-shape clauses
   -- moved there). Discharges the old `pair-lit` re-wrap: the pair's components are
   -- reached via `iFromInfer`'s genuine sub-derivations, not a re-embedded grandchild.
-  check-complete (t-embed d) = iFromInfer d
+  check-complete (t-sub d sb) = iFromInferSub d sb
   -- D127: the seven POINT-FREE LEAVES. Each is the elaborator's own
   -- `RVar`-fallback lemma, which never depended on the purity — generalising
   -- those to any `π` is what lets these rules stay grade-poly.
@@ -1718,7 +1568,7 @@ mutual
   ... | (_ , _ , _ , _ , eqA) | (_ , _ , _ , _ , eqB) = pair-lit-reduce eqA eqB
   check-complete (t-apply-check {p = p} {A = A} {B = B} d) =
     let (_ , _ , _ , eq) = infer-complete d
-    in checkElab-fallback-RApp-apply p A B eq
+    in checkElab-fallback-RApp-apply p A B eq (<:-refl B)
   -- Plan 0.4 T0 Phase F new check-mode rules — discharged by
   -- completeness-gap-*-eq helpers above (recursive check-complete on
   -- the sub-derivation produces the bridging checkElab equation).
@@ -1733,11 +1583,6 @@ mutual
     in completeness-gap-initial-app-check-eq arg T eqC
   check-complete (t-arg-driven-app-check notPoly dArg dF) =
     completeness-gap-arg-driven-app-check notPoly dArg dF
-  -- Plan 0.52: pure ⊑ eff subsumption, BY INDUCTION ON THE DERIVATION (OCP-0008
-  -- spirit: reason through the typing, not the decision procedure). Morphisms
-  -- regrade to eff and go through `morph-complete`; values through `gd-complete`.
-  check-complete (t-subsume d) = subsume-complete d
-
   -- Plan 0.6.2 Phase 4: polymorphic schema-instantiation. Threads
   -- the body's check-mode derivation through `check-complete`,
   -- then composes with the lookup premises via the helper.
@@ -1748,112 +1593,6 @@ mutual
     in checkElab-fallback-RVar-poly {ctx} x T localN importN
          (lookupPolyPrefix⇒lookupPoly (NamedCtx.polys ctx) x polyE)
          (¬Ground-isGround-inj₂ schema eqG) eqBody
-
-  -- pure-arrow derivation ⇒ the eff-arrow checkElab also succeeds (same usage).
-  -- BY INDUCTION ON THE DERIVATION (OCP-0008): morphisms regrade to eff and go
-  -- through morph-complete; values through gd-complete. Residual cases TODO.
-  subsume-complete : ∀ {ctx : NamedCtx} {e : RawExpr} {A B : Type}
-      {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    → ctx ⊢ᶜ e ∶ (A T.⇒[ T.mk-kind T.Many T.pure ] B) ⨾ Ψ
-    → ∃[ eE ] ∃[ d ] ∃[ f ]
-        checkElab ctx e (A T.⇒[ T.mk-kind T.Many T.eff ] B) ≡ success Ψ eE d f
-  -- D127: the seven GRADE-POLY LEAVES subsume by RE-INSTANTIATION. The rule is
-  -- `∀ {π}`, so the eff instance is the same rule and the same fallback lemma —
-  -- there is nothing to regrade. `regrade-eff` existed only because `⊢ᵐ` had to
-  -- rebuild a derivation at a new grade.
-  subsume-complete {ctx} (t-id-check {T = T}) =
-    checkElab-fallback-RVar-id {ctx} T
-  subsume-complete {ctx} (t-fst-check {A = A} {B = B}) =
-    checkElab-fallback-RVar-fst {ctx} A B
-  subsume-complete {ctx} (t-snd-check {A = A} {B = B}) =
-    checkElab-fallback-RVar-snd {ctx} A B
-  subsume-complete {ctx} (t-terminal-morph-check {A = A}) =
-    checkElab-fallback-RVar-terminal {ctx} A
-  subsume-complete {ctx} (t-initial-morph-check {A = A}) =
-    checkElab-fallback-RVar-initial {ctx} A
-  subsume-complete {ctx} (t-inl-morph-check {A = A} {B = B}) =
-    checkElab-fallback-RVar-inl {ctx} A B
-  subsume-complete {ctx} (t-inr-morph-check {A = A} {B = B}) =
-    checkElab-fallback-RVar-inr {ctx} A B
-  -- D127: the COMBINATORS at the eff arrow. The elaborator's eff clause TRIES
-  -- the eff `Go` first and falls back to pure + `arr'`/`t-subsume`. The pure
-  -- derivation only tells us the PURE `Go` succeeds, so each of these
-  -- case-splits on the eff attempt and uses the fallback branch.
-  -- The eff arms come from the RECURSIVE `subsume-completeV`, so the eff `Go`
-  -- succeeds at the SAME usages and `checkCompose`/`checkCase`/`checkCata`'s
-  -- first branch fires. No usage-coincidence lemma is needed: the recursion
-  -- already carries it.
-  subsume-complete {ctx} (t-compose-check eqB df dg)
-    with subsume-completeV df | subsume-completeV dg
-  ... | (_ , _ , _ , Wf , eqf) | (_ , _ , _ , Wg , eqg)
-        with composeGo-success eqB eqf eqg
-  ...     | (d , fr , eqGo) rewrite trans (sym (go-canonical eqB)) eqGo =
-            _ , _ , _ , refl
-  subsume-complete {ctx} (t-case-copair-check df dg)
-    with subsume-completeV df | subsume-completeV dg
-  ... | (_ , _ , _ , Wf , eqf) | (_ , _ , _ , Wg , eqg)
-        with caseGo-success eqf eqg
-  ...     | (d , fr , eqGo) rewrite eqGo = _ , _ , _ , refl
-  subsume-complete {ctx} (t-cata-check {alg = alg} {F = F} {A = A} wfF dalg)
-    with wellFormedF?-complete-at wfF
-  ... | eqW
-    with subsume-completeV dalg
-  ... | (_ , _ , _ , W , eqA)
-        with checkCataGo-just-success ctx alg F A T.eff wfF eqW eqA
-  ...     | eqGo
-            rewrite trans (checkCataGo-J ctx alg F A T.eff (just wfF) eqW) eqGo =
-            _ , _ , _ , refl
-  subsume-complete {ctx} (t-ana-check {coalg = coalg} {F = F} {A = A} wfF dcoalg)
-    with wellFormedF?-complete-at wfF
-  ... | eqW
-    with subsume-completeV dcoalg
-  ... | (_ , _ , _ , W , eqA)
-        with checkAnaGo-just-success ctx coalg F A T.eff wfF eqW eqA
-  ...     | eqGo
-            rewrite trans (checkAnaGo-J ctx coalg F A T.eff (just wfF) eqW) eqGo =
-            _ , _ , _ , refl
-  -- D222: `checkPair` is ONE grade-poly clause now, so at an EFF target it
-  -- checks the ARMS at eff too. The arms' completeness therefore has to be the
-  -- SUBSUMED one — `check-completeV` gives them at `pure`, which is what the
-  -- former eff clause (pure arms + `arr'`/`t-subsume`) wanted and no longer
-  -- matches. The error said so precisely: the goal asked for
-  -- `checkElabV-wf ctx … f (A ⇒[eff] B)` while the rewrite offered the pure one.
-  subsume-complete {ctx} (t-pair-morph-check df dg)
-    with subsume-completeV df | subsume-completeV dg
-  ... | (_ , _ , _ , Wf , eqf) | (_ , _ , _ , Wg , eqg)
-        rewrite eqf | eqg = _ , _ , _ , refl
-  subsume-complete {ctx} (t-curry-check df)
-    with check-completeV df
-  ... | (_ , _ , _ , Wf , eqf) rewrite eqf = _ , _ , _ , refl
-  subsume-complete {ctx} (t-lam {x = x} {body = body} {A = A} {B = B} {q' = q'} leqEq bodyD) =
-    let (_ , _ , _ , eqBody) = check-complete bodyD
-    in check-complete-RLam-eff ctx x body A q' B leqEq eqBody
-  -- t-embed: ONE clause — the EFF-mode switch `iFromInferEff` recurses on the infer
-  -- derivation (parity with `check-complete (t-embed d) = iFromInfer d`), so pure and
-  -- eff mode share one named bidirectional switch instead of 12 unrolled clauses.
-  subsume-complete (t-embed d) = iFromInferEff d
-  -- t-apply-check: the check-mode apply bridges to the infer-mode apply on the SAME
-  -- premise `d` (a principled mode-conversion), then rides the same eff switch.
-  subsume-complete (t-apply-check {p = p} d) = iFromInferEff (t-apply-app-infer d)
-  -- t-initial-app-check: `initial` is grade-agnostic (Void → any T), so given
-  -- arg : Void it checks at the eff arrow directly (no subsumption needed).
-  subsume-complete {ctx} {_} {A} {B} (t-initial-app-check {arg = arg} d) =
-    let (_ , _ , _ , eqArg) = check-complete d
-    in checkElab-fallback-RApp-initial-eff arg (A T.⇒[ T.mk-kind T.Many T.eff ] B) eqArg
-  -- t-arg-driven-app-check: inherits the pre-existing argdriven completeness gap
-  -- (completeness-gap-arg-driven-app-check is postulated for the pure case too).
-  subsume-complete (t-arg-driven-app-check notPoly dArg dF) =
-    completeness-gap-arg-driven-app-check-eff notPoly dArg dF
-  -- t-var-poly-instantiate: the poly path is T-agnostic (instantiates at T via
-  -- lookupPoly); recurse subsume-complete on the body for the eff target type.
-  subsume-complete {ctx} {_} {A} {B}
-    (t-var-poly-instantiate {x = x} {schema = schema}
-                            localN importN polyE eqG bodyD) =
-    let (_ , _ , _ , eqBodyEff) = subsume-complete bodyD
-    in checkElab-fallback-RVar-poly {ctx} x (A T.⇒[ T.mk-kind T.Many T.eff ] B)
-         localN importN
-         (lookupPolyPrefix⇒lookupPoly (NamedCtx.polys ctx) x polyE)
-         (¬Ground-isGround-inj₂ schema eqG) eqBodyEff
 
 -- STRONG check-complete: a trivial VIEW of the weak `check-complete`, not a
 -- per-case rewrite. Abstract `checkElabV`, take the weak proj₁ equation, and
