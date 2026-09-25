@@ -17,11 +17,12 @@
 --   so the de Bruijn depth of an annotated context IS that of its erasure,
 --   definitionally — no transport between the layers, ever.
 --
--- ⚠ SLICE 1 — the non-inductive kernel.  `con`/`elim`/`icon`/`ielim`,
---   `⌜IMu⌝` and `IMu` have NO rule yet: their premises (`payTy`,
---   `methsTy`, `εwkTy I`) compute `RTy`s from descriptions, and an `ATy`
---   version needs ANNOTATED descriptions — PLAN-BIDI §3d's follow-up.
---   `Mu`/`⌜Mu⌝` need only `DescWf` and are in.
+-- ★ THE INDUCTIVE FORMERS, over ANNOTATED descriptions: their premise
+--   types come from `Spec/AnnotatedDesc` (`payTyᴬ`, `methsTyᴬ`, `ipayTyᴬ`,
+--   `imethsTyᴬ`, `iinstᴬ`), and description well-formedness is itself an
+--   annotated judgment (`ADescWf`, `AIDescWf`, …) — mutual with `⊢ᴬ`,
+--   exactly as `DescWf`/`IDescWf` are with `⊢`.  Membership `k ∈D` is
+--   about STRUCTURE, so it reads the erasure.
 --
 -- `--safe`, ZERO axioms.
 ------------------------------------------------------------------------
@@ -32,8 +33,9 @@ open import normalizer.Syntax.Types using ( _≡_ )
 open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Variance using ( 𝔹; true; false; occTm; NoNatC; flat? )
 open import DirectedHoTT.Spec.Typing
-  using ( Ctx; ◇; _▹_; ⌊_⌋; _≅ᵀ_; DescWf )
+  using ( Ctx; ◇; _▹_; ⌊_⌋; _≅ᵀ_ )
 open import DirectedHoTT.Spec.Annotated
+open import DirectedHoTT.Spec.AnnotatedDesc
 
 ------------------------------------------------------------------------
 -- Annotated contexts, and their erasure — MUTUALLY.
@@ -62,10 +64,6 @@ private
 -- The annotated substitutions the rules mention.
 ------------------------------------------------------------------------
 
-singleᴬ : {Δ : Cx} → ATm Δ → Subᴬ (Δ ∙) Δ
-singleᴬ u vz     = u
-singleᴬ u (vs x) = var x
-
 nrsᴬ : {Δ : Cx} → Subᴬ (Δ ∙) ((Δ ∙) ∙)
 nrsᴬ vz     = nsuc (var (vs vz))
 nrsᴬ (vs x) = var (vs (vs x))
@@ -87,6 +85,14 @@ data _∋ᴬ_∷_ : (Γ : ACtx) → Var ⌊ Γ ⌋ᴬ → ATy ⌊ Γ ⌋ᴬ → 
 infix 3 _⊢ᴬ_∷_ _⊢tyᴬ_
 data _⊢ᴬ_∷_ : (Γ : ACtx) → ATm ⌊ Γ ⌋ᴬ → ATy ⌊ Γ ⌋ᴬ → Set
 data _⊢tyᴬ_ : (Γ : ACtx) → ATy ⌊ Γ ⌋ᴬ → Set
+data ADConWf : ADCon → Set
+data ADescWf : ADesc → Set
+data AIConWf : AIDesc → ATy ε → (Θ : ACtx) → AICon ⌊ Θ ⌋ᴬ → Set
+data AIDescWfFrom : AIDesc → ATy ε → AIDesc → Set
+data AICodeWf : {Θ : Cx} → ATm Θ → Set
+
+AIDescWf : ATy ε → AIDesc → Set
+AIDescWf I D = AIDescWfFrom D I D
 
 data _⊢ᴬ_∷_ where
   ⊢ᴬvar  : ∀ {Γ x A} → Γ ∋ᴬ x ∷ A → Γ ⊢ᴬ var x ∷ A
@@ -140,7 +146,8 @@ data _⊢ᴬ_∷_ where
   ⊢ᴬ⌜Id⌝ : ∀ {Γ c a b} → Γ ⊢ᴬ c ∷ U → Γ ⊢ᴬ a ∷ El c → Γ ⊢ᴬ b ∷ El c →
                          Γ ⊢ᴬ ⌜Id⌝ c a b ∷ U
   ⊢ᴬ⌜Nat⌝  : ∀ {Γ} → Γ ⊢ᴬ ⌜Nat⌝ ∷ U
-  ⊢ᴬ⌜Mu⌝   : ∀ {Γ D} → DescWf D → Γ ⊢ᴬ ⌜Mu⌝ D ∷ U
+  ⊢ᴬ⌜Mu⌝   : ∀ {Γ D} → ADescWf D → Γ ⊢ᴬ ⌜Mu⌝ D ∷ U
+  ⊢ᴬ⌜IMu⌝  : ∀ {Γ D I i} → AIDescWf I D → Γ ⊢ᴬ i ∷ εwkTyᴬ I → Γ ⊢ᴬ ⌜IMu⌝ D I i ∷ U
   ⊢ᴬ⌜Unit⌝ : ∀ {Γ} → Γ ⊢ᴬ ⌜Unit⌝ ∷ U
   ⊢ᴬidrefl : ∀ {Γ c t} → Γ ⊢ᴬ c ∷ U → Γ ⊢ᴬ t ∷ El c →
                          Γ ⊢ᴬ idrefl c t ∷ Id (El c) t t
@@ -161,6 +168,21 @@ data _⊢ᴬ_∷_ where
              ((Γ ▹ᴬ Nat) ▹ᴬ M) ⊢ᴬ s ∷ subTyᴬ nrsᴬ M →
              Γ ⊢ᴬ n ∷ Nat →
              Γ ⊢ᴬ natrec M z s n ∷ subTyᴬ (singleᴬ n) M
+  -- ★ INDUCTIVE TYPES — the description is in the term (`con D`, `elim D M`)
+  ⊢ᴬcon  : ∀ {Γ D k p} → ADescWf D → k ∈D ⌈ D ⌉ᴰ →
+           Γ ⊢ᴬ p ∷ payTyᴬ D (lookupDᴬ D k) → Γ ⊢ᴬ con D k p ∷ Mu D
+  ⊢ᴬelim : ∀ {Γ D M ms t} → ADescWf D → (Γ ▹ᴬ Mu D) ⊢tyᴬ M →
+           Γ ⊢ᴬ ms ∷ methsTyᴬ D M D → Γ ⊢ᴬ t ∷ Mu D →
+           Γ ⊢ᴬ elim D M ms t ∷ subTyᴬ (singleᴬ t) M
+  -- ★ INDEXED — description, index type and index are in the term
+  ⊢ᴬicon  : ∀ {Γ D I i k p} → AIDescWf I D → k ∈ID ⌈ D ⌉ᴵᴰ →
+            Γ ⊢ᴬ i ∷ εwkTyᴬ I →
+            Γ ⊢ᴬ p ∷ ipayTyᴬ D I (isingleᴬ i) (ilookupDᴬ D k) →
+            Γ ⊢ᴬ icon D I i k p ∷ IMu D I i
+  ⊢ᴬielim : ∀ {Γ D I M i ms t} → AIDescWf I D →
+            ((Γ ▹ᴬ εwkTyᴬ I) ▹ᴬ IMu D I (var vz)) ⊢tyᴬ M →
+            Γ ⊢ᴬ i ∷ εwkTyᴬ I → Γ ⊢ᴬ ms ∷ imethsTyᴬ D I M D → Γ ⊢ᴬ t ∷ IMu D I i →
+            Γ ⊢ᴬ ielim D I M i ms t ∷ iinstᴬ i t M
   -- ★ (c): conversion of ERASURES
   ⊢ᴬconv : ∀ {Γ t A B} → Γ ⊢ᴬ t ∷ A → ⌈ A ⌉ᵀ ≅ᵀ ⌈ B ⌉ᵀ → Γ ⊢ᴬ t ∷ B
 
@@ -173,5 +195,38 @@ data _⊢tyᴬ_ where
   tyᴬ-Id   : ∀ {Γ A t u} → Γ ⊢tyᴬ A → Γ ⊢ᴬ t ∷ A → Γ ⊢ᴬ u ∷ A → Γ ⊢tyᴬ Id A t u
   tyᴬ-Unit : ∀ {Γ} → Γ ⊢tyᴬ Unit
   tyᴬ-Nat  : ∀ {Γ} → Γ ⊢tyᴬ Nat
-  tyᴬ-Mu   : ∀ {Γ D} → DescWf D → Γ ⊢tyᴬ Mu D
+  tyᴬ-Mu   : ∀ {Γ D} → ADescWf D → Γ ⊢tyᴬ Mu D
+  tyᴬ-IMu  : ∀ {Γ D I i} → AIDescWf I D → Γ ⊢ᴬ i ∷ εwkTyᴬ I → Γ ⊢tyᴬ IMu D I i
   tyᴬ-Hom  : ∀ {Γ A t u} → Γ ⊢tyᴬ A → Γ ⊢ᴬ t ∷ A → Γ ⊢ᴬ u ∷ A → Γ ⊢tyᴬ Hom A t u
+
+-- ★ the descriptions the model can interpret — `Spec/Typing`'s rows, annotated
+data ADConWf where
+  dwf-ι : ADConWf dι
+  dwf-ρ : {C : ADCon} → ADConWf C → ADConWf (dρ C)
+  dwf-κ : {C : ADCon} (c : ATm ε) → ◇ᴬ ⊢ᴬ c ∷ U → ADConWf C → ADConWf (dκ (El c) C)
+
+data ADescWf where
+  dwf-nil  : ADescWf dnil
+  dwf-cons : {C : ADCon} {E : ADesc} → ADConWf C → ADescWf E → ADescWf (C ◃ E)
+
+data AIConWf where
+  iwf-ι : {D : AIDesc} {I : ATy ε} {Θ : ACtx} → AIConWf D I Θ iι
+  iwf-ρ : {D : AIDesc} {I : ATy ε} {Θ : ACtx} {C : AICon (⌊ Θ ⌋ᴬ ∙)}
+          (j : ATm ⌊ Θ ⌋ᴬ) → Θ ⊢ᴬ j ∷ εwkTyᴬ I →
+          AIConWf D I (Θ ▹ᴬ IMu D I j) C → AIConWf D I Θ (iρ j C)
+  iwf-κ : {D : AIDesc} {I : ATy ε} {Θ : ACtx} {C : AICon (⌊ Θ ⌋ᴬ ∙)}
+          (κ : ATm ⌊ Θ ⌋ᴬ) → AICodeWf κ → Θ ⊢ᴬ κ ∷ U →
+          AIConWf D I (Θ ▹ᴬ El κ) C → AIConWf D I Θ (iκ κ C)
+
+data AICodeWf where
+  icw-clo  : {Θ : Cx} (c : ATm ε) → ◇ᴬ ⊢ᴬ c ∷ U → AICodeWf (εwkTmᴬ {Θ} c)
+  icw-ford : {Θ : Cx} (c a b : ATm Θ) → AICodeWf (⌜Id⌝ c a b)
+  icw-imu  : {Θ : Cx} {D' : AIDesc} {I' : ATy ε} (i : ATm Θ) →
+             AIDescWf I' D' → AICodeWf (⌜IMu⌝ D' I' i)
+
+data AIDescWfFrom where
+  idwf-nil  : {D : AIDesc} {I : ATy ε} → AIDescWfFrom D I inil
+  idwf-cons : {D : AIDesc} {I : ATy ε} {C : AICon (ε ∙)} {E : AIDesc} →
+              AIConWf D I (◇ᴬ ▹ᴬ εwkTyᴬ I) C → AIDescWfFrom D I E →
+              AIDescWfFrom D I (C ◂ E)
+
