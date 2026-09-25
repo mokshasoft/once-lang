@@ -4,7 +4,13 @@ Branch `ocp-0009-spike-natrecM`. ADDITIVE former alongside `natrec`, with
 the PRINCIPLED conversion: `ξ-natrecᴹᴹ : M ⟶ᵀ M' → natrecᴹ M … ⟶ natrecᴹ M' …`
 (annotations are compared up to conversion, as Coq's kernel does).
 
-⚠ **STATE: RED at `Metatheory/Confluence`.** Everything upstream is green.
+★ **STATE (2026-09-25, `5db7da2e`): GREEN through `Confluence`, `TySub` and
+`LogicalRelation`'s classifier layer.** The next tripwire is
+`Metatheory/FormerCensus`: *natrecᴹ has no row in SNe/SN/SNRed* — i.e. §3.
+
+Decision recorded: **option (a), principled conversion.** Compile cost is not
+a reason against it (user, 2026-09-25: "if this seems reachable and provable,
+we should not think about compilation performance").
 
 ## 1. Cascade so far — by module
 
@@ -18,7 +24,7 @@ the PRINCIPLED conversion: `ξ-natrecᴹᴹ : M ⟶ᵀ M' → natrecᴹ M … �
 | `Metatheory/RedCong` + `TySub` | +230 / −65 | ⚠⚠ **MODULE REORGANISATION**: `⟶ᵀ-ren` and `subTy-monoˢ` lived in `TySub`, which IMPORTS `RedCong` — so the term versions could not call them. Both moved into `RedCong`, mutual with `⟶-ren`/`subTm-monoˢ`; the `_⟶ᵀ*_` block moved above them. `TySub` re-exports, so no importer changed |
 | explicit `using (…)` lists | every importer | ✅ mechanical, but it touches every module that names a former |
 
-## 2. ⛔ Where it stops being mechanical — `Confluence`
+## 2. ✅ `Confluence` — DONE, and it needed NO new proof idea
 
 Confluence is Takahashi's method on TERMS: parallel reduction `_⟹_`,
 complete development `_⁺`, triangle `⟹-⁺`, diamond (3 726 lines).
@@ -30,10 +36,23 @@ With a motive that reduces, the term relation needs the type relation:
 `p-natrecᴹ : M ⟹ᵀ M' → …`, `_⁺` needs `_⁺ᵀ`, `⟹-⁺` needs `⟹ᵀ-⁺ᵀ`,
 `⟹-ren`/`⟹-sub` need their type twins. ⇒ **the whole `⟹ᵀ` layer must move
 INTO `Confluence` and become one mutual block with the term development.**
-This is the file's largest mutual block, and compile cost here is
-mutual-block size (`agda-perf-is-mutual-block-size`).
+★ **DONE (`b86a3bbb`).** The 471-line layer moved; `Injectivity` re-exports
+it. Two lemmas are NEW — `⟹ᵀ-ren`, `⟹ᵀ-sub` — because parallel TYPE
+reduction never had to survive a renaming before. 175 rows (enumerations
+of `⟹`'s constructors, and `pnatrec`-headed triangle rows) were GENERATED
+from their `natrec` twins; ~12 clauses by hand. The term triangle calls the
+type triangle on the motive, a strict subterm: termination is structural.
 
-## 3. ⛔ And the logical relation will need SN FOR TYPES
+⚠ Generator lessons: (1) split a clause at the top-level ` = `, NOT inside
+`{t = …}` — the first run silently skipped 23 rows; (2) emit an "inner"
+twin only when the RHS has no untransformed former token.
+
+## 2b. ✅ `TySub`, `LogicalRelation` classifiers — DONE
+
+`occ-redᵀ` (new: the type twin of `occ-red`, 26 rules), `natrecᴹ` cases of
+`occ-red`/`ren-lemma`/`sub-lemma`; 101 generated classifier twins in the LR.
+
+## 3. ⬜ NEXT: the logical relation needs SN FOR TYPES — and that IS S4
 
 `SN`/`SNe`/`SNRed` are predicates on TERMS only; there is no SN for types
 (`fund-ty` gives weak-head forms only). A term whose motive reduces is SN
@@ -44,7 +63,22 @@ mutual with the term one, and `fund` must prove every well-formed type SN.
 PLAN-BIDI **S4** (a normal form for types, to decide `≅ᵀ`). 1b with
 principled conversion *forces S4 earlier*; it does not add a separate one.
 
-## 4. The fork this exposes (PLAN-BIDI §4, "conversion on annotations")
+★★ **The concrete shape, read off the term development:**
+- `sne-natrecᴹ` and `snr-natrecᴹ-zero` need `SNᵀ M` — the zero rule
+  DISCARDS the motive, and the JM discipline requires discarded parts SN
+  (exactly as `snr-natrec-zero` requires `SN w`).
+- `wn : SN t → WN t` needs a NORMAL motive (`ξ-natrecᴹᴹ` makes a
+  non-normal motive a redex), so `WN` needs `wnᵀ : SNᵀ A → WNᵀ A` — a type
+  normaliser. That is S4's deliverable itself.
+- ⇒ build `SNᵀ` in the SAME Joachimski–Matthes inductive style as `SN`:
+  structural rows + a weak-head EXPANSION row (`El (⌜Π⌝ c d)`, `Hom U …`,
+  `Hom (Π …) …` are head redexes). The expansion row is what makes `wnᵀ`
+  structural on the derivation, as `wn` is — a purely structural `SNᵀ`
+  cannot, because `Hom-Π` produces `Hom B (app f↑ vz) …`, not a subterm.
+- `CR1ᵀ : ⊩₁ A → SNᵀ A` from the existing type interpretation, with
+  anti-renaming under binders (`no-kripke-but-anti-renaming`).
+
+## 4. The fork this exposed — DECIDED: (a)
 
 | option | conversion on the motive | cascade |
 |---|---|---|
