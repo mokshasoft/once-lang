@@ -54,10 +54,12 @@ open import Once.Surface.Context using (Ctx; ∅; _,_^_; lookup; svar; SVar; _�
   renaming (⟦_⟧ᶜ to ⟦_⟧ᶜᵗ)
 open import Once.Surface.Syntax using (sigOp; poly; Expr; Usage; morph-app; unit)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; forceᵈ)
-open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_; projTrace; valueT; resT-lift; bindRes-idʳ)
+open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_; projTrace; valueT; resT-lift; bindRes-idʳ; fmapT)
 open import Once.Res using (Res; stopped; returns; Res-rel; rel-stopped; rel-returns; mapRes)
 open import Once.Denotation.DenotTrace using (evalᴰ; forget; liftFn; cohᴰ)
 open import Once.TypeCheck.Classify using (NamedCtx)
+open import Once.Type.Sub
+open import Once.Denotation.Sub using (⟦_⟧<:)
 open import Once.TypeCheck.Raw using (BinOp;
   OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
 open import Once.SigOp.Info using (semM)
@@ -70,9 +72,9 @@ open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_;
   t-var-resolved; t-var-import; t-annot; t-pair; t-neg; t-neg-float; t-binop-arith-float; t-binop-arith-float-il; t-binop-arith-float-ir; t-let; t-case;
   t-binop-arith; t-binop-cmp; t-id-app; t-fst-app; t-snd-app;
   t-terminal-app; t-apply-app-infer; t-apply-eff-app-infer; t-Out-app-infer; t-app; t-effApp;
-  t-embed; t-lam; t-pair-lit-check;
+  t-sub; t-lam; t-pair-lit-check;
   t-In-app-check; t-apply-check; t-inl-app-check; t-inr-app-check;
-  t-initial-app-check; t-subsume; t-arg-driven-app-check; t-var-poly-instantiate;
+  t-initial-app-check; t-arg-driven-app-check; t-var-poly-instantiate;
   t-var-poly-instantiate-infer)
 open import Once.Denotation.Phase using (lookupᴰUsed; restrictᴰ; bindᴰ; bindᴰ0; env0)
 open import Once.Denotation.Meaning using (⟦_⟧ᶜ; ⟦_⟧ᵢ;
@@ -577,6 +579,43 @@ bridge-i : ∀ {ctx : NamedCtx} {e A Ψ} (d : ctx ⊢ᵢ e ∶ A ⨾ Ψ)
            {dγ₁ dγ₂ : EnvRun ctx Ψ}
            (re : RelEnv↾ (NamedCtx.debruijn ctx) Ψ dγ₁ dγ₂)
          → RelT A ((⟦ d ⟧ᵢ fmt) dγ₁) ((SD.⟦ realize-infer d ⟧ˢ fmt) dγ₂)
+------------------------------------------------------------------------
+-- D226: the relation respects conversions. `⟦ p ⟧<:` is applied to BOTH sides,
+-- so related values stay related: `Void` has none, base types are equal,
+-- an arrow's relation is a Π over related arguments (converted backwards) to
+-- related results (converted forwards), and products/sums are componentwise.
+------------------------------------------------------------------------
+
+Res-rel-map : ∀ {X Y X′ Y′ : Set} {R : X → Y → Set} {S : X′ → Y′ → Set}
+                {h₁ : X → X′} {h₂ : Y → Y′}
+            → (∀ {x y} → R x y → S (h₁ x) (h₂ y))
+            → ∀ {r₁ r₂} → Res-rel R r₁ r₂ → Res-rel S (mapRes h₁ r₁) (mapRes h₂ r₂)
+Res-rel-map k rel-stopped     = rel-stopped
+Res-rel-map k (rel-returns r) = rel-returns (k r)
+
+mutual
+  RelV-sub : ∀ {A B} (p : A <: B) {x y : ⟦ A ⟧ᴰ} → RelV A x y → RelV B (⟦ p ⟧<: x) (⟦ p ⟧<: y)
+  RelV-sub sub-void {()}
+  RelV-sub sub-unit   r = r
+  RelV-sub sub-int    r = r
+  RelV-sub sub-float  r = r
+  RelV-sub sub-str    r = r
+  RelV-sub sub-buffer r = r
+  RelV-sub sub-μ      r = r
+  RelV-sub sub-ν      r = r
+  RelV-sub (sub-arr {q = Zero} a b _) r = RelT-sub b r
+  RelV-sub (sub-arr {q = One}  a b _) r = λ ra → RelT-sub b (r (RelV-sub a ra))
+  RelV-sub (sub-arr {q = Many} a b _) r = λ ra → RelT-sub b (r (RelV-sub a ra))
+  RelV-sub (sub-prod a b) {x₁ , y₁} {x₂ , y₂} (ra , rb) = RelV-sub a ra , RelV-sub b rb
+  RelV-sub (sub-sum a b) {inj₁ _} {inj₁ _} r = RelV-sub a r
+  RelV-sub (sub-sum a b) {inj₂ _} {inj₂ _} r = RelV-sub b r
+  RelV-sub (sub-sum a b) {inj₁ _} {inj₂ _} ()
+  RelV-sub (sub-sum a b) {inj₂ _} {inj₁ _} ()
+
+  RelT-sub : ∀ {A B} (p : A <: B) {t₁ t₂ : T ⟦ A ⟧ᴰ}
+           → RelT A t₁ t₂ → RelT B (fmapT ⟦ p ⟧<: t₁) (fmapT ⟦ p ⟧<: t₂)
+  RelT-sub p rt n = proj₁ (rt n) , Res-rel-map (RelV-sub p) (proj₂ (rt n))
+
 bridge-c : ∀ {ctx : NamedCtx} {e A Ψ} (d : ctx ⊢ᶜ e ∶ A ⨾ Ψ)
            {dγ₁ dγ₂ : EnvRun ctx Ψ}
            (re : RelEnv↾ (NamedCtx.debruijn ctx) Ψ dγ₁ dγ₂)
@@ -1023,7 +1062,9 @@ bridge-c (t-ana-check {F = F} {A = A} {π = π} wfF dcoalg) re =
                       (bridge-c dcoalg (mk↾ tt))
                       (λ {f} {g} rfg → rfg rxy))
           rab))
-bridge-c (t-embed d) re = bridge-i d re
+-- D226: the mode switch. Both sides map their result along the same `⟦ p ⟧<:`,
+-- and the relation respects every conversion (`RelT-sub`).
+bridge-c (t-sub d p) re = RelT-sub p (bridge-i d re)
 -- D143: `q` (the arrow) decides whether the RELATION supplies an argument;
 -- `q'` (the binder) decides whether it enters the environment. Six clauses,
 -- mirroring `⟦_⟧ᶜ`'s own split — `q' ≤q q` rules the rest out.
@@ -1061,7 +1102,6 @@ bridge-c {ctx = ctx} (t-inr-app-check {A = A} {B = B} d) {dγ₁ = dγ₁} {dγ�
 -- it is actually bound, and the stopped branch closes on its own.
 bridge-c {ctx = ctx} {A = A} (t-initial-app-check d) re =
   RelT-bind {A = Once.Type.Void} {B = A} (bridge-c d (reᵐ re)) (λ {a} _ → ⊥-elim a)
-bridge-c (t-subsume d) re = bridge-c d re
 bridge-c (t-arg-driven-app-check {X = X} {T = T} _ darg df) re =
   RelT-bind {A = X Once.Type.⇒[ mk-kind Many pure ] T} {B = T}
             (bridge-c df (reˡ re))
