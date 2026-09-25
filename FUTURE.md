@@ -3687,3 +3687,63 @@ more, found 1 dead lemma, and surfaced the 42-match result that produced
 checker, not after it — a library that cannot be searched by type grows
 duplicates at a rate proportional to its size, and this repository is
 the evidence.
+
+## Once: AN INTERVAL-BASED `Hom` — cubical / simplicial — tempting, and parked
+
+★ **Raised 2026-09-25**, while building S4 (type normalisation) for
+`bootstrap/DirectedHoTT/PLAN-BIDI.md` §3b. Recorded as a TEMPTING
+addition, not a decision.
+
+### What prompted it
+
+The kernel's `Hom` COMPUTES at `Π` — directed function extensionality as a
+TYPE reduction:
+
+    Hom (Π A B) f g ⟶ᵀ Π A (Hom B (app (renTm vs f) (var vz)) (app (renTm vs g) (var vz)))
+
+It is the ONE rule that makes type normalisation non-structural: it creates
+new terms, so SN of types needs typing (route C). In **cubical** type theory
+a path is a function out of an interval, so funext holds *by construction of
+terms* and no type ever reduces this way. The directed analogue is
+**simplicial type theory** (Riehl–Shulman): `hom_A(x,y)` is an extension type
+over a directed interval `Δ¹`, and `hom` at `Π` is argument-swapping.
+
+### What it would buy — the abstraction powers
+
+- funext definitional, by construction;
+- univalence that COMPUTES (Glue types) — transport along an equivalence
+  runs, instead of being an axiom;
+- higher inductive types, quotients, propositional truncation — with
+  canonicity;
+- for this kernel: `Hom-Π` disappears, and with it the only non-structural
+  case of type normalisation.
+
+### Why it is parked
+
+1. **The difficulty moves, it does not vanish.** Cubical TYPES compute too
+   (transport through Glue, `hcomp` in the universe). Normalisation for
+   cubical type theory is proven (Sterling–Angiuli 2021) but is among the
+   hardest results in the field.
+2. **This kernel is DIRECTED; cubical is symmetric.** The directed side —
+   simplicial type theory, directed univalence (Gratzer–Weinberger–
+   Buchholtz 2024) — is the research frontier. `rzk` implements
+   Riehl–Shulman, but its normalisation/decidability metatheory is far less
+   developed.
+3. **The de Bruijn criterion.** Interval + face lattice + Kan operations
+   make the trusted kernel much larger; PLAN-BIDI §0 exists to keep an
+   independent, small checker possible. Cubical Agda has none.
+4. **The linear core.** Once's direction is a linear SMCC core + QTT
+   grades; graded/linear cubical type theory is open research.
+5. **It restarts most of the metatheory** — reduction, confluence, the
+   logical relation and the Knot's encoding all assume `Hom` is a former
+   with computation rules.
+
+### The cheap experiment, if it is ever picked up
+
+A spike: present `Hom` as an extension type over a directed interval
+WITHOUT Kan operations (Riehl–Shulman style), for the Π fragment only.
+Measure (a) whether type normalisation becomes structural, (b) what `J`
+and transport cost. That decides whether the redesign pays BEFORE anything
+is rewritten. Route C's outputs — validity, SR for types, inversion, typed
+normalisation — are needed by ANY kernel, interval-based or not, so
+continuing with C loses nothing.
