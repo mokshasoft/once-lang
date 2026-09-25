@@ -12,7 +12,8 @@ module Once.Optimize.Shape where
 
 open import Once.Type
 open import Once.IR
-open import Once.Optimize using (optimize-pair; optimize-case; _≟Type_; _≟IR_)
+open import Once.Type.DecEq using () renaming (_≟T_ to _≟Type_)
+open import Once.Optimize using (optimize-pair; optimize-case; _≟IR_)
 
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; inspect; [_])
 open import Relation.Nullary using (Dec; yes; no)

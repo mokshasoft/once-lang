@@ -17,7 +17,8 @@ module Once.Optimizer.Normal where
 
 open import Once.Type
 open import Once.IR
-open import Once.Optimize using (_≟Type_; _≟IR_; optimize; optimize-once;
+open import Once.Type.DecEq using () renaming (_≟T_ to _≟Type_)
+open import Once.Optimize using (_≟IR_; optimize; optimize-once;
   optimize-once-structural; optimize-compose; optimize-compose-structural;
   optimize-pair; optimize-case; safe-pair-distrib; optimize-n)
 open import Once.Optimize.Correct using (optimize-correct)

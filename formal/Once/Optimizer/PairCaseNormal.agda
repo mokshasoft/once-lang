@@ -13,7 +13,8 @@ module Once.Optimizer.PairCaseNormal where
 
 open import Once.Type
 open import Once.IR
-open import Once.Optimize using (_≟Type_; _≟IR_; optimize-pair; optimize-case)
+open import Once.Type.DecEq using () renaming (_≟T_ to _≟Type_)
+open import Once.Optimize using (_≟IR_; optimize-pair; optimize-case)
 open import Once.Optimizer.IRReducible
 
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; _≢_)
