@@ -853,12 +853,12 @@ record VerifiedTypeChecker : Set₁ where
         {Ψ' : Surface.Usage (NamedCtx.size ctx)}
         {eE' : SExpr (NamedCtx.debruijn (extendNamedCtx ctx x A))
                      (q' Once.Surface.Syntax.Usage.∷ Ψ') B}
-        {d' f' : _}
+        {d' f' : _} {π : Once.Type.Purity}
       → (q' Once.Type.≤q q) ≡ Data.Bool.true
       → tcCheck (extendNamedCtx ctx x A) body B
           ≡ success (q' Once.Surface.Syntax.Usage.∷ Ψ') eE' d' f'
       → ∃[ eE ] ∃[ d ] ∃[ f ]
-          tcCheck ctx (RLam x body) (A Once.Type.⇒[ Once.Type.mk-kind q Once.Type.pure ] B) ≡ success Ψ' eE d f
+          tcCheck ctx (RLam x body) (A Once.Type.⇒[ Once.Type.mk-kind q π ] B) ≡ success Ψ' eE d f
 
     ----------------------------------------------------------------
     -- G7 (first pass): algebraic identities
