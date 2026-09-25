@@ -264,6 +264,28 @@ check_disk
 check_generated
 "$ROOT/tools/check-trust.sh" || exit 2
 
+# ============================================================================
+# ★★★ GATE 1 — THE IMPORT LINTER, BEFORE ANY AGDA.  Seconds, tree-wide.
+#   Agda cannot do this cheaply: `--only-scope-checking` FULLY type-checks
+#   every import first (measured with a control, 2026-09-25 — see the
+#   linter's header).  The linter reads source, so a missing or stale
+#   import anywhere is reported before a 30-minute sweep spends 20 of them
+#   type-checking the closure that leads to it.
+# ⚠ EXIT 4, distinct from 1 (FAIL), 2 (check-trust), 3 (disk).  A gate that
+#   exits 0 on refusal is `sweep-refusal-exits-zero`.
+# ⚠ It is a GATE, not a verdict: no errors here means "worth sweeping".
+# Bypass (e.g. to measure the sweep itself): SWEEP_SKIP_LINT=1.
+# ============================================================================
+if [ -z "${SWEEP_SKIP_LINT:-}" ]; then
+  if ! python3 "$ROOT/tools/lint-imports.py" > "$LOGDIR/lint-imports.log" 2>&1; then
+    grep 'ERROR' "$LOGDIR/lint-imports.log" >&2
+    tail -1 "$LOGDIR/lint-imports.log" >&2
+    echo "== REFUSING TO SWEEP — the import linter found errors (full log: $LOGDIR/lint-imports.log)" >&2
+    exit 4
+  fi
+  echo "-- $(tail -1 "$LOGDIR/lint-imports.log" | sed 's/^== //')"
+fi
+
 declare -a RED=() TOBUILD=() MAIN=() CMP=()
 while IFS= read -r f; do
   rel="${f#$BOOT/}"
@@ -284,10 +306,40 @@ for f in "${RED[@]:-}"; do [ -n "$f" ] && echo "     $f"; done
 [ "$WITH_NEG" -eq 0 ] && echo "-- Negative/ SKIPPED (parked, not verified) — use --negative to build it"
 echo "-- BUILDING ${#TOBUILD[@]} module(s), sequentially (RTS-special first)"
 
+# ★★ A MODULE WHOSE IMPORT FAILED IS NOT ATTEMPTED.  Checking it re-type-
+#   checks its closure up to the broken module and fails AGAIN — the most
+#   time for the least information.  It is reported BLOCKED instead, and
+#   counted: a blocked module is UNVERIFIED, never green.
+DEPS="$LOGDIR/deps.txt"
+BOOT="$BOOT" python3 -c '
+import os, re, sys
+boot = os.environ["BOOT"]
+rels = sys.argv[1:]
+mod2rel = {r[:-5].replace("/", "."): r for r in rels}
+imp = re.compile(r"^\s*(?:open\s+)?import\s+([A-Za-z0-9_.]+)")
+for r in rels:
+    ds = set()
+    with open(os.path.join(boot, r), encoding="utf-8") as fh:
+        for line in fh:
+            m = imp.match(line)
+            if m and m.group(1) in mod2rel: ds.add(mod2rel[m.group(1)])
+    print(r, *sorted(ds))
+' "${TOBUILD[@]:-}" > "$DEPS"
+declare -A BAD=()
+blocked=0; blockedl=()
+
 fail=0; failed=(); TIMES=(); CTIMES=(); unmeasured=()
 for rel in "${TOBUILD[@]:-}"; do
   [ -n "$rel" ] || continue
   f="$BOOT/$rel"; tag="$(echo "${rel#DirectedHoTT/}" | tr '/' '.')"; tag="${tag%.agda}"
+  by=""
+  for d in $(grep -m1 "^$rel " "$DEPS" | cut -d' ' -f2-); do
+    [ -n "${BAD[$d]:-}" ] && { by="${BAD[$d]}"; break; }
+  done
+  if [ -n "$by" ]; then
+    printf '   %-46s BLOCKED (by %s)\n' "$tag" "$by"
+    BAD[$rel]="$by"; blocked=$((blocked+1)); blockedl+=("$tag"); continue
+  fi
   rts="-A64m"; note=""
   needs_c "$f" && { rts="-A64m -c"; note=" (compacting GC, per header)"; }
   printf '   %-46s%s ' "$tag" "$note"
@@ -388,7 +440,7 @@ for rel in "${TOBUILD[@]:-}"; do
         unmeasured+=("$tag"); continue ;;
     esac
     [ "$rc" = 143 ] && echo "KILLED(143) — memory, NOT a proof error" || echo "FAIL($rc)"
-    failed+=("$tag($rc)"); fail=$((fail+1))
+    failed+=("$tag($rc)"); fail=$((fail+1)); BAD[$rel]="$tag"
   fi
 done
 
@@ -411,4 +463,5 @@ if [ "$fail" -eq 0 ]; then
   exit 0
 fi
 echo "== $fail FAILED: ${failed[*]}" >&2
+[ "$blocked" -gt 0 ] && echo "== $blocked BLOCKED (not attempted — UNVERIFIED): ${blockedl[*]}" >&2
 exit 1
