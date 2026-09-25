@@ -14,6 +14,7 @@ open import Once.Type
 open import Once.Float.Decimal using (Decimal)
 open import Once.IR
 open import Once.Surface.Syntax
+open import Once.Surface.CoerceIR using (coeIR; runC)
 open import Once.IRTy.WF using (wf-⌊⌋)
 open import Relation.Binary.PropositionalEquality using (subst; sym)
 open import Once.Surface.Properties using (erase-arg-usage)
@@ -397,7 +398,9 @@ elaborate {Γ = Γ} m (effApp {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} f x) =
 -- Pair: (a, b) becomes ⟨a, b⟩
 elaborate {Γ = Γ} m (pair {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) =
   ⟨ elaborate m a ∘ envˡ {Γ = Γ} m Ψ₁ Ψ₂ , elaborate m b ∘ envʳ {Γ = Γ} m Ψ₁ Ψ₂ ⟩
-elaborate m (arr' f)    = elaborate m f   -- Plan 0.52 M2: arr' is identity (IR.arr retired)
+-- D226: a conversion compiles to `coeIR p`; a grade-only one (the former `arr'`)
+-- is `idC`, so `runC` returns the operand's IR unchanged.
+elaborate m (coerce p f) = runC (coeIR p) (elaborate m f)
 
 -- Projections: compose with projection
 elaborate m (fst' p) = fst ∘ elaborate m p

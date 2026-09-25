@@ -51,6 +51,7 @@ open import Once.Functor.Translate using (WellFormedF; IsBaseType; IsConcrete; c
 -- has to follow — the judgment no longer reaches into the IR or the elaborator.
 open import Data.Bool using (true)
 open import Relation.Nullary using (¬_)
+open import Once.Type.Sub using (_<:_)
 open import Once.TypeCheck.Raw as Raw
   using (RawExpr; RVar; RQualified; RResolved; RApp; RInt; RStringLit; RUnit; RAnnot; RPair;
          RFloat;
@@ -681,17 +682,31 @@ mutual
                         ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] (ν-type F))
                         ⨾ Surface.zeroUsage
 
-    t-embed : ∀ {ctx : NamedCtx} {e : RawExpr} {A : Type}
-              {Ψ : Surface.Usage (NamedCtx.size ctx)}
-            → ctx ⊢ᵢ e ∶ A ⨾ Ψ
-            → ctx ⊢ᶜ e ∶ A ⨾ Ψ
+    -- | THE MODE SWITCH, with subsumption (D226 / plan 0.99). A term whose type
+    -- is INFERRED checks at any supertype. Inference reports the least
+    -- (principal) type; conversion happens only here, where the expected type
+    -- is known (D125: "subsumption belongs in CHECK mode"). The former
+    -- `t-embed` is the reflexive instance, and the former `t-subsume`
+    -- (pure ⊑ eff) the grade instance. The premise is an INFERENCE judgment,
+    -- not a check: with a checked premise, a lambda checked at `Int ⇒ Int` would
+    -- convert (contravariant domain) to `Void ⇒ Int`, which no checker can
+    -- find — the standard bidirectional placement (Dunfield–Krishnaswami).
+    t-sub : ∀ {ctx : NamedCtx} {e : RawExpr} {A B : Type}
+            {Ψ : Surface.Usage (NamedCtx.size ctx)}
+          → ctx ⊢ᵢ e ∶ A ⨾ Ψ
+          → A <: B
+          → ctx ⊢ᶜ e ∶ B ⨾ Ψ
 
+    -- D226: GRADE-POLY (D069's principle — the grade is real only where an
+    -- effect is introduced, and abstraction introduces none; the body's effects
+    -- live on the arrows it returns). Before 0.99 a lambda was typed `pure` and
+    -- lifted by `t-subsume`; this derives exactly those typings.
     t-lam : ∀ {ctx : NamedCtx} {x : String} {body : RawExpr}
-            {A B : Type} {q q' : Quantity}
+            {A B : Type} {q q' : Quantity} {π : Once.Type.Purity}
             {Ψ : Surface.Usage (NamedCtx.size ctx)}
           → (q' Once.Type.≤q q) ≡ true
           → (extendNamedCtx ctx x A) ⊢ᶜ body ∶ B ⨾ (q' ∷ᵘ Ψ)
-          → ctx ⊢ᶜ RLam x body ∶ (A Once.Type.⇒[ Once.Type.mk-kind q Once.Type.pure ] B) ⨾ Ψ
+          → ctx ⊢ᶜ RLam x body ∶ (A Once.Type.⇒[ Once.Type.mk-kind q π ] B) ⨾ Ψ
 
     -- Plan 0.36 Phase 2a follow-up: check-mode for the pair LITERAL
     -- `(a , b)` at a product type. Checks the components bidirectionally
@@ -757,17 +772,6 @@ mutual
 
     -- (Plan 0.52 M1: `t-arr-app-check` retired — a bare lambda at an eff arrow
     -- now checks via the pure-arrow clause + `t-subsume`, no `arr` term.)
-
-    -- | pure ⊑ eff SUBSUMPTION (D068 / Plan 0.52 M1): a value of a pure arrow is
-    -- usable where the eff arrow is expected, with NO `arr` term — "annotation is
-    -- a check, never a coercion" (OCP-0007). The denotation is identity
-    -- (`realize` emits `arr'`, and `⟦arr' f⟧ = ⟦f⟧`). This is `t-arr-app-check`
-    -- with the `arr` wrapper dropped from the subject. Retires surface `arr`.
-    -- Monotone only (pure→eff; eff→pure is unsound — D066).
-    t-subsume : ∀ {ctx : NamedCtx} {e : RawExpr} {A B : Type}
-                {Ψ : Surface.Usage (NamedCtx.size ctx)}
-              → ctx ⊢ᶜ e ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) ⨾ Ψ
-              → ctx ⊢ᶜ e ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B) ⨾ Ψ
 
     -- | Argument-driven application in check mode. Plan 0.4 T1
     -- changes 2+4. When `f` cannot be inferred as a function (the

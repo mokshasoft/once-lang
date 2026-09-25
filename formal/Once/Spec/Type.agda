@@ -37,3 +37,11 @@ open import Once.Type public
           -- target expressibility (D115)
         ; FitsInReg ; fits-int ; fits-float
         )
+-- D226 / plan 0.99: the ONE subtyping judgment. Canonical, observation-free
+-- conversions only (`Void <: B`, the grade `pure ⊑ eff`), closed under the type
+-- formers; one derivation per `A <: B`, so every conversion is coherent.
+open import Once.Type.Sub public
+  using ( _⊑π_ ; ⊑-pure ; ⊑-eff ; ⊑-pe
+        ; _<:_ ; sub-void ; sub-unit ; sub-int ; sub-float ; sub-str ; sub-buffer
+        ; sub-arr ; sub-prod ; sub-sum ; sub-μ ; sub-ν
+        )

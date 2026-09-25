@@ -53,6 +53,7 @@ open import Data.Nat using (ℕ)
 open import Once.Surface.Context using (Ctx; ∅; _,_^_; svar; SVar; Usage; _↾_; _⊑ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many; _+ᵘ_; _*ᵘ_; _⊔ᵘ_; zeroUsage; _∷_) renaming (⟦_⟧ᶜ to ⟦_⟧ᶜᵗ; lookup to lookupᵗ)
 open import Once.TypeCheck.Classify using (NamedCtx)
 open import Once.TypeCheck.Raw using (BinOp; OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
+open import Once.Denotation.Sub using (⟦_⟧<:)
 open import Once.SigOp.Info using (SigOpInfo; semM)
 open import Once.Arith.SigOp.Builders
   using (value-info; arrow-info; str-lit-info;
@@ -65,9 +66,9 @@ open import Once.TypeCheck.Judgment
          t-initial-morph-check; t-inl-morph-check; t-inr-morph-check;
          t-compose-check; t-case-copair-check; t-pair-morph-check;
          t-curry-check; t-cata-check; t-ana-check;
-         t-embed; t-lam; t-pair-lit-check;
+         t-sub; t-lam; t-pair-lit-check;
          t-In-app-check; t-apply-check; t-inl-app-check; t-inr-app-check;
-         t-initial-app-check; t-subsume; t-arg-driven-app-check; t-var-poly-instantiate;
+         t-initial-app-check; t-arg-driven-app-check; t-var-poly-instantiate;
          t-var-poly-instantiate-infer;
          t-int; t-float; t-str; t-unit; t-unit-var; t-var-local; t-var-qualified;
          t-var-resolved; t-var-import; t-annot; t-pair; t-neg; t-neg-float; t-binop-arith-float; t-binop-arith-float-il; t-binop-arith-float-ir; t-let; t-case;
@@ -271,7 +272,8 @@ EnvRun ctx Ψ = ⟦ ⟦ NamedCtx.debruijn ctx ↾ Ψ ⟧ᶜᵗ ⟧ᴰ
   (⟦ dalg ⟧ᶜ fmt) tt >>=T λ valg → returnT (cata-sem wfF valg)
 ⟦_⟧ᶜ {ctx = ctx} (t-ana-check wfF dcoalg) fmt dγ =
   returnT (ana-sem wfF ((⟦ dcoalg ⟧ᶜ fmt) tt))
-⟦_⟧ᶜ {ctx = ctx} (t-embed d) fmt dγ = (⟦ d ⟧ᵢ fmt) dγ
+-- D226: the mode switch maps the inferred computation's RESULT along `p`.
+⟦_⟧ᶜ {ctx = ctx} (t-sub d p) fmt dγ = fmapT ⟦ p ⟧<: ((⟦ d ⟧ᵢ fmt) dγ)
 -- D143: the arrow's declared quantity `q` decides whether the meaning receives
 -- an argument; the binder's usage `q'` decides whether it enters the body's
 -- environment. `q' ≤q q` (the rule's own premise) rules out the off-diagonal
@@ -288,7 +290,6 @@ EnvRun ctx Ψ = ⟦ ⟦ NamedCtx.debruijn ctx ↾ Ψ ⟧ᶜᵗ ⟧ᴰ
 ⟦_⟧ᶜ {ctx = ctx} (t-inl-app-check d) fmt dγ = (⟦ d ⟧ᶜ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-trans (⊑ᵘ-*Many _) (⊑ᵘ-+ʳ zeroUsage _)) dγ) >>=T λ v → returnT (inj₁ v)
 ⟦_⟧ᶜ {ctx = ctx} (t-inr-app-check d) fmt dγ = (⟦ d ⟧ᶜ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-trans (⊑ᵘ-*Many _) (⊑ᵘ-+ʳ zeroUsage _)) dγ) >>=T λ v → returnT (inj₂ v)
 ⟦_⟧ᶜ {ctx = ctx} (t-initial-app-check d) fmt dγ = (⟦ d ⟧ᶜ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-trans (⊑ᵘ-*Many _) (⊑ᵘ-+ʳ zeroUsage _)) dγ) >>=T λ v → ⊥-elim v
-⟦_⟧ᶜ {ctx = ctx} (t-subsume d) fmt dγ = (⟦ d ⟧ᶜ fmt) dγ
 ⟦_⟧ᶜ {ctx = ctx} (t-arg-driven-app-check _ darg df) fmt dγ = (⟦ df ⟧ᶜ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=T λ vf → (⟦ darg ⟧ᵢ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-trans (⊑ᵘ-*Many _) (⊑ᵘ-+ʳ _ _)) dγ) >>=T λ vx → vf vx
 -- Plan 0.58 (telescope): a same-module def reference MEANS its closed body
 -- (the body derivation is the rule's premise). Env-independent — the body is

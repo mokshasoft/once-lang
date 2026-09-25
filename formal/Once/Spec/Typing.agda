@@ -37,8 +37,8 @@ open import Once.TypeCheck.Judgment public
         ; t-inl-morph-check ; t-inr-morph-check
         ; t-compose-check ; t-case-copair-check ; t-pair-morph-check
         ; t-curry-check ; t-cata-check
-        ; t-embed ; t-lam ; t-pair-lit-check
+        ; t-sub ; t-lam ; t-pair-lit-check
         ; t-In-app-check ; t-apply-check
         ; t-inl-app-check ; t-inr-app-check ; t-initial-app-check
-        ; t-subsume ; t-arg-driven-app-check ; t-var-poly-instantiate
+        ; t-arg-driven-app-check ; t-var-poly-instantiate
         )

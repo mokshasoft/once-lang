@@ -51,6 +51,7 @@ open import Once.Functor.Translate using (WellFormedF; con-fun; base-Unit)
 open import Once.Semantics.Machine
   using (sem-cata; sem-ana; sem-fmap; coerce-functor; coerce-functor⁻¹; ⟦_⟧F)
 open import Once.SigOp.Info using (semM)
+open import Once.Denotation.Sub using (⟦_⟧<:)
 open import Once.Arith.SigOp.Builders
 open import Once.CanonicalName using (bare)
 
@@ -275,7 +276,10 @@ liftD fmt {A} {B} ir = returnT (liftFn fmt {A} {B} ir)
 -- Plan 0.52 M2: `ir : IR ⌊A⌋ ⌊B⌋`, so `evalᴰ ir : ⟦⌊A⌋⟧ᴰᴵ → T ⟦⌊B⌋⟧ᴰᴵ`;
 -- `cohᴰ` transports it to the surface `⟦A⟧ᴰ → T ⟦B⟧ᴰ` (grade-blind erasure).
 ⟦ lift-morphism {A = A} {B = B} ir ⟧ˢ fmt dγ = liftD fmt {A} {B} ir
-⟦ arr' f ⟧ˢ fmt       dγ = ⟦ f ⟧ˢ fmt dγ
+-- D226: a conversion along `p` maps the RESULT by `⟦ p ⟧<:`; the trace is
+-- untouched. At the grade instance (the former `arr'`) this is the identity
+-- up to `<:-refl-id`.
+⟦ coerce p e ⟧ˢ fmt   dγ = fmapT ⟦ p ⟧<: (⟦ e ⟧ˢ fmt dγ)
 ⟦ morph-app {Γ = Γ} {Ψ = Ψₑ} {A = A} {B = B} ir e ⟧ˢ fmt dγ =
   ⟦ e ⟧ˢ fmt (restrictᴰ {Γ = Γ} (⊑ᵘ-trans (⊑ᵘ-*Many Ψₑ) (⊑ᵘ-+ʳ zeroUsage (Many *ᵘ Ψₑ))) dγ)
   >>=T λ v → subst T (cohᴰ B) (evalᴰ fmt ir (subst (λ z → z) (sym (cohᴰ A)) v))

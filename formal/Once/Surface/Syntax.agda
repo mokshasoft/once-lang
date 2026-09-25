@@ -11,6 +11,7 @@
 module Once.Surface.Syntax where
 
 open import Once.Type
+open import Once.Type.Sub using (_<:_)
 open import Once.IR using (IR)
 open import Once.IRTy using (⌊_⌋)
 open import Once.Functor.Translate using (WellFormedF; IsConcrete)
@@ -54,10 +55,10 @@ data Expr : ∀ {n} → Ctx n → Usage n → Type → Set where
   -- (sub-usage allowed: linear-use body accepted under ω-declared arrow).
   -- The explicit proof argument is the linearity-by-construction witness:
   -- no term violating its declared usage discipline can be built.
-  lam   : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {q' : Quantity} {A B} (q : Quantity)
+  lam   : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {q' : Quantity} {π : Purity} {A B} (q : Quantity)
         → (q' ≤q q) ≡ true
         → Expr (Γ , A) (q' ∷ Ψ) B
-        → Expr Γ Ψ (A ⇒[ mk-kind q pure ] B)
+        → Expr Γ Ψ (A ⇒[ mk-kind q π ] B)
 
   -- Application (pure function) — argument usage scales by arrow grade q.
   app   : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} {A B} {q : Quantity}
@@ -176,7 +177,9 @@ data Expr : ∀ {n} → Ctx n → Usage n → Type → Set where
   -- Plan 0.52 M2: STAYS (the grade lives at the surface, OCP-0007), but now
   -- ELABORATES TO THE IDENTITY (`IR.arr` retired — pure/eff IR objects coincide)
   -- with identity denotation. Internal-only; the programmer never writes it.
-  arr'  : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A B} → Expr Γ Ψ (A ⇒ B) → Expr Γ Ψ (A ⇒[ mk-kind Many eff ] B)
+  -- D226 / plan 0.99: the realisation of `t-sub` — a term converted along a
+  -- subtyping derivation. Replaces `arr'`, which was its grade instance.
+  coerce : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A B} → A <: B → Expr Γ Ψ A → Expr Γ Ψ B
 
   -- External primitive reference (syscalls, intrinsics) — uses no variables.
   -- Asm-level `once_<name>` directly implements the declared type `A`: at

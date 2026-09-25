@@ -680,7 +680,7 @@ mutual
 -- Bool-valued Type / Functor equality
 ------------------------------------------------------------------------
 -- Used by `instantiate` for the TVar-consistency check. Decidable
--- equality lives in `Once.TypeCheck.Elaborate._≟T_` (richer form,
+-- equality lives in `Once.Type.DecEq._≟T_` (richer form,
 -- returns Dec with refl evidence); this simpler Bool version avoids
 -- the upward dependency from Type → Elaborate. Plan 0.6.2 Phase 1.
 

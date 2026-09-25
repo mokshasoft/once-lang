@@ -15166,3 +15166,33 @@ A family of maps `A → T B` natural in `B` is, by Yoneda, the same thing as one
 `A → T 0`: `Void` is the representing object. So `Eff Int Void` is the canonical
 single statement of "never returns", `<:` supplies the instances, and FFI
 signatures keep concrete codomains.
+
+### Amendment (2026-09-25, plan 0.99 phase B): the rule sits at the MODE SWITCH
+
+As first written, `t-sub` took a CHECKED premise (`⊢ᶜ e ∶ A`), like `t-subsume`.
+That is wrong once `<:` has a contravariant domain: the judgment would derive
+`\x -> x + 1 ∶ Void ⇒ Int` (check the lambda at `Int ⇒ Int`, convert the domain),
+and no checker can find it — checking the lambda at `Void ⇒ Int` binds `x ∶ Void`,
+and `x + 1` then fails. `check-complete` would be false.
+
+The rule is therefore the standard bidirectional subsumption (Dunfield–Krishnaswami),
+at the switch from inference to checking — which is also what "inference reports the
+principal type; conversion happens only where the expected type is known" says:
+
+    t-sub : ctx ⊢ᵢ e ∶ A ⨾ Ψ → A <: B → ctx ⊢ᶜ e ∶ B ⨾ Ψ
+
+Consequences, each a Spec-closure hunk:
+
+* `t-embed` is DELETED: it is `t-sub` at the reflexive derivation.
+* `t-subsume` is DELETED: at an inferred term it is `t-sub` at the grade derivation;
+  its other use, lifting a CHECKED lambda, is taken over by —
+* `t-lam` is GRADE-POLY (`mk-kind q π`, π free), D069's principle applied to
+  abstraction, which introduces no effect. Every lambda was typed `pure` and lifted by
+  `t-subsume` before, so this derives exactly those typings. Surface `lam` is
+  grade-poly with it; `⟦_⟧ᴰ` and `⌊_⌋` already ignore the grade.
+* Surface `arr'` is replaced by `coerce p e` (the realisation of `t-sub`); its IR is
+  `coeIR p`, which is the IDENTITY (`idC`) for every grade-only derivation, so no
+  existing program's IR changes.
+* Every check rule that concluded at an arrow is already grade-poly (`t-pair-morph-check`
+  since D222; compose/case/cata since D032), so the elaborator's "try eff, else check at
+  pure and lift" fallbacks are deleted: the eff attempt covers them.

@@ -45,6 +45,7 @@ open import Data.String using (_++_)
 import Data.String.Properties
 open import Relation.Nullary using (yes; no; ¬_)
 open import Data.Empty using (⊥-elim)
+import Once.Type.DecEq
 open import Once.TypeCheck.Elaborate
   using (NamedCtx; inferElab; checkElab; InferElabResult; CheckElabResult;
          success; failure; lookupLocal; lookupImport; extendNamedCtx)
@@ -466,10 +467,10 @@ caseBranchBundle ctx x T branch = inferElab (extendNamedCtx ctx x T) branch , re
 
 -- Bundle for the type-equality decision.
 TyEqBundle : (A B : Type) → Set
-TyEqBundle A B = ∃[ r ] Once.TypeCheck.Elaborate._≟T_ A B ≡ r
+TyEqBundle A B = ∃[ r ] Once.Type.DecEq._≟T_ A B ≡ r
 
 tyEqBundle : (A B : Type) → TyEqBundle A B
-tyEqBundle A B = Once.TypeCheck.Elaborate._≟T_ A B , refl
+tyEqBundle A B = Once.Type.DecEq._≟T_ A B , refl
 
 sound-RDestruct :
   ∀ (ctx : NamedCtx) (scrut : RawExpr) (xL : _) (eL : RawExpr)

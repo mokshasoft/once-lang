@@ -82,6 +82,8 @@ open import Once.TypeCheck.Morph using (MorphRaw; morphRaw?; morphToIR)
 open import Once.Float.Dyadic using (Dyadic)
 open import Once.Float.Decimal using (Decimal; decimalOf)
 import Once.Float.Decimal as Decimal
+open import Once.Type.Sub using (_<:_; _<:?_)
+open import Once.Type.DecEq using (_≟F_; _≟T_)
 open import Once.TypeCheck.Judgment
 
 ------------------------------------------------------------------------
@@ -102,66 +104,7 @@ open import Once.TypeCheck.Judgment
 -- Type Equality (Decidable with proof)
 ------------------------------------------------------------------------
 
--- Helpers for ≟T / ≟F matching-constructor cases (avoid `with`-blocks).
-
-≟F-K-aux : ∀ {A B} → Dec (A ≡ B) → Dec (K A ≡ K B)
-≟F-K-aux (yes refl) = yes refl
-≟F-K-aux (no ¬p)    = no λ { refl → ¬p refl }
-
-≟F-⊕-aux : ∀ {F₁ G₁ F₂ G₂}
-         → Dec (F₁ ≡ F₂) → Dec (G₁ ≡ G₂)
-         → Dec ((F₁ ⊕ G₁) ≡ (F₂ ⊕ G₂))
-≟F-⊕-aux (yes refl) (yes refl) = yes refl
-≟F-⊕-aux (yes refl) (no ¬q)    = no λ { refl → ¬q refl }
-≟F-⊕-aux (no ¬p)    (yes _)    = no λ { refl → ¬p refl }
-≟F-⊕-aux (no ¬p)    (no _)     = no λ { refl → ¬p refl }
-
-≟F-⊗-aux : ∀ {F₁ G₁ F₂ G₂}
-         → Dec (F₁ ≡ F₂) → Dec (G₁ ≡ G₂)
-         → Dec ((F₁ ⊗ G₁) ≡ (F₂ ⊗ G₂))
-≟F-⊗-aux (yes refl) (yes refl) = yes refl
-≟F-⊗-aux (yes refl) (no ¬q)    = no λ { refl → ¬q refl }
-≟F-⊗-aux (no ¬p)    (yes _)    = no λ { refl → ¬p refl }
-≟F-⊗-aux (no ¬p)    (no _)     = no λ { refl → ¬p refl }
-
-≟T-*-aux : ∀ {A₁ B₁ A₂ B₂}
-         → Dec (A₁ ≡ A₂) → Dec (B₁ ≡ B₂)
-         → Dec ((A₁ Once.Type.* B₁) ≡ (A₂ Once.Type.* B₂))
-≟T-*-aux (yes refl) (yes refl) = yes refl
-≟T-*-aux (yes refl) (no ¬q)    = no λ { refl → ¬q refl }
-≟T-*-aux (no ¬p)    (yes _)    = no λ { refl → ¬p refl }
-≟T-*-aux (no ¬p)    (no _)     = no λ { refl → ¬p refl }
-
-≟T-+-aux : ∀ {A₁ B₁ A₂ B₂}
-         → Dec (A₁ ≡ A₂) → Dec (B₁ ≡ B₂)
-         → Dec ((A₁ Once.Type.+ B₁) ≡ (A₂ Once.Type.+ B₂))
-≟T-+-aux (yes refl) (yes refl) = yes refl
-≟T-+-aux (yes refl) (no ¬q)    = no λ { refl → ¬q refl }
-≟T-+-aux (no ¬p)    (yes _)    = no λ { refl → ¬p refl }
-≟T-+-aux (no ¬p)    (no _)     = no λ { refl → ¬p refl }
-
-≟T-⇒-aux : ∀ {A₁ B₁ A₂ B₂ k₁ k₂}
-         → Dec (A₁ ≡ A₂) → Dec (k₁ ≡ k₂) → Dec (B₁ ≡ B₂)
-         → Dec ((A₁ ⇒[ k₁ ] B₁) ≡ (A₂ ⇒[ k₂ ] B₂))
--- Clause ORDER is load-bearing, not cosmetic: each `no` clause leaves the OTHER
--- two columns unsplit, so a kind clash (`pure` vs `eff`, `Many` vs `One`) decides
--- the arrow WITHOUT the domain/codomain deciders having to reduce first. With the
--- old all-eight-combinations order, `(A ⇒eff B) ≟T (A' ⇒pure B')` was stuck on
--- `A ≟T A'` for variable A/A' — and a stuck outer decision HIDES the inner ones
--- from a proof's `with`, which is what made D126's `embedOrSubsume-lifts`
--- unprovable. Same decisions, same results; just decided sooner.
-≟T-⇒-aux _          (no ¬k)    _          = no λ { refl → ¬k refl }
-≟T-⇒-aux (no ¬p)    _          _          = no λ { refl → ¬p refl }
-≟T-⇒-aux _          _          (no ¬r)    = no λ { refl → ¬r refl }
-≟T-⇒-aux (yes refl) (yes refl) (yes refl) = yes refl
-
-≟T-μ-aux : ∀ {F₁ F₂} → Dec (F₁ ≡ F₂) → Dec (μ-type F₁ ≡ μ-type F₂)
-≟T-μ-aux (yes refl) = yes refl
-≟T-μ-aux (no ¬p)    = no λ { refl → ¬p refl }
-
-≟T-ν-aux : ∀ {F₁ F₂} → Dec (F₁ ≡ F₂) → Dec (ν-type F₁ ≡ ν-type F₂)
-≟T-ν-aux (yes refl) = yes refl
-≟T-ν-aux (no ¬p)    = no λ { refl → ¬p refl }
+-- Plan 0.99: decidable Functor/Type equality lives in `Once.Type.DecEq`.
 
 -- | Decide whether `T` is a pure-arrow-to-`Int` — the value-lift target for
 -- an integer literal (Plan 0.41 / D018). Returning the equality witness as a
@@ -209,159 +152,6 @@ classifyRPairTarget
   (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] (A Once.Type.* B)) =
   rpt-vlift X A B π
 classifyRPairTarget T = rpt-other T
-
--- | Decidable functor and type equality (mutually recursive)
-mutual
-  -- | Decidable functor equality
-  _≟F_ : (F G : Functor) → Dec (F ≡ G)
-  K A ≟F K B = ≟F-K-aux (A ≟T B)
-  Id ≟F Id = yes refl
-  (F₁ ⊕ G₁) ≟F (F₂ ⊕ G₂) = ≟F-⊕-aux (F₁ ≟F F₂) (G₁ ≟F G₂)
-  (F₁ ⊗ G₁) ≟F (F₂ ⊗ G₂) = ≟F-⊗-aux (F₁ ≟F F₂) (G₁ ≟F G₂)
-  -- Mismatched constructors
-  K _ ≟F Id = no λ ()
-  K _ ≟F (_ ⊕ _) = no λ ()
-  K _ ≟F (_ ⊗ _) = no λ ()
-  Id ≟F K _ = no λ ()
-  Id ≟F (_ ⊕ _) = no λ ()
-  Id ≟F (_ ⊗ _) = no λ ()
-  (_ ⊕ _) ≟F K _ = no λ ()
-  (_ ⊕ _) ≟F Id = no λ ()
-  (_ ⊕ _) ≟F (_ ⊗ _) = no λ ()
-  (_ ⊗ _) ≟F K _ = no λ ()
-  (_ ⊗ _) ≟F Id = no λ ()
-  (_ ⊗ _) ≟F (_ ⊕ _) = no λ ()
-
-  -- | Decidable type equality
-  _≟T_ : (A B : Type) → Dec (A ≡ B)
-  Unit ≟T Unit = yes refl
-  Void ≟T Void = yes refl
-  Int ≟T Int = yes refl
-  Float ≟T Float = yes refl
-  Str ≟T Str = yes refl
-  Buffer ≟T Buffer = yes refl
-  (A₁ Once.Type.* B₁) ≟T (A₂ Once.Type.* B₂) = ≟T-*-aux (A₁ ≟T A₂) (B₁ ≟T B₂)
-  (A₁ Once.Type.+ B₁) ≟T (A₂ Once.Type.+ B₂) = ≟T-+-aux (A₁ ≟T A₂) (B₁ ≟T B₂)
-  (A₁ ⇒[ k₁ ] B₁) ≟T (A₂ ⇒[ k₂ ] B₂) = ≟T-⇒-aux (A₁ ≟T A₂) (k₁ ≟k k₂) (B₁ ≟T B₂)
-  -- OCP-0003: Fix removed
-  -- TVar removed from Type; now in PolyType (see Once.Type)
-  -- All other combinations are unequal
-  Unit ≟T Void = no λ ()
-  Unit ≟T Int = no λ ()
-  Unit ≟T Float = no λ ()
-  Unit ≟T Str = no λ ()
-  Unit ≟T Buffer = no λ ()
-  Unit ≟T (_ Once.Type.* _) = no λ ()
-  Unit ≟T (_ Once.Type.+ _) = no λ ()
-  Unit ≟T (_ ⇒[ _ ] _) = no λ ()
-  Void ≟T Unit = no λ ()
-  Void ≟T Int = no λ ()
-  Void ≟T Float = no λ ()
-  Void ≟T Str = no λ ()
-  Void ≟T Buffer = no λ ()
-  Void ≟T (_ Once.Type.* _) = no λ ()
-  Void ≟T (_ Once.Type.+ _) = no λ ()
-  Void ≟T (_ ⇒[ _ ] _) = no λ ()
-  Int ≟T Unit = no λ ()
-  Int ≟T Void = no λ ()
-  Int ≟T Float = no λ ()
-  Int ≟T Str = no λ ()
-  Int ≟T Buffer = no λ ()
-  Int ≟T (_ Once.Type.* _) = no λ ()
-  Int ≟T (_ Once.Type.+ _) = no λ ()
-  Int ≟T (_ ⇒[ _ ] _) = no λ ()
-  Float ≟T Unit = no λ ()
-  Float ≟T Void = no λ ()
-  Float ≟T Int = no λ ()
-  Float ≟T Str = no λ ()
-  Float ≟T Buffer = no λ ()
-  Float ≟T (_ Once.Type.* _) = no λ ()
-  Float ≟T (_ Once.Type.+ _) = no λ ()
-  Float ≟T (_ ⇒[ _ ] _) = no λ ()
-  Str ≟T Unit = no λ ()
-  Str ≟T Void = no λ ()
-  Str ≟T Int = no λ ()
-  Str ≟T Float = no λ ()
-  Str ≟T Buffer = no λ ()
-  Str ≟T (_ Once.Type.* _) = no λ ()
-  Str ≟T (_ Once.Type.+ _) = no λ ()
-  Str ≟T (_ ⇒[ _ ] _) = no λ ()
-  Buffer ≟T Unit = no λ ()
-  Buffer ≟T Void = no λ ()
-  Buffer ≟T Int = no λ ()
-  Buffer ≟T Float = no λ ()
-  Buffer ≟T Str = no λ ()
-  Buffer ≟T (_ Once.Type.* _) = no λ ()
-  Buffer ≟T (_ Once.Type.+ _) = no λ ()
-  Buffer ≟T (_ ⇒[ _ ] _) = no λ ()
-  (_ Once.Type.* _) ≟T Unit = no λ ()
-  (_ Once.Type.* _) ≟T Void = no λ ()
-  (_ Once.Type.* _) ≟T Int = no λ ()
-  (_ Once.Type.* _) ≟T Float = no λ ()
-  (_ Once.Type.* _) ≟T Str = no λ ()
-  (_ Once.Type.* _) ≟T Buffer = no λ ()
-  (_ Once.Type.* _) ≟T (_ Once.Type.+ _) = no λ ()
-  (_ Once.Type.* _) ≟T (_ ⇒[ _ ] _) = no λ ()
-  (_ Once.Type.+ _) ≟T Unit = no λ ()
-  (_ Once.Type.+ _) ≟T Void = no λ ()
-  (_ Once.Type.+ _) ≟T Int = no λ ()
-  (_ Once.Type.+ _) ≟T Float = no λ ()
-  (_ Once.Type.+ _) ≟T Str = no λ ()
-  (_ Once.Type.+ _) ≟T Buffer = no λ ()
-  (_ Once.Type.+ _) ≟T (_ Once.Type.* _) = no λ ()
-  (_ Once.Type.+ _) ≟T (_ ⇒[ _ ] _) = no λ ()
-  (_ ⇒[ _ ] _) ≟T Unit = no λ ()
-  (_ ⇒[ _ ] _) ≟T Void = no λ ()
-  (_ ⇒[ _ ] _) ≟T Int = no λ ()
-  (_ ⇒[ _ ] _) ≟T Float = no λ ()
-  (_ ⇒[ _ ] _) ≟T Str = no λ ()
-  (_ ⇒[ _ ] _) ≟T Buffer = no λ ()
-  (_ ⇒[ _ ] _) ≟T (_ Once.Type.* _) = no λ ()
-  (_ ⇒[ _ ] _) ≟T (_ Once.Type.+ _) = no λ ()
-  -- TVar removed from Type; now in PolyType (see Once.Type)
-  -- OCP-0003: μ-type and ν-type cases
-  (μ-type F₁) ≟T (μ-type F₂) = ≟T-μ-aux (F₁ ≟F F₂)
-  (ν-type F₁) ≟T (ν-type F₂) = ≟T-ν-aux (F₁ ≟F F₂)
-  μ-type _ ≟T Unit = no λ ()
-  μ-type _ ≟T Void = no λ ()
-  μ-type _ ≟T Int = no λ ()
-  μ-type _ ≟T Float = no λ ()
-  μ-type _ ≟T Str = no λ ()
-  μ-type _ ≟T Buffer = no λ ()
-  μ-type _ ≟T (_ Once.Type.* _) = no λ ()
-  μ-type _ ≟T (_ Once.Type.+ _) = no λ ()
-  μ-type _ ≟T (_ ⇒[ _ ] _) = no λ ()
-  μ-type _ ≟T ν-type _ = no λ ()
-  ν-type _ ≟T Unit = no λ ()
-  ν-type _ ≟T Void = no λ ()
-  ν-type _ ≟T Int = no λ ()
-  ν-type _ ≟T Float = no λ ()
-  ν-type _ ≟T Str = no λ ()
-  ν-type _ ≟T Buffer = no λ ()
-  ν-type _ ≟T (_ Once.Type.* _) = no λ ()
-  ν-type _ ≟T (_ Once.Type.+ _) = no λ ()
-  ν-type _ ≟T (_ ⇒[ _ ] _) = no λ ()
-  ν-type _ ≟T μ-type _ = no λ ()
-  Unit ≟T μ-type _ = no λ ()
-  Unit ≟T ν-type _ = no λ ()
-  Void ≟T μ-type _ = no λ ()
-  Void ≟T ν-type _ = no λ ()
-  Int ≟T μ-type _ = no λ ()
-  Int ≟T ν-type _ = no λ ()
-  Float ≟T μ-type _ = no λ ()
-  Float ≟T ν-type _ = no λ ()
-  Str ≟T μ-type _ = no λ ()
-  Str ≟T ν-type _ = no λ ()
-  Buffer ≟T μ-type _ = no λ ()
-  Buffer ≟T ν-type _ = no λ ()
-  (_ Once.Type.* _) ≟T μ-type _ = no λ ()
-  (_ Once.Type.* _) ≟T ν-type _ = no λ ()
-  (_ Once.Type.+ _) ≟T μ-type _ = no λ ()
-  (_ Once.Type.+ _) ≟T ν-type _ = no λ ()
-  (_ ⇒[ _ ] _) ≟T μ-type _ = no λ ()
-  (_ ⇒[ _ ] _) ≟T ν-type _ = no λ ()
-  -- GuardedT removed: productivity follows from IR totality
-  -- TVar removed from Type; now in PolyType (see Once.Type)
 
 ------------------------------------------------------------------------
 -- PolyType Equality (for type checking during inference)
@@ -462,74 +252,27 @@ VerifiedCheckResult : (ctx : NamedCtx) (e : RawExpr) (T : Type) → Set
 VerifiedCheckResult ctx e T =
   ∃-syntax (λ r → checkSoundOf ctx e T r)
 
--- The universal "infer-then-check" combinator (Plan 0.52 M1). Given the expected
--- check type `T` and the result of inferring `e` (`VerifiedInferResult`):
---   * inferred type matches `T`              → `t-embed`;
---   * `T` is the eff arrow of the inferred pure arrow (pure ⊑ eff SUBSUMPTION,
---     D068) → `t-subsume (t-embed w)` (se = `arr' eE`, identity denotation);
---   * otherwise                              → type mismatch.
--- Non-recursive (consumes an already-built infer witness), so no impact on the
--- `checkElabV`/`inferElabV` termination. Every check-mode "fall back to infer"
--- site (the generic catch-all + the `bbc-*` builtin auxes) routes through here,
--- so subsumption is uniform and `check-complete` has a single bridge.
--- The `T ≟T T'` = no recovery: pure ⊑ eff subsumption when `T` is an eff arrow
--- and the inferred `T'` is the matching pure arrow. Matched on the inferred `T'`
--- (concrete at most sites) FIRST, so a non-arrow `T'` (e.g. `Str`) fails without
--- splitting an abstract expected `T` (which would get stuck). Top-level so the
--- generic catch-all can inline `with T ≟T T'` (keeping that decision visible to
--- the agreement proofs) while still sharing this subsumption tail.
--- NOTE arg order: the inferred `T'` comes BEFORE the expected `T`, so Agda
--- splits the (concrete) `T'` first — a non-arrow `T'` hits the catch-all without
--- ever forcing a split of an abstract `T`.
--- Plan 0.52: a VIEW classifying whether a target is a Many-eff arrow. Lets the
--- argdriven dispatch (and its agreement proof) branch pure⊑eff uniformly for an
--- abstract `T` (OCP-0008: a view, not a stuck type-shape match / T-enumeration).
-data EffArrowView : Type → Set where
-  eav-eff   : (A B : Type) → EffArrowView (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B)
-  eav-other : (T : Type) → EffArrowView T
-classifyEffArrow : (T : Type) → EffArrowView T
-classifyEffArrow (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B) = eav-eff A B
-classifyEffArrow T = eav-other T
-
--- ARGUMENT ORDER: the EXPECTED type `T` comes first, and it is the one every
--- clause discriminates on. With the inferred `T'` first, the subsumption clause
--- went stuck whenever `T'` was a variable — which hid every clause below it, so
--- a proof holding an ABSTRACT inferred type could not reduce this at all.
-embedOrSubsume-no : ∀ (ctx : NamedCtx) (e : RawExpr)
-                      {Ψ : Surface.Usage (NamedCtx.size ctx)} (T T' : Type)
-                  → SExpr (NamedCtx.debruijn ctx) Ψ T' → (depth fresh : ℕ)
-                  → ctx ⊢ᵢ e ∶ T' ⨾ Ψ → VerifiedCheckResult ctx e T
-embedOrSubsume-no ctx e (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B)
-                        (A' Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B')
-                        eE depth fresh w with A ≟T A' | B ≟T B'
-... | yes refl | yes refl = success _ (Surface.arr' eE) depth fresh , t-subsume (t-embed w)
--- D127: and when it is NOT a subsume, it is a type error. There is no lift to
--- fall through to any more — a value used where an arrow is expected is
--- written `\_ -> v`.
-... | _        | _        =
-      failure (TypeMismatch (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B)
-                            (A' Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B')) , tt
--- D126: THE CLOSED-EXPRESSION LIFT. The expected type is a PURE arrow and the
--- expression infers at its codomain using no local variable, so it is a global
--- element and lifts to the constant morphism — which is what D018 decided
--- ("values with implicit lifting") and D056 spelled out ("a value `v : B` used
--- where a morphism is expected is the constant morphism `const v : Unit → B`").
---
--- Before this, `compose exit@S (1 + 1)` was `expected (Unit ω→ Int) but got
--- Int`, because `⊢ᵍ` enumerates the literal FORMS and `1 + 1` is not one of
--- them — an implementation narrower than the decision.
---
--- BOTH DECISIONS ARE ARGUMENTS, not `with`s: the codomain match and the
--- zero-usage check. Same convention as `cfm-build-gated`, and it keeps this
--- clause reducing for an abstract `e`.
-embedOrSubsume-no ctx e T T' eE depth fresh w = failure (TypeMismatch T T') , tt
+-- The universal "infer-then-check" combinator — THE MODE SWITCH (D226 / plan
+-- 0.99). Given the expected check type `T` and the result of inferring `e`, it
+-- succeeds exactly when the inferred `T'` is a SUBTYPE of `T`, emitting the
+-- conversion (`coerce p`) and the witness `t-sub w p`. Equal types are the
+-- reflexive instance (the former `t-embed`); pure ⊑ eff is the grade instance
+-- (the former `t-subsume`); `Void <: T` is what lets `exit@S x` stand where
+-- `Unit` is expected. Every check-mode "fall back to infer" site routes through
+-- here, so conversion is uniform and `check-complete` has a single bridge.
+-- The decision is an ARGUMENT (not a `with`), so a proof holding an abstract
+-- inferred type can still reduce this.
+embedOrSubsume-dec : ∀ (ctx : NamedCtx) (e : RawExpr)
+                       {Ψ : Surface.Usage (NamedCtx.size ctx)} (T T' : Type)
+                   → SExpr (NamedCtx.debruijn ctx) Ψ T' → (depth fresh : ℕ)
+                   → ctx ⊢ᵢ e ∶ T' ⨾ Ψ → Dec (T' <: T) → VerifiedCheckResult ctx e T
+embedOrSubsume-dec ctx e T T' eE depth fresh w (yes p) = success _ (Surface.coerce p eE) depth fresh , t-sub w p
+embedOrSubsume-dec ctx e T T' eE depth fresh w (no _)  = failure (TypeMismatch T T') , tt
 
 embedOrSubsume : ∀ (ctx : NamedCtx) (e : RawExpr) (T : Type)
                → VerifiedInferResult ctx e → VerifiedCheckResult ctx e T
 embedOrSubsume ctx e T (failure err , _) = failure err , tt
-embedOrSubsume ctx e T (success T' Ψ eE d fr , w) with T ≟T T'
-... | yes refl = success Ψ eE d fr , t-embed w
-... | no _     = embedOrSubsume-no ctx e T T' eE d fr w
+embedOrSubsume ctx e T (success T' Ψ eE d fr , w) = embedOrSubsume-dec ctx e T T' eE d fr w (T' <:? T)
 
 ------------------------------------------------------------------------
 -- QTT Usage Helpers
@@ -1432,14 +1175,6 @@ mutual
   -- Plan 0.52 (pure⊑eff): case at an EFF outer arrow — mirror of the compose
   -- eff-clause. Try eff arms; else check the whole case at PURE and subsume.
   checkCase ctx (Raw.RApp (Raw.RResolved (gen "case")) f_inner) arg
-            ((A Once.Type.+ B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] C)
-    with checkCaseGo ctx f_inner arg A B C Once.Type.eff
-  ... | (success Ψ eE d fr , w) = success Ψ eE d fr , w
-  ... | (failure _ , _)
-        with checkCaseGo ctx f_inner arg A B C Once.Type.pure
-  ...     | (success Ψ eE d fr , w) = success Ψ (Surface.arr' eE) d fr , t-subsume w
-  ...     | (failure err , _) = failure err , tt
-  checkCase ctx (Raw.RApp (Raw.RResolved (gen "case")) f_inner) arg
             ((A Once.Type.+ B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] C) =
     checkCaseGo ctx f_inner arg A B C π
   checkCase _ _ _ _ = failure (BuiltinTypeMismatch "case") , tt
@@ -1475,14 +1210,6 @@ mutual
   -- `pair`/`curry`/a named import), check the whole compose at PURE and subsume
   -- via arr'/t-subsume. This makes `checkElab (compose f g) (…eff…)` ACCEPT a
   -- subsumed pure compose (soundness of the subsume-complete bridge).
-  checkCompose ctx (Raw.RApp (Raw.RResolved (gen "compose")) f_inner) arg
-               (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] C)
-    with checkComposeGo ctx f_inner arg A C Once.Type.eff (composeMid ctx f_inner arg A) refl
-  ... | (success Ψ eE d fr , w) = success Ψ eE d fr , w
-  ... | (failure _ , _)
-        with checkComposeGo ctx f_inner arg A C Once.Type.pure (composeMid ctx f_inner arg A) refl
-  ...     | (success Ψ eE d fr , w) = success Ψ (Surface.arr' eE) d fr , t-subsume w
-  ...     | (failure err , _) = failure err , tt
   checkCompose ctx (Raw.RApp (Raw.RResolved (gen "compose")) f_inner) arg
                (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] C) =
     checkComposeGo ctx f_inner arg A C π (composeMid ctx f_inner arg A) refl
@@ -1611,13 +1338,6 @@ mutual
   -- `extractMorphWitness`), check the whole cata at PURE and subsume via
   -- arr'/t-subsume. This ACCEPTS `cata pureAlg` at an eff position (soundness of
   -- the `subsume-complete` m-cata bridge).
-  checkCata ctx alg (Once.Type.μ-type F Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] A)
-    with checkCataGo ctx alg F A Once.Type.eff (wellFormedF? F) refl
-  ... | (success Ψ eE d fr , w) = success Ψ eE d fr , w
-  ... | (failure _ , _)
-        with checkCataGo ctx alg F A Once.Type.pure (wellFormedF? F) refl
-  ...     | (success Ψ eE d fr , w) = success Ψ (Surface.arr' eE) d fr , t-subsume w
-  ...     | (failure err , _) = failure err , tt
   checkCata ctx alg (Once.Type.μ-type F Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] A) =
     checkCataGo ctx alg F A π (wellFormedF? F) refl
   checkCata _ _ _ = failure (BuiltinTypeMismatch "cata") , tt
@@ -1799,20 +1519,14 @@ mutual
   checkElabV-wf ctx ac (Raw.RApp f arg) T =
     checkElabV-RApp-dispatch ctx f arg T _ refl
 
-  -- RLam check-mode: only well-typed at a pure arrow type.
-  checkElabV-wf ctx ac (Raw.RLam x body) (A Once.Type.⇒[ Once.Type.mk-kind q Once.Type.pure ] B) with checkElabV (extendNamedCtx ctx x A) body B
+  -- RLam check-mode at ANY arrow: `t-lam` is grade-poly (D226 — abstraction
+  -- introduces no effect; D069's principle).
+  checkElabV-wf ctx ac (Raw.RLam x body) (A Once.Type.⇒[ Once.Type.mk-kind q π ] B) with checkElabV (extendNamedCtx ctx x A) body B
   ... | failure err , _ = failure err , tt
   ... | success (q' ∷ᵘ Ψ) bodyE d fr , wBody with decideLeq q' q
   ...   | just eq = success _ (Surface.lam q eq bodyE) (suc d) fr , t-lam eq wBody
   ...   | nothing = failure (UsageViolation x q q') , tt
-  -- Eff arrow: pure ⊑ eff SUBSUMPTION (Plan 0.52 M1) — a lambda checks at the
-  -- corresponding pure arrow and is lifted by `t-subsume` (no `arr` needed).
-  checkElabV-wf ctx ac (Raw.RLam x body) (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B) with checkElabV (extendNamedCtx ctx x A) body B
-  ... | failure err , _ = failure err , tt
-  ... | success (q' ∷ᵘ Ψ) bodyE d fr , wBody with decideLeq q' Once.Type.Many
-  ...   | just eq = success _ (Surface.arr' (Surface.lam Once.Type.Many eq bodyE)) (suc d) fr , t-subsume (t-lam eq wBody)
-  ...   | nothing = failure (UsageViolation x Once.Type.Many q') , tt
-  -- Non-arrow T: lambda's only check-mode rules are t-lam (pure) / t-subsume (eff).
+  -- Non-arrow T: a lambda has no check-mode rule.
   checkElabV-wf ctx ac (Raw.RLam _ _) _ = failure LambdaRequiresFunctionType , tt
 
   ----------------------------------------------------------------------
@@ -2110,17 +1824,17 @@ mutual
   -- Written out so the FOLDED literal is what gets embedded — routing through
   -- `inferElabV ctx (RUnaryOp OpNeg (RInt n))` would be the same term but
   -- would stop reducing wherever the view has been abstracted.
-  checkElabV-neg-int-aux ctx n T with T ≟T Int
-  ... | yes refl = success Surface.zeroUsage (Surface.int (- n)) 1 (NamedCtx.freshCounter ctx)
-                 , t-embed (t-neg (t-int n))
-  ... | no _     = failure (TypeMismatch T Int) , tt
+  checkElabV-neg-int-aux ctx n T with Int <:? T
+  ... | yes p = success Surface.zeroUsage (Surface.coerce p (Surface.int (- n))) 1 (NamedCtx.freshCounter ctx)
+              , t-sub (t-neg (t-int n)) p
+  ... | no _  = failure (TypeMismatch T Int) , tt
 
-  checkElabV-neg-float-aux ctx i f l p T with T ≟T Once.Type.Float
-  ... | yes refl = success Surface.zeroUsage
-                           (Surface.float (Decimal.negate (decimalOf i f l))) 1
-                           (NamedCtx.freshCounter ctx)
-                 , t-embed (t-neg-float i f l p)
-  ... | no _     = failure (TypeMismatch T Once.Type.Float) , tt
+  checkElabV-neg-float-aux ctx i f l p T with Once.Type.Float <:? T
+  ... | yes s = success Surface.zeroUsage
+                        (Surface.coerce s (Surface.float (Decimal.negate (decimalOf i f l)))) 1
+                        (NamedCtx.freshCounter ctx)
+              , t-sub (t-neg-float i f l p) s
+  ... | no _  = failure (TypeMismatch T Once.Type.Float) , tt
 
   inferElabV-RUnaryOp-aux ctx e (failure err , _)                = failure err , tt
   inferElabV-RUnaryOp-aux ctx e (success Unit   _ _ _ _ , _)     = failure (TypeMismatch Int Unit) , tt
@@ -2511,19 +2225,11 @@ mutual
     checkElabV-RApp-other-argdriven-aux ctx f arg T errInfer (classifyAppHead f) refl
 
   checkElabV-RApp-other-argdriven-aux ctx f arg T errInfer (just _) eqAH = failure errInfer , tt
-  -- Plan 0.52 (pure⊑eff): dispatch on the target via classifyEffArrow. At an EFF
-  -- arrow, check `f` at its PURE codomain (its natural type — no nested
-  -- subsumption) and wrap the app in arr'/t-subsume; otherwise the plain app.
+  -- D226: ONE path at every target. An eff target `T` is reached by checking
+  -- `f` at `X ⇒ T` — conversion happens inside, at the mode switch.
   checkElabV-RApp-other-argdriven-aux ctx f arg T errInfer nothing eqAH with inferElabV ctx arg
   ... | failure errArg , _ = failure errArg , tt
-  ... | success X Ψx argE dx frx , wArg with classifyEffArrow T
-  ...   | eav-eff A B with checkElabV ctx f (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ]
-                                              (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B))
-  ...     | failure err , _ = failure err , tt
-  ...     | success Ψf fE df frf , wF =
-            success _ (Surface.arr' (Surface.app fE argE)) (suc (df ⊔ dx)) frf
-            , t-subsume (t-arg-driven-app-check eqAH wArg wF)
-  checkElabV-RApp-other-argdriven-aux ctx f arg T errInfer nothing eqAH | success X Ψx argE dx frx , wArg | eav-other _
+  ... | success X Ψx argE dx frx , wArg
           with checkElabV ctx f (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] T)
   ...   | failure err , _ = failure err , tt
   ...   | success Ψf fE df frf , wF =
@@ -2733,16 +2439,13 @@ mutual
   -- RFloat: value-lift on a pure-arrow-to-Float target; otherwise embed at
   -- `Float` or report a genuine type mismatch. The only failure left is a type
   -- mismatch — representability is no longer a way to fail.
-  checkElabV-RFloat-aux ctx i f l p T with T ≟T Once.Type.Float
-  ... | yes refl = success Surface.zeroUsage (Surface.float (decimalOf i f l)) 0 (NamedCtx.freshCounter ctx)
-                 , t-embed (t-float i f l p)
-  ... | no _     = failure (TypeMismatch T Once.Type.Float) , tt
+  checkElabV-RFloat-aux ctx i f l p T with Once.Type.Float <:? T
+  ... | yes s = success Surface.zeroUsage (Surface.coerce s (Surface.float (decimalOf i f l))) 0 (NamedCtx.freshCounter ctx)
+              , t-sub (t-float i f l p) s
+  ... | no _  = failure (TypeMismatch T Once.Type.Float) , tt
 
   checkElabV-RInt-aux ctx n T with inferElabV ctx (Raw.RInt n)
-  ... | failure err , _ = failure err , tt
-  ... | success T' Ψ eE d fr , w with T ≟T T'
-  ...   | yes refl = success Ψ eE d fr , t-embed w
-  ...   | no _     = failure (TypeMismatch T T') , tt
+  ... | r = embedOrSubsume ctx (Raw.RInt n) T r
 
   -- RPair: product → bidirectional component check (checkPairLit);
   -- pure-arrow-to-product → value-lift via checkG (inspectCheckG); else the
@@ -2753,10 +2456,7 @@ mutual
     failure (TypeMismatch (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] (A Once.Type.* B))
                           (A Once.Type.* B)) , tt
   checkElabV-RPair-aux ctx a b _ (rpt-other T) with inferElabV ctx (Raw.RPair a b)
-  ... | failure err , _ = failure err , tt
-  ... | success T' Ψ eE d fr , w with T ≟T T'
-  ...   | yes refl = success Ψ eE d fr , t-embed w
-  ...   | no _     = failure (TypeMismatch T T') , tt
+  ... | r = embedOrSubsume ctx (Raw.RPair a b) T r
 
   -- Per-bbc-X auxes: pattern-match on the verified inferElabV result
   -- (Σ-pair). The success path uses t-embed of the witness; the

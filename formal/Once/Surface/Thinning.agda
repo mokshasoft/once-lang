@@ -208,7 +208,7 @@ rename {Δ = Δ} θ (Surface.fork' {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} f g) =
         (Surface.fork' (rename θ f) (rename θ g))
 rename θ (Surface.curry' f) = Surface.curry' (rename θ f)
 rename θ (Surface.fst' p) = Surface.fst' (rename θ p)
-rename θ (Surface.arr' f) = Surface.arr' (rename θ f)
+rename θ (Surface.coerce p f) = Surface.coerce p (rename θ f)
 rename θ (Surface.snd' p) = Surface.snd' (rename θ p)
 rename θ (Surface.inl' a) = Surface.inl' (rename θ a)
 rename θ (Surface.inr' b) = Surface.inr' (rename θ b)

@@ -49,9 +49,9 @@ open import Once.TypeCheck.Judgment
          t-var-import; t-annot; t-pair; t-neg; t-neg-float; t-let; t-case;
          t-binop-arith; t-binop-arith-float; t-binop-arith-float-il;
          t-binop-arith-float-ir; t-binop-cmp; t-id-app; t-fst-app; t-snd-app;
-         t-terminal-app; t-apply-app-infer; t-apply-eff-app-infer; t-Out-app-infer; t-app; t-effApp; t-embed; t-lam;
+         t-terminal-app; t-apply-app-infer; t-apply-eff-app-infer; t-Out-app-infer; t-app; t-effApp; t-sub; t-lam;
          t-pair-lit-check; t-In-app-check; t-apply-check; t-inl-app-check;
-         t-inr-app-check; t-initial-app-check; t-subsume;
+         t-inr-app-check; t-initial-app-check;
          t-arg-driven-app-check; t-var-poly-instantiate;
          t-var-poly-instantiate-infer)
 open import Once.Float.Decimal using (Decimal; decimalOf; negate)
@@ -59,7 +59,7 @@ open import Once.Surface.Thinning using (weaken)
 open import Once.Surface.Syntax using (Expr; Usage; zeroUsage; var; svar; svar→expr;
   lam; app; effApp; pair; neg; let'; case'; int; float; str; unit;
   add; sub; mul; div; mod'; fadd; fsub; fmul; fdiv; i2f; lt; le; gt; ge; eq; ne; sigOp; poly;
-  lift-morphism; morph-app; arr'; cata; ana; comp'; copair'; fork'; curry')
+  lift-morphism; morph-app; coerce; cata; ana; comp'; copair'; fork'; curry')
 open import Once.Surface.Elaborate using (intLit; floatLit; elaborate)
 open import Once.Arith.SigOp.Builders using (value-info)
 open import Once.CanonicalName using (bare)
@@ -114,7 +114,8 @@ realize (t-cata-check wfF dalg) = cata wfF (realize dalg)
 -- already elaborated (`curry (Ana … ∘ snd)`); what it lacked was a typing rule
 -- to be produced BY.
 realize (t-ana-check wfF dcoalg) = ana wfF (realize dcoalg)
-realize (t-embed d)             = realize-infer d
+-- D226: the mode switch realises as the conversion it carries.
+realize (t-sub d p)             = coerce p (realize-infer d)
 realize (t-lam {q = q} ≤p d)    = lam q ≤p (realize d)
 realize (t-pair-lit-check da db) = pair (realize da) (realize db)
 realize (t-In-app-check {F = F} wfF d) =
@@ -123,7 +124,6 @@ realize (t-apply-check dp)      = morph-app IR.apply (realize-infer dp)
 realize (t-inl-app-check d)     = morph-app (IR.inl) (realize d)
 realize (t-inr-app-check d)     = morph-app (IR.inr) (realize d)
 realize (t-initial-app-check d) = morph-app IR.initial (realize d)
-realize (t-subsume d)           = arr' (realize d)
 realize (t-arg-driven-app-check _ darg df) = app (realize df) (realize-infer darg)
 -- Plan 0.58 (telescope / E1): a same-module def reference realizes to its
 -- closed body's IR, wrapped as a closed morphism applied to `unit` — so its
