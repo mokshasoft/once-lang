@@ -22,7 +22,7 @@
 --   only that each subject it builds is the one the rule names.  A full
 --   `enDeriv` would subsume it.
 --
--- ★ 32 checks.  ⚠ 17 subject(s) SKIPPED and named — a
+-- ★ 30 checks.  ⚠ 19 subject(s) SKIPPED and named — a
 --   translation mentioning the row's DEPTH has no meta-level depth to be
 --   instantiated at, and an `ICon` binder's scope is not named by its
 --   rule:
@@ -41,7 +41,9 @@
 --     iwf-ι        _Undepthed
 --     iwf-ρ        _Undepthed
 --     iwf-κ        _Undepthed
---     icw-clo      applies εwkK
+--     icw-clo      _Undepthed
+--     icw-ford     _Undepthed
+--     icw-imu      _Undepthed
 --     idwf-cons    _Undepthed
 --
 -- ★★★ AND A SKIP THAT SAYS `applies X` OWES SOMETHING.  For a WRAPPER,
@@ -116,6 +118,11 @@
 --                `conSSK`/`conSK` have identical shape one sort down —
 --                the `ilookupDK` entry's "the two are one proof", run
 --                upward this time.
+--     ctxAtK     ✅ not owed — a DETERMINED WITNESS, not a program with a
+--                meta counterpart: it fills the `Ctx` slot of the SCOPE-
+--                indexed `ICodeWf`, whose object family is uniform in its
+--                context (no `icw-*` row reads it).  Any context of the
+--                right depth is adequate; this one makes the choice fixed.
 --     extNK      ✅ DISCHARGED — `Knot/SubExt.extS-Represents`.  ⚠ Its `vs`
 --                case composes with `wkTmK-agree`, i.e. with `ren-agree`:
 --                `extS σ (vs x) = renTm vs (σ x)` WEAKENS.
@@ -759,13 +766,5 @@ _ = refl
 
 -- dwf-cons
 _ : {Γ Δ : Cx} {C : DCon} {E : Desc} → (Desc-consK (enDCon {Γ' = Δ} C) (enDesc {Γ' = Δ} E)) ≡ enDesc {Γ' = Δ} ((C ◃ E))
-_ = refl
-
--- icw-ford
-_ : {Γ Δ : Cx} {c : RTm Γ} {a : RTm Γ} {b : RTm Γ} → (Tm-cIdK (enTm {Γ' = Δ} c) (enTm {Γ' = Δ} a) (enTm {Γ' = Δ} b)) ≡ enTm {Γ = Γ} {Γ' = Δ} ((⌜Id⌝ c a b))
-_ = refl
-
--- icw-imu
-_ : {Γ Δ : Cx} {D' : IDesc} {I' : RTy ε} {i : RTm Γ} → (Tm-cIMuK (enIDesc {Γ' = Δ} D') (enTy {Γ' = Δ} I') (enTm {Γ' = Δ} i)) ≡ enTm {Γ = Γ} {Γ' = Δ} ((⌜IMu⌝ D' I' i))
 _ = refl
 

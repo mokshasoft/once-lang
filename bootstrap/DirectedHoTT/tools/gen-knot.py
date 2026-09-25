@@ -1125,7 +1125,14 @@ WF_BINDER_SORT = {
 }
 # ★ keyed by (binder NAME, type): `{Θ : Cx}` is `ICodeWf`'s flat context
 #   slot, but `{Δ : Cx}` in `IConWf` is only ever a DEPTH.
-WF_BINDER_BYNAME = {("Δ", "Cx"): ("nat", None)}
+WF_BINDER_BYNAME = {("Δ", "Cx"): ("nat", None),
+    # ★★ `ICodeWf`'s `{Θ : Cx}` is a SCOPE and nothing more — it becomes
+    #   the row's own DEPTH, not a context binder.  The `Ctx` slot every
+    #   merged judgement carries is filled with the DETERMINED witness
+    #   `ctxAtK d` (`Knot/CtxD`); the family is uniform in it.  ⚠ This
+    #   REPLACES the old "hand it whatever `Θ` is in scope" strengthening,
+    #   which A-math broke: `iwf-κ`'s code lives in a scope with no context.
+    ("Θ", "Cx"): ("depthalias", 0)}
 # ★ `{Θ : Cx}` — `ICodeWf`'s ambient SCOPE — becomes the flat `Ctx` slot.
 #
 # ⚠ THAT IS A STRENGTHENING, AND IT IS DELIBERATE.  The rule is indexed by
@@ -1822,6 +1829,8 @@ def _mutual_rows(CT, TEL, dummy):
             for b, srt in sorts.items():
                 _BSORT[b] = srt
                 _BDEP[b] = deps[b]
+                if srt == "depthalias":
+                    continue            # the row's own depth — no field
                 if srt == "ctx":
                     bs.append((b, _code(TCTX(), _depth_at(deps[b]))))
                 elif srt == "thin":
@@ -1874,9 +1883,14 @@ def _mutual_rows(CT, TEL, dummy):
                                       _thin_val(_th, _s, _d),
                                       _v(a[3], _d), _v(a[4], _s)))
                     if j == "ICodeWf":
-                        _d = V(_DEPTH)
-                        return TUP(_d, V("Θ"), _v(a[0], _d), AP("Ty-NatK"),
-                                   RAW("num 5"), AP("IxNoneK", _d))
+                        # ★ at the SUBJECT'S depth — the row's own for the
+                        #   three `icw-*` rows, `dΔ` for `iwf-κ`'s premise —
+                        #   with the canonical context of that depth.
+                        _sb = a[0].strip()
+                        _d = (_depth_at(_BDEP[_sb]) if _sb in _BDEP
+                              else V(_DEPTH))
+                        return TUP(_d, AP("ctxAtK", _d), _v(a[0], _d),
+                                   AP("Ty-NatK"), RAW("num 5"), AP("IxNoneK", _d))
                     if j == "IDescWfFrom":
                         return TUP(_z, _e, dummy, AP("Ty-NatK"), RAW("num 6"),
                                    AP("IxIDescK", _z, _v(a[0], _z), _v(a[1], _z)))
@@ -2287,6 +2301,7 @@ MUT_EXTRA = """open import DirectedHoTT.Examples.Knot.ThinD
   using ( ThinD; ThinWf; Thin-doneK; ⊢Thin-doneK; Thin-keepK; ⊢Thin-keepK
         ; Thin-dropK; ⊢Thin-dropK )
 open import DirectedHoTT.Examples.Knot.ThinRen using ( thinTmK; ⊢thinTmK )
+open import DirectedHoTT.Examples.Knot.CtxD using ( ctxAtK; ⊢ctxAtK )
 open import DirectedHoTT.Examples.Knot.CtxD
   using ( CtxD; INat; CtxWf; Ctx-extK; ⊢Ctx-extKt; Ctx-empK; ⊢Ctx-empK )
 open import DirectedHoTT.Examples.Knot.EWk using ( εwkK; ⊢εwkK; isingleK; ⊢isingleK )
@@ -4707,6 +4722,7 @@ WF_CTOR.update({
     "Var-vzK":  ("⊢Var-vzKt", ["DD"],       None),
     # ★ A-MATH: the thinning's three constructors and its action on terms
     "Thin-doneK": ("⊢Thin-doneK", [],                    None),
+    "ctxAtK":     ("⊢ctxAtK",     ["DD"],                None),
     "Thin-keepK": ("⊢Thin-keepK", ["DD", "DD", "MU"],    None),
     "Thin-dropK": ("⊢Thin-dropK", ["DD", "DD", "MU"],    None),
     "thinTmK":    ("⊢thinTmK",    ["DD", "DD", "MU", "MU@0"], None),
@@ -6493,6 +6509,7 @@ _WRAP_LEDGER = {
     "Ctx-extK": "✅ not owed — a constructor of `CtxD`.",
     "IxNoneK":  "✅ not owed — a constructor of `IxD`.",
     "Thin-doneK": "✅ not owed — a constructor of `ThinD`.",
+    "ctxAtK":   "✅ not owed — a DETERMINED WITNESS, not a program with a\n--                meta counterpart: it fills the `Ctx` slot of the SCOPE-\n--                indexed `ICodeWf`, whose object family is uniform in its\n--                context (no `icw-*` row reads it).  Any context of the\n--                right depth is adequate; this one makes the choice fixed.",
     "Thin-keepK": "✅ not owed — a constructor of `ThinD`.",
     "Thin-dropK": "✅ not owed — a constructor of `ThinD`.",
     "thinTmK":  "⬜ OWED — A-math's `renTm (thinR θ) t`.  `thinRenK` folds a\n--                `ThinD` value to a `RenTy` clause for clause with the\n--                kernel's `thinR` (keep = `extRNK`, drop = `Var-vsK`, done =\n--                the variable transported along both Fords), then\n--                `renTmAtK` applies it.  ⇒ owed: an `enThin` map (`ThinD`\n--                is a STRATUM, like `CtxD`), `thinRenK (enThin θ) v ⟶*\n--                enVar (thinR θ x)`, and then `ren-agree` closes it.",

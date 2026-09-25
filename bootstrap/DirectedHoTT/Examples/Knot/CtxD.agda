@@ -49,13 +49,13 @@ open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; vz; vs; Var
         ; RTy; RTm; El; Unit; Nat; Σ'; IMu
-        ; var; pair; unit; nzero; nsuc; ⌜Nat⌝; ⌜Id⌝; ⌜IMu⌝; idrefl; icon
+        ; var; pair; unit; nzero; nsuc; ⌜Nat⌝; ⌜Id⌝; ⌜IMu⌝; idrefl; icon; natrec
         ; ICon; IDesc; iι; iρ; iκ; inil; _◂_; _∈ID_; hereID; thereID
         ; Ren; Sub; renTm; subTm; extS )
 open import DirectedHoTT.Spec.Typing
   using ( Ctx; ◇; _▹_; ⌊_⌋; single; wk-single
         ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢conv
-        ; ⊢pair; ⊢unit; ⊢nzero; ⊢nsuc; ⊢⌜Nat⌝; ⊢⌜Id⌝; ⊢⌜IMu⌝; ⊢idrefl; ⊢icon
+        ; ⊢pair; ⊢unit; ⊢nzero; ⊢nsuc; ⊢⌜Nat⌝; ⊢⌜Id⌝; ⊢⌜IMu⌝; ⊢idrefl; ⊢icon; ⊢natrec
         ; ty-El; ty-Unit; ty-Σ; ty-IMu
         ; IConWf; iwf-ι; iwf-ρ; iwf-κ
         ; ICodeWf; icw-clo; icw-ford; icw-imu
@@ -67,6 +67,7 @@ open import DirectedHoTT.Examples.Knot.Sorts
 open import DirectedHoTT.Examples.Knot.Desc using ( KnotD; K )
 open import DirectedHoTT.Examples.Knot.Wf using ( KnotWf )
 open import DirectedHoTT.Examples.Knot.Ctors using ( Ty-NatK; ⊢Ty-NatK )
+open import DirectedHoTT.Examples.Knot.CtorsV using ( ⊢Ty-NatKv )
 open import DirectedHoTT.Examples.Knot.Map using ( enTy; ⊢enTy )
 open import DirectedHoTT.Examples.Knot.Sorts using ( len )
 open import DirectedHoTT.Examples.Knot.Build using ( kCast; tmCast )
@@ -323,3 +324,25 @@ enCtx (Γ ▹ A) = Ctx-extK (num (len ⌊ Γ ⌋)) (enCtx Γ) (enTy A)
              Δ ⊢ a ∷ K (pair sTy (var x)) →
              Δ ⊢ Ctx-extK (var x) g a ∷ CtxK (nsuc (var x))
 ⊢Ctx-extKv = ⊢Ctx-extKt
+
+------------------------------------------------------------------------
+-- ★★ THE CANONICAL CONTEXT OF A DEPTH — how a SCOPE-indexed judgement is
+--   reified.  The merged judgement family gives every judgement a `Ctx`
+--   slot; `ICodeWf` is indexed by a SCOPE (`Cx`) only, and its three rows
+--   never read the context's types.  So its object form is reified AT A
+--   DEPTH, with this determined witness in the slot — `d` copies of `Nat`.
+--   (Before A-math the slot got "whatever `Θ` was in scope"; A-math put
+--   `iwf-κ`'s code in a scope with no context at all, which is what made
+--   the choice visible.  See HANDOFF-2026-09-25 §2.)
+------------------------------------------------------------------------
+
+ctxAtK : {Γ : Cx} → RTm Γ → RTm Γ
+ctxAtK d = natrec Ctx-empK (Ctx-extK (var (vs vz)) (var vz) Ty-NatK) d
+
+⊢ctxAtK : {Δ : Ctx} {d : RTm ⌊ Δ ⌋} → Δ ⊢ d ∷ Nat → Δ ⊢ ctxAtK d ∷ CtxK d
+⊢ctxAtK dd =
+  ⊢natrec (ty-IMu CtxWf (toI (⊢var here)))
+          ⊢Ctx-empK
+          (⊢Ctx-extKt (⊢var (there here)) (⊢var here)
+                      (⊢Ty-NatKv _ (⊢var (there here))))
+          dd
