@@ -15220,3 +15220,52 @@ Sources: `Strata/Interpretations/Linux/Syscalls.once` declares
 `exit0 : Eff Unit Void` and `exit : Eff Int Void`. `main = exit@S (…)` at
 `Eff Unit Unit` checks by `Void <: Unit` under the arrow (D226). `ParseSpec`'s
 annotation test is replaced by a `Void`-codomain test and a rejection test.
+
+## D228 — `cata` IS AN ELIMINATOR, SO IT SYNTHESIZES; `t-sub` STAYS THE ONLY CONVERSION (2026-09-25)
+
+**Status**: Accepted; implementation in plan 0.94 (phase C′, "b′").
+**Relates**: D226 (one subtyping judgment; `t-sub` at the mode switch), D068
+(`t-subsume`, the Freyd embedding `J`), D219/D222 (Freyd structure), plan 0.99 §8,
+plan 0.94 §3 (the domain-given, codomain-synthesized mode).
+
+### The finding
+
+D226 put conversion at the switch from inference to checking (`t-sub` takes an
+INFERRED premise), which is what keeps `check-complete` true. The old `t-subsume`
+lifted ANY checked pure morphism to eff — the Freyd embedding `J` applied to a
+checked derivation. Every check rule whose type is covariant in the raised grade
+still admits that lift (lambdas and the combinators are grade-poly), but `cata` is
+checked with an INVARIANT carrier (`⟦F⟧ A ⇒ A`), so
+
+    (cata alg) x   checked at   X ⇒[eff] B,   the fold's result a pure arrow,
+
+has a meaning and no derivation. The MODEL is still a Freyd category (meanings are
+unchanged; `J` is the identity on meanings); what is lost is the typing rules'
+completeness with respect to `J`. `ana` does not hit this corner: it is an
+introduction, its result `νF` is not an arrow, and its carrier is its domain,
+which converts only at the mode switch. (Raising grades NESTED inside types fails
+for both, in the old system as well.)
+
+### Decision
+
+The cause is treating `cata` as check-only, as if it were an introduction. It is
+the ELIMINATOR of `μF`: by initiality `cata alg` is the unique morphism `μF → A`
+determined by its algebra, so its type is DETERMINED — `F` by its argument, the
+carrier `A` by the algebra — and the bidirectional principle is that eliminations
+synthesize. So:
+
+* `cata`, given its domain `μF` (from the argument, or the expected arrow),
+  SYNTHESIZES its result from a synthesizing algebra; `t-sub` then does every
+  conversion. The corner is derived through the one existing mechanism.
+* An algebra that does not synthesize (an unannotated lambda) is a type error that
+  asks for an annotation, and the TYPING RULES state that requirement (the
+  synthesis rule's premise is a synthesizing algebra), so `check-complete` stays
+  true. The existing check-at-a-given-carrier rule is kept.
+* NO separate grade rule (`t-grade`) and no interim stopgap: it would be a second
+  conversion mechanism that this decision then makes redundant. The corner stays
+  open until plan 0.94 phase C′ lands.
+* This is the domain-given, codomain-synthesized mode plan 0.94 §3 already needs
+  for `compose`, applied to `cata`; hence it lives in plan 0.94.
+* Runtime is unchanged: the conversion involved is grade-only (void-free, no code)
+  and `cata` still compiles to `IR.Cata`; the elaborator's synthesis path must emit
+  the SAME term as the checking path.
