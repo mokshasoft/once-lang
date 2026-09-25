@@ -63,7 +63,7 @@ module DirectedHoTT.Lib.IWk where
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂ )
 open import Agda.Builtin.Nat using ( zero; suc; _+_ ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
-  using ( Cx; ε; _∙; vz; vs; var; Var; Ren
+  using ( Cx; ε; _∙; vz; vs; var; Var; Ren; Thin
         ; RTy; RTm; Unit; Σ'; El; IMu; Nat
         ; lam; pair; fst; snd; unit; nzero; nsuc; icon; ⌜Id⌝; ⌜Nat⌝
         ; ICon; IDesc; iι; iρ; iκ; inil; _◂_
@@ -639,7 +639,7 @@ ridesConv {σ = σ} {τ = τ} {a = a} {s = s} {d = d} D I cs p sq dt =
   ⊢-cast (cong (IMu D I) (pinned-stable j σ τ o)) du
 
 ⊢iwkPay : {Γ Θ : Ctx} {Δ : Cx} (D : IDesc) (I : RTy ε)
-          {ρ : Ren Δ ⌊ Θ ⌋} {x : Var ⌊ Θ ⌋}
+          {ρ : Thin Δ ⌊ Θ ⌋} {x : Var ⌊ Θ ⌋}
           {σ τ : Sub Δ ⌊ Γ ⌋} {a : Var Δ} {C : ICon Δ}
           (w : WkCon a C) → IConWf I Θ ρ x C → IDescWf I D →
           XEnv D I Θ ρ x Γ σ → XEnv D I Θ ρ x Γ τ → τ a ≡ sh (σ a) →

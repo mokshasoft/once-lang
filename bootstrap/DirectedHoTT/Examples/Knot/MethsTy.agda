@@ -12,6 +12,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Knot.MethsTy where
+open import DirectedHoTT.Spec.Typing using ( IDescWf-cons )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; RTm; IDesc; app; pair; unit; _◂_; ielim; nsuc; nzero; Nat )
@@ -39,8 +40,8 @@ MD42' = cDesc-cons ◂ MD43
 mspl42 : Split KnotD 42 MD42'
 mspl42 = splTake spl-nil (cdTake 42 KnotD)
 
-mwf43 : IDescWfFrom KnotD IPair MD43
-mwf43 = idwfDrop (spl-step mspl42) KnotWf
+mwf43 : IDescWfFrom IPair MD43
+mwf43 = idwfDrop (spl-step mspl42) (IDescWf-cons KnotWf)
 
 -- ★ 53 − 43 = 10 rows after `cDesc-cons`, all junk.
 methsTyTail : {Γ : Cx} → RTm Γ
@@ -69,7 +70,7 @@ methsTyMethsK = methsFrom (cdTake 42 KnotD) methsTyJunk methsTyMid42
 ⊢methsTyMethsK : {Γ : Ctx} →
                  Γ ⊢ methsTyMethsK ∷ imethsTy KnotD IPair methsTyMotK KnotD
 ⊢methsTyMethsK =
-  ⊢methsFrom KnotD IPair 0 (cdTake 42 KnotD) KnotWf KnotWf spl-nil
+  ⊢methsFrom KnotD IPair 0 (cdTake 42 KnotD) KnotWf (IDescWf-cons KnotWf) spl-nil
              ⊢IPair ⊢methsTyMotK (λ {k} {C} wC _ _ → ⊢methsTyJunk k C wC)
              methsTyMid42 ⊢methsTyMid42
 

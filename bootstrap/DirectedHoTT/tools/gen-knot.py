@@ -297,29 +297,39 @@ def gen_desc():
     L.append("K i = IMu KnotD IPair i")
     return "\n".join(L) + "\n"
 
-def gen_wf():
+def gen_wf(part=None):
+    """`part` None → the ASSEMBLY module (imports both halves PUBLIC);
+    'Tm' → the 30 `RTm` rows; 'Ty' → the other 23 (types, descriptions,
+    constructors, variables).  ⚠ Split BY SORT, not at an index: a cut
+    through the table would halve `RTm` arbitrarily.
+
+    ⚠⚠ SPLIT BY A-MATH, AND THE MEASUREMENT IS WHY.  The telescope root
+      binds the abstract family, one slot deeper than before, and
+      `agda-cost-is-context-depth` prices a slot at ~1.7×: the 53 rows
+      alone went 99s → 142s, and rows + assembly in ONE module crossed
+      check.sh's 5.5 GB cap at 158s.  The assembly alone is 1s.  Two
+      halves keep each module's PEAK well under the cap; the time is
+      cost-neutral (`agda-oom-is-a-gc-choice`), the headroom is not."""
+    _mine = (lambda n: n.startswith("cTm-")) if part == "Tm" else \
+            (lambda n: not n.startswith("cTm-"))
     L = [BANNER,
          "-- \u26a0\u26a0 THIS MODULE NEEDS THE **COMPACTING COLLECTOR**.",
-         "--",
-         "--   53 `IConWf`s in one module, measured cold on a 7.7 GB box.",
-         "--   RE-MEASURED 2026-08-27 at 55 rows (`Ctx` was briefly a sort",
-         "--   here) and the marker held:  -A64m OOM at 80s · -A64m -c 99s,",
-         "--   against 76s / 104s at 53.  ⇒ ±2 rows is inside the ±12% noise",
-         "--   floor: the cost is a row's TELESCOPE DEPTH, not the count.",
          "--",
          "--   `tools/sweep.sh` greps this header for the phrase above and",
          "--   switches collectors on its own (`needs_c`), which is why the",
          "--   words are spelled out rather than described.",
          "--",
-         "-- \u2605 AND THE COST IS THE 53 ROWS, NOT THE ASSEMBLY.  Dropping",
-         "--   `KnotWf` and keeping only the individual `IConWf`s does not",
-         "--   move the number.  Splitting the module would not either",
-         "--   (`agda-oom-is-a-gc-choice`: splitting measured cost-neutral);",
-         "--   the driver is TELESCOPE DEPTH per row — `ordtr` alone binds",
-         "--   six slots, and `agda-cost-is-context-depth` prices that at",
-         "--   ~1.7\u00d7 per slot.",
+         "-- \u2605 THE COST IS TELESCOPE DEPTH, and A-math added a slot.",
+         "--   Measured 2026-08-27: 53 rows in one module, -A64m OOM at 80s,",
+         "--   -A64m -c 99s.  Re-measured 2026-09-25 under A-math (the root",
+         "--   telescope binds the abstract family, one slot deeper; ~1.7\u00d7",
+         "--   per slot, `agda-cost-is-context-depth`): the 53 rows alone",
+         "--   142s, rows + `KnotWf` in one module over the 5.5 GB cap at",
+         "--   158s, the assembly alone 1s.  \u21d2 the rows live in two halves",
+         "--   (`WfTy`: types/descriptions/variables, `WfTm`: terms) and `Wf`",
+         "--   assembles and re-exports them.",
          "", "{-# OPTIONS --safe #-}",
-         "module DirectedHoTT.Examples.Knot.Wf where",
+         "module DirectedHoTT.Examples.Knot.Wf%s where" % (part or ""),
          "open import DirectedHoTT.Spec.Syntax",
          "  using ( Cx; ε; _∙; vz; vs",
          "        ; RTm; var; pair; fst; snd; nzero; nsuc; ⌜Nat⌝; ⌜Id⌝",
@@ -329,23 +339,33 @@ def gen_wf():
          "        ; ⊢var; here; there; ⊢fst; ⊢snd; ⊢nzero; ⊢nsuc; ⊢⌜Nat⌝; ⊢⌜Id⌝",
          "        ; IConWf; iwf-ι; iwf-ρ; iwf-κ",
          "        ; ICodeWf; icw-clo; icw-ford",
-         "        ; IDescWf; idwf-nil; idwf-cons )",
+         "        ; IDescWf; idwf-nil; idwf-cons; _,,_; Θ₀; ρ₀; x₀ )",
          "open import DirectedHoTT.Examples.Knot.Sorts",
-         "  using ( IPair; sTy; sTm; sDesc; sDCon; sIDesc; sICon; sVar",
+         "  using ( IPair; ⊢IPair; sTy; sTm; sDesc; sDCon; sIDesc; sICon; sVar",
          "        ; ⊢sTy; ⊢sTm; ⊢sDesc; ⊢sDCon; ⊢sIDesc; ⊢sICon; ⊢sVar",
          "        ; toI; fromI; ⊢ixP )",
          "open import DirectedHoTT.Examples.Knot.Desc",
          "  using ( KnotD",
          "        ; " + "\n        ; ".join(n for n, _, _ in KNOT) + " )",
          ""]
-    for name, src, fields in KNOT:
-        L.append(f"{name}Wf : IConWf KnotD IPair (◇ ▹ IPair) {name}")
+    if part is None:
+        L.append("open import DirectedHoTT.Examples.Knot.WfTy public")
+        L.append("open import DirectedHoTT.Examples.Knot.WfTm public")
+        L.append("")
+    for name, src, fields in ([r for r in KNOT if _mine(r[0])] if part else []):
+        # ★ A-MATH: no description in the judgment; the telescope's
+        #   root binds the abstract family, then the index.
+        L.append(f"{name}Wf : IConWf IPair (Θ₀ IPair) ρ₀ x₀ {name}")
         L.append(f"{name}Wf =")
         L.append(nest(emit_iconwf(fields), "iwf-ι", 2))
         L.append("")
+    if part is not None:
+        return "\n".join(L) + "\n"
     L.append("-- ★★★ …AND THE WHOLE KNOT IS WELL-FORMED.")
     L.append("KnotWf : IDescWf IPair KnotD")
     L.append("KnotWf =")
+    # ★ the index type IS a type — `IDescWf` carries it (A-math).
+    L.append("  ⊢IPair ,,")
     L.append(nest([f"idwf-cons {n}Wf" for n, _, _ in KNOT], "idwf-nil", 2))
     return "\n".join(L) + "\n"
 
@@ -1066,8 +1086,8 @@ def TBOOL(app, lit): return ('tbool', app, lit)
 #   this is not a choice.  See JUDGEMENT-ATTEMPTS §10.1.
 # tag → (Agda name, arity of its SUBJECT list)
 MERGED = [(0, "_⊢ty_", None), (1, "_⊢_∷_", None),
-          (2, "DConWf", 1), (3, "DescWf", 1), (4, "IConWf", 4),
-          (5, "ICodeWf", 1), (6, "IDescWfFrom", 3)]
+          (2, "DConWf", 1), (3, "DescWf", 1), (4, "IConWf", 5),
+          (5, "ICodeWf", 1), (6, "IDescWfFrom", 2)]
 WF_HEADS = {n: a for _, n, a in MERGED if a is not None}
 WF_TAG   = {n: t for t, n, _ in MERGED}
 
@@ -1093,7 +1113,19 @@ WF_BINDER_SORT = {
     "RTm ⌊ Θ ⌋":      ("sTm",    0),
     "RTm Θ":          ("sTm",    0),
     "Cx":             ("ctx",    0),
+    # ★★ A-MATH's `IConWf I {Δ} Θ ρ x C`.  The constructor's own scope `Δ`
+    #   is a DEPTH (see `WF_BINDER_BYNAME`), and what lives in it — the
+    #   index `j`, the tail `C` — sits at depths RELATIVE TO THAT BINDER,
+    #   not to the row's.  `ρ` is a thinning FROM `Δ` TO `Θ`, a `ThinD`
+    #   value at `(dΔ , dΘ)`; `x` the family variable, in `Θ`.
+    "RTm Δ":          ("sTm",    ("bv", "Δ", 0)),
+    "ICon (Δ ∙)":     ("sICon",  ("bv", "Δ", 1)),
+    "Thin Δ ⌊ Θ ⌋":   ("thin",   ("bv", "Δ", 0)),
+    "Var ⌊ Θ ⌋":      ("sVar",   0),
 }
+# ★ keyed by (binder NAME, type): `{Θ : Cx}` is `ICodeWf`'s flat context
+#   slot, but `{Δ : Cx}` in `IConWf` is only ever a DEPTH.
+WF_BINDER_BYNAME = {("Δ", "Cx"): ("nat", None)}
 # ★ `{Θ : Cx}` — `ICodeWf`'s ambient SCOPE — becomes the flat `Ctx` slot.
 #
 # ⚠ THAT IS A STRENGTHENING, AND IT IS DELIBERATE.  The rule is indexed by
@@ -1107,7 +1139,7 @@ WF_SKIP = set()
 # ⚠⚠ WHICH `Wf` ARGUMENT IS A **CONTEXT** and not a term.  Reading
 #   `IConWf`'s `Θ` as a term emits `▹` as an unmapped head — and, before
 #   the `chk` fix below, emitted NOTHING and said nothing.
-WF_CTXARG = {"IConWf": 2}
+WF_CTXARG = {"IConWf": 1}
 
 def _infix(args, CT):
     """`a ⊕ b` → `_⊕_ a b` when `_⊕_` is a knot constructor.
@@ -1149,10 +1181,13 @@ def _wf_rule(r):
             if ":" not in grp: return (name.strip(), None, "binder %r" % grp)
             nms, t = grp.split(":", 1); t = t.strip()
             if t in WF_SKIP: continue
-            if t not in WF_BINDER_SORT:
-                return (name.strip(), None, "binder type %r" % t)
-            srt, dp = WF_BINDER_SORT[t]
-            for nm in nms.split(): sorts[nm], deps[nm] = srt, dp
+            for nm in nms.split():
+                if (nm, t) in WF_BINDER_BYNAME:
+                    sorts[nm], deps[nm] = WF_BINDER_BYNAME[(nm, t)]
+                    continue
+                if t not in WF_BINDER_SORT:
+                    return (name.strip(), None, "binder type %r" % t)
+                sorts[nm], deps[nm] = WF_BINDER_SORT[t]
     return (name.strip(), sorts, deps, body)
 
 # ★★★ A PREMISE THAT IS A **UNARY FOREIGN JUDGEMENT**.
@@ -1521,8 +1556,6 @@ def _parse_jpart(p):
             _a, _b = [x.strip() for x in p.split(_r)]
             return ("fb", _r, _a, _b)
     _as = _argsplit(p)
-    if _as and _as[0] == "IDescWf" and len(_as) == 3:
-        return ("wf", "IDescWfFrom", _as[2], _as[1], _as[2])
     if _as and _as[0] in WF_HEADS and len(_as) - 1 == WF_HEADS[_as[0]]:
         return ("wf",) + tuple(_as)
     # ★ a UNARY foreign judgement — `NoNatC c`.  Last, because it is the
@@ -1621,6 +1654,10 @@ def infer_depths(rule, names, CT):
         if q[0] in ("wf", "fb"): continue
         ext = q[2] if q[0] in ("ty", "tm") else None
         deep = len(ext) if ext else 0
+        # ★ A-MATH's `◇ ⊢ty I` (from `IDescWf`'s expansion): a judgement
+        #   in the EMPTY context is about CLOSED subjects, not ambient ones.
+        if q[0] in ("ty", "tm") and q[1].strip() == "◇" and not ext:
+            deep = "closed"
         put(q[1], 0)
         # ⚠ THE i-TH EXTENSION IS i BINDERS DEEP.  Recording them all at 0
         #   was right while there was only ever one; with two it claims
@@ -1638,6 +1675,10 @@ def _wfctx(t, CT):
     """a `Wf` rule's context argument → (its DEPTH, its value).
     ★ `◇` pins the depth to a NUMERAL — `idwf-cons`'s premise is at 1,
       not at the row's variable, and the `Ctx` slot's type reads it."""
+    # ★ A-MATH's root telescope, `Spec/Typing.Θ₀`
+    _m = re.match(r"^\(?\s*Θ₀\s+(\S+?)\s*\)?$", t.strip())
+    if _m:
+        t = "(◇ ▹ Π (εwkTy %s) U) ▹ εwkTy %s" % (_m.group(1), _m.group(1))
     b, ext = _splitctx(t)
     if b.strip() == "◇":
         e = AP("Ctx-empK")
@@ -1676,10 +1717,8 @@ def _subjects(q):
         if j == "DConWf":     return [(a[0], "sDCon")]
         if j == "DescWf":     return [(a[0], "sDesc")]
         if j == "ICodeWf":    return [(a[0], "sTm")]
-        if j == "IConWf":     return [(a[0], "sIDesc"), (a[1], "sTy"),
-                                      (a[3], "sICon")]
-        if j == "IDescWfFrom":return [(a[0], "sIDesc"), (a[1], "sTy"),
-                                      (a[2], "sIDesc")]
+        if j == "IConWf":     return [(a[0], "sTy"), (a[4], "sICon")]
+        if j == "IDescWfFrom":return [(a[0], "sTy"), (a[1], "sIDesc")]
     return []
 
 def _mutual_rows(CT, TEL, dummy):
@@ -1689,6 +1728,10 @@ def _mutual_rows(CT, TEL, dummy):
     rows, skipped = [], []
     for tag, dn, _ar in MERGED:
         for r in _rule_lines(src, dn):
+            # ★★ A-MATH: `IDescWf I D = (◇ ⊢ty I) × IDescWfFrom I D` — a
+            #   PAIR of judgements, so a premise citing it is TWO premises.
+            #   Expanded in the rule's text, before anything reads it.
+            r = re.sub(r"IDescWf (\S+) (\S+) →", r"◇ ⊢ty \1 → IDescWfFrom \1 \2 →", r)
             if _ar is None:
                 nm, sorts, why = infer_sorts(r, CT, FIELD_SORT)
                 if sorts is None: skipped.append((nm, why)); continue
@@ -1739,7 +1782,10 @@ def _mutual_rows(CT, TEL, dummy):
                 if e[0] == "a":
                     if (e[1] not in CT and e[1] not in sorts
                             and e[1] not in ("renTm", "vs", "εwkTm", "εwkTy",
-                                             "zero", "suc")):
+                                             "zero", "suc",
+                                             # ★ A-MATH's thinnings & root
+                                             "thinR", "keep", "drop", "done",
+                                             "ρ₀", "x₀", "Θ₀")):
                         unk.append(e[1])
                     return
                 for x in _infix(e[1], CT): chk(x)
@@ -1778,6 +1824,11 @@ def _mutual_rows(CT, TEL, dummy):
                 _BDEP[b] = deps[b]
                 if srt == "ctx":
                     bs.append((b, _code(TCTX(), _depth_at(deps[b]))))
+                elif srt == "thin":
+                    # ★ a thinning from `Δ` (its declared source) to the
+                    #   row's own depth — `Θ`'s, which the `Ctx` slot reads.
+                    bs.append((b, _code(FOREIGN["ThinD"],
+                                        TUP(_depth_at(deps[b]), V(_DEPTH)))))
                 elif srt == "nat":
                     # ⚠ `⊢con`'s `k` is a ℕ FIELD of the knot's `con`, so
                     #   `infer_sorts` gives it the sort "nat" — a bare
@@ -1811,19 +1862,24 @@ def _mutual_rows(CT, TEL, dummy):
                     if j == "IConWf":
                         # ⚠ the DEPTH IS `Θ`'s — the `Ctx` slot's type reads
                         #   it, so it is not free.
-                        _d, _cx = _wfctx(a[2], CT)
+                        # ★ A-MATH: `IConWf I Θ ρ x C` — `C` lives at the
+                        #   thinning's SOURCE depth (the constructor scope),
+                        #   `x` at `Θ`'s, and the thinning spans the two.
+                        _d, _cx = _wfctx(a[1], CT)
+                        _th = _parse_spine(_tokens(a[2]))
+                        _s = _thin_src(_th)
                         return TUP(_d, _cx, dummy, AP("Ty-NatK"),
                                    RAW("num 4"),
-                                   AP("IxIConK", _d, _v(a[0], _z), _v(a[1], _z),
-                                      _v(a[3], _d)))
+                                   AP("IxIConK", _d, _v(a[0], _z), _s,
+                                      _thin_val(_th, _s, _d),
+                                      _v(a[3], _d), _v(a[4], _s)))
                     if j == "ICodeWf":
                         _d = V(_DEPTH)
                         return TUP(_d, V("Θ"), _v(a[0], _d), AP("Ty-NatK"),
                                    RAW("num 5"), AP("IxNoneK", _d))
                     if j == "IDescWfFrom":
                         return TUP(_z, _e, dummy, AP("Ty-NatK"), RAW("num 6"),
-                                   AP("IxIDescK", _z, _v(a[0], _z), _v(a[1], _z),
-                                      _v(a[2], _z)))
+                                   AP("IxIDescK", _z, _v(a[0], _z), _v(a[1], _z)))
                     raise ValueError("no index shape for %r" % (j,))
                 ext = q[2] if q[0] in ("ty", "tm") else None
                 # ★ `◇` is a LITERAL context, at depth 0 — `dwf-κ`'s premise
@@ -1998,6 +2054,8 @@ JHDR = """--- GENERATED by tools/gen-knot.py — do not edit.
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Knot.%(mod)s where
 open import normalizer.Syntax.Types using ( _≡_; refl )
+open import DirectedHoTT.Spec.Typing using ( Θ₀; ρ₀; x₀; _,,_ )
+open import DirectedHoTT.Spec.Syntax using ( thinR; keep; app; renTm )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; RTy; RTm; var; vz; vs; pair; fst; snd; nsuc; nzero
@@ -2102,9 +2160,8 @@ def gen_j_wf(J, part, lo, hi, last):
         L.append("-" * 72)
         L.append("%s : IDescWf %s %s" % (J.wf, J.ity, J.desc))
         L.append("%s =" % J.wf)
-        L.append(nest(["idwf-cons (rd%sWf %s)" % (nm, J.desc) if not row.prems
-                       else "idwf-cons rd%sWf" % nm
-                       for nm, row in rows], "idwf-nil", 2))
+        L.append("  %s ,," % par(tel_tywf(J.tel)))
+        L.append(nest(["idwf-cons rd%sWf" % nm for nm, row in rows], "idwf-nil", 2))
     return "\n".join(L) + "\n"
 
 def write_judgement(J, out, CT):
@@ -2226,7 +2283,11 @@ def _opt_imports(body):
         if any(n in body for n in names): out.append(line)
     return ("\n".join(out) + "\n") if out else ""
 
-MUT_EXTRA = """open import DirectedHoTT.Examples.Knot.CtxD
+MUT_EXTRA = """open import DirectedHoTT.Examples.Knot.ThinD
+  using ( ThinD; ThinWf; Thin-doneK; ⊢Thin-doneK; Thin-keepK; ⊢Thin-keepK
+        ; Thin-dropK; ⊢Thin-dropK )
+open import DirectedHoTT.Examples.Knot.ThinRen using ( thinTmK; ⊢thinTmK )
+open import DirectedHoTT.Examples.Knot.CtxD
   using ( CtxD; INat; CtxWf; Ctx-extK; ⊢Ctx-extKt; Ctx-empK; ⊢Ctx-empK )
 open import DirectedHoTT.Examples.Knot.EWk using ( εwkK; ⊢εwkK; isingleK; ⊢isingleK )
 open import DirectedHoTT.Examples.Knot.SubMot
@@ -2277,9 +2338,17 @@ kJS1 = ⌜IMu⌝ CtxD INat (var vz)
 JS2 : Ctx
 JS2 = JS1 ▹ El kJS1
 
-jwfTop : {C : ICon ⌊ JS2 ⌋} (D : IDesc) → IConWf D IJudge JS2 C →
-         IConWf D IJudge JS0 (iκ kJS0 (iκ kJS1 C))
-jwfTop D w =
+-- ★ A-MATH: the telescope the two rungs live in — the family, the
+--   index, then each code read through the family-skipping thinning.
+TelJS0 TelJS1 TelJS2 : Ctx
+TelJS0 = Θ₀ IJudge
+TelJS1 = TelJS0 ▹ El (renTm (thinR ρ₀) kJS0)
+TelJS2 = TelJS1 ▹ El (renTm (thinR (keep ρ₀)) kJS1)
+
+jwfTop : {C : ICon ⌊ JS2 ⌋} →
+         IConWf IJudge TelJS2 (keep (keep ρ₀)) (vs (vs x₀)) C →
+         IConWf IJudge (Θ₀ IJudge) ρ₀ x₀ (iκ kJS0 (iκ kJS1 C))
+jwfTop w =
   iwf-κ kJS0 (icw-clo ⌜Nat⌝ ⊢⌜Nat⌝) ⊢⌜Nat⌝
     (iwf-κ kJS1 (icw-imu (var vz) CtxWf)
       (⊢⌜IMu⌝ CtxWf (toI (fromI (⊢var here))))
@@ -2516,6 +2585,7 @@ def write_mutual(out, CT):
     for _f in sorted(os.listdir(out)):
         if _f.startswith("JudgeWf") and _f.endswith(".agda"):
             os.remove(os.path.join(out, _f)); print("  removed pre-rename", _f[:-5])
+    _base_part = None
     for _pi, (part, _u) in enumerate(zip(_parts, _units)):
         lo, hi = _u['lo'], _u['hi']
         # ★★★ NO PREDECESSOR IMPORTS.  A part imports NONE of the earlier
@@ -2565,6 +2635,13 @@ def write_mutual(out, CT):
         #   ABOVE it — one real edge, and the only one it needs.
         if _u['chain'] and not _is_last:
             _prev = "\nopen import DirectedHoTT.Examples.Knot.Judge.%s" % _parts[_pi - 1]
+            # ★ A-MATH: the row's TELESCOPE (`Tel…`) is emitted once, in the
+            #   sub-split's BASE part, and imports are not transitive — so
+            #   every continuation imports the base too.
+            if _base_part and _base_part != _parts[_pi - 1]:
+                _prev += "\nopen import DirectedHoTT.Examples.Knot.Judge.%s" % _base_part
+        if _u['kslice'] is not None and _u['with_ctx']:
+            _base_part = _parts[_pi]
         # ⚠⚠ THE BODY IS BUILT BEFORE THE HEADER, so the header can ask
         #   it which step-5 imports it actually needs.  Emitting them all
         #   OOM-KILLED `JudgeWfAA`…`AD` — see `_OPT_IMPORT`.
@@ -2599,9 +2676,8 @@ def write_mutual(out, CT):
             W.append("-" * 72)
             W.append("JudgeWf : IDescWf IJudge JudgeD")
             W.append("JudgeWf =")
-            W.append(nest(["idwf-cons (jd%sWf JudgeD)" % nm if not row.prems
-                           else "idwf-cons jd%sWf" % nm
-                           for nm, row in rows], "idwf-nil", 2))
+            W.append("  %s ,," % par(tel_tywf(TEL)))
+            W.append(nest(["idwf-cons jd%sWf" % nm for nm, row in rows], "idwf-nil", 2))
         _body = "\n".join(W)
         _hdr = JHDR % dict(gc=GC_NOTE, data="_⊢ty_ / _⊢_∷_",
                            what=" IS A WELL-FORMED DESCRIPTION.",
@@ -4629,6 +4705,11 @@ WF_CTOR.update({
     #   ⚠ The table pointed at `⊢Var-vzKv` (`var x`) for two commits.
     #   The narrow twin was written first and shadowed the general one.
     "Var-vzK":  ("⊢Var-vzKt", ["DD"],       None),
+    # ★ A-MATH: the thinning's three constructors and its action on terms
+    "Thin-doneK": ("⊢Thin-doneK", [],                    None),
+    "Thin-keepK": ("⊢Thin-keepK", ["DD", "DD", "MU"],    None),
+    "Thin-dropK": ("⊢Thin-dropK", ["DD", "DD", "MU"],    None),
+    "thinTmK":    ("⊢thinTmK",    ["DD", "DD", "MU", "MU@0"], None),
     "Var-vsK":  ("⊢Var-vsKt", ["DD", "MU"], None),
     # ⚠ AND THE SAME NARROW-TWIN TRAP, a second time.  This pointed at
     #   `⊢Ctx-extKv` (`var x`) until `⊢natrec`, whose premise extends the
@@ -4700,8 +4781,10 @@ WF_CTOR.update({
     "IxNoneK":  ("⊢IxNoneK",  ["DD"],                    None),
     "IxDConK":  ("⊢IxDConK",  ["DD", "MU"],              None),
     "IxDescK":  ("⊢IxDescK",  ["DD", "MU"],              None),
-    "IxIConK":  ("⊢IxIConK",  ["DD", "MU", "MU", "MU"],  None),
-    "IxIDescK": ("⊢IxIDescK", ["DD", "MU", "MU", "MU"],  None),
+    # ★ A-MATH: `IxIConK n I dΔ ρ x C` — `C` sits at `dΔ` (argument 2),
+    #   not at the row's depth: `MU@2` descends there.
+    "IxIConK":  ("⊢IxIConK",  ["DD", "MU", "N", "MU", "MU", "MU@2"],  None),
+    "IxIDescK": ("⊢IxIDescK", ["DD", "MU", "MU"],  None),
 })
 
 def _telty(comp):
@@ -4721,6 +4804,16 @@ def _ixderiv(comp, dnat):
     #   takes `toI`, and reading it as a knot sort emits `⊢ixP ⊢tix`.
     if comp[0] in ('tctx', 'tix'): return "toI " + par(dnat)
     return "⊢ixP ⊢%s %s" % (comp[1], par(dnat))
+
+def tel_tywf(tel):
+    """`◇ ⊢ty I` for a judgement's index type `I`, read off its TELESCOPE.
+
+    ★ A-MATH: `IDescWf I D` carries it — the functor's index must BE a
+      type, and the old kernel never asked.  The first component is the
+      depth, so a later component `t` binders in reads it at `vs^(t-1)`;
+      `_tailty` already builds a telescope's ⊢ty from exactly that."""
+    assert tel and tel[0][0] == 'tnat', tel
+    return _tailty(0, 0, tel, lambda t: dbd(t - 1))
 
 def _codewf(comp, dnat):
     "…and that the CODE itself is in `U`"
@@ -4863,6 +4956,11 @@ def _dep_t(dep):  return nsucs(dep[2], dep[0])
 def _dep_d(dep):  return dnsucs(dep[2], dep[1])
 
 def _dep_pred(dep):
+    # ★ a LITERAL depth (A-math's root telescope is at `num 2`) has a
+    #   predecessor as a literal.
+    if dep[2] == 0 and dep[0].startswith("num ") and int(dep[0][4:]) > 0:
+        _k = int(dep[0][4:]) - 1
+        return ("num %d" % _k, "⊢num %d" % _k, 0)
     if dep[2] == 0:
         raise ValueError("a Var at a non-successor depth: %r" % (dep,))
     return (dep[0], dep[1], dep[2] - 1)
@@ -4937,6 +5035,18 @@ def jd(e, k, ix, binders, tel):
                     a = args[ai]; ai += 1
                     _s = a[1]
                     ds.append("⊢" + _s); ds.append(SORTMAP_LEM[_s])
+                    continue
+                if r.startswith('MU@'):
+                    # ★ A-MATH: descend at the depth ANOTHER argument names
+                    #   (a constructor scope's, not the row's).
+                    a = args[ai]; ai += 1
+                    _b, _n = args[int(r[3:])], 0
+                    while _b[0] == "nsuc": _b, _n = _b[1], _n + 1
+                    keep = DEPTHD[0]
+                    DEPTHD[0] = (rend(_b, k, ix),
+                                 jdAt(_b, k, ix, binders, tel, 'nat'), _n)
+                    ds.append(par(jdAt(a, k, ix, binders, tel, 'mu')))
+                    DEPTHD[0] = keep
                     continue
                 if r == 'DX':
                     # ★ the ROW's depth — the TERM and then its
@@ -5049,13 +5159,14 @@ def emit_jrowwf(row, tel, pre, ity, wfname, idesc=None, share=0, topname=None,
     """the `IConWf` chain for one row — one lemma per field, innermost
     first, exactly as `Knot/Lookup` writes them by hand.
 
-    ⚠⚠ `D` STAYS A PARAMETER ONLY FOR A ROW WITH NO RECURSIVE PREMISE.
-      `IConWf` mentions `D` only at `iwf-ρ` — but the row's TELESCOPE
-      mentions it too, from the premise onwards: that field extends the
-      context by `IMu D I ρ`.  ⇒ a row with a premise is proved at the
-      CONCRETE description, and its post-premise contexts have to be
-      re-declared at `Ctx` level, because `emit_jrow` had to drop to a
-      bare `Cx` there to stay writable before `D` existed."""
+    ★★ A-MATH.  `IConWf` names NO description, so every row is proved
+      once, with no `D` parameter and no "row with a premise is proved at
+      the concrete description" split.  The row is typed against its
+      TELESCOPE `Tel…` — the root `Θ₀ I` (the abstract family, then the
+      index) extended field by field, each code READ THROUGH the thinning
+      `keep^k ρ₀` that skips the family; a recursive premise's field is
+      the FAMILY at its index, `El (app (var x) …)`.  The codes themselves
+      stay where `emit_jrow` put them, in the X-free scope."""
     ix, fs = jrow_fields(row, tel)
     T, F = pre
     bty = {nm: _binder_comp(code)[0] for nm, code in row.binders}
@@ -5063,23 +5174,38 @@ def emit_jrowwf(row, tel, pre, ity, wfname, idesc=None, share=0, topname=None,
     n, nb, npr = len(tel), len(row.binders), len(row.prems)
     depth_at = ix.get('#depth')
     L, W = [], "W_" + T
-    para = (npr == 0)
-    if not para and with_ctx:
-        assert idesc is not None, "a row with a premise needs its description"
-        rho = next(j for j, (kd, _) in enumerate(fs) if kd == 'ρ')
-        names = ["%s%d" % (T, j) for j in range(rho + 1, len(fs) + 1)]
-        L.append("-- ★ the telescope, back at `Ctx` level: `emit_jrow` had to")
-        L.append("--   drop to a bare `Cx` at the premise to stay writable")
-        L.append("--   before `%s` existed." % idesc)
-        L.append("%s : Ctx" % " ".join(names))
-        # ⚠ EXTEND BY FIELD KIND, NOT BY POSITION.  `ctrnᵀ` has TWO
-        #   recursive premises, and assuming "the first is `iρ`, the rest
-        #   are `iκ`" gives the second one an `El` where it needs an
-        #   `IMu` — a context that is wrong only from that field on.
-        for j in range(rho, len(fs)):
-            ext = ("IMu %s %s %s%d" % (idesc, ity, F, j)) if fs[j][0] == 'ρ' \
-                  else ("El %s%d" % (F, j))
-            L.append("%s%d = %s%d ▹ %s" % (T, j + 1, T, j, ext))
+    TT = "Tel" + T
+    # ★ where `emit_jrow` put field k's code: a `Ctx` up to and including
+    #   the first premise, a bare `Cx` after it.
+    _rho0 = next((j for j, (kd, _) in enumerate(fs) if kd == 'ρ'), None)
+    def _scope(k):
+        return ("⌊ %s%d ⌋" % (T, k)) if (_rho0 is None or k <= _rho0) \
+               else ("X%s%d" % (T, k))
+    def _thin(k):  return "(%s)" % nest1("keep", k, "ρ₀")
+    def _xvar(k):  return "(%s)" % nest1("vs", k, "x₀")
+    if with_ctx:
+        L.append("-- ★ the telescope: the family, the index, then each field")
+        L.append("--   read through the thinning that skips the family.")
+        # ⚠⚠ EACH FIELD IS STATED **PRE-RENAMED**, as its own named code
+        #   `G…k` at the telescope's scope.  The thinning skips only the
+        #   BOTTOM variable, so de Bruijn indices do not move and the renamed
+        #   code is TEXTUALLY the original — but left as `renTm (thinR ρ) F`
+        #   in the context, every later lookup and conversion re-normalises
+        #   that renaming over the whole code.  Measured: 4–9 s/row against
+        #   1.8 before A-math, and `RedWfHom` (19 rows) OOM at every rung.
+        #   ⇒ the equation `renTm (thinR ρ) F ≡ G` is checked ONCE, where
+        #   the rung's continuation meets the declared telescope.
+        GG = "G" + T
+        L.append("%s0 : Ctx" % TT)
+        L.append("%s0 = Θ₀ %s" % (TT, ity))
+        for j in range(len(fs)):
+            _vis = {nm: jj for nm, jj in ix.items() if jj < j or nm == '#depth'}
+            L.append("%s%d : RTm ⌊ %s%d ⌋" % (GG, j, TT, j))
+            L.append("%s%d = %s" % (GG, j, rend(fs[j][1], j, _vis)))
+            ext = ("El (app (var %s) %s%d)" % (_xvar(j), GG, j) if fs[j][0] == 'ρ'
+                   else "El %s%d" % (GG, j))
+            L.append("%s%d : Ctx" % (TT, j + 1))
+            L.append("%s%d = %s%d ▹ %s" % (TT, j + 1, TT, j, ext))
         L.append("")
     for k in range(len(fs) - 1, -1, -1):
         # ★★★ THE SHARED TOP RUNGS ARE NOT EMITTED — see `topname`.
@@ -5092,9 +5218,7 @@ def emit_jrowwf(row, tel, pre, ity, wfname, idesc=None, share=0, topname=None,
         kind, e = fs[k]
         vis = {nm: j for nm, j in ix.items() if j < k or nm == '#depth'}
         damb = dbd(k)
-        inner = ("iwf-ι" if k == len(fs) - 1
-                 else ("%s%d" % (W, k + 1)) + ("" if npr == 0 else ""))
-        if k < len(fs) - 1 and npr == 0: inner = "%s%d" % (W, k + 1)
+        inner = "iwf-ι" if k == len(fs) - 1 else "%s%d" % (W, k + 1)
         if kind == 'ρ':
             # ★★★ THE RECURSIVE PREMISE.  Its derivation is the index
             #   TUPLE's typing: a right-nested `⊢pair`, each carrying the
@@ -5102,11 +5226,11 @@ def emit_jrowwf(row, tel, pre, ity, wfname, idesc=None, share=0, topname=None,
             body = _tupderiv(_tupcomps(e), tel, k, vis, bty)
             rung = "iwf-ρ %s%d\n    (%s)" % (F, k, body)
             C = "C" + T
-            L.append("%s%d : ICon ⌊ %s%d ⌋" % (C, k, T, k))
+            L.append("%s%d : ICon %s" % (C, k, _scope(k)))
             L.append("%s%d = iρ %s%d %s" % (C, k, F, k,
                      "iι" if k == len(fs) - 1 else "%s%d" % (C, k + 1)))
-            L.append("%s%d : IConWf %s %s %s%d %s%d"
-                     % (W, k, idesc, ity, T, k, C, k))
+            L.append("%s%d : IConWf %s %s%d %s %s %s%d"
+                     % (W, k, ity, TT, k, _thin(k), _xvar(k), C, k))
             L.append("%s%d =\n  %s\n    %s" % (W, k, rung, inner))
             L.append("")
             continue
@@ -5167,7 +5291,7 @@ def emit_jrowwf(row, tel, pre, ity, wfname, idesc=None, share=0, topname=None,
                 #   occurrence, by every phase.  `check.sh`'s own header
                 #   makes this argument about `⊢strong-base'`.
                 A = "a%s%d" % (T, k)
-                L.append("%s : %s%d ⊢ fst (%s) ∷ Nat" % (A, T, k, amb(k)))
+                L.append("%s : %s%d ⊢ fst (%s) ∷ Nat" % (A, TT, k, amb(k)))
                 L.append("%s = ⊢fst (%s)" % (A, damb))
                 # ★ the row's depth — TERM and derivation — for the tree
                 #   below.
@@ -5198,46 +5322,29 @@ def emit_jrowwf(row, tel, pre, ity, wfname, idesc=None, share=0, topname=None,
         # ★ NAME THE SUFFIX and build it from the next one in — linear,
         #   the way `Knot/Lookup` writes it by hand.
         C = "C" + T
-        L.append("%s%d : ICon ⌊ %s%d ⌋" % (C, k, T, k))
+        L.append("%s%d : ICon %s" % (C, k, _scope(k)))
         L.append("%s%d = %s %s%d %s" % (C, k, 'iκ' if kind == 'κ' else 'iρ',
                                         F, k,
                                         "iι" if k == len(fs) - 1
                                         else "%s%d" % (C, k + 1)))
-        if para:
-            L.append("%s%d : (D : IDesc) → IConWf D %s %s%d %s%d"
-                     % (W, k, ity, T, k, C, k))
-            L.append("%s%d D =\n  %s\n    (%s)" % (W, k, rung,
-                     inner if inner == "iwf-ι" else inner + " D"))
-        else:
-            L.append("%s%d : IConWf %s %s %s%d %s%d"
-                     % (W, k, idesc, ity, T, k, C, k))
-            L.append("%s%d =\n  %s\n    %s" % (W, k, rung, inner))
+        L.append("%s%d : IConWf %s %s%d %s %s %s%d"
+                 % (W, k, ity, TT, k, _thin(k), _xvar(k), C, k))
+        L.append("%s%d =\n  %s\n    %s" % (W, k, rung, inner))
         L.append("")
     if share:
-        # ★★★ THE TOP OF THE CHAIN IS A LEMMA, NOT A COPY.  Rungs 0..n-1
-        #   are identical in EVERY row — the depth binder and the context
-        #   binder — but they are the OUTERMOST rungs, so each row's copy
-        #   wraps that row's own inner chain and is a different TERM.
-        #   ⇒ unshareable as a VALUE, shareable as a FUNCTION over the
-        #     tail.  Same move as `Lib/IPay`'s `⊢methLam`.
-        # ★ AND THE POINT IS THE PAYLOAD, NOT THE SHAPE: the `⊢ty`
-        #   obligations in those rungs (`⊢⌜Nat⌝`, `⊢⌜IMu⌝ CtxWf …`) were
-        #   re-discharged once per row and are now discharged ONCE.
-        if para:
-            L.append("%s : (D : IDesc) → IConWf D %s %s0 %s"
-                     % (wfname, ity, T, row.name))
-            L.append("%s D = %s D (%s%d D)" % (wfname, topname, W, share))
-        else:
-            L.append("%s : IConWf %s %s %s0 %s"
-                     % (wfname, idesc, ity, T, row.name))
-            L.append("%s = %s %s (%s%d)" % (wfname, topname, idesc, W, share))
-    elif para and with_term:
-        L.append("%s : (D : IDesc) → IConWf D %s %s0 %s" % (wfname, ity, T, row.name))
-        L.append("%s = %s0" % (wfname, W))
+        # ★★★ THE TOP OF THE CHAIN IS A LEMMA, NOT A COPY — see `JWFTOP`.
+        L.append("%s : IConWf %s (Θ₀ %s) ρ₀ x₀ %s" % (wfname, ity, ity, row.name))
+        L.append("%s = %s (%s%d)" % (wfname, topname, W, share))
     elif with_term:
-        L.append("%s : IConWf %s %s %s0 %s" % (wfname, idesc, ity, T, row.name))
+        L.append("%s : IConWf %s (Θ₀ %s) ρ₀ x₀ %s" % (wfname, ity, ity, row.name))
         L.append("%s = %s0" % (wfname, W))
     return "\n".join(reversed_blocks(L))
+
+def nest1(f, k, base):
+    "`f (f (… base))`, k applications"
+    t = base
+    for _ in range(k): t = "%s (%s)" % (f, t) if " " in t else "%s %s" % (f, t)
+    return t
 
 def reversed_blocks(L):
     "the rungs come out innermost-first; Agda wants them declared that way"
@@ -5265,11 +5372,12 @@ def emit_jrow(row, tel, pre, ity, idesc):
     """the Θ/κ/ICon chain for one row.  `pre` names the row's telescope
     variables (`Θ`/`κ` for one row, `Ξ`/`λ` for the next…).
 
-    ⚠ THE TELESCOPE STOPS BEING A `Ctx` AT THE FIRST RECURSIVE PREMISE.
-      That field extends by `IMu D I …`, which mentions the description
-      being DEFINED.  `⌊_⌋` only COUNTS, so everything after it is typed
-      at a plain `Cx` and the row stays writable before `D` exists; the
-      `Ctx`-level telescope comes back where the Wf is proved."""
+    ★ THESE ARE THE CODES' SCOPES, NOT THE TELESCOPE.  Under A-math the
+      codes live in the constructor's X-FREE scope and only their SCOPE
+      matters here, so after the first recursive premise it is a plain
+      `Cx` (`⌊_⌋` only counts).  The typed telescope — the family, the
+      index, each code read through `keep^k ρ₀` — is `emit_jrowwf`'s
+      `Tel…`, where the Wf is proved."""
     ix, fs = jrow_fields(row, tel)
     T, F = pre
     X = "X" + T
@@ -5324,6 +5432,8 @@ LOOKUPGEN_HDR = """--- GENERATED by tools/gen-knot.py — do not edit.
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Knot.LookupGen where
+open import DirectedHoTT.Spec.Typing using ( Θ₀; ρ₀; x₀; _,,_ )
+open import DirectedHoTT.Spec.Syntax using ( thinR; keep; app; renTm )
 open import normalizer.Syntax.Types using ( _≡_; refl )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; RTm; var; vz; vs; pair; fst; snd; nsuc; El; IMu; Nat
@@ -5455,6 +5565,11 @@ _DEPTH = "#m"
 
 def _depth_at(dp):
     if dp == "closed": return RAW("nzero")
+    # ★ A-MATH: a depth RELATIVE TO ANOTHER BINDER (`Δ`'s), k deeper.
+    if isinstance(dp, tuple) and dp[0] == "bv":
+        e = V(dp[1])
+        for _ in range(dp[2]): e = NSUC(e)
+        return e
     # ★ an ABSOLUTE depth — `ICon (ε ∙)` is at 1 whatever the row's is.
     if isinstance(dp, tuple) and dp[0] == "abs": return RAW("num %d" % dp[1])
     e = V(_DEPTH)
@@ -5614,6 +5729,8 @@ _IX_PRE = {"pwBodyK": "sTm"}
 
 def _pred(dep):
     if dep[0] == "nsuc": return dep[1]
+    if dep[0] == "raw" and dep[1].startswith("num ") and int(dep[1][4:]) > 0:
+        return RAW("num %d" % (int(dep[1][4:]) - 1))
     raise ValueError("a Var at a non-successor depth: %r" % (dep,))
 
 # ★★★ THE DEPTH OF AN ARGUMENT, RELATIVE TO THE RESULT — ONE FUNCTION,
@@ -5679,6 +5796,38 @@ SORTMAP_LEM = {"sTy": "sortMap-ty", "sTm": "sortMap-tm",
                "sIDesc": "sortMap-idesc", "sICon": "sortMap-icon",
                "sVar": "sortMap-var"}
 
+# ★★ A-MATH's THINNINGS, as values.  A thinning's two depths are NOT
+#   the row's: its SOURCE is the constructor scope `Δ` (a binder, or
+#   computed from the expression), its TARGET the telescope's.  Both are
+#   read off the expression, the way the kernel's types read them.
+_THIN_ROOT = "keep (drop done)"          # `Spec/Typing.ρ₀`
+
+def _thin_src(e):
+    "the source depth of a thinning expression"
+    h = _headname(e)
+    if e[0] == "a":
+        if h == "ρ₀": return _thin_src(_parse_spine(_tokens(_THIN_ROOT)))
+        if h == "done": return RAW("nzero")
+        return _depth_at(_BDEP[h])                 # a `Thin` binder
+    args = e[1]
+    if h == "keep": return NSUC(_thin_src(args[1]))
+    if h == "drop": return _thin_src(args[1])
+    raise ValueError("thinning %r" % (e,))
+
+def _thin_val(e, src, tgt):
+    h = _headname(e)
+    if e[0] == "a":
+        if h == "ρ₀": return _thin_val(_parse_spine(_tokens(_THIN_ROOT)), src, tgt)
+        if h == "done": return AP("Thin-doneK")
+        return V(h)
+    args = e[1]
+    if h == "keep":
+        return AP("Thin-keepK", _pred(src), _pred(tgt),
+                  _thin_val(args[1], _pred(src), _pred(tgt)))
+    if h == "drop":
+        return AP("Thin-dropK", src, _pred(tgt), _thin_val(args[1], src, _pred(tgt)))
+    raise ValueError("thinning %r" % (e,))
+
 def _val(e, CT, dep):
     """a parsed Agda spine → the row description's value language.
 
@@ -5695,6 +5844,8 @@ def _val(e, CT, dep):
         #   index carries a bare `Nat`, so they translate to the object
         #   level's own `nzero`/`nsuc` and NOT to `Tm-nzeroK`/`Tm-nsucK`.
         if h == "zero": return RAW("nzero")
+        # ★ `Spec/Typing.x₀ = vs vz` — the root telescope's family variable
+        if h == "x₀": return _val(_parse_spine(_tokens("vs vz")), CT, dep)
         if h in CT:
             c = CT[h]
             return AP(c, _pred(dep)) if c in _DEPTH_ARG else AP(c)
@@ -5722,6 +5873,15 @@ def _val(e, CT, dep):
     if h[1] == "renTm" and len(args) == 3:
         x, rho = args[2], args[1]
         srt = _BSORT.get(x[1] if x[0] == "a" else None, "sTm")
+        # ★★ A-MATH: `renTm (thinR θ) t` — the thinning's action, which
+        #   `Knot/ThinRen.thinRenK` folds to a `RenTy` and `renTmAtK`
+        #   applies.  The term sits at the thinning's SOURCE depth.
+        if _headname(rho) == "thinR":
+            th = rho[1][1]
+            src = _thin_src(th)
+            assert srt == "sTm", srt
+            return AP("thinTmK", src, dep, _thin_val(th, src, dep),
+                      _val(x, CT, src))
         p = _pred(dep)
         # ★★★ `renTm pwShift` — AND IT NEEDS NO NEW OBJECT-LEVEL FUNCTION.
         #
@@ -5889,6 +6049,8 @@ REDWF_HDR = """--- GENERATED by tools/gen-knot.py — do not edit.
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Knot.RedWf%(part)s where
+open import DirectedHoTT.Spec.Typing using ( Θ₀; ρ₀; x₀; _,,_ )
+open import DirectedHoTT.Spec.Syntax using ( thinR; keep; app; renTm )
 open import normalizer.Syntax.Types using ( _≡_; refl )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
@@ -5929,26 +6091,54 @@ open import DirectedHoTT.Examples.Knot.WkSub using ( wkTmK; ⊢wkTmK; wkTyK; ⊢
 %(prev)s
 """
 
-def gen_redwf(part, lo, hi):
-    """one HALF of the well-formedness.
+# ★★★ `_⟶_`'s WELL-FORMEDNESS, SPLIT BY RULE FAMILY — one module per group
+#   of term formers, and `RedWf` assembling them.
+#
+# ⚠⚠ WHY, MEASURED.  It was two halves of ~36 rows (`RedWfA`/`RedWfB`,
+#   sized from a bisection: linear at ~1.8 s/row, a cliff near 52 rows
+#   under the 5.5 GB cap).  A-math adds a telescope slot to every row —
+#   ~1.7× per slot, `agda-cost-is-context-depth` — and `RedWfA` was then
+#   OOM-killed at EVERY rung of the sweep's ladder (`-A64m`, `-A64m -c`,
+#   `-A8m -c`).  Smaller parts keep each module's peak well under the cap.
+# ★ AND THE CUT IS BY FAMILY, NOT BY COUNT: a half cuts wherever the row
+#   count says, a family is a unit someone looks for.  Every row must land
+#   in EXACTLY ONE family — a new rule fails here until it is placed.
+RED_FAMILIES = [
+    ("Fun",  lambda n: n in ("β", "βfst", "βsnd")
+                       or n.startswith(("ξ-lam", "ξ-app", "ξ-pair", "ξ-fst",
+                                        "ξ-snd", "ξ-absurd"))),
+    ("Ord",  lambda n: "ordtr" in n),
+    ("Code", lambda n: n.startswith("ξ-⌜")),
+    # ★ the directed rules, as TWO families: transport (`tr`, 12 rows —
+    #   the heaviest telescopes in `_⟶_`) and action/refl (`ap`, `hrefl`).
+    #   One `Hom` family of 19 was OOM-killed at every rung.
+    ("Tr",   lambda n: n.startswith(("tr-", "ξ-tr"))),
+    ("Ap",   lambda n: (n.startswith(("ap-", "ξ-ap", "hrefl", "ξ-hrefl"))
+                        and not n.startswith("ξ-app"))),
+    ("Id",   lambda n: "jsub" in n or "idrefl" in n),
+    ("Nat",  lambda n: "natrec" in n or n == "ξ-nsuc"),
+    ("Ind",  lambda n: n in ("ι-elim", "ι-ielim", "ξ-con", "ξ-icon")
+                       or n.startswith(("ξ-elim", "ξ-ielim"))),
+]
 
-    ⚠⚠ SPLIT BECAUSE OF A MEASURED CLIFF, NOT A GUESS.  Bisected on this
-      box (5.5 GB cgroup cap): 8 rows 10s · 16 rows 25s · 32 rows 50s ·
-      48 rows 87s — LINEAR at ~1.8s/row — and then 56/64/65 OOM.
-      ★ But 52 OOMed while 54 PASSED, at the same runtime, so the cliff
-      is not a bad row: the module simply sits near the cap and whether
-      it trips is noise.  `exit-143-is-not-evidence-about-cost` again.
-      ⇒ two halves of ~33 sit well inside the linear region."""
+def red_family(nm):
+    fs = [f for f, p in RED_FAMILIES if p(nm)]
+    assert len(fs) == 1, "reduction rule %r is in families %r — place it in exactly one" % (nm, fs)
+    return fs[0]
+
+def gen_redwf(part):
+    """`part` a family name → that family's rows; None → the ASSEMBLY."""
     TEL = [TNAT(), TKNOT("sTm"), TKNOT("sTm")]
-    # ⚠ SAME TREATMENT AS `JudgeWf`: body first, then only the step-5
-    #   imports it mentions.
     L = []
-    for nm, row, tag in _ROWS[lo:hi]:
-        L.append("-- %s" % nm)
-        L.append(emit_jrowwf(row, TEL, (tag, "k" + tag), "IRed",
-                             "rd%sWf" % nm, "RedD"))
-        L.append("")
-    if part != "B":
+    if part is not None:
+        # ⚠ SAME TREATMENT AS `JudgeWf`: body first, then only the step-5
+        #   imports it mentions.
+        for nm, row, tag in _ROWS:
+            if red_family(nm) != part: continue
+            L.append("-- %s" % nm)
+            L.append(emit_jrowwf(row, TEL, (tag, "k" + tag), "IRed",
+                                 "rd%sWf" % nm, "RedD"))
+            L.append("")
         _b = "\n".join(L)
         return (REDWF_HDR % dict(part=part, prev="", opt=_opt_imports(_b))
                 + "\n" + _b + "\n")
@@ -5957,19 +6147,15 @@ def gen_redwf(part, lo, hi):
     L.append("-" * 72)
     L.append("RedWf : IDescWf IRed RedD")
     L.append("RedWf =")
-    # ⚠ A ROW WITH NO RECURSIVE PREMISE IS `D`-PARAMETRIC and must be
-    #   APPLIED here; one with a premise is already at `RedD`.  The two
-    #   shapes are not interchangeable — see `emit_jrowwf`.
-    L.append(nest(["idwf-cons (rd%sWf RedD)" % nm if not row.prems
-                   else "idwf-cons rd%sWf" % nm
-                   for nm, row, _ in _ROWS], "idwf-nil", 2))
+    L.append("  %s ,," % par(tel_tywf(TEL)))
+    L.append(nest(["idwf-cons rd%sWf" % nm for nm, row, _ in _ROWS], "idwf-nil", 2))
     _b = "\n".join(L)
     return (REDWF_HDR % dict(
-              part=part,
-              prev="open import DirectedHoTT.Examples.Knot.RedWfA",
+              part="",
+              prev="\n".join("open import DirectedHoTT.Examples.Knot.RedWf%s" % f
+                              for f, _ in RED_FAMILIES),
               opt=_opt_imports(_b))
             + "\n" + _b + "\n")
-
 
 def gen_lookupgen():
     TEL = [TNAT(), TCTX(), TKNOT("sVar"), TKNOT("sTy")]
@@ -6028,6 +6214,8 @@ TEL_TYR = [TNAT(), TKNOT("sTy"), TKNOT("sTy")]
 
 # ★ registered so `_binder_comp` recognises a foreign judgement's code
 FOREIGN["RedD"] = TJ("RedD", "IRed", "RedWf", TEL_RED)
+# ★ A-MATH: a thinning binder's code is a `ThinD` value at (src , tgt)
+FOREIGN["ThinD"] = TJ("ThinD", "IPair", "ThinWf", [TNAT(), TNAT()])
 
 J_TYRED = Judgement(
     "_⟶ᵀ_", "⟶ᵀ", TEL_TYR, "ITyRed",
@@ -6036,7 +6224,7 @@ J_TYRED = Judgement(
     "TyRedD", "TyRed", "TyRedWf",
     cites=[("⟶", FOREIGN["RedD"])],
     extra=("open import DirectedHoTT.Examples.Knot.RedRows using ( RedD; IRed )\n"
-           "open import DirectedHoTT.Examples.Knot.RedWfB using ( RedWf )"))
+           "open import DirectedHoTT.Examples.Knot.RedWf using ( RedWf )"))
 
 
 FOREIGN["TyRedD"] = TJ("TyRedD", "ITyRed", "TyRedWf", TEL_TYR)
@@ -6304,6 +6492,10 @@ _WRAP_LEDGER = {
     "Ctx-empK": "✅ not owed — a CONSTRUCTOR of `CtxD`, not a wrapper.",
     "Ctx-extK": "✅ not owed — a constructor of `CtxD`.",
     "IxNoneK":  "✅ not owed — a constructor of `IxD`.",
+    "Thin-doneK": "✅ not owed — a constructor of `ThinD`.",
+    "Thin-keepK": "✅ not owed — a constructor of `ThinD`.",
+    "Thin-dropK": "✅ not owed — a constructor of `ThinD`.",
+    "thinTmK":  "⬜ OWED — A-math's `renTm (thinR θ) t`.  `thinRenK` folds a\n--                `ThinD` value to a `RenTy` clause for clause with the\n--                kernel's `thinR` (keep = `extRNK`, drop = `Var-vsK`, done =\n--                the variable transported along both Fords), then\n--                `renTmAtK` applies it.  ⇒ owed: an `enThin` map (`ThinD`\n--                is a STRATUM, like `CtxD`), `thinRenK (enThin θ) v ⟶*\n--                enVar (thinR θ x)`, and then `ren-agree` closes it.",
     "IxDConK":  "✅ not owed — a constructor of `IxD`.",
     "IxDescK":  "✅ not owed — a constructor of `IxD`.",
     "IxIConK":  "✅ not owed — a constructor of `IxD`.",
@@ -6959,6 +7151,8 @@ if __name__ == "__main__":
     if verify(os.path.join(root, "Spec", "Syntax.agda")):
         sys.exit("  ⇒ TABLE AND SYNTAX DISAGREE — nothing written.")
     open(os.path.join(out, "Desc.agda"), "w").write(gen_desc())
+    open(os.path.join(out, "WfTy.agda"), "w").write(_lkp_towers(gen_wf("Ty"))[0])
+    open(os.path.join(out, "WfTm.agda"), "w").write(_lkp_towers(gen_wf("Tm"))[0])
     open(os.path.join(out, "Wf.agda"),   "w").write(_lkp_towers(gen_wf())[0])
     open(os.path.join(out, "Tags.agda"), "w").write(gen_tags())
     open(os.path.join(out, "Ctors.agda"), "w").write(gen_ctors())
@@ -6991,9 +7185,13 @@ if __name__ == "__main__":
     open(os.path.join(out, "LookupGen.agda"), "w").write(_lkp_towers(gen_lookupgen())[0])
     open(os.path.join(out, "RedRows.agda"), "w").write(gen_redrows())
     _CENSUS.append(("RedD", ["_⟶_"], len(_SKIP), "Typing"))
-    _half = (len(_ROWS) + 1) // 2
-    open(os.path.join(out, "RedWfA.agda"), "w").write(_lkp_towers(gen_redwf("A", 0, _half))[0])
-    open(os.path.join(out, "RedWfB.agda"), "w").write(_lkp_towers(gen_redwf("B", _half, len(_ROWS)))[0])
+    for _f, _ in RED_FAMILIES:
+        open(os.path.join(out, "RedWf%s.agda" % _f), "w").write(_lkp_towers(gen_redwf(_f))[0])
+    open(os.path.join(out, "RedWf.agda"), "w").write(_lkp_towers(gen_redwf(None))[0])
+    # ★ the deletion pass this generator owes (`generators-owe-a-deletion-pass`)
+    for _stale in ("RedWfA.agda", "RedWfB.agda", "RedWfHom.agda"):
+        if os.path.exists(os.path.join(out, _stale)):
+            os.remove(os.path.join(out, _stale)); print("  removed stale", _stale[:-5])
     _CT = {d.split(":")[0].strip(): n[1:] + "K" for n, d, _ in KNOT}
     _CT.update(_SUBST_CT)
     for _J in (J_IND, J_IIND, J_NONATC, J_TYRED, J_CONV):

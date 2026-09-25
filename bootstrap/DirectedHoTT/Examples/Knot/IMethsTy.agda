@@ -11,6 +11,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Knot.IMethsTy where
+open import DirectedHoTT.Spec.Typing using ( IDescWf-cons )
 open import DirectedHoTT.Lib.Lkp using ( ∋lkp; vsⁿ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
@@ -114,8 +115,8 @@ MID47' = cIDesc-cons ◂ MID48
 mispl47 : Split KnotD 47 MID47'
 mispl47 = splTake spl-nil (cdTake 47 KnotD)
 
-miwf48 : IDescWfFrom KnotD IPair MID48
-miwf48 = idwfDrop (spl-step mispl47) KnotWf
+miwf48 : IDescWfFrom IPair MID48
+miwf48 = idwfDrop (spl-step mispl47) (IDescWf-cons KnotWf)
 
 imethsTyTail : {Γ : Cx} → RTm Γ
 imethsTyTail = methsFrom (cdTake 5 MID48) imethsTyJunk unit
@@ -145,7 +146,7 @@ imethsTyMethsK = methsFrom (cdTake 47 KnotD) imethsTyJunk imethsTyMid47
 ⊢imethsTyMethsK : {Γ : Ctx} →
                   Γ ⊢ imethsTyMethsK ∷ imethsTy KnotD IPair imethsTyMotK KnotD
 ⊢imethsTyMethsK =
-  ⊢methsFrom KnotD IPair 0 (cdTake 47 KnotD) KnotWf KnotWf spl-nil
+  ⊢methsFrom KnotD IPair 0 (cdTake 47 KnotD) KnotWf (IDescWf-cons KnotWf) spl-nil
              ⊢IPair ⊢imethsTyMotK (λ {k} {C} wC _ _ → ⊢imethsTyJunk k C wC)
              imethsTyMid47 ⊢imethsTyMid47
 

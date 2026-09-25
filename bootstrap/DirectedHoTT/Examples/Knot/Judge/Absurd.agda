@@ -35,6 +35,8 @@
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Knot.Judge.Absurd where
 open import normalizer.Syntax.Types using ( _≡_; refl )
+open import DirectedHoTT.Spec.Typing using ( Θ₀; ρ₀; x₀; _,,_ )
+open import DirectedHoTT.Spec.Syntax using ( thinR; keep; app; renTm )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; RTy; RTm; var; vz; vs; pair; fst; snd; nsuc; nzero
@@ -70,6 +72,10 @@ open import DirectedHoTT.Examples.Knot.Stk
   using ( stkAK; ⊢stkAK; stkCK; ⊢stkCK; flatK; ⊢flatK )
 open import DirectedHoTT.Examples.Knot.Nrs using ( nrsSubK; ⊢nrsSubK )
 open import DirectedHoTT.Examples.Knot.PwBody using ( pwBodyK; ⊢pwBodyK )
+open import DirectedHoTT.Examples.Knot.ThinD
+  using ( ThinD; ThinWf; Thin-doneK; ⊢Thin-doneK; Thin-keepK; ⊢Thin-keepK
+        ; Thin-dropK; ⊢Thin-dropK )
+open import DirectedHoTT.Examples.Knot.ThinRen using ( thinTmK; ⊢thinTmK )
 open import DirectedHoTT.Examples.Knot.CtxD
   using ( CtxD; INat; CtxWf; Ctx-extK; ⊢Ctx-extKt; Ctx-empK; ⊢Ctx-empK )
 open import DirectedHoTT.Examples.Knot.EWk using ( εwkK; ⊢εwkK; isingleK; ⊢isingleK )
@@ -91,24 +97,64 @@ open import DirectedHoTT.Examples.Knot.IxD
 open import DirectedHoTT.Examples.Knot.JudgeRows
 
 -- ⊢absurd
--- ★ the telescope, back at `Ctx` level: `emit_jrow` had to
---   drop to a bare `Cx` at the premise to stay writable
---   before `JudgeD` existed.
-JΠ5 JΠ6 JΠ7 JΠ8 JΠ9 JΠ10 JΠ11 JΠ12 : Ctx
-JΠ5 = JΠ4 ▹ IMu JudgeD IJudge kJΠ4
-JΠ6 = JΠ5 ▹ IMu JudgeD IJudge kJΠ5
-JΠ7 = JΠ6 ▹ El kJΠ6
-JΠ8 = JΠ7 ▹ El kJΠ7
-JΠ9 = JΠ8 ▹ El kJΠ8
-JΠ10 = JΠ9 ▹ El kJΠ9
-JΠ11 = JΠ10 ▹ El kJΠ10
-JΠ12 = JΠ11 ▹ El kJΠ11
+-- ★ the telescope: the family, the index, then each field
+--   read through the thinning that skips the family.
+TelJΠ0 : Ctx
+TelJΠ0 = Θ₀ IJudge
+GJΠ0 : RTm ⌊ TelJΠ0 ⌋
+GJΠ0 = ⌜Nat⌝
+TelJΠ1 : Ctx
+TelJΠ1 = TelJΠ0 ▹ El GJΠ0
+GJΠ1 : RTm ⌊ TelJΠ1 ⌋
+GJΠ1 = ⌜IMu⌝ CtxD INat (var vz)
+TelJΠ2 : Ctx
+TelJΠ2 = TelJΠ1 ▹ El GJΠ1
+GJΠ2 : RTm ⌊ TelJΠ2 ⌋
+GJΠ2 = ⌜IMu⌝ KnotD IPair (pair sTm (var (vs vz)))
+TelJΠ3 : Ctx
+TelJΠ3 = TelJΠ2 ▹ El GJΠ2
+GJΠ3 : RTm ⌊ TelJΠ3 ⌋
+GJΠ3 = ⌜IMu⌝ KnotD IPair (pair sTm (var (vs (vs vz))))
+TelJΠ4 : Ctx
+TelJΠ4 = TelJΠ3 ▹ El GJΠ3
+GJΠ4 : RTm ⌊ TelJΠ4 ⌋
+GJΠ4 = pair (var (vs (vs (vs vz)))) (pair (var (vs (vs vz))) (pair (var (vs vz)) (pair Ty-UK (pair (num 1) (IxNoneK (var (vs (vs (vs vz)))))))))
+TelJΠ5 : Ctx
+TelJΠ5 = TelJΠ4 ▹ El (app (var (vs (vs (vs (vs x₀))))) GJΠ4)
+GJΠ5 : RTm ⌊ TelJΠ5 ⌋
+GJΠ5 = pair (var (vs (vs (vs (vs vz))))) (pair (var (vs (vs (vs vz)))) (pair (var (vs vz)) (pair Ty-baseK (pair (num 1) (IxNoneK (var (vs (vs (vs (vs vz))))))))))
+TelJΠ6 : Ctx
+TelJΠ6 = TelJΠ5 ▹ El (app (var (vs (vs (vs (vs (vs x₀)))))) GJΠ5)
+GJΠ6 : RTm ⌊ TelJΠ6 ⌋
+GJΠ6 = ⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs (vs (vs (vs (vs vz)))))))) (var (vs (vs (vs (vs (vs vz))))))
+TelJΠ7 : Ctx
+TelJΠ7 = TelJΠ6 ▹ El GJΠ6
+GJΠ7 : RTm ⌊ TelJΠ7 ⌋
+GJΠ7 = ⌜Id⌝ (⌜IMu⌝ CtxD INat (fst (var (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (fst (snd (var (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (jsub (⌜IMu⌝ CtxD INat (var vz)) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs vz))))))))) (var vz)) (var (vs (vs (vs (vs (vs vz)))))))
+TelJΠ8 : Ctx
+TelJΠ8 = TelJΠ7 ▹ El GJΠ7
+GJΠ8 : RTm ⌊ TelJΠ8 ⌋
+GJΠ8 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTm (fst (var (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) (fst (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTm (var vz))) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (var (vs vz))) (Tm-absurdK (var (vs (vs (vs (vs (vs vz)))))) (var (vs (vs (vs (vs vz)))))))
+TelJΠ9 : Ctx
+TelJΠ9 = TelJΠ8 ▹ El GJΠ8
+GJΠ9 : RTm ⌊ TelJΠ9 ⌋
+GJΠ9 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTy (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))) (fst (snd (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTy (var vz))) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (var (vs (vs vz)))) (Ty-ElK (var (vs (vs (vs (vs (vs (vs vz)))))))))
+TelJΠ10 : Ctx
+TelJΠ10 = TelJΠ9 ▹ El GJΠ9
+GJΠ10 : RTm ⌊ TelJΠ10 ⌋
+GJΠ10 = ⌜Id⌝ ⌜Nat⌝ (fst (snd (snd (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))))))) (jsub ⌜Nat⌝ (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) (var (vs (vs (vs vz))))) (num 1))
+TelJΠ11 : Ctx
+TelJΠ11 = TelJΠ10 ▹ El GJΠ10
+GJΠ11 : RTm ⌊ TelJΠ11 ⌋
+GJΠ11 = ⌜Id⌝ (⌜IMu⌝ IxD INat (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))))) (snd (snd (snd (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))))))) (jsub (⌜IMu⌝ IxD INat (var vz)) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))) (var (vs (vs (vs (vs vz)))))) (IxNoneK (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))))
+TelJΠ12 : Ctx
+TelJΠ12 = TelJΠ11 ▹ El GJΠ11
 
-aJΠ11 : JΠ11 ⊢ fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) ∷ Nat
+aJΠ11 : TelJΠ11 ⊢ fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) ∷ Nat
 aJΠ11 = ⊢fst (⊢var (there (there (there (there (there (there (there (there (there (there (there here))))))))))))
-CJΠ11 : ICon ⌊ JΠ11 ⌋
+CJΠ11 : ICon XJΠ11
 CJΠ11 = iκ kJΠ11 iι
-W_JΠ11 : IConWf JudgeD IJudge JΠ11 CJΠ11
+W_JΠ11 : IConWf IJudge TelJΠ11 (keep (keep (keep (keep (keep (keep (keep (keep (keep (keep (keep ρ₀))))))))))) (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs x₀))))))))))) CJΠ11
 W_JΠ11 =
   iwf-κ kJΠ11 (icw-ford _ _ _)
     (⊢⌜Id⌝ (⊢⌜IMu⌝ IxWf (toI aJΠ11))
@@ -121,11 +167,11 @@ W_JΠ11 =
                   (toMu (⊢IxNoneK (fromI (⊢var (there (there (there (there (there (there (there (there (there (there here))))))))))))))))
     iwf-ι
 
-aJΠ10 : JΠ10 ⊢ fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) ∷ Nat
+aJΠ10 : TelJΠ10 ⊢ fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) ∷ Nat
 aJΠ10 = ⊢fst (⊢var (there (there (there (there (there (there (there (there (there (there here)))))))))))
-CJΠ10 : ICon ⌊ JΠ10 ⌋
+CJΠ10 : ICon XJΠ10
 CJΠ10 = iκ kJΠ10 CJΠ11
-W_JΠ10 : IConWf JudgeD IJudge JΠ10 CJΠ10
+W_JΠ10 : IConWf IJudge TelJΠ10 (keep (keep (keep (keep (keep (keep (keep (keep (keep (keep ρ₀)))))))))) (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs x₀)))))))))) CJΠ10
 W_JΠ10 =
   iwf-κ kJΠ10 (icw-ford _ _ _)
     (⊢⌜Id⌝ ⊢⌜Nat⌝
@@ -138,11 +184,11 @@ W_JΠ10 =
                   (toI (⊢num 1))))
     W_JΠ11
 
-aJΠ9 : JΠ9 ⊢ fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))) ∷ Nat
+aJΠ9 : TelJΠ9 ⊢ fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))) ∷ Nat
 aJΠ9 = ⊢fst (⊢var (there (there (there (there (there (there (there (there (there here))))))))))
-CJΠ9 : ICon ⌊ JΠ9 ⌋
+CJΠ9 : ICon XJΠ9
 CJΠ9 = iκ kJΠ9 CJΠ10
-W_JΠ9 : IConWf JudgeD IJudge JΠ9 CJΠ9
+W_JΠ9 : IConWf IJudge TelJΠ9 (keep (keep (keep (keep (keep (keep (keep (keep (keep ρ₀))))))))) (vs (vs (vs (vs (vs (vs (vs (vs (vs x₀))))))))) CJΠ9
 W_JΠ9 =
   iwf-κ kJΠ9 (icw-ford _ _ _)
     (⊢⌜Id⌝ (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTy aJΠ9))
@@ -155,11 +201,11 @@ W_JΠ9 =
                   (toMu (⊢Ty-ElKv (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))) (fromI (⊢var (there (there (there (there (there (there (there (there here)))))))))) (fromMu (⊢var (there (there (there (there (there (there here))))))))))))
     W_JΠ10
 
-aJΠ8 : JΠ8 ⊢ fst (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))) ∷ Nat
+aJΠ8 : TelJΠ8 ⊢ fst (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))) ∷ Nat
 aJΠ8 = ⊢fst (⊢var (there (there (there (there (there (there (there (there here)))))))))
-CJΠ8 : ICon ⌊ JΠ8 ⌋
+CJΠ8 : ICon XJΠ8
 CJΠ8 = iκ kJΠ8 CJΠ9
-W_JΠ8 : IConWf JudgeD IJudge JΠ8 CJΠ8
+W_JΠ8 : IConWf IJudge TelJΠ8 (keep (keep (keep (keep (keep (keep (keep (keep ρ₀)))))))) (vs (vs (vs (vs (vs (vs (vs (vs x₀)))))))) CJΠ8
 W_JΠ8 =
   iwf-κ kJΠ8 (icw-ford _ _ _)
     (⊢⌜Id⌝ (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTm aJΠ8))
@@ -172,11 +218,11 @@ W_JΠ8 =
                   (toMu (⊢Tm-absurdKv (var (vs (vs (vs (vs (vs (vs (vs vz)))))))) (fromI (⊢var (there (there (there (there (there (there (there here))))))))) (fromMu (⊢var (there (there (there (there (there here))))))) (fromMu (⊢var (there (there (there (there here))))))))))
     W_JΠ9
 
-aJΠ7 : JΠ7 ⊢ fst (var (vs (vs (vs (vs (vs (vs (vs vz)))))))) ∷ Nat
+aJΠ7 : TelJΠ7 ⊢ fst (var (vs (vs (vs (vs (vs (vs (vs vz)))))))) ∷ Nat
 aJΠ7 = ⊢fst (⊢var (there (there (there (there (there (there (there here))))))))
-CJΠ7 : ICon ⌊ JΠ7 ⌋
+CJΠ7 : ICon XJΠ7
 CJΠ7 = iκ kJΠ7 CJΠ8
-W_JΠ7 : IConWf JudgeD IJudge JΠ7 CJΠ7
+W_JΠ7 : IConWf IJudge TelJΠ7 (keep (keep (keep (keep (keep (keep (keep ρ₀))))))) (vs (vs (vs (vs (vs (vs (vs x₀))))))) CJΠ7
 W_JΠ7 =
   iwf-κ kJΠ7 (icw-ford _ _ _)
     (⊢⌜Id⌝ (⊢⌜IMu⌝ CtxWf (toI aJΠ7))
@@ -189,17 +235,17 @@ W_JΠ7 =
                   (toMu (fromMu (⊢var (there (there (there (there (there here))))))))))
     W_JΠ8
 
-CJΠ6 : ICon ⌊ JΠ6 ⌋
+CJΠ6 : ICon XJΠ6
 CJΠ6 = iκ kJΠ6 CJΠ7
-W_JΠ6 : IConWf JudgeD IJudge JΠ6 CJΠ6
+W_JΠ6 : IConWf IJudge TelJΠ6 (keep (keep (keep (keep (keep (keep ρ₀)))))) (vs (vs (vs (vs (vs (vs x₀)))))) CJΠ6
 W_JΠ6 =
   iwf-κ kJΠ6 (icw-ford _ _ _)
     (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (there (there (there (there (there (there here))))))))) (toI (fromI (⊢var (there (there (there (there (there here)))))))))
     W_JΠ7
 
-CJΠ5 : ICon ⌊ JΠ5 ⌋
+CJΠ5 : ICon XJΠ5
 CJΠ5 = iρ kJΠ5 CJΠ6
-W_JΠ5 : IConWf JudgeD IJudge JΠ5 CJΠ5
+W_JΠ5 : IConWf IJudge TelJΠ5 (keep (keep (keep (keep (keep ρ₀))))) (vs (vs (vs (vs (vs x₀))))) CJΠ5
 W_JΠ5 =
   iwf-ρ kJΠ5
     (⊢pair (ty-Σ (ty-IMu CtxWf (toI (⊢var here))) (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var (there here)))) (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTy (⊢var (there (there here))))) (ty-Σ ty-Nat (ty-IMu IxWf (toI (⊢var (there (there (there (there here))))))))))) (fromI (⊢var (there (there (there (there here))))))
@@ -211,7 +257,7 @@ W_JΠ5 =
 
 CJΠ4 : ICon ⌊ JΠ4 ⌋
 CJΠ4 = iρ kJΠ4 CJΠ5
-W_JΠ4 : IConWf JudgeD IJudge JΠ4 CJΠ4
+W_JΠ4 : IConWf IJudge TelJΠ4 (keep (keep (keep (keep ρ₀)))) (vs (vs (vs (vs x₀)))) CJΠ4
 W_JΠ4 =
   iwf-ρ kJΠ4
     (⊢pair (ty-Σ (ty-IMu CtxWf (toI (⊢var here))) (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var (there here)))) (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTy (⊢var (there (there here))))) (ty-Σ ty-Nat (ty-IMu IxWf (toI (⊢var (there (there (there (there here))))))))))) (fromI (⊢var (there (there (there here)))))
@@ -223,7 +269,7 @@ W_JΠ4 =
 
 CJΠ3 : ICon ⌊ JΠ3 ⌋
 CJΠ3 = iκ kJΠ3 CJΠ4
-W_JΠ3 : IConWf JudgeD IJudge JΠ3 CJΠ3
+W_JΠ3 : IConWf IJudge TelJΠ3 (keep (keep (keep ρ₀))) (vs (vs (vs x₀))) CJΠ3
 W_JΠ3 =
   iwf-κ kJΠ3 (icw-imu (pair sTm (var (vs (vs vz)))) KnotWf)
     (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTm (fromI (⊢var (there (there here))))))
@@ -231,7 +277,7 @@ W_JΠ3 =
 
 CJΠ2 : ICon ⌊ JΠ2 ⌋
 CJΠ2 = iκ kJΠ2 CJΠ3
-W_JΠ2 : IConWf JudgeD IJudge JΠ2 CJΠ2
+W_JΠ2 : IConWf IJudge TelJΠ2 (keep (keep ρ₀)) (vs (vs x₀)) CJΠ2
 W_JΠ2 =
   iwf-κ kJΠ2 (icw-imu (pair sTm (var (vs vz))) KnotWf)
     (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTm (fromI (⊢var (there here)))))
@@ -239,7 +285,7 @@ W_JΠ2 =
 
 CJΠ1 : ICon ⌊ JΠ1 ⌋
 CJΠ1 = iκ kJΠ1 CJΠ2
-W_JΠ1 : IConWf JudgeD IJudge JΠ1 CJΠ1
+W_JΠ1 : IConWf IJudge TelJΠ1 (keep ρ₀) (vs x₀) CJΠ1
 W_JΠ1 =
   iwf-κ kJΠ1 (icw-imu (var vz) CtxWf)
     (⊢⌜IMu⌝ CtxWf (toI (fromI (⊢var here))))
@@ -247,11 +293,11 @@ W_JΠ1 =
 
 CJΠ0 : ICon ⌊ JΠ0 ⌋
 CJΠ0 = iκ kJΠ0 CJΠ1
-W_JΠ0 : IConWf JudgeD IJudge JΠ0 CJΠ0
+W_JΠ0 : IConWf IJudge TelJΠ0 (ρ₀) (x₀) CJΠ0
 W_JΠ0 =
   iwf-κ kJΠ0 (icw-clo ⌜Nat⌝ ⊢⌜Nat⌝) ⊢⌜Nat⌝
     W_JΠ1
 
-jd⊢absurdWf : IConWf JudgeD IJudge JΠ0 jd⊢absurd
+jd⊢absurdWf : IConWf IJudge (Θ₀ IJudge) ρ₀ x₀ jd⊢absurd
 jd⊢absurdWf = W_JΠ0
 

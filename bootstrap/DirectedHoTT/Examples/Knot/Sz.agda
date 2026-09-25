@@ -12,6 +12,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Knot.Sz where
+open import DirectedHoTT.Spec.Typing using ( IDescWf-cons )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; RTy; RTm; Nat; Σ'; ielim )
@@ -32,7 +33,7 @@ szMethsK = szMeths KnotD
 --   split supplies.  At the hard-wired `Nat` motive the codomain
 --   never mentioned the payload, so nobody had to say it.
 ⊢szMethsK : {Γ : Ctx} → Γ ⊢ szMethsK ∷ imethsTy KnotD IPair Nat KnotD
-⊢szMethsK = ⊢szMeths KnotD IPair zero KnotD KnotWf KnotWf spl-nil ⊢IPair
+⊢szMethsK = ⊢szMeths KnotD IPair zero KnotD KnotWf (IDescWf-cons KnotWf) spl-nil ⊢IPair
 
 -- ★★★ `sz` OVER THE WHOLE KNOT.
 szTm : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ

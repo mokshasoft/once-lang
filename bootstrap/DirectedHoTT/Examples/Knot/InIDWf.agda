@@ -17,6 +17,8 @@
 module DirectedHoTT.Examples.Knot.InIDWf where
 open import DirectedHoTT.Lib.Lkp using ( ∋lkp; vsⁿ )
 open import normalizer.Syntax.Types using ( _≡_; refl )
+open import DirectedHoTT.Spec.Typing using ( Θ₀; ρ₀; x₀; _,,_ )
+open import DirectedHoTT.Spec.Syntax using ( thinR; keep; app; renTm )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; RTy; RTm; var; vz; vs; pair; fst; snd; nsuc; nzero
@@ -56,12 +58,41 @@ open import DirectedHoTT.Examples.Knot.InIDRows
 
 
 -- hereID
-aInIDΑ5 : InIDΑ5 ⊢ fst (var (vs (vs (vs (vs (vs vz)))))) ∷ Nat
+-- ★ the telescope: the family, the index, then each field
+--   read through the thinning that skips the family.
+TelInIDΑ0 : Ctx
+TelInIDΑ0 = Θ₀ IInID
+GInIDΑ0 : RTm ⌊ TelInIDΑ0 ⌋
+GInIDΑ0 = ⌜Nat⌝
+TelInIDΑ1 : Ctx
+TelInIDΑ1 = TelInIDΑ0 ▹ El GInIDΑ0
+GInIDΑ1 : RTm ⌊ TelInIDΑ1 ⌋
+GInIDΑ1 = ⌜IMu⌝ KnotD IPair (pair sICon (num 1))
+TelInIDΑ2 : Ctx
+TelInIDΑ2 = TelInIDΑ1 ▹ El GInIDΑ1
+GInIDΑ2 : RTm ⌊ TelInIDΑ2 ⌋
+GInIDΑ2 = ⌜IMu⌝ KnotD IPair (pair sIDesc (var (vs vz)))
+TelInIDΑ3 : Ctx
+TelInIDΑ3 = TelInIDΑ2 ▹ El GInIDΑ2
+GInIDΑ3 : RTm ⌊ TelInIDΑ3 ⌋
+GInIDΑ3 = ⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs (vs vz))))) (var (vs (vs vz)))
+TelInIDΑ4 : Ctx
+TelInIDΑ4 = TelInIDΑ3 ▹ El GInIDΑ3
+GInIDΑ4 : RTm ⌊ TelInIDΑ4 ⌋
+GInIDΑ4 = ⌜Id⌝ ⌜Nat⌝ (fst (snd (var (vs (vs (vs (vs vz))))))) (jsub ⌜Nat⌝ (symN (fst (var (vs (vs (vs (vs vz)))))) (var vz)) nzero)
+TelInIDΑ5 : Ctx
+TelInIDΑ5 = TelInIDΑ4 ▹ El GInIDΑ4
+GInIDΑ5 : RTm ⌊ TelInIDΑ5 ⌋
+GInIDΑ5 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sIDesc (fst (var (vs (vs (vs (vs (vs vz))))))))) (snd (snd (var (vs (vs (vs (vs (vs vz)))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sIDesc (var vz))) (symN (fst (var (vs (vs (vs (vs (vs vz))))))) (var (vs vz))) (IDesc-consK (var (vs (vs (vs vz)))) (var (vs (vs vz)))))
+TelInIDΑ6 : Ctx
+TelInIDΑ6 = TelInIDΑ5 ▹ El GInIDΑ5
+
+aInIDΑ5 : TelInIDΑ5 ⊢ fst (var (vs (vs (vs (vs (vs vz)))))) ∷ Nat
 aInIDΑ5 = ⊢fst (⊢var (∋lkp _ (vsⁿ 5 vz)))
 CInIDΑ5 : ICon ⌊ InIDΑ5 ⌋
 CInIDΑ5 = iκ kInIDΑ5 iι
-W_InIDΑ5 : (D : IDesc) → IConWf D IInID InIDΑ5 CInIDΑ5
-W_InIDΑ5 D =
+W_InIDΑ5 : IConWf IInID TelInIDΑ5 (keep (keep (keep (keep (keep ρ₀))))) (vs (vs (vs (vs (vs x₀))))) CInIDΑ5
+W_InIDΑ5 =
   iwf-κ kInIDΑ5 (icw-ford _ _ _)
     (⊢⌜Id⌝ (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sIDesc aInIDΑ5))
            (toMu (⊢snd (⊢snd (⊢var (∋lkp _ (vsⁿ 5 vz))))))
@@ -71,14 +102,14 @@ W_InIDΑ5 D =
                   (⊢symN aInIDΑ5 (fromI (⊢var (∋lkp _ (vsⁿ 4 vz))))
                          (fordAs (⊢var (there here))))
                   (toMu (⊢IDesc-consKv (var (vs (vs (vs (vs vz))))) (fromI (⊢var (∋lkp _ (vsⁿ 4 vz)))) (fromMu (⊢var (∋lkp _ (vsⁿ 3 vz)))) (fromMu (⊢var (∋lkp _ (vsⁿ 2 vz))))))))
-    (iwf-ι)
+    iwf-ι
 
-aInIDΑ4 : InIDΑ4 ⊢ fst (var (vs (vs (vs (vs vz))))) ∷ Nat
+aInIDΑ4 : TelInIDΑ4 ⊢ fst (var (vs (vs (vs (vs vz))))) ∷ Nat
 aInIDΑ4 = ⊢fst (⊢var (∋lkp _ (vsⁿ 4 vz)))
 CInIDΑ4 : ICon ⌊ InIDΑ4 ⌋
 CInIDΑ4 = iκ kInIDΑ4 CInIDΑ5
-W_InIDΑ4 : (D : IDesc) → IConWf D IInID InIDΑ4 CInIDΑ4
-W_InIDΑ4 D =
+W_InIDΑ4 : IConWf IInID TelInIDΑ4 (keep (keep (keep (keep ρ₀)))) (vs (vs (vs (vs x₀)))) CInIDΑ4
+W_InIDΑ4 =
   iwf-κ kInIDΑ4 (icw-ford _ _ _)
     (⊢⌜Id⌝ ⊢⌜Nat⌝
            (toI (⊢fst (⊢snd (⊢var (∋lkp _ (vsⁿ 4 vz))))))
@@ -88,57 +119,85 @@ W_InIDΑ4 D =
                   (⊢symN aInIDΑ4 (fromI (⊢var (∋lkp _ (vsⁿ 3 vz))))
                          (fordAs (⊢var here)))
                   (toI ⊢nzero)))
-    (W_InIDΑ5 D)
+    W_InIDΑ5
 
 CInIDΑ3 : ICon ⌊ InIDΑ3 ⌋
 CInIDΑ3 = iκ kInIDΑ3 CInIDΑ4
-W_InIDΑ3 : (D : IDesc) → IConWf D IInID InIDΑ3 CInIDΑ3
-W_InIDΑ3 D =
+W_InIDΑ3 : IConWf IInID TelInIDΑ3 (keep (keep (keep ρ₀))) (vs (vs (vs x₀))) CInIDΑ3
+W_InIDΑ3 =
   iwf-κ kInIDΑ3 (icw-ford _ _ _)
     (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (∋lkp _ (vsⁿ 3 vz))))) (toI (fromI (⊢var (∋lkp _ (vsⁿ 2 vz))))))
-    (W_InIDΑ4 D)
+    W_InIDΑ4
 
 CInIDΑ2 : ICon ⌊ InIDΑ2 ⌋
 CInIDΑ2 = iκ kInIDΑ2 CInIDΑ3
-W_InIDΑ2 : (D : IDesc) → IConWf D IInID InIDΑ2 CInIDΑ2
-W_InIDΑ2 D =
+W_InIDΑ2 : IConWf IInID TelInIDΑ2 (keep (keep ρ₀)) (vs (vs x₀)) CInIDΑ2
+W_InIDΑ2 =
   iwf-κ kInIDΑ2 (icw-imu (pair sIDesc (var (vs vz))) KnotWf)
     (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sIDesc (fromI (⊢var (there here)))))
-    (W_InIDΑ3 D)
+    W_InIDΑ3
 
 CInIDΑ1 : ICon ⌊ InIDΑ1 ⌋
 CInIDΑ1 = iκ kInIDΑ1 CInIDΑ2
-W_InIDΑ1 : (D : IDesc) → IConWf D IInID InIDΑ1 CInIDΑ1
-W_InIDΑ1 D =
+W_InIDΑ1 : IConWf IInID TelInIDΑ1 (keep ρ₀) (vs x₀) CInIDΑ1
+W_InIDΑ1 =
   iwf-κ kInIDΑ1 (icw-imu (pair sICon (num 1)) KnotWf)
     (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sICon (⊢num 1)))
-    (W_InIDΑ2 D)
+    W_InIDΑ2
 
 CInIDΑ0 : ICon ⌊ InIDΑ0 ⌋
 CInIDΑ0 = iκ kInIDΑ0 CInIDΑ1
-W_InIDΑ0 : (D : IDesc) → IConWf D IInID InIDΑ0 CInIDΑ0
-W_InIDΑ0 D =
+W_InIDΑ0 : IConWf IInID TelInIDΑ0 (ρ₀) (x₀) CInIDΑ0
+W_InIDΑ0 =
   iwf-κ kInIDΑ0 (icw-clo ⌜Nat⌝ ⊢⌜Nat⌝) ⊢⌜Nat⌝
-    (W_InIDΑ1 D)
+    W_InIDΑ1
 
-rdhereIDWf : (D : IDesc) → IConWf D IInID InIDΑ0 rdhereID
+rdhereIDWf : IConWf IInID (Θ₀ IInID) ρ₀ x₀ rdhereID
 rdhereIDWf = W_InIDΑ0
 
 -- thereID
--- ★ the telescope, back at `Ctx` level: `emit_jrow` had to
---   drop to a bare `Cx` at the premise to stay writable
---   before `InIDD` existed.
-InIDΒ5 InIDΒ6 InIDΒ7 InIDΒ8 : Ctx
-InIDΒ5 = InIDΒ4 ▹ IMu InIDD IInID kInIDΒ4
-InIDΒ6 = InIDΒ5 ▹ El kInIDΒ5
-InIDΒ7 = InIDΒ6 ▹ El kInIDΒ6
-InIDΒ8 = InIDΒ7 ▹ El kInIDΒ7
+-- ★ the telescope: the family, the index, then each field
+--   read through the thinning that skips the family.
+TelInIDΒ0 : Ctx
+TelInIDΒ0 = Θ₀ IInID
+GInIDΒ0 : RTm ⌊ TelInIDΒ0 ⌋
+GInIDΒ0 = ⌜Nat⌝
+TelInIDΒ1 : Ctx
+TelInIDΒ1 = TelInIDΒ0 ▹ El GInIDΒ0
+GInIDΒ1 : RTm ⌊ TelInIDΒ1 ⌋
+GInIDΒ1 = ⌜Nat⌝
+TelInIDΒ2 : Ctx
+TelInIDΒ2 = TelInIDΒ1 ▹ El GInIDΒ1
+GInIDΒ2 : RTm ⌊ TelInIDΒ2 ⌋
+GInIDΒ2 = ⌜IMu⌝ KnotD IPair (pair sICon (num 1))
+TelInIDΒ3 : Ctx
+TelInIDΒ3 = TelInIDΒ2 ▹ El GInIDΒ2
+GInIDΒ3 : RTm ⌊ TelInIDΒ3 ⌋
+GInIDΒ3 = ⌜IMu⌝ KnotD IPair (pair sIDesc (var (vs (vs vz))))
+TelInIDΒ4 : Ctx
+TelInIDΒ4 = TelInIDΒ3 ▹ El GInIDΒ3
+GInIDΒ4 : RTm ⌊ TelInIDΒ4 ⌋
+GInIDΒ4 = pair (var (vs (vs (vs vz)))) (pair (var (vs (vs vz))) (var vz))
+TelInIDΒ5 : Ctx
+TelInIDΒ5 = TelInIDΒ4 ▹ El (app (var (vs (vs (vs (vs x₀))))) GInIDΒ4)
+GInIDΒ5 : RTm ⌊ TelInIDΒ5 ⌋
+GInIDΒ5 = ⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs (vs (vs (vs vz))))))) (var (vs (vs (vs (vs vz)))))
+TelInIDΒ6 : Ctx
+TelInIDΒ6 = TelInIDΒ5 ▹ El GInIDΒ5
+GInIDΒ6 : RTm ⌊ TelInIDΒ6 ⌋
+GInIDΒ6 = ⌜Id⌝ ⌜Nat⌝ (fst (snd (var (vs (vs (vs (vs (vs (vs vz))))))))) (jsub ⌜Nat⌝ (symN (fst (var (vs (vs (vs (vs (vs (vs vz)))))))) (var vz)) (nsuc (var (vs (vs (vs (vs vz)))))))
+TelInIDΒ7 : Ctx
+TelInIDΒ7 = TelInIDΒ6 ▹ El GInIDΒ6
+GInIDΒ7 : RTm ⌊ TelInIDΒ7 ⌋
+GInIDΒ7 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sIDesc (fst (var (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (snd (snd (var (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sIDesc (var vz))) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs vz))))))))) (var (vs vz))) (IDesc-consK (var (vs (vs (vs (vs vz))))) (var (vs (vs (vs vz))))))
+TelInIDΒ8 : Ctx
+TelInIDΒ8 = TelInIDΒ7 ▹ El GInIDΒ7
 
-aInIDΒ7 : InIDΒ7 ⊢ fst (var (vs (vs (vs (vs (vs (vs (vs vz)))))))) ∷ Nat
+aInIDΒ7 : TelInIDΒ7 ⊢ fst (var (vs (vs (vs (vs (vs (vs (vs vz)))))))) ∷ Nat
 aInIDΒ7 = ⊢fst (⊢var (∋lkp _ (vsⁿ 7 vz)))
-CInIDΒ7 : ICon ⌊ InIDΒ7 ⌋
+CInIDΒ7 : ICon XInIDΒ7
 CInIDΒ7 = iκ kInIDΒ7 iι
-W_InIDΒ7 : IConWf InIDD IInID InIDΒ7 CInIDΒ7
+W_InIDΒ7 : IConWf IInID TelInIDΒ7 (keep (keep (keep (keep (keep (keep (keep ρ₀))))))) (vs (vs (vs (vs (vs (vs (vs x₀))))))) CInIDΒ7
 W_InIDΒ7 =
   iwf-κ kInIDΒ7 (icw-ford _ _ _)
     (⊢⌜Id⌝ (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sIDesc aInIDΒ7))
@@ -151,11 +210,11 @@ W_InIDΒ7 =
                   (toMu (⊢IDesc-consKv (var (vs (vs (vs (vs (vs (vs vz))))))) (fromI (⊢var (∋lkp _ (vsⁿ 6 vz)))) (fromMu (⊢var (∋lkp _ (vsⁿ 4 vz)))) (fromMu (⊢var (∋lkp _ (vsⁿ 3 vz))))))))
     iwf-ι
 
-aInIDΒ6 : InIDΒ6 ⊢ fst (var (vs (vs (vs (vs (vs (vs vz))))))) ∷ Nat
+aInIDΒ6 : TelInIDΒ6 ⊢ fst (var (vs (vs (vs (vs (vs (vs vz))))))) ∷ Nat
 aInIDΒ6 = ⊢fst (⊢var (∋lkp _ (vsⁿ 6 vz)))
-CInIDΒ6 : ICon ⌊ InIDΒ6 ⌋
+CInIDΒ6 : ICon XInIDΒ6
 CInIDΒ6 = iκ kInIDΒ6 CInIDΒ7
-W_InIDΒ6 : IConWf InIDD IInID InIDΒ6 CInIDΒ6
+W_InIDΒ6 : IConWf IInID TelInIDΒ6 (keep (keep (keep (keep (keep (keep ρ₀)))))) (vs (vs (vs (vs (vs (vs x₀)))))) CInIDΒ6
 W_InIDΒ6 =
   iwf-κ kInIDΒ6 (icw-ford _ _ _)
     (⊢⌜Id⌝ ⊢⌜Nat⌝
@@ -168,9 +227,9 @@ W_InIDΒ6 =
                   (toI (⊢nsuc (fromI (⊢var (∋lkp _ (vsⁿ 4 vz))))))))
     W_InIDΒ7
 
-CInIDΒ5 : ICon ⌊ InIDΒ5 ⌋
+CInIDΒ5 : ICon XInIDΒ5
 CInIDΒ5 = iκ kInIDΒ5 CInIDΒ6
-W_InIDΒ5 : IConWf InIDD IInID InIDΒ5 CInIDΒ5
+W_InIDΒ5 : IConWf IInID TelInIDΒ5 (keep (keep (keep (keep (keep ρ₀))))) (vs (vs (vs (vs (vs x₀))))) CInIDΒ5
 W_InIDΒ5 =
   iwf-κ kInIDΒ5 (icw-ford _ _ _)
     (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (∋lkp _ (vsⁿ 5 vz))))) (toI (fromI (⊢var (∋lkp _ (vsⁿ 4 vz))))))
@@ -178,7 +237,7 @@ W_InIDΒ5 =
 
 CInIDΒ4 : ICon ⌊ InIDΒ4 ⌋
 CInIDΒ4 = iρ kInIDΒ4 CInIDΒ5
-W_InIDΒ4 : IConWf InIDD IInID InIDΒ4 CInIDΒ4
+W_InIDΒ4 : IConWf IInID TelInIDΒ4 (keep (keep (keep (keep ρ₀)))) (vs (vs (vs (vs x₀)))) CInIDΒ4
 W_InIDΒ4 =
   iwf-ρ kInIDΒ4
     (⊢pair (ty-Σ ty-Nat (ty-IMu KnotWf (⊢ixP ⊢sIDesc (⊢var (there here))))) (fromI (⊢var (∋lkp _ (vsⁿ 3 vz))))
@@ -187,7 +246,7 @@ W_InIDΒ4 =
 
 CInIDΒ3 : ICon ⌊ InIDΒ3 ⌋
 CInIDΒ3 = iκ kInIDΒ3 CInIDΒ4
-W_InIDΒ3 : IConWf InIDD IInID InIDΒ3 CInIDΒ3
+W_InIDΒ3 : IConWf IInID TelInIDΒ3 (keep (keep (keep ρ₀))) (vs (vs (vs x₀))) CInIDΒ3
 W_InIDΒ3 =
   iwf-κ kInIDΒ3 (icw-imu (pair sIDesc (var (vs (vs vz)))) KnotWf)
     (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sIDesc (fromI (⊢var (∋lkp _ (vsⁿ 2 vz))))))
@@ -195,7 +254,7 @@ W_InIDΒ3 =
 
 CInIDΒ2 : ICon ⌊ InIDΒ2 ⌋
 CInIDΒ2 = iκ kInIDΒ2 CInIDΒ3
-W_InIDΒ2 : IConWf InIDD IInID InIDΒ2 CInIDΒ2
+W_InIDΒ2 : IConWf IInID TelInIDΒ2 (keep (keep ρ₀)) (vs (vs x₀)) CInIDΒ2
 W_InIDΒ2 =
   iwf-κ kInIDΒ2 (icw-imu (pair sICon (num 1)) KnotWf)
     (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sICon (⊢num 1)))
@@ -203,19 +262,19 @@ W_InIDΒ2 =
 
 CInIDΒ1 : ICon ⌊ InIDΒ1 ⌋
 CInIDΒ1 = iκ kInIDΒ1 CInIDΒ2
-W_InIDΒ1 : IConWf InIDD IInID InIDΒ1 CInIDΒ1
+W_InIDΒ1 : IConWf IInID TelInIDΒ1 (keep ρ₀) (vs x₀) CInIDΒ1
 W_InIDΒ1 =
   iwf-κ kInIDΒ1 (icw-clo ⌜Nat⌝ ⊢⌜Nat⌝) ⊢⌜Nat⌝
     W_InIDΒ2
 
 CInIDΒ0 : ICon ⌊ InIDΒ0 ⌋
 CInIDΒ0 = iκ kInIDΒ0 CInIDΒ1
-W_InIDΒ0 : IConWf InIDD IInID InIDΒ0 CInIDΒ0
+W_InIDΒ0 : IConWf IInID TelInIDΒ0 (ρ₀) (x₀) CInIDΒ0
 W_InIDΒ0 =
   iwf-κ kInIDΒ0 (icw-clo ⌜Nat⌝ ⊢⌜Nat⌝) ⊢⌜Nat⌝
     W_InIDΒ1
 
-rdthereIDWf : IConWf InIDD IInID InIDΒ0 rdthereID
+rdthereIDWf : IConWf IInID (Θ₀ IInID) ρ₀ x₀ rdthereID
 rdthereIDWf = W_InIDΒ0
 
 ------------------------------------------------------------------------
@@ -223,6 +282,7 @@ rdthereIDWf = W_InIDΒ0
 ------------------------------------------------------------------------
 InIDWf : IDescWf IInID InIDD
 InIDWf =
-  idwf-cons (rdhereIDWf InIDD)
+  (ty-Σ ty-Nat (ty-Σ ty-Nat (ty-IMu KnotWf (⊢ixP ⊢sIDesc (⊢var (there here)))))) ,,
+  idwf-cons rdhereIDWf
    (idwf-cons rdthereIDWf
     idwf-nil)

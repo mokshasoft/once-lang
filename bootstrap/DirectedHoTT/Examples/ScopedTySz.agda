@@ -21,6 +21,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.ScopedTySz where
+open import DirectedHoTT.Spec.Typing using ( IDescWf-cons )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; RTy; RTm; Nat; El; ielim )
@@ -35,7 +36,7 @@ szMethsTmTy : {Γ : Cx} → RTm Γ
 szMethsTmTy = szMeths TmD
 
 ⊢szMethsTmTy : {Γ : Ctx} → Γ ⊢ szMethsTmTy ∷ imethsTy TmD I Nat TmD
-⊢szMethsTmTy = ⊢szMeths TmD I zero TmD TmWf TmWf spl-nil (ty-El ⊢⌜I⌝)
+⊢szMethsTmTy = ⊢szMeths TmD I zero TmD TmWf (IDescWf-cons TmWf) spl-nil (ty-El ⊢⌜I⌝)
 
 -- ★ `size` for the TYPE-INDEXED λ-calculus, from the SAME library that
 --   does the 53-constructor knot and the depth-indexed twin.

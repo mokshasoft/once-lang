@@ -31,6 +31,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Knot.PayTy where
+open import DirectedHoTT.Spec.Typing using ( IDescWf-cons )
 open import DirectedHoTT.Lib.Lkp using ( ∋lkp; vsⁿ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
@@ -41,7 +42,7 @@ open import DirectedHoTT.Spec.Typing
   using ( Ctx; ◇; _▹_; ⌊_⌋; _⊢_∷_; _⊢ty_; ⊢var; here; there
         ; ⊢snd; ⊢lam; ty-Π; ty-IMu; IConWf; imethTy
         ; ⊢app; ⊢fst; ⊢unit; imethsTy; imethsTyFrom; IDescWfFrom; ⊢ielim
-        ; ξ-pairʳ; βsnd; done; step; single; wk-single )
+        ; ξ-pairʳ; βsnd; done; step; single; wk-single ; Θ₀; ρ₀; x₀ )
 open import DirectedHoTT.Lib.Wk using ( sub-w-single )
 open import DirectedHoTT.Metatheory.TySub using ( ⊢-cast )
 open import normalizer.Syntax.Types using ( cong; trans; sym )
@@ -89,7 +90,7 @@ payTyJunk : {Γ : Cx} → RTm Γ
 payTyJunk = lam (lam (lam (lam Ty-UnitK)))
 
 ⊢payTyJunk : {Γ : Ctx} (k : ℕ) (C : ICon (ε ∙)) →
-             IConWf KnotD IPair (◇ ▹ εwkTy IPair) C →
+             IConWf IPair (Θ₀ IPair) ρ₀ x₀ C →
              Γ ⊢ payTyJunk ∷ imethTy KnotD IPair k C payTyMotK
 ⊢payTyJunk k C wC =
   ⊢methLam KnotD IPair k C KnotWf wC ⊢IPair ⊢payTyMotK
@@ -197,11 +198,11 @@ D44' = cDCon-rho ◂ D45'
 spl44 : Split KnotD 44 D44'
 spl44 = splTake spl-nil (cdTake 44 KnotD)
 
-wf45 : IDescWfFrom KnotD IPair D45'
-wf45 = idwfDrop (spl-step spl44) KnotWf
+wf45 : IDescWfFrom IPair D45'
+wf45 = idwfDrop (spl-step spl44) (IDescWf-cons KnotWf)
 
-wf46 : IDescWfFrom KnotD IPair D46
-wf46 = idwfDrop (spl-step (spl-step spl44)) KnotWf
+wf46 : IDescWfFrom IPair D46
+wf46 = idwfDrop (spl-step (spl-step spl44)) (IDescWf-cons KnotWf)
 
 -- ★ the last seven rows, all junk.
 payTyTail : {Γ : Cx} → RTm Γ
@@ -241,7 +242,7 @@ payTyMethsK = methsFrom (cdTake 44 KnotD) payTyJunk payTyMid44
 ⊢payTyMethsK : {Γ : Ctx} →
                Γ ⊢ payTyMethsK ∷ imethsTy KnotD IPair payTyMotK KnotD
 ⊢payTyMethsK =
-  ⊢methsFrom KnotD IPair 0 (cdTake 44 KnotD) KnotWf KnotWf spl-nil
+  ⊢methsFrom KnotD IPair 0 (cdTake 44 KnotD) KnotWf (IDescWf-cons KnotWf) spl-nil
              ⊢IPair ⊢payTyMotK (λ {k} {C} wC _ _ → ⊢payTyJunk k C wC)
              payTyMid44 ⊢payTyMid44
 

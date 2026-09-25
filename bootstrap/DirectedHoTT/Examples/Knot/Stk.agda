@@ -23,6 +23,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Knot.Stk where
+open import DirectedHoTT.Spec.Typing using ( IDescWf-cons )
 open import DirectedHoTT.Lib.Lkp using ( ∋lkp; vsⁿ )
 open import normalizer.Syntax.Types using ( _≡_; refl; subst )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
@@ -32,7 +33,7 @@ open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing
   using ( Ctx; ◇; _▹_; ⌊_⌋; _⊢_∷_; ⊢nzero; ⊢nsuc; ty-Nat; IConWf; imethTy
         ; imethsTyFrom; IDescWfFrom; imethsTy; ⊢unit; ⊢ielim
-        ; ⊢var; here; there; ⊢fst; ⊢snd )
+        ; ⊢var; here; there; ⊢fst; ⊢snd ; Θ₀; ρ₀; x₀ )
 open import DirectedHoTT.Lib.IPay
   using ( ⊢methLam; ⊢methsFrom; ⊢methsCons; imethsTyFrom-wf; idwfDrop
         ; splTake; Split; spl-nil; spl-step )
@@ -80,7 +81,7 @@ stkOne : {Γ : Cx} → RTm Γ
 stkOne = lam (lam (lam (nsuc nzero)))
 
 ⊢stkOne : {Γ : Ctx} (k : ℕ) (C : ICon (ε ∙)) →
-          IConWf KnotD IPair (◇ ▹ εwkTy IPair) C →
+          IConWf IPair (Θ₀ IPair) ρ₀ x₀ C →
           Γ ⊢ stkOne ∷ imethTy KnotD IPair k C Nat
 ⊢stkOne k C wC =
   ⊢methLam KnotD IPair k C KnotWf wC ⊢IPair ty-Nat (⊢nsuc ⊢nzero)
@@ -131,8 +132,8 @@ sp38 = spl-step sp37
 sp41 : Split KnotD 41 D41
 sp41 = splTake spl-nil (cdTake 41 KnotD)
 
-wf : {E : IDesc} {j : ℕ} → Split KnotD j E → IDescWfFrom KnotD IPair E
-wf sp = idwfDrop sp KnotWf
+wf : {E : IDesc} {j : ℕ} → Split KnotD j E → IDescWfFrom IPair E
+wf sp = idwfDrop sp (IDescWf-cons KnotWf)
 
 -- ⚠ `C` IS EXPLICIT.  `imethTy` is a DEFINED function and not injective,
 --   so unifying `imethTy … j _C Nat` against a method's concrete type
@@ -150,7 +151,7 @@ cons j C E sp = ⊢methsCons KnotD IPair j {C = C} E KnotWf (wf sp) sp ⊢IPair 
 --   determined because the explicit one shadows it in the type.
 run : {Γ : Ctx} (j : ℕ) (n : ℕ) (E : IDesc) {m : RTm ⌊ Γ ⌋} →
       Split KnotD j E →
-      ({k : ℕ} {C : ICon (ε ∙)} → IConWf KnotD IPair (◇ ▹ εwkTy IPair) C →
+      ({k : ℕ} {C : ICon (ε ∙)} → IConWf IPair (Θ₀ IPair) ρ₀ x₀ C →
          k ∈ID KnotD → ilookupD KnotD k ≡ C → Γ ⊢ m ∷ imethTy KnotD IPair k C Nat) →
       (tl : RTm ⌊ Γ ⌋) →
       Γ ⊢ tl ∷ imethsTyFrom KnotD IPair Nat (cdPos (cdTake n E) j) (cdRest (cdTake n E)) →

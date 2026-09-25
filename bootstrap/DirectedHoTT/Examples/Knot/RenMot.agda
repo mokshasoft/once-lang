@@ -38,6 +38,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Knot.RenMot where
+open import DirectedHoTT.Spec.Typing using ( IDescWf-cons )
 open import DirectedHoTT.Lib.Lkp using ( ∋lkp; vsⁿ )
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
@@ -52,7 +53,7 @@ open import DirectedHoTT.Spec.Typing
         ; IConWf; imethTy; imethsTyFrom; ty-Σ; βsnd; βfst; ξ-pairʳ; ξ-pairˡ; ξ-nsuc; single
         ; _⟶*_; done; step; natrec-suc; natrec-zero; csymᵀ; iinst; iihTy
         ; ⊢app; ⊢jsub; ⊢fst; ⊢conv; ⊢⌜IMu⌝; ⊢⌜Id⌝; ⊢⌜Nat⌝; ty-El; ⊢ielim; imethsTy
-        ; IDescWfFrom; idwf-nil; idwf-cons )
+        ; IDescWfFrom; idwf-nil; idwf-cons ; Θ₀; ρ₀; x₀ )
 open import DirectedHoTT.Lib.Wk using ( wk-singleTy; w; sub-w; ren-w; sub-w-single; towerA; towerJ )
 open import DirectedHoTT.Lib.IMeths using ( CDesc; cd-stop; cd-cons; cdRest; cdPos; cdTake; methsFrom-sub )
 open import DirectedHoTT.Lib.IFold using ( eqℕ )
@@ -75,7 +76,7 @@ open import DirectedHoTT.Lib.IdSuc using ( predN; ⊢fordPredN )
 open import DirectedHoTT.Lib.ICast
   using ( muFwd; muBwd*; fordAs; toMu; fromMu; ⟶*-castᵣ; ⟶*-castₗ )
 open import DirectedHoTT.Metatheory.TySub
-  using ( ⊢-cast; isingle-Sub⊢; iihTy-wf; ren-ty; ⊢wk; iihTy-ren; iihTy-cong )
+  using ( ⊢-cast; isingle-Sub⊢; xenv₀; iihTy-wf; ren-ty; ⊢wk; iihTy-ren; iihTy-cong )
 open import DirectedHoTT.Lib.IPay using ( ipayTy-wf; ⊢methLam )
 open import DirectedHoTT.Examples.Knot.Tags
   using ( memTm-nzero; memTm-var; memVar-vz; tagVar-vz; tagVar-vs; tagTm-var )
@@ -149,7 +150,7 @@ constMethR : {Γ : Cx} → RTm Γ
 constMethR = lam (lam (lam (lam (lam (Var-vzK (var (vs vz)))))))
 
 ⊢constMethR : {Γ : Ctx} (k : ℕ) (C : ICon (ε ∙)) →
-              IConWf KnotD IPair (◇ ▹ εwkTy IPair) C →
+              IConWf IPair (Θ₀ IPair) ρ₀ x₀ C →
               Γ ⊢ constMethR ∷ imethTy KnotD IPair k C extRMotK
 ⊢constMethR k C wC =
   ⊢methLam KnotD IPair k C KnotWf wC ⊢IPair ⊢extRMotK
@@ -185,10 +186,10 @@ extRVs =
   ⊢lam ⊢IPair
     (⊢lam (ipayTy-wf {Γ = Γ ▹ εwkTy IPair} KnotD IPair (isingle (var vz)) cVar-vs
                      KnotWf cVar-vsWf
-                     (isingle-Sub⊢ (⊢-cast (εwk-ren vs IPair) (⊢var here))))
+                     (xenv₀ KnotWf (⊢-cast (εwk-ren vs IPair) (⊢var here))))
       (⊢lam (iihTy-wf {Γ = (Γ ▹ εwkTy IPair) ▹ ipayTy KnotD IPair (isingle (var vz)) cVar-vs}
                       KnotD IPair extRMotK (isingle (var (vs vz))) cVar-vs (var vz) cVar-vsWf
-                      (isingle-Sub⊢ (⊢-cast (trans (cong (renTy vs) (εwk-ren vs IPair))
+                      (xenv₀ KnotWf (⊢-cast (trans (cong (renTy vs) (εwk-ren vs IPair))
                                                    (εwk-ren vs IPair))
                                             (⊢var (there here))))
                       ⊢extRMotK
@@ -248,7 +249,7 @@ extRTail = pair extRVs unit
             Γ ⊢ extRTail ∷ imethsTyFrom KnotD IPair extRMotK 52 RD52
 ⊢extRTail =
   ⊢methsCons KnotD IPair 52 {C = cVar-vs} inil KnotWf
-             (idwfDrop (spl-step rspl52) KnotWf) (spl-step rspl52)
+             (idwfDrop (spl-step rspl52) (IDescWf-cons KnotWf)) (spl-step rspl52)
              ⊢IPair ⊢extRMotK ⊢extRVs ⊢unit
 
 extRMethsK : {Γ : Cx} → RTm Γ
@@ -257,7 +258,7 @@ extRMethsK = methsFrom (cdTake 52 KnotD) constMethR extRTail
 ⊢extRMethsK : {Γ : Ctx} →
               Γ ⊢ extRMethsK ∷ imethsTy KnotD IPair extRMotK KnotD
 ⊢extRMethsK =
-  ⊢methsFrom KnotD IPair 0 (cdTake 52 KnotD) KnotWf KnotWf spl-nil
+  ⊢methsFrom KnotD IPair 0 (cdTake 52 KnotD) KnotWf (IDescWf-cons KnotWf) spl-nil
              ⊢IPair ⊢extRMotK (λ {k} {C} wC _ _ → ⊢constMethR k C wC)
              extRTail ⊢extRTail
 

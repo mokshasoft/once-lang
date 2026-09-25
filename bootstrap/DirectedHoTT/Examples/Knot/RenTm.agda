@@ -43,6 +43,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Knot.RenTm where
+open import DirectedHoTT.Spec.Typing using ( IDescWf-cons )
 open import DirectedHoTT.Lib.Lkp using ( ∋lkp; vsⁿ )
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
@@ -59,7 +60,7 @@ open import DirectedHoTT.Spec.Typing
         ; IConWf; imethTy; imethsTyFrom; ty-Σ; βsnd; βfst; ξ-pairʳ; ξ-pairˡ; ξ-nsuc; single
         ; _⟶*_; done; step; natrec-suc; natrec-zero; csymᵀ; iinst; iihTy
         ; ⊢app; ⊢jsub; ⊢fst; ⊢conv; ⊢⌜IMu⌝; ⊢⌜Id⌝; ⊢⌜Nat⌝; ty-El; ⊢ielim; imethsTy
-        ; IDescWfFrom; idwf-nil; idwf-cons )
+        ; IDescWfFrom; idwf-nil; idwf-cons ; Θ₀; ρ₀; x₀ )
 open import DirectedHoTT.Lib.Wk using ( wk-singleTy; w; sub-w; ren-w; sub-w-single; towerA; towerJ )
 open import DirectedHoTT.Lib.IMeths using ( CDesc; cd-stop; cd-cons; cdRest; cdPos; cdTake )
 open import DirectedHoTT.Lib.IFold using ( eqℕ )
@@ -82,7 +83,7 @@ open import DirectedHoTT.Lib.IdSuc using ( predN; ⊢fordPredN )
 open import DirectedHoTT.Lib.ICast
   using ( muFwd; muBwd*; fordAs; toMu; fromMu; ⟶*-castᵣ; ⟶*-castₗ )
 open import DirectedHoTT.Metatheory.TySub
-  using ( ⊢-cast; isingle-Sub⊢; iihTy-wf; ren-ty; ⊢wk; iihTy-ren; iihTy-cong )
+  using ( ⊢-cast; isingle-Sub⊢; xenv₀; iihTy-wf; ren-ty; ⊢wk; iihTy-ren; iihTy-cong )
 open import DirectedHoTT.Lib.IPay using ( ipayTy-wf; ⊢methLam )
 open import DirectedHoTT.Examples.Knot.Tags
   using ( memTm-nzero; memTm-var; memVar-vz; tagVar-vz; tagVar-vs; tagTm-var )
@@ -370,17 +371,17 @@ ihRenR v q C M =
                     (λ { vz → refl ; (vs ()) }))
 
 ⊢isubMethodR : {Γ : Ctx} (k : ℕ) {C : ICon (ε ∙)}
-               (w : SubCon vz C) → IConWf KnotD IPair (◇ ▹ εwkTy IPair) C →
+               (w : SubCon vz C) → IConWf IPair (Θ₀ IPair) ρ₀ x₀ C →
                k ∈ID KnotD → ilookupD KnotD k ≡ C →
                Γ ⊢ isubMethod k w ∷ imethTy KnotD IPair k C renMotK
 ⊢isubMethodR {Γ = Γ} k {C = C} w wC mem look =
   ⊢lam ⊢IPair
     (⊢lam (ipayTy-wf {Γ = Γ ▹ εwkTy IPair} KnotD IPair (isingle (var vz)) C
                      KnotWf wC
-                     (isingle-Sub⊢ (⊢-cast (εwk-ren vs IPair) (⊢var here))))
+                     (xenv₀ KnotWf (⊢-cast (εwk-ren vs IPair) (⊢var here))))
       (⊢lam (iihTy-wf {Γ = (Γ ▹ εwkTy IPair) ▹ ipayTy KnotD IPair (isingle (var vz)) C}
                       KnotD IPair renMotK (isingle (var (vs vz))) C (var vz) wC
-                      (isingle-Sub⊢ (⊢-cast (trans (cong (renTy vs) (εwk-ren vs IPair))
+                      (xenv₀ KnotWf (⊢-cast (trans (cong (renTy vs) (εwk-ren vs IPair))
                                                    (εwk-ren vs IPair))
                                             (⊢var (there here))))
                       ⊢renMotK
@@ -396,8 +397,8 @@ ihRenR v q C M =
                                                    (var (vs vz)))))
                                  (sym look))
                      (⊢isubPay w wC KnotWf
-                       (isingle-Sub⊢ (⊢var (∋lkp _ (vsⁿ 4 vz))))
-                       (isingle-Sub⊢ (⊢ixP ((⊢fst (⊢var (∋lkp _ (vsⁿ 4 vz)))))
+                       (xenv₀ KnotWf (⊢var (∋lkp _ (vsⁿ 4 vz))))
+                       (xenv₀ KnotWf (⊢ixP ((⊢fst (⊢var (∋lkp _ (vsⁿ 4 vz)))))
                                            (⊢var (there here))))
                        refl (step (βfst _ _) done) refl (step (βsnd _ _) done)
                        (⊢fst (⊢var (∋lkp _ (vsⁿ 4 vz)))) (⊢snd (⊢var (∋lkp _ (vsⁿ 4 vz)))) (⊢var (there here))
@@ -428,16 +429,16 @@ ihRenR v q C M =
 -- ★ the method TYPE's well-formedness, `Knot/SubMot`'s with the motive
 --   swapped and `⊢sortMap` gone from the result index.
 imethTySubR-wf : {Γ : Ctx} (k : ℕ) (C : ICon (ε ∙)) →
-                 IConWf KnotD IPair (◇ ▹ εwkTy IPair) C →
+                 IConWf IPair (Θ₀ IPair) ρ₀ x₀ C →
                  Γ ⊢ty imethTy KnotD IPair k C renMotK
 imethTySubR-wf {Γ = Γ} k C wC =
   ty-Π ⊢IPair
     (ty-Π (ipayTy-wf {Γ = Γ ▹ εwkTy IPair} KnotD IPair (isingle (var vz)) C
                      KnotWf wC
-                     (isingle-Sub⊢ (⊢-cast (εwk-ren vs IPair) (⊢var here))))
+                     (xenv₀ KnotWf (⊢-cast (εwk-ren vs IPair) (⊢var here))))
       (ty-Π (iihTy-wf {Γ = (Γ ▹ εwkTy IPair) ▹ ipayTy KnotD IPair (isingle (var vz)) C}
                       KnotD IPair renMotK (isingle (var (vs vz))) C (var vz) wC
-                      (isingle-Sub⊢ (⊢-cast (trans (cong (renTy vs) (εwk-ren vs IPair))
+                      (xenv₀ KnotWf (⊢-cast (trans (cong (renTy vs) (εwk-ren vs IPair))
                                                    (εwk-ren vs IPair))
                                             (⊢var (there here))))
                       ⊢renMotK
@@ -449,7 +450,7 @@ imethTySubR-wf {Γ = Γ} k C wC =
                        (⊢ixP (⊢fst (⊢var (∋lkp _ (vsⁿ 4 vz)))) (⊢var (there here))))))))
 
 imethsTyFromSubR-wf : {Γ : Ctx} (j : ℕ) (E : IDesc) →
-                      IDescWfFrom KnotD IPair E →
+                      IDescWfFrom IPair E →
                       Γ ⊢ty imethsTyFrom KnotD IPair renMotK j E
 imethsTyFromSubR-wf j inil    idwf-nil          = ty-Unit
 imethsTyFromSubR-wf j (C ◂ E) (idwf-cons wC wE) =
@@ -473,7 +474,7 @@ GiveOK Γ give j (sd-give {C = C} W) =
   Pr (Γ ⊢ give j ∷ imethTy KnotD IPair j C renMotK) (GiveOK Γ give (suc j) W)
 
 ⊢isubMethsR : {Γ : Ctx} {j : ℕ} {E : IDesc} {give : (k : ℕ) → RTm ⌊ Γ ⌋}
-              (W : SubDesc E) → Split KnotD j E → IDescWfFrom KnotD IPair E →
+              (W : SubDesc E) → Split KnotD j E → IDescWfFrom IPair E →
               GiveOK Γ give j W →
               Γ ⊢ isubMeths give j W ∷ imethsTyFrom KnotD IPair renMotK j E
 ⊢isubMethsR sd-nil        sp idwf-nil          okg      = ⊢unit
@@ -506,7 +507,7 @@ renMethsK : {Γ : Cx} → RTm Γ
 renMethsK = isubMeths renGiveK 0 renDescK
 
 ⊢renMethsK : {Γ : Ctx} → Γ ⊢ renMethsK ∷ imethsTy KnotD IPair renMotK KnotD
-⊢renMethsK = ⊢isubMethsR {give = renGiveK} renDescK spl-nil KnotWf renGiveOKK
+⊢renMethsK = ⊢isubMethsR {give = renGiveK} renDescK spl-nil (IDescWf-cons KnotWf) renGiveOKK
 
 ------------------------------------------------------------------------
 -- ★★★ `renTm ρ`, AT LAST — AND `ρ` IS AN ARGUMENT.

@@ -16,6 +16,8 @@
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Knot.TyRedRows where
 open import normalizer.Syntax.Types using ( _≡_; refl )
+open import DirectedHoTT.Spec.Typing using ( Θ₀; ρ₀; x₀; _,,_ )
+open import DirectedHoTT.Spec.Syntax using ( thinR; keep; app; renTm )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; RTy; RTm; var; vz; vs; pair; fst; snd; nsuc; nzero
@@ -52,7 +54,7 @@ open import DirectedHoTT.Examples.Knot.Stk
 open import DirectedHoTT.Examples.Knot.Nrs using ( nrsSubK; ⊢nrsSubK )
 open import DirectedHoTT.Examples.Knot.PwBody using ( pwBodyK; ⊢pwBodyK )
 open import DirectedHoTT.Examples.Knot.RedRows using ( RedD; IRed )
-open import DirectedHoTT.Examples.Knot.RedWfB using ( RedWf )
+open import DirectedHoTT.Examples.Knot.RedWf using ( RedWf )
 
 ITyRed : RTy ε
 ITyRed = Σ' Nat (Σ' (IMu KnotD IPair (pair sTy (var vz)))

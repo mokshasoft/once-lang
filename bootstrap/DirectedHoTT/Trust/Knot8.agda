@@ -24,23 +24,20 @@
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Trust.Knot8 where
 
-import DirectedHoTT.Examples.Knot.SubApp
-import DirectedHoTT.Examples.Knot.SubClosed
-import DirectedHoTT.Examples.Knot.SubExt
-import DirectedHoTT.Examples.Knot.SubMot
-import DirectedHoTT.Examples.Knot.SubNat
-import DirectedHoTT.Examples.Knot.SubRed
-import DirectedHoTT.Examples.Knot.SubSpec
 import DirectedHoTT.Examples.Knot.Sz
 import DirectedHoTT.Examples.Knot.SzAgree
 import DirectedHoTT.Examples.Knot.SzProbe
 import DirectedHoTT.Examples.Knot.SzS
 import DirectedHoTT.Examples.Knot.Tags
 import DirectedHoTT.Examples.Knot.Terms
+import DirectedHoTT.Examples.Knot.ThinD
+import DirectedHoTT.Examples.Knot.ThinRen
 import DirectedHoTT.Examples.Knot.TyAgree
 import DirectedHoTT.Examples.Knot.TyRedRows
 import DirectedHoTT.Examples.Knot.TyRedWf
 import DirectedHoTT.Examples.Knot.Wf
+import DirectedHoTT.Examples.Knot.WfTm
+import DirectedHoTT.Examples.Knot.WfTy
 import DirectedHoTT.Examples.Knot.Wk
 import DirectedHoTT.Examples.Knot.WkProbe
 import DirectedHoTT.Examples.Knot.WkRows

@@ -11,7 +11,7 @@ open import normalizer.Syntax.Types
   using ( _≡_; refl; sym; trans; cong; cong₂; subst; Σ; _,_; _×_; ⊥; ⊥-elim )
 
 open import DirectedHoTT.Spec.Syntax
-  using ( Cx; ε; _∙; Var; vz; vs
+  using ( Cx; ε; _∙; Var; Thin; keep; thinR; vz; vs
         ; RTy; base; U; Π; Σ'; El; Hom; Id; Hom-cong₃; Id-cong₃; ⌜Hom⌝-cong₃; tr-cong₃; ap-cong₃; ⌜Id⌝-cong₃; jsub-cong₃
         ; RTm; var; lam; app; pair; fst; snd; absurd; ordtr; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝; ⌜Hom⌝; hrefl; tr; ap
         ; ⌜Id⌝; idrefl; jsub
@@ -201,7 +201,7 @@ iκW : {Θ : Cx} {κ : RTm Θ} → ICodeWf κ → Var Ξ →
 -- ⚠ A-MATH: neither mentions a description — the telescope is typed
 --   against the abstract family, so its interp is the fixed point's
 --   business only where the fixed point is tied (`IMuMem`).
-interpIK : {I : RTy ε} {Δ : Cx} {Θ : Ctx} {ρ : Ren Δ ⌊ Θ ⌋} {x : Var ⌊ Θ ⌋} {C : ICon Δ} →
+interpIK : {I : RTy ε} {Δ : Cx} {Θ : Ctx} {ρ : Thin Δ ⌊ Θ ⌋} {x : Var ⌊ Θ ⌋} {C : ICon Δ} →
            IConWf I Θ ρ x C → Var Ξ → IKInterp Ξ C
 interpID : {E : IDesc} {I : RTy ε} →
            IDescWfFrom I E → Var Ξ → IDInterp Ξ E
@@ -767,10 +767,10 @@ fund {Ξ = Ξ} {σ = σ} (⊢ielim {D = D} {I = I} {M = M} {i = i} {ms = ms} {t 
     -- ★ A-MATH: two environments, as in `iihTy-wf` — `σt` over the
     --   telescope (with the family at `x`, instantiated at the fixed
     --   point) and `τ` over the X-free scope the payload is computed in.
-    iihsSem : {Θ : Ctx} {Δ : Cx} {ρt : Ren Δ ⌊ Θ ⌋} {x : Var ⌊ Θ ⌋} {C : ICon Δ}
+    iihsSem : {Θ : Ctx} {Δ : Cx} {ρt : Thin Δ ⌊ Θ ⌋} {x : Var ⌊ Θ ⌋} {C : ICon Δ}
               (wC : IConWf I Θ ρt x C)
               (σt : Sub ⌊ Θ ⌋ Ξ) → Θ ⊩ˢ σt → σt x ≡ Xinst D I →
-              (τ : Sub Δ Ξ) → (∀ y → σt (ρt y) ≡ τ y) → (p : RTm Ξ) →
+              (τ : Sub Δ Ξ) → (∀ y → σt (thinR ρt y) ≡ τ y) → (p : RTm Ξ) →
               ILift C (ikpredsOf (interpIK wC x₀))
                     (IMuMem D I (ipredsOf idi)) τ p →
               Rel (iihTy D I τ C p MI) (iihs D msI τ C p)
@@ -848,7 +848,7 @@ fund {Ξ = Ξ} {σ = σ} (⊢ielim {D = D} {I = I} {M = M} {i = i} {ms = ms} {t 
       ( ⊩₁Σ doneᵀ ⊩F ⊩G , sem-pair doneᵀ ⊩F ⊩G snA snB rA rB )
       where
         jτ  = subTm τ jt
-        ej : subTm σt (renTm ρt jt) ≡ jτ
+        ej : subTm σt (renTm (thinR ρt) jt) ≡ jτ
         ej  = trans (subTm-renTm jt) (subTm-cong hτ jt)
         hjτ = toI jτ (relCast refl ej (fund djt x₀ hσ))
 
@@ -856,11 +856,11 @@ fund {Ξ = Ξ} {σ = σ} (⊢ielim {D = D} {I = I} {M = M} {i = i} {ms = ms} {t 
         hf = (sf , mf)
 
         -- the head, re-read at the FAMILY the telescope names.
-        hX : Rel (subTy σt (El (app (var x) (renTm ρt jt)))) (fst p)
+        hX : Rel (subTy σt (El (app (var x) (renTm (thinR ρt) jt)))) (fst p)
         hX = relTy (cong₂ (λ a b → El (app a b)) (sym eX) (sym ej))
                    (relRec D I idi jτ (fst p) hf)
 
-        hτ' : ∀ y → iext σt (fst p) (extR ρt y) ≡ iext τ (fst p) y
+        hτ' : ∀ y → iext σt (fst p) (thinR (keep ρt) y) ≡ iext τ (fst p) y
         hτ' vz     = refl
         hτ' (vs y) = hτ y
 
@@ -897,10 +897,10 @@ fund {Ξ = Ξ} {σ = σ} (⊢ielim {D = D} {I = I} {M = M} {i = i} {ms = ms} {t 
       iihsSem wC (iext σt (fst p)) (⊩ˢ-iext hσ (dfst hK) (fst p) (dsnd hK))
               eX (iext τ (fst p)) hτ' (snd p) rest
       where
-        hK : Rel (subTy σt (El (renTm ρt κ))) (fst p)
+        hK : Rel (subTy σt (El (renTm (thinR ρt) κ))) (fst p)
         hK = relTy (cong El (sym (trans (subTm-renTm κ) (subTm-cong hτ κ))))
                    (emb (iκW ok x₀ τ) , projl (emb-coh (iκW ok x₀ τ)) (fst p) q)
-        hτ' : ∀ y → iext σt (fst p) (extR ρt y) ≡ iext τ (fst p) y
+        hτ' : ∀ y → iext σt (fst p) (thinR (keep ρt) y) ≡ iext τ (fst p) y
         hτ' vz     = refl
         hτ' (vs y) = hτ y
 

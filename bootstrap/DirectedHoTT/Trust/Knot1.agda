@@ -48,3 +48,5 @@ import DirectedHoTT.Examples.Knot.ILookupD
 import DirectedHoTT.Examples.Knot.ILookupDAgree
 import DirectedHoTT.Examples.Knot.IMethTy
 import DirectedHoTT.Examples.Knot.IMethsTy
+import DirectedHoTT.Examples.Knot.IMethsTyMot
+import DirectedHoTT.Examples.Knot.IPayTy

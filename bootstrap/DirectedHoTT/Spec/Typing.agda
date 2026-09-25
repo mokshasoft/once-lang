@@ -40,7 +40,7 @@ open import DirectedHoTT.Spec.Syntax
         ; pair; fst; snd; absurd; ordtr; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝; ⌜Hom⌝; hrefl; tr; ap
         ; Id; ⌜Id⌝; idrefl; jsub
         ; Unit; Nat; unit; nzero; nsuc; natrec; extS; ⌜Nat⌝; ⌜Unit⌝; ⌜Mu⌝
-        ; Ren; extR; Sub; subTy; subTm; renTy; renTm
+        ; Ren; extR; Thin; done; keep; drop; thinR; Sub; subTy; subTm; renTy; renTm
         ; Desc; Mu; con; elim; lookupD; sel; fields
         ; payTy; payTy-ren; payTy-sub; εwkTy; εwk-ren; εwk-sub; _∈D_; hereD; thereD; DCon; dι; dρ; dκ; dnil; _◃_; ihs; subTy-subTy; subTy-cong; renTy-subTy
         ; subTm-renTm; subTm-id
@@ -688,7 +688,7 @@ data DescWf : Desc → Set
 --   well-formed); a certifying CHECKER cannot — proving the context
 --   well-formed needed `IDescWf D`, the thing being checked.  The model
 --   (`ILift`) was already this functor at an abstract predicate.
-data IConWf     : RTy ε → {Δ : Cx} (Θ : Ctx) → Ren Δ ⌊ Θ ⌋ → Var ⌊ Θ ⌋ → ICon Δ → Set
+data IConWf     : RTy ε → {Δ : Cx} (Θ : Ctx) → Thin Δ ⌊ Θ ⌋ → Var ⌊ Θ ⌋ → ICon Δ → Set
 data IDescWfFrom : RTy ε → IDesc → Set
 -- ★★★ PLAN-INDEXED §10 — WHICH κ CODES THE MODEL CAN INTERPRET.
 --
@@ -737,12 +737,15 @@ IDescWf-cons (_ ,, wE) = wE
 
 -- ★ the ROOT of every constructor telescope: the abstract family
 --   `X : Π I U`, then the ambient index.  `ρ₀` embeds the constructor's
---   scope (just the index); `x₀` is where `X` lives.
+--   scope (just the index) as a THINNING that skips `X`; `x₀` is where
+--   `X` lives.
 Θ₀ : RTy ε → Ctx
 Θ₀ I = (◇ ▹ Π (εwkTy I) U) ▹ εwkTy I
 
-ρ₀ : Ren (ε ∙) ((ε ∙) ∙)
-ρ₀ vz = vz
+-- ⚠ KEEP the index, DROP the family: the family is the telescope's
+--   BOTTOM variable, so it is the thinning's innermost step.
+ρ₀ : Thin (ε ∙) ((ε ∙) ∙)
+ρ₀ = keep (drop done)
 
 x₀ : Var ((ε ∙) ∙)
 x₀ = vs vz
@@ -1013,26 +1016,26 @@ data DescWf where
 --   on the index type.  For a SYNTAX that is `lam (var vz)` (a field at the
 --   ambient index) or `lam (nsuc (var vz))` (one under a binder).
 data IConWf where
-  iwf-ι : {I : RTy ε} {Δ : Cx} {Θ : Ctx} {ρ : Ren Δ ⌊ Θ ⌋} {x : Var ⌊ Θ ⌋} →
+  iwf-ι : {I : RTy ε} {Δ : Cx} {Θ : Ctx} {ρ : Thin Δ ⌊ Θ ⌋} {x : Var ⌊ Θ ⌋} →
           IConWf I Θ ρ x iι
   -- ★ a RECURSIVE field: its index `j` is any well-typed index term IN THE
   --   TELESCOPE SO FAR (§9.2: a later field may name it), and the tail
   --   sees it bound at the ABSTRACT FAMILY `X j` — not the fixed point.
-  iwf-ρ : {I : RTy ε} {Δ : Cx} {Θ : Ctx} {ρ : Ren Δ ⌊ Θ ⌋} {x : Var ⌊ Θ ⌋}
+  iwf-ρ : {I : RTy ε} {Δ : Cx} {Θ : Ctx} {ρ : Thin Δ ⌊ Θ ⌋} {x : Var ⌊ Θ ⌋}
           {C : ICon (Δ ∙)} (j : RTm Δ) →
-          Θ ⊢ renTm ρ j ∷ εwkTy I →
-          IConWf I (Θ ▹ El (app (var x) (renTm ρ j))) (extR ρ) (vs x) C →
+          Θ ⊢ renTm (thinR ρ) j ∷ εwkTy I →
+          IConWf I (Θ ▹ El (app (var x) (renTm (thinR ρ) j))) (keep ρ) (vs x) C →
           IConWf I Θ ρ x (iρ j C)
   -- ★ a NON-RECURSIVE field: a CODE in the telescope, decoded by `El`.
   --   A FORDING constraint is exactly this — a field whose code mentions
   --   the ambient index and an earlier field.
   --   ⚠ §10: it also carries an `ICodeWf` — the model's key, the indexed
   --   twin of `dwf-κ`'s "the κ field must be SMALL".
-  iwf-κ : {I : RTy ε} {Δ : Cx} {Θ : Ctx} {ρ : Ren Δ ⌊ Θ ⌋} {x : Var ⌊ Θ ⌋}
+  iwf-κ : {I : RTy ε} {Δ : Cx} {Θ : Ctx} {ρ : Thin Δ ⌊ Θ ⌋} {x : Var ⌊ Θ ⌋}
           {C : ICon (Δ ∙)} (κ : RTm Δ) →
           ICodeWf κ →
-          Θ ⊢ renTm ρ κ ∷ U →
-          IConWf I (Θ ▹ El (renTm ρ κ)) (extR ρ) (vs x) C →
+          Θ ⊢ renTm (thinR ρ) κ ∷ U →
+          IConWf I (Θ ▹ El (renTm (thinR ρ) κ)) (keep ρ) (vs x) C →
           IConWf I Θ ρ x (iκ κ C)
 
 -- ★★★ §10.  TWO ROWS, and each is forced.

@@ -277,6 +277,25 @@ extR : Ren Γ Δ → Ren (Γ ∙) (Δ ∙)
 extR ρ vz     = vz
 extR ρ (vs x) = vs (ρ x)
 
+-- ★ A THINNING — an order-preserving embedding, as FIRST-ORDER data.
+--   Where a renaming is any function on variables, a thinning can only
+--   KEEP a variable or DROP (skip) one of the target's, in order — so
+--   it is exactly a WEAKENING.  A-math's constructor telescopes are the
+--   customer: the constructor's own scope embeds into the telescope
+--   omitting the abstract family, and that embedding is a thinning, not
+--   an arbitrary renaming.  First-order is what lets the Knot reify it.
+data Thin : Cx → Cx → Set where
+  done : Thin ε ε
+  keep : Thin Γ Δ → Thin (Γ ∙) (Δ ∙)
+  drop : Thin Γ Δ → Thin Γ (Δ ∙)
+
+-- its action on variables.  ⚠ `thinR (keep θ)` IS `extR (thinR θ)`
+--   clause by clause, so a walk that extends by `keep` needs no lemma.
+thinR : Thin Γ Δ → Ren Γ Δ
+thinR (keep θ) vz     = vz
+thinR (keep θ) (vs x) = vs (thinR θ x)
+thinR (drop θ) x      = vs (thinR θ x)
+
 renTy : Ren Γ Δ → RTy Γ → RTy Δ
 renTm : Ren Γ Δ → RTm Γ → RTm Δ
 renTy ρ Unit       = Unit

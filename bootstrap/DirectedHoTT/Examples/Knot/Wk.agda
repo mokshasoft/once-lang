@@ -40,6 +40,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Knot.Wk where
+open import DirectedHoTT.Spec.Typing using ( IDescWf-cons )
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; vz; vs; var; RTy; RTm; Nat; Σ'; IMu; pair; unit
@@ -91,8 +92,8 @@ open import DirectedHoTT.Examples.Knot.WkRows
 -- ⚠ ONE STEP OF THE LEFTOVER'S WELL-FORMEDNESS.  `IDescWfFrom` is a
 --   datatype, so its tail is reached by MATCHING, not projection — and
 --   the two `⊢pair`s below each need one step further in.
-wfStep : {D : IDesc} {I : RTy ε} {C : ICon (ε ∙)} {E : IDesc} →
-         IDescWfFrom D I (C ◂ E) → IDescWfFrom D I E
+wfStep : {I : RTy ε} {C : ICon (ε ∙)} {E : IDesc} →
+         IDescWfFrom I (C ◂ E) → IDescWfFrom I E
 wfStep (idwf-cons _ wE) = wE
 
 wkTail : {Γ : Cx} → RTm Γ
@@ -103,13 +104,13 @@ wkTail = pair wkVarVz (pair wkVarVs unit)
                          tagVar-vz (wkdRest (decDesc KnotD))
 ⊢wkTail =
   ⊢pair (ren-ty (imethsTyFromMot-wf KnotD IPair tagVar-vs _ KnotWf
-                   (wfStep (wfDrop KnotWf (decDesc KnotD)))
+                   (wfStep (wfDrop (IDescWf-cons KnotWf) (decDesc KnotD)))
                    ⊢IPair ⊢shIPair)
                 there)
         ⊢wkVarVz
         (⊢-cast (sym (wk-singleTy {v = wkVarVz} _))
           (⊢pair (ren-ty (imethsTyFromMot-wf KnotD IPair (suc tagVar-vs) _ KnotWf
-                            (wfStep (wfStep (wfDrop KnotWf (decDesc KnotD))))
+                            (wfStep (wfStep (wfDrop (IDescWf-cons KnotWf) (decDesc KnotD))))
                             ⊢IPair ⊢shIPair)
                          there)
                  ⊢wkVarVs
@@ -125,7 +126,7 @@ wkMethsK = iwkMeths (decDesc KnotD) wkTail
 ⊢wkMethsK : {Γ : Ctx} →
             Γ ⊢ wkMethsK ∷ imethsTy KnotD IPair (Mot KnotD IPair) KnotD
 ⊢wkMethsK =
-  ⊢iwkMethsFrom KnotD IPair (decDesc KnotD) spl-nil KnotWf KnotWf
+  ⊢iwkMethsFrom KnotD IPair (decDesc KnotD) spl-nil KnotWf (IDescWf-cons KnotWf)
                 ⊢IPair ⊢shIPair wkTail ⊢wkTail
 
 ⊢MotK : {Γ : Ctx} →

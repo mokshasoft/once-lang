@@ -87,7 +87,7 @@ module DirectedHoTT.Lib.ISub where
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂; subst )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
-  using ( Cx; ε; _∙; RTm; Var; Ren; ICon; IDesc; _◂_; inil; iι; iρ; iκ
+  using ( Cx; ε; _∙; RTm; Var; Ren; Thin; ICon; IDesc; _◂_; inil; iι; iρ; iκ
         ; app; lam; pair; fst; snd; unit; nzero; nsuc; icon; var; vz; vs; ⌜Id⌝; ⌜Nat⌝
         ; Sub; subTm; RTy; IMu; Nat; El; extS; ipayTy; sel 
         -- ★ for the promoted `isubMethod-red` block:
@@ -673,7 +673,7 @@ module Sub
     --   which is the shape `iihTy` HANDS OVER.
     ------------------------------------------------------------------------
 
-    ⊢isubPay : {Γ Θ : Ctx} {Δ : Cx} {ρ : Ren Δ ⌊ Θ ⌋} {x : Var ⌊ Θ ⌋}
+    ⊢isubPay : {Γ Θ : Ctx} {Δ : Cx} {ρ : Thin Δ ⌊ Θ ⌋} {x : Var ⌊ Θ ⌋}
                {σ τ : Sub Δ ⌊ Γ ⌋} {a : Var Δ}
                {C : ICon Δ} {fi d n sb : RTm ⌊ Γ ⌋}
                (w : SubCon a C) → IConWf I Θ ρ x C → IDescWf I D →

@@ -21,6 +21,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Knot.Pw where
+open import DirectedHoTT.Spec.Typing using ( IDescWf-cons )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import normalizer.Syntax.Types using ( _≡_; sym )
 open import DirectedHoTT.Spec.Syntax
@@ -31,7 +32,7 @@ open import DirectedHoTT.Metatheory.TySub using ( ⊢-cast; ren-ty )
 open import DirectedHoTT.Spec.Typing
   using ( Ctx; ◇; _▹_; ⌊_⌋; _⊢_∷_; _⊢ty_; ⊢var; here; there
         ; ⊢nzero; ⊢nsuc; ⊢fst; ty-Nat; IConWf; imethTy
-        ; imethsTyFrom; imethsTy; ⊢pair; ⊢unit; ⊢ielim; IDescWfFrom )
+        ; imethsTyFrom; imethsTy; ⊢pair; ⊢unit; ⊢ielim; IDescWfFrom ; Θ₀; ρ₀; x₀ )
 open import DirectedHoTT.Lib.IPay
   using ( ⊢methLam; ⊢methsFrom; imethsTyFrom-wf; idwfDrop; splTake
         ; Split; spl-nil; spl-step )
@@ -51,7 +52,7 @@ pwZero : {Γ : Cx} → RTm Γ
 pwZero = lam (lam (lam nzero))
 
 ⊢pwZero : {Γ : Ctx} (k : ℕ) (C : ICon (ε ∙)) →
-          IConWf KnotD IPair (◇ ▹ εwkTy IPair) C →
+          IConWf IPair (Θ₀ IPair) ρ₀ x₀ C →
           Γ ⊢ pwZero ∷ imethTy KnotD IPair k C Nat
 ⊢pwZero k C wC =
   ⊢methLam KnotD IPair k C KnotWf wC ⊢IPair ty-Nat ⊢nzero
@@ -97,8 +98,8 @@ D23 = cdRest (cdTake 23 KnotD)
 spl23 : Split KnotD 23 D23
 spl23 = splTake spl-nil (cdTake 23 KnotD)
 
-wf23 : IDescWfFrom KnotD IPair D23
-wf23 = idwfDrop spl23 KnotWf
+wf23 : IDescWfFrom IPair D23
+wf23 = idwfDrop spl23 (IDescWf-cons KnotWf)
 
 -- ★ the last 30 rows, all `0`.
 pwTail : {Γ : Cx} → RTm Γ
@@ -148,12 +149,12 @@ pwMid = pair pwOne (pair pwZero (pair pwHom pwTail))
 ⊢pwMid : {Γ : Ctx} → Γ ⊢ pwMid ∷ imethsTyFrom KnotD IPair Nat 20 D20
 ⊢pwMid =
   ⊢pair (ren-ty (imethsTyFrom-wf KnotD IPair 21 D21 KnotWf
-                   (idwfDrop spl21 KnotWf) spl21 ⊢IPair ty-Nat) there)
+                   (idwfDrop spl21 (IDescWf-cons KnotWf)) spl21 ⊢IPair ty-Nat) there)
         ⊢pwOne
         (⊢-cast (sym (wk-singleTy {v = pwOne}
                         (imethsTyFrom KnotD IPair Nat 21 D21)))
           (⊢pair (ren-ty (imethsTyFrom-wf KnotD IPair 22 D22 KnotWf
-                            (idwfDrop spl22 KnotWf) spl22 ⊢IPair ty-Nat) there)
+                            (idwfDrop spl22 (IDescWf-cons KnotWf)) spl22 ⊢IPair ty-Nat) there)
                  (⊢pwZero tagTm-cSg cTm-cSg cTm-cSgWf)
                  (⊢-cast (sym (wk-singleTy {v = pwZero}
                                  (imethsTyFrom KnotD IPair Nat 22 D22)))
@@ -173,7 +174,7 @@ pwMethsK = methsFrom (cdTake 20 KnotD) pwZero pwMid
 
 ⊢pwMethsK : {Γ : Ctx} → Γ ⊢ pwMethsK ∷ imethsTy KnotD IPair Nat KnotD
 ⊢pwMethsK =
-  ⊢methsFrom KnotD IPair 0 (cdTake 20 KnotD) KnotWf KnotWf spl-nil
+  ⊢methsFrom KnotD IPair 0 (cdTake 20 KnotD) KnotWf (IDescWf-cons KnotWf) spl-nil
              ⊢IPair ty-Nat (λ {k} {C} wC _ _ → ⊢pwZero k C wC)
              pwMid ⊢pwMid
 

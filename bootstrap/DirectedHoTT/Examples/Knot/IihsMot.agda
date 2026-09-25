@@ -32,7 +32,7 @@ open import DirectedHoTT.Lib.Lkp using ( ∋lkp; vsⁿ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; _∙; RTm; RTy; var; vz; vs; pair; snd; Π; Σ'; Nat; εwkTy; IMu )
 open import DirectedHoTT.Spec.Typing
-  using ( Ctx; ◇; _▹_; ⌊_⌋; _⊢ty_; ⊢var; here; there; ⊢snd; ty-Π; ty-Σ; ty-IMu; ty-Nat )
+  using ( Ctx; ◇; _▹_; ⌊_⌋; _⊢ty_; ⊢var; here; there; ⊢snd; ty-Π; ty-Σ; ty-IMu; ty-Nat ; Θ₀; ρ₀; x₀ )
 open import DirectedHoTT.Examples.Knot.Sorts
   using ( IPair; ⊢IPair; sTm; ⊢sTm; sIDesc; ⊢sIDesc; ⊢ixP )
 open import DirectedHoTT.Examples.Knot.Desc using ( KnotD; K )
@@ -87,7 +87,7 @@ iihsJunk : {Γ : Cx} → RTm Γ
 iihsJunk = lam (lam (lam (lam (lam (lam (lam Tm-unitK))))))
 
 ⊢iihsJunk : {Γ : Ctx} (k : ℕ) (C : ICon (ε ∙)) →
-            IConWf KnotD IPair (◇ ▹ εwkTy IPair) C →
+            IConWf IPair (Θ₀ IPair) ρ₀ x₀ C →
             Γ ⊢ iihsJunk ∷ imethTy KnotD IPair k C iihsMotK
 ⊢iihsJunk k C wC =
   ⊢methLam KnotD IPair k C KnotWf wC ⊢IPair ⊢iihsMotK
