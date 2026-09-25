@@ -20,13 +20,16 @@
 --     distinct normal terms are provably inconvertible. The "reject" half of the
 --     decision, standing on its own.
 --
--- HONEST CEILING — what (1) needs. Weak/strong normalization for THIS calculus
--- is the research-scale piece. β/Σ-β SN for a λ-calculus with pairs is classical
--- (reducibility); the UNIVERSE is what makes it hard: `El c` can decode (via a
--- code) to `Π`/`Σ`, so under substitution a type can GROW, and the reducibility
--- predicate must respect type conversion and be defined by a Kripke logical
--- relation rather than structural recursion on the type. That is the remaining
--- theorem; the engine here consumes it. `--safe`, ZERO axioms.
+-- ⚠⚠ STATUS, CORRECTED 2026-09-25.  This header used to call (1) "the
+-- research-scale piece … the remaining theorem".  THAT IS NO LONGER TRUE, and
+-- the stale wording nearly steered the type-checker decision wrong:
+--   * (1) is PROVEN — `snorm`/`wnorm` in `Metatheory/Fundamental` (open terms,
+--     any `⊢ctx Γ`, and it RUNS: `id-nf`/`appex-nf` are `refl`);
+--   * `dec-conv-typed` (same module) plugs it into `dec-conv` below;
+--   * the last input, decidable `_≡_` on `RTm`, is `_≟Tm_` in
+--     `Algorithm/DecEq`, and `Algorithm/DecideConversionTyped` closes it.
+-- What remains OPEN is TYPE conversion `≅ᵀ` (types have weak-head forms only,
+-- via `fund-ty`) — see `Algorithm/DecEq`'s successors. `--safe`, ZERO axioms.
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
@@ -42,9 +45,9 @@ private
   variable
     Γ : Cx
 
-data Dec (P : Set) : Set where
-  yes : P → Dec P
-  no  : ¬ P → Dec P
+-- ★ `Dec` lives in `Algorithm/DecEq` (it has no dependencies there) and is
+--   re-exported, so existing `using ( Dec; … )` importers are unchanged.
+open import DirectedHoTT.Algorithm.DecEq using ( Dec; yes; no ) public
 
 ------------------------------------------------------------------------
 -- Normal forms, and the confluence-powered core of the decision.

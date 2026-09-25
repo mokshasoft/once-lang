@@ -24,7 +24,10 @@
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Trust.Kernel where
 
+import DirectedHoTT.Algorithm.Check
+import DirectedHoTT.Algorithm.DecEq
 import DirectedHoTT.Algorithm.DecideConversion
+import DirectedHoTT.Algorithm.DecideConversionTyped
 import DirectedHoTT.Metatheory.Canonicity
 import DirectedHoTT.Metatheory.Confluence
 import DirectedHoTT.Metatheory.FormerCensus
