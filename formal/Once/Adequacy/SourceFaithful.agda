@@ -33,6 +33,9 @@ open import Once.Target.Arch using (TargetNum; int-bits; float-format)
 -- denotations themselves take it as an explicit argument.
 module Once.Adequacy.SourceFaithful (fmt : TargetNum) where
 
+open import Once.Denotation.Sub using (⟦_⟧<:)
+open import Once.Adequacy.CoerceFaithful fmt using (coerce-lift)
+
 open import Data.Nat using (ℕ; _∸_)
 open import Data.Unit using (tt)
 open import Data.Fin using (Fin; zero; suc)
@@ -1051,7 +1054,12 @@ faithful :
   → liftFn fmt {⟦ Γ ↾ Ψ ⟧ᶜ} {A} (elaborate C.Heap e) dγ ⟨$⟩ k ≡ SD.⟦ e ⟧ˢ fmt dγ ⟨$⟩ k
 -- `unit` ↦ `terminal`; both sides reduce to `returnT tt` ⇒ refl.
 faithful (var {Γ = Γ} i) dγ k = proj-lookup {Γ = Γ} i dγ k
-faithful (arr' f) dγ k = faithful f dγ k
+-- D226: the compiled conversion means `⟦ p ⟧<:` mapped over the result
+-- (`coerce-lift`), and `fmapT` leaves the trace alone, so at every budget this
+-- is the operand's agreement with the result half mapped.
+faithful (coerce {Γ = Γ} {Ψ = Ψ} p e) dγ k =
+  trans (cong (λ m → m ⟨$⟩ k) (coerce-lift {⟦ Γ ↾ Ψ ⟧ᶜ} p (elaborate C.Heap e) dγ))
+        (cong (λ r → proj₁ r , mapRes ⟦ p ⟧<: (proj₂ r)) (faithful e dγ k))
 -- lam ↦ curry. D143: SIX clauses — the arrow's quantity `q` decides whether the
 -- meaning takes an argument, the binder's body-usage `q'` whether it enters the
 -- body's environment. At `q' = Zero` the elaborated body is `ee ∘ fst` (the

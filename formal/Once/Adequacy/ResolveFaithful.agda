@@ -32,6 +32,9 @@ open import Once.Denotation.Phase using (restrictᴰ; bindᴰ; bindᴰ0)
 -- not apply. The denotations themselves take it as an explicit argument.
 module Once.Adequacy.ResolveFaithful (fmt : TargetNum) where
 
+open import Once.Denotation.Sub using (⟦_⟧<:)
+open import Once.Res using (mapRes)
+
 open import Data.Nat using (ℕ; _<_; _∸_)
 open import Data.Nat.Induction using (<-wellFounded)
 open import Data.List using (List; []; length)
@@ -297,8 +300,9 @@ resolveExpr-faithful :
 -- Leaves (resolveExpr unchanged ⇒ definitionally equal).
 resolveExpr-faithful polys imps userFns fresh (Srf.var i) dγ k = refl
 resolveExpr-faithful polys imps userFns fresh Srf.unit dγ k = refl
-resolveExpr-faithful polys imps userFns fresh (Srf.arr' e) dγ k =
-  resolveExpr-faithful polys imps userFns fresh e dγ k
+-- D226: a conversion maps the result and leaves the trace; resolution commutes.
+resolveExpr-faithful polys imps userFns fresh (Srf.coerce p e) dγ k =
+  cong (λ r → proj₁ r , mapRes ⟦ p ⟧<: (proj₂ r)) (resolveExpr-faithful polys imps userFns fresh e dγ k)
 resolveExpr-faithful polys imps userFns fresh (Srf.int z) dγ k = refl
 -- A float literal has no names in it, so resolution is the identity and the
 -- denotation is unchanged — `refl`, exactly as for `int`.

@@ -4,95 +4,144 @@
 ------------------------------------------------------------------------
 -- Once.Surface.CoerceIR — the IR a subtyping conversion compiles to (plan 0.99).
 --
--- The IR is UNGRADED (`⌊_⌋` erases the arrow's purity), so a conversion that
--- only raises grades is the identity on IR types. `Coe X Y` keeps that fact as
--- a constructor, `idC`, instead of emitting `id ∘ …`: a grade-only coercion — the
--- former `arr'` — compiles to exactly the IR it compiled to before, and only a
--- real `Void` conversion emits code (`initial`, under a closure when it sits in
--- an arrow's codomain).
+-- `coeIR p` is the STRUCTURAL conversion: `initial` out of `Void`, the identity
+-- on base types, and under a type former the former's functorial action (a
+-- closure is re-wrapped: argument backwards, result forwards).
+--
+-- The IR is UNGRADED (`⌊_⌋` erases the arrow's purity), so a derivation with no
+-- genuine `Void` conversion in it — `VoidFree` — relates two types with the SAME
+-- IR type (`erase-eq`), and needs no code at all. `runCoe` emits nothing for
+-- those: `subst … refl f` is `f` for every concrete derivation, so a grade-only
+-- conversion (the former `arr'`) compiles to exactly the IR it compiled to
+-- before. Only a derivation that converts out of `Void` pays for `coeIR`.
+--
+-- Why a DECIDED predicate and not a `Coe` type with an identity constructor:
+-- splitting on such a constructor makes Agda unify `⌊ A ⌋` with `⌊ B ⌋`, which
+-- it cannot do through a defined function. A decision is split on instead.
 ------------------------------------------------------------------------
 
 module Once.Surface.CoerceIR where
 
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; sym; subst)
+open import Relation.Nullary using (Dec; yes; no)
 open import Once.Type as T using (Type; Quantity; Zero; One; Many)
 open import Once.Type.Sub
 open import Once.IR
 
 ------------------------------------------------------------------------
--- A conversion is either the identity (the two IR types coincide) or a
--- morphism.
+-- The structural conversion.
 ------------------------------------------------------------------------
-
-data Coe : IRTy → IRTy → Set where
-  idC : ∀ {X} → Coe X X
-  fnC : ∀ {X Y} → IR X Y → Coe X Y
-
-toIR : ∀ {X Y} → Coe X Y → IR X Y
-toIR idC     = id
-toIR (fnC f) = f
-
--- Post-compose a conversion. `idC` adds NOTHING — `runC idC e` IS `e`.
-runC : ∀ {Z X Y} → Coe X Y → IR Z X → IR Z Y
-runC idC     e = e
-runC (fnC f) e = f ∘ e
-
-------------------------------------------------------------------------
--- The constructors' actions.
-------------------------------------------------------------------------
-
--- `Void` into anything: `initial`, except into `Void` itself.
-voidC : ∀ (B : Type) → Coe Void ⌊ B ⌋
-voidC T.Unit          = fnC initial
-voidC T.Void          = idC
-voidC T.Int           = fnC initial
-voidC T.Float         = fnC initial
-voidC T.Str           = fnC initial
-voidC T.Buffer        = fnC initial
-voidC (A T.* B)       = fnC initial
-voidC (A T.+ B)       = fnC initial
-voidC (A T.⇒[ k ] B)  = fnC initial
-voidC (T.μ-type F)    = fnC initial
-voidC (T.ν-type F)    = fnC initial
 
 -- A closure converted: the argument backwards, the result forwards.
 wrapArr : ∀ {X X′ Y Y′} → IR X′ X → IR Y Y′ → IR (X ⇛ Y) (X′ ⇛ Y′)
 wrapArr f g = curry (g ∘ (apply ∘ ⟨ fst , f ∘ snd ⟩))
 
 -- An erased (`Zero`) arrow takes no argument, so only its result converts.
-arrC : ∀ (q : Quantity) {X X′ Y Y′} → Coe X′ X → Coe Y Y′
-     → Coe (eraseArrow q X Y) (eraseArrow q X′ Y′)
-arrC Zero ca        idC     = idC
-arrC Zero ca        (fnC g) = fnC (curry (g ∘ apply))
-arrC One  idC       idC     = idC
-arrC One  idC       (fnC g) = fnC (wrapArr id g)
-arrC One  (fnC f)   cb      = fnC (wrapArr f (toIR cb))
-arrC Many idC       idC     = idC
-arrC Many idC       (fnC g) = fnC (wrapArr id g)
-arrC Many (fnC f)   cb      = fnC (wrapArr f (toIR cb))
+wrapArr₀ : ∀ {Y Y′} → IR Y Y′ → IR (Unit ⇛ Y) (Unit ⇛ Y′)
+wrapArr₀ g = curry (g ∘ apply)
 
-prodC : ∀ {X X′ Y Y′} → Coe X X′ → Coe Y Y′ → Coe (X * Y) (X′ * Y′)
-prodC idC     idC     = idC
-prodC idC     (fnC g) = fnC ⟨ fst , g ∘ snd ⟩
-prodC (fnC f) cb      = fnC ⟨ f ∘ fst , toIR cb ∘ snd ⟩
-
-sumC : ∀ {X X′ Y Y′} → Coe X X′ → Coe Y Y′ → Coe (X + Y) (X′ + Y′)
-sumC idC     idC     = idC
-sumC idC     (fnC g) = fnC (case inl (inr ∘ g))
-sumC (fnC f) cb      = fnC (case (inl ∘ f) (inr ∘ toIR cb))
+coeIR : ∀ {A B} → A <: B → IR ⌊ A ⌋ ⌊ B ⌋
+coeIR sub-void   = initial
+coeIR sub-unit   = id
+coeIR sub-int    = id
+coeIR sub-float  = id
+coeIR sub-str    = id
+coeIR sub-buffer = id
+coeIR (sub-arr {q = Zero} a b _) = wrapArr₀ (coeIR b)
+coeIR (sub-arr {q = One}  a b _) = wrapArr (coeIR a) (coeIR b)
+coeIR (sub-arr {q = Many} a b _) = wrapArr (coeIR a) (coeIR b)
+coeIR (sub-prod a b) = ⟨ coeIR a ∘ fst , coeIR b ∘ snd ⟩
+coeIR (sub-sum a b)  = case (inl ∘ coeIR a) (inr ∘ coeIR b)
+coeIR sub-μ = id
+coeIR sub-ν = id
 
 ------------------------------------------------------------------------
--- The conversion a derivation compiles to.
+-- Void-free derivations relate types with the same IR type.
 ------------------------------------------------------------------------
 
-coeIR : ∀ {A B} → A <: B → Coe ⌊ A ⌋ ⌊ B ⌋
-coeIR (sub-void {B}) = voidC B
-coeIR sub-unit   = idC
-coeIR sub-int    = idC
-coeIR sub-float  = idC
-coeIR sub-str    = idC
-coeIR sub-buffer = idC
-coeIR (sub-arr {q = q} a b _) = arrC q (coeIR a) (coeIR b)
-coeIR (sub-prod a b) = prodC (coeIR a) (coeIR b)
-coeIR (sub-sum a b)  = sumC (coeIR a) (coeIR b)
-coeIR sub-μ = idC
-coeIR sub-ν = idC
+data VoidFree : ∀ {A B} → A <: B → Set where
+  vf-void   : VoidFree (sub-void {T.Void})
+  vf-unit   : VoidFree sub-unit
+  vf-int    : VoidFree sub-int
+  vf-float  : VoidFree sub-float
+  vf-str    : VoidFree sub-str
+  vf-buffer : VoidFree sub-buffer
+  vf-arr    : ∀ {A A′ B B′ q π π′} {a : A′ <: A} {b : B <: B′} {g : π ⊑π π′}
+            → VoidFree a → VoidFree b → VoidFree (sub-arr {q = q} a b g)
+  vf-prod   : ∀ {A A′ B B′} {a : A <: A′} {b : B <: B′}
+            → VoidFree a → VoidFree b → VoidFree (sub-prod a b)
+  vf-sum    : ∀ {A A′ B B′} {a : A <: A′} {b : B <: B′}
+            → VoidFree a → VoidFree b → VoidFree (sub-sum a b)
+  vf-μ      : ∀ {F} → VoidFree (sub-μ {F})
+  vf-ν      : ∀ {F} → VoidFree (sub-ν {F})
+
+private
+  two : ∀ {P Q R : Set} → (P → Q → R) → (R → P) → (R → Q) → Dec P → Dec Q → Dec R
+  two k π₁ π₂ (yes p) (yes q) = yes (k p q)
+  two k π₁ π₂ (no ¬p) _       = no λ r → ¬p (π₁ r)
+  two k π₁ π₂ (yes _) (no ¬q) = no λ r → ¬q (π₂ r)
+
+  arr-a : ∀ {A A′ B B′ q π π′} {a : A′ <: A} {b : B <: B′} {g : π ⊑π π′}
+        → VoidFree (sub-arr {q = q} a b g) → VoidFree a
+  arr-a (vf-arr va _) = va
+  arr-b : ∀ {A A′ B B′ q π π′} {a : A′ <: A} {b : B <: B′} {g : π ⊑π π′}
+        → VoidFree (sub-arr {q = q} a b g) → VoidFree b
+  arr-b (vf-arr _ vb) = vb
+  prod-a : ∀ {A A′ B B′} {a : A <: A′} {b : B <: B′} → VoidFree (sub-prod a b) → VoidFree a
+  prod-a (vf-prod va _) = va
+  prod-b : ∀ {A A′ B B′} {a : A <: A′} {b : B <: B′} → VoidFree (sub-prod a b) → VoidFree b
+  prod-b (vf-prod _ vb) = vb
+  sum-a : ∀ {A A′ B B′} {a : A <: A′} {b : B <: B′} → VoidFree (sub-sum a b) → VoidFree a
+  sum-a (vf-sum va _) = va
+  sum-b : ∀ {A A′ B B′} {a : A <: A′} {b : B <: B′} → VoidFree (sub-sum a b) → VoidFree b
+  sum-b (vf-sum _ vb) = vb
+
+voidFree? : ∀ {A B} (p : A <: B) → Dec (VoidFree p)
+voidFree? (sub-void {T.Void})         = yes vf-void
+voidFree? (sub-void {T.Unit})         = no λ ()
+voidFree? (sub-void {T.Int})          = no λ ()
+voidFree? (sub-void {T.Float})        = no λ ()
+voidFree? (sub-void {T.Str})          = no λ ()
+voidFree? (sub-void {T.Buffer})       = no λ ()
+voidFree? (sub-void {_ T.* _})        = no λ ()
+voidFree? (sub-void {_ T.+ _})        = no λ ()
+voidFree? (sub-void {_ T.⇒[ _ ] _})  = no λ ()
+voidFree? (sub-void {T.μ-type _})     = no λ ()
+voidFree? (sub-void {T.ν-type _})     = no λ ()
+voidFree? sub-unit   = yes vf-unit
+voidFree? sub-int    = yes vf-int
+voidFree? sub-float  = yes vf-float
+voidFree? sub-str    = yes vf-str
+voidFree? sub-buffer = yes vf-buffer
+voidFree? (sub-arr a b g) = two vf-arr arr-a arr-b (voidFree? a) (voidFree? b)
+voidFree? (sub-prod a b)  = two vf-prod prod-a prod-b (voidFree? a) (voidFree? b)
+voidFree? (sub-sum a b)   = two vf-sum sum-a sum-b (voidFree? a) (voidFree? b)
+voidFree? sub-μ = yes vf-μ
+voidFree? sub-ν = yes vf-ν
+
+-- For every CONCRETE derivation this reduces to `refl`.
+erase-eq : ∀ {A B} (p : A <: B) → VoidFree p → ⌊ A ⌋ ≡ ⌊ B ⌋
+erase-eq _ vf-void   = refl
+erase-eq _ vf-unit   = refl
+erase-eq _ vf-int    = refl
+erase-eq _ vf-float  = refl
+erase-eq _ vf-str    = refl
+erase-eq _ vf-buffer = refl
+erase-eq (sub-arr {q = Zero} a b _) (vf-arr va vb) = cong (Unit ⇛_) (erase-eq b vb)
+erase-eq (sub-arr {q = One}  a b _) (vf-arr va vb) = cong₂ _⇛_ (sym (erase-eq a va)) (erase-eq b vb)
+erase-eq (sub-arr {q = Many} a b _) (vf-arr va vb) = cong₂ _⇛_ (sym (erase-eq a va)) (erase-eq b vb)
+erase-eq (sub-prod a b) (vf-prod va vb) = cong₂ _*_ (erase-eq a va) (erase-eq b vb)
+erase-eq (sub-sum a b)  (vf-sum va vb)  = cong₂ _+_ (erase-eq a va) (erase-eq b vb)
+erase-eq _ vf-μ = refl
+erase-eq _ vf-ν = refl
+
+------------------------------------------------------------------------
+-- What `elaborate (coerce p e)` emits.
+------------------------------------------------------------------------
+
+runCoe-dec : ∀ {Z A B} (p : A <: B) → Dec (VoidFree p) → IR Z ⌊ A ⌋ → IR Z ⌊ B ⌋
+runCoe-dec p (yes vf) f = subst (IR _) (erase-eq p vf) f
+runCoe-dec p (no _)   f = coeIR p ∘ f
+
+runCoe : ∀ {Z A B} → A <: B → IR Z ⌊ A ⌋ → IR Z ⌊ B ⌋
+runCoe p f = runCoe-dec p (voidFree? p) f
