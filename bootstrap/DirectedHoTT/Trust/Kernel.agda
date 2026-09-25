@@ -30,6 +30,7 @@ import DirectedHoTT.Algorithm.DecideConversion
 import DirectedHoTT.Algorithm.DecideConversionTyped
 import DirectedHoTT.Metatheory.Canonicity
 import DirectedHoTT.Metatheory.Confluence
+import DirectedHoTT.Metatheory.Erasure
 import DirectedHoTT.Metatheory.FormerCensus
 import DirectedHoTT.Metatheory.Fundamental
 import DirectedHoTT.Metatheory.Fundamental.Indexed
@@ -43,6 +44,8 @@ import DirectedHoTT.Metatheory.SubjectReduction
 import DirectedHoTT.Metatheory.SubjectReductionBase
 import DirectedHoTT.Metatheory.TySub
 import DirectedHoTT.Metatheory.Validity
+import DirectedHoTT.Spec.Annotated
 import DirectedHoTT.Spec.Syntax
 import DirectedHoTT.Spec.Typing
+import DirectedHoTT.Spec.TypingA
 import DirectedHoTT.Spec.Variance
