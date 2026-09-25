@@ -203,6 +203,55 @@ derivation, and a checker cannot recover them (`Hom` computes away at
 well-formedness premises are the `⊢`-level ones — an annotated description
 layer is a follow-up before `⊢ᴬ` is fully decidable.
 
+## 3e. ★ DECISION 6 (pending adoption) — descriptions are FUNCTORS: "A-math"
+
+Found while giving the annotated checker the inductive formers
+(2026-09-25). `IConWf` puts the FIXED POINT `IMu D I j` into its own
+telescope (`iwf-ρ`). The declarative judgment tolerates it (it never needs
+the context well-formed); the certifying checker cannot — its conversion
+engine must prove `⊢ctx`, which needs `IDescWf D`, the thing being
+checked. A hidden invariant exposed by an algorithm, like the annotation
+audit.
+
+★ **The mathematics:** an indexed description is a code for a STRICTLY
+POSITIVE FUNCTOR `F : (I → Type) → (I → Type)`; `IMu D` is its initial
+algebra. Well-formedness is a property of `F`, checked with the recursive
+positions typed by an ABSTRACT FAMILY `X : Π I U` — never the fixed point.
+Positivity is STRUCTURAL (recursive positions exist only via `iρ`), not a
+side check — unlike Coq's inductive-as-assumption + syntactic positivity.
+
+★ **The model already IS this** (read from the code, not the record):
+`ILift C … P` is the constructor's functor applied to an abstract predicate
+`P`; `ikp-ρ`/`iki-ρ` carry nothing; the fixed point is tied ONLY in
+`IMuMem`. Only the SYNTAX lags. §9.2 put `IMu D I j` in the telescope for
+EXPRESSIVITY (a recursive index may name earlier fields) — A-math keeps it
+(the family is applied to the same `j`). No recorded decision rejects it.
+
+★ **SPIKE — `bootstrap/tmp/AMathSpike.agda`, GREEN:**
+- Q-shape: `IConWfˣ` does not mention `D` at all; `PairIx`'s description
+  ports almost verbatim (only a recursive field's TYPE changes). Carried
+  terms live in the constructor's `X`-free scope and reach the telescope by
+  a renaming `ρ` — positivity is SYNTACTIC; `X` at the ROOT keeps every
+  carried index unchanged.
+- Q-check: `telWf` — EVERY context the judgment visits is well-formed from
+  `◇ ⊢ty I` alone. **The checker's circularity is gone.**
+- Q-use (syntactic): `TySub.iihTy-wf` ports (`iihTy-wfˣ`) with
+  `X := λj. ⌜IMu⌝ D I j`; cost = ONE conversion (β, then decode) per
+  recursive field.
+- Q-use (semantic) + termination: `relX` builds the `X` entry's
+  interpretation DIRECTLY from `idi` (as `fund`'s `⊢⌜IMu⌝` case does) — no
+  recursion into `fund`, so the recorded "fund-mutual helpers cannot be
+  parameterized" trap does not arise; `relRec` is one `sem-conv`.
+
+⚠ **It must REPLACE `iwf-ρ`, not sit beside it:** bridging new → old needs
+`IDescWf D` to type `X`'s instance — the circle again.
+
+⬜ **Adoption cost** (from the model read): the telescope gains a root slot
+(carried through `ρ`); `ipayTy`/`iihTy`/`iihs`/`isingle`/`imeth*`
+consumers restated over `(σ, τ)` as `iihTy-wfˣ` is; `fund`'s `iihsSem`
+uses `relX`/`relRec`; `Examples/PairIx`, `DepIx`, and the Knot's
+description rows are rewritten; `Spec/TypingA`'s annotated twin follows.
+
 ## 4. Open questions, recorded not answered
 
 - **A universe hierarchy.** Needed for large elimination under code
