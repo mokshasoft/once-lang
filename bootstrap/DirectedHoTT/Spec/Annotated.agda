@@ -26,8 +26,10 @@
 --   `Spec/Syntax`'s `RTm` constructor list): a former missing here is a
 --   generator failure, not a silent row.
 --
--- ⚠ Descriptions (`Desc`, `IDesc`, and `RTy ε` index types) are SHARED
---   with `RTm`, not annotated — PLAN-BIDI §3d's recorded follow-up.
+-- ★ DESCRIPTIONS ARE ANNOTATED TOO (`ADesc`/`AIDesc`, and index types
+--   `ATy ε`): their field types and carried terms are kernel terms, so they
+--   must be checkable.  They are CLOSED (no renaming/substitution action),
+--   exactly as `Desc`/`IDesc` are.
 --
 -- `--safe`, ZERO axioms.
 ------------------------------------------------------------------------
@@ -57,6 +59,12 @@ private
 
 data ATy : Cx → Set
 data ATm : Cx → Set
+-- ★ ANNOTATED DESCRIPTIONS — their field types and carried terms are
+--   annotated, so a description is checkable like any kernel term.
+data ADCon : Set
+data ADesc : Set
+data AICon : Cx → Set
+data AIDesc : Set
 
 data ATy where
   base : ∀ {Γ} → ATy Γ
@@ -68,8 +76,8 @@ data ATy where
   Unit : ∀ {Γ} → ATy Γ
   Nat : ∀ {Γ} → ATy Γ
   Id : ∀ {Γ} → ATy Γ → ATm Γ → ATm Γ → ATy Γ
-  Mu : ∀ {Γ} → Desc → ATy Γ
-  IMu : ∀ {Γ} → IDesc → RTy ε → ATm Γ → ATy Γ
+  Mu : ∀ {Γ} → ADesc → ATy Γ
+  IMu : ∀ {Γ} → AIDesc → ATy ε → ATm Γ → ATy Γ
 
 data ATm where
   var : ∀ {Γ} → Var Γ → ATm Γ
@@ -94,14 +102,32 @@ data ATm where
   nzero : ∀ {Γ} → ATm Γ
   nsuc : ∀ {Γ} → ATm Γ → ATm Γ
   natrec : ∀ {Γ} → ATy (Γ ∙) → ATm Γ → ATm ((Γ ∙) ∙) → ATm Γ → ATm Γ
-  con : ∀ {Γ} → Desc → ℕ → ATm Γ → ATm Γ
-  elim : ∀ {Γ} → Desc → ATy (Γ ∙) → ATm Γ → ATm Γ → ATm Γ
-  icon : ∀ {Γ} → IDesc → RTy ε → ATm Γ → ℕ → ATm Γ → ATm Γ
-  ielim : ∀ {Γ} → IDesc → RTy ε → ATy ((Γ ∙) ∙) → ATm Γ → ATm Γ → ATm Γ → ATm Γ
+  con : ∀ {Γ} → ADesc → ℕ → ATm Γ → ATm Γ
+  elim : ∀ {Γ} → ADesc → ATy (Γ ∙) → ATm Γ → ATm Γ → ATm Γ
+  icon : ∀ {Γ} → AIDesc → ATy ε → ATm Γ → ℕ → ATm Γ → ATm Γ
+  ielim : ∀ {Γ} → AIDesc → ATy ε → ATy ((Γ ∙) ∙) → ATm Γ → ATm Γ → ATm Γ → ATm Γ
   ⌜Nat⌝ : ∀ {Γ} → ATm Γ
-  ⌜Mu⌝ : ∀ {Γ} → Desc → ATm Γ
-  ⌜IMu⌝ : ∀ {Γ} → IDesc → RTy ε → ATm Γ → ATm Γ
+  ⌜Mu⌝ : ∀ {Γ} → ADesc → ATm Γ
+  ⌜IMu⌝ : ∀ {Γ} → AIDesc → ATy ε → ATm Γ → ATm Γ
   ⌜Unit⌝ : ∀ {Γ} → ATm Γ
+
+data ADCon where
+  dι : ADCon
+  dρ : ADCon → ADCon
+  dκ : ATy ε → ADCon → ADCon
+
+data ADesc where
+  dnil : ADesc
+  _◃_  : ADCon → ADesc → ADesc
+
+data AICon where
+  iι : ∀ {Δ} → AICon Δ
+  iρ : ∀ {Δ} → ATm Δ → AICon (Δ ∙) → AICon Δ
+  iκ : ∀ {Δ} → ATm Δ → AICon (Δ ∙) → AICon Δ
+
+data AIDesc where
+  inil : AIDesc
+  _◂_  : AICon (ε ∙) → AIDesc → AIDesc
 
 renTyᴬ : {Γ Δ : Cx} → Ren Γ Δ → ATy Γ → ATy Δ
 renTmᴬ : {Γ Δ : Cx} → Ren Γ Δ → ATm Γ → ATm Δ
@@ -201,6 +227,20 @@ subTmᴬ σ ⌜Unit⌝ = ⌜Unit⌝
 -- ★ ERASURE — drops exactly the annotation fields.
 ⌈_⌉ᵀ : {Γ : Cx} → ATy Γ → RTy Γ
 ⌈_⌉ : {Γ : Cx} → ATm Γ → RTm Γ
+⌈_⌉ᴰᶜ : ADCon → DCon
+⌈_⌉ᴰ : ADesc → Desc
+⌈_⌉ᴵᶜ : {Δ : Cx} → AICon Δ → ICon Δ
+⌈_⌉ᴵᴰ : AIDesc → IDesc
+⌈ dι ⌉ᴰᶜ = dι
+⌈ dρ C ⌉ᴰᶜ = dρ ⌈ C ⌉ᴰᶜ
+⌈ dκ A C ⌉ᴰᶜ = dκ ⌈ A ⌉ᵀ ⌈ C ⌉ᴰᶜ
+⌈ dnil ⌉ᴰ = dnil
+⌈ C ◃ D ⌉ᴰ = ⌈ C ⌉ᴰᶜ ◃ ⌈ D ⌉ᴰ
+⌈ iι ⌉ᴵᶜ = iι
+⌈ iρ t C ⌉ᴵᶜ = iρ ⌈ t ⌉ ⌈ C ⌉ᴵᶜ
+⌈ iκ t C ⌉ᴵᶜ = iκ ⌈ t ⌉ ⌈ C ⌉ᴵᶜ
+⌈ inil ⌉ᴵᴰ = inil
+⌈ C ◂ D ⌉ᴵᴰ = ⌈ C ⌉ᴵᶜ ◂ ⌈ D ⌉ᴵᴰ
 ⌈ base ⌉ᵀ = base
 ⌈ U ⌉ᵀ = U
 ⌈ (Π x0 x1) ⌉ᵀ = Π (⌈ x0 ⌉ᵀ) (⌈ x1 ⌉ᵀ)
@@ -210,8 +250,8 @@ subTmᴬ σ ⌜Unit⌝ = ⌜Unit⌝
 ⌈ Unit ⌉ᵀ = Unit
 ⌈ Nat ⌉ᵀ = Nat
 ⌈ (Id x0 x1 x2) ⌉ᵀ = Id (⌈ x0 ⌉ᵀ) (⌈ x1 ⌉) (⌈ x2 ⌉)
-⌈ (Mu x0) ⌉ᵀ = Mu x0
-⌈ (IMu x0 x1 x2) ⌉ᵀ = IMu x0 x1 (⌈ x2 ⌉)
+⌈ (Mu x0) ⌉ᵀ = Mu (⌈ x0 ⌉ᴰ)
+⌈ (IMu x0 x1 x2) ⌉ᵀ = IMu (⌈ x0 ⌉ᴵᴰ) (⌈ x1 ⌉ᵀ) (⌈ x2 ⌉)
 ⌈ (var x0) ⌉ = var x0
 ⌈ (lam x0 x1) ⌉ = lam (⌈ x1 ⌉)
 ⌈ (app x0 x1) ⌉ = app (⌈ x0 ⌉) (⌈ x1 ⌉)
@@ -235,12 +275,12 @@ subTmᴬ σ ⌜Unit⌝ = ⌜Unit⌝
 ⌈ (nsuc x0) ⌉ = nsuc (⌈ x0 ⌉)
 ⌈ (natrec x0 x1 x2 x3) ⌉ = natrec (⌈ x1 ⌉) (⌈ x2 ⌉) (⌈ x3 ⌉)
 ⌈ (con x0 x1 x2) ⌉ = con x1 (⌈ x2 ⌉)
-⌈ (elim x0 x1 x2 x3) ⌉ = elim x0 (⌈ x2 ⌉) (⌈ x3 ⌉)
+⌈ (elim x0 x1 x2 x3) ⌉ = elim (⌈ x0 ⌉ᴰ) (⌈ x2 ⌉) (⌈ x3 ⌉)
 ⌈ (icon x0 x1 x2 x3 x4) ⌉ = icon x3 (⌈ x4 ⌉)
-⌈ (ielim x0 x1 x2 x3 x4 x5) ⌉ = ielim x0 (⌈ x3 ⌉) (⌈ x4 ⌉) (⌈ x5 ⌉)
+⌈ (ielim x0 x1 x2 x3 x4 x5) ⌉ = ielim (⌈ x0 ⌉ᴵᴰ) (⌈ x3 ⌉) (⌈ x4 ⌉) (⌈ x5 ⌉)
 ⌈ ⌜Nat⌝ ⌉ = ⌜Nat⌝
-⌈ (⌜Mu⌝ x0) ⌉ = ⌜Mu⌝ x0
-⌈ (⌜IMu⌝ x0 x1 x2) ⌉ = ⌜IMu⌝ x0 x1 (⌈ x2 ⌉)
+⌈ (⌜Mu⌝ x0) ⌉ = ⌜Mu⌝ (⌈ x0 ⌉ᴰ)
+⌈ (⌜IMu⌝ x0 x1 x2) ⌉ = ⌜IMu⌝ (⌈ x0 ⌉ᴵᴰ) (⌈ x1 ⌉ᵀ) (⌈ x2 ⌉)
 ⌈ ⌜Unit⌝ ⌉ = ⌜Unit⌝
 
 -- ★ erasure commutes with renaming
@@ -256,7 +296,7 @@ era-renTy ρ Unit = refl
 era-renTy ρ Nat = refl
 era-renTy ρ (Id x0 x1 x2) = cong3 (λ a0 a1 a2 → Id a0 a1 a2) (era-renTy ρ x0) (era-renTm ρ x1) (era-renTm ρ x2)
 era-renTy ρ (Mu x0) = refl
-era-renTy ρ (IMu x0 x1 x2) = cong1 (λ a0 → IMu x0 x1 a0) (era-renTm ρ x2)
+era-renTy ρ (IMu x0 x1 x2) = cong1 (λ a0 → IMu (⌈ x0 ⌉ᴵᴰ) (⌈ x1 ⌉ᵀ) a0) (era-renTm ρ x2)
 era-renTm ρ (var x) = refl
 era-renTm ρ (lam x0 x1) = cong1 (λ a0 → lam a0) (era-renTm (extR ρ) x1)
 era-renTm ρ (app x0 x1) = cong2 (λ a0 a1 → app a0 a1) (era-renTm ρ x0) (era-renTm ρ x1)
@@ -280,12 +320,12 @@ era-renTm ρ nzero = refl
 era-renTm ρ (nsuc x0) = cong1 (λ a0 → nsuc a0) (era-renTm ρ x0)
 era-renTm ρ (natrec x0 x1 x2 x3) = cong3 (λ a0 a1 a2 → natrec a0 a1 a2) (era-renTm ρ x1) (era-renTm (extR (extR ρ)) x2) (era-renTm ρ x3)
 era-renTm ρ (con x0 x1 x2) = cong1 (λ a0 → con x1 a0) (era-renTm ρ x2)
-era-renTm ρ (elim x0 x1 x2 x3) = cong2 (λ a0 a1 → elim x0 a0 a1) (era-renTm ρ x2) (era-renTm ρ x3)
+era-renTm ρ (elim x0 x1 x2 x3) = cong2 (λ a0 a1 → elim (⌈ x0 ⌉ᴰ) a0 a1) (era-renTm ρ x2) (era-renTm ρ x3)
 era-renTm ρ (icon x0 x1 x2 x3 x4) = cong1 (λ a0 → icon x3 a0) (era-renTm ρ x4)
-era-renTm ρ (ielim x0 x1 x2 x3 x4 x5) = cong3 (λ a0 a1 a2 → ielim x0 a0 a1 a2) (era-renTm ρ x3) (era-renTm ρ x4) (era-renTm ρ x5)
+era-renTm ρ (ielim x0 x1 x2 x3 x4 x5) = cong3 (λ a0 a1 a2 → ielim (⌈ x0 ⌉ᴵᴰ) a0 a1 a2) (era-renTm ρ x3) (era-renTm ρ x4) (era-renTm ρ x5)
 era-renTm ρ ⌜Nat⌝ = refl
 era-renTm ρ (⌜Mu⌝ x0) = refl
-era-renTm ρ (⌜IMu⌝ x0 x1 x2) = cong1 (λ a0 → ⌜IMu⌝ x0 x1 a0) (era-renTm ρ x2)
+era-renTm ρ (⌜IMu⌝ x0 x1 x2) = cong1 (λ a0 → ⌜IMu⌝ (⌈ x0 ⌉ᴵᴰ) (⌈ x1 ⌉ᵀ) a0) (era-renTm ρ x2)
 era-renTm ρ ⌜Unit⌝ = refl
 
 -- extending a substitution commutes with erasure
@@ -309,7 +349,7 @@ era-subTy σ τ h Unit = refl
 era-subTy σ τ h Nat = refl
 era-subTy σ τ h (Id x0 x1 x2) = cong3 (λ a0 a1 a2 → Id a0 a1 a2) (era-subTy σ τ h x0) (era-subTm σ τ h x1) (era-subTm σ τ h x2)
 era-subTy σ τ h (Mu x0) = refl
-era-subTy σ τ h (IMu x0 x1 x2) = cong1 (λ a0 → IMu x0 x1 a0) (era-subTm σ τ h x2)
+era-subTy σ τ h (IMu x0 x1 x2) = cong1 (λ a0 → IMu (⌈ x0 ⌉ᴵᴰ) (⌈ x1 ⌉ᵀ) a0) (era-subTm σ τ h x2)
 era-subTm σ τ h (var x) = h x
 era-subTm σ τ h (lam x0 x1) = cong1 (λ a0 → lam a0) (era-subTm (extSᴬ σ) (extS τ) (era-ext h) x1)
 era-subTm σ τ h (app x0 x1) = cong2 (λ a0 a1 → app a0 a1) (era-subTm σ τ h x0) (era-subTm σ τ h x1)
@@ -333,10 +373,10 @@ era-subTm σ τ h nzero = refl
 era-subTm σ τ h (nsuc x0) = cong1 (λ a0 → nsuc a0) (era-subTm σ τ h x0)
 era-subTm σ τ h (natrec x0 x1 x2 x3) = cong3 (λ a0 a1 a2 → natrec a0 a1 a2) (era-subTm σ τ h x1) (era-subTm (extSᴬ (extSᴬ σ)) (extS (extS τ)) (era-ext (era-ext h)) x2) (era-subTm σ τ h x3)
 era-subTm σ τ h (con x0 x1 x2) = cong1 (λ a0 → con x1 a0) (era-subTm σ τ h x2)
-era-subTm σ τ h (elim x0 x1 x2 x3) = cong2 (λ a0 a1 → elim x0 a0 a1) (era-subTm σ τ h x2) (era-subTm σ τ h x3)
+era-subTm σ τ h (elim x0 x1 x2 x3) = cong2 (λ a0 a1 → elim (⌈ x0 ⌉ᴰ) a0 a1) (era-subTm σ τ h x2) (era-subTm σ τ h x3)
 era-subTm σ τ h (icon x0 x1 x2 x3 x4) = cong1 (λ a0 → icon x3 a0) (era-subTm σ τ h x4)
-era-subTm σ τ h (ielim x0 x1 x2 x3 x4 x5) = cong3 (λ a0 a1 a2 → ielim x0 a0 a1 a2) (era-subTm σ τ h x3) (era-subTm σ τ h x4) (era-subTm σ τ h x5)
+era-subTm σ τ h (ielim x0 x1 x2 x3 x4 x5) = cong3 (λ a0 a1 a2 → ielim (⌈ x0 ⌉ᴵᴰ) a0 a1 a2) (era-subTm σ τ h x3) (era-subTm σ τ h x4) (era-subTm σ τ h x5)
 era-subTm σ τ h ⌜Nat⌝ = refl
 era-subTm σ τ h (⌜Mu⌝ x0) = refl
-era-subTm σ τ h (⌜IMu⌝ x0 x1 x2) = cong1 (λ a0 → ⌜IMu⌝ x0 x1 a0) (era-subTm σ τ h x2)
+era-subTm σ τ h (⌜IMu⌝ x0 x1 x2) = cong1 (λ a0 → ⌜IMu⌝ (⌈ x0 ⌉ᴵᴰ) (⌈ x1 ⌉ᵀ) a0) (era-subTm σ τ h x2)
 era-subTm σ τ h ⌜Unit⌝ = refl

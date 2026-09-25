@@ -41,6 +41,7 @@ open import DirectedHoTT.Spec.Variance
 open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Spec.Annotated
+open import DirectedHoTT.Spec.AnnotatedDesc
 open import DirectedHoTT.Spec.TypingA
 open import DirectedHoTT.Metatheory.Erasure using ( erase; erase-ty; sub1; sub1ᵗ; nrs-era )
 open import DirectedHoTT.Metatheory.SubjectReduction
@@ -74,6 +75,20 @@ private
 
 liftTy : {Γ : Cx} → RTy Γ → ATy Γ
 liftTm : {Γ : Cx} → RTm Γ → ATm Γ
+liftDC : DCon → ADCon
+liftD : Desc → ADesc
+liftIC : {Δ : Cx} → ICon Δ → AICon Δ
+liftID : IDesc → AIDesc
+liftDC dι = dι
+liftDC (dρ C) = dρ (liftDC C)
+liftDC (dκ A C) = dκ (liftTy A) (liftDC C)
+liftD dnil = dnil
+liftD (C ◃ D) = liftDC C ◃ liftD D
+liftIC iι = iι
+liftIC (iρ t C) = iρ (liftTm t) (liftIC C)
+liftIC (iκ t C) = iκ (liftTm t) (liftIC C)
+liftID inil = inil
+liftID (C ◂ D) = liftIC C ◂ liftID D
 liftTy base = base
 liftTy U = U
 liftTy (Π x0 x1) = Π (liftTy x0) (liftTy x1)
@@ -83,8 +98,8 @@ liftTy (Hom x0 x1 x2) = Hom (liftTy x0) (liftTm x1) (liftTm x2)
 liftTy Unit = Unit
 liftTy Nat = Nat
 liftTy (Id x0 x1 x2) = Id (liftTy x0) (liftTm x1) (liftTm x2)
-liftTy (Mu x0) = Mu x0
-liftTy (IMu x0 x1 x2) = IMu x0 x1 (liftTm x2)
+liftTy (Mu x0) = Mu (liftD x0)
+liftTy (IMu x0 x1 x2) = IMu (liftID x0) (liftTy x1) (liftTm x2)
 liftTm (var x0) = var x0
 liftTm (lam x0) = lam base (liftTm x0)
 liftTm (app x0 x1) = app (liftTm x0) (liftTm x1)
@@ -108,16 +123,30 @@ liftTm nzero = nzero
 liftTm (nsuc x0) = nsuc (liftTm x0)
 liftTm (natrec x0 x1 x2) = natrec base (liftTm x0) (liftTm x1) (liftTm x2)
 liftTm (con x0 x1) = con dnil x0 (liftTm x1)
-liftTm (elim x0 x1 x2) = elim x0 base (liftTm x1) (liftTm x2)
+liftTm (elim x0 x1 x2) = elim (liftD x0) base (liftTm x1) (liftTm x2)
 liftTm (icon x0 x1) = icon inil base nzero x0 (liftTm x1)
-liftTm (ielim x0 x1 x2 x3) = ielim x0 base base (liftTm x1) (liftTm x2) (liftTm x3)
+liftTm (ielim x0 x1 x2 x3) = ielim (liftID x0) base base (liftTm x1) (liftTm x2) (liftTm x3)
 liftTm ⌜Nat⌝ = ⌜Nat⌝
-liftTm (⌜Mu⌝ x0) = ⌜Mu⌝ x0
-liftTm (⌜IMu⌝ x0 x1 x2) = ⌜IMu⌝ x0 x1 (liftTm x2)
+liftTm (⌜Mu⌝ x0) = ⌜Mu⌝ (liftD x0)
+liftTm (⌜IMu⌝ x0 x1 x2) = ⌜IMu⌝ (liftID x0) (liftTy x1) (liftTm x2)
 liftTm ⌜Unit⌝ = ⌜Unit⌝
 
 era-liftTy : {Γ : Cx} (A : RTy Γ) → ⌈ liftTy A ⌉ᵀ ≡ A
 era-liftTm : {Γ : Cx} (t : RTm Γ) → ⌈ liftTm t ⌉ ≡ t
+era-liftDC : (C : DCon) → ⌈ liftDC C ⌉ᴰᶜ ≡ C
+era-liftD : (D : Desc) → ⌈ liftD D ⌉ᴰ ≡ D
+era-liftIC : {Δ : Cx} (C : ICon Δ) → ⌈ liftIC C ⌉ᴵᶜ ≡ C
+era-liftID : (D : IDesc) → ⌈ liftID D ⌉ᴵᴰ ≡ D
+era-liftDC dι = refl
+era-liftDC (dρ C) = cong dρ (era-liftDC C)
+era-liftDC (dκ A C) = cong2 dκ (era-liftTy A) (era-liftDC C)
+era-liftD dnil = refl
+era-liftD (C ◃ D) = cong2 _◃_ (era-liftDC C) (era-liftD D)
+era-liftIC iι = refl
+era-liftIC (iρ t C) = cong2 iρ (era-liftTm t) (era-liftIC C)
+era-liftIC (iκ t C) = cong2 iκ (era-liftTm t) (era-liftIC C)
+era-liftID inil = refl
+era-liftID (C ◂ D) = cong2 _◂_ (era-liftIC C) (era-liftID D)
 era-liftTy base = refl
 era-liftTy U = refl
 era-liftTy (Π x0 x1) = cong2 (λ a0 a1 → Π a0 a1) (era-liftTy x0) (era-liftTy x1)
@@ -127,8 +156,8 @@ era-liftTy (Hom x0 x1 x2) = cong3 (λ a0 a1 a2 → Hom a0 a1 a2) (era-liftTy x0)
 era-liftTy Unit = refl
 era-liftTy Nat = refl
 era-liftTy (Id x0 x1 x2) = cong3 (λ a0 a1 a2 → Id a0 a1 a2) (era-liftTy x0) (era-liftTm x1) (era-liftTm x2)
-era-liftTy (Mu x0) = refl
-era-liftTy (IMu x0 x1 x2) = cong1 (λ a0 → IMu x0 x1 a0) (era-liftTm x2)
+era-liftTy (Mu x0) = cong1 (λ a0 → Mu a0) (era-liftD x0)
+era-liftTy (IMu x0 x1 x2) = cong3 (λ a0 a1 a2 → IMu a0 a1 a2) (era-liftID x0) (era-liftTy x1) (era-liftTm x2)
 era-liftTm (var x0) = refl
 era-liftTm (lam x0) = cong1 (λ a0 → lam a0) (era-liftTm x0)
 era-liftTm (app x0 x1) = cong2 (λ a0 a1 → app a0 a1) (era-liftTm x0) (era-liftTm x1)
@@ -152,12 +181,12 @@ era-liftTm nzero = refl
 era-liftTm (nsuc x0) = cong1 (λ a0 → nsuc a0) (era-liftTm x0)
 era-liftTm (natrec x0 x1 x2) = cong3 (λ a0 a1 a2 → natrec a0 a1 a2) (era-liftTm x0) (era-liftTm x1) (era-liftTm x2)
 era-liftTm (con x0 x1) = cong1 (λ a0 → con x0 a0) (era-liftTm x1)
-era-liftTm (elim x0 x1 x2) = cong2 (λ a0 a1 → elim x0 a0 a1) (era-liftTm x1) (era-liftTm x2)
+era-liftTm (elim x0 x1 x2) = cong3 (λ a0 a1 a2 → elim a0 a1 a2) (era-liftD x0) (era-liftTm x1) (era-liftTm x2)
 era-liftTm (icon x0 x1) = cong1 (λ a0 → icon x0 a0) (era-liftTm x1)
-era-liftTm (ielim x0 x1 x2 x3) = cong3 (λ a0 a1 a2 → ielim x0 a0 a1 a2) (era-liftTm x1) (era-liftTm x2) (era-liftTm x3)
+era-liftTm (ielim x0 x1 x2 x3) = cong4 (λ a0 a1 a2 a3 → ielim a0 a1 a2 a3) (era-liftID x0) (era-liftTm x1) (era-liftTm x2) (era-liftTm x3)
 era-liftTm ⌜Nat⌝ = refl
-era-liftTm (⌜Mu⌝ x0) = refl
-era-liftTm (⌜IMu⌝ x0 x1 x2) = cong1 (λ a0 → ⌜IMu⌝ x0 x1 a0) (era-liftTm x2)
+era-liftTm (⌜Mu⌝ x0) = cong1 (λ a0 → ⌜Mu⌝ a0) (era-liftD x0)
+era-liftTm (⌜IMu⌝ x0 x1 x2) = cong3 (λ a0 a1 a2 → ⌜IMu⌝ a0 a1 a2) (era-liftID x0) (era-liftTy x1) (era-liftTm x2)
 era-liftTm ⌜Unit⌝ = refl
 
 ------------------------------------------------------------------------
