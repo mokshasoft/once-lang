@@ -49,7 +49,7 @@ open import DirectedHoTT.Spec.Syntax
         ; RTy; base; U; Π; Σ'; El; Hom
         ; RTm; var; lam; app; pair; fst; snd; absurd; ordtr; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝
         ; ⌜Hom⌝; hrefl; tr; ap; Id; ⌜Id⌝; idrefl; jsub
-        ; Unit; Nat; unit; nzero; nsuc; natrec; natrec-cong₃; ⌜Nat⌝; ⌜Unit⌝
+        ; Unit; Nat; unit; nzero; nsuc; natrec; natrec-cong₃; natrecᴹ; ⌜Nat⌝; ⌜Unit⌝
         ; Ren; extR; Sub; subTy; subTm; extS; renTm
         ; subTm-renTm; subTm-id; Hom-cong₃; ⌜Hom⌝-cong₃
         ; Desc; Mu; con; elim; lookupD; sel; fields
@@ -67,6 +67,7 @@ open import DirectedHoTT.Spec.Typing
         ; tr-J-Id; jsub-refl; ξ-⌜Id⌝ᶜ; ξ-⌜Id⌝ˡ; ξ-⌜Id⌝ʳ; ξ-idreflᶜ; ξ-idreflᵃ
         ; ξ-jsubᵈ; ξ-jsubᵖ; ξ-jsubᵉ
         ; natrec-zero; natrec-suc; ξ-nsuc; ξ-natrecᶻ; ξ-natrecˢ; ξ-natrecⁿ
+        ; natrecᴹ-zero; natrecᴹ-suc; ξ-natrecᴹᴹ; ξ-natrecᴹᶻ; ξ-natrecᴹˢ; ξ-natrecᴹⁿ
         ; Hom-Nat-z; Hom-Nat-sz; Hom-Nat-ss; El-⌜Id⌝; ξ-Idᵀ; ξ-Idˡ; ξ-Idʳ; ⊢⌜Id⌝; ⊢idrefl; ⊢jsub; ⊢ap
         ; hrefl-pw; tr-J-Hom; tr-pw
         ; _⟶*_; done; step
@@ -183,6 +184,7 @@ spine? (jsub d p e)   = idstk? p
 -- ★ WF stage A: `natrec` is an eliminator — a spine head exactly when
 -- its SCRUTINEE can never become a numeral.
 spine? (natrec z s n) = natstk? n
+spine? (natrecᴹ Mᴹ z s n) = natstk? n
 -- ★ INDUCTIVE TYPES: `con` is CANONICAL, so it is not a spine head (it
 --   falls where `nzero`/`nsuc` fall); a stuck `elim` IS one, exactly as
 --   a stuck `natrec` is.  ⚠ Leaving these to the catch-all would answer
@@ -226,6 +228,7 @@ stablecd? unit           = true
 stablecd? nzero          = true
 stablecd? (nsuc n)       = true
 stablecd? (natrec z s n) = natstk? n
+stablecd? (natrecᴹ Mᴹ z s n) = natstk? n
 -- ★ INDUCTIVE TYPES: ⚠ these two are NOT the catch-all.  `sne→stablecd`
 --   obliges every NEUTRAL to be a stable code, and a stuck `elim` is a
 --   neutral — so it must answer `mustk?`, exactly as a stuck `natrec`
@@ -278,6 +281,7 @@ mustk? unit           = true
 mustk? nzero          = true
 mustk? (nsuc n)       = true
 mustk? (natrec z s n) = natstk? n
+mustk? (natrecᴹ Mᴹ z s n) = natstk? n
 mustk? (con k p)      = false
 mustk? (elim D ms t)  = mustk? t
 mustk? (icon k p)      = false
@@ -309,6 +313,7 @@ pathstk? unit           = true
 pathstk? nzero          = true
 pathstk? (nsuc n)       = true
 pathstk? (natrec z s n) = natstk? n
+pathstk? (natrecᴹ Mᴹ z s n) = natstk? n
 pathstk? (con k p)      = true
 pathstk? (elim D ms t)  = mustk? t
 pathstk? (icon k p)      = true
@@ -344,6 +349,7 @@ idstk? unit           = true
 idstk? nzero          = true
 idstk? (nsuc n)       = true
 idstk? (natrec z s n) = natstk? n
+idstk? (natrecᴹ Mᴹ z s n) = natstk? n
 idstk? (con k p)      = true
 idstk? (elim D ms t)  = mustk? t
 idstk? (icon k p)      = true
@@ -379,6 +385,7 @@ apstk? unit           = true
 apstk? nzero          = true
 apstk? (nsuc n)       = true
 apstk? (natrec z s n) = natstk? n
+apstk? (natrecᴹ Mᴹ z s n) = natstk? n
 apstk? (con k p)      = true
 apstk? (elim D ms t)  = mustk? t
 apstk? (icon k p)      = true
@@ -433,6 +440,7 @@ deadmot? unit           = true
 deadmot? nzero          = true
 deadmot? (nsuc n)       = true
 deadmot? (natrec z s n) = natstk? n
+deadmot? (natrecᴹ Mᴹ z s n) = natstk? n
 deadmot? (con k p)      = true
 deadmot? (elim D ms t)  = mustk? t
 deadmot? (icon k p)      = true
@@ -464,6 +472,7 @@ nopw? unit           = true
 nopw? nzero          = true
 nopw? (nsuc n)       = true
 nopw? (natrec z s n) = natstk? n
+nopw? (natrecᴹ Mᴹ z s n) = natstk? n
 nopw? (con k p)      = true
 nopw? (elim D ms t)  = mustk? t
 nopw? (icon k p)      = true
@@ -499,6 +508,7 @@ natstk? unit           = true
 natstk? nzero          = false
 natstk? (nsuc n)       = false
 natstk? (natrec z s n) = natstk? n
+natstk? (natrecᴹ Mᴹ z s n) = natstk? n
 natstk? (con k p)      = true
 natstk? (elim D ms t)  = mustk? t
 natstk? (icon k p)      = true
@@ -610,6 +620,7 @@ nopw⊥pw unit h = refl
 nopw⊥pw nzero h = refl
 nopw⊥pw (nsuc n) h = refl
 nopw⊥pw (natrec z s n) h = refl
+nopw⊥pw (natrecᴹ Mᴹ z s n) h = refl
 nopw⊥pw (con k p) h = refl
 nopw⊥pw (elim D ms t) h = refl
 nopw⊥pw (icon k p) h = refl
@@ -642,6 +653,7 @@ deadmot→nopw unit h = refl
 deadmot→nopw nzero h = refl
 deadmot→nopw (nsuc n) h = refl
 deadmot→nopw (natrec z s n) h = h
+deadmot→nopw (natrecᴹ Mᴹ z s n) h = h
 deadmot→nopw (con k p) h = refl
 deadmot→nopw (elim D ms t) h = h
 deadmot→nopw (icon k p) h = refl
@@ -836,11 +848,17 @@ spine?-red (ξ-jsubᵈ r) h = h
 spine?-red (ξ-jsubᵖ r) h = idstk?-red r h
 spine?-red (ξ-jsubᵉ r) h = h
 spine?-red (natrec-zero _ _) ()
+spine?-red (natrecᴹ-zero _ _ _) ()
 spine?-red (natrec-suc _ _ _) ()
+spine?-red (natrecᴹ-suc _ _ _ _) ()
 spine?-red (ξ-nsuc r) ()
 spine?-red (ξ-natrecᶻ r) h = h
+spine?-red (ξ-natrecᴹᶻ r) h = h
+spine?-red (ξ-natrecᴹᴹ r) h = h
 spine?-red (ξ-natrecˢ r) h = h
+spine?-red (ξ-natrecᴹˢ r) h = h
 spine?-red (ξ-natrecⁿ r) h = natstk?-red r h
+spine?-red (ξ-natrecᴹⁿ r) h = natstk?-red r h
 -- ★ INDUCTIVE TYPES: a stuck `elim` is a spine head, so this mirrors
 --   `natrec`'s rows exactly — and ι UNSTICKS it, hence the absurdity.
 spine?-red (ι-elim D ms k q) ()
@@ -911,11 +929,17 @@ stableA?-red (ξ-jsubᵈ r) h = h
 stableA?-red (ξ-jsubᵖ r) h = idstk?-red r h
 stableA?-red (ξ-jsubᵉ r) h = h
 stableA?-red (natrec-zero _ _) ()
+stableA?-red (natrecᴹ-zero _ _ _) ()
 stableA?-red (natrec-suc _ _ _) ()
+stableA?-red (natrecᴹ-suc _ _ _ _) ()
 stableA?-red (ξ-nsuc r) h = refl
 stableA?-red (ξ-natrecᶻ r) h = h
+stableA?-red (ξ-natrecᴹᶻ r) h = h
+stableA?-red (ξ-natrecᴹᴹ r) h = h
 stableA?-red (ξ-natrecˢ r) h = h
+stableA?-red (ξ-natrecᴹˢ r) h = h
 stableA?-red (ξ-natrecⁿ r) h = natstk?-red r h
+stableA?-red (ξ-natrecᴹⁿ r) h = natstk?-red r h
 stableA?-red (ξ-con r) h = refl
 stableA?-red (ι-elim D ms k q) ()
 stableA?-red (ξ-elimᵐ r) h = h
@@ -983,11 +1007,17 @@ stablecd?-red (ξ-jsubᵈ r) h = h
 stablecd?-red (ξ-jsubᵖ r) h = idstk?-red r h
 stablecd?-red (ξ-jsubᵉ r) h = h
 stablecd?-red (natrec-zero _ _) ()
+stablecd?-red (natrecᴹ-zero _ _ _) ()
 stablecd?-red (natrec-suc _ _ _) ()
+stablecd?-red (natrecᴹ-suc _ _ _ _) ()
 stablecd?-red (ξ-nsuc r) h = refl
 stablecd?-red (ξ-natrecᶻ r) h = h
+stablecd?-red (ξ-natrecᴹᶻ r) h = h
+stablecd?-red (ξ-natrecᴹᴹ r) h = h
 stablecd?-red (ξ-natrecˢ r) h = h
+stablecd?-red (ξ-natrecᴹˢ r) h = h
 stablecd?-red (ξ-natrecⁿ r) h = natstk?-red r h
+stablecd?-red (ξ-natrecᴹⁿ r) h = natstk?-red r h
 stablecd?-red (ξ-con r) h = refl
 stablecd?-red (ι-elim D ms k q) ()
 stablecd?-red (ξ-elimᵐ r) h = h
@@ -1055,11 +1085,17 @@ pathstk?-red (ξ-jsubᵈ r) h = h
 pathstk?-red (ξ-jsubᵖ r) h = idstk?-red r h
 pathstk?-red (ξ-jsubᵉ r) h = h
 pathstk?-red (natrec-zero _ _) ()
+pathstk?-red (natrecᴹ-zero _ _ _) ()
 pathstk?-red (natrec-suc _ _ _) ()
+pathstk?-red (natrecᴹ-suc _ _ _ _) ()
 pathstk?-red (ξ-nsuc r) h = refl
 pathstk?-red (ξ-natrecᶻ r) h = h
+pathstk?-red (ξ-natrecᴹᶻ r) h = h
+pathstk?-red (ξ-natrecᴹᴹ r) h = h
 pathstk?-red (ξ-natrecˢ r) h = h
+pathstk?-red (ξ-natrecᴹˢ r) h = h
 pathstk?-red (ξ-natrecⁿ r) h = natstk?-red r h
+pathstk?-red (ξ-natrecᴹⁿ r) h = natstk?-red r h
 pathstk?-red (ordtr-z _ _ _ _) ()
 pathstk?-red (ordtr-szz _ _ _) ()
 pathstk?-red (ordtr-ssz _ _ _ _) ()
@@ -1131,11 +1167,17 @@ apstk?-red (ξ-jsubᵈ r) h = h
 apstk?-red (ξ-jsubᵖ r) h = idstk?-red r h
 apstk?-red (ξ-jsubᵉ r) h = h
 apstk?-red (natrec-zero _ _) ()
+apstk?-red (natrecᴹ-zero _ _ _) ()
 apstk?-red (natrec-suc _ _ _) ()
+apstk?-red (natrecᴹ-suc _ _ _ _) ()
 apstk?-red (ξ-nsuc r) h = refl
 apstk?-red (ξ-natrecᶻ r) h = h
+apstk?-red (ξ-natrecᴹᶻ r) h = h
+apstk?-red (ξ-natrecᴹᴹ r) h = h
 apstk?-red (ξ-natrecˢ r) h = h
+apstk?-red (ξ-natrecᴹˢ r) h = h
 apstk?-red (ξ-natrecⁿ r) h = natstk?-red r h
+apstk?-red (ξ-natrecᴹⁿ r) h = natstk?-red r h
 apstk?-red (ordtr-z _ _ _ _) ()
 apstk?-red (ordtr-szz _ _ _) ()
 apstk?-red (ordtr-ssz _ _ _ _) ()
@@ -1205,11 +1247,17 @@ idstk?-red (ξ-jsubᵈ r) h = h
 idstk?-red (ξ-jsubᵖ r) h = idstk?-red r h
 idstk?-red (ξ-jsubᵉ r) h = h
 idstk?-red (natrec-zero _ _) ()
+idstk?-red (natrecᴹ-zero _ _ _) ()
 idstk?-red (natrec-suc _ _ _) ()
+idstk?-red (natrecᴹ-suc _ _ _ _) ()
 idstk?-red (ξ-nsuc r) h = refl
 idstk?-red (ξ-natrecᶻ r) h = h
+idstk?-red (ξ-natrecᴹᶻ r) h = h
+idstk?-red (ξ-natrecᴹᴹ r) h = h
 idstk?-red (ξ-natrecˢ r) h = h
+idstk?-red (ξ-natrecᴹˢ r) h = h
 idstk?-red (ξ-natrecⁿ r) h = natstk?-red r h
+idstk?-red (ξ-natrecᴹⁿ r) h = natstk?-red r h
 idstk?-red (ordtr-z _ _ _ _) ()
 idstk?-red (ordtr-szz _ _ _) ()
 idstk?-red (ordtr-ssz _ _ _ _) ()
@@ -1278,11 +1326,17 @@ natstk?-red (ξ-jsubᵈ r) h = h
 natstk?-red (ξ-jsubᵖ r) h = idstk?-red r h
 natstk?-red (ξ-jsubᵉ r) h = h
 natstk?-red (natrec-zero _ _) ()
+natstk?-red (natrecᴹ-zero _ _ _) ()
 natstk?-red (natrec-suc _ _ _) ()
+natstk?-red (natrecᴹ-suc _ _ _ _) ()
 natstk?-red (ξ-nsuc r) ()
 natstk?-red (ξ-natrecᶻ r) h = h
+natstk?-red (ξ-natrecᴹᶻ r) h = h
+natstk?-red (ξ-natrecᴹᴹ r) h = h
 natstk?-red (ξ-natrecˢ r) h = h
+natstk?-red (ξ-natrecᴹˢ r) h = h
 natstk?-red (ξ-natrecⁿ r) h = natstk?-red r h
+natstk?-red (ξ-natrecᴹⁿ r) h = natstk?-red r h
 natstk?-red (ordtr-z _ _ _ _) ()
 natstk?-red (ordtr-szz _ _ _) ()
 natstk?-red (ordtr-ssz _ _ _ _) ()
@@ -1351,11 +1405,17 @@ mustk?-red (ξ-jsubᵈ r) h = h
 mustk?-red (ξ-jsubᵖ r) h = idstk?-red r h
 mustk?-red (ξ-jsubᵉ r) h = h
 mustk?-red (natrec-zero _ _) ()
+mustk?-red (natrecᴹ-zero _ _ _) ()
 mustk?-red (natrec-suc _ _ _) ()
+mustk?-red (natrecᴹ-suc _ _ _ _) ()
 mustk?-red (ξ-nsuc r) h = refl
 mustk?-red (ξ-natrecᶻ r) h = h
+mustk?-red (ξ-natrecᴹᶻ r) h = h
+mustk?-red (ξ-natrecᴹᴹ r) h = h
 mustk?-red (ξ-natrecˢ r) h = h
+mustk?-red (ξ-natrecᴹˢ r) h = h
 mustk?-red (ξ-natrecⁿ r) h = natstk?-red r h
+mustk?-red (ξ-natrecᴹⁿ r) h = natstk?-red r h
 mustk?-red (ordtr-z _ _ _ _) ()
 mustk?-red (ordtr-szz _ _ _) ()
 mustk?-red (ordtr-ssz _ _ _ _) ()
@@ -1426,15 +1486,21 @@ ordstk?-redᵃ (ξ-jsubᵈ r) h = h
 ordstk?-redᵃ (ξ-jsubᵖ r) h = idstk?-red r h
 ordstk?-redᵃ (ξ-jsubᵉ r) h = h
 ordstk?-redᵃ (natrec-zero _ _) ()
+ordstk?-redᵃ (natrecᴹ-zero _ _ _) ()
 ordstk?-redᵃ (natrec-suc _ _ _) ()
+ordstk?-redᵃ (natrecᴹ-suc _ _ _ _) ()
 -- ★ THE ONE ROW THAT DIFFERS FROM `natstk?-red`.  There this is `()`
 -- because `natstk? (nsuc n)` is `false`; here `ordstk? (nsuc n) t u`
 -- is `ordS? (natstk? t) u`, which does not mention the bound at all —
 -- so both sides are the SAME TERM and the row is just `h`.
 ordstk?-redᵃ (ξ-nsuc r) h = h
 ordstk?-redᵃ (ξ-natrecᶻ r) h = h
+ordstk?-redᵃ (ξ-natrecᴹᶻ r) h = h
+ordstk?-redᵃ (ξ-natrecᴹᴹ r) h = h
 ordstk?-redᵃ (ξ-natrecˢ r) h = h
+ordstk?-redᵃ (ξ-natrecᴹˢ r) h = h
 ordstk?-redᵃ (ξ-natrecⁿ r) h = natstk?-red r h
+ordstk?-redᵃ (ξ-natrecᴹⁿ r) h = natstk?-red r h
 ordstk?-redᵃ (ξ-con r) h = refl
 ordstk?-redᵃ (ι-elim D ms k p) ()
 ordstk?-redᵃ (ξ-elimᵐ r) h = h
@@ -1484,6 +1550,7 @@ ordstk?-redᵗ {a = idrefl a a₁} r h = h
 ordstk?-redᵗ {a = jsub a a₁ a₂} r h = h
 ordstk?-redᵗ {a = unit} r h = h
 ordstk?-redᵗ {a = natrec a a₁ a₂} r h = h
+ordstk?-redᵗ {a = natrecᴹ aᴹ a a₁ a₂} r h = h
 ordstk?-redᵗ {a = ⌜Nat⌝} r h = h
 ordstk?-redᵗ {a = ⌜Unit⌝} r h = h
 ordstk?-redᵗ {a = (⌜Mu⌝ Dᵐ)} r h = h
@@ -1515,6 +1582,7 @@ ordstk?-redᵘ {a = idrefl a a₁} r h = h
 ordstk?-redᵘ {a = jsub a a₁ a₂} r h = h
 ordstk?-redᵘ {a = unit} r h = h
 ordstk?-redᵘ {a = natrec a a₁ a₂} r h = h
+ordstk?-redᵘ {a = natrecᴹ aᴹ a a₁ a₂} r h = h
 ordstk?-redᵘ {a = ⌜Nat⌝} r h = h
 ordstk?-redᵘ {a = ⌜Unit⌝} r h = h
 ordstk?-redᵘ {a = (⌜Mu⌝ Dᵐ)} r h = h
@@ -1569,11 +1637,17 @@ nopw?-red (ξ-jsubᵈ r) h = h
 nopw?-red (ξ-jsubᵖ r) h = idstk?-red r h
 nopw?-red (ξ-jsubᵉ r) h = h
 nopw?-red (natrec-zero _ _) ()
+nopw?-red (natrecᴹ-zero _ _ _) ()
 nopw?-red (natrec-suc _ _ _) ()
+nopw?-red (natrecᴹ-suc _ _ _ _) ()
 nopw?-red (ξ-nsuc r) h = refl
 nopw?-red (ξ-natrecᶻ r) h = h
+nopw?-red (ξ-natrecᴹᶻ r) h = h
+nopw?-red (ξ-natrecᴹᴹ r) h = h
 nopw?-red (ξ-natrecˢ r) h = h
+nopw?-red (ξ-natrecᴹˢ r) h = h
 nopw?-red (ξ-natrecⁿ r) h = natstk?-red r h
+nopw?-red (ξ-natrecᴹⁿ r) h = natstk?-red r h
 nopw?-red (ordtr-z _ _ _ _) ()
 nopw?-red (ordtr-szz _ _ _) ()
 nopw?-red (ordtr-ssz _ _ _ _) ()
@@ -1644,11 +1718,17 @@ deadmot?-red (ξ-jsubᵈ r) h = h
 deadmot?-red (ξ-jsubᵖ r) h = idstk?-red r h
 deadmot?-red (ξ-jsubᵉ r) h = h
 deadmot?-red (natrec-zero _ _) ()
+deadmot?-red (natrecᴹ-zero _ _ _) ()
 deadmot?-red (natrec-suc _ _ _) ()
+deadmot?-red (natrecᴹ-suc _ _ _ _) ()
 deadmot?-red (ξ-nsuc r) h = refl
 deadmot?-red (ξ-natrecᶻ r) h = h
+deadmot?-red (ξ-natrecᴹᶻ r) h = h
+deadmot?-red (ξ-natrecᴹᴹ r) h = h
 deadmot?-red (ξ-natrecˢ r) h = h
+deadmot?-red (ξ-natrecᴹˢ r) h = h
 deadmot?-red (ξ-natrecⁿ r) h = natstk?-red r h
+deadmot?-red (ξ-natrecᴹⁿ r) h = natstk?-red r h
 deadmot?-red (ordtr-z _ _ _ _) ()
 deadmot?-red (ordtr-szz _ _ _) ()
 deadmot?-red (ordtr-ssz _ _ _ _) ()
@@ -1696,6 +1776,7 @@ deadA→nopw unit h = refl
 deadA→nopw nzero h = refl
 deadA→nopw (nsuc n) h = refl
 deadA→nopw (natrec z s n) h = h
+deadA→nopw (natrecᴹ Mᴹ z s n) h = h
 deadA→nopw (con k q) h = refl
 deadA→nopw (elim D ms t) h = h
 deadA→nopw (icon k q) h = refl
@@ -1724,6 +1805,7 @@ dead→nopw unit h = refl
 dead→nopw nzero h = refl
 dead→nopw (nsuc n) h = refl
 dead→nopw (natrec z s n) h = h
+dead→nopw (natrecᴹ Mᴹ z s n) h = h
 dead→nopw (con k q) h = refl
 dead→nopw (elim D ms t) h = h
 dead→nopw (icon k q) h = refl
@@ -1763,6 +1845,7 @@ trstk-hrefl-any unit h = h
 trstk-hrefl-any nzero h = h
 trstk-hrefl-any (nsuc n) h = h
 trstk-hrefl-any (natrec z s n) h = h
+trstk-hrefl-any (natrecᴹ Mᴹ z s n) h = h
 
 -- motive steps.  Only lam- and hrefl-paths inspect the motive; the
 -- rest are motive-independent (the catchall clause on both sides).
@@ -1881,6 +1964,7 @@ trstk?-red-d {d = unit} {d' = d'} {p = hrefl c s} r h = trstk-hrefl-any d' h
 trstk?-red-d {d = nzero} {d' = d'} {p = hrefl c s} r h = trstk-hrefl-any d' h
 trstk?-red-d {d = (nsuc dz)} {d' = d'} {p = hrefl c s} r h = trstk-hrefl-any d' h
 trstk?-red-d {d = (natrec dz₁ dz₂ dz₃)} {d' = d'} {p = hrefl c s} r h = trstk-hrefl-any d' h
+trstk?-red-d {d = (natrecᴹ dzᴹ dz₁ dz₂ dz₃)} {d' = d'} {p = hrefl c s} r h = trstk-hrefl-any d' h
 trstk?-red-d {p = (var y)} r h = h
 trstk?-red-d {p = (app t₁ u₁)} r h = h
 trstk?-red-d {p = (pair a₁ b₁)} r h = h
@@ -1902,6 +1986,7 @@ trstk?-red-d {p = unit} r h = h
 trstk?-red-d {p = nzero} r h = h
 trstk?-red-d {p = nsuc _} r h = h
 trstk?-red-d {p = natrec _ _ _} r h = h
+trstk?-red-d {p = natrecᴹ _ _ _ _} r h = h
 -- a `con`/`elim` PATH is neither `lam` nor `hrefl`, so `trstk?` falls to
 -- `pathstk?` and a reduction of the MOTIVE cannot touch it.
 trstk?-red-d {p = con _ _} r h = h
@@ -1955,6 +2040,7 @@ trstk?-red-p {d = (icon dk dq)} (ξ-hreflᶜ rc) h = stablecd?-red rc h
 trstk?-red-p {d = (elim dD dm dt)} (ξ-hreflᶜ rc) h = stablecd?-red rc h
 trstk?-red-p {d = (ielim dD iˣ dm dt)} (ξ-hreflᶜ rc) h = stablecd?-red rc h
 trstk?-red-p {d = (natrec dz₁ dz₂ dz₃)} (ξ-hreflᶜ rc) h = stablecd?-red rc h
+trstk?-red-p {d = (natrecᴹ dzᴹ dz₁ dz₂ dz₃)} (ξ-hreflᶜ rc) h = stablecd?-red rc h
 trstk?-red-p {d = (var x)} (ξ-hreflᵃ ra) h = h
 trstk?-red-p {d = (lam t)} (ξ-hreflᵃ ra) h = h
 trstk?-red-p {d = (app t u)} (ξ-hreflᵃ ra) h = h
@@ -1983,6 +2069,7 @@ trstk?-red-p {d = (icon dk dq)} (ξ-hreflᵃ ra) h = h
 trstk?-red-p {d = (elim dD dm dt)} (ξ-hreflᵃ ra) h = h
 trstk?-red-p {d = (ielim dD iˣ dm dt)} (ξ-hreflᵃ ra) h = h
 trstk?-red-p {d = (natrec dz₁ dz₂ dz₃)} (ξ-hreflᵃ ra) h = h
+trstk?-red-p {d = (natrecᴹ dzᴹ dz₁ dz₂ dz₃)} (ξ-hreflᵃ ra) h = h
 trstk?-red-p {d = var x} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (nopw⊥pw C₀ h)) kp))
 trstk?-red-p {d = (lam t)} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
 trstk?-red-p {d = (app t u)} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
@@ -2011,6 +2098,7 @@ trstk?-red-p {d = (icon dk dq)} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (tra
 trstk?-red-p {d = (elim dD dm dt)} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
 trstk?-red-p {d = (ielim dD iˣ dm dt)} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
 trstk?-red-p {d = (natrec dz₁ dz₂ dz₃)} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
+trstk?-red-p {d = (natrecᴹ dzᴹ dz₁ dz₂ dz₃)} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
 trstk?-red-p {d = (ordtr dz₁ dz₂ dz₃ dz₄ dz₅)} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
 trstk?-red-p (β _ _) ()
 trstk?-red-p (βfst _ _) ()
@@ -2067,11 +2155,17 @@ trstk?-red-p (ξ-jsubᵈ r) h = h
 trstk?-red-p (ξ-jsubᵖ r) h = idstk?-red r h
 trstk?-red-p (ξ-jsubᵉ r) h = h
 trstk?-red-p (natrec-zero _ _) ()
+trstk?-red-p (natrecᴹ-zero _ _ _) ()
 trstk?-red-p (natrec-suc _ _ _) ()
+trstk?-red-p (natrecᴹ-suc _ _ _ _) ()
 trstk?-red-p (ξ-nsuc r) h = refl
 trstk?-red-p (ξ-natrecᶻ r) h = h
+trstk?-red-p (ξ-natrecᴹᶻ r) h = h
+trstk?-red-p (ξ-natrecᴹᴹ r) h = h
 trstk?-red-p (ξ-natrecˢ r) h = h
+trstk?-red-p (ξ-natrecᴹˢ r) h = h
 trstk?-red-p (ξ-natrecⁿ r) h = natstk?-red r h
+trstk?-red-p (ξ-natrecᴹⁿ r) h = natstk?-red r h
 -- ★ INDUCTIVE TYPES: a `con`/`elim` path is motive-independent (neither
 -- `lam` nor `hrefl`), so this is `pathstk?`'s ι row verbatim.
 trstk?-red-p (ξ-con r) h = refl
@@ -2164,6 +2258,7 @@ natstk→homnat unit u h           = h
 natstk→homnat nzero u ()
 natstk→homnat (nsuc n) u ()
 natstk→homnat (natrec z w n) u h = h
+natstk→homnat (natrecᴹ Mᴹ z w n) u h = h
 natstk→homnat (con k q) u h = h
 natstk→homnat (elim D ms t) u h = h
 natstk→homnat (⌜IMu⌝ Dˣ Iˣ iˣ) u h = h
@@ -2198,6 +2293,7 @@ natstk→ordstk (ap c b₀ p₀) t u h = h
 natstk→ordstk (jsub d p₀ e) t u h = h
 natstk→ordstk unit t u h = h
 natstk→ordstk (natrec z w n) t u h = h
+natstk→ordstk (natrecᴹ Mᴹ z w n) t u h = h
 natstk→ordstk (con k q) t u h = h
 natstk→ordstk (elim D ms t₀) t u h = h
 natstk→ordstk (⌜IMu⌝ Dˣ Iˣ iˣ) t u h = h
@@ -2230,6 +2326,7 @@ homnat?-redˡ {t = ap c b p} {t' = t'} {u = u} r h = natstk→homnat t' u (natst
 homnat?-redˡ {t = jsub d p e} {t' = t'} {u = u} r h = natstk→homnat t' u (natstk?-red r h)
 homnat?-redˡ {t = unit} {t' = t'} {u = u} r h = natstk→homnat t' u (natstk?-red r h)
 homnat?-redˡ {t = natrec z w n} {t' = t'} {u = u} r h = natstk→homnat t' u (natstk?-red r h)
+homnat?-redˡ {t = natrecᴹ Mᴹ z w n} {t' = t'} {u = u} r h = natstk→homnat t' u (natstk?-red r h)
 homnat?-redˡ {t = con k q} {t' = t'} {u = u} r h = natstk→homnat t' u (natstk?-red r h)
 homnat?-redˡ {t = elim D ms t₀} {t' = t'} {u = u} r h = natstk→homnat t' u (natstk?-red r h)
 homnat?-redˡ {t = icon k q} {t' = t'} {u = u} r h = natstk→homnat t' u (natstk?-red r h)
@@ -2263,6 +2360,7 @@ homnat?-redʳ {t = ap c b p} r h     = h
 homnat?-redʳ {t = jsub d p e} r h   = h
 homnat?-redʳ {t = unit} r h         = h
 homnat?-redʳ {t = natrec z w n} r h = h
+homnat?-redʳ {t = natrecᴹ Mᴹ z w n} r h = h
 homnat?-redʳ {t = con k q} r h = h
 homnat?-redʳ {t = elim D ms t₀} r h = h
 homnat?-redʳ {t = icon k q} r h = h
@@ -3241,6 +3339,7 @@ homheaded?-ren ρ unit          = refl
 homheaded?-ren ρ nzero         = refl
 homheaded?-ren ρ (nsuc n)      = refl
 homheaded?-ren ρ (natrec z s n) = refl
+homheaded?-ren ρ (natrecᴹ Mᴹ z s n) = refl
 homheaded?-ren ρ (con k q) = refl
 homheaded?-ren ρ (elim D ms t) = refl
 homheaded?-ren ρ (⌜IMu⌝ Dˣ Iˣ iˣ) = refl
@@ -3298,6 +3397,7 @@ spine?-ren ρ unit          = refl
 spine?-ren ρ nzero         = refl
 spine?-ren ρ (nsuc n)      = refl
 spine?-ren ρ (natrec z s n) = natstk?-ren ρ n
+spine?-ren ρ (natrecᴹ Mᴹ z s n) = natstk?-ren ρ n
 spine?-ren ρ (con k q) = refl
 spine?-ren ρ (elim D ms t) = mustk?-ren ρ t
 spine?-ren ρ (⌜IMu⌝ Dˣ Iˣ iˣ) = refl
@@ -3340,6 +3440,7 @@ ordstk?-ren ρ (idrefl a₀ a₁) t u   = refl
 ordstk?-ren ρ (jsub a₀ a₁ a₂) t u  = idstk?-ren ρ a₁
 ordstk?-ren ρ unit t u             = refl
 ordstk?-ren ρ (natrec a₀ a₁ a₂) t u = natstk?-ren ρ a₂
+ordstk?-ren ρ (natrecᴹ _ a₀ a₁ a₂) t u = natstk?-ren ρ a₂
 ordstk?-ren ρ (con k q) t u = refl
 ordstk?-ren ρ (elim D ms a₀) t u = mustk?-ren ρ a₀
 ordstk?-ren ρ (⌜IMu⌝ Dˣ Iˣ iˣ) t u           = refl
@@ -3372,6 +3473,7 @@ stableA?-ren ρ unit          = refl
 stableA?-ren ρ nzero         = refl
 stableA?-ren ρ (nsuc n)      = refl
 stableA?-ren ρ (natrec z s n) = natstk?-ren ρ n
+stableA?-ren ρ (natrecᴹ Mᴹ z s n) = natstk?-ren ρ n
 stableA?-ren ρ (con k q) = refl
 stableA?-ren ρ (elim D ms t) = mustk?-ren ρ t
 stableA?-ren ρ (⌜IMu⌝ Dˣ Iˣ iˣ) = refl
@@ -3403,6 +3505,7 @@ stablecd?-ren ρ unit          = refl
 stablecd?-ren ρ nzero         = refl
 stablecd?-ren ρ (nsuc n)      = refl
 stablecd?-ren ρ (natrec z s n) = natstk?-ren ρ n
+stablecd?-ren ρ (natrecᴹ Mᴹ z s n) = natstk?-ren ρ n
 stablecd?-ren ρ (con k q) = refl
 stablecd?-ren ρ (elim D ms t) = mustk?-ren ρ t
 stablecd?-ren ρ (⌜IMu⌝ Dˣ Iˣ iˣ) = refl
@@ -3434,6 +3537,7 @@ pathstk?-ren ρ unit          = refl
 pathstk?-ren ρ nzero         = refl
 pathstk?-ren ρ (nsuc n)      = refl
 pathstk?-ren ρ (natrec z s n) = natstk?-ren ρ n
+pathstk?-ren ρ (natrecᴹ Mᴹ z s n) = natstk?-ren ρ n
 pathstk?-ren ρ (con k q) = refl
 pathstk?-ren ρ (elim D ms t) = mustk?-ren ρ t
 pathstk?-ren ρ (⌜IMu⌝ Dˣ Iˣ iˣ) = refl
@@ -3465,6 +3569,7 @@ apstk?-ren ρ unit          = refl
 apstk?-ren ρ nzero         = refl
 apstk?-ren ρ (nsuc n)      = refl
 apstk?-ren ρ (natrec z s n) = natstk?-ren ρ n
+apstk?-ren ρ (natrecᴹ Mᴹ z s n) = natstk?-ren ρ n
 apstk?-ren ρ (con k q) = refl
 apstk?-ren ρ (elim D ms t) = mustk?-ren ρ t
 apstk?-ren ρ (⌜IMu⌝ Dˣ Iˣ iˣ) = refl
@@ -3496,6 +3601,7 @@ idstk?-ren ρ unit          = refl
 idstk?-ren ρ nzero         = refl
 idstk?-ren ρ (nsuc n)      = refl
 idstk?-ren ρ (natrec z s n) = natstk?-ren ρ n
+idstk?-ren ρ (natrecᴹ Mᴹ z s n) = natstk?-ren ρ n
 idstk?-ren ρ (con k q) = refl
 idstk?-ren ρ (elim D ms t) = mustk?-ren ρ t
 idstk?-ren ρ (⌜IMu⌝ Dˣ Iˣ iˣ) = refl
@@ -3527,6 +3633,7 @@ natstk?-ren ρ unit          = refl
 natstk?-ren ρ nzero         = refl
 natstk?-ren ρ (nsuc n)      = refl
 natstk?-ren ρ (natrec z s n) = natstk?-ren ρ n
+natstk?-ren ρ (natrecᴹ Mᴹ z s n) = natstk?-ren ρ n
 natstk?-ren ρ (con k q) = refl
 natstk?-ren ρ (elim D ms t) = mustk?-ren ρ t
 natstk?-ren ρ (⌜IMu⌝ Dˣ Iˣ iˣ) = refl
@@ -3560,6 +3667,7 @@ mustk?-ren ρ unit          = refl
 mustk?-ren ρ nzero         = refl
 mustk?-ren ρ (nsuc n)      = refl
 mustk?-ren ρ (natrec z s n) = natstk?-ren ρ n
+mustk?-ren ρ (natrecᴹ Mᴹ z s n) = natstk?-ren ρ n
 mustk?-ren ρ (con k q) = refl
 mustk?-ren ρ (elim D ms t) = mustk?-ren ρ t
 mustk?-ren ρ (⌜IMu⌝ Dˣ Iˣ iˣ) = refl
@@ -3606,6 +3714,7 @@ trstk?-ren ρ unit (hrefl c t)             = stablecd?-ren ρ c
 trstk?-ren ρ nzero (hrefl c t)            = stablecd?-ren ρ c
 trstk?-ren ρ (nsuc d₁) (hrefl c t)        = stablecd?-ren ρ c
 trstk?-ren ρ (natrec d₁ d₂ d₃) (hrefl c t) = stablecd?-ren ρ c
+trstk?-ren ρ (natrecᴹ _ d₁ d₂ d₃) (hrefl c t) = stablecd?-ren ρ c
 trstk?-ren ρ (con dk dq) (hrefl c t)       = stablecd?-ren ρ c
 trstk?-ren ρ (elim dD dm dt) (hrefl c t)   = stablecd?-ren ρ c
 trstk?-ren ρ d (tr e q w)    = trstk?-ren ρ e q
@@ -3617,6 +3726,7 @@ trstk?-ren ρ d unit          = refl
 trstk?-ren ρ d nzero         = refl
 trstk?-ren ρ d (nsuc n)      = refl
 trstk?-ren ρ d (natrec z w n) = natstk?-ren ρ n
+trstk?-ren ρ d (natrecᴹ Mᴹ z w n) = natstk?-ren ρ n
 trstk?-ren ρ d (con k q) = refl
 trstk?-ren ρ d (elim D ms t) = mustk?-ren ρ t
 trstk?-ren ρ d (⌜IMu⌝ Dˣ Iˣ iˣ) = refl
@@ -3651,6 +3761,7 @@ nopw?-ren ρ unit          = refl
 nopw?-ren ρ nzero         = refl
 nopw?-ren ρ (nsuc n)      = refl
 nopw?-ren ρ (natrec z s n) = natstk?-ren ρ n
+nopw?-ren ρ (natrecᴹ Mᴹ z s n) = natstk?-ren ρ n
 nopw?-ren ρ (con k q) = refl
 nopw?-ren ρ (elim D ms t) = mustk?-ren ρ t
 nopw?-ren ρ (⌜IMu⌝ Dˣ Iˣ iˣ) = refl
@@ -3682,6 +3793,7 @@ deadmot?-ren ρ unit          = refl
 deadmot?-ren ρ nzero         = refl
 deadmot?-ren ρ (nsuc n)      = refl
 deadmot?-ren ρ (natrec z s n) = natstk?-ren ρ n
+deadmot?-ren ρ (natrecᴹ Mᴹ z s n) = natstk?-ren ρ n
 deadmot?-ren ρ (con k q) = refl
 deadmot?-ren ρ (elim D ms t) = mustk?-ren ρ t
 deadmot?-ren ρ (⌜IMu⌝ Dˣ Iˣ iˣ) = refl
@@ -3734,6 +3846,7 @@ trlam?-ren ρ (⌜Hom⌝ c a unit)             = refl
 trlam?-ren ρ (⌜Hom⌝ c a nzero)            = refl
 trlam?-ren ρ (⌜Hom⌝ c a (nsuc m))         = refl
 trlam?-ren ρ (⌜Hom⌝ c a (natrec m₁ m₂ m₃)) = refl
+trlam?-ren ρ (⌜Hom⌝ c a (natrecᴹ _ m₁ m₂ m₃)) = refl
 trlam?-ren ρ (hrefl c t)  = refl
 trlam?-ren ρ (tr d p e)   = refl
 trlam?-ren ρ (ap c b p)   = refl
@@ -3744,6 +3857,7 @@ trlam?-ren ρ unit         = refl
 trlam?-ren ρ nzero        = refl
 trlam?-ren ρ (nsuc n)     = refl
 trlam?-ren ρ (natrec z w n) = refl
+trlam?-ren ρ (natrecᴹ Mᴹ z w n) = refl
 trlam?-ren ρ (con k q) = refl
 trlam?-ren ρ (elim D ms t) = refl
 trlam?-ren ρ (⌜IMu⌝ Dˣ Iˣ iˣ)       = refl

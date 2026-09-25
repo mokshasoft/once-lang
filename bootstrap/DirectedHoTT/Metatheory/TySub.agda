@@ -67,7 +67,7 @@ open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; Var; vz; vs; RTy; base; U; Π; Σ'; El; Hom; RTm; var
         ; lam; app; pair; fst; snd; absurd; ordtr; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝; ⌜Hom⌝
         ; hrefl; tr; ap; Id; ⌜Id⌝; idrefl; jsub; Id-cong₃; ⌜Id⌝-cong₃
-        ; jsub-cong₃; Unit; Nat; unit; nzero; nsuc; natrec; ⌜Nat⌝; ⌜Unit⌝
+        ; jsub-cong₃; Unit; Nat; unit; nzero; nsuc; natrec; natrecᴹ; ⌜Nat⌝; ⌜Unit⌝
         ; ⌜Mu⌝; Ren; extR; renTm; renTy; Sub; extS; subTm; subTy; idₛ; _∘ᵣ_
         ; _ₛ∘ᵣ_; _ᵣ∘ₛ_; _∘ₛ_; subTy-renTy; renTy-subTy; subTy-subTy
         ; renTy-renTy; subTy-cong; renTy-cong; subTy-id; subTm-renTm
@@ -80,7 +80,7 @@ open import DirectedHoTT.Spec.Syntax
         ; ipayTy-ren; ipayTy-sub; iext; isingle; ipayTy-cong; subTm-subTm
         ; iext-ren; iext-sub; ipayTy-renⁱ; ipayTy-subⁱ )
 open import DirectedHoTT.Spec.Variance
-  using ( 𝔹; true; false; _∨_; occTm; ∨-false; ∨-false₁; ∨-false₂
+  using ( 𝔹; true; false; _∨_; occTm; occTy; ∨-false; ∨-false₁; ∨-false₂
         ; occ-ren-eq; occ-sub; eqv; Avoids; occ-ren-tm; avoids-wk
         ; PosC; posc-var; posc-Hom; posc-ren; posc-sub
         ; pw?; stkC?; pwDom; pwBody; pwShift
@@ -109,6 +109,7 @@ open import DirectedHoTT.Spec.Typing
         ; jsub-refl; ξ-⌜Id⌝ᶜ; ξ-⌜Id⌝ˡ; ξ-⌜Id⌝ʳ; ξ-idreflᶜ; ξ-idreflᵃ
         ; ξ-jsubᵈ; ξ-jsubᵖ; ξ-jsubᵉ; El-⌜Id⌝; ξ-Idᵀ; ξ-Idˡ; ξ-Idʳ
         ; natrec-zero; natrec-suc; ξ-nsuc; ξ-natrecᶻ; ξ-natrecˢ; ξ-natrecⁿ
+        ; natrecᴹ-zero; natrecᴹ-suc; ξ-natrecᴹᴹ; ξ-natrecᴹᶻ; ξ-natrecᴹˢ; ξ-natrecᴹⁿ; ⊢natrecᴹ
         ; Hom-Nat-z; Hom-Nat-sz; Hom-Nat-ss
         ; _⟶*_; done; step
         ; _≅ᵀ_; credᵀ; crflᵀ; csymᵀ; ctrnᵀ
@@ -275,6 +276,10 @@ wk-inst d =
 
 -- Reduction never INTRODUCES a free variable — so `PosC` (whose content
 -- is vz-freeness of the motive's frozen components) survives `ξ-trᵈ`.
+-- ★ SPIKE (PLAN-BIDI S1): the TYPE twin — a motive in a term can now
+--   reduce, and reduction still introduces no free variable.
+occ-redᵀ : {x : Var Γ} {A A' : RTy Γ} →
+           A ⟶ᵀ A' → occTy x A ≡ false → occTy x A' ≡ false
 occ-red : {x : Var Γ} {t t' : RTm Γ} →
           t ⟶ t' → occTm x t ≡ false → occTm x t' ≡ false
 occ-red {x = x} (β t u) e = occ-sub h t (∨-false₁ (occTm (vs x) t) e)
@@ -339,6 +344,43 @@ occ-red {x = x} (natrec-suc z s₀ n) e =
   h₂ (vs (vs y)) q = q
   h₁ : ∀ y → eqv (vs x) y ≡ false → occTm x (single (natrec z s₀ n) y) ≡ false
   h₁ vz     _ = ∨-false eZ (∨-false eS eN)
+  h₁ (vs y) q = q
+-- ★ SPIKE: the motive-annotated recursor.  `e₀` peels the MOTIVE's
+--   disjunct; the rest is the `natrec` proof verbatim.
+occ-red {x = x} (ξ-natrecᴹᴹ {M = M} r) e =
+  ∨-false (occ-redᵀ r (∨-false₁ (occTy (vs x) M) e)) (∨-false₂ (occTy (vs x) M) e)
+occ-red {x = x} (ξ-natrecᴹᶻ {M = M} {z = z} {s = s₀} r) e =
+  ∨-false (∨-false₁ (occTy (vs x) M) e)
+    (∨-false (occ-red r (∨-false₁ (occTm x z) e₀)) (∨-false₂ (occTm x z) e₀))
+  where e₀ = ∨-false₂ (occTy (vs x) M) e
+occ-red {x = x} (ξ-natrecᴹˢ {M = M} {z = z} {s = s₀} r) e =
+  ∨-false (∨-false₁ (occTy (vs x) M) e)
+    (∨-false (∨-false₁ (occTm x z) e₀)
+      (∨-false (occ-red r (∨-false₁ (occTm (vs (vs x)) s₀) (∨-false₂ (occTm x z) e₀)))
+               (∨-false₂ (occTm (vs (vs x)) s₀) (∨-false₂ (occTm x z) e₀))))
+  where e₀ = ∨-false₂ (occTy (vs x) M) e
+occ-red {x = x} (ξ-natrecᴹⁿ {M = M} {z = z} {s = s₀} r) e =
+  ∨-false (∨-false₁ (occTy (vs x) M) e)
+    (∨-false (∨-false₁ (occTm x z) e₀)
+      (∨-false (∨-false₁ (occTm (vs (vs x)) s₀) (∨-false₂ (occTm x z) e₀))
+               (occ-red r (∨-false₂ (occTm (vs (vs x)) s₀) (∨-false₂ (occTm x z) e₀)))))
+  where e₀ = ∨-false₂ (occTy (vs x) M) e
+occ-red {x = x} (natrecᴹ-zero M z s₀) e =
+  ∨-false₁ (occTm x z) (∨-false₂ (occTy (vs x) M) e)
+occ-red {x = x} (natrecᴹ-suc M z s₀ n) e =
+  occ-sub h₁ (subTm (extS (single n)) s₀) (occ-sub h₂ s₀ eS)
+  where
+  eM = ∨-false₁ (occTy (vs x) M) e
+  e₀ = ∨-false₂ (occTy (vs x) M) e
+  eZ = ∨-false₁ (occTm x z) e₀
+  eS = ∨-false₁ (occTm (vs (vs x)) s₀) (∨-false₂ (occTm x z) e₀)
+  eN = ∨-false₂ (occTm (vs (vs x)) s₀) (∨-false₂ (occTm x z) e₀)
+  h₂ : ∀ y → eqv (vs (vs x)) y ≡ false → occTm (vs x) (extS (single n) y) ≡ false
+  h₂ vz          _ = refl
+  h₂ (vs vz)     _ = trans (occ-ren-eq (λ _ → refl) n) eN
+  h₂ (vs (vs y)) q = q
+  h₁ : ∀ y → eqv (vs x) y ≡ false → occTm x (single (natrecᴹ M z s₀ n) y) ≡ false
+  h₁ vz     _ = ∨-false eM (∨-false eZ (∨-false eS eN))
   h₁ (vs y) q = q
 occ-red (ξ-lam r) e = occ-red r e
 occ-red {x = x} (ξ-appˡ {t = t} r) e =
@@ -532,6 +574,61 @@ occ-red {x = x} (ξ-jsubᵉ {d = d} {p = p} r) e =
   ∨-false (∨-false₁ (occTm (vs x) d) e)
           (∨-false (∨-false₁ (occTm x p) (∨-false₂ (occTm (vs x) d) e))
                    (occ-red r (∨-false₂ (occTm x p) (∨-false₂ (occTm (vs x) d) e))))
+
+occ-redᵀ El-⌜base⌝ e = refl
+occ-redᵀ (El-⌜Π⌝ c d) e = e
+occ-redᵀ (El-⌜Σ⌝ c d) e = e
+occ-redᵀ (El-⌜Hom⌝ c a b) e = e
+occ-redᵀ (El-⌜Id⌝ c a b) e = e
+occ-redᵀ El-⌜Nat⌝ e = refl
+occ-redᵀ El-⌜Unit⌝ e = refl
+occ-redᵀ El-⌜Mu⌝ e = refl
+occ-redᵀ El-⌜IMu⌝ e = e
+occ-redᵀ (ξ-El r) e = occ-red r e
+occ-redᵀ {x = x} (ξ-Πˡ {A = A} r) e =
+  ∨-false (occ-redᵀ r (∨-false₁ (occTy x A) e)) (∨-false₂ (occTy x A) e)
+occ-redᵀ {x = x} (ξ-Πʳ {A = A} r) e =
+  ∨-false (∨-false₁ (occTy x A) e) (occ-redᵀ r (∨-false₂ (occTy x A) e))
+occ-redᵀ {x = x} (ξ-Σˡ {A = A} r) e =
+  ∨-false (occ-redᵀ r (∨-false₁ (occTy x A) e)) (∨-false₂ (occTy x A) e)
+occ-redᵀ {x = x} (ξ-Σʳ {A = A} r) e =
+  ∨-false (∨-false₁ (occTy x A) e) (occ-redᵀ r (∨-false₂ (occTy x A) e))
+occ-redᵀ (Hom-Nat-z n) e = refl
+occ-redᵀ (Hom-Nat-sz m) e = refl
+occ-redᵀ (Hom-Nat-ss m n) e = e
+occ-redᵀ {x = x} (Hom-U c d) e =
+  ∨-false (∨-false₁ (occTm x c) e)
+          (trans (occ-ren-eq (λ _ → refl) d) (∨-false₂ (occTm x c) e))
+occ-redᵀ {x = x} (Hom-Π A B f g) e =
+  ∨-false eA (∨-false eB (∨-false (∨-false ef refl) (∨-false eg refl)))
+  where
+  eAB = ∨-false₁ (occTy x A ∨ occTy (vs x) B) e
+  eA  = ∨-false₁ (occTy x A) eAB
+  eB  = ∨-false₂ (occTy x A) eAB
+  efg = ∨-false₂ (occTy x A ∨ occTy (vs x) B) e
+  ef  = trans (occ-ren-eq (λ _ → refl) f) (∨-false₁ (occTm x f) efg)
+  eg  = trans (occ-ren-eq (λ _ → refl) g) (∨-false₂ (occTm x f) efg)
+occ-redᵀ {x = x} (ξ-Homᵀ {A = A} r) e =
+  ∨-false (occ-redᵀ r (∨-false₁ (occTy x A) e)) (∨-false₂ (occTy x A) e)
+occ-redᵀ {x = x} (ξ-Homˡ {A = A} {t = t} r) e =
+  ∨-false (∨-false₁ (occTy x A) e)
+    (∨-false (occ-red r (∨-false₁ (occTm x t) e₀)) (∨-false₂ (occTm x t) e₀))
+  where e₀ = ∨-false₂ (occTy x A) e
+occ-redᵀ {x = x} (ξ-Homʳ {A = A} {t = t} r) e =
+  ∨-false (∨-false₁ (occTy x A) e)
+    (∨-false (∨-false₁ (occTm x t) e₀) (occ-red r (∨-false₂ (occTm x t) e₀)))
+  where e₀ = ∨-false₂ (occTy x A) e
+occ-redᵀ {x = x} (ξ-Idᵀ {A = A} r) e =
+  ∨-false (occ-redᵀ r (∨-false₁ (occTy x A) e)) (∨-false₂ (occTy x A) e)
+occ-redᵀ {x = x} (ξ-Idˡ {A = A} {t = t} r) e =
+  ∨-false (∨-false₁ (occTy x A) e)
+    (∨-false (occ-red r (∨-false₁ (occTm x t) e₀)) (∨-false₂ (occTm x t) e₀))
+  where e₀ = ∨-false₂ (occTy x A) e
+occ-redᵀ {x = x} (ξ-Idʳ {A = A} {t = t} r) e =
+  ∨-false (∨-false₁ (occTy x A) e)
+    (∨-false (∨-false₁ (occTm x t) e₀) (occ-red r (∨-false₂ (occTm x t) e₀)))
+  where e₀ = ∨-false₂ (occTy x A) e
+occ-redᵀ (ξ-IMu r) e = occ-red r e
 
 posc-red : {d d' : RTm (Γ ∙)} → PosC vz d → d ⟶ d' → PosC vz d'
 posc-red posc-var ()
@@ -1034,6 +1131,12 @@ ren-lemma {ρ = ρ} (⊢natrec {M = M} {n = n} dM dz ds dn) h =
              (⊢-cast (ren-comm-ty ρ M nzero) (ren-lemma dz h))
              (⊢-cast (nrs-ren ρ M) (ren-lemma ds (Ren⊢-ext (Ren⊢-ext h))))
              (ren-lemma dn h))
+ren-lemma {ρ = ρ} (⊢natrecᴹ {M = M} {n = n} dM dz ds dn) h =
+  ⊢-cast (sym (ren-comm-ty ρ M n))
+    (⊢natrecᴹ (ren-ty dM (Ren⊢-ext h))
+             (⊢-cast (ren-comm-ty ρ M nzero) (ren-lemma dz h))
+             (⊢-cast (nrs-ren ρ M) (ren-lemma ds (Ren⊢-ext (Ren⊢-ext h))))
+             (ren-lemma dn h))
 ren-lemma (⊢var v) h = ⊢var (h v)
 ren-lemma (⊢lam dA d) h = ⊢lam (ren-ty dA h) (ren-lemma d (Ren⊢-ext h))
 ren-lemma {ρ = ρ} (⊢app {B = D} {u = u} d₁ d₂) h =
@@ -1161,6 +1264,12 @@ sub-lemma {σ = σ} (⊢elim {D = D} {M = M} {t = t} w dM dms dt) h =
 sub-lemma {σ = σ} (⊢natrec {M = M} {n = n} dM dz ds dn) h =
   ⊢-cast (sym (subTy-comm σ M n))
     (⊢natrec (sub-ty dM (Sub⊢-ext h))
+             (⊢-cast (subTy-comm σ M nzero) (sub-lemma dz h))
+             (⊢-cast (nrs-sub σ M) (sub-lemma ds (Sub⊢-ext (Sub⊢-ext h))))
+             (sub-lemma dn h))
+sub-lemma {σ = σ} (⊢natrecᴹ {M = M} {n = n} dM dz ds dn) h =
+  ⊢-cast (sym (subTy-comm σ M n))
+    (⊢natrecᴹ (sub-ty dM (Sub⊢-ext h))
              (⊢-cast (subTy-comm σ M nzero) (sub-lemma dz h))
              (⊢-cast (nrs-sub σ M) (sub-lemma ds (Sub⊢-ext (Sub⊢-ext h))))
              (sub-lemma dn h))
