@@ -87,8 +87,8 @@ the follow-on question.
 | # | stage | state |
 |---|---|---|
 | S0 | `Algorithm/DecEq` (`Dec` equality, all sorts); `Algorithm/DecideConversionTyped` (term conversion, no parameters); `Algorithm/Check` slice 1 (certifying bidirectional checker, Π/Σ/U/El/Nat/Unit/Hom/Id) | ✅ `e4135b26` |
-| S1 | **SPIKE: `natrecᴹ M z s n`, ADDITIVE** — alongside `natrec`, the way indexed descriptions were brought up. Measure the cascade through reduction, substitution, confluence, SR, LR. | ⬜ **next** |
-| S2 | Decide from S1: annotate in place, former by former (`natrec`, `elim`, `ielim`, `lam`, `pair`, then the §1 audit of the code-carrying formers); delete the unannotated forms | ⬜ |
+| S1 | SPIKE `natrecᴹ` inside `RTm` (branch `ocp-0009-spike-natrecM`) | ✅ done — superseded by §3c/§3d; it showed (a) needs a mutual SN theorem to be decided |
+| S2 | The annotated layer (§3d): `Spec/Annotated` (`ATm`/`ATy`, ren/sub, erasure + commutation), `⊢ᴬ`, erasure-soundness | 🟡 **next** |
 | S3 | Core `infer : Γ → t → Maybe (Σ A (Γ ⊢ t ∷ A))` — certifying, so sound by construction. Then COMPLETENESS: needs uniqueness of types up to conversion (absent today) | ⬜ |
 | S4 | Decide TYPE conversion `≅ᵀ` completely — ROUTE C (§3b): ① validity + `srᵀ` (`Metatheory/Validity`) ✅; ② inversion — the existing `gen-*` sufficed ✅; ③ `normTy`/`decConvᵀ` (`Metatheory/NormTy`) ✅ — **structural, NO measure needed**: `homNF` recurses on the NORMAL ambient (`G` ⊂ `Π F G`), the created `app f↑ vz` go through the typed `wnorm`, and a `NoU` witness breaks the harmless `elNF ↔ homNF` cycle | ✅ |
 | S5 | The signature: constants, δ, and the conservativity theorem | ⬜ |
@@ -145,15 +145,68 @@ as `wnᵀ` in route A, made sound by typing instead of by extending the
 untyped SN predicate. Decidable conversion now covers the WHOLE kernel:
 `decide-≅` (terms) + `decConvᵀ` (types).
 
+## 3c. ★ DECISION 4 — annotations are irrelevant to conversion (c)
+
+Found while bringing S4 onto the `natrecᴹ` spike (2026-09-25).
+
+| option | conversion on a motive | deciding conversion needs |
+|---|---|---|
+| (a1) reduction enters motives | up to `≅ᵀ` | a MUTUAL term+type SN theorem — S4 (route C) derives type SN FROM term SN, and (a) makes term SN depend on type SN |
+| (d) motives inert, compared by `≅ᵀ` | up to `≅ᵀ` | ⛔ the SAME mutual theorem, for TERMINATION of the comparison: substitution/duplication nests motives arbitrarily deep (`(λx. natrecᴹ (El x) …) u`, iterated by a `natrec`), so no size or depth measure decreases |
+| **(c) annotations irrelevant** | **ignored — conversion compares erasures** | **nothing new**: the existing term SN, then compare erasures |
+
+★ **Grounds, and not edit cost:** (1) annotations exist so a kernel term's
+TYPE is recoverable (§0) — they are typing data, not computational content,
+and irrelevance says exactly that; (2) the metatheory is LAYERED — terms
+normalise without reference to types, then types (S4), then conversion;
+(3) the equality is strictly COARSER (a superset) — nothing typable before
+stops being typable.
+
+⚠ **Obligations it creates:** subject reduction and uniqueness of types
+under the coarser conversion; the logical relation must respect "same
+erasure". Proved FIRST, before anything builds on (c).
+
+⚠ **Correction recorded:** (d) was recommended once on the claim that it
+removes the cycle. It removes it from NORMALISATION only; the DECISION
+procedure still needs the mutual theorem. (a1) is not a planned follow-up —
+it returns only if equality should ever distinguish annotations.
+
+## 3d. ★ DECISION 5 — (c) is implemented as a SEPARATE ANNOTATED LAYER
+
+The kernel the checker checks is an ANNOTATED syntax `ATm`/`ATy` with its
+own syntax-directed judgment `⊢ᴬ`; its MEANING is erasure to today's `RTm`,
+whose metatheory is already proven:
+
+    ⌈_⌉ : ATm → RTm          erasure-soundness : Γ ⊢ᴬ t ∷ A → ⌈Γ⌉ ⊢ ⌈t⌉ ∷ ⌈A⌉
+    conversion in ⊢ᴬ  :=  conversion of erasures   (decision (c))
+
+★ **Why this and not annotations inside `RTm`:** it states (c)
+STRUCTURALLY — the computational calculus has no annotations because they
+carry no computation; the typing layer has them because they carry typing.
+Putting them in `RTm` would force every metatheorem (LR, confluence, SR,
+canonicity) to re-prove that they are irrelevant. Consistency, SN and
+canonicity TRANSFER through erasure; conversion is decided by `decide-≅` /
+`decConvᵀ` unchanged.
+
+⚠ **Correction recorded:** this is the SHAPE of option 1a, rejected in §1
+for failing the de Bruijn criterion. That rejection conflated WHERE
+annotations live with WHICH judgment is trusted: here the trusted judgment
+is the annotated, decidable `⊢ᴬ`, and plain `⊢` is its semantics — §0 holds.
+
+Annotations `ATm` carries (each is what `⊢` takes from the derivation):
+`lam A`, `pair B`, `natrec M`, `con D`, `elim M`, `icon D I i`, `ielim I M`.
+⬜ Descriptions (`Desc`/`IDesc`) stay erased-level for now: their
+well-formedness premises are the `⊢`-level ones — an annotated description
+layer is a follow-up before `⊢ᴬ` is fully decidable.
+
 ## 4. Open questions, recorded not answered
 
 - **A universe hierarchy.** Needed for large elimination under code
   motives, and for `U : U`-free typing of `U` itself. Independent of this
   plan but interacts with §1's 1b/1c equivalence.
-- **Conversion on annotations.** Compare up to `≅ᵀ` (principled, costs the
-  mutual reduction) vs ignore them in conversion (cheap, but two
-  convertible-motive `natrec`s would then be inconvertible). S1 should
-  measure the first before anyone reaches for the second.
+- ~~**Conversion on annotations.**~~ ✅ **DECIDED 2026-09-25: (c) —
+  annotations are IRRELEVANT to conversion** (conversion compares erasures;
+  domain-free PTS, Barthe–Sørensen). See §3c.
 - **Fuel.** `Algorithm/Check` and `Lib/Eval` take fuel. `snorm` makes a
   fuel-free normaliser derivable (`PLAN-NF` Phase 2); a kernel `infer`
   should not ultimately depend on fuel.
