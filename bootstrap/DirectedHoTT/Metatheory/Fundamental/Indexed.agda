@@ -24,7 +24,7 @@ open import Agda.Builtin.Nat using ( zero; suc; _+_ ) renaming ( Nat to ℕ )
 
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; Var; vz; vs
-        ; RTy; El; Σ'; Unit; Id; U
+        ; RTy; El; Σ'; Unit; Id; U; Π; app; lam; ⌜IMu⌝
         ; RTm; fst; snd; sel; ⌜Id⌝; var
         ; renTy-renTy; renTy-subTy; subTy-subTy
         ; Ren; extR; renTy
@@ -345,3 +345,40 @@ imeth-land k j p ih MI =
                          (cong (renTm vs) (wk-single j))))
             (trans (wk-single j) (sym (wk-single j)))
     pt (vs (vs y)) = refl
+
+------------------------------------------------------------------------
+-- ★★ A-MATH: the abstract family's two semantic entries.
+--
+-- `IConWf` types a constructor telescope against an abstract family
+-- `X : Π I U`; the model runs it at `X := Xinst D I`.  These are the two
+-- facts that makes that possible, and neither needs `fund` or recursion:
+-- the fixed point's interp `idi` is taken as GIVEN (it is what the
+-- telescope is being run inside).
+------------------------------------------------------------------------
+
+open import DirectedHoTT.Spec.Typing using ( Xinst; Xconv; El-⌜IMu⌝; ξ-El; β; csymᵀ )
+open import DirectedHoTT.Metatheory.LogicalRelation
+  using ( ⊩₁Π; ⊩₁U; ⊩₀IMu; exp₁; sn-lam; sn-cIMu; sn-ne; sne-var; snr-β; bwd₁; sem-conv )
+
+module _ {Ξ : Cx} (D : IDesc) (I : RTy ε) (idi : IDInterp Ξ D) where
+
+  -- the X entry: the fixed point's code family is a member of `Π A U`,
+  -- for ANY interpreted index type `A`.
+  relX : {A : RTy Ξ} (⊩A : ⊩₁ A) → Rel (Π A U) (Xinst D I)
+  relX ⊩A =
+    ( ⊩₁Π doneᵀ ⊩A (λ u r → ⊩₁U doneᵀ)
+    , ( sn-lam (sn-cIMu (sn-ne (sne-var vz)))
+      , λ u r → exp₁ (⊩₁U doneᵀ) (snr-β (CR1₁ ⊩A r))
+                     ( sn-cIMu (CR1₁ ⊩A r)
+                     , ( ⊩₀IMu (stepᵀ El-⌜IMu⌝ doneᵀ) idi , _ ) ) ) )
+
+  -- a recursive-field entry: a member of the FIXED POINT is a member of
+  -- the FAMILY at that index — one semantic conversion, `Xconv`.
+  relRec : (j v : RTm Ξ) → (⊩₁IMu {i = j} doneᵀ idi) ⊩₁∋ v →
+           Rel (El (app (Xinst D I) j)) v
+  relRec j v r =
+    ( S , sem-conv (csymᵀ (Xconv D I j)) (⊩₁IMu doneᵀ idi) S r )
+    where
+    S : ⊩₁ (El (app (Xinst D I) j))
+    S = bwd₁ (stepᵀ (ξ-El (β (⌜IMu⌝ D I (var vz)) j)) (stepᵀ El-⌜IMu⌝ doneᵀ))
+             (⊩₁IMu doneᵀ idi)

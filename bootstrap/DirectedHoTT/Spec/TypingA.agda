@@ -33,7 +33,7 @@ open import normalizer.Syntax.Types using ( _≡_ )
 open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Variance using ( 𝔹; true; false; occTm; NoNatC; flat? )
 open import DirectedHoTT.Spec.Typing
-  using ( Ctx; ◇; _▹_; ⌊_⌋; _≅ᵀ_ )
+  using ( Ctx; ◇; _▹_; ⌊_⌋; _≅ᵀ_; _×_; _,,_; ρ₀; x₀ )
 open import DirectedHoTT.Spec.Annotated
 open import DirectedHoTT.Spec.AnnotatedDesc
 
@@ -87,12 +87,19 @@ data _⊢ᴬ_∷_ : (Γ : ACtx) → ATm ⌊ Γ ⌋ᴬ → ATy ⌊ Γ ⌋ᴬ → 
 data _⊢tyᴬ_ : (Γ : ACtx) → ATy ⌊ Γ ⌋ᴬ → Set
 data ADConWf : ADCon → Set
 data ADescWf : ADesc → Set
-data AIConWf : AIDesc → ATy ε → (Θ : ACtx) → AICon ⌊ Θ ⌋ᴬ → Set
-data AIDescWfFrom : AIDesc → ATy ε → AIDesc → Set
+-- ★ A-MATH, annotated: the twin of `Spec.Typing`'s `IConWf` — the
+--   telescope is typed against an abstract family at `x`, the carried
+--   terms live in the X-free scope `Δ` reached by `ρ`, and NO description
+--   appears in the judgment.
+data AIConWf : ATy ε → {Δ : Cx} (Θ : ACtx) → Ren Δ ⌊ Θ ⌋ᴬ → Var ⌊ Θ ⌋ᴬ → AICon Δ → Set
+data AIDescWfFrom : ATy ε → AIDesc → Set
 data AICodeWf : {Θ : Cx} → ATm Θ → Set
 
+AΘ₀ : ATy ε → ACtx
+AΘ₀ I = (◇ᴬ ▹ᴬ Π (εwkTyᴬ I) U) ▹ᴬ εwkTyᴬ I
+
 AIDescWf : ATy ε → AIDesc → Set
-AIDescWf I D = AIDescWfFrom D I D
+AIDescWf I D = (◇ᴬ ⊢tyᴬ I) × AIDescWfFrom I D
 
 data _⊢ᴬ_∷_ where
   ⊢ᴬvar  : ∀ {Γ x A} → Γ ∋ᴬ x ∷ A → Γ ⊢ᴬ var x ∷ A
@@ -210,13 +217,15 @@ data ADescWf where
   dwf-cons : {C : ADCon} {E : ADesc} → ADConWf C → ADescWf E → ADescWf (C ◃ E)
 
 data AIConWf where
-  iwf-ι : {D : AIDesc} {I : ATy ε} {Θ : ACtx} → AIConWf D I Θ iι
-  iwf-ρ : {D : AIDesc} {I : ATy ε} {Θ : ACtx} {C : AICon (⌊ Θ ⌋ᴬ ∙)}
-          (j : ATm ⌊ Θ ⌋ᴬ) → Θ ⊢ᴬ j ∷ εwkTyᴬ I →
-          AIConWf D I (Θ ▹ᴬ IMu D I j) C → AIConWf D I Θ (iρ j C)
-  iwf-κ : {D : AIDesc} {I : ATy ε} {Θ : ACtx} {C : AICon (⌊ Θ ⌋ᴬ ∙)}
-          (κ : ATm ⌊ Θ ⌋ᴬ) → AICodeWf κ → Θ ⊢ᴬ κ ∷ U →
-          AIConWf D I (Θ ▹ᴬ El κ) C → AIConWf D I Θ (iκ κ C)
+  iwf-ι : ∀ {I Δ Θ ρ x} → AIConWf I {Δ} Θ ρ x iι
+  iwf-ρ : ∀ {I Δ Θ ρ x} {C : AICon (Δ ∙)} (j : ATm Δ) →
+          Θ ⊢ᴬ renTmᴬ ρ j ∷ εwkTyᴬ I →
+          AIConWf I (Θ ▹ᴬ El (app (var x) (renTmᴬ ρ j))) (extR ρ) (vs x) C →
+          AIConWf I Θ ρ x (iρ j C)
+  iwf-κ : ∀ {I Δ Θ ρ x} {C : AICon (Δ ∙)} (κ : ATm Δ) →
+          AICodeWf κ → Θ ⊢ᴬ renTmᴬ ρ κ ∷ U →
+          AIConWf I (Θ ▹ᴬ El (renTmᴬ ρ κ)) (extR ρ) (vs x) C →
+          AIConWf I Θ ρ x (iκ κ C)
 
 data AICodeWf where
   icw-clo  : {Θ : Cx} (c : ATm ε) → ◇ᴬ ⊢ᴬ c ∷ U → AICodeWf (εwkTmᴬ {Θ} c)
@@ -225,8 +234,8 @@ data AICodeWf where
              AIDescWf I' D' → AICodeWf (⌜IMu⌝ D' I' i)
 
 data AIDescWfFrom where
-  idwf-nil  : {D : AIDesc} {I : ATy ε} → AIDescWfFrom D I inil
-  idwf-cons : {D : AIDesc} {I : ATy ε} {C : AICon (ε ∙)} {E : AIDesc} →
-              AIConWf D I (◇ᴬ ▹ᴬ εwkTyᴬ I) C → AIDescWfFrom D I E →
-              AIDescWfFrom D I (C ◂ E)
+  idwf-nil  : {I : ATy ε} → AIDescWfFrom I inil
+  idwf-cons : {I : ATy ε} {C : AICon (ε ∙)} {E : AIDesc} →
+              AIConWf I (AΘ₀ I) ρ₀ x₀ C → AIDescWfFrom I E →
+              AIDescWfFrom I (C ◂ E)
 

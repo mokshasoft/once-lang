@@ -20,7 +20,7 @@ module DirectedHoTT.Lib.IPay where
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; subst )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
-  using ( Cx; ε; _∙; vz; vs; var; RTy; RTm; Unit; Σ'; El; IMu; Nat; Π
+  using ( Cx; ε; _∙; Var; Ren; vz; vs; var; RTy; RTm; Unit; Σ'; El; IMu; Nat; Π
         ; renTy; extR; isingle; ipayTy-ren; ipayTy-cong
         ; ICon; IDesc; iι; iρ; iκ; ipayTy; Sub; extS; subTm; subTy
         ; εwkTy; εwk-sub; εwk-ren; _◂_; inil
@@ -33,24 +33,26 @@ open import DirectedHoTT.Spec.Typing
         ; IConWf; iwf-ι; iwf-ρ; iwf-κ
         ; IDescWf; IDescWfFrom; idwf-nil; idwf-cons
         ; imethTy; imethsTyFrom; ⊢icon; iconS; iatCon; iihTy; ⊢lam; ⊢pair
-        ; ⊢fst; ⊢snd; iinst )
+        ; ⊢fst; ⊢snd; iinst; Θ₀; ρ₀; x₀ )
 open import DirectedHoTT.Metatheory.TySub
   using ( Sub⊢; Sub⊢-ext; sub-lemma; sub-ty; ⊢-cast; ren-ty; ⊢wk; Ren⊢-ext
-        ; isingle-Sub⊢; iihTy-wf )
+        ; isingle-Sub⊢; iihTy-wf; XEnv; xenv₀; xenv-idx; xenv-code; xenv-ρ↑; xenv-κ↑ )
 open import DirectedHoTT.Lib.Wk using ( ren-subTy; Ren⊢-ins²; wk-singleTy )
 open import DirectedHoTT.Lib.IMeths using ( CDesc; cd-stop; cd-cons; cdRest; cdPos; methsFrom; methsAt )
 
-ipayTy-wf : {Γ Θ : Ctx} (D : IDesc) (I : RTy ε)
-            (σ : Sub ⌊ Θ ⌋ ⌊ Γ ⌋) (C : ICon ⌊ Θ ⌋) →
-            IDescWf I D → IConWf D I Θ C → Sub⊢ Θ Γ σ →
-            Γ ⊢ty ipayTy D I σ C
-ipayTy-wf D I σ iι wD wC hσ = ty-Unit
-ipayTy-wf D I σ (iρ j C) wD (iwf-ρ .j dj wC) hσ =
-  ty-Σ (ty-IMu wD (⊢-cast (εwk-sub σ I) (sub-lemma dj hσ)))
-       (ipayTy-wf D I (extS σ) C wD wC (Sub⊢-ext hσ))
-ipayTy-wf D I σ (iκ κ C) wD (iwf-κ .κ _ dcode wC) hσ =
-  ty-Σ (ty-El (sub-lemma dcode hσ))
-       (ipayTy-wf D I (extS σ) C wD wC (Sub⊢-ext hσ))
+-- ★ A-MATH: the telescope is walked with an `XEnv` UNDER BINDERS
+--   (`xenv-ρ↑`/`xenv-κ↑`), because `ipayTy` extends with `extS`.
+ipayTy-wf : {Γ Θ : Ctx} {Δ : Cx} (D : IDesc) (I : RTy ε) {ρ : Ren Δ ⌊ Θ ⌋} {x : Var ⌊ Θ ⌋}
+            (τ : Sub Δ ⌊ Γ ⌋) (C : ICon Δ) →
+            IDescWf I D → IConWf I Θ ρ x C → XEnv D I Θ ρ x Γ τ →
+            Γ ⊢ty ipayTy D I τ C
+ipayTy-wf D I τ iι wD wC e = ty-Unit
+ipayTy-wf D I τ (iρ j C) wD (iwf-ρ .j dj wC) e =
+  ty-Σ (ty-IMu wD (xenv-idx e j dj))
+       (ipayTy-wf D I (extS τ) C wD wC (xenv-ρ↑ e j))
+ipayTy-wf D I τ (iκ κ C) wD (iwf-κ .κ _ dcode wC) e =
+  ty-Σ (ty-El (xenv-code e κ dcode))
+       (ipayTy-wf D I (extS τ) C wD wC (xenv-κ↑ e κ))
 
 ------------------------------------------------------------------------
 -- ★★★ …AND THE SAME FOR A METHOD, AND FOR A WHOLE METHOD TUPLE.
@@ -76,7 +78,7 @@ ipayTy-wf D I σ (iκ κ C) wD (iwf-κ .κ _ dcode wC) hσ =
 ------------------------------------------------------------------------
 
 imethTyNat-wf : {Γ : Ctx} (D : IDesc) (I : RTy ε) (k : ℕ) (C : ICon (ε ∙)) →
-                IDescWf I D → IConWf D I (◇ ▹ εwkTy I) C →
+                IDescWf I D → IConWf I (Θ₀ I) ρ₀ x₀ C →
                 ({Δ : Ctx} → Δ ⊢ty εwkTy I) →
                 Γ ⊢ty imethTy D I k C Nat
 -- ⚠ THE CONTEXTS ARE PINNED.  `ty-Π`'s second argument lives one binder
@@ -84,10 +86,10 @@ imethTyNat-wf : {Γ : Ctx} (D : IDesc) (I : RTy ε) (k : ℕ) (C : ICon (ε ∙)
 imethTyNat-wf {Γ = Γ} D I k C wD wC tI =
   ty-Π tI
     (ty-Π (ipayTy-wf {Γ = Γ ▹ εwkTy I} D I (isingle (var vz)) C
-                     wD wC (isingle-Sub⊢ (⊢-cast (εwk-ren vs I) (⊢var here))))
+                     wD wC (xenv₀ wD (⊢-cast (εwk-ren vs I) (⊢var here))))
       (ty-Π (iihTy-wf {Γ = (Γ ▹ εwkTy I) ▹ ipayTy D I (isingle (var vz)) C}
                       D I Nat (isingle (var (vs vz))) C (var vz) wC
-                      (isingle-Sub⊢ (⊢-cast (trans (cong (renTy vs) (εwk-ren vs I))
+                      (xenv₀ wD (⊢-cast (trans (cong (renTy vs) (εwk-ren vs I))
                                                    (εwk-ren vs I))
                                             (⊢var (there here)))) ty-Nat
                       -- ⚠ the payload variable, RETYPED.  `⊢var here`
@@ -103,7 +105,7 @@ imethTyNat-wf {Γ = Γ} D I k C wD wC tI =
 
 -- ★★★ ONE INDUCTION over the description, at an ABSTRACT tail.
 imethsTyFromNat-wf : {Γ : Ctx} (D : IDesc) (I : RTy ε) (j : ℕ) (E : IDesc) →
-                     IDescWf I D → IDescWfFrom D I E →
+                     IDescWf I D → IDescWfFrom I E →
                      ({Δ : Ctx} → Δ ⊢ty εwkTy I) →
                      Γ ⊢ty imethsTyFrom D I Nat j E
 imethsTyFromNat-wf D I j inil    wD idwf-nil        tI = ty-Unit
@@ -278,7 +280,7 @@ spl-step (spl-cons s) = spl-cons (spl-step s)
 
 imethTy-wf : {Γ : Ctx} (D : IDesc) (I : RTy ε) (k : ℕ) (C : ICon (ε ∙))
              {M : RTy ((⌊ Γ ⌋ ∙) ∙)} →
-             IDescWf I D → IConWf D I (◇ ▹ εwkTy I) C →
+             IDescWf I D → IConWf I (Θ₀ I) ρ₀ x₀ C →
              k ∈ID D → ilookupD D k ≡ C →
              ({Δ : Ctx} → Δ ⊢ty εwkTy I) →
              ((Γ ▹ εwkTy I) ▹ IMu D I (var vz)) ⊢ty M →
@@ -286,10 +288,10 @@ imethTy-wf : {Γ : Ctx} (D : IDesc) (I : RTy ε) (k : ℕ) (C : ICon (ε ∙))
 imethTy-wf {Γ = Γ} D I k C {M = M} wD wC mem look tI wM =
   ty-Π tI
     (ty-Π (ipayTy-wf {Γ = Γ ▹ εwkTy I} D I (isingle (var vz)) C
-                     wD wC (isingle-Sub⊢ (⊢-cast (εwk-ren vs I) (⊢var here))))
+                     wD wC (xenv₀ wD (⊢-cast (εwk-ren vs I) (⊢var here))))
       (ty-Π (iihTy-wf {Γ = (Γ ▹ εwkTy I) ▹ ipayTy D I (isingle (var vz)) C}
                       D I _ (isingle (var (vs vz))) C (var vz) wC
-                      (isingle-Sub⊢ (⊢-cast (trans (cong (renTy vs) (εwk-ren vs I))
+                      (xenv₀ wD (⊢-cast (trans (cong (renTy vs) (εwk-ren vs I))
                                                    (εwk-ren vs I))
                                             (⊢var (there here))))
                       (ren-ty (ren-ty wM (Ren⊢-ins² (εwk-ren vs I)))
@@ -322,7 +324,7 @@ imethTy-wf {Γ = Γ} D I k C {M = M} wD wC mem look tI wM =
 
 imethsTyFrom-wf : {Γ : Ctx} (D : IDesc) (I : RTy ε) (j : ℕ) (E : IDesc)
                   {M : RTy ((⌊ Γ ⌋ ∙) ∙)} →
-                  IDescWf I D → IDescWfFrom D I E → Split D j E →
+                  IDescWf I D → IDescWfFrom I E → Split D j E →
                   ({Δ : Ctx} → Δ ⊢ty εwkTy I) →
                   ((Γ ▹ εwkTy I) ▹ IMu D I (var vz)) ⊢ty M →
                   Γ ⊢ty imethsTyFrom D I M j E
@@ -354,7 +356,7 @@ imethsTyFrom-wf D I j (C ◂ E) wD (idwf-cons wC wE) sp tI wM =
                         ▹ iihTy D I (isingle (var (vs vz))) C (var vz)
                                 (renTy (extR (extR vs))
                                        (renTy (extR (extR vs)) M))) ⌋} →
-           IDescWf I D → IConWf D I (◇ ▹ εwkTy I) C →
+           IDescWf I D → IConWf I (Θ₀ I) ρ₀ x₀ C →
            ({Δ : Ctx} → Δ ⊢ty εwkTy I) →
            ((Γ ▹ εwkTy I) ▹ IMu D I (var vz)) ⊢ty M →
            ((((Γ ▹ εwkTy I) ▹ ipayTy D I (isingle (var vz)) C)
@@ -365,10 +367,10 @@ imethsTyFrom-wf D I j (C ◂ E) wD (idwf-cons wC wE) sp tI wM =
 ⊢methLam {Γ = Γ} D I k C wD wC tI wM db =
   ⊢lam tI
     (⊢lam (ipayTy-wf {Γ = Γ ▹ εwkTy I} D I (isingle (var vz)) C
-                     wD wC (isingle-Sub⊢ (⊢-cast (εwk-ren vs I) (⊢var here))))
+                     wD wC (xenv₀ wD (⊢-cast (εwk-ren vs I) (⊢var here))))
       (⊢lam (iihTy-wf {Γ = (Γ ▹ εwkTy I) ▹ ipayTy D I (isingle (var vz)) C}
                       D I _ (isingle (var (vs vz))) C (var vz) wC
-                      (isingle-Sub⊢ (⊢-cast (trans (cong (renTy vs) (εwk-ren vs I))
+                      (xenv₀ wD (⊢-cast (trans (cong (renTy vs) (εwk-ren vs I))
                                                    (εwk-ren vs I))
                                             (⊢var (there here))))
                       (ren-ty (ren-ty wM (Ren⊢-ins² (εwk-ren vs I)))
@@ -393,10 +395,10 @@ imethsTyFrom-wf D I j (C ◂ E) wD (idwf-cons wC wE) sp tI wM =
 
 ⊢methsFrom : {Γ : Ctx} (D : IDesc) (I : RTy ε) (j : ℕ) {E : IDesc}
              (W : CDesc E) {M : RTy ((⌊ Γ ⌋ ∙) ∙)} {m : RTm ⌊ Γ ⌋} →
-             IDescWf I D → IDescWfFrom D I E → Split D j E →
+             IDescWf I D → IDescWfFrom I E → Split D j E →
              ({Δ : Ctx} → Δ ⊢ty εwkTy I) →
              ((Γ ▹ εwkTy I) ▹ IMu D I (var vz)) ⊢ty M →
-             ({k : ℕ} {C : ICon (ε ∙)} → IConWf D I (◇ ▹ εwkTy I) C →
+             ({k : ℕ} {C : ICon (ε ∙)} → IConWf I (Θ₀ I) ρ₀ x₀ C →
                 k ∈ID D → ilookupD D k ≡ C → Γ ⊢ m ∷ imethTy D I k C M) →
              (tl : RTm ⌊ Γ ⌋) →
              Γ ⊢ tl ∷ imethsTyFrom D I M (cdPos W j) (cdRest W) →
@@ -428,10 +430,10 @@ imethsTyFrom-wf D I j (C ◂ E) wD (idwf-cons wC wE) sp tI wM =
 
 ⊢methsAt : {Γ : Ctx} (D : IDesc) (I : RTy ε) (j : ℕ) {E : IDesc}
            (W : CDesc E) {M : RTy ((⌊ Γ ⌋ ∙) ∙)} {mth : ℕ → RTm ⌊ Γ ⌋} →
-           IDescWf I D → IDescWfFrom D I E → Split D j E →
+           IDescWf I D → IDescWfFrom I E → Split D j E →
            ({Δ : Ctx} → Δ ⊢ty εwkTy I) →
            ((Γ ▹ εwkTy I) ▹ IMu D I (var vz)) ⊢ty M →
-           ({k : ℕ} {C : ICon (ε ∙)} → IConWf D I (◇ ▹ εwkTy I) C →
+           ({k : ℕ} {C : ICon (ε ∙)} → IConWf I (Θ₀ I) ρ₀ x₀ C →
               k ∈ID D → ilookupD D k ≡ C → Γ ⊢ mth k ∷ imethTy D I k C M) →
            (tl : RTm ⌊ Γ ⌋) →
            Γ ⊢ tl ∷ imethsTyFrom D I M (cdPos W j) (cdRest W) →
@@ -447,7 +449,7 @@ imethsTyFrom-wf D I j (C ◂ E) wD (idwf-cons wC wE) sp tI wM =
 ------------------------------------------------------------------------
 -- ★ THE WELL-FORMEDNESS OF A **SUFFIX**, taken off the whole one.
 --
--- ⚠ A CALLER THAT STARTS ITS WALK PART-WAY IN needs `IDescWfFrom D I E`
+-- ⚠ A CALLER THAT STARTS ITS WALK PART-WAY IN needs `IDescWfFrom I E`
 --   for the suffix `E`, and holds only `IDescWf I D` for the whole.  The
 --   `Split` that located `E` is exactly the evidence needed to strip the
 --   rows in front of it, one `idwf-cons` at a time.
@@ -467,7 +469,7 @@ imethsTyFrom-wf D I j (C ◂ E) wD (idwf-cons wC wE) sp tI wM =
 
 ⊢methsCons : {Γ : Ctx} (D : IDesc) (I : RTy ε) (j : ℕ) {C : ICon (ε ∙)}
              (E : IDesc) {M : RTy ((⌊ Γ ⌋ ∙) ∙)} {m tl : RTm ⌊ Γ ⌋} →
-             IDescWf I D → IDescWfFrom D I E → Split D (suc j) E →
+             IDescWf I D → IDescWfFrom I E → Split D (suc j) E →
              ({Δ : Ctx} → Δ ⊢ty εwkTy I) →
              ((Γ ▹ εwkTy I) ▹ IMu D I (var vz)) ⊢ty M →
              Γ ⊢ m ∷ imethTy D I j C M →
@@ -478,8 +480,8 @@ imethsTyFrom-wf D I j (C ◂ E) wD (idwf-cons wC wE) sp tI wM =
         dm
         (⊢-cast (sym (wk-singleTy {v = m} (imethsTyFrom D I M (suc j) E))) dtl)
 
-idwfDrop : {D : IDesc} {I : RTy ε} {j : ℕ} {E F : IDesc} →
-           Split F j E → IDescWfFrom D I F → IDescWfFrom D I E
+idwfDrop : {I : RTy ε} {j : ℕ} {E F : IDesc} →
+           Split F j E → IDescWfFrom I F → IDescWfFrom I E
 idwfDrop spl-nil      w                = w
 idwfDrop (spl-cons s) (idwf-cons _ w') = idwfDrop s w'
 

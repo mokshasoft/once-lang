@@ -87,7 +87,7 @@ module DirectedHoTT.Lib.ISub where
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂; subst )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
-  using ( Cx; ε; _∙; RTm; Var; ICon; IDesc; _◂_; inil; iι; iρ; iκ
+  using ( Cx; ε; _∙; RTm; Var; Ren; ICon; IDesc; _◂_; inil; iι; iρ; iκ
         ; app; lam; pair; fst; snd; unit; nzero; nsuc; icon; var; vz; vs; ⌜Id⌝; ⌜Nat⌝
         ; Sub; subTm; RTy; IMu; Nat; El; extS; ipayTy; sel 
         -- ★ for the promoted `isubMethod-red` block:
@@ -100,7 +100,7 @@ open import DirectedHoTT.Spec.Typing
         -- ★ for the promoted `isubMethod-red` block:
         ; single; wk-single; β; step; done )
 open import DirectedHoTT.Metatheory.TySub
-  using ( ⊢-cast; Sub⊢; Sub⊢-ext; iext-Sub⊢ )
+  using ( ⊢-cast; Sub⊢; Sub⊢-ext; iext-Sub⊢; XEnv; xenv-ρ; xenv-κ; xenv-ρ↑; xenv-κ↑ )
 open import DirectedHoTT.Lib.IPay using ( ipayTy-wf )
 open import DirectedHoTT.Lib.Wk using ( wk-singleTy; w; _∙^_; w^; sub-w; extS^; pw^ )
 open import DirectedHoTT.Metatheory.RedCong
@@ -585,8 +585,8 @@ module Sub
     --   states it that way, so this is the shape that composes.
     ------------------------------------------------------------------------
 
-    ⊢sPick : {Γ Θ : Ctx} {σ τ : Sub ⌊ Θ ⌋ ⌊ Γ ⌋} {a : Var ⌊ Θ ⌋}
-             {j : RTm ⌊ Θ ⌋} {d n sb q ih : RTm ⌊ Γ ⌋}
+    ⊢sPick : {Γ : Ctx} {Θ : Cx} {σ τ : Sub Θ ⌊ Γ ⌋} {a : Var Θ}
+             {j : RTm Θ} {d n sb q ih : RTm ⌊ Γ ⌋}
              (ix : SubIx a j) →
              -- ⚠⚠ σ's HYPOTHESIS IS AN `≡` AND τ's IS A `⟶*`, and the
              --   asymmetry is forced by the CUSTOMER.  `σ` is
@@ -639,8 +639,8 @@ module Sub
     -- justified.
     ------------------------------------------------------------------------
 
-    ⊢kaPick : {Γ Θ : Ctx} {σ τ : Sub ⌊ Θ ⌋ ⌊ Γ ⌋} {a : Var ⌊ Θ ⌋}
-              {κ : RTm ⌊ Θ ⌋} {fi t : RTm ⌊ Γ ⌋} (ka : SubKa a κ) →
+    ⊢kaPick : {Γ : Ctx} {Θ : Cx} {σ τ : Sub Θ ⌊ Γ ⌋} {a : Var Θ}
+              {κ : RTm Θ} {fi t : RTm ⌊ Γ ⌋} (ka : SubKa a κ) →
               -- ⚠ same asymmetry as `⊢sPick`, same reason.
               fst (σ a) ≡ fi → fst (τ a) ⟶* smap fi → Γ ⊢ fi ∷ Nat →
               Γ ⊢ t ∷ El (subTm σ κ) →
@@ -673,10 +673,11 @@ module Sub
     --   which is the shape `iihTy` HANDS OVER.
     ------------------------------------------------------------------------
 
-    ⊢isubPay : {Γ Θ : Ctx} {σ τ : Sub ⌊ Θ ⌋ ⌊ Γ ⌋} {a : Var ⌊ Θ ⌋}
-               {C : ICon ⌊ Θ ⌋} {fi d n sb : RTm ⌊ Γ ⌋}
-               (w : SubCon a C) → IConWf D I Θ C → IDescWf I D →
-               Sub⊢ Θ Γ σ → Sub⊢ Θ Γ τ →
+    ⊢isubPay : {Γ Θ : Ctx} {Δ : Cx} {ρ : Ren Δ ⌊ Θ ⌋} {x : Var ⌊ Θ ⌋}
+               {σ τ : Sub Δ ⌊ Γ ⌋} {a : Var Δ}
+               {C : ICon Δ} {fi d n sb : RTm ⌊ Γ ⌋}
+               (w : SubCon a C) → IConWf I Θ ρ x C → IDescWf I D →
+               XEnv D I Θ ρ x Γ σ → XEnv D I Θ ρ x Γ τ →
                fst (σ a) ≡ fi → fst (τ a) ⟶* smap fi →
                snd (σ a) ≡ d → snd (τ a) ⟶* n →
                Γ ⊢ fi ∷ Nat → Γ ⊢ d ∷ Nat → Γ ⊢ n ∷ Nat →
@@ -688,10 +689,10 @@ module Sub
     ⊢isubPay sc-ι iwf-ι wD hσ hτ fσ fτ sσ sτ dfi dd dn dsb q ih dq dih = ⊢unit
     ⊢isubPay {σ = σ} {τ = τ} (sc-ρ ix w) (iwf-ρ j dj wC) wD hσ hτ fσ fτ sσ sτ
              dfi dd dn dsb q ih dq dih =
-      ⊢pair (ipayTy-wf D I (extS τ) _ wD wC (Sub⊢-ext hτ))
+      ⊢pair (ipayTy-wf D I (extS τ) _ wD wC (xenv-ρ↑ hτ j))
             c₀
             (⊢-cast (sym (payStep D I τ _ _))
-              (⊢isubPay w wC wD (iext-Sub⊢ hσ (⊢fst dq)) (iext-Sub⊢ hτ c₀)
+              (⊢isubPay w wC wD (xenv-ρ hσ j (⊢fst dq)) (xenv-ρ hτ j c₀)
                         fσ fτ sσ sτ dfi dd dn dsb (snd q) (snd ih)
                         (⊢-cast (payStep D I σ (fst q) _) (⊢snd dq))
                         (⊢-cast (wk-singleTy {v = fst ih} _) (⊢snd dih))))
@@ -699,10 +700,10 @@ module Sub
         c₀ = ⊢sPick ix sσ sτ dd dn dsb (⊢fst dq) (⊢fst dih)
     ⊢isubPay {σ = σ} {τ = τ} (sc-κ {C = C'} ka w) (iwf-κ κ _ dc wC) wD hσ hτ fσ fτ sσ sτ
              dfi dd dn dsb q ih dq dih =
-      ⊢pair (ipayTy-wf D I (extS τ) C' wD wC (Sub⊢-ext hτ))
+      ⊢pair (ipayTy-wf D I (extS τ) C' wD wC (xenv-κ↑ hτ κ))
             c₀
             (⊢-cast (sym (payStep D I τ (kaPick ka _ (fst q)) C'))
-              (⊢isubPay w wC wD (iext-Sub⊢ hσ (⊢fst dq)) (iext-Sub⊢ hτ c₀)
+              (⊢isubPay w wC wD (xenv-κ hσ κ (⊢fst dq)) (xenv-κ hτ κ c₀)
                         fσ fτ sσ sτ dfi dd dn dsb (snd q) ih
                         (⊢-cast (payStep D I σ (fst q) C') (⊢snd dq))
                         dih))

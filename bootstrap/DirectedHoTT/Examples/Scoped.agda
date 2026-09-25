@@ -65,7 +65,7 @@ open import DirectedHoTT.Spec.Typing
         ; ⊢unit; ⊢nzero; ⊢nsuc; ⊢⌜Nat⌝; ⊢⌜Id⌝; ⊢⌜IMu⌝; ⊢idrefl; ⊢natrec
         ; ⊢icon; ⊢ielim
         ; _⊢ty_; ty-El; ty-Unit; ty-Nat; ty-Σ; ty-Π; ty-IMu
-        ; IConWf; iwf-ι; iwf-ρ; iwf-κ
+        ; IConWf; iwf-ι; iwf-ρ; iwf-κ ; Θ₀; ρ₀; x₀; _,,_
         ; ICodeWf; icw-clo; icw-ford; icw-imu
         ; IDescWf; IDescWfFrom; idwf-nil; idwf-cons
         ; imethTy; imethsTy )
@@ -123,7 +123,7 @@ FinD = fzeroC ◂ (fsucC ◂ inil)
 Fin : {Γ : Cx} → RTm Γ → RTy Γ
 Fin n = IMu FinD INat n
 
-fzeroWf : IConWf FinD INat (◇ ▹ INat) fzeroC
+fzeroWf : IConWf INat (Θ₀ INat) ρ₀ x₀ fzeroC
 fzeroWf =
   iwf-κ ⌜Nat⌝ (icw-clo ⌜Nat⌝ ⊢⌜Nat⌝) ⊢⌜Nat⌝
    (iwf-κ (⌜Id⌝ ⌜Nat⌝ (var (vs vz)) (nsuc (var vz)))
@@ -132,7 +132,7 @@ fzeroWf =
                         (toI (⊢nsuc (fromI (⊢var here)))))
           iwf-ι)
 
-fsucWf : IConWf FinD INat (◇ ▹ INat) fsucC
+fsucWf : IConWf INat (Θ₀ INat) ρ₀ x₀ fsucC
 fsucWf =
   iwf-κ ⌜Nat⌝ (icw-clo ⌜Nat⌝ ⊢⌜Nat⌝) ⊢⌜Nat⌝
    (iwf-ρ (var vz) (⊢var here)
@@ -143,7 +143,7 @@ fsucWf =
            iwf-ι))
 
 FinWf : IDescWf INat FinD
-FinWf = idwf-cons fzeroWf (idwf-cons fsucWf idwf-nil)
+FinWf = ty-El ⊢⌜Nat⌝ ,, idwf-cons fzeroWf (idwf-cons fsucWf idwf-nil)
 
 -- `El (⌜IMu⌝ FinD INat n) ≅ᵀ Fin n` — the ONE conversion a κ field of
 -- family type costs, and the exact mirror of `elNat`.
@@ -214,7 +214,7 @@ Tm n = IMu TmD INat n
 -- 2. WELL-FORMEDNESS.
 ------------------------------------------------------------------------
 
-varWf : IConWf TmD INat (◇ ▹ INat) varC
+varWf : IConWf INat (Θ₀ INat) ρ₀ x₀ varC
 varWf = iwf-κ (⌜IMu⌝ FinD INat (var vz))
               (icw-imu (var vz) FinWf)
               (⊢⌜IMu⌝ FinWf (⊢var here))
@@ -224,15 +224,15 @@ varWf = iwf-κ (⌜IMu⌝ FinD INat (var vz))
 --   `nsuc ⟨n⟩ ∷ El ⌜Nat⌝` — which is why the index type being a decode
 --   pays off, and why `Nat` had to be in `U` (stage C) before a syntax
 --   could be described at all.
-lamWf : IConWf TmD INat (◇ ▹ INat) lamC
+lamWf : IConWf INat (Θ₀ INat) ρ₀ x₀ lamC
 lamWf = iwf-ρ (nsuc (var vz)) (toI (⊢nsuc (fromI (⊢var here)))) iwf-ι
 
-appWf : IConWf TmD INat (◇ ▹ INat) appC
+appWf : IConWf INat (Θ₀ INat) ρ₀ x₀ appC
 appWf = iwf-ρ (var vz) (⊢var here)
          (iwf-ρ (var (vs vz)) (⊢var (there here)) iwf-ι)
 
 TmWf : IDescWf INat TmD
-TmWf = idwf-cons varWf (idwf-cons lamWf (idwf-cons appWf idwf-nil))
+TmWf = ty-El ⊢⌜Nat⌝ ,, idwf-cons varWf (idwf-cons lamWf (idwf-cons appWf idwf-nil))
 
 ------------------------------------------------------------------------
 -- 3. THE TERM FORMERS — `⊢icon`, three times.

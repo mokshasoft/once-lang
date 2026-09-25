@@ -124,7 +124,8 @@ open import DirectedHoTT.Spec.Typing
         ; DescWf
         ; wk-single; iinst; iihTy; iconS; iatCon; iatCon-inst
         ; imethTy; imethsTy; imethsTyFrom; IDescWf
-        ; ty-IMu; ⊢icon; ⊢ielim; ⊢⌜IMu⌝; IConWf; iwf-ρ; iwf-κ; IDescWfFrom; idwf-cons; idwf-nil; _≅_; csym; ctrn; cred; crfl )
+        ; ty-IMu; ⊢icon; ⊢ielim; ⊢⌜IMu⌝; IConWf; iwf-ρ; iwf-κ; IDescWfFrom; idwf-cons; idwf-nil; _≅_; csym; ctrn; cred; crfl
+        ; Θ₀; ρ₀; x₀; IDescWf-I; IDescWf-cons; Xinst; Xconv; ⊢lam; ⊢app; ⊢conv; csymᵀ; ⊢var; here; there; ⊢fst )
 open import DirectedHoTT.Metatheory.SubjectReductionBase using ( ≅ᵀ-sub; ⟶-sub )
 open import DirectedHoTT.Metatheory.RedCong
   using ( ⟶-ren; ⟶*-ren; ⟶*-appʳ; ren-comm; subTm-monoˢ; extS-mono; single-mono
@@ -1185,6 +1186,14 @@ Sub⊢-ext {σ = σ} {C = C} h here =
 Sub⊢-ext {σ = σ} h (there {A = A₀} v) =
   ⊢-cast (sym (exts-wk-ty σ A₀)) (⊢wk (h v))
 
+-- the same, landing at a CONVERTIBLE extension type.
+Sub⊢-ext-conv : {Γ Δ : Ctx} {σ : Sub ⌊ Γ ⌋ ⌊ Δ ⌋} {C : RTy ⌊ Γ ⌋} {B : RTy ⌊ Δ ⌋} →
+                Sub⊢ Γ Δ σ → subTy σ C ≅ᵀ B → Sub⊢ (Γ ▹ C) (Δ ▹ B) (extS σ)
+Sub⊢-ext-conv {σ = σ} {C = C} h c here =
+  ⊢-cast (sym (exts-wk-ty σ C)) (⊢conv (⊢var here) (≅ᵀ-ren vs (csymᵀ c)))
+Sub⊢-ext-conv {σ = σ} h c (there {A = A₀} v) =
+  ⊢-cast (sym (exts-wk-ty σ A₀)) (⊢wk (h v))
+
 sub-lemma : {Γ Δ : Ctx} {σ : Sub ⌊ Γ ⌋ ⌊ Δ ⌋} {t : RTm ⌊ Γ ⌋} {A : RTy ⌊ Γ ⌋} →
             Γ ⊢ t ∷ A → Sub⊢ Γ Δ σ → Δ ⊢ subTm σ t ∷ subTy σ A
 sub-ty : {Γ Δ : Ctx} {σ : Sub ⌊ Γ ⌋ ⌊ Δ ⌋} {A : RTy ⌊ Γ ⌋} →
@@ -1381,26 +1390,153 @@ iext-Sub⊢ {σ = σ} h dv (there {A = A₀} x) =
   ⊢-cast (sym (trans (subTy-renTy A₀)
                      (subTy-cong (λ x → refl) A₀))) (h x)
 
+-- the k-th constructor of a well-formed description is well-formed, in
+-- the ROOT telescope `Θ₀ I` (the family `X`, then the ambient index).
+ilookupD-wf : {I : RTy ε} {E : IDesc} (k : ℕ) →
+              IDescWfFrom I E → k ∈ID E →
+              IConWf I (Θ₀ I) ρ₀ x₀ (ilookupD E k)
+ilookupD-wf zero    (idwf-cons wC wE) hereID      = wC
+ilookupD-wf (suc k) (idwf-cons wC wE) (thereID m) = ilookupD-wf k wE m
+
+-- ★ the family instantiated at the fixed point is a well-typed `Π I U`.
+--   This is where `IDescWf`'s `◇ ⊢ty I` is consumed.
+Xinst-ty : {Γ : Ctx} {D : IDesc} {I : RTy ε} →
+           IDescWf I D → Γ ⊢ Xinst D I ∷ Π (εwkTy I) U
+Xinst-ty {I = I} wD =
+  ⊢lam (sub-ty (IDescWf-I wD) (λ ()))
+       (⊢⌜IMu⌝ wD (⊢-cast (εwk-ren vs I) (⊢var here)))
+
+-- ★ the ROOT environment: `X ↦ Xinst`, index ↦ `i`.
+xsingle : {Γ : Cx} → IDesc → RTy ε → RTm Γ → Sub ((ε ∙) ∙) Γ
+xsingle D I i vz           = i
+xsingle D I i (vs vz)      = Xinst D I
+xsingle D I i (vs (vs ()))
+
+xsingle-ρ₀ : {Γ : Cx} (D : IDesc) (I : RTy ε) (i : RTm Γ) →
+             ∀ y → xsingle D I i (ρ₀ y) ≡ isingle i y
+xsingle-ρ₀ D I i vz      = refl
+xsingle-ρ₀ D I i (vs ())
+
+-- ★ a well-typed index IS a well-typed environment for the root telescope
+--   — the base case that gets `iihs-ty` off the ground.
+xsingle-Sub⊢ : {Γ : Ctx} {D : IDesc} {I : RTy ε} {i : RTm ⌊ Γ ⌋} →
+               IDescWf I D → Γ ⊢ i ∷ εwkTy I → Sub⊢ (Θ₀ I) Γ (xsingle D I i)
+xsingle-Sub⊢ {I = I} wD di here =
+  ⊢-cast (sym (trans (subTy-renTy (εwkTy I)) (εwk-sub _ I))) di
+xsingle-Sub⊢ {I = I} wD di (there here) =
+  ⊢-cast (sym (trans (subTy-renTy (renTy vs (Π (εwkTy I) U)))
+                     (trans (subTy-renTy (Π (εwkTy I) U))
+                            (cong (λ Z → Π Z U) (εwk-sub _ I)))))
+         (Xinst-ty wD)
+xsingle-Sub⊢ wD di (there (there ()))
+
+-- the X-free half of the root: just the ambient index.
+isingle-Sub⊢ : {Γ : Ctx} {I : RTy ε} {i : RTm ⌊ Γ ⌋} →
+               Γ ⊢ i ∷ εwkTy I → Sub⊢ (◇ ▹ εwkTy I) Γ (isingle i)
+isingle-Sub⊢ {I = I} di here =
+  ⊢-cast (sym (trans (subTy-renTy (εwkTy I)) (εwk-sub _ I))) di
+isingle-Sub⊢ di (there ())
+
+------------------------------------------------------------------------
+-- ★★ A-MATH: AN ENVIRONMENT FOR A CONSTRUCTOR TELESCOPE.
+--
+-- `IConWf I Θ ρ x C` types `C` against an ABSTRACT family at `x`; every
+-- consumer runs the telescope at the fixed point.  What that takes is
+-- always the same four things, so they are ONE record: an environment
+-- over the telescope, well-typed, sending the family to `Xinst D I`, and
+-- agreeing (off the family) with the X-free environment `τ` that the
+-- payload and the IH are computed with.
+------------------------------------------------------------------------
+
+record XEnv {Δ : Cx} (D : IDesc) (I : RTy ε) (Θ : Ctx) (ρ : Ren Δ ⌊ Θ ⌋)
+            (x : Var ⌊ Θ ⌋) (Γ : Ctx) (τ : Sub Δ ⌊ Γ ⌋) : Set where
+  constructor xenv
+  field
+    env  : Sub ⌊ Θ ⌋ ⌊ Γ ⌋
+    env⊢ : Sub⊢ Θ Γ env
+    envX : env x ≡ Xinst D I
+    envτ : (y : Var Δ) → env (ρ y) ≡ τ y
+open XEnv public
+
+module _ {Δ : Cx} {D : IDesc} {I : RTy ε} {Θ : Ctx} {ρ : Ren Δ ⌊ Θ ⌋}
+         {x : Var ⌊ Θ ⌋} {Γ : Ctx} {τ : Sub Δ ⌊ Γ ⌋} (e : XEnv D I Θ ρ x Γ τ) where
+
+  -- a carried term, read through the telescope, is the X-free one.
+  xenv-tm : (t : RTm Δ) → subTm (env e) (renTm ρ t) ≡ subTm τ t
+  xenv-tm t = trans (subTm-renTm t) (subTm-cong (envτ e) t)
+
+  -- a recursive field's INDEX, moved from the telescope to `Γ`.
+  xenv-idx : (j : RTm Δ) → Θ ⊢ renTm ρ j ∷ εwkTy I → Γ ⊢ subTm τ j ∷ εwkTy I
+  xenv-idx j dj = subst (λ z → Γ ⊢ z ∷ εwkTy I) (xenv-tm j)
+                        (⊢-cast (εwk-sub (env e) I) (sub-lemma dj (env⊢ e)))
+
+  -- a constant field's CODE, likewise.
+  xenv-code : (κ : RTm Δ) → Θ ⊢ renTm ρ κ ∷ U → Γ ⊢ subTm τ κ ∷ U
+  xenv-code κ dk = subst (λ z → Γ ⊢ z ∷ U) (xenv-tm κ) (sub-lemma dk (env⊢ e))
+
+  -- ★ the family at a recursive field, read through the environment, IS
+  --   the fixed point there — one conversion, `Xconv`.
+  xenv-fam : (j : RTm Δ) →
+             subTy (env e) (El (app (var x) (renTm ρ j))) ≅ᵀ IMu D I (subTm τ j)
+  xenv-fam j =
+    subst (λ z → El (app z (subTm (env e) (renTm ρ j))) ≅ᵀ IMu D I (subTm τ j)) (sym (envX e))
+      (subst (λ z → El (app (Xinst D I) z) ≅ᵀ IMu D I (subTm τ j)) (sym (xenv-tm j))
+             (Xconv D I (subTm τ j)))
+
+  -- ★ EXTENSION BY A VALUE (`iext`) — how `iihTy`/`iihs` walk.
+  xenv-ρ : (j : RTm Δ) {v : RTm ⌊ Γ ⌋} → Γ ⊢ v ∷ IMu D I (subTm τ j) →
+           XEnv D I (Θ ▹ El (app (var x) (renTm ρ j))) (extR ρ) (vs x) Γ (iext τ v)
+  xenv-ρ j {v} dv =
+    xenv (iext (env e) v) (iext-Sub⊢ (env⊢ e) (⊢conv dv (csymᵀ (xenv-fam j))))
+         (envX e) (λ { vz → refl ; (vs y) → envτ e y })
+
+  xenv-κ : (κ : RTm Δ) {v : RTm ⌊ Γ ⌋} → Γ ⊢ v ∷ El (subTm τ κ) →
+           XEnv D I (Θ ▹ El (renTm ρ κ)) (extR ρ) (vs x) Γ (iext τ v)
+  xenv-κ κ {v} dv =
+    xenv (iext (env e) v)
+         (iext-Sub⊢ (env⊢ e) (subst (λ z → Γ ⊢ v ∷ El z) (sym (xenv-tm κ)) dv))
+         (envX e) (λ { vz → refl ; (vs y) → envτ e y })
+
+  -- ★ EXTENSION UNDER A BINDER (`extS`) — how `ipayTy` walks.
+  xenv-ρ↑ : (j : RTm Δ) →
+            XEnv D I (Θ ▹ El (app (var x) (renTm ρ j))) (extR ρ) (vs x)
+                 (Γ ▹ IMu D I (subTm τ j)) (extS τ)
+  xenv-ρ↑ j =
+    xenv (extS (env e)) (Sub⊢-ext-conv (env⊢ e) (xenv-fam j))
+         (cong (renTm vs) (envX e)) (λ { vz → refl ; (vs y) → cong (renTm vs) (envτ e y) })
+
+  xenv-κ↑ : (κ : RTm Δ) →
+            XEnv D I (Θ ▹ El (renTm ρ κ)) (extR ρ) (vs x) (Γ ▹ El (subTm τ κ)) (extS τ)
+  xenv-κ↑ κ =
+    xenv (extS (env e))
+         (Sub⊢-ext-conv (env⊢ e) (subst (λ z → El (subTm (env e) (renTm ρ κ)) ≅ᵀ El z)
+                                        (xenv-tm κ) crflᵀ))
+         (cong (renTm vs) (envX e)) (λ { vz → refl ; (vs y) → cong (renTm vs) (envτ e y) })
+
+-- ★ the ROOT: a well-typed index is an environment for `Θ₀ I`.
+xenv₀ : {Γ : Ctx} {D : IDesc} {I : RTy ε} {i : RTm ⌊ Γ ⌋} →
+        IDescWf I D → Γ ⊢ i ∷ εwkTy I → XEnv D I (Θ₀ I) ρ₀ x₀ Γ (isingle i)
+xenv₀ {D = D} {I = I} {i = i} wD di =
+  xenv (xsingle D I i) (xsingle-Sub⊢ wD di) refl (xsingle-ρ₀ D I i)
+
 -- the IH TUPLE'S TYPE is well-formed.  Mirrors `ihTy-wf`; the `iρ` row's
 -- first component is the motive instantiated at the recursive field.
-iihTy-wf : {Γ Θ : Ctx} (D : IDesc) (I : RTy ε) (M : RTy ((⌊ Γ ⌋ ∙) ∙))
-           (σ : Sub ⌊ Θ ⌋ ⌊ Γ ⌋) (C : ICon ⌊ Θ ⌋) (p : RTm ⌊ Γ ⌋) →
-           IConWf D I Θ C → Sub⊢ Θ Γ σ →
+iihTy-wf : {Γ Θ : Ctx} {Δ : Cx} (D : IDesc) (I : RTy ε) (M : RTy ((⌊ Γ ⌋ ∙) ∙))
+           {ρ : Ren Δ ⌊ Θ ⌋} {x : Var ⌊ Θ ⌋}
+           (τ : Sub Δ ⌊ Γ ⌋) (C : ICon Δ) (p : RTm ⌊ Γ ⌋) →
+           IConWf I Θ ρ x C → XEnv D I Θ ρ x Γ τ →
            ((Γ ▹ εwkTy I) ▹ IMu D I (var vz)) ⊢ty M →
-           Γ ⊢ p ∷ ipayTy D I σ C →
-           Γ ⊢ty iihTy D I σ C p M
-iihTy-wf D I M σ iι p wC hσ dM hp = ty-Unit
-iihTy-wf {Γ} {Θ} D I M σ (iρ j C) p (iwf-ρ .j dj wC) hσ dM hp =
-  ty-Σ (iinst-wf D I M (subTm σ j) (fst p)
-                 (⊢-cast (εwk-sub σ I) (sub-lemma dj hσ)) (⊢fst hp) dM)
-       (ren-ty (iihTy-wf D I M (iext σ (fst p)) C (snd p) wC
-                         (iext-Sub⊢ hσ (⊢fst hp)) dM
-                         (⊢-cast (ipayTy-sub-single D I σ (fst p) C) (⊢snd hp)))
+           Γ ⊢ p ∷ ipayTy D I τ C →
+           Γ ⊢ty iihTy D I τ C p M
+iihTy-wf D I M τ iι p wC e dM hp = ty-Unit
+iihTy-wf D I M τ (iρ j C) p (iwf-ρ .j dj wC) e dM hp =
+  ty-Σ (iinst-wf D I M (subTm τ j) (fst p) (xenv-idx e j dj) (⊢fst hp) dM)
+       (ren-ty (iihTy-wf D I M (iext τ (fst p)) C (snd p) wC (xenv-ρ e j (⊢fst hp)) dM
+                         (⊢-cast (ipayTy-sub-single D I τ (fst p) C) (⊢snd hp)))
                there)
-iihTy-wf D I M σ (iκ κ C) p (iwf-κ .κ _ dcode wC) hσ dM hp =
-  iihTy-wf D I M (iext σ (fst p)) C (snd p) wC
-           (iext-Sub⊢ hσ (⊢fst hp)) dM
-           (⊢-cast (ipayTy-sub-single D I σ (fst p) C) (⊢snd hp))
+iihTy-wf D I M τ (iκ κ C) p (iwf-κ .κ _ dcode wC) e dM hp =
+  iihTy-wf D I M (iext τ (fst p)) C (snd p) wC (xenv-κ e κ (⊢fst hp)) dM
+           (⊢-cast (ipayTy-sub-single D I τ (fst p) C) (⊢snd hp))
 
 -- `sel k` extracts method `k` at its own tag.  ⚠ NO INDEX PARAMETER —
 --   after §9.1 a method's type mentions no particular index, which is
@@ -1426,18 +1562,4 @@ isel-ty {Γ} D I M (C ◂ E) j (suc k) ms (thereID i) hms =
     wk-sub-single A u =
       trans (subTy-renTy A) (trans (subTy-cong (λ x → refl) A) (subTy-id A))
 
--- the k-th constructor of a well-formed description is well-formed, in
--- the STARTING telescope `◇ ▹ εwkTy I` (just the ambient index bound).
-ilookupD-wf : {I : RTy ε} {D E : IDesc} (k : ℕ) →
-              IDescWfFrom D I E → k ∈ID E →
-              IConWf D I (◇ ▹ εwkTy I) (ilookupD E k)
-ilookupD-wf zero    (idwf-cons wC wE) hereID      = wC
-ilookupD-wf (suc k) (idwf-cons wC wE) (thereID m) = ilookupD-wf k wE m
 
--- ★ a well-typed index IS a well-typed environment for the starting
---   telescope — the base case that gets `iihs-ty` off the ground.
-isingle-Sub⊢ : {Γ : Ctx} {I : RTy ε} {i : RTm ⌊ Γ ⌋} →
-               Γ ⊢ i ∷ εwkTy I → Sub⊢ (◇ ▹ εwkTy I) Γ (isingle i)
-isingle-Sub⊢ {I = I} di here =
-  ⊢-cast (sym (trans (subTy-renTy (εwkTy I)) (εwk-sub _ I))) di
-isingle-Sub⊢ di (there ())

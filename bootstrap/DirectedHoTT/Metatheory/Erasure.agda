@@ -21,7 +21,7 @@ module DirectedHoTT.Metatheory.Erasure where
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; subst; ⊥ )
 open import Agda.Builtin.Nat using ( zero )
 open import DirectedHoTT.Spec.Syntax
-open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
+open import DirectedHoTT.Spec.Typing hiding ( _×_ )
 open import DirectedHoTT.Spec.Annotated
 open import DirectedHoTT.Spec.AnnotatedDesc
 open import DirectedHoTT.Spec.TypingA
@@ -64,10 +64,11 @@ erase-ty : {A : ATy ⌊ Γ ⌋ᴬ} → Γ ⊢tyᴬ A → ⌈ Γ ⌉ᶜ ⊢ty ⌈
 erase-dc   : {C : ADCon} → ADConWf C → DConWf ⌈ C ⌉ᴰᶜ
 erase-d    : {D : ADesc} → ADescWf D → DescWf ⌈ D ⌉ᴰ
 erase-icw  : {Θ : Cx} {κ : ATm Θ} → AICodeWf κ → ICodeWf ⌈ κ ⌉
-erase-iwf  : {D : AIDesc} {I : ATy ε} {Θ : ACtx} {C : AICon ⌊ Θ ⌋ᴬ} →
-             AIConWf D I Θ C → IConWf ⌈ D ⌉ᴵᴰ ⌈ I ⌉ᵀ ⌈ Θ ⌉ᶜ ⌈ C ⌉ᴵᶜ
-erase-idwf : {D : AIDesc} {I : ATy ε} {E : AIDesc} →
-             AIDescWfFrom D I E → IDescWfFrom ⌈ D ⌉ᴵᴰ ⌈ I ⌉ᵀ ⌈ E ⌉ᴵᴰ
+erase-iwf  : {I : ATy ε} {Δ : Cx} {Θ : ACtx} {ρ : Ren Δ ⌊ Θ ⌋ᴬ} {x : Var ⌊ Θ ⌋ᴬ} {C : AICon Δ} →
+             AIConWf I Θ ρ x C → IConWf ⌈ I ⌉ᵀ ⌈ Θ ⌉ᶜ ρ x ⌈ C ⌉ᴵᶜ
+erase-idwf : {I : ATy ε} {E : AIDesc} →
+             AIDescWfFrom I E → IDescWfFrom ⌈ I ⌉ᵀ ⌈ E ⌉ᴵᴰ
+erase-idw  : {I : ATy ε} {D : AIDesc} → AIDescWf I D → IDescWf ⌈ I ⌉ᵀ ⌈ D ⌉ᴵᴰ
 
 erase-dc dwf-ι = dwf-ι
 erase-dc (dwf-ρ w) = dwf-ρ (erase-dc w)
@@ -79,17 +80,32 @@ erase-d (dwf-cons c w) = dwf-cons (erase-dc c) (erase-d w)
 erase-icw {Θ} (icw-clo c dc) =
   subst ICodeWf (sym (era-εwkTm {Θ} c)) (icw-clo ⌈ c ⌉ (erase dc))
 erase-icw (icw-ford c a b) = icw-ford ⌈ c ⌉ ⌈ a ⌉ ⌈ b ⌉
-erase-icw (icw-imu i w) = icw-imu ⌈ i ⌉ (erase-idwf w)
+erase-icw (icw-imu i w) = icw-imu ⌈ i ⌉ (erase-idw w)
 
 erase-iwf iwf-ι = iwf-ι
-erase-iwf {I = I} (iwf-ρ j dj w) =
-  iwf-ρ ⌈ j ⌉ (⊢-cast (era-εwkTy I) (erase dj)) (erase-iwf w)
-erase-iwf (iwf-κ κ cw dk w) = iwf-κ ⌈ κ ⌉ (erase-icw cw) (erase dk) (erase-iwf w)
+erase-iwf {I = I} {Θ = Θ} {ρ = ρ} {x = x} (iwf-ρ {C = C} j dj w) =
+  iwf-ρ ⌈ j ⌉
+        (subst (λ z → ⌈ Θ ⌉ᶜ ⊢ z ∷ εwkTy ⌈ I ⌉ᵀ) (era-renTm ρ j)
+               (⊢-cast (era-εwkTy I) (erase dj)))
+        (subst (λ z → IConWf ⌈ I ⌉ᵀ (⌈ Θ ⌉ᶜ ▹ El (app (var x) z)) (extR ρ) (vs x) ⌈ C ⌉ᴵᶜ)
+               (era-renTm ρ j) (erase-iwf w))
+erase-iwf {I = I} {Θ = Θ} {ρ = ρ} {x = x} (iwf-κ {C = C} κ cw dk w) =
+  iwf-κ ⌈ κ ⌉ (erase-icw cw)
+        (subst (λ z → ⌈ Θ ⌉ᶜ ⊢ z ∷ U) (era-renTm ρ κ) (erase dk))
+        (subst (λ z → IConWf ⌈ I ⌉ᵀ (⌈ Θ ⌉ᶜ ▹ El z) (extR ρ) (vs x) ⌈ C ⌉ᴵᶜ)
+               (era-renTm ρ κ) (erase-iwf w))
 
 erase-idwf idwf-nil = idwf-nil
-erase-idwf {D = D} {I = I} (idwf-cons {C = C} c w) =
-  idwf-cons (subst (λ X → IConWf ⌈ D ⌉ᴵᴰ ⌈ I ⌉ᵀ (◇ ▹ X) ⌈ C ⌉ᴵᶜ) (era-εwkTy I) (erase-iwf c))
-            (erase-idwf w)
+erase-idwf {I = I} (idwf-cons c w) =
+  idwf-cons (root-cast (era-εwkTy I) (era-εwkTy I) (erase-iwf c)) (erase-idwf w)
+  where
+  -- the erased root telescope IS `Θ₀`, up to `εwkTy` commuting with erasure
+  root-cast : {J : RTy ε} {C : ICon (ε ∙)} {A A' : RTy ε} {B B' : RTy (ε ∙)} →
+              A ≡ A' → B ≡ B' →
+              IConWf J ((◇ ▹ Π A U) ▹ B) ρ₀ x₀ C → IConWf J ((◇ ▹ Π A' U) ▹ B') ρ₀ x₀ C
+  root-cast refl refl w = w
+
+erase-idw (dI ,, w) = erase-ty dI ,, erase-idwf w
 
 erase (⊢ᴬvar v) = ⊢var (erase-∋ v)
 erase (⊢ᴬlam dA d) = ⊢lam (erase-ty dA) (erase d)
@@ -123,7 +139,7 @@ erase (⊢ᴬap {cB = cB} {b = b} {t = t} {u = u} dcA fl dcB db dt du dp) =
 erase (⊢ᴬ⌜Id⌝ dc da db) = ⊢⌜Id⌝ (erase dc) (erase da) (erase db)
 erase ⊢ᴬ⌜Nat⌝ = ⊢⌜Nat⌝
 erase (⊢ᴬ⌜Mu⌝ w) = ⊢⌜Mu⌝ (erase-d w)
-erase (⊢ᴬ⌜IMu⌝ {I = I} w di) = ⊢⌜IMu⌝ (erase-idwf w) (⊢-cast (era-εwkTy I) (erase di))
+erase (⊢ᴬ⌜IMu⌝ {I = I} w di) = ⊢⌜IMu⌝ (erase-idw w) (⊢-cast (era-εwkTy I) (erase di))
 erase (⊢ᴬcon {D = D} {k = k} w m dp) =
   ⊢con (erase-d w) m
        (⊢-cast (trans (era-payTy D (lookupDᴬ D k)) (cong (payTy ⌈ D ⌉ᴰ) (era-lookupD D k)))
@@ -132,13 +148,13 @@ erase (⊢ᴬelim {D = D} {M = M} {t = t} w dM dms dt) =
   ⊢-cast (sym (sub1 t M))
     (⊢elim (erase-d w) (erase-ty dM) (⊢-cast (era-methsTyFrom D M zero D) (erase dms)) (erase dt))
 erase (⊢ᴬicon {D = D} {I = I} {i = i} {k = k} w m di dp) =
-  ⊢icon (erase-idwf w) m (⊢-cast (era-εwkTy I) (erase di))
+  ⊢icon (erase-idw w) m (⊢-cast (era-εwkTy I) (erase di))
         (⊢-cast (trans (era-ipayTy D I (isingleᴬ i) (isingle ⌈ i ⌉) (era-isingle i) (ilookupDᴬ D k))
                        (cong (ipayTy ⌈ D ⌉ᴵᴰ ⌈ I ⌉ᵀ (isingle ⌈ i ⌉)) (era-ilookupD D k)))
                 (erase dp))
 erase {Γ = Γ} (⊢ᴬielim {D = D} {I = I} {M = M} {i = i} {t = t} w dM di dms dt) =
   ⊢-cast (sym (era-iinst i t M))
-    (⊢ielim (erase-idwf w)
+    (⊢ielim (erase-idw w)
             (subst (λ X → ((⌈ Γ ⌉ᶜ ▹ X) ▹ IMu ⌈ D ⌉ᴵᴰ ⌈ I ⌉ᵀ (var vz)) ⊢ty ⌈ M ⌉ᵀ)
                    (era-εwkTy I) (erase-ty dM))
             (⊢-cast (era-εwkTy I) (erase di))
@@ -170,7 +186,7 @@ erase-ty (tyᴬ-Id dA dt du) = ty-Id (erase-ty dA) (erase dt) (erase du)
 erase-ty tyᴬ-Unit = ty-Unit
 erase-ty tyᴬ-Nat  = ty-Nat
 erase-ty (tyᴬ-Mu w) = ty-Mu (erase-d w)
-erase-ty (tyᴬ-IMu {I = I} w di) = ty-IMu (erase-idwf w) (⊢-cast (era-εwkTy I) (erase di))
+erase-ty (tyᴬ-IMu {I = I} w di) = ty-IMu (erase-idw w) (⊢-cast (era-εwkTy I) (erase di))
 erase-ty (tyᴬ-Hom dA dt du) = ty-Hom (erase-ty dA) (erase dt) (erase du)
 
 ------------------------------------------------------------------------

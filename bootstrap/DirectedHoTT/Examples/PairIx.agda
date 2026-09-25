@@ -61,7 +61,7 @@ open import DirectedHoTT.Spec.Typing
         ; ⊢unit; ⊢nzero; ⊢nsuc; ⊢⌜Nat⌝; ⊢⌜Id⌝; ⊢idrefl
         ; ⊢icon; ⊢ielim
         ; _⊢ty_; ty-El; ty-Unit; ty-Nat; ty-Σ; ty-Π; ty-IMu
-        ; IConWf; iwf-ι; iwf-ρ; iwf-κ
+        ; IConWf; iwf-ι; iwf-ρ; iwf-κ ; Θ₀; ρ₀; x₀; _,,_
         ; ICodeWf; icw-clo; icw-ford
         ; IDescWf; IDescWfFrom; idwf-nil; idwf-cons
         ; imethTy; imethsTy )
@@ -125,14 +125,14 @@ K i = IMu KD IPair i
 --    type is closed, so no weakening appears in any premise.
 ------------------------------------------------------------------------
 
-kbaseWf : IConWf KD IPair (◇ ▹ IPair) kbaseC
+kbaseWf : IConWf IPair (Θ₀ IPair) ρ₀ x₀ kbaseC
 kbaseWf =
   iwf-κ (⌜Id⌝ ⌜Nat⌝ (fst ix) sTy)
         (icw-ford ⌜Nat⌝ (fst ix) sTy)
         (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var here))) (toI ⊢nzero))
         iwf-ι
 
-kvarWf : IConWf KD IPair (◇ ▹ IPair) kvarC
+kvarWf : IConWf IPair (Θ₀ IPair) ρ₀ x₀ kvarC
 kvarWf =
   iwf-κ (⌜Id⌝ ⌜Nat⌝ (fst ix) sTm)
         (icw-ford ⌜Nat⌝ (fst ix) sTm)
@@ -141,7 +141,7 @@ kvarWf =
 
 -- ★★★ the binder row: the recursive field's index is a PAIR TERM whose
 --   second component is `suc` of the ambient's second component.
-klamWf : IConWf KD IPair (◇ ▹ IPair) klamC
+klamWf : IConWf IPair (Θ₀ IPair) ρ₀ x₀ klamC
 klamWf =
   iwf-ρ (pair sTm (nsuc (snd ix)))
         (⊢pair ty-Nat (⊢nsuc ⊢nzero) (⊢nsuc (⊢snd (⊢var here))))
@@ -152,7 +152,7 @@ klamWf =
           iwf-ι)
 
 -- ★★★ the cross-sort row: FIRST component changes, SECOND is held.
-kannWf : IConWf KD IPair (◇ ▹ IPair) kannC
+kannWf : IConWf IPair (Θ₀ IPair) ρ₀ x₀ kannC
 kannWf =
   iwf-ρ (pair sTm (snd ix))
         (⊢pair ty-Nat (⊢nsuc ⊢nzero) (⊢snd (⊢var here)))
@@ -165,7 +165,7 @@ kannWf =
            iwf-ι))
 
 KWf : IDescWf IPair KD
-KWf = idwf-cons kbaseWf (idwf-cons kvarWf (idwf-cons klamWf
+KWf = ty-Σ ty-Nat ty-Nat ,, idwf-cons kbaseWf (idwf-cons kvarWf (idwf-cons klamWf
         (idwf-cons kannWf idwf-nil)))
 
 ------------------------------------------------------------------------

@@ -46,7 +46,7 @@ open import DirectedHoTT.Spec.Typing
         ; _≅ᵀ_; csymᵀ; ctrnᵀ; credᵀ
         ; El-⌜Id⌝; El-⌜IMu⌝; ξ-El; ξ-⌜Id⌝ᶜ; ξ-⌜Id⌝ˡ; ξ-⌜IMu⌝; ξ-nsuc
         ; βfst; βsnd
-        ; IConWf; iwf-ι; iwf-ρ; iwf-κ
+        ; IConWf; iwf-ι; iwf-ρ; iwf-κ ; Θ₀; ρ₀; x₀; _,,_
         ; ICodeWf; icw-clo; icw-ford; icw-imu
         ; IDescWf; idwf-nil; idwf-cons )
 open import DirectedHoTT.Examples.Scoped
@@ -104,7 +104,7 @@ IsLam i = IMu IsLamD IPT i
 -- 3. WELL-FORMEDNESS — the whole question, in two rows.
 ------------------------------------------------------------------------
 
-islamWf : IConWf IsLamD IPT (◇ ▹ IPT) islamC
+islamWf : IConWf IPT (Θ₀ IPT) ρ₀ x₀ islamC
 islamWf =
   iwf-κ (⌜IMu⌝ TmD INat (nsuc (fst (var vz))))
         (icw-imu (nsuc (fst (var vz))) TmWf)
@@ -122,7 +122,7 @@ islamWf =
           iwf-ι)
 
 IsLamWf : IDescWf IPT IsLamD
-IsLamWf = idwf-cons islamWf idwf-nil
+IsLamWf = ty-Σ (ty-El ⊢⌜Nat⌝) (ty-IMu TmWf (⊢var here)) ,, idwf-cons islamWf idwf-nil
 
 ------------------------------------------------------------------------
 -- 4. ⚠⚠ INHABITATION — WITHOUT IT §3 SAYS NOTHING.

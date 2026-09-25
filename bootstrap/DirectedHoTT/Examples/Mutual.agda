@@ -58,7 +58,7 @@ open import DirectedHoTT.Spec.Typing
         ; ⊢unit; ⊢nzero; ⊢nsuc; ⊢⌜Nat⌝; ⊢⌜Id⌝; ⊢idrefl
         ; ⊢icon; ⊢ielim
         ; _⊢ty_; ty-El; ty-Unit; ty-Nat; ty-Σ; ty-Π; ty-IMu
-        ; IConWf; iwf-ι; iwf-ρ; iwf-κ
+        ; IConWf; iwf-ι; iwf-ρ; iwf-κ ; Θ₀; ρ₀; x₀; _,,_
         ; ICodeWf; icw-clo; icw-ford
         ; IDescWf; IDescWfFrom; idwf-nil; idwf-cons
         ; imethTy; imethsTy )
@@ -120,13 +120,13 @@ TT s = IMu TTD INat s
 -- 2. WELL-FORMEDNESS.
 ------------------------------------------------------------------------
 
-ιWf : IConWf TTD INat (◇ ▹ INat) ιC
+ιWf : IConWf INat (Θ₀ INat) ρ₀ x₀ ιC
 ιWf = iwf-κ (⌜Id⌝ ⌜Nat⌝ (var vz) sortTy)
             (icw-ford ⌜Nat⌝ (var vz) sortTy)
             (⊢⌜Id⌝ ⊢⌜Nat⌝ (⊢var here) (toI ⊢nzero))
             iwf-ι
 
-arrWf : IConWf TTD INat (◇ ▹ INat) arrC
+arrWf : IConWf INat (Θ₀ INat) ρ₀ x₀ arrC
 arrWf =
   iwf-ρ sortTy (toI ⊢nzero)
    (iwf-ρ sortTy (toI ⊢nzero)
@@ -135,13 +135,13 @@ arrWf =
            (⊢⌜Id⌝ ⊢⌜Nat⌝ (⊢var (there (there here))) (toI ⊢nzero))
            iwf-ι))
 
-cWf : IConWf TTD INat (◇ ▹ INat) cC
+cWf : IConWf INat (Θ₀ INat) ρ₀ x₀ cC
 cWf = iwf-κ (⌜Id⌝ ⌜Nat⌝ (var vz) sortTm)
             (icw-ford ⌜Nat⌝ (var vz) sortTm)
             (⊢⌜Id⌝ ⊢⌜Nat⌝ (⊢var here) (toI (⊢nsuc ⊢nzero)))
             iwf-ι
 
-annWf : IConWf TTD INat (◇ ▹ INat) annC
+annWf : IConWf INat (Θ₀ INat) ρ₀ x₀ annC
 annWf =
   iwf-ρ sortTm (toI (⊢nsuc ⊢nzero))
    (iwf-ρ sortTy (toI ⊢nzero)
@@ -151,7 +151,7 @@ annWf =
            iwf-ι))
 
 TTWf : IDescWf INat TTD
-TTWf = idwf-cons ιWf (idwf-cons arrWf (idwf-cons cWf (idwf-cons annWf idwf-nil)))
+TTWf = ty-El ⊢⌜Nat⌝ ,, idwf-cons ιWf (idwf-cons arrWf (idwf-cons cWf (idwf-cons annWf idwf-nil)))
 
 ------------------------------------------------------------------------
 -- 3. THE CONSTRUCTORS — `⊢icon`, four times, across both sorts.
