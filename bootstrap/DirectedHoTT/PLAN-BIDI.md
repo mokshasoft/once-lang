@@ -90,7 +90,7 @@ the follow-on question.
 | S1 | **SPIKE: `natrecᴹ M z s n`, ADDITIVE** — alongside `natrec`, the way indexed descriptions were brought up. Measure the cascade through reduction, substitution, confluence, SR, LR. | ⬜ **next** |
 | S2 | Decide from S1: annotate in place, former by former (`natrec`, `elim`, `ielim`, `lam`, `pair`, then the §1 audit of the code-carrying formers); delete the unannotated forms | ⬜ |
 | S3 | Core `infer : Γ → t → Maybe (Σ A (Γ ⊢ t ∷ A))` — certifying, so sound by construction. Then COMPLETENESS: needs uniqueness of types up to conversion (absent today) | ⬜ |
-| S4 | Decide TYPE conversion `≅ᵀ` completely: a normal form for types — by ROUTE C (§3b): ① validity + `srᵀ` (`Metatheory/Validity`), ② inversion, ③ type normaliser on a measure | 🟡 ① in progress |
+| S4 | Decide TYPE conversion `≅ᵀ` completely — ROUTE C (§3b): ① validity + `srᵀ` (`Metatheory/Validity`) ✅; ② inversion — the existing `gen-*` sufficed ✅; ③ `normTy`/`decConvᵀ` (`Metatheory/NormTy`) ✅ — **structural, NO measure needed**: `homNF` recurses on the NORMAL ambient (`G` ⊂ `Π F G`), the created `app f↑ vz` go through the typed `wnorm`, and a `NoU` witness breaks the harmless `elNF ↔ homNF` cycle | ✅ |
 | S5 | The signature: constants, δ, and the conservativity theorem | ⬜ |
 | S6 | The bidirectional SURFACE → annotated core elaborator. `Algorithm/Check`'s slice 1 is its seed; the Once compiler's `formal/Once/TypeCheck` is the shape template | ⬜ |
 | S7 | The Knot: `gen-knot.py` emits core terms + signature references and asks `infer` for the wf derivations; measure against `HANDOFF-2026-09-24` §4's split | ⬜ |
@@ -136,6 +136,14 @@ TYPE reduction). Simplicial type theory (Riehl–Shulman) presents
 `hom_A(x,y)` as an extension type over a directed interval `Δ¹`, where
 `hom` at `Π` is argument-swapping between terms — types never grow, and
 type normalisation is structural. A kernel redesign; not now.
+
+★ **S4 OUTCOME (2026-09-25).** Route C was costed as "validity + SR +
+inversion + a measure". The measure was NOT needed: recursing on the
+NORMAL ambient is structural, and typing makes the terms `Hom-Π` creates
+normalisable by `wnorm`. That is the transferable lesson — the same move
+as `wnᵀ` in route A, made sound by typing instead of by extending the
+untyped SN predicate. Decidable conversion now covers the WHOLE kernel:
+`decide-≅` (terms) + `decConvᵀ` (types).
 
 ## 4. Open questions, recorded not answered
 
