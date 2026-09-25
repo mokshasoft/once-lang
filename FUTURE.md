@@ -3747,3 +3747,44 @@ and transport cost. That decides whether the redesign pays BEFORE anything
 is rewritten. Route C's outputs — validity, SR for types, inversion, typed
 normalisation — are needed by ANY kernel, interval-based or not, so
 continuing with C loses nothing.
+
+## Once: CONTEXTS INDEXED BY THEIR SCOPE — so A-math's `ρ`/`x` are COMPUTED, not carried
+
+*(OCP-0009, 2026-09-25, raised while porting A-math to the Knot.)*
+
+### What prompted it
+
+A-math types a constructor telescope against an abstract family `X` sitting
+at the BOTTOM of the telescope, with the constructor's own syntax in the
+X-free scope `Δ`. The kernel states that as `IConWf I Θ ρ x C` with
+`ρ : Ren Δ ⌊ Θ ⌋` and `x : Var ⌊ Θ ⌋` as PARAMETERS. Mathematically both
+are DETERMINED: `⌊ Θ ⌋` is `Δ` with one variable inserted at the bottom,
+and that is structural on snoc scopes:
+
+    _⁺ : Cx → Cx          ε ⁺ = ε ∙ ;  (Δ ∙) ⁺ = Δ ⁺ ∙
+    up  : Ren Δ (Δ ⁺)     up vz = vz ;  up (vs y) = vs (up y)   (= extR up)
+    bot : (Δ : Cx) → Var (Δ ⁺)   bot ε = vz ;  bot (Δ ∙) = vs (bot Δ)
+
+### Why the kernel cannot say it today
+
+`Ctx` is NOT indexed by its scope — `⌊_⌋` is COMPUTED. "The telescope's
+scope is `Δ ⁺`" is then only statable as an equation index
+`⌊ Θ ⌋ ≡ Δ ⁺`, i.e. transports everywhere. So the general `(ρ, x)` is the
+honest presentation, and the Knot reifies it 1:1 (a `SubTy` slot for `ρ`,
+an `sVar` for `x`).
+
+### What it would buy
+
+With `Ctx : Cx → Set` (intrinsically scoped contexts, `Γ ▹ A` with
+`A : RTy Δ` for `Γ : Ctx Δ`), a telescope could be `Ctx (Δ ⁺)` directly:
+`ρ`/`x` become `up`/`bot`, two parameters disappear from `IConWf`, from
+`XEnv`, and from the Knot's `IConWf` subjects. It also removes every
+`⌊ Γ ⌋` coercion in signatures kernel-wide.
+
+### Why it is parked
+
+It re-indexes the most-used type in the kernel (every judgment, every
+Lib lemma, every Knot row's context), and the gain is two DETERMINED
+parameters that are harmless as data. Revisit if a second judgment wants
+a scope relation that the current `Ctx` can only state by equation — that
+would make it a pattern, not a one-off.
