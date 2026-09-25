@@ -36,7 +36,7 @@ open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; Var; vz; vs; RTy; base; U; Π; Σ'; El; Hom; RTm; var; lam; app
         ; ⌜Π⌝; ⌜Hom⌝; hrefl; tr; ap; ⌜Id⌝; idrefl; jsub
-        ; nzero; nsuc; natrec; natrec-cong₃; ⌜Nat⌝; ⌜Unit⌝
+        ; nzero; nsuc; natrec; natrec-cong₃; natrecᴹ; ⌜Nat⌝; ⌜Unit⌝
         ; ⌜Hom⌝-cong₃; tr-cong₃; ap-cong₃; ⌜Id⌝-cong₃; jsub-cong₃
         ; Ren; extR; Sub; subTy; subTm; extS; _∘ₛ_; _ₛ∘ᵣ_; _ᵣ∘ₛ_; renTm
         ; subTm-subTm; subTm-cong; subTm-renTm; subTm-id; renTm-subTm
@@ -59,6 +59,7 @@ open import DirectedHoTT.Spec.Typing
         ; jsub-refl; ξ-⌜Id⌝ᶜ; ξ-⌜Id⌝ˡ; ξ-⌜Id⌝ʳ; ξ-idreflᶜ; ξ-idreflᵃ
         ; ξ-jsubᵈ; ξ-jsubᵖ; ξ-jsubᵉ; El-⌜Id⌝; ξ-Idᵀ; ξ-Idˡ; ξ-Idʳ
         ; natrec-zero; natrec-suc; ξ-nsuc; ξ-natrecᶻ; ξ-natrecˢ; ξ-natrecⁿ
+        ; natrecᴹ-zero; natrecᴹ-suc; ξ-natrecᴹᴹ; ξ-natrecᴹᶻ; ξ-natrecᴹˢ; ξ-natrecᴹⁿ
         ; Hom-Nat-z; Hom-Nat-sz; Hom-Nat-ss
         ; El-⌜Nat⌝; El-⌜Unit⌝; El-⌜Mu⌝; tr-J-Unit; tr-J-Mu; tr-J-IMu
         ; ξ-IMu
@@ -174,6 +175,8 @@ pwShift-sub σ t =
 -- Reduction is substitution-stable — terms, then types.
 ------------------------------------------------------------------------
 
+-- ★ SPIKE: forward-declared — `ξ-natrecᴹᴹ` makes `⟶-sub` call it.
+⟶ᵀ-sub : (σ : Sub Γ Δ) {A B : RTy Γ} → A ⟶ᵀ B → subTy σ A ⟶ᵀ subTy σ B
 ⟶-sub : (σ : Sub Γ Δ) {t u : RTm Γ} → t ⟶ u → subTm σ t ⟶ subTm σ u
 ⟶-sub σ (β t s)    =
   subst (λ z → app (lam (subTm (extS σ) t)) (subTm σ s) ⟶ z)
@@ -289,6 +292,21 @@ pwShift-sub σ t =
                           (sub-comm-ext σ s n))))
         (natrec-suc (subTm σ z) (subTm (extS (extS σ)) s) (subTm σ n))
 ⟶-sub σ (ξ-nsuc r)    = ξ-nsuc (⟶-sub σ r)
+⟶-sub σ (natrecᴹ-zero M z s) =
+  natrecᴹ-zero (subTy (extS σ) M) (subTm σ z) (subTm (extS (extS σ)) s)
+⟶-sub σ (natrecᴹ-suc M z s n) =
+  subst (λ w → natrecᴹ (subTy (extS σ) M) (subTm σ z) (subTm (extS (extS σ)) s)
+                       (nsuc (subTm σ n)) ⟶ w)
+        (sym (trans (sub-comm σ (subTm (extS (single n)) s) (natrecᴹ M z s n))
+                    (cong (subTm (single (natrecᴹ (subTy (extS σ) M) (subTm σ z)
+                                                  (subTm (extS (extS σ)) s)
+                                                  (subTm σ n))))
+                          (sub-comm-ext σ s n))))
+        (natrecᴹ-suc (subTy (extS σ) M) (subTm σ z) (subTm (extS (extS σ)) s) (subTm σ n))
+⟶-sub σ (ξ-natrecᴹᴹ r) = ξ-natrecᴹᴹ (⟶ᵀ-sub (extS σ) r)
+⟶-sub σ (ξ-natrecᴹᶻ r) = ξ-natrecᴹᶻ (⟶-sub σ r)
+⟶-sub σ (ξ-natrecᴹˢ r) = ξ-natrecᴹˢ (⟶-sub (extS (extS σ)) r)
+⟶-sub σ (ξ-natrecᴹⁿ r) = ξ-natrecᴹⁿ (⟶-sub σ r)
 ⟶-sub σ (ξ-natrecᶻ r) = ξ-natrecᶻ (⟶-sub σ r)
 ⟶-sub σ (ξ-natrecˢ r) = ξ-natrecˢ (⟶-sub (extS (extS σ)) r)
 ⟶-sub σ (ξ-natrecⁿ r) = ξ-natrecⁿ (⟶-sub σ r)
@@ -322,7 +340,6 @@ pwShift-sub σ t =
 ⟶-sub σ (ξ-jsubᵖ r) = ξ-jsubᵖ (⟶-sub σ r)
 ⟶-sub σ (ξ-jsubᵉ r) = ξ-jsubᵉ (⟶-sub σ r)
 
-⟶ᵀ-sub : (σ : Sub Γ Δ) {A B : RTy Γ} → A ⟶ᵀ B → subTy σ A ⟶ᵀ subTy σ B
 ⟶ᵀ-sub σ (El-⌜base⌝)  = El-⌜base⌝
 ⟶ᵀ-sub σ (El-⌜Π⌝ c d) = El-⌜Π⌝ (subTm σ c) (subTm (extS σ) d)
 ⟶ᵀ-sub σ (El-⌜Σ⌝ c d) = El-⌜Σ⌝ (subTm σ c) (subTm (extS σ) d)

@@ -156,6 +156,7 @@ mutual
   encTm (⌜Mu⌝ D)            = n1 2 7 (encDesc D)
   encTm (⌜IMu⌝ D I i)       = n3 2 8 (encIDesc D) (encTy I) (encTm i)
   encTm ⌜Unit⌝              = n0 2 9
+  encTm (natrecᴹ M z s n)   = n4 3 0 (encTy M) (encTm z) (encTm s) (encTm n)
 
   encDCon : DCon → Tree
   encDCon dι       = n0 0 0
@@ -246,6 +247,8 @@ mutual
   decTm Γ (node 2 7 (a ∷ []))         = decDesc a >>= λ D → just (⌜Mu⌝ D)
   decTm Γ (node 2 8 (a ∷ b ∷ c ∷ [])) = decIDesc a >>= λ D → decTy ε b >>= λ I → decTm Γ c >>= λ i → just (⌜IMu⌝ D I i)
   decTm Γ (node 2 9 [])               = just ⌜Unit⌝
+  decTm Γ (node 3 0 (a ∷ b ∷ c ∷ d ∷ [])) =
+    decTy (Γ ∙) a >>= λ M → decTm Γ b >>= λ z → decTm ((Γ ∙) ∙) c >>= λ s → decTm Γ d >>= λ n → just (natrecᴹ M z s n)
   decTm Γ _ = nothing
 
   decDCon : Tree → Maybe DCon
@@ -323,6 +326,7 @@ mutual
   dec-encTm (⌜Mu⌝ D) = dec-encDesc D ⟫ refl
   dec-encTm (⌜IMu⌝ D I i) = dec-encIDesc D ⟫ dec-encTy I ⟫ dec-encTm i ⟫ refl
   dec-encTm ⌜Unit⌝ = refl
+  dec-encTm (natrecᴹ M z s n) = dec-encTy M ⟫ dec-encTm z ⟫ dec-encTm s ⟫ dec-encTm n ⟫ refl
 
   dec-encDCon : (C : DCon) → decDCon (encDCon C) ≡ just C
   dec-encDCon dι = refl

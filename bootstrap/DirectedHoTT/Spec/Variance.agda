@@ -73,7 +73,7 @@ open import DirectedHoTT.Spec.Syntax
         ; RTy; base; U; Π; Σ'; El; Hom
         ; RTm; var; lam; app; pair; fst; snd; absurd; ordtr; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝
         ; ⌜Hom⌝; hrefl; tr; ap; Id; ⌜Id⌝; idrefl; jsub
-        ; Unit; Nat; unit; nzero; nsuc; natrec; natrec-cong₃; ⌜Nat⌝; ⌜Unit⌝; ⌜Mu⌝
+        ; Unit; Nat; unit; nzero; nsuc; natrec; natrec-cong₃; natrecᴹ; natrecᴹ-cong₄; subTy; subTy-cong; Hom-cong₃; ⌜Nat⌝; ⌜Unit⌝; ⌜Mu⌝
         ; ⌜Hom⌝-cong₃; tr-cong₃; ordtr-cong₅; ⌜Id⌝-cong₃; jsub-cong₃; Id-cong₃
         ; Ren; extR; renTy; renTm; Sub; extS; subTm
         ; renTm-renTm; subTm-renTm; renTm-subTm; subTm-cong
@@ -147,6 +147,7 @@ occTm x unit          = false
 occTm x nzero         = false
 occTm x (nsuc n)      = occTm x n
 occTm x (natrec z s n) = occTm x z ∨ occTm (vs (vs x)) s ∨ occTm x n
+occTm x (natrecᴹ M z s n) = occTy (vs x) M ∨ occTm x z ∨ occTm (vs (vs x)) s ∨ occTm x n
 occTm x (con k p)      = occTm x p
 occTm x (elim D ms t)  = occTm x ms ∨ occTm x t
 occTm x (icon k p)     = occTm x p
@@ -261,6 +262,10 @@ occ-ren-tm h (ielim D i ms t) =
 occ-ren-tm h (natrec z s n) =
   ∨-false (occ-ren-tm h z)
           (∨-false (occ-ren-tm (avoids-ext (avoids-ext h)) s) (occ-ren-tm h n))
+occ-ren-tm h (natrecᴹ M z s n) =
+  ∨-false (occ-ren-ty (avoids-ext h) M)
+    (∨-false (occ-ren-tm h z)
+             (∨-false (occ-ren-tm (avoids-ext (avoids-ext h)) s) (occ-ren-tm h n)))
 occ-ren-tm h (tr d p e)    =
   ∨-false (occ-ren-tm (avoids-ext h) d)
           (∨-false (occ-ren-tm h p) (occ-ren-tm h e))
@@ -398,6 +403,9 @@ ext-eq : {ρ : Ren Γ Δ} {x : Var Γ} {x' : Var Δ} →
 ext-eq h vz     = refl
 ext-eq h (vs y) = h y
 
+occ-ren-eqᵀ : {ρ : Ren Γ Δ} {x : Var Γ} {x' : Var Δ} →
+              (∀ y → eqv x' (ρ y) ≡ eqv x y) →
+              (A : RTy Γ) → occTy x' (renTy ρ A) ≡ occTy x A
 occ-ren-eq : {ρ : Ren Γ Δ} {x : Var Γ} {x' : Var Δ} →
              (∀ y → eqv x' (ρ y) ≡ eqv x y) →
              (t : RTm Γ) → occTm x' (renTm ρ t) ≡ occTm x t
@@ -446,6 +454,23 @@ occ-ren-eq h (jsub d p e)    =
 occ-ren-eq h (ap c b p)    =
   cong₂ _∨_ (occ-ren-eq h c)
             (cong₂ _∨_ (occ-ren-eq (ext-eq h) b) (occ-ren-eq h p))
+occ-ren-eq h (natrecᴹ M z s n) =
+  cong₂ _∨_ (occ-ren-eqᵀ (ext-eq h) M)
+    (cong₂ _∨_ (occ-ren-eq h z)
+      (cong₂ _∨_ (occ-ren-eq (ext-eq (ext-eq h)) s) (occ-ren-eq h n)))
+occ-ren-eqᵀ h base     = refl
+occ-ren-eqᵀ h U        = refl
+occ-ren-eqᵀ h Unit     = refl
+occ-ren-eqᵀ h Nat      = refl
+occ-ren-eqᵀ h (Mu D)   = refl
+occ-ren-eqᵀ h (Π A B)  = cong₂ _∨_ (occ-ren-eqᵀ h A) (occ-ren-eqᵀ (ext-eq h) B)
+occ-ren-eqᵀ h (Σ' A B) = cong₂ _∨_ (occ-ren-eqᵀ h A) (occ-ren-eqᵀ (ext-eq h) B)
+occ-ren-eqᵀ h (El t)   = occ-ren-eq h t
+occ-ren-eqᵀ h (Hom A t u) =
+  cong₂ _∨_ (occ-ren-eqᵀ h A) (cong₂ _∨_ (occ-ren-eq h t) (occ-ren-eq h u))
+occ-ren-eqᵀ h (Id A t u) =
+  cong₂ _∨_ (occ-ren-eqᵀ h A) (cong₂ _∨_ (occ-ren-eq h t) (occ-ren-eq h u))
+occ-ren-eqᵀ h (IMu D I i) = occ-ren-eq h i
 
 -- Substitution KILLS occurrence: if the substitution's images avoid the
 -- tracked target variable on every source variable the term can mention,
@@ -457,6 +482,9 @@ ext-occ h vz     _ = refl
 ext-occ {σ = σ} h (vs y) e =
   trans (occ-ren-eq (λ _ → refl) (σ y)) (h y e)
 
+occ-subᵀ : {σ : Sub Γ Δ} {x : Var Γ} {x' : Var Δ} →
+           (∀ y → eqv x y ≡ false → occTm x' (σ y) ≡ false) →
+           (A : RTy Γ) → occTy x A ≡ false → occTy x' (subTy σ A) ≡ false
 occ-sub : {σ : Sub Γ Δ} {x : Var Γ} {x' : Var Δ} →
           (∀ y → eqv x y ≡ false → occTm x' (σ y) ≡ false) →
           (t : RTm Γ) → occTm x t ≡ false → occTm x' (subTm σ t) ≡ false
@@ -537,6 +565,35 @@ occ-sub {x = x} h (ap c b p) e =
   ∨-false (occ-sub h c (∨-false₁ (occTm x c) e))
           (∨-false (occ-sub (ext-occ h) b (∨-false₁ (occTm (vs x) b) (∨-false₂ (occTm x c) e)))
                    (occ-sub h p (∨-false₂ (occTm (vs x) b) (∨-false₂ (occTm x c) e))))
+occ-sub {x = x} h (natrecᴹ M z s n) e =
+  ∨-false (occ-subᵀ (ext-occ h) M (∨-false₁ (occTy (vs x) M) e))
+    (∨-false (occ-sub h z (∨-false₁ (occTm x z) e₁))
+             (∨-false (occ-sub (ext-occ (ext-occ h)) s
+                        (∨-false₁ (occTm (vs (vs x)) s) (∨-false₂ (occTm x z) e₁)))
+                      (occ-sub h n
+                        (∨-false₂ (occTm (vs (vs x)) s) (∨-false₂ (occTm x z) e₁)))))
+  where e₁ = ∨-false₂ (occTy (vs x) M) e
+occ-subᵀ h base     e = refl
+occ-subᵀ h U        e = refl
+occ-subᵀ h Unit     e = refl
+occ-subᵀ h Nat      e = refl
+occ-subᵀ h (Mu D)   e = refl
+occ-subᵀ {x = x} h (Π A B) e =
+  ∨-false (occ-subᵀ h A (∨-false₁ (occTy x A) e))
+          (occ-subᵀ (ext-occ h) B (∨-false₂ (occTy x A) e))
+occ-subᵀ {x = x} h (Σ' A B) e =
+  ∨-false (occ-subᵀ h A (∨-false₁ (occTy x A) e))
+          (occ-subᵀ (ext-occ h) B (∨-false₂ (occTy x A) e))
+occ-subᵀ h (El t) e = occ-sub h t e
+occ-subᵀ {x = x} h (Hom A t u) e =
+  ∨-false (occ-subᵀ h A (∨-false₁ (occTy x A) e))
+          (∨-false (occ-sub h t (∨-false₁ (occTm x t) (∨-false₂ (occTy x A) e)))
+                   (occ-sub h u (∨-false₂ (occTm x t) (∨-false₂ (occTy x A) e))))
+occ-subᵀ {x = x} h (Id A t u) e =
+  ∨-false (occ-subᵀ h A (∨-false₁ (occTy x A) e))
+          (∨-false (occ-sub h t (∨-false₁ (occTm x t) (∨-false₂ (occTy x A) e)))
+                   (occ-sub h u (∨-false₂ (occTm x t) (∨-false₂ (occTy x A) e))))
+occ-subᵀ h (IMu D I i) e = occ-sub h i e
 
 -- ★★ THE UNCONDITIONAL VARIANT.  `occ-sub` asks that `t` itself avoid a
 --   chosen variable; a description's telescope term avoids nothing in
@@ -548,6 +605,9 @@ ext-occ' : {σ : Sub Γ Δ} {x' : Var Δ} →
            (∀ y → occTm (vs x') (extS σ y) ≡ false)
 ext-occ' h vz     = refl
 ext-occ' {σ = σ} h (vs y) = trans (occ-ren-eq (λ _ → refl) (σ y)) (h y)
+occ-sub'ᵀ : {σ : Sub Γ Δ} {x' : Var Δ} →
+            (∀ y → occTm x' (σ y) ≡ false) →
+            (A : RTy Γ) → occTy x' (subTy σ A) ≡ false
 occ-sub' : {σ : Sub Γ Δ} {x' : Var Δ} →
            (∀ y → occTm x' (σ y) ≡ false) →
            (t : RTm Γ) → occTm x' (subTm σ t) ≡ false
@@ -581,6 +641,20 @@ occ-sub' h (idrefl c t) = ∨-false (occ-sub' h c) (occ-sub' h t)
 occ-sub' h (tr d p q) = ∨-false (occ-sub' (ext-occ' h) d) (∨-false (occ-sub' h p) (occ-sub' h q))
 occ-sub' h (jsub d p q) = ∨-false (occ-sub' (ext-occ' h) d) (∨-false (occ-sub' h p) (occ-sub' h q))
 occ-sub' h (ap c b p) = ∨-false (occ-sub' h c) (∨-false (occ-sub' (ext-occ' h) b) (occ-sub' h p))
+occ-sub' h (natrecᴹ M z s n) =
+  ∨-false (occ-sub'ᵀ (ext-occ' h) M)
+    (∨-false (occ-sub' h z) (∨-false (occ-sub' (ext-occ' (ext-occ' h)) s) (occ-sub' h n)))
+occ-sub'ᵀ h base     = refl
+occ-sub'ᵀ h U        = refl
+occ-sub'ᵀ h Unit     = refl
+occ-sub'ᵀ h Nat      = refl
+occ-sub'ᵀ h (Mu D)   = refl
+occ-sub'ᵀ h (Π A B)  = ∨-false (occ-sub'ᵀ h A) (occ-sub'ᵀ (ext-occ' h) B)
+occ-sub'ᵀ h (Σ' A B) = ∨-false (occ-sub'ᵀ h A) (occ-sub'ᵀ (ext-occ' h) B)
+occ-sub'ᵀ h (El t)   = occ-sub' h t
+occ-sub'ᵀ h (Hom A t u) = ∨-false (occ-sub'ᵀ h A) (∨-false (occ-sub' h t) (occ-sub' h u))
+occ-sub'ᵀ h (Id A t u)  = ∨-false (occ-sub'ᵀ h A) (∨-false (occ-sub' h t) (occ-sub' h u))
+occ-sub'ᵀ h (IMu D I i) = occ-sub' h i
 
 ------------------------------------------------------------------------
 -- ★ INDUCTIVE TYPES: the ι-rule's right-hand side introduces no variable.
@@ -620,6 +694,9 @@ ext-agree : {σ τ : Sub Γ Δ} (f : Var (Γ ∙) → 𝔹) →
 ext-agree f g vz     _ = refl
 ext-agree f g (vs y) o = cong (renTm vs) (g y o)
 
+subTy-occ : {σ τ : Sub Γ Δ} (A : RTy Γ) →
+            ((x : Var Γ) → occTy x A ≡ true → σ x ≡ τ x) →
+            subTy σ A ≡ subTy τ A
 subTm-occ : {σ τ : Sub Γ Δ} (m : RTm Γ) →
             ((x : Var Γ) → occTm x m ≡ true → σ x ≡ τ x) →
             subTm σ m ≡ subTm τ m
@@ -704,6 +781,38 @@ subTm-occ (ap m k l) h =
     (subTm-occ m (λ x o → h x (∨-inl o)))
     (subTm-occ k (ext-agree (λ x → occTm x k) (λ y o → h y (∨-inr (occTm y m) (∨-inl o)))))
     (subTm-occ l (λ x o → h x (∨-inr (occTm x m) (∨-inr (occTm (vs x) k) o))))
+subTm-occ (natrecᴹ M z s n) h =
+  natrecᴹ-cong₄
+    (subTy-occ M (ext-agree (λ x → occTy x M) (λ y o → h y (∨-inl o))))
+    (subTm-occ z (λ x o → h x (∨-inr (occTy (vs x) M) (∨-inl o))))
+    (subTm-occ s (ext-agree (λ x → occTm x s)
+       (ext-agree (λ x → occTm (vs x) s)
+         (λ y o → h y (∨-inr (occTy (vs y) M) (∨-inr (occTm y z) (∨-inl o)))))))
+    (subTm-occ n (λ x o → h x (∨-inr (occTy (vs x) M)
+                              (∨-inr (occTm x z) (∨-inr (occTm (vs (vs x)) s) o)))))
+subTy-occ base     h = refl
+subTy-occ U        h = refl
+subTy-occ Unit     h = refl
+subTy-occ Nat      h = refl
+subTy-occ (Mu D)   h = refl
+subTy-occ (Π A B)  h = cong₂ Π
+  (subTy-occ A (λ x o → h x (∨-inl o)))
+  (subTy-occ B (ext-agree (λ x → occTy x B) (λ y o → h y (∨-inr (occTy y A) o))))
+subTy-occ (Σ' A B) h = cong₂ Σ'
+  (subTy-occ A (λ x o → h x (∨-inl o)))
+  (subTy-occ B (ext-agree (λ x → occTy x B) (λ y o → h y (∨-inr (occTy y A) o))))
+subTy-occ (El t)   h = cong El (subTm-occ t h)
+subTy-occ (Hom A t u) h =
+  Hom-cong₃
+    (subTy-occ A (λ x o → h x (∨-inl o)))
+    (subTm-occ t (λ x o → h x (∨-inr (occTy x A) (∨-inl o))))
+    (subTm-occ u (λ x o → h x (∨-inr (occTy x A) (∨-inr (occTm x t) o))))
+subTy-occ (Id A t u) h =
+  Id-cong₃
+    (subTy-occ A (λ x o → h x (∨-inl o)))
+    (subTm-occ t (λ x o → h x (∨-inr (occTy x A) (∨-inl o))))
+    (subTm-occ u (λ x o → h x (∨-inr (occTy x A) (∨-inr (occTm x t) o))))
+subTy-occ (IMu D I i) h = cong (IMu D I) (subTm-occ i h)
 
 ------------------------------------------------------------------------
 -- 7. `PosC` survives renaming and substitution — `⊢tr` moves under both.
@@ -897,6 +1006,7 @@ stkC?→stkA? unit ()
 stkC?→stkA? nzero ()
 stkC?→stkA? (nsuc _) ()
 stkC?→stkA? (natrec _ _ _) ()
+stkC?→stkA? (natrecᴹ _ _ _ _) ()
 
 ------------------------------------------------------------------------
 -- ★ WF stage C: the SHALLOW Nat-freeness.  `NoNatC` (above) is
@@ -956,6 +1066,7 @@ stkC?→hd unit ()
 stkC?→hd nzero ()
 stkC?→hd (nsuc _) ()
 stkC?→hd (natrec _ _ _) ()
+stkC?→hd (natrecᴹ _ _ _ _) ()
 
 -- ⚠ there is deliberately NO `stkA?→hd`: `stkA? ⌜Nat⌝ = true`, so a
 -- stable-ambient code CAN be ⌜Nat⌝ — that is the whole content of the
@@ -983,6 +1094,7 @@ stkA?-ren ρ (elim D ms t) = refl
 stkA?-ren ρ (icon k p)     = refl
 stkA?-ren ρ (ielim D i ms t) = refl
 stkA?-ren ρ (natrec z s n) = refl
+stkA?-ren ρ (natrecᴹ M z s n) = refl
 stkA?-ren ρ (⌜Π⌝ γ δ)     = refl
 stkA?-ren ρ (⌜Σ⌝ c d)     = refl
 stkA?-ren ρ (⌜Hom⌝ C a b) = stkA?-ren ρ C
@@ -1052,6 +1164,7 @@ stkA?⊥pw unit ()
 stkA?⊥pw nzero ()
 stkA?⊥pw (nsuc n) ()
 stkA?⊥pw (natrec z s n) ()
+stkA?⊥pw (natrecᴹ M z s n) ()
 
 stk⊥pw : (C : RTm Γ) → stkC? C ≡ true → pw? C ≡ false
 stk⊥pw (var x) ()
@@ -1098,6 +1211,7 @@ pw?-ren ρ (elim D ms t) = refl
 pw?-ren ρ (icon k p)     = refl
 pw?-ren ρ (ielim D i ms t) = refl
 pw?-ren ρ (natrec z s n) = refl
+pw?-ren ρ (natrecᴹ M z s n) = refl
 pw?-ren ρ (⌜Π⌝ γ δ)     = refl
 pw?-ren ρ (⌜Σ⌝ c d)     = refl
 pw?-ren ρ (⌜Hom⌝ C a b) = pw?-ren ρ C
@@ -1130,6 +1244,7 @@ stkC?-ren ρ (elim D ms t) = refl
 stkC?-ren ρ (icon k p)     = refl
 stkC?-ren ρ (ielim D i ms t) = refl
 stkC?-ren ρ (natrec z s n) = refl
+stkC?-ren ρ (natrecᴹ M z s n) = refl
 stkC?-ren ρ (⌜Π⌝ γ δ)     = refl
 stkC?-ren ρ (⌜Σ⌝ c d)     = refl
 stkC?-ren ρ (⌜Hom⌝ C a b) = stkA?-ren ρ C
@@ -1191,6 +1306,7 @@ flat?-ren ρ (elim D ms t)  = refl
 flat?-ren ρ (icon k p)      = refl
 flat?-ren ρ (ielim D i ms t) = refl
 flat?-ren ρ (natrec z s n) = refl
+flat?-ren ρ (natrecᴹ M z s n) = refl
 flat?-ren ρ (⌜Π⌝ c d)      = refl
 flat?-ren ρ (⌜Σ⌝ c d)      = refl
 flat?-ren ρ (⌜Hom⌝ c a b)  = stkC?-ren ρ c
@@ -1301,6 +1417,7 @@ stkA?-sub σ unit ()
 stkA?-sub σ nzero ()
 stkA?-sub σ (nsuc n) ()
 stkA?-sub σ (natrec z s n) ()
+stkA?-sub σ (natrecᴹ M z s n) ()
 
 stkC?-sub : (σ : Sub Γ Δ) (C : RTm Γ) → stkC? C ≡ true →
             stkC? (subTm σ C) ≡ true
@@ -1430,6 +1547,8 @@ pw⊥stk (ap c b p) ()
 
 -- a renaming IS a variable-image substitution — lets `subTm-occ`'s
 -- occurrence-agreement machinery reach mixed ren/sub equations.
+ren-as-subᵀ : (ρ : Ren Γ Δ) (A : RTy Γ) →
+              renTy ρ A ≡ subTy (λ x → var (ρ x)) A
 ren-as-sub : (ρ : Ren Γ Δ) (t : RTm Γ) →
              renTm ρ t ≡ subTm (λ x → var (ρ x)) t
 ren-as-sub ρ (var x)    = refl
@@ -1514,6 +1633,40 @@ ren-as-sub ρ (ap c b p) =
   ptw : ∀ x → var (extR ρ x) ≡ extS (λ y → var (ρ y)) x
   ptw vz     = refl
   ptw (vs x) = refl
+ren-as-sub ρ (natrecᴹ M z s n) =
+  natrecᴹ-cong₄ (trans (ren-as-subᵀ (extR ρ) M) (subTy-cong ptw1 M))
+    (ren-as-sub ρ z)
+    (trans (ren-as-sub (extR (extR ρ)) s) (subTm-cong ptw2 s))
+    (ren-as-sub ρ n)
+  where
+  ptw1 : ∀ x → var (extR ρ x) ≡ extS (λ y → var (ρ y)) x
+  ptw1 vz     = refl
+  ptw1 (vs x) = refl
+  ptw2 : ∀ x → var (extR (extR ρ) x) ≡ extS (extS (λ y → var (ρ y))) x
+  ptw2 vz          = refl
+  ptw2 (vs vz)     = refl
+  ptw2 (vs (vs x)) = refl
+ren-as-subᵀ ρ base     = refl
+ren-as-subᵀ ρ U        = refl
+ren-as-subᵀ ρ Unit     = refl
+ren-as-subᵀ ρ Nat      = refl
+ren-as-subᵀ ρ (Mu D)   = refl
+ren-as-subᵀ ρ (Π A B)  =
+  cong₂ Π (ren-as-subᵀ ρ A) (trans (ren-as-subᵀ (extR ρ) B) (subTy-cong ptw B))
+  where
+  ptw : ∀ x → var (extR ρ x) ≡ extS (λ y → var (ρ y)) x
+  ptw vz     = refl
+  ptw (vs x) = refl
+ren-as-subᵀ ρ (Σ' A B) =
+  cong₂ Σ' (ren-as-subᵀ ρ A) (trans (ren-as-subᵀ (extR ρ) B) (subTy-cong ptw B))
+  where
+  ptw : ∀ x → var (extR ρ x) ≡ extS (λ y → var (ρ y)) x
+  ptw vz     = refl
+  ptw (vs x) = refl
+ren-as-subᵀ ρ (El t)   = cong El (ren-as-sub ρ t)
+ren-as-subᵀ ρ (Hom A t u) = Hom-cong₃ (ren-as-subᵀ ρ A) (ren-as-sub ρ t) (ren-as-sub ρ u)
+ren-as-subᵀ ρ (Id A t u)  = Id-cong₃ (ren-as-subᵀ ρ A) (ren-as-sub ρ t) (ren-as-sub ρ u)
+ren-as-subᵀ ρ (IMu D I i) = cong (IMu D I) (ren-as-sub ρ i)
 
 ------------------------------------------------------------------------
 -- ★★ THE INDEXED TWINS.  One new ingredient over the non-indexed pair:

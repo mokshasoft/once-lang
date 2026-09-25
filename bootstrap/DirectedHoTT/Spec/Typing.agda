@@ -39,7 +39,7 @@ open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; Var; vz; vs; RTy; base; U; Π; Σ'; El; Hom; RTm; var; lam; app
         ; pair; fst; snd; absurd; ordtr; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝; ⌜Hom⌝; hrefl; tr; ap
         ; Id; ⌜Id⌝; idrefl; jsub
-        ; Unit; Nat; unit; nzero; nsuc; natrec; extS; ⌜Nat⌝; ⌜Unit⌝; ⌜Mu⌝
+        ; Unit; Nat; unit; nzero; nsuc; natrec; natrecᴹ; extS; ⌜Nat⌝; ⌜Unit⌝; ⌜Mu⌝
         ; Ren; extR; Sub; subTy; subTm; renTy; renTm
         ; Desc; Mu; con; elim; lookupD; sel; fields
         ; payTy; payTy-ren; payTy-sub; εwkTy; εwk-ren; εwk-sub; _∈D_; hereD; thereD; DCon; dι; dρ; dκ; dnil; _◃_; ihs; subTy-subTy; subTy-cong; renTy-subTy
@@ -235,6 +235,11 @@ swp (vs (vs x)) = vs (vs x)
 ------------------------------------------------------------------------
 
 infix 3 _⟶_ _⟶ᵀ_
+-- ★ SPIKE (PLAN-BIDI S1): `natrecᴹ` carries a TYPE, and conversion must
+--   see through it (`ξ-natrecᴹᴹ`), so term reduction now reaches INTO
+--   types: `_⟶_` and `_⟶ᵀ_` are MUTUAL.  This forward declaration is
+--   the first cost of types-in-terms.
+data _⟶ᵀ_ : {Γ : Cx} → RTy Γ → RTy Γ → Set
 data _⟶_ : {Γ : Cx} → RTm Γ → RTm Γ → Set where
   β       : (t : RTm (Γ ∙)) (u : RTm Γ) → app (lam t) u ⟶ subTm (single u) t
   βfst    : (a b : RTm Γ) → fst (pair a b) ⟶ a
@@ -429,6 +434,22 @@ data _⟶_ : {Γ : Cx} → RTm Γ → RTm Γ → Set where
               s ⟶ s' → natrec z s n ⟶ natrec z s' n
   ξ-natrecⁿ : {z : RTm Γ} {s : RTm ((Γ ∙) ∙)} {n n' : RTm Γ} →
               n ⟶ n' → natrec z s n ⟶ natrec z s n'
+  -- ★ SPIKE: the motive-annotated recursor.  The ι-rules DROP the motive
+  --   (it is typing data, not computational content); the congruences
+  --   include one INTO the motive.
+  natrecᴹ-zero : (M : RTy (Γ ∙)) (z : RTm Γ) (s : RTm ((Γ ∙) ∙)) →
+                 natrecᴹ M z s nzero ⟶ z
+  natrecᴹ-suc  : (M : RTy (Γ ∙)) (z : RTm Γ) (s : RTm ((Γ ∙) ∙)) (n : RTm Γ) →
+                 natrecᴹ M z s (nsuc n) ⟶
+                 subTm (single (natrecᴹ M z s n)) (subTm (extS (single n)) s)
+  ξ-natrecᴹᴹ : {M M' : RTy (Γ ∙)} {z : RTm Γ} {s : RTm ((Γ ∙) ∙)} {n : RTm Γ} →
+               M ⟶ᵀ M' → natrecᴹ M z s n ⟶ natrecᴹ M' z s n
+  ξ-natrecᴹᶻ : {M : RTy (Γ ∙)} {z z' : RTm Γ} {s : RTm ((Γ ∙) ∙)} {n : RTm Γ} →
+               z ⟶ z' → natrecᴹ M z s n ⟶ natrecᴹ M z' s n
+  ξ-natrecᴹˢ : {M : RTy (Γ ∙)} {z : RTm Γ} {s s' : RTm ((Γ ∙) ∙)} {n : RTm Γ} →
+               s ⟶ s' → natrecᴹ M z s n ⟶ natrecᴹ M z s' n
+  ξ-natrecᴹⁿ : {M : RTy (Γ ∙)} {z : RTm Γ} {s : RTm ((Γ ∙) ∙)} {n n' : RTm Γ} →
+               n ⟶ n' → natrecᴹ M z s n ⟶ natrecᴹ M z s n'
   -- ★ INDUCTIVE-TYPES AXIS: THE ι-RULE.  Keyed on the canonical head
   -- `con k p`, exactly as `natrec-suc` is keyed on `nsuc n`.
   --
@@ -501,7 +522,7 @@ data _⟶_ : {Γ : Cx} → RTm Γ → RTm Γ → Set where
   ξ-⌜IMu⌝  : {D : IDesc} {I : RTy ε} {i i' : RTm Γ} →
              i ⟶ i' → ⌜IMu⌝ D I i ⟶ ⌜IMu⌝ D I i'
 
-data _⟶ᵀ_ : {Γ : Cx} → RTy Γ → RTy Γ → Set where
+data _⟶ᵀ_ where
   El-⌜base⌝ : El (⌜base⌝ {Γ}) ⟶ᵀ base
   El-⌜Π⌝    : (c : RTm Γ) (d : RTm (Γ ∙)) → El (⌜Π⌝ c d) ⟶ᵀ Π (El c) (El d)
   El-⌜Σ⌝    : (c : RTm Γ) (d : RTm (Γ ∙)) → El (⌜Σ⌝ c d) ⟶ᵀ Σ' (El c) (El d)
@@ -840,6 +861,13 @@ data _⊢_∷_ where
             ((Γ ▹ Nat) ▹ M) ⊢ s ∷ subTy nrs M →
             Γ ⊢ n ∷ Nat →
             Γ ⊢ natrec z s n ∷ subTy (single n) M
+  -- ★ SPIKE: identical premises; the motive is now READ OFF THE TERM.
+  ⊢natrecᴹ : ∀ {Γ M z s n} →
+             (Γ ▹ Nat) ⊢ty M →
+             Γ ⊢ z ∷ subTy (single nzero) M →
+             ((Γ ▹ Nat) ▹ M) ⊢ s ∷ subTy nrs M →
+             Γ ⊢ n ∷ Nat →
+             Γ ⊢ natrecᴹ M z s n ∷ subTy (single n) M
   -- ★★★ INDUCTIVE TYPES (gate 5c).  No new JUDGMENT: the payload's type
   -- and the method's type are COMPUTED from the description, so these
   -- reuse the existing Π/Σ rules.

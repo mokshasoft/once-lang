@@ -179,6 +179,10 @@ data RTm where
   nzero  : ∀ {Γ} → RTm Γ
   nsuc   : ∀ {Γ} → RTm Γ → RTm Γ
   natrec : ∀ {Γ} → RTm Γ → RTm ((Γ ∙) ∙) → RTm Γ → RTm Γ
+  -- ★ SPIKE (PLAN-BIDI S1): the MOTIVE-ANNOTATED recursor.  The motive
+  --   `M : RTy (Γ ∙)` lives in the TERM, so the term determines its type.
+  --   ADDITIVE — alongside `natrec`, to measure the cascade.
+  natrecᴹ : ∀ {Γ} → RTy (Γ ∙) → RTm Γ → RTm ((Γ ∙) ∙) → RTm Γ → RTm Γ
   -- ★★ INDUCTIVE TYPES.
   --   `con k p`      constructor TAG `k` and a PAYLOAD built from
   --                  `unit`/`pair` — the choice lives in the term, which
@@ -318,6 +322,8 @@ renTm ρ nzero         = nzero
 renTm ρ (nsuc n)      = nsuc (renTm ρ n)
 renTm ρ (natrec z s n) =
   natrec (renTm ρ z) (renTm (extR (extR ρ)) s) (renTm ρ n)
+renTm ρ (natrecᴹ M z s n) =
+  natrecᴹ (renTy (extR ρ) M) (renTm ρ z) (renTm (extR (extR ρ)) s) (renTm ρ n)
 renTm ρ (con k p) = con k (renTm ρ p)
 renTm ρ (elim D ms t) = elim D (renTm ρ ms) (renTm ρ t)
 renTm ρ (icon k p) = icon k (renTm ρ p)
@@ -375,6 +381,8 @@ subTm σ nzero         = nzero
 subTm σ (nsuc n)      = nsuc (subTm σ n)
 subTm σ (natrec z s n) =
   natrec (subTm σ z) (subTm (extS (extS σ)) s) (subTm σ n)
+subTm σ (natrecᴹ M z s n) =
+  natrecᴹ (subTy (extS σ) M) (subTm σ z) (subTm (extS (extS σ)) s) (subTm σ n)
 subTm σ (con k p) = con k (subTm σ p)
 subTm σ (elim D ms t) = elim D (subTm σ ms) (subTm σ t)
 subTm σ (icon k p) = icon k (subTm σ p)
@@ -463,6 +471,10 @@ natrec-cong₃ : {z z' : RTm Γ} {s s' : RTm ((Γ ∙) ∙)} {n n' : RTm Γ} →
                z ≡ z' → s ≡ s' → n ≡ n' → natrec z s n ≡ natrec z' s' n'
 natrec-cong₃ refl refl refl = refl
 
+natrecᴹ-cong₄ : {M M' : RTy (Γ ∙)} {z z' : RTm Γ} {s s' : RTm ((Γ ∙) ∙)} {n n' : RTm Γ} →
+                M ≡ M' → z ≡ z' → s ≡ s' → n ≡ n' → natrecᴹ M z s n ≡ natrecᴹ M' z' s' n'
+natrecᴹ-cong₄ refl refl refl refl = refl
+
 -- A concrete dependent type and its substitution: `(x : base) → El x`.
 Πdep : RTy Γ
 Πdep = Π base (El (var vz))
@@ -515,6 +527,8 @@ renTm-cong h nzero     = refl
 renTm-cong h (nsuc n)  = cong nsuc (renTm-cong h n)
 renTm-cong h (natrec z s₂ n) =
   natrec-cong₃ (renTm-cong h z) (renTm-cong (extR-cong (extR-cong h)) s₂) (renTm-cong h n)
+renTm-cong h (natrecᴹ M z s₂ n) =
+  natrecᴹ-cong₄ (renTy-cong (extR-cong h) M) (renTm-cong h z) (renTm-cong (extR-cong (extR-cong h)) s₂) (renTm-cong h n)
 renTm-cong h (⌜Π⌝ c d)  = cong₂ ⌜Π⌝ (renTm-cong h c) (renTm-cong (extR-cong h) d)
 renTm-cong h (⌜Σ⌝ c d)  = cong₂ ⌜Σ⌝ (renTm-cong h c) (renTm-cong (extR-cong h) d)
 renTm-cong h (⌜Hom⌝ c a b) =
@@ -575,6 +589,8 @@ subTm-cong h nzero     = refl
 subTm-cong h (nsuc n)  = cong nsuc (subTm-cong h n)
 subTm-cong h (natrec z s₂ n) =
   natrec-cong₃ (subTm-cong h z) (subTm-cong (extS-cong (extS-cong h)) s₂) (subTm-cong h n)
+subTm-cong h (natrecᴹ M z s₂ n) =
+  natrecᴹ-cong₄ (subTy-cong (extS-cong h) M) (subTm-cong h z) (subTm-cong (extS-cong (extS-cong h)) s₂) (subTm-cong h n)
 subTm-cong h (⌜Π⌝ c d)  = cong₂ ⌜Π⌝ (subTm-cong h c) (subTm-cong (extS-cong h) d)
 subTm-cong h (⌜Σ⌝ c d)  = cong₂ ⌜Σ⌝ (subTm-cong h c) (subTm-cong (extS-cong h) d)
 subTm-cong h (⌜Hom⌝ c a b) =
@@ -644,6 +660,12 @@ renTm-renTm nzero      = refl
 renTm-renTm (nsuc n)   = cong nsuc (renTm-renTm n)
 renTm-renTm {ρ' = ρ'} {ρ} (natrec z s n) =
   natrec-cong₃ (renTm-renTm z)
+    (trans (renTm-renTm s)
+           (renTm-cong (λ x → trans (extr-extr (extR ρ') (extR ρ) x) (extR-cong (extr-extr ρ' ρ) x)) s))
+    (renTm-renTm n)
+renTm-renTm {ρ' = ρ'} {ρ} (natrecᴹ M z s n) =
+  natrecᴹ-cong₄ (trans (renTy-renTy M) (renTy-cong (extr-extr ρ' ρ) M))
+    (renTm-renTm z)
     (trans (renTm-renTm s)
            (renTm-cong (λ x → trans (extr-extr (extR ρ') (extR ρ) x) (extR-cong (extr-extr ρ' ρ) x)) s))
     (renTm-renTm n)
@@ -720,6 +742,12 @@ subTm-renTm {σ = σ} {ρ} (natrec z s n) =
     (trans (subTm-renTm s)
            (subTm-cong (λ x → trans (exts-extr (extS σ) (extR ρ) x) (extS-cong (exts-extr σ ρ) x)) s))
     (subTm-renTm n)
+subTm-renTm {σ = σ} {ρ} (natrecᴹ M z s n) =
+  natrecᴹ-cong₄ (trans (subTy-renTy M) (subTy-cong (exts-extr σ ρ) M))
+    (subTm-renTm z)
+    (trans (subTm-renTm s)
+           (subTm-cong (λ x → trans (exts-extr (extS σ) (extR ρ) x) (extS-cong (exts-extr σ ρ) x)) s))
+    (subTm-renTm n)
 subTm-renTm {σ = σ} {ρ} (⌜Π⌝ c d) =
   cong₂ ⌜Π⌝ (subTm-renTm c) (trans (subTm-renTm d) (subTm-cong (exts-extr σ ρ) d))
 subTm-renTm {σ = σ} {ρ} (⌜Σ⌝ c d) =
@@ -790,6 +818,12 @@ renTm-subTm nzero      = refl
 renTm-subTm (nsuc n)   = cong nsuc (renTm-subTm n)
 renTm-subTm {ρ = ρ} {σ} (natrec z s n) =
   natrec-cong₃ (renTm-subTm z)
+    (trans (renTm-subTm s)
+           (subTm-cong (λ x → trans (extr-exts (extR ρ) (extS σ) x) (extS-cong (extr-exts ρ σ) x)) s))
+    (renTm-subTm n)
+renTm-subTm {ρ = ρ} {σ} (natrecᴹ M z s n) =
+  natrecᴹ-cong₄ (trans (renTy-subTy M) (subTy-cong (extr-exts ρ σ) M))
+    (renTm-subTm z)
     (trans (renTm-subTm s)
            (subTm-cong (λ x → trans (extr-exts (extR ρ) (extS σ) x) (extS-cong (extr-exts ρ σ) x)) s))
     (renTm-subTm n)
@@ -866,6 +900,12 @@ subTm-subTm {τ = τ} {σ} (natrec z s n) =
     (trans (subTm-subTm s)
            (subTm-cong (λ x → trans (exts-exts (extS τ) (extS σ) x) (extS-cong (exts-exts τ σ) x)) s))
     (subTm-subTm n)
+subTm-subTm {τ = τ} {σ} (natrecᴹ M z s n) =
+  natrecᴹ-cong₄ (trans (subTy-subTy M) (subTy-cong (exts-exts τ σ) M))
+    (subTm-subTm z)
+    (trans (subTm-subTm s)
+           (subTm-cong (λ x → trans (exts-exts (extS τ) (extS σ) x) (extS-cong (exts-exts τ σ) x)) s))
+    (subTm-subTm n)
 subTm-subTm {τ = τ} {σ} (⌜Π⌝ c d) =
   cong₂ ⌜Π⌝ (subTm-subTm c) (trans (subTm-subTm d) (subTm-cong (exts-exts τ σ) d))
 subTm-subTm {τ = τ} {σ} (⌜Σ⌝ c d) =
@@ -928,6 +968,12 @@ subTm-id nzero      = refl
 subTm-id (nsuc n)   = cong nsuc (subTm-id n)
 subTm-id (natrec z s n) =
   natrec-cong₃ (subTm-id z)
+    (trans (subTm-cong (λ x → trans (extS-cong exts-id x) (exts-id x)) s)
+           (subTm-id s))
+    (subTm-id n)
+subTm-id (natrecᴹ M z s n) =
+  natrecᴹ-cong₄ (trans (subTy-cong exts-id M) (subTy-id M))
+    (subTm-id z)
     (trans (subTm-cong (λ x → trans (extS-cong exts-id x) (exts-id x)) s)
            (subTm-id s))
     (subTm-id n)

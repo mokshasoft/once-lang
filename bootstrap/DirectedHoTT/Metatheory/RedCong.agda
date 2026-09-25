@@ -38,7 +38,7 @@ open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; Var; vz; vs; RTm; var; lam; app; pair; fst; snd; absurd; ordtr
         ; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝; ⌜Hom⌝; hrefl; tr; ap; ⌜Id⌝; idrefl; jsub
-        ; unit; nzero; nsuc; natrec; natrec-cong₃; ⌜Nat⌝; ⌜Unit⌝; ⌜Mu⌝; subTm-subTm
+        ; unit; nzero; nsuc; natrec; natrec-cong₃; natrecᴹ; renTy; subTy; U; base; Unit; Nat; Mu; ⌜Nat⌝; ⌜Unit⌝; ⌜Mu⌝; subTm-subTm
         ; ⌜Hom⌝-cong₃; tr-cong₃; ap-cong₃; ⌜Id⌝-cong₃; jsub-cong₃
         ; Ren; extR; renTm; renTm-renTm; renTm-cong
         ; Sub; extS; subTm; renTm-subTm; subTm-renTm; subTm-cong
@@ -66,6 +66,8 @@ open import DirectedHoTT.Spec.Typing
         ; jsub-refl; ξ-⌜Id⌝ᶜ; ξ-⌜Id⌝ˡ; ξ-⌜Id⌝ʳ; ξ-idreflᶜ; ξ-idreflᵃ
         ; ξ-jsubᵈ; ξ-jsubᵖ; ξ-jsubᵉ
         ; natrec-zero; natrec-suc; ξ-nsuc; ξ-natrecᶻ; ξ-natrecˢ; ξ-natrecⁿ
+        ; natrecᴹ-zero; natrecᴹ-suc; ξ-natrecᴹᴹ; ξ-natrecᴹᶻ; ξ-natrecᴹˢ; ξ-natrecᴹⁿ
+        ; El-⌜base⌝; El-⌜Π⌝; El-⌜Σ⌝; El-⌜Hom⌝; El-⌜Id⌝; Hom-Nat-z; Hom-Nat-sz; Hom-Nat-ss; Hom-U; Hom-Π
         ; tr-J-Unit; tr-J-Mu; tr-J-IMu; El-⌜Nat⌝; El-⌜Unit⌝; El-⌜Mu⌝
         ; _⟶*_; done; step
         ; _≅_; cred; crfl; csym; ctrn
@@ -253,6 +255,21 @@ private
 ⟶*-natrecⁿ done       = done
 ⟶*-natrecⁿ (step r q) = step (ξ-natrecⁿ r) (⟶*-natrecⁿ q)
 
+⟶*-natrecᴹᶻ : {M : RTy (Γ ∙)} {z z' : RTm Γ} {s : RTm ((Γ ∙) ∙)} {n : RTm Γ} →
+              z ⟶* z' → natrecᴹ M z s n ⟶* natrecᴹ M z' s n
+⟶*-natrecᴹᶻ done       = done
+⟶*-natrecᴹᶻ (step r q) = step (ξ-natrecᴹᶻ r) (⟶*-natrecᴹᶻ q)
+
+⟶*-natrecᴹˢ : {M : RTy (Γ ∙)} {z : RTm Γ} {s s' : RTm ((Γ ∙) ∙)} {n : RTm Γ} →
+              s ⟶* s' → natrecᴹ M z s n ⟶* natrecᴹ M z s' n
+⟶*-natrecᴹˢ done       = done
+⟶*-natrecᴹˢ (step r q) = step (ξ-natrecᴹˢ r) (⟶*-natrecᴹˢ q)
+
+⟶*-natrecᴹⁿ : {M : RTy (Γ ∙)} {z : RTm Γ} {s : RTm ((Γ ∙) ∙)} {n n' : RTm Γ} →
+              n ⟶* n' → natrecᴹ M z s n ⟶* natrecᴹ M z s n'
+⟶*-natrecᴹⁿ done       = done
+⟶*-natrecᴹⁿ (step r q) = step (ξ-natrecᴹⁿ r) (⟶*-natrecᴹⁿ q)
+
 -- ★ INDUCTIVE TYPES: the two congruence closures, plus the two DERIVED
 --   ones — `sel`/`fields` are metalevel functions, so their closures are
 --   inductions on ℕ and `DCon`, not on the reduction sequence.
@@ -400,6 +417,8 @@ pwShift-ren ρ t =
   ptw (vs vz)     = refl
   ptw (vs (vs z)) = refl
 
+-- ★ SPIKE: forward-declared — `ξ-natrecᴹᴹ` makes `⟶-ren` call it.
+⟶ᵀ-ren : (ρ : Ren Γ Δ) {A B : RTy Γ} → A ⟶ᵀ B → renTy ρ A ⟶ᵀ renTy ρ B
 ⟶-ren : (ρ : Ren Γ Δ) {t u : RTm Γ} → t ⟶ u → renTm ρ t ⟶ renTm ρ u
 ⟶-ren ρ (β t u)    =
   subst (λ z → renTm ρ (app (lam t) u) ⟶ z)
@@ -438,6 +457,21 @@ pwShift-ren ρ t =
                           (ren-comm-ext ρ s n))))
         (natrec-suc (renTm ρ z) (renTm (extR (extR ρ)) s) (renTm ρ n))
 ⟶-ren ρ (ξ-nsuc r)    = ξ-nsuc (⟶-ren ρ r)
+⟶-ren ρ (natrecᴹ-zero M z s) =
+  natrecᴹ-zero (renTy (extR ρ) M) (renTm ρ z) (renTm (extR (extR ρ)) s)
+⟶-ren ρ (natrecᴹ-suc M z s n) =
+  subst (λ w → natrecᴹ (renTy (extR ρ) M) (renTm ρ z) (renTm (extR (extR ρ)) s)
+                       (nsuc (renTm ρ n)) ⟶ w)
+        (sym (trans (ren-comm ρ (subTm (extS (single n)) s) (natrecᴹ M z s n))
+                    (cong (subTm (single (natrecᴹ (renTy (extR ρ) M) (renTm ρ z)
+                                                  (renTm (extR (extR ρ)) s)
+                                                  (renTm ρ n))))
+                          (ren-comm-ext ρ s n))))
+        (natrecᴹ-suc (renTy (extR ρ) M) (renTm ρ z) (renTm (extR (extR ρ)) s) (renTm ρ n))
+⟶-ren ρ (ξ-natrecᴹᴹ r) = ξ-natrecᴹᴹ (⟶ᵀ-ren (extR ρ) r)
+⟶-ren ρ (ξ-natrecᴹᶻ r) = ξ-natrecᴹᶻ (⟶-ren ρ r)
+⟶-ren ρ (ξ-natrecᴹˢ r) = ξ-natrecᴹˢ (⟶-ren (extR (extR ρ)) r)
+⟶-ren ρ (ξ-natrecᴹⁿ r) = ξ-natrecᴹⁿ (⟶-ren ρ r)
 ⟶-ren ρ (ξ-natrecᶻ r) = ξ-natrecᶻ (⟶-ren ρ r)
 ⟶-ren ρ (ξ-natrecˢ r) = ξ-natrecˢ (⟶-ren (extR (extR ρ)) r)
 ⟶-ren ρ (ξ-natrecⁿ r) = ξ-natrecⁿ (⟶-ren ρ r)
@@ -539,6 +573,42 @@ pwShift-ren ρ t =
 ⟶-ren ρ (ξ-jsubᵈ r) = ξ-jsubᵈ (⟶-ren (extR ρ) r)
 ⟶-ren ρ (ξ-jsubᵖ r) = ξ-jsubᵖ (⟶-ren ρ r)
 ⟶-ren ρ (ξ-jsubᵉ r) = ξ-jsubᵉ (⟶-ren ρ r)
+⟶ᵀ-ren ρ El-⌜base⌝    = El-⌜base⌝
+⟶ᵀ-ren ρ (El-⌜Π⌝ c d) = El-⌜Π⌝ (renTm ρ c) (renTm (extR ρ) d)
+⟶ᵀ-ren ρ (El-⌜Σ⌝ c d) = El-⌜Σ⌝ (renTm ρ c) (renTm (extR ρ) d)
+⟶ᵀ-ren ρ (El-⌜Hom⌝ c a b) = El-⌜Hom⌝ (renTm ρ c) (renTm ρ a) (renTm ρ b)
+-- ★ WF stage C: the datatype decodes.  Both targets are closed formers,
+-- so renaming is the identity on them.
+⟶ᵀ-ren ρ El-⌜Nat⌝  = El-⌜Nat⌝
+⟶ᵀ-ren ρ El-⌜Unit⌝ = El-⌜Unit⌝
+⟶ᵀ-ren ρ El-⌜Mu⌝   = El-⌜Mu⌝
+⟶ᵀ-ren ρ El-⌜IMu⌝  = El-⌜IMu⌝
+⟶ᵀ-ren ρ (ξ-IMu r) = ξ-IMu (⟶-ren ρ r)
+⟶ᵀ-ren ρ (ξ-El r) = ξ-El (⟶-ren ρ r)
+⟶ᵀ-ren ρ (ξ-Πˡ r) = ξ-Πˡ (⟶ᵀ-ren ρ r)
+⟶ᵀ-ren ρ (ξ-Πʳ r) = ξ-Πʳ (⟶ᵀ-ren (extR ρ) r)
+⟶ᵀ-ren ρ (ξ-Σˡ r) = ξ-Σˡ (⟶ᵀ-ren ρ r)
+⟶ᵀ-ren ρ (ξ-Σʳ r) = ξ-Σʳ (⟶ᵀ-ren (extR ρ) r)
+⟶ᵀ-ren ρ (Hom-Nat-z n)    = Hom-Nat-z (renTm ρ n)
+⟶ᵀ-ren ρ (Hom-Nat-sz m)   = Hom-Nat-sz (renTm ρ m)
+⟶ᵀ-ren ρ (Hom-Nat-ss m n) = Hom-Nat-ss (renTm ρ m) (renTm ρ n)
+⟶ᵀ-ren ρ (Hom-U c d) =
+  subst (λ z → Hom U (renTm ρ c) (renTm ρ d) ⟶ᵀ Π (El (renTm ρ c)) (El z))
+        (sym (wk-ren ρ d))
+        (Hom-U (renTm ρ c) (renTm ρ d))
+⟶ᵀ-ren ρ (Hom-Π A B f g) =
+  subst (λ Z → Hom (Π (renTy ρ A) (renTy (extR ρ) B)) (renTm ρ f) (renTm ρ g) ⟶ᵀ Z)
+        (cong₂ (λ x y → Π (renTy ρ A)
+                          (Hom (renTy (extR ρ) B) (app x (var vz)) (app y (var vz))))
+               (sym (wk-ren ρ f)) (sym (wk-ren ρ g)))
+        (Hom-Π (renTy ρ A) (renTy (extR ρ) B) (renTm ρ f) (renTm ρ g))
+⟶ᵀ-ren ρ (ξ-Homᵀ r) = ξ-Homᵀ (⟶ᵀ-ren ρ r)
+⟶ᵀ-ren ρ (ξ-Homˡ r) = ξ-Homˡ (⟶-ren ρ r)
+⟶ᵀ-ren ρ (ξ-Homʳ r) = ξ-Homʳ (⟶-ren ρ r)
+⟶ᵀ-ren ρ (El-⌜Id⌝ c a b) = El-⌜Id⌝ (renTm ρ c) (renTm ρ a) (renTm ρ b)
+⟶ᵀ-ren ρ (ξ-Idᵀ r) = ξ-Idᵀ (⟶ᵀ-ren ρ r)
+⟶ᵀ-ren ρ (ξ-Idˡ r) = ξ-Idˡ (⟶-ren ρ r)
+⟶ᵀ-ren ρ (ξ-Idʳ r) = ξ-Idʳ (⟶-ren ρ r)
 
 ⟶*-ren : (ρ : Ren Γ Δ) {t u : RTm Γ} → t ⟶* u → renTm ρ t ⟶* renTm ρ u
 ⟶*-ren ρ done       = done
@@ -705,136 +775,6 @@ pwBody-red* h (step r p) =
   ⟶*-trans (pwBody-red r h) (pwBody-red* (pw?-red r h) p)
 
 
-------------------------------------------------------------------------
--- Substitution is monotone in the substitution (pointwise `⟶*`).
-------------------------------------------------------------------------
-
-extS-mono : {σ σ' : Sub Γ Δ} → (∀ x → σ x ⟶* σ' x) →
-            ∀ (x : Var (Γ ∙)) → extS σ x ⟶* extS σ' x
-extS-mono h vz     = done
-extS-mono h (vs x) = ⟶*-ren vs (h x)
-
-subTm-monoˢ : {σ σ' : Sub Γ Δ} → (∀ x → σ x ⟶* σ' x) →
-              (t : RTm Γ) → subTm σ t ⟶* subTm σ' t
-subTm-monoˢ h (var x)   = h x
-subTm-monoˢ h (lam t)   = ⟶*-lam (subTm-monoˢ (extS-mono h) t)
-subTm-monoˢ h (app t u) =
-  ⟶*-trans (⟶*-appˡ (subTm-monoˢ h t)) (⟶*-appʳ (subTm-monoˢ h u))
-subTm-monoˢ h (pair a b) =
-  ⟶*-trans (⟶*-pairˡ (subTm-monoˢ h a)) (⟶*-pairʳ (subTm-monoˢ h b))
-subTm-monoˢ h (ordtr a t u p q) =
-  ⟶*-trans (⟶*-ordtrᵃ (subTm-monoˢ h a))
-   (⟶*-trans (⟶*-ordtrᵗ (subTm-monoˢ h t))
-    (⟶*-trans (⟶*-ordtrᵘ (subTm-monoˢ h u))
-     (⟶*-trans (⟶*-ordtrᵖ (subTm-monoˢ h p)) (⟶*-ordtrq (subTm-monoˢ h q)))))
-subTm-monoˢ h (absurd c₁ p) =
-  ⟶*-trans (⟶*-absurdᶜ (subTm-monoˢ h c₁)) (⟶*-absurdᵉ (subTm-monoˢ h p))
-subTm-monoˢ h (fst p) = ⟶*-fst (subTm-monoˢ h p)
-subTm-monoˢ h (snd p) = ⟶*-snd (subTm-monoˢ h p)
-subTm-monoˢ h ⌜base⌝  = done
-subTm-monoˢ h (⌜Π⌝ c d) =
-  ⟶*-trans (⟶*-⌜Π⌝ˡ (subTm-monoˢ h c)) (⟶*-⌜Π⌝ʳ (subTm-monoˢ (extS-mono h) d))
-subTm-monoˢ h (⌜Σ⌝ c d) =
-  ⟶*-trans (⟶*-⌜Σ⌝ˡ (subTm-monoˢ h c)) (⟶*-⌜Σ⌝ʳ (subTm-monoˢ (extS-mono h) d))
-subTm-monoˢ h (⌜Hom⌝ c a b) =
-  ⟶*-trans (⟶*-⌜Hom⌝ᶜ (subTm-monoˢ h c))
-           (⟶*-trans (⟶*-⌜Hom⌝ˡ (subTm-monoˢ h a))
-                     (⟶*-⌜Hom⌝ʳ (subTm-monoˢ h b)))
-subTm-monoˢ h (hrefl c t) =
-  ⟶*-trans (⟶*-hreflᶜ (subTm-monoˢ h c)) (⟶*-hreflᵃ (subTm-monoˢ h t))
-subTm-monoˢ h (tr d p e) =
-  ⟶*-trans (⟶*-trᵈ (subTm-monoˢ (extS-mono h) d))
-           (⟶*-trans (⟶*-trᵖ (subTm-monoˢ h p)) (⟶*-trᵉ (subTm-monoˢ h e)))
-subTm-monoˢ h (ap c b p) =
-  ⟶*-trans (⟶*-apᶜ (subTm-monoˢ h c))
-           (⟶*-trans (⟶*-apᵇ (subTm-monoˢ (extS-mono h) b))
-                     (⟶*-apᵖ (subTm-monoˢ h p)))
-subTm-monoˢ h (⌜Id⌝ c a b) =
-  ⟶*-trans (⟶*-⌜Id⌝ᶜ (subTm-monoˢ h c))
-           (⟶*-trans (⟶*-⌜Id⌝ˡ (subTm-monoˢ h a))
-                     (⟶*-⌜Id⌝ʳ (subTm-monoˢ h b)))
-subTm-monoˢ h (idrefl c t) =
-  ⟶*-trans (⟶*-idreflᶜ (subTm-monoˢ h c)) (⟶*-idreflᵃ (subTm-monoˢ h t))
-subTm-monoˢ h ⌜Nat⌝    = done
-subTm-monoˢ h ⌜Unit⌝   = done
-subTm-monoˢ h (⌜Mu⌝ Dᵐ) = done
-subTm-monoˢ h unit     = done
-subTm-monoˢ h nzero    = done
-subTm-monoˢ h (nsuc n) = ⟶*-nsuc (subTm-monoˢ h n)
-subTm-monoˢ h (con k p) = ⟶*-con (subTm-monoˢ h p)
-subTm-monoˢ h (elim D ms t) =
-  ⟶*-trans (⟶*-elimᵐ (subTm-monoˢ h ms)) (⟶*-elimᵗ (subTm-monoˢ h t))
-subTm-monoˢ h (icon k p) = ⟶*-icon (subTm-monoˢ h p)
-subTm-monoˢ h (ielim D i ms t) =
-  ⟶*-trans (⟶*-ielimⁱ (subTm-monoˢ h i))
-           (⟶*-trans (⟶*-ielimᵐ (subTm-monoˢ h ms)) (⟶*-ielimᵗ (subTm-monoˢ h t)))
-subTm-monoˢ h (⌜IMu⌝ D I i) = ⟶*-⌜IMu⌝ (subTm-monoˢ h i)
-subTm-monoˢ h (natrec z s n) =
-  ⟶*-trans (⟶*-natrecᶻ (subTm-monoˢ h z))
-           (⟶*-trans (⟶*-natrecˢ (subTm-monoˢ (extS-mono (extS-mono h)) s))
-                     (⟶*-natrecⁿ (subTm-monoˢ h n)))
-subTm-monoˢ h (jsub d p e) =
-  ⟶*-trans (⟶*-jsubᵈ (subTm-monoˢ (extS-mono h) d))
-           (⟶*-trans (⟶*-jsubᵖ (subTm-monoˢ h p))
-                     (⟶*-jsubᵉ (subTm-monoˢ h e)))
-
-
--- ⚠ PLACED AFTER `subTm-monoˢ`: a recursive field's index is an arbitrary
---   telescope term, so moving it needs substitution-monotonicity, which
---   is defined just above.  (The old `iρ f` only needed `⟶*-appʳ`.)
--- ⚠ the ENVIRONMENT moves, not a single index: a description's recursive
---   field sits at an arbitrary telescope term, so what reduces is every
---   slot of `σ` pointwise.  `iext`'s new slot moves with the payload.
-⟶*-iihs : (D : IDesc) {ms ms' : RTm Γ} {Θ : Cx} {σ σ' : Sub Θ Γ}
-          (C : ICon Θ) {p p' : RTm Γ} →
-          (∀ x → σ x ⟶* σ' x) → ms ⟶* ms' → p ⟶* p' →
-          iihs D ms σ C p ⟶* iihs D ms' σ' C p'
-⟶*-iihs D iι       qσ qms qp = done
-⟶*-iihs D (iρ j C) qσ qms qp =
-  ⟶*-trans (⟶*-pairˡ (⟶*-trans (⟶*-ielimⁱ (subTm-monoˢ qσ j))
-                     (⟶*-trans (⟶*-ielimᵐ qms) (⟶*-ielimᵗ (⟶*-fst qp)))))
-           (⟶*-pairʳ (⟶*-iihs D C (λ { vz → ⟶*-fst qp ; (vs x) → qσ x })
-                              qms (⟶*-snd qp)))
-⟶*-iihs D (iκ κ C) qσ qms qp =
-  ⟶*-iihs D C (λ { vz → ⟶*-fst qp ; (vs x) → qσ x }) qms (⟶*-snd qp)
-
-⟶*-ifields : (D : IDesc) {i i' ms ms' : RTm Γ} {Θ : Cx} {σ σ' : Sub Θ Γ}
-             (C : ICon Θ) {m m' p p' : RTm Γ} →
-             i ⟶* i' → (∀ x → σ x ⟶* σ' x) → ms ⟶* ms' → m ⟶* m' → p ⟶* p' →
-             ifields D i ms σ C m p ⟶* ifields D i' ms' σ' C m' p'
-⟶*-ifields D C qi qσ qms qm qp =
-  ⟶*-trans (⟶*-appˡ (⟶*-trans (⟶*-appˡ (⟶*-trans (⟶*-appˡ qm) (⟶*-appʳ qi)))
-                              (⟶*-appʳ qp)))
-           (⟶*-appʳ (⟶*-iihs D C qσ qms qp))
-single-mono : {u u' : RTm Γ} → u ⟶* u' →
-              ∀ (x : Var (Γ ∙)) → single u x ⟶* single u' x
-single-mono p vz     = p
-single-mono p (vs x) = done
-
-------------------------------------------------------------------------
--- Parallel reduction, reflexivity, and the two inclusions.
-------------------------------------------------------------------------
-
-
-------------------------------------------------------------------------
--- ★★★ AND THE **TYPE-LEVEL** MULTI-STEP RELATION `_⟶ᵀ*_` WITH ITS
---   CONGRUENCES — lifted out of `Metatheory/Injectivity` for the SAME
---   reason, and it is the piece that makes the `SubjectReduction` split
---   possible at all.
---
--- ⚠ `Metatheory/TySub` needs `_⟶ᵀ*_`, its congruences and `red→≅ᵀ`, and
---   NOTHING else from `Injectivity`.  The genuine injectivity results —
---   `Π-inj`, `Π-reduct`, `Id-reduct`, `church-rosserᵀ`, the `⟹ᵀ` layer —
---   are only ever used by `sr`'s reduct analyses, which stay behind.
---   Leaving these fifteen definitions in `Injectivity` would have forced
---   every knot module to load the 5.4 MB injectivity proof to weaken a
---   derivation.
---
--- ★ THEY ARE ALL FOLDS.  Not one mentions `⟹` or confluence; each is
---   three lines over `doneᵀ`/`stepᵀ`.  `Injectivity` re-exports them
---   `public`, so its own callers are unaffected.
-------------------------------------------------------------------------
-
 infix 3 _⟶ᵀ*_
 data _⟶ᵀ*_ : {Γ : Cx} → RTy Γ → RTy Γ → Set where
   doneᵀ : {A : RTy Γ} → A ⟶ᵀ* A
@@ -898,3 +838,165 @@ data _⟶ᵀ*_ : {Γ : Cx} → RTy Γ → RTy Γ → Set where
 red→≅ᵀ : {A B : RTy Γ} → A ⟶ᵀ* B → A ≅ᵀ B
 red→≅ᵀ doneᵀ       = crflᵀ
 red→≅ᵀ (stepᵀ r p) = ctrnᵀ (credᵀ r) (red→≅ᵀ p)
+
+⟶*-natrecᴹᴹ : {M M' : RTy (Γ ∙)} {z : RTm Γ} {s : RTm ((Γ ∙) ∙)} {n : RTm Γ} →
+              M ⟶ᵀ* M' → natrecᴹ M z s n ⟶* natrecᴹ M' z s n
+⟶*-natrecᴹᴹ doneᵀ       = done
+⟶*-natrecᴹᴹ (stepᵀ r q) = step (ξ-natrecᴹᴹ r) (⟶*-natrecᴹᴹ q)
+
+------------------------------------------------------------------------
+-- Substitution is monotone in the substitution (pointwise `⟶*`).
+------------------------------------------------------------------------
+
+extS-mono : {σ σ' : Sub Γ Δ} → (∀ x → σ x ⟶* σ' x) →
+            ∀ (x : Var (Γ ∙)) → extS σ x ⟶* extS σ' x
+extS-mono h vz     = done
+extS-mono h (vs x) = ⟶*-ren vs (h x)
+
+-- ★ SPIKE: forward-declared — the motive of `natrecᴹ` is a TYPE.
+subTy-monoˢ : {σ σ' : Sub Γ Δ} → (∀ x → σ x ⟶* σ' x) →
+              (A : RTy Γ) → subTy σ A ⟶ᵀ* subTy σ' A
+subTm-monoˢ : {σ σ' : Sub Γ Δ} → (∀ x → σ x ⟶* σ' x) →
+              (t : RTm Γ) → subTm σ t ⟶* subTm σ' t
+subTm-monoˢ h (var x)   = h x
+subTm-monoˢ h (lam t)   = ⟶*-lam (subTm-monoˢ (extS-mono h) t)
+subTm-monoˢ h (app t u) =
+  ⟶*-trans (⟶*-appˡ (subTm-monoˢ h t)) (⟶*-appʳ (subTm-monoˢ h u))
+subTm-monoˢ h (pair a b) =
+  ⟶*-trans (⟶*-pairˡ (subTm-monoˢ h a)) (⟶*-pairʳ (subTm-monoˢ h b))
+subTm-monoˢ h (ordtr a t u p q) =
+  ⟶*-trans (⟶*-ordtrᵃ (subTm-monoˢ h a))
+   (⟶*-trans (⟶*-ordtrᵗ (subTm-monoˢ h t))
+    (⟶*-trans (⟶*-ordtrᵘ (subTm-monoˢ h u))
+     (⟶*-trans (⟶*-ordtrᵖ (subTm-monoˢ h p)) (⟶*-ordtrq (subTm-monoˢ h q)))))
+subTm-monoˢ h (absurd c₁ p) =
+  ⟶*-trans (⟶*-absurdᶜ (subTm-monoˢ h c₁)) (⟶*-absurdᵉ (subTm-monoˢ h p))
+subTm-monoˢ h (fst p) = ⟶*-fst (subTm-monoˢ h p)
+subTm-monoˢ h (snd p) = ⟶*-snd (subTm-monoˢ h p)
+subTm-monoˢ h ⌜base⌝  = done
+subTm-monoˢ h (⌜Π⌝ c d) =
+  ⟶*-trans (⟶*-⌜Π⌝ˡ (subTm-monoˢ h c)) (⟶*-⌜Π⌝ʳ (subTm-monoˢ (extS-mono h) d))
+subTm-monoˢ h (⌜Σ⌝ c d) =
+  ⟶*-trans (⟶*-⌜Σ⌝ˡ (subTm-monoˢ h c)) (⟶*-⌜Σ⌝ʳ (subTm-monoˢ (extS-mono h) d))
+subTm-monoˢ h (⌜Hom⌝ c a b) =
+  ⟶*-trans (⟶*-⌜Hom⌝ᶜ (subTm-monoˢ h c))
+           (⟶*-trans (⟶*-⌜Hom⌝ˡ (subTm-monoˢ h a))
+                     (⟶*-⌜Hom⌝ʳ (subTm-monoˢ h b)))
+subTm-monoˢ h (hrefl c t) =
+  ⟶*-trans (⟶*-hreflᶜ (subTm-monoˢ h c)) (⟶*-hreflᵃ (subTm-monoˢ h t))
+subTm-monoˢ h (tr d p e) =
+  ⟶*-trans (⟶*-trᵈ (subTm-monoˢ (extS-mono h) d))
+           (⟶*-trans (⟶*-trᵖ (subTm-monoˢ h p)) (⟶*-trᵉ (subTm-monoˢ h e)))
+subTm-monoˢ h (ap c b p) =
+  ⟶*-trans (⟶*-apᶜ (subTm-monoˢ h c))
+           (⟶*-trans (⟶*-apᵇ (subTm-monoˢ (extS-mono h) b))
+                     (⟶*-apᵖ (subTm-monoˢ h p)))
+subTm-monoˢ h (⌜Id⌝ c a b) =
+  ⟶*-trans (⟶*-⌜Id⌝ᶜ (subTm-monoˢ h c))
+           (⟶*-trans (⟶*-⌜Id⌝ˡ (subTm-monoˢ h a))
+                     (⟶*-⌜Id⌝ʳ (subTm-monoˢ h b)))
+subTm-monoˢ h (idrefl c t) =
+  ⟶*-trans (⟶*-idreflᶜ (subTm-monoˢ h c)) (⟶*-idreflᵃ (subTm-monoˢ h t))
+subTm-monoˢ h ⌜Nat⌝    = done
+subTm-monoˢ h ⌜Unit⌝   = done
+subTm-monoˢ h (⌜Mu⌝ Dᵐ) = done
+subTm-monoˢ h unit     = done
+subTm-monoˢ h nzero    = done
+subTm-monoˢ h (nsuc n) = ⟶*-nsuc (subTm-monoˢ h n)
+subTm-monoˢ h (con k p) = ⟶*-con (subTm-monoˢ h p)
+subTm-monoˢ h (elim D ms t) =
+  ⟶*-trans (⟶*-elimᵐ (subTm-monoˢ h ms)) (⟶*-elimᵗ (subTm-monoˢ h t))
+subTm-monoˢ h (icon k p) = ⟶*-icon (subTm-monoˢ h p)
+subTm-monoˢ h (ielim D i ms t) =
+  ⟶*-trans (⟶*-ielimⁱ (subTm-monoˢ h i))
+           (⟶*-trans (⟶*-ielimᵐ (subTm-monoˢ h ms)) (⟶*-ielimᵗ (subTm-monoˢ h t)))
+subTm-monoˢ h (⌜IMu⌝ D I i) = ⟶*-⌜IMu⌝ (subTm-monoˢ h i)
+subTm-monoˢ h (natrec z s n) =
+  ⟶*-trans (⟶*-natrecᶻ (subTm-monoˢ h z))
+           (⟶*-trans (⟶*-natrecˢ (subTm-monoˢ (extS-mono (extS-mono h)) s))
+                     (⟶*-natrecⁿ (subTm-monoˢ h n)))
+subTm-monoˢ h (natrecᴹ M z s n) =
+  ⟶*-trans (⟶*-natrecᴹᴹ (subTy-monoˢ (extS-mono h) M))
+    (⟶*-trans (⟶*-natrecᴹᶻ (subTm-monoˢ h z))
+             (⟶*-trans (⟶*-natrecᴹˢ (subTm-monoˢ (extS-mono (extS-mono h)) s))
+                       (⟶*-natrecᴹⁿ (subTm-monoˢ h n))))
+subTm-monoˢ h (jsub d p e) =
+  ⟶*-trans (⟶*-jsubᵈ (subTm-monoˢ (extS-mono h) d))
+           (⟶*-trans (⟶*-jsubᵖ (subTm-monoˢ h p))
+                     (⟶*-jsubᵉ (subTm-monoˢ h e)))
+subTy-monoˢ h base     = doneᵀ
+subTy-monoˢ h Unit     = doneᵀ
+subTy-monoˢ h Nat      = doneᵀ
+subTy-monoˢ h (Mu D)   = doneᵀ
+-- ⚠ NOT `doneᵀ` like `Mu`: the INDEX is a term, so it moves.
+subTy-monoˢ h (IMu D I i) = ⟶ᵀ*-IMu (subTm-monoˢ h i)
+subTy-monoˢ h U        = doneᵀ
+subTy-monoˢ h (El t)   = ⟶ᵀ*-El (subTm-monoˢ h t)
+subTy-monoˢ h (Π A B)  =
+  ⟶ᵀ*-trans (⟶ᵀ*-Πˡ (subTy-monoˢ h A)) (⟶ᵀ*-Πʳ (subTy-monoˢ (extS-mono h) B))
+subTy-monoˢ h (Σ' A B) =
+  ⟶ᵀ*-trans (⟶ᵀ*-Σˡ (subTy-monoˢ h A)) (⟶ᵀ*-Σʳ (subTy-monoˢ (extS-mono h) B))
+subTy-monoˢ h (Hom A t u) =
+  ⟶ᵀ*-trans (⟶ᵀ*-Homᵀ (subTy-monoˢ h A))
+    (⟶ᵀ*-trans (⟶ᵀ*-Homˡ (subTm-monoˢ h t)) (⟶ᵀ*-Homʳ (subTm-monoˢ h u)))
+subTy-monoˢ h (Id A t u) =
+  ⟶ᵀ*-trans (⟶ᵀ*-Idᵀ (subTy-monoˢ h A))
+    (⟶ᵀ*-trans (⟶ᵀ*-Idˡ (subTm-monoˢ h t)) (⟶ᵀ*-Idʳ (subTm-monoˢ h u)))
+
+
+-- ⚠ PLACED AFTER `subTm-monoˢ`: a recursive field's index is an arbitrary
+--   telescope term, so moving it needs substitution-monotonicity, which
+--   is defined just above.  (The old `iρ f` only needed `⟶*-appʳ`.)
+-- ⚠ the ENVIRONMENT moves, not a single index: a description's recursive
+--   field sits at an arbitrary telescope term, so what reduces is every
+--   slot of `σ` pointwise.  `iext`'s new slot moves with the payload.
+⟶*-iihs : (D : IDesc) {ms ms' : RTm Γ} {Θ : Cx} {σ σ' : Sub Θ Γ}
+          (C : ICon Θ) {p p' : RTm Γ} →
+          (∀ x → σ x ⟶* σ' x) → ms ⟶* ms' → p ⟶* p' →
+          iihs D ms σ C p ⟶* iihs D ms' σ' C p'
+⟶*-iihs D iι       qσ qms qp = done
+⟶*-iihs D (iρ j C) qσ qms qp =
+  ⟶*-trans (⟶*-pairˡ (⟶*-trans (⟶*-ielimⁱ (subTm-monoˢ qσ j))
+                     (⟶*-trans (⟶*-ielimᵐ qms) (⟶*-ielimᵗ (⟶*-fst qp)))))
+           (⟶*-pairʳ (⟶*-iihs D C (λ { vz → ⟶*-fst qp ; (vs x) → qσ x })
+                              qms (⟶*-snd qp)))
+⟶*-iihs D (iκ κ C) qσ qms qp =
+  ⟶*-iihs D C (λ { vz → ⟶*-fst qp ; (vs x) → qσ x }) qms (⟶*-snd qp)
+
+⟶*-ifields : (D : IDesc) {i i' ms ms' : RTm Γ} {Θ : Cx} {σ σ' : Sub Θ Γ}
+             (C : ICon Θ) {m m' p p' : RTm Γ} →
+             i ⟶* i' → (∀ x → σ x ⟶* σ' x) → ms ⟶* ms' → m ⟶* m' → p ⟶* p' →
+             ifields D i ms σ C m p ⟶* ifields D i' ms' σ' C m' p'
+⟶*-ifields D C qi qσ qms qm qp =
+  ⟶*-trans (⟶*-appˡ (⟶*-trans (⟶*-appˡ (⟶*-trans (⟶*-appˡ qm) (⟶*-appʳ qi)))
+                              (⟶*-appʳ qp)))
+           (⟶*-appʳ (⟶*-iihs D C qσ qms qp))
+single-mono : {u u' : RTm Γ} → u ⟶* u' →
+              ∀ (x : Var (Γ ∙)) → single u x ⟶* single u' x
+single-mono p vz     = p
+single-mono p (vs x) = done
+
+------------------------------------------------------------------------
+-- Parallel reduction, reflexivity, and the two inclusions.
+------------------------------------------------------------------------
+
+
+------------------------------------------------------------------------
+-- ★★★ AND THE **TYPE-LEVEL** MULTI-STEP RELATION `_⟶ᵀ*_` WITH ITS
+--   CONGRUENCES — lifted out of `Metatheory/Injectivity` for the SAME
+--   reason, and it is the piece that makes the `SubjectReduction` split
+--   possible at all.
+--
+-- ⚠ `Metatheory/TySub` needs `_⟶ᵀ*_`, its congruences and `red→≅ᵀ`, and
+--   NOTHING else from `Injectivity`.  The genuine injectivity results —
+--   `Π-inj`, `Π-reduct`, `Id-reduct`, `church-rosserᵀ`, the `⟹ᵀ` layer —
+--   are only ever used by `sr`'s reduct analyses, which stay behind.
+--   Leaving these fifteen definitions in `Injectivity` would have forced
+--   every knot module to load the 5.4 MB injectivity proof to weaken a
+--   derivation.
+--
+-- ★ THEY ARE ALL FOLDS.  Not one mentions `⟹` or confluence; each is
+--   three lines over `doneᵀ`/`stepᵀ`.  `Injectivity` re-exports them
+--   `public`, so its own callers are unaffected.
+------------------------------------------------------------------------
+

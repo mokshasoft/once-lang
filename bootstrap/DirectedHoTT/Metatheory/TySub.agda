@@ -135,6 +135,9 @@ open import DirectedHoTT.Metatheory.RedCong
         ; ⟶ᵀ*-Homᵀ; ⟶ᵀ*-Homˡ; ⟶ᵀ*-Homʳ; red→≅ᵀ
         ; ⟶ᵀ*-Idᵀ; ⟶ᵀ*-Idˡ; ⟶ᵀ*-Idʳ; ⟶ᵀ*-IMu )
 open import DirectedHoTT.Metatheory.SubjectReductionBase using ( sub-comm; ⟶ᵀ-sub )
+-- ★ SPIKE (PLAN-BIDI S1): moved to `RedCong` — mutual with their TERM
+--   twins once a term (`natrecᴹ`) carries a type.  Re-exported unchanged.
+open import DirectedHoTT.Metatheory.RedCong using ( wk-ren; ⟶ᵀ-ren; subTy-monoˢ ) public
 
 private
   variable
@@ -196,47 +199,7 @@ subTy-comm {Γ} σ B u =
 
 -- Weakening commutes with a renaming, at TERMS — both composites are
 -- definitionally `x ↦ vs (ρ x)`.  The `Hom-U`/`Hom-Π` cases need it.
-wk-ren : (ρ : Ren Γ Δ) (t : RTm Γ) →
-         renTm (extR ρ) (renTm vs t) ≡ renTm vs (renTm ρ t)
-wk-ren ρ t = trans (renTm-renTm t) (sym (renTm-renTm t))
 
-⟶ᵀ-ren : (ρ : Ren Γ Δ) {A B : RTy Γ} → A ⟶ᵀ B → renTy ρ A ⟶ᵀ renTy ρ B
-⟶ᵀ-ren ρ El-⌜base⌝    = El-⌜base⌝
-⟶ᵀ-ren ρ (El-⌜Π⌝ c d) = El-⌜Π⌝ (renTm ρ c) (renTm (extR ρ) d)
-⟶ᵀ-ren ρ (El-⌜Σ⌝ c d) = El-⌜Σ⌝ (renTm ρ c) (renTm (extR ρ) d)
-⟶ᵀ-ren ρ (El-⌜Hom⌝ c a b) = El-⌜Hom⌝ (renTm ρ c) (renTm ρ a) (renTm ρ b)
--- ★ WF stage C: the datatype decodes.  Both targets are closed formers,
--- so renaming is the identity on them.
-⟶ᵀ-ren ρ El-⌜Nat⌝  = El-⌜Nat⌝
-⟶ᵀ-ren ρ El-⌜Unit⌝ = El-⌜Unit⌝
-⟶ᵀ-ren ρ El-⌜Mu⌝   = El-⌜Mu⌝
-⟶ᵀ-ren ρ El-⌜IMu⌝  = El-⌜IMu⌝
-⟶ᵀ-ren ρ (ξ-IMu r) = ξ-IMu (⟶-ren ρ r)
-⟶ᵀ-ren ρ (ξ-El r) = ξ-El (⟶-ren ρ r)
-⟶ᵀ-ren ρ (ξ-Πˡ r) = ξ-Πˡ (⟶ᵀ-ren ρ r)
-⟶ᵀ-ren ρ (ξ-Πʳ r) = ξ-Πʳ (⟶ᵀ-ren (extR ρ) r)
-⟶ᵀ-ren ρ (ξ-Σˡ r) = ξ-Σˡ (⟶ᵀ-ren ρ r)
-⟶ᵀ-ren ρ (ξ-Σʳ r) = ξ-Σʳ (⟶ᵀ-ren (extR ρ) r)
-⟶ᵀ-ren ρ (Hom-Nat-z n)    = Hom-Nat-z (renTm ρ n)
-⟶ᵀ-ren ρ (Hom-Nat-sz m)   = Hom-Nat-sz (renTm ρ m)
-⟶ᵀ-ren ρ (Hom-Nat-ss m n) = Hom-Nat-ss (renTm ρ m) (renTm ρ n)
-⟶ᵀ-ren ρ (Hom-U c d) =
-  subst (λ z → Hom U (renTm ρ c) (renTm ρ d) ⟶ᵀ Π (El (renTm ρ c)) (El z))
-        (sym (wk-ren ρ d))
-        (Hom-U (renTm ρ c) (renTm ρ d))
-⟶ᵀ-ren ρ (Hom-Π A B f g) =
-  subst (λ Z → Hom (Π (renTy ρ A) (renTy (extR ρ) B)) (renTm ρ f) (renTm ρ g) ⟶ᵀ Z)
-        (cong₂ (λ x y → Π (renTy ρ A)
-                          (Hom (renTy (extR ρ) B) (app x (var vz)) (app y (var vz))))
-               (sym (wk-ren ρ f)) (sym (wk-ren ρ g)))
-        (Hom-Π (renTy ρ A) (renTy (extR ρ) B) (renTm ρ f) (renTm ρ g))
-⟶ᵀ-ren ρ (ξ-Homᵀ r) = ξ-Homᵀ (⟶ᵀ-ren ρ r)
-⟶ᵀ-ren ρ (ξ-Homˡ r) = ξ-Homˡ (⟶-ren ρ r)
-⟶ᵀ-ren ρ (ξ-Homʳ r) = ξ-Homʳ (⟶-ren ρ r)
-⟶ᵀ-ren ρ (El-⌜Id⌝ c a b) = El-⌜Id⌝ (renTm ρ c) (renTm ρ a) (renTm ρ b)
-⟶ᵀ-ren ρ (ξ-Idᵀ r) = ξ-Idᵀ (⟶ᵀ-ren ρ r)
-⟶ᵀ-ren ρ (ξ-Idˡ r) = ξ-Idˡ (⟶-ren ρ r)
-⟶ᵀ-ren ρ (ξ-Idʳ r) = ξ-Idʳ (⟶-ren ρ r)
 
 ≅ᵀ-ren : (ρ : Ren Γ Δ) {A B : RTy Γ} → A ≅ᵀ B → renTy ρ A ≅ᵀ renTy ρ B
 ≅ᵀ-ren ρ (credᵀ r)   = credᵀ (⟶ᵀ-ren ρ r)
@@ -244,26 +207,6 @@ wk-ren ρ t = trans (renTm-renTm t) (sym (renTm-renTm t))
 ≅ᵀ-ren ρ (csymᵀ c)   = csymᵀ (≅ᵀ-ren ρ c)
 ≅ᵀ-ren ρ (ctrnᵀ c d) = ctrnᵀ (≅ᵀ-ren ρ c) (≅ᵀ-ren ρ d)
 
-subTy-monoˢ : {σ σ' : Sub Γ Δ} → (∀ x → σ x ⟶* σ' x) →
-              (A : RTy Γ) → subTy σ A ⟶ᵀ* subTy σ' A
-subTy-monoˢ h base     = doneᵀ
-subTy-monoˢ h Unit     = doneᵀ
-subTy-monoˢ h Nat      = doneᵀ
-subTy-monoˢ h (Mu D)   = doneᵀ
--- ⚠ NOT `doneᵀ` like `Mu`: the INDEX is a term, so it moves.
-subTy-monoˢ h (IMu D I i) = ⟶ᵀ*-IMu (subTm-monoˢ h i)
-subTy-monoˢ h U        = doneᵀ
-subTy-monoˢ h (El t)   = ⟶ᵀ*-El (subTm-monoˢ h t)
-subTy-monoˢ h (Π A B)  =
-  ⟶ᵀ*-trans (⟶ᵀ*-Πˡ (subTy-monoˢ h A)) (⟶ᵀ*-Πʳ (subTy-monoˢ (extS-mono h) B))
-subTy-monoˢ h (Σ' A B) =
-  ⟶ᵀ*-trans (⟶ᵀ*-Σˡ (subTy-monoˢ h A)) (⟶ᵀ*-Σʳ (subTy-monoˢ (extS-mono h) B))
-subTy-monoˢ h (Hom A t u) =
-  ⟶ᵀ*-trans (⟶ᵀ*-Homᵀ (subTy-monoˢ h A))
-    (⟶ᵀ*-trans (⟶ᵀ*-Homˡ (subTm-monoˢ h t)) (⟶ᵀ*-Homʳ (subTm-monoˢ h u)))
-subTy-monoˢ h (Id A t u) =
-  ⟶ᵀ*-trans (⟶ᵀ*-Idᵀ (subTy-monoˢ h A))
-    (⟶ᵀ*-trans (⟶ᵀ*-Idˡ (subTm-monoˢ h t)) (⟶ᵀ*-Idʳ (subTm-monoˢ h u)))
 
 ------------------------------------------------------------------------
 -- W2 eliminator support: term-level cancels, type reduction under
