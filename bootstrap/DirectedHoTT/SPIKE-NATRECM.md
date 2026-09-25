@@ -1,5 +1,12 @@
 # SPIKE · `natrecᴹ M z s n` — the cost of types-in-terms (PLAN-BIDI S1)
 
+⛔ **SUPERSEDED 2026-09-25 — see PLAN-BIDI §3c/§3d.** Conversion ignores
+annotations (decision (c)), implemented as a SEPARATE annotated layer
+(`ATm`/`⊢ᴬ`, erased to `RTm`) — so annotations never enter `RTm` and none of
+this branch's metatheory changes are needed. Kept as the evidence: (a) is
+provable at the confluence level; (a)/(d) need a MUTUAL term+type SN
+theorem to be DECIDED.
+
 Branch `ocp-0009-spike-natrecM`. ADDITIVE former alongside `natrec`, with
 the PRINCIPLED conversion: `ξ-natrecᴹᴹ : M ⟶ᵀ M' → natrecᴹ M … ⟶ natrecᴹ M' …`
 (annotations are compared up to conversion, as Coq's kernel does).
