@@ -1550,6 +1550,7 @@ ordstk?-redᵗ {a = idrefl a a₁} r h = h
 ordstk?-redᵗ {a = jsub a a₁ a₂} r h = h
 ordstk?-redᵗ {a = unit} r h = h
 ordstk?-redᵗ {a = natrec a a₁ a₂} r h = h
+ordstk?-redᵗ {a = natrecᴹ Mᴹ a a₁ a₂} r h = h
 ordstk?-redᵗ {a = natrecᴹ aᴹ a a₁ a₂} r h = h
 ordstk?-redᵗ {a = ⌜Nat⌝} r h = h
 ordstk?-redᵗ {a = ⌜Unit⌝} r h = h
@@ -1582,6 +1583,7 @@ ordstk?-redᵘ {a = idrefl a a₁} r h = h
 ordstk?-redᵘ {a = jsub a a₁ a₂} r h = h
 ordstk?-redᵘ {a = unit} r h = h
 ordstk?-redᵘ {a = natrec a a₁ a₂} r h = h
+ordstk?-redᵘ {a = natrecᴹ Mᴹ a a₁ a₂} r h = h
 ordstk?-redᵘ {a = natrecᴹ aᴹ a a₁ a₂} r h = h
 ordstk?-redᵘ {a = ⌜Nat⌝} r h = h
 ordstk?-redᵘ {a = ⌜Unit⌝} r h = h
@@ -1964,6 +1966,7 @@ trstk?-red-d {d = unit} {d' = d'} {p = hrefl c s} r h = trstk-hrefl-any d' h
 trstk?-red-d {d = nzero} {d' = d'} {p = hrefl c s} r h = trstk-hrefl-any d' h
 trstk?-red-d {d = (nsuc dz)} {d' = d'} {p = hrefl c s} r h = trstk-hrefl-any d' h
 trstk?-red-d {d = (natrec dz₁ dz₂ dz₃)} {d' = d'} {p = hrefl c s} r h = trstk-hrefl-any d' h
+trstk?-red-d {d = (natrecᴹ Mᴹ dz₁ dz₂ dz₃)} {d' = d'} {p = hrefl c s} r h = trstk-hrefl-any d' h
 trstk?-red-d {d = (natrecᴹ dzᴹ dz₁ dz₂ dz₃)} {d' = d'} {p = hrefl c s} r h = trstk-hrefl-any d' h
 trstk?-red-d {p = (var y)} r h = h
 trstk?-red-d {p = (app t₁ u₁)} r h = h
@@ -1986,6 +1989,7 @@ trstk?-red-d {p = unit} r h = h
 trstk?-red-d {p = nzero} r h = h
 trstk?-red-d {p = nsuc _} r h = h
 trstk?-red-d {p = natrec _ _ _} r h = h
+trstk?-red-d {p = natrecᴹ Mᴹ _ _ _} r h = h
 trstk?-red-d {p = natrecᴹ _ _ _ _} r h = h
 -- a `con`/`elim` PATH is neither `lam` nor `hrefl`, so `trstk?` falls to
 -- `pathstk?` and a reduction of the MOTIVE cannot touch it.
@@ -2040,6 +2044,7 @@ trstk?-red-p {d = (icon dk dq)} (ξ-hreflᶜ rc) h = stablecd?-red rc h
 trstk?-red-p {d = (elim dD dm dt)} (ξ-hreflᶜ rc) h = stablecd?-red rc h
 trstk?-red-p {d = (ielim dD iˣ dm dt)} (ξ-hreflᶜ rc) h = stablecd?-red rc h
 trstk?-red-p {d = (natrec dz₁ dz₂ dz₃)} (ξ-hreflᶜ rc) h = stablecd?-red rc h
+trstk?-red-p {d = (natrecᴹ Mᴹ dz₁ dz₂ dz₃)} (ξ-hreflᶜ rc) h = stablecd?-red rc h
 trstk?-red-p {d = (natrecᴹ dzᴹ dz₁ dz₂ dz₃)} (ξ-hreflᶜ rc) h = stablecd?-red rc h
 trstk?-red-p {d = (var x)} (ξ-hreflᵃ ra) h = h
 trstk?-red-p {d = (lam t)} (ξ-hreflᵃ ra) h = h
@@ -2069,6 +2074,7 @@ trstk?-red-p {d = (icon dk dq)} (ξ-hreflᵃ ra) h = h
 trstk?-red-p {d = (elim dD dm dt)} (ξ-hreflᵃ ra) h = h
 trstk?-red-p {d = (ielim dD iˣ dm dt)} (ξ-hreflᵃ ra) h = h
 trstk?-red-p {d = (natrec dz₁ dz₂ dz₃)} (ξ-hreflᵃ ra) h = h
+trstk?-red-p {d = (natrecᴹ Mᴹ dz₁ dz₂ dz₃)} (ξ-hreflᵃ ra) h = h
 trstk?-red-p {d = (natrecᴹ dzᴹ dz₁ dz₂ dz₃)} (ξ-hreflᵃ ra) h = h
 trstk?-red-p {d = var x} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (nopw⊥pw C₀ h)) kp))
 trstk?-red-p {d = (lam t)} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
@@ -2098,6 +2104,7 @@ trstk?-red-p {d = (icon dk dq)} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (tra
 trstk?-red-p {d = (elim dD dm dt)} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
 trstk?-red-p {d = (ielim dD iˣ dm dt)} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
 trstk?-red-p {d = (natrec dz₁ dz₂ dz₃)} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
+trstk?-red-p {d = (natrecᴹ Mᴹ dz₁ dz₂ dz₃)} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
 trstk?-red-p {d = (natrecᴹ dzᴹ dz₁ dz₂ dz₃)} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
 trstk?-red-p {d = (ordtr dz₁ dz₂ dz₃ dz₄ dz₅)} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
 trstk?-red-p (β _ _) ()
@@ -2387,12 +2394,33 @@ nopw?-red* done       h = h
 nopw?-red* (step r q) h = nopw?-red* q (nopw?-red r h)
 
 data SNe {Γ} : RTm Γ → Set
+-- ★ S4 (PLAN-BIDI): SN FOR TYPES.  STRUCTURAL, not Joachimski–Matthes:
+--   a type is SN when its component types are and every embedded TERM is.
+--   Type reduction has no β of its own — it is term reduction inside a
+--   type plus finitely many DECODE/`Hom` unfoldings, and those only ever
+--   expose subterms of an already-SN code or endpoint.  The normaliser
+--   `wnᵀ` gets its termination from NORMAL inputs, not from an expansion
+--   row (see there).  Mutual with `SN` because `natrecᴹ` carries a type.
+data SNᵀ {Γ} : RTy Γ → Set
 data SN  {Γ} : RTm Γ → Set
 data SNRed {Γ} : RTm Γ → RTm Γ → Set
 -- W2b (G1f discovery 1): the head strategy descends ⌜Hom⌝ SPINES —
 -- an hrefl's code normalizes at its spine BOTTOM (where a transient
 -- redex can hide from the Boolean keys).
 data CSR {Γ} : RTm Γ → RTm Γ → Set
+
+data SNᵀ {Γ} where
+  snᵀ-base : SNᵀ base
+  snᵀ-U    : SNᵀ U
+  snᵀ-Unit : SNᵀ Unit
+  snᵀ-Nat  : SNᵀ Nat
+  snᵀ-Mu   : {D : Desc} → SNᵀ (Mu D)
+  snᵀ-IMu  : {D : IDesc} {I : RTy ε} {i : RTm Γ} → SN i → SNᵀ (IMu D I i)
+  snᵀ-Π    : {A : RTy Γ} {B : RTy (Γ ∙)} → SNᵀ A → SNᵀ B → SNᵀ (Π A B)
+  snᵀ-Σ    : {A : RTy Γ} {B : RTy (Γ ∙)} → SNᵀ A → SNᵀ B → SNᵀ (Σ' A B)
+  snᵀ-El   : {t : RTm Γ} → SN t → SNᵀ (El t)
+  snᵀ-Hom  : {A : RTy Γ} {t u : RTm Γ} → SNᵀ A → SN t → SN u → SNᵀ (Hom A t u)
+  snᵀ-Id   : {A : RTy Γ} {t u : RTm Γ} → SNᵀ A → SN t → SN u → SNᵀ (Id A t u)
 
 data SNe {Γ} where
   sne-var : (x : Var Γ) → SNe (var x)
@@ -2427,6 +2455,10 @@ data SNe {Γ} where
   sne-natrec : {z : RTm Γ} {w : RTm ((Γ ∙) ∙)} {n : RTm Γ} →
                SN z → SN w → SN n → natstk? n ≡ true →
                SNe (natrec z w n)
+  -- ★ S4: the motive-annotated recursor — `natrec`'s row plus the MOTIVE.
+  sne-natrecᴹ : {M : RTy (Γ ∙)} {z : RTm Γ} {w : RTm ((Γ ∙) ∙)} {n : RTm Γ} →
+                SNᵀ M → SN z → SN w → SN n → natstk? n ≡ true →
+                SNe (natrecᴹ M z w n)
   -- ★★ WF stage E: `ordtr` eliminates its three BOUNDS, so it is neutral
   -- exactly when `ordstk?` says they can never all become numerals.
   -- ⚠ it is NOT `sne-absurd`: ex falso has no root rule and so needs no
@@ -2545,6 +2577,16 @@ data SNRed {Γ} where
                                  (subTm (extS (single n)) w))
   snr-natrecⁿ : {z : RTm Γ} {w : RTm ((Γ ∙) ∙)} {n n' : RTm Γ} →
                 SNRed n n' → SNRed (natrec z w n) (natrec z w n')
+  -- ★ S4: the zero rule DISCARDS the motive, so it must be SN (as `w` is).
+  snr-natrecᴹ-zero : {M : RTy (Γ ∙)} {z : RTm Γ} {w : RTm ((Γ ∙) ∙)} →
+                     SNᵀ M → SN w → SNRed (natrecᴹ M z w nzero) z
+  snr-natrecᴹ-suc  : {M : RTy (Γ ∙)} {z : RTm Γ} {w : RTm ((Γ ∙) ∙)} {n : RTm Γ} →
+                     SNᵀ M → SN z → SN w → SN n →
+                     SNRed (natrecᴹ M z w (nsuc n))
+                           (subTm (single (natrecᴹ M z w n))
+                                  (subTm (extS (single n)) w))
+  snr-natrecᴹⁿ : {M : RTy (Γ ∙)} {z : RTm Γ} {w : RTm ((Γ ∙) ∙)} {n n' : RTm Γ} →
+                 SNRed n n' → SNRed (natrecᴹ M z w n) (natrecᴹ M z w n')
   -- ★ INDUCTIVE TYPES: ι, plus one ξ for the SCRUTINEE only — weak head,
   -- exactly as `snr-natrecⁿ` leaves the branches alone.  The discarded
   -- material rides as `SN` (the `snr-β` pattern).
@@ -2670,8 +2712,11 @@ snr→⟶ (snr-jsub-refl _ _ _) = jsub-refl _ _ _ _
 snr→⟶ (snr-jsubᵖ r)        = ξ-jsubᵖ (snr→⟶ r)
 snr→⟶ (snr-J-Id _ _ _ _ _) = tr-J-Id _ _ _ _ _ _ _ _
 snr→⟶ (snr-natrec-zero _)      = natrec-zero _ _
+snr→⟶ (snr-natrecᴹ-zero snMᴹ _)      = natrecᴹ-zero _ _ _
 snr→⟶ (snr-natrec-suc _ _ _)   = natrec-suc _ _ _
+snr→⟶ (snr-natrecᴹ-suc snMᴹ _ _ _)   = natrecᴹ-suc _ _ _ _
 snr→⟶ (snr-natrecⁿ r)          = ξ-natrecⁿ (snr→⟶ r)
+snr→⟶ (snr-natrecᴹⁿ r)          = ξ-natrecᴹⁿ (snr→⟶ r)
 snr→⟶ (snr-ι _ _)              = ι-elim _ _ _ _
 snr→⟶ (snr-elimᵗ r)            = ξ-elimᵗ (snr→⟶ r)
 snr→⟶ (snr-ιi _ _ _)           = ι-ielim _ _ _ _ _
@@ -2713,8 +2758,11 @@ snr-nonpw (snr-jsub-refl _ _ _) = refl
 snr-nonpw (snr-jsubᵖ _)     = refl
 snr-nonpw (snr-J-Id _ _ _ _ _) = refl
 snr-nonpw (snr-natrec-zero _)     = refl
+snr-nonpw (snr-natrecᴹ-zero snMᴹ _)     = refl
 snr-nonpw (snr-natrec-suc _ _ _)  = refl
+snr-nonpw (snr-natrecᴹ-suc snMᴹ _ _ _)  = refl
 snr-nonpw (snr-natrecⁿ _)         = refl
+snr-nonpw (snr-natrecᴹⁿ _)         = refl
 snr-nonpw (snr-ι _ _)             = refl
 snr-nonpw (snr-elimᵗ _)           = refl
 snr-nonpw (snr-ιi _ _ _)          = refl
@@ -2884,11 +2932,17 @@ snr-det (snr-trᵖ (snr-hrefl-pw ())) (snr-J-Id _ _ _ _ _)
 -- a firing rule and a scrutinee step can never overlap (`nzero`/`nsuc`
 -- have no head step).
 snr-det (snr-natrec-zero _) (snr-natrec-zero _)      = refl
+snr-det (snr-natrecᴹ-zero snMᴹ _) (snr-natrecᴹ-zero _ _)      = refl
 snr-det (snr-natrec-zero _) (snr-natrecⁿ ())
+snr-det (snr-natrecᴹ-zero snMᴹ _) (snr-natrecᴹⁿ ())
 snr-det (snr-natrecⁿ ()) (snr-natrec-zero _)
+snr-det (snr-natrecᴹⁿ ()) (snr-natrecᴹ-zero snMᴹ _)
 snr-det (snr-natrec-suc _ _ _) (snr-natrec-suc _ _ _) = refl
+snr-det (snr-natrecᴹ-suc snMᴹ _ _ _) (snr-natrecᴹ-suc _ _ _ _) = refl
 snr-det (snr-natrec-suc _ _ _) (snr-natrecⁿ ())
+snr-det (snr-natrecᴹ-suc snMᴹ _ _ _) (snr-natrecᴹⁿ ())
 snr-det (snr-natrecⁿ ()) (snr-natrec-suc _ _ _)
+snr-det (snr-natrecᴹⁿ ()) (snr-natrecᴹ-suc snMᴹ _ _ _)
 -- ★ INDUCTIVE TYPES: ι and the ξ overlap only where the scrutinee is a
 -- `con`, and NO SNRed rule steps a `con` — so the cross cases are refuted
 -- definitionally, exactly as `natrec`'s are.
@@ -2909,6 +2963,8 @@ snr-det (snr-ielimᵗ {D = D} {i = i} {ms = ms} r) (snr-ielimᵗ r') =
   cong (λ q → ielim D i ms q) (snr-det r r')
 -- (no `snr-ielimⁱ` — see the note on `snr-ielimᵗ`)
 snr-det (snr-natrecⁿ {z = z} {w = w} r) (snr-natrecⁿ r') =
+  cong (λ q → natrec z w q) (snr-det r r')
+snr-det (snr-natrecᴹⁿ {z = z} {w = w} r) (snr-natrecᴹⁿ r') =
   cong (λ q → natrec z w q) (snr-det r r')
 -- ★★ WF stage E: `natrec`'s argument three times over.  Every cross
 -- pair is refuted by an ABSURD `SNRed` out of a numeral — that is the
@@ -3016,9 +3072,13 @@ sne-whred (sne-jsub snd₀ snp sne₀ ()) (snr-jsub-refl _ _ _)
 sne-whred (sne-jsub snd₀ snp sne₀ key) (snr-jsubᵖ r) =
   sne-jsub snd₀ (sn-whred snp r) sne₀ (idstk?-red (snr→⟶ r) key)
 sne-whred (sne-natrec snz snw snn ()) (snr-natrec-zero _)
+sne-whred (sne-natrecᴹ snMᴹ snz snw snn ()) (snr-natrecᴹ-zero _ _)
 sne-whred (sne-natrec snz snw snn ()) (snr-natrec-suc _ _ _)
+sne-whred (sne-natrecᴹ snMᴹ snz snw snn ()) (snr-natrecᴹ-suc _ _ _ _)
 sne-whred (sne-natrec snz snw snn key) (snr-natrecⁿ r) =
   sne-natrec snz snw (sn-whred snn r) (natstk?-red (snr→⟶ r) key)
+sne-whred (sne-natrecᴹ snMᴹ snz snw snn key) (snr-natrecᴹⁿ r) =
+  sne-natrecᴹ snMᴹ snz snw (sn-whred snn r) (natstk?-red (snr→⟶ r) key)
 -- ★ INDUCTIVE TYPES: ι is refuted DEFINITIONALLY — it fires only on a
 -- `con` scrutinee and `mustk?` of a `con` is `false`, so the neutral's own
 -- key contradicts it.  That is exactly what keying `sne-elim` bought.
@@ -3130,6 +3190,8 @@ data Ne {Γ} : RTm Γ → Set where
           apstk? p ≡ true → Ne (ap cB b p)
   ne-natrec : {z : RTm Γ} {w : RTm ((Γ ∙) ∙)} {n : RTm Γ} →
               natstk? n ≡ true → Ne (natrec z w n)
+  ne-natrecᴹ : {M : RTy (Γ ∙)} {z : RTm Γ} {w : RTm ((Γ ∙) ∙)} {n : RTm Γ} →
+               natstk? n ≡ true → Ne (natrecᴹ M z w n)
   ne-jsub : {d : RTm (Γ ∙)} {p e : RTm Γ} →
             idstk? p ≡ true → Ne (jsub d p e)
   -- ★★ WF stage E: the `Ne` peer of `sne-ordtr` — same key, and like
@@ -3176,10 +3238,15 @@ ne-red (ne-jsub key) (ξ-jsubᵈ r) = ne-jsub key
 ne-red (ne-jsub key) (ξ-jsubᵖ r) = ne-jsub (idstk?-red r key)
 ne-red (ne-jsub key) (ξ-jsubᵉ r) = ne-jsub key
 ne-red (ne-natrec ()) (natrec-zero _ _)
+ne-red (ne-natrecᴹ ()) (natrecᴹ-zero _ _ _)
 ne-red (ne-natrec ()) (natrec-suc _ _ _)
+ne-red (ne-natrecᴹ ()) (natrecᴹ-suc _ _ _ _)
 ne-red (ne-natrec key) (ξ-natrecᶻ r) = ne-natrec key
+ne-red (ne-natrecᴹ key) (ξ-natrecᴹᶻ r) = ne-natrecᴹ key
 ne-red (ne-natrec key) (ξ-natrecˢ r) = ne-natrec key
+ne-red (ne-natrecᴹ key) (ξ-natrecᴹˢ r) = ne-natrecᴹ key
 ne-red (ne-natrec key) (ξ-natrecⁿ r) = ne-natrec (natstk?-red r key)
+ne-red (ne-natrecᴹ key) (ξ-natrecᴹⁿ r) = ne-natrecᴹ (natstk?-red r key)
 -- ★ INDUCTIVE TYPES: ι refuted by the key; the methods leave it alone;
 -- the scrutinee moves it.  `natrec`'s three rows exactly.
 ne-red (ne-elim ()) (ι-elim _ _ _ _)
@@ -3219,6 +3286,7 @@ sne→ne (sne-tr _ _ _ key) = ne-tr key
 sne→ne (sne-ap _ _ _ key) = ne-ap key
 sne→ne (sne-jsub _ _ _ key) = ne-jsub key
 sne→ne (sne-natrec _ _ _ key) = ne-natrec key
+sne→ne (sne-natrecᴹ snMᴹ _ _ _ key) = ne-natrecᴹ key
 sne→ne (sne-elim _ _ key) = ne-elim key
 sne→ne (sne-ielim _ _ _ key) = ne-ielim key
 sne→ne (sne-ordtr _ _ _ _ _ key) = ne-ordtr key
@@ -3236,6 +3304,7 @@ sne→spine (sne-tr _ _ _ key) = key
 sne→spine (sne-ap _ _ _ key) = key
 sne→spine (sne-jsub _ _ _ key) = key
 sne→spine (sne-natrec _ _ _ key) = key
+sne→spine (sne-natrecᴹ snMᴹ _ _ _ key) = key
 sne→spine (sne-elim _ _ key) = key
 sne→spine (sne-ielim _ _ _ key) = key
 sne→spine (sne-ordtr _ _ _ _ _ key) = key
@@ -3259,6 +3328,7 @@ sne→mustk (sne-tr _ _ _ key)      = key
 sne→mustk (sne-ap _ _ _ key)      = key
 sne→mustk (sne-jsub _ _ _ key)    = key
 sne→mustk (sne-natrec _ _ _ key)  = key
+sne→mustk (sne-natrecᴹ snMᴹ _ _ _ key)  = key
 sne→mustk (sne-elim _ _ key)      = key
 sne→mustk (sne-ielim _ _ _ key)      = key
 sne→mustk (sne-ordtr _ _ _ _ _ key) = key
@@ -3274,6 +3344,7 @@ sne→stableA (sne-tr _ _ _ key) = key
 sne→stableA (sne-ap _ _ _ key) = key
 sne→stableA (sne-jsub _ _ _ key) = key
 sne→stableA (sne-natrec _ _ _ key) = key
+sne→stableA (sne-natrecᴹ snMᴹ _ _ _ key) = key
 sne→stableA (sne-elim _ _ key) = key
 sne→stableA (sne-ielim _ _ _ key) = key
 sne→stableA (sne-ordtr _ _ _ _ _ key) = key
@@ -3289,6 +3360,7 @@ sne→stablecd (sne-tr _ _ _ key) = key
 sne→stablecd (sne-ap _ _ _ key) = key
 sne→stablecd (sne-jsub _ _ _ key) = key
 sne→stablecd (sne-natrec _ _ _ key) = key
+sne→stablecd (sne-natrecᴹ snMᴹ _ _ _ key) = key
 sne→stablecd (sne-elim _ _ key) = key
 sne→stablecd (sne-ielim _ _ _ key) = key
 sne→stablecd (sne-ordtr _ _ _ _ _ key) = key
@@ -3306,6 +3378,7 @@ sne→natstk (sne-tr _ _ _ key)   = key
 sne→natstk (sne-ap _ _ _ key)   = key
 sne→natstk (sne-jsub _ _ _ key) = key
 sne→natstk (sne-natrec _ _ _ key) = key
+sne→natstk (sne-natrecᴹ snMᴹ _ _ _ key) = key
 sne→natstk (sne-elim _ _ key) = key
 sne→natstk (sne-ielim _ _ _ key) = key
 sne→natstk (sne-ordtr _ _ _ _ _ key) = key
@@ -3440,6 +3513,7 @@ ordstk?-ren ρ (idrefl a₀ a₁) t u   = refl
 ordstk?-ren ρ (jsub a₀ a₁ a₂) t u  = idstk?-ren ρ a₁
 ordstk?-ren ρ unit t u             = refl
 ordstk?-ren ρ (natrec a₀ a₁ a₂) t u = natstk?-ren ρ a₂
+ordstk?-ren ρ (natrecᴹ Mᴹ a₀ a₁ a₂) t u = natstk?-ren ρ a₂
 ordstk?-ren ρ (natrecᴹ _ a₀ a₁ a₂) t u = natstk?-ren ρ a₂
 ordstk?-ren ρ (con k q) t u = refl
 ordstk?-ren ρ (elim D ms a₀) t u = mustk?-ren ρ a₀
@@ -3714,6 +3788,7 @@ trstk?-ren ρ unit (hrefl c t)             = stablecd?-ren ρ c
 trstk?-ren ρ nzero (hrefl c t)            = stablecd?-ren ρ c
 trstk?-ren ρ (nsuc d₁) (hrefl c t)        = stablecd?-ren ρ c
 trstk?-ren ρ (natrec d₁ d₂ d₃) (hrefl c t) = stablecd?-ren ρ c
+trstk?-ren ρ (natrecᴹ Mᴹ d₁ d₂ d₃) (hrefl c t) = stablecd?-ren ρ c
 trstk?-ren ρ (natrecᴹ _ d₁ d₂ d₃) (hrefl c t) = stablecd?-ren ρ c
 trstk?-ren ρ (con dk dq) (hrefl c t)       = stablecd?-ren ρ c
 trstk?-ren ρ (elim dD dm dt) (hrefl c t)   = stablecd?-ren ρ c
@@ -3846,6 +3921,7 @@ trlam?-ren ρ (⌜Hom⌝ c a unit)             = refl
 trlam?-ren ρ (⌜Hom⌝ c a nzero)            = refl
 trlam?-ren ρ (⌜Hom⌝ c a (nsuc m))         = refl
 trlam?-ren ρ (⌜Hom⌝ c a (natrec m₁ m₂ m₃)) = refl
+trlam?-ren ρ (⌜Hom⌝ c a (natrecᴹ Mᴹ m₁ m₂ m₃)) = refl
 trlam?-ren ρ (⌜Hom⌝ c a (natrecᴹ _ m₁ m₂ m₃)) = refl
 trlam?-ren ρ (hrefl c t)  = refl
 trlam?-ren ρ (tr d p e)   = refl
