@@ -76,6 +76,7 @@ open import DirectedHoTT.Examples.Knot.ThinD
   using ( ThinD; ThinWf; Thin-doneK; ⊢Thin-doneK; Thin-keepK; ⊢Thin-keepK
         ; Thin-dropK; ⊢Thin-dropK )
 open import DirectedHoTT.Examples.Knot.ThinRen using ( thinTmK; ⊢thinTmK )
+open import DirectedHoTT.Examples.Knot.CtxD using ( ctxAtK; ⊢ctxAtK )
 open import DirectedHoTT.Examples.Knot.CtxD
   using ( CtxD; INat; CtxWf; Ctx-extK; ⊢Ctx-extKt; Ctx-empK; ⊢Ctx-empK )
 open import DirectedHoTT.Examples.Knot.EWk using ( εwkK; ⊢εwkK; isingleK; ⊢isingleK )
@@ -134,7 +135,7 @@ GJΓΓ7 = ⌜IMu⌝ KnotD IPair (pair sTm (var (vs (vs (vs (vs vz))))))
 TelJΓΓ8 : Ctx
 TelJΓΓ8 = TelJΓΓ7 ▹ El GJΓΓ7
 GJΓΓ8 : RTm ⌊ TelJΓΓ8 ⌋
-GJΓΓ8 = pair (var (vs (vs (vs (vs (vs (vs (vs vz)))))))) (pair (var (vs (vs (vs (vs vz))))) (pair (var vz) (pair Ty-NatK (pair (num 5) (IxNoneK (var (vs (vs (vs (vs (vs (vs (vs vz)))))))))))))
+GJΓΓ8 = pair (var (vs (vs (vs (vs (vs vz)))))) (pair (ctxAtK (var (vs (vs (vs (vs (vs vz))))))) (pair (var vz) (pair Ty-NatK (pair (num 5) (IxNoneK (var (vs (vs (vs (vs (vs vz)))))))))))
 TelJΓΓ9 : Ctx
 TelJΓΓ9 = TelJΓΓ8 ▹ El (app (var (vs (vs (vs (vs (vs (vs (vs (vs x₀))))))))) GJΓΓ8)
 GJΓΓ9 : RTm ⌊ TelJΓΓ9 ⌋
@@ -292,11 +293,11 @@ CJΓΓ8 = iρ kJΓΓ8 CJΓΓ9
 W_JΓΓ8 : IConWf IJudge TelJΓΓ8 (keep (keep (keep (keep (keep (keep (keep (keep ρ₀)))))))) (vs (vs (vs (vs (vs (vs (vs (vs x₀)))))))) CJΓΓ8
 W_JΓΓ8 =
   iwf-ρ kJΓΓ8
-    (⊢pair (ty-Σ (ty-IMu CtxWf (toI (⊢var here))) (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var (there here)))) (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTy (⊢var (there (there here))))) (ty-Σ ty-Nat (ty-IMu IxWf (toI (⊢var (there (there (there (there here))))))))))) (fromI (⊢var (there (there (there (there (there (there (there here)))))))))
-      (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢wk (fromI (⊢var (there (there (there (there (there (there (there here)))))))))))) (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTy (⊢wk (⊢wk (fromI (⊢var (there (there (there (there (there (there (there here))))))))))))) (ty-Σ ty-Nat (ty-IMu IxWf (toI (⊢wk (⊢wk (⊢wk (⊢wk (fromI (⊢var (there (there (there (there (there (there (there here)))))))))))))))))) (fromMu (⊢var (there (there (there (there here))))))
-      (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTy (⊢wk (fromI (⊢var (there (there (there (there (there (there (there here)))))))))))) (ty-Σ ty-Nat (ty-IMu IxWf (toI (⊢wk (⊢wk (⊢wk (fromI (⊢var (there (there (there (there (there (there (there here)))))))))))))))) (fromMu (⊢var here))
-      (⊢pair (ty-Σ ty-Nat (ty-IMu IxWf (toI (⊢wk (⊢wk (fromI (⊢var (there (there (there (there (there (there (there here)))))))))))))) (⊢Ty-NatKv (var (vs (vs (vs (vs (vs (vs (vs vz)))))))) (fromI (⊢var (there (there (there (there (there (there (there here))))))))))
-      (⊢pair (ty-IMu IxWf (toI (⊢wk (fromI (⊢var (there (there (there (there (there (there (there here)))))))))))) (⊢num 5) (⊢IxNoneK (fromI (⊢var (there (there (there (there (there (there (there here)))))))))))))))
+    (⊢pair (ty-Σ (ty-IMu CtxWf (toI (⊢var here))) (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var (there here)))) (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTy (⊢var (there (there here))))) (ty-Σ ty-Nat (ty-IMu IxWf (toI (⊢var (there (there (there (there here))))))))))) (fromI (⊢var (there (there (there (there (there here)))))))
+      (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢wk (fromI (⊢var (there (there (there (there (there here)))))))))) (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTy (⊢wk (⊢wk (fromI (⊢var (there (there (there (there (there here))))))))))) (ty-Σ ty-Nat (ty-IMu IxWf (toI (⊢wk (⊢wk (⊢wk (⊢wk (fromI (⊢var (there (there (there (there (there here)))))))))))))))) (⊢ctxAtK (fromI (⊢var (there (there (there (there (there here))))))))
+      (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTy (⊢wk (fromI (⊢var (there (there (there (there (there here)))))))))) (ty-Σ ty-Nat (ty-IMu IxWf (toI (⊢wk (⊢wk (⊢wk (fromI (⊢var (there (there (there (there (there here)))))))))))))) (fromMu (⊢var here))
+      (⊢pair (ty-Σ ty-Nat (ty-IMu IxWf (toI (⊢wk (⊢wk (fromI (⊢var (there (there (there (there (there here)))))))))))) (⊢Ty-NatKv (var (vs (vs (vs (vs (vs vz)))))) (fromI (⊢var (there (there (there (there (there here))))))))
+      (⊢pair (ty-IMu IxWf (toI (⊢wk (fromI (⊢var (there (there (there (there (there here)))))))))) (⊢num 5) (⊢IxNoneK (fromI (⊢var (there (there (there (there (there here)))))))))))))
     W_JΓΓ9
 
 CJΓΓ7 : ICon ⌊ JΓΓ7 ⌋
