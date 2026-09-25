@@ -36,7 +36,7 @@ open import DirectedHoTT.Spec.Syntax
         ; ICon; IDesc; iι; iρ; iκ; inil; _◂_ )
 open import DirectedHoTT.Spec.Typing
   using ( Ctx; ◇; _▹_; ⊢nzero; ⊢nsuc; ⊢var; here; there; ⊢⌜IMu⌝
-        ; IConWf; iwf-ι; iwf-ρ; iwf-κ; icw-imu
+        ; IConWf; iwf-ι; iwf-ρ; iwf-κ ; Θ₀; ρ₀; x₀; _,,_; ty-El; ⊢⌜Nat⌝; icw-imu
         ; IDescWf; idwf-cons; idwf-nil )
 open import DirectedHoTT.Spec.Variance using ( 𝔹; true; false )
 open import DirectedHoTT.Lib.IFold using ( Maybeℕ; noℕ; someℕ; numVal; scopeAt )
@@ -65,24 +65,24 @@ TmH n = IMu TmHD INat n
 --   and are re-proved verbatim here.  A description is not extensible in
 --   place — a real data point for "descriptions as VALUES".
 ------------------------------------------------------------------------
-varWfH : IConWf TmHD INat (◇ ▹ INat) varC
+varWfH : IConWf INat (Θ₀ INat) ρ₀ x₀ varC
 varWfH = iwf-κ (⌜IMu⌝ FinD INat (var vz))
                (icw-imu (var vz) FinWf)
                (⊢⌜IMu⌝ FinWf (⊢var here))
                iwf-ι
 
-lamWfH : IConWf TmHD INat (◇ ▹ INat) lamC
+lamWfH : IConWf INat (Θ₀ INat) ρ₀ x₀ lamC
 lamWfH = iwf-ρ (nsuc (var vz)) (toI (⊢nsuc (fromI (⊢var here)))) iwf-ι
 
-appWfH : IConWf TmHD INat (◇ ▹ INat) appC
+appWfH : IConWf INat (Θ₀ INat) ρ₀ x₀ appC
 appWfH = iwf-ρ (var vz) (⊢var here)
           (iwf-ρ (var (vs vz)) (⊢var (there here)) iwf-ι)
 
-boxWfH : IConWf TmHD INat (◇ ▹ INat) boxC
+boxWfH : IConWf INat (Θ₀ INat) ρ₀ x₀ boxC
 boxWfH = iwf-ρ nzero (toI ⊢nzero) iwf-ι
 
 TmHWf : IDescWf INat TmHD
-TmHWf = idwf-cons varWfH (idwf-cons lamWfH (idwf-cons appWfH
+TmHWf = ty-El ⊢⌜Nat⌝ ,, idwf-cons varWfH (idwf-cons lamWfH (idwf-cons appWfH
         (idwf-cons boxWfH idwf-nil)))
 
 ------------------------------------------------------------------------

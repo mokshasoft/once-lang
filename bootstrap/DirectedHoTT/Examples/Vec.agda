@@ -55,7 +55,7 @@ open import DirectedHoTT.Spec.Typing
         ; ⊢unit; ⊢nzero; ⊢nsuc; ⊢⌜Nat⌝; ⊢⌜Id⌝; ⊢idrefl
         ; ⊢icon; ⊢ielim
         ; _⊢ty_; ty-U; ty-El; ty-Unit; ty-Nat; ty-Σ; ty-Π; ty-IMu
-        ; IConWf; iwf-ι; iwf-ρ; iwf-κ
+        ; IConWf; iwf-ι; iwf-ρ; iwf-κ ; Θ₀; ρ₀; x₀; _,,_
         ; ICodeWf; icw-clo; icw-ford
         ; IDescWf; IDescWfFrom; idwf-nil; idwf-cons
         ; imethTy; imethsTy )
@@ -120,14 +120,14 @@ Vec n = IMu VecD INat n
 -- 2. WELL-FORMEDNESS — where `icw-clo` and `icw-ford` earn their keep.
 ------------------------------------------------------------------------
 
-nilWf : IConWf VecD INat (◇ ▹ INat) nilC
+nilWf : IConWf INat (Θ₀ INat) ρ₀ x₀ nilC
 nilWf =
   iwf-κ (⌜Id⌝ ⌜Nat⌝ (var vz) nzero)
         (icw-ford ⌜Nat⌝ (var vz) nzero)
         (⊢⌜Id⌝ ⊢⌜Nat⌝ (⊢var here) (toI ⊢nzero))
         iwf-ι
 
-consWf : IConWf VecD INat (◇ ▹ INat) consC
+consWf : IConWf INat (Θ₀ INat) ρ₀ x₀ consC
 consWf =
   iwf-κ ⌜Nat⌝ (icw-clo ⌜Nat⌝ ⊢⌜Nat⌝) ⊢⌜Nat⌝
    (iwf-κ ⌜Nat⌝ (icw-clo ⌜Nat⌝ ⊢⌜Nat⌝) ⊢⌜Nat⌝
@@ -140,7 +140,7 @@ consWf =
             iwf-ι)))
 
 VecWf : IDescWf INat VecD
-VecWf = idwf-cons nilWf (idwf-cons consWf idwf-nil)
+VecWf = ty-El ⊢⌜Nat⌝ ,, idwf-cons nilWf (idwf-cons consWf idwf-nil)
 
 ------------------------------------------------------------------------
 -- 3. THE CONSTRUCTORS — `⊢icon`, twice.

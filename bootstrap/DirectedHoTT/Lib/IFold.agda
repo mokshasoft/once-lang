@@ -62,11 +62,11 @@ open import DirectedHoTT.Spec.Typing
         ; _⊢_∷_; ⊢var; here; there; ⊢lam; ⊢pair; ⊢fst; ⊢snd; ⊢unit
         ; _⊢ty_; ty-Unit; ty-Σ; ty-Nat
         ; IConWf; iwf-ι; iwf-ρ; iwf-κ
-        ; IDescWf; IDescWfFrom; idwf-nil; idwf-cons
+        ; IDescWf; IDescWfFrom; idwf-nil; idwf-cons; Θ₀; ρ₀; x₀
         ; imethTy; imethsTyFrom; iihTy
         ; _⟶_; _⟶*_; done; step; βfst; βsnd; ξ-fst; ξ-snd ; iinst; single; iconS; iatCon)
 open import DirectedHoTT.Metatheory.TySub
-  using ( ⊢-cast; ren-ty; isingle-Sub⊢; iihTy-wf; iihTy-ren; iihTy-cong )
+  using ( ⊢-cast; ren-ty; isingle-Sub⊢; iihTy-wf; iihTy-ren; iihTy-cong; xenv₀ )
 open import DirectedHoTT.Lib.Wk using ( wk-singleTy )
 open import DirectedHoTT.Spec.Variance using ( 𝔹; true; false )
 open import DirectedHoTT.Lib.IPay
@@ -377,18 +377,18 @@ module Fold
   ifMethod C = lam (lam (lam (nd (ifSum (rsum C) C (var vz)))))
 
   ⊢ifMethod : {Γ : Ctx} (D : IDesc) (I : RTy ε) (k : ℕ) (C : ICon (ε ∙)) →
-              IDescWf I D → IConWf D I (◇ ▹ εwkTy I) C →
+              IDescWf I D → IConWf I (Θ₀ I) ρ₀ x₀ C →
               ({Δ : Ctx} → Δ ⊢ty εwkTy I) →
               Γ ⊢ ifMethod C ∷ imethTy D I k C A
   ⊢ifMethod {Γ = Γ} D I k C wD wC tI =
     ⊢lam tI
       (⊢lam (ipayTy-wf {Γ = Γ ▹ εwkTy I} D I (isingle (var vz)) C
-                       wD wC (isingle-Sub⊢ (⊢-cast (εwk-ren vs I) (⊢var here))))
+                       wD wC (xenv₀ wD (⊢-cast (εwk-ren vs I) (⊢var here))))
         (⊢lam (subst (λ z → _ ⊢ty iihTy D I (isingle (var (vs vz))) C (var vz) z)
                      (sym renAA)
                 (iihTy-wf {Γ = (Γ ▹ εwkTy I) ▹ ipayTy D I (isingle (var vz)) C}
                         D I A (isingle (var (vs vz))) C (var vz) wC
-                        (isingle-Sub⊢ (⊢-cast (trans (cong (renTy vs) (εwk-ren vs I))
+                        (xenv₀ wD (⊢-cast (trans (cong (renTy vs) (εwk-ren vs I))
                                                      (εwk-ren vs I))
                                               (⊢var (there here)))) tyA
                         (⊢-cast (trans (ipayTy-ren vs D I (isingle (var vz)) C)
@@ -430,7 +430,7 @@ module Fold
   --   say it, because the method type's CODOMAIN never mentioned the
   --   payload — `iatCon k i Nat` is `Nat`.
   ⊢ifMeths : {Γ : Ctx} (D : IDesc) (I : RTy ε) (j : ℕ) (E : IDesc) →
-             IDescWf I D → IDescWfFrom D I E → Split D j E →
+             IDescWf I D → IDescWfFrom I E → Split D j E →
              ({Δ : Ctx} → Δ ⊢ty εwkTy I) →
              Γ ⊢ ifMeths E ∷ imethsTyFrom D I A j E
   ⊢ifMeths D I j inil    wD idwf-nil          sp tI = ⊢unit

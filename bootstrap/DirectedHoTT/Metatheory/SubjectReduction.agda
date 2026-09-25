@@ -88,7 +88,8 @@ open import DirectedHoTT.Spec.Typing
         ; DescWf
         ; wk-single; iinst; iihTy; iconS; iatCon; iatCon-inst
         ; imethTy; imethsTy; imethsTyFrom; IDescWf
-        ; ty-IMu; ⊢icon; ⊢ielim; ⊢⌜IMu⌝; IConWf; iwf-ρ; iwf-κ; IDescWfFrom; idwf-cons; idwf-nil; _≅_; csym; ctrn; cred; crfl )
+        ; ty-IMu; ⊢icon; ⊢ielim; ⊢⌜IMu⌝; IConWf; iwf-ρ; iwf-κ; IDescWfFrom; idwf-cons; idwf-nil; _≅_; csym; ctrn; cred; crfl
+        ; Xinst; IDescWf-cons )
 open import DirectedHoTT.Metatheory.SubjectReductionBase using ( ≅ᵀ-sub; ⟶-sub )
 open import DirectedHoTT.Metatheory.Confluence
   using ( ⟶-ren; ⟶*-ren; ⟶*-appʳ; ren-comm; subTm-monoˢ; extS-mono; single-mono
@@ -1084,41 +1085,34 @@ ihs-ty {Γ} D M ms (dκ A C) p w dM hms hp =
 -- ⚠ the environment must be WELL-TYPED against the telescope (`Sub⊢ Θ Γ σ`)
 --   — that is what turns `IConWf`'s `Θ ⊢ j ∷ εwkTy I` into the
 --   `Γ ⊢ subTm σ j ∷ εwkTy I` that `⊢ielim` demands.
-iihs-ty : {Γ Θ : Ctx} (D : IDesc) (I : RTy ε) (M : RTy ((⌊ Γ ⌋ ∙) ∙))
-          (ms : RTm ⌊ Γ ⌋) (σ : Sub ⌊ Θ ⌋ ⌊ Γ ⌋) (C : ICon ⌊ Θ ⌋)
-          (p : RTm ⌊ Γ ⌋) →
+iihs-ty : {Γ Θ : Ctx} {Δ : Cx} (D : IDesc) (I : RTy ε) (M : RTy ((⌊ Γ ⌋ ∙) ∙))
+          (ms : RTm ⌊ Γ ⌋) {ρ : Ren Δ ⌊ Θ ⌋} {x : Var ⌊ Θ ⌋}
+          (τ : Sub Δ ⌊ Γ ⌋) (C : ICon Δ) (p : RTm ⌊ Γ ⌋) →
           IDescWf I D →
-          IConWf D I Θ C →
-          Sub⊢ Θ Γ σ →
+          IConWf I Θ ρ x C →
+          XEnv D I Θ ρ x Γ τ →
           ((Γ ▹ εwkTy I) ▹ IMu D I (var vz)) ⊢ty M →
           Γ ⊢ ms ∷ imethsTy D I M D →
-          Γ ⊢ p ∷ ipayTy D I σ C →
-          Γ ⊢ iihs D ms σ C p ∷ iihTy D I σ C p M
-iihs-ty D I M ms σ iι p wD wC hσ dM hms hp = ⊢unit
-iihs-ty {Γ} {Θ} D I M ms σ (iρ j C) p wD (iwf-ρ .j dj wC) hσ dM hms hp =
-  ⊢pair (ren-ty (iihTy-wf D I M (iext σ (fst p)) C (snd p) wC
-                          (iext-Sub⊢ hσ (⊢fst hp)) dM
-                          (⊢-cast (ipayTy-sub-single D I σ (fst p) C) (⊢snd hp)))
-                there)
-        (⊢ielim wD dM
-                (⊢-cast (εwk-sub σ I) (sub-lemma dj hσ))
-                hms
-                (⊢fst hp))
+          Γ ⊢ p ∷ ipayTy D I τ C →
+          Γ ⊢ iihs D ms τ C p ∷ iihTy D I τ C p M
+iihs-ty D I M ms τ iι p wD wC e dM hms hp = ⊢unit
+iihs-ty {Γ} D I M ms τ (iρ j C) p wD (iwf-ρ .j dj wC) e dM hms hp =
+  ⊢pair (ren-ty (iihTy-wf D I M (iext τ (fst p)) C (snd p) wC e' dM hp') there)
+        (⊢ielim wD dM (xenv-idx e j dj) hms (⊢fst hp))
         (⊢-cast (sym (wk-sub-single
-                        (iihTy D I (iext σ (fst p)) C (snd p) M)
-                        (ielim D (subTm σ j) ms (fst p))))
-                (iihs-ty D I M ms (iext σ (fst p)) C (snd p) wD wC
-                         (iext-Sub⊢ hσ (⊢fst hp)) dM hms
-                         (⊢-cast (ipayTy-sub-single D I σ (fst p) C) (⊢snd hp))))
+                        (iihTy D I (iext τ (fst p)) C (snd p) M)
+                        (ielim D (subTm τ j) ms (fst p))))
+                (iihs-ty D I M ms (iext τ (fst p)) C (snd p) wD wC e' dM hms hp'))
   where
+    e'  = xenv-ρ e j (⊢fst hp)
+    hp' = ⊢-cast (ipayTy-sub-single D I τ (fst p) C) (⊢snd hp)
     wk-sub-single : (A : RTy ⌊ Γ ⌋) (u : RTm ⌊ Γ ⌋) →
                     subTy (single u) (renTy vs A) ≡ A
     wk-sub-single A u =
       trans (subTy-renTy A) (trans (subTy-cong (λ x → refl) A) (subTy-id A))
-iihs-ty D I M ms σ (iκ κ C) p wD (iwf-κ .κ _ dcode wC) hσ dM hms hp =
-  iihs-ty D I M ms (iext σ (fst p)) C (snd p) wD wC
-          (iext-Sub⊢ hσ (⊢fst hp)) dM hms
-          (⊢-cast (ipayTy-sub-single D I σ (fst p) C) (⊢snd hp))
+iihs-ty D I M ms τ (iκ κ C) p wD (iwf-κ .κ _ dcode wC) e dM hms hp =
+  iihs-ty D I M ms (iext τ (fst p)) C (snd p) wD wC (xenv-κ e κ (⊢fst hp)) dM hms
+          (⊢-cast (ipayTy-sub-single D I τ (fst p) C) (⊢snd hp))
 
 -- ★★★ INDUCTIVE TYPES: SUBJECT REDUCTION AT ι.
 --
@@ -1171,7 +1165,7 @@ sr {Γ = Γ} d (ι-ielim D i ms k p) with gen-ielim d
                    (⊢app (⊢-cast step2
                             (⊢app (⊢-cast step1 (⊢app hsel di)) dp'))
                          (iihs-ty D I M ms (isingle i) (ilookupD D k) p
-                                  w (ilookupD-wf k w kin) (isingle-Sub⊢ di)
+                                  w (ilookupD-wf k (IDescWf-cons w) kin) (xenv₀ w di)
                                   dM dms dp')))
                 (csymᵀ cC)
   where

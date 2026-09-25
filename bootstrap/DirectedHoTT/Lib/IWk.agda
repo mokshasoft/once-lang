@@ -63,7 +63,7 @@ module DirectedHoTT.Lib.IWk where
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂ )
 open import Agda.Builtin.Nat using ( zero; suc; _+_ ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
-  using ( Cx; ε; _∙; vz; vs; var; Var
+  using ( Cx; ε; _∙; vz; vs; var; Var; Ren
         ; RTy; RTm; Unit; Σ'; El; IMu; Nat
         ; lam; pair; fst; snd; unit; nzero; nsuc; icon; ⌜Id⌝; ⌜Nat⌝
         ; ICon; IDesc; iι; iρ; iκ; inil; _◂_
@@ -75,13 +75,14 @@ open import DirectedHoTT.Spec.Typing
         ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢pair; ⊢fst; ⊢snd; ⊢unit; ⊢conv
         ; ty-El; ty-Unit; ty-Σ; ty-Π; ty-IMu
         ; IConWf; iwf-ι; iwf-ρ; iwf-κ
-        ; IDescWf; IDescWfFrom; idwf-nil; idwf-cons
+        ; IDescWf; IDescWfFrom; idwf-nil; idwf-cons; Θ₀; ρ₀; x₀
         ; iihTy; imethTy; imethsTyFrom; ⊢lam; ⊢icon
         ; _≅ᵀ_; csymᵀ; credᵀ; ξ-El; ξ-⌜Id⌝ˡ; ξ-IMu
         ; _⟶_; βfst; βsnd; ξ-pairˡ; ξ-pairʳ; ξ-nsuc )
 open import DirectedHoTT.Metatheory.TySub
   using ( ⊢-cast; Sub⊢; Sub⊢-ext; iext-Sub⊢; isingle-Sub⊢; ren-ty
-        ; iihTy-wf; iihTy-ren; iihTy-cong )
+        ; iihTy-wf; iihTy-ren; iihTy-cong
+        ; XEnv; xenv₀; xenv-ρ; xenv-κ; xenv-ρ↑; xenv-κ↑ )
 open import DirectedHoTT.Lib.IPay
   using ( ipayTy-wf; imethsTyFromNat-wf
         ; Split; spl-nil; spl-cons; spl-mem; spl-look; spl-step )
@@ -574,8 +575,8 @@ payStep D I σ v C =
 
 -- ★ a κ field passes through, and WHICH conversion it needs is the only
 --   thing its classification decides.
-⊢kaComp : {Γ Θ : Ctx} {σ τ : Sub ⌊ Θ ⌋ ⌊ Γ ⌋} {a : Var ⌊ Θ ⌋}
-          {κ : RTm ⌊ Θ ⌋} {t : RTm ⌊ Γ ⌋} →
+⊢kaComp : {Γ : Ctx} {Θ : Cx} {σ τ : Sub Θ ⌊ Γ ⌋} {a : Var Θ}
+          {κ : RTm Θ} {t : RTm ⌊ Γ ⌋} →
           WkKa a κ → τ a ≡ sh (σ a) →
           Γ ⊢ t ∷ El (subTm σ κ) → Γ ⊢ t ∷ El (subTm τ κ)
 ⊢kaComp {σ = σ} {τ = τ} (ka-clo κ o) sq d =
@@ -596,9 +597,9 @@ payStep D I σ v C =
 --   ⚠ The last line is where `sucs k (nsuc x) ≡ nsuc (sucs k x)` earns
 --     its keep: both are `nsucᵏ⁺¹ x`, so the two sides MEET rather than
 --     needing a chain per `k`.
-ridesConv : {Γ Θ : Ctx} {σ τ : Sub ⌊ Θ ⌋ ⌊ Γ ⌋} {a : Var ⌊ Θ ⌋}
-            {s d : RTm ⌊ Θ ⌋} {t : RTm ⌊ Γ ⌋} (D : IDesc) (I : RTy ε) →
-            ((x : Var ⌊ Θ ⌋) → occTm x s ≡ false) →
+ridesConv : {Γ : Ctx} {Θ : Cx} {σ τ : Sub Θ ⌊ Γ ⌋} {a : Var Θ}
+            {s d : RTm Θ} {t : RTm ⌊ Γ ⌋} (D : IDesc) (I : RTy ε) →
+            ((x : Var Θ) → occTm x s ≡ false) →
             (p : IsSucs a d) → τ a ≡ sh (σ a) →
             Γ ⊢ t ∷ IMu D I (sh (subTm σ (pair s d))) →
             Γ ⊢ t ∷ IMu D I (subTm τ (pair s d))
@@ -625,8 +626,8 @@ ridesConv {σ = σ} {τ = τ} {a = a} {s = s} {d = d} D I cs p sq dt =
 -- ★ and the ρ component: the IH when the index RIDES, the ORIGINAL FIELD
 --   when it is pinned.  ⚠ `ixPick` makes the choice in BOTH places, so
 --   the term level and the proof cannot drift apart about which.
-⊢ixComp : {Γ Θ : Ctx} {σ τ : Sub ⌊ Θ ⌋ ⌊ Γ ⌋} {a : Var ⌊ Θ ⌋}
-          {j : RTm ⌊ Θ ⌋} {u v : RTm ⌊ Γ ⌋} (D : IDesc) (I : RTy ε)
+⊢ixComp : {Γ : Ctx} {Θ : Cx} {σ τ : Sub Θ ⌊ Γ ⌋} {a : Var Θ}
+          {j : RTm Θ} {u v : RTm ⌊ Γ ⌋} (D : IDesc) (I : RTy ε)
           (ix : WkIx a j) → τ a ≡ sh (σ a) →
           Γ ⊢ u ∷ IMu D I (subTm σ j) →
           Γ ⊢ v ∷ IMu D I (sh (subTm σ j)) →
@@ -637,10 +638,11 @@ ridesConv {σ = σ} {τ = τ} {a = a} {s = s} {d = d} D I cs p sq dt =
 ⊢ixComp {σ = σ} {τ = τ} D I (pinned j o) sq du dv =
   ⊢-cast (cong (IMu D I) (pinned-stable j σ τ o)) du
 
-⊢iwkPay : {Γ Θ : Ctx} (D : IDesc) (I : RTy ε)
-          {σ τ : Sub ⌊ Θ ⌋ ⌊ Γ ⌋} {a : Var ⌊ Θ ⌋} {C : ICon ⌊ Θ ⌋}
-          (w : WkCon a C) → IConWf D I Θ C → IDescWf I D →
-          Sub⊢ Θ Γ σ → Sub⊢ Θ Γ τ → τ a ≡ sh (σ a) →
+⊢iwkPay : {Γ Θ : Ctx} {Δ : Cx} (D : IDesc) (I : RTy ε)
+          {ρ : Ren Δ ⌊ Θ ⌋} {x : Var ⌊ Θ ⌋}
+          {σ τ : Sub Δ ⌊ Γ ⌋} {a : Var Δ} {C : ICon Δ}
+          (w : WkCon a C) → IConWf I Θ ρ x C → IDescWf I D →
+          XEnv D I Θ ρ x Γ σ → XEnv D I Θ ρ x Γ τ → τ a ≡ sh (σ a) →
           (q ih : RTm ⌊ Γ ⌋) →
           Γ ⊢ q ∷ ipayTy D I σ C →
           Γ ⊢ ih ∷ iihTy D I σ C q (Mot D I) →
@@ -648,11 +650,11 @@ ridesConv {σ = σ} {τ = τ} {a = a} {s = s} {d = d} D I cs p sq dt =
 ⊢iwkPay D I wk-ι iwf-ι wD hσ hτ sq q ih dq dih = ⊢unit
 ⊢iwkPay {Γ = Γ} D I {σ = σ} {τ = τ} (wk-ρ ix w) (iwf-ρ j dj wC)
         wD hσ hτ sq q ih dq dih =
-  ⊢pair (ipayTy-wf D I (extS τ) _ wD wC (Sub⊢-ext hτ))
+  ⊢pair (ipayTy-wf D I (extS τ) _ wD wC (xenv-ρ↑ hτ j))
         c₀
         (⊢-cast (sym (payStep D I τ _ _))
           (⊢iwkPay D I w wC wD
-                   (iext-Sub⊢ hσ (⊢fst dq)) (iext-Sub⊢ hτ c₀) sq
+                   (xenv-ρ hσ j (⊢fst dq)) (xenv-ρ hτ j c₀) sq
                    (snd q) (snd ih)
                    (⊢-cast (payStep D I σ (fst q) _) (⊢snd dq))
                    (⊢-cast (wk-singleTy {v = fst ih} _) (⊢snd dih))))
@@ -662,11 +664,11 @@ ridesConv {σ = σ} {τ = τ} {a = a} {s = s} {d = d} D I cs p sq dt =
                    (⊢fst dih))
 ⊢iwkPay {Γ = Γ} D I {σ = σ} {τ = τ} (wk-κ {κ = κ} {C = C'} ka w)
         (iwf-κ .κ _ dc wC) wD hσ hτ sq q ih dq dih =
-  ⊢pair (ipayTy-wf D I (extS τ) C' wD wC (Sub⊢-ext hτ))
+  ⊢pair (ipayTy-wf D I (extS τ) C' wD wC (xenv-κ↑ hτ κ))
         c₀
         (⊢-cast (sym (payStep D I τ (fst q) C'))
           (⊢iwkPay D I w wC wD
-                   (iext-Sub⊢ hσ (⊢fst dq)) (iext-Sub⊢ hτ c₀) sq
+                   (xenv-κ hσ κ (⊢fst dq)) (xenv-κ hτ κ c₀) sq
                    (snd q) ih
                    (⊢-cast (payStep D I σ (fst q) C') (⊢snd dq))
                    dih))
@@ -712,7 +714,7 @@ posOf (wkd-stop _)   j = j
 posOf (wkd-cons _ W) j = posOf W (suc j)
 
 ⊢iwkMethod : {Γ : Ctx} (D : IDesc) (I : RTy ε) (k : ℕ) {C : ICon (ε ∙)}
-             (w : WkCon vz C) → IDescWf I D → IConWf D I (◇ ▹ εwkTy I) C →
+             (w : WkCon vz C) → IDescWf I D → IConWf I (Θ₀ I) ρ₀ x₀ C →
              k ∈ID D → ilookupD D k ≡ C →
              ({Δ : Ctx} → Δ ⊢ty εwkTy I) →
              ({Δ : Ctx} {i : RTm ⌊ Δ ⌋} → Δ ⊢ i ∷ εwkTy I → Δ ⊢ sh i ∷ εwkTy I) →
@@ -723,10 +725,10 @@ posOf (wkd-cons _ W) j = posOf W (suc j)
 ⊢iwkMethod {Γ = Γ} D I k {C = C} w wD wC mem look tI ⊢sh =
   ⊢lam tI
     (⊢lam (ipayTy-wf {Γ = Γ ▹ εwkTy I} D I (isingle (var vz)) C
-                     wD wC (isingle-Sub⊢ (⊢-cast (εwk-ren vs I) (⊢var here))))
+                     wD wC (xenv₀ wD (⊢-cast (εwk-ren vs I) (⊢var here))))
       (⊢lam (iihTy-wf {Γ = (Γ ▹ εwkTy I) ▹ ipayTy D I (isingle (var vz)) C}
                       D I (Mot D I) (isingle (var (vs vz))) C (var vz) wC
-                      (isingle-Sub⊢
+                      (xenv₀ wD
                         (⊢-cast (trans (cong (renTy vs) (εwk-ren vs I))
                                        (εwk-ren vs I))
                                 (⊢var (there here))))
@@ -752,13 +754,13 @@ posOf (wkd-cons _ W) j = posOf W (suc j)
                --   says so; this is where that is cashed.
                (⊢-cast (cong (ipayTy D I (isingle (sh (var (vs (vs vz)))))) (sym look))
                 (⊢iwkPay D I w wC wD
-                        (isingle-Sub⊢
+                        (xenv₀ wD
                           (⊢-cast (trans (cong (renTy vs)
                                            (trans (cong (renTy vs) (εwk-ren vs I))
                                                   (εwk-ren vs I)))
                                          (εwk-ren vs I))
                                   (⊢var (there (there here)))))
-                        (isingle-Sub⊢
+                        (xenv₀ wD
                           (⊢sh (⊢-cast (trans (cong (renTy vs)
                                                 (trans (cong (renTy vs) (εwk-ren vs I))
                                                        (εwk-ren vs I)))
@@ -788,17 +790,17 @@ posOf (wkd-cons _ W) j = posOf W (suc j)
 --   with `Nat` replaced by `Mot D I` — the only changes are the two
 --   places the motive's own `⊢ty` is required, and both are `⊢sh`.
 imethTyMot-wf : {Γ : Ctx} (D : IDesc) (I : RTy ε) (k : ℕ) (C : ICon (ε ∙)) →
-                IDescWf I D → IConWf D I (◇ ▹ εwkTy I) C →
+                IDescWf I D → IConWf I (Θ₀ I) ρ₀ x₀ C →
                 ({Δ : Ctx} → Δ ⊢ty εwkTy I) →
                 ({Δ : Ctx} {i : RTm ⌊ Δ ⌋} → Δ ⊢ i ∷ εwkTy I → Δ ⊢ sh i ∷ εwkTy I) →
                 Γ ⊢ty imethTy D I k C (Mot D I)
 imethTyMot-wf {Γ = Γ} D I k C wD wC tI ⊢sh =
   ty-Π tI
     (ty-Π (ipayTy-wf {Γ = Γ ▹ εwkTy I} D I (isingle (var vz)) C
-                     wD wC (isingle-Sub⊢ (⊢-cast (εwk-ren vs I) (⊢var here))))
+                     wD wC (xenv₀ wD (⊢-cast (εwk-ren vs I) (⊢var here))))
       (ty-Π (iihTy-wf {Γ = (Γ ▹ εwkTy I) ▹ ipayTy D I (isingle (var vz)) C}
                       D I (Mot D I) (isingle (var (vs vz))) C (var vz) wC
-                      (isingle-Sub⊢ (⊢-cast (trans (cong (renTy vs) (εwk-ren vs I))
+                      (xenv₀ wD (⊢-cast (trans (cong (renTy vs) (εwk-ren vs I))
                                                    (εwk-ren vs I))
                                             (⊢var (there here))))
                       (ty-IMu wD
@@ -817,7 +819,7 @@ imethTyMot-wf {Γ = Γ} D I k C wD wC tI ⊢sh =
                            (⊢var (there (there here))))))))
 
 imethsTyFromMot-wf : {Γ : Ctx} (D : IDesc) (I : RTy ε) (j : ℕ) (E : IDesc) →
-                     IDescWf I D → IDescWfFrom D I E →
+                     IDescWf I D → IDescWfFrom I E →
                      ({Δ : Ctx} → Δ ⊢ty εwkTy I) →
                      ({Δ : Ctx} {i : RTm ⌊ Δ ⌋} →
                        Δ ⊢ i ∷ εwkTy I → Δ ⊢ sh i ∷ εwkTy I) →
@@ -828,12 +830,12 @@ imethsTyFromMot-wf D I j (C ◂ E) wD (idwf-cons wC wE) tI ⊢sh =
        (ren-ty (imethsTyFromMot-wf D I (suc j) E wD wE tI ⊢sh) there)
 
 -- ★ the leftover's OWN well-formedness, peeled rather than enumerated.
---   ⚠ The caller needs `IDescWfFrom D I (wkdRest W)` to type the tail, and
+--   ⚠ The caller needs `IDescWfFrom I (wkdRest W)` to type the tail, and
 --   getting there from `IDescWf I D` by hand is 51 `idwf-cons` peels for
 --   `KnotD` — i.e. exactly the enumeration this module exists to avoid.
 --   One recursion over the `WkDesc` does it instead.
-wfDrop : {D : IDesc} {I : RTy ε} {E : IDesc} →
-         IDescWfFrom D I E → (W : WkDesc E) → IDescWfFrom D I (wkdRest W)
+wfDrop : {I : RTy ε} {E : IDesc} →
+         IDescWfFrom I E → (W : WkDesc E) → IDescWfFrom I (wkdRest W)
 wfDrop wE                (wkd-stop _)   = wE
 wfDrop (idwf-cons wC wE) (wkd-cons w W) = wfDrop wE W
 
@@ -849,7 +851,7 @@ splDrop sp (wkd-cons w W) = splDrop (spl-step sp) W
 --   so the tail's position needs no `j + n` arithmetic at all.
 ⊢iwkMethsFrom : {Γ : Ctx} (D : IDesc) (I : RTy ε) {j : ℕ}
                 {E : IDesc} (W : WkDesc E) → Split D j E →
-                IDescWf I D → IDescWfFrom D I E →
+                IDescWf I D → IDescWfFrom I E →
                 ({Δ : Ctx} → Δ ⊢ty εwkTy I) →
                 ({Δ : Ctx} {i : RTm ⌊ Δ ⌋} →
                   Δ ⊢ i ∷ εwkTy I → Δ ⊢ sh i ∷ εwkTy I) →

@@ -46,7 +46,7 @@ open import DirectedHoTT.Spec.Typing
   using ( Ctx; ◇; _▹_; ⌊_⌋; _⊢_∷_; _⊢ty_; ⊢var; here; there
         ; DescWf; dwf-nil; dwf-cons; DConWf; dwf-ι; dwf-ρ; dwf-κ
         ; ⊢⌜Mu⌝; ⊢⌜Σ⌝; ⊢⌜Id⌝; ⊢conv; ⊢pair; ⊢fst; ⊢snd; ⊢con; ⊢unit
-        ; IConWf; iwf-ι; iwf-ρ; iwf-κ; ICodeWf; icw-clo; icw-ford
+        ; IConWf; iwf-ι; iwf-ρ; iwf-κ ; Θ₀; ρ₀; x₀; _,,_; ICodeWf; icw-clo; icw-ford
         ; IDescWf; idwf-nil; idwf-cons; ty-Σ; ty-El; ty-Mu; ty-Unit
         ; _≅ᵀ_; csymᵀ; credᵀ; El-⌜Σ⌝; El-⌜Mu⌝ )
 open import DirectedHoTT.Spec.Syntax
@@ -242,7 +242,7 @@ elMuCx = credᵀ El-⌜Mu⌝
 --                (iwf-ρ (var (vs vz)) (⊢var (there here)) iwf-ι)
 ------------------------------------------------------------------------
 
-appWf : IConWf TmD I (◇ ▹ I) appC
+appWf : IConWf I (Θ₀ I) ρ₀ x₀ appC
 appWf =
   iwf-κ ⌜Ty⌝ (icw-clo (⌜Mu⌝ TyD) ⊢⌜Ty⌝) ⊢⌜Ty⌝
    (iwf-ρ (ix (fst (var (vs vz))) (arrow (var vz) (snd (var (vs vz)))))
@@ -252,7 +252,7 @@ appWf =
            (⊢ixP (⊢fstI (⊢var (there (there here)))) (⊢var (there here)))
      iwf-ι))
 
-lamWf : IConWf TmD I (◇ ▹ I) lamC
+lamWf : IConWf I (Θ₀ I) ρ₀ x₀ lamC
 lamWf =
   iwf-κ ⌜Ty⌝  (icw-clo (⌜Mu⌝ TyD)  ⊢⌜Ty⌝)  ⊢⌜Ty⌝
    (iwf-κ ⌜Ty⌝  (icw-clo (⌜Mu⌝ TyD)  ⊢⌜Ty⌝)  ⊢⌜Ty⌝
@@ -271,4 +271,4 @@ lamWf =
        iwf-ι))))
 
 TmWf : IDescWf I TmD
-TmWf = idwf-cons appWf (idwf-cons lamWf idwf-nil)
+TmWf = ty-El ⊢⌜I⌝ ,, idwf-cons appWf (idwf-cons lamWf idwf-nil)

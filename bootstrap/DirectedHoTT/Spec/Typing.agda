@@ -669,13 +669,27 @@ data DescWf : Desc → Set
 -- ★★ their INDEXED twins.  Indexed BY the index type: a shift and a field
 --   code are both functions OUT of it, so well-formedness cannot be stated
 --   without knowing what it is.
--- ⚠ REVISED (§9.2): `IConWf` now walks a TYPED TELESCOPE, because a
---   carried term must be well-typed in a context holding the earlier
---   fields WITH THEIR TYPES.  It therefore needs the DESCRIPTION — a
---   recursive field's type is `IMu D I j` — which the old version, whose
---   `iρ` carried only a closed function, did not.
-data IConWf     : IDesc → RTy ε → (Θ : Ctx) → ICon ⌊ Θ ⌋ → Set
-data IDescWfFrom : IDesc → RTy ε → IDesc → Set
+-- ⚠ REVISED (§9.2): `IConWf` walks a TYPED TELESCOPE, because a carried
+--   term must be well-typed in a context holding the earlier fields WITH
+--   THEIR TYPES.
+-- ★★★ REVISED AGAIN (PLAN-BIDI §3e, "A-math", 2026-09-25): A DESCRIPTION IS
+--   A STRICTLY POSITIVE FUNCTOR, and its well-formedness is a property of
+--   the FUNCTOR — checked with the recursive positions typed by an ABSTRACT
+--   FAMILY `X : Π I U`, never by the fixed point `IMu D I j`.  So:
+--   · the judgment does NOT mention the description `D` at all;
+--   · carried terms live in the constructor's own `X`-FREE scope `Δ` and
+--     reach the typed telescope through a renaming `ρ` — positivity is
+--     SYNTACTIC, not a side condition; only a recursive field's TYPE
+--     mentions `X`;
+--   · `X` sits at the ROOT (deepest slot), so `ρ` leaves every carried
+--     index unchanged.
+--   Why: the previous form put the fixed point into its own telescope.  The
+--   declarative judgment tolerated it (it never needs the context
+--   well-formed); a certifying CHECKER cannot — proving the context
+--   well-formed needed `IDescWf D`, the thing being checked.  The model
+--   (`ILift`) was already this functor at an abstract predicate.
+data IConWf     : RTy ε → {Δ : Cx} (Θ : Ctx) → Ren Δ ⌊ Θ ⌋ → Var ⌊ Θ ⌋ → ICon Δ → Set
+data IDescWfFrom : RTy ε → IDesc → Set
 -- ★★★ PLAN-INDEXED §10 — WHICH κ CODES THE MODEL CAN INTERPRET.
 --
 -- ⚠⚠ FOUND BY WRITING `fund`, exactly like §9.1 and §9.2.  `⊩₀IMu`
@@ -708,8 +722,42 @@ data ICodeWf : {Θ : Cx} → RTm Θ → Set
 -- the user-facing name is unchanged: a description is well-formed when
 -- every constructor is, with the SAME description available for its
 -- recursive fields.
+-- ★ the functor `F : (I → Type) → (I → Type)` presupposes that `I` IS a
+--   type.  The previous kernel never required it (an IMPLICIT assumption);
+--   the instantiation `X := λj. ⌜IMu⌝ D I j` needs it to be typed, so it is
+--   now carried explicitly.
 IDescWf : RTy ε → IDesc → Set
-IDescWf I D = IDescWfFrom D I D
+IDescWf I D = (◇ ⊢ty I) × IDescWfFrom I D
+
+IDescWf-I : {I : RTy ε} {D : IDesc} → IDescWf I D → ◇ ⊢ty I
+IDescWf-I (dI ,, _) = dI
+
+IDescWf-cons : {I : RTy ε} {D : IDesc} → IDescWf I D → IDescWfFrom I D
+IDescWf-cons (_ ,, wE) = wE
+
+-- ★ the ROOT of every constructor telescope: the abstract family
+--   `X : Π I U`, then the ambient index.  `ρ₀` embeds the constructor's
+--   scope (just the index); `x₀` is where `X` lives.
+Θ₀ : RTy ε → Ctx
+Θ₀ I = (◇ ▹ Π (εwkTy I) U) ▹ εwkTy I
+
+ρ₀ : Ren (ε ∙) ((ε ∙) ∙)
+ρ₀ vz = vz
+
+x₀ : Var ((ε ∙) ∙)
+x₀ = vs vz
+
+-- ★ the INSTANTIATION of the abstract family at the fixed point:
+--   `X := λ j. ⌜IMu⌝ D I j`.  Every consumer of `IConWf` (subject
+--   reduction, the model) runs the telescope at this `X`; `Xconv` is the
+--   one conversion that turns a family-typed field back into a
+--   fixed-point-typed one.
+Xinst : {Γ : Cx} → IDesc → RTy ε → RTm Γ
+Xinst D I = lam (⌜IMu⌝ D I (var vz))
+
+Xconv : {Γ : Cx} (D : IDesc) (I : RTy ε) (j : RTm Γ) →
+        El (app (Xinst D I) j) ≅ᵀ IMu D I j
+Xconv D I j = ctrnᵀ (credᵀ (ξ-El (β (⌜IMu⌝ D I (var vz)) j))) (credᵀ El-⌜IMu⌝)
 
 data _⊢_∷_ where
   ⊢var  : ∀ {Γ x A}     → Γ ∋ x ∷ A → Γ ⊢ var x ∷ A
@@ -965,27 +1013,27 @@ data DescWf where
 --   on the index type.  For a SYNTAX that is `lam (var vz)` (a field at the
 --   ambient index) or `lam (nsuc (var vz))` (one under a binder).
 data IConWf where
-  iwf-ι : {D : IDesc} {I : RTy ε} {Θ : Ctx} → IConWf D I Θ iι
+  iwf-ι : {I : RTy ε} {Δ : Cx} {Θ : Ctx} {ρ : Ren Δ ⌊ Θ ⌋} {x : Var ⌊ Θ ⌋} →
+          IConWf I Θ ρ x iι
   -- ★ a RECURSIVE field: its index `j` is any well-typed index term IN THE
-  --   TELESCOPE SO FAR, and the tail sees it bound at type `IMu D I j`.
-  --   That binding is what lets a LATER field name this one — the whole
-  --   point of §9.2.
-  iwf-ρ : {D : IDesc} {I : RTy ε} {Θ : Ctx} {C : ICon (⌊ Θ ⌋ ∙)}
-          (j : RTm ⌊ Θ ⌋) →
-          Θ ⊢ j ∷ εwkTy I →
-          IConWf D I (Θ ▹ IMu D I j) C →
-          IConWf D I Θ (iρ j C)
+  --   TELESCOPE SO FAR (§9.2: a later field may name it), and the tail
+  --   sees it bound at the ABSTRACT FAMILY `X j` — not the fixed point.
+  iwf-ρ : {I : RTy ε} {Δ : Cx} {Θ : Ctx} {ρ : Ren Δ ⌊ Θ ⌋} {x : Var ⌊ Θ ⌋}
+          {C : ICon (Δ ∙)} (j : RTm Δ) →
+          Θ ⊢ renTm ρ j ∷ εwkTy I →
+          IConWf I (Θ ▹ El (app (var x) (renTm ρ j))) (extR ρ) (vs x) C →
+          IConWf I Θ ρ x (iρ j C)
   -- ★ a NON-RECURSIVE field: a CODE in the telescope, decoded by `El`.
   --   A FORDING constraint is exactly this — a field whose code mentions
   --   the ambient index and an earlier field.
   --   ⚠ §10: it also carries an `ICodeWf` — the model's key, the indexed
   --   twin of `dwf-κ`'s "the κ field must be SMALL".
-  iwf-κ : {D : IDesc} {I : RTy ε} {Θ : Ctx} {C : ICon (⌊ Θ ⌋ ∙)}
-          (κ : RTm ⌊ Θ ⌋) →
+  iwf-κ : {I : RTy ε} {Δ : Cx} {Θ : Ctx} {ρ : Ren Δ ⌊ Θ ⌋} {x : Var ⌊ Θ ⌋}
+          {C : ICon (Δ ∙)} (κ : RTm Δ) →
           ICodeWf κ →
-          Θ ⊢ κ ∷ U →
-          IConWf D I (Θ ▹ El κ) C →
-          IConWf D I Θ (iκ κ C)
+          Θ ⊢ renTm ρ κ ∷ U →
+          IConWf I (Θ ▹ El (renTm ρ κ)) (extR ρ) (vs x) C →
+          IConWf I Θ ρ x (iκ κ C)
 
 -- ★★★ §10.  TWO ROWS, and each is forced.
 --
@@ -1029,12 +1077,12 @@ data ICodeWf where
              IDescWf I' D' → ICodeWf (⌜IMu⌝ D' I' i)
 
 data IDescWfFrom where
-  idwf-nil  : {D : IDesc} {I : RTy ε} → IDescWfFrom D I inil
-  -- ⚠ each constructor starts in the telescope `◇ ▹ εwkTy I` — just the
-  --   AMBIENT INDEX bound — whose erasure is `ε ∙`, matching `ICon (ε ∙)`.
-  idwf-cons : {D : IDesc} {I : RTy ε} {C : ICon (ε ∙)} {E : IDesc} →
-              IConWf D I (◇ ▹ εwkTy I) C → IDescWfFrom D I E →
-              IDescWfFrom D I (C ◂ E)
+  idwf-nil  : {I : RTy ε} → IDescWfFrom I inil
+  -- ⚠ each constructor starts in the telescope `Θ₀ I` — the abstract family,
+  --   then the AMBIENT INDEX — its own scope `ε ∙` embedded by `ρ₀`.
+  idwf-cons : {I : RTy ε} {C : ICon (ε ∙)} {E : IDesc} →
+              IConWf I (Θ₀ I) ρ₀ x₀ C → IDescWfFrom I E →
+              IDescWfFrom I (C ◂ E)
 
 
 -- CONTEXT well-formedness. Needed because `⊢var`'s type comes from a lookup:
