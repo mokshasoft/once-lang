@@ -116,9 +116,11 @@ data _⊢ᴬ_∷_ where
   ⊢ᴬtrU  : ∀ {Γ p e t u} →
            Γ ⊢ᴬ t ∷ U → Γ ⊢ᴬ u ∷ U →
            Γ ⊢ᴬ p ∷ Hom U t u → Γ ⊢ᴬ e ∷ El t →
-           Γ ⊢ᴬ tr (var vz) p e ∷ El u
+           Γ ⊢ᴬ tr U t u (var vz) p e ∷ El u
   -- the side conditions are about COMPUTATION, so they read the erasure
+  -- ★ the AMBIENT and ENDPOINTS are in the term (the §1 audit's finding)
   ⊢ᴬtr   : ∀ {Γ A c a p e t u} →
+           Γ ⊢tyᴬ A →
            (Γ ▹ᴬ A) ⊢ᴬ c ∷ U → (Γ ▹ᴬ A) ⊢ᴬ a ∷ El c →
            (Γ ▹ᴬ A) ⊢ᴬ var vz ∷ El c →
            NoNatC ⌈ c ⌉ →
@@ -126,7 +128,7 @@ data _⊢ᴬ_∷_ where
            Γ ⊢ᴬ t ∷ A → Γ ⊢ᴬ u ∷ A →
            Γ ⊢ᴬ p ∷ Hom A t u →
            Γ ⊢ᴬ e ∷ El (subTmᴬ (singleᴬ t) (⌜Hom⌝ c a (var vz))) →
-           Γ ⊢ᴬ tr (⌜Hom⌝ c a (var vz)) p e
+           Γ ⊢ᴬ tr A t u (⌜Hom⌝ c a (var vz)) p e
              ∷ El (subTmᴬ (singleᴬ u) (⌜Hom⌝ c a (var vz)))
   ⊢ᴬap   : ∀ {Γ cA cB b p t u} →
            Γ ⊢ᴬ cA ∷ U → flat? ⌈ cA ⌉ ≡ true →
@@ -134,7 +136,7 @@ data _⊢ᴬ_∷_ where
            (Γ ▹ᴬ El cA) ⊢ᴬ b ∷ El (renTmᴬ vs cB) →
            Γ ⊢ᴬ t ∷ El cA → Γ ⊢ᴬ u ∷ El cA →
            Γ ⊢ᴬ p ∷ Hom (El cA) t u →
-           Γ ⊢ᴬ ap cB b p ∷ Hom (El cB) (subTmᴬ (singleᴬ t) b) (subTmᴬ (singleᴬ u) b)
+           Γ ⊢ᴬ ap cA t u cB b p ∷ Hom (El cB) (subTmᴬ (singleᴬ t) b) (subTmᴬ (singleᴬ u) b)
   ⊢ᴬ⌜Id⌝ : ∀ {Γ c a b} → Γ ⊢ᴬ c ∷ U → Γ ⊢ᴬ a ∷ El c → Γ ⊢ᴬ b ∷ El c →
                          Γ ⊢ᴬ ⌜Id⌝ c a b ∷ U
   ⊢ᴬ⌜Nat⌝  : ∀ {Γ} → Γ ⊢ᴬ ⌜Nat⌝ ∷ U
@@ -143,11 +145,12 @@ data _⊢ᴬ_∷_ where
   ⊢ᴬidrefl : ∀ {Γ c t} → Γ ⊢ᴬ c ∷ U → Γ ⊢ᴬ t ∷ El c →
                          Γ ⊢ᴬ idrefl c t ∷ Id (El c) t t
   ⊢ᴬjsub : ∀ {Γ A d t u p e} →
+           Γ ⊢tyᴬ A →
            (Γ ▹ᴬ A) ⊢ᴬ d ∷ U →
            Γ ⊢ᴬ t ∷ A → Γ ⊢ᴬ u ∷ A →
            Γ ⊢ᴬ p ∷ Id A t u →
            Γ ⊢ᴬ e ∷ El (subTmᴬ (singleᴬ t) d) →
-           Γ ⊢ᴬ jsub d p e ∷ El (subTmᴬ (singleᴬ u) d)
+           Γ ⊢ᴬ jsub A t u d p e ∷ El (subTmᴬ (singleᴬ u) d)
   ⊢ᴬunit  : ∀ {Γ} → Γ ⊢ᴬ unit ∷ Unit
   ⊢ᴬnzero : ∀ {Γ} → Γ ⊢ᴬ nzero ∷ Nat
   ⊢ᴬnsuc  : ∀ {Γ n} → Γ ⊢ᴬ n ∷ Nat → Γ ⊢ᴬ nsuc n ∷ Nat

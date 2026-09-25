@@ -30,7 +30,9 @@ private
   variable
     Γ : ACtx
 
-  -- the erasures of the two annotated substitutions the rules use
+-- the erasures of the two annotated substitutions the rules use
+-- (public: the checker states its targets through them)
+module _ where
   single-era : {Δ : Cx} (u : ATm Δ) → ∀ x → ⌈ singleᴬ u x ⌉ ≡ single ⌈ u ⌉ x
   single-era u vz     = refl
   single-era u (vs x) = refl
@@ -74,7 +76,7 @@ erase (⊢ᴬ⌜Σ⌝ dc dd) = ⊢⌜Σ⌝ (erase dc) (erase dd)
 erase (⊢ᴬ⌜Hom⌝ dc da db) = ⊢⌜Hom⌝ (erase dc) (erase da) (erase db)
 erase (⊢ᴬhrefl dc dt) = ⊢hrefl (erase dc) (erase dt)
 erase (⊢ᴬtrU dt du dp de) = ⊢trU (erase dt) (erase du) (erase dp) (erase de)
-erase (⊢ᴬtr {c = c} {a = a} {t = t} {u = u} dc da dvz nn o₁ o₂ dt du dp de) =
+erase (⊢ᴬtr {c = c} {a = a} {t = t} {u = u} dA dc da dvz nn o₁ o₂ dt du dp de) =
   ⊢-cast (cong El (sym (sub1ᵗ u (⌜Hom⌝ c a (var vz)))))
     (⊢tr (erase dc) (erase da) (erase dvz) nn o₁ o₂ (erase dt) (erase du) (erase dp)
          (⊢-cast (cong El (sub1ᵗ t (⌜Hom⌝ c a (var vz)))) (erase de)))
@@ -91,7 +93,7 @@ erase ⊢ᴬ⌜Nat⌝ = ⊢⌜Nat⌝
 erase (⊢ᴬ⌜Mu⌝ w) = ⊢⌜Mu⌝ w
 erase ⊢ᴬ⌜Unit⌝ = ⊢⌜Unit⌝
 erase (⊢ᴬidrefl dc dt) = ⊢idrefl (erase dc) (erase dt)
-erase (⊢ᴬjsub {d = d} {t = t} {u = u} dd dt du dp de) =
+erase (⊢ᴬjsub {d = d} {t = t} {u = u} dA dd dt du dp de) =
   ⊢-cast (cong El (sym (sub1ᵗ u d)))
     (⊢jsub (erase dd) (erase dt) (erase du) (erase dp)
            (⊢-cast (cong El (sub1ᵗ t d)) (erase de)))
