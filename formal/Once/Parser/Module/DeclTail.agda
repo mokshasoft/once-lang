@@ -76,46 +76,7 @@ parseTypeAlias toks with parseTypeAliasB toks
 ... | just (d , rest , _) = just (d , rest)
 ... | nothing = nothing
 
--- | Map a shape word to its `SigEffect`. Only `halts`/`emits` are
--- recognised; anything else is not a shape (the `!` is left in place,
--- so the decl parser reports the stray token). Plan 0.38 M0.2.
-shapeWord : String → Maybe SigEffect
-shapeWord w with w ≟ "halts"
-... | yes _ = just halts
-... | no _ with w ≟ "emits"
-...   | yes _ = just emits
-...   | no _  = nothing
-
--- | Optional trailing `! <shape>` EffectShape annotation. Consumes the
--- two tokens `TBang ∷ TWord <shape>` when `<shape>` is a recognised
--- shape word; otherwise consumes nothing. The remainder is never longer
--- than the input.
--- Routed through the `effAnnotShape` classifier (instead of matching the
--- `TBang ∷ TWord w` prefix directly) so the bridge cases it in 2 clauses.
-effAnnotShape : List Token → Maybe SigEffect
-effAnnotShape (TBang ∷ TWord w ∷ _) = shapeWord w
-effAnnotShape _                     = nothing
-
-eaDrop2 : List Token → List Token
-eaDrop2 (_ ∷ _ ∷ xs) = xs
-eaDrop2 xs           = xs
-
-eaDrop2-≤ : (toks : List Token) → length (eaDrop2 toks) ≤ length toks
-eaDrop2-≤ (_ ∷ _ ∷ xs) = m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl)
-eaDrop2-≤ []           = ≤-refl
-eaDrop2-≤ (_ ∷ [])     = ≤-refl
-
-parseEffAnnot-go : (toks : List Token) → Maybe SigEffect →
-                   Maybe SigEffect × Σ[ rest ∈ List Token ] (length rest ≤ length toks)
-parseEffAnnot-go toks (just se) = just se , eaDrop2 toks , eaDrop2-≤ toks
-parseEffAnnot-go toks nothing   = nothing , toks , ≤-refl
-
-parseEffAnnot : (toks : List Token) →
-                Maybe SigEffect ×
-                Σ[ rest ∈ List Token ] (length rest ≤ length toks)
-parseEffAnnot toks = parseEffAnnot-go toks (effAnnotShape toks)
-
--- `name : polytype [! shape]` signature. Routed through `colonHead` + `colDrop1`
+-- `name : polytype` signature. Routed through `colonHead` + `colDrop1`
 -- (instead of matching `TColon ∷ rest` on the anyWordB residual) for the bridge.
 colonHead : List Token → Bool
 colonHead (TColon ∷ _) = true
@@ -134,10 +95,9 @@ psig-poly : (toks : List Token) (name : String) (residual : List Token)
             ParseAtB {Decl} toks
 psig-poly toks name residual bnd nothing = nothing
 psig-poly toks name residual bnd (just (ty , rest' , bnd')) =
-  just (DSignature name nothing ty (proj₁ (parseEffAnnot rest'))
-       , proj₁ (proj₂ (parseEffAnnot rest'))
-       , <-trans (<-≤-trans (≤-<-trans (proj₂ (proj₂ (parseEffAnnot rest'))) bnd')
-                            (colDrop1-≤ residual)) bnd)
+  just (DSignature name nothing ty
+       , rest'
+       , <-trans (<-≤-trans bnd' (colDrop1-≤ residual)) bnd)
 
 psig-colon : (toks : List Token) (name : String) (residual : List Token)
              (bnd : length residual < length toks) → Bool → ParseAtB {Decl} toks

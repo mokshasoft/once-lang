@@ -64,8 +64,8 @@ open FunInfo
 -- applied to the top-level thunk `tt`.
 ------------------------------------------------------------------------
 
-main-bridge-leaf : ∀ {polys sigEffs nm bdy ctx Ψ}
-  (deriv : (ctxWithImportsAndSelfAndPolys ctx polys sigEffs nm EffUU) ⊢ᶜ bdy ∶ EffUU ⨾ Ψ)
+main-bridge-leaf : ∀ {polys nm bdy ctx Ψ}
+  (deriv : (ctxWithImportsAndSelfAndPolys ctx polys nm EffUU) ⊢ᶜ bdy ∶ EffUU ⨾ Ψ)
   (n : ℕ)
   → ME.runMainˢ (realize deriv) n
     ≡ MM.runMainᵈ (λ _ → ⟦ deriv ⟧ᶜ fmt (env0 {Ψ} tt)) n
@@ -82,13 +82,13 @@ main-bridge-leaf {Ψ = Ψ} deriv n =
 -- The parallel dispatch — identical branching to `mrg-dispatch`/`mmd-dispatch`.
 ------------------------------------------------------------------------
 
-main-bridge-go : ∀ {polys sigEffs funs ctx}
-  (aft : AllFunsTyped polys sigEffs funs ctx) (me : MainExists aft) (n : ℕ)
+main-bridge-go : ∀ {polys funs ctx}
+  (aft : AllFunsTyped polys funs ctx) (me : MainExists aft) (n : ℕ)
   → ME.runMainˢ (proj₂ (MC.mainRealized-go aft me)) n
     ≡ MM.runMainᵈ (proj₂ (MM.mainMeaningᵈ-go fmt aft me)) n
-main-bridge-dispatch : ∀ {polys sigEffs nm bdy rest ctx ty Ψ}
-  (deriv : (ctxWithImportsAndSelfAndPolys ctx polys sigEffs nm ty) ⊢ᶜ bdy ∶ ty ⨾ Ψ)
-  (rt : AllFunsTyped polys sigEffs rest (C.extendFunCtx ctx nm ty))
+main-bridge-dispatch : ∀ {polys nm bdy rest ctx ty Ψ}
+  (deriv : (ctxWithImportsAndSelfAndPolys ctx polys nm ty) ⊢ᶜ bdy ∶ ty ⨾ Ψ)
+  (rt : AllFunsTyped polys rest (C.extendFunCtx ctx nm ty))
   (w : MainExists rt)
   (dn : Dec (nm ≡ "main")) (dt : Dec (ty ≡ EffUU)) (b : Bool) (n : ℕ)
   → ME.runMainˢ (proj₂ (MC.mrg-dispatch deriv rt w dn dt b)) n

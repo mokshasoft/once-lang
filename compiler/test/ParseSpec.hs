@@ -110,16 +110,23 @@ validSyntaxTests = testGroup "Valid syntax"
       result <- parseSource source
       assertParsed result ["exit : Eff Int Unit"]
 
-  , testCase "signature with effect-shape annotation" $ do
-      -- Signatures may carry an effect-shape annotation (`! halts` / `! emits`,
-      -- per Once.SigOp.Info.EffectShape). It is consumed by the parser and not
-      -- reflected in the printed signature.
+  , testCase "a halting signature says Void" $ do
+      -- Plan 0.98 E / D226: an external op that never returns is typed by its
+      -- CODOMAIN -- `Void` -- not by an annotation.
       let source = T.unlines
-            [ "signature ex : Eff Int Unit ! halts"
-            , "signature em : Eff Int Unit ! emits"
+            [ "signature ex : Eff Int Void"
             ]
       result <- parseSource source
-      assertParsed result ["ex : Eff Int Unit", "em : Eff Int Unit"]
+      assertParsedContains result "ex : "
+
+  , testCase "the effect-shape annotation is gone" $ do
+      -- `! halts` / `! emits` were deleted with the SigEffect table (plan 0.98 E):
+      -- the codomain says it, so the annotation is no longer syntax.
+      let source = T.unlines
+            [ "signature ex : Eff Int Unit ! halts"
+            ]
+      result <- parseSource source
+      assertParseError result
 
   , testCase "import statement" $ do
       -- `import` now resolves the interpretation and surfaces ITS signatures

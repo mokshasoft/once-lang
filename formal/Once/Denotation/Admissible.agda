@@ -116,7 +116,7 @@ negLits e        = rawIntLits e
 declIntLits : Decl → List ℤ
 declIntLits (DFunDef _ body) = rawIntLits body
 declIntLits (DTypeSig _ _)     = []
-declIntLits (DSignature _ _ _ _) = []
+declIntLits (DSignature _ _ _) = []
 declIntLits (DTypeAlias _ _ _) = []
 declIntLits (DImport _)        = []
 

@@ -35,7 +35,7 @@ open import Once.Type
 open import Once.IR using (IR)
 open import Once.IRTy using (⌊_⌋)
 open import Once.TypeCheck.Raw using (RawExpr)
-open import Once.TypeCheck.Classify using (SigEffectCtx; NamedCtx)
+open import Once.TypeCheck.Classify using (NamedCtx)
 open import Once.TypeCheck.Elaborate using (PolyCtx)
 import Once.Compile as C
 open import Once.Parser using (FunInfo)
@@ -94,11 +94,11 @@ validateMain-EffUU ((ν-type _) ⇒[ k ] B)   ()
 -- (2) A successfully-compiled "main" has type EffUU.
 ------------------------------------------------------------------------
 
-compileFun-main-EffUU : ∀ (ctx : C.FunCtx) (polys : PolyCtx) (sigEffs : SigEffectCtx)
+compileFun-main-EffUU : ∀ (ctx : C.FunCtx) (polys : PolyCtx)
   (ty : Type) (body : RawExpr) (irFun : IR ⌊ Unit ⌋ ⌊ ty ⌋) →
-  C.compileFun C.Heap false ctx polys sigEffs "main" ty body ≡ inj₂ irFun →
+  C.compileFun C.Heap false ctx polys "main" ty body ≡ inj₂ irFun →
   ty ≡ EffUU
-compileFun-main-EffUU ctx polys sigEffs ty body irFun eq with C.validateMain ty in veq
+compileFun-main-EffUU ctx polys ty body irFun eq with C.validateMain ty in veq
 ... | inj₂ tt  = validateMain-EffUU ty veq
 ... | inj₁ err = case eq of λ ()
 

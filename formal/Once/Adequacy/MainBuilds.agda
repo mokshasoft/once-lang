@@ -35,7 +35,6 @@ import Once.Compile as C
 open import Once.Adequacy.SourceTrace using (moduleToIR; moduleToIR-aux)
 import Once.Surface.Syntax as Srf
 open import Once.TypeCheck.Elaborate as TE using (CheckElabResult)
-open import Once.TypeCheck.Classify using (SigEffectCtx)
 open import Once.TypeCheck.Raw using (RawExpr)
 open import Once.Adequacy.CPU.Interface using (Arch)
 import Once.Parser.Module.Core as P
@@ -53,86 +52,86 @@ cfb-aux-doOpt : ∀ {n} {Δ : Srf.Ctx n}
 cfb-aux-doOpt doOpt ctx polys name ty δ (TE.failure err) ()
 cfb-aux-doOpt doOpt ctx polys name ty δ (TE.success _ se _ _) eq = _ , refl
 
-cfb-doOpt : ∀ (doOpt : Bool) (ctx : C.FunCtx) (polys : TE.PolyCtx) (sigEffs : SigEffectCtx)
+cfb-doOpt : ∀ (doOpt : Bool) (ctx : C.FunCtx) (polys : TE.PolyCtx)
   (name : String) (ty : C.Type) (expr : RawExpr) {ir : IR ⌊ Unit ⌋ ⌊ ty ⌋} →
-  C.compileFunBody C.Heap false ctx polys sigEffs name ty expr ≡ inj₂ ir →
-  Σ-syntax (IR ⌊ Unit ⌋ ⌊ ty ⌋) (λ ir' → C.compileFunBody C.Heap doOpt ctx polys sigEffs name ty expr ≡ inj₂ ir')
-cfb-doOpt doOpt ctx polys sigEffs name ty expr eq =
+  C.compileFunBody C.Heap false ctx polys name ty expr ≡ inj₂ ir →
+  Σ-syntax (IR ⌊ Unit ⌋ ⌊ ty ⌋) (λ ir' → C.compileFunBody C.Heap doOpt ctx polys name ty expr ≡ inj₂ ir')
+cfb-doOpt doOpt ctx polys name ty expr eq =
   cfb-aux-doOpt doOpt ctx polys name ty refl
-    (TE.checkElab (TE.ctxWithImportsAndSelfAndPolys ctx polys sigEffs name ty) expr ty) eq
+    (TE.checkElab (TE.ctxWithImportsAndSelfAndPolys ctx polys name ty) expr ty) eq
 
 ------------------------------------------------------------------------
 -- Layer 1 — `compileFun` success is `doOpt`-independent.
 ------------------------------------------------------------------------
 
-cfun-main-aux-doOpt : ∀ (doOpt : Bool) (ctx : C.FunCtx) (polys : TE.PolyCtx) (sigEffs : SigEffectCtx)
+cfun-main-aux-doOpt : ∀ (doOpt : Bool) (ctx : C.FunCtx) (polys : TE.PolyCtx)
   (name : String) (ty : C.Type) (expr : RawExpr) (vm : String ⊎ ⊤) {ir : IR ⌊ Unit ⌋ ⌊ ty ⌋} →
-  C.compileFun-main-aux C.Heap false ctx polys sigEffs name ty expr vm ≡ inj₂ ir →
-  Σ-syntax (IR ⌊ Unit ⌋ ⌊ ty ⌋) (λ ir' → C.compileFun-main-aux C.Heap doOpt ctx polys sigEffs name ty expr vm ≡ inj₂ ir')
-cfun-main-aux-doOpt doOpt ctx polys sigEffs name ty expr (inj₁ err) ()
-cfun-main-aux-doOpt doOpt ctx polys sigEffs name ty expr (inj₂ _) eq =
-  cfb-doOpt doOpt ctx polys sigEffs name ty expr eq
+  C.compileFun-main-aux C.Heap false ctx polys name ty expr vm ≡ inj₂ ir →
+  Σ-syntax (IR ⌊ Unit ⌋ ⌊ ty ⌋) (λ ir' → C.compileFun-main-aux C.Heap doOpt ctx polys name ty expr vm ≡ inj₂ ir')
+cfun-main-aux-doOpt doOpt ctx polys name ty expr (inj₁ err) ()
+cfun-main-aux-doOpt doOpt ctx polys name ty expr (inj₂ _) eq =
+  cfb-doOpt doOpt ctx polys name ty expr eq
 
-cfun-aux-doOpt : ∀ (doOpt : Bool) (ctx : C.FunCtx) (polys : TE.PolyCtx) (sigEffs : SigEffectCtx)
+cfun-aux-doOpt : ∀ (doOpt : Bool) (ctx : C.FunCtx) (polys : TE.PolyCtx)
   (name : String) (ty : C.Type) (expr : RawExpr) (b : Bool) {ir : IR ⌊ Unit ⌋ ⌊ ty ⌋} →
-  C.compileFun-aux C.Heap false ctx polys sigEffs name ty expr b ≡ inj₂ ir →
-  Σ-syntax (IR ⌊ Unit ⌋ ⌊ ty ⌋) (λ ir' → C.compileFun-aux C.Heap doOpt ctx polys sigEffs name ty expr b ≡ inj₂ ir')
-cfun-aux-doOpt doOpt ctx polys sigEffs name ty expr true eq =
-  cfun-main-aux-doOpt doOpt ctx polys sigEffs name ty expr (C.validateMain ty) eq
-cfun-aux-doOpt doOpt ctx polys sigEffs name ty expr false eq =
-  cfb-doOpt doOpt ctx polys sigEffs name ty expr eq
+  C.compileFun-aux C.Heap false ctx polys name ty expr b ≡ inj₂ ir →
+  Σ-syntax (IR ⌊ Unit ⌋ ⌊ ty ⌋) (λ ir' → C.compileFun-aux C.Heap doOpt ctx polys name ty expr b ≡ inj₂ ir')
+cfun-aux-doOpt doOpt ctx polys name ty expr true eq =
+  cfun-main-aux-doOpt doOpt ctx polys name ty expr (C.validateMain ty) eq
+cfun-aux-doOpt doOpt ctx polys name ty expr false eq =
+  cfb-doOpt doOpt ctx polys name ty expr eq
 
-cfun-doOpt : ∀ (doOpt : Bool) (ctx : C.FunCtx) (polys : TE.PolyCtx) (sigEffs : SigEffectCtx)
+cfun-doOpt : ∀ (doOpt : Bool) (ctx : C.FunCtx) (polys : TE.PolyCtx)
   (name : String) (ty : C.Type) (expr : RawExpr) {ir : IR ⌊ Unit ⌋ ⌊ ty ⌋} →
-  C.compileFun C.Heap false ctx polys sigEffs name ty expr ≡ inj₂ ir →
-  Σ-syntax (IR ⌊ Unit ⌋ ⌊ ty ⌋) (λ ir' → C.compileFun C.Heap doOpt ctx polys sigEffs name ty expr ≡ inj₂ ir')
-cfun-doOpt doOpt ctx polys sigEffs name ty expr eq =
-  cfun-aux-doOpt doOpt ctx polys sigEffs name ty expr (name == "main") eq
+  C.compileFun C.Heap false ctx polys name ty expr ≡ inj₂ ir →
+  Σ-syntax (IR ⌊ Unit ⌋ ⌊ ty ⌋) (λ ir' → C.compileFun C.Heap doOpt ctx polys name ty expr ≡ inj₂ ir')
+cfun-doOpt doOpt ctx polys name ty expr eq =
+  cfun-aux-doOpt doOpt ctx polys name ty expr (name == "main") eq
 
 ------------------------------------------------------------------------
 -- Layer 2 — `compileAllFuns-go` success is `doOpt`-independent (mutual).
 ------------------------------------------------------------------------
 
-caf-go-doOpt : ∀ (doOpt : Bool) (polys : TE.PolyCtx) (sigEffs : SigEffectCtx)
+caf-go-doOpt : ∀ (doOpt : Bool) (polys : TE.PolyCtx)
   (funs : List C.FunInfo) (ctx : C.FunCtx) {c : List C.CompiledFun} →
-  C.compileAllFuns-go C.Heap false polys sigEffs funs ctx ≡ inj₂ c →
-  Σ-syntax (List C.CompiledFun) (λ c' → C.compileAllFuns-go C.Heap doOpt polys sigEffs funs ctx ≡ inj₂ c')
-caf-go-cf-doOpt : ∀ (doOpt : Bool) (polys : TE.PolyCtx) (sigEffs : SigEffectCtx)
+  C.compileAllFuns-go C.Heap false polys funs ctx ≡ inj₂ c →
+  Σ-syntax (List C.CompiledFun) (λ c' → C.compileAllFuns-go C.Heap doOpt polys funs ctx ≡ inj₂ c')
+caf-go-cf-doOpt : ∀ (doOpt : Bool) (polys : TE.PolyCtx)
   (fi : C.FunInfo) (rest : List C.FunInfo) (ctx : C.FunCtx) (ty : C.Type) {c : List C.CompiledFun} →
-  C.caf-go-cf-aux C.Heap false polys sigEffs fi rest ctx ty (C.compileFun C.Heap false ctx polys sigEffs (C.FunInfo.funName fi) ty (C.FunInfo.funBody fi)) ≡ inj₂ c →
-  Σ-syntax (List C.CompiledFun) (λ c' → C.caf-go-cf-aux C.Heap doOpt polys sigEffs fi rest ctx ty (C.compileFun C.Heap doOpt ctx polys sigEffs (C.FunInfo.funName fi) ty (C.FunInfo.funBody fi)) ≡ inj₂ c')
-caf-go-rf-doOpt : ∀ (doOpt : Bool) (polys : TE.PolyCtx) (sigEffs : SigEffectCtx)
+  C.caf-go-cf-aux C.Heap false polys fi rest ctx ty (C.compileFun C.Heap false ctx polys (C.FunInfo.funName fi) ty (C.FunInfo.funBody fi)) ≡ inj₂ c →
+  Σ-syntax (List C.CompiledFun) (λ c' → C.caf-go-cf-aux C.Heap doOpt polys fi rest ctx ty (C.compileFun C.Heap doOpt ctx polys (C.FunInfo.funName fi) ty (C.FunInfo.funBody fi)) ≡ inj₂ c')
+caf-go-rf-doOpt : ∀ (doOpt : Bool) (polys : TE.PolyCtx)
   (fi : C.FunInfo) (rest : List C.FunInfo) (ctx : C.FunCtx) (rf : String ⊎ C.Type) {c : List C.CompiledFun} →
-  C.caf-go-rf-aux C.Heap false polys sigEffs fi rest ctx rf ≡ inj₂ c →
-  Σ-syntax (List C.CompiledFun) (λ c' → C.caf-go-rf-aux C.Heap doOpt polys sigEffs fi rest ctx rf ≡ inj₂ c')
+  C.caf-go-rf-aux C.Heap false polys fi rest ctx rf ≡ inj₂ c →
+  Σ-syntax (List C.CompiledFun) (λ c' → C.caf-go-rf-aux C.Heap doOpt polys fi rest ctx rf ≡ inj₂ c')
 
-caf-go-doOpt doOpt polys sigEffs [] ctx eq = _ , refl
-caf-go-doOpt doOpt polys sigEffs (fi ∷ rest) ctx eq =
-  caf-go-rf-doOpt doOpt polys sigEffs fi rest ctx
+caf-go-doOpt doOpt polys [] ctx eq = _ , refl
+caf-go-doOpt doOpt polys (fi ∷ rest) ctx eq =
+  caf-go-rf-doOpt doOpt polys fi rest ctx
     (C.resolveFunType ctx polys (C.FunInfo.funType fi) (C.FunInfo.funBody fi)) eq
 
-caf-go-rf-doOpt doOpt polys sigEffs fi rest ctx (inj₁ err) ()
-caf-go-rf-doOpt doOpt polys sigEffs fi rest ctx (inj₂ ty) eq =
-  caf-go-cf-doOpt doOpt polys sigEffs fi rest ctx ty eq
+caf-go-rf-doOpt doOpt polys fi rest ctx (inj₁ err) ()
+caf-go-rf-doOpt doOpt polys fi rest ctx (inj₂ ty) eq =
+  caf-go-cf-doOpt doOpt polys fi rest ctx ty eq
 
-caf-go-cf-doOpt doOpt polys sigEffs fi rest ctx ty eq
-  with C.compileFun C.Heap false ctx polys sigEffs (C.FunInfo.funName fi) ty (C.FunInfo.funBody fi) in cf-eq
+caf-go-cf-doOpt doOpt polys fi rest ctx ty eq
+  with C.compileFun C.Heap false ctx polys (C.FunInfo.funName fi) ty (C.FunInfo.funBody fi) in cf-eq
 ... | inj₁ err = case eq of λ ()
 ... | inj₂ ir-f
-      with C.compileAllFuns-go C.Heap false polys sigEffs rest (C.extendFunCtx ctx (C.FunInfo.funName fi) ty) in rec-eq
+      with C.compileAllFuns-go C.Heap false polys rest (C.extendFunCtx ctx (C.FunInfo.funName fi) ty) in rec-eq
 ...   | inj₁ err = case eq of λ ()
 ...   | inj₂ c-rec =
-        let (ir-d , cfd)     = cfun-doOpt doOpt ctx polys sigEffs (C.FunInfo.funName fi) ty (C.FunInfo.funBody fi) cf-eq
-            (c-rec-d , recd) = caf-go-doOpt doOpt polys sigEffs rest (C.extendFunCtx ctx (C.FunInfo.funName fi) ty) rec-eq
-        in _ , trans (cong (C.caf-go-cf-aux C.Heap doOpt polys sigEffs fi rest ctx ty) cfd)
+        let (ir-d , cfd)     = cfun-doOpt doOpt ctx polys (C.FunInfo.funName fi) ty (C.FunInfo.funBody fi) cf-eq
+            (c-rec-d , recd) = caf-go-doOpt doOpt polys rest (C.extendFunCtx ctx (C.FunInfo.funName fi) ty) rec-eq
+        in _ , trans (cong (C.caf-go-cf-aux C.Heap doOpt polys fi rest ctx ty) cfd)
                      (cong (C.caf-go-wrap fi ty ir-d) recd)
 
-caf-doOpt : ∀ (doOpt : Bool) (funs : List C.FunInfo) (polys : TE.PolyCtx) (sigEffs : SigEffectCtx)
+caf-doOpt : ∀ (doOpt : Bool) (funs : List C.FunInfo) (polys : TE.PolyCtx)
   {c : List C.CompiledFun} →
-  C.compileAllFuns C.Heap false funs polys sigEffs ≡ inj₂ c →
-  Σ-syntax (List C.CompiledFun) (λ c' → C.compileAllFuns C.Heap doOpt funs polys sigEffs ≡ inj₂ c')
-caf-doOpt doOpt funs polys sigEffs eq =
-  caf-go-doOpt doOpt polys sigEffs funs C.emptyFunCtx eq
+  C.compileAllFuns C.Heap false funs polys ≡ inj₂ c →
+  Σ-syntax (List C.CompiledFun) (λ c' → C.compileAllFuns C.Heap doOpt funs polys ≡ inj₂ c')
+caf-doOpt doOpt funs polys eq =
+  caf-go-doOpt doOpt polys funs C.emptyFunCtx eq
 
 ------------------------------------------------------------------------
 -- Layer 3 — `compileResolvedModule` success is `doOpt`-independent.
@@ -144,7 +143,7 @@ crm-aux-doOpt : ∀ (doOpt : Bool) (m : P.Module)
   Σ-syntax (List C.CompiledFun) (λ c' → C.compileResolvedModule-aux C.Heap doOpt m ef ≡ inj₂ c')
 crm-aux-doOpt doOpt m (inj₁ err) ()
 crm-aux-doOpt doOpt m (inj₂ (funs , polys)) eq =
-  caf-doOpt doOpt funs (C.buildPolyCtx polys) (C.collectSigEffects (C.Module.decls m)) eq
+  caf-doOpt doOpt funs (C.buildPolyCtx polys) eq
 
 crm-doOpt : ∀ (doOpt : Bool) (m : P.Module) {c : List C.CompiledFun} →
   C.compileResolvedModule C.Heap false m ≡ inj₂ c →
@@ -167,7 +166,7 @@ cfm-built-gated : ∀ (doOpt : Bool) (arch : Arch) (m : P.Module)
   (funs : List C.FunInfo) (polys : List C.PolyFunInfo)
   (d : Dec (AdmissibleM arch m)) → AdmissibleM arch m →
   {c : List C.CompiledFun} →
-  C.compileAllFuns C.Heap doOpt funs (C.buildPolyCtx polys) (C.collectSigEffects (P.Module.decls m)) ≡ inj₂ c →
+  C.compileAllFuns C.Heap doOpt funs (C.buildPolyCtx polys) ≡ inj₂ c →
   Σ-syntax String (λ asm → C.cfm-build-gated C.Heap doOpt arch m funs polys d ≡ C.Built asm)
 cfm-built-gated doOpt arch m funs polys (yes _)  adm eq = _ , cong (C.cfm-build-emit arch) eq
 cfm-built-gated doOpt arch m funs polys (no ¬adm) adm eq = ⊥-elim (¬adm adm)

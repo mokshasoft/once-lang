@@ -134,9 +134,9 @@ main-extract :
                ≡ SD.⟦ realize mtder ⟧ˢ fmt dγ₀))))))))))))))
 main-extract m mt hvm ir mi =
   let (funs , polys , ef-eq , b , bme , mctx , mbody , mΨ , mse , md , mf , mce , ir≡ , rw) = MF.main-node-of m ir mi
-  in    ctxWithImportsAndSelfAndPolys mctx (C.buildPolyCtx polys) (C.collectSigEffects (C.Module.decls m)) "main" EffUU
+  in    ctxWithImportsAndSelfAndPolys mctx (C.buildPolyCtx polys) "main" EffUU
       , mbody , mΨ , mse , md , mf , env0 {mΨ} tt
-      , check-sound (ctxWithImportsAndSelfAndPolys mctx (C.buildPolyCtx polys) (C.collectSigEffects (C.Module.decls m)) "main" EffUU) mbody EffUU mce
+      , check-sound (ctxWithImportsAndSelfAndPolys mctx (C.buildPolyCtx polys) "main" EffUU) mbody EffUU mce
       , mce , C.buildPolyCtx polys , (("main" , EffUU) ∷ mctx) , (("main" , EffUU) ∷ mctx) , 0
       , refl
       , trans (MF.mainRealized-bundle m mt hvm b bme ef-eq)

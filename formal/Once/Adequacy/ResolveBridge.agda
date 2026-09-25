@@ -312,7 +312,7 @@ resolvesDecl-complete : ∀ (polys : List String) (um : UnaliasedMap) (am : Alia
 resolvesDecl-complete polys um am (DFunDef n b) =
   rd-fundef (resolves-complete um am polys b)
 resolvesDecl-complete polys um am (DTypeSig n t)      = rd-typesig
-resolvesDecl-complete polys um am (DSignature n o t e) = rd-signature
+resolvesDecl-complete polys um am (DSignature n o t) = rd-signature
 resolvesDecl-complete polys um am (DTypeAlias n ps t) = rd-typealias
 resolvesDecl-complete polys um am (DImport imp)       = rd-import
 
@@ -434,8 +434,8 @@ mutual
   resolvesDecls-complete mm polys um am (DFunDef n b ∷ rest) ds' eq =
     rdc-cons mm polys um am (DFunDef n b) nim-fundef rest ds'
       (resolveDecls polys um am mm rest) refl eq
-  resolvesDecls-complete mm polys um am (DSignature n o t e ∷ rest) ds' eq =
-    rdc-cons mm polys um am (DSignature n o t e) nim-sig rest ds'
+  resolvesDecls-complete mm polys um am (DSignature n o t ∷ rest) ds' eq =
+    rdc-cons mm polys um am (DSignature n o t) nim-sig rest ds'
       (resolveDecls polys um am mm rest) refl eq
   resolvesDecls-complete mm polys um am (DTypeAlias n ps t ∷ rest) ds' eq =
     rdc-cons mm polys um am (DTypeAlias n ps t) nim-alias rest ds'

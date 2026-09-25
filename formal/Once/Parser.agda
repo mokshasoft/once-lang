@@ -319,10 +319,10 @@ extractFunctions-go aliases (DFunDef name body ∷ rest) nothing
 -- resolves to this FunInfo without further wiring. Primitives must
 -- be ground; polymorphic primitive signatures are rejected by
 -- `projectSig`.
-extractFunctions-go aliases (DSignature name nothing ty _ ∷ rest) _ with projectSig aliases name ty
+extractFunctions-go aliases (DSignature name nothing ty ∷ rest) _ with projectSig aliases name ty
 ... | inj₁ err  = inj₁ err
 ... | inj₂ gty  = extractFunctions-consFun (extractFunctions-go aliases rest nothing) (mkFunInfo name (just gty) (RVar name) true)
-extractFunctions-go aliases (DSignature name (just owner) ty _ ∷ rest) _ with projectSig aliases (owner ++ "." ++ name) ty
+extractFunctions-go aliases (DSignature name (just owner) ty ∷ rest) _ with projectSig aliases (owner ++ "." ++ name) ty
 ... | inj₁ err  = inj₁ err
 ... | inj₂ gty  =
          let qname = owner ++ "." ++ name

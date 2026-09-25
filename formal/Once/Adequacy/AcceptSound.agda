@@ -36,7 +36,7 @@ open import Once.Type using (Unit; Type)
 import Once.Compile as C
 import Once.Surface.Syntax as Srf
 open import Once.TypeCheck.Elaborate as TE using (CheckElabResult; checkElab; ctxWithImportsAndSelfAndPolys)
-open import Once.TypeCheck.Classify using (NamedCtx; SigEffectCtx)
+open import Once.TypeCheck.Classify using (NamedCtx)
 open import Once.TypeCheck.Raw using (RawExpr)
 open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_)
 open import Once.Spec.Module
@@ -66,12 +66,12 @@ compileFunBody-aux-success doOpt ctx polys name ty δ (TE.success Ψ se d f) eq 
   Ψ , se , d , f , refl
 
 compileFunBody-sound : ∀ (doOpt : Bool) (ctx : C.FunCtx) (polys : TE.PolyCtx)
-  (sigEffs : SigEffectCtx) (name : String) (ty : Type) (expr : RawExpr) {ir : IR ⌊ Unit ⌋ ⌊ ty ⌋} →
-  C.compileFunBody C.Heap doOpt ctx polys sigEffs name ty expr ≡ inj₂ ir →
-  Σ-syntax (Srf.Usage (NamedCtx.size (ctxWithImportsAndSelfAndPolys ctx polys sigEffs name ty)))
-    (λ Ψ → (ctxWithImportsAndSelfAndPolys ctx polys sigEffs name ty) ⊢ᶜ expr ∶ ty ⨾ Ψ)
-compileFunBody-sound doOpt ctx polys sigEffs name ty expr eq =
-  let ce-ctx = ctxWithImportsAndSelfAndPolys ctx polys sigEffs name ty
+  (name : String) (ty : Type) (expr : RawExpr) {ir : IR ⌊ Unit ⌋ ⌊ ty ⌋} →
+  C.compileFunBody C.Heap doOpt ctx polys name ty expr ≡ inj₂ ir →
+  Σ-syntax (Srf.Usage (NamedCtx.size (ctxWithImportsAndSelfAndPolys ctx polys name ty)))
+    (λ Ψ → (ctxWithImportsAndSelfAndPolys ctx polys name ty) ⊢ᶜ expr ∶ ty ⨾ Ψ)
+compileFunBody-sound doOpt ctx polys name ty expr eq =
+  let ce-ctx = ctxWithImportsAndSelfAndPolys ctx polys name ty
       (Ψ , se , d , f , ce) = compileFunBody-aux-success doOpt ctx polys name ty refl
                                 (checkElab ce-ctx expr ty) eq
   in Ψ , check-sound ce-ctx expr ty ce
@@ -90,77 +90,77 @@ compileFunBody-sound doOpt ctx polys sigEffs name ty expr eq =
 ------------------------------------------------------------------------
 
 compileFun-main-aux-sound : ∀ (doOpt : Bool) (ctx : C.FunCtx) (polys : TE.PolyCtx)
-  (sigEffs : SigEffectCtx) (name : String) (ty : Type) (expr : RawExpr) (vm : String ⊎ ⊤) {ir : IR ⌊ Unit ⌋ ⌊ ty ⌋} →
-  C.compileFun-main-aux C.Heap doOpt ctx polys sigEffs name ty expr vm ≡ inj₂ ir →
-  Σ-syntax (Srf.Usage (NamedCtx.size (ctxWithImportsAndSelfAndPolys ctx polys sigEffs name ty)))
-    (λ Ψ → (ctxWithImportsAndSelfAndPolys ctx polys sigEffs name ty) ⊢ᶜ expr ∶ ty ⨾ Ψ)
-compileFun-main-aux-sound doOpt ctx polys sigEffs name ty expr (inj₁ err) ()
-compileFun-main-aux-sound doOpt ctx polys sigEffs name ty expr (inj₂ _) eq =
-  compileFunBody-sound doOpt ctx polys sigEffs name ty expr eq
+  (name : String) (ty : Type) (expr : RawExpr) (vm : String ⊎ ⊤) {ir : IR ⌊ Unit ⌋ ⌊ ty ⌋} →
+  C.compileFun-main-aux C.Heap doOpt ctx polys name ty expr vm ≡ inj₂ ir →
+  Σ-syntax (Srf.Usage (NamedCtx.size (ctxWithImportsAndSelfAndPolys ctx polys name ty)))
+    (λ Ψ → (ctxWithImportsAndSelfAndPolys ctx polys name ty) ⊢ᶜ expr ∶ ty ⨾ Ψ)
+compileFun-main-aux-sound doOpt ctx polys name ty expr (inj₁ err) ()
+compileFun-main-aux-sound doOpt ctx polys name ty expr (inj₂ _) eq =
+  compileFunBody-sound doOpt ctx polys name ty expr eq
 
 compileFun-aux-sound : ∀ (doOpt : Bool) (ctx : C.FunCtx) (polys : TE.PolyCtx)
-  (sigEffs : SigEffectCtx) (name : String) (ty : Type) (expr : RawExpr) (b : Bool) {ir : IR ⌊ Unit ⌋ ⌊ ty ⌋} →
-  C.compileFun-aux C.Heap doOpt ctx polys sigEffs name ty expr b ≡ inj₂ ir →
-  Σ-syntax (Srf.Usage (NamedCtx.size (ctxWithImportsAndSelfAndPolys ctx polys sigEffs name ty)))
-    (λ Ψ → (ctxWithImportsAndSelfAndPolys ctx polys sigEffs name ty) ⊢ᶜ expr ∶ ty ⨾ Ψ)
-compileFun-aux-sound doOpt ctx polys sigEffs name ty expr true eq =
-  compileFun-main-aux-sound doOpt ctx polys sigEffs name ty expr (C.validateMain ty) eq
-compileFun-aux-sound doOpt ctx polys sigEffs name ty expr false eq =
-  compileFunBody-sound doOpt ctx polys sigEffs name ty expr eq
+  (name : String) (ty : Type) (expr : RawExpr) (b : Bool) {ir : IR ⌊ Unit ⌋ ⌊ ty ⌋} →
+  C.compileFun-aux C.Heap doOpt ctx polys name ty expr b ≡ inj₂ ir →
+  Σ-syntax (Srf.Usage (NamedCtx.size (ctxWithImportsAndSelfAndPolys ctx polys name ty)))
+    (λ Ψ → (ctxWithImportsAndSelfAndPolys ctx polys name ty) ⊢ᶜ expr ∶ ty ⨾ Ψ)
+compileFun-aux-sound doOpt ctx polys name ty expr true eq =
+  compileFun-main-aux-sound doOpt ctx polys name ty expr (C.validateMain ty) eq
+compileFun-aux-sound doOpt ctx polys name ty expr false eq =
+  compileFunBody-sound doOpt ctx polys name ty expr eq
 
 compileFun-sound : ∀ (doOpt : Bool) (ctx : C.FunCtx) (polys : TE.PolyCtx)
-  (sigEffs : SigEffectCtx) (name : String) (ty : Type) (expr : RawExpr) {ir : IR ⌊ Unit ⌋ ⌊ ty ⌋} →
-  C.compileFun C.Heap doOpt ctx polys sigEffs name ty expr ≡ inj₂ ir →
-  Σ-syntax (Srf.Usage (NamedCtx.size (ctxWithImportsAndSelfAndPolys ctx polys sigEffs name ty)))
-    (λ Ψ → (ctxWithImportsAndSelfAndPolys ctx polys sigEffs name ty) ⊢ᶜ expr ∶ ty ⨾ Ψ)
-compileFun-sound doOpt ctx polys sigEffs name ty expr eq =
-  compileFun-aux-sound doOpt ctx polys sigEffs name ty expr (name == "main") eq
+  (name : String) (ty : Type) (expr : RawExpr) {ir : IR ⌊ Unit ⌋ ⌊ ty ⌋} →
+  C.compileFun C.Heap doOpt ctx polys name ty expr ≡ inj₂ ir →
+  Σ-syntax (Srf.Usage (NamedCtx.size (ctxWithImportsAndSelfAndPolys ctx polys name ty)))
+    (λ Ψ → (ctxWithImportsAndSelfAndPolys ctx polys name ty) ⊢ᶜ expr ∶ ty ⨾ Ψ)
+compileFun-sound doOpt ctx polys name ty expr eq =
+  compileFun-aux-sound doOpt ctx polys name ty expr (name == "main") eq
 
 ------------------------------------------------------------------------
 -- Layer 2 — `compileAllFuns-go` accepts ⇒ `AllFunsTyped` (mutual).
 ------------------------------------------------------------------------
 
-caf-go-sound : ∀ (doOpt : Bool) (polys : TE.PolyCtx) (sigEffs : SigEffectCtx)
+caf-go-sound : ∀ (doOpt : Bool) (polys : TE.PolyCtx)
   (funs : List C.FunInfo) (ctx : C.FunCtx) {compiled : List C.CompiledFun} →
-  C.compileAllFuns-go C.Heap doOpt polys sigEffs funs ctx ≡ inj₂ compiled →
-  AllFunsTyped polys sigEffs funs ctx
-caf-go-cf-sound : ∀ (doOpt : Bool) (polys : TE.PolyCtx) (sigEffs : SigEffectCtx)
+  C.compileAllFuns-go C.Heap doOpt polys funs ctx ≡ inj₂ compiled →
+  AllFunsTyped polys funs ctx
+caf-go-cf-sound : ∀ (doOpt : Bool) (polys : TE.PolyCtx)
   (fi : C.FunInfo) (rest : List C.FunInfo) (ctx : C.FunCtx) (ty : Type) {compiled : List C.CompiledFun} →
   C.resolveFunType ctx polys (C.FunInfo.funType fi) (C.FunInfo.funBody fi) ≡ inj₂ ty →
-  C.caf-go-cf-aux C.Heap doOpt polys sigEffs fi rest ctx ty (C.compileFun C.Heap doOpt ctx polys sigEffs (C.FunInfo.funName fi) ty (C.FunInfo.funBody fi)) ≡ inj₂ compiled →
-  AllFunsTyped polys sigEffs (fi ∷ rest) ctx
-caf-go-rf-sound : ∀ (doOpt : Bool) (polys : TE.PolyCtx) (sigEffs : SigEffectCtx)
+  C.caf-go-cf-aux C.Heap doOpt polys fi rest ctx ty (C.compileFun C.Heap doOpt ctx polys (C.FunInfo.funName fi) ty (C.FunInfo.funBody fi)) ≡ inj₂ compiled →
+  AllFunsTyped polys (fi ∷ rest) ctx
+caf-go-rf-sound : ∀ (doOpt : Bool) (polys : TE.PolyCtx)
   (fi : C.FunInfo) (rest : List C.FunInfo) (ctx : C.FunCtx) (rf : String ⊎ Type) {compiled : List C.CompiledFun} →
   C.resolveFunType ctx polys (C.FunInfo.funType fi) (C.FunInfo.funBody fi) ≡ rf →
-  C.caf-go-rf-aux C.Heap doOpt polys sigEffs fi rest ctx rf ≡ inj₂ compiled →
-  AllFunsTyped polys sigEffs (fi ∷ rest) ctx
+  C.caf-go-rf-aux C.Heap doOpt polys fi rest ctx rf ≡ inj₂ compiled →
+  AllFunsTyped polys (fi ∷ rest) ctx
 
-caf-go-sound doOpt polys sigEffs [] ctx eq = tnil
-caf-go-sound doOpt polys sigEffs (fi ∷ rest) ctx eq =
-  caf-go-rf-sound doOpt polys sigEffs fi rest ctx
+caf-go-sound doOpt polys [] ctx eq = tnil
+caf-go-sound doOpt polys (fi ∷ rest) ctx eq =
+  caf-go-rf-sound doOpt polys fi rest ctx
     (C.resolveFunType ctx polys (C.FunInfo.funType fi) (C.FunInfo.funBody fi)) refl eq
 
-caf-go-rf-sound doOpt polys sigEffs fi rest ctx (inj₁ err) rf-conn ()
-caf-go-rf-sound doOpt polys sigEffs fi rest ctx (inj₂ ty) rf-conn eq =
-  caf-go-cf-sound doOpt polys sigEffs fi rest ctx ty rf-conn eq
+caf-go-rf-sound doOpt polys fi rest ctx (inj₁ err) rf-conn ()
+caf-go-rf-sound doOpt polys fi rest ctx (inj₂ ty) rf-conn eq =
+  caf-go-cf-sound doOpt polys fi rest ctx ty rf-conn eq
 
-caf-go-cf-sound doOpt polys sigEffs fi rest ctx ty rf-eq eq
-  with C.compileFun C.Heap doOpt ctx polys sigEffs (C.FunInfo.funName fi) ty (C.FunInfo.funBody fi) in cf-eq
+caf-go-cf-sound doOpt polys fi rest ctx ty rf-eq eq
+  with C.compileFun C.Heap doOpt ctx polys (C.FunInfo.funName fi) ty (C.FunInfo.funBody fi) in cf-eq
 ... | inj₁ err = case eq of λ ()
 ... | inj₂ ir
-      with C.compileAllFuns-go C.Heap doOpt polys sigEffs rest (C.extendFunCtx ctx (C.FunInfo.funName fi) ty) in rec-eq
+      with C.compileAllFuns-go C.Heap doOpt polys rest (C.extendFunCtx ctx (C.FunInfo.funName fi) ty) in rec-eq
 ...   | inj₁ err = case eq of λ ()
 ...   | inj₂ compiled-rest =
-        let (Ψ , jud)  = compileFun-sound doOpt ctx polys sigEffs (C.FunInfo.funName fi) ty (C.FunInfo.funBody fi) cf-eq
-            rest-typed = caf-go-sound doOpt polys sigEffs rest (C.extendFunCtx ctx (C.FunInfo.funName fi) ty) rec-eq
+        let (Ψ , jud)  = compileFun-sound doOpt ctx polys (C.FunInfo.funName fi) ty (C.FunInfo.funBody fi) cf-eq
+            rest-typed = caf-go-sound doOpt polys rest (C.extendFunCtx ctx (C.FunInfo.funName fi) ty) rec-eq
         in tcons rf-eq jud rest-typed
 
-caf-sound : ∀ (doOpt : Bool) (funs : List C.FunInfo) (polys : TE.PolyCtx) (sigEffs : SigEffectCtx)
+caf-sound : ∀ (doOpt : Bool) (funs : List C.FunInfo) (polys : TE.PolyCtx)
   {compiled : List C.CompiledFun} →
-  C.compileAllFuns C.Heap doOpt funs polys sigEffs ≡ inj₂ compiled →
-  AllFunsTyped polys sigEffs funs C.emptyFunCtx
-caf-sound doOpt funs polys sigEffs eq =
-  caf-go-sound doOpt polys sigEffs funs C.emptyFunCtx eq
+  C.compileAllFuns C.Heap doOpt funs polys ≡ inj₂ compiled →
+  AllFunsTyped polys funs C.emptyFunCtx
+caf-sound doOpt funs polys eq =
+  caf-go-sound doOpt polys funs C.emptyFunCtx eq
 
 ------------------------------------------------------------------------
 -- Layer 3 — module level. `ModuleTyped m` = the independent fact that
@@ -175,7 +175,7 @@ crm-aux-sound : ∀ (doOpt : Bool) (m : P.Module)
   ModuleTyped-ef m ef
 crm-aux-sound doOpt m (inj₁ err) ()
 crm-aux-sound doOpt m (inj₂ (funs , polys)) eq =
-  caf-sound doOpt funs (C.buildPolyCtx polys) (C.collectSigEffects (C.Module.decls m)) eq
+  caf-sound doOpt funs (C.buildPolyCtx polys) eq
 
 crm-sound : ∀ (doOpt : Bool) (m : P.Module) {compiled : List C.CompiledFun} →
   C.compileResolvedModule C.Heap doOpt m ≡ inj₂ compiled →

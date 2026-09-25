@@ -87,7 +87,7 @@ gdeclToDecl (G.DTypeSig name ty)   = just (P.DTypeSig name (gtypeToPolyType ty))
 -- `! <shape>` EffectShape annotation, so a GDecl-derived signature carries
 -- no declared effect (`nothing`). The live path (`Parser.Module.DeclTail`)
 -- is where `! <shape>` is parsed.
-gdeclToDecl (G.DSignature name ty) = just (P.DSignature name nothing (gtypeToPolyType ty) nothing)
+gdeclToDecl (G.DSignature name ty) = just (P.DSignature name nothing (gtypeToPolyType ty))
 gdeclToDecl (G.DImport path alias) = just (P.DImport (mkImport path alias))
 gdeclToDecl (G.DTypeAlias name params ty) with gtypeToType ty
 ... | just t  = just (P.DTypeAlias name params t)

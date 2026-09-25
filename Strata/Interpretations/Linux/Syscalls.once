@@ -14,10 +14,10 @@
 ------------------------------------------------------------------------
 
 -- | Exit the process with code 0
-signature exit0 : Eff Unit Unit ! halts
+signature exit0 : Eff Unit Void
 
 -- | Exit the process with given code
-signature exit : Eff Int Unit ! halts
+signature exit : Eff Int Void
 
 -- | Get current process ID
 signature getpid : Eff Unit Int

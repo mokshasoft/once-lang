@@ -105,10 +105,9 @@ open import Once.TypeCheck.Elaborate as TE using (CheckElabResult)
 import Once.Surface.Syntax as Srf
 open import Relation.Binary.PropositionalEquality using (subst; cong)
 -- D007 inference: the self-less context for inferring a sig-less def's type.
-open import Once.TypeCheck.Classify using (ctxWithImportsAndPolys; SigEffectCtx; emptySigEffects; lookupSigEffect; NamedCtx)
+open import Once.TypeCheck.Classify using (ctxWithImportsAndPolys; NamedCtx)
 -- D072: the untrusted principal-type oracle (validated by checkElab).
 import Once.TypeCheck.Principal as Principal
-open import Once.SigEffect using (SigEffect)
 
 -- Surface → IR elaboration
 open import Once.Surface.Elaborate using (elaborate; elaborateFull)
@@ -225,10 +224,10 @@ compileFunBody-aux m doOpt ctx polys name ty δ-unit (TE.success _ surfaceExpr _
       ir = elaborateFull m resolved
   in inj₂ (subst (λ X → IR X ⌊ ty ⌋) (cong ⌊_⌋ δ-unit) (if doOpt then optimize ir else ir))
 
-compileFunBody : AllocMode → Bool → FunCtx → PolyCtx → SigEffectCtx → (name : String) (ty : Type) → RawExpr → String ⊎ IR ⌊ Unit ⌋ ⌊ ty ⌋
-compileFunBody m doOpt ctx polys sigEffs name ty expr =
+compileFunBody : AllocMode → Bool → FunCtx → PolyCtx → (name : String) (ty : Type) → RawExpr → String ⊎ IR ⌊ Unit ⌋ ⌊ ty ⌋
+compileFunBody m doOpt ctx polys name ty expr =
   compileFunBody-aux m doOpt ctx polys name ty refl
-    (checkElab (ctxWithImportsAndSelfAndPolys ctx polys sigEffs name ty) expr ty)
+    (checkElab (ctxWithImportsAndSelfAndPolys ctx polys name ty) expr ty)
 
 -- | Compile a function with main validation
 -- For main: validates type is Eff Unit A before compiling
@@ -237,16 +236,16 @@ compileFunBody m doOpt ctx polys sigEffs name ty expr =
 -- Explicit-argument aux form (Plan 0.48): `compileFun-aux` dispatches on the
 -- `name == "main"` Bool, `compileFun-main-aux` on the `validateMain` result —
 -- both `doOpt`-free guards, so success rides on `compileFunBody` alone.
-compileFun-main-aux : AllocMode → Bool → FunCtx → PolyCtx → SigEffectCtx → (name : String) (ty : Type) → RawExpr → String ⊎ ⊤ → String ⊎ IR ⌊ Unit ⌋ ⌊ ty ⌋
-compileFun-main-aux m doOpt ctx polys sigEffs name ty expr (inj₁ err) = inj₁ err
-compileFun-main-aux m doOpt ctx polys sigEffs name ty expr (inj₂ _)   = compileFunBody m doOpt ctx polys sigEffs name ty expr
+compileFun-main-aux : AllocMode → Bool → FunCtx → PolyCtx → (name : String) (ty : Type) → RawExpr → String ⊎ ⊤ → String ⊎ IR ⌊ Unit ⌋ ⌊ ty ⌋
+compileFun-main-aux m doOpt ctx polys name ty expr (inj₁ err) = inj₁ err
+compileFun-main-aux m doOpt ctx polys name ty expr (inj₂ _)   = compileFunBody m doOpt ctx polys name ty expr
 
-compileFun-aux : AllocMode → Bool → FunCtx → PolyCtx → SigEffectCtx → (name : String) (ty : Type) → RawExpr → Bool → String ⊎ IR ⌊ Unit ⌋ ⌊ ty ⌋
-compileFun-aux m doOpt ctx polys sigEffs name ty expr true  = compileFun-main-aux m doOpt ctx polys sigEffs name ty expr (validateMain ty)
-compileFun-aux m doOpt ctx polys sigEffs name ty expr false = compileFunBody m doOpt ctx polys sigEffs name ty expr
+compileFun-aux : AllocMode → Bool → FunCtx → PolyCtx → (name : String) (ty : Type) → RawExpr → Bool → String ⊎ IR ⌊ Unit ⌋ ⌊ ty ⌋
+compileFun-aux m doOpt ctx polys name ty expr true  = compileFun-main-aux m doOpt ctx polys name ty expr (validateMain ty)
+compileFun-aux m doOpt ctx polys name ty expr false = compileFunBody m doOpt ctx polys name ty expr
 
-compileFun : AllocMode → Bool → FunCtx → PolyCtx → SigEffectCtx → (name : String) (ty : Type) → RawExpr → String ⊎ IR ⌊ Unit ⌋ ⌊ ty ⌋
-compileFun m doOpt ctx polys sigEffs name ty expr = compileFun-aux m doOpt ctx polys sigEffs name ty expr (name == "main")
+compileFun : AllocMode → Bool → FunCtx → PolyCtx → (name : String) (ty : Type) → RawExpr → String ⊎ IR ⌊ Unit ⌋ ⌊ ty ⌋
+compileFun m doOpt ctx polys name ty expr = compileFun-aux m doOpt ctx polys name ty expr (name == "main")
 
 ------------------------------------------------------------------------
 -- Module compilation: source → List (name, IR)
@@ -326,9 +325,9 @@ resolveFunType ctx polys nothing   body = inferType ctx polys body
 -- `caf-go-cf-aux` calls `compileAllFuns-go` (mutual); the self-recursion is on
 -- the structurally-smaller `rest`.
 caf-go-wrap : (fi : FunInfo) (ty : Type) → IR ⌊ Unit ⌋ ⌊ ty ⌋ → String ⊎ List CompiledFun → String ⊎ List CompiledFun
-caf-go-cf-aux : AllocMode → Bool → PolyCtx → SigEffectCtx → (fi : FunInfo) → List FunInfo → FunCtx → (ty : Type) → String ⊎ IR ⌊ Unit ⌋ ⌊ ty ⌋ → String ⊎ List CompiledFun
-caf-go-rf-aux : AllocMode → Bool → PolyCtx → SigEffectCtx → (fi : FunInfo) → List FunInfo → FunCtx → String ⊎ Type → String ⊎ List CompiledFun
-compileAllFuns-go : AllocMode → Bool → PolyCtx → SigEffectCtx → List FunInfo → FunCtx → String ⊎ List CompiledFun
+caf-go-cf-aux : AllocMode → Bool → PolyCtx → (fi : FunInfo) → List FunInfo → FunCtx → (ty : Type) → String ⊎ IR ⌊ Unit ⌋ ⌊ ty ⌋ → String ⊎ List CompiledFun
+caf-go-rf-aux : AllocMode → Bool → PolyCtx → (fi : FunInfo) → List FunInfo → FunCtx → String ⊎ Type → String ⊎ List CompiledFun
+compileAllFuns-go : AllocMode → Bool → PolyCtx → List FunInfo → FunCtx → String ⊎ List CompiledFun
 
 caf-go-wrap fi ty ir (inj₁ err)       = inj₁ err
 caf-go-wrap fi ty ir (inj₂ compiled)  =
@@ -341,36 +340,23 @@ caf-go-wrap fi ty ir (inj₂ compiled)  =
       ir'     = proj₂ wrapped
   in inj₂ (mkCompiledFun (bare (funName fi)) ty' ir' (funIsPrimitive fi) ∷ compiled)
 
-caf-go-cf-aux m doOpt polys sigEffs fi rest ctx ty (inj₁ err) = inj₁ err
-caf-go-cf-aux m doOpt polys sigEffs fi rest ctx ty (inj₂ ir) =
-  caf-go-wrap fi ty ir (compileAllFuns-go m doOpt polys sigEffs rest (extendFunCtx ctx (funName fi) ty))
+caf-go-cf-aux m doOpt polys fi rest ctx ty (inj₁ err) = inj₁ err
+caf-go-cf-aux m doOpt polys fi rest ctx ty (inj₂ ir) =
+  caf-go-wrap fi ty ir (compileAllFuns-go m doOpt polys rest (extendFunCtx ctx (funName fi) ty))
 
-caf-go-rf-aux m doOpt polys sigEffs fi rest ctx (inj₁ err) = inj₁ err
-caf-go-rf-aux m doOpt polys sigEffs fi rest ctx (inj₂ ty) =
-  caf-go-cf-aux m doOpt polys sigEffs fi rest ctx ty (compileFun m doOpt ctx polys sigEffs (funName fi) ty (funBody fi))
+caf-go-rf-aux m doOpt polys fi rest ctx (inj₁ err) = inj₁ err
+caf-go-rf-aux m doOpt polys fi rest ctx (inj₂ ty) =
+  caf-go-cf-aux m doOpt polys fi rest ctx ty (compileFun m doOpt ctx polys (funName fi) ty (funBody fi))
 
-compileAllFuns-go m doOpt polys sigEffs [] _ = inj₂ []
+compileAllFuns-go m doOpt polys [] _ = inj₂ []
 -- D007: resolve the function's type FIRST (explicit sig, or inferred from
 -- the body), then compile / extend the context / wrap-main with it.
-compileAllFuns-go m doOpt polys sigEffs (fi ∷ rest) ctx =
-  caf-go-rf-aux m doOpt polys sigEffs fi rest ctx (resolveFunType ctx polys (funType fi) (funBody fi))
+compileAllFuns-go m doOpt polys (fi ∷ rest) ctx =
+  caf-go-rf-aux m doOpt polys fi rest ctx (resolveFunType ctx polys (funType fi) (funBody fi))
 
-compileAllFuns : AllocMode → Bool → List FunInfo → PolyCtx → SigEffectCtx → String ⊎ List CompiledFun
-compileAllFuns m doOpt funs polys sigEffs = compileAllFuns-go m doOpt polys sigEffs funs emptyFunCtx
+compileAllFuns : AllocMode → Bool → List FunInfo → PolyCtx → String ⊎ List CompiledFun
+compileAllFuns m doOpt funs polys = compileAllFuns-go m doOpt polys funs emptyFunCtx
 
--- | Collect the declared `! <shape>` effect map from a module's
--- declarations (Plan 0.38 M0.2). Keyed by the SAME qualified name as
--- `extractFunctions`' `FunInfo`s / the elaborator's import lookups
--- (`owner.name`, or bare `name` when unowned). Signatures with no
--- annotation contribute nothing. This is the ONLY channel by which the
--- compiler learns an external arrow's effect.
-collectSigEffects : List Decl → SigEffectCtx
-collectSigEffects [] = []
-collectSigEffects (DSignature name (just owner) _ (just se) ∷ rest) =
-  (owner ++ "." ++ name , se) ∷ collectSigEffects rest
-collectSigEffects (DSignature name nothing _ (just se) ∷ rest) =
-  (name , se) ∷ collectSigEffects rest
-collectSigEffects (_ ∷ rest) = collectSigEffects rest
 
 -- | Compile source text to list of compiled functions
 -- Returns: Left error | Right list of (name, type, IR)
@@ -388,7 +374,7 @@ compileModule m doOpt source with parse source
       in case extractFunctions aliases mod of λ where
            (inj₁ err)             → inj₁ err
            (inj₂ (funs , polys))  →
-             compileAllFuns m doOpt funs (buildPolyCtx polys) (collectSigEffects (Module.decls mod))
+             compileAllFuns m doOpt funs (buildPolyCtx polys)
 
 -- | Parse source text to a Module AST. Haskell uses this to read
 -- both the user's file and each transitive import before calling
@@ -414,7 +400,7 @@ parseSourceToModule = parseStrict
 compileResolvedModule-aux : AllocMode → Bool → Module → String ⊎ (List FunInfo × List PolyFunInfo) → String ⊎ List CompiledFun
 compileResolvedModule-aux m doOpt mod (inj₁ err)            = inj₁ err
 compileResolvedModule-aux m doOpt mod (inj₂ (funs , polys)) =
-  compileAllFuns m doOpt funs (buildPolyCtx polys) (collectSigEffects (Module.decls mod))
+  compileAllFuns m doOpt funs (buildPolyCtx polys)
 
 compileResolvedModule : AllocMode → Bool → Module → String ⊎ List CompiledFun
 compileResolvedModule m doOpt mod =
@@ -742,10 +728,10 @@ compile m stage doOpt arch source with parseStrict source
          let pctx = buildPolyCtx polys
          in case stage of λ where
            Parse → Parsed funs polys
-           Check → case compileAllFuns m doOpt funs pctx (collectSigEffects (Module.decls mod)) of λ where
+           Check → case compileAllFuns m doOpt funs pctx of λ where
              (inj₁ err) → Error err
              (inj₂ compiled) → Checked compiled
-           Build → case compileAllFuns m doOpt funs pctx (collectSigEffects (Module.decls mod)) of λ where
+           Build → case compileAllFuns m doOpt funs pctx of λ where
              (inj₁ err) → Error err
              (inj₂ compiled) →
                let target = archTarget arch
@@ -832,12 +818,12 @@ cfm-build-gated : AllocMode → Bool → (arch : Arch) → (mod : Module)
                 → Dec (AdmissibleM arch mod) → CompileResult
 cfm-build-gated m doOpt arch mod funs polys (no  _) = Error (litRangeError arch mod)
 cfm-build-gated m doOpt arch mod funs polys (yes _) =
-  cfm-build-emit arch (compileAllFuns m doOpt funs (buildPolyCtx polys) (collectSigEffects (Module.decls mod)))
+  cfm-build-emit arch (compileAllFuns m doOpt funs (buildPolyCtx polys))
 
 cfm-stage-aux : AllocMode → Stage → Bool → Arch → Module → List FunInfo → List PolyFunInfo → CompileResult
 cfm-stage-aux m Parse doOpt arch mod funs polys = Parsed funs polys
 cfm-stage-aux m Check doOpt arch mod funs polys =
-  cfm-check-emit (compileAllFuns m doOpt funs (buildPolyCtx polys) (collectSigEffects (Module.decls mod)))
+  cfm-check-emit (compileAllFuns m doOpt funs (buildPolyCtx polys))
 cfm-stage-aux m Build doOpt arch mod funs polys =
   cfm-build-gated m doOpt arch mod funs polys (admissibleM? arch mod)
 

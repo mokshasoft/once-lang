@@ -52,7 +52,6 @@ open import Once.Target.Symbol using (once-symbol-own)
 open import Once.Target.SymbolInjective using (ValidIdent; ValidIdentChars; once-symbol-own-≢)
 open import Once.CanonicalName using (bare)
 open import Once.TypeCheck.Elaborate using (PolyCtx)
-open import Once.TypeCheck.Classify using (SigEffectCtx)
 import Once.Compile as C
 
 ------------------------------------------------------------------------
@@ -163,20 +162,20 @@ guard-true (inj₂ (funs₀ , polys₀)) eq
 -- builds equal `once-symbol-own` of the NON-primitive funNames. Induction through
 -- the mutual aux (template: `MainIRForm.caf-go-find-form`); `caf-go-wrap` builds
 -- `mkCompiledFun (bare (funName fi)) … (funIsPrimitive fi)`, so this is forced.
-caf-syms : ∀ (doOpt : Bool) (polys : PolyCtx) (sigEffs : SigEffectCtx)
+caf-syms : ∀ (doOpt : Bool) (polys : PolyCtx)
   (funs : List FunInfo) (ctx : C.FunCtx) (cfs : List C.CompiledFun)
-  → C.compileAllFuns-go C.Heap doOpt polys sigEffs funs ctx ≡ inj₂ cfs
+  → C.compileAllFuns-go C.Heap doOpt polys funs ctx ≡ inj₂ cfs
   → C.emittedSyms cfs ≡ map once-symbol-own (emittedNames funs)
-caf-syms doOpt polys sigEffs [] ctx cfs caf-eq =
+caf-syms doOpt polys [] ctx cfs caf-eq =
   cong C.emittedSyms (sym (inj₂-injective caf-eq))
-caf-syms doOpt polys sigEffs (fi ∷ rest) ctx cfs caf-eq
+caf-syms doOpt polys (fi ∷ rest) ctx cfs caf-eq
   with C.resolveFunType ctx polys (FunInfo.funType fi) (FunInfo.funBody fi) in rf-eq
 ... | inj₁ err = case caf-eq of λ ()
 ... | inj₂ ty
-    with C.compileFun C.Heap doOpt ctx polys sigEffs (FunInfo.funName fi) ty (FunInfo.funBody fi) in cf-eq
+    with C.compileFun C.Heap doOpt ctx polys (FunInfo.funName fi) ty (FunInfo.funBody fi) in cf-eq
 ...   | inj₁ err = case caf-eq of λ ()
 ...   | inj₂ irFun
-      with C.compileAllFuns-go C.Heap doOpt polys sigEffs rest (C.extendFunCtx ctx (FunInfo.funName fi) ty) in rec-eq
+      with C.compileAllFuns-go C.Heap doOpt polys rest (C.extendFunCtx ctx (FunInfo.funName fi) ty) in rec-eq
 ...     | inj₁ err = case caf-eq of λ ()
 ...     | inj₂ compiled-rest =
           subst (λ c → C.emittedSyms c ≡ map once-symbol-own (emittedNames (fi ∷ rest)))
@@ -185,7 +184,7 @@ caf-syms doOpt polys sigEffs (fi ∷ rest) ctx cfs caf-eq
       where
         cfW = C.maybeWrapMain (FunInfo.funName fi) ty irFun
         IH : C.emittedSyms compiled-rest ≡ map once-symbol-own (emittedNames rest)
-        IH = caf-syms doOpt polys sigEffs rest (C.extendFunCtx ctx (FunInfo.funName fi) ty) compiled-rest rec-eq
+        IH = caf-syms doOpt polys rest (C.extendFunCtx ctx (FunInfo.funName fi) ty) compiled-rest rec-eq
         cons : (b : Bool) → FunInfo.funIsPrimitive fi ≡ b
           → C.emittedSyms (C.mkCompiledFun (bare (FunInfo.funName fi)) (proj₁ cfW) (proj₂ cfW) b ∷ compiled-rest)
             ≡ map once-symbol-own (emittedNames-cons b fi (emittedNames rest))
@@ -198,7 +197,7 @@ program-no-clash (mkModule ds)
   with extractFunctions (extractAliases (mkModule ds)) (mkModule ds) in efeq
 ... | inj₁ _ = []
 ... | inj₂ (funs , polys)
-    with C.compileAllFuns C.Heap false funs (C.buildPolyCtx polys) (C.collectSigEffects ds) in caeq
+    with C.compileAllFuns C.Heap false funs (C.buildPolyCtx polys) in caeq
 ...   | inj₁ _ = []
 ...   | inj₂ cfs =
         subst (AllPairs _≢_) (sym bridge)
@@ -209,4 +208,4 @@ program-no-clash (mkModule ds)
         guard : (namesDistinct (emittedNames funs) ∧ allValidIdentB (emittedNames funs)) ≡ true
         guard = guard-true (extractFunctions-go (extractAliases (mkModule ds)) ds nothing) efeq
         bridge : C.emittedSyms cfs ≡ map once-symbol-own (emittedNames funs)
-        bridge = caf-syms false (C.buildPolyCtx polys) (C.collectSigEffects ds) funs C.emptyFunCtx cfs caeq
+        bridge = caf-syms false (C.buildPolyCtx polys) funs C.emptyFunCtx cfs caeq

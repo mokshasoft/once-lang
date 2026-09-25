@@ -210,7 +210,7 @@ data ResolvesDecl (polys : List String) (um : UnaliasedMap) (am : AliasMap)
   -- than a catch-all with a negative side condition: the reader sees that every
   -- declaration form has been considered, and nothing has to supply a `≢`.
   rd-typesig   : ∀ {n t}     → ResolvesDecl polys um am (DTypeSig n t) (DTypeSig n t)
-  rd-signature : ∀ {n o t e} → ResolvesDecl polys um am (DSignature n o t e) (DSignature n o t e)
+  rd-signature : ∀ {n o t} → ResolvesDecl polys um am (DSignature n o t) (DSignature n o t)
   rd-typealias : ∀ {n ps t}  → ResolvesDecl polys um am (DTypeAlias n ps t) (DTypeAlias n ps t)
   rd-import    : ∀ {imp}     → ResolvesDecl polys um am (DImport imp) (DImport imp)
 
@@ -242,7 +242,7 @@ data ResolvesDecl (polys : List String) (um : UnaliasedMap) (am : AliasMap)
 data NotImport : Decl → Set where
   nim-typesig : ∀ {n t}     → NotImport (DTypeSig n t)
   nim-fundef  : ∀ {n b}     → NotImport (DFunDef n b)
-  nim-sig     : ∀ {n o t e} → NotImport (DSignature n o t e)
+  nim-sig     : ∀ {n o t} → NotImport (DSignature n o t)
   nim-alias   : ∀ {n ps t}  → NotImport (DTypeAlias n ps t)
 
 data ResolvesDecls (mm : ModuleMap) (polys : List String)

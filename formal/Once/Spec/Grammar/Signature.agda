@@ -17,27 +17,13 @@ open import Data.List using (List; _∷_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
-open import Once.SigEffect using (SigEffect)
 open import Once.Parser.Token
 open import Once.Parser.Module.Core using (Decl; DSignature)
-open import Once.Parser.Module.DeclTail using (colonHead; colDrop1; effAnnotShape; eaDrop2)
+open import Once.Parser.Module.DeclTail using (colonHead; colDrop1)
 open import Once.Parser.Generic.PolyInst using (ParsesPolyType)
 
-------------------------------------------------------------------------
--- Optional effect annotation `! halts` / `! emits`.
-------------------------------------------------------------------------
-
-data ParsesEffAnnot : List Token → Maybe SigEffect → List Token → Set where
-  pea-some : ∀ {toks se} → effAnnotShape toks ≡ just se → ParsesEffAnnot toks (just se) (eaDrop2 toks)
-  pea-none : ∀ {toks}    → effAnnotShape toks ≡ nothing → ParsesEffAnnot toks nothing toks
-
-------------------------------------------------------------------------
--- `name : polytype [! shape]`.
-------------------------------------------------------------------------
-
 data ParsesSignature : List Token → Decl → List Token → Set where
-  psig-mk : ∀ {name residual ty rest' meff rest''} →
+  psig-mk : ∀ {name residual ty rest'} →
             colonHead residual ≡ true →
             ParsesPolyType (colDrop1 residual) ty rest' →
-            ParsesEffAnnot rest' meff rest'' →
-            ParsesSignature (TWord name ∷ residual) (DSignature name nothing ty meff) rest''
+            ParsesSignature (TWord name ∷ residual) (DSignature name nothing ty) rest'

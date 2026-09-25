@@ -132,7 +132,7 @@ UnaliasedMap = List (String × List String)
 -- primitives `signaturesWithOwner` inlines).
 sigNames : List Decl → List String
 sigNames []                          = []
-sigNames (DSignature name _ _ _ ∷ r) = name ∷ sigNames r
+sigNames (DSignature name _ _ ∷ r) = name ∷ sigNames r
 sigNames (_ ∷ r)                     = sigNames r
 
 collectUnaliased : ModuleMap → List Decl → UnaliasedMap
@@ -213,7 +213,7 @@ pdn-go (DFunDef name body ∷ rest) nothing with siglessSchema body
 ... | just _  = name ∷ pdn-go rest nothing
 ... | nothing = pdn-go rest nothing
 -- A DSignature resets the pending (mirror of `extractFunctions-go`).
-pdn-go (DSignature name owner ty se ∷ rest) _ = pdn-go rest nothing
+pdn-go (DSignature name owner ty ∷ rest) _ = pdn-go rest nothing
 pdn-go (_ ∷ rest) pending                = pdn-go rest pending
 
 polyDefNames : List Decl → List String
@@ -351,8 +351,8 @@ canonDecl polys um am d                         = d
 -- belong to the imported module's own scope, not the importer's.
 signaturesWithOwner : Maybe String → List Decl → List Decl
 signaturesWithOwner _     []                                   = []
-signaturesWithOwner owner (DSignature name _ ty eff ∷ rest)   =
-  DSignature name owner ty eff ∷ signaturesWithOwner owner rest
+signaturesWithOwner owner (DSignature name _ ty ∷ rest)   =
+  DSignature name owner ty ∷ signaturesWithOwner owner rest
 signaturesWithOwner owner (_ ∷ rest)                           =
   signaturesWithOwner owner rest
 

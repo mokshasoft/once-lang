@@ -15196,3 +15196,27 @@ Consequences, each a Spec-closure hunk:
 * Every check rule that concluded at an arrow is already grade-poly (`t-pair-morph-check`
   since D222; compose/case/cata since D032), so the elaborator's "try eff, else check at
   pure and lift" fallbacks are deleted: the eff attempt covers them.
+
+## D227 — THE EFFECT ANNOTATION IS DELETED; `exit` RETURNS `Void` (2026-09-25)
+
+**Relates**: D225, D226, plan 0.98 §3 ("What this DELETES") and stage E, plan 0.99
+phase E.
+
+With D225 (the Spec reads the codomain) and D226 (`Void <: B` at the mode switch),
+the `! halts` / `! emits` signature annotation and the name-keyed table it filled
+(`SigEffect`, `SigEffectCtx`, `lookupSigEffect`, `collectSigEffects`,
+`NamedCtx.sigEffects`) had no reader left. They are deleted.
+
+Spec-closure hunks, each justified by this entry:
+
+* `Spec/Grammar/Signature`: `ParsesEffAnnot` is gone; `psig-mk` concludes at the
+  token remainder after the type. `! halts` is no longer syntax (a signature ending
+  in it is a parse error).
+* `Spec/Module`: `AllFunsTyped` loses its `sigEffs` index; the body context is
+  `ctxWithImportsAndSelfAndPolys ctx polys name ty`.
+* `Spec/Resolution`: `DSignature` is ternary (`name owner type`).
+
+Sources: `Strata/Interpretations/Linux/Syscalls.once` declares
+`exit0 : Eff Unit Void` and `exit : Eff Int Void`. `main = exit@S (…)` at
+`Eff Unit Unit` checks by `Void <: Unit` under the arrow (D226). `ParseSpec`'s
+annotation test is replaced by a `Void`-codomain test and a rejection test.

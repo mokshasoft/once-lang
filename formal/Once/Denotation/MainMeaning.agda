@@ -26,7 +26,7 @@ open import Once.Type using (Type; Unit)
 open import Once.Surface.Syntax using (Expr; ∅; Usage)
 open import Once.TypeCheck.Elaborate using (ctxWithImportsAndSelfAndPolys; PolyCtx)
 open import Once.Type.DecEq using (_≟T_)
-open import Once.TypeCheck.Classify using (SigEffectCtx; NamedCtx)
+open import Once.TypeCheck.Classify using (NamedCtx)
 open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_)
 open import Once.Denotation.TraceMonad using (T; _>>=T_; projTrace; PrefixFamily; bnd; sat; coh)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ)
@@ -53,12 +53,12 @@ MClo = ⟦ ⟦ ∅ ⟧ᶜᵗ ⟧ᴰ → T ⟦ EffUU ⟧ᴰ
 
 -- Plan 0.73 (D113): the format, explicit — this chain is recursive and its
 -- reduction is what `MainExtract`/`MeaningBridge` rewrite through.
-mainMeaningᵈ-go : ∀ {polys sigEffs funs ctx} (fmt : TargetNum)
-                  (aft : AllFunsTyped polys sigEffs funs ctx)
+mainMeaningᵈ-go : ∀ {polys funs ctx} (fmt : TargetNum)
+                  (aft : AllFunsTyped polys funs ctx)
                 → MainExists aft → Σ-syntax (Usage 0) (λ _ → MClo)
-mmd-dispatch : ∀ {polys sigEffs nm bdy rest ctx ty Ψ} (fmt : TargetNum)
-  (deriv : (ctxWithImportsAndSelfAndPolys ctx polys sigEffs nm ty) ⊢ᶜ bdy ∶ ty ⨾ Ψ)
-  (rest-typed : AllFunsTyped polys sigEffs rest (C.extendFunCtx ctx nm ty))
+mmd-dispatch : ∀ {polys nm bdy rest ctx ty Ψ} (fmt : TargetNum)
+  (deriv : (ctxWithImportsAndSelfAndPolys ctx polys nm ty) ⊢ᶜ bdy ∶ ty ⨾ Ψ)
+  (rest-typed : AllFunsTyped polys rest (C.extendFunCtx ctx nm ty))
   (w : MainExists rest-typed)
   → Dec (nm ≡ "main") → Dec (ty ≡ EffUU) → Bool
   → Σ-syntax (Usage 0) (λ _ → MClo)

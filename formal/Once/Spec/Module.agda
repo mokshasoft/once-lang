@@ -40,7 +40,6 @@ open import Once.Type using (Type; Unit; _⇒[_]_; mk-kind; Many; eff)
 import Once.Compile as C
 import Once.Parser.Module.Core as P
 open import Once.TypeCheck.Elaborate as TE using (ctxWithImportsAndSelfAndPolys)
-open import Once.TypeCheck.Classify using (SigEffectCtx)
 open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_)
 
 open C.FunInfo using (funName; funBody; funType; funIsPrimitive)
@@ -51,15 +50,15 @@ open C.FunInfo using (funName; funBody; funType; funIsPrimitive)
 -- context threading, but the BODY premise speaks only `_⊢ᶜ_∶_⨾_`.
 ------------------------------------------------------------------------
 
-data AllFunsTyped (polys : TE.PolyCtx) (sigEffs : SigEffectCtx)
+data AllFunsTyped (polys : TE.PolyCtx)
      : List C.FunInfo → C.FunCtx → Set where
-  tnil  : ∀ {ctx} → AllFunsTyped polys sigEffs [] ctx
+  tnil  : ∀ {ctx} → AllFunsTyped polys [] ctx
   tcons : ∀ {fi rest ctx ty Ψ} →
     C.resolveFunType ctx polys (C.FunInfo.funType fi) (C.FunInfo.funBody fi) ≡ inj₂ ty →
-    (ctxWithImportsAndSelfAndPolys ctx polys sigEffs (C.FunInfo.funName fi) ty)
+    (ctxWithImportsAndSelfAndPolys ctx polys (C.FunInfo.funName fi) ty)
       ⊢ᶜ C.FunInfo.funBody fi ∶ ty ⨾ Ψ →
-    AllFunsTyped polys sigEffs rest (C.extendFunCtx ctx (C.FunInfo.funName fi) ty) →
-    AllFunsTyped polys sigEffs (fi ∷ rest) ctx
+    AllFunsTyped polys rest (C.extendFunCtx ctx (C.FunInfo.funName fi) ty) →
+    AllFunsTyped polys (fi ∷ rest) ctx
 
 ------------------------------------------------------------------------
 -- Module level.
@@ -68,7 +67,7 @@ data AllFunsTyped (polys : TE.PolyCtx) (sigEffs : SigEffectCtx)
 ModuleTyped-ef : P.Module → (String ⊎ (List C.FunInfo × List C.PolyFunInfo)) → Set
 ModuleTyped-ef m (inj₁ _)            = ⊥
 ModuleTyped-ef m (inj₂ (funs , polys)) =
-  AllFunsTyped (C.buildPolyCtx polys) (C.collectSigEffects (C.Module.decls m)) funs C.emptyFunCtx
+  AllFunsTyped (C.buildPolyCtx polys) funs C.emptyFunCtx
 
 ModuleTyped : P.Module → Set
 ModuleTyped m = ModuleTyped-ef m (C.extractFunctions (C.extractAliases m) m)
@@ -81,13 +80,13 @@ EffUU : Type
 EffUU = Unit ⇒[ mk-kind Many eff ] Unit
 
 -- Every main-named function (in the derivation) resolved to EffUU.
-AllMainEffUU : ∀ {polys sigEffs funs ctx} → AllFunsTyped polys sigEffs funs ctx → Set
+AllMainEffUU : ∀ {polys funs ctx} → AllFunsTyped polys funs ctx → Set
 AllMainEffUU tnil = ⊤
 AllMainEffUU (tcons {fi = fi} {ty = ty} _ _ rest) =
   (funName fi ≡ "main" → ty ≡ EffUU) × AllMainEffUU rest
 
 -- A non-primitive main-named function (resolved to EffUU) exists.
-MainExists : ∀ {polys sigEffs funs ctx} → AllFunsTyped polys sigEffs funs ctx → Set
+MainExists : ∀ {polys funs ctx} → AllFunsTyped polys funs ctx → Set
 MainExists tnil = ⊥
 MainExists (tcons {fi = fi} {ty = ty} _ _ rest) =
   ((funName fi ≡ "main") × (funIsPrimitive fi ≡ false) × (ty ≡ EffUU)) ⊎ MainExists rest

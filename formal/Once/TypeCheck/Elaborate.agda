@@ -51,7 +51,6 @@ open import Once.IRTy.WF using (wf-⌊⌋)
 open import Once.Arith.SigOp.Builders using (generic-semM)
 open import Once.SigOp.Info using (SigOpInfo; mk-info'; pureV; emitsV; haltsV; ffi-concrete)
 open import Once.CanonicalName using (CanonicalName; bare; showCanonical; gen; NotGenerator; bare-NotGenerator; GenWord; genWord?)
-open import Once.SigEffect using (SigEffect) renaming (halts to se-halts; emits to se-emits)
 open import Once.TypeCheck.Raw using (RawExpr)
 open import Once.TypeCheck.Raw as Raw
 open import Once.TypeCheck.Error using (TypeError; renderError;
