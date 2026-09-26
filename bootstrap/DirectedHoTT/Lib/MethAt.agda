@@ -42,7 +42,7 @@ open import DirectedHoTT.Metatheory.Validity using ( wk-app-vz )
 open import DirectedHoTT.Lib.Sugar
   using ( Cons; []; _∷_; Nth; nth-z; nth-s; tag; tag-ren; sel; selM; selF-β; conₗ; ⊢con-fib; ⊢pay-σ
         ; ⊢tag; nth-lt; Lt; AllQ; []q; _∷q_; castQ; ⊢selG; fsucsS; fsucsS-zero; fsucsS-suc; fsucsS-head
-        ; wk-single-tag; ≅ᵀ-ren; ⊢wkF; wkC )
+        ; wk-single-tag; ≅ᵀ-ren; ⊢wkF; wkC; subC; selF-sub )
 
 private
   variable
@@ -464,3 +464,14 @@ methAt-β {Γ = Γ} {k = k} {m} {p} {h} {ms} nt =
         pt x = refl
     E : subTm (single2 (tag k) p) b₁ ≡ app (app (selM ms) (tag k)) p
     E = cong₂ app (cong₂ app (L3 (selM ms)) refl) refl
+
+-- the one method commutes with substitution
+methAt-sub : {Θ : Cx} (σ : Sub Γ Θ) (ms : Cons Γ c) → subTm σ (methAt ms) ≡ methAt (subC σ ms)
+methAt-sub σ ms =
+  cong (λ X → lam (psplit (app (app X (var (vs vz))) (var vz)) (var vz)))
+       (trans (trans (subTm-renTm (selM ms))
+                     (trans (subTm-cong pt (selM ms)) (sym (renTm-subTm (selM ms)))))
+              (cong (renTm w3) (selF-sub σ ms)))
+  where
+    pt : ∀ x → (extS (extS (extS σ)) ₛ∘ᵣ w3) x ≡ (w3 ᵣ∘ₛ σ) x
+    pt x = ren3 (σ x)
