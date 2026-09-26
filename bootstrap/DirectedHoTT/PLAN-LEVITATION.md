@@ -86,6 +86,25 @@ CongMacro → Vec, Scoped, ScopedDepth → continue stage 4.
   12 474 top-level signatures; 3 854 lines of `Lib/I*`; `gen-knot.py` 7 303
   lines.
 
+### Stage 5 — log (2026-09-27)
+
+- ✅ Library stack for sorted families: `Lib/MethAt`, `Lib/Sorted`,
+  `Lib/TelAt`, `Lib/TelFoldS`. `Examples/Mutual` is its client.
+- ✅ `tools/gen-knot.py` rewritten: 400 lines, down from 7 303. Rows are
+  parsed from `Spec/Syntax`: 51 (13 Ty, 38 Tm). It emits:
+  - `Knot/Desc`: the family, no Fords;
+  - `Knot/Ctors`: typed at every depth, 14 s;
+  - `Knot/Terms`: the typed quotation of the whole syntax, 7 s.
+- ✅ Deleted as superseded: the old Knot (201 modules), `Lib/I*` (12),
+  `ScopeHazard`, `Negative/WkK`, `Negative/WkEmp`. Sweep ALL GREEN at 155
+  modules (before `Terms`).
+- Lesson: pin `{Tss}{Ts}{T}` at concrete `⊢conₛₜ` uses; inferred, one row
+  cost 16.5 s instead of 0.12 s.
+- ⬜ Next: `Knot/Sz` (`⊢foldₛ sizeAlg`, plus adequacy on `quote`); generic
+  renaming/substitution over sorted telescopes (the old IWk/ISub
+  redesign, depth riding); `CtxD`; the judgement layer (`Judge`, rows
+  parsed from `Spec/Typing`); `scopeAt` over Tel (restore `ScopeHazard`).
+
 ## Stage 1 — DONE (2026-09-26, branch `ocp-0009-levitation`)
 
 `Spec/Syntax`, `Spec/Typing`, `Spec/Variance`, `Spec/Annotated` (regenerated
