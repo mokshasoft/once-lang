@@ -25,8 +25,9 @@
 --     types  base U Π Σ' El Unit Nat Hom Id
 --     terms  var lam app pair fst snd absurd ordtr unit nzero nsuc
 --            ⌜base⌝ ⌜Π⌝ ⌜Σ⌝ ⌜Hom⌝ ⌜Id⌝ ⌜Nat⌝ ⌜Unit⌝ hrefl idrefl jsub
---   NOT YET: tr ap natrec con elim icon ielim ⌜Mu⌝ ⌜IMu⌝, types Mu IMu.
---   ⚠ `natrec`/`elim`/`ielim` CANNOT be done on `RTm` at all: their motive
+--   NOT YET: tr ap natrec con ielim dpay dih fcase psplit ⌜IMu⌝ ⌜Fin⌝ dι dσ dρ
+--            fzero fsuc, types IMu Desc DIh Fin.
+--   ⚠ `natrec`/`ielim`/`dih`/`fcase`/`psplit` CANNOT be done on `RTm` at all: their motive
 --   lives only in the derivation (the `⊢lam` pattern), so they need an
 --   ANNOTATED input syntax.  That is slice 2's design question.
 --
@@ -43,7 +44,7 @@ open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing
 open import DirectedHoTT.Metatheory.RedCong
   using ( _⟶ᵀ*_; doneᵀ; stepᵀ; ⟶ᵀ*-trans; ⟶ᵀ*-El; ⟶ᵀ*-Πˡ; ⟶ᵀ*-Πʳ
-        ; ⟶ᵀ*-Σˡ; ⟶ᵀ*-Σʳ; ⟶ᵀ*-Homᵀ; ⟶ᵀ*-Homˡ; ⟶ᵀ*-Homʳ; ⟶ᵀ*-IMu
+        ; ⟶ᵀ*-Σˡ; ⟶ᵀ*-Σʳ; ⟶ᵀ*-Homᵀ; ⟶ᵀ*-Homˡ; ⟶ᵀ*-Homʳ; ⟶ᵀ*-IMu; ⟶ᵀ*-IMuᴵ; ⟶ᵀ*-IMuᴰ; ⟶ᵀ*-Desc
         ; ⟶ᵀ*-Idᵀ; ⟶ᵀ*-Idˡ; ⟶ᵀ*-Idʳ; red→≅ᵀ )
 open import DirectedHoTT.Lib.Eval using ( evN )
 open import DirectedHoTT.Algorithm.DecEq using ( Dec; yes; no; _≟Ty_ )
@@ -98,9 +99,12 @@ mutual
     let (A' , p) = evTy n A ; (t' , q) = evN n t ; (u' , r) = evN n u
     in  Id A' t' u' ,
         ⟶ᵀ*-trans (⟶ᵀ*-Idᵀ p) (⟶ᵀ*-trans (⟶ᵀ*-Idˡ q) (⟶ᵀ*-Idʳ r))
-  evTy (suc n) (IMu D I i) =
-    let (i' , p) = evN n i in IMu D I i' , ⟶ᵀ*-IMu p
-  evTy (suc n) A = A , doneᵀ          -- base U Unit Nat Mu: already normal
+  evTy (suc n) (IMu I D i) =
+    let (I' , p) = evN n I ; (D' , q) = evN n D ; (i' , r) = evN n i
+    in  IMu I' D' i' , ⟶ᵀ*-trans (⟶ᵀ*-IMuᴵ p) (⟶ᵀ*-trans (⟶ᵀ*-IMuᴰ q) (⟶ᵀ*-IMu r))
+  evTy (suc n) (Desc I) =
+    let (I' , p) = evN n I in Desc I' , ⟶ᵀ*-Desc p
+  evTy (suc n) A = A , doneᵀ          -- base U Unit Nat Fin: already normal; DIh: slice 2
 
   -- decode a code, if the evaluated term IS one
   unEl : ℕ → {A : RTy Δ} (t : RTm Δ) → A ⟶ᵀ* El t → RedT A
@@ -111,8 +115,8 @@ mutual
   unEl n (⌜Id⌝ c a b)  p = (p ▷ El-⌜Id⌝ c a b) then evTy n (Id (El c) a b)
   unEl n ⌜Nat⌝         p = Nat , p ▷ El-⌜Nat⌝
   unEl n ⌜Unit⌝        p = Unit , p ▷ El-⌜Unit⌝
-  unEl n (⌜Mu⌝ D)      p = Mu D , p ▷ El-⌜Mu⌝
-  unEl n (⌜IMu⌝ D I i) p = (p ▷ El-⌜IMu⌝) then evTy n (IMu D I i)
+  unEl n (⌜IMu⌝ I D i) p = (p ▷ El-⌜IMu⌝) then evTy n (IMu I D i)
+  unEl n (⌜Fin⌝ k)     p = Fin k , p ▷ El-⌜Fin⌝
   unEl n t             p = El t , p
 
   -- the `Hom` computation rules, on already-evaluated components
