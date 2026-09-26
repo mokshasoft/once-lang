@@ -23,9 +23,10 @@
 --   finding, `Spec/Annotated`): nothing is read back from a path's type,
 --   which matters because `Hom` computes away at `U`/`Π`/`Nat`.
 --
--- ⚠ SLICE 1.  `nothing` (incomplete, never unsound) for `⌜Mu⌝`, `Mu`,
---   `con`/`elim`/`icon`/`ielim`, `IMu` — annotated descriptions first
---   (PLAN-BIDI §3d).
+-- ★★ LEVITATION: descriptions are TERMS, so the §3d question dissolved —
+--   every levitated former carries its annotations and INFERS like any
+--   other; the only new lemmas are the premise types' well-formedness
+--   (`MethTy-wf`, `pairS⊢`, `fsucS⊢`, `motCtx-wf`).
 --
 -- `--safe`, ZERO axioms.
 ------------------------------------------------------------------------
@@ -37,19 +38,20 @@ open import normalizer.Syntax.Types
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import Agda.Builtin.Maybe using ( Maybe; just; nothing )
 open import DirectedHoTT.Spec.Variance
-  using ( 𝔹; true; false; occTm; flat?; NoNatC; nnc-base; nnc-Unit; nnc-Mu; nnc-Σ; nnc-Id; nnc-Π; nnc-Hom )
+  using ( 𝔹; true; false; occTm; flat?; NoNatC; nnc-base; nnc-Unit; nnc-Fin; nnc-Σ; nnc-Id; nnc-Π; nnc-Hom )
 open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Spec.Annotated
 open import DirectedHoTT.Spec.AnnotatedDesc
 open import DirectedHoTT.Spec.TypingA
-open import DirectedHoTT.Metatheory.Erasure using ( erase; erase-ty; sub1; sub1ᵗ; nrs-era )
+open import DirectedHoTT.Metatheory.Erasure using ( erase; erase-ty; sub1; sub1ᵗ; nrs-era; motCtx-era )
 open import DirectedHoTT.Metatheory.SubjectReduction
   using ( ⊢-cast; ⊢single; sub-ty; Sub⊢; ⊢[]; ⊢wk )
 open import DirectedHoTT.Metatheory.Validity using ( validity; WfUpTo; wf; srᵀ* )
 open import DirectedHoTT.Metatheory.NormTy using ( normTy; mkWNᵀ; decConvᵀ )
 open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ )
 open import DirectedHoTT.Algorithm.DecEq using ( Dec; yes; no )
+open import DirectedHoTT.Metatheory.Premises using ( MethTy-wf; pairS⊢; fsucS⊢ )
 
 private
   cong1 = cong
@@ -75,20 +77,6 @@ private
 
 liftTy : {Γ : Cx} → RTy Γ → ATy Γ
 liftTm : {Γ : Cx} → RTm Γ → ATm Γ
-liftDC : DCon → ADCon
-liftD : Desc → ADesc
-liftIC : {Δ : Cx} → ICon Δ → AICon Δ
-liftID : IDesc → AIDesc
-liftDC dι = dι
-liftDC (dρ C) = dρ (liftDC C)
-liftDC (dκ A C) = dκ (liftTy A) (liftDC C)
-liftD dnil = dnil
-liftD (C ◃ D) = liftDC C ◃ liftD D
-liftIC iι = iι
-liftIC (iρ t C) = iρ (liftTm t) (liftIC C)
-liftIC (iκ t C) = iκ (liftTm t) (liftIC C)
-liftID inil = inil
-liftID (C ◂ D) = liftIC C ◂ liftID D
 liftTy base = base
 liftTy U = U
 liftTy (Π x0 x1) = Π (liftTy x0) (liftTy x1)
@@ -98,8 +86,10 @@ liftTy (Hom x0 x1 x2) = Hom (liftTy x0) (liftTm x1) (liftTm x2)
 liftTy Unit = Unit
 liftTy Nat = Nat
 liftTy (Id x0 x1 x2) = Id (liftTy x0) (liftTm x1) (liftTm x2)
-liftTy (Mu x0) = Mu (liftD x0)
-liftTy (IMu x0 x1 x2) = IMu (liftID x0) (liftTy x1) (liftTm x2)
+liftTy (IMu x0 x1 x2) = IMu (liftTm x0) (liftTm x1) (liftTm x2)
+liftTy (Desc x0) = Desc (liftTm x0)
+liftTy (DIh x0 x1 x2 x3) = DIh nzero (liftTm x0) (liftTy x1) (liftTm x2) nzero (liftTm x3)
+liftTy (Fin x0) = Fin x0
 liftTm (var x0) = var x0
 liftTm (lam x0) = lam base (liftTm x0)
 liftTm (app x0 x1) = app (liftTm x0) (liftTm x1)
@@ -122,31 +112,25 @@ liftTm unit = unit
 liftTm nzero = nzero
 liftTm (nsuc x0) = nsuc (liftTm x0)
 liftTm (natrec x0 x1 x2) = natrec base (liftTm x0) (liftTm x1) (liftTm x2)
-liftTm (con x0 x1) = con dnil x0 (liftTm x1)
-liftTm (elim x0 x1 x2) = elim (liftD x0) base (liftTm x1) (liftTm x2)
-liftTm (icon x0 x1) = icon inil base nzero x0 (liftTm x1)
-liftTm (ielim x0 x1 x2 x3) = ielim (liftID x0) base base (liftTm x1) (liftTm x2) (liftTm x3)
 liftTm ⌜Nat⌝ = ⌜Nat⌝
-liftTm (⌜Mu⌝ x0) = ⌜Mu⌝ (liftD x0)
-liftTm (⌜IMu⌝ x0 x1 x2) = ⌜IMu⌝ (liftID x0) (liftTy x1) (liftTm x2)
 liftTm ⌜Unit⌝ = ⌜Unit⌝
+liftTm (⌜IMu⌝ x0 x1 x2) = ⌜IMu⌝ (liftTm x0) (liftTm x1) (liftTm x2)
+liftTm (⌜Fin⌝ x0) = ⌜Fin⌝ x0
+liftTm (con x0) = con nzero nzero nzero (liftTm x0)
+liftTm (ielim x0 x1 x2 x3) = ielim nzero (liftTm x0) base (liftTm x1) (liftTm x2) (liftTm x3)
+liftTm (dι x0) = dι nzero (liftTm x0)
+liftTm (dσ x0 x1) = dσ nzero (liftTm x0) (liftTm x1)
+liftTm (dρ x0 x1) = dρ nzero (liftTm x0) (liftTm x1)
+liftTm (dpay x0 x1 x2 x3) = dpay (liftTm x0) (liftTm x1) (liftTm x2) (liftTm x3)
+liftTm (dih x0 x1 x2 x3) = dih nzero (liftTm x0) base (liftTm x1) (liftTm x2) nzero (liftTm x3)
+liftTm fzero = fzero zero
+liftTm (fsuc x0) = fsuc zero (liftTm x0)
+liftTm (fcase x0 x1 x2) = fcase zero base (liftTm x0) (liftTm x1) (liftTm x2)
+liftTm (fcase0 x0) = fcase0 base (liftTm x0)
+liftTm (psplit x0 x1) = psplit base base base (liftTm x0) (liftTm x1)
 
 era-liftTy : {Γ : Cx} (A : RTy Γ) → ⌈ liftTy A ⌉ᵀ ≡ A
 era-liftTm : {Γ : Cx} (t : RTm Γ) → ⌈ liftTm t ⌉ ≡ t
-era-liftDC : (C : DCon) → ⌈ liftDC C ⌉ᴰᶜ ≡ C
-era-liftD : (D : Desc) → ⌈ liftD D ⌉ᴰ ≡ D
-era-liftIC : {Δ : Cx} (C : ICon Δ) → ⌈ liftIC C ⌉ᴵᶜ ≡ C
-era-liftID : (D : IDesc) → ⌈ liftID D ⌉ᴵᴰ ≡ D
-era-liftDC dι = refl
-era-liftDC (dρ C) = cong dρ (era-liftDC C)
-era-liftDC (dκ A C) = cong2 dκ (era-liftTy A) (era-liftDC C)
-era-liftD dnil = refl
-era-liftD (C ◃ D) = cong2 _◃_ (era-liftDC C) (era-liftD D)
-era-liftIC iι = refl
-era-liftIC (iρ t C) = cong2 iρ (era-liftTm t) (era-liftIC C)
-era-liftIC (iκ t C) = cong2 iκ (era-liftTm t) (era-liftIC C)
-era-liftID inil = refl
-era-liftID (C ◂ D) = cong2 _◂_ (era-liftIC C) (era-liftID D)
 era-liftTy base = refl
 era-liftTy U = refl
 era-liftTy (Π x0 x1) = cong2 (λ a0 a1 → Π a0 a1) (era-liftTy x0) (era-liftTy x1)
@@ -156,8 +140,10 @@ era-liftTy (Hom x0 x1 x2) = cong3 (λ a0 a1 a2 → Hom a0 a1 a2) (era-liftTy x0)
 era-liftTy Unit = refl
 era-liftTy Nat = refl
 era-liftTy (Id x0 x1 x2) = cong3 (λ a0 a1 a2 → Id a0 a1 a2) (era-liftTy x0) (era-liftTm x1) (era-liftTm x2)
-era-liftTy (Mu x0) = cong1 (λ a0 → Mu a0) (era-liftD x0)
-era-liftTy (IMu x0 x1 x2) = cong3 (λ a0 a1 a2 → IMu a0 a1 a2) (era-liftID x0) (era-liftTy x1) (era-liftTm x2)
+era-liftTy (IMu x0 x1 x2) = cong3 (λ a0 a1 a2 → IMu a0 a1 a2) (era-liftTm x0) (era-liftTm x1) (era-liftTm x2)
+era-liftTy (Desc x0) = cong1 (λ a0 → Desc a0) (era-liftTm x0)
+era-liftTy (DIh x0 x1 x2 x3) = cong4 (λ a0 a1 a2 a3 → DIh a0 a1 a2 a3) (era-liftTm x0) (era-liftTy x1) (era-liftTm x2) (era-liftTm x3)
+era-liftTy (Fin x0) = refl
 era-liftTm (var x0) = refl
 era-liftTm (lam x0) = cong1 (λ a0 → lam a0) (era-liftTm x0)
 era-liftTm (app x0 x1) = cong2 (λ a0 a1 → app a0 a1) (era-liftTm x0) (era-liftTm x1)
@@ -180,14 +166,22 @@ era-liftTm unit = refl
 era-liftTm nzero = refl
 era-liftTm (nsuc x0) = cong1 (λ a0 → nsuc a0) (era-liftTm x0)
 era-liftTm (natrec x0 x1 x2) = cong3 (λ a0 a1 a2 → natrec a0 a1 a2) (era-liftTm x0) (era-liftTm x1) (era-liftTm x2)
-era-liftTm (con x0 x1) = cong1 (λ a0 → con x0 a0) (era-liftTm x1)
-era-liftTm (elim x0 x1 x2) = cong3 (λ a0 a1 a2 → elim a0 a1 a2) (era-liftD x0) (era-liftTm x1) (era-liftTm x2)
-era-liftTm (icon x0 x1) = cong1 (λ a0 → icon x0 a0) (era-liftTm x1)
-era-liftTm (ielim x0 x1 x2 x3) = cong4 (λ a0 a1 a2 a3 → ielim a0 a1 a2 a3) (era-liftID x0) (era-liftTm x1) (era-liftTm x2) (era-liftTm x3)
 era-liftTm ⌜Nat⌝ = refl
-era-liftTm (⌜Mu⌝ x0) = cong1 (λ a0 → ⌜Mu⌝ a0) (era-liftD x0)
-era-liftTm (⌜IMu⌝ x0 x1 x2) = cong3 (λ a0 a1 a2 → ⌜IMu⌝ a0 a1 a2) (era-liftID x0) (era-liftTy x1) (era-liftTm x2)
 era-liftTm ⌜Unit⌝ = refl
+era-liftTm (⌜IMu⌝ x0 x1 x2) = cong3 (λ a0 a1 a2 → ⌜IMu⌝ a0 a1 a2) (era-liftTm x0) (era-liftTm x1) (era-liftTm x2)
+era-liftTm (⌜Fin⌝ x0) = refl
+era-liftTm (con x0) = cong1 (λ a0 → con a0) (era-liftTm x0)
+era-liftTm (ielim x0 x1 x2 x3) = cong4 (λ a0 a1 a2 a3 → ielim a0 a1 a2 a3) (era-liftTm x0) (era-liftTm x1) (era-liftTm x2) (era-liftTm x3)
+era-liftTm (dι x0) = cong1 (λ a0 → dι a0) (era-liftTm x0)
+era-liftTm (dσ x0 x1) = cong2 (λ a0 a1 → dσ a0 a1) (era-liftTm x0) (era-liftTm x1)
+era-liftTm (dρ x0 x1) = cong2 (λ a0 a1 → dρ a0 a1) (era-liftTm x0) (era-liftTm x1)
+era-liftTm (dpay x0 x1 x2 x3) = cong4 (λ a0 a1 a2 a3 → dpay a0 a1 a2 a3) (era-liftTm x0) (era-liftTm x1) (era-liftTm x2) (era-liftTm x3)
+era-liftTm (dih x0 x1 x2 x3) = cong4 (λ a0 a1 a2 a3 → dih a0 a1 a2 a3) (era-liftTm x0) (era-liftTm x1) (era-liftTm x2) (era-liftTm x3)
+era-liftTm fzero = refl
+era-liftTm (fsuc x0) = cong1 (λ a0 → fsuc a0) (era-liftTm x0)
+era-liftTm (fcase x0 x1 x2) = cong3 (λ a0 a1 a2 → fcase a0 a1 a2) (era-liftTm x0) (era-liftTm x1) (era-liftTm x2)
+era-liftTm (fcase0 x0) = cong1 (λ a0 → fcase0 a0) (era-liftTm x0)
+era-liftTm (psplit x0 x1) = cong2 (λ a0 a1 → psplit a0 a1) (era-liftTm x0) (era-liftTm x1)
 
 ------------------------------------------------------------------------
 -- 1. Erased-side tools.
@@ -293,6 +287,20 @@ viewId {Γ} {T = T} wΓ d with nfOf wΓ d
 ... | _ = nothing
 
 ------------------------------------------------------------------------
+-- 1b. The motive's context, erased, is well-formed (the premise types
+--     themselves are `Metatheory/Premises`).
+------------------------------------------------------------------------
+
+-- the motive's context, erased, is well-formed
+motCtx-wf : {Γ : ACtx} {I D : ATm ⌊ Γ ⌋ᴬ} → ⊢ctx ⌈ Γ ⌉ᶜ →
+            ⌈ Γ ⌉ᶜ ⊢ ⌈ I ⌉ ∷ U → ⌈ Γ ⌉ᶜ ⊢ ⌈ D ⌉ ∷ Desc ⌈ I ⌉ → ⊢ctx ⌈ motCtxᴬ Γ I D ⌉ᶜ
+motCtx-wf {Γ} {I} {D} wΓ dI dD =
+  c-▹ (c-▹ wΓ (ty-El dI))
+      (subst (λ a → (⌈ Γ ⌉ᶜ ▹ El ⌈ I ⌉) ⊢ty IMu a ⌈ renTmᴬ vs D ⌉ (var vz)) (sym (era-renTm vs I))
+        (subst (λ b → (⌈ Γ ⌉ᶜ ▹ El ⌈ I ⌉) ⊢ty IMu (renTm vs ⌈ I ⌉) b (var vz)) (sym (era-renTm vs D))
+          (ty-IMu (⊢wk dI) (⊢wk dD) (⊢var here))))
+
+------------------------------------------------------------------------
 -- 3. ★ The checker.
 ------------------------------------------------------------------------
 
@@ -313,7 +321,7 @@ isTrue false = nothing
 noNatC? : {Δ : Cx} (c : RTm Δ) → Maybe (NoNatC c)
 noNatC? ⌜base⌝        = just nnc-base
 noNatC? ⌜Unit⌝        = just nnc-Unit
-noNatC? (⌜Mu⌝ D)      = just nnc-Mu
+noNatC? (⌜Fin⌝ n)     = just nnc-Fin
 noNatC? (⌜Σ⌝ c d)     = just nnc-Σ
 noNatC? (⌜Id⌝ c a b)  = just nnc-Id
 noNatC? (⌜Π⌝ c d)     = noNatC? d >>= λ nd → just (nnc-Π nd)
@@ -351,8 +359,21 @@ checkTyᴬ Γ wΓ (Id A t u) =
   checkTyᴬ Γ wΓ A >>= λ dA →
   checkᴬ Γ wΓ t A (erase-ty dA) >>= λ dt → checkᴬ Γ wΓ u A (erase-ty dA) >>= λ du →
   just (tyᴬ-Id dA dt du)
-checkTyᴬ Γ wΓ (Mu D)      = nothing   -- annotated descriptions first
-checkTyᴬ Γ wΓ (IMu D I i) = nothing
+checkTyᴬ Γ wΓ (IMu I D i) =
+  checkᴬ Γ wΓ I U ty-U >>= λ dI →
+  checkᴬ Γ wΓ D (Desc I) (ty-Desc (erase dI)) >>= λ dD →
+  checkᴬ Γ wΓ i (El I) (ty-El (erase dI)) >>= λ di →
+  just (tyᴬ-IMu dI dD di)
+checkTyᴬ Γ wΓ (Desc I) = checkᴬ Γ wΓ I U ty-U >>= λ dI → just (tyᴬ-Desc dI)
+checkTyᴬ Γ wΓ (Fin n) = just tyᴬ-Fin
+checkTyᴬ Γ wΓ (DIh I D M C i p) =
+  checkᴬ Γ wΓ I U ty-U >>= λ dI →
+  checkᴬ Γ wΓ D (Desc I) (ty-Desc (erase dI)) >>= λ dD →
+  checkTyᴬ (motCtxᴬ Γ I D) (motCtx-wf wΓ (erase dI) (erase dD)) M >>= λ dM →
+  checkᴬ Γ wΓ C (Desc I) (ty-Desc (erase dI)) >>= λ dC →
+  checkᴬ Γ wΓ i (El I) (ty-El (erase dI)) >>= λ di →
+  checkᴬ Γ wΓ p (El (dpay I D C i)) (ty-El (⊢dpay (erase dI) (erase dD) (erase dC) (erase di))) >>= λ dp →
+  just (tyᴬ-DIh dI dD dM dC di dp)
 
 inferᴬ Γ wΓ (var x) with lookupᴬ Γ x
 ... | A , v = just (A , ⊢ᴬvar v)
@@ -473,14 +494,92 @@ inferᴬ Γ wΓ (natrec M z s n) =
                 (sub-ty (erase-ty dM) nrs⊢)) >>= λ ds →
   checkᴬ Γ wΓ n Nat ty-Nat >>= λ dn →
   just (subTyᴬ (singleᴬ n) M , ⊢ᴬnatrec dM dz ds dn)
-inferᴬ Γ wΓ (con D k p)                = nothing   -- annotated descriptions first
-inferᴬ Γ wΓ (elim D M ms t)            = nothing
-inferᴬ Γ wΓ (icon D I i k p)           = nothing
-inferᴬ Γ wΓ (ielim D I M i ms t)       = nothing
+-- ★★ LEVITATION: every former carries what its rule needs, so every one
+--   INFERS — descriptions are ordinary terms, checked like any other.
 inferᴬ Γ wΓ ⌜Nat⌝  = just (U , ⊢ᴬ⌜Nat⌝)
 inferᴬ Γ wΓ ⌜Unit⌝ = just (U , ⊢ᴬ⌜Unit⌝)
-inferᴬ Γ wΓ (⌜Mu⌝ D) = nothing
-inferᴬ Γ wΓ (⌜IMu⌝ D I i) = nothing
+inferᴬ Γ wΓ (⌜Fin⌝ n) = just (U , ⊢ᴬ⌜Fin⌝)
+inferᴬ Γ wΓ (⌜IMu⌝ I D i) =
+  checkᴬ Γ wΓ I U ty-U >>= λ dI →
+  checkᴬ Γ wΓ D (Desc I) (ty-Desc (erase dI)) >>= λ dD →
+  checkᴬ Γ wΓ i (El I) (ty-El (erase dI)) >>= λ di →
+  just (U , ⊢ᴬ⌜IMu⌝ dI dD di)
+inferᴬ Γ wΓ (dι I j) =
+  checkᴬ Γ wΓ I U ty-U >>= λ dI →
+  checkᴬ Γ wΓ j (El I) (ty-El (erase dI)) >>= λ dj →
+  just (Desc I , ⊢ᴬdι dI dj)
+inferᴬ Γ wΓ (dσ I S f) =
+  checkᴬ Γ wΓ I U ty-U >>= λ dI →
+  checkᴬ Γ wΓ S U ty-U >>= λ dS →
+  checkᴬ Γ wΓ f (Π (El S) (Desc (renTmᴬ vs I)))
+         (ty-Π (ty-El (erase dS))
+               (subst (λ Z → (⌈ Γ ⌉ᶜ ▹ El ⌈ S ⌉) ⊢ty Desc Z) (sym (era-renTm vs I))
+                      (ty-Desc (⊢wk (erase dI))))) >>= λ df →
+  just (Desc I , ⊢ᴬdσ dI dS df)
+inferᴬ Γ wΓ (dρ I j C) =
+  checkᴬ Γ wΓ I U ty-U >>= λ dI →
+  checkᴬ Γ wΓ j (El I) (ty-El (erase dI)) >>= λ dj →
+  checkᴬ Γ wΓ C (Desc I) (ty-Desc (erase dI)) >>= λ dC →
+  just (Desc I , ⊢ᴬdρ dI dj dC)
+inferᴬ Γ wΓ (dpay I D C i) =
+  checkᴬ Γ wΓ I U ty-U >>= λ dI →
+  checkᴬ Γ wΓ D (Desc I) (ty-Desc (erase dI)) >>= λ dD →
+  checkᴬ Γ wΓ C (Desc I) (ty-Desc (erase dI)) >>= λ dC →
+  checkᴬ Γ wΓ i (El I) (ty-El (erase dI)) >>= λ di →
+  just (U , ⊢ᴬdpay dI dD dC di)
+inferᴬ Γ wΓ (con I D i p) =
+  checkᴬ Γ wΓ I U ty-U >>= λ dI →
+  checkᴬ Γ wΓ D (Desc I) (ty-Desc (erase dI)) >>= λ dD →
+  checkᴬ Γ wΓ i (El I) (ty-El (erase dI)) >>= λ di →
+  checkᴬ Γ wΓ p (El (dpay I D D i)) (ty-El (⊢dpay (erase dI) (erase dD) (erase dD) (erase di))) >>= λ dp →
+  just (IMu I D i , ⊢ᴬcon dI dD di dp)
+inferᴬ Γ wΓ (ielim I D M i e t) =
+  checkᴬ Γ wΓ I U ty-U >>= λ dI →
+  checkᴬ Γ wΓ D (Desc I) (ty-Desc (erase dI)) >>= λ dD →
+  checkTyᴬ (motCtxᴬ Γ I D) (motCtx-wf wΓ (erase dI) (erase dD)) M >>= λ dM →
+  checkᴬ Γ wΓ e (MethTyᴬ I D M)
+         (subst (λ Z → ⌈ Γ ⌉ᶜ ⊢ty Z) (sym (era-MethTy I D M))
+                (MethTy-wf (erase dI) (erase dD) (motCtx-era (erase-ty dM)))) >>= λ de →
+  checkᴬ Γ wΓ i (El I) (ty-El (erase dI)) >>= λ di →
+  checkᴬ Γ wΓ t (IMu I D i) (ty-IMu (erase dI) (erase dD) (erase di)) >>= λ dt →
+  just (iinstᴬ i t M , ⊢ᴬielim dI dD dM de di dt)
+inferᴬ Γ wΓ (dih I D M e C i p) =
+  checkᴬ Γ wΓ I U ty-U >>= λ dI →
+  checkᴬ Γ wΓ D (Desc I) (ty-Desc (erase dI)) >>= λ dD →
+  checkTyᴬ (motCtxᴬ Γ I D) (motCtx-wf wΓ (erase dI) (erase dD)) M >>= λ dM →
+  checkᴬ Γ wΓ e (MethTyᴬ I D M)
+         (subst (λ Z → ⌈ Γ ⌉ᶜ ⊢ty Z) (sym (era-MethTy I D M))
+                (MethTy-wf (erase dI) (erase dD) (motCtx-era (erase-ty dM)))) >>= λ de →
+  checkᴬ Γ wΓ C (Desc I) (ty-Desc (erase dI)) >>= λ dC →
+  checkᴬ Γ wΓ i (El I) (ty-El (erase dI)) >>= λ di →
+  checkᴬ Γ wΓ p (El (dpay I D C i)) (ty-El (⊢dpay (erase dI) (erase dD) (erase dC) (erase di))) >>= λ dp →
+  just (DIh I D M C i p , ⊢ᴬdih dI dD dM de dC di dp)
+inferᴬ Γ wΓ (fzero n) = just (Fin (suc n) , ⊢ᴬfzero)
+inferᴬ Γ wΓ (fsuc n t) =
+  checkᴬ Γ wΓ t (Fin n) ty-Fin >>= λ dt → just (Fin (suc n) , ⊢ᴬfsuc dt)
+inferᴬ Γ wΓ (fcase n P t a b) =
+  checkTyᴬ (Γ ▹ᴬ Fin (suc n)) (c-▹ wΓ ty-Fin) P >>= λ dP →
+  checkᴬ Γ wΓ t (Fin (suc n)) ty-Fin >>= λ dt →
+  checkᴬ Γ wΓ a (subTyᴬ (singleᴬ (fzero n)) P)
+         (subst (λ Z → ⌈ Γ ⌉ᶜ ⊢ty Z) (sym (sub1 (fzero n) P))
+                (sub-ty (erase-ty dP) (⊢single ⊢fzero))) >>= λ da →
+  checkᴬ (Γ ▹ᴬ Fin n) (c-▹ wΓ ty-Fin) b (subTyᴬ (fsucSᴬ n) P)
+         (subst (λ Z → ⌈ Γ ▹ᴬ Fin n ⌉ᶜ ⊢ty Z) (sym (era-subTy (fsucSᴬ n) fsucS (era-fsucS n) P))
+                (sub-ty (erase-ty dP) fsucS⊢)) >>= λ db →
+  just (subTyᴬ (singleᴬ t) P , ⊢ᴬfcase dP dt da db)
+inferᴬ Γ wΓ (fcase0 P t) =
+  checkTyᴬ (Γ ▹ᴬ Fin zero) (c-▹ wΓ ty-Fin) P >>= λ dP →
+  checkᴬ Γ wΓ t (Fin zero) ty-Fin >>= λ dt →
+  just (subTyᴬ (singleᴬ t) P , ⊢ᴬfcase0 dP dt)
+inferᴬ Γ wΓ (psplit A B P b q) =
+  checkTyᴬ Γ wΓ A >>= λ dA →
+  checkTyᴬ (Γ ▹ᴬ A) (c-▹ wΓ (erase-ty dA)) B >>= λ dB →
+  checkTyᴬ (Γ ▹ᴬ Σ' A B) (c-▹ wΓ (ty-Σ (erase-ty dA) (erase-ty dB))) P >>= λ dP →
+  checkᴬ Γ wΓ q (Σ' A B) (ty-Σ (erase-ty dA) (erase-ty dB)) >>= λ dq →
+  checkᴬ ((Γ ▹ᴬ A) ▹ᴬ B) (c-▹ (c-▹ wΓ (erase-ty dA)) (erase-ty dB)) b (subTyᴬ (pairSᴬ B) P)
+         (subst (λ Z → ⌈ (Γ ▹ᴬ A) ▹ᴬ B ⌉ᶜ ⊢ty Z) (sym (era-subTy (pairSᴬ B) pairS (era-pairS B) P))
+                (sub-ty (erase-ty dP) (pairS⊢ (erase-ty dB)))) >>= λ db →
+  just (subTyᴬ (singleᴬ q) P , ⊢ᴬpsplit dA dB dP dq db)
 
 ------------------------------------------------------------------------
 -- 4. NON-VACUITY — it RUNS: accepts, converts, and REJECTS.
