@@ -52,6 +52,26 @@ Order: Spec (Syntax/Typing/Variance/Annotated/TypingA via genA.py) → stage-2
 modules in the same order as before → Sugar/Tel/TelFold/ICast/IHeadRed/
 CongMacro → Vec, Scoped, ScopedDepth → continue stage 4.
 
+### Stage F — log (2026-09-26/27)
+
+- ✅ Spec, all of Metatheory (incl. Confluence, LR, Fundamental, NormTy,
+  Canonicity, Erasure, Premises), all of Algorithm — green.
+- LR: `⊩₀IMu` stores representatives `I ≅ I₀`, `D ≅ D₀`, `i ≅ i₀`, the
+  validity of `i₀`, and a FAMILY `j ↦ IKInterp (app D₀ j)` over valid
+  indices (the `⊩₀Π` IR pattern — positivity accepted). `IKPred` takes the
+  index-validity predicate; `ikp-ρ` stores its index's validity; `IMuMem`
+  is indexed by a valid index. No membership is ever transported between
+  different terms (the fibres are joined, `app D i ⟶* app D* i*`).
+- `Premises.MethG` takes the telescope OVER the index (`C : RTm (Δ ∙)`);
+  `MethTy` is its instance at `app (wk D) (var vz)`.
+- Sugar: `Dₗ Cs = λ i. dσ (⌜Fin⌝ c) (selF Cs)`; `⊢methσ` proves the one
+  method at the open fibre, `⊢methₗ` is one β from it.
+- Examples: `Vec` Fords EXPLICITLY (an `⌜Id⌝` field per constructor);
+  `Scoped`'s syntax is FORD-FREE again (`lamT = tρ (suc n) tι`);
+  `Fin` Fords explicitly.
+- Tooling lesson: `fixusing.py` now follows `open … public` (it had pruned
+  re-exported names — the lint-imports blind spot).
+
 ## Stage 1 — DONE (2026-09-26, branch `ocp-0009-levitation`)
 
 `Spec/Syntax`, `Spec/Typing`, `Spec/Variance`, `Spec/Annotated` (regenerated
