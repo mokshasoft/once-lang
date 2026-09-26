@@ -123,7 +123,8 @@ open import DirectedHoTT.Metatheory.RedCong
         ; single-mono; stkC?-red; stkA?-red; _⟶ᵀ*_; doneᵀ; stepᵀ; ⟶ᵀ*-trans
         ; ⟶ᵀ*-El; ⟶ᵀ*-Πˡ; ⟶ᵀ*-Πʳ; ⟶ᵀ*-Σˡ; ⟶ᵀ*-Σʳ; ⟶ᵀ*-Homᵀ; ⟶ᵀ*-Homˡ; ⟶ᵀ*-Homʳ
         ; red→≅ᵀ; ⟶ᵀ*-Idᵀ; ⟶ᵀ*-Idˡ; ⟶ᵀ*-Idʳ; ⟶ᵀ*-IMu; ⟶ᵀ*-IMuᴵ; ⟶ᵀ*-IMuᴰ
-        ; ⟶ᵀ*-Desc; ⟶ᵀ*-DIhᴰ; ⟶ᵀ*-DIhᴹ; ⟶ᵀ*-DIhᶜ; ⟶ᵀ*-DIhᵖ )
+        ; ⟶ᵀ*-Desc; ⟶ᵀ*-DIhᴰ; ⟶ᵀ*-DIhᴹ; ⟶ᵀ*-DIhᶜ; ⟶ᵀ*-DIhᵖ; ⟶*-trans; ⟶*-dpayᴰ
+        ; ⟶*-dpayᶜ )
 open import DirectedHoTT.Metatheory.SubjectReductionBase
   using ( sub-comm; ⟶ᵀ-sub; subTy-comm; sub-comm-ty-ext; iinst-sub; wk-sub
         ; wk2-subTy )
@@ -768,6 +769,16 @@ iinst-mono M t r =
   ⟶ᵀ*-sub' (single t)
     (subTy-monoˢ (λ { vz → done ; (vs vz) → ⟶*-ren vs r ; (vs (vs x)) → done }) M)
 
+-- ★ the method type is reduction-monotone in the DESCRIPTION: it names
+--   `D` twice in the payload and twice in the hypotheses.
+MethTy-monoᴰ : (I : RTm Γ) (M : RTy ((Γ ∙) ∙)) {D D' : RTm Γ} →
+               D ⟶* D' → MethTy I D M ⟶ᵀ* MethTy I D' M
+MethTy-monoᴰ I M r =
+  ⟶ᵀ*-Πʳ (⟶ᵀ*-trans
+    (⟶ᵀ*-Πˡ (⟶ᵀ*-El (⟶*-trans (⟶*-dpayᴰ (⟶*-ren vs r)) (⟶*-dpayᶜ (⟶*-ren vs r)))))
+    (⟶ᵀ*-Πʳ (⟶ᵀ*-Πˡ (⟶ᵀ*-trans (⟶ᵀ*-DIhᴰ (⟶*-ren vs (⟶*-ren vs r)))
+                                (⟶ᵀ*-DIhᶜ (⟶*-ren vs (⟶*-ren vs r)))))))
+
 ------------------------------------------------------------------------
 -- ★★ LEVITATION: naturality of the ONE method type, and the two motive
 --   re-basings (`fcase`'s successor, `psplit`'s pair).
@@ -911,12 +922,12 @@ ren-lemma {ρ = ρ} (⊢natrec {M = M} {n = n} dM dz ds dn) h =
 -- ★★ LEVITATION
 ren-lemma (⊢⌜IMu⌝ dD di) h = ⊢⌜IMu⌝ (ren-lemma dD h) (ren-lemma di h)
 ren-lemma ⊢⌜Fin⌝ h = ⊢⌜Fin⌝
-ren-lemma (⊢dι dj) h = ⊢dι (ren-lemma dj h)
+ren-lemma (⊢dι dI dj) h = ⊢dι (ren-lemma dI h) (ren-lemma dj h)
 ren-lemma {ρ = ρ} (⊢dσ {I = I} {S = S} dI dS df) h =
   ⊢dσ (ren-lemma dI h) (ren-lemma dS h)
       (⊢-cast (cong (λ X → Π (El (renTm ρ S)) (Desc X)) (wk-ren ρ I)) (ren-lemma df h))
-ren-lemma (⊢dρ dj dC) h = ⊢dρ (ren-lemma dj h) (ren-lemma dC h)
-ren-lemma (⊢dpay dD dC di) h = ⊢dpay (ren-lemma dD h) (ren-lemma dC h) (ren-lemma di h)
+ren-lemma (⊢dρ dI dj dC) h = ⊢dρ (ren-lemma dI h) (ren-lemma dj h) (ren-lemma dC h)
+ren-lemma (⊢dpay dI dD dC di) h = ⊢dpay (ren-lemma dI h) (ren-lemma dD h) (ren-lemma dC h) (ren-lemma di h)
 ren-lemma (⊢con dD di dp) h = ⊢con (ren-lemma dD h) (ren-lemma di h) (ren-lemma dp h)
 ren-lemma {Δ = Δ} {ρ = ρ} (⊢dih {I = I} {D = D} {M = M} dD dM de dC di dp) h =
   ⊢dih (ren-lemma dD h)
@@ -1069,12 +1080,12 @@ sub-lemma {σ = σ} (⊢natrec {M = M} {n = n} dM dz ds dn) h =
 -- ★★ LEVITATION
 sub-lemma (⊢⌜IMu⌝ dD di) h = ⊢⌜IMu⌝ (sub-lemma dD h) (sub-lemma di h)
 sub-lemma ⊢⌜Fin⌝ h = ⊢⌜Fin⌝
-sub-lemma (⊢dι dj) h = ⊢dι (sub-lemma dj h)
+sub-lemma (⊢dι dI dj) h = ⊢dι (sub-lemma dI h) (sub-lemma dj h)
 sub-lemma {σ = σ} (⊢dσ {I = I} {S = S} dI dS df) h =
   ⊢dσ (sub-lemma dI h) (sub-lemma dS h)
       (⊢-cast (cong (λ X → Π (El (subTm σ S)) (Desc X)) (wk-sub σ I)) (sub-lemma df h))
-sub-lemma (⊢dρ dj dC) h = ⊢dρ (sub-lemma dj h) (sub-lemma dC h)
-sub-lemma (⊢dpay dD dC di) h = ⊢dpay (sub-lemma dD h) (sub-lemma dC h) (sub-lemma di h)
+sub-lemma (⊢dρ dI dj dC) h = ⊢dρ (sub-lemma dI h) (sub-lemma dj h) (sub-lemma dC h)
+sub-lemma (⊢dpay dI dD dC di) h = ⊢dpay (sub-lemma dI h) (sub-lemma dD h) (sub-lemma dC h) (sub-lemma di h)
 sub-lemma (⊢con dD di dp) h = ⊢con (sub-lemma dD h) (sub-lemma di h) (sub-lemma dp h)
 sub-lemma {Δ = Δ} {σ = σ} (⊢dih {I = I} {D = D} {M = M} dD dM de dC di dp) h =
   ⊢dih (sub-lemma dD h)
@@ -1178,6 +1189,19 @@ conv-ctx : {Γ : Ctx} {A A' : RTy ⌊ Γ ⌋} → A ≅ᵀ A' →
 conv-ctx {Γ} {A} {A'} c {t} {B} d =
   ⊢-cast (subTy-id B)
     (subst (λ z → (Γ ▹ A') ⊢ z ∷ subTy idₛ B) (subTm-id t) (sub-lemma d idₛ⊢))
+  where
+  idₛ⊢ : Sub⊢ (Γ ▹ A) (Γ ▹ A') idₛ
+  idₛ⊢ here =
+    ⊢-cast (sym (subTy-id (renTy vs A))) (⊢conv (⊢var here) (csymᵀ (≅ᵀ-ren vs c)))
+  idₛ⊢ (there {A = A₀} v) =
+    ⊢-cast (sym (subTy-id (renTy vs A₀))) (⊢var (there v))
+
+-- the same, for a TYPE under the converted entry (a motive whose
+--   context mentions a description that stepped).
+conv-ctxᵀ : {Γ : Ctx} {A A' : RTy ⌊ Γ ⌋} → A ≅ᵀ A' →
+            {B : RTy (⌊ Γ ⌋ ∙)} → (Γ ▹ A) ⊢ty B → (Γ ▹ A') ⊢ty B
+conv-ctxᵀ {Γ} {A} {A'} c {B} d =
+  subst (λ z → (Γ ▹ A') ⊢ty z) (subTy-id B) (sub-ty d idₛ⊢)
   where
   idₛ⊢ : Sub⊢ (Γ ▹ A) (Γ ▹ A') idₛ
   idₛ⊢ here =

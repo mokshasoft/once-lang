@@ -686,13 +686,20 @@ data _⊢_∷_ where
             Γ ⊢ n ∷ Nat →
             Γ ⊢ natrec z s n ∷ subTy (single n) M
   -- ★★ LEVITATED INDUCTIVE FAMILIES (SPIKE-LEVITATION S3/S4).
-  --   Telescopes: well-formedness IS typing.  `⊢dσ` carries the index
-  --   code's typing because its other premises only type it UNDER a binder.
-  ⊢dι   : ∀ {Γ I j} → Γ ⊢ j ∷ El I → Γ ⊢ dι j ∷ Desc I
+  --   Telescopes: well-formedness IS typing.  Every telescope former
+  --   types its index code `Γ ⊢ I ∷ U`: its conclusion `Desc I` needs it,
+  --   and the other premises mention `I` only under `El`/`Desc` or a
+  --   binder, from which it is recoverable only up to conversion (validity
+  --   sits ABOVE subject reduction).
+  ⊢dι   : ∀ {Γ I j} → Γ ⊢ I ∷ U → Γ ⊢ j ∷ El I → Γ ⊢ dι j ∷ Desc I
   ⊢dσ   : ∀ {Γ I S f} → Γ ⊢ I ∷ U → Γ ⊢ S ∷ U →
           Γ ⊢ f ∷ Π (El S) (Desc (renTm vs I)) → Γ ⊢ dσ S f ∷ Desc I
-  ⊢dρ   : ∀ {Γ I j C} → Γ ⊢ j ∷ El I → Γ ⊢ C ∷ Desc I → Γ ⊢ dρ j C ∷ Desc I
-  ⊢dpay : ∀ {Γ I D C i} → Γ ⊢ D ∷ Desc I → Γ ⊢ C ∷ Desc I → Γ ⊢ i ∷ El I →
+  ⊢dρ   : ∀ {Γ I j C} → Γ ⊢ I ∷ U → Γ ⊢ j ∷ El I → Γ ⊢ C ∷ Desc I → Γ ⊢ dρ j C ∷ Desc I
+  -- `⊢dpay` types its index code like `⊢dσ` does: its reduct at `dι j` is
+  --   `⌜Id⌝ I j i`, whose formation needs `Γ ⊢ I ∷ U`, and the other
+  --   premises only mention `I` under `Desc`/`El` (extracting it would
+  --   need validity, which sits ABOVE subject reduction).
+  ⊢dpay : ∀ {Γ I D C i} → Γ ⊢ I ∷ U → Γ ⊢ D ∷ Desc I → Γ ⊢ C ∷ Desc I → Γ ⊢ i ∷ El I →
           Γ ⊢ dpay I D C i ∷ U
   -- a constructor exists at EVERY index (Fording): the payload's `dι j`
   --   field is the equation `j ≡ i`, so the bad ones are uninhabitable.
