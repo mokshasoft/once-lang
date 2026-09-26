@@ -101,21 +101,21 @@ erase (⊢ᴬap {cB = cB} {b = b} {t = t} {u = u} dcA fl dcB db dt du dp) =
   cong₂' refl refl = refl
 erase (⊢ᴬ⌜Id⌝ dc da db) = ⊢⌜Id⌝ (erase dc) (erase da) (erase db)
 erase ⊢ᴬ⌜Nat⌝ = ⊢⌜Nat⌝
-erase (⊢ᴬ⌜IMu⌝ dI dD di) = ⊢⌜IMu⌝ (erase dI) (erase dD) (erase di)
+erase (⊢ᴬ⌜IMu⌝ {I = I} dI dD di) = ⊢⌜IMu⌝ (erase dI) (⊢-cast (era-DescF I) (erase dD)) (erase di)
 erase ⊢ᴬ⌜Fin⌝ = ⊢⌜Fin⌝
-erase (⊢ᴬdι dI dj) = ⊢dι (erase dI) (erase dj)
+erase (⊢ᴬdι dI) = ⊢dι (erase dI)
 erase (⊢ᴬdσ {I = I} {S = S} dI dS df) =
   ⊢dσ (erase dI) (erase dS)
       (⊢-cast (cong (λ z → Π (El ⌈ S ⌉) (Desc z)) (era-renTm vs I)) (erase df))
 erase (⊢ᴬdρ dI dj dC) = ⊢dρ (erase dI) (erase dj) (erase dC)
-erase (⊢ᴬdpay dI dD dC di) = ⊢dpay (erase dI) (erase dD) (erase dC) (erase di)
-erase (⊢ᴬcon dI dD di dp) = ⊢con (erase dI) (erase dD) (erase di) (erase dp)
-erase (⊢ᴬdih {I = I} {D = D} {M = M} dI dD dM de dC di dp) =
-  ⊢dih (erase dI) (erase dD) (motCtx-era (erase-ty dM)) (⊢-cast (era-MethTy I D M) (erase de))
-       (erase dC) (erase di) (erase dp)
+erase (⊢ᴬdpay {I = I} dI dD dC) = ⊢dpay (erase dI) (⊢-cast (era-DescF I) (erase dD)) (erase dC)
+erase (⊢ᴬcon {I = I} dI dD di dp) = ⊢con (erase dI) (⊢-cast (era-DescF I) (erase dD)) (erase di) (erase dp)
+erase (⊢ᴬdih {I = I} {D = D} {M = M} dI dD dM de dC dp) =
+  ⊢dih (erase dI) (⊢-cast (era-DescF I) (erase dD)) (motCtx-era (erase-ty dM)) (⊢-cast (era-MethTy I D M) (erase de))
+       (erase dC) (erase dp)
 erase (⊢ᴬielim {I = I} {D = D} {M = M} {i = i} {t = t} dI dD dM de di dt) =
   ⊢-cast (sym (era-iinst i t M))
-    (⊢ielim (erase dI) (erase dD) (motCtx-era (erase-ty dM)) (⊢-cast (era-MethTy I D M) (erase de))
+    (⊢ielim (erase dI) (⊢-cast (era-DescF I) (erase dD)) (motCtx-era (erase-ty dM)) (⊢-cast (era-MethTy I D M) (erase de))
             (erase di) (erase dt))
 erase ⊢ᴬfzero = ⊢fzero
 erase (⊢ᴬfsuc d) = ⊢fsuc (erase d)
@@ -154,10 +154,10 @@ erase-ty (tyᴬ-El dc) = ty-El (erase dc)
 erase-ty (tyᴬ-Id dA dt du) = ty-Id (erase-ty dA) (erase dt) (erase du)
 erase-ty tyᴬ-Unit = ty-Unit
 erase-ty tyᴬ-Nat  = ty-Nat
-erase-ty (tyᴬ-IMu dI dD di) = ty-IMu (erase dI) (erase dD) (erase di)
+erase-ty (tyᴬ-IMu {I = I} dI dD di) = ty-IMu (erase dI) (⊢-cast (era-DescF I) (erase dD)) (erase di)
 erase-ty (tyᴬ-Desc dI) = ty-Desc (erase dI)
-erase-ty (tyᴬ-DIh dI dD dM dC di dp) =
-  ty-DIh (erase dI) (erase dD) (motCtx-era (erase-ty dM)) (erase dC) (erase di) (erase dp)
+erase-ty (tyᴬ-DIh {I = I} dI dD dM dC dp) =
+  ty-DIh (erase dI) (⊢-cast (era-DescF I) (erase dD)) (motCtx-era (erase-ty dM)) (erase dC) (erase dp)
 erase-ty tyᴬ-Fin = ty-Fin
 erase-ty (tyᴬ-Hom dA dt du) = ty-Hom (erase-ty dA) (erase dt) (erase du)
 
