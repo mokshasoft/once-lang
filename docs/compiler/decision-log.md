@@ -5177,3 +5177,49 @@ The Chapman–Dagand–McBride–Morris levitated form.
 
 D072, D073, `bootstrap/DirectedHoTT/PLAN-LEVITATION.md`, PLAN-INDEXED §1–3
 (the ambient-index design this levitates), PLAN-JUDGEMENT §1 (Fording cost).
+
+## D075: Mutual Families Are FIBRED BY SORT — No Sort Ford (OCP-0009, levitation; the Knot's encoding)
+
+**Date**: 2026-09-27
+**Status**: Accepted (follows from D074; user: "like always, which one is most principled mathematically, we should not consider edits")
+
+### Context
+
+After D074 the depth of a syntax rides (an input). The Knot's index is
+`(sort, depth)`, and its SORT was still Forded: every constructor ended
+with `⌜Id⌝ ⌜Nat⌝ (fst i) s`. That is the `Id`-encoding of the fibre over
+the sort, which D074 names as a hidden choice. It is permitted, but it is
+not the definition.
+
+### Decision
+
+A mutual family is ONE family over `I = Σ (s : Fin ns) J`. Its fibre over
+`(s , j)` is sort `s`'s constructor list:
+
+    Dₛ Css = λ i. sel [Dσ Cs₀, …, Dσ Cs_{ns-1}] (fst i)        (Lib/Sorted)
+
+- No constructor carries a sort equation. The sort is where the
+  constructor lives.
+- The sort tag is a `⌜Fin⌝` code, so the fibre can case on it with `fcase`
+  (natural numbers would need a recursor into `Desc`).
+- Methods pattern-match on the index. The one method splits `i` with
+  `psplit` and selects the sort. Each sort's methods are typed at
+  `pair (tag s) j`, where the fibre computes.
+
+### Consequence (the library layer it needed)
+
+The kernel's `MethTy` body is a method at an index VARIABLE. It generalises
+to a method at an index TERM: `Lib/MethAt`'s `MethAt I D M i F s` and
+`⊢methAt`. The variable form is the special case (`MethTy-At`). Built on
+it:
+
+- `Lib/Sorted`: `⊢Dₛ`, `fibₛ-β`, `⊢conₛ`, `⊢methₛ`, `⊢sortMeth`, `ιₛ-red`;
+- `Lib/TelAt`: telescopes at an index term under a pending substitution
+  (`⊢methTσ`, `⊢payAt`, `entₛ`, `ιₛT`);
+- `Lib/TelFoldS`: the library fold of a sorted family.
+
+`Examples/Mutual` is the first client and is green.
+
+### See Also
+
+D074, `bootstrap/DirectedHoTT/PLAN-LEVITATION.md` Stage 5.
