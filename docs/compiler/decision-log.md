@@ -15401,3 +15401,53 @@ accepted for `compose`.
 
 Coherence: where derivations overlap, the meaning agrees by `realize-invariant` (A4),
 itself still a postulate; removing ALL postulates includes proving A4.
+
+## D231 — THE SPEC IS A CORE CALCULUS; THE COMBINATORS ARE ITS DEFINITIONS; TERMS CARRY AN EFFECT GRADE (2026-09-26)
+
+**Relates**: plan 0.102 (phase A), OCP-0009 (POC plan §9, the `Spec/Kernel` breakout),
+D032/D046/D068/D069/D222/D225 (effects on arrows), D127 (combinators linear in their
+arms), D131 (an algebra is obtained once), D143 (grade-aware meaning), D226 (coercions).
+
+### Context
+
+The Spec's typing judgment is the bidirectional algorithm (`⊢ᵢ`/`⊢ᶜ`/`⊢ᵈ`) over named
+raw syntax, with one primitive rule per combinator per mode. Every property the model
+gives for free (substitution, let = def, narrowing to `Void`) became a per-rule, per-mode
+obligation (plan 0.94). OCP-0009 prescribes the fix for its dependent kernel: the Spec is
+a declarative core, and bidirectional checking is an implementation proven against it.
+
+### Decision
+
+1. **The core** (`Once.Spec.Core.*`): well-scoped de Bruijn raw terms `Tm n` and an
+   extrinsic judgment `Γ ⊢[ Ψ ] t ∷ A ! π`, graded by a usage vector (QTT, exact) and an
+   effect grade. The formers are those of the types: `var`/`lam`/`app`/`let′`, `unit`,
+   `pair`/`fst`/`snd`, `inl`/`inr`/`case`, `absurd`, `roll`/`fold` (μ), `unfold`/`out` (ν),
+   `coerce` (D226), `lit`, saturated `prim` (the arithmetic SigOps), `sigop` (FFI). This
+   is the non-dependent fragment of the POC's kernel. The dependent kernel extends this
+   judgment. It is never a second one.
+2. **The combinators are definitions** (`Once.Spec.Core.Derived`). `id`, `compose`,
+   `fst`, `snd`, `pair`, `case`, `curry`, `apply`, `terminal`, `initial`, `In`, `Out`,
+   `cata`, `ana` and the `effApp` suspension are λ-terms. An arm is bound by `let`, so it
+   is evaluated once and costs its own usage (D127). The compiler's path is unchanged: it
+   emits `IR.compose` and owes the model lemma `⟦IR.c⟧ = ⟦definition of c⟧`, not a
+   runtime translation.
+3. **Terms carry an effect grade `π`.** This is D032's arrow discipline read as a
+   λ-calculus. A combinator defined as a λ-term has an effectful body at an effectful
+   arrow (`compose f g`'s body is `g (f x)`), so the core has to type effectful terms.
+   Value introductions are `pure`, and a λ is pure whatever its body does, because the
+   body's grade rides the arrow (D222). Multi-premise rules share one `π` (D222).
+   `pure ⊑ eff` is the subsumption rule `⊢sub-eff`, which has no term (D068). Referencing a
+   base-typed FFI constant has the grade of its codomain (D225).
+4. **The meaning** (`Once.Spec.Core.Meaning`) is the surface meaning with the modes
+   removed: call-by-value Kleisli morphisms `⟦Γ ↾ Ψ⟧ → T⟦A⟧`, one clause per rule.
+
+### Known gaps, now visible rather than hidden
+
+* `ν-type F` records no grade, so forcing a layer (`out`) is `eff`. A pure-graded use
+  of `Out` that the surface accepts will fail the surface-to-core soundness proof (plan
+  0.102 C). The fix, if one is needed, is a graded ν type.
+* An FFI arrow's grade is trusted from its signature. Nothing yet ties an `Int → Unit`
+  signature (which emits, D225) to an `eff` arrow.
+* The equality judgment is not written yet. Following the top-down rule it lands when
+  something first consumes it: the combinators' defining equations (plan 0.102 C) or the
+  optimizer's normalization postulates.
