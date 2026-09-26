@@ -4,271 +4,289 @@
 --   Scoped (baseline):  Tm n            -- index: a DEPTH (one ℕ)
 --   here   (probe):     Tm (Γ , A)      -- index: a CONTEXT and a TYPE
 --
--- Same language, same two interesting constructors.  The ONLY
--- difference is the index, which is the whole question:
---
 --     lam : Tm (Γ , A) B → Tm Γ (A ⇒ B)
 --     app : Tm Γ (A ⇒ B) → Tm Γ A → Tm Γ B
 --
--- ★★★ THE RESULT, measured 2026-09-23 (standalone, warm deps):
+-- ★★ D074 (fibred descriptions).  Each constructor telescope sees the
+--   index `(Γ , T)` it lands at:
 --
---     | | lines (lam+app, desc+Wf) | module | time | memory |
---     | `Scoped`   depth-indexed |  22 | 433 | 0.68 s | 171 MB |
---     | `ScopedTy` type-indexed  |  96 | 257 | 0.42 s | 159 MB |
+--     `app`  target IS the ambient              ⇒ NO ford, one σ for A
+--     `lam`  target's TYPE is `A ⇒ B` (computed) ⇒ ford the TYPE component
+--            only; the CONTEXT rides (`fst i`), exactly `PairIx`'s trick
 --
---   ⇒ the CONSTRUCTORS cost **4.4×** the lines.  ⇒ there is **NO time
---     or memory blowup at all** — the type-indexed module is FASTER and
---     SMALLER than its depth-indexed baseline.
+--   ⇒ `lam` is σ A, σ B, ρ (A ∷ fst i , B), and ONE `⌜Id⌝` on `snd i`.
+--   The one-telescope form needed a σ for Γ as well and forded the whole
+--   pair (five fields, 2026-09-23 measurement); the fibre removes the
+--   context field and half the equation.
 --
---   ⚠ NOT apples-to-apples on the module totals: `Scoped` carries `var`
---     and the whole forded `Fin` family, which this file omits;
---     this file carries the `Ty` and `Ctx` families, which `Scoped`
---     does not need (a depth is a ℕ, already a kernel type).  The
---     4.4× on lam+app IS apples-to-apples — both have exactly those
---     two constructors.
+-- ★ The two auxiliary datatypes are ordinary families over `⌜Unit⌝`
+--   (D072: one datatype former).  §6 is `ScopedTySz`, folded in: the
+--   library `size` fold over a STRUCTURAL pair index.
 --
--- ★ THE PREDICTION, from `Scoped`'s own header — *"`iι` targets the
---   AMBIENT index, so a constructor that wants to land at `suc m` must
---   SAY SO with an `Id` field"*:
---
---     `app`  target IS the ambient `(Γ , B)`      ⇒ NO Ford, +1 κ for A
---     `lam`  target is `(Γ , A ⇒ B)` ≠ ambient    ⇒ FORD, +3 κ
---
---   ⇒ the delta is ONE Ford and four κ fields.  Everything else is the
---   two auxiliary datatypes the index is built from.
+-- ⚠ No constructor has a base case (no `var`), so the family is EMPTY:
+--   this file is a probe of the INDEX, and inhabits nothing closed.
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.ScopedTy where
-
-open import normalizer.Syntax.Types using ( _≡_; refl )
-open import DirectedHoTT.Spec.Typing
-  using ( Ctx; ◇; _▹_; ⌊_⌋; _⊢_∷_; _⊢ty_; ⊢var; here; there
-        ; DescWf; dwf-nil; dwf-cons; DConWf; dwf-ι; dwf-ρ; dwf-κ
-        ; ⊢⌜Mu⌝; ⊢⌜Σ⌝; ⊢⌜Id⌝; ⊢conv; ⊢pair; ⊢fst; ⊢snd; ⊢con; ⊢unit
-        ; IConWf; iwf-ι; iwf-ρ; iwf-κ ; Θ₀; ρ₀; x₀; _,,_; ICodeWf; icw-clo; icw-ford
-        ; IDescWf; idwf-nil; idwf-cons; ty-Σ; ty-El; ty-Mu; ty-Unit
-        ; _≅ᵀ_; csymᵀ; credᵀ; El-⌜Σ⌝; El-⌜Mu⌝ )
-open import DirectedHoTT.Spec.Syntax
-  using ( Cx; ε; _∙; RTy; RTm; var; vz; vs; Mu; IMu; El; Σ'; U; _∈D_; hereD; thereD
-        ; Desc; dnil; _◃_; DCon; dι; dρ; dκ
-        ; IDesc; inil; _◂_; ICon; iι; iρ; iκ
-        ; con; pair; fst; snd; unit; ⌜Mu⌝; ⌜Σ⌝; ⌜Id⌝ )
+open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; subst )
+open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
+open import DirectedHoTT.Spec.Syntax hiding ( Fin; base )
+open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
+open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-trans; ⟶*-pairˡ; ⟶*-pairʳ; ⟶*-con; red→≅ᵀ; ⟶ᵀ*-IMu )
+open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; exts-wk-tm )
+open import DirectedHoTT.Lib.Sugar using ( conₗ; methₗ; Dₗ )
+open import DirectedHoTT.Lib.Tel
+open import DirectedHoTT.Lib.TelFold using ( sizeAlg; foldMs; ⊢foldE )
 
 ------------------------------------------------------------------------
--- 1. THE TWO AUXILIARY DATATYPES the index is built from.
---    ⚠ `Scoped`'s index needed NONE of this — `INat = El ⌜Nat⌝`, one
---      line, because a depth is a ℕ and ℕ is already a kernel type.
+-- 1. THE TWO AUXILIARY DATATYPES, as families over `⌜Unit⌝`.
 ------------------------------------------------------------------------
+
+⊢u : {Γ : Ctx} → Γ ⊢ unit ∷ El ⌜Unit⌝
+⊢u = ⊢conv ⊢unit (csymᵀ (credᵀ El-⌜Unit⌝))
+
+fromEl : {Γ : Ctx} {I D i t : RTm ⌊ Γ ⌋} → Γ ⊢ t ∷ El (⌜IMu⌝ I D i) → Γ ⊢ t ∷ IMu I D i
+fromEl d = ⊢conv d (credᵀ El-⌜IMu⌝)
+
+toEl : {Γ : Ctx} {I D i t : RTm ⌊ Γ ⌋} → Γ ⊢ t ∷ IMu I D i → Γ ⊢ t ∷ El (⌜IMu⌝ I D i)
+toEl d = ⊢conv d (csymᵀ (credᵀ El-⌜IMu⌝))
 
 -- Ty ::= base | Ty ⇒ Ty
-TyD : Desc
-TyD = dι ◃ (dρ (dρ dι) ◃ dnil)
+TyTs : {Γ : Cx} → Tels (Γ ∙) 2
+TyTs = tι ∷ᵗ tρ unit (tρ unit tι) ∷ᵗ []ᵗ
 
-Ty : {Γ : Cx} → RTy Γ
-Ty = Mu TyD
+TyD : {Γ : Cx} → RTm Γ
+TyD = Dₗ ⌜ TyTs ⌝ₛ
 
 ⌜Ty⌝ : {Γ : Cx} → RTm Γ
-⌜Ty⌝ = ⌜Mu⌝ TyD
+⌜Ty⌝ = ⌜IMu⌝ ⌜Unit⌝ TyD unit
+
+TyOK : {Γ : Ctx} → AllOK (Γ ▹ El ⌜Unit⌝) ⌜Unit⌝ TyTs
+TyOK = ok-ι ∷ᵒ ok-ρ ⊢u (ok-ρ ⊢u ok-ι) ∷ᵒ []ᵒ
+
+⊢TyD : {Γ : Ctx} → Γ ⊢ TyD ∷ DescF ⌜Unit⌝
+⊢TyD = ⊢Dₜ ⊢⌜Unit⌝ TyOK
+
+⊢⌜Ty⌝ : {Γ : Ctx} → Γ ⊢ ⌜Ty⌝ ∷ U
+⊢⌜Ty⌝ = ⊢⌜IMu⌝ ⊢⌜Unit⌝ ⊢TyD ⊢u
 
 base : {Γ : Cx} → RTm Γ
-base = con 0 unit
+base = conₗ zero unit
 
 arrow : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ
-arrow a b = con 1 (pair a (pair b unit))
+arrow a b = conₗ (suc zero) (pair a (pair b unit))
 
--- Ctx ::= nil | Ty , Ctx
-CtxD : Desc
--- ⚠ the field type must be `El c` for a CLOSED code `c` (`dwf-κ`),
---   which is `Scoped`'s `INat = El ⌜Nat⌝` trick one level down.
-CtxD = dι ◃ (dκ (El (⌜Mu⌝ TyD)) (dρ dι) ◃ dnil)
+⊢base : {Γ : Ctx} → Γ ⊢ base ∷ El ⌜Ty⌝
+⊢base = toEl (⊢conₜ ⊢⌜Unit⌝ TyOK nthᵗ-z ⊢u (⊢payι ⊢⌜Unit⌝ ⊢TyD ⊢unit))
 
-Cxt : {Γ : Cx} → RTy Γ
-Cxt = Mu CtxD
+⊢arrow : {Γ : Ctx} {a b : RTm ⌊ Γ ⌋} →
+         Γ ⊢ a ∷ El ⌜Ty⌝ → Γ ⊢ b ∷ El ⌜Ty⌝ → Γ ⊢ arrow a b ∷ El ⌜Ty⌝
+⊢arrow da db =
+  toEl (⊢conₜ ⊢⌜Unit⌝ TyOK (nthᵗ-s nthᵗ-z) ⊢u
+         (⊢payρ ⊢⌜Unit⌝ ⊢TyD (ok-ρ ⊢u (ok-ρ ⊢u ok-ι)) (fromEl da)
+           (⊢payρ ⊢⌜Unit⌝ ⊢TyD (ok-ρ ⊢u ok-ι) (fromEl db) (⊢payι ⊢⌜Unit⌝ ⊢TyD ⊢unit))))
+
+-- Ctx ::= nil | Ty ∷ Ctx
+CxTs : {Γ : Cx} → Tels (Γ ∙) 2
+CxTs = tι ∷ᵗ tσ ⌜Ty⌝ (tρ unit tι) ∷ᵗ []ᵗ
+
+CxD : {Γ : Cx} → RTm Γ
+CxD = Dₗ ⌜ CxTs ⌝ₛ
 
 ⌜Cxt⌝ : {Γ : Cx} → RTm Γ
-⌜Cxt⌝ = ⌜Mu⌝ CtxD
+⌜Cxt⌝ = ⌜IMu⌝ ⌜Unit⌝ CxD unit
+
+CxOK : {Γ : Ctx} → AllOK (Γ ▹ El ⌜Unit⌝) ⌜Unit⌝ CxTs
+CxOK = ok-ι ∷ᵒ ok-σ ⊢⌜Ty⌝ (ok-ρ ⊢u ok-ι) ∷ᵒ []ᵒ
+
+⊢CxD : {Γ : Ctx} → Γ ⊢ CxD ∷ DescF ⌜Unit⌝
+⊢CxD = ⊢Dₜ ⊢⌜Unit⌝ CxOK
+
+⊢⌜Cxt⌝ : {Γ : Ctx} → Γ ⊢ ⌜Cxt⌝ ∷ U
+⊢⌜Cxt⌝ = ⊢⌜IMu⌝ ⊢⌜Unit⌝ ⊢CxD ⊢u
 
 nilC : {Γ : Cx} → RTm Γ
-nilC = con 0 unit
+nilC = conₗ zero unit
 
 consC : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ
-consC a g = con 1 (pair a (pair g unit))
+consC a g = conₗ (suc zero) (pair a (pair g unit))
+
+⊢nilC : {Γ : Ctx} → Γ ⊢ nilC ∷ El ⌜Cxt⌝
+⊢nilC = toEl (⊢conₜ ⊢⌜Unit⌝ CxOK nthᵗ-z ⊢u (⊢payι ⊢⌜Unit⌝ ⊢CxD ⊢unit))
+
+⊢consC : {Γ : Ctx} {a g : RTm ⌊ Γ ⌋} →
+         Γ ⊢ a ∷ El ⌜Ty⌝ → Γ ⊢ g ∷ El ⌜Cxt⌝ → Γ ⊢ consC a g ∷ El ⌜Cxt⌝
+⊢consC da dg =
+  toEl (⊢conₜ ⊢⌜Unit⌝ CxOK (nthᵗ-s nthᵗ-z) ⊢u
+         (⊢payσ ⊢⌜Unit⌝ ⊢CxD (ok-σ ⊢⌜Ty⌝ (ok-ρ ⊢u ok-ι)) da
+           (⊢payρ ⊢⌜Unit⌝ ⊢CxD (ok-ρ ⊢u ok-ι) (fromEl dg) (⊢payι ⊢⌜Unit⌝ ⊢CxD ⊢unit))))
 
 ------------------------------------------------------------------------
--- 2. THE INDEX — a PAIR of them.
---    ★ `Scoped` uses `El ⌜Nat⌝` so the index type is the DECODE of a
---      code; mirrored here so `ty-IMu` obligations line up the same way.
+-- 2. THE INDEX — a pair of them, as a CODE.
 ------------------------------------------------------------------------
 
 ⌜I⌝ : {Γ : Cx} → RTm Γ
 ⌜I⌝ = ⌜Σ⌝ ⌜Cxt⌝ ⌜Ty⌝
 
-I : RTy ε
-I = El ⌜I⌝
-
-ix : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ
-ix g a = pair g a
-
-------------------------------------------------------------------------
--- 3. THE CONSTRUCTORS — and the whole probe is the difference between
---    these two and `Scoped`'s.
---
---   Scoped (depth):   lamC = iρ (nsuc (var vz)) iι              -- 1 field
---                     appC = iρ (var vz) (iρ (var (vs vz)) iι)  -- 2 fields
-------------------------------------------------------------------------
-
--- app : Tm Γ (A ⇒ B) → Tm Γ A → Tm Γ B
--- ★ TARGET IS THE AMBIENT `(Γ , B)`, so NO Ford — exactly as predicted.
---   `A` is a parameter, so it is a κ field; `A ⇒ B` is BUILT from it
---   and the ambient's second component, which is forward.
-appC : ICon (ε ∙)
-appC =
-  iκ ⌜Ty⌝                                              -- A
-   (iρ (ix (fst (var (vs vz)))                         -- Γ
-           (arrow (var vz) (snd (var (vs vz)))))       -- A ⇒ B
-    (iρ (ix (fst (var (vs (vs vz))))                   -- Γ
-            (var (vs vz)))                             -- A
-     iι))
-
--- lam : Tm (Γ , A) B → Tm Γ (A ⇒ B)
--- ⚠ TARGET IS `(Γ , A ⇒ B)`, NOT the ambient ⇒ it must SAY SO with an
---   `Id` field.  That is the one Ford, and the three κ fields the
---   depth-indexed version does not need.
-lamC : ICon (ε ∙)
-lamC =
-  iκ ⌜Ty⌝                                              -- A
-   (iκ ⌜Ty⌝                                            -- B
-    (iκ ⌜Cxt⌝                                          -- Γ
-     (iρ (ix (consC (var (vs (vs vz))) (var vz))       -- (Γ , A)
-             (var (vs vz)))                            -- B
-      (iκ (⌜Id⌝ ⌜I⌝ (var (vs (vs (vs (vs vz)))))       -- the FORD
-                    (ix (var (vs vz))
-                        (arrow (var (vs (vs (vs vz))))
-                               (var (vs (vs vz))))))
-       iι))))
-
-TmD : IDesc
-TmD = appC ◂ (lamC ◂ inil)
-
-Tm : {Γ : Cx} → RTm Γ → RTy Γ
-Tm i = IMu TmD I i
-
-------------------------------------------------------------------------
--- 4. WELL-FORMEDNESS.
-------------------------------------------------------------------------
-
-TyWf : DescWf TyD
-TyWf = dwf-cons dwf-ι (dwf-cons (dwf-ρ (dwf-ρ dwf-ι)) dwf-nil)
-
-CtxWf : DescWf CtxD
-CtxWf = dwf-cons dwf-ι
-          (dwf-cons (dwf-κ (⌜Mu⌝ TyD) (⊢⌜Mu⌝ TyWf) (dwf-ρ dwf-ι)) dwf-nil)
-
-⊢⌜Ty⌝ : {Γ : Ctx} → Γ ⊢ ⌜Ty⌝ ∷ U
-⊢⌜Ty⌝ = ⊢⌜Mu⌝ TyWf
-
-⊢⌜Cxt⌝ : {Γ : Ctx} → Γ ⊢ ⌜Cxt⌝ ∷ U
-⊢⌜Cxt⌝ = ⊢⌜Mu⌝ CtxWf
-
 ⊢⌜I⌝ : {Γ : Ctx} → Γ ⊢ ⌜I⌝ ∷ U
 ⊢⌜I⌝ = ⊢⌜Σ⌝ ⊢⌜Cxt⌝ ⊢⌜Ty⌝
-
-------------------------------------------------------------------------
--- 5. THE CONVERSIONS the index costs — one per `⌜Mu⌝`, plus the `Σ`.
---    ⚠ `Scoped` needs exactly ONE of these (`elNat`).  A pair index
---      over two datatypes needs THREE.
-------------------------------------------------------------------------
 
 elΣI : {Γ : Cx} → El (⌜I⌝ {Γ}) ≅ᵀ Σ' (El ⌜Cxt⌝) (El ⌜Ty⌝)
 elΣI = credᵀ (El-⌜Σ⌝ _ _)
 
-elMuTy : {Γ : Cx} → El (⌜Ty⌝ {Γ}) ≅ᵀ Mu TyD
-elMuTy = credᵀ El-⌜Mu⌝
-
-elMuCx : {Γ : Cx} → El (⌜Cxt⌝ {Γ}) ≅ᵀ Mu CtxD
-elMuCx = credᵀ El-⌜Mu⌝
-
-------------------------------------------------------------------------
--- 6. BUILDING AND DESTRUCTING AN INDEX.
-------------------------------------------------------------------------
-
 ⊢ixP : {Γ : Ctx} {g a : RTm ⌊ Γ ⌋} →
-       Γ ⊢ g ∷ El ⌜Cxt⌝ → Γ ⊢ a ∷ El ⌜Ty⌝ → Γ ⊢ ix g a ∷ El ⌜I⌝
+       Γ ⊢ g ∷ El ⌜Cxt⌝ → Γ ⊢ a ∷ El ⌜Ty⌝ → Γ ⊢ pair g a ∷ El ⌜I⌝
 ⊢ixP dg da = ⊢conv (⊢pair (ty-El ⊢⌜Ty⌝) dg da) (csymᵀ elΣI)
 
-⊢fstI : {Γ : Ctx} {i : RTm ⌊ Γ ⌋} →
-        Γ ⊢ i ∷ El ⌜I⌝ → Γ ⊢ fst i ∷ El ⌜Cxt⌝
+⊢fstI : {Γ : Ctx} {i : RTm ⌊ Γ ⌋} → Γ ⊢ i ∷ El ⌜I⌝ → Γ ⊢ fst i ∷ El ⌜Cxt⌝
 ⊢fstI di = ⊢fst (⊢conv di elΣI)
 
-⊢sndI : {Γ : Ctx} {i : RTm ⌊ Γ ⌋} →
-        Γ ⊢ i ∷ El ⌜I⌝ → Γ ⊢ snd i ∷ El ⌜Ty⌝
+⊢sndI : {Γ : Ctx} {i : RTm ⌊ Γ ⌋} → Γ ⊢ i ∷ El ⌜I⌝ → Γ ⊢ snd i ∷ El ⌜Ty⌝
 ⊢sndI di = ⊢snd (⊢conv di elΣI)
 
 ------------------------------------------------------------------------
--- 7. THE TWO TYPE CONSTRUCTORS, TYPED.
---    ⚠ `Scoped` needs NONE of this — its index is `nsuc`, a kernel
---      constructor with `⊢nsuc` already proved.
+-- 3. ★★★ THE SYNTAX — telescopes over the index `i`, stated through
+--    two tails GENERIC IN THE INDEX TERM (`appR`, `lamR`), so each
+--    constructor below instantiates them at the index the pending
+--    substitution leaves, with one `wk-single`-style cast of the INDEX
+--    derivation and nothing else.
 ------------------------------------------------------------------------
 
-⊢base : {Γ : Ctx} → Γ ⊢ base ∷ El ⌜Ty⌝
-⊢base = ⊢conv (⊢con TyWf hereD ⊢unit) (csymᵀ elMuTy)
+-- app, after `A`: the function at `(fst i , A ⇒ snd i)`, the argument at `(fst i , A)`
+appR : {Δ : Cx} → RTm Δ → RTm Δ → Tel Δ
+appR I A = tρ (pair (fst I) (arrow A (snd I))) (tρ (pair (fst I) A) tι)
 
-⊢arrow : {Γ : Ctx} {a b : RTm ⌊ Γ ⌋} →
-         Γ ⊢ a ∷ El ⌜Ty⌝ → Γ ⊢ b ∷ El ⌜Ty⌝ → Γ ⊢ arrow a b ∷ El ⌜Ty⌝
-⊢arrow da db =
-  ⊢conv (⊢con TyWf (thereD hereD)
-           (⊢pair (ty-Σ (ty-Mu TyWf) ty-Unit) (⊢conv da elMuTy)
-             (⊢pair ty-Unit (⊢conv db elMuTy) ⊢unit)))
-        (csymᵀ elMuTy)
+-- lam, after `A` and `B`: the body at `(A ∷ fst i , B)`, then the ford on the TYPE
+lamR : {Δ : Cx} → RTm Δ → RTm Δ → RTm Δ → Tel Δ
+lamR I A B = tρ (pair (consC A (fst I)) B) (tσ (⌜Id⌝ ⌜Ty⌝ (snd I) (arrow A B)) tι)
 
-⊢nilC : {Γ : Ctx} → Γ ⊢ nilC ∷ El ⌜Cxt⌝
-⊢nilC = ⊢conv (⊢con CtxWf hereD ⊢unit) (csymᵀ elMuCx)
+appT lamT : {Γ : Cx} → Tel (Γ ∙)
+appT = tσ ⌜Ty⌝ (appR (var (vs vz)) (var vz))
+lamT = tσ ⌜Ty⌝ (tσ ⌜Ty⌝ (lamR (var (vs (vs vz))) (var (vs vz)) (var vz)))
 
-⊢consC : {Γ : Ctx} {a g : RTm ⌊ Γ ⌋} →
-         Γ ⊢ a ∷ El ⌜Ty⌝ → Γ ⊢ g ∷ El ⌜Cxt⌝ → Γ ⊢ consC a g ∷ El ⌜Cxt⌝
-⊢consC da dg =
-  ⊢conv (⊢con CtxWf (thereD hereD)
-           (⊢pair (ty-Σ (ty-Mu CtxWf) ty-Unit) da
-             (⊢pair ty-Unit (⊢conv dg elMuCx) ⊢unit)))
-        (csymᵀ elMuCx)
+TmTs : {Γ : Cx} → Tels (Γ ∙) 2
+TmTs = appT ∷ᵗ lamT ∷ᵗ []ᵗ
+
+TmD : {Γ : Cx} → RTm Γ
+TmD = Dₗ ⌜ TmTs ⌝ₛ
+
+Tm : {Γ : Cx} → RTm Γ → RTy Γ
+Tm i = IMu ⌜I⌝ TmD i
 
 ------------------------------------------------------------------------
--- 8. ★★★ THE TWO WELL-FORMEDNESS PROOFS — the measurement.
+-- 4. WELL-FORMEDNESS — of the tails at any index, then of the syntax.
+------------------------------------------------------------------------
+
+module _ {Γ : Ctx} {I A : RTm ⌊ Γ ⌋} (dI : Γ ⊢ I ∷ El ⌜I⌝) (dA : Γ ⊢ A ∷ El ⌜Ty⌝) where
+  appR₂OK : TelOK Γ ⌜I⌝ (tρ (pair (fst I) A) tι)
+  appR₂OK = ok-ρ (⊢ixP (⊢fstI dI) dA) ok-ι
+
+  appROK : TelOK Γ ⌜I⌝ (appR I A)
+  appROK = ok-ρ (⊢ixP (⊢fstI dI) (⊢arrow dA (⊢sndI dI))) appR₂OK
+
+  ⊢lamEq : {B : RTm ⌊ Γ ⌋} → Γ ⊢ B ∷ El ⌜Ty⌝ → Γ ⊢ ⌜Id⌝ ⌜Ty⌝ (snd I) (arrow A B) ∷ U
+  ⊢lamEq dB = ⊢⌜Id⌝ ⊢⌜Ty⌝ (⊢sndI dI) (⊢arrow dA dB)
+
+  lamROK : {B : RTm ⌊ Γ ⌋} → Γ ⊢ B ∷ El ⌜Ty⌝ → TelOK Γ ⌜I⌝ (lamR I A B)
+  lamROK dB = ok-ρ (⊢ixP (⊢consC dA (⊢fstI dI)) dB) (ok-σ (⊢lamEq dB) ok-ι)
+
+appOK : {Γ : Ctx} {I : RTm ⌊ Γ ⌋} → Γ ⊢ I ∷ El ⌜I⌝ → TelOK Γ ⌜I⌝ (tσ ⌜Ty⌝ (appR (renTm vs I) (var vz)))
+appOK dI = ok-σ ⊢⌜Ty⌝ (appROK (⊢wk dI) (⊢var here))
+
+lamOK : {Γ : Ctx} {I : RTm ⌊ Γ ⌋} → Γ ⊢ I ∷ El ⌜I⌝ →
+        TelOK Γ ⌜I⌝ (tσ ⌜Ty⌝ (tσ ⌜Ty⌝ (lamR (renTm vs (renTm vs I)) (var (vs vz)) (var vz))))
+lamOK dI = ok-σ ⊢⌜Ty⌝ (ok-σ ⊢⌜Ty⌝ (lamROK (⊢wk (⊢wk dI)) (⊢var (there here)) (⊢var here)))
+
+TmOK : {Γ : Ctx} → AllOK (Γ ▹ El ⌜I⌝) ⌜I⌝ TmTs
+TmOK = appOK (⊢var here) ∷ᵒ lamOK (⊢var here) ∷ᵒ []ᵒ
+
+⊢TmD : {Γ : Ctx} → Γ ⊢ TmD ∷ DescF ⌜I⌝
+⊢TmD = ⊢Dₜ ⊢⌜I⌝ TmOK
+
+------------------------------------------------------------------------
+-- 5. THE TERM FORMERS, at EVERY index.
 --
---   `Scoped`'s, for comparison:
---       lamWf = iwf-ρ (nsuc (var vz)) (toI (⊢nsuc (fromI (⊢var here)))) iwf-ι
---       appWf = iwf-ρ (var vz) (⊢var here)
---                (iwf-ρ (var (vs vz)) (⊢var (there here)) iwf-ι)
+-- ⚠ The one cost the fibre does not remove: the pending substitution
+--   leaves the index under the σ-binders as `subTm (single a) (renTm vs i)`,
+--   which is `i` only PROPOSITIONALLY (`wk-single`).  The tails being
+--   generic in the index term, that is one `subst` of the INDEX
+--   derivation per constructor, and the rest is `βfst`/`βsnd`.
 ------------------------------------------------------------------------
 
-appWf : IConWf I (Θ₀ I) ρ₀ x₀ appC
-appWf =
-  iwf-κ ⌜Ty⌝ (icw-clo (⌜Mu⌝ TyD) ⊢⌜Ty⌝) ⊢⌜Ty⌝
-   (iwf-ρ (ix (fst (var (vs vz))) (arrow (var vz) (snd (var (vs vz)))))
-          (⊢ixP (⊢fstI (⊢var (there here)))
-                (⊢arrow (⊢var here) (⊢sndI (⊢var (there here)))))
-    (iwf-ρ (ix (fst (var (vs (vs vz)))) (var (vs vz)))
-           (⊢ixP (⊢fstI (⊢var (there (there here)))) (⊢var (there here)))
-     iwf-ι))
+tapp : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ → RTm Γ
+tapp a f x = conₗ zero (pair a (pair f (pair x unit)))
 
-lamWf : IConWf I (Θ₀ I) ρ₀ x₀ lamC
-lamWf =
-  iwf-κ ⌜Ty⌝  (icw-clo (⌜Mu⌝ TyD)  ⊢⌜Ty⌝)  ⊢⌜Ty⌝
-   (iwf-κ ⌜Ty⌝  (icw-clo (⌜Mu⌝ TyD)  ⊢⌜Ty⌝)  ⊢⌜Ty⌝
-    (iwf-κ ⌜Cxt⌝ (icw-clo (⌜Mu⌝ CtxD) ⊢⌜Cxt⌝) ⊢⌜Cxt⌝
-     (iwf-ρ (ix (consC (var (vs (vs vz))) (var vz)) (var (vs vz)))
-            (⊢ixP (⊢consC (⊢var (there (there here))) (⊢var here))
-                  (⊢var (there here)))
-      (iwf-κ (⌜Id⌝ ⌜I⌝ (var (vs (vs (vs (vs vz)))))
-                       (ix (var (vs vz))
-                           (arrow (var (vs (vs (vs vz)))) (var (vs (vs vz))))))
-             (icw-ford ⌜I⌝ _ _)
-             (⊢⌜Id⌝ ⊢⌜I⌝ (⊢var (there (there (there (there here)))))
-                    (⊢ixP (⊢var (there here))
-                          (⊢arrow (⊢var (there (there (there here))))
-                                  (⊢var (there (there here))))))
-       iwf-ι))))
+tlam : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ → RTm Γ
+tlam a b t = conₗ (suc zero) (pair a (pair b (pair t (pair (idrefl ⌜Ty⌝ (arrow a b)) unit))))
 
-TmWf : IDescWf I TmD
-TmWf = ty-El ⊢⌜I⌝ ,, idwf-cons appWf (idwf-cons lamWf idwf-nil)
+-- convert along a reduction OF THE INDEX
+ixConv : {Γ : Ctx} {t i i' : RTm ⌊ Γ ⌋} → i ⟶* i' → Γ ⊢ t ∷ Tm i' → Γ ⊢ t ∷ Tm i
+ixConv r d = ⊢conv d (csymᵀ (red→≅ᵀ (⟶ᵀ*-IMu r)))
+
+module _ {Γ : Ctx} {g : RTm ⌊ Γ ⌋} (dg : Γ ⊢ g ∷ El ⌜Cxt⌝) where
+
+  ⊢tapp : {a b f x : RTm ⌊ Γ ⌋} → Γ ⊢ a ∷ El ⌜Ty⌝ → Γ ⊢ b ∷ El ⌜Ty⌝ →
+          Γ ⊢ f ∷ Tm (pair g (arrow a b)) → Γ ⊢ x ∷ Tm (pair g a) →
+          Γ ⊢ tapp a f x ∷ Tm (pair g b)
+  ⊢tapp {a} {b} {f} {x} da db df dx =
+    ⊢conₜ ⊢⌜I⌝ TmOK nthᵗ-z di
+      (⊢payσ ⊢⌜I⌝ ⊢TmD (appOK di) da
+        (subst (λ J → Γ ⊢ pair f (pair x unit) ∷ El (dpay ⌜I⌝ TmD ⌜ appR J a ⌝ᵗ)) (sym (wk-single {v = a} i))
+          (⊢payρ ⊢⌜I⌝ ⊢TmD (appROK di da)
+                 (ixConv (⟶*-trans (⟶*-pairˡ (step (βfst g b) done))
+                                   (⟶*-pairʳ (⟶*-con (⟶*-pairʳ (⟶*-pairʳ
+                                     (⟶*-pairˡ (step (βsnd g b) done))))))) df)
+            (⊢payρ ⊢⌜I⌝ ⊢TmD (appR₂OK di da)
+                   (ixConv (⟶*-pairˡ (step (βfst g b) done)) dx)
+                   (⊢payι ⊢⌜I⌝ ⊢TmD ⊢unit)))))
+    where i = pair g b
+          di = ⊢ixP dg db
+
+  -- ★★★ THE BINDING CONSTRUCTOR: the body at `(A ∷ Γ , B)`, the type forded.
+  ⊢tlam : {a b t : RTm ⌊ Γ ⌋} → Γ ⊢ a ∷ El ⌜Ty⌝ → Γ ⊢ b ∷ El ⌜Ty⌝ →
+          Γ ⊢ t ∷ Tm (pair (consC a g) b) → Γ ⊢ tlam a b t ∷ Tm (pair g (arrow a b))
+  ⊢tlam {a} {b} {t} da db dt =
+    ⊢conₜ ⊢⌜I⌝ TmOK (nthᵗ-s nthᵗ-z) di
+      (⊢payσ ⊢⌜I⌝ ⊢TmD (lamOK di) da
+        (⊢payσ ⊢⌜I⌝ ⊢TmD (ok-σ ⊢⌜Ty⌝ (lamROK dI₁ (⊢wk da) (⊢var here))) db
+          (subst (λ A' → Γ ⊢ lamP ∷ El (dpay ⌜I⌝ TmD ⌜ lamR (subTm (single b) I₁) A' b ⌝ᵗ))
+                 (sym (wk-single {v = b} a))
+          (subst (λ J → Γ ⊢ lamP ∷ El (dpay ⌜I⌝ TmD ⌜ lamR J a b ⌝ᵗ)) e₂
+            (⊢payρ ⊢⌜I⌝ ⊢TmD (lamROK di da db)
+                   (ixConv (⟶*-pairˡ (⟶*-con (⟶*-pairʳ (⟶*-pairʳ
+                             (⟶*-pairˡ (step (βfst g (arrow a b)) done)))))) dt)
+              (⊢payσ ⊢⌜I⌝ ⊢TmD (ok-σ (⊢lamEq di da db) ok-ι)
+                     (⊢conv (⊢idrefl ⊢⌜Ty⌝ (⊢arrow da db))
+                            (csymᵀ (ctrnᵀ (credᵀ (ξ-El (ξ-⌜Id⌝ˡ (βsnd g (arrow a b)))))
+                                          (credᵀ (El-⌜Id⌝ ⌜Ty⌝ _ _)))))
+                     (⊢payι ⊢⌜I⌝ ⊢TmD ⊢unit)))))))
+    where
+      i = pair g (arrow a b)
+      lamP = pair t (pair (idrefl ⌜Ty⌝ (arrow a b)) unit)
+      di = ⊢ixP dg (⊢arrow da db)
+      I₁ = subTm (extS (single a)) (renTm vs (renTm vs i))
+      e₁ : renTm vs i ≡ I₁
+      e₁ = sym (trans (exts-wk-tm (single a) (renTm vs i)) (cong (renTm vs) (wk-single {v = a} i)))
+      dI₁ : (Γ ▹ El ⌜Ty⌝) ⊢ I₁ ∷ El ⌜I⌝
+      dI₁ = subst (λ J → (Γ ▹ El ⌜Ty⌝) ⊢ J ∷ El ⌜I⌝) e₁ (⊢wk di)
+      e₂ : i ≡ subTm (single b) I₁
+      e₂ = trans (sym (wk-single {v = b} i)) (cong (subTm (single b)) e₁)
+
+------------------------------------------------------------------------
+-- 6. THE FOLD, over a STRUCTURAL index (was `ScopedTySz`).
+--
+-- ★ `KNOT-LESSONS` §2.1: the Knot's fold pain was index BOOKKEEPING —
+--   a binder is `+1` and the fold must count.  Here the index is a
+--   context and a type, and the library fold is ONE line: the method
+--   tuple is computed from the telescopes and never looks at the index.
+------------------------------------------------------------------------
+
+msize : {Γ : Cx} → RTm Γ
+msize = methₗ (foldMs sizeAlg TmTs)
+
+size : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ
+size i t = ielim TmD i msize t
+
+⊢size : {Γ : Ctx} {i t : RTm ⌊ Γ ⌋} → Γ ⊢ i ∷ El ⌜I⌝ → Γ ⊢ t ∷ Tm i → Γ ⊢ size i t ∷ Nat
+⊢size di dt = ⊢ielim ⊢⌜I⌝ ⊢TmD ty-Nat (⊢foldE sizeAlg ⊢⌜I⌝ TmOK) di dt
