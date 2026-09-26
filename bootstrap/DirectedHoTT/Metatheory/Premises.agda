@@ -23,7 +23,7 @@ open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Metatheory.TySub
   using ( Sub⊢; sub-lemma; sub-ty; Ren⊢; Ren⊢-ext; ren-ty; ∋-cast; ⊢-cast; ⊢wk; wk-ren
-        ; wk2-sub-tm; wk2M-sub )
+        ; wk2-sub-tm; wk2M-sub; DescF-ren; wk-cancel-tm )
 open import DirectedHoTT.Metatheory.Fundamental.Syntactic using ( ⟨_⟩ᵣ; subTm-var; subTy-var )
 open import DirectedHoTT.Metatheory.SubjectReductionBase using ( wk-sub )
 open import DirectedHoTT.Metatheory.RedCong
@@ -38,6 +38,17 @@ private
   w2⊢ {A = A} v = ∋-cast (renTy-renTy A) (there (there v))
 
 -- the motive, renamed under its own two binders
+-- ★ D074: weakening a DESCRIPTION keeps its type a description of the
+--   weakened index
+⊢wkD : {Δ : Ctx} {B : RTy ⌊ Δ ⌋} {I D : RTm ⌊ Δ ⌋} →
+       Δ ⊢ D ∷ DescF I → (Δ ▹ B) ⊢ renTm vs D ∷ DescF (renTm vs I)
+⊢wkD {I = I} dD = ⊢-cast (DescF-ren vs I) (⊢wk dD)
+
+-- …and its fibre over the fresh index variable is a telescope
+⊢fibre : {Δ : Ctx} {I D : RTm ⌊ Δ ⌋} →
+         Δ ⊢ D ∷ DescF I → (Δ ▹ El I) ⊢ app (renTm vs D) (var vz) ∷ Desc (renTm vs I)
+⊢fibre {I = I} dD = ⊢-cast (cong Desc (wk-cancel-tm (var vz) (renTm vs I))) (⊢app (⊢wkD dD) (⊢var here))
+
 mot-ren : {Δ Θ : Ctx} {ρ : Ren ⌊ Δ ⌋ ⌊ Θ ⌋} {I D : RTm ⌊ Δ ⌋} {M : RTy ((⌊ Δ ⌋ ∙) ∙)} →
           Ren⊢ Δ Θ ρ → motCtx Δ I D ⊢ty M →
           motCtx Θ (renTm ρ I) (renTm ρ D) ⊢ty renTy (extR (extR ρ)) M
@@ -58,19 +69,21 @@ methSg s vz          = s
 methSg s (vs vz)     = var (vs (vs vz))
 methSg s (vs (vs x)) = var (vs (vs (vs x)))
 
-MethG : {Δ : Cx} → RTm Δ → RTm Δ → RTy ((Δ ∙) ∙) → RTm Δ → RTm (((Δ ∙) ∙) ∙) → RTy Δ
+-- ★ D074: the telescope `C` lives over the INDEX variable (the fibre of
+--   the constructor being matched); the kernel's is `D`'s own fibre.
+MethG : {Δ : Cx} → RTm Δ → RTm Δ → RTy ((Δ ∙) ∙) → RTm (Δ ∙) → RTm (((Δ ∙) ∙) ∙) → RTy Δ
 MethG I D M C s =
   Π (El I)
-    (Π (El (dpay (renTm vs I) (renTm vs D) (renTm vs C) (var vz)))
-       (Π (DIh (renTm vs (renTm vs D)) (wk2M M) (renTm vs (renTm vs C)) (var vz))
+    (Π (El (dpay (renTm vs I) (renTm vs D) C))
+       (Π (DIh (renTm vs (renTm vs D)) (wk2M M) (renTm vs C) (var vz))
           (subTy (methSg s) M)))
 
--- the kernel's method type is the instance at `C = D`, `s = con p`
+-- the kernel's method type is the instance at `C = D (var vz)`, `s = con p`
 MethTy-MethG : {Δ : Cx} (I D : RTm Δ) (M : RTy ((Δ ∙) ∙)) →
-               MethTy I D M ≡ MethG I D M D (con (var (vs vz)))
+               MethTy I D M ≡ MethG I D M (app (renTm vs D) (var vz)) (con (var (vs vz)))
 MethTy-MethG I D M =
-  cong (λ X → Π (El I) (Π (El (dpay (renTm vs I) (renTm vs D) (renTm vs D) (var vz)))
-                         (Π (DIh (renTm vs (renTm vs D)) (wk2M M) (renTm vs (renTm vs D)) (var vz)) X)))
+  cong (λ X → Π (El I) (Π (El (dpay (renTm vs I) (renTm vs D) (app (renTm vs D) (var vz))))
+                         (Π (DIh (renTm vs (renTm vs D)) (wk2M M) (app (renTm vs (renTm vs D)) (var (vs vz))) (var vz)) X)))
        (subTy-cong pt M)
   where
     pt : ∀ x → methS x ≡ methSg (con (var (vs vz))) x
@@ -109,51 +122,51 @@ methSg-sub σ s M = trans (subTy-subTy M) (trans (subTy-cong ptw M) (sym (subTy-
           (trans (ren-as-sub (λ y → vs (vs (vs y))) (σ x))
                  (sym (trans (subTm-renTm (renTm vs (σ x))) (subTm-renTm (σ x)))))
 
-MethG-sub : {Δ Θ : Cx} (σ : Sub Δ Θ) (I D : RTm Δ) (M : RTy ((Δ ∙) ∙)) (C : RTm Δ)
+MethG-sub : {Δ Θ : Cx} (σ : Sub Δ Θ) (I D : RTm Δ) (M : RTy ((Δ ∙) ∙)) (C : RTm (Δ ∙))
             (s : RTm (((Δ ∙) ∙) ∙)) →
             subTy σ (MethG I D M C s)
-            ≡ MethG (subTm σ I) (subTm σ D) (subTy (extS (extS σ)) M) (subTm σ C)
+            ≡ MethG (subTm σ I) (subTm σ D) (subTy (extS (extS σ)) M) (subTm (extS σ) C)
                     (subTm (extS (extS (extS σ))) s)
 MethG-sub σ I D M C s =
   cong₂ (λ P Q → Π (El (subTm σ I)) (Π P Q))
-    (cong₃ (λ a b c → El (dpay a b c (var vz))) (wk-sub σ I) (wk-sub σ D) (wk-sub σ C))
+    (cong₂ (λ a b → El (dpay a b (subTm (extS σ) C))) (wk-sub σ I) (wk-sub σ D))
     (cong₄ (λ d m c t → Π (DIh d m c (var vz)) t)
-           (wk2-sub-tm σ D) (wk2M-sub σ M) (wk2-sub-tm σ C) (methSg-sub σ s M))
+           (wk2-sub-tm σ D) (wk2M-sub σ M) (wk-sub (extS σ) C) (methSg-sub σ s M))
 
 -- ★ a method type computes with its payload telescope
-MethG-monoᶜ : {Δ : Cx} {I D C C' : RTm Δ} {M : RTy ((Δ ∙) ∙)} {s : RTm (((Δ ∙) ∙) ∙)} →
+MethG-monoᶜ : {Δ : Cx} {I D : RTm Δ} {C C' : RTm (Δ ∙)} {M : RTy ((Δ ∙) ∙)} {s : RTm (((Δ ∙) ∙) ∙)} →
               C ⟶* C' → MethG I D M C s ⟶ᵀ* MethG I D M C' s
 MethG-monoᶜ r =
-  ⟶ᵀ*-trans (⟶ᵀ*-Πʳ (⟶ᵀ*-Πˡ (⟶ᵀ*-El (⟶*-dpayᶜ (⟶*-ren vs r)))))
-            (⟶ᵀ*-Πʳ (⟶ᵀ*-Πʳ (⟶ᵀ*-Πˡ (⟶ᵀ*-DIhᶜ (⟶*-ren vs (⟶*-ren vs r))))))
+  ⟶ᵀ*-trans (⟶ᵀ*-Πʳ (⟶ᵀ*-Πˡ (⟶ᵀ*-El (⟶*-dpayᶜ r))))
+            (⟶ᵀ*-Πʳ (⟶ᵀ*-Πʳ (⟶ᵀ*-Πˡ (⟶ᵀ*-DIhᶜ (⟶*-ren vs r)))))
 
 -- the context a method's CONCLUSION lives in: index, payload of `C`,
 --   hypotheses
-MethCtx : (Δ : Ctx) → RTm ⌊ Δ ⌋ → RTm ⌊ Δ ⌋ → RTy ((⌊ Δ ⌋ ∙) ∙) → RTm ⌊ Δ ⌋ → Ctx
+MethCtx : (Δ : Ctx) → RTm ⌊ Δ ⌋ → RTm ⌊ Δ ⌋ → RTy ((⌊ Δ ⌋ ∙) ∙) → RTm (⌊ Δ ⌋ ∙) → Ctx
 MethCtx Δ I D M C =
-  ((Δ ▹ El I) ▹ El (dpay (renTm vs I) (renTm vs D) (renTm vs C) (var vz)))
-    ▹ DIh (renTm vs (renTm vs D)) (wk2M M) (renTm vs (renTm vs C)) (var vz)
+  ((Δ ▹ El I) ▹ El (dpay (renTm vs I) (renTm vs D) C))
+    ▹ DIh (renTm vs (renTm vs D)) (wk2M M) (renTm vs C) (var vz)
 
 -- ★ a method type is well-formed when its scrutinee lives in the family
 --   at the method's index.
-MethG-wf : {Δ : Ctx} {I D C : RTm ⌊ Δ ⌋} {M : RTy ((⌊ Δ ⌋ ∙) ∙)} {s : RTm (((⌊ Δ ⌋ ∙) ∙) ∙)} →
-           Δ ⊢ I ∷ U → Δ ⊢ D ∷ Desc I → Δ ⊢ C ∷ Desc I → motCtx Δ I D ⊢ty M →
+MethG-wf : {Δ : Ctx} {I D : RTm ⌊ Δ ⌋} {C : RTm (⌊ Δ ⌋ ∙)} {M : RTy ((⌊ Δ ⌋ ∙) ∙)}
+           {s : RTm (((⌊ Δ ⌋ ∙) ∙) ∙)} →
+           Δ ⊢ I ∷ U → Δ ⊢ D ∷ DescF I → (Δ ▹ El I) ⊢ C ∷ Desc (renTm vs I) → motCtx Δ I D ⊢ty M →
            MethCtx Δ I D M C ⊢ s ∷ IMu (renTm vs (renTm vs (renTm vs I)))
                                         (renTm vs (renTm vs (renTm vs D))) (var (vs (vs vz))) →
            Δ ⊢ty MethG I D M C s
 MethG-wf {Δ} {I} {D} {C} {M} {s} dI dD dC dM ds =
   ty-Π (ty-El dI)
-    (ty-Π (ty-El (⊢dpay dI₁ dD₁ dC₁ (⊢var here)))
-      (ty-Π (ty-DIh dI₂ dD₂ dM₂ dC₂ (⊢var (there here)) (⊢var here))
+    (ty-Π (ty-El (⊢dpay dI₁ dD₁ dC))
+      (ty-Π (ty-DIh dI₂ dD₂ dM₂ dC₂ (⊢var here))
             (sub-ty dM hm)))
   where
     dI₁ = ⊢wk {B = El I} dI
-    dD₁ = ⊢wk {B = El I} dD
-    dC₁ = ⊢wk {B = El I} dC
-    P₁ = El (dpay (renTm vs I) (renTm vs D) (renTm vs C) (var vz))
+    dD₁ = ⊢wkD {B = El I} dD
+    P₁ = El (dpay (renTm vs I) (renTm vs D) C)
     dI₂ = ⊢wk {B = P₁} dI₁
-    dD₂ = ⊢wk {B = P₁} dD₁
-    dC₂ = ⊢wk {B = P₁} dC₁
+    dD₂ = ⊢wkD {B = P₁} dD₁
+    dC₂ = ⊢wk {B = P₁} dC
     Δ₂ = (Δ ▹ El I) ▹ P₁
     dM₂ : motCtx Δ₂ (renTm vs (renTm vs I)) (renTm vs (renTm vs D)) ⊢ty wk2M M
     dM₂ = subst (λ a → motCtx Δ₂ a (renTm vs (renTm vs D)) ⊢ty wk2M M) (sym (renTm-renTm I))
@@ -167,11 +180,11 @@ MethG-wf {Δ} {I} {D} {C} {M} {s} dI dD dC dM ds =
 
 -- ★ the METHOD TYPE is well-formed — the premise type of `⊢ielim`/`⊢dih`.
 MethTy-wf : {Δ : Ctx} {I D : RTm ⌊ Δ ⌋} {M : RTy ((⌊ Δ ⌋ ∙) ∙)} →
-            Δ ⊢ I ∷ U → Δ ⊢ D ∷ Desc I → motCtx Δ I D ⊢ty M → Δ ⊢ty MethTy I D M
+            Δ ⊢ I ∷ U → Δ ⊢ D ∷ DescF I → motCtx Δ I D ⊢ty M → Δ ⊢ty MethTy I D M
 MethTy-wf {Δ} {I} {D} {M} dI dD dM =
   subst (λ X → Δ ⊢ty X) (sym (MethTy-MethG I D M))
-    (MethG-wf dI dD dD dM
-      (⊢con (⊢wk (⊢wk (⊢wk dI))) (⊢wk (⊢wk (⊢wk dD))) (⊢var (there (there here))) (⊢var (there here))))
+    (MethG-wf dI dD (⊢fibre dD) dM
+      (⊢con (⊢wk (⊢wk (⊢wk dI))) (⊢wkD (⊢wkD (⊢wkD dD))) (⊢var (there (there here))) (⊢var (there here))))
 
 -- `pairS` and `fsucS` are well-typed substitutions (the kernel never needed
 --   these: `⊢psplit`/`⊢fcase` take their branch types as given).
