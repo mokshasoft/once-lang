@@ -38,20 +38,27 @@ open import normalizer.Syntax.Types
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import Agda.Builtin.Maybe using ( Maybe; just; nothing )
 open import DirectedHoTT.Spec.Variance
-  using ( 𝔹; true; false; occTm; flat?; NoNatC; nnc-base; nnc-Unit; nnc-Fin; nnc-Σ; nnc-Id; nnc-Π; nnc-Hom )
+  using ( 𝔹; true; false; occTm; flat?; NoNatC; nnc-base; nnc-Unit; nnc-Fin
+        ; nnc-Σ; nnc-Id; nnc-Π; nnc-Hom )
 open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Spec.Annotated
 open import DirectedHoTT.Spec.AnnotatedDesc
 open import DirectedHoTT.Spec.TypingA
-open import DirectedHoTT.Metatheory.Erasure using ( erase; erase-ty; sub1; sub1ᵗ; nrs-era; motCtx-era )
+open import DirectedHoTT.Metatheory.Erasure
+  using ( erase; erase-ty; sub1; sub1ᵗ; nrs-era; motCtx-era )
 open import DirectedHoTT.Metatheory.SubjectReduction
-  using ( ⊢-cast; ⊢single; sub-ty; Sub⊢; ⊢[]; ⊢wk )
-open import DirectedHoTT.Metatheory.Validity using ( validity; WfUpTo; wf; srᵀ* )
-open import DirectedHoTT.Metatheory.NormTy using ( normTy; mkWNᵀ; decConvᵀ )
-open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ )
-open import DirectedHoTT.Algorithm.DecEq using ( Dec; yes; no )
-open import DirectedHoTT.Metatheory.Premises using ( MethTy-wf; pairS⊢; fsucS⊢ )
+  using ( ⊢-cast; ⊢single; sub-ty; Sub⊢; ⊢[]; ⊢wk; wk-cancel-tm )
+open import DirectedHoTT.Metatheory.Validity
+  using ( validity; WfUpTo; wf; srᵀ* )
+open import DirectedHoTT.Metatheory.NormTy
+  using ( normTy; mkWNᵀ; decConvᵀ )
+open import DirectedHoTT.Metatheory.RedCong
+  using ( red→≅ᵀ )
+open import DirectedHoTT.Algorithm.DecEq
+  using ( Dec; yes; no )
+open import DirectedHoTT.Metatheory.Premises
+  using ( MethTy-wf; pairS⊢; fsucS⊢; ⊢wkD )
 
 private
   cong1 = cong
@@ -88,7 +95,7 @@ liftTy Nat = Nat
 liftTy (Id x0 x1 x2) = Id (liftTy x0) (liftTm x1) (liftTm x2)
 liftTy (IMu x0 x1 x2) = IMu (liftTm x0) (liftTm x1) (liftTm x2)
 liftTy (Desc x0) = Desc (liftTm x0)
-liftTy (DIh x0 x1 x2 x3) = DIh nzero (liftTm x0) (liftTy x1) (liftTm x2) nzero (liftTm x3)
+liftTy (DIh x0 x1 x2 x3) = DIh nzero (liftTm x0) (liftTy x1) (liftTm x2) (liftTm x3)
 liftTy (Fin x0) = Fin x0
 liftTm (var x0) = var x0
 liftTm (lam x0) = lam base (liftTm x0)
@@ -118,11 +125,11 @@ liftTm (⌜IMu⌝ x0 x1 x2) = ⌜IMu⌝ (liftTm x0) (liftTm x1) (liftTm x2)
 liftTm (⌜Fin⌝ x0) = ⌜Fin⌝ x0
 liftTm (con x0) = con nzero nzero nzero (liftTm x0)
 liftTm (ielim x0 x1 x2 x3) = ielim nzero (liftTm x0) base (liftTm x1) (liftTm x2) (liftTm x3)
-liftTm (dι x0) = dι nzero (liftTm x0)
+liftTm dι = dι nzero
 liftTm (dσ x0 x1) = dσ nzero (liftTm x0) (liftTm x1)
 liftTm (dρ x0 x1) = dρ nzero (liftTm x0) (liftTm x1)
-liftTm (dpay x0 x1 x2 x3) = dpay (liftTm x0) (liftTm x1) (liftTm x2) (liftTm x3)
-liftTm (dih x0 x1 x2 x3) = dih nzero (liftTm x0) base (liftTm x1) (liftTm x2) nzero (liftTm x3)
+liftTm (dpay x0 x1 x2) = dpay (liftTm x0) (liftTm x1) (liftTm x2)
+liftTm (dih x0 x1 x2 x3) = dih nzero (liftTm x0) base (liftTm x1) (liftTm x2) (liftTm x3)
 liftTm fzero = fzero zero
 liftTm (fsuc x0) = fsuc zero (liftTm x0)
 liftTm (fcase x0 x1 x2) = fcase zero base (liftTm x0) (liftTm x1) (liftTm x2)
@@ -172,10 +179,10 @@ era-liftTm (⌜IMu⌝ x0 x1 x2) = cong3 (λ a0 a1 a2 → ⌜IMu⌝ a0 a1 a2) (er
 era-liftTm (⌜Fin⌝ x0) = refl
 era-liftTm (con x0) = cong1 (λ a0 → con a0) (era-liftTm x0)
 era-liftTm (ielim x0 x1 x2 x3) = cong4 (λ a0 a1 a2 a3 → ielim a0 a1 a2 a3) (era-liftTm x0) (era-liftTm x1) (era-liftTm x2) (era-liftTm x3)
-era-liftTm (dι x0) = cong1 (λ a0 → dι a0) (era-liftTm x0)
+era-liftTm dι = refl
 era-liftTm (dσ x0 x1) = cong2 (λ a0 a1 → dσ a0 a1) (era-liftTm x0) (era-liftTm x1)
 era-liftTm (dρ x0 x1) = cong2 (λ a0 a1 → dρ a0 a1) (era-liftTm x0) (era-liftTm x1)
-era-liftTm (dpay x0 x1 x2 x3) = cong4 (λ a0 a1 a2 a3 → dpay a0 a1 a2 a3) (era-liftTm x0) (era-liftTm x1) (era-liftTm x2) (era-liftTm x3)
+era-liftTm (dpay x0 x1 x2) = cong3 (λ a0 a1 a2 → dpay a0 a1 a2) (era-liftTm x0) (era-liftTm x1) (era-liftTm x2)
 era-liftTm (dih x0 x1 x2 x3) = cong4 (λ a0 a1 a2 a3 → dih a0 a1 a2 a3) (era-liftTm x0) (era-liftTm x1) (era-liftTm x2) (era-liftTm x3)
 era-liftTm fzero = refl
 era-liftTm (fsuc x0) = cong1 (λ a0 → fsuc a0) (era-liftTm x0)
@@ -293,12 +300,26 @@ viewId {Γ} {T = T} wΓ d with nfOf wΓ d
 
 -- the motive's context, erased, is well-formed
 motCtx-wf : {Γ : ACtx} {I D : ATm ⌊ Γ ⌋ᴬ} → ⊢ctx ⌈ Γ ⌉ᶜ →
-            ⌈ Γ ⌉ᶜ ⊢ ⌈ I ⌉ ∷ U → ⌈ Γ ⌉ᶜ ⊢ ⌈ D ⌉ ∷ Desc ⌈ I ⌉ → ⊢ctx ⌈ motCtxᴬ Γ I D ⌉ᶜ
+            ⌈ Γ ⌉ᶜ ⊢ ⌈ I ⌉ ∷ U → ⌈ Γ ⌉ᶜ ⊢ ⌈ D ⌉ ∷ DescF ⌈ I ⌉ → ⊢ctx ⌈ motCtxᴬ Γ I D ⌉ᶜ
 motCtx-wf {Γ} {I} {D} wΓ dI dD =
   c-▹ (c-▹ wΓ (ty-El dI))
       (subst (λ a → (⌈ Γ ⌉ᶜ ▹ El ⌈ I ⌉) ⊢ty IMu a ⌈ renTmᴬ vs D ⌉ (var vz)) (sym (era-renTm vs I))
         (subst (λ b → (⌈ Γ ⌉ᶜ ▹ El ⌈ I ⌉) ⊢ty IMu (renTm vs ⌈ I ⌉) b (var vz)) (sym (era-renTm vs D))
-          (ty-IMu (⊢wk dI) (⊢wk dD) (⊢var here))))
+          (ty-IMu (⊢wk dI) (⊢wkD dD) (⊢var here))))
+
+-- ★ D074: an annotated description's derivation, erased, at `DescF`
+eD : {Γ : ACtx} (I : ATm ⌊ Γ ⌋ᴬ) {D : ATm ⌊ Γ ⌋ᴬ} → Γ ⊢ᴬ D ∷ DescFᴬ I → ⌈ Γ ⌉ᶜ ⊢ ⌈ D ⌉ ∷ DescF ⌈ I ⌉
+eD I dD = ⊢-cast (era-DescF I) (erase dD)
+
+-- ★ D074: the type of a description is well-formed
+wfDF : {Γ : ACtx} {I : ATm ⌊ Γ ⌋ᴬ} → ⌈ Γ ⌉ᶜ ⊢ ⌈ I ⌉ ∷ U → ⌈ Γ ⌉ᶜ ⊢ty ⌈ DescFᴬ I ⌉ᵀ
+wfDF {Γ} {I} dI =
+  subst (λ Z → ⌈ Γ ⌉ᶜ ⊢ty Z) (sym (era-DescF I)) (ty-Π (ty-El dI) (ty-Desc (⊢wk dI)))
+
+-- …and so is its fibre over a valid index
+wfFib : {Γ : ACtx} {I D i : ATm ⌊ Γ ⌋ᴬ} → ⌈ Γ ⌉ᶜ ⊢ ⌈ I ⌉ ∷ U → ⌈ Γ ⌉ᶜ ⊢ ⌈ D ⌉ ∷ DescF ⌈ I ⌉ →
+        ⌈ Γ ⌉ᶜ ⊢ ⌈ i ⌉ ∷ El ⌈ I ⌉ → ⌈ Γ ⌉ᶜ ⊢ app ⌈ D ⌉ ⌈ i ⌉ ∷ Desc ⌈ I ⌉
+wfFib {I = I} {i = i} dI dD di = ⊢-cast (cong Desc (wk-cancel-tm ⌈ i ⌉ ⌈ I ⌉)) (⊢app dD di)
 
 ------------------------------------------------------------------------
 -- 3. ★ The checker.
@@ -361,19 +382,18 @@ checkTyᴬ Γ wΓ (Id A t u) =
   just (tyᴬ-Id dA dt du)
 checkTyᴬ Γ wΓ (IMu I D i) =
   checkᴬ Γ wΓ I U ty-U >>= λ dI →
-  checkᴬ Γ wΓ D (Desc I) (ty-Desc (erase dI)) >>= λ dD →
+  checkᴬ Γ wΓ D (DescFᴬ I) (wfDF (erase dI)) >>= λ dD →
   checkᴬ Γ wΓ i (El I) (ty-El (erase dI)) >>= λ di →
   just (tyᴬ-IMu dI dD di)
 checkTyᴬ Γ wΓ (Desc I) = checkᴬ Γ wΓ I U ty-U >>= λ dI → just (tyᴬ-Desc dI)
 checkTyᴬ Γ wΓ (Fin n) = just tyᴬ-Fin
-checkTyᴬ Γ wΓ (DIh I D M C i p) =
+checkTyᴬ Γ wΓ (DIh I D M C p) =
   checkᴬ Γ wΓ I U ty-U >>= λ dI →
-  checkᴬ Γ wΓ D (Desc I) (ty-Desc (erase dI)) >>= λ dD →
-  checkTyᴬ (motCtxᴬ Γ I D) (motCtx-wf wΓ (erase dI) (erase dD)) M >>= λ dM →
+  checkᴬ Γ wΓ D (DescFᴬ I) (wfDF (erase dI)) >>= λ dD →
+  checkTyᴬ (motCtxᴬ Γ I D) (motCtx-wf wΓ (erase dI) (eD I dD)) M >>= λ dM →
   checkᴬ Γ wΓ C (Desc I) (ty-Desc (erase dI)) >>= λ dC →
-  checkᴬ Γ wΓ i (El I) (ty-El (erase dI)) >>= λ di →
-  checkᴬ Γ wΓ p (El (dpay I D C i)) (ty-El (⊢dpay (erase dI) (erase dD) (erase dC) (erase di))) >>= λ dp →
-  just (tyᴬ-DIh dI dD dM dC di dp)
+  checkᴬ Γ wΓ p (El (dpay I D C)) (ty-El (⊢dpay (erase dI) (eD I dD) (erase dC))) >>= λ dp →
+  just (tyᴬ-DIh dI dD dM dC dp)
 
 inferᴬ Γ wΓ (var x) with lookupᴬ Γ x
 ... | A , v = just (A , ⊢ᴬvar v)
@@ -501,13 +521,12 @@ inferᴬ Γ wΓ ⌜Unit⌝ = just (U , ⊢ᴬ⌜Unit⌝)
 inferᴬ Γ wΓ (⌜Fin⌝ n) = just (U , ⊢ᴬ⌜Fin⌝)
 inferᴬ Γ wΓ (⌜IMu⌝ I D i) =
   checkᴬ Γ wΓ I U ty-U >>= λ dI →
-  checkᴬ Γ wΓ D (Desc I) (ty-Desc (erase dI)) >>= λ dD →
+  checkᴬ Γ wΓ D (DescFᴬ I) (wfDF (erase dI)) >>= λ dD →
   checkᴬ Γ wΓ i (El I) (ty-El (erase dI)) >>= λ di →
   just (U , ⊢ᴬ⌜IMu⌝ dI dD di)
-inferᴬ Γ wΓ (dι I j) =
+inferᴬ Γ wΓ (dι I) =
   checkᴬ Γ wΓ I U ty-U >>= λ dI →
-  checkᴬ Γ wΓ j (El I) (ty-El (erase dI)) >>= λ dj →
-  just (Desc I , ⊢ᴬdι dI dj)
+  just (Desc I , ⊢ᴬdι dI)
 inferᴬ Γ wΓ (dσ I S f) =
   checkᴬ Γ wΓ I U ty-U >>= λ dI →
   checkᴬ Γ wΓ S U ty-U >>= λ dS →
@@ -521,39 +540,38 @@ inferᴬ Γ wΓ (dρ I j C) =
   checkᴬ Γ wΓ j (El I) (ty-El (erase dI)) >>= λ dj →
   checkᴬ Γ wΓ C (Desc I) (ty-Desc (erase dI)) >>= λ dC →
   just (Desc I , ⊢ᴬdρ dI dj dC)
-inferᴬ Γ wΓ (dpay I D C i) =
+inferᴬ Γ wΓ (dpay I D C) =
   checkᴬ Γ wΓ I U ty-U >>= λ dI →
-  checkᴬ Γ wΓ D (Desc I) (ty-Desc (erase dI)) >>= λ dD →
+  checkᴬ Γ wΓ D (DescFᴬ I) (wfDF (erase dI)) >>= λ dD →
   checkᴬ Γ wΓ C (Desc I) (ty-Desc (erase dI)) >>= λ dC →
-  checkᴬ Γ wΓ i (El I) (ty-El (erase dI)) >>= λ di →
-  just (U , ⊢ᴬdpay dI dD dC di)
+  just (U , ⊢ᴬdpay dI dD dC)
 inferᴬ Γ wΓ (con I D i p) =
   checkᴬ Γ wΓ I U ty-U >>= λ dI →
-  checkᴬ Γ wΓ D (Desc I) (ty-Desc (erase dI)) >>= λ dD →
+  checkᴬ Γ wΓ D (DescFᴬ I) (wfDF (erase dI)) >>= λ dD →
   checkᴬ Γ wΓ i (El I) (ty-El (erase dI)) >>= λ di →
-  checkᴬ Γ wΓ p (El (dpay I D D i)) (ty-El (⊢dpay (erase dI) (erase dD) (erase dD) (erase di))) >>= λ dp →
+  checkᴬ Γ wΓ p (El (dpay I D (app D i)))
+         (ty-El (⊢dpay (erase dI) (eD I dD) (wfFib (erase dI) (eD I dD) (erase di)))) >>= λ dp →
   just (IMu I D i , ⊢ᴬcon dI dD di dp)
 inferᴬ Γ wΓ (ielim I D M i e t) =
   checkᴬ Γ wΓ I U ty-U >>= λ dI →
-  checkᴬ Γ wΓ D (Desc I) (ty-Desc (erase dI)) >>= λ dD →
-  checkTyᴬ (motCtxᴬ Γ I D) (motCtx-wf wΓ (erase dI) (erase dD)) M >>= λ dM →
+  checkᴬ Γ wΓ D (DescFᴬ I) (wfDF (erase dI)) >>= λ dD →
+  checkTyᴬ (motCtxᴬ Γ I D) (motCtx-wf wΓ (erase dI) (eD I dD)) M >>= λ dM →
   checkᴬ Γ wΓ e (MethTyᴬ I D M)
          (subst (λ Z → ⌈ Γ ⌉ᶜ ⊢ty Z) (sym (era-MethTy I D M))
-                (MethTy-wf (erase dI) (erase dD) (motCtx-era (erase-ty dM)))) >>= λ de →
+                (MethTy-wf (erase dI) (eD I dD) (motCtx-era (erase-ty dM)))) >>= λ de →
   checkᴬ Γ wΓ i (El I) (ty-El (erase dI)) >>= λ di →
-  checkᴬ Γ wΓ t (IMu I D i) (ty-IMu (erase dI) (erase dD) (erase di)) >>= λ dt →
+  checkᴬ Γ wΓ t (IMu I D i) (ty-IMu (erase dI) (eD I dD) (erase di)) >>= λ dt →
   just (iinstᴬ i t M , ⊢ᴬielim dI dD dM de di dt)
-inferᴬ Γ wΓ (dih I D M e C i p) =
+inferᴬ Γ wΓ (dih I D M e C p) =
   checkᴬ Γ wΓ I U ty-U >>= λ dI →
-  checkᴬ Γ wΓ D (Desc I) (ty-Desc (erase dI)) >>= λ dD →
-  checkTyᴬ (motCtxᴬ Γ I D) (motCtx-wf wΓ (erase dI) (erase dD)) M >>= λ dM →
+  checkᴬ Γ wΓ D (DescFᴬ I) (wfDF (erase dI)) >>= λ dD →
+  checkTyᴬ (motCtxᴬ Γ I D) (motCtx-wf wΓ (erase dI) (eD I dD)) M >>= λ dM →
   checkᴬ Γ wΓ e (MethTyᴬ I D M)
          (subst (λ Z → ⌈ Γ ⌉ᶜ ⊢ty Z) (sym (era-MethTy I D M))
-                (MethTy-wf (erase dI) (erase dD) (motCtx-era (erase-ty dM)))) >>= λ de →
+                (MethTy-wf (erase dI) (eD I dD) (motCtx-era (erase-ty dM)))) >>= λ de →
   checkᴬ Γ wΓ C (Desc I) (ty-Desc (erase dI)) >>= λ dC →
-  checkᴬ Γ wΓ i (El I) (ty-El (erase dI)) >>= λ di →
-  checkᴬ Γ wΓ p (El (dpay I D C i)) (ty-El (⊢dpay (erase dI) (erase dD) (erase dC) (erase di))) >>= λ dp →
-  just (DIh I D M C i p , ⊢ᴬdih dI dD dM de dC di dp)
+  checkᴬ Γ wΓ p (El (dpay I D C)) (ty-El (⊢dpay (erase dI) (eD I dD) (erase dC))) >>= λ dp →
+  just (DIh I D M C p , ⊢ᴬdih dI dD dM de dC dp)
 inferᴬ Γ wΓ (fzero n) = just (Fin (suc n) , ⊢ᴬfzero)
 inferᴬ Γ wΓ (fsuc n t) =
   checkᴬ Γ wΓ t (Fin n) ty-Fin >>= λ dt → just (Fin (suc n) , ⊢ᴬfsuc dt)
