@@ -1,385 +1,243 @@
 ------------------------------------------------------------------------
--- OCP-0009 · EXAMPLES — `Vec` AS FORDING SUGAR.  THE ACCEPTANCE TEST for
--- the indexed-descriptions increment (PLAN-INDEXED §3), written under
--- the standing rule: a library is exercised by an EXAMPLE, per branch.
+-- OCP-0009 · EXAMPLES — `Vec`, LEVITATED.  THE ACCEPTANCE TEST for the
+-- one-telescope families (PLAN-LEVITATION stage 4), written the way the
+-- surface writes it: a constructor LIST and one method PER constructor,
+-- elaborated by `Lib/Sugar`.
 --
--- ★ WHY THIS FILE IS THE POINT.  Everything else about `IMu`/`icon`/
---   `ielim` is a metatheorem ABOUT them.  Nothing anywhere constructed a
---   single `icon` or `ielim`, and that is exactly the shape the `lexrec`
---   failure mode takes: derived, green, and UNCALLABLE.  This file makes
---   the increment callable.
---
---   ⚠ It is also where the DESIGN is tested rather than the proofs: §9.2
---   generalised `iρ` precisely so `cons`'s recursive field can sit at an
---   EARLIER FIELD, and §10 restricted `iκ`'s code precisely so a FORDING
---   constraint is the one thing that may mention the index.  `consWf`
---   below uses both, and neither has any other customer.
---
---        nil  : (n ≡ zero)                        → Vec n
---        cons : (m : Nat) → Nat → Vec m → (n ≡ suc m) → Vec n
+--        nil  :                              Vec zero
+--        cons : (m : Nat) → Nat → Vec m →    Vec (suc m)
 --
 -- ★ WHAT IS DEMONSTRATED, in order:
---     · `VecWf`      — the description is well-formed (`iwf-ρ` at an
---                      earlier field; `icw-clo` and `icw-ford`);
---     · `⊢vnil` / `⊢vcons` — the constructors TYPE (`⊢icon`);
---     · `⊢vlen`    — an eliminator TYPES (`⊢ielim`), at the
---                      index-quantified methods §9.1 forced;
---     · `vlen-nil` / `vlen-cons` — and it COMPUTES: ι fires.
+--     · `VecD` — the description is a TERM (two telescopes), typed by
+--       ordinary typing (`⊢Dₗ`); there is no separate well-formedness;
+--     · `⊢vnil` / `⊢v1` — the constructors TYPE (`⊢conₗ`), their payload
+--       built field by field (`⊢pay-σλ`/`⊢pay-ρ`/`⊢pay-ι`); the INDEX
+--       EQUATION is the payload's last field (`dι` IS the Fording);
+--     · `⊢vlen` — the eliminator TYPES from two per-constructor methods
+--       (`⊢methₗ`);
+--     · `vlen-nil` / `vlen-cons` / `vlen-v1` — and it COMPUTES (`ιₗ`, then
+--       the hypotheses `dih` walking the telescope);
+--     · `no-cons-at-zero` — what the Fording buys, as a theorem.
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Vec where
-open import normalizer.Syntax.Types using ( _≡_; refl; ⊥ )
+open import normalizer.Syntax.Types using ( _≡_; refl; cong; ⊥; _,_ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
-  using ( Cx; ε; _∙; Var; vz; vs
-        ; RTy; U; El; Π; Σ'; Unit; Nat; IMu
-        ; RTm; var; lam; app; pair; fst; snd; unit; nzero; nsuc
-        ; ⌜Nat⌝; ⌜Id⌝; idrefl; icon; ielim
-        ; ICon; IDesc; iι; iρ; iκ; inil; _◂_
-        ; ilookupD; _∈ID_; hereID; thereID
-        ; ipayTy; isingle; iext; ifields; sel
-        ; renTy; renTm; subTy; subTm )
-open import DirectedHoTT.Metatheory.Canonicity
-  using ( idEndpoints; zero≇suc )
-open import DirectedHoTT.Spec.Typing
-  using ( Ctx; ◇; _▹_; ⌊_⌋
-        ; _∋_∷_; here; there
-        ; _⟶_; _⟶*_; done; step
-        ; β; βfst; βsnd; ξ-appˡ; ξ-fst; ξ-snd; ξ-nsuc
-        ; ξ-ielimⁱ; ξ-ielimᵗ
-        ; _≅ᵀ_; crflᵀ; csymᵀ; ctrnᵀ; credᵀ; _≅_
-        ; _⟶ᵀ_; El-⌜Nat⌝; El-⌜Id⌝
-        ; ι-ielim
-        ; _⊢_∷_; ⊢var; ⊢lam; ⊢app; ⊢pair; ⊢fst; ⊢snd; ⊢conv
-        ; ⊢unit; ⊢nzero; ⊢nsuc; ⊢⌜Nat⌝; ⊢⌜Id⌝; ⊢idrefl
-        ; ⊢icon; ⊢ielim
-        ; _⊢ty_; ty-U; ty-El; ty-Unit; ty-Nat; ty-Σ; ty-Π; ty-IMu
-        ; IConWf; iwf-ι; iwf-ρ; iwf-κ ; Θ₀; ρ₀; x₀; _,,_
-        ; ICodeWf; icw-clo; icw-ford
-        ; IDescWf; IDescWfFrom; idwf-nil; idwf-cons
-        ; imethTy; imethsTy )
+open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
+open import DirectedHoTT.Metatheory.RedCong
+  using ( ⟶*-trans; ⟶*-nsuc; ⟶*-fst; ⟶*-dihᶜ; ⟶*-ielimⁱ; ⟶*-ielimᵗ; red→≅ᵀ; _⟶ᵀ*_; doneᵀ; stepᵀ )
+open import DirectedHoTT.Metatheory.Canonicity using ( idEndpoints; zero≇suc )
+open import DirectedHoTT.Lib.Sugar
+open import DirectedHoTT.Lib.IHeadRed using ( ihead-red )
+open import DirectedHoTT.Lib.ICast using ( ⟶*-castᵣ )
+open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; wk-cancel-tm )
 
 ------------------------------------------------------------------------
--- 0. The index type, and the two conversions everything below rides.
---
--- ⚠ `I = El ⌜Nat⌝`, not `Nat`.  `⊢⌜Id⌝` wants its endpoints at `El c`,
---   and the FORDING constraint's endpoints ARE the index — so taking the
---   index type to be the DECODE of a code removes a conversion from
---   every single obligation below.  `εwkTy (El ⌜Nat⌝) = El ⌜Nat⌝`
---   definitionally, `⌜Nat⌝` being closed.
+-- 0. The index CODE, and the one conversion everything below rides.
 ------------------------------------------------------------------------
 
-INat : RTy ε
-INat = El ⌜Nat⌝
-
--- `El ⌜Nat⌝ ≅ᵀ Nat`, both ways.  One step, used everywhere.
-elNat : {Γ : Cx} → El (⌜Nat⌝ {Γ}) ≅ᵀ Nat
-elNat = credᵀ El-⌜Nat⌝
-
--- a `Nat` term, read as an index
 toI : {Γ : Ctx} {t : RTm ⌊ Γ ⌋} → Γ ⊢ t ∷ Nat → Γ ⊢ t ∷ El ⌜Nat⌝
-toI d = ⊢conv d (csymᵀ elNat)
+toI d = ⊢conv d (csymᵀ (credᵀ El-⌜Nat⌝))
 
--- …and back
 fromI : {Γ : Ctx} {t : RTm ⌊ Γ ⌋} → Γ ⊢ t ∷ El ⌜Nat⌝ → Γ ⊢ t ∷ Nat
-fromI d = ⊢conv d elNat
+fromI d = ⊢conv d (credᵀ El-⌜Nat⌝)
 
 ------------------------------------------------------------------------
--- 1. THE DESCRIPTION.
+-- 1. THE DESCRIPTION: two telescope TERMS over the index code `⌜Nat⌝`.
 --
--- ⚠ READ THE DE BRUIJN INDICES — they are the content.  A constructor
---   starts in `ε ∙` (the AMBIENT INDEX alone) and gains one slot per
---   field, so inside `cons`'s constraint the ambient index has been
---   pushed out to `vs (vs (vs vz))` while `m` sits at `vs (vs vz)`.
---   THAT is what §9.2 bought: the constraint and the recursive field can
---   both name an earlier field.
+-- ⚠ A `dσ` field is BOUND (its tail is a `lam`); a recursive `dρ` field
+--   is NOT — the telescope never names a value of the family it is
+--   describing (A-math as GRAMMAR).  So under `cons`'s element binder
+--   `m` sits at `vs vz`, for the recursive field's index and the end's.
 ------------------------------------------------------------------------
 
--- nil : (n ≡ zero) → Vec n
-nilC : ICon (ε ∙)
-nilC = iκ (⌜Id⌝ ⌜Nat⌝ (var vz) nzero) iι
+nilC : {Γ : Cx} → RTm Γ
+nilC = dι nzero
 
--- cons : (m : Nat) → Nat → Vec m → (n ≡ suc m) → Vec n
-consC : ICon (ε ∙)
-consC =
-  iκ ⌜Nat⌝                                        -- m
-    (iκ ⌜Nat⌝                                     -- the element
-      (iρ (var (vs vz))                           -- Vec m  ← THE EARLIER FIELD
-        (iκ (⌜Id⌝ ⌜Nat⌝ (var (vs (vs (vs vz))))   -- n
-                        (nsuc (var (vs (vs vz)))))-- suc m
-          iι)))
+consT : {Γ : Cx} → RTm Γ          -- the tail after `m`
+consT = lam (dσ ⌜Nat⌝ (lam (dρ (var (vs vz)) (dι (nsuc (var (vs vz)))))))
 
-VecD : IDesc
-VecD = nilC ◂ (consC ◂ inil)
+consC : {Γ : Cx} → RTm Γ
+consC = dσ ⌜Nat⌝ consT
+
+VecCs : {Γ : Cx} → Cons Γ 2
+VecCs = nilC ∷ (consC ∷ [])
+
+VecD : {Γ : Cx} → RTm Γ
+VecD = Dₗ VecCs
 
 Vec : {Γ : Cx} → RTm Γ → RTy Γ
-Vec n = IMu VecD INat n
+Vec n = IMu ⌜Nat⌝ VecD n
+
+⊢nilC : {Γ : Ctx} → Γ ⊢ nilC ∷ Desc ⌜Nat⌝
+⊢nilC = ⊢dι ⊢⌜Nat⌝ (toI ⊢nzero)
+
+-- the tail after the element, as a function of it
+⊢consT₂ : {Γ : Ctx} → (Γ ▹ El ⌜Nat⌝) ⊢ lam (dρ (var (vs vz)) (dι (nsuc (var (vs vz)))))
+                                          ∷ Π (El ⌜Nat⌝) (Desc ⌜Nat⌝)
+⊢consT₂ = ⊢lam (ty-El ⊢⌜Nat⌝)
+            (⊢dρ ⊢⌜Nat⌝ (⊢var (there here)) (⊢dι ⊢⌜Nat⌝ (toI (⊢nsuc (fromI (⊢var (there here)))))))
+
+⊢consT : {Γ : Ctx} → Γ ⊢ consT ∷ Π (El ⌜Nat⌝) (Desc ⌜Nat⌝)
+⊢consT = ⊢lam (ty-El ⊢⌜Nat⌝) (⊢dσ ⊢⌜Nat⌝ ⊢⌜Nat⌝ ⊢consT₂)
+
+⊢consC : {Γ : Ctx} → Γ ⊢ consC ∷ Desc ⌜Nat⌝
+⊢consC = ⊢dσ ⊢⌜Nat⌝ ⊢⌜Nat⌝ ⊢consT
+
+allVec : {Γ : Ctx} → AllD Γ ⌜Nat⌝ VecCs
+allVec = ⊢nilC ∷ᵈ (⊢consC ∷ᵈ []ᵈ)
+
+⊢VecD : {Γ : Ctx} → Γ ⊢ VecD ∷ Desc ⌜Nat⌝
+⊢VecD = ⊢Dₗ ⊢⌜Nat⌝ allVec
 
 ------------------------------------------------------------------------
--- 2. WELL-FORMEDNESS — where `icw-clo` and `icw-ford` earn their keep.
-------------------------------------------------------------------------
-
-nilWf : IConWf INat (Θ₀ INat) ρ₀ x₀ nilC
-nilWf =
-  iwf-κ (⌜Id⌝ ⌜Nat⌝ (var vz) nzero)
-        (icw-ford ⌜Nat⌝ (var vz) nzero)
-        (⊢⌜Id⌝ ⊢⌜Nat⌝ (⊢var here) (toI ⊢nzero))
-        iwf-ι
-
-consWf : IConWf INat (Θ₀ INat) ρ₀ x₀ consC
-consWf =
-  iwf-κ ⌜Nat⌝ (icw-clo ⌜Nat⌝ ⊢⌜Nat⌝) ⊢⌜Nat⌝
-   (iwf-κ ⌜Nat⌝ (icw-clo ⌜Nat⌝ ⊢⌜Nat⌝) ⊢⌜Nat⌝
-    (iwf-ρ (var (vs vz)) (⊢var (there here))
-     (iwf-κ (⌜Id⌝ ⌜Nat⌝ (var (vs (vs (vs vz)))) (nsuc (var (vs (vs vz)))))
-            (icw-ford ⌜Nat⌝ (var (vs (vs (vs vz)))) (nsuc (var (vs (vs vz)))))
-            (⊢⌜Id⌝ ⊢⌜Nat⌝
-                   (⊢var (there (there (there here))))
-                   (toI (⊢nsuc (fromI (⊢var (there (there here)))))))
-            iwf-ι)))
-
-VecWf : IDescWf INat VecD
-VecWf = ty-El ⊢⌜Nat⌝ ,, idwf-cons nilWf (idwf-cons consWf idwf-nil)
-
-------------------------------------------------------------------------
--- 3. THE CONSTRUCTORS — `⊢icon`, twice.
---
--- ⚠ THE PAYLOAD IS THE Σ-CHAIN `ipayTy` COMPUTES, constraint field and
---   all.  `nil`'s is `Σ' (El (⌜Id⌝ ⌜Nat⌝ n nzero)) Unit` — Fording is not
---   a comment here, it is a component you have to supply.
+-- 2. THE CONSTRUCTORS.  The payload is what `dpay` computes: for `nil`
+--    just the index equation; for `cons` `m`, the element, the recursive
+--    field AT `m`, and the equation `suc m ≡ n`.
 ------------------------------------------------------------------------
 
 vnil : {Γ : Cx} → RTm Γ
-vnil = icon zero (pair (idrefl ⌜Nat⌝ nzero) unit)
+vnil = conₗ zero (idrefl ⌜Nat⌝ nzero)
 
--- the Fording witness at `n := zero`: `El (⌜Id⌝ ⌜Nat⌝ zero zero)`
-reflZ : {Γ : Ctx} → Γ ⊢ idrefl ⌜Nat⌝ nzero ∷ El (⌜Id⌝ ⌜Nat⌝ nzero nzero)
-reflZ = ⊢conv (⊢idrefl ⊢⌜Nat⌝ (toI ⊢nzero))
-              (csymᵀ (credᵀ (El-⌜Id⌝ ⌜Nat⌝ nzero nzero)))
+⊢vnil : {Γ : Ctx} → Γ ⊢ vnil ∷ Vec nzero
+⊢vnil = ⊢conₗ ⊢⌜Nat⌝ allVec (toI ⊢nzero) nth-z (⊢pay-ι (⊢idrefl ⊢⌜Nat⌝ (toI ⊢nzero)))
 
-⊢vnil : ◇ ⊢ vnil ∷ Vec nzero
-⊢vnil =
-  ⊢icon VecWf hereID (toI ⊢nzero)
-        (⊢pair ty-Unit reflZ ⊢unit)
-
--- ★ CONS, at a CONCRETE index.  ⚠ deliberately concrete: with `m` a
---   numeral every weakening in the payload's Σ-chain computes away, and
---   what is left to supply is exactly the interesting part — the
---   RECURSIVE field and the FORDING constraint.  A `⊢vcons` general in
---   `m` needs the weakening plumbing and demonstrates nothing more.
 vcons : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ → RTm Γ
-vcons m a xs =
-  icon (suc zero)
-       (pair m (pair a (pair xs (pair (idrefl ⌜Nat⌝ (nsuc m)) unit))))
-
--- the Fording witness at `n := suc zero`, `m := zero`
-reflSZ : {Γ : Ctx} →
-         Γ ⊢ idrefl ⌜Nat⌝ (nsuc nzero) ∷
-             El (⌜Id⌝ ⌜Nat⌝ (nsuc nzero) (nsuc nzero))
-reflSZ = ⊢conv (⊢idrefl ⊢⌜Nat⌝ (toI (⊢nsuc ⊢nzero)))
-               (csymᵀ (credᵀ (El-⌜Id⌝ ⌜Nat⌝ (nsuc nzero) (nsuc nzero))))
+vcons m a xs = conₗ (suc zero) (pair m (pair a (pair xs (idrefl ⌜Nat⌝ (nsuc m)))))
 
 -- `[0] : Vec 1`
 v1 : {Γ : Cx} → RTm Γ
 v1 = vcons nzero nzero vnil
 
--- the three `⊢ty` premises `⊢pair` asks for, each stated where it is
--- needed.  ⚠ each is at ONE binder over the ambient: the Σ-chain is
--- consumed head-first, so every step substitutes its binder away.
-tyFord : {Γ : Ctx} →
-         Γ ⊢ty Σ' (El (⌜Id⌝ ⌜Nat⌝ (nsuc nzero) (nsuc nzero))) Unit
-tyFord = ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢nsuc ⊢nzero)) (toI (⊢nsuc ⊢nzero))))
-              ty-Unit
-
-tyRec : {Γ : Ctx} →
-        Γ ⊢ty Σ' (IMu VecD INat nzero)
-                 (Σ' (El (⌜Id⌝ ⌜Nat⌝ (nsuc nzero) (nsuc nzero))) Unit)
-tyRec = ty-Σ (ty-IMu VecWf (toI ⊢nzero)) tyFord
-
--- …and the UNSUBSTITUTED tail, the one that still mentions `m`.
-tyP₁ : (◇ ▹ El ⌜Nat⌝) ⊢ty
-       Σ' (El ⌜Nat⌝)
-          (Σ' (IMu VecD INat (var (vs vz)))
-              (Σ' (El (⌜Id⌝ ⌜Nat⌝ (nsuc nzero)
-                                  (nsuc (var (vs (vs vz)))))) Unit))
-tyP₁ =
-  ty-Σ (ty-El ⊢⌜Nat⌝)
-    (ty-Σ (ty-IMu VecWf (⊢var (there here)))
-      (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢nsuc ⊢nzero))
-                          (toI (⊢nsuc (fromI (⊢var (there (there here))))))))
-            ty-Unit))
-
-⊢v1 : ◇ ⊢ v1 ∷ Vec (nsuc nzero)
+⊢v1 : {Γ : Ctx} → Γ ⊢ v1 ∷ Vec (nsuc nzero)
 ⊢v1 =
-  ⊢icon VecWf (thereID hereID) (toI (⊢nsuc ⊢nzero))
-    (⊢pair tyP₁ (toI ⊢nzero)
-      (⊢pair tyRec (toI ⊢nzero)
-        (⊢pair tyFord ⊢vnil
-          (⊢pair ty-Unit reflSZ ⊢unit))))
+  ⊢conₗ ⊢⌜Nat⌝ allVec i1 (nth-s nth-z)
+    (⊢pay-σλ ⊢⌜Nat⌝ ⊢VecD ⊢consT i1 (toI ⊢nzero)
+      (⊢pay-σλ ⊢⌜Nat⌝ ⊢VecD ⊢consT₂' i1 (toI ⊢nzero)
+        (⊢pay-ρ ⊢⌜Nat⌝ ⊢VecD (⊢dι ⊢⌜Nat⌝ i1) i1 ⊢vnil
+          (⊢pay-ι (⊢idrefl ⊢⌜Nat⌝ i1)))))
+  where
+    i1 : {Δ : Ctx} → Δ ⊢ nsuc nzero ∷ El ⌜Nat⌝
+    i1 = toI (⊢nsuc ⊢nzero)
+    ⊢consT₂' = ⊢lam (ty-El ⊢⌜Nat⌝) (⊢dρ ⊢⌜Nat⌝ (toI ⊢nzero) (⊢dι ⊢⌜Nat⌝ i1))
 
 ------------------------------------------------------------------------
--- 4. THE ELIMINATOR — `⊢ielim`, and it COMPUTES.
+-- 3. THE ELIMINATOR, from one method per constructor.
 --
--- `vlen : Vec n → Nat`, at the CONSTANT motive `Nat`.  ⚠ constant on
--- purpose: `iinst i t Nat = Nat` and `iatCon k i Nat = Nat` definitionally,
--- so what is left to supply is exactly the thing §9.1 forced — a method
--- that QUANTIFIES OVER THE INDEX (the outer `lam`), which is what lets
--- ONE method tuple serve `cons`'s recursive call at `m` and the ambient
--- call at `suc m` alike.
+-- `vlen : Vec n → Nat`, at the CONSTANT motive `Nat`.  Each method takes
+-- the index, the constructor's payload and its hypotheses; `cons`'s
+-- hypotheses are the motive at the recursive field (`dih` computes them
+-- to `Σ Nat _`), and `nsuc (fst h)` is the length.
 ------------------------------------------------------------------------
 
--- λ n. λ p. λ ih. zero
-mnil : {Γ : Cx} → RTm Γ
-mnil = lam (lam (lam nzero))
-
--- λ n. λ p. λ ih. suc (fst ih)
-mcons : {Γ : Cx} → RTm Γ
+mnil mcons : {Γ : Cx} → RTm Γ
+mnil  = lam (lam (lam nzero))
 mcons = lam (lam (lam (nsuc (fst (var vz)))))
 
-vms : {Γ : Cx} → RTm Γ
-vms = pair mnil (pair mcons unit)
+VecMs : {Γ : Cx} → Cons Γ 2
+VecMs = mnil ∷ (mcons ∷ [])
 
 vlen : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ
-vlen n v = ielim VecD n vms v
+vlen n v = ielim VecD n (methₗ VecMs) v
 
--- the payload types, as `⊢ty` derivations under the method's index binder
-tyPayNil : {Γ : Ctx} → (Γ ▹ El ⌜Nat⌝) ⊢ty
-           Σ' (El (⌜Id⌝ ⌜Nat⌝ (var vz) nzero)) Unit
-tyPayNil = ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (⊢var here) (toI ⊢nzero))) ty-Unit
+-- the method types' domains
+module _ {Γ : Ctx} where
+  dPay : {C : RTm ⌊ Γ ⌋} → Γ ⊢ C ∷ Desc ⌜Nat⌝ →
+         (Γ ▹ El ⌜Nat⌝) ⊢ty El (dpay ⌜Nat⌝ (renTm vs VecD) (renTm vs C) (var vz))
+  dPay dC = ty-El (⊢dpay ⊢⌜Nat⌝ (⊢wk ⊢VecD) (⊢wk dC) (⊢var here))
 
-tyPayCons : {Γ : Ctx} → (Γ ▹ El ⌜Nat⌝) ⊢ty
-            Σ' (El ⌜Nat⌝)
-               (Σ' (El ⌜Nat⌝)
-                  (Σ' (IMu VecD INat (var (vs vz)))
-                     (Σ' (El (⌜Id⌝ ⌜Nat⌝ (var (vs (vs (vs vz))))
-                                         (nsuc (var (vs (vs vz)))))) Unit)))
-tyPayCons =
-  ty-Σ (ty-El ⊢⌜Nat⌝)
-    (ty-Σ (ty-El ⊢⌜Nat⌝)
-      (ty-Σ (ty-IMu VecWf (⊢var (there here)))
-        (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝
-                            (⊢var (there (there (there here))))
-                            (toI (⊢nsuc (fromI (⊢var (there (there here))))))))
-              ty-Unit)))
+  dHyp : {C : RTm ⌊ Γ ⌋} → Γ ⊢ C ∷ Desc ⌜Nat⌝ →
+         ((Γ ▹ El ⌜Nat⌝) ▹ El (dpay ⌜Nat⌝ (renTm vs VecD) (renTm vs C) (var vz)))
+           ⊢ty DIh (renTm vs (renTm vs VecD)) Nat (renTm vs (renTm vs C)) (var vz)
+  dHyp dC = ty-DIh ⊢⌜Nat⌝ (⊢wk (⊢wk ⊢VecD)) ty-Nat (⊢wk (⊢wk dC)) (⊢var (there here)) (⊢var here)
 
-⊢mnil : {Γ : Ctx} → Γ ⊢ mnil ∷ Π (El ⌜Nat⌝)
-                       (Π (Σ' (El (⌜Id⌝ ⌜Nat⌝ (var vz) nzero)) Unit)
-                          (Π Unit Nat))
-⊢mnil = ⊢lam (ty-El ⊢⌜Nat⌝) (⊢lam tyPayNil (⊢lam ty-Unit ⊢nzero))
+  ⊢mnil : Γ ⊢ mnil ∷ MethK ⌜Nat⌝ VecD Nat nilC zero
+  ⊢mnil = ⊢lam (ty-El ⊢⌜Nat⌝) (⊢lam (dPay ⊢nilC) (⊢lam (dHyp ⊢nilC) ⊢nzero))
 
-⊢mcons : {Γ : Ctx} → Γ ⊢ mcons ∷
-         Π (El ⌜Nat⌝)
-           (Π (Σ' (El ⌜Nat⌝)
-                 (Σ' (El ⌜Nat⌝)
-                    (Σ' (IMu VecD INat (var (vs vz)))
-                       (Σ' (El (⌜Id⌝ ⌜Nat⌝ (var (vs (vs (vs vz))))
-                                           (nsuc (var (vs (vs vz)))))) Unit))))
-              (Π (Σ' Nat Unit) Nat))
-⊢mcons =
-  ⊢lam (ty-El ⊢⌜Nat⌝)
-    (⊢lam tyPayCons
-      (⊢lam (ty-Σ ty-Nat ty-Unit) (⊢nsuc (⊢fst (⊢var here)))))
+  -- `cons`'s hypotheses compute, field by field, to the motive at the
+  --   recursive field and the (empty) rest
+  ⊢mcons : Γ ⊢ mcons ∷ MethK ⌜Nat⌝ VecD Nat consC (suc zero)
+  ⊢mcons = ⊢lam (ty-El ⊢⌜Nat⌝) (⊢lam (dPay ⊢consC) (⊢lam (dHyp ⊢consC)
+             (⊢nsuc (⊢fst (⊢conv (⊢var here) (red→≅ᵀ hyps))))))
+    where
+      p : RTm (((⌊ Γ ⌋ ∙) ∙) ∙)
+      p = var (vs vz)
+      hyps = stepᵀ (DIh-σ _ _ _ _ _)
+               (stepᵀ (ξ-DIhᶜ (β _ _))
+                 (stepᵀ (DIh-σ _ _ _ _ _)
+                   (stepᵀ (ξ-DIhᶜ (β _ _))
+                     (stepᵀ (DIh-ρ _ _ _ _ _) doneᵀ))))
 
-⊢vms : ◇ ⊢ vms ∷ imethsTy VecD INat Nat VecD
-⊢vms =
-  ⊢pair (ty-Σ (ty-Π (ty-El ⊢⌜Nat⌝)
-                    (ty-Π tyPayCons (ty-Π (ty-Σ ty-Nat ty-Unit) ty-Nat)))
-              ty-Unit)
-        ⊢mnil
-        (⊢pair ty-Unit ⊢mcons ⊢unit)
+  perVec : PerK Γ ⌜Nat⌝ VecD Nat (selF VecCs) zero VecMs
+  perVec = (selF-β nth-z , ⊢mnil) ∷ₘ ((selF-β (nth-s nth-z) , ⊢mcons) ∷ₘ []ₘ)
 
--- ★★ AND THE ELIMINATOR TYPES.
-⊢vlen : ◇ ⊢ vlen (nsuc nzero) v1 ∷ Nat
-⊢vlen = ⊢ielim VecWf ty-Nat (toI (⊢nsuc ⊢nzero)) ⊢vms ⊢v1
-
-⊢vlen0 : ◇ ⊢ vlen nzero vnil ∷ Nat
-⊢vlen0 = ⊢ielim VecWf ty-Nat (toI ⊢nzero) ⊢vms ⊢vnil
+  ⊢vlen : {n v : RTm ⌊ Γ ⌋} → Γ ⊢ n ∷ El ⌜Nat⌝ → Γ ⊢ v ∷ Vec n → Γ ⊢ vlen n v ∷ Nat
+  ⊢vlen dn dv = ⊢ielim ⊢⌜Nat⌝ ⊢VecD ty-Nat (⊢methₗ ⊢⌜Nat⌝ allVec ty-Nat perVec) dn dv
 
 ------------------------------------------------------------------------
--- 5. …AND IT COMPUTES.  ι fires — which is the whole difference between
---    "proven about" and "callable".
+-- 4. …AND IT COMPUTES.
 ------------------------------------------------------------------------
 
-vlen-nil-fires :
-  {Γ : Cx} →
-  vlen {Γ} nzero vnil ⟶
-    ifields VecD nzero vms (isingle nzero)
-      (ilookupD VecD zero)
-      (sel zero vms)
-      (pair (idrefl ⌜Nat⌝ nzero) unit)
-vlen-nil-fires = ι-ielim VecD nzero vms zero (pair (idrefl ⌜Nat⌝ nzero) unit)
-
--- ★★★ THE WHOLE CHAIN.  `length []` really is `0`: ι fires, `sel`
---   projects the method out of the tuple, and the three β's are the
---   INDEX, the payload and the (empty) IH tuple — the three binders
---   §9.1's `imethTy` introduced.
+-- `length [] ⟶* 0`: the head step, then the method's three β
 vlen-nil : {Γ : Cx} → vlen {Γ} nzero vnil ⟶* nzero
 vlen-nil =
-  step (ι-ielim VecD nzero vms zero (pair (idrefl ⌜Nat⌝ nzero) unit))
-  (step (ξ-appˡ (ξ-appˡ (ξ-appˡ (βfst mnil (pair mcons unit)))))
-  (step (ξ-appˡ (ξ-appˡ (β (lam (lam nzero)) nzero)))
-  (step (ξ-appˡ (β (lam nzero) (pair (idrefl ⌜Nat⌝ nzero) unit)))
-  (step (β nzero unit) done))))
+  ihead-red VecD VecMs zero nzero (idrefl ⌜Nat⌝ nzero) nth-z
+    (step (ξ-appˡ (ξ-appˡ (β _ _))) (step (ξ-appˡ (β _ _)) (step (β _ _) done)))
 
--- the cons payload and its tails, named so the projections' β-steps can
--- be written down (⚠ `fst`/`snd` are TERM FORMERS here, not projections:
--- `fst (pair a b)` reduces by `βfst`, it is not definitionally `a`).
-cP4 cP3 cP2 cP1 : {Γ : Cx} → RTm Γ
-cP4 = pair (idrefl ⌜Nat⌝ (nsuc nzero)) unit
-cP3 = pair vnil cP4
-cP2 = pair nzero cP3
-cP1 = pair nzero cP2
+-- ★ `length (cons m a xs) ⟶* suc (length xs)`, for ANY fields: the head
+--   step, the method's β's, then `dih` walks the telescope — the tag,
+--   `m`, the element — and fires the recursive call AT `m`, the recursive
+--   field's OWN index.
+vlen-cons : {Γ : Cx} {m a xs : RTm Γ} →
+            vlen (nsuc m) (vcons m a xs) ⟶* nsuc (vlen m xs)
+vlen-cons {m = m} {a = a} {xs = xs} =
+  ihead-red VecD VecMs (suc zero) (nsuc m) P (nth-s nth-z)
+    (step (ξ-appˡ (ξ-appˡ (β _ _)))
+    (step (ξ-appˡ (β _ _))
+    (step (β _ _)
+    (⟶*-nsuc
+      (⟶*-trans (⟶*-fst walk)
+      (step (βfst _ _)
+      (step (ξ-ielimⁱ (βfst _ _))
+      (step (ξ-ielimᵗ (ξ-fst (ξ-snd (βsnd _ _))))
+      (step (ξ-ielimᵗ (ξ-fst (βsnd _ _)))
+      (step (ξ-ielimᵗ (βfst _ _)) done))))))))))
+  where
+    P = pair m (pair a (pair xs (idrefl ⌜Nat⌝ (nsuc m))))
+    e = methₗ VecMs
+    walk : dih VecD e VecD (pair (tag (suc zero)) P)
+             ⟶* pair (ielim VecD (fst P) e (fst (snd (snd P)))) (dih VecD e (dι (nsuc (fst P))) (snd (snd (snd P))))
+    walk = ⟶*-castᵣ (cong (λ z → pair (ielim VecD z e (fst (snd (snd P))))
+                                      (dih VecD e (dι (nsuc z)) (snd (snd (snd P)))))
+                          (wk-cancel-tm (fst (snd P)) (fst P)))
+      (step (dih-σ _ _ _ _ _)
+      (step (ξ-dihᶜ (ξ-appʳ (βfst _ _)))
+      (step (ξ-dihᵖ (βsnd _ _))
+      (⟶*-trans (⟶*-dihᶜ (selF-β (nth-s nth-z)))
+      (step (dih-σ _ _ _ _ _)
+      (step (ξ-dihᶜ (β _ _))
+      (step (dih-σ _ _ _ _ _)
+      (step (ξ-dihᶜ (β _ _))
+      (step (dih-ρ _ _ _ _ _) done)))))))))
 
-nsucStar : {Γ : Cx} {t u : RTm Γ} → t ⟶* u → nsuc t ⟶* nsuc u
-nsucStar done       = done
-nsucStar (step r q) = step (ξ-nsuc r) (nsucStar q)
-
--- ★★★ AND THE RECURSIVE ONE.  `length [0]` is `1`, and the middle of
---   this chain is where the whole indexed design shows up at once:
---   `iihs` built the IH tuple by calling `ielim` AGAIN at the recursive
---   field's OWN index — `fst cP1`, i.e. `m`, NOT the ambient `suc m` —
---   with the SAME method tuple.  That is precisely what PLAN-INDEXED
---   §9.1's index-quantified `imethTy` exists to make typable and what
---   §9.2's telescope makes expressible.  Everything after it is the
---   projections β-firing.
-vlen-cons : {Γ : Cx} → vlen {Γ} (nsuc nzero) v1 ⟶* nsuc nzero
-vlen-cons =
-  step (ι-ielim VecD (nsuc nzero) vms (suc zero) cP1)
-  (step (ξ-appˡ (ξ-appˡ (ξ-appˡ (ξ-fst (βsnd mnil (pair mcons unit))))))
-  (step (ξ-appˡ (ξ-appˡ (ξ-appˡ (βfst mcons unit))))
-  (step (ξ-appˡ (ξ-appˡ (β (lam (lam (nsuc (fst (var vz))))) (nsuc nzero))))
-  (step (ξ-appˡ (β (lam (nsuc (fst (var vz)))) cP1))
-  (step (β (nsuc (fst (var vz)))
-           (pair (ielim VecD (fst cP1) vms (fst (snd (snd cP1)))) unit))
-  (step (ξ-nsuc (βfst (ielim VecD (fst cP1) vms (fst (snd (snd cP1)))) unit))
-  (step (ξ-nsuc (ξ-ielimⁱ (βfst nzero cP2)))
-  (step (ξ-nsuc (ξ-ielimᵗ (ξ-fst (ξ-snd (βsnd nzero cP2)))))
-  (step (ξ-nsuc (ξ-ielimᵗ (ξ-fst (βsnd nzero cP3))))
-  (step (ξ-nsuc (ξ-ielimᵗ (βfst vnil cP4)))
-    (nsucStar vlen-nil)))))))))))
+-- `length [0] ⟶* 1`
+vlen-v1 : {Γ : Cx} → vlen {Γ} (nsuc nzero) v1 ⟶* nsuc nzero
+vlen-v1 = ⟶*-trans vlen-cons (⟶*-nsuc vlen-nil)
 
 ------------------------------------------------------------------------
--- 6. ★★★ WHAT FORDING BUYS — `⊢icon`'s note, at this description.
---
--- `nil` and `cons` are BOTH available at EVERY index — that is what `iι`
--- means, and it is why `IMuMem` is uniform in the index (PLAN-INDEXED
--- §2).  What rules the bad ones out is the CONSTRAINT FIELD, and here is
--- that claim as a THEOREM rather than a comment: there is no closed
--- `cons` payload at index `zero`.
---
--- The mechanism is `Canonicity.idEndpoints` — a closed proof of `Id`
--- forces its endpoints CONVERTIBLE.  A `cons` payload's last component
--- inhabits `El (⌜Id⌝ ⌜Nat⌝ zero (suc m))`, which decodes to
--- `Id (El ⌜Nat⌝) zero (suc m)`; `idEndpoints` turns it into
--- `zero ≅ suc m`, and `zero≇suc` closes it.
+-- 5. ★★★ WHAT FORDING BUYS.  `nil` and `cons` are available at EVERY
+--    index; what rules the bad ones out is the index equation `dι` puts
+--    at the end of the payload.  There is no closed `cons` payload at
+--    index `zero`: its last field inhabits `Id (El ⌜Nat⌝) (suc m) zero`,
+--    and a closed proof of `Id` forces its endpoints convertible
+--    (`Canonicity.idEndpoints`), which `zero≇suc` refutes.
 ------------------------------------------------------------------------
 
--- ★★★ NO `cons` PAYLOAD LIVES AT INDEX ZERO.
 no-cons-at-zero :
-  {m a xs : RTm ε} →
-  ◇ ⊢ pair m (pair a (pair xs (pair (idrefl ⌜Nat⌝ (nsuc m)) unit)))
-        ∷ ipayTy VecD INat (isingle nzero) (ilookupD VecD (suc zero)) → ⊥
-no-cons-at-zero dp =
-  zero≇suc (idEndpoints
-    (⊢conv (⊢fst (⊢snd (⊢snd (⊢snd dp)))) (credᵀ (El-⌜Id⌝ _ _ _))))
+  {m e : RTm ε} →
+  ◇ ⊢ e ∷ El (dpay ⌜Nat⌝ VecD (dι (nsuc m)) nzero) → ⊥
+no-cons-at-zero de =
+  zero≇suc (csym (idEndpoints
+    (⊢conv de (ctrnᵀ (credᵀ (ξ-El (dpay-ι _ _ _ _))) (credᵀ (El-⌜Id⌝ _ _ _))))))
