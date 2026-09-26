@@ -31,69 +31,53 @@ open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; Var; Thin; vz; vs; RTy; base; U; Π; Σ'; El; Hom; RTm; var
         ; lam; app; pair; fst; snd; absurd; ordtr; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝; ⌜Hom⌝
         ; hrefl; tr; ap; Id; ⌜Id⌝; idrefl; jsub; Id-cong₃; ⌜Id⌝-cong₃
-        ; jsub-cong₃; Unit; Nat; unit; nzero; nsuc; natrec; ⌜Nat⌝; ⌜Unit⌝
-        ; ⌜Mu⌝; Ren; extR; renTm; renTy; Sub; extS; subTm; subTy; idₛ; _∘ᵣ_
-        ; _ₛ∘ᵣ_; _ᵣ∘ₛ_; _∘ₛ_; subTy-renTy; renTy-subTy; subTy-subTy
-        ; renTy-renTy; subTy-cong; renTy-cong; subTy-id; subTm-renTm
-        ; subTm-id; subTm-cong; renTm-renTm; renTm-subTm; ⌜Hom⌝-cong₃
-        ; Hom-cong₃; ordtr-cong₅; Desc; Mu; con; elim; lookupD; sel; fields
-        ; DCon; dι; dρ; dκ; dnil; _◃_; payTy; payTy-ren; payTy-sub; _∈D_
-        ; hereD; thereD; ihs; IMu; icon; ielim; ⌜IMu⌝; ICon; IDesc; iι; iρ
-        ; iκ; inil; _◂_; ipayTy; ilookupD; _∈ID_; hereID; thereID; iihs
-        ; ifields; εwkTy; εwk-ren; εwk-sub; εwkTm; εwkTm-ren; εwkTm-sub
-        ; ipayTy-ren; ipayTy-sub; iext; isingle; ipayTy-cong; subTm-subTm
-        ; iext-ren; iext-sub; ipayTy-renⁱ; ipayTy-subⁱ )
+        ; jsub-cong₃; Unit; Nat; unit; nzero; nsuc; natrec; ⌜Nat⌝; ⌜Unit⌝; Ren
+        ; extR; renTm; renTy; Sub; extS; subTm; subTy; idₛ; _∘ᵣ_; _ₛ∘ᵣ_; _ᵣ∘ₛ_
+        ; _∘ₛ_; subTy-renTy; renTy-subTy; subTy-subTy; renTy-renTy; subTy-cong
+        ; renTy-cong; subTy-id; subTm-renTm; subTm-id; subTm-cong; renTm-renTm
+        ; renTm-subTm; ⌜Hom⌝-cong₃; Hom-cong₃; ordtr-cong₅; Desc; con; dι; dρ
+        ; IMu; ielim; ⌜IMu⌝; εwkTy; εwk-ren; εwk-sub; εwkTm; εwkTm-ren
+        ; εwkTm-sub; subTm-subTm
+        ; DIh; Fin; ⌜Fin⌝; dσ; dpay; dih; fzero; fsuc; fcase; fcase0; psplit; cong₄; cong₃ )
 open import DirectedHoTT.Spec.Variance
-  using ( 𝔹; true; false; _∨_; occTm; ∨-false; ∨-false₁; ∨-false₂
-        ; occ-ren-eq; occ-sub; eqv; Avoids; occ-ren-tm; avoids-wk
-        ; PosC; posc-var; posc-Hom; posc-ren; posc-sub
-        ; pw?; stkC?; pwDom; pwBody; pwShift
-        ; pw?-sub; stkC?-sub; pwBody-sub; pwDom-sub
-        ; pwBody-occ; ren-as-sub; avoids-pwShift; subTm-occ
-        ; stkC?-ren; wk-ren-tm; wk-sub-tm; flat?; flat→stk; flat?-ren; flat?-sub
-        ; NoNatC; nnc-base; nnc-Unit; nnc-Π; nnc-Σ; nnc-Hom; nnc-Id
-        ; nonatc-ren; nonatc-sub; nonatc-pwBody
-        ; stkA?; stkA?-ren; stkA?-sub; stkC?→stkA?
-        ; NoNatHd; nnh-base; nnh-Unit; nnh-Σ; nnh-Id; nnh-Π; nnh-Hom; nnh-Mu; nnh-IMu
-        ; nonatc→hd; stkC?→hd
-        ; occ-sel; occ-fields; occ-ifields; occ-iihs; occ-εwkTm )
+  using ( 𝔹; true; false; _∨_; occTm; ∨-false; ∨-false₁; ∨-false₂; occ-ren-eq
+        ; occ-sub; eqv; Avoids; occ-ren-tm; avoids-wk; PosC; posc-var
+        ; posc-Hom; posc-ren; posc-sub; pw?; stkC?; pwDom; pwBody; pwShift
+        ; pw?-sub; stkC?-sub; pwBody-sub; pwDom-sub; pwBody-occ; ren-as-sub
+        ; avoids-pwShift; subTm-occ; stkC?-ren; wk-ren-tm; wk-sub-tm; flat?
+        ; flat→stk; flat?-ren; flat?-sub; NoNatC; nnc-base; nnc-Unit; nnc-Π
+        ; nnc-Σ; nnc-Hom; nnc-Id; nonatc-ren; nonatc-sub; nonatc-pwBody; stkA?
+        ; stkA?-ren; stkA?-sub; stkC?→stkA?; NoNatHd; nnh-base; nnh-Unit
+        ; nnh-Σ; nnh-Id; nnh-Π; nnh-Hom; nnh-IMu; nonatc→hd; stkC?→hd
+        ; occ-εwkTm
+        ; nnh-Fin )
 open import DirectedHoTT.Spec.Typing
-  using ( single; nrs; _⟶ᵀ_; El-⌜base⌝; El-⌜Π⌝; El-⌜Σ⌝; El-⌜Hom⌝
-        ; ξ-El; ξ-Πˡ; ξ-Πʳ; ξ-Σˡ; ξ-Σʳ
-        ; Hom-U; Hom-Π; ξ-Homᵀ; ξ-Homˡ; ξ-Homʳ
-        ; _⟶_; β; βfst; βsnd; ξ-lam; ξ-appˡ; ξ-appʳ
-        ; ξ-pairˡ; ξ-pairʳ; ξ-absurdᶜ; ξ-absurdᵉ; ordtr-z; ordtr-szz; ordtr-ssz; ordtr-szs; ordtr-sss
-        ; ξ-ordtrᵃ; ξ-ordtrᵗ; ξ-ordtrᵘ; ξ-ordtrᵖ; ξ-ordtrq; ξ-fst; ξ-snd
-        ; ξ-⌜Π⌝ˡ; ξ-⌜Π⌝ʳ; ξ-⌜Σ⌝ˡ; ξ-⌜Σ⌝ʳ
-        ; tr-J-base; tr-J-Σ; tr-J-Id; tr-J-Unit; tr-J-Mu; tr-J-IMu; tr-taut; hrefl-pw; tr-J-Hom; tr-pw
-        ; El-⌜Nat⌝; El-⌜Unit⌝; El-⌜Mu⌝
-        ; El-⌜IMu⌝; ξ-IMu
-        ; ξ-⌜Hom⌝ᶜ; ξ-⌜Hom⌝ˡ; ξ-⌜Hom⌝ʳ; ξ-hreflᶜ; ξ-hreflᵃ; ξ-trᵈ; ξ-trᵖ; ξ-trᵉ
-        ; ap-J; ξ-apᶜ; ξ-apᵇ; ξ-apᵖ
-        ; jsub-refl; ξ-⌜Id⌝ᶜ; ξ-⌜Id⌝ˡ; ξ-⌜Id⌝ʳ; ξ-idreflᶜ; ξ-idreflᵃ
-        ; ξ-jsubᵈ; ξ-jsubᵖ; ξ-jsubᵉ; El-⌜Id⌝; ξ-Idᵀ; ξ-Idˡ; ξ-Idʳ
-        ; natrec-zero; natrec-suc; ξ-nsuc; ξ-natrecᶻ; ξ-natrecˢ; ξ-natrecⁿ
-        ; Hom-Nat-z; Hom-Nat-sz; Hom-Nat-ss
-        ; _⟶*_; done; step
-        ; _≅ᵀ_; credᵀ; crflᵀ; csymᵀ; ctrnᵀ
-        ; Ctx; ◇; _▹_; ⌊_⌋; _∋_∷_; here; there
-        ; _⊢_∷_; ⊢var; ⊢lam; ⊢app; ⊢pair; ⊢fst; ⊢snd; ⊢absurd; ⊢ordtr; ⊢trU
-        ; ⊢⌜base⌝; ⊢⌜Π⌝; ⊢⌜Σ⌝; ⊢⌜Hom⌝; ⊢hrefl; ⊢tr; ⊢ap; ⊢conv
-        ; ⊢⌜Id⌝; ⊢idrefl; ⊢jsub; ⊢unit; ⊢nzero; ⊢nsuc; ⊢natrec; ⊢⌜Nat⌝; ⊢⌜Unit⌝; ⊢⌜Mu⌝
-        ; _⊢ty_; ty-base; ty-U; ty-Π; ty-Σ; ty-El; ty-Hom; ty-Id; ty-Unit; ty-Nat
-        ; ⊢ctx_; c-◇; c-▹
-        ; ι-elim; ξ-con; ξ-elimᵐ; ξ-elimᵗ
-        ; ι-ielim; ξ-icon; ξ-ielimⁱ; ξ-ielimᵐ; ξ-ielimᵗ; ξ-⌜IMu⌝
-        ; ihTy; atCon; conS; methTy; methsTy; methsTyFrom; atCon-inst; ty-Mu; ⊢con; ⊢elim
-        ; DescWf
-        ; wk-single; iinst; iihTy; iconS; iatCon; iatCon-inst
-        ; imethTy; imethsTy; imethsTyFrom; IDescWf
-        ; ty-IMu; ⊢icon; ⊢ielim; ⊢⌜IMu⌝; IConWf; iwf-ρ; iwf-κ; IDescWfFrom; idwf-cons; idwf-nil; _≅_; csym; ctrn; cred; crfl
-        ; Xinst; IDescWf-cons )
+  using ( single; nrs; _⟶ᵀ_; El-⌜base⌝; El-⌜Π⌝; El-⌜Σ⌝; El-⌜Hom⌝; ξ-El; ξ-Πˡ
+        ; ξ-Πʳ; ξ-Σˡ; ξ-Σʳ; Hom-U; Hom-Π; ξ-Homᵀ; ξ-Homˡ; ξ-Homʳ; _⟶_; β; βfst
+        ; βsnd; ξ-lam; ξ-appˡ; ξ-appʳ; ξ-pairˡ; ξ-pairʳ; ξ-absurdᶜ; ξ-absurdᵉ
+        ; ordtr-z; ordtr-szz; ordtr-ssz; ordtr-szs; ordtr-sss; ξ-ordtrᵃ
+        ; ξ-ordtrᵗ; ξ-ordtrᵘ; ξ-ordtrᵖ; ξ-ordtrq; ξ-fst; ξ-snd; ξ-⌜Π⌝ˡ; ξ-⌜Π⌝ʳ
+        ; ξ-⌜Σ⌝ˡ; ξ-⌜Σ⌝ʳ; tr-J-base; tr-J-Σ; tr-J-Id; tr-J-Unit; tr-J-IMu
+        ; tr-taut; hrefl-pw; tr-J-Hom; tr-pw; El-⌜Nat⌝; El-⌜Unit⌝; El-⌜IMu⌝
+        ; ξ-⌜Hom⌝ᶜ; ξ-⌜Hom⌝ˡ; ξ-⌜Hom⌝ʳ; ξ-hreflᶜ; ξ-hreflᵃ; ξ-trᵈ; ξ-trᵖ
+        ; ξ-trᵉ; ap-J; ξ-apᶜ; ξ-apᵇ; ξ-apᵖ; jsub-refl; ξ-⌜Id⌝ᶜ; ξ-⌜Id⌝ˡ
+        ; ξ-⌜Id⌝ʳ; ξ-idreflᶜ; ξ-idreflᵃ; ξ-jsubᵈ; ξ-jsubᵖ; ξ-jsubᵉ; El-⌜Id⌝
+        ; ξ-Idᵀ; ξ-Idˡ; ξ-Idʳ; natrec-zero; natrec-suc; ξ-nsuc; ξ-natrecᶻ
+        ; ξ-natrecˢ; ξ-natrecⁿ; Hom-Nat-z; Hom-Nat-sz; Hom-Nat-ss; _⟶*_; done
+        ; step; _≅ᵀ_; credᵀ; crflᵀ; csymᵀ; ctrnᵀ; Ctx; ◇; _▹_; ⌊_⌋; _∋_∷_
+        ; here; there; _⊢_∷_; ⊢var; ⊢lam; ⊢app; ⊢pair; ⊢fst; ⊢snd; ⊢absurd
+        ; ⊢ordtr; ⊢trU; ⊢⌜base⌝; ⊢⌜Π⌝; ⊢⌜Σ⌝; ⊢⌜Hom⌝; ⊢hrefl; ⊢tr; ⊢ap; ⊢conv
+        ; ⊢⌜Id⌝; ⊢idrefl; ⊢jsub; ⊢unit; ⊢nzero; ⊢nsuc; ⊢natrec; ⊢⌜Nat⌝
+        ; ⊢⌜Unit⌝; _⊢ty_; ty-base; ty-U; ty-Π; ty-Σ; ty-El; ty-Hom; ty-Id
+        ; ty-Unit; ty-Nat; ⊢ctx_; c-◇; c-▹; ξ-con; ξ-ielimⁱ; ξ-ielimᵗ; ⊢con
+        ; wk-single; iinst; ty-IMu; ⊢ielim; ⊢⌜IMu⌝; _≅_; csym; ctrn; cred
+        ; crfl
+        ; El-⌜Fin⌝; DIh-ι; DIh-σ; DIh-ρ; ξ-IMuᴵ; ξ-IMuᴰ; ξ-IMuⁱ; ξ-Desc; ξ-DIhᴰ; ξ-DIhᴹ; ξ-DIhᶜ; ξ-DIhᵖ; ι; dpay-ι; dpay-σ; dpay-ρ; dih-ι; dih-σ; dih-ρ; fcase-z; fcase-s; psplit-β; ξ-⌜IMu⌝ᴵ; ξ-⌜IMu⌝ᴰ; ξ-⌜IMu⌝ⁱ; ξ-ielimᴰ; ξ-ielimᵉ; ξ-dι; ξ-dσˢ; ξ-dσᶠ; ξ-dρʲ; ξ-dρᶜ; ξ-dpayᴵ; ξ-dpayᴰ; ξ-dpayᶜ; ξ-dpayⁱ; ξ-dihᴰ; ξ-dihᵉ; ξ-dihᶜ; ξ-dihᵖ; ξ-fsuc; ξ-fcaseᵗ; ξ-fcaseᵃ; ξ-fcaseᵇ; ξ-fcase0; ξ-psplitᵇ; ξ-psplitᵍ; tr-J-Fin; ⊢⌜Fin⌝; ⊢dι; ⊢dσ; ⊢dρ; ⊢dpay; ⊢dih; ⊢fzero; ⊢fsuc; ⊢fcase; ⊢fcase0; ⊢psplit; ty-Desc; ty-DIh; ty-Fin; MethTy; motCtx; methS; wk2M; single2; pairS; fsucS )
 open import DirectedHoTT.Metatheory.SubjectReductionBase using ( ≅ᵀ-sub; ⟶-sub )
 open import DirectedHoTT.Metatheory.Confluence
   using ( ⟶-ren; ⟶*-ren; ⟶*-appʳ; ren-comm; subTm-monoˢ; extS-mono; single-mono
-        ; stkC?-red; stkA?-red; church-rosser )
+        ; stkC?-red; stkA?-red; church-rosser
+        ; ⟶*-trans; ⟶*-dpayᴵ; ⟶*-dpayᴰ; ⟶*-dpayᶜ; ⟶*-dpayⁱ )
 open import DirectedHoTT.Metatheory.SubjectReductionBase using ( sub-comm; ⟶ᵀ-sub )
 open import DirectedHoTT.Metatheory.Injectivity
   using ( _⟶ᵀ*_; doneᵀ; stepᵀ; ⟶ᵀ*-trans; ⟶ᵀ*-El
@@ -101,7 +85,8 @@ open import DirectedHoTT.Metatheory.Injectivity
         ; ⟶ᵀ*-Homᵀ; ⟶ᵀ*-Homˡ; ⟶ᵀ*-Homʳ; red→≅ᵀ; Π-inj; Σ-inj
         ; ⟶ᵀ*-Idᵀ; ⟶ᵀ*-Idˡ; ⟶ᵀ*-Idʳ; Id-reduct
         ; church-rosserᵀ; Π-reduct; ΠRed; mkΠRed
-        ; Mu-inj; ⟶ᵀ*-IMu; IMu-inj; IMu-reduct; IMuRed; mkIMuRed )
+        ; ⟶ᵀ*-IMu; IMu-inj; IMu-reduct; IMuRed; mkIMuRed
+        ; Desc-inj; Fin-inj; ⟶ᵀ*-Desc )
 
 private
   variable
@@ -165,7 +150,10 @@ open import DirectedHoTT.Metatheory.TySub public
 nonathd-red : {c c' : RTm Γ} → NoNatHd c → c ⟶ c' → NoNatHd c'
 nonathd-red nnh-base ()
 nonathd-red nnh-Unit ()
-nonathd-red nnh-IMu (ξ-⌜IMu⌝ _) = nnh-IMu
+nonathd-red nnh-Fin ()
+nonathd-red nnh-IMu (ξ-⌜IMu⌝ᴵ _) = nnh-IMu
+nonathd-red nnh-IMu (ξ-⌜IMu⌝ᴰ _) = nnh-IMu
+nonathd-red nnh-IMu (ξ-⌜IMu⌝ⁱ _) = nnh-IMu
 nonathd-red nnh-Σ (ξ-⌜Σ⌝ˡ _) = nnh-Σ
 nonathd-red nnh-Σ (ξ-⌜Σ⌝ʳ _) = nnh-Σ
 nonathd-red nnh-Id (ξ-⌜Id⌝ᶜ _) = nnh-Id
@@ -200,25 +188,27 @@ data NoNat {Γ} : RTy Γ → Set where
   nn-Σ    : {F : RTy Γ} {G : RTy (Γ ∙)} → NoNat (Σ' F G)
   nn-Hom  : {H : RTy Γ} {a b : RTm Γ} → NoNat (Hom H a b)
   nn-Id   : {A : RTy Γ} {t u : RTm Γ} → NoNat (Id A t u)
-  nn-Mu   : {Dᵐ : Desc} → NoNat (Mu {Γ} Dᵐ)
-  -- ⚠ unlike `nn-Mu`, this one is NOT closed by an absurd reduction —
-  --   `ξ-IMu` steps the index, so `nonat-red` has a real row below.
-  nn-IMu  : {D : IDesc} {I : RTy ε} {i : RTm Γ} → NoNat (IMu D I i)
+  -- ⚠ NOT closed by an absurd reduction — the family's three slots are
+  --   terms and step, so `nonat-red` has real rows below.
+  nn-IMu  : {I D i : RTm Γ} → NoNat (IMu I D i)
+  nn-Fin  : {n : ℕ} → NoNat (Fin {Γ} n)
 
 nonat-red : {A A' : RTy Γ} → NoNat A → A ⟶ᵀ A' → NoNat A'
 nonat-red nn-base ()
 nonat-red nn-U ()
 nonat-red nn-Unit ()
-nonat-red nn-Mu ()
+nonat-red nn-Fin ()
 nonat-red (nn-El _)  El-⌜base⌝        = nn-base
 nonat-red (nn-El _)  (El-⌜Π⌝ _ _)     = nn-Π
 nonat-red (nn-El _)  (El-⌜Σ⌝ _ _)     = nn-Σ
 nonat-red (nn-El _)  (El-⌜Hom⌝ _ _ _) = nn-Hom
 nonat-red (nn-El _)  (El-⌜Id⌝ _ _ _)  = nn-Id
 nonat-red (nn-El _)  El-⌜Unit⌝        = nn-Unit
-nonat-red (nn-El _)  El-⌜Mu⌝          = nn-Mu
+nonat-red (nn-El _)  El-⌜Fin⌝         = nn-Fin
 nonat-red (nn-El _)  El-⌜IMu⌝         = nn-IMu
-nonat-red nn-IMu     (ξ-IMu _)        = nn-IMu
+nonat-red nn-IMu     (ξ-IMuᴵ _)       = nn-IMu
+nonat-red nn-IMu     (ξ-IMuᴰ _)       = nn-IMu
+nonat-red nn-IMu     (ξ-IMuⁱ _)       = nn-IMu
 -- ★★ THE excluded case, and the only one: a ⌜Nat⌝-headed ambient.
 nonat-red (nn-El ()) El-⌜Nat⌝
 nonat-red (nn-El nc) (ξ-El r)        = nn-El (nonathd-red nc r)
@@ -477,18 +467,108 @@ hom-step (ξ-⌜Hom⌝ˡ r) = hsˡ r
 hom-step (ξ-⌜Hom⌝ʳ r) = hsʳ r
 
 
--- lifting an index CONVERSION to the payload type, via church-rosser.
-ipayTy-conv : (D : IDesc) (I : RTy ε) (C : ICon (ε ∙)) {i i' : RTm Γ} →
-              i ≅ i' → ipayTy D I (isingle i) C ≅ᵀ ipayTy D I (isingle i') C
-ipayTy-conv D I C c with church-rosser c
-... | w , (ri , ri') =
-      -- ⚠ THE ENVIRONMENTS MUST BE PINNED.  `isingle` is a DEFINED
-      --   function, so it is not injective and Agda cannot solve
-      --   `σ' vz = w` for `σ'`.  Same trap as `IHAt`/`IndPW`.
-      ctrnᵀ (red→≅ᵀ (ipayTy-mono D I {σ = isingle _} {σ' = isingle w} C
-                                 (λ { vz → ri })))
-            (csymᵀ (red→≅ᵀ (ipayTy-mono D I {σ = isingle _} {σ' = isingle w} C
-                                        (λ { vz → ri' }))))
+------------------------------------------------------------------------
+-- ★★ LEVITATION: the substitution facts the levitated rules need.
+--   All are σ-calculus: fuse, then compare pointwise.
+------------------------------------------------------------------------
+
+-- a term conversion lifts through any reduction-monotone type context.
+conv-lift : {Γ : Cx} (F : RTm Γ → RTy Γ) → (∀ {a b} → a ⟶* b → F a ⟶ᵀ* F b) →
+            {a b : RTm Γ} → a ≅ b → F a ≅ᵀ F b
+conv-lift F m c with church-rosser c
+... | w , (r₁ , r₂) = ctrnᵀ (red→≅ᵀ (m r₁)) (csymᵀ (red→≅ᵀ (m r₂)))
+
+El-≅ : {Γ : Cx} {a b : RTm Γ} → a ≅ b → El a ≅ᵀ El b
+El-≅ = conv-lift El ⟶ᵀ*-El
+
+Desc-≅ : {Γ : Cx} {a b : RTm Γ} → a ≅ b → Desc a ≅ᵀ Desc b
+Desc-≅ = conv-lift Desc ⟶ᵀ*-Desc
+
+-- application with the argument typed at a propositionally equal domain;
+--   leaves the codomain for Agda to read off the function's type.
+⊢app-cast : {Γ : Ctx} {A A' : RTy ⌊ Γ ⌋} {B : RTy (⌊ Γ ⌋ ∙)} {t u : RTm ⌊ Γ ⌋} →
+            A ≡ A' → Γ ⊢ t ∷ Π A B → Γ ⊢ u ∷ A' → Γ ⊢ app t u ∷ subTy (single u) B
+⊢app-cast refl dt du = ⊢app dt du
+
+-- `dσ`'s branch applied to the fresh payload variable
+wk-app-vzᵗ : {Γ : Cx} (t : RTm Γ) →
+            subTm (single (var vz)) (renTm (extR vs) (renTm vs t)) ≡ renTm vs t
+wk-app-vzᵗ t =
+  trans (cong (subTm (single (var vz)))
+              (trans (renTm-renTm t) (sym (renTm-renTm {ρ' = vs} {ρ = vs} t))))
+        (wk-cancel-tm (var vz) (renTm vs t))
+
+-- two weakenings, then the method's two instantiations, cancel
+ww-cancel : {Γ : Cx} (a b t : RTm Γ) →
+            subTm (single a) (subTm (extS (single b)) (renTm vs (renTm vs t))) ≡ t
+ww-cancel a b t =
+  trans (subTm-subTm (renTm vs (renTm vs t)))
+    (trans (subTm-renTm (renTm vs t))
+      (trans (subTm-renTm t) (trans (subTm-cong (λ _ → refl) t) (subTm-id t))))
+
+-- the method's hypothesis motive, instantiated at `i` then `p`, is `M`
+wk2M-cancel : {Γ : Cx} (p i : RTm Γ) (M : RTy ((Γ ∙) ∙)) →
+              subTy (extS (extS (single p))) (subTy (extS (extS (extS (single i)))) (wk2M M)) ≡ M
+wk2M-cancel p i M =
+  trans (subTy-subTy (wk2M M))
+    (trans (subTy-renTy M)
+      (trans (subTy-cong (λ { vz → refl ; (vs vz) → refl ; (vs (vs y)) → refl }) M)
+             (subTy-id M)))
+
+-- the method's conclusion, at `i`, `p`, `h`, is the motive at `con p`
+meth-inst : {Γ : Cx} (h p i : RTm Γ) (M : RTy ((Γ ∙) ∙)) →
+            subTy (single h) (subTy (extS (single p)) (subTy (extS (extS (single i))) (subTy methS M)))
+            ≡ iinst i (con p) M
+meth-inst h p i M =
+  trans (cong (subTy (single h)) (cong (subTy (extS (single p))) (subTy-subTy M)))
+    (trans (cong (subTy (single h)) (subTy-subTy M))
+      (trans (subTy-subTy M)
+        (trans (subTy-cong ptw M) (sym (subTy-subTy M)))))
+  where
+  ptw : ∀ x → (single h ∘ₛ (extS (single p) ∘ₛ (extS (extS (single i)) ∘ₛ methS))) x
+              ≡ (single (con p) ∘ₛ extS (single i)) x
+  ptw vz          = cong con (wk-cancel-tm h p)
+  ptw (vs vz)     = trans (ww-cancel h p i) (sym (wk-cancel-tm (con p) i))
+  ptw (vs (vs y)) = refl
+
+-- `fcase`'s successor branch, instantiated at the predecessor
+fsucS-inst : {Γ : Cx} (t : RTm Γ) (P : RTy (Γ ∙)) →
+             subTy (single t) (subTy fsucS P) ≡ subTy (single (fsuc t)) P
+fsucS-inst t P =
+  trans (subTy-subTy P) (subTy-cong (λ { vz → refl ; (vs x) → refl }) P)
+
+-- `psplit`'s body, instantiated at both halves
+pairS-inst : {Γ : Cx} (x y : RTm Γ) (P : RTy (Γ ∙)) →
+             subTy (single2 x y) (subTy pairS P) ≡ subTy (single (pair x y)) P
+pairS-inst x y P =
+  trans (subTy-subTy P) (subTy-cong (λ { vz → refl ; (vs z) → refl }) P)
+
+s2-wk : {Γ : Cx} (x y : RTm Γ) (B : RTy (Γ ∙)) →
+        subTy (single2 x y) (renTy vs B) ≡ subTy (single x) B
+s2-wk x y B = trans (subTy-renTy B) (subTy-cong (λ { vz → refl ; (vs z) → refl }) B)
+
+s2-cancel : {Γ : Cx} (x y : RTm Γ) (A : RTy Γ) →
+            subTy (single2 x y) (renTy vs (renTy vs A)) ≡ A
+s2-cancel x y A =
+  trans (subTy-renTy (renTy vs A))
+    (trans (subTy-renTy A) (trans (subTy-cong (λ _ → refl) A) (subTy-id A)))
+
+-- the two-slot single substitution as a typed substitution
+⊢single2 : {Γ : Ctx} {A : RTy ⌊ Γ ⌋} {B : RTy (⌊ Γ ⌋ ∙)} {x y : RTm ⌊ Γ ⌋} →
+           Γ ⊢ x ∷ A → Γ ⊢ y ∷ subTy (single x) B → Sub⊢ ((Γ ▹ A) ▹ B) Γ (single2 x y)
+⊢single2 {B = B} {x = x} {y = y} dx dy here = ⊢-cast (sym (s2-wk x y B)) dy
+⊢single2 {A = A} {x = x} {y = y} dx dy (there here) = ⊢-cast (sym (s2-cancel x y A)) dx
+⊢single2 {x = x} {y = y} dx dy (there (there {A = A₀} v)) =
+  ⊢-cast (sym (s2-cancel x y A₀)) (⊢var v)
+
+-- the payload of `p : El (dpay I D C i)` at `i ≅ i'`, `I ≅ I'`, `D ≅ D'`
+dpay-≅ : {Γ : Cx} {I I' D D' i i' : RTm Γ} → I ≅ I' → D ≅ D' → i ≅ i' →
+         El (dpay I D D i) ≅ᵀ El (dpay I' D' D' i')
+dpay-≅ {I' = I'} {D = D} {D' = D'} {i = i} {i' = i'} cI cD ci =
+  ctrnᵀ (conv-lift (λ x → El (dpay x D D i)) (λ r → ⟶ᵀ*-El (⟶*-dpayᴵ r)) cI)
+    (ctrnᵀ (conv-lift (λ x → El (dpay I' x x i))
+                      (λ r → ⟶ᵀ*-El (⟶*-trans (⟶*-dpayᴰ r) (⟶*-dpayᶜ r))) cD)
+           (conv-lift (λ x → El (dpay I' D' D' x)) (λ r → ⟶ᵀ*-El (⟶*-dpayⁱ r)) ci))
 
 ------------------------------------------------------------------------
 -- Generation (inversion through `⊢conv`).
@@ -733,11 +813,10 @@ data StkAmb {Γ : Cx} : RTy Γ → Set where
   -- ★ WF stage C: `⌜Unit⌝` IS a stable code, so its decode joins the
   -- stable ambients.
   st-Unit : StkAmb (Unit {Γ})
-  -- ★ `Mu D` is inert: never `U`, never `Π`.
-  st-Mu   : {Dᵐ : Desc} → StkAmb (Mu {Γ} Dᵐ)
-  -- ★ `IMu D I i` is likewise never `U`, never `Π` — but its index
-  --   reduces, so it is INERT-SHAPED, not inert.
-  st-IMu  : {D : IDesc} {I : RTy ε} {i : RTm Γ} → StkAmb (IMu D I i)
+  -- ★ `IMu I D i` is never `U`, never `Π` — but its slots reduce, so
+  --   it is INERT-SHAPED, not inert.  `Fin n` is inert.
+  st-IMu  : {I D i : RTm Γ} → StkAmb (IMu I D i)
+  st-Fin  : {n : ℕ} → StkAmb (Fin {Γ} n)
   -- ★★ SpikeNatJ: `Nat` IS a stable ambient.  `StkAmb A` means "A never
   -- becomes `U` or `Π`", NOT "A is stuck" — that second notion is LR's
   -- `StkHd`, and the two must not be confused.  `Nat` is inert, and a
@@ -751,9 +830,12 @@ stamb-red (st-el {c = ⌜base⌝} k) El-⌜base⌝ = st-base
 stamb-red (st-el {c = ⌜Σ⌝ c d} k) (El-⌜Σ⌝ _ _) = st-Σ
 stamb-red (st-el {c = ⌜Id⌝ c a b} k) (El-⌜Id⌝ _ _ _) = st-Id
 stamb-red (st-el {c = ⌜Unit⌝} k) El-⌜Unit⌝ = st-Unit
-stamb-red (st-el {c = ⌜Mu⌝ _} k) El-⌜Mu⌝ = st-Mu
+stamb-red (st-el {c = ⌜Fin⌝ _} k) El-⌜Fin⌝ = st-Fin
 stamb-red (st-el {c = ⌜IMu⌝ _ _ _} k) El-⌜IMu⌝ = st-IMu
-stamb-red st-IMu (ξ-IMu r) = st-IMu
+stamb-red st-IMu (ξ-IMuᴵ r) = st-IMu
+stamb-red st-IMu (ξ-IMuᴰ r) = st-IMu
+stamb-red st-IMu (ξ-IMuⁱ r) = st-IMu
+stamb-red st-Fin ()
 stamb-red (st-el {c = ⌜Nat⌝} k) El-⌜Nat⌝ = st-Nat
 stamb-red st-Nat ()
 stamb-red st-Unit ()
@@ -931,453 +1013,292 @@ gen-tr (⊢conv d c) with gen-tr d
 ------------------------------------------------------------------------
 
 sr : {Γ : Ctx} {t u : RTm ⌊ Γ ⌋} {A : RTy ⌊ Γ ⌋} → Γ ⊢ t ∷ A → t ⟶ u → Γ ⊢ u ∷ A
--- ★★★ REAL INVERSIONS.  These REPLACE the `⊥`-valued placeholders that
---   stood here while `⊢con`/`⊢elim` did not exist.  The placeholders made
---   subject reduction at ι VACUOUS; these make it provable.
-gen-con : {Γ : Ctx} {k : ℕ} {p : RTm ⌊ Γ ⌋} {C : RTy ⌊ Γ ⌋} →
-          Γ ⊢ con k p ∷ C →
-          Σ Desc (λ D → DescWf D × ((k ∈D D) ×
-                        ((Γ ⊢ p ∷ payTy D (lookupD D k)) × (C ≅ᵀ Mu D))))
-gen-con (⊢con {D = D} w i dp) = D , (w , (i , (dp , crflᵀ)))
+-- ★★ LEVITATION: generation lemmas for the levitated formers — the rule,
+--   then `⊢conv` composing the conversion (the file's two-clause shape).
+gen-con : {Γ : Ctx} {p : RTm ⌊ Γ ⌋} {C : RTy ⌊ Γ ⌋} → Γ ⊢ con p ∷ C →
+          Σ (RTm ⌊ Γ ⌋) (λ I → Σ (RTm ⌊ Γ ⌋) (λ D → Σ (RTm ⌊ Γ ⌋) (λ i →
+            (Γ ⊢ D ∷ Desc I) × ((Γ ⊢ i ∷ El I) ×
+            ((Γ ⊢ p ∷ El (dpay I D D i)) × (C ≅ᵀ IMu I D i))))))
+gen-con (⊢con dD di dp) = _ , (_ , (_ , (dD , (di , (dp , crflᵀ)))))
 gen-con (⊢conv d c) with gen-con d
-... | D , (w , (i , (dp , c'))) = D , (w , (i , (dp , ctrnᵀ (csymᵀ c) c')))
+... | I , (D , (i , (dD , (di , (dp , c'))))) = I , (D , (i , (dD , (di , (dp , ctrnᵀ (csymᵀ c) c')))))
 
-gen-elim : {Γ : Ctx} {D : Desc} {ms t : RTm ⌊ Γ ⌋} {C : RTy ⌊ Γ ⌋} →
-           Γ ⊢ elim D ms t ∷ C →
-           Σ (RTy (⌊ Γ ⌋ ∙)) (λ M → DescWf D ×
-             (((Γ ▹ Mu D) ⊢ty M) ×
-             ((Γ ⊢ ms ∷ methsTy D M D) ×
-             ((Γ ⊢ t ∷ Mu D) × (C ≅ᵀ subTy (single t) M)))))
-gen-elim (⊢elim {M = M} w dM dms dt) = M , (w , (dM , (dms , (dt , crflᵀ))))
-gen-elim (⊢conv d c) with gen-elim d
-... | M , (w , (dM , (dms , (dt , c')))) =
-      M , (w , (dM , (dms , (dt , ctrnᵀ (csymᵀ c) c'))))
-
--- ★ the INDEXED generation lemmas.  Same two-clause shape as `gen-con`/
---   `gen-elim`: the rule itself, then `⊢conv` composing the conversion.
-gen-icon : {Γ : Ctx} {k : ℕ} {p : RTm ⌊ Γ ⌋} {C : RTy ⌊ Γ ⌋} →
-           Γ ⊢ icon k p ∷ C →
-           Σ IDesc (λ D → Σ (RTy ε) (λ I → Σ (RTm ⌊ Γ ⌋) (λ i →
-             IDescWf I D × ((k ∈ID D) ×
-             ((Γ ⊢ i ∷ εwkTy I) ×
-             ((Γ ⊢ p ∷ ipayTy D I (isingle i) (ilookupD D k)) × (C ≅ᵀ IMu D I i)))))))
-gen-icon (⊢icon {D = D} {I = I} {i = i} w kin di dp) =
-  D , (I , (i , (w , (kin , (di , (dp , crflᵀ))))))
-gen-icon (⊢conv d c) with gen-icon d
-... | D , (I , (i , (w , (kin , (di , (dp , c')))))) =
-      D , (I , (i , (w , (kin , (di , (dp , ctrnᵀ (csymᵀ c) c'))))))
-
-gen-ielim : {Γ : Ctx} {D : IDesc} {i ms t : RTm ⌊ Γ ⌋} {C : RTy ⌊ Γ ⌋} →
-            Γ ⊢ ielim D i ms t ∷ C →
-            Σ (RTy ((⌊ Γ ⌋ ∙) ∙)) (λ M → Σ (RTy ε) (λ I →
-              IDescWf I D ×
-              ((((Γ ▹ εwkTy I) ▹ IMu D I (var vz)) ⊢ty M) ×
-              ((Γ ⊢ i ∷ εwkTy I) ×
-              ((Γ ⊢ ms ∷ imethsTy D I M D) ×
-              ((Γ ⊢ t ∷ IMu D I i) × (C ≅ᵀ iinst i t M)))))))
-gen-ielim (⊢ielim {I = I} {M = M} w dM di dms dt) =
-  M , (I , (w , (dM , (di , (dms , (dt , crflᵀ))))))
+gen-ielim : {Γ : Ctx} {D i e t : RTm ⌊ Γ ⌋} {C : RTy ⌊ Γ ⌋} → Γ ⊢ ielim D i e t ∷ C →
+            Σ (RTm ⌊ Γ ⌋) (λ I → Σ (RTy ((⌊ Γ ⌋ ∙) ∙)) (λ M →
+              (Γ ⊢ D ∷ Desc I) × ((motCtx Γ I D ⊢ty M) ×
+              ((Γ ⊢ e ∷ MethTy I D M) × ((Γ ⊢ i ∷ El I) ×
+              ((Γ ⊢ t ∷ IMu I D i) × (C ≅ᵀ iinst i t M)))))))
+gen-ielim (⊢ielim dD dM de di dt) = _ , (_ , (dD , (dM , (de , (di , (dt , crflᵀ))))))
 gen-ielim (⊢conv d c) with gen-ielim d
-... | M , (I , (w , (dM , (di , (dms , (dt , c')))))) =
-      M , (I , (w , (dM , (di , (dms , (dt , ctrnᵀ (csymᵀ c) c'))))))
+... | I , (M , (dD , (dM , (de , (di , (dt , c')))))) =
+      I , (M , (dD , (dM , (de , (di , (dt , ctrnᵀ (csymᵀ c) c'))))))
 
-gen-⌜IMu⌝ : {Γ : Ctx} {D : IDesc} {I : RTy ε} {i : RTm ⌊ Γ ⌋} {C : RTy ⌊ Γ ⌋} →
-            Γ ⊢ ⌜IMu⌝ D I i ∷ C →
-            (IDescWf I D) × ((Γ ⊢ i ∷ εwkTy I) × (C ≅ᵀ U))
-gen-⌜IMu⌝ (⊢⌜IMu⌝ w di) = w , (di , crflᵀ)
+gen-⌜IMu⌝ : {Γ : Ctx} {I D i : RTm ⌊ Γ ⌋} {C : RTy ⌊ Γ ⌋} → Γ ⊢ ⌜IMu⌝ I D i ∷ C →
+            (Γ ⊢ D ∷ Desc I) × ((Γ ⊢ i ∷ El I) × (C ≅ᵀ U))
+gen-⌜IMu⌝ (⊢⌜IMu⌝ dD di) = dD , (di , crflᵀ)
 gen-⌜IMu⌝ (⊢conv d c) with gen-⌜IMu⌝ d
-... | w , (di , c') = w , (di , ctrnᵀ (csymᵀ c) c')
+... | dD , (di , c') = dD , (di , ctrnᵀ (csymᵀ c) c')
+
+gen-dι : {Γ : Ctx} {j : RTm ⌊ Γ ⌋} {C : RTy ⌊ Γ ⌋} → Γ ⊢ dι j ∷ C →
+         Σ (RTm ⌊ Γ ⌋) (λ I → (Γ ⊢ I ∷ U) × ((Γ ⊢ j ∷ El I) × (C ≅ᵀ Desc I)))
+gen-dι (⊢dι dI dj) = _ , (dI , (dj , crflᵀ))
+gen-dι (⊢conv d c) with gen-dι d
+... | I , (dI , (dj , c')) = I , (dI , (dj , ctrnᵀ (csymᵀ c) c'))
+
+gen-dσ : {Γ : Ctx} {S f : RTm ⌊ Γ ⌋} {C : RTy ⌊ Γ ⌋} → Γ ⊢ dσ S f ∷ C →
+         Σ (RTm ⌊ Γ ⌋) (λ I → (Γ ⊢ I ∷ U) × ((Γ ⊢ S ∷ U) ×
+           ((Γ ⊢ f ∷ Π (El S) (Desc (renTm vs I))) × (C ≅ᵀ Desc I))))
+gen-dσ (⊢dσ dI dS df) = _ , (dI , (dS , (df , crflᵀ)))
+gen-dσ (⊢conv d c) with gen-dσ d
+... | I , (dI , (dS , (df , c'))) = I , (dI , (dS , (df , ctrnᵀ (csymᵀ c) c')))
+
+gen-dρ : {Γ : Ctx} {j C₀ : RTm ⌊ Γ ⌋} {C : RTy ⌊ Γ ⌋} → Γ ⊢ dρ j C₀ ∷ C →
+         Σ (RTm ⌊ Γ ⌋) (λ I → (Γ ⊢ I ∷ U) × ((Γ ⊢ j ∷ El I) × ((Γ ⊢ C₀ ∷ Desc I) × (C ≅ᵀ Desc I))))
+gen-dρ (⊢dρ dI dj dC) = _ , (dI , (dj , (dC , crflᵀ)))
+gen-dρ (⊢conv d c) with gen-dρ d
+... | I , (dI , (dj , (dC , c'))) = I , (dI , (dj , (dC , ctrnᵀ (csymᵀ c) c')))
+
+gen-dpay : {Γ : Ctx} {I D C₀ i : RTm ⌊ Γ ⌋} {C : RTy ⌊ Γ ⌋} → Γ ⊢ dpay I D C₀ i ∷ C →
+           (Γ ⊢ I ∷ U) × ((Γ ⊢ D ∷ Desc I) × ((Γ ⊢ C₀ ∷ Desc I) × ((Γ ⊢ i ∷ El I) × (C ≅ᵀ U))))
+gen-dpay (⊢dpay dI dD dC di) = dI , (dD , (dC , (di , crflᵀ)))
+gen-dpay (⊢conv d c) with gen-dpay d
+... | dI , (dD , (dC , (di , c'))) = dI , (dD , (dC , (di , ctrnᵀ (csymᵀ c) c')))
+
+gen-dih : {Γ : Ctx} {D e C₀ p : RTm ⌊ Γ ⌋} {C : RTy ⌊ Γ ⌋} → Γ ⊢ dih D e C₀ p ∷ C →
+          Σ (RTm ⌊ Γ ⌋) (λ I → Σ (RTy ((⌊ Γ ⌋ ∙) ∙)) (λ M → Σ (RTm ⌊ Γ ⌋) (λ i →
+            (Γ ⊢ D ∷ Desc I) × ((motCtx Γ I D ⊢ty M) × ((Γ ⊢ e ∷ MethTy I D M) ×
+            ((Γ ⊢ C₀ ∷ Desc I) × ((Γ ⊢ i ∷ El I) ×
+            ((Γ ⊢ p ∷ El (dpay I D C₀ i)) × (C ≅ᵀ DIh D M C₀ p)))))))))
+gen-dih (⊢dih dD dM de dC di dp) = _ , (_ , (_ , (dD , (dM , (de , (dC , (di , (dp , crflᵀ))))))))
+gen-dih (⊢conv d c) with gen-dih d
+... | I , (M , (i , (dD , (dM , (de , (dC , (di , (dp , c')))))))) =
+      I , (M , (i , (dD , (dM , (de , (dC , (di , (dp , ctrnᵀ (csymᵀ c) c'))))))))
+
+gen-fsuc : {Γ : Ctx} {t : RTm ⌊ Γ ⌋} {C : RTy ⌊ Γ ⌋} → Γ ⊢ fsuc t ∷ C →
+           Σ ℕ (λ n → (Γ ⊢ t ∷ Fin n) × (C ≅ᵀ Fin (suc n)))
+gen-fsuc (⊢fsuc dt) = _ , (dt , crflᵀ)
+gen-fsuc (⊢conv d c) with gen-fsuc d
+... | n , (dt , c') = n , (dt , ctrnᵀ (csymᵀ c) c')
+
+gen-fcase : {Γ : Ctx} {t a : RTm ⌊ Γ ⌋} {b : RTm (⌊ Γ ⌋ ∙)} {C : RTy ⌊ Γ ⌋} →
+            Γ ⊢ fcase t a b ∷ C →
+            Σ ℕ (λ n → Σ (RTy (⌊ Γ ⌋ ∙)) (λ P →
+              ((Γ ▹ Fin (suc n)) ⊢ty P) × ((Γ ⊢ t ∷ Fin (suc n)) ×
+              ((Γ ⊢ a ∷ subTy (single fzero) P) × (((Γ ▹ Fin n) ⊢ b ∷ subTy fsucS P) ×
+              (C ≅ᵀ subTy (single t) P))))))
+gen-fcase (⊢fcase dP dt da db) = _ , (_ , (dP , (dt , (da , (db , crflᵀ)))))
+gen-fcase (⊢conv d c) with gen-fcase d
+... | n , (P , (dP , (dt , (da , (db , c'))))) = n , (P , (dP , (dt , (da , (db , ctrnᵀ (csymᵀ c) c')))))
+
+gen-fcase0 : {Γ : Ctx} {t : RTm ⌊ Γ ⌋} {C : RTy ⌊ Γ ⌋} → Γ ⊢ fcase0 t ∷ C →
+             Σ (RTy (⌊ Γ ⌋ ∙)) (λ P → ((Γ ▹ Fin zero) ⊢ty P) × ((Γ ⊢ t ∷ Fin zero) ×
+               (C ≅ᵀ subTy (single t) P)))
+gen-fcase0 (⊢fcase0 dP dt) = _ , (dP , (dt , crflᵀ))
+gen-fcase0 (⊢conv d c) with gen-fcase0 d
+... | P , (dP , (dt , c')) = P , (dP , (dt , ctrnᵀ (csymᵀ c) c'))
+
+gen-psplit : {Γ : Ctx} {b : RTm ((⌊ Γ ⌋ ∙) ∙)} {q : RTm ⌊ Γ ⌋} {C : RTy ⌊ Γ ⌋} →
+             Γ ⊢ psplit b q ∷ C →
+             Σ (RTy ⌊ Γ ⌋) (λ A → Σ (RTy (⌊ Γ ⌋ ∙)) (λ B → Σ (RTy (⌊ Γ ⌋ ∙)) (λ P →
+               ((Γ ▹ Σ' A B) ⊢ty P) × ((Γ ⊢ q ∷ Σ' A B) ×
+               ((((Γ ▹ A) ▹ B) ⊢ b ∷ subTy pairS P) × (C ≅ᵀ subTy (single q) P))))))
+gen-psplit (⊢psplit dP dq db) = _ , (_ , (_ , (dP , (dq , (db , crflᵀ)))))
+gen-psplit (⊢conv d c) with gen-psplit d
+... | A , (B , (P , (dP , (dq , (db , c'))))) = A , (B , (P , (dP , (dq , (db , ctrnᵀ (csymᵀ c) c')))))
+
+-- ★★ THE PAYLOAD'S σ AND ρ STEPS: a payload of a `dσ`/`dρ` telescope is a
+--   pair; its halves are typed at the chosen branch / the recursive field
+--   and the rest.  Used by `sr` at `dih-σ`/`dih-ρ` and by `srᵀ` at
+--   `DIh-σ`/`DIh-ρ` (Validity).
+dσ-step : {Γ : Ctx} {I D S f i p : RTm ⌊ Γ ⌋} →
+          Γ ⊢ dσ S f ∷ Desc I → Γ ⊢ p ∷ El (dpay I D (dσ S f) i) →
+          (Γ ⊢ app f (fst p) ∷ Desc I) × (Γ ⊢ snd p ∷ El (dpay I D (app f (fst p)) i))
+dσ-step {I = I} {D = D} {S = S} {f = f} {i = i} {p = p} dC dp with gen-dσ dC
+... | I₀ , (dI₀ , (dS , (df , c))) =
+      ⊢conv (⊢-cast (cong Desc (wk-cancel-tm (fst p) I₀)) (⊢app df (⊢fst dp'))) (csymᵀ c)
+    , ⊢-cast (cong₄ (λ a b g k → El (dpay a b (app g (fst p)) k))
+                    (wk-cancel-tm (fst p) I) (wk-cancel-tm (fst p) D)
+                    (wk-cancel-tm (fst p) f) (wk-cancel-tm (fst p) i))
+             (⊢snd dp')
+  where
+  dp' = ⊢conv dp (ctrnᵀ (credᵀ (ξ-El (dpay-σ I D S f i))) (credᵀ (El-⌜Σ⌝ _ _)))
+
+dρ-step : {Γ : Ctx} {I D j C i p : RTm ⌊ Γ ⌋} →
+          Γ ⊢ dρ j C ∷ Desc I → Γ ⊢ p ∷ El (dpay I D (dρ j C) i) →
+          (Γ ⊢ j ∷ El I) × ((Γ ⊢ C ∷ Desc I) ×
+          ((Γ ⊢ fst p ∷ IMu I D j) × (Γ ⊢ snd p ∷ El (dpay I D C i))))
+dρ-step {I = I} {D = D} {j = j} {C = C} {i = i} {p = p} dC dp with gen-dρ dC
+... | I₀ , (_ , (dj , (dC₀ , c))) =
+      ⊢conv dj (El-≅ (csym (Desc-inj c)))
+    , (⊢conv dC₀ (csymᵀ c)
+    , (⊢conv (⊢fst dp') (credᵀ El-⌜IMu⌝)
+    , ⊢-cast (cong₄ (λ a b g k → El (dpay a b g k))
+                    (wk-cancel-tm (fst p) I) (wk-cancel-tm (fst p) D)
+                    (wk-cancel-tm (fst p) C) (wk-cancel-tm (fst p) i))
+             (⊢snd dp')))
+  where
+  dp' = ⊢conv dp (ctrnᵀ (credᵀ (ξ-El (dpay-ρ I D j C i))) (credᵀ (El-⌜Σ⌝ _ _)))
 
 ------------------------------------------------------------------------
--- ★★★ THE TWO LEMMAS ι NEEDS.  Ported from gate 5c (`SpikeIotaTup`).
+-- ★★★ LEVITATED INDUCTIVE FAMILIES: the reduction rules.
 ------------------------------------------------------------------------
 
--- ⚠ the kernel's `_≡_` has NO fixity declaration, so it defaults to 20 —
---   TIGHTER than `_+_`'s infixl 6.  Without these parens `j + suc k ≡ …`
---   parses as `j + (suc k ≡ …)`.
-
--- ★ `sel k` extracts method `k` AT ITS OWN TAG.  ⚠ the `k ∈D E` premise
---   is what makes the `dnil` case impossible — without it this lemma is
---   FALSE, which is gate 5's Q21 finding.
-sel-ty : {Γ : Ctx} (D : Desc) (M : RTy (⌊ Γ ⌋ ∙)) (E : Desc)
-         (j k : ℕ) (ms : RTm ⌊ Γ ⌋) → k ∈D E →
-         Γ ⊢ ms ∷ methsTyFrom D M j E →
-         Γ ⊢ sel k ms ∷ methTy D (j + k) (lookupD E k) M
-sel-ty {Γ} D M (C ◃ E) j zero ms hereD hms =
-  ⊢-cast (cong (λ n → methTy D n C M) (sym (+zero j))) (⊢fst hms)
-  where
-    +zero : (n : ℕ) → (n + zero) ≡ n
-    +zero zero    = refl
-    +zero (suc n) = cong suc (+zero n)
-sel-ty {Γ} D M (C ◃ E) j (suc k) ms (thereD i) hms =
-  ⊢-cast (cong (λ n → methTy D n (lookupD E k) M) (sym (+-suc j k)))
-         (sel-ty D M E (suc j) k (snd ms) i
-                 (⊢-cast (wk-sub-single (methsTyFrom D M (suc j) E) (fst ms))
-                         (⊢snd hms)))
-  where
-    wk-sub-single : (A : RTy ⌊ Γ ⌋) (u : RTm ⌊ Γ ⌋) →
-                    subTy (single u) (renTy vs A) ≡ A
-    wk-sub-single A u =
-      trans (subTy-renTy A) (trans (subTy-cong (λ x → refl) A) (subTy-id A))
-
--- ★ the IH tuple's TYPE is well-formed.
---
--- ⚠⚠ NEEDED BECAUSE THE KERNEL'S `⊢pair` CARRIES A `⊢ty` PREMISE that the
---   gate-5c spike's did not — I chose the spike's rules myself, so it
---   could validate the SHAPE of the design and still miss the kernel's
---   SIDE CONDITIONS.  A self-contained spike cannot catch this.
---
--- ★ `ihTy-wf` does NOT drag in description well-formedness (PLAN §4):
---   `ihTy` SKIPS `dκ` fields entirely, so no `εwkTy A` ever appears in it,
---   and it needs `payTy` INHABITED, not well-formed.
---   ⚠ `ihs-ty` BELOW IS DIFFERENT: it builds an `⊢elim` at each `dρ`
---   field, and `⊢elim` now carries a `DescWf` premise — so §4 does reach
---   that one.  It is threaded, not re-derived.
-ihTy-wf : {Γ : Ctx} (D : Desc) (M : RTy (⌊ Γ ⌋ ∙)) (C : DCon) (p : RTm ⌊ Γ ⌋) →
-          (Γ ▹ Mu D) ⊢ty M → Γ ⊢ p ∷ payTy D C → Γ ⊢ty ihTy D C p M
-ihTy-wf D M dι       p dM hp = ty-Unit
-ihTy-wf {Γ} D M (dρ C) p dM hp =
-  ty-Σ (sub-ty dM (⊢single (⊢fst hp)))
-       (ren-ty (ihTy-wf D M C (snd p) dM htail) there)
-  where
-    htail : Γ ⊢ snd p ∷ payTy D C
-    htail = ⊢-cast (payTy-sub (single (fst p)) D C) (⊢snd hp)
-ihTy-wf {Γ} D M (dκ A C) p dM hp =
-  ihTy-wf D M C (snd p) dM
-          (⊢-cast (payTy-sub (single (fst p)) D C) (⊢snd hp))
-
--- ★ the IH tuple inhabits its type.  ⚠ `dρ` contributes an IH, `dκ` NONE.
-ihs-ty : {Γ : Ctx} (D : Desc) (M : RTy (⌊ Γ ⌋ ∙)) (ms : RTm ⌊ Γ ⌋)
-         (C : DCon) (p : RTm ⌊ Γ ⌋) →
-         DescWf D →
-         (Γ ▹ Mu D) ⊢ty M →
-         Γ ⊢ ms ∷ methsTy D M D →
-         Γ ⊢ p ∷ payTy D C →
-         Γ ⊢ ihs D ms C p ∷ ihTy D C p M
-ihs-ty D M ms dι       p w dM hms hp = ⊢unit
-ihs-ty {Γ} D M ms (dρ C) p w dM hms hp =
-  ⊢pair (ren-ty (ihTy-wf D M C (snd p) dM htail) there)
-        (⊢elim w dM hms (⊢fst hp))
-        (⊢-cast (sym (wk-sub-single (ihTy D C (snd p) M) (elim D ms (fst p))))
-                (ihs-ty D M ms C (snd p) w dM hms htail))
-  where
-    wk-sub-single : (A : RTy ⌊ Γ ⌋) (u : RTm ⌊ Γ ⌋) →
-                    subTy (single u) (renTy vs A) ≡ A
-    wk-sub-single A u =
-      trans (subTy-renTy A) (trans (subTy-cong (λ x → refl) A) (subTy-id A))
-    htail : Γ ⊢ snd p ∷ payTy D C
-    htail = ⊢-cast (payTy-sub (single (fst p)) D C) (⊢snd hp)
-ihs-ty {Γ} D M ms (dκ A C) p w dM hms hp =
-  ihs-ty D M ms C (snd p) w dM hms
-         (⊢-cast (payTy-sub (single (fst p)) D C) (⊢snd hp))
-
--- ★ the five indexed-ι lemmas moved to `Metatheory/TySub` (their cone
---   touches neither `sr` nor `gen-*`); re-exported from there.
-
--- ★★★ OBLIGATION (c) — THE IH TUPLE, AT THE RECURSIVE FIELDS' OWN INDICES.
---
--- ⚠⚠ THIS WAS FALSE UNDER THE OLD FORMULATION (PLAN-INDEXED §9.1), not
---   merely unproven: the tuple `ms` was typed at ONE index while the
---   recursive call below needs it at `subTm σ j`.  With methods
---   index-quantified, `ms ∷ imethsTy D I M D` mentions no index and the
---   SAME tuple serves every recursive field.  That is the whole fix.
---
--- ⚠ the environment must be WELL-TYPED against the telescope (`Sub⊢ Θ Γ σ`)
---   — that is what turns `IConWf`'s `Θ ⊢ j ∷ εwkTy I` into the
---   `Γ ⊢ subTm σ j ∷ εwkTy I` that `⊢ielim` demands.
-iihs-ty : {Γ Θ : Ctx} {Δ : Cx} (D : IDesc) (I : RTy ε) (M : RTy ((⌊ Γ ⌋ ∙) ∙))
-          (ms : RTm ⌊ Γ ⌋) {ρ : Thin Δ ⌊ Θ ⌋} {x : Var ⌊ Θ ⌋}
-          (τ : Sub Δ ⌊ Γ ⌋) (C : ICon Δ) (p : RTm ⌊ Γ ⌋) →
-          IDescWf I D →
-          IConWf I Θ ρ x C →
-          XEnv D I Θ ρ x Γ τ →
-          ((Γ ▹ εwkTy I) ▹ IMu D I (var vz)) ⊢ty M →
-          Γ ⊢ ms ∷ imethsTy D I M D →
-          Γ ⊢ p ∷ ipayTy D I τ C →
-          Γ ⊢ iihs D ms τ C p ∷ iihTy D I τ C p M
-iihs-ty D I M ms τ iι p wD wC e dM hms hp = ⊢unit
-iihs-ty {Γ} D I M ms τ (iρ j C) p wD (iwf-ρ .j dj wC) e dM hms hp =
-  ⊢pair (ren-ty (iihTy-wf D I M (iext τ (fst p)) C (snd p) wC e' dM hp') there)
-        (⊢ielim wD dM (xenv-idx e j dj) hms (⊢fst hp))
-        (⊢-cast (sym (wk-sub-single
-                        (iihTy D I (iext τ (fst p)) C (snd p) M)
-                        (ielim D (subTm τ j) ms (fst p))))
-                (iihs-ty D I M ms (iext τ (fst p)) C (snd p) wD wC e' dM hms hp'))
-  where
-    e'  = xenv-ρ e j (⊢fst hp)
-    hp' = ⊢-cast (ipayTy-sub-single D I τ (fst p) C) (⊢snd hp)
-    wk-sub-single : (A : RTy ⌊ Γ ⌋) (u : RTm ⌊ Γ ⌋) →
-                    subTy (single u) (renTy vs A) ≡ A
-    wk-sub-single A u =
-      trans (subTy-renTy A) (trans (subTy-cong (λ x → refl) A) (subTy-id A))
-iihs-ty D I M ms τ (iκ κ C) p wD (iwf-κ .κ _ dcode wC) e dM hms hp =
-  iihs-ty D I M ms (iext τ (fst p)) C (snd p) wD wC (xenv-κ e κ (⊢fst hp)) dM hms
-          (⊢-cast (ipayTy-sub-single D I τ (fst p) C) (⊢snd hp))
-
--- ★★★ INDUCTIVE TYPES: SUBJECT REDUCTION AT ι.
---
--- This is the obligation the ι-rule has carried since it landed, and the
--- one the `⊥-elim` placeholder stood in for.  Every piece is now present:
---
---   Mu-inj    reconciles the description `gen-elim` reports with the one
---             `gen-con` reports  (cheap: `Mu` is INERT)
---   sel-ty    method `k` out of the tuple, AT ITS OWN TAG (needs `k ∈D D`)
---   ihs-ty    the IH tuple inhabits `ihTy`
---   atCon-inst  the re-based motive lands at `M [ con k p ]` — NO η
--- ★★★ THE INDEXED REDUCTION RULES.
---
--- ⚠ `ξ-ielimⁱ` is where `ξ-IMu` earns its place: the index steps, so the
---   SCRUTINEE'S TYPE `IMu D I i` steps with it, and `dt` must be
---   re-typed by conversion.  Without that congruence this case has no
---   proof — which is why the rule was added (PLAN-INDEXED §9, `ξ-IMu`).
---   The RESULT type moves too, hence `iinst-mono`.  ⚠ the METHODS do NOT
---   move: after §9.1 `imethsTy` names no index at all.
-sr d (ξ-icon r) with gen-icon d
-... | D , (I , (i , (w , (kin , (di , (dp , cIMu))))))
-      = ⊢conv (⊢icon w kin di (sr dp r)) (csymᵀ cIMu)
-sr d (ξ-⌜IMu⌝ r) with gen-⌜IMu⌝ d
-... | w , (di , cU) = ⊢conv (⊢⌜IMu⌝ w (sr di r)) (csymᵀ cU)
-sr d (ξ-ielimᵐ r) with gen-ielim d
-... | M , (I , (w , (dM , (di , (dms , (dt , cC))))))
-      = ⊢conv (⊢ielim w dM di (sr dms r) dt) (csymᵀ cC)
-sr d (ξ-ielimᵗ {i = i} r) with gen-ielim d
-... | M , (I , (w , (dM , (di , (dms , (dt , cC))))))
-      = ⊢conv (⊢ielim w dM di dms (sr dt r))
-              (csymᵀ (ctrnᵀ cC (red→≅ᵀ (iinst-monoˢ M i (step r done)))))
-sr {Γ = Γ} d (ξ-ielimⁱ {i = i} {i' = i'} r) with gen-ielim d
-... | M , (I , (w , (dM , (di , (dms , (dt , cC))))))
-      = ⊢conv (⊢ielim w dM (sr di r) dms
-                      (⊢conv dt (credᵀ (ξ-IMu r))))
-              (csymᵀ (ctrnᵀ cC (red→≅ᵀ (iinst-mono M _ (step r done)))))
--- ★★★ SUBJECT REDUCTION AT THE INDEXED ι.
---
--- Mirrors `ι-elim` with ONE extra application — the INDEX, which is the
--- binder §9.1 added to `imethTy`.  And with one step the non-indexed rule
--- never needs: `IMu-inj` yields `i ≅ i''` (a CONVERSION, because `IMu`
--- carries a reducible index) where `Mu-inj` yields `D ≡ D'`, so the
--- payload derivation must be TRANSPORTED before it can be applied.
-sr {Γ = Γ} d (ι-ielim D i ms k p) with gen-ielim d
-... | M , (I , (w , (dM , (di , (dms , (dt , cC)))))) with gen-icon dt
-...   | D' , (I' , (i'' , (w' , (kin , (di'' , (dp , cIMu))))))
-        with IMu-inj cIMu
-...     | (refl , (refl , ci)) =
-          ⊢conv (⊢-cast step3
-                   (⊢app (⊢-cast step2
-                            (⊢app (⊢-cast step1 (⊢app hsel di)) dp'))
-                         (iihs-ty D I M ms (isingle i) (ilookupD D k) p
-                                  w (ilookupD-wf k (IDescWf-cons w) kin) (xenv₀ w di)
-                                  dM dms dp')))
+-- the payload CODE computes; each reduct is a code again.
+sr d (dpay-ι I D j i) with gen-dpay d
+... | dI , (dD , (dC , (di , cU))) with gen-dι dC
+...   | I₀ , (_ , (dj , c)) =
+        ⊢conv (⊢⌜Id⌝ dI (⊢conv dj (El-≅ (csym (Desc-inj c)))) di) (csymᵀ cU)
+sr d (dpay-σ I D S f i) with gen-dpay d
+... | dI , (dD , (dC , (di , cU))) with gen-dσ dC
+...   | I₀ , (dI₀ , (dS , (df , c))) =
+        ⊢conv (⊢⌜Σ⌝ dS
+                (⊢dpay (⊢wk dI) (⊢wk dD)
+                       (⊢conv (⊢-cast (cong Desc (wk-app-vzᵗ I₀)) (⊢app (⊢wk df) (⊢var here)))
+                              (≅ᵀ-ren vs (csymᵀ c)))
+                       (⊢wk di)))
+              (csymᵀ cU)
+sr d (dpay-ρ I D j C i) with gen-dpay d
+... | dI , (dD , (dC , (di , cU))) with gen-dρ dC
+...   | I₀ , (_ , (dj , (dC₀ , c))) =
+        ⊢conv (⊢⌜Σ⌝ (⊢⌜IMu⌝ dD (⊢conv dj (El-≅ (csym (Desc-inj c)))))
+                    (⊢dpay (⊢wk dI) (⊢wk dD) (⊢wk (⊢conv dC₀ (csymᵀ c))) (⊢wk di)))
+              (csymᵀ cU)
+-- the hypotheses: none at `dι`, the chosen branch's at `dσ`, one
+--   recursive call AT ITS OWN INDEX plus the rest at `dρ`.
+sr d (dih-ι D e j p) with gen-dih d
+... | I , (M , (i , (dD , (dM , (de , (dC , (di , (dp , cC)))))))) =
+      ⊢conv ⊢unit (csymᵀ (ctrnᵀ cC (credᵀ (DIh-ι D M j p))))
+sr d (dih-σ D e S f p) with gen-dih d
+... | I , (M , (i , (dD , (dM , (de , (dC , (di , (dp , cC)))))))) with dσ-step dC dp
+...   | dC' , dsnd =
+        ⊢conv (⊢dih dD dM de dC' di dsnd) (csymᵀ (ctrnᵀ cC (credᵀ (DIh-σ D M S f p))))
+sr d (dih-ρ D e j C p) with gen-dih d
+... | I , (M , (i , (dD , (dM , (de , (dC , (di , (dp , cC)))))))) with dρ-step dC dp
+...   | dj , (dC' , (dfst , dsnd)) =
+        ⊢conv (⊢pair (ren-ty (ty-DIh dD dM dC' di dsnd) there)
+                     (⊢ielim dD dM de dj dfst)
+                     (⊢-cast (sym (wk-cancel _ _)) (⊢dih dD dM de dC' di dsnd)))
+              (csymᵀ (ctrnᵀ cC (credᵀ (DIh-ρ D M j C p))))
+-- ★★★ ι.  `IMu-inj` reconciles the constructor's family with the
+--   eliminator's (three CONVERSIONS — every slot is a term), the payload
+--   is transported once, and the method is applied to index, payload and
+--   hypotheses.  The result type is the motive at `con p` by σ-calculus
+--   alone (`meth-inst`) — no η.
+sr d (ι D i e p) with gen-ielim d
+... | I , (M , (dD , (dM , (de , (di , (dt , cC)))))) with gen-con dt
+...   | I' , (D' , (i' , (dD' , (di' , (dp , cIMu))))) with IMu-inj cIMu
+...     | cI , (cD , ci) =
+          ⊢conv (⊢-cast (meth-inst (dih D e D p) p i M)
+                  (⊢app-cast (cong₄ DIh (ww-cancel p i D) (wk2M-cancel p i M)
+                                        (ww-cancel p i D) refl)
+                    (⊢app-cast (cong₃ (λ a b c' → El (dpay a b c' i))
+                                      (wk-cancel-tm i I) (wk-cancel-tm i D) (wk-cancel-tm i D))
+                      (⊢app de di) dp₁)
+                    (⊢dih dD dM de dD di dp₁)))
                 (csymᵀ cC)
   where
-    C₀ : ICon (ε ∙)
-    C₀ = ilookupD D k
-
-    -- ⚠ THE TRANSPORT the non-indexed ι does not need.
-    dp' : Γ ⊢ p ∷ ipayTy D I (isingle i) C₀
-    dp' = ⊢conv dp (ipayTy-conv D I C₀ (csym ci))
-
-    hsel : Γ ⊢ sel k ms ∷ imethTy D I k C₀ M
-    hsel = isel-ty D I M D zero k ms kin dms
-
-    step1 : subTy (single i)
-              (Π (ipayTy D I (isingle (var vz)) C₀)
-                 (Π (iihTy D I (isingle (var (vs vz))) C₀ (var vz)
-                           (renTy (extR (extR vs)) (renTy (extR (extR vs)) M)))
-                    (renTy vs (iatCon k (var vz) (renTy (extR (extR vs)) M)))))
-              ≡ Π (ipayTy D I (isingle i) C₀)
-                  (subTy (extS (single i))
-                     (Π (iihTy D I (isingle (var (vs vz))) C₀ (var vz)
-                               (renTy (extR (extR vs)) (renTy (extR (extR vs)) M)))
-                        (renTy vs (iatCon k (var vz) (renTy (extR (extR vs)) M)))))
-    -- ⚠ the codomain must be WRITTEN OUT.  With `_` Agda has to invert
-    --   `λ z → Π z ?` against the goal, which it cannot: the meta is
-    --   blocked on the very equation this `cong` is producing.
-    step1 = cong (λ z →
-                   Π z (subTy (extS (single i))
-                          (Π (iihTy D I (isingle (var (vs vz))) C₀ (var vz)
-                                    (renTy (extR (extR vs))
-                                           (renTy (extR (extR vs)) M)))
-                             (renTy vs (iatCon k (var vz)
-                                                (renTy (extR (extR vs)) M))))))
-                 (trans (ipayTy-sub (single i) D I (isingle (var vz)) C₀)
-                        (ipayTy-cong D I C₀ (λ { vz → refl })))
-
-    step2 : subTy (single p)
-              (subTy (extS (single i))
-                 (Π (iihTy D I (isingle (var (vs vz))) C₀ (var vz)
-                           (renTy (extR (extR vs)) (renTy (extR (extR vs)) M)))
-                    (renTy vs (iatCon k (var vz) (renTy (extR (extR vs)) M)))))
-              ≡ Π (iihTy D I (isingle i) C₀ p M)
-                  (renTy vs (subTy (single p) (iatCon k i M)))
-
-    -- the motive survives BOTH substitutions: each cancels one of the two
-    -- weakenings written into `imethTy`.
-    mcancel : subTy (extS (extS (single p)))
-                (subTy (extS (extS (extS (single i))))
-                   (renTy (extR (extR vs)) (renTy (extR (extR vs)) M)))
-                ≡ M
-    -- ⚠ FUSE, THEN CHECK POINTWISE.  Hand-deriving which `extS` cancels
-    --   which `extR` at this depth is where I kept going wrong; composing
-    --   everything into ONE substitution and letting `subTy-cong` check
-    --   the three variable cases is both shorter and self-checking — if
-    --   the weakening tower in `imethTy` were off, THIS is where Agda
-    --   would say so rather than somewhere three lemmas later.
-    mcancel =
-      trans (subTy-subTy (renTy (extR (extR vs)) (renTy (extR (extR vs)) M)))
-      (trans (subTy-renTy (renTy (extR (extR vs)) M))
-      (trans (subTy-renTy M)
-      (trans (subTy-cong (λ { vz → refl ; (vs vz) → refl
-                            ; (vs (vs x)) → refl }) M)
-             (subTy-id M))))
-
-    compA : subTy (single p)
-              (subTy (extS (single i))
-                 (iihTy D I (isingle (var (vs vz))) C₀ (var vz)
-                        (renTy (extR (extR vs)) (renTy (extR (extR vs)) M))))
-              ≡ iihTy D I (isingle i) C₀ p M
-    -- ⚠ FIFTH pointwise bridge.  `iihTy-sub` returns the environment
-    --   `λ x → subTm τ (σ x)`; the next step names `isingle (renTm vs i)`.
-    --   Pointwise equal, definitionally distinct — so `iihTy-cong` has to
-    --   sit BETWEEN the two `iihTy-sub` applications, not after them.
-    compA =
-      trans (cong (subTy (single p))
-                  (trans (iihTy-sub (extS (single i)) D I
-                                    (isingle (var (vs vz))) C₀ (var vz)
-                                    (renTy (extR (extR vs))
-                                           (renTy (extR (extR vs)) M)))
-                         (iihTy-cong D I C₀ (var vz)
-                            (subTy (extS (extS (extS (single i))))
-                               (renTy (extR (extR vs))
-                                      (renTy (extR (extR vs)) M)))
-                            (λ { vz → refl }))))
-            (trans (iihTy-sub (single p) D I (isingle (renTm vs i))
-                              C₀ (var vz)
-                              (subTy (extS (extS (extS (single i))))
-                                 (renTy (extR (extR vs))
-                                        (renTy (extR (extR vs)) M))))
-                   (trans (iihTy-cong D I C₀ p
-                             (subTy (extS (extS (single p)))
-                                (subTy (extS (extS (extS (single i))))
-                                   (renTy (extR (extR vs))
-                                          (renTy (extR (extR vs)) M))))
-                             (λ { vz → wk-single i }))
-                          (cong (iihTy D I (isingle i) C₀ p) mcancel)))
-
-    compB : subTy (extS (single p))
-              (subTy (extS (extS (single i)))
-                 (renTy vs (iatCon k (var vz) (renTy (extR (extR vs)) M))))
-              ≡ renTy vs (subTy (single p) (iatCon k i M))
-    -- ⚠ FUSE BOTH SIDES to `subTy θ M`, then compare θ pointwise — the
-    --   same move that settled `mcancel`.  LHS: two substitutions over a
-    --   weakened `iatCon`; RHS: the substituted `iatCon`, weakened.  Three
-    --   variable cases, and `iconS`'s `vz` row is the only one with content.
-    -- ⚠ REWRITTEN.  Fusing everything to a pointwise comparison of the
-    --   two composites did NOT work: at `vs vz` they are genuinely
-    --   different shapes.  Going through `iatCon-sub` — a lemma already
-    --   proved for the naturality layer — instead of re-deriving the
-    --   substitution algebra by hand is both shorter and correct.
-    -- ⚠ CONTEXT-POLYMORPHIC: applied at two different depths below, so it
-    --   must not be pinned to `⌊ Γ ⌋`.
-    exts-wk : {Θ Δ : Cx} (σ : Sub Θ Δ) (A : RTy Θ) →
-              subTy (extS σ) (renTy vs A) ≡ renTy vs (subTy σ A)
-    exts-wk σ A = trans (subTy-renTy A) (sym (renTy-subTy A))
-
-    wkcancel : subTy (extS (extS (single i)))
-                     (renTy (extR (extR vs)) M) ≡ M
-    wkcancel =
-      trans (subTy-renTy M)
-            (trans (subTy-cong (λ { vz → refl ; (vs vz) → refl
-                                  ; (vs (vs x)) → refl }) M)
-                   (subTy-id M))
-
-    compB =
-      trans (cong (subTy (extS (single p)))
-                  (exts-wk (extS (single i))
-                           (iatCon k (var vz) (renTy (extR (extR vs)) M))))
-            (trans (exts-wk (single p)
-                      (subTy (extS (single i))
-                             (iatCon k (var vz) (renTy (extR (extR vs)) M))))
-                   (cong (renTy vs)
-                      (cong (subTy (single p))
-                         (trans (iatCon-sub (single i) k (var vz)
-                                            (renTy (extR (extR vs)) M))
-                                (cong (iatCon k i) wkcancel)))))
-
-    -- ⚠ BOTH substitutions land on a Π, so this is `cong₂ Π` over the two
-    --   components.  The domain is the IH tuple's type (which is exactly
-    --   what `iihs-ty` produces); the codomain is the re-based motive,
-    --   which `step3` then closes with `iatCon-inst`.
-    step2 = cong₂ Π compA compB
-
-    wk-sub-single : (A : RTy ⌊ Γ ⌋) (u : RTm ⌊ Γ ⌋) →
-                    subTy (single u) (renTy vs A) ≡ A
-    wk-sub-single A u =
-      trans (subTy-renTy A) (trans (subTy-cong (λ x → refl) A) (subTy-id A))
-
-    step3 : subTy (single (iihs D ms (isingle i) C₀ p))
-                  (renTy vs (subTy (single p) (iatCon k i M)))
-              ≡ iinst i (icon k p) M
-    step3 = trans (wk-sub-single (subTy (single p) (iatCon k i M))
-                                 (iihs D ms (isingle i) C₀ p))
-                  (iatCon-inst k i M p)
-
-sr {Γ = Γ} d (ι-elim D ms k p) with gen-elim d
-... | M , (w , (dM , (dms , (dt , cC)))) with gen-con dt
-...   | D' , (w' , (i , (dp , cMu))) with Mu-inj cMu
-...     | refl =
-          ⊢conv (⊢-cast step3 (⊢app (⊢-cast step2 (⊢app hsel dp))
-                                    (ihs-ty D M ms (lookupD D k) p w dM dms dp)))
+  dp₁ = ⊢conv dp (dpay-≅ (csym cI) (csym cD) (csym ci))
+-- tags and pairs
+sr d (fcase-z a b) with gen-fcase d
+... | n , (P , (dP , (dt , (da , (db , cC))))) = ⊢conv da (csymᵀ cC)
+sr d (fcase-s t a b) with gen-fcase d
+... | n , (P , (dP , (dt , (da , (db , cC))))) with gen-fsuc dt
+...   | n' , (dt' , c') with Fin-inj c'
+...     | refl = ⊢conv (⊢-cast (fsucS-inst t P) (⊢[] db dt')) (csymᵀ cC)
+sr d (psplit-β b x y) with gen-psplit d
+... | A , (B , (P , (dP , (dq , (db , cC))))) with gen-pair dq
+...   | A' , (B' , (cΣ , (dB' , (dx , dy)))) with Σ-inj (csymᵀ cΣ)
+...     | cA , cB =
+          ⊢conv (⊢-cast (pairS-inst x y P)
+                  (sub-lemma db (⊢single2 (⊢conv dx cA) (⊢conv dy (≅ᵀ-sub (single x) cB)))))
                 (csymᵀ cC)
-  where
-    wk-single-id : (p : RTm ⌊ Γ ⌋) (M : RTy (⌊ Γ ⌋ ∙)) →
-                   subTy (extS (single p)) (renTy (extR vs) M) ≡ M
-    wk-single-id p M =
-      trans (subTy-renTy M)
-            (trans (subTy-cong (λ { vz → refl ; (vs x) → refl }) M) (subTy-id M))
-
-    hsel : Γ ⊢ sel k ms ∷ methTy D k (lookupD D k) M
-    hsel = sel-ty D M D zero k ms i dms
-
-
-
-    -- the payload substitution, pushed through both components
-    step2 : subTy (single p)
-              (Π (ihTy D (lookupD D k) (var vz) (renTy (extR vs) M))
-                 (renTy vs (atCon k M)))
-              ≡ Π (ihTy D (lookupD D k) p M)
-                  (renTy vs (subTy (single p) (atCon k M)))
-    step2 =
-      cong₂ Π (trans (ihTy-sub (single p) D (lookupD D k) (var vz)
-                               (renTy (extR vs) M))
-                     (cong (ihTy D (lookupD D k) p) (wk-single-id p M)))
-              (trans (subTy-renTy (atCon k M))
-                     (sym (renTy-subTy (atCon k M))))
-
-    wk-sub-single : (A : RTy ⌊ Γ ⌋) (u : RTm ⌊ Γ ⌋) →
-                    subTy (single u) (renTy vs A) ≡ A
-    wk-sub-single A u =
-      trans (subTy-renTy A) (trans (subTy-cong (λ x → refl) A) (subTy-id A))
-
-    step3 : subTy (single (ihs D ms (lookupD D k) p))
-                  (renTy vs (subTy (single p) (atCon k M)))
-              ≡ subTy (single (con k p)) M
-    step3 = trans (wk-sub-single (subTy (single p) (atCon k M))
-                                 (ihs D ms (lookupD D k) p))
-                  (atCon-inst k M p)
-
-
--- ★★ INDUCTIVE TYPES: the three CONGRUENCES.  Each is a plain rebuild;
--- only the SCRUTINEE case moves the motive, and it moves it exactly as
--- `ξ-natrecⁿ` does.
+-- ★★ the CONGRUENCES.  A stepped description/index/code that occurs in a
+--   premise's TYPE is carried there by conversion.
+sr d (ξ-⌜IMu⌝ᴵ r) with gen-⌜IMu⌝ d
+... | dD , (di , cU) =
+      ⊢conv (⊢⌜IMu⌝ (⊢conv dD (credᵀ (ξ-Desc r))) (⊢conv di (credᵀ (ξ-El r)))) (csymᵀ cU)
+sr d (ξ-⌜IMu⌝ᴰ r) with gen-⌜IMu⌝ d
+... | dD , (di , cU) = ⊢conv (⊢⌜IMu⌝ (sr dD r) di) (csymᵀ cU)
+sr d (ξ-⌜IMu⌝ⁱ r) with gen-⌜IMu⌝ d
+... | dD , (di , cU) = ⊢conv (⊢⌜IMu⌝ dD (sr di r)) (csymᵀ cU)
 sr d (ξ-con r) with gen-con d
-... | D , (w , (i , (dp , cMu))) = ⊢conv (⊢con w i (sr dp r)) (csymᵀ cMu)
-sr d (ξ-elimᵐ r) with gen-elim d
-... | M , (w , (dM , (dms , (dt , cC)))) =
-      ⊢conv (⊢elim w dM (sr dms r) dt) (csymᵀ cC)
-sr d (ξ-elimᵗ {t = t} r) with gen-elim d
-... | M , (w , (dM , (dms , (dt , cC)))) =
-      ⊢conv (⊢elim w dM dms (sr dt r))
-            (csymᵀ (ctrnᵀ cC (red→≅ᵀ (subTy-monoˢ (single-mono (step r done)) M))))
+... | I , (D , (i , (dD , (di , (dp , c))))) = ⊢conv (⊢con dD di (sr dp r)) (csymᵀ c)
+sr d (ξ-ielimᴰ r) with gen-ielim d
+... | I , (M , (dD , (dM , (de , (di , (dt , cC)))))) =
+      ⊢conv (⊢ielim (sr dD r) (conv-ctxᵀ (credᵀ (ξ-IMuᴰ (⟶-ren vs r))) dM)
+                    (⊢conv de (red→≅ᵀ (MethTy-monoᴰ I M (step r done))))
+                    di (⊢conv dt (credᵀ (ξ-IMuᴰ r))))
+            (csymᵀ cC)
+sr d (ξ-ielimⁱ r) with gen-ielim d
+... | I , (M , (dD , (dM , (de , (di , (dt , cC)))))) =
+      ⊢conv (⊢ielim dD dM de (sr di r) (⊢conv dt (credᵀ (ξ-IMuⁱ r))))
+            (csymᵀ (ctrnᵀ cC (red→≅ᵀ (iinst-mono M _ (step r done)))))
+sr d (ξ-ielimᵉ r) with gen-ielim d
+... | I , (M , (dD , (dM , (de , (di , (dt , cC)))))) =
+      ⊢conv (⊢ielim dD dM (sr de r) di dt) (csymᵀ cC)
+sr d (ξ-ielimᵗ {i = i} r) with gen-ielim d
+... | I , (M , (dD , (dM , (de , (di , (dt , cC)))))) =
+      ⊢conv (⊢ielim dD dM de di (sr dt r))
+            (csymᵀ (ctrnᵀ cC (red→≅ᵀ (iinst-monoˢ M i (step r done)))))
+sr d (ξ-dι r) with gen-dι d
+... | I , (dI , (dj , c)) = ⊢conv (⊢dι dI (sr dj r)) (csymᵀ c)
+sr d (ξ-dσˢ r) with gen-dσ d
+... | I , (dI , (dS , (df , c))) =
+      ⊢conv (⊢dσ dI (sr dS r) (⊢conv df (credᵀ (ξ-Πˡ (ξ-El r))))) (csymᵀ c)
+sr d (ξ-dσᶠ r) with gen-dσ d
+... | I , (dI , (dS , (df , c))) = ⊢conv (⊢dσ dI dS (sr df r)) (csymᵀ c)
+sr d (ξ-dρʲ r) with gen-dρ d
+... | I , (dI , (dj , (dC , c))) = ⊢conv (⊢dρ dI (sr dj r) dC) (csymᵀ c)
+sr d (ξ-dρᶜ r) with gen-dρ d
+... | I , (dI , (dj , (dC , c))) = ⊢conv (⊢dρ dI dj (sr dC r)) (csymᵀ c)
+sr d (ξ-dpayᴵ r) with gen-dpay d
+... | dI , (dD , (dC , (di , cU))) =
+      ⊢conv (⊢dpay (sr dI r) (⊢conv dD (credᵀ (ξ-Desc r))) (⊢conv dC (credᵀ (ξ-Desc r)))
+                   (⊢conv di (credᵀ (ξ-El r))))
+            (csymᵀ cU)
+sr d (ξ-dpayᴰ r) with gen-dpay d
+... | dI , (dD , (dC , (di , cU))) = ⊢conv (⊢dpay dI (sr dD r) dC di) (csymᵀ cU)
+sr d (ξ-dpayᶜ r) with gen-dpay d
+... | dI , (dD , (dC , (di , cU))) = ⊢conv (⊢dpay dI dD (sr dC r) di) (csymᵀ cU)
+sr d (ξ-dpayⁱ r) with gen-dpay d
+... | dI , (dD , (dC , (di , cU))) = ⊢conv (⊢dpay dI dD dC (sr di r)) (csymᵀ cU)
+sr d (ξ-dihᴰ r) with gen-dih d
+... | I , (M , (i , (dD , (dM , (de , (dC , (di , (dp , cC)))))))) =
+      ⊢conv (⊢dih (sr dD r) (conv-ctxᵀ (credᵀ (ξ-IMuᴰ (⟶-ren vs r))) dM)
+                  (⊢conv de (red→≅ᵀ (MethTy-monoᴰ I M (step r done))))
+                  dC di (⊢conv dp (credᵀ (ξ-El (ξ-dpayᴰ r)))))
+            (csymᵀ (ctrnᵀ cC (credᵀ (ξ-DIhᴰ r))))
+sr d (ξ-dihᵉ r) with gen-dih d
+... | I , (M , (i , (dD , (dM , (de , (dC , (di , (dp , cC)))))))) =
+      ⊢conv (⊢dih dD dM (sr de r) dC di dp) (csymᵀ cC)
+sr d (ξ-dihᶜ r) with gen-dih d
+... | I , (M , (i , (dD , (dM , (de , (dC , (di , (dp , cC)))))))) =
+      ⊢conv (⊢dih dD dM de (sr dC r) di (⊢conv dp (credᵀ (ξ-El (ξ-dpayᶜ r)))))
+            (csymᵀ (ctrnᵀ cC (credᵀ (ξ-DIhᶜ r))))
+sr d (ξ-dihᵖ r) with gen-dih d
+... | I , (M , (i , (dD , (dM , (de , (dC , (di , (dp , cC)))))))) =
+      ⊢conv (⊢dih dD dM de dC di (sr dp r)) (csymᵀ (ctrnᵀ cC (credᵀ (ξ-DIhᵖ r))))
+sr d (ξ-fsuc r) with gen-fsuc d
+... | n , (dt , c) = ⊢conv (⊢fsuc (sr dt r)) (csymᵀ c)
+sr d (ξ-fcaseᵗ r) with gen-fcase d
+... | n , (P , (dP , (dt , (da , (db , cC))))) =
+      ⊢conv (⊢fcase dP (sr dt r) da db)
+            (csymᵀ (ctrnᵀ cC (red→≅ᵀ (subTy-monoˢ (single-mono (step r done)) P))))
+sr d (ξ-fcaseᵃ r) with gen-fcase d
+... | n , (P , (dP , (dt , (da , (db , cC))))) = ⊢conv (⊢fcase dP dt (sr da r) db) (csymᵀ cC)
+sr d (ξ-fcaseᵇ r) with gen-fcase d
+... | n , (P , (dP , (dt , (da , (db , cC))))) = ⊢conv (⊢fcase dP dt da (sr db r)) (csymᵀ cC)
+sr d (ξ-fcase0 r) with gen-fcase0 d
+... | P , (dP , (dt , cC)) =
+      ⊢conv (⊢fcase0 dP (sr dt r))
+            (csymᵀ (ctrnᵀ cC (red→≅ᵀ (subTy-monoˢ (single-mono (step r done)) P))))
+sr d (ξ-psplitᵇ r) with gen-psplit d
+... | A , (B , (P , (dP , (dq , (db , cC))))) = ⊢conv (⊢psplit dP dq (sr db r)) (csymᵀ cC)
+sr d (ξ-psplitᵍ r) with gen-psplit d
+... | A , (B , (P , (dP , (dq , (db , cC))))) =
+      ⊢conv (⊢psplit dP (sr dq r) db)
+            (csymᵀ (ctrnᵀ cC (red→≅ᵀ (subTy-monoˢ (single-mono (step r done)) P))))
+
 sr d (ξ-nsuc r) with gen-nsuc d
 ... | (dn , cC) = ⊢conv (⊢nsuc (sr dn r)) (csymᵀ cC)
 sr d (natrec-zero z s₀) with gen-natrec d
@@ -1613,18 +1534,18 @@ sr d (tr-J-Unit cm am mm s e₀) with gen-tr d
                            (ctrnᵀ (mono-El[] (⌜Hom⌝ cm am mm) rs₂)
                              (csymᵀ (mono-El[] (⌜Hom⌝ cm am mm) ru)))))
                        (csymᵀ cC))
--- ★ §10.4's subject-reduction obligation.  `tr-J-Mu`'s proof VERBATIM:
+-- ★ §10.4's subject-reduction obligation.  `tr-J-Unit`'s proof VERBATIM:
 --   the only input that differs is the stuck-ambient witness, which is
 --   `st-el {c = ⌜IMu⌝ …} refl` (that is `stkC? (⌜IMu⌝ …) = true`) paired
 --   with `nn-El nnh-IMu`.
-sr d (tr-J-IMu {D = Dⁱ} {I = Iⁱ} {iˣ = iˣ} cm am mm s e₀) with gen-tr d
+sr d (tr-J-IMu {I = Iⁱ} {D = Dⁱ} {iˣ = iˣ} cm am mm s e₀) with gen-tr d
 ... | tgU (mkTrInvU () t u dt du dp de cC)
 ... | tgC (mkTrInv cM aM refl A t u dcM daM dvM ncM hcM haM dt du dp de cC)
       with gen-hrefl dp
 ...   | (dc , (ds , cH)) with church-rosserᵀ cH
 ...     | W , (rL , rR)
           with homred-inv stknn-red stknn-noU stknn-noΠ stknn-noN
-                          (st-el {c = ⌜IMu⌝ Dⁱ Iⁱ iˣ} refl , nn-El nnh-IMu) rR
+                          (st-el {c = ⌜IMu⌝ Iⁱ Dⁱ iˣ} refl , nn-El nnh-IMu) rR
 ...       | A₂ , (s₁ , (s₂ , (eqW , (rs₁ , rs₂))))
             with Hom-to-Hom
                    (homAmb→ (subst (λ z → _ ⟶ᵀ* z) eqW rR) (nn-El nnh-IMu))
@@ -1636,17 +1557,18 @@ sr d (tr-J-IMu {D = Dⁱ} {I = Iⁱ} {iˣ = iˣ} cm am mm s e₀) with gen-tr d
                            (ctrnᵀ (mono-El[] (⌜Hom⌝ cm am mm) rs₂)
                              (csymᵀ (mono-El[] (⌜Hom⌝ cm am mm) ru)))))
                        (csymᵀ cC))
-sr d (tr-J-Mu {D = Dᵐ} cm am mm s e₀) with gen-tr d
+-- ★ tags: `Hom (Fin n)` computes nothing either — the same proof.
+sr d (tr-J-Fin {n = n} cm am mm s e₀) with gen-tr d
 ... | tgU (mkTrInvU () t u dt du dp de cC)
 ... | tgC (mkTrInv cM aM refl A t u dcM daM dvM ncM hcM haM dt du dp de cC)
       with gen-hrefl dp
 ...   | (dc , (ds , cH)) with church-rosserᵀ cH
 ...     | W , (rL , rR)
           with homred-inv stknn-red stknn-noU stknn-noΠ stknn-noN
-                          (st-el {c = ⌜Mu⌝ Dᵐ} refl , nn-El nnh-Mu) rR
+                          (st-el {c = ⌜Fin⌝ n} refl , nn-El nnh-Fin) rR
 ...       | A₂ , (s₁ , (s₂ , (eqW , (rs₁ , rs₂))))
             with Hom-to-Hom
-                   (homAmb→ (subst (λ z → _ ⟶ᵀ* z) eqW rR) (nn-El nnh-Mu))
+                   (homAmb→ (subst (λ z → _ ⟶ᵀ* z) eqW rR) (nn-El nnh-Fin))
                    (subst (Hom A t u ⟶ᵀ*_) eqW rL)
 ...         | mkHomRed rA rt ru =
               ⊢conv de

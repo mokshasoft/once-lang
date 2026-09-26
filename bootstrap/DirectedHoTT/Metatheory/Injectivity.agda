@@ -24,38 +24,40 @@
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Metatheory.Injectivity where
 open import normalizer.Syntax.Types
-  using ( _≡_; refl; sym; trans; subst; Σ; _,_; _×_ )
+  using ( _≡_; refl; sym; trans; subst; Σ; _,_; _×_ ; cong₂ )
+open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; RTy; base; U; Π; Σ'; El; Hom; RTm; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝
-        ; ⌜Hom⌝; hrefl; tr; ap; Id; ⌜Id⌝; idrefl; jsub
-        ; var; lam; app; pair; fst; snd; absurd; ordtr; vz; vs; renTm
-        ; Unit; Nat; unit; nzero; nsuc; natrec; ⌜Nat⌝; ⌜Unit⌝; ⌜Mu⌝
-        ; Desc; Mu; con; elim
-        ; IMu; icon; ielim; ⌜IMu⌝; ICon; IDesc; iι; iρ; iκ; inil; _◂_; ipayTy; ilookupD; _∈ID_; hereID; thereID; iihs; ifields; εwkTm )
+        ; ⌜Hom⌝; hrefl; tr; ap; Id; ⌜Id⌝; idrefl; jsub; var; lam; app; pair
+        ; fst; snd; absurd; ordtr; vz; vs; renTm; Unit; Nat; unit; nzero; nsuc
+        ; natrec; ⌜Nat⌝; ⌜Unit⌝; Desc; con; IMu; ielim; ⌜IMu⌝; εwkTm; Fin
+        ; ⌜Fin⌝; DIh; dι; dσ; dρ; renTy; extR; extS; Ren; cong₄; Sub; subTy
+        ; subTm; dpay; dih; fzero; fsuc; fcase; fcase0; psplit )
 open import DirectedHoTT.Spec.Typing
-  using ( _⟶ᵀ_; El-⌜base⌝; El-⌜Π⌝; El-⌜Σ⌝; El-⌜Hom⌝
-        ; ξ-El; ξ-Πˡ; ξ-Πʳ; ξ-Σˡ; ξ-Σʳ
-        ; Hom-U; Hom-Π; ξ-Homᵀ; ξ-Homˡ; ξ-Homʳ
-        ; El-⌜Id⌝; ξ-Idᵀ; ξ-Idˡ; ξ-Idʳ; jsub-refl; ξ-⌜Id⌝ᶜ; ξ-⌜Id⌝ˡ; ξ-⌜Id⌝ʳ
-        ; Hom-Nat-z; Hom-Nat-sz; Hom-Nat-ss; El-⌜Nat⌝; El-⌜Unit⌝; El-⌜Mu⌝
-        ; El-⌜IMu⌝; ξ-IMu
-        ; ξ-idreflᶜ; ξ-idreflᵃ; ξ-jsubᵈ; ξ-jsubᵖ; ξ-jsubᵉ
-        ; _⟶*_; done; step
-        ; _≅ᵀ_; credᵀ; crflᵀ; csymᵀ; ctrnᵀ
-        ; _≅_; cred; crfl; csym; ctrn; hom→≅ )
+  using ( _⟶ᵀ_; El-⌜base⌝; El-⌜Π⌝; El-⌜Σ⌝; El-⌜Hom⌝; ξ-El; ξ-Πˡ; ξ-Πʳ; ξ-Σˡ
+        ; ξ-Σʳ; Hom-U; Hom-Π; ξ-Homᵀ; ξ-Homˡ; ξ-Homʳ; El-⌜Id⌝; ξ-Idᵀ; ξ-Idˡ
+        ; ξ-Idʳ; jsub-refl; ξ-⌜Id⌝ᶜ; ξ-⌜Id⌝ˡ; ξ-⌜Id⌝ʳ; Hom-Nat-z; Hom-Nat-sz
+        ; Hom-Nat-ss; El-⌜Nat⌝; El-⌜Unit⌝; El-⌜IMu⌝; ξ-idreflᶜ; ξ-idreflᵃ
+        ; ξ-jsubᵈ; ξ-jsubᵖ; ξ-jsubᵉ; _⟶*_; done; step; _≅ᵀ_; credᵀ; crflᵀ
+        ; csymᵀ; ctrnᵀ; _≅_; cred; crfl; csym; ctrn; hom→≅; iinst; El-⌜Fin⌝
+        ; DIh-ι; DIh-σ; DIh-ρ; ξ-IMuᴵ; ξ-IMuᴰ; ξ-IMuⁱ; ξ-Desc; ξ-DIhᴰ; ξ-DIhᴹ
+        ; ξ-DIhᶜ; ξ-DIhᵖ; ι; dpay-ι; dpay-σ; dpay-ρ; dih-ι; dih-σ; dih-ρ
+        ; fcase-z; fcase-s; psplit-β; ξ-⌜IMu⌝ᴵ; ξ-⌜IMu⌝ᴰ; ξ-⌜IMu⌝ⁱ; ξ-con
+        ; ξ-ielimᴰ; ξ-ielimⁱ; ξ-ielimᵉ; ξ-ielimᵗ; ξ-dι; ξ-dσˢ; ξ-dσᶠ; ξ-dρʲ
+        ; ξ-dρᶜ; ξ-dpayᴵ; ξ-dpayᴰ; ξ-dpayᶜ; ξ-dpayⁱ; ξ-dihᴰ; ξ-dihᵉ; ξ-dihᶜ
+        ; ξ-dihᵖ; ξ-fsuc; ξ-fcaseᵗ; ξ-fcaseᵃ; ξ-fcaseᵇ; ξ-fcase0; ξ-psplitᵇ
+        ; ξ-psplitᵍ; tr-J-IMu; tr-J-Fin; single )
 open import DirectedHoTT.Metatheory.Confluence
   using ( _⟹_; pvar; plam; papp; pβ; ppair; pabsurd; pfst; psnd; pβfst; pβsnd
-        ; p⌜base⌝; p⌜Π⌝; p⌜Σ⌝; p⌜Hom⌝; phrefl
-        ; ptr; ptr-J-base; ptr-J-Σ; ptr-taut
-        ; phrefl-pw; ptr-J-Hom; ptr-pw; pap; pap-J; p⌜Id⌝; pidrefl; pjsub; pjsub-refl
-        ; ptr-J-Id; punit; pnzero; pnsuc; pnatrec; pnatrec-zero; pnatrec-suc
-        ; p⌜Nat⌝; p⌜Unit⌝; ptr-J-Unit; p⌜Mu⌝; ptr-J-Mu; ptr-J-IMu
-        ; pordtr; pordtr-z; pordtr-szz; pordtr-ssz; pordtr-szs; pordtr-sss
-        ; ⟶*-nsuc
-        ; _⁺; ⟹-refl; ⟹-⁺; ⟶→⟹; ⟹→⟶*; ⟶*-trans
-        ; ⟹-ren; ⟶*-ren; ⟶*-appˡ
-        ; pcon; pelim; pι
-        ; p⌜IMu⌝; picon; pielim; pιi )
+        ; p⌜base⌝; p⌜Π⌝; p⌜Σ⌝; p⌜Hom⌝; phrefl; ptr; ptr-J-base; ptr-J-Σ
+        ; ptr-taut; phrefl-pw; ptr-J-Hom; ptr-pw; pap; pap-J; p⌜Id⌝; pidrefl
+        ; pjsub; pjsub-refl; ptr-J-Id; punit; pnzero; pnsuc; pnatrec
+        ; pnatrec-zero; pnatrec-suc; p⌜Nat⌝; p⌜Unit⌝; ptr-J-Unit; ptr-J-IMu
+        ; pordtr; pordtr-z; pordtr-szz; pordtr-ssz; pordtr-szs; pordtr-sss; _⁺
+        ; ⟹-refl; ⟹-⁺; ⟶→⟹; ⟹→⟶*; ⟹-ren; pcon; pι; p⌜IMu⌝; pielim; ⟹-sub
+        ; ⟹-exts; pdι; pdσ; pdρ; pdpay; pdpay-ι; pdpay-σ; pdpay-ρ; pdih
+        ; pdih-ι; pdih-σ; pdih-ρ; pfzero; pfsuc; pfcase; pfcase-z; pfcase-s
+        ; pfcase0; ppsplit; ppsplit-β; ptr-J-Fin; p⌜Fin⌝; single2-⟹; single-⟹ )
 
 private
   variable
@@ -70,6 +72,12 @@ private
 --   (they are folds, and `TySub` needs them without the injectivity proof);
 --   re-exported here so this module's own callers are unaffected.
 open import DirectedHoTT.Metatheory.RedCong public
+-- the levitated `DIh-ρ` rule's type-level development needs typing-free
+--   renaming/substitution facts about `iinst`/`wk2`.
+open import DirectedHoTT.Metatheory.TySub
+  using ( ⟶ᵀ*-sub'; iinst-mono; iinst-monoˢ; ⟶ᵀ*-ren; iinst-ren; wk2-renTy )
+open import DirectedHoTT.Metatheory.SubjectReductionBase
+  using ( iinst-sub; wk2-subTy; wk-sub )
 
 
 
@@ -113,10 +121,6 @@ data _⟹ᵀ_ : {Γ : Cx} → RTy Γ → RTy Γ → Set where
   -- ★ WF stage A: Unit/Nat are INERT type formers — nullary congruences.
   pUnit : Unit {Γ} ⟹ᵀ Unit
   pNat  : Nat {Γ} ⟹ᵀ Nat
-  -- ★ INDUCTIVE TYPES: `Mu D` is INERT at the type level — no rule
-  -- unfolds it, so its only row is reflexivity.  The computation lives
-  -- entirely in `elim`, on the TERM side.
-  pMu   : {D : Desc} → Mu {Γ} D ⟹ᵀ Mu D
   pEl   : {t t' : RTm Γ} → t ⟹ t' → El t ⟹ᵀ El t'
   pΠ    : {A A' : RTy Γ} {B B' : RTy (Γ ∙)} → A ⟹ᵀ A' → B ⟹ᵀ B' → Π A B ⟹ᵀ Π A' B'
   pΣ    : {A A' : RTy Γ} {B B' : RTy (Γ ∙)} → A ⟹ᵀ A' → B ⟹ᵀ B' → Σ' A B ⟹ᵀ Σ' A' B'
@@ -149,13 +153,26 @@ data _⟹ᵀ_ : {Γ : Cx} → RTy Γ → RTy Γ → Set where
         A ⟹ᵀ A' → t ⟹ t' → u ⟹ u' → Id A t u ⟹ᵀ Id A' t' u'
   pEl-⌜Nat⌝  : El (⌜Nat⌝ {Γ}) ⟹ᵀ Nat
   pEl-⌜Unit⌝ : El (⌜Unit⌝ {Γ}) ⟹ᵀ Unit
-  pEl-⌜Mu⌝   : {Dᵐ : Desc} → El (⌜Mu⌝ {Γ} Dᵐ) ⟹ᵀ Mu Dᵐ
-  -- ★ `pMu` is nullary because `Mu D` is inert.  `IMu D I i` is NOT —
-  --   the index steps, so both rows take the index's parallel step.
-  pIMu       : {D : IDesc} {I : RTy ε} {i i' : RTm Γ} →
-               i ⟹ i' → IMu D I i ⟹ᵀ IMu D I i'
-  pEl-⌜IMu⌝  : {D : IDesc} {I : RTy ε} {i i' : RTm Γ} →
-               i ⟹ i' → El (⌜IMu⌝ D I i) ⟹ᵀ IMu D I i'
+  -- ★★ LEVITATED FAMILIES.  `IMu`/`Desc` carry terms (congruences); `DIh`
+  --   computes on its telescope head, the three parallel roots.
+  pIMu      : {I I' D D' i i' : RTm Γ} → I ⟹ I' → D ⟹ D' → i ⟹ i' →
+              IMu I D i ⟹ᵀ IMu I' D' i'
+  pEl-⌜IMu⌝ : {I I' D D' i i' : RTm Γ} → I ⟹ I' → D ⟹ D' → i ⟹ i' →
+              El (⌜IMu⌝ I D i) ⟹ᵀ IMu I' D' i'
+  pDesc     : {I I' : RTm Γ} → I ⟹ I' → Desc I ⟹ᵀ Desc I'
+  pFin      : {n : ℕ} → Fin {Γ} n ⟹ᵀ Fin n
+  pEl-⌜Fin⌝ : {n : ℕ} → El (⌜Fin⌝ {Γ} n) ⟹ᵀ Fin n
+  pDIh      : {D D' C C' p p' : RTm Γ} {M M' : RTy ((Γ ∙) ∙)} →
+              D ⟹ D' → M ⟹ᵀ M' → C ⟹ C' → p ⟹ p' → DIh D M C p ⟹ᵀ DIh D' M' C' p'
+  pDIh-ι    : {D j p : RTm Γ} {M : RTy ((Γ ∙) ∙)} → DIh D M (dι j) p ⟹ᵀ Unit
+  pDIh-σ    : {D D' S f f' p p' : RTm Γ} {M M' : RTy ((Γ ∙) ∙)} →
+              D ⟹ D' → M ⟹ᵀ M' → f ⟹ f' → p ⟹ p' →
+              DIh D M (dσ S f) p ⟹ᵀ DIh D' M' (app f' (fst p')) (snd p')
+  pDIh-ρ    : {D D' j j' C C' p p' : RTm Γ} {M M' : RTy ((Γ ∙) ∙)} →
+              D ⟹ D' → M ⟹ᵀ M' → j ⟹ j' → C ⟹ C' → p ⟹ p' →
+              DIh D M (dρ j C) p ⟹ᵀ
+              Σ' (iinst j' (fst p') M')
+                 (DIh (renTm vs D') (renTy (extR (extR vs)) M') (renTm vs C') (snd (renTm vs p')))
   pEl-⌜Id⌝ : {c c' a a' b b' : RTm Γ} →
              c ⟹ c' → a ⟹ a' → b ⟹ b' →
              El (⌜Id⌝ c a b) ⟹ᵀ Id (El c') a' b'
@@ -164,9 +181,11 @@ data _⟹ᵀ_ : {Γ : Cx} → RTy Γ → RTy Γ → Set where
 ⟹ᵀ-refl base     = pbase
 ⟹ᵀ-refl Unit     = pUnit
 ⟹ᵀ-refl Nat      = pNat
-⟹ᵀ-refl (Mu D)   = pMu
-⟹ᵀ-refl (IMu D I i) = pIMu (⟹-refl i)
 ⟹ᵀ-refl (El t)   = pEl (⟹-refl t)
+⟹ᵀ-refl (IMu I D i) = pIMu (⟹-refl I) (⟹-refl D) (⟹-refl i)
+⟹ᵀ-refl (Desc I) = pDesc (⟹-refl I)
+⟹ᵀ-refl (Fin n) = pFin
+⟹ᵀ-refl (DIh D M C p) = pDIh (⟹-refl D) (⟹ᵀ-refl M) (⟹-refl C) (⟹-refl p)
 ⟹ᵀ-refl U        = pU
 ⟹ᵀ-refl (Π A B)  = pΠ (⟹ᵀ-refl A) (⟹ᵀ-refl B)
 ⟹ᵀ-refl (Id A t u) = pId (⟹ᵀ-refl A) (⟹-refl t) (⟹-refl u)
@@ -179,10 +198,20 @@ data _⟹ᵀ_ : {Γ : Cx} → RTy Γ → RTy Γ → Set where
 ⟶ᵀ→⟹ᵀ (Hom-Nat-ss m n) = pHom-Nat-ss (⟹-refl m) (⟹-refl n)
 ⟶ᵀ→⟹ᵀ El-⌜Nat⌝     = pEl-⌜Nat⌝
 ⟶ᵀ→⟹ᵀ El-⌜Unit⌝    = pEl-⌜Unit⌝
-⟶ᵀ→⟹ᵀ El-⌜Mu⌝      = pEl-⌜Mu⌝
-⟶ᵀ→⟹ᵀ El-⌜IMu⌝     = pEl-⌜IMu⌝ (⟹-refl _)
-⟶ᵀ→⟹ᵀ (ξ-IMu r)    = pIMu (⟶→⟹ r)
 ⟶ᵀ→⟹ᵀ El-⌜base⌝    = pEl-⌜base⌝
+⟶ᵀ→⟹ᵀ El-⌜IMu⌝     = pEl-⌜IMu⌝ (⟹-refl _) (⟹-refl _) (⟹-refl _)
+⟶ᵀ→⟹ᵀ El-⌜Fin⌝     = pEl-⌜Fin⌝
+⟶ᵀ→⟹ᵀ (DIh-ι D M j p) = pDIh-ι
+⟶ᵀ→⟹ᵀ (DIh-σ D M S f p) = pDIh-σ (⟹-refl D) (⟹ᵀ-refl M) (⟹-refl f) (⟹-refl p)
+⟶ᵀ→⟹ᵀ (DIh-ρ D M j C p) = pDIh-ρ (⟹-refl D) (⟹ᵀ-refl M) (⟹-refl j) (⟹-refl C) (⟹-refl p)
+⟶ᵀ→⟹ᵀ (ξ-IMuᴵ r) = pIMu (⟶→⟹ r) (⟹-refl _) (⟹-refl _)
+⟶ᵀ→⟹ᵀ (ξ-IMuᴰ r) = pIMu (⟹-refl _) (⟶→⟹ r) (⟹-refl _)
+⟶ᵀ→⟹ᵀ (ξ-IMuⁱ r) = pIMu (⟹-refl _) (⟹-refl _) (⟶→⟹ r)
+⟶ᵀ→⟹ᵀ (ξ-Desc r) = pDesc (⟶→⟹ r)
+⟶ᵀ→⟹ᵀ (ξ-DIhᴰ r) = pDIh (⟶→⟹ r) (⟹ᵀ-refl _) (⟹-refl _) (⟹-refl _)
+⟶ᵀ→⟹ᵀ (ξ-DIhᴹ r) = pDIh (⟹-refl _) (⟶ᵀ→⟹ᵀ r) (⟹-refl _) (⟹-refl _)
+⟶ᵀ→⟹ᵀ (ξ-DIhᶜ r) = pDIh (⟹-refl _) (⟹ᵀ-refl _) (⟶→⟹ r) (⟹-refl _)
+⟶ᵀ→⟹ᵀ (ξ-DIhᵖ r) = pDIh (⟹-refl _) (⟹ᵀ-refl _) (⟹-refl _) (⟶→⟹ r)
 ⟶ᵀ→⟹ᵀ (El-⌜Π⌝ c d) = pEl-⌜Π⌝ (⟹-refl c) (⟹-refl d)
 ⟶ᵀ→⟹ᵀ (El-⌜Σ⌝ c d) = pEl-⌜Σ⌝ (⟹-refl c) (⟹-refl d)
 ⟶ᵀ→⟹ᵀ (El-⌜Hom⌝ c a b) = pEl-⌜Hom⌝ (⟹-refl c) (⟹-refl a) (⟹-refl b)
@@ -205,14 +234,35 @@ data _⟹ᵀ_ : {Γ : Cx} → RTy Γ → RTy Γ → Set where
 ⟹ᵀ→⟶ᵀ* : {A B : RTy Γ} → A ⟹ᵀ B → A ⟶ᵀ* B
 ⟹ᵀ→⟶ᵀ* pEl-⌜Nat⌝  = stepᵀ El-⌜Nat⌝ doneᵀ
 ⟹ᵀ→⟶ᵀ* pEl-⌜Unit⌝ = stepᵀ El-⌜Unit⌝ doneᵀ
-⟹ᵀ→⟶ᵀ* pEl-⌜Mu⌝   = stepᵀ El-⌜Mu⌝ doneᵀ
 ⟹ᵀ→⟶ᵀ* pbase    = doneᵀ
 ⟹ᵀ→⟶ᵀ* pUnit    = doneᵀ
 ⟹ᵀ→⟶ᵀ* pNat     = doneᵀ
-⟹ᵀ→⟶ᵀ* pMu      = doneᵀ
-⟹ᵀ→⟶ᵀ* (pIMu p) = ⟶ᵀ*-IMu (⟹→⟶* p)
-⟹ᵀ→⟶ᵀ* (pEl-⌜IMu⌝ p) = stepᵀ El-⌜IMu⌝ (⟶ᵀ*-IMu (⟹→⟶* p))
 ⟹ᵀ→⟶ᵀ* pU       = doneᵀ
+⟹ᵀ→⟶ᵀ* (pIMu a b c) =
+  ⟶ᵀ*-trans (⟶ᵀ*-IMuᴵ (⟹→⟶* a)) (⟶ᵀ*-trans (⟶ᵀ*-IMuᴰ (⟹→⟶* b)) (⟶ᵀ*-IMu (⟹→⟶* c)))
+⟹ᵀ→⟶ᵀ* (pEl-⌜IMu⌝ a b c) =
+  stepᵀ El-⌜IMu⌝ (⟶ᵀ*-trans (⟶ᵀ*-IMuᴵ (⟹→⟶* a)) (⟶ᵀ*-trans (⟶ᵀ*-IMuᴰ (⟹→⟶* b)) (⟶ᵀ*-IMu (⟹→⟶* c))))
+⟹ᵀ→⟶ᵀ* (pDesc a) = ⟶ᵀ*-Desc (⟹→⟶* a)
+⟹ᵀ→⟶ᵀ* pFin = doneᵀ
+⟹ᵀ→⟶ᵀ* pEl-⌜Fin⌝ = stepᵀ El-⌜Fin⌝ doneᵀ
+⟹ᵀ→⟶ᵀ* (pDIh a m c d) =
+  ⟶ᵀ*-trans (⟶ᵀ*-DIhᴰ (⟹→⟶* a)) (⟶ᵀ*-trans (⟶ᵀ*-DIhᴹ (⟹ᵀ→⟶ᵀ* m))
+    (⟶ᵀ*-trans (⟶ᵀ*-DIhᶜ (⟹→⟶* c)) (⟶ᵀ*-DIhᵖ (⟹→⟶* d))))
+⟹ᵀ→⟶ᵀ* (pDIh-ι {D = D} {j = j} {p = p} {M = M}) = stepᵀ (DIh-ι D M j p) doneᵀ
+⟹ᵀ→⟶ᵀ* (pDIh-σ {D = D} {S = S} {f = f} {p = p} {M = M} a m c d) =
+  stepᵀ (DIh-σ D M S f p)
+    (⟶ᵀ*-trans (⟶ᵀ*-DIhᴰ (⟹→⟶* a)) (⟶ᵀ*-trans (⟶ᵀ*-DIhᴹ (⟹ᵀ→⟶ᵀ* m))
+      (⟶ᵀ*-trans (⟶ᵀ*-DIhᶜ (⟶*-trans (⟶*-appˡ (⟹→⟶* c)) (⟶*-appʳ (⟶*-fst (⟹→⟶* d)))))
+                 (⟶ᵀ*-DIhᵖ (⟶*-snd (⟹→⟶* d))))))
+⟹ᵀ→⟶ᵀ* (pDIh-ρ {D = D} {j = j} {j'} {C = C} {p = p} {p'} {M = M} {M'} a m b c d) =
+  stepᵀ (DIh-ρ D M j C p)
+    (⟶ᵀ*-trans
+      (⟶ᵀ*-Σˡ (⟶ᵀ*-trans (⟶ᵀ*-sub' (single (fst p)) (⟶ᵀ*-sub' (extS (single j)) (⟹ᵀ→⟶ᵀ* m)))
+                (⟶ᵀ*-trans (iinst-mono M' (fst p) (⟹→⟶* b)) (iinst-monoˢ M' j' (⟶*-fst (⟹→⟶* d))))))
+      (⟶ᵀ*-Σʳ (⟶ᵀ*-trans (⟶ᵀ*-DIhᴰ (⟶*-ren vs (⟹→⟶* a)))
+                (⟶ᵀ*-trans (⟶ᵀ*-DIhᴹ (⟶ᵀ*-ren (extR (extR vs)) (⟹ᵀ→⟶ᵀ* m)))
+                  (⟶ᵀ*-trans (⟶ᵀ*-DIhᶜ (⟶*-ren vs (⟹→⟶* c)))
+                             (⟶ᵀ*-DIhᵖ (⟶*-snd (⟶*-ren vs (⟹→⟶* d)))))))))
 ⟹ᵀ→⟶ᵀ* (pEl p)  = ⟶ᵀ*-El (⟹→⟶* p)
 ⟹ᵀ→⟶ᵀ* (pΠ p q) = ⟶ᵀ*-trans (⟶ᵀ*-Πˡ (⟹ᵀ→⟶ᵀ* p)) (⟶ᵀ*-Πʳ (⟹ᵀ→⟶ᵀ* q))
 ⟹ᵀ→⟶ᵀ* (pΣ p q) = ⟶ᵀ*-trans (⟶ᵀ*-Σˡ (⟹ᵀ→⟶ᵀ* p)) (⟶ᵀ*-Σʳ (⟹ᵀ→⟶ᵀ* q))
@@ -254,6 +304,98 @@ data _⟹ᵀ_ : {Γ : Cx} → RTy Γ → RTy Γ → Set where
                    (⟶ᵀ*-Homʳ (⟶*-appˡ (⟶*-ren vs (⟹→⟶* pg))))))))
 
 ------------------------------------------------------------------------
+-- ★ LEVITATION: parallel type reduction is stable under renaming and
+--   (pointwise-parallel) substitution — `DIh-ρ`'s triangle case needs it.
+------------------------------------------------------------------------
+
+⟹ᵀ-ren : {Δ : Cx} (ρ : Ren Γ Δ) {A B : RTy Γ} → A ⟹ᵀ B → renTy ρ A ⟹ᵀ renTy ρ B
+⟹ᵀ-ren ρ pbase = pbase
+⟹ᵀ-ren ρ pU = pU
+⟹ᵀ-ren ρ pUnit = pUnit
+⟹ᵀ-ren ρ pNat = pNat
+⟹ᵀ-ren ρ pFin = pFin
+⟹ᵀ-ren ρ (pEl a) = pEl (⟹-ren ρ a)
+⟹ᵀ-ren ρ (pΠ a b) = pΠ (⟹ᵀ-ren ρ a) (⟹ᵀ-ren (extR ρ) b)
+⟹ᵀ-ren ρ (pΣ a b) = pΣ (⟹ᵀ-ren ρ a) (⟹ᵀ-ren (extR ρ) b)
+⟹ᵀ-ren ρ pEl-⌜base⌝ = pEl-⌜base⌝
+⟹ᵀ-ren ρ (pEl-⌜Π⌝ a b) = pEl-⌜Π⌝ (⟹-ren ρ a) (⟹-ren (extR ρ) b)
+⟹ᵀ-ren ρ (pEl-⌜Σ⌝ a b) = pEl-⌜Σ⌝ (⟹-ren ρ a) (⟹-ren (extR ρ) b)
+⟹ᵀ-ren ρ (pEl-⌜Hom⌝ a b c) = pEl-⌜Hom⌝ (⟹-ren ρ a) (⟹-ren ρ b) (⟹-ren ρ c)
+⟹ᵀ-ren ρ (pHom a b c) = pHom (⟹ᵀ-ren ρ a) (⟹-ren ρ b) (⟹-ren ρ c)
+⟹ᵀ-ren ρ (pHom-U {c = c} {c'} {d = d} {d'} a b) =
+  subst (λ z → renTy ρ (Hom U c d) ⟹ᵀ Π (El (renTm ρ c')) (El z)) (sym (wk-ren ρ d'))
+        (pHom-U (⟹-ren ρ a) (⟹-ren ρ b))
+⟹ᵀ-ren ρ (pHom-Nat-z a) = pHom-Nat-z (⟹-ren ρ a)
+⟹ᵀ-ren ρ (pHom-Nat-sz a) = pHom-Nat-sz (⟹-ren ρ a)
+⟹ᵀ-ren ρ (pHom-Nat-ss a b) = pHom-Nat-ss (⟹-ren ρ a) (⟹-ren ρ b)
+⟹ᵀ-ren ρ (pHom-Π {A = A} {A'} {B = B} {B'} {f = f} {f'} {g = g} {g'} a b c d) =
+  subst (λ Z → renTy ρ (Hom (Π A B) f g) ⟹ᵀ Z)
+        (cong₂ (λ x y → Π (renTy ρ A')
+                         (Hom (renTy (extR ρ) B') (app x (var vz)) (app y (var vz))))
+               (sym (wk-ren ρ f')) (sym (wk-ren ρ g')))
+        (pHom-Π (⟹ᵀ-ren ρ a) (⟹ᵀ-ren (extR ρ) b) (⟹-ren ρ c) (⟹-ren ρ d))
+⟹ᵀ-ren ρ (pId a b c) = pId (⟹ᵀ-ren ρ a) (⟹-ren ρ b) (⟹-ren ρ c)
+⟹ᵀ-ren ρ pEl-⌜Nat⌝ = pEl-⌜Nat⌝
+⟹ᵀ-ren ρ pEl-⌜Unit⌝ = pEl-⌜Unit⌝
+⟹ᵀ-ren ρ (pIMu a b c) = pIMu (⟹-ren ρ a) (⟹-ren ρ b) (⟹-ren ρ c)
+⟹ᵀ-ren ρ (pEl-⌜IMu⌝ a b c) = pEl-⌜IMu⌝ (⟹-ren ρ a) (⟹-ren ρ b) (⟹-ren ρ c)
+⟹ᵀ-ren ρ (pDesc a) = pDesc (⟹-ren ρ a)
+⟹ᵀ-ren ρ pEl-⌜Fin⌝ = pEl-⌜Fin⌝
+⟹ᵀ-ren ρ (pDIh a m c d) = pDIh (⟹-ren ρ a) (⟹ᵀ-ren (extR (extR ρ)) m) (⟹-ren ρ c) (⟹-ren ρ d)
+⟹ᵀ-ren ρ pDIh-ι = pDIh-ι
+⟹ᵀ-ren ρ (pDIh-σ a m c d) = pDIh-σ (⟹-ren ρ a) (⟹ᵀ-ren (extR (extR ρ)) m) (⟹-ren ρ c) (⟹-ren ρ d)
+⟹ᵀ-ren ρ (pDIh-ρ {D = D} {D'} {j = j} {j'} {C = C} {C'} {p = p} {p'} {M = M} {M'} a m b c d) =
+  subst (λ Z → renTy ρ (DIh D M (dρ j C) p) ⟹ᵀ Z)
+        (sym (cong₂ Σ' (iinst-ren ρ M' j' (fst p'))
+                        (cong₄ (λ w x y z → DIh w x y (snd z)) (wk-ren ρ D') (wk2-renTy ρ M') (wk-ren ρ C') (wk-ren ρ p'))))
+        (pDIh-ρ (⟹-ren ρ a) (⟹ᵀ-ren (extR (extR ρ)) m) (⟹-ren ρ b) (⟹-ren ρ c) (⟹-ren ρ d))
+⟹ᵀ-ren ρ (pEl-⌜Id⌝ a b c) = pEl-⌜Id⌝ (⟹-ren ρ a) (⟹-ren ρ b) (⟹-ren ρ c)
+
+⟹ᵀ-sub : {Δ : Cx} {σ σ' : Sub Γ Δ} → (∀ x → σ x ⟹ σ' x) →
+         {A B : RTy Γ} → A ⟹ᵀ B → subTy σ A ⟹ᵀ subTy σ' B
+⟹ᵀ-sub h pbase = pbase
+⟹ᵀ-sub h pU = pU
+⟹ᵀ-sub h pUnit = pUnit
+⟹ᵀ-sub h pNat = pNat
+⟹ᵀ-sub h pFin = pFin
+⟹ᵀ-sub h (pEl a) = pEl (⟹-sub h a)
+⟹ᵀ-sub h (pΠ a b) = pΠ (⟹ᵀ-sub h a) (⟹ᵀ-sub (⟹-exts h) b)
+⟹ᵀ-sub h (pΣ a b) = pΣ (⟹ᵀ-sub h a) (⟹ᵀ-sub (⟹-exts h) b)
+⟹ᵀ-sub h pEl-⌜base⌝ = pEl-⌜base⌝
+⟹ᵀ-sub h (pEl-⌜Π⌝ a b) = pEl-⌜Π⌝ (⟹-sub h a) (⟹-sub (⟹-exts h) b)
+⟹ᵀ-sub h (pEl-⌜Σ⌝ a b) = pEl-⌜Σ⌝ (⟹-sub h a) (⟹-sub (⟹-exts h) b)
+⟹ᵀ-sub h (pEl-⌜Hom⌝ a b c) = pEl-⌜Hom⌝ (⟹-sub h a) (⟹-sub h b) (⟹-sub h c)
+⟹ᵀ-sub h (pHom a b c) = pHom (⟹ᵀ-sub h a) (⟹-sub h b) (⟹-sub h c)
+⟹ᵀ-sub {σ = σ} {σ'} h (pHom-U {c = c} {c'} {d = d} {d'} a b) =
+  subst (λ z → subTy σ (Hom U c d) ⟹ᵀ Π (El (subTm σ' c')) (El z)) (sym (wk-sub σ' d'))
+        (pHom-U (⟹-sub h a) (⟹-sub h b))
+⟹ᵀ-sub h (pHom-Nat-z a) = pHom-Nat-z (⟹-sub h a)
+⟹ᵀ-sub h (pHom-Nat-sz a) = pHom-Nat-sz (⟹-sub h a)
+⟹ᵀ-sub h (pHom-Nat-ss a b) = pHom-Nat-ss (⟹-sub h a) (⟹-sub h b)
+⟹ᵀ-sub {σ = σ} {σ'} h (pHom-Π {A = A} {A'} {B = B} {B'} {f = f} {f'} {g = g} {g'} a b c d) =
+  subst (λ Z → subTy σ (Hom (Π A B) f g) ⟹ᵀ Z)
+        (cong₂ (λ x y → Π (subTy σ' A')
+                         (Hom (subTy (extS σ') B') (app x (var vz)) (app y (var vz))))
+               (sym (wk-sub σ' f')) (sym (wk-sub σ' g')))
+        (pHom-Π (⟹ᵀ-sub h a) (⟹ᵀ-sub (⟹-exts h) b) (⟹-sub h c) (⟹-sub h d))
+⟹ᵀ-sub h (pId a b c) = pId (⟹ᵀ-sub h a) (⟹-sub h b) (⟹-sub h c)
+⟹ᵀ-sub h pEl-⌜Nat⌝ = pEl-⌜Nat⌝
+⟹ᵀ-sub h pEl-⌜Unit⌝ = pEl-⌜Unit⌝
+⟹ᵀ-sub h (pIMu a b c) = pIMu (⟹-sub h a) (⟹-sub h b) (⟹-sub h c)
+⟹ᵀ-sub h (pEl-⌜IMu⌝ a b c) = pEl-⌜IMu⌝ (⟹-sub h a) (⟹-sub h b) (⟹-sub h c)
+⟹ᵀ-sub h (pDesc a) = pDesc (⟹-sub h a)
+⟹ᵀ-sub h pEl-⌜Fin⌝ = pEl-⌜Fin⌝
+⟹ᵀ-sub h (pDIh a m c d) = pDIh (⟹-sub h a) (⟹ᵀ-sub (⟹-exts (⟹-exts h)) m) (⟹-sub h c) (⟹-sub h d)
+⟹ᵀ-sub h pDIh-ι = pDIh-ι
+⟹ᵀ-sub h (pDIh-σ a m c d) = pDIh-σ (⟹-sub h a) (⟹ᵀ-sub (⟹-exts (⟹-exts h)) m) (⟹-sub h c) (⟹-sub h d)
+⟹ᵀ-sub {σ = σ} {σ'} h (pDIh-ρ {D = D} {D'} {j = j} {j'} {C = C} {C'} {p = p} {p'} {M = M} {M'} a m b c d) =
+  subst (λ Z → subTy σ (DIh D M (dρ j C) p) ⟹ᵀ Z)
+        (sym (cong₂ Σ' (iinst-sub σ' M' j' (fst p'))
+                        (cong₄ (λ w x y z → DIh w x y (snd z)) (wk-sub σ' D') (wk2-subTy σ' M') (wk-sub σ' C') (wk-sub σ' p'))))
+        (pDIh-ρ (⟹-sub h a) (⟹ᵀ-sub (⟹-exts (⟹-exts h)) m) (⟹-sub h b) (⟹-sub h c) (⟹-sub h d))
+⟹ᵀ-sub h (pEl-⌜Id⌝ a b c) = pEl-⌜Id⌝ (⟹-sub h a) (⟹-sub h b) (⟹-sub h c)
+
+------------------------------------------------------------------------
 -- Complete development + triangle for types.
 ------------------------------------------------------------------------
 
@@ -261,8 +403,28 @@ _⁺ᵀ : RTy Γ → RTy Γ
 base ⁺ᵀ         = base
 Unit ⁺ᵀ         = Unit
 Nat ⁺ᵀ          = Nat
-Mu D ⁺ᵀ         = Mu D
-IMu D I i ⁺ᵀ    = IMu D I (i ⁺)
+IMu I D i ⁺ᵀ = IMu (I ⁺) (D ⁺) (i ⁺)
+Desc I ⁺ᵀ = Desc (I ⁺)
+Fin n ⁺ᵀ = Fin n
+DIh D M (dι j) p ⁺ᵀ = Unit
+DIh D M (dσ S f) p ⁺ᵀ = DIh (D ⁺) (M ⁺ᵀ) (app (f ⁺) (fst (p ⁺))) (snd (p ⁺))
+DIh D M (dρ j C) p ⁺ᵀ =
+  Σ' (iinst (j ⁺) (fst (p ⁺)) (M ⁺ᵀ))
+     (DIh (renTm vs (D ⁺)) (renTy (extR (extR vs)) (M ⁺ᵀ)) (renTm vs (C ⁺)) (snd (renTm vs (p ⁺))))
+DIh D M C p ⁺ᵀ = DIh (D ⁺) (M ⁺ᵀ) (C ⁺) (p ⁺)
+El (⌜IMu⌝ I D i) ⁺ᵀ = IMu (I ⁺) (D ⁺) (i ⁺)
+El (⌜Fin⌝ n) ⁺ᵀ = Fin n
+El (con c) ⁺ᵀ = El (con c ⁺)
+El (dι j) ⁺ᵀ = El (dι j ⁺)
+El (dσ S f) ⁺ᵀ = El (dσ S f ⁺)
+El (dρ j C) ⁺ᵀ = El (dρ j C ⁺)
+El (dpay I D C i) ⁺ᵀ = El (dpay I D C i ⁺)
+El (dih D e C p) ⁺ᵀ = El (dih D e C p ⁺)
+El fzero ⁺ᵀ = El (fzero ⁺)
+El (fsuc t) ⁺ᵀ = El (fsuc t ⁺)
+El (fcase t a b) ⁺ᵀ = El (fcase t a b ⁺)
+El (fcase0 t) ⁺ᵀ = El (fcase0 t ⁺)
+El (psplit b q) ⁺ᵀ = El (psplit b q ⁺)
 U ⁺ᵀ            = U
 El (var x) ⁺ᵀ   = El (var x ⁺)
 El (lam t) ⁺ᵀ   = El (lam t ⁺)
@@ -272,12 +434,9 @@ El (absurd c e) ⁺ᵀ = El (absurd c e ⁺)
 El (ordtr a t u p q) ⁺ᵀ = El (ordtr a t u p q ⁺)
 El (fst p) ⁺ᵀ   = El (fst p ⁺)
 El (snd p) ⁺ᵀ   = El (snd p ⁺)
-El (icon k p) ⁺ᵀ = El (icon k p ⁺)
 El (ielim D i ms t) ⁺ᵀ = El (ielim D i ms t ⁺)
 El ⌜Nat⌝ ⁺ᵀ     = Nat
 El ⌜Unit⌝ ⁺ᵀ    = Unit
-El (⌜Mu⌝ Dᵐ) ⁺ᵀ = Mu Dᵐ
-El (⌜IMu⌝ D I i) ⁺ᵀ = IMu D I (i ⁺)
 El ⌜base⌝ ⁺ᵀ    = base
 El (⌜Π⌝ c d) ⁺ᵀ = Π (El (c ⁺)) (El (d ⁺))
 El (⌜Σ⌝ c d) ⁺ᵀ = Σ' (El (c ⁺)) (El (d ⁺))
@@ -292,8 +451,17 @@ El (jsub d p e) ⁺ᵀ  = El (jsub d p e ⁺)
 El (hrefl c t) ⁺ᵀ   = El (hrefl c t ⁺)
 El (tr d p e) ⁺ᵀ    = El (tr d p e ⁺)
 El (ap c b p) ⁺ᵀ    = El (ap c b p ⁺)
-El (con k c) ⁺ᵀ     = El (con k c ⁺)
-El (elim D ms t) ⁺ᵀ = El (elim D ms t ⁺)
+El (con p) ⁺ᵀ       = El (con p ⁺)
+El (dι j) ⁺ᵀ        = El (dι j ⁺)
+El (dσ S f) ⁺ᵀ      = El (dσ S f ⁺)
+El (dρ j C) ⁺ᵀ      = El (dρ j C ⁺)
+El (dpay I D C i) ⁺ᵀ = El (dpay I D C i ⁺)
+El (dih D e C p) ⁺ᵀ = El (dih D e C p ⁺)
+El fzero ⁺ᵀ         = El (fzero ⁺)
+El (fsuc t) ⁺ᵀ      = El (fsuc t ⁺)
+El (fcase t a b) ⁺ᵀ = El (fcase t a b ⁺)
+El (fcase0 t) ⁺ᵀ    = El (fcase0 t ⁺)
+El (psplit b q) ⁺ᵀ  = El (psplit b q ⁺)
 Π A B ⁺ᵀ        = Π (A ⁺ᵀ) (B ⁺ᵀ)
 Σ' A B ⁺ᵀ       = Σ' (A ⁺ᵀ) (B ⁺ᵀ)
 -- W2: `Hom` develops by the head of its TYPE argument.  Where the head is
@@ -318,11 +486,12 @@ Hom (Σ' A B) t u ⁺ᵀ    = Hom (Σ' (A ⁺ᵀ) (B ⁺ᵀ)) (t ⁺) (u ⁺)
 Hom (El e) t u ⁺ᵀ      = Hom ((El e) ⁺ᵀ) (t ⁺) (u ⁺)
 Hom (Hom A a b) t u ⁺ᵀ = Hom ((Hom A a b) ⁺ᵀ) (t ⁺) (u ⁺)
 Hom (Id A a b) t u ⁺ᵀ  = Hom ((Id A a b) ⁺ᵀ) (t ⁺) (u ⁺)
-Hom (Mu D) t u ⁺ᵀ      = Hom (Mu D) (t ⁺) (u ⁺)
--- ⚠ unlike `Mu`, the ambient itself develops — the index steps.
-Hom (IMu D I i) t u ⁺ᵀ = Hom (IMu D I (i ⁺)) (t ⁺) (u ⁺)
 -- the two-former kernel: `Id` is INERT — a UNIFORM development row, no
 -- head dispatch at all.
+Hom (IMu I D i) t u ⁺ᵀ = Hom (IMu (I ⁺) (D ⁺) (i ⁺)) (t ⁺) (u ⁺)
+Hom (Desc I) t u ⁺ᵀ = Hom (Desc (I ⁺)) (t ⁺) (u ⁺)
+Hom (Fin n) t u ⁺ᵀ = Hom (Fin n) (t ⁺) (u ⁺)
+Hom (DIh D M C p) t u ⁺ᵀ = Hom ((DIh D M C p) ⁺ᵀ) (t ⁺) (u ⁺)
 Id A t u ⁺ᵀ = Id (A ⁺ᵀ) (t ⁺) (u ⁺)
 
 ⟹ᵀ-⁺ : {A B : RTy Γ} → A ⟹ᵀ B → B ⟹ᵀ A ⁺ᵀ
@@ -330,50 +499,12 @@ Id A t u ⁺ᵀ = Id (A ⁺ᵀ) (t ⁺) (u ⁺)
 ⟹ᵀ-⁺ pU             = pU
 ⟹ᵀ-⁺ pEl-⌜Nat⌝      = pNat
 ⟹ᵀ-⁺ pEl-⌜Unit⌝     = pUnit
-⟹ᵀ-⁺ pEl-⌜Mu⌝       = pMu
 ⟹ᵀ-⁺ pUnit          = pUnit
 ⟹ᵀ-⁺ pNat           = pNat
-⟹ᵀ-⁺ pMu            = pMu
-⟹ᵀ-⁺ (pIMu p)       = pIMu (⟹-⁺ p)
-⟹ᵀ-⁺ (pEl-⌜IMu⌝ p)  = pIMu (⟹-⁺ p)
-
-------------------------------------------------------------------------
--- ★ INDUCTIVE TYPES — ten rows, and every one of them is congruence.
---   `con`/`elim` heads are inert AS CODES (`El`) and as `Hom`-at-`Nat`
---   ENDPOINTS: neither `El`'s decoding nor the ordered-Nat unfolding keys
---   on them, so the type layer just develops the pieces.  `pMu` in the
---   ambient position is the same story for the new TYPE former.
-------------------------------------------------------------------------
 ⟹ᵀ-⁺ (pEl w@(pcon _))    = pEl (⟹-⁺ w)
-⟹ᵀ-⁺ (pEl w@(pelim _ _)) = pEl (⟹-⁺ w)
-⟹ᵀ-⁺ (pEl w@(pι _ _))    = pEl (⟹-⁺ w)
-⟹ᵀ-⁺ (pEl w@(picon _))      = pEl (⟹-⁺ w)
-⟹ᵀ-⁺ (pEl w@(pielim _ _ _)) = pEl (⟹-⁺ w)
-⟹ᵀ-⁺ (pEl w@(pιi _ _ _))    = pEl (⟹-⁺ w)
 ⟹ᵀ-⁺ (pHom pNat (pnsuc pm) w@(pcon _)) =
   pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ w)
-⟹ᵀ-⁺ (pHom pNat (pnsuc pm) w@(pelim _ _)) =
-  pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ w)
-⟹ᵀ-⁺ (pHom pNat (pnsuc pm) w@(pι _ _)) =
-  pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ w)
-⟹ᵀ-⁺ (pHom pNat (pnsuc pm) w@(picon _)) =
-  pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ w)
-⟹ᵀ-⁺ (pHom pNat (pnsuc pm) w@(pielim _ _ _)) =
-  pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ w)
-⟹ᵀ-⁺ (pHom pNat (pnsuc pm) w@(pιi _ _ _)) =
-  pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ w)
-⟹ᵀ-⁺ (pHom pNat (pnsuc pm) w@(p⌜IMu⌝ _)) =
-  pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ w)
 ⟹ᵀ-⁺ (pHom pNat w@(pcon _) pu)    = pHom pNat (⟹-⁺ w) (⟹-⁺ pu)
-⟹ᵀ-⁺ (pHom pNat w@(pelim _ _) pu) = pHom pNat (⟹-⁺ w) (⟹-⁺ pu)
-⟹ᵀ-⁺ (pHom pNat w@(pι _ _) pu)    = pHom pNat (⟹-⁺ w) (⟹-⁺ pu)
-⟹ᵀ-⁺ (pHom pNat w@(picon _) pu)      = pHom pNat (⟹-⁺ w) (⟹-⁺ pu)
-⟹ᵀ-⁺ (pHom pNat w@(pielim _ _ _) pu) = pHom pNat (⟹-⁺ w) (⟹-⁺ pu)
-⟹ᵀ-⁺ (pHom pNat w@(pιi _ _ _) pu)    = pHom pNat (⟹-⁺ w) (⟹-⁺ pu)
-⟹ᵀ-⁺ (pHom pNat w@(p⌜IMu⌝ _) pu)     = pHom pNat (⟹-⁺ w) (⟹-⁺ pu)
-⟹ᵀ-⁺ (pHom pMu pt pu) = pHom pMu (⟹-⁺ pt) (⟹-⁺ pu)
-⟹ᵀ-⁺ (pHom (pIMu p) pt pu)      = pHom (pIMu (⟹-⁺ p)) (⟹-⁺ pt) (⟹-⁺ pu)
-⟹ᵀ-⁺ (pHom (pEl-⌜IMu⌝ p) pt pu) = pHom (pIMu (⟹-⁺ p)) (⟹-⁺ pt) (⟹-⁺ pu)
 ⟹ᵀ-⁺ (pEl w@punit)  = pEl (⟹-⁺ w)
 ⟹ᵀ-⁺ (pEl w@pnzero) = pEl (⟹-⁺ w)
 ⟹ᵀ-⁺ (pEl w@(pnsuc _))  = pEl (⟹-⁺ w)
@@ -398,8 +529,6 @@ Id A t u ⁺ᵀ = Id (A ⁺ᵀ) (t ⁺) (u ⁺)
 ⟹ᵀ-⁺ (pEl (pβsnd p q)) = pEl (⟹-⁺ (pβsnd p q))
 ⟹ᵀ-⁺ (pEl p⌜Nat⌝)    = pEl-⌜Nat⌝
 ⟹ᵀ-⁺ (pEl p⌜Unit⌝)   = pEl-⌜Unit⌝
-⟹ᵀ-⁺ (pEl p⌜Mu⌝)     = pEl-⌜Mu⌝
-⟹ᵀ-⁺ (pEl (p⌜IMu⌝ p)) = pEl-⌜IMu⌝ (⟹-⁺ p)
 ⟹ᵀ-⁺ (pEl w@(ptr-J-Unit _)) = pEl (⟹-⁺ w)
 ⟹ᵀ-⁺ (pEl p⌜base⌝)   = pEl-⌜base⌝
 ⟹ᵀ-⁺ (pEl (p⌜Π⌝ p q)) = pEl-⌜Π⌝ (⟹-⁺ p) (⟹-⁺ q)
@@ -415,13 +544,35 @@ Id A t u ⁺ᵀ = Id (A ⁺ᵀ) (t ⁺) (u ⁺)
 ⟹ᵀ-⁺ (pEl w@(ptr-J-Hom _ _))   = pEl (⟹-⁺ w)
 ⟹ᵀ-⁺ (pEl w@(ptr-pw _ _ _ _ _)) = pEl (⟹-⁺ w)
 ⟹ᵀ-⁺ (pEl w@(ptr-J-Id _)) = pEl (⟹-⁺ w)
+⟹ᵀ-⁺ (pEl w@(pcon _)) = pEl (⟹-⁺ w)
+⟹ᵀ-⁺ (pEl w@(pielim _ _ _ _)) = pEl (⟹-⁺ w)
+⟹ᵀ-⁺ (pEl w@(pι _ _ _ _)) = pEl (⟹-⁺ w)
+⟹ᵀ-⁺ (pEl w@(pdι _)) = pEl (⟹-⁺ w)
+⟹ᵀ-⁺ (pEl w@(pdσ _ _)) = pEl (⟹-⁺ w)
+⟹ᵀ-⁺ (pEl w@(pdρ _ _)) = pEl (⟹-⁺ w)
+⟹ᵀ-⁺ (pEl w@(pdpay _ _ _ _)) = pEl (⟹-⁺ w)
+⟹ᵀ-⁺ (pEl w@(pdpay-ι _ _ _)) = pEl (⟹-⁺ w)
+⟹ᵀ-⁺ (pEl w@(pdpay-σ _ _ _ _ _)) = pEl (⟹-⁺ w)
+⟹ᵀ-⁺ (pEl w@(pdpay-ρ _ _ _ _ _)) = pEl (⟹-⁺ w)
+⟹ᵀ-⁺ (pEl w@(pdih _ _ _ _)) = pEl (⟹-⁺ w)
+⟹ᵀ-⁺ (pEl w@pdih-ι) = pEl (⟹-⁺ w)
+⟹ᵀ-⁺ (pEl w@(pdih-σ _ _ _ _)) = pEl (⟹-⁺ w)
+⟹ᵀ-⁺ (pEl w@(pdih-ρ _ _ _ _ _)) = pEl (⟹-⁺ w)
+⟹ᵀ-⁺ (pEl w@pfzero) = pEl (⟹-⁺ w)
+⟹ᵀ-⁺ (pEl w@(pfsuc _)) = pEl (⟹-⁺ w)
+⟹ᵀ-⁺ (pEl w@(pfcase _ _ _)) = pEl (⟹-⁺ w)
+⟹ᵀ-⁺ (pEl w@(pfcase-z _)) = pEl (⟹-⁺ w)
+⟹ᵀ-⁺ (pEl w@(pfcase-s _ _)) = pEl (⟹-⁺ w)
+⟹ᵀ-⁺ (pEl w@(pfcase0 _)) = pEl (⟹-⁺ w)
+⟹ᵀ-⁺ (pEl w@(ppsplit _ _)) = pEl (⟹-⁺ w)
+⟹ᵀ-⁺ (pEl w@(ppsplit-β _ _ _)) = pEl (⟹-⁺ w)
+⟹ᵀ-⁺ (pEl w@(ptr-J-Fin _)) = pEl (⟹-⁺ w)
 ⟹ᵀ-⁺ (pEl w@(pap _ _ _))        = pEl (⟹-⁺ w)
 ⟹ᵀ-⁺ (pEl w@(pap-J _ _ _ _))    = pEl (⟹-⁺ w)
 ⟹ᵀ-⁺ (pEl w@(pidrefl _ _))      = pEl (⟹-⁺ w)
 ⟹ᵀ-⁺ (pEl w@(pjsub _ _ _))      = pEl (⟹-⁺ w)
 ⟹ᵀ-⁺ (pEl w@(pjsub-refl _))     = pEl (⟹-⁺ w)
 -- ★ a J-step under `El` is just a term step: the code is not the head.
-⟹ᵀ-⁺ (pEl w@(ptr-J-Mu _))       = pEl (⟹-⁺ w)
 ⟹ᵀ-⁺ (pEl w@(ptr-J-IMu _))       = pEl (⟹-⁺ w)
 ⟹ᵀ-⁺ (pΠ p q)       = pΠ (⟹ᵀ-⁺ p) (⟹ᵀ-⁺ q)
 ⟹ᵀ-⁺ (pΣ p q)       = pΣ (⟹ᵀ-⁺ p) (⟹ᵀ-⁺ q)
@@ -469,8 +620,6 @@ Id A t u ⁺ᵀ = Id (A ⁺ᵀ) (t ⁺) (u ⁺)
 ⟹ᵀ-⁺ (pHom pNat (pnsuc pm) pu@(pβsnd _ _)) = pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ pu)
 ⟹ᵀ-⁺ (pHom pNat (pnsuc pm) pu@p⌜Nat⌝) = pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ pu)
 ⟹ᵀ-⁺ (pHom pNat (pnsuc pm) pu@p⌜Unit⌝) = pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ pu)
-⟹ᵀ-⁺ (pHom pNat (pnsuc pm) pu@p⌜Mu⌝)   = pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ pu)
-⟹ᵀ-⁺ (pHom pNat (pnsuc pm) pu@(ptr-J-Mu _)) = pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ pu)
 ⟹ᵀ-⁺ (pHom pNat (pnsuc pm) pu@(ptr-J-IMu _)) = pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ pu)
 ⟹ᵀ-⁺ (pHom pNat (pnsuc pm) pu@(ptr-J-Unit _)) = pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ pu)
 ⟹ᵀ-⁺ (pHom pNat (pnsuc pm) pu@p⌜base⌝) = pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ pu)
@@ -496,6 +645,31 @@ Id A t u ⁺ᵀ = Id (A ⁺ᵀ) (t ⁺) (u ⁺)
 ⟹ᵀ-⁺ (pHom pNat (pnsuc pm) pu@(pnatrec _ _ _)) = pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ pu)
 ⟹ᵀ-⁺ (pHom pNat (pnsuc pm) pu@(pnatrec-zero _ _)) = pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ pu)
 ⟹ᵀ-⁺ (pHom pNat (pnsuc pm) pu@(pnatrec-suc _ _ _)) = pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom pNat (pnsuc pm) pu@(pcon _)) = pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom pNat (pnsuc pm) pu@(p⌜IMu⌝ _ _ _)) = pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom pNat (pnsuc pm) pu@p⌜Fin⌝) = pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom pNat (pnsuc pm) pu@(pielim _ _ _ _)) = pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom pNat (pnsuc pm) pu@(pι _ _ _ _)) = pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom pNat (pnsuc pm) pu@(pdι _)) = pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom pNat (pnsuc pm) pu@(pdσ _ _)) = pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom pNat (pnsuc pm) pu@(pdρ _ _)) = pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom pNat (pnsuc pm) pu@(pdpay _ _ _ _)) = pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom pNat (pnsuc pm) pu@(pdpay-ι _ _ _)) = pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom pNat (pnsuc pm) pu@(pdpay-σ _ _ _ _ _)) = pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom pNat (pnsuc pm) pu@(pdpay-ρ _ _ _ _ _)) = pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom pNat (pnsuc pm) pu@(pdih _ _ _ _)) = pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom pNat (pnsuc pm) pu@pdih-ι) = pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom pNat (pnsuc pm) pu@(pdih-σ _ _ _ _)) = pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom pNat (pnsuc pm) pu@(pdih-ρ _ _ _ _ _)) = pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom pNat (pnsuc pm) pu@pfzero) = pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom pNat (pnsuc pm) pu@(pfsuc _)) = pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom pNat (pnsuc pm) pu@(pfcase _ _ _)) = pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom pNat (pnsuc pm) pu@(pfcase-z _)) = pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom pNat (pnsuc pm) pu@(pfcase-s _ _)) = pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom pNat (pnsuc pm) pu@(pfcase0 _)) = pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom pNat (pnsuc pm) pu@(ppsplit _ _)) = pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom pNat (pnsuc pm) pu@(ppsplit-β _ _ _)) = pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom pNat (pnsuc pm) pu@(ptr-J-Fin _)) = pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ pu)
 ⟹ᵀ-⁺ (pHom pNat pt@(pvar _) pu) = pHom pNat (⟹-⁺ pt) (⟹-⁺ pu)
 ⟹ᵀ-⁺ (pHom pNat pt@(plam _) pu) = pHom pNat (⟹-⁺ pt) (⟹-⁺ pu)
 ⟹ᵀ-⁺ (pHom pNat pt@(papp _ _) pu) = pHom pNat (⟹-⁺ pt) (⟹-⁺ pu)
@@ -507,8 +681,6 @@ Id A t u ⁺ᵀ = Id (A ⁺ᵀ) (t ⁺) (u ⁺)
 ⟹ᵀ-⁺ (pHom pNat pt@(pβsnd _ _) pu) = pHom pNat (⟹-⁺ pt) (⟹-⁺ pu)
 ⟹ᵀ-⁺ (pHom pNat pt@p⌜Nat⌝ pu) = pHom pNat (⟹-⁺ pt) (⟹-⁺ pu)
 ⟹ᵀ-⁺ (pHom pNat pt@p⌜Unit⌝ pu) = pHom pNat (⟹-⁺ pt) (⟹-⁺ pu)
-⟹ᵀ-⁺ (pHom pNat pt@p⌜Mu⌝ pu)   = pHom pNat (⟹-⁺ pt) (⟹-⁺ pu)
-⟹ᵀ-⁺ (pHom pNat pt@(ptr-J-Mu _) pu) = pHom pNat (⟹-⁺ pt) (⟹-⁺ pu)
 ⟹ᵀ-⁺ (pHom pNat pt@(ptr-J-IMu _) pu) = pHom pNat (⟹-⁺ pt) (⟹-⁺ pu)
 ⟹ᵀ-⁺ (pHom pNat pt@(ptr-J-Unit _) pu) = pHom pNat (⟹-⁺ pt) (⟹-⁺ pu)
 ⟹ᵀ-⁺ (pHom pNat pt@p⌜base⌝ pu) = pHom pNat (⟹-⁺ pt) (⟹-⁺ pu)
@@ -534,6 +706,31 @@ Id A t u ⁺ᵀ = Id (A ⁺ᵀ) (t ⁺) (u ⁺)
 ⟹ᵀ-⁺ (pHom pNat pt@(pnatrec _ _ _) pu) = pHom pNat (⟹-⁺ pt) (⟹-⁺ pu)
 ⟹ᵀ-⁺ (pHom pNat pt@(pnatrec-zero _ _) pu) = pHom pNat (⟹-⁺ pt) (⟹-⁺ pu)
 ⟹ᵀ-⁺ (pHom pNat pt@(pnatrec-suc _ _ _) pu) = pHom pNat (⟹-⁺ pt) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom pNat pt@(pcon _) pu) = pHom pNat (⟹-⁺ pt) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom pNat pt@(p⌜IMu⌝ _ _ _) pu) = pHom pNat (⟹-⁺ pt) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom pNat pt@p⌜Fin⌝ pu) = pHom pNat (⟹-⁺ pt) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom pNat pt@(pielim _ _ _ _) pu) = pHom pNat (⟹-⁺ pt) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom pNat pt@(pι _ _ _ _) pu) = pHom pNat (⟹-⁺ pt) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom pNat pt@(pdι _) pu) = pHom pNat (⟹-⁺ pt) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom pNat pt@(pdσ _ _) pu) = pHom pNat (⟹-⁺ pt) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom pNat pt@(pdρ _ _) pu) = pHom pNat (⟹-⁺ pt) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom pNat pt@(pdpay _ _ _ _) pu) = pHom pNat (⟹-⁺ pt) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom pNat pt@(pdpay-ι _ _ _) pu) = pHom pNat (⟹-⁺ pt) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom pNat pt@(pdpay-σ _ _ _ _ _) pu) = pHom pNat (⟹-⁺ pt) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom pNat pt@(pdpay-ρ _ _ _ _ _) pu) = pHom pNat (⟹-⁺ pt) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom pNat pt@(pdih _ _ _ _) pu) = pHom pNat (⟹-⁺ pt) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom pNat pt@pdih-ι pu) = pHom pNat (⟹-⁺ pt) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom pNat pt@(pdih-σ _ _ _ _) pu) = pHom pNat (⟹-⁺ pt) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom pNat pt@(pdih-ρ _ _ _ _ _) pu) = pHom pNat (⟹-⁺ pt) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom pNat pt@pfzero pu) = pHom pNat (⟹-⁺ pt) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom pNat pt@(pfsuc _) pu) = pHom pNat (⟹-⁺ pt) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom pNat pt@(pfcase _ _ _) pu) = pHom pNat (⟹-⁺ pt) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom pNat pt@(pfcase-z _) pu) = pHom pNat (⟹-⁺ pt) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom pNat pt@(pfcase-s _ _) pu) = pHom pNat (⟹-⁺ pt) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom pNat pt@(pfcase0 _) pu) = pHom pNat (⟹-⁺ pt) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom pNat pt@(ppsplit _ _) pu) = pHom pNat (⟹-⁺ pt) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom pNat pt@(ppsplit-β _ _ _) pu) = pHom pNat (⟹-⁺ pt) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom pNat pt@(ptr-J-Fin _) pu) = pHom pNat (⟹-⁺ pt) (⟹-⁺ pu)
 ⟹ᵀ-⁺ (pHom (pΣ pA pB) pt pu) =
   pHom (pΣ (⟹ᵀ-⁺ pA) (⟹ᵀ-⁺ pB)) (⟹-⁺ pt) (⟹-⁺ pu)
 ⟹ᵀ-⁺ (pHom (pEl pe) pt pu)   =
@@ -542,7 +739,6 @@ Id A t u ⁺ᵀ = Id (A ⁺ᵀ) (t ⁺) (u ⁺)
 -- endpoints — the same one-step-behind principle `El` itself uses.
 ⟹ᵀ-⁺ (pHom pEl-⌜Nat⌝ pt pu)  = pHom pNat (⟹-⁺ pt) (⟹-⁺ pu)
 ⟹ᵀ-⁺ (pHom pEl-⌜Unit⌝ pt pu) = pHom pUnit (⟹-⁺ pt) (⟹-⁺ pu)
-⟹ᵀ-⁺ (pHom pEl-⌜Mu⌝ pt pu)   = pHom pMu (⟹-⁺ pt) (⟹-⁺ pu)
 ⟹ᵀ-⁺ (pHom pEl-⌜base⌝ pt pu) =
   pHom (⟹ᵀ-⁺ pEl-⌜base⌝) (⟹-⁺ pt) (⟹-⁺ pu)
 ⟹ᵀ-⁺ (pHom (pEl-⌜Π⌝ p q) pt pu) =
@@ -581,6 +777,100 @@ Id A t u ⁺ᵀ = Id (A ⁺ᵀ) (t ⁺) (u ⁺)
 
 ------------------------------------------------------------------------
 -- Diamond → confluence → Church–Rosser, for types.
+-- ★★ LEVITATION: the family type formers and the hypotheses type.
+⟹ᵀ-⁺ (pIMu a b c) = pIMu (⟹-⁺ a) (⟹-⁺ b) (⟹-⁺ c)
+⟹ᵀ-⁺ (pEl-⌜IMu⌝ a b c) = pIMu (⟹-⁺ a) (⟹-⁺ b) (⟹-⁺ c)
+⟹ᵀ-⁺ (pEl (p⌜IMu⌝ a b c)) = pEl-⌜IMu⌝ (⟹-⁺ a) (⟹-⁺ b) (⟹-⁺ c)
+⟹ᵀ-⁺ (pDesc a) = pDesc (⟹-⁺ a)
+⟹ᵀ-⁺ pFin = pFin
+⟹ᵀ-⁺ pEl-⌜Fin⌝ = pFin
+⟹ᵀ-⁺ (pEl p⌜Fin⌝) = pEl-⌜Fin⌝
+⟹ᵀ-⁺ (pDIh pD pM (pdι pj) pp) = pDIh-ι
+⟹ᵀ-⁺ (pDIh pD pM (pdσ pS pf) pp) = pDIh-σ (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ pf) (⟹-⁺ pp)
+⟹ᵀ-⁺ (pDIh pD pM (pdρ pj pC) pp) = pDIh-ρ (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ pj) (⟹-⁺ pC) (⟹-⁺ pp)
+⟹ᵀ-⁺ (pDIh pD pM w@(pvar _) pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
+⟹ᵀ-⁺ (pDIh pD pM w@(plam _) pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
+⟹ᵀ-⁺ (pDIh pD pM w@(papp _ _) pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
+⟹ᵀ-⁺ (pDIh pD pM w@(pβ _ _) pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
+⟹ᵀ-⁺ (pDIh pD pM w@(ppair _ _) pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
+⟹ᵀ-⁺ (pDIh pD pM w@(pabsurd _ _) pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
+⟹ᵀ-⁺ (pDIh pD pM w@(pordtr _ _ _ _ _) pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
+⟹ᵀ-⁺ (pDIh pD pM w@pordtr-z pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
+⟹ᵀ-⁺ (pDIh pD pM w@(pordtr-szz _) pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
+⟹ᵀ-⁺ (pDIh pD pM w@(pordtr-ssz _) pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
+⟹ᵀ-⁺ (pDIh pD pM w@(pordtr-szs _ _ _) pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
+⟹ᵀ-⁺ (pDIh pD pM w@(pordtr-sss _ _ _ _ _) pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
+⟹ᵀ-⁺ (pDIh pD pM w@(pfst _) pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
+⟹ᵀ-⁺ (pDIh pD pM w@(psnd _) pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
+⟹ᵀ-⁺ (pDIh pD pM w@(pβfst _ _) pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
+⟹ᵀ-⁺ (pDIh pD pM w@(pβsnd _ _) pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
+⟹ᵀ-⁺ (pDIh pD pM w@p⌜base⌝ pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
+⟹ᵀ-⁺ (pDIh pD pM w@(p⌜Π⌝ _ _) pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
+⟹ᵀ-⁺ (pDIh pD pM w@(p⌜Σ⌝ _ _) pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
+⟹ᵀ-⁺ (pDIh pD pM w@(p⌜Hom⌝ _ _ _) pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
+⟹ᵀ-⁺ (pDIh pD pM w@(phrefl _ _) pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
+⟹ᵀ-⁺ (pDIh pD pM w@(ptr _ _ _) pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
+⟹ᵀ-⁺ (pDIh pD pM w@(ptr-J-base _) pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
+⟹ᵀ-⁺ (pDIh pD pM w@p⌜Nat⌝ pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
+⟹ᵀ-⁺ (pDIh pD pM w@p⌜Unit⌝ pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
+⟹ᵀ-⁺ (pDIh pD pM w@(ptr-J-Unit _) pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
+⟹ᵀ-⁺ (pDIh pD pM w@(ptr-J-IMu _) pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
+⟹ᵀ-⁺ (pDIh pD pM w@(ptr-J-Fin _) pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
+⟹ᵀ-⁺ (pDIh pD pM w@(ptr-J-Σ _) pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
+⟹ᵀ-⁺ (pDIh pD pM w@(ptr-J-Id _) pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
+⟹ᵀ-⁺ (pDIh pD pM w@(ptr-taut _ _) pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
+⟹ᵀ-⁺ (pDIh pD pM w@(phrefl-pw _ _ _) pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
+⟹ᵀ-⁺ (pDIh pD pM w@(ptr-J-Hom _ _) pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
+⟹ᵀ-⁺ (pDIh pD pM w@(ptr-pw _ _ _ _ _) pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
+⟹ᵀ-⁺ (pDIh pD pM w@(pap _ _ _) pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
+⟹ᵀ-⁺ (pDIh pD pM w@(pap-J _ _ _ _) pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
+⟹ᵀ-⁺ (pDIh pD pM w@(p⌜Id⌝ _ _ _) pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
+⟹ᵀ-⁺ (pDIh pD pM w@(pidrefl _ _) pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
+⟹ᵀ-⁺ (pDIh pD pM w@(pjsub _ _ _) pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
+⟹ᵀ-⁺ (pDIh pD pM w@(pjsub-refl _) pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
+⟹ᵀ-⁺ (pDIh pD pM w@punit pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
+⟹ᵀ-⁺ (pDIh pD pM w@pnzero pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
+⟹ᵀ-⁺ (pDIh pD pM w@(pnsuc _) pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
+⟹ᵀ-⁺ (pDIh pD pM w@(pnatrec _ _ _) pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
+⟹ᵀ-⁺ (pDIh pD pM w@(pnatrec-zero _ _) pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
+⟹ᵀ-⁺ (pDIh pD pM w@(pnatrec-suc _ _ _) pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
+⟹ᵀ-⁺ (pDIh pD pM w@(p⌜IMu⌝ _ _ _) pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
+⟹ᵀ-⁺ (pDIh pD pM w@p⌜Fin⌝ pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
+⟹ᵀ-⁺ (pDIh pD pM w@(pcon _) pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
+⟹ᵀ-⁺ (pDIh pD pM w@(pielim _ _ _ _) pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
+⟹ᵀ-⁺ (pDIh pD pM w@(pι _ _ _ _) pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
+⟹ᵀ-⁺ (pDIh pD pM w@(pdpay _ _ _ _) pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
+⟹ᵀ-⁺ (pDIh pD pM w@(pdpay-ι _ _ _) pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
+⟹ᵀ-⁺ (pDIh pD pM w@(pdpay-σ _ _ _ _ _) pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
+⟹ᵀ-⁺ (pDIh pD pM w@(pdpay-ρ _ _ _ _ _) pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
+⟹ᵀ-⁺ (pDIh pD pM w@(pdih _ _ _ _) pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
+⟹ᵀ-⁺ (pDIh pD pM w@pdih-ι pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
+⟹ᵀ-⁺ (pDIh pD pM w@(pdih-σ _ _ _ _) pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
+⟹ᵀ-⁺ (pDIh pD pM w@(pdih-ρ _ _ _ _ _) pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
+⟹ᵀ-⁺ (pDIh pD pM w@pfzero pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
+⟹ᵀ-⁺ (pDIh pD pM w@(pfsuc _) pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
+⟹ᵀ-⁺ (pDIh pD pM w@(pfcase _ _ _) pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
+⟹ᵀ-⁺ (pDIh pD pM w@(pfcase-z _) pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
+⟹ᵀ-⁺ (pDIh pD pM w@(pfcase-s _ _) pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
+⟹ᵀ-⁺ (pDIh pD pM w@(pfcase0 _) pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
+⟹ᵀ-⁺ (pDIh pD pM w@(ppsplit _ _) pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
+⟹ᵀ-⁺ (pDIh pD pM w@(ppsplit-β _ _ _) pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
+⟹ᵀ-⁺ pDIh-ι = pUnit
+⟹ᵀ-⁺ (pDIh-σ pD pM pf pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (papp (⟹-⁺ pf) (pfst (⟹-⁺ pp))) (psnd (⟹-⁺ pp))
+⟹ᵀ-⁺ (pDIh-ρ pD pM pj pC pp) =
+  pΣ (⟹ᵀ-sub (single-⟹ (pfst (⟹-⁺ pp))) (⟹ᵀ-sub (⟹-exts (single-⟹ (⟹-⁺ pj))) (⟹ᵀ-⁺ pM)))
+     (pDIh (⟹-ren vs (⟹-⁺ pD)) (⟹ᵀ-ren (extR (extR vs)) (⟹ᵀ-⁺ pM))
+           (⟹-ren vs (⟹-⁺ pC)) (psnd (⟹-ren vs (⟹-⁺ pp))))
+⟹ᵀ-⁺ (pHom w@(pIMu _ _ _) pt pu) = pHom (⟹ᵀ-⁺ w) (⟹-⁺ pt) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom w@(pEl-⌜IMu⌝ _ _ _) pt pu) = pHom (⟹ᵀ-⁺ w) (⟹-⁺ pt) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom w@(pDesc _) pt pu) = pHom (⟹ᵀ-⁺ w) (⟹-⁺ pt) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom w@pFin pt pu) = pHom (⟹ᵀ-⁺ w) (⟹-⁺ pt) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom w@pEl-⌜Fin⌝ pt pu) = pHom (⟹ᵀ-⁺ w) (⟹-⁺ pt) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom w@(pDIh _ _ _ _) pt pu) = pHom (⟹ᵀ-⁺ w) (⟹-⁺ pt) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom w@pDIh-ι pt pu) = pHom (⟹ᵀ-⁺ w) (⟹-⁺ pt) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom w@(pDIh-σ _ _ _ _) pt pu) = pHom (⟹ᵀ-⁺ w) (⟹-⁺ pt) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom w@(pDIh-ρ _ _ _ _ _) pt pu) = pHom (⟹ᵀ-⁺ w) (⟹-⁺ pt) (⟹-⁺ pu)
+
 ------------------------------------------------------------------------
 
 diamondᵀ : {A B C : RTy Γ} → A ⟹ᵀ B → A ⟹ᵀ C →
@@ -659,49 +949,68 @@ record ΠRed {Γ} (A : RTy Γ) (B : RTy (Γ ∙)) (C : RTy Γ) : Set where
 --   collapses immediately.
 ------------------------------------------------------------------------
 
-Muinj≡ : {D D' : Desc} → Mu {Γ} D ≡ Mu D' → D ≡ D'
-Muinj≡ refl = refl
-
-IMuinj≡ : {D D' : IDesc} {I I' : RTy ε} {i i' : RTm Γ} →
-          IMu {Γ} D I i ≡ IMu D' I' i' → (D ≡ D') × ((I ≡ I') × (i ≡ i'))
+-- ★ LEVITATION: `IMu` carries THREE terms (index code, description,
+--   index), each may reduce; `Desc` one; `Fin` is inert.
+IMuinj≡ : {I I' D D' i i' : RTm Γ} →
+          IMu I D i ≡ IMu I' D' i' → (I ≡ I') × ((D ≡ D') × (i ≡ i'))
 IMuinj≡ refl = (refl , (refl , refl))
 
-Mu-reduct : {D : Desc} {C : RTy Γ} → Mu D ⟶ᵀ* C → C ≡ Mu D
-Mu-reduct doneᵀ        = refl
-Mu-reduct (stepᵀ () _)
-
-Mu-inj : {D D' : Desc} → Mu {Γ} D ≅ᵀ Mu D' → D ≡ D'
-Mu-inj c with church-rosserᵀ c
-... | C , (r₁ , r₂) = Muinj≡ (trans (sym (Mu-reduct r₁)) (Mu-reduct r₂))
-
--- ★ `IMu` is NOT inert, so `IMu-reduct` cannot be `Mu-reduct`'s `stepᵀ ()`.
---   Only `ξ-IMu` applies, so the SHAPE is preserved and the index reduces —
---   the `Π-reduct` pattern, with one moving part instead of two.
-record IMuRed {Γ : Cx} (D : IDesc) (I : RTy ε) (i : RTm Γ) (C : RTy Γ) : Set where
+record IMuRed {Γ : Cx} (I D i : RTm Γ) (C : RTy Γ) : Set where
   constructor mkIMuRed
   field
-    idx   : RTm Γ
-    eq    : C ≡ IMu D I idx
-    ridx  : i ⟶* idx
+    cod  : RTm Γ
+    desc : RTm Γ
+    idx  : RTm Γ
+    eq   : C ≡ IMu cod desc idx
+    rcod : I ⟶* cod
+    rdes : D ⟶* desc
+    ridx : i ⟶* idx
 
-IMu-reduct : {D : IDesc} {I : RTy ε} {i : RTm Γ} {C : RTy Γ} →
-             IMu D I i ⟶ᵀ* C → IMuRed D I i C
-IMu-reduct doneᵀ = mkIMuRed _ refl done
-IMu-reduct (stepᵀ (ξ-IMu r) p) with IMu-reduct p
-... | mkIMuRed j eq rj = mkIMuRed j eq (step r rj)
+IMu-reduct : {I D i : RTm Γ} {C : RTy Γ} → IMu I D i ⟶ᵀ* C → IMuRed I D i C
+IMu-reduct doneᵀ = mkIMuRed _ _ _ refl done done done
+IMu-reduct (stepᵀ (ξ-IMuᴵ r) p) with IMu-reduct p
+... | mkIMuRed a b c eq ra rb rc = mkIMuRed a b c eq (step r ra) rb rc
+IMu-reduct (stepᵀ (ξ-IMuᴰ r) p) with IMu-reduct p
+... | mkIMuRed a b c eq ra rb rc = mkIMuRed a b c eq ra (step r rb) rc
+IMu-reduct (stepᵀ (ξ-IMuⁱ r) p) with IMu-reduct p
+... | mkIMuRed a b c eq ra rb rc = mkIMuRed a b c eq ra rb (step r rc)
 
--- ⚠ the index is only ≅, not ≡ — it is a TERM and it reduces.  That is the
---   whole difference from `Mu-inj`, and it is why `⊢ielim` can retype its
---   scrutinee across `ξ-ielimⁱ`.
-IMu-inj : {D D' : IDesc} {I I' : RTy ε} {i i' : RTm Γ} →
-          IMu {Γ} D I i ≅ᵀ IMu D' I' i' →
-          (D ≡ D') × ((I ≡ I') × (i ≅ i'))
+-- ⚠ all three only ≅, not ≡ — they are TERMS and they reduce.
+IMu-inj : {I I' D D' i i' : RTm Γ} →
+          IMu I D i ≅ᵀ IMu I' D' i' → (I ≅ I') × ((D ≅ D') × (i ≅ i'))
 IMu-inj c with church-rosserᵀ c
 ... | C , (r₁ , r₂) with IMu-reduct r₁ | IMu-reduct r₂
-...   | mkIMuRed j₁ eq₁ rj₁ | mkIMuRed j₂ eq₂ rj₂ with IMuinj≡ (trans (sym eq₁) eq₂)
-...     | (eqD , (eqI , eqj)) =
-          (eqD , (eqI , ctrn (hom→≅ rj₁)
-                             (csym (hom→≅ (subst (_ ⟶*_) (sym eqj) rj₂)))))
+...   | mkIMuRed a₁ b₁ c₁ eq₁ ra₁ rb₁ rc₁ | mkIMuRed a₂ b₂ c₂ eq₂ ra₂ rb₂ rc₂
+        with IMuinj≡ (trans (sym eq₁) eq₂)
+...       | (ea , (eb , ec)) =
+            ctrn (hom→≅ ra₁) (csym (hom→≅ (subst (_ ⟶*_) (sym ea) ra₂)))
+          , (ctrn (hom→≅ rb₁) (csym (hom→≅ (subst (_ ⟶*_) (sym eb) rb₂)))
+          , ctrn (hom→≅ rc₁) (csym (hom→≅ (subst (_ ⟶*_) (sym ec) rc₂))))
+
+Desc-reduct : {I : RTm Γ} {C : RTy Γ} → Desc I ⟶ᵀ* C → Σ (RTm Γ) (λ J → (C ≡ Desc J) × (I ⟶* J))
+Desc-reduct doneᵀ = _ , (refl , done)
+Desc-reduct (stepᵀ (ξ-Desc r) p) with Desc-reduct p
+... | J , (eq , rJ) = J , (eq , step r rJ)
+
+Descinj≡ : {I I' : RTm Γ} → Desc I ≡ Desc I' → I ≡ I'
+Descinj≡ refl = refl
+
+Desc-inj : {I I' : RTm Γ} → Desc I ≅ᵀ Desc I' → I ≅ I'
+Desc-inj c with church-rosserᵀ c
+... | C , (r₁ , r₂) with Desc-reduct r₁ | Desc-reduct r₂
+...   | J₁ , (eq₁ , rJ₁) | J₂ , (eq₂ , rJ₂) =
+        ctrn (hom→≅ rJ₁) (csym (hom→≅ (subst (_ ⟶*_) (sym (Descinj≡ (trans (sym eq₁) eq₂))) rJ₂)))
+
+Fin-reduct : {n : ℕ} {C : RTy Γ} → Fin n ⟶ᵀ* C → C ≡ Fin n
+Fin-reduct doneᵀ = refl
+Fin-reduct (stepᵀ () _)
+
+Fininj≡ : {n n' : ℕ} → Fin {Γ} n ≡ Fin n' → n ≡ n'
+Fininj≡ refl = refl
+
+Fin-inj : {n n' : ℕ} → Fin {Γ} n ≅ᵀ Fin n' → n ≡ n'
+Fin-inj c with church-rosserᵀ c
+... | C , (r₁ , r₂) = Fininj≡ (trans (sym (Fin-reduct r₁)) (Fin-reduct r₂))
 
 -- ★ Π-INJECTIVITY OF CONVERSION — dHoTT-24's scoped ceiling, discharged.
 Π-inj : {A A' : RTy Γ} {B B' : RTy (Γ ∙)} →

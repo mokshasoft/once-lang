@@ -165,11 +165,11 @@ data _⊢ᴬ_∷_ where
              Γ ⊢ᴬ n ∷ Nat →
              Γ ⊢ᴬ natrec M z s n ∷ subTyᴬ (singleᴬ n) M
   -- ★★ LEVITATED FAMILIES — index code (and motive, index) in the term
-  ⊢ᴬdι   : ∀ {Γ I j} → Γ ⊢ᴬ j ∷ El I → Γ ⊢ᴬ dι I j ∷ Desc I
+  ⊢ᴬdι   : ∀ {Γ I j} → Γ ⊢ᴬ I ∷ U → Γ ⊢ᴬ j ∷ El I → Γ ⊢ᴬ dι I j ∷ Desc I
   ⊢ᴬdσ   : ∀ {Γ I S f} → Γ ⊢ᴬ I ∷ U → Γ ⊢ᴬ S ∷ U →
            Γ ⊢ᴬ f ∷ Π (El S) (Desc (renTmᴬ vs I)) → Γ ⊢ᴬ dσ I S f ∷ Desc I
-  ⊢ᴬdρ   : ∀ {Γ I j C} → Γ ⊢ᴬ j ∷ El I → Γ ⊢ᴬ C ∷ Desc I → Γ ⊢ᴬ dρ I j C ∷ Desc I
-  ⊢ᴬdpay : ∀ {Γ I D C i} → Γ ⊢ᴬ D ∷ Desc I → Γ ⊢ᴬ C ∷ Desc I → Γ ⊢ᴬ i ∷ El I →
+  ⊢ᴬdρ   : ∀ {Γ I j C} → Γ ⊢ᴬ I ∷ U → Γ ⊢ᴬ j ∷ El I → Γ ⊢ᴬ C ∷ Desc I → Γ ⊢ᴬ dρ I j C ∷ Desc I
+  ⊢ᴬdpay : ∀ {Γ I D C i} → Γ ⊢ᴬ I ∷ U → Γ ⊢ᴬ D ∷ Desc I → Γ ⊢ᴬ C ∷ Desc I → Γ ⊢ᴬ i ∷ El I →
            Γ ⊢ᴬ dpay I D C i ∷ U
   ⊢ᴬcon  : ∀ {Γ I D i p} → Γ ⊢ᴬ D ∷ Desc I → Γ ⊢ᴬ i ∷ El I →
            Γ ⊢ᴬ p ∷ El (dpay I D D i) → Γ ⊢ᴬ con I D i p ∷ IMu I D i

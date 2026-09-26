@@ -41,6 +41,54 @@ over c constructors is c-1 nested `fcase`s (the elaborator's job).
 `fst`/`snd` remain primitive for now; deriving them from `psplit` (D071)
 is a follow-up stage once everything is green.
 
+## Stage 2 — progress (2026-09-26)
+
+- ✅ `SubjectReductionBase`, `RedCong`, `TySub` (committed).
+- `Confluence`: rows done; ⚠ the family cloner's `NEW` list omitted `pcon`
+  (the old `Mu` already had a `pcon`), so every family missed its `pcon`
+  row — re-cloned for `pcon` alone. A cloned family member can itself be a
+  REDEX row (`pielim … (pcon _)` is ι): drop it, the explicit redex row wins.
+- `Injectivity`: `IMu-inj` gives three CONVERSIONS; `Desc-inj`, `Fin-inj`.
+- `SubjectReduction`: generation lemmas for every levitated former; ι by
+  `IMu-inj` + one payload transport + σ-calculus (`meth-inst`, no η);
+  `dσ-step`/`dρ-step` (the payload's two halves) shared with `Validity`.
+- ★ KERNEL FINDING (SR + Validity): every telescope former and `dpay`
+  carries `Γ ⊢ I ∷ U`. `dpay-ι`'s reduct `⌜Id⌝ I j i` needs it, and
+  `validity` of `dι j ∷ Desc I` needs it; the other premises give `I` only
+  under `El`/`Desc`, i.e. up to conversion, and `El I` may DECODE. This is
+  the levitation paper's rule shape (the index type is a premise).
+
+### LogicalRelation design (the stage's biggest unknown)
+
+- `⊩₀IMu : A ⟶ᵀ* IMu I D i → (⊩I : ⊩₀ (El I)) → IKInterp ⊩I D → ⊩₀ A`.
+  `IKInterp ⊩I C` (in the ⊩₀ block, S0-accepted shape) walks the
+  telescope by WHNF: `iki-ne` (stuck, carries `SN C`), `iki-ι`
+  (`C ⟶* dι j`), `iki-σ` (`C ⟶* dσ S f`, `w : ⊩₀ (El S)`, a tail over
+  `w`'s MEMBERS), `iki-ρ` (`C ⟶* dρ j C'`, `⊩I ⊩₀∋ j` — index validity is
+  what `⊢ielim`'s IH needs at the recursive field). SN at every node.
+- Membership `SN t × IMuMem (ikpredsOf K) i t`. `IMuMem`/`IKPred`/`ILift`
+  live BEFORE the block and take predicates (the S0 law). The `dι j` leaf's
+  payload is `⌜Id⌝ I j i`, so `ILift` there is `SN p × IdPay j i p` —
+  exactly `⊩₀Id`'s membership. No uniformity-in-the-index argument is
+  needed any more: Fording is now IN the payload.
+- `⊩₁Desc : A ⟶ᵀ* Desc I → ⊩₀ (El I) → ⊩₁ A`, membership `IKInterp`
+  itself (a level-0 datatype used at level 1 — S0's `toIK` is the identity).
+- `DIh` has no clause of its own when the telescope is canonical (it
+  REDUCES to `Unit`/`Σ'`); a stuck one gets `⊩₁DIhNe` (membership `SN`).
+- `Fin n`: `⊩₀Fin`/`⊩₁Fin` with a `NatMem`-shaped `FinMem`.
+- Neutrals: `ielim` (scrutinee key `mustk?`), `dpay`/`dih` (telescope key),
+  `fcase`/`fcase0` (tag key), `psplit` (SNe pair). The head steps carry SN
+  of what they DISCARD (J–M): `dpay-ι` drops `D`, `dih-ι` drops `D e j p`,
+  `dih-σ` drops `S`, `fcase-z` drops `b`, `fcase-s` drops `a`,
+  `psplit-β` substitutes `x y` (both SN, as `snr-β`).
+- `⊢ielim` in `fund`: induction on `IMuMem` — `imm-ne` ⇒ neutral; `imm-con`
+  ⇒ one ι head step, the method's Π-membership at `i`, the payload (via
+  the `payInterp`/`ILift` bridge) and `dih`'s membership (recursion on
+  `ILift` with the outer IH at `ρ` nodes); `imm-exp` ⇒ expansion.
+  A neutral `D` needs NO special case: ι is a head step at any `D` and
+  the payload at a stuck telescope is only SN (S1b's result, restated in
+  the J–M presentation).
+
 ## Stages (each ends GREEN on its own branch; straight-line history)
 
 1. **Spec**: `Syntax` (formers, generic ren/sub — S2) and `Typing` (S3/S4
