@@ -26,6 +26,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Gcd.LeMid where
+open import DirectedHoTT.Metatheory.SubjectReductionBase using ( subTy-comm )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; _∙; RTm; RTy; Nat; pair; nsuc; nzero; natrec; app
         ; subTm; subTy; extS; renTm; vs; var; vz; _∘ₛ_; subTy-subTy; subTy-cong; Var; Sub
