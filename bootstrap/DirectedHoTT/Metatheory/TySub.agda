@@ -112,10 +112,10 @@ open import DirectedHoTT.Spec.Typing
         ; dih-σ; dih-ρ; fcase-z; fcase-s; psplit-β; tr-J-Fin; single2; methS
         ; wk2M; MethTy; fsucS; pairS; motCtx; ty-Desc; ty-DIh; ty-Fin; ⊢⌜Fin⌝
         ; ⊢dι; ⊢dσ; ⊢dρ; ⊢dpay; ⊢dih; ⊢fzero; ⊢fsuc; ⊢fcase; ⊢fcase0; ⊢psplit
-        ; ξ-⌜IMu⌝ᴵ; ξ-⌜IMu⌝ᴰ; ξ-⌜IMu⌝ⁱ; ξ-ielimᴰ; ξ-ielimᵉ; ξ-dι; ξ-dσˢ; ξ-dσᶠ
-        ; ξ-dρʲ; ξ-dρᶜ; ξ-dpayᴵ; ξ-dpayᴰ; ξ-dpayᶜ; ξ-dpayⁱ; ξ-dihᴰ; ξ-dihᵉ
-        ; ξ-dihᶜ; ξ-dihᵖ; ξ-fsuc; ξ-fcaseᵗ; ξ-fcaseᵃ; ξ-fcaseᵇ; ξ-fcase0
-        ; ξ-psplitᵇ; ξ-psplitᵍ )
+        ; ξ-⌜IMu⌝ᴵ; ξ-⌜IMu⌝ᴰ; ξ-⌜IMu⌝ⁱ; ξ-ielimᴰ; ξ-ielimᵉ; ξ-dσˢ; ξ-dσᶠ
+        ; ξ-dρʲ; ξ-dρᶜ; ξ-dpayᴵ; ξ-dpayᴰ; ξ-dpayᶜ; ξ-dihᴰ; ξ-dihᵉ; ξ-dihᶜ
+        ; ξ-dihᵖ; ξ-fsuc; ξ-fcaseᵗ; ξ-fcaseᵃ; ξ-fcaseᵇ; ξ-fcase0; ξ-psplitᵇ
+        ; ξ-psplitᵍ; DescF )
 open import DirectedHoTT.Metatheory.SubjectReductionBase
   using ( ≅ᵀ-sub; ⟶-sub )
 open import DirectedHoTT.Metatheory.RedCong
@@ -124,7 +124,7 @@ open import DirectedHoTT.Metatheory.RedCong
         ; ⟶ᵀ*-El; ⟶ᵀ*-Πˡ; ⟶ᵀ*-Πʳ; ⟶ᵀ*-Σˡ; ⟶ᵀ*-Σʳ; ⟶ᵀ*-Homᵀ; ⟶ᵀ*-Homˡ; ⟶ᵀ*-Homʳ
         ; red→≅ᵀ; ⟶ᵀ*-Idᵀ; ⟶ᵀ*-Idˡ; ⟶ᵀ*-Idʳ; ⟶ᵀ*-IMu; ⟶ᵀ*-IMuᴵ; ⟶ᵀ*-IMuᴰ
         ; ⟶ᵀ*-Desc; ⟶ᵀ*-DIhᴰ; ⟶ᵀ*-DIhᴹ; ⟶ᵀ*-DIhᶜ; ⟶ᵀ*-DIhᵖ; ⟶*-trans; ⟶*-dpayᴰ
-        ; ⟶*-dpayᶜ )
+        ; ⟶*-dpayᶜ; ⟶*-appˡ )
 open import DirectedHoTT.Metatheory.SubjectReductionBase
   using ( sub-comm; ⟶ᵀ-sub; subTy-comm; sub-comm-ty-ext; iinst-sub; wk-sub
         ; wk2-subTy )
@@ -182,6 +182,14 @@ wk-ren : (ρ : Ren Γ Δ) (t : RTm Γ) →
          renTm (extR ρ) (renTm vs t) ≡ renTm vs (renTm ρ t)
 wk-ren ρ t = trans (renTm-renTm t) (sym (renTm-renTm t))
 
+-- ★ D074: the type of a fibred description is stable (its codomain is
+--   one binder in)
+DescF-ren : (ρ : Ren Γ Δ) (I : RTm Γ) → renTy ρ (DescF I) ≡ DescF (renTm ρ I)
+DescF-ren ρ I = cong (λ X → Π (El (renTm ρ I)) (Desc X)) (wk-ren ρ I)
+
+DescF-sub : (σ : Sub Γ Δ) (I : RTm Γ) → subTy σ (DescF I) ≡ DescF (subTm σ I)
+DescF-sub σ I = cong (λ X → Π (El (subTm σ I)) (Desc X)) (wk-sub σ I)
+
 -- ★ `ren-comm-ty` ONE BINDER UP — what the motive's INDEX layer needs.
 --   Only the index variable moves; the payload and ambient slots are refl.
 ren-comm-ty-ext : (ρ : Ren Γ Δ) (M : RTy ((Γ ∙) ∙)) (j : RTm Γ) →
@@ -228,7 +236,7 @@ wk2-renTy ρ M =
 ⟶ᵀ-ren ρ El-⌜Unit⌝ = El-⌜Unit⌝
 ⟶ᵀ-ren ρ El-⌜IMu⌝ = El-⌜IMu⌝
 ⟶ᵀ-ren ρ El-⌜Fin⌝ = El-⌜Fin⌝
-⟶ᵀ-ren ρ (DIh-ι D M j p) = DIh-ι _ _ _ _
+⟶ᵀ-ren ρ (DIh-ι D M p) = DIh-ι _ _ _
 ⟶ᵀ-ren ρ (DIh-σ D M S f p) = DIh-σ _ _ _ _ _
 ⟶ᵀ-ren ρ (DIh-ρ D M j C p) =
   subst (λ Z → DIh (renTm ρ D) (renTy (extR (extR ρ)) M) (dρ (renTm ρ j) (renTm ρ C)) (renTm ρ p) ⟶ᵀ Z)
@@ -396,7 +404,6 @@ occ-red {x = x} (ξ-ielimᵉ {D = D} {i = i} {e = m} {t = t} r) e =
   ∨-false (∨-false₁ (occTm x D) e) (∨-false (∨-false₁ (occTm x i) (∨-false₂ (occTm x D) e)) (∨-false (occ-red r (∨-false₁ (occTm x m) (∨-false₂ (occTm x i) (∨-false₂ (occTm x D) e)))) (∨-false₂ (occTm x m) (∨-false₂ (occTm x i) (∨-false₂ (occTm x D) e)))))
 occ-red {x = x} (ξ-ielimᵗ {D = D} {i = i} {e = m} {t = t} r) e =
   ∨-false (∨-false₁ (occTm x D) e) (∨-false (∨-false₁ (occTm x i) (∨-false₂ (occTm x D) e)) (∨-false (∨-false₁ (occTm x m) (∨-false₂ (occTm x i) (∨-false₂ (occTm x D) e))) (occ-red r (∨-false₂ (occTm x m) (∨-false₂ (occTm x i) (∨-false₂ (occTm x D) e))))))
-occ-red (ξ-dι r) e = occ-red r e
 occ-red {x = x} (ξ-dσˢ {S = S} {f = f} r) e =
   ∨-false (occ-red r (∨-false₁ (occTm x S) e)) (∨-false₂ (occTm x S) e)
 occ-red {x = x} (ξ-dσᶠ {S = S} {f = f} r) e =
@@ -405,14 +412,12 @@ occ-red {x = x} (ξ-dρʲ {j = j} {C = C} r) e =
   ∨-false (occ-red r (∨-false₁ (occTm x j) e)) (∨-false₂ (occTm x j) e)
 occ-red {x = x} (ξ-dρᶜ {j = j} {C = C} r) e =
   ∨-false (∨-false₁ (occTm x j) e) (occ-red r (∨-false₂ (occTm x j) e))
-occ-red {x = x} (ξ-dpayᴵ {I = I} {D = D} {C = C} {i = i} r) e =
-  ∨-false (occ-red r (∨-false₁ (occTm x I) e)) (∨-false (∨-false₁ (occTm x D) (∨-false₂ (occTm x I) e)) (∨-false (∨-false₁ (occTm x C) (∨-false₂ (occTm x D) (∨-false₂ (occTm x I) e))) (∨-false₂ (occTm x C) (∨-false₂ (occTm x D) (∨-false₂ (occTm x I) e)))))
-occ-red {x = x} (ξ-dpayᴰ {I = I} {D = D} {C = C} {i = i} r) e =
-  ∨-false (∨-false₁ (occTm x I) e) (∨-false (occ-red r (∨-false₁ (occTm x D) (∨-false₂ (occTm x I) e))) (∨-false (∨-false₁ (occTm x C) (∨-false₂ (occTm x D) (∨-false₂ (occTm x I) e))) (∨-false₂ (occTm x C) (∨-false₂ (occTm x D) (∨-false₂ (occTm x I) e)))))
-occ-red {x = x} (ξ-dpayᶜ {I = I} {D = D} {C = C} {i = i} r) e =
-  ∨-false (∨-false₁ (occTm x I) e) (∨-false (∨-false₁ (occTm x D) (∨-false₂ (occTm x I) e)) (∨-false (occ-red r (∨-false₁ (occTm x C) (∨-false₂ (occTm x D) (∨-false₂ (occTm x I) e)))) (∨-false₂ (occTm x C) (∨-false₂ (occTm x D) (∨-false₂ (occTm x I) e)))))
-occ-red {x = x} (ξ-dpayⁱ {I = I} {D = D} {C = C} {i = i} r) e =
-  ∨-false (∨-false₁ (occTm x I) e) (∨-false (∨-false₁ (occTm x D) (∨-false₂ (occTm x I) e)) (∨-false (∨-false₁ (occTm x C) (∨-false₂ (occTm x D) (∨-false₂ (occTm x I) e))) (occ-red r (∨-false₂ (occTm x C) (∨-false₂ (occTm x D) (∨-false₂ (occTm x I) e))))))
+occ-red {x = x} (ξ-dpayᴵ {I = I} {D = D} {C = C} r) e =
+  ∨-false (occ-red r (∨-false₁ (occTm x I) e)) (∨-false (∨-false₁ (occTm x D) (∨-false₂ (occTm x I) e)) (∨-false₂ (occTm x D) (∨-false₂ (occTm x I) e)))
+occ-red {x = x} (ξ-dpayᴰ {I = I} {D = D} {C = C} r) e =
+  ∨-false (∨-false₁ (occTm x I) e) (∨-false (occ-red r (∨-false₁ (occTm x D) (∨-false₂ (occTm x I) e))) (∨-false₂ (occTm x D) (∨-false₂ (occTm x I) e)))
+occ-red {x = x} (ξ-dpayᶜ {I = I} {D = D} {C = C} r) e =
+  ∨-false (∨-false₁ (occTm x I) e) (∨-false (∨-false₁ (occTm x D) (∨-false₂ (occTm x I) e)) (occ-red r (∨-false₂ (occTm x D) (∨-false₂ (occTm x I) e))))
 occ-red {x = x} (ξ-dihᴰ {D = D} {e = m} {C = C} {p = p} r) e =
   ∨-false (occ-red r (∨-false₁ (occTm x D) e)) (∨-false (∨-false₁ (occTm x m) (∨-false₂ (occTm x D) e)) (∨-false (∨-false₁ (occTm x C) (∨-false₂ (occTm x m) (∨-false₂ (occTm x D) e))) (∨-false₂ (occTm x C) (∨-false₂ (occTm x m) (∨-false₂ (occTm x D) e)))))
 occ-red {x = x} (ξ-dihᵉ {D = D} {e = m} {C = C} {p = p} r) e =
@@ -434,38 +439,32 @@ occ-red {x = x} (ξ-psplitᵇ {b = b} {q = q} r) e =
 occ-red {x = x} (ξ-psplitᵍ {b = b} {q = q} r) e =
   ∨-false (∨-false₁ (occTm (vs (vs x)) b) e) (occ-red r (∨-false₂ (occTm (vs (vs x)) b) e))
 occ-red {x = x} (ι D i m p) e =
-  ∨-false (∨-false (∨-false eM ei) eP) (∨-false eD (∨-false eM (∨-false eD eP)))
+  ∨-false (∨-false (∨-false eM ei) eP) (∨-false eD (∨-false eM (∨-false (∨-false eD ei) eP)))
   where
   eD = ∨-false₁ (occTm x D) e
   ei = ∨-false₁ (occTm x i) (∨-false₂ (occTm x D) e)
   eM = ∨-false₁ (occTm x m) (∨-false₂ (occTm x i) (∨-false₂ (occTm x D) e))
   eP = ∨-false₂ (occTm x m) (∨-false₂ (occTm x i) (∨-false₂ (occTm x D) e))
-occ-red {x = x} (dpay-ι I D j i) e =
-  ∨-false eI (∨-false (∨-false₁ (occTm x j) eR) (∨-false₂ (occTm x j) eR))
-  where
-  eI = ∨-false₁ (occTm x I) e
-  eR = ∨-false₂ (occTm x D) (∨-false₂ (occTm x I) e)
-occ-red {x = x} (dpay-σ I D S f i) e =
+occ-red (dpay-ι I D) e = refl
+occ-red {x = x} (dpay-σ I D S f) e =
   ∨-false (∨-false₁ (occTm x S) eC)
-    (∨-false (wk I eI) (∨-false (wk D eD) (∨-false (∨-false (wk f (∨-false₂ (occTm x S) eC)) refl) (wk i ei))))
+    (∨-false (wk I eI) (∨-false (wk D eD) (∨-false (wk f (∨-false₂ (occTm x S) eC)) refl)))
   where
   wk : (t : RTm _) → occTm x t ≡ false → occTm (vs x) (renTm vs t) ≡ false
   wk t o = trans (occ-ren-eq (λ _ → refl) t) o
   eI = ∨-false₁ (occTm x I) e
   eD = ∨-false₁ (occTm x D) (∨-false₂ (occTm x I) e)
-  eC = ∨-false₁ (occTm x S ∨ occTm x f) (∨-false₂ (occTm x D) (∨-false₂ (occTm x I) e))
-  ei = ∨-false₂ (occTm x S ∨ occTm x f) (∨-false₂ (occTm x D) (∨-false₂ (occTm x I) e))
-occ-red {x = x} (dpay-ρ I D j C i) e =
+  eC = ∨-false₂ (occTm x D) (∨-false₂ (occTm x I) e)
+occ-red {x = x} (dpay-ρ I D j C) e =
   ∨-false (∨-false eI (∨-false eD (∨-false₁ (occTm x j) eC)))
-    (∨-false (wk I eI) (∨-false (wk D eD) (∨-false (wk C (∨-false₂ (occTm x j) eC)) (wk i ei))))
+    (∨-false (wk I eI) (∨-false (wk D eD) (wk C (∨-false₂ (occTm x j) eC))))
   where
   wk : (t : RTm _) → occTm x t ≡ false → occTm (vs x) (renTm vs t) ≡ false
   wk t o = trans (occ-ren-eq (λ _ → refl) t) o
   eI = ∨-false₁ (occTm x I) e
   eD = ∨-false₁ (occTm x D) (∨-false₂ (occTm x I) e)
-  eC = ∨-false₁ (occTm x j ∨ occTm x C) (∨-false₂ (occTm x D) (∨-false₂ (occTm x I) e))
-  ei = ∨-false₂ (occTm x j ∨ occTm x C) (∨-false₂ (occTm x D) (∨-false₂ (occTm x I) e))
-occ-red (dih-ι D m j p) e = refl
+  eC = ∨-false₂ (occTm x D) (∨-false₂ (occTm x I) e)
+occ-red (dih-ι D m p) e = refl
 occ-red {x = x} (dih-σ D m S f p) e =
   ∨-false eD (∨-false eM (∨-false (∨-false (∨-false₂ (occTm x S) eC) eP) eP))
   where
@@ -775,9 +774,9 @@ MethTy-monoᴰ : (I : RTm Γ) (M : RTy ((Γ ∙) ∙)) {D D' : RTm Γ} →
                D ⟶* D' → MethTy I D M ⟶ᵀ* MethTy I D' M
 MethTy-monoᴰ I M r =
   ⟶ᵀ*-Πʳ (⟶ᵀ*-trans
-    (⟶ᵀ*-Πˡ (⟶ᵀ*-El (⟶*-trans (⟶*-dpayᴰ (⟶*-ren vs r)) (⟶*-dpayᶜ (⟶*-ren vs r)))))
+    (⟶ᵀ*-Πˡ (⟶ᵀ*-El (⟶*-trans (⟶*-dpayᴰ (⟶*-ren vs r)) (⟶*-dpayᶜ (⟶*-appˡ (⟶*-ren vs r))))))
     (⟶ᵀ*-Πʳ (⟶ᵀ*-Πˡ (⟶ᵀ*-trans (⟶ᵀ*-DIhᴰ (⟶*-ren vs (⟶*-ren vs r)))
-                                (⟶ᵀ*-DIhᶜ (⟶*-ren vs (⟶*-ren vs r)))))))
+                                (⟶ᵀ*-DIhᶜ (⟶*-appˡ (⟶*-ren vs (⟶*-ren vs r))))))))
 
 ------------------------------------------------------------------------
 -- ★★ LEVITATION: naturality of the ONE method type, and the two motive
@@ -842,15 +841,15 @@ MethTy-ren : (ρ : Ren Γ Δ) (I D : RTm Γ) (M : RTy ((Γ ∙) ∙)) →
              renTy ρ (MethTy I D M) ≡ MethTy (renTm ρ I) (renTm ρ D) (renTy (extR (extR ρ)) M)
 MethTy-ren ρ I D M =
   cong₂ (λ P Q → Π (El (renTm ρ I)) (Π P Q))
-    (cong₂ (λ a b → El (dpay a b b (var vz))) (wk-ren ρ I) (wk-ren ρ D))
-    (cong₃ (λ c m t → Π (DIh c m c (var vz)) t) (wk2-ren-tm ρ D) (wk2M-ren ρ M) (methS-ren ρ M))
+    (cong₂ (λ a b → El (dpay a b (app b (var vz)))) (wk-ren ρ I) (wk-ren ρ D))
+    (cong₃ (λ c m t → Π (DIh c m (app c (var (vs vz))) (var vz)) t) (wk2-ren-tm ρ D) (wk2M-ren ρ M) (methS-ren ρ M))
 
 MethTy-sub : (σ : Sub Γ Δ) (I D : RTm Γ) (M : RTy ((Γ ∙) ∙)) →
              subTy σ (MethTy I D M) ≡ MethTy (subTm σ I) (subTm σ D) (subTy (extS (extS σ)) M)
 MethTy-sub σ I D M =
   cong₂ (λ P Q → Π (El (subTm σ I)) (Π P Q))
-    (cong₂ (λ a b → El (dpay a b b (var vz))) (wk-sub σ I) (wk-sub σ D))
-    (cong₃ (λ c m t → Π (DIh c m c (var vz)) t) (wk2-sub-tm σ D) (wk2M-sub σ M) (methS-sub σ M))
+    (cong₂ (λ a b → El (dpay a b (app b (var vz)))) (wk-sub σ I) (wk-sub σ D))
+    (cong₃ (λ c m t → Π (DIh c m (app c (var (vs vz))) (var vz)) t) (wk2-sub-tm σ D) (wk2M-sub σ M) (methS-sub σ M))
 
 fsucS-ren : (ρ : Ren Γ Δ) (P : RTy (Γ ∙)) →
             renTy (extR ρ) (subTy fsucS P) ≡ subTy fsucS (renTy (extR ρ) P)
@@ -891,14 +890,14 @@ ren-ty : {Γ Δ : Ctx} {ρ : Ren ⌊ Γ ⌋ ⌊ Δ ⌋} {A : RTy ⌊ Γ ⌋} →
 ren-ty ty-base       h = ty-base
 ren-ty ty-Unit       h = ty-Unit
 ren-ty ty-Nat        h = ty-Nat
-ren-ty (ty-IMu dI dD di) h = ty-IMu (ren-lemma dI h) (ren-lemma dD h) (ren-lemma di h)
+ren-ty {ρ = ρ} (ty-IMu {I = I} dI dD di) h = ty-IMu (ren-lemma dI h) (⊢-cast (DescF-ren ρ I) (ren-lemma dD h)) (ren-lemma di h)
 ren-ty (ty-Desc dI) h = ty-Desc (ren-lemma dI h)
-ren-ty {Δ = Δ} {ρ = ρ} (ty-DIh {I = I} {D = D} {M = M} dI dD dM dC di dp) h =
-  ty-DIh (ren-lemma dI h) (ren-lemma dD h)
+ren-ty {Δ = Δ} {ρ = ρ} (ty-DIh {I = I} {D = D} {M = M} dI dD dM dC dp) h =
+  ty-DIh (ren-lemma dI h) (⊢-cast (DescF-ren ρ I) (ren-lemma dD h))
     (subst (λ A → ((Δ ▹ El (renTm ρ I)) ▹ A) ⊢ty renTy (extR (extR ρ)) M)
              (cong₂ (λ a b → IMu a b (var vz)) (wk-ren ρ I) (wk-ren ρ D))
              (ren-ty dM (Ren⊢-ext (Ren⊢-ext h))))
-    (ren-lemma dC h) (ren-lemma di h) (ren-lemma dp h)
+    (ren-lemma dC h) (ren-lemma dp h)
 ren-ty ty-Fin h = ty-Fin
 ren-ty ty-U          h = ty-U
 ren-ty (ty-Π dA dB)  h = ty-Π (ren-ty dA h) (ren-ty dB (Ren⊢-ext h))
@@ -920,25 +919,25 @@ ren-lemma {ρ = ρ} (⊢natrec {M = M} {n = n} dM dz ds dn) h =
              (⊢-cast (nrs-ren ρ M) (ren-lemma ds (Ren⊢-ext (Ren⊢-ext h))))
              (ren-lemma dn h))
 -- ★★ LEVITATION
-ren-lemma (⊢⌜IMu⌝ dI dD di) h = ⊢⌜IMu⌝ (ren-lemma dI h) (ren-lemma dD h) (ren-lemma di h)
+ren-lemma {ρ = ρ} (⊢⌜IMu⌝ {I = I} dI dD di) h = ⊢⌜IMu⌝ (ren-lemma dI h) (⊢-cast (DescF-ren ρ I) (ren-lemma dD h)) (ren-lemma di h)
 ren-lemma ⊢⌜Fin⌝ h = ⊢⌜Fin⌝
-ren-lemma (⊢dι dI dj) h = ⊢dι (ren-lemma dI h) (ren-lemma dj h)
+ren-lemma (⊢dι dI) h = ⊢dι (ren-lemma dI h)
 ren-lemma {ρ = ρ} (⊢dσ {I = I} {S = S} dI dS df) h =
   ⊢dσ (ren-lemma dI h) (ren-lemma dS h)
       (⊢-cast (cong (λ X → Π (El (renTm ρ S)) (Desc X)) (wk-ren ρ I)) (ren-lemma df h))
 ren-lemma (⊢dρ dI dj dC) h = ⊢dρ (ren-lemma dI h) (ren-lemma dj h) (ren-lemma dC h)
-ren-lemma (⊢dpay dI dD dC di) h = ⊢dpay (ren-lemma dI h) (ren-lemma dD h) (ren-lemma dC h) (ren-lemma di h)
-ren-lemma (⊢con dI dD di dp) h = ⊢con (ren-lemma dI h) (ren-lemma dD h) (ren-lemma di h) (ren-lemma dp h)
-ren-lemma {Δ = Δ} {ρ = ρ} (⊢dih {I = I} {D = D} {M = M} dI dD dM de dC di dp) h =
-  ⊢dih (ren-lemma dI h) (ren-lemma dD h)
+ren-lemma {ρ = ρ} (⊢dpay {I = I} dI dD dC) h = ⊢dpay (ren-lemma dI h) (⊢-cast (DescF-ren ρ I) (ren-lemma dD h)) (ren-lemma dC h)
+ren-lemma {ρ = ρ} (⊢con {I = I} dI dD di dp) h = ⊢con (ren-lemma dI h) (⊢-cast (DescF-ren ρ I) (ren-lemma dD h)) (ren-lemma di h) (ren-lemma dp h)
+ren-lemma {Δ = Δ} {ρ = ρ} (⊢dih {I = I} {D = D} {M = M} dI dD dM de dC dp) h =
+  ⊢dih (ren-lemma dI h) (⊢-cast (DescF-ren ρ I) (ren-lemma dD h))
     (subst (λ A → ((Δ ▹ El (renTm ρ I)) ▹ A) ⊢ty renTy (extR (extR ρ)) M)
              (cong₂ (λ a b → IMu a b (var vz)) (wk-ren ρ I) (wk-ren ρ D))
              (ren-ty dM (Ren⊢-ext (Ren⊢-ext h))))
     (⊢-cast (MethTy-ren ρ I D M) (ren-lemma de h))
-    (ren-lemma dC h) (ren-lemma di h) (ren-lemma dp h)
+    (ren-lemma dC h) (ren-lemma dp h)
 ren-lemma {Δ = Δ} {ρ = ρ} (⊢ielim {I = I} {D = D} {M = M} {i = i} {t = t} dI dD dM de di dt) h =
   ⊢-cast (sym (iinst-ren ρ M i t))
-    (⊢ielim (ren-lemma dI h) (ren-lemma dD h)
+    (⊢ielim (ren-lemma dI h) (⊢-cast (DescF-ren ρ I) (ren-lemma dD h))
       (subst (λ A → ((Δ ▹ El (renTm ρ I)) ▹ A) ⊢ty renTy (extR (extR ρ)) M)
              (cong₂ (λ a b → IMu a b (var vz)) (wk-ren ρ I) (wk-ren ρ D))
              (ren-ty dM (Ren⊢-ext (Ren⊢-ext h))))
@@ -1050,14 +1049,14 @@ sub-ty : {Γ Δ : Ctx} {σ : Sub ⌊ Γ ⌋ ⌊ Δ ⌋} {A : RTy ⌊ Γ ⌋} →
 sub-ty ty-base      h = ty-base
 sub-ty ty-Unit      h = ty-Unit
 sub-ty ty-Nat       h = ty-Nat
-sub-ty (ty-IMu dI dD di) h = ty-IMu (sub-lemma dI h) (sub-lemma dD h) (sub-lemma di h)
+sub-ty {σ = σ} (ty-IMu {I = I} dI dD di) h = ty-IMu (sub-lemma dI h) (⊢-cast (DescF-sub σ I) (sub-lemma dD h)) (sub-lemma di h)
 sub-ty (ty-Desc dI) h = ty-Desc (sub-lemma dI h)
-sub-ty {Δ = Δ} {σ = σ} (ty-DIh {I = I} {D = D} {M = M} dI dD dM dC di dp) h =
-  ty-DIh (sub-lemma dI h) (sub-lemma dD h)
+sub-ty {Δ = Δ} {σ = σ} (ty-DIh {I = I} {D = D} {M = M} dI dD dM dC dp) h =
+  ty-DIh (sub-lemma dI h) (⊢-cast (DescF-sub σ I) (sub-lemma dD h))
     (subst (λ A → ((Δ ▹ El (subTm σ I)) ▹ A) ⊢ty subTy (extS (extS σ)) M)
              (cong₂ (λ a b → IMu a b (var vz)) (wk-sub σ I) (wk-sub σ D))
              (sub-ty dM (Sub⊢-ext (Sub⊢-ext h))))
-    (sub-lemma dC h) (sub-lemma di h) (sub-lemma dp h)
+    (sub-lemma dC h) (sub-lemma dp h)
 sub-ty ty-Fin h = ty-Fin
 sub-ty ty-U         h = ty-U
 sub-ty (ty-Π dA dB) h = ty-Π (sub-ty dA h) (sub-ty dB (Sub⊢-ext h))
@@ -1078,25 +1077,25 @@ sub-lemma {σ = σ} (⊢natrec {M = M} {n = n} dM dz ds dn) h =
              (⊢-cast (nrs-sub σ M) (sub-lemma ds (Sub⊢-ext (Sub⊢-ext h))))
              (sub-lemma dn h))
 -- ★★ LEVITATION
-sub-lemma (⊢⌜IMu⌝ dI dD di) h = ⊢⌜IMu⌝ (sub-lemma dI h) (sub-lemma dD h) (sub-lemma di h)
+sub-lemma {σ = σ} (⊢⌜IMu⌝ {I = I} dI dD di) h = ⊢⌜IMu⌝ (sub-lemma dI h) (⊢-cast (DescF-sub σ I) (sub-lemma dD h)) (sub-lemma di h)
 sub-lemma ⊢⌜Fin⌝ h = ⊢⌜Fin⌝
-sub-lemma (⊢dι dI dj) h = ⊢dι (sub-lemma dI h) (sub-lemma dj h)
+sub-lemma (⊢dι dI) h = ⊢dι (sub-lemma dI h)
 sub-lemma {σ = σ} (⊢dσ {I = I} {S = S} dI dS df) h =
   ⊢dσ (sub-lemma dI h) (sub-lemma dS h)
       (⊢-cast (cong (λ X → Π (El (subTm σ S)) (Desc X)) (wk-sub σ I)) (sub-lemma df h))
 sub-lemma (⊢dρ dI dj dC) h = ⊢dρ (sub-lemma dI h) (sub-lemma dj h) (sub-lemma dC h)
-sub-lemma (⊢dpay dI dD dC di) h = ⊢dpay (sub-lemma dI h) (sub-lemma dD h) (sub-lemma dC h) (sub-lemma di h)
-sub-lemma (⊢con dI dD di dp) h = ⊢con (sub-lemma dI h) (sub-lemma dD h) (sub-lemma di h) (sub-lemma dp h)
-sub-lemma {Δ = Δ} {σ = σ} (⊢dih {I = I} {D = D} {M = M} dI dD dM de dC di dp) h =
-  ⊢dih (sub-lemma dI h) (sub-lemma dD h)
+sub-lemma {σ = σ} (⊢dpay {I = I} dI dD dC) h = ⊢dpay (sub-lemma dI h) (⊢-cast (DescF-sub σ I) (sub-lemma dD h)) (sub-lemma dC h)
+sub-lemma {σ = σ} (⊢con {I = I} dI dD di dp) h = ⊢con (sub-lemma dI h) (⊢-cast (DescF-sub σ I) (sub-lemma dD h)) (sub-lemma di h) (sub-lemma dp h)
+sub-lemma {Δ = Δ} {σ = σ} (⊢dih {I = I} {D = D} {M = M} dI dD dM de dC dp) h =
+  ⊢dih (sub-lemma dI h) (⊢-cast (DescF-sub σ I) (sub-lemma dD h))
     (subst (λ A → ((Δ ▹ El (subTm σ I)) ▹ A) ⊢ty subTy (extS (extS σ)) M)
              (cong₂ (λ a b → IMu a b (var vz)) (wk-sub σ I) (wk-sub σ D))
              (sub-ty dM (Sub⊢-ext (Sub⊢-ext h))))
     (⊢-cast (MethTy-sub σ I D M) (sub-lemma de h))
-    (sub-lemma dC h) (sub-lemma di h) (sub-lemma dp h)
+    (sub-lemma dC h) (sub-lemma dp h)
 sub-lemma {Δ = Δ} {σ = σ} (⊢ielim {I = I} {D = D} {M = M} {i = i} {t = t} dI dD dM de di dt) h =
   ⊢-cast (sym (iinst-sub σ M i t))
-    (⊢ielim (sub-lemma dI h) (sub-lemma dD h)
+    (⊢ielim (sub-lemma dI h) (⊢-cast (DescF-sub σ I) (sub-lemma dD h))
       (subst (λ A → ((Δ ▹ El (subTm σ I)) ▹ A) ⊢ty subTy (extS (extS σ)) M)
              (cong₂ (λ a b → IMu a b (var vz)) (wk-sub σ I) (wk-sub σ D))
              (sub-ty dM (Sub⊢-ext (Sub⊢-ext h))))
