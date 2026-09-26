@@ -73,15 +73,13 @@ open import DirectedHoTT.Spec.Syntax
         ; RTy; base; U; Π; Σ'; El; Hom
         ; RTm; var; lam; app; pair; fst; snd; absurd; ordtr; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝
         ; ⌜Hom⌝; hrefl; tr; ap; Id; ⌜Id⌝; idrefl; jsub
-        ; Unit; Nat; unit; nzero; nsuc; natrec; natrec-cong₃; ⌜Nat⌝; ⌜Unit⌝; ⌜Mu⌝
+        ; Unit; Nat; unit; nzero; nsuc; natrec; natrec-cong₃; ⌜Nat⌝; ⌜Unit⌝
         ; ⌜Hom⌝-cong₃; tr-cong₃; ordtr-cong₅; ⌜Id⌝-cong₃; jsub-cong₃; Id-cong₃
         ; Ren; extR; renTy; renTm; Sub; extS; subTm
         ; renTm-renTm; subTm-renTm; renTm-subTm; subTm-cong
-        ; Desc; Mu; con; elim
-        ; DCon; dι; dρ; dκ; sel; fields
-        ; ihs
-        ; IMu; icon; ielim; IDesc; ICon; cong₃; ⌜IMu⌝
-        ; εwkTm; iihs; ifields; iι; iρ; iκ; iext )
+        ; cong₃; cong₄; εwkTm
+        ; IMu; Desc; DIh; Fin; ⌜IMu⌝; ⌜Fin⌝; con; ielim; dι; dσ; dρ; dpay; dih
+        ; fzero; fsuc; fcase; fcase0; psplit )
 
 private
   variable
@@ -117,8 +115,10 @@ occTy x (Hom A t u) = occTy x A ∨ occTm x t ∨ occTm x u
 occTy x (Id A t u) = occTy x A ∨ occTm x t ∨ occTm x u
 occTy x Unit        = false
 occTy x Nat         = false
-occTy x (Mu D)      = false
-occTy x (IMu D I i) = occTm x i
+occTy x (IMu I D i) = occTm x I ∨ (occTm x D ∨ occTm x i)
+occTy x (Desc I) = occTm x I
+occTy x (DIh D M C p) = occTm x D ∨ (occTy (vs (vs x)) M ∨ (occTm x C ∨ occTm x p))
+occTy x (Fin n) = false
 
 occTm x (var y)    = eqv x y
 occTm x (lam t)    = occTm (vs x) t
@@ -141,16 +141,24 @@ occTm x (jsub d p e)    = occTm (vs x) d ∨ occTm x p ∨ occTm x e
 occTm x (ap c b p)    = occTm x c ∨ occTm (vs x) b ∨ occTm x p
 occTm x ⌜Nat⌝         = false
 occTm x ⌜Unit⌝        = false
-occTm x (⌜Mu⌝ D)        = false
-occTm x (⌜IMu⌝ D I i) = occTm x i
+occTm x (⌜IMu⌝ I D i) = occTm x I ∨ (occTm x D ∨ occTm x i)
+occTm x (⌜Fin⌝ n) = false
+occTm x (con p) = occTm x p
+occTm x (ielim D i m t) = occTm x D ∨ (occTm x i ∨ (occTm x m ∨ occTm x t))
+occTm x (dι j) = occTm x j
+occTm x (dσ S f) = occTm x S ∨ occTm x f
+occTm x (dρ j C) = occTm x j ∨ occTm x C
+occTm x (dpay I D C i) = occTm x I ∨ (occTm x D ∨ (occTm x C ∨ occTm x i))
+occTm x (dih D m C p) = occTm x D ∨ (occTm x m ∨ (occTm x C ∨ occTm x p))
+occTm x fzero = false
+occTm x (fsuc t) = occTm x t
+occTm x (fcase t a b) = occTm x t ∨ (occTm x a ∨ occTm (vs x) b)
+occTm x (fcase0 t) = occTm x t
+occTm x (psplit b q) = occTm (vs (vs x)) b ∨ occTm x q
 occTm x unit          = false
 occTm x nzero         = false
 occTm x (nsuc n)      = occTm x n
 occTm x (natrec z s n) = occTm x z ∨ occTm (vs (vs x)) s ∨ occTm x n
-occTm x (con k p)      = occTm x p
-occTm x (elim D ms t)  = occTm x ms ∨ occTm x t
-occTm x (icon k p)     = occTm x p
-occTm x (ielim D i ms t) = occTm x i ∨ (occTm x ms ∨ occTm x t)
 
 ------------------------------------------------------------------------
 -- 2. ★ THE POLARITY JUDGMENT.
@@ -212,14 +220,18 @@ occ-ren-tm : {ρ : Ren Γ Δ} {x : Var Δ} →
 occ-ren-ty h base     = refl
 occ-ren-ty h Unit     = refl
 occ-ren-ty h Nat      = refl
-occ-ren-ty h (Mu D)   = refl
+occ-ren-ty h (IMu I D i) =
+  ∨-false (occ-ren-tm h I) (∨-false (occ-ren-tm h D) (occ-ren-tm h i))
+occ-ren-ty h (Desc I) = occ-ren-tm h I
+occ-ren-ty h (DIh D M C p) =
+  ∨-false (occ-ren-tm h D) (∨-false (occ-ren-ty (avoids-ext (avoids-ext h)) M) (∨-false (occ-ren-tm h C) (occ-ren-tm h p)))
+occ-ren-ty h (Fin n) = refl
 occ-ren-ty h U        = refl
 occ-ren-ty h (Π A B)  =
   ∨-false (occ-ren-ty h A) (occ-ren-ty (avoids-ext h) B)
 occ-ren-ty h (Σ' A B) =
   ∨-false (occ-ren-ty h A) (occ-ren-ty (avoids-ext h) B)
 occ-ren-ty h (El t)   = occ-ren-tm h t
-occ-ren-ty h (IMu D I i) = occ-ren-tm h i
 occ-ren-ty h (Hom A t u) =
   ∨-false (occ-ren-ty h A) (∨-false (occ-ren-tm h t) (occ-ren-tm h u))
 occ-ren-ty h (Id A t u) =
@@ -248,16 +260,31 @@ occ-ren-tm h (hrefl c t)   = ∨-false (occ-ren-tm h c) (occ-ren-tm h t)
 occ-ren-tm h (idrefl c t)   = ∨-false (occ-ren-tm h c) (occ-ren-tm h t)
 occ-ren-tm h ⌜Nat⌝      = refl
 occ-ren-tm h ⌜Unit⌝     = refl
-occ-ren-tm h (⌜Mu⌝ D)     = refl
-occ-ren-tm h (⌜IMu⌝ D I i) = occ-ren-tm h i
+occ-ren-tm h (⌜IMu⌝ I D i) =
+  ∨-false (occ-ren-tm h I) (∨-false (occ-ren-tm h D) (occ-ren-tm h i))
+occ-ren-tm h (⌜Fin⌝ n) = refl
+occ-ren-tm h (con p) = occ-ren-tm h p
+occ-ren-tm h (ielim D i m t) =
+  ∨-false (occ-ren-tm h D) (∨-false (occ-ren-tm h i) (∨-false (occ-ren-tm h m) (occ-ren-tm h t)))
+occ-ren-tm h (dι j) = occ-ren-tm h j
+occ-ren-tm h (dσ S f) =
+  ∨-false (occ-ren-tm h S) (occ-ren-tm h f)
+occ-ren-tm h (dρ j C) =
+  ∨-false (occ-ren-tm h j) (occ-ren-tm h C)
+occ-ren-tm h (dpay I D C i) =
+  ∨-false (occ-ren-tm h I) (∨-false (occ-ren-tm h D) (∨-false (occ-ren-tm h C) (occ-ren-tm h i)))
+occ-ren-tm h (dih D m C p) =
+  ∨-false (occ-ren-tm h D) (∨-false (occ-ren-tm h m) (∨-false (occ-ren-tm h C) (occ-ren-tm h p)))
+occ-ren-tm h fzero = refl
+occ-ren-tm h (fsuc t) = occ-ren-tm h t
+occ-ren-tm h (fcase t a b) =
+  ∨-false (occ-ren-tm h t) (∨-false (occ-ren-tm h a) (occ-ren-tm (avoids-ext h) b))
+occ-ren-tm h (fcase0 t) = occ-ren-tm h t
+occ-ren-tm h (psplit b q) =
+  ∨-false (occ-ren-tm (avoids-ext (avoids-ext h)) b) (occ-ren-tm h q)
 occ-ren-tm h unit       = refl
 occ-ren-tm h nzero      = refl
 occ-ren-tm h (nsuc n)   = occ-ren-tm h n
-occ-ren-tm h (con k p)  = occ-ren-tm h p
-occ-ren-tm h (elim D ms t) = ∨-false (occ-ren-tm h ms) (occ-ren-tm h t)
-occ-ren-tm h (icon k p)  = occ-ren-tm h p
-occ-ren-tm h (ielim D i ms t) =
-  ∨-false (occ-ren-tm h i) (∨-false (occ-ren-tm h ms) (occ-ren-tm h t))
 occ-ren-tm h (natrec z s n) =
   ∨-false (occ-ren-tm h z)
           (∨-false (occ-ren-tm (avoids-ext (avoids-ext h)) s) (occ-ren-tm h n))
@@ -424,16 +451,31 @@ occ-ren-eq h (hrefl c t)   = cong₂ _∨_ (occ-ren-eq h c) (occ-ren-eq h t)
 occ-ren-eq h (idrefl c t)   = cong₂ _∨_ (occ-ren-eq h c) (occ-ren-eq h t)
 occ-ren-eq h ⌜Nat⌝      = refl
 occ-ren-eq h ⌜Unit⌝     = refl
-occ-ren-eq h (⌜Mu⌝ D)     = refl
-occ-ren-eq h (⌜IMu⌝ D I i) = occ-ren-eq h i
+occ-ren-eq h (⌜IMu⌝ I D i) =
+  cong₂ _∨_ (occ-ren-eq h I) (cong₂ _∨_ (occ-ren-eq h D) (occ-ren-eq h i))
+occ-ren-eq h (⌜Fin⌝ n) = refl
+occ-ren-eq h (con p) = occ-ren-eq h p
+occ-ren-eq h (ielim D i m t) =
+  cong₂ _∨_ (occ-ren-eq h D) (cong₂ _∨_ (occ-ren-eq h i) (cong₂ _∨_ (occ-ren-eq h m) (occ-ren-eq h t)))
+occ-ren-eq h (dι j) = occ-ren-eq h j
+occ-ren-eq h (dσ S f) =
+  cong₂ _∨_ (occ-ren-eq h S) (occ-ren-eq h f)
+occ-ren-eq h (dρ j C) =
+  cong₂ _∨_ (occ-ren-eq h j) (occ-ren-eq h C)
+occ-ren-eq h (dpay I D C i) =
+  cong₂ _∨_ (occ-ren-eq h I) (cong₂ _∨_ (occ-ren-eq h D) (cong₂ _∨_ (occ-ren-eq h C) (occ-ren-eq h i)))
+occ-ren-eq h (dih D m C p) =
+  cong₂ _∨_ (occ-ren-eq h D) (cong₂ _∨_ (occ-ren-eq h m) (cong₂ _∨_ (occ-ren-eq h C) (occ-ren-eq h p)))
+occ-ren-eq h fzero = refl
+occ-ren-eq h (fsuc t) = occ-ren-eq h t
+occ-ren-eq h (fcase t a b) =
+  cong₂ _∨_ (occ-ren-eq h t) (cong₂ _∨_ (occ-ren-eq h a) (occ-ren-eq (ext-eq h) b))
+occ-ren-eq h (fcase0 t) = occ-ren-eq h t
+occ-ren-eq h (psplit b q) =
+  cong₂ _∨_ (occ-ren-eq (ext-eq (ext-eq h)) b) (occ-ren-eq h q)
 occ-ren-eq h unit       = refl
 occ-ren-eq h nzero      = refl
 occ-ren-eq h (nsuc n)   = occ-ren-eq h n
-occ-ren-eq h (con k p)  = occ-ren-eq h p
-occ-ren-eq h (elim D ms t) = cong₂ _∨_ (occ-ren-eq h ms) (occ-ren-eq h t)
-occ-ren-eq h (icon k p)  = occ-ren-eq h p
-occ-ren-eq h (ielim D i ms t) =
-  cong₂ _∨_ (occ-ren-eq h i) (cong₂ _∨_ (occ-ren-eq h ms) (occ-ren-eq h t))
 occ-ren-eq h (natrec z s n) =
   cong₂ _∨_ (occ-ren-eq h z)
             (cong₂ _∨_ (occ-ren-eq (ext-eq (ext-eq h)) s) (occ-ren-eq h n))
@@ -462,22 +504,33 @@ occ-sub : {σ : Sub Γ Δ} {x : Var Γ} {x' : Var Δ} →
           (t : RTm Γ) → occTm x t ≡ false → occTm x' (subTm σ t) ≡ false
 occ-sub h ⌜Nat⌝      e = refl
 occ-sub h ⌜Unit⌝     e = refl
-occ-sub h (⌜Mu⌝ D)     e = refl
-occ-sub h (⌜IMu⌝ D I i) e = occ-sub h i e
+occ-sub {x = x} h (⌜IMu⌝ I D i) e =
+  ∨-false (occ-sub h I (∨-false₁ (occTm x I) e)) (∨-false (occ-sub h D (∨-false₁ (occTm x D) (∨-false₂ (occTm x I) e))) (occ-sub h i (∨-false₂ (occTm x D) (∨-false₂ (occTm x I) e))))
+occ-sub h (⌜Fin⌝ n) e = refl
+occ-sub h (con p) e = occ-sub h p e
+occ-sub {x = x} h (ielim D i m t) e =
+  ∨-false (occ-sub h D (∨-false₁ (occTm x D) e)) (∨-false (occ-sub h i (∨-false₁ (occTm x i) (∨-false₂ (occTm x D) e))) (∨-false (occ-sub h m (∨-false₁ (occTm x m) (∨-false₂ (occTm x i) (∨-false₂ (occTm x D) e)))) (occ-sub h t (∨-false₂ (occTm x m) (∨-false₂ (occTm x i) (∨-false₂ (occTm x D) e))))))
+occ-sub h (dι j) e = occ-sub h j e
+occ-sub {x = x} h (dσ S f) e =
+  ∨-false (occ-sub h S (∨-false₁ (occTm x S) e)) (occ-sub h f (∨-false₂ (occTm x S) e))
+occ-sub {x = x} h (dρ j C) e =
+  ∨-false (occ-sub h j (∨-false₁ (occTm x j) e)) (occ-sub h C (∨-false₂ (occTm x j) e))
+occ-sub {x = x} h (dpay I D C i) e =
+  ∨-false (occ-sub h I (∨-false₁ (occTm x I) e)) (∨-false (occ-sub h D (∨-false₁ (occTm x D) (∨-false₂ (occTm x I) e))) (∨-false (occ-sub h C (∨-false₁ (occTm x C) (∨-false₂ (occTm x D) (∨-false₂ (occTm x I) e)))) (occ-sub h i (∨-false₂ (occTm x C) (∨-false₂ (occTm x D) (∨-false₂ (occTm x I) e))))))
+occ-sub {x = x} h (dih D m C p) e =
+  ∨-false (occ-sub h D (∨-false₁ (occTm x D) e)) (∨-false (occ-sub h m (∨-false₁ (occTm x m) (∨-false₂ (occTm x D) e))) (∨-false (occ-sub h C (∨-false₁ (occTm x C) (∨-false₂ (occTm x m) (∨-false₂ (occTm x D) e)))) (occ-sub h p (∨-false₂ (occTm x C) (∨-false₂ (occTm x m) (∨-false₂ (occTm x D) e))))))
+occ-sub h fzero e = refl
+occ-sub h (fsuc t) e = occ-sub h t e
+occ-sub {x = x} h (fcase t a b) e =
+  ∨-false (occ-sub h t (∨-false₁ (occTm x t) e)) (∨-false (occ-sub h a (∨-false₁ (occTm x a) (∨-false₂ (occTm x t) e))) (occ-sub (ext-occ h) b (∨-false₂ (occTm x a) (∨-false₂ (occTm x t) e))))
+occ-sub h (fcase0 t) e = occ-sub h t e
+occ-sub {x = x} h (psplit b q) e =
+  ∨-false (occ-sub (ext-occ (ext-occ h)) b (∨-false₁ (occTm (vs (vs x)) b) e)) (occ-sub h q (∨-false₂ (occTm (vs (vs x)) b) e))
 occ-sub h unit       e = refl
 occ-sub h nzero      e = refl
 occ-sub h (nsuc n)   e = occ-sub h n e
-occ-sub h (con k p)  e = occ-sub h p e
-occ-sub h (icon k p) e = occ-sub h p e
 -- ⚠ THREE subterms, so the `∨` is right-nested and the witness must be
 --   split twice.  `elim` below needs only one split.
-occ-sub {x = x} h (ielim D i ms t) e =
-  ∨-false (occ-sub h i (∨-false₁ (occTm x i) e))
-          (∨-false (occ-sub h ms (∨-false₁ (occTm x ms) (∨-false₂ (occTm x i) e)))
-                   (occ-sub h t  (∨-false₂ (occTm x ms) (∨-false₂ (occTm x i) e))))
-occ-sub {x = x} h (elim D ms t) e =
-  ∨-false (occ-sub h ms (∨-false₁ (occTm x ms) e))
-          (occ-sub h t  (∨-false₂ (occTm x ms) e))
 
 occ-sub {x = x} h (natrec z s n) e =
   ∨-false (occ-sub h z (∨-false₁ (occTm x z) e))
@@ -553,15 +606,23 @@ occ-sub' : {σ : Sub Γ Δ} {x' : Var Δ} →
            (t : RTm Γ) → occTm x' (subTm σ t) ≡ false
 occ-sub' h ⌜Nat⌝ = refl
 occ-sub' h ⌜Unit⌝ = refl
-occ-sub' h (⌜Mu⌝ D) = refl
-occ-sub' h (⌜IMu⌝ D I i) = occ-sub' h i
+occ-sub' h (⌜IMu⌝ I D i) = ∨-false (occ-sub' h I) (∨-false (occ-sub' h D) (occ-sub' h i))
+occ-sub' h (⌜Fin⌝ n) = refl
+occ-sub' h (con p) = occ-sub' h p
+occ-sub' h (ielim D i m t) = ∨-false (occ-sub' h D) (∨-false (occ-sub' h i) (∨-false (occ-sub' h m) (occ-sub' h t)))
+occ-sub' h (dι j) = occ-sub' h j
+occ-sub' h (dσ S f) = ∨-false (occ-sub' h S) (occ-sub' h f)
+occ-sub' h (dρ j C) = ∨-false (occ-sub' h j) (occ-sub' h C)
+occ-sub' h (dpay I D C i) = ∨-false (occ-sub' h I) (∨-false (occ-sub' h D) (∨-false (occ-sub' h C) (occ-sub' h i)))
+occ-sub' h (dih D m C p) = ∨-false (occ-sub' h D) (∨-false (occ-sub' h m) (∨-false (occ-sub' h C) (occ-sub' h p)))
+occ-sub' h fzero = refl
+occ-sub' h (fsuc t) = occ-sub' h t
+occ-sub' h (fcase t a b) = ∨-false (occ-sub' h t) (∨-false (occ-sub' h a) (occ-sub' (ext-occ' h) b))
+occ-sub' h (fcase0 t) = occ-sub' h t
+occ-sub' h (psplit b q) = ∨-false (occ-sub' (ext-occ' (ext-occ' h)) b) (occ-sub' h q)
 occ-sub' h unit = refl
 occ-sub' h nzero = refl
 occ-sub' h (nsuc n) = occ-sub' h n
-occ-sub' h (con k p) = occ-sub' h p
-occ-sub' h (icon k p) = occ-sub' h p
-occ-sub' h (ielim D i ms t) = ∨-false (occ-sub' h i) (∨-false (occ-sub' h ms) (occ-sub' h t))
-occ-sub' h (elim D ms t) = ∨-false (occ-sub' h ms) (occ-sub' h t)
 occ-sub' h (natrec z s n) = ∨-false (occ-sub' h z) (∨-false (occ-sub' (ext-occ' (ext-occ' h)) s) (occ-sub' h n))
 occ-sub' h (var y) = h y
 occ-sub' h (lam t) = occ-sub' (ext-occ' h) t
@@ -582,35 +643,6 @@ occ-sub' h (tr d p q) = ∨-false (occ-sub' (ext-occ' h) d) (∨-false (occ-sub'
 occ-sub' h (jsub d p q) = ∨-false (occ-sub' (ext-occ' h) d) (∨-false (occ-sub' h p) (occ-sub' h q))
 occ-sub' h (ap c b p) = ∨-false (occ-sub' h c) (∨-false (occ-sub' (ext-occ' h) b) (occ-sub' h p))
 
-------------------------------------------------------------------------
--- ★ INDUCTIVE TYPES: the ι-rule's right-hand side introduces no variable.
---   `occ-red` (Subj) needs exactly this to keep `PosC` alive across ι.
-------------------------------------------------------------------------
-occ-sel : {x : Var Γ} (k : ℕ) (ms : RTm Γ) →
-          occTm x ms ≡ false → occTm x (sel k ms) ≡ false
-occ-sel zero    ms e = e
-occ-sel (suc k) ms e = occ-sel k (snd ms) e
-
--- ★ the IH TUPLE introduces no variable — one entry per `dρ`, and each is
---   `elim D ms (fst p)`, built only from `ms` and `p`.
-occ-ihs : {x : Var Γ} (D : Desc) (ms : RTm Γ) (C : DCon) (p : RTm Γ) →
-          occTm x ms ≡ false → occTm x p ≡ false →
-          occTm x (ihs D ms C p) ≡ false
-occ-ihs D ms dι       p ems ep = refl
-occ-ihs D ms (dρ C)   p ems ep =
-  ∨-false (∨-false ems ep) (occ-ihs D ms C (snd p) ems ep)
-occ-ihs D ms (dκ A C) p ems ep = occ-ihs D ms C (snd p) ems ep
-
--- ⚠ TUPLED (gate 5c): `fields` is now ONE application, so this is a
---   `∨-false` over `occ-ihs` rather than an induction on the field list.
-occ-fields : {x : Var Γ} (D : Desc) (ms : RTm Γ) (C : DCon) (m p : RTm Γ) →
-             occTm x ms ≡ false → occTm x m ≡ false → occTm x p ≡ false →
-             occTm x (fields D ms C m p) ≡ false
-occ-fields D ms C m p ems em ep =
-  ∨-false (∨-false em ep) (occ-ihs D ms C p ems ep)
-
-
-
 -- Two substitutions agreeing on every OCCURRING variable act equally
 -- (SpikeTr §9, promoted) — how `sr`'s `tr-pw` case bridges the swap
 -- renaming to a typed substitution on a variable-avoiding motive.
@@ -625,21 +657,35 @@ subTm-occ : {σ τ : Sub Γ Δ} (m : RTm Γ) →
             subTm σ m ≡ subTm τ m
 subTm-occ ⌜Nat⌝      h = refl
 subTm-occ ⌜Unit⌝     h = refl
-subTm-occ (⌜Mu⌝ D)     h = refl
-subTm-occ (⌜IMu⌝ D I i) h = cong (⌜IMu⌝ D I) (subTm-occ i h)
+subTm-occ (⌜IMu⌝ I D i) h =
+  cong₃ ⌜IMu⌝ (subTm-occ I (λ x o → h x (∨-inl o))) (subTm-occ D (λ x o → h x (∨-inr (occTm x I) (∨-inl o)))) (subTm-occ i (λ x o → h x (∨-inr (occTm x I) (∨-inr (occTm x D) o))))
+subTm-occ (⌜Fin⌝ n) h = refl
+subTm-occ (con p) h =
+  cong con (subTm-occ p h)
+subTm-occ (ielim D i m t) h =
+  cong₄ ielim (subTm-occ D (λ x o → h x (∨-inl o))) (subTm-occ i (λ x o → h x (∨-inr (occTm x D) (∨-inl o)))) (subTm-occ m (λ x o → h x (∨-inr (occTm x D) (∨-inr (occTm x i) (∨-inl o))))) (subTm-occ t (λ x o → h x (∨-inr (occTm x D) (∨-inr (occTm x i) (∨-inr (occTm x m) o)))))
+subTm-occ (dι j) h =
+  cong dι (subTm-occ j h)
+subTm-occ (dσ S f) h =
+  cong₂ dσ (subTm-occ S (λ x o → h x (∨-inl o))) (subTm-occ f (λ x o → h x (∨-inr (occTm x S) o)))
+subTm-occ (dρ j C) h =
+  cong₂ dρ (subTm-occ j (λ x o → h x (∨-inl o))) (subTm-occ C (λ x o → h x (∨-inr (occTm x j) o)))
+subTm-occ (dpay I D C i) h =
+  cong₄ dpay (subTm-occ I (λ x o → h x (∨-inl o))) (subTm-occ D (λ x o → h x (∨-inr (occTm x I) (∨-inl o)))) (subTm-occ C (λ x o → h x (∨-inr (occTm x I) (∨-inr (occTm x D) (∨-inl o))))) (subTm-occ i (λ x o → h x (∨-inr (occTm x I) (∨-inr (occTm x D) (∨-inr (occTm x C) o)))))
+subTm-occ (dih D m C p) h =
+  cong₄ dih (subTm-occ D (λ x o → h x (∨-inl o))) (subTm-occ m (λ x o → h x (∨-inr (occTm x D) (∨-inl o)))) (subTm-occ C (λ x o → h x (∨-inr (occTm x D) (∨-inr (occTm x m) (∨-inl o))))) (subTm-occ p (λ x o → h x (∨-inr (occTm x D) (∨-inr (occTm x m) (∨-inr (occTm x C) o)))))
+subTm-occ fzero h = refl
+subTm-occ (fsuc t) h =
+  cong fsuc (subTm-occ t h)
+subTm-occ (fcase t a b) h =
+  cong₃ fcase (subTm-occ t (λ x o → h x (∨-inl o))) (subTm-occ a (λ x o → h x (∨-inr (occTm x t) (∨-inl o)))) (subTm-occ b (ext-agree (λ x → occTm x b) (λ y o → h y (∨-inr (occTm y t) (∨-inr (occTm y a) o)))))
+subTm-occ (fcase0 t) h =
+  cong fcase0 (subTm-occ t h)
+subTm-occ (psplit b q) h =
+  cong₂ psplit (subTm-occ b (ext-agree (λ x → occTm x b) (ext-agree (λ x → occTm (vs x) b) (λ y o → h y (∨-inl o))))) (subTm-occ q (λ x o → h x (∨-inr (occTm (vs (vs x)) b) o)))
 subTm-occ unit       h = refl
 subTm-occ nzero      h = refl
 subTm-occ (nsuc n)   h = cong nsuc (subTm-occ n h)
-subTm-occ (con k p)  h = cong (con k) (subTm-occ p h)
-subTm-occ (icon k p) h = cong (icon k) (subTm-occ p h)
-subTm-occ (ielim D i ms t) h =
-  cong₃ (ielim D)
-    (subTm-occ i  (λ x o → h x (∨-inl o)))
-    (subTm-occ ms (λ x o → h x (∨-inr (occTm x i) (∨-inl o))))
-    (subTm-occ t  (λ x o → h x (∨-inr (occTm x i) (∨-inr (occTm x ms) o))))
-subTm-occ (elim D ms t) h = cong₂ (elim D)
-  (subTm-occ ms (λ x o → h x (∨-inl o)))
-  (subTm-occ t  (λ x o → h x (∨-inr (occTm x ms) o)))
 subTm-occ (natrec z s n) h =
   natrec-cong₃
     (subTm-occ z (λ x o → h x (∨-inl o)))
@@ -757,8 +803,8 @@ pw? _             = false
 data NoNatC {Γ} : RTm Γ → Set where
   nnc-base : NoNatC (⌜base⌝ {Γ})
   nnc-Unit : NoNatC (⌜Unit⌝ {Γ})
-  -- ★ `El (⌜Mu⌝ D)` decodes to `Mu D`, which is never `Nat`.
-  nnc-Mu   : {D : Desc} → NoNatC (⌜Mu⌝ {Γ} D)
+  -- ★ `El (⌜Fin⌝ n)` decodes to `Fin n`, which is never `Nat`.
+  nnc-Fin  : {n : ℕ} → NoNatC (⌜Fin⌝ {Γ} n)
   nnc-Σ    : {c : RTm Γ} {d : RTm (Γ ∙)} → NoNatC (⌜Σ⌝ c d)
   nnc-Id   : {c a b : RTm Γ} → NoNatC (⌜Id⌝ c a b)
   -- ★★ HEREDITARY along the pw-spine, and this is not decoration:
@@ -774,7 +820,7 @@ data NoNatC {Γ} : RTm Γ → Set where
 nonatc-ren : (ρ : Ren Γ Δ) {c : RTm Γ} → NoNatC c → NoNatC (renTm ρ c)
 nonatc-ren ρ nnc-base = nnc-base
 nonatc-ren ρ nnc-Unit = nnc-Unit
-nonatc-ren ρ nnc-Mu   = nnc-Mu
+nonatc-ren ρ nnc-Fin   = nnc-Fin
 nonatc-ren ρ nnc-Σ    = nnc-Σ
 nonatc-ren ρ nnc-Id   = nnc-Id
 nonatc-ren ρ (nnc-Π nd)  = nnc-Π (nonatc-ren (extR ρ) nd)
@@ -783,7 +829,7 @@ nonatc-ren ρ (nnc-Hom nc) = nnc-Hom (nonatc-ren ρ nc)
 nonatc-sub : (σ : Sub Γ Δ) {c : RTm Γ} → NoNatC c → NoNatC (subTm σ c)
 nonatc-sub σ nnc-base = nnc-base
 nonatc-sub σ nnc-Unit = nnc-Unit
-nonatc-sub σ nnc-Mu   = nnc-Mu
+nonatc-sub σ nnc-Fin   = nnc-Fin
 nonatc-sub σ nnc-Σ    = nnc-Σ
 nonatc-sub σ nnc-Id   = nnc-Id
 nonatc-sub σ (nnc-Π nd)  = nnc-Π (nonatc-sub (extS σ) nd)
@@ -820,7 +866,7 @@ stkA? ⌜base⌝        = true
 stkA? (⌜Σ⌝ c d)     = true
 stkA? (⌜Id⌝ c a b)  = true
 stkA? ⌜Unit⌝        = true
-stkA? (⌜Mu⌝ D)        = true
+stkA? (⌜Fin⌝ n)        = true
 stkA? ⌜Nat⌝         = true
 -- ⚠⚠ EXPLICIT, NOT INHERITED (PLAN-INDEXED §10.4).  `IMu D I i` is an
 --   INERT type — no reduction rule takes a `Hom (IMu …) a b` anywhere —
@@ -830,7 +876,7 @@ stkA? ⌜Nat⌝         = true
 --   ⚠ `stkC?` stays `false`: `tr-J-Hom` is GENERIC in the code, but the
 --   BARE J rules are per-code and there is no `tr-J-IMu`.  That is
 --   ⌜Nat⌝'s profile exactly, and it is why the two sit together here.
-stkA? (⌜IMu⌝ D I i) = true
+stkA? (⌜IMu⌝ I D i) = true
 stkA? (⌜Hom⌝ C a b) = stkA? C
 stkA? _             = false
 
@@ -846,7 +892,7 @@ stkC? (⌜Id⌝ c a b)  = true
 -- ⌜Π⌝-able, so paths at it are J-only (exactly the ⌜base⌝/⌜Σ⌝/⌜Id⌝
 -- verdict).
 stkC? ⌜Unit⌝        = true
-stkC? (⌜Mu⌝ D)        = true
+stkC? (⌜Fin⌝ n)        = true
 -- ★★ ⌜Nat⌝ is NOT J-able, and this is the axis's one real cost.
 -- `stkC?` is the J-ABILITY key (it is what `tr-J-Hom` and `ap-J` test),
 -- and `tr-J-Nat` BREAKS SUBJECT REDUCTION: `Hom-Nat-z` reads
@@ -866,7 +912,7 @@ stkC? (⌜Mu⌝ D)        = true
 -- ★★ §10.4: `⌜IMu⌝` IS J-able — `tr-J-IMu` is its obligation, and
 --   progress needs the rule (see the note there).  So it sits with
 --   `⌜Mu⌝`, not with ⌜Nat⌝, at `stkC?`.
-stkC? (⌜IMu⌝ D I i) = true
+stkC? (⌜IMu⌝ I D i) = true
 stkC? ⌜Nat⌝         = false
 stkC? (⌜Hom⌝ C a b) = stkA? C
 stkC? _             = false
@@ -881,7 +927,7 @@ stkC?→stkA? (fst _) ()
 stkC?→stkA? (snd _) ()
 stkC?→stkA? ⌜base⌝ h = refl
 stkC?→stkA? ⌜Unit⌝ h = refl
-stkC?→stkA? (⌜Mu⌝ D) h = refl
+stkC?→stkA? (⌜Fin⌝ n) h = refl
 stkC?→stkA? (⌜IMu⌝ Dⁱ Iⁱ i) h = refl
 stkC?→stkA? ⌜Nat⌝ ()
 stkC?→stkA? (⌜Π⌝ _ _) ()
@@ -912,18 +958,18 @@ stkC?→stkA? (natrec _ _ _) ()
 data NoNatHd {Γ} : RTm Γ → Set where
   nnh-base : NoNatHd (⌜base⌝ {Γ})
   nnh-Unit : NoNatHd (⌜Unit⌝ {Γ})
-  nnh-Mu   : {D : Desc} → NoNatHd (⌜Mu⌝ {Γ} D)
+  nnh-Fin  : {n : ℕ} → NoNatHd (⌜Fin⌝ {Γ} n)
   nnh-Σ    : {c : RTm Γ} {d : RTm (Γ ∙)} → NoNatHd (⌜Σ⌝ c d)
   nnh-Id   : {c a b : RTm Γ} → NoNatHd (⌜Id⌝ c a b)
   nnh-Π    : {c : RTm Γ} {d : RTm (Γ ∙)} → NoNatHd (⌜Π⌝ c d)
   nnh-Hom  : {c a b : RTm Γ} → NoNatHd (⌜Hom⌝ c a b)
   -- ★ §10.4: `stkC? (⌜IMu⌝ …)` is `true`, so `stkC?→hd` obliges a row.
-  nnh-IMu  : {D : IDesc} {I : RTy ε} {i : RTm Γ} → NoNatHd (⌜IMu⌝ D I i)
+  nnh-IMu  : {I D i : RTm Γ} → NoNatHd (⌜IMu⌝ I D i)
 
 nonatc→hd : {c : RTm Γ} → NoNatC c → NoNatHd c
 nonatc→hd nnc-base = nnh-base
 nonatc→hd nnc-Unit = nnh-Unit
-nonatc→hd nnc-Mu   = nnh-Mu
+nonatc→hd nnc-Fin   = nnh-Fin
 nonatc→hd nnc-Σ    = nnh-Σ
 nonatc→hd nnc-Id   = nnh-Id
 nonatc→hd (nnc-Π _)   = nnh-Π
@@ -940,7 +986,7 @@ stkC?→hd (fst _) ()
 stkC?→hd (snd _) ()
 stkC?→hd ⌜base⌝ h = nnh-base
 stkC?→hd ⌜Unit⌝ h = nnh-Unit
-stkC?→hd (⌜Mu⌝ D) h = nnh-Mu
+stkC?→hd (⌜Fin⌝ n) h = nnh-Fin
 stkC?→hd (⌜IMu⌝ Dⁱ Iⁱ i) h = nnh-IMu
 stkC?→hd ⌜Nat⌝ ()
 stkC?→hd (⌜Π⌝ _ _) ()
@@ -973,15 +1019,23 @@ stkA?-ren ρ (snd t)       = refl
 stkA?-ren ρ ⌜base⌝        = refl
 stkA?-ren ρ ⌜Nat⌝         = refl
 stkA?-ren ρ ⌜Unit⌝        = refl
-stkA?-ren ρ (⌜Mu⌝ D)        = refl
-stkA?-ren ρ (⌜IMu⌝ D I i) = refl
+stkA?-ren ρ (⌜IMu⌝ I D i) = refl
+stkA?-ren ρ (⌜Fin⌝ n) = refl
+stkA?-ren ρ (con p) = refl
+stkA?-ren ρ (ielim D i m t) = refl
+stkA?-ren ρ (dι j) = refl
+stkA?-ren ρ (dσ S f) = refl
+stkA?-ren ρ (dρ j C) = refl
+stkA?-ren ρ (dpay I D C i) = refl
+stkA?-ren ρ (dih D m C p) = refl
+stkA?-ren ρ fzero = refl
+stkA?-ren ρ (fsuc t) = refl
+stkA?-ren ρ (fcase t a b) = refl
+stkA?-ren ρ (fcase0 t) = refl
+stkA?-ren ρ (psplit b q) = refl
 stkA?-ren ρ unit          = refl
 stkA?-ren ρ nzero         = refl
 stkA?-ren ρ (nsuc n)      = refl
-stkA?-ren ρ (con k p)     = refl
-stkA?-ren ρ (elim D ms t) = refl
-stkA?-ren ρ (icon k p)     = refl
-stkA?-ren ρ (ielim D i ms t) = refl
 stkA?-ren ρ (natrec z s n) = refl
 stkA?-ren ρ (⌜Π⌝ γ δ)     = refl
 stkA?-ren ρ (⌜Σ⌝ c d)     = refl
@@ -1019,7 +1073,7 @@ nonatc-pwBody (⌜Π⌝ γ δ) (nnc-Π nd) h = nd
 nonatc-pwBody (⌜Hom⌝ C a b) (nnc-Hom nc) h = nnc-Hom (nonatc-pwBody C nc h)
 nonatc-pwBody ⌜base⌝ nnc-base ()
 nonatc-pwBody ⌜Unit⌝ nnc-Unit ()
-nonatc-pwBody (⌜Mu⌝ D) nnc-Mu ()
+nonatc-pwBody (⌜Fin⌝ n) nnc-Fin ()
 nonatc-pwBody (⌜Σ⌝ c d) nnc-Σ ()
 nonatc-pwBody (⌜Id⌝ c a b) nnc-Id ()
 
@@ -1042,7 +1096,7 @@ stkA?⊥pw (⌜Hom⌝ C a b) h = stkA?⊥pw C h
 stkA?⊥pw (⌜Id⌝ C a b) h = refl
 stkA?⊥pw ⌜Nat⌝ h = refl
 stkA?⊥pw ⌜Unit⌝ h = refl
-stkA?⊥pw (⌜Mu⌝ D) h = refl
+stkA?⊥pw (⌜Fin⌝ n) h = refl
 stkA?⊥pw (hrefl c t) ()
 stkA?⊥pw (idrefl c t) ()
 stkA?⊥pw (tr d p e) ()
@@ -1068,7 +1122,7 @@ stk⊥pw (⌜Hom⌝ C a b) h = stkA?⊥pw C h
 stk⊥pw (⌜Id⌝ C a b) h = refl
 stk⊥pw ⌜Nat⌝ ()
 stk⊥pw ⌜Unit⌝ h = refl
-stk⊥pw (⌜Mu⌝ D) h = refl
+stk⊥pw (⌜Fin⌝ n) h = refl
 stk⊥pw (hrefl c t) ()
 stk⊥pw (idrefl c t) ()
 stk⊥pw (tr d p e) ()
@@ -1088,15 +1142,23 @@ pw?-ren ρ (snd t)       = refl
 pw?-ren ρ ⌜base⌝        = refl
 pw?-ren ρ ⌜Nat⌝         = refl
 pw?-ren ρ ⌜Unit⌝        = refl
-pw?-ren ρ (⌜Mu⌝ D)        = refl
-pw?-ren ρ (⌜IMu⌝ D I i) = refl
+pw?-ren ρ (⌜IMu⌝ I D i) = refl
+pw?-ren ρ (⌜Fin⌝ n) = refl
+pw?-ren ρ (con p) = refl
+pw?-ren ρ (ielim D i m t) = refl
+pw?-ren ρ (dι j) = refl
+pw?-ren ρ (dσ S f) = refl
+pw?-ren ρ (dρ j C) = refl
+pw?-ren ρ (dpay I D C i) = refl
+pw?-ren ρ (dih D m C p) = refl
+pw?-ren ρ fzero = refl
+pw?-ren ρ (fsuc t) = refl
+pw?-ren ρ (fcase t a b) = refl
+pw?-ren ρ (fcase0 t) = refl
+pw?-ren ρ (psplit b q) = refl
 pw?-ren ρ unit          = refl
 pw?-ren ρ nzero         = refl
 pw?-ren ρ (nsuc n)      = refl
-pw?-ren ρ (con k p)     = refl
-pw?-ren ρ (elim D ms t) = refl
-pw?-ren ρ (icon k p)     = refl
-pw?-ren ρ (ielim D i ms t) = refl
 pw?-ren ρ (natrec z s n) = refl
 pw?-ren ρ (⌜Π⌝ γ δ)     = refl
 pw?-ren ρ (⌜Σ⌝ c d)     = refl
@@ -1120,15 +1182,23 @@ stkC?-ren ρ (snd t)       = refl
 stkC?-ren ρ ⌜base⌝        = refl
 stkC?-ren ρ ⌜Nat⌝         = refl
 stkC?-ren ρ ⌜Unit⌝        = refl
-stkC?-ren ρ (⌜Mu⌝ D)        = refl
-stkC?-ren ρ (⌜IMu⌝ D I i) = refl
+stkC?-ren ρ (⌜IMu⌝ I D i) = refl
+stkC?-ren ρ (⌜Fin⌝ n) = refl
+stkC?-ren ρ (con p) = refl
+stkC?-ren ρ (ielim D i m t) = refl
+stkC?-ren ρ (dι j) = refl
+stkC?-ren ρ (dσ S f) = refl
+stkC?-ren ρ (dρ j C) = refl
+stkC?-ren ρ (dpay I D C i) = refl
+stkC?-ren ρ (dih D m C p) = refl
+stkC?-ren ρ fzero = refl
+stkC?-ren ρ (fsuc t) = refl
+stkC?-ren ρ (fcase t a b) = refl
+stkC?-ren ρ (fcase0 t) = refl
+stkC?-ren ρ (psplit b q) = refl
 stkC?-ren ρ unit          = refl
 stkC?-ren ρ nzero         = refl
 stkC?-ren ρ (nsuc n)      = refl
-stkC?-ren ρ (con k p)     = refl
-stkC?-ren ρ (elim D ms t) = refl
-stkC?-ren ρ (icon k p)     = refl
-stkC?-ren ρ (ielim D i ms t) = refl
 stkC?-ren ρ (natrec z s n) = refl
 stkC?-ren ρ (⌜Π⌝ γ δ)     = refl
 stkC?-ren ρ (⌜Σ⌝ c d)     = refl
@@ -1181,15 +1251,23 @@ flat?-ren ρ (snd t)        = refl
 flat?-ren ρ ⌜base⌝         = refl
 flat?-ren ρ ⌜Nat⌝          = refl
 flat?-ren ρ ⌜Unit⌝         = refl
-flat?-ren ρ (⌜Mu⌝ D)         = refl
-flat?-ren ρ (⌜IMu⌝ D I i) = refl
+flat?-ren ρ (⌜IMu⌝ I D i) = refl
+flat?-ren ρ (⌜Fin⌝ n) = refl
+flat?-ren ρ (con p) = refl
+flat?-ren ρ (ielim D i m t) = refl
+flat?-ren ρ (dι j) = refl
+flat?-ren ρ (dσ S f) = refl
+flat?-ren ρ (dρ j C) = refl
+flat?-ren ρ (dpay I D C i) = refl
+flat?-ren ρ (dih D m C p) = refl
+flat?-ren ρ fzero = refl
+flat?-ren ρ (fsuc t) = refl
+flat?-ren ρ (fcase t a b) = refl
+flat?-ren ρ (fcase0 t) = refl
+flat?-ren ρ (psplit b q) = refl
 flat?-ren ρ unit           = refl
 flat?-ren ρ nzero          = refl
 flat?-ren ρ (nsuc n)       = refl
-flat?-ren ρ (con k p)      = refl
-flat?-ren ρ (elim D ms t)  = refl
-flat?-ren ρ (icon k p)      = refl
-flat?-ren ρ (ielim D i ms t) = refl
 flat?-ren ρ (natrec z s n) = refl
 flat?-ren ρ (⌜Π⌝ c d)      = refl
 flat?-ren ρ (⌜Σ⌝ c d)      = refl
@@ -1291,7 +1369,7 @@ stkA?-sub σ (⌜Hom⌝ C a b) h = stkA?-sub σ C h
 stkA?-sub σ (⌜Id⌝ C a b) h = refl
 stkA?-sub σ ⌜Nat⌝ h = refl
 stkA?-sub σ ⌜Unit⌝ h = refl
-stkA?-sub σ (⌜Mu⌝ D) h = refl
+stkA?-sub σ (⌜Fin⌝ n) h = refl
 stkA?-sub σ (hrefl c t) ()
 stkA?-sub σ (idrefl c t) ()
 stkA?-sub σ (tr d p e) ()
@@ -1318,7 +1396,7 @@ stkC?-sub σ (⌜Hom⌝ C a b) h = stkA?-sub σ C h
 stkC?-sub σ (⌜Id⌝ C a b) h = refl
 stkC?-sub σ ⌜Nat⌝ ()
 stkC?-sub σ ⌜Unit⌝ h = refl
-stkC?-sub σ (⌜Mu⌝ D) h = refl
+stkC?-sub σ (⌜Fin⌝ n) h = refl
 stkC?-sub σ (hrefl c t) ()
 stkC?-sub σ (idrefl c t) ()
 stkC?-sub σ (tr d p e) ()
@@ -1486,17 +1564,46 @@ ren-as-sub ρ (jsub d p e) =
   ptw (vs x) = refl
 ren-as-sub ρ ⌜Nat⌝ = refl
 ren-as-sub ρ ⌜Unit⌝ = refl
-ren-as-sub ρ (⌜Mu⌝ D) = refl
-ren-as-sub ρ (⌜IMu⌝ D I i) = cong (⌜IMu⌝ D I) (ren-as-sub ρ i)
+ren-as-sub ρ (⌜IMu⌝ I D i) =
+  cong₃ ⌜IMu⌝ (ren-as-sub ρ I) (ren-as-sub ρ D) (ren-as-sub ρ i)
+ren-as-sub ρ (⌜Fin⌝ n) =
+  refl
+ren-as-sub ρ (con p) =
+  cong con (ren-as-sub ρ p)
+ren-as-sub ρ (ielim D i m t) =
+  cong₄ ielim (ren-as-sub ρ D) (ren-as-sub ρ i) (ren-as-sub ρ m) (ren-as-sub ρ t)
+ren-as-sub ρ (dι j) =
+  cong dι (ren-as-sub ρ j)
+ren-as-sub ρ (dσ S f) =
+  cong₂ dσ (ren-as-sub ρ S) (ren-as-sub ρ f)
+ren-as-sub ρ (dρ j C) =
+  cong₂ dρ (ren-as-sub ρ j) (ren-as-sub ρ C)
+ren-as-sub ρ (dpay I D C i) =
+  cong₄ dpay (ren-as-sub ρ I) (ren-as-sub ρ D) (ren-as-sub ρ C) (ren-as-sub ρ i)
+ren-as-sub ρ (dih D m C p) =
+  cong₄ dih (ren-as-sub ρ D) (ren-as-sub ρ m) (ren-as-sub ρ C) (ren-as-sub ρ p)
+ren-as-sub ρ fzero =
+  refl
+ren-as-sub ρ (fsuc t) =
+  cong fsuc (ren-as-sub ρ t)
+ren-as-sub ρ (fcase t a b) =
+  cong₃ fcase (ren-as-sub ρ t) (ren-as-sub ρ a) (trans (ren-as-sub (extR ρ) b) (subTm-cong ptw b))
+  where
+  ptw : ∀ x → var (extR ρ x) ≡ extS (λ y → var (ρ y)) x
+  ptw vz     = refl
+  ptw (vs x) = refl
+ren-as-sub ρ (fcase0 t) =
+  cong fcase0 (ren-as-sub ρ t)
+ren-as-sub ρ (psplit b q) =
+  cong₂ psplit (trans (ren-as-sub (extR (extR ρ)) b) (subTm-cong ptw2 b)) (ren-as-sub ρ q)
+  where
+  ptw2 : ∀ x → var (extR (extR ρ) x) ≡ extS (extS (λ y → var (ρ y))) x
+  ptw2 vz          = refl
+  ptw2 (vs vz)     = refl
+  ptw2 (vs (vs x)) = refl
 ren-as-sub ρ unit  = refl
 ren-as-sub ρ nzero = refl
 ren-as-sub ρ (nsuc n) = cong nsuc (ren-as-sub ρ n)
-ren-as-sub ρ (con k p) = cong (con k) (ren-as-sub ρ p)
-ren-as-sub ρ (icon k p) = cong (icon k) (ren-as-sub ρ p)
-ren-as-sub ρ (ielim D i ms t) =
-  cong₃ (ielim D) (ren-as-sub ρ i) (ren-as-sub ρ ms) (ren-as-sub ρ t)
-ren-as-sub ρ (elim D ms t) =
-  cong₂ (elim D) (ren-as-sub ρ ms) (ren-as-sub ρ t)
 ren-as-sub ρ (natrec z s n) =
   natrec-cong₃ (ren-as-sub ρ z)
     (trans (ren-as-sub (extR (extR ρ)) s) (subTm-cong ptw2 s))
@@ -1532,30 +1639,6 @@ occ-εwkTm {Γ} {x} t =
   subst (λ z → occTm x z ≡ false)
         (trans (ren-as-sub εren t) (subTm-cong (λ ()) t))
         (occ-ren-tm (λ ()) t)
-
-occ-iihs : {x : Var Γ} (D : IDesc) (ms : RTm Γ) {Δ : Cx} (σ : Sub Δ Γ)
-           (C : ICon Δ) (p : RTm Γ) →
-           (∀ y → occTm x (σ y) ≡ false) →
-           occTm x ms ≡ false → occTm x p ≡ false →
-           occTm x (iihs D ms σ C p) ≡ false
-occ-iihs D ms σ iι       p eσ ems ep = refl
-occ-iihs D ms σ (iρ j C) p eσ ems ep =
-  ∨-false (∨-false (occ-sub' eσ j) (∨-false ems ep))
-          (occ-iihs D ms (iext σ (fst p)) C (snd p)
-                    (λ { vz → ep ; (vs y) → eσ y }) ems ep)
-occ-iihs D ms σ (iκ κ C) p eσ ems ep =
-  occ-iihs D ms (iext σ (fst p)) C (snd p)
-           (λ { vz → ep ; (vs y) → eσ y }) ems ep
-
-occ-ifields : {x : Var Γ} (D : IDesc) (i ms : RTm Γ) {Δ : Cx} (σ : Sub Δ Γ)
-              (C : ICon Δ) (m p : RTm Γ) →
-              (∀ y → occTm x (σ y) ≡ false) →
-              occTm x i ≡ false → occTm x ms ≡ false →
-              occTm x m ≡ false → occTm x p ≡ false →
-              occTm x (ifields D i ms σ C m p) ≡ false
-occ-ifields D i ms σ C m p eσ ei ems em ep =
-  ∨-false (∨-false (∨-false em ei) ep) (occ-iihs D ms σ C p eσ ems ep)
-
 
 -- the pointwise body preserves NON-occurrence (one binder deeper).
 pwBody-occ : {x : Var Γ} (C : RTm Γ) → pw? C ≡ true →

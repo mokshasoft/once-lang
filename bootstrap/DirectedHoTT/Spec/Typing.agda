@@ -39,12 +39,12 @@ open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; Var; vz; vs; RTy; base; U; Π; Σ'; El; Hom; RTm; var; lam; app
         ; pair; fst; snd; absurd; ordtr; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝; ⌜Hom⌝; hrefl; tr; ap
         ; Id; ⌜Id⌝; idrefl; jsub
-        ; Unit; Nat; unit; nzero; nsuc; natrec; extS; ⌜Nat⌝; ⌜Unit⌝; ⌜Mu⌝
-        ; Ren; extR; Thin; done; keep; drop; thinR; Sub; subTy; subTm; renTy; renTm
-        ; Desc; Mu; con; elim; lookupD; sel; fields
-        ; payTy; payTy-ren; payTy-sub; εwkTy; εwk-ren; εwk-sub; _∈D_; hereD; thereD; DCon; dι; dρ; dκ; dnil; _◃_; ihs; subTy-subTy; subTy-cong; renTy-subTy
-        ; subTm-renTm; subTm-id
-        ; IMu; icon; ielim; ⌜IMu⌝; ICon; IDesc; iι; iρ; iκ; inil; _◂_; ipayTy; ilookupD; _∈ID_; hereID; thereID; iihs; ifields; εwkTm; iext; isingle )
+        ; Unit; Nat; unit; nzero; nsuc; natrec; extS; ⌜Nat⌝; ⌜Unit⌝
+        ; Ren; extR; Sub; subTy; subTm; renTy; renTm
+        ; subTy-subTy; subTy-cong; renTy-subTy; subTm-renTm; subTm-id
+        ; εwkTy; εwk-ren; εwk-sub; εwkTm
+        ; IMu; Desc; DIh; Fin; ⌜IMu⌝; ⌜Fin⌝; con; ielim; dι; dσ; dρ; dpay; dih
+        ; fzero; fsuc; fcase; fcase0; psplit )
 open import DirectedHoTT.Spec.Variance
   using ( 𝔹; true; false; occTm; pw?; stkC?; stkA?; flat?; pwBody; pwShift
         ; NoNatC; nnc-base; nnc-Unit; nnc-Π; nnc-Σ; nnc-Hom; nnc-Id )
@@ -84,141 +84,54 @@ nrs : Sub (Γ ∙) ((Γ ∙) ∙)
 nrs vz     = nsuc (var (vs vz))
 nrs (vs x) = var (vs (vs x))
 
+-- ★ the two-binder instantiation `psplit`'s rule plugs in: the inner
+--   binder gets `y`, the outer `x`.
+single2 : RTm Γ → RTm Γ → Sub ((Γ ∙) ∙) Γ
+single2 x y vz          = y
+single2 x y (vs vz)     = x
+single2 x y (vs (vs x')) = var x'
+
+-- ★ `psplit`'s motive re-based at the two halves, and `fcase`'s at a
+--   successor tag.
+pairS : Sub (Γ ∙) ((Γ ∙) ∙)
+pairS vz     = pair (var (vs vz)) (var vz)
+pairS (vs x) = var (vs (vs x))
+
+fsucS : Sub (Γ ∙) (Γ ∙)
+fsucS vz     = fsuc (var vz)
+fsucS (vs x) = var (vs x)
+
 ------------------------------------------------------------------------
--- ★★ THE ELIMINATOR'S COMPUTED TYPES (gate 5c).  Here rather than in
---    `Pi` because they need `single`, and because `⊢con`/`⊢elim` are
---    the only consumers.
-------------------------------------------------------------------------
-
--- ★★ the IH TUPLE's type: one entry per `dρ`, NONE per `dκ`.
---    ⚠ a non-recursive field owes no induction hypothesis — it is
---      SKIPPED, not filled with a placeholder.  Same accounting as
---      `SpikeDescSigma`'s `elimLift` in the model, which is why the term
---      layer and the model layer agree on what a description means.
-ihTy : Desc → DCon → RTm Γ → RTy (Γ ∙) → RTy Γ
-ihTy D dι       q M = Unit
-ihTy D (dρ C)   q M = Σ' (subTy (single (fst q)) M) (renTy vs (ihTy D C (snd q) M))
-ihTy D (dκ A C) q M = ihTy D C (snd q) M
-
--- ★★★ THE MOTIVE, RE-BASED AT THE PAYLOAD BINDER.  `atCon k M` is `M`
---     with its SCRUTINEE binder replaced by `con k ⟨-⟩`, so its own
---     binder is now the PAYLOAD.  This is the move that makes tupled
---     methods type WITHOUT η (gate 5c).
-conS : ℕ → Sub (Γ ∙) (Γ ∙)
-conS k vz     = con k (var vz)
-conS k (vs x) = var (vs x)
-
-atCon : ℕ → RTy (Γ ∙) → RTy (Γ ∙)
-atCon k M = subTy (conS k) M
-
--- instantiating the re-based motive at a payload IS the motive at that
--- constructor.  ⚠ NO η — the congruence is `refl` in every case.
-atCon-inst : (k : ℕ) (M : RTy (Γ ∙)) (p : RTm Γ) →
-             subTy (single p) (atCon k M) ≡ subTy (single (con k p)) M
-atCon-inst k M p =
-  trans (subTy-subTy M) (subTy-cong (λ { vz → refl ; (vs x) → refl }) M)
-
--- ★★ one constructor's METHOD — TUPLED: the payload whole, then the IHs.
-methTy : Desc → ℕ → DCon → RTy (Γ ∙) → RTy Γ
-methTy D k C M =
-  Π (payTy D C)
-    (Π (ihTy D C (var vz) (renTy (extR vs) M))
-       (renTy vs (atCon k M)))
-
--- the METHOD TUPLE, right-nested so `sel` navigates it by `fst`/`snd`.
+-- ★★ THE ELIMINATOR'S TYPES (levitated, one-telescope form).
 --
--- ⚠⚠ THE TAG MUST ADVANCE.  Each method's result is `atCon k M` — the
---   motive at ITS OWN constructor — so the k-th entry carries tag `k`,
---   not `0`.  The extra `ℕ` is that offset.  With a fixed `0` every
---   method would claim to produce `M[con 0 …]` and `sel-ty` (which pulls
---   entry `k` out at `methTy D k (lookupD D k) M`) would be unprovable.
-methsTyFrom : Desc → RTy (Γ ∙) → ℕ → Desc → RTy Γ
-methsTyFrom D M j dnil    = Unit
-methsTyFrom D M j (C ◃ E) =
-  Σ' (methTy D j C M) (renTy vs (methsTyFrom D M (suc j) E))
-
-methsTy : Desc → RTy (Γ ∙) → Desc → RTy Γ
-methsTy D M E = methsTyFrom D M zero E
-
-------------------------------------------------------------------------
--- ★★★ THE INDEXED ELIMINATOR'S APPARATUS.
---
--- ⚠⚠ THE MOTIVE IS TWO-SLOT: `M : RTy ((Γ ∙) ∙)`, a family over the INDEX
---   (outer, `var (vs vz)`) and the SCRUTINEE (inner, `var vz`).  It has to
---   be — the scrutinee's type `IMu D I i` MENTIONS the index, so a motive
---   over the scrutinee alone cannot be written down.  That is the third
---   thing about indexing that was forced rather than chosen.
+-- ⚠ THE MOTIVE IS TWO-SLOT: `M : RTy ((Γ ∙) ∙)`, a family over the INDEX
+--   (outer) and the SCRUTINEE (inner).
 ------------------------------------------------------------------------
 
 -- instantiate the two-slot motive at index `j` and scrutinee `t`
 iinst : RTm Γ → RTm Γ → RTy ((Γ ∙) ∙) → RTy Γ
 iinst j t M = subTy (single t) (subTy (extS (single j)) M)
 
--- ★ the IH tuple's TYPE.  Each recursive field contributes the motive AT
---   ITS OWN SHIFTED INDEX — that is the whole content of indexing here.
-iihTy : IDesc → RTy ε → ∀ {Δ} → Sub Δ Γ → ICon Δ → RTm Γ → RTy ((Γ ∙) ∙) → RTy Γ
-iihTy D I σ iι       q M = Unit
-iihTy D I σ (iρ j C) q M =
-  Σ' (iinst (subTm σ j) (fst q) M)
-     (renTy vs (iihTy D I (iext σ (fst q)) C (snd q) M))
-iihTy D I σ (iκ κ C) q M = iihTy D I (iext σ (fst q)) C (snd q) M
+-- the motive, after the method's three binders (i, p, h), at index `i`
+--   and scrutinee `con p`
+methS : Sub ((Γ ∙) ∙) (((Γ ∙) ∙) ∙)
+methS vz          = con (var (vs vz))
+methS (vs vz)     = var (vs (vs vz))
+methS (vs (vs x)) = var (vs (vs (vs x)))
 
--- ★ the motive RE-BASED at the payload binder, for constructor `k` at
---   index `i`: the scrutinee slot becomes `icon k ⟨-⟩` and the index slot
---   is fixed to `i`.  The indexed twin of `atCon`.
-iconS : ℕ → RTm Γ → Sub ((Γ ∙) ∙) (Γ ∙)
-iconS k i vz          = icon k (var vz)
-iconS k i (vs vz)     = renTm vs i
-iconS k i (vs (vs x)) = var (vs x)
+-- the base context weakened past two binders, the motive's own two kept
+wk2M : RTy ((Γ ∙) ∙) → RTy ((((Γ ∙) ∙) ∙) ∙)
+wk2M M = renTy (extR (extR (λ x → vs (vs x)))) M
 
-iatCon : ℕ → RTm Γ → RTy ((Γ ∙) ∙) → RTy (Γ ∙)
-iatCon k i M = subTy (iconS k i) M
-
--- ★★★ OBLIGATION (b) of `ι-ielim`, DISCHARGED.  The indexed twin of
---   `atCon-inst`: instantiating the re-based motive at a payload IS the
---   two-slot motive at that constructor and that index.
---
---   ⚠ NOT congruence-free, unlike `atCon-inst`.  The INDEX slot is the one
---   with content: on the left it is `renTm vs i` weakened past the payload
---   binder, on the right past the scrutinee binder — two different
---   `single`s, both undone by `wk-single`.  The other two slots are `refl`.
-iatCon-inst : (k : ℕ) (i : RTm Γ) (M : RTy ((Γ ∙) ∙)) (p : RTm Γ) →
-              subTy (single p) (iatCon k i M) ≡ iinst i (icon k p) M
-iatCon-inst k i M p =
-  trans (subTy-subTy M)
-        (trans (subTy-cong (λ { vz          → refl
-                              ; (vs vz)     → trans (wk-single i) (sym (wk-single i))
-                              ; (vs (vs x)) → refl }) M)
-               (sym (subTy-subTy M)))
-
--- ★★★ ⚠ REVISED (§9.1): A METHOD QUANTIFIES OVER THE INDEX.
---   Without this binder the method tuple is usable at ONE index, while
---   `iihs` needs it at every recursive field's index — so obligation (c)
---   was not merely open, it was FALSE.  This is what every real indexed
---   eliminator does and what the old formulation was missing.
-imethTy : IDesc → RTy ε → ℕ → ICon (ε ∙) → RTy ((Γ ∙) ∙) → RTy Γ
--- ⚠ WRITTEN OUT, NOT via a `where`.  A `where`-bound `M₁` becomes an
---   OPAQUE APPLICATION `M₁ D I k C M` in downstream goals, so
---   `renTy ρ (M₁ … M)` does not reduce to `M₁ … (renTy ρ M)` and
---   `imethTy-ren` cannot be proved.  Readability lost, provability gained.
---   (`renTy (extR (extR vs)) M` is the motive pushed past the NEW index
---   binder; applying it twice pushes it past the payload binder too.)
-imethTy {Γ} D I k C M =
-  Π (εwkTy I)
-    (Π (ipayTy D I (isingle (var vz)) C)
-       (Π (iihTy D I (isingle (var (vs vz))) C (var vz)
-                 (renTy (extR (extR vs)) (renTy (extR (extR vs)) M)))
-          (renTy vs (iatCon k (var vz) (renTy (extR (extR vs)) M)))))
-
-imethsTyFrom : IDesc → RTy ε → RTy ((Γ ∙) ∙) → ℕ → IDesc → RTy Γ
-imethsTyFrom D I M j inil    = Unit
-imethsTyFrom D I M j (C ◂ E) =
-  Σ' (imethTy D I j C M)
-     (renTy vs (imethsTyFrom D I M (suc j) E))
-
-imethsTy : IDesc → RTy ε → RTy ((Γ ∙) ∙) → IDesc → RTy Γ
-imethsTy D I M E = imethsTyFrom D I M zero E
-
+-- ★★ THE ONE METHOD (SPIKE-LEVITATION S3/S4): at every index `i`, for the
+--   payload `p` of the WHOLE telescope and its hypotheses `h`, the motive
+--   at `con p`.  The payload is passed WHOLE — no η (gate 5c).
+MethTy : RTm Γ → RTm Γ → RTy ((Γ ∙) ∙) → RTy Γ
+MethTy I D M =
+  Π (El I)
+    (Π (El (dpay (renTm vs I) (renTm vs D) (renTm vs D) (var vz)))
+       (Π (DIh (renTm vs (renTm vs D)) (wk2M M) (renTm vs (renTm vs D)) (var vz))
+          (subTy methS M)))
 
 -- The top-two-variable SWAP renaming — what `tr-pw` uses to move the
 -- `⌜Π⌝`-codomain code under the new lambda: the Π-binder becomes the new
@@ -321,15 +234,6 @@ data _⟶_ : {Γ : Cx} → RTm Γ → RTm Γ → Set where
               tr (⌜Hom⌝ c a m) (hrefl ⌜Unit⌝ s) e ⟶ e
   tr-J-Id   : (c a m : RTm (Γ ∙)) (c₁ a₁ b₁ : RTm Γ) (s e : RTm Γ) →
               tr (⌜Hom⌝ c a m) (hrefl (⌜Id⌝ c₁ a₁ b₁) s) e ⟶ e
-  -- ★★ INDUCTIVE TYPES: `⌜Mu⌝` is J-ABLE, and belongs with ⌜base⌝/⌜Σ⌝/
-  -- ⌜Id⌝/⌜Unit⌝ rather than with ⌜Nat⌝.  The dividing line is whether the
-  -- decode's `Hom` COMPUTES: `Hom Nat a b` does (the order rules discard
-  -- an endpoint, which is what breaks J at ⌜Nat⌝), whereas nothing
-  -- computes `Hom (Mu D) a b` — that is exactly why `sh-Mu` is a STUCK
-  -- HEAD in the SN layer.  So `stkC? (⌜Mu⌝ D) = true` and this rule is
-  -- its obligation.
-  tr-J-Mu   : {D : Desc} (c a m : RTm (Γ ∙)) (s e : RTm Γ) →
-              tr (⌜Hom⌝ c a m) (hrefl (⌜Mu⌝ D) s) e ⟶ e
   -- ★★★ AND ITS INDEXED TWIN (PLAN-INDEXED §10.4).  ⚠ NOT optional, and
   --   not symmetry-for-its-own-sake: WITHOUT it a closed
   --   `tr (⌜Hom⌝ c a m) (hrefl (⌜IMu⌝ D I i) s) e` is STUCK, and that
@@ -339,9 +243,12 @@ data _⟶_ : {Γ : Cx} → RTm Γ → RTm Γ → Set where
   --   order rules are `Nat`-only), so J at it is as sound as at `Mu D`.
   --   Found by writing `trCS`; the classifiers had it wrong three ways
   --   (`stkC?`, `stkA?`, `stablecd?`) and only the metatheorem noticed.
-  tr-J-IMu  : {D : IDesc} {I : RTy ε} {iˣ : RTm Γ} (c a m : RTm (Γ ∙))
+  tr-J-IMu  : {I D iˣ : RTm Γ} (c a m : RTm (Γ ∙))
               (s e : RTm Γ) →
-              tr (⌜Hom⌝ c a m) (hrefl (⌜IMu⌝ D I iˣ) s) e ⟶ e
+              tr (⌜Hom⌝ c a m) (hrefl (⌜IMu⌝ I D iˣ) s) e ⟶ e
+  -- ★ tags: `Hom (Fin n)` computes nothing either, so J fires there too.
+  tr-J-Fin  : {n : ℕ} (c a m : RTm (Γ ∙)) (s e : RTm Γ) →
+              tr (⌜Hom⌝ c a m) (hrefl (⌜Fin⌝ n) s) e ⟶ e
   -- directed univalence computing a third time: transport at the
   -- tautological motive along a (canonical) universe path is application
   tr-taut   : (f : RTm (Γ ∙)) (e : RTm Γ) →
@@ -429,77 +336,60 @@ data _⟶_ : {Γ : Cx} → RTm Γ → RTm Γ → Set where
               s ⟶ s' → natrec z s n ⟶ natrec z s' n
   ξ-natrecⁿ : {z : RTm Γ} {s : RTm ((Γ ∙) ∙)} {n n' : RTm Γ} →
               n ⟶ n' → natrec z s n ⟶ natrec z s n'
-  -- ★ INDUCTIVE-TYPES AXIS: THE ι-RULE.  Keyed on the canonical head
-  -- `con k p`, exactly as `natrec-suc` is keyed on `nsuc n`.
-  --
-  -- ⚠ NO SIDE CONDITION.  `lookupD` and `sel` are total (see Pi), so this
-  -- is one rule with no `lookup D k ≡ just C` premise — determinism is a
-  -- pattern match and confluence never inverts a `just`.  An out-of-range
-  -- tag reduces to junk; `⊢con` is what rules it out.
-  --
-  -- The recursive calls are BUILT BY `fields`, one `elim D ms (fst …)` per
-  -- `dρ` — at a payload projection, i.e. strictly inside `p`.  That is the
-  -- same descent `natrec-suc` makes to `n`, generalised to a field list.
-  ι-elim   : (D : Desc) (ms : RTm Γ) (k : ℕ) (p : RTm Γ) →
-             elim D ms (con k p) ⟶ fields D ms (lookupD D k) (sel k ms) p
-  ξ-con    : {k : ℕ} {p p' : RTm Γ} → p ⟶ p' → con k p ⟶ con k p'
-  ξ-elimᵐ  : {D : Desc} {ms ms' t : RTm Γ} →
-             ms ⟶ ms' → elim D ms t ⟶ elim D ms' t
-  ξ-elimᵗ  : {D : Desc} {ms t t' : RTm Γ} →
-             t ⟶ t' → elim D ms t ⟶ elim D ms t'
-
-  -- ★★★★ THE INDEXED ι-RULE.
-  --
-  -- ⚠⚠ ITS SUBJECT-REDUCTION OBLIGATION, STATED HERE BECAUSE WRITING THE
-  --   STATEMENT IS WHAT EXPOSES THE MISSING PREMISE (PLAN-INDUCTIVE §8 —
-  --   that is how gate 5 found `k ∈D D`, three commits after the rule
-  --   landed).  For this rule the obligation is:
-  --
-  --     GIVEN   Γ ⊢ ielim D i ms (icon k p) ∷ iinst i (icon k p) M
-  --     SHOW    Γ ⊢ ifields D I i ms (ilookupD D k) (sel k ms) p
-  --                 ∷ iinst i (icon k p) M
-  --
-  --   which needs, and this is what writing it exposes:
-  --     (a) `k ∈ID D`      — from inverting ⊢icon on the scrutinee.  WITHOUT
-  --         it `ilookupD D k` falls off the end of the list and returns
-  --         `iι`, and the method selected is not the one that built the
-  --         term.  (Exactly gate 5's `k ∈D D`.)
-  --     (b) `iatCon`-instantiation: `iinst i (icon k p) M` must equal the
-  --         k-th method's RESULT type at the payload — the indexed twin of
-  --         `atCon-inst`, and it must hold WITH the index slot fixed to `i`.
-  --     (c) the IH tuple `iihs` must inhabit `iihTy` AT THE SHIFTED INDICES
-  --         — i.e. `ielim` at `app (εwkTm f) i` for each `iρ f`.
-  --
-  --   ✅ (a) discharged by the `k ∈ID D` premise on ⊢icon.
-  --   ✅ (b) discharged by `iatCon-inst` above.  ⚠ NOT congruence-free,
-  --      unlike `atCon-inst`: the motive is TWO-SLOT, and the INDEX slot
-  --      is weakened past the payload binder on one side and the
-  --      scrutinee binder on the other.  `wk-single`, twice.
-  --   ✅ (c) discharged by `Metatheory/SubjectReduction.iihs-ty`, which
-  --      the `sr` case for `ι-ielim` consumes.  ⚠⚠ IT WAS FALSE under the
-  --      old formulation, not merely open: methods were typed at ONE
-  --      index while `iihs` needs them at every recursive field's index
-  --      (PLAN-INDEXED §9.1); `imethTy` quantifying over the index is
-  --      what made it provable.
-  --      ⚠ This line read `⬜ … the obligation that remains` until
-  --      2026-08-26.  The proof had landed with §9.1 and the marker was
-  --      never updated — a stale ⬜ is how finished work gets redone.
-  ι-ielim  : (D : IDesc) (i ms : RTm Γ) (k : ℕ) (p : RTm Γ) →
-             ielim D i ms (icon k p)
-               ⟶ ifields D i ms (isingle i) (ilookupD D k) (sel k ms) p
-  ξ-icon   : {k : ℕ} {p p' : RTm Γ} → p ⟶ p' → icon k p ⟶ icon k p'
-  ξ-ielimⁱ : {D : IDesc} {i i' ms t : RTm Γ} →
-             i ⟶ i' → ielim D i ms t ⟶ ielim D i' ms t
-  ξ-ielimᵐ : {D : IDesc} {i ms ms' t : RTm Γ} →
-             ms ⟶ ms' → ielim D i ms t ⟶ ielim D i ms' t
-  ξ-ielimᵗ : {D : IDesc} {i ms t t' : RTm Γ} →
-             t ⟶ t' → ielim D i ms t ⟶ ielim D i ms t'
-  -- ★ `⌜Mu⌝` needs no congruence — it is inert, with no subterms.
-  --   `⌜IMu⌝` CARRIES THE INDEX, so it needs one.  Exposed by writing
-  --   Confluence's `p⌜IMu⌝`: a parallel-reduction rule under a former
-  --   implies a single-step congruence under it.
-  ξ-⌜IMu⌝  : {D : IDesc} {I : RTy ε} {i i' : RTm Γ} →
-             i ⟶ i' → ⌜IMu⌝ D I i ⟶ ⌜IMu⌝ D I i'
+  -- ★★ LEVITATED INDUCTIVE FAMILIES.  THE ι-RULE: keyed on `con p` ONLY —
+  --   it fires at ANY description (SPIKE-LEVITATION S1b: the method is a
+  --   Π, so a neutral `D` needs no guard).  The hypotheses are `dih`,
+  --   which computes on the telescope head and is stuck on a neutral one.
+  ι         : (D i e p : RTm Γ) →
+              ielim D i e (con p) ⟶ app (app (app e i) p) (dih D e D p)
+  -- the payload CODE of a telescope: the index EQUATION at `dι j`
+  --   (Fording: a constructor exists at every index, the bad ones are
+  --   uninhabitable), a Σ at `dσ`, a Σ over the family at `dρ`.
+  dpay-ι    : (I D j i : RTm Γ) → dpay I D (dι j) i ⟶ ⌜Id⌝ I j i
+  dpay-σ    : (I D S f i : RTm Γ) →
+              dpay I D (dσ S f) i ⟶
+              ⌜Σ⌝ S (dpay (renTm vs I) (renTm vs D) (app (renTm vs f) (var vz)) (renTm vs i))
+  dpay-ρ    : (I D j C i : RTm Γ) →
+              dpay I D (dρ j C) i ⟶
+              ⌜Σ⌝ (⌜IMu⌝ I D j) (dpay (renTm vs I) (renTm vs D) (renTm vs C) (renTm vs i))
+  -- the hypotheses: one recursive call per `dρ`, AT ITS OWN INDEX `j`
+  dih-ι     : (D e j p : RTm Γ) → dih D e (dι j) p ⟶ unit
+  dih-σ     : (D e S f p : RTm Γ) → dih D e (dσ S f) p ⟶ dih D e (app f (fst p)) (snd p)
+  dih-ρ     : (D e j C p : RTm Γ) →
+              dih D e (dρ j C) p ⟶ pair (ielim D j e (fst p)) (dih D e C (snd p))
+  -- tags and Σ-induction
+  fcase-z   : (a : RTm Γ) (b : RTm (Γ ∙)) → fcase fzero a b ⟶ a
+  fcase-s   : (t a : RTm Γ) (b : RTm (Γ ∙)) → fcase (fsuc t) a b ⟶ subTm (single t) b
+  psplit-β  : (b : RTm ((Γ ∙) ∙)) (x y : RTm Γ) → psplit b (pair x y) ⟶ subTm (single2 x y) b
+  -- congruences
+  ξ-⌜IMu⌝ᴵ  : {I I' D i : RTm Γ} → I ⟶ I' → ⌜IMu⌝ I D i ⟶ ⌜IMu⌝ I' D i
+  ξ-⌜IMu⌝ᴰ  : {I D D' i : RTm Γ} → D ⟶ D' → ⌜IMu⌝ I D i ⟶ ⌜IMu⌝ I D' i
+  ξ-⌜IMu⌝ⁱ  : {I D i i' : RTm Γ} → i ⟶ i' → ⌜IMu⌝ I D i ⟶ ⌜IMu⌝ I D i'
+  ξ-con     : {p p' : RTm Γ} → p ⟶ p' → con p ⟶ con p'
+  ξ-ielimᴰ  : {D D' i e t : RTm Γ} → D ⟶ D' → ielim D i e t ⟶ ielim D' i e t
+  ξ-ielimⁱ  : {D i i' e t : RTm Γ} → i ⟶ i' → ielim D i e t ⟶ ielim D i' e t
+  ξ-ielimᵉ  : {D i e e' t : RTm Γ} → e ⟶ e' → ielim D i e t ⟶ ielim D i e' t
+  ξ-ielimᵗ  : {D i e t t' : RTm Γ} → t ⟶ t' → ielim D i e t ⟶ ielim D i e t'
+  ξ-dι      : {j j' : RTm Γ} → j ⟶ j' → dι j ⟶ dι j'
+  ξ-dσˢ     : {S S' f : RTm Γ} → S ⟶ S' → dσ S f ⟶ dσ S' f
+  ξ-dσᶠ     : {S f f' : RTm Γ} → f ⟶ f' → dσ S f ⟶ dσ S f'
+  ξ-dρʲ     : {j j' C : RTm Γ} → j ⟶ j' → dρ j C ⟶ dρ j' C
+  ξ-dρᶜ     : {j C C' : RTm Γ} → C ⟶ C' → dρ j C ⟶ dρ j C'
+  ξ-dpayᴵ   : {I I' D C i : RTm Γ} → I ⟶ I' → dpay I D C i ⟶ dpay I' D C i
+  ξ-dpayᴰ   : {I D D' C i : RTm Γ} → D ⟶ D' → dpay I D C i ⟶ dpay I D' C i
+  ξ-dpayᶜ   : {I D C C' i : RTm Γ} → C ⟶ C' → dpay I D C i ⟶ dpay I D C' i
+  ξ-dpayⁱ   : {I D C i i' : RTm Γ} → i ⟶ i' → dpay I D C i ⟶ dpay I D C i'
+  ξ-dihᴰ    : {D D' e C p : RTm Γ} → D ⟶ D' → dih D e C p ⟶ dih D' e C p
+  ξ-dihᵉ    : {D e e' C p : RTm Γ} → e ⟶ e' → dih D e C p ⟶ dih D e' C p
+  ξ-dihᶜ    : {D e C C' p : RTm Γ} → C ⟶ C' → dih D e C p ⟶ dih D e C' p
+  ξ-dihᵖ    : {D e C p p' : RTm Γ} → p ⟶ p' → dih D e C p ⟶ dih D e C p'
+  ξ-fsuc    : {t t' : RTm Γ} → t ⟶ t' → fsuc t ⟶ fsuc t'
+  ξ-fcaseᵗ  : {t t' a : RTm Γ} {b : RTm (Γ ∙)} → t ⟶ t' → fcase t a b ⟶ fcase t' a b
+  ξ-fcaseᵃ  : {t a a' : RTm Γ} {b : RTm (Γ ∙)} → a ⟶ a' → fcase t a b ⟶ fcase t a' b
+  ξ-fcaseᵇ  : {t a : RTm Γ} {b b' : RTm (Γ ∙)} → b ⟶ b' → fcase t a b ⟶ fcase t a b'
+  ξ-fcase0  : {t t' : RTm Γ} → t ⟶ t' → fcase0 t ⟶ fcase0 t'
+  ξ-psplitᵇ : {b b' : RTm ((Γ ∙) ∙)} {q : RTm Γ} → b ⟶ b' → psplit b q ⟶ psplit b' q
+  ξ-psplitᵍ : {b : RTm ((Γ ∙) ∙)} {q q' : RTm Γ} → q ⟶ q' → psplit b q ⟶ psplit b q'
 
 data _⟶ᵀ_ : {Γ : Cx} → RTy Γ → RTy Γ → Set where
   El-⌜base⌝ : El (⌜base⌝ {Γ}) ⟶ᵀ base
@@ -511,12 +401,16 @@ data _⟶ᵀ_ : {Γ : Cx} → RTy Γ → RTy Γ → Set where
   El-⌜Id⌝   : (c a b : RTm Γ) → El (⌜Id⌝ c a b) ⟶ᵀ Id (El c) a b
   -- ★ stage C (N-in): the datatype codes decode.
   El-⌜Nat⌝  : El (⌜Nat⌝ {Γ}) ⟶ᵀ Nat
-  -- ★★ INDUCTIVE TYPES: the code DECODES.  This is the single rule
-  -- that makes `Mu D` a SMALL type, and so the single rule that
-  -- unlocks nesting — `dκ (El (⌜Mu⌝ D'))` is now well-formed.
-  El-⌜Mu⌝   : {D : Desc} → El (⌜Mu⌝ {Γ} D) ⟶ᵀ Mu D
-  El-⌜IMu⌝  : {D : IDesc} {I : RTy ε} {i : RTm Γ} →
-              El (⌜IMu⌝ D I i) ⟶ᵀ IMu D I i
+  El-⌜IMu⌝  : {I D i : RTm Γ} → El (⌜IMu⌝ I D i) ⟶ᵀ IMu I D i
+  El-⌜Fin⌝  : {n : ℕ} → El (⌜Fin⌝ {Γ} n) ⟶ᵀ Fin n
+  -- ★★ the hypotheses' TYPE computes on the telescope head (S3).
+  DIh-ι : (D : RTm Γ) (M : RTy ((Γ ∙) ∙)) (j p : RTm Γ) → DIh D M (dι j) p ⟶ᵀ Unit
+  DIh-σ : (D : RTm Γ) (M : RTy ((Γ ∙) ∙)) (S f p : RTm Γ) →
+          DIh D M (dσ S f) p ⟶ᵀ DIh D M (app f (fst p)) (snd p)
+  DIh-ρ : (D : RTm Γ) (M : RTy ((Γ ∙) ∙)) (j C p : RTm Γ) →
+          DIh D M (dρ j C) p ⟶ᵀ
+          Σ' (iinst j (fst p) M)
+             (DIh (renTm vs D) (renTy (extR (extR vs)) M) (renTm vs C) (snd (renTm vs p)))
   El-⌜Unit⌝ : El (⌜Unit⌝ {Γ}) ⟶ᵀ Unit
   ξ-El : {t t' : RTm Γ} → t ⟶ t' → El t ⟶ᵀ El t'
   ξ-Πˡ : {A A' : RTy Γ} {B : RTy (Γ ∙)} → A ⟶ᵀ A' → Π A B ⟶ᵀ Π A' B
@@ -552,20 +446,16 @@ data _⟶ᵀ_ : {Γ : Cx} → RTy Γ → RTy Γ → Set where
   ξ-Idᵀ  : {A A' : RTy Γ} {t u : RTm Γ} → A ⟶ᵀ A' → Id A t u ⟶ᵀ Id A' t u
   ξ-Idˡ  : {A : RTy Γ} {t t' u : RTm Γ} → t ⟶ t' → Id A t u ⟶ᵀ Id A t' u
   ξ-Idʳ  : {A : RTy Γ} {t u u' : RTm Γ} → u ⟶ u' → Id A t u ⟶ᵀ Id A t u'
-  -- ★★★ `IMu` CARRIES A TERM, so it needs a congruence — the TYPE-LEVEL
-  --   twin of the note on `ξ-⌜IMu⌝` above, and the same argument.  `Mu D`
-  --   is inert and needs none; `Hom`/`Id` carry terms and have `ξ-…ˡ/ʳ`;
-  --   `IMu D I i` carries the INDEX and had nothing.
-  --
-  -- ⚠⚠ WITHOUT THIS, SUBJECT REDUCTION IS FALSE FOR `ξ-ielimⁱ` — a rule
-  --   already in the kernel.  `sr` preserves the type on the nose, so
-  --   retyping `ielim D i' ms t` needs `t ∷ IMu D I i'` from
-  --   `t ∷ IMu D I i`, i.e. `IMu D I i ≅ᵀ IMu D I i'`, i.e. this rule.
-  --   The only alternative is deleting `ξ-ielimⁱ` so indices never
-  --   reduce — which defeats `iκ` and Vec-as-sugar, both of which exist
-  --   precisely so that computed indices COMPUTE.
-  ξ-IMu  : {D : IDesc} {I : RTy ε} {i i' : RTm Γ} →
-           i ⟶ i' → IMu D I i ⟶ᵀ IMu D I i'
+  -- ★ the formers that carry terms need congruences (a type-level `sr`
+  --   preserves types on the nose; retyping after an index step needs these).
+  ξ-IMuᴵ  : {I I' D i : RTm Γ} → I ⟶ I' → IMu I D i ⟶ᵀ IMu I' D i
+  ξ-IMuᴰ  : {I D D' i : RTm Γ} → D ⟶ D' → IMu I D i ⟶ᵀ IMu I D' i
+  ξ-IMuⁱ  : {I D i i' : RTm Γ} → i ⟶ i' → IMu I D i ⟶ᵀ IMu I D i'
+  ξ-Desc  : {I I' : RTm Γ} → I ⟶ I' → Desc I ⟶ᵀ Desc I'
+  ξ-DIhᴰ  : {D D' C p : RTm Γ} {M : RTy ((Γ ∙) ∙)} → D ⟶ D' → DIh D M C p ⟶ᵀ DIh D' M C p
+  ξ-DIhᴹ  : {D C p : RTm Γ} {M M' : RTy ((Γ ∙) ∙)} → M ⟶ᵀ M' → DIh D M C p ⟶ᵀ DIh D M' C p
+  ξ-DIhᶜ  : {D C C' p : RTm Γ} {M : RTy ((Γ ∙) ∙)} → C ⟶ C' → DIh D M C p ⟶ᵀ DIh D M C' p
+  ξ-DIhᵖ  : {D C p p' : RTm Γ} {M : RTy ((Γ ∙) ∙)} → p ⟶ p' → DIh D M C p ⟶ᵀ DIh D M C p'
 
 infix 3 _⟶*_
 data _⟶*_ : {Γ : Cx} → RTm Γ → RTm Γ → Set where
@@ -662,105 +552,15 @@ infix 3 _⊢_∷_
 infix 3 _⊢ty_
 data _⊢_∷_ : (Γ : Ctx) → RTm ⌊ Γ ⌋ → RTy ⌊ Γ ⌋ → Set
 data _⊢ty_ : (Γ : Ctx) → RTy ⌊ Γ ⌋ → Set
--- ★★ PLAN §4 — DESCRIPTION WELL-FORMEDNESS.  Mutual with typing because a
---   `dκ` slot's smallness is a TYPING fact (`◇ ⊢ c ∷ U`).
-data DConWf : DCon → Set
-data DescWf : Desc → Set
--- ★★ their INDEXED twins.  Indexed BY the index type: a shift and a field
---   code are both functions OUT of it, so well-formedness cannot be stated
---   without knowing what it is.
--- ⚠ REVISED (§9.2): `IConWf` walks a TYPED TELESCOPE, because a carried
---   term must be well-typed in a context holding the earlier fields WITH
---   THEIR TYPES.
--- ★★★ REVISED AGAIN (PLAN-BIDI §3e, "A-math", 2026-09-25): A DESCRIPTION IS
---   A STRICTLY POSITIVE FUNCTOR, and its well-formedness is a property of
---   the FUNCTOR — checked with the recursive positions typed by an ABSTRACT
---   FAMILY `X : Π I U`, never by the fixed point `IMu D I j`.  So:
---   · the judgment does NOT mention the description `D` at all;
---   · carried terms live in the constructor's own `X`-FREE scope `Δ` and
---     reach the typed telescope through a renaming `ρ` — positivity is
---     SYNTACTIC, not a side condition; only a recursive field's TYPE
---     mentions `X`;
---   · `X` sits at the ROOT (deepest slot), so `ρ` leaves every carried
---     index unchanged.
---   Why: the previous form put the fixed point into its own telescope.  The
---   declarative judgment tolerated it (it never needs the context
---   well-formed); a certifying CHECKER cannot — proving the context
---   well-formed needed `IDescWf D`, the thing being checked.  The model
---   (`ILift`) was already this functor at an abstract predicate.
-data IConWf     : RTy ε → {Δ : Cx} (Θ : Ctx) → Thin Δ ⌊ Θ ⌋ → Var ⌊ Θ ⌋ → ICon Δ → Set
-data IDescWfFrom : RTy ε → IDesc → Set
--- ★★★ PLAN-INDEXED §10 — WHICH κ CODES THE MODEL CAN INTERPRET.
---
--- ⚠⚠ FOUND BY WRITING `fund`, exactly like §9.1 and §9.2.  `⊩₀IMu`
---   carries an `IDInterp`, whose `iki-κ` row must supply
---   `(σ : Sub Θ Γ) → ⊩₀ (El (subTm σ κ))` — an interpretation of the
---   field type at EVERY environment.  It has to be every environment:
---   `⊩₀IMu` is built at `ty-IMu`, long before any payload exists, so it
---   cannot record which environments are the semantically good ones.
---
---   For a general `Θ ⊢ κ ∷ U` that is FALSE, and not marginally: take
---   `I = U`, so the ambient index is itself a code, and `κ = ⌜Π⌝ ⟨i⟩ …`.
---   Then `⊩₀ (El (subTm σ κ))` needs `⊩₀ (El (σ i))` for a σ that may
---   send `i` to any raw term at all.  `IDescWf` would admit a description
---   the model cannot interpret and `fund-ty (ty-IMu …)` would be stuck.
---
--- ★ THE FIX, and it is the non-indexed kernel's own rule generalised by
---   exactly one row.  `dwf-κ` already restricts a non-recursive field to
---   `El c` for a CLOSED code — for this very reason ("the model needs a
---   `⊩₀` witness at every `dκ` slot").  Indexing needs precisely ONE more
---   shape, the FORDING CONSTRAINT of §3, and a `⌜Id⌝` code is
---   REDUCTION-DETERMINED: `El (⌜Id⌝ c a b) ⟶ᵀ Id (El c) a b` and
---   `⊩₀Id` asks for nothing but that chain, at any arguments whatever.
---   So its interpretation IS available at every environment.
---
---   ⇒ a κ field is either a CLOSED small type or a FORDING CONSTRAINT.
---   That is not a restriction bolted on to make a proof go through: it is
---   the statement of what §3 said Fording was for.
-data ICodeWf : {Θ : Cx} → RTm Θ → Set
+-- ★★ LEVITATION: there is NO description well-formedness judgment.  A
+--   description is a TERM of `Desc I`, and its well-formedness is ordinary
+--   typing (`⊢dι`/`⊢dσ`/`⊢dρ`).  `DescWf`/`DConWf`/`IConWf`/`IDescWfFrom`/
+--   `ICodeWf`/`IDescWf` are gone (PLAN-LEVITATION; A-math's content — a
+--   telescope typed with no family in scope — is now the grammar).
 
--- the user-facing name is unchanged: a description is well-formed when
--- every constructor is, with the SAME description available for its
--- recursive fields.
--- ★ the functor `F : (I → Type) → (I → Type)` presupposes that `I` IS a
---   type.  The previous kernel never required it (an IMPLICIT assumption);
---   the instantiation `X := λj. ⌜IMu⌝ D I j` needs it to be typed, so it is
---   now carried explicitly.
-IDescWf : RTy ε → IDesc → Set
-IDescWf I D = (◇ ⊢ty I) × IDescWfFrom I D
-
-IDescWf-I : {I : RTy ε} {D : IDesc} → IDescWf I D → ◇ ⊢ty I
-IDescWf-I (dI ,, _) = dI
-
-IDescWf-cons : {I : RTy ε} {D : IDesc} → IDescWf I D → IDescWfFrom I D
-IDescWf-cons (_ ,, wE) = wE
-
--- ★ the ROOT of every constructor telescope: the abstract family
---   `X : Π I U`, then the ambient index.  `ρ₀` embeds the constructor's
---   scope (just the index) as a THINNING that skips `X`; `x₀` is where
---   `X` lives.
-Θ₀ : RTy ε → Ctx
-Θ₀ I = (◇ ▹ Π (εwkTy I) U) ▹ εwkTy I
-
--- ⚠ KEEP the index, DROP the family: the family is the telescope's
---   BOTTOM variable, so it is the thinning's innermost step.
-ρ₀ : Thin (ε ∙) ((ε ∙) ∙)
-ρ₀ = keep (drop done)
-
-x₀ : Var ((ε ∙) ∙)
-x₀ = vs vz
-
--- ★ the INSTANTIATION of the abstract family at the fixed point:
---   `X := λ j. ⌜IMu⌝ D I j`.  Every consumer of `IConWf` (subject
---   reduction, the model) runs the telescope at this `X`; `Xconv` is the
---   one conversion that turns a family-typed field back into a
---   fixed-point-typed one.
-Xinst : {Γ : Cx} → IDesc → RTy ε → RTm Γ
-Xinst D I = lam (⌜IMu⌝ D I (var vz))
-
-Xconv : {Γ : Cx} (D : IDesc) (I : RTy ε) (j : RTm Γ) →
-        El (app (Xinst D I) j) ≅ᵀ IMu D I j
-Xconv D I j = ctrnᵀ (credᵀ (ξ-El (β (⌜IMu⌝ D I (var vz)) j))) (credᵀ El-⌜IMu⌝)
+-- the motive's context: index, then scrutinee
+motCtx : (Γ : Ctx) → RTm ⌊ Γ ⌋ → RTm ⌊ Γ ⌋ → Ctx
+motCtx Γ I D = (Γ ▹ El I) ▹ IMu (renTm vs I) (renTm vs D) (var vz)
 
 data _⊢_∷_ where
   ⊢var  : ∀ {Γ x A}     → Γ ∋ x ∷ A → Γ ⊢ var x ∷ A
@@ -861,15 +661,9 @@ data _⊢_∷_ where
                           Γ ⊢ ⌜Id⌝ c a b ∷ U
   -- ★ stage C: `Nat` and `Unit` are SMALL.
   ⊢⌜Nat⌝  : ∀ {Γ} → Γ ⊢ ⌜Nat⌝ {⌊ Γ ⌋} ∷ U
-  -- ⚠ carries `DescWf` for the SAME reason `ty-Mu` does: the model
-  -- needs a `⊩₀` witness at every `dκ` slot, and this is now a second
-  -- door through which `Mu D` enters — so it must carry the same key.
-  ⊢⌜Mu⌝   : ∀ {Γ D} → DescWf D → Γ ⊢ ⌜Mu⌝ {⌊ Γ ⌋} D ∷ U
-  -- ★ the INDEXED code.  Required, not optional: without it an indexed type
-  --   cannot live in `U`, so it could never be the carrier `A : U` that
-  --   `amrec` recurses over — which is exactly what dogfooding needs.
-  ⊢⌜IMu⌝  : ∀ {Γ D I i} → IDescWf I D → Γ ⊢ i ∷ εwkTy I →
-            Γ ⊢ ⌜IMu⌝ D I i ∷ U
+  -- ★ the family's CODE: families are small (nesting, `amrec` carriers).
+  ⊢⌜IMu⌝  : ∀ {Γ I D i} → Γ ⊢ D ∷ Desc I → Γ ⊢ i ∷ El I → Γ ⊢ ⌜IMu⌝ I D i ∷ U
+  ⊢⌜Fin⌝  : ∀ {Γ n} → Γ ⊢ ⌜Fin⌝ {⌊ Γ ⌋} n ∷ U
   ⊢⌜Unit⌝ : ∀ {Γ} → Γ ⊢ ⌜Unit⌝ {⌊ Γ ⌋} ∷ U
   ⊢idrefl : ∀ {Γ c t}   → Γ ⊢ c ∷ U → Γ ⊢ t ∷ El c →
                           Γ ⊢ idrefl c t ∷ Id (El c) t t
@@ -891,67 +685,41 @@ data _⊢_∷_ where
             ((Γ ▹ Nat) ▹ M) ⊢ s ∷ subTy nrs M →
             Γ ⊢ n ∷ Nat →
             Γ ⊢ natrec z s n ∷ subTy (single n) M
-  -- ★★★ INDUCTIVE TYPES (gate 5c).  No new JUDGMENT: the payload's type
-  -- and the method's type are COMPUTED from the description, so these
-  -- reuse the existing Π/Σ rules.
-  --
-  -- ⚠⚠ `k ∈D D` IS LOAD-BEARING (gate 5, Q21).  `lookupD` is total, and
-  -- `payTy D dι = Unit`, so without it an out-of-range tag with payload
-  -- `unit` is typeable, ι reduces it to `sel k ms`, and that bottoms out
-  -- in `fst unit`.  Subject reduction would be FALSE, not unprovable.
-  ⊢con  : ∀ {Γ D k p} →
-          DescWf D →
-          k ∈D D →
-          Γ ⊢ p ∷ payTy D (lookupD D k) →
-          Γ ⊢ con k p ∷ Mu D
-  -- ★ DEPENDENT elimination — the motive is a family over the scrutinee,
-  -- exactly as `⊢natrec`'s is.  Methods are TUPLED: each receives the
-  -- payload WHOLE and the IH tuple beside it, which is what lets this
-  -- type without η (gate 5b vs 5c).
-  ⊢elim : ∀ {Γ D M ms t} →
-          DescWf D →
-          (Γ ▹ Mu D) ⊢ty M →
-          Γ ⊢ ms ∷ methsTy D M D →
-          Γ ⊢ t ∷ Mu D →
-          Γ ⊢ elim D ms t ∷ subTy (single t) M
-  -- ★★★ INDEXED introduction.  The payload is typed AT THE AMBIENT INDEX;
-  --   a constructor is available at EVERY index — that is what `iι`
-  --   means, and it is why `IMuMem` is UNIFORM in the index
-  --   (PLAN-INDEXED §2).  The FORDING constraint field is what makes the
-  --   bad ones UNINHABITABLE.
-  --
-  --   ⚠ THAT USED TO BE A PROMISSORY NOTE, and its neighbour one rule up
-  --     (`⊢con`'s `k ∈D D`) shows why that is not good enough: written as
-  --     a comment it was FALSE, and only gate 5 caught it.  So the
-  --     mechanism is now a THEOREM, not a claim:
-  --
-  --       `Canonicity.idEndpoints` — a CLOSED proof of `Id A a b` forces
-  --         `a ≅ b`.  A Fording field has type `El (⌜Id⌝ c a b)`, which
-  --         decodes to `Id (El c) a b`, so inhabiting a constructor at
-  --         the wrong index would make the ambient index and the
-  --         constructor's own target convertible.
-  --       `Canonicity.zero≇suc` — distinct numerals are not.
-  --       `Examples.Vec.no-cons-at-zero` — the two composed: there is no
-  --         closed `cons` payload at index `zero`.
-  --
-  --   ⚠ NOTHING HERE RESTRICTS THE RULE.  `⊢icon` is unchanged; what
-  --     changed is that the semantic content of §3's Fording decision is
-  --     now checked instead of asserted.
-  ⊢icon : ∀ {Γ D I i k p} →
-          IDescWf I D →
-          k ∈ID D →
-          Γ ⊢ i ∷ εwkTy I →
-          Γ ⊢ p ∷ ipayTy D I (isingle i) (ilookupD D k) →
-          Γ ⊢ icon k p ∷ IMu D I i
-  -- ★★★ INDEXED elimination.  ⚠ The result substitutes BOTH slots — the
-  --   index and the scrutinee — because the motive is two-slot.
-  ⊢ielim : ∀ {Γ D I M i ms t} →
-           IDescWf I D →
-           ((Γ ▹ εwkTy I) ▹ IMu D I (var vz)) ⊢ty M →
-           Γ ⊢ i ∷ εwkTy I →
-           Γ ⊢ ms ∷ imethsTy D I M D →
-           Γ ⊢ t ∷ IMu D I i →
-           Γ ⊢ ielim D i ms t ∷ iinst i t M
+  -- ★★ LEVITATED INDUCTIVE FAMILIES (SPIKE-LEVITATION S3/S4).
+  --   Telescopes: well-formedness IS typing.  `⊢dσ` carries the index
+  --   code's typing because its other premises only type it UNDER a binder.
+  ⊢dι   : ∀ {Γ I j} → Γ ⊢ j ∷ El I → Γ ⊢ dι j ∷ Desc I
+  ⊢dσ   : ∀ {Γ I S f} → Γ ⊢ I ∷ U → Γ ⊢ S ∷ U →
+          Γ ⊢ f ∷ Π (El S) (Desc (renTm vs I)) → Γ ⊢ dσ S f ∷ Desc I
+  ⊢dρ   : ∀ {Γ I j C} → Γ ⊢ j ∷ El I → Γ ⊢ C ∷ Desc I → Γ ⊢ dρ j C ∷ Desc I
+  ⊢dpay : ∀ {Γ I D C i} → Γ ⊢ D ∷ Desc I → Γ ⊢ C ∷ Desc I → Γ ⊢ i ∷ El I →
+          Γ ⊢ dpay I D C i ∷ U
+  -- a constructor exists at EVERY index (Fording): the payload's `dι j`
+  --   field is the equation `j ≡ i`, so the bad ones are uninhabitable.
+  ⊢con  : ∀ {Γ I D i p} → Γ ⊢ D ∷ Desc I → Γ ⊢ i ∷ El I →
+          Γ ⊢ p ∷ El (dpay I D D i) → Γ ⊢ con p ∷ IMu I D i
+  ⊢dih  : ∀ {Γ I D M e C i p} →
+          Γ ⊢ D ∷ Desc I → motCtx Γ I D ⊢ty M → Γ ⊢ e ∷ MethTy I D M →
+          Γ ⊢ C ∷ Desc I → Γ ⊢ i ∷ El I → Γ ⊢ p ∷ El (dpay I D C i) →
+          Γ ⊢ dih D e C p ∷ DIh D M C p
+  ⊢ielim : ∀ {Γ I D M e i t} →
+           Γ ⊢ D ∷ Desc I → motCtx Γ I D ⊢ty M → Γ ⊢ e ∷ MethTy I D M →
+           Γ ⊢ i ∷ El I → Γ ⊢ t ∷ IMu I D i →
+           Γ ⊢ ielim D i e t ∷ iinst i t M
+  -- tags: Fin (n+1) ≅ 1 + Fin n, and the empty Fin 0
+  ⊢fzero  : ∀ {Γ n} → Γ ⊢ fzero ∷ Fin (suc n)
+  ⊢fsuc   : ∀ {Γ n t} → Γ ⊢ t ∷ Fin n → Γ ⊢ fsuc t ∷ Fin (suc n)
+  ⊢fcase  : ∀ {Γ n P t a b} →
+            (Γ ▹ Fin (suc n)) ⊢ty P → Γ ⊢ t ∷ Fin (suc n) →
+            Γ ⊢ a ∷ subTy (single fzero) P → (Γ ▹ Fin n) ⊢ b ∷ subTy fsucS P →
+            Γ ⊢ fcase t a b ∷ subTy (single t) P
+  ⊢fcase0 : ∀ {Γ P t} → (Γ ▹ Fin zero) ⊢ty P → Γ ⊢ t ∷ Fin zero →
+            Γ ⊢ fcase0 t ∷ subTy (single t) P
+  -- ★ Σ-INDUCTION (D071)
+  ⊢psplit : ∀ {Γ A B P q b} →
+            (Γ ▹ Σ' A B) ⊢ty P → Γ ⊢ q ∷ Σ' A B →
+            ((Γ ▹ A) ▹ B) ⊢ b ∷ subTy pairS P →
+            Γ ⊢ psplit b q ∷ subTy (single q) P
   ⊢conv : ∀ {Γ t A B}   → Γ ⊢ t ∷ A → A ≅ᵀ B → Γ ⊢ t ∷ B
 
 data _⊢ty_ where
@@ -963,130 +731,15 @@ data _⊢ty_ where
   ty-Id   : ∀ {Γ A t u} → Γ ⊢ty A → Γ ⊢ t ∷ A → Γ ⊢ u ∷ A → Γ ⊢ty Id A t u
   ty-Unit : ∀ {Γ}     → Γ ⊢ty Unit
   ty-Nat  : ∀ {Γ}     → Γ ⊢ty Nat
-  -- ★ INDUCTIVE TYPES.  ⚠ UNCONDITIONAL for now: a garbage `dκ A` yields
-  -- a type nothing inhabits — permissive, not unsound.  Description
-  -- WELL-FORMEDNESS becomes REQUIRED for the model, where `⊩₀ (Mu D)`
-  -- needs `⊩₀ A` at every `dκ`.  See PLAN-INDUCTIVE §4.
-  -- ★ now CONDITIONAL.  The model needs a `⊩₀` witness at every `dκ`
-  -- slot, and there is nowhere else to get one: `ty-Mu` is the only rule
-  -- that introduces `Mu D`, so it is the only place the interpretation
-  -- can enter.  (It was unconditional while `Mu` had no model.)
-  ty-Mu   : ∀ {Γ D}   → DescWf D → Γ ⊢ty Mu D
-  -- ★★★ INDEXED formation.  ⚠ Needs the INDEX to be typed, which is why
-  --   `IMu` carries the index TYPE at all — `ty-Mu` needs no such thing.
-  --   Writing THIS rule is what exposed the missing field (2026-08-22).
-  ty-IMu  : ∀ {Γ D I i} → IDescWf I D → Γ ⊢ i ∷ εwkTy I → Γ ⊢ty IMu D I i
+  ty-IMu  : ∀ {Γ I D i} → Γ ⊢ D ∷ Desc I → Γ ⊢ i ∷ El I → Γ ⊢ty IMu I D i
+  -- ★ `Desc I` is LARGE (no code); its index must be a code
+  ty-Desc : ∀ {Γ I} → Γ ⊢ I ∷ U → Γ ⊢ty Desc I
+  ty-DIh  : ∀ {Γ I D M C i p} →
+            Γ ⊢ D ∷ Desc I → motCtx Γ I D ⊢ty M → Γ ⊢ C ∷ Desc I →
+            Γ ⊢ i ∷ El I → Γ ⊢ p ∷ El (dpay I D C i) → Γ ⊢ty DIh D M C p
+  ty-Fin  : ∀ {Γ n} → Γ ⊢ty Fin n
   -- W2: `Hom` FORMATION — both endpoints at the same (well-formed) type.
   ty-Hom  : ∀ {Γ A t u} → Γ ⊢ty A → Γ ⊢ t ∷ A → Γ ⊢ u ∷ A → Γ ⊢ty Hom A t u
-
--- ★★ the descriptions the model can interpret.
---
--- ⚠ THE κ FIELD MUST BE SMALL — `El c` for a CLOSED code.  This is not an
---   ad-hoc restriction to make the proof go through: an inductive type
---   belongs to the universe exactly when its fields do, which is the rule
---   Agda and Coq use.  Concretely it is what lets `fund-ty` build the
---   `⊩₀ (εwkTy (El c))` witness that `ki-κ` demands, via `sem-El`.
---
--- ⚠ CONSEQUENCE, recorded so it is not discovered later: `dκ (Mu D')` —
---   a NESTED datatype — is NOT well-formed yet, because `Mu D'` is not
---   `El c` for any code.  There is no `⌜Mu⌝`.  Adding one (with
---   `El-⌜Mu⌝ : El (⌜Mu⌝ D) ⟶ᵀ Mu D`, on the `⌜Nat⌝`-at-stage-C template)
---   unlocks nesting and invalidates none of this — `dwf-κ` just gains
---   `⌜Mu⌝` as an admissible code.  Gate 6c's `WrapD` tested exactly that
---   case, so it is a real capability deferred, not a hypothetical.
-data DConWf where
-  dwf-ι : DConWf dι
-  dwf-ρ : {C : DCon} → DConWf C → DConWf (dρ C)
-  dwf-κ : {C : DCon} (c : RTm ε) → ◇ ⊢ c ∷ U → DConWf C → DConWf (dκ (El c) C)
-
-data DescWf where
-  dwf-nil  : DescWf dnil
-  dwf-cons : {C : DCon} {E : Desc} → DConWf C → DescWf E → DescWf (C ◃ E)
-
--- ★★★ INDEXED well-formedness.
---
--- ⚠ `iwf-κ` asks for `◇ ⊢ κ ∷ Π I U` — a closed function from the index
---   type to CODES.  That is strictly better behaved than `dwf-κ`'s
---   `dκ (El c) C` hack: `dκ` takes an arbitrary `RTy ε` and well-formedness
---   then has to RESTRICT it to an `El` of a code ("the κ field must be
---   SMALL"). Here the code-valued function is the constructor's own field,
---   so `ipayTy` produces `El (app κ i)` and smallness is structural.
---
--- ⚠ `iwf-ρ` asks for `◇ ⊢ f ∷ Π I (εwkTy I)` — the shift is an endofunction
---   on the index type.  For a SYNTAX that is `lam (var vz)` (a field at the
---   ambient index) or `lam (nsuc (var vz))` (one under a binder).
-data IConWf where
-  iwf-ι : {I : RTy ε} {Δ : Cx} {Θ : Ctx} {ρ : Thin Δ ⌊ Θ ⌋} {x : Var ⌊ Θ ⌋} →
-          IConWf I Θ ρ x iι
-  -- ★ a RECURSIVE field: its index `j` is any well-typed index term IN THE
-  --   TELESCOPE SO FAR (§9.2: a later field may name it), and the tail
-  --   sees it bound at the ABSTRACT FAMILY `X j` — not the fixed point.
-  iwf-ρ : {I : RTy ε} {Δ : Cx} {Θ : Ctx} {ρ : Thin Δ ⌊ Θ ⌋} {x : Var ⌊ Θ ⌋}
-          {C : ICon (Δ ∙)} (j : RTm Δ) →
-          Θ ⊢ renTm (thinR ρ) j ∷ εwkTy I →
-          IConWf I (Θ ▹ El (app (var x) (renTm (thinR ρ) j))) (keep ρ) (vs x) C →
-          IConWf I Θ ρ x (iρ j C)
-  -- ★ a NON-RECURSIVE field: a CODE in the telescope, decoded by `El`.
-  --   A FORDING constraint is exactly this — a field whose code mentions
-  --   the ambient index and an earlier field.
-  --   ⚠ §10: it also carries an `ICodeWf` — the model's key, the indexed
-  --   twin of `dwf-κ`'s "the κ field must be SMALL".
-  iwf-κ : {I : RTy ε} {Δ : Cx} {Θ : Ctx} {ρ : Thin Δ ⌊ Θ ⌋} {x : Var ⌊ Θ ⌋}
-          {C : ICon (Δ ∙)} (κ : RTm Δ) →
-          ICodeWf κ →
-          Θ ⊢ renTm (thinR ρ) κ ∷ U →
-          IConWf I (Θ ▹ El (renTm (thinR ρ) κ)) (keep ρ) (vs x) C →
-          IConWf I Θ ρ x (iκ κ C)
-
--- ★★★ §10.  TWO ROWS, and each is forced.
---
---   `icw-clo`  — a CLOSED small type.  This is `dwf-κ` verbatim; its
---                witness is `elW`, at the empty environment, so no `σ`
---                can disturb it (`εwkTm-sub`).
---   `icw-ford` — a FORDING CONSTRAINT.  `El (⌜Id⌝ c a b)` reduces to
---                `Id (El c) a b` in ONE step and `⊩₀Id` needs only that
---                chain — no interpretation of `c`, no `SN` of the
---                endpoints.  That is what makes it environment-proof, and
---                it is why Fording (§3) and not native computed targets
---                is what this kernel can model.
---
--- ⚠ NOT CLOSED UNDER `⌜Π⌝`/`⌜Σ⌝`/`⌜Hom⌝, deliberately.  `⊩₀Π` needs a
---   real interpretation of the domain, `⊩₀Hom` needs the `Hom` to be
---   STUCK — neither survives an arbitrary environment.  A field wanting
---   one of those must be closed, and then `icw-clo` covers it.
-data ICodeWf where
-  icw-clo  : {Θ : Cx} (c : RTm ε) → ◇ ⊢ c ∷ U → ICodeWf (εwkTm {Θ} c)
-  icw-ford : {Θ : Cx} (c a b : RTm Θ) → ICodeWf (⌜Id⌝ c a b)
-  -- ★★★ §12: a NESTED INDEXED TYPE, and it belongs here for exactly
-  --   `icw-ford`'s reason.  `⊩₀IMu` asks for the decode chain and an
-  --   `IDInterp`, and the `IDInterp` DOES NOT MENTION THE INDEX — so a
-  --   `⌜IMu⌝` code is reduction-determined at every environment just as
-  --   a `⌜Id⌝` one is, however the index moves.
-  --
-  --   ⚠ THE `IDescWf` IS CARRIED, though `iwf-κ`'s own `Θ ⊢ κ ∷ U`
-  --     premise already implies it (`gen-⌜IMu⌝` recovers it).  Not
-  --     redundancy for its own sake: `interpIK` recurses on this
-  --     argument, and a witness RECOVERED by an inversion lemma is not a
-  --     structural subterm of anything, so `fund`'s termination check
-  --     would fail.  Same reason `icw-clo` carries the typing derivation
-  --     `elW` consumes rather than re-deriving it.
-  --
-  --   ⚠ NESTING IS WHAT `Fording` CANNOT DO.  Fording turns a computed
-  --     INDEX into an equality CONSTRAINT; it never makes a field's TYPE
-  --     a family.  `Var`/`Fin` can be had either way, but `elim`'s
-  --     `Desc` and `dκ`'s `RTy ε` cannot — which is why this row is on
-  --     the path to `RTm` as a kernel type (PLAN-INDEXED §12).
-  icw-imu  : {Θ : Cx} {D' : IDesc} {I' : RTy ε} (i : RTm Θ) →
-             IDescWf I' D' → ICodeWf (⌜IMu⌝ D' I' i)
-
-data IDescWfFrom where
-  idwf-nil  : {I : RTy ε} → IDescWfFrom I inil
-  -- ⚠ each constructor starts in the telescope `Θ₀ I` — the abstract family,
-  --   then the AMBIENT INDEX — its own scope `ε ∙` embedded by `ρ₀`.
-  idwf-cons : {I : RTy ε} {C : ICon (ε ∙)} {E : IDesc} →
-              IConWf I (Θ₀ I) ρ₀ x₀ C → IDescWfFrom I E →
-              IDescWfFrom I (C ◂ E)
-
 
 -- CONTEXT well-formedness. Needed because `⊢var`'s type comes from a lookup:
 -- syntactic validity at `⊢var` is exactly "a lookup in a well-formed context
