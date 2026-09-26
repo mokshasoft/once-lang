@@ -43,8 +43,8 @@ open import DirectedHoTT.Spec.Typing
         ; DIh-ι; DIh-σ; DIh-ρ; ξ-IMuᴵ; ξ-IMuᴰ; ξ-IMuⁱ; ξ-Desc; ξ-DIhᴰ; ξ-DIhᴹ
         ; ξ-DIhᶜ; ξ-DIhᵖ; ι; dpay-ι; dpay-σ; dpay-ρ; dih-ι; dih-σ; dih-ρ
         ; fcase-z; fcase-s; psplit-β; ξ-⌜IMu⌝ᴵ; ξ-⌜IMu⌝ᴰ; ξ-⌜IMu⌝ⁱ; ξ-con
-        ; ξ-ielimᴰ; ξ-ielimⁱ; ξ-ielimᵉ; ξ-ielimᵗ; ξ-dι; ξ-dσˢ; ξ-dσᶠ; ξ-dρʲ
-        ; ξ-dρᶜ; ξ-dpayᴵ; ξ-dpayᴰ; ξ-dpayᶜ; ξ-dpayⁱ; ξ-dihᴰ; ξ-dihᵉ; ξ-dihᶜ
+        ; ξ-ielimᴰ; ξ-ielimⁱ; ξ-ielimᵉ; ξ-ielimᵗ; ξ-dσˢ; ξ-dσᶠ; ξ-dρʲ
+        ; ξ-dρᶜ; ξ-dpayᴵ; ξ-dpayᴰ; ξ-dpayᶜ; ξ-dihᴰ; ξ-dihᵉ; ξ-dihᶜ
         ; ξ-dihᵖ; ξ-fsuc; ξ-fcaseᵗ; ξ-fcaseᵃ; ξ-fcaseᵇ; ξ-fcase0; ξ-psplitᵇ
         ; ξ-psplitᵍ; tr-J-IMu; tr-J-Fin; single )
 open import DirectedHoTT.Metatheory.Confluence
@@ -164,7 +164,7 @@ data _⟹ᵀ_ : {Γ : Cx} → RTy Γ → RTy Γ → Set where
   pEl-⌜Fin⌝ : {n : ℕ} → El (⌜Fin⌝ {Γ} n) ⟹ᵀ Fin n
   pDIh      : {D D' C C' p p' : RTm Γ} {M M' : RTy ((Γ ∙) ∙)} →
               D ⟹ D' → M ⟹ᵀ M' → C ⟹ C' → p ⟹ p' → DIh D M C p ⟹ᵀ DIh D' M' C' p'
-  pDIh-ι    : {D j p : RTm Γ} {M : RTy ((Γ ∙) ∙)} → DIh D M (dι j) p ⟹ᵀ Unit
+  pDIh-ι    : {D p : RTm Γ} {M : RTy ((Γ ∙) ∙)} → DIh D M dι p ⟹ᵀ Unit
   pDIh-σ    : {D D' S f f' p p' : RTm Γ} {M M' : RTy ((Γ ∙) ∙)} →
               D ⟹ D' → M ⟹ᵀ M' → f ⟹ f' → p ⟹ p' →
               DIh D M (dσ S f) p ⟹ᵀ DIh D' M' (app f' (fst p')) (snd p')
@@ -201,7 +201,7 @@ data _⟹ᵀ_ : {Γ : Cx} → RTy Γ → RTy Γ → Set where
 ⟶ᵀ→⟹ᵀ El-⌜base⌝    = pEl-⌜base⌝
 ⟶ᵀ→⟹ᵀ El-⌜IMu⌝     = pEl-⌜IMu⌝ (⟹-refl _) (⟹-refl _) (⟹-refl _)
 ⟶ᵀ→⟹ᵀ El-⌜Fin⌝     = pEl-⌜Fin⌝
-⟶ᵀ→⟹ᵀ (DIh-ι D M j p) = pDIh-ι
+⟶ᵀ→⟹ᵀ (DIh-ι D M p) = pDIh-ι
 ⟶ᵀ→⟹ᵀ (DIh-σ D M S f p) = pDIh-σ (⟹-refl D) (⟹ᵀ-refl M) (⟹-refl f) (⟹-refl p)
 ⟶ᵀ→⟹ᵀ (DIh-ρ D M j C p) = pDIh-ρ (⟹-refl D) (⟹ᵀ-refl M) (⟹-refl j) (⟹-refl C) (⟹-refl p)
 ⟶ᵀ→⟹ᵀ (ξ-IMuᴵ r) = pIMu (⟶→⟹ r) (⟹-refl _) (⟹-refl _)
@@ -248,7 +248,7 @@ data _⟹ᵀ_ : {Γ : Cx} → RTy Γ → RTy Γ → Set where
 ⟹ᵀ→⟶ᵀ* (pDIh a m c d) =
   ⟶ᵀ*-trans (⟶ᵀ*-DIhᴰ (⟹→⟶* a)) (⟶ᵀ*-trans (⟶ᵀ*-DIhᴹ (⟹ᵀ→⟶ᵀ* m))
     (⟶ᵀ*-trans (⟶ᵀ*-DIhᶜ (⟹→⟶* c)) (⟶ᵀ*-DIhᵖ (⟹→⟶* d))))
-⟹ᵀ→⟶ᵀ* (pDIh-ι {D = D} {j = j} {p = p} {M = M}) = stepᵀ (DIh-ι D M j p) doneᵀ
+⟹ᵀ→⟶ᵀ* (pDIh-ι {D = D} {p = p} {M = M}) = stepᵀ (DIh-ι D M p) doneᵀ
 ⟹ᵀ→⟶ᵀ* (pDIh-σ {D = D} {S = S} {f = f} {p = p} {M = M} a m c d) =
   stepᵀ (DIh-σ D M S f p)
     (⟶ᵀ*-trans (⟶ᵀ*-DIhᴰ (⟹→⟶* a)) (⟶ᵀ*-trans (⟶ᵀ*-DIhᴹ (⟹ᵀ→⟶ᵀ* m))
@@ -406,7 +406,7 @@ Nat ⁺ᵀ          = Nat
 IMu I D i ⁺ᵀ = IMu (I ⁺) (D ⁺) (i ⁺)
 Desc I ⁺ᵀ = Desc (I ⁺)
 Fin n ⁺ᵀ = Fin n
-DIh D M (dι j) p ⁺ᵀ = Unit
+DIh D M dι p ⁺ᵀ = Unit
 DIh D M (dσ S f) p ⁺ᵀ = DIh (D ⁺) (M ⁺ᵀ) (app (f ⁺) (fst (p ⁺))) (snd (p ⁺))
 DIh D M (dρ j C) p ⁺ᵀ =
   Σ' (iinst (j ⁺) (fst (p ⁺)) (M ⁺ᵀ))
@@ -415,10 +415,10 @@ DIh D M C p ⁺ᵀ = DIh (D ⁺) (M ⁺ᵀ) (C ⁺) (p ⁺)
 El (⌜IMu⌝ I D i) ⁺ᵀ = IMu (I ⁺) (D ⁺) (i ⁺)
 El (⌜Fin⌝ n) ⁺ᵀ = Fin n
 El (con c) ⁺ᵀ = El (con c ⁺)
-El (dι j) ⁺ᵀ = El (dι j ⁺)
+El dι ⁺ᵀ = El (dι ⁺)
 El (dσ S f) ⁺ᵀ = El (dσ S f ⁺)
 El (dρ j C) ⁺ᵀ = El (dρ j C ⁺)
-El (dpay I D C i) ⁺ᵀ = El (dpay I D C i ⁺)
+El (dpay I D C) ⁺ᵀ = El (dpay I D C ⁺)
 El (dih D e C p) ⁺ᵀ = El (dih D e C p ⁺)
 El fzero ⁺ᵀ = El (fzero ⁺)
 El (fsuc t) ⁺ᵀ = El (fsuc t ⁺)
@@ -452,10 +452,10 @@ El (hrefl c t) ⁺ᵀ   = El (hrefl c t ⁺)
 El (tr d p e) ⁺ᵀ    = El (tr d p e ⁺)
 El (ap c b p) ⁺ᵀ    = El (ap c b p ⁺)
 El (con p) ⁺ᵀ       = El (con p ⁺)
-El (dι j) ⁺ᵀ        = El (dι j ⁺)
+El dι ⁺ᵀ        = El (dι ⁺)
 El (dσ S f) ⁺ᵀ      = El (dσ S f ⁺)
 El (dρ j C) ⁺ᵀ      = El (dρ j C ⁺)
-El (dpay I D C i) ⁺ᵀ = El (dpay I D C i ⁺)
+El (dpay I D C) ⁺ᵀ = El (dpay I D C ⁺)
 El (dih D e C p) ⁺ᵀ = El (dih D e C p ⁺)
 El fzero ⁺ᵀ         = El (fzero ⁺)
 El (fsuc t) ⁺ᵀ      = El (fsuc t ⁺)
@@ -547,13 +547,13 @@ Id A t u ⁺ᵀ = Id (A ⁺ᵀ) (t ⁺) (u ⁺)
 ⟹ᵀ-⁺ (pEl w@(pcon _)) = pEl (⟹-⁺ w)
 ⟹ᵀ-⁺ (pEl w@(pielim _ _ _ _)) = pEl (⟹-⁺ w)
 ⟹ᵀ-⁺ (pEl w@(pι _ _ _ _)) = pEl (⟹-⁺ w)
-⟹ᵀ-⁺ (pEl w@(pdι _)) = pEl (⟹-⁺ w)
+⟹ᵀ-⁺ (pEl w@pdι) = pEl (⟹-⁺ w)
 ⟹ᵀ-⁺ (pEl w@(pdσ _ _)) = pEl (⟹-⁺ w)
 ⟹ᵀ-⁺ (pEl w@(pdρ _ _)) = pEl (⟹-⁺ w)
-⟹ᵀ-⁺ (pEl w@(pdpay _ _ _ _)) = pEl (⟹-⁺ w)
-⟹ᵀ-⁺ (pEl w@(pdpay-ι _ _ _)) = pEl (⟹-⁺ w)
-⟹ᵀ-⁺ (pEl w@(pdpay-σ _ _ _ _ _)) = pEl (⟹-⁺ w)
-⟹ᵀ-⁺ (pEl w@(pdpay-ρ _ _ _ _ _)) = pEl (⟹-⁺ w)
+⟹ᵀ-⁺ (pEl w@(pdpay _ _ _)) = pEl (⟹-⁺ w)
+⟹ᵀ-⁺ (pEl w@pdpay-ι) = pEl (⟹-⁺ w)
+⟹ᵀ-⁺ (pEl w@(pdpay-σ _ _ _ _)) = pEl (⟹-⁺ w)
+⟹ᵀ-⁺ (pEl w@(pdpay-ρ _ _ _ _)) = pEl (⟹-⁺ w)
 ⟹ᵀ-⁺ (pEl w@(pdih _ _ _ _)) = pEl (⟹-⁺ w)
 ⟹ᵀ-⁺ (pEl w@pdih-ι) = pEl (⟹-⁺ w)
 ⟹ᵀ-⁺ (pEl w@(pdih-σ _ _ _ _)) = pEl (⟹-⁺ w)
@@ -650,13 +650,13 @@ Id A t u ⁺ᵀ = Id (A ⁺ᵀ) (t ⁺) (u ⁺)
 ⟹ᵀ-⁺ (pHom pNat (pnsuc pm) pu@p⌜Fin⌝) = pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ pu)
 ⟹ᵀ-⁺ (pHom pNat (pnsuc pm) pu@(pielim _ _ _ _)) = pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ pu)
 ⟹ᵀ-⁺ (pHom pNat (pnsuc pm) pu@(pι _ _ _ _)) = pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ pu)
-⟹ᵀ-⁺ (pHom pNat (pnsuc pm) pu@(pdι _)) = pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom pNat (pnsuc pm) pu@pdι) = pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ pu)
 ⟹ᵀ-⁺ (pHom pNat (pnsuc pm) pu@(pdσ _ _)) = pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ pu)
 ⟹ᵀ-⁺ (pHom pNat (pnsuc pm) pu@(pdρ _ _)) = pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ pu)
-⟹ᵀ-⁺ (pHom pNat (pnsuc pm) pu@(pdpay _ _ _ _)) = pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ pu)
-⟹ᵀ-⁺ (pHom pNat (pnsuc pm) pu@(pdpay-ι _ _ _)) = pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ pu)
-⟹ᵀ-⁺ (pHom pNat (pnsuc pm) pu@(pdpay-σ _ _ _ _ _)) = pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ pu)
-⟹ᵀ-⁺ (pHom pNat (pnsuc pm) pu@(pdpay-ρ _ _ _ _ _)) = pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom pNat (pnsuc pm) pu@(pdpay _ _ _)) = pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom pNat (pnsuc pm) pu@pdpay-ι) = pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom pNat (pnsuc pm) pu@(pdpay-σ _ _ _ _)) = pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom pNat (pnsuc pm) pu@(pdpay-ρ _ _ _ _)) = pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ pu)
 ⟹ᵀ-⁺ (pHom pNat (pnsuc pm) pu@(pdih _ _ _ _)) = pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ pu)
 ⟹ᵀ-⁺ (pHom pNat (pnsuc pm) pu@pdih-ι) = pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ pu)
 ⟹ᵀ-⁺ (pHom pNat (pnsuc pm) pu@(pdih-σ _ _ _ _)) = pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ pu)
@@ -711,13 +711,13 @@ Id A t u ⁺ᵀ = Id (A ⁺ᵀ) (t ⁺) (u ⁺)
 ⟹ᵀ-⁺ (pHom pNat pt@p⌜Fin⌝ pu) = pHom pNat (⟹-⁺ pt) (⟹-⁺ pu)
 ⟹ᵀ-⁺ (pHom pNat pt@(pielim _ _ _ _) pu) = pHom pNat (⟹-⁺ pt) (⟹-⁺ pu)
 ⟹ᵀ-⁺ (pHom pNat pt@(pι _ _ _ _) pu) = pHom pNat (⟹-⁺ pt) (⟹-⁺ pu)
-⟹ᵀ-⁺ (pHom pNat pt@(pdι _) pu) = pHom pNat (⟹-⁺ pt) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom pNat pt@pdι pu) = pHom pNat (⟹-⁺ pt) (⟹-⁺ pu)
 ⟹ᵀ-⁺ (pHom pNat pt@(pdσ _ _) pu) = pHom pNat (⟹-⁺ pt) (⟹-⁺ pu)
 ⟹ᵀ-⁺ (pHom pNat pt@(pdρ _ _) pu) = pHom pNat (⟹-⁺ pt) (⟹-⁺ pu)
-⟹ᵀ-⁺ (pHom pNat pt@(pdpay _ _ _ _) pu) = pHom pNat (⟹-⁺ pt) (⟹-⁺ pu)
-⟹ᵀ-⁺ (pHom pNat pt@(pdpay-ι _ _ _) pu) = pHom pNat (⟹-⁺ pt) (⟹-⁺ pu)
-⟹ᵀ-⁺ (pHom pNat pt@(pdpay-σ _ _ _ _ _) pu) = pHom pNat (⟹-⁺ pt) (⟹-⁺ pu)
-⟹ᵀ-⁺ (pHom pNat pt@(pdpay-ρ _ _ _ _ _) pu) = pHom pNat (⟹-⁺ pt) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom pNat pt@(pdpay _ _ _) pu) = pHom pNat (⟹-⁺ pt) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom pNat pt@pdpay-ι pu) = pHom pNat (⟹-⁺ pt) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom pNat pt@(pdpay-σ _ _ _ _) pu) = pHom pNat (⟹-⁺ pt) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom pNat pt@(pdpay-ρ _ _ _ _) pu) = pHom pNat (⟹-⁺ pt) (⟹-⁺ pu)
 ⟹ᵀ-⁺ (pHom pNat pt@(pdih _ _ _ _) pu) = pHom pNat (⟹-⁺ pt) (⟹-⁺ pu)
 ⟹ᵀ-⁺ (pHom pNat pt@pdih-ι pu) = pHom pNat (⟹-⁺ pt) (⟹-⁺ pu)
 ⟹ᵀ-⁺ (pHom pNat pt@(pdih-σ _ _ _ _) pu) = pHom pNat (⟹-⁺ pt) (⟹-⁺ pu)
@@ -785,7 +785,7 @@ Id A t u ⁺ᵀ = Id (A ⁺ᵀ) (t ⁺) (u ⁺)
 ⟹ᵀ-⁺ pFin = pFin
 ⟹ᵀ-⁺ pEl-⌜Fin⌝ = pFin
 ⟹ᵀ-⁺ (pEl p⌜Fin⌝) = pEl-⌜Fin⌝
-⟹ᵀ-⁺ (pDIh pD pM (pdι pj) pp) = pDIh-ι
+⟹ᵀ-⁺ (pDIh pD pM pdι pp) = pDIh-ι
 ⟹ᵀ-⁺ (pDIh pD pM (pdσ pS pf) pp) = pDIh-σ (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ pf) (⟹-⁺ pp)
 ⟹ᵀ-⁺ (pDIh pD pM (pdρ pj pC) pp) = pDIh-ρ (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ pj) (⟹-⁺ pC) (⟹-⁺ pp)
 ⟹ᵀ-⁺ (pDIh pD pM w@(pvar _) pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
@@ -839,10 +839,10 @@ Id A t u ⁺ᵀ = Id (A ⁺ᵀ) (t ⁺) (u ⁺)
 ⟹ᵀ-⁺ (pDIh pD pM w@(pcon _) pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
 ⟹ᵀ-⁺ (pDIh pD pM w@(pielim _ _ _ _) pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
 ⟹ᵀ-⁺ (pDIh pD pM w@(pι _ _ _ _) pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
-⟹ᵀ-⁺ (pDIh pD pM w@(pdpay _ _ _ _) pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
-⟹ᵀ-⁺ (pDIh pD pM w@(pdpay-ι _ _ _) pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
-⟹ᵀ-⁺ (pDIh pD pM w@(pdpay-σ _ _ _ _ _) pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
-⟹ᵀ-⁺ (pDIh pD pM w@(pdpay-ρ _ _ _ _ _) pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
+⟹ᵀ-⁺ (pDIh pD pM w@(pdpay _ _ _) pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
+⟹ᵀ-⁺ (pDIh pD pM w@pdpay-ι pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
+⟹ᵀ-⁺ (pDIh pD pM w@(pdpay-σ _ _ _ _) pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
+⟹ᵀ-⁺ (pDIh pD pM w@(pdpay-ρ _ _ _ _) pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
 ⟹ᵀ-⁺ (pDIh pD pM w@(pdih _ _ _ _) pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
 ⟹ᵀ-⁺ (pDIh pD pM w@pdih-ι pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
 ⟹ᵀ-⁺ (pDIh pD pM w@(pdih-σ _ _ _ _) pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
