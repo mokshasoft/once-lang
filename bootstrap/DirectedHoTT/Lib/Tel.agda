@@ -35,13 +35,18 @@ open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Metatheory.RedCong
-  using ( ⟶*-trans; ⟶*-pairʳ; ⟶*-appʳ; ⟶*-dihᶜ; _⟶ᵀ*_; doneᵀ; stepᵀ; ⟶ᵀ*-Σʳ; red→≅ᵀ )
-open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; Ren⊢; ∋-cast; conv-ctx )
-open import DirectedHoTT.Metatheory.Fundamental.Syntactic using ( _,ₛ_; subTm-var )
-open import DirectedHoTT.Metatheory.Premises using ( MethG; methSg; mot-ren )
+  using ( ⟶*-trans; ⟶*-pairʳ; ⟶*-appʳ; ⟶*-dihᶜ; _⟶ᵀ*_; doneᵀ; stepᵀ; ⟶ᵀ*-Σʳ
+        ; red→≅ᵀ )
+open import DirectedHoTT.Metatheory.TySub
+  using ( ⊢wk; Ren⊢; ∋-cast; conv-ctx )
+open import DirectedHoTT.Metatheory.Fundamental.Syntactic
+  using ( _,ₛ_; subTm-var; ⟨_⟩ᵣ )
+open import DirectedHoTT.Metatheory.Premises
+  using ( MethG; methSg; mot-ren; ⊢wkD )
 open import DirectedHoTT.Lib.Sugar
-  using ( Cons; []; _∷_; Nth; nth-z; nth-s; tag; Dₗ; conₗ; selF-β; methₗ; ιₗ; MethK; AllD; []ᵈ; _∷ᵈ_
-        ; ⊢Dₗ; ⊢conₗ; ⊢pay-ι; ⊢pay-σλ; ⊢pay-ρ )
+  using ( Cons; []; _∷_; Nth; nth-z; nth-s; tag; Dₗ; conₗ; selF-β; methₗ; ιₗ
+        ; MethK; AllD; []ᵈ; _∷ᵈ_; ⊢Dₗ; ⊢conₗ; ⊢pay-ι; ⊢pay-σλ; ⊢pay-ρ; Dσ
+        ; selF-sub; nth-sub )
 
 private
   variable
@@ -53,12 +58,12 @@ private
 ------------------------------------------------------------------------
 
 data Tel (Δ : Cx) : Set where
-  tι : RTm Δ → Tel Δ                 -- the end: the target index
+  tι : Tel Δ                         -- the end (D074: the index is the fibre's)
   tσ : RTm Δ → Tel (Δ ∙) → Tel Δ     -- a non-recursive field (a code), BOUND
   tρ : RTm Δ → Tel Δ → Tel Δ         -- a recursive field at an index, NOT bound
 
 ⌜_⌝ᵗ : Tel Δ → RTm Δ
-⌜ tι j ⌝ᵗ   = dι j
+⌜ tι ⌝ᵗ     = dι
 ⌜ tσ S T ⌝ᵗ = dσ S (lam ⌜ T ⌝ᵗ)
 ⌜ tρ j T ⌝ᵗ = dρ j ⌜ T ⌝ᵗ
 
@@ -67,7 +72,7 @@ data Tel (Δ : Cx) : Set where
 ------------------------------------------------------------------------
 
 data TelOK (Γ : Ctx) (I : RTm ⌊ Γ ⌋) : Tel ⌊ Γ ⌋ → Set where
-  ok-ι : {j : RTm ⌊ Γ ⌋} → Γ ⊢ j ∷ El I → TelOK Γ I (tι j)
+  ok-ι : TelOK Γ I tι
   ok-σ : {S : RTm ⌊ Γ ⌋} {T : Tel (⌊ Γ ⌋ ∙)} →
          Γ ⊢ S ∷ U → TelOK (Γ ▹ El S) (renTm vs I) T → TelOK Γ I (tσ S T)
   ok-ρ : {j : RTm ⌊ Γ ⌋} {T : Tel ⌊ Γ ⌋} →
@@ -75,7 +80,7 @@ data TelOK (Γ : Ctx) (I : RTm ⌊ Γ ⌋) : Tel ⌊ Γ ⌋ → Set where
 
 ⊢tel : {Γ : Ctx} {I : RTm ⌊ Γ ⌋} {T : Tel ⌊ Γ ⌋} →
        Γ ⊢ I ∷ U → TelOK Γ I T → Γ ⊢ ⌜ T ⌝ᵗ ∷ Desc I
-⊢tel dI (ok-ι dj)    = ⊢dι dI dj
+⊢tel dI ok-ι         = ⊢dι dI
 ⊢tel dI (ok-σ dS ok) = ⊢dσ dI dS (⊢lam (ty-El dS) (⊢tel (⊢wk dI) ok))
 ⊢tel dI (ok-ρ dj ok) = ⊢dρ dI dj (⊢tel dI ok)
 
@@ -98,7 +103,7 @@ sub-snoc σ a t = trans (subTm-subTm t) (subTm-cong pw t)
 ------------------------------------------------------------------------
 
 IhN : Sub Δ Γ → Tel Δ → RTm Γ → RTy ((Γ ∙) ∙) → RTm Γ → RTy Γ
-IhN σ (tι j)   D M p = Unit
+IhN σ tι       D M p = Unit
 IhN σ (tσ S T) D M p = IhN (σ ,ₛ fst p) T D M (snd p)
 IhN σ (tρ j T) D M p =
   Σ' (iinst (subTm σ j) (fst p) M)
@@ -106,7 +111,7 @@ IhN σ (tρ j T) D M p =
 
 ihN-red : (σ : Sub Δ Γ) (T : Tel Δ) (D : RTm Γ) (M : RTy ((Γ ∙) ∙)) (p : RTm Γ) →
           DIh D M (subTm σ ⌜ T ⌝ᵗ) p ⟶ᵀ* IhN σ T D M p
-ihN-red σ (tι j) D M p = stepᵀ (DIh-ι D M (subTm σ j) p) doneᵀ
+ihN-red σ tι D M p = stepᵀ (DIh-ι D M p) doneᵀ
 ihN-red σ (tσ S T) D M p =
   stepᵀ (DIh-σ D M (subTm σ S) (lam (subTm (extS σ) ⌜ T ⌝ᵗ)) p)
   (stepᵀ (ξ-DIhᶜ (β (subTm (extS σ) ⌜ T ⌝ᵗ) (fst p)))
@@ -129,13 +134,13 @@ ihN-red σ (tρ j T) D M p =
 ------------------------------------------------------------------------
 
 dihN : Sub Δ Γ → Tel Δ → RTm Γ → RTm Γ → RTm Γ → RTm Γ
-dihN σ (tι j)   D e p = unit
+dihN σ tι       D e p = unit
 dihN σ (tσ S T) D e p = dihN (σ ,ₛ fst p) T D e (snd p)
 dihN σ (tρ j T) D e p = pair (ielim D (subTm σ j) e (fst p)) (dihN σ T D e (snd p))
 
 dihN-red : (σ : Sub Δ Γ) (T : Tel Δ) (D e p : RTm Γ) →
            dih D e (subTm σ ⌜ T ⌝ᵗ) p ⟶* dihN σ T D e p
-dihN-red σ (tι j) D e p = step (dih-ι D e (subTm σ j) p) done
+dihN-red σ tι D e p = step (dih-ι D e p) done
 dihN-red σ (tσ S T) D e p =
   step (dih-σ D e (subTm σ S) (lam (subTm (extS σ) ⌜ T ⌝ᵗ)) p)
   (step (ξ-dihᶜ (β (subTm (extS σ) ⌜ T ⌝ᵗ) (fst p)))
@@ -161,67 +166,67 @@ dihN-red₀ T D e p =
 --    (`HypCtx`), and `⊢methT` converts the context once.
 ------------------------------------------------------------------------
 
-wk2ₛ : Sub Γ ((Γ ∙) ∙)
-wk2ₛ x = var (vs (vs x))
-
-HypCtx : (Γ : Ctx) → RTm ⌊ Γ ⌋ → RTm ⌊ Γ ⌋ → RTy ((⌊ Γ ⌋ ∙) ∙) → Tel ⌊ Γ ⌋ → Ctx
+-- the method's context: index, payload of the telescope (OVER the index
+--   binder — D074), hypotheses in normal form (the telescope's pending
+--   substitution is the weakening past the payload)
+HypCtx : (Γ : Ctx) → RTm ⌊ Γ ⌋ → RTm ⌊ Γ ⌋ → RTy ((⌊ Γ ⌋ ∙) ∙) → Tel (⌊ Γ ⌋ ∙) → Ctx
 HypCtx Γ I D M T =
-  ((Γ ▹ El I) ▹ El (dpay (renTm vs I) (renTm vs D) (renTm vs ⌜ T ⌝ᵗ) (var vz)))
-    ▹ IhN wk2ₛ T (renTm vs (renTm vs D)) (wk2M M) (var vz)
+  ((Γ ▹ El I) ▹ El (dpay (renTm vs I) (renTm vs D) ⌜ T ⌝ᵗ))
+    ▹ IhN ⟨ vs ⟩ᵣ T (renTm vs (renTm vs D)) (wk2M M) (var vz)
 
-wk2-⌜⌝ : (T : Tel Γ) → subTm wk2ₛ ⌜ T ⌝ᵗ ≡ renTm vs (renTm vs ⌜ T ⌝ᵗ)
-wk2-⌜⌝ T = trans (subTm-var (λ x → vs (vs x)) ⌜ T ⌝ᵗ) (sym (renTm-renTm ⌜ T ⌝ᵗ))
-
-hyps≅ : (T : Tel Γ) (D : RTm Γ) (M : RTy ((Γ ∙) ∙)) →
-        DIh (renTm vs (renTm vs D)) (wk2M M) (renTm vs (renTm vs ⌜ T ⌝ᵗ)) (var vz)
-          ≅ᵀ IhN wk2ₛ T (renTm vs (renTm vs D)) (wk2M M) (var vz)
+hyps≅ : (T : Tel (Γ ∙)) (D : RTm Γ) (M : RTy ((Γ ∙) ∙)) →
+        DIh (renTm vs (renTm vs D)) (wk2M M) (renTm vs ⌜ T ⌝ᵗ) (var vz)
+          ≅ᵀ IhN ⟨ vs ⟩ᵣ T (renTm vs (renTm vs D)) (wk2M M) (var vz)
 hyps≅ T D M =
-  red→≅ᵀ (subst (λ C → DIh D₂ (wk2M M) C (var vz) ⟶ᵀ* IhN wk2ₛ T D₂ (wk2M M) (var vz))
-                (wk2-⌜⌝ T) (ihN-red wk2ₛ T D₂ (wk2M M) (var vz)))
+  red→≅ᵀ (subst (λ C → DIh D₂ (wk2M M) C (var vz) ⟶ᵀ* IhN ⟨ vs ⟩ᵣ T D₂ (wk2M M) (var vz))
+                (subTm-var vs ⌜ T ⌝ᵗ) (ihN-red ⟨ vs ⟩ᵣ T D₂ (wk2M M) (var vz)))
   where D₂ = renTm vs (renTm vs D)
 
 private
   w2⊢ : {Γ : Ctx} {B : RTy ⌊ Γ ⌋} {B' : RTy (⌊ Γ ⌋ ∙)} → Ren⊢ Γ ((Γ ▹ B) ▹ B') (λ x → vs (vs x))
   w2⊢ {A = A} v = ∋-cast (renTy-renTy A) (there (there v))
 
-⊢methT : {Γ : Ctx} {I D : RTm ⌊ Γ ⌋} {M : RTy ((⌊ Γ ⌋ ∙) ∙)} {T : Tel ⌊ Γ ⌋}
+⊢methT : {Γ : Ctx} {I D : RTm ⌊ Γ ⌋} {M : RTy ((⌊ Γ ⌋ ∙) ∙)} {T : Tel (⌊ Γ ⌋ ∙)}
          {s b : RTm (((⌊ Γ ⌋ ∙) ∙) ∙)} →
-         Γ ⊢ I ∷ U → Γ ⊢ D ∷ Desc I → motCtx Γ I D ⊢ty M → TelOK Γ I T →
+         Γ ⊢ I ∷ U → Γ ⊢ D ∷ DescF I → motCtx Γ I D ⊢ty M → TelOK (Γ ▹ El I) (renTm vs I) T →
          HypCtx Γ I D M T ⊢ b ∷ subTy (methSg s) M →
          Γ ⊢ lam (lam (lam b)) ∷ MethG I D M ⌜ T ⌝ᵗ s
 ⊢methT {Γ} {I} {D} {M} {T} dI dD dM ok db =
   ⊢lam (ty-El dI) (⊢lam dP₁ (⊢lam dH (conv-ctx (csymᵀ (hyps≅ T D M)) db)))
   where
-    dC = ⊢tel dI ok
-    P₁ = El (dpay (renTm vs I) (renTm vs D) (renTm vs ⌜ T ⌝ᵗ) (var vz))
-    dP₁ = ty-El (⊢dpay (⊢wk dI) (⊢wk dD) (⊢wk dC) (⊢var here))
+    dC = ⊢tel (⊢wk dI) ok
+    P₁ = El (dpay (renTm vs I) (renTm vs D) ⌜ T ⌝ᵗ)
+    dP₁ = ty-El (⊢dpay (⊢wk dI) (⊢wkD dD) dC)
     Γ₂ = (Γ ▹ El I) ▹ P₁
     dM₂ : motCtx Γ₂ (renTm vs (renTm vs I)) (renTm vs (renTm vs D)) ⊢ty wk2M M
     dM₂ = subst (λ a → motCtx Γ₂ a (renTm vs (renTm vs D)) ⊢ty wk2M M) (sym (renTm-renTm I))
             (subst (λ b → motCtx Γ₂ (renTm (λ x → vs (vs x)) I) b ⊢ty wk2M M) (sym (renTm-renTm D))
               (mot-ren (w2⊢ {B = El I} {B' = P₁}) dM))
-    dH = ty-DIh (⊢wk (⊢wk dI)) (⊢wk (⊢wk dD)) dM₂ (⊢wk (⊢wk dC)) (⊢var (there here)) (⊢var here)
+    dH = ty-DIh (⊢wk (⊢wk dI)) (⊢wkD (⊢wkD dD)) dM₂ (⊢wk dC) (⊢var here)
 
 ------------------------------------------------------------------------
 -- 7. ★ …AND IT COMPUTES: the ι-step of the constructor-list form, with
 --    the hypotheses already in normal form.
 ------------------------------------------------------------------------
 
--- the outer TAG layer of `Dₗ`, peeled
-dihₗ : {Cs : Cons Δ c} {C e p : RTm Δ} → Nth Cs k C →
-       dih (Dₗ Cs) e (Dₗ Cs) (pair (tag k) p) ⟶* dih (Dₗ Cs) e C p
-dihₗ nt =
-  step (dih-σ _ _ _ _ _)
+-- the fibre and the outer TAG layer of `Dₗ`, peeled: the hypotheses at
+--   constructor `k`'s telescope, instantiated at the index
+dihₗ : {Cs : Cons (Δ ∙) c} {C : RTm (Δ ∙)} {e i p : RTm Δ} → Nth Cs k C →
+       dih (Dₗ Cs) e (app (Dₗ Cs) i) (pair (tag k) p) ⟶* dih (Dₗ Cs) e (subTm (single i) C) p
+dihₗ {k = k} {Cs = Cs} {C = C} {i = i} nt =
+  step (ξ-dihᶜ (β (Dσ Cs) i))
+  (step (dih-σ _ _ _ _ _)
   (step (ξ-dihᶜ (ξ-appʳ (βfst _ _)))
   (step (ξ-dihᵖ (βsnd _ _))
-    (⟶*-dihᶜ (selF-β nt))))
+    (⟶*-dihᶜ (subst (λ X → app X (tag k) ⟶* subTm (single i) C) (sym (selF-sub (single i) Cs))
+                    (selF-β (nth-sub (single i) nt)))))))
 
-ιT : {Cs ms : Cons Δ c} {T : Tel Δ} {m i p : RTm Δ} →
+ιT : {Cs : Cons (Δ ∙) c} {ms : Cons Δ c} {T : Tel (Δ ∙)} {m i p : RTm Δ} →
      Nth Cs k ⌜ T ⌝ᵗ → Nth ms k m →
      ielim (Dₗ Cs) i (methₗ ms) (conₗ k p)
-       ⟶* app (app (app m i) p) (dihN idₛ T (Dₗ Cs) (methₗ ms) p)
-ιT {Cs = Cs} {ms} {T} {p = p} nC nm =
-  ⟶*-trans (ιₗ nm) (⟶*-appʳ (⟶*-trans (dihₗ nC) (dihN-red₀ T (Dₗ Cs) (methₗ ms) p)))
+       ⟶* app (app (app m i) p) (dihN (single i) T (Dₗ Cs) (methₗ ms) p)
+ιT {Cs = Cs} {ms} {T} {i = i} {p = p} nC nm =
+  ⟶*-trans (ιₗ nm) (⟶*-appʳ (⟶*-trans (dihₗ nC) (dihN-red (single i) T (Dₗ Cs) (methₗ ms) p)))
 
 ------------------------------------------------------------------------
 -- 8. ★ THE CONSTRUCTOR LIST, as telescopes.
@@ -252,9 +257,9 @@ allD : {Γ : Ctx} {I : RTm ⌊ Γ ⌋} {Ts : Tels ⌊ Γ ⌋ c} → Γ ⊢ I ∷
 allD dI []ᵒ          = []ᵈ
 allD dI (ok ∷ᵒ oks) = ⊢tel dI ok ∷ᵈ allD dI oks
 
-⊢Dₜ : {Γ : Ctx} {I : RTm ⌊ Γ ⌋} {Ts : Tels ⌊ Γ ⌋ c} → Γ ⊢ I ∷ U → AllOK Γ I Ts →
-      Γ ⊢ Dₗ ⌜ Ts ⌝ₛ ∷ Desc I
-⊢Dₜ dI oks = ⊢Dₗ dI (allD dI oks)
+⊢Dₜ : {Γ : Ctx} {I : RTm ⌊ Γ ⌋} {Ts : Tels (⌊ Γ ⌋ ∙) c} → Γ ⊢ I ∷ U →
+      AllOK (Γ ▹ El I) (renTm vs I) Ts → Γ ⊢ Dₗ ⌜ Ts ⌝ₛ ∷ DescF I
+⊢Dₜ dI oks = ⊢Dₗ dI (allD (⊢wk dI) oks)
 
 ------------------------------------------------------------------------
 -- 9. ★ CONSTRUCTORS: the payload built field by field along the view.
@@ -262,22 +267,25 @@ allD dI (ok ∷ᵒ oks) = ⊢tel dI ok ∷ᵈ allD dI oks
 --    field's `⌜_⌝ᵗ`, so a use site chains these with no casts.
 ------------------------------------------------------------------------
 
-module _ {Γ : Ctx} {I D i : RTm ⌊ Γ ⌋} (dI : Γ ⊢ I ∷ U) (dD : Γ ⊢ D ∷ Desc I) (di : Γ ⊢ i ∷ El I) where
+module _ {Γ : Ctx} {I D : RTm ⌊ Γ ⌋} (dI : Γ ⊢ I ∷ U) (dD : Γ ⊢ D ∷ DescF I) where
 
-  ⊢payι : {j e : RTm ⌊ Γ ⌋} → Γ ⊢ e ∷ Id (El I) j i → Γ ⊢ e ∷ El (dpay I D ⌜ tι j ⌝ᵗ i)
+  ⊢payι : {e : RTm ⌊ Γ ⌋} → Γ ⊢ e ∷ Unit → Γ ⊢ e ∷ El (dpay I D ⌜ tι ⌝ᵗ)
   ⊢payι = ⊢pay-ι
 
   ⊢payσ : {S a p : RTm ⌊ Γ ⌋} {T : Tel (⌊ Γ ⌋ ∙)} → TelOK Γ I (tσ S T) →
-          Γ ⊢ a ∷ El S → Γ ⊢ p ∷ El (dpay I D (subTm (single a) ⌜ T ⌝ᵗ) i) →
-          Γ ⊢ pair a p ∷ El (dpay I D ⌜ tσ S T ⌝ᵗ i)
-  ⊢payσ (ok-σ dS ok) = ⊢pay-σλ dI dD (⊢lam (ty-El dS) (⊢tel (⊢wk dI) ok)) di
+          Γ ⊢ a ∷ El S → Γ ⊢ p ∷ El (dpay I D (subTm (single a) ⌜ T ⌝ᵗ)) →
+          Γ ⊢ pair a p ∷ El (dpay I D ⌜ tσ S T ⌝ᵗ)
+  ⊢payσ (ok-σ dS ok) = ⊢pay-σλ dI dD (⊢lam (ty-El dS) (⊢tel (⊢wk dI) ok))
 
   ⊢payρ : {j r p : RTm ⌊ Γ ⌋} {T : Tel ⌊ Γ ⌋} → TelOK Γ I (tρ j T) →
-          Γ ⊢ r ∷ IMu I D j → Γ ⊢ p ∷ El (dpay I D ⌜ T ⌝ᵗ i) →
-          Γ ⊢ pair r p ∷ El (dpay I D ⌜ tρ j T ⌝ᵗ i)
-  ⊢payρ (ok-ρ dj ok) = ⊢pay-ρ dI dD (⊢tel dI ok) di
+          Γ ⊢ r ∷ IMu I D j → Γ ⊢ p ∷ El (dpay I D ⌜ T ⌝ᵗ) →
+          Γ ⊢ pair r p ∷ El (dpay I D ⌜ tρ j T ⌝ᵗ)
+  ⊢payρ (ok-ρ dj ok) = ⊢pay-ρ dI dD (⊢tel dI ok)
 
-⊢conₜ : {Γ : Ctx} {I i p : RTm ⌊ Γ ⌋} {Ts : Tels ⌊ Γ ⌋ c} {T : Tel ⌊ Γ ⌋} →
-        Γ ⊢ I ∷ U → AllOK Γ I Ts → NthT Ts k T → Γ ⊢ i ∷ El I →
-        Γ ⊢ p ∷ El (dpay I (Dₗ ⌜ Ts ⌝ₛ) ⌜ T ⌝ᵗ i) → Γ ⊢ conₗ k p ∷ IMu I (Dₗ ⌜ Ts ⌝ₛ) i
-⊢conₜ dI oks n di dp = ⊢conₗ dI (allD dI oks) di (nth-⌜⌝ n) dp
+-- ★ constructor `k` at index `i`: its payload is the telescope
+--   instantiated at the index (at a concrete telescope that COMPUTES to
+--   the next `⌜_⌝ᵗ`, so the builders above chain with no casts)
+⊢conₜ : {Γ : Ctx} {I i p : RTm ⌊ Γ ⌋} {Ts : Tels (⌊ Γ ⌋ ∙) c} {T : Tel (⌊ Γ ⌋ ∙)} →
+        Γ ⊢ I ∷ U → AllOK (Γ ▹ El I) (renTm vs I) Ts → NthT Ts k T → Γ ⊢ i ∷ El I →
+        Γ ⊢ p ∷ El (dpay I (Dₗ ⌜ Ts ⌝ₛ) (subTm (single i) ⌜ T ⌝ᵗ)) → Γ ⊢ conₗ k p ∷ IMu I (Dₗ ⌜ Ts ⌝ₛ) i
+⊢conₜ dI oks n di dp = ⊢conₗ dI (allD (⊢wk dI) oks) di (nth-⌜⌝ n) dp

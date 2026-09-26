@@ -29,16 +29,22 @@ open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import Agda.Builtin.Bool using ( Bool; true; false )
 open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
-open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-trans )
-open import DirectedHoTT.Metatheory.TySub using ( ⊢-cast )
-open import DirectedHoTT.Metatheory.Fundamental.Syntactic using ( ⟨_⟩ᵣ; subTy-var; _,ₛ_ )
-open import DirectedHoTT.Metatheory.Premises using ( MethG; methSg )
+open import DirectedHoTT.Metatheory.RedCong
+  using ( ⟶*-trans )
+open import DirectedHoTT.Metatheory.TySub
+  using ( ⊢-cast; ⊢wk )
+open import DirectedHoTT.Metatheory.Fundamental.Syntactic
+  using ( ⟨_⟩ᵣ; subTy-var; _,ₛ_ )
+open import DirectedHoTT.Metatheory.Premises
+  using ( MethG; methSg )
 open import DirectedHoTT.Lib.Sugar
   using ( Cons; []; _∷_; Nth; nth-z; nth-s; tag; Dₗ; conₗ; selF; selF-β; methₗ
         ; AllD; []ᵈ; _∷ᵈ_; ⊢Dₗ; PerK; []ₘ; _∷ₘ_; ⊢methₗ; MethK )
 open import DirectedHoTT.Lib.Tel
-open import DirectedHoTT.Lib.Nat using ( plusTm; ⊢plus )
-open import DirectedHoTT.Lib.NatMax using ( maxTm; ⊢max )
+open import DirectedHoTT.Lib.Nat
+  using ( plusTm; ⊢plus )
+open import DirectedHoTT.Lib.NatMax
+  using ( maxTm; ⊢max )
 
 private
   variable
@@ -76,12 +82,12 @@ module _ (A : Alg) where
   ----------------------------------------------------------------------
 
   IhK : Tel Δ → RTy Γ
-  IhK (tι j)   = Unit
+  IhK tι       = Unit
   IhK (tσ S T) = IhK T
   IhK (tρ j T) = Σ' K (IhK T)
 
   IhK-sub : {Γ Θ : Cx} (σ : Sub Γ Θ) (T : Tel Δ) → subTy σ (IhK {Γ = Γ} T) ≡ IhK T
-  IhK-sub σ (tι j)   = refl
+  IhK-sub σ tι       = refl
   IhK-sub σ (tσ S T) = IhK-sub σ T
   IhK-sub σ (tρ j T) = cong₂ Σ' (K-sub σ) (IhK-sub (extS σ) T)
 
@@ -90,7 +96,7 @@ module _ (A : Alg) where
 
   -- ★ the normal form `IhN` IS `IhK` at a stable motive
   IhN-K : (σ : Sub Δ Γ) (T : Tel Δ) (D p : RTm Γ) → IhN σ T D K p ≡ IhK T
-  IhN-K σ (tι j)   D p = refl
+  IhN-K σ tι       D p = refl
   IhN-K σ (tσ S T) D p = IhN-K (σ ,ₛ fst p) T D (snd p)
   IhN-K σ (tρ j T) D p =
     cong₂ Σ' (trans (cong (subTy (single (fst p))) (K-sub (extS (single (subTm σ j)))))
@@ -105,13 +111,13 @@ module _ (A : Alg) where
 
   -- does the rest of the telescope have a recursive field?
   ρ? : Tel Δ → Bool
-  ρ? (tι j)   = false
+  ρ? tι       = false
   ρ? (tσ S T) = ρ? T
   ρ? (tρ j T) = true
 
   foldK : Tel Δ → RTm Γ → RTm Γ
   opK   : Bool → Tel Δ → RTm Γ → RTm Γ → RTm Γ
-  foldK (tι j)   h = z
+  foldK tι       h = z
   foldK (tσ S T) h = foldK T h
   foldK (tρ j T) h = opK (ρ? T) T (fst h) (snd h)
   opK false T x h = x
@@ -121,7 +127,7 @@ module _ (A : Alg) where
               subTm σ (foldK T h) ≡ foldK T (subTm σ h)
   opK-sub   : {Θ : Cx} (σ : Sub Γ Θ) (b : Bool) (T : Tel Δ) (x h : RTm Γ) →
               subTm σ (opK b T x h) ≡ opK b T (subTm σ x) (subTm σ h)
-  foldK-sub σ (tι j)   h = z-sub σ
+  foldK-sub σ tι       h = z-sub σ
   foldK-sub σ (tσ S T) h = foldK-sub σ T h
   foldK-sub σ (tρ j T) h = opK-sub σ (ρ? T) T (fst h) (snd h)
   opK-sub σ false T x h = refl
@@ -130,7 +136,7 @@ module _ (A : Alg) where
   ⊢foldK : {Γ : Ctx} (T : Tel Δ) {h : RTm ⌊ Γ ⌋} → Γ ⊢ h ∷ IhK T → Γ ⊢ foldK T h ∷ K
   ⊢opK   : {Γ : Ctx} (b : Bool) (T : Tel Δ) {x h : RTm ⌊ Γ ⌋} →
            Γ ⊢ x ∷ K → Γ ⊢ h ∷ IhK T → Γ ⊢ opK b T x h ∷ K
-  ⊢foldK (tι j)   dh = ⊢z
+  ⊢foldK tι       dh = ⊢z
   ⊢foldK (tσ S T) dh = ⊢foldK T dh
   ⊢foldK (tρ j T) dh =
     ⊢opK (ρ? T) T (⊢fst dh) (⊢-cast (IhK-sub (single _) T) (⊢snd dh))
@@ -144,8 +150,8 @@ module _ (A : Alg) where
   mfold : Tel Δ → RTm Γ
   mfold T = lam (lam (lam (nd (foldK T (var vz)))))
 
-  ⊢mfold : {Γ : Ctx} {I D : RTm ⌊ Γ ⌋} {T : Tel ⌊ Γ ⌋} {s : RTm (((⌊ Γ ⌋ ∙) ∙) ∙)} →
-           Γ ⊢ I ∷ U → Γ ⊢ D ∷ Desc I → TelOK Γ I T →
+  ⊢mfold : {Γ : Ctx} {I D : RTm ⌊ Γ ⌋} {T : Tel (⌊ Γ ⌋ ∙)} {s : RTm (((⌊ Γ ⌋ ∙) ∙) ∙)} →
+           Γ ⊢ I ∷ U → Γ ⊢ D ∷ DescF I → TelOK (Γ ▹ El I) (renTm vs I) T →
            Γ ⊢ mfold T ∷ MethG I D K ⌜ T ⌝ᵗ s
   ⊢mfold {D = D} {T = T} {s = s} dI dD ok =
     ⊢methT dI dD ⊢K ok
@@ -153,10 +159,10 @@ module _ (A : Alg) where
         (⊢nd (⊢foldK T (⊢-cast eq (⊢var here)))))
     where
       D₂ = renTm vs (renTm vs D)
-      eq : renTy vs (IhN wk2ₛ T D₂ (wk2M K) (var vz)) ≡ IhK T
+      eq : renTy vs (IhN ⟨ vs ⟩ᵣ T D₂ (wk2M K) (var vz)) ≡ IhK T
       eq = trans (cong (renTy vs)
-                   (trans (cong (λ M → IhN wk2ₛ T D₂ M (var vz)) (K-ren _))
-                          (IhN-K wk2ₛ T D₂ (var vz))))
+                   (trans (cong (λ M → IhN ⟨ vs ⟩ᵣ T D₂ M (var vz)) (K-ren _))
+                          (IhN-K ⟨ vs ⟩ᵣ T D₂ (var vz))))
                  (IhK-ren vs T)
 
   ----------------------------------------------------------------------
@@ -179,22 +185,22 @@ module _ (A : Alg) where
   +'-zero zero    = refl
   +'-zero (suc j) = trans (+'-suc j zero) (cong suc (+'-zero j))
 
-  foldMs : Tels Δ c → Cons Δ c
+  foldMs : Tels (Δ ∙) c → Cons Δ c
   foldMs []ᵗ       = []
   foldMs (T ∷ᵗ Ts) = mfold T ∷ foldMs Ts
 
-  perFold : {Γ : Ctx} {I D f : RTm ⌊ Γ ⌋} {Ts : Tels ⌊ Γ ⌋ c} →
-            Γ ⊢ I ∷ U → Γ ⊢ D ∷ Desc I → AllOK Γ I Ts →
-            ({j : ℕ} {C : RTm ⌊ Γ ⌋} → Nth ⌜ Ts ⌝ₛ j C → app f (tag (j +' k)) ⟶* C) →
+  perFold : {Γ : Ctx} {I D : RTm ⌊ Γ ⌋} {f : RTm (⌊ Γ ⌋ ∙)} {Ts : Tels (⌊ Γ ⌋ ∙) c} →
+            Γ ⊢ I ∷ U → Γ ⊢ D ∷ DescF I → AllOK (Γ ▹ El I) (renTm vs I) Ts →
+            ({j : ℕ} {C : RTm (⌊ Γ ⌋ ∙)} → Nth ⌜ Ts ⌝ₛ j C → app f (tag (j +' k)) ⟶* C) →
             PerK Γ I D K f k (foldMs Ts)
   perFold dI dD []ᵒ          look = []ₘ
   perFold dI dD (ok ∷ᵒ oks) look = (look nth-z , ⊢mfold dI dD ok) ∷ₘ perFold dI dD oks (λ n → look (nth-s n))
 
-  ⊢foldE : {Γ : Ctx} {I : RTm ⌊ Γ ⌋} {Ts : Tels ⌊ Γ ⌋ c} →
-           Γ ⊢ I ∷ U → AllOK Γ I Ts → Γ ⊢ methₗ (foldMs Ts) ∷ MethTy I (Dₗ ⌜ Ts ⌝ₛ) K
+  ⊢foldE : {Γ : Ctx} {I : RTm ⌊ Γ ⌋} {Ts : Tels (⌊ Γ ⌋ ∙) c} →
+           Γ ⊢ I ∷ U → AllOK (Γ ▹ El I) (renTm vs I) Ts → Γ ⊢ methₗ (foldMs Ts) ∷ MethTy I (Dₗ ⌜ Ts ⌝ₛ) K
   ⊢foldE {Ts = Ts} dI oks =
-    ⊢methₗ dI (allD dI oks) ⊢K
-      (perFold dI (⊢Dₗ dI (allD dI oks)) oks
+    ⊢methₗ dI (allD (⊢wk dI) oks) ⊢K
+      (perFold dI (⊢Dₜ dI oks) oks
         (λ {j} n → subst (λ m → app (selF ⌜ Ts ⌝ₛ) (tag m) ⟶* _) (sym (+'-zero j)) (selF-β n)))
 
   ----------------------------------------------------------------------
@@ -202,13 +208,13 @@ module _ (A : Alg) where
   --    body's substitution pushed through the fold (`foldK-sub`).
   ----------------------------------------------------------------------
 
-  nth-mfold : {Ts : Tels Δ c} {T : Tel Δ} → NthT Ts k T → Nth (foldMs Ts) k (mfold T)
+  nth-mfold : {Ts : Tels (Δ ∙) c} {T : Tel (Δ ∙)} → NthT Ts k T → Nth (foldMs {Δ = Δ} Ts) k (mfold T)
   nth-mfold nthᵗ-z     = nth-z
   nth-mfold (nthᵗ-s n) = nth-s (nth-mfold n)
 
-  fold-ι : {Ts : Tels Δ c} {T : Tel Δ} {i p : RTm Δ} → NthT Ts k T →
+  fold-ι : {Ts : Tels (Δ ∙) c} {T : Tel (Δ ∙)} {i p : RTm Δ} → NthT Ts k T →
            ielim (Dₗ ⌜ Ts ⌝ₛ) i (methₗ (foldMs Ts)) (conₗ k p)
-             ⟶* nd (foldK T (dihN idₛ T (Dₗ ⌜ Ts ⌝ₛ) (methₗ (foldMs Ts)) p))
+             ⟶* nd (foldK T (dihN (single i) T (Dₗ ⌜ Ts ⌝ₛ) (methₗ (foldMs Ts)) p))
   fold-ι {Ts = Ts} {T} {i} {p} n =
     ⟶*-trans (ιT (nth-⌜⌝ n) (nth-mfold n))
       (step (ξ-appˡ (ξ-appˡ (β _ i)))
@@ -216,7 +222,7 @@ module _ (A : Alg) where
       (step (β _ h)
         (subst (λ t → t ⟶* nd (foldK T h)) (sym body) done))))
     where
-      h = dihN idₛ T (Dₗ ⌜ Ts ⌝ₛ) (methₗ (foldMs Ts)) p
+      h = dihN (single i) T (Dₗ ⌜ Ts ⌝ₛ) (methₗ (foldMs Ts)) p
       σ₁ = extS (extS (single i))
       σ₂ = extS (single p)
       body : subTm (single h) (subTm σ₂ (subTm σ₁ (nd (foldK T (var vz))))) ≡ nd (foldK T h)
