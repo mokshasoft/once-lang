@@ -297,8 +297,8 @@ sne-anti {ρ = ρ} {t = jsub d p e} (sne-jsub hd hp he key) =
 sne-anti {ρ = ρ} {t = ielim D i e t₀} (sne-ielim hD hi he ht key) =
   sne-ielim (sn-anti hD) (sn-anti hi) (sn-anti he) (sn-anti ht)
             (trans (sym (mustk?-ren ρ t₀)) key)
-sne-anti {ρ = ρ} {t = dpay I D C i} (sne-dpay hI hD hC hi key) =
-  sne-dpay (sn-anti hI) (sn-anti hD) (sn-anti hC) (sn-anti hi)
+sne-anti {ρ = ρ} {t = dpay I D C} (sne-dpay hI hD hC key) =
+  sne-dpay (sn-anti hI) (sn-anti hD) (sn-anti hC)
            (trans (sym (dstk?-ren ρ C)) key)
 sne-anti {ρ = ρ} {t = dih D e C p} (sne-dih hD he hC hp key) =
   sne-dih (sn-anti hD) (sn-anti he) (sn-anti hC) (sn-anti hp)
@@ -368,13 +368,13 @@ sn-anti {t = snd p}    (sn-exp r h) with snr-anti r
 sn-anti {t = ⌜IMu⌝ I D i} (sn-cIMu hI hD hi) = sn-cIMu (sn-anti hI) (sn-anti hD) (sn-anti hi)
 sn-anti {t = ⌜Fin⌝ n}  _               = sn-cFin
 sn-anti {t = con q}    (sn-con h)      = sn-con (sn-anti h)
-sn-anti {t = dι j}     (sn-dι h)       = sn-dι (sn-anti h)
+sn-anti {t = dι}       _               = sn-dι
 sn-anti {t = dσ S f}   (sn-dσ h₁ h₂)   = sn-dσ (sn-anti h₁) (sn-anti h₂)
 sn-anti {t = dρ j C}   (sn-dρ h₁ h₂)   = sn-dρ (sn-anti h₁) (sn-anti h₂)
 sn-anti {t = fzero}    _               = sn-fzero
 sn-anti {t = fsuc t₀}  (sn-fsuc h)     = sn-fsuc (sn-anti h)
-sn-anti {t = dpay I D C i} (sn-ne nt) = sn-ne (sne-anti nt)
-sn-anti {t = dpay I D C i} (sn-exp r h) with snr-anti r
+sn-anti {t = dpay I D C} (sn-ne nt) = sn-ne (sne-anti nt)
+sn-anti {t = dpay I D C} (sn-exp r h) with snr-anti r
 ... | t' , (r' , refl) = sn-exp r' (sn-anti h)
 sn-anti {t = dih D e C p} (sn-ne nt) = sn-ne (sne-anti nt)
 sn-anti {t = dih D e C p} (sn-exp r h) with snr-anti r
@@ -443,7 +443,7 @@ snr-anti {t = app unit u}       (snr-app ())
 snr-anti {t = app nzero u}      (snr-app ())
 snr-anti {t = app (nsuc k) u}   (snr-app ())
 snr-anti {t = app (con _) u}   (snr-app ())
-snr-anti {t = app (dι _) u}   (snr-app ())
+snr-anti {t = app dι u}   (snr-app ())
 snr-anti {t = app (dσ _ _) u}   (snr-app ())
 snr-anti {t = app (dρ _ _) u}   (snr-app ())
 snr-anti {t = app fzero u}   (snr-app ())
@@ -452,7 +452,7 @@ snr-anti {t = app (fcase0 _) u}   (snr-app ())
 snr-anti {t = app (⌜Fin⌝ _) u}   (snr-app ())
 snr-anti {t = app (natrec z w n) u} (snr-app r) with snr-anti r
 ... | t' , (r' , refl) = app t' u , (snr-app r' , refl)
-snr-anti {t = app (dpay _ _ _ _) u} (snr-app r) with snr-anti r
+snr-anti {t = app (dpay _ _ _) u} (snr-app r) with snr-anti r
 ... | t' , (r' , refl) = app t' u , (snr-app r' , refl)
 snr-anti {t = app (dih _ _ _ _) u} (snr-app r) with snr-anti r
 ... | t' , (r' , refl) = app t' u , (snr-app r' , refl)
@@ -483,7 +483,7 @@ snr-anti {t = fst unit}         (snr-fst ())
 snr-anti {t = fst nzero}        (snr-fst ())
 snr-anti {t = fst (nsuc k)}     (snr-fst ())
 snr-anti {t = fst (con _)}     (snr-fst ())
-snr-anti {t = fst (dι _)}     (snr-fst ())
+snr-anti {t = fst dι}     (snr-fst ())
 snr-anti {t = fst (dσ _ _)}     (snr-fst ())
 snr-anti {t = fst (dρ _ _)}     (snr-fst ())
 snr-anti {t = fst fzero}     (snr-fst ())
@@ -492,7 +492,7 @@ snr-anti {t = fst (fcase0 _)}     (snr-fst ())
 snr-anti {t = fst (⌜Fin⌝ _)}     (snr-fst ())
 snr-anti {t = fst (natrec z w n)} (snr-fst r) with snr-anti r
 ... | t' , (r' , refl) = fst t' , (snr-fst r' , refl)
-snr-anti {t = fst (dpay _ _ _ _)} (snr-fst r) with snr-anti r
+snr-anti {t = fst (dpay _ _ _)} (snr-fst r) with snr-anti r
 ... | t' , (r' , refl) = fst t' , (snr-fst r' , refl)
 snr-anti {t = fst (dih _ _ _ _)} (snr-fst r) with snr-anti r
 ... | t' , (r' , refl) = fst t' , (snr-fst r' , refl)
@@ -504,7 +504,7 @@ snr-anti {t = snd unit}         (snr-snd ())
 snr-anti {t = snd nzero}        (snr-snd ())
 snr-anti {t = snd (nsuc k)}     (snr-snd ())
 snr-anti {t = snd (con _)}     (snr-snd ())
-snr-anti {t = snd (dι _)}     (snr-snd ())
+snr-anti {t = snd dι}     (snr-snd ())
 snr-anti {t = snd (dσ _ _)}     (snr-snd ())
 snr-anti {t = snd (dρ _ _)}     (snr-snd ())
 snr-anti {t = snd fzero}     (snr-snd ())
@@ -513,7 +513,7 @@ snr-anti {t = snd (fcase0 _)}     (snr-snd ())
 snr-anti {t = snd (⌜Fin⌝ _)}     (snr-snd ())
 snr-anti {t = snd (natrec z w n)} (snr-snd r) with snr-anti r
 ... | t' , (r' , refl) = snd t' , (snr-snd r' , refl)
-snr-anti {t = snd (dpay _ _ _ _)} (snr-snd r) with snr-anti r
+snr-anti {t = snd (dpay _ _ _)} (snr-snd r) with snr-anti r
 ... | t' , (r' , refl) = snd t' , (snr-snd r' , refl)
 snr-anti {t = snd (dih _ _ _ _)} (snr-snd r) with snr-anti r
 ... | t' , (r' , refl) = snd t' , (snr-snd r' , refl)
@@ -732,7 +732,7 @@ snr-anti {t = tr d (hrefl nzero s) e} (snr-trᵖ (snr-hreflᶜ (csr-here ())))
 snr-anti {t = tr d (hrefl nzero s) e} (snr-trᵖ (snr-hrefl-pw ()))
 snr-anti {t = tr d (hrefl (nsuc k) s) e} (snr-trᵖ (snr-hreflᶜ (csr-here ())))
 snr-anti {t = tr d (hrefl (con _) s) e} (snr-trᵖ (snr-hreflᶜ (csr-here ())))
-snr-anti {t = tr d (hrefl (dι _) s) e} (snr-trᵖ (snr-hreflᶜ (csr-here ())))
+snr-anti {t = tr d (hrefl dι s) e} (snr-trᵖ (snr-hreflᶜ (csr-here ())))
 snr-anti {t = tr d (hrefl (dσ _ _) s) e} (snr-trᵖ (snr-hreflᶜ (csr-here ())))
 snr-anti {t = tr d (hrefl (dρ _ _) s) e} (snr-trᵖ (snr-hreflᶜ (csr-here ())))
 snr-anti {t = tr d (hrefl fzero s) e} (snr-trᵖ (snr-hreflᶜ (csr-here ())))
@@ -741,7 +741,7 @@ snr-anti {t = tr d (hrefl (fcase0 _) s) e} (snr-trᵖ (snr-hreflᶜ (csr-here ()
 snr-anti {t = tr d (hrefl (⌜Fin⌝ _) s) e} (snr-trᵖ (snr-hreflᶜ (csr-here ())))
 snr-anti {t = tr d (hrefl (nsuc k) s) e} (snr-trᵖ (snr-hrefl-pw ()))
 snr-anti {t = tr d (hrefl (con _) s) e} (snr-trᵖ (snr-hrefl-pw ()))
-snr-anti {t = tr d (hrefl (dι _) s) e} (snr-trᵖ (snr-hrefl-pw ()))
+snr-anti {t = tr d (hrefl dι s) e} (snr-trᵖ (snr-hrefl-pw ()))
 snr-anti {t = tr d (hrefl (dσ _ _) s) e} (snr-trᵖ (snr-hrefl-pw ()))
 snr-anti {t = tr d (hrefl (dρ _ _) s) e} (snr-trᵖ (snr-hrefl-pw ()))
 snr-anti {t = tr d (hrefl fzero s) e} (snr-trᵖ (snr-hrefl-pw ()))
@@ -750,7 +750,7 @@ snr-anti {t = tr d (hrefl (fcase0 _) s) e} (snr-trᵖ (snr-hrefl-pw ()))
 snr-anti {t = tr d (hrefl (⌜Fin⌝ _) s) e} (snr-trᵖ (snr-hrefl-pw ()))
 snr-anti {t = tr d (hrefl (natrec z w n) s) e} (snr-trᵖ r) with snr-anti r
 ... | t' , (r' , refl) = tr d t' e , (snr-trᵖ r' , refl)
-snr-anti {t = tr d (hrefl (dpay _ _ _ _) s) e} (snr-trᵖ r) with snr-anti r
+snr-anti {t = tr d (hrefl (dpay _ _ _) s) e} (snr-trᵖ r) with snr-anti r
 ... | t' , (r' , refl) = tr d t' e , (snr-trᵖ r' , refl)
 snr-anti {t = tr d (hrefl (dih _ _ _ _) s) e} (snr-trᵖ r) with snr-anti r
 ... | t' , (r' , refl) = tr d t' e , (snr-trᵖ r' , refl)
@@ -772,7 +772,7 @@ snr-anti {t = tr d unit e} (snr-trᵖ ())
 snr-anti {t = tr d nzero e} (snr-trᵖ ())
 snr-anti {t = tr d (nsuc k) e} (snr-trᵖ ())
 snr-anti {t = tr d (con _) e} (snr-trᵖ ())
-snr-anti {t = tr d (dι _) e} (snr-trᵖ ())
+snr-anti {t = tr d dι e} (snr-trᵖ ())
 snr-anti {t = tr d (dσ _ _) e} (snr-trᵖ ())
 snr-anti {t = tr d (dρ _ _) e} (snr-trᵖ ())
 snr-anti {t = tr d fzero e} (snr-trᵖ ())
@@ -781,7 +781,7 @@ snr-anti {t = tr d (fcase0 _) e} (snr-trᵖ ())
 snr-anti {t = tr d (⌜Fin⌝ _) e} (snr-trᵖ ())
 snr-anti {t = tr d (natrec z w n) e} (snr-trᵖ r) with snr-anti r
 ... | t' , (r' , refl) = tr d t' e , (snr-trᵖ r' , refl)
-snr-anti {t = tr d (dpay _ _ _ _) e} (snr-trᵖ r) with snr-anti r
+snr-anti {t = tr d (dpay _ _ _) e} (snr-trᵖ r) with snr-anti r
 ... | t' , (r' , refl) = tr d t' e , (snr-trᵖ r' , refl)
 snr-anti {t = tr d (dih _ _ _ _) e} (snr-trᵖ r) with snr-anti r
 ... | t' , (r' , refl) = tr d t' e , (snr-trᵖ r' , refl)
@@ -805,27 +805,26 @@ snr-anti {t = ap c b p} (snr-apᵖ r) with snr-anti r
 --   binder is related by `wk-ren-tm`; `fcase-s`/`psplit-β` by the
 --   single/double substitution commutations.
 snr-anti {t = ielim D i e (con q)} (snr-ι hD hi he hq) =
-  app (app (app e i) q) (dih D e D q)
+  app (app (app e i) q) (dih D e (app D i) q)
   , (snr-ι (sn-anti hD) (sn-anti hi) (sn-anti he) (sn-anti hq) , refl)
-snr-anti {t = dpay I D (dι j) i} (snr-dpay-ι hD) =
-  ⌜Id⌝ I j i , (snr-dpay-ι (sn-anti hD) , refl)
-snr-anti {ρ = ρ} {t = dpay I D (dσ S f) i} snr-dpay-σ =
-  ⌜Σ⌝ S (dpay (renTm vs I) (renTm vs D) (app (renTm vs f) (var vz)) (renTm vs i))
+snr-anti {t = dpay I D dι} (snr-dpay-ι hI hD) =
+  ⌜Unit⌝ , (snr-dpay-ι (sn-anti hI) (sn-anti hD) , refl)
+snr-anti {ρ = ρ} {t = dpay I D (dσ S f)} snr-dpay-σ =
+  ⌜Σ⌝ S (dpay (renTm vs I) (renTm vs D) (app (renTm vs f) (var vz)))
   , ( snr-dpay-σ
     , cong (⌜Σ⌝ (renTm ρ S))
-           (cong₄ dpay (sym (wk-ren-tm ρ I)) (sym (wk-ren-tm ρ D))
-                       (cong (λ z → app z (var vz)) (sym (wk-ren-tm ρ f)))
-                       (sym (wk-ren-tm ρ i))) )
-snr-anti {ρ = ρ} {t = dpay I D (dρ j C) i} snr-dpay-ρ =
-  ⌜Σ⌝ (⌜IMu⌝ I D j) (dpay (renTm vs I) (renTm vs D) (renTm vs C) (renTm vs i))
+           (cong₃ dpay (sym (wk-ren-tm ρ I)) (sym (wk-ren-tm ρ D))
+                       (cong (λ z → app z (var vz)) (sym (wk-ren-tm ρ f)))) )
+snr-anti {ρ = ρ} {t = dpay I D (dρ j C)} snr-dpay-ρ =
+  ⌜Σ⌝ (⌜IMu⌝ I D j) (dpay (renTm vs I) (renTm vs D) (renTm vs C))
   , ( snr-dpay-ρ
     , cong (⌜Σ⌝ (⌜IMu⌝ (renTm ρ I) (renTm ρ D) (renTm ρ j)))
-           (cong₄ dpay (sym (wk-ren-tm ρ I)) (sym (wk-ren-tm ρ D))
-                       (sym (wk-ren-tm ρ C)) (sym (wk-ren-tm ρ i))) )
-snr-anti {t = dpay I D C i} (snr-dpayᶜ r) with snr-anti r
-... | C' , (r' , refl) = dpay I D C' i , (snr-dpayᶜ r' , refl)
-snr-anti {t = dih D e (dι j) p} (snr-dih-ι hD he hj hp) =
-  unit , (snr-dih-ι (sn-anti hD) (sn-anti he) (sn-anti hj) (sn-anti hp) , refl)
+           (cong₃ dpay (sym (wk-ren-tm ρ I)) (sym (wk-ren-tm ρ D))
+                       (sym (wk-ren-tm ρ C))) )
+snr-anti {t = dpay I D C} (snr-dpayᶜ r) with snr-anti r
+... | C' , (r' , refl) = dpay I D C' , (snr-dpayᶜ r' , refl)
+snr-anti {t = dih D e dι p} (snr-dih-ι hD he hp) =
+  unit , (snr-dih-ι (sn-anti hD) (sn-anti he) (sn-anti hp) , refl)
 snr-anti {t = dih D e (dσ S f) p} (snr-dih-σ hS) =
   dih D e (app f (fst p)) (snd p) , (snr-dih-σ (sn-anti hS) , refl)
 snr-anti {t = dih D e (dρ j C) p} snr-dih-ρ =
@@ -853,7 +852,7 @@ csr-anti {t = unit} (csr-here ())
 csr-anti {t = nzero} (csr-here ())
 csr-anti {t = nsuc _} (csr-here ())
 csr-anti {t = con _} (csr-here ())
-csr-anti {t = dι _} (csr-here ())
+csr-anti {t = dι} (csr-here ())
 csr-anti {t = dσ _ _} (csr-here ())
 csr-anti {t = dρ _ _} (csr-here ())
 csr-anti {t = fzero} (csr-here ())
@@ -862,7 +861,7 @@ csr-anti {t = fcase0 _} (csr-here ())
 csr-anti {t = ⌜Fin⌝ _} (csr-here ())
 csr-anti {t = natrec z w n} (csr-here r) with snr-anti r
 ... | t' , (r' , refl) = t' , (csr-here r' , refl)
-csr-anti {t = dpay _ _ _ _} (csr-here r) with snr-anti r
+csr-anti {t = dpay _ _ _} (csr-here r) with snr-anti r
 ... | t' , (r' , refl) = t' , (csr-here r' , refl)
 csr-anti {t = dih _ _ _ _} (csr-here r) with snr-anti r
 ... | t' , (r' , refl) = t' , (csr-here r' , refl)
@@ -942,8 +941,8 @@ sne-ren {ρ = ρ} (sne-ordtr {a = a} {t = t} {u = u} ha ht hu hp hq key) =
             (trans (ordstk?-ren ρ a t u) key)
 sne-ren {ρ = ρ} (sne-ielim {t = t₀} hD hi he ht key) =
   sne-ielim (sn-ren hD) (sn-ren hi) (sn-ren he) (sn-ren ht) (trans (mustk?-ren ρ t₀) key)
-sne-ren {ρ = ρ} (sne-dpay {C = C} hI hD hC hi key) =
-  sne-dpay (sn-ren hI) (sn-ren hD) (sn-ren hC) (sn-ren hi) (trans (dstk?-ren ρ C) key)
+sne-ren {ρ = ρ} (sne-dpay {C = C} hI hD hC key) =
+  sne-dpay (sn-ren hI) (sn-ren hD) (sn-ren hC) (trans (dstk?-ren ρ C) key)
 sne-ren {ρ = ρ} (sne-dih {C = C} hD he hC hp key) =
   sne-dih (sn-ren hD) (sn-ren he) (sn-ren hC) (sn-ren hp) (trans (dstk?-ren ρ C) key)
 sne-ren {ρ = ρ} (sne-fcase {t = t₀} ht ha hb key) =
@@ -970,7 +969,7 @@ sn-ren (sn-exp r h)     = sn-exp (snr-ren r) (sn-ren h)
 sn-ren (sn-cIMu h₁ h₂ h₃) = sn-cIMu (sn-ren h₁) (sn-ren h₂) (sn-ren h₃)
 sn-ren sn-cFin          = sn-cFin
 sn-ren (sn-con h)       = sn-con (sn-ren h)
-sn-ren (sn-dι h)        = sn-dι (sn-ren h)
+sn-ren sn-dι            = sn-dι
 sn-ren (sn-dσ h₁ h₂)    = sn-dσ (sn-ren h₁) (sn-ren h₂)
 sn-ren (sn-dρ h₁ h₂)    = sn-dρ (sn-ren h₁) (sn-ren h₂)
 sn-ren sn-fzero         = sn-fzero
@@ -1054,22 +1053,21 @@ snr-ren {ρ = ρ} (snr-tr-pw {c = c} {a = a} {f = f} {e = e} hc ha kp) =
             (cong (λ z → app z (var vz)) (sym (wk-ren-tm ρ e)))))
         (snr-tr-pw (sn-ren hc) (sn-ren ha) (trans (pw?-ren (extR ρ) c) kp))
 snr-ren (snr-ι hD hi he hq) = snr-ι (sn-ren hD) (sn-ren hi) (sn-ren he) (sn-ren hq)
-snr-ren (snr-dpay-ι hD) = snr-dpay-ι (sn-ren hD)
-snr-ren {ρ = ρ} (snr-dpay-σ {I = I} {D = D} {S = S} {f = f} {i = i}) =
-  subst (SNRed (dpay (renTm ρ I) (renTm ρ D) (dσ (renTm ρ S) (renTm ρ f)) (renTm ρ i)))
+snr-ren (snr-dpay-ι hI hD) = snr-dpay-ι (sn-ren hI) (sn-ren hD)
+snr-ren {ρ = ρ} (snr-dpay-σ {I = I} {D = D} {S = S} {f = f}) =
+  subst (SNRed (dpay (renTm ρ I) (renTm ρ D) (dσ (renTm ρ S) (renTm ρ f))))
         (cong (⌜Σ⌝ (renTm ρ S))
-              (cong₄ dpay (sym (wk-ren-tm ρ I)) (sym (wk-ren-tm ρ D))
-                          (cong (λ z → app z (var vz)) (sym (wk-ren-tm ρ f)))
-                          (sym (wk-ren-tm ρ i))))
+              (cong₃ dpay (sym (wk-ren-tm ρ I)) (sym (wk-ren-tm ρ D))
+                          (cong (λ z → app z (var vz)) (sym (wk-ren-tm ρ f)))))
         snr-dpay-σ
-snr-ren {ρ = ρ} (snr-dpay-ρ {I = I} {D = D} {j = j} {C = C} {i = i}) =
-  subst (SNRed (dpay (renTm ρ I) (renTm ρ D) (dρ (renTm ρ j) (renTm ρ C)) (renTm ρ i)))
+snr-ren {ρ = ρ} (snr-dpay-ρ {I = I} {D = D} {j = j} {C = C}) =
+  subst (SNRed (dpay (renTm ρ I) (renTm ρ D) (dρ (renTm ρ j) (renTm ρ C))))
         (cong (⌜Σ⌝ (⌜IMu⌝ (renTm ρ I) (renTm ρ D) (renTm ρ j)))
-              (cong₄ dpay (sym (wk-ren-tm ρ I)) (sym (wk-ren-tm ρ D))
-                          (sym (wk-ren-tm ρ C)) (sym (wk-ren-tm ρ i))))
+              (cong₃ dpay (sym (wk-ren-tm ρ I)) (sym (wk-ren-tm ρ D))
+                          (sym (wk-ren-tm ρ C))))
         snr-dpay-ρ
 snr-ren (snr-dpayᶜ r) = snr-dpayᶜ (snr-ren r)
-snr-ren (snr-dih-ι hD he hj hp) = snr-dih-ι (sn-ren hD) (sn-ren he) (sn-ren hj) (sn-ren hp)
+snr-ren (snr-dih-ι hD he hp) = snr-dih-ι (sn-ren hD) (sn-ren he) (sn-ren hp)
 snr-ren (snr-dih-σ hS) = snr-dih-σ (sn-ren hS)
 snr-ren snr-dih-ρ = snr-dih-ρ
 snr-ren (snr-dihᶜ r) = snr-dihᶜ (snr-ren r)
