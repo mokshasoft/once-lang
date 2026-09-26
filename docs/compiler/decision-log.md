@@ -4978,3 +4978,64 @@ bracket abstraction:
   `⊢ᵍ`/`⊢ᵐ`/`⊢ᶜ`), D032 (compose/case/cata grade-poly), Curry–Howard–Lambek
   correspondence (CCC ≅ typed λ-calculus), Plan 0.52 M1 (`const-morph-strong`
   discharged; `cata-morph-strong` the remaining leaf this enables).
+
+---
+
+## D071: Σ Is POSITIVE — `split` Is Its Primitive Eliminator, No Σ-η (OCP-0009 kernel, levitation)
+
+**Date**: 2026-09-26
+**Status**: Accepted
+
+### Context
+
+SPIKE-LEVITATION (`bootstrap/DirectedHoTT/SPIKE-LEVITATION.md`, S0–S4)
+showed descriptions-as-terms is feasible in the one-telescope form: a
+datatype is ONE telescope whose first field is a tag in a finite enumeration
+(`dσ (enum c) (λ t. switch t Cs)`), and the eliminator takes ONE method. The
+surface keeps constructor lists and per-constructor methods as sugar (S4).
+The elaborated method receives the payload `q` as a variable and must hand
+`con (tag , rest)` to method k. With only `fst`/`snd` (the kernel's current
+Σ, which has no η), it can only rebuild `con (fst q , snd q)`, and that is not
+convertible to `con q`. Two principled fixes exist: Σ-η (negative Σ), or a
+dependent Σ eliminator `split` (positive Σ).
+
+### Decision
+
+Σ is a **positive** type. Its primitive eliminator is `split P q b`
+(Σ-induction, with ι rule `split P (a , b) body ⟶ body[a, b]`). `fst` and
+`snd` are **derived** from it (`snd` is typed through π₁'s conversion), or
+kept only as sugar. There is **no definitional Σ-η**.
+
+### Rationale
+
+- **Confluence.** β together with surjective pairing as untyped rewrite rules
+  is not confluent (Klop 1980). The kernel's conversion is an untyped
+  reduction relation, and its metatheory uses confluence for
+  `El`/`mu`/`sig` injectivity. So Σ-η would force type-directed conversion:
+  an architectural change hidden behind one rule.
+- **Linearity.** The linear SMCC core plus the QTT layer is the chosen
+  direction. There the dependent pair is a tensor ⊗, eliminated only by
+  pattern matching. Projections belong to the additive `&`; `fst` alone
+  discards a component, and both projections duplicate `q`. A constructor
+  payload is exactly such a tensor of fields.
+- **Mathematics.** Dependent sum is left adjoint to weakening, so it is
+  characterised by maps out of it, i.e. `split`. This is Martin-Löf's
+  original Σ, with one eliminator per former.
+- **Nothing is lost.** With `split` and `Id`, η is a propositional theorem.
+  If typed conversion (the checker's NbE) later adopts η, `split` stays
+  derivable, so this decision forecloses nothing.
+
+### Consequences
+
+- The levitation migration adds `enum`/`tag`/`switch` and `split` to the kernel.
+  SR for them is already spiked (`bootstrap/tmp/LevS3.agda`).
+- `fst`/`snd` become derived. Their existing ι rules (π₁/π₂) remain valid as
+  derived computations on canonical pairs.
+- The open G4 η question is narrowed: Σ-η is off the table for untyped
+  conversion.
+
+### See Also
+
+- SPIKE-LEVITATION S3 (SR), S4 (the elaboration of constructor lists; why
+  `split` is needed), `Spec/Typing` ("NO η"), the linear-core decision
+  (memory: linear-core-is-the-direction).
