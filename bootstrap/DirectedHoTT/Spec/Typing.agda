@@ -123,14 +123,19 @@ methS (vs (vs x)) = var (vs (vs (vs x)))
 wk2M : RTy ((Γ ∙) ∙) → RTy ((((Γ ∙) ∙) ∙) ∙)
 wk2M M = renTy (extR (extR (λ x → vs (vs x)))) M
 
+-- ★★ D074: a description is FIBRED — a family of telescopes over the
+--   index, `D : Π (El I) (Desc I)` (Chapman–Dagand–McBride–Morris).
+DescF : RTm Γ → RTy Γ
+DescF I = Π (El I) (Desc (renTm vs I))
+
 -- ★★ THE ONE METHOD (SPIKE-LEVITATION S3/S4): at every index `i`, for the
---   payload `p` of the WHOLE telescope and its hypotheses `h`, the motive
---   at `con p`.  The payload is passed WHOLE — no η (gate 5c).
+--   payload `p` of the telescope AT `i` (`D i`) and its hypotheses `h`,
+--   the motive at `con p`.  The payload is passed WHOLE — no η (gate 5c).
 MethTy : RTm Γ → RTm Γ → RTy ((Γ ∙) ∙) → RTy Γ
 MethTy I D M =
   Π (El I)
-    (Π (El (dpay (renTm vs I) (renTm vs D) (renTm vs D) (var vz)))
-       (Π (DIh (renTm vs (renTm vs D)) (wk2M M) (renTm vs (renTm vs D)) (var vz))
+    (Π (El (dpay (renTm vs I) (renTm vs D) (app (renTm vs D) (var vz))))
+       (Π (DIh (renTm vs (renTm vs D)) (wk2M M) (app (renTm vs (renTm vs D)) (var (vs vz))) (var vz))
           (subTy methS M)))
 
 -- The top-two-variable SWAP renaming — what `tr-pw` uses to move the
@@ -341,19 +346,19 @@ data _⟶_ : {Γ : Cx} → RTm Γ → RTm Γ → Set where
   --   Π, so a neutral `D` needs no guard).  The hypotheses are `dih`,
   --   which computes on the telescope head and is stuck on a neutral one.
   ι         : (D i e p : RTm Γ) →
-              ielim D i e (con p) ⟶ app (app (app e i) p) (dih D e D p)
-  -- the payload CODE of a telescope: the index EQUATION at `dι j`
-  --   (Fording: a constructor exists at every index, the bad ones are
-  --   uninhabitable), a Σ at `dσ`, a Σ over the family at `dρ`.
-  dpay-ι    : (I D j i : RTm Γ) → dpay I D (dι j) i ⟶ ⌜Id⌝ I j i
-  dpay-σ    : (I D S f i : RTm Γ) →
-              dpay I D (dσ S f) i ⟶
-              ⌜Σ⌝ S (dpay (renTm vs I) (renTm vs D) (app (renTm vs f) (var vz)) (renTm vs i))
-  dpay-ρ    : (I D j C i : RTm Γ) →
-              dpay I D (dρ j C) i ⟶
-              ⌜Σ⌝ (⌜IMu⌝ I D j) (dpay (renTm vs I) (renTm vs D) (renTm vs C) (renTm vs i))
+              ielim D i e (con p) ⟶ app (app (app e i) p) (dih D e (app D i) p)
+  -- the payload CODE of a telescope: nothing at `dι` (D074: the index is
+  --   the FIBRE's, not an equation), a Σ at `dσ`, a Σ over the family at
+  --   `dρ`.
+  dpay-ι    : (I D : RTm Γ) → dpay I D dι ⟶ ⌜Unit⌝
+  dpay-σ    : (I D S f : RTm Γ) →
+              dpay I D (dσ S f) ⟶
+              ⌜Σ⌝ S (dpay (renTm vs I) (renTm vs D) (app (renTm vs f) (var vz)))
+  dpay-ρ    : (I D j C : RTm Γ) →
+              dpay I D (dρ j C) ⟶
+              ⌜Σ⌝ (⌜IMu⌝ I D j) (dpay (renTm vs I) (renTm vs D) (renTm vs C))
   -- the hypotheses: one recursive call per `dρ`, AT ITS OWN INDEX `j`
-  dih-ι     : (D e j p : RTm Γ) → dih D e (dι j) p ⟶ unit
+  dih-ι     : (D e p : RTm Γ) → dih D e dι p ⟶ unit
   dih-σ     : (D e S f p : RTm Γ) → dih D e (dσ S f) p ⟶ dih D e (app f (fst p)) (snd p)
   dih-ρ     : (D e j C p : RTm Γ) →
               dih D e (dρ j C) p ⟶ pair (ielim D j e (fst p)) (dih D e C (snd p))
@@ -370,15 +375,13 @@ data _⟶_ : {Γ : Cx} → RTm Γ → RTm Γ → Set where
   ξ-ielimⁱ  : {D i i' e t : RTm Γ} → i ⟶ i' → ielim D i e t ⟶ ielim D i' e t
   ξ-ielimᵉ  : {D i e e' t : RTm Γ} → e ⟶ e' → ielim D i e t ⟶ ielim D i e' t
   ξ-ielimᵗ  : {D i e t t' : RTm Γ} → t ⟶ t' → ielim D i e t ⟶ ielim D i e t'
-  ξ-dι      : {j j' : RTm Γ} → j ⟶ j' → dι j ⟶ dι j'
   ξ-dσˢ     : {S S' f : RTm Γ} → S ⟶ S' → dσ S f ⟶ dσ S' f
   ξ-dσᶠ     : {S f f' : RTm Γ} → f ⟶ f' → dσ S f ⟶ dσ S f'
   ξ-dρʲ     : {j j' C : RTm Γ} → j ⟶ j' → dρ j C ⟶ dρ j' C
   ξ-dρᶜ     : {j C C' : RTm Γ} → C ⟶ C' → dρ j C ⟶ dρ j C'
-  ξ-dpayᴵ   : {I I' D C i : RTm Γ} → I ⟶ I' → dpay I D C i ⟶ dpay I' D C i
-  ξ-dpayᴰ   : {I D D' C i : RTm Γ} → D ⟶ D' → dpay I D C i ⟶ dpay I D' C i
-  ξ-dpayᶜ   : {I D C C' i : RTm Γ} → C ⟶ C' → dpay I D C i ⟶ dpay I D C' i
-  ξ-dpayⁱ   : {I D C i i' : RTm Γ} → i ⟶ i' → dpay I D C i ⟶ dpay I D C i'
+  ξ-dpayᴵ   : {I I' D C : RTm Γ} → I ⟶ I' → dpay I D C ⟶ dpay I' D C
+  ξ-dpayᴰ   : {I D D' C : RTm Γ} → D ⟶ D' → dpay I D C ⟶ dpay I D' C
+  ξ-dpayᶜ   : {I D C C' : RTm Γ} → C ⟶ C' → dpay I D C ⟶ dpay I D C'
   ξ-dihᴰ    : {D D' e C p : RTm Γ} → D ⟶ D' → dih D e C p ⟶ dih D' e C p
   ξ-dihᵉ    : {D e e' C p : RTm Γ} → e ⟶ e' → dih D e C p ⟶ dih D e' C p
   ξ-dihᶜ    : {D e C C' p : RTm Γ} → C ⟶ C' → dih D e C p ⟶ dih D e C' p
@@ -404,7 +407,7 @@ data _⟶ᵀ_ : {Γ : Cx} → RTy Γ → RTy Γ → Set where
   El-⌜IMu⌝  : {I D i : RTm Γ} → El (⌜IMu⌝ I D i) ⟶ᵀ IMu I D i
   El-⌜Fin⌝  : {n : ℕ} → El (⌜Fin⌝ {Γ} n) ⟶ᵀ Fin n
   -- ★★ the hypotheses' TYPE computes on the telescope head (S3).
-  DIh-ι : (D : RTm Γ) (M : RTy ((Γ ∙) ∙)) (j p : RTm Γ) → DIh D M (dι j) p ⟶ᵀ Unit
+  DIh-ι : (D : RTm Γ) (M : RTy ((Γ ∙) ∙)) (p : RTm Γ) → DIh D M dι p ⟶ᵀ Unit
   DIh-σ : (D : RTm Γ) (M : RTy ((Γ ∙) ∙)) (S f p : RTm Γ) →
           DIh D M (dσ S f) p ⟶ᵀ DIh D M (app f (fst p)) (snd p)
   DIh-ρ : (D : RTm Γ) (M : RTy ((Γ ∙) ∙)) (j C p : RTm Γ) →
@@ -664,7 +667,7 @@ data _⊢_∷_ where
   -- ★ the family's CODE: families are small (nesting, `amrec` carriers).
   -- the code CONTAINS its index code, so it types it (as every former
   --   types each term it contains — SN of the code needs SN of `I`).
-  ⊢⌜IMu⌝  : ∀ {Γ I D i} → Γ ⊢ I ∷ U → Γ ⊢ D ∷ Desc I → Γ ⊢ i ∷ El I → Γ ⊢ ⌜IMu⌝ I D i ∷ U
+  ⊢⌜IMu⌝  : ∀ {Γ I D i} → Γ ⊢ I ∷ U → Γ ⊢ D ∷ DescF I → Γ ⊢ i ∷ El I → Γ ⊢ ⌜IMu⌝ I D i ∷ U
   ⊢⌜Fin⌝  : ∀ {Γ n} → Γ ⊢ ⌜Fin⌝ {⌊ Γ ⌋} n ∷ U
   ⊢⌜Unit⌝ : ∀ {Γ} → Γ ⊢ ⌜Unit⌝ {⌊ Γ ⌋} ∷ U
   ⊢idrefl : ∀ {Γ c t}   → Γ ⊢ c ∷ U → Γ ⊢ t ∷ El c →
@@ -693,27 +696,24 @@ data _⊢_∷_ where
   --   and the other premises mention `I` only under `El`/`Desc` or a
   --   binder, from which it is recoverable only up to conversion (validity
   --   sits ABOVE subject reduction).
-  ⊢dι   : ∀ {Γ I j} → Γ ⊢ I ∷ U → Γ ⊢ j ∷ El I → Γ ⊢ dι j ∷ Desc I
+  ⊢dι   : ∀ {Γ I} → Γ ⊢ I ∷ U → Γ ⊢ dι ∷ Desc I
   ⊢dσ   : ∀ {Γ I S f} → Γ ⊢ I ∷ U → Γ ⊢ S ∷ U →
           Γ ⊢ f ∷ Π (El S) (Desc (renTm vs I)) → Γ ⊢ dσ S f ∷ Desc I
   ⊢dρ   : ∀ {Γ I j C} → Γ ⊢ I ∷ U → Γ ⊢ j ∷ El I → Γ ⊢ C ∷ Desc I → Γ ⊢ dρ j C ∷ Desc I
-  -- `⊢dpay` types its index code like `⊢dσ` does: its reduct at `dι j` is
-  --   `⌜Id⌝ I j i`, whose formation needs `Γ ⊢ I ∷ U`, and the other
-  --   premises only mention `I` under `Desc`/`El` (extracting it would
-  --   need validity, which sits ABOVE subject reduction).
-  ⊢dpay : ∀ {Γ I D C i} → Γ ⊢ I ∷ U → Γ ⊢ D ∷ Desc I → Γ ⊢ C ∷ Desc I → Γ ⊢ i ∷ El I →
-          Γ ⊢ dpay I D C i ∷ U
-  -- a constructor exists at EVERY index (Fording): the payload's `dι j`
-  --   field is the equation `j ≡ i`, so the bad ones are uninhabitable.
-  -- its TYPE mentions the index code, so it types it (validity).
-  ⊢con  : ∀ {Γ I D i p} → Γ ⊢ I ∷ U → Γ ⊢ D ∷ Desc I → Γ ⊢ i ∷ El I →
-          Γ ⊢ p ∷ El (dpay I D D i) → Γ ⊢ con p ∷ IMu I D i
-  ⊢dih  : ∀ {Γ I D M e C i p} →
-          Γ ⊢ I ∷ U → Γ ⊢ D ∷ Desc I → motCtx Γ I D ⊢ty M → Γ ⊢ e ∷ MethTy I D M →
-          Γ ⊢ C ∷ Desc I → Γ ⊢ i ∷ El I → Γ ⊢ p ∷ El (dpay I D C i) →
+  -- `⊢dpay` types each term it contains (the index code included).
+  ⊢dpay : ∀ {Γ I D C} → Γ ⊢ I ∷ U → Γ ⊢ D ∷ DescF I → Γ ⊢ C ∷ Desc I →
+          Γ ⊢ dpay I D C ∷ U
+  -- ★ D074: a constructor at index `i` is a payload of the telescope
+  --   `D i` — the FIBRE over `i`.  Its type mentions the index code, so it
+  --   types it (validity).
+  ⊢con  : ∀ {Γ I D i p} → Γ ⊢ I ∷ U → Γ ⊢ D ∷ DescF I → Γ ⊢ i ∷ El I →
+          Γ ⊢ p ∷ El (dpay I D (app D i)) → Γ ⊢ con p ∷ IMu I D i
+  ⊢dih  : ∀ {Γ I D M e C p} →
+          Γ ⊢ I ∷ U → Γ ⊢ D ∷ DescF I → motCtx Γ I D ⊢ty M → Γ ⊢ e ∷ MethTy I D M →
+          Γ ⊢ C ∷ Desc I → Γ ⊢ p ∷ El (dpay I D C) →
           Γ ⊢ dih D e C p ∷ DIh D M C p
   ⊢ielim : ∀ {Γ I D M e i t} →
-           Γ ⊢ I ∷ U → Γ ⊢ D ∷ Desc I → motCtx Γ I D ⊢ty M → Γ ⊢ e ∷ MethTy I D M →
+           Γ ⊢ I ∷ U → Γ ⊢ D ∷ DescF I → motCtx Γ I D ⊢ty M → Γ ⊢ e ∷ MethTy I D M →
            Γ ⊢ i ∷ El I → Γ ⊢ t ∷ IMu I D i →
            Γ ⊢ ielim D i e t ∷ iinst i t M
   -- tags: Fin (n+1) ≅ 1 + Fin n, and the empty Fin 0
@@ -743,12 +743,12 @@ data _⊢ty_ where
   ty-Nat  : ∀ {Γ}     → Γ ⊢ty Nat
   -- the type CONTAINS its index code, so it types it (as every former
   --   types each term it contains — normalising the type normalises `I`).
-  ty-IMu  : ∀ {Γ I D i} → Γ ⊢ I ∷ U → Γ ⊢ D ∷ Desc I → Γ ⊢ i ∷ El I → Γ ⊢ty IMu I D i
+  ty-IMu  : ∀ {Γ I D i} → Γ ⊢ I ∷ U → Γ ⊢ D ∷ DescF I → Γ ⊢ i ∷ El I → Γ ⊢ty IMu I D i
   -- ★ `Desc I` is LARGE (no code); its index must be a code
   ty-Desc : ∀ {Γ I} → Γ ⊢ I ∷ U → Γ ⊢ty Desc I
-  ty-DIh  : ∀ {Γ I D M C i p} →
-            Γ ⊢ I ∷ U → Γ ⊢ D ∷ Desc I → motCtx Γ I D ⊢ty M → Γ ⊢ C ∷ Desc I →
-            Γ ⊢ i ∷ El I → Γ ⊢ p ∷ El (dpay I D C i) → Γ ⊢ty DIh D M C p
+  ty-DIh  : ∀ {Γ I D M C p} →
+            Γ ⊢ I ∷ U → Γ ⊢ D ∷ DescF I → motCtx Γ I D ⊢ty M → Γ ⊢ C ∷ Desc I →
+            Γ ⊢ p ∷ El (dpay I D C) → Γ ⊢ty DIh D M C p
   ty-Fin  : ∀ {Γ n} → Γ ⊢ty Fin n
   -- W2: `Hom` FORMATION — both endpoints at the same (well-formed) type.
   ty-Hom  : ∀ {Γ A t u} → Γ ⊢ty A → Γ ⊢ t ∷ A → Γ ⊢ u ∷ A → Γ ⊢ty Hom A t u

@@ -22,7 +22,7 @@ open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong�
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing
-  using ( single; single2; pairS; fsucS; iinst; methS; wk2M; MethTy )
+  using ( single; single2; pairS; fsucS; iinst; methS; wk2M; MethTy; DescF )
 open import DirectedHoTT.Spec.Annotated
 
 private
@@ -121,19 +121,26 @@ era-methS I D (vs (vs z)) = refl
 wk2Mᴬ : ATy ((Γ ∙) ∙) → ATy ((((Γ ∙) ∙) ∙) ∙)
 wk2Mᴬ M = renTyᴬ (extR (extR (λ x → vs (vs x)))) M
 
+-- D074: the type of a (fibred) description
+DescFᴬ : ATm Γ → ATy Γ
+DescFᴬ I = Π (El I) (Desc (renTmᴬ vs I))
+
+era-DescF : (I : ATm Γ) → ⌈ DescFᴬ I ⌉ᵀ ≡ DescF ⌈ I ⌉
+era-DescF I = cong (λ a → Π (El ⌈ I ⌉) (Desc a)) (era-renTm vs I)
+
 MethTyᴬ : ATm Γ → ATm Γ → ATy ((Γ ∙) ∙) → ATy Γ
 MethTyᴬ I D M =
   Π (El I)
-    (Π (El (dpay (renTmᴬ vs I) (renTmᴬ vs D) (renTmᴬ vs D) (var vz)))
+    (Π (El (dpay (renTmᴬ vs I) (renTmᴬ vs D) (app (renTmᴬ vs D) (var vz))))
        (Π (DIh (renTmᴬ vs (renTmᴬ vs I)) (renTmᴬ vs (renTmᴬ vs D)) (wk2Mᴬ M)
-               (renTmᴬ vs (renTmᴬ vs D)) (var (vs vz)) (var vz))
+               (app (renTmᴬ vs (renTmᴬ vs D)) (var (vs vz))) (var vz))
           (subTyᴬ (methSᴬ I D) M)))
 
 era-MethTy : (I D : ATm Γ) (M : ATy ((Γ ∙) ∙)) → ⌈ MethTyᴬ I D M ⌉ᵀ ≡ MethTy ⌈ I ⌉ ⌈ D ⌉ ⌈ M ⌉ᵀ
 era-MethTy I D M =
   cong₂ (λ X Y → Π (El ⌈ I ⌉) (Π X Y))
-    (cong₂ (λ a b → El (dpay a b b (var vz))) (era-renTm vs I) (era-renTm vs D))
-    (cong₃ (λ a b c → Π (DIh a b a (var vz)) c)
+    (cong₂ (λ a b → El (dpay a b (app b (var vz)))) (era-renTm vs I) (era-renTm vs D))
+    (cong₃ (λ a b c → Π (DIh a b (app a (var (vs vz))) (var vz)) c)
        (trans (era-renTm vs (renTmᴬ vs D)) (cong (renTm vs) (era-renTm vs D)))
        (era-renTy (extR (extR (λ x → vs (vs x)))) M)
        (era-subTy (methSᴬ I D) methS (era-methS I D) M))

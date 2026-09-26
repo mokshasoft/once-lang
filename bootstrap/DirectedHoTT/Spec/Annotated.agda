@@ -71,7 +71,7 @@ data ATy where
   Id : ∀ {Γ} → ATy Γ → ATm Γ → ATm Γ → ATy Γ
   IMu : ∀ {Γ} → ATm Γ → ATm Γ → ATm Γ → ATy Γ
   Desc : ∀ {Γ} → ATm Γ → ATy Γ
-  DIh : ∀ {Γ} → ATm Γ → ATm Γ → ATy ((Γ ∙) ∙) → ATm Γ → ATm Γ → ATm Γ → ATy Γ
+  DIh : ∀ {Γ} → ATm Γ → ATm Γ → ATy ((Γ ∙) ∙) → ATm Γ → ATm Γ → ATy Γ
   Fin : ∀ {Γ} → ℕ → ATy Γ
 
 data ATm where
@@ -103,11 +103,11 @@ data ATm where
   ⌜Fin⌝ : ∀ {Γ} → ℕ → ATm Γ
   con : ∀ {Γ} → ATm Γ → ATm Γ → ATm Γ → ATm Γ → ATm Γ
   ielim : ∀ {Γ} → ATm Γ → ATm Γ → ATy ((Γ ∙) ∙) → ATm Γ → ATm Γ → ATm Γ → ATm Γ
-  dι : ∀ {Γ} → ATm Γ → ATm Γ → ATm Γ
+  dι : ∀ {Γ} → ATm Γ → ATm Γ
   dσ : ∀ {Γ} → ATm Γ → ATm Γ → ATm Γ → ATm Γ
   dρ : ∀ {Γ} → ATm Γ → ATm Γ → ATm Γ → ATm Γ
-  dpay : ∀ {Γ} → ATm Γ → ATm Γ → ATm Γ → ATm Γ → ATm Γ
-  dih : ∀ {Γ} → ATm Γ → ATm Γ → ATy ((Γ ∙) ∙) → ATm Γ → ATm Γ → ATm Γ → ATm Γ → ATm Γ
+  dpay : ∀ {Γ} → ATm Γ → ATm Γ → ATm Γ → ATm Γ
+  dih : ∀ {Γ} → ATm Γ → ATm Γ → ATy ((Γ ∙) ∙) → ATm Γ → ATm Γ → ATm Γ → ATm Γ
   fzero : ∀ {Γ} → ℕ → ATm Γ
   fsuc : ∀ {Γ} → ℕ → ATm Γ → ATm Γ
   fcase : ∀ {Γ} → ℕ → ATy (Γ ∙) → ATm Γ → ATm Γ → ATm (Γ ∙) → ATm Γ
@@ -127,7 +127,7 @@ renTyᴬ ρ Nat = Nat
 renTyᴬ ρ (Id x0 x1 x2) = Id (renTyᴬ ρ x0) (renTmᴬ ρ x1) (renTmᴬ ρ x2)
 renTyᴬ ρ (IMu x0 x1 x2) = IMu (renTmᴬ ρ x0) (renTmᴬ ρ x1) (renTmᴬ ρ x2)
 renTyᴬ ρ (Desc x0) = Desc (renTmᴬ ρ x0)
-renTyᴬ ρ (DIh x0 x1 x2 x3 x4 x5) = DIh (renTmᴬ ρ x0) (renTmᴬ ρ x1) (renTyᴬ (extR (extR ρ)) x2) (renTmᴬ ρ x3) (renTmᴬ ρ x4) (renTmᴬ ρ x5)
+renTyᴬ ρ (DIh x0 x1 x2 x3 x4) = DIh (renTmᴬ ρ x0) (renTmᴬ ρ x1) (renTyᴬ (extR (extR ρ)) x2) (renTmᴬ ρ x3) (renTmᴬ ρ x4)
 renTyᴬ ρ (Fin x0) = Fin x0
 renTmᴬ ρ (var x) = var (ρ x)
 renTmᴬ ρ (lam x0 x1) = lam (renTyᴬ ρ x0) (renTmᴬ (extR ρ) x1)
@@ -157,11 +157,11 @@ renTmᴬ ρ (⌜IMu⌝ x0 x1 x2) = ⌜IMu⌝ (renTmᴬ ρ x0) (renTmᴬ ρ x1) (
 renTmᴬ ρ (⌜Fin⌝ x0) = ⌜Fin⌝ x0
 renTmᴬ ρ (con x0 x1 x2 x3) = con (renTmᴬ ρ x0) (renTmᴬ ρ x1) (renTmᴬ ρ x2) (renTmᴬ ρ x3)
 renTmᴬ ρ (ielim x0 x1 x2 x3 x4 x5) = ielim (renTmᴬ ρ x0) (renTmᴬ ρ x1) (renTyᴬ (extR (extR ρ)) x2) (renTmᴬ ρ x3) (renTmᴬ ρ x4) (renTmᴬ ρ x5)
-renTmᴬ ρ (dι x0 x1) = dι (renTmᴬ ρ x0) (renTmᴬ ρ x1)
+renTmᴬ ρ (dι x0) = dι (renTmᴬ ρ x0)
 renTmᴬ ρ (dσ x0 x1 x2) = dσ (renTmᴬ ρ x0) (renTmᴬ ρ x1) (renTmᴬ ρ x2)
 renTmᴬ ρ (dρ x0 x1 x2) = dρ (renTmᴬ ρ x0) (renTmᴬ ρ x1) (renTmᴬ ρ x2)
-renTmᴬ ρ (dpay x0 x1 x2 x3) = dpay (renTmᴬ ρ x0) (renTmᴬ ρ x1) (renTmᴬ ρ x2) (renTmᴬ ρ x3)
-renTmᴬ ρ (dih x0 x1 x2 x3 x4 x5 x6) = dih (renTmᴬ ρ x0) (renTmᴬ ρ x1) (renTyᴬ (extR (extR ρ)) x2) (renTmᴬ ρ x3) (renTmᴬ ρ x4) (renTmᴬ ρ x5) (renTmᴬ ρ x6)
+renTmᴬ ρ (dpay x0 x1 x2) = dpay (renTmᴬ ρ x0) (renTmᴬ ρ x1) (renTmᴬ ρ x2)
+renTmᴬ ρ (dih x0 x1 x2 x3 x4 x5) = dih (renTmᴬ ρ x0) (renTmᴬ ρ x1) (renTyᴬ (extR (extR ρ)) x2) (renTmᴬ ρ x3) (renTmᴬ ρ x4) (renTmᴬ ρ x5)
 renTmᴬ ρ (fzero x0) = fzero x0
 renTmᴬ ρ (fsuc x0 x1) = fsuc x0 (renTmᴬ ρ x1)
 renTmᴬ ρ (fcase x0 x1 x2 x3 x4) = fcase x0 (renTyᴬ (extR ρ) x1) (renTmᴬ ρ x2) (renTmᴬ ρ x3) (renTmᴬ (extR ρ) x4)
@@ -188,7 +188,7 @@ subTyᴬ σ Nat = Nat
 subTyᴬ σ (Id x0 x1 x2) = Id (subTyᴬ σ x0) (subTmᴬ σ x1) (subTmᴬ σ x2)
 subTyᴬ σ (IMu x0 x1 x2) = IMu (subTmᴬ σ x0) (subTmᴬ σ x1) (subTmᴬ σ x2)
 subTyᴬ σ (Desc x0) = Desc (subTmᴬ σ x0)
-subTyᴬ σ (DIh x0 x1 x2 x3 x4 x5) = DIh (subTmᴬ σ x0) (subTmᴬ σ x1) (subTyᴬ (extSᴬ (extSᴬ σ)) x2) (subTmᴬ σ x3) (subTmᴬ σ x4) (subTmᴬ σ x5)
+subTyᴬ σ (DIh x0 x1 x2 x3 x4) = DIh (subTmᴬ σ x0) (subTmᴬ σ x1) (subTyᴬ (extSᴬ (extSᴬ σ)) x2) (subTmᴬ σ x3) (subTmᴬ σ x4)
 subTyᴬ σ (Fin x0) = Fin x0
 subTmᴬ σ (var x) = σ x
 subTmᴬ σ (lam x0 x1) = lam (subTyᴬ σ x0) (subTmᴬ (extSᴬ σ) x1)
@@ -218,11 +218,11 @@ subTmᴬ σ (⌜IMu⌝ x0 x1 x2) = ⌜IMu⌝ (subTmᴬ σ x0) (subTmᴬ σ x1) (
 subTmᴬ σ (⌜Fin⌝ x0) = ⌜Fin⌝ x0
 subTmᴬ σ (con x0 x1 x2 x3) = con (subTmᴬ σ x0) (subTmᴬ σ x1) (subTmᴬ σ x2) (subTmᴬ σ x3)
 subTmᴬ σ (ielim x0 x1 x2 x3 x4 x5) = ielim (subTmᴬ σ x0) (subTmᴬ σ x1) (subTyᴬ (extSᴬ (extSᴬ σ)) x2) (subTmᴬ σ x3) (subTmᴬ σ x4) (subTmᴬ σ x5)
-subTmᴬ σ (dι x0 x1) = dι (subTmᴬ σ x0) (subTmᴬ σ x1)
+subTmᴬ σ (dι x0) = dι (subTmᴬ σ x0)
 subTmᴬ σ (dσ x0 x1 x2) = dσ (subTmᴬ σ x0) (subTmᴬ σ x1) (subTmᴬ σ x2)
 subTmᴬ σ (dρ x0 x1 x2) = dρ (subTmᴬ σ x0) (subTmᴬ σ x1) (subTmᴬ σ x2)
-subTmᴬ σ (dpay x0 x1 x2 x3) = dpay (subTmᴬ σ x0) (subTmᴬ σ x1) (subTmᴬ σ x2) (subTmᴬ σ x3)
-subTmᴬ σ (dih x0 x1 x2 x3 x4 x5 x6) = dih (subTmᴬ σ x0) (subTmᴬ σ x1) (subTyᴬ (extSᴬ (extSᴬ σ)) x2) (subTmᴬ σ x3) (subTmᴬ σ x4) (subTmᴬ σ x5) (subTmᴬ σ x6)
+subTmᴬ σ (dpay x0 x1 x2) = dpay (subTmᴬ σ x0) (subTmᴬ σ x1) (subTmᴬ σ x2)
+subTmᴬ σ (dih x0 x1 x2 x3 x4 x5) = dih (subTmᴬ σ x0) (subTmᴬ σ x1) (subTyᴬ (extSᴬ (extSᴬ σ)) x2) (subTmᴬ σ x3) (subTmᴬ σ x4) (subTmᴬ σ x5)
 subTmᴬ σ (fzero x0) = fzero x0
 subTmᴬ σ (fsuc x0 x1) = fsuc x0 (subTmᴬ σ x1)
 subTmᴬ σ (fcase x0 x1 x2 x3 x4) = fcase x0 (subTyᴬ (extSᴬ σ) x1) (subTmᴬ σ x2) (subTmᴬ σ x3) (subTmᴬ (extSᴬ σ) x4)
@@ -243,7 +243,7 @@ subTmᴬ σ (psplit x0 x1 x2 x3 x4) = psplit (subTyᴬ σ x0) (subTyᴬ (extSᴬ
 ⌈ (Id x0 x1 x2) ⌉ᵀ = Id (⌈ x0 ⌉ᵀ) (⌈ x1 ⌉) (⌈ x2 ⌉)
 ⌈ (IMu x0 x1 x2) ⌉ᵀ = IMu (⌈ x0 ⌉) (⌈ x1 ⌉) (⌈ x2 ⌉)
 ⌈ (Desc x0) ⌉ᵀ = Desc (⌈ x0 ⌉)
-⌈ (DIh x0 x1 x2 x3 x4 x5) ⌉ᵀ = DIh (⌈ x1 ⌉) (⌈ x2 ⌉ᵀ) (⌈ x3 ⌉) (⌈ x5 ⌉)
+⌈ (DIh x0 x1 x2 x3 x4) ⌉ᵀ = DIh (⌈ x1 ⌉) (⌈ x2 ⌉ᵀ) (⌈ x3 ⌉) (⌈ x4 ⌉)
 ⌈ (Fin x0) ⌉ᵀ = Fin x0
 ⌈ (var x) ⌉ = var x
 ⌈ (lam x0 x1) ⌉ = lam (⌈ x1 ⌉)
@@ -273,11 +273,11 @@ subTmᴬ σ (psplit x0 x1 x2 x3 x4) = psplit (subTyᴬ σ x0) (subTyᴬ (extSᴬ
 ⌈ (⌜Fin⌝ x0) ⌉ = ⌜Fin⌝ x0
 ⌈ (con x0 x1 x2 x3) ⌉ = con (⌈ x3 ⌉)
 ⌈ (ielim x0 x1 x2 x3 x4 x5) ⌉ = ielim (⌈ x1 ⌉) (⌈ x3 ⌉) (⌈ x4 ⌉) (⌈ x5 ⌉)
-⌈ (dι x0 x1) ⌉ = dι (⌈ x1 ⌉)
+⌈ (dι x0) ⌉ = dι
 ⌈ (dσ x0 x1 x2) ⌉ = dσ (⌈ x1 ⌉) (⌈ x2 ⌉)
 ⌈ (dρ x0 x1 x2) ⌉ = dρ (⌈ x1 ⌉) (⌈ x2 ⌉)
-⌈ (dpay x0 x1 x2 x3) ⌉ = dpay (⌈ x0 ⌉) (⌈ x1 ⌉) (⌈ x2 ⌉) (⌈ x3 ⌉)
-⌈ (dih x0 x1 x2 x3 x4 x5 x6) ⌉ = dih (⌈ x1 ⌉) (⌈ x3 ⌉) (⌈ x4 ⌉) (⌈ x6 ⌉)
+⌈ (dpay x0 x1 x2) ⌉ = dpay (⌈ x0 ⌉) (⌈ x1 ⌉) (⌈ x2 ⌉)
+⌈ (dih x0 x1 x2 x3 x4 x5) ⌉ = dih (⌈ x1 ⌉) (⌈ x3 ⌉) (⌈ x4 ⌉) (⌈ x5 ⌉)
 ⌈ (fzero x0) ⌉ = fzero
 ⌈ (fsuc x0 x1) ⌉ = fsuc (⌈ x1 ⌉)
 ⌈ (fcase x0 x1 x2 x3 x4) ⌉ = fcase (⌈ x2 ⌉) (⌈ x3 ⌉) (⌈ x4 ⌉)
@@ -298,7 +298,7 @@ era-renTy ρ Nat = refl
 era-renTy ρ (Id x0 x1 x2) = cong3 (λ a0 a1 a2 → Id a0 a1 a2) (era-renTy ρ x0) (era-renTm ρ x1) (era-renTm ρ x2)
 era-renTy ρ (IMu x0 x1 x2) = cong3 (λ a0 a1 a2 → IMu a0 a1 a2) (era-renTm ρ x0) (era-renTm ρ x1) (era-renTm ρ x2)
 era-renTy ρ (Desc x0) = cong1 (λ a0 → Desc a0) (era-renTm ρ x0)
-era-renTy ρ (DIh x0 x1 x2 x3 x4 x5) = cong4 (λ a0 a1 a2 a3 → DIh a0 a1 a2 a3) (era-renTm ρ x1) (era-renTy (extR (extR ρ)) x2) (era-renTm ρ x3) (era-renTm ρ x5)
+era-renTy ρ (DIh x0 x1 x2 x3 x4) = cong4 (λ a0 a1 a2 a3 → DIh a0 a1 a2 a3) (era-renTm ρ x1) (era-renTy (extR (extR ρ)) x2) (era-renTm ρ x3) (era-renTm ρ x4)
 era-renTy ρ (Fin x0) = refl
 era-renTm ρ (var x) = refl
 era-renTm ρ (lam x0 x1) = cong1 (λ a0 → lam a0) (era-renTm (extR ρ) x1)
@@ -328,11 +328,11 @@ era-renTm ρ (⌜IMu⌝ x0 x1 x2) = cong3 (λ a0 a1 a2 → ⌜IMu⌝ a0 a1 a2) (
 era-renTm ρ (⌜Fin⌝ x0) = refl
 era-renTm ρ (con x0 x1 x2 x3) = cong1 (λ a0 → con a0) (era-renTm ρ x3)
 era-renTm ρ (ielim x0 x1 x2 x3 x4 x5) = cong4 (λ a0 a1 a2 a3 → ielim a0 a1 a2 a3) (era-renTm ρ x1) (era-renTm ρ x3) (era-renTm ρ x4) (era-renTm ρ x5)
-era-renTm ρ (dι x0 x1) = cong1 (λ a0 → dι a0) (era-renTm ρ x1)
+era-renTm ρ (dι x0) = refl
 era-renTm ρ (dσ x0 x1 x2) = cong2 (λ a0 a1 → dσ a0 a1) (era-renTm ρ x1) (era-renTm ρ x2)
 era-renTm ρ (dρ x0 x1 x2) = cong2 (λ a0 a1 → dρ a0 a1) (era-renTm ρ x1) (era-renTm ρ x2)
-era-renTm ρ (dpay x0 x1 x2 x3) = cong4 (λ a0 a1 a2 a3 → dpay a0 a1 a2 a3) (era-renTm ρ x0) (era-renTm ρ x1) (era-renTm ρ x2) (era-renTm ρ x3)
-era-renTm ρ (dih x0 x1 x2 x3 x4 x5 x6) = cong4 (λ a0 a1 a2 a3 → dih a0 a1 a2 a3) (era-renTm ρ x1) (era-renTm ρ x3) (era-renTm ρ x4) (era-renTm ρ x6)
+era-renTm ρ (dpay x0 x1 x2) = cong3 (λ a0 a1 a2 → dpay a0 a1 a2) (era-renTm ρ x0) (era-renTm ρ x1) (era-renTm ρ x2)
+era-renTm ρ (dih x0 x1 x2 x3 x4 x5) = cong4 (λ a0 a1 a2 a3 → dih a0 a1 a2 a3) (era-renTm ρ x1) (era-renTm ρ x3) (era-renTm ρ x4) (era-renTm ρ x5)
 era-renTm ρ (fzero x0) = refl
 era-renTm ρ (fsuc x0 x1) = cong1 (λ a0 → fsuc a0) (era-renTm ρ x1)
 era-renTm ρ (fcase x0 x1 x2 x3 x4) = cong3 (λ a0 a1 a2 → fcase a0 a1 a2) (era-renTm ρ x2) (era-renTm ρ x3) (era-renTm (extR ρ) x4)
@@ -361,7 +361,7 @@ era-subTy σ τ h Nat = refl
 era-subTy σ τ h (Id x0 x1 x2) = cong3 (λ a0 a1 a2 → Id a0 a1 a2) (era-subTy σ τ h x0) (era-subTm σ τ h x1) (era-subTm σ τ h x2)
 era-subTy σ τ h (IMu x0 x1 x2) = cong3 (λ a0 a1 a2 → IMu a0 a1 a2) (era-subTm σ τ h x0) (era-subTm σ τ h x1) (era-subTm σ τ h x2)
 era-subTy σ τ h (Desc x0) = cong1 (λ a0 → Desc a0) (era-subTm σ τ h x0)
-era-subTy σ τ h (DIh x0 x1 x2 x3 x4 x5) = cong4 (λ a0 a1 a2 a3 → DIh a0 a1 a2 a3) (era-subTm σ τ h x1) (era-subTy (extSᴬ (extSᴬ σ)) (extS (extS τ)) (era-ext (era-ext h)) x2) (era-subTm σ τ h x3) (era-subTm σ τ h x5)
+era-subTy σ τ h (DIh x0 x1 x2 x3 x4) = cong4 (λ a0 a1 a2 a3 → DIh a0 a1 a2 a3) (era-subTm σ τ h x1) (era-subTy (extSᴬ (extSᴬ σ)) (extS (extS τ)) (era-ext (era-ext h)) x2) (era-subTm σ τ h x3) (era-subTm σ τ h x4)
 era-subTy σ τ h (Fin x0) = refl
 era-subTm σ τ h (var x) = h x
 era-subTm σ τ h (lam x0 x1) = cong1 (λ a0 → lam a0) (era-subTm (extSᴬ σ) (extS τ) (era-ext h) x1)
@@ -391,11 +391,11 @@ era-subTm σ τ h (⌜IMu⌝ x0 x1 x2) = cong3 (λ a0 a1 a2 → ⌜IMu⌝ a0 a1 
 era-subTm σ τ h (⌜Fin⌝ x0) = refl
 era-subTm σ τ h (con x0 x1 x2 x3) = cong1 (λ a0 → con a0) (era-subTm σ τ h x3)
 era-subTm σ τ h (ielim x0 x1 x2 x3 x4 x5) = cong4 (λ a0 a1 a2 a3 → ielim a0 a1 a2 a3) (era-subTm σ τ h x1) (era-subTm σ τ h x3) (era-subTm σ τ h x4) (era-subTm σ τ h x5)
-era-subTm σ τ h (dι x0 x1) = cong1 (λ a0 → dι a0) (era-subTm σ τ h x1)
+era-subTm σ τ h (dι x0) = refl
 era-subTm σ τ h (dσ x0 x1 x2) = cong2 (λ a0 a1 → dσ a0 a1) (era-subTm σ τ h x1) (era-subTm σ τ h x2)
 era-subTm σ τ h (dρ x0 x1 x2) = cong2 (λ a0 a1 → dρ a0 a1) (era-subTm σ τ h x1) (era-subTm σ τ h x2)
-era-subTm σ τ h (dpay x0 x1 x2 x3) = cong4 (λ a0 a1 a2 a3 → dpay a0 a1 a2 a3) (era-subTm σ τ h x0) (era-subTm σ τ h x1) (era-subTm σ τ h x2) (era-subTm σ τ h x3)
-era-subTm σ τ h (dih x0 x1 x2 x3 x4 x5 x6) = cong4 (λ a0 a1 a2 a3 → dih a0 a1 a2 a3) (era-subTm σ τ h x1) (era-subTm σ τ h x3) (era-subTm σ τ h x4) (era-subTm σ τ h x6)
+era-subTm σ τ h (dpay x0 x1 x2) = cong3 (λ a0 a1 a2 → dpay a0 a1 a2) (era-subTm σ τ h x0) (era-subTm σ τ h x1) (era-subTm σ τ h x2)
+era-subTm σ τ h (dih x0 x1 x2 x3 x4 x5) = cong4 (λ a0 a1 a2 a3 → dih a0 a1 a2 a3) (era-subTm σ τ h x1) (era-subTm σ τ h x3) (era-subTm σ τ h x4) (era-subTm σ τ h x5)
 era-subTm σ τ h (fzero x0) = refl
 era-subTm σ τ h (fsuc x0 x1) = cong1 (λ a0 → fsuc a0) (era-subTm σ τ h x1)
 era-subTm σ τ h (fcase x0 x1 x2 x3 x4) = cong3 (λ a0 a1 a2 → fcase a0 a1 a2) (era-subTm σ τ h x2) (era-subTm σ τ h x3) (era-subTm (extSᴬ σ) (extS τ) (era-ext h) x4)
