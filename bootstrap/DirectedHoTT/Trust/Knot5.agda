@@ -24,29 +24,4 @@
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Trust.Knot5 where
 
-import DirectedHoTT.Examples.Knot.Judge.TyHom
-import DirectedHoTT.Examples.Knot.Judge.TyIMu
-import DirectedHoTT.Examples.Knot.Judge.TyId
-import DirectedHoTT.Examples.Knot.Judge.TyMu
-import DirectedHoTT.Examples.Knot.Judge.TyNat
-import DirectedHoTT.Examples.Knot.Judge.TyPi
-import DirectedHoTT.Examples.Knot.Judge.TySigma
-import DirectedHoTT.Examples.Knot.Judge.TyU
-import DirectedHoTT.Examples.Knot.Judge.TyUnit
-import DirectedHoTT.Examples.Knot.Judge.Unit
-import DirectedHoTT.Examples.Knot.Judge.Var
-import DirectedHoTT.Examples.Knot.JudgeRows
-import DirectedHoTT.Examples.Knot.KAdapt
-import DirectedHoTT.Examples.Knot.Lookup
-import DirectedHoTT.Examples.Knot.LookupD
-import DirectedHoTT.Examples.Knot.LookupDAgree
-import DirectedHoTT.Examples.Knot.LookupGen
-import DirectedHoTT.Examples.Knot.Map
-import DirectedHoTT.Examples.Knot.MethTy
-import DirectedHoTT.Examples.Knot.MethTyAgree
-import DirectedHoTT.Examples.Knot.MethsTy
-import DirectedHoTT.Examples.Knot.MethsTyAgree
-import DirectedHoTT.Examples.Knot.MethsTyCons
-import DirectedHoTT.Examples.Knot.MethsTyMot
-import DirectedHoTT.Examples.Knot.NoNatCRows
-import DirectedHoTT.Examples.Knot.NoNatCWf
+

@@ -24,29 +24,4 @@
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Trust.Knot2 where
 
-import DirectedHoTT.Examples.Knot.IPayTyAgree
-import DirectedHoTT.Examples.Knot.IPayTyKap
-import DirectedHoTT.Examples.Knot.IPayTyMot
-import DirectedHoTT.Examples.Knot.IPayTyRho
-import DirectedHoTT.Examples.Knot.ISubRedControl
-import DirectedHoTT.Examples.Knot.IhITy
-import DirectedHoTT.Examples.Knot.IhITyAgree
-import DirectedHoTT.Examples.Knot.IhITyMot
-import DirectedHoTT.Examples.Knot.IhITyRows
-import DirectedHoTT.Examples.Knot.IhTy
-import DirectedHoTT.Examples.Knot.IhTyAgree
-import DirectedHoTT.Examples.Knot.IhTyKap
-import DirectedHoTT.Examples.Knot.IhTyMot
-import DirectedHoTT.Examples.Knot.IhTyRho
-import DirectedHoTT.Examples.Knot.Ihs
-import DirectedHoTT.Examples.Knot.IhsAgree
-import DirectedHoTT.Examples.Knot.IhsKap
-import DirectedHoTT.Examples.Knot.IhsMeths
-import DirectedHoTT.Examples.Knot.IhsMot
-import DirectedHoTT.Examples.Knot.IhsRho
-import DirectedHoTT.Examples.Knot.Iihs
-import DirectedHoTT.Examples.Knot.IihsAgree
-import DirectedHoTT.Examples.Knot.IihsKap
-import DirectedHoTT.Examples.Knot.IihsMeths
-import DirectedHoTT.Examples.Knot.IihsMot
-import DirectedHoTT.Examples.Knot.IihsRho
+import DirectedHoTT.Examples.Knot.Desc
