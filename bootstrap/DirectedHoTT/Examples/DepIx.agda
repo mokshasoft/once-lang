@@ -6,23 +6,22 @@
 -- `_∋_∷_` by `(Ctx, Var, RTy)`, `_⊢ty_` by `(Ctx, RTy)`.  Encoding any of
 -- them therefore needs an index type whose LATER components are typed by
 -- its EARLIER ones.  Every index in the development so far has been
--- NON-dependent — `El ⌜Nat⌝`, or §14's `Σ' Nat Nat` — so this has never
--- been tested, and everything downstream of it is blocked on the answer.
+-- NON-dependent — `⌜Nat⌝`, or `PairIx`'s `⌜Σ⌝ ⌜Nat⌝ ⌜Nat⌝`.
 --
---     I  =  Σ' (El ⌜Nat⌝) (Tm ⟨d⟩)          -- a depth, and a term AT it
+--     I  =  ⌜Σ⌝ ⌜Nat⌝ (⌜IMu⌝ ⌜Nat⌝ TmD (var vz))   -- a depth, and a term AT it
 --
--- ⚠ `I : RTy ε` must be CLOSED, and it is: `Σ'` BINDS, so the second
---   component may mention the first as `var vz` while the whole thing
---   still mentions no ambient variable.  That is the observation the
---   spike turns on.
+-- ★ The index is a CODE (D073), and `⌜Σ⌝` BINDS, so the second component
+--   mentions the first as `var vz`.  `El-⌜Σ⌝` decodes it to a dependent
+--   `Σ'`, and `⊢snd` lands at `Tm (fst i)` DEFINITIONALLY — the
+--   dependency costs nothing to read.
 --
 -- THE FAMILY, one constructor, chosen because it needs BOTH mechanisms
 -- at once:
 --
 --     islam : (b : Tm (suc d)) → IsLam (d , lam b)
 --
---   * the field `b` is a NESTED FAMILY at a COMPUTED index (§12's
---     `icw-imu`, at `suc ⟨d⟩` rather than at the ambient);
+--   * the field `b` is a NESTED FAMILY at a COMPUTED index (a σ-field
+--     of code `⌜IMu⌝`, at `suc (fst i)` rather than at the ambient);
 --   * the target index is computed, so the TERM component is FORDED —
 --     and its `Id` is at an `IMu` type, not at `Nat`, which no previous
 --     ford has been.
@@ -30,163 +29,140 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.DepIx where
+open import normalizer.Syntax.Types using ( _≡_; sym; subst )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
-open import DirectedHoTT.Spec.Syntax
-  using ( Cx; ε; _∙; vz; vs
-        ; RTy; U; El; Σ'; Unit; Nat; IMu
-        ; RTm; var; pair; fst; snd; unit; nzero; nsuc
-        ; ⌜Nat⌝; ⌜Id⌝; ⌜IMu⌝; idrefl; icon
-        ; ICon; IDesc; iι; iρ; iκ; inil; _◂_
-        ; hereID; thereID )
-open import DirectedHoTT.Spec.Typing
-  using ( Ctx; ◇; _▹_; ⌊_⌋
-        ; _⊢_∷_; ⊢var; here; there; ⊢conv; ⊢pair; ⊢fst; ⊢snd; ⊢unit
-        ; ⊢nzero; ⊢nsuc; ⊢⌜Nat⌝; ⊢⌜Id⌝; ⊢⌜IMu⌝; ⊢idrefl; ⊢icon
-        ; _⊢ty_; ty-El; ty-Unit; ty-Nat; ty-Σ; ty-IMu
-        ; _≅ᵀ_; csymᵀ; ctrnᵀ; credᵀ
-        ; El-⌜Id⌝; El-⌜IMu⌝; ξ-El; ξ-⌜Id⌝ᶜ; ξ-⌜Id⌝ˡ; ξ-⌜IMu⌝; ξ-nsuc
-        ; βfst; βsnd
-        ; IConWf; iwf-ι; iwf-ρ; iwf-κ ; Θ₀; ρ₀; x₀; _,,_
-        ; ICodeWf; icw-clo; icw-ford; icw-imu
-        ; IDescWf; idwf-nil; idwf-cons )
+open import DirectedHoTT.Spec.Syntax hiding ( Fin )
+open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
+open import DirectedHoTT.Metatheory.TySub using ( ⊢wk )
+open import DirectedHoTT.Lib.Sugar using ( conₗ; Dₗ )
+open import DirectedHoTT.Lib.Tel
 open import DirectedHoTT.Examples.Scoped
-  using ( INat; TmD; TmWf; Tm; toI; fromI; tlam; ⊢tlam; tvar; ⊢tvar
-        ; fz; ⊢fz; idTm; ⊢idTm )
+  using ( TmD; ⊢TmD; Tm; toI; ⊢isuc; tlam; ⊢tlam; tvar; ⊢tvar; ⊢ffz; fz; idTm; ⊢idTm )
 
 ------------------------------------------------------------------------
--- 1. ★★★ THE DEPENDENT INDEX TYPE.
+-- 1. ★★★ THE DEPENDENT INDEX CODE.
 ------------------------------------------------------------------------
 
-IPT : RTy ε
-IPT = Σ' (El ⌜Nat⌝) (IMu TmD INat (var vz))
+TmC : {Γ : Cx} → RTm Γ → RTm Γ
+TmC n = ⌜IMu⌝ ⌜Nat⌝ TmD n
 
-⊢IPT : {Γ : Ctx} → Γ ⊢ty Σ' (El ⌜Nat⌝) (IMu TmD INat (var vz))
-⊢IPT = ty-Σ (ty-El ⊢⌜Nat⌝) (ty-IMu TmWf (⊢var here))
+⊢TmC : {Γ : Ctx} {n : RTm ⌊ Γ ⌋} → Γ ⊢ n ∷ El ⌜Nat⌝ → Γ ⊢ TmC n ∷ U
+⊢TmC = ⊢⌜IMu⌝ ⊢⌜Nat⌝ ⊢TmD
 
--- the two projections of the ambient index, at `k` binders in
---   ⚠ `⊢snd` lands at `subTy (single (fst i)) (IMu TmD INat (var vz))`,
---     which COMPUTES to `Tm (fst i)` — the dependency is definitional
---     here, and that is what makes the telescope usable at all.
-ixTm : {Γ : Ctx} {i : RTm ⌊ Γ ⌋} →
-       Γ ⊢ i ∷ Σ' (El ⌜Nat⌝) (IMu TmD INat (var vz)) →
-       Γ ⊢ snd i ∷ Tm (fst i)
-ixTm d = ⊢snd d
+IPT : {Γ : Cx} → RTm Γ
+IPT = ⌜Σ⌝ ⌜Nat⌝ (TmC (var vz))
 
--- `Tm n ≅ᵀ El (⌜IMu⌝ TmD INat n)` — the one conversion a family-typed
--- field or ford costs.
-toMu : {Γ : Ctx} {n t : RTm ⌊ Γ ⌋} →
-       Γ ⊢ t ∷ Tm n → Γ ⊢ t ∷ El (⌜IMu⌝ TmD INat n)
+⊢IPT : {Γ : Ctx} → Γ ⊢ IPT ∷ U
+⊢IPT = ⊢⌜Σ⌝ ⊢⌜Nat⌝ (⊢TmC (⊢var here))
+
+-- `Tm n ≅ᵀ El (TmC n)` — the one conversion a family-typed field or ford costs
+toMu : {Γ : Ctx} {n t : RTm ⌊ Γ ⌋} → Γ ⊢ t ∷ Tm n → Γ ⊢ t ∷ El (TmC n)
 toMu d = ⊢conv d (csymᵀ (credᵀ El-⌜IMu⌝))
 
-fromMu : {Γ : Ctx} {n t : RTm ⌊ Γ ⌋} →
-         Γ ⊢ t ∷ El (⌜IMu⌝ TmD INat n) → Γ ⊢ t ∷ Tm n
+fromMu : {Γ : Ctx} {n t : RTm ⌊ Γ ⌋} → Γ ⊢ t ∷ El (TmC n) → Γ ⊢ t ∷ Tm n
 fromMu d = ⊢conv d (credᵀ El-⌜IMu⌝)
 
+unI : {Γ : Ctx} {i : RTm ⌊ Γ ⌋} → Γ ⊢ i ∷ El IPT → Γ ⊢ i ∷ Σ' (El ⌜Nat⌝) (El (TmC (var vz)))
+unI d = ⊢conv d (credᵀ (El-⌜Σ⌝ _ _))
+
+⊢π₁ : {Γ : Ctx} {i : RTm ⌊ Γ ⌋} → Γ ⊢ i ∷ El IPT → Γ ⊢ fst i ∷ El ⌜Nat⌝
+⊢π₁ d = ⊢fst (unI d)
+
+-- ⚠ `⊢snd` lands at `El (subTm (single (fst i)) (TmC (var vz)))`, which
+--   COMPUTES to `El (TmC (fst i))` — the dependency is definitional.
+⊢π₂ : {Γ : Ctx} {i : RTm ⌊ Γ ⌋} → Γ ⊢ i ∷ El IPT → Γ ⊢ snd i ∷ El (TmC (fst i))
+⊢π₂ d = ⊢snd (unI d)
+
+⊢ixP : {Γ : Ctx} {n t : RTm ⌊ Γ ⌋} → Γ ⊢ n ∷ El ⌜Nat⌝ → Γ ⊢ t ∷ Tm n → Γ ⊢ pair n t ∷ El IPT
+⊢ixP dn dt = ⊢conv (⊢pair (ty-El (⊢TmC (⊢var here))) dn (toMu dt)) (csymᵀ (credᵀ (El-⌜Σ⌝ _ _)))
+
 ------------------------------------------------------------------------
--- 2. THE DESCRIPTION.
+-- 2. THE DESCRIPTION — one telescope over the index `i`, its ford tail
+--    stated GENERIC IN THE INDEX TERM (the pending substitution leaves
+--    `i` weakened-then-instantiated under the body's binder).
 ------------------------------------------------------------------------
 
-islamC : ICon (ε ∙)
-islamC =
-  iκ (⌜IMu⌝ TmD INat (nsuc (fst (var vz))))              -- b : Tm (suc d)
-   (iκ (⌜Id⌝ (⌜IMu⌝ TmD INat (fst (var (vs vz))))         -- ⟨t⟩ ≡ lam b
-             (snd (var (vs vz)))
-             (tlam (var vz)))
-    iι)
+-- ⟨i⟩ ≡ lam b, at the family's own code
+fordT : {Δ : Cx} → RTm Δ → RTm Δ → Tel Δ
+fordT J b = tσ (⌜Id⌝ (TmC (fst J)) (snd J) (tlam b)) tι
 
-IsLamD : IDesc
-IsLamD = islamC ◂ inil
+islamT : {Γ : Cx} → Tel (Γ ∙)
+islamT = tσ (TmC (nsuc (fst (var vz))))              -- b : Tm (suc d)
+           (fordT (var (vs vz)) (var vz))
+
+IsLamTs : {Γ : Cx} → Tels (Γ ∙) 1
+IsLamTs = islamT ∷ᵗ []ᵗ
+
+IsLamD : {Γ : Cx} → RTm Γ
+IsLamD = Dₗ ⌜ IsLamTs ⌝ₛ
 
 IsLam : {Γ : Cx} → RTm Γ → RTy Γ
-IsLam i = IMu IsLamD IPT i
+IsLam i = IMu IPT IsLamD i
 
 ------------------------------------------------------------------------
--- 3. WELL-FORMEDNESS — the whole question, in two rows.
+-- 3. WELL-FORMEDNESS — the whole question, in two fields.
 ------------------------------------------------------------------------
 
-islamWf : IConWf IPT (Θ₀ IPT) ρ₀ x₀ islamC
-islamWf =
-  iwf-κ (⌜IMu⌝ TmD INat (nsuc (fst (var vz))))
-        (icw-imu (nsuc (fst (var vz))) TmWf)
-        (⊢⌜IMu⌝ TmWf (toI (⊢nsuc (fromI (⊢fst (⊢var here))))))
-   (iwf-κ (⌜Id⌝ (⌜IMu⌝ TmD INat (fst (var (vs vz))))
-                (snd (var (vs vz)))
-                (tlam (var vz)))
-          (icw-ford (⌜IMu⌝ TmD INat (fst (var (vs vz))))
-                    (snd (var (vs vz)))
-                    (tlam (var vz)))
-          (⊢⌜Id⌝ (⊢⌜IMu⌝ TmWf (⊢fst (⊢var (there here))))
-                 (toMu (ixTm (⊢var (there here))))
-                 (toMu (⊢tlam (⊢fst (⊢var (there here)))
-                              (fromMu (⊢var here)))))
-          iwf-ι)
+fordOK : {Γ : Ctx} {J b : RTm ⌊ Γ ⌋} → Γ ⊢ J ∷ El IPT → Γ ⊢ b ∷ El (TmC (nsuc (fst J))) →
+         TelOK Γ IPT (fordT J b)
+fordOK dJ db =
+  ok-σ (⊢⌜Id⌝ (⊢TmC (⊢π₁ dJ)) (⊢π₂ dJ) (toMu (⊢tlam (⊢π₁ dJ) (fromMu db)))) ok-ι
 
-IsLamWf : IDescWf IPT IsLamD
-IsLamWf = ty-Σ (ty-El ⊢⌜Nat⌝) (ty-IMu TmWf (⊢var here)) ,, idwf-cons islamWf idwf-nil
+islamOK : {Γ : Ctx} → TelOK (Γ ▹ El IPT) IPT islamT
+islamOK = ok-σ (⊢TmC (⊢isuc (⊢π₁ (⊢var here)))) (fordOK (⊢var (there here)) (⊢var here))
+
+IsLamOK : {Γ : Ctx} → AllOK (Γ ▹ El IPT) IPT IsLamTs
+IsLamOK = islamOK ∷ᵒ []ᵒ
+
+⊢IsLamD : {Γ : Ctx} → Γ ⊢ IsLamD ∷ DescF IPT
+⊢IsLamD = ⊢Dₜ ⊢IPT IsLamOK
 
 ------------------------------------------------------------------------
 -- 4. ⚠⚠ INHABITATION — WITHOUT IT §3 SAYS NOTHING.
 --
--- `IsLamWf` says the WF judgement accepts a dependent index telescope.
--- It does NOT say anything lives at one, and a description can be
--- well-formed and EMPTY (`Examples/Vec.no-cons-at-zero` proves that
--- hazard on purpose).  Below, `islam` at the concrete index
--- `(0 , λx. x)` — so the telescope is inhabited, not merely admissible.
+-- A description can be well-formed and EMPTY (`Examples/Vec.
+-- no-cons-at-zero`).  Below, `islam` inhabits `IsLam (n , λ. b)` at
+-- EVERY depth and body — so the telescope is inhabited, not merely
+-- admissible.
 --
 -- ★ AND THIS IS WHERE THE DEPENDENCY IS PAID FOR.  At a concrete
---   `pair n t` BOTH components must STEP before anything matches:
---   the field's type mentions `fst ⟨i⟩` and the ford mentions BOTH
---   `fst ⟨i⟩` (inside the `⌜IMu⌝` CODE) and `snd ⟨i⟩` (as an endpoint).
---   That is three congruence rules — `ξ-⌜IMu⌝`, `ξ-⌜Id⌝ᶜ`, `ξ-⌜Id⌝ˡ` —
---   where a non-dependent index needed one.
+--   `pair n t` the field's type mentions `fst ⟨i⟩` and the ford mentions
+--   BOTH `fst ⟨i⟩` (inside the `⌜IMu⌝` CODE) and `snd ⟨i⟩` (as an
+--   endpoint): three congruences — `ξ-⌜IMu⌝ⁱ`, `ξ-⌜Id⌝ᶜ`, `ξ-⌜Id⌝ˡ`.
 ------------------------------------------------------------------------
 
-⊢ixP2 : {Γ : Ctx} {n t : RTm ⌊ Γ ⌋} →
-        Γ ⊢ n ∷ El ⌜Nat⌝ → Γ ⊢ t ∷ Tm n →
-        Γ ⊢ pair n t ∷ Σ' (El ⌜Nat⌝) (IMu TmD INat (var vz))
-⊢ixP2 dn dt = ⊢pair (ty-IMu TmWf (⊢var here)) dn dt
-
--- the BODY field, at a concrete index: `fst (pair n t)` must step
-bodyAt : {Γ : Ctx} {n t b : RTm ⌊ Γ ⌋} → Γ ⊢ n ∷ El ⌜Nat⌝ →
-         Γ ⊢ b ∷ Tm (nsuc n) →
-         Γ ⊢ b ∷ El (⌜IMu⌝ TmD INat (nsuc (fst (pair n t))))
-bodyAt {n = n} {t = t} dn db =
-  ⊢conv (toMu db)
-        (csymᵀ (credᵀ (ξ-El (ξ-⌜IMu⌝ (ξ-nsuc (βfst n t))))))
-
--- the FORD, at a concrete index: the code's `fst` AND the endpoint's
--- `snd` both step, then `El-⌜Id⌝` lands it.
-fordAt : {Γ : Ctx} {n t : RTm ⌊ Γ ⌋} → Γ ⊢ n ∷ El ⌜Nat⌝ → Γ ⊢ t ∷ Tm n →
-         Γ ⊢ idrefl (⌜IMu⌝ TmD INat n) t
-           ∷ El (⌜Id⌝ (⌜IMu⌝ TmD INat (fst (pair n t))) (snd (pair n t)) t)
-fordAt {n = n} {t = t} dn dt =
-  ⊢conv (⊢idrefl (⊢⌜IMu⌝ TmWf dn) (toMu dt))
-        (csymᵀ (ctrnᵀ (credᵀ (ξ-El (ξ-⌜Id⌝ᶜ (ξ-⌜IMu⌝ (βfst n t)))))
-                 (ctrnᵀ (credᵀ (ξ-El (ξ-⌜Id⌝ˡ (βsnd n t))))
-                        (credᵀ (El-⌜Id⌝ (⌜IMu⌝ TmD INat n) t t)))))
-
--- ⚠ the ford's ⊢ty premise sits ONE BINDER deeper (inside the payload's
---   `Σ'`), so its index terms live at the EXTENDED context.  Here they are
---   CLOSED, so `⊢ixP2` — which is context-generic — serves at both depths
---   and nothing needs weakening.
-tyFord₀ : {Γ : Ctx} →
-          (Γ ▹ El (⌜IMu⌝ TmD INat (nsuc (fst (pair nzero idTm))))) ⊢ty
-          Σ' (El (⌜Id⌝ (⌜IMu⌝ TmD INat (fst (pair nzero idTm)))
-                       (snd (pair nzero idTm)) (tlam (var vz)))) Unit
-tyFord₀ =
-  ty-Σ (ty-El (⊢⌜Id⌝ (⊢⌜IMu⌝ TmWf (⊢fst (⊢ixP2 (toI ⊢nzero) ⊢idTm)))
-                     (toMu (⊢snd (⊢ixP2 (toI ⊢nzero) ⊢idTm)))
-                     (toMu (⊢tlam (⊢fst (⊢ixP2 (toI ⊢nzero) ⊢idTm))
-                                  (fromMu (⊢var here))))))
-       ty-Unit
-
 islam : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ
-islam n b = icon zero (pair b (pair (idrefl (⌜IMu⌝ TmD INat n) (tlam b)) unit))
+islam n b = conₗ zero (pair b (pair (idrefl (TmC n) (tlam b)) unit))
 
--- ★★★ `islam : IsLam (0 , λx. x)` — the telescope is INHABITED.
+module _ {Γ : Ctx} {n b : RTm ⌊ Γ ⌋} (dn : Γ ⊢ n ∷ El ⌜Nat⌝) (db : Γ ⊢ b ∷ Tm (nsuc n)) where
+  private
+    i = pair n (tlam b)
+    di : Γ ⊢ i ∷ El IPT
+    di = ⊢ixP dn (⊢tlam dn db)
+
+    -- the BODY field: `fst (pair n t)` must step
+    bodyAt : Γ ⊢ b ∷ El (TmC (nsuc (fst i)))
+    bodyAt = ⊢conv (toMu db) (csymᵀ (credᵀ (ξ-El (ξ-⌜IMu⌝ⁱ (ξ-nsuc (βfst n (tlam b)))))))
+
+    -- the FORD: the code's `fst` AND the endpoint's `snd` both step
+    fordAt : Γ ⊢ idrefl (TmC n) (tlam b) ∷ El (⌜Id⌝ (TmC (fst i)) (snd i) (tlam b))
+    fordAt =
+      ⊢conv (⊢idrefl (⊢TmC dn) (toMu (⊢tlam dn db)))
+            (csymᵀ (ctrnᵀ (credᵀ (ξ-El (ξ-⌜Id⌝ᶜ (ξ-⌜IMu⌝ⁱ (βfst n (tlam b))))))
+                     (ctrnᵀ (credᵀ (ξ-El (ξ-⌜Id⌝ˡ (βsnd n (tlam b)))))
+                            (credᵀ (El-⌜Id⌝ (TmC n) (tlam b) (tlam b))))))
+
+    fpay = pair (idrefl (TmC n) (tlam b)) unit
+
+  -- ★★★ `islam : IsLam (n , λ. b)`
+  ⊢islam : Γ ⊢ islam n b ∷ IsLam (pair n (tlam b))
+  ⊢islam =
+    ⊢conₜ ⊢IPT IsLamOK nthᵗ-z di
+      (⊢payσ ⊢IPT ⊢IsLamD (ok-σ (⊢TmC (⊢isuc (⊢π₁ di))) (fordOK (⊢wk di) (⊢var here))) bodyAt
+        (subst (λ J → Γ ⊢ fpay ∷ El (dpay IPT IsLamD ⌜ fordT J b ⌝ᵗ)) (sym (wk-single {v = b} i))
+          (⊢payσ ⊢IPT ⊢IsLamD (fordOK di bodyAt) fordAt (⊢payι ⊢IPT ⊢IsLamD ⊢unit))))
+
+-- `islam : IsLam (0 , λx. x)` — a closed inhabitant
 ⊢islam₀ : ◇ ⊢ islam nzero (tvar fz) ∷ IsLam (pair nzero idTm)
-⊢islam₀ =
-  ⊢icon IsLamWf hereID (⊢ixP2 (toI ⊢nzero) ⊢idTm)
-    (⊢pair tyFord₀
-           (bodyAt (toI ⊢nzero) (⊢tvar (toI (⊢nsuc ⊢nzero)) ⊢fz))
-           (⊢pair ty-Unit (fordAt (toI ⊢nzero) ⊢idTm) ⊢unit))
+⊢islam₀ = ⊢islam z (⊢tvar (⊢isuc z) (⊢ffz z))
+  where z = toI ⊢nzero
