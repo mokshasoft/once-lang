@@ -63,6 +63,6 @@ private variable
 ihead-red : (D : RTm Γ) (ms : Cons Γ c) (k : ℕ) {m : RTm Γ}
             (i p : RTm Γ) {u : RTm Γ} →
             Nth ms k m →
-            app (app (app m i) p) (dih D (methₗ ms) D (pair (tag k) p)) ⟶* u →
+            app (app (app m i) p) (dih D (methₗ ms) (app D i) (pair (tag k) p)) ⟶* u →
             ielim D i (methₗ ms) (conₗ k p) ⟶* u
 ihead-red D ms k i p nt h = ⟶*-trans (ιₗ nt) h
