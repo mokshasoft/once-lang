@@ -15322,3 +15322,45 @@ Open for later (not decided): grade narrowing as a theorem. Two routes, each
 reversing an earlier decision — (α) admit `B <: Unit ⇒[eff] B` (the Kleisli unit `η`;
 reverses D127's removal of value-as-arrow lifting), or (γ) redesign effectful
 application as sequencing instead of suspension (reopens D018).
+
+## D230 — THE SPINE MODE: ARGUMENT-DRIVEN APPLICATION IS AN INFERENCE, `t-arg-driven-app-check` IS DELETED (2026-09-26)
+
+**Status**: Accepted; implementation in plan 0.94 (phase C).
+**Relates**: D134 (deciders are not typing rules; `compose`'s free middle owes
+coherence and a restated completeness), D226, D228 (`cata` synthesizes), D229,
+plan 0.94 §3 and §10, plan 0.4-T2 / 0.55 (the `arg-driven` completeness gap).
+
+### The finding
+
+With `compose`'s middle type locally determined by two routes (`g` given its input,
+or `f`'s synthesized input), `check-complete` needs the standard bidirectional
+property CHECKING AGREES WITH INFERENCE: if a term infers `T` and checks at `U`,
+then `T <: U` with the same usage. That holds when the rules are MODE-CORRECT
+(Pfenning's recipe: introductions check, eliminations synthesize), i.e. when no
+check rule applies to a term that also infers. Exactly one rule breaks it:
+`t-arg-driven-app-check`, which CHECKS an application `f x` (inferring `x`, checking
+`f` at `X ⇒ T`) even where `t-app` infers it — the overlap behind the long-standing
+postulate `completeness-gap-arg-driven-app-check`.
+
+### Decision
+
+The domain-given judgment `⊢ᵈ` ("given its input, this term's output is determined")
+gets a rule per combinator — inferable term, lambda, `compose`, `case`, `pair`,
+`id`/`fst`/`snd`/`terminal`, `initial` (output `Void`), and `cata` (D228, phase C′) —
+and argument-driven application becomes a mode-correct INFERENCE rule:
+
+    ctx ⊢ᵢ x ∶ X  →  ctx ⊢ᵈ f ∶ X ⇒[pure] ↦ T  →  ctx ⊢ᵢ f x ∶ T
+
+`t-arg-driven-app-check` and its postulate are DELETED. Where `f` also infers, the two
+applications agree (same type — `d-infer` reads `f`'s own codomain — and same usage,
+because `⊢ᵈ` fixes the arrow at `Many`). Checking-agrees-with-inference becomes a
+theorem, both `compose` routes become complete, and C, C′ and argument-driven
+application are one mechanism.
+
+Cost, stated: a head whose output its input does not determine (`curry g`, a lambda
+returning a lambda) applied in argument-driven position now needs an annotation, where
+before the check target typed it — the local-inference trade D-entry 0.94 §10 already
+accepted for `compose`.
+
+Coherence: where derivations overlap, the meaning agrees by `realize-invariant` (A4),
+itself still a postulate; removing ALL postulates includes proving A4.
