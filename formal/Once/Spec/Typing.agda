@@ -21,7 +21,10 @@ open import Once.TypeCheck.Judgment public
 -- `_⊢_∶_⨾_` that nothing uses, and its name collides with the PROGRAM-level
 -- `Typed` in `Once.Spec.Program` — two different notions, one word. The
 -- judgment is the one a reader needs; the alias adds nothing.
-  using ( _⊢ᵢ_∶_⨾_ ; _⊢ᶜ_∶_⨾_ ; _⊢_∶_⨾_
+  using ( _⊢ᵢ_∶_⨾_ ; _⊢ᶜ_∶_⨾_ ; _⊢ᵈ_∶_⇒[_]↦_⨾_ ; _⊢_∶_⨾_
+        -- ⊢ᵈ — domain-given (plan 0.94 §10)
+        ; d-infer ; d-lam ; d-compose ; d-id ; d-fst ; d-snd ; d-terminal ; d-initial
+        ; d-case ; d-pair ; d-cata
         -- ⊢ᵢ — synthesis
         ; t-int ; t-float ; t-str ; t-unit ; t-unit-var
         ; t-var-local ; t-var-qualified ; t-var-resolved ; t-var-import
@@ -30,15 +33,15 @@ open import Once.TypeCheck.Judgment public
         ; t-binop-arith ; t-binop-arith-float
         ; t-binop-arith-float-il ; t-binop-arith-float-ir ; t-binop-cmp
         ; t-id-app ; t-fst-app ; t-snd-app ; t-terminal-app ; t-apply-app-infer
-        ; t-app ; t-effApp
+        ; t-app ; t-effApp ; t-app-spine
         -- ⊢ᶜ — checking (D127: the categorical combinators live here)
         ; t-id-check ; t-fst-check ; t-snd-check
         ; t-terminal-morph-check ; t-initial-morph-check
         ; t-inl-morph-check ; t-inr-morph-check
-        ; t-compose-check ; t-case-copair-check ; t-pair-morph-check
+        ; t-compose-check-g ; t-compose-check-f ; t-case-copair-check ; t-pair-morph-check
         ; t-curry-check ; t-cata-check
         ; t-sub ; t-lam ; t-pair-lit-check
         ; t-In-app-check ; t-apply-check
         ; t-inl-app-check ; t-inr-app-check ; t-initial-app-check
-        ; t-arg-driven-app-check ; t-var-poly-instantiate
+        ; t-var-poly-instantiate
         )

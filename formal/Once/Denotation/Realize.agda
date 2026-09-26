@@ -33,7 +33,8 @@ module Once.Denotation.Realize where
 
 open import Data.Integer using (-_)   -- the folded payload of `g-neg-int` (plan 0.73 F3)
 open import Data.String using (_++_)
-open import Once.Type using (Type; Many; _*_; _+_; μ-type; ν-type; ⟦_⟧T)
+open import Once.Type using (Type; Many; _*_; _+_; μ-type; ν-type; ⟦_⟧T; Purity; mk-kind; _⇒[_]_)
+open import Once.Type.Sub using (sub-arr; <:-refl)
 open import Once.IR as IR using (IR; _∘_; ⟨_,_⟩)
 open import Once.IRTy using (⌊_⌋; ⌊⟧T-commute)
 open import Once.IRTy.WF using (wf-⌊⌋)
@@ -41,9 +42,9 @@ open import Once.TypeCheck.Raw using (RawExpr;
   OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
 open import Once.TypeCheck.Classify using (NamedCtx)
 open import Once.TypeCheck.Judgment
-  using (_⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_; t-id-check; t-fst-check; t-snd-check;
+  using (_⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_; _⊢ᵈ_∶_⇒[_]↦_⨾_; t-id-check; t-fst-check; t-snd-check;
          t-terminal-morph-check; t-initial-morph-check; t-inl-morph-check;
-         t-inr-morph-check; t-compose-check; t-case-copair-check;
+         t-inr-morph-check; t-compose-check-g; t-compose-check-f; d-infer; d-lam; d-compose; d-id; d-fst; d-snd; d-terminal; d-initial; d-case; d-pair; d-cata; t-case-copair-check;
          t-pair-morph-check; t-curry-check; t-cata-check; t-ana-check; t-int; t-float; t-str;
          t-unit; t-unit-var; t-var-local; t-var-qualified; t-var-resolved;
          t-var-import; t-annot; t-pair; t-neg; t-neg-float; t-let; t-case;
@@ -52,7 +53,7 @@ open import Once.TypeCheck.Judgment
          t-terminal-app; t-apply-app-infer; t-apply-eff-app-infer; t-Out-app-infer; t-app; t-effApp; t-sub; t-lam;
          t-pair-lit-check; t-In-app-check; t-apply-check; t-inl-app-check;
          t-inr-app-check; t-initial-app-check;
-         t-arg-driven-app-check; t-var-poly-instantiate;
+         t-app-spine; t-var-poly-instantiate;
          t-var-poly-instantiate-infer)
 open import Once.Float.Decimal using (Decimal; decimalOf; negate)
 open import Once.Surface.Thinning using (weaken)
@@ -87,6 +88,10 @@ realize : ∀ {ctx : NamedCtx} {e : RawExpr} {A : Type}
 realize-infer : ∀ {ctx : NamedCtx} {e : RawExpr} {A : Type}
                 {Ψ : Usage (NamedCtx.size ctx)}
               → ctx ⊢ᵢ e ∶ A ⨾ Ψ → Expr (NamedCtx.debruijn ctx) Ψ A
+-- Plan 0.94 §10: a domain-given derivation realises the term as its arrow.
+realize-d : ∀ {ctx : NamedCtx} {e : RawExpr} {A B : Type} {π : Purity}
+              {Ψ : Usage (NamedCtx.size ctx)}
+          → ctx ⊢ᵈ e ∶ A ⇒[ π ]↦ B ⨾ Ψ → Expr (NamedCtx.debruijn ctx) Ψ (A ⇒[ mk-kind Many π ] B)
 
 
 ------------------------------------------------------------------------
@@ -105,7 +110,8 @@ realize (t-terminal-morph-check) = lift-morphism IR.terminal
 realize (t-initial-morph-check)  = lift-morphism IR.initial
 realize (t-inl-morph-check)      = lift-morphism (IR.inl)
 realize (t-inr-morph-check)      = lift-morphism (IR.inr)
-realize (t-compose-check _ df dg)    = comp'   (realize df) (realize dg)
+realize (t-compose-check-g dg df)  = comp'   (realize df) (realize-d dg)
+realize (t-compose-check-f wf p dg) = comp' (coerce p (realize-infer wf)) (realize dg)
 realize (t-case-copair-check df dg)  = copair' (realize df) (realize dg)
 realize (t-pair-morph-check df dg)   = fork'   (realize df) (realize dg)
 realize (t-curry-check df)           = curry'  (realize df)
@@ -124,7 +130,6 @@ realize (t-apply-check dp)      = morph-app IR.apply (realize-infer dp)
 realize (t-inl-app-check d)     = morph-app (IR.inl) (realize d)
 realize (t-inr-app-check d)     = morph-app (IR.inr) (realize d)
 realize (t-initial-app-check d) = morph-app IR.initial (realize d)
-realize (t-arg-driven-app-check _ darg df) = app (realize df) (realize-infer darg)
 -- Plan 0.58 (telescope / E1): a same-module def reference realizes to its
 -- closed body's IR, wrapped as a closed morphism applied to `unit` — so its
 -- denotation is env-independent BY DEFINITION (`⟦ morph-app ir unit ⟧ˢ dγ =
@@ -249,3 +254,16 @@ realize-infer (t-apply-app-infer d) = morph-app IR.apply (realize-infer d)
 realize-infer (t-apply-eff-app-infer d) = morph-app (IR.curry (IR.apply IR.∘ IR.fst)) (realize-infer d)
 realize-infer (t-app _ df dx)    = app    (realize-infer df) (realize dx)
 realize-infer (t-effApp _ df dx) = effApp (realize-infer df) (realize dx)
+realize-infer (t-app-spine _ dx df) = app (realize-d df) (realize-infer dx)
+
+realize-d (d-infer {B = B} w a g) = coerce (sub-arr a (<:-refl B) g) (realize-infer w)
+realize-d (d-lam ≤p d)            = lam Many ≤p (realize-infer d)
+realize-d (d-compose dg df)       = comp' (realize-d df) (realize-d dg)
+realize-d d-id       = lift-morphism IR.id
+realize-d d-fst      = lift-morphism IR.fst
+realize-d d-snd      = lift-morphism IR.snd
+realize-d d-terminal = lift-morphism IR.terminal
+realize-d d-initial  = lift-morphism IR.initial
+realize-d (d-case df dg) = copair' (realize-d df) (realize-d dg)
+realize-d (d-pair df dg) = fork'   (realize-d df) (realize-d dg)
+realize-d (d-cata wfF dalg) = cata wfF (realize-infer dalg)

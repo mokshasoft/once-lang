@@ -66,7 +66,8 @@ open import Once.SigOp.Info using (semM)
 open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_;
   t-id-check; t-fst-check; t-snd-check; t-terminal-morph-check;
   t-initial-morph-check; t-inl-morph-check; t-inr-morph-check;
-  t-compose-check; t-case-copair-check; t-pair-morph-check;
+  t-compose-check-g; t-compose-check-f; d-infer; d-lam; d-compose; d-id; d-fst; d-snd;
+  d-terminal; d-initial; d-case; d-pair; d-cata; _⊢ᵈ_∶_⇒[_]↦_⨾_; t-case-copair-check; t-pair-morph-check;
   t-curry-check; t-cata-check; t-ana-check;
   t-int; t-float; t-str; t-unit; t-unit-var; t-var-local; t-var-qualified;
   t-var-resolved; t-var-import; t-annot; t-pair; t-neg; t-neg-float; t-binop-arith-float; t-binop-arith-float-il; t-binop-arith-float-ir; t-let; t-case;
@@ -74,10 +75,10 @@ open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_;
   t-terminal-app; t-apply-app-infer; t-apply-eff-app-infer; t-Out-app-infer; t-app; t-effApp;
   t-sub; t-lam; t-pair-lit-check;
   t-In-app-check; t-apply-check; t-inl-app-check; t-inr-app-check;
-  t-initial-app-check; t-arg-driven-app-check; t-var-poly-instantiate;
+  t-initial-app-check; t-app-spine; t-var-poly-instantiate;
   t-var-poly-instantiate-infer)
 open import Once.Denotation.Phase using (lookupᴰUsed; restrictᴰ; bindᴰ; bindᴰ0; env0)
-open import Once.Denotation.Meaning using (⟦_⟧ᶜ; ⟦_⟧ᵢ;
+open import Once.Denotation.Meaning using (⟦_⟧ᶜ; ⟦_⟧ᵢ; ⟦_⟧ᵈ;
   lookupᴰ; Env; EnvRun; cata-sem; sigOpValᴰ; sigOpRefᴰ; svarᴰ; in-value; named-sem)
 open import Once.Adequacy.CataErased fmt using (liftFn-SigOp)
 open import Once.Adequacy.LiftFnReduce fmt using
@@ -89,7 +90,7 @@ open import Once.Arith.SigOp.Builders using (value-info;
   fadd-info; fsub-info; fmul-info; fdiv-info; i2f-info;
   lt-info; le-info; gt-info; ge-info; eq-info; ne-info)
 open import Once.CanonicalName using (CanonicalName; bare)
-open import Once.Denotation.Realize using (realize; realize-infer; poly-usage-eq)
+open import Once.Denotation.Realize using (realize; realize-infer; realize-d; poly-usage-eq)
 open import Once.Adequacy.SourceFaithful fmt using (faithful; T-ext-at)
 open import Once.Surface.Elaborate using (elaborate)
 import Once.Denotation.SourceDenote as SD
@@ -613,6 +614,11 @@ bridge-c : ∀ {ctx : NamedCtx} {e A Ψ} (d : ctx ⊢ᶜ e ∶ A ⨾ Ψ)
            {dγ₁ dγ₂ : EnvRun ctx Ψ}
            (re : RelEnv↾ (NamedCtx.debruijn ctx) Ψ dγ₁ dγ₂)
          → RelT A ((⟦ d ⟧ᶜ fmt) dγ₁) ((SD.⟦ realize d ⟧ˢ fmt) dγ₂)
+-- Plan 0.94 §10: the domain-given realm, related at the arrow it determines.
+bridge-d : ∀ {ctx : NamedCtx} {e A π B Ψ} (d : ctx ⊢ᵈ e ∶ A ⇒[ π ]↦ B ⨾ Ψ)
+           {dγ₁ dγ₂ : EnvRun ctx Ψ}
+           (re : RelEnv↾ (NamedCtx.debruijn ctx) Ψ dγ₁ dγ₂)
+         → RelT (A ⇒[ mk-kind Many π ] B) ((⟦ d ⟧ᵈ fmt) dγ₁) ((SD.⟦ realize-d d ⟧ˢ fmt) dγ₂)
 
 -- Literals — pure `returnT`, identical values.
 bridge-i (t-int _)   re k = refl , rel-returns refl
@@ -958,6 +964,11 @@ bridge-i (t-app {A = A} {B = B} {q = Many} _ df dx) re =
 bridge-i (t-effApp {A = A} {B = B} _ df dx) re k = refl , rel-returns λ {a} {b} _ →
   RelT-bind {A = A ⇒[ mk-kind Many eff ] B} {B = B} (bridge-i df (reˡ re))
             (λ rf → RelT-bind {A = A} {B = B} (bridge-c dx (reʳ re)) (λ rx → rf rx))
+-- D230: the spine — the head's domain-given meaning, applied to the argument's.
+bridge-i (t-app-spine {X = X} {T = T} _ darg df) re =
+  RelT-bind {A = X ⇒[ mk-kind Many pure ] T} {B = T}
+            (bridge-d df (reˡ re))
+            (λ rf → RelT-bind {A = X} {B = T} (bridge-i darg (reᵐ re)) (λ rx → rf rx))
 
 -- D127: the POINT-FREE LEAVES. `realize` sends each to `lift-morphism` of the
 -- plain categorical generator, so these are the OLD `bridge-m` bodies verbatim,
@@ -986,9 +997,17 @@ bridge-c (t-inr-morph-check {A = A} {B = B} {π = π}) re k =
 -- D127: the COMBINATORS. Both sides now bind their arms and then build the
 -- same function from the results, so each is a `RelT-bind`/`RelT-return`
 -- congruence — no realm, no extraction, no per-shape reasoning.
-bridge-c (t-compose-check {A = A} {B = B} {C = C} {π = π} _ df dg) re =
+bridge-c (t-compose-check-g {A = A} {B = B} {C = C} {π = π} dg df) re =
   RelT-bind {A = B ⇒[ mk-kind Many π ] C} {B = A ⇒[ mk-kind Many π ] C}
             (bridge-c df (reˡ re)) (λ {f₁} {f₂} rf →
+  RelT-bind {A = A ⇒[ mk-kind Many π ] B} {B = A ⇒[ mk-kind Many π ] C}
+            (bridge-d dg (reʳ re)) (λ {g₁} {g₂} rg →
+  RelT-return {A = A ⇒[ mk-kind Many π ] C}
+              {x = λ a → g₁ a >>=T f₁} {y = λ a → g₂ a >>=T f₂}
+              (λ rv → RelT-bind {A = B} {B = C} (rg rv) rf)))
+bridge-c (t-compose-check-f {A = A} {B = B} {C = C} {π = π} wf p dg) re =
+  RelT-bind {A = B ⇒[ mk-kind Many π ] C} {B = A ⇒[ mk-kind Many π ] C}
+            (RelT-sub p (bridge-i wf (reˡ re))) (λ {f₁} {f₂} rf →
   RelT-bind {A = A ⇒[ mk-kind Many π ] B} {B = A ⇒[ mk-kind Many π ] C}
             (bridge-c dg (reʳ re)) (λ {g₁} {g₂} rg →
   RelT-return {A = A ⇒[ mk-kind Many π ] C}
@@ -1095,10 +1114,6 @@ bridge-c {ctx = ctx} (t-inr-app-check {A = A} {B = B} d) {dγ₁ = dγ₁} {dγ�
 -- it is actually bound, and the stopped branch closes on its own.
 bridge-c {ctx = ctx} {A = A} (t-initial-app-check d) re =
   RelT-bind {A = Once.Type.Void} {B = A} (bridge-c d (reᵐ re)) (λ {a} _ → ⊥-elim a)
-bridge-c (t-arg-driven-app-check {X = X} {T = T} _ darg df) re =
-  RelT-bind {A = X Once.Type.⇒[ mk-kind Many pure ] T} {B = T}
-            (bridge-c df (reˡ re))
-            (λ rf → RelT-bind {A = X} {B = T} (bridge-i darg (reᵐ re)) (λ rx → rf rx))
 -- Plan 0.58 (telescope): ⟦ t-var-poly ⟧ᶜ dγ₁ = ⟦ bodyD ⟧ᶜ tt and
 -- SD.⟦ realize d ⟧ˢ dγ₂ = evalᴰ (elaborate Heap (realize bodyD)) tt (morph-app+unit,
 -- env-independent by def). So the bridge RECURSES on the body (bodyD is closed ⇒
@@ -1115,3 +1130,61 @@ bridge-c {ctx = ctx} {A = A} (t-var-poly-instantiate _ _ _ _ bodyD) {dγ₂ = d�
     rhs≡ = trans (SD-subst-usage {Γ = NamedCtx.debruijn ctx} {A = A} poly-usage-eq
                     {e = morph-app (elaborate IR.Heap (realize bodyD)) unit} dγ₂)
                  (T-ext-at (faithful (realize bodyD) tt))
+
+-- Plan 0.94 §10: the domain-given clauses mirror their check-mode twins.
+bridge-d (d-infer {B = B} w a g) re = RelT-sub (sub-arr {q = Many} a (<:-refl B) g) (bridge-i w re)
+bridge-d (d-lam {q' = Zero} _ d) re k = refl , rel-returns λ {a} {b} rv → bridge-i d (rel-bind0 re)
+bridge-d (d-lam {q' = One}  _ d) re k = refl , rel-returns λ {a} {b} rv → bridge-i d (rel-bind One re rv)
+bridge-d (d-lam {q' = Many} _ d) re k = refl , rel-returns λ {a} {b} rv → bridge-i d (rel-bind Many re rv)
+bridge-d (d-compose {A = A} {M = M} {B = B} {π = π} dg df) re =
+  RelT-bind {A = M ⇒[ mk-kind Many π ] B} {B = A ⇒[ mk-kind Many π ] B}
+            (bridge-d df (reˡ re)) (λ {f₁} {f₂} rf →
+  RelT-bind {A = A ⇒[ mk-kind Many π ] M} {B = A ⇒[ mk-kind Many π ] B}
+            (bridge-d dg (reʳ re)) (λ {g₁} {g₂} rg →
+  RelT-return {A = A ⇒[ mk-kind Many π ] B}
+              {x = λ a → g₁ a >>=T f₁} {y = λ a → g₂ a >>=T f₂}
+              (λ rv → RelT-bind {A = M} {B = B} (rg rv) rf)))
+bridge-d (d-id {A = T} {π = π}) re k =
+  refl , rel-returns (subst (RelV (T ⇒[ mk-kind Many π ] T) (λ a → returnT a))
+               (sym (liftFn-id {T})) (λ rv n → refl , rel-returns rv))
+bridge-d (d-fst {A = A} {B = B} {π = π}) re k =
+  refl , rel-returns (subst (RelV ((A * B) ⇒[ mk-kind Many π ] A) (λ ab → returnT (proj₁ ab)))
+               (sym (liftFn-fst {A} {B})) (λ rv n → refl , rel-returns (proj₁ rv)))
+bridge-d (d-snd {A = A} {B = B} {π = π}) re k =
+  refl , rel-returns (subst (RelV ((A * B) ⇒[ mk-kind Many π ] B) (λ ab → returnT (proj₂ ab)))
+               (sym (liftFn-snd {A} {B})) (λ rv n → refl , rel-returns (proj₂ rv)))
+bridge-d (d-terminal {A = A} {π = π}) re k =
+  refl , rel-returns (subst (RelV (A ⇒[ mk-kind Many π ] Once.Type.Unit) (λ _ → returnT tt))
+               (sym (liftFn-terminal {A})) (λ _ n → refl , rel-returns tt))
+bridge-d d-initial re k = refl , rel-returns (λ { {a = ()} })
+bridge-d (d-case {A = A} {B = B} {C = C} {π = π} df dg) re =
+  RelT-bind {A = A ⇒[ mk-kind Many π ] C} {B = (A + B) ⇒[ mk-kind Many π ] C}
+            (bridge-d df (reˡ re)) (λ {c₁} {c₂} rf →
+  RelT-bind {A = B ⇒[ mk-kind Many π ] C} {B = (A + B) ⇒[ mk-kind Many π ] C}
+            (bridge-d dg (reʳ re)) (λ {d₁} {d₂} rg →
+  RelT-return {A = (A + B) ⇒[ mk-kind Many π ] C}
+              {x = λ ab → [ c₁ , d₁ ]′ ab} {y = λ ab → [ c₂ , d₂ ]′ ab}
+              (λ {ab} {ab'} rv →
+                 copair-rel {A} {B} {C} {vf = c₁} {vf' = c₂} {vg = d₁} {vg' = d₂}
+                            rf rg ab ab' rv)))
+bridge-d (d-pair {A = A} {B = B} {C = C} {π = π} df dg) re =
+  RelT-bind {A = A ⇒[ mk-kind Many π ] B}
+            {B = A ⇒[ mk-kind Many π ] (B * C)}
+            (bridge-d df (reˡ re)) (λ {f₁} {f₂} rf →
+  RelT-bind {A = A ⇒[ mk-kind Many π ] C}
+            {B = A ⇒[ mk-kind Many π ] (B * C)}
+            (bridge-d dg (reʳ re)) (λ {g₁} {g₂} rg →
+  RelT-return {A = A ⇒[ mk-kind Many π ] (B * C)}
+              {x = λ a → f₁ a >>=T λ b → g₁ a >>=T λ c → returnT (b , c)}
+              {y = λ a → f₂ a >>=T λ b → g₂ a >>=T λ c → returnT (b , c)}
+              (λ rv → RelT-bind {A = B} {B = B * C} (rf rv) (λ {b₁} {b₂} rb →
+                       RelT-bind {A = C} {B = B * C} (rg rv) (λ {e₁} {e₂} rc →
+                         RelT-return {A = B * C} {x = b₁ , e₁} {y = b₂ , e₂} (rb , rc))))))
+bridge-d (d-cata {F = F} {A = A} {π = π} wfF dalg) re =
+  RelT-bind {A = ⟦ F ⟧T A ⇒[ mk-kind Many π ] A}
+            {B = μ-type F ⇒[ mk-kind Many π ] A}
+            (bridge-i dalg (mk↾ tt)) (λ {c₁} {c₂} ralg →
+  RelT-return {A = μ-type F ⇒[ mk-kind Many π ] A}
+              {x = cata-sem wfF c₁}
+              {y = λ x → sem-cata wfF (SD.cata-ev-algˢ {F} {A} (returnT c₂)) x}
+              (λ {a} {b} rv → cata-bridge {A' = A} {wfF = wfF} c₁ c₂ ralg rv))

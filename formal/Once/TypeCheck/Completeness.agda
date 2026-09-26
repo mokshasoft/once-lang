@@ -57,7 +57,7 @@ open import Once.TypeCheck.DeciderComplete
   using (isGround-complete-at; ¬Ground-isGround-inj₂; wellFormedF?-complete-at)
 open import Once.Functor.Decide using (wellFormedF?; isConcrete?; isBaseType?;
   isConcrete?-complete; isBaseType?-complete)
-open import Once.TypeCheck.Classify using (ctxWithImportsAndPolys; composeArgB; composeMid;
+open import Once.TypeCheck.Classify using (ctxWithImportsAndPolys;
   inspectLookupLocal; inspectLookupImport; llv-found; llv-not-found; liv-found; liv-not-found)
 open import Once.Surface.Syntax as Surface using (zeroUsage; _+ᵘ_; _*ᵘ_; [])
   renaming (Expr to SExpr)
@@ -76,15 +76,18 @@ open import Once.IRTy.WF using (wf-⌊⌋)
 open import Once.Denotation.Realize using ()
 open import Once.Surface.Syntax as Srf using (Expr; lift-morphism)
 open import Once.Type using (Functor; μ-type; ⟦_⟧T)
-open import Once.Type.Sub using (_<:_; _<:?_; <:-refl; sub-int; sub-float; sub-str; sub-unit; sub-prod; sub-sum)
+open import Once.Type.Sub using (_<:_; _<:?_; <:-refl; _⊑π_; _⊑π?_; ⊑-pure; sub-int; sub-float; sub-str; sub-unit; sub-prod; sub-sum)
 open import Once.Type.DecEq using (_≟T_; _≟F_)
 open import Once.TypeCheck.Classify using (lookupLocal; lookupImport; lookupPolyPrefix⇒lookupPoly;
   inspectLookupLocal; inspectLookupImport; llv-found; llv-not-found; liv-found; liv-not-found;
   GenView; classifyGen; gv-id; gv-fst; gv-snd; gv-terminal; gv-initial; gv-inl; gv-inr;
   gv-unit; gv-other)
 open import Data.List.Relation.Unary.All using () renaming (_∷_ to _∷ᴬ_)
+open import Once.TypeCheck.ModeAgreement using (mode-agree-ic; mode-agree-dc)
 open import Once.TypeCheck.ElaborateProofs using (
-  checkComposeGo; checkCaseGo; VerifiedCheckResult; inferElabV-RVar-fail-bridge;
+  checkCaseGo; VerifiedCheckResult;
+  elabGivenV; elabGivenLeaf; elabGivenApp; given-infer; given-cata; checkCompose-g; checkCompose-f;
+  inferSpine; VerifiedGivenResult; inferElabV-RVar-fail-bridge;
   inspectWellFormedF; wfv-no; wfv-yes;
   checkCataGo; cata-go-canonical; checkCataGo-J; checkCataGoV-pure-J; checkCataGo-just-success;
   checkAnaGo; checkAnaGo-J; checkAnaGoV-J; checkAnaGo-just-success;
@@ -924,6 +927,163 @@ infer-complete-RApp-eff {ctx} f x A {B} eqAH eqF eqX
     with checkElabV ctx x A | eqX
 ...   | success _ _ _ _ , _ | refl = _ , _ , _ , refl
 
+
+------------------------------------------------------------------------
+-- Plan 0.94 §10 / D230: the domain-given mode, the two compose routes and the
+-- spine. Non-recursive helpers here; the recursion is in the mutual block.
+------------------------------------------------------------------------
+
+-- A synthesizing term reaches `given-infer` — its shape is not one the
+-- domain-given mode takes apart. The generator leaves it could name are
+-- exactly the ones `NotGenerator` rules out.
+private
+  leaf-route : ∀ (ctx : NamedCtx) (cn : CanonicalName) (A : Type) (π : T.Purity)
+                 (r : VerifiedInferResult ctx (RResolved cn))
+             → NotGenerator cn → (vw : AppHeadView (RResolved cn))
+             → elabGivenLeaf ctx cn A π vw r ≡ given-infer ctx (RResolved cn) A π r
+  leaf-route ctx ._ A π r (¬id ∷ᴬ _) Once.TypeCheck.ElaborateProofs.ahv-id = ⊥-elim (¬id refl)
+  leaf-route ctx ._ A π r (_ ∷ᴬ ¬fst ∷ᴬ _) Once.TypeCheck.ElaborateProofs.ahv-fst = ⊥-elim (¬fst refl)
+  leaf-route ctx ._ A π r (_ ∷ᴬ _ ∷ᴬ ¬snd ∷ᴬ _) Once.TypeCheck.ElaborateProofs.ahv-snd = ⊥-elim (¬snd refl)
+  leaf-route ctx ._ A π r (_ ∷ᴬ _ ∷ᴬ _ ∷ᴬ ¬t ∷ᴬ _) Once.TypeCheck.ElaborateProofs.ahv-terminal = ⊥-elim (¬t refl)
+  leaf-route ctx ._ A π r (_ ∷ᴬ _ ∷ᴬ _ ∷ᴬ _ ∷ᴬ ¬i ∷ᴬ _) Once.TypeCheck.ElaborateProofs.ahv-initial = ⊥-elim (¬i refl)
+  leaf-route ctx ._ A π r _ Once.TypeCheck.ElaborateProofs.ahv-inl = refl
+  leaf-route ctx ._ A π r _ Once.TypeCheck.ElaborateProofs.ahv-inr = refl
+  leaf-route ctx ._ A π r _ Once.TypeCheck.ElaborateProofs.ahv-curry = refl
+  leaf-route ctx ._ A π r _ Once.TypeCheck.ElaborateProofs.ahv-apply = refl
+  leaf-route ctx ._ A π r _ Once.TypeCheck.ElaborateProofs.ahv-In = refl
+  leaf-route ctx ._ A π r _ Once.TypeCheck.ElaborateProofs.ahv-cata = refl
+  leaf-route ctx ._ A π r _ Once.TypeCheck.ElaborateProofs.ahv-ana = refl
+  leaf-route ctx ._ A π r _ Once.TypeCheck.ElaborateProofs.ahv-Out = refl
+  leaf-route ctx cn A π r _ ahv-other = refl
+
+  app-other-route : ∀ (ctx : NamedCtx) (f x : RawExpr) (A : Type) (π : T.Purity)
+                      (r : VerifiedInferResult ctx (Raw.RApp f x))
+                  → classifyAppHeadView f ≡ ahv-other
+                  → elabGivenApp ctx f x A π (classifyAppHeadView f) r ≡ given-infer ctx (Raw.RApp f x) A π r
+  app-other-route ctx f x A π r eq rewrite eq = refl
+
+given-infer-route : ∀ {ctx : NamedCtx} {e : RawExpr} {T : Type}
+    {Ψ : Surface.Usage (NamedCtx.size ctx)}
+  → ctx ⊢ᵢ e ∶ T ⨾ Ψ → ∀ (A : Type) (π : T.Purity)
+  → elabGivenV ctx e A π ≡ given-infer ctx e A π (inferElabV ctx e)
+given-infer-route (t-int _) A π = refl
+given-infer-route (t-float _ _ _ _) A π = refl
+given-infer-route (t-str _) A π = refl
+given-infer-route t-unit A π = refl
+given-infer-route t-unit-var A π = refl
+given-infer-route (t-var-local _) A π = refl
+given-infer-route (t-var-qualified _ _) A π = refl
+given-infer-route {ctx} (t-var-resolved {cn = cn} ng _ _) A π =
+  leaf-route ctx cn A π (inferElabV ctx (RResolved cn)) ng (classifyAppHeadView (RResolved cn))
+given-infer-route (t-var-import _ _ _ _) A π = refl
+given-infer-route (t-var-poly-instantiate-infer _ _ _ _ _ _) A π = refl
+given-infer-route (t-annot _) A π = refl
+given-infer-route (t-pair _ _) A π = refl
+given-infer-route (t-neg _) A π = refl
+given-infer-route (t-neg-float _ _ _ _) A π = refl
+given-infer-route (t-let _ _) A π = refl
+given-infer-route (t-case _ _ _) A π = refl
+given-infer-route (t-binop-arith _ _ _) A π = refl
+given-infer-route (t-binop-arith-float _ _ _) A π = refl
+given-infer-route (t-binop-arith-float-il _ _ _) A π = refl
+given-infer-route (t-binop-arith-float-ir _ _ _) A π = refl
+given-infer-route (t-binop-cmp _ _ _) A π = refl
+given-infer-route (t-id-app _) A π = refl
+given-infer-route (t-fst-app _) A π = refl
+given-infer-route (t-snd-app _) A π = refl
+given-infer-route (t-terminal-app _) A π = refl
+given-infer-route (t-apply-app-infer _) A π = refl
+given-infer-route (t-apply-eff-app-infer _) A π = refl
+given-infer-route (t-Out-app-infer _ _ _) A π = refl
+given-infer-route {ctx} (t-app {f = f} {x = x} eqAH _ _) A π =
+  app-other-route ctx f x A π (inferElabV ctx (Raw.RApp f x)) (classifyAppHead-nothing⇒view-other eqAH)
+given-infer-route {ctx} (t-effApp {f = f} {x = x} eqAH _ _) A π =
+  app-other-route ctx f x A π (inferElabV ctx (Raw.RApp f x)) (classifyAppHead-nothing⇒view-other eqAH)
+given-infer-route {ctx} (t-app-spine {f = f} {arg = x} eqAH _ _) A π =
+  app-other-route ctx f x A π (inferElabV ctx (Raw.RApp f x)) (classifyAppHead-nothing⇒view-other eqAH)
+
+-- `d-infer`: the inferred arrow's domain converts back, its grade up.
+given-infer-complete : ∀ {ctx : NamedCtx} {e : RawExpr} {A A′ B : Type} {π π′ : T.Purity}
+    {Ψ : Surface.Usage (NamedCtx.size ctx)} {eE : _} {d f : ℕ}
+    (r : VerifiedInferResult ctx e)
+  → proj₁ r ≡ success (A′ T.⇒[ T.mk-kind T.Many π′ ] B) Ψ eE d f
+  → A <: A′ → π′ ⊑π π
+  → ∃[ eE′ ] ∃[ d′ ] ∃[ f′ ] proj₁ (given-infer ctx e A π r) ≡ success B Ψ eE′ d′ f′
+given-infer-complete {A = A} {A′} {π = π} {π′} (success _ _ _ _ _ , _) refl a g
+  with A <:? A′ | π′ ⊑π? π
+... | yes _ | yes _ = _ , _ , _ , refl
+... | no ¬a | _     = ⊥-elim (¬a a)
+... | yes _ | no ¬g = ⊥-elim (¬g g)
+
+-- `d-cata`: the algebra synthesizes the arrow the fold needs.
+given-cata-complete : ∀ {ctx : NamedCtx} {alg : RawExpr} {F : Functor} {A : Type} {π : T.Purity}
+    (wfF : WellFormedF F) {eE : _} {d f : ℕ}
+    (r : VerifiedInferResult (ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx)) alg)
+  → proj₁ r ≡ success (⟦ F ⟧T A T.⇒[ T.mk-kind T.Many π ] A) [] eE d f
+  → ∃[ eE′ ] ∃[ d′ ] ∃[ f′ ] proj₁ (given-cata ctx alg F π wfF r) ≡ success A zeroUsage eE′ d′ f′
+given-cata-complete {F = F} {A} {π} wfF (success _ _ _ _ _ , _) refl
+  with (⟦ F ⟧T A T.⇒[ T.mk-kind T.Many π ] A) ≟T (⟦ F ⟧T A T.⇒[ T.mk-kind T.Many π ] A)
+... | yes refl = _ , _ , _ , refl
+... | no ¬p = ⊥-elim (¬p refl)
+
+-- compose, `f`'s route: `f` synthesizes, converts, and `g` is checked at the
+-- middle it names.
+compose-f-complete : ∀ {ctx : NamedCtx} (f g : RawExpr) (A B C C′ : Type) (π π′ : T.Purity)
+    {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)} {fE : _} {gE : _} {df ff dg fg : ℕ}
+  → inferElab ctx f ≡ success (B T.⇒[ T.mk-kind T.Many π′ ] C′) Ψ₁ fE df ff
+  → (B T.⇒[ T.mk-kind T.Many π′ ] C′) <: (B T.⇒[ T.mk-kind T.Many π ] C)
+  → checkElab ctx g (A T.⇒[ T.mk-kind T.Many π ] B) ≡ success Ψ₂ gE dg fg
+  → ∃[ eE ] ∃[ d ] ∃[ fr ] proj₁ (checkCompose-f ctx f g A C π) ≡ success (Ψ₁ +ᵘ Ψ₂) eE d fr
+compose-f-complete {ctx} f g A B C C′ π π′ eqF p eqG
+  with inferElabV ctx f | eqF
+... | success _ _ _ _ _ , _ | refl
+    with (B T.⇒[ T.mk-kind T.Many π′ ] C′) <:? (B T.⇒[ T.mk-kind T.Many π ] C)
+...   | no ¬p = ⊥-elim (¬p p)
+...   | yes _ with checkElabV ctx g (A T.⇒[ T.mk-kind T.Many π ] B) | eqG
+...     | success _ _ _ _ , _ | refl = _ , _ , _ , refl
+
+-- compose, the elaborator's order: `g`'s route first. Where it succeeds on a
+-- derivation built on `f`'s route, the two agree because usage is the term's
+-- (`ModeAgreement`), not the route's.
+compose-g-complete : ∀ {ctx : NamedCtx} (f g : RawExpr) (A B C C′ : Type) (π π′ : T.Purity)
+    (rG : VerifiedGivenResult ctx g A π)
+    {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)} {fE : _} {gE : _} {df ff dg fg : ℕ}
+  → ctx ⊢ᵢ f ∶ (B T.⇒[ T.mk-kind T.Many π′ ] C′) ⨾ Ψ₁
+  → ctx ⊢ᶜ g ∶ (A T.⇒[ T.mk-kind T.Many π ] B) ⨾ Ψ₂
+  → inferElab ctx f ≡ success (B T.⇒[ T.mk-kind T.Many π′ ] C′) Ψ₁ fE df ff
+  → (B T.⇒[ T.mk-kind T.Many π′ ] C′) <: (B T.⇒[ T.mk-kind T.Many π ] C)
+  → checkElab ctx g (A T.⇒[ T.mk-kind T.Many π ] B) ≡ success Ψ₂ gE dg fg
+  → ∃[ eE ] ∃[ d ] ∃[ fr ] proj₁ (checkCompose-g ctx f g A C π rG) ≡ success (Ψ₁ +ᵘ Ψ₂) eE d fr
+compose-g-complete f g A B C C′ π π′ (failure _ , _) wf dg eqF p eqG =
+  compose-f-complete f g A B C C′ π π′ eqF p eqG
+compose-g-complete {ctx} f g A B C C′ π π′ (success B″ Ψg″ gE″ dg″ fg″ , wG) wf dg eqF p eqG
+  with checkElabV ctx f (B″ T.⇒[ T.mk-kind T.Many π ] C)
+... | failure _ , _ = compose-f-complete f g A B C C′ π π′ eqF p eqG
+... | success Ψf″ fE″ df″ ff″ , wF
+      with mode-agree-ic wf wF | mode-agree-dc wG dg
+...   | refl | refl = _ , _ , _ , refl
+
+-- The spine, once the head is known not to synthesize.
+infer-complete-RApp-spine :
+  ∀ {ctx : NamedCtx} (f x : RawExpr) {X B : Type} {err : _}
+    {Ψf Ψx : Surface.Usage (NamedCtx.size ctx)} {fE : _} {xE : _} {df ff dx fx : ℕ}
+  → Once.TypeCheck.ElaborateProofs.classifyAppHead f ≡ nothing
+  → inferElab ctx f ≡ failure err
+  → inferElab ctx x ≡ success X Ψx xE dx fx
+  → proj₁ (elabGivenV ctx f X T.pure) ≡ success B Ψf fE df ff
+  → ∃[ eE ] ∃[ d ] ∃[ f' ]
+      inferElab ctx (Raw.RApp f x) ≡ success B (Ψf +ᵘ (T.Many *ᵘ Ψx)) eE d f'
+
+infer-complete-RApp-spine {ctx} f x {X} {B} eqAH eqF eqX eqG
+  rewrite cong proj₁ (viewBridge {ctx} {f} {x} ahv-other (classifyAppHead-nothing⇒view-other eqAH))
+        | cong proj₁ (otherBridge {ctx} {f} {x} nothing eqAH)
+  with inferElabV ctx f | eqF
+... | failure _ , _ | refl
+    with inferElabV ctx x | eqX
+...   | success _ _ _ _ _ , _ | refl
+      with elabGivenV ctx f X T.pure | eqG
+...     | success _ _ _ _ _ , _ | refl = _ , _ , _ , refl
+
 ------------------------------------------------------------------------
 -- Effectful RApp completeness
 --
@@ -1081,46 +1241,7 @@ checkElabV-RResolved-J :
                  ctx cn T gv (inferElabV ctx (RResolved cn)))
 checkElabV-RResolved-J ctx cn T .(classifyGen cn) refl = refl
 
--- The two arg-driven-app completeness gaps (pre-existing, not D127's).
-postulate
-  completeness-gap-arg-driven-app-check :
-    ∀ {ctx : NamedCtx} {f arg : RawExpr} {X T : Type}
-      {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
-    → Once.TypeCheck.ElaborateProofs.classifyAppHead f ≡ nothing
-    → ctx ⊢ᵢ arg ∶ X ⨾ Ψ₂
-    → ctx ⊢ᶜ f ∶ (X T.⇒[ T.mk-kind T.Many T.pure ] T) ⨾ Ψ₁
-    → ∃[ eE ] ∃[ d ] ∃[ fr ]
-        checkElab ctx (Raw.RApp f arg) T
-          ≡ success (Ψ₁ +ᵘ (T.Many *ᵘ Ψ₂)) eE d fr
-
 private
-  -- `checkComposeGo` is called at the canonical `(composeMid …, refl)`; any
-  -- `(mid, p)` collapses to it by J (singleton contractibility).
-  go-canonical : ∀ {ctx f g A C} {π : T.Purity} {mid}
-    (p : composeMid ctx f g A ≡ mid)
-    → checkComposeGo ctx f g A C π mid p
-      ≡ checkComposeGo ctx f g A C π (composeMid ctx f g A) refl
-  go-canonical refl = refl
-
-  -- D127: the (just B) branch of `checkComposeGo` reduces to the compose
-  -- success once the two ARM CHECKS are known — and that is all. The four
-  -- extraction premises are gone with the extractor, and so is the
-  -- `m ≡ mf ∘ mg` conclusion: the emitted term is `comp' Ef Eg`, built from the
-  -- arms themselves rather than from morphisms recovered out of them.
-  composeGo-success : ∀ {ctx f g A C} {π : T.Purity} {B}
-    {Ψf Ψg : Surface.Usage (NamedCtx.size ctx)}
-    {Ef : _} {Eg : _} {Wf : _} {Wg : _} {df ff dg fg : ℕ}
-    (eqB : composeMid ctx f g A ≡ just B)
-    → checkElabV ctx f (B T.⇒[ T.mk-kind T.Many π ] C)
-        ≡ (success Ψf Ef df ff , Wf)
-    → checkElabV ctx g (A T.⇒[ T.mk-kind T.Many π ] B)
-        ≡ (success Ψg Eg dg fg , Wg)
-    → Σ-syntax ℕ λ d → Σ-syntax ℕ λ fr →
-        checkComposeGo ctx f g A C π (just B) eqB
-          ≡ (success (Ψf Surface.+ᵘ Ψg) (Srf.comp' Ef Eg) d fr
-            , t-compose-check eqB Wf Wg)
-  composeGo-success eqB eqf eqg rewrite eqg | eqf = _ , _ , refl
-
   -- The `case` twin. No `mid` argument, so no `-J` bridge is needed.
   caseGo-success : ∀ {ctx f g A B C} {π : T.Purity}
     {Ψf Ψg : Surface.Usage (NamedCtx.size ctx)}
@@ -1317,6 +1438,9 @@ mutual
   iFromInferSub (t-effApp {f = f} {x = x} {B = B} notPoly dF dX) sb =
     let (_ , _ , _ , eqI) = infer-complete (t-effApp notPoly dF dX)
     in checkElab-fallback-RApp-generic f x (T.Unit T.⇒[ T.mk-kind T.Many T.eff ] B) notPoly eqI sb
+  iFromInferSub (t-app-spine {f = f} {arg = x} {T = B} notPoly dX dF) sb =
+    let (_ , _ , _ , eqI) = infer-complete (t-app-spine notPoly dX dF)
+    in checkElab-fallback-RApp-generic f x B notPoly eqI sb
 
   infer-complete :
     ∀ {ctx : NamedCtx} {e : RawExpr} {A : Type}
@@ -1430,6 +1554,84 @@ mutual
     let (_ , _ , _ , eqF) = infer-complete dF
         (_ , _ , _ , eqX) = check-complete dX
     in infer-complete-RApp-eff f x A notPoly eqF eqX
+  -- D230: the spine.
+  infer-complete (t-app-spine {f = f} {arg = x} eqAH dX dF) = spine-complete f x eqAH dX dF
+
+  -- The spine. A head that synthesizes is `t-app`'s case (its `⊢ᵈ` can only be
+  -- `d-infer`, at the pure grade); any other head has no synthesized type (the
+  -- elaborator's head inference fails by computation — `refl` below) and is
+  -- taken apart given the argument's type.
+  spine-complete : ∀ {ctx : NamedCtx} (f x : RawExpr) {X B : Type}
+      {Ψf Ψx : Surface.Usage (NamedCtx.size ctx)}
+    → Once.TypeCheck.ElaborateProofs.classifyAppHead f ≡ nothing
+    → ctx ⊢ᵢ x ∶ X ⨾ Ψx
+    → ctx ⊢ᵈ f ∶ X ⇒[ T.pure ]↦ B ⨾ Ψf
+    → ∃[ eE ] ∃[ d ] ∃[ f' ]
+        inferElab ctx (Raw.RApp f x) ≡ success B (Ψf +ᵘ (T.Many *ᵘ Ψx)) eE d f'
+  spine-complete f x eqAH dX dF@(d-lam _ _) =
+    infer-complete-RApp-spine f x eqAH refl (proj₂ (proj₂ (proj₂ (infer-complete dX)))) (proj₂ (proj₂ (proj₂ (given-complete dF))))
+  spine-complete f x eqAH dX dF@(d-compose _ _) =
+    infer-complete-RApp-spine f x eqAH refl (proj₂ (proj₂ (proj₂ (infer-complete dX)))) (proj₂ (proj₂ (proj₂ (given-complete dF))))
+  spine-complete f x () dX d-id
+  spine-complete f x () dX d-fst
+  spine-complete f x () dX d-snd
+  spine-complete f x () dX d-terminal
+  spine-complete f x () dX d-initial
+  spine-complete f x eqAH dX dF@(d-case _ _) =
+    infer-complete-RApp-spine f x eqAH refl (proj₂ (proj₂ (proj₂ (infer-complete dX)))) (proj₂ (proj₂ (proj₂ (given-complete dF))))
+  spine-complete f x eqAH dX dF@(d-pair _ _) =
+    infer-complete-RApp-spine f x eqAH refl (proj₂ (proj₂ (proj₂ (infer-complete dX)))) (proj₂ (proj₂ (proj₂ (given-complete dF))))
+  spine-complete f x eqAH dX dF@(d-cata _ _) =
+    infer-complete-RApp-spine f x eqAH refl (proj₂ (proj₂ (proj₂ (infer-complete dX)))) (proj₂ (proj₂ (proj₂ (given-complete dF))))
+  spine-complete f x eqAH dX (d-infer {A′ = A′} w a ⊑-pure) =
+    let (_ , _ , _ , eqF) = infer-complete w
+        (_ , _ , _ , eqX) = iFromInferSub dX a
+    in infer-complete-RApp-generic f x A′ eqAH eqF eqX
+
+  -- Plan 0.94 §10: the domain-given mode is EXACT — the elaborator returns the
+  -- derivation's output and usage.
+  given-complete :
+    ∀ {ctx : NamedCtx} {e : RawExpr} {A B : Type} {π : T.Purity}
+      {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    → ctx ⊢ᵈ e ∶ A ⇒[ π ]↦ B ⨾ Ψ
+    → ∃[ eE ] ∃[ d ] ∃[ f ]
+        proj₁ (elabGivenV ctx e A π) ≡ success B Ψ eE d f
+  given-complete {ctx} {e} {A} {π = π} (d-infer w a g)
+    rewrite given-infer-route w A π =
+      given-infer-complete (inferElabV ctx e) (proj₂ (proj₂ (proj₂ (infer-complete w)))) a g
+  given-complete {ctx} (d-lam {x = x} {body = body} {A = A} {q' = q'} leq bd)
+    with inferElabV (Once.TypeCheck.ElaborateProofs.extendNamedCtx ctx x A) body | infer-complete bd
+  ... | success _ (_ Surface.Usage.∷ _) _ _ _ , _ | (_ , _ , _ , refl)
+      with Once.TypeCheck.ElaborateProofs.decideLeq q' T.Many | decideLeq-just q' T.Many leq
+  ...   | just _ | _ , refl = _ , _ , _ , refl
+  given-complete {ctx} (d-compose {f = f} {g = g} {A = A} {M = M} {π = π} dg df)
+    with elabGivenV ctx g A π | given-complete dg
+  ... | success _ _ _ _ _ , _ | (_ , _ , _ , refl)
+      with elabGivenV ctx f M π | given-complete df
+  ...   | success _ _ _ _ _ , _ | (_ , _ , _ , refl) = _ , _ , _ , refl
+  given-complete d-id = _ , _ , _ , refl
+  given-complete d-fst = _ , _ , _ , refl
+  given-complete d-snd = _ , _ , _ , refl
+  given-complete d-terminal = _ , _ , _ , refl
+  given-complete d-initial = _ , _ , _ , refl
+  given-complete {ctx} (d-case {f = f} {g = g} {A = A} {B = B} {C = C} {π = π} df dg)
+    with elabGivenV ctx f A π | given-complete df
+  ... | success _ _ _ _ _ , _ | (_ , _ , _ , refl)
+      with elabGivenV ctx g B π | given-complete dg
+  ...   | success _ _ _ _ _ , _ | (_ , _ , _ , refl)
+        with C ≟T C
+  ...     | yes refl = _ , _ , _ , refl
+  ...     | no ¬p = ⊥-elim (¬p refl)
+  given-complete {ctx} (d-pair {f = f} {g = g} {A = A} {π = π} df dg)
+    with elabGivenV ctx f A π | given-complete df
+  ... | success _ _ _ _ _ , _ | (_ , _ , _ , refl)
+      with elabGivenV ctx g A π | given-complete dg
+  ...   | success _ _ _ _ _ , _ | (_ , _ , _ , refl) = _ , _ , _ , refl
+  given-complete {ctx} (d-cata {alg = alg} {F = F} {A = A} {π = π} wfF dalg)
+    rewrite wellFormedF?-complete-at wfF =
+      given-cata-complete wfF
+        (inferElabV (ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx)) alg)
+        (proj₂ (proj₂ (proj₂ (infer-complete dalg))))
 
   -- Plan 0.49 / D063: the MORPHISM-COMPLETENESS theorem. A `⊢ᵐ` morphism
   -- check-elaborates at its arrow type (any grade π). TRUE — provable by
@@ -1488,21 +1690,18 @@ mutual
     checkElab-fallback-RVar-inl {ctx} A B
   check-complete {ctx} (t-inr-morph-check {A = A} {B = B}) =
     checkElab-fallback-RVar-inr {ctx} A B
-  -- SPLIT ON π: `checkCompose`'s EFF clause comes first and `with`s on the eff
-  -- `checkComposeGo`, so an abstract π is stuck. At `pure` the second clause
-  -- applies directly; at `eff` the arms ARE eff derivations, so the eff `Go`
-  -- succeeds and the first branch fires — no arr'/subsume fallback needed.
-  check-complete (t-compose-check {π = T.pure} eqB df dg) =
-    let (_ , _ , _ , Wf , eqf) = check-completeV df
-        (_ , _ , _ , Wg , eqg) = check-completeV dg
-        (d , fr , eqGo) = composeGo-success eqB eqf eqg
-    in _ , _ , _ , cong proj₁ (trans (sym (go-canonical eqB)) eqGo)
-  check-complete (t-compose-check {π = T.eff} eqB df dg)
-    with check-completeV df | check-completeV dg
-  ... | (_ , _ , _ , Wf , eqf) | (_ , _ , _ , Wg , eqg)
-        with composeGo-success eqB eqf eqg
-  ...     | (d , fr , eqGo) rewrite trans (sym (go-canonical eqB)) eqGo =
-            _ , _ , _ , refl
+  -- Plan 0.94 §10: compose's two routes. `g`'s is the elaborator's first, so
+  -- a `g`-route derivation is followed step by step; an `f`-route derivation
+  -- meets it through `compose-g-complete`.
+  check-complete {ctx} (t-compose-check-g {f = f} {g = g} {A = A} {B = B} {C = C} {π = π} dg df)
+    with elabGivenV ctx g A π | given-complete dg
+  ... | success _ _ _ _ _ , _ | (_ , _ , _ , refl)
+      with checkElabV ctx f (B T.⇒[ T.mk-kind T.Many π ] C) | check-complete df
+  ...   | success _ _ _ _ , _ | (_ , _ , _ , refl) = _ , _ , _ , refl
+  check-complete {ctx} (t-compose-check-f {f = f} {g = g} {A = A} {B = B} {C = C} {C′ = C′} {π = π} {π′ = π′} wf p dg) =
+    let (_ , _ , _ , eqF) = infer-complete wf
+        (_ , _ , _ , eqG) = check-complete dg
+    in compose-g-complete f g A B C C′ π π′ (elabGivenV ctx g A π) wf dg eqF p eqG
   check-complete (t-case-copair-check {π = T.pure} df dg) =
     let (_ , _ , _ , Wf , eqf) = check-completeV df
         (_ , _ , _ , Wg , eqg) = check-completeV dg
@@ -1581,8 +1780,6 @@ mutual
   check-complete (t-initial-app-check {arg = arg} {T = T} d) =
     let (_ , _ , _ , eqC) = check-complete d
     in completeness-gap-initial-app-check-eq arg T eqC
-  check-complete (t-arg-driven-app-check notPoly dArg dF) =
-    completeness-gap-arg-driven-app-check notPoly dArg dF
   -- Plan 0.6.2 Phase 4: polymorphic schema-instantiation. Threads
   -- the body's check-mode derivation through `check-complete`,
   -- then composes with the lookup premises via the helper.

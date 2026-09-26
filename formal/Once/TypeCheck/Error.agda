@@ -107,6 +107,11 @@ data TypeError : Set where
   -- Per-builtin type-shape mismatches in check mode
   BuiltinTypeMismatch : (builtin-name : String) → TypeError
 
+  -- Plan 0.94 §10: `compose f g`'s middle type is determined locally — by `g`
+  -- given its input, or by `f`'s synthesized type — and here neither determines
+  -- it. The fix is an annotation.
+  ComposeMiddleUndetermined : TypeError
+
   -- Binary operator sub-errors: wraps a sub-error from either side.
   BinOpLeftError  : TypeError → TypeError
   BinOpRightError : TypeError → TypeError
@@ -181,6 +186,10 @@ renderError (UsageViolation name declared actual) =
     ++ showQuantity declared
 renderError (BuiltinTypeMismatch name) =
   name ++ ": expected type mismatch"
+renderError ComposeMiddleUndetermined =
+  "compose: cannot determine the middle type — neither the second argument's "
+    ++ "output (given its input) nor the first argument's input is known; "
+    ++ "annotate one of them"
 renderError (BinOpLeftError sub) =
   "binop left: " ++ renderError sub
 renderError (BinOpRightError sub) =

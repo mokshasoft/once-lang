@@ -115,7 +115,7 @@ checkElab-total ctx e T with checkElab ctx e T
 success≢failure-infer : ∀ {n} {Δ : SCtx n}
                         {A : Type} {Ψ : Surface.Usage n}
                         {eE : SExpr Δ Ψ A} {d f : ℕ} {err : TypeError}
-                      → success {Δ = Δ} A Ψ eE d f ≡ failure err → ⊥
+                      → _≡_ {A = InferElabResult Δ} (success A Ψ eE d f) (failure err) → ⊥
 success≢failure-infer ()
 
 success≢failure-check : ∀ {n} {Δ : SCtx n} {A : Type}

@@ -51,7 +51,7 @@ open import Once.Functor.Translate using (WellFormedF; IsBaseType; IsConcrete; c
 -- has to follow — the judgment no longer reaches into the IR or the elaborator.
 open import Data.Bool using (true)
 open import Relation.Nullary using (¬_)
-open import Once.Type.Sub using (_<:_)
+open import Once.Type.Sub using (_<:_; _⊑π_)
 open import Once.TypeCheck.Raw as Raw
   using (RawExpr; RVar; RQualified; RResolved; RApp; RInt; RStringLit; RUnit; RAnnot; RPair;
          RFloat;
@@ -62,8 +62,7 @@ open import Once.CanonicalName using (CanonicalName; showCanonical; gen; NotGene
 open import Once.TypeCheck.Classify
   using (NamedCtx; lookupLocal; lookupImport; lookupPoly; lookupPolyPrefix;
          removePoly;
-         ctxWithImportsAndPolys; extendNamedCtx; classifyAppHead;
-         composeArgB; composeMid)
+         ctxWithImportsAndPolys; extendNamedCtx; classifyAppHead)
 
 open import Data.String using (_++_)
 
@@ -512,6 +511,19 @@ mutual
              → ctx ⊢ᶜ x ∶ A ⨾ Ψ₂
              → ctx ⊢ᵢ RApp f x ∶ Once.Type.Unit Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B ⨾ (Ψ₁ +ᵘ Ψ₂)
 
+    -- | D230: THE SPINE. An application whose head does not synthesize: the
+    -- argument's type is inferred and given to the head, whose output the
+    -- domain-given judgment determines. Mode-correct — an INFERENCE, where the
+    -- deleted `t-arg-driven-app-check` checked — so checking agrees with
+    -- inference. Where the head also infers, this agrees with `t-app` (`d-infer`
+    -- reads the head's own codomain, at a `Many` arrow).
+    t-app-spine : ∀ {ctx : NamedCtx} {f arg : RawExpr} {X T : Type}
+                  {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
+                → classifyAppHead f ≡ nothing
+                → ctx ⊢ᵢ arg ∶ X ⨾ Ψ₂
+                → ctx ⊢ᵈ f ∶ X ⇒[ Once.Type.pure ]↦ T ⨾ Ψ₁
+                → ctx ⊢ᵢ RApp f arg ∶ T ⨾ (Ψ₁ Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ₂))
+
   -- | Check-mode judgment.
   --
   -- Contains:
@@ -576,18 +588,30 @@ mutual
                       → ctx ⊢ᶜ RResolved (gen "inr") ∶ (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] (A + B))
                               ⨾ Surface.zeroUsage
 
-    -- `composeMid` SURVIVES (plan 0.76 A3): D044/D045 chose a locally
-    -- decidable, unification-free bidirectional rule deliberately, and making
-    -- `compose` an ordinary polymorphic constant is a separate decision.
-    t-compose-check : ∀ {ctx : NamedCtx} {f g : RawExpr} {A B C : Type}
-                      {π : Once.Type.Purity}
-                      {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
-                    → composeMid ctx f g A ≡ just B
-                    → ctx ⊢ᶜ f ∶ (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] C) ⨾ Ψ₁
-                    → ctx ⊢ᶜ g ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B) ⨾ Ψ₂
-                    → ctx ⊢ᶜ RApp (RApp (RResolved (gen "compose")) f) g
-                            ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] C)
-                            ⨾ (Ψ₁ Surface.+ᵘ Ψ₂)
+    -- Plan 0.94 §10: the middle type is LOCALLY DETERMINED — every premise a
+    -- judgment (§2), no computation on syntax. Either `g`, given its input,
+    -- determines its output (`⊢ᵈ`), or `f` synthesizes its type and so names its
+    -- input. A program where neither holds needs an annotation. The meaning never
+    -- depends on which rule derived it (coherence; `void-middle`).
+    t-compose-check-g : ∀ {ctx : NamedCtx} {f g : RawExpr} {A B C : Type}
+                        {π : Once.Type.Purity}
+                        {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
+                      → ctx ⊢ᵈ g ∶ A ⇒[ π ]↦ B ⨾ Ψ₂
+                      → ctx ⊢ᶜ f ∶ (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] C) ⨾ Ψ₁
+                      → ctx ⊢ᶜ RApp (RApp (RResolved (gen "compose")) f) g
+                              ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] C)
+                              ⨾ (Ψ₁ Surface.+ᵘ Ψ₂)
+
+    t-compose-check-f : ∀ {ctx : NamedCtx} {f g : RawExpr} {A B C C′ : Type}
+                        {π π′ : Once.Type.Purity}
+                        {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
+                      → ctx ⊢ᵢ f ∶ (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π′ ] C′) ⨾ Ψ₁
+                      → (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π′ ] C′)
+                          <: (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] C)
+                      → ctx ⊢ᶜ g ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B) ⨾ Ψ₂
+                      → ctx ⊢ᶜ RApp (RApp (RResolved (gen "compose")) f) g
+                              ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] C)
+                              ⨾ (Ψ₁ Surface.+ᵘ Ψ₂)
 
     t-case-copair-check : ∀ {ctx : NamedCtx} {f g : RawExpr} {A B C : Type}
                           {π : Once.Type.Purity}
@@ -603,7 +627,7 @@ mutual
     -- `evalᴰ ⟨f,g⟩ a = evalᴰ f a >>=T λ b → evalᴰ g a >>=T λ c → returnT (b , c)`
     -- (DenotTrace.agda:134) — applying the pair's arrow RUNS BOTH ARMS, and
     -- their events land in that application's trace, in order. So the arms and
-    -- the result carry ONE SHARED π, exactly as `t-compose-check` and
+    -- the result carry ONE SHARED π, exactly as the compose rules and
     -- `t-case-copair-check` do. The emitter agrees (IRToTrace.agda:795-817 runs
     -- f, restores the input, runs g) and `obs-correct-pair-proof` is a PROOF
     -- over ARBITRARY arms (D211), so an effectful pair already had a meaning and
@@ -773,21 +797,6 @@ mutual
     -- (Plan 0.52 M1: `t-arr-app-check` retired — a bare lambda at an eff arrow
     -- now checks via the pure-arrow clause + `t-subsume`, no `arr` term.)
 
-    -- | Argument-driven application in check mode. Plan 0.4 T1
-    -- changes 2+4. When `f` cannot be inferred as a function (the
-    -- function-driven `t-app` path fails), infer the argument first
-    -- then check the function against the resulting arrow. Enables
-    -- programs like `(id . id . id) 42` without annotations: the
-    -- argument's `Int` drives checking the compose chain at
-    -- `Int → Int`. The `classifyAppHead f ≡ nothing` premise keeps
-    -- this disjoint from the polymorphic-builtin rules.
-    t-arg-driven-app-check : ∀ {ctx : NamedCtx} {f arg : RawExpr} {X T : Type}
-                             {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
-                           → classifyAppHead f ≡ nothing
-                           → ctx ⊢ᵢ arg ∶ X ⨾ Ψ₂
-                           → ctx ⊢ᶜ f ∶ (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] T) ⨾ Ψ₁
-                           → ctx ⊢ᶜ RApp f arg ∶ T ⨾ (Ψ₁ Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ₂))
-
     -- | Plan 0.6.2 Phase 4: polymorphic name specialisation at a
     -- call-site expected type. Disjoint from `t-embed (t-var-
     -- local/import …)` by the two lookup-failure premises (name
@@ -843,6 +852,66 @@ mutual
 -- check mode, t-embed bridging), the refined relations are
 -- available directly.
 ------------------------------------------------------------------------
+
+  -- | DOMAIN-GIVEN judgment (plan 0.94 §10, D228): given its input type `A`, the
+  -- term's OUTPUT type `B` is determined — the "domain-given, codomain-
+  -- synthesized" mode. `B` is never converted here: it is what the term itself
+  -- produces, so it is a function of the term and `A`.
+  data _⊢ᵈ_∶_⇒[_]↦_⨾_ : (ctx : NamedCtx) → RawExpr → (A : Type) → Once.Type.Purity
+                        → (B : Type) → Surface.Usage (NamedCtx.size ctx) → Set where
+    -- The term synthesizes an arrow: its own codomain, its domain converted
+    -- (contravariantly) and its grade raised.
+    d-infer : ∀ {ctx : NamedCtx} {g : RawExpr} {A A′ B : Type} {π π′ : Once.Type.Purity}
+                {Ψ : Surface.Usage (NamedCtx.size ctx)}
+            → ctx ⊢ᵢ g ∶ (A′ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π′ ] B) ⨾ Ψ
+            → A <: A′
+            → π′ ⊑π π
+            → ctx ⊢ᵈ g ∶ A ⇒[ π ]↦ B ⨾ Ψ
+    -- A lambda whose body synthesizes once its binder has the given type.
+    d-lam : ∀ {ctx : NamedCtx} {x : String} {body : RawExpr} {A B : Type} {q' : Quantity}
+              {π : Once.Type.Purity} {Ψ : Surface.Usage (NamedCtx.size ctx)}
+          → (q' Once.Type.≤q Once.Type.Many) ≡ true
+          → (extendNamedCtx ctx x A) ⊢ᵢ body ∶ B ⨾ (q' ∷ᵘ Ψ)
+          → ctx ⊢ᵈ RLam x body ∶ A ⇒[ π ]↦ B ⨾ Ψ
+    -- A nested composite: the inner half determines the middle, the outer half
+    -- the output.
+    d-compose : ∀ {ctx : NamedCtx} {f g : RawExpr} {A M B : Type} {π : Once.Type.Purity}
+                  {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
+              → ctx ⊢ᵈ g ∶ A ⇒[ π ]↦ M ⨾ Ψ₂
+              → ctx ⊢ᵈ f ∶ M ⇒[ π ]↦ B ⨾ Ψ₁
+              → ctx ⊢ᵈ RApp (RApp (RResolved (gen "compose")) f) g ∶ A ⇒[ π ]↦ B ⨾ (Ψ₁ Surface.+ᵘ Ψ₂)
+    -- D230: the point-free generators whose output their input determines.
+    d-id       : ∀ {ctx : NamedCtx} {A : Type} {π : Once.Type.Purity}
+               → ctx ⊢ᵈ RResolved (gen "id") ∶ A ⇒[ π ]↦ A ⨾ Surface.zeroUsage
+    d-fst      : ∀ {ctx : NamedCtx} {A B : Type} {π : Once.Type.Purity}
+               → ctx ⊢ᵈ RResolved (gen "fst") ∶ (A * B) ⇒[ π ]↦ A ⨾ Surface.zeroUsage
+    d-snd      : ∀ {ctx : NamedCtx} {A B : Type} {π : Once.Type.Purity}
+               → ctx ⊢ᵈ RResolved (gen "snd") ∶ (A * B) ⇒[ π ]↦ B ⨾ Surface.zeroUsage
+    d-terminal : ∀ {ctx : NamedCtx} {A : Type} {π : Once.Type.Purity}
+               → ctx ⊢ᵈ RResolved (gen "terminal") ∶ A ⇒[ π ]↦ Unit ⨾ Surface.zeroUsage
+    -- `initial`'s output is its least possible one: `Void` (`Void <: B` for every
+    -- `B`, and `¡` is unique).
+    d-initial  : ∀ {ctx : NamedCtx} {π : Once.Type.Purity}
+               → ctx ⊢ᵈ RResolved (gen "initial") ∶ Void ⇒[ π ]↦ Void ⨾ Surface.zeroUsage
+    -- The copair: both branches determine the SAME output.
+    d-case     : ∀ {ctx : NamedCtx} {f g : RawExpr} {A B C : Type} {π : Once.Type.Purity}
+                   {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
+               → ctx ⊢ᵈ f ∶ A ⇒[ π ]↦ C ⨾ Ψ₁
+               → ctx ⊢ᵈ g ∶ B ⇒[ π ]↦ C ⨾ Ψ₂
+               → ctx ⊢ᵈ RApp (RApp (RResolved (gen "case")) f) g ∶ (A + B) ⇒[ π ]↦ C ⨾ (Ψ₁ Surface.+ᵘ Ψ₂)
+    d-pair     : ∀ {ctx : NamedCtx} {f g : RawExpr} {A B C : Type} {π : Once.Type.Purity}
+                   {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
+               → ctx ⊢ᵈ f ∶ A ⇒[ π ]↦ B ⨾ Ψ₁
+               → ctx ⊢ᵈ g ∶ A ⇒[ π ]↦ C ⨾ Ψ₂
+               → ctx ⊢ᵈ RApp (RApp (RResolved (gen "pair")) f) g ∶ A ⇒[ π ]↦ (B * C) ⨾ (Ψ₁ Surface.+ᵘ Ψ₂)
+    -- D228 (phase C′): `cata` is the eliminator of `μF`; its carrier is what the
+    -- algebra SYNTHESIZES (initiality: `cata alg` is determined by `alg`).
+    d-cata     : ∀ {ctx : NamedCtx} {alg : RawExpr} {F : Functor} {A : Type} {π : Once.Type.Purity}
+               → WellFormedF F
+               → ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx)
+                   ⊢ᵢ alg ∶ ((⟦ F ⟧T A) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] A)
+                   ⨾ Surface.zeroUsage
+               → ctx ⊢ᵈ RApp (RResolved (gen "cata")) alg ∶ (μ-type F) ⇒[ π ]↦ A ⨾ Surface.zeroUsage
 
 _⊢_∶_⨾_ : (ctx : NamedCtx) → RawExpr → (A : Type)
          → Surface.Usage (NamedCtx.size ctx) → Set
