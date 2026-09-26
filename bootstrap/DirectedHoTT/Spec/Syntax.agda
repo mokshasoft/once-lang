@@ -49,6 +49,10 @@ cong₃ : {A B C D : Set} (f : A → B → C → D) {a a' : A} {b b' : B} {c c' 
         a ≡ a' → b ≡ b' → c ≡ c' → f a b c ≡ f a' b' c'
 cong₃ f refl refl refl = refl
 
+cong₄ : {A B C D E : Set} (f : A → B → C → D → E) {a a' : A} {b b' : B} {c c' : C} {d d' : D} →
+        a ≡ a' → b ≡ b' → c ≡ c' → d ≡ d' → f a b c d ≡ f a' b' c' d'
+cong₄ f refl refl refl refl = refl
+
 ------------------------------------------------------------------------
 -- Scopes (de Bruijn depth) and variables. Untyped scoping — genuine
 -- dependency without the transport hell of intrinsic dependent typing.
@@ -69,30 +73,9 @@ data Var : Cx → Set where
 
 data RTy : Cx → Set
 data RTm : Cx → Set
--- ★ INDUCTIVE-TYPES AXIS.  ⚠ DESCRIPTIONS ARE CLOSED: `Con` carries field
---   types at `ε`, so a description mentions no ambient variable and
---   `renTy ρ (Mu D) = Mu D` holds ON THE NOSE.  That is what keeps this
---   former from needing a parallel `renDesc`/`subDesc` development with
---   its own naturality tower — the single biggest cost decision here.
---   ⚠ Limitation, recorded: a PARAMETERISED datatype (`List A` for a
---   variable `A`) needs open descriptions and is NOT step 1.
-data DCon : Set
-data Desc : Set
--- ★★ INDEXED descriptions (2026-08-22).  Added ALONGSIDE the non-indexed
---   pair rather than re-typing `dρ`, so everything already green stays
---   green and the two coexist while the indexed one is brought up.
--- ★★★ THE FIELD TELESCOPE.  `ICx n` is the context a description's
---   carried terms live in: the AMBIENT INDEX, then one binder per field
---   already introduced.  ⚠ It is a `Cx`, NOT the ambient `Γ` — descriptions
---   must stay CLOSED (they appear in types, and `renTy ρ (IMu D I i) =
---   IMu D I (renTm ρ i)` must not have to rename `D`).
--- ⚠ INDEXED BY THE TELESCOPE CONTEXT, not by a field COUNT.  With a count
---   you cannot state well-formedness — `IConWf` must track each field's
---   TYPE, and "a typed context whose erasure is `ICx n`" needs an equality
---   proof threaded everywhere.  Indexed by `Cx` it falls out, because
---   `⌊ Θ ▹ A ⌋ = ⌊ Θ ⌋ ∙` holds ON THE NOSE.
-data ICon : Cx → Set
-data IDesc : Set
+-- ★★ LEVITATION (PLAN-LEVITATION, D071–D073): descriptions are TERMS
+--   of the large type `Desc I`, so there is no separate description
+--   syntax — and renaming/substitution traverse them like any term.
 
 data RTy where
   base : ∀ {Γ} → RTy Γ
@@ -114,19 +97,19 @@ data RTy where
   -- ★ the TWO-FORMER kernel (SPIKE-TWOFORMER): the SYMMETRIC identity
   -- type, INERT — no type-level computation, ξ-congruences only.
   Id   : ∀ {Γ} → RTy Γ → RTm Γ → RTm Γ → RTy Γ
-  -- ★★ INDUCTIVE TYPES: a datatype, given by its description.
-  Mu   : ∀ {Γ} → Desc → RTy Γ
-  -- ★★★ INDEXED inductive types: a description AND an index VALUE.
-  -- ⚠ Unlike `Mu`, this is NOT stable under renaming on the nose — the
-  --   INDEX lives in `Γ`.  The description stays CLOSED (see `ICon`), so
-  --   only the index needs naturality, exactly as for `El`.  That keeps
-  --   the "no parallel renDesc/subDesc tower" decision at line 67 intact.
-  -- ⚠ CARRIES THE INDEX TYPE, as a CLOSED `RTy ε`.  Without it `ty-IMu`
-  --   cannot say what the index is an inhabitant OF — `ty-Mu` needs only
-  --   the description, but an INDEXED type must type its index.  Exactly
-  --   the precedent `dκ : RTy ε → DCon → DCon` sets, and `εwkTy` weakens
-  --   it into `Γ` the same way `payTy` already does for a `dκ` field.
-  IMu  : ∀ {Γ} → IDesc → RTy ε → RTm Γ → RTy Γ
+  -- ★★ INDUCTIVE FAMILIES (levitated).  `IMu I D i`: the family described
+  --   by the TERM `D : Desc I` at index `i : El I`.  The index type is a
+  --   CODE in Γ (D073).
+  IMu  : ∀ {Γ} → RTm Γ → RTm Γ → RTm Γ → RTy Γ
+  -- ★ the LARGE type of descriptions over the index code `I` (no code:
+  --   level 1, SPIKE-LEVITATION S0).
+  Desc : ∀ {Γ} → RTm Γ → RTy Γ
+  -- ★ the induction hypotheses a payload `p` of telescope `C` owes, for
+  --   the motive `M` (index, scrutinee).  Computes on the telescope head
+  --   (`_⟶ᵀ_`); stuck on a neutral telescope.
+  DIh  : ∀ {Γ} → RTm Γ → RTy ((Γ ∙) ∙) → RTm Γ → RTm Γ → RTy Γ
+  -- ★ the TAG type: a finite enumeration {0 … n-1} (constructor choice).
+  Fin  : ∀ {Γ} → ℕ → RTy Γ
 
 data RTm where
   var  : ∀ {Γ} → Var Γ → RTm Γ
@@ -179,88 +162,41 @@ data RTm where
   nzero  : ∀ {Γ} → RTm Γ
   nsuc   : ∀ {Γ} → RTm Γ → RTm Γ
   natrec : ∀ {Γ} → RTm Γ → RTm ((Γ ∙) ∙) → RTm Γ → RTm Γ
-  -- ★★ INDUCTIVE TYPES.
-  --   `con k p`      constructor TAG `k` and a PAYLOAD built from
-  --                  `unit`/`pair` — the choice lives in the term, which
-  --                  is why no coproduct is needed (SpikeDescTm).
-  --   `elim D ms t`  the description, a METHOD TUPLE (again nested
-  --                  pairs), and the scrutinee.
-  con  : ∀ {Γ} → ℕ → RTm Γ → RTm Γ
-  elim : ∀ {Γ} → Desc → RTm Γ → RTm Γ → RTm Γ
-  -- ★★★ their INDEXED twins.  `icon` carries the tag and payload as `con`
-  --   does; `ielim` additionally carries the index it eliminates AT.
-  icon  : ∀ {Γ} → ℕ → RTm Γ → RTm Γ
-  ielim : ∀ {Γ} → IDesc → RTm Γ → RTm Γ → RTm Γ → RTm Γ
+  -- ★★ INDUCTIVE FAMILIES (levitated, one-telescope form).
+  --   `con p`           a constructor: the payload of the WHOLE telescope
+  --                     (constructor choice is its first, tag, field).
+  --   `ielim D i e t`   eliminate at index `i` with ONE method `e`; the
+  --                     motive lives in the derivation (the ⊢natrec pattern).
+  con   : ∀ {Γ} → RTm Γ → RTm Γ
+  ielim : ∀ {Γ} → RTm Γ → RTm Γ → RTm Γ → RTm Γ → RTm Γ
+  -- ★ telescopes: end at index `j` / a field of code `S` then the rest as
+  --   a FUNCTION of it / a recursive field at index `j`.  Strict
+  --   positivity is the GRAMMAR: `dρ` names an index, never a family.
+  dι    : ∀ {Γ} → RTm Γ → RTm Γ
+  dσ    : ∀ {Γ} → RTm Γ → RTm Γ → RTm Γ
+  dρ    : ∀ {Γ} → RTm Γ → RTm Γ → RTm Γ
+  -- ★ the payload CODE of telescope `C` at index `i`, recursion into
+  --   `IMu I D` (`dpay I D C i`), and the IH tuple (`dih D e C p`).
+  dpay  : ∀ {Γ} → RTm Γ → RTm Γ → RTm Γ → RTm Γ → RTm Γ
+  dih   : ∀ {Γ} → RTm Γ → RTm Γ → RTm Γ → RTm Γ → RTm Γ
+  -- ★ tags: `fzero`, `fsuc`, the case split of Fin (n+1) ≅ 1 + Fin n
+  --   (motive in the derivation), and the elimination of the empty Fin 0.
+  fzero  : ∀ {Γ} → RTm Γ
+  fsuc   : ∀ {Γ} → RTm Γ → RTm Γ
+  fcase  : ∀ {Γ} → RTm Γ → RTm Γ → RTm (Γ ∙) → RTm Γ
+  fcase0 : ∀ {Γ} → RTm Γ → RTm Γ
+  -- ★ Σ-INDUCTION (D071): `psplit b q`, `b` binds both halves.
+  psplit : ∀ {Γ} → RTm ((Γ ∙) ∙) → RTm Γ → RTm Γ
   -- ★ WF-axis stage C (N-in): `Nat` becomes SMALL — it gets a code, so
   -- it can appear in `U`-families.  That is what unlocks Id-rewriting
   -- AT `Nat` (`jsub` needs a code family), cong-at-ℕ, and ≤ as a
   -- transportable relation.
   ⌜Nat⌝  : ∀ {Γ} → RTm Γ
-  -- ★★ INDUCTIVE TYPES: the CODE for `Mu`.  Structurally NULLARY — a
-  -- `Desc` is closed and contains no terms — so both actions are inert
-  -- on it, exactly as for `⌜Nat⌝`/`⌜Unit⌝`.  This is what makes `Mu D`
-  -- a SMALL type, and hence what unlocks NESTED datatypes (`dκ` at
-  -- `El (⌜Mu⌝ D')`).
-  ⌜Mu⌝   : ∀ {Γ} → Desc → RTm Γ
-  -- ★ the INDEXED code.  Required so an indexed type can live in `U` and
-  --   hence be `amrec`'s carrier — see ⊢⌜IMu⌝ in Spec/Typing.
-  ⌜IMu⌝  : ∀ {Γ} → IDesc → RTy ε → RTm Γ → RTm Γ
+  -- ★ the CODE of a family at an index: families are SMALL, so they
+  --   nest (a field of code `⌜IMu⌝ …`) and are `amrec` carriers.
+  ⌜IMu⌝  : ∀ {Γ} → RTm Γ → RTm Γ → RTm Γ → RTm Γ
+  ⌜Fin⌝  : ∀ {Γ} → ℕ → RTm Γ
   ⌜Unit⌝ : ∀ {Γ} → RTm Γ
-
--- ★ DESCRIPTIONS.  `DCon` is one constructor's field list; `Desc` is the
---   datatype, i.e. the list of its constructors.  ⚠ Both CLOSED — see the
---   note at the forward declarations.
-data DCon where
-  dι : DCon                  -- no more fields
-  dρ : DCon → DCon           -- a RECURSIVE field, then more
-  dκ : RTy ε → DCon → DCon   -- a NON-RECURSIVE field of a CLOSED type
-
-data Desc where
-  dnil : Desc
-  _◃_  : DCon → Desc → Desc
-
--- ★★★ INDEXED descriptions.  A carried term lives in the FIELD
---   TELESCOPE `ICx n`: `var vz` is the most recent field, and the
---   ambient index is the innermost variable.
---
--- ⚠⚠ WHY A TERM AND NOT AN AGDA FUNCTION.  `IMu` lands in `RTy`, so a
---   FUNCTION FIELD would put Agda functions inside TYPES and decidable
---   equality on `RTy` — hence `Algorithm/DecideConversion` — would be
---   gone.  A first-order `RTm` keeps equality decidable.  Same move
---   `dκ : RTy ε → DCon → DCon` already makes for the field type.
---
--- ⚠⚠ REVISED 2026-08-23 (PLAN-INDEXED §9.2).  These previously carried
---   `RTm ε` applied to the AMBIENT INDEX ONLY.  That could not express
---   this project's own `Vec`: the forded
---       cons : (m : Nat) → A → Vec A m → (n ≡ suc m) → Vec A n
---   recurses at `m`, an EARLIER FIELD, which a closed function of the
---   ambient index cannot name.  Two comments in this very block said
---   opposite things about it and both stayed green — the honest one was
---   the SCOPE note ("does NOT cover Vec … needs σ"), and the `iκ`
---   note claiming Vec was expressible was an overclaim: `iκ` supplies
---   the CONSTRAINT FIELD, which is necessary and not sufficient.
---
--- ★ `iι` targets the AMBIENT index — every constructor is available at
---   every index, which is what keeps the logical relation UNIFORM in the
---   index and never reasoning up to index conversion.  That is why
---   Fording is cheap here and native computed targets are not.
-data ICon where
-  iι : ∀ {Δ} → ICon Δ
-  -- RECURSIVE field, at an index that MAY MENTION EARLIER FIELDS.
-  iρ : ∀ {Δ} → RTm Δ → ICon (Δ ∙) → ICon Δ
-  -- NON-RECURSIVE field, type `El κ`, `κ` a code that may mention
-  --   earlier fields and the ambient index.  A FORDING constraint is
-  --   just such a field: `iκ (⌜Id⌝ ⌜Nat⌝ ⟨n⟩ (nsuc ⟨m⟩)) …`.
-  iκ : ∀ {Δ} → RTm Δ → ICon (Δ ∙) → ICon Δ
-
-data IDesc where
-  inil : IDesc
-  -- ★ a constructor starts with NO fields bound, only the ambient index.
-  _◂_  : ICon (ε ∙) → IDesc → IDesc
-
-infixr 5 _◂_
-
-infixr 5 _◃_
 
 private
   variable
@@ -307,8 +243,10 @@ renTy ρ (Σ' A B) = Σ' (renTy ρ A) (renTy (extR ρ) B)
 renTy ρ (El t)   = El (renTm ρ t)
 renTy ρ (Hom A t u) = Hom (renTy ρ A) (renTm ρ t) (renTm ρ u)
 renTy ρ (Id A t u) = Id (renTy ρ A) (renTm ρ t) (renTm ρ u)
-renTy ρ (Mu D) = Mu D
-renTy ρ (IMu D I i) = IMu D I (renTm ρ i)
+renTy ρ (IMu I D i) = IMu (renTm ρ I) (renTm ρ D) (renTm ρ i)
+renTy ρ (Desc I) = Desc (renTm ρ I)
+renTy ρ (DIh D M C p) = DIh (renTm ρ D) (renTy (extR (extR ρ)) M) (renTm ρ C) (renTm ρ p)
+renTy ρ (Fin n) = Fin n
 renTm ρ (var x)   = var (ρ x)
 renTm ρ (lam t)   = lam (renTm (extR ρ) t)
 renTm ρ (app t u)  = app (renTm ρ t) (renTm ρ u)
@@ -329,18 +267,26 @@ renTm ρ (tr d p e)    = tr (renTm (extR ρ) d) (renTm ρ p) (renTm ρ e)
 renTm ρ (jsub d p e)    = jsub (renTm (extR ρ) d) (renTm ρ p) (renTm ρ e)
 renTm ρ (ap c b p)    = ap (renTm ρ c) (renTm (extR ρ) b) (renTm ρ p)
 renTm ρ ⌜Nat⌝         = ⌜Nat⌝
-renTm ρ (⌜Mu⌝ D)      = ⌜Mu⌝ D
-renTm ρ (⌜IMu⌝ D I i) = ⌜IMu⌝ D I (renTm ρ i)
+renTm ρ (⌜IMu⌝ I D i) = ⌜IMu⌝ (renTm ρ I) (renTm ρ D) (renTm ρ i)
+renTm ρ (⌜Fin⌝ n) = ⌜Fin⌝ n
+renTm ρ (con p) = con (renTm ρ p)
+renTm ρ (ielim D i e t) = ielim (renTm ρ D) (renTm ρ i) (renTm ρ e) (renTm ρ t)
+renTm ρ (dι j) = dι (renTm ρ j)
+renTm ρ (dσ S f) = dσ (renTm ρ S) (renTm ρ f)
+renTm ρ (dρ j C) = dρ (renTm ρ j) (renTm ρ C)
+renTm ρ (dpay I D C i) = dpay (renTm ρ I) (renTm ρ D) (renTm ρ C) (renTm ρ i)
+renTm ρ (dih D e C p) = dih (renTm ρ D) (renTm ρ e) (renTm ρ C) (renTm ρ p)
+renTm ρ fzero = fzero
+renTm ρ (fsuc t) = fsuc (renTm ρ t)
+renTm ρ (fcase t a b) = fcase (renTm ρ t) (renTm ρ a) (renTm (extR ρ) b)
+renTm ρ (fcase0 t) = fcase0 (renTm ρ t)
+renTm ρ (psplit b q) = psplit (renTm (extR (extR ρ)) b) (renTm ρ q)
 renTm ρ ⌜Unit⌝        = ⌜Unit⌝
 renTm ρ unit          = unit
 renTm ρ nzero         = nzero
 renTm ρ (nsuc n)      = nsuc (renTm ρ n)
 renTm ρ (natrec z s n) =
   natrec (renTm ρ z) (renTm (extR (extR ρ)) s) (renTm ρ n)
-renTm ρ (con k p) = con k (renTm ρ p)
-renTm ρ (elim D ms t) = elim D (renTm ρ ms) (renTm ρ t)
-renTm ρ (icon k p) = icon k (renTm ρ p)
-renTm ρ (ielim D i ms t) = ielim D (renTm ρ i) (renTm ρ ms) (renTm ρ t)
 
 ------------------------------------------------------------------------
 -- Parallel substitutions (variable-for-term) and their action.
@@ -364,8 +310,10 @@ subTy σ (Σ' A B) = Σ' (subTy σ A) (subTy (extS σ) B)
 subTy σ (El t)   = El (subTm σ t)
 subTy σ (Hom A t u) = Hom (subTy σ A) (subTm σ t) (subTm σ u)
 subTy σ (Id A t u) = Id (subTy σ A) (subTm σ t) (subTm σ u)
-subTy σ (Mu D) = Mu D
-subTy σ (IMu D I i) = IMu D I (subTm σ i)
+subTy σ (IMu I D i) = IMu (subTm σ I) (subTm σ D) (subTm σ i)
+subTy σ (Desc I) = Desc (subTm σ I)
+subTy σ (DIh D M C p) = DIh (subTm σ D) (subTy (extS (extS σ)) M) (subTm σ C) (subTm σ p)
+subTy σ (Fin n) = Fin n
 subTm σ (var x)   = σ x
 subTm σ (lam t)   = lam (subTm (extS σ) t)
 subTm σ (app t u)  = app (subTm σ t) (subTm σ u)
@@ -386,18 +334,26 @@ subTm σ (tr d p e)    = tr (subTm (extS σ) d) (subTm σ p) (subTm σ e)
 subTm σ (jsub d p e)    = jsub (subTm (extS σ) d) (subTm σ p) (subTm σ e)
 subTm σ (ap c b p)    = ap (subTm σ c) (subTm (extS σ) b) (subTm σ p)
 subTm σ ⌜Nat⌝         = ⌜Nat⌝
-subTm σ (⌜Mu⌝ D)      = ⌜Mu⌝ D
-subTm σ (⌜IMu⌝ D I i) = ⌜IMu⌝ D I (subTm σ i)
+subTm σ (⌜IMu⌝ I D i) = ⌜IMu⌝ (subTm σ I) (subTm σ D) (subTm σ i)
+subTm σ (⌜Fin⌝ n) = ⌜Fin⌝ n
+subTm σ (con p) = con (subTm σ p)
+subTm σ (ielim D i e t) = ielim (subTm σ D) (subTm σ i) (subTm σ e) (subTm σ t)
+subTm σ (dι j) = dι (subTm σ j)
+subTm σ (dσ S f) = dσ (subTm σ S) (subTm σ f)
+subTm σ (dρ j C) = dρ (subTm σ j) (subTm σ C)
+subTm σ (dpay I D C i) = dpay (subTm σ I) (subTm σ D) (subTm σ C) (subTm σ i)
+subTm σ (dih D e C p) = dih (subTm σ D) (subTm σ e) (subTm σ C) (subTm σ p)
+subTm σ fzero = fzero
+subTm σ (fsuc t) = fsuc (subTm σ t)
+subTm σ (fcase t a b) = fcase (subTm σ t) (subTm σ a) (subTm (extS σ) b)
+subTm σ (fcase0 t) = fcase0 (subTm σ t)
+subTm σ (psplit b q) = psplit (subTm (extS (extS σ)) b) (subTm σ q)
 subTm σ ⌜Unit⌝        = ⌜Unit⌝
 subTm σ unit          = unit
 subTm σ nzero         = nzero
 subTm σ (nsuc n)      = nsuc (subTm σ n)
 subTm σ (natrec z s n) =
   natrec (subTm σ z) (subTm (extS (extS σ)) s) (subTm σ n)
-subTm σ (con k p) = con k (subTm σ p)
-subTm σ (elim D ms t) = elim D (subTm σ ms) (subTm σ t)
-subTm σ (icon k p) = icon k (subTm σ p)
-subTm σ (ielim D i ms t) = ielim D (subTm σ i) (subTm σ ms) (subTm σ t)
 
 -- Identity and the four composition operators (explicit-index, genuine
 -- Ren/Sub — same shape as NbEPDirDB).
@@ -514,8 +470,14 @@ renTy-cong h (Hom A t u) =
   Hom-cong₃ (renTy-cong h A) (renTm-cong h t) (renTm-cong h u)
 renTy-cong h (Id A t u) =
   Id-cong₃ (renTy-cong h A) (renTm-cong h t) (renTm-cong h u)
-renTy-cong h (Mu D) = refl
-renTy-cong h (IMu D I i) = cong (IMu D I) (renTm-cong h i)
+renTy-cong h (IMu I D i) =
+  cong₃ IMu (renTm-cong h I) (renTm-cong h D) (renTm-cong h i)
+renTy-cong h (Desc I) =
+  cong Desc (renTm-cong h I)
+renTy-cong h (DIh D M C p) =
+  cong₄ DIh (renTm-cong h D) (renTy-cong (extR-cong (extR-cong h)) M) (renTm-cong h C) (renTm-cong h p)
+renTy-cong h (Fin n) =
+  refl
 renTm-cong h (var x)   = cong var (h x)
 renTm-cong h (lam t)   = cong lam (renTm-cong (extR-cong h) t)
 renTm-cong h (app t u)  = cong₂ app (renTm-cong h t) (renTm-cong h u)
@@ -526,8 +488,34 @@ renTm-cong h (fst p)    = cong fst (renTm-cong h p)
 renTm-cong h (snd p)    = cong snd (renTm-cong h p)
 renTm-cong h ⌜base⌝     = refl
 renTm-cong h ⌜Nat⌝      = refl
-renTm-cong h (⌜Mu⌝ D)   = refl
-renTm-cong h (⌜IMu⌝ D I i) = cong (⌜IMu⌝ D I) (renTm-cong h i)
+renTm-cong h (⌜IMu⌝ I D i) =
+  cong₃ ⌜IMu⌝ (renTm-cong h I) (renTm-cong h D) (renTm-cong h i)
+renTm-cong h (⌜Fin⌝ n) =
+  refl
+renTm-cong h (con p) =
+  cong con (renTm-cong h p)
+renTm-cong h (ielim D i e t) =
+  cong₄ ielim (renTm-cong h D) (renTm-cong h i) (renTm-cong h e) (renTm-cong h t)
+renTm-cong h (dι j) =
+  cong dι (renTm-cong h j)
+renTm-cong h (dσ S f) =
+  cong₂ dσ (renTm-cong h S) (renTm-cong h f)
+renTm-cong h (dρ j C) =
+  cong₂ dρ (renTm-cong h j) (renTm-cong h C)
+renTm-cong h (dpay I D C i) =
+  cong₄ dpay (renTm-cong h I) (renTm-cong h D) (renTm-cong h C) (renTm-cong h i)
+renTm-cong h (dih D e C p) =
+  cong₄ dih (renTm-cong h D) (renTm-cong h e) (renTm-cong h C) (renTm-cong h p)
+renTm-cong h fzero =
+  refl
+renTm-cong h (fsuc t) =
+  cong fsuc (renTm-cong h t)
+renTm-cong h (fcase t a b) =
+  cong₃ fcase (renTm-cong h t) (renTm-cong h a) (renTm-cong (extR-cong h) b)
+renTm-cong h (fcase0 t) =
+  cong fcase0 (renTm-cong h t)
+renTm-cong h (psplit b q) =
+  cong₂ psplit (renTm-cong (extR-cong (extR-cong h)) b) (renTm-cong h q)
 renTm-cong h ⌜Unit⌝     = refl
 renTm-cong h unit      = refl
 renTm-cong h nzero     = refl
@@ -548,11 +536,6 @@ renTm-cong h (jsub d p e)    =
   jsub-cong₃ (renTm-cong (extR-cong h) d) (renTm-cong h p) (renTm-cong h e)
 renTm-cong h (ap c b p)    =
   ap-cong₃ (renTm-cong h c) (renTm-cong (extR-cong h) b) (renTm-cong h p)
-renTm-cong h (con k p) = cong (con k) (renTm-cong h p)
-renTm-cong h (elim D ms t) = cong₂ (elim D) (renTm-cong h ms) (renTm-cong h t)
-renTm-cong h (icon k p) = cong (icon k) (renTm-cong h p)
-renTm-cong h (ielim D i ms t) =
-  cong₃ (ielim D) (renTm-cong h i) (renTm-cong h ms) (renTm-cong h t)
 
 extS-cong : {σ σ' : Sub Γ Δ} → (∀ (x : Var Γ) → σ x ≡ σ' x) →
             ∀ (x : Var (Γ ∙)) → extS σ x ≡ extS σ' x
@@ -574,8 +557,14 @@ subTy-cong h (Hom A t u) =
   Hom-cong₃ (subTy-cong h A) (subTm-cong h t) (subTm-cong h u)
 subTy-cong h (Id A t u) =
   Id-cong₃ (subTy-cong h A) (subTm-cong h t) (subTm-cong h u)
-subTy-cong h (Mu D) = refl
-subTy-cong h (IMu D I i) = cong (IMu D I) (subTm-cong h i)
+subTy-cong h (IMu I D i) =
+  cong₃ IMu (subTm-cong h I) (subTm-cong h D) (subTm-cong h i)
+subTy-cong h (Desc I) =
+  cong Desc (subTm-cong h I)
+subTy-cong h (DIh D M C p) =
+  cong₄ DIh (subTm-cong h D) (subTy-cong (extS-cong (extS-cong h)) M) (subTm-cong h C) (subTm-cong h p)
+subTy-cong h (Fin n) =
+  refl
 subTm-cong h (var x)   = h x
 subTm-cong h (lam t)   = cong lam (subTm-cong (extS-cong h) t)
 subTm-cong h (app t u)  = cong₂ app (subTm-cong h t) (subTm-cong h u)
@@ -586,8 +575,34 @@ subTm-cong h (fst p)    = cong fst (subTm-cong h p)
 subTm-cong h (snd p)    = cong snd (subTm-cong h p)
 subTm-cong h ⌜base⌝     = refl
 subTm-cong h ⌜Nat⌝      = refl
-subTm-cong h (⌜Mu⌝ D)   = refl
-subTm-cong h (⌜IMu⌝ D I i) = cong (⌜IMu⌝ D I) (subTm-cong h i)
+subTm-cong h (⌜IMu⌝ I D i) =
+  cong₃ ⌜IMu⌝ (subTm-cong h I) (subTm-cong h D) (subTm-cong h i)
+subTm-cong h (⌜Fin⌝ n) =
+  refl
+subTm-cong h (con p) =
+  cong con (subTm-cong h p)
+subTm-cong h (ielim D i e t) =
+  cong₄ ielim (subTm-cong h D) (subTm-cong h i) (subTm-cong h e) (subTm-cong h t)
+subTm-cong h (dι j) =
+  cong dι (subTm-cong h j)
+subTm-cong h (dσ S f) =
+  cong₂ dσ (subTm-cong h S) (subTm-cong h f)
+subTm-cong h (dρ j C) =
+  cong₂ dρ (subTm-cong h j) (subTm-cong h C)
+subTm-cong h (dpay I D C i) =
+  cong₄ dpay (subTm-cong h I) (subTm-cong h D) (subTm-cong h C) (subTm-cong h i)
+subTm-cong h (dih D e C p) =
+  cong₄ dih (subTm-cong h D) (subTm-cong h e) (subTm-cong h C) (subTm-cong h p)
+subTm-cong h fzero =
+  refl
+subTm-cong h (fsuc t) =
+  cong fsuc (subTm-cong h t)
+subTm-cong h (fcase t a b) =
+  cong₃ fcase (subTm-cong h t) (subTm-cong h a) (subTm-cong (extS-cong h) b)
+subTm-cong h (fcase0 t) =
+  cong fcase0 (subTm-cong h t)
+subTm-cong h (psplit b q) =
+  cong₂ psplit (subTm-cong (extS-cong (extS-cong h)) b) (subTm-cong h q)
 subTm-cong h ⌜Unit⌝     = refl
 subTm-cong h unit      = refl
 subTm-cong h nzero     = refl
@@ -608,11 +623,6 @@ subTm-cong h (jsub d p e)    =
   jsub-cong₃ (subTm-cong (extS-cong h) d) (subTm-cong h p) (subTm-cong h e)
 subTm-cong h (ap c b p)    =
   ap-cong₃ (subTm-cong h c) (subTm-cong (extS-cong h) b) (subTm-cong h p)
-subTm-cong h (con k p) = cong (con k) (subTm-cong h p)
-subTm-cong h (elim D ms t) = cong₂ (elim D) (subTm-cong h ms) (subTm-cong h t)
-subTm-cong h (icon k p) = cong (icon k) (subTm-cong h p)
-subTm-cong h (ielim D i ms t) =
-  cong₃ (ielim D) (subTm-cong h i) (subTm-cong h ms) (subTm-cong h t)
 
 ------------------------------------------------------------------------
 -- The four mutual fusion lemmas (each a type/term pair). Binder cases bridge
@@ -642,8 +652,14 @@ renTy-renTy (Hom A t u) =
   Hom-cong₃ (renTy-renTy A) (renTm-renTm t) (renTm-renTm u)
 renTy-renTy (Id A t u) =
   Id-cong₃ (renTy-renTy A) (renTm-renTm t) (renTm-renTm u)
-renTy-renTy (Mu D) = refl
-renTy-renTy (IMu D I i) = cong (IMu D I) (renTm-renTm i)
+renTy-renTy {ρ' = ρ'} {ρ} (IMu I D i) =
+  cong₃ IMu (renTm-renTm I) (renTm-renTm D) (renTm-renTm i)
+renTy-renTy {ρ' = ρ'} {ρ} (Desc I) =
+  cong Desc (renTm-renTm I)
+renTy-renTy {ρ' = ρ'} {ρ} (DIh D M C p) =
+  cong₄ DIh (renTm-renTm D) (trans (renTy-renTy M) (renTy-cong (λ x → trans (extr-extr (extR ρ') (extR ρ) x) (extR-cong (extr-extr ρ' ρ) x)) M)) (renTm-renTm C) (renTm-renTm p)
+renTy-renTy {ρ' = ρ'} {ρ} (Fin n) =
+  refl
 renTm-renTm (var x)   = refl
 renTm-renTm {ρ' = ρ'} {ρ} (lam t) =
   cong lam (trans (renTm-renTm t) (renTm-cong (extr-extr ρ' ρ) t))
@@ -655,8 +671,34 @@ renTm-renTm (fst p)    = cong fst (renTm-renTm p)
 renTm-renTm (snd p)    = cong snd (renTm-renTm p)
 renTm-renTm ⌜base⌝     = refl
 renTm-renTm ⌜Nat⌝      = refl
-renTm-renTm (⌜Mu⌝ D)   = refl
-renTm-renTm (⌜IMu⌝ D I i) = cong (⌜IMu⌝ D I) (renTm-renTm i)
+renTm-renTm {ρ' = ρ'} {ρ} (⌜IMu⌝ I D i) =
+  cong₃ ⌜IMu⌝ (renTm-renTm I) (renTm-renTm D) (renTm-renTm i)
+renTm-renTm {ρ' = ρ'} {ρ} (⌜Fin⌝ n) =
+  refl
+renTm-renTm {ρ' = ρ'} {ρ} (con p) =
+  cong con (renTm-renTm p)
+renTm-renTm {ρ' = ρ'} {ρ} (ielim D i e t) =
+  cong₄ ielim (renTm-renTm D) (renTm-renTm i) (renTm-renTm e) (renTm-renTm t)
+renTm-renTm {ρ' = ρ'} {ρ} (dι j) =
+  cong dι (renTm-renTm j)
+renTm-renTm {ρ' = ρ'} {ρ} (dσ S f) =
+  cong₂ dσ (renTm-renTm S) (renTm-renTm f)
+renTm-renTm {ρ' = ρ'} {ρ} (dρ j C) =
+  cong₂ dρ (renTm-renTm j) (renTm-renTm C)
+renTm-renTm {ρ' = ρ'} {ρ} (dpay I D C i) =
+  cong₄ dpay (renTm-renTm I) (renTm-renTm D) (renTm-renTm C) (renTm-renTm i)
+renTm-renTm {ρ' = ρ'} {ρ} (dih D e C p) =
+  cong₄ dih (renTm-renTm D) (renTm-renTm e) (renTm-renTm C) (renTm-renTm p)
+renTm-renTm {ρ' = ρ'} {ρ} fzero =
+  refl
+renTm-renTm {ρ' = ρ'} {ρ} (fsuc t) =
+  cong fsuc (renTm-renTm t)
+renTm-renTm {ρ' = ρ'} {ρ} (fcase t a b) =
+  cong₃ fcase (renTm-renTm t) (renTm-renTm a) (trans (renTm-renTm b) (renTm-cong (extr-extr ρ' ρ) b))
+renTm-renTm {ρ' = ρ'} {ρ} (fcase0 t) =
+  cong fcase0 (renTm-renTm t)
+renTm-renTm {ρ' = ρ'} {ρ} (psplit b q) =
+  cong₂ psplit (trans (renTm-renTm b) (renTm-cong (λ x → trans (extr-extr (extR ρ') (extR ρ) x) (extR-cong (extr-extr ρ' ρ) x)) b)) (renTm-renTm q)
 renTm-renTm ⌜Unit⌝     = refl
 renTm-renTm unit       = refl
 renTm-renTm nzero      = refl
@@ -686,11 +728,6 @@ renTm-renTm {ρ' = ρ'} {ρ} (ap c b p) =
   ap-cong₃ (renTm-renTm c)
            (trans (renTm-renTm b) (renTm-cong (extr-extr ρ' ρ) b))
            (renTm-renTm p)
-renTm-renTm (con k p) = cong (con k) (renTm-renTm p)
-renTm-renTm (elim D ms t) = cong₂ (elim D) (renTm-renTm ms) (renTm-renTm t)
-renTm-renTm (icon k p) = cong (icon k) (renTm-renTm p)
-renTm-renTm (ielim D i ms t) =
-  cong₃ (ielim D) (renTm-renTm i) (renTm-renTm ms) (renTm-renTm t)
 
 -- sub ∘ ren.
 exts-extr : (σ : Sub Δ Θ) (ρ : Ren Γ Δ) (x : Var (Γ ∙)) →
@@ -715,8 +752,14 @@ subTy-renTy (Hom A t u) =
   Hom-cong₃ (subTy-renTy A) (subTm-renTm t) (subTm-renTm u)
 subTy-renTy (Id A t u) =
   Id-cong₃ (subTy-renTy A) (subTm-renTm t) (subTm-renTm u)
-subTy-renTy (Mu D) = refl
-subTy-renTy (IMu D I i) = cong (IMu D I) (subTm-renTm i)
+subTy-renTy {σ = σ} {ρ} (IMu I D i) =
+  cong₃ IMu (subTm-renTm I) (subTm-renTm D) (subTm-renTm i)
+subTy-renTy {σ = σ} {ρ} (Desc I) =
+  cong Desc (subTm-renTm I)
+subTy-renTy {σ = σ} {ρ} (DIh D M C p) =
+  cong₄ DIh (subTm-renTm D) (trans (subTy-renTy M) (subTy-cong (λ x → trans (exts-extr (extS σ) (extR ρ) x) (extS-cong (exts-extr σ ρ) x)) M)) (subTm-renTm C) (subTm-renTm p)
+subTy-renTy {σ = σ} {ρ} (Fin n) =
+  refl
 subTm-renTm (var x)   = refl
 subTm-renTm {σ = σ} {ρ} (lam t) =
   cong lam (trans (subTm-renTm t) (subTm-cong (exts-extr σ ρ) t))
@@ -728,8 +771,34 @@ subTm-renTm (fst p)    = cong fst (subTm-renTm p)
 subTm-renTm (snd p)    = cong snd (subTm-renTm p)
 subTm-renTm ⌜base⌝     = refl
 subTm-renTm ⌜Nat⌝      = refl
-subTm-renTm (⌜Mu⌝ D)   = refl
-subTm-renTm (⌜IMu⌝ D I i) = cong (⌜IMu⌝ D I) (subTm-renTm i)
+subTm-renTm {σ = σ} {ρ} (⌜IMu⌝ I D i) =
+  cong₃ ⌜IMu⌝ (subTm-renTm I) (subTm-renTm D) (subTm-renTm i)
+subTm-renTm {σ = σ} {ρ} (⌜Fin⌝ n) =
+  refl
+subTm-renTm {σ = σ} {ρ} (con p) =
+  cong con (subTm-renTm p)
+subTm-renTm {σ = σ} {ρ} (ielim D i e t) =
+  cong₄ ielim (subTm-renTm D) (subTm-renTm i) (subTm-renTm e) (subTm-renTm t)
+subTm-renTm {σ = σ} {ρ} (dι j) =
+  cong dι (subTm-renTm j)
+subTm-renTm {σ = σ} {ρ} (dσ S f) =
+  cong₂ dσ (subTm-renTm S) (subTm-renTm f)
+subTm-renTm {σ = σ} {ρ} (dρ j C) =
+  cong₂ dρ (subTm-renTm j) (subTm-renTm C)
+subTm-renTm {σ = σ} {ρ} (dpay I D C i) =
+  cong₄ dpay (subTm-renTm I) (subTm-renTm D) (subTm-renTm C) (subTm-renTm i)
+subTm-renTm {σ = σ} {ρ} (dih D e C p) =
+  cong₄ dih (subTm-renTm D) (subTm-renTm e) (subTm-renTm C) (subTm-renTm p)
+subTm-renTm {σ = σ} {ρ} fzero =
+  refl
+subTm-renTm {σ = σ} {ρ} (fsuc t) =
+  cong fsuc (subTm-renTm t)
+subTm-renTm {σ = σ} {ρ} (fcase t a b) =
+  cong₃ fcase (subTm-renTm t) (subTm-renTm a) (trans (subTm-renTm b) (subTm-cong (exts-extr σ ρ) b))
+subTm-renTm {σ = σ} {ρ} (fcase0 t) =
+  cong fcase0 (subTm-renTm t)
+subTm-renTm {σ = σ} {ρ} (psplit b q) =
+  cong₂ psplit (trans (subTm-renTm b) (subTm-cong (λ x → trans (exts-extr (extS σ) (extR ρ) x) (extS-cong (exts-extr σ ρ) x)) b)) (subTm-renTm q)
 subTm-renTm ⌜Unit⌝     = refl
 subTm-renTm unit       = refl
 subTm-renTm nzero      = refl
@@ -759,11 +828,6 @@ subTm-renTm {σ = σ} {ρ} (ap c b p) =
   ap-cong₃ (subTm-renTm c)
            (trans (subTm-renTm b) (subTm-cong (exts-extr σ ρ) b))
            (subTm-renTm p)
-subTm-renTm (con k p) = cong (con k) (subTm-renTm p)
-subTm-renTm (elim D ms t) = cong₂ (elim D) (subTm-renTm ms) (subTm-renTm t)
-subTm-renTm (icon k p) = cong (icon k) (subTm-renTm p)
-subTm-renTm (ielim D i ms t) =
-  cong₃ (ielim D) (subTm-renTm i) (subTm-renTm ms) (subTm-renTm t)
 
 -- ren ∘ sub.
 extr-exts : (ρ : Ren Δ Θ) (σ : Sub Γ Δ) (x : Var (Γ ∙)) →
@@ -788,8 +852,14 @@ renTy-subTy (Hom A t u) =
   Hom-cong₃ (renTy-subTy A) (renTm-subTm t) (renTm-subTm u)
 renTy-subTy (Id A t u) =
   Id-cong₃ (renTy-subTy A) (renTm-subTm t) (renTm-subTm u)
-renTy-subTy (Mu D) = refl
-renTy-subTy (IMu D I i) = cong (IMu D I) (renTm-subTm i)
+renTy-subTy {ρ = ρ} {σ} (IMu I D i) =
+  cong₃ IMu (renTm-subTm I) (renTm-subTm D) (renTm-subTm i)
+renTy-subTy {ρ = ρ} {σ} (Desc I) =
+  cong Desc (renTm-subTm I)
+renTy-subTy {ρ = ρ} {σ} (DIh D M C p) =
+  cong₄ DIh (renTm-subTm D) (trans (renTy-subTy M) (subTy-cong (λ x → trans (extr-exts (extR ρ) (extS σ) x) (extS-cong (extr-exts ρ σ) x)) M)) (renTm-subTm C) (renTm-subTm p)
+renTy-subTy {ρ = ρ} {σ} (Fin n) =
+  refl
 renTm-subTm (var x)   = refl
 renTm-subTm {ρ = ρ} {σ} (lam t) =
   cong lam (trans (renTm-subTm t) (subTm-cong (extr-exts ρ σ) t))
@@ -801,8 +871,34 @@ renTm-subTm (fst p)    = cong fst (renTm-subTm p)
 renTm-subTm (snd p)    = cong snd (renTm-subTm p)
 renTm-subTm ⌜base⌝     = refl
 renTm-subTm ⌜Nat⌝      = refl
-renTm-subTm (⌜Mu⌝ D)   = refl
-renTm-subTm (⌜IMu⌝ D I i) = cong (⌜IMu⌝ D I) (renTm-subTm i)
+renTm-subTm {ρ = ρ} {σ} (⌜IMu⌝ I D i) =
+  cong₃ ⌜IMu⌝ (renTm-subTm I) (renTm-subTm D) (renTm-subTm i)
+renTm-subTm {ρ = ρ} {σ} (⌜Fin⌝ n) =
+  refl
+renTm-subTm {ρ = ρ} {σ} (con p) =
+  cong con (renTm-subTm p)
+renTm-subTm {ρ = ρ} {σ} (ielim D i e t) =
+  cong₄ ielim (renTm-subTm D) (renTm-subTm i) (renTm-subTm e) (renTm-subTm t)
+renTm-subTm {ρ = ρ} {σ} (dι j) =
+  cong dι (renTm-subTm j)
+renTm-subTm {ρ = ρ} {σ} (dσ S f) =
+  cong₂ dσ (renTm-subTm S) (renTm-subTm f)
+renTm-subTm {ρ = ρ} {σ} (dρ j C) =
+  cong₂ dρ (renTm-subTm j) (renTm-subTm C)
+renTm-subTm {ρ = ρ} {σ} (dpay I D C i) =
+  cong₄ dpay (renTm-subTm I) (renTm-subTm D) (renTm-subTm C) (renTm-subTm i)
+renTm-subTm {ρ = ρ} {σ} (dih D e C p) =
+  cong₄ dih (renTm-subTm D) (renTm-subTm e) (renTm-subTm C) (renTm-subTm p)
+renTm-subTm {ρ = ρ} {σ} fzero =
+  refl
+renTm-subTm {ρ = ρ} {σ} (fsuc t) =
+  cong fsuc (renTm-subTm t)
+renTm-subTm {ρ = ρ} {σ} (fcase t a b) =
+  cong₃ fcase (renTm-subTm t) (renTm-subTm a) (trans (renTm-subTm b) (subTm-cong (extr-exts ρ σ) b))
+renTm-subTm {ρ = ρ} {σ} (fcase0 t) =
+  cong fcase0 (renTm-subTm t)
+renTm-subTm {ρ = ρ} {σ} (psplit b q) =
+  cong₂ psplit (trans (renTm-subTm b) (subTm-cong (λ x → trans (extr-exts (extR ρ) (extS σ) x) (extS-cong (extr-exts ρ σ) x)) b)) (renTm-subTm q)
 renTm-subTm ⌜Unit⌝     = refl
 renTm-subTm unit       = refl
 renTm-subTm nzero      = refl
@@ -832,11 +928,6 @@ renTm-subTm {ρ = ρ} {σ} (ap c b p) =
   ap-cong₃ (renTm-subTm c)
            (trans (renTm-subTm b) (subTm-cong (extr-exts ρ σ) b))
            (renTm-subTm p)
-renTm-subTm (con k p) = cong (con k) (renTm-subTm p)
-renTm-subTm (elim D ms t) = cong₂ (elim D) (renTm-subTm ms) (renTm-subTm t)
-renTm-subTm (icon k p) = cong (icon k) (renTm-subTm p)
-renTm-subTm (ielim D i ms t) =
-  cong₃ (ielim D) (renTm-subTm i) (renTm-subTm ms) (renTm-subTm t)
 
 -- sub ∘ sub.
 exts-exts : (τ : Sub Δ Θ) (σ : Sub Γ Δ) (x : Var (Γ ∙)) →
@@ -861,8 +952,14 @@ subTy-subTy (Hom A t u) =
   Hom-cong₃ (subTy-subTy A) (subTm-subTm t) (subTm-subTm u)
 subTy-subTy (Id A t u) =
   Id-cong₃ (subTy-subTy A) (subTm-subTm t) (subTm-subTm u)
-subTy-subTy (Mu D) = refl
-subTy-subTy (IMu D I i) = cong (IMu D I) (subTm-subTm i)
+subTy-subTy {τ = τ} {σ} (IMu I D i) =
+  cong₃ IMu (subTm-subTm I) (subTm-subTm D) (subTm-subTm i)
+subTy-subTy {τ = τ} {σ} (Desc I) =
+  cong Desc (subTm-subTm I)
+subTy-subTy {τ = τ} {σ} (DIh D M C p) =
+  cong₄ DIh (subTm-subTm D) (trans (subTy-subTy M) (subTy-cong (λ x → trans (exts-exts (extS τ) (extS σ) x) (extS-cong (exts-exts τ σ) x)) M)) (subTm-subTm C) (subTm-subTm p)
+subTy-subTy {τ = τ} {σ} (Fin n) =
+  refl
 subTm-subTm (var x)   = refl
 subTm-subTm {τ = τ} {σ} (lam t) =
   cong lam (trans (subTm-subTm t) (subTm-cong (exts-exts τ σ) t))
@@ -874,8 +971,34 @@ subTm-subTm (fst p)    = cong fst (subTm-subTm p)
 subTm-subTm (snd p)    = cong snd (subTm-subTm p)
 subTm-subTm ⌜base⌝     = refl
 subTm-subTm ⌜Nat⌝      = refl
-subTm-subTm (⌜Mu⌝ D)   = refl
-subTm-subTm (⌜IMu⌝ D I i) = cong (⌜IMu⌝ D I) (subTm-subTm i)
+subTm-subTm {τ = τ} {σ} (⌜IMu⌝ I D i) =
+  cong₃ ⌜IMu⌝ (subTm-subTm I) (subTm-subTm D) (subTm-subTm i)
+subTm-subTm {τ = τ} {σ} (⌜Fin⌝ n) =
+  refl
+subTm-subTm {τ = τ} {σ} (con p) =
+  cong con (subTm-subTm p)
+subTm-subTm {τ = τ} {σ} (ielim D i e t) =
+  cong₄ ielim (subTm-subTm D) (subTm-subTm i) (subTm-subTm e) (subTm-subTm t)
+subTm-subTm {τ = τ} {σ} (dι j) =
+  cong dι (subTm-subTm j)
+subTm-subTm {τ = τ} {σ} (dσ S f) =
+  cong₂ dσ (subTm-subTm S) (subTm-subTm f)
+subTm-subTm {τ = τ} {σ} (dρ j C) =
+  cong₂ dρ (subTm-subTm j) (subTm-subTm C)
+subTm-subTm {τ = τ} {σ} (dpay I D C i) =
+  cong₄ dpay (subTm-subTm I) (subTm-subTm D) (subTm-subTm C) (subTm-subTm i)
+subTm-subTm {τ = τ} {σ} (dih D e C p) =
+  cong₄ dih (subTm-subTm D) (subTm-subTm e) (subTm-subTm C) (subTm-subTm p)
+subTm-subTm {τ = τ} {σ} fzero =
+  refl
+subTm-subTm {τ = τ} {σ} (fsuc t) =
+  cong fsuc (subTm-subTm t)
+subTm-subTm {τ = τ} {σ} (fcase t a b) =
+  cong₃ fcase (subTm-subTm t) (subTm-subTm a) (trans (subTm-subTm b) (subTm-cong (exts-exts τ σ) b))
+subTm-subTm {τ = τ} {σ} (fcase0 t) =
+  cong fcase0 (subTm-subTm t)
+subTm-subTm {τ = τ} {σ} (psplit b q) =
+  cong₂ psplit (trans (subTm-subTm b) (subTm-cong (λ x → trans (exts-exts (extS τ) (extS σ) x) (extS-cong (exts-exts τ σ) x)) b)) (subTm-subTm q)
 subTm-subTm ⌜Unit⌝     = refl
 subTm-subTm unit       = refl
 subTm-subTm nzero      = refl
@@ -905,11 +1028,6 @@ subTm-subTm {τ = τ} {σ} (ap c b p) =
   ap-cong₃ (subTm-subTm c)
            (trans (subTm-subTm b) (subTm-cong (exts-exts τ σ) b))
            (subTm-subTm p)
-subTm-subTm (con k p) = cong (con k) (subTm-subTm p)
-subTm-subTm (elim D ms t) = cong₂ (elim D) (subTm-subTm ms) (subTm-subTm t)
-subTm-subTm (icon k p) = cong (icon k) (subTm-subTm p)
-subTm-subTm (ielim D i ms t) =
-  cong₃ (ielim D) (subTm-subTm i) (subTm-subTm ms) (subTm-subTm t)
 
 -- Identity: `exts` preserves `idₛ`, hence `subTy idₛ = id`.
 exts-id : (x : Var (Γ ∙)) → extS idₛ x ≡ idₛ x
@@ -927,8 +1045,14 @@ subTy-id (Σ' A B) = cong₂ Σ' (subTy-id A) (trans (subTy-cong exts-id B) (sub
 subTy-id (El t)   = cong El (subTm-id t)
 subTy-id (Hom A t u) = Hom-cong₃ (subTy-id A) (subTm-id t) (subTm-id u)
 subTy-id (Id A t u) = Id-cong₃ (subTy-id A) (subTm-id t) (subTm-id u)
-subTy-id (Mu D) = refl
-subTy-id (IMu D I i) = cong (IMu D I) (subTm-id i)
+subTy-id (IMu I D i) =
+  cong₃ IMu (subTm-id I) (subTm-id D) (subTm-id i)
+subTy-id (Desc I) =
+  cong Desc (subTm-id I)
+subTy-id (DIh D M C p) =
+  cong₄ DIh (subTm-id D) (trans (subTy-cong (λ x → trans (extS-cong exts-id x) (exts-id x)) M) (subTy-id M)) (subTm-id C) (subTm-id p)
+subTy-id (Fin n) =
+  refl
 subTm-id (var x)   = refl
 subTm-id (lam t)   = cong lam (trans (subTm-cong exts-id t) (subTm-id t))
 subTm-id (app t u)  = cong₂ app (subTm-id t) (subTm-id u)
@@ -939,8 +1063,34 @@ subTm-id (fst p)    = cong fst (subTm-id p)
 subTm-id (snd p)    = cong snd (subTm-id p)
 subTm-id ⌜base⌝     = refl
 subTm-id ⌜Nat⌝      = refl
-subTm-id (⌜Mu⌝ D)   = refl
-subTm-id (⌜IMu⌝ D I i) = cong (⌜IMu⌝ D I) (subTm-id i)
+subTm-id (⌜IMu⌝ I D i) =
+  cong₃ ⌜IMu⌝ (subTm-id I) (subTm-id D) (subTm-id i)
+subTm-id (⌜Fin⌝ n) =
+  refl
+subTm-id (con p) =
+  cong con (subTm-id p)
+subTm-id (ielim D i e t) =
+  cong₄ ielim (subTm-id D) (subTm-id i) (subTm-id e) (subTm-id t)
+subTm-id (dι j) =
+  cong dι (subTm-id j)
+subTm-id (dσ S f) =
+  cong₂ dσ (subTm-id S) (subTm-id f)
+subTm-id (dρ j C) =
+  cong₂ dρ (subTm-id j) (subTm-id C)
+subTm-id (dpay I D C i) =
+  cong₄ dpay (subTm-id I) (subTm-id D) (subTm-id C) (subTm-id i)
+subTm-id (dih D e C p) =
+  cong₄ dih (subTm-id D) (subTm-id e) (subTm-id C) (subTm-id p)
+subTm-id fzero =
+  refl
+subTm-id (fsuc t) =
+  cong fsuc (subTm-id t)
+subTm-id (fcase t a b) =
+  cong₃ fcase (subTm-id t) (subTm-id a) (trans (subTm-cong exts-id b) (subTm-id b))
+subTm-id (fcase0 t) =
+  cong fcase0 (subTm-id t)
+subTm-id (psplit b q) =
+  cong₂ psplit (trans (subTm-cong (λ x → trans (extS-cong exts-id x) (exts-id x)) b) (subTm-id b)) (subTm-id q)
 subTm-id ⌜Unit⌝     = refl
 subTm-id unit       = refl
 subTm-id nzero      = refl
@@ -962,114 +1112,14 @@ subTm-id (jsub d p e)    =
   jsub-cong₃ (trans (subTm-cong exts-id d) (subTm-id d)) (subTm-id p) (subTm-id e)
 subTm-id (ap c b p)    =
   ap-cong₃ (subTm-id c) (trans (subTm-cong exts-id b) (subTm-id b)) (subTm-id p)
-subTm-id (con k p) = cong (con k) (subTm-id p)
-subTm-id (elim D ms t) = cong₂ (elim D) (subTm-id ms) (subTm-id t)
-subTm-id (icon k p) = cong (icon k) (subTm-id p)
-subTm-id (ielim D i ms t) =
-  cong₃ (ielim D) (subTm-id i) (subTm-id ms) (subTm-id t)
 
 
 
 ------------------------------------------------------------------------
--- ★ THE ι-RULE'S MACHINERY — three TOTAL metalevel functions on raw
---   syntax, and their four naturality lemmas.
---
--- ⚠ ALL THREE ARE TOTAL, deliberately.  `lookupD` returns `dι` off the end
---   of a description and `sel` bottoms out in whatever `snd`-chain it is
---   handed; neither can get stuck.  That is what keeps `_⟶_` a
---   SIDE-CONDITION-FREE relation — the ι-rule needs no `lookup D k ≡ just C`
---   premise, so determinism stays a one-line pattern match and confluence
---   never has to invert a `just`.  Junk tags reduce to junk; ⊢con rules
---   them out, exactly as the rest of this raw syntax is disciplined.
+-- ★ closed things weakened into any scope (the unique substitution out of
+--   the empty context).
 ------------------------------------------------------------------------
 
--- the k-th constructor's field list; `dι` (no fields) off the end
-lookupD : Desc → ℕ → DCon
-lookupD dnil    _       = dι
-lookupD (C ◃ D) zero    = C
-lookupD (C ◃ D) (suc k) = lookupD D k
-
--- the k-th METHOD out of a right-nested tuple `pair m₀ (pair m₁ …)`
-sel : ℕ → RTm Γ → RTm Γ
-sel zero    ms = fst ms
-sel (suc k) ms = sel k (snd ms)
-
--- ★★ THE IH TUPLE.  One entry per RECURSIVE field; a `dκ` field owes no
---   induction hypothesis and is SKIPPED, not filled with a placeholder —
---   the same accounting `SpikeDescSigma`'s `elimLift` made in the model.
-ihs : Desc → RTm Γ → DCon → RTm Γ → RTm Γ
-ihs D ms dι       p = unit
-ihs D ms (dρ C)   p = pair (elim D ms (fst p)) (ihs D ms C (snd p))
-ihs D ms (dκ A C) p = ihs D ms C (snd p)
-
--- ★★★ APPLY a method to a payload — TUPLED (gate 5c): the method receives
---   the payload WHOLE and the IH tuple beside it.
---
---   ⚠⚠ NOT CURRIED, and that is a decision, not a style.  Curried
---     application hands the method `fst p`/`snd p` and never `p`, so under
---     a DEPENDENT motive its result type can only mention the payload
---     REBUILT from its own binders — `pair (fst p) unit` — which is `p`
---     only up to SURJECTIVE PAIRING.  Gate 5b could not even STATE
---     subject reduction without that η; gate 5c proves it here without.
---
---   ⇒ the η requirement was the SYMPTOM of an information loss, and it
---     would have coupled this axis to the OPEN G4 conversion decision.
---     Passing the payload whole is also the ALGEBRA form: a description
---     denotes a functor, the payload IS the functor application.
-fields : Desc → RTm Γ → DCon → RTm Γ → RTm Γ → RTm Γ
-fields D ms C m p = app (app m p) (ihs D ms C p)
-
-ren-sel : (ρ : Ren Γ Δ) (k : ℕ) (ms : RTm Γ) →
-          renTm ρ (sel k ms) ≡ sel k (renTm ρ ms)
-ren-sel ρ zero    ms = refl
-ren-sel ρ (suc k) ms = ren-sel ρ k (snd ms)
-
-sub-sel : (σ : Sub Γ Δ) (k : ℕ) (ms : RTm Γ) →
-          subTm σ (sel k ms) ≡ sel k (subTm σ ms)
-sub-sel σ zero    ms = refl
-sub-sel σ (suc k) ms = sub-sel σ k (snd ms)
-
-ren-ihs : (ρ : Ren Γ Δ) (D : Desc) (ms : RTm Γ) (C : DCon) (p : RTm Γ) →
-          renTm ρ (ihs D ms C p) ≡ ihs D (renTm ρ ms) C (renTm ρ p)
-ren-ihs ρ D ms dι       p = refl
-ren-ihs ρ D ms (dρ C)   p = cong₂ pair refl (ren-ihs ρ D ms C (snd p))
-ren-ihs ρ D ms (dκ A C) p = ren-ihs ρ D ms C (snd p)
-
-sub-ihs : (σ : Sub Γ Δ) (D : Desc) (ms : RTm Γ) (C : DCon) (p : RTm Γ) →
-          subTm σ (ihs D ms C p) ≡ ihs D (subTm σ ms) C (subTm σ p)
-sub-ihs σ D ms dι       p = refl
-sub-ihs σ D ms (dρ C)   p = cong₂ pair refl (sub-ihs σ D ms C (snd p))
-sub-ihs σ D ms (dκ A C) p = sub-ihs σ D ms C (snd p)
-
-ren-fields : (ρ : Ren Γ Δ) (D : Desc) (ms : RTm Γ) (C : DCon) (m p : RTm Γ) →
-             renTm ρ (fields D ms C m p)
-               ≡ fields D (renTm ρ ms) C (renTm ρ m) (renTm ρ p)
-ren-fields ρ D ms C m p = cong (app (app (renTm ρ m) (renTm ρ p)))
-                               (ren-ihs ρ D ms C p)
-
-sub-fields : (σ : Sub Γ Δ) (D : Desc) (ms : RTm Γ) (C : DCon) (m p : RTm Γ) →
-             subTm σ (fields D ms C m p)
-               ≡ fields D (subTm σ ms) C (subTm σ m) (subTm σ p)
-sub-fields σ D ms C m p = cong (app (app (subTm σ m) (subTm σ p)))
-                               (sub-ihs σ D ms C p)
-
-------------------------------------------------------------------------
--- ★★ THE ELIMINATOR'S COMPUTED TYPES (gate 5c, general in `DCon`).
---
---   payTy   D C      the PAYLOAD's type — a Σ-chain over the field list
---   ihTy    D C q M  the IH TUPLE's type — one entry per `dρ`, NONE per
---                    `dκ` (a non-recursive field owes no hypothesis)
---   atCon   k M      the motive RE-BASED at the payload binder
---   methTy  D k C M  Π (payTy) (Π (ihTy) (wk (atCon k M)))
---
--- ⚠ No new JUDGMENT is needed: `⊢con`/`⊢elim` reuse the existing Π/Σ
---   rules against these.
-------------------------------------------------------------------------
-
--- ★ the unique SUBSTITUTION out of the empty context.  ⚠ defined by
---   `subTy`, not `renTy`, on purpose: both inertness laws below then come
---   from one composition law plus a VACUOUS congruence (`Var ε` is
---   empty), with no ren-versus-sub mismatch to bridge.
 εsub : Sub ε Γ
 εsub ()
 
@@ -1082,44 +1132,6 @@ sub-fields σ D ms C m p = cong (app (app (subTm σ m) (subTm σ p)))
 εwk-sub : (σ : Sub Γ Δ) (A : RTy ε) → subTy σ (εwkTy A) ≡ εwkTy A
 εwk-sub σ A = trans (subTy-subTy A) (subTy-cong (λ ()) A)
 
--- ★★ the PAYLOAD's type: a Σ-chain over one constructor's field list.
---    Closed, so both actions are inert on it.
-payTy : Desc → DCon → RTy Γ
-payTy D dι       = Unit
-payTy D (dρ C)   = Σ' (Mu D)    (payTy D C)
-payTy D (dκ A C) = Σ' (εwkTy A) (payTy D C)
-
-payTy-ren : (ρ : Ren Γ Δ) (D : Desc) (C : DCon) →
-            renTy ρ (payTy D C) ≡ payTy D C
-payTy-ren ρ D dι       = refl
-payTy-ren ρ D (dρ C)   = cong (Σ' (Mu D)) (payTy-ren (extR ρ) D C)
-payTy-ren ρ D (dκ A C) = cong₂ Σ' (εwk-ren ρ A) (payTy-ren (extR ρ) D C)
-
-payTy-sub : (σ : Sub Γ Δ) (D : Desc) (C : DCon) →
-            subTy σ (payTy D C) ≡ payTy D C
-payTy-sub σ D dι       = refl
-payTy-sub σ D (dρ C)   = cong (Σ' (Mu D)) (payTy-sub (extS σ) D C)
-payTy-sub σ D (dκ A C) = cong₂ Σ' (εwk-sub σ A) (payTy-sub (extS σ) D C)
-
--- ★★ the TAG INDEXES A REAL CONSTRUCTOR.  ⚠⚠ gate 5's Q21: `lookupD` is
---    TOTAL (it answers `dι` off the end, so `_⟶_` needs no side
---    condition), and `payTy D dι = Unit` — so WITHOUT this premise an
---    out-of-range tag with payload `unit` would be typeable, ι would
---    reduce it to `sel k ms`, and that bottoms out in `fst unit`.
---    SUBJECT REDUCTION WOULD BE FALSE.  Totality relocates the
---    obligation; it does not remove it.
-------------------------------------------------------------------------
--- ★★★ THE INDEXED APPARATUS — the twins of everything above.
---
--- ⚠⚠ AND HERE THE "CLOSED DESCRIPTIONS ARE CHEAP" DECISION (line 67) STOPS
---   PAYING. `payTy` is inert under both actions because `Mu D` mentions no
---   ambient variable. `ipayTy` carries the INDEX, which does — so its
---   naturality lemmas are real congruences over a renamed/substituted
---   index, not `refl`. That is the price of indexing, and it is confined
---   to the index: the DESCRIPTION is still closed, so no `renIDesc` tower
---   is needed.
-------------------------------------------------------------------------
-
 εwkTm : RTm ε → RTm Γ
 εwkTm = subTm εsub
 
@@ -1128,247 +1140,6 @@ payTy-sub σ D (dκ A C) = cong₂ Σ' (εwk-sub σ A) (payTy-sub (extS σ) D C)
 
 εwkTm-sub : (σ : Sub Γ Δ) (t : RTm ε) → subTm σ (εwkTm t) ≡ εwkTm t
 εwkTm-sub σ t = trans (subTm-subTm t) (subTm-cong (λ ()) t)
-
-ilookupD : IDesc → ℕ → ICon (ε ∙)
-ilookupD inil    _       = iι
-ilookupD (C ◂ D) zero    = C
-ilookupD (C ◂ D) (suc k) = ilookupD D k
-
--- ★ the PAYLOAD's type at ambient index `i`.  A recursive field sits at
---   the SHIFTED index `f i`, where `f` is the constructor's closed shift.
--- ★ the ENVIRONMENT for a description's telescope: what the ambient
---   index and each already-bound field actually are, in `Γ`.
-isingle : RTm Γ → Sub (ε ∙) Γ
-isingle i vz      = i
-isingle i (vs ())
-
--- ★ the PAYLOAD's type.  ⚠ REVISED (§9.2): walks the telescope with an
---   environment rather than applying a closed function to the ambient
---   index.  `extS σ : Sub (ICx n ∙) (Γ ∙)` IS `Sub (ICx (suc n)) (Γ ∙)`,
---   so the field just introduced is `var vz` in the tail — which is what
---   lets a later `iρ` name it.
-ipayTy : IDesc → RTy ε → ∀ {Δ} → Sub Δ Γ → ICon Δ → RTy Γ
-ipayTy D I σ iι       = Unit
-ipayTy D I σ (iρ j C) = Σ' (IMu D I (subTm σ j)) (ipayTy D I (extS σ) C)
-ipayTy D I σ (iκ κ C) = Σ' (El (subTm σ κ))      (ipayTy D I (extS σ) C)
-
--- two environments agreeing pointwise give the same payload type.
-ipayTy-cong : (D : IDesc) (I : RTy ε) {Δ : Cx} {σ σ' : Sub Δ Γ}
-              (C : ICon Δ) → (∀ x → σ x ≡ σ' x) →
-              ipayTy D I σ C ≡ ipayTy D I σ' C
-ipayTy-cong D I iι       h = refl
-ipayTy-cong D I (iρ j C) h =
-  cong₂ Σ' (cong (IMu D I) (subTm-cong h j))
-           (ipayTy-cong D I C (λ { vz → refl ; (vs x) → cong (renTm vs) (h x) }))
-ipayTy-cong D I (iκ κ C) h =
-  cong₂ Σ' (cong El (subTm-cong h κ))
-           (ipayTy-cong D I C (λ { vz → refl ; (vs x) → cong (renTm vs) (h x) }))
-
--- naturality.  ⚠ the environment absorbs the action — that is the whole
---   point of carrying one: `renTy ρ (ipayTy D I σ C) ≡ ipayTy D I (ρ ∘ σ) C`,
---   with no per-former index bookkeeping.
-ipayTy-ren : (ρ : Ren Γ Δ) (D : IDesc) (I : RTy ε) {Θ : Cx}
-             (σ : Sub Θ Γ) (C : ICon Θ) →
-             renTy ρ (ipayTy D I σ C) ≡ ipayTy D I (λ x → renTm ρ (σ x)) C
-ipayTy-ren ρ D I σ iι = refl
-ipayTy-ren ρ D I σ (iρ j C) =
-  cong₂ Σ' (cong (IMu D I) (renTm-subTm j))
-           (trans (ipayTy-ren (extR ρ) D I (extS σ) C)
-                  (ipayTy-cong D I C (λ { vz → refl
-                                        ; (vs x) → trans (renTm-renTm (σ x))
-                                                         (sym (renTm-renTm (σ x))) })))
-ipayTy-ren ρ D I σ (iκ κ C) =
-  cong₂ Σ' (cong El (renTm-subTm κ))
-           (trans (ipayTy-ren (extR ρ) D I (extS σ) C)
-                  (ipayTy-cong D I C (λ { vz → refl
-                                        ; (vs x) → trans (renTm-renTm (σ x))
-                                                         (sym (renTm-renTm (σ x))) })))
-
-ipayTy-sub : (τ : Sub Γ Δ) (D : IDesc) (I : RTy ε) {Θ : Cx}
-             (σ : Sub Θ Γ) (C : ICon Θ) →
-             subTy τ (ipayTy D I σ C) ≡ ipayTy D I (λ x → subTm τ (σ x)) C
-ipayTy-sub τ D I σ iι = refl
-ipayTy-sub τ D I σ (iρ j C) =
-  cong₂ Σ' (cong (IMu D I) (subTm-subTm j))
-           (trans (ipayTy-sub (extS τ) D I (extS σ) C)
-                  (ipayTy-cong D I C (λ { vz → refl
-                                        ; (vs x) → trans (subTm-renTm (σ x))
-                                                         (sym (renTm-subTm (σ x))) })))
-ipayTy-sub τ D I σ (iκ κ C) =
-  cong₂ Σ' (cong El (subTm-subTm κ))
-           (trans (ipayTy-sub (extS τ) D I (extS σ) C)
-                  (ipayTy-cong D I C (λ { vz → refl
-                                        ; (vs x) → trans (subTm-renTm (σ x))
-                                                         (sym (renTm-subTm (σ x))) })))
-
-data _∈ID_ : ℕ → IDesc → Set where
-  hereID  : {C : ICon (ε ∙)} {E : IDesc} → zero ∈ID (C ◂ E)
-  thereID : {k : ℕ} {C : ICon (ε ∙)} {E : IDesc} → k ∈ID E → suc k ∈ID (C ◂ E)
-
--- ★ EXTENDING AN ENVIRONMENT BY A VALUE.  ⚠ this is where the TERM level
---   parts company with the TYPE level: `ipayTy` extends with `extS`,
---   because its tail lives under a `Σ'` BINDER; `iihs` extends with the
---   actual field VALUE, because its tail lives under a `pair`, which
---   binds nothing and stays in `Γ`.
-iext : ∀ {Δ} → Sub Δ Γ → RTm Γ → Sub (Δ ∙) Γ
-iext σ v vz     = v
-iext σ v (vs x) = σ x
-
--- ★ `iext` commutes with the action.  BOTH cases are `refl` — `iext`'s
---   clauses reduce on the variable pattern — but the equation is still
---   needed, because `λ x → renTm ρ (iext σ v x)` and
---   `iext (renTm ρ ∘ σ) (renTm ρ v)` are POINTWISE equal and not
---   definitionally so, and Agda will not identify two functions that
---   merely agree everywhere.
-iext-ren : (ρ : Ren Γ Δ) {Θ : Cx} (σ : Sub Θ Γ) (v : RTm Γ) →
-           ∀ x → renTm ρ (iext σ v x) ≡ iext (λ y → renTm ρ (σ y)) (renTm ρ v) x
-iext-ren ρ σ v vz     = refl
-iext-ren ρ σ v (vs x) = refl
-
-iext-sub : (τ : Sub Γ Δ) {Θ : Cx} (σ : Sub Θ Γ) (v : RTm Γ) →
-           ∀ x → subTm τ (iext σ v x) ≡ iext (λ y → subTm τ (σ y)) (subTm τ v) x
-iext-sub τ σ v vz     = refl
-iext-sub τ σ v (vs x) = refl
-
--- ★ the INDEXED IH tuple.  Each recursive call is eliminated AT ITS OWN
---   index, read off the environment — the whole content of indexing at
---   the term level.
--- ⚠ NO INDEX TYPE. `I` was threaded here and NEVER USED — the index TYPE
---   is a TYPE-level concern (`IMu`, `ipayTy`, well-formedness); the term
---   level only needs the index VALUE. Found by writing Confluence's
---   parallel-reduction rule `pιi`, whose conclusion would have mentioned
---   an `I` its premise could not determine.
-iihs : IDesc → RTm Γ → ∀ {Δ} → Sub Δ Γ → ICon Δ → RTm Γ → RTm Γ
-iihs D ms σ iι       p = unit
-iihs D ms σ (iρ j C) p =
-  pair (ielim D (subTm σ j) ms (fst p))
-       (iihs D ms (iext σ (fst p)) C (snd p))
-iihs D ms σ (iκ κ C) p = iihs D ms (iext σ (fst p)) C (snd p)
-
--- ★★ ⚠ REVISED (§9.1): the method is applied to the INDEX first, so ONE
---   method tuple serves every recursive index.
-ifields : IDesc → RTm Γ → RTm Γ → ∀ {Δ} → Sub Δ Γ → ICon Δ →
-          RTm Γ → RTm Γ → RTm Γ
-ifields D i ms σ C m p = app (app (app m i) p) (iihs D ms σ C p)
-
-iihs-cong : (D : IDesc) (ms : RTm Γ) {Δ : Cx} {σ σ' : Sub Δ Γ}
-            (C : ICon Δ) (p : RTm Γ) → (∀ x → σ x ≡ σ' x) →
-            iihs D ms σ C p ≡ iihs D ms σ' C p
-iihs-cong D ms iι       p h = refl
-iihs-cong D ms (iρ j C) p h =
-  cong₂ pair (cong (λ z → ielim D z ms (fst p)) (subTm-cong h j))
-             (iihs-cong D ms C (snd p) (λ { vz → refl ; (vs x) → h x }))
-iihs-cong D ms (iκ κ C) p h =
-  iihs-cong D ms C (snd p) (λ { vz → refl ; (vs x) → h x })
-
-ren-iihs : (ρ : Ren Γ Δ) (D : IDesc) (ms : RTm Γ) {Θ : Cx}
-           (σ : Sub Θ Γ) (C : ICon Θ) (p : RTm Γ) →
-           renTm ρ (iihs D ms σ C p)
-             ≡ iihs D (renTm ρ ms) (λ x → renTm ρ (σ x)) C (renTm ρ p)
-ren-iihs ρ D ms σ iι       p = refl
-ren-iihs ρ D ms σ (iρ j C) p =
-  cong₂ pair (cong (λ z → ielim D z (renTm ρ ms) (fst (renTm ρ p)))
-                   (renTm-subTm j))
-             (trans (ren-iihs ρ D ms (iext σ (fst p)) C (snd p))
-                    (iihs-cong D (renTm ρ ms) C (renTm ρ (snd p))
-                               (λ { vz → refl ; (vs x) → refl })))
-ren-iihs ρ D ms σ (iκ κ C) p =
-  trans (ren-iihs ρ D ms (iext σ (fst p)) C (snd p))
-        (iihs-cong D (renTm ρ ms) C (renTm ρ (snd p))
-                   (λ { vz → refl ; (vs x) → refl }))
-
-sub-iihs : (τ : Sub Γ Δ) (D : IDesc) (ms : RTm Γ) {Θ : Cx}
-           (σ : Sub Θ Γ) (C : ICon Θ) (p : RTm Γ) →
-           subTm τ (iihs D ms σ C p)
-             ≡ iihs D (subTm τ ms) (λ x → subTm τ (σ x)) C (subTm τ p)
-sub-iihs τ D ms σ iι       p = refl
-sub-iihs τ D ms σ (iρ j C) p =
-  cong₂ pair (cong (λ z → ielim D z (subTm τ ms) (fst (subTm τ p)))
-                   (subTm-subTm j))
-             (trans (sub-iihs τ D ms (iext σ (fst p)) C (snd p))
-                    (iihs-cong D (subTm τ ms) C (subTm τ (snd p))
-                               (λ { vz → refl ; (vs x) → refl })))
-sub-iihs τ D ms σ (iκ κ C) p =
-  trans (sub-iihs τ D ms (iext σ (fst p)) C (snd p))
-        (iihs-cong D (subTm τ ms) C (subTm τ (snd p))
-                   (λ { vz → refl ; (vs x) → refl }))
-
-ren-ifields : (ρ : Ren Γ Δ) (D : IDesc) (i ms : RTm Γ) {Θ : Cx}
-              (σ : Sub Θ Γ) (C : ICon Θ) (m p : RTm Γ) →
-              renTm ρ (ifields D i ms σ C m p)
-                ≡ ifields D (renTm ρ i) (renTm ρ ms) (λ x → renTm ρ (σ x)) C
-                            (renTm ρ m) (renTm ρ p)
-ren-ifields ρ D i ms σ C m p = cong (app _) (ren-iihs ρ D ms σ C p)
-
-sub-ifields : (τ : Sub Γ Δ) (D : IDesc) (i ms : RTm Γ) {Θ : Cx}
-              (σ : Sub Θ Γ) (C : ICon Θ) (m p : RTm Γ) →
-              subTm τ (ifields D i ms σ C m p)
-                ≡ ifields D (subTm τ i) (subTm τ ms) (λ x → subTm τ (σ x)) C
-                            (subTm τ m) (subTm τ p)
-sub-ifields τ D i ms σ C m p = cong (app _) (sub-iihs τ D ms σ C p)
-
--- ★ the ι-RULE'S SHAPE, specialised.  `ren-ifields` yields the environment
---   `λ x → renTm ρ (isingle i x)`; the rule needs `isingle (renTm ρ i)`.
---   They agree POINTWISE but not as functions, so the congruence has to be
---   applied somewhere — here, once, rather than at every call site.
-isingle-ren : (ρ : Ren Γ Δ) (i : RTm Γ) →
-              ∀ x → renTm ρ (isingle i x) ≡ isingle (renTm ρ i) x
-isingle-ren ρ i vz     = refl
-isingle-ren ρ i (vs ())
-
-isingle-sub : (τ : Sub Γ Δ) (i : RTm Γ) →
-              ∀ x → subTm τ (isingle i x) ≡ isingle (subTm τ i) x
-isingle-sub τ i vz     = refl
-isingle-sub τ i (vs ())
-
-ifields-cong : (D : IDesc) (i ms : RTm Γ) {Δ : Cx} {σ σ' : Sub Δ Γ}
-               (C : ICon Δ) (m p : RTm Γ) → (∀ x → σ x ≡ σ' x) →
-               ifields D i ms σ C m p ≡ ifields D i ms σ' C m p
-ifields-cong D i ms C m p h = cong (app _) (iihs-cong D ms C p h)
-
--- the same specialisation for `ipayTy`: the ι-rule and `⊢icon` both name
--- `isingle i`, so the generic law's `λ x → renTm ρ (isingle i x)` needs the
--- pointwise bridge applied once, here.
-ipayTy-renⁱ : (ρ : Ren Γ Δ) (D : IDesc) (I : RTy ε) (i : RTm Γ)
-              (C : ICon (ε ∙)) →
-              renTy ρ (ipayTy D I (isingle i) C)
-                ≡ ipayTy D I (isingle (renTm ρ i)) C
-ipayTy-renⁱ ρ D I i C =
-  trans (ipayTy-ren ρ D I (isingle i) C)
-        (ipayTy-cong D I C (isingle-ren ρ i))
-
-ipayTy-subⁱ : (τ : Sub Γ Δ) (D : IDesc) (I : RTy ε) (i : RTm Γ)
-              (C : ICon (ε ∙)) →
-              subTy τ (ipayTy D I (isingle i) C)
-                ≡ ipayTy D I (isingle (subTm τ i)) C
-ipayTy-subⁱ τ D I i C =
-  trans (ipayTy-sub τ D I (isingle i) C)
-        (ipayTy-cong D I C (isingle-sub τ i))
-
-ren-ifieldsⁱ : (ρ : Ren Γ Δ) (D : IDesc) (i ms : RTm Γ) (C : ICon (ε ∙))
-               (m p : RTm Γ) →
-               renTm ρ (ifields D i ms (isingle i) C m p)
-                 ≡ ifields D (renTm ρ i) (renTm ρ ms) (isingle (renTm ρ i)) C
-                             (renTm ρ m) (renTm ρ p)
-ren-ifieldsⁱ ρ D i ms C m p =
-  trans (ren-ifields ρ D i ms (isingle i) C m p)
-        (ifields-cong D (renTm ρ i) (renTm ρ ms) C (renTm ρ m) (renTm ρ p)
-                      (isingle-ren ρ i))
-
-sub-ifieldsⁱ : (τ : Sub Γ Δ) (D : IDesc) (i ms : RTm Γ) (C : ICon (ε ∙))
-               (m p : RTm Γ) →
-               subTm τ (ifields D i ms (isingle i) C m p)
-                 ≡ ifields D (subTm τ i) (subTm τ ms) (isingle (subTm τ i)) C
-                             (subTm τ m) (subTm τ p)
-sub-ifieldsⁱ τ D i ms C m p =
-  trans (sub-ifields τ D i ms (isingle i) C m p)
-        (ifields-cong D (subTm τ i) (subTm τ ms) C (subTm τ m) (subTm τ p)
-                      (isingle-sub τ i))
-
-
-data _∈D_ : ℕ → Desc → Set where
-  hereD  : {C : DCon} {E : Desc} → zero ∈D (C ◃ E)
-  thereD : {k : ℕ} {C : DCon} {E : Desc} → k ∈D E → suc k ∈D (C ◃ E)
 
 ------------------------------------------------------------------------
 -- ★ THE CATEGORY-OF-CONTEXTS LAWS ON TYPES — the coherence that makes the
