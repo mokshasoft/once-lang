@@ -174,11 +174,11 @@ data _⊢ᴬ_∷_ where
   ⊢ᴬcon  : ∀ {Γ I D i p} → Γ ⊢ᴬ I ∷ U → Γ ⊢ᴬ D ∷ Desc I → Γ ⊢ᴬ i ∷ El I →
            Γ ⊢ᴬ p ∷ El (dpay I D D i) → Γ ⊢ᴬ con I D i p ∷ IMu I D i
   ⊢ᴬdih  : ∀ {Γ I D M e C i p} →
-           Γ ⊢ᴬ D ∷ Desc I → motCtxᴬ Γ I D ⊢tyᴬ M → Γ ⊢ᴬ e ∷ MethTyᴬ I D M →
+           Γ ⊢ᴬ I ∷ U → Γ ⊢ᴬ D ∷ Desc I → motCtxᴬ Γ I D ⊢tyᴬ M → Γ ⊢ᴬ e ∷ MethTyᴬ I D M →
            Γ ⊢ᴬ C ∷ Desc I → Γ ⊢ᴬ i ∷ El I → Γ ⊢ᴬ p ∷ El (dpay I D C i) →
            Γ ⊢ᴬ dih I D M e C i p ∷ DIh I D M C i p
   ⊢ᴬielim : ∀ {Γ I D M e i t} →
-            Γ ⊢ᴬ D ∷ Desc I → motCtxᴬ Γ I D ⊢tyᴬ M → Γ ⊢ᴬ e ∷ MethTyᴬ I D M →
+            Γ ⊢ᴬ I ∷ U → Γ ⊢ᴬ D ∷ Desc I → motCtxᴬ Γ I D ⊢tyᴬ M → Γ ⊢ᴬ e ∷ MethTyᴬ I D M →
             Γ ⊢ᴬ i ∷ El I → Γ ⊢ᴬ t ∷ IMu I D i →
             Γ ⊢ᴬ ielim I D M i e t ∷ iinstᴬ i t M
   ⊢ᴬfzero  : ∀ {Γ n} → Γ ⊢ᴬ fzero n ∷ Fin (suc n)
@@ -191,7 +191,7 @@ data _⊢ᴬ_∷_ where
   ⊢ᴬfcase0 : ∀ {Γ P t} → (Γ ▹ᴬ Fin zero) ⊢tyᴬ P → Γ ⊢ᴬ t ∷ Fin zero →
              Γ ⊢ᴬ fcase0 P t ∷ subTyᴬ (singleᴬ t) P
   ⊢ᴬpsplit : ∀ {Γ A B P q b} →
-             (Γ ▹ᴬ Σ' A B) ⊢tyᴬ P → Γ ⊢ᴬ q ∷ Σ' A B →
+             Γ ⊢tyᴬ A → (Γ ▹ᴬ A) ⊢tyᴬ B → (Γ ▹ᴬ Σ' A B) ⊢tyᴬ P → Γ ⊢ᴬ q ∷ Σ' A B →
              ((Γ ▹ᴬ A) ▹ᴬ B) ⊢ᴬ b ∷ subTyᴬ (pairSᴬ B) P →
              Γ ⊢ᴬ psplit A B P b q ∷ subTyᴬ (singleᴬ q) P
   -- ★ (c): conversion of ERASURES
@@ -209,7 +209,7 @@ data _⊢tyᴬ_ where
   tyᴬ-IMu  : ∀ {Γ I D i} → Γ ⊢ᴬ I ∷ U → Γ ⊢ᴬ D ∷ Desc I → Γ ⊢ᴬ i ∷ El I → Γ ⊢tyᴬ IMu I D i
   tyᴬ-Desc : ∀ {Γ I} → Γ ⊢ᴬ I ∷ U → Γ ⊢tyᴬ Desc I
   tyᴬ-DIh  : ∀ {Γ I D M C i p} →
-             Γ ⊢ᴬ D ∷ Desc I → motCtxᴬ Γ I D ⊢tyᴬ M → Γ ⊢ᴬ C ∷ Desc I →
+             Γ ⊢ᴬ I ∷ U → Γ ⊢ᴬ D ∷ Desc I → motCtxᴬ Γ I D ⊢tyᴬ M → Γ ⊢ᴬ C ∷ Desc I →
              Γ ⊢ᴬ i ∷ El I → Γ ⊢ᴬ p ∷ El (dpay I D C i) → Γ ⊢tyᴬ DIh I D M C i p
   tyᴬ-Fin  : ∀ {Γ n} → Γ ⊢tyᴬ Fin n
   tyᴬ-Hom  : ∀ {Γ A t u} → Γ ⊢tyᴬ A → Γ ⊢ᴬ t ∷ A → Γ ⊢ᴬ u ∷ A → Γ ⊢tyᴬ Hom A t u

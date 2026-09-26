@@ -113,24 +113,24 @@ srᵀ (ty-Id dA dt du) (ξ-Idʳ r) = ty-Id dA dt (sr du r)
 -- ★★ the levitated families: the hypotheses' type computes on the
 --   telescope (the payload steps are `sr`'s), the slots step under
 --   conversion.
-srᵀ (ty-DIh dD dM dC di dp) (DIh-ι D M j p) = ty-Unit
-srᵀ (ty-DIh dD dM dC di dp) (DIh-σ D M S f p) with dσ-step dC dp
-... | dC' , dsnd = ty-DIh dD dM dC' di dsnd
-srᵀ (ty-DIh dD dM dC di dp) (DIh-ρ D M j C p) with dρ-step dC dp
+srᵀ (ty-DIh dI dD dM dC di dp) (DIh-ι D M j p) = ty-Unit
+srᵀ (ty-DIh dI dD dM dC di dp) (DIh-σ D M S f p) with dσ-step dC dp
+... | dC' , dsnd = ty-DIh dI dD dM dC' di dsnd
+srᵀ (ty-DIh dI dD dM dC di dp) (DIh-ρ D M j C p) with dρ-step dC dp
 ... | dj , (dC' , (dfst , dsnd)) =
-      ty-Σ (iinst-wf M j (fst p) dj dfst dM) (ren-ty (ty-DIh dD dM dC' di dsnd) there)
+      ty-Σ (iinst-wf M j (fst p) dj dfst dM) (ren-ty (ty-DIh dI dD dM dC' di dsnd) there)
 srᵀ (ty-IMu dI dD di) (ξ-IMuᴵ r) =
   ty-IMu (sr dI r) (⊢conv dD (credᵀ (ξ-Desc r))) (⊢conv di (credᵀ (ξ-El r)))
 srᵀ (ty-IMu dI dD di) (ξ-IMuᴰ r) = ty-IMu dI (sr dD r) di
 srᵀ (ty-IMu dI dD di) (ξ-IMuⁱ r) = ty-IMu dI dD (sr di r)
 srᵀ (ty-Desc dI) (ξ-Desc r) = ty-Desc (sr dI r)
-srᵀ (ty-DIh dD dM dC di dp) (ξ-DIhᴰ r) =
-  ty-DIh (sr dD r) (conv-ctxᵀ (credᵀ (ξ-IMuᴰ (⟶-ren vs r))) dM) dC di
+srᵀ (ty-DIh dI dD dM dC di dp) (ξ-DIhᴰ r) =
+  ty-DIh dI (sr dD r) (conv-ctxᵀ (credᵀ (ξ-IMuᴰ (⟶-ren vs r))) dM) dC di
          (⊢conv dp (credᵀ (ξ-El (ξ-dpayᴰ r))))
-srᵀ (ty-DIh dD dM dC di dp) (ξ-DIhᴹ r) = ty-DIh dD (srᵀ dM r) dC di dp
-srᵀ (ty-DIh dD dM dC di dp) (ξ-DIhᶜ r) =
-  ty-DIh dD dM (sr dC r) di (⊢conv dp (credᵀ (ξ-El (ξ-dpayᶜ r))))
-srᵀ (ty-DIh dD dM dC di dp) (ξ-DIhᵖ r) = ty-DIh dD dM dC di (sr dp r)
+srᵀ (ty-DIh dI dD dM dC di dp) (ξ-DIhᴹ r) = ty-DIh dI dD (srᵀ dM r) dC di dp
+srᵀ (ty-DIh dI dD dM dC di dp) (ξ-DIhᶜ r) =
+  ty-DIh dI dD dM (sr dC r) di (⊢conv dp (credᵀ (ξ-El (ξ-dpayᶜ r))))
+srᵀ (ty-DIh dI dD dM dC di dp) (ξ-DIhᵖ r) = ty-DIh dI dD dM dC di (sr dp r)
 
 srᵀ* : {A B : RTy ⌊ Γ ⌋} → Γ ⊢ty A → A ⟶ᵀ* B → Γ ⊢ty B
 srᵀ* d doneᵀ       = d
@@ -249,12 +249,12 @@ validity wΓ (⊢dσ dI dS df) = exact (ty-Desc dI)
 validity wΓ (⊢dρ dI dj dC) = exact (ty-Desc dI)
 validity wΓ (⊢dpay dI dD dC di) = exact ty-U
 validity wΓ (⊢con dI dD di dp) = exact (ty-IMu dI dD di)
-validity wΓ (⊢dih dD dM de dC di dp) = exact (ty-DIh dD dM dC di dp)
-validity wΓ (⊢ielim {M = M} {i = i} {t = t} dD dM de di dt) = exact (iinst-wf M i t di dt dM)
+validity wΓ (⊢dih dI dD dM de dC di dp) = exact (ty-DIh dI dD dM dC di dp)
+validity wΓ (⊢ielim {M = M} {i = i} {t = t} dI dD dM de di dt) = exact (iinst-wf M i t di dt dM)
 validity wΓ ⊢fzero = exact ty-Fin
 validity wΓ (⊢fsuc dt) = exact ty-Fin
 validity wΓ (⊢fcase dP dt da db) = exact (sub-ty dP (⊢single dt))
 validity wΓ (⊢fcase0 dP dt) = exact (sub-ty dP (⊢single dt))
-validity wΓ (⊢psplit dP dq db) = exact (sub-ty dP (⊢single dq))
+validity wΓ (⊢psplit dA dB dP dq db) = exact (sub-ty dP (⊢single dq))
 validity wΓ (⊢conv d c) with validity wΓ d
 ... | wf A' c' dA' = wf A' (ctrnᵀ (csymᵀ c) c') dA'

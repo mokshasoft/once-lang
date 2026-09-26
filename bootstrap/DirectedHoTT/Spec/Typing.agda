@@ -709,11 +709,11 @@ data _⊢_∷_ where
   ⊢con  : ∀ {Γ I D i p} → Γ ⊢ I ∷ U → Γ ⊢ D ∷ Desc I → Γ ⊢ i ∷ El I →
           Γ ⊢ p ∷ El (dpay I D D i) → Γ ⊢ con p ∷ IMu I D i
   ⊢dih  : ∀ {Γ I D M e C i p} →
-          Γ ⊢ D ∷ Desc I → motCtx Γ I D ⊢ty M → Γ ⊢ e ∷ MethTy I D M →
+          Γ ⊢ I ∷ U → Γ ⊢ D ∷ Desc I → motCtx Γ I D ⊢ty M → Γ ⊢ e ∷ MethTy I D M →
           Γ ⊢ C ∷ Desc I → Γ ⊢ i ∷ El I → Γ ⊢ p ∷ El (dpay I D C i) →
           Γ ⊢ dih D e C p ∷ DIh D M C p
   ⊢ielim : ∀ {Γ I D M e i t} →
-           Γ ⊢ D ∷ Desc I → motCtx Γ I D ⊢ty M → Γ ⊢ e ∷ MethTy I D M →
+           Γ ⊢ I ∷ U → Γ ⊢ D ∷ Desc I → motCtx Γ I D ⊢ty M → Γ ⊢ e ∷ MethTy I D M →
            Γ ⊢ i ∷ El I → Γ ⊢ t ∷ IMu I D i →
            Γ ⊢ ielim D i e t ∷ iinst i t M
   -- tags: Fin (n+1) ≅ 1 + Fin n, and the empty Fin 0
@@ -727,7 +727,7 @@ data _⊢_∷_ where
             Γ ⊢ fcase0 t ∷ subTy (single t) P
   -- ★ Σ-INDUCTION (D071)
   ⊢psplit : ∀ {Γ A B P q b} →
-            (Γ ▹ Σ' A B) ⊢ty P → Γ ⊢ q ∷ Σ' A B →
+            Γ ⊢ty A → (Γ ▹ A) ⊢ty B → (Γ ▹ Σ' A B) ⊢ty P → Γ ⊢ q ∷ Σ' A B →
             ((Γ ▹ A) ▹ B) ⊢ b ∷ subTy pairS P →
             Γ ⊢ psplit b q ∷ subTy (single q) P
   ⊢conv : ∀ {Γ t A B}   → Γ ⊢ t ∷ A → A ≅ᵀ B → Γ ⊢ t ∷ B
@@ -747,7 +747,7 @@ data _⊢ty_ where
   -- ★ `Desc I` is LARGE (no code); its index must be a code
   ty-Desc : ∀ {Γ I} → Γ ⊢ I ∷ U → Γ ⊢ty Desc I
   ty-DIh  : ∀ {Γ I D M C i p} →
-            Γ ⊢ D ∷ Desc I → motCtx Γ I D ⊢ty M → Γ ⊢ C ∷ Desc I →
+            Γ ⊢ I ∷ U → Γ ⊢ D ∷ Desc I → motCtx Γ I D ⊢ty M → Γ ⊢ C ∷ Desc I →
             Γ ⊢ i ∷ El I → Γ ⊢ p ∷ El (dpay I D C i) → Γ ⊢ty DIh D M C p
   ty-Fin  : ∀ {Γ n} → Γ ⊢ty Fin n
   -- W2: `Hom` FORMATION — both endpoints at the same (well-formed) type.
