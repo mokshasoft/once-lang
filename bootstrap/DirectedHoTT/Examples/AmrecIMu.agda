@@ -55,7 +55,7 @@ open import DirectedHoTT.Lib.Wk    using ( ⊢wkᶠ )
 open import DirectedHoTT.Lib.Rec   using ( aIHT )
 open import DirectedHoTT.Lib.Amrec using ( aStepT; module AmTΠ )
 open import DirectedHoTT.Examples.Scoped
-  using ( INat; TmD; TmWf; Tm; size; ⊢size; toI; idTm; ⊢idTm; size-id )
+  using ( INat; TmD; ⊢TmD; Tm; size; ⊢size; toI; idTm; ⊢idTm; size-id )
 
 ------------------------------------------------------------------------
 -- 1. THE CARRIER — a closed instance of the indexed family.
@@ -70,7 +70,7 @@ A : RTy ε
 A = Tm nzero
 
 ⊢A : ◇ ⊢ty A
-⊢A = ty-IMu TmWf (toI ⊢nzero)
+⊢A = ty-IMu ⊢⌜Nat⌝ ⊢TmD (toI ⊢nzero)
 
 ------------------------------------------------------------------------
 -- 2. THE MEASURE — an `ielim`, at the carrier's binder.

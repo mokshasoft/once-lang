@@ -34,7 +34,6 @@ import DirectedHoTT.Examples.AmrecC
 import DirectedHoTT.Examples.AmrecIMu
 import DirectedHoTT.Examples.AmrecIMuDepth
 import DirectedHoTT.Examples.AmrecIMuRec
-import DirectedHoTT.Examples.AmrecIMuSzGen
 import DirectedHoTT.Examples.AmrecInd
 import DirectedHoTT.Examples.AmrecInst
 import DirectedHoTT.Examples.AmrecT
@@ -81,7 +80,6 @@ import DirectedHoTT.Examples.ScopeHazard
 import DirectedHoTT.Examples.Scoped
 import DirectedHoTT.Examples.ScopedDepth
 import DirectedHoTT.Examples.ScopedSize
-import DirectedHoTT.Examples.ScopedSz
 import DirectedHoTT.Examples.ScopedTy
 import DirectedHoTT.Examples.ScopedTySz
 import DirectedHoTT.Examples.Small

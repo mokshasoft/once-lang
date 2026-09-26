@@ -47,14 +47,14 @@ open import DirectedHoTT.Lib.Wk    using ( ⊢wkᶠ )
 open import DirectedHoTT.Lib.Rec   using ( aIHT )
 open import DirectedHoTT.Lib.Amrec using ( aStepT; module AmTΠ )
 open import DirectedHoTT.Examples.Scoped
-  using ( INat; TmD; TmWf; Tm; toI; idTm; ⊢idTm )
+  using ( INat; TmD; ⊢TmD; Tm; toI; idTm; ⊢idTm )
 open import DirectedHoTT.Examples.ScopedDepth using ( dpTm; ⊢dpTm )
 
 A : RTy ε
 A = Tm nzero
 
 ⊢A : ◇ ⊢ty A
-⊢A = ty-IMu TmWf (toI ⊢nzero)
+⊢A = ty-IMu ⊢⌜Nat⌝ ⊢TmD (toI ⊢nzero)
 
 -- ★ THE MEASURE, DERIVED FROM THE DESCRIPTION rather than written out.
 msr : RTm (ε ∙)
