@@ -25,7 +25,8 @@ open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Metatheory.RedCong
   using ( ⟶*-trans; ⟶*-appʳ; ⟶*-dihᶜ; red→≅ᵀ; _⟶ᵀ*_; doneᵀ; stepᵀ )
-open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast; conv-ctx )
+open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast; conv-ctx; sub-lemma )
+open import DirectedHoTT.Metatheory.Fundamental.Syntactic using ( subTm-var )
 open import DirectedHoTT.Metatheory.Premises using ( mot-ren; ⊢wkD )
 open import DirectedHoTT.Lib.Sugar
   using ( Cons; []; _∷_; Nth; nth-z; nth-s; tag; selF; selF-β; nth-sub; subC; conₗ; AllD )
@@ -153,3 +154,40 @@ dihₛ {s = s} {k = k} {Cs = Cs} {j = j} {p = p} ns nt =
   ⟶*-trans (ιₛ-red nE nm)
     (⟶*-appʳ (⟶*-trans (dihₛ (nth-⌜⌝ₛₛ ns) (nth-⌜⌝ nt))
                         (dihN-red (single (pair (tag s) j)) T (Dₛₜ Tss) (methAt Es) p)))
+
+------------------------------------------------------------------------
+-- 4. ★ ONE METHOD ENTRY of a sorted family: constructor `k` of sort `s`,
+--    its body against the normal forms at `ιₛ s` (`HypAt`), with its
+--    lookup — what `⊢sortMeth`'s `PerKAt` list is built from.
+------------------------------------------------------------------------
+
+nth-AllSOK : {Γ : Ctx} {I : RTm ⌊ Γ ⌋} {Tss : STels (⌊ Γ ⌋ ∙) n} {Ts : Tels (⌊ Γ ⌋ ∙) c} →
+             AllSOK Γ I Tss → NthST Tss s Ts → AllOK (Γ ▹ El I) (renTm vs I) Ts
+nth-AllSOK (ok ∷ˢᵒ _)   nthˢᵗ-z     = ok
+nth-AllSOK (_ ∷ˢᵒ oks) (nthˢᵗ-s n) = nth-AllSOK oks n
+
+nth-OK : {Γ : Ctx} {I : RTm ⌊ Γ ⌋} {Ts : Tels ⌊ Γ ⌋ c} {T : Tel ⌊ Γ ⌋} →
+         AllOK Γ I Ts → NthT Ts k T → TelOK Γ I T
+nth-OK (ok ∷ᵒ _)   nthᵗ-z     = ok
+nth-OK (_ ∷ᵒ oks) (nthᵗ-s n) = nth-OK oks n
+
+entₛ : {Γ : Ctx} {J : RTm (⌊ Γ ⌋ ∙)} {Tss : STels (⌊ Γ ⌋ ∙) n} {Ts : Tels (⌊ Γ ⌋ ∙) c}
+       {T : Tel (⌊ Γ ⌋ ∙)} {M : RTy ((⌊ Γ ⌋ ∙) ∙)} {b : RTm (((⌊ Γ ⌋ ∙) ∙) ∙)} →
+       (Γ ▹ El (⌜Fin⌝ n)) ⊢ J ∷ U → AllSOK Γ (SortI J n) Tss → motCtx Γ (SortI J n) (Dₛₜ Tss) ⊢ty M →
+       NthST Tss s Ts → NthT Ts k T →
+       HypAt (Γ ▹ El (subTm (single (tag s)) J)) (renTm vs (SortI J n)) (renTm vs (Dₛₜ Tss)) (wk1M M) (σₛ s) T
+         ⊢ b ∷ subTy (atS (ιₛ s) (conₗ k (var (vs vz)))) (wk1M M) →
+       (app (selF (subC (σₛ s) ⌜ Ts ⌝ₛ)) (tag k) ⟶* subTm (σₛ s) ⌜ T ⌝ᵗ)
+       × ((Γ ▹ El (subTm (single (tag s)) J))
+            ⊢ lam (lam b) ∷ MethKAt (renTm vs (SortI J n)) (renTm vs (Dₛₜ Tss)) (wk1M M) (ιₛ s) (subTm (σₛ s) ⌜ T ⌝ᵗ) k)
+entₛ {n = n} {s = s} {Γ = Γ} {J = J} {Tss} {Ts} {T} {M} dJ oks dM ns nt db =
+  selF-β (nth-sub (σₛ s) (nth-⌜⌝ nt)) ,
+  ⊢methTσ {σ = σₛ s} {T = T} (⊢wk dI) (⊢wkD (⊢Dₛₜ dJ oks)) (mot-ren there dM) dC db
+  where
+    dI = ⊢SortI dJ
+    dix = ⊢ιₛ dJ (nthS-lt (nth-⌜⌝ₛₛ ns))
+    dC = ⊢-cast (cong Desc (fl-σₛ' s (SortI J n)))
+                (sub-lemma (⊢tel (⊢wk dI) (nth-OK (nth-AllSOK oks ns) nt)) (hσₛ s dix))
+      where
+        fl-σₛ' : (s : ℕ) (t : RTm ⌊ Γ ⌋) → subTm (σₛ s) (renTm vs t) ≡ renTm vs t
+        fl-σₛ' s t = trans (subTm-renTm t) (subTm-var vs t)

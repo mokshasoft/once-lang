@@ -88,11 +88,6 @@ module _ (A : Alg) where
     (look nth-z , ⊢mfoldAt {σ = σ} {T = T} dI dD dC) ∷ₐ perAt dI dD ds (λ n → look (nth-s n))
 
   private
-    nth-AllSOK : {Γ : Ctx} {I : RTm ⌊ Γ ⌋} {Tss : STels (⌊ Γ ⌋ ∙) n} {Ts : Tels (⌊ Γ ⌋ ∙) c} →
-                 AllSOK Γ I Tss → NthST Tss s Ts → AllOK (Γ ▹ El I) (renTm vs I) Ts
-    nth-AllSOK (ok ∷ˢᵒ _)   nthˢᵗ-z     = ok
-    nth-AllSOK (_ ∷ˢᵒ oks) (nthˢᵗ-s n) = nth-AllSOK oks n
-
     perS : {Γ : Ctx} {J : RTm (⌊ Γ ⌋ ∙)} {Tss : STels (⌊ Γ ⌋ ∙) n} {Tss' : STels (⌊ Γ ⌋ ∙) k} {s₀ : ℕ} →
            (Γ ▹ El (⌜Fin⌝ n)) ⊢ J ∷ U → AllSOK Γ (SortI J n) Tss →
            ({j c : ℕ} {Ts : Tels (⌊ Γ ⌋ ∙) c} → NthST Tss' j Ts → NthST Tss (j +' s₀) Ts) →
