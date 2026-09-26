@@ -1,0 +1,58 @@
+------------------------------------------------------------------------
+-- OCP-0009 · dHoTT — ★ THE ANNOTATED KERNEL SYNTAX, and its ERASURE.
+--                      (PLAN-BIDI §3d — decision (c), implemented as a layer)
+--
+-- ★ WHAT THIS IS.  `ATm`/`ATy` are the kernel terms the checker checks:
+--   `RTm`/`RTy` plus exactly the annotations the typing judgment would
+--   otherwise take from the DERIVATION —
+--       lam A · pair B · natrec M · jsub A t u · tr A t u · ap cA t u
+--       con I D i · ielim I M · dih I M i · dι/dσ/dρ I · DIh I i
+--       fzero n · fsuc n · fcase n P · fcase0 P · psplit A B P
+--   so that a kernel term determines its type (PLAN-BIDI §0).
+--   ⚠ The last row is the §1 AUDIT's finding: `jsub`/`tr`/`ap` took their
+--   ambient and ENDPOINTS from the derivation, and a checker cannot recover
+--   them — `Hom` computes away at `U`/`Π`/`Nat`, and a recovered endpoint
+--   has no annotated derivation.
+--
+-- ★ WHAT IT MEANS.  Erasure `⌈_⌉` to `RTm`.  Annotations are typing data,
+--   not computation (decision (c)): conversion in `⊢ᴬ` is conversion of
+--   ERASURES, and every metatheorem of `RTm` — SN, confluence, canonicity,
+--   consistency, decidable conversion — transfers instead of being redone.
+--
+-- ★ ONLY TWO LEMMAS relate the layers here: erasure commutes with renaming
+--   and with substitution.  Stated against ANY pointwise-equal `RTm`
+--   substitution, so binders need no `subTm-cong` detour.
+--
+-- ⚠ GENERATED from one field table (`tools/genA.py`, checked against
+--   `Spec/Syntax`'s `RTm` constructor list): a former missing here is a
+--   generator failure, not a silent row.
+--
+-- ★ LEVITATION: descriptions are TERMS, so they need no separate annotated
+--   syntax — they are `ATm`s like any other.
+--
+-- `--safe`, ZERO axioms.
+------------------------------------------------------------------------
+
+{-# OPTIONS --safe #-}
+module DirectedHoTT.Spec.Annotated where
+open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂ )
+open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
+open import DirectedHoTT.Spec.Syntax
+
+private
+  cong1 = cong
+  cong2 = cong₂
+
+  cong3 : {A B C D : Set} (f : A → B → C → D) {a a' : A} {b b' : B} {c c' : C} →
+          a ≡ a' → b ≡ b' → c ≡ c' → f a b c ≡ f a' b' c'
+  cong3 f refl refl refl = refl
+
+  cong4 : {A B C D E : Set} (f : A → B → C → D → E) {a a' : A} {b b' : B} {c c' : C} {d d' : D} →
+          a ≡ a' → b ≡ b' → c ≡ c' → d ≡ d' → f a b c d ≡ f a' b' c' d'
+  cong4 f refl refl refl refl = refl
+
+  cong5 : {A B C D E F : Set} (f : A → B → C → D → E → F)
+          {a a' : A} {b b' : B} {c c' : C} {d d' : D} {e e' : E} →
+          a ≡ a' → b ≡ b' → c ≡ c' → d ≡ d' → e ≡ e' → f a b c d e ≡ f a' b' c' d' e'
+  cong5 f refl refl refl refl refl = refl
+
