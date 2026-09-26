@@ -22,9 +22,15 @@
 -- (D222: `pair` shares one π); `lam`'s body grade rides the ARROW, so a λ is
 -- pure however effectful its body (D222: `curry`'s outer arrow).
 --
--- KNOWN GAPS the core makes visible (recorded in plan 0.102 §6, not hidden):
---   * `ν-type F` carries no grade, so forcing a layer (`out`) is `eff`;
---   * an FFI arrow's grade is TRUSTED from its signature (`⊢sigop`).
+-- THE GRADE IS THE SURFACE'S, NOT YET A SEMANTIC CLAIM (plan 0.102 §3: the
+-- accepted programs do not change). Two leaves may emit while typed at any
+-- grade, exactly as the surface allows them under a pure `lam`:
+--   * `out` — `ν-type F` records no grade, so forcing a layer of an effectful
+--     ν is not visible in the type;
+--   * `sigop` — referencing a base-typed FFI constant at `Unit`/`Void` IS a
+--     SigOp call (D225: it emits/halts), and an FFI arrow's grade is trusted
+--     from its signature.
+-- Making `pure` mean "emits nothing" is a language decision (D231, open).
 ------------------------------------------------------------------------
 
 module Once.Spec.Core.Typing where
@@ -33,40 +39,15 @@ open import Data.Nat using (ℕ)
 open import Data.Bool using (true)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Once.Type
-  using ( Type; Unit; Void; Int; Float; Str; Buffer; _*_; _+_; _⇒[_]_
+  using ( Type; Unit; Void; Int; Float; Str; _*_; _+_; _⇒[_]_
         ; μ-type; ν-type; Functor; ⟦_⟧T
         ; Quantity; Zero; One; Many; _≤q_; Purity; pure; eff; mk-kind )
 open import Once.Type.Sub using (_<:_; _⊑π_)
-open import Once.Functor.Translate using (WellFormedF; IsConcrete; con-base; con-fun)
+open import Once.Functor.Translate using (WellFormedF; IsConcrete)
 open import Once.CanonicalName using (CanonicalName)
 open import Once.Surface.Context
   using (Ctx; _,_; lookup; Usage; _∷_; zeroUsage; singleUse; _+ᵘ_; _*ᵘ_; _⊔ᵘ_)
 open import Once.Spec.Core.Syntax
-
-------------------------------------------------------------------------
--- The grade of REFERENCING an FFI constant (evaluating `sigop c A`).
--- A base-typed constant IS a nullary SigOp call, and a SigOp's effect is read
--- off its codomain (D225): `Unit` emits, `Void` halts, anything else is pure.
--- An arrow-typed constant evaluates to a closure: pure; its grade is paid at
--- application, by the arrow's own `π`.
-------------------------------------------------------------------------
-
-codGrade : Type → Purity
-codGrade Unit          = eff
-codGrade Void          = eff
-codGrade (_ * _)       = pure
-codGrade (_ + _)       = pure
-codGrade (_ ⇒[ _ ] _)  = pure
-codGrade (μ-type _)    = pure
-codGrade (ν-type _)    = pure
-codGrade Int           = pure
-codGrade Float         = pure
-codGrade Str           = pure
-codGrade Buffer        = pure
-
-refGrade : ∀ {A} → IsConcrete A → Purity
-refGrade {A} (con-base _) = codGrade A
-refGrade (con-fun _ _)    = pure
 
 ------------------------------------------------------------------------
 -- The judgment
@@ -140,16 +121,16 @@ data _⊢[_]_∷_!_ : ∀ {n} → Ctx n → Usage n → Tm n → Type → Purity
   -- ν F: its coalgebra structure `out` and its (non-dependent) introduction.
   -- `unfold` builds the ν LAZILY: the coalgebra's grade `π` is paid when a
   -- layer is forced, so building it costs only evaluating its parts (`π′`).
-  -- `ν-type F` does not record `π`, hence `out` is `eff` (see the header).
+  -- `ν-type F` does not record `π`, so `out` is at any grade (see the header).
   ⊢unfold : ∀ {n} {Γ : Ctx n} {Ψc Ψs : Usage n} {π π′ : Purity} {F : Functor} {A c s}
           → WellFormedF F
           → Γ ⊢[ Ψc ] c ∷ A ⇒[ mk-kind Many π ] ⟦ F ⟧T A ! π′
           → Γ ⊢[ Ψs ] s ∷ A ! π′
           → Γ ⊢[ Ψc +ᵘ Ψs ] unfold c s ∷ ν-type F ! π′
-  ⊢out : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {F : Functor} {t}
+  ⊢out : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {π : Purity} {F : Functor} {t}
        → WellFormedF F
-       → Γ ⊢[ Ψ ] t ∷ ν-type F ! eff
-       → Γ ⊢[ Ψ ] out t ∷ ⟦ F ⟧T (ν-type F) ! eff
+       → Γ ⊢[ Ψ ] t ∷ ν-type F ! π
+       → Γ ⊢[ Ψ ] out t ∷ ⟦ F ⟧T (ν-type F) ! π
 
   -- D226: subtyping is a COERCION term (it has content: `Void <: B` is `¡`).
   ⊢coerce : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {π : Purity} {A B t}
@@ -167,9 +148,9 @@ data _⊢[_]_∷_!_ : ∀ {n} → Ctx n → Usage n → Tm n → Type → Purity
         → Γ ⊢[ Ψ ] prim p t ∷ primCod p ! π
 
   -- An FFI constant at its declared type (D061/D071: a contract, resolved
-  -- by the module layer). Closed: it uses no variable.
-  ⊢sigop : ∀ {n} {Γ : Ctx n} {A} (c : CanonicalName) (k : IsConcrete A)
-         → Γ ⊢[ zeroUsage ] sigop c A ∷ A ! refGrade k
+  -- by the module layer). Closed: it uses no variable. At any grade (header).
+  ⊢sigop : ∀ {n} {Γ : Ctx n} {π : Purity} {A} (c : CanonicalName) (k : IsConcrete A)
+         → Γ ⊢[ zeroUsage ] sigop c A ∷ A ! π
 
   -- D068: pure ⊑ eff is SUBSUMPTION — no term, identity meaning.
   ⊢sub-eff : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {π π′ : Purity} {A t}

@@ -15441,13 +15441,22 @@ a declarative core, and bidirectional checking is an implementation proven again
 4. **The meaning** (`Once.Spec.Core.Meaning`) is the surface meaning with the modes
    removed: call-by-value Kleisli morphisms `⟦Γ ↾ Ψ⟧ → T⟦A⟧`, one clause per rule.
 
-### Known gaps, now visible rather than hidden
+### The grade is the surface's, not yet a semantic claim
 
-* `ν-type F` records no grade, so forcing a layer (`out`) is `eff`. A pure-graded use
-  of `Out` that the surface accepts will fail the surface-to-core soundness proof (plan
-  0.102 C). The fix, if one is needed, is a graded ν type.
-* An FFI arrow's grade is trusted from its signature. Nothing yet ties an `Int → Unit`
-  signature (which emits, D225) to an `eff` arrow.
-* The equality judgment is not written yet. Following the top-down rule it lands when
-  something first consumes it: the combinators' defining equations (plan 0.102 C) or the
-  optimizer's normalization postulates.
+The accepted programs must not change (plan 0.102 §3), and the surface `lam` accepts
+any body at any arrow grade. So the core types two emitting leaves at ANY grade, as the
+surface does:
+
+* `out`: `ν-type F` records no grade, so forcing a layer of an effectful ν is invisible
+  in the type;
+* `sigop`: referencing a base-typed FFI constant at `Unit`/`Void` is a SigOp call that
+  emits or halts (D225), and an FFI arrow's grade is trusted from its signature.
+
+**Open (a language decision, not this plan's):** should `pure` mean "evaluation emits
+nothing"? If so, `ν-type` gains a grade, the two leaves are graded by what they do, and
+the surface rejects a pure `lam` whose body emits. The core states that in one place
+(its three rules). Today's grade is exactly as sound as today's surface.
+
+The equality judgment is not written yet. Following the top-down rule it lands when
+something first consumes it: the combinators' defining equations (plan 0.102 C) or the
+optimizer's normalization postulates.
