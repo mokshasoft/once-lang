@@ -247,26 +247,62 @@ private
 --    selection converts to `Cₖ` (`selF-β`).
 ------------------------------------------------------------------------
 
+-- ★ A PAYLOAD, ONE FIELD AT A TIME — the three telescope heads.  A
+--   payload is the Σ-chain `dpay` computes; these type it head by head.
+--   `ι`: the index equation (Fording is IN the payload); `σ`: a field of
+--   code `S` and the rest at the selected telescope `f a`; `ρ`: a
+--   recursive field at its own index, and the rest.
+⊢pay-ι : {Γ : Ctx} {I D j i e : RTm ⌊ Γ ⌋} →
+         Γ ⊢ e ∷ Id (El I) j i → Γ ⊢ e ∷ El (dpay I D (dι j) i)
+⊢pay-ι {I = I} {D} {j} {i} de =
+  ⊢conv de (csymᵀ (ctrnᵀ (credᵀ (ξ-El (dpay-ι I D j i))) (credᵀ (El-⌜Id⌝ I j i))))
+
+⊢pay-σ : {Γ : Ctx} {I D S f i a p : RTm ⌊ Γ ⌋} →
+         Γ ⊢ I ∷ U → Γ ⊢ D ∷ Desc I → Γ ⊢ f ∷ Π (El S) (Desc (renTm vs I)) → Γ ⊢ i ∷ El I →
+         Γ ⊢ a ∷ El S → Γ ⊢ p ∷ El (dpay I D (app f a) i) →
+         Γ ⊢ pair a p ∷ El (dpay I D (dσ S f) i)
+⊢pay-σ {Γ = Γ} {I = I} {D = D} {S = S} {f = f} {i = i} {a = a} dI dD df di da dp =
+  ⊢conv (⊢pair dB da dp') cv
+  where
+    dapp : (Γ ▹ El S) ⊢ app (renTm vs f) (var vz) ∷ Desc (renTm vs I)
+    dapp = ⊢-cast (wk-app-vz (Desc (renTm vs I))) (⊢app (⊢wk df) (⊢var here))
+    dB = ty-El (⊢dpay (⊢wk dI) (⊢wk dD) dapp (⊢wk di))
+    dp' = ⊢-cast (sym (cong₄ (λ x y g k → El (dpay x y (app g a) k))
+                             (wk-cancel-tm a I) (wk-cancel-tm a D)
+                             (wk-cancel-tm a f) (wk-cancel-tm a i)))
+                 dp
+    cv = csymᵀ (ctrnᵀ (credᵀ (ξ-El (dpay-σ I D S f i))) (credᵀ (El-⌜Σ⌝ _ _)))
+
+-- the common case `f = λ C`: the rest at `C[a]`, one β away
+⊢pay-σλ : {Γ : Ctx} {I D S i a p : RTm ⌊ Γ ⌋} {C : RTm (⌊ Γ ⌋ ∙)} →
+          Γ ⊢ I ∷ U → Γ ⊢ D ∷ Desc I → Γ ⊢ lam C ∷ Π (El S) (Desc (renTm vs I)) → Γ ⊢ i ∷ El I →
+          Γ ⊢ a ∷ El S → Γ ⊢ p ∷ El (dpay I D (subTm (single a) C) i) →
+          Γ ⊢ pair a p ∷ El (dpay I D (dσ S (lam C)) i)
+⊢pay-σλ {a = a} {C = C} dI dD df di da dp =
+  ⊢pay-σ dI dD df di da (⊢conv dp (csymᵀ (credᵀ (ξ-El (ξ-dpayᶜ (β C a))))))
+
+⊢pay-ρ : {Γ : Ctx} {I D j C i r p : RTm ⌊ Γ ⌋} →
+         Γ ⊢ I ∷ U → Γ ⊢ D ∷ Desc I → Γ ⊢ C ∷ Desc I → Γ ⊢ i ∷ El I →
+         Γ ⊢ r ∷ IMu I D j → Γ ⊢ p ∷ El (dpay I D C i) →
+         Γ ⊢ pair r p ∷ El (dpay I D (dρ j C) i)
+⊢pay-ρ {Γ = Γ} {I = I} {D = D} {j = j} {C = C} {i = i} {r = r} dI dD dC di dr dp =
+  ⊢conv (⊢pair dB (⊢conv dr (csymᵀ (credᵀ El-⌜IMu⌝))) dp') cv
+  where
+    dB = ty-El (⊢dpay (⊢wk dI) (⊢wk dD) (⊢wk dC) (⊢wk di))
+    dp' = ⊢-cast (sym (cong₄ (λ x y z k → El (dpay x y z k))
+                             (wk-cancel-tm r I) (wk-cancel-tm r D)
+                             (wk-cancel-tm r C) (wk-cancel-tm r i)))
+                 dp
+    cv = csymᵀ (ctrnᵀ (credᵀ (ξ-El (dpay-ρ I D j C i))) (credᵀ (El-⌜Σ⌝ _ _)))
+
 -- ★ a constructor of a `dσ` family from a (tag , payload) pair, for ANY
---   tag term: the payload lives at the SELECTED telescope `f t`.  Kept
---   abstract in `S`/`f`, so it types under any renaming unchanged.
+--   tag term: the payload lives at the SELECTED telescope `f t`.
 ⊢con-σ : {Γ : Ctx} {I S f i t p : RTm ⌊ Γ ⌋} →
          Γ ⊢ I ∷ U → Γ ⊢ S ∷ U → Γ ⊢ f ∷ Π (El S) (Desc (renTm vs I)) → Γ ⊢ i ∷ El I →
          Γ ⊢ t ∷ El S → Γ ⊢ p ∷ El (dpay I (dσ S f) (app f t) i) →
          Γ ⊢ con (pair t p) ∷ IMu I (dσ S f) i
-⊢con-σ {Γ = Γ} {I = I} {S = S} {f = f} {i = i} {t = t} dI dS df di dt dp =
-  ⊢con dI dD di (⊢conv (⊢pair dB dt dp') cv)
-  where
-    D = dσ S f
-    dD = ⊢dσ dI dS df
-    dapp : (Γ ▹ El S) ⊢ app (renTm vs f) (var vz) ∷ Desc (renTm vs I)
-    dapp = ⊢-cast (wk-app-vz (Desc (renTm vs I))) (⊢app (⊢wk df) (⊢var here))
-    dB = ty-El (⊢dpay (⊢wk dI) (⊢wk dD) dapp (⊢wk di))
-    dp' = ⊢-cast (sym (cong₄ (λ a b g j → El (dpay a b (app g t) j))
-                             (wk-cancel-tm t I) (wk-cancel-tm t D)
-                             (wk-cancel-tm t f) (wk-cancel-tm t i)))
-                 dp
-    cv = csymᵀ (ctrnᵀ (credᵀ (ξ-El (dpay-σ I D S f i))) (credᵀ (El-⌜Σ⌝ _ _)))
+⊢con-σ dI dS df di dt dp = ⊢con dI dD di (⊢pay-σ dI dD df di dt dp)
+  where dD = ⊢dσ dI dS df
 
 -- ★ (b) constructor `k` of the list form: `⊢con-σ` at `tag k`, the
 --   selection converted to `Cₖ` (`selF-β`)
