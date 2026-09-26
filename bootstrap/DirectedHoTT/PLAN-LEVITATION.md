@@ -41,7 +41,19 @@ over c constructors is c-1 nested `fcase`s (the elaborator's job).
 `fst`/`snd` remain primitive for now; deriving them from `psplit` (D071)
 is a follow-up stage once everything is green.
 
-## Stage 2 — progress (2026-09-26)
+## Stage 2 — DONE (2026-09-26)
+
+Every `Spec`/`Metatheory`/`Algorithm` module checks on the levitated
+kernel: TySub, SubjectReduction, Confluence, Injectivity, Validity, DecEq,
+DecideConversion(+Typed), LogicalRelation, Fundamental (+Syntactic,
+Semantic, Indexed), NormTy, Canonicity, Erasure, FormerCensus, Premises
+(new), Check, CheckA.
+
+⬜ Consolidation items found on the way: `subTy-var`/`subTm-var` are pure
+σ-calculus living in `Fundamental/Syntactic` (move to `Spec`); `fsucS⊢`/
+`pairS⊢`/`MethG` could live in `TySub`.
+
+### Stage 2 — log
 
 - ✅ `SubjectReductionBase`, `RedCong`, `TySub` (committed).
 - `Confluence`: rows done; ⚠ the family cloner's `NEW` list omitted `pcon`
