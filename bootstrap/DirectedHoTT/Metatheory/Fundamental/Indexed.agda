@@ -9,13 +9,13 @@
 --
 -- ★ WHAT IS IN IT.  A telescope's interpretation (`IKInterp`) determines
 --   everything the eliminator needs:
---     · `payInterp₀` — the payload CODE's decoding, `El (dpay I D C i)`,
---       by recursion on the telescope's interpretation: `dι` gives the
---       index equation (`⊩₀Id`), `dσ` a `⊩₀Σ` over the field code's
+--     · `payInterp₀` — the payload CODE's decoding, `El (dpay I D C)`,
+--       by recursion on the telescope's interpretation: `dι` gives
+--       `⊩₀Unit` (D074: fibred, no index equation), `dσ` a `⊩₀Σ` over the field code's
 --       interpretation, `dρ` a `⊩₀Σ` over the WHOLE family's `⊩₀IMu`, a
 --       stuck telescope a neutral type, a head step `bwd₀`;
 --     · `liftPay₀`/`payLift₀` — membership there IS `ILift` (definitionally,
---       up to the two casts): `ILift` was written in `⊩₀Σ`/`⊩₀Id` shape;
+--       up to the two casts): `ILift` was written in `⊩₀Σ` shape;
 --     · `dihTy` — the hypotheses' TYPE, `DIh D M C p`, given the motive's
 --       interpretation at semantic arguments;
 --     · `sn-dpay` — SN of the payload code, SN-under-the-binder paid for by
@@ -58,21 +58,29 @@ private
 -- 0. The two tails and a cast.
 ------------------------------------------------------------------------
 
+-- ★ D074: the family's interpretation is FIBRED — a telescope
+--   interpretation over every VALID index — and its membership predicate
+IKFam : {I₀ : RTm Ξ} (⊩I : ⊩₀ (El I₀)) → RTm Ξ → Set
+IKFam {Ξ} ⊩I D = (j : RTm Ξ) → ⊩I ⊩₀∋ j → IKInterp ⊩I (app D j)
+
+Mem : {I₀ D : RTm Ξ} {⊩I : ⊩₀ (El I₀)} → IKFam ⊩I D → (j : RTm Ξ) → ⊩I ⊩₀∋ j → RTm Ξ → Set
+Mem {⊩I = ⊩I} KF = IMuMem (⊩I ⊩₀∋_) (λ j q → ikpredsOf (KF j q))
+
 -- `dpay-σ`'s tail at a field value is the payload of the chosen branch
-σ-tail : (I D f i u : RTm Ξ) →
-         subTy (single u) (El (dpay (renTm vs I) (renTm vs D) (app (renTm vs f) (var vz)) (renTm vs i)))
-         ≡ El (dpay I D (app f u) i)
-σ-tail I D f i u =
-  cong₄ (λ a b g k → El (dpay a b (app g u) k))
-        (wk-cancel-tm u I) (wk-cancel-tm u D) (wk-cancel-tm u f) (wk-cancel-tm u i)
+σ-tail : (I D f u : RTm Ξ) →
+         subTy (single u) (El (dpay (renTm vs I) (renTm vs D) (app (renTm vs f) (var vz))))
+         ≡ El (dpay I D (app f u))
+σ-tail I D f u =
+  cong₃ (λ a b g → El (dpay a b (app g u)))
+        (wk-cancel-tm u I) (wk-cancel-tm u D) (wk-cancel-tm u f)
 
 -- `dpay-ρ`'s tail is the rest of the telescope, independent of the field
-ρ-tail : (I D C i u : RTm Ξ) →
-         subTy (single u) (El (dpay (renTm vs I) (renTm vs D) (renTm vs C) (renTm vs i)))
-         ≡ El (dpay I D C i)
-ρ-tail I D C i u =
-  cong₄ (λ a b c k → El (dpay a b c k))
-        (wk-cancel-tm u I) (wk-cancel-tm u D) (wk-cancel-tm u C) (wk-cancel-tm u i)
+ρ-tail : (I D C u : RTm Ξ) →
+         subTy (single u) (El (dpay (renTm vs I) (renTm vs D) (renTm vs C)))
+         ≡ El (dpay I D C)
+ρ-tail I D C u =
+  cong₃ (λ a b c → El (dpay a b c))
+        (wk-cancel-tm u I) (wk-cancel-tm u D) (wk-cancel-tm u C)
 
 -- membership rides across a cast — the equation is matched away.
 ⊩₀cast-mem : {A A' : RTy Ξ} (eq : A ≡ A') (R : ⊩₀ A) {t : RTm Ξ} →
@@ -144,7 +152,7 @@ desc-view (⊩₁Nat p) h with Desc-reduct p
 ... | _ , (() , _)
 desc-view (⊩₁Id p) h with Desc-reduct p
 ... | _ , (() , _)
-desc-view (⊩₁IMu p _ _ _ _) h with Desc-reduct p
+desc-view (⊩₁IMu p _ _ _ _ _ _) h with Desc-reduct p
 ... | _ , (() , _)
 desc-view (⊩₁Fin p) h with Desc-reduct p
 ... | _ , (() , _)
@@ -158,99 +166,99 @@ desc-view (⊩₁DIhNe p _) h with Desc-reduct p
 -- `D`, as `⊩₀IMu` stores it); `KC` the telescope being walked.
 ------------------------------------------------------------------------
 
-payInterp₀ : {I D C i I₀ D₀ : RTm Ξ} → I ≅ I₀ → D ≅ D₀ →
-             (⊩I : ⊩₀ (El I₀)) → IKInterp ⊩I D₀ → IKInterp ⊩I C →
-             ⊩₀ (El (dpay I D C i))
-payInterp₀ cI cD ⊩I KD (iki-ne n) = ⊩₀ne doneᵀ (ne-dpay (sne→dstk n))
-payInterp₀ cI cD ⊩I KD (iki-exp r k) =
-  bwd₀ (stepᵀ (ξ-El (ξ-dpayᶜ (snr→⟶ r))) doneᵀ) (payInterp₀ cI cD ⊩I KD k)
-payInterp₀ cI cD ⊩I KD (iki-ι _) =
-  ⊩₀Id (stepᵀ (ξ-El (dpay-ι _ _ _ _)) (stepᵀ (El-⌜Id⌝ _ _ _) doneᵀ))
-payInterp₀ {I = I} {D = D} {i = i} cI cD ⊩I KD (iki-σ {f = f} _ _ w k) =
-  ⊩₀Σ (stepᵀ (ξ-El (dpay-σ _ _ _ _ _)) (stepᵀ (El-⌜Σ⌝ _ _) doneᵀ)) w
-      (λ u r → ⊩₀cast (sym (σ-tail I D f i u)) (payInterp₀ cI cD ⊩I KD (k u r)))
-payInterp₀ {I = I} {D = D} {i = i} cI cD ⊩I KD (iki-ρ {C = C} _ _ k) =
-  ⊩₀Σ (stepᵀ (ξ-El (dpay-ρ _ _ _ _ _)) (stepᵀ (El-⌜Σ⌝ _ _) doneᵀ))
-      (⊩₀IMu (stepᵀ El-⌜IMu⌝ doneᵀ) cI cD ⊩I KD)
-      (λ u r → ⊩₀cast (sym (ρ-tail I D C i u)) (payInterp₀ cI cD ⊩I KD k))
+payInterp₀ : {I D C I₀ D₀ : RTm Ξ} → I ≅ I₀ → D ≅ D₀ →
+             (⊩I : ⊩₀ (El I₀)) → IKFam ⊩I D₀ → IKInterp ⊩I C →
+             ⊩₀ (El (dpay I D C))
+payInterp₀ cI cD ⊩I KF (iki-ne n) = ⊩₀ne doneᵀ (ne-dpay (sne→dstk n))
+payInterp₀ cI cD ⊩I KF (iki-exp r k) =
+  bwd₀ (stepᵀ (ξ-El (ξ-dpayᶜ (snr→⟶ r))) doneᵀ) (payInterp₀ cI cD ⊩I KF k)
+payInterp₀ cI cD ⊩I KF iki-ι =
+  ⊩₀Unit (stepᵀ (ξ-El (dpay-ι _ _)) (stepᵀ El-⌜Unit⌝ doneᵀ))
+payInterp₀ {I = I} {D = D} cI cD ⊩I KF (iki-σ {f = f} _ _ w k) =
+  ⊩₀Σ (stepᵀ (ξ-El (dpay-σ _ _ _ _)) (stepᵀ (El-⌜Σ⌝ _ _) doneᵀ)) w
+      (λ u r → ⊩₀cast (sym (σ-tail I D f u)) (payInterp₀ cI cD ⊩I KF (k u r)))
+payInterp₀ {I = I} {D = D} cI cD ⊩I KF (iki-ρ {C = C} _ vj k) =
+  ⊩₀Σ (stepᵀ (ξ-El (dpay-ρ _ _ _ _)) (stepᵀ (El-⌜Σ⌝ _ _) doneᵀ))
+      (⊩₀IMu (stepᵀ El-⌜IMu⌝ doneᵀ) cI cD crfl ⊩I vj KF)
+      (λ u r → ⊩₀cast (sym (ρ-tail I D C u)) (payInterp₀ cI cD ⊩I KF k))
 
 -- ★ an `ILift` IS a member of the payload type, and conversely.
-liftPay₀ : {I D C i I₀ D₀ : RTm Ξ} (cI : I ≅ I₀) (cD : D ≅ D₀) →
-           (⊩I : ⊩₀ (El I₀)) (KD : IKInterp ⊩I D₀) (KC : IKInterp ⊩I C) →
+liftPay₀ : {I D C I₀ D₀ : RTm Ξ} (cI : I ≅ I₀) (cD : D ≅ D₀) →
+           (⊩I : ⊩₀ (El I₀)) (KF : IKFam ⊩I D₀) (KC : IKInterp ⊩I C) →
            {p : RTm Ξ} →
-           ILift (ikpredsOf KC) (IMuMem (ikpredsOf KD)) i p →
-           (payInterp₀ {i = i} cI cD ⊩I KD KC) ⊩₀∋ p
-payLift₀ : {I D C i I₀ D₀ : RTm Ξ} (cI : I ≅ I₀) (cD : D ≅ D₀) →
-           (⊩I : ⊩₀ (El I₀)) (KD : IKInterp ⊩I D₀) (KC : IKInterp ⊩I C) →
+           ILift (ikpredsOf KC) (Mem KF) p →
+           (payInterp₀ cI cD ⊩I KF KC) ⊩₀∋ p
+payLift₀ : {I D C I₀ D₀ : RTm Ξ} (cI : I ≅ I₀) (cD : D ≅ D₀) →
+           (⊩I : ⊩₀ (El I₀)) (KF : IKFam ⊩I D₀) (KC : IKInterp ⊩I C) →
            {p : RTm Ξ} →
-           (payInterp₀ {i = i} cI cD ⊩I KD KC) ⊩₀∋ p →
-           ILift (ikpredsOf KC) (IMuMem (ikpredsOf KD)) i p
+           (payInterp₀ cI cD ⊩I KF KC) ⊩₀∋ p →
+           ILift (ikpredsOf KC) (Mem KF) p
 
-liftPay₀ cI cD ⊩I KD (iki-ne n) h = h
-liftPay₀ cI cD ⊩I KD (iki-exp r k) h =
-  bwd₀-mem⁻ (stepᵀ (ξ-El (ξ-dpayᶜ (snr→⟶ r))) doneᵀ) (payInterp₀ cI cD ⊩I KD k)
-            (liftPay₀ cI cD ⊩I KD k h)
-liftPay₀ cI cD ⊩I KD (iki-ι _) h = h
-liftPay₀ {I = I} {D = D} {i = i} cI cD ⊩I KD (iki-σ {f = f} _ _ w k) {p = p} (sn , (q , rest)) =
+liftPay₀ cI cD ⊩I KF (iki-ne n) h = h
+liftPay₀ cI cD ⊩I KF (iki-exp r k) h =
+  bwd₀-mem⁻ (stepᵀ (ξ-El (ξ-dpayᶜ (snr→⟶ r))) doneᵀ) (payInterp₀ cI cD ⊩I KF k)
+            (liftPay₀ cI cD ⊩I KF k h)
+liftPay₀ cI cD ⊩I KF iki-ι h = h
+liftPay₀ {I = I} {D = D} cI cD ⊩I KF (iki-σ {f = f} _ _ w k) {p = p} (sn , (q , rest)) =
   ( sn
   , ( q
-    , ⊩₀cast-mem (sym (σ-tail I D f i (fst p))) (payInterp₀ cI cD ⊩I KD (k (fst p) q))
-                 (liftPay₀ cI cD ⊩I KD (k (fst p) q) rest) ) )
-liftPay₀ {I = I} {D = D} {i = i} cI cD ⊩I KD (iki-ρ {C = C} _ _ k) {p = p} (sn , (fm , rest)) =
+    , ⊩₀cast-mem (sym (σ-tail I D f (fst p))) (payInterp₀ cI cD ⊩I KF (k (fst p) q))
+                 (liftPay₀ cI cD ⊩I KF (k (fst p) q) rest) ) )
+liftPay₀ {I = I} {D = D} cI cD ⊩I KF (iki-ρ {C = C} _ _ k) {p = p} (sn , (fm , rest)) =
   ( sn
   , ( fm
-    , ⊩₀cast-mem (sym (ρ-tail I D C i (fst p))) (payInterp₀ cI cD ⊩I KD k)
-                 (liftPay₀ cI cD ⊩I KD k rest) ) )
+    , ⊩₀cast-mem (sym (ρ-tail I D C (fst p))) (payInterp₀ cI cD ⊩I KF k)
+                 (liftPay₀ cI cD ⊩I KF k rest) ) )
 
-payLift₀ cI cD ⊩I KD (iki-ne n) h = h
-payLift₀ cI cD ⊩I KD (iki-exp r k) h =
-  payLift₀ cI cD ⊩I KD k
-           (bwd₀-mem (stepᵀ (ξ-El (ξ-dpayᶜ (snr→⟶ r))) doneᵀ) (payInterp₀ cI cD ⊩I KD k) h)
-payLift₀ cI cD ⊩I KD (iki-ι _) h = h
-payLift₀ {I = I} {D = D} {i = i} cI cD ⊩I KD (iki-σ {f = f} _ _ w k) {p = p} (sn , (q , rest)) =
+payLift₀ cI cD ⊩I KF (iki-ne n) h = h
+payLift₀ cI cD ⊩I KF (iki-exp r k) h =
+  payLift₀ cI cD ⊩I KF k
+           (bwd₀-mem (stepᵀ (ξ-El (ξ-dpayᶜ (snr→⟶ r))) doneᵀ) (payInterp₀ cI cD ⊩I KF k) h)
+payLift₀ cI cD ⊩I KF iki-ι h = h
+payLift₀ {I = I} {D = D} cI cD ⊩I KF (iki-σ {f = f} _ _ w k) {p = p} (sn , (q , rest)) =
   ( sn
   , ( q
-    , payLift₀ cI cD ⊩I KD (k (fst p) q)
-               (⊩₀cast-mem⁻ (sym (σ-tail I D f i (fst p))) (payInterp₀ cI cD ⊩I KD (k (fst p) q)) rest) ) )
-payLift₀ {I = I} {D = D} {i = i} cI cD ⊩I KD (iki-ρ {C = C} _ _ k) {p = p} (sn , (fm , rest)) =
+    , payLift₀ cI cD ⊩I KF (k (fst p) q)
+               (⊩₀cast-mem⁻ (sym (σ-tail I D f (fst p))) (payInterp₀ cI cD ⊩I KF (k (fst p) q)) rest) ) )
+payLift₀ {I = I} {D = D} cI cD ⊩I KF (iki-ρ {C = C} _ _ k) {p = p} (sn , (fm , rest)) =
   ( sn
   , ( fm
-    , payLift₀ cI cD ⊩I KD k
-               (⊩₀cast-mem⁻ (sym (ρ-tail I D C i (fst p))) (payInterp₀ cI cD ⊩I KD k) rest) ) )
+    , payLift₀ cI cD ⊩I KF k
+               (⊩₀cast-mem⁻ (sym (ρ-tail I D C (fst p))) (payInterp₀ cI cD ⊩I KF k) rest) ) )
 
 -- the payload code's `U`-membership payload is trivial (its decoding is a
 --   Σ/Id/neutral, never a Π), carried through the head steps.
-payT-pay : {I D C i I₀ D₀ : RTm Ξ} (cI : I ≅ I₀) (cD : D ≅ D₀) →
-           (⊩I : ⊩₀ (El I₀)) (KD : IKInterp ⊩I D₀) (KC : IKInterp ⊩I C) {c : RTm Ξ} →
-           PayT (payInterp₀ {i = i} cI cD ⊩I KD KC) c
-payT-pay cI cD ⊩I KD (iki-ne n) = _
-payT-pay cI cD ⊩I KD (iki-ι _) = _
-payT-pay cI cD ⊩I KD (iki-σ _ _ _ _) = _
-payT-pay cI cD ⊩I KD (iki-ρ _ _ _) = _
-payT-pay cI cD ⊩I KD (iki-exp r k) =
-  payT-bwd₀' (stepᵀ (ξ-El (ξ-dpayᶜ (snr→⟶ r))) doneᵀ) (payInterp₀ cI cD ⊩I KD k)
-             (payT-pay cI cD ⊩I KD k)
+payT-pay : {I D C I₀ D₀ : RTm Ξ} (cI : I ≅ I₀) (cD : D ≅ D₀) →
+           (⊩I : ⊩₀ (El I₀)) (KF : IKFam ⊩I D₀) (KC : IKInterp ⊩I C) {c : RTm Ξ} →
+           PayT (payInterp₀ cI cD ⊩I KF KC) c
+payT-pay cI cD ⊩I KF (iki-ne n) = _
+payT-pay cI cD ⊩I KF iki-ι = _
+payT-pay cI cD ⊩I KF (iki-σ _ _ _ _) = _
+payT-pay cI cD ⊩I KF (iki-ρ _ _ _) = _
+payT-pay cI cD ⊩I KF (iki-exp r k) =
+  payT-bwd₀' (stepᵀ (ξ-El (ξ-dpayᶜ (snr→⟶ r))) doneᵀ) (payInterp₀ cI cD ⊩I KF k)
+             (payT-pay cI cD ⊩I KF k)
 
 ------------------------------------------------------------------------
 -- 2. The hypotheses' TYPE, given the motive at semantic arguments.
 ------------------------------------------------------------------------
 
 dihTy : {I₀ D C : RTm Ξ} {M : RTy ((Ξ ∙) ∙)} {⊩I : ⊩₀ (El I₀)} →
-        (KD : IKInterp ⊩I D) →
-        (MotC : (j u : RTm Ξ) → ⊩I ⊩₀∋ j → SN u → IMuMem (ikpredsOf KD) j u →
+        (KF : IKFam ⊩I D) →
+        (MotC : (j u : RTm Ξ) (hj : ⊩I ⊩₀∋ j) → SN u → Mem KF j hj u →
                 ⊩₁ (iinst j u M)) →
-        (KC : IKInterp ⊩I C) {i p : RTm Ξ} →
-        ILift (ikpredsOf KC) (IMuMem (ikpredsOf KD)) i p →
+        (KC : IKInterp ⊩I C) {p : RTm Ξ} →
+        ILift (ikpredsOf KC) (Mem KF) p →
         ⊩₁ (DIh D M C p)
-dihTy KD MotC (iki-ne n) l = ⊩₁DIhNe doneᵀ (sne→ne n)
-dihTy KD MotC (iki-exp r k) l =
-  bwd₁ (stepᵀ (ξ-DIhᶜ (snr→⟶ r)) doneᵀ) (dihTy KD MotC k l)
-dihTy KD MotC (iki-ι _) l = ⊩₁Unit (stepᵀ (DIh-ι _ _ _ _) doneᵀ)
-dihTy KD MotC (iki-σ _ _ w k) {p = p} (sn , (q , rest)) =
-  bwd₁ (stepᵀ (DIh-σ _ _ _ _ _) doneᵀ) (dihTy KD MotC (k (fst p) q) rest)
-dihTy {D = D} {M = M} KD MotC (iki-ρ {j = j} {C = C} _ vj k) {p = p} (sn , ((snf , m) , rest)) =
+dihTy KF MotC (iki-ne n) l = ⊩₁DIhNe doneᵀ (sne→ne n)
+dihTy KF MotC (iki-exp r k) l =
+  bwd₁ (stepᵀ (ξ-DIhᶜ (snr→⟶ r)) doneᵀ) (dihTy KF MotC k l)
+dihTy KF MotC iki-ι l = ⊩₁Unit (stepᵀ (DIh-ι _ _ _) doneᵀ)
+dihTy KF MotC (iki-σ _ _ w k) {p = p} (sn , (q , rest)) =
+  bwd₁ (stepᵀ (DIh-σ _ _ _ _ _) doneᵀ) (dihTy KF MotC (k (fst p) q) rest)
+dihTy {D = D} {M = M} KF MotC (iki-ρ {j = j} {C = C} _ vj k) {p = p} (sn , ((snf , m) , rest)) =
   ⊩₁Σ (stepᵀ (DIh-ρ _ _ _ _ _) doneᵀ) (MotC j (fst p) vj snf m)
-      (λ u r → ⊩₁cast (sym (wk-cancel u (DIh D M C (snd p)))) (dihTy KD MotC k rest))
+      (λ u r → ⊩₁cast (sym (wk-cancel u (DIh D M C (snd p)))) (dihTy KF MotC k rest))
 
 ------------------------------------------------------------------------
 -- 2b. ★ The hypotheses' WALK — the SYNTACTIC shadow of `dihTy`'s
@@ -264,24 +272,23 @@ dihTy {D = D} {M = M} KD MotC (iki-ρ {j = j} {C = C} _ vj k) {p = p} (sn , ((sn
 data Walk {Ξ} : RTm Ξ → RTm Ξ → Set where
   w-ne  : {C p : RTm Ξ} → SNe C → Walk C p
   w-exp : {C C' p : RTm Ξ} → SNRed C C' → Walk C' p → Walk C p
-  w-ι   : {j p : RTm Ξ} → Walk (dι j) p
+  w-ι   : {p : RTm Ξ} → Walk dι p
   w-σ   : {S f p : RTm Ξ} → Walk (app f (fst p)) (snd p) → Walk (dσ S f) p
   w-ρ   : {j C p : RTm Ξ} → Walk C (snd p) → Walk (dρ j C) p
 
-walkOf : {I₀ D C : RTm Ξ} {⊩I : ⊩₀ (El I₀)} (KD : IKInterp ⊩I D) (KC : IKInterp ⊩I C)
-         {i p : RTm Ξ} → ILift (ikpredsOf KC) (IMuMem (ikpredsOf KD)) i p → Walk C p
-walkOf KD (iki-ne n) l = w-ne n
-walkOf KD (iki-exp r k) l = w-exp r (walkOf KD k l)
-walkOf KD (iki-ι _) l = w-ι
-walkOf KD (iki-σ _ _ w k) {p = p} (sn , (q , rest)) = w-σ (walkOf KD (k (fst p) q) rest)
-walkOf KD (iki-ρ _ vj k) (sn , (_ , rest)) = w-ρ (walkOf KD k rest)
+walkOf : {I₀ D C : RTm Ξ} {⊩I : ⊩₀ (El I₀)} (KF : IKFam ⊩I D) (KC : IKInterp ⊩I C)
+         {p : RTm Ξ} → ILift (ikpredsOf KC) (Mem KF) p → Walk C p
+walkOf KF (iki-ne n) l = w-ne n
+walkOf KF (iki-exp r k) l = w-exp r (walkOf KF k l)
+walkOf KF iki-ι l = w-ι
+walkOf KF (iki-σ _ _ w k) {p = p} (sn , (q , rest)) = w-σ (walkOf KF (k (fst p) q) rest)
+walkOf KF (iki-ρ _ vj k) (sn , (_ , rest)) = w-ρ (walkOf KF k rest)
 
 -- the three telescope heads invert through a renaming (generated: one
 -- clause per term former, no catch-all).
 
-ren-dι-inv : {ρ : Ren Θ Ξ} (C : RTm Θ) {j : RTm Ξ} → dι j ≡ renTm ρ C →
-             Σ (RTm Θ) (λ j₀ → (C ≡ dι j₀) × (j ≡ renTm ρ j₀))
-ren-dι-inv (dι j₀) refl = j₀ , (refl , refl)
+ren-dι-inv : {ρ : Ren Θ Ξ} (C : RTm Θ) → dι ≡ renTm ρ C → C ≡ dι
+ren-dι-inv dι refl = refl
 ren-dι-inv (var _) ()
 ren-dι-inv (lam _) ()
 ren-dι-inv (app _ _) ()
@@ -308,7 +315,7 @@ ren-dι-inv (con _) ()
 ren-dι-inv (ielim _ _ _ _) ()
 ren-dι-inv (dσ _ _) ()
 ren-dι-inv (dρ _ _) ()
-ren-dι-inv (dpay _ _ _ _) ()
+ren-dι-inv (dpay _ _ _) ()
 ren-dι-inv (dih _ _ _ _) ()
 ren-dι-inv fzero ()
 ren-dι-inv (fsuc _) ()
@@ -348,9 +355,9 @@ ren-dσ-inv (nsuc _) ()
 ren-dσ-inv (natrec _ _ _) ()
 ren-dσ-inv (con _) ()
 ren-dσ-inv (ielim _ _ _ _) ()
-ren-dσ-inv (dι _) ()
+ren-dσ-inv dι ()
 ren-dσ-inv (dρ _ _) ()
-ren-dσ-inv (dpay _ _ _ _) ()
+ren-dσ-inv (dpay _ _ _) ()
 ren-dσ-inv (dih _ _ _ _) ()
 ren-dσ-inv fzero ()
 ren-dσ-inv (fsuc _) ()
@@ -390,9 +397,9 @@ ren-dρ-inv (nsuc _) ()
 ren-dρ-inv (natrec _ _ _) ()
 ren-dρ-inv (con _) ()
 ren-dρ-inv (ielim _ _ _ _) ()
-ren-dρ-inv (dι _) ()
+ren-dρ-inv dι ()
 ren-dρ-inv (dσ _ _) ()
-ren-dρ-inv (dpay _ _ _ _) ()
+ren-dρ-inv (dpay _ _ _) ()
 ren-dρ-inv (dih _ _ _ _) ()
 ren-dρ-inv fzero ()
 ren-dρ-inv (fsuc _) ()
@@ -410,7 +417,7 @@ walk-anti (w-ne n) refl refl = w-ne (sne-anti n)
 walk-anti (w-exp r k) refl ep with snr-anti r
 ... | C₀ , (r₀ , e₀) = w-exp r₀ (walk-anti k e₀ ep)
 walk-anti {C = C} w-ι e ep with ren-dι-inv C e
-... | j₀ , (refl , _) = w-ι
+... | refl = w-ι
 walk-anti {C = C} (w-σ k) e ep with ren-dσ-inv C e
 ... | S₀ , (f₀ , (refl , (_ , ef))) = w-σ (walk-anti k (cong₂ app ef (cong fst ep)) (cong snd ep))
 walk-anti {C = C} (w-ρ k) e ep with ren-dρ-inv C e
@@ -421,23 +428,23 @@ walk-anti {C = C} (w-ρ k) e ep with ren-dρ-inv C e
 --    binder; its SN comes back from the tail's instance at `x₀` (`sn-body`).
 ------------------------------------------------------------------------
 
-sn-dpay : (x₀ : Var Ξ) {I D C i I₀ : RTm Ξ} {⊩I : ⊩₀ (El I₀)} →
-          SN I → SN D → SN i → IKInterp ⊩I C → SN (dpay I D C i)
-sn-dpay x₀ snI snD sni (iki-ne n) = sn-ne (sne-dpay snI snD (sn-ne n) sni (sne→dstk n))
-sn-dpay x₀ snI snD sni (iki-exp r k) = sn-exp (snr-dpayᶜ r) (sn-dpay x₀ snI snD sni k)
-sn-dpay x₀ snI snD sni (iki-ι sj) = sn-exp (snr-dpay-ι snD) (sn-cId snI sj sni)
-sn-dpay x₀ {I = I} {D = D} {i = i} snI snD sni (iki-σ {S = S} {f = f} sS sf w k) =
+sn-dpay : (x₀ : Var Ξ) {I D C I₀ : RTm Ξ} {⊩I : ⊩₀ (El I₀)} →
+          SN I → SN D → IKInterp ⊩I C → SN (dpay I D C)
+sn-dpay x₀ snI snD (iki-ne n) = sn-ne (sne-dpay snI snD (sn-ne n) (sne→dstk n))
+sn-dpay x₀ snI snD (iki-exp r k) = sn-exp (snr-dpayᶜ r) (sn-dpay x₀ snI snD k)
+sn-dpay x₀ snI snD iki-ι = sn-exp (snr-dpay-ι snI snD) sn-cUnit
+sn-dpay x₀ {I = I} {D = D} snI snD (iki-σ {S = S} {f = f} sS sf w k) =
   sn-exp snr-dpay-σ
-    (sn-cΣ sS (sn-body x₀ (subst SN (sym (cong₄ (λ a b g c → dpay a b (app g (var x₀)) c)
+    (sn-cΣ sS (sn-body x₀ (subst SN (sym (cong₃ (λ a b g → dpay a b (app g (var x₀)))
                                                (wk-cancel-tm (var x₀) I) (wk-cancel-tm (var x₀) D)
-                                               (wk-cancel-tm (var x₀) f) (wk-cancel-tm (var x₀) i)))
-                                   (sn-dpay x₀ snI snD sni (k (var x₀) (CR3₀ w (sne-var x₀)))))))
-sn-dpay x₀ {I = I} {D = D} {i = i} snI snD sni (iki-ρ {j = j} {C = C} sj _ k) =
+                                               (wk-cancel-tm (var x₀) f)))
+                                   (sn-dpay x₀ snI snD (k (var x₀) (CR3₀ w (sne-var x₀)))))))
+sn-dpay x₀ {I = I} {D = D} snI snD (iki-ρ {j = j} {C = C} sj _ k) =
   sn-exp snr-dpay-ρ
     (sn-cΣ (sn-cIMu snI snD sj)
-           (sn-body x₀ (subst SN (sym (cong₄ dpay (wk-cancel-tm (var x₀) I) (wk-cancel-tm (var x₀) D)
-                                                  (wk-cancel-tm (var x₀) C) (wk-cancel-tm (var x₀) i)))
-                              (sn-dpay x₀ snI snD sni k))))
+           (sn-body x₀ (subst SN (sym (cong₃ dpay (wk-cancel-tm (var x₀) I) (wk-cancel-tm (var x₀) D)
+                                                  (wk-cancel-tm (var x₀) C)))
+                              (sn-dpay x₀ snI snD k))))
 
 ------------------------------------------------------------------------
 -- 4. ★★★ THE ELIMINATOR'S SEMANTICS.  Induction on the family's membership
@@ -451,12 +458,13 @@ sn-dpay x₀ {I = I} {D = D} {i = i} snI snD sni (iki-ρ {j = j} {C = C} sj _ k)
 ------------------------------------------------------------------------
 
 -- an `ILift` carries SN at its root
-ilift-sn : {C : RTm Ξ} (kp : IKPred Ξ C) {P : RTm Ξ → RTm Ξ → Set} {i t : RTm Ξ} →
-           ILift kp P i t → SN t
+ilift-sn : {PI : RTm Ξ → Set} {C : RTm Ξ} (kp : IKPred Ξ PI C)
+           {P : (j : RTm Ξ) → PI j → RTm Ξ → Set} {t : RTm Ξ} →
+           ILift kp P t → SN t
 ilift-sn ikp-ne        h = h
-ilift-sn ikp-ι         h = projl h
+ilift-sn ikp-ι         h = h
 ilift-sn (ikp-σ Q k)   h = projl h
-ilift-sn (ikp-ρ k)     h = projl h
+ilift-sn (ikp-ρ q k)   h = projl h
 ilift-sn (ikp-exp r k) h = ilift-sn k h
 
 -- the method's two domain casts
@@ -464,13 +472,10 @@ ilift-sn (ikp-exp r k) h = ilift-sn k h
 Π-dom refl = refl
 
 module ElimSem {I D I₀ e : RTm Ξ} {M : RTy ((Ξ ∙) ∙)}
-  (cI : I ≅ I₀) (⊩I : ⊩₀ (El I₀)) (K : IKInterp ⊩I D)
-  (MotC : (j u : RTm Ξ) → ⊩I ⊩₀∋ j → SN u → IMuMem (ikpredsOf K) j u → ⊩₁ (iinst j u M))
+  (cI : I ≅ I₀) (⊩I : ⊩₀ (El I₀)) (snD : SN D) (KF : IKFam ⊩I D)
+  (MotC : (j u : RTm Ξ) (hj : ⊩I ⊩₀∋ j) → SN u → Mem KF j hj u → ⊩₁ (iinst j u M))
   (Rₑ : ⊩₁ (MethTy I D M)) (hₑ : Rₑ ⊩₁∋ e)
   where
-
-  snD : SN D
-  snD = ikinterp-sn K
 
   snE : SN e
   snE = CR1₁ Rₑ hₑ
@@ -482,11 +487,11 @@ module ElimSem {I D I₀ e : RTm Ξ} {M : RTy ((Ξ ∙) ∙)}
   idx : (j : RTm Ξ) → ⊩I ⊩₀∋ j → (emb ⊩I') ⊩₁∋ j
   idx j hj = projl (emb-coh ⊩I') j (projl (irrel₀ (El≅ (csym cI)) ⊩I ⊩I') j hj)
 
-  go : (j u : RTm Ξ) (hj : ⊩I ⊩₀∋ j) (snu : SN u) (mm : IMuMem (ikpredsOf K) j u) →
+  go : (j u : RTm Ξ) (hj : ⊩I ⊩₀∋ j) (snu : SN u) (mm : Mem KF j hj u) →
        (MotC j u hj snu mm) ⊩₁∋ ielim D j e u
-  dihSem : {C : RTm Ξ} (KC : IKInterp ⊩I C) {j p : RTm Ξ}
-           (l : ILift (ikpredsOf KC) (IMuMem (ikpredsOf K)) j p) →
-           (dihTy K MotC KC l) ⊩₁∋ dih D e C p
+  dihSem : {C : RTm Ξ} (KC : IKInterp ⊩I C) {p : RTm Ξ}
+           (l : ILift (ikpredsOf KC) (Mem KF) p) →
+           (dihTy KF MotC KC l) ⊩₁∋ dih D e C p
 
   go j u hj snu (imm-ne nt) =
     CR3₁ (MotC j u hj snu (imm-ne nt))
@@ -500,37 +505,39 @@ module ElimSem {I D I₀ e : RTm Ξ} {M : RTy ((Ξ ∙) ∙)}
     exp₁ (MotC j (con p) hj snu (imm-con l)) (snr-ι snD (CR1₀ ⊩I hj) snE snp)
       (projl (irrel₁ crflᵀ (dfst a₃) (MotC j (con p) hj snu (imm-con l))) _ (dsnd a₃))
     where
-    snp = ilift-sn (ikpredsOf K) l
-    a₁ = relTy (Π-dom (cong₃ (λ a b c → El (dpay a b c j))
-                             (wk-cancel-tm j I) (wk-cancel-tm j D) (wk-cancel-tm j D)))
+    Kj = KF j hj
+    snp = ilift-sn (ikpredsOf Kj) l
+    a₁ = relTy (Π-dom (cong₂ (λ a b → El (dpay a b (app b j)))
+                             (wk-cancel-tm j I) (wk-cancel-tm j D)))
                (⊩₁-app Rₑ (emb ⊩I') hₑ (idx j hj))
-    S₂ = emb (payInterp₀ {i = j} cI crfl ⊩I K K)
-    a₂ = relTy (Π-dom (cong₄ DIh (ww-cancel p j D) (wk2M-cancel p j M) (ww-cancel p j D) refl))
+    S₂ = emb (payInterp₀ cI crfl ⊩I KF Kj)
+    a₂ = relTy (Π-dom (cong₄ DIh (ww-cancel p j D) (wk2M-cancel p j M)
+                             (cong₂ app (ww-cancel p j D) (wk-cancel-tm p j)) refl))
                (⊩₁-app (dfst a₁) S₂ (dsnd a₁)
-                       (projl (emb-coh (payInterp₀ {i = j} cI crfl ⊩I K K)) p
-                              (liftPay₀ cI crfl ⊩I K K l)))
-    a₃ = relTy (meth-inst (dih D e D p) p j M)
-               (⊩₁-app (dfst a₂) (dihTy K MotC K l) (dsnd a₂) (dihSem K l))
+                       (projl (emb-coh (payInterp₀ cI crfl ⊩I KF Kj)) p
+                              (liftPay₀ cI crfl ⊩I KF Kj l)))
+    a₃ = relTy (meth-inst (dih D e (app D j) p) p j M)
+               (⊩₁-app (dfst a₂) (dihTy KF MotC Kj l) (dsnd a₂) (dihSem Kj l))
 
   dihSem (iki-ne n) {p = p} l =
     sn-ne (sne-dih snD snE (sn-ne n) l (sne→dstk n))
   dihSem (iki-exp r k) l =
-    bwd₁-mem⁻ (stepᵀ (ξ-DIhᶜ (snr→⟶ r)) doneᵀ) (dihTy K MotC k l)
-      (exp₁ (dihTy K MotC k l) (snr-dihᶜ r) (dihSem k l))
-  dihSem (iki-ι sj) l =
-    sn-exp (snr-dih-ι snD snE sj (projl l)) sn-unit
+    bwd₁-mem⁻ (stepᵀ (ξ-DIhᶜ (snr→⟶ r)) doneᵀ) (dihTy KF MotC k l)
+      (exp₁ (dihTy KF MotC k l) (snr-dihᶜ r) (dihSem k l))
+  dihSem iki-ι l =
+    sn-exp (snr-dih-ι snD snE l) sn-unit
   dihSem (iki-σ sS sf w k) {p = p} (sn , (q , rest)) =
-    bwd₁-mem⁻ (stepᵀ (DIh-σ _ _ _ _ _) doneᵀ) (dihTy K MotC (k (fst p) q) rest)
-      (exp₁ (dihTy K MotC (k (fst p) q) rest) (snr-dih-σ sS) (dihSem (k (fst p) q) rest))
+    bwd₁-mem⁻ (stepᵀ (DIh-σ _ _ _ _ _) doneᵀ) (dihTy KF MotC (k (fst p) q) rest)
+      (exp₁ (dihTy KF MotC (k (fst p) q) rest) (snr-dih-σ sS) (dihSem (k (fst p) q) rest))
   dihSem (iki-ρ {j = j'} {C = C} sj vj k) {p = p} (sn , ((snf , m) , rest)) =
-    exp₁ (dihTy K MotC (iki-ρ sj vj k) (sn , ((snf , m) , rest))) snr-dih-ρ
+    exp₁ (dihTy KF MotC (iki-ρ sj vj k) (sn , ((snf , m) , rest))) snr-dih-ρ
       (sem-pair (stepᵀ (DIh-ρ D M j' C p) doneᵀ) (MotC j' (fst p) vj snf m)
-                (λ u r → ⊩₁cast (sym (wk-cancel u (DIh D M C (snd p)))) (dihTy K MotC k rest))
+                (λ u r → ⊩₁cast (sym (wk-cancel u (DIh D M C (snd p)))) (dihTy KF MotC k rest))
                 {a = ielim D j' e (fst p)} {b = dih D e C (snd p)}
-                (CR1₁ (MotC j' (fst p) vj snf m) hf) (CR1₁ (dihTy K MotC k rest) hs)
+                (CR1₁ (MotC j' (fst p) vj snf m) hf) (CR1₁ (dihTy KF MotC k rest) hs)
                 hf
                 (⊩₁cast-mem (sym (wk-cancel (ielim D j' e (fst p)) (DIh D M C (snd p))))
-                            (dihTy K MotC k rest) hs))
+                            (dihTy KF MotC k rest) hs))
     where
     hf = go j' (fst p) vj snf m
     hs = dihSem k rest
@@ -559,6 +566,15 @@ idxMem {j = j} cI ⊩I hj =
 -- a telescope's interpretation, re-based on the family's index witness
 rebase : {I C I₀ : RTm Ξ} → DescView I C → (⊩I : ⊩₀ (El I₀)) → I ≅ I₀ → IKInterp ⊩I C
 rebase (mkDV I₁ c₁ ⊩I₁ K) ⊩I cI = ikinterp-irrel (El≅ (ctrn (csym c₁) cI)) ⊩I₁ ⊩I K
+
+-- ★ D074: a DESCRIPTION `D ∷ Π (El I) (Desc I)` gives a telescope
+--   interpretation over every valid index — its fibre `D j`.
+famInterp : {I D I₀ : RTm Ξ} (cI : I ≅ I₀) (⊩I : ⊩₀ (El I₀)) → Rel (DescF I) D → IKFam ⊩I D
+famInterp {I = I} {D = D} cI ⊩I h j hj = rebase (desc-view (dfst a) (dsnd a)) ⊩I cI
+  where
+    a : Rel (Desc I) (app D j)
+    a = relTy (cong Desc (wk-cancel-tm j I))
+              (⊩₁-app (dfst h) (emb (conv₀ (El≅ (csym cI)) ⊩I)) (dsnd h) (idxMem cI ⊩I hj))
 
 -- the `dσ` branch's type at a field value is the family's own `Desc I`
 wk-tail : {Θ : Cx} (σ : Sub Θ Ξ) (I : RTm Θ) (v : RTm Ξ) →
@@ -616,7 +632,7 @@ single2-cons {Θ = Θ} σ x y b = trans (subTm-subTm b) (subTm-cong pt b)
 ... | mkΣRed _ _ () _ _
 Σ-parts (⊩₁Id p) x₀ with Σ-reduct p
 ... | mkΣRed _ _ () _ _
-Σ-parts (⊩₁IMu p _ _ _ _) x₀ with Σ-reduct p
+Σ-parts (⊩₁IMu p _ _ _ _ _ _) x₀ with Σ-reduct p
 ... | mkΣRed _ _ () _ _
 Σ-parts (⊩₁Fin p) x₀ with Σ-reduct p
 ... | mkΣRed _ _ () _ _
