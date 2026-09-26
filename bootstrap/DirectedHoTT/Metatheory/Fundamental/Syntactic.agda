@@ -10,119 +10,96 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Metatheory.Fundamental.Syntactic where
+open import DirectedHoTT.Metatheory.RedCong
+  using ( ren-comm2; ren-comm; ren-comm-ext; pwShift-ren )
 open import normalizer.Syntax.Types
   using ( _≡_; refl; sym; trans; cong; cong₂; subst; Σ; _,_; _×_; ⊥; ⊥-elim )
 
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
-  using ( Cx; ε; _∙; Var; vz; vs
-        ; RTy; base; U; Π; Σ'; El; Hom; Id; Hom-cong₃; Id-cong₃; ⌜Hom⌝-cong₃; tr-cong₃; ap-cong₃; ⌜Id⌝-cong₃; jsub-cong₃
-        ; RTm; var; lam; app; pair; fst; snd; absurd; ordtr; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝; ⌜Hom⌝; hrefl; tr; ap
-        ; ⌜Id⌝; idrefl; jsub
-        ; Unit; Nat; unit; nzero; nsuc; natrec; natrec-cong₃; ⌜Nat⌝; ⌜Unit⌝; ⌜Mu⌝
-        ; ordtr-cong₅
-        ; Ren; extR; renTy; renTm
-        ; Sub; subTy; subTm; extS; idₛ
-        ; _∘ᵣ_
-        ; subTy-cong; subTm-cong
-        ; subTy-renTy; subTm-renTm
-        ; renTy-subTy; renTm-subTm
-        ; subTy-subTy; subTm-subTm
-        ; subTy-id; subTm-id; renTm-renTm; renTm-cong
-        ; Desc; Mu; con; elim; lookupD; sel; fields; ren-fields; ren-sel
-        ; isingle; ren-ifieldsⁱ
-        ; IMu; icon; ielim; ⌜IMu⌝; ICon; IDesc; iι; iρ; iκ; inil; _◂_; ipayTy; ilookupD; _∈ID_; hereID; thereID; iihs; ifields; εwkTm )
+  using ( Cx; ε; _∙; Var; vz; vs; RTy; base; U; Π; Σ'; El; Hom; Id; Hom-cong₃
+        ; Id-cong₃; ⌜Hom⌝-cong₃; tr-cong₃; ap-cong₃; ⌜Id⌝-cong₃; jsub-cong₃
+        ; RTm; var; lam; app; pair; fst; snd; absurd; ordtr; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝
+        ; ⌜Hom⌝; hrefl; tr; ap; ⌜Id⌝; idrefl; jsub; Unit; Nat; unit; nzero
+        ; nsuc; natrec; natrec-cong₃; ⌜Nat⌝; ⌜Unit⌝; ordtr-cong₅; Ren; extR
+        ; renTy; renTm; Sub; subTy; subTm; extS; idₛ; _∘ᵣ_; subTy-cong
+        ; subTm-cong; subTy-renTy; subTm-renTm; renTy-subTy; renTm-subTm
+        ; subTy-subTy; subTm-subTm; subTy-id; subTm-id; renTm-renTm
+        ; renTm-cong; Desc; con; IMu; ielim; ⌜IMu⌝; εwkTm; cong₃; DIh; Fin
+        ; ⌜Fin⌝; dι; dσ; dρ; dpay; dih; fzero; fsuc; fcase; fcase0; psplit
+        ; cong₄ )
 open import DirectedHoTT.Spec.Typing
-  using ( single; nrs
-        ; _⟶_; _⟶*_; done; step
-        ; β; βfst; βsnd; ξ-lam; ξ-appˡ; ξ-appʳ; ξ-pairˡ; ξ-pairʳ; ξ-absurdᶜ; ξ-absurdᵉ; ordtr-z; ordtr-szz; ordtr-ssz; ordtr-szs; ordtr-sss
-        ; ξ-ordtrᵃ; ξ-ordtrᵗ; ξ-ordtrᵘ; ξ-ordtrᵖ; ξ-ordtrq; ξ-fst; ξ-snd
-        ; ξ-⌜Π⌝ˡ; ξ-⌜Π⌝ʳ; ξ-⌜Σ⌝ˡ; ξ-⌜Σ⌝ʳ; ξ-⌜Hom⌝ᶜ; ξ-⌜Hom⌝ˡ; ξ-⌜Hom⌝ʳ
-        ; ξ-hreflᶜ; ξ-hreflᵃ; hrefl-pw; tr-J-base; tr-J-Σ; tr-J-Hom; tr-taut
-        ; tr-pw; ξ-trᵈ; ξ-trᵖ; ξ-trᵉ; ap-J; ξ-apᶜ; ξ-apᵇ; ξ-apᵖ
-        ; ξ-Σˡ; ξ-Σʳ
-        ; _≅_
-        ; _≅ᵀ_; crflᵀ; csymᵀ; ctrnᵀ
-        ; Ctx; ◇; _▹_; ⌊_⌋
-        ; _∋_∷_; here; there
-        ; _⊢_∷_; ⊢var; ⊢lam; ⊢app; ⊢pair; ⊢fst; ⊢snd; ⊢absurd
-        ; El-⌜Hom⌝; ξ-El; El-⌜Π⌝; _⟶ᵀ_; El-⌜base⌝; El-⌜Σ⌝; El-⌜Id⌝
-        ; El-⌜Nat⌝; El-⌜Unit⌝
-        ; ξ-Idᵀ; ξ-Idˡ; ξ-Idʳ
-        ; Hom-U; Hom-Π; ξ-Homᵀ; ξ-Homˡ; ξ-Homʳ
-        ; Hom-Nat-z; Hom-Nat-sz; Hom-Nat-ss
-        ; ⊢⌜base⌝; ⊢⌜Π⌝; ⊢⌜Σ⌝; ⊢⌜Hom⌝; ⊢hrefl; ⊢tr; ⊢trU; ⊢ap; ⊢conv
-        ; ⊢⌜Nat⌝; ⊢⌜Unit⌝
-        ; ⊢⌜Id⌝; ⊢idrefl; ⊢jsub
-        ; _⊢ty_; ty-base; ty-U; ty-Π; ty-Σ; ty-El; ty-Hom; ty-Id; ty-Unit; ty-Nat
-        ; ⊢unit; ⊢nzero; ⊢nsuc; ⊢natrec
-        ; ⊢ctx_; c-◇; c-▹
-        ; ⊢id; ⊢appex )
+  using ( single; nrs; _⟶_; _⟶*_; done; step; β; βfst; βsnd; ξ-lam; ξ-appˡ
+        ; ξ-appʳ; ξ-pairˡ; ξ-pairʳ; ξ-absurdᶜ; ξ-absurdᵉ; ordtr-z; ordtr-szz
+        ; ordtr-ssz; ordtr-szs; ordtr-sss; ξ-ordtrᵃ; ξ-ordtrᵗ; ξ-ordtrᵘ
+        ; ξ-ordtrᵖ; ξ-ordtrq; ξ-fst; ξ-snd; ξ-⌜Π⌝ˡ; ξ-⌜Π⌝ʳ; ξ-⌜Σ⌝ˡ; ξ-⌜Σ⌝ʳ
+        ; ξ-⌜Hom⌝ᶜ; ξ-⌜Hom⌝ˡ; ξ-⌜Hom⌝ʳ; ξ-hreflᶜ; ξ-hreflᵃ; hrefl-pw
+        ; tr-J-base; tr-J-Σ; tr-J-Hom; tr-taut; tr-pw; ξ-trᵈ; ξ-trᵖ; ξ-trᵉ
+        ; ap-J; ξ-apᶜ; ξ-apᵇ; ξ-apᵖ; ξ-Σˡ; ξ-Σʳ; _≅_; _≅ᵀ_; crflᵀ; csymᵀ
+        ; ctrnᵀ; Ctx; ◇; _▹_; ⌊_⌋; _∋_∷_; here; there; _⊢_∷_; ⊢var; ⊢lam; ⊢app
+        ; ⊢pair; ⊢fst; ⊢snd; ⊢absurd; El-⌜Hom⌝; ξ-El; El-⌜Π⌝; _⟶ᵀ_; El-⌜base⌝
+        ; El-⌜Σ⌝; El-⌜Id⌝; El-⌜Nat⌝; El-⌜Unit⌝; ξ-Idᵀ; ξ-Idˡ; ξ-Idʳ; Hom-U
+        ; Hom-Π; ξ-Homᵀ; ξ-Homˡ; ξ-Homʳ; Hom-Nat-z; Hom-Nat-sz; Hom-Nat-ss
+        ; ⊢⌜base⌝; ⊢⌜Π⌝; ⊢⌜Σ⌝; ⊢⌜Hom⌝; ⊢hrefl; ⊢tr; ⊢trU; ⊢ap; ⊢conv; ⊢⌜Nat⌝
+        ; ⊢⌜Unit⌝; ⊢⌜Id⌝; ⊢idrefl; ⊢jsub; _⊢ty_; ty-base; ty-U; ty-Π; ty-Σ
+        ; ty-El; ty-Hom; ty-Id; ty-Unit; ty-Nat; ⊢unit; ⊢nzero; ⊢nsuc; ⊢natrec
+        ; ⊢ctx_; c-◇; c-▹; ⊢id; ⊢appex; single2 )
 open import DirectedHoTT.Spec.Variance
-  using ( 𝔹; true; false; occTm; subTm-occ
-        ; pw?; stkC?; stkA?; pwBody; pwDom; pwShift
-        ; pw?-ren; stkC?-ren; stkA?-ren; pwBody-ren; wk-ren-tm; pw?-sub
-        ; stkC?→stkA?
-        ; wk-sub-tm; stk⊥pw; pw⊥stk; flat?; flat→stk; flat?-sub
-        ; eqv; occ-sub; occ-ren-tm; avoids-wk )
-open import DirectedHoTT.Metatheory.SubjectReductionBase using ( ≅ᵀ-sub; sub-comm; wk-sub )
-open import DirectedHoTT.Metatheory.Confluence using ( pwShift-ren; stkC?-red; stkA?-red; subTm-monoˢ; single-mono; ⟶*-trans; ren-comm; ren-comm-ext )
-open import DirectedHoTT.Algorithm.DecideConversion using ( Dec; dec-conv )
+  using ( 𝔹; true; false; occTm; subTm-occ; pw?; stkC?; stkA?; pwBody; pwDom
+        ; pwShift; pw?-ren; stkC?-ren; stkA?-ren; pwBody-ren; wk-ren-tm
+        ; pw?-sub; stkC?→stkA?; wk-sub-tm; stk⊥pw; pw⊥stk; flat?; flat→stk
+        ; flat?-sub; eqv; occ-sub; occ-ren-tm; avoids-wk; ren-as-sub )
+open import DirectedHoTT.Metatheory.SubjectReductionBase
+  using ( ≅ᵀ-sub; sub-comm; wk-sub )
+open import DirectedHoTT.Metatheory.Confluence
+  using ( )
+open import DirectedHoTT.Algorithm.DecideConversion
+  using ( dec-conv )
 open import DirectedHoTT.Metatheory.Injectivity
-  using ( _⟶ᵀ*_; doneᵀ; stepᵀ; ⟶ᵀ*-trans; ⟶ᵀ*-El; confluentᵀ; church-rosserᵀ; Π-inj
-        ; red→≅ᵀ; Π-reduct; Σ-reduct; mkΠRed; mkΣRed
-        ; Id-reduct; ⟶ᵀ*-Homᵀ )
+  using ( confluentᵀ; church-rosserᵀ; Π-inj; Π-reduct; Σ-reduct; mkΠRed
+        ; mkΣRed; Id-reduct )
 open import DirectedHoTT.Metatheory.SubjectReduction
-  using ( HomΠShape; hsΠ; hsH; hom-shape; hom-shapeN; nn-U; NoNat; pw-El-decode
-        ; HomRed; mkHomRed; Hom-to-Hom; homAmb→
-        ; HomToΠ; via-U; via-Π; hom-to-Π
-        ; U-reduct; wk-cancel-tm; ≅ᵀ-Homᵀ; gen-var; subTy-comm; subTy-monoˢ )
+  using ( HomΠShape; hsΠ; hsH; hom-shape; hom-shapeN; nn-U; NoNat
+        ; pw-El-decode; HomRed; mkHomRed; Hom-to-Hom; homAmb→; HomToΠ; via-U
+        ; via-Π; hom-to-Π; U-reduct; ≅ᵀ-Homᵀ; gen-var )
 open import DirectedHoTT.Metatheory.LogicalRelation
-  using ( SNe; sne-var; sne-app; sne-absurd; sne-fst; sne-snd; sne-hrefl; sne-tr; sne-ap; sne-jsub
-        ; Ne; ne-var; ne-app; ne-absurd; ne-fst; ne-snd; ne-hrefl; ne-tr; ne-ap; ne-jsub; homSem₁
-        ; SN; sn-ne; sn-lam; sn-pair; sn-cb; sn-cΠ; sn-cΣ; sn-cH; sn-cId; sn-idrefl; sn-exp
-        ; sn-cNat; sn-cUnit; sn-cMu; sn-cIMu; sn-icon; snr-J-IMu
-        ; sne-ielim; snr-ιi; snr-ielimᵗ
-        ; SNRed; snr-β; snr-βfst; snr-βsnd; snr-app; snr-fst; snr-snd
-        ; snr-hreflᶜ; snr-J-base; snr-J-Σ; snr-J-Id; snr-J-Unit; snr-J-Mu; snr-taut; snr-trᵖ; snr-ap-J; snr-apᵖ
-        ; snr-jsub-refl; snr-jsubᵖ
-        ; snr-natrec-zero; snr-natrec-suc; snr-natrecⁿ
-        ; sne-natrec; ne-natrec; sn-unit; sn-nzero; sn-nsuc
-        ; sne-ordtr; ne-ordtr; ordstk?; ordstk?-ren
-        ; ordstk?-redᵃ; ordstk?-redᵗ; ordstk?-redᵘ
-        ; snr-ordtr-z; snr-ordtr-szz; snr-ordtr-ssz; snr-ordtr-szs; snr-ordtr-sss
-        ; snr-ordtrᵃ; snr-ordtrᵗ; snr-ordtrᵘᶻ; snr-ordtrᵘˢ
-        ; NatMem; nm-ne; nm-zero; nm-suc; nm-exp; natmem-whred
-        ; ⊩₁Unit; ⊩₁Nat; natstk?; natstk?-ren; natstk?-red; sne→natstk; sn-whred
-        ; homNatSem; homNatSem₀; hns₀-in; bwd₀-mem⁻
-        ; StkHd; sh-Hom; sh-NatH; homnat?
-        ; trstk?-ren; apstk?-ren; idstk?-ren; nopw?-ren; trlam?-ren
-        ; idstk?-red; ⊩₀Id; ⊩₁Id; IdPay; idpay-transfer; idpay-peel; sne-nopay
-        ; nopw⊥pw; stk⊥dead; pw⊥dead; dead→nopw; snr-nonpw
-        ; snr-hrefl-pw; snr-J-Hom; snr-tr-pw; snr-tr-mot
-        ; deadmot?; deadmot?-red; deadmot?-ren; deadmot→nopw; stk→deadmot
-        ; nopw?-red; nopw?-red*
-        ; CSR; csr-here; csr-hom; csr→⟶; csr-nonpw; csr-stk⊥; sn-csr
-        ; csr-det
-        ; _⟶csr*_; csr-done; csr-step; csrs-hom
-        ; PayT; payChain; payT-exp; payT-whred; payT-irrel
-        ; payT-cast; payT-code; payHomT; _⟶snr*_; snr-done; snr-step
-        ; ⊩₀_; ⊩₀base; ⊩₀ne; ⊩₀Π; ⊩₀Σ; ⊩₀Hom; _⊩₀∋_; bwd₀; exp₁
-        ; ⊩₀Unit; ⊩₀Nat
-        ; base-nf; Unit-nf; Nat-nf; El-ne-reduct; mkElNe; Hom-stk-reduct; mkHomStk
-        ; nopw?; trlam?; stablecd?; stableA?; idstk?; sne→spine; wk-single; snr→⟶
-        ; exp₀; f≢t
-        ; mem-whred₁; homSem₀; homSem₀-mem-endpoints
-        ; sne→stablecd; sne→stableA; trstk?
-        ; ⊩₁_; ⊩₁base; ⊩₁U; ⊩₁ne; ⊩₁Π; ⊩₁Σ; ⊩₁Hom; _⊩₁∋_
-        ; bwd₁; irrel₁; conv₁; CR1₀; CR1₁; CR3₀; CR3₁
-        ; emb; emb-coh
-        ; sem-conv; sem-lam; sem-app; sem-fst; sem-snd; sem-pair
-        ; sem-El; sem-⌜base⌝; sem-⌜Π⌝; sem-⌜Σ⌝; sem-⌜Hom⌝; sem-hrefl
-        ; ⟶ᵀ*-sub
-        ; IsNormal; WN; mkWN; wn
-        ; projl; projr; dfst; dsnd
-        ; sne-elim; sn-con; snr-ι; snr-elimᵗ; mustk?; mustk?-ren )
+  using ( SNe; sne-var; sne-app; sne-absurd; sne-fst; sne-snd; sne-hrefl
+        ; sne-tr; sne-ap; sne-jsub; Ne; ne-var; ne-app; ne-absurd; ne-fst
+        ; ne-snd; ne-hrefl; ne-tr; ne-ap; ne-jsub; homSem₁; SN; sn-ne; sn-lam
+        ; sn-pair; sn-cb; sn-cΠ; sn-cΣ; sn-cH; sn-cId; sn-idrefl; sn-exp
+        ; sn-cNat; sn-cUnit; sn-cIMu; snr-J-IMu; sne-ielim; snr-ielimᵗ; SNRed
+        ; snr-β; snr-βfst; snr-βsnd; snr-app; snr-fst; snr-snd; snr-hreflᶜ
+        ; snr-J-base; snr-J-Σ; snr-J-Id; snr-J-Unit; snr-taut; snr-trᵖ
+        ; snr-ap-J; snr-apᵖ; snr-jsub-refl; snr-jsubᵖ; snr-natrec-zero
+        ; snr-natrec-suc; snr-natrecⁿ; sne-natrec; ne-natrec; sn-unit
+        ; sn-nzero; sn-nsuc; sne-ordtr; ne-ordtr; ordstk?; ordstk?-ren
+        ; ordstk?-redᵃ; ordstk?-redᵗ; ordstk?-redᵘ; snr-ordtr-z; snr-ordtr-szz
+        ; snr-ordtr-ssz; snr-ordtr-szs; snr-ordtr-sss; snr-ordtrᵃ; snr-ordtrᵗ
+        ; snr-ordtrᵘᶻ; snr-ordtrᵘˢ; NatMem; nm-ne; nm-zero; nm-suc; nm-exp
+        ; natmem-whred; ⊩₁Unit; ⊩₁Nat; natstk?-ren; natstk?-red; sne→natstk
+        ; sn-whred; homNatSem; homNatSem₀; hns₀-in; bwd₀-mem⁻; StkHd; sh-Hom
+        ; sh-NatH; homnat?; trstk?-ren; apstk?-ren; idstk?-ren; nopw?-ren
+        ; trlam?-ren; idstk?-red; ⊩₀Id; ⊩₁Id; IdPay; idpay-transfer
+        ; idpay-peel; sne-nopay; nopw⊥pw; stk⊥dead; pw⊥dead; dead→nopw
+        ; snr-nonpw; snr-hrefl-pw; snr-J-Hom; snr-tr-pw; snr-tr-mot
+        ; deadmot?-red; deadmot?-ren; deadmot→nopw; stk→deadmot; nopw?-red
+        ; nopw?-red*; CSR; csr-here; csr-hom; csr→⟶; csr-nonpw; csr-stk⊥
+        ; sn-csr; csr-det; _⟶csr*_; csr-done; csr-step; csrs-hom; PayT
+        ; payChain; payT-exp; payT-whred; payT-irrel; payT-cast; payT-code
+        ; payHomT; _⟶snr*_; snr-done; snr-step; ⊩₀_; ⊩₀base; ⊩₀ne; ⊩₀Π; ⊩₀Σ
+        ; ⊩₀Hom; _⊩₀∋_; bwd₀; exp₁; ⊩₀Unit; ⊩₀Nat; base-nf; Unit-nf; Nat-nf
+        ; El-ne-reduct; mkElNe; Hom-stk-reduct; mkHomStk; trlam?; sne→spine
+        ; snr→⟶; exp₀; f≢t; mem-whred₁; homSem₀; homSem₀-mem-endpoints
+        ; sne→stablecd; sne→stableA; trstk?; ⊩₁_; ⊩₁base; ⊩₁U; ⊩₁ne; ⊩₁Π; ⊩₁Σ
+        ; ⊩₁Hom; _⊩₁∋_; bwd₁; irrel₁; conv₁; CR1₀; CR1₁; CR3₀; CR3₁; emb
+        ; emb-coh; sem-conv; sem-lam; sem-app; sem-fst; sem-snd; sem-pair
+        ; sem-El; sem-⌜base⌝; sem-⌜Π⌝; sem-⌜Σ⌝; sem-⌜Hom⌝; sem-hrefl; ⟶ᵀ*-sub
+        ; IsNormal; WN; mkWN; wn; projl; projr; dfst; dsnd; sn-con; snr-ι
+        ; mustk?; mustk?-ren; dstk?-ren; sne-fcase; snr-dpay-ρ; snr-psplit-β
+        ; snr-dpay-σ; snr-fcase-s; sne-dih; finstk?-ren; sne-dpay; sn-cFin
+        ; sn-dι; sn-dρ; sn-dσ; sn-fsuc; sn-fzero; sne-fcase0; sne-psplit
+        ; snr-J-Fin; snr-dih-ι; snr-dih-ρ; snr-dih-σ; snr-dihᶜ; snr-dpay-ι
+        ; snr-dpayᶜ; snr-fcase-z; snr-fcaseᵗ; snr-psplitᵍ )
 
 
 private
@@ -175,62 +152,18 @@ subTy-var ρ (Σ' A B) =
 subTy-var ρ (El t)   = cong El (subTm-var ρ t)
 subTy-var ρ (Hom A t u) =
   Hom-cong₃ (subTy-var ρ A) (subTm-var ρ t) (subTm-var ρ u)
-subTy-var ρ (Mu D)   = refl
-subTy-var ρ (IMu Dⁱ Iⁱ i) = cong (IMu Dⁱ Iⁱ) (subTm-var ρ i)
+subTy-var ρ (IMu I D i) = cong₃ IMu (subTm-var ρ I) (subTm-var ρ D) (subTm-var ρ i)
+subTy-var ρ (Desc I) = cong Desc (subTm-var ρ I)
+subTy-var ρ (DIh D M C p) =
+  cong₄ DIh (subTm-var ρ D)
+            (trans (subTy-cong (exts2-var ρ) M) (subTy-var (extR (extR ρ)) M))
+            (subTm-var ρ C) (subTm-var ρ p)
+subTy-var ρ (Fin n) = refl
 subTy-var ρ (Id A t u) =
   Id-cong₃ (subTy-var ρ A) (subTm-var ρ t) (subTm-var ρ u)
-subTm-var ρ (var x)   = refl
-subTm-var ρ (lam t)   =
-  cong lam (trans (subTm-cong (exts-var ρ) t) (subTm-var (extR ρ) t))
-subTm-var ρ (app t u)  = cong₂ app (subTm-var ρ t) (subTm-var ρ u)
-subTm-var ρ (pair a b) = cong₂ pair (subTm-var ρ a) (subTm-var ρ b)
-subTm-var ρ (absurd c e) = cong₂ absurd (subTm-var ρ c) (subTm-var ρ e)
-subTm-var ρ (ordtr a t u p q) =
-  ordtr-cong₅ (subTm-var ρ a) (subTm-var ρ t) (subTm-var ρ u)
-              (subTm-var ρ p) (subTm-var ρ q)
-subTm-var ρ (fst p)    = cong fst (subTm-var ρ p)
-subTm-var ρ (snd p)    = cong snd (subTm-var ρ p)
-subTm-var ρ ⌜base⌝     = refl
-subTm-var ρ ⌜Nat⌝      = refl
-subTm-var ρ ⌜Unit⌝     = refl
-subTm-var ρ (⌜Mu⌝ Dᵐ)  = refl
-subTm-var ρ (⌜IMu⌝ Dⁱ Iⁱ i) = cong (⌜IMu⌝ Dⁱ Iⁱ) (subTm-var ρ i)
-subTm-var ρ unit       = refl
-subTm-var ρ nzero      = refl
-subTm-var ρ (nsuc n)   = cong nsuc (subTm-var ρ n)
-subTm-var ρ (con k q)  = cong (con k) (subTm-var ρ q)
-subTm-var ρ (elim D ms t) = cong₂ (elim D) (subTm-var ρ ms) (subTm-var ρ t)
-subTm-var ρ (icon k q) = cong (icon k) (subTm-var ρ q)
-subTm-var ρ (ielim D i ms t) =
-  trans (cong (λ z → ielim D z (subTm ⟨ ρ ⟩ᵣ ms) (subTm ⟨ ρ ⟩ᵣ t))
-              (subTm-var ρ i))
-        (cong₂ (ielim D (renTm ρ i)) (subTm-var ρ ms) (subTm-var ρ t))
-subTm-var ρ (natrec z w n) =
-  natrec-cong₃ (subTm-var ρ z)
-    (trans (subTm-cong (exts2-var ρ) w) (subTm-var (extR (extR ρ)) w))
-    (subTm-var ρ n)
-subTm-var ρ (⌜Π⌝ c d)  =
-  cong₂ ⌜Π⌝ (subTm-var ρ c)
-            (trans (subTm-cong (exts-var ρ) d) (subTm-var (extR ρ) d))
-subTm-var ρ (⌜Σ⌝ c d)  =
-  cong₂ ⌜Σ⌝ (subTm-var ρ c)
-            (trans (subTm-cong (exts-var ρ) d) (subTm-var (extR ρ) d))
-subTm-var ρ (⌜Hom⌝ c a b) =
-  ⌜Hom⌝-cong₃ (subTm-var ρ c) (subTm-var ρ a) (subTm-var ρ b)
-subTm-var ρ (hrefl c t) = cong₂ hrefl (subTm-var ρ c) (subTm-var ρ t)
-subTm-var ρ (tr d p e)  =
-  tr-cong₃ (trans (subTm-cong (exts-var ρ) d) (subTm-var (extR ρ) d))
-           (subTm-var ρ p) (subTm-var ρ e)
-subTm-var ρ (ap c b p)  =
-  ap-cong₃ (subTm-var ρ c)
-           (trans (subTm-cong (exts-var ρ) b) (subTm-var (extR ρ) b))
-           (subTm-var ρ p)
-subTm-var ρ (⌜Id⌝ c a b) =
-  ⌜Id⌝-cong₃ (subTm-var ρ c) (subTm-var ρ a) (subTm-var ρ b)
-subTm-var ρ (idrefl c t) = cong₂ idrefl (subTm-var ρ c) (subTm-var ρ t)
-subTm-var ρ (jsub d p e) =
-  jsub-cong₃ (trans (subTm-cong (exts-var ρ) d) (subTm-var (extR ρ) d))
-             (subTm-var ρ p) (subTm-var ρ e)
+-- ★ the TERM half is `Spec/Variance`'s generated `ren-as-sub` (⟨ ρ ⟩ᵣ is
+--   `var ∘ ρ` on the nose) — one statement, not a second enumeration.
+subTm-var ρ t = sym (ren-as-sub ρ t)
 
 -- (1b) single substitution commutes with renaming — what `snr-β` needs when
 -- reflected through a renaming (§2).
@@ -336,15 +269,9 @@ sne-anti {ρ = ρ} {t = natrec z w n} (sne-natrec hz hw hn key) =
              (trans (sym (natstk?-ren ρ n)) key)
 -- ★ INDUCTIVE TYPES: one classifier, so the key transports through
 -- `mustk?-ren` — `sne-natrec`'s shape exactly.
-sne-anti {ρ = ρ} {t = elim D ms t₀} (sne-elim hm ht key) =
-  sne-elim (sn-anti hm) (sn-anti ht)
-           (trans (sym (mustk?-ren ρ t₀)) key)
 -- ⚠ the INDEXED twin takes ONE MORE `SN`: `ielim` carries the index and
 --   `ξ-ielimⁱ` steps it, so `sne-ielim` has a fourth premise.  The key is
 --   still about the SCRUTINEE alone, so it rides the same `mustk?-ren`.
-sne-anti {ρ = ρ} {t = ielim D i ms t₀} (sne-ielim hi hm ht key) =
-  sne-ielim (sn-anti hi) (sn-anti hm) (sn-anti ht)
-            (trans (sym (mustk?-ren ρ t₀)) key)
 sne-anti {t = app t u}  (sne-app n s) = sne-app (sne-anti n) (sn-anti s)
 sne-anti {t = absurd c e} (sne-absurd sc sn₀) = sne-absurd (sn-anti sc) (sn-anti sn₀)
 -- ★★ WF stage E: three bounds, so the key transports through
@@ -365,6 +292,22 @@ sne-anti {ρ = ρ} {t = ap c b p} (sne-ap hc hb hp key) =
 sne-anti {ρ = ρ} {t = jsub d p e} (sne-jsub hd hp he key) =
   sne-jsub (sn-anti hd) (sn-anti hp) (sn-anti he)
            (trans (sym (idstk?-ren ρ p)) key)
+-- ★★ LEVITATED FAMILIES: each key transports through its classifier's
+--   `-ren`, `sne-natrec`'s shape; `psplit`'s neutral pair recurses.
+sne-anti {ρ = ρ} {t = ielim D i e t₀} (sne-ielim hD hi he ht key) =
+  sne-ielim (sn-anti hD) (sn-anti hi) (sn-anti he) (sn-anti ht)
+            (trans (sym (mustk?-ren ρ t₀)) key)
+sne-anti {ρ = ρ} {t = dpay I D C i} (sne-dpay hI hD hC hi key) =
+  sne-dpay (sn-anti hI) (sn-anti hD) (sn-anti hC) (sn-anti hi)
+           (trans (sym (dstk?-ren ρ C)) key)
+sne-anti {ρ = ρ} {t = dih D e C p} (sne-dih hD he hC hp key) =
+  sne-dih (sn-anti hD) (sn-anti he) (sn-anti hC) (sn-anti hp)
+          (trans (sym (dstk?-ren ρ C)) key)
+sne-anti {ρ = ρ} {t = fcase t₀ a b} (sne-fcase ht ha hb key) =
+  sne-fcase (sn-anti ht) (sn-anti ha) (sn-anti hb)
+            (trans (sym (finstk?-ren ρ t₀)) key)
+sne-anti {t = fcase0 t₀} (sne-fcase0 ht) = sne-fcase0 (sn-anti ht)
+sne-anti {t = psplit b q} (sne-psplit hb n) = sne-psplit (sn-anti hb) (sne-anti n)
 
 sn-anti {t = var x}    _              = sn-ne (sne-var x)
 sn-anti {t = unit}     _              = sn-unit
@@ -373,11 +316,6 @@ sn-anti {t = nsuc n}   (sn-nsuc h)    = sn-nsuc (sn-anti h)
 sn-anti {t = natrec z w n} (sn-ne nt) = sn-ne (sne-anti nt)
 sn-anti {t = natrec z w n} (sn-exp r h) with snr-anti r
 ... | t' , (r' , refl) = sn-exp r' (sn-anti h)
-sn-anti {t = con k q}  (sn-con h)     = sn-con (sn-anti h)
-sn-anti {t = elim D ms t₀} (sn-ne nt) = sn-ne (sne-anti nt)
-sn-anti {t = elim D ms t₀} (sn-exp r h) with snr-anti r
-... | t' , (r' , refl) = sn-exp r' (sn-anti h)
-sn-anti {t = icon k q} (sn-icon h)    = sn-icon (sn-anti h)
 sn-anti {t = ielim D i ms t₀} (sn-ne nt) = sn-ne (sne-anti nt)
 sn-anti {t = ielim D i ms t₀} (sn-exp r h) with snr-anti r
 ... | t' , (r' , refl) = sn-exp r' (sn-anti h)
@@ -386,10 +324,8 @@ sn-anti {t = pair a b} (sn-pair ha hb) = sn-pair (sn-anti ha) (sn-anti hb)
 sn-anti {t = ⌜base⌝}   _              = sn-cb
 sn-anti {t = ⌜Nat⌝}    _              = sn-cNat
 sn-anti {t = ⌜Unit⌝}   _              = sn-cUnit
-sn-anti {t = ⌜Mu⌝ Dᵐ}  _              = sn-cMu
 -- ⚠ NOT nullary like `⌜Mu⌝`: `⌜IMu⌝` carries the index, so its `SN` has a
 --   premise and anti-renaming has to recurse into it.
-sn-anti {t = ⌜IMu⌝ Dⁱ Iⁱ i} (sn-cIMu h) = sn-cIMu (sn-anti h)
 sn-anti {t = ⌜Π⌝ c d}  (sn-cΠ hc hd)  = sn-cΠ (sn-anti hc) (sn-anti hd)
 sn-anti {t = ⌜Σ⌝ c d}  (sn-cΣ hc hd)  = sn-cΣ (sn-anti hc) (sn-anti hd)
 sn-anti {t = ⌜Hom⌝ c a b} (sn-cH hc ha hb) =
@@ -426,6 +362,31 @@ sn-anti {t = fst p}    (sn-exp r h) with snr-anti r
 ... | t' , (r' , refl) = sn-exp r' (sn-anti h)
 sn-anti {t = snd p}    (sn-exp r h) with snr-anti r
 ... | t' , (r' , refl) = sn-exp r' (sn-anti h)
+-- ★★ LEVITATED FAMILIES: the constructors and codes recurse into their
+--   parts; the eliminators are `natrec`'s two rows (neutral / expansion),
+--   except `fcase0`, which never steps (`absurd`'s shape).
+sn-anti {t = ⌜IMu⌝ I D i} (sn-cIMu hI hD hi) = sn-cIMu (sn-anti hI) (sn-anti hD) (sn-anti hi)
+sn-anti {t = ⌜Fin⌝ n}  _               = sn-cFin
+sn-anti {t = con q}    (sn-con h)      = sn-con (sn-anti h)
+sn-anti {t = dι j}     (sn-dι h)       = sn-dι (sn-anti h)
+sn-anti {t = dσ S f}   (sn-dσ h₁ h₂)   = sn-dσ (sn-anti h₁) (sn-anti h₂)
+sn-anti {t = dρ j C}   (sn-dρ h₁ h₂)   = sn-dρ (sn-anti h₁) (sn-anti h₂)
+sn-anti {t = fzero}    _               = sn-fzero
+sn-anti {t = fsuc t₀}  (sn-fsuc h)     = sn-fsuc (sn-anti h)
+sn-anti {t = dpay I D C i} (sn-ne nt) = sn-ne (sne-anti nt)
+sn-anti {t = dpay I D C i} (sn-exp r h) with snr-anti r
+... | t' , (r' , refl) = sn-exp r' (sn-anti h)
+sn-anti {t = dih D e C p} (sn-ne nt) = sn-ne (sne-anti nt)
+sn-anti {t = dih D e C p} (sn-exp r h) with snr-anti r
+... | t' , (r' , refl) = sn-exp r' (sn-anti h)
+sn-anti {t = fcase t₀ a b} (sn-ne nt) = sn-ne (sne-anti nt)
+sn-anti {t = fcase t₀ a b} (sn-exp r h) with snr-anti r
+... | t' , (r' , refl) = sn-exp r' (sn-anti h)
+sn-anti {t = fcase0 t₀} (sn-ne nt) = sn-ne (sne-anti nt)
+sn-anti {t = fcase0 t₀} (sn-exp () h)
+sn-anti {t = psplit b q} (sn-ne nt) = sn-ne (sne-anti nt)
+sn-anti {t = psplit b q} (sn-exp r h) with snr-anti r
+... | t' , (r' , refl) = sn-exp r' (sn-anti h)
 
 snr-anti {t = natrec z w nzero} (snr-natrec-zero hw) =
   z , (snr-natrec-zero (sn-anti hw) , refl)
@@ -443,25 +404,9 @@ snr-anti {t = natrec z w n} (snr-natrecⁿ r) with snr-anti r
 -- reason the comment below gives — otherwise `renTm ρ (con k q)` does not
 -- reduce and the index unification sticks.  The equation is `ren-fields`
 -- composed with `ren-sel`, the same pair `⟶-ren` needed.
-snr-anti {ρ = ρ} {t = elim D ms (con k q)} (snr-ι hm hq) =
-  fields D ms (lookupD D k) (sel k ms) q
-  , ( snr-ι (sn-anti hm) (sn-anti hq)
-    , sym (trans (ren-fields ρ D ms (lookupD D k) (sel k ms) q)
-                 (cong (λ w → fields D (renTm ρ ms) (lookupD D k) w (renTm ρ q))
-                       (ren-sel ρ k ms))) )
-snr-anti {t = elim D ms t₀} (snr-elimᵗ r) with snr-anti r
-... | t' , (r' , refl) = elim D ms t' , (snr-elimᵗ r' , refl)
 -- ★ the INDEXED ι.  Same shape, one extra `SN` premise, and the equation
 --   is `ren-ifieldsⁱ` — the specialised form that already folds in
 --   `isingle-ren`, so the environment lands as `isingle (renTm ρ i)`.
-snr-anti {ρ = ρ} {t = ielim D i ms (icon k q)} (snr-ιi hi hm hq) =
-  ifields D i ms (isingle i) (ilookupD D k) (sel k ms) q
-  , ( snr-ιi (sn-anti hi) (sn-anti hm) (sn-anti hq)
-    , sym (trans (ren-ifieldsⁱ ρ D i ms (ilookupD D k) (sel k ms) q)
-                 (cong (λ w → ifields D (renTm ρ i) (renTm ρ ms)
-                                      (isingle (renTm ρ i))
-                                      (ilookupD D k) w (renTm ρ q))
-                       (ren-sel ρ k ms))) )
 snr-anti {t = ielim D i ms t₀} (snr-ielimᵗ r) with snr-anti r
 ... | t' , (r' , refl) = ielim D i ms t' , (snr-ielimᵗ r' , refl)
 -- ★★ WF stage E: the bounds must be matched SHAPED, or `renTm ρ a` does
@@ -497,14 +442,26 @@ snr-anti {t = app (snd p) u}    (snr-app r) with snr-anti r
 snr-anti {t = app unit u}       (snr-app ())
 snr-anti {t = app nzero u}      (snr-app ())
 snr-anti {t = app (nsuc k) u}   (snr-app ())
+snr-anti {t = app (con _) u}   (snr-app ())
+snr-anti {t = app (dι _) u}   (snr-app ())
+snr-anti {t = app (dσ _ _) u}   (snr-app ())
+snr-anti {t = app (dρ _ _) u}   (snr-app ())
+snr-anti {t = app fzero u}   (snr-app ())
+snr-anti {t = app (fsuc _) u}   (snr-app ())
+snr-anti {t = app (fcase0 _) u}   (snr-app ())
+snr-anti {t = app (⌜Fin⌝ _) u}   (snr-app ())
 snr-anti {t = app (natrec z w n) u} (snr-app r) with snr-anti r
+... | t' , (r' , refl) = app t' u , (snr-app r' , refl)
+snr-anti {t = app (dpay _ _ _ _) u} (snr-app r) with snr-anti r
+... | t' , (r' , refl) = app t' u , (snr-app r' , refl)
+snr-anti {t = app (dih _ _ _ _) u} (snr-app r) with snr-anti r
+... | t' , (r' , refl) = app t' u , (snr-app r' , refl)
+snr-anti {t = app (fcase _ _ _) u} (snr-app r) with snr-anti r
+... | t' , (r' , refl) = app t' u , (snr-app r' , refl)
+snr-anti {t = app (psplit _ _) u} (snr-app r) with snr-anti r
 ... | t' , (r' , refl) = app t' u , (snr-app r' , refl)
 -- ★ INDUCTIVE TYPES: in a SPINE position a `con` head is inert (no SNRed
 -- rule steps it) and an `elim` head recurses — `nsuc`/`natrec` exactly.
-snr-anti {t = app (con k q) u}  (snr-app ())
-snr-anti {t = app (elim D ms t₀) u} (snr-app r) with snr-anti r
-... | t' , (r' , refl) = app t' u , (snr-app r' , refl)
-snr-anti {t = app (icon k q) u}  (snr-app ())
 snr-anti {t = app (ielim D i ms t₀) u} (snr-app r) with snr-anti r
 ... | t' , (r' , refl) = app t' u , (snr-app r' , refl)
 snr-anti {t = absurd c e} ()
@@ -525,23 +482,47 @@ snr-anti {t = app (ordtr a t u p q) w} (snr-app r) with snr-anti r
 snr-anti {t = fst unit}         (snr-fst ())
 snr-anti {t = fst nzero}        (snr-fst ())
 snr-anti {t = fst (nsuc k)}     (snr-fst ())
+snr-anti {t = fst (con _)}     (snr-fst ())
+snr-anti {t = fst (dι _)}     (snr-fst ())
+snr-anti {t = fst (dσ _ _)}     (snr-fst ())
+snr-anti {t = fst (dρ _ _)}     (snr-fst ())
+snr-anti {t = fst fzero}     (snr-fst ())
+snr-anti {t = fst (fsuc _)}     (snr-fst ())
+snr-anti {t = fst (fcase0 _)}     (snr-fst ())
+snr-anti {t = fst (⌜Fin⌝ _)}     (snr-fst ())
 snr-anti {t = fst (natrec z w n)} (snr-fst r) with snr-anti r
+... | t' , (r' , refl) = fst t' , (snr-fst r' , refl)
+snr-anti {t = fst (dpay _ _ _ _)} (snr-fst r) with snr-anti r
+... | t' , (r' , refl) = fst t' , (snr-fst r' , refl)
+snr-anti {t = fst (dih _ _ _ _)} (snr-fst r) with snr-anti r
+... | t' , (r' , refl) = fst t' , (snr-fst r' , refl)
+snr-anti {t = fst (fcase _ _ _)} (snr-fst r) with snr-anti r
+... | t' , (r' , refl) = fst t' , (snr-fst r' , refl)
+snr-anti {t = fst (psplit _ _)} (snr-fst r) with snr-anti r
 ... | t' , (r' , refl) = fst t' , (snr-fst r' , refl)
 snr-anti {t = snd unit}         (snr-snd ())
 snr-anti {t = snd nzero}        (snr-snd ())
 snr-anti {t = snd (nsuc k)}     (snr-snd ())
+snr-anti {t = snd (con _)}     (snr-snd ())
+snr-anti {t = snd (dι _)}     (snr-snd ())
+snr-anti {t = snd (dσ _ _)}     (snr-snd ())
+snr-anti {t = snd (dρ _ _)}     (snr-snd ())
+snr-anti {t = snd fzero}     (snr-snd ())
+snr-anti {t = snd (fsuc _)}     (snr-snd ())
+snr-anti {t = snd (fcase0 _)}     (snr-snd ())
+snr-anti {t = snd (⌜Fin⌝ _)}     (snr-snd ())
 snr-anti {t = snd (natrec z w n)} (snr-snd r) with snr-anti r
 ... | t' , (r' , refl) = snd t' , (snr-snd r' , refl)
-snr-anti {t = snd (con k q)}    (snr-snd ())
-snr-anti {t = snd (elim D ms t₀)} (snr-snd r) with snr-anti r
+snr-anti {t = snd (dpay _ _ _ _)} (snr-snd r) with snr-anti r
 ... | t' , (r' , refl) = snd t' , (snr-snd r' , refl)
-snr-anti {t = fst (con k q)}    (snr-fst ())
-snr-anti {t = fst (elim D ms t₀)} (snr-fst r) with snr-anti r
-... | t' , (r' , refl) = fst t' , (snr-fst r' , refl)
-snr-anti {t = snd (icon k q)}    (snr-snd ())
+snr-anti {t = snd (dih _ _ _ _)} (snr-snd r) with snr-anti r
+... | t' , (r' , refl) = snd t' , (snr-snd r' , refl)
+snr-anti {t = snd (fcase _ _ _)} (snr-snd r) with snr-anti r
+... | t' , (r' , refl) = snd t' , (snr-snd r' , refl)
+snr-anti {t = snd (psplit _ _)} (snr-snd r) with snr-anti r
+... | t' , (r' , refl) = snd t' , (snr-snd r' , refl)
 snr-anti {t = snd (ielim D i ms t₀)} (snr-snd r) with snr-anti r
 ... | t' , (r' , refl) = snd t' , (snr-snd r' , refl)
-snr-anti {t = fst (icon k q)}    (snr-fst ())
 snr-anti {t = fst (ielim D i ms t₀)} (snr-fst r) with snr-anti r
 ... | t' , (r' , refl) = fst t' , (snr-fst r' , refl)
 snr-anti {t = fst (pair a b)}   (snr-βfst h) =
@@ -574,14 +555,10 @@ snr-anti {t = tr d (hrefl ⌜base⌝ s) e} (snr-trᵖ (snr-hreflᶜ (csr-here ()
 snr-anti {t = tr d (hrefl ⌜base⌝ s) e} (snr-trᵖ (snr-hrefl-pw ()))
 snr-anti {t = tr (⌜Hom⌝ c a m) (hrefl ⌜Unit⌝ s) e} (snr-J-Unit hd hs) =
   e , (snr-J-Unit (sn-anti hd) (sn-anti hs) , refl)
-snr-anti {t = tr (⌜Hom⌝ c a m) (hrefl (⌜Mu⌝ Dᵐ) s) e} (snr-J-Mu hd hs) =
-  e , (snr-J-Mu (sn-anti hd) (sn-anti hs) , refl)
 snr-anti {t = tr (⌜Hom⌝ c a m) (hrefl (⌜IMu⌝ Dⁱ Iⁱ iˣ) s) e} (snr-J-IMu hd hs) =
   e , (snr-J-IMu (sn-anti hd) (sn-anti hs) , refl)
 snr-anti {t = tr d (hrefl ⌜Unit⌝ s) e} (snr-trᵖ (snr-hreflᶜ (csr-here ())))
-snr-anti {t = tr d (hrefl (⌜Mu⌝ Dᵐ) s) e} (snr-trᵖ (snr-hreflᶜ (csr-here ())))
 snr-anti {t = tr d (hrefl ⌜Unit⌝ s) e} (snr-trᵖ (snr-hrefl-pw ()))
-snr-anti {t = tr d (hrefl (⌜Mu⌝ Dᵐ) s) e} (snr-trᵖ (snr-hrefl-pw ()))
 -- ⌜Nat⌝ has NO J root — a `hrefl ⌜Nat⌝` path is neutral — so the only
 -- shapes here are the (absurd) code reductions.
 -- an `absurd` path CODE is neither `pw?` nor `stkC?`, and it has no
@@ -594,7 +571,6 @@ snr-anti {t = tr d (hrefl ⌜Nat⌝ s) e} (snr-trᵖ (snr-hrefl-pw ()))
 snr-anti {t = tr (⌜Hom⌝ c a m) (absurd c₉ e₉) e} (snr-trᵖ ())
 snr-anti {t = tr (⌜Hom⌝ c a m) ⌜Nat⌝ e} (snr-trᵖ ())
 snr-anti {t = tr (⌜Hom⌝ c a m) ⌜Unit⌝ e} (snr-trᵖ ())
-snr-anti {t = tr (⌜Hom⌝ c a m) (⌜Mu⌝ Dᵐ) e} (snr-trᵖ ())
 snr-anti {t = tr (⌜Hom⌝ c a m) (hrefl (⌜Σ⌝ c₁ c₂) s) e} (snr-J-Σ hd h₁ h₂ hs) =
   e , (snr-J-Σ (sn-anti hd) (sn-anti h₁) (sn-anti h₂) (sn-anti hs) , refl)
 snr-anti {t = tr d (hrefl (⌜Σ⌝ c₁ c₂) s) e} (snr-trᵖ (snr-hreflᶜ (csr-here ())))
@@ -680,7 +656,6 @@ snr-anti {t = app (pair a b) u} (snr-app ())
 snr-anti {t = app ⌜base⌝ u}     (snr-app ())
 snr-anti {t = app ⌜Nat⌝ u}      (snr-app ())
 snr-anti {t = app ⌜Unit⌝ u}     (snr-app ())
-snr-anti {t = app (⌜Mu⌝ Dᵐ) u}     (snr-app ())
 snr-anti {t = app (⌜Π⌝ c d) u}  (snr-app ())
 snr-anti {t = app (⌜Σ⌝ c d) u}  (snr-app ())
 snr-anti {t = app (⌜IMu⌝ Dⁱ Iⁱ i₉) u} (snr-app ())
@@ -689,7 +664,6 @@ snr-anti {t = fst (lam s)}      (snr-fst ())
 snr-anti {t = fst ⌜base⌝}       (snr-fst ())
 snr-anti {t = fst ⌜Nat⌝}        (snr-fst ())
 snr-anti {t = fst ⌜Unit⌝}       (snr-fst ())
-snr-anti {t = fst (⌜Mu⌝ Dᵐ)}    (snr-fst ())
 snr-anti {t = fst (⌜IMu⌝ Dⁱ Iⁱ i₉)} (snr-fst ())
 snr-anti {t = fst (⌜Π⌝ c d)}    (snr-fst ())
 snr-anti {t = fst (⌜Σ⌝ c d)}    (snr-fst ())
@@ -713,7 +687,6 @@ snr-anti {t = snd (lam s)}      (snr-snd ())
 snr-anti {t = snd ⌜base⌝}       (snr-snd ())
 snr-anti {t = snd ⌜Nat⌝}        (snr-snd ())
 snr-anti {t = snd ⌜Unit⌝}       (snr-snd ())
-snr-anti {t = snd (⌜Mu⌝ Dᵐ)}    (snr-snd ())
 snr-anti {t = snd (⌜IMu⌝ Dⁱ Iⁱ i₉)} (snr-snd ())
 snr-anti {t = snd (⌜Π⌝ c d)}    (snr-snd ())
 snr-anti {t = snd (⌜Σ⌝ c d)}    (snr-snd ())
@@ -758,21 +731,39 @@ snr-anti {t = tr d (hrefl unit s) e} (snr-trᵖ (snr-hrefl-pw ()))
 snr-anti {t = tr d (hrefl nzero s) e} (snr-trᵖ (snr-hreflᶜ (csr-here ())))
 snr-anti {t = tr d (hrefl nzero s) e} (snr-trᵖ (snr-hrefl-pw ()))
 snr-anti {t = tr d (hrefl (nsuc k) s) e} (snr-trᵖ (snr-hreflᶜ (csr-here ())))
+snr-anti {t = tr d (hrefl (con _) s) e} (snr-trᵖ (snr-hreflᶜ (csr-here ())))
+snr-anti {t = tr d (hrefl (dι _) s) e} (snr-trᵖ (snr-hreflᶜ (csr-here ())))
+snr-anti {t = tr d (hrefl (dσ _ _) s) e} (snr-trᵖ (snr-hreflᶜ (csr-here ())))
+snr-anti {t = tr d (hrefl (dρ _ _) s) e} (snr-trᵖ (snr-hreflᶜ (csr-here ())))
+snr-anti {t = tr d (hrefl fzero s) e} (snr-trᵖ (snr-hreflᶜ (csr-here ())))
+snr-anti {t = tr d (hrefl (fsuc _) s) e} (snr-trᵖ (snr-hreflᶜ (csr-here ())))
+snr-anti {t = tr d (hrefl (fcase0 _) s) e} (snr-trᵖ (snr-hreflᶜ (csr-here ())))
+snr-anti {t = tr d (hrefl (⌜Fin⌝ _) s) e} (snr-trᵖ (snr-hreflᶜ (csr-here ())))
 snr-anti {t = tr d (hrefl (nsuc k) s) e} (snr-trᵖ (snr-hrefl-pw ()))
+snr-anti {t = tr d (hrefl (con _) s) e} (snr-trᵖ (snr-hrefl-pw ()))
+snr-anti {t = tr d (hrefl (dι _) s) e} (snr-trᵖ (snr-hrefl-pw ()))
+snr-anti {t = tr d (hrefl (dσ _ _) s) e} (snr-trᵖ (snr-hrefl-pw ()))
+snr-anti {t = tr d (hrefl (dρ _ _) s) e} (snr-trᵖ (snr-hrefl-pw ()))
+snr-anti {t = tr d (hrefl fzero s) e} (snr-trᵖ (snr-hrefl-pw ()))
+snr-anti {t = tr d (hrefl (fsuc _) s) e} (snr-trᵖ (snr-hrefl-pw ()))
+snr-anti {t = tr d (hrefl (fcase0 _) s) e} (snr-trᵖ (snr-hrefl-pw ()))
+snr-anti {t = tr d (hrefl (⌜Fin⌝ _) s) e} (snr-trᵖ (snr-hrefl-pw ()))
 snr-anti {t = tr d (hrefl (natrec z w n) s) e} (snr-trᵖ r) with snr-anti r
+... | t' , (r' , refl) = tr d t' e , (snr-trᵖ r' , refl)
+snr-anti {t = tr d (hrefl (dpay _ _ _ _) s) e} (snr-trᵖ r) with snr-anti r
+... | t' , (r' , refl) = tr d t' e , (snr-trᵖ r' , refl)
+snr-anti {t = tr d (hrefl (dih _ _ _ _) s) e} (snr-trᵖ r) with snr-anti r
+... | t' , (r' , refl) = tr d t' e , (snr-trᵖ r' , refl)
+snr-anti {t = tr d (hrefl (fcase _ _ _) s) e} (snr-trᵖ r) with snr-anti r
+... | t' , (r' , refl) = tr d t' e , (snr-trᵖ r' , refl)
+snr-anti {t = tr d (hrefl (psplit _ _) s) e} (snr-trᵖ r) with snr-anti r
 ... | t' , (r' , refl) = tr d t' e , (snr-trᵖ r' , refl)
 -- ★ INDUCTIVE TYPES: the MOTIVE stays a variable here, as in the `natrec`
 -- rows above — `trstk?` falls to `pathstk?` on a `con`/`elim` path, so it
 -- does not look at the motive at all.
-snr-anti {t = tr d (hrefl (con k q) s) e} (snr-trᵖ r) with snr-anti r
-... | t' , (r' , refl) = tr d t' e , (snr-trᵖ r' , refl)
-snr-anti {t = tr d (hrefl (elim D₁ ms₁ t₁) s) e} (snr-trᵖ r) with snr-anti r
-... | t' , (r' , refl) = tr d t' e , (snr-trᵖ r' , refl)
 -- ⚠ the INDEXED code has NO J root (unlike `⌜Mu⌝`): `pathstk? (⌜IMu⌝ …)`
 --   is `true`, so a `hrefl ⌜IMu⌝` path is permanently STUCK — the `⌜Nat⌝`
 --   rows' shape, not `⌜Mu⌝`'s.
-snr-anti {t = tr d (hrefl (icon k q) s) e} (snr-trᵖ r) with snr-anti r
-... | t' , (r' , refl) = tr d t' e , (snr-trᵖ r' , refl)
 snr-anti {t = tr d (hrefl (ielim D₁ i₁ ms₁ t₁) s) e} (snr-trᵖ r) with snr-anti r
 ... | t' , (r' , refl) = tr d t' e , (snr-trᵖ r' , refl)
 snr-anti {t = tr d (hrefl (⌜IMu⌝ Dⁱ Iⁱ i₉) s) e} (snr-trᵖ (snr-hreflᶜ (csr-here ())))
@@ -780,12 +771,24 @@ snr-anti {t = tr d (hrefl (⌜IMu⌝ Dⁱ Iⁱ i₉) s) e} (snr-trᵖ (snr-hrefl
 snr-anti {t = tr d unit e} (snr-trᵖ ())
 snr-anti {t = tr d nzero e} (snr-trᵖ ())
 snr-anti {t = tr d (nsuc k) e} (snr-trᵖ ())
+snr-anti {t = tr d (con _) e} (snr-trᵖ ())
+snr-anti {t = tr d (dι _) e} (snr-trᵖ ())
+snr-anti {t = tr d (dσ _ _) e} (snr-trᵖ ())
+snr-anti {t = tr d (dρ _ _) e} (snr-trᵖ ())
+snr-anti {t = tr d fzero e} (snr-trᵖ ())
+snr-anti {t = tr d (fsuc _) e} (snr-trᵖ ())
+snr-anti {t = tr d (fcase0 _) e} (snr-trᵖ ())
+snr-anti {t = tr d (⌜Fin⌝ _) e} (snr-trᵖ ())
 snr-anti {t = tr d (natrec z w n) e} (snr-trᵖ r) with snr-anti r
 ... | t' , (r' , refl) = tr d t' e , (snr-trᵖ r' , refl)
-snr-anti {t = tr d (con k q) e} (snr-trᵖ ())
-snr-anti {t = tr d (elim D₁ ms₁ t₁) e} (snr-trᵖ r) with snr-anti r
+snr-anti {t = tr d (dpay _ _ _ _) e} (snr-trᵖ r) with snr-anti r
 ... | t' , (r' , refl) = tr d t' e , (snr-trᵖ r' , refl)
-snr-anti {t = tr d (icon k q) e} (snr-trᵖ ())
+snr-anti {t = tr d (dih _ _ _ _) e} (snr-trᵖ r) with snr-anti r
+... | t' , (r' , refl) = tr d t' e , (snr-trᵖ r' , refl)
+snr-anti {t = tr d (fcase _ _ _) e} (snr-trᵖ r) with snr-anti r
+... | t' , (r' , refl) = tr d t' e , (snr-trᵖ r' , refl)
+snr-anti {t = tr d (psplit _ _) e} (snr-trᵖ r) with snr-anti r
+... | t' , (r' , refl) = tr d t' e , (snr-trᵖ r' , refl)
 snr-anti {t = tr d (⌜IMu⌝ Dⁱ Iⁱ i₉) e} (snr-trᵖ ())
 snr-anti {t = tr d (ielim D₁ i₁ ms₁ t₁) e} (snr-trᵖ r) with snr-anti r
 ... | t' , (r' , refl) = tr d t' e , (snr-trᵖ r' , refl)
@@ -797,17 +800,76 @@ snr-anti {ρ = ρ} {t = ap c b (hrefl c₁ s)} (snr-ap-J h₁ kh) =
     , cong (hrefl (renTm ρ c)) (ren-single ρ s b) )
 snr-anti {t = ap c b p} (snr-apᵖ r) with snr-anti r
 ... | p' , (r' , refl) = ap c b p' , (snr-apᵖ r' , refl)
+-- ★★ LEVITATED FAMILIES: the root rules (the scrutinee matched SHAPED, so
+--   `renTm ρ` reduces), then each scrutinee ξ.  A reduct built under a
+--   binder is related by `wk-ren-tm`; `fcase-s`/`psplit-β` by the
+--   single/double substitution commutations.
+snr-anti {t = ielim D i e (con q)} (snr-ι hD hi he hq) =
+  app (app (app e i) q) (dih D e D q)
+  , (snr-ι (sn-anti hD) (sn-anti hi) (sn-anti he) (sn-anti hq) , refl)
+snr-anti {t = dpay I D (dι j) i} (snr-dpay-ι hD) =
+  ⌜Id⌝ I j i , (snr-dpay-ι (sn-anti hD) , refl)
+snr-anti {ρ = ρ} {t = dpay I D (dσ S f) i} snr-dpay-σ =
+  ⌜Σ⌝ S (dpay (renTm vs I) (renTm vs D) (app (renTm vs f) (var vz)) (renTm vs i))
+  , ( snr-dpay-σ
+    , cong (⌜Σ⌝ (renTm ρ S))
+           (cong₄ dpay (sym (wk-ren-tm ρ I)) (sym (wk-ren-tm ρ D))
+                       (cong (λ z → app z (var vz)) (sym (wk-ren-tm ρ f)))
+                       (sym (wk-ren-tm ρ i))) )
+snr-anti {ρ = ρ} {t = dpay I D (dρ j C) i} snr-dpay-ρ =
+  ⌜Σ⌝ (⌜IMu⌝ I D j) (dpay (renTm vs I) (renTm vs D) (renTm vs C) (renTm vs i))
+  , ( snr-dpay-ρ
+    , cong (⌜Σ⌝ (⌜IMu⌝ (renTm ρ I) (renTm ρ D) (renTm ρ j)))
+           (cong₄ dpay (sym (wk-ren-tm ρ I)) (sym (wk-ren-tm ρ D))
+                       (sym (wk-ren-tm ρ C)) (sym (wk-ren-tm ρ i))) )
+snr-anti {t = dpay I D C i} (snr-dpayᶜ r) with snr-anti r
+... | C' , (r' , refl) = dpay I D C' i , (snr-dpayᶜ r' , refl)
+snr-anti {t = dih D e (dι j) p} (snr-dih-ι hD he hj hp) =
+  unit , (snr-dih-ι (sn-anti hD) (sn-anti he) (sn-anti hj) (sn-anti hp) , refl)
+snr-anti {t = dih D e (dσ S f) p} (snr-dih-σ hS) =
+  dih D e (app f (fst p)) (snd p) , (snr-dih-σ (sn-anti hS) , refl)
+snr-anti {t = dih D e (dρ j C) p} snr-dih-ρ =
+  pair (ielim D j e (fst p)) (dih D e C (snd p)) , (snr-dih-ρ , refl)
+snr-anti {t = dih D e C p} (snr-dihᶜ r) with snr-anti r
+... | C' , (r' , refl) = dih D e C' p , (snr-dihᶜ r' , refl)
+snr-anti {t = fcase fzero a b} (snr-fcase-z hb) =
+  a , (snr-fcase-z (sn-anti hb) , refl)
+snr-anti {ρ = ρ} {t = fcase (fsuc t₀) a b} (snr-fcase-s ht ha) =
+  subTm (single t₀) b , (snr-fcase-s (sn-anti ht) (sn-anti ha) , ren-single ρ t₀ b)
+snr-anti {t = fcase t₀ a b} (snr-fcaseᵗ r) with snr-anti r
+... | t' , (r' , refl) = fcase t' a b , (snr-fcaseᵗ r' , refl)
+snr-anti {ρ = ρ} {t = psplit b (pair x y)} (snr-psplit-β hx hy) =
+  subTm (single2 x y) b
+  , (snr-psplit-β (sn-anti hx) (sn-anti hy) , sym (ren-comm2 ρ b x y))
+snr-anti {t = psplit b q} (snr-psplitᵍ r) with snr-anti r
+... | q' , (r' , refl) = psplit b q' , (snr-psplitᵍ r' , refl)
+snr-anti {t = tr (⌜Hom⌝ c a m) (hrefl (⌜Fin⌝ n) s) e} (snr-J-Fin hd hs) =
+  e , (snr-J-Fin (sn-anti hd) (sn-anti hs) , refl)
+snr-anti {t = tr d (hrefl (⌜Fin⌝ n) s) e} (snr-trᵖ (snr-hreflᶜ (csr-here ())))
+snr-anti {t = tr d (hrefl (⌜Fin⌝ n) s) e} (snr-trᵖ (snr-hrefl-pw ()))
 
 csr-anti {t = var x} (csr-here ())
 csr-anti {t = unit} (csr-here ())
 csr-anti {t = nzero} (csr-here ())
 csr-anti {t = nsuc _} (csr-here ())
+csr-anti {t = con _} (csr-here ())
+csr-anti {t = dι _} (csr-here ())
+csr-anti {t = dσ _ _} (csr-here ())
+csr-anti {t = dρ _ _} (csr-here ())
+csr-anti {t = fzero} (csr-here ())
+csr-anti {t = fsuc _} (csr-here ())
+csr-anti {t = fcase0 _} (csr-here ())
+csr-anti {t = ⌜Fin⌝ _} (csr-here ())
 csr-anti {t = natrec z w n} (csr-here r) with snr-anti r
 ... | t' , (r' , refl) = t' , (csr-here r' , refl)
-csr-anti {t = con _ _} (csr-here ())
-csr-anti {t = elim D ms t₀} (csr-here r) with snr-anti r
+csr-anti {t = dpay _ _ _ _} (csr-here r) with snr-anti r
 ... | t' , (r' , refl) = t' , (csr-here r' , refl)
-csr-anti {t = icon _ _} (csr-here ())
+csr-anti {t = dih _ _ _ _} (csr-here r) with snr-anti r
+... | t' , (r' , refl) = t' , (csr-here r' , refl)
+csr-anti {t = fcase _ _ _} (csr-here r) with snr-anti r
+... | t' , (r' , refl) = t' , (csr-here r' , refl)
+csr-anti {t = psplit _ _} (csr-here r) with snr-anti r
+... | t' , (r' , refl) = t' , (csr-here r' , refl)
 csr-anti {t = ielim D i ms t₀} (csr-here r) with snr-anti r
 ... | t' , (r' , refl) = t' , (csr-here r' , refl)
 csr-anti {t = ordtr a t u p q} (csr-here r) with snr-anti r
@@ -818,7 +880,6 @@ csr-anti {t = ⌜base⌝} (csr-here ())
 csr-anti {t = absurd c e} (csr-here ())
 csr-anti {t = ⌜Nat⌝ } (csr-here ())
 csr-anti {t = ⌜Unit⌝ } (csr-here ())
-csr-anti {t = (⌜Mu⌝ Dᵐ) } (csr-here ())
 csr-anti {t = ⌜IMu⌝ Dⁱ Iⁱ i } (csr-here ())
 csr-anti {t = ⌜Π⌝ _ _} (csr-here ())
 csr-anti {t = ⌜Σ⌝ _ _} (csr-here ())
@@ -861,11 +922,6 @@ sne-ren {ρ = ρ} (sne-natrec {n = n} hz hw hn key) =
   sne-natrec (sn-ren hz) (sn-ren hw) (sn-ren hn)
              (trans (natstk?-ren ρ n) key)
 -- ★ INDUCTIVE TYPES: the key transports FORWARD through `mustk?-ren`.
-sne-ren {ρ = ρ} (sne-elim {t = t₀} hm ht key) =
-  sne-elim (sn-ren hm) (sn-ren ht) (trans (mustk?-ren ρ t₀) key)
-sne-ren {ρ = ρ} (sne-ielim {t = t₀} hi hm ht key) =
-  sne-ielim (sn-ren hi) (sn-ren hm) (sn-ren ht)
-            (trans (mustk?-ren ρ t₀) key)
 sne-ren (sne-app n s)         = sne-app (sne-ren n) (sn-ren s)
 sne-ren (sne-absurd sc sn₀)   = sne-absurd (sn-ren sc) (sn-ren sn₀)
 sne-ren (sne-fst n)           = sne-fst (sne-ren n)
@@ -884,6 +940,16 @@ sne-ren {ρ = ρ} (sne-jsub {p = p} hd hp he key) =
 sne-ren {ρ = ρ} (sne-ordtr {a = a} {t = t} {u = u} ha ht hu hp hq key) =
   sne-ordtr (sn-ren ha) (sn-ren ht) (sn-ren hu) (sn-ren hp) (sn-ren hq)
             (trans (ordstk?-ren ρ a t u) key)
+sne-ren {ρ = ρ} (sne-ielim {t = t₀} hD hi he ht key) =
+  sne-ielim (sn-ren hD) (sn-ren hi) (sn-ren he) (sn-ren ht) (trans (mustk?-ren ρ t₀) key)
+sne-ren {ρ = ρ} (sne-dpay {C = C} hI hD hC hi key) =
+  sne-dpay (sn-ren hI) (sn-ren hD) (sn-ren hC) (sn-ren hi) (trans (dstk?-ren ρ C) key)
+sne-ren {ρ = ρ} (sne-dih {C = C} hD he hC hp key) =
+  sne-dih (sn-ren hD) (sn-ren he) (sn-ren hC) (sn-ren hp) (trans (dstk?-ren ρ C) key)
+sne-ren {ρ = ρ} (sne-fcase {t = t₀} ht ha hb key) =
+  sne-fcase (sn-ren ht) (sn-ren ha) (sn-ren hb) (trans (finstk?-ren ρ t₀) key)
+sne-ren (sne-fcase0 ht) = sne-fcase0 (sn-ren ht)
+sne-ren (sne-psplit hb n) = sne-psplit (sn-ren hb) (sne-ren n)
 
 sn-ren (sn-ne n)        = sn-ne (sne-ren n)
 sn-ren (sn-lam h)       = sn-lam (sn-ren h)
@@ -891,7 +957,6 @@ sn-ren (sn-pair ha hb)  = sn-pair (sn-ren ha) (sn-ren hb)
 sn-ren sn-cb            = sn-cb
 sn-ren sn-cNat          = sn-cNat
 sn-ren sn-cUnit         = sn-cUnit
-sn-ren sn-cMu           = sn-cMu
 sn-ren (sn-cΠ h₁ h₂)    = sn-cΠ (sn-ren h₁) (sn-ren h₂)
 sn-ren (sn-cΣ h₁ h₂)    = sn-cΣ (sn-ren h₁) (sn-ren h₂)
 sn-ren (sn-cH h₁ h₂ h₃) = sn-cH (sn-ren h₁) (sn-ren h₂) (sn-ren h₃)
@@ -901,9 +966,15 @@ sn-ren sn-unit          = sn-unit
 sn-ren sn-nzero         = sn-nzero
 sn-ren (sn-nsuc h)      = sn-nsuc (sn-ren h)
 sn-ren (sn-con h)       = sn-con (sn-ren h)
-sn-ren (sn-icon h)      = sn-icon (sn-ren h)
-sn-ren (sn-cIMu h)      = sn-cIMu (sn-ren h)
 sn-ren (sn-exp r h)     = sn-exp (snr-ren r) (sn-ren h)
+sn-ren (sn-cIMu h₁ h₂ h₃) = sn-cIMu (sn-ren h₁) (sn-ren h₂) (sn-ren h₃)
+sn-ren sn-cFin          = sn-cFin
+sn-ren (sn-con h)       = sn-con (sn-ren h)
+sn-ren (sn-dι h)        = sn-dι (sn-ren h)
+sn-ren (sn-dσ h₁ h₂)    = sn-dσ (sn-ren h₁) (sn-ren h₂)
+sn-ren (sn-dρ h₁ h₂)    = sn-dρ (sn-ren h₁) (sn-ren h₂)
+sn-ren sn-fzero         = sn-fzero
+sn-ren (sn-fsuc h)      = sn-fsuc (sn-ren h)
 
 snr-ren {ρ = ρ} (snr-β {s = s} {u = u} hu) =
   subst (λ z → SNRed (app (lam (renTm (extR ρ) s)) (renTm ρ u)) z)
@@ -921,22 +992,7 @@ snr-ren {ρ = ρ} (snr-natrec-suc {z = z} {w = w} {n = m} hz hw hn) =
         (snr-natrec-suc (sn-ren hz) (sn-ren hw) (sn-ren hn))
 snr-ren (snr-natrecⁿ r) = snr-natrecⁿ (snr-ren r)
 -- ★ INDUCTIVE TYPES: ι's equation, forward — `ren-fields` after `ren-sel`.
-snr-ren {ρ = ρ} (snr-ι {D = D} {ms = ms} {k = k} {p = q} hm hq) =
-  subst (SNRed (elim D (renTm ρ ms) (con k (renTm ρ q))))
-        (sym (trans (ren-fields ρ D ms (lookupD D k) (sel k ms) q)
-                    (cong (λ w → fields D (renTm ρ ms) (lookupD D k) w (renTm ρ q))
-                          (ren-sel ρ k ms))))
-        (snr-ι (sn-ren hm) (sn-ren hq))
-snr-ren (snr-elimᵗ r)   = snr-elimᵗ (snr-ren r)
 -- ★ the INDEXED ι, forward.  `ren-ifieldsⁱ` after `ren-sel`.
-snr-ren {ρ = ρ} (snr-ιi {D = D} {i = i} {ms = ms} {k = k} {p = q} hi hm hq) =
-  subst (SNRed (ielim D (renTm ρ i) (renTm ρ ms) (icon k (renTm ρ q))))
-        (sym (trans (ren-ifieldsⁱ ρ D i ms (ilookupD D k) (sel k ms) q)
-                    (cong (λ w → ifields D (renTm ρ i) (renTm ρ ms)
-                                         (isingle (renTm ρ i))
-                                         (ilookupD D k) w (renTm ρ q))
-                          (ren-sel ρ k ms))))
-        (snr-ιi (sn-ren hi) (sn-ren hm) (sn-ren hq))
 snr-ren (snr-ielimᵗ r)  = snr-ielimᵗ (snr-ren r)
 snr-ren (snr-ordtr-z ht hu hp hq) =
   snr-ordtr-z (sn-ren ht) (sn-ren hu) (sn-ren hp) (sn-ren hq)
@@ -962,7 +1018,6 @@ snr-ren {ρ = ρ} (snr-hrefl-pw {C = C} {t = t} kp) =
         (snr-hrefl-pw (trans (pw?-ren ρ C) kp))
 snr-ren (snr-J-base hd hs) = snr-J-base (sn-ren hd) (sn-ren hs)
 snr-ren (snr-J-Unit hd hs) = snr-J-Unit (sn-ren hd) (sn-ren hs)
-snr-ren (snr-J-Mu hd hs)   = snr-J-Mu (sn-ren hd) (sn-ren hs)
 snr-ren (snr-J-IMu hd hs)  = snr-J-IMu (sn-ren hd) (sn-ren hs)
 snr-ren (snr-J-Σ hd h₁ h₂ hs) =
   snr-J-Σ (sn-ren hd) (sn-ren h₁) (sn-ren h₂) (sn-ren hs)
@@ -998,6 +1053,38 @@ snr-ren {ρ = ρ} (snr-tr-pw {c = c} {a = a} {f = f} {e = e} hc ha kp) =
             refl
             (cong (λ z → app z (var vz)) (sym (wk-ren-tm ρ e)))))
         (snr-tr-pw (sn-ren hc) (sn-ren ha) (trans (pw?-ren (extR ρ) c) kp))
+snr-ren (snr-ι hD hi he hq) = snr-ι (sn-ren hD) (sn-ren hi) (sn-ren he) (sn-ren hq)
+snr-ren (snr-dpay-ι hD) = snr-dpay-ι (sn-ren hD)
+snr-ren {ρ = ρ} (snr-dpay-σ {I = I} {D = D} {S = S} {f = f} {i = i}) =
+  subst (SNRed (dpay (renTm ρ I) (renTm ρ D) (dσ (renTm ρ S) (renTm ρ f)) (renTm ρ i)))
+        (cong (⌜Σ⌝ (renTm ρ S))
+              (cong₄ dpay (sym (wk-ren-tm ρ I)) (sym (wk-ren-tm ρ D))
+                          (cong (λ z → app z (var vz)) (sym (wk-ren-tm ρ f)))
+                          (sym (wk-ren-tm ρ i))))
+        snr-dpay-σ
+snr-ren {ρ = ρ} (snr-dpay-ρ {I = I} {D = D} {j = j} {C = C} {i = i}) =
+  subst (SNRed (dpay (renTm ρ I) (renTm ρ D) (dρ (renTm ρ j) (renTm ρ C)) (renTm ρ i)))
+        (cong (⌜Σ⌝ (⌜IMu⌝ (renTm ρ I) (renTm ρ D) (renTm ρ j)))
+              (cong₄ dpay (sym (wk-ren-tm ρ I)) (sym (wk-ren-tm ρ D))
+                          (sym (wk-ren-tm ρ C)) (sym (wk-ren-tm ρ i))))
+        snr-dpay-ρ
+snr-ren (snr-dpayᶜ r) = snr-dpayᶜ (snr-ren r)
+snr-ren (snr-dih-ι hD he hj hp) = snr-dih-ι (sn-ren hD) (sn-ren he) (sn-ren hj) (sn-ren hp)
+snr-ren (snr-dih-σ hS) = snr-dih-σ (sn-ren hS)
+snr-ren snr-dih-ρ = snr-dih-ρ
+snr-ren (snr-dihᶜ r) = snr-dihᶜ (snr-ren r)
+snr-ren (snr-fcase-z hb) = snr-fcase-z (sn-ren hb)
+snr-ren {ρ = ρ} (snr-fcase-s {t = t₀} {a = a} {b = b} ht ha) =
+  subst (SNRed (fcase (fsuc (renTm ρ t₀)) (renTm ρ a) (renTm (extR ρ) b)))
+        (ren-single ρ t₀ b)
+        (snr-fcase-s (sn-ren ht) (sn-ren ha))
+snr-ren (snr-fcaseᵗ r) = snr-fcaseᵗ (snr-ren r)
+snr-ren {ρ = ρ} (snr-psplit-β {b = b} {x = x} {y = y} hx hy) =
+  subst (SNRed (psplit (renTm (extR (extR ρ)) b) (pair (renTm ρ x) (renTm ρ y))))
+        (sym (ren-comm2 ρ b x y))
+        (snr-psplit-β (sn-ren hx) (sn-ren hy))
+snr-ren (snr-psplitᵍ r) = snr-psplitᵍ (snr-ren r)
+snr-ren (snr-J-Fin hd hs) = snr-J-Fin (sn-ren hd) (sn-ren hs)
 
 csr-ren (csr-here r) = csr-here (snr-ren r)
 csr-ren (csr-hom σ)  = csr-hom (csr-ren σ)

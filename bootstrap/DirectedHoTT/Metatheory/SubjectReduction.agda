@@ -1026,13 +1026,13 @@ gen-con (⊢conv d c) with gen-con d
 
 gen-ielim : {Γ : Ctx} {D i e t : RTm ⌊ Γ ⌋} {C : RTy ⌊ Γ ⌋} → Γ ⊢ ielim D i e t ∷ C →
             Σ (RTm ⌊ Γ ⌋) (λ I → Σ (RTy ((⌊ Γ ⌋ ∙) ∙)) (λ M →
-              (Γ ⊢ D ∷ Desc I) × ((motCtx Γ I D ⊢ty M) ×
+              (Γ ⊢ I ∷ U) × ((Γ ⊢ D ∷ Desc I) × ((motCtx Γ I D ⊢ty M) ×
               ((Γ ⊢ e ∷ MethTy I D M) × ((Γ ⊢ i ∷ El I) ×
-              ((Γ ⊢ t ∷ IMu I D i) × (C ≅ᵀ iinst i t M)))))))
-gen-ielim (⊢ielim dD dM de di dt) = _ , (_ , (dD , (dM , (de , (di , (dt , crflᵀ))))))
+              ((Γ ⊢ t ∷ IMu I D i) × (C ≅ᵀ iinst i t M))))))))
+gen-ielim (⊢ielim dI dD dM de di dt) = _ , (_ , (dI , (dD , (dM , (de , (di , (dt , crflᵀ)))))))
 gen-ielim (⊢conv d c) with gen-ielim d
-... | I , (M , (dD , (dM , (de , (di , (dt , c')))))) =
-      I , (M , (dD , (dM , (de , (di , (dt , ctrnᵀ (csymᵀ c) c'))))))
+... | I , (M , (dI , (dD , (dM , (de , (di , (dt , c'))))))) =
+      I , (M , (dI , (dD , (dM , (de , (di , (dt , ctrnᵀ (csymᵀ c) c')))))))
 
 gen-⌜IMu⌝ : {Γ : Ctx} {I D i : RTm ⌊ Γ ⌋} {C : RTy ⌊ Γ ⌋} → Γ ⊢ ⌜IMu⌝ I D i ∷ C →
             (Γ ⊢ I ∷ U) × ((Γ ⊢ D ∷ Desc I) × ((Γ ⊢ i ∷ El I) × (C ≅ᵀ U)))
@@ -1067,13 +1067,13 @@ gen-dpay (⊢conv d c) with gen-dpay d
 
 gen-dih : {Γ : Ctx} {D e C₀ p : RTm ⌊ Γ ⌋} {C : RTy ⌊ Γ ⌋} → Γ ⊢ dih D e C₀ p ∷ C →
           Σ (RTm ⌊ Γ ⌋) (λ I → Σ (RTy ((⌊ Γ ⌋ ∙) ∙)) (λ M → Σ (RTm ⌊ Γ ⌋) (λ i →
-            (Γ ⊢ D ∷ Desc I) × ((motCtx Γ I D ⊢ty M) × ((Γ ⊢ e ∷ MethTy I D M) ×
+            (Γ ⊢ I ∷ U) × ((Γ ⊢ D ∷ Desc I) × ((motCtx Γ I D ⊢ty M) × ((Γ ⊢ e ∷ MethTy I D M) ×
             ((Γ ⊢ C₀ ∷ Desc I) × ((Γ ⊢ i ∷ El I) ×
-            ((Γ ⊢ p ∷ El (dpay I D C₀ i)) × (C ≅ᵀ DIh D M C₀ p)))))))))
-gen-dih (⊢dih dD dM de dC di dp) = _ , (_ , (_ , (dD , (dM , (de , (dC , (di , (dp , crflᵀ))))))))
+            ((Γ ⊢ p ∷ El (dpay I D C₀ i)) × (C ≅ᵀ DIh D M C₀ p))))))))))
+gen-dih (⊢dih dI dD dM de dC di dp) = _ , (_ , (_ , (dI , (dD , (dM , (de , (dC , (di , (dp , crflᵀ)))))))))
 gen-dih (⊢conv d c) with gen-dih d
-... | I , (M , (i , (dD , (dM , (de , (dC , (di , (dp , c')))))))) =
-      I , (M , (i , (dD , (dM , (de , (dC , (di , (dp , ctrnᵀ (csymᵀ c) c'))))))))
+... | I , (M , (i , (dI , (dD , (dM , (de , (dC , (di , (dp , c'))))))))) =
+      I , (M , (i , (dI , (dD , (dM , (de , (dC , (di , (dp , ctrnᵀ (csymᵀ c) c')))))))))
 
 gen-fsuc : {Γ : Ctx} {t : RTm ⌊ Γ ⌋} {C : RTy ⌊ Γ ⌋} → Γ ⊢ fsuc t ∷ C →
            Σ ℕ (λ n → (Γ ⊢ t ∷ Fin n) × (C ≅ᵀ Fin (suc n)))
@@ -1101,11 +1101,11 @@ gen-fcase0 (⊢conv d c) with gen-fcase0 d
 gen-psplit : {Γ : Ctx} {b : RTm ((⌊ Γ ⌋ ∙) ∙)} {q : RTm ⌊ Γ ⌋} {C : RTy ⌊ Γ ⌋} →
              Γ ⊢ psplit b q ∷ C →
              Σ (RTy ⌊ Γ ⌋) (λ A → Σ (RTy (⌊ Γ ⌋ ∙)) (λ B → Σ (RTy (⌊ Γ ⌋ ∙)) (λ P →
-               ((Γ ▹ Σ' A B) ⊢ty P) × ((Γ ⊢ q ∷ Σ' A B) ×
-               ((((Γ ▹ A) ▹ B) ⊢ b ∷ subTy pairS P) × (C ≅ᵀ subTy (single q) P))))))
-gen-psplit (⊢psplit dP dq db) = _ , (_ , (_ , (dP , (dq , (db , crflᵀ)))))
+               (Γ ⊢ty A) × (((Γ ▹ A) ⊢ty B) × (((Γ ▹ Σ' A B) ⊢ty P) × ((Γ ⊢ q ∷ Σ' A B) ×
+               ((((Γ ▹ A) ▹ B) ⊢ b ∷ subTy pairS P) × (C ≅ᵀ subTy (single q) P))))))))
+gen-psplit (⊢psplit dA dB dP dq db) = _ , (_ , (_ , (dA , (dB , (dP , (dq , (db , crflᵀ)))))))
 gen-psplit (⊢conv d c) with gen-psplit d
-... | A , (B , (P , (dP , (dq , (db , c'))))) = A , (B , (P , (dP , (dq , (db , ctrnᵀ (csymᵀ c) c')))))
+... | A , (B , (P , (dA , (dB , (dP , (dq , (db , c'))))))) = A , (B , (P , (dA , (dB , (dP , (dq , (db , ctrnᵀ (csymᵀ c) c')))))))
 
 -- ★★ THE PAYLOAD'S σ AND ρ STEPS: a payload of a `dσ`/`dρ` telescope is a
 --   pair; its halves are typed at the chosen branch / the recursive field
@@ -1167,18 +1167,18 @@ sr d (dpay-ρ I D j C i) with gen-dpay d
 -- the hypotheses: none at `dι`, the chosen branch's at `dσ`, one
 --   recursive call AT ITS OWN INDEX plus the rest at `dρ`.
 sr d (dih-ι D e j p) with gen-dih d
-... | I , (M , (i , (dD , (dM , (de , (dC , (di , (dp , cC)))))))) =
+... | I , (M , (i , (dI , (dD , (dM , (de , (dC , (di , (dp , cC))))))))) =
       ⊢conv ⊢unit (csymᵀ (ctrnᵀ cC (credᵀ (DIh-ι D M j p))))
 sr d (dih-σ D e S f p) with gen-dih d
-... | I , (M , (i , (dD , (dM , (de , (dC , (di , (dp , cC)))))))) with dσ-step dC dp
+... | I , (M , (i , (dI , (dD , (dM , (de , (dC , (di , (dp , cC))))))))) with dσ-step dC dp
 ...   | dC' , dsnd =
-        ⊢conv (⊢dih dD dM de dC' di dsnd) (csymᵀ (ctrnᵀ cC (credᵀ (DIh-σ D M S f p))))
+        ⊢conv (⊢dih dI dD dM de dC' di dsnd) (csymᵀ (ctrnᵀ cC (credᵀ (DIh-σ D M S f p))))
 sr d (dih-ρ D e j C p) with gen-dih d
-... | I , (M , (i , (dD , (dM , (de , (dC , (di , (dp , cC)))))))) with dρ-step dC dp
+... | I , (M , (i , (dI , (dD , (dM , (de , (dC , (di , (dp , cC))))))))) with dρ-step dC dp
 ...   | dj , (dC' , (dfst , dsnd)) =
-        ⊢conv (⊢pair (ren-ty (ty-DIh dD dM dC' di dsnd) there)
-                     (⊢ielim dD dM de dj dfst)
-                     (⊢-cast (sym (wk-cancel _ _)) (⊢dih dD dM de dC' di dsnd)))
+        ⊢conv (⊢pair (ren-ty (ty-DIh dI dD dM dC' di dsnd) there)
+                     (⊢ielim dI dD dM de dj dfst)
+                     (⊢-cast (sym (wk-cancel _ _)) (⊢dih dI dD dM de dC' di dsnd)))
               (csymᵀ (ctrnᵀ cC (credᵀ (DIh-ρ D M j C p))))
 -- ★★★ ι.  `IMu-inj` reconciles the constructor's family with the
 --   eliminator's (three CONVERSIONS — every slot is a term), the payload
@@ -1186,7 +1186,7 @@ sr d (dih-ρ D e j C p) with gen-dih d
 --   hypotheses.  The result type is the motive at `con p` by σ-calculus
 --   alone (`meth-inst`) — no η.
 sr d (ι D i e p) with gen-ielim d
-... | I , (M , (dD , (dM , (de , (di , (dt , cC)))))) with gen-con dt
+... | I , (M , (dI , (dD , (dM , (de , (di , (dt , cC))))))) with gen-con dt
 ...   | I' , (D' , (i' , (dI' , (dD' , (di' , (dp , cIMu)))))) with IMu-inj cIMu
 ...     | cI , (cD , ci) =
           ⊢conv (⊢-cast (meth-inst (dih D e D p) p i M)
@@ -1195,7 +1195,7 @@ sr d (ι D i e p) with gen-ielim d
                     (⊢app-cast (cong₃ (λ a b c' → El (dpay a b c' i))
                                       (wk-cancel-tm i I) (wk-cancel-tm i D) (wk-cancel-tm i D))
                       (⊢app de di) dp₁)
-                    (⊢dih dD dM de dD di dp₁)))
+                    (⊢dih dI dD dM de dD di dp₁)))
                 (csymᵀ cC)
   where
   dp₁ = ⊢conv dp (dpay-≅ (csym cI) (csym cD) (csym ci))
@@ -1207,7 +1207,7 @@ sr d (fcase-s t a b) with gen-fcase d
 ...   | n' , (dt' , c') with Fin-inj c'
 ...     | refl = ⊢conv (⊢-cast (fsucS-inst t P) (⊢[] db dt')) (csymᵀ cC)
 sr d (psplit-β b x y) with gen-psplit d
-... | A , (B , (P , (dP , (dq , (db , cC))))) with gen-pair dq
+... | A , (B , (P , (dA , (dB , (dP , (dq , (db , cC))))))) with gen-pair dq
 ...   | A' , (B' , (cΣ , (dB' , (dx , dy)))) with Σ-inj (csymᵀ cΣ)
 ...     | cA , cB =
           ⊢conv (⊢-cast (pairS-inst x y P)
@@ -1226,21 +1226,21 @@ sr d (ξ-⌜IMu⌝ⁱ r) with gen-⌜IMu⌝ d
 sr d (ξ-con r) with gen-con d
 ... | I , (D , (i , (dI , (dD , (di , (dp , c)))))) = ⊢conv (⊢con dI dD di (sr dp r)) (csymᵀ c)
 sr d (ξ-ielimᴰ r) with gen-ielim d
-... | I , (M , (dD , (dM , (de , (di , (dt , cC)))))) =
-      ⊢conv (⊢ielim (sr dD r) (conv-ctxᵀ (credᵀ (ξ-IMuᴰ (⟶-ren vs r))) dM)
+... | I , (M , (dI , (dD , (dM , (de , (di , (dt , cC))))))) =
+      ⊢conv (⊢ielim dI (sr dD r) (conv-ctxᵀ (credᵀ (ξ-IMuᴰ (⟶-ren vs r))) dM)
                     (⊢conv de (red→≅ᵀ (MethTy-monoᴰ I M (step r done))))
                     di (⊢conv dt (credᵀ (ξ-IMuᴰ r))))
             (csymᵀ cC)
 sr d (ξ-ielimⁱ r) with gen-ielim d
-... | I , (M , (dD , (dM , (de , (di , (dt , cC)))))) =
-      ⊢conv (⊢ielim dD dM de (sr di r) (⊢conv dt (credᵀ (ξ-IMuⁱ r))))
+... | I , (M , (dI , (dD , (dM , (de , (di , (dt , cC))))))) =
+      ⊢conv (⊢ielim dI dD dM de (sr di r) (⊢conv dt (credᵀ (ξ-IMuⁱ r))))
             (csymᵀ (ctrnᵀ cC (red→≅ᵀ (iinst-mono M _ (step r done)))))
 sr d (ξ-ielimᵉ r) with gen-ielim d
-... | I , (M , (dD , (dM , (de , (di , (dt , cC)))))) =
-      ⊢conv (⊢ielim dD dM (sr de r) di dt) (csymᵀ cC)
+... | I , (M , (dI , (dD , (dM , (de , (di , (dt , cC))))))) =
+      ⊢conv (⊢ielim dI dD dM (sr de r) di dt) (csymᵀ cC)
 sr d (ξ-ielimᵗ {i = i} r) with gen-ielim d
-... | I , (M , (dD , (dM , (de , (di , (dt , cC)))))) =
-      ⊢conv (⊢ielim dD dM de di (sr dt r))
+... | I , (M , (dI , (dD , (dM , (de , (di , (dt , cC))))))) =
+      ⊢conv (⊢ielim dI dD dM de di (sr dt r))
             (csymᵀ (ctrnᵀ cC (red→≅ᵀ (iinst-monoˢ M i (step r done)))))
 sr d (ξ-dι r) with gen-dι d
 ... | I , (dI , (dj , c)) = ⊢conv (⊢dι dI (sr dj r)) (csymᵀ c)
@@ -1265,21 +1265,21 @@ sr d (ξ-dpayᶜ r) with gen-dpay d
 sr d (ξ-dpayⁱ r) with gen-dpay d
 ... | dI , (dD , (dC , (di , cU))) = ⊢conv (⊢dpay dI dD dC (sr di r)) (csymᵀ cU)
 sr d (ξ-dihᴰ r) with gen-dih d
-... | I , (M , (i , (dD , (dM , (de , (dC , (di , (dp , cC)))))))) =
-      ⊢conv (⊢dih (sr dD r) (conv-ctxᵀ (credᵀ (ξ-IMuᴰ (⟶-ren vs r))) dM)
+... | I , (M , (i , (dI , (dD , (dM , (de , (dC , (di , (dp , cC))))))))) =
+      ⊢conv (⊢dih dI (sr dD r) (conv-ctxᵀ (credᵀ (ξ-IMuᴰ (⟶-ren vs r))) dM)
                   (⊢conv de (red→≅ᵀ (MethTy-monoᴰ I M (step r done))))
                   dC di (⊢conv dp (credᵀ (ξ-El (ξ-dpayᴰ r)))))
             (csymᵀ (ctrnᵀ cC (credᵀ (ξ-DIhᴰ r))))
 sr d (ξ-dihᵉ r) with gen-dih d
-... | I , (M , (i , (dD , (dM , (de , (dC , (di , (dp , cC)))))))) =
-      ⊢conv (⊢dih dD dM (sr de r) dC di dp) (csymᵀ cC)
+... | I , (M , (i , (dI , (dD , (dM , (de , (dC , (di , (dp , cC))))))))) =
+      ⊢conv (⊢dih dI dD dM (sr de r) dC di dp) (csymᵀ cC)
 sr d (ξ-dihᶜ r) with gen-dih d
-... | I , (M , (i , (dD , (dM , (de , (dC , (di , (dp , cC)))))))) =
-      ⊢conv (⊢dih dD dM de (sr dC r) di (⊢conv dp (credᵀ (ξ-El (ξ-dpayᶜ r)))))
+... | I , (M , (i , (dI , (dD , (dM , (de , (dC , (di , (dp , cC))))))))) =
+      ⊢conv (⊢dih dI dD dM de (sr dC r) di (⊢conv dp (credᵀ (ξ-El (ξ-dpayᶜ r)))))
             (csymᵀ (ctrnᵀ cC (credᵀ (ξ-DIhᶜ r))))
 sr d (ξ-dihᵖ r) with gen-dih d
-... | I , (M , (i , (dD , (dM , (de , (dC , (di , (dp , cC)))))))) =
-      ⊢conv (⊢dih dD dM de dC di (sr dp r)) (csymᵀ (ctrnᵀ cC (credᵀ (ξ-DIhᵖ r))))
+... | I , (M , (i , (dI , (dD , (dM , (de , (dC , (di , (dp , cC))))))))) =
+      ⊢conv (⊢dih dI dD dM de dC di (sr dp r)) (csymᵀ (ctrnᵀ cC (credᵀ (ξ-DIhᵖ r))))
 sr d (ξ-fsuc r) with gen-fsuc d
 ... | n , (dt , c) = ⊢conv (⊢fsuc (sr dt r)) (csymᵀ c)
 sr d (ξ-fcaseᵗ r) with gen-fcase d
@@ -1295,10 +1295,10 @@ sr d (ξ-fcase0 r) with gen-fcase0 d
       ⊢conv (⊢fcase0 dP (sr dt r))
             (csymᵀ (ctrnᵀ cC (red→≅ᵀ (subTy-monoˢ (single-mono (step r done)) P))))
 sr d (ξ-psplitᵇ r) with gen-psplit d
-... | A , (B , (P , (dP , (dq , (db , cC))))) = ⊢conv (⊢psplit dP dq (sr db r)) (csymᵀ cC)
+... | A , (B , (P , (dA , (dB , (dP , (dq , (db , cC))))))) = ⊢conv (⊢psplit dA dB dP dq (sr db r)) (csymᵀ cC)
 sr d (ξ-psplitᵍ r) with gen-psplit d
-... | A , (B , (P , (dP , (dq , (db , cC))))) =
-      ⊢conv (⊢psplit dP (sr dq r) db)
+... | A , (B , (P , (dA , (dB , (dP , (dq , (db , cC))))))) =
+      ⊢conv (⊢psplit dA dB dP (sr dq r) db)
             (csymᵀ (ctrnᵀ cC (red→≅ᵀ (subTy-monoˢ (single-mono (step r done)) P))))
 
 sr d (ξ-nsuc r) with gen-nsuc d

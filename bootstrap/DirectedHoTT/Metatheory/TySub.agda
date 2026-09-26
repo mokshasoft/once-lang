@@ -893,8 +893,8 @@ ren-ty ty-Unit       h = ty-Unit
 ren-ty ty-Nat        h = ty-Nat
 ren-ty (ty-IMu dI dD di) h = ty-IMu (ren-lemma dI h) (ren-lemma dD h) (ren-lemma di h)
 ren-ty (ty-Desc dI) h = ty-Desc (ren-lemma dI h)
-ren-ty {Δ = Δ} {ρ = ρ} (ty-DIh {I = I} {D = D} {M = M} dD dM dC di dp) h =
-  ty-DIh (ren-lemma dD h)
+ren-ty {Δ = Δ} {ρ = ρ} (ty-DIh {I = I} {D = D} {M = M} dI dD dM dC di dp) h =
+  ty-DIh (ren-lemma dI h) (ren-lemma dD h)
     (subst (λ A → ((Δ ▹ El (renTm ρ I)) ▹ A) ⊢ty renTy (extR (extR ρ)) M)
              (cong₂ (λ a b → IMu a b (var vz)) (wk-ren ρ I) (wk-ren ρ D))
              (ren-ty dM (Ren⊢-ext (Ren⊢-ext h))))
@@ -929,16 +929,16 @@ ren-lemma {ρ = ρ} (⊢dσ {I = I} {S = S} dI dS df) h =
 ren-lemma (⊢dρ dI dj dC) h = ⊢dρ (ren-lemma dI h) (ren-lemma dj h) (ren-lemma dC h)
 ren-lemma (⊢dpay dI dD dC di) h = ⊢dpay (ren-lemma dI h) (ren-lemma dD h) (ren-lemma dC h) (ren-lemma di h)
 ren-lemma (⊢con dI dD di dp) h = ⊢con (ren-lemma dI h) (ren-lemma dD h) (ren-lemma di h) (ren-lemma dp h)
-ren-lemma {Δ = Δ} {ρ = ρ} (⊢dih {I = I} {D = D} {M = M} dD dM de dC di dp) h =
-  ⊢dih (ren-lemma dD h)
+ren-lemma {Δ = Δ} {ρ = ρ} (⊢dih {I = I} {D = D} {M = M} dI dD dM de dC di dp) h =
+  ⊢dih (ren-lemma dI h) (ren-lemma dD h)
     (subst (λ A → ((Δ ▹ El (renTm ρ I)) ▹ A) ⊢ty renTy (extR (extR ρ)) M)
              (cong₂ (λ a b → IMu a b (var vz)) (wk-ren ρ I) (wk-ren ρ D))
              (ren-ty dM (Ren⊢-ext (Ren⊢-ext h))))
     (⊢-cast (MethTy-ren ρ I D M) (ren-lemma de h))
     (ren-lemma dC h) (ren-lemma di h) (ren-lemma dp h)
-ren-lemma {Δ = Δ} {ρ = ρ} (⊢ielim {I = I} {D = D} {M = M} {i = i} {t = t} dD dM de di dt) h =
+ren-lemma {Δ = Δ} {ρ = ρ} (⊢ielim {I = I} {D = D} {M = M} {i = i} {t = t} dI dD dM de di dt) h =
   ⊢-cast (sym (iinst-ren ρ M i t))
-    (⊢ielim (ren-lemma dD h)
+    (⊢ielim (ren-lemma dI h) (ren-lemma dD h)
       (subst (λ A → ((Δ ▹ El (renTm ρ I)) ▹ A) ⊢ty renTy (extR (extR ρ)) M)
              (cong₂ (λ a b → IMu a b (var vz)) (wk-ren ρ I) (wk-ren ρ D))
              (ren-ty dM (Ren⊢-ext (Ren⊢-ext h))))
@@ -953,9 +953,9 @@ ren-lemma {ρ = ρ} (⊢fcase {P = P} {t = t} dP dt da db) h =
             (⊢-cast (fsucS-ren ρ P) (ren-lemma db (Ren⊢-ext h))))
 ren-lemma {ρ = ρ} (⊢fcase0 {P = P} {t = t} dP dt) h =
   ⊢-cast (sym (ren-comm-ty ρ P t)) (⊢fcase0 (ren-ty dP (Ren⊢-ext h)) (ren-lemma dt h))
-ren-lemma {ρ = ρ} (⊢psplit {P = P} {q = q} dP dq db) h =
+ren-lemma {ρ = ρ} (⊢psplit {P = P} {q = q} dA dB dP dq db) h =
   ⊢-cast (sym (ren-comm-ty ρ P q))
-    (⊢psplit (ren-ty dP (Ren⊢-ext h)) (ren-lemma dq h)
+    (⊢psplit (ren-ty dA h) (ren-ty dB (Ren⊢-ext h)) (ren-ty dP (Ren⊢-ext h)) (ren-lemma dq h)
              (⊢-cast (pairS-ren ρ P) (ren-lemma db (Ren⊢-ext (Ren⊢-ext h)))))
 ren-lemma (⊢var v) h = ⊢var (h v)
 ren-lemma (⊢lam dA d) h = ⊢lam (ren-ty dA h) (ren-lemma d (Ren⊢-ext h))
@@ -1052,8 +1052,8 @@ sub-ty ty-Unit      h = ty-Unit
 sub-ty ty-Nat       h = ty-Nat
 sub-ty (ty-IMu dI dD di) h = ty-IMu (sub-lemma dI h) (sub-lemma dD h) (sub-lemma di h)
 sub-ty (ty-Desc dI) h = ty-Desc (sub-lemma dI h)
-sub-ty {Δ = Δ} {σ = σ} (ty-DIh {I = I} {D = D} {M = M} dD dM dC di dp) h =
-  ty-DIh (sub-lemma dD h)
+sub-ty {Δ = Δ} {σ = σ} (ty-DIh {I = I} {D = D} {M = M} dI dD dM dC di dp) h =
+  ty-DIh (sub-lemma dI h) (sub-lemma dD h)
     (subst (λ A → ((Δ ▹ El (subTm σ I)) ▹ A) ⊢ty subTy (extS (extS σ)) M)
              (cong₂ (λ a b → IMu a b (var vz)) (wk-sub σ I) (wk-sub σ D))
              (sub-ty dM (Sub⊢-ext (Sub⊢-ext h))))
@@ -1087,16 +1087,16 @@ sub-lemma {σ = σ} (⊢dσ {I = I} {S = S} dI dS df) h =
 sub-lemma (⊢dρ dI dj dC) h = ⊢dρ (sub-lemma dI h) (sub-lemma dj h) (sub-lemma dC h)
 sub-lemma (⊢dpay dI dD dC di) h = ⊢dpay (sub-lemma dI h) (sub-lemma dD h) (sub-lemma dC h) (sub-lemma di h)
 sub-lemma (⊢con dI dD di dp) h = ⊢con (sub-lemma dI h) (sub-lemma dD h) (sub-lemma di h) (sub-lemma dp h)
-sub-lemma {Δ = Δ} {σ = σ} (⊢dih {I = I} {D = D} {M = M} dD dM de dC di dp) h =
-  ⊢dih (sub-lemma dD h)
+sub-lemma {Δ = Δ} {σ = σ} (⊢dih {I = I} {D = D} {M = M} dI dD dM de dC di dp) h =
+  ⊢dih (sub-lemma dI h) (sub-lemma dD h)
     (subst (λ A → ((Δ ▹ El (subTm σ I)) ▹ A) ⊢ty subTy (extS (extS σ)) M)
              (cong₂ (λ a b → IMu a b (var vz)) (wk-sub σ I) (wk-sub σ D))
              (sub-ty dM (Sub⊢-ext (Sub⊢-ext h))))
     (⊢-cast (MethTy-sub σ I D M) (sub-lemma de h))
     (sub-lemma dC h) (sub-lemma di h) (sub-lemma dp h)
-sub-lemma {Δ = Δ} {σ = σ} (⊢ielim {I = I} {D = D} {M = M} {i = i} {t = t} dD dM de di dt) h =
+sub-lemma {Δ = Δ} {σ = σ} (⊢ielim {I = I} {D = D} {M = M} {i = i} {t = t} dI dD dM de di dt) h =
   ⊢-cast (sym (iinst-sub σ M i t))
-    (⊢ielim (sub-lemma dD h)
+    (⊢ielim (sub-lemma dI h) (sub-lemma dD h)
       (subst (λ A → ((Δ ▹ El (subTm σ I)) ▹ A) ⊢ty subTy (extS (extS σ)) M)
              (cong₂ (λ a b → IMu a b (var vz)) (wk-sub σ I) (wk-sub σ D))
              (sub-ty dM (Sub⊢-ext (Sub⊢-ext h))))
@@ -1111,9 +1111,9 @@ sub-lemma {σ = σ} (⊢fcase {P = P} {t = t} dP dt da db) h =
             (⊢-cast (fsucS-sub σ P) (sub-lemma db (Sub⊢-ext h))))
 sub-lemma {σ = σ} (⊢fcase0 {P = P} {t = t} dP dt) h =
   ⊢-cast (sym (subTy-comm σ P t)) (⊢fcase0 (sub-ty dP (Sub⊢-ext h)) (sub-lemma dt h))
-sub-lemma {σ = σ} (⊢psplit {P = P} {q = q} dP dq db) h =
+sub-lemma {σ = σ} (⊢psplit {P = P} {q = q} dA dB dP dq db) h =
   ⊢-cast (sym (subTy-comm σ P q))
-    (⊢psplit (sub-ty dP (Sub⊢-ext h)) (sub-lemma dq h)
+    (⊢psplit (sub-ty dA h) (sub-ty dB (Sub⊢-ext h)) (sub-ty dP (Sub⊢-ext h)) (sub-lemma dq h)
              (⊢-cast (pairS-sub σ P) (sub-lemma db (Sub⊢-ext (Sub⊢-ext h)))))
 sub-lemma (⊢var v) h = h v
 sub-lemma (⊢lam dA d) h = ⊢lam (sub-ty dA h) (sub-lemma d (Sub⊢-ext h))
