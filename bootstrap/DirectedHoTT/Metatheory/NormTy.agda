@@ -41,7 +41,7 @@ open import DirectedHoTT.Metatheory.RedCong
         ; ⟶ᵀ*-DIhᴰ; ⟶ᵀ*-DIhᴹ; ⟶ᵀ*-DIhᶜ; ⟶ᵀ*-DIhᵖ; red→≅ᵀ )
 open import DirectedHoTT.Metatheory.TySub
   using ( Sub⊢; Sub⊢-ext; ⊢single; sub-lemma; sub-ty; Ren⊢; Ren⊢-ext; ren-lemma; ren-ty
-        ; ∋-cast; ⟶ᵀ-ren; iinst-wf; wk-cancel-tm )
+        ; ∋-cast; ⟶ᵀ-ren; iinst-wf; wk-cancel-tm; DescF-ren; DescF-sub; ⊢wk; ⊢-cast )
 open import DirectedHoTT.Metatheory.SubjectReductionBase using ( wk-sub )
 open import DirectedHoTT.Metatheory.Fundamental.Syntactic using ( ⟨_⟩ᵣ; subTy-var )
 open import DirectedHoTT.Metatheory.Fundamental.Indexed using ( Walk; w-ne; w-exp; w-ι; w-σ; w-ρ )
@@ -189,10 +189,10 @@ elNF wΓ c@(nsuc _) dc nc = mkWNᵁ (El c) doneᵀ (λ { (ξ-El q) → nc q }) n
 elNF wΓ c@(natrec _ _ _) dc nc = mkWNᵁ (El c) doneᵀ (λ { (ξ-El q) → nc q }) nu-El
 elNF wΓ c@(con _) dc nc = mkWNᵁ (El c) doneᵀ (λ { (ξ-El q) → nc q }) nu-El
 elNF wΓ c@(ielim _ _ _ _) dc nc = mkWNᵁ (El c) doneᵀ (λ { (ξ-El q) → nc q }) nu-El
-elNF wΓ c@(dι _) dc nc = mkWNᵁ (El c) doneᵀ (λ { (ξ-El q) → nc q }) nu-El
+elNF wΓ c@dι dc nc = mkWNᵁ (El c) doneᵀ (λ { (ξ-El q) → nc q }) nu-El
 elNF wΓ c@(dσ _ _) dc nc = mkWNᵁ (El c) doneᵀ (λ { (ξ-El q) → nc q }) nu-El
 elNF wΓ c@(dρ _ _) dc nc = mkWNᵁ (El c) doneᵀ (λ { (ξ-El q) → nc q }) nu-El
-elNF wΓ c@(dpay _ _ _ _) dc nc = mkWNᵁ (El c) doneᵀ (λ { (ξ-El q) → nc q }) nu-El
+elNF wΓ c@(dpay _ _ _) dc nc = mkWNᵁ (El c) doneᵀ (λ { (ξ-El q) → nc q }) nu-El
 elNF wΓ c@(dih _ _ _ _) dc nc = mkWNᵁ (El c) doneᵀ (λ { (ξ-El q) → nc q }) nu-El
 elNF wΓ c@fzero dc nc = mkWNᵁ (El c) doneᵀ (λ { (ξ-El q) → nc q }) nu-El
 elNF wΓ c@(fsuc _) dc nc = mkWNᵁ (El c) doneᵀ (λ { (ξ-El q) → nc q }) nu-El
@@ -246,10 +246,10 @@ homNF⁰ wΓ Nat dA nA uA (nsuc m) u@unit dt du nt nu = mkWNᵁ (Hom Nat (nsuc m
 homNF⁰ wΓ Nat dA nA uA (nsuc m) u@(natrec _ _ _) dt du nt nu = mkWNᵁ (Hom Nat (nsuc m) u) doneᵀ (λ { (ξ-Homᵀ ()) ; (ξ-Homˡ q) → nt q ; (ξ-Homʳ q) → nu q }) nu-Hom
 homNF⁰ wΓ Nat dA nA uA (nsuc m) u@(con _) dt du nt nu = mkWNᵁ (Hom Nat (nsuc m) u) doneᵀ (λ { (ξ-Homᵀ ()) ; (ξ-Homˡ q) → nt q ; (ξ-Homʳ q) → nu q }) nu-Hom
 homNF⁰ wΓ Nat dA nA uA (nsuc m) u@(ielim _ _ _ _) dt du nt nu = mkWNᵁ (Hom Nat (nsuc m) u) doneᵀ (λ { (ξ-Homᵀ ()) ; (ξ-Homˡ q) → nt q ; (ξ-Homʳ q) → nu q }) nu-Hom
-homNF⁰ wΓ Nat dA nA uA (nsuc m) u@(dι _) dt du nt nu = mkWNᵁ (Hom Nat (nsuc m) u) doneᵀ (λ { (ξ-Homᵀ ()) ; (ξ-Homˡ q) → nt q ; (ξ-Homʳ q) → nu q }) nu-Hom
+homNF⁰ wΓ Nat dA nA uA (nsuc m) u@dι dt du nt nu = mkWNᵁ (Hom Nat (nsuc m) u) doneᵀ (λ { (ξ-Homᵀ ()) ; (ξ-Homˡ q) → nt q ; (ξ-Homʳ q) → nu q }) nu-Hom
 homNF⁰ wΓ Nat dA nA uA (nsuc m) u@(dσ _ _) dt du nt nu = mkWNᵁ (Hom Nat (nsuc m) u) doneᵀ (λ { (ξ-Homᵀ ()) ; (ξ-Homˡ q) → nt q ; (ξ-Homʳ q) → nu q }) nu-Hom
 homNF⁰ wΓ Nat dA nA uA (nsuc m) u@(dρ _ _) dt du nt nu = mkWNᵁ (Hom Nat (nsuc m) u) doneᵀ (λ { (ξ-Homᵀ ()) ; (ξ-Homˡ q) → nt q ; (ξ-Homʳ q) → nu q }) nu-Hom
-homNF⁰ wΓ Nat dA nA uA (nsuc m) u@(dpay _ _ _ _) dt du nt nu = mkWNᵁ (Hom Nat (nsuc m) u) doneᵀ (λ { (ξ-Homᵀ ()) ; (ξ-Homˡ q) → nt q ; (ξ-Homʳ q) → nu q }) nu-Hom
+homNF⁰ wΓ Nat dA nA uA (nsuc m) u@(dpay _ _ _) dt du nt nu = mkWNᵁ (Hom Nat (nsuc m) u) doneᵀ (λ { (ξ-Homᵀ ()) ; (ξ-Homˡ q) → nt q ; (ξ-Homʳ q) → nu q }) nu-Hom
 homNF⁰ wΓ Nat dA nA uA (nsuc m) u@(dih _ _ _ _) dt du nt nu = mkWNᵁ (Hom Nat (nsuc m) u) doneᵀ (λ { (ξ-Homᵀ ()) ; (ξ-Homˡ q) → nt q ; (ξ-Homʳ q) → nu q }) nu-Hom
 homNF⁰ wΓ Nat dA nA uA (nsuc m) u@fzero dt du nt nu = mkWNᵁ (Hom Nat (nsuc m) u) doneᵀ (λ { (ξ-Homᵀ ()) ; (ξ-Homˡ q) → nt q ; (ξ-Homʳ q) → nu q }) nu-Hom
 homNF⁰ wΓ Nat dA nA uA (nsuc m) u@(fsuc _) dt du nt nu = mkWNᵁ (Hom Nat (nsuc m) u) doneᵀ (λ { (ξ-Homᵀ ()) ; (ξ-Homˡ q) → nt q ; (ξ-Homʳ q) → nu q }) nu-Hom
@@ -282,10 +282,10 @@ homNF⁰ wΓ Nat dA nA uA t@unit u dt du nt nu = mkWNᵁ (Hom Nat t u) doneᵀ (
 homNF⁰ wΓ Nat dA nA uA t@(natrec _ _ _) u dt du nt nu = mkWNᵁ (Hom Nat t u) doneᵀ (λ { (ξ-Homᵀ ()) ; (ξ-Homˡ q) → nt q ; (ξ-Homʳ q) → nu q }) nu-Hom
 homNF⁰ wΓ Nat dA nA uA t@(con _) u dt du nt nu = mkWNᵁ (Hom Nat t u) doneᵀ (λ { (ξ-Homᵀ ()) ; (ξ-Homˡ q) → nt q ; (ξ-Homʳ q) → nu q }) nu-Hom
 homNF⁰ wΓ Nat dA nA uA t@(ielim _ _ _ _) u dt du nt nu = mkWNᵁ (Hom Nat t u) doneᵀ (λ { (ξ-Homᵀ ()) ; (ξ-Homˡ q) → nt q ; (ξ-Homʳ q) → nu q }) nu-Hom
-homNF⁰ wΓ Nat dA nA uA t@(dι _) u dt du nt nu = mkWNᵁ (Hom Nat t u) doneᵀ (λ { (ξ-Homᵀ ()) ; (ξ-Homˡ q) → nt q ; (ξ-Homʳ q) → nu q }) nu-Hom
+homNF⁰ wΓ Nat dA nA uA t@dι u dt du nt nu = mkWNᵁ (Hom Nat t u) doneᵀ (λ { (ξ-Homᵀ ()) ; (ξ-Homˡ q) → nt q ; (ξ-Homʳ q) → nu q }) nu-Hom
 homNF⁰ wΓ Nat dA nA uA t@(dσ _ _) u dt du nt nu = mkWNᵁ (Hom Nat t u) doneᵀ (λ { (ξ-Homᵀ ()) ; (ξ-Homˡ q) → nt q ; (ξ-Homʳ q) → nu q }) nu-Hom
 homNF⁰ wΓ Nat dA nA uA t@(dρ _ _) u dt du nt nu = mkWNᵁ (Hom Nat t u) doneᵀ (λ { (ξ-Homᵀ ()) ; (ξ-Homˡ q) → nt q ; (ξ-Homʳ q) → nu q }) nu-Hom
-homNF⁰ wΓ Nat dA nA uA t@(dpay _ _ _ _) u dt du nt nu = mkWNᵁ (Hom Nat t u) doneᵀ (λ { (ξ-Homᵀ ()) ; (ξ-Homˡ q) → nt q ; (ξ-Homʳ q) → nu q }) nu-Hom
+homNF⁰ wΓ Nat dA nA uA t@(dpay _ _ _) u dt du nt nu = mkWNᵁ (Hom Nat t u) doneᵀ (λ { (ξ-Homᵀ ()) ; (ξ-Homˡ q) → nt q ; (ξ-Homʳ q) → nu q }) nu-Hom
 homNF⁰ wΓ Nat dA nA uA t@(dih _ _ _ _) u dt du nt nu = mkWNᵁ (Hom Nat t u) doneᵀ (λ { (ξ-Homᵀ ()) ; (ξ-Homˡ q) → nt q ; (ξ-Homʳ q) → nu q }) nu-Hom
 homNF⁰ wΓ Nat dA nA uA t@fzero u dt du nt nu = mkWNᵁ (Hom Nat t u) doneᵀ (λ { (ξ-Homᵀ ()) ; (ξ-Homˡ q) → nt q ; (ξ-Homʳ q) → nu q }) nu-Hom
 homNF⁰ wΓ Nat dA nA uA t@(fsuc _) u dt du nt nu = mkWNᵁ (Hom Nat t u) doneᵀ (λ { (ξ-Homᵀ ()) ; (ξ-Homˡ q) → nt q ; (ξ-Homʳ q) → nu q }) nu-Hom
@@ -362,10 +362,10 @@ homNF wΓ Nat dA nA (nsuc m) u@unit dt du nt nu = mkWNᵀ (Hom Nat (nsuc m) u) d
 homNF wΓ Nat dA nA (nsuc m) u@(natrec _ _ _) dt du nt nu = mkWNᵀ (Hom Nat (nsuc m) u) doneᵀ (λ { (ξ-Homᵀ ()) ; (ξ-Homˡ q) → nt q ; (ξ-Homʳ q) → nu q })
 homNF wΓ Nat dA nA (nsuc m) u@(con _) dt du nt nu = mkWNᵀ (Hom Nat (nsuc m) u) doneᵀ (λ { (ξ-Homᵀ ()) ; (ξ-Homˡ q) → nt q ; (ξ-Homʳ q) → nu q })
 homNF wΓ Nat dA nA (nsuc m) u@(ielim _ _ _ _) dt du nt nu = mkWNᵀ (Hom Nat (nsuc m) u) doneᵀ (λ { (ξ-Homᵀ ()) ; (ξ-Homˡ q) → nt q ; (ξ-Homʳ q) → nu q })
-homNF wΓ Nat dA nA (nsuc m) u@(dι _) dt du nt nu = mkWNᵀ (Hom Nat (nsuc m) u) doneᵀ (λ { (ξ-Homᵀ ()) ; (ξ-Homˡ q) → nt q ; (ξ-Homʳ q) → nu q })
+homNF wΓ Nat dA nA (nsuc m) u@dι dt du nt nu = mkWNᵀ (Hom Nat (nsuc m) u) doneᵀ (λ { (ξ-Homᵀ ()) ; (ξ-Homˡ q) → nt q ; (ξ-Homʳ q) → nu q })
 homNF wΓ Nat dA nA (nsuc m) u@(dσ _ _) dt du nt nu = mkWNᵀ (Hom Nat (nsuc m) u) doneᵀ (λ { (ξ-Homᵀ ()) ; (ξ-Homˡ q) → nt q ; (ξ-Homʳ q) → nu q })
 homNF wΓ Nat dA nA (nsuc m) u@(dρ _ _) dt du nt nu = mkWNᵀ (Hom Nat (nsuc m) u) doneᵀ (λ { (ξ-Homᵀ ()) ; (ξ-Homˡ q) → nt q ; (ξ-Homʳ q) → nu q })
-homNF wΓ Nat dA nA (nsuc m) u@(dpay _ _ _ _) dt du nt nu = mkWNᵀ (Hom Nat (nsuc m) u) doneᵀ (λ { (ξ-Homᵀ ()) ; (ξ-Homˡ q) → nt q ; (ξ-Homʳ q) → nu q })
+homNF wΓ Nat dA nA (nsuc m) u@(dpay _ _ _) dt du nt nu = mkWNᵀ (Hom Nat (nsuc m) u) doneᵀ (λ { (ξ-Homᵀ ()) ; (ξ-Homˡ q) → nt q ; (ξ-Homʳ q) → nu q })
 homNF wΓ Nat dA nA (nsuc m) u@(dih _ _ _ _) dt du nt nu = mkWNᵀ (Hom Nat (nsuc m) u) doneᵀ (λ { (ξ-Homᵀ ()) ; (ξ-Homˡ q) → nt q ; (ξ-Homʳ q) → nu q })
 homNF wΓ Nat dA nA (nsuc m) u@fzero dt du nt nu = mkWNᵀ (Hom Nat (nsuc m) u) doneᵀ (λ { (ξ-Homᵀ ()) ; (ξ-Homˡ q) → nt q ; (ξ-Homʳ q) → nu q })
 homNF wΓ Nat dA nA (nsuc m) u@(fsuc _) dt du nt nu = mkWNᵀ (Hom Nat (nsuc m) u) doneᵀ (λ { (ξ-Homᵀ ()) ; (ξ-Homˡ q) → nt q ; (ξ-Homʳ q) → nu q })
@@ -398,10 +398,10 @@ homNF wΓ Nat dA nA t@unit u dt du nt nu = mkWNᵀ (Hom Nat t u) doneᵀ (λ { (
 homNF wΓ Nat dA nA t@(natrec _ _ _) u dt du nt nu = mkWNᵀ (Hom Nat t u) doneᵀ (λ { (ξ-Homᵀ ()) ; (ξ-Homˡ q) → nt q ; (ξ-Homʳ q) → nu q })
 homNF wΓ Nat dA nA t@(con _) u dt du nt nu = mkWNᵀ (Hom Nat t u) doneᵀ (λ { (ξ-Homᵀ ()) ; (ξ-Homˡ q) → nt q ; (ξ-Homʳ q) → nu q })
 homNF wΓ Nat dA nA t@(ielim _ _ _ _) u dt du nt nu = mkWNᵀ (Hom Nat t u) doneᵀ (λ { (ξ-Homᵀ ()) ; (ξ-Homˡ q) → nt q ; (ξ-Homʳ q) → nu q })
-homNF wΓ Nat dA nA t@(dι _) u dt du nt nu = mkWNᵀ (Hom Nat t u) doneᵀ (λ { (ξ-Homᵀ ()) ; (ξ-Homˡ q) → nt q ; (ξ-Homʳ q) → nu q })
+homNF wΓ Nat dA nA t@dι u dt du nt nu = mkWNᵀ (Hom Nat t u) doneᵀ (λ { (ξ-Homᵀ ()) ; (ξ-Homˡ q) → nt q ; (ξ-Homʳ q) → nu q })
 homNF wΓ Nat dA nA t@(dσ _ _) u dt du nt nu = mkWNᵀ (Hom Nat t u) doneᵀ (λ { (ξ-Homᵀ ()) ; (ξ-Homˡ q) → nt q ; (ξ-Homʳ q) → nu q })
 homNF wΓ Nat dA nA t@(dρ _ _) u dt du nt nu = mkWNᵀ (Hom Nat t u) doneᵀ (λ { (ξ-Homᵀ ()) ; (ξ-Homˡ q) → nt q ; (ξ-Homʳ q) → nu q })
-homNF wΓ Nat dA nA t@(dpay _ _ _ _) u dt du nt nu = mkWNᵀ (Hom Nat t u) doneᵀ (λ { (ξ-Homᵀ ()) ; (ξ-Homˡ q) → nt q ; (ξ-Homʳ q) → nu q })
+homNF wΓ Nat dA nA t@(dpay _ _ _) u dt du nt nu = mkWNᵀ (Hom Nat t u) doneᵀ (λ { (ξ-Homᵀ ()) ; (ξ-Homˡ q) → nt q ; (ξ-Homʳ q) → nu q })
 homNF wΓ Nat dA nA t@(dih _ _ _ _) u dt du nt nu = mkWNᵀ (Hom Nat t u) doneᵀ (λ { (ξ-Homᵀ ()) ; (ξ-Homˡ q) → nt q ; (ξ-Homʳ q) → nu q })
 homNF wΓ Nat dA nA t@fzero u dt du nt nu = mkWNᵀ (Hom Nat t u) doneᵀ (λ { (ξ-Homᵀ ()) ; (ξ-Homˡ q) → nt q ; (ξ-Homʳ q) → nu q })
 homNF wΓ Nat dA nA t@(fsuc _) u dt du nt nu = mkWNᵀ (Hom Nat t u) doneᵀ (λ { (ξ-Homᵀ ()) ; (ξ-Homˡ q) → nt q ; (ξ-Homʳ q) → nu q })
@@ -470,7 +470,7 @@ private
   dih-stuck (ξ-DIhᴹ q) k nD nM nC np = nM q
   dih-stuck (ξ-DIhᶜ q) k nD nM nC np = nC q
   dih-stuck (ξ-DIhᵖ q) k nD nM nC np = np q
-  dih-stuck (DIh-ι _ _ _ _)   () nD nM nC np
+  dih-stuck (DIh-ι _ _ _)   () nD nM nC np
   dih-stuck (DIh-σ _ _ _ _ _) () nD nM nC np
   dih-stuck (DIh-ρ _ _ _ _ _) () nD nM nC np
 
@@ -480,22 +480,22 @@ private
 --     `normTyS`'s recursive call on the motive's derivation).
 ------------------------------------------------------------------------
 
-module _ {Θ : Ctx} {I D i : RTm ⌊ Θ ⌋} {M : RTy ((⌊ Θ ⌋ ∙) ∙)}
-         (dI : Θ ⊢ I ∷ U) (dD : Θ ⊢ D ∷ Desc I) (dM : motCtx Θ I D ⊢ty M)
+module _ {Θ : Ctx} {I D : RTm ⌊ Θ ⌋} {M : RTy ((⌊ Θ ⌋ ∙) ∙)}
+         (dI : Θ ⊢ I ∷ U) (dD : Θ ⊢ D ∷ DescF I) (dM : motCtx Θ I D ⊢ty M)
          (motNF : {Ξ : Ctx} {τ : Sub ((⌊ Θ ⌋ ∙) ∙) ⌊ Ξ ⌋} →
                   ⊢ctx Ξ → Sub⊢ (motCtx Θ I D) Ξ τ → WNᵀ (subTy τ M))
          where
 
-  dihNF : {C p : RTm ⌊ Θ ⌋} → Walk C p → Θ ⊢ C ∷ Desc I → Θ ⊢ p ∷ El (dpay I D C i) →
+  dihNF : {C p : RTm ⌊ Θ ⌋} → Walk C p → Θ ⊢ C ∷ Desc I → Θ ⊢ p ∷ El (dpay I D C) →
           {Ξ : Ctx} {ρ : Ren ⌊ Θ ⌋ ⌊ Ξ ⌋} → ⊢ctx Ξ → Ren⊢ Θ Ξ ρ →
           WNᵀ (renTy ρ (DIh D M C p))
   -- a stuck telescope: normalise every slot; the motive at the renaming
   dihNF {C = C} (w-ne n) dC dp {ρ = ρ} wΞ hρ =
-    let mkWN D' rD nD _ = wnorm wΞ (ren-lemma dD hρ)
+    let mkWN D' rD nD _ = wnorm wΞ (⊢-cast (DescF-ren ρ I) (ren-lemma dD hρ))
         mkWN C' rC nC _ = wnorm wΞ (ren-lemma dC hρ)
         mkWN p' rp np _ = wnorm wΞ (ren-lemma dp hρ)
         wmot = c-▹ (c-▹ wΞ (ren-ty (ty-El dI) hρ))
-                   (ren-ty (ty-IMu (⊢wk dI) (⊢wk dD) (⊢var here)) (Ren⊢-ext hρ))
+                   (ren-ty (ty-IMu (⊢wk dI) (⊢-cast (DescF-ren vs I) (⊢wk dD)) (⊢var here)) (Ren⊢-ext hρ))
         mkWNᵀ M' rM nM = subst WNᵀ (subTy-var (extR (extR ρ)) M)
                                 (motNF wmot (Sub⊢-ren (Ren⊢-ext (Ren⊢-ext hρ))))
         key = dstk?-red* rC (trans (dstk?-ren ρ C) (sne→dstk n))
@@ -507,7 +507,7 @@ module _ {Θ : Ctx} {I D i : RTm ⌊ Θ ⌋} {M : RTy ((⌊ Θ ⌋ ∙) ∙)}
     stepᵀ (⟶ᵀ-ren ρ (ξ-DIhᶜ (snr→⟶ r))) doneᵀ
       ◁ dihNF k (sr dC (snr→⟶ r)) (⊢conv dp (credᵀ (ξ-El (ξ-dpayᶜ (snr→⟶ r))))) wΞ hρ
   dihNF w-ι dC dp {ρ = ρ} wΞ hρ =
-    mkWNᵀ Unit (stepᵀ (⟶ᵀ-ren ρ (DIh-ι _ _ _ _)) doneᵀ) (λ ())
+    mkWNᵀ Unit (stepᵀ (⟶ᵀ-ren ρ (DIh-ι _ _ _)) doneᵀ) (λ ())
   dihNF (w-σ k) dC dp {ρ = ρ} wΞ hρ with dσ-step dC dp
   ... | dC' , dsnd = stepᵀ (⟶ᵀ-ren ρ (DIh-σ _ _ _ _ _)) doneᵀ ◁ dihNF k dC' dsnd wΞ hρ
   -- ★ the recursive field: the motive's instance, and the rest of the
@@ -547,9 +547,9 @@ normTyS wΔ ty-U    h = mkWNᵀ U doneᵀ (λ ())
 normTyS wΔ ty-Unit h = mkWNᵀ Unit doneᵀ (λ ())
 normTyS wΔ ty-Nat  h = mkWNᵀ Nat doneᵀ (λ ())
 normTyS wΔ ty-Fin  h = mkWNᵀ (Fin _) doneᵀ (λ ())
-normTyS wΔ (ty-IMu dI dD di) h =
+normTyS {σ = σ} wΔ (ty-IMu {I = I} dI dD di) h =
   let mkWN I' rI nI _ = wnorm wΔ (sub-lemma dI h)
-      mkWN D' rD nD _ = wnorm wΔ (sub-lemma dD h)
+      mkWN D' rD nD _ = wnorm wΔ (⊢-cast (DescF-sub σ I) (sub-lemma dD h))
       mkWN i' ri ni _ = wnorm wΔ (sub-lemma di h)
   in  mkWNᵀ (IMu I' D' i') (⟶ᵀ*-trans (⟶ᵀ*-IMuᴵ rI) (⟶ᵀ*-trans (⟶ᵀ*-IMuᴰ rD) (⟶ᵀ*-IMu ri)))
         (λ { (ξ-IMuᴵ q) → nI q ; (ξ-IMuᴰ q) → nD q ; (ξ-IMuⁱ q) → ni q })
@@ -585,12 +585,12 @@ normTyS wΔ (ty-Hom dA dt du) h =
   in  ⟶ᵀ*-trans (⟶ᵀ*-Homᵀ rA) (⟶ᵀ*-trans (⟶ᵀ*-Homˡ rt) (⟶ᵀ*-Homʳ ru))
         ◁ homNF wΔ A' (srᵀ* dA' rA) nA t' u' (sr* dt' rt) (sr* du' ru) nt nu
 -- ★ the hypotheses: the walk, at the identity renaming.
-normTyS {Δ = Δ} {σ = σ} wΔ (ty-DIh {I = I} {D = D} {M = M} dI dD dM dC di dp) h =
+normTyS {Δ = Δ} {σ = σ} wΔ (ty-DIh {I = I} {D = D} {M = M} dI dD dM dC dp) h =
   subst WNᵀ (renTy-idR _)
-    (dihNF dI' dD' dM' motNF (dih-walk wΔ dD' dC' dp') dC' dp' wΔ Ren⊢-id)
+    (dihNF dI' dD' dM' motNF (dih-walk wΔ dI' dD' dC' dp') dC' dp' wΔ Ren⊢-id)
   where
     dI' = sub-lemma dI h
-    dD' = sub-lemma dD h
+    dD' = ⊢-cast (DescF-sub σ I) (sub-lemma dD h)
     dC' = sub-lemma dC h
     dp' = sub-lemma dp h
     ext-eq = cong₂ (λ a b → IMu a b (var vz)) (wk-sub σ I) (wk-sub σ D)
