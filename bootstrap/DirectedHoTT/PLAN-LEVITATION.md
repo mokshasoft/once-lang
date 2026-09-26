@@ -1,7 +1,8 @@
 # PLAN-LEVITATION — descriptions become terms, one datatype former (2026-09-26)
 
 > Decisions: D071 (Σ positive, `split`, no η), D072 (one former, indexed),
-> D073 (index is a code in Γ).
+> D073 (index is a code in Γ), ★ D074 (descriptions are FIBRED:
+> `D : Π (El I) (Desc I)` — see "Stage F" below; it revises stages 1–4).
 > Evidence: `SPIKE-LEVITATION.md` S0–S4 (`bootstrap/tmp/Lev*.agda`).
 > The goal is KNOT SIMPLICITY. Kernel/MT churn is cheap: A-math went through
 > all the metatheory in hours.
@@ -23,6 +24,33 @@
 - DELETED: `Mu`/`⌜Mu⌝`/`con k`/`elim`, `IMu`'s closed `IDesc`, `icon k`,
   `ilookupD`, method tuples, `IDescWf`/`IDescWfFrom`/`IConWf`/`ICodeWf`/
   `DescWf`/`DConWf`, `Xinst`/`XEnv`.
+
+## ★ Stage F — the FIBRED form (D074, 2026-09-26)
+
+Found while porting the examples (stage 4): with `D : Desc I` EVERY
+constructor Fords its index, so syntaxes (`Scoped`, the Knot's depth) pay a
+`jsub` per recursive field in every index-dependent consumer. The fibred
+form is the definition (fibres of the target map), Fording its `Id`-encoding.
+
+Kernel delta (everything else unchanged):
+- `dι` is NULLARY; `dpay I D C` loses its index (`dpay-ι ⟶ ⌜Unit⌝`,
+  `dpay-ρ ⟶ ⌜Σ⌝ (⌜IMu⌝ I D j) (wk …)`, `dpay-σ` as before);
+- `D ∷ Π (El I) (Desc I)` in `ty-IMu`/`⊢⌜IMu⌝`/`⊢con`/`⊢ielim`/`⊢dih`/
+  `ty-DIh`/`⊢dpay`; `⊢con`: `p ∷ El (dpay I D (app D i))`;
+- ι: `ielim D i e (con p) ⟶ e i p (dih D e (app D i) p)`;
+- `MethTy`: payload `dpay … (app D' (var vz))`, hypotheses at `app D'' i`;
+- `⊢dih`/`ty-DIh` lose the index premise (the payload no longer mentions it).
+LR: `⊩₀IMu` stores `⊩I` and `(j : RTm Γ) → ⊩I ⊩₀∋ j → IKInterp ⊩I (app D₀ j)`
+(the `⊩₀Π` induction–recursion pattern: `⊩₀∋` negative, `IKInterp`
+positive); the type's own index validity is stored too. `IKPred` takes the
+index predicate `PI`; `ikp-ρ` stores `PI j`; `IMuMem PI KP i q t` with
+`imm-con : ILift (KP i q) (IMuMem PI KP) p → IMuMem … i q (con p)`.
+Lib: `Dₗ Cs = lam (dσ (⌜Fin⌝ c) (selF Cs))` with `Cs` over `Γ ∙` (the index
+in scope); `Tel` over `Γ ∙`, `tι` nullary. Vec gets an explicit `⌜Id⌝` Ford
+field; Scoped is Ford-free.
+Order: Spec (Syntax/Typing/Variance/Annotated/TypingA via genA.py) → stage-2
+modules in the same order as before → Sugar/Tel/TelFold/ICast/IHeadRed/
+CongMacro → Vec, Scoped, ScopedDepth → continue stage 4.
 
 ## Stage 1 — DONE (2026-09-26, branch `ocp-0009-levitation`)
 

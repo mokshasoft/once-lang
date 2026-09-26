@@ -5123,3 +5123,57 @@ condition.
 ### See Also
 
 D071, D072, `bootstrap/DirectedHoTT/PLAN-LEVITATION.md`.
+
+---
+
+## D074: Descriptions Are FIBRED — `D : Π (El I) (Desc I)`, Not a Forded `Desc I` (OCP-0009 kernel, levitation)
+
+**Date**: 2026-09-26
+**Status**: Accepted (supersedes the `Desc I` telescope shape used by D072/D073's first implementation)
+
+### Context
+
+The first levitated kernel (PLAN-LEVITATION stages 1–2) gave a family one
+telescope `D : Desc I` with no access to the target index. `dι j` ends a
+telescope with its target, and the payload FORDS it: `dpay-ι ⟶ ⌜Id⌝ I j i`.
+Porting the examples showed the cost. Every constructor of every family
+Fords, including syntaxes whose index is an input (`Scoped`'s `lam` at
+`suc n`, the Knot's depth). Every index-dependent consumer must then
+transport each recursive field along the payload's equation (`jsub`). The
+pre-levitation design had an AMBIENT index (`iι`), so only families with
+computed targets Forded (2 Knot rows of 53). The alternative had never been
+weighed on record.
+
+### Decision
+
+A description is a FAMILY of telescopes over the index:
+`Γ ⊢ D ∷ Π (El I) (Desc I)`, `IMu I D i`, payload `dpay I D (app D i) i`.
+The Chapman–Dagand–McBride–Morris levitated form.
+- `dι` carries NO index. Its payload is `⌜Unit⌝`.
+- `dρ j C` still names its recursive index; `dσ S f` is unchanged.
+- A family with a computed target Fords EXPLICITLY, with a `dσ (⌜Id⌝ …)` field.
+
+### Rationale
+
+- **Mathematics:** an inductive family is the initial algebra of an indexed
+  polynomial `I ← B → A → I`. Presenting the target map `A → I` BY FIBRES
+  (the shapes available at `i`) is the definition. Fording is its encoding,
+  `Σ a. Id (t a) i`, and it is equivalent only in the presence of `Id`
+  and `J`.
+- **No hidden commitment:** Fording makes the datatype former depend on the
+  identity type, and in a directed theory it silently chooses `Id` over
+  `Hom` for "the fibre over `i`". The fibred form makes no choice. A family
+  that wants a fibre condition asks for it as a field.
+- **Strictly more general:** Forded families are expressible (an explicit
+  `⌜Id⌝` field, as the old `icw-ford`). Ford-free families (syntaxes) are
+  not expressible in the Forded kernel without the tax.
+- **Knot simplicity:** index-dependent generic consumers (weakening,
+  substitution, occurrence) pay no transport on ambient-riding fields.
+- **Kernel simplification:** `dpay-ι` no longer mentions `⌜Id⌝`. The `I ∷ U`
+  premise it forced may become unnecessary for some formers; re-derive,
+  do not assume.
+
+### See Also
+
+D072, D073, `bootstrap/DirectedHoTT/PLAN-LEVITATION.md`, PLAN-INDEXED §1–3
+(the ambient-index design this levitates), PLAN-JUDGEMENT §1 (Fording cost).
