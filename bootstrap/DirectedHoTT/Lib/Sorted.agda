@@ -371,19 +371,18 @@ SortT-inst I D M J s =
     pt (vs x) = refl
 
 -- the constructor lists at the index, typed
-private
-  hσₛ : {Γ : Ctx} {I : RTm ⌊ Γ ⌋} {B : RTy ⌊ Γ ⌋} (s : ℕ) →
-        (Γ ▹ B) ⊢ ιₛ s ∷ El (renTm vs I) → Sub⊢ (Γ ▹ El I) (Γ ▹ B) (σₛ s)
-  hσₛ {I = I} s dx here = ⊢-cast (cong El (sym (fl-σₛ s I))) dx
-  hσₛ s dx (there {A = A₀} v) =
-    ⊢-cast (sym (trans (subTy-renTy A₀) (subTy-var vs A₀))) (⊢var (there v))
+hσₛ : {Γ : Ctx} {I : RTm ⌊ Γ ⌋} {B : RTy ⌊ Γ ⌋} (s : ℕ) →
+      (Γ ▹ B) ⊢ ιₛ s ∷ El (renTm vs I) → Sub⊢ (Γ ▹ El I) (Γ ▹ B) (σₛ s)
+hσₛ {I = I} s dx here = ⊢-cast (cong El (sym (fl-σₛ s I))) dx
+hσₛ s dx (there {A = A₀} v) =
+  ⊢-cast (sym (trans (subTy-renTy A₀) (subTy-var vs A₀))) (⊢var (there v))
 
-  subAllDₛ : {Γ : Ctx} {I : RTm ⌊ Γ ⌋} {B : RTy ⌊ Γ ⌋} {Cs : Cons (⌊ Γ ⌋ ∙) c} (s : ℕ) →
-             (Γ ▹ B) ⊢ ιₛ s ∷ El (renTm vs I) → AllD (Γ ▹ El I) (renTm vs I) Cs →
-             AllD (Γ ▹ B) (renTm vs I) (subC (σₛ s) Cs)
-  subAllDₛ s dx []ᵈ = []ᵈ
-  subAllDₛ {I = I} s dx (d ∷ᵈ ds) =
-    ⊢-cast (cong Desc (fl-σₛ s I)) (sub-lemma d (hσₛ s dx)) ∷ᵈ subAllDₛ s dx ds
+subAllDₛ : {Γ : Ctx} {I : RTm ⌊ Γ ⌋} {B : RTy ⌊ Γ ⌋} {Cs : Cons (⌊ Γ ⌋ ∙) c} (s : ℕ) →
+           (Γ ▹ B) ⊢ ιₛ s ∷ El (renTm vs I) → AllD (Γ ▹ El I) (renTm vs I) Cs →
+           AllD (Γ ▹ B) (renTm vs I) (subC (σₛ s) Cs)
+subAllDₛ s dx []ᵈ = []ᵈ
+subAllDₛ {I = I} s dx (d ∷ᵈ ds) =
+  ⊢-cast (cong Desc (fl-σₛ s I)) (sub-lemma d (hσₛ s dx)) ∷ᵈ subAllDₛ s dx ds
 
 -- sort `s`'s index is well-typed over its `j`
 ⊢ιₛ : {Γ : Ctx} {J : RTm (⌊ Γ ⌋ ∙)} → (Γ ▹ El (⌜Fin⌝ n)) ⊢ J ∷ U → Lt s n →
