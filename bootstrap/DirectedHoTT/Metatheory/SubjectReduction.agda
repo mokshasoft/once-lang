@@ -1017,11 +1017,12 @@ sr : {Γ : Ctx} {t u : RTm ⌊ Γ ⌋} {A : RTy ⌊ Γ ⌋} → Γ ⊢ t ∷ A �
 --   then `⊢conv` composing the conversion (the file's two-clause shape).
 gen-con : {Γ : Ctx} {p : RTm ⌊ Γ ⌋} {C : RTy ⌊ Γ ⌋} → Γ ⊢ con p ∷ C →
           Σ (RTm ⌊ Γ ⌋) (λ I → Σ (RTm ⌊ Γ ⌋) (λ D → Σ (RTm ⌊ Γ ⌋) (λ i →
-            (Γ ⊢ D ∷ Desc I) × ((Γ ⊢ i ∷ El I) ×
-            ((Γ ⊢ p ∷ El (dpay I D D i)) × (C ≅ᵀ IMu I D i))))))
-gen-con (⊢con dD di dp) = _ , (_ , (_ , (dD , (di , (dp , crflᵀ)))))
+            (Γ ⊢ I ∷ U) × ((Γ ⊢ D ∷ Desc I) × ((Γ ⊢ i ∷ El I) ×
+            ((Γ ⊢ p ∷ El (dpay I D D i)) × (C ≅ᵀ IMu I D i)))))))
+gen-con (⊢con dI dD di dp) = _ , (_ , (_ , (dI , (dD , (di , (dp , crflᵀ))))))
 gen-con (⊢conv d c) with gen-con d
-... | I , (D , (i , (dD , (di , (dp , c'))))) = I , (D , (i , (dD , (di , (dp , ctrnᵀ (csymᵀ c) c')))))
+... | I , (D , (i , (dI , (dD , (di , (dp , c')))))) =
+      I , (D , (i , (dI , (dD , (di , (dp , ctrnᵀ (csymᵀ c) c'))))))
 
 gen-ielim : {Γ : Ctx} {D i e t : RTm ⌊ Γ ⌋} {C : RTy ⌊ Γ ⌋} → Γ ⊢ ielim D i e t ∷ C →
             Σ (RTm ⌊ Γ ⌋) (λ I → Σ (RTy ((⌊ Γ ⌋ ∙) ∙)) (λ M →
@@ -1034,10 +1035,10 @@ gen-ielim (⊢conv d c) with gen-ielim d
       I , (M , (dD , (dM , (de , (di , (dt , ctrnᵀ (csymᵀ c) c'))))))
 
 gen-⌜IMu⌝ : {Γ : Ctx} {I D i : RTm ⌊ Γ ⌋} {C : RTy ⌊ Γ ⌋} → Γ ⊢ ⌜IMu⌝ I D i ∷ C →
-            (Γ ⊢ D ∷ Desc I) × ((Γ ⊢ i ∷ El I) × (C ≅ᵀ U))
-gen-⌜IMu⌝ (⊢⌜IMu⌝ dD di) = dD , (di , crflᵀ)
+            (Γ ⊢ I ∷ U) × ((Γ ⊢ D ∷ Desc I) × ((Γ ⊢ i ∷ El I) × (C ≅ᵀ U)))
+gen-⌜IMu⌝ (⊢⌜IMu⌝ dI dD di) = dI , (dD , (di , crflᵀ))
 gen-⌜IMu⌝ (⊢conv d c) with gen-⌜IMu⌝ d
-... | dD , (di , c') = dD , (di , ctrnᵀ (csymᵀ c) c')
+... | dI , (dD , (di , c')) = dI , (dD , (di , ctrnᵀ (csymᵀ c) c'))
 
 gen-dι : {Γ : Ctx} {j : RTm ⌊ Γ ⌋} {C : RTy ⌊ Γ ⌋} → Γ ⊢ dι j ∷ C →
          Σ (RTm ⌊ Γ ⌋) (λ I → (Γ ⊢ I ∷ U) × ((Γ ⊢ j ∷ El I) × (C ≅ᵀ Desc I)))
@@ -1160,7 +1161,7 @@ sr d (dpay-σ I D S f i) with gen-dpay d
 sr d (dpay-ρ I D j C i) with gen-dpay d
 ... | dI , (dD , (dC , (di , cU))) with gen-dρ dC
 ...   | I₀ , (_ , (dj , (dC₀ , c))) =
-        ⊢conv (⊢⌜Σ⌝ (⊢⌜IMu⌝ dD (⊢conv dj (El-≅ (csym (Desc-inj c)))))
+        ⊢conv (⊢⌜Σ⌝ (⊢⌜IMu⌝ dI dD (⊢conv dj (El-≅ (csym (Desc-inj c)))))
                     (⊢dpay (⊢wk dI) (⊢wk dD) (⊢wk (⊢conv dC₀ (csymᵀ c))) (⊢wk di)))
               (csymᵀ cU)
 -- the hypotheses: none at `dι`, the chosen branch's at `dσ`, one
@@ -1186,7 +1187,7 @@ sr d (dih-ρ D e j C p) with gen-dih d
 --   alone (`meth-inst`) — no η.
 sr d (ι D i e p) with gen-ielim d
 ... | I , (M , (dD , (dM , (de , (di , (dt , cC)))))) with gen-con dt
-...   | I' , (D' , (i' , (dD' , (di' , (dp , cIMu))))) with IMu-inj cIMu
+...   | I' , (D' , (i' , (dI' , (dD' , (di' , (dp , cIMu)))))) with IMu-inj cIMu
 ...     | cI , (cD , ci) =
           ⊢conv (⊢-cast (meth-inst (dih D e D p) p i M)
                   (⊢app-cast (cong₄ DIh (ww-cancel p i D) (wk2M-cancel p i M)
@@ -1215,14 +1216,15 @@ sr d (psplit-β b x y) with gen-psplit d
 -- ★★ the CONGRUENCES.  A stepped description/index/code that occurs in a
 --   premise's TYPE is carried there by conversion.
 sr d (ξ-⌜IMu⌝ᴵ r) with gen-⌜IMu⌝ d
-... | dD , (di , cU) =
-      ⊢conv (⊢⌜IMu⌝ (⊢conv dD (credᵀ (ξ-Desc r))) (⊢conv di (credᵀ (ξ-El r)))) (csymᵀ cU)
+... | dI , (dD , (di , cU)) =
+      ⊢conv (⊢⌜IMu⌝ (sr dI r) (⊢conv dD (credᵀ (ξ-Desc r))) (⊢conv di (credᵀ (ξ-El r))))
+            (csymᵀ cU)
 sr d (ξ-⌜IMu⌝ᴰ r) with gen-⌜IMu⌝ d
-... | dD , (di , cU) = ⊢conv (⊢⌜IMu⌝ (sr dD r) di) (csymᵀ cU)
+... | dI , (dD , (di , cU)) = ⊢conv (⊢⌜IMu⌝ dI (sr dD r) di) (csymᵀ cU)
 sr d (ξ-⌜IMu⌝ⁱ r) with gen-⌜IMu⌝ d
-... | dD , (di , cU) = ⊢conv (⊢⌜IMu⌝ dD (sr di r)) (csymᵀ cU)
+... | dI , (dD , (di , cU)) = ⊢conv (⊢⌜IMu⌝ dI dD (sr di r)) (csymᵀ cU)
 sr d (ξ-con r) with gen-con d
-... | I , (D , (i , (dD , (di , (dp , c))))) = ⊢conv (⊢con dD di (sr dp r)) (csymᵀ c)
+... | I , (D , (i , (dI , (dD , (di , (dp , c)))))) = ⊢conv (⊢con dI dD di (sr dp r)) (csymᵀ c)
 sr d (ξ-ielimᴰ r) with gen-ielim d
 ... | I , (M , (dD , (dM , (de , (di , (dt , cC)))))) =
       ⊢conv (⊢ielim (sr dD r) (conv-ctxᵀ (credᵀ (ξ-IMuᴰ (⟶-ren vs r))) dM)

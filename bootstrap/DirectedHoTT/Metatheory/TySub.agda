@@ -891,7 +891,7 @@ ren-ty : {Γ Δ : Ctx} {ρ : Ren ⌊ Γ ⌋ ⌊ Δ ⌋} {A : RTy ⌊ Γ ⌋} →
 ren-ty ty-base       h = ty-base
 ren-ty ty-Unit       h = ty-Unit
 ren-ty ty-Nat        h = ty-Nat
-ren-ty (ty-IMu dD di) h = ty-IMu (ren-lemma dD h) (ren-lemma di h)
+ren-ty (ty-IMu dI dD di) h = ty-IMu (ren-lemma dI h) (ren-lemma dD h) (ren-lemma di h)
 ren-ty (ty-Desc dI) h = ty-Desc (ren-lemma dI h)
 ren-ty {Δ = Δ} {ρ = ρ} (ty-DIh {I = I} {D = D} {M = M} dD dM dC di dp) h =
   ty-DIh (ren-lemma dD h)
@@ -920,7 +920,7 @@ ren-lemma {ρ = ρ} (⊢natrec {M = M} {n = n} dM dz ds dn) h =
              (⊢-cast (nrs-ren ρ M) (ren-lemma ds (Ren⊢-ext (Ren⊢-ext h))))
              (ren-lemma dn h))
 -- ★★ LEVITATION
-ren-lemma (⊢⌜IMu⌝ dD di) h = ⊢⌜IMu⌝ (ren-lemma dD h) (ren-lemma di h)
+ren-lemma (⊢⌜IMu⌝ dI dD di) h = ⊢⌜IMu⌝ (ren-lemma dI h) (ren-lemma dD h) (ren-lemma di h)
 ren-lemma ⊢⌜Fin⌝ h = ⊢⌜Fin⌝
 ren-lemma (⊢dι dI dj) h = ⊢dι (ren-lemma dI h) (ren-lemma dj h)
 ren-lemma {ρ = ρ} (⊢dσ {I = I} {S = S} dI dS df) h =
@@ -928,7 +928,7 @@ ren-lemma {ρ = ρ} (⊢dσ {I = I} {S = S} dI dS df) h =
       (⊢-cast (cong (λ X → Π (El (renTm ρ S)) (Desc X)) (wk-ren ρ I)) (ren-lemma df h))
 ren-lemma (⊢dρ dI dj dC) h = ⊢dρ (ren-lemma dI h) (ren-lemma dj h) (ren-lemma dC h)
 ren-lemma (⊢dpay dI dD dC di) h = ⊢dpay (ren-lemma dI h) (ren-lemma dD h) (ren-lemma dC h) (ren-lemma di h)
-ren-lemma (⊢con dD di dp) h = ⊢con (ren-lemma dD h) (ren-lemma di h) (ren-lemma dp h)
+ren-lemma (⊢con dI dD di dp) h = ⊢con (ren-lemma dI h) (ren-lemma dD h) (ren-lemma di h) (ren-lemma dp h)
 ren-lemma {Δ = Δ} {ρ = ρ} (⊢dih {I = I} {D = D} {M = M} dD dM de dC di dp) h =
   ⊢dih (ren-lemma dD h)
     (subst (λ A → ((Δ ▹ El (renTm ρ I)) ▹ A) ⊢ty renTy (extR (extR ρ)) M)
@@ -1050,7 +1050,7 @@ sub-ty : {Γ Δ : Ctx} {σ : Sub ⌊ Γ ⌋ ⌊ Δ ⌋} {A : RTy ⌊ Γ ⌋} →
 sub-ty ty-base      h = ty-base
 sub-ty ty-Unit      h = ty-Unit
 sub-ty ty-Nat       h = ty-Nat
-sub-ty (ty-IMu dD di) h = ty-IMu (sub-lemma dD h) (sub-lemma di h)
+sub-ty (ty-IMu dI dD di) h = ty-IMu (sub-lemma dI h) (sub-lemma dD h) (sub-lemma di h)
 sub-ty (ty-Desc dI) h = ty-Desc (sub-lemma dI h)
 sub-ty {Δ = Δ} {σ = σ} (ty-DIh {I = I} {D = D} {M = M} dD dM dC di dp) h =
   ty-DIh (sub-lemma dD h)
@@ -1078,7 +1078,7 @@ sub-lemma {σ = σ} (⊢natrec {M = M} {n = n} dM dz ds dn) h =
              (⊢-cast (nrs-sub σ M) (sub-lemma ds (Sub⊢-ext (Sub⊢-ext h))))
              (sub-lemma dn h))
 -- ★★ LEVITATION
-sub-lemma (⊢⌜IMu⌝ dD di) h = ⊢⌜IMu⌝ (sub-lemma dD h) (sub-lemma di h)
+sub-lemma (⊢⌜IMu⌝ dI dD di) h = ⊢⌜IMu⌝ (sub-lemma dI h) (sub-lemma dD h) (sub-lemma di h)
 sub-lemma ⊢⌜Fin⌝ h = ⊢⌜Fin⌝
 sub-lemma (⊢dι dI dj) h = ⊢dι (sub-lemma dI h) (sub-lemma dj h)
 sub-lemma {σ = σ} (⊢dσ {I = I} {S = S} dI dS df) h =
@@ -1086,7 +1086,7 @@ sub-lemma {σ = σ} (⊢dσ {I = I} {S = S} dI dS df) h =
       (⊢-cast (cong (λ X → Π (El (subTm σ S)) (Desc X)) (wk-sub σ I)) (sub-lemma df h))
 sub-lemma (⊢dρ dI dj dC) h = ⊢dρ (sub-lemma dI h) (sub-lemma dj h) (sub-lemma dC h)
 sub-lemma (⊢dpay dI dD dC di) h = ⊢dpay (sub-lemma dI h) (sub-lemma dD h) (sub-lemma dC h) (sub-lemma di h)
-sub-lemma (⊢con dD di dp) h = ⊢con (sub-lemma dD h) (sub-lemma di h) (sub-lemma dp h)
+sub-lemma (⊢con dI dD di dp) h = ⊢con (sub-lemma dI h) (sub-lemma dD h) (sub-lemma di h) (sub-lemma dp h)
 sub-lemma {Δ = Δ} {σ = σ} (⊢dih {I = I} {D = D} {M = M} dD dM de dC di dp) h =
   ⊢dih (sub-lemma dD h)
     (subst (λ A → ((Δ ▹ El (subTm σ I)) ▹ A) ⊢ty subTy (extS (extS σ)) M)

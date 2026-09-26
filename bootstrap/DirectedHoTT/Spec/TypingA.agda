@@ -142,7 +142,7 @@ data _⊢ᴬ_∷_ where
   ⊢ᴬ⌜Id⌝ : ∀ {Γ c a b} → Γ ⊢ᴬ c ∷ U → Γ ⊢ᴬ a ∷ El c → Γ ⊢ᴬ b ∷ El c →
                          Γ ⊢ᴬ ⌜Id⌝ c a b ∷ U
   ⊢ᴬ⌜Nat⌝  : ∀ {Γ} → Γ ⊢ᴬ ⌜Nat⌝ ∷ U
-  ⊢ᴬ⌜IMu⌝  : ∀ {Γ I D i} → Γ ⊢ᴬ D ∷ Desc I → Γ ⊢ᴬ i ∷ El I → Γ ⊢ᴬ ⌜IMu⌝ I D i ∷ U
+  ⊢ᴬ⌜IMu⌝  : ∀ {Γ I D i} → Γ ⊢ᴬ I ∷ U → Γ ⊢ᴬ D ∷ Desc I → Γ ⊢ᴬ i ∷ El I → Γ ⊢ᴬ ⌜IMu⌝ I D i ∷ U
   ⊢ᴬ⌜Fin⌝  : ∀ {Γ n} → Γ ⊢ᴬ ⌜Fin⌝ n ∷ U
   ⊢ᴬ⌜Unit⌝ : ∀ {Γ} → Γ ⊢ᴬ ⌜Unit⌝ ∷ U
   ⊢ᴬidrefl : ∀ {Γ c t} → Γ ⊢ᴬ c ∷ U → Γ ⊢ᴬ t ∷ El c →
@@ -171,7 +171,7 @@ data _⊢ᴬ_∷_ where
   ⊢ᴬdρ   : ∀ {Γ I j C} → Γ ⊢ᴬ I ∷ U → Γ ⊢ᴬ j ∷ El I → Γ ⊢ᴬ C ∷ Desc I → Γ ⊢ᴬ dρ I j C ∷ Desc I
   ⊢ᴬdpay : ∀ {Γ I D C i} → Γ ⊢ᴬ I ∷ U → Γ ⊢ᴬ D ∷ Desc I → Γ ⊢ᴬ C ∷ Desc I → Γ ⊢ᴬ i ∷ El I →
            Γ ⊢ᴬ dpay I D C i ∷ U
-  ⊢ᴬcon  : ∀ {Γ I D i p} → Γ ⊢ᴬ D ∷ Desc I → Γ ⊢ᴬ i ∷ El I →
+  ⊢ᴬcon  : ∀ {Γ I D i p} → Γ ⊢ᴬ I ∷ U → Γ ⊢ᴬ D ∷ Desc I → Γ ⊢ᴬ i ∷ El I →
            Γ ⊢ᴬ p ∷ El (dpay I D D i) → Γ ⊢ᴬ con I D i p ∷ IMu I D i
   ⊢ᴬdih  : ∀ {Γ I D M e C i p} →
            Γ ⊢ᴬ D ∷ Desc I → motCtxᴬ Γ I D ⊢tyᴬ M → Γ ⊢ᴬ e ∷ MethTyᴬ I D M →
@@ -206,7 +206,7 @@ data _⊢tyᴬ_ where
   tyᴬ-Id   : ∀ {Γ A t u} → Γ ⊢tyᴬ A → Γ ⊢ᴬ t ∷ A → Γ ⊢ᴬ u ∷ A → Γ ⊢tyᴬ Id A t u
   tyᴬ-Unit : ∀ {Γ} → Γ ⊢tyᴬ Unit
   tyᴬ-Nat  : ∀ {Γ} → Γ ⊢tyᴬ Nat
-  tyᴬ-IMu  : ∀ {Γ I D i} → Γ ⊢ᴬ D ∷ Desc I → Γ ⊢ᴬ i ∷ El I → Γ ⊢tyᴬ IMu I D i
+  tyᴬ-IMu  : ∀ {Γ I D i} → Γ ⊢ᴬ I ∷ U → Γ ⊢ᴬ D ∷ Desc I → Γ ⊢ᴬ i ∷ El I → Γ ⊢tyᴬ IMu I D i
   tyᴬ-Desc : ∀ {Γ I} → Γ ⊢ᴬ I ∷ U → Γ ⊢tyᴬ Desc I
   tyᴬ-DIh  : ∀ {Γ I D M C i p} →
              Γ ⊢ᴬ D ∷ Desc I → motCtxᴬ Γ I D ⊢tyᴬ M → Γ ⊢ᴬ C ∷ Desc I →

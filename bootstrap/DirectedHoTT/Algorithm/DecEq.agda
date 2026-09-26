@@ -122,8 +122,10 @@ mutual
   encTy Unit          = n0 0 6
   encTy Nat           = n0 0 7
   encTy (Id A t u)    = n3 0 8 (encTy A) (encTm t) (encTm u)
-  encTy (Mu D)        = n1 0 9 (encDesc D)
-  encTy (IMu D I i)   = n3 1 0 (encIDesc D) (encTy I) (encTm i)
+  encTy (IMu I D i) = n3 0 9 (encTm I) (encTm D) (encTm i)
+  encTy (Desc I) = n1 1 0 (encTm I)
+  encTy (DIh D M C p) = n4 1 1 (encTm D) (encTy M) (encTm C) (encTm p)
+  encTy (Fin n) = n1 1 2 (nat n)
 
   encTm : RTm Γ → Tree
   encTm (var x)             = n1 0 0 (nat (encVar x))
@@ -148,32 +150,23 @@ mutual
   encTm nzero               = n0 1 9
   encTm (nsuc t)            = n1 2 0 (encTm t)
   encTm (natrec z s n)      = n3 2 1 (encTm z) (encTm s) (encTm n)
-  encTm (con k p)           = n2 2 2 (nat k) (encTm p)
-  encTm (elim D ms t)       = n3 2 3 (encDesc D) (encTm ms) (encTm t)
-  encTm (icon k p)          = n2 2 4 (nat k) (encTm p)
-  encTm (ielim D ms i t)    = n4 2 5 (encIDesc D) (encTm ms) (encTm i) (encTm t)
   encTm ⌜Nat⌝               = n0 2 6
-  encTm (⌜Mu⌝ D)            = n1 2 7 (encDesc D)
-  encTm (⌜IMu⌝ D I i)       = n3 2 8 (encIDesc D) (encTy I) (encTm i)
   encTm ⌜Unit⌝              = n0 2 9
+  encTm (con p) = n1 2 2 (encTm p)
+  encTm (dι j) = n1 2 3 (encTm j)
+  encTm (dσ S f) = n2 2 4 (encTm S) (encTm f)
+  encTm (ielim D i e t) = n4 2 5 (encTm D) (encTm i) (encTm e) (encTm t)
+  encTm (dρ j C) = n2 2 7 (encTm j) (encTm C)
+  encTm (⌜IMu⌝ I D i) = n3 2 8 (encTm I) (encTm D) (encTm i)
+  encTm (dpay I D C i) = n4 3 0 (encTm I) (encTm D) (encTm C) (encTm i)
+  encTm (dih D e C p) = n4 3 1 (encTm D) (encTm e) (encTm C) (encTm p)
+  encTm fzero = n0 3 2
+  encTm (fsuc t) = n1 3 3 (encTm t)
+  encTm (fcase t a b) = n3 3 4 (encTm t) (encTm a) (encTm b)
+  encTm (fcase0 t) = n1 3 5 (encTm t)
+  encTm (psplit b q) = n2 3 6 (encTm b) (encTm q)
+  encTm (⌜Fin⌝ n) = n1 3 7 (nat n)
 
-  encDCon : DCon → Tree
-  encDCon dι       = n0 0 0
-  encDCon (dρ C)   = n1 0 1 (encDCon C)
-  encDCon (dκ A C) = n2 0 2 (encTy A) (encDCon C)
-
-  encDesc : Desc → Tree
-  encDesc dnil    = n0 0 0
-  encDesc (C ◃ D) = n2 0 1 (encDCon C) (encDesc D)
-
-  encICon : ICon Δ → Tree
-  encICon iι       = n0 0 0
-  encICon (iρ t C) = n2 0 1 (encTm t) (encICon C)
-  encICon (iκ t C) = n2 0 2 (encTm t) (encICon C)
-
-  encIDesc : IDesc → Tree
-  encIDesc inil    = n0 0 0
-  encIDesc (C ◂ D) = n2 0 1 (encICon C) (encIDesc D)
 
 ------------------------------------------------------------------------
 -- 3. Decoding — partial; the catch-alls answer `nothing` on malformed trees.
@@ -208,8 +201,10 @@ mutual
   decTy Γ (node 0 6 [])               = just Unit
   decTy Γ (node 0 7 [])               = just Nat
   decTy Γ (node 0 8 (a ∷ b ∷ c ∷ [])) = decTy Γ a >>= λ A → decTm Γ b >>= λ t → decTm Γ c >>= λ u → just (Id A t u)
-  decTy Γ (node 0 9 (a ∷ []))         = decDesc a >>= λ D → just (Mu D)
-  decTy Γ (node 1 0 (a ∷ b ∷ c ∷ [])) = decIDesc a >>= λ D → decTy ε b >>= λ I → decTm Γ c >>= λ i → just (IMu D I i)
+  decTy Γ (node 0 9 (a ∷ b ∷ c ∷ [])) = decTm Γ a >>= λ I₀ → decTm Γ b >>= λ D₀ → decTm Γ c >>= λ i₀ → just (IMu I₀ D₀ i₀)
+  decTy Γ (node 1 0 (a ∷ [])) = decTm Γ a >>= λ I₀ → just (Desc I₀)
+  decTy Γ (node 1 1 (a ∷ b ∷ c ∷ d ∷ [])) = decTm Γ a >>= λ D₀ → decTy ((Γ ∙) ∙) b >>= λ M₀ → decTm Γ c >>= λ C₀ → decTm Γ d >>= λ p₀ → just (DIh D₀ M₀ C₀ p₀)
+  decTy Γ (node 1 2 (nat n ∷ [])) = just (Fin n)
   decTy Γ _ = nothing
 
   decTm : (Γ : Cx) → Tree → Maybe (RTm Γ)
@@ -237,38 +232,24 @@ mutual
   decTm Γ (node 1 9 [])               = just nzero
   decTm Γ (node 2 0 (a ∷ []))         = decTm Γ a >>= λ t → just (nsuc t)
   decTm Γ (node 2 1 (a ∷ b ∷ c ∷ [])) = decTm Γ a >>= λ z → decTm ((Γ ∙) ∙) b >>= λ s → decTm Γ c >>= λ n → just (natrec z s n)
-  decTm Γ (node 2 2 (nat k ∷ b ∷ [])) = decTm Γ b >>= λ p → just (con k p)
-  decTm Γ (node 2 3 (a ∷ b ∷ c ∷ [])) = decDesc a >>= λ D → decTm Γ b >>= λ ms → decTm Γ c >>= λ t → just (elim D ms t)
-  decTm Γ (node 2 4 (nat k ∷ b ∷ [])) = decTm Γ b >>= λ p → just (icon k p)
-  decTm Γ (node 2 5 (a ∷ b ∷ c ∷ d ∷ [])) =
-    decIDesc a >>= λ D → decTm Γ b >>= λ ms → decTm Γ c >>= λ i → decTm Γ d >>= λ t → just (ielim D ms i t)
   decTm Γ (node 2 6 [])               = just ⌜Nat⌝
-  decTm Γ (node 2 7 (a ∷ []))         = decDesc a >>= λ D → just (⌜Mu⌝ D)
-  decTm Γ (node 2 8 (a ∷ b ∷ c ∷ [])) = decIDesc a >>= λ D → decTy ε b >>= λ I → decTm Γ c >>= λ i → just (⌜IMu⌝ D I i)
   decTm Γ (node 2 9 [])               = just ⌜Unit⌝
+  decTm Γ (node 2 2 (a ∷ [])) = decTm Γ a >>= λ p₀ → just (con p₀)
+  decTm Γ (node 2 3 (a ∷ [])) = decTm Γ a >>= λ j₀ → just (dι j₀)
+  decTm Γ (node 2 4 (a ∷ b ∷ [])) = decTm Γ a >>= λ S₀ → decTm Γ b >>= λ f₀ → just (dσ S₀ f₀)
+  decTm Γ (node 2 5 (a ∷ b ∷ c ∷ d ∷ [])) = decTm Γ a >>= λ D₀ → decTm Γ b >>= λ i₀ → decTm Γ c >>= λ e₀ → decTm Γ d >>= λ t₀ → just (ielim D₀ i₀ e₀ t₀)
+  decTm Γ (node 2 7 (a ∷ b ∷ [])) = decTm Γ a >>= λ j₀ → decTm Γ b >>= λ C₀ → just (dρ j₀ C₀)
+  decTm Γ (node 2 8 (a ∷ b ∷ c ∷ [])) = decTm Γ a >>= λ I₀ → decTm Γ b >>= λ D₀ → decTm Γ c >>= λ i₀ → just (⌜IMu⌝ I₀ D₀ i₀)
+  decTm Γ (node 3 0 (a ∷ b ∷ c ∷ d ∷ [])) = decTm Γ a >>= λ I₀ → decTm Γ b >>= λ D₀ → decTm Γ c >>= λ C₀ → decTm Γ d >>= λ i₀ → just (dpay I₀ D₀ C₀ i₀)
+  decTm Γ (node 3 1 (a ∷ b ∷ c ∷ d ∷ [])) = decTm Γ a >>= λ D₀ → decTm Γ b >>= λ e₀ → decTm Γ c >>= λ C₀ → decTm Γ d >>= λ p₀ → just (dih D₀ e₀ C₀ p₀)
+  decTm Γ (node 3 2 []) = just (fzero)
+  decTm Γ (node 3 3 (a ∷ [])) = decTm Γ a >>= λ t₀ → just (fsuc t₀)
+  decTm Γ (node 3 4 (a ∷ b ∷ c ∷ [])) = decTm Γ a >>= λ t₀ → decTm Γ b >>= λ a₀ → decTm (Γ ∙) c >>= λ b₀ → just (fcase t₀ a₀ b₀)
+  decTm Γ (node 3 5 (a ∷ [])) = decTm Γ a >>= λ t₀ → just (fcase0 t₀)
+  decTm Γ (node 3 6 (a ∷ b ∷ [])) = decTm ((Γ ∙) ∙) a >>= λ b₀ → decTm Γ b >>= λ q₀ → just (psplit b₀ q₀)
+  decTm Γ (node 3 7 (nat n ∷ [])) = just (⌜Fin⌝ n)
   decTm Γ _ = nothing
 
-  decDCon : Tree → Maybe DCon
-  decDCon (node 0 0 [])           = just dι
-  decDCon (node 0 1 (a ∷ []))     = decDCon a >>= λ C → just (dρ C)
-  decDCon (node 0 2 (a ∷ b ∷ [])) = decTy ε a >>= λ A → decDCon b >>= λ C → just (dκ A C)
-  decDCon _ = nothing
-
-  decDesc : Tree → Maybe Desc
-  decDesc (node 0 0 [])           = just dnil
-  decDesc (node 0 1 (a ∷ b ∷ [])) = decDCon a >>= λ C → decDesc b >>= λ D → just (C ◃ D)
-  decDesc _ = nothing
-
-  decICon : (Δ : Cx) → Tree → Maybe (ICon Δ)
-  decICon Δ (node 0 0 [])           = just iι
-  decICon Δ (node 0 1 (a ∷ b ∷ [])) = decTm Δ a >>= λ t → decICon (Δ ∙) b >>= λ C → just (iρ t C)
-  decICon Δ (node 0 2 (a ∷ b ∷ [])) = decTm Δ a >>= λ t → decICon (Δ ∙) b >>= λ C → just (iκ t C)
-  decICon Δ _ = nothing
-
-  decIDesc : Tree → Maybe IDesc
-  decIDesc (node 0 0 [])           = just inil
-  decIDesc (node 0 1 (a ∷ b ∷ [])) = decICon (ε ∙) a >>= λ C → decIDesc b >>= λ D → just (C ◂ D)
-  decIDesc _ = nothing
 
 ------------------------------------------------------------------------
 -- 4. ★ The decoder inverts the encoder.  ⚠ NO catch-all.
@@ -289,8 +270,10 @@ mutual
   dec-encTy Unit = refl
   dec-encTy Nat = refl
   dec-encTy (Id A t u) = dec-encTy A ⟫ dec-encTm t ⟫ dec-encTm u ⟫ refl
-  dec-encTy (Mu D) = dec-encDesc D ⟫ refl
-  dec-encTy (IMu D I i) = dec-encIDesc D ⟫ dec-encTy I ⟫ dec-encTm i ⟫ refl
+  dec-encTy (IMu I D i) = dec-encTm I ⟫ dec-encTm D ⟫ dec-encTm i ⟫ refl
+  dec-encTy (Desc I) = dec-encTm I ⟫ refl
+  dec-encTy (DIh D M C p) = dec-encTm D ⟫ dec-encTy M ⟫ dec-encTm C ⟫ dec-encTm p ⟫ refl
+  dec-encTy (Fin n) = refl
 
   dec-encTm : (t : RTm Γ) → decTm Γ (encTm t) ≡ just t
   dec-encTm (var x) = dec-encVar x ⟫ refl
@@ -315,32 +298,23 @@ mutual
   dec-encTm nzero = refl
   dec-encTm (nsuc t) = dec-encTm t ⟫ refl
   dec-encTm (natrec z s n) = dec-encTm z ⟫ dec-encTm s ⟫ dec-encTm n ⟫ refl
-  dec-encTm (con k p) = dec-encTm p ⟫ refl
-  dec-encTm (elim D ms t) = dec-encDesc D ⟫ dec-encTm ms ⟫ dec-encTm t ⟫ refl
-  dec-encTm (icon k p) = dec-encTm p ⟫ refl
-  dec-encTm (ielim D ms i t) = dec-encIDesc D ⟫ dec-encTm ms ⟫ dec-encTm i ⟫ dec-encTm t ⟫ refl
   dec-encTm ⌜Nat⌝ = refl
-  dec-encTm (⌜Mu⌝ D) = dec-encDesc D ⟫ refl
-  dec-encTm (⌜IMu⌝ D I i) = dec-encIDesc D ⟫ dec-encTy I ⟫ dec-encTm i ⟫ refl
   dec-encTm ⌜Unit⌝ = refl
+  dec-encTm (con p) = dec-encTm p ⟫ refl
+  dec-encTm (dι j) = dec-encTm j ⟫ refl
+  dec-encTm (dσ S f) = dec-encTm S ⟫ dec-encTm f ⟫ refl
+  dec-encTm (ielim D i e t) = dec-encTm D ⟫ dec-encTm i ⟫ dec-encTm e ⟫ dec-encTm t ⟫ refl
+  dec-encTm (dρ j C) = dec-encTm j ⟫ dec-encTm C ⟫ refl
+  dec-encTm (⌜IMu⌝ I D i) = dec-encTm I ⟫ dec-encTm D ⟫ dec-encTm i ⟫ refl
+  dec-encTm (dpay I D C i) = dec-encTm I ⟫ dec-encTm D ⟫ dec-encTm C ⟫ dec-encTm i ⟫ refl
+  dec-encTm (dih D e C p) = dec-encTm D ⟫ dec-encTm e ⟫ dec-encTm C ⟫ dec-encTm p ⟫ refl
+  dec-encTm fzero = refl
+  dec-encTm (fsuc t) = dec-encTm t ⟫ refl
+  dec-encTm (fcase t a b) = dec-encTm t ⟫ dec-encTm a ⟫ dec-encTm b ⟫ refl
+  dec-encTm (fcase0 t) = dec-encTm t ⟫ refl
+  dec-encTm (psplit b q) = dec-encTm b ⟫ dec-encTm q ⟫ refl
+  dec-encTm (⌜Fin⌝ n) = refl
 
-  dec-encDCon : (C : DCon) → decDCon (encDCon C) ≡ just C
-  dec-encDCon dι = refl
-  dec-encDCon (dρ C) = dec-encDCon C ⟫ refl
-  dec-encDCon (dκ A C) = dec-encTy A ⟫ dec-encDCon C ⟫ refl
-
-  dec-encDesc : (D : Desc) → decDesc (encDesc D) ≡ just D
-  dec-encDesc dnil = refl
-  dec-encDesc (C ◃ D) = dec-encDCon C ⟫ dec-encDesc D ⟫ refl
-
-  dec-encICon : (C : ICon Δ) → decICon Δ (encICon C) ≡ just C
-  dec-encICon iι = refl
-  dec-encICon (iρ t C) = dec-encTm t ⟫ dec-encICon C ⟫ refl
-  dec-encICon (iκ t C) = dec-encTm t ⟫ dec-encICon C ⟫ refl
-
-  dec-encIDesc : (D : IDesc) → decIDesc (encIDesc D) ≡ just D
-  dec-encIDesc inil = refl
-  dec-encIDesc (C ◂ D) = dec-encICon C ⟫ dec-encIDesc D ⟫ refl
 
 ------------------------------------------------------------------------
 -- 5. Injectivity, and the decisions.
@@ -375,17 +349,6 @@ _≟Ty_ {Γ} = decide encTy (decTy Γ) dec-encTy
 _≟Tm_ : (t u : RTm Γ) → Dec (t ≡ u)
 _≟Tm_ {Γ} = decide encTm (decTm Γ) dec-encTm
 
-_≟DCon_ : (C C' : DCon) → Dec (C ≡ C')
-_≟DCon_ = decide encDCon decDCon dec-encDCon
-
-_≟Desc_ : (D D' : Desc) → Dec (D ≡ D')
-_≟Desc_ = decide encDesc decDesc dec-encDesc
-
-_≟ICon_ : (C C' : ICon Δ) → Dec (C ≡ C')
-_≟ICon_ {Δ} = decide encICon (decICon Δ) dec-encICon
-
-_≟IDesc_ : (D D' : IDesc) → Dec (D ≡ D')
-_≟IDesc_ = decide encIDesc decIDesc dec-encIDesc
 
 ------------------------------------------------------------------------
 -- 6. NON-VACUITY — the decisions RUN, both ways.
@@ -406,12 +369,12 @@ private
   runs-no : ⌊ t₁ ≟Tm t₂ ⌋ ≡ false
   runs-no = refl
 
-  -- a type mentioning a description and a closed index type
+  -- a family whose description is a TERM (one recursive field, then stop)
   A₁ : RTy ε
-  A₁ = IMu ((iρ (var vz) iι) ◂ inil) Nat nzero
+  A₁ = IMu ⌜Unit⌝ (dρ unit (dι unit)) unit
 
   runs-ty : ⌊ A₁ ≟Ty A₁ ⌋ ≡ true
   runs-ty = refl
 
-  runs-ty-no : ⌊ A₁ ≟Ty IMu ((iκ (var vz) iι) ◂ inil) Nat nzero ⌋ ≡ false
+  runs-ty-no : ⌊ A₁ ≟Ty IMu ⌜Unit⌝ (dι unit) unit ⌋ ≡ false
   runs-ty-no = refl

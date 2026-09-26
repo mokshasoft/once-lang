@@ -662,7 +662,9 @@ data _⊢_∷_ where
   -- ★ stage C: `Nat` and `Unit` are SMALL.
   ⊢⌜Nat⌝  : ∀ {Γ} → Γ ⊢ ⌜Nat⌝ {⌊ Γ ⌋} ∷ U
   -- ★ the family's CODE: families are small (nesting, `amrec` carriers).
-  ⊢⌜IMu⌝  : ∀ {Γ I D i} → Γ ⊢ D ∷ Desc I → Γ ⊢ i ∷ El I → Γ ⊢ ⌜IMu⌝ I D i ∷ U
+  -- the code CONTAINS its index code, so it types it (as every former
+  --   types each term it contains — SN of the code needs SN of `I`).
+  ⊢⌜IMu⌝  : ∀ {Γ I D i} → Γ ⊢ I ∷ U → Γ ⊢ D ∷ Desc I → Γ ⊢ i ∷ El I → Γ ⊢ ⌜IMu⌝ I D i ∷ U
   ⊢⌜Fin⌝  : ∀ {Γ n} → Γ ⊢ ⌜Fin⌝ {⌊ Γ ⌋} n ∷ U
   ⊢⌜Unit⌝ : ∀ {Γ} → Γ ⊢ ⌜Unit⌝ {⌊ Γ ⌋} ∷ U
   ⊢idrefl : ∀ {Γ c t}   → Γ ⊢ c ∷ U → Γ ⊢ t ∷ El c →
@@ -703,7 +705,8 @@ data _⊢_∷_ where
           Γ ⊢ dpay I D C i ∷ U
   -- a constructor exists at EVERY index (Fording): the payload's `dι j`
   --   field is the equation `j ≡ i`, so the bad ones are uninhabitable.
-  ⊢con  : ∀ {Γ I D i p} → Γ ⊢ D ∷ Desc I → Γ ⊢ i ∷ El I →
+  -- its TYPE mentions the index code, so it types it (validity).
+  ⊢con  : ∀ {Γ I D i p} → Γ ⊢ I ∷ U → Γ ⊢ D ∷ Desc I → Γ ⊢ i ∷ El I →
           Γ ⊢ p ∷ El (dpay I D D i) → Γ ⊢ con p ∷ IMu I D i
   ⊢dih  : ∀ {Γ I D M e C i p} →
           Γ ⊢ D ∷ Desc I → motCtx Γ I D ⊢ty M → Γ ⊢ e ∷ MethTy I D M →
@@ -738,7 +741,9 @@ data _⊢ty_ where
   ty-Id   : ∀ {Γ A t u} → Γ ⊢ty A → Γ ⊢ t ∷ A → Γ ⊢ u ∷ A → Γ ⊢ty Id A t u
   ty-Unit : ∀ {Γ}     → Γ ⊢ty Unit
   ty-Nat  : ∀ {Γ}     → Γ ⊢ty Nat
-  ty-IMu  : ∀ {Γ I D i} → Γ ⊢ D ∷ Desc I → Γ ⊢ i ∷ El I → Γ ⊢ty IMu I D i
+  -- the type CONTAINS its index code, so it types it (as every former
+  --   types each term it contains — normalising the type normalises `I`).
+  ty-IMu  : ∀ {Γ I D i} → Γ ⊢ I ∷ U → Γ ⊢ D ∷ Desc I → Γ ⊢ i ∷ El I → Γ ⊢ty IMu I D i
   -- ★ `Desc I` is LARGE (no code); its index must be a code
   ty-Desc : ∀ {Γ I} → Γ ⊢ I ∷ U → Γ ⊢ty Desc I
   ty-DIh  : ∀ {Γ I D M C i p} →
