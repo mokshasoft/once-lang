@@ -1,6 +1,7 @@
 # PLAN-LEVITATION — descriptions become terms, one datatype former (2026-09-26)
 
-> Decisions: D071 (Σ positive, `split`, no η), D072 (one former, indexed).
+> Decisions: D071 (Σ positive, `split`, no η), D072 (one former, indexed),
+> D073 (index is a code in Γ).
 > Evidence: `SPIKE-LEVITATION.md` S0–S4 (`bootstrap/tmp/Lev*.agda`).
 > The goal is KNOT SIMPLICITY. Kernel/MT churn is cheap: A-math went through
 > all the metatheory in hours.
@@ -8,8 +9,9 @@
 ## Target kernel (from S3/S4)
 
 - `Desc I` is a LARGE type: no code, level 1 (S0). The index is a code
-  `I : U`. S3 used a fixed closed `ix`, and A-math said `◇ ⊢ty I`.
-  ⬜ Decide at stage 1 whether `I` must be closed.
+  in Γ, `Γ ⊢ I ∷ U` (D073). A-math's CONTENT survives as grammar: a
+  telescope is typed with no family in scope, and `pay` instantiates it
+  with `mu D`.
 - Telescopes are terms: `dι j`, `dσ S f` (`f : Π (El S) (Desc I)`), `dρ j C`.
   ⬜ Infinitary `dπ` is NOT spiked. Leave it out unless an example needs it.
 - `mu D i` and its code; `con p`; `ielim D M e i t` with ONE method
@@ -25,7 +27,7 @@
 ## Stages (each ends GREEN on its own branch; straight-line history)
 
 1. **Spec**: `Syntax` (formers, generic ren/sub — S2) and `Typing` (S3/S4
-   rules), `TypingA` twin, `Variance`. Fix the index question here.
+   rules), `TypingA` twin, `Variance`.
 2. **Metatheory**, in dependency order:
    - `TySub` (sub-⊢, now with description terms);
    - `SubjectReductionBase`/`SubjectReduction` (S3's `sr-desc` + congruence);

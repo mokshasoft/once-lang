@@ -5082,3 +5082,44 @@ the indexed form at the unit index. Constructor lists stay surface sugar
 ### See Also
 
 D071, SPIKE-LEVITATION S0–S4, `bootstrap/DirectedHoTT/PLAN-LEVITATION.md`.
+
+---
+
+## D073: The Index Type Is a CODE IN Γ, Not a Closed Type (OCP-0009 kernel, levitation)
+
+**Date**: 2026-09-26
+**Status**: Accepted
+
+### Context
+
+A-math required the index type to be closed (`IDescWf I D = (◇ ⊢ty I) × …`),
+and `IMu` carries an `RTy ε`. This closedness followed from descriptions
+being CLOSED. Levitation (D071/D072) makes descriptions ordinary terms in Γ.
+
+### Decision
+
+A datatype's index is a SMALL type given by a code in the context:
+`Γ ⊢ I ∷ U`, `Γ ⊢ D ∷ Desc I`, `mu D i`. There is no closedness side
+condition.
+
+### Rationale
+
+- **Mathematics:** in Dybjer's inductive families, index types may depend on
+  parameters. Identity as a family, `x ≡_A y`, has index type `A`. A
+  closed-index rule excludes that class.
+- **Consistency:** with open descriptions, a closed index would be the one
+  remaining closed part — a side condition with no mathematical reason.
+- **Cost:** closedness is paid for with `εwk` weakening towers (128 Knot
+  files, plus the metatheory and Lib). With the index in Γ they become
+  ordinary substitution.
+- **What remains a real requirement:** the index must be SMALL (a code).
+  SPIKE-LEVITATION S0 needs it: `⊩₀` of `mu` stores the index type's
+  interpretation, which is available at every environment.
+- **A-math is kept, not dropped.** A telescope is typed with no family in
+  scope (`dρ j C` names only an index), and `pay` instantiates the family
+  with `mu D`. The abstract family is now enforced by the GRAMMAR instead of
+  by `IConWf`/`XEnv`.
+
+### See Also
+
+D071, D072, `bootstrap/DirectedHoTT/PLAN-LEVITATION.md`.
