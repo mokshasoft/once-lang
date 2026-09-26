@@ -217,3 +217,37 @@ module Syntax (Op : Set) (ar : Op → List Nat) where
     pt fz     = refl
     pt (fs i) = sym (trans (sub-ren (sg (sub σ u)) fs (σ i)) (sub-var (σ i)))
 
+
+  -- renaming IS substitution by variables
+  extsN-var-ren : {m n : Nat} (k : Nat) (ρ : Fin m → Fin n) →
+                  extsN k (λ x → var (ρ x)) ≗ (λ x → var (extN k ρ x))
+  extsN-var-ren zero    ρ x      = refl
+  extsN-var-ren (suc k) ρ fz     = refl
+  extsN-var-ren (suc k) ρ (fs x) = cong wk (extsN-var-ren k ρ x)
+
+  ren-as-sub  : {m n : Nat} (ρ : Fin m → Fin n) (t : Tm m) → sub (λ x → var (ρ x)) t ≡ ren ρ t
+  renA-as-sub : {m n : Nat} {ks : List Nat} (ρ : Fin m → Fin n) (as : Args m ks) →
+                subA (λ x → var (ρ x)) as ≡ renA ρ as
+  ren-as-sub ρ (var x)     = refl
+  ren-as-sub ρ (node o as) = cong (node o) (renA-as-sub ρ as)
+  renA-as-sub ρ []             = refl
+  renA-as-sub ρ (_∷_ {k} t as) =
+    cong₂ _∷_ (trans (sub-cong (extsN-var-ren k ρ) t) (ren-as-sub (extN k ρ) t)) (renA-as-sub ρ as)
+
+  -- ★ the two normalisers every weakening/cancellation reduces to
+  --   (the pointwise premise is `λ _ → refl` for concrete σ, ρ)
+  subRen : {l m n : Nat} (σ : Fin m → Tm n) (ρ : Fin l → Fin m) (ρ' : Fin l → Fin n) →
+           (∀ x → σ (ρ x) ≡ var (ρ' x)) → (t : Tm l) → sub σ (ren ρ t) ≡ ren ρ' t
+  subRen σ ρ ρ' h t = trans (sub-ren σ ρ t) (trans (sub-cong h t) (ren-as-sub ρ' t))
+
+  subRenA : {l m n : Nat} {ks : List Nat} (σ : Fin m → Tm n) (ρ : Fin l → Fin m) (ρ' : Fin l → Fin n) →
+            (∀ x → σ (ρ x) ≡ var (ρ' x)) → (as : Args l ks) → subA σ (renA ρ as) ≡ renA ρ' as
+  subRenA σ ρ ρ' h as = trans (subA-ren σ ρ as) (trans (subA-cong h as) (renA-as-sub ρ' as))
+
+  renRen : {l m n : Nat} (ρ : Fin m → Fin n) (ρ' : Fin l → Fin m) (ρ'' : Fin l → Fin n) →
+           (∀ x → ρ (ρ' x) ≡ ρ'' x) → (t : Tm l) → ren ρ (ren ρ' t) ≡ ren ρ'' t
+  renRen ρ ρ' ρ'' h t = trans (ren-ren ρ ρ' t) (ren-cong h t)
+
+  renRenA : {l m n : Nat} {ks : List Nat} (ρ : Fin m → Fin n) (ρ' : Fin l → Fin m) (ρ'' : Fin l → Fin n) →
+            (∀ x → ρ (ρ' x) ≡ ρ'' x) → (as : Args l ks) → renA ρ (renA ρ' as) ≡ renA ρ'' as
+  renRenA ρ ρ' ρ'' h as = trans (renA-ren ρ ρ' as) (renA-cong h as)

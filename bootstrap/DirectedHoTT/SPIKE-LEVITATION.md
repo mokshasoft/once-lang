@@ -201,3 +201,54 @@ Open, NOT covered by these spikes:
   normalization proof for the whole system (S0/S1b are its two new pieces);
 - infinitary fields (a `dπ`), and the interaction with `Id`/`Hom`;
 - the migration of Spec/Metatheory/Lib/examples/Knot.
+
+### ✅ S4 PASSED (2026-09-26) — the TAG type; the constructor LIST is SUGAR — `bootstrap/tmp/LevS4.agda`
+
+Question (user, after the verdict): do we migrate the constructor-list
+telescope to a single telescope? Answer tested here: the KERNEL keeps one
+telescope; the surface, examples and Knot keep writing a constructor list
+and one method per constructor, and that ELABORATES faithfully.
+
+Kernel additions (in `tmp/LevS3.agda`, SR extended — `sr-desc` now covers
+all TWELVE rules): a finite enumeration code `enum c`, tags `tag k` (typed
+with `k < c`), a dependent `switch c P t (m₀ … m_{c-1})` (motive a TYPE, so
+it eliminates into `Desc` too), and Σ-INDUCTION `split P q b`.
+
+⚠ `split` is REQUIRED: the kernel has no Σ-η (`Spec/Typing`: "NO η"). The
+one method receives the payload `q` as a variable and must hand
+`con (tag , rest)` to the per-constructor method; with only `fst`/`snd` the
+rebuilt `con (fst q , snd q)` and `con q` are distinct normal forms — they
+convert only under Σ-η. (Argued, not mechanised: non-convertibility needs
+confluence.) So the choice is `split` (η-free, standard Σ-induction) or
+deciding Σ-η (the open G4 η question); the spike uses `split`.
+
+The elaboration (`Dₗ Cs = dσ (enum c) (λ t. switch t Cs)`,
+`conₗ k p = con (tag k , p)`, `methₗ = λ i q. split q (λ t p h. switch t (mₖ i) p h)`):
+- (a) `⊢Dₗ` — each `Cₖ ∷ Desc` ⇒ `Dₗ Cs ∷ Desc`;
+- (b) `⊢conₗ` — `p ∷ pay D Cₖ i` ⇒ `conₗ k p ∷ mu D i` (constructor lookup
+  IS a conversion: `f (tag k) ⟶β switch … ⟶ Cₖ`, `switchConv`);
+- (c) `⊢methₗ` — each `mₖ` at ITS constructor's method type `MethK D M Cₖ k`
+  (conclusion `M i (con (tag k , p))`) ⇒ `methₗ ∷ MethTy D M`, the kernel's
+  ONE method type. Proved with the selector `f` ABSTRACT (one hypothesis:
+  `f` applied to a tag converts to `switch`), discharged for the concrete
+  selector by `fₗ-β` — `⊢methₗ-concrete`;
+- (d) `ιₗ` — the DERIVED ι is a real 7-step reduction:
+  `ielim D M methₗ i (conₗ k p) ⟶* mₖ i p (ih D M methₗ D (tag k , p))`
+  (ι, β, β, split-ι, β, switch-ι, and the substitutions cancel);
+- (e) CANONICITY: a well-typed tag is in range (`tag-lt`), so a switch on it
+  always fires (`switch-fires`).
+CONTROL for (e): `switch 2 U (tag 2) (unit , unit)` — the list form's
+`lkp dnil k` — is mechanically STUCK (`out-of-range-stuck`: no step) and
+UNTYPABLE (`out-of-range-untypable`): the `Lt` premise is exactly what buys
+canonicity. (c)/(d) have no failing-variant control; they are constructive
+facts about specific terms, and (c)'s one hypothesis is discharged.
+
+All de Bruijn bookkeeping went through TWO generic normalisers
+(`subRen`, `renRen` + `ren-as-sub`, in `LevSyn`) with pointwise `refl` — the
+"variable/abstract position" lessons held: no tower appeared.
+
+Consequence for the migration: the constructor list, `icon k`, per-
+constructor methods and the method tuple SURVIVE as surface/elaborator
+notions (and as Knot notation); the kernel, MT and Knot reify only `dσ`
+over `enum`. Still open: whether the elaborator lives in the kernel repo's
+Lib (a verified elaboration, as here) or in the surface; Σ-η vs `split`.

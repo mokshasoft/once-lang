@@ -25,6 +25,13 @@ open import Agda.Builtin.Sigma using ( Σ; _,_ )
 data Op : Set where
   `U `El `Pi `ix `unit `eqc `sig `tt `pair `fst `snd `lam `app : Op
   `Desc `dι `dσ `dρ `mu `con `pay `ihTy `ih `ielim : Op
+  -- S4: the TAG type (a finite enumeration) and Σ-INDUCTION
+  `enum `tag `switch : Nat → Op
+  `split : Op
+
+rep : Nat → List Nat          -- c plain arguments
+rep zero    = []
+rep (suc c) = 0 ∷ rep c
 
 ar : Op → List Nat
 ar `U     = []
@@ -50,6 +57,10 @@ ar `pay   = 0 ∷ 0 ∷ 0 ∷ []            -- pay D C i : payload of C, recursi
 ar `ihTy  = 0 ∷ 0 ∷ 0 ∷ 0 ∷ []        -- ihTy D M C p
 ar `ih    = 0 ∷ 0 ∷ 0 ∷ 0 ∷ 0 ∷ []    -- ih D M e C p
 ar `ielim = 0 ∷ 0 ∷ 0 ∷ 0 ∷ 0 ∷ []    -- ielim D M e i t
+ar (`enum c)   = []                  -- the code of {0 … c-1}
+ar (`tag k)    = []
+ar (`switch c) = 1 ∷ 0 ∷ rep c       -- switch c P t (m₀ … m_{c-1}), P binds the tag
+ar `split      = 1 ∷ 0 ∷ 2 ∷ []      -- split P q b, P binds q, b binds both halves
 
 open Syntax Op ar
 
@@ -76,6 +87,10 @@ pattern pay D C i    = node `pay (D ∷ C ∷ i ∷ [])
 pattern ihTy D M C p = node `ihTy (D ∷ M ∷ C ∷ p ∷ [])
 pattern ih D M e C p = node `ih (D ∷ M ∷ e ∷ C ∷ p ∷ [])
 pattern ielim D M e i t = node `ielim (D ∷ M ∷ e ∷ i ∷ t ∷ [])
+pattern enum c          = node (`enum c) []
+pattern tag k           = node (`tag k) []
+pattern switch c P t ms = node (`switch c) (P ∷ t ∷ ms)
+pattern split P q b     = node `split (P ∷ q ∷ b ∷ [])
 
 infixr 2 _×_
 _×_ : Set → Set → Set
@@ -103,8 +118,28 @@ MethTy D M =
              (El (app (app (ren w3 M) (var (fs (fs fz)))) (con (var (fs fz)))))))
 
 variable
-  a b c e f h i i' j p t t' u A A' B S T D D' M C : Tm n
+  a b c e f h i i' j p q t t' u A A' B S T D D' M C : Tm n
   bd B' : Tm (suc n)
+
+-- the k-th of c plain arguments
+data Nth {m : Nat} : {c : Nat} → Args m (rep c) → Nat → Tm m → Set where
+  nth-z : {c : Nat} {x : Tm m} {xs : Args m (rep c)} → Nth {c = suc c} (x ∷ xs) zero x
+  nth-s : {c k : Nat} {x y : Tm m} {xs : Args m (rep c)} →
+          Nth xs k y → Nth {c = suc c} (x ∷ xs) (suc k) y
+
+data Lt : Nat → Nat → Set where
+  lt-z : {c : Nat} → Lt zero (suc c)
+  lt-s : {k c : Nat} → Lt k c → Lt (suc k) (suc c)
+
+-- instantiate split's two binders / re-pair them for the motive
+sg2 : Tm n → Tm n → Fin (suc (suc n)) → Tm n
+sg2 a b fz          = b
+sg2 a b (fs fz)     = a
+sg2 a b (fs (fs x)) = var x
+
+ρpair : Fin (suc n) → Tm (suc (suc n))
+ρpair fz     = pair (var (fs fz)) (var fz)
+ρpair (fs x) = var (fs (fs x))
 
 -- ═══ reduction ═══════════════════════════════════════════════════════════
 infix 4 _⟶ᴰ_ _⟶_ _⟶ₐ_ _≃_
@@ -121,6 +156,11 @@ data _⟶ᴰ_ {n : Nat} : Tm n → Tm n → Set where
   ih-ι   : ih D M e (dι j) p ⟶ᴰ tt
   ih-σ   : ih D M e (dσ S f) p ⟶ᴰ ih D M e (app f (fst p)) (snd p)
   ih-ρ   : ih D M e (dρ j C) p ⟶ᴰ pair (ielim D M e j (fst p)) (ih D M e C (snd p))
+  -- S4: the tag eliminator and Σ-induction
+  switch-ι : {c k : Nat} {P : Tm (suc n)} {ms : Args n (rep c)} {m : Tm n} →
+             Nth ms k m → switch c P (tag k) ms ⟶ᴰ m
+  split-ι  : {P : Tm (suc n)} {b2 : Tm (suc (suc n))} →
+             split P (pair a b) b2 ⟶ᴰ sub (sg2 a b) b2
 
 data _⟶_  {n : Nat} : Tm n → Tm n → Set
 data _⟶ₐ_ {n : Nat} : {ks : List Nat} → Args n ks → Args n ks → Set
@@ -166,7 +206,11 @@ lookup (Γ ▹ A) (fs x) = wk (lookup Γ x)
 variable Γ : Ctx n
 
 infix 3 _⊢_∷_
-data _⊢_∷_ {n : Nat} (Γ : Ctx n) : Tm n → Tm n → Set where
+data _⊢_∷_ {n : Nat} (Γ : Ctx n) : Tm n → Tm n → Set
+-- the cases of a switch, from tag k on
+data Cases {n : Nat} (Γ : Ctx n) (P : Tm (suc n)) : Nat → {c : Nat} → Args n (rep c) → Set
+
+data _⊢_∷_ {n} Γ where
   t-var   : {x : Fin n} → Γ ⊢ var x ∷ lookup Γ x
   t-conv  : Γ ⊢ t ∷ A → A ≃ B → Γ ⊢ t ∷ B
   t-lam   : (Γ ▹ A) ⊢ bd ∷ B' → Γ ⊢ lam bd ∷ Pi A B'
@@ -192,6 +236,19 @@ data _⊢_∷_ {n : Nat} (Γ : Ctx n) : Tm n → Tm n → Set where
             Γ ⊢ i ∷ El ix → Γ ⊢ p ∷ El (pay D C i) → Γ ⊢ ih D M e C p ∷ El (ihTy D M C p)
   t-ielim : Γ ⊢ D ∷ Desc → Γ ⊢ M ∷ MotTy D → Γ ⊢ e ∷ MethTy D M →
             Γ ⊢ i ∷ El ix → Γ ⊢ t ∷ El (mu D i) → Γ ⊢ ielim D M e i t ∷ El (app (app M i) t)
+  -- S4
+  t-enum   : {c : Nat} → Γ ⊢ enum c ∷ U
+  t-tag    : {c k : Nat} → Lt k c → Γ ⊢ tag k ∷ El (enum c)
+  t-switch : {c : Nat} {P : Tm (suc n)} {ms : Args n (rep c)} →
+             Γ ⊢ t ∷ El (enum c) → Cases Γ P 0 ms → Γ ⊢ switch c P t ms ∷ P [ t ]
+  t-split  : {P T' : Tm (suc n)} {b2 : Tm (suc (suc n))} →
+             Γ ⊢ q ∷ El (sig S T') → ((Γ ▹ El S) ▹ El T') ⊢ b2 ∷ sub ρpair P →
+             Γ ⊢ split P q b2 ∷ P [ q ]
+
+data Cases {n} Γ P where
+  cs-nil  : {k : Nat} → Cases Γ P k {zero} []
+  cs-cons : {k c : Nat} {x : Tm n} {xs : Args n (rep c)} →
+            Γ ⊢ x ∷ P [ tag k ] → Cases Γ P (suc k) xs → Cases Γ P k {suc c} (x ∷ xs)
 
 ≡-ty : Γ ⊢ t ∷ A → A ≡ B → Γ ⊢ t ∷ B
 ≡-ty d refl = d
@@ -244,6 +301,51 @@ inv-con (t-con d k q) = _ , _ , ≃-refl , d , k , q
 inv-con (t-conv d q) with inv-con d
 ... | D' , i' , r , x = D' , i' , ≃-trans r q , x
 
+-- S4 inversions
+inv-switch : {c : Nat} {P : Tm (suc n)} {ms : Args n (rep c)} →
+             Γ ⊢ switch c P t ms ∷ A →
+             (P [ t ] ≃ A) × (Γ ⊢ t ∷ El (enum c)) × Cases Γ P 0 ms
+inv-switch (t-switch d cs) = ≃-refl , d , cs
+inv-switch (t-conv d q) with inv-switch d
+... | r , x = ≃-trans r q , x
+
+inv-split : {P : Tm (suc n)} {b2 : Tm (suc (suc n))} → Γ ⊢ split P q b2 ∷ A →
+            (P [ q ] ≃ A) × Σ (Tm _) λ S → Σ (Tm _) λ T' →
+            (Γ ⊢ q ∷ El (sig S T')) × (((Γ ▹ El S) ▹ El T') ⊢ b2 ∷ sub ρpair P)
+inv-split (t-split d b) = ≃-refl , _ , _ , d , b
+inv-split (t-conv d q) with inv-split d
+... | r , x = ≃-trans r q , x
+
+inv-pair : Γ ⊢ pair a b ∷ A →
+           Σ (Tm _) λ S → Σ (Tm _) λ T' →
+           (El (sig S T') ≃ A) × (Γ ⊢ a ∷ El S) × (Γ ⊢ b ∷ El (T' [ a ]))
+inv-pair (t-pair x y) = _ , _ , ≃-refl , x , y
+inv-pair (t-conv d q) with inv-pair d
+... | S , T' , r , x = S , T' , ≃-trans r q , x
+
+inv-tag : {k : Nat} → Γ ⊢ tag k ∷ A → Σ Nat λ c → (El (enum c) ≃ A) × Lt k c
+inv-tag (t-tag l) = _ , ≃-refl , l
+inv-tag (t-conv d q) with inv-tag d
+... | c , r , l = c , ≃-trans r q , l
+
++-zero : (k : Nat) → k + zero ≡ k
++-zero zero    = refl
++-zero (suc k) = cong suc (+-zero k)
+
++-suc : (a b : Nat) → a + suc b ≡ suc (a + b)
++-suc zero    b = refl
++-suc (suc a) b = cong suc (+-suc a b)
+
+cases-nth : {k0 c k : Nat} {P : Tm (suc n)} {ms : Args n (rep c)} {m : Tm n} →
+            Cases Γ P k0 ms → Nth ms k m → Γ ⊢ m ∷ P [ tag (k0 + k) ]
+cases-nth {k0 = k0} {P = P} (cs-cons d _) nth-z =
+  ≡-ty d (cong (λ x → P [ tag x ]) (sym (+-zero k0)))
+cases-nth {k0 = k0} {P = P} (cs-cons _ cs) (nth-s {k = k} nt) =
+  ≡-ty (cases-nth cs nt) (cong (λ x → P [ tag x ]) (sym (+-suc k0 k)))
+
+El≃ : t ≃ t' → El t ≃ El t'
+El≃ = ≃-map El (λ s → under (here s))
+
 -- ═══ substitution bookkeeping (S2's lemmas, instantiated) ═════════════════
 can : (σ : Fin m → Tm n) (ρ : Fin n → Fin m) → (∀ x → σ (ρ x) ≡ var x) →
       (t : Tm n) → sub σ (ren ρ t) ≡ t
@@ -278,7 +380,19 @@ module SR
   (wk-⊢   : ∀ {n} {Γ : Ctx n} {t A B} → Γ ⊢ t ∷ A → (Γ ▹ B) ⊢ wk t ∷ wk A)
   (El-inj : ∀ {n} {a b : Tm n} → El a ≃ El b → a ≃ b)
   (mu-inj : ∀ {n} {D D' i i' : Tm n} → mu D i ≃ mu D' i' → (D ≃ D') × (i ≃ i'))
+  -- S4 (standard Σ metatheory)
+  (sig-inj : ∀ {n} {S S' : Tm n} {T T' : Tm (suc n)} → sig S T ≃ sig S' T' → (S ≃ S') × (T ≃ T'))
+  (sub-≃   : ∀ {n} {T T' : Tm (suc n)} {a : Tm n} → T ≃ T' → (T [ a ]) ≃ (T' [ a ]))
+  (sub-⊢₂  : ∀ {n} {Γ : Ctx n} {S : Tm n} {T : Tm (suc n)} {t X : Tm (suc (suc n))} {a b : Tm n} →
+             ((Γ ▹ El S) ▹ El T) ⊢ t ∷ X → Γ ⊢ a ∷ El S → Γ ⊢ b ∷ El (T [ a ]) →
+             Γ ⊢ sub (sg2 a b) t ∷ sub (sg2 a b) X)
   where
+
+  split-ty : (P : Tm (suc n)) (a b : Tm n) → sub (sg2 a b) (sub ρpair P) ≡ P [ pair a b ]
+  split-ty P a b = trans (sub-sub (sg2 a b) ρpair P) (sub-cong pt P)
+    where pt : (λ x → sub (sg2 a b) (ρpair x)) ≗ sg (pair a b)
+          pt fz     = refl
+          pt (fs x) = refl
 
   sr-desc : Γ ⊢ t ∷ A → t ⟶ᴰ t' → Γ ⊢ t' ∷ A
   sr-desc d pay-ι with inv-pay d
@@ -347,3 +461,12 @@ module SR
                        (trans (cong (sub (sg hh)) (sub-wk (sg p) (wk i))) (trans (c1 hh _) (c1 p i)))
                        (c1 hh p))
     in t-conv res q
+  sr-desc d (switch-ι nt) with inv-switch d
+  ... | q , _ , cs = t-conv (cases-nth cs nt) q
+  sr-desc d (split-ι {a = a} {b = b} {P = P}) with inv-split d
+  ... | q , S , T' , pq , body with inv-pair pq
+  ... | S' , T'' , qq , da , db with sig-inj (El-inj qq)
+  ... | ss , tt' =
+    t-conv (≡-ty (sub-⊢₂ body (t-conv da (El≃ ss)) (t-conv db (El≃ (sub-≃ tt'))))
+                 (split-ty P a b))
+           q
