@@ -17,12 +17,9 @@
 --   so the de Bruijn depth of an annotated context IS that of its erasure,
 --   definitionally — no transport between the layers, ever.
 --
--- ★ THE INDUCTIVE FORMERS, over ANNOTATED descriptions: their premise
---   types come from `Spec/AnnotatedDesc` (`payTyᴬ`, `methsTyᴬ`, `ipayTyᴬ`,
---   `imethsTyᴬ`, `iinstᴬ`), and description well-formedness is itself an
---   annotated judgment (`ADescWf`, `AIDescWf`, …) — mutual with `⊢ᴬ`,
---   exactly as `DescWf`/`IDescWf` are with `⊢`.  Membership `k ∈D` is
---   about STRUCTURE, so it reads the erasure.
+-- ★ THE INDUCTIVE FORMERS (levitated): descriptions are annotated TERMS
+--   of `Desc I`, so their well-formedness is `⊢ᴬ` itself; the method type
+--   comes from `Spec/AnnotatedDesc` (`MethTyᴬ`, `iinstᴬ`).
 --
 -- `--safe`, ZERO axioms.
 ------------------------------------------------------------------------
@@ -33,7 +30,8 @@ open import normalizer.Syntax.Types using ( _≡_ )
 open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Variance using ( 𝔹; true; false; occTm; NoNatC; flat? )
 open import DirectedHoTT.Spec.Typing
-  using ( Ctx; ◇; _▹_; ⌊_⌋; _≅ᵀ_; _×_; _,,_; ρ₀; x₀ )
+  using ( Ctx; ◇; _▹_; ⌊_⌋; _≅ᵀ_; _×_; _,,_ )
+open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Annotated
 open import DirectedHoTT.Spec.AnnotatedDesc
 
@@ -85,21 +83,12 @@ data _∋ᴬ_∷_ : (Γ : ACtx) → Var ⌊ Γ ⌋ᴬ → ATy ⌊ Γ ⌋ᴬ → 
 infix 3 _⊢ᴬ_∷_ _⊢tyᴬ_
 data _⊢ᴬ_∷_ : (Γ : ACtx) → ATm ⌊ Γ ⌋ᴬ → ATy ⌊ Γ ⌋ᴬ → Set
 data _⊢tyᴬ_ : (Γ : ACtx) → ATy ⌊ Γ ⌋ᴬ → Set
-data ADConWf : ADCon → Set
-data ADescWf : ADesc → Set
--- ★ A-MATH, annotated: the twin of `Spec.Typing`'s `IConWf` — the
---   telescope is typed against an abstract family at `x`, the carried
---   terms live in the X-free scope `Δ` reached by `ρ`, and NO description
---   appears in the judgment.
-data AIConWf : ATy ε → {Δ : Cx} (Θ : ACtx) → Thin Δ ⌊ Θ ⌋ᴬ → Var ⌊ Θ ⌋ᴬ → AICon Δ → Set
-data AIDescWfFrom : ATy ε → AIDesc → Set
-data AICodeWf : {Θ : Cx} → ATm Θ → Set
+-- ★ LEVITATION: no description well-formedness judgment — a description
+--   is an annotated TERM of `Desc I`, checked like any other.
 
-AΘ₀ : ATy ε → ACtx
-AΘ₀ I = (◇ᴬ ▹ᴬ Π (εwkTyᴬ I) U) ▹ᴬ εwkTyᴬ I
-
-AIDescWf : ATy ε → AIDesc → Set
-AIDescWf I D = (◇ᴬ ⊢tyᴬ I) × AIDescWfFrom I D
+-- the motive's context: index, then scrutinee
+motCtxᴬ : (Γ : ACtx) → ATm ⌊ Γ ⌋ᴬ → ATm ⌊ Γ ⌋ᴬ → ACtx
+motCtxᴬ Γ I D = (Γ ▹ᴬ El I) ▹ᴬ IMu (renTmᴬ vs I) (renTmᴬ vs D) (var vz)
 
 data _⊢ᴬ_∷_ where
   ⊢ᴬvar  : ∀ {Γ x A} → Γ ∋ᴬ x ∷ A → Γ ⊢ᴬ var x ∷ A
@@ -153,8 +142,8 @@ data _⊢ᴬ_∷_ where
   ⊢ᴬ⌜Id⌝ : ∀ {Γ c a b} → Γ ⊢ᴬ c ∷ U → Γ ⊢ᴬ a ∷ El c → Γ ⊢ᴬ b ∷ El c →
                          Γ ⊢ᴬ ⌜Id⌝ c a b ∷ U
   ⊢ᴬ⌜Nat⌝  : ∀ {Γ} → Γ ⊢ᴬ ⌜Nat⌝ ∷ U
-  ⊢ᴬ⌜Mu⌝   : ∀ {Γ D} → ADescWf D → Γ ⊢ᴬ ⌜Mu⌝ D ∷ U
-  ⊢ᴬ⌜IMu⌝  : ∀ {Γ D I i} → AIDescWf I D → Γ ⊢ᴬ i ∷ εwkTyᴬ I → Γ ⊢ᴬ ⌜IMu⌝ D I i ∷ U
+  ⊢ᴬ⌜IMu⌝  : ∀ {Γ I D i} → Γ ⊢ᴬ D ∷ Desc I → Γ ⊢ᴬ i ∷ El I → Γ ⊢ᴬ ⌜IMu⌝ I D i ∷ U
+  ⊢ᴬ⌜Fin⌝  : ∀ {Γ n} → Γ ⊢ᴬ ⌜Fin⌝ n ∷ U
   ⊢ᴬ⌜Unit⌝ : ∀ {Γ} → Γ ⊢ᴬ ⌜Unit⌝ ∷ U
   ⊢ᴬidrefl : ∀ {Γ c t} → Γ ⊢ᴬ c ∷ U → Γ ⊢ᴬ t ∷ El c →
                          Γ ⊢ᴬ idrefl c t ∷ Id (El c) t t
@@ -175,21 +164,36 @@ data _⊢ᴬ_∷_ where
              ((Γ ▹ᴬ Nat) ▹ᴬ M) ⊢ᴬ s ∷ subTyᴬ nrsᴬ M →
              Γ ⊢ᴬ n ∷ Nat →
              Γ ⊢ᴬ natrec M z s n ∷ subTyᴬ (singleᴬ n) M
-  -- ★ INDUCTIVE TYPES — the description is in the term (`con D`, `elim D M`)
-  ⊢ᴬcon  : ∀ {Γ D k p} → ADescWf D → k ∈D ⌈ D ⌉ᴰ →
-           Γ ⊢ᴬ p ∷ payTyᴬ D (lookupDᴬ D k) → Γ ⊢ᴬ con D k p ∷ Mu D
-  ⊢ᴬelim : ∀ {Γ D M ms t} → ADescWf D → (Γ ▹ᴬ Mu D) ⊢tyᴬ M →
-           Γ ⊢ᴬ ms ∷ methsTyᴬ D M D → Γ ⊢ᴬ t ∷ Mu D →
-           Γ ⊢ᴬ elim D M ms t ∷ subTyᴬ (singleᴬ t) M
-  -- ★ INDEXED — description, index type and index are in the term
-  ⊢ᴬicon  : ∀ {Γ D I i k p} → AIDescWf I D → k ∈ID ⌈ D ⌉ᴵᴰ →
-            Γ ⊢ᴬ i ∷ εwkTyᴬ I →
-            Γ ⊢ᴬ p ∷ ipayTyᴬ D I (isingleᴬ i) (ilookupDᴬ D k) →
-            Γ ⊢ᴬ icon D I i k p ∷ IMu D I i
-  ⊢ᴬielim : ∀ {Γ D I M i ms t} → AIDescWf I D →
-            ((Γ ▹ᴬ εwkTyᴬ I) ▹ᴬ IMu D I (var vz)) ⊢tyᴬ M →
-            Γ ⊢ᴬ i ∷ εwkTyᴬ I → Γ ⊢ᴬ ms ∷ imethsTyᴬ D I M D → Γ ⊢ᴬ t ∷ IMu D I i →
-            Γ ⊢ᴬ ielim D I M i ms t ∷ iinstᴬ i t M
+  -- ★★ LEVITATED FAMILIES — index code (and motive, index) in the term
+  ⊢ᴬdι   : ∀ {Γ I j} → Γ ⊢ᴬ j ∷ El I → Γ ⊢ᴬ dι I j ∷ Desc I
+  ⊢ᴬdσ   : ∀ {Γ I S f} → Γ ⊢ᴬ I ∷ U → Γ ⊢ᴬ S ∷ U →
+           Γ ⊢ᴬ f ∷ Π (El S) (Desc (renTmᴬ vs I)) → Γ ⊢ᴬ dσ I S f ∷ Desc I
+  ⊢ᴬdρ   : ∀ {Γ I j C} → Γ ⊢ᴬ j ∷ El I → Γ ⊢ᴬ C ∷ Desc I → Γ ⊢ᴬ dρ I j C ∷ Desc I
+  ⊢ᴬdpay : ∀ {Γ I D C i} → Γ ⊢ᴬ D ∷ Desc I → Γ ⊢ᴬ C ∷ Desc I → Γ ⊢ᴬ i ∷ El I →
+           Γ ⊢ᴬ dpay I D C i ∷ U
+  ⊢ᴬcon  : ∀ {Γ I D i p} → Γ ⊢ᴬ D ∷ Desc I → Γ ⊢ᴬ i ∷ El I →
+           Γ ⊢ᴬ p ∷ El (dpay I D D i) → Γ ⊢ᴬ con I D i p ∷ IMu I D i
+  ⊢ᴬdih  : ∀ {Γ I D M e C i p} →
+           Γ ⊢ᴬ D ∷ Desc I → motCtxᴬ Γ I D ⊢tyᴬ M → Γ ⊢ᴬ e ∷ MethTyᴬ I D M →
+           Γ ⊢ᴬ C ∷ Desc I → Γ ⊢ᴬ i ∷ El I → Γ ⊢ᴬ p ∷ El (dpay I D C i) →
+           Γ ⊢ᴬ dih I D M e C i p ∷ DIh I D M C i p
+  ⊢ᴬielim : ∀ {Γ I D M e i t} →
+            Γ ⊢ᴬ D ∷ Desc I → motCtxᴬ Γ I D ⊢tyᴬ M → Γ ⊢ᴬ e ∷ MethTyᴬ I D M →
+            Γ ⊢ᴬ i ∷ El I → Γ ⊢ᴬ t ∷ IMu I D i →
+            Γ ⊢ᴬ ielim I D M i e t ∷ iinstᴬ i t M
+  ⊢ᴬfzero  : ∀ {Γ n} → Γ ⊢ᴬ fzero n ∷ Fin (suc n)
+  ⊢ᴬfsuc   : ∀ {Γ n t} → Γ ⊢ᴬ t ∷ Fin n → Γ ⊢ᴬ fsuc n t ∷ Fin (suc n)
+  ⊢ᴬfcase  : ∀ {Γ n P t a b} →
+             (Γ ▹ᴬ Fin (suc n)) ⊢tyᴬ P → Γ ⊢ᴬ t ∷ Fin (suc n) →
+             Γ ⊢ᴬ a ∷ subTyᴬ (singleᴬ (fzero n)) P →
+             (Γ ▹ᴬ Fin n) ⊢ᴬ b ∷ subTyᴬ (fsucSᴬ n) P →
+             Γ ⊢ᴬ fcase n P t a b ∷ subTyᴬ (singleᴬ t) P
+  ⊢ᴬfcase0 : ∀ {Γ P t} → (Γ ▹ᴬ Fin zero) ⊢tyᴬ P → Γ ⊢ᴬ t ∷ Fin zero →
+             Γ ⊢ᴬ fcase0 P t ∷ subTyᴬ (singleᴬ t) P
+  ⊢ᴬpsplit : ∀ {Γ A B P q b} →
+             (Γ ▹ᴬ Σ' A B) ⊢tyᴬ P → Γ ⊢ᴬ q ∷ Σ' A B →
+             ((Γ ▹ᴬ A) ▹ᴬ B) ⊢ᴬ b ∷ subTyᴬ (pairSᴬ B) P →
+             Γ ⊢ᴬ psplit A B P b q ∷ subTyᴬ (singleᴬ q) P
   -- ★ (c): conversion of ERASURES
   ⊢ᴬconv : ∀ {Γ t A B} → Γ ⊢ᴬ t ∷ A → ⌈ A ⌉ᵀ ≅ᵀ ⌈ B ⌉ᵀ → Γ ⊢ᴬ t ∷ B
 
@@ -202,40 +206,11 @@ data _⊢tyᴬ_ where
   tyᴬ-Id   : ∀ {Γ A t u} → Γ ⊢tyᴬ A → Γ ⊢ᴬ t ∷ A → Γ ⊢ᴬ u ∷ A → Γ ⊢tyᴬ Id A t u
   tyᴬ-Unit : ∀ {Γ} → Γ ⊢tyᴬ Unit
   tyᴬ-Nat  : ∀ {Γ} → Γ ⊢tyᴬ Nat
-  tyᴬ-Mu   : ∀ {Γ D} → ADescWf D → Γ ⊢tyᴬ Mu D
-  tyᴬ-IMu  : ∀ {Γ D I i} → AIDescWf I D → Γ ⊢ᴬ i ∷ εwkTyᴬ I → Γ ⊢tyᴬ IMu D I i
+  tyᴬ-IMu  : ∀ {Γ I D i} → Γ ⊢ᴬ D ∷ Desc I → Γ ⊢ᴬ i ∷ El I → Γ ⊢tyᴬ IMu I D i
+  tyᴬ-Desc : ∀ {Γ I} → Γ ⊢ᴬ I ∷ U → Γ ⊢tyᴬ Desc I
+  tyᴬ-DIh  : ∀ {Γ I D M C i p} →
+             Γ ⊢ᴬ D ∷ Desc I → motCtxᴬ Γ I D ⊢tyᴬ M → Γ ⊢ᴬ C ∷ Desc I →
+             Γ ⊢ᴬ i ∷ El I → Γ ⊢ᴬ p ∷ El (dpay I D C i) → Γ ⊢tyᴬ DIh I D M C i p
+  tyᴬ-Fin  : ∀ {Γ n} → Γ ⊢tyᴬ Fin n
   tyᴬ-Hom  : ∀ {Γ A t u} → Γ ⊢tyᴬ A → Γ ⊢ᴬ t ∷ A → Γ ⊢ᴬ u ∷ A → Γ ⊢tyᴬ Hom A t u
-
--- ★ the descriptions the model can interpret — `Spec/Typing`'s rows, annotated
-data ADConWf where
-  dwf-ι : ADConWf dι
-  dwf-ρ : {C : ADCon} → ADConWf C → ADConWf (dρ C)
-  dwf-κ : {C : ADCon} (c : ATm ε) → ◇ᴬ ⊢ᴬ c ∷ U → ADConWf C → ADConWf (dκ (El c) C)
-
-data ADescWf where
-  dwf-nil  : ADescWf dnil
-  dwf-cons : {C : ADCon} {E : ADesc} → ADConWf C → ADescWf E → ADescWf (C ◃ E)
-
-data AIConWf where
-  iwf-ι : ∀ {I Δ Θ ρ x} → AIConWf I {Δ} Θ ρ x iι
-  iwf-ρ : ∀ {I Δ Θ ρ x} {C : AICon (Δ ∙)} (j : ATm Δ) →
-          Θ ⊢ᴬ renTmᴬ (thinR ρ) j ∷ εwkTyᴬ I →
-          AIConWf I (Θ ▹ᴬ El (app (var x) (renTmᴬ (thinR ρ) j))) (keep ρ) (vs x) C →
-          AIConWf I Θ ρ x (iρ j C)
-  iwf-κ : ∀ {I Δ Θ ρ x} {C : AICon (Δ ∙)} (κ : ATm Δ) →
-          AICodeWf κ → Θ ⊢ᴬ renTmᴬ (thinR ρ) κ ∷ U →
-          AIConWf I (Θ ▹ᴬ El (renTmᴬ (thinR ρ) κ)) (keep ρ) (vs x) C →
-          AIConWf I Θ ρ x (iκ κ C)
-
-data AICodeWf where
-  icw-clo  : {Θ : Cx} (c : ATm ε) → ◇ᴬ ⊢ᴬ c ∷ U → AICodeWf (εwkTmᴬ {Θ} c)
-  icw-ford : {Θ : Cx} (c a b : ATm Θ) → AICodeWf (⌜Id⌝ c a b)
-  icw-imu  : {Θ : Cx} {D' : AIDesc} {I' : ATy ε} (i : ATm Θ) →
-             AIDescWf I' D' → AICodeWf (⌜IMu⌝ D' I' i)
-
-data AIDescWfFrom where
-  idwf-nil  : {I : ATy ε} → AIDescWfFrom I inil
-  idwf-cons : {I : ATy ε} {C : AICon (ε ∙)} {E : AIDesc} →
-              AIConWf I (AΘ₀ I) ρ₀ x₀ C → AIDescWfFrom I E →
-              AIDescWfFrom I (C ◂ E)
 
