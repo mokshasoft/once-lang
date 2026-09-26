@@ -42,7 +42,7 @@ open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-natrecⁿ; ⟶*-natrec�
 open import DirectedHoTT.Lib.RedChain using ( _»_ )
 open import DirectedHoTT.Lib.NatNum using ( num )
 open import DirectedHoTT.Lib.BoolNum using ( b2n )
-open import DirectedHoTT.Lib.IFold using ( eqℕ )
+open import DirectedHoTT.Spec.Variance using ( 𝔹; true; false )
 open import DirectedHoTT.Lib.ICast using ( ⟶*-castᵣ )
 open import DirectedHoTT.Lib.Monus using ( monusTm )
 open import DirectedHoTT.Lib.NatEq using ( isZeroTm; eqNatTm )
@@ -75,6 +75,12 @@ monusTm-red p q ha hb = ⟶*-natrecᶻ ha » ⟶*-natrecⁿ hb » monus-num p q
 --   SECOND argument (so `monusℕ zero (suc b)` is stuck — `monusℕ-zeroˡ`),
 --   stepping both at once is a lemma (`monusℕ-suc`), and `maxℕ m zero`
 --   is real arithmetic rather than a computation (`maxℕ≡max'`).
+-- meta-level equality of naturals (what the object-level test computes)
+eqℕ : ℕ → ℕ → 𝔹
+eqℕ zero    zero    = true
+eqℕ (suc a) (suc b) = eqℕ a b
+eqℕ _       _       = false
+
 eqAux : (a b : ℕ) → isZeroℕ (maxℕ (monusℕ a b) (monusℕ b a)) ≡ b2n (eqℕ a b)
 eqAux zero    zero    = refl
 eqAux zero    (suc b) =
