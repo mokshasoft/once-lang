@@ -181,7 +181,12 @@ macro
 --   "every other `RTm` former was considered, and `false` is right".
 --   ⇒ if one moves, do NOT just bump it — swap in `catchAllList`, read
 --     the names, decide, and put the number back.
-_ : catchAllN spine? RTm ≡ 12
+-- ★ LEVITATION (2026-09-26): 12 → 17, read by name.  The catch-all now
+--   holds exactly the INTRODUCTION FORMS and codes that are no spine head:
+--   lam pair ⌜base⌝ ⌜Σ⌝ unit nzero nsuc ⌜Nat⌝ ⌜Unit⌝ ⌜IMu⌝ con, and the new
+--   ⌜Fin⌝ dι dσ dρ fzero fsuc (values of `Fin`/`Desc`, as `nsuc` is of
+--   `Nat`).  Every eliminator of the levitated kernel has its own row.
+_ : catchAllN spine? RTm ≡ 17
 _ = refl
 
 _ : catchAllN stablecd? RTm ≡ 7
