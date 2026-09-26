@@ -50,25 +50,20 @@
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.AmrecIMuRec where
 open import Agda.Builtin.Nat using ( zero; suc )
+open import normalizer.Syntax.Types using ( _,_; Σ )
 open import DirectedHoTT.Spec.Syntax
-  using ( Cx; ε; _∙; vz; vs
-        ; RTy; El; Hom; Nat; IMu
-        ; RTm; var; lam; app; pair; fst; snd; unit; nzero; nsuc; ⌜Nat⌝
-        ; icon; ielim; renTm; Π
-        ; hereID; thereID )
-open import DirectedHoTT.Spec.Typing
-  using ( Ctx; ◇; _▹_; ⌊_⌋
-        ; _⊢_∷_; ⊢var; here; there; ⊢nzero; ⊢nsuc; ⊢lam; ⊢app
-        ; _⟶*_; done; step; β; βfst; βsnd; ξ-appˡ; ξ-fst; ξ-snd; ι-ielim
-        ; ⊢pair; ⊢fst; ⊢snd; ⊢unit; ⊢⌜Nat⌝; ⊢icon; ⊢ielim
-        ; imethTy; imethsTy
-        ; _⊢ty_; ty-Nat; ty-Hom; ty-El; ty-Π; ty-Σ; ty-Unit; ty-IMu )
+open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Metatheory.TySub using ( ⊢wk )
+open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-trans; ⟶*-appˡ )
+open import DirectedHoTT.Metatheory.SubjectReduction using ( dρ-step )
 open import DirectedHoTT.Lib.Amrec using ( aStepT; module AmTΠ )
+open import DirectedHoTT.Lib.Sugar
+  using ( Cons; []; _∷_; conₗ; methₗ; MethK; selF; selF-β; nth-z; nth-s
+        ; PerK; []ₘ; _∷ₘ_; ⊢methₗ; ιₗ )
+open import DirectedHoTT.Lib.Tel
 open import DirectedHoTT.Examples.Scoped
-  using ( INat; TmD; TmWf; Tm; size; ⊢size; toI; fromI
-        ; varC; lamC; appC; tyPayVar; tyPayLam; tyPayApp
-        ; idTm; tapp )
+  using ( INat; TmTs; TmD; ⊢TmD; TmOK; varT; lamT; appT; varOK; lamOK; appOK
+        ; Tm; size; ⊢size; toI; fromI; idTm; tapp )
 open import DirectedHoTT.Examples.ScopedSize using ( appNode; descAppTm; ⊢desc-app )
 open import DirectedHoTT.Examples.AmrecIMu using ( A; ⊢A; msr; ⊢msr )
 
@@ -80,7 +75,7 @@ open import DirectedHoTT.Examples.AmrecIMu using ( A; ⊢A; msr; ⊢msr )
 -- `(y : Tm i) → size i y < size i s → El ⌜Nat⌝`
 ihT : {Γ : Cx} → RTm Γ → RTm Γ → RTy Γ
 ihT i s =
-  Π (IMu TmD INat i)
+  Π (IMu ⌜Nat⌝ TmD i)
     (Π (Hom Nat (nsuc (size (renTm vs i) (var vz)))
                 (size (renTm vs i) (renTm vs s)))
        (El ⌜Nat⌝))
@@ -88,7 +83,7 @@ ihT i s =
 ⊢ihT : {Γ : Ctx} {i s : RTm ⌊ Γ ⌋} →
        Γ ⊢ i ∷ El ⌜Nat⌝ → Γ ⊢ s ∷ Tm i → Γ ⊢ty ihT i s
 ⊢ihT di ds =
-  ty-Π (ty-IMu TmWf di)
+  ty-Π (ty-IMu ⊢⌜Nat⌝ ⊢TmD di)
     (ty-Π (ty-Hom ty-Nat (⊢nsuc (⊢size (⊢wk di) (⊢var here)))
                          (⊢size (⊢wk di) (⊢wk ds)))
           (ty-El ⊢⌜Nat⌝))
@@ -96,125 +91,107 @@ ihT i s =
 MotAt : {Γ : Cx} → RTm Γ → RTm Γ → RTy Γ
 MotAt i s = Π (ihT i s) (El ⌜Nat⌝)
 
-⊢MotAt : {Γ : Ctx} {i s : RTm ⌊ Γ ⌋} →
-         Γ ⊢ i ∷ El ⌜Nat⌝ → Γ ⊢ s ∷ Tm i → Γ ⊢ty MotAt i s
-⊢MotAt di ds = ty-Π (⊢ihT di ds) (ty-El ⊢⌜Nat⌝)
-
 -- ★ the two-slot motive: index = `var (vs vz)`, scrutinee = `var vz`.
 Mot : {Γ : Cx} → RTy ((Γ ∙) ∙)
 Mot = MotAt (var (vs vz)) (var vz)
 
-⊢Mot : {Γ : Ctx} → ((Γ ▹ El ⌜Nat⌝) ▹ IMu TmD INat (var vz)) ⊢ty Mot
-⊢Mot = ⊢MotAt (⊢var (there here)) (⊢var here)
+⊢Mot : {Γ : Ctx} → ((Γ ▹ El ⌜Nat⌝) ▹ IMu ⌜Nat⌝ TmD (var vz)) ⊢ty Mot
+⊢Mot = ty-Π (⊢ihT (⊢var (there here)) (⊢var here)) (ty-El ⊢⌜Nat⌝)
 
 ------------------------------------------------------------------------
--- 2. THE THREE METHODS.
+-- 2. THE THREE METHODS, each against its hypotheses' NORMAL FORM.
 --
--- Each is FOUR binders — the index, the payload, the structural IH
--- tuple, and then the amrec IH the motive's codomain asks for.
+-- Each is FOUR binders — the index, the payload, the structural
+-- hypotheses, and then the amrec IH the motive's codomain asks for.
+-- ★ D074: `app`'s fields sit at the fibre's OWN index `i`, so the amrec
+--   IH (at `Tm i`) applies to them as they are — no transport.
 ------------------------------------------------------------------------
 
 mVar mLam mApp : {Γ : Cx} → RTm Γ
 mVar = lam (lam (lam (lam nzero)))
 mLam = lam (lam (lam (lam nzero)))
-
--- ★★★ THE RECURSIVE LEAF.  `ih (fst p) ⟨descent⟩`, with the payload and
---   the index both BOUND VARIABLES — which is why `⊢desc-app` had to be
---   proved at an abstract payload.
 mApp = lam (lam (lam (lam
          (app (app (var vz) (fst (var (vs (vs vz)))))
               (descAppTm (var (vs (vs (vs vz)))) (var (vs (vs vz))))))))
 
--- `var`: no recursive field, so the structural IH tuple is `Unit`.
-tyMethVar : {Γ : Ctx} → Γ ⊢ty imethTy TmD INat zero varC Mot
-tyMethVar =
-  ty-Π (ty-El ⊢⌜Nat⌝)
-    (ty-Π tyPayVar
-      (ty-Π ty-Unit
-        (⊢MotAt (⊢var (there (there here)))
-                (⊢icon TmWf hereID (⊢var (there (there here)))
-                                   (⊢var (there here))))))
+-- ⚠ EACH PIECE AT ITS OWN NAMED TYPE.  Written as one expression, the
+--   unifier solves the pieces' types against the UNFOLDED description and
+--   motive — measured 66 s / 4.4 GB for `var`'s method alone; with every
+--   intermediate typed by a named lemma it is well under a second.  (The
+--   Def-backed-name lesson again: a name shares, an inferred meta re-runs.)
 
-⊢mVar : {Γ : Ctx} → Γ ⊢ mVar ∷ imethTy TmD INat zero varC Mot
-⊢mVar =
-  ⊢lam (ty-El ⊢⌜Nat⌝)
-    (⊢lam tyPayVar
-      (⊢lam ty-Unit
-        (⊢lam (⊢ihT (⊢var (there (there here)))
-                    (⊢icon TmWf hereID (⊢var (there (there here)))
-                                       (⊢var (there here))))
-              (toI ⊢nzero))))
+-- the method's context for constructor `T`, and its scrutinee
+HC : (Γ : Ctx) → Tel (⌊ Γ ⌋ ∙) → Ctx
+HC Γ T = HypCtx Γ ⌜Nat⌝ TmD Mot T
 
--- `lam`: ONE structural IH, at the SHIFTED index `suc n` — and the
--- amrec IH cannot be applied to the body, whose type is `Tm (suc n)`.
-tyMethLam : {Γ : Ctx} → Γ ⊢ty imethTy TmD INat (suc zero) lamC Mot
-tyMethLam =
-  ty-Π (ty-El ⊢⌜Nat⌝)
-    (ty-Π tyPayLam
-      (ty-Π (ty-Σ (⊢MotAt (toI (⊢nsuc (fromI (⊢var (there here)))))
-                          (⊢fst (⊢var here)))
-                  ty-Unit)
-        (⊢MotAt (⊢var (there (there here)))
-                (⊢icon TmWf (thereID hereID) (⊢var (there (there here)))
-                                             (⊢var (there here))))))
+-- `var`
+scrV : {Γ : Ctx} → HC Γ varT ⊢ conₗ zero (var (vs vz)) ∷ Tm (var (vs (vs vz)))
+scrV = ⊢conₜ ⊢⌜Nat⌝ TmOK nthᵗ-z (⊢var (there (there here))) (⊢var (there here))
 
-⊢mLam : {Γ : Ctx} → Γ ⊢ mLam ∷ imethTy TmD INat (suc zero) lamC Mot
-⊢mLam =
-  ⊢lam (ty-El ⊢⌜Nat⌝)
-    (⊢lam tyPayLam
-      (⊢lam (ty-Σ (⊢MotAt (toI (⊢nsuc (fromI (⊢var (there here)))))
-                          (⊢fst (⊢var here)))
-                  ty-Unit)
-        (⊢lam (⊢ihT (⊢var (there (there here)))
-                    (⊢icon TmWf (thereID hereID) (⊢var (there (there here)))
-                                                 (⊢var (there here))))
-              (toI ⊢nzero))))
+bodyV : {Γ : Ctx} → HC Γ varT ⊢ lam nzero ∷ MotAt (var (vs (vs vz))) (conₗ zero (var (vs vz)))
+bodyV = ⊢lam (⊢ihT (⊢var (there (there here))) scrV) (toI ⊢nzero)
 
--- `app`: TWO structural IHs, both at the ambient index — and both
--- fields are at the carrier's own type, so the amrec IH applies.
-tyMethApp : {Γ : Ctx} → Γ ⊢ty imethTy TmD INat (suc (suc zero)) appC Mot
-tyMethApp =
-  ty-Π (ty-El ⊢⌜Nat⌝)
-    (ty-Π tyPayApp
-      (ty-Π (ty-Σ (⊢MotAt (⊢var (there here)) (⊢fst (⊢var here)))
-                  (ty-Σ (⊢MotAt (⊢wk (⊢var (there here)))
-                                (⊢wk (⊢fst (⊢snd (⊢var here)))))
-                        ty-Unit))
-        (⊢MotAt (⊢var (there (there here)))
-                (⊢icon TmWf (thereID (thereID hereID))
-                            (⊢var (there (there here)))
-                            (⊢var (there here))))))
+⊢mVar : {Γ : Ctx} → Γ ⊢ mVar ∷ MethK ⌜Nat⌝ TmD Mot ⌜ varT ⌝ᵗ zero
+⊢mVar = ⊢methT {T = varT} {s = conₗ zero (var (vs vz))} ⊢⌜Nat⌝ ⊢TmD ⊢Mot varOK bodyV
 
-⊢mApp : {Γ : Ctx} → Γ ⊢ mApp ∷ imethTy TmD INat (suc (suc zero)) appC Mot
-⊢mApp =
-  ⊢lam (ty-El ⊢⌜Nat⌝)
-    (⊢lam tyPayApp
-      (⊢lam (ty-Σ (⊢MotAt (⊢var (there here)) (⊢fst (⊢var here)))
-                  (ty-Σ (⊢MotAt (⊢wk (⊢var (there here)))
-                                (⊢wk (⊢fst (⊢snd (⊢var here)))))
-                        ty-Unit))
-        (⊢lam (⊢ihT (⊢var (there (there here)))
-                    (⊢icon TmWf (thereID (thereID hereID))
-                                (⊢var (there (there here)))
-                                (⊢var (there here))))
-          -- ★★★ THE RECURSIVE CALL, and the whole point of step 1b.
-          (⊢app (⊢app (⊢var here) (⊢fst (⊢var (there (there here)))))
-                (⊢desc-app (⊢var (there (there (there here))))
-                           (⊢fst (⊢var (there (there here))))
-                           (⊢fst (⊢snd (⊢var (there (there here))))))))))
+-- `lam`: its body is at `suc i`, a DIFFERENT type — no amrec call
+scrL : {Γ : Ctx} → HC Γ lamT ⊢ conₗ (suc zero) (var (vs vz)) ∷ Tm (var (vs (vs vz)))
+scrL = ⊢conₜ ⊢⌜Nat⌝ TmOK (nthᵗ-s nthᵗ-z) (⊢var (there (there here))) (⊢var (there here))
+
+bodyL : {Γ : Ctx} → HC Γ lamT ⊢ lam nzero ∷ MotAt (var (vs (vs vz))) (conₗ (suc zero) (var (vs vz)))
+bodyL = ⊢lam (⊢ihT (⊢var (there (there here))) scrL) (toI ⊢nzero)
+
+⊢mLam : {Γ : Ctx} → Γ ⊢ mLam ∷ MethK ⌜Nat⌝ TmD Mot ⌜ lamT ⌝ᵗ (suc zero)
+⊢mLam = ⊢methT {T = lamT} {s = conₗ (suc zero) (var (vs vz))} ⊢⌜Nat⌝ ⊢TmD ⊢Mot lamOK bodyL
+
+-- ★★★ `app`: THE RECURSIVE LEAF — the amrec IH at the first field, with
+--   the descent certificate.
+scrA : {Γ : Ctx} → HC Γ appT ⊢ conₗ (suc (suc zero)) (var (vs vz)) ∷ Tm (var (vs (vs vz)))
+scrA = ⊢conₜ ⊢⌜Nat⌝ TmOK (nthᵗ-s (nthᵗ-s nthᵗ-z)) (⊢var (there (there here))) (⊢var (there here))
+
+-- the context under the amrec IH's binder
+HCA : Ctx → Ctx
+HCA Γ = HC Γ appT ▹ ihT (var (vs (vs vz))) (conₗ (suc (suc zero)) (var (vs vz)))
+
+-- the payload's two recursive fields, at the fibre's own index
+fstA : {Γ : Ctx} → HCA Γ ⊢ fst (var (vs (vs vz))) ∷ Tm (var (vs (vs (vs vz))))
+fstA = Σ.fst (Σ.snd (Σ.snd (dρ-step dC (⊢var (there (there here))))))
+  where dC = ⊢tel ⊢⌜Nat⌝ (ok-ρ (⊢var (there (there (there here)))) (ok-ρ (⊢var (there (there (there here)))) ok-ι))
+
+sndA : {Γ : Ctx} → HCA Γ ⊢ fst (snd (var (vs (vs vz)))) ∷ Tm (var (vs (vs (vs vz))))
+sndA = Σ.fst (Σ.snd (Σ.snd (dρ-step (Σ.fst (Σ.snd s₁)) (Σ.snd (Σ.snd (Σ.snd s₁))))))
+  where
+    dC = ⊢tel ⊢⌜Nat⌝ (ok-ρ (⊢var (there (there (there here)))) (ok-ρ (⊢var (there (there (there here)))) ok-ι))
+    s₁ = dρ-step dC (⊢var (there (there here)))
+
+callA : {Γ : Ctx} → HCA Γ ⊢ app (app (var vz) (fst (var (vs (vs vz)))))
+                              (descAppTm (var (vs (vs (vs vz)))) (var (vs (vs vz))))
+                        ∷ El ⌜Nat⌝
+callA = ⊢app (⊢app (⊢var here) fstA) (⊢desc-app (⊢var (there (there (there here)))) fstA sndA)
+
+bodyA : {Γ : Ctx} → HC Γ appT ⊢ lam (app (app (var vz) (fst (var (vs (vs vz)))))
+                                      (descAppTm (var (vs (vs (vs vz)))) (var (vs (vs vz)))))
+                              ∷ MotAt (var (vs (vs vz))) (conₗ (suc (suc zero)) (var (vs vz)))
+bodyA = ⊢lam (⊢ihT (⊢var (there (there here))) scrA) callA
+
+⊢mApp : {Γ : Ctx} → Γ ⊢ mApp ∷ MethK ⌜Nat⌝ TmD Mot ⌜ appT ⌝ᵗ (suc (suc zero))
+⊢mApp = ⊢methT {T = appT} {s = conₗ (suc (suc zero)) (var (vs vz))} ⊢⌜Nat⌝ ⊢TmD ⊢Mot appOK bodyA
 
 ------------------------------------------------------------------------
--- 3. THE METHOD TUPLE, AND THE STEP.
+-- 3. THE ONE METHOD, AND THE STEP.
 ------------------------------------------------------------------------
+
+RecMs : {Γ : Cx} → Cons Γ 3
+RecMs = mVar ∷ (mLam ∷ (mApp ∷ []))
 
 mRecs : {Γ : Cx} → RTm Γ
-mRecs = pair mVar (pair mLam (pair mApp unit))
+mRecs = methₗ RecMs
 
-⊢mRecs : {Γ : Ctx} → Γ ⊢ mRecs ∷ imethsTy TmD INat Mot TmD
-⊢mRecs =
-  ⊢pair (ty-Σ tyMethLam (ty-Σ tyMethApp ty-Unit)) ⊢mVar
-    (⊢pair (ty-Σ tyMethApp ty-Unit) ⊢mLam
-      (⊢pair ty-Unit ⊢mApp ⊢unit))
+⊢mRecs : {Γ : Ctx} → Γ ⊢ mRecs ∷ MethTy ⌜Nat⌝ TmD Mot
+⊢mRecs = ⊢methₗ ⊢⌜Nat⌝ (allD (⊢wk ⊢⌜Nat⌝) TmOK) ⊢Mot
+           ( (selF-β {Cs = ⌜ TmTs ⌝ₛ} nth-z , ⊢mVar)
+          ∷ₘ ((selF-β {Cs = ⌜ TmTs ⌝ₛ} (nth-s nth-z) , ⊢mLam)
+          ∷ₘ ((selF-β {Cs = ⌜ TmTs ⌝ₛ} (nth-s (nth-s nth-z)) , ⊢mApp) ∷ₘ []ₘ)))
 
 -- ★ SPLIT FIRST, TAKE THE IH SECOND — `DivLib`'s `lam (natrec …)` with
 --   the `natrec` replaced by an `ielim` over the syntax.
@@ -222,7 +199,7 @@ stpR : RTm ε
 stpR = lam (ielim TmD nzero mRecs (var vz))
 
 ⊢stpR : ◇ ⊢ stpR ∷ aStepT A ⌜Nat⌝ msr
-⊢stpR = ⊢lam ⊢A (⊢ielim TmWf ⊢Mot (toI ⊢nzero) ⊢mRecs (⊢var here))
+⊢stpR = ⊢lam ⊢A (⊢ielim ⊢⌜Nat⌝ ⊢TmD ⊢Mot ⊢mRecs (toI ⊢nzero) (⊢var here))
 
 ------------------------------------------------------------------------
 -- 4. ★★★ THE USE SITE.
@@ -276,13 +253,8 @@ stpR-app : (ih : RTm ε) →
              ⟶* app (app ih (fst selfPay)) (descAppTm nzero selfPay)
 stpR-app ih =
   step (ξ-appˡ (β _ (tapp idTm idTm)))
-  (step (ξ-appˡ (ι-ielim TmD nzero mRecs (suc (suc zero)) selfPay))
-  (step (ξ-appˡ (ξ-appˡ (ξ-appˡ (ξ-appˡ
-          (ξ-fst (ξ-snd (βsnd mVar (pair mLam (pair mApp unit)))))))))
-  (step (ξ-appˡ (ξ-appˡ (ξ-appˡ (ξ-appˡ
-          (ξ-fst (βsnd mLam (pair mApp unit)))))))
-  (step (ξ-appˡ (ξ-appˡ (ξ-appˡ (ξ-appˡ (βfst mApp unit)))))
+  (⟶*-trans (⟶*-appˡ (ιₗ {D = TmD} {i = nzero} {p = selfPay} {ms = RecMs} (nth-s (nth-s nth-z))))
   (step (ξ-appˡ (ξ-appˡ (ξ-appˡ (β _ nzero))))
   (step (ξ-appˡ (ξ-appˡ (β _ selfPay)))
   (step (ξ-appˡ (β _ _))
-  (step (β _ ih) done))))))))
+  (step (β _ ih) done)))))

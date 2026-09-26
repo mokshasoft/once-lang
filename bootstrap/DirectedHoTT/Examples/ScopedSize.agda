@@ -28,60 +28,42 @@
 module DirectedHoTT.Examples.ScopedSize where
 open import Agda.Builtin.Nat using ( zero; suc )
 open import DirectedHoTT.Spec.Syntax
-  using ( Cx; ε; _∙; vz; vs
-        ; RTy; El; Hom; Nat
-        ; RTm; var; pair; fst; snd; unit; nzero; nsuc; ⌜Nat⌝
-        ; icon; ielim )
-open import DirectedHoTT.Spec.Typing
-  using ( Ctx; ◇; _▹_; ⌊_⌋
-        ; _⊢_∷_; ⊢conv; ⊢nzero; ⊢nsuc
-        ; _⟶*_; done; step
-        ; β; βfst; βsnd; ξ-appˡ; ξ-fst; ξ-snd; ξ-nsuc; ξ-natrecⁿ; ξ-natrecᶻ
-        ; ι-ielim; ξ-Homʳ
-        ; _⊢ty_
-        ; _≅ᵀ_; csymᵀ; credᵀ; Hom-Nat-ss )
+open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Metatheory.RedCong
-  using ( red→≅ᵀ; _⟶ᵀ*_; doneᵀ; stepᵀ )
+  using ( red→≅ᵀ; _⟶ᵀ*_; doneᵀ; stepᵀ; ⟶*-trans; ⟶*-nsuc )
 open import DirectedHoTT.Lib.Nat     using ( plusTm; ⊢plus )
 open import DirectedHoTT.Lib.ArithLe using ( leSumTm; ⊢le-sum )
+open import DirectedHoTT.Lib.Sugar   using ( conₗ )
+open import DirectedHoTT.Lib.Tel     using ( nthᵗ-z; nthᵗ-s )
+open import DirectedHoTT.Lib.TelFold using ( sizeAlg; fold-ι )
 open import DirectedHoTT.Examples.Scoped
-  using ( TmD; INat; Tm; size; ⊢size
-        ; msize; msize-var; msize-lam; msize-app; msTail )
+  using ( TmTs; TmD; INat; Tm; size; ⊢size; msize )
 
 ------------------------------------------------------------------------
 -- 0. THE `app` NODE AT AN ABSTRACT PAYLOAD.
 ------------------------------------------------------------------------
 
 appNode : {Γ : Cx} → RTm Γ → RTm Γ
-appNode p = icon (suc (suc zero)) p
-
--- the IH tuple `ι-ielim` builds for `appC`: the recursor at each
--- recursive field, both at the AMBIENT index (`appC` shifts neither).
-appIHs : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ
-appIHs n p = pair (size n (fst p)) (pair (size n (fst (snd p))) unit)
+appNode p = conₗ (suc (suc zero)) p
 
 ------------------------------------------------------------------------
 -- 1. THE REDUCTION.  `size n (app f a) ⟶* suc (size n f + size n a)`.
 --
--- Ten steps, and every one is forced: one `ι-ielim`, three to `sel 2`
--- the method out of the tuple, three βs for the method's three binders
--- (index, payload, IHs), and three projections out of the IH tuple.
+-- The library fold's ι (`fold-ι`) delivers `suc (fst h + fst (snd h))`
+-- with `h` the walked hypotheses — both recursive calls at the AMBIENT
+-- index `n` (D074: `app`'s fields sit at the fibre's own index) — and
+-- three projections finish it.
 ------------------------------------------------------------------------
 
 sizeApp : {Γ : Cx} (n p : RTm Γ) →
           size n (appNode p)
             ⟶* nsuc (plusTm (size n (fst p)) (size n (fst (snd p))))
 sizeApp n p =
-  step (ι-ielim TmD n msize (suc (suc zero)) p)
-  (step (ξ-appˡ (ξ-appˡ (ξ-appˡ (ξ-fst (ξ-snd (βsnd msize-var msTail))))))
-  (step (ξ-appˡ (ξ-appˡ (ξ-appˡ (ξ-fst (βsnd msize-lam (pair msize-app unit))))))
-  (step (ξ-appˡ (ξ-appˡ (ξ-appˡ (βfst msize-app unit))))
-  (step (ξ-appˡ (ξ-appˡ (β _ n)))
-  (step (ξ-appˡ (β _ p))
-  (step (β _ (appIHs n p))
-  (step (ξ-nsuc (ξ-natrecⁿ (βfst _ _)))
-  (step (ξ-nsuc (ξ-natrecᶻ (ξ-fst (βsnd _ _))))
-  (step (ξ-nsuc (ξ-natrecᶻ (βfst _ _))) done)))))))))
+  ⟶*-trans (fold-ι sizeAlg {Ts = TmTs} {i = n} {p = p} (nthᵗ-s (nthᵗ-s nthᵗ-z)))
+    (⟶*-nsuc
+      (step (ξ-natrecⁿ (βfst _ _))
+      (step (ξ-natrecᶻ (ξ-fst (βsnd _ _)))
+      (step (ξ-natrecᶻ (βfst _ _)) done))))
 
 -- lift a term reduction into a `Hom`'s RIGHT endpoint.
 homʳStar : {Γ : Cx} {A : RTy Γ} {t u u' : RTm Γ} →
