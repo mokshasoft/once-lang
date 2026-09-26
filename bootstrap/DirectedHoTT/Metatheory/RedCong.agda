@@ -43,7 +43,7 @@ open import DirectedHoTT.Spec.Syntax
         ; renTm; renTm-renTm; renTm-cong; Sub; extS; subTm; renTm-subTm
         ; subTm-renTm; subTm-cong; _ᵣ∘ₛ_; _ₛ∘ᵣ_; _∘ᵣ_; Desc; dι; dρ; con; IMu
         ; ielim; ⌜IMu⌝; εwkTm; RTy; El; Π; Σ'; Hom; Id; DIh; ⌜Fin⌝; dσ; dpay
-        ; dih; fzero; fsuc; fcase; fcase0; psplit; cong₄ )
+        ; dih; fzero; fsuc; fcase; fcase0; psplit; cong₄; cong₃ )
 open import DirectedHoTT.Spec.Variance
   using ( 𝔹; true; false; pw?; stkC?; stkA?; pwBody; pwShift; pw?-ren
         ; stkC?-ren; stkA?-ren; pwBody-ren; pw?-sub; stkC?-sub; stkA?-sub
@@ -63,10 +63,10 @@ open import DirectedHoTT.Spec.Typing
         ; ξ-Σʳ; ξ-Homᵀ; ξ-Homˡ; ξ-Homʳ; ξ-Idᵀ; ξ-Idˡ; ξ-Idʳ; _≅ᵀ_; crflᵀ
         ; ctrnᵀ; credᵀ; ι; dpay-ι; dpay-σ; dpay-ρ; dih-ι; dih-σ; dih-ρ
         ; fcase-z; fcase-s; psplit-β; tr-J-Fin; single2; ξ-⌜IMu⌝ᴵ; ξ-⌜IMu⌝ᴰ
-        ; ξ-⌜IMu⌝ⁱ; ξ-ielimᴰ; ξ-ielimᵉ; ξ-dι; ξ-dσˢ; ξ-dσᶠ; ξ-dρʲ; ξ-dρᶜ
-        ; ξ-dpayᴵ; ξ-dpayᴰ; ξ-dpayᶜ; ξ-dpayⁱ; ξ-dihᴰ; ξ-dihᵉ; ξ-dihᶜ; ξ-dihᵖ
-        ; ξ-fsuc; ξ-fcaseᵗ; ξ-fcaseᵃ; ξ-fcaseᵇ; ξ-fcase0; ξ-psplitᵇ; ξ-psplitᵍ
-        ; ξ-IMuᴵ; ξ-IMuᴰ; ξ-IMuⁱ; ξ-Desc; ξ-DIhᴰ; ξ-DIhᴹ; ξ-DIhᶜ; ξ-DIhᵖ )
+        ; ξ-⌜IMu⌝ⁱ; ξ-ielimᴰ; ξ-ielimᵉ; ξ-dσˢ; ξ-dσᶠ; ξ-dρʲ; ξ-dρᶜ; ξ-dpayᴵ
+        ; ξ-dpayᴰ; ξ-dpayᶜ; ξ-dihᴰ; ξ-dihᵉ; ξ-dihᶜ; ξ-dihᵖ; ξ-fsuc; ξ-fcaseᵗ
+        ; ξ-fcaseᵃ; ξ-fcaseᵇ; ξ-fcase0; ξ-psplitᵇ; ξ-psplitᵍ; ξ-IMuᴵ; ξ-IMuᴰ
+        ; ξ-IMuⁱ; ξ-Desc; ξ-DIhᴰ; ξ-DIhᴹ; ξ-DIhᶜ; ξ-DIhᵖ )
 open import DirectedHoTT.Metatheory.SubjectReductionBase
   using ( sub-comm; sub-comm-ext; ⟶-sub; wk-sub; wk₁-sub; swp-sub; pwShift-sub )
 
@@ -278,10 +278,6 @@ private
 ⟶*-ielimᵗ done       = done
 ⟶*-ielimᵗ (step r q) = step (ξ-ielimᵗ r) (⟶*-ielimᵗ q)
 
-⟶*-dι :  {j j' : RTm Γ} → j ⟶* j' → dι j ⟶* dι j'
-⟶*-dι done       = done
-⟶*-dι (step r q) = step (ξ-dι r) (⟶*-dι q)
-
 ⟶*-dσˢ : {f : RTm Γ} {S S' : RTm Γ} → S ⟶* S' → dσ S f ⟶* dσ S' f
 ⟶*-dσˢ done       = done
 ⟶*-dσˢ (step r q) = step (ξ-dσˢ r) (⟶*-dσˢ q)
@@ -298,21 +294,17 @@ private
 ⟶*-dρᶜ done       = done
 ⟶*-dρᶜ (step r q) = step (ξ-dρᶜ r) (⟶*-dρᶜ q)
 
-⟶*-dpayᴵ : {D : RTm Γ} {C : RTm Γ} {i : RTm Γ} {I I' : RTm Γ} → I ⟶* I' → dpay I D C i ⟶* dpay I' D C i
+⟶*-dpayᴵ : {D : RTm Γ} {C : RTm Γ} {I I' : RTm Γ} → I ⟶* I' → dpay I D C ⟶* dpay I' D C
 ⟶*-dpayᴵ done       = done
 ⟶*-dpayᴵ (step r q) = step (ξ-dpayᴵ r) (⟶*-dpayᴵ q)
 
-⟶*-dpayᴰ : {I : RTm Γ} {C : RTm Γ} {i : RTm Γ} {D D' : RTm Γ} → D ⟶* D' → dpay I D C i ⟶* dpay I D' C i
+⟶*-dpayᴰ : {I : RTm Γ} {C : RTm Γ} {D D' : RTm Γ} → D ⟶* D' → dpay I D C ⟶* dpay I D' C
 ⟶*-dpayᴰ done       = done
 ⟶*-dpayᴰ (step r q) = step (ξ-dpayᴰ r) (⟶*-dpayᴰ q)
 
-⟶*-dpayᶜ : {I : RTm Γ} {D : RTm Γ} {i : RTm Γ} {C C' : RTm Γ} → C ⟶* C' → dpay I D C i ⟶* dpay I D C' i
+⟶*-dpayᶜ : {I : RTm Γ} {D : RTm Γ} {C C' : RTm Γ} → C ⟶* C' → dpay I D C ⟶* dpay I D C'
 ⟶*-dpayᶜ done       = done
 ⟶*-dpayᶜ (step r q) = step (ξ-dpayᶜ r) (⟶*-dpayᶜ q)
-
-⟶*-dpayⁱ : {I : RTm Γ} {D : RTm Γ} {C : RTm Γ} {i i' : RTm Γ} → i ⟶* i' → dpay I D C i ⟶* dpay I D C i'
-⟶*-dpayⁱ done       = done
-⟶*-dpayⁱ (step r q) = step (ξ-dpayⁱ r) (⟶*-dpayⁱ q)
 
 ⟶*-dihᴰ : {e : RTm Γ} {C : RTm Γ} {p : RTm Γ} {D D' : RTm Γ} → D ⟶* D' → dih D e C p ⟶* dih D' e C p
 ⟶*-dihᴰ done       = done
@@ -493,18 +485,18 @@ ren-comm2 {Γ} ρ b x y =
         (natrec-suc (renTm ρ z) (renTm (extR (extR ρ)) s) (renTm ρ n))
 -- ★ LEVITATION
 ⟶-ren ρ (ι D i e p) = ι _ _ _ _
-⟶-ren ρ (dpay-ι I D j i) = dpay-ι _ _ _ _
-⟶-ren ρ (dpay-σ I D S f i) =
-  subst (λ z → dpay (renTm ρ I) (renTm ρ D) (dσ (renTm ρ S) (renTm ρ f)) (renTm ρ i) ⟶ z)
-        (sym (cong₄ (λ a b c d → ⌜Σ⌝ (renTm ρ S) (dpay a b (app c (var vz)) d))
-                    (wk-ren ρ I) (wk-ren ρ D) (wk-ren ρ f) (wk-ren ρ i)))
-        (dpay-σ _ _ _ _ _)
-⟶-ren ρ (dpay-ρ I D j C i) =
-  subst (λ z → dpay (renTm ρ I) (renTm ρ D) (dρ (renTm ρ j) (renTm ρ C)) (renTm ρ i) ⟶ z)
-        (sym (cong₄ (λ a b c d → ⌜Σ⌝ (⌜IMu⌝ (renTm ρ I) (renTm ρ D) (renTm ρ j)) (dpay a b c d))
-                    (wk-ren ρ I) (wk-ren ρ D) (wk-ren ρ C) (wk-ren ρ i)))
-        (dpay-ρ _ _ _ _ _)
-⟶-ren ρ (dih-ι D e j p) = dih-ι _ _ _ _
+⟶-ren ρ (dpay-ι I D) = dpay-ι _ _
+⟶-ren ρ (dpay-σ I D S f) =
+  subst (λ z → dpay (renTm ρ I) (renTm ρ D) (dσ (renTm ρ S) (renTm ρ f)) ⟶ z)
+        (sym (cong₃ (λ a b c → ⌜Σ⌝ (renTm ρ S) (dpay a b (app c (var vz))))
+                    (wk-ren ρ I) (wk-ren ρ D) (wk-ren ρ f)))
+        (dpay-σ _ _ _ _)
+⟶-ren ρ (dpay-ρ I D j C) =
+  subst (λ z → dpay (renTm ρ I) (renTm ρ D) (dρ (renTm ρ j) (renTm ρ C)) ⟶ z)
+        (sym (cong₃ (λ a b c → ⌜Σ⌝ (⌜IMu⌝ (renTm ρ I) (renTm ρ D) (renTm ρ j)) (dpay a b c))
+                    (wk-ren ρ I) (wk-ren ρ D) (wk-ren ρ C)))
+        (dpay-ρ _ _ _ _)
+⟶-ren ρ (dih-ι D e p) = dih-ι _ _ _
 ⟶-ren ρ (dih-σ D e S f p) = dih-σ _ _ _ _ _
 ⟶-ren ρ (dih-ρ D e j C p) = dih-ρ _ _ _ _ _
 ⟶-ren ρ (fcase-z a b) = fcase-z _ _
@@ -526,7 +518,6 @@ ren-comm2 {Γ} ρ b x y =
 ⟶-ren ρ (ξ-ielimⁱ r) = ξ-ielimⁱ (⟶-ren ρ r)
 ⟶-ren ρ (ξ-ielimᵉ r) = ξ-ielimᵉ (⟶-ren ρ r)
 ⟶-ren ρ (ξ-ielimᵗ r) = ξ-ielimᵗ (⟶-ren ρ r)
-⟶-ren ρ (ξ-dι r) = ξ-dι (⟶-ren ρ r)
 ⟶-ren ρ (ξ-dσˢ r) = ξ-dσˢ (⟶-ren ρ r)
 ⟶-ren ρ (ξ-dσᶠ r) = ξ-dσᶠ (⟶-ren ρ r)
 ⟶-ren ρ (ξ-dρʲ r) = ξ-dρʲ (⟶-ren ρ r)
@@ -534,7 +525,6 @@ ren-comm2 {Γ} ρ b x y =
 ⟶-ren ρ (ξ-dpayᴵ r) = ξ-dpayᴵ (⟶-ren ρ r)
 ⟶-ren ρ (ξ-dpayᴰ r) = ξ-dpayᴰ (⟶-ren ρ r)
 ⟶-ren ρ (ξ-dpayᶜ r) = ξ-dpayᶜ (⟶-ren ρ r)
-⟶-ren ρ (ξ-dpayⁱ r) = ξ-dpayⁱ (⟶-ren ρ r)
 ⟶-ren ρ (ξ-dihᴰ r) = ξ-dihᴰ (⟶-ren ρ r)
 ⟶-ren ρ (ξ-dihᵉ r) = ξ-dihᵉ (⟶-ren ρ r)
 ⟶-ren ρ (ξ-dihᶜ r) = ξ-dihᶜ (⟶-ren ρ r)
@@ -856,14 +846,13 @@ subTm-monoˢ h (con p) =
   ⟶*-con (subTm-monoˢ h p)
 subTm-monoˢ h (ielim D i e t) =
   ⟶*-trans (⟶*-ielimᴰ (subTm-monoˢ h D)) (⟶*-trans (⟶*-ielimⁱ (subTm-monoˢ h i)) (⟶*-trans (⟶*-ielimᵉ (subTm-monoˢ h e)) (⟶*-ielimᵗ (subTm-monoˢ h t))))
-subTm-monoˢ h (dι j) =
-  ⟶*-dι (subTm-monoˢ h j)
+subTm-monoˢ h dι = done
 subTm-monoˢ h (dσ S f) =
   ⟶*-trans (⟶*-dσˢ (subTm-monoˢ h S)) (⟶*-dσᶠ (subTm-monoˢ h f))
 subTm-monoˢ h (dρ j C) =
   ⟶*-trans (⟶*-dρʲ (subTm-monoˢ h j)) (⟶*-dρᶜ (subTm-monoˢ h C))
-subTm-monoˢ h (dpay I D C i) =
-  ⟶*-trans (⟶*-dpayᴵ (subTm-monoˢ h I)) (⟶*-trans (⟶*-dpayᴰ (subTm-monoˢ h D)) (⟶*-trans (⟶*-dpayᶜ (subTm-monoˢ h C)) (⟶*-dpayⁱ (subTm-monoˢ h i))))
+subTm-monoˢ h (dpay I D C) =
+  ⟶*-trans (⟶*-dpayᴵ (subTm-monoˢ h I)) (⟶*-trans (⟶*-dpayᴰ (subTm-monoˢ h D)) (⟶*-dpayᶜ (subTm-monoˢ h C)))
 subTm-monoˢ h (dih D e C p) =
   ⟶*-trans (⟶*-dihᴰ (subTm-monoˢ h D)) (⟶*-trans (⟶*-dihᵉ (subTm-monoˢ h e)) (⟶*-trans (⟶*-dihᶜ (subTm-monoˢ h C)) (⟶*-dihᵖ (subTm-monoˢ h p))))
 subTm-monoˢ h (fsuc t) =

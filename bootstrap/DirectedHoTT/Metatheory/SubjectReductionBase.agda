@@ -42,7 +42,7 @@ open import DirectedHoTT.Spec.Syntax
         ; renTm-subTm; renTm-renTm; renTm-cong; Desc; con; IMu; ielim; ⌜IMu⌝
         ; εwkTm; ⌜Σ⌝; ⌜Fin⌝; dι; dσ; dρ; dpay; dih; fzero; fsuc; fcase; fcase0
         ; psplit; DIh; Fin; pair; fst; snd; unit; renTy; subTy-subTy
-        ; subTy-cong; subTy-renTy; renTy-subTy; subTy-id; cong₄ )
+        ; subTy-cong; subTy-renTy; renTy-subTy; subTy-id; cong₄; cong₃ )
 open import DirectedHoTT.Spec.Variance
   using ( ren-as-sub )
 open import DirectedHoTT.Spec.Variance
@@ -64,12 +64,12 @@ open import DirectedHoTT.Spec.Typing
         ; crflᵀ; csymᵀ; ctrnᵀ; Ctx; ◇; _▹_; _⊢_∷_; ⊢var; ⊢lam; ⊢app; here
         ; _⊢ty_; ty-base; ξ-con; ξ-ielimⁱ; ξ-ielimᵗ; El-⌜IMu⌝; ι; dpay-ι
         ; dpay-σ; dpay-ρ; dih-ι; dih-σ; dih-ρ; fcase-z; fcase-s; psplit-β
-        ; ξ-⌜IMu⌝ᴵ; ξ-⌜IMu⌝ᴰ; ξ-⌜IMu⌝ⁱ; ξ-ielimᴰ; ξ-ielimᵉ; ξ-dι; ξ-dσˢ; ξ-dσᶠ
-        ; ξ-dρʲ; ξ-dρᶜ; ξ-dpayᴵ; ξ-dpayᴰ; ξ-dpayᶜ; ξ-dpayⁱ; ξ-dihᴰ; ξ-dihᵉ
-        ; ξ-dihᶜ; ξ-dihᵖ; ξ-fsuc; ξ-fcaseᵗ; ξ-fcaseᵃ; ξ-fcaseᵇ; ξ-fcase0
-        ; ξ-psplitᵇ; ξ-psplitᵍ; tr-J-Fin; El-⌜Fin⌝; DIh-ι; DIh-σ; DIh-ρ
-        ; ξ-IMuᴵ; ξ-IMuᴰ; ξ-IMuⁱ; ξ-Desc; ξ-DIhᴰ; ξ-DIhᴹ; ξ-DIhᶜ; ξ-DIhᵖ
-        ; single2; iinst; wk-single )
+        ; ξ-⌜IMu⌝ᴵ; ξ-⌜IMu⌝ᴰ; ξ-⌜IMu⌝ⁱ; ξ-ielimᴰ; ξ-ielimᵉ; ξ-dσˢ; ξ-dσᶠ
+        ; ξ-dρʲ; ξ-dρᶜ; ξ-dpayᴵ; ξ-dpayᴰ; ξ-dpayᶜ; ξ-dihᴰ; ξ-dihᵉ; ξ-dihᶜ
+        ; ξ-dihᵖ; ξ-fsuc; ξ-fcaseᵗ; ξ-fcaseᵃ; ξ-fcaseᵇ; ξ-fcase0; ξ-psplitᵇ
+        ; ξ-psplitᵍ; tr-J-Fin; El-⌜Fin⌝; DIh-ι; DIh-σ; DIh-ρ; ξ-IMuᴵ; ξ-IMuᴰ
+        ; ξ-IMuⁱ; ξ-Desc; ξ-DIhᴰ; ξ-DIhᴹ; ξ-DIhᶜ; ξ-DIhᵖ; single2; iinst
+        ; wk-single )
 
 private
   variable
@@ -355,18 +355,18 @@ sub-comm2 {Γ} σ b x y =
 ⟶-sub σ (ξ-natrecⁿ r) = ξ-natrecⁿ (⟶-sub σ r)
 -- ★ LEVITATION
 ⟶-sub σ (ι D i e p) = ι _ _ _ _
-⟶-sub σ (dpay-ι I D j i) = dpay-ι _ _ _ _
-⟶-sub σ (dpay-σ I D S f i) =
-  subst (λ z → dpay (subTm σ I) (subTm σ D) (dσ (subTm σ S) (subTm σ f)) (subTm σ i) ⟶ z)
-        (sym (cong₄ (λ a b c d → ⌜Σ⌝ (subTm σ S) (dpay a b (app c (var vz)) d))
-                    (wk-sub σ I) (wk-sub σ D) (wk-sub σ f) (wk-sub σ i)))
-        (dpay-σ _ _ _ _ _)
-⟶-sub σ (dpay-ρ I D j C i) =
-  subst (λ z → dpay (subTm σ I) (subTm σ D) (dρ (subTm σ j) (subTm σ C)) (subTm σ i) ⟶ z)
-        (sym (cong₄ (λ a b c d → ⌜Σ⌝ (⌜IMu⌝ (subTm σ I) (subTm σ D) (subTm σ j)) (dpay a b c d))
-                    (wk-sub σ I) (wk-sub σ D) (wk-sub σ C) (wk-sub σ i)))
-        (dpay-ρ _ _ _ _ _)
-⟶-sub σ (dih-ι D e j p) = dih-ι _ _ _ _
+⟶-sub σ (dpay-ι I D) = dpay-ι _ _
+⟶-sub σ (dpay-σ I D S f) =
+  subst (λ z → dpay (subTm σ I) (subTm σ D) (dσ (subTm σ S) (subTm σ f)) ⟶ z)
+        (sym (cong₃ (λ a b c → ⌜Σ⌝ (subTm σ S) (dpay a b (app c (var vz))))
+                    (wk-sub σ I) (wk-sub σ D) (wk-sub σ f)))
+        (dpay-σ _ _ _ _)
+⟶-sub σ (dpay-ρ I D j C) =
+  subst (λ z → dpay (subTm σ I) (subTm σ D) (dρ (subTm σ j) (subTm σ C)) ⟶ z)
+        (sym (cong₃ (λ a b c → ⌜Σ⌝ (⌜IMu⌝ (subTm σ I) (subTm σ D) (subTm σ j)) (dpay a b c))
+                    (wk-sub σ I) (wk-sub σ D) (wk-sub σ C)))
+        (dpay-ρ _ _ _ _)
+⟶-sub σ (dih-ι D e p) = dih-ι _ _ _
 ⟶-sub σ (dih-σ D e S f p) = dih-σ _ _ _ _ _
 ⟶-sub σ (dih-ρ D e j C p) = dih-ρ _ _ _ _ _
 ⟶-sub σ (fcase-z a b) = fcase-z _ _
@@ -388,7 +388,6 @@ sub-comm2 {Γ} σ b x y =
 ⟶-sub σ (ξ-ielimⁱ r) = ξ-ielimⁱ (⟶-sub σ r)
 ⟶-sub σ (ξ-ielimᵉ r) = ξ-ielimᵉ (⟶-sub σ r)
 ⟶-sub σ (ξ-ielimᵗ r) = ξ-ielimᵗ (⟶-sub σ r)
-⟶-sub σ (ξ-dι r)     = ξ-dι (⟶-sub σ r)
 ⟶-sub σ (ξ-dσˢ r)    = ξ-dσˢ (⟶-sub σ r)
 ⟶-sub σ (ξ-dσᶠ r)    = ξ-dσᶠ (⟶-sub σ r)
 ⟶-sub σ (ξ-dρʲ r)    = ξ-dρʲ (⟶-sub σ r)
@@ -396,7 +395,6 @@ sub-comm2 {Γ} σ b x y =
 ⟶-sub σ (ξ-dpayᴵ r)  = ξ-dpayᴵ (⟶-sub σ r)
 ⟶-sub σ (ξ-dpayᴰ r)  = ξ-dpayᴰ (⟶-sub σ r)
 ⟶-sub σ (ξ-dpayᶜ r)  = ξ-dpayᶜ (⟶-sub σ r)
-⟶-sub σ (ξ-dpayⁱ r)  = ξ-dpayⁱ (⟶-sub σ r)
 ⟶-sub σ (ξ-dihᴰ r)   = ξ-dihᴰ (⟶-sub σ r)
 ⟶-sub σ (ξ-dihᵉ r)   = ξ-dihᵉ (⟶-sub σ r)
 ⟶-sub σ (ξ-dihᶜ r)   = ξ-dihᶜ (⟶-sub σ r)
@@ -425,7 +423,7 @@ sub-comm2 {Γ} σ b x y =
 ⟶ᵀ-sub σ El-⌜Nat⌝         = El-⌜Nat⌝
 ⟶ᵀ-sub σ El-⌜IMu⌝ = El-⌜IMu⌝
 ⟶ᵀ-sub σ El-⌜Fin⌝ = El-⌜Fin⌝
-⟶ᵀ-sub σ (DIh-ι D M j p) = DIh-ι _ _ _ _
+⟶ᵀ-sub σ (DIh-ι D M p) = DIh-ι _ _ _
 ⟶ᵀ-sub σ (DIh-σ D M S f p) = DIh-σ _ _ _ _ _
 ⟶ᵀ-sub σ (DIh-ρ D M j C p) =
   subst (λ Z → DIh (subTm σ D) (subTy (extS (extS σ)) M) (dρ (subTm σ j) (subTm σ C)) (subTm σ p) ⟶ᵀ Z)
