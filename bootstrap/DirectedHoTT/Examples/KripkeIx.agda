@@ -31,73 +31,49 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.KripkeIx where
-open import normalizer.Syntax.Types using ( _≡_; cong )
+open import normalizer.Syntax.Types using ( _≡_; cong; _,_ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
-open import DirectedHoTT.Spec.Syntax
-  using ( Cx; ε; _∙; vz; vs
-        ; RTy; U; El; Σ'; Unit; Nat; Π; IMu
-        ; RTm; var; lam; app; pair; fst; snd; unit; nzero; nsuc
-        ; ⌜Nat⌝; ⌜IMu⌝; icon; ielim; εwkTy; isingle; iihs )
-open import DirectedHoTT.Spec.Typing
-  using ( Ctx; ◇; _▹_; ⌊_⌋; wk-single
-        ; _⊢_∷_; ⊢var; here; there; ⊢conv; ⊢pair; ⊢fst; ⊢snd; ⊢unit
-        ; ⊢nzero; ⊢nsuc; ⊢⌜Nat⌝; ⊢lam; ⊢app; ⊢ielim
-        ; _⊢ty_; ty-El; ty-Unit; ty-Nat; ty-Σ; ty-Π; ty-IMu
-        ; imethTy; imethsTy
-        ; _⟶*_; done; step; β; βfst; ξ-appˡ; ι-ielim )
-open import DirectedHoTT.Metatheory.TySub using ( ⊢-cast )
+open import DirectedHoTT.Spec.Syntax hiding ( Fin )
+open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
+open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-trans )
+open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast )
 open import DirectedHoTT.Lib.Nat using ( plusTm; ⊢plus )
+open import DirectedHoTT.Lib.Sugar
+  using ( Cons; []; _∷_; conₗ; methₗ; selF; selF-β; nth-z; nth-s; MethK; PerK; []ₘ; _∷ₘ_; ⊢methₗ )
+open import DirectedHoTT.Lib.Tel
 open import DirectedHoTT.Examples.Scoped
-  using ( INat; TmD; TmWf; Tm; FinD; FinWf; Fin; varC; lamC; appC
-        ; tyPayVar; tyPayLam; tyPayApp; toI; fromI )
+  using ( TmTs; TmD; ⊢TmD; TmOK; Tm; varT; lamT; appT; varOK; lamOK; appOK
+        ; FinD; ⊢FinD; FinI; ⊢isuc; tvar; fz )
 open import DirectedHoTT.Examples.WkFin using ( fromFin )
-open import DirectedHoTT.Examples.Scoped using ( tvar; fz )
 
 ------------------------------------------------------------------------
 -- 1. ★★★ THE KRIPKE MOTIVE.  `(Fin ⟨i⟩ → Nat) → Nat`.
 ------------------------------------------------------------------------
 
 kMot : {Γ : Cx} → RTy ((Γ ∙) ∙)
-kMot = Π (Π (IMu FinD INat (var (vs vz))) Nat) Nat
+kMot = Π (Π (FinI (var (vs vz))) Nat) Nat
 
-⊢kMot : {Γ : Ctx} → ((Γ ▹ εwkTy INat) ▹ IMu TmD INat (var vz)) ⊢ty kMot
-⊢kMot = ty-Π (ty-Π (ty-IMu FinWf (⊢var (there here))) ty-Nat) ty-Nat
+⊢kMot : {Γ : Ctx} → ((Γ ▹ El ⌜Nat⌝) ▹ Tm (var vz)) ⊢ty kMot
+⊢kMot = ty-Π (ty-Π (ty-IMu ⊢⌜Nat⌝ ⊢FinD (⊢var (there here))) ty-Nat) ty-Nat
 
 ------------------------------------------------------------------------
--- 2. THE THREE METHODS.
---
--- Binder layout inside a method: `i` `p` `ih`, then the motive's own `ρ`.
---   ρ = vz · ih = vs vz · p = vs vs vz · i = vs vs vs vz
+-- 2. THE THREE METHODS.  Method binders `i p h` (`v₂ v₁ v₀`), then the
+--    motive's own valuation `ρ`.
 ------------------------------------------------------------------------
+
+v₀ v₁ v₂ : {Γ : Cx} → RTm (((Γ ∙) ∙) ∙)
+v₀ = var vz
+v₁ = var (vs vz)
+v₂ = var (vs (vs vz))
 
 -- var k : look the variable up in the valuation
 kVar : {Γ : Cx} → RTm Γ
 kVar = lam (lam (lam (lam (app (var vz) (fst (var (vs (vs vz))))))))
 
-⊢kVar : {Γ : Ctx} → Γ ⊢ kVar ∷ imethTy TmD INat zero varC kMot
-⊢kVar =
-  ⊢lam (ty-El ⊢⌜Nat⌝)
-    (⊢lam tyPayVar
-      (⊢lam ty-Unit
-        (⊢lam (ty-Π (ty-IMu FinWf (⊢var (there (there here)))) ty-Nat)
-          (⊢app (⊢var here) (fromFin (⊢fst (⊢var (there (there here)))))))))
-
--- ★★ lam b : use the IH AT THE SHIFTED DOMAIN.  `ih` expects a
+-- ★★ lam b : use the IH AT THE SHIFTED DOMAIN.  `h` expects a
 --    `Fin (suc ⟨i⟩) → Nat` where `ρ` is a `Fin ⟨i⟩ → Nat`.
 kLam : {Γ : Cx} → RTm Γ
 kLam = lam (lam (lam (lam (app (fst (var (vs vz))) (lam nzero)))))
-
-⊢kLam : {Γ : Ctx} → Γ ⊢ kLam ∷ imethTy TmD INat (suc zero) lamC kMot
-⊢kLam =
-  ⊢lam (ty-El ⊢⌜Nat⌝)
-    (⊢lam tyPayLam
-      (⊢lam (ty-Σ (ty-Π (ty-Π (ty-IMu FinWf (toI (⊢nsuc (fromI (⊢var (there here)))))) ty-Nat)
-                        ty-Nat)
-                  ty-Unit)
-        (⊢lam (ty-Π (ty-IMu FinWf (⊢var (there (there here)))) ty-Nat)
-          (⊢app (⊢fst (⊢var (there here)))
-                (⊢lam (ty-IMu FinWf (toI (⊢nsuc (fromI (⊢var (there (there (there here))))))))
-                      ⊢nzero)))))
 
 -- app f a : both IHs at the SAME domain, so `ρ` is passed twice
 kApp : {Γ : Cx} → RTm Γ
@@ -105,77 +81,64 @@ kApp = lam (lam (lam (lam
          (plusTm (app (fst (var (vs vz))) (var vz))
                  (app (fst (snd (var (vs vz)))) (var vz))))))
 
-⊢kApp : {Γ : Ctx} → Γ ⊢ kApp ∷ imethTy TmD INat (suc (suc zero)) appC kMot
-⊢kApp =
-  ⊢lam (ty-El ⊢⌜Nat⌝)
-    (⊢lam tyPayApp
-      (⊢lam (ty-Σ (ty-Π (ty-Π (ty-IMu FinWf (⊢var (there here))) ty-Nat) ty-Nat)
-                  (ty-Σ (ty-Π (ty-Π (ty-IMu FinWf (⊢var (there (there here)))) ty-Nat) ty-Nat)
-                        ty-Unit))
-        (⊢lam (ty-Π (ty-IMu FinWf (⊢var (there (there here)))) ty-Nat)
-          (⊢plus (⊢app (⊢fst (⊢var (there here))) (⊢var here))
-                 (⊢app (⊢fst (⊢snd (⊢var (there here)))) (⊢var here))))))
+KMs : {Γ : Cx} → Cons Γ 3
+KMs = kVar ∷ kLam ∷ kApp ∷ []
+
+module _ {Γ : Ctx} where
+  private
+    H : Tel (⌊ Γ ⌋ ∙) → Ctx
+    H T = HypCtx Γ ⌜Nat⌝ TmD kMot T
+    idx : {T : Tel (⌊ Γ ⌋ ∙)} → H T ⊢ v₂ ∷ El ⌜Nat⌝
+    idx = ⊢var (there (there here))
+    ρTy : {T : Tel (⌊ Γ ⌋ ∙)} → H T ⊢ty Π (FinI v₂) Nat
+    ρTy = ty-Π (ty-IMu ⊢⌜Nat⌝ ⊢FinD idx) ty-Nat
+
+  ⊢kV : H varT ⊢ fst v₁ ∷ El (⌜IMu⌝ ⌜Nat⌝ FinD v₂)
+  ⊢kV = ⊢fst (⊢payHyp {I = ⌜Nat⌝} {D = TmD} {M = kMot} {T = varT})
+
+  ⊢kVar : Γ ⊢ kVar ∷ MethK ⌜Nat⌝ TmD kMot ⌜ varT ⌝ᵗ zero
+  ⊢kVar = ⊢methT {T = varT} {s = conₗ zero (var (vs vz))} ⊢⌜Nat⌝ ⊢TmD ⊢kMot varOK
+            (⊢lam ρTy (⊢app (⊢var here) (fromFin (⊢wk ⊢kV))))
+
+  ⊢kLam : Γ ⊢ kLam ∷ MethK ⌜Nat⌝ TmD kMot ⌜ lamT ⌝ᵗ (suc zero)
+  ⊢kLam = ⊢methT {T = lamT} {s = conₗ (suc zero) (var (vs vz))} ⊢⌜Nat⌝ ⊢TmD ⊢kMot lamOK
+            (⊢lam ρTy (⊢app (⊢fst (⊢var (there here)))
+                            (⊢lam (ty-IMu ⊢⌜Nat⌝ ⊢FinD (⊢isuc (⊢wk idx))) ⊢nzero)))
+
+  ⊢kApp : Γ ⊢ kApp ∷ MethK ⌜Nat⌝ TmD kMot ⌜ appT ⌝ᵗ (suc (suc zero))
+  ⊢kApp = ⊢methT {T = appT} {s = conₗ (suc (suc zero)) (var (vs vz))} ⊢⌜Nat⌝ ⊢TmD ⊢kMot appOK
+            (⊢lam ρTy (⊢plus (⊢app (⊢fst (⊢var (there here))) (⊢var here))
+                             (⊢app (⊢fst (⊢snd (⊢var (there here)))) (⊢var here))))
+
+  perK : PerK Γ ⌜Nat⌝ TmD kMot (selF ⌜ TmTs ⌝ₛ) zero KMs
+  perK = (selF-β {Cs = ⌜ TmTs ⌝ₛ} nth-z , ⊢kVar)
+      ∷ₘ ((selF-β {Cs = ⌜ TmTs ⌝ₛ} (nth-s nth-z) , ⊢kLam)
+      ∷ₘ ((selF-β {Cs = ⌜ TmTs ⌝ₛ} (nth-s (nth-s nth-z)) , ⊢kApp) ∷ₘ []ₘ))
 
 ------------------------------------------------------------------------
 -- 3. ★★★ THE ELIMINATION ITSELF, AT A KRIPKE MOTIVE.
 ------------------------------------------------------------------------
 
-tyΠkVar : {Γ : Ctx} → Γ ⊢ty imethTy TmD INat zero varC kMot
-tyΠkVar = ty-Π (ty-El ⊢⌜Nat⌝)
-            (ty-Π tyPayVar
-              (ty-Π ty-Unit
-                (ty-Π (ty-Π (ty-IMu FinWf (⊢var (there (there here)))) ty-Nat) ty-Nat)))
-
-tyΠkLam : {Γ : Ctx} → Γ ⊢ty imethTy TmD INat (suc zero) lamC kMot
-tyΠkLam = ty-Π (ty-El ⊢⌜Nat⌝)
-            (ty-Π tyPayLam
-              (ty-Π (ty-Σ (ty-Π (ty-Π (ty-IMu FinWf (toI (⊢nsuc (fromI (⊢var (there here)))))) ty-Nat)
-                                ty-Nat)
-                          ty-Unit)
-                (ty-Π (ty-Π (ty-IMu FinWf (⊢var (there (there here)))) ty-Nat) ty-Nat)))
-
-tyΠkApp : {Γ : Ctx} → Γ ⊢ty imethTy TmD INat (suc (suc zero)) appC kMot
-tyΠkApp = ty-Π (ty-El ⊢⌜Nat⌝)
-            (ty-Π tyPayApp
-              (ty-Π (ty-Σ (ty-Π (ty-Π (ty-IMu FinWf (⊢var (there here))) ty-Nat) ty-Nat)
-                          (ty-Σ (ty-Π (ty-Π (ty-IMu FinWf (⊢var (there (there here)))) ty-Nat) ty-Nat)
-                                ty-Unit))
-                (ty-Π (ty-Π (ty-IMu FinWf (⊢var (there (there here)))) ty-Nat) ty-Nat)))
-
-kMeths : {Γ : Cx} → RTm Γ
-kMeths = pair kVar (pair kLam (pair kApp unit))
-
-⊢kMeths : {Γ : Ctx} → Γ ⊢ kMeths ∷ imethsTy TmD INat kMot TmD
-⊢kMeths =
-  ⊢pair (ty-Σ tyΠkLam (ty-Σ tyΠkApp ty-Unit)) ⊢kVar
-    (⊢pair (ty-Σ tyΠkApp ty-Unit) ⊢kLam
-      (⊢pair ty-Unit ⊢kApp ⊢unit))
-
 -- ★★★ `Tm n → (Fin n → Nat) → Nat`, by `ielim` at a KRIPKE motive.
 kEval : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ
-kEval n t = ielim TmD n kMeths t
+kEval n t = ielim TmD n (methₗ KMs) t
 
 ⊢kEval : {Γ : Ctx} {n t : RTm ⌊ Γ ⌋} →
          Γ ⊢ n ∷ El ⌜Nat⌝ → Γ ⊢ t ∷ Tm n →
-         Γ ⊢ kEval n t ∷ Π (Π (Fin n) Nat) Nat
+         Γ ⊢ kEval n t ∷ Π (Π (FinI n) Nat) Nat
 ⊢kEval {n = n} dn dt =
-  ⊢-cast (cong (λ z → Π (Π (IMu FinD INat z) Nat) Nat) (wk-single n))
-         (⊢ielim TmWf ⊢kMot dn ⊢kMeths dt)
+  ⊢-cast (cong (λ z → Π (Π (FinI z) Nat) Nat) (wk-single n))
+    (⊢ielim ⊢⌜Nat⌝ ⊢TmD ⊢kMot (⊢methₗ ⊢⌜Nat⌝ (allD (⊢wk ⊢⌜Nat⌝) TmOK) ⊢kMot perK) dn dt)
 
 ------------------------------------------------------------------------
 -- 4. ★★ …AND IT COMPUTES.  A KRIPKE motive is a `Π`, so the method's
---    result is a FUNCTION — `ι-ielim` still has to fire and deliver it.
+--    result is a FUNCTION — `ι` still has to fire and deliver it.
 ------------------------------------------------------------------------
 
 kVarPay : {Γ : Cx} → RTm Γ
 kVarPay = pair fz unit
 
-kEval-var : {Γ : Cx} →
-            kEval {Γ} (nsuc nzero) (tvar fz)
-              ⟶* lam (app (var vz) (fst kVarPay))
+kEval-var : {Γ : Cx} → kEval {Γ} (nsuc nzero) (tvar fz) ⟶* lam (app (var vz) (fst kVarPay))
 kEval-var =
-  step (ι-ielim TmD (nsuc nzero) kMeths zero kVarPay)
-  (step (ξ-appˡ (ξ-appˡ (ξ-appˡ (βfst kVar (pair kLam (pair kApp unit))))))
-  (step (ξ-appˡ (ξ-appˡ (β _ (nsuc nzero))))
-  (step (ξ-appˡ (β _ kVarPay))
-  (step (β _ (iihs TmD kMeths (isingle (nsuc nzero)) varC kVarPay)) done))))
+  ⟶*-trans (ιT {Cs = ⌜ TmTs ⌝ₛ} {ms = KMs} {T = varT} (nth-⌜⌝ {Ts = TmTs} nthᵗ-z) nth-z)
+    (step (ξ-appˡ (ξ-appˡ (β _ _))) (step (ξ-appˡ (β _ _)) (step (β _ _) done)))
