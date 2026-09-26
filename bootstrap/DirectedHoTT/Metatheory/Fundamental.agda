@@ -7,12 +7,13 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Metatheory.Fundamental where
-open import DirectedHoTT.Algorithm.DecEq using ( Dec )
+open import DirectedHoTT.Algorithm.DecEq
+  using ( Dec )
 open import DirectedHoTT.Metatheory.RedCong
   using ( _⟶ᵀ*_; doneᵀ; stepᵀ; ⟶*-trans; red→≅ᵀ; ⟶ᵀ*-El; ⟶ᵀ*-trans
         ; single-mono; subTm-monoˢ )
 open import DirectedHoTT.Metatheory.TySub
-  using ( MethTy-sub; wk-cancel-tm; subTy-monoˢ )
+  using ( MethTy-sub; wk-cancel-tm; subTy-monoˢ; DescF-sub )
 open import normalizer.Syntax.Types
   using ( _≡_; refl; sym; trans; cong; cong₂; subst; Σ; _,_; _×_; ⊥; ⊥-elim )
 
@@ -47,7 +48,7 @@ open import DirectedHoTT.Spec.Typing
         ; El-⌜IMu⌝; _,,_; iinst; ⊢unit; ⊢nzero; ⊢nsuc; ⊢natrec; ⊢ordtr; ⊢ctx_
         ; c-◇; c-▹; ⊢id; ⊢appex; ⊢dih; ⊢psplit; ty-DIh; ⊢fcase0; csym; single2
         ; ⊢fsuc; motCtx; ⊢fcase; El-⌜Fin⌝; ⊢⌜Fin⌝; ⊢dpay; ⊢dρ; ⊢dι; ⊢dσ; crfl
-        ; ty-Desc; ty-Fin; ⊢fzero; wk-single )
+        ; ty-Desc; ty-Fin; ⊢fzero; wk-single; DescF )
 open import DirectedHoTT.Spec.Variance
   using ( 𝔹; true; false; occTm; subTm-occ; pw?; stkC?; stkA?; pwBody; pwDom
         ; pwShift; pw?-ren; stkC?-ren; stkA?-ren; pwBody-ren; wk-ren-tm
@@ -124,8 +125,8 @@ fund : {σ : Sub ⌊ Γ ⌋ Ξ} {t : RTm ⌊ Γ ⌋} {A : RTy ⌊ Γ ⌋} →
 --   subterm of the rule that matched).
 motSem : {σ : Sub ⌊ Γ ⌋ Ξ} {I D : RTm ⌊ Γ ⌋} {M : RTy ((⌊ Γ ⌋ ∙) ∙)} {I₀ : RTm Ξ} →
          motCtx Γ I D ⊢ty M → Var Ξ → Γ ⊩ˢ σ →
-         (cI : subTm σ I ≅ I₀) (⊩I : ⊩₀ (El I₀)) (K : IKInterp ⊩I (subTm σ D)) →
-         (j u : RTm Ξ) → ⊩I ⊩₀∋ j → SN u → IMuMem (ikpredsOf K) j u →
+         (cI : subTm σ I ≅ I₀) (⊩I : ⊩₀ (El I₀)) (KF : IKFam ⊩I (subTm σ D)) →
+         (j u : RTm Ξ) (hj : ⊩I ⊩₀∋ j) → SN u → Mem KF j hj u →
          ⊩₁ (iinst j u (subTy (extS (extS σ)) M))
 
 -- the empty environment: `◇ ∋ x ∷ A` has no inhabitants.
@@ -172,17 +173,19 @@ fund-ty ty-Nat  x₀ ρ = ⊩₁Nat  doneᵀ
 --   interpretation (`desc-view`); the family stores it with the index
 --   type's representative.  `Desc I` needs only the index code's decoding;
 --   the hypotheses' type is `dihTy` at the motive's semantics.
-fund-ty (ty-IMu dI dD di) x₀ ρ with desc-view (dfst (fund dD x₀ ρ)) (dsnd (fund dD x₀ ρ))
-... | mkDV I₀ cI ⊩I K = ⊩₁IMu doneᵀ cI crfl ⊩I K
+fund-ty {σ = σ} (ty-IMu {I = I} dI dD di) x₀ ρ =
+  ⊩₁IMu doneᵀ crfl crfl crfl ⊩I (elIdx crfl ⊩I (fund di x₀ ρ))
+        (famInterp crfl ⊩I (relTy (DescF-sub σ I) (fund dD x₀ ρ)))
+  where ⊩I = sem-El doneᵀ (uSem (fund dI x₀ ρ))
 fund-ty (ty-Desc dI) x₀ ρ = ⊩₁Desc doneᵀ crfl (sem-El doneᵀ (uSem (fund dI x₀ ρ)))
 fund-ty ty-Fin x₀ ρ = ⊩₁Fin doneᵀ
-fund-ty {σ = σ} (ty-DIh {i = i} dI dD dM dC di dp) x₀ ρ
-  with desc-view (dfst (fund dD x₀ ρ)) (dsnd (fund dD x₀ ρ))
-... | mkDV I₀ cI ⊩I K = dihTy K (motSem dM x₀ ρ cI ⊩I K) KC l
+fund-ty {σ = σ} (ty-DIh {I = I} dI dD dM dC dp) x₀ ρ = dihTy KF (motSem dM x₀ ρ crfl ⊩I KF) KC l
   where
-    KC = rebase (desc-view (dfst (fund dC x₀ ρ)) (dsnd (fund dC x₀ ρ))) ⊩I cI
-    R₀ = payInterp₀ {i = subTm σ i} cI crfl ⊩I K KC
-    l = payLift₀ cI crfl ⊩I K KC
+    ⊩I = sem-El doneᵀ (uSem (fund dI x₀ ρ))
+    KF = famInterp crfl ⊩I (relTy (DescF-sub σ I) (fund dD x₀ ρ))
+    KC = rebase (desc-view (dfst (fund dC x₀ ρ)) (dsnd (fund dC x₀ ρ))) ⊩I crfl
+    R₀ = payInterp₀ crfl crfl ⊩I KF KC
+    l = payLift₀ crfl crfl ⊩I KF KC
           (projr (emb-coh R₀) _ (projl (irrel₁ crflᵀ (dfst (fund dp x₀ ρ)) (emb R₀)) _
                                        (dsnd (fund dp x₀ ρ))))
 
@@ -194,11 +197,11 @@ fund-ty {σ = σ} (ty-Hom {t = t} {u = u} tyA dt du) x₀ ρ = homSem₁ R ht hu
     hu = projl (irrel₁ crflᵀ (dfst (fund du x₀ ρ)) R)
                (subTm σ u) (dsnd (fund du x₀ ρ))
 
-motSem {σ = σ} {I = I} {D = D} {M = M} dM x₀ ρ cI ⊩I K j u hj snu mm =
+motSem {σ = σ} {I = I} {D = D} {M = M} dM x₀ ρ cI ⊩I KF j u hj snu mm =
   ⊩₁cast (sym (iinst-cons-Ty σ j u M))
     (fund-ty dM x₀ (⊩ˢ-ext (⊩ˢ-ext ρ (emb (conv₀ (El≅ (csym cI)) ⊩I)) j (idxMem cI ⊩I hj))
-                           (⊩₁cast (sym eqU) (⊩₁IMu doneᵀ cI crfl ⊩I K)) u
-                           (⊩₁cast-mem (sym eqU) (⊩₁IMu doneᵀ cI crfl ⊩I K) (snu , mm))))
+                           (⊩₁cast (sym eqU) (⊩₁IMu doneᵀ cI crfl crfl ⊩I hj KF)) u
+                           (⊩₁cast-mem (sym eqU) (⊩₁IMu doneᵀ cI crfl crfl ⊩I hj KF) (snu , mm))))
   where
     eqU : subTy (σ ,ₛ j) (IMu (renTm vs I) (renTm vs D) (var vz)) ≡ IMu (subTm σ I) (subTm σ D) j
     eqU = cong₃ IMu (cons-wk-tm σ j I) (cons-wk-tm σ j D) refl
@@ -329,42 +332,45 @@ fund {σ = σ} (⊢nsuc {n = n} dn) x₀ ρ =
 --   The constructor's payload is an `ILift` (`payLift₀`), the eliminator is
 --   `ElimSem` (induction on the membership), the hypotheses are its
 --   `dihSem`, and the telescope formers build interpretations directly.
-fund {σ = σ} (⊢con {i = i} dI dD di dp) x₀ ρ
-  with desc-view (dfst (fund dD x₀ ρ)) (dsnd (fund dD x₀ ρ))
-... | mkDV I₀ cI ⊩I K =
-      ( ⊩₁IMu doneᵀ cI crfl ⊩I K
-      , ( sn-con (ilift-sn (ikpredsOf K) l) , imm-con l ) )
+fund {σ = σ} (⊢con {I = I} {D = D} {i = i} dI dD di dp) x₀ ρ =
+      ( ⊩₁IMu doneᵀ crfl crfl crfl ⊩I hi KF
+      , ( sn-con (ilift-sn (ikpredsOf (KF _ hi)) l) , imm-con l ) )
   where
-    R₀ = payInterp₀ {i = subTm σ i} cI crfl ⊩I K K
-    l = payLift₀ cI crfl ⊩I K K
+    ⊩I = sem-El doneᵀ (uSem (fund dI x₀ ρ))
+    KF = famInterp crfl ⊩I (relTy (DescF-sub σ I) (fund dD x₀ ρ))
+    hi = elIdx crfl ⊩I (fund di x₀ ρ)
+    R₀ = payInterp₀ crfl crfl ⊩I KF (KF _ hi)
+    l = payLift₀ crfl crfl ⊩I KF (KF _ hi)
           (projr (emb-coh R₀) _ (projl (irrel₁ crflᵀ (dfst (fund dp x₀ ρ)) (emb R₀)) _
                                        (dsnd (fund dp x₀ ρ))))
-fund {σ = σ} (⊢ielim {I = I} {D = D} {M = M} {e = e} {i = i} {t = t} dI dD dM de di dt) x₀ ρ
-  with desc-view (dfst (fund dD x₀ ρ)) (dsnd (fund dD x₀ ρ))
-... | mkDV I₀ cI ⊩I K =
+fund {σ = σ} (⊢ielim {I = I} {D = D} {M = M} {e = e} {i = i} {t = t} dI dD dM de di dt) x₀ ρ =
       relTy (sym (iinst-sub σ M i t))
-            ( motSem dM x₀ ρ cI ⊩I K (subTm σ i) (subTm σ t) hi (projl ht) (projr ht)
+            ( motSem dM x₀ ρ crfl ⊩I KF (subTm σ i) (subTm σ t) hi (projl ht) (projr ht)
             , go (subTm σ i) (subTm σ t) hi (projl ht) (projr ht) )
   where
+    ⊩I = sem-El doneᵀ (uSem (fund dI x₀ ρ))
+    hD = relTy (DescF-sub σ I) (fund dD x₀ ρ)
+    KF = famInterp crfl ⊩I hD
     hₑ₀ = relTy (MethTy-sub σ I D M) (fund de x₀ ρ)
-    hi = elIdx cI ⊩I (fund di x₀ ρ)
-    ht = projl (irrel₁ crflᵀ (dfst (fund dt x₀ ρ)) (⊩₁IMu doneᵀ cI crfl ⊩I K))
+    hi = elIdx crfl ⊩I (fund di x₀ ρ)
+    ht = projl (irrel₁ crflᵀ (dfst (fund dt x₀ ρ)) (⊩₁IMu doneᵀ crfl crfl crfl ⊩I hi KF))
                (subTm σ t) (dsnd (fund dt x₀ ρ))
-    open ElimSem cI ⊩I K (motSem dM x₀ ρ cI ⊩I K) (dfst hₑ₀) (dsnd hₑ₀)
-fund {σ = σ} (⊢dih {I = I} {D = D} {M = M} {e = e} {i = i} dI dD dM de dC di dp) x₀ ρ
-  with desc-view (dfst (fund dD x₀ ρ)) (dsnd (fund dD x₀ ρ))
-... | mkDV I₀ cI ⊩I K = ( dihTy K (motSem dM x₀ ρ cI ⊩I K) KC l , dihSem KC l )
+    open ElimSem crfl ⊩I (CR1₁ (dfst hD) (dsnd hD)) KF (motSem dM x₀ ρ crfl ⊩I KF) (dfst hₑ₀) (dsnd hₑ₀)
+fund {σ = σ} (⊢dih {I = I} {D = D} {M = M} {e = e} dI dD dM de dC dp) x₀ ρ =
+      ( dihTy KF (motSem dM x₀ ρ crfl ⊩I KF) KC l , dihSem KC l )
   where
+    ⊩I = sem-El doneᵀ (uSem (fund dI x₀ ρ))
+    hD = relTy (DescF-sub σ I) (fund dD x₀ ρ)
+    KF = famInterp crfl ⊩I hD
     hₑ₀ = relTy (MethTy-sub σ I D M) (fund de x₀ ρ)
-    KC = rebase (desc-view (dfst (fund dC x₀ ρ)) (dsnd (fund dC x₀ ρ))) ⊩I cI
-    R₀ = payInterp₀ {i = subTm σ i} cI crfl ⊩I K KC
-    l = payLift₀ cI crfl ⊩I K KC
+    KC = rebase (desc-view (dfst (fund dC x₀ ρ)) (dsnd (fund dC x₀ ρ))) ⊩I crfl
+    R₀ = payInterp₀ crfl crfl ⊩I KF KC
+    l = payLift₀ crfl crfl ⊩I KF KC
           (projr (emb-coh R₀) _ (projl (irrel₁ crflᵀ (dfst (fund dp x₀ ρ)) (emb R₀)) _
                                        (dsnd (fund dp x₀ ρ))))
-    open ElimSem cI ⊩I K (motSem dM x₀ ρ cI ⊩I K) (dfst hₑ₀) (dsnd hₑ₀)
-fund (⊢dι dI dj) x₀ ρ =
-  ( ⊩₁Desc doneᵀ crfl (sem-El doneᵀ (uSem (fund dI x₀ ρ)))
-  , iki-ι (CR1₁ (dfst (fund dj x₀ ρ)) (dsnd (fund dj x₀ ρ))) )
+    open ElimSem crfl ⊩I (CR1₁ (dfst hD) (dsnd hD)) KF (motSem dM x₀ ρ crfl ⊩I KF) (dfst hₑ₀) (dsnd hₑ₀)
+fund (⊢dι dI) x₀ ρ =
+  ( ⊩₁Desc doneᵀ crfl (sem-El doneᵀ (uSem (fund dI x₀ ρ))) , iki-ι )
 fund (⊢dρ dI dj dC) x₀ ρ =
   ( ⊩₁Desc doneᵀ crfl ⊩I
   , iki-ρ (CR1₁ (dfst hj) (dsnd hj)) (elIdx crfl ⊩I hj)
@@ -385,16 +391,16 @@ fund {Ξ = Ξ} {σ = σ} (⊢dσ {I = I} {S = S} {f = f} dI dS df) x₀ ρ =
       where
         hv = relTy (cong Desc (wk-tail σ I v))
                    (⊩₁-app (dfst hf) (emb w) (dsnd hf) (projl (emb-coh w) v r))
-fund {σ = σ} (⊢dpay {i = i} dI dD dC di) x₀ ρ =
+fund {σ = σ} (⊢dpay {I = I} dI dD dC) x₀ ρ =
   ( ⊩₁U doneᵀ
-  , ( sn-dpay x₀ (projl hI) (ikinterp-sn KD) (CR1₁ (dfst hi) (dsnd hi)) KC
-    , ( payInterp₀ {i = subTm σ i} crfl crfl ⊩I KD KC , payT-pay crfl crfl ⊩I KD KC ) ) )
+  , ( sn-dpay x₀ (projl hI) (CR1₁ (dfst hD) (dsnd hD)) KC
+    , ( payInterp₀ crfl crfl ⊩I KF KC , payT-pay crfl crfl ⊩I KF KC ) ) )
   where
     hI = uSem (fund dI x₀ ρ)
     ⊩I = sem-El doneᵀ hI
-    KD = rebase (desc-view (dfst (fund dD x₀ ρ)) (dsnd (fund dD x₀ ρ))) ⊩I crfl
+    hD = relTy (DescF-sub σ I) (fund dD x₀ ρ)
+    KF = famInterp crfl ⊩I hD
     KC = rebase (desc-view (dfst (fund dC x₀ ρ)) (dsnd (fund dC x₀ ρ))) ⊩I crfl
-    hi = fund di x₀ ρ
 -- ★ the TAGS: `NatMem`'s shape; `Fin 0` has no canonical member, so
 --   `fcase0` is a permanent neutral.
 fund ⊢fzero x₀ ρ = ( ⊩₁Fin doneᵀ , (sn-fzero , fm-zero) )
@@ -580,7 +586,7 @@ fund {Ξ = Ξ} {σ = σ} (⊢psplit {A = A} {B = B} {P = P} {q = q} {b = b} dA d
     go _ (sn-con _) r with CR1₁ (dfst (⊩₁-fstm Rq r)) (dsnd (⊩₁-fstm Rq r))
     ... | sn-ne (sne-fst ())
     ... | sn-exp (snr-fst ()) _
-    go _ (sn-dι _) r with CR1₁ (dfst (⊩₁-fstm Rq r)) (dsnd (⊩₁-fstm Rq r))
+    go _ sn-dι r with CR1₁ (dfst (⊩₁-fstm Rq r)) (dsnd (⊩₁-fstm Rq r))
     ... | sn-ne (sne-fst ())
     ... | sn-exp (snr-fst ()) _
     go _ (sn-dσ _ _) r with CR1₁ (dfst (⊩₁-fstm Rq r)) (dsnd (⊩₁-fstm Rq r))
@@ -736,14 +742,15 @@ fund ⊢⌜Unit⌝ x₀ ρ =
   ( ⊩₁U doneᵀ , (sn-cUnit , (⊩₀Unit (stepᵀ El-⌜Unit⌝ doneᵀ) , _)) )
 -- ★★ the LEVITATED codes: `⌜IMu⌝` decodes to the family (its interpretation
 --   enters by the same door as at `ty-IMu`); `⌜Fin⌝` is inert.
-fund {σ = σ} (⊢⌜IMu⌝ {i = i} dI dD di) x₀ ρ =
+fund {σ = σ} (⊢⌜IMu⌝ {I = I} {i = i} dI dD di) x₀ ρ =
   ( ⊩₁U doneᵀ
-  , ( sn-cIMu (projl hI) (ikinterp-sn K) (CR1₁ (dfst hi) (dsnd hi))
-    , ( ⊩₀IMu (stepᵀ El-⌜IMu⌝ doneᵀ) crfl crfl ⊩I K , _ ) ) )
+  , ( sn-cIMu (projl hI) (CR1₁ (dfst hD) (dsnd hD)) (CR1₁ (dfst hi) (dsnd hi))
+    , ( ⊩₀IMu (stepᵀ El-⌜IMu⌝ doneᵀ) crfl crfl crfl ⊩I (elIdx crfl ⊩I hi) KF , _ ) ) )
   where
     hI = uSem (fund dI x₀ ρ)
     ⊩I = sem-El doneᵀ hI
-    K = rebase (desc-view (dfst (fund dD x₀ ρ)) (dsnd (fund dD x₀ ρ))) ⊩I crfl
+    hD = relTy (DescF-sub σ I) (fund dD x₀ ρ)
+    KF = famInterp crfl ⊩I hD
     hi = fund di x₀ ρ
 fund ⊢⌜Fin⌝ x₀ ρ =
   ( ⊩₁U doneᵀ , (sn-cFin , (⊩₀Fin (stepᵀ El-⌜Fin⌝ doneᵀ) , _)) )
@@ -915,7 +922,7 @@ fund {Ξ = Ξ} {σ = σ}
   flatMem (⊩₁Unit p) sns = sns
   flatMem (⊩₁Nat p) sns with ett-star (et-el kflat) p
   ... | ()
-  flatMem (⊩₁IMu p _ _ _ _) sns with ett-star (et-el kflat) p
+  flatMem (⊩₁IMu p _ _ _ _ _ _) sns with ett-star (et-el kflat) p
   ... | ()
   flatMem (⊩₁Fin p) sns with ett-star (et-el kflat) p
   ... | ()
@@ -1033,8 +1040,8 @@ fund {Ξ = Ξ} {σ = σ}
     CR3₀ R_H (sne-ap snCB snBB (sn-ne (sne-natrec h₁ h₂ h₃ k)) k)
   goP (sn-ne (sne-ielim h₀ h₁ h₂ h₃ k)) =
     CR3₀ R_H (sne-ap snCB snBB (sn-ne (sne-ielim h₀ h₁ h₂ h₃ k)) k)
-  goP (sn-ne (sne-dpay h₀ h₁ h₂ h₃ k)) =
-    CR3₀ R_H (sne-ap snCB snBB (sn-ne (sne-dpay h₀ h₁ h₂ h₃ k)) k)
+  goP (sn-ne (sne-dpay h₀ h₁ h₂ k)) =
+    CR3₀ R_H (sne-ap snCB snBB (sn-ne (sne-dpay h₀ h₁ h₂ k)) k)
   goP (sn-ne (sne-dih h₀ h₁ h₂ h₃ k)) =
     CR3₀ R_H (sne-ap snCB snBB (sn-ne (sne-dih h₀ h₁ h₂ h₃ k)) k)
   goP (sn-ne (sne-fcase h₁ h₂ h₃ k)) =
@@ -1060,7 +1067,7 @@ fund {Ξ = Ξ} {σ = σ}
   goP (sn-nsuc h)       = CR3₀ R_H (sne-ap snCB snBB (sn-nsuc h) refl)
   goP (sn-cIMu h₁ h₂ h₃)       = CR3₀ R_H (sne-ap snCB snBB (sn-cIMu h₁ h₂ h₃) refl)
   goP sn-cFin       = CR3₀ R_H (sne-ap snCB snBB sn-cFin refl)
-  goP (sn-dι h)       = CR3₀ R_H (sne-ap snCB snBB (sn-dι h) refl)
+  goP sn-dι       = CR3₀ R_H (sne-ap snCB snBB sn-dι refl)
   goP (sn-dσ h₁ h₂)       = CR3₀ R_H (sne-ap snCB snBB (sn-dσ h₁ h₂) refl)
   goP (sn-dρ h₁ h₂)       = CR3₀ R_H (sne-ap snCB snBB (sn-dρ h₁ h₂) refl)
   goP sn-fzero       = CR3₀ R_H (sne-ap snCB snBB sn-fzero refl)
@@ -1160,7 +1167,7 @@ fund {Ξ = Ξ} {σ = σ}
   ... | _ , (_ , (_ , ((), _)))
   idMemGet (⊩₁Nat ch) h with Id-reduct ch
   ... | _ , (_ , (_ , ((), _)))
-  idMemGet (⊩₁IMu ch _ _ _ _) h with Id-reduct ch
+  idMemGet (⊩₁IMu ch _ _ _ _ _ _) h with Id-reduct ch
   ... | _ , (_ , (_ , ((), _)))
   idMemGet (⊩₁Fin ch) h with Id-reduct ch
   ... | _ , (_ , (_ , ((), _)))
@@ -1194,7 +1201,7 @@ fund {Ξ = Ξ} {σ = σ}
   nkeyJ (sne-jsub _ _ _ key) = key
   nkeyJ (sne-natrec _ _ _ key) = key
   nkeyJ (sne-ielim _ _ _ _ key) = key
-  nkeyJ (sne-dpay _ _ _ _ key) = key
+  nkeyJ (sne-dpay _ _ _ key) = key
   nkeyJ (sne-dih _ _ _ _ key) = key
   nkeyJ (sne-fcase _ _ _ key) = key
   nkeyJ (sne-fcase0 _) = refl
@@ -1243,8 +1250,8 @@ fund {Ξ = Ξ} {σ = σ}
     CR3₁ (emb R₀u) (sne-jsub snDI (sn-cIMu h₁ h₂ h₃) (CR1₁ (emb R₀t) hEt) refl)
   goP sn-cFin pay =
     CR3₁ (emb R₀u) (sne-jsub snDI sn-cFin (CR1₁ (emb R₀t) hEt) refl)
-  goP (sn-dι h) pay =
-    CR3₁ (emb R₀u) (sne-jsub snDI (sn-dι h) (CR1₁ (emb R₀t) hEt) refl)
+  goP sn-dι pay =
+    CR3₁ (emb R₀u) (sne-jsub snDI sn-dι (CR1₁ (emb R₀t) hEt) refl)
   goP (sn-dσ h₁ h₂) pay =
     CR3₁ (emb R₀u) (sne-jsub snDI (sn-dσ h₁ h₂) (CR1₁ (emb R₀t) hEt) refl)
   goP (sn-dρ h₁ h₂) pay =
@@ -1296,7 +1303,7 @@ fund {Ξ = Ξ} {σ = σ}
   nkey (sne-jsub _ _ _ key) = key
   nkey (sne-natrec _ _ _ key) = key
   nkey (sne-ielim _ _ _ _ key) = key
-  nkey (sne-dpay _ _ _ _ key) = key
+  nkey (sne-dpay _ _ _ key) = key
   nkey (sne-dih _ _ _ _ key) = key
   nkey (sne-fcase _ _ _ key) = key
   nkey (sne-fcase0 _) = refl
@@ -1348,7 +1355,7 @@ fund {Ξ = Ξ} {σ = σ}
   piCase q ⊩F ⊩G rt ru rEt rEu (sn-nsuc h) hp' = cr3 (sn-nsuc h) refl
   piCase q ⊩F ⊩G rt ru rEt rEu (sn-cIMu h₁ h₂ h₃) hp' = cr3 (sn-cIMu h₁ h₂ h₃) refl
   piCase q ⊩F ⊩G rt ru rEt rEu sn-cFin hp' = cr3 sn-cFin refl
-  piCase q ⊩F ⊩G rt ru rEt rEu (sn-dι h) hp' = cr3 (sn-dι h) refl
+  piCase q ⊩F ⊩G rt ru rEt rEu sn-dι hp' = cr3 sn-dι refl
   piCase q ⊩F ⊩G rt ru rEt rEu (sn-dσ h₁ h₂) hp' = cr3 (sn-dσ h₁ h₂) refl
   piCase q ⊩F ⊩G rt ru rEt rEu (sn-dρ h₁ h₂) hp' = cr3 (sn-dρ h₁ h₂) refl
   piCase q ⊩F ⊩G rt ru rEt rEu sn-fzero hp' = cr3 sn-fzero refl
@@ -1371,7 +1378,7 @@ fund {Ξ = Ξ} {σ = σ}
   ... | ()
   main (⊩₁Nat q) hp with hom-shapeN nn-U q
   ... | ()
-  main (⊩₁IMu q _ _ _ _) hp with hom-shapeN nn-U q
+  main (⊩₁IMu q _ _ _ _ _ _) hp with hom-shapeN nn-U q
   ... | ()
   main (⊩₁Fin q) hp with hom-shapeN nn-U q
   ... | ()
@@ -1630,8 +1637,8 @@ fund {Ξ = Ξ} {σ = σ}
     cr3 (sn-ne (sne-natrec h₁ h₂ h₃ key)) key
   go (sn-ne (sne-ielim h₀ h₁ h₂ h₃ key)) hp' =
     cr3 (sn-ne (sne-ielim h₀ h₁ h₂ h₃ key)) key
-  go (sn-ne (sne-dpay h₀ h₁ h₂ h₃ key)) hp' =
-    cr3 (sn-ne (sne-dpay h₀ h₁ h₂ h₃ key)) key
+  go (sn-ne (sne-dpay h₀ h₁ h₂ key)) hp' =
+    cr3 (sn-ne (sne-dpay h₀ h₁ h₂ key)) key
   go (sn-ne (sne-dih h₀ h₁ h₂ h₃ key)) hp' =
     cr3 (sn-ne (sne-dih h₀ h₁ h₂ h₃ key)) key
   go (sn-ne (sne-fcase h₁ h₂ h₃ key)) hp' =
@@ -1657,7 +1664,7 @@ fund {Ξ = Ξ} {σ = σ}
   go (sn-nsuc h) hp'       = cr3 (sn-nsuc h) refl
   go (sn-cIMu h₁ h₂ h₃) hp'       = cr3 (sn-cIMu h₁ h₂ h₃) refl
   go sn-cFin hp'       = cr3 sn-cFin refl
-  go (sn-dι h) hp'       = cr3 (sn-dι h) refl
+  go sn-dι hp'       = cr3 sn-dι refl
   go (sn-dσ h₁ h₂) hp'       = cr3 (sn-dσ h₁ h₂) refl
   go (sn-dρ h₁ h₂) hp'       = cr3 (sn-dρ h₁ h₂) refl
   go sn-fzero hp'       = cr3 sn-fzero refl
@@ -1706,8 +1713,8 @@ fund {Ξ = Ξ} {σ = σ}
     ( R_result , exp₁ R_result (snr-J-IMu snD sns) heTgt )
   goh sn-cFin sns kn hp' =
     ( R_result , exp₁ R_result (snr-J-Fin snD sns) heTgt )
-  goh (sn-dι h) sns kn hp' =
-    cr3 (sn-ne (sne-hrefl (sn-dι h) sns refl)) refl
+  goh sn-dι sns kn hp' =
+    cr3 (sn-ne (sne-hrefl sn-dι sns refl)) refl
   goh (sn-dσ h₁ h₂) sns kn hp' =
     cr3 (sn-ne (sne-hrefl (sn-dσ h₁ h₂) sns refl)) refl
   goh (sn-dρ h₁ h₂) sns kn hp' =
@@ -1790,20 +1797,19 @@ snorm {t = t} wΓ d = sn-anti (subst SN (subTm-var vs t) (CR1₁ R m))
 -- ★ the hypotheses' WALK at the SOURCE scope — `NormTy`'s `DIh` case.
 --   `fund-ty`'s `DIh` assembly, run at `vs`; the walk is read off the
 --   telescope's interpretation and anti-renamed (it carries no semantics).
-dih-walk : {I D C i p : RTm ⌊ Γ ⌋} → ⊢ctx Γ →
-           Γ ⊢ D ∷ Desc I → Γ ⊢ C ∷ Desc I → Γ ⊢ p ∷ El (dpay I D C i) → Walk C p
-dih-walk {D = D} {C = C} {i = i} {p = p} wΓ dD dC dp =
-  go (desc-view (dfst (fund dD vz R)) (dsnd (fund dD vz R)))
+dih-walk : {I D C p : RTm ⌊ Γ ⌋} → ⊢ctx Γ → Γ ⊢ I ∷ U →
+           Γ ⊢ D ∷ DescF I → Γ ⊢ C ∷ Desc I → Γ ⊢ p ∷ El (dpay I D C) → Walk C p
+dih-walk {I = I} {D = D} {C = C} {p = p} wΓ dI dD dC dp =
+  walk-anti (walkOf KF KC l) (subTm-var vs C) (subTm-var vs p)
   where
     R = ⊩ˢ-ren wΓ vs
-    go : DescView _ (subTm ⟨ vs ⟩ᵣ D) → Walk C p
-    go (mkDV I₀ cI ⊩I K) = walk-anti (walkOf K KC l) (subTm-var vs C) (subTm-var vs p)
-      where
-        KC = rebase (desc-view (dfst (fund dC vz R)) (dsnd (fund dC vz R))) ⊩I cI
-        R₀ = payInterp₀ {i = subTm ⟨ vs ⟩ᵣ i} cI crfl ⊩I K KC
-        l = payLift₀ cI crfl ⊩I K KC
-              (projr (emb-coh R₀) _ (projl (irrel₁ crflᵀ (dfst (fund dp vz R)) (emb R₀)) _
-                                           (dsnd (fund dp vz R))))
+    ⊩I = sem-El doneᵀ (uSem (fund dI vz R))
+    KF = famInterp crfl ⊩I (relTy (DescF-sub ⟨ vs ⟩ᵣ I) (fund dD vz R))
+    KC = rebase (desc-view (dfst (fund dC vz R)) (dsnd (fund dC vz R))) ⊩I crfl
+    R₀ = payInterp₀ crfl crfl ⊩I KF KC
+    l = payLift₀ crfl crfl ⊩I KF KC
+          (projr (emb-coh R₀) _ (projl (irrel₁ crflᵀ (dfst (fund dp vz R)) (emb R₀)) _
+                                       (dsnd (fund dp vz R))))
 
 -- ⚠ WEAK normalization is the headline (handoff §4.1): `SN` here is the
 -- INDUCTIVE Joachimski–Matthes predicate, and nothing proves it equivalent to
