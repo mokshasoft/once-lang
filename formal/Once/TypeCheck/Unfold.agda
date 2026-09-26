@@ -35,7 +35,8 @@ open import Data.Empty using (⊥; ⊥-elim)
 open import Data.List using (List; []; _∷_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Nat using (ℕ; suc)
-open import Data.Product using (∃-syntax; _×_; _,_)
+open import Data.Product using (∃-syntax; _×_; _,_; proj₁; proj₂)
+open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.String using (String)
 open import Data.String.Properties as StrProp using ()
 open import Data.Unit using (⊤; tt)
@@ -53,7 +54,7 @@ open import Once.TypeCheck.Classify
 open import Once.TypeCheck.Context using (Ctx)
 open import Once.TypeCheck.Context as Context using () renaming (_,_∷_ to extendCtx)
 open import Once.TypeCheck.Judgment
-open import Once.TypeCheck.ModeAgreement using (extractGround-irr)
+open import Once.TypeCheck.ModeAgreement using (extractGround-irr; agree-cc)
 open import Once.TypeCheck.LetIsDef using (defineNamedCtx)
 open import Once.Surface.Context as SC using (Usage; SVar; zeroUsage; _+ᵘ_; _*ᵘ_; _⊔ᵘ_)
 open SC.Usage using () renaming (_∷_ to _∷ᵘ_)
@@ -664,6 +665,561 @@ module Unfolding
     S-d r ((_ , n₁) , n₂) (d-pair df dg) = d-pair (S-d r n₁ df) (S-d r n₂ dg)
     S-d r (_ , nc) (d-cata wf dalg) = d-cata wf (S-i sr-alg nc dalg)
 
+
+  ------------------------------------------------------------------------
+  -- Inverting the substitution: it changes nothing but an unshadowed `x`,
+  -- which becomes `(e : A)`; so a substituted term of any other shape came
+  -- from a term of the same shape.
+  ------------------------------------------------------------------------
+
+  inv-RQualified : ∀ {sh b n a} → sub sh b ≡ (RQualified n a)
+            → (b ≡ RQualified n a)
+  inv-RQualified {b = (RQualified n a)} refl = refl
+  inv-RQualified {sh} {b = RVar y} eq with y StrProp.≟ x | sh | eq
+  ... | no _ | _ | ()
+  ... | yes _ | false | ()
+  ... | yes _ | true | ()
+  inv-RQualified {b = (RAnnot _ _)} ()
+  inv-RQualified {b = (RResolved _)} ()
+  inv-RQualified {b = (RApp _ _)} ()
+  inv-RQualified {b = (RLam _ _)} ()
+  inv-RQualified {b = (RLet _ _ _)} ()
+  inv-RQualified {b = (RPair _ _)} ()
+  inv-RQualified {b = (RDestruct _ _ _ _ _)} ()
+  inv-RQualified {b = RUnit} ()
+  inv-RQualified {b = (RInt _)} ()
+  inv-RQualified {b = (RFloat _ _ _ _)} ()
+  inv-RQualified {b = (RStringLit _)} ()
+  inv-RQualified {b = (RBinOp _ _ _)} ()
+  inv-RQualified {b = (RUnaryOp _ _)} ()
+  inv-RQualified {b = (RAna _ _)} ()
+  inv-RResolved : ∀ {sh b c} → sub sh b ≡ (RResolved c)
+            → (b ≡ RResolved c)
+  inv-RResolved {b = (RResolved c)} refl = refl
+  inv-RResolved {sh} {b = RVar y} eq with y StrProp.≟ x | sh | eq
+  ... | no _ | _ | ()
+  ... | yes _ | false | ()
+  ... | yes _ | true | ()
+  inv-RResolved {b = (RAnnot _ _)} ()
+  inv-RResolved {b = (RQualified _ _)} ()
+  inv-RResolved {b = (RApp _ _)} ()
+  inv-RResolved {b = (RLam _ _)} ()
+  inv-RResolved {b = (RLet _ _ _)} ()
+  inv-RResolved {b = (RPair _ _)} ()
+  inv-RResolved {b = (RDestruct _ _ _ _ _)} ()
+  inv-RResolved {b = RUnit} ()
+  inv-RResolved {b = (RInt _)} ()
+  inv-RResolved {b = (RFloat _ _ _ _)} ()
+  inv-RResolved {b = (RStringLit _)} ()
+  inv-RResolved {b = (RBinOp _ _ _)} ()
+  inv-RResolved {b = (RUnaryOp _ _)} ()
+  inv-RResolved {b = (RAna _ _)} ()
+  inv-RApp : ∀ {sh b f a} → sub sh b ≡ (RApp f a)
+            → ∃[ f₀ ] ∃[ a₀ ] (b ≡ RApp f₀ a₀ × sub (sh) f₀ ≡ f × sub (scopeOf (isAlg f₀) sh) a₀ ≡ a)
+  inv-RApp {b = (RApp f₀ a₀)} refl = f₀ , a₀ , refl , refl , refl
+  inv-RApp {sh} {b = RVar y} eq with y StrProp.≟ x | sh | eq
+  ... | no _ | _ | ()
+  ... | yes _ | false | ()
+  ... | yes _ | true | ()
+  inv-RApp {b = (RAnnot _ _)} ()
+  inv-RApp {b = (RQualified _ _)} ()
+  inv-RApp {b = (RResolved _)} ()
+  inv-RApp {b = (RLam _ _)} ()
+  inv-RApp {b = (RLet _ _ _)} ()
+  inv-RApp {b = (RPair _ _)} ()
+  inv-RApp {b = (RDestruct _ _ _ _ _)} ()
+  inv-RApp {b = RUnit} ()
+  inv-RApp {b = (RInt _)} ()
+  inv-RApp {b = (RFloat _ _ _ _)} ()
+  inv-RApp {b = (RStringLit _)} ()
+  inv-RApp {b = (RBinOp _ _ _)} ()
+  inv-RApp {b = (RUnaryOp _ _)} ()
+  inv-RApp {b = (RAna _ _)} ()
+  inv-RLam : ∀ {sh b y u} → sub sh b ≡ (RLam y u)
+            → ∃[ u₀ ] (b ≡ RLam y u₀ × sub (bindSh (y StrProp.≟ x) sh) u₀ ≡ u)
+  inv-RLam {b = (RLam y u₀)} refl = u₀ , refl , refl
+  inv-RLam {sh} {b = RVar y} eq with y StrProp.≟ x | sh | eq
+  ... | no _ | _ | ()
+  ... | yes _ | false | ()
+  ... | yes _ | true | ()
+  inv-RLam {b = (RAnnot _ _)} ()
+  inv-RLam {b = (RQualified _ _)} ()
+  inv-RLam {b = (RResolved _)} ()
+  inv-RLam {b = (RApp _ _)} ()
+  inv-RLam {b = (RLet _ _ _)} ()
+  inv-RLam {b = (RPair _ _)} ()
+  inv-RLam {b = (RDestruct _ _ _ _ _)} ()
+  inv-RLam {b = RUnit} ()
+  inv-RLam {b = (RInt _)} ()
+  inv-RLam {b = (RFloat _ _ _ _)} ()
+  inv-RLam {b = (RStringLit _)} ()
+  inv-RLam {b = (RBinOp _ _ _)} ()
+  inv-RLam {b = (RUnaryOp _ _)} ()
+  inv-RLam {b = (RAna _ _)} ()
+  inv-RLet : ∀ {sh b y a u} → sub sh b ≡ (RLet y a u)
+            → ∃[ a₀ ] ∃[ u₀ ] (b ≡ RLet y a₀ u₀ × sub (sh) a₀ ≡ a × sub (bindSh (y StrProp.≟ x) sh) u₀ ≡ u)
+  inv-RLet {b = (RLet y a₀ u₀)} refl = a₀ , u₀ , refl , refl , refl
+  inv-RLet {sh} {b = RVar y} eq with y StrProp.≟ x | sh | eq
+  ... | no _ | _ | ()
+  ... | yes _ | false | ()
+  ... | yes _ | true | ()
+  inv-RLet {b = (RAnnot _ _)} ()
+  inv-RLet {b = (RQualified _ _)} ()
+  inv-RLet {b = (RResolved _)} ()
+  inv-RLet {b = (RApp _ _)} ()
+  inv-RLet {b = (RLam _ _)} ()
+  inv-RLet {b = (RPair _ _)} ()
+  inv-RLet {b = (RDestruct _ _ _ _ _)} ()
+  inv-RLet {b = RUnit} ()
+  inv-RLet {b = (RInt _)} ()
+  inv-RLet {b = (RFloat _ _ _ _)} ()
+  inv-RLet {b = (RStringLit _)} ()
+  inv-RLet {b = (RBinOp _ _ _)} ()
+  inv-RLet {b = (RUnaryOp _ _)} ()
+  inv-RLet {b = (RAna _ _)} ()
+  inv-RPair : ∀ {sh b a u} → sub sh b ≡ (RPair a u)
+            → ∃[ a₀ ] ∃[ u₀ ] (b ≡ RPair a₀ u₀ × sub (sh) a₀ ≡ a × sub (sh) u₀ ≡ u)
+  inv-RPair {b = (RPair a₀ u₀)} refl = a₀ , u₀ , refl , refl , refl
+  inv-RPair {sh} {b = RVar y} eq with y StrProp.≟ x | sh | eq
+  ... | no _ | _ | ()
+  ... | yes _ | false | ()
+  ... | yes _ | true | ()
+  inv-RPair {b = (RAnnot _ _)} ()
+  inv-RPair {b = (RQualified _ _)} ()
+  inv-RPair {b = (RResolved _)} ()
+  inv-RPair {b = (RApp _ _)} ()
+  inv-RPair {b = (RLam _ _)} ()
+  inv-RPair {b = (RLet _ _ _)} ()
+  inv-RPair {b = (RDestruct _ _ _ _ _)} ()
+  inv-RPair {b = RUnit} ()
+  inv-RPair {b = (RInt _)} ()
+  inv-RPair {b = (RFloat _ _ _ _)} ()
+  inv-RPair {b = (RStringLit _)} ()
+  inv-RPair {b = (RBinOp _ _ _)} ()
+  inv-RPair {b = (RUnaryOp _ _)} ()
+  inv-RPair {b = (RAna _ _)} ()
+  inv-RDestruct : ∀ {sh b xL xR s l r} → sub sh b ≡ (RDestruct s xL l xR r)
+            → ∃[ s₀ ] ∃[ l₀ ] ∃[ r₀ ] (b ≡ RDestruct s₀ xL l₀ xR r₀ × sub (sh) s₀ ≡ s × sub (bindSh (xL StrProp.≟ x) sh) l₀ ≡ l × sub (bindSh (xR StrProp.≟ x) sh) r₀ ≡ r)
+  inv-RDestruct {b = (RDestruct s₀ xL l₀ xR r₀)} refl = s₀ , l₀ , r₀ , refl , refl , refl , refl
+  inv-RDestruct {sh} {b = RVar y} eq with y StrProp.≟ x | sh | eq
+  ... | no _ | _ | ()
+  ... | yes _ | false | ()
+  ... | yes _ | true | ()
+  inv-RDestruct {b = (RAnnot _ _)} ()
+  inv-RDestruct {b = (RQualified _ _)} ()
+  inv-RDestruct {b = (RResolved _)} ()
+  inv-RDestruct {b = (RApp _ _)} ()
+  inv-RDestruct {b = (RLam _ _)} ()
+  inv-RDestruct {b = (RLet _ _ _)} ()
+  inv-RDestruct {b = (RPair _ _)} ()
+  inv-RDestruct {b = RUnit} ()
+  inv-RDestruct {b = (RInt _)} ()
+  inv-RDestruct {b = (RFloat _ _ _ _)} ()
+  inv-RDestruct {b = (RStringLit _)} ()
+  inv-RDestruct {b = (RBinOp _ _ _)} ()
+  inv-RDestruct {b = (RUnaryOp _ _)} ()
+  inv-RDestruct {b = (RAna _ _)} ()
+  inv-RUnit : ∀ {sh b} → sub sh b ≡ RUnit
+            → (b ≡ RUnit)
+  inv-RUnit {b = RUnit} refl = refl
+  inv-RUnit {sh} {b = RVar y} eq with y StrProp.≟ x | sh | eq
+  ... | no _ | _ | ()
+  ... | yes _ | false | ()
+  ... | yes _ | true | ()
+  inv-RUnit {b = (RAnnot _ _)} ()
+  inv-RUnit {b = (RQualified _ _)} ()
+  inv-RUnit {b = (RResolved _)} ()
+  inv-RUnit {b = (RApp _ _)} ()
+  inv-RUnit {b = (RLam _ _)} ()
+  inv-RUnit {b = (RLet _ _ _)} ()
+  inv-RUnit {b = (RPair _ _)} ()
+  inv-RUnit {b = (RDestruct _ _ _ _ _)} ()
+  inv-RUnit {b = (RInt _)} ()
+  inv-RUnit {b = (RFloat _ _ _ _)} ()
+  inv-RUnit {b = (RStringLit _)} ()
+  inv-RUnit {b = (RBinOp _ _ _)} ()
+  inv-RUnit {b = (RUnaryOp _ _)} ()
+  inv-RUnit {b = (RAna _ _)} ()
+  inv-RInt : ∀ {sh b n} → sub sh b ≡ (RInt n)
+            → (b ≡ RInt n)
+  inv-RInt {b = (RInt n)} refl = refl
+  inv-RInt {sh} {b = RVar y} eq with y StrProp.≟ x | sh | eq
+  ... | no _ | _ | ()
+  ... | yes _ | false | ()
+  ... | yes _ | true | ()
+  inv-RInt {b = (RAnnot _ _)} ()
+  inv-RInt {b = (RQualified _ _)} ()
+  inv-RInt {b = (RResolved _)} ()
+  inv-RInt {b = (RApp _ _)} ()
+  inv-RInt {b = (RLam _ _)} ()
+  inv-RInt {b = (RLet _ _ _)} ()
+  inv-RInt {b = (RPair _ _)} ()
+  inv-RInt {b = (RDestruct _ _ _ _ _)} ()
+  inv-RInt {b = RUnit} ()
+  inv-RInt {b = (RFloat _ _ _ _)} ()
+  inv-RInt {b = (RStringLit _)} ()
+  inv-RInt {b = (RBinOp _ _ _)} ()
+  inv-RInt {b = (RUnaryOp _ _)} ()
+  inv-RInt {b = (RAna _ _)} ()
+  inv-RFloat : ∀ {sh b i f l p} → sub sh b ≡ (RFloat i f l p)
+            → (b ≡ RFloat i f l p)
+  inv-RFloat {b = (RFloat i f l p)} refl = refl
+  inv-RFloat {sh} {b = RVar y} eq with y StrProp.≟ x | sh | eq
+  ... | no _ | _ | ()
+  ... | yes _ | false | ()
+  ... | yes _ | true | ()
+  inv-RFloat {b = (RAnnot _ _)} ()
+  inv-RFloat {b = (RQualified _ _)} ()
+  inv-RFloat {b = (RResolved _)} ()
+  inv-RFloat {b = (RApp _ _)} ()
+  inv-RFloat {b = (RLam _ _)} ()
+  inv-RFloat {b = (RLet _ _ _)} ()
+  inv-RFloat {b = (RPair _ _)} ()
+  inv-RFloat {b = (RDestruct _ _ _ _ _)} ()
+  inv-RFloat {b = RUnit} ()
+  inv-RFloat {b = (RInt _)} ()
+  inv-RFloat {b = (RStringLit _)} ()
+  inv-RFloat {b = (RBinOp _ _ _)} ()
+  inv-RFloat {b = (RUnaryOp _ _)} ()
+  inv-RFloat {b = (RAna _ _)} ()
+  inv-RStringLit : ∀ {sh b t} → sub sh b ≡ (RStringLit t)
+            → (b ≡ RStringLit t)
+  inv-RStringLit {b = (RStringLit t)} refl = refl
+  inv-RStringLit {sh} {b = RVar y} eq with y StrProp.≟ x | sh | eq
+  ... | no _ | _ | ()
+  ... | yes _ | false | ()
+  ... | yes _ | true | ()
+  inv-RStringLit {b = (RAnnot _ _)} ()
+  inv-RStringLit {b = (RQualified _ _)} ()
+  inv-RStringLit {b = (RResolved _)} ()
+  inv-RStringLit {b = (RApp _ _)} ()
+  inv-RStringLit {b = (RLam _ _)} ()
+  inv-RStringLit {b = (RLet _ _ _)} ()
+  inv-RStringLit {b = (RPair _ _)} ()
+  inv-RStringLit {b = (RDestruct _ _ _ _ _)} ()
+  inv-RStringLit {b = RUnit} ()
+  inv-RStringLit {b = (RInt _)} ()
+  inv-RStringLit {b = (RFloat _ _ _ _)} ()
+  inv-RStringLit {b = (RBinOp _ _ _)} ()
+  inv-RStringLit {b = (RUnaryOp _ _)} ()
+  inv-RStringLit {b = (RAna _ _)} ()
+  inv-RBinOp : ∀ {sh b o a u} → sub sh b ≡ (RBinOp o a u)
+            → ∃[ a₀ ] ∃[ u₀ ] (b ≡ RBinOp o a₀ u₀ × sub (sh) a₀ ≡ a × sub (sh) u₀ ≡ u)
+  inv-RBinOp {b = (RBinOp o a₀ u₀)} refl = a₀ , u₀ , refl , refl , refl
+  inv-RBinOp {sh} {b = RVar y} eq with y StrProp.≟ x | sh | eq
+  ... | no _ | _ | ()
+  ... | yes _ | false | ()
+  ... | yes _ | true | ()
+  inv-RBinOp {b = (RAnnot _ _)} ()
+  inv-RBinOp {b = (RQualified _ _)} ()
+  inv-RBinOp {b = (RResolved _)} ()
+  inv-RBinOp {b = (RApp _ _)} ()
+  inv-RBinOp {b = (RLam _ _)} ()
+  inv-RBinOp {b = (RLet _ _ _)} ()
+  inv-RBinOp {b = (RPair _ _)} ()
+  inv-RBinOp {b = (RDestruct _ _ _ _ _)} ()
+  inv-RBinOp {b = RUnit} ()
+  inv-RBinOp {b = (RInt _)} ()
+  inv-RBinOp {b = (RFloat _ _ _ _)} ()
+  inv-RBinOp {b = (RStringLit _)} ()
+  inv-RBinOp {b = (RUnaryOp _ _)} ()
+  inv-RBinOp {b = (RAna _ _)} ()
+  inv-RUnaryOp : ∀ {sh b o a} → sub sh b ≡ (RUnaryOp o a)
+            → ∃[ a₀ ] (b ≡ RUnaryOp o a₀ × sub (sh) a₀ ≡ a)
+  inv-RUnaryOp {b = (RUnaryOp o a₀)} refl = a₀ , refl , refl
+  inv-RUnaryOp {sh} {b = RVar y} eq with y StrProp.≟ x | sh | eq
+  ... | no _ | _ | ()
+  ... | yes _ | false | ()
+  ... | yes _ | true | ()
+  inv-RUnaryOp {b = (RAnnot _ _)} ()
+  inv-RUnaryOp {b = (RQualified _ _)} ()
+  inv-RUnaryOp {b = (RResolved _)} ()
+  inv-RUnaryOp {b = (RApp _ _)} ()
+  inv-RUnaryOp {b = (RLam _ _)} ()
+  inv-RUnaryOp {b = (RLet _ _ _)} ()
+  inv-RUnaryOp {b = (RPair _ _)} ()
+  inv-RUnaryOp {b = (RDestruct _ _ _ _ _)} ()
+  inv-RUnaryOp {b = RUnit} ()
+  inv-RUnaryOp {b = (RInt _)} ()
+  inv-RUnaryOp {b = (RFloat _ _ _ _)} ()
+  inv-RUnaryOp {b = (RStringLit _)} ()
+  inv-RUnaryOp {b = (RBinOp _ _ _)} ()
+  inv-RUnaryOp {b = (RAna _ _)} ()
+  inv-RAna : ∀ {sh b F a} → sub sh b ≡ (RAna F a)
+            → ∃[ a₀ ] (b ≡ RAna F a₀ × sub (sh) a₀ ≡ a)
+  inv-RAna {b = (RAna F a₀)} refl = a₀ , refl , refl
+  inv-RAna {sh} {b = RVar y} eq with y StrProp.≟ x | sh | eq
+  ... | no _ | _ | ()
+  ... | yes _ | false | ()
+  ... | yes _ | true | ()
+  inv-RAna {b = (RAnnot _ _)} ()
+  inv-RAna {b = (RQualified _ _)} ()
+  inv-RAna {b = (RResolved _)} ()
+  inv-RAna {b = (RApp _ _)} ()
+  inv-RAna {b = (RLam _ _)} ()
+  inv-RAna {b = (RLet _ _ _)} ()
+  inv-RAna {b = (RPair _ _)} ()
+  inv-RAna {b = (RDestruct _ _ _ _ _)} ()
+  inv-RAna {b = RUnit} ()
+  inv-RAna {b = (RInt _)} ()
+  inv-RAna {b = (RFloat _ _ _ _)} ()
+  inv-RAna {b = (RStringLit _)} ()
+  inv-RAna {b = (RBinOp _ _ _)} ()
+  inv-RAna {b = (RUnaryOp _ _)} ()
+
+  inv-RVar : ∀ {sh b z} → sub sh b ≡ RVar z → b ≡ RVar z × (z ≢ x ⊎ sh ≡ true)
+  inv-RVar {sh} {b = RVar y} eq with y StrProp.≟ x | sh | eq
+  ... | no y≢x | _ | refl = refl , inj₁ y≢x
+  ... | yes _ | true | refl = refl , inj₂ refl
+  ... | yes _ | false | ()
+  inv-RVar {b = (RAnnot _ _)} ()
+  inv-RVar {b = (RQualified _ _)} ()
+  inv-RVar {b = (RResolved _)} ()
+  inv-RVar {b = (RApp _ _)} ()
+  inv-RVar {b = (RLam _ _)} ()
+  inv-RVar {b = (RLet _ _ _)} ()
+  inv-RVar {b = (RPair _ _)} ()
+  inv-RVar {b = (RDestruct _ _ _ _ _)} ()
+  inv-RVar {b = RUnit} ()
+  inv-RVar {b = (RInt _)} ()
+  inv-RVar {b = (RFloat _ _ _ _)} ()
+  inv-RVar {b = (RStringLit _)} ()
+  inv-RVar {b = (RBinOp _ _ _)} ()
+  inv-RVar {b = (RUnaryOp _ _)} ()
+  inv-RVar {b = (RAna _ _)} ()
+
+  inv-RAnnot : ∀ {sh b e′ T} → sub sh b ≡ RAnnot e′ T
+             → (∃[ b₀ ] (b ≡ RAnnot b₀ T × sub sh b₀ ≡ e′)) ⊎ (b ≡ RVar x × sh ≡ false × e′ ≡ e × T ≡ A)
+  inv-RAnnot {b = RAnnot b₀ T} refl = inj₁ (b₀ , refl , refl)
+  inv-RAnnot {sh} {b = RVar y} eq with y StrProp.≟ x | sh | eq
+  ... | no _ | _ | ()
+  ... | yes y≡x | false | refl = inj₂ (cong RVar y≡x , refl , refl , refl)
+  ... | yes _ | true | ()
+  inv-RAnnot {b = (RQualified _ _)} ()
+  inv-RAnnot {b = (RResolved _)} ()
+  inv-RAnnot {b = (RApp _ _)} ()
+  inv-RAnnot {b = (RLam _ _)} ()
+  inv-RAnnot {b = (RLet _ _ _)} ()
+  inv-RAnnot {b = (RPair _ _)} ()
+  inv-RAnnot {b = (RDestruct _ _ _ _ _)} ()
+  inv-RAnnot {b = RUnit} ()
+  inv-RAnnot {b = (RInt _)} ()
+  inv-RAnnot {b = (RFloat _ _ _ _)} ()
+  inv-RAnnot {b = (RStringLit _)} ()
+  inv-RAnnot {b = (RBinOp _ _ _)} ()
+  inv-RAnnot {b = (RUnaryOp _ _)} ()
+  inv-RAnnot {b = (RAna _ _)} ()
+
+  -- A `z` the substitution kept is not the unshadowed `x`: the definition's
+  -- entry does not change what `z` finds.
+  lpp-cons : ∀ {z : String} {res} → z ≢ x → lookupPolyPrefix P z ≡ res → lookupPolyPrefix P′ z ≡ res
+  lpp-cons {z} z≢x lp with x StrProp.≟ z
+  ... | yes x≡z = ⊥-elim (z≢x (sym x≡z))
+  ... | no _ = lp
+
+  lpp-add : ∀ {n G Δ sh} → SR {n} sh G Δ → (z : String) {res : _}
+          → (z ≢ x ⊎ sh ≡ true) → lookupLocal-go z G Δ ≡ nothing
+          → lookupPolyPrefix P z ≡ res → lookupPolyPrefix P′ z ≡ res
+  lpp-add {G = G} {Δ = Δ} r z alt ln lp with z StrProp.≟ x
+  ... | no z≢x = lpp-cons z≢x lp
+  ... | yes z≡x with alt
+  ...   | inj₁ z≢x = ⊥-elim (z≢x z≡x)
+  ...   | inj₂ sh≡t = ⊥-elim (SR.yesX r sh≡t (subst (λ w → lookupLocal-go w G Δ ≡ nothing) z≡x ln))
+
+  -- The unfolded occurrence `(e : A)`: `e` is checked at the use site with
+  -- no local use (checking agrees with checking, `ModeAgreement`), which is
+  -- exactly what a use of the definition costs.
+  unfolded : ∀ {n G Δ fr} → SR {n} false G Δ → ∀ {U}
+           → Lc G Δ fr ⊢ᶜ e ∶ A ⨾ U → Dc G Δ fr ⊢ᵢ RVar x ∶ A ⨾ U
+  unfolded {G = G} {Δ = Δ} {fr = fr} r {U} c =
+    subst (λ U → Dc G Δ fr ⊢ᵢ RVar x ∶ A ⨾ U) (agree-cc (W-c wk-base (SR.clr r) eD) c)
+      (t-var-poly-instantiate-infer {g = g} (SR.noX r refl) noImp lpp-head g (sym eqA) eD)
+
+  mutual
+    F-i : ∀ {n G Δ fr sh} → SR {n} sh G Δ → ∀ {b b′ T U}
+        → NC e b → Lc G Δ fr ⊢ᵢ b′ ∶ T ⨾ U → sub sh b ≡ b′ → Dc G Δ fr ⊢ᵢ b ∶ T ⨾ U
+    F-c : ∀ {n G Δ fr sh} → SR {n} sh G Δ → ∀ {b b′ T U}
+        → NC e b → Lc G Δ fr ⊢ᶜ b′ ∶ T ⨾ U → sub sh b ≡ b′ → Dc G Δ fr ⊢ᶜ b ∶ T ⨾ U
+    F-d : ∀ {n G Δ fr sh} → SR {n} sh G Δ → ∀ {b b′ A′ π B U}
+        → NC e b → Lc G Δ fr ⊢ᵈ b′ ∶ A′ ⇒[ π ]↦ B ⨾ U → sub sh b ≡ b′ → Dc G Δ fr ⊢ᵈ b ∶ A′ ⇒[ π ]↦ B ⨾ U
+
+    F-i {sh = sh} r {b = b} nc (t-int n) eq with inv-RInt {sh = sh} {b = b} eq
+    ... | refl = t-int n
+    F-i {sh = sh} r {b = b} nc (t-float i f l p) eq with inv-RFloat {sh = sh} {b = b} eq
+    ... | refl = t-float i f l p
+    F-i {sh = sh} r {b = b} nc (t-str t) eq with inv-RStringLit {sh = sh} {b = b} eq
+    ... | refl = t-str t
+    F-i {sh = sh} r {b = b} nc t-unit eq with inv-RUnit {sh = sh} {b = b} eq
+    ... | refl = t-unit
+    F-i {sh = sh} r {b = b} nc t-unit-var eq with inv-RResolved {sh = sh} {b = b} eq
+    ... | refl = t-unit-var
+    F-i {sh = sh} r {b = b} nc (t-var-qualified l c) eq with inv-RQualified {sh = sh} {b = b} eq
+    ... | refl = t-var-qualified l c
+    F-i {sh = sh} r {b = b} nc (t-var-resolved ng l c) eq with inv-RResolved {sh = sh} {b = b} eq
+    ... | refl = t-var-resolved ng l c
+    F-i {sh = sh} r {b = b} nc (t-var-local q) eq with inv-RVar {sh = sh} {b = b} eq
+    ... | refl , _ = t-var-local q
+    F-i {sh = sh} r {b = b} nc (t-var-import ¬gw ln li c) eq with inv-RVar {sh = sh} {b = b} eq
+    ... | refl , _ = t-var-import ¬gw ln li c
+    F-i {sh = sh} r {b = b} nc (t-var-poly-instantiate-infer {x = z} ln li lp gr eT body) eq with inv-RVar {sh = sh} {b = b} eq
+    ... | refl , alt = t-var-poly-instantiate-infer ln li (lpp-add r z alt ln lp) gr eT body
+    F-i {sh = sh} r {b = b} nc (t-annot c) eq with inv-RAnnot {sh = sh} {b = b} eq
+    ... | inj₁ (b₀ , refl , eb) = t-annot (F-c r nc c eb)
+    ... | inj₂ (refl , refl , refl , refl) = unfolded r c
+    F-i {sh = sh} r {b = b} nc (t-pair d₁ d₂) eq with inv-RPair {sh = sh} {b = b} eq
+    ... | a₀ , u₀ , refl , e₁ , e₂ = t-pair (F-i r (proj₁ nc) d₁ e₁) (F-i r (proj₂ nc) d₂ e₂)
+    F-i {sh = sh} r {b = b} nc (t-neg d) eq with inv-RUnaryOp {sh = sh} {b = b} eq
+    ... | a₀ , refl , e₁ = t-neg (F-i r nc d e₁)
+    F-i {sh = sh} r {b = b} nc (t-neg-float i f l p) eq with inv-RUnaryOp {sh = sh} {b = b} eq
+    ... | a₀ , refl , e₁ with inv-RFloat {sh = sh} {b = a₀} e₁
+    ...   | refl = t-neg-float i f l p
+    F-i {sh = sh} r {b = b} nc (t-let {x = y} {A = B} d₁ d₂) eq with inv-RLet {sh = sh} {b = b} eq
+    ... | a₀ , u₀ , refl , e₁ , e₂ =
+          t-let (F-i r (proj₁ (proj₂ nc)) d₁ e₁) (F-i (sr-ext r y B (proj₁ nc)) (proj₂ (proj₂ nc)) d₂ e₂)
+    F-i {sh = sh} r {b = b} nc (t-case {xL = xL} {xR = xR} {A = AL} {B = AR} dS dL dR) eq with inv-RDestruct {sh = sh} {b = b} eq
+    ... | s₀ , l₀ , r₀ , refl , eS , eL , eR =
+          t-case (F-i r (proj₁ nc) dS eS)
+                 (F-i (sr-ext r xL AL (proj₁ (proj₂ nc))) (proj₁ (proj₂ (proj₂ nc))) dL eL)
+                 (F-i (sr-ext r xR AR (proj₁ (proj₂ (proj₂ (proj₂ nc))))) (proj₂ (proj₂ (proj₂ (proj₂ nc)))) dR eR)
+    F-i {sh = sh} r {b = b} nc (t-binop-arith o d₁ d₂) eq with inv-RBinOp {sh = sh} {b = b} eq
+    ... | a₀ , u₀ , refl , e₁ , e₂ = t-binop-arith o (F-i r (proj₁ nc) d₁ e₁) (F-i r (proj₂ nc) d₂ e₂)
+    F-i {sh = sh} r {b = b} nc (t-binop-arith-float o d₁ d₂) eq with inv-RBinOp {sh = sh} {b = b} eq
+    ... | a₀ , u₀ , refl , e₁ , e₂ = t-binop-arith-float o (F-i r (proj₁ nc) d₁ e₁) (F-i r (proj₂ nc) d₂ e₂)
+    F-i {sh = sh} r {b = b} nc (t-binop-arith-float-il o d₁ d₂) eq with inv-RBinOp {sh = sh} {b = b} eq
+    ... | a₀ , u₀ , refl , e₁ , e₂ = t-binop-arith-float-il o (F-i r (proj₁ nc) d₁ e₁) (F-i r (proj₂ nc) d₂ e₂)
+    F-i {sh = sh} r {b = b} nc (t-binop-arith-float-ir o d₁ d₂) eq with inv-RBinOp {sh = sh} {b = b} eq
+    ... | a₀ , u₀ , refl , e₁ , e₂ = t-binop-arith-float-ir o (F-i r (proj₁ nc) d₁ e₁) (F-i r (proj₂ nc) d₂ e₂)
+    F-i {sh = sh} r {b = b} nc (t-binop-cmp o d₁ d₂) eq with inv-RBinOp {sh = sh} {b = b} eq
+    ... | a₀ , u₀ , refl , e₁ , e₂ = t-binop-cmp o (F-i r (proj₁ nc) d₁ e₁) (F-i r (proj₂ nc) d₂ e₂)
+    F-i {sh = sh} r {b = b} nc (t-id-app d) eq with inv-RApp {sh = sh} {b = b} eq
+    ... | f₀ , a₀ , refl , ef , ea with inv-RResolved {sh = sh} {b = f₀} ef
+    ...   | refl = t-id-app (F-i r (proj₂ nc) d ea)
+    F-i {sh = sh} r {b = b} nc (t-fst-app d) eq with inv-RApp {sh = sh} {b = b} eq
+    ... | f₀ , a₀ , refl , ef , ea with inv-RResolved {sh = sh} {b = f₀} ef
+    ...   | refl = t-fst-app (F-i r (proj₂ nc) d ea)
+    F-i {sh = sh} r {b = b} nc (t-snd-app d) eq with inv-RApp {sh = sh} {b = b} eq
+    ... | f₀ , a₀ , refl , ef , ea with inv-RResolved {sh = sh} {b = f₀} ef
+    ...   | refl = t-snd-app (F-i r (proj₂ nc) d ea)
+    F-i {sh = sh} r {b = b} nc (t-terminal-app d) eq with inv-RApp {sh = sh} {b = b} eq
+    ... | f₀ , a₀ , refl , ef , ea with inv-RResolved {sh = sh} {b = f₀} ef
+    ...   | refl = t-terminal-app (F-i r (proj₂ nc) d ea)
+    F-i {sh = sh} r {b = b} nc (t-apply-app-infer d) eq with inv-RApp {sh = sh} {b = b} eq
+    ... | f₀ , a₀ , refl , ef , ea with inv-RResolved {sh = sh} {b = f₀} ef
+    ...   | refl = t-apply-app-infer (F-i r (proj₂ nc) d ea)
+    F-i {sh = sh} r {b = b} nc (t-apply-eff-app-infer d) eq with inv-RApp {sh = sh} {b = b} eq
+    ... | f₀ , a₀ , refl , ef , ea with inv-RResolved {sh = sh} {b = f₀} ef
+    ...   | refl = t-apply-eff-app-infer (F-i r (proj₂ nc) d ea)
+    F-i {sh = sh} r {b = b} nc (t-Out-app-infer wf eqC d) eq with inv-RApp {sh = sh} {b = b} eq
+    ... | f₀ , a₀ , refl , ef , ea with inv-RResolved {sh = sh} {b = f₀} ef
+    ...   | refl = t-Out-app-infer wf eqC (F-i r (proj₂ nc) d ea)
+    F-i {sh = sh} r {b = b} nc (t-app ah dF dX) eq with inv-RApp {sh = sh} {b = b} eq
+    ... | f₀ , a₀ , refl , refl , refl =
+          t-app ah₀ (F-i r (proj₁ nc) dF refl) (F-c r (proj₂ nc) dX eqX)
+        where
+          ah₀ = trans (sym (sub-head sh f₀)) ah
+          eqX = cong (λ β → sub (scopeOf β sh) a₀) (sym (isAlg-other ah₀))
+    F-i {sh = sh} r {b = b} nc (t-effApp ah dF dX) eq with inv-RApp {sh = sh} {b = b} eq
+    ... | f₀ , a₀ , refl , refl , refl =
+          t-effApp ah₀ (F-i r (proj₁ nc) dF refl) (F-c r (proj₂ nc) dX eqX)
+        where
+          ah₀ = trans (sym (sub-head sh f₀)) ah
+          eqX = cong (λ β → sub (scopeOf β sh) a₀) (sym (isAlg-other ah₀))
+    F-i {sh = sh} r {b = b} nc (t-app-spine ah dX dF) eq with inv-RApp {sh = sh} {b = b} eq
+    ... | f₀ , a₀ , refl , refl , refl =
+          t-app-spine ah₀ (F-i r (proj₂ nc) dX eqX) (F-d r (proj₁ nc) dF refl)
+        where
+          ah₀ = trans (sym (sub-head sh f₀)) ah
+          eqX = cong (λ β → sub (scopeOf β sh) a₀) (sym (isAlg-other ah₀))
+    F-c {sh = sh} r {b = b} nc t-id-check eq with inv-RResolved {sh = sh} {b = b} eq
+    ... | refl = t-id-check
+    F-c {sh = sh} r {b = b} nc t-fst-check eq with inv-RResolved {sh = sh} {b = b} eq
+    ... | refl = t-fst-check
+    F-c {sh = sh} r {b = b} nc t-snd-check eq with inv-RResolved {sh = sh} {b = b} eq
+    ... | refl = t-snd-check
+    F-c {sh = sh} r {b = b} nc t-terminal-morph-check eq with inv-RResolved {sh = sh} {b = b} eq
+    ... | refl = t-terminal-morph-check
+    F-c {sh = sh} r {b = b} nc t-initial-morph-check eq with inv-RResolved {sh = sh} {b = b} eq
+    ... | refl = t-initial-morph-check
+    F-c {sh = sh} r {b = b} nc t-inl-morph-check eq with inv-RResolved {sh = sh} {b = b} eq
+    ... | refl = t-inl-morph-check
+    F-c {sh = sh} r {b = b} nc t-inr-morph-check eq with inv-RResolved {sh = sh} {b = b} eq
+    ... | refl = t-inr-morph-check
+    F-c {sh = sh} r {b = b} nc (t-compose-check-g dg df) eq with inv-RApp {sh = sh} {b = b} eq
+    ... | h₀ , a₀ , refl , eh , ea with inv-RApp {sh = sh} {b = h₀} eh
+    ...   | c₀ , f₁ , refl , ec , ef with inv-RResolved {sh = sh} {b = c₀} ec
+    ...     | refl = t-compose-check-g (F-d r (proj₂ nc) dg ea) (F-c r (proj₂ (proj₁ nc)) df ef)
+    F-c {sh = sh} r {b = b} nc (t-compose-check-f wf p dg) eq with inv-RApp {sh = sh} {b = b} eq
+    ... | h₀ , a₀ , refl , eh , ea with inv-RApp {sh = sh} {b = h₀} eh
+    ...   | c₀ , f₁ , refl , ec , ef with inv-RResolved {sh = sh} {b = c₀} ec
+    ...     | refl = t-compose-check-f (F-i r (proj₂ (proj₁ nc)) wf ef) p (F-c r (proj₂ nc) dg ea)
+    F-c {sh = sh} r {b = b} nc (t-case-copair-check df dg) eq with inv-RApp {sh = sh} {b = b} eq
+    ... | h₀ , a₀ , refl , eh , ea with inv-RApp {sh = sh} {b = h₀} eh
+    ...   | c₀ , f₁ , refl , ec , ef with inv-RResolved {sh = sh} {b = c₀} ec
+    ...     | refl = t-case-copair-check (F-c r (proj₂ (proj₁ nc)) df ef) (F-c r (proj₂ nc) dg ea)
+    F-c {sh = sh} r {b = b} nc (t-pair-morph-check df dg) eq with inv-RApp {sh = sh} {b = b} eq
+    ... | h₀ , a₀ , refl , eh , ea with inv-RApp {sh = sh} {b = h₀} eh
+    ...   | c₀ , f₁ , refl , ec , ef with inv-RResolved {sh = sh} {b = c₀} ec
+    ...     | refl = t-pair-morph-check (F-c r (proj₂ (proj₁ nc)) df ef) (F-c r (proj₂ nc) dg ea)
+    F-c {sh = sh} r {b = b} nc (t-curry-check d) eq with inv-RApp {sh = sh} {b = b} eq
+    ... | f₀ , a₀ , refl , ef , ea with inv-RResolved {sh = sh} {b = f₀} ef
+    ...   | refl = t-curry-check (F-c r (proj₂ nc) d ea)
+    F-c {sh = sh} r {b = b} nc (t-cata-check wf dalg) eq with inv-RApp {sh = sh} {b = b} eq
+    ... | f₀ , a₀ , refl , ef , ea with inv-RResolved {sh = sh} {b = f₀} ef
+    ...   | refl = t-cata-check wf (F-c sr-alg (proj₂ nc) dalg ea)
+    F-c {sh = sh} r {b = b} nc (t-ana-check wf dco) eq with inv-RApp {sh = sh} {b = b} eq
+    ... | f₀ , a₀ , refl , ef , ea with inv-RResolved {sh = sh} {b = f₀} ef
+    ...   | refl = t-ana-check wf (F-c sr-alg (proj₂ nc) dco ea)
+    F-c {sh = sh} r {b = b} nc (t-sub d p) eq = t-sub (F-i r nc d eq) p
+    F-c {sh = sh} r {b = b} nc (t-lam {x = y} {A = B} leq body) eq with inv-RLam {sh = sh} {b = b} eq
+    ... | u₀ , refl , eu = t-lam leq (F-c (sr-ext r y B (proj₁ nc)) (proj₂ nc) body eu)
+    F-c {sh = sh} r {b = b} nc (t-pair-lit-check d₁ d₂) eq with inv-RPair {sh = sh} {b = b} eq
+    ... | a₀ , u₀ , refl , e₁ , e₂ = t-pair-lit-check (F-c r (proj₁ nc) d₁ e₁) (F-c r (proj₂ nc) d₂ e₂)
+    F-c {sh = sh} r {b = b} nc (t-In-app-check wf d) eq with inv-RApp {sh = sh} {b = b} eq
+    ... | f₀ , a₀ , refl , ef , ea with inv-RResolved {sh = sh} {b = f₀} ef
+    ...   | refl = t-In-app-check wf (F-c r (proj₂ nc) d ea)
+    F-c {sh = sh} r {b = b} nc (t-apply-check d) eq with inv-RApp {sh = sh} {b = b} eq
+    ... | f₀ , a₀ , refl , ef , ea with inv-RResolved {sh = sh} {b = f₀} ef
+    ...   | refl = t-apply-check (F-i r (proj₂ nc) d ea)
+    F-c {sh = sh} r {b = b} nc (t-inl-app-check d) eq with inv-RApp {sh = sh} {b = b} eq
+    ... | f₀ , a₀ , refl , ef , ea with inv-RResolved {sh = sh} {b = f₀} ef
+    ...   | refl = t-inl-app-check (F-c r (proj₂ nc) d ea)
+    F-c {sh = sh} r {b = b} nc (t-inr-app-check d) eq with inv-RApp {sh = sh} {b = b} eq
+    ... | f₀ , a₀ , refl , ef , ea with inv-RResolved {sh = sh} {b = f₀} ef
+    ...   | refl = t-inr-app-check (F-c r (proj₂ nc) d ea)
+    F-c {sh = sh} r {b = b} nc (t-initial-app-check d) eq with inv-RApp {sh = sh} {b = b} eq
+    ... | f₀ , a₀ , refl , ef , ea with inv-RResolved {sh = sh} {b = f₀} ef
+    ...   | refl = t-initial-app-check (F-c r (proj₂ nc) d ea)
+    F-c {sh = sh} r {b = b} nc (t-var-poly-instantiate {x = z} ln li lp ¬g body) eq with inv-RVar {sh = sh} {b = b} eq
+    ... | refl , alt = t-var-poly-instantiate ln li (lpp-add r z alt ln lp) ¬g body
+    F-d {sh = sh} r {b = b} nc (d-infer w sb gr) eq = d-infer (F-i r nc w eq) sb gr
+    F-d {sh = sh} r {b = b} nc (d-lam {x = y} {A = B} leq body) eq with inv-RLam {sh = sh} {b = b} eq
+    ... | u₀ , refl , eu = d-lam leq (F-i (sr-ext r y B (proj₁ nc)) (proj₂ nc) body eu)
+    F-d {sh = sh} r {b = b} nc (d-compose dg df) eq with inv-RApp {sh = sh} {b = b} eq
+    ... | h₀ , a₀ , refl , eh , ea with inv-RApp {sh = sh} {b = h₀} eh
+    ...   | c₀ , f₁ , refl , ec , ef with inv-RResolved {sh = sh} {b = c₀} ec
+    ...     | refl = d-compose (F-d r (proj₂ nc) dg ea) (F-d r (proj₂ (proj₁ nc)) df ef)
+    F-d {sh = sh} r {b = b} nc d-id eq with inv-RResolved {sh = sh} {b = b} eq
+    ... | refl = d-id
+    F-d {sh = sh} r {b = b} nc d-fst eq with inv-RResolved {sh = sh} {b = b} eq
+    ... | refl = d-fst
+    F-d {sh = sh} r {b = b} nc d-snd eq with inv-RResolved {sh = sh} {b = b} eq
+    ... | refl = d-snd
+    F-d {sh = sh} r {b = b} nc d-terminal eq with inv-RResolved {sh = sh} {b = b} eq
+    ... | refl = d-terminal
+    F-d {sh = sh} r {b = b} nc d-initial eq with inv-RResolved {sh = sh} {b = b} eq
+    ... | refl = d-initial
+    F-d {sh = sh} r {b = b} nc (d-case df dg) eq with inv-RApp {sh = sh} {b = b} eq
+    ... | h₀ , a₀ , refl , eh , ea with inv-RApp {sh = sh} {b = h₀} eh
+    ...   | c₀ , f₁ , refl , ec , ef with inv-RResolved {sh = sh} {b = c₀} ec
+    ...     | refl = d-case (F-d r (proj₂ (proj₁ nc)) df ef) (F-d r (proj₂ nc) dg ea)
+    F-d {sh = sh} r {b = b} nc (d-pair df dg) eq with inv-RApp {sh = sh} {b = b} eq
+    ... | h₀ , a₀ , refl , eh , ea with inv-RApp {sh = sh} {b = h₀} eh
+    ...   | c₀ , f₁ , refl , ec , ef with inv-RResolved {sh = sh} {b = c₀} ec
+    ...     | refl = d-pair (F-d r (proj₂ (proj₁ nc)) df ef) (F-d r (proj₂ nc) dg ea)
+    F-d {sh = sh} r {b = b} nc (d-cata wf dalg) eq with inv-RApp {sh = sh} {b = b} eq
+    ... | f₀ , a₀ , refl , ef , ea with inv-RResolved {sh = sh} {b = f₀} ef
+    ...   | refl = d-cata wf (F-i sr-alg (proj₂ nc) dalg ea)
+
 ------------------------------------------------------------------------
 -- The theorem, in all three judgments.
 ------------------------------------------------------------------------
@@ -691,3 +1247,15 @@ module _ {Γ : NamedCtx} {x : String} {A : Type} {e : RawExpr} {s : PolyType} {g
   unfoldᵈ : ∀ {b A′ π B Ψ} → NC e b → defineNamedCtx Γ x s e ⊢ᵈ b ∶ A′ ⇒[ π ]↦ B ⨾ Ψ
           → Γ ⊢ᵈ sub false b ∶ A′ ⇒[ π ]↦ B ⨾ Ψ
   unfoldᵈ = U.S-d r₀
+
+  -- Folding: the unfolded term types only if the name did. Together with
+  -- `unfold`, a definition and its definiens are interchangeable (§0).
+  foldᵢ : ∀ {b B Ψ} → NC e b → Γ ⊢ᵢ sub false b ∶ B ⨾ Ψ → defineNamedCtx Γ x s e ⊢ᵢ b ∶ B ⨾ Ψ
+  foldᵢ nc d = U.F-i r₀ nc d refl
+
+  foldᶜ : ∀ {b B Ψ} → NC e b → Γ ⊢ᶜ sub false b ∶ B ⨾ Ψ → defineNamedCtx Γ x s e ⊢ᶜ b ∶ B ⨾ Ψ
+  foldᶜ nc d = U.F-c r₀ nc d refl
+
+  foldᵈ : ∀ {b A′ π B Ψ} → NC e b → Γ ⊢ᵈ sub false b ∶ A′ ⇒[ π ]↦ B ⨾ Ψ
+        → defineNamedCtx Γ x s e ⊢ᵈ b ∶ A′ ⇒[ π ]↦ B ⨾ Ψ
+  foldᵈ nc d = U.F-d r₀ nc d refl
