@@ -35,11 +35,12 @@ open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Metatheory.SubjectReduction
   using ( sr; gen-⌜Π⌝; gen-⌜Σ⌝; gen-⌜Hom⌝; gen-⌜Id⌝; gen-⌜IMu⌝; gen-nsuc
         ; ren-ty; sub-ty; sub-lemma; ⊢wk; ⊢single; ⊢[]; ⊢-cast; Sub⊢
-        ; wk-cancel; wk-cancel-tm; ⟶ᵀ*-sub'; iinst-wf )
+        ; wk-cancel; wk-cancel-tm; ⟶ᵀ*-sub'; iinst-wf; conv-ctxᵀ
+        ; dσ-step; dρ-step )
 open import DirectedHoTT.Metatheory.SubjectReductionBase using ( ≅ᵀ-sub )
 open import DirectedHoTT.Metatheory.TySub using ( ≅ᵀ-ren )
 open import DirectedHoTT.Metatheory.RedCong
-  using ( _⟶ᵀ*_; doneᵀ; stepᵀ; red→≅ᵀ )
+  using ( _⟶ᵀ*_; doneᵀ; stepᵀ; red→≅ᵀ; ⟶-ren )
 open import DirectedHoTT.Metatheory.Injectivity
   using ( church-rosserᵀ; Π-reduct; Σ-reduct; ΠRed; ΣRed; mkΠRed; mkΣRed )
 
@@ -51,24 +52,7 @@ private
 -- 0. Small pieces.
 ------------------------------------------------------------------------
 
--- `⌜Mu⌝` has no inversion lemma yet — `sr` never needed one (it has no
--- reduction rule).  `El-⌜Mu⌝` does.
-gen-⌜Mu⌝ : {D : Desc} {C : RTy ⌊ Γ ⌋} → Γ ⊢ ⌜Mu⌝ D ∷ C → DescWf D × (C ≅ᵀ U)
-gen-⌜Mu⌝ (⊢⌜Mu⌝ w)   = w , crflᵀ
-gen-⌜Mu⌝ (⊢conv d c) with gen-⌜Mu⌝ d
-... | w , c' = w , ctrnᵀ (csymᵀ c) c'
-
--- the `⊢ty` twin of `conv-ctx`: convert the LAST context entry.
-conv-ctxᵀ : {A A' : RTy ⌊ Γ ⌋} → A ≅ᵀ A' →
-            {B : RTy (⌊ Γ ⌋ ∙)} → (Γ ▹ A) ⊢ty B → (Γ ▹ A') ⊢ty B
-conv-ctxᵀ {Γ} {A} {A'} c {B} d =
-  subst (λ Z → (Γ ▹ A') ⊢ty Z) (subTy-id B) (sub-ty d idₛ⊢)
-  where
-  idₛ⊢ : Sub⊢ (Γ ▹ A) (Γ ▹ A') idₛ
-  idₛ⊢ here =
-    ⊢-cast (sym (subTy-id (renTy vs A))) (⊢conv (⊢var here) (csymᵀ (≅ᵀ-ren vs c)))
-  idₛ⊢ (there {A = A₀} v) =
-    ⊢-cast (sym (subTy-id (renTy vs A₀))) (⊢var (there v))
+-- (`conv-ctxᵀ`, the `⊢ty` twin of `conv-ctx`, lives in `TySub`.)
 
 -- applying a weakened term to the fresh variable undoes the weakening in
 -- the codomain: `B[vz/vz]` after `extR vs`.
@@ -96,10 +80,9 @@ srᵀ (ty-El dc) (El-⌜Id⌝ c a b) with gen-⌜Id⌝ dc
 ... | dc' , (da , (db , _)) = ty-Id (ty-El dc') da db
 srᵀ (ty-El dc) El-⌜Nat⌝  = ty-Nat
 srᵀ (ty-El dc) El-⌜Unit⌝ = ty-Unit
-srᵀ (ty-El dc) El-⌜Mu⌝ with gen-⌜Mu⌝ dc
-... | w , _ = ty-Mu w
 srᵀ (ty-El dc) El-⌜IMu⌝ with gen-⌜IMu⌝ dc
-... | w , (di , _) = ty-IMu w di
+... | dI , (dD , (di , _)) = ty-IMu dI dD di
+srᵀ (ty-El dc) El-⌜Fin⌝ = ty-Fin
 srᵀ (ty-El dc) (ξ-El r) = ty-El (sr dc r)
 -- congruences
 srᵀ (ty-Π dA dB) (ξ-Πˡ r) = ty-Π (srᵀ dA r) (conv-ctxᵀ (credᵀ r) dB)
@@ -127,7 +110,27 @@ srᵀ (ty-Id dA dt du) (ξ-Idᵀ r) =
   ty-Id (srᵀ dA r) (⊢conv dt (credᵀ r)) (⊢conv du (credᵀ r))
 srᵀ (ty-Id dA dt du) (ξ-Idˡ r) = ty-Id dA (sr dt r) du
 srᵀ (ty-Id dA dt du) (ξ-Idʳ r) = ty-Id dA dt (sr du r)
-srᵀ (ty-IMu w di) (ξ-IMu r) = ty-IMu w (sr di r)
+-- ★★ the levitated families: the hypotheses' type computes on the
+--   telescope (the payload steps are `sr`'s), the slots step under
+--   conversion.
+srᵀ (ty-DIh dD dM dC di dp) (DIh-ι D M j p) = ty-Unit
+srᵀ (ty-DIh dD dM dC di dp) (DIh-σ D M S f p) with dσ-step dC dp
+... | dC' , dsnd = ty-DIh dD dM dC' di dsnd
+srᵀ (ty-DIh dD dM dC di dp) (DIh-ρ D M j C p) with dρ-step dC dp
+... | dj , (dC' , (dfst , dsnd)) =
+      ty-Σ (iinst-wf M j (fst p) dj dfst dM) (ren-ty (ty-DIh dD dM dC' di dsnd) there)
+srᵀ (ty-IMu dI dD di) (ξ-IMuᴵ r) =
+  ty-IMu (sr dI r) (⊢conv dD (credᵀ (ξ-Desc r))) (⊢conv di (credᵀ (ξ-El r)))
+srᵀ (ty-IMu dI dD di) (ξ-IMuᴰ r) = ty-IMu dI (sr dD r) di
+srᵀ (ty-IMu dI dD di) (ξ-IMuⁱ r) = ty-IMu dI dD (sr di r)
+srᵀ (ty-Desc dI) (ξ-Desc r) = ty-Desc (sr dI r)
+srᵀ (ty-DIh dD dM dC di dp) (ξ-DIhᴰ r) =
+  ty-DIh (sr dD r) (conv-ctxᵀ (credᵀ (ξ-IMuᴰ (⟶-ren vs r))) dM) dC di
+         (⊢conv dp (credᵀ (ξ-El (ξ-dpayᴰ r))))
+srᵀ (ty-DIh dD dM dC di dp) (ξ-DIhᴹ r) = ty-DIh dD (srᵀ dM r) dC di dp
+srᵀ (ty-DIh dD dM dC di dp) (ξ-DIhᶜ r) =
+  ty-DIh dD dM (sr dC r) di (⊢conv dp (credᵀ (ξ-El (ξ-dpayᶜ r))))
+srᵀ (ty-DIh dD dM dC di dp) (ξ-DIhᵖ r) = ty-DIh dD dM dC di (sr dp r)
 
 srᵀ* : {A B : RTy ⌊ Γ ⌋} → Γ ⊢ty A → A ⟶ᵀ* B → Γ ⊢ty B
 srᵀ* d doneᵀ       = d
@@ -231,8 +234,8 @@ validity wΓ (⊢ap {cB = cB} {b = b} {t = t} {u = u} dcA fl dcB db dt du dp) =
   at {s} ds = ⊢-cast (cong El (wk-cancel-tm s cB)) (⊢[] db ds)
 validity wΓ (⊢⌜Id⌝ dc da db) = exact ty-U
 validity wΓ ⊢⌜Nat⌝ = exact ty-U
-validity wΓ (⊢⌜Mu⌝ w) = exact ty-U
-validity wΓ (⊢⌜IMu⌝ w di) = exact ty-U
+validity wΓ (⊢⌜IMu⌝ dI dD di) = exact ty-U
+validity wΓ ⊢⌜Fin⌝ = exact ty-U
 validity wΓ ⊢⌜Unit⌝ = exact ty-U
 validity wΓ (⊢idrefl dc dt) = exact (ty-Id (ty-El dc) dt dt)
 validity wΓ (⊢jsub dd dt du dp de) = exact (ty-El (⊢[] dd du))
@@ -240,10 +243,18 @@ validity wΓ ⊢unit = exact ty-Unit
 validity wΓ ⊢nzero = exact ty-Nat
 validity wΓ (⊢nsuc dn) = exact ty-Nat
 validity wΓ (⊢natrec dM dz ds dn) = exact (sub-ty dM (⊢single dn))
-validity wΓ (⊢con w k dp) = exact (ty-Mu w)
-validity wΓ (⊢elim w dM dms dt) = exact (sub-ty dM (⊢single dt))
-validity wΓ (⊢icon w k di dp) = exact (ty-IMu w di)
-validity wΓ (⊢ielim {D = D} {I = I} {M = M} {i = i} {t = t} w dM di dms dt) =
-  exact (iinst-wf D I M i t di dt dM)
+-- ★★ the levitated families: every telescope former types its index code
+validity wΓ (⊢dι dI dj) = exact (ty-Desc dI)
+validity wΓ (⊢dσ dI dS df) = exact (ty-Desc dI)
+validity wΓ (⊢dρ dI dj dC) = exact (ty-Desc dI)
+validity wΓ (⊢dpay dI dD dC di) = exact ty-U
+validity wΓ (⊢con dI dD di dp) = exact (ty-IMu dI dD di)
+validity wΓ (⊢dih dD dM de dC di dp) = exact (ty-DIh dD dM dC di dp)
+validity wΓ (⊢ielim {M = M} {i = i} {t = t} dD dM de di dt) = exact (iinst-wf M i t di dt dM)
+validity wΓ ⊢fzero = exact ty-Fin
+validity wΓ (⊢fsuc dt) = exact ty-Fin
+validity wΓ (⊢fcase dP dt da db) = exact (sub-ty dP (⊢single dt))
+validity wΓ (⊢fcase0 dP dt) = exact (sub-ty dP (⊢single dt))
+validity wΓ (⊢psplit dP dq db) = exact (sub-ty dP (⊢single dq))
 validity wΓ (⊢conv d c) with validity wΓ d
 ... | wf A' c' dA' = wf A' (ctrnᵀ (csymᵀ c) c') dA'
