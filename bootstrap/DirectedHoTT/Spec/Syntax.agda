@@ -169,15 +169,16 @@ data RTm where
   --                     motive lives in the derivation (the ⊢natrec pattern).
   con   : ∀ {Γ} → RTm Γ → RTm Γ
   ielim : ∀ {Γ} → RTm Γ → RTm Γ → RTm Γ → RTm Γ → RTm Γ
-  -- ★ telescopes: end at index `j` / a field of code `S` then the rest as
-  --   a FUNCTION of it / a recursive field at index `j`.  Strict
+  -- ★ telescopes (D074, FIBRED — a family's description is a FUNCTION of
+  --   the index, `D : Π (El I) (Desc I)`): end / a field of code `S` then
+  --   the rest as a FUNCTION of it / a recursive field at index `j`.  Strict
   --   positivity is the GRAMMAR: `dρ` names an index, never a family.
-  dι    : ∀ {Γ} → RTm Γ → RTm Γ
+  dι    : ∀ {Γ} → RTm Γ
   dσ    : ∀ {Γ} → RTm Γ → RTm Γ → RTm Γ
   dρ    : ∀ {Γ} → RTm Γ → RTm Γ → RTm Γ
-  -- ★ the payload CODE of telescope `C` at index `i`, recursion into
-  --   `IMu I D` (`dpay I D C i`), and the IH tuple (`dih D e C p`).
-  dpay  : ∀ {Γ} → RTm Γ → RTm Γ → RTm Γ → RTm Γ → RTm Γ
+  -- ★ the payload CODE of telescope `C`, recursion into `IMu I D`
+  --   (`dpay I D C`), and the IH tuple (`dih D e C p`).
+  dpay  : ∀ {Γ} → RTm Γ → RTm Γ → RTm Γ → RTm Γ
   dih   : ∀ {Γ} → RTm Γ → RTm Γ → RTm Γ → RTm Γ → RTm Γ
   -- ★ tags: `fzero`, `fsuc`, the case split of Fin (n+1) ≅ 1 + Fin n
   --   (motive in the derivation), and the elimination of the empty Fin 0.
@@ -271,10 +272,10 @@ renTm ρ (⌜IMu⌝ I D i) = ⌜IMu⌝ (renTm ρ I) (renTm ρ D) (renTm ρ i)
 renTm ρ (⌜Fin⌝ n) = ⌜Fin⌝ n
 renTm ρ (con p) = con (renTm ρ p)
 renTm ρ (ielim D i e t) = ielim (renTm ρ D) (renTm ρ i) (renTm ρ e) (renTm ρ t)
-renTm ρ (dι j) = dι (renTm ρ j)
+renTm ρ dι = dι
 renTm ρ (dσ S f) = dσ (renTm ρ S) (renTm ρ f)
 renTm ρ (dρ j C) = dρ (renTm ρ j) (renTm ρ C)
-renTm ρ (dpay I D C i) = dpay (renTm ρ I) (renTm ρ D) (renTm ρ C) (renTm ρ i)
+renTm ρ (dpay I D C) = dpay (renTm ρ I) (renTm ρ D) (renTm ρ C)
 renTm ρ (dih D e C p) = dih (renTm ρ D) (renTm ρ e) (renTm ρ C) (renTm ρ p)
 renTm ρ fzero = fzero
 renTm ρ (fsuc t) = fsuc (renTm ρ t)
@@ -338,10 +339,10 @@ subTm σ (⌜IMu⌝ I D i) = ⌜IMu⌝ (subTm σ I) (subTm σ D) (subTm σ i)
 subTm σ (⌜Fin⌝ n) = ⌜Fin⌝ n
 subTm σ (con p) = con (subTm σ p)
 subTm σ (ielim D i e t) = ielim (subTm σ D) (subTm σ i) (subTm σ e) (subTm σ t)
-subTm σ (dι j) = dι (subTm σ j)
+subTm σ dι = dι
 subTm σ (dσ S f) = dσ (subTm σ S) (subTm σ f)
 subTm σ (dρ j C) = dρ (subTm σ j) (subTm σ C)
-subTm σ (dpay I D C i) = dpay (subTm σ I) (subTm σ D) (subTm σ C) (subTm σ i)
+subTm σ (dpay I D C) = dpay (subTm σ I) (subTm σ D) (subTm σ C)
 subTm σ (dih D e C p) = dih (subTm σ D) (subTm σ e) (subTm σ C) (subTm σ p)
 subTm σ fzero = fzero
 subTm σ (fsuc t) = fsuc (subTm σ t)
@@ -496,14 +497,14 @@ renTm-cong h (con p) =
   cong con (renTm-cong h p)
 renTm-cong h (ielim D i e t) =
   cong₄ ielim (renTm-cong h D) (renTm-cong h i) (renTm-cong h e) (renTm-cong h t)
-renTm-cong h (dι j) =
-  cong dι (renTm-cong h j)
+renTm-cong h dι =
+  refl
 renTm-cong h (dσ S f) =
   cong₂ dσ (renTm-cong h S) (renTm-cong h f)
 renTm-cong h (dρ j C) =
   cong₂ dρ (renTm-cong h j) (renTm-cong h C)
-renTm-cong h (dpay I D C i) =
-  cong₄ dpay (renTm-cong h I) (renTm-cong h D) (renTm-cong h C) (renTm-cong h i)
+renTm-cong h (dpay I D C) =
+  cong₃ dpay (renTm-cong h I) (renTm-cong h D) (renTm-cong h C)
 renTm-cong h (dih D e C p) =
   cong₄ dih (renTm-cong h D) (renTm-cong h e) (renTm-cong h C) (renTm-cong h p)
 renTm-cong h fzero =
@@ -583,14 +584,14 @@ subTm-cong h (con p) =
   cong con (subTm-cong h p)
 subTm-cong h (ielim D i e t) =
   cong₄ ielim (subTm-cong h D) (subTm-cong h i) (subTm-cong h e) (subTm-cong h t)
-subTm-cong h (dι j) =
-  cong dι (subTm-cong h j)
+subTm-cong h dι =
+  refl
 subTm-cong h (dσ S f) =
   cong₂ dσ (subTm-cong h S) (subTm-cong h f)
 subTm-cong h (dρ j C) =
   cong₂ dρ (subTm-cong h j) (subTm-cong h C)
-subTm-cong h (dpay I D C i) =
-  cong₄ dpay (subTm-cong h I) (subTm-cong h D) (subTm-cong h C) (subTm-cong h i)
+subTm-cong h (dpay I D C) =
+  cong₃ dpay (subTm-cong h I) (subTm-cong h D) (subTm-cong h C)
 subTm-cong h (dih D e C p) =
   cong₄ dih (subTm-cong h D) (subTm-cong h e) (subTm-cong h C) (subTm-cong h p)
 subTm-cong h fzero =
@@ -679,14 +680,14 @@ renTm-renTm {ρ' = ρ'} {ρ} (con p) =
   cong con (renTm-renTm p)
 renTm-renTm {ρ' = ρ'} {ρ} (ielim D i e t) =
   cong₄ ielim (renTm-renTm D) (renTm-renTm i) (renTm-renTm e) (renTm-renTm t)
-renTm-renTm {ρ' = ρ'} {ρ} (dι j) =
-  cong dι (renTm-renTm j)
+renTm-renTm {ρ' = ρ'} {ρ} dι =
+  refl
 renTm-renTm {ρ' = ρ'} {ρ} (dσ S f) =
   cong₂ dσ (renTm-renTm S) (renTm-renTm f)
 renTm-renTm {ρ' = ρ'} {ρ} (dρ j C) =
   cong₂ dρ (renTm-renTm j) (renTm-renTm C)
-renTm-renTm {ρ' = ρ'} {ρ} (dpay I D C i) =
-  cong₄ dpay (renTm-renTm I) (renTm-renTm D) (renTm-renTm C) (renTm-renTm i)
+renTm-renTm {ρ' = ρ'} {ρ} (dpay I D C) =
+  cong₃ dpay (renTm-renTm I) (renTm-renTm D) (renTm-renTm C)
 renTm-renTm {ρ' = ρ'} {ρ} (dih D e C p) =
   cong₄ dih (renTm-renTm D) (renTm-renTm e) (renTm-renTm C) (renTm-renTm p)
 renTm-renTm {ρ' = ρ'} {ρ} fzero =
@@ -779,14 +780,14 @@ subTm-renTm {σ = σ} {ρ} (con p) =
   cong con (subTm-renTm p)
 subTm-renTm {σ = σ} {ρ} (ielim D i e t) =
   cong₄ ielim (subTm-renTm D) (subTm-renTm i) (subTm-renTm e) (subTm-renTm t)
-subTm-renTm {σ = σ} {ρ} (dι j) =
-  cong dι (subTm-renTm j)
+subTm-renTm {σ = σ} {ρ} dι =
+  refl
 subTm-renTm {σ = σ} {ρ} (dσ S f) =
   cong₂ dσ (subTm-renTm S) (subTm-renTm f)
 subTm-renTm {σ = σ} {ρ} (dρ j C) =
   cong₂ dρ (subTm-renTm j) (subTm-renTm C)
-subTm-renTm {σ = σ} {ρ} (dpay I D C i) =
-  cong₄ dpay (subTm-renTm I) (subTm-renTm D) (subTm-renTm C) (subTm-renTm i)
+subTm-renTm {σ = σ} {ρ} (dpay I D C) =
+  cong₃ dpay (subTm-renTm I) (subTm-renTm D) (subTm-renTm C)
 subTm-renTm {σ = σ} {ρ} (dih D e C p) =
   cong₄ dih (subTm-renTm D) (subTm-renTm e) (subTm-renTm C) (subTm-renTm p)
 subTm-renTm {σ = σ} {ρ} fzero =
@@ -879,14 +880,14 @@ renTm-subTm {ρ = ρ} {σ} (con p) =
   cong con (renTm-subTm p)
 renTm-subTm {ρ = ρ} {σ} (ielim D i e t) =
   cong₄ ielim (renTm-subTm D) (renTm-subTm i) (renTm-subTm e) (renTm-subTm t)
-renTm-subTm {ρ = ρ} {σ} (dι j) =
-  cong dι (renTm-subTm j)
+renTm-subTm {ρ = ρ} {σ} dι =
+  refl
 renTm-subTm {ρ = ρ} {σ} (dσ S f) =
   cong₂ dσ (renTm-subTm S) (renTm-subTm f)
 renTm-subTm {ρ = ρ} {σ} (dρ j C) =
   cong₂ dρ (renTm-subTm j) (renTm-subTm C)
-renTm-subTm {ρ = ρ} {σ} (dpay I D C i) =
-  cong₄ dpay (renTm-subTm I) (renTm-subTm D) (renTm-subTm C) (renTm-subTm i)
+renTm-subTm {ρ = ρ} {σ} (dpay I D C) =
+  cong₃ dpay (renTm-subTm I) (renTm-subTm D) (renTm-subTm C)
 renTm-subTm {ρ = ρ} {σ} (dih D e C p) =
   cong₄ dih (renTm-subTm D) (renTm-subTm e) (renTm-subTm C) (renTm-subTm p)
 renTm-subTm {ρ = ρ} {σ} fzero =
@@ -979,14 +980,14 @@ subTm-subTm {τ = τ} {σ} (con p) =
   cong con (subTm-subTm p)
 subTm-subTm {τ = τ} {σ} (ielim D i e t) =
   cong₄ ielim (subTm-subTm D) (subTm-subTm i) (subTm-subTm e) (subTm-subTm t)
-subTm-subTm {τ = τ} {σ} (dι j) =
-  cong dι (subTm-subTm j)
+subTm-subTm {τ = τ} {σ} dι =
+  refl
 subTm-subTm {τ = τ} {σ} (dσ S f) =
   cong₂ dσ (subTm-subTm S) (subTm-subTm f)
 subTm-subTm {τ = τ} {σ} (dρ j C) =
   cong₂ dρ (subTm-subTm j) (subTm-subTm C)
-subTm-subTm {τ = τ} {σ} (dpay I D C i) =
-  cong₄ dpay (subTm-subTm I) (subTm-subTm D) (subTm-subTm C) (subTm-subTm i)
+subTm-subTm {τ = τ} {σ} (dpay I D C) =
+  cong₃ dpay (subTm-subTm I) (subTm-subTm D) (subTm-subTm C)
 subTm-subTm {τ = τ} {σ} (dih D e C p) =
   cong₄ dih (subTm-subTm D) (subTm-subTm e) (subTm-subTm C) (subTm-subTm p)
 subTm-subTm {τ = τ} {σ} fzero =
@@ -1071,14 +1072,14 @@ subTm-id (con p) =
   cong con (subTm-id p)
 subTm-id (ielim D i e t) =
   cong₄ ielim (subTm-id D) (subTm-id i) (subTm-id e) (subTm-id t)
-subTm-id (dι j) =
-  cong dι (subTm-id j)
+subTm-id dι =
+  refl
 subTm-id (dσ S f) =
   cong₂ dσ (subTm-id S) (subTm-id f)
 subTm-id (dρ j C) =
   cong₂ dρ (subTm-id j) (subTm-id C)
-subTm-id (dpay I D C i) =
-  cong₄ dpay (subTm-id I) (subTm-id D) (subTm-id C) (subTm-id i)
+subTm-id (dpay I D C) =
+  cong₃ dpay (subTm-id I) (subTm-id D) (subTm-id C)
 subTm-id (dih D e C p) =
   cong₄ dih (subTm-id D) (subTm-id e) (subTm-id C) (subTm-id p)
 subTm-id fzero =

@@ -145,10 +145,10 @@ occTm x (⌜IMu⌝ I D i) = occTm x I ∨ (occTm x D ∨ occTm x i)
 occTm x (⌜Fin⌝ n) = false
 occTm x (con p) = occTm x p
 occTm x (ielim D i m t) = occTm x D ∨ (occTm x i ∨ (occTm x m ∨ occTm x t))
-occTm x (dι j) = occTm x j
+occTm x dι = false
 occTm x (dσ S f) = occTm x S ∨ occTm x f
 occTm x (dρ j C) = occTm x j ∨ occTm x C
-occTm x (dpay I D C i) = occTm x I ∨ (occTm x D ∨ (occTm x C ∨ occTm x i))
+occTm x (dpay I D C) = occTm x I ∨ (occTm x D ∨ occTm x C)
 occTm x (dih D m C p) = occTm x D ∨ (occTm x m ∨ (occTm x C ∨ occTm x p))
 occTm x fzero = false
 occTm x (fsuc t) = occTm x t
@@ -266,13 +266,13 @@ occ-ren-tm h (⌜Fin⌝ n) = refl
 occ-ren-tm h (con p) = occ-ren-tm h p
 occ-ren-tm h (ielim D i m t) =
   ∨-false (occ-ren-tm h D) (∨-false (occ-ren-tm h i) (∨-false (occ-ren-tm h m) (occ-ren-tm h t)))
-occ-ren-tm h (dι j) = occ-ren-tm h j
+occ-ren-tm h dι = refl
 occ-ren-tm h (dσ S f) =
   ∨-false (occ-ren-tm h S) (occ-ren-tm h f)
 occ-ren-tm h (dρ j C) =
   ∨-false (occ-ren-tm h j) (occ-ren-tm h C)
-occ-ren-tm h (dpay I D C i) =
-  ∨-false (occ-ren-tm h I) (∨-false (occ-ren-tm h D) (∨-false (occ-ren-tm h C) (occ-ren-tm h i)))
+occ-ren-tm h (dpay I D C) =
+  ∨-false (occ-ren-tm h I) (∨-false (occ-ren-tm h D) (occ-ren-tm h C))
 occ-ren-tm h (dih D m C p) =
   ∨-false (occ-ren-tm h D) (∨-false (occ-ren-tm h m) (∨-false (occ-ren-tm h C) (occ-ren-tm h p)))
 occ-ren-tm h fzero = refl
@@ -457,13 +457,13 @@ occ-ren-eq h (⌜Fin⌝ n) = refl
 occ-ren-eq h (con p) = occ-ren-eq h p
 occ-ren-eq h (ielim D i m t) =
   cong₂ _∨_ (occ-ren-eq h D) (cong₂ _∨_ (occ-ren-eq h i) (cong₂ _∨_ (occ-ren-eq h m) (occ-ren-eq h t)))
-occ-ren-eq h (dι j) = occ-ren-eq h j
+occ-ren-eq h dι = refl
 occ-ren-eq h (dσ S f) =
   cong₂ _∨_ (occ-ren-eq h S) (occ-ren-eq h f)
 occ-ren-eq h (dρ j C) =
   cong₂ _∨_ (occ-ren-eq h j) (occ-ren-eq h C)
-occ-ren-eq h (dpay I D C i) =
-  cong₂ _∨_ (occ-ren-eq h I) (cong₂ _∨_ (occ-ren-eq h D) (cong₂ _∨_ (occ-ren-eq h C) (occ-ren-eq h i)))
+occ-ren-eq h (dpay I D C) =
+  cong₂ _∨_ (occ-ren-eq h I) (cong₂ _∨_ (occ-ren-eq h D) (occ-ren-eq h C))
 occ-ren-eq h (dih D m C p) =
   cong₂ _∨_ (occ-ren-eq h D) (cong₂ _∨_ (occ-ren-eq h m) (cong₂ _∨_ (occ-ren-eq h C) (occ-ren-eq h p)))
 occ-ren-eq h fzero = refl
@@ -510,13 +510,13 @@ occ-sub h (⌜Fin⌝ n) e = refl
 occ-sub h (con p) e = occ-sub h p e
 occ-sub {x = x} h (ielim D i m t) e =
   ∨-false (occ-sub h D (∨-false₁ (occTm x D) e)) (∨-false (occ-sub h i (∨-false₁ (occTm x i) (∨-false₂ (occTm x D) e))) (∨-false (occ-sub h m (∨-false₁ (occTm x m) (∨-false₂ (occTm x i) (∨-false₂ (occTm x D) e)))) (occ-sub h t (∨-false₂ (occTm x m) (∨-false₂ (occTm x i) (∨-false₂ (occTm x D) e))))))
-occ-sub h (dι j) e = occ-sub h j e
+occ-sub h dι e = refl
 occ-sub {x = x} h (dσ S f) e =
   ∨-false (occ-sub h S (∨-false₁ (occTm x S) e)) (occ-sub h f (∨-false₂ (occTm x S) e))
 occ-sub {x = x} h (dρ j C) e =
   ∨-false (occ-sub h j (∨-false₁ (occTm x j) e)) (occ-sub h C (∨-false₂ (occTm x j) e))
-occ-sub {x = x} h (dpay I D C i) e =
-  ∨-false (occ-sub h I (∨-false₁ (occTm x I) e)) (∨-false (occ-sub h D (∨-false₁ (occTm x D) (∨-false₂ (occTm x I) e))) (∨-false (occ-sub h C (∨-false₁ (occTm x C) (∨-false₂ (occTm x D) (∨-false₂ (occTm x I) e)))) (occ-sub h i (∨-false₂ (occTm x C) (∨-false₂ (occTm x D) (∨-false₂ (occTm x I) e))))))
+occ-sub {x = x} h (dpay I D C) e =
+  ∨-false (occ-sub h I (∨-false₁ (occTm x I) e)) (∨-false (occ-sub h D (∨-false₁ (occTm x D) (∨-false₂ (occTm x I) e))) (occ-sub h C (∨-false₂ (occTm x D) (∨-false₂ (occTm x I) e))))
 occ-sub {x = x} h (dih D m C p) e =
   ∨-false (occ-sub h D (∨-false₁ (occTm x D) e)) (∨-false (occ-sub h m (∨-false₁ (occTm x m) (∨-false₂ (occTm x D) e))) (∨-false (occ-sub h C (∨-false₁ (occTm x C) (∨-false₂ (occTm x m) (∨-false₂ (occTm x D) e)))) (occ-sub h p (∨-false₂ (occTm x C) (∨-false₂ (occTm x m) (∨-false₂ (occTm x D) e))))))
 occ-sub h fzero e = refl
@@ -610,10 +610,10 @@ occ-sub' h (⌜IMu⌝ I D i) = ∨-false (occ-sub' h I) (∨-false (occ-sub' h D
 occ-sub' h (⌜Fin⌝ n) = refl
 occ-sub' h (con p) = occ-sub' h p
 occ-sub' h (ielim D i m t) = ∨-false (occ-sub' h D) (∨-false (occ-sub' h i) (∨-false (occ-sub' h m) (occ-sub' h t)))
-occ-sub' h (dι j) = occ-sub' h j
+occ-sub' h dι = refl
 occ-sub' h (dσ S f) = ∨-false (occ-sub' h S) (occ-sub' h f)
 occ-sub' h (dρ j C) = ∨-false (occ-sub' h j) (occ-sub' h C)
-occ-sub' h (dpay I D C i) = ∨-false (occ-sub' h I) (∨-false (occ-sub' h D) (∨-false (occ-sub' h C) (occ-sub' h i)))
+occ-sub' h (dpay I D C) = ∨-false (occ-sub' h I) (∨-false (occ-sub' h D) (occ-sub' h C))
 occ-sub' h (dih D m C p) = ∨-false (occ-sub' h D) (∨-false (occ-sub' h m) (∨-false (occ-sub' h C) (occ-sub' h p)))
 occ-sub' h fzero = refl
 occ-sub' h (fsuc t) = occ-sub' h t
@@ -664,14 +664,13 @@ subTm-occ (con p) h =
   cong con (subTm-occ p h)
 subTm-occ (ielim D i m t) h =
   cong₄ ielim (subTm-occ D (λ x o → h x (∨-inl o))) (subTm-occ i (λ x o → h x (∨-inr (occTm x D) (∨-inl o)))) (subTm-occ m (λ x o → h x (∨-inr (occTm x D) (∨-inr (occTm x i) (∨-inl o))))) (subTm-occ t (λ x o → h x (∨-inr (occTm x D) (∨-inr (occTm x i) (∨-inr (occTm x m) o)))))
-subTm-occ (dι j) h =
-  cong dι (subTm-occ j h)
+subTm-occ dι h = refl
 subTm-occ (dσ S f) h =
   cong₂ dσ (subTm-occ S (λ x o → h x (∨-inl o))) (subTm-occ f (λ x o → h x (∨-inr (occTm x S) o)))
 subTm-occ (dρ j C) h =
   cong₂ dρ (subTm-occ j (λ x o → h x (∨-inl o))) (subTm-occ C (λ x o → h x (∨-inr (occTm x j) o)))
-subTm-occ (dpay I D C i) h =
-  cong₄ dpay (subTm-occ I (λ x o → h x (∨-inl o))) (subTm-occ D (λ x o → h x (∨-inr (occTm x I) (∨-inl o)))) (subTm-occ C (λ x o → h x (∨-inr (occTm x I) (∨-inr (occTm x D) (∨-inl o))))) (subTm-occ i (λ x o → h x (∨-inr (occTm x I) (∨-inr (occTm x D) (∨-inr (occTm x C) o)))))
+subTm-occ (dpay I D C) h =
+  cong₃ dpay (subTm-occ I (λ x o → h x (∨-inl o))) (subTm-occ D (λ x o → h x (∨-inr (occTm x I) (∨-inl o)))) (subTm-occ C (λ x o → h x (∨-inr (occTm x I) (∨-inr (occTm x D) o))))
 subTm-occ (dih D m C p) h =
   cong₄ dih (subTm-occ D (λ x o → h x (∨-inl o))) (subTm-occ m (λ x o → h x (∨-inr (occTm x D) (∨-inl o)))) (subTm-occ C (λ x o → h x (∨-inr (occTm x D) (∨-inr (occTm x m) (∨-inl o))))) (subTm-occ p (λ x o → h x (∨-inr (occTm x D) (∨-inr (occTm x m) (∨-inr (occTm x C) o)))))
 subTm-occ fzero h = refl
@@ -1023,10 +1022,10 @@ stkA?-ren ρ (⌜IMu⌝ I D i) = refl
 stkA?-ren ρ (⌜Fin⌝ n) = refl
 stkA?-ren ρ (con p) = refl
 stkA?-ren ρ (ielim D i m t) = refl
-stkA?-ren ρ (dι j) = refl
+stkA?-ren ρ dι = refl
 stkA?-ren ρ (dσ S f) = refl
 stkA?-ren ρ (dρ j C) = refl
-stkA?-ren ρ (dpay I D C i) = refl
+stkA?-ren ρ (dpay I D C) = refl
 stkA?-ren ρ (dih D m C p) = refl
 stkA?-ren ρ fzero = refl
 stkA?-ren ρ (fsuc t) = refl
@@ -1146,10 +1145,10 @@ pw?-ren ρ (⌜IMu⌝ I D i) = refl
 pw?-ren ρ (⌜Fin⌝ n) = refl
 pw?-ren ρ (con p) = refl
 pw?-ren ρ (ielim D i m t) = refl
-pw?-ren ρ (dι j) = refl
+pw?-ren ρ dι = refl
 pw?-ren ρ (dσ S f) = refl
 pw?-ren ρ (dρ j C) = refl
-pw?-ren ρ (dpay I D C i) = refl
+pw?-ren ρ (dpay I D C) = refl
 pw?-ren ρ (dih D m C p) = refl
 pw?-ren ρ fzero = refl
 pw?-ren ρ (fsuc t) = refl
@@ -1186,10 +1185,10 @@ stkC?-ren ρ (⌜IMu⌝ I D i) = refl
 stkC?-ren ρ (⌜Fin⌝ n) = refl
 stkC?-ren ρ (con p) = refl
 stkC?-ren ρ (ielim D i m t) = refl
-stkC?-ren ρ (dι j) = refl
+stkC?-ren ρ dι = refl
 stkC?-ren ρ (dσ S f) = refl
 stkC?-ren ρ (dρ j C) = refl
-stkC?-ren ρ (dpay I D C i) = refl
+stkC?-ren ρ (dpay I D C) = refl
 stkC?-ren ρ (dih D m C p) = refl
 stkC?-ren ρ fzero = refl
 stkC?-ren ρ (fsuc t) = refl
@@ -1255,10 +1254,10 @@ flat?-ren ρ (⌜IMu⌝ I D i) = refl
 flat?-ren ρ (⌜Fin⌝ n) = refl
 flat?-ren ρ (con p) = refl
 flat?-ren ρ (ielim D i m t) = refl
-flat?-ren ρ (dι j) = refl
+flat?-ren ρ dι = refl
 flat?-ren ρ (dσ S f) = refl
 flat?-ren ρ (dρ j C) = refl
-flat?-ren ρ (dpay I D C i) = refl
+flat?-ren ρ (dpay I D C) = refl
 flat?-ren ρ (dih D m C p) = refl
 flat?-ren ρ fzero = refl
 flat?-ren ρ (fsuc t) = refl
@@ -1572,14 +1571,14 @@ ren-as-sub ρ (con p) =
   cong con (ren-as-sub ρ p)
 ren-as-sub ρ (ielim D i m t) =
   cong₄ ielim (ren-as-sub ρ D) (ren-as-sub ρ i) (ren-as-sub ρ m) (ren-as-sub ρ t)
-ren-as-sub ρ (dι j) =
-  cong dι (ren-as-sub ρ j)
+ren-as-sub ρ dι =
+  refl
 ren-as-sub ρ (dσ S f) =
   cong₂ dσ (ren-as-sub ρ S) (ren-as-sub ρ f)
 ren-as-sub ρ (dρ j C) =
   cong₂ dρ (ren-as-sub ρ j) (ren-as-sub ρ C)
-ren-as-sub ρ (dpay I D C i) =
-  cong₄ dpay (ren-as-sub ρ I) (ren-as-sub ρ D) (ren-as-sub ρ C) (ren-as-sub ρ i)
+ren-as-sub ρ (dpay I D C) =
+  cong₃ dpay (ren-as-sub ρ I) (ren-as-sub ρ D) (ren-as-sub ρ C)
 ren-as-sub ρ (dih D m C p) =
   cong₄ dih (ren-as-sub ρ D) (ren-as-sub ρ m) (ren-as-sub ρ C) (ren-as-sub ρ p)
 ren-as-sub ρ fzero =
