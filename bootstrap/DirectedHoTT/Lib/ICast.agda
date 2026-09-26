@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------
 -- OCP-0009 · LIB — THE CONVERSIONS EVERY JUDGEMENT ROW NEEDS.
 --
--- A judgement is encoded as an `IDesc` whose rows are Forded: each index
+-- A judgement is encoded as a description whose rows are Forded: each index
 -- component gets an `iκ (⌜Id⌝ …)` field.  ⚠ THE FIELDS ARE **CODES**, so
 -- everything inhabiting one is typed at `El <code>`, while the things
 -- actually built — a `Ctx`, a `Var`, an `RTy` — are typed at `IMu …`.
@@ -29,23 +29,23 @@
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Lib.ICast where
 open import DirectedHoTT.Spec.Syntax
-  using ( Cx; RTm; RTy; IDesc; IMu; El; ⌜Nat⌝; ⌜Id⌝; ⌜IMu⌝ )
+  using ( Cx; RTm; RTy; IMu; El; ⌜Nat⌝; ⌜Id⌝; ⌜IMu⌝ )
 open import DirectedHoTT.Spec.Typing
   using ( Ctx; ⌊_⌋; _⊢_∷_; ⊢conv; _⟶_; _⟶*_
-        ; csymᵀ; credᵀ; El-⌜IMu⌝; ξ-IMu )
+        ; csymᵀ; credᵀ; El-⌜IMu⌝; ξ-IMuⁱ )
 open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; ⟶ᵀ*-IMu )
 open import DirectedHoTT.Lib.ArithComm using ( IdN; elIdN )
 open import normalizer.Syntax.Types using ( _≡_; refl )
 
--- ★ THE DESCRIPTION AND ITS INDEX TYPE ARE IMPLICIT, and that is the
+-- ★ THE DESCRIPTION AND ITS INDEX CODE ARE IMPLICIT, and that is the
 --   whole point: one pair of conversions for `KnotD`, `CtxD`, and every
 --   judgement description that comes later.
-toMu : {Γ : Ctx} {D : IDesc} {I : RTy Cx.ε} {i t : RTm ⌊ Γ ⌋} →
-       Γ ⊢ t ∷ IMu D I i → Γ ⊢ t ∷ El (⌜IMu⌝ D I i)
+toMu : {Γ : Ctx} {I D i t : RTm ⌊ Γ ⌋} →
+       Γ ⊢ t ∷ IMu I D i → Γ ⊢ t ∷ El (⌜IMu⌝ I D i)
 toMu d = ⊢conv d (csymᵀ (credᵀ El-⌜IMu⌝))
 
-fromMu : {Γ : Ctx} {D : IDesc} {I : RTy Cx.ε} {i t : RTm ⌊ Γ ⌋} →
-         Γ ⊢ t ∷ El (⌜IMu⌝ D I i) → Γ ⊢ t ∷ IMu D I i
+fromMu : {Γ : Ctx} {I D i t : RTm ⌊ Γ ⌋} →
+         Γ ⊢ t ∷ El (⌜IMu⌝ I D i) → Γ ⊢ t ∷ IMu I D i
 fromMu d = ⊢conv d (credᵀ El-⌜IMu⌝)
 
 -- a DEPTH ford's inhabitant, read as the `Id` it is
@@ -56,9 +56,9 @@ fordAs {a = a} {b = b} d = ⊢conv d (elIdN a b)
 -- ★ a value built at one index, retyped at an index it REDUCES to.
 --   `wkK`'s result index is `sh (pair sTy m)` where the ford wants
 --   `pair sTy (nsuc m)` — two β-steps, the same two every time.
-muFwd : {Γ : Ctx} {D : IDesc} {I : RTy Cx.ε} {i i' t : RTm ⌊ Γ ⌋} →
-        i ⟶ i' → Γ ⊢ t ∷ IMu D I i → Γ ⊢ t ∷ IMu D I i'
-muFwd r d = ⊢conv d (credᵀ (ξ-IMu r))
+muFwd : {Γ : Ctx} {I D i i' t : RTm ⌊ Γ ⌋} →
+        i ⟶ i' → Γ ⊢ t ∷ IMu I D i → Γ ⊢ t ∷ IMu I D i'
+muFwd r d = ⊢conv d (credᵀ (ξ-IMuⁱ r))
 
 ------------------------------------------------------------------------
 -- ★ THE SAME MOVE ALONG A REDUCTION SEQUENCE, BOTH WAYS.
@@ -75,8 +75,8 @@ muFwd r d = ⊢conv d (credᵀ (ξ-IMu r))
 --   flagged it.  Symmetry is not a reason to ship a lemma.
 ------------------------------------------------------------------------
 
-muBwd* : {Γ : Ctx} {D : IDesc} {I : RTy Cx.ε} {i i' t : RTm ⌊ Γ ⌋} →
-         i ⟶* i' → Γ ⊢ t ∷ IMu D I i' → Γ ⊢ t ∷ IMu D I i
+muBwd* : {Γ : Ctx} {I D i i' t : RTm ⌊ Γ ⌋} →
+         i ⟶* i' → Γ ⊢ t ∷ IMu I D i' → Γ ⊢ t ∷ IMu I D i
 muBwd* r d = ⊢conv d (csymᵀ (red→≅ᵀ (⟶ᵀ*-IMu r)))
 
 ------------------------------------------------------------------------

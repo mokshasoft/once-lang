@@ -1,9 +1,12 @@
 ------------------------------------------------------------------------
 -- OCP-0009 · LIB — ★★★ THE HEAD REDUCTION OF AN `ielim`, ONCE.
 --
---     ihead-red : sel k ms ⟶* mth →
---                 app (app (app mth i) p) (iihs D ms (isingle i) C p) ⟶* u →
---                 ielim D i ms (icon k p) ⟶* u
+--     ihead-red : Nth ms k m →
+--                 app (app (app m i) p) (dih D (methₗ ms) D (tag k , p)) ⟶* u →
+--                 ielim D i (methₗ ms) (conₗ k p) ⟶* u
+--
+-- ★★ LEVITATION: the head step is `Lib/Sugar.ιₗ` — ι, two β, the split,
+--   the tag selection — and the IH is the kernel's `dih`, not a tuple.
 --
 -- ★★★ EVERY ADEQUACY PROOF IN THE TREE STARTS WITH THIS STEP, AND EACH
 --   ONE HAD WRITTEN IT OUT AGAIN.  Before this module there were exactly
@@ -40,34 +43,26 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Lib.IHeadRed where
-
 open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
-open import DirectedHoTT.Spec.Syntax
-  using ( Cx; ε; _∙; RTm; IDesc; ICon; icon; ielim; sel; app; iihs; isingle
-        ; ilookupD )
-open import DirectedHoTT.Spec.Typing
-  using ( _⟶*_; _⟶_; step; done; ι-ielim )
+open import DirectedHoTT.Spec.Syntax using ( Cx; RTm; ielim; app; dih; pair )
+open import DirectedHoTT.Spec.Typing using ( _⟶*_ )
 -- ⚠ `_»_` is NOT imported: it is a LOCAL infix alias for `⟶*-trans`,
 --   redefined in 10+ Knot modules.  A library lemma must not depend
 --   on a notation its clients happen to have spelled out.
-open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-appˡ; ⟶*-trans )
+open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-trans )
+open import DirectedHoTT.Lib.Sugar using ( Cons; Nth; methₗ; conₗ; tag; ιₗ )
 
-private variable Γ : Cx
+private variable
+  Γ : Cx
+  c : ℕ
 
 -- ★ `D`, `ms`, `k`, `i`, `p` are EXPLICIT: every call site names them
 --   anyway, and leaving them implicit makes the metas depend on the
---   client's `iihs` argument, which is exactly the position
+--   client's continuation, which is exactly the position
 --   `pin-implicits-on-defined-set-types` warns about.
--- ⚠ THE `ICon` IS NOT FREE: `ι-ielim` hands back `ilookupD D k`, so the
---   row's constructor is DETERMINED by `D` and `k`.  Taking it as a
---   parameter type-checks the signature and then fails at the body —
---   the lemma has one shape, not a family of them.
-ihead-red : (D : IDesc) (ms : RTm Γ) (k : ℕ) {mth : RTm Γ}
+ihead-red : (D : RTm Γ) (ms : Cons Γ c) (k : ℕ) {m : RTm Γ}
             (i p : RTm Γ) {u : RTm Γ} →
-            sel k ms ⟶* mth →
-            app (app (app mth i) p) (iihs D ms (isingle i) (ilookupD D k) p)
-              ⟶* u →
-            ielim D i ms (icon k p) ⟶* u
-ihead-red D ms k i p sel-red h =
-  step (ι-ielim D i ms k p)
-       (⟶*-trans (⟶*-appˡ (⟶*-appˡ (⟶*-appˡ sel-red))) h)
+            Nth ms k m →
+            app (app (app m i) p) (dih D (methₗ ms) D (pair (tag k) p)) ⟶* u →
+            ielim D i (methₗ ms) (conₗ k p) ⟶* u
+ihead-red D ms k i p nt h = ⟶*-trans (ιₗ nt) h

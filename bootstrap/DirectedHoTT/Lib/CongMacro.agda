@@ -45,15 +45,15 @@ open import Agda.Builtin.Bool
 open import Agda.Builtin.Nat using ( Nat; zero; suc )
 open import Agda.Builtin.Maybe
 open import Agda.Builtin.Unit using ( ⊤; tt )
--- ⚠ `lam` is AMBIGUOUS with `Reflection.Term.lam`; rename on import so
+-- ⚠ `lam`/`con` are AMBIGUOUS with `Reflection.Term`'s; rename on import so
 --   `quote` has an unambiguous name to take.
 open import DirectedHoTT.Spec.Syntax
-  using ( app; pair; fst; snd; icon; ielim; nsuc; jsub )
-  renaming ( lam to Rlam )
+  using ( app; pair; fst; snd; ielim; nsuc; jsub; fsuc; psplit )
+  renaming ( lam to Rlam; con to Rcon )
 open import DirectedHoTT.Metatheory.RedCong
   using ( ⟶*-appˡ; ⟶*-appʳ; ⟶*-pairˡ; ⟶*-pairʳ; ⟶*-fst; ⟶*-snd
-        ; ⟶*-lam; ⟶*-icon; ⟶*-nsuc; ⟶*-jsubᵖ
-        ; ⟶*-ielimⁱ; ⟶*-ielimᵐ; ⟶*-ielimᵗ )
+        ; ⟶*-lam; ⟶*-con; ⟶*-nsuc; ⟶*-jsubᵖ; ⟶*-fsuc; ⟶*-psplitᵍ
+        ; ⟶*-ielimᴰ; ⟶*-ielimⁱ; ⟶*-ielimᵉ; ⟶*-ielimᵗ )
 
 ite : {A : Set} → Bool → A → A → A
 ite true  x _ = x
@@ -68,9 +68,8 @@ eqN _       _       = false
 --   congruence that lifts it.  One line per congruence; extending the
 --   macro's coverage is adding a row here.
 --
--- ⚠ VISIBLE index, not the constructor's arity: `icon k p` has `k : ℕ`
---   at 0 so the payload is 1, and `ielim D i ms t` has the description
---   at 0 so the scrutinee is 3.
+-- ⚠ VISIBLE index: `ielim D i e t` has the description at 0 so the
+--   scrutinee is 3; `psplit b q` has the (bound) branch at 0, the pair 1.
 data Entry : Set where
   ent : Name → Nat → Name → Entry
 
@@ -83,11 +82,14 @@ table = ent (quote app)   0 (quote ⟶*-appˡ)
       ∷ ent (quote snd)   0 (quote ⟶*-snd)
       ∷ ent (quote Rlam)  0 (quote ⟶*-lam)
       ∷ ent (quote nsuc)  0 (quote ⟶*-nsuc)
-      ∷ ent (quote icon)  1 (quote ⟶*-icon)
+      ∷ ent (quote Rcon)  0 (quote ⟶*-con)
+      ∷ ent (quote fsuc)  0 (quote ⟶*-fsuc)
       ∷ ent (quote jsub)  1 (quote ⟶*-jsubᵖ)
+      ∷ ent (quote ielim) 0 (quote ⟶*-ielimᴰ)
       ∷ ent (quote ielim) 1 (quote ⟶*-ielimⁱ)
-      ∷ ent (quote ielim) 2 (quote ⟶*-ielimᵐ)
+      ∷ ent (quote ielim) 2 (quote ⟶*-ielimᵉ)
       ∷ ent (quote ielim) 3 (quote ⟶*-ielimᵗ)
+      ∷ ent (quote psplit) 1 (quote ⟶*-psplitᵍ)
       ∷ []
 
 congFor : Name → Nat → Maybe Name
