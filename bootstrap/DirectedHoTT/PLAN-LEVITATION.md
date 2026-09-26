@@ -72,6 +72,20 @@ CongMacro → Vec, Scoped, ScopedDepth → continue stage 4.
 - Tooling lesson: `fixusing.py` now follows `open … public` (it had pruned
   re-exported names — the lint-imports blind spot).
 
+## ★ Stage 5 design — the Knot fibred by SORT (D075, 2026-09-27)
+
+- Index `SortI ⌜Nat⌝ 2`: sort ∈ {Ty, Tm} (a `⌜Fin⌝` code), depth riding.
+  `Var` is the nested `Fin` family (a σ-field `⌜IMu⌝ ⌜Nat⌝ FinD d`); it
+  FORDS its own depth, as `Examples/Scoped`'s `Fin` does. The old
+  Desc/DCon/IDesc/ICon sorts are gone: descriptions are terms (D072).
+- No sort Ford: `Dₛ` presents the fibres (`Lib/Sorted`); methods are typed
+  at `pair (tag s) j` (`Lib/MethAt`, `Lib/TelAt.entₛ`).
+- Stage-4 status: every example is ported except `ScopeHazard`, which waits
+  on the Tel-based `scopeAt`. `Mutual` is the sorted-family exemplar.
+- Before-metrics (commit 1a98d1bf): 201 Knot modules, 74 494 lines,
+  12 474 top-level signatures; 3 854 lines of `Lib/I*`; `gen-knot.py` 7 303
+  lines.
+
 ## Stage 1 — DONE (2026-09-26, branch `ocp-0009-levitation`)
 
 `Spec/Syntax`, `Spec/Typing`, `Spec/Variance`, `Spec/Annotated` (regenerated
