@@ -16,7 +16,7 @@
 --
 --   ⇒ **MUTUALITY NEEDS NO KERNEL CHANGE AT ALL.**  It is an ENCODING:
 --     one description over a TAG-EXTENDED index, `0 = Ty`, `1 = Tm`.
---     Cross-sort references become `iρ` at a CONSTANT index, and each
+--     Cross-sort references become `tρ` at a CONSTANT index, and each
 --     constructor's fixed target is Forded exactly as `Vec`'s is.
 --
 -- ⚠ THIS IS A NEGATIVE RESULT ABOUT SCOPE, and that is its value.  The
@@ -36,366 +36,213 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Mutual where
+open import normalizer.Syntax.Types using ( _,_ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
-open import DirectedHoTT.Spec.Syntax
-  using ( Cx; ε; _∙; Var; vz; vs
-        ; RTy; U; El; Π; Σ'; Unit; Nat; IMu
-        ; RTm; var; lam; app; pair; fst; snd; unit; nzero; nsuc
-        ; ⌜Nat⌝; ⌜Id⌝; idrefl; icon; ielim
-        ; ICon; IDesc; iι; iρ; iκ; inil; _◂_
-        ; ilookupD; _∈ID_; hereID; thereID
-        ; ipayTy; isingle; iext; ifields; sel )
-open import DirectedHoTT.Lib.Nat using ( plusTm; ⊢plus )
-open import DirectedHoTT.Spec.Typing
-  using ( Ctx; ◇; _▹_; ⌊_⌋
-        ; _∋_∷_; here; there
-        ; _⟶_; _⟶*_; done; step
-        ; β; βfst; βsnd; ξ-appˡ; ξ-fst; ξ-snd; ξ-nsuc
-        ; ξ-ielimⁱ; ξ-ielimᵗ; ι-ielim
-        ; _≅ᵀ_; crflᵀ; csymᵀ; ctrnᵀ; credᵀ
-        ; _⟶ᵀ_; El-⌜Nat⌝; El-⌜Id⌝
-        ; _⊢_∷_; ⊢var; ⊢lam; ⊢app; ⊢pair; ⊢fst; ⊢snd; ⊢conv
-        ; ⊢unit; ⊢nzero; ⊢nsuc; ⊢⌜Nat⌝; ⊢⌜Id⌝; ⊢idrefl
-        ; ⊢icon; ⊢ielim
-        ; _⊢ty_; ty-El; ty-Unit; ty-Nat; ty-Σ; ty-Π; ty-IMu
-        ; IConWf; iwf-ι; iwf-ρ; iwf-κ ; Θ₀; ρ₀; x₀; _,,_
-        ; ICodeWf; icw-clo; icw-ford
-        ; IDescWf; IDescWfFrom; idwf-nil; idwf-cons
-        ; imethTy; imethsTy )
+open import DirectedHoTT.Spec.Syntax hiding ( Fin )
+open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
+open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-trans; ⟶*-nsuc )
+open import DirectedHoTT.Metatheory.TySub using ( ⊢wk )
+open import DirectedHoTT.Lib.Sugar
+  using ( Cons; []; _∷_; Dₗ; conₗ; methₗ; selF; selF-β; nth-z; nth-s; MethK
+        ; PerK; []ₘ; _∷ₘ_; ⊢methₗ )
+open import DirectedHoTT.Lib.Tel
 
 ------------------------------------------------------------------------
--- 0. The index: THE SORT TAG.  `0` is the type sort, `1` the term sort.
+-- 0. The index CODE: THE SORT TAG.  `0` is the type sort, `1` the term sort.
 ------------------------------------------------------------------------
-
-INat : RTy ε
-INat = El ⌜Nat⌝
-
-elNat : {Γ : Cx} → El (⌜Nat⌝ {Γ}) ≅ᵀ Nat
-elNat = credᵀ El-⌜Nat⌝
 
 toI : {Γ : Ctx} {t : RTm ⌊ Γ ⌋} → Γ ⊢ t ∷ Nat → Γ ⊢ t ∷ El ⌜Nat⌝
-toI d = ⊢conv d (csymᵀ elNat)
-
-fromI : {Γ : Ctx} {t : RTm ⌊ Γ ⌋} → Γ ⊢ t ∷ El ⌜Nat⌝ → Γ ⊢ t ∷ Nat
-fromI d = ⊢conv d elNat
+toI d = ⊢conv d (csymᵀ (credᵀ El-⌜Nat⌝))
 
 sortTy sortTm : {Γ : Cx} → RTm Γ
 sortTy = nzero
 sortTm = nsuc nzero
 
+⊢sTy : {Γ : Ctx} → Γ ⊢ nzero ∷ El ⌜Nat⌝
+⊢sTy = toI ⊢nzero
+
+⊢sTm' : {Γ : Ctx} → Γ ⊢ sortTm ∷ El ⌜Nat⌝
+⊢sTm' = toI (⊢nsuc ⊢nzero)
+
 ------------------------------------------------------------------------
--- 1. THE DESCRIPTION — four constructors across two sorts.
+-- 1. THE DESCRIPTION — four constructors across two sorts, as
+--    telescopes over the tag `s` (`var vz`).
 --
--- ⚠ EVERY recursive field sits at a CLOSED index (`0` or `1`), never at
---   a function of the ambient one.  That is what makes mutuality easier
---   than `Scoped`'s binder shift, not harder: `renTm vs nzero = nzero`,
---   so none of `Scoped`'s `wk-single` plumbing appears below.
+-- ⚠ EVERY recursive field sits at a CLOSED tag (`0` or `1`), never at a
+--   function of the ambient one; each constructor's fixed target is a
+--   constant, so it FORDS (D074: computed targets ford explicitly).
 ------------------------------------------------------------------------
 
--- ι : Ty                       — forded to the type sort
-ιC : ICon (ε ∙)
-ιC = iκ (⌜Id⌝ ⌜Nat⌝ (var vz) sortTy) iι
+sortIs : {Γ : Cx} → RTm (Γ ∙) → Tel (Γ ∙)
+sortIs s = tσ (⌜Id⌝ ⌜Nat⌝ (var vz) s) tι
 
--- arr : Ty → Ty → Ty
-arrC : ICon (ε ∙)
-arrC = iρ sortTy (iρ sortTy (iκ (⌜Id⌝ ⌜Nat⌝ (var (vs (vs vz))) sortTy) iι))
+baseT arrT cT annT : {Γ : Cx} → Tel (Γ ∙)
+baseT = sortIs sortTy                                     -- ι   : Ty
+arrT  = tρ sortTy (tρ sortTy (sortIs sortTy))             -- arr : Ty → Ty → Ty
+cT    = sortIs sortTm                                     -- c   : Tm
+-- ★★★ ann : Tm → Ty → Tm — THE CROSS-SORT FIELD: one `tρ` at each tag
+annT  = tρ sortTm (tρ sortTy (sortIs sortTm))
 
--- c : Tm
-cC : ICon (ε ∙)
-cC = iκ (⌜Id⌝ ⌜Nat⌝ (var vz) sortTm) iι
+TTs : {Γ : Cx} → Tels (Γ ∙) 4
+TTs = baseT ∷ᵗ arrT ∷ᵗ cT ∷ᵗ annT ∷ᵗ []ᵗ
 
--- ★★★ ann : Tm → Ty → Tm — THE CROSS-SORT FIELD.  Field 1 recurses at
---   tag 1, field 2 at tag 0: one `iρ` each, at different constant
---   indices, in the SAME constructor.
-annC : ICon (ε ∙)
-annC = iρ sortTm (iρ sortTy (iκ (⌜Id⌝ ⌜Nat⌝ (var (vs (vs vz))) sortTm) iι))
-
-TTD : IDesc
-TTD = ιC ◂ (arrC ◂ (cC ◂ (annC ◂ inil)))
+TTD : {Γ : Cx} → RTm Γ
+TTD = Dₗ ⌜ TTs ⌝ₛ
 
 TT : {Γ : Cx} → RTm Γ → RTy Γ
-TT s = IMu TTD INat s
+TT s = IMu ⌜Nat⌝ TTD s
 
 ------------------------------------------------------------------------
 -- 2. WELL-FORMEDNESS.
 ------------------------------------------------------------------------
 
-ιWf : IConWf INat (Θ₀ INat) ρ₀ x₀ ιC
-ιWf = iwf-κ (⌜Id⌝ ⌜Nat⌝ (var vz) sortTy)
-            (icw-ford ⌜Nat⌝ (var vz) sortTy)
-            (⊢⌜Id⌝ ⊢⌜Nat⌝ (⊢var here) (toI ⊢nzero))
-            iwf-ι
+sortOK : {Γ : Ctx} {i s : RTm ⌊ Γ ⌋} → Γ ⊢ i ∷ El ⌜Nat⌝ → Γ ⊢ s ∷ El ⌜Nat⌝ →
+         TelOK Γ ⌜Nat⌝ (tσ (⌜Id⌝ ⌜Nat⌝ i s) tι)
+sortOK di ds = ok-σ (⊢⌜Id⌝ ⊢⌜Nat⌝ di ds) ok-ι
 
-arrWf : IConWf INat (Θ₀ INat) ρ₀ x₀ arrC
-arrWf =
-  iwf-ρ sortTy (toI ⊢nzero)
-   (iwf-ρ sortTy (toI ⊢nzero)
-    (iwf-κ (⌜Id⌝ ⌜Nat⌝ (var (vs (vs vz))) sortTy)
-           (icw-ford ⌜Nat⌝ (var (vs (vs vz))) sortTy)
-           (⊢⌜Id⌝ ⊢⌜Nat⌝ (⊢var (there (there here))) (toI ⊢nzero))
-           iwf-ι))
+module _ {Γ : Ctx} where
+  private
+    v : (Γ ▹ El ⌜Nat⌝) ⊢ var vz ∷ El ⌜Nat⌝
+    v = ⊢var here
 
-cWf : IConWf INat (Θ₀ INat) ρ₀ x₀ cC
-cWf = iwf-κ (⌜Id⌝ ⌜Nat⌝ (var vz) sortTm)
-            (icw-ford ⌜Nat⌝ (var vz) sortTm)
-            (⊢⌜Id⌝ ⊢⌜Nat⌝ (⊢var here) (toI (⊢nsuc ⊢nzero)))
-            iwf-ι
+  baseOK : TelOK (Γ ▹ El ⌜Nat⌝) ⌜Nat⌝ baseT
+  baseOK = sortOK v ⊢sTy
 
-annWf : IConWf INat (Θ₀ INat) ρ₀ x₀ annC
-annWf =
-  iwf-ρ sortTm (toI (⊢nsuc ⊢nzero))
-   (iwf-ρ sortTy (toI ⊢nzero)
-    (iwf-κ (⌜Id⌝ ⌜Nat⌝ (var (vs (vs vz))) sortTm)
-           (icw-ford ⌜Nat⌝ (var (vs (vs vz))) sortTm)
-           (⊢⌜Id⌝ ⊢⌜Nat⌝ (⊢var (there (there here))) (toI (⊢nsuc ⊢nzero)))
-           iwf-ι))
+  arrOK : TelOK (Γ ▹ El ⌜Nat⌝) ⌜Nat⌝ arrT
+  arrOK = ok-ρ ⊢sTy (ok-ρ ⊢sTy (sortOK v ⊢sTy))
 
-TTWf : IDescWf INat TTD
-TTWf = ty-El ⊢⌜Nat⌝ ,, idwf-cons ιWf (idwf-cons arrWf (idwf-cons cWf (idwf-cons annWf idwf-nil)))
+  cOK : TelOK (Γ ▹ El ⌜Nat⌝) ⌜Nat⌝ cT
+  cOK = sortOK v ⊢sTm'
+
+  annOK : TelOK (Γ ▹ El ⌜Nat⌝) ⌜Nat⌝ annT
+  annOK = ok-ρ ⊢sTm' (ok-ρ ⊢sTy (sortOK v ⊢sTm'))
+
+TTOK : {Γ : Ctx} → AllOK (Γ ▹ El ⌜Nat⌝) ⌜Nat⌝ TTs
+TTOK = baseOK ∷ᵒ arrOK ∷ᵒ cOK ∷ᵒ annOK ∷ᵒ []ᵒ
+
+⊢TTD : {Γ : Ctx} → Γ ⊢ TTD ∷ DescF ⌜Nat⌝
+⊢TTD = ⊢Dₜ ⊢⌜Nat⌝ TTOK
 
 ------------------------------------------------------------------------
--- 3. THE CONSTRUCTORS — `⊢icon`, four times, across both sorts.
+-- 3. THE CONSTRUCTORS, across both sorts.  ⚠ ALL indices CLOSED — no
+--    weakening appears anywhere, the encoding's dividend over `Scoped`.
 ------------------------------------------------------------------------
 
-tι tc : {Γ : Cx} → RTm Γ
-tι = icon zero (pair (idrefl ⌜Nat⌝ sortTy) unit)
-tc = icon (suc (suc zero)) (pair (idrefl ⌜Nat⌝ sortTm) unit)
+tbase tc : {Γ : Cx} → RTm Γ
+tbase = conₗ zero (pair (idrefl ⌜Nat⌝ sortTy) unit)
+tc    = conₗ (suc (suc zero)) (pair (idrefl ⌜Nat⌝ sortTm) unit)
 
 tarr tann : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ
-tarr a b = icon (suc zero)
-                (pair a (pair b (pair (idrefl ⌜Nat⌝ sortTy) unit)))
-tann t a = icon (suc (suc (suc zero)))
-                (pair t (pair a (pair (idrefl ⌜Nat⌝ sortTm) unit)))
+tarr a b = conₗ (suc zero) (pair a (pair b (pair (idrefl ⌜Nat⌝ sortTy) unit)))
+tann t a = conₗ (suc (suc (suc zero))) (pair t (pair a (pair (idrefl ⌜Nat⌝ sortTm) unit)))
 
-reflSTy : {Γ : Ctx} →
-          Γ ⊢ idrefl ⌜Nat⌝ sortTy ∷ El (⌜Id⌝ ⌜Nat⌝ sortTy sortTy)
-reflSTy = ⊢conv (⊢idrefl ⊢⌜Nat⌝ (toI ⊢nzero))
-                (csymᵀ (credᵀ (El-⌜Id⌝ ⌜Nat⌝ sortTy sortTy)))
+module _ {Γ : Ctx} where
+  private
+    refl' : {s : RTm ⌊ Γ ⌋} → Γ ⊢ s ∷ El ⌜Nat⌝ → Γ ⊢ idrefl ⌜Nat⌝ s ∷ El (⌜Id⌝ ⌜Nat⌝ s s)
+    refl' {s} ds = ⊢conv (⊢idrefl ⊢⌜Nat⌝ ds) (csymᵀ (credᵀ (El-⌜Id⌝ ⌜Nat⌝ s s)))
+    ford : {s : RTm ⌊ Γ ⌋} → Γ ⊢ s ∷ El ⌜Nat⌝ →
+           Γ ⊢ pair (idrefl ⌜Nat⌝ s) unit ∷ El (dpay ⌜Nat⌝ TTD ⌜ tσ (⌜Id⌝ ⌜Nat⌝ s s) tι ⌝ᵗ)
+    ford ds = ⊢payσ ⊢⌜Nat⌝ ⊢TTD (sortOK ds ds) (refl' ds) (⊢payι ⊢⌜Nat⌝ ⊢TTD ⊢unit)
 
-reflSTm : {Γ : Ctx} →
-          Γ ⊢ idrefl ⌜Nat⌝ sortTm ∷ El (⌜Id⌝ ⌜Nat⌝ sortTm sortTm)
-reflSTm = ⊢conv (⊢idrefl ⊢⌜Nat⌝ (toI (⊢nsuc ⊢nzero)))
-                (csymᵀ (credᵀ (El-⌜Id⌝ ⌜Nat⌝ sortTm sortTm)))
+  ⊢tbase : Γ ⊢ tbase ∷ TT sortTy
+  ⊢tbase = ⊢conₜ ⊢⌜Nat⌝ TTOK nthᵗ-z ⊢sTy (ford ⊢sTy)
 
-⊢tι : ◇ ⊢ tι ∷ TT sortTy
-⊢tι = ⊢icon TTWf hereID (toI ⊢nzero) (⊢pair ty-Unit reflSTy ⊢unit)
+  ⊢tc : Γ ⊢ tc ∷ TT sortTm
+  ⊢tc = ⊢conₜ ⊢⌜Nat⌝ TTOK (nthᵗ-s (nthᵗ-s nthᵗ-z)) ⊢sTm' (ford ⊢sTm')
 
-⊢tc : ◇ ⊢ tc ∷ TT sortTm
-⊢tc = ⊢icon TTWf (thereID (thereID hereID)) (toI (⊢nsuc ⊢nzero))
-        (⊢pair ty-Unit reflSTm ⊢unit)
+  ⊢tarr : {a b : RTm ⌊ Γ ⌋} → Γ ⊢ a ∷ TT sortTy → Γ ⊢ b ∷ TT sortTy → Γ ⊢ tarr a b ∷ TT sortTy
+  ⊢tarr da db =
+    ⊢conₜ ⊢⌜Nat⌝ TTOK (nthᵗ-s nthᵗ-z) ⊢sTy
+      (⊢payρ ⊢⌜Nat⌝ ⊢TTD (ok-ρ ⊢sTy (ok-ρ ⊢sTy (sortOK ⊢sTy ⊢sTy))) da
+        (⊢payρ ⊢⌜Nat⌝ ⊢TTD (ok-ρ ⊢sTy (sortOK ⊢sTy ⊢sTy)) db (ford ⊢sTy)))
 
--- the `⊢ty` tails.  ⚠ ALL CLOSED — no weakening appears anywhere here,
---   which is the encoding's practical dividend over `Scoped`'s shift.
-tyFordTy : {Γ : Ctx} → Γ ⊢ty Σ' (El (⌜Id⌝ ⌜Nat⌝ sortTy sortTy)) Unit
-tyFordTy = ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI ⊢nzero) (toI ⊢nzero))) ty-Unit
-
-tyFordTm : {Γ : Ctx} → Γ ⊢ty Σ' (El (⌜Id⌝ ⌜Nat⌝ sortTm sortTm)) Unit
-tyFordTm = ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢nsuc ⊢nzero))
-                                     (toI (⊢nsuc ⊢nzero)))) ty-Unit
-
-tyArr₂ : {Γ : Ctx} →
-         Γ ⊢ty Σ' (IMu TTD INat sortTy)
-                  (Σ' (El (⌜Id⌝ ⌜Nat⌝ sortTy sortTy)) Unit)
-tyArr₂ = ty-Σ (ty-IMu TTWf (toI ⊢nzero)) tyFordTy
-
-tyAnn₂ : {Γ : Ctx} →
-         Γ ⊢ty Σ' (IMu TTD INat sortTy)
-                  (Σ' (El (⌜Id⌝ ⌜Nat⌝ sortTm sortTm)) Unit)
-tyAnn₂ = ty-Σ (ty-IMu TTWf (toI ⊢nzero)) tyFordTm
-
-⊢tarr : {a b : RTm ε} →
-        ◇ ⊢ a ∷ TT sortTy → ◇ ⊢ b ∷ TT sortTy → ◇ ⊢ tarr a b ∷ TT sortTy
-⊢tarr da db =
-  ⊢icon TTWf (thereID hereID) (toI ⊢nzero)
-    (⊢pair tyArr₂ da (⊢pair tyFordTy db (⊢pair ty-Unit reflSTy ⊢unit)))
-
--- ★★★ THE CROSS-SORT CONSTRUCTOR: a `Tm` field and a `Ty` field, in one
---   `⊢icon`, from one description.
-⊢tann : {t a : RTm ε} →
-        ◇ ⊢ t ∷ TT sortTm → ◇ ⊢ a ∷ TT sortTy → ◇ ⊢ tann t a ∷ TT sortTm
-⊢tann dt da =
-  ⊢icon TTWf (thereID (thereID (thereID hereID))) (toI (⊢nsuc ⊢nzero))
-    (⊢pair tyAnn₂ dt (⊢pair tyFordTm da (⊢pair ty-Unit reflSTm ⊢unit)))
+  -- ★★★ THE CROSS-SORT CONSTRUCTOR: a `Tm` field and a `Ty` field
+  ⊢tann : {t a : RTm ⌊ Γ ⌋} → Γ ⊢ t ∷ TT sortTm → Γ ⊢ a ∷ TT sortTy → Γ ⊢ tann t a ∷ TT sortTm
+  ⊢tann dt da =
+    ⊢conₜ ⊢⌜Nat⌝ TTOK (nthᵗ-s (nthᵗ-s (nthᵗ-s nthᵗ-z))) ⊢sTm'
+      (⊢payρ ⊢⌜Nat⌝ ⊢TTD (ok-ρ ⊢sTm' (ok-ρ ⊢sTy (sortOK ⊢sTm' ⊢sTm'))) dt
+        (⊢payρ ⊢⌜Nat⌝ ⊢TTD (ok-ρ ⊢sTy (sortOK ⊢sTm' ⊢sTm')) da (ford ⊢sTm')))
 
 -- `c : ι` — the smallest term that uses both sorts.
 annCι : {Γ : Cx} → RTm Γ
-annCι = tann tc tι
+annCι = tann tc tbase
 
 ⊢annCι : ◇ ⊢ annCι ∷ TT sortTm
-⊢annCι = ⊢tann ⊢tc ⊢tι
+⊢annCι = ⊢tann ⊢tc ⊢tbase
 
 ------------------------------------------------------------------------
 -- 4. ★★★ MUTUAL INDUCTION IS ONE `ielim`.
 --
 -- `depth : TT s → Nat`, one motive (`Nat`, constant), one method per
 -- constructor OF EITHER SORT.  ⚠ `mann` deliberately reads its SECOND
--- IH — the one at the `Ty` field — so the recursion CROSSES SORTS: the
--- method reached at tag `1` consumes the recursor's result at tag `0`,
--- from the same method tuple.  That is what "mutual induction" means,
--- and nothing in the kernel had to learn it.
+-- hypothesis — the one at the `Ty` field — so the recursion CROSSES
+-- SORTS: the method reached at tag `1` consumes the recursor's result at
+-- tag `0`, from the same method tuple.
 ------------------------------------------------------------------------
 
-mι marr mc mann ms : {Γ : Cx} → RTm Γ
+mι marr mc mann : {Γ : Cx} → RTm Γ
 mι   = lam (lam (lam (nsuc nzero)))
 marr = lam (lam (lam (nsuc (fst (var vz)))))
 mc   = lam (lam (lam (nsuc nzero)))
 mann = lam (lam (lam (nsuc (fst (snd (var vz))))))
-ms   = pair mι (pair marr (pair mc (pair mann unit)))
+
+TTMs : {Γ : Cx} → Cons Γ 4
+TTMs = mι ∷ marr ∷ mc ∷ mann ∷ []
 
 depth : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ
-depth s t = ielim TTD s ms t
+depth s t = ielim TTD s (methₗ TTMs) t
 
--- the four payload types, under the method's index binder
-tyPayΙ : {Γ : Ctx} →
-         (Γ ▹ El ⌜Nat⌝) ⊢ty Σ' (El (⌜Id⌝ ⌜Nat⌝ (var vz) sortTy)) Unit
-tyPayΙ = ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (⊢var here) (toI ⊢nzero))) ty-Unit
+module _ {Γ : Ctx} where
+  ⊢mι : Γ ⊢ mι ∷ MethK ⌜Nat⌝ TTD Nat ⌜ baseT ⌝ᵗ zero
+  ⊢mι = ⊢methT {T = baseT} {s = conₗ zero (var (vs vz))} ⊢⌜Nat⌝ ⊢TTD ty-Nat baseOK (⊢nsuc ⊢nzero)
 
-tyPayC : {Γ : Ctx} →
-         (Γ ▹ El ⌜Nat⌝) ⊢ty Σ' (El (⌜Id⌝ ⌜Nat⌝ (var vz) sortTm)) Unit
-tyPayC = ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (⊢var here) (toI (⊢nsuc ⊢nzero))))
-              ty-Unit
+  ⊢marr : Γ ⊢ marr ∷ MethK ⌜Nat⌝ TTD Nat ⌜ arrT ⌝ᵗ (suc zero)
+  ⊢marr = ⊢methT {T = arrT} {s = conₗ (suc zero) (var (vs vz))} ⊢⌜Nat⌝ ⊢TTD ty-Nat arrOK
+            (⊢nsuc (⊢fst (⊢var here)))
 
-tyPayArr : {Γ : Ctx} →
-           (Γ ▹ El ⌜Nat⌝) ⊢ty
-           Σ' (IMu TTD INat sortTy)
-              (Σ' (IMu TTD INat sortTy)
-                  (Σ' (El (⌜Id⌝ ⌜Nat⌝ (var (vs (vs vz))) sortTy)) Unit))
-tyPayArr =
-  ty-Σ (ty-IMu TTWf (toI ⊢nzero))
-    (ty-Σ (ty-IMu TTWf (toI ⊢nzero))
-      (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (⊢var (there (there here))) (toI ⊢nzero)))
-            ty-Unit))
+  ⊢mc : Γ ⊢ mc ∷ MethK ⌜Nat⌝ TTD Nat ⌜ cT ⌝ᵗ (suc (suc zero))
+  ⊢mc = ⊢methT {T = cT} {s = conₗ (suc (suc zero)) (var (vs vz))} ⊢⌜Nat⌝ ⊢TTD ty-Nat cOK (⊢nsuc ⊢nzero)
 
-tyPayAnn : {Γ : Ctx} →
-           (Γ ▹ El ⌜Nat⌝) ⊢ty
-           Σ' (IMu TTD INat sortTm)
-              (Σ' (IMu TTD INat sortTy)
-                  (Σ' (El (⌜Id⌝ ⌜Nat⌝ (var (vs (vs vz))) sortTm)) Unit))
-tyPayAnn =
-  ty-Σ (ty-IMu TTWf (toI (⊢nsuc ⊢nzero)))
-    (ty-Σ (ty-IMu TTWf (toI ⊢nzero))
-      (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (⊢var (there (there here)))
-                                 (toI (⊢nsuc ⊢nzero))))
-            ty-Unit))
+  -- ★★★ the cross-sort method: `fst (snd h)` is the recursor's value at the OTHER TAG
+  ⊢mann : Γ ⊢ mann ∷ MethK ⌜Nat⌝ TTD Nat ⌜ annT ⌝ᵗ (suc (suc (suc zero)))
+  ⊢mann = ⊢methT {T = annT} {s = conₗ (suc (suc (suc zero))) (var (vs vz))} ⊢⌜Nat⌝ ⊢TTD ty-Nat annOK
+            (⊢nsuc (⊢fst (⊢snd (⊢var here))))
 
-tyIH₀ : {Γ : Ctx} → Γ ⊢ty Unit
-tyIH₀ = ty-Unit
+  perTT : PerK Γ ⌜Nat⌝ TTD Nat (selF ⌜ TTs ⌝ₛ) zero TTMs
+  perTT = (selF-β {Cs = ⌜ TTs ⌝ₛ} nth-z , ⊢mι)
+       ∷ₘ ((selF-β {Cs = ⌜ TTs ⌝ₛ} (nth-s nth-z) , ⊢marr)
+       ∷ₘ ((selF-β {Cs = ⌜ TTs ⌝ₛ} (nth-s (nth-s nth-z)) , ⊢mc)
+       ∷ₘ ((selF-β {Cs = ⌜ TTs ⌝ₛ} (nth-s (nth-s (nth-s nth-z))) , ⊢mann) ∷ₘ []ₘ)))
 
-tyIH₂ : {Γ : Ctx} → Γ ⊢ty Σ' Nat (Σ' Nat Unit)
-tyIH₂ = ty-Σ ty-Nat (ty-Σ ty-Nat ty-Unit)
-
-⊢mι : {Γ : Ctx} →
-      Γ ⊢ mι ∷ Π (El ⌜Nat⌝)
-                 (Π (Σ' (El (⌜Id⌝ ⌜Nat⌝ (var vz) sortTy)) Unit)
-                    (Π Unit Nat))
-⊢mι = ⊢lam (ty-El ⊢⌜Nat⌝)
-        (⊢lam tyPayΙ (⊢lam ty-Unit (⊢nsuc ⊢nzero)))
-
-⊢mc : {Γ : Ctx} →
-      Γ ⊢ mc ∷ Π (El ⌜Nat⌝)
-                 (Π (Σ' (El (⌜Id⌝ ⌜Nat⌝ (var vz) sortTm)) Unit)
-                    (Π Unit Nat))
-⊢mc = ⊢lam (ty-El ⊢⌜Nat⌝)
-        (⊢lam tyPayC (⊢lam ty-Unit (⊢nsuc ⊢nzero)))
-
-⊢marr : {Γ : Ctx} →
-        Γ ⊢ marr ∷
-        Π (El ⌜Nat⌝)
-          (Π (Σ' (IMu TTD INat sortTy)
-                 (Σ' (IMu TTD INat sortTy)
-                     (Σ' (El (⌜Id⌝ ⌜Nat⌝ (var (vs (vs vz))) sortTy)) Unit)))
-             (Π (Σ' Nat (Σ' Nat Unit)) Nat))
-⊢marr = ⊢lam (ty-El ⊢⌜Nat⌝)
-          (⊢lam tyPayArr (⊢lam tyIH₂ (⊢nsuc (⊢fst (⊢var here)))))
-
--- ★★★ the cross-sort method: `fst (snd ih)` is the recursor's value at
---   the OTHER TAG.
-⊢mann : {Γ : Ctx} →
-        Γ ⊢ mann ∷
-        Π (El ⌜Nat⌝)
-          (Π (Σ' (IMu TTD INat sortTm)
-                 (Σ' (IMu TTD INat sortTy)
-                     (Σ' (El (⌜Id⌝ ⌜Nat⌝ (var (vs (vs vz))) sortTm)) Unit)))
-             (Π (Σ' Nat (Σ' Nat Unit)) Nat))
-⊢mann = ⊢lam (ty-El ⊢⌜Nat⌝)
-          (⊢lam tyPayAnn (⊢lam tyIH₂ (⊢nsuc (⊢fst (⊢snd (⊢var here))))))
-
-tyΠmarr : {Γ : Ctx} →
-          Γ ⊢ty Π (El ⌜Nat⌝)
-                  (Π (Σ' (IMu TTD INat sortTy)
-                         (Σ' (IMu TTD INat sortTy)
-                             (Σ' (El (⌜Id⌝ ⌜Nat⌝ (var (vs (vs vz))) sortTy))
-                                 Unit)))
-                     (Π (Σ' Nat (Σ' Nat Unit)) Nat))
-tyΠmarr = ty-Π (ty-El ⊢⌜Nat⌝) (ty-Π tyPayArr (ty-Π tyIH₂ ty-Nat))
-
-tyΠmc : {Γ : Ctx} →
-        Γ ⊢ty Π (El ⌜Nat⌝)
-                (Π (Σ' (El (⌜Id⌝ ⌜Nat⌝ (var vz) sortTm)) Unit)
-                   (Π Unit Nat))
-tyΠmc = ty-Π (ty-El ⊢⌜Nat⌝) (ty-Π tyPayC (ty-Π ty-Unit ty-Nat))
-
-tyΠmann : {Γ : Ctx} →
-          Γ ⊢ty Π (El ⌜Nat⌝)
-                  (Π (Σ' (IMu TTD INat sortTm)
-                         (Σ' (IMu TTD INat sortTy)
-                             (Σ' (El (⌜Id⌝ ⌜Nat⌝ (var (vs (vs vz))) sortTm))
-                                 Unit)))
-                     (Π (Σ' Nat (Σ' Nat Unit)) Nat))
-tyΠmann = ty-Π (ty-El ⊢⌜Nat⌝) (ty-Π tyPayAnn (ty-Π tyIH₂ ty-Nat))
-
-⊢ms : ◇ ⊢ ms ∷ imethsTy TTD INat Nat TTD
-⊢ms =
-  ⊢pair (ty-Σ tyΠmarr (ty-Σ tyΠmc (ty-Σ tyΠmann ty-Unit))) ⊢mι
-    (⊢pair (ty-Σ tyΠmc (ty-Σ tyΠmann ty-Unit)) ⊢marr
-      (⊢pair (ty-Σ tyΠmann ty-Unit) ⊢mc
-        (⊢pair ty-Unit ⊢mann ⊢unit)))
-
-⊢depth : {s t : RTm ε} →
-         ◇ ⊢ s ∷ El ⌜Nat⌝ → ◇ ⊢ t ∷ TT s → ◇ ⊢ depth s t ∷ Nat
-⊢depth ds dt = ⊢ielim TTWf ty-Nat ds ⊢ms dt
+  ⊢depth : {s t : RTm ⌊ Γ ⌋} → Γ ⊢ s ∷ El ⌜Nat⌝ → Γ ⊢ t ∷ TT s → Γ ⊢ depth s t ∷ Nat
+  ⊢depth ds dt =
+    ⊢ielim ⊢⌜Nat⌝ ⊢TTD ty-Nat (⊢methₗ ⊢⌜Nat⌝ (allD (⊢wk ⊢⌜Nat⌝) TTOK) ty-Nat perTT) ds dt
 
 ------------------------------------------------------------------------
 -- 5. ★★★ …AND IT RUNS ACROSS THE SORTS.
 --
--- `depth 1 (ann c ι) ⟶* 2`.  Step 13 is the whole point: the recursor
--- was entered at tag `1` (`sortTm`) and the IH tuple's SECOND component
--- re-entered it at tag `0` (`sortTy`), with the SAME method tuple.  A
--- mutual recursion, and the kernel never learned the word.
+-- `depth 1 (ann c ι) ⟶* 2`.  The recursor is entered at tag `1` and the
+-- hypotheses' SECOND component re-enters it at tag `0`, with the SAME
+-- method tuple: a mutual recursion, and the kernel never learned the word.
 ------------------------------------------------------------------------
 
-annPay ιPay annIHs msT1 msT2 msT3 : {Γ : Cx} → RTm Γ
-annPay = pair tc (pair tι (pair (idrefl ⌜Nat⌝ sortTm) unit))
-ιPay   = pair (idrefl ⌜Nat⌝ sortTy) unit
-msT1   = pair marr (pair mc (pair mann unit))
-msT2   = pair mc (pair mann unit)
-msT3   = pair mann unit
-annIHs = pair (ielim TTD sortTm ms (fst annPay))
-              (pair (ielim TTD sortTy ms (fst (snd annPay))) unit)
+depth-base : {Γ : Cx} → depth {Γ} sortTy tbase ⟶* nsuc nzero
+depth-base =
+  ⟶*-trans (ιT {T = baseT} (nth-⌜⌝ {Ts = TTs} nthᵗ-z) nth-z)
+    (step (ξ-appˡ (ξ-appˡ (β _ _))) (step (ξ-appˡ (β _ _)) (step (β _ _) done)))
 
 depth-annCι : {Γ : Cx} → depth {Γ} sortTm annCι ⟶* nsuc (nsuc nzero)
 depth-annCι =
-  step (ι-ielim TTD sortTm ms (suc (suc (suc zero))) annPay)
-  -- select the fourth method: three `βsnd`, then `βfst`
-  (step (ξ-appˡ (ξ-appˡ (ξ-appˡ (ξ-fst (ξ-snd (ξ-snd (βsnd mι msT1)))))))
-  (step (ξ-appˡ (ξ-appˡ (ξ-appˡ (ξ-fst (ξ-snd (βsnd marr msT2))))))
-  (step (ξ-appˡ (ξ-appˡ (ξ-appˡ (ξ-fst (βsnd mc msT3)))))
-  (step (ξ-appˡ (ξ-appˡ (ξ-appˡ (βfst mann unit))))
-  -- apply it to the index, the payload and the IHs
-  (step (ξ-appˡ (ξ-appˡ (β (lam (lam (nsuc (fst (snd (var vz)))))) sortTm)))
-  (step (ξ-appˡ (β (lam (nsuc (fst (snd (var vz))))) annPay))
-  (step (β (nsuc (fst (snd (var vz)))) annIHs)
-  -- project the SECOND IH — the one at the other tag
-  (step (ξ-nsuc (ξ-fst (βsnd (ielim TTD sortTm ms (fst annPay))
-                             (pair (ielim TTD sortTy ms
-                                     (fst (snd annPay))) unit))))
-  (step (ξ-nsuc (βfst (ielim TTD sortTy ms (fst (snd annPay))) unit))
-  (step (ξ-nsuc (ξ-ielimᵗ (ξ-fst (βsnd tc (pair tι (pair (idrefl ⌜Nat⌝ sortTm)
-                                                         unit))))))
-  (step (ξ-nsuc (ξ-ielimᵗ (βfst tι (pair (idrefl ⌜Nat⌝ sortTm) unit))))
-  -- ★★★ HERE: the recursor fires again, at tag 0, on `ι`
-  (step (ξ-nsuc (ι-ielim TTD sortTy ms zero ιPay))
-  (step (ξ-nsuc (ξ-appˡ (ξ-appˡ (ξ-appˡ (βfst mι msT1)))))
-  (step (ξ-nsuc (ξ-appˡ (ξ-appˡ (β (lam (lam (nsuc nzero))) sortTy))))
-  (step (ξ-nsuc (ξ-appˡ (β (lam (nsuc nzero)) ιPay)))
-  (step (ξ-nsuc (β (nsuc nzero) unit)) done))))))))))))))))
+  ⟶*-trans (ιT {T = annT} (nth-⌜⌝ {Ts = TTs} (nthᵗ-s (nthᵗ-s (nthᵗ-s nthᵗ-z))))
+                          (nth-s (nth-s (nth-s nth-z))))
+    (step (ξ-appˡ (ξ-appˡ (β _ _)))
+    (step (ξ-appˡ (β _ _))
+    (step (β _ _)
+    -- project the SECOND hypothesis — the one at the other tag
+    (⟶*-nsuc
+      (step (ξ-fst (βsnd _ _))
+      (step (βfst _ _)
+      (step (ξ-ielimᵗ (ξ-fst (βsnd _ _)))
+      (step (ξ-ielimᵗ (βfst _ _))
+      -- ★★★ HERE: the recursor fires again, at tag 0, on `ι`
+        depth-base))))))))
