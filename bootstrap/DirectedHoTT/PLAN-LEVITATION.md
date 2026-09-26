@@ -24,6 +24,23 @@
   `ilookupD`, method tuples, `IDescWf`/`IDescWfFrom`/`IConWf`/`ICodeWf`/
   `DescWf`/`DConWf`, `Xinst`/`XEnv`.
 
+## Stage 1 — DONE (2026-09-26, branch `ocp-0009-levitation`)
+
+`Spec/Syntax`, `Spec/Typing`, `Spec/Variance`, `Spec/Annotated` (regenerated
+by the reconstructed `tools/genA.py`, which checks its field table against
+`Spec/Syntax`), `Spec/AnnotatedDesc`, `Spec/TypingA` — all check.
+Concrete formers (names chosen not to clash with existing identifiers):
+`IMu I D i`, `Desc I`, `DIh D M C p` (type, computes on the telescope
+head), `Fin n`; `⌜IMu⌝ I D i`, `⌜Fin⌝ n`, `con p`, `ielim D i e t`,
+`dι j`/`dσ S f`/`dρ j C`, `dpay I D C i` (payload CODE), `dih D e C p`,
+`fzero`/`fsuc t`/`fcase t a b`/`fcase0 t`, `psplit b q`.
+⚠ DEVIATION from S4: tags are `Fin (n+1) ≅ 1 + Fin n` with a binary
+`fcase` (plus `fcase0` for the empty Fin 0), not an n-ary `switch` — a
+first-order eliminator with no argument list in the syntax; `switch`
+over c constructors is c-1 nested `fcase`s (the elaborator's job).
+`fst`/`snd` remain primitive for now; deriving them from `psplit` (D071)
+is a follow-up stage once everything is green.
+
 ## Stages (each ends GREEN on its own branch; straight-line history)
 
 1. **Spec**: `Syntax` (formers, generic ren/sub — S2) and `Typing` (S3/S4
