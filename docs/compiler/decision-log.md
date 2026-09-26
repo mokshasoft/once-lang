@@ -5039,3 +5039,46 @@ kept only as sugar. There is **no definitional Σ-η**.
 - SPIKE-LEVITATION S3 (SR), S4 (the elaboration of constructor lists; why
   `split` is needed), `Spec/Typing` ("NO η"), the linear-core decision
   (memory: linear-core-is-the-direction).
+
+---
+
+## D072: One Datatype Former — `Mu`/`Desc` Merges Into the Indexed Levitated Form (OCP-0009 kernel)
+
+**Date**: 2026-09-26
+**Status**: Accepted
+
+### Context
+
+The kernel has two datatype systems: non-indexed `Mu`/`⌜Mu⌝`/`con`/`elim`
+over the closed `Desc`/`DCon`, and indexed
+`IMu`/`⌜IMu⌝`/`icon`/`ielim` over `IDesc`. Levitation (D071,
+SPIKE-LEVITATION) replaces descriptions with terms anyway.
+Measured on 2026-09-26:
+
+| where | files using the non-indexed family | files using the indexed family |
+| --- | --- | --- |
+| `Lib` | 0 (every library — `IPay`, `IFold`, `ISz`, `IOcc`, … — is indexed-only) | — |
+| examples | 6 | 15 |
+| Knot | 41 | 159 |
+
+The Knot reifies both families.
+
+### Decision
+
+Migrate to ONE former: the levitated indexed one. A non-indexed datatype is
+the indexed form at the unit index. Constructor lists stay surface sugar
+(S4).
+
+### Rationale
+
+- The non-indexed family is a strict special case, so it is a duplicate:
+  duplicate rules, SR, fundamental and canonicity cases, and duplicate Knot
+  judgement rows and reductions.
+- Use sites gain: non-indexed datatypes get the whole indexed Lib, which they
+  have none of today. The Knot and the metatheory lose a whole parallel family.
+- The cost is a trivial index at non-indexed use sites. The S4 elaborator
+  hides it.
+
+### See Also
+
+D071, SPIKE-LEVITATION S0–S4, `bootstrap/DirectedHoTT/PLAN-LEVITATION.md`.
