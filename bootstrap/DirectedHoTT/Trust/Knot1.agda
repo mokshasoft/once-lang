@@ -24,29 +24,4 @@
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Trust.Knot1 where
 
-import DirectedHoTT.Examples.Knot.Adequacy
-import DirectedHoTT.Examples.Knot.Build
-import DirectedHoTT.Examples.Knot.Census
-import DirectedHoTT.Examples.Knot.ConS
-import DirectedHoTT.Examples.Knot.ConSAgree
-import DirectedHoTT.Examples.Knot.ConvRows
-import DirectedHoTT.Examples.Knot.ConvWf
 import DirectedHoTT.Examples.Knot.Ctors
-import DirectedHoTT.Examples.Knot.CtorsV
-import DirectedHoTT.Examples.Knot.CtxD
-import DirectedHoTT.Examples.Knot.DepthCong
-import DirectedHoTT.Examples.Knot.Desc
-import DirectedHoTT.Examples.Knot.EWk
-import DirectedHoTT.Examples.Knot.FlatAgree
-import DirectedHoTT.Examples.Knot.IConS
-import DirectedHoTT.Examples.Knot.IConSAgree
-import DirectedHoTT.Examples.Knot.IConSRep
-import DirectedHoTT.Examples.Knot.IExt
-import DirectedHoTT.Examples.Knot.IExtAgree
-import DirectedHoTT.Examples.Knot.IExtRep
-import DirectedHoTT.Examples.Knot.ILookupD
-import DirectedHoTT.Examples.Knot.ILookupDAgree
-import DirectedHoTT.Examples.Knot.IMethTy
-import DirectedHoTT.Examples.Knot.IMethsTy
-import DirectedHoTT.Examples.Knot.IMethsTyMot
-import DirectedHoTT.Examples.Knot.IPayTy

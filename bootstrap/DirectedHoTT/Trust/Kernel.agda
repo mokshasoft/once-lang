@@ -40,6 +40,7 @@ import DirectedHoTT.Metatheory.Fundamental.Syntactic
 import DirectedHoTT.Metatheory.Injectivity
 import DirectedHoTT.Metatheory.LogicalRelation
 import DirectedHoTT.Metatheory.NormTy
+import DirectedHoTT.Metatheory.Premises
 import DirectedHoTT.Metatheory.RedCong
 import DirectedHoTT.Metatheory.SubjectReduction
 import DirectedHoTT.Metatheory.SubjectReductionBase
