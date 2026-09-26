@@ -36,45 +36,37 @@ open import normalizer.Syntax.Types
   using ( _≡_; refl; sym; trans; subst; cong; cong₂; Σ; _,_; _×_ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
-  using ( Cx; ε; _∙; Var; vz; vs; RTm; var; lam; app; pair; fst; snd; absurd; ordtr
-        ; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝; ⌜Hom⌝; hrefl; tr; ap; ⌜Id⌝; idrefl; jsub
-        ; unit; nzero; nsuc; natrec; natrec-cong₃; ⌜Nat⌝; ⌜Unit⌝; ⌜Mu⌝; subTm-subTm
-        ; ⌜Hom⌝-cong₃; tr-cong₃; ap-cong₃; ⌜Id⌝-cong₃; jsub-cong₃
-        ; Ren; extR; renTm; renTm-renTm; renTm-cong
-        ; Sub; extS; subTm; renTm-subTm; subTm-renTm; subTm-cong
-        ; _ᵣ∘ₛ_; _ₛ∘ᵣ_; _∘ᵣ_
-        ; Desc; DCon; dι; dρ; dκ; con; elim; lookupD; sel; fields; ren-fields; ren-sel; sub-fields; sub-sel
-        ; ihs
-        ; IMu; icon; ielim; ⌜IMu⌝; ICon; IDesc; iι; iρ; iκ; inil; _◂_; ipayTy; ilookupD; _∈ID_; hereID; thereID; iihs; ifields; εwkTm
-        ; RTy
-        ; ren-ifields; sub-ifields; ren-iihs; sub-iihs; ren-ifieldsⁱ; sub-ifieldsⁱ; isingle; iext
-        -- ★ type formers, for the `_⟶ᵀ*_` block lifted from `Injectivity`:
-        ; RTy; El; Π; Σ'; Hom; Id; IMu; IDesc )
+  using ( Cx; ε; _∙; Var; vz; vs; RTm; var; lam; app; pair; fst; snd; absurd
+        ; ordtr; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝; ⌜Hom⌝; hrefl; tr; ap; ⌜Id⌝; idrefl; jsub
+        ; unit; nzero; nsuc; natrec; natrec-cong₃; ⌜Nat⌝; ⌜Unit⌝; subTm-subTm
+        ; ⌜Hom⌝-cong₃; tr-cong₃; ap-cong₃; ⌜Id⌝-cong₃; jsub-cong₃; Ren; extR
+        ; renTm; renTm-renTm; renTm-cong; Sub; extS; subTm; renTm-subTm
+        ; subTm-renTm; subTm-cong; _ᵣ∘ₛ_; _ₛ∘ᵣ_; _∘ᵣ_; Desc; dι; dρ; con; IMu
+        ; ielim; ⌜IMu⌝; εwkTm; RTy; El; Π; Σ'; Hom; Id; DIh; ⌜Fin⌝; dσ; dpay
+        ; dih; fzero; fsuc; fcase; fcase0; psplit; cong₄ )
 open import DirectedHoTT.Spec.Variance
-  using ( 𝔹; true; false; pw?; stkC?; stkA?; pwBody; pwShift
-        ; pw?-ren; stkC?-ren; stkA?-ren; pwBody-ren
-        ; pw?-sub; stkC?-sub; stkA?-sub; pwBody-sub; pw⊥stk; pw⊥stkA
-        ; stkC?→stkA? )
+  using ( 𝔹; true; false; pw?; stkC?; stkA?; pwBody; pwShift; pw?-ren
+        ; stkC?-ren; stkA?-ren; pwBody-ren; pw?-sub; stkC?-sub; stkA?-sub
+        ; pwBody-sub; pw⊥stk; pw⊥stkA; stkC?→stkA? )
 open import DirectedHoTT.Spec.Typing
-  using ( single; swp; _⟶_; β; βfst; βsnd; ξ-lam; ξ-appˡ; ξ-appʳ
-        ; ξ-pairˡ; ξ-pairʳ; ξ-absurdᶜ; ξ-absurdᵉ; ordtr-z; ordtr-szz; ordtr-ssz; ordtr-szs; ordtr-sss
-        ; ξ-ordtrᵃ; ξ-ordtrᵗ; ξ-ordtrᵘ; ξ-ordtrᵖ; ξ-ordtrq; ξ-fst; ξ-snd
-        ; ξ-⌜Π⌝ˡ; ξ-⌜Π⌝ʳ; ξ-⌜Σ⌝ˡ; ξ-⌜Σ⌝ʳ
-        ; tr-J-base; tr-J-Σ; tr-J-Id; tr-taut; hrefl-pw; tr-J-Hom; tr-pw
-        ; ξ-⌜Hom⌝ᶜ; ξ-⌜Hom⌝ˡ; ξ-⌜Hom⌝ʳ; ξ-hreflᶜ; ξ-hreflᵃ; ξ-trᵈ; ξ-trᵖ; ξ-trᵉ
-        ; ap-J; ξ-apᶜ; ξ-apᵇ; ξ-apᵖ
-        ; jsub-refl; ξ-⌜Id⌝ᶜ; ξ-⌜Id⌝ˡ; ξ-⌜Id⌝ʳ; ξ-idreflᶜ; ξ-idreflᵃ
-        ; ξ-jsubᵈ; ξ-jsubᵖ; ξ-jsubᵉ
-        ; natrec-zero; natrec-suc; ξ-nsuc; ξ-natrecᶻ; ξ-natrecˢ; ξ-natrecⁿ
-        ; tr-J-Unit; tr-J-Mu; tr-J-IMu; El-⌜Nat⌝; El-⌜Unit⌝; El-⌜Mu⌝
-        ; _⟶*_; done; step
-        ; _≅_; cred; crfl; csym; ctrn
-        ; ι-elim; ξ-con; ξ-elimᵐ; ξ-elimᵗ
-        ; ι-ielim; ξ-icon; ξ-ielimⁱ; ξ-ielimᵐ; ξ-ielimᵗ; ξ-⌜IMu⌝; El-⌜IMu⌝
-        -- ★ for the `_⟶ᵀ*_` block lifted from `Injectivity`:
-        ; _⟶ᵀ_; ξ-El; ξ-Πˡ; ξ-Πʳ; ξ-Σˡ; ξ-Σʳ
-        ; ξ-Homᵀ; ξ-Homˡ; ξ-Homʳ; ξ-IMu; ξ-Idᵀ; ξ-Idˡ; ξ-Idʳ
-        ; _≅ᵀ_; crflᵀ; ctrnᵀ; credᵀ )
+  using ( single; swp; _⟶_; β; βfst; βsnd; ξ-lam; ξ-appˡ; ξ-appʳ; ξ-pairˡ
+        ; ξ-pairʳ; ξ-absurdᶜ; ξ-absurdᵉ; ordtr-z; ordtr-szz; ordtr-ssz
+        ; ordtr-szs; ordtr-sss; ξ-ordtrᵃ; ξ-ordtrᵗ; ξ-ordtrᵘ; ξ-ordtrᵖ
+        ; ξ-ordtrq; ξ-fst; ξ-snd; ξ-⌜Π⌝ˡ; ξ-⌜Π⌝ʳ; ξ-⌜Σ⌝ˡ; ξ-⌜Σ⌝ʳ; tr-J-base
+        ; tr-J-Σ; tr-J-Id; tr-taut; hrefl-pw; tr-J-Hom; tr-pw; ξ-⌜Hom⌝ᶜ
+        ; ξ-⌜Hom⌝ˡ; ξ-⌜Hom⌝ʳ; ξ-hreflᶜ; ξ-hreflᵃ; ξ-trᵈ; ξ-trᵖ; ξ-trᵉ; ap-J
+        ; ξ-apᶜ; ξ-apᵇ; ξ-apᵖ; jsub-refl; ξ-⌜Id⌝ᶜ; ξ-⌜Id⌝ˡ; ξ-⌜Id⌝ʳ; ξ-idreflᶜ
+        ; ξ-idreflᵃ; ξ-jsubᵈ; ξ-jsubᵖ; ξ-jsubᵉ; natrec-zero; natrec-suc
+        ; ξ-nsuc; ξ-natrecᶻ; ξ-natrecˢ; ξ-natrecⁿ; tr-J-Unit; tr-J-IMu
+        ; El-⌜Nat⌝; El-⌜Unit⌝; _⟶*_; done; step; _≅_; cred; crfl; csym; ctrn
+        ; ξ-con; ξ-ielimⁱ; ξ-ielimᵗ; El-⌜IMu⌝; _⟶ᵀ_; ξ-El; ξ-Πˡ; ξ-Πʳ; ξ-Σˡ
+        ; ξ-Σʳ; ξ-Homᵀ; ξ-Homˡ; ξ-Homʳ; ξ-Idᵀ; ξ-Idˡ; ξ-Idʳ; _≅ᵀ_; crflᵀ
+        ; ctrnᵀ; credᵀ; ι; dpay-ι; dpay-σ; dpay-ρ; dih-ι; dih-σ; dih-ρ
+        ; fcase-z; fcase-s; psplit-β; tr-J-Fin; single2; ξ-⌜IMu⌝ᴵ; ξ-⌜IMu⌝ᴰ
+        ; ξ-⌜IMu⌝ⁱ; ξ-ielimᴰ; ξ-ielimᵉ; ξ-dι; ξ-dσˢ; ξ-dσᶠ; ξ-dρʲ; ξ-dρᶜ
+        ; ξ-dpayᴵ; ξ-dpayᴰ; ξ-dpayᶜ; ξ-dpayⁱ; ξ-dihᴰ; ξ-dihᵉ; ξ-dihᶜ; ξ-dihᵖ
+        ; ξ-fsuc; ξ-fcaseᵗ; ξ-fcaseᵃ; ξ-fcaseᵇ; ξ-fcase0; ξ-psplitᵇ; ξ-psplitᵍ
+        ; ξ-IMuᴵ; ξ-IMuᴰ; ξ-IMuⁱ; ξ-Desc; ξ-DIhᴰ; ξ-DIhᴹ; ξ-DIhᶜ; ξ-DIhᵖ )
 open import DirectedHoTT.Metatheory.SubjectReductionBase
   using ( sub-comm; sub-comm-ext; ⟶-sub; wk-sub; wk₁-sub; swp-sub; pwShift-sub )
 
@@ -253,69 +245,118 @@ private
 ⟶*-natrecⁿ done       = done
 ⟶*-natrecⁿ (step r q) = step (ξ-natrecⁿ r) (⟶*-natrecⁿ q)
 
--- ★ INDUCTIVE TYPES: the two congruence closures, plus the two DERIVED
---   ones — `sel`/`fields` are metalevel functions, so their closures are
---   inductions on ℕ and `DCon`, not on the reduction sequence.
-⟶*-con : {k : ℕ} {p p' : RTm Γ} → p ⟶* p' → con k p ⟶* con k p'
+-- ★ LEVITATION: the congruence closures of the levitated formers.
+⟶*-⌜IMu⌝ᴵ : {D : RTm Γ} {i : RTm Γ} {I I' : RTm Γ} → I ⟶* I' → ⌜IMu⌝ I D i ⟶* ⌜IMu⌝ I' D i
+⟶*-⌜IMu⌝ᴵ done       = done
+⟶*-⌜IMu⌝ᴵ (step r q) = step (ξ-⌜IMu⌝ᴵ r) (⟶*-⌜IMu⌝ᴵ q)
+
+⟶*-⌜IMu⌝ᴰ : {I : RTm Γ} {i : RTm Γ} {D D' : RTm Γ} → D ⟶* D' → ⌜IMu⌝ I D i ⟶* ⌜IMu⌝ I D' i
+⟶*-⌜IMu⌝ᴰ done       = done
+⟶*-⌜IMu⌝ᴰ (step r q) = step (ξ-⌜IMu⌝ᴰ r) (⟶*-⌜IMu⌝ᴰ q)
+
+⟶*-⌜IMu⌝ⁱ : {I : RTm Γ} {D : RTm Γ} {i i' : RTm Γ} → i ⟶* i' → ⌜IMu⌝ I D i ⟶* ⌜IMu⌝ I D i'
+⟶*-⌜IMu⌝ⁱ done       = done
+⟶*-⌜IMu⌝ⁱ (step r q) = step (ξ-⌜IMu⌝ⁱ r) (⟶*-⌜IMu⌝ⁱ q)
+
+⟶*-con :  {p p' : RTm Γ} → p ⟶* p' → con p ⟶* con p'
 ⟶*-con done       = done
 ⟶*-con (step r q) = step (ξ-con r) (⟶*-con q)
 
-⟶*-elimᵐ : {D : Desc} {ms ms' t : RTm Γ} →
-           ms ⟶* ms' → elim D ms t ⟶* elim D ms' t
-⟶*-elimᵐ done       = done
-⟶*-elimᵐ (step r q) = step (ξ-elimᵐ r) (⟶*-elimᵐ q)
+⟶*-ielimᴰ : {i : RTm Γ} {e : RTm Γ} {t : RTm Γ} {D D' : RTm Γ} → D ⟶* D' → ielim D i e t ⟶* ielim D' i e t
+⟶*-ielimᴰ done       = done
+⟶*-ielimᴰ (step r q) = step (ξ-ielimᴰ r) (⟶*-ielimᴰ q)
 
-⟶*-elimᵗ : {D : Desc} {ms t t' : RTm Γ} →
-           t ⟶* t' → elim D ms t ⟶* elim D ms t'
-⟶*-elimᵗ done       = done
-⟶*-elimᵗ (step r q) = step (ξ-elimᵗ r) (⟶*-elimᵗ q)
-
-⟶*-icon : {k : ℕ} {p p' : RTm Γ} → p ⟶* p' → icon k p ⟶* icon k p'
-⟶*-icon done       = done
-⟶*-icon (step r q) = step (ξ-icon r) (⟶*-icon q)
-
-⟶*-ielimⁱ : {D : IDesc} {i i' ms t : RTm Γ} →
-            i ⟶* i' → ielim D i ms t ⟶* ielim D i' ms t
+⟶*-ielimⁱ : {D : RTm Γ} {e : RTm Γ} {t : RTm Γ} {i i' : RTm Γ} → i ⟶* i' → ielim D i e t ⟶* ielim D i' e t
 ⟶*-ielimⁱ done       = done
 ⟶*-ielimⁱ (step r q) = step (ξ-ielimⁱ r) (⟶*-ielimⁱ q)
 
-⟶*-ielimᵐ : {D : IDesc} {i ms ms' t : RTm Γ} →
-            ms ⟶* ms' → ielim D i ms t ⟶* ielim D i ms' t
-⟶*-ielimᵐ done       = done
-⟶*-ielimᵐ (step r q) = step (ξ-ielimᵐ r) (⟶*-ielimᵐ q)
+⟶*-ielimᵉ : {D : RTm Γ} {i : RTm Γ} {t : RTm Γ} {e e' : RTm Γ} → e ⟶* e' → ielim D i e t ⟶* ielim D i e' t
+⟶*-ielimᵉ done       = done
+⟶*-ielimᵉ (step r q) = step (ξ-ielimᵉ r) (⟶*-ielimᵉ q)
 
-⟶*-ielimᵗ : {D : IDesc} {i ms t t' : RTm Γ} →
-            t ⟶* t' → ielim D i ms t ⟶* ielim D i ms t'
+⟶*-ielimᵗ : {D : RTm Γ} {i : RTm Γ} {e : RTm Γ} {t t' : RTm Γ} → t ⟶* t' → ielim D i e t ⟶* ielim D i e t'
 ⟶*-ielimᵗ done       = done
 ⟶*-ielimᵗ (step r q) = step (ξ-ielimᵗ r) (⟶*-ielimᵗ q)
 
-⟶*-⌜IMu⌝ : {D : IDesc} {I : RTy ε} {i i' : RTm Γ} →
-           i ⟶* i' → ⌜IMu⌝ D I i ⟶* ⌜IMu⌝ D I i'
-⟶*-⌜IMu⌝ done       = done
-⟶*-⌜IMu⌝ (step r q) = step (ξ-⌜IMu⌝ r) (⟶*-⌜IMu⌝ q)
+⟶*-dι :  {j j' : RTm Γ} → j ⟶* j' → dι j ⟶* dι j'
+⟶*-dι done       = done
+⟶*-dι (step r q) = step (ξ-dι r) (⟶*-dι q)
 
-⟶*-sel : (k : ℕ) {ms ms' : RTm Γ} → ms ⟶* ms' → sel k ms ⟶* sel k ms'
-⟶*-sel zero    q = ⟶*-fst q
-⟶*-sel (suc k) q = ⟶*-sel k (⟶*-snd q)
+⟶*-dσˢ : {f : RTm Γ} {S S' : RTm Γ} → S ⟶* S' → dσ S f ⟶* dσ S' f
+⟶*-dσˢ done       = done
+⟶*-dσˢ (step r q) = step (ξ-dσˢ r) (⟶*-dσˢ q)
 
--- ⚠ TUPLED (gate 5c): the induction on the field list now lives in
---   `⟶*-ihs`; `fields` itself is one application, so its closure is two
---   `app` congruences over it.
-⟶*-ihs : (D : Desc) {ms ms' : RTm Γ} (C : DCon) {p p' : RTm Γ} →
-         ms ⟶* ms' → p ⟶* p' → ihs D ms C p ⟶* ihs D ms' C p'
-⟶*-ihs D dι       qms qp = done
-⟶*-ihs D (dρ C)   qms qp =
-  ⟶*-trans (⟶*-pairˡ (⟶*-trans (⟶*-elimᵐ qms) (⟶*-elimᵗ (⟶*-fst qp))))
-           (⟶*-pairʳ (⟶*-ihs D C qms (⟶*-snd qp)))
-⟶*-ihs D (dκ A C) qms qp = ⟶*-ihs D C qms (⟶*-snd qp)
+⟶*-dσᶠ : {S : RTm Γ} {f f' : RTm Γ} → f ⟶* f' → dσ S f ⟶* dσ S f'
+⟶*-dσᶠ done       = done
+⟶*-dσᶠ (step r q) = step (ξ-dσᶠ r) (⟶*-dσᶠ q)
 
-⟶*-fields : (D : Desc) {ms ms' : RTm Γ} (C : DCon) {m m' p p' : RTm Γ} →
-            ms ⟶* ms' → m ⟶* m' → p ⟶* p' →
-            fields D ms C m p ⟶* fields D ms' C m' p'
-⟶*-fields D C qms qm qp =
-  ⟶*-trans (⟶*-appˡ (⟶*-trans (⟶*-appˡ qm) (⟶*-appʳ qp)))
-           (⟶*-appʳ (⟶*-ihs D C qms qp))
+⟶*-dρʲ : {C : RTm Γ} {j j' : RTm Γ} → j ⟶* j' → dρ j C ⟶* dρ j' C
+⟶*-dρʲ done       = done
+⟶*-dρʲ (step r q) = step (ξ-dρʲ r) (⟶*-dρʲ q)
 
+⟶*-dρᶜ : {j : RTm Γ} {C C' : RTm Γ} → C ⟶* C' → dρ j C ⟶* dρ j C'
+⟶*-dρᶜ done       = done
+⟶*-dρᶜ (step r q) = step (ξ-dρᶜ r) (⟶*-dρᶜ q)
+
+⟶*-dpayᴵ : {D : RTm Γ} {C : RTm Γ} {i : RTm Γ} {I I' : RTm Γ} → I ⟶* I' → dpay I D C i ⟶* dpay I' D C i
+⟶*-dpayᴵ done       = done
+⟶*-dpayᴵ (step r q) = step (ξ-dpayᴵ r) (⟶*-dpayᴵ q)
+
+⟶*-dpayᴰ : {I : RTm Γ} {C : RTm Γ} {i : RTm Γ} {D D' : RTm Γ} → D ⟶* D' → dpay I D C i ⟶* dpay I D' C i
+⟶*-dpayᴰ done       = done
+⟶*-dpayᴰ (step r q) = step (ξ-dpayᴰ r) (⟶*-dpayᴰ q)
+
+⟶*-dpayᶜ : {I : RTm Γ} {D : RTm Γ} {i : RTm Γ} {C C' : RTm Γ} → C ⟶* C' → dpay I D C i ⟶* dpay I D C' i
+⟶*-dpayᶜ done       = done
+⟶*-dpayᶜ (step r q) = step (ξ-dpayᶜ r) (⟶*-dpayᶜ q)
+
+⟶*-dpayⁱ : {I : RTm Γ} {D : RTm Γ} {C : RTm Γ} {i i' : RTm Γ} → i ⟶* i' → dpay I D C i ⟶* dpay I D C i'
+⟶*-dpayⁱ done       = done
+⟶*-dpayⁱ (step r q) = step (ξ-dpayⁱ r) (⟶*-dpayⁱ q)
+
+⟶*-dihᴰ : {e : RTm Γ} {C : RTm Γ} {p : RTm Γ} {D D' : RTm Γ} → D ⟶* D' → dih D e C p ⟶* dih D' e C p
+⟶*-dihᴰ done       = done
+⟶*-dihᴰ (step r q) = step (ξ-dihᴰ r) (⟶*-dihᴰ q)
+
+⟶*-dihᵉ : {D : RTm Γ} {C : RTm Γ} {p : RTm Γ} {e e' : RTm Γ} → e ⟶* e' → dih D e C p ⟶* dih D e' C p
+⟶*-dihᵉ done       = done
+⟶*-dihᵉ (step r q) = step (ξ-dihᵉ r) (⟶*-dihᵉ q)
+
+⟶*-dihᶜ : {D : RTm Γ} {e : RTm Γ} {p : RTm Γ} {C C' : RTm Γ} → C ⟶* C' → dih D e C p ⟶* dih D e C' p
+⟶*-dihᶜ done       = done
+⟶*-dihᶜ (step r q) = step (ξ-dihᶜ r) (⟶*-dihᶜ q)
+
+⟶*-dihᵖ : {D : RTm Γ} {e : RTm Γ} {C : RTm Γ} {p p' : RTm Γ} → p ⟶* p' → dih D e C p ⟶* dih D e C p'
+⟶*-dihᵖ done       = done
+⟶*-dihᵖ (step r q) = step (ξ-dihᵖ r) (⟶*-dihᵖ q)
+
+⟶*-fsuc :  {t t' : RTm Γ} → t ⟶* t' → fsuc t ⟶* fsuc t'
+⟶*-fsuc done       = done
+⟶*-fsuc (step r q) = step (ξ-fsuc r) (⟶*-fsuc q)
+
+⟶*-fcaseᵗ : {a : RTm Γ} {b : RTm (Γ ∙)} {t t' : RTm Γ} → t ⟶* t' → fcase t a b ⟶* fcase t' a b
+⟶*-fcaseᵗ done       = done
+⟶*-fcaseᵗ (step r q) = step (ξ-fcaseᵗ r) (⟶*-fcaseᵗ q)
+
+⟶*-fcaseᵃ : {t : RTm Γ} {b : RTm (Γ ∙)} {a a' : RTm Γ} → a ⟶* a' → fcase t a b ⟶* fcase t a' b
+⟶*-fcaseᵃ done       = done
+⟶*-fcaseᵃ (step r q) = step (ξ-fcaseᵃ r) (⟶*-fcaseᵃ q)
+
+⟶*-fcaseᵇ : {t : RTm Γ} {a : RTm Γ} {b b' : RTm (Γ ∙)} → b ⟶* b' → fcase t a b ⟶* fcase t a b'
+⟶*-fcaseᵇ done       = done
+⟶*-fcaseᵇ (step r q) = step (ξ-fcaseᵇ r) (⟶*-fcaseᵇ q)
+
+⟶*-fcase0 :  {t t' : RTm Γ} → t ⟶* t' → fcase0 t ⟶* fcase0 t'
+⟶*-fcase0 done       = done
+⟶*-fcase0 (step r q) = step (ξ-fcase0 r) (⟶*-fcase0 q)
+
+⟶*-psplitᵇ : {q : RTm Γ} {b b' : RTm ((Γ ∙) ∙)} → b ⟶* b' → psplit b q ⟶* psplit b' q
+⟶*-psplitᵇ done       = done
+⟶*-psplitᵇ (step r q) = step (ξ-psplitᵇ r) (⟶*-psplitᵇ q)
+
+⟶*-psplitᵍ : {b : RTm ((Γ ∙) ∙)} {q q' : RTm Γ} → q ⟶* q' → psplit b q ⟶* psplit b q'
+⟶*-psplitᵍ done       = done
+⟶*-psplitᵍ (step r q) = step (ξ-psplitᵍ r) (⟶*-psplitᵍ q)
 
 ⟶*-sub : (σ : Sub Γ Δ) {t u : RTm Γ} → t ⟶* u → subTm σ t ⟶* subTm σ u
 ⟶*-sub σ done       = done
@@ -400,6 +441,19 @@ pwShift-ren ρ t =
   ptw (vs vz)     = refl
   ptw (vs (vs z)) = refl
 
+-- `psplit-β`'s two-binder instantiation commutes with renaming
+ren-comm2 : (ρ : Ren Γ Δ) (b : RTm ((Γ ∙) ∙)) (x y : RTm Γ) →
+            renTm ρ (subTm (single2 x y) b) ≡
+            subTm (single2 (renTm ρ x) (renTm ρ y)) (renTm (extR (extR ρ)) b)
+ren-comm2 {Γ} ρ b x y =
+  trans (renTm-subTm b) (trans (subTm-cong bridge b) (sym (subTm-renTm b)))
+  where
+  bridge : ∀ (z : Var ((Γ ∙) ∙)) →
+           (ρ ᵣ∘ₛ single2 x y) z ≡ (single2 (renTm ρ x) (renTm ρ y) ₛ∘ᵣ extR (extR ρ)) z
+  bridge vz          = refl
+  bridge (vs vz)     = refl
+  bridge (vs (vs z)) = refl
+
 ⟶-ren : (ρ : Ren Γ Δ) {t u : RTm Γ} → t ⟶ u → renTm ρ t ⟶ renTm ρ u
 ⟶-ren ρ (β t u)    =
   subst (λ z → renTm ρ (app (lam t) u) ⟶ z)
@@ -437,32 +491,65 @@ pwShift-ren ρ t =
                                                  (renTm ρ n))))
                           (ren-comm-ext ρ s n))))
         (natrec-suc (renTm ρ z) (renTm (extR (extR ρ)) s) (renTm ρ n))
+-- ★ LEVITATION
+⟶-ren ρ (ι D i e p) = ι _ _ _ _
+⟶-ren ρ (dpay-ι I D j i) = dpay-ι _ _ _ _
+⟶-ren ρ (dpay-σ I D S f i) =
+  subst (λ z → dpay (renTm ρ I) (renTm ρ D) (dσ (renTm ρ S) (renTm ρ f)) (renTm ρ i) ⟶ z)
+        (sym (cong₄ (λ a b c d → ⌜Σ⌝ (renTm ρ S) (dpay a b (app c (var vz)) d))
+                    (wk-ren ρ I) (wk-ren ρ D) (wk-ren ρ f) (wk-ren ρ i)))
+        (dpay-σ _ _ _ _ _)
+⟶-ren ρ (dpay-ρ I D j C i) =
+  subst (λ z → dpay (renTm ρ I) (renTm ρ D) (dρ (renTm ρ j) (renTm ρ C)) (renTm ρ i) ⟶ z)
+        (sym (cong₄ (λ a b c d → ⌜Σ⌝ (⌜IMu⌝ (renTm ρ I) (renTm ρ D) (renTm ρ j)) (dpay a b c d))
+                    (wk-ren ρ I) (wk-ren ρ D) (wk-ren ρ C) (wk-ren ρ i)))
+        (dpay-ρ _ _ _ _ _)
+⟶-ren ρ (dih-ι D e j p) = dih-ι _ _ _ _
+⟶-ren ρ (dih-σ D e S f p) = dih-σ _ _ _ _ _
+⟶-ren ρ (dih-ρ D e j C p) = dih-ρ _ _ _ _ _
+⟶-ren ρ (fcase-z a b) = fcase-z _ _
+⟶-ren ρ (fcase-s t a b) =
+  subst (λ z → fcase (fsuc (renTm ρ t)) (renTm ρ a) (renTm (extR ρ) b) ⟶ z)
+        (sym (ren-comm ρ b t))
+        (fcase-s _ _ _)
+⟶-ren ρ (psplit-β b x y) =
+  subst (λ z → psplit (renTm (extR (extR ρ)) b) (pair (renTm ρ x) (renTm ρ y)) ⟶ z)
+        (sym (ren-comm2 ρ b x y))
+        (psplit-β _ _ _)
+⟶-ren ρ (tr-J-Fin c a m s e) =
+  tr-J-Fin (renTm (extR ρ) c) (renTm (extR ρ) a) (renTm (extR ρ) m) (renTm ρ s) (renTm ρ e)
+⟶-ren ρ (ξ-⌜IMu⌝ᴵ r) = ξ-⌜IMu⌝ᴵ (⟶-ren ρ r)
+⟶-ren ρ (ξ-⌜IMu⌝ᴰ r) = ξ-⌜IMu⌝ᴰ (⟶-ren ρ r)
+⟶-ren ρ (ξ-⌜IMu⌝ⁱ r) = ξ-⌜IMu⌝ⁱ (⟶-ren ρ r)
+⟶-ren ρ (ξ-con r) = ξ-con (⟶-ren ρ r)
+⟶-ren ρ (ξ-ielimᴰ r) = ξ-ielimᴰ (⟶-ren ρ r)
+⟶-ren ρ (ξ-ielimⁱ r) = ξ-ielimⁱ (⟶-ren ρ r)
+⟶-ren ρ (ξ-ielimᵉ r) = ξ-ielimᵉ (⟶-ren ρ r)
+⟶-ren ρ (ξ-ielimᵗ r) = ξ-ielimᵗ (⟶-ren ρ r)
+⟶-ren ρ (ξ-dι r) = ξ-dι (⟶-ren ρ r)
+⟶-ren ρ (ξ-dσˢ r) = ξ-dσˢ (⟶-ren ρ r)
+⟶-ren ρ (ξ-dσᶠ r) = ξ-dσᶠ (⟶-ren ρ r)
+⟶-ren ρ (ξ-dρʲ r) = ξ-dρʲ (⟶-ren ρ r)
+⟶-ren ρ (ξ-dρᶜ r) = ξ-dρᶜ (⟶-ren ρ r)
+⟶-ren ρ (ξ-dpayᴵ r) = ξ-dpayᴵ (⟶-ren ρ r)
+⟶-ren ρ (ξ-dpayᴰ r) = ξ-dpayᴰ (⟶-ren ρ r)
+⟶-ren ρ (ξ-dpayᶜ r) = ξ-dpayᶜ (⟶-ren ρ r)
+⟶-ren ρ (ξ-dpayⁱ r) = ξ-dpayⁱ (⟶-ren ρ r)
+⟶-ren ρ (ξ-dihᴰ r) = ξ-dihᴰ (⟶-ren ρ r)
+⟶-ren ρ (ξ-dihᵉ r) = ξ-dihᵉ (⟶-ren ρ r)
+⟶-ren ρ (ξ-dihᶜ r) = ξ-dihᶜ (⟶-ren ρ r)
+⟶-ren ρ (ξ-dihᵖ r) = ξ-dihᵖ (⟶-ren ρ r)
+⟶-ren ρ (ξ-fsuc r) = ξ-fsuc (⟶-ren ρ r)
+⟶-ren ρ (ξ-fcaseᵗ r) = ξ-fcaseᵗ (⟶-ren ρ r)
+⟶-ren ρ (ξ-fcaseᵃ r) = ξ-fcaseᵃ (⟶-ren ρ r)
+⟶-ren ρ (ξ-fcaseᵇ r) = ξ-fcaseᵇ (⟶-ren (extR ρ) r)
+⟶-ren ρ (ξ-fcase0 r) = ξ-fcase0 (⟶-ren ρ r)
+⟶-ren ρ (ξ-psplitᵇ r) = ξ-psplitᵇ (⟶-ren (extR (extR ρ)) r)
+⟶-ren ρ (ξ-psplitᵍ r) = ξ-psplitᵍ (⟶-ren ρ r)
 ⟶-ren ρ (ξ-nsuc r)    = ξ-nsuc (⟶-ren ρ r)
 ⟶-ren ρ (ξ-natrecᶻ r) = ξ-natrecᶻ (⟶-ren ρ r)
 ⟶-ren ρ (ξ-natrecˢ r) = ξ-natrecˢ (⟶-ren (extR (extR ρ)) r)
 ⟶-ren ρ (ξ-natrecⁿ r) = ξ-natrecⁿ (⟶-ren ρ r)
-⟶-ren ρ (ι-elim D ms k p) =
-  subst (elim D (renTm ρ ms) (con k (renTm ρ p)) ⟶_)
-        (sym (trans (ren-fields ρ D ms (lookupD D k) (sel k ms) p)
-                    (cong (λ w → fields D (renTm ρ ms) (lookupD D k) w (renTm ρ p))
-                          (ren-sel ρ k ms))))
-        (ι-elim D (renTm ρ ms) k (renTm ρ p))
-⟶-ren ρ (ξ-con r)   = ξ-con   (⟶-ren ρ r)
-⟶-ren ρ (ξ-elimᵐ r) = ξ-elimᵐ (⟶-ren ρ r)
-⟶-ren ρ (ξ-elimᵗ r) = ξ-elimᵗ (⟶-ren ρ r)
-⟶-ren ρ (ι-ielim D i ms k p) =
-  subst (ielim D (renTm ρ i) (renTm ρ ms) (icon k (renTm ρ p)) ⟶_)
-        (sym (trans (ren-ifieldsⁱ ρ D i ms (ilookupD D k) (sel k ms) p)
-                    (cong (λ w → ifields D (renTm ρ i) (renTm ρ ms)
-                                          (isingle (renTm ρ i))
-                                          (ilookupD D k) w (renTm ρ p))
-                          (ren-sel ρ k ms))))
-        (ι-ielim D (renTm ρ i) (renTm ρ ms) k (renTm ρ p))
-⟶-ren ρ (ξ-icon r)    = ξ-icon    (⟶-ren ρ r)
-⟶-ren ρ (ξ-ielimⁱ r)  = ξ-ielimⁱ  (⟶-ren ρ r)
-⟶-ren ρ (ξ-ielimᵐ r)  = ξ-ielimᵐ  (⟶-ren ρ r)
-⟶-ren ρ (ξ-ielimᵗ r)  = ξ-ielimᵗ  (⟶-ren ρ r)
-⟶-ren ρ (ξ-⌜IMu⌝ r)   = ξ-⌜IMu⌝   (⟶-ren ρ r)
 ⟶-ren ρ (ξ-⌜Π⌝ˡ r) = ξ-⌜Π⌝ˡ (⟶-ren ρ r)
 ⟶-ren ρ (ξ-⌜Π⌝ʳ r) = ξ-⌜Π⌝ʳ (⟶-ren (extR ρ) r)
 ⟶-ren ρ (ξ-⌜Σ⌝ˡ r) = ξ-⌜Σ⌝ˡ (⟶-ren ρ r)
@@ -473,9 +560,6 @@ pwShift-ren ρ t =
 ⟶-ren ρ (tr-J-IMu c a m s e) =
   tr-J-IMu (renTm (extR ρ) c) (renTm (extR ρ) a) (renTm (extR ρ) m)
            (renTm ρ s) (renTm ρ e)
-⟶-ren ρ (tr-J-Mu c a m s e) =
-  tr-J-Mu (renTm (extR ρ) c) (renTm (extR ρ) a) (renTm (extR ρ) m)
-          (renTm ρ s) (renTm ρ e)
 ⟶-ren ρ (tr-J-base c a m s e) =
   tr-J-base (renTm (extR ρ) c) (renTm (extR ρ) a) (renTm (extR ρ) m)
             (renTm ρ s) (renTm ρ e)
@@ -612,7 +696,9 @@ stkA?-red (ξ-⌜Π⌝ˡ _) ()
 stkA?-red (ξ-⌜Π⌝ʳ _) ()
 -- ⚠ §10.4: `stkA? (⌜IMu⌝ …)` is `true` and the INDEX steps, so this is
 --   a real preservation row, not an absurdity.
-stkA?-red (ξ-⌜IMu⌝ r) h = refl
+stkA?-red (ξ-⌜IMu⌝ᴵ r) h = refl
+stkA?-red (ξ-⌜IMu⌝ᴰ r) h = refl
+stkA?-red (ξ-⌜IMu⌝ⁱ r) h = refl
 stkA?-red (ξ-⌜Σ⌝ˡ r) h = refl
 stkA?-red (ξ-⌜Σ⌝ʳ r) h = refl
 stkA?-red (ξ-⌜Hom⌝ᶜ r) h = stkA?-red r h
@@ -646,7 +732,9 @@ stkC?-red (ξ-fst _) ()
 stkC?-red (ξ-snd _) ()
 stkC?-red (ξ-⌜Π⌝ˡ _) ()
 stkC?-red (ξ-⌜Π⌝ʳ _) ()
-stkC?-red (ξ-⌜IMu⌝ r) h = refl
+stkC?-red (ξ-⌜IMu⌝ᴵ r) h = refl
+stkC?-red (ξ-⌜IMu⌝ᴰ r) h = refl
+stkC?-red (ξ-⌜IMu⌝ⁱ r) h = refl
 stkC?-red (ξ-⌜Σ⌝ˡ r) h = refl
 stkC?-red (ξ-⌜Σ⌝ʳ r) h = refl
 stkC?-red (ξ-⌜Hom⌝ᶜ r) h = stkA?-red r h
@@ -757,18 +845,35 @@ subTm-monoˢ h (idrefl c t) =
   ⟶*-trans (⟶*-idreflᶜ (subTm-monoˢ h c)) (⟶*-idreflᵃ (subTm-monoˢ h t))
 subTm-monoˢ h ⌜Nat⌝    = done
 subTm-monoˢ h ⌜Unit⌝   = done
-subTm-monoˢ h (⌜Mu⌝ Dᵐ) = done
 subTm-monoˢ h unit     = done
 subTm-monoˢ h nzero    = done
 subTm-monoˢ h (nsuc n) = ⟶*-nsuc (subTm-monoˢ h n)
-subTm-monoˢ h (con k p) = ⟶*-con (subTm-monoˢ h p)
-subTm-monoˢ h (elim D ms t) =
-  ⟶*-trans (⟶*-elimᵐ (subTm-monoˢ h ms)) (⟶*-elimᵗ (subTm-monoˢ h t))
-subTm-monoˢ h (icon k p) = ⟶*-icon (subTm-monoˢ h p)
-subTm-monoˢ h (ielim D i ms t) =
-  ⟶*-trans (⟶*-ielimⁱ (subTm-monoˢ h i))
-           (⟶*-trans (⟶*-ielimᵐ (subTm-monoˢ h ms)) (⟶*-ielimᵗ (subTm-monoˢ h t)))
-subTm-monoˢ h (⌜IMu⌝ D I i) = ⟶*-⌜IMu⌝ (subTm-monoˢ h i)
+subTm-monoˢ h (⌜Fin⌝ n) = done
+subTm-monoˢ h fzero = done
+subTm-monoˢ h (⌜IMu⌝ I D i) =
+  ⟶*-trans (⟶*-⌜IMu⌝ᴵ (subTm-monoˢ h I)) (⟶*-trans (⟶*-⌜IMu⌝ᴰ (subTm-monoˢ h D)) (⟶*-⌜IMu⌝ⁱ (subTm-monoˢ h i)))
+subTm-monoˢ h (con p) =
+  ⟶*-con (subTm-monoˢ h p)
+subTm-monoˢ h (ielim D i e t) =
+  ⟶*-trans (⟶*-ielimᴰ (subTm-monoˢ h D)) (⟶*-trans (⟶*-ielimⁱ (subTm-monoˢ h i)) (⟶*-trans (⟶*-ielimᵉ (subTm-monoˢ h e)) (⟶*-ielimᵗ (subTm-monoˢ h t))))
+subTm-monoˢ h (dι j) =
+  ⟶*-dι (subTm-monoˢ h j)
+subTm-monoˢ h (dσ S f) =
+  ⟶*-trans (⟶*-dσˢ (subTm-monoˢ h S)) (⟶*-dσᶠ (subTm-monoˢ h f))
+subTm-monoˢ h (dρ j C) =
+  ⟶*-trans (⟶*-dρʲ (subTm-monoˢ h j)) (⟶*-dρᶜ (subTm-monoˢ h C))
+subTm-monoˢ h (dpay I D C i) =
+  ⟶*-trans (⟶*-dpayᴵ (subTm-monoˢ h I)) (⟶*-trans (⟶*-dpayᴰ (subTm-monoˢ h D)) (⟶*-trans (⟶*-dpayᶜ (subTm-monoˢ h C)) (⟶*-dpayⁱ (subTm-monoˢ h i))))
+subTm-monoˢ h (dih D e C p) =
+  ⟶*-trans (⟶*-dihᴰ (subTm-monoˢ h D)) (⟶*-trans (⟶*-dihᵉ (subTm-monoˢ h e)) (⟶*-trans (⟶*-dihᶜ (subTm-monoˢ h C)) (⟶*-dihᵖ (subTm-monoˢ h p))))
+subTm-monoˢ h (fsuc t) =
+  ⟶*-fsuc (subTm-monoˢ h t)
+subTm-monoˢ h (fcase t a b) =
+  ⟶*-trans (⟶*-fcaseᵗ (subTm-monoˢ h t)) (⟶*-trans (⟶*-fcaseᵃ (subTm-monoˢ h a)) (⟶*-fcaseᵇ (subTm-monoˢ (extS-mono h) b)))
+subTm-monoˢ h (fcase0 t) =
+  ⟶*-fcase0 (subTm-monoˢ h t)
+subTm-monoˢ h (psplit b q) =
+  ⟶*-trans (⟶*-psplitᵇ (subTm-monoˢ (extS-mono (extS-mono h)) b)) (⟶*-psplitᵍ (subTm-monoˢ h q))
 subTm-monoˢ h (natrec z s n) =
   ⟶*-trans (⟶*-natrecᶻ (subTm-monoˢ h z))
            (⟶*-trans (⟶*-natrecˢ (subTm-monoˢ (extS-mono (extS-mono h)) s))
@@ -779,33 +884,6 @@ subTm-monoˢ h (jsub d p e) =
                      (⟶*-jsubᵉ (subTm-monoˢ h e)))
 
 
--- ⚠ PLACED AFTER `subTm-monoˢ`: a recursive field's index is an arbitrary
---   telescope term, so moving it needs substitution-monotonicity, which
---   is defined just above.  (The old `iρ f` only needed `⟶*-appʳ`.)
--- ⚠ the ENVIRONMENT moves, not a single index: a description's recursive
---   field sits at an arbitrary telescope term, so what reduces is every
---   slot of `σ` pointwise.  `iext`'s new slot moves with the payload.
-⟶*-iihs : (D : IDesc) {ms ms' : RTm Γ} {Θ : Cx} {σ σ' : Sub Θ Γ}
-          (C : ICon Θ) {p p' : RTm Γ} →
-          (∀ x → σ x ⟶* σ' x) → ms ⟶* ms' → p ⟶* p' →
-          iihs D ms σ C p ⟶* iihs D ms' σ' C p'
-⟶*-iihs D iι       qσ qms qp = done
-⟶*-iihs D (iρ j C) qσ qms qp =
-  ⟶*-trans (⟶*-pairˡ (⟶*-trans (⟶*-ielimⁱ (subTm-monoˢ qσ j))
-                     (⟶*-trans (⟶*-ielimᵐ qms) (⟶*-ielimᵗ (⟶*-fst qp)))))
-           (⟶*-pairʳ (⟶*-iihs D C (λ { vz → ⟶*-fst qp ; (vs x) → qσ x })
-                              qms (⟶*-snd qp)))
-⟶*-iihs D (iκ κ C) qσ qms qp =
-  ⟶*-iihs D C (λ { vz → ⟶*-fst qp ; (vs x) → qσ x }) qms (⟶*-snd qp)
-
-⟶*-ifields : (D : IDesc) {i i' ms ms' : RTm Γ} {Θ : Cx} {σ σ' : Sub Θ Γ}
-             (C : ICon Θ) {m m' p p' : RTm Γ} →
-             i ⟶* i' → (∀ x → σ x ⟶* σ' x) → ms ⟶* ms' → m ⟶* m' → p ⟶* p' →
-             ifields D i ms σ C m p ⟶* ifields D i' ms' σ' C m' p'
-⟶*-ifields D C qi qσ qms qm qp =
-  ⟶*-trans (⟶*-appˡ (⟶*-trans (⟶*-appˡ (⟶*-trans (⟶*-appˡ qm) (⟶*-appʳ qi)))
-                              (⟶*-appʳ qp)))
-           (⟶*-appʳ (⟶*-iihs D C qσ qms qp))
 single-mono : {u u' : RTm Γ} → u ⟶* u' →
               ∀ (x : Var (Γ ∙)) → single u x ⟶* single u' x
 single-mono p vz     = p
@@ -876,11 +954,39 @@ data _⟶ᵀ*_ : {Γ : Cx} → RTy Γ → RTy Γ → Set where
 ⟶ᵀ*-Homʳ done       = doneᵀ
 ⟶ᵀ*-Homʳ (step r p) = stepᵀ (ξ-Homʳ r) (⟶ᵀ*-Homʳ p)
 
--- the index congruence, closed under ⟶ᵀ* — `IMu`'s analogue of `⟶ᵀ*-Idˡ`.
-⟶ᵀ*-IMu : {D : IDesc} {I : RTy ε} {i i' : RTm Γ} →
-          i ⟶* i' → IMu D I i ⟶ᵀ* IMu D I i'
+-- the levitated types' congruences, closed under ⟶ᵀ*
+⟶ᵀ*-IMuᴵ : {I I' D i : RTm Γ} → I ⟶* I' → IMu I D i ⟶ᵀ* IMu I' D i
+⟶ᵀ*-IMuᴵ done       = doneᵀ
+⟶ᵀ*-IMuᴵ (step r p) = stepᵀ (ξ-IMuᴵ r) (⟶ᵀ*-IMuᴵ p)
+
+⟶ᵀ*-IMuᴰ : {I D D' i : RTm Γ} → D ⟶* D' → IMu I D i ⟶ᵀ* IMu I D' i
+⟶ᵀ*-IMuᴰ done       = doneᵀ
+⟶ᵀ*-IMuᴰ (step r p) = stepᵀ (ξ-IMuᴰ r) (⟶ᵀ*-IMuᴰ p)
+
+-- the INDEX congruence keeps its old name (`IMu`'s analogue of `⟶ᵀ*-Idˡ`)
+⟶ᵀ*-IMu : {I D i i' : RTm Γ} → i ⟶* i' → IMu I D i ⟶ᵀ* IMu I D i'
 ⟶ᵀ*-IMu done       = doneᵀ
-⟶ᵀ*-IMu (step r p) = stepᵀ (ξ-IMu r) (⟶ᵀ*-IMu p)
+⟶ᵀ*-IMu (step r p) = stepᵀ (ξ-IMuⁱ r) (⟶ᵀ*-IMu p)
+
+⟶ᵀ*-Desc : {I I' : RTm Γ} → I ⟶* I' → Desc I ⟶ᵀ* Desc I'
+⟶ᵀ*-Desc done       = doneᵀ
+⟶ᵀ*-Desc (step r p) = stepᵀ (ξ-Desc r) (⟶ᵀ*-Desc p)
+
+⟶ᵀ*-DIhᴰ : {D D' C p : RTm Γ} {M : RTy ((Γ ∙) ∙)} → D ⟶* D' → DIh D M C p ⟶ᵀ* DIh D' M C p
+⟶ᵀ*-DIhᴰ done       = doneᵀ
+⟶ᵀ*-DIhᴰ (step r q) = stepᵀ (ξ-DIhᴰ r) (⟶ᵀ*-DIhᴰ q)
+
+⟶ᵀ*-DIhᴹ : {D C p : RTm Γ} {M M' : RTy ((Γ ∙) ∙)} → M ⟶ᵀ* M' → DIh D M C p ⟶ᵀ* DIh D M' C p
+⟶ᵀ*-DIhᴹ doneᵀ       = doneᵀ
+⟶ᵀ*-DIhᴹ (stepᵀ r q) = stepᵀ (ξ-DIhᴹ r) (⟶ᵀ*-DIhᴹ q)
+
+⟶ᵀ*-DIhᶜ : {D C C' p : RTm Γ} {M : RTy ((Γ ∙) ∙)} → C ⟶* C' → DIh D M C p ⟶ᵀ* DIh D M C' p
+⟶ᵀ*-DIhᶜ done       = doneᵀ
+⟶ᵀ*-DIhᶜ (step r q) = stepᵀ (ξ-DIhᶜ r) (⟶ᵀ*-DIhᶜ q)
+
+⟶ᵀ*-DIhᵖ : {D C p p' : RTm Γ} {M : RTy ((Γ ∙) ∙)} → p ⟶* p' → DIh D M C p ⟶ᵀ* DIh D M C p'
+⟶ᵀ*-DIhᵖ done       = doneᵀ
+⟶ᵀ*-DIhᵖ (step r q) = stepᵀ (ξ-DIhᵖ r) (⟶ᵀ*-DIhᵖ q)
 
 ⟶ᵀ*-Idᵀ : {A A' : RTy Γ} {t u : RTm Γ} → A ⟶ᵀ* A' → Id A t u ⟶ᵀ* Id A' t u
 ⟶ᵀ*-Idᵀ doneᵀ       = doneᵀ
