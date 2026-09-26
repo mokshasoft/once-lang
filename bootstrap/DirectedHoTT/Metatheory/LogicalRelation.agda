@@ -45,47 +45,37 @@ open import normalizer.Syntax.Types
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Typing using ( wk-single ) public
 open import DirectedHoTT.Spec.Syntax
-  using ( Cx; ε; _∙; Var; vz; vs
-        ; RTy; base; U; Π; Σ'; El; Hom
-        ; RTm; var; lam; app; pair; fst; snd; absurd; ordtr; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝
-        ; ⌜Hom⌝; hrefl; tr; ap; Id; ⌜Id⌝; idrefl; jsub
-        ; Unit; Nat; unit; nzero; nsuc; natrec; natrec-cong₃; ⌜Nat⌝; ⌜Unit⌝
-        ; Ren; extR; Sub; subTy; subTm; extS; renTm
-        ; subTm-renTm; subTm-id; Hom-cong₃; ⌜Hom⌝-cong₃
-        ; Desc; Mu; con; elim; lookupD; sel; fields
-        ; DCon; dι; dρ; dκ; dnil; _◃_; εwkTy; _∈D_; hereD; thereD; ⌜Mu⌝
-        ; IMu; icon; ielim; ⌜IMu⌝; ICon; IDesc; iι; iρ; iκ; inil; _◂_; ipayTy; ilookupD; _∈ID_; hereID; thereID; iihs; ifields; εwkTm; iext; isingle )
+  using ( Cx; ε; _∙; Var; vz; vs; RTy; base; U; Π; Σ'; El; Hom; RTm; var; lam
+        ; app; pair; fst; snd; absurd; ordtr; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝; ⌜Hom⌝; hrefl
+        ; tr; ap; Id; ⌜Id⌝; idrefl; jsub; Unit; Nat; unit; nzero; nsuc; natrec
+        ; natrec-cong₃; ⌜Nat⌝; ⌜Unit⌝; Ren; extR; Sub; subTy; subTm; extS
+        ; renTm; subTm-renTm; subTm-id; Hom-cong₃; ⌜Hom⌝-cong₃; Desc; con; dι
+        ; dρ; εwkTy; IMu; ielim; ⌜IMu⌝; εwkTm
+        ; DIh; Fin; ⌜Fin⌝; dσ; dpay; dih; fzero; fsuc; fcase; fcase0; psplit; cong₄; cong₃ )
 open import DirectedHoTT.Spec.Typing
-  using ( single; nrs
-        ; _⟶_; β; βfst; βsnd; ξ-lam; ξ-appˡ; ξ-appʳ
-        ; ξ-pairˡ; ξ-pairʳ; ξ-absurdᶜ; ξ-absurdᵉ; ordtr-z; ordtr-szz; ordtr-ssz; ordtr-szs; ordtr-sss
-        ; ξ-ordtrᵃ; ξ-ordtrᵗ; ξ-ordtrᵘ; ξ-ordtrᵖ; ξ-ordtrq; ξ-fst; ξ-snd
-        ; ξ-⌜Π⌝ˡ; ξ-⌜Π⌝ʳ; ξ-⌜Σ⌝ˡ; ξ-⌜Σ⌝ʳ
-        ; ξ-⌜Hom⌝ᶜ; ξ-⌜Hom⌝ˡ; ξ-⌜Hom⌝ʳ; ξ-hreflᶜ; ξ-hreflᵃ
-        ; tr-J-base; tr-J-Σ; tr-J-Unit; tr-J-Mu; tr-taut; ξ-trᵈ; ξ-trᵖ; ξ-trᵉ
-        ; ap-J; ξ-apᶜ; ξ-apᵇ; ξ-apᵖ
-        ; tr-J-Id; jsub-refl; ξ-⌜Id⌝ᶜ; ξ-⌜Id⌝ˡ; ξ-⌜Id⌝ʳ; ξ-idreflᶜ; ξ-idreflᵃ
-        ; ξ-jsubᵈ; ξ-jsubᵖ; ξ-jsubᵉ
-        ; natrec-zero; natrec-suc; ξ-nsuc; ξ-natrecᶻ; ξ-natrecˢ; ξ-natrecⁿ
-        ; Hom-Nat-z; Hom-Nat-sz; Hom-Nat-ss; El-⌜Id⌝; ξ-Idᵀ; ξ-Idˡ; ξ-Idʳ; ⊢⌜Id⌝; ⊢idrefl; ⊢jsub; ⊢ap
-        ; hrefl-pw; tr-J-Hom; tr-pw
-        ; _⟶*_; done; step
-        ; _⟶ᵀ_; El-⌜base⌝; El-⌜Π⌝; El-⌜Σ⌝; El-⌜Hom⌝; ξ-El; ξ-Πˡ; ξ-Πʳ; ξ-Σˡ; ξ-Σʳ
-        ; El-⌜Nat⌝; El-⌜Unit⌝; El-⌜Mu⌝
-        ; El-⌜IMu⌝; ξ-IMu; tr-J-IMu
-        ; Hom-U; Hom-Π; ξ-Homᵀ; ξ-Homˡ; ξ-Homʳ
-        ; _≅ᵀ_; credᵀ; crflᵀ; csymᵀ; ctrnᵀ
-        ; ι-elim; ξ-con; ξ-elimᵐ; ξ-elimᵗ
-        ; ξ-icon; ι-ielim; ξ-ielimⁱ; ξ-ielimᵐ; ξ-ielimᵗ; ξ-⌜IMu⌝ )
+  using ( single; nrs; _⟶_; β; βfst; βsnd; ξ-lam; ξ-appˡ; ξ-appʳ; ξ-pairˡ
+        ; ξ-pairʳ; ξ-absurdᶜ; ξ-absurdᵉ; ordtr-z; ordtr-szz; ordtr-ssz
+        ; ordtr-szs; ordtr-sss; ξ-ordtrᵃ; ξ-ordtrᵗ; ξ-ordtrᵘ; ξ-ordtrᵖ
+        ; ξ-ordtrq; ξ-fst; ξ-snd; ξ-⌜Π⌝ˡ; ξ-⌜Π⌝ʳ; ξ-⌜Σ⌝ˡ; ξ-⌜Σ⌝ʳ; ξ-⌜Hom⌝ᶜ
+        ; ξ-⌜Hom⌝ˡ; ξ-⌜Hom⌝ʳ; ξ-hreflᶜ; ξ-hreflᵃ; tr-J-base; tr-J-Σ; tr-J-Unit
+        ; tr-taut; ξ-trᵈ; ξ-trᵖ; ξ-trᵉ; ap-J; ξ-apᶜ; ξ-apᵇ; ξ-apᵖ; tr-J-Id
+        ; jsub-refl; ξ-⌜Id⌝ᶜ; ξ-⌜Id⌝ˡ; ξ-⌜Id⌝ʳ; ξ-idreflᶜ; ξ-idreflᵃ; ξ-jsubᵈ
+        ; ξ-jsubᵖ; ξ-jsubᵉ; natrec-zero; natrec-suc; ξ-nsuc; ξ-natrecᶻ
+        ; ξ-natrecˢ; ξ-natrecⁿ; Hom-Nat-z; Hom-Nat-sz; Hom-Nat-ss; El-⌜Id⌝
+        ; ξ-Idᵀ; ξ-Idˡ; ξ-Idʳ; ⊢⌜Id⌝; ⊢idrefl; ⊢jsub; ⊢ap; hrefl-pw; tr-J-Hom
+        ; tr-pw; _⟶*_; done; step; _⟶ᵀ_; El-⌜base⌝; El-⌜Π⌝; El-⌜Σ⌝; El-⌜Hom⌝
+        ; ξ-El; ξ-Πˡ; ξ-Πʳ; ξ-Σˡ; ξ-Σʳ; El-⌜Nat⌝; El-⌜Unit⌝; El-⌜IMu⌝
+        ; tr-J-IMu; Hom-U; Hom-Π; ξ-Homᵀ; ξ-Homˡ; ξ-Homʳ; _≅ᵀ_; credᵀ; crflᵀ
+        ; csymᵀ; ctrnᵀ; ξ-con; ξ-ielimⁱ; ξ-ielimᵗ
+        ; El-⌜Fin⌝; DIh-ι; DIh-σ; DIh-ρ; ξ-IMuᴵ; ξ-IMuᴰ; ξ-IMuⁱ; ξ-Desc; ξ-DIhᴰ; ξ-DIhᴹ; ξ-DIhᶜ; ξ-DIhᵖ; ι; dpay-ι; dpay-σ; dpay-ρ; dih-ι; dih-σ; dih-ρ; fcase-z; fcase-s; psplit-β; ξ-⌜IMu⌝ᴵ; ξ-⌜IMu⌝ᴰ; ξ-⌜IMu⌝ⁱ; ξ-ielimᴰ; ξ-ielimᵉ; ξ-dι; ξ-dσˢ; ξ-dσᶠ; ξ-dρʲ; ξ-dρᶜ; ξ-dpayᴵ; ξ-dpayᴰ; ξ-dpayᶜ; ξ-dpayⁱ; ξ-dihᴰ; ξ-dihᵉ; ξ-dihᶜ; ξ-dihᵖ; ξ-fsuc; ξ-fcaseᵗ; ξ-fcaseᵃ; ξ-fcaseᵇ; ξ-fcase0; ξ-psplitᵇ; ξ-psplitᵍ; tr-J-Fin; ⊢⌜IMu⌝; ⊢⌜Fin⌝; ⊢dι; ⊢dσ; ⊢dρ; ⊢dpay; ⊢con; ⊢dih; ⊢ielim; ⊢fzero; ⊢fsuc; ⊢fcase; ⊢fcase0; ⊢psplit; ty-IMu; ty-Desc; ty-DIh; ty-Fin; MethTy; motCtx; methS; wk2M; iinst; single2; pairS; fsucS; hom→≅; _≅_; cred; crfl; csym; ctrn )
 open import DirectedHoTT.Spec.Variance
-  using ( 𝔹; true; false
-        ; pw?; stkC?; stkA?; pwDom; pwBody; pwShift
-        ; pw?-ren; stkC?-ren; stkA?-ren; pwBody-ren; pwDom-ren
-        ; stkC?→stkA?; stkA?⊥pw
+  using ( 𝔹; true; false; pw?; stkC?; stkA?; pwDom; pwBody; pwShift; pw?-ren
+        ; stkC?-ren; stkA?-ren; pwBody-ren; pwDom-ren; stkC?→stkA?; stkA?⊥pw
         ; stk⊥pw; pw⊥stk )
 open import DirectedHoTT.Metatheory.SubjectReductionBase using ( ⟶ᵀ-sub; ≅ᵀ-sub )
 open import DirectedHoTT.Metatheory.TySub using ( subTy-monoˢ )
-open import DirectedHoTT.Metatheory.Confluence using ( single-mono; confluent; ⟶*-absurdᶜ; ⟶*-absurdᵉ )
+open import DirectedHoTT.Metatheory.Confluence using ( single-mono; confluent; ⟶*-absurdᶜ; ⟶*-absurdᵉ
+        ; church-rosser; ⟶*-⌜IMu⌝ᴵ; ⟶*-⌜IMu⌝ᴰ; ⟶*-⌜IMu⌝ⁱ; ⟶*-ielimᴰ; ⟶*-ielimᵉ; ⟶*-dι; ⟶*-dσˢ; ⟶*-dσᶠ; ⟶*-dρʲ; ⟶*-dρᶜ; ⟶*-dpayᴵ; ⟶*-dpayᴰ; ⟶*-dpayᶜ; ⟶*-dpayⁱ; ⟶*-dihᴰ; ⟶*-dihᵉ; ⟶*-dihᶜ; ⟶*-dihᵖ; ⟶*-fsuc; ⟶*-fcaseᵗ; ⟶*-fcaseᵃ; ⟶*-fcaseᵇ; ⟶*-fcase0; ⟶*-psplitᵇ; ⟶*-psplitᵍ )
 open import DirectedHoTT.Metatheory.Confluence
   using ( ⟶*-trans; ⟶*-lam; ⟶*-appˡ; ⟶*-appʳ
         ; ⟶*-pairˡ; ⟶*-pairʳ; ⟶*-fst; ⟶*-snd
@@ -96,13 +86,14 @@ open import DirectedHoTT.Metatheory.Confluence
         ; ⟶*-idreflᶜ; ⟶*-idreflᵃ
         ; ⟶*-nsuc; ⟶*-natrecᶻ; ⟶*-natrecˢ; ⟶*-natrecⁿ ; ⟶*-absurdᶜ; ⟶*-absurdᵉ
         ; ⟶*-ordtrᵃ; ⟶*-ordtrᵗ; ⟶*-ordtrᵘ; ⟶*-ordtrᵖ; ⟶*-ordtrq
-        ; ⟶*-con; ⟶*-elimᵐ; ⟶*-elimᵗ; subTm-monoˢ
-        ; ⟶*-icon; ⟶*-ielimⁱ; ⟶*-ielimᵐ; ⟶*-ielimᵗ; ⟶*-⌜IMu⌝ )
+        ; ⟶*-con; subTm-monoˢ
+        ; ⟶*-ielimⁱ; ⟶*-ielimᵗ )
 open import DirectedHoTT.Metatheory.Injectivity
   using ( _⟶ᵀ*_; doneᵀ; stepᵀ; ⟶ᵀ*-trans; ⟶ᵀ*-El; ⟶ᵀ*-Homᵀ
         ; confluentᵀ; church-rosserᵀ; Id-reduct
         ; ΠRed; mkΠRed; Π-reduct; Πinj≡
-        ; ΣRed; mkΣRed; Σ-reduct; Σinj≡; red→≅ᵀ; IMu-reduct; IMuRed; mkIMuRed; IMuinj≡ )
+        ; ΣRed; mkΣRed; Σ-reduct; Σinj≡; red→≅ᵀ; IMu-reduct; IMuRed; mkIMuRed; IMuinj≡
+        ; Desc-reduct )
 
 private
   variable
@@ -155,6 +146,10 @@ homheaded? (⌜Hom⌝ _ _ _) = true
 homheaded? _             = false
 
 spine? stablecd? stableA? pathstk? nopw? deadmot? apstk? idstk? natstk? : RTm Γ → 𝔹
+-- ★★ LEVITATION: the telescope key (`dpay`/`dih` fire on a `dι`/`dσ`/`dρ`
+--   telescope and nothing else) and the tag key (`fcase` fires on
+--   `fzero`/`fsuc`).  Both are `natstk?`'s shape, constructors moved.
+dstk? finstk? : RTm Γ → 𝔹
 -- ★ INDUCTIVE TYPES: `Mu`'s stuckness key, the exact analogue of
 --   `natstk?`.  `elim` fires only on a `con` scrutinee, so it is stuck
 --   forever exactly when the scrutinee can never become one.
@@ -187,14 +182,17 @@ spine? (natrec z s n) = natstk? n
 --   falls where `nzero`/`nsuc` fall); a stuck `elim` IS one, exactly as
 --   a stuck `natrec` is.  ⚠ Leaving these to the catch-all would answer
 --   `false` for `elim` and silently misclassify `app (elim …) u`.
-spine? (con k q)      = false
-spine? (elim D ms t)  = mustk? t
 -- ⚠⚠ EXPLICIT, NOT INHERITED.  The catch-all below answers `false`, which
 --   is RIGHT for `icon` (matching `con`) and WRONG for `ielim`: an `ielim`
 --   with a stuck scrutinee IS a spine, exactly as `elim` is.  check-formers
 --   check 3 lists this default; its warning — "CONFIRM each default rather
 --   than inherit it" — is the whole reason this was caught.
-spine? (ielim D i ms t) = mustk? t
+spine? (ielim D i e t)  = mustk? t
+spine? (dpay I D C i)   = dstk? C
+spine? (dih D e C p)    = dstk? C
+spine? (fcase t a b)    = finstk? t
+spine? (fcase0 t)       = true
+spine? (psplit b q)     = spine? q
 spine? _              = false
 
 -- W2b: `stablecd?` is now DEAD-CODE-ness — the code can never fire a
@@ -232,12 +230,8 @@ stablecd? (natrec z s n) = natstk? n
 --   answers `natstk?`.  Inheriting `false` here makes that lemma
 --   UNPROVABLE (and `stableA?` inherits this row through its own
 --   catch-all `stableA? t = stablecd? t`).
-stablecd? (con k q)      = true
-stablecd? (elim D ms t)  = mustk? t
 -- ⚠⚠ BOTH EXPLICIT.  The catch-all answers `false`, which contradicts
 --   `con`'s `true` AND `elim`'s `mustk? t`.  Two silently wrong defaults.
-stablecd? (icon k q)     = true
-stablecd? (ielim D i ms t) = mustk? t
 -- ★★ WF stage C: ⌜Nat⌝ is DEAD.  Since the retraction of `tr-J-Nat`
 -- (`stkC? ⌜Nat⌝ = false`) NO rule fires on a `hrefl ⌜Nat⌝ s` path —
 -- not J, not `ap-J`, not `tr-pw`/`tr-taut` (those need a lam path) —
@@ -248,6 +242,18 @@ stablecd? (ielim D i ms t) = mustk? t
 -- nor `stkC?`, the third code kind — is a DEAD code, so it lands in
 -- `cf-dead` rather than needing a third `CodeFate` arm.
 stablecd? ⌜Nat⌝         = true
+stablecd? (con p)          = true
+stablecd? (ielim D i e t)  = mustk? t
+stablecd? (dι j)           = true
+stablecd? (dσ S f)         = true
+stablecd? (dρ j C)         = true
+stablecd? (dpay I D C i)   = dstk? C
+stablecd? (dih D e C p)    = dstk? C
+stablecd? fzero            = true
+stablecd? (fsuc t)         = true
+stablecd? (fcase t a b)    = finstk? t
+stablecd? (fcase0 t)       = true
+stablecd? (psplit b q)     = spine? q
 stablecd? _             = false
 
 -- ★ INDUCTIVE TYPES: `elim` fires on a `con` scrutinee and nothing
@@ -264,7 +270,6 @@ mustk? (snd t)        = spine? t
 mustk? ⌜base⌝         = true
 mustk? ⌜Nat⌝          = true
 mustk? ⌜Unit⌝         = true
-mustk? (⌜Mu⌝ Dᵐ)         = true
 mustk? (⌜Π⌝ c d)      = true
 mustk? (⌜Σ⌝ c d)      = true
 mustk? (⌜Hom⌝ c a b)  = true
@@ -278,11 +283,20 @@ mustk? unit           = true
 mustk? nzero          = true
 mustk? (nsuc n)       = true
 mustk? (natrec z s n) = natstk? n
-mustk? (con k p)      = false
-mustk? (elim D ms t)  = mustk? t
-mustk? (icon k p)      = false
-mustk? (ielim D i ms t) = mustk? t
-mustk? (⌜IMu⌝ D I i)   = true
+mustk? (⌜IMu⌝ I D i)    = true
+mustk? (⌜Fin⌝ n)        = true
+mustk? (con p)          = false
+mustk? (ielim D i e t)  = mustk? t
+mustk? (dι j)           = true
+mustk? (dσ S f)         = true
+mustk? (dρ j C)         = true
+mustk? (dpay I D C i)   = dstk? C
+mustk? (dih D e C p)    = dstk? C
+mustk? fzero            = true
+mustk? (fsuc t)         = true
+mustk? (fcase t a b)    = finstk? t
+mustk? (fcase0 t)       = true
+mustk? (psplit b q)     = spine? q
 
 pathstk? (var x)        = true
 pathstk? (lam t)        = false
@@ -295,7 +309,6 @@ pathstk? (snd t)        = spine? t
 pathstk? ⌜base⌝         = true
 pathstk? ⌜Nat⌝ = true
 pathstk? ⌜Unit⌝ = true
-pathstk? (⌜Mu⌝ Dᵐ) = true
 pathstk? (⌜Π⌝ c d)      = true
 pathstk? (⌜Σ⌝ c d)      = true
 pathstk? (⌜Hom⌝ c a b)  = true
@@ -309,11 +322,20 @@ pathstk? unit           = true
 pathstk? nzero          = true
 pathstk? (nsuc n)       = true
 pathstk? (natrec z s n) = natstk? n
-pathstk? (con k p)      = true
-pathstk? (elim D ms t)  = mustk? t
-pathstk? (icon k p)      = true
-pathstk? (ielim D i ms t) = mustk? t
-pathstk? (⌜IMu⌝ D I i)   = true
+pathstk? (⌜IMu⌝ I D i)    = true
+pathstk? (⌜Fin⌝ n)        = true
+pathstk? (con p)          = true
+pathstk? (ielim D i e t)  = mustk? t
+pathstk? (dι j)           = true
+pathstk? (dσ S f)         = true
+pathstk? (dρ j C)         = true
+pathstk? (dpay I D C i)   = dstk? C
+pathstk? (dih D e C p)    = dstk? C
+pathstk? fzero            = true
+pathstk? (fsuc t)         = true
+pathstk? (fcase t a b)    = finstk? t
+pathstk? (fcase0 t)       = true
+pathstk? (psplit b q)     = spine? q
 
 -- ★ the two-former kernel: `jsub` is stuck forever iff its PATH never
 -- becomes an `idrefl`: everything except idrefl itself is junk-stuck
@@ -330,7 +352,6 @@ idstk? (snd t)        = spine? t
 idstk? ⌜base⌝         = true
 idstk? ⌜Nat⌝ = true
 idstk? ⌜Unit⌝ = true
-idstk? (⌜Mu⌝ Dᵐ) = true
 idstk? (⌜Π⌝ c d)      = true
 idstk? (⌜Σ⌝ c d)      = true
 idstk? (⌜Hom⌝ c a b)  = true
@@ -344,11 +365,20 @@ idstk? unit           = true
 idstk? nzero          = true
 idstk? (nsuc n)       = true
 idstk? (natrec z s n) = natstk? n
-idstk? (con k p)      = true
-idstk? (elim D ms t)  = mustk? t
-idstk? (icon k p)      = true
-idstk? (ielim D i ms t) = mustk? t
-idstk? (⌜IMu⌝ D I i)   = true
+idstk? (⌜IMu⌝ I D i)    = true
+idstk? (⌜Fin⌝ n)        = true
+idstk? (con p)          = true
+idstk? (ielim D i e t)  = mustk? t
+idstk? (dι j)           = true
+idstk? (dσ S f)         = true
+idstk? (dρ j C)         = true
+idstk? (dpay I D C i)   = dstk? C
+idstk? (dih D e C p)    = dstk? C
+idstk? fzero            = true
+idstk? (fsuc t)         = true
+idstk? (fcase t a b)    = finstk? t
+idstk? (fcase0 t)       = true
+idstk? (psplit b q)     = spine? q
 
 -- ★ directed `ap` (SpikeAp): `ap` is stuck forever iff its PATH never
 -- becomes a canonical hrefl the J rule fires on: lam paths have NO ap
@@ -365,7 +395,6 @@ apstk? (snd t)        = spine? t
 apstk? ⌜base⌝         = true
 apstk? ⌜Nat⌝ = true
 apstk? ⌜Unit⌝ = true
-apstk? (⌜Mu⌝ Dᵐ) = true
 apstk? (⌜Π⌝ c d)      = true
 apstk? (⌜Σ⌝ c d)      = true
 apstk? (⌜Hom⌝ c a b)  = true
@@ -379,11 +408,20 @@ apstk? unit           = true
 apstk? nzero          = true
 apstk? (nsuc n)       = true
 apstk? (natrec z s n) = natstk? n
-apstk? (con k p)      = true
-apstk? (elim D ms t)  = mustk? t
-apstk? (icon k p)      = true
-apstk? (ielim D i ms t) = mustk? t
-apstk? (⌜IMu⌝ D I i)   = true
+apstk? (⌜IMu⌝ I D i)    = true
+apstk? (⌜Fin⌝ n)        = true
+apstk? (con p)          = true
+apstk? (ielim D i e t)  = mustk? t
+apstk? (dι j)           = true
+apstk? (dσ S f)         = true
+apstk? (dρ j C)         = true
+apstk? (dpay I D C i)   = dstk? C
+apstk? (dih D e C p)    = dstk? C
+apstk? fzero            = true
+apstk? (fsuc t)         = true
+apstk? (fcase t a b)    = finstk? t
+apstk? (fcase0 t)       = true
+apstk? (psplit b q)     = spine? q
 
 -- W2b: a lam path fires tr-pw at a pw-able-⌜Hom⌝ motive with the
 -- LITERAL `var vz` endpoint — stuck only when the code can never
@@ -419,7 +457,6 @@ deadmot? (snd t)        = spine? t
 deadmot? ⌜base⌝         = true
 deadmot? ⌜Nat⌝ = true
 deadmot? ⌜Unit⌝ = true
-deadmot? (⌜Mu⌝ Dᵐ) = true
 deadmot? (⌜Π⌝ c d)      = false
 deadmot? (⌜Σ⌝ c d)      = true
 deadmot? (⌜Hom⌝ c a b)  = deadmot? c
@@ -433,11 +470,20 @@ deadmot? unit           = true
 deadmot? nzero          = true
 deadmot? (nsuc n)       = true
 deadmot? (natrec z s n) = natstk? n
-deadmot? (con k p)      = true
-deadmot? (elim D ms t)  = mustk? t
-deadmot? (icon k p)      = true
-deadmot? (ielim D i ms t) = mustk? t
-deadmot? (⌜IMu⌝ D I i)   = true
+deadmot? (⌜IMu⌝ I D i)    = true
+deadmot? (⌜Fin⌝ n)        = true
+deadmot? (con p)          = true
+deadmot? (ielim D i e t)  = mustk? t
+deadmot? (dι j)           = true
+deadmot? (dσ S f)         = true
+deadmot? (dρ j C)         = true
+deadmot? (dpay I D C i)   = dstk? C
+deadmot? (dih D e C p)    = dstk? C
+deadmot? fzero            = true
+deadmot? (fsuc t)         = true
+deadmot? (fcase t a b)    = finstk? t
+deadmot? (fcase0 t)       = true
+deadmot? (psplit b q)     = spine? q
 
 nopw? (var x)        = true
 nopw? (lam t)        = true
@@ -450,7 +496,6 @@ nopw? (snd t)        = spine? t
 nopw? ⌜base⌝         = true
 nopw? ⌜Nat⌝ = true
 nopw? ⌜Unit⌝ = true
-nopw? (⌜Mu⌝ Dᵐ) = true
 nopw? (⌜Π⌝ c d)      = false
 nopw? (⌜Σ⌝ c d)      = true
 nopw? (⌜Hom⌝ c a b)  = nopw? c
@@ -464,11 +509,20 @@ nopw? unit           = true
 nopw? nzero          = true
 nopw? (nsuc n)       = true
 nopw? (natrec z s n) = natstk? n
-nopw? (con k p)      = true
-nopw? (elim D ms t)  = mustk? t
-nopw? (icon k p)      = true
-nopw? (ielim D i ms t) = mustk? t
-nopw? (⌜IMu⌝ D I i)   = true
+nopw? (⌜IMu⌝ I D i)    = true
+nopw? (⌜Fin⌝ n)        = true
+nopw? (con p)          = true
+nopw? (ielim D i e t)  = mustk? t
+nopw? (dι j)           = true
+nopw? (dσ S f)         = true
+nopw? (dρ j C)         = true
+nopw? (dpay I D C i)   = dstk? C
+nopw? (dih D e C p)    = dstk? C
+nopw? fzero            = true
+nopw? (fsuc t)         = true
+nopw? (fcase t a b)    = finstk? t
+nopw? (fcase0 t)       = true
+nopw? (psplit b q)     = spine? q
 
 -- ★ WF stage A: `natrec` fires only on a NUMERAL scrutinee, so it is
 -- stuck forever exactly when the scrutinee can never become one —
@@ -485,7 +539,6 @@ natstk? (snd t)        = spine? t
 natstk? ⌜base⌝         = true
 natstk? ⌜Nat⌝ = true
 natstk? ⌜Unit⌝ = true
-natstk? (⌜Mu⌝ Dᵐ) = true
 natstk? (⌜Π⌝ c d)      = true
 natstk? (⌜Σ⌝ c d)      = true
 natstk? (⌜Hom⌝ c a b)  = true
@@ -499,11 +552,98 @@ natstk? unit           = true
 natstk? nzero          = false
 natstk? (nsuc n)       = false
 natstk? (natrec z s n) = natstk? n
-natstk? (con k p)      = true
-natstk? (elim D ms t)  = mustk? t
-natstk? (icon k p)      = true
-natstk? (ielim D i ms t) = mustk? t
-natstk? (⌜IMu⌝ D I i)   = true
+natstk? (⌜IMu⌝ I D i)    = true
+natstk? (⌜Fin⌝ n)        = true
+natstk? (con p)          = true
+natstk? (ielim D i e t)  = mustk? t
+natstk? (dι j)           = true
+natstk? (dσ S f)         = true
+natstk? (dρ j C)         = true
+natstk? (dpay I D C i)   = dstk? C
+natstk? (dih D e C p)    = dstk? C
+natstk? fzero            = true
+natstk? (fsuc t)         = true
+natstk? (fcase t a b)    = finstk? t
+natstk? (fcase0 t)       = true
+natstk? (psplit b q)     = spine? q
+
+dstk? (var x)          = true
+dstk? (lam t)          = true
+dstk? (app t u)        = spine? t
+dstk? (pair a b)       = true
+dstk? (absurd c e)     = true
+dstk? (ordtr a t u p q) = ordstk? a t u
+dstk? (fst t)          = spine? t
+dstk? (snd t)          = spine? t
+dstk? ⌜base⌝           = true
+dstk? ⌜Nat⌝            = true
+dstk? ⌜Unit⌝           = true
+dstk? (⌜Π⌝ c d)        = true
+dstk? (⌜Σ⌝ c d)        = true
+dstk? (⌜Hom⌝ c a b)    = true
+dstk? (⌜Id⌝ c a b)     = true
+dstk? (hrefl c t)      = true
+dstk? (idrefl c t)     = true
+dstk? (tr d p e)       = trstk? d p
+dstk? (ap c b p)       = apstk? p
+dstk? (jsub d p e)     = idstk? p
+dstk? unit             = true
+dstk? nzero            = true
+dstk? (nsuc n)         = true
+dstk? (natrec z s n)   = natstk? n
+dstk? (⌜IMu⌝ I D i)    = true
+dstk? (⌜Fin⌝ n)        = true
+dstk? (con p)          = true
+dstk? (ielim D i e t)  = mustk? t
+dstk? (dι j)           = false
+dstk? (dσ S f)         = false
+dstk? (dρ j C)         = false
+dstk? (dpay I D C i)   = dstk? C
+dstk? (dih D e C p)    = dstk? C
+dstk? fzero            = true
+dstk? (fsuc t)         = true
+dstk? (fcase t a b)    = finstk? t
+dstk? (fcase0 t)       = true
+dstk? (psplit b q)     = spine? q
+
+finstk? (var x)          = true
+finstk? (lam t)          = true
+finstk? (app t u)        = spine? t
+finstk? (pair a b)       = true
+finstk? (absurd c e)     = true
+finstk? (ordtr a t u p q) = ordstk? a t u
+finstk? (fst t)          = spine? t
+finstk? (snd t)          = spine? t
+finstk? ⌜base⌝           = true
+finstk? ⌜Nat⌝            = true
+finstk? ⌜Unit⌝           = true
+finstk? (⌜Π⌝ c d)        = true
+finstk? (⌜Σ⌝ c d)        = true
+finstk? (⌜Hom⌝ c a b)    = true
+finstk? (⌜Id⌝ c a b)     = true
+finstk? (hrefl c t)      = true
+finstk? (idrefl c t)     = true
+finstk? (tr d p e)       = trstk? d p
+finstk? (ap c b p)       = apstk? p
+finstk? (jsub d p e)     = idstk? p
+finstk? unit             = true
+finstk? nzero            = true
+finstk? (nsuc n)         = true
+finstk? (natrec z s n)   = natstk? n
+finstk? (⌜IMu⌝ I D i)    = true
+finstk? (⌜Fin⌝ n)        = true
+finstk? (con p)          = true
+finstk? (ielim D i e t)  = mustk? t
+finstk? (dι j)           = true
+finstk? (dσ S f)         = true
+finstk? (dρ j C)         = true
+finstk? (dpay I D C i)   = dstk? C
+finstk? (dih D e C p)    = dstk? C
+finstk? fzero            = false
+finstk? (fsuc t)         = false
+finstk? (fcase t a b)    = finstk? t
+finstk? (fcase0 t)       = true
+finstk? (psplit b q)     = spine? q
 
 -- ★ THE ORDER'S STUCKNESS, and it must mirror `_⁺`'s dispatch EXACTLY:
 -- `a`, then `u`, then `t`.  `ordtr` is NOT like `absurd` — `absurd` has
@@ -596,7 +736,6 @@ nopw⊥pw (snd t) h = refl
 nopw⊥pw ⌜base⌝ h = refl
 nopw⊥pw ⌜Nat⌝ h = refl
 nopw⊥pw ⌜Unit⌝ h = refl
-nopw⊥pw (⌜Mu⌝ Dᵐ) h = refl
 nopw⊥pw (⌜Π⌝ c d) ()
 nopw⊥pw (⌜Σ⌝ c d) h = refl
 nopw⊥pw (⌜Hom⌝ C a b) h = nopw⊥pw C h
@@ -610,11 +749,20 @@ nopw⊥pw unit h = refl
 nopw⊥pw nzero h = refl
 nopw⊥pw (nsuc n) h = refl
 nopw⊥pw (natrec z s n) h = refl
-nopw⊥pw (con k p) h = refl
-nopw⊥pw (elim D ms t) h = refl
-nopw⊥pw (icon k p) h = refl
-nopw⊥pw (ielim D i ms t) h = refl
-nopw⊥pw (⌜IMu⌝ D I i) h = refl
+nopw⊥pw (⌜IMu⌝ I D i) h = refl
+nopw⊥pw (⌜Fin⌝ n) h = refl
+nopw⊥pw (con p) h = refl
+nopw⊥pw (ielim D i e t) h = refl
+nopw⊥pw (dι j) h = refl
+nopw⊥pw (dσ S f) h = refl
+nopw⊥pw (dρ j C) h = refl
+nopw⊥pw (dpay I D C i) h = refl
+nopw⊥pw (dih D e C p) h = refl
+nopw⊥pw fzero h = refl
+nopw⊥pw (fsuc t) h = refl
+nopw⊥pw (fcase t a b) h = refl
+nopw⊥pw (fcase0 t) h = refl
+nopw⊥pw (psplit b q) h = refl
 
 deadmot→nopw : (C : RTm Γ) → deadmot? C ≡ true → nopw? C ≡ true
 deadmot→nopw (var x) h = refl
@@ -628,7 +776,6 @@ deadmot→nopw (snd t) h = h
 deadmot→nopw ⌜base⌝ h = refl
 deadmot→nopw ⌜Nat⌝ h = refl
 deadmot→nopw ⌜Unit⌝ h = refl
-deadmot→nopw (⌜Mu⌝ Dᵐ) h = refl
 deadmot→nopw (⌜Π⌝ c d) ()
 deadmot→nopw (⌜Σ⌝ c d) h = refl
 deadmot→nopw (⌜Hom⌝ C a b) h = deadmot→nopw C h
@@ -642,11 +789,20 @@ deadmot→nopw unit h = refl
 deadmot→nopw nzero h = refl
 deadmot→nopw (nsuc n) h = refl
 deadmot→nopw (natrec z s n) h = h
-deadmot→nopw (con k p) h = refl
-deadmot→nopw (elim D ms t) h = h
-deadmot→nopw (icon k p) h = refl
-deadmot→nopw (ielim D i ms t) h = h
-deadmot→nopw (⌜IMu⌝ D I i) h = refl
+deadmot→nopw (⌜IMu⌝ I D i) h = refl
+deadmot→nopw (⌜Fin⌝ n) h = refl
+deadmot→nopw (con p) h = refl
+deadmot→nopw (ielim D i e t) h = h
+deadmot→nopw (dι j) h = refl
+deadmot→nopw (dσ S f) h = refl
+deadmot→nopw (dρ j C) h = refl
+deadmot→nopw (dpay I D C i) h = h
+deadmot→nopw (dih D e C p) h = h
+deadmot→nopw fzero h = refl
+deadmot→nopw (fsuc t) h = refl
+deadmot→nopw (fcase t a b) h = h
+deadmot→nopw (fcase0 t) h = refl
+deadmot→nopw (psplit b q) h = h
 
 -- ★ the `stkA?` peer.  ⌜Nat⌝ IS a dead motive (nothing fires on
 -- `tr ⌜Nat⌝ p e`) even though it is a live PATH code, so this goes
@@ -661,14 +817,14 @@ stkA?→deadmot (snd t) ()
 stkA?→deadmot ⌜base⌝ h = refl
 stkA?→deadmot ⌜Nat⌝ h = refl
 stkA?→deadmot ⌜Unit⌝ h = refl
-stkA?→deadmot (⌜Mu⌝ Dᵐ) h = refl
-stkA?→deadmot (⌜IMu⌝ Dⁱ Iⁱ i) h = refl
 stkA?→deadmot (⌜Π⌝ c d) ()
 stkA?→deadmot (⌜Σ⌝ c d) h = refl
 stkA?→deadmot (⌜Id⌝ c a b) h = refl
 stkA?→deadmot (⌜Hom⌝ C a b) h = stkA?→deadmot C h
 stkA?→deadmot (hrefl c t) ()
 stkA?→deadmot (tr d p e) ()
+stkA?→deadmot (⌜IMu⌝ I D i) h = refl
+stkA?→deadmot (⌜Fin⌝ n) h = refl
 
 stk→deadmot : (C : RTm Γ) → stkC? C ≡ true → deadmot? C ≡ true
 stk→deadmot (var x) ()
@@ -679,14 +835,14 @@ stk→deadmot (fst t) ()
 stk→deadmot (snd t) ()
 stk→deadmot ⌜base⌝ h = refl
 stk→deadmot ⌜Unit⌝ h = refl
-stk→deadmot (⌜Mu⌝ Dᵐ) h = refl
-stk→deadmot (⌜IMu⌝ Dⁱ Iⁱ i) h = refl
 stk→deadmot (⌜Π⌝ c d) ()
 stk→deadmot (⌜Σ⌝ c d) h = refl
 stk→deadmot (⌜Id⌝ c a b) h = refl
 stk→deadmot (⌜Hom⌝ C a b) h = stkA?→deadmot C h
 stk→deadmot (hrefl c t) ()
 stk→deadmot (tr d p e) ()
+stk→deadmot (⌜IMu⌝ I D i) h = refl
+stk→deadmot (⌜Fin⌝ n) h = refl
 
 -- ★ the `stkA?` peer: a stable-ambient code is never a dead WRAPPER
 -- code.  ⌜Nat⌝ is the interesting row — `stableA? ⌜Nat⌝ = false` is
@@ -701,14 +857,14 @@ stkA?⊥dead (snd t) ()
 stkA?⊥dead ⌜base⌝ h = refl
 stkA?⊥dead ⌜Nat⌝ h = refl
 stkA?⊥dead ⌜Unit⌝ h = refl
-stkA?⊥dead (⌜Mu⌝ Dᵐ) h = refl
-stkA?⊥dead (⌜IMu⌝ Dⁱ Iⁱ i) h = refl
 stkA?⊥dead (⌜Π⌝ c d) ()
 stkA?⊥dead (⌜Σ⌝ c d) h = refl
 stkA?⊥dead (⌜Id⌝ c a b) h = refl
 stkA?⊥dead (⌜Hom⌝ C a b) h = stkA?⊥dead C h
 stkA?⊥dead (hrefl c t) ()
 stkA?⊥dead (tr d p e) ()
+stkA?⊥dead (⌜IMu⌝ I D i) h = refl
+stkA?⊥dead (⌜Fin⌝ n) h = refl
 
 stk⊥dead : (C : RTm Γ) → stkC? C ≡ true → stablecd? C ≡ false
 stk⊥dead (var x) ()
@@ -719,14 +875,14 @@ stk⊥dead (fst t) ()
 stk⊥dead (snd t) ()
 stk⊥dead ⌜base⌝ h = refl
 stk⊥dead ⌜Unit⌝ h = refl
-stk⊥dead (⌜Mu⌝ Dᵐ) h = refl
-stk⊥dead (⌜IMu⌝ Dⁱ Iⁱ i) h = refl
 stk⊥dead (⌜Π⌝ c d) ()
 stk⊥dead (⌜Σ⌝ c d) h = refl
 stk⊥dead (⌜Id⌝ c a b) h = refl
 stk⊥dead (⌜Hom⌝ C a b) h = stkA?⊥dead C h
 stk⊥dead (hrefl c t) ()
 stk⊥dead (tr d p e) ()
+stk⊥dead (⌜IMu⌝ I D i) h = refl
+stk⊥dead (⌜Fin⌝ n) h = refl
 
 -- a head-reducible term is never a pw code (SNRed's subjects are
 -- app/fst/snd/hrefl/tr-headed, never ⌜Π⌝/⌜Hom⌝-constructor-headed) —
@@ -754,6 +910,8 @@ apstk?-red    : {t t' : RTm Γ} → t ⟶ t' → apstk? t ≡ true → apstk? t'
 idstk?-red    : {t t' : RTm Γ} → t ⟶ t' → idstk? t ≡ true → idstk? t' ≡ true
 natstk?-red   : {t t' : RTm Γ} → t ⟶ t' → natstk? t ≡ true → natstk? t' ≡ true
 mustk?-red    : {t t' : RTm Γ} → t ⟶ t' → mustk? t ≡ true → mustk? t' ≡ true
+dstk?-red     : {t t' : RTm Γ} → t ⟶ t' → dstk? t ≡ true → dstk? t' ≡ true
+finstk?-red   : {t t' : RTm Γ} → t ⟶ t' → finstk? t ≡ true → finstk? t' ≡ true
 deadmot?-red  : {t t' : RTm Γ} → t ⟶ t' →
                 deadmot? t ≡ true → deadmot? t' ≡ true
 trstk?-red-d  : {d d' : RTm (Γ ∙)} {p : RTm Γ} → d ⟶ d' →
@@ -843,14 +1001,8 @@ spine?-red (ξ-natrecˢ r) h = h
 spine?-red (ξ-natrecⁿ r) h = natstk?-red r h
 -- ★ INDUCTIVE TYPES: a stuck `elim` is a spine head, so this mirrors
 --   `natrec`'s rows exactly — and ι UNSTICKS it, hence the absurdity.
-spine?-red (ι-elim D ms k q) ()
-spine?-red (ξ-elimᵐ r) h = h
-spine?-red (ξ-elimᵗ r) h = mustk?-red r h
-spine?-red (ι-ielim D iˣ ms k q) ()
-spine?-red (ξ-ielimᵐ r) h = h
 spine?-red (ξ-ielimᵗ r) h = mustk?-red r h
 spine?-red (ξ-ielimⁱ r) h = h
-spine?-red (ξ-⌜IMu⌝ r) h = h
 spine?-red (ordtr-z _ _ _ _) ()
 spine?-red (ordtr-szz _ _ _) ()
 spine?-red (ordtr-ssz _ _ _ _) ()
@@ -861,6 +1013,42 @@ spine?-red (ξ-ordtrᵗ {a = a} {t = t} {t' = t'} {u = u} r) h = ordstk?-redᵗ 
 spine?-red (ξ-ordtrᵘ {a = a} {t = t} {u = u} {u' = u'} r) h = ordstk?-redᵘ {a = a} {t = t} {u = u} {u' = u'} r h
 spine?-red (ξ-ordtrᵖ r) h = h
 spine?-red (ξ-ordtrq r) h = h
+spine?-red (ι _ _ _ _) ()
+spine?-red (dpay-ι _ _ _ _) ()
+spine?-red (dpay-σ _ _ _ _ _) ()
+spine?-red (dpay-ρ _ _ _ _ _) ()
+spine?-red (dih-ι _ _ _ _) ()
+spine?-red (dih-σ _ _ _ _ _) ()
+spine?-red (dih-ρ _ _ _ _ _) ()
+spine?-red (fcase-z _ _) ()
+spine?-red (fcase-s _ _ _) ()
+spine?-red (psplit-β _ _ _) ()
+spine?-red (ξ-⌜IMu⌝ᴵ _) ()
+spine?-red (ξ-⌜IMu⌝ᴰ _) ()
+spine?-red (ξ-⌜IMu⌝ⁱ _) ()
+spine?-red (ξ-con _) ()
+spine?-red (ξ-ielimᴰ r) h = h
+spine?-red (ξ-ielimᵉ r) h = h
+spine?-red (ξ-dι _) ()
+spine?-red (ξ-dσˢ _) ()
+spine?-red (ξ-dσᶠ _) ()
+spine?-red (ξ-dρʲ _) ()
+spine?-red (ξ-dρᶜ _) ()
+spine?-red (ξ-dpayᴵ r) h = h
+spine?-red (ξ-dpayᴰ r) h = h
+spine?-red (ξ-dpayᶜ r) h = dstk?-red r h
+spine?-red (ξ-dpayⁱ r) h = h
+spine?-red (ξ-dihᴰ r) h = h
+spine?-red (ξ-dihᵉ r) h = h
+spine?-red (ξ-dihᶜ r) h = dstk?-red r h
+spine?-red (ξ-dihᵖ r) h = h
+spine?-red (ξ-fsuc _) ()
+spine?-red (ξ-fcaseᵗ r) h = finstk?-red r h
+spine?-red (ξ-fcaseᵃ r) h = h
+spine?-red (ξ-fcaseᵇ r) h = h
+spine?-red (ξ-fcase0 r) h = h
+spine?-red (ξ-psplitᵇ r) h = h
+spine?-red (ξ-psplitᵍ r) h = spine?-red r h
 
 -- ★ the `stableA?` peer of `stablecd?-red`: identical except that the
 -- ⌜Hom⌝-code congruence recurses into ITSELF, so ⌜Nat⌝ under a ⌜Hom⌝
@@ -917,15 +1105,8 @@ stableA?-red (ξ-natrecᶻ r) h = h
 stableA?-red (ξ-natrecˢ r) h = h
 stableA?-red (ξ-natrecⁿ r) h = natstk?-red r h
 stableA?-red (ξ-con r) h = refl
-stableA?-red (ι-elim D ms k q) ()
-stableA?-red (ξ-elimᵐ r) h = h
-stableA?-red (ξ-elimᵗ r) h = mustk?-red r h
-stableA?-red (ξ-icon r) h = refl
-stableA?-red (ι-ielim D iˣ ms k q) ()
-stableA?-red (ξ-ielimᵐ r) h = h
 stableA?-red (ξ-ielimᵗ r) h = mustk?-red r h
 stableA?-red (ξ-ielimⁱ r) h = h
-stableA?-red (ξ-⌜IMu⌝ r) h = h
 stableA?-red (ordtr-z _ _ _ _) ()
 stableA?-red (ordtr-szz _ _ _) ()
 stableA?-red (ordtr-ssz _ _ _ _) ()
@@ -936,6 +1117,41 @@ stableA?-red (ξ-ordtrᵗ {a = a} {t = t} {t' = t'} {u = u} r) h = ordstk?-red�
 stableA?-red (ξ-ordtrᵘ {a = a} {t = t} {u = u} {u' = u'} r) h = ordstk?-redᵘ {a = a} {t = t} {u = u} {u' = u'} r h
 stableA?-red (ξ-ordtrᵖ r) h = h
 stableA?-red (ξ-ordtrq r) h = h
+stableA?-red (ι _ _ _ _) ()
+stableA?-red (dpay-ι _ _ _ _) ()
+stableA?-red (dpay-σ _ _ _ _ _) ()
+stableA?-red (dpay-ρ _ _ _ _ _) ()
+stableA?-red (dih-ι _ _ _ _) ()
+stableA?-red (dih-σ _ _ _ _ _) ()
+stableA?-red (dih-ρ _ _ _ _ _) ()
+stableA?-red (fcase-z _ _) ()
+stableA?-red (fcase-s _ _ _) ()
+stableA?-red (psplit-β _ _ _) ()
+stableA?-red (ξ-⌜IMu⌝ᴵ _) ()
+stableA?-red (ξ-⌜IMu⌝ᴰ _) ()
+stableA?-red (ξ-⌜IMu⌝ⁱ _) ()
+stableA?-red (ξ-ielimᴰ r) h = h
+stableA?-red (ξ-ielimᵉ r) h = h
+stableA?-red (ξ-dι r) h = h
+stableA?-red (ξ-dσˢ r) h = h
+stableA?-red (ξ-dσᶠ r) h = h
+stableA?-red (ξ-dρʲ r) h = h
+stableA?-red (ξ-dρᶜ r) h = h
+stableA?-red (ξ-dpayᴵ r) h = h
+stableA?-red (ξ-dpayᴰ r) h = h
+stableA?-red (ξ-dpayᶜ r) h = dstk?-red r h
+stableA?-red (ξ-dpayⁱ r) h = h
+stableA?-red (ξ-dihᴰ r) h = h
+stableA?-red (ξ-dihᵉ r) h = h
+stableA?-red (ξ-dihᶜ r) h = dstk?-red r h
+stableA?-red (ξ-dihᵖ r) h = h
+stableA?-red (ξ-fsuc r) h = h
+stableA?-red (ξ-fcaseᵗ r) h = finstk?-red r h
+stableA?-red (ξ-fcaseᵃ r) h = h
+stableA?-red (ξ-fcaseᵇ r) h = h
+stableA?-red (ξ-fcase0 r) h = h
+stableA?-red (ξ-psplitᵇ r) h = h
+stableA?-red (ξ-psplitᵍ r) h = spine?-red r h
 
 stablecd?-red (β _ _) ()
 stablecd?-red (βfst _ _) ()
@@ -989,15 +1205,8 @@ stablecd?-red (ξ-natrecᶻ r) h = h
 stablecd?-red (ξ-natrecˢ r) h = h
 stablecd?-red (ξ-natrecⁿ r) h = natstk?-red r h
 stablecd?-red (ξ-con r) h = refl
-stablecd?-red (ι-elim D ms k q) ()
-stablecd?-red (ξ-elimᵐ r) h = h
-stablecd?-red (ξ-elimᵗ r) h = mustk?-red r h
-stablecd?-red (ξ-icon r) h = refl
-stablecd?-red (ι-ielim D iˣ ms k q) ()
-stablecd?-red (ξ-ielimᵐ r) h = h
 stablecd?-red (ξ-ielimᵗ r) h = mustk?-red r h
 stablecd?-red (ξ-ielimⁱ r) h = h
-stablecd?-red (ξ-⌜IMu⌝ r) h = h
 stablecd?-red (ordtr-z _ _ _ _) ()
 stablecd?-red (ordtr-szz _ _ _) ()
 stablecd?-red (ordtr-ssz _ _ _ _) ()
@@ -1008,6 +1217,41 @@ stablecd?-red (ξ-ordtrᵗ {a = a} {t = t} {t' = t'} {u = u} r) h = ordstk?-red�
 stablecd?-red (ξ-ordtrᵘ {a = a} {t = t} {u = u} {u' = u'} r) h = ordstk?-redᵘ {a = a} {t = t} {u = u} {u' = u'} r h
 stablecd?-red (ξ-ordtrᵖ r) h = h
 stablecd?-red (ξ-ordtrq r) h = h
+stablecd?-red (ι _ _ _ _) ()
+stablecd?-red (dpay-ι _ _ _ _) ()
+stablecd?-red (dpay-σ _ _ _ _ _) ()
+stablecd?-red (dpay-ρ _ _ _ _ _) ()
+stablecd?-red (dih-ι _ _ _ _) ()
+stablecd?-red (dih-σ _ _ _ _ _) ()
+stablecd?-red (dih-ρ _ _ _ _ _) ()
+stablecd?-red (fcase-z _ _) ()
+stablecd?-red (fcase-s _ _ _) ()
+stablecd?-red (psplit-β _ _ _) ()
+stablecd?-red (ξ-⌜IMu⌝ᴵ _) ()
+stablecd?-red (ξ-⌜IMu⌝ᴰ _) ()
+stablecd?-red (ξ-⌜IMu⌝ⁱ _) ()
+stablecd?-red (ξ-ielimᴰ r) h = h
+stablecd?-red (ξ-ielimᵉ r) h = h
+stablecd?-red (ξ-dι r) h = h
+stablecd?-red (ξ-dσˢ r) h = h
+stablecd?-red (ξ-dσᶠ r) h = h
+stablecd?-red (ξ-dρʲ r) h = h
+stablecd?-red (ξ-dρᶜ r) h = h
+stablecd?-red (ξ-dpayᴵ r) h = h
+stablecd?-red (ξ-dpayᴰ r) h = h
+stablecd?-red (ξ-dpayᶜ r) h = dstk?-red r h
+stablecd?-red (ξ-dpayⁱ r) h = h
+stablecd?-red (ξ-dihᴰ r) h = h
+stablecd?-red (ξ-dihᵉ r) h = h
+stablecd?-red (ξ-dihᶜ r) h = dstk?-red r h
+stablecd?-red (ξ-dihᵖ r) h = h
+stablecd?-red (ξ-fsuc r) h = h
+stablecd?-red (ξ-fcaseᵗ r) h = finstk?-red r h
+stablecd?-red (ξ-fcaseᵃ r) h = h
+stablecd?-red (ξ-fcaseᵇ r) h = h
+stablecd?-red (ξ-fcase0 r) h = h
+stablecd?-red (ξ-psplitᵇ r) h = h
+stablecd?-red (ξ-psplitᵍ r) h = spine?-red r h
 
 pathstk?-red (β _ _) ()
 pathstk?-red (βfst _ _) ()
@@ -1071,15 +1315,43 @@ pathstk?-red (ξ-ordtrᵘ {a = a} {t = t} {u = u} {u' = u'} r) h = ordstk?-red�
 pathstk?-red (ξ-ordtrᵖ r) h = h
 pathstk?-red (ξ-ordtrq r) h = h
 pathstk?-red (ξ-con r) h = refl
-pathstk?-red (ι-elim D ms k p) ()
-pathstk?-red (ξ-elimᵐ r) h = h
-pathstk?-red (ξ-elimᵗ r) h = mustk?-red r h
-pathstk?-red (ξ-icon r) h = refl
-pathstk?-red (ι-ielim D i ms k p) ()
-pathstk?-red (ξ-ielimᵐ r) h = h
 pathstk?-red (ξ-ielimᵗ r) h = mustk?-red r h
 pathstk?-red (ξ-ielimⁱ r) h = h
-pathstk?-red (ξ-⌜IMu⌝ r) h = h
+pathstk?-red (ι _ _ _ _) ()
+pathstk?-red (dpay-ι _ _ _ _) ()
+pathstk?-red (dpay-σ _ _ _ _ _) ()
+pathstk?-red (dpay-ρ _ _ _ _ _) ()
+pathstk?-red (dih-ι _ _ _ _) ()
+pathstk?-red (dih-σ _ _ _ _ _) ()
+pathstk?-red (dih-ρ _ _ _ _ _) ()
+pathstk?-red (fcase-z _ _) ()
+pathstk?-red (fcase-s _ _ _) ()
+pathstk?-red (psplit-β _ _ _) ()
+pathstk?-red (ξ-⌜IMu⌝ᴵ r) h = h
+pathstk?-red (ξ-⌜IMu⌝ᴰ r) h = h
+pathstk?-red (ξ-⌜IMu⌝ⁱ r) h = h
+pathstk?-red (ξ-ielimᴰ r) h = h
+pathstk?-red (ξ-ielimᵉ r) h = h
+pathstk?-red (ξ-dι r) h = h
+pathstk?-red (ξ-dσˢ r) h = h
+pathstk?-red (ξ-dσᶠ r) h = h
+pathstk?-red (ξ-dρʲ r) h = h
+pathstk?-red (ξ-dρᶜ r) h = h
+pathstk?-red (ξ-dpayᴵ r) h = h
+pathstk?-red (ξ-dpayᴰ r) h = h
+pathstk?-red (ξ-dpayᶜ r) h = dstk?-red r h
+pathstk?-red (ξ-dpayⁱ r) h = h
+pathstk?-red (ξ-dihᴰ r) h = h
+pathstk?-red (ξ-dihᵉ r) h = h
+pathstk?-red (ξ-dihᶜ r) h = dstk?-red r h
+pathstk?-red (ξ-dihᵖ r) h = h
+pathstk?-red (ξ-fsuc r) h = h
+pathstk?-red (ξ-fcaseᵗ r) h = finstk?-red r h
+pathstk?-red (ξ-fcaseᵃ r) h = h
+pathstk?-red (ξ-fcaseᵇ r) h = h
+pathstk?-red (ξ-fcase0 r) h = h
+pathstk?-red (ξ-psplitᵇ r) h = h
+pathstk?-red (ξ-psplitᵍ r) h = spine?-red r h
 
 -- ★ `ap`-stuckness is closed under reduction: the J key clashes with
 -- the dead-code key; the pw/taut unfoldings land on LAM paths, which
@@ -1147,15 +1419,43 @@ apstk?-red (ξ-ordtrᵘ {a = a} {t = t} {u = u} {u' = u'} r) h = ordstk?-redᵘ 
 apstk?-red (ξ-ordtrᵖ r) h = h
 apstk?-red (ξ-ordtrq r) h = h
 apstk?-red (ξ-con r) h = refl
-apstk?-red (ι-elim D ms k p) ()
-apstk?-red (ξ-elimᵐ r) h = h
-apstk?-red (ξ-elimᵗ r) h = mustk?-red r h
-apstk?-red (ξ-icon r) h = refl
-apstk?-red (ι-ielim D i ms k p) ()
-apstk?-red (ξ-ielimᵐ r) h = h
 apstk?-red (ξ-ielimᵗ r) h = mustk?-red r h
 apstk?-red (ξ-ielimⁱ r) h = h
-apstk?-red (ξ-⌜IMu⌝ r) h = h
+apstk?-red (ι _ _ _ _) ()
+apstk?-red (dpay-ι _ _ _ _) ()
+apstk?-red (dpay-σ _ _ _ _ _) ()
+apstk?-red (dpay-ρ _ _ _ _ _) ()
+apstk?-red (dih-ι _ _ _ _) ()
+apstk?-red (dih-σ _ _ _ _ _) ()
+apstk?-red (dih-ρ _ _ _ _ _) ()
+apstk?-red (fcase-z _ _) ()
+apstk?-red (fcase-s _ _ _) ()
+apstk?-red (psplit-β _ _ _) ()
+apstk?-red (ξ-⌜IMu⌝ᴵ r) h = h
+apstk?-red (ξ-⌜IMu⌝ᴰ r) h = h
+apstk?-red (ξ-⌜IMu⌝ⁱ r) h = h
+apstk?-red (ξ-ielimᴰ r) h = h
+apstk?-red (ξ-ielimᵉ r) h = h
+apstk?-red (ξ-dι r) h = h
+apstk?-red (ξ-dσˢ r) h = h
+apstk?-red (ξ-dσᶠ r) h = h
+apstk?-red (ξ-dρʲ r) h = h
+apstk?-red (ξ-dρᶜ r) h = h
+apstk?-red (ξ-dpayᴵ r) h = h
+apstk?-red (ξ-dpayᴰ r) h = h
+apstk?-red (ξ-dpayᶜ r) h = dstk?-red r h
+apstk?-red (ξ-dpayⁱ r) h = h
+apstk?-red (ξ-dihᴰ r) h = h
+apstk?-red (ξ-dihᵉ r) h = h
+apstk?-red (ξ-dihᶜ r) h = dstk?-red r h
+apstk?-red (ξ-dihᵖ r) h = h
+apstk?-red (ξ-fsuc r) h = h
+apstk?-red (ξ-fcaseᵗ r) h = finstk?-red r h
+apstk?-red (ξ-fcaseᵃ r) h = h
+apstk?-red (ξ-fcaseᵇ r) h = h
+apstk?-red (ξ-fcase0 r) h = h
+apstk?-red (ξ-psplitᵇ r) h = h
+apstk?-red (ξ-psplitᵍ r) h = spine?-red r h
 
 -- ★ jsub-stuckness is closed under reduction (the idstk? mirror).
 idstk?-red (β _ _) ()
@@ -1221,15 +1521,43 @@ idstk?-red (ξ-ordtrᵘ {a = a} {t = t} {u = u} {u' = u'} r) h = ordstk?-redᵘ 
 idstk?-red (ξ-ordtrᵖ r) h = h
 idstk?-red (ξ-ordtrq r) h = h
 idstk?-red (ξ-con r) h = refl
-idstk?-red (ι-elim D ms k p) ()
-idstk?-red (ξ-elimᵐ r) h = h
-idstk?-red (ξ-elimᵗ r) h = mustk?-red r h
-idstk?-red (ξ-icon r) h = refl
-idstk?-red (ι-ielim D i ms k p) ()
-idstk?-red (ξ-ielimᵐ r) h = h
 idstk?-red (ξ-ielimᵗ r) h = mustk?-red r h
 idstk?-red (ξ-ielimⁱ r) h = h
-idstk?-red (ξ-⌜IMu⌝ r) h = h
+idstk?-red (ι _ _ _ _) ()
+idstk?-red (dpay-ι _ _ _ _) ()
+idstk?-red (dpay-σ _ _ _ _ _) ()
+idstk?-red (dpay-ρ _ _ _ _ _) ()
+idstk?-red (dih-ι _ _ _ _) ()
+idstk?-red (dih-σ _ _ _ _ _) ()
+idstk?-red (dih-ρ _ _ _ _ _) ()
+idstk?-red (fcase-z _ _) ()
+idstk?-red (fcase-s _ _ _) ()
+idstk?-red (psplit-β _ _ _) ()
+idstk?-red (ξ-⌜IMu⌝ᴵ r) h = h
+idstk?-red (ξ-⌜IMu⌝ᴰ r) h = h
+idstk?-red (ξ-⌜IMu⌝ⁱ r) h = h
+idstk?-red (ξ-ielimᴰ r) h = h
+idstk?-red (ξ-ielimᵉ r) h = h
+idstk?-red (ξ-dι r) h = h
+idstk?-red (ξ-dσˢ r) h = h
+idstk?-red (ξ-dσᶠ r) h = h
+idstk?-red (ξ-dρʲ r) h = h
+idstk?-red (ξ-dρᶜ r) h = h
+idstk?-red (ξ-dpayᴵ r) h = h
+idstk?-red (ξ-dpayᴰ r) h = h
+idstk?-red (ξ-dpayᶜ r) h = dstk?-red r h
+idstk?-red (ξ-dpayⁱ r) h = h
+idstk?-red (ξ-dihᴰ r) h = h
+idstk?-red (ξ-dihᵉ r) h = h
+idstk?-red (ξ-dihᶜ r) h = dstk?-red r h
+idstk?-red (ξ-dihᵖ r) h = h
+idstk?-red (ξ-fsuc r) h = h
+idstk?-red (ξ-fcaseᵗ r) h = finstk?-red r h
+idstk?-red (ξ-fcaseᵃ r) h = h
+idstk?-red (ξ-fcaseᵇ r) h = h
+idstk?-red (ξ-fcase0 r) h = h
+idstk?-red (ξ-psplitᵇ r) h = h
+idstk?-red (ξ-psplitᵍ r) h = spine?-red r h
 
 natstk?-red (β _ _) ()
 natstk?-red (βfst _ _) ()
@@ -1294,15 +1622,43 @@ natstk?-red (ξ-ordtrᵘ {a = a} {t = t} {u = u} {u' = u'} r) h = ordstk?-redᵘ
 natstk?-red (ξ-ordtrᵖ r) h = h
 natstk?-red (ξ-ordtrq r) h = h
 natstk?-red (ξ-con r) h = refl
-natstk?-red (ι-elim D ms k p) ()
-natstk?-red (ξ-elimᵐ r) h = h
-natstk?-red (ξ-elimᵗ r) h = mustk?-red r h
-natstk?-red (ξ-icon r) h = refl
-natstk?-red (ι-ielim D i ms k p) ()
-natstk?-red (ξ-ielimᵐ r) h = h
 natstk?-red (ξ-ielimᵗ r) h = mustk?-red r h
 natstk?-red (ξ-ielimⁱ r) h = h
-natstk?-red (ξ-⌜IMu⌝ r) h = h
+natstk?-red (ι _ _ _ _) ()
+natstk?-red (dpay-ι _ _ _ _) ()
+natstk?-red (dpay-σ _ _ _ _ _) ()
+natstk?-red (dpay-ρ _ _ _ _ _) ()
+natstk?-red (dih-ι _ _ _ _) ()
+natstk?-red (dih-σ _ _ _ _ _) ()
+natstk?-red (dih-ρ _ _ _ _ _) ()
+natstk?-red (fcase-z _ _) ()
+natstk?-red (fcase-s _ _ _) ()
+natstk?-red (psplit-β _ _ _) ()
+natstk?-red (ξ-⌜IMu⌝ᴵ r) h = h
+natstk?-red (ξ-⌜IMu⌝ᴰ r) h = h
+natstk?-red (ξ-⌜IMu⌝ⁱ r) h = h
+natstk?-red (ξ-ielimᴰ r) h = h
+natstk?-red (ξ-ielimᵉ r) h = h
+natstk?-red (ξ-dι r) h = h
+natstk?-red (ξ-dσˢ r) h = h
+natstk?-red (ξ-dσᶠ r) h = h
+natstk?-red (ξ-dρʲ r) h = h
+natstk?-red (ξ-dρᶜ r) h = h
+natstk?-red (ξ-dpayᴵ r) h = h
+natstk?-red (ξ-dpayᴰ r) h = h
+natstk?-red (ξ-dpayᶜ r) h = dstk?-red r h
+natstk?-red (ξ-dpayⁱ r) h = h
+natstk?-red (ξ-dihᴰ r) h = h
+natstk?-red (ξ-dihᵉ r) h = h
+natstk?-red (ξ-dihᶜ r) h = dstk?-red r h
+natstk?-red (ξ-dihᵖ r) h = h
+natstk?-red (ξ-fsuc r) h = h
+natstk?-red (ξ-fcaseᵗ r) h = finstk?-red r h
+natstk?-red (ξ-fcaseᵃ r) h = h
+natstk?-red (ξ-fcaseᵇ r) h = h
+natstk?-red (ξ-fcase0 r) h = h
+natstk?-red (ξ-psplitᵇ r) h = h
+natstk?-red (ξ-psplitᵍ r) h = spine?-red r h
 
 mustk?-red (β _ _) ()
 mustk?-red (βfst _ _) ()
@@ -1369,15 +1725,249 @@ mustk?-red (ξ-ordtrq r) h = h
 -- ★ the four rows that are not `natstk?-red`'s: `con` is the head that
 --   UNSTICKS an `elim`, so it is the one place these two keys differ.
 mustk?-red (ξ-con r) ()
-mustk?-red (ι-elim D ms k p) ()
-mustk?-red (ξ-elimᵐ r) h = h
-mustk?-red (ξ-elimᵗ r) h = mustk?-red r h
-mustk?-red (ξ-icon r) ()
-mustk?-red (ι-ielim D i ms k p) ()
-mustk?-red (ξ-ielimᵐ r) h = h
 mustk?-red (ξ-ielimᵗ r) h = mustk?-red r h
 mustk?-red (ξ-ielimⁱ r) h = h
-mustk?-red (ξ-⌜IMu⌝ r) h = h
+mustk?-red (ι _ _ _ _) ()
+mustk?-red (dpay-ι _ _ _ _) ()
+mustk?-red (dpay-σ _ _ _ _ _) ()
+mustk?-red (dpay-ρ _ _ _ _ _) ()
+mustk?-red (dih-ι _ _ _ _) ()
+mustk?-red (dih-σ _ _ _ _ _) ()
+mustk?-red (dih-ρ _ _ _ _ _) ()
+mustk?-red (fcase-z _ _) ()
+mustk?-red (fcase-s _ _ _) ()
+mustk?-red (psplit-β _ _ _) ()
+mustk?-red (ξ-⌜IMu⌝ᴵ r) h = h
+mustk?-red (ξ-⌜IMu⌝ᴰ r) h = h
+mustk?-red (ξ-⌜IMu⌝ⁱ r) h = h
+mustk?-red (ξ-ielimᴰ r) h = h
+mustk?-red (ξ-ielimᵉ r) h = h
+mustk?-red (ξ-dι r) h = h
+mustk?-red (ξ-dσˢ r) h = h
+mustk?-red (ξ-dσᶠ r) h = h
+mustk?-red (ξ-dρʲ r) h = h
+mustk?-red (ξ-dρᶜ r) h = h
+mustk?-red (ξ-dpayᴵ r) h = h
+mustk?-red (ξ-dpayᴰ r) h = h
+mustk?-red (ξ-dpayᶜ r) h = dstk?-red r h
+mustk?-red (ξ-dpayⁱ r) h = h
+mustk?-red (ξ-dihᴰ r) h = h
+mustk?-red (ξ-dihᵉ r) h = h
+mustk?-red (ξ-dihᶜ r) h = dstk?-red r h
+mustk?-red (ξ-dihᵖ r) h = h
+mustk?-red (ξ-fsuc r) h = h
+mustk?-red (ξ-fcaseᵗ r) h = finstk?-red r h
+mustk?-red (ξ-fcaseᵃ r) h = h
+mustk?-red (ξ-fcaseᵇ r) h = h
+mustk?-red (ξ-fcase0 r) h = h
+mustk?-red (ξ-psplitᵇ r) h = h
+mustk?-red (ξ-psplitᵍ r) h = spine?-red r h
+
+dstk?-red (β _ _) ()
+dstk?-red (βfst _ _) ()
+dstk?-red (βsnd _ _) ()
+dstk?-red (ξ-lam r) h = h
+dstk?-red (ξ-appˡ r) h = spine?-red r h
+dstk?-red (ξ-appʳ r) h = h
+dstk?-red (ξ-pairˡ r) h = h
+dstk?-red (ξ-pairʳ r) h = h
+dstk?-red (ξ-absurdᶜ _) h = refl
+dstk?-red (ξ-absurdᵉ _) h = refl
+dstk?-red (ξ-fst r) h = spine?-red r h
+dstk?-red (ξ-snd r) h = spine?-red r h
+dstk?-red (ξ-⌜Π⌝ˡ r) h = h
+dstk?-red (ξ-⌜Π⌝ʳ r) h = h
+dstk?-red (ξ-⌜Σ⌝ˡ r) h = h
+dstk?-red (ξ-⌜Σ⌝ʳ r) h = h
+dstk?-red (ξ-⌜Hom⌝ᶜ r) h = h
+dstk?-red (ξ-⌜Hom⌝ˡ r) h = h
+dstk?-red (ξ-⌜Hom⌝ʳ r) h = h
+dstk?-red (ξ-hreflᶜ r) h = h
+dstk?-red (ξ-hreflᵃ r) h = h
+dstk?-red (hrefl-pw C₀ s₀ kp) h = refl
+dstk?-red (tr-J-base _ _ _ _ _) ()
+dstk?-red (tr-J-Σ _ _ _ _ _ _ _) ()
+dstk?-red (tr-J-Hom _ _ _ c₁ _ _ _ _ kh) h =
+  ⊥-elim (f≢t (trans (sym (stkA?⊥dead c₁ kh)) h))
+dstk?-red (tr-taut _ _) ()
+dstk?-red (tr-pw _ _ _ _ _) h = refl
+dstk?-red (ξ-trᵈ {p = p₀} r) h = trstk?-red-d {p = p₀} r h
+dstk?-red (ξ-trᵖ {d = d₀} r) h = trstk?-red-p {d = d₀} r h
+dstk?-red (ξ-trᵉ r) h = h
+dstk?-red (ap-J _ _ c₁ _ key) h =
+  ⊥-elim (f≢t (trans (sym (stk⊥dead c₁ key)) h))
+dstk?-red (ξ-apᶜ r) h = h
+dstk?-red (ξ-apᵇ r) h = h
+dstk?-red (ξ-apᵖ r) h = apstk?-red r h
+dstk?-red (tr-J-Id _ _ _ _ _ _ _ _) ()
+dstk?-red (jsub-refl _ _ _ _) ()
+dstk?-red (ξ-⌜Id⌝ᶜ r) h = h
+dstk?-red (ξ-⌜Id⌝ˡ r) h = h
+dstk?-red (ξ-⌜Id⌝ʳ r) h = h
+dstk?-red (ξ-idreflᶜ r) h = refl
+dstk?-red (ξ-idreflᵃ r) h = refl
+dstk?-red (ξ-jsubᵈ r) h = h
+dstk?-red (ξ-jsubᵖ r) h = idstk?-red r h
+dstk?-red (ξ-jsubᵉ r) h = h
+dstk?-red (natrec-zero _ _) ()
+dstk?-red (natrec-suc _ _ _) ()
+dstk?-red (ξ-nsuc r) h = refl
+dstk?-red (ξ-natrecᶻ r) h = h
+dstk?-red (ξ-natrecˢ r) h = h
+dstk?-red (ξ-natrecⁿ r) h = natstk?-red r h
+dstk?-red (ordtr-z _ _ _ _) ()
+dstk?-red (ordtr-szz _ _ _) ()
+dstk?-red (ordtr-ssz _ _ _ _) ()
+dstk?-red (ordtr-szs _ _ _ _) ()
+dstk?-red (ordtr-sss _ _ _ _ _) ()
+dstk?-red (ξ-ordtrᵃ {a = a} {a' = a'} {t = t} {u = u} r) h = ordstk?-redᵃ {a = a} {a' = a'} {t = t} {u = u} r h
+dstk?-red (ξ-ordtrᵗ {a = a} {t = t} {t' = t'} {u = u} r) h = ordstk?-redᵗ {a = a} {t = t} {t' = t'} {u = u} r h
+dstk?-red (ξ-ordtrᵘ {a = a} {t = t} {u = u} {u' = u'} r) h = ordstk?-redᵘ {a = a} {t = t} {u = u} {u' = u'} r h
+dstk?-red (ξ-ordtrᵖ r) h = h
+dstk?-red (ξ-ordtrq r) h = h
+-- ★ the four rows that are not `natstk?-red`'s: `con` is the head that
+--   UNSTICKS an `elim`, so it is the one place these two keys differ.
+dstk?-red (ι _ _ _ _) ()
+dstk?-red (dpay-ι _ _ _ _) ()
+dstk?-red (dpay-σ _ _ _ _ _) ()
+dstk?-red (dpay-ρ _ _ _ _ _) ()
+dstk?-red (dih-ι _ _ _ _) ()
+dstk?-red (dih-σ _ _ _ _ _) ()
+dstk?-red (dih-ρ _ _ _ _ _) ()
+dstk?-red (fcase-z _ _) ()
+dstk?-red (fcase-s _ _ _) ()
+dstk?-red (psplit-β _ _ _) ()
+dstk?-red (ξ-⌜IMu⌝ᴵ r) h = h
+dstk?-red (ξ-⌜IMu⌝ᴰ r) h = h
+dstk?-red (ξ-⌜IMu⌝ⁱ r) h = h
+dstk?-red (ξ-con r) h = h
+dstk?-red (ξ-ielimᴰ r) h = h
+dstk?-red (ξ-ielimⁱ r) h = h
+dstk?-red (ξ-ielimᵉ r) h = h
+dstk?-red (ξ-ielimᵗ r) h = mustk?-red r h
+dstk?-red (ξ-dι _) ()
+dstk?-red (ξ-dσˢ _) ()
+dstk?-red (ξ-dσᶠ _) ()
+dstk?-red (ξ-dρʲ _) ()
+dstk?-red (ξ-dρᶜ _) ()
+dstk?-red (ξ-dpayᴵ r) h = h
+dstk?-red (ξ-dpayᴰ r) h = h
+dstk?-red (ξ-dpayᶜ r) h = dstk?-red r h
+dstk?-red (ξ-dpayⁱ r) h = h
+dstk?-red (ξ-dihᴰ r) h = h
+dstk?-red (ξ-dihᵉ r) h = h
+dstk?-red (ξ-dihᶜ r) h = dstk?-red r h
+dstk?-red (ξ-dihᵖ r) h = h
+dstk?-red (ξ-fsuc r) h = h
+dstk?-red (ξ-fcaseᵗ r) h = finstk?-red r h
+dstk?-red (ξ-fcaseᵃ r) h = h
+dstk?-red (ξ-fcaseᵇ r) h = h
+dstk?-red (ξ-fcase0 r) h = h
+dstk?-red (ξ-psplitᵇ r) h = h
+dstk?-red (ξ-psplitᵍ r) h = spine?-red r h
+
+finstk?-red (β _ _) ()
+finstk?-red (βfst _ _) ()
+finstk?-red (βsnd _ _) ()
+finstk?-red (ξ-lam r) h = h
+finstk?-red (ξ-appˡ r) h = spine?-red r h
+finstk?-red (ξ-appʳ r) h = h
+finstk?-red (ξ-pairˡ r) h = h
+finstk?-red (ξ-pairʳ r) h = h
+finstk?-red (ξ-absurdᶜ _) h = refl
+finstk?-red (ξ-absurdᵉ _) h = refl
+finstk?-red (ξ-fst r) h = spine?-red r h
+finstk?-red (ξ-snd r) h = spine?-red r h
+finstk?-red (ξ-⌜Π⌝ˡ r) h = h
+finstk?-red (ξ-⌜Π⌝ʳ r) h = h
+finstk?-red (ξ-⌜Σ⌝ˡ r) h = h
+finstk?-red (ξ-⌜Σ⌝ʳ r) h = h
+finstk?-red (ξ-⌜Hom⌝ᶜ r) h = h
+finstk?-red (ξ-⌜Hom⌝ˡ r) h = h
+finstk?-red (ξ-⌜Hom⌝ʳ r) h = h
+finstk?-red (ξ-hreflᶜ r) h = h
+finstk?-red (ξ-hreflᵃ r) h = h
+finstk?-red (hrefl-pw C₀ s₀ kp) h = refl
+finstk?-red (tr-J-base _ _ _ _ _) ()
+finstk?-red (tr-J-Σ _ _ _ _ _ _ _) ()
+finstk?-red (tr-J-Hom _ _ _ c₁ _ _ _ _ kh) h =
+  ⊥-elim (f≢t (trans (sym (stkA?⊥dead c₁ kh)) h))
+finstk?-red (tr-taut _ _) ()
+finstk?-red (tr-pw _ _ _ _ _) h = refl
+finstk?-red (ξ-trᵈ {p = p₀} r) h = trstk?-red-d {p = p₀} r h
+finstk?-red (ξ-trᵖ {d = d₀} r) h = trstk?-red-p {d = d₀} r h
+finstk?-red (ξ-trᵉ r) h = h
+finstk?-red (ap-J _ _ c₁ _ key) h =
+  ⊥-elim (f≢t (trans (sym (stk⊥dead c₁ key)) h))
+finstk?-red (ξ-apᶜ r) h = h
+finstk?-red (ξ-apᵇ r) h = h
+finstk?-red (ξ-apᵖ r) h = apstk?-red r h
+finstk?-red (tr-J-Id _ _ _ _ _ _ _ _) ()
+finstk?-red (jsub-refl _ _ _ _) ()
+finstk?-red (ξ-⌜Id⌝ᶜ r) h = h
+finstk?-red (ξ-⌜Id⌝ˡ r) h = h
+finstk?-red (ξ-⌜Id⌝ʳ r) h = h
+finstk?-red (ξ-idreflᶜ r) h = refl
+finstk?-red (ξ-idreflᵃ r) h = refl
+finstk?-red (ξ-jsubᵈ r) h = h
+finstk?-red (ξ-jsubᵖ r) h = idstk?-red r h
+finstk?-red (ξ-jsubᵉ r) h = h
+finstk?-red (natrec-zero _ _) ()
+finstk?-red (natrec-suc _ _ _) ()
+finstk?-red (ξ-nsuc r) h = refl
+finstk?-red (ξ-natrecᶻ r) h = h
+finstk?-red (ξ-natrecˢ r) h = h
+finstk?-red (ξ-natrecⁿ r) h = natstk?-red r h
+finstk?-red (ordtr-z _ _ _ _) ()
+finstk?-red (ordtr-szz _ _ _) ()
+finstk?-red (ordtr-ssz _ _ _ _) ()
+finstk?-red (ordtr-szs _ _ _ _) ()
+finstk?-red (ordtr-sss _ _ _ _ _) ()
+finstk?-red (ξ-ordtrᵃ {a = a} {a' = a'} {t = t} {u = u} r) h = ordstk?-redᵃ {a = a} {a' = a'} {t = t} {u = u} r h
+finstk?-red (ξ-ordtrᵗ {a = a} {t = t} {t' = t'} {u = u} r) h = ordstk?-redᵗ {a = a} {t = t} {t' = t'} {u = u} r h
+finstk?-red (ξ-ordtrᵘ {a = a} {t = t} {u = u} {u' = u'} r) h = ordstk?-redᵘ {a = a} {t = t} {u = u} {u' = u'} r h
+finstk?-red (ξ-ordtrᵖ r) h = h
+finstk?-red (ξ-ordtrq r) h = h
+-- ★ the four rows that are not `natstk?-red`'s: `con` is the head that
+--   UNSTICKS an `elim`, so it is the one place these two keys differ.
+finstk?-red (ι _ _ _ _) ()
+finstk?-red (dpay-ι _ _ _ _) ()
+finstk?-red (dpay-σ _ _ _ _ _) ()
+finstk?-red (dpay-ρ _ _ _ _ _) ()
+finstk?-red (dih-ι _ _ _ _) ()
+finstk?-red (dih-σ _ _ _ _ _) ()
+finstk?-red (dih-ρ _ _ _ _ _) ()
+finstk?-red (fcase-z _ _) ()
+finstk?-red (fcase-s _ _ _) ()
+finstk?-red (psplit-β _ _ _) ()
+finstk?-red (ξ-⌜IMu⌝ᴵ r) h = h
+finstk?-red (ξ-⌜IMu⌝ᴰ r) h = h
+finstk?-red (ξ-⌜IMu⌝ⁱ r) h = h
+finstk?-red (ξ-con r) h = h
+finstk?-red (ξ-ielimᴰ r) h = h
+finstk?-red (ξ-ielimⁱ r) h = h
+finstk?-red (ξ-ielimᵉ r) h = h
+finstk?-red (ξ-ielimᵗ r) h = mustk?-red r h
+finstk?-red (ξ-dι r) h = h
+finstk?-red (ξ-dσˢ r) h = h
+finstk?-red (ξ-dσᶠ r) h = h
+finstk?-red (ξ-dρʲ r) h = h
+finstk?-red (ξ-dρᶜ r) h = h
+finstk?-red (ξ-dpayᴵ r) h = h
+finstk?-red (ξ-dpayᴰ r) h = h
+finstk?-red (ξ-dpayᶜ r) h = dstk?-red r h
+finstk?-red (ξ-dpayⁱ r) h = h
+finstk?-red (ξ-dihᴰ r) h = h
+finstk?-red (ξ-dihᵉ r) h = h
+finstk?-red (ξ-dihᶜ r) h = dstk?-red r h
+finstk?-red (ξ-dihᵖ r) h = h
+finstk?-red (ξ-fsuc _) ()
+finstk?-red (ξ-fcaseᵗ r) h = finstk?-red r h
+finstk?-red (ξ-fcaseᵃ r) h = h
+finstk?-red (ξ-fcaseᵇ r) h = h
+finstk?-red (ξ-fcase0 r) h = h
+finstk?-red (ξ-psplitᵇ r) h = h
+finstk?-red (ξ-psplitᵍ r) h = spine?-red r h
 
 ordstk?-redᵃ (β _ _) ()
 ordstk?-redᵃ (βfst _ _) ()
@@ -1436,15 +2026,8 @@ ordstk?-redᵃ (ξ-natrecᶻ r) h = h
 ordstk?-redᵃ (ξ-natrecˢ r) h = h
 ordstk?-redᵃ (ξ-natrecⁿ r) h = natstk?-red r h
 ordstk?-redᵃ (ξ-con r) h = refl
-ordstk?-redᵃ (ι-elim D ms k p) ()
-ordstk?-redᵃ (ξ-elimᵐ r) h = h
-ordstk?-redᵃ (ξ-elimᵗ r) h = mustk?-red r h
-ordstk?-redᵃ (ξ-icon r) h = refl
-ordstk?-redᵃ (ι-ielim D i ms k p) ()
-ordstk?-redᵃ (ξ-ielimᵐ r) h = h
 ordstk?-redᵃ (ξ-ielimᵗ r) h = mustk?-red r h
 ordstk?-redᵃ (ξ-ielimⁱ r) h = h
-ordstk?-redᵃ (ξ-⌜IMu⌝ r) h = h
 ordstk?-redᵃ (ordtr-z _ _ _ _) ()
 ordstk?-redᵃ (ordtr-szz _ _ _) ()
 ordstk?-redᵃ (ordtr-ssz _ _ _ _) ()
@@ -1455,6 +2038,41 @@ ordstk?-redᵃ (ξ-ordtrᵗ {a = a} {t = t} {t' = t'} {u = u} r) h = ordstk?-red
 ordstk?-redᵃ (ξ-ordtrᵘ {a = a} {t = t} {u = u} {u' = u'} r) h = ordstk?-redᵘ {a = a} {t = t} {u = u} {u' = u'} r h
 ordstk?-redᵃ (ξ-ordtrᵖ r) h = h
 ordstk?-redᵃ (ξ-ordtrq r) h = h
+ordstk?-redᵃ (ι _ _ _ _) ()
+ordstk?-redᵃ (dpay-ι _ _ _ _) ()
+ordstk?-redᵃ (dpay-σ _ _ _ _ _) ()
+ordstk?-redᵃ (dpay-ρ _ _ _ _ _) ()
+ordstk?-redᵃ (dih-ι _ _ _ _) ()
+ordstk?-redᵃ (dih-σ _ _ _ _ _) ()
+ordstk?-redᵃ (dih-ρ _ _ _ _ _) ()
+ordstk?-redᵃ (fcase-z _ _) ()
+ordstk?-redᵃ (fcase-s _ _ _) ()
+ordstk?-redᵃ (psplit-β _ _ _) ()
+ordstk?-redᵃ (ξ-⌜IMu⌝ᴵ r) h = h
+ordstk?-redᵃ (ξ-⌜IMu⌝ᴰ r) h = h
+ordstk?-redᵃ (ξ-⌜IMu⌝ⁱ r) h = h
+ordstk?-redᵃ (ξ-ielimᴰ r) h = h
+ordstk?-redᵃ (ξ-ielimᵉ r) h = h
+ordstk?-redᵃ (ξ-dι r) h = h
+ordstk?-redᵃ (ξ-dσˢ r) h = h
+ordstk?-redᵃ (ξ-dσᶠ r) h = h
+ordstk?-redᵃ (ξ-dρʲ r) h = h
+ordstk?-redᵃ (ξ-dρᶜ r) h = h
+ordstk?-redᵃ (ξ-dpayᴵ r) h = h
+ordstk?-redᵃ (ξ-dpayᴰ r) h = h
+ordstk?-redᵃ (ξ-dpayᶜ r) h = dstk?-red r h
+ordstk?-redᵃ (ξ-dpayⁱ r) h = h
+ordstk?-redᵃ (ξ-dihᴰ r) h = h
+ordstk?-redᵃ (ξ-dihᵉ r) h = h
+ordstk?-redᵃ (ξ-dihᶜ r) h = dstk?-red r h
+ordstk?-redᵃ (ξ-dihᵖ r) h = h
+ordstk?-redᵃ (ξ-fsuc r) h = h
+ordstk?-redᵃ (ξ-fcaseᵗ r) h = finstk?-red r h
+ordstk?-redᵃ (ξ-fcaseᵃ r) h = h
+ordstk?-redᵃ (ξ-fcaseᵇ r) h = h
+ordstk?-redᵃ (ξ-fcase0 r) h = h
+ordstk?-redᵃ (ξ-psplitᵇ r) h = h
+ordstk?-redᵃ (ξ-psplitᵍ r) h = spine?-red r h
 
 -- `t` and `u` are inert under a reduction of the other, so these two
 -- must case on `a` — its head is what selects `ordstk?`'s clause, and a
@@ -1486,12 +2104,20 @@ ordstk?-redᵗ {a = unit} r h = h
 ordstk?-redᵗ {a = natrec a a₁ a₂} r h = h
 ordstk?-redᵗ {a = ⌜Nat⌝} r h = h
 ordstk?-redᵗ {a = ⌜Unit⌝} r h = h
-ordstk?-redᵗ {a = (⌜Mu⌝ Dᵐ)} r h = h
-ordstk?-redᵗ {a = con k p} r h = refl
-ordstk?-redᵗ {a = elim D ms t₀} r h = h
-ordstk?-redᵗ {a = icon k p} r h = refl
-ordstk?-redᵗ {a = ielim D i ms t₀} r h = h
-ordstk?-redᵗ {a = ⌜IMu⌝ D I i} r h = h
+ordstk?-redᵗ {a = ⌜IMu⌝ a a₁ a₂} r h = h
+ordstk?-redᵗ {a = ⌜Fin⌝ n₀} r h = h
+ordstk?-redᵗ {a = con a} r h = h
+ordstk?-redᵗ {a = ielim a a₁ a₂ a₃} r h = h
+ordstk?-redᵗ {a = dι a} r h = h
+ordstk?-redᵗ {a = dσ a a₁} r h = h
+ordstk?-redᵗ {a = dρ a a₁} r h = h
+ordstk?-redᵗ {a = dpay a a₁ a₂ a₃} r h = h
+ordstk?-redᵗ {a = dih a a₁ a₂ a₃} r h = h
+ordstk?-redᵗ {a = fzero} r h = h
+ordstk?-redᵗ {a = fsuc a} r h = h
+ordstk?-redᵗ {a = fcase a a₁ a₂} r h = h
+ordstk?-redᵗ {a = fcase0 a} r h = h
+ordstk?-redᵗ {a = psplit a a₁} r h = h
 ordstk?-redᵘ {a = nzero} r ()
 ordstk?-redᵘ {a = nsuc a₀} {t = t} r h =
   ordS?-monoᵘ (natstk? t) (natstk?-red r) h
@@ -1517,12 +2143,20 @@ ordstk?-redᵘ {a = unit} r h = h
 ordstk?-redᵘ {a = natrec a a₁ a₂} r h = h
 ordstk?-redᵘ {a = ⌜Nat⌝} r h = h
 ordstk?-redᵘ {a = ⌜Unit⌝} r h = h
-ordstk?-redᵘ {a = (⌜Mu⌝ Dᵐ)} r h = h
-ordstk?-redᵘ {a = con k p} r h = refl
-ordstk?-redᵘ {a = elim D ms t₀} r h = h
-ordstk?-redᵘ {a = icon k p} r h = refl
-ordstk?-redᵘ {a = ielim D i ms t₀} r h = h
-ordstk?-redᵘ {a = ⌜IMu⌝ D I i} r h = h
+ordstk?-redᵘ {a = ⌜IMu⌝ a a₁ a₂} r h = h
+ordstk?-redᵘ {a = ⌜Fin⌝ n₀} r h = h
+ordstk?-redᵘ {a = con a} r h = h
+ordstk?-redᵘ {a = ielim a a₁ a₂ a₃} r h = h
+ordstk?-redᵘ {a = dι a} r h = h
+ordstk?-redᵘ {a = dσ a a₁} r h = h
+ordstk?-redᵘ {a = dρ a a₁} r h = h
+ordstk?-redᵘ {a = dpay a a₁ a₂ a₃} r h = h
+ordstk?-redᵘ {a = dih a a₁ a₂ a₃} r h = h
+ordstk?-redᵘ {a = fzero} r h = h
+ordstk?-redᵘ {a = fsuc a} r h = h
+ordstk?-redᵘ {a = fcase a a₁ a₂} r h = h
+ordstk?-redᵘ {a = fcase0 a} r h = h
+ordstk?-redᵘ {a = psplit a a₁} r h = h
 
 nopw?-red (β _ _) ()
 nopw?-red (βfst _ _) ()
@@ -1585,15 +2219,43 @@ nopw?-red (ξ-ordtrᵘ {a = a} {t = t} {u = u} {u' = u'} r) h = ordstk?-redᵘ {
 nopw?-red (ξ-ordtrᵖ r) h = h
 nopw?-red (ξ-ordtrq r) h = h
 nopw?-red (ξ-con r) h = refl
-nopw?-red (ι-elim D ms k p) ()
-nopw?-red (ξ-elimᵐ r) h = h
-nopw?-red (ξ-elimᵗ r) h = mustk?-red r h
-nopw?-red (ξ-icon r) h = refl
-nopw?-red (ι-ielim D i ms k p) ()
-nopw?-red (ξ-ielimᵐ r) h = h
 nopw?-red (ξ-ielimᵗ r) h = mustk?-red r h
 nopw?-red (ξ-ielimⁱ r) h = h
-nopw?-red (ξ-⌜IMu⌝ r) h = h
+nopw?-red (ι _ _ _ _) ()
+nopw?-red (dpay-ι _ _ _ _) ()
+nopw?-red (dpay-σ _ _ _ _ _) ()
+nopw?-red (dpay-ρ _ _ _ _ _) ()
+nopw?-red (dih-ι _ _ _ _) ()
+nopw?-red (dih-σ _ _ _ _ _) ()
+nopw?-red (dih-ρ _ _ _ _ _) ()
+nopw?-red (fcase-z _ _) ()
+nopw?-red (fcase-s _ _ _) ()
+nopw?-red (psplit-β _ _ _) ()
+nopw?-red (ξ-⌜IMu⌝ᴵ r) h = h
+nopw?-red (ξ-⌜IMu⌝ᴰ r) h = h
+nopw?-red (ξ-⌜IMu⌝ⁱ r) h = h
+nopw?-red (ξ-ielimᴰ r) h = h
+nopw?-red (ξ-ielimᵉ r) h = h
+nopw?-red (ξ-dι r) h = h
+nopw?-red (ξ-dσˢ r) h = h
+nopw?-red (ξ-dσᶠ r) h = h
+nopw?-red (ξ-dρʲ r) h = h
+nopw?-red (ξ-dρᶜ r) h = h
+nopw?-red (ξ-dpayᴵ r) h = h
+nopw?-red (ξ-dpayᴰ r) h = h
+nopw?-red (ξ-dpayᶜ r) h = dstk?-red r h
+nopw?-red (ξ-dpayⁱ r) h = h
+nopw?-red (ξ-dihᴰ r) h = h
+nopw?-red (ξ-dihᵉ r) h = h
+nopw?-red (ξ-dihᶜ r) h = dstk?-red r h
+nopw?-red (ξ-dihᵖ r) h = h
+nopw?-red (ξ-fsuc r) h = h
+nopw?-red (ξ-fcaseᵗ r) h = finstk?-red r h
+nopw?-red (ξ-fcaseᵃ r) h = h
+nopw?-red (ξ-fcaseᵇ r) h = h
+nopw?-red (ξ-fcase0 r) h = h
+nopw?-red (ξ-psplitᵇ r) h = h
+nopw?-red (ξ-psplitᵍ r) h = spine?-red r h
 
 deadmot?-red (β _ _) ()
 deadmot?-red (βfst _ _) ()
@@ -1660,15 +2322,43 @@ deadmot?-red (ξ-ordtrᵘ {a = a} {t = t} {u = u} {u' = u'} r) h = ordstk?-red�
 deadmot?-red (ξ-ordtrᵖ r) h = h
 deadmot?-red (ξ-ordtrq r) h = h
 deadmot?-red (ξ-con r) h = refl
-deadmot?-red (ι-elim D ms k p) ()
-deadmot?-red (ξ-elimᵐ r) h = h
-deadmot?-red (ξ-elimᵗ r) h = mustk?-red r h
-deadmot?-red (ξ-icon r) h = refl
-deadmot?-red (ι-ielim D i ms k p) ()
-deadmot?-red (ξ-ielimᵐ r) h = h
 deadmot?-red (ξ-ielimᵗ r) h = mustk?-red r h
 deadmot?-red (ξ-ielimⁱ r) h = h
-deadmot?-red (ξ-⌜IMu⌝ r) h = h
+deadmot?-red (ι _ _ _ _) ()
+deadmot?-red (dpay-ι _ _ _ _) ()
+deadmot?-red (dpay-σ _ _ _ _ _) ()
+deadmot?-red (dpay-ρ _ _ _ _ _) ()
+deadmot?-red (dih-ι _ _ _ _) ()
+deadmot?-red (dih-σ _ _ _ _ _) ()
+deadmot?-red (dih-ρ _ _ _ _ _) ()
+deadmot?-red (fcase-z _ _) ()
+deadmot?-red (fcase-s _ _ _) ()
+deadmot?-red (psplit-β _ _ _) ()
+deadmot?-red (ξ-⌜IMu⌝ᴵ r) h = h
+deadmot?-red (ξ-⌜IMu⌝ᴰ r) h = h
+deadmot?-red (ξ-⌜IMu⌝ⁱ r) h = h
+deadmot?-red (ξ-ielimᴰ r) h = h
+deadmot?-red (ξ-ielimᵉ r) h = h
+deadmot?-red (ξ-dι r) h = h
+deadmot?-red (ξ-dσˢ r) h = h
+deadmot?-red (ξ-dσᶠ r) h = h
+deadmot?-red (ξ-dρʲ r) h = h
+deadmot?-red (ξ-dρᶜ r) h = h
+deadmot?-red (ξ-dpayᴵ r) h = h
+deadmot?-red (ξ-dpayᴰ r) h = h
+deadmot?-red (ξ-dpayᶜ r) h = dstk?-red r h
+deadmot?-red (ξ-dpayⁱ r) h = h
+deadmot?-red (ξ-dihᴰ r) h = h
+deadmot?-red (ξ-dihᵉ r) h = h
+deadmot?-red (ξ-dihᶜ r) h = dstk?-red r h
+deadmot?-red (ξ-dihᵖ r) h = h
+deadmot?-red (ξ-fsuc r) h = h
+deadmot?-red (ξ-fcaseᵗ r) h = finstk?-red r h
+deadmot?-red (ξ-fcaseᵃ r) h = h
+deadmot?-red (ξ-fcaseᵇ r) h = h
+deadmot?-red (ξ-fcase0 r) h = h
+deadmot?-red (ξ-psplitᵇ r) h = h
+deadmot?-red (ξ-psplitᵍ r) h = spine?-red r h
 
 -- dead codes are pw-immune (deadness subsumes the weaker key).
 -- ★ the `stableA?` peer.  ⌜Nat⌝ is ABSURD here — `stableA? ⌜Nat⌝`
@@ -1696,10 +2386,20 @@ deadA→nopw unit h = refl
 deadA→nopw nzero h = refl
 deadA→nopw (nsuc n) h = refl
 deadA→nopw (natrec z s n) h = h
-deadA→nopw (con k q) h = refl
-deadA→nopw (elim D ms t) h = h
-deadA→nopw (icon k q) h = refl
-deadA→nopw (ielim D iˣ ms t) h = h
+deadA→nopw (⌜IMu⌝ I D i) ()
+deadA→nopw (⌜Fin⌝ n) ()
+deadA→nopw (con p) h = refl
+deadA→nopw (ielim D i e t) h = h
+deadA→nopw (dι j) h = refl
+deadA→nopw (dσ S f) h = refl
+deadA→nopw (dρ j C) h = refl
+deadA→nopw (dpay I D C i) h = h
+deadA→nopw (dih D e C p) h = h
+deadA→nopw fzero h = refl
+deadA→nopw (fsuc t) h = refl
+deadA→nopw (fcase t a b) h = h
+deadA→nopw (fcase0 t) h = refl
+deadA→nopw (psplit b q) h = h
 
 dead→nopw : (C : RTm Γ) → stablecd? C ≡ true → nopw? C ≡ true
 dead→nopw (var x) h = refl
@@ -1724,10 +2424,20 @@ dead→nopw unit h = refl
 dead→nopw nzero h = refl
 dead→nopw (nsuc n) h = refl
 dead→nopw (natrec z s n) h = h
-dead→nopw (con k q) h = refl
-dead→nopw (elim D ms t) h = h
-dead→nopw (icon k q) h = refl
-dead→nopw (ielim D iˣ ms t) h = h
+dead→nopw (⌜IMu⌝ I D i) ()
+dead→nopw (⌜Fin⌝ n) ()
+dead→nopw (con p) h = refl
+dead→nopw (ielim D i e t) h = h
+dead→nopw (dι j) h = refl
+dead→nopw (dσ S f) h = refl
+dead→nopw (dρ j C) h = refl
+dead→nopw (dpay I D C i) h = h
+dead→nopw (dih D e C p) h = h
+dead→nopw fzero h = refl
+dead→nopw (fsuc t) h = refl
+dead→nopw (fcase t a b) h = h
+dead→nopw (fcase0 t) h = refl
+dead→nopw (psplit b q) h = h
 
 
 -- an hrefl path at a DEAD code is tr-stuck under EVERY motive shape.
@@ -1739,17 +2449,11 @@ trstk-hrefl-any (app t u) h = h
 trstk-hrefl-any (pair a b) h = h
 trstk-hrefl-any (absurd c e) h = h
 trstk-hrefl-any (ordtr a t u p q) h = h
-trstk-hrefl-any (con k p) h = h
-trstk-hrefl-any (elim D ms t) h = h
 trstk-hrefl-any (fst t) h = h
 trstk-hrefl-any (snd t) h = h
 trstk-hrefl-any ⌜base⌝ h = h
 trstk-hrefl-any ⌜Nat⌝ h = h
 trstk-hrefl-any ⌜Unit⌝ h = h
-trstk-hrefl-any (⌜Mu⌝ Dᵐ) h = h
-trstk-hrefl-any (icon k p) h = h
-trstk-hrefl-any (ielim D i ms t) h = h
-trstk-hrefl-any (⌜IMu⌝ D I i) h = h
 trstk-hrefl-any (⌜Π⌝ c₂ d₂) h = h
 trstk-hrefl-any (⌜Σ⌝ c₂ d₂) h = h
 trstk-hrefl-any (⌜Hom⌝ c₂ a₂ b₂) h = h
@@ -1763,6 +2467,20 @@ trstk-hrefl-any unit h = h
 trstk-hrefl-any nzero h = h
 trstk-hrefl-any (nsuc n) h = h
 trstk-hrefl-any (natrec z s n) h = h
+trstk-hrefl-any (⌜IMu⌝ I D i) h = h
+trstk-hrefl-any (⌜Fin⌝ n) h = h
+trstk-hrefl-any (con p) h = h
+trstk-hrefl-any (ielim D i e t) h = h
+trstk-hrefl-any (dι j) h = h
+trstk-hrefl-any (dσ S f) h = h
+trstk-hrefl-any (dρ j C) h = h
+trstk-hrefl-any (dpay I D C i) h = h
+trstk-hrefl-any (dih D e C p) h = h
+trstk-hrefl-any fzero h = h
+trstk-hrefl-any (fsuc t) h = h
+trstk-hrefl-any (fcase t a b) h = h
+trstk-hrefl-any (fcase0 t) h = h
+trstk-hrefl-any (psplit b q) h = h
 
 -- motive steps.  Only lam- and hrefl-paths inspect the motive; the
 -- rest are motive-independent (the catchall clause on both sides).
@@ -1771,9 +2489,6 @@ trstk-hrefl-any (natrec z s n) h = h
 -- does.
 -- ★ INDUCTIVE TYPES: a `con`/`elim` MOTIVE is not a `var`, so `trstk?`
 -- falls to `pathstk?` on both sides — `trstk-hrefl-any` at the reduct.
-trstk?-red-d {d = con dk dq} {d' = d'} {p = hrefl c s} r h = trstk-hrefl-any d' h
-trstk?-red-d {d = elim dD dm dt} {d' = d'} {p = hrefl c s} r h = trstk-hrefl-any d' h
-trstk?-red-d {d = icon dk dq} {d' = d'} {p = hrefl c s} r h = trstk-hrefl-any d' h
 trstk?-red-d {d = ielim dD di dm dt} {d' = d'} {p = hrefl c s} r h = trstk-hrefl-any d' h
 trstk?-red-d {d = ⌜IMu⌝ dD dI di} {d' = d'} {p = hrefl c s} r h = trstk-hrefl-any d' h
 trstk?-red-d {p = absurd p₂ e₂} r h = refl
@@ -1889,7 +2604,6 @@ trstk?-red-d {p = (snd q)} r h = h
 trstk?-red-d {p = ⌜base⌝} r h = h
 trstk?-red-d {p = ⌜Nat⌝} r h = h
 trstk?-red-d {p = ⌜Unit⌝} r h = h
-trstk?-red-d {p = (⌜Mu⌝ Dᵐ)} r h = h
 trstk?-red-d {p = (⌜Π⌝ c₁ d₁)} r h = h
 trstk?-red-d {p = (⌜Σ⌝ c₁ d₁)} r h = h
 trstk?-red-d {p = (⌜Hom⌝ c₁ a₁ b₁)} r h = h
@@ -1904,16 +2618,41 @@ trstk?-red-d {p = nsuc _} r h = h
 trstk?-red-d {p = natrec _ _ _} r h = h
 -- a `con`/`elim` PATH is neither `lam` nor `hrefl`, so `trstk?` falls to
 -- `pathstk?` and a reduction of the MOTIVE cannot touch it.
-trstk?-red-d {p = con _ _} r h = h
-trstk?-red-d {p = elim _ _ _} r h = h
 -- ⚠ THREE ROWS CLOSE 72 MISSING CASES.  Agda enumerated the `d` × `p`
 --   cross-product, but these rows are UNIFORM in `d` — `trstk?` does not
 --   look at `d` once `p` is a constructor/eliminator/code — so one row per
 --   new `p`-shape suffices.  Reading the missing-case list as a worklist
 --   would have produced 72 clauses for the same content.
-trstk?-red-d {p = icon _ _} r h = h
 trstk?-red-d {p = ielim _ _ _ _} r h = h
 trstk?-red-d {p = ⌜IMu⌝ _ _ _} r h = h
+trstk?-red-d {d = (con _)} {d' = d'} {p = hrefl c s} r h = trstk-hrefl-any d' h
+trstk?-red-d {d = (ielim _ _ _ _)} {d' = d'} {p = hrefl c s} r h = trstk-hrefl-any d' h
+trstk?-red-d {d = (⌜IMu⌝ _ _ _)} {d' = d'} {p = hrefl c s} r h = trstk-hrefl-any d' h
+trstk?-red-d {d = (⌜Fin⌝ _)} {d' = d'} {p = hrefl c s} r h = trstk-hrefl-any d' h
+trstk?-red-d {d = (dι _)} {d' = d'} {p = hrefl c s} r h = trstk-hrefl-any d' h
+trstk?-red-d {d = (dσ _ _)} {d' = d'} {p = hrefl c s} r h = trstk-hrefl-any d' h
+trstk?-red-d {d = (dρ _ _)} {d' = d'} {p = hrefl c s} r h = trstk-hrefl-any d' h
+trstk?-red-d {d = (dpay _ _ _ _)} {d' = d'} {p = hrefl c s} r h = trstk-hrefl-any d' h
+trstk?-red-d {d = (dih _ _ _ _)} {d' = d'} {p = hrefl c s} r h = trstk-hrefl-any d' h
+trstk?-red-d {d = fzero} {d' = d'} {p = hrefl c s} r h = trstk-hrefl-any d' h
+trstk?-red-d {d = (fsuc _)} {d' = d'} {p = hrefl c s} r h = trstk-hrefl-any d' h
+trstk?-red-d {d = (fcase _ _ _)} {d' = d'} {p = hrefl c s} r h = trstk-hrefl-any d' h
+trstk?-red-d {d = (fcase0 _)} {d' = d'} {p = hrefl c s} r h = trstk-hrefl-any d' h
+trstk?-red-d {d = (psplit _ _)} {d' = d'} {p = hrefl c s} r h = trstk-hrefl-any d' h
+trstk?-red-d {p = con _} r h = h
+trstk?-red-d {p = ielim _ _ _ _} r h = h
+trstk?-red-d {p = ⌜IMu⌝ _ _ _} r h = h
+trstk?-red-d {p = ⌜Fin⌝ _} r h = h
+trstk?-red-d {p = dι _} r h = h
+trstk?-red-d {p = dσ _ _} r h = h
+trstk?-red-d {p = dρ _ _} r h = h
+trstk?-red-d {p = dpay _ _ _ _} r h = h
+trstk?-red-d {p = dih _ _ _ _} r h = h
+trstk?-red-d {p = fzero} r h = h
+trstk?-red-d {p = fsuc _} r h = h
+trstk?-red-d {p = fcase _ _ _} r h = h
+trstk?-red-d {p = fcase0 _} r h = h
+trstk?-red-d {p = psplit _ _} r h = h
 trstk?-red-p {d = (var x)} (ξ-hreflᶜ rc) h = nopw?-red rc h
 trstk?-red-p {d = (lam t)} (ξ-hreflᶜ rc) h = stablecd?-red rc h
 trstk?-red-p {d = (app t u)} (ξ-hreflᶜ rc) h = stablecd?-red rc h
@@ -1936,7 +2675,6 @@ trstk?-red-p {d = (ordtr dz₁ dz₂ dz₃ dz₄ dz₅)} {hrefl _ _} {hrefl _ _}
 trstk?-red-p {d = ⌜base⌝} (ξ-hreflᶜ rc) h = stablecd?-red rc h
 trstk?-red-p {d = ⌜Nat⌝} (ξ-hreflᶜ rc) h = stablecd?-red rc h
 trstk?-red-p {d = ⌜Unit⌝} (ξ-hreflᶜ rc) h = stablecd?-red rc h
-trstk?-red-p {d = (⌜Mu⌝ Dᵐ)} (ξ-hreflᶜ rc) h = stablecd?-red rc h
 trstk?-red-p {d = (⌜IMu⌝ Dˣ Iˣ iˣ)} (ξ-hreflᶜ rc) h = stablecd?-red rc h
 trstk?-red-p {d = (⌜Π⌝ c₂ d₂)} (ξ-hreflᶜ rc) h = stablecd?-red rc h
 trstk?-red-p {d = (⌜Σ⌝ c₂ d₂)} (ξ-hreflᶜ rc) h = stablecd?-red rc h
@@ -1950,9 +2688,6 @@ trstk?-red-p {d = (jsub dz₁ dz₂ dz₃)} (ξ-hreflᶜ rc) h = stablecd?-red r
 trstk?-red-p {d = unit} (ξ-hreflᶜ rc) h = stablecd?-red rc h
 trstk?-red-p {d = nzero} (ξ-hreflᶜ rc) h = stablecd?-red rc h
 trstk?-red-p {d = (nsuc dz)} (ξ-hreflᶜ rc) h = stablecd?-red rc h
-trstk?-red-p {d = (con dk dq)} (ξ-hreflᶜ rc) h = stablecd?-red rc h
-trstk?-red-p {d = (icon dk dq)} (ξ-hreflᶜ rc) h = stablecd?-red rc h
-trstk?-red-p {d = (elim dD dm dt)} (ξ-hreflᶜ rc) h = stablecd?-red rc h
 trstk?-red-p {d = (ielim dD iˣ dm dt)} (ξ-hreflᶜ rc) h = stablecd?-red rc h
 trstk?-red-p {d = (natrec dz₁ dz₂ dz₃)} (ξ-hreflᶜ rc) h = stablecd?-red rc h
 trstk?-red-p {d = (var x)} (ξ-hreflᵃ ra) h = h
@@ -1964,7 +2699,6 @@ trstk?-red-p {d = (snd t)} (ξ-hreflᵃ ra) h = h
 trstk?-red-p {d = ⌜base⌝} (ξ-hreflᵃ ra) h = h
 trstk?-red-p {d = ⌜Nat⌝} (ξ-hreflᵃ ra) h = h
 trstk?-red-p {d = ⌜Unit⌝} (ξ-hreflᵃ ra) h = h
-trstk?-red-p {d = (⌜Mu⌝ Dᵐ)} (ξ-hreflᵃ ra) h = h
 trstk?-red-p {d = (⌜IMu⌝ Dˣ Iˣ iˣ)} (ξ-hreflᵃ ra) h = h
 trstk?-red-p {d = (⌜Π⌝ c₂ d₂)} (ξ-hreflᵃ ra) h = h
 trstk?-red-p {d = (⌜Σ⌝ c₂ d₂)} (ξ-hreflᵃ ra) h = h
@@ -1978,9 +2712,6 @@ trstk?-red-p {d = (jsub dz₁ dz₂ dz₃)} (ξ-hreflᵃ ra) h = h
 trstk?-red-p {d = unit} (ξ-hreflᵃ ra) h = h
 trstk?-red-p {d = nzero} (ξ-hreflᵃ ra) h = h
 trstk?-red-p {d = (nsuc dz)} (ξ-hreflᵃ ra) h = h
-trstk?-red-p {d = (con dk dq)} (ξ-hreflᵃ ra) h = h
-trstk?-red-p {d = (icon dk dq)} (ξ-hreflᵃ ra) h = h
-trstk?-red-p {d = (elim dD dm dt)} (ξ-hreflᵃ ra) h = h
 trstk?-red-p {d = (ielim dD iˣ dm dt)} (ξ-hreflᵃ ra) h = h
 trstk?-red-p {d = (natrec dz₁ dz₂ dz₃)} (ξ-hreflᵃ ra) h = h
 trstk?-red-p {d = var x} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (nopw⊥pw C₀ h)) kp))
@@ -1992,7 +2723,6 @@ trstk?-red-p {d = (snd t)} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (s
 trstk?-red-p {d = ⌜base⌝} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
 trstk?-red-p {d = ⌜Nat⌝} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
 trstk?-red-p {d = ⌜Unit⌝} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
-trstk?-red-p {d = (⌜Mu⌝ Dᵐ)} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
 trstk?-red-p {d = (⌜IMu⌝ Dˣ Iˣ iˣ)} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
 trstk?-red-p {d = (⌜Π⌝ c₂ d₂)} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
 trstk?-red-p {d = (⌜Σ⌝ c₂ d₂)} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
@@ -2006,9 +2736,6 @@ trstk?-red-p {d = (jsub dz₁ dz₂ dz₃)} (hrefl-pw C₀ s₀ kp) h = ⊥-elim
 trstk?-red-p {d = unit} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
 trstk?-red-p {d = nzero} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
 trstk?-red-p {d = (nsuc dz)} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
-trstk?-red-p {d = (con dk dq)} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
-trstk?-red-p {d = (icon dk dq)} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
-trstk?-red-p {d = (elim dD dm dt)} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
 trstk?-red-p {d = (ielim dD iˣ dm dt)} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
 trstk?-red-p {d = (natrec dz₁ dz₂ dz₃)} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
 trstk?-red-p {d = (ordtr dz₁ dz₂ dz₃ dz₄ dz₅)} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
@@ -2075,15 +2802,79 @@ trstk?-red-p (ξ-natrecⁿ r) h = natstk?-red r h
 -- ★ INDUCTIVE TYPES: a `con`/`elim` path is motive-independent (neither
 -- `lam` nor `hrefl`), so this is `pathstk?`'s ι row verbatim.
 trstk?-red-p (ξ-con r) h = refl
-trstk?-red-p (ι-elim D ms k p) ()
-trstk?-red-p (ξ-elimᵐ r) h = h
-trstk?-red-p (ξ-elimᵗ r) h = mustk?-red r h
-trstk?-red-p (ξ-icon r) h = refl
-trstk?-red-p (ι-ielim D iˣ ms k p) ()
-trstk?-red-p (ξ-ielimᵐ r) h = h
 trstk?-red-p (ξ-ielimᵗ r) h = mustk?-red r h
 trstk?-red-p (ξ-ielimⁱ r) h = h
-trstk?-red-p (ξ-⌜IMu⌝ r) h = h
+trstk?-red-p (ι _ _ _ _) ()
+trstk?-red-p (dpay-ι _ _ _ _) ()
+trstk?-red-p (dpay-σ _ _ _ _ _) ()
+trstk?-red-p (dpay-ρ _ _ _ _ _) ()
+trstk?-red-p (dih-ι _ _ _ _) ()
+trstk?-red-p (dih-σ _ _ _ _ _) ()
+trstk?-red-p (dih-ρ _ _ _ _ _) ()
+trstk?-red-p (fcase-z _ _) ()
+trstk?-red-p (fcase-s _ _ _) ()
+trstk?-red-p (psplit-β _ _ _) ()
+trstk?-red-p (ξ-⌜IMu⌝ᴵ r) h = h
+trstk?-red-p (ξ-⌜IMu⌝ᴰ r) h = h
+trstk?-red-p (ξ-⌜IMu⌝ⁱ r) h = h
+trstk?-red-p (ξ-ielimᴰ r) h = h
+trstk?-red-p (ξ-ielimᵉ r) h = h
+trstk?-red-p (ξ-dι r) h = h
+trstk?-red-p (ξ-dσˢ r) h = h
+trstk?-red-p (ξ-dσᶠ r) h = h
+trstk?-red-p (ξ-dρʲ r) h = h
+trstk?-red-p (ξ-dρᶜ r) h = h
+trstk?-red-p (ξ-dpayᴵ r) h = h
+trstk?-red-p (ξ-dpayᴰ r) h = h
+trstk?-red-p (ξ-dpayᶜ r) h = dstk?-red r h
+trstk?-red-p (ξ-dpayⁱ r) h = h
+trstk?-red-p (ξ-dihᴰ r) h = h
+trstk?-red-p (ξ-dihᵉ r) h = h
+trstk?-red-p (ξ-dihᶜ r) h = dstk?-red r h
+trstk?-red-p (ξ-dihᵖ r) h = h
+trstk?-red-p (ξ-fsuc r) h = h
+trstk?-red-p (ξ-fcaseᵗ r) h = finstk?-red r h
+trstk?-red-p (ξ-fcaseᵃ r) h = h
+trstk?-red-p (ξ-fcaseᵇ r) h = h
+trstk?-red-p (ξ-fcase0 r) h = h
+trstk?-red-p (ξ-psplitᵇ r) h = h
+trstk?-red-p (ξ-psplitᵍ r) h = spine?-red r h
+trstk?-red-p {d = (con _)} (ξ-hreflᶜ rc) h = stablecd?-red rc h
+trstk?-red-p {d = (con _)} (ξ-hreflᵃ ra) h = h
+trstk?-red-p {d = (con _)} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
+trstk?-red-p {d = (⌜Fin⌝ _)} (ξ-hreflᶜ rc) h = stablecd?-red rc h
+trstk?-red-p {d = (⌜Fin⌝ _)} (ξ-hreflᵃ ra) h = h
+trstk?-red-p {d = (⌜Fin⌝ _)} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
+trstk?-red-p {d = (dι _)} (ξ-hreflᶜ rc) h = stablecd?-red rc h
+trstk?-red-p {d = (dι _)} (ξ-hreflᵃ ra) h = h
+trstk?-red-p {d = (dι _)} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
+trstk?-red-p {d = (dσ _ _)} (ξ-hreflᶜ rc) h = stablecd?-red rc h
+trstk?-red-p {d = (dσ _ _)} (ξ-hreflᵃ ra) h = h
+trstk?-red-p {d = (dσ _ _)} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
+trstk?-red-p {d = (dρ _ _)} (ξ-hreflᶜ rc) h = stablecd?-red rc h
+trstk?-red-p {d = (dρ _ _)} (ξ-hreflᵃ ra) h = h
+trstk?-red-p {d = (dρ _ _)} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
+trstk?-red-p {d = (dpay _ _ _ _)} (ξ-hreflᶜ rc) h = stablecd?-red rc h
+trstk?-red-p {d = (dpay _ _ _ _)} (ξ-hreflᵃ ra) h = h
+trstk?-red-p {d = (dpay _ _ _ _)} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
+trstk?-red-p {d = (dih _ _ _ _)} (ξ-hreflᶜ rc) h = stablecd?-red rc h
+trstk?-red-p {d = (dih _ _ _ _)} (ξ-hreflᵃ ra) h = h
+trstk?-red-p {d = (dih _ _ _ _)} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
+trstk?-red-p {d = fzero} (ξ-hreflᶜ rc) h = stablecd?-red rc h
+trstk?-red-p {d = fzero} (ξ-hreflᵃ ra) h = h
+trstk?-red-p {d = fzero} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
+trstk?-red-p {d = (fsuc _)} (ξ-hreflᶜ rc) h = stablecd?-red rc h
+trstk?-red-p {d = (fsuc _)} (ξ-hreflᵃ ra) h = h
+trstk?-red-p {d = (fsuc _)} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
+trstk?-red-p {d = (fcase _ _ _)} (ξ-hreflᶜ rc) h = stablecd?-red rc h
+trstk?-red-p {d = (fcase _ _ _)} (ξ-hreflᵃ ra) h = h
+trstk?-red-p {d = (fcase _ _ _)} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
+trstk?-red-p {d = (fcase0 _)} (ξ-hreflᶜ rc) h = stablecd?-red rc h
+trstk?-red-p {d = (fcase0 _)} (ξ-hreflᵃ ra) h = h
+trstk?-red-p {d = (fcase0 _)} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
+trstk?-red-p {d = (psplit _ _)} (ξ-hreflᶜ rc) h = stablecd?-red rc h
+trstk?-red-p {d = (psplit _ _)} (ξ-hreflᵃ ra) h = h
+trstk?-red-p {d = (psplit _ _)} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
 
 apstk?-red* : {t t' : RTm Γ} → t ⟶* t' → apstk? t ≡ true → apstk? t' ≡ true
 apstk?-red* done h       = h
@@ -2096,6 +2887,14 @@ natstk?-red* (step r q) h = natstk?-red* q (natstk?-red r h)
 mustk?-red* : {t t' : RTm Γ} → t ⟶* t' → mustk? t ≡ true → mustk? t' ≡ true
 mustk?-red* done h       = h
 mustk?-red* (step r q) h = mustk?-red* q (mustk?-red r h)
+
+dstk?-red* : {t t' : RTm Γ} → t ⟶* t' → dstk? t ≡ true → dstk? t' ≡ true
+dstk?-red* done h       = h
+dstk?-red* (step r q) h = dstk?-red* q (dstk?-red r h)
+
+finstk?-red* : {t t' : RTm Γ} → t ⟶* t' → finstk? t ≡ true → finstk? t' ≡ true
+finstk?-red* done h       = h
+finstk?-red* (step r q) h = finstk?-red* q (finstk?-red r h)
 
 -- ★★ WF stage E: the multi-step closures, one per BOUND.  `wne` needs
 -- all three, composed in `ordstk?`'s own dispatch order.
@@ -2150,7 +2949,6 @@ natstk→homnat (snd t) u h        = h
 natstk→homnat ⌜base⌝ u h         = h
 natstk→homnat ⌜Nat⌝ u h = h
 natstk→homnat ⌜Unit⌝ u h = h
-natstk→homnat (⌜Mu⌝ Dᵐ) u h = h
 natstk→homnat (⌜Π⌝ c d) u h      = h
 natstk→homnat (⌜Σ⌝ c d) u h      = h
 natstk→homnat (⌜Hom⌝ c a b) u h  = h
@@ -2164,11 +2962,20 @@ natstk→homnat unit u h           = h
 natstk→homnat nzero u ()
 natstk→homnat (nsuc n) u ()
 natstk→homnat (natrec z w n) u h = h
-natstk→homnat (con k q) u h = h
-natstk→homnat (elim D ms t) u h = h
 natstk→homnat (⌜IMu⌝ Dˣ Iˣ iˣ) u h = h
-natstk→homnat (icon k q) u h = h
 natstk→homnat (ielim D iˣ ms t) u h = h
+natstk→homnat (con _) u h           = h
+natstk→homnat (⌜Fin⌝ _) u h           = h
+natstk→homnat (dι _) u h           = h
+natstk→homnat (dσ _ _) u h           = h
+natstk→homnat (dρ _ _) u h           = h
+natstk→homnat (dpay _ _ _ _) u h           = h
+natstk→homnat (dih _ _ _ _) u h           = h
+natstk→homnat fzero u h           = h
+natstk→homnat (fsuc _) u h           = h
+natstk→homnat (fcase _ _ _) u h           = h
+natstk→homnat (fcase0 _) u h           = h
+natstk→homnat (psplit _ _) u h           = h
 
 -- ★★ WF stage E: the `natstk→homnat` peer.  A bound that never becomes a
 -- numeral makes the ORDER stuck on its own — and this is the lemma that
@@ -2186,7 +2993,6 @@ natstk→ordstk (snd t₀) t u h = h
 natstk→ordstk ⌜base⌝ t u h = h
 natstk→ordstk ⌜Nat⌝ t u h = h
 natstk→ordstk ⌜Unit⌝ t u h = h
-natstk→ordstk (⌜Mu⌝ Dᵐ) t u h = h
 natstk→ordstk (⌜Π⌝ c d) t u h = h
 natstk→ordstk (⌜Σ⌝ c d) t u h = h
 natstk→ordstk (⌜Hom⌝ c a₀ b₀) t u h = h
@@ -2198,13 +3004,22 @@ natstk→ordstk (ap c b₀ p₀) t u h = h
 natstk→ordstk (jsub d p₀ e) t u h = h
 natstk→ordstk unit t u h = h
 natstk→ordstk (natrec z w n) t u h = h
-natstk→ordstk (con k q) t u h = h
-natstk→ordstk (elim D ms t₀) t u h = h
 natstk→ordstk (⌜IMu⌝ Dˣ Iˣ iˣ) t u h = h
-natstk→ordstk (icon k q) t u h = h
 natstk→ordstk (ielim D iˣ ms t₀) t u h = h
 natstk→ordstk nzero t u ()
 natstk→ordstk (nsuc n) t u ()
+natstk→ordstk (con _) t u h = h
+natstk→ordstk (⌜Fin⌝ _) t u h = h
+natstk→ordstk (dι _) t u h = h
+natstk→ordstk (dσ _ _) t u h = h
+natstk→ordstk (dρ _ _) t u h = h
+natstk→ordstk (dpay _ _ _ _) t u h = h
+natstk→ordstk (dih _ _ _ _) t u h = h
+natstk→ordstk fzero t u h = h
+natstk→ordstk (fsuc _) t u h = h
+natstk→ordstk (fcase _ _ _) t u h = h
+natstk→ordstk (fcase0 _) t u h = h
+natstk→ordstk (psplit _ _) t u h = h
 
 homnat?-redˡ : {t t' u : RTm Γ} → t ⟶ t' →
                homnat? t u ≡ true → homnat? t' u ≡ true
@@ -2230,11 +3045,22 @@ homnat?-redˡ {t = ap c b p} {t' = t'} {u = u} r h = natstk→homnat t' u (natst
 homnat?-redˡ {t = jsub d p e} {t' = t'} {u = u} r h = natstk→homnat t' u (natstk?-red r h)
 homnat?-redˡ {t = unit} {t' = t'} {u = u} r h = natstk→homnat t' u (natstk?-red r h)
 homnat?-redˡ {t = natrec z w n} {t' = t'} {u = u} r h = natstk→homnat t' u (natstk?-red r h)
-homnat?-redˡ {t = con k q} {t' = t'} {u = u} r h = natstk→homnat t' u (natstk?-red r h)
-homnat?-redˡ {t = elim D ms t₀} {t' = t'} {u = u} r h = natstk→homnat t' u (natstk?-red r h)
-homnat?-redˡ {t = icon k q} {t' = t'} {u = u} r h = natstk→homnat t' u (natstk?-red r h)
 homnat?-redˡ {t = ielim D iˣ ms t₀} {t' = t'} {u = u} r h = natstk→homnat t' u (natstk?-red r h)
 homnat?-redˡ {t = ⌜IMu⌝ Dˣ Iˣ iˣ} {t' = t'} {u = u} r h = natstk→homnat t' u (natstk?-red r h)
+homnat?-redˡ {t = (con _)} {t' = t'} {u = u} r h = natstk→homnat t' u (natstk?-red r h)
+homnat?-redˡ {t = (ielim _ _ _ _)} {t' = t'} {u = u} r h = natstk→homnat t' u (natstk?-red r h)
+homnat?-redˡ {t = (⌜IMu⌝ _ _ _)} {t' = t'} {u = u} r h = natstk→homnat t' u (natstk?-red r h)
+homnat?-redˡ {t = (⌜Fin⌝ _)} {t' = t'} {u = u} r h = natstk→homnat t' u (natstk?-red r h)
+homnat?-redˡ {t = (dι _)} {t' = t'} {u = u} r h = natstk→homnat t' u (natstk?-red r h)
+homnat?-redˡ {t = (dσ _ _)} {t' = t'} {u = u} r h = natstk→homnat t' u (natstk?-red r h)
+homnat?-redˡ {t = (dρ _ _)} {t' = t'} {u = u} r h = natstk→homnat t' u (natstk?-red r h)
+homnat?-redˡ {t = (dpay _ _ _ _)} {t' = t'} {u = u} r h = natstk→homnat t' u (natstk?-red r h)
+homnat?-redˡ {t = (dih _ _ _ _)} {t' = t'} {u = u} r h = natstk→homnat t' u (natstk?-red r h)
+homnat?-redˡ {t = fzero} {t' = t'} {u = u} r h = natstk→homnat t' u (natstk?-red r h)
+homnat?-redˡ {t = (fsuc _)} {t' = t'} {u = u} r h = natstk→homnat t' u (natstk?-red r h)
+homnat?-redˡ {t = (fcase _ _ _)} {t' = t'} {u = u} r h = natstk→homnat t' u (natstk?-red r h)
+homnat?-redˡ {t = (fcase0 _)} {t' = t'} {u = u} r h = natstk→homnat t' u (natstk?-red r h)
+homnat?-redˡ {t = (psplit _ _)} {t' = t'} {u = u} r h = natstk→homnat t' u (natstk?-red r h)
 
 homnat?-redʳ : {t u u' : RTm Γ} → u ⟶ u' →
                homnat? t u ≡ true → homnat? t u' ≡ true
@@ -2251,7 +3077,6 @@ homnat?-redʳ {t = snd t} r h        = h
 homnat?-redʳ {t = ⌜base⌝} r h       = h
 homnat?-redʳ {t = ⌜Nat⌝} r h        = h
 homnat?-redʳ {t = ⌜Unit⌝} r h       = h
-homnat?-redʳ {t = (⌜Mu⌝ Dᵐ)} r h       = h
 homnat?-redʳ {t = ⌜Π⌝ c d} r h      = h
 homnat?-redʳ {t = ⌜Σ⌝ c d} r h      = h
 homnat?-redʳ {t = ⌜Hom⌝ c a b} r h  = h
@@ -2263,11 +3088,22 @@ homnat?-redʳ {t = ap c b p} r h     = h
 homnat?-redʳ {t = jsub d p e} r h   = h
 homnat?-redʳ {t = unit} r h         = h
 homnat?-redʳ {t = natrec z w n} r h = h
-homnat?-redʳ {t = con k q} r h = h
-homnat?-redʳ {t = elim D ms t₀} r h = h
-homnat?-redʳ {t = icon k q} r h = h
 homnat?-redʳ {t = ielim D iˣ ms t₀} r h = h
 homnat?-redʳ {t = ⌜IMu⌝ Dˣ Iˣ iˣ} r h = h
+homnat?-redʳ {t = (con _)} r h         = h
+homnat?-redʳ {t = (ielim _ _ _ _)} r h         = h
+homnat?-redʳ {t = (⌜IMu⌝ _ _ _)} r h         = h
+homnat?-redʳ {t = (⌜Fin⌝ _)} r h         = h
+homnat?-redʳ {t = (dι _)} r h         = h
+homnat?-redʳ {t = (dσ _ _)} r h         = h
+homnat?-redʳ {t = (dρ _ _)} r h         = h
+homnat?-redʳ {t = (dpay _ _ _ _)} r h         = h
+homnat?-redʳ {t = (dih _ _ _ _)} r h         = h
+homnat?-redʳ {t = fzero} r h         = h
+homnat?-redʳ {t = (fsuc _)} r h         = h
+homnat?-redʳ {t = (fcase _ _ _)} r h         = h
+homnat?-redʳ {t = (fcase0 _)} r h         = h
+homnat?-redʳ {t = (psplit _ _)} r h         = h
 
 idstk?-red* : {t t' : RTm Γ} → t ⟶* t' → idstk? t ≡ true → idstk? t' ≡ true
 idstk?-red* done h       = h
@@ -2338,17 +3174,22 @@ data SNe {Γ} where
   sne-ordtr : {a t u p q : RTm Γ} →
               SN a → SN t → SN u → SN p → SN q → ordstk? a t u ≡ true →
               SNe (ordtr a t u p q)
-  -- ★ INDUCTIVE TYPES: an `elim` whose SCRUTINEE never becomes a `con` is
-  -- neutral — `sne-natrec`'s shape with `mustk?` for `natstk?`.  The
-  -- METHODS are payload, so they only ride along as `SN`, exactly as
-  -- `natrec`'s branches do.
-  sne-elim : {D : Desc} {ms t : RTm Γ} →
-             SN ms → SN t → mustk? t ≡ true → SNe (elim D ms t)
-  -- ★ the INDEXED twin.  ⚠ the INDEX is an extra `SN` premise — it is a
-  --   term the eliminator carries, and `ξ-ielimⁱ` can step it, so it must
-  --   be strongly normalising for the whole to be.
-  sne-ielim : {D : IDesc} {i ms t : RTm Γ} →
-              SN i → SN ms → SN t → mustk? t ≡ true → SNe (ielim D i ms t)
+  -- ★★ LEVITATED FAMILIES: an eliminator whose SCRUTINEE can never become
+  --   its constructor is neutral — `sne-natrec`'s shape, one key per
+  --   eliminator (`mustk?` for `con`, `dstk?` for a telescope head,
+  --   `finstk?` for a tag).  Everything else rides along as `SN`.
+  sne-ielim : {D i e t : RTm Γ} →
+              SN D → SN i → SN e → SN t → mustk? t ≡ true → SNe (ielim D i e t)
+  sne-dpay  : {I D C i : RTm Γ} →
+              SN I → SN D → SN C → SN i → dstk? C ≡ true → SNe (dpay I D C i)
+  sne-dih   : {D e C p : RTm Γ} →
+              SN D → SN e → SN C → SN p → dstk? C ≡ true → SNe (dih D e C p)
+  sne-fcase : {t a : RTm Γ} {b : RTm (Γ ∙)} →
+              SN t → SN a → SN b → finstk? t ≡ true → SNe (fcase t a b)
+  -- the EMPTY tag's eliminator has no rule at all: `sne-absurd`'s shape.
+  sne-fcase0 : {t : RTm Γ} → SN t → SNe (fcase0 t)
+  -- Σ-induction is `fst`/`snd`'s peer: stuck on a neutral pair.
+  sne-psplit : {b : RTm ((Γ ∙) ∙)} {q : RTm Γ} → SN b → SNe q → SNe (psplit b q)
 
 data SN {Γ} where
   sn-ne   : {t : RTm Γ} → SNe t → SN t
@@ -2365,17 +3206,20 @@ data SN {Γ} where
   -- exactly like `⌜base⌝`.
   sn-cNat   : SN (⌜Nat⌝ {Γ})
   sn-cUnit  : SN (⌜Unit⌝ {Γ})
-  sn-cMu    : {Dᵐ : Desc} → SN (⌜Mu⌝ {Γ} Dᵐ)
-  -- ⚠ NOT nullary like `sn-cMu`: `⌜IMu⌝` CARRIES THE INDEX, so it is SN
-  --   only when the index is.  Same reason `ξ-⌜IMu⌝` exists and `⌜Mu⌝`
-  --   needs no congruence.
-  sn-cIMu   : {D : IDesc} {I : RTy ε} {i : RTm Γ} → SN i → SN (⌜IMu⌝ D I i)
+  -- ⚠ `⌜IMu⌝` carries three TERMS, so it is SN only when they are.
+  sn-cIMu   : {I D i : RTm Γ} → SN I → SN D → SN i → SN (⌜IMu⌝ I D i)
+  sn-cFin   : {n : ℕ} → SN (⌜Fin⌝ {Γ} n)
   sn-unit   : SN (unit {Γ})
   sn-nzero  : SN (nzero {Γ})
   sn-nsuc   : {n : RTm Γ} → SN n → SN (nsuc n)
-  -- ★ INDUCTIVE TYPES: a constructor is SN-inert, like `nsuc`.
-  sn-con    : {k : ℕ} {p : RTm Γ} → SN p → SN (con k p)
-  sn-icon   : {k : ℕ} {p : RTm Γ} → SN p → SN (icon k p)
+  -- ★ LEVITATED FAMILIES: the constructor, the telescope formers and the
+  --   tags are SN-inert, like `nsuc`.
+  sn-con    : {p : RTm Γ} → SN p → SN (con p)
+  sn-dι     : {j : RTm Γ} → SN j → SN (dι j)
+  sn-dσ     : {S f : RTm Γ} → SN S → SN f → SN (dσ S f)
+  sn-dρ     : {j C : RTm Γ} → SN j → SN C → SN (dρ j C)
+  sn-fzero  : SN (fzero {Γ})
+  sn-fsuc   : {t : RTm Γ} → SN t → SN (fsuc t)
   sn-exp  : {t t' : RTm Γ} → SNRed t t' → SN t' → SN t
 
 data SNRed {Γ} where
@@ -2409,15 +3253,14 @@ data SNRed {Γ} where
   snr-J-Unit : {c a m : RTm (Γ ∙)} {s e : RTm Γ} →
                SN (⌜Hom⌝ c a m) → SN s →
                SNRed (tr (⌜Hom⌝ c a m) (hrefl ⌜Unit⌝ s) e) e
-  -- ★ INDUCTIVE TYPES: `tr-J-Mu`'s head-reduction peer.
-  -- ★ §10.4's SN-layer obligation: `⌜IMu⌝` is `stkC?`, so J fires.
-  snr-J-IMu  : {Dⁱ : IDesc} {Iⁱ : RTy ε} {iˣ : RTm Γ}
-               {c a m : RTm (Γ ∙)} {s e : RTm Γ} →
+  -- ★ §10.4's SN-layer obligation: `⌜IMu⌝` and `⌜Fin⌝` are `stkC?`, so J
+  --   fires — `snr-J-Unit`'s shape.
+  snr-J-IMu  : {Iⁱ Dⁱ iˣ : RTm Γ} {c a m : RTm (Γ ∙)} {s e : RTm Γ} →
                SN (⌜Hom⌝ c a m) → SN s →
-               SNRed (tr (⌜Hom⌝ c a m) (hrefl (⌜IMu⌝ Dⁱ Iⁱ iˣ) s) e) e
-  snr-J-Mu   : {Dᵐ : Desc} {c a m : RTm (Γ ∙)} {s e : RTm Γ} →
+               SNRed (tr (⌜Hom⌝ c a m) (hrefl (⌜IMu⌝ Iⁱ Dⁱ iˣ) s) e) e
+  snr-J-Fin  : {n : ℕ} {c a m : RTm (Γ ∙)} {s e : RTm Γ} →
                SN (⌜Hom⌝ c a m) → SN s →
-               SNRed (tr (⌜Hom⌝ c a m) (hrefl (⌜Mu⌝ Dᵐ) s) e) e
+               SNRed (tr (⌜Hom⌝ c a m) (hrefl (⌜Fin⌝ n) s) e) e
   snr-taut   : {f : RTm (Γ ∙)} {e : RTm Γ} →
                SNRed (tr (var vz) (lam f) e) (app (lam f) e)
   snr-trᵖ    : {d : RTm (Γ ∙)} {p p' e : RTm Γ} → SNRed p p' →
@@ -2447,34 +3290,41 @@ data SNRed {Γ} where
                                  (subTm (extS (single n)) w))
   snr-natrecⁿ : {z : RTm Γ} {w : RTm ((Γ ∙) ∙)} {n n' : RTm Γ} →
                 SNRed n n' → SNRed (natrec z w n) (natrec z w n')
-  -- ★ INDUCTIVE TYPES: ι, plus one ξ for the SCRUTINEE only — weak head,
-  -- exactly as `snr-natrecⁿ` leaves the branches alone.  The discarded
-  -- material rides as `SN` (the `snr-β` pattern).
-  snr-ι     : {D : Desc} {ms : RTm Γ} {k : ℕ} {p : RTm Γ} →
-              SN ms → SN p →
-              SNRed (elim D ms (con k p))
-                    (fields D ms (lookupD D k) (sel k ms) p)
-  snr-elimᵗ : {D : Desc} {ms t t' : RTm Γ} →
-              SNRed t t' → SNRed (elim D ms t) (elim D ms t')
-  -- ★ the INDEXED ι and its ξ's.  ⚠ TWO ξ's where the non-indexed rule
-  --   has one: the scrutinee AND the index can both step.
-  snr-ιi     : {D : IDesc} {i ms : RTm Γ} {k : ℕ} {p : RTm Γ} →
-               SN i → SN ms → SN p →
-               SNRed (ielim D i ms (icon k p))
-                     (ifields D i ms (isingle i) (ilookupD D k) (sel k ms) p)
-  snr-ielimᵗ : {D : IDesc} {i ms t t' : RTm Γ} →
-               SNRed t t' → SNRed (ielim D i ms t) (ielim D i ms t')
-  -- ⚠⚠ THERE IS DELIBERATELY NO `snr-ielimⁱ`.  I added one and it made
-  --   `snr-det` FALSE: for `ielim D i ms (icon k p)` BOTH `snr-ιi` (the
-  --   scrutinee is a constructor) and an index-ξ would apply, so weak-head
-  --   reduction would not be deterministic.  `elim` is safe only because
-  --   `snr-elimᵗ` cannot fire on `con k p`; the index is a SEPARATE
-  --   subterm with no such protection.
-  --   The rule above already states the principle — "one ξ for the
-  --   SCRUTINEE only — weak head, exactly as `snr-natrecⁿ` leaves the
-  --   branches alone".  The index is CARRIED, like `elim`'s methods: its
-  --   normalisation is tracked by `sne-ielim`'s `SN i` premise, not by a
-  --   weak-head step.
+  -- ★★ LEVITATED FAMILIES: each root rule, plus ONE ξ for its scrutinee
+  --   (weak head — the other slots are CARRIED, and their normalisation is
+  --   the neutral's `SN` premises).  One ξ per eliminator keeps `snr-det`
+  --   true (the old index-ξ made it false).  The root rules carry the SN
+  --   of what they DISCARD (the `snr-β` pattern); ι discards nothing but
+  --   carries its parts, as the old `snr-ιi` did.
+  snr-ι      : {D i e p : RTm Γ} → SN D → SN i → SN e → SN p →
+               SNRed (ielim D i e (con p)) (app (app (app e i) p) (dih D e D p))
+  snr-ielimᵗ : {D i e t t' : RTm Γ} →
+               SNRed t t' → SNRed (ielim D i e t) (ielim D i e t')
+  snr-dpay-ι : {I D j i : RTm Γ} → SN D →
+               SNRed (dpay I D (dι j) i) (⌜Id⌝ I j i)
+  snr-dpay-σ : {I D S f i : RTm Γ} →
+               SNRed (dpay I D (dσ S f) i)
+                     (⌜Σ⌝ S (dpay (renTm vs I) (renTm vs D) (app (renTm vs f) (var vz)) (renTm vs i)))
+  snr-dpay-ρ : {I D j C i : RTm Γ} →
+               SNRed (dpay I D (dρ j C) i)
+                     (⌜Σ⌝ (⌜IMu⌝ I D j) (dpay (renTm vs I) (renTm vs D) (renTm vs C) (renTm vs i)))
+  snr-dpayᶜ  : {I D C C' i : RTm Γ} → SNRed C C' → SNRed (dpay I D C i) (dpay I D C' i)
+  snr-dih-ι  : {D e j p : RTm Γ} → SN D → SN e → SN j → SN p →
+               SNRed (dih D e (dι j) p) unit
+  snr-dih-σ  : {D e S f p : RTm Γ} → SN S →
+               SNRed (dih D e (dσ S f) p) (dih D e (app f (fst p)) (snd p))
+  snr-dih-ρ  : {D e j C p : RTm Γ} →
+               SNRed (dih D e (dρ j C) p) (pair (ielim D j e (fst p)) (dih D e C (snd p)))
+  snr-dihᶜ   : {D e C C' p : RTm Γ} → SNRed C C' → SNRed (dih D e C p) (dih D e C' p)
+  snr-fcase-z : {a : RTm Γ} {b : RTm (Γ ∙)} → SN b → SNRed (fcase fzero a b) a
+  snr-fcase-s : {t a : RTm Γ} {b : RTm (Γ ∙)} → SN t → SN a →
+                SNRed (fcase (fsuc t) a b) (subTm (single t) b)
+  snr-fcaseᵗ : {t t' a : RTm Γ} {b : RTm (Γ ∙)} → SNRed t t' →
+               SNRed (fcase t a b) (fcase t' a b)
+  snr-psplit-β : {b : RTm ((Γ ∙) ∙)} {x y : RTm Γ} → SN x → SN y →
+                 SNRed (psplit b (pair x y)) (subTm (single2 x y) b)
+  snr-psplitᵍ : {b : RTm ((Γ ∙) ∙)} {q q' : RTm Γ} → SNRed q q' →
+                SNRed (psplit b q) (psplit b q')
   -- ★★ WF stage E: the order's five root rules, each discarding the
   -- material it drops as `SN` (the `snr-β` pattern), plus one ξ per
   -- BOUND.  Three scrutinees, so three ξ's — `p`/`q` are payload and
@@ -2557,8 +3407,8 @@ snr→⟶ (snr-snd r)          = ξ-snd (snr→⟶ r)
 snr→⟶ (snr-hreflᶜ σ)       = ξ-hreflᶜ (csr→⟶ σ)
 snr→⟶ (snr-J-base _ _)     = tr-J-base _ _ _ _ _
 snr→⟶ (snr-J-Unit _ _)     = tr-J-Unit _ _ _ _ _
-snr→⟶ (snr-J-Mu _ _)       = tr-J-Mu _ _ _ _ _
 snr→⟶ (snr-J-IMu _ _)      = tr-J-IMu _ _ _ _ _
+snr→⟶ (snr-J-Fin _ _)      = tr-J-Fin _ _ _ _ _
 snr→⟶ (snr-J-Σ _ _ _ _)    = tr-J-Σ _ _ _ _ _ _ _
 snr→⟶ snr-taut             = tr-taut _ _
 snr→⟶ (snr-trᵖ r)          = ξ-trᵖ (snr→⟶ r)
@@ -2574,10 +3424,21 @@ snr→⟶ (snr-J-Id _ _ _ _ _) = tr-J-Id _ _ _ _ _ _ _ _
 snr→⟶ (snr-natrec-zero _)      = natrec-zero _ _
 snr→⟶ (snr-natrec-suc _ _ _)   = natrec-suc _ _ _
 snr→⟶ (snr-natrecⁿ r)          = ξ-natrecⁿ (snr→⟶ r)
-snr→⟶ (snr-ι _ _)              = ι-elim _ _ _ _
-snr→⟶ (snr-elimᵗ r)            = ξ-elimᵗ (snr→⟶ r)
-snr→⟶ (snr-ιi _ _ _)           = ι-ielim _ _ _ _ _
-snr→⟶ (snr-ielimᵗ r)           = ξ-ielimᵗ (snr→⟶ r)
+snr→⟶ (snr-ι _ _ _ _) = ι _ _ _ _
+snr→⟶ (snr-ielimᵗ r) = ξ-ielimᵗ (snr→⟶ r)
+snr→⟶ (snr-dpay-ι _) = dpay-ι _ _ _ _
+snr→⟶ snr-dpay-σ = dpay-σ _ _ _ _ _
+snr→⟶ snr-dpay-ρ = dpay-ρ _ _ _ _ _
+snr→⟶ (snr-dpayᶜ r) = ξ-dpayᶜ (snr→⟶ r)
+snr→⟶ (snr-dih-ι _ _ _ _) = dih-ι _ _ _ _
+snr→⟶ (snr-dih-σ _) = dih-σ _ _ _ _ _
+snr→⟶ snr-dih-ρ = dih-ρ _ _ _ _ _
+snr→⟶ (snr-dihᶜ r) = ξ-dihᶜ (snr→⟶ r)
+snr→⟶ (snr-fcase-z _) = fcase-z _ _
+snr→⟶ (snr-fcase-s _ _) = fcase-s _ _ _
+snr→⟶ (snr-fcaseᵗ r) = ξ-fcaseᵗ (snr→⟶ r)
+snr→⟶ (snr-psplit-β _ _) = psplit-β _ _ _
+snr→⟶ (snr-psplitᵍ r) = ξ-psplitᵍ (snr→⟶ r)
 snr→⟶ (snr-ordtr-z _ _ _ _)    = ordtr-z _ _ _ _
 snr→⟶ (snr-ordtr-szz _ _)      = ordtr-szz _ _ _
 snr→⟶ (snr-ordtr-ssz _ _ _)    = ordtr-ssz _ _ _ _
@@ -2601,8 +3462,8 @@ snr-nonpw (snr-hreflᶜ _) = refl
 snr-nonpw (snr-hrefl-pw _) = refl
 snr-nonpw (snr-J-base _ _)  = refl
 snr-nonpw (snr-J-Unit _ _)  = refl
-snr-nonpw (snr-J-Mu _ _)    = refl
 snr-nonpw (snr-J-IMu _ _)   = refl
+snr-nonpw (snr-J-Fin _ _)   = refl
 snr-nonpw (snr-J-Σ _ _ _ _) = refl
 snr-nonpw (snr-J-Hom _ _ _ _ _ _) = refl
 snr-nonpw snr-taut       = refl
@@ -2617,10 +3478,21 @@ snr-nonpw (snr-J-Id _ _ _ _ _) = refl
 snr-nonpw (snr-natrec-zero _)     = refl
 snr-nonpw (snr-natrec-suc _ _ _)  = refl
 snr-nonpw (snr-natrecⁿ _)         = refl
-snr-nonpw (snr-ι _ _)             = refl
-snr-nonpw (snr-elimᵗ _)           = refl
-snr-nonpw (snr-ιi _ _ _)          = refl
-snr-nonpw (snr-ielimᵗ _)          = refl
+snr-nonpw (snr-ι _ _ _ _) = refl
+snr-nonpw (snr-ielimᵗ _) = refl
+snr-nonpw (snr-dpay-ι _) = refl
+snr-nonpw snr-dpay-σ = refl
+snr-nonpw snr-dpay-ρ = refl
+snr-nonpw (snr-dpayᶜ _) = refl
+snr-nonpw (snr-dih-ι _ _ _ _) = refl
+snr-nonpw (snr-dih-σ _) = refl
+snr-nonpw snr-dih-ρ = refl
+snr-nonpw (snr-dihᶜ _) = refl
+snr-nonpw (snr-fcase-z _) = refl
+snr-nonpw (snr-fcase-s _ _) = refl
+snr-nonpw (snr-fcaseᵗ _) = refl
+snr-nonpw (snr-psplit-β _ _) = refl
+snr-nonpw (snr-psplitᵍ _) = refl
 snr-nonpw (snr-ordtr-z _ _ _ _)   = refl
 snr-nonpw (snr-ordtr-szz _ _)     = refl
 snr-nonpw (snr-ordtr-ssz _ _ _)   = refl
@@ -2640,7 +3512,8 @@ csr-stkA⊥ : {t t' : RTm Γ} → stkA? t ≡ true → CSR t t' → ⊥
 csr-stkA⊥ {t = ⌜base⌝} k (csr-here ())
 csr-stkA⊥ {t = ⌜Nat⌝} k (csr-here ())
 csr-stkA⊥ {t = ⌜Unit⌝} k (csr-here ())
-csr-stkA⊥ {t = (⌜Mu⌝ Dᵐ)} k (csr-here ())
+csr-stkA⊥ {t = ⌜IMu⌝ I D i} k (csr-here ())
+csr-stkA⊥ {t = ⌜Fin⌝ n} k (csr-here ())
 csr-stkA⊥ {t = ⌜Σ⌝ c d} k (csr-here ())
 csr-stkA⊥ {t = ⌜Id⌝ c a b} k (csr-here ())
 csr-stkA⊥ {t = ⌜Hom⌝ c a b} k (csr-here ())
@@ -2702,14 +3575,14 @@ snr-det (snr-J-base _ _) (snr-J-base _ _) = refl
 snr-det (snr-J-base _ _) (snr-trᵖ (snr-hreflᶜ (csr-here ())))
 snr-det (snr-trᵖ (snr-hreflᶜ (csr-here ()))) (snr-J-base _ _)
 snr-det (snr-J-Unit _ _) (snr-J-Unit _ _) = refl
-snr-det (snr-J-Mu _ _) (snr-J-Mu _ _) = refl
+snr-det (snr-J-Fin _ _) (snr-J-Fin _ _) = refl
 snr-det (snr-J-IMu _ _) (snr-J-IMu _ _) = refl
 snr-det (snr-J-Unit _ _) (snr-trᵖ (snr-hreflᶜ (csr-here ())))
 snr-det (snr-J-IMu _ _) (snr-trᵖ (snr-hreflᶜ (csr-here ())))
-snr-det (snr-J-Mu _ _) (snr-trᵖ (snr-hreflᶜ (csr-here ())))
+snr-det (snr-J-Fin _ _) (snr-trᵖ (snr-hreflᶜ (csr-here ())))
 snr-det (snr-trᵖ (snr-hreflᶜ (csr-here ()))) (snr-J-Unit _ _)
 snr-det (snr-trᵖ (snr-hreflᶜ (csr-here ()))) (snr-J-IMu _ _)
-snr-det (snr-trᵖ (snr-hreflᶜ (csr-here ()))) (snr-J-Mu _ _)
+snr-det (snr-trᵖ (snr-hreflᶜ (csr-here ()))) (snr-J-Fin _ _)
 snr-det (snr-J-Σ _ _ _ _) (snr-J-Σ _ _ _ _) = refl
 snr-det (snr-J-Σ _ _ _ _) (snr-trᵖ (snr-hreflᶜ (csr-here ())))
 snr-det (snr-trᵖ (snr-hreflᶜ (csr-here ()))) (snr-J-Σ _ _ _ _)
@@ -2742,10 +3615,10 @@ snr-det (snr-J-base _ _) (snr-trᵖ (snr-hrefl-pw ()))
 snr-det (snr-trᵖ (snr-hrefl-pw ())) (snr-J-base _ _)
 snr-det (snr-J-Unit _ _) (snr-trᵖ (snr-hrefl-pw ()))
 snr-det (snr-J-IMu _ _) (snr-trᵖ (snr-hrefl-pw ()))
-snr-det (snr-J-Mu _ _) (snr-trᵖ (snr-hrefl-pw ()))
+snr-det (snr-J-Fin _ _) (snr-trᵖ (snr-hrefl-pw ()))
 snr-det (snr-trᵖ (snr-hrefl-pw ())) (snr-J-Unit _ _)
 snr-det (snr-trᵖ (snr-hrefl-pw ())) (snr-J-IMu _ _)
-snr-det (snr-trᵖ (snr-hrefl-pw ())) (snr-J-Mu _ _)
+snr-det (snr-trᵖ (snr-hrefl-pw ())) (snr-J-Fin _ _)
 snr-det (snr-J-Σ _ _ _ _) (snr-trᵖ (snr-hrefl-pw ()))
 snr-det (snr-trᵖ (snr-hrefl-pw ())) (snr-J-Σ _ _ _ _)
 snr-det (snr-tr-pw _ _ _) (snr-tr-pw _ _ _) = refl
@@ -2791,25 +3664,50 @@ snr-det (snr-natrecⁿ ()) (snr-natrec-zero _)
 snr-det (snr-natrec-suc _ _ _) (snr-natrec-suc _ _ _) = refl
 snr-det (snr-natrec-suc _ _ _) (snr-natrecⁿ ())
 snr-det (snr-natrecⁿ ()) (snr-natrec-suc _ _ _)
--- ★ INDUCTIVE TYPES: ι and the ξ overlap only where the scrutinee is a
--- `con`, and NO SNRed rule steps a `con` — so the cross cases are refuted
--- definitionally, exactly as `natrec`'s are.
-snr-det (snr-ι _ _) (snr-ι _ _)         = refl
-snr-det (snr-ι _ _) (snr-elimᵗ ())
-snr-det (snr-elimᵗ ()) (snr-ι _ _)
-snr-det (snr-elimᵗ {D = D} {ms = ms} r) (snr-elimᵗ r') =
-  cong (elim D ms) (snr-det r r')
--- ★ the INDEXED determinism block.  THREE reduction constructors for
---   `ielim` (ι, scrutinee-ξ, index-ξ) where `elim` has two, so nine pairs
---   instead of four.  ⚠ the off-diagonal pairs are IMPOSSIBLE, and the
---   witness that kills them is the SAME as `elim`'s: a `snr` out of
---   `icon` (for ι-vs-ξᵗ) or out of an index that ι requires inert.
-snr-det (snr-ιi _ _ _) (snr-ιi _ _ _)     = refl
-snr-det (snr-ιi _ _ _) (snr-ielimᵗ ())
-snr-det (snr-ielimᵗ ()) (snr-ιi _ _ _)
-snr-det (snr-ielimᵗ {D = D} {i = i} {ms = ms} r) (snr-ielimᵗ r') =
-  cong (λ q → ielim D i ms q) (snr-det r r')
--- (no `snr-ielimⁱ` — see the note on `snr-ielimᵗ`)
+-- ★★ LEVITATED FAMILIES: each eliminator has ONE root rule family and ONE
+--   scrutinee ξ; they overlap only where the scrutinee is a constructor
+--   (`con`, `dι`/`dσ`/`dρ`, `fzero`/`fsuc`, `pair`), and NO SNRed rule
+--   steps a constructor — so every cross case is refuted definitionally.
+snr-det (snr-ι _ _ _ _) (snr-ι _ _ _ _) = refl
+snr-det (snr-ι _ _ _ _) (snr-ielimᵗ ())
+snr-det (snr-ielimᵗ ()) (snr-ι _ _ _ _)
+snr-det (snr-ielimᵗ {D = D} {i = i} {e = e} r) (snr-ielimᵗ r') =
+  cong (λ q → ielim D i e q) (snr-det r r')
+snr-det (snr-dpay-ι _) (snr-dpay-ι _) = refl
+snr-det snr-dpay-σ snr-dpay-σ = refl
+snr-det snr-dpay-ρ snr-dpay-ρ = refl
+snr-det (snr-dpay-ι _) (snr-dpayᶜ ())
+snr-det snr-dpay-σ (snr-dpayᶜ ())
+snr-det snr-dpay-ρ (snr-dpayᶜ ())
+snr-det (snr-dpayᶜ ()) (snr-dpay-ι _)
+snr-det (snr-dpayᶜ ()) snr-dpay-σ
+snr-det (snr-dpayᶜ ()) snr-dpay-ρ
+snr-det (snr-dpayᶜ {I = I} {D = D} {i = i} r) (snr-dpayᶜ r') =
+  cong (λ q → dpay I D q i) (snr-det r r')
+snr-det (snr-dih-ι _ _ _ _) (snr-dih-ι _ _ _ _) = refl
+snr-det (snr-dih-σ _) (snr-dih-σ _) = refl
+snr-det snr-dih-ρ snr-dih-ρ = refl
+snr-det (snr-dih-ι _ _ _ _) (snr-dihᶜ ())
+snr-det (snr-dih-σ _) (snr-dihᶜ ())
+snr-det snr-dih-ρ (snr-dihᶜ ())
+snr-det (snr-dihᶜ ()) (snr-dih-ι _ _ _ _)
+snr-det (snr-dihᶜ ()) (snr-dih-σ _)
+snr-det (snr-dihᶜ ()) snr-dih-ρ
+snr-det (snr-dihᶜ {D = D} {e = e} {p = p} r) (snr-dihᶜ r') =
+  cong (λ q → dih D e q p) (snr-det r r')
+snr-det (snr-fcase-z _) (snr-fcase-z _) = refl
+snr-det (snr-fcase-s _ _) (snr-fcase-s _ _) = refl
+snr-det (snr-fcase-z _) (snr-fcaseᵗ ())
+snr-det (snr-fcase-s _ _) (snr-fcaseᵗ ())
+snr-det (snr-fcaseᵗ ()) (snr-fcase-z _)
+snr-det (snr-fcaseᵗ ()) (snr-fcase-s _ _)
+snr-det (snr-fcaseᵗ {a = a} {b = b} r) (snr-fcaseᵗ r') =
+  cong (λ q → fcase q a b) (snr-det r r')
+snr-det (snr-psplit-β _ _) (snr-psplit-β _ _) = refl
+snr-det (snr-psplit-β _ _) (snr-psplitᵍ ())
+snr-det (snr-psplitᵍ ()) (snr-psplit-β _ _)
+snr-det (snr-psplitᵍ {b = b} r) (snr-psplitᵍ r') =
+  cong (psplit b) (snr-det r r')
 snr-det (snr-natrecⁿ {z = z} {w = w} r) (snr-natrecⁿ r') =
   cong (λ q → natrec z w q) (snr-det r r')
 -- ★★ WF stage E: `natrec`'s argument three times over.  Every cross
@@ -2921,18 +3819,28 @@ sne-whred (sne-natrec snz snw snn ()) (snr-natrec-zero _)
 sne-whred (sne-natrec snz snw snn ()) (snr-natrec-suc _ _ _)
 sne-whred (sne-natrec snz snw snn key) (snr-natrecⁿ r) =
   sne-natrec snz snw (sn-whred snn r) (natstk?-red (snr→⟶ r) key)
--- ★ INDUCTIVE TYPES: ι is refuted DEFINITIONALLY — it fires only on a
--- `con` scrutinee and `mustk?` of a `con` is `false`, so the neutral's own
--- key contradicts it.  That is exactly what keying `sne-elim` bought.
-sne-whred (sne-elim snm snt ()) (snr-ι _ _)
-sne-whred (sne-elim snm snt key) (snr-elimᵗ r) =
-  sne-elim snm (sn-whred snt r) (mustk?-red (snr→⟶ r) key)
--- ★ the INDEXED twins.  `()` on the ι row for the same reason: `sne-ielim`
---   keys on `mustk? t ≡ true`, and ι requires the scrutinee to be `icon`,
---   which `mustk?` answers `false` for.
-sne-whred (sne-ielim sni snm snt ()) (snr-ιi _ _ _)
-sne-whred (sne-ielim sni snm snt key) (snr-ielimᵗ r) =
-  sne-ielim sni snm (sn-whred snt r) (mustk?-red (snr→⟶ r) key)
+-- ★★ LEVITATED FAMILIES: every root rule is refuted DEFINITIONALLY — it
+-- fires only on a constructor scrutinee, and the neutral's own key answers
+-- `false` there.  The scrutinee ξ moves the key along (`X?-red`).
+sne-whred (sne-ielim snD sni sne snt ()) (snr-ι _ _ _ _)
+sne-whred (sne-ielim snD sni sne snt key) (snr-ielimᵗ r) =
+  sne-ielim snD sni sne (sn-whred snt r) (mustk?-red (snr→⟶ r) key)
+sne-whred (sne-dpay _ _ _ _ ()) (snr-dpay-ι _)
+sne-whred (sne-dpay _ _ _ _ ()) snr-dpay-σ
+sne-whred (sne-dpay _ _ _ _ ()) snr-dpay-ρ
+sne-whred (sne-dpay snI snD snC sni key) (snr-dpayᶜ r) =
+  sne-dpay snI snD (sn-whred snC r) sni (dstk?-red (snr→⟶ r) key)
+sne-whred (sne-dih _ _ _ _ ()) (snr-dih-ι _ _ _ _)
+sne-whred (sne-dih _ _ _ _ ()) (snr-dih-σ _)
+sne-whred (sne-dih _ _ _ _ ()) snr-dih-ρ
+sne-whred (sne-dih snD sne snC snp key) (snr-dihᶜ r) =
+  sne-dih snD sne (sn-whred snC r) snp (dstk?-red (snr→⟶ r) key)
+sne-whred (sne-fcase _ _ _ ()) (snr-fcase-z _)
+sne-whred (sne-fcase _ _ _ ()) (snr-fcase-s _ _)
+sne-whred (sne-fcase snt sna snb key) (snr-fcaseᵗ r) =
+  sne-fcase (sn-whred snt r) sna snb (finstk?-red (snr→⟶ r) key)
+sne-whred (sne-psplit snb ()) (snr-psplit-β _ _)
+sne-whred (sne-psplit snb n) (snr-psplitᵍ r) = sne-psplit snb (sne-whred n r)
 -- ★★ WF stage E: every root rule is refuted DEFINITIONALLY — each one
 -- fires only on numeral bounds, and `natstk?` of a numeral is `false`,
 -- so `ordstk?` computes to `false` and the key is `()`.
@@ -3009,9 +3917,9 @@ Nat-nf (stepᵀ () _)
 -- ★ INDUCTIVE TYPES: `Mu D` is INERT at the type level — no `_⟶ᵀ_` rule
 --   has it as subject — so it is its own only reduct, exactly like `Nat`
 --   and `Unit`.  This is what makes every `Mu`-versus-X clash two lines.
-Mu-nf : {D : Desc} {A : RTy Γ} → Mu {Γ} D ⟶ᵀ* A → A ≡ Mu D
-Mu-nf doneᵀ        = refl
-Mu-nf (stepᵀ () _)
+Fin-nf : {n : ℕ} {A : RTy Γ} → Fin {Γ} n ⟶ᵀ* A → A ≡ Fin n
+Fin-nf doneᵀ        = refl
+Fin-nf (stepᵀ () _)
 
 -- ⚠ The TYPE-level neutrality payload is a PLAIN syntactic `Ne`, not `SNe`.
 -- `El-ne-reduct` needs neutrality preserved under reduction, and for `SNe` that
@@ -3038,12 +3946,14 @@ data Ne {Γ} : RTm Γ → Set where
   -- every other eliminator it carries only the stuckness, not the SN.
   ne-ordtr : {a t u p q : RTm Γ} →
              ordstk? a t u ≡ true → Ne (ordtr a t u p q)
-  -- ★ INDUCTIVE TYPES: the `Ne` peer of `sne-elim` — same key, and like
-  -- every other eliminator it carries only the stuckness.
-  ne-elim : {D : Desc} {ms t : RTm Γ} →
-            mustk? t ≡ true → Ne (elim D ms t)
-  ne-ielim : {D : IDesc} {i ms t : RTm Γ} →
-             mustk? t ≡ true → Ne (ielim D i ms t)
+  -- ★★ LEVITATED FAMILIES: the `Ne` peers of the new `sne-*` — same keys,
+  -- carrying only the stuckness.
+  ne-ielim : {D i e t : RTm Γ} → mustk? t ≡ true → Ne (ielim D i e t)
+  ne-dpay  : {I D C i : RTm Γ} → dstk? C ≡ true → Ne (dpay I D C i)
+  ne-dih   : {D e C p : RTm Γ} → dstk? C ≡ true → Ne (dih D e C p)
+  ne-fcase : {t a : RTm Γ} {b : RTm (Γ ∙)} → finstk? t ≡ true → Ne (fcase t a b)
+  ne-fcase0 : {t : RTm Γ} → Ne (fcase0 t)
+  ne-psplit : {b : RTm ((Γ ∙) ∙)} {q : RTm Γ} → Ne q → Ne (psplit b q)
 
 ne-red : {t t' : RTm Γ} → Ne t → t ⟶ t' → Ne t'
 ne-red (ne-var x) ()
@@ -3082,17 +3992,36 @@ ne-red (ne-natrec ()) (natrec-suc _ _ _)
 ne-red (ne-natrec key) (ξ-natrecᶻ r) = ne-natrec key
 ne-red (ne-natrec key) (ξ-natrecˢ r) = ne-natrec key
 ne-red (ne-natrec key) (ξ-natrecⁿ r) = ne-natrec (natstk?-red r key)
--- ★ INDUCTIVE TYPES: ι refuted by the key; the methods leave it alone;
--- the scrutinee moves it.  `natrec`'s three rows exactly.
-ne-red (ne-elim ()) (ι-elim _ _ _ _)
-ne-red (ne-ielim ()) (ι-ielim _ _ _ _ _)
-ne-red (ne-elim key) (ξ-elimᵐ r) = ne-elim key
--- ⚠ THREE ξ rows, not two: the INDEX is a subterm of `ielim` and
--- `ξ-ielimⁱ` steps it.  The key is about the SCRUTINEE, so it survives.
+-- ★★ LEVITATED FAMILIES: each root rule refuted by the key, the scrutinee
+-- ξ moves the key, every other ξ leaves it alone.
+ne-red (ne-ielim ()) (ι _ _ _ _)
+ne-red (ne-ielim key) (ξ-ielimᴰ r) = ne-ielim key
 ne-red (ne-ielim key) (ξ-ielimⁱ r) = ne-ielim key
-ne-red (ne-ielim key) (ξ-ielimᵐ r) = ne-ielim key
-ne-red (ne-elim key) (ξ-elimᵗ r) = ne-elim (mustk?-red r key)
+ne-red (ne-ielim key) (ξ-ielimᵉ r) = ne-ielim key
 ne-red (ne-ielim key) (ξ-ielimᵗ r) = ne-ielim (mustk?-red r key)
+ne-red (ne-dpay ()) (dpay-ι _ _ _ _)
+ne-red (ne-dpay ()) (dpay-σ _ _ _ _ _)
+ne-red (ne-dpay ()) (dpay-ρ _ _ _ _ _)
+ne-red (ne-dpay key) (ξ-dpayᴵ r) = ne-dpay key
+ne-red (ne-dpay key) (ξ-dpayᴰ r) = ne-dpay key
+ne-red (ne-dpay key) (ξ-dpayᶜ r) = ne-dpay (dstk?-red r key)
+ne-red (ne-dpay key) (ξ-dpayⁱ r) = ne-dpay key
+ne-red (ne-dih ()) (dih-ι _ _ _ _)
+ne-red (ne-dih ()) (dih-σ _ _ _ _ _)
+ne-red (ne-dih ()) (dih-ρ _ _ _ _ _)
+ne-red (ne-dih key) (ξ-dihᴰ r) = ne-dih key
+ne-red (ne-dih key) (ξ-dihᵉ r) = ne-dih key
+ne-red (ne-dih key) (ξ-dihᶜ r) = ne-dih (dstk?-red r key)
+ne-red (ne-dih key) (ξ-dihᵖ r) = ne-dih key
+ne-red (ne-fcase ()) (fcase-z _ _)
+ne-red (ne-fcase ()) (fcase-s _ _ _)
+ne-red (ne-fcase key) (ξ-fcaseᵗ r) = ne-fcase (finstk?-red r key)
+ne-red (ne-fcase key) (ξ-fcaseᵃ r) = ne-fcase key
+ne-red (ne-fcase key) (ξ-fcaseᵇ r) = ne-fcase key
+ne-red ne-fcase0 (ξ-fcase0 r) = ne-fcase0
+ne-red (ne-psplit ()) (psplit-β _ _ _)
+ne-red (ne-psplit n) (ξ-psplitᵇ r) = ne-psplit n
+ne-red (ne-psplit n) (ξ-psplitᵍ r) = ne-psplit (ne-red n r)
 -- ★★ WF stage E: the five root rules are refuted by the key, the three
 -- bound congruences move it, and the two PROOF congruences leave it
 -- alone — `ordstk?` does not mention `p`/`q`.
@@ -3121,9 +4050,56 @@ sne→ne (sne-tr _ _ _ key) = ne-tr key
 sne→ne (sne-ap _ _ _ key) = ne-ap key
 sne→ne (sne-jsub _ _ _ key) = ne-jsub key
 sne→ne (sne-natrec _ _ _ key) = ne-natrec key
-sne→ne (sne-elim _ _ key) = ne-elim key
-sne→ne (sne-ielim _ _ _ key) = ne-ielim key
+sne→ne (sne-ielim _ _ _ _ key) = ne-ielim key
+sne→ne (sne-dpay _ _ _ _ key) = ne-dpay key
+sne→ne (sne-dih _ _ _ _ key) = ne-dih key
+sne→ne (sne-fcase _ _ _ key) = ne-fcase key
+sne→ne (sne-fcase0 _) = ne-fcase0
+sne→ne (sne-psplit _ n) = ne-psplit (sne→ne n)
 sne→ne (sne-ordtr _ _ _ _ _ key) = ne-ordtr key
+
+ne-red* : {t t' : RTm Γ} → Ne t → t ⟶* t' → Ne t'
+ne-red* n done       = n
+ne-red* n (step r p) = ne-red* (ne-red n r) p
+
+-- ★★ LEVITATED FAMILIES: the telescope formers are inert-SHAPED — every
+--   reduct keeps the head and reduces componentwise.  The transfer layer's
+--   joins and shape clashes ride on these (`IMu-reduct`'s term-level peers).
+dι-reduct : {j C : RTm Γ} → dι j ⟶* C → Σ (RTm Γ) (λ j' → (C ≡ dι j') × (j ⟶* j'))
+dι-reduct done = _ , (refl , done)
+dι-reduct (step (ξ-dι r) p) with dι-reduct p
+... | j' , (eq , q) = j' , (eq , step r q)
+
+dσ-reduct : {S f C : RTm Γ} → dσ S f ⟶* C →
+            Σ (RTm Γ) (λ S' → Σ (RTm Γ) (λ f' → (C ≡ dσ S' f') × ((S ⟶* S') × (f ⟶* f'))))
+dσ-reduct done = _ , (_ , (refl , (done , done)))
+dσ-reduct (step (ξ-dσˢ r) p) with dσ-reduct p
+... | S' , (f' , (eq , (rS , rf))) = S' , (f' , (eq , (step r rS , rf)))
+dσ-reduct (step (ξ-dσᶠ r) p) with dσ-reduct p
+... | S' , (f' , (eq , (rS , rf))) = S' , (f' , (eq , (rS , step r rf)))
+
+dρ-reduct : {j C E : RTm Γ} → dρ j C ⟶* E →
+            Σ (RTm Γ) (λ j' → Σ (RTm Γ) (λ C' → (E ≡ dρ j' C') × ((j ⟶* j') × (C ⟶* C'))))
+dρ-reduct done = _ , (_ , (refl , (done , done)))
+dρ-reduct (step (ξ-dρʲ r) p) with dρ-reduct p
+... | j' , (C' , (eq , (rj , rC))) = j' , (C' , (eq , (step r rj , rC)))
+dρ-reduct (step (ξ-dρᶜ r) p) with dρ-reduct p
+... | j' , (C' , (eq , (rj , rC))) = j' , (C' , (eq , (rj , step r rC)))
+
+-- the shape clashes: a neutral is never a telescope former, and the three
+-- formers are distinct.
+ne≢dι : {C j : RTm Γ} → C ≡ dι j → Ne C → ⊥
+ne≢dι refl ()
+ne≢dσ : {C S f : RTm Γ} → C ≡ dσ S f → Ne C → ⊥
+ne≢dσ refl ()
+ne≢dρ : {C j E : RTm Γ} → C ≡ dρ j E → Ne C → ⊥
+ne≢dρ refl ()
+dι≢dσ : {j S f : RTm Γ} → dι j ≡ dσ S f → ⊥
+dι≢dσ ()
+dι≢dρ : {j j' C : RTm Γ} → dι j ≡ dρ j' C → ⊥
+dι≢dρ ()
+dσ≢dρ : {S f j C : RTm Γ} → dσ S f ≡ dρ j C → ⊥
+dσ≢dρ ()
 
 -- extractors for `fund`'s path analysis: strict neutrals are safe spine
 -- heads and stable codes.
@@ -3138,8 +4114,12 @@ sne→spine (sne-tr _ _ _ key) = key
 sne→spine (sne-ap _ _ _ key) = key
 sne→spine (sne-jsub _ _ _ key) = key
 sne→spine (sne-natrec _ _ _ key) = key
-sne→spine (sne-elim _ _ key) = key
-sne→spine (sne-ielim _ _ _ key) = key
+sne→spine (sne-ielim _ _ _ _ key) = key
+sne→spine (sne-dpay _ _ _ _ key) = key
+sne→spine (sne-dih _ _ _ _ key) = key
+sne→spine (sne-fcase _ _ _ key) = key
+sne→spine (sne-fcase0 _) = refl
+sne→spine (sne-psplit _ n) = sne→spine n
 sne→spine (sne-ordtr _ _ _ _ _ key) = key
 
 -- ★ the `stableA?` peer.  A strict neutral is never ⌜Nat⌝- or
@@ -3161,8 +4141,12 @@ sne→mustk (sne-tr _ _ _ key)      = key
 sne→mustk (sne-ap _ _ _ key)      = key
 sne→mustk (sne-jsub _ _ _ key)    = key
 sne→mustk (sne-natrec _ _ _ key)  = key
-sne→mustk (sne-elim _ _ key)      = key
-sne→mustk (sne-ielim _ _ _ key)      = key
+sne→mustk (sne-ielim _ _ _ _ key) = key
+sne→mustk (sne-dpay _ _ _ _ key) = key
+sne→mustk (sne-dih _ _ _ _ key) = key
+sne→mustk (sne-fcase _ _ _ key) = key
+sne→mustk (sne-fcase0 _) = refl
+sne→mustk (sne-psplit _ n) = sne→spine n
 sne→mustk (sne-ordtr _ _ _ _ _ key) = key
 
 sne→stableA : {t : RTm Γ} → SNe t → stableA? t ≡ true
@@ -3176,8 +4160,12 @@ sne→stableA (sne-tr _ _ _ key) = key
 sne→stableA (sne-ap _ _ _ key) = key
 sne→stableA (sne-jsub _ _ _ key) = key
 sne→stableA (sne-natrec _ _ _ key) = key
-sne→stableA (sne-elim _ _ key) = key
-sne→stableA (sne-ielim _ _ _ key) = key
+sne→stableA (sne-ielim _ _ _ _ key) = key
+sne→stableA (sne-dpay _ _ _ _ key) = key
+sne→stableA (sne-dih _ _ _ _ key) = key
+sne→stableA (sne-fcase _ _ _ key) = key
+sne→stableA (sne-fcase0 _) = refl
+sne→stableA (sne-psplit _ n) = sne→spine n
 sne→stableA (sne-ordtr _ _ _ _ _ key) = key
 
 sne→stablecd : {t : RTm Γ} → SNe t → stablecd? t ≡ true
@@ -3191,8 +4179,12 @@ sne→stablecd (sne-tr _ _ _ key) = key
 sne→stablecd (sne-ap _ _ _ key) = key
 sne→stablecd (sne-jsub _ _ _ key) = key
 sne→stablecd (sne-natrec _ _ _ key) = key
-sne→stablecd (sne-elim _ _ key) = key
-sne→stablecd (sne-ielim _ _ _ key) = key
+sne→stablecd (sne-ielim _ _ _ _ key) = key
+sne→stablecd (sne-dpay _ _ _ _ key) = key
+sne→stablecd (sne-dih _ _ _ _ key) = key
+sne→stablecd (sne-fcase _ _ _ key) = key
+sne→stablecd (sne-fcase0 _) = refl
+sne→stablecd (sne-psplit _ n) = sne→spine n
 sne→stablecd (sne-ordtr _ _ _ _ _ key) = key
 
 -- ★ WF stage A: a strict neutral is never a numeral — the extractor
@@ -3208,9 +4200,53 @@ sne→natstk (sne-tr _ _ _ key)   = key
 sne→natstk (sne-ap _ _ _ key)   = key
 sne→natstk (sne-jsub _ _ _ key) = key
 sne→natstk (sne-natrec _ _ _ key) = key
-sne→natstk (sne-elim _ _ key) = key
-sne→natstk (sne-ielim _ _ _ key) = key
+sne→natstk (sne-ielim _ _ _ _ key) = key
+sne→natstk (sne-dpay _ _ _ _ key) = key
+sne→natstk (sne-dih _ _ _ _ key) = key
+sne→natstk (sne-fcase _ _ _ key) = key
+sne→natstk (sne-fcase0 _) = refl
+sne→natstk (sne-psplit _ n) = sne→spine n
 sne→natstk (sne-ordtr _ _ _ _ _ key) = key
+
+-- ★★ LEVITATED FAMILIES: the telescope and tag peers, for `fund`'s neutral
+--   `dpay`/`dih`/`fcase` cases.  Every row is `sne→natstk`'s.
+sne→dstk : {t : RTm Γ} → SNe t → dstk? t ≡ true
+sne→dstk (sne-var x)          = refl
+sne→dstk (sne-app n _)        = sne→spine n
+sne→dstk (sne-absurd _ _)       = refl
+sne→dstk (sne-fst n)          = sne→spine n
+sne→dstk (sne-snd n)          = sne→spine n
+sne→dstk (sne-hrefl _ _ _)    = refl
+sne→dstk (sne-tr _ _ _ key)   = key
+sne→dstk (sne-ap _ _ _ key)   = key
+sne→dstk (sne-jsub _ _ _ key) = key
+sne→dstk (sne-natrec _ _ _ key) = key
+sne→dstk (sne-ielim _ _ _ _ key) = key
+sne→dstk (sne-dpay _ _ _ _ key) = key
+sne→dstk (sne-dih _ _ _ _ key) = key
+sne→dstk (sne-fcase _ _ _ key) = key
+sne→dstk (sne-fcase0 _) = refl
+sne→dstk (sne-psplit _ n) = sne→spine n
+sne→dstk (sne-ordtr _ _ _ _ _ key) = key
+
+sne→finstk : {t : RTm Γ} → SNe t → finstk? t ≡ true
+sne→finstk (sne-var x)          = refl
+sne→finstk (sne-app n _)        = sne→spine n
+sne→finstk (sne-absurd _ _)       = refl
+sne→finstk (sne-fst n)          = sne→spine n
+sne→finstk (sne-snd n)          = sne→spine n
+sne→finstk (sne-hrefl _ _ _)    = refl
+sne→finstk (sne-tr _ _ _ key)   = key
+sne→finstk (sne-ap _ _ _ key)   = key
+sne→finstk (sne-jsub _ _ _ key) = key
+sne→finstk (sne-natrec _ _ _ key) = key
+sne→finstk (sne-ielim _ _ _ _ key) = key
+sne→finstk (sne-dpay _ _ _ _ key) = key
+sne→finstk (sne-dih _ _ _ _ key) = key
+sne→finstk (sne-fcase _ _ _ key) = key
+sne→finstk (sne-fcase0 _) = refl
+sne→finstk (sne-psplit _ n) = sne→spine n
+sne→finstk (sne-ordtr _ _ _ _ _ key) = key
 
 -- renaming preserves every classifier ON THE NOSE — the entire
 -- anti-renaming bill for the shape layer.
@@ -3227,7 +4263,6 @@ homheaded?-ren ρ (snd t)       = refl
 homheaded?-ren ρ ⌜base⌝        = refl
 homheaded?-ren ρ ⌜Nat⌝ = refl
 homheaded?-ren ρ ⌜Unit⌝ = refl
-homheaded?-ren ρ (⌜Mu⌝ Dᵐ) = refl
 homheaded?-ren ρ (⌜Π⌝ c d)     = refl
 homheaded?-ren ρ (⌜Σ⌝ c d)     = refl
 homheaded?-ren ρ (⌜Hom⌝ c a b) = refl
@@ -3241,11 +4276,20 @@ homheaded?-ren ρ unit          = refl
 homheaded?-ren ρ nzero         = refl
 homheaded?-ren ρ (nsuc n)      = refl
 homheaded?-ren ρ (natrec z s n) = refl
-homheaded?-ren ρ (con k q) = refl
-homheaded?-ren ρ (elim D ms t) = refl
 homheaded?-ren ρ (⌜IMu⌝ Dˣ Iˣ iˣ) = refl
-homheaded?-ren ρ (icon k q) = refl
 homheaded?-ren ρ (ielim D iˣ ms t) = refl
+homheaded?-ren ρ (⌜Fin⌝ n) = refl
+homheaded?-ren ρ (con p) = refl
+homheaded?-ren ρ (dι j) = refl
+homheaded?-ren ρ (dσ S f) = refl
+homheaded?-ren ρ (dρ j C) = refl
+homheaded?-ren ρ (dpay I D C i) = refl
+homheaded?-ren ρ (dih D e C p) = refl
+homheaded?-ren ρ fzero = refl
+homheaded?-ren ρ (fsuc t) = refl
+homheaded?-ren ρ (fcase t a b) = refl
+homheaded?-ren ρ (fcase0 t) = refl
+homheaded?-ren ρ (psplit b q) = refl
 
 spine?-ren    : (ρ : Ren Γ Δ) (t : RTm Γ) → spine? (renTm ρ t) ≡ spine? t
 -- the order's renaming stability, shared by all nine classifiers.
@@ -3260,6 +4304,8 @@ stablecd?-ren : (ρ : Ren Γ Δ) (t : RTm Γ) →
 apstk?-ren    : (ρ : Ren Γ Δ) (t : RTm Γ) →
                 apstk? (renTm ρ t) ≡ apstk? t
 natstk?-ren   : (ρ : Ren Γ Δ) (t : RTm Γ) → natstk? (renTm ρ t) ≡ natstk? t
+dstk?-ren     : (ρ : Ren Γ Δ) (t : RTm Γ) → dstk? (renTm ρ t) ≡ dstk? t
+finstk?-ren   : (ρ : Ren Γ Δ) (t : RTm Γ) → finstk? (renTm ρ t) ≡ finstk? t
 mustk?-ren    : (ρ : Ren Γ Δ) (t : RTm Γ) → mustk? (renTm ρ t) ≡ mustk? t
 idstk?-ren    : (ρ : Ren Γ Δ) (t : RTm Γ) →
                 idstk? (renTm ρ t) ≡ idstk? t
@@ -3284,7 +4330,6 @@ spine?-ren ρ (snd t)       = spine?-ren ρ t
 spine?-ren ρ ⌜base⌝        = refl
 spine?-ren ρ ⌜Nat⌝ = refl
 spine?-ren ρ ⌜Unit⌝ = refl
-spine?-ren ρ (⌜Mu⌝ Dᵐ) = refl
 spine?-ren ρ (⌜Π⌝ c d)     = refl
 spine?-ren ρ (⌜Σ⌝ c d)     = refl
 spine?-ren ρ (⌜Hom⌝ c a b) = refl
@@ -3298,11 +4343,20 @@ spine?-ren ρ unit          = refl
 spine?-ren ρ nzero         = refl
 spine?-ren ρ (nsuc n)      = refl
 spine?-ren ρ (natrec z s n) = natstk?-ren ρ n
-spine?-ren ρ (con k q) = refl
-spine?-ren ρ (elim D ms t) = mustk?-ren ρ t
 spine?-ren ρ (⌜IMu⌝ Dˣ Iˣ iˣ) = refl
-spine?-ren ρ (icon k q) = refl
 spine?-ren ρ (ielim D iˣ ms t) = mustk?-ren ρ t
+spine?-ren ρ (⌜Fin⌝ n) = refl
+spine?-ren ρ (con p) = refl
+spine?-ren ρ (dι j) = refl
+spine?-ren ρ (dσ S f) = refl
+spine?-ren ρ (dρ j C) = refl
+spine?-ren ρ (dpay I D C i) = dstk?-ren ρ C
+spine?-ren ρ (dih D e C p) = dstk?-ren ρ C
+spine?-ren ρ fzero = refl
+spine?-ren ρ (fsuc t) = refl
+spine?-ren ρ (fcase t a b) = finstk?-ren ρ t
+spine?-ren ρ (fcase0 t) = refl
+spine?-ren ρ (psplit b q) = spine?-ren ρ q
 
 ordS?-ren true  ρ u = refl
 ordS?-ren false ρ u = natstk?-ren ρ u
@@ -3328,7 +4382,6 @@ ordstk?-ren ρ (snd a₀) t u         = spine?-ren ρ a₀
 ordstk?-ren ρ ⌜base⌝ t u           = refl
 ordstk?-ren ρ ⌜Nat⌝ t u            = refl
 ordstk?-ren ρ ⌜Unit⌝ t u           = refl
-ordstk?-ren ρ (⌜Mu⌝ Dᵐ) t u           = refl
 ordstk?-ren ρ (⌜Π⌝ a₀ a₁) t u      = refl
 ordstk?-ren ρ (⌜Σ⌝ a₀ a₁) t u      = refl
 ordstk?-ren ρ (⌜Hom⌝ a₀ a₁ a₂) t u = refl
@@ -3340,11 +4393,20 @@ ordstk?-ren ρ (idrefl a₀ a₁) t u   = refl
 ordstk?-ren ρ (jsub a₀ a₁ a₂) t u  = idstk?-ren ρ a₁
 ordstk?-ren ρ unit t u             = refl
 ordstk?-ren ρ (natrec a₀ a₁ a₂) t u = natstk?-ren ρ a₂
-ordstk?-ren ρ (con k q) t u = refl
-ordstk?-ren ρ (elim D ms a₀) t u = mustk?-ren ρ a₀
 ordstk?-ren ρ (⌜IMu⌝ Dˣ Iˣ iˣ) t u           = refl
-ordstk?-ren ρ (icon k q) t u = refl
 ordstk?-ren ρ (ielim D iˣ ms a₀) t u = mustk?-ren ρ a₀
+ordstk?-ren ρ (⌜Fin⌝ n) t u = refl
+ordstk?-ren ρ (con p) t u = refl
+ordstk?-ren ρ (dι j) t u = refl
+ordstk?-ren ρ (dσ S f) t u = refl
+ordstk?-ren ρ (dρ j C) t u = refl
+ordstk?-ren ρ (dpay I D C i) t u = dstk?-ren ρ C
+ordstk?-ren ρ (dih D e C p) t u = dstk?-ren ρ C
+ordstk?-ren ρ fzero t u = refl
+ordstk?-ren ρ (fsuc t₀) t u = refl
+ordstk?-ren ρ (fcase t₀ a b) t u = finstk?-ren ρ t₀
+ordstk?-ren ρ (fcase0 t₀) t u = refl
+ordstk?-ren ρ (psplit b q) t u = spine?-ren ρ q
 
 -- ★ the `stableA?` peer of `stablecd?-ren`.
 stableA?-ren ρ (var x)       = refl
@@ -3358,7 +4420,6 @@ stableA?-ren ρ (snd t)       = spine?-ren ρ t
 stableA?-ren ρ ⌜base⌝        = refl
 stableA?-ren ρ ⌜Nat⌝ = refl
 stableA?-ren ρ ⌜Unit⌝ = refl
-stableA?-ren ρ (⌜Mu⌝ Dᵐ) = refl
 stableA?-ren ρ (⌜Π⌝ c d)     = refl
 stableA?-ren ρ (⌜Σ⌝ c d)     = refl
 stableA?-ren ρ (⌜Hom⌝ c a b) = stableA?-ren ρ c
@@ -3372,11 +4433,20 @@ stableA?-ren ρ unit          = refl
 stableA?-ren ρ nzero         = refl
 stableA?-ren ρ (nsuc n)      = refl
 stableA?-ren ρ (natrec z s n) = natstk?-ren ρ n
-stableA?-ren ρ (con k q) = refl
-stableA?-ren ρ (elim D ms t) = mustk?-ren ρ t
 stableA?-ren ρ (⌜IMu⌝ Dˣ Iˣ iˣ) = refl
-stableA?-ren ρ (icon k q) = refl
 stableA?-ren ρ (ielim D iˣ ms t) = mustk?-ren ρ t
+stableA?-ren ρ (⌜Fin⌝ n) = refl
+stableA?-ren ρ (con p) = refl
+stableA?-ren ρ (dι j) = refl
+stableA?-ren ρ (dσ S f) = refl
+stableA?-ren ρ (dρ j C) = refl
+stableA?-ren ρ (dpay I D C i) = dstk?-ren ρ C
+stableA?-ren ρ (dih D e C p) = dstk?-ren ρ C
+stableA?-ren ρ fzero = refl
+stableA?-ren ρ (fsuc t) = refl
+stableA?-ren ρ (fcase t a b) = finstk?-ren ρ t
+stableA?-ren ρ (fcase0 t) = refl
+stableA?-ren ρ (psplit b q) = spine?-ren ρ q
 
 stablecd?-ren ρ (var x)       = refl
 stablecd?-ren ρ (lam t)       = refl
@@ -3389,7 +4459,6 @@ stablecd?-ren ρ (snd t)       = spine?-ren ρ t
 stablecd?-ren ρ ⌜base⌝        = refl
 stablecd?-ren ρ ⌜Nat⌝ = refl
 stablecd?-ren ρ ⌜Unit⌝ = refl
-stablecd?-ren ρ (⌜Mu⌝ Dᵐ) = refl
 stablecd?-ren ρ (⌜Π⌝ c d)     = refl
 stablecd?-ren ρ (⌜Σ⌝ c d)     = refl
 stablecd?-ren ρ (⌜Hom⌝ c a b) = stableA?-ren ρ c
@@ -3403,11 +4472,20 @@ stablecd?-ren ρ unit          = refl
 stablecd?-ren ρ nzero         = refl
 stablecd?-ren ρ (nsuc n)      = refl
 stablecd?-ren ρ (natrec z s n) = natstk?-ren ρ n
-stablecd?-ren ρ (con k q) = refl
-stablecd?-ren ρ (elim D ms t) = mustk?-ren ρ t
 stablecd?-ren ρ (⌜IMu⌝ Dˣ Iˣ iˣ) = refl
-stablecd?-ren ρ (icon k q) = refl
 stablecd?-ren ρ (ielim D iˣ ms t) = mustk?-ren ρ t
+stablecd?-ren ρ (⌜Fin⌝ n) = refl
+stablecd?-ren ρ (con p) = refl
+stablecd?-ren ρ (dι j) = refl
+stablecd?-ren ρ (dσ S f) = refl
+stablecd?-ren ρ (dρ j C) = refl
+stablecd?-ren ρ (dpay I D C i) = dstk?-ren ρ C
+stablecd?-ren ρ (dih D e C p) = dstk?-ren ρ C
+stablecd?-ren ρ fzero = refl
+stablecd?-ren ρ (fsuc t) = refl
+stablecd?-ren ρ (fcase t a b) = finstk?-ren ρ t
+stablecd?-ren ρ (fcase0 t) = refl
+stablecd?-ren ρ (psplit b q) = spine?-ren ρ q
 
 pathstk?-ren ρ (var x)       = refl
 pathstk?-ren ρ (lam t)       = refl
@@ -3420,7 +4498,6 @@ pathstk?-ren ρ (snd t)       = spine?-ren ρ t
 pathstk?-ren ρ ⌜base⌝        = refl
 pathstk?-ren ρ ⌜Nat⌝ = refl
 pathstk?-ren ρ ⌜Unit⌝ = refl
-pathstk?-ren ρ (⌜Mu⌝ Dᵐ) = refl
 pathstk?-ren ρ (⌜Π⌝ c d)     = refl
 pathstk?-ren ρ (⌜Σ⌝ c d)     = refl
 pathstk?-ren ρ (⌜Hom⌝ c a b) = refl
@@ -3434,11 +4511,20 @@ pathstk?-ren ρ unit          = refl
 pathstk?-ren ρ nzero         = refl
 pathstk?-ren ρ (nsuc n)      = refl
 pathstk?-ren ρ (natrec z s n) = natstk?-ren ρ n
-pathstk?-ren ρ (con k q) = refl
-pathstk?-ren ρ (elim D ms t) = mustk?-ren ρ t
 pathstk?-ren ρ (⌜IMu⌝ Dˣ Iˣ iˣ) = refl
-pathstk?-ren ρ (icon k q) = refl
 pathstk?-ren ρ (ielim D iˣ ms t) = mustk?-ren ρ t
+pathstk?-ren ρ (⌜Fin⌝ n) = refl
+pathstk?-ren ρ (con p) = refl
+pathstk?-ren ρ (dι j) = refl
+pathstk?-ren ρ (dσ S f) = refl
+pathstk?-ren ρ (dρ j C) = refl
+pathstk?-ren ρ (dpay I D C i) = dstk?-ren ρ C
+pathstk?-ren ρ (dih D e C p) = dstk?-ren ρ C
+pathstk?-ren ρ fzero = refl
+pathstk?-ren ρ (fsuc t) = refl
+pathstk?-ren ρ (fcase t a b) = finstk?-ren ρ t
+pathstk?-ren ρ (fcase0 t) = refl
+pathstk?-ren ρ (psplit b q) = spine?-ren ρ q
 
 apstk?-ren ρ (var x)       = refl
 apstk?-ren ρ (lam t)       = refl
@@ -3451,7 +4537,6 @@ apstk?-ren ρ (snd t)       = spine?-ren ρ t
 apstk?-ren ρ ⌜base⌝        = refl
 apstk?-ren ρ ⌜Nat⌝ = refl
 apstk?-ren ρ ⌜Unit⌝ = refl
-apstk?-ren ρ (⌜Mu⌝ Dᵐ) = refl
 apstk?-ren ρ (⌜Π⌝ c d)     = refl
 apstk?-ren ρ (⌜Σ⌝ c d)     = refl
 apstk?-ren ρ (⌜Hom⌝ c a b) = refl
@@ -3465,11 +4550,20 @@ apstk?-ren ρ unit          = refl
 apstk?-ren ρ nzero         = refl
 apstk?-ren ρ (nsuc n)      = refl
 apstk?-ren ρ (natrec z s n) = natstk?-ren ρ n
-apstk?-ren ρ (con k q) = refl
-apstk?-ren ρ (elim D ms t) = mustk?-ren ρ t
 apstk?-ren ρ (⌜IMu⌝ Dˣ Iˣ iˣ) = refl
-apstk?-ren ρ (icon k q) = refl
 apstk?-ren ρ (ielim D iˣ ms t) = mustk?-ren ρ t
+apstk?-ren ρ (⌜Fin⌝ n) = refl
+apstk?-ren ρ (con p) = refl
+apstk?-ren ρ (dι j) = refl
+apstk?-ren ρ (dσ S f) = refl
+apstk?-ren ρ (dρ j C) = refl
+apstk?-ren ρ (dpay I D C i) = dstk?-ren ρ C
+apstk?-ren ρ (dih D e C p) = dstk?-ren ρ C
+apstk?-ren ρ fzero = refl
+apstk?-ren ρ (fsuc t) = refl
+apstk?-ren ρ (fcase t a b) = finstk?-ren ρ t
+apstk?-ren ρ (fcase0 t) = refl
+apstk?-ren ρ (psplit b q) = spine?-ren ρ q
 
 idstk?-ren ρ (var x)       = refl
 idstk?-ren ρ (lam t)       = refl
@@ -3482,7 +4576,6 @@ idstk?-ren ρ (snd t)       = spine?-ren ρ t
 idstk?-ren ρ ⌜base⌝        = refl
 idstk?-ren ρ ⌜Nat⌝ = refl
 idstk?-ren ρ ⌜Unit⌝ = refl
-idstk?-ren ρ (⌜Mu⌝ Dᵐ) = refl
 idstk?-ren ρ (⌜Π⌝ c d)     = refl
 idstk?-ren ρ (⌜Σ⌝ c d)     = refl
 idstk?-ren ρ (⌜Hom⌝ c a b) = refl
@@ -3496,11 +4589,20 @@ idstk?-ren ρ unit          = refl
 idstk?-ren ρ nzero         = refl
 idstk?-ren ρ (nsuc n)      = refl
 idstk?-ren ρ (natrec z s n) = natstk?-ren ρ n
-idstk?-ren ρ (con k q) = refl
-idstk?-ren ρ (elim D ms t) = mustk?-ren ρ t
 idstk?-ren ρ (⌜IMu⌝ Dˣ Iˣ iˣ) = refl
-idstk?-ren ρ (icon k q) = refl
 idstk?-ren ρ (ielim D iˣ ms t) = mustk?-ren ρ t
+idstk?-ren ρ (⌜Fin⌝ n) = refl
+idstk?-ren ρ (con p) = refl
+idstk?-ren ρ (dι j) = refl
+idstk?-ren ρ (dσ S f) = refl
+idstk?-ren ρ (dρ j C) = refl
+idstk?-ren ρ (dpay I D C i) = dstk?-ren ρ C
+idstk?-ren ρ (dih D e C p) = dstk?-ren ρ C
+idstk?-ren ρ fzero = refl
+idstk?-ren ρ (fsuc t) = refl
+idstk?-ren ρ (fcase t a b) = finstk?-ren ρ t
+idstk?-ren ρ (fcase0 t) = refl
+idstk?-ren ρ (psplit b q) = spine?-ren ρ q
 
 natstk?-ren ρ (var x)       = refl
 natstk?-ren ρ (lam t)       = refl
@@ -3513,7 +4615,6 @@ natstk?-ren ρ (snd t)       = spine?-ren ρ t
 natstk?-ren ρ ⌜base⌝        = refl
 natstk?-ren ρ ⌜Nat⌝ = refl
 natstk?-ren ρ ⌜Unit⌝ = refl
-natstk?-ren ρ (⌜Mu⌝ Dᵐ) = refl
 natstk?-ren ρ (⌜Π⌝ c d)     = refl
 natstk?-ren ρ (⌜Σ⌝ c d)     = refl
 natstk?-ren ρ (⌜Hom⌝ c a b) = refl
@@ -3527,11 +4628,98 @@ natstk?-ren ρ unit          = refl
 natstk?-ren ρ nzero         = refl
 natstk?-ren ρ (nsuc n)      = refl
 natstk?-ren ρ (natrec z s n) = natstk?-ren ρ n
-natstk?-ren ρ (con k q) = refl
-natstk?-ren ρ (elim D ms t) = mustk?-ren ρ t
 natstk?-ren ρ (⌜IMu⌝ Dˣ Iˣ iˣ) = refl
-natstk?-ren ρ (icon k q) = refl
 natstk?-ren ρ (ielim D iˣ ms t) = mustk?-ren ρ t
+natstk?-ren ρ (⌜Fin⌝ n) = refl
+natstk?-ren ρ (con p) = refl
+natstk?-ren ρ (dι j) = refl
+natstk?-ren ρ (dσ S f) = refl
+natstk?-ren ρ (dρ j C) = refl
+natstk?-ren ρ (dpay I D C i) = dstk?-ren ρ C
+natstk?-ren ρ (dih D e C p) = dstk?-ren ρ C
+natstk?-ren ρ fzero = refl
+natstk?-ren ρ (fsuc t) = refl
+natstk?-ren ρ (fcase t a b) = finstk?-ren ρ t
+natstk?-ren ρ (fcase0 t) = refl
+natstk?-ren ρ (psplit b q) = spine?-ren ρ q
+
+dstk?-ren ρ (var x)       = refl
+dstk?-ren ρ (lam t)       = refl
+dstk?-ren ρ (app t u)     = spine?-ren ρ t
+dstk?-ren ρ (pair a b)    = refl
+dstk?-ren ρ (absurd c e)       = refl
+dstk?-ren ρ (ordtr a t u p q) = ordstk?-ren ρ a t u
+dstk?-ren ρ (fst t)       = spine?-ren ρ t
+dstk?-ren ρ (snd t)       = spine?-ren ρ t
+dstk?-ren ρ ⌜base⌝        = refl
+dstk?-ren ρ ⌜Nat⌝ = refl
+dstk?-ren ρ ⌜Unit⌝ = refl
+dstk?-ren ρ (⌜Π⌝ c d)     = refl
+dstk?-ren ρ (⌜Σ⌝ c d)     = refl
+dstk?-ren ρ (⌜Hom⌝ c a b) = refl
+dstk?-ren ρ (⌜Id⌝ c a b)  = refl
+dstk?-ren ρ (hrefl c t)   = refl
+dstk?-ren ρ (idrefl c t)  = refl
+dstk?-ren ρ (tr d p e)    = trstk?-ren ρ d p
+dstk?-ren ρ (ap c b p)    = apstk?-ren ρ p
+dstk?-ren ρ (jsub d p e)  = idstk?-ren ρ p
+dstk?-ren ρ unit          = refl
+dstk?-ren ρ nzero         = refl
+dstk?-ren ρ (nsuc n)      = refl
+dstk?-ren ρ (natrec z s n) = natstk?-ren ρ n
+dstk?-ren ρ (⌜IMu⌝ Dˣ Iˣ iˣ) = refl
+dstk?-ren ρ (ielim D iˣ ms t) = mustk?-ren ρ t
+dstk?-ren ρ (⌜Fin⌝ n) = refl
+dstk?-ren ρ (con p) = refl
+dstk?-ren ρ (dι j) = refl
+dstk?-ren ρ (dσ S f) = refl
+dstk?-ren ρ (dρ j C) = refl
+dstk?-ren ρ (dpay I D C i) = dstk?-ren ρ C
+dstk?-ren ρ (dih D e C p) = dstk?-ren ρ C
+dstk?-ren ρ fzero = refl
+dstk?-ren ρ (fsuc t) = refl
+dstk?-ren ρ (fcase t a b) = finstk?-ren ρ t
+dstk?-ren ρ (fcase0 t) = refl
+dstk?-ren ρ (psplit b q) = spine?-ren ρ q
+
+finstk?-ren ρ (var x)       = refl
+finstk?-ren ρ (lam t)       = refl
+finstk?-ren ρ (app t u)     = spine?-ren ρ t
+finstk?-ren ρ (pair a b)    = refl
+finstk?-ren ρ (absurd c e)       = refl
+finstk?-ren ρ (ordtr a t u p q) = ordstk?-ren ρ a t u
+finstk?-ren ρ (fst t)       = spine?-ren ρ t
+finstk?-ren ρ (snd t)       = spine?-ren ρ t
+finstk?-ren ρ ⌜base⌝        = refl
+finstk?-ren ρ ⌜Nat⌝ = refl
+finstk?-ren ρ ⌜Unit⌝ = refl
+finstk?-ren ρ (⌜Π⌝ c d)     = refl
+finstk?-ren ρ (⌜Σ⌝ c d)     = refl
+finstk?-ren ρ (⌜Hom⌝ c a b) = refl
+finstk?-ren ρ (⌜Id⌝ c a b)  = refl
+finstk?-ren ρ (hrefl c t)   = refl
+finstk?-ren ρ (idrefl c t)  = refl
+finstk?-ren ρ (tr d p e)    = trstk?-ren ρ d p
+finstk?-ren ρ (ap c b p)    = apstk?-ren ρ p
+finstk?-ren ρ (jsub d p e)  = idstk?-ren ρ p
+finstk?-ren ρ unit          = refl
+finstk?-ren ρ nzero         = refl
+finstk?-ren ρ (nsuc n)      = refl
+finstk?-ren ρ (natrec z s n) = natstk?-ren ρ n
+finstk?-ren ρ (⌜IMu⌝ Dˣ Iˣ iˣ) = refl
+finstk?-ren ρ (ielim D iˣ ms t) = mustk?-ren ρ t
+finstk?-ren ρ (⌜Fin⌝ n) = refl
+finstk?-ren ρ (con p) = refl
+finstk?-ren ρ (dι j) = refl
+finstk?-ren ρ (dσ S f) = refl
+finstk?-ren ρ (dρ j C) = refl
+finstk?-ren ρ (dpay I D C i) = dstk?-ren ρ C
+finstk?-ren ρ (dih D e C p) = dstk?-ren ρ C
+finstk?-ren ρ fzero = refl
+finstk?-ren ρ (fsuc t) = refl
+finstk?-ren ρ (fcase t a b) = finstk?-ren ρ t
+finstk?-ren ρ (fcase0 t) = refl
+finstk?-ren ρ (psplit b q) = spine?-ren ρ q
 
 -- ★ INDUCTIVE TYPES: `mustk?`'s naturality — `natstk?-ren`'s clone, since
 --   the two keys agree on every head that renaming can see.
@@ -3546,7 +4734,6 @@ mustk?-ren ρ (snd t)       = spine?-ren ρ t
 mustk?-ren ρ ⌜base⌝        = refl
 mustk?-ren ρ ⌜Nat⌝ = refl
 mustk?-ren ρ ⌜Unit⌝ = refl
-mustk?-ren ρ (⌜Mu⌝ Dᵐ) = refl
 mustk?-ren ρ (⌜Π⌝ c d)     = refl
 mustk?-ren ρ (⌜Σ⌝ c d)     = refl
 mustk?-ren ρ (⌜Hom⌝ c a b) = refl
@@ -3560,11 +4747,20 @@ mustk?-ren ρ unit          = refl
 mustk?-ren ρ nzero         = refl
 mustk?-ren ρ (nsuc n)      = refl
 mustk?-ren ρ (natrec z s n) = natstk?-ren ρ n
-mustk?-ren ρ (con k q) = refl
-mustk?-ren ρ (elim D ms t) = mustk?-ren ρ t
 mustk?-ren ρ (⌜IMu⌝ Dˣ Iˣ iˣ) = refl
-mustk?-ren ρ (icon k q) = refl
 mustk?-ren ρ (ielim D iˣ ms t) = mustk?-ren ρ t
+mustk?-ren ρ (⌜Fin⌝ n) = refl
+mustk?-ren ρ (con p) = refl
+mustk?-ren ρ (dι j) = refl
+mustk?-ren ρ (dσ S f) = refl
+mustk?-ren ρ (dρ j C) = refl
+mustk?-ren ρ (dpay I D C i) = dstk?-ren ρ C
+mustk?-ren ρ (dih D e C p) = dstk?-ren ρ C
+mustk?-ren ρ fzero = refl
+mustk?-ren ρ (fsuc t) = refl
+mustk?-ren ρ (fcase t a b) = finstk?-ren ρ t
+mustk?-ren ρ (fcase0 t) = refl
+mustk?-ren ρ (psplit b q) = spine?-ren ρ q
 
 trstk?-ren ρ d (var x)       = refl
 trstk?-ren ρ d (lam f)       = trlam?-ren ρ d
@@ -3577,7 +4773,6 @@ trstk?-ren ρ d (snd t)       = spine?-ren ρ t
 trstk?-ren ρ d ⌜base⌝        = refl
 trstk?-ren ρ d ⌜Nat⌝ = refl
 trstk?-ren ρ d ⌜Unit⌝ = refl
-trstk?-ren ρ d (⌜Mu⌝ Dᵐ) = refl
 trstk?-ren ρ d (⌜Π⌝ c e)     = refl
 trstk?-ren ρ d (⌜Σ⌝ c e)     = refl
 trstk?-ren ρ d (⌜Hom⌝ c a b) = refl
@@ -3592,7 +4787,6 @@ trstk?-ren ρ (snd q) (hrefl c t)          = stablecd?-ren ρ c
 trstk?-ren ρ ⌜base⌝ (hrefl c t)           = stablecd?-ren ρ c
 trstk?-ren ρ ⌜Nat⌝ (hrefl c t)            = stablecd?-ren ρ c
 trstk?-ren ρ ⌜Unit⌝ (hrefl c t)           = stablecd?-ren ρ c
-trstk?-ren ρ (⌜Mu⌝ Dᵐ) (hrefl c t)           = stablecd?-ren ρ c
 trstk?-ren ρ (⌜Π⌝ c₁ d₁) (hrefl c t)      = stablecd?-ren ρ c
 trstk?-ren ρ (⌜Σ⌝ c₁ d₁) (hrefl c t)      = stablecd?-ren ρ c
 trstk?-ren ρ (⌜Hom⌝ c₁ a₁ b₁) (hrefl c t) = stablecd?-ren ρ c
@@ -3606,8 +4800,6 @@ trstk?-ren ρ unit (hrefl c t)             = stablecd?-ren ρ c
 trstk?-ren ρ nzero (hrefl c t)            = stablecd?-ren ρ c
 trstk?-ren ρ (nsuc d₁) (hrefl c t)        = stablecd?-ren ρ c
 trstk?-ren ρ (natrec d₁ d₂ d₃) (hrefl c t) = stablecd?-ren ρ c
-trstk?-ren ρ (con dk dq) (hrefl c t)       = stablecd?-ren ρ c
-trstk?-ren ρ (elim dD dm dt) (hrefl c t)   = stablecd?-ren ρ c
 trstk?-ren ρ d (tr e q w)    = trstk?-ren ρ e q
 trstk?-ren ρ d (ap c b p)    = apstk?-ren ρ p
 trstk?-ren ρ d (⌜Id⌝ c a b)  = refl
@@ -3617,14 +4809,34 @@ trstk?-ren ρ d unit          = refl
 trstk?-ren ρ d nzero         = refl
 trstk?-ren ρ d (nsuc n)      = refl
 trstk?-ren ρ d (natrec z w n) = natstk?-ren ρ n
-trstk?-ren ρ d (con k q) = refl
-trstk?-ren ρ d (elim D ms t) = mustk?-ren ρ t
 trstk?-ren ρ d (⌜IMu⌝ Dˣ Iˣ iˣ) = refl
 trstk?-ren ρ (⌜IMu⌝ Dˣ Iˣ iˣ) (hrefl c t)           = stablecd?-ren ρ c
-trstk?-ren ρ (icon dk dq) (hrefl c t)       = stablecd?-ren ρ c
 trstk?-ren ρ (ielim dD iˣ dm dt) (hrefl c t)   = stablecd?-ren ρ c
-trstk?-ren ρ d (icon k q) = refl
 trstk?-ren ρ d (ielim D iˣ ms t) = mustk?-ren ρ t
+trstk?-ren ρ d (⌜Fin⌝ n) = refl
+trstk?-ren ρ d (con p) = refl
+trstk?-ren ρ d (dι j) = refl
+trstk?-ren ρ d (dσ S f) = refl
+trstk?-ren ρ d (dρ j C) = refl
+trstk?-ren ρ d (dpay I D C i) = dstk?-ren ρ C
+trstk?-ren ρ d (dih D e C p) = dstk?-ren ρ C
+trstk?-ren ρ d fzero = refl
+trstk?-ren ρ d (fsuc t) = refl
+trstk?-ren ρ d (fcase t a b) = finstk?-ren ρ t
+trstk?-ren ρ d (fcase0 t) = refl
+trstk?-ren ρ d (psplit b q) = spine?-ren ρ q
+trstk?-ren ρ (⌜Fin⌝ n) (hrefl c t) = stablecd?-ren ρ c
+trstk?-ren ρ (con p) (hrefl c t) = stablecd?-ren ρ c
+trstk?-ren ρ (dι j) (hrefl c t) = stablecd?-ren ρ c
+trstk?-ren ρ (dσ S f) (hrefl c t) = stablecd?-ren ρ c
+trstk?-ren ρ (dρ j C) (hrefl c t) = stablecd?-ren ρ c
+trstk?-ren ρ (dpay I D C i) (hrefl c t) = stablecd?-ren ρ c
+trstk?-ren ρ (dih D e C p) (hrefl c t) = stablecd?-ren ρ c
+trstk?-ren ρ fzero (hrefl c t) = stablecd?-ren ρ c
+trstk?-ren ρ (fsuc t₀) (hrefl c t) = stablecd?-ren ρ c
+trstk?-ren ρ (fcase t₀ a b) (hrefl c t) = stablecd?-ren ρ c
+trstk?-ren ρ (fcase0 t₀) (hrefl c t) = stablecd?-ren ρ c
+trstk?-ren ρ (psplit b q) (hrefl c t) = stablecd?-ren ρ c
 
 nopw?-ren ρ (var x)       = refl
 nopw?-ren ρ (lam t)       = refl
@@ -3637,7 +4849,6 @@ nopw?-ren ρ (snd t)       = spine?-ren ρ t
 nopw?-ren ρ ⌜base⌝        = refl
 nopw?-ren ρ ⌜Nat⌝ = refl
 nopw?-ren ρ ⌜Unit⌝ = refl
-nopw?-ren ρ (⌜Mu⌝ Dᵐ) = refl
 nopw?-ren ρ (⌜Π⌝ c d)     = refl
 nopw?-ren ρ (⌜Σ⌝ c d)     = refl
 nopw?-ren ρ (⌜Hom⌝ c a b) = nopw?-ren ρ c
@@ -3651,11 +4862,20 @@ nopw?-ren ρ unit          = refl
 nopw?-ren ρ nzero         = refl
 nopw?-ren ρ (nsuc n)      = refl
 nopw?-ren ρ (natrec z s n) = natstk?-ren ρ n
-nopw?-ren ρ (con k q) = refl
-nopw?-ren ρ (elim D ms t) = mustk?-ren ρ t
 nopw?-ren ρ (⌜IMu⌝ Dˣ Iˣ iˣ) = refl
-nopw?-ren ρ (icon k q) = refl
 nopw?-ren ρ (ielim D iˣ ms t) = mustk?-ren ρ t
+nopw?-ren ρ (⌜Fin⌝ n) = refl
+nopw?-ren ρ (con p) = refl
+nopw?-ren ρ (dι j) = refl
+nopw?-ren ρ (dσ S f) = refl
+nopw?-ren ρ (dρ j C) = refl
+nopw?-ren ρ (dpay I D C i) = dstk?-ren ρ C
+nopw?-ren ρ (dih D e C p) = dstk?-ren ρ C
+nopw?-ren ρ fzero = refl
+nopw?-ren ρ (fsuc t) = refl
+nopw?-ren ρ (fcase t a b) = finstk?-ren ρ t
+nopw?-ren ρ (fcase0 t) = refl
+nopw?-ren ρ (psplit b q) = spine?-ren ρ q
 
 deadmot?-ren ρ (var x)       = refl
 deadmot?-ren ρ (lam t)       = refl
@@ -3668,7 +4888,6 @@ deadmot?-ren ρ (snd t)       = spine?-ren ρ t
 deadmot?-ren ρ ⌜base⌝        = refl
 deadmot?-ren ρ ⌜Nat⌝ = refl
 deadmot?-ren ρ ⌜Unit⌝ = refl
-deadmot?-ren ρ (⌜Mu⌝ Dᵐ) = refl
 deadmot?-ren ρ (⌜Π⌝ c d)     = refl
 deadmot?-ren ρ (⌜Σ⌝ c d)     = refl
 deadmot?-ren ρ (⌜Hom⌝ c a b) = deadmot?-ren ρ c
@@ -3682,11 +4901,20 @@ deadmot?-ren ρ unit          = refl
 deadmot?-ren ρ nzero         = refl
 deadmot?-ren ρ (nsuc n)      = refl
 deadmot?-ren ρ (natrec z s n) = natstk?-ren ρ n
-deadmot?-ren ρ (con k q) = refl
-deadmot?-ren ρ (elim D ms t) = mustk?-ren ρ t
 deadmot?-ren ρ (⌜IMu⌝ Dˣ Iˣ iˣ) = refl
-deadmot?-ren ρ (icon k q) = refl
 deadmot?-ren ρ (ielim D iˣ ms t) = mustk?-ren ρ t
+deadmot?-ren ρ (⌜Fin⌝ n) = refl
+deadmot?-ren ρ (con p) = refl
+deadmot?-ren ρ (dι j) = refl
+deadmot?-ren ρ (dσ S f) = refl
+deadmot?-ren ρ (dρ j C) = refl
+deadmot?-ren ρ (dpay I D C i) = dstk?-ren ρ C
+deadmot?-ren ρ (dih D e C p) = dstk?-ren ρ C
+deadmot?-ren ρ fzero = refl
+deadmot?-ren ρ (fsuc t) = refl
+deadmot?-ren ρ (fcase t a b) = finstk?-ren ρ t
+deadmot?-ren ρ (fcase0 t) = refl
+deadmot?-ren ρ (psplit b q) = spine?-ren ρ q
 
 trlam?-ren ρ (var vz)     = refl
 trlam?-ren ρ (var (vs x)) = refl
@@ -3703,14 +4931,11 @@ trlam?-ren ρ (snd t)      = refl
 trlam?-ren ρ ⌜base⌝       = refl
 trlam?-ren ρ ⌜Nat⌝        = refl
 trlam?-ren ρ ⌜Unit⌝       = refl
-trlam?-ren ρ (⌜Mu⌝ Dᵐ)       = refl
 trlam?-ren ρ (⌜Π⌝ c d)    = refl
 trlam?-ren ρ (⌜Σ⌝ c d)    = refl
 trlam?-ren ρ (⌜Hom⌝ c a (var vz))     = deadmot?-ren (extR ρ) c
 trlam?-ren ρ (⌜Hom⌝ c a (var (vs x))) = refl
 trlam?-ren ρ (⌜Hom⌝ c a (lam m))      = refl
-trlam?-ren ρ (⌜Hom⌝ c a (con mk mq))  = refl
-trlam?-ren ρ (⌜Hom⌝ c a (elim mD mm mt)) = refl
 trlam?-ren ρ (⌜Hom⌝ c a (app m₁ m₂))  = refl
 trlam?-ren ρ (⌜Hom⌝ c a (pair m₁ m₂)) = refl
 trlam?-ren ρ (⌜Hom⌝ c a (absurd m₁ m₂)) = refl
@@ -3720,7 +4945,6 @@ trlam?-ren ρ (⌜Hom⌝ c a (snd m))      = refl
 trlam?-ren ρ (⌜Hom⌝ c a ⌜base⌝)       = refl
 trlam?-ren ρ (⌜Hom⌝ c a ⌜Nat⌝)        = refl
 trlam?-ren ρ (⌜Hom⌝ c a ⌜Unit⌝)       = refl
-trlam?-ren ρ (⌜Hom⌝ c a (⌜Mu⌝ Dᵐ))       = refl
 trlam?-ren ρ (⌜Hom⌝ c a (⌜Π⌝ m₁ m₂))  = refl
 trlam?-ren ρ (⌜Hom⌝ c a (⌜Σ⌝ m₁ m₂))  = refl
 trlam?-ren ρ (⌜Hom⌝ c a (⌜Hom⌝ m₁ m₂ m₃)) = refl
@@ -3733,6 +4957,18 @@ trlam?-ren ρ (⌜Hom⌝ c a (jsub m₁ m₂ m₃))  = refl
 trlam?-ren ρ (⌜Hom⌝ c a unit)             = refl
 trlam?-ren ρ (⌜Hom⌝ c a nzero)            = refl
 trlam?-ren ρ (⌜Hom⌝ c a (nsuc m))         = refl
+trlam?-ren ρ (⌜Hom⌝ c a (con m₁)) = refl
+trlam?-ren ρ (⌜Hom⌝ c a (dι m₁)) = refl
+trlam?-ren ρ (⌜Hom⌝ c a (dσ m₁ m₂)) = refl
+trlam?-ren ρ (⌜Hom⌝ c a (dρ m₁ m₂)) = refl
+trlam?-ren ρ (⌜Hom⌝ c a (dpay m₁ m₂ m₃ m₄)) = refl
+trlam?-ren ρ (⌜Hom⌝ c a (dih m₁ m₂ m₃ m₄)) = refl
+trlam?-ren ρ (⌜Hom⌝ c a fzero) = refl
+trlam?-ren ρ (⌜Hom⌝ c a (fsuc m₁)) = refl
+trlam?-ren ρ (⌜Hom⌝ c a (fcase m₁ m₂ m₃)) = refl
+trlam?-ren ρ (⌜Hom⌝ c a (fcase0 m₁)) = refl
+trlam?-ren ρ (⌜Hom⌝ c a (psplit m₁ m₂)) = refl
+trlam?-ren ρ (⌜Hom⌝ c a (⌜Fin⌝ n₀)) = refl
 trlam?-ren ρ (⌜Hom⌝ c a (natrec m₁ m₂ m₃)) = refl
 trlam?-ren ρ (hrefl c t)  = refl
 trlam?-ren ρ (tr d p e)   = refl
@@ -3744,14 +4980,22 @@ trlam?-ren ρ unit         = refl
 trlam?-ren ρ nzero        = refl
 trlam?-ren ρ (nsuc n)     = refl
 trlam?-ren ρ (natrec z w n) = refl
-trlam?-ren ρ (con k q) = refl
-trlam?-ren ρ (elim D ms t) = refl
 trlam?-ren ρ (⌜IMu⌝ Dˣ Iˣ iˣ)       = refl
-trlam?-ren ρ (⌜Hom⌝ c a (icon mk mq))  = refl
 trlam?-ren ρ (⌜Hom⌝ c a (ielim mD iˣ mm mt)) = refl
 trlam?-ren ρ (⌜Hom⌝ c a (⌜IMu⌝ Dˣ Iˣ iˣ)) = refl
-trlam?-ren ρ (icon k q) = refl
 trlam?-ren ρ (ielim D iˣ ms t) = refl
+trlam?-ren ρ (⌜Fin⌝ n) = refl
+trlam?-ren ρ (con p) = refl
+trlam?-ren ρ (dι j) = refl
+trlam?-ren ρ (dσ S f) = refl
+trlam?-ren ρ (dρ j C) = refl
+trlam?-ren ρ (dpay I D C i) = refl
+trlam?-ren ρ (dih D e C p) = refl
+trlam?-ren ρ fzero = refl
+trlam?-ren ρ (fsuc t) = refl
+trlam?-ren ρ (fcase t a b) = refl
+trlam?-ren ρ (fcase0 t) = refl
+trlam?-ren ρ (psplit b q) = refl
 
 
 record ElNe {Γ} (A : RTy Γ) : Set where
@@ -3791,11 +5035,14 @@ data StkHd {Γ} : RTy Γ → Set where
   -- Note this arm produces `StkHd` of the whole `Hom`, which is why
   -- `⊩₀Hom`/`⊩₁Hom` now take `StkHd (Hom H a b)` rather than `StkHd H`.
   sh-NatH : {a b : RTm Γ} → homnat? a b ≡ true → StkHd (Hom Nat a b)
-  -- ★ `Mu` is a stuck head, `base`-style: no rule computes `Hom (Mu D) a b`.
-  -- (Contrast `Nat`, whose order rules removed `sh-Nat` at stage B.)
-  sh-Mu   : {D : Desc} → StkHd (Mu {Γ} D)
-  -- ★ same argument as `sh-Mu`: no rule computes `Hom (IMu D I i) a b`.
-  sh-IMu  : {D : IDesc} {I : RTy ε} {i : RTm Γ} → StkHd (IMu D I i)
+  -- ★★ LEVITATED FAMILIES: no rule computes `Hom` over a family, a tag
+  -- type, a description type, or the hypotheses' type at a STUCK
+  -- telescope — they are stuck heads, `base`-style.  (A canonical
+  -- telescope's `DIh` computes to `Unit`/`Σ'`, both stuck already.)
+  sh-IMu  : {I D i : RTm Γ} → StkHd (IMu I D i)
+  sh-Fin  : {n : ℕ} → StkHd (Fin {Γ} n)
+  sh-Desc : {I : RTm Γ} → StkHd (Desc I)
+  sh-DIhNe : {D C p : RTm Γ} {M : RTy ((Γ ∙) ∙)} → Ne C → StkHd (DIh D M C p)
 
 stkhd-red : {H H' : RTy Γ} → StkHd H → H ⟶ᵀ H' → StkHd H'
 stkhd-red (sh-ne ()) El-⌜base⌝
@@ -3805,7 +5052,18 @@ stkhd-red (sh-ne n)  (ξ-El r)    = sh-ne (ne-red n r)
 stkhd-red sh-Id (ξ-Idᵀ r) = sh-Id
 stkhd-red sh-Id (ξ-Idˡ r) = sh-Id
 stkhd-red sh-Id (ξ-Idʳ r) = sh-Id
-stkhd-red sh-IMu (ξ-IMu r) = sh-IMu
+stkhd-red sh-IMu (ξ-IMuᴵ r) = sh-IMu
+stkhd-red sh-IMu (ξ-IMuᴰ r) = sh-IMu
+stkhd-red sh-IMu (ξ-IMuⁱ r) = sh-IMu
+stkhd-red sh-Fin ()
+stkhd-red sh-Desc (ξ-Desc r) = sh-Desc
+stkhd-red (sh-DIhNe ()) (DIh-ι _ _ _ _)
+stkhd-red (sh-DIhNe ()) (DIh-σ _ _ _ _ _)
+stkhd-red (sh-DIhNe ()) (DIh-ρ _ _ _ _ _)
+stkhd-red (sh-DIhNe n) (ξ-DIhᴰ r) = sh-DIhNe n
+stkhd-red (sh-DIhNe n) (ξ-DIhᴹ r) = sh-DIhNe n
+stkhd-red (sh-DIhNe n) (ξ-DIhᶜ r) = sh-DIhNe (ne-red n r)
+stkhd-red (sh-DIhNe n) (ξ-DIhᵖ r) = sh-DIhNe n
 stkhd-red sh-Unit ()
 stkhd-red sh-Σ       (ξ-Σˡ r)    = sh-Σ
 stkhd-red sh-Σ       (ξ-Σʳ r)    = sh-Σ
@@ -3898,175 +5156,89 @@ natmem-whred (nm-ne n)   r = nm-ne (sne-whred n r)
 natmem-whred (nm-exp r₀ h) r with snr-det r₀ r
 ... | refl = h
 
+-- the endpoint-join payload: reaching an `idrefl` yields a confluence
+-- join of the Id-type's endpoints.
+IdPay : (a b p : RTm Γ) → Set
+IdPay {Γ} a b p =
+  {c s : RTm Γ} → p ⟶snr* idrefl c s →
+  Σ (RTm Γ) (λ w → (a ⟶* w) × (b ⟶* w))
+
+-- re-base a payload across component joins (TERM confluence zig-zag) —
+-- what irrel's Id-Id transfer rides.
+idpay-transfer :
+  {a b a' b' : RTm Γ} →
+  Σ (RTm Γ) (λ v → (a ⟶* v) × (a' ⟶* v)) →
+  Σ (RTm Γ) (λ v → (b ⟶* v) × (b' ⟶* v)) →
+  {p : RTm Γ} → IdPay a b p → IdPay a' b' p
+idpay-transfer (v , (av , a'v)) (v₂ , (bv₂ , b'v₂)) pay ch with pay ch
+... | w , (aw , bw) with confluent aw av
+...   | z , (wz , vzc) with confluent (⟶*-trans bw wz) bv₂
+...     | z₃ , (zz₃ , v₂z₃) =
+        z₃ , ( ⟶*-trans a'v (⟶*-trans vzc zz₃)
+             , ⟶*-trans b'v₂ v₂z₃ )
+
 ------------------------------------------------------------------------
--- ★★★ INDUCTIVE-TYPES AXIS — the `Mu` membership payload.
+-- ★★★ LEVITATED FAMILIES — the membership payload (SPIKE-LEVITATION S0).
 --
 -- ⚠⚠ WHY THIS LIVES HERE, BEFORE `⊩₀`, AND MENTIONS NOTHING OF IT.
---   `_⊩₀∋_` is INHERENTLY negative-recursive at `Π` (`⊩₀Π` carries
---   `(u : RTm Γ) → ⊩F ⊩₀∋ u → …`).  That is fine for a FUNCTION — Agda
---   accepts `_⊩₀∋_` — but ANY DATATYPE mutual with it inherits the
---   negativity.  Gates 6 and 6b both died there: an existential package,
---   and then a carried WITNESS, each forced `MuMem` into the block.
+--   `_⊩₀∋_` is negative at `Π`, and a datatype mutual with it inherits
+--   that (gates 6/6b; S0's control).  So the payload takes PREDICATES:
+--   `IKPred` is a telescope's shape with a predicate at each `dσ` field,
+--   and `ikpredsOf` (inside the block) builds it from the WITNESSES the
+--   interpretation `IKInterp` stores.
 --
---   ⇒ `MuMem` must not mention the relation AT ALL.  It does not, and so
---     it sits out here, structurally identical to `NatMem` above — which
---     is exactly WHY `NatMem` has always worked.
---
---   The κ-field's membership is supplied as a PREDICATE (gate 6c, design
---   f).  Where that predicate comes FROM is `KOk`/`DOk`'s business, down
---   in the block; `MuMem` never asks.
---
---   Price, and it is metalanguage-only: `KPred` quantifies over
---   `RTm Γ → Set`, so it lands in `Set₁`, and `⊩₀`/`⊩₁` follow.  Object
---   -level expressiveness is FULL — `dκ` stays unrestricted.
+-- ★ A telescope is a TERM now, so its shape is reached by HEAD REDUCTION:
+--   neutral / canonical former / head expansion — `NatMem`'s shape, so
+--   every transport is the SN transport.
 ------------------------------------------------------------------------
 
--- one constructor's field list, each `dκ` slot carrying its membership
--- ⚠ `Γ` is written EXPLICITLY at every recursive occurrence.  Unlike
---   `NatMem n` (where `n : RTm Γ` pins it), `KPred C` has only `C : DCon`
---   — which carries no context — so an implicit `Γ` there is an unsolved
---   meta, not an inferred one.
-data KPred (Γ : Cx) : DCon → Set₁ where
-  kp-ι : KPred Γ dι
-  kp-ρ : {C : DCon} → KPred Γ C → KPred Γ (dρ C)
-  kp-κ : {A : RTy ε} {C : DCon} →
-         (RTm Γ → Set) → KPred Γ C → KPred Γ (dκ A C)
+data IKPred (Γ : Cx) : RTm Γ → Set₁ where
+  ikp-ne  : {C : RTm Γ} → IKPred Γ C
+  ikp-ι   : {j : RTm Γ} → IKPred Γ (dι j)
+  ikp-σ   : {S f : RTm Γ} → (Q : RTm Γ → Set) →
+            ((v : RTm Γ) → Q v → IKPred Γ (app f v)) → IKPred Γ (dσ S f)
+  ikp-ρ   : {j C : RTm Γ} → IKPred Γ C → IKPred Γ (dρ j C)
+  ikp-exp : {C C' : RTm Γ} → SNRed C C' → IKPred Γ C' → IKPred Γ C
 
--- …and a whole description's
-data DPred (Γ : Cx) : Desc → Set₁ where
-  dp-nil  : DPred Γ dnil
-  dp-cons : {C : DCon} {E : Desc} →
-            KPred Γ C → DPred Γ E → DPred Γ (C ◃ E)
+-- the payload predicate at index `i`, walked in lockstep with `dpay`: the
+-- `dι j` leaf is the index EQUATION (`⌜Id⌝ I j i`, i.e. `⊩₀Id`'s
+-- membership — Fording is IN the payload now), a `dσ` field is a member of
+-- its code and the tail at its VALUE, a `dρ` field is a recursive member AT
+-- ITS OWN INDEX `j`.  PROJECTION-BASED and SN at every node, for the
+-- reasons the list form's `Lift` recorded (the `⊢ielim` direction runs it
+-- backward into a `⊩₀Σ` member).
+ILift : {C : RTm Γ} → IKPred Γ C → (RTm Γ → RTm Γ → Set) → RTm Γ → RTm Γ → Set
+ILift ikp-ne              P i t = SN t
+ILift (ikp-ι {j = j})     P i t = SN t × IdPay j i t
+ILift (ikp-σ Q k)         P i t = SN t × Σ (Q (fst t)) (λ q → ILift (k (fst t) q) P i (snd t))
+ILift (ikp-ρ {j = j} k)   P i t = SN t × ((SN (fst t) × P j (fst t)) × ILift k P i (snd t))
+ILift (ikp-exp r k)       P i t = ILift k P i t
 
--- ⚠ TOTAL, mirroring `lookupD`: `dι` off the end, hence `kp-ι`.
-lookupP : {D : Desc} → DPred Γ D → (k : ℕ) → KPred Γ (lookupD D k)
-lookupP dp-nil          _       = kp-ι
-lookupP (dp-cons kp _)  zero    = kp
-lookupP (dp-cons _  dp) (suc k) = lookupP dp k
+-- ★ a member of the family at index `i`: neutral / constructor / head
+--   expansion.  `imm-con` does NOT constrain `i` — the payload's `dι` leaf
+--   carries the index equation, so the Fording argument is now a TYPE.
+data IMuMem {Γ} {D : RTm Γ} (kp : IKPred Γ D) : RTm Γ → RTm Γ → Set where
+  imm-ne  : {i t : RTm Γ} → SNe t → IMuMem kp i t
+  imm-con : {i p : RTm Γ} → ILift kp (IMuMem kp) i p → IMuMem kp i (con p)
+  imm-exp : {i t t' : RTm Γ} → SNRed t t' → IMuMem kp i t' → IMuMem kp i t
 
-------------------------------------------------------------------------
--- ★★★ THE INDEXED PREDICATE LAYER.
---
--- ⚠ ONE GENUINE COMPLICATION over the non-indexed twins, and it is the
---   price of §9.2's expressiveness: `dκ` carries a CLOSED field type, so
---   its predicate is a fixed `RTm Γ → Set`.  `iκ` carries a CODE that may
---   mention earlier fields, so the field's TYPE — and hence its predicate
---   — depends on the ENVIRONMENT at that point.  Both `IKPred` rows
---   therefore take the environment.
---
--- ★★ WHERE FORDING PAYS OFF.  `imm-icon` does NOT constrain the index:
---   every constructor targets the AMBIENT index (`iι`), so a constructor
---   is available at every index and `IMuMem` is UNIFORM in it.  That is
---   exactly PLAN-INDEXED §2–§3's claim — the logical relation never has
---   to reason up to INDEX CONVERSION — and it is what makes this layer a
---   mirror of the non-indexed one rather than a new development.
-------------------------------------------------------------------------
-
-data IKPred (Γ : Cx) : {Θ : Cx} → ICon Θ → Set₁ where
-  ikp-ι : {Θ : Cx} → IKPred Γ (iι {Θ})
-  ikp-ρ : {Θ : Cx} {j : RTm Θ} {C : ICon (Θ ∙)} →
-          IKPred Γ C → IKPred Γ (iρ j C)
-  ikp-κ : {Θ : Cx} {κ : RTm Θ} {C : ICon (Θ ∙)} →
-          (Sub Θ Γ → RTm Γ → Set) → IKPred Γ C → IKPred Γ (iκ κ C)
-
-data IDPred (Γ : Cx) : IDesc → Set₁ where
-  idp-nil  : IDPred Γ inil
-  idp-cons : {C : ICon (ε ∙)} {E : IDesc} →
-             IKPred Γ C → IDPred Γ E → IDPred Γ (C ◂ E)
-
--- ⚠ TOTAL, mirroring `ilookupD`: `iι` off the end, hence `ikp-ι`.
-ilookupP : {D : IDesc} → IDPred Γ D → (k : ℕ) → IKPred Γ (ilookupD D k)
-ilookupP idp-nil         _       = ikp-ι
-ilookupP (idp-cons kp _) zero    = kp
-ilookupP (idp-cons _ dp) (suc k) = ilookupP dp k
-
--- the payload predicate, walked in lockstep with `ipayTy`.  ⚠ the
--- recursive occurrence's predicate takes the INDEX, because `iρ j` puts
--- that field at `subTm σ j` — the whole content of indexing here.  And
--- the environment is extended by the field VALUE (`iext`), matching
--- `iihs`, not by a binder — `ipayTy`'s `extS` is the TYPE-level twin.
-ILift : {Θ : Cx} (C : ICon Θ) → IKPred Γ C →
-        (RTm Γ → RTm Γ → Set) → Sub Θ Γ → RTm Γ → Set
-ILift iι       ikp-ι         P σ t = SN t
-ILift (iρ j C) (ikp-ρ ikp)   P σ t =
-  SN t × ((SN (fst t) × P (subTm σ j) (fst t))
-          × ILift C ikp P (iext σ (fst t)) (snd t))
-ILift (iκ κ C) (ikp-κ Q ikp) P σ t =
-  SN t × (Q σ (fst t) × ILift C ikp P (iext σ (fst t)) (snd t))
-
--- the payload predicate for ONE constructor's fields: a Σ-chain walked in
--- lockstep with `payTy`.  `P` is the RECURSIVE occurrence's predicate.
--- ★★ PROJECTION-BASED, not pair-pattern-based — `fst p` / `snd p`, never
---   a match on `pair`.  Three reasons, all pre-existing:
---     · `⊩₀Σ`'s membership is already written this way (`⊩F ⊩₀∋ fst t`),
---       and `payTy` makes the payload a Σ-chain, so this IS that idiom;
---     · the ι-rule's own `ihs` walks the payload by `fst`/`snd`
---       (`NbEPDirDBPi`), so the semantics tracks the syntax step for step;
---     · it needs no case split on `RTm`, which has 30+ formers.
---   The payload's SHAPE is not asserted here and does not need to be:
---   `SN` is carried at the top (as `⊩₀Nat` carries it beside `NatMem`),
---   and canonicity gets the shape from TYPING — `⊢ p ∷ payTy D C` plus
---   canonicity at `Unit`/`Σ'` — exactly as it already does for `Σ'`.
---   ⚠ SN IS CARRIED AT EVERY NODE, and the `dρ` slot carries `SN (fst t)`
---   beside its payload.  Not redundancy: `⊢elim` must run this BACKWARD —
---   turn a `Lift` into a semantic member of `payTy D C` so the method can
---   be applied to it — and membership at `Σ'` is `SN t × …`.  There is no
---   `SN t → SN (fst t)` lemma in this kernel, so the SN has to travel WITH
---   the payload.  `SN` is standalone, so positivity is untouched, and
---   `SN (fst t) × P (fst t)` is LITERALLY `⊩₁Mu doneᵀ di ⊩₁∋ fst t`.
-Lift : (C : DCon) → KPred Γ C → (RTm Γ → Set) → RTm Γ → Set
-Lift dι       kp-ι        P t = SN t
-Lift (dρ C)   (kp-ρ kp)   P t = SN t × ((SN (fst t) × P (fst t)) × Lift C kp P (snd t))
-Lift (dκ A C) (kp-κ Q kp) P t = SN t × (Q (fst t) × Lift C kp P (snd t))
-
--- ★ and the payload itself.  Neutral / constructor / head-expansion —
---   `NatMem`'s shape exactly, so every transport is the SN transport.
--- ★ `Γ` may stay IMPLICIT here — `dp : DPred Γ D` pins it, exactly as
---   `n : RTm Γ` pins it for `NatMem`.
-data MuMem {Γ} (D : Desc) (dp : DPred Γ D) : RTm Γ → Set where
-  mm-ne  : {t : RTm Γ} → SNe t → MuMem D dp t
-  -- ⚠ `k ∈D D` IS REQUIRED, and it is not bookkeeping.  `lookupD` is
-  --   TOTAL, so without it `con 99 p` with `SN p` is a member of EVERY
-  --   description — and `⊢elim` then has no method to apply, because
-  --   `sel`'s type needs the very same premise (`sel-ty`, in Subj).
-  --   `⊢con` already carries it; the payload has to mirror it or the
-  --   fundamental theorem at `⊢elim` is simply false.
-  mm-con : (k : ℕ) → k ∈D D → {p : RTm Γ} →
-           Lift (lookupD D k) (lookupP dp k) (MuMem D dp) p →
-           MuMem D dp (con k p)
-  mm-exp : {t t' : RTm Γ} → SNRed t t' → MuMem D dp t' → MuMem D dp t
-
--- ★★★ INDEXED MEMBERSHIP.  ⚠⚠ NOTE WHAT `imm-icon` DOES NOT SAY: it does
---   not constrain `i`.  Every constructor targets the AMBIENT index, so a
---   constructor is available at EVERY index and this predicate is UNIFORM
---   in it.  That is the Fording payoff stated in PLAN-INDEXED §2–§3, and
---   it is why the logical relation never reasons up to index conversion.
---   A NATIVE computed target would break exactly this line.
---
--- ⚠ `k ∈ID D` IS REQUIRED, same argument as `mm-con`: `ilookupD` is TOTAL,
---   so without it `icon 99 p` would inhabit every description and
---   `⊢ielim` would have no method to apply — `isel-ty` needs the very
---   same premise.
-data IMuMem {Γ} (D : IDesc) (I : RTy ε) (dp : IDPred Γ D)
-            : RTm Γ → RTm Γ → Set where
-  imm-ne   : {i t : RTm Γ} → SNe t → IMuMem D I dp i t
-  imm-icon : (k : ℕ) → k ∈ID D → {i p : RTm Γ} →
-             ILift (ilookupD D k) (ilookupP dp k)
-                   (IMuMem D I dp) (isingle i) p →
-             IMuMem D I dp i (icon k p)
-  imm-exp  : {i t t' : RTm Γ} → SNRed t t' →
-             IMuMem D I dp i t' → IMuMem D I dp i t
-
-imumem-whred : {D : IDesc} {I : RTy ε} {dp : IDPred Γ D} {i t t' : RTm Γ} →
-               IMuMem D I dp i t → SNRed t t' → IMuMem D I dp i t'
+imumem-whred : {D : RTm Γ} {kp : IKPred Γ D} {i t t' : RTm Γ} →
+               IMuMem kp i t → SNRed t t' → IMuMem kp i t'
 imumem-whred (imm-ne n)     r = imm-ne (sne-whred n r)
 imumem-whred (imm-exp r₀ h) r with snr-det r₀ r
 ... | refl = h
 
-mumem-whred : {D : Desc} {dp : DPred Γ D} {t t' : RTm Γ} →
-              MuMem D dp t → SNRed t t' → MuMem D dp t'
-mumem-whred (mm-ne n)     r = mm-ne (sne-whred n r)
-mumem-whred (mm-exp r₀ h) r with snr-det r₀ r
+-- ★ the TAGS: `NatMem`'s shape, indexed by the bound so `Fin 0` is EMPTY
+--   on canonical forms (what `fcase0`'s canonicity rests on).
+data FinMem {Γ} : ℕ → RTm Γ → Set where
+  fm-ne   : {n : ℕ} {t : RTm Γ} → SNe t → FinMem n t
+  fm-zero : {n : ℕ} → FinMem (suc n) (fzero {Γ})
+  fm-suc  : {n : ℕ} {t : RTm Γ} → FinMem n t → FinMem (suc n) (fsuc t)
+  fm-exp  : {n : ℕ} {t t' : RTm Γ} → SNRed t t' → FinMem n t' → FinMem n t
+
+finmem-whred : {n : ℕ} {t t' : RTm Γ} → FinMem n t → SNRed t t' → FinMem n t'
+finmem-whred (fm-ne n)     r = fm-ne (sne-whred n r)
+finmem-whred (fm-exp r₀ h) r with snr-det r₀ r
 ... | refl = h
 
 ------------------------------------------------------------------------
@@ -4153,56 +5325,20 @@ sn-ordtr .(nsuc _) .(nsuc _) .(nsuc _) p q sa (nm-suc {n = a₀} ma) st (nm-suc 
 data ⊩₀_ {Γ} : RTy Γ → Set
 _⊩₀∋_ : {Γ : Cx} {A : RTy Γ} → ⊩₀ A → RTm Γ → Set
 
--- ★★ WHERE THE κ-PREDICATES COME FROM.  `⊩₀Mu` carries WITNESSES —
---   ordinary `⊩₀`s, so `⊩₀` STAYS IN `Set` — and `predsOf` turns them
---   into the `DPred` that `MuMem` wants.  The split is the whole trick:
---
---     · `MuMem` takes PREDICATES, so it is not mutual with `_⊩₀∋_` and
---       stays strictly positive.  Gates 6/6b died carrying witnesses INTO
---       it, where `Lift` had to APPLY them — and `_⊩₀∋_` is negative at Π.
---     · `⊩₀Mu` carries WITNESSES, so `irrel₀` has something to recurse on
---       and nonsense interpretations are unrepresentable.
---
---   `predsOf` is the one-way bridge; it lives in the mutual block because
---   it names `_⊩₀∋_`.  ⚠ This also keeps `⊩₁` in `Set`: `⊩₁U`'s
---   membership STORES a `⊩₀` interp, so a `Set₁` level 0 would have
---   forced level 1's membership up too — and with no cumulativity that
---   means `Lift`-wrapping every `⊩₁` clause across five modules.
-data KInterp (Γ : Cx) : DCon → Set
-data DInterp (Γ : Cx) : Desc → Set
-kpredsOf : {C : DCon} → KInterp Γ C → KPred Γ C
-predsOf  : {D : Desc} → DInterp Γ D → DPred Γ D
--- ★ their INDEXED twins.  ⚠ `IKInterp` is indexed by the TELESCOPE, and
---   the `iκ` row's interpretation is a FUNCTION OF THE ENVIRONMENT —
---   `iκ`'s field type is `El (subTm σ κ)`, which depends on the earlier
---   fields, so there is no single `⊩₀` to hand over.  `dκ`'s closed field
---   type needs no such thing; this is the one place the indexed
---   interpretation is genuinely bigger, and it is the price of §9.2.
-data IKInterp (Γ : Cx) : {Θ : Cx} → ICon Θ → Set
-data IDInterp (Γ : Cx) : IDesc → Set
-ikpredsOf : {Θ : Cx} {C : ICon Θ} → IKInterp Γ C → IKPred Γ C
-ipredsOf  : {D : IDesc} → IDInterp Γ D → IDPred Γ D
-
--- the endpoint-join payload: reaching an `idrefl` yields a confluence
--- join of the Id-type's endpoints.
-IdPay : (a b p : RTm Γ) → Set
-IdPay {Γ} a b p =
-  {c s : RTm Γ} → p ⟶snr* idrefl c s →
-  Σ (RTm Γ) (λ w → (a ⟶* w) × (b ⟶* w))
-
--- re-base a payload across component joins (TERM confluence zig-zag) —
--- what irrel's Id-Id transfer rides.
-idpay-transfer :
-  {a b a' b' : RTm Γ} →
-  Σ (RTm Γ) (λ v → (a ⟶* v) × (a' ⟶* v)) →
-  Σ (RTm Γ) (λ v → (b ⟶* v) × (b' ⟶* v)) →
-  {p : RTm Γ} → IdPay a b p → IdPay a' b' p
-idpay-transfer (v , (av , a'v)) (v₂ , (bv₂ , b'v₂)) pay ch with pay ch
-... | w , (aw , bw) with confluent aw av
-...   | z , (wz , vzc) with confluent (⟶*-trans bw wz) bv₂
-...     | z₃ , (zz₃ , v₂z₃) =
-        z₃ , ( ⟶*-trans a'v (⟶*-trans vzc zz₃)
-             , ⟶*-trans b'v₂ v₂z₃ )
+-- ★★ WHERE THE FIELD PREDICATES COME FROM.  `⊩₀IMu` carries WITNESSES —
+--   an interpretation `IKInterp` of the telescope, built from ordinary
+--   `⊩₀`s, so `⊩₀` STAYS IN `Set` — and `ikpredsOf` turns it into the
+--   `IKPred` that `IMuMem` wants.  The split is the whole trick (S0):
+--     · `IMuMem` takes PREDICATES, so it is not mutual with `_⊩₀∋_` and
+--       stays strictly positive;
+--     · `⊩₀IMu` carries WITNESSES, so `irrel₀` has something to recurse on.
+--   `IKInterp` is ALSO the membership of `Desc I` at level 1 (`⊩₁Desc`):
+--   a description's meaning IS its interpretation (S0's `toIK` is the
+--   identity).  ⚠ it stores the index type's interpretation's MEMBERS at
+--   `dρ` fields — `⊢ielim`'s induction hypothesis needs the recursive
+--   field's index to be valid.
+data IKInterp {Γ} {I : RTm Γ} (⊩I : ⊩₀ (El I)) : RTm Γ → Set
+ikpredsOf : {I C : RTm Γ} {⊩I : ⊩₀ (El I)} → IKInterp ⊩I C → IKPred Γ C
 
 data ⊩₀_ {Γ} where
   ⊩₀base : {A : RTy Γ} → A ⟶ᵀ* base → ⊩₀ A
@@ -4238,56 +5374,35 @@ data ⊩₀_ {Γ} where
   -- mirrors level 1 exactly, `NatMem` payload included.
   ⊩₀Unit : {A : RTy Γ} → A ⟶ᵀ* Unit → ⊩₀ A
   ⊩₀Nat  : {A : RTy Γ} → A ⟶ᵀ* Nat → ⊩₀ A
-  -- ★★★ the inductive-types axis.  Membership is `SN t × MuMem D dp t`,
-  -- mirroring `⊩₀Nat`'s `NatMem` exactly — and for the same structural
-  -- reason: the payload mentions no part of the relation.
-  ⊩₀Mu   : {A : RTy Γ} {D : Desc} → A ⟶ᵀ* Mu D → DInterp Γ D → ⊩₀ A
-  -- ★★ the INDEXED twin.  ⚠ the reduct is `IMu D I i` for the index `i`
-  --   the type actually reduced to — `IMu` is inert-SHAPED, not inert, so
-  --   two reducts of the same type can differ in their index and
-  --   `IMu-reduct` is what relates them.
-  ⊩₀IMu  : {A : RTy Γ} {D : IDesc} {I : RTy ε} {i : RTm Γ} →
-           A ⟶ᵀ* IMu D I i → IDInterp Γ D → ⊩₀ A
+  -- ★★★ the levitated family: the index type's interpretation and the
+  --   telescope's.  ⚠ the reduct's slots are TERMS and step, so two reducts
+  --   of one type can differ in all three (`IMu-reduct` relates them).
+  --   ⚠ the interpretation is of a CONVERTIBLE REPRESENTATIVE `I₀`/`D₀`,
+  --   not of the reduct's own slots: forwarding along a type reduction
+  --   then only extends a conversion, and never has to transport an
+  --   interpretation along an arbitrary reduction of a TERM (which head
+  --   expansion cannot do).  `irrel₀` joins two representatives by
+  --   Church–Rosser.
+  ⊩₀IMu  : {A : RTy Γ} {I D i I₀ D₀ : RTm Γ} → A ⟶ᵀ* IMu I D i →
+           I ≅ I₀ → D ≅ D₀ → (⊩I : ⊩₀ (El I₀)) → IKInterp ⊩I D₀ → ⊩₀ A
+  -- ★ the tags (`El-⌜Fin⌝`): inert, `⊩₀Nat`'s shape.
+  ⊩₀Fin  : {A : RTy Γ} {n : ℕ} → A ⟶ᵀ* Fin n → ⊩₀ A
 
-data KInterp Γ where
-  ki-ι : KInterp Γ dι
-  ki-ρ : {C : DCon} → KInterp Γ C → KInterp Γ (dρ C)
-  ki-κ : {A : RTy ε} {C : DCon} →
-         ⊩₀ (εwkTy A) → KInterp Γ C → KInterp Γ (dκ A C)
+data IKInterp {Γ} {I} ⊩I where
+  iki-ne  : {C : RTm Γ} → SNe C → IKInterp ⊩I C
+  iki-ι   : {j : RTm Γ} → SN j → IKInterp ⊩I (dι j)
+  iki-σ   : {S f : RTm Γ} → SN S → SN f → (w : ⊩₀ (El S)) →
+            ((v : RTm Γ) → w ⊩₀∋ v → IKInterp ⊩I (app f v)) →
+            IKInterp ⊩I (dσ S f)
+  iki-ρ   : {j C : RTm Γ} → SN j → ⊩I ⊩₀∋ j → IKInterp ⊩I C →
+            IKInterp ⊩I (dρ j C)
+  iki-exp : {C C' : RTm Γ} → SNRed C C' → IKInterp ⊩I C' → IKInterp ⊩I C
 
-data DInterp Γ where
-  di-nil  : DInterp Γ dnil
-  di-cons : {C : DCon} {E : Desc} →
-            KInterp Γ C → DInterp Γ E → DInterp Γ (C ◃ E)
-
-data IKInterp Γ where
-  iki-ι : {Θ : Cx} → IKInterp Γ (iι {Θ})
-  iki-ρ : {Θ : Cx} {j : RTm Θ} {C : ICon (Θ ∙)} →
-          IKInterp Γ C → IKInterp Γ (iρ j C)
-  -- ⚠ a FAMILY of interpretations, one per environment — see the note on
-  --   the forward declaration.
-  iki-κ : {Θ : Cx} {κ : RTm Θ} {C : ICon (Θ ∙)} →
-          ((σ : Sub Θ Γ) → ⊩₀ (El (subTm σ κ))) →
-          IKInterp Γ C → IKInterp Γ (iκ κ C)
-
-data IDInterp Γ where
-  idi-nil  : IDInterp Γ inil
-  idi-cons : {C : ICon (ε ∙)} {E : IDesc} →
-             IKInterp Γ C → IDInterp Γ E → IDInterp Γ (C ◂ E)
-
-ikpredsOf iki-ι        = ikp-ι
-ikpredsOf (iki-ρ ki)   = ikp-ρ (ikpredsOf ki)
-ikpredsOf (iki-κ w ki) = ikp-κ (λ σ t → (w σ) ⊩₀∋ t) (ikpredsOf ki)
-
-ipredsOf idi-nil          = idp-nil
-ipredsOf (idi-cons ki d)  = idp-cons (ikpredsOf ki) (ipredsOf d)
-
-kpredsOf ki-ι        = kp-ι
-kpredsOf (ki-ρ ki)   = kp-ρ (kpredsOf ki)
-kpredsOf (ki-κ w ki) = kp-κ (λ t → w ⊩₀∋ t) (kpredsOf ki)
-
-predsOf di-nil         = dp-nil
-predsOf (di-cons ki d) = dp-cons (kpredsOf ki) (predsOf d)
+ikpredsOf (iki-ne n)       = ikp-ne
+ikpredsOf (iki-ι _)        = ikp-ι
+ikpredsOf (iki-σ _ _ w k)  = ikp-σ (w ⊩₀∋_) (λ v q → ikpredsOf (k v q))
+ikpredsOf (iki-ρ _ _ k)    = ikp-ρ (ikpredsOf k)
+ikpredsOf (iki-exp r k)    = ikp-exp r (ikpredsOf k)
 
 ⊩₀base _     ⊩₀∋ t = SN t
 ⊩₀ne _ _     ⊩₀∋ t = SN t
@@ -4299,19 +5414,8 @@ predsOf (di-cons ki d) = dp-cons (kpredsOf ki) (predsOf d)
 ⊩₀Id {a = a} {b = b} _ ⊩₀∋ t = SN t × IdPay a b t
 ⊩₀Unit _     ⊩₀∋ t = SN t
 ⊩₀Nat _      ⊩₀∋ t = SN t × NatMem t
--- ★ the `DOk` proof is IGNORED — `MuMem` needs only the predicates.  That
---   is the whole design: membership does not depend on the relation, so
---   `MuMem` is not mutual with it and stays strictly positive.
-⊩₀Mu {D = D} _ di ⊩₀∋ t = SN t × MuMem D (predsOf di) t
-⊩₀IMu {D = D} {I = I} {i = i} _ di ⊩₀∋ t =
-  SN t × IMuMem D I (ipredsOf di) i t
-
--- ⚠ TOTAL, in lockstep with `lookupP`/`lookupD`: off the end all three
---   give the empty constructor (`dι`/`kp-ι`/`ko-ι`).
-lookupI : {D : Desc} → DInterp Γ D → (k : ℕ) → KInterp Γ (lookupD D k)
-lookupI di-nil          _       = ki-ι
-lookupI (di-cons ki _)  zero    = ki
-lookupI (di-cons _  dj) (suc k) = lookupI dj k
+⊩₀IMu {i = i} _ _ _ ⊩I K ⊩₀∋ t = SN t × IMuMem (ikpredsOf K) i t
+⊩₀Fin {n = n} _ ⊩₀∋ t = SN t × FinMem n t
 
 bwd₀ : {A B : RTy Γ} → A ⟶ᵀ* B → ⊩₀ B → ⊩₀ A
 bwd₀ p (⊩₀base q)    = ⊩₀base (⟶ᵀ*-trans p q)
@@ -4322,8 +5426,8 @@ bwd₀ p (⊩₀Hom q s)   = ⊩₀Hom  (⟶ᵀ*-trans p q) s
 bwd₀ p (⊩₀Id q)      = ⊩₀Id   (⟶ᵀ*-trans p q)
 bwd₀ p (⊩₀Unit q)    = ⊩₀Unit (⟶ᵀ*-trans p q)
 bwd₀ p (⊩₀Nat q)     = ⊩₀Nat  (⟶ᵀ*-trans p q)
-bwd₀ p (⊩₀Mu q di)   = ⊩₀Mu   (⟶ᵀ*-trans p q) di
-bwd₀ p (⊩₀IMu q di)   = ⊩₀IMu   (⟶ᵀ*-trans p q) di
+bwd₀ p (⊩₀IMu q cI cD ⊩I K) = ⊩₀IMu (⟶ᵀ*-trans p q) cI cD ⊩I K
+bwd₀ p (⊩₀Fin q)     = ⊩₀Fin (⟶ᵀ*-trans p q)
 
 -- `bwd₀` only rewrites the REDUCTION WITNESS, never the membership — so
 -- both directions are the identity once the interp's head is exposed.
@@ -4339,8 +5443,8 @@ bwd₀-mem q (⊩₀Hom _ _) h = h
 bwd₀-mem q (⊩₀Id _)    h = h
 bwd₀-mem q (⊩₀Unit _)  h = h
 bwd₀-mem q (⊩₀Nat _)   h = h
-bwd₀-mem q (⊩₀Mu _ _)  h = h
-bwd₀-mem q (⊩₀IMu _ _)  h = h
+bwd₀-mem q (⊩₀IMu _ _ _ _ _) h = h
+bwd₀-mem q (⊩₀Fin _)   h = h
 
 bwd₀-mem⁻ : {A B : RTy Γ} (q : A ⟶ᵀ* B) (R : ⊩₀ B) {t : RTm Γ} →
             R ⊩₀∋ t → (bwd₀ q R) ⊩₀∋ t
@@ -4352,8 +5456,8 @@ bwd₀-mem⁻ q (⊩₀Hom _ _) h = h
 bwd₀-mem⁻ q (⊩₀Id _)    h = h
 bwd₀-mem⁻ q (⊩₀Unit _)  h = h
 bwd₀-mem⁻ q (⊩₀Nat _)   h = h
-bwd₀-mem⁻ q (⊩₀Mu _ _)  h = h
-bwd₀-mem⁻ q (⊩₀IMu _ _)  h = h
+bwd₀-mem⁻ q (⊩₀IMu _ _ _ _ _) h = h
+bwd₀-mem⁻ q (⊩₀Fin _)   h = h
 
 ------------------------------------------------------------------------
 -- 3a. IRRELEVANCE UP TO CONVERSION, at level 0.
@@ -4369,61 +5473,30 @@ bwd₀-mem⁻ q (⊩₀IMu _ _)  h = h
 irrel₀ : {A B : RTy Γ} → A ≅ᵀ B → (R : ⊩₀ A) (S : ⊩₀ B) →
          ((t : RTm Γ) → R ⊩₀∋ t → S ⊩₀∋ t) × ((t : RTm Γ) → S ⊩₀∋ t → R ⊩₀∋ t)
 
--- ★★★ THE `Mu` HALF OF IRRELEVANCE, mutual with `irrel₀` itself.
+-- ★★★ THE FAMILY HALF OF IRRELEVANCE, mutual with `irrel₀` itself.
 --
---   This is the knot design (f) creates and gate 6c deliberately left
---   open (its `IrrelAt` was an external hypothesis).  Two interps at one
---   type carry `DPred`s that need not be syntactically equal — but `DOk`
---   pins every κ-slot to `λ t → w ⊩₀∋ t` for SOME `w`, so they differ
---   only by the CHOICE of witness, and `irrel₀` is exactly what collapses
---   that.  Hence: `irrel₀` at `Mu` calls `irrelMu`, which calls `irrel₀`
---   at each κ-field's type.
---
---   ⚠ TERMINATION is by the `DOk`/`KOk` structure, not the types: each
---     `w` is a strict subterm of the `DOk` that came in, so the recursive
---     `irrel₀` call is on a structurally smaller witness.
---   ⚠ the constructor's field list is reached by WALKING THE `DInterp`
---     SUFFIX (`irrelAtK`), not by a `lookupI` call: Agda cannot see that
---     `lookupI di k`'s parts are subterms of `di`, which severs the
---     size-change cycle.  The FULL interps stay fixed — they are what
---     `MuMem` mentions — and only the suffix shrinks.
-irrelMu : {D : Desc} (di₁ di₂ : DInterp Γ D) {t : RTm Γ} →
-          MuMem D (predsOf di₁) t → MuMem D (predsOf di₂) t
-irrelAtK : {D : Desc} (di₁ di₂ : DInterp Γ D)
-           {E : Desc} (dj₁ dj₂ : DInterp Γ E)
-           (k : ℕ) (p : RTm Γ) →
-           Lift (lookupD E k) (lookupP (predsOf dj₁) k) (MuMem D (predsOf di₁)) p →
-           Lift (lookupD E k) (lookupP (predsOf dj₂) k) (MuMem D (predsOf di₂)) p
-liftK : {D : Desc} (di₁ di₂ : DInterp Γ D)
-        {C : DCon} (ki₁ ki₂ : KInterp Γ C) (p : RTm Γ) →
-        Lift C (kpredsOf ki₁) (MuMem D (predsOf di₁)) p →
-        Lift C (kpredsOf ki₂) (MuMem D (predsOf di₂)) p
-
--- ★★★ THE INDEXED TWINS.  ⚠ these do MORE than `irrelMu`/`liftK`: they
---   transfer the INTERPRETATION *and* move the INDEX.  `⊩₀Mu`'s two
---   reducts are syntactically equal (`Mu-nf`); `⊩₀IMu`'s can differ in
---   their index, so the pattern to follow is `⊩₀Id`'s — whose membership
---   also depends on carried terms, and whose diagonal already moves them
---   along reductions via `idpay-transfer`.  The index behaves exactly
---   like `Id`'s endpoints; nothing new is needed at the DESIGN level.
-irrelIMu : {D : IDesc} {I : RTy ε} (di₁ di₂ : IDInterp Γ D)
-           {i i' v : RTm Γ} → i ⟶* v → i' ⟶* v → {t : RTm Γ} →
-           IMuMem D I (ipredsOf di₁) i t → IMuMem D I (ipredsOf di₂) i' t
-irrelIAtK : {D : IDesc} {I : RTy ε} (di₁ di₂ : IDInterp Γ D)
-            {E : IDesc} (dj₁ dj₂ : IDInterp Γ E)
-            {i i' v : RTm Γ} → i ⟶* v → i' ⟶* v →
-            (k : ℕ) (p : RTm Γ) →
-            ILift (ilookupD E k) (ilookupP (ipredsOf dj₁) k)
-                  (IMuMem D I (ipredsOf di₁)) (isingle i) p →
-            ILift (ilookupD E k) (ilookupP (ipredsOf dj₂) k)
-                  (IMuMem D I (ipredsOf di₂)) (isingle i') p
-iliftK : {D : IDesc} {I : RTy ε} (di₁ di₂ : IDInterp Γ D)
-         {Θ : Cx} (C : ICon Θ) (ki₁ ki₂ : IKInterp Γ C)
-         (σ σ' σ⁺ : Sub Θ Γ) →
-         (∀ x → σ x ⟶* σ⁺ x) → (∀ x → σ' x ⟶* σ⁺ x) →
-         (p : RTm Γ) →
-         ILift C (ikpredsOf ki₁) (IMuMem D I (ipredsOf di₁)) σ p →
-         ILift C (ikpredsOf ki₂) (IMuMem D I (ipredsOf di₂)) σ' p
+--   Two interpretations of ONE family type interpret telescopes that are
+--   only JOINABLE (they are terms, and the type's reducts may differ in
+--   every slot).  `iliftK` walks both in lockstep ALONG A COMMON REDUCT:
+--   a head expansion on either side is re-joined by confluence, matching
+--   formers recurse (the `dσ` field's membership by `irrel₀` at the joined
+--   field codes, the `dρ` field's by `irrelIMu` at the joined index), the
+--   `dι` leaf's index equation by `idpay-transfer`, and every mismatch is a
+--   shape clash on the common reduct.
+--   ⚠ TERMINATION: `irrelIMu` on the membership, `iliftK` on the
+--   interpretation it walks (the WHOLE ones, `K₁`/`K₂`, ride along for the
+--   recursive field), `irrel₀` on a field witness inside it.
+irrelIMu : {I₁ I₂ D₁ D₂ D* : RTm Γ} {⊩I₁ : ⊩₀ (El I₁)} {⊩I₂ : ⊩₀ (El I₂)}
+           (K₁ : IKInterp ⊩I₁ D₁) (K₂ : IKInterp ⊩I₂ D₂) → D₁ ⟶* D* → D₂ ⟶* D* →
+           {i₁ i₂ i* t : RTm Γ} → i₁ ⟶* i* → i₂ ⟶* i* →
+           IMuMem (ikpredsOf K₁) i₁ t → IMuMem (ikpredsOf K₂) i₂ t
+iliftK : {I₁ I₂ D₁ D₂ D* : RTm Γ} {⊩I₁ : ⊩₀ (El I₁)} {⊩I₂ : ⊩₀ (El I₂)}
+         (K₁ : IKInterp ⊩I₁ D₁) (K₂ : IKInterp ⊩I₂ D₂) → D₁ ⟶* D* → D₂ ⟶* D* →
+         {C₁ C₂ C* : RTm Γ} (Kc₁ : IKInterp ⊩I₁ C₁) (Kc₂ : IKInterp ⊩I₂ C₂) →
+         C₁ ⟶* C* → C₂ ⟶* C* →
+         {i₁ i₂ i* : RTm Γ} → i₁ ⟶* i* → i₂ ⟶* i* → (t : RTm Γ) →
+         ILift (ikpredsOf Kc₁) (IMuMem (ikpredsOf K₁)) i₁ t →
+         ILift (ikpredsOf Kc₂) (IMuMem (ikpredsOf K₂)) i₂ t
 
 -- both sides non-`Π`: membership is `SN t` on both, so transfer is identity.
 irrel₀ c (⊩₀base _) (⊩₀base _) = (λ _ h → h) , (λ _ h → h)
@@ -4536,14 +5609,14 @@ irrel₀ c (⊩₀Id {a = a} {b = b} p) (⊩₀Id {a = a'} {b = b'} q)
                                     (projr h) )) )
 -- ★ `Mu` vs `IMu` — DIFFERENT FORMERS, so no common reduct.  `Mu-nf`
 --   pins one side syntactically; `IMu-reduct` gives the other's shape.
-irrel₀ c (⊩₀Mu p _) (⊩₀IMu q _) with joinW c p q
-... | E , (mE , iE) with Mu-nf mE
+irrel₀ c (⊩₀Fin p) (⊩₀IMu q _ _ _ _) with joinW c p q
+... | E , (mE , iE) with Fin-nf mE
 ...   | refl with IMu-reduct iE
-...     | mkIMuRed _ () _
-irrel₀ c (⊩₀IMu p _) (⊩₀Mu q _) with joinW c p q
-... | E , (iE , mE) with Mu-nf mE
+...     | mkIMuRed _ _ _ () _ _ _
+irrel₀ c (⊩₀IMu p _ _ _ _) (⊩₀Fin q) with joinW c p q
+... | E , (iE , mE) with Fin-nf mE
 ...   | refl with IMu-reduct iE
-...     | mkIMuRed _ () _
+...     | mkIMuRed _ _ _ () _ _ _
 -- ★★★ THE DIAGONAL — the one case with real content, and the reason the
 --   `irrelIMu`/`iliftK` transfer layer exists.  ⚠ `⊩₀Mu`'s two reducts are
 --   SYNTACTICALLY EQUAL (`Mu-nf` twice, then `refl`).  `⊩₀IMu`'s are not:
@@ -4553,13 +5626,20 @@ irrel₀ c (⊩₀IMu p _) (⊩₀Mu q _) with joinW c p q
 --   `irrelIMu`, which moves membership along them.  This is exactly the
 --   shape `⊩₀Id`'s diagonal uses for its endpoints — the index is not a
 --   new phenomenon, it is `Id`'s carried terms again.
-irrel₀ c (⊩₀IMu p di₁) (⊩₀IMu q di₂) with joinW c p q
+-- ★★★ THE DIAGONAL.  The join identifies the two reducts' slots; the two
+--   REPRESENTATIVES are then convertible through them, and Church–Rosser
+--   gives the common reduct `irrelIMu` walks along.  The index is `Id`'s
+--   carried terms again: its two reductions feed `idpay-transfer` at the
+--   `dι` leaves.
+irrel₀ c (⊩₀IMu p cI₁ cD₁ ⊩I₁ K₁) (⊩₀IMu q cI₂ cD₂ ⊩I₂ K₂) with joinW c p q
 ... | E , (i₁ , i₂) with IMu-reduct i₁ | IMu-reduct i₂
-...   | mkIMuRed j₁ eq₁ r₁ | mkIMuRed j₂ eq₂ r₂
+...   | mkIMuRed I₁' D₁' j₁ eq₁ rI₁ rD₁ r₁ | mkIMuRed I₂' D₂' j₂ eq₂ rI₂ rD₂ r₂
       with IMuinj≡ (trans (sym eq₁) eq₂)
-...     | (refl , (refl , refl)) =
-          ( (λ _ h → (projl h , irrelIMu di₁ di₂ r₁ r₂ (projr h)))
-          , (λ _ h → (projl h , irrelIMu di₂ di₁ r₂ r₁ (projr h))) )
+...     | (refl , (refl , refl))
+          with church-rosser (ctrn (csym cD₁) (ctrn (hom→≅ rD₁) (ctrn (csym (hom→≅ rD₂)) cD₂)))
+...       | D* , (d₁ , d₂) =
+          ( (λ _ h → (projl h , irrelIMu K₁ K₂ d₁ d₂ r₁ r₂ (projr h)))
+          , (λ _ h → (projl h , irrelIMu K₂ K₁ d₂ d₁ r₂ r₁ (projr h))) )
 irrel₀ c (⊩₀Hom _ _) (⊩₀Hom _ _) = (λ _ h → h) , (λ _ h → h)
 irrel₀ c (⊩₀base p) (⊩₀Hom q s) with joinW c p q
 ... | E , (bE , hE) with base-nf bE
@@ -4769,225 +5849,203 @@ irrel₀ c (⊩₀Nat _)  (⊩₀Nat _)  = (λ _ h → h) , (λ _ h → h)
 
 -- ★ `Mu` versus every other former: `Mu D` is a NORMAL FORM (`Mu-nf`), so
 --   any join with a differently-headed type is absurd.
-irrel₀ c (⊩₀Mu p _) (⊩₀base q) with joinW c p q
+irrel₀ c (⊩₀Fin p) (⊩₀base q) with joinW c p q
 ... | E , (mE , bE) with base-nf bE
-...   | refl with Mu-nf mE
+...   | refl with Fin-nf mE
 ...     | ()
-irrel₀ c (⊩₀IMu p _) (⊩₀base q) with joinW c p q
+irrel₀ c (⊩₀IMu p _ _ _ _) (⊩₀base q) with joinW c p q
 ... | E , (mE , bE) with base-nf bE
 ...   | refl with IMu-reduct mE
-...     | mkIMuRed _ () _
-irrel₀ c (⊩₀base p) (⊩₀Mu q _) with joinW c p q
+...     | mkIMuRed _ _ _ () _ _ _
+irrel₀ c (⊩₀base p) (⊩₀Fin q) with joinW c p q
 ... | E , (bE , mE) with base-nf bE
-...   | refl with Mu-nf mE
+...   | refl with Fin-nf mE
 ...     | ()
-irrel₀ c (⊩₀base p) (⊩₀IMu q _) with joinW c p q
+irrel₀ c (⊩₀base p) (⊩₀IMu q _ _ _ _) with joinW c p q
 ... | E , (bE , mE) with base-nf bE
 ...   | refl with IMu-reduct mE
-...     | mkIMuRed _ () _
-irrel₀ c (⊩₀Mu p _) (⊩₀ne q n) with joinW c p q
+...     | mkIMuRed _ _ _ () _ _ _
+irrel₀ c (⊩₀Fin p) (⊩₀ne q n) with joinW c p q
 ... | E , (mE , eE) with El-ne-reduct n eE
-...   | mkElNe _ _ refl with Mu-nf mE
+...   | mkElNe _ _ refl with Fin-nf mE
 ...     | ()
-irrel₀ c (⊩₀IMu p _) (⊩₀ne q n) with joinW c p q
+irrel₀ c (⊩₀IMu p _ _ _ _) (⊩₀ne q n) with joinW c p q
 ... | E , (mE , eE) with El-ne-reduct n eE
 ...   | mkElNe _ _ refl with IMu-reduct mE
-...     | mkIMuRed _ () _
-irrel₀ c (⊩₀ne p n) (⊩₀Mu q _) with joinW c p q
+...     | mkIMuRed _ _ _ () _ _ _
+irrel₀ c (⊩₀ne p n) (⊩₀Fin q) with joinW c p q
 ... | E , (eE , mE) with El-ne-reduct n eE
-...   | mkElNe _ _ refl with Mu-nf mE
+...   | mkElNe _ _ refl with Fin-nf mE
 ...     | ()
-irrel₀ c (⊩₀ne p n) (⊩₀IMu q _) with joinW c p q
+irrel₀ c (⊩₀ne p n) (⊩₀IMu q _ _ _ _) with joinW c p q
 ... | E , (eE , mE) with El-ne-reduct n eE
 ...   | mkElNe _ _ refl with IMu-reduct mE
-...     | mkIMuRed _ () _
-irrel₀ c (⊩₀Mu p _) (⊩₀Π q _ _) with joinW c p q
+...     | mkIMuRed _ _ _ () _ _ _
+irrel₀ c (⊩₀Fin p) (⊩₀Π q _ _) with joinW c p q
 ... | E , (mE , πE) with Π-reduct πE
-...   | mkΠRed _ _ refl _ _ with Mu-nf mE
+...   | mkΠRed _ _ refl _ _ with Fin-nf mE
 ...     | ()
-irrel₀ c (⊩₀IMu p _) (⊩₀Π q _ _) with joinW c p q
+irrel₀ c (⊩₀IMu p _ _ _ _) (⊩₀Π q _ _) with joinW c p q
 ... | E , (mE , πE) with Π-reduct πE
 ...   | mkΠRed _ _ refl _ _ with IMu-reduct mE
-...     | mkIMuRed _ () _
-irrel₀ c (⊩₀Π p _ _) (⊩₀Mu q _) with joinW c p q
+...     | mkIMuRed _ _ _ () _ _ _
+irrel₀ c (⊩₀Π p _ _) (⊩₀Fin q) with joinW c p q
 ... | E , (πE , mE) with Π-reduct πE
-...   | mkΠRed _ _ refl _ _ with Mu-nf mE
+...   | mkΠRed _ _ refl _ _ with Fin-nf mE
 ...     | ()
-irrel₀ c (⊩₀Π p _ _) (⊩₀IMu q _) with joinW c p q
+irrel₀ c (⊩₀Π p _ _) (⊩₀IMu q _ _ _ _) with joinW c p q
 ... | E , (πE , mE) with Π-reduct πE
 ...   | mkΠRed _ _ refl _ _ with IMu-reduct mE
-...     | mkIMuRed _ () _
-irrel₀ c (⊩₀Mu p _) (⊩₀Σ q _ _) with joinW c p q
+...     | mkIMuRed _ _ _ () _ _ _
+irrel₀ c (⊩₀Fin p) (⊩₀Σ q _ _) with joinW c p q
 ... | E , (mE , σE) with Σ-reduct σE
-...   | mkΣRed _ _ refl _ _ with Mu-nf mE
+...   | mkΣRed _ _ refl _ _ with Fin-nf mE
 ...     | ()
-irrel₀ c (⊩₀IMu p _) (⊩₀Σ q _ _) with joinW c p q
+irrel₀ c (⊩₀IMu p _ _ _ _) (⊩₀Σ q _ _) with joinW c p q
 ... | E , (mE , σE) with Σ-reduct σE
 ...   | mkΣRed _ _ refl _ _ with IMu-reduct mE
-...     | mkIMuRed _ () _
-irrel₀ c (⊩₀Σ p _ _) (⊩₀Mu q _) with joinW c p q
+...     | mkIMuRed _ _ _ () _ _ _
+irrel₀ c (⊩₀Σ p _ _) (⊩₀Fin q) with joinW c p q
 ... | E , (σE , mE) with Σ-reduct σE
-...   | mkΣRed _ _ refl _ _ with Mu-nf mE
+...   | mkΣRed _ _ refl _ _ with Fin-nf mE
 ...     | ()
-irrel₀ c (⊩₀Σ p _ _) (⊩₀IMu q _) with joinW c p q
+irrel₀ c (⊩₀Σ p _ _) (⊩₀IMu q _ _ _ _) with joinW c p q
 ... | E , (σE , mE) with Σ-reduct σE
 ...   | mkΣRed _ _ refl _ _ with IMu-reduct mE
-...     | mkIMuRed _ () _
-irrel₀ c (⊩₀Mu p _) (⊩₀Hom q sh) with joinW c p q
+...     | mkIMuRed _ _ _ () _ _ _
+irrel₀ c (⊩₀Fin p) (⊩₀Hom q sh) with joinW c p q
 ... | E , (mE , hE) with Hom-stk-reduct sh hE
-...   | mkHomStk _ _ _ _ refl with Mu-nf mE
+...   | mkHomStk _ _ _ _ refl with Fin-nf mE
 ...     | ()
-irrel₀ c (⊩₀IMu p _) (⊩₀Hom q sh) with joinW c p q
+irrel₀ c (⊩₀IMu p _ _ _ _) (⊩₀Hom q sh) with joinW c p q
 ... | E , (mE , hE) with Hom-stk-reduct sh hE
 ...   | mkHomStk _ _ _ _ refl with IMu-reduct mE
-...     | mkIMuRed _ () _
-irrel₀ c (⊩₀Hom p sh) (⊩₀Mu q _) with joinW c p q
+...     | mkIMuRed _ _ _ () _ _ _
+irrel₀ c (⊩₀Hom p sh) (⊩₀Fin q) with joinW c p q
 ... | E , (hE , mE) with Hom-stk-reduct sh hE
-...   | mkHomStk _ _ _ _ refl with Mu-nf mE
+...   | mkHomStk _ _ _ _ refl with Fin-nf mE
 ...     | ()
-irrel₀ c (⊩₀Hom p sh) (⊩₀IMu q _) with joinW c p q
+irrel₀ c (⊩₀Hom p sh) (⊩₀IMu q _ _ _ _) with joinW c p q
 ... | E , (hE , mE) with Hom-stk-reduct sh hE
 ...   | mkHomStk _ _ _ _ refl with IMu-reduct mE
-...     | mkIMuRed _ () _
-irrel₀ c (⊩₀Mu p _) (⊩₀Id q) with joinW c p q
+...     | mkIMuRed _ _ _ () _ _ _
+irrel₀ c (⊩₀Fin p) (⊩₀Id q) with joinW c p q
 ... | E , (mE , iE) with Id-reduct iE
-...   | _ , (_ , (_ , (refl , _))) with Mu-nf mE
+...   | _ , (_ , (_ , (refl , _))) with Fin-nf mE
 ...     | ()
-irrel₀ c (⊩₀IMu p _) (⊩₀Id q) with joinW c p q
+irrel₀ c (⊩₀IMu p _ _ _ _) (⊩₀Id q) with joinW c p q
 ... | E , (mE , iE) with Id-reduct iE
 ...   | _ , (_ , (_ , (refl , _))) with IMu-reduct mE
-...     | mkIMuRed _ () _
-irrel₀ c (⊩₀Id p) (⊩₀Mu q _) with joinW c p q
+...     | mkIMuRed _ _ _ () _ _ _
+irrel₀ c (⊩₀Id p) (⊩₀Fin q) with joinW c p q
 ... | E , (iE , mE) with Id-reduct iE
-...   | _ , (_ , (_ , (refl , _))) with Mu-nf mE
+...   | _ , (_ , (_ , (refl , _))) with Fin-nf mE
 ...     | ()
-irrel₀ c (⊩₀Id p) (⊩₀IMu q _) with joinW c p q
+irrel₀ c (⊩₀Id p) (⊩₀IMu q _ _ _ _) with joinW c p q
 ... | E , (iE , mE) with Id-reduct iE
 ...   | _ , (_ , (_ , (refl , _))) with IMu-reduct mE
-...     | mkIMuRed _ () _
-irrel₀ c (⊩₀Mu p _) (⊩₀Unit q) with joinW c p q
+...     | mkIMuRed _ _ _ () _ _ _
+irrel₀ c (⊩₀Fin p) (⊩₀Unit q) with joinW c p q
 ... | E , (mE , uE) with Unit-nf uE
-...   | refl with Mu-nf mE
+...   | refl with Fin-nf mE
 ...     | ()
-irrel₀ c (⊩₀IMu p _) (⊩₀Unit q) with joinW c p q
+irrel₀ c (⊩₀IMu p _ _ _ _) (⊩₀Unit q) with joinW c p q
 ... | E , (mE , uE) with Unit-nf uE
 ...   | refl with IMu-reduct mE
-...     | mkIMuRed _ () _
-irrel₀ c (⊩₀Unit p) (⊩₀Mu q _) with joinW c p q
+...     | mkIMuRed _ _ _ () _ _ _
+irrel₀ c (⊩₀Unit p) (⊩₀Fin q) with joinW c p q
 ... | E , (uE , mE) with Unit-nf uE
-...   | refl with Mu-nf mE
+...   | refl with Fin-nf mE
 ...     | ()
-irrel₀ c (⊩₀Unit p) (⊩₀IMu q _) with joinW c p q
+irrel₀ c (⊩₀Unit p) (⊩₀IMu q _ _ _ _) with joinW c p q
 ... | E , (uE , mE) with Unit-nf uE
 ...   | refl with IMu-reduct mE
-...     | mkIMuRed _ () _
-irrel₀ c (⊩₀Mu p _) (⊩₀Nat q) with joinW c p q
+...     | mkIMuRed _ _ _ () _ _ _
+irrel₀ c (⊩₀Fin p) (⊩₀Nat q) with joinW c p q
 ... | E , (mE , nE) with Nat-nf nE
-...   | refl with Mu-nf mE
+...   | refl with Fin-nf mE
 ...     | ()
-irrel₀ c (⊩₀IMu p _) (⊩₀Nat q) with joinW c p q
+irrel₀ c (⊩₀IMu p _ _ _ _) (⊩₀Nat q) with joinW c p q
 ... | E , (mE , nE) with Nat-nf nE
 ...   | refl with IMu-reduct mE
-...     | mkIMuRed _ () _
-irrel₀ c (⊩₀Nat p) (⊩₀Mu q _) with joinW c p q
+...     | mkIMuRed _ _ _ () _ _ _
+irrel₀ c (⊩₀Nat p) (⊩₀Fin q) with joinW c p q
 ... | E , (nE , mE) with Nat-nf nE
-...   | refl with Mu-nf mE
+...   | refl with Fin-nf mE
 ...     | ()
-irrel₀ c (⊩₀Nat p) (⊩₀IMu q _) with joinW c p q
+irrel₀ c (⊩₀Nat p) (⊩₀IMu q _ _ _ _) with joinW c p q
 ... | E , (nE , mE) with Nat-nf nE
 ...   | refl with IMu-reduct mE
-...     | mkIMuRed _ () _
+...     | mkIMuRed _ _ _ () _ _ _
 -- ★★ `Mu`/`Mu`: the join forces the two DESCRIPTIONS equal (matching the
 --   second `refl` inverts `Mu`'s injectivity), but NOT the two `DPred`s —
 --   that residual difference is precisely what `irrelMu` collapses.
-irrel₀ c (⊩₀Mu p di₁) (⊩₀Mu q di₂) with joinW c p q
-... | E , (m₁ , m₂) with Mu-nf m₁
-...   | refl with Mu-nf m₂
-...     | refl = ( (λ _ h → (projl h , irrelMu di₁ di₂ (projr h)))
-                 , (λ _ h → (projl h , irrelMu di₂ di₁ (projr h))) )
+irrel₀ c (⊩₀Fin p) (⊩₀Fin q) with joinW c p q
+... | E , (m₁ , m₂) with Fin-nf m₁
+...   | refl with Fin-nf m₂
+...     | refl = (λ _ h → h) , (λ _ h → h)
 
-irrelMu d₁ d₂ (mm-ne n)        = mm-ne n
-irrelMu d₁ d₂ (mm-exp r m)     = mm-exp r (irrelMu d₁ d₂ m)
-irrelMu d₁ d₂ (mm-con k i {p} l) = mm-con k i (irrelAtK d₁ d₂ d₁ d₂ k p l)
+irrelIMu K₁ K₂ d₁ d₂ r₁ r₂ (imm-ne n)    = imm-ne n
+irrelIMu K₁ K₂ d₁ d₂ r₁ r₂ (imm-exp r m) = imm-exp r (irrelIMu K₁ K₂ d₁ d₂ r₁ r₂ m)
+irrelIMu K₁ K₂ d₁ d₂ r₁ r₂ (imm-con {p = p} l) =
+  imm-con (iliftK K₁ K₂ d₁ d₂ K₁ K₂ d₁ d₂ r₁ r₂ p l)
 
-irrelAtK d₁ d₂ di-nil di-nil k p l = l
-irrelAtK d₁ d₂ (di-cons i₁ _) (di-cons i₂ _) zero    p l = liftK d₁ d₂ i₁ i₂ p l
-irrelAtK d₁ d₂ (di-cons _ q₁) (di-cons _ q₂) (suc k) p l =
-  irrelAtK d₁ d₂ q₁ q₂ k p l
-
--- ⚠ the payload halves are taken by PATTERN, not by `projl`/`projr`:
---   those are functions, so `projl l` is an application and Agda would
---   not see it as a subterm of `l` — which is what the cycle needs.
--- ★ two environments that JOIN give convertible decoded field types.
---   This is what replaces `liftK`'s `crflᵀ` in the indexed κ slot.
-ienv-conv : {Θ : Cx} {σ σ' σ⁺ : Sub Θ Γ} (κ : RTm Θ) →
-            (∀ x → σ x ⟶* σ⁺ x) → (∀ x → σ' x ⟶* σ⁺ x) →
-            El (subTm σ κ) ≅ᵀ El (subTm σ' κ)
-ienv-conv κ j j' =
-  ctrnᵀ (red→≅ᵀ (⟶ᵀ*-El (subTm-monoˢ j κ)))
-        (csymᵀ (red→≅ᵀ (⟶ᵀ*-El (subTm-monoˢ j' κ))))
-
--- ★★★ the INDEXED transfer.  Structure mirrors `irrelMu`/`irrelAtK`/
---   `liftK` exactly; the only additions are the index-reduction witnesses
---   threaded through, and the κ slot's conversion (below).
-irrelIMu d₁ d₂ r r' (imm-ne n)    = imm-ne n
-irrelIMu d₁ d₂ r r' (imm-exp s m) = imm-exp s (irrelIMu d₁ d₂ r r' m)
-irrelIMu d₁ d₂ r r' (imm-icon k kin {p = p} l) =
-  imm-icon k kin (irrelIAtK d₁ d₂ d₁ d₂ r r' k p l)
-
-irrelIAtK d₁ d₂ idi-nil idi-nil r r' k p l = l
--- ⚠ NAME the constructor's ICon rather than computing `ilookupD _ zero`:
---   the description is an implicit of `idi-cons` and Agda cannot invert
---   `ilookupD` to recover it.  Same lesson as pinning `isingle`'s
---   environments — recover a value from where it is BOUND, not from a
---   defined function that happens to produce it.
-irrelIAtK d₁ d₂ (idi-cons {C = C} i₁ _) (idi-cons i₂ _)
-          {i = i} {i' = i'} r r' zero p l =
-  iliftK d₁ d₂ C i₁ i₂ (isingle i) (isingle i') (isingle _)
-         (λ { vz → r }) (λ { vz → r' }) p l
-irrelIAtK d₁ d₂ (idi-cons _ q₁) (idi-cons _ q₂) r r' (suc k) p l =
-  irrelIAtK d₁ d₂ q₁ q₂ r r' k p l
-
-iliftK d₁ d₂ iι iki-ι iki-ι σ σ' σ⁺ j j' p l = l
--- ⚠ NOT `j vz`.  `ILift`'s `iρ` row puts the recursive field at
---   `subTm σ jt` — a SUBSTITUTION INSTANCE of the carried index term, not
---   a slot of the environment.  Hence `subTm-monoˢ`, join `subTm σ⁺ jt`.
-iliftK d₁ d₂ (iρ jt C) (iki-ρ i₁) (iki-ρ i₂) σ σ' σ⁺ j j' p
-       (sp , ((sf , m) , rest)) =
-  ( sp
-  , ( (sf , irrelIMu d₁ d₂ (subTm-monoˢ j jt) (subTm-monoˢ j' jt) m)
-    , iliftK d₁ d₂ C i₁ i₂ (iext σ (fst p)) (iext σ' (fst p))
-             (iext σ⁺ (fst p))
-             (λ { vz → done ; (vs x) → j x })
-             (λ { vz → done ; (vs x) → j' x }) (snd p) rest ) )
--- ★ THE κ SLOT.  `liftK`'s twin collapses two witnesses at ONE type with
---   `irrel₀ crflᵀ`.  Here the two sit at `El (subTm (isingle i) κ)` and
---   `El (subTm (isingle i') κ)` — DIFFERENT types, but CONVERTIBLE,
---   because `i` and `i'` join.  So `crflᵀ` becomes a real conversion,
---   built from the two index reductions.  Everything else is unchanged,
---   including the termination argument: `w₁` is still a strict subterm of
---   the `IKInterp` that came in.
-iliftK d₁ d₂ (iκ κ C) (iki-κ w₁ i₁) (iki-κ w₂ i₂) σ σ' σ⁺ j j' p
-       (sp , (q , rest)) =
-  ( sp
-  , ( projl (irrel₀ (ienv-conv κ j j') (w₁ σ) (w₂ σ')) (fst p) q
-    , iliftK d₁ d₂ C i₁ i₂ (iext σ (fst p)) (iext σ' (fst p))
-             (iext σ⁺ (fst p))
-             (λ { vz → done ; (vs x) → j x })
-             (λ { vz → done ; (vs x) → j' x }) (snd p) rest ) )
-
-liftK d₁ d₂ ki-ι ki-ι p l = l
-liftK d₁ d₂ (ki-ρ i₁) (ki-ρ i₂) p (sp , ((sf , m) , rest)) =
-  ( sp
-  , ( (sf , irrelMu d₁ d₂ m)
-    , liftK d₁ d₂ i₁ i₂ (snd p) rest ) )
--- ★ THE κ SLOT — two witnesses at ONE type, collapsed by `irrel₀` itself.
---   `w₁` is a strict subterm of the `KInterp` that came in, hence of the
---   `⊩₀Mu` `irrel₀` started from: that is what makes the cycle decrease.
-liftK d₁ d₂ (ki-κ w₁ i₁) (ki-κ w₂ i₂) p (sp , (q , rest)) =
-  ( sp
-  , ( projl (irrel₀ crflᵀ w₁ w₂) (fst p) q
-    , liftK d₁ d₂ i₁ i₂ (snd p) rest ) )
+-- a head expansion on either side: re-join by confluence.
+iliftK K₁ K₂ d₁ d₂ (iki-exp r k) Kc₂ c₁ c₂ r₁ r₂ t l with confluent (step (snr→⟶ r) done) c₁
+... | w , (cw , *w) = iliftK K₁ K₂ d₁ d₂ k Kc₂ cw (⟶*-trans c₂ *w) r₁ r₂ t l
+iliftK K₁ K₂ d₁ d₂ Kc₁ (iki-exp r k) c₁ c₂ r₁ r₂ t l with confluent (step (snr→⟶ r) done) c₂
+... | w , (cw , *w) = iliftK K₁ K₂ d₁ d₂ Kc₁ k (⟶*-trans c₁ *w) cw r₁ r₂ t l
+-- matching formers.
+iliftK K₁ K₂ d₁ d₂ (iki-ne n₁) (iki-ne n₂) c₁ c₂ r₁ r₂ t l = l
+iliftK K₁ K₂ d₁ d₂ (iki-ι _) (iki-ι _) c₁ c₂ r₁ r₂ t l with dι-reduct c₁ | dι-reduct c₂
+... | j₁ , (eq₁ , rj₁) | j₂ , (eq₂ , rj₂) with trans (sym eq₁) eq₂
+...   | refl = ( projl l
+              , idpay-transfer (j₁ , (rj₁ , rj₂)) (_ , (r₁ , r₂)) (projr l) )
+iliftK K₁ K₂ d₁ d₂ (iki-σ _ _ w₁ k₁) (iki-σ _ _ w₂ k₂) c₁ c₂ r₁ r₂ t (sn , (q , rest))
+  with dσ-reduct c₁ | dσ-reduct c₂
+... | S₁ , (f₁ , (eq₁ , (rS₁ , rf₁))) | S₂ , (f₂ , (eq₂ , (rS₂ , rf₂)))
+      with trans (sym eq₁) eq₂
+...   | refl =
+        ( sn
+        , ( q'
+          , iliftK K₁ K₂ d₁ d₂ (k₁ (fst t) q) (k₂ (fst t) q') (⟶*-appˡ rf₁) (⟶*-appˡ rf₂)
+                   r₁ r₂ (snd t) rest ) )
+  where
+  q' = projl (irrel₀ (ctrnᵀ (red→≅ᵀ (⟶ᵀ*-El rS₁)) (csymᵀ (red→≅ᵀ (⟶ᵀ*-El rS₂)))) w₁ w₂)
+             (fst t) q
+iliftK K₁ K₂ d₁ d₂ (iki-ρ _ _ k₁) (iki-ρ _ _ k₂) c₁ c₂ r₁ r₂ t (sn , ((snf , m) , rest))
+  with dρ-reduct c₁ | dρ-reduct c₂
+... | j₁ , (C₁ , (eq₁ , (rj₁ , rC₁))) | j₂ , (C₂ , (eq₂ , (rj₂ , rC₂)))
+      with trans (sym eq₁) eq₂
+...   | refl =
+        ( sn
+        , ( (snf , irrelIMu K₁ K₂ d₁ d₂ rj₁ rj₂ m)
+          , iliftK K₁ K₂ d₁ d₂ k₁ k₂ rC₁ rC₂ r₁ r₂ (snd t) rest ) )
+-- every mismatch is a shape clash on the common reduct.
+iliftK K₁ K₂ d₁ d₂ (iki-ne n₁) (iki-ι _) c₁ c₂ r₁ r₂ t l with dι-reduct c₂
+... | _ , (eq , _) = ⊥-elim (ne≢dι eq (ne-red* (sne→ne n₁) c₁))
+iliftK K₁ K₂ d₁ d₂ (iki-ne n₁) (iki-σ _ _ _ _) c₁ c₂ r₁ r₂ t l with dσ-reduct c₂
+... | _ , (_ , (eq , _)) = ⊥-elim (ne≢dσ eq (ne-red* (sne→ne n₁) c₁))
+iliftK K₁ K₂ d₁ d₂ (iki-ne n₁) (iki-ρ _ _ _) c₁ c₂ r₁ r₂ t l with dρ-reduct c₂
+... | _ , (_ , (eq , _)) = ⊥-elim (ne≢dρ eq (ne-red* (sne→ne n₁) c₁))
+iliftK K₁ K₂ d₁ d₂ (iki-ι _) (iki-ne n₂) c₁ c₂ r₁ r₂ t l with dι-reduct c₁
+... | _ , (eq , _) = ⊥-elim (ne≢dι eq (ne-red* (sne→ne n₂) c₂))
+iliftK K₁ K₂ d₁ d₂ (iki-ι _) (iki-σ _ _ _ _) c₁ c₂ r₁ r₂ t l with dι-reduct c₁ | dσ-reduct c₂
+... | _ , (e₁ , _) | _ , (_ , (e₂ , _)) = ⊥-elim (dι≢dσ (trans (sym e₁) e₂))
+iliftK K₁ K₂ d₁ d₂ (iki-ι _) (iki-ρ _ _ _) c₁ c₂ r₁ r₂ t l with dι-reduct c₁ | dρ-reduct c₂
+... | _ , (e₁ , _) | _ , (_ , (e₂ , _)) = ⊥-elim (dι≢dρ (trans (sym e₁) e₂))
+iliftK K₁ K₂ d₁ d₂ (iki-σ _ _ _ _) (iki-ne n₂) c₁ c₂ r₁ r₂ t l with dσ-reduct c₁
+... | _ , (_ , (eq , _)) = ⊥-elim (ne≢dσ eq (ne-red* (sne→ne n₂) c₂))
+iliftK K₁ K₂ d₁ d₂ (iki-σ _ _ _ _) (iki-ι _) c₁ c₂ r₁ r₂ t l with dσ-reduct c₁ | dι-reduct c₂
+... | _ , (_ , (e₁ , _)) | _ , (e₂ , _) = ⊥-elim (dι≢dσ (trans (sym e₂) e₁))
+iliftK K₁ K₂ d₁ d₂ (iki-σ _ _ _ _) (iki-ρ _ _ _) c₁ c₂ r₁ r₂ t l with dσ-reduct c₁ | dρ-reduct c₂
+... | _ , (_ , (e₁ , _)) | _ , (_ , (e₂ , _)) = ⊥-elim (dσ≢dρ (trans (sym e₁) e₂))
+iliftK K₁ K₂ d₁ d₂ (iki-ρ _ _ _) (iki-ne n₂) c₁ c₂ r₁ r₂ t l with dρ-reduct c₁
+... | _ , (_ , (eq , _)) = ⊥-elim (ne≢dρ eq (ne-red* (sne→ne n₂) c₂))
+iliftK K₁ K₂ d₁ d₂ (iki-ρ _ _ _) (iki-ι _) c₁ c₂ r₁ r₂ t l with dρ-reduct c₁ | dι-reduct c₂
+... | _ , (_ , (e₁ , _)) | _ , (e₂ , _) = ⊥-elim (dι≢dρ (trans (sym e₂) e₁))
+iliftK K₁ K₂ d₁ d₂ (iki-ρ _ _ _) (iki-σ _ _ _ _) c₁ c₂ r₁ r₂ t l with dρ-reduct c₁ | dσ-reduct c₂
+... | _ , (_ , (e₁ , _)) | _ , (_ , (e₂ , _)) = ⊥-elim (dσ≢dρ (trans (sym e₂) e₁))
 
 ------------------------------------------------------------------------
 -- 3b. FORWARD TRANSFER at level 0, and hence transfer along CONVERSION.
@@ -5032,14 +6090,15 @@ fwd₀ p (⊩₀Nat q) with confluentᵀ p q
 ... | E , (bE , nE) with Nat-nf nE
 ...   | refl = ⊩₀Nat bE
 
--- ★ `Mu D` is a NORMAL FORM (`Mu-nf`, no ⟶ᵀ out of it), so the interp
---   travels unchanged — description AND its interpretation both inert.
-fwd₀ p (⊩₀Mu q di) with confluentᵀ p q
-... | E , (bE , mE) with Mu-nf mE
-...   | refl = ⊩₀Mu bE di
-fwd₀ p (⊩₀IMu q di) with confluentᵀ p q
+-- ★ the family's interpretation is of a REPRESENTATIVE, so forwarding
+--   only extends the two conversions — nothing is transported.
+fwd₀ p (⊩₀IMu q cI cD ⊩I K) with confluentᵀ p q
 ... | E , (bE , mE) with IMu-reduct mE
-...   | mkIMuRed _ refl _ = ⊩₀IMu bE di
+...   | mkIMuRed _ _ _ refl rI rD _ =
+        ⊩₀IMu bE (ctrn (csym (hom→≅ rI)) cI) (ctrn (csym (hom→≅ rD)) cD) ⊩I K
+fwd₀ p (⊩₀Fin q) with confluentᵀ p q
+... | E , (bE , mE) with Fin-nf mE
+...   | refl = ⊩₀Fin bE
 
 conv₀ : {A B : RTy Γ} → A ≅ᵀ B → ⊩₀ A → ⊩₀ B
 conv₀ c R with church-rosserᵀ c
@@ -5058,8 +6117,8 @@ CR1₀ (⊩₀Hom _ _) h = h
 CR1₀ (⊩₀Id _)    h = projl h
 CR1₀ (⊩₀Unit _)  h = h
 CR1₀ (⊩₀Nat _)   h = projl h
-CR1₀ (⊩₀Mu _ _)  h = projl h
-CR1₀ (⊩₀IMu _ _)  h = projl h
+CR1₀ (⊩₀IMu _ _ _ _ _) h = projl h
+CR1₀ (⊩₀Fin _)  h = projl h
 
 CR3₀ : {A : RTy Γ} (R : ⊩₀ A) {t : RTm Γ} → SNe t → R ⊩₀∋ t
 CR3₀ (⊩₀base _)    nt = sn-ne nt
@@ -5068,8 +6127,8 @@ CR3₀ (⊩₀Id _)      nt = (sn-ne nt , λ ch → ⊥-elim (sne-nopay nt ch))
 CR3₀ (⊩₀ne _ _)    nt = sn-ne nt
 CR3₀ (⊩₀Unit _)    nt = sn-ne nt
 CR3₀ (⊩₀Nat _)     nt = (sn-ne nt , nm-ne nt)
-CR3₀ (⊩₀Mu _ _)    nt = (sn-ne nt , mm-ne nt)
-CR3₀ (⊩₀IMu _ _)    nt = (sn-ne nt , imm-ne nt)
+CR3₀ (⊩₀IMu _ _ _ _ _) nt = (sn-ne nt , imm-ne nt)
+CR3₀ (⊩₀Fin _)    nt = (sn-ne nt , fm-ne nt)
 CR3₀ (⊩₀Π _ ⊩F ⊩G) nt =
   (sn-ne nt , λ u ru → CR3₀ (⊩G u ru) (sne-app nt (CR1₀ ⊩F ru)))
 CR3₀ (⊩₀Σ _ ⊩F ⊩G) {t} nt =
@@ -5085,8 +6144,8 @@ exp₀ (⊩₀Id _) r h =
 exp₀ (⊩₀ne _ _)    r h = sn-exp r h
 exp₀ (⊩₀Unit _)    r h = sn-exp r h
 exp₀ (⊩₀Nat _)     r h = (sn-exp r (projl h) , nm-exp r (projr h))
-exp₀ (⊩₀Mu _ _)    r h = (sn-exp r (projl h) , mm-exp r (projr h))
-exp₀ (⊩₀IMu _ _)    r h = (sn-exp r (projl h) , imm-exp r (projr h))
+exp₀ (⊩₀IMu _ _ _ _ _) r h = (sn-exp r (projl h) , imm-exp r (projr h))
+exp₀ (⊩₀Fin _)    r h = (sn-exp r (projl h) , fm-exp r (projr h))
 exp₀ (⊩₀Π _ ⊩F ⊩G) r h =
   (sn-exp r (projl h) , λ v rv → exp₀ (⊩G v rv) (snr-app r) (projr h v rv))
 -- ★ the `Σ'` case needs a CONVERSION, not just a congruence: expanding `t` to
@@ -5143,8 +6202,8 @@ PayT (⊩₀Hom _ _) c = ⊤
 PayT (⊩₀Id _)    c = ⊤
 PayT (⊩₀Unit _)  c = ⊤
 PayT (⊩₀Nat _)   c = ⊤
-PayT (⊩₀Mu _ _) c = ⊤
-PayT (⊩₀IMu _ _) c = ⊤
+PayT (⊩₀IMu _ _ _ _ _) c = ⊤
+PayT (⊩₀Fin _) c = ⊤
 PayT {Γ = Γ} (⊩₀Π _ ⊩F ⊩G) c =
   (v : RTm Γ) (r : ⊩F ⊩₀∋ v) →
   Σ (RTm Γ) (λ c* →
@@ -5180,8 +6239,8 @@ payT-exp r q (⊩₀Hom _ _) pay = _
 payT-exp r q (⊩₀Id _) pay = _
 payT-exp r q (⊩₀Unit _) pay = _
 payT-exp r q (⊩₀Nat _) pay = _
-payT-exp r q (⊩₀Mu _ _) pay = _
-payT-exp r q (⊩₀IMu _ _) pay = _
+payT-exp r q (⊩₀IMu _ _ _ _ _) pay = _
+payT-exp r q (⊩₀Fin _) pay = _
 payT-exp r q (⊩₀Π _ ⊩F ⊩G) pay v rv with pay v rv
 ... | c* , (csr , rest) = c* , (csr-step (csr-here r) csr , rest)
 
@@ -5204,8 +6263,8 @@ payT-whred r (⊩₀Hom _ _) pay = _
 payT-whred r (⊩₀Id _) pay = _
 payT-whred r (⊩₀Unit _) pay = _
 payT-whred r (⊩₀Nat _) pay = _
-payT-whred r (⊩₀Mu _ _) pay = _
-payT-whred r (⊩₀IMu _ _) pay = _
+payT-whred r (⊩₀IMu _ _ _ _ _) pay = _
+payT-whred r (⊩₀Fin _) pay = _
 payT-whred r (⊩₀Π _ ⊩F ⊩G) pay v rv with pay v rv
 ... | c* , (csr , (key , rest)) =
       c* , (payT-whred-node r csr key , (key , rest))
@@ -5221,17 +6280,17 @@ payT-irrel cv R (⊩₀Hom _ _) pay = _
 payT-irrel cv R (⊩₀Id _) pay = _
 payT-irrel cv R (⊩₀Unit _) pay = _
 payT-irrel cv R (⊩₀Nat _) pay = _
-payT-irrel cv R (⊩₀Mu _ _) pay = _
-payT-irrel cv R (⊩₀IMu _ _) pay = _
+payT-irrel cv R (⊩₀IMu _ _ _ _ _) pay = _
+payT-irrel cv R (⊩₀Fin _) pay = _
 -- ★ `Mu` versus `Π`: `Mu D` is a normal form and `Π` cannot be reached
 --   from it, so the join is absurd.
-payT-irrel cv (⊩₀Mu p _) (⊩₀Π q _ _) pay with joinW cv p q
-... | E , (mE , πE) with Mu-nf mE
+payT-irrel cv (⊩₀Fin p) (⊩₀Π q _ _) pay with joinW cv p q
+... | E , (mE , πE) with Fin-nf mE
 ...   | refl with Π-reduct πE
 ...     | mkΠRed _ _ () _ _
-payT-irrel cv (⊩₀IMu p _) (⊩₀Π q _ _) pay with joinW cv p q
+payT-irrel cv (⊩₀IMu p _ _ _ _) (⊩₀Π q _ _) pay with joinW cv p q
 ... | E , (mE , πE) with IMu-reduct mE
-...   | mkIMuRed _ refl _ with Π-reduct πE
+...   | mkIMuRed _ _ _ refl _ _ _ with Π-reduct πE
 ...     | mkΠRed _ _ () _ _
 payT-irrel cv (⊩₀base p) (⊩₀Π q _ _) pay with joinW cv p q
 ... | E , (bE , πE) with base-nf bE
@@ -5311,14 +6370,20 @@ data ⊩₁_ {Γ} where
   ⊩₁Nat  : {A : RTy Γ} → A ⟶ᵀ* Nat → ⊩₁ A
   ⊩₁Id   : {A H : RTy Γ} {a b : RTm Γ}
          → A ⟶ᵀ* Id H a b → ⊩₁ A
-  -- ★ the inductive-types axis at level 1.  It carries the SAME
-  --   `DInterp` as level 0 — the κ-field types are CLOSED and their
-  --   membership is computed at level 0 either way, exactly as
-  --   `⊩₁Nat`'s payload is the very same `NatMem` as `⊩₀Nat`'s.  That is
-  --   what makes `emb`/`emb-coh` at `Mu` the identity.
-  ⊩₁Mu   : {A : RTy Γ} {D : Desc} → A ⟶ᵀ* Mu D → DInterp Γ D → ⊩₁ A
-  ⊩₁IMu  : {A : RTy Γ} {D : IDesc} {I : RTy ε} {i : RTm Γ} →
-           A ⟶ᵀ* IMu D I i → IDInterp Γ D → ⊩₁ A
+  -- ★ the levitated family at level 1 carries the SAME data as level 0,
+  --   exactly as `⊩₁Nat`'s payload is `⊩₀Nat`'s — which is what makes
+  --   `emb`/`emb-coh` at `IMu` the identity.
+  ⊩₁IMu  : {A : RTy Γ} {I D i I₀ D₀ : RTm Γ} → A ⟶ᵀ* IMu I D i →
+           I ≅ I₀ → D ≅ D₀ → (⊩I : ⊩₀ (El I₀)) → IKInterp ⊩I D₀ → ⊩₁ A
+  ⊩₁Fin  : {A : RTy Γ} {n : ℕ} → A ⟶ᵀ* Fin n → ⊩₁ A
+  -- ★★ LARGE: the type of descriptions.  Its members are the telescopes
+  --   that HAVE an interpretation — S0's `⊩₁IDesc`, and `toIK` is the
+  --   identity: the membership IS the level-0 `IKInterp`.
+  ⊩₁Desc : {A : RTy Γ} {I I₀ : RTm Γ} → A ⟶ᵀ* Desc I → I ≅ I₀ → ⊩₀ (El I₀) → ⊩₁ A
+  -- the hypotheses' type at a STUCK telescope (a canonical one COMPUTES to
+  --   `Unit`/`Σ'`); members are the SN terms, like `⊩₁ne`.
+  ⊩₁DIhNe : {A : RTy Γ} {D C p : RTm Γ} {M : RTy ((Γ ∙) ∙)} →
+            A ⟶ᵀ* DIh D M C p → Ne C → ⊩₁ A
 
 ⊩₁base _     ⊩₁∋ t = SN t
 ⊩₁U _        ⊩₁∋ t = SN t × Σ (⊩₀ (El t)) (λ R → PayT R t)
@@ -5329,8 +6394,10 @@ data ⊩₁_ {Γ} where
 ⊩₁Hom _ _    ⊩₁∋ t = SN t
 ⊩₁Unit _     ⊩₁∋ t = SN t
 ⊩₁Nat _      ⊩₁∋ t = SN t × NatMem t
-⊩₁Mu {D = D} _ di ⊩₁∋ t = SN t × MuMem D (predsOf di) t
-⊩₁IMu {D = D} {I = I} {i = i} _ di ⊩₁∋ t = SN t × IMuMem D I (ipredsOf di) i t
+⊩₁IMu {i = i} _ _ _ ⊩I K ⊩₁∋ t = SN t × IMuMem (ikpredsOf K) i t
+⊩₁Fin {n = n} _ ⊩₁∋ t = SN t × FinMem n t
+⊩₁Desc _ _ ⊩I ⊩₁∋ t = IKInterp ⊩I t
+⊩₁DIhNe _ _ ⊩₁∋ t = SN t
 ⊩₁Id {a = a} {b = b} _ ⊩₁∋ t = SN t × IdPay a b t
 
 bwd₁ : {A B : RTy Γ} → A ⟶ᵀ* B → ⊩₁ B → ⊩₁ A
@@ -5342,8 +6409,10 @@ bwd₁ p (⊩₁Σ q ⊩F ⊩G) = ⊩₁Σ    (⟶ᵀ*-trans p q) ⊩F ⊩G
 bwd₁ p (⊩₁Hom q s)   = ⊩₁Hom  (⟶ᵀ*-trans p q) s
 bwd₁ p (⊩₁Unit q)    = ⊩₁Unit (⟶ᵀ*-trans p q)
 bwd₁ p (⊩₁Nat q)     = ⊩₁Nat  (⟶ᵀ*-trans p q)
-bwd₁ p (⊩₁Mu q di)   = ⊩₁Mu   (⟶ᵀ*-trans p q) di
-bwd₁ p (⊩₁IMu q di)   = ⊩₁IMu   (⟶ᵀ*-trans p q) di
+bwd₁ p (⊩₁IMu q cI cD ⊩I K) = ⊩₁IMu (⟶ᵀ*-trans p q) cI cD ⊩I K
+bwd₁ p (⊩₁Fin q)     = ⊩₁Fin  (⟶ᵀ*-trans p q)
+bwd₁ p (⊩₁Desc q cI ⊩I) = ⊩₁Desc (⟶ᵀ*-trans p q) cI ⊩I
+bwd₁ p (⊩₁DIhNe q n) = ⊩₁DIhNe (⟶ᵀ*-trans p q) n
 bwd₁ p (⊩₁Id q)      = ⊩₁Id   (⟶ᵀ*-trans p q)
 
 -- ★ the level-1 peer of `bwd₀-mem⁻`, never needed until stage E.
@@ -5361,9 +6430,71 @@ bwd₁-mem⁻ q (⊩₁Σ _ _ _) h = h
 bwd₁-mem⁻ q (⊩₁Hom _ _) h = h
 bwd₁-mem⁻ q (⊩₁Unit _)  h = h
 bwd₁-mem⁻ q (⊩₁Nat _)   h = h
-bwd₁-mem⁻ q (⊩₁Mu _ _)  h = h
-bwd₁-mem⁻ q (⊩₁IMu _ _)  h = h
+bwd₁-mem⁻ q (⊩₁IMu _ _ _ _ _) h = h
+bwd₁-mem⁻ q (⊩₁Fin _)   h = h
+bwd₁-mem⁻ q (⊩₁Desc _ _ _) h = h
+bwd₁-mem⁻ q (⊩₁DIhNe _ _) h = h
 bwd₁-mem⁻ q (⊩₁Id _)    h = h
+
+------------------------------------------------------------------------
+-- ★★ LEVITATED FAMILIES — the level-1 helpers.
+------------------------------------------------------------------------
+
+-- a term conversion lifts to its decoding (Church–Rosser, then `ξ-El`).
+El≅ : {a b : RTm Γ} → a ≅ b → El a ≅ᵀ El b
+El≅ c with church-rosser c
+... | w , (r₁ , r₂) = ctrnᵀ (red→≅ᵀ (⟶ᵀ*-El r₁)) (csymᵀ (red→≅ᵀ (⟶ᵀ*-El r₂)))
+
+-- a telescope with an interpretation is strongly normalising (SN is
+-- carried at every canonical node; head expansion is `sn-exp`).
+ikinterp-sn : {I C : RTm Γ} {⊩I : ⊩₀ (El I)} → IKInterp ⊩I C → SN C
+ikinterp-sn (iki-ne n)         = sn-ne n
+ikinterp-sn (iki-ι sj)         = sn-dι sj
+ikinterp-sn (iki-σ sS sf _ _)  = sn-dσ sS sf
+ikinterp-sn (iki-ρ sj _ k)     = sn-dρ sj (ikinterp-sn k)
+ikinterp-sn (iki-exp r k)      = sn-exp r (ikinterp-sn k)
+
+-- …and closed under the head strategy (the formers have no head step).
+ikinterp-whred : {I C C' : RTm Γ} {⊩I : ⊩₀ (El I)} →
+                 IKInterp ⊩I C → SNRed C C' → IKInterp ⊩I C'
+ikinterp-whred (iki-ne n)     r = iki-ne (sne-whred n r)
+ikinterp-whred (iki-exp r₀ k) r with snr-det r₀ r
+... | refl = k
+
+-- re-base an interpretation on another witness of a CONVERTIBLE index
+-- type: only the `dρ` fields' index-validity members move (`irrel₀`).
+ikinterp-irrel : {I I' C : RTm Γ} → El I ≅ᵀ El I' →
+                 (⊩I : ⊩₀ (El I)) (⊩I' : ⊩₀ (El I')) →
+                 IKInterp ⊩I C → IKInterp ⊩I' C
+ikinterp-irrel c ⊩I ⊩I' (iki-ne n)          = iki-ne n
+ikinterp-irrel c ⊩I ⊩I' (iki-ι sj)          = iki-ι sj
+ikinterp-irrel c ⊩I ⊩I' (iki-σ sS sf w k)   =
+  iki-σ sS sf w (λ v q → ikinterp-irrel c ⊩I ⊩I' (k v q))
+ikinterp-irrel c ⊩I ⊩I' (iki-ρ {j = j} sj vj k) =
+  iki-ρ sj (projl (irrel₀ c ⊩I ⊩I') j vj) (ikinterp-irrel c ⊩I ⊩I' k)
+ikinterp-irrel c ⊩I ⊩I' (iki-exp r k)       = iki-exp r (ikinterp-irrel c ⊩I ⊩I' k)
+
+-- the hypotheses' type at a stuck telescope stays so under reduction.
+record DIhNeRed {Γ} (A : RTy Γ) : Set where
+  constructor mkDIhNe
+  field
+    dD  : RTm Γ
+    dM  : RTy ((Γ ∙) ∙)
+    dC  : RTm Γ
+    dp  : RTm Γ
+    dne : Ne dC
+    deq : A ≡ DIh dD dM dC dp
+
+DIhNe-reduct : {D C p : RTm Γ} {M : RTy ((Γ ∙) ∙)} {A : RTy Γ} →
+               Ne C → DIh D M C p ⟶ᵀ* A → DIhNeRed A
+DIhNe-reduct n doneᵀ = mkDIhNe _ _ _ _ n refl
+DIhNe-reduct () (stepᵀ (DIh-ι _ _ _ _) _)
+DIhNe-reduct () (stepᵀ (DIh-σ _ _ _ _ _) _)
+DIhNe-reduct () (stepᵀ (DIh-ρ _ _ _ _ _) _)
+DIhNe-reduct n (stepᵀ (ξ-DIhᴰ r) p) = DIhNe-reduct n p
+DIhNe-reduct n (stepᵀ (ξ-DIhᴹ r) p) = DIhNe-reduct n p
+DIhNe-reduct n (stepᵀ (ξ-DIhᶜ r) p) = DIhNe-reduct (ne-red n r) p
+DIhNe-reduct n (stepᵀ (ξ-DIhᵖ r) p) = DIhNe-reduct n p
 
 ------------------------------------------------------------------------
 -- 4a. IRRELEVANCE at level 1.
@@ -5501,172 +6632,375 @@ irrel₁ c (⊩₁Nat p) (⊩₁Unit q) with joinW c p q
 irrel₁ c (⊩₁Unit _) (⊩₁Unit _) = (λ _ h → h) , (λ _ h → h)
 
 -- ★ `Mu` versus every other level-1 former: `Mu D` is a normal form.
-irrel₁ c (⊩₁Mu p _) (⊩₁base q) with joinW c p q
+irrel₁ c (⊩₁Fin p) (⊩₁base q) with joinW c p q
 ... | E , (mE , oE) with base-nf oE
-...   | refl with Mu-nf mE
+...   | refl with Fin-nf mE
 ...     | ()
-irrel₁ c (⊩₁IMu p _) (⊩₁base q) with joinW c p q
+irrel₁ c (⊩₁IMu p _ _ _ _) (⊩₁base q) with joinW c p q
 ... | E , (mE , oE) with base-nf oE
 ...   | refl with IMu-reduct mE
-...     | mkIMuRed _ () _
-irrel₁ c (⊩₁base p) (⊩₁Mu q _) with joinW c p q
+...     | mkIMuRed _ _ _ () _ _ _
+irrel₁ c (⊩₁base p) (⊩₁Fin q) with joinW c p q
 ... | E , (oE , mE) with base-nf oE
-...   | refl with Mu-nf mE
+...   | refl with Fin-nf mE
 ...     | ()
-irrel₁ c (⊩₁base p) (⊩₁IMu q _) with joinW c p q
+irrel₁ c (⊩₁base p) (⊩₁IMu q _ _ _ _) with joinW c p q
 ... | E , (oE , mE) with base-nf oE
 ...   | refl with IMu-reduct mE
-...     | mkIMuRed _ () _
-irrel₁ c (⊩₁Mu p _) (⊩₁U q) with joinW c p q
+...     | mkIMuRed _ _ _ () _ _ _
+irrel₁ c (⊩₁Fin p) (⊩₁U q) with joinW c p q
 ... | E , (mE , oE) with U-nf oE
-...   | refl with Mu-nf mE
+...   | refl with Fin-nf mE
 ...     | ()
-irrel₁ c (⊩₁IMu p _) (⊩₁U q) with joinW c p q
+irrel₁ c (⊩₁IMu p _ _ _ _) (⊩₁U q) with joinW c p q
 ... | E , (mE , oE) with U-nf oE
 ...   | refl with IMu-reduct mE
-...     | mkIMuRed _ () _
-irrel₁ c (⊩₁U p) (⊩₁Mu q _) with joinW c p q
+...     | mkIMuRed _ _ _ () _ _ _
+irrel₁ c (⊩₁U p) (⊩₁Fin q) with joinW c p q
 ... | E , (oE , mE) with U-nf oE
-...   | refl with Mu-nf mE
+...   | refl with Fin-nf mE
 ...     | ()
-irrel₁ c (⊩₁U p) (⊩₁IMu q _) with joinW c p q
+irrel₁ c (⊩₁U p) (⊩₁IMu q _ _ _ _) with joinW c p q
 ... | E , (oE , mE) with U-nf oE
 ...   | refl with IMu-reduct mE
-...     | mkIMuRed _ () _
-irrel₁ c (⊩₁Mu p _) (⊩₁ne q n) with joinW c p q
+...     | mkIMuRed _ _ _ () _ _ _
+irrel₁ c (⊩₁Fin p) (⊩₁ne q n) with joinW c p q
 ... | E , (mE , oE) with El-ne-reduct n oE
-...   | mkElNe _ _ refl with Mu-nf mE
+...   | mkElNe _ _ refl with Fin-nf mE
 ...     | ()
-irrel₁ c (⊩₁IMu p _) (⊩₁ne q n) with joinW c p q
+irrel₁ c (⊩₁IMu p _ _ _ _) (⊩₁ne q n) with joinW c p q
 ... | E , (mE , oE) with El-ne-reduct n oE
 ...   | mkElNe _ _ refl with IMu-reduct mE
-...     | mkIMuRed _ () _
-irrel₁ c (⊩₁ne p n) (⊩₁Mu q _) with joinW c p q
+...     | mkIMuRed _ _ _ () _ _ _
+irrel₁ c (⊩₁ne p n) (⊩₁Fin q) with joinW c p q
 ... | E , (oE , mE) with El-ne-reduct n oE
-...   | mkElNe _ _ refl with Mu-nf mE
+...   | mkElNe _ _ refl with Fin-nf mE
 ...     | ()
-irrel₁ c (⊩₁ne p n) (⊩₁IMu q _) with joinW c p q
+irrel₁ c (⊩₁ne p n) (⊩₁IMu q _ _ _ _) with joinW c p q
 ... | E , (oE , mE) with El-ne-reduct n oE
 ...   | mkElNe _ _ refl with IMu-reduct mE
-...     | mkIMuRed _ () _
-irrel₁ c (⊩₁Mu p _) (⊩₁Π q _ _) with joinW c p q
+...     | mkIMuRed _ _ _ () _ _ _
+irrel₁ c (⊩₁Fin p) (⊩₁Π q _ _) with joinW c p q
 ... | E , (mE , oE) with Π-reduct oE
-...   | mkΠRed _ _ refl _ _ with Mu-nf mE
+...   | mkΠRed _ _ refl _ _ with Fin-nf mE
 ...     | ()
-irrel₁ c (⊩₁IMu p _) (⊩₁Π q _ _) with joinW c p q
+irrel₁ c (⊩₁IMu p _ _ _ _) (⊩₁Π q _ _) with joinW c p q
 ... | E , (mE , oE) with Π-reduct oE
 ...   | mkΠRed _ _ refl _ _ with IMu-reduct mE
-...     | mkIMuRed _ () _
-irrel₁ c (⊩₁Π p _ _) (⊩₁Mu q _) with joinW c p q
+...     | mkIMuRed _ _ _ () _ _ _
+irrel₁ c (⊩₁Π p _ _) (⊩₁Fin q) with joinW c p q
 ... | E , (oE , mE) with Π-reduct oE
-...   | mkΠRed _ _ refl _ _ with Mu-nf mE
+...   | mkΠRed _ _ refl _ _ with Fin-nf mE
 ...     | ()
-irrel₁ c (⊩₁Π p _ _) (⊩₁IMu q _) with joinW c p q
+irrel₁ c (⊩₁Π p _ _) (⊩₁IMu q _ _ _ _) with joinW c p q
 ... | E , (oE , mE) with Π-reduct oE
 ...   | mkΠRed _ _ refl _ _ with IMu-reduct mE
-...     | mkIMuRed _ () _
-irrel₁ c (⊩₁Mu p _) (⊩₁Σ q _ _) with joinW c p q
+...     | mkIMuRed _ _ _ () _ _ _
+irrel₁ c (⊩₁Fin p) (⊩₁Σ q _ _) with joinW c p q
 ... | E , (mE , oE) with Σ-reduct oE
-...   | mkΣRed _ _ refl _ _ with Mu-nf mE
+...   | mkΣRed _ _ refl _ _ with Fin-nf mE
 ...     | ()
-irrel₁ c (⊩₁IMu p _) (⊩₁Σ q _ _) with joinW c p q
+irrel₁ c (⊩₁IMu p _ _ _ _) (⊩₁Σ q _ _) with joinW c p q
 ... | E , (mE , oE) with Σ-reduct oE
 ...   | mkΣRed _ _ refl _ _ with IMu-reduct mE
-...     | mkIMuRed _ () _
-irrel₁ c (⊩₁Σ p _ _) (⊩₁Mu q _) with joinW c p q
+...     | mkIMuRed _ _ _ () _ _ _
+irrel₁ c (⊩₁Σ p _ _) (⊩₁Fin q) with joinW c p q
 ... | E , (oE , mE) with Σ-reduct oE
-...   | mkΣRed _ _ refl _ _ with Mu-nf mE
+...   | mkΣRed _ _ refl _ _ with Fin-nf mE
 ...     | ()
-irrel₁ c (⊩₁Σ p _ _) (⊩₁IMu q _) with joinW c p q
+irrel₁ c (⊩₁Σ p _ _) (⊩₁IMu q _ _ _ _) with joinW c p q
 ... | E , (oE , mE) with Σ-reduct oE
 ...   | mkΣRed _ _ refl _ _ with IMu-reduct mE
-...     | mkIMuRed _ () _
-irrel₁ c (⊩₁Mu p _) (⊩₁Hom q sh) with joinW c p q
+...     | mkIMuRed _ _ _ () _ _ _
+irrel₁ c (⊩₁Fin p) (⊩₁Hom q sh) with joinW c p q
 ... | E , (mE , oE) with Hom-stk-reduct sh oE
-...   | mkHomStk _ _ _ _ refl with Mu-nf mE
+...   | mkHomStk _ _ _ _ refl with Fin-nf mE
 ...     | ()
-irrel₁ c (⊩₁IMu p _) (⊩₁Hom q sh) with joinW c p q
+irrel₁ c (⊩₁IMu p _ _ _ _) (⊩₁Hom q sh) with joinW c p q
 ... | E , (mE , oE) with Hom-stk-reduct sh oE
 ...   | mkHomStk _ _ _ _ refl with IMu-reduct mE
-...     | mkIMuRed _ () _
-irrel₁ c (⊩₁Hom p sh) (⊩₁Mu q _) with joinW c p q
+...     | mkIMuRed _ _ _ () _ _ _
+irrel₁ c (⊩₁Hom p sh) (⊩₁Fin q) with joinW c p q
 ... | E , (oE , mE) with Hom-stk-reduct sh oE
-...   | mkHomStk _ _ _ _ refl with Mu-nf mE
+...   | mkHomStk _ _ _ _ refl with Fin-nf mE
 ...     | ()
-irrel₁ c (⊩₁Hom p sh) (⊩₁IMu q _) with joinW c p q
+irrel₁ c (⊩₁Hom p sh) (⊩₁IMu q _ _ _ _) with joinW c p q
 ... | E , (oE , mE) with Hom-stk-reduct sh oE
 ...   | mkHomStk _ _ _ _ refl with IMu-reduct mE
-...     | mkIMuRed _ () _
-irrel₁ c (⊩₁Mu p _) (⊩₁Unit q) with joinW c p q
+...     | mkIMuRed _ _ _ () _ _ _
+irrel₁ c (⊩₁Fin p) (⊩₁Unit q) with joinW c p q
 ... | E , (mE , oE) with Unit-nf oE
-...   | refl with Mu-nf mE
+...   | refl with Fin-nf mE
 ...     | ()
-irrel₁ c (⊩₁IMu p _) (⊩₁Unit q) with joinW c p q
+irrel₁ c (⊩₁IMu p _ _ _ _) (⊩₁Unit q) with joinW c p q
 ... | E , (mE , oE) with Unit-nf oE
 ...   | refl with IMu-reduct mE
-...     | mkIMuRed _ () _
-irrel₁ c (⊩₁Unit p) (⊩₁Mu q _) with joinW c p q
+...     | mkIMuRed _ _ _ () _ _ _
+irrel₁ c (⊩₁Unit p) (⊩₁Fin q) with joinW c p q
 ... | E , (oE , mE) with Unit-nf oE
-...   | refl with Mu-nf mE
+...   | refl with Fin-nf mE
 ...     | ()
-irrel₁ c (⊩₁Unit p) (⊩₁IMu q _) with joinW c p q
+irrel₁ c (⊩₁Unit p) (⊩₁IMu q _ _ _ _) with joinW c p q
 ... | E , (oE , mE) with Unit-nf oE
 ...   | refl with IMu-reduct mE
-...     | mkIMuRed _ () _
-irrel₁ c (⊩₁Mu p _) (⊩₁Nat q) with joinW c p q
+...     | mkIMuRed _ _ _ () _ _ _
+irrel₁ c (⊩₁Fin p) (⊩₁Nat q) with joinW c p q
 ... | E , (mE , oE) with Nat-nf oE
-...   | refl with Mu-nf mE
+...   | refl with Fin-nf mE
 ...     | ()
-irrel₁ c (⊩₁IMu p _) (⊩₁Nat q) with joinW c p q
+irrel₁ c (⊩₁IMu p _ _ _ _) (⊩₁Nat q) with joinW c p q
 ... | E , (mE , oE) with Nat-nf oE
 ...   | refl with IMu-reduct mE
-...     | mkIMuRed _ () _
-irrel₁ c (⊩₁Nat p) (⊩₁Mu q _) with joinW c p q
+...     | mkIMuRed _ _ _ () _ _ _
+irrel₁ c (⊩₁Nat p) (⊩₁Fin q) with joinW c p q
 ... | E , (oE , mE) with Nat-nf oE
-...   | refl with Mu-nf mE
+...   | refl with Fin-nf mE
 ...     | ()
-irrel₁ c (⊩₁Nat p) (⊩₁IMu q _) with joinW c p q
+irrel₁ c (⊩₁Nat p) (⊩₁IMu q _ _ _ _) with joinW c p q
 ... | E , (oE , mE) with Nat-nf oE
 ...   | refl with IMu-reduct mE
-...     | mkIMuRed _ () _
-irrel₁ c (⊩₁Mu p _) (⊩₁Id q) with joinW c p q
+...     | mkIMuRed _ _ _ () _ _ _
+irrel₁ c (⊩₁Fin p) (⊩₁Id q) with joinW c p q
 ... | E , (mE , oE) with Id-reduct oE
-...   | _ , (_ , (_ , (refl , _))) with Mu-nf mE
+...   | _ , (_ , (_ , (refl , _))) with Fin-nf mE
 ...     | ()
-irrel₁ c (⊩₁IMu p _) (⊩₁Id q) with joinW c p q
+irrel₁ c (⊩₁IMu p _ _ _ _) (⊩₁Id q) with joinW c p q
 ... | E , (mE , oE) with Id-reduct oE
 ...   | _ , (_ , (_ , (refl , _))) with IMu-reduct mE
-...     | mkIMuRed _ () _
-irrel₁ c (⊩₁Id p) (⊩₁Mu q _) with joinW c p q
+...     | mkIMuRed _ _ _ () _ _ _
+irrel₁ c (⊩₁Id p) (⊩₁Fin q) with joinW c p q
 ... | E , (oE , mE) with Id-reduct oE
-...   | _ , (_ , (_ , (refl , _))) with Mu-nf mE
+...   | _ , (_ , (_ , (refl , _))) with Fin-nf mE
 ...     | ()
-irrel₁ c (⊩₁Id p) (⊩₁IMu q _) with joinW c p q
+irrel₁ c (⊩₁Id p) (⊩₁IMu q _ _ _ _) with joinW c p q
 ... | E , (oE , mE) with Id-reduct oE
 ...   | _ , (_ , (_ , (refl , _))) with IMu-reduct mE
-...     | mkIMuRed _ () _
+...     | mkIMuRed _ _ _ () _ _ _
 -- ★★ `Mu`/`Mu` at level 1 — the same residual-`DInterp` difference as at
 --   level 0, collapsed by the very same `irrelMu`.
-irrel₁ c (⊩₁Mu p _) (⊩₁IMu q _) with joinW c p q
-... | E , (mE , iE) with Mu-nf mE
+irrel₁ c (⊩₁Fin p) (⊩₁IMu q _ _ _ _) with joinW c p q
+... | E , (mE , iE) with Fin-nf mE
 ...   | refl with IMu-reduct iE
-...     | mkIMuRed _ () _
-irrel₁ c (⊩₁IMu p _) (⊩₁Mu q _) with joinW c p q
-... | E , (iE , mE) with Mu-nf mE
+...     | mkIMuRed _ _ _ () _ _ _
+irrel₁ c (⊩₁IMu p _ _ _ _) (⊩₁Fin q) with joinW c p q
+... | E , (iE , mE) with Fin-nf mE
 ...   | refl with IMu-reduct iE
-...     | mkIMuRed _ () _
-irrel₁ c (⊩₁IMu p di₁) (⊩₁IMu q di₂) with joinW c p q
+...     | mkIMuRed _ _ _ () _ _ _
+-- ★★ LEVITATED FAMILIES at level 1: the description type and the stuck
+--   hypotheses' type against every other head — one side's shape fixes the
+--   common reduct, the other's clashes with it.
+irrel₁ c (⊩₁Desc p _ _) (⊩₁base q) with joinW c p q
+... | E , (aE , bE) with base-nf bE
+...   | refl with Desc-reduct aE
+...     | _ , ((), _)
+irrel₁ c (⊩₁base p) (⊩₁Desc q _ _) with joinW c p q
+... | E , (aE , bE) with Desc-reduct bE
+...   | _ , (refl , _) with base-nf aE
+...     | ()
+irrel₁ c (⊩₁Desc p _ _) (⊩₁U q) with joinW c p q
+... | E , (aE , bE) with U-nf bE
+...   | refl with Desc-reduct aE
+...     | _ , ((), _)
+irrel₁ c (⊩₁U p) (⊩₁Desc q _ _) with joinW c p q
+... | E , (aE , bE) with Desc-reduct bE
+...   | _ , (refl , _) with U-nf aE
+...     | ()
+irrel₁ c (⊩₁Desc p _ _) (⊩₁ne q n₂) with joinW c p q
+... | E , (aE , bE) with El-ne-reduct n₂ bE
+...   | mkElNe _ _ refl with Desc-reduct aE
+...     | _ , ((), _)
+irrel₁ c (⊩₁ne p n₁) (⊩₁Desc q _ _) with joinW c p q
+... | E , (aE , bE) with Desc-reduct bE
+...   | _ , (refl , _) with El-ne-reduct n₁ aE
+...     | mkElNe _ _ ()
+irrel₁ c (⊩₁Desc p _ _) (⊩₁Π q _ _) with joinW c p q
+... | E , (aE , bE) with Π-reduct bE
+...   | mkΠRed _ _ refl _ _ with Desc-reduct aE
+...     | _ , ((), _)
+irrel₁ c (⊩₁Π p _ _) (⊩₁Desc q _ _) with joinW c p q
+... | E , (aE , bE) with Desc-reduct bE
+...   | _ , (refl , _) with Π-reduct aE
+...     | mkΠRed _ _ () _ _
+irrel₁ c (⊩₁Desc p _ _) (⊩₁Σ q _ _) with joinW c p q
+... | E , (aE , bE) with Σ-reduct bE
+...   | mkΣRed _ _ refl _ _ with Desc-reduct aE
+...     | _ , ((), _)
+irrel₁ c (⊩₁Σ p _ _) (⊩₁Desc q _ _) with joinW c p q
+... | E , (aE , bE) with Desc-reduct bE
+...   | _ , (refl , _) with Σ-reduct aE
+...     | mkΣRed _ _ () _ _
+irrel₁ c (⊩₁Desc p _ _) (⊩₁Hom q sh₂) with joinW c p q
+... | E , (aE , bE) with Hom-stk-reduct sh₂ bE
+...   | mkHomStk _ _ _ _ refl with Desc-reduct aE
+...     | _ , ((), _)
+irrel₁ c (⊩₁Hom p sh₁) (⊩₁Desc q _ _) with joinW c p q
+... | E , (aE , bE) with Desc-reduct bE
+...   | _ , (refl , _) with Hom-stk-reduct sh₁ aE
+...     | mkHomStk _ _ _ _ ()
+irrel₁ c (⊩₁Desc p _ _) (⊩₁Unit q) with joinW c p q
+... | E , (aE , bE) with Unit-nf bE
+...   | refl with Desc-reduct aE
+...     | _ , ((), _)
+irrel₁ c (⊩₁Unit p) (⊩₁Desc q _ _) with joinW c p q
+... | E , (aE , bE) with Desc-reduct bE
+...   | _ , (refl , _) with Unit-nf aE
+...     | ()
+irrel₁ c (⊩₁Desc p _ _) (⊩₁Nat q) with joinW c p q
+... | E , (aE , bE) with Nat-nf bE
+...   | refl with Desc-reduct aE
+...     | _ , ((), _)
+irrel₁ c (⊩₁Nat p) (⊩₁Desc q _ _) with joinW c p q
+... | E , (aE , bE) with Desc-reduct bE
+...   | _ , (refl , _) with Nat-nf aE
+...     | ()
+irrel₁ c (⊩₁Desc p _ _) (⊩₁Id q) with joinW c p q
+... | E , (aE , bE) with Id-reduct bE
+...   | _ , (_ , (_ , (refl , _))) with Desc-reduct aE
+...     | _ , ((), _)
+irrel₁ c (⊩₁Id p) (⊩₁Desc q _ _) with joinW c p q
+... | E , (aE , bE) with Desc-reduct bE
+...   | _ , (refl , _) with Id-reduct aE
+...     | _ , (_ , (_ , ((), _)))
+irrel₁ c (⊩₁Desc p _ _) (⊩₁IMu q _ _ _ _) with joinW c p q
+... | E , (aE , bE) with IMu-reduct bE
+...   | mkIMuRed _ _ _ refl _ _ _ with Desc-reduct aE
+...     | _ , ((), _)
+irrel₁ c (⊩₁IMu p _ _ _ _) (⊩₁Desc q _ _) with joinW c p q
+... | E , (aE , bE) with Desc-reduct bE
+...   | _ , (refl , _) with IMu-reduct aE
+...     | mkIMuRed _ _ _ () _ _ _
+irrel₁ c (⊩₁Desc p _ _) (⊩₁Fin q) with joinW c p q
+... | E , (aE , bE) with Fin-nf bE
+...   | refl with Desc-reduct aE
+...     | _ , ((), _)
+irrel₁ c (⊩₁Fin p) (⊩₁Desc q _ _) with joinW c p q
+... | E , (aE , bE) with Desc-reduct bE
+...   | _ , (refl , _) with Fin-nf aE
+...     | ()
+irrel₁ c (⊩₁Desc p _ _) (⊩₁DIhNe q n₂) with joinW c p q
+... | E , (aE , bE) with DIhNe-reduct n₂ bE
+...   | mkDIhNe _ _ _ _ _ refl with Desc-reduct aE
+...     | _ , ((), _)
+irrel₁ c (⊩₁DIhNe p n₁) (⊩₁base q) with joinW c p q
+... | E , (aE , bE) with base-nf bE
+...   | refl with DIhNe-reduct n₁ aE
+...     | mkDIhNe _ _ _ _ _ ()
+irrel₁ c (⊩₁base p) (⊩₁DIhNe q n₂) with joinW c p q
+... | E , (aE , bE) with DIhNe-reduct n₂ bE
+...   | mkDIhNe _ _ _ _ _ refl with base-nf aE
+...     | ()
+irrel₁ c (⊩₁DIhNe p n₁) (⊩₁U q) with joinW c p q
+... | E , (aE , bE) with U-nf bE
+...   | refl with DIhNe-reduct n₁ aE
+...     | mkDIhNe _ _ _ _ _ ()
+irrel₁ c (⊩₁U p) (⊩₁DIhNe q n₂) with joinW c p q
+... | E , (aE , bE) with DIhNe-reduct n₂ bE
+...   | mkDIhNe _ _ _ _ _ refl with U-nf aE
+...     | ()
+irrel₁ c (⊩₁DIhNe p n₁) (⊩₁ne q n₂) with joinW c p q
+... | E , (aE , bE) with El-ne-reduct n₂ bE
+...   | mkElNe _ _ refl with DIhNe-reduct n₁ aE
+...     | mkDIhNe _ _ _ _ _ ()
+irrel₁ c (⊩₁ne p n₁) (⊩₁DIhNe q n₂) with joinW c p q
+... | E , (aE , bE) with DIhNe-reduct n₂ bE
+...   | mkDIhNe _ _ _ _ _ refl with El-ne-reduct n₁ aE
+...     | mkElNe _ _ ()
+irrel₁ c (⊩₁DIhNe p n₁) (⊩₁Π q _ _) with joinW c p q
+... | E , (aE , bE) with Π-reduct bE
+...   | mkΠRed _ _ refl _ _ with DIhNe-reduct n₁ aE
+...     | mkDIhNe _ _ _ _ _ ()
+irrel₁ c (⊩₁Π p _ _) (⊩₁DIhNe q n₂) with joinW c p q
+... | E , (aE , bE) with DIhNe-reduct n₂ bE
+...   | mkDIhNe _ _ _ _ _ refl with Π-reduct aE
+...     | mkΠRed _ _ () _ _
+irrel₁ c (⊩₁DIhNe p n₁) (⊩₁Σ q _ _) with joinW c p q
+... | E , (aE , bE) with Σ-reduct bE
+...   | mkΣRed _ _ refl _ _ with DIhNe-reduct n₁ aE
+...     | mkDIhNe _ _ _ _ _ ()
+irrel₁ c (⊩₁Σ p _ _) (⊩₁DIhNe q n₂) with joinW c p q
+... | E , (aE , bE) with DIhNe-reduct n₂ bE
+...   | mkDIhNe _ _ _ _ _ refl with Σ-reduct aE
+...     | mkΣRed _ _ () _ _
+irrel₁ c (⊩₁DIhNe p n₁) (⊩₁Hom q sh₂) with joinW c p q
+... | E , (aE , bE) with Hom-stk-reduct sh₂ bE
+...   | mkHomStk _ _ _ _ refl with DIhNe-reduct n₁ aE
+...     | mkDIhNe _ _ _ _ _ ()
+irrel₁ c (⊩₁Hom p sh₁) (⊩₁DIhNe q n₂) with joinW c p q
+... | E , (aE , bE) with DIhNe-reduct n₂ bE
+...   | mkDIhNe _ _ _ _ _ refl with Hom-stk-reduct sh₁ aE
+...     | mkHomStk _ _ _ _ ()
+irrel₁ c (⊩₁DIhNe p n₁) (⊩₁Unit q) with joinW c p q
+... | E , (aE , bE) with Unit-nf bE
+...   | refl with DIhNe-reduct n₁ aE
+...     | mkDIhNe _ _ _ _ _ ()
+irrel₁ c (⊩₁Unit p) (⊩₁DIhNe q n₂) with joinW c p q
+... | E , (aE , bE) with DIhNe-reduct n₂ bE
+...   | mkDIhNe _ _ _ _ _ refl with Unit-nf aE
+...     | ()
+irrel₁ c (⊩₁DIhNe p n₁) (⊩₁Nat q) with joinW c p q
+... | E , (aE , bE) with Nat-nf bE
+...   | refl with DIhNe-reduct n₁ aE
+...     | mkDIhNe _ _ _ _ _ ()
+irrel₁ c (⊩₁Nat p) (⊩₁DIhNe q n₂) with joinW c p q
+... | E , (aE , bE) with DIhNe-reduct n₂ bE
+...   | mkDIhNe _ _ _ _ _ refl with Nat-nf aE
+...     | ()
+irrel₁ c (⊩₁DIhNe p n₁) (⊩₁Id q) with joinW c p q
+... | E , (aE , bE) with Id-reduct bE
+...   | _ , (_ , (_ , (refl , _))) with DIhNe-reduct n₁ aE
+...     | mkDIhNe _ _ _ _ _ ()
+irrel₁ c (⊩₁Id p) (⊩₁DIhNe q n₂) with joinW c p q
+... | E , (aE , bE) with DIhNe-reduct n₂ bE
+...   | mkDIhNe _ _ _ _ _ refl with Id-reduct aE
+...     | _ , (_ , (_ , ((), _)))
+irrel₁ c (⊩₁DIhNe p n₁) (⊩₁IMu q _ _ _ _) with joinW c p q
+... | E , (aE , bE) with IMu-reduct bE
+...   | mkIMuRed _ _ _ refl _ _ _ with DIhNe-reduct n₁ aE
+...     | mkDIhNe _ _ _ _ _ ()
+irrel₁ c (⊩₁IMu p _ _ _ _) (⊩₁DIhNe q n₂) with joinW c p q
+... | E , (aE , bE) with DIhNe-reduct n₂ bE
+...   | mkDIhNe _ _ _ _ _ refl with IMu-reduct aE
+...     | mkIMuRed _ _ _ () _ _ _
+irrel₁ c (⊩₁DIhNe p n₁) (⊩₁Fin q) with joinW c p q
+... | E , (aE , bE) with Fin-nf bE
+...   | refl with DIhNe-reduct n₁ aE
+...     | mkDIhNe _ _ _ _ _ ()
+irrel₁ c (⊩₁Fin p) (⊩₁DIhNe q n₂) with joinW c p q
+... | E , (aE , bE) with DIhNe-reduct n₂ bE
+...   | mkDIhNe _ _ _ _ _ refl with Fin-nf aE
+...     | ()
+irrel₁ c (⊩₁DIhNe p n₁) (⊩₁Desc q _ _) with joinW c p q
+... | E , (aE , bE) with Desc-reduct bE
+...   | _ , (refl , _) with DIhNe-reduct n₁ aE
+...     | mkDIhNe _ _ _ _ _ ()
+irrel₁ c (⊩₁DIhNe _ _) (⊩₁DIhNe _ _) = (λ _ h → h) , (λ _ h → h)
+-- ★ `Desc`/`Desc`: the two index witnesses are convertible, and the
+--   membership is the interpretation itself — re-based on the other
+--   witness (`ikinterp-irrel`).
+irrel₁ c (⊩₁Desc {I₀ = I₁} p cI₁ ⊩I₁) (⊩₁Desc {I₀ = I₂} q cI₂ ⊩I₂) with joinW c p q
+... | E , (d₁ , d₂) with Desc-reduct d₁ | Desc-reduct d₂
+...   | J₁ , (eq₁ , r₁) | J₂ , (eq₂ , r₂) with trans (sym eq₁) eq₂
+...     | refl =
+          ( (λ t h → ikinterp-irrel cEl ⊩I₁ ⊩I₂ h)
+          , (λ t h → ikinterp-irrel (csymᵀ cEl) ⊩I₂ ⊩I₁ h) )
+  where
+  cI : I₁ ≅ I₂
+  cI = ctrn (csym cI₁) (ctrn (hom→≅ r₁) (ctrn (csym (hom→≅ r₂)) cI₂))
+  cEl : El I₁ ≅ᵀ El I₂
+  cEl = El≅ cI
+irrel₁ c (⊩₁IMu p cI₁ cD₁ ⊩I₁ K₁) (⊩₁IMu q cI₂ cD₂ ⊩I₂ K₂) with joinW c p q
 ... | E , (i₁ , i₂) with IMu-reduct i₁ | IMu-reduct i₂
-...   | mkIMuRed j₁ eq₁ r₁ | mkIMuRed j₂ eq₂ r₂
+...   | mkIMuRed I₁' D₁' j₁ eq₁ rI₁ rD₁ r₁ | mkIMuRed I₂' D₂' j₂ eq₂ rI₂ rD₂ r₂
       with IMuinj≡ (trans (sym eq₁) eq₂)
-...     | (refl , (refl , refl)) =
-          ( (λ _ h → (projl h , irrelIMu di₁ di₂ r₁ r₂ (projr h)))
-          , (λ _ h → (projl h , irrelIMu di₂ di₁ r₂ r₁ (projr h))) )
-irrel₁ c (⊩₁Mu p di₁) (⊩₁Mu q di₂) with joinW c p q
-... | E , (m₁ , m₂) with Mu-nf m₁
-...   | refl with Mu-nf m₂
-...     | refl = ( (λ _ h → (projl h , irrelMu di₁ di₂ (projr h)))
-                 , (λ _ h → (projl h , irrelMu di₂ di₁ (projr h))) )
+...     | (refl , (refl , refl))
+          with church-rosser (ctrn (csym cD₁) (ctrn (hom→≅ rD₁) (ctrn (csym (hom→≅ rD₂)) cD₂)))
+...       | D* , (d₁ , d₂) =
+          ( (λ _ h → (projl h , irrelIMu K₁ K₂ d₁ d₂ r₁ r₂ (projr h)))
+          , (λ _ h → (projl h , irrelIMu K₂ K₁ d₂ d₁ r₂ r₁ (projr h))) )
+irrel₁ c (⊩₁Fin p) (⊩₁Fin q) with joinW c p q
+... | E , (m₁ , m₂) with Fin-nf m₁
+...   | refl with Fin-nf m₂
+...     | refl = (λ _ h → h) , (λ _ h → h)
 
 irrel₁ c (⊩₁Nat _)  (⊩₁Nat _)  = (λ _ h → h) , (λ _ h → h)
 irrel₁ c (⊩₁base _) (⊩₁base _) = (λ _ h → h) , (λ _ h → h)
@@ -5959,12 +7293,19 @@ fwd₁ p (⊩₁Unit q) with confluentᵀ p q
 fwd₁ p (⊩₁Nat q) with confluentᵀ p q
 ... | E , (bE , nE) with Nat-nf nE
 ...   | refl = ⊩₁Nat bE
-fwd₁ p (⊩₁Mu q di) with confluentᵀ p q
-... | E , (bE , mE) with Mu-nf mE
-...   | refl = ⊩₁Mu bE di
-fwd₁ p (⊩₁IMu q di) with confluentᵀ p q
+fwd₁ p (⊩₁IMu q cI cD ⊩I K) with confluentᵀ p q
 ... | E , (bE , mE) with IMu-reduct mE
-...   | mkIMuRed _ refl _ = ⊩₁IMu bE di
+...   | mkIMuRed _ _ _ refl rI rD _ =
+        ⊩₁IMu bE (ctrn (csym (hom→≅ rI)) cI) (ctrn (csym (hom→≅ rD)) cD) ⊩I K
+fwd₁ p (⊩₁Fin q) with confluentᵀ p q
+... | E , (bE , mE) with Fin-nf mE
+...   | refl = ⊩₁Fin bE
+fwd₁ p (⊩₁Desc q cI ⊩I) with confluentᵀ p q
+... | E , (bE , dE) with Desc-reduct dE
+...   | J , (refl , rI) = ⊩₁Desc bE (ctrn (csym (hom→≅ rI)) cI) ⊩I
+fwd₁ p (⊩₁DIhNe q n) with confluentᵀ p q
+... | E , (bE , dE) with DIhNe-reduct n dE
+...   | mkDIhNe _ _ _ _ n' refl = ⊩₁DIhNe bE n'
 fwd₁ p (⊩₁Id q) with confluentᵀ p q
 ... | E , (bE , iE) with Id-reduct iE
 ...   | _ , (_ , (_ , (refl , _))) = ⊩₁Id bE
@@ -5991,8 +7332,10 @@ CR1₁ (⊩₁Σ _ _ _) h = projl h
 CR1₁ (⊩₁Hom _ _) h = h
 CR1₁ (⊩₁Unit _) h = h
 CR1₁ (⊩₁Nat _)  h = projl h
-CR1₁ (⊩₁Mu _ _) h = projl h
-CR1₁ (⊩₁IMu _ _) h = projl h
+CR1₁ (⊩₁IMu _ _ _ _ _) h = projl h
+CR1₁ (⊩₁Fin _) h = projl h
+CR1₁ (⊩₁Desc _ _ _) h = ikinterp-sn h
+CR1₁ (⊩₁DIhNe _ _) h = h
 CR1₁ (⊩₁Id _)    h = projl h
 
 CR3₁ : {A : RTy Γ} (R : ⊩₁ A) {t : RTm Γ} → SNe t → R ⊩₁∋ t
@@ -6002,8 +7345,10 @@ CR3₁ (⊩₁ne _ _)    nt = sn-ne nt
 CR3₁ (⊩₁Hom _ _)   nt = sn-ne nt
 CR3₁ (⊩₁Unit _)    nt = sn-ne nt
 CR3₁ (⊩₁Nat _)     nt = (sn-ne nt , nm-ne nt)
-CR3₁ (⊩₁Mu _ _)    nt = (sn-ne nt , mm-ne nt)
-CR3₁ (⊩₁IMu _ _)    nt = (sn-ne nt , imm-ne nt)
+CR3₁ (⊩₁IMu _ _ _ _ _) nt = (sn-ne nt , imm-ne nt)
+CR3₁ (⊩₁Fin _)    nt = (sn-ne nt , fm-ne nt)
+CR3₁ (⊩₁Desc _ _ _) nt = iki-ne nt
+CR3₁ (⊩₁DIhNe _ _) nt = sn-ne nt
 CR3₁ (⊩₁Id _)      nt = (sn-ne nt , λ ch → ⊥-elim (sne-nopay nt ch))
 CR3₁ (⊩₁Π _ ⊩F ⊩G) nt =
   (sn-ne nt , λ u ru → CR3₁ (⊩G u ru) (sne-app nt (CR1₁ ⊩F ru)))
@@ -6017,8 +7362,10 @@ exp₁ (⊩₁ne _ _)    r h = sn-exp r h
 exp₁ (⊩₁Hom _ _)   r h = sn-exp r h
 exp₁ (⊩₁Unit _)    r h = sn-exp r h
 exp₁ (⊩₁Nat _)     r h = (sn-exp r (projl h) , nm-exp r (projr h))
-exp₁ (⊩₁Mu _ _)    r h = (sn-exp r (projl h) , mm-exp r (projr h))
-exp₁ (⊩₁IMu _ _)    r h = (sn-exp r (projl h) , imm-exp r (projr h))
+exp₁ (⊩₁IMu _ _ _ _ _) r h = (sn-exp r (projl h) , imm-exp r (projr h))
+exp₁ (⊩₁Fin _)    r h = (sn-exp r (projl h) , fm-exp r (projr h))
+exp₁ (⊩₁Desc _ _ _) r h = iki-exp r h
+exp₁ (⊩₁DIhNe _ _) r h = sn-exp r h
 exp₁ (⊩₁Id _) r h =
   ( sn-exp r (projl h) , λ ch → projr h (idpay-peel r ch) )
 exp₁ (⊩₁U _)       r h =
@@ -6052,8 +7399,10 @@ mem-whred₁ (⊩₁ne _ _)  r h = sn-whred h r
 mem-whred₁ (⊩₁Hom _ _) r h = sn-whred h r
 mem-whred₁ (⊩₁Unit _) r h = sn-whred h r
 mem-whred₁ (⊩₁Nat _)  r h = (sn-whred (projl h) r , natmem-whred (projr h) r)
-mem-whred₁ (⊩₁Mu _ _) r h = (sn-whred (projl h) r , mumem-whred (projr h) r)
-mem-whred₁ (⊩₁IMu _ _) r h = (sn-whred (projl h) r , imumem-whred (projr h) r)
+mem-whred₁ (⊩₁IMu _ _ _ _ _) r h = (sn-whred (projl h) r , imumem-whred (projr h) r)
+mem-whred₁ (⊩₁Fin _) r h = (sn-whred (projl h) r , finmem-whred (projr h) r)
+mem-whred₁ (⊩₁Desc _ _ _) r h = ikinterp-whred h r
+mem-whred₁ (⊩₁DIhNe _ _) r h = sn-whred h r
 mem-whred₁ (⊩₁Id _) r h =
   ( sn-whred (projl h) r , λ ch → projr h (snr-step r ch) )
 mem-whred₁ (⊩₁U _)     r h =
@@ -6096,8 +7445,8 @@ emb (⊩₀Hom p s)   = ⊩₁Hom p s
 emb (⊩₀Id p)      = ⊩₁Id p
 emb (⊩₀Unit p)    = ⊩₁Unit p
 emb (⊩₀Nat p)     = ⊩₁Nat p
-emb (⊩₀Mu p di)   = ⊩₁Mu p di
-emb (⊩₀IMu p di)   = ⊩₁IMu p di
+emb (⊩₀IMu p cI cD ⊩I K) = ⊩₁IMu p cI cD ⊩I K
+emb (⊩₀Fin p)   = ⊩₁Fin p
 emb (⊩₀ne p n)    = ⊩₁ne p n
 emb (⊩₀Π p ⊩F ⊩G) =
   ⊩₁Π p (emb ⊩F) (λ u r → emb (⊩G u (projr (emb-coh ⊩F) u r)))
@@ -6109,8 +7458,8 @@ emb-coh (⊩₀Hom _ _) = (λ _ h → h) , (λ _ h → h)
 emb-coh (⊩₀Id _)    = (λ _ h → h) , (λ _ h → h)
 emb-coh (⊩₀Unit _)  = (λ _ h → h) , (λ _ h → h)
 emb-coh (⊩₀Nat _)   = (λ _ h → h) , (λ _ h → h)
-emb-coh (⊩₀Mu _ _)  = (λ _ h → h) , (λ _ h → h)
-emb-coh (⊩₀IMu _ _)  = (λ _ h → h) , (λ _ h → h)
+emb-coh (⊩₀IMu _ _ _ _ _) = (λ _ h → h) , (λ _ h → h)
+emb-coh (⊩₀Fin _)  = (λ _ h → h) , (λ _ h → h)
 emb-coh (⊩₀ne _ _) = (λ _ h → h) , (λ _ h → h)
 emb-coh (⊩₀Σ _ ⊩F ⊩G) =
     (λ t h → (projl h
@@ -6363,8 +7712,10 @@ homSem₁ (⊩₁Nat p) {a} {b} ha hb =
   bwd₁ (⟶ᵀ*-Homᵀ p)
        (homNatSem a b (projl ha) (projr ha) (projl hb) (projr hb))
 homSem₁ (⊩₁Id p)      ha hb = ⊩₁Hom (⟶ᵀ*-Homᵀ p) (sh-Hom sh-Id)
-homSem₁ (⊩₁Mu p _)    ha hb = ⊩₁Hom (⟶ᵀ*-Homᵀ p) (sh-Hom sh-Mu)
-homSem₁ (⊩₁IMu p _)    ha hb = ⊩₁Hom (⟶ᵀ*-Homᵀ p) (sh-Hom sh-IMu)
+homSem₁ (⊩₁IMu p _ _ _ _) ha hb = ⊩₁Hom (⟶ᵀ*-Homᵀ p) (sh-Hom sh-IMu)
+homSem₁ (⊩₁Fin p)    ha hb = ⊩₁Hom (⟶ᵀ*-Homᵀ p) (sh-Hom sh-Fin)
+homSem₁ (⊩₁Desc p _ _) ha hb = ⊩₁Hom (⟶ᵀ*-Homᵀ p) (sh-Hom sh-Desc)
+homSem₁ (⊩₁DIhNe p n) ha hb = ⊩₁Hom (⟶ᵀ*-Homᵀ p) (sh-Hom (sh-DIhNe n))
 homSem₁ (⊩₁U p) {c} {d} hc hd =
   ⊩₁Π (⟶ᵀ*-trans (⟶ᵀ*-Homᵀ p) (stepᵀ (Hom-U c d) doneᵀ))
       (emb (Σ.fst (projr hc)))
@@ -6470,8 +7821,8 @@ payT-bwd₀' q (⊩₀Hom _ _) pay = _
 payT-bwd₀' q (⊩₀Id _)    pay = _
 payT-bwd₀' q (⊩₀Unit _)  pay = _
 payT-bwd₀' q (⊩₀Nat _)   pay = _
-payT-bwd₀' q (⊩₀Mu _ _)  pay = _
-payT-bwd₀' q (⊩₀IMu _ _)  pay = _
+payT-bwd₀' q (⊩₀IMu _ _ _ _ _) pay = _
+payT-bwd₀' q (⊩₀Fin _)  pay = _
 payT-bwd₀' q (⊩₀Π _ _ _) pay = pay
 
 -- ★ and the payload is trivial at every leaf too — none of `⊩₀Unit`,
@@ -6504,8 +7855,8 @@ homSem₀ (⊩₀ne p n)    ha hb = ⊩₀Hom (⟶ᵀ*-Homᵀ p) (sh-Hom (sh-ne 
 homSem₀ (⊩₀Σ p ⊩F ⊩G) ha hb = ⊩₀Hom (⟶ᵀ*-Homᵀ p) (sh-Hom sh-Σ)
 homSem₀ (⊩₀Hom p s)   ha hb = ⊩₀Hom (⟶ᵀ*-Homᵀ p) (sh-Hom s)
 homSem₀ (⊩₀Unit p)    ha hb = ⊩₀Hom (⟶ᵀ*-Homᵀ p) (sh-Hom sh-Unit)
-homSem₀ (⊩₀Mu p _)    ha hb = ⊩₀Hom (⟶ᵀ*-Homᵀ p) (sh-Hom sh-Mu)
-homSem₀ (⊩₀IMu p _)    ha hb = ⊩₀Hom (⟶ᵀ*-Homᵀ p) (sh-Hom sh-IMu)
+homSem₀ (⊩₀IMu p _ _ _ _) ha hb = ⊩₀Hom (⟶ᵀ*-Homᵀ p) (sh-Hom sh-IMu)
+homSem₀ (⊩₀Fin p)    ha hb = ⊩₀Hom (⟶ᵀ*-Homᵀ p) (sh-Hom sh-Fin)
 homSem₀ (⊩₀Nat p) {a} {b} ha hb =
   bwd₀ (⟶ᵀ*-Homᵀ p)
        (homNatSem₀ a b (projl ha) (projr ha) (projl hb) (projr hb))
@@ -6540,8 +7891,8 @@ homSem₀-mem-endpoints :
   {t : RTm Γ} →
   (homSem₀ R ha hb) ⊩₀∋ t → (homSem₀ R ha' hb') ⊩₀∋ t
 homSem₀-mem-endpoints (⊩₀base p)    ha hb ha' hb' h = h
-homSem₀-mem-endpoints (⊩₀Mu p _)    ha hb ha' hb' h = h
-homSem₀-mem-endpoints (⊩₀IMu p _)    ha hb ha' hb' h = h
+homSem₀-mem-endpoints (⊩₀IMu p _ _ _ _) ha hb ha' hb' h = h
+homSem₀-mem-endpoints (⊩₀Fin p)    ha hb ha' hb' h = h
 homSem₀-mem-endpoints (⊩₀ne p n)    ha hb ha' hb' h = h
 homSem₀-mem-endpoints (⊩₀Σ p ⊩F ⊩G) ha hb ha' hb' h = h
 homSem₀-mem-endpoints (⊩₀Hom p s)   ha hb ha' hb' h = h
@@ -6600,8 +7951,8 @@ payHomT : {X : RTy Γ} (⊩c : ⊩₀ X) {C a b : RTm Γ}
           (ha : ⊩c ⊩₀∋ a) (hb : ⊩c ⊩₀∋ b) →
           PayT (homSem₀ ⊩c ha hb) (⌜Hom⌝ C a b)
 payHomT (⊩₀base _)  payC ha hb = _
-payHomT (⊩₀Mu _ _)  payC ha hb = _
-payHomT (⊩₀IMu _ _)  payC ha hb = _
+payHomT (⊩₀IMu _ _ _ _ _) payC ha hb = _
+payHomT (⊩₀Fin _)  payC ha hb = _
 payHomT (⊩₀ne _ _)  payC ha hb = _
 payHomT (⊩₀Σ _ _ _) payC ha hb = _
 payHomT (⊩₀Hom _ _) payC ha hb = _
@@ -6651,8 +8002,8 @@ sem-⌜Hom⌝ p snc sna snb ⊩c payc ha hb =
   payT-bwd₀ : {A B : RTy _} (q : A ⟶ᵀ* B) (R : ⊩₀ B) {c₀ : RTm _} →
               PayT R c₀ → PayT (bwd₀ q R) c₀
   payT-bwd₀ q (⊩₀base _)  pay = _
-  payT-bwd₀ q (⊩₀Mu _ _)  pay = _
-  payT-bwd₀ q (⊩₀IMu _ _) pay = _
+  payT-bwd₀ q (⊩₀IMu _ _ _ _ _) pay = _
+  payT-bwd₀ q (⊩₀Fin _)  pay = _
   payT-bwd₀ q (⊩₀ne _ _)  pay = _
   payT-bwd₀ q (⊩₀Σ _ _ _) pay = _
   payT-bwd₀ q (⊩₀Hom _ _) pay = _
@@ -6694,6 +8045,10 @@ record WNe {Γ} (t : RTm Γ) : Set where
     rd  : t ⟶* nfm
     nrm : IsNormal nfm
     neu : SNe nfm
+
+-- a neutral is never a pair (what refutes `psplit-β` on a normal neutral).
+sne-nopair : {a b : RTm Γ} → SNe (pair a b) → ⊥
+sne-nopair ()
 
 wn  : {t : RTm Γ} → SN t → WN t
 wne : {t : RTm Γ} → SNe t → WNe t
@@ -6752,7 +8107,7 @@ wne (sne-tr {d = d} {p = p} d₀ p₀ e₀ key) with wn d₀ | wn p₀ | wn e₀
     nrm' (tr-J-Σ _ _ _ _ _ _ _) = ⊥-elim (f≢t key')
     nrm' (tr-J-Id _ _ _ _ _ _ _ _) = ⊥-elim (f≢t key')
     nrm' (tr-J-Unit _ _ _ _ _) = ⊥-elim (f≢t key')
-    nrm' (tr-J-Mu _ _ _ _ _) = ⊥-elim (f≢t key')
+    nrm' (tr-J-Fin _ _ _ _ _) = ⊥-elim (f≢t key')
     nrm' (tr-J-IMu _ _ _ _ _) = ⊥-elim (f≢t key')
     nrm' (tr-taut _ _)      = ⊥-elim (f≢t key')
     nrm' (tr-J-Hom _ _ _ c₁ _ _ _ _ kh) =
@@ -6812,42 +8167,91 @@ wne (sne-natrec {z = z} {w = w} {n = n} z₀ w₀ n₀ key)
 -- carry the key — and once they are normal, all five root rules are
 -- refuted by `key'` computing to `false ≡ true`, exactly as `natrec`'s
 -- two are.
--- ★ INDUCTIVE TYPES: two subterms, and only the SCRUTINEE carries the key;
--- once normal, ι is refuted by `key'` computing to `false ≡ true`.
-wne (sne-elim {D = D} {ms = ms} {t = t} m₀ t₀ key)
-  with wn m₀ | wn t₀
-... | mkWN n₁ r₁ nm₁ sn₁ | mkWN n₂ r₂ nm₂ sn₂ =
-      mkWNe (elim D n₁ n₂)
-            (⟶*-trans (⟶*-elimᵐ r₁) (⟶*-elimᵗ r₂))
-            nrm' (sne-elim sn₁ sn₂ key')
+-- ★★ LEVITATED FAMILIES: every carried subterm is normalised, and once the
+--   scrutinee is normal each root rule is refuted by its key (`psplit`'s
+--   neutral pair is never a `pair`).
+wne (sne-ielim a0₀ a1₀ a2₀ a3₀ key)
+  with wn a0₀ | wn a1₀ | wn a2₀ | wn a3₀
+... | mkWN n0 r0 nm0 sn0 | mkWN n1 r1 nm1 sn1 | mkWN n2 r2 nm2 sn2 | mkWN n3 r3 nm3 sn3 =
+      mkWNe (ielim n0 n1 n2 n3) (⟶*-trans (⟶*-ielimᴰ r0) (⟶*-trans (⟶*-ielimⁱ r1) (⟶*-trans (⟶*-ielimᵉ r2) (⟶*-ielimᵗ r3))))
+            nrm' (sne-ielim sn0 sn1 sn2 sn3 key')
   where
-    key' : mustk? n₂ ≡ true
-    key' = mustk?-red* r₂ key
+    key' : mustk? n3 ≡ true
+    key' = mustk?-red* r3 key
 
-    nrm' : IsNormal (elim D n₁ n₂)
-    nrm' (ι-elim _ _ _ _) = f≢t key'
-    nrm' (ξ-elimᵐ q) = nm₁ q
-    nrm' (ξ-elimᵗ q) = nm₂ q
--- ★ its INDEXED twin.  ⚠ THREE subterms, not two: `ielim` CARRIES the
--- index, and `ξ-ielimⁱ` can step it, so the normal form has to normalize
--- it too — the very reason `sne-ielim` takes an extra `SN i` premise.
--- Only the SCRUTINEE carries the key; ι is refuted by `key'` as above.
-wne (sne-ielim {D = D} {i = i} {ms = ms} {t = t} i₀ m₀ t₀ key)
-  with wn i₀ | wn m₀ | wn t₀
-... | mkWN n₀ r₀ nm₀ sn₀ | mkWN n₁ r₁ nm₁ sn₁ | mkWN n₂ r₂ nm₂ sn₂ =
-      mkWNe (ielim D n₀ n₁ n₂)
-            (⟶*-trans (⟶*-ielimⁱ r₀)
-                      (⟶*-trans (⟶*-ielimᵐ r₁) (⟶*-ielimᵗ r₂)))
-            nrm' (sne-ielim sn₀ sn₁ sn₂ key')
+    nrm' : IsNormal (ielim n0 n1 n2 n3)
+    nrm' (ι _ _ _ _) = f≢t key'
+    nrm' (ξ-ielimᴰ q) = nm0 q
+    nrm' (ξ-ielimⁱ q) = nm1 q
+    nrm' (ξ-ielimᵉ q) = nm2 q
+    nrm' (ξ-ielimᵗ q) = nm3 q
+wne (sne-dpay a0₀ a1₀ a2₀ a3₀ key)
+  with wn a0₀ | wn a1₀ | wn a2₀ | wn a3₀
+... | mkWN n0 r0 nm0 sn0 | mkWN n1 r1 nm1 sn1 | mkWN n2 r2 nm2 sn2 | mkWN n3 r3 nm3 sn3 =
+      mkWNe (dpay n0 n1 n2 n3) (⟶*-trans (⟶*-dpayᴵ r0) (⟶*-trans (⟶*-dpayᴰ r1) (⟶*-trans (⟶*-dpayᶜ r2) (⟶*-dpayⁱ r3))))
+            nrm' (sne-dpay sn0 sn1 sn2 sn3 key')
   where
-    key' : mustk? n₂ ≡ true
-    key' = mustk?-red* r₂ key
+    key' : dstk? n2 ≡ true
+    key' = dstk?-red* r2 key
 
-    nrm' : IsNormal (ielim D n₀ n₁ n₂)
-    nrm' (ι-ielim _ _ _ _ _) = f≢t key'
-    nrm' (ξ-ielimⁱ q) = nm₀ q
-    nrm' (ξ-ielimᵐ q) = nm₁ q
-    nrm' (ξ-ielimᵗ q) = nm₂ q
+    nrm' : IsNormal (dpay n0 n1 n2 n3)
+    nrm' (dpay-ι _ _ _ _) = f≢t key'
+    nrm' (dpay-σ _ _ _ _ _) = f≢t key'
+    nrm' (dpay-ρ _ _ _ _ _) = f≢t key'
+    nrm' (ξ-dpayᴵ q) = nm0 q
+    nrm' (ξ-dpayᴰ q) = nm1 q
+    nrm' (ξ-dpayᶜ q) = nm2 q
+    nrm' (ξ-dpayⁱ q) = nm3 q
+wne (sne-dih a0₀ a1₀ a2₀ a3₀ key)
+  with wn a0₀ | wn a1₀ | wn a2₀ | wn a3₀
+... | mkWN n0 r0 nm0 sn0 | mkWN n1 r1 nm1 sn1 | mkWN n2 r2 nm2 sn2 | mkWN n3 r3 nm3 sn3 =
+      mkWNe (dih n0 n1 n2 n3) (⟶*-trans (⟶*-dihᴰ r0) (⟶*-trans (⟶*-dihᵉ r1) (⟶*-trans (⟶*-dihᶜ r2) (⟶*-dihᵖ r3))))
+            nrm' (sne-dih sn0 sn1 sn2 sn3 key')
+  where
+    key' : dstk? n2 ≡ true
+    key' = dstk?-red* r2 key
+
+    nrm' : IsNormal (dih n0 n1 n2 n3)
+    nrm' (dih-ι _ _ _ _) = f≢t key'
+    nrm' (dih-σ _ _ _ _ _) = f≢t key'
+    nrm' (dih-ρ _ _ _ _ _) = f≢t key'
+    nrm' (ξ-dihᴰ q) = nm0 q
+    nrm' (ξ-dihᵉ q) = nm1 q
+    nrm' (ξ-dihᶜ q) = nm2 q
+    nrm' (ξ-dihᵖ q) = nm3 q
+wne (sne-fcase a0₀ a1₀ a2₀ key)
+  with wn a0₀ | wn a1₀ | wn a2₀
+... | mkWN n0 r0 nm0 sn0 | mkWN n1 r1 nm1 sn1 | mkWN n2 r2 nm2 sn2 =
+      mkWNe (fcase n0 n1 n2) (⟶*-trans (⟶*-fcaseᵗ r0) (⟶*-trans (⟶*-fcaseᵃ r1) (⟶*-fcaseᵇ r2)))
+            nrm' (sne-fcase sn0 sn1 sn2 key')
+  where
+    key' : finstk? n0 ≡ true
+    key' = finstk?-red* r0 key
+
+    nrm' : IsNormal (fcase n0 n1 n2)
+    nrm' (fcase-z _ _) = f≢t key'
+    nrm' (fcase-s _ _ _) = f≢t key'
+    nrm' (ξ-fcaseᵗ q) = nm0 q
+    nrm' (ξ-fcaseᵃ q) = nm1 q
+    nrm' (ξ-fcaseᵇ q) = nm2 q
+wne (sne-fcase0 a0₀)
+  with wn a0₀
+... | mkWN n0 r0 nm0 sn0 =
+      mkWNe (fcase0 n0) (⟶*-fcase0 r0)
+            nrm' (sne-fcase0 sn0)
+  where
+    nrm' : IsNormal (fcase0 n0)
+    nrm' (ξ-fcase0 q) = nm0 q
+wne (sne-psplit a0₀ a1₀)
+  with wn a0₀ | wne a1₀
+... | mkWN n0 r0 nm0 sn0 | mkWNe n1 r1 nm1 ne1 =
+      mkWNe (psplit n0 n1) (⟶*-trans (⟶*-psplitᵇ r0) (⟶*-psplitᵍ r1))
+            nrm' (sne-psplit sn0 ne1)
+  where
+    nrm' : IsNormal (psplit n0 n1)
+    nrm' (psplit-β _ _ _) = sne-nopair ne1
+    nrm' (ξ-psplitᵇ q) = nm0 q
+    nrm' (ξ-psplitᵍ q) = nm1 q
 wne (sne-ordtr {a = a} {t = t} {u = u} a₀ t₀ u₀ p₀ q₀ key)
   with wn a₀ | wn t₀ | wn u₀ | wn p₀ | wn q₀
 ... | mkWN n₁ r₁ nm₁ sn₁ | mkWN n₂ r₂ nm₂ sn₂ | mkWN n₃ r₃ nm₃ sn₃
@@ -6894,15 +8298,15 @@ wn (sn-pair a b) with wn a | wn b
 wn sn-cb = mkWN ⌜base⌝ done (λ ()) sn-cb
 wn sn-cNat = mkWN ⌜Nat⌝ done (λ ()) sn-cNat
 wn sn-cUnit = mkWN ⌜Unit⌝ done (λ ()) sn-cUnit
-wn (sn-cMu {Dᵐ = Dᵐ}) = mkWN (⌜Mu⌝ Dᵐ) done (λ ()) sn-cMu
--- ⚠ NOT a one-liner like `sn-cMu`: `⌜IMu⌝` CARRIES the index, so the
--- normal form is the code at the index's normal form.
-wn (sn-cIMu {D = Dⁱ} {I = Iⁱ} h) with wn h
-... | mkWN n₁ r₁ nm₁ sn₁ =
-      mkWN (⌜IMu⌝ Dⁱ Iⁱ n₁) (⟶*-⌜IMu⌝ r₁) nrm' (sn-cIMu sn₁)
+wn (sn-cIMu a0₀ a1₀ a2₀) with wn a0₀ | wn a1₀ | wn a2₀
+... | mkWN n0 r0 nm0 sn0 | mkWN n1 r1 nm1 sn1 | mkWN n2 r2 nm2 sn2 =
+      mkWN (⌜IMu⌝ n0 n1 n2) (⟶*-trans (⟶*-⌜IMu⌝ᴵ r0) (⟶*-trans (⟶*-⌜IMu⌝ᴰ r1) (⟶*-⌜IMu⌝ⁱ r2))) nrm' (sn-cIMu sn0 sn1 sn2)
   where
-    nrm' : IsNormal (⌜IMu⌝ Dⁱ Iⁱ n₁)
-    nrm' (ξ-⌜IMu⌝ q) = nm₁ q
+    nrm' : IsNormal (⌜IMu⌝ n0 n1 n2)
+    nrm' (ξ-⌜IMu⌝ᴵ q) = nm0 q
+    nrm' (ξ-⌜IMu⌝ᴰ q) = nm1 q
+    nrm' (ξ-⌜IMu⌝ⁱ q) = nm2 q
+wn (sn-cFin {n = n}) = mkWN (⌜Fin⌝ n) done (λ ()) sn-cFin
 wn (sn-cΠ c d) with wn c | wn d
 ... | mkWN n₁ r₁ nm₁ sn₁ | mkWN n₂ r₂ nm₂ sn₂ =
       mkWN (⌜Π⌝ n₁ n₂) (⟶*-trans (⟶*-⌜Π⌝ˡ r₁) (⟶*-⌜Π⌝ʳ r₂)) nrm' (sn-cΠ sn₁ sn₂)
@@ -6953,16 +8357,39 @@ wn (sn-nsuc h) with wn h
   where
     nrm' : IsNormal (nsuc n₁)
     nrm' (ξ-nsuc q) = nm₁ q
-wn (sn-con {k = k} h) with wn h
-... | mkWN n₁ r₁ nm₁ sn₁ = mkWN (con k n₁) (⟶*-con r₁) nrm' (sn-con sn₁)
+wn (sn-con a0₀) with wn a0₀
+... | mkWN n0 r0 nm0 sn0 =
+      mkWN (con n0) (⟶*-con r0) nrm' (sn-con sn0)
   where
-    nrm' : IsNormal (con k n₁)
-    nrm' (ξ-con q) = nm₁ q
-wn (sn-icon {k = k} h) with wn h
-... | mkWN n₁ r₁ nm₁ sn₁ = mkWN (icon k n₁) (⟶*-icon r₁) nrm' (sn-icon sn₁)
+    nrm' : IsNormal (con n0)
+    nrm' (ξ-con q) = nm0 q
+wn (sn-dι a0₀) with wn a0₀
+... | mkWN n0 r0 nm0 sn0 =
+      mkWN (dι n0) (⟶*-dι r0) nrm' (sn-dι sn0)
   where
-    nrm' : IsNormal (icon k n₁)
-    nrm' (ξ-icon q) = nm₁ q
+    nrm' : IsNormal (dι n0)
+    nrm' (ξ-dι q) = nm0 q
+wn (sn-dσ a0₀ a1₀) with wn a0₀ | wn a1₀
+... | mkWN n0 r0 nm0 sn0 | mkWN n1 r1 nm1 sn1 =
+      mkWN (dσ n0 n1) (⟶*-trans (⟶*-dσˢ r0) (⟶*-dσᶠ r1)) nrm' (sn-dσ sn0 sn1)
+  where
+    nrm' : IsNormal (dσ n0 n1)
+    nrm' (ξ-dσˢ q) = nm0 q
+    nrm' (ξ-dσᶠ q) = nm1 q
+wn (sn-dρ a0₀ a1₀) with wn a0₀ | wn a1₀
+... | mkWN n0 r0 nm0 sn0 | mkWN n1 r1 nm1 sn1 =
+      mkWN (dρ n0 n1) (⟶*-trans (⟶*-dρʲ r0) (⟶*-dρᶜ r1)) nrm' (sn-dρ sn0 sn1)
+  where
+    nrm' : IsNormal (dρ n0 n1)
+    nrm' (ξ-dρʲ q) = nm0 q
+    nrm' (ξ-dρᶜ q) = nm1 q
+wn sn-fzero = mkWN fzero done (λ ()) sn-fzero
+wn (sn-fsuc a0₀) with wn a0₀
+... | mkWN n0 r0 nm0 sn0 =
+      mkWN (fsuc n0) (⟶*-fsuc r0) nrm' (sn-fsuc sn0)
+  where
+    nrm' : IsNormal (fsuc n0)
+    nrm' (ξ-fsuc q) = nm0 q
 wn (sn-exp r h) with wn h
 ... | mkWN n₁ r₁ nm₁ sn₁ = mkWN n₁ (step (snr→⟶ r) r₁) nm₁ sn₁
 
