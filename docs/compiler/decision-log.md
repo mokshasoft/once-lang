@@ -15323,6 +15323,31 @@ reversing an earlier decision — (α) admit `B <: Unit ⇒[eff] B` (the Kleisli
 reverses D127's removal of value-as-arrow lifting), or (γ) redesign effectful
 application as sequencing instead of suspension (reopens D018).
 
+### Amendment 2 (2026-09-26): the other subterms STILL SYNTHESIZE; usage is the nullary sum's
+
+The "no requirement on its other subterms" clause above is WITHDRAWN (option (a)):
+every subterm of a `Void`-principal elimination must still synthesize. Nothing
+untyped stands inside a typed program, and no type is invented.
+
+Usage follows from QTT, not from a new rule. A sum's eliminator consumes its
+scrutinee plus the JOIN of its branches (`t-case`: `Ψs +ᵘ (Ψₗ ⊔ᵘ Ψᵣ)`), because
+exactly one branch runs. `Void` is the NULLARY sum, whose eliminator `¡` has no
+branches, so the join is over nothing: zero. Hence the rule (i):
+
+* a subterm evaluated up to and including the `Void` principal counts as usual;
+* what the `Void` eliminator discards counts zero —
+  `f x` with `f ∶ Void`: `x` counts zero; `v + e` with `v ∶ Void`: `e` counts zero;
+  `e + v`: `e` ran first and counts; `case v of …` with `v ∶ Void`: the written
+  branches are typed (their binders at `Void`) and count zero.
+
+A right-operand rule requires a non-`Void` left operand, so each term has one
+synthesized type and one usage (uniqueness of synthesis, `ModeAgreement.agree-ii`).
+Once's quantities form the chain `0 ≤ 1 ≤ ω`, so the narrowing lemma says narrowing
+never INCREASES usage. Rejected (ii): reading `v ∶ Void` as `Void + Void` and joining
+the written branches — it keeps a `case`'s usage under narrowing, but an absurd head
+`f x` has no arrow quantity to multiply `x` by, so usage cannot be preserved in general
+anyway.
+
 ## D230 — THE SPINE MODE: ARGUMENT-DRIVEN APPLICATION IS AN INFERENCE, `t-arg-driven-app-check` IS DELETED (2026-09-26)
 
 **Status**: Accepted; implementation in plan 0.94 (phase C).
