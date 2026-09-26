@@ -35,7 +35,7 @@ open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Metatheory.RedCong
-  using ( ⟶*-trans; ⟶*-pairʳ; ⟶*-appʳ; ⟶*-dihᶜ; _⟶ᵀ*_; doneᵀ; stepᵀ; ⟶ᵀ*-Σʳ
+  using ( ⟶*-trans; ⟶*-pairʳ; ⟶*-appʳ; ⟶*-dihᶜ; _⟶ᵀ*_; doneᵀ; stepᵀ; ⟶ᵀ*-Σʳ; ⟶ᵀ*-Σˡ; ⟶ᵀ*-trans
         ; red→≅ᵀ )
 open import DirectedHoTT.Metatheory.TySub
   using ( ⊢wk; Ren⊢; ∋-cast; conv-ctx )
@@ -46,7 +46,7 @@ open import DirectedHoTT.Metatheory.Premises
 open import DirectedHoTT.Lib.Sugar
   using ( Cons; []; _∷_; Nth; nth-z; nth-s; tag; Dₗ; conₗ; selF-β; methₗ; ιₗ
         ; MethK; AllD; []ᵈ; _∷ᵈ_; ⊢Dₗ; ⊢conₗ; ⊢pay-ι; ⊢pay-σλ; ⊢pay-ρ; Dσ
-        ; selF-sub; nth-sub )
+        ; selF-sub; nth-sub; vz-cancel )
 
 private
   variable
@@ -161,6 +161,37 @@ dihN-red₀ T D e p =
   subst (λ C → dih D e C p ⟶* dihN idₛ T D e p) (subTm-id ⌜ T ⌝ᵗ) (dihN-red idₛ T D e p)
 
 ------------------------------------------------------------------------
+-- 5b. ★ THE PAYLOAD'S TYPE, in normal form: a `Σ'` per field — the
+--     field's decoded code at `tσ`, the family at `tρ` — ending in
+--     `Unit`.  What a method body needs to READ its payload (`fst`/`snd`
+--     of the payload variable) without a per-example conversion chain.
+------------------------------------------------------------------------
+
+PayN : Sub Δ Γ → Tel Δ → RTm Γ → RTm Γ → RTy Γ
+PayN σ tι       I D = Unit
+PayN σ (tσ S T) I D = Σ' (El (subTm σ S)) (PayN (extS σ) T (renTm vs I) (renTm vs D))
+PayN σ (tρ j T) I D = Σ' (IMu I D (subTm σ j)) (PayN (vs ᵣ∘ₛ σ) T (renTm vs I) (renTm vs D))
+
+payN-red : (σ : Sub Δ Γ) (T : Tel Δ) (I D : RTm Γ) →
+           El (dpay I D (subTm σ ⌜ T ⌝ᵗ)) ⟶ᵀ* PayN σ T I D
+payN-red σ tι I D = stepᵀ (ξ-El (dpay-ι I D)) (stepᵀ El-⌜Unit⌝ doneᵀ)
+payN-red σ (tσ S T) I D =
+  stepᵀ (ξ-El (dpay-σ I D (subTm σ S) (lam X)))
+  (stepᵀ (ξ-El (ξ-⌜Σ⌝ʳ (ξ-dpayᶜ (β (renTm (extR vs) X) (var vz)))))
+  (stepᵀ (El-⌜Σ⌝ _ _)
+    (⟶ᵀ*-Σʳ (subst (λ C → El (dpay (renTm vs I) (renTm vs D) C) ⟶ᵀ* PayN (extS σ) T (renTm vs I) (renTm vs D))
+                   (sym (vz-cancel X))
+                   (payN-red (extS σ) T (renTm vs I) (renTm vs D))))))
+  where X = subTm (extS σ) ⌜ T ⌝ᵗ
+payN-red σ (tρ j T) I D =
+  stepᵀ (ξ-El (dpay-ρ I D (subTm σ j) (subTm σ ⌜ T ⌝ᵗ)))
+  (stepᵀ (El-⌜Σ⌝ _ _)
+  (⟶ᵀ*-trans (⟶ᵀ*-Σˡ (stepᵀ El-⌜IMu⌝ doneᵀ))
+    (⟶ᵀ*-Σʳ (subst (λ C → El (dpay (renTm vs I) (renTm vs D) C) ⟶ᵀ* PayN (vs ᵣ∘ₛ σ) T (renTm vs I) (renTm vs D))
+                   (sym (renTm-subTm ⌜ T ⌝ᵗ))
+                   (payN-red (vs ᵣ∘ₛ σ) T (renTm vs I) (renTm vs D))))))
+
+------------------------------------------------------------------------
 -- 6. ★ A METHOD, read along the view.  The method's third binder is the
 --    hypotheses at `DIh`; the body is written against their NORMAL FORM
 --    (`HypCtx`), and `⊢methT` converts the context once.
@@ -203,6 +234,19 @@ private
             (subst (λ b → motCtx Γ₂ (renTm (λ x → vs (vs x)) I) b ⊢ty wk2M M) (sym (renTm-renTm D))
               (mot-ren (w2⊢ {B = El I} {B' = P₁}) dM))
     dH = ty-DIh (⊢wk (⊢wk dI)) (⊢wkD (⊢wkD dD)) dM₂ (⊢wk dC) (⊢var here)
+
+-- ★ the method's PAYLOAD variable, at its normal form (it sits two
+--   binders out, under the pending weakening `w2`)
+⊢payHyp : {Γ : Ctx} {I D : RTm ⌊ Γ ⌋} {M : RTy ((⌊ Γ ⌋ ∙) ∙)} {T : Tel (⌊ Γ ⌋ ∙)} →
+          HypCtx Γ I D M T ⊢ var (vs vz) ∷
+            PayN ⟨ (λ x → vs (vs x)) ⟩ᵣ T (renTm vs (renTm vs (renTm vs I))) (renTm vs (renTm vs (renTm vs D)))
+⊢payHyp {Γ} {I} {D} {M} {T} =
+  ⊢conv (subst (λ C → HypCtx Γ I D M T ⊢ var (vs vz) ∷ El (dpay I₃ D₃ C))
+               (trans (renTm-renTm ⌜ T ⌝ᵗ) (sym (subTm-var (λ x → vs (vs x)) ⌜ T ⌝ᵗ)))
+               (⊢var (there here)))
+        (red→≅ᵀ (payN-red ⟨ (λ x → vs (vs x)) ⟩ᵣ T I₃ D₃))
+  where I₃ = renTm vs (renTm vs (renTm vs I))
+        D₃ = renTm vs (renTm vs (renTm vs D))
 
 ------------------------------------------------------------------------
 -- 7. ★ …AND IT COMPUTES: the ι-step of the constructor-list form, with
