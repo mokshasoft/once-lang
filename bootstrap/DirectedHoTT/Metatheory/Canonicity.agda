@@ -498,10 +498,10 @@ szb (con p)        = sz p
 szb (ielim D i e t) = sz D + sz i + sz e + sz t
 szb (⌜IMu⌝ I D i)  = sz I + sz D + sz i
 szb (⌜Fin⌝ n)      = zero
-szb (dι j)         = sz j
+szb dι             = zero
 szb (dσ S f)       = sz S + sz f
 szb (dρ j C)       = sz j + sz C
-szb (dpay I D C i) = sz I + sz D + sz C + sz i
+szb (dpay I D C)   = sz I + sz D + sz C
 szb (dih D e C p)  = sz D + sz e + sz C + sz p
 szb fzero          = zero
 szb (fsuc t)       = sz t
@@ -546,11 +546,11 @@ szb-ren ρ (ielim D i e t) =
   cong₂ _+_ (cong₂ _+_ (cong₂ _+_ (sz-ren ρ D) (sz-ren ρ i)) (sz-ren ρ e)) (sz-ren ρ t)
 szb-ren ρ (⌜IMu⌝ I D i) = cong₂ _+_ (cong₂ _+_ (sz-ren ρ I) (sz-ren ρ D)) (sz-ren ρ i)
 szb-ren ρ (⌜Fin⌝ n)     = refl
-szb-ren ρ (dι j)        = sz-ren ρ j
+szb-ren ρ dι            = refl
 szb-ren ρ (dσ S f)      = cong₂ _+_ (sz-ren ρ S) (sz-ren ρ f)
 szb-ren ρ (dρ j C)      = cong₂ _+_ (sz-ren ρ j) (sz-ren ρ C)
-szb-ren ρ (dpay I D C i) =
-  cong₂ _+_ (cong₂ _+_ (cong₂ _+_ (sz-ren ρ I) (sz-ren ρ D)) (sz-ren ρ C)) (sz-ren ρ i)
+szb-ren ρ (dpay I D C) =
+  cong₂ _+_ (cong₂ _+_ (sz-ren ρ I) (sz-ren ρ D)) (sz-ren ρ C)
 szb-ren ρ (dih D e C p) =
   cong₂ _+_ (cong₂ _+_ (cong₂ _+_ (sz-ren ρ D) (sz-ren ρ e)) (sz-ren ρ C)) (sz-ren ρ p)
 szb-ren ρ fzero         = refl
@@ -591,7 +591,7 @@ data Canon {Γ : Cx} : RTm Γ → Set where
   can-con   : (p : RTm Γ)                → Canon (con p)
   can-cIMu  : (I D i : RTm Γ)            → Canon (⌜IMu⌝ I D i)
   can-cFin  : (n : ℕ)                    → Canon (⌜Fin⌝ {Γ} n)
-  can-dι    : (j : RTm Γ)                → Canon (dι j)
+  can-dι    :                              Canon (dι {Γ})
   can-dσ    : (S f : RTm Γ)              → Canon (dσ S f)
   can-dρ    : (j C : RTm Γ)              → Canon (dρ j C)
   can-fzero :                              Canon (fzero {Γ})
@@ -667,7 +667,7 @@ data CanOf {Γ : Cx} : Hd → RTm Γ → Set where
   co-nzero  : CanOf hNat nzero
   co-nsuc   : (n : RTm Γ) → CanOf hNat (nsuc n)
   co-con    : (p : RTm Γ) → CanOf hIMu (con p)
-  co-dι     : (j : RTm Γ) → CanOf hDesc (dι j)
+  co-dι     : CanOf hDesc (dι {Γ})
   co-dσ     : (S f : RTm Γ) → CanOf hDesc (dσ S f)
   co-dρ     : (j C : RTm Γ) → CanOf hDesc (dρ j C)
   co-fzero  : CanOf hFin fzero
@@ -717,8 +717,8 @@ canTy d (can-nsuc n) with gen-nsuc d
 ... | _ , cv = inj₂ (hNat , (co-nsuc n , (_ , (cv , in-Nat))))
 canTy d (can-con p) with gen-con d
 ... | _ , (_ , (_ , (_ , (_ , (_ , (_ , cv)))))) = inj₂ (hIMu , (co-con p , (_ , (cv , in-IMu))))
-canTy d (can-dι j) with gen-dι d
-... | _ , (_ , (_ , cv)) = inj₂ (hDesc , (co-dι j , (_ , (cv , in-Desc))))
+canTy d can-dι with gen-dι d
+... | _ , (_ , cv) = inj₂ (hDesc , (co-dι , (_ , (cv , in-Desc))))
 canTy d (can-dσ S f) with gen-dσ d
 ... | _ , (_ , (_ , (_ , cv))) = inj₂ (hDesc , (co-dσ S f , (_ , (cv , in-Desc))))
 canTy d (can-dρ j C) with gen-dρ d
@@ -810,10 +810,10 @@ jfire cM aM (nsuc _) s e ()
 jfire cM aM (natrec _ _ _) s e ()
 jfire cM aM (con _) s e ()
 jfire cM aM (ielim _ _ _ _) s e ()
-jfire cM aM (dι _) s e ()
+jfire cM aM dι s e ()
 jfire cM aM (dσ _ _) s e ()
 jfire cM aM (dρ _ _) s e ()
-jfire cM aM (dpay _ _ _ _) s e ()
+jfire cM aM (dpay _ _ _) s e ()
 jfire cM aM (dih _ _ _ _) s e ()
 jfire cM aM fzero s e ()
 jfire cM aM (fsuc _) s e ()
@@ -932,7 +932,7 @@ mutual
   prog (suc m) {t = nzero}       d le = prog-can can-nzero
   prog (suc m) {t = nsuc n}      d le = prog-can (can-nsuc n)
   prog (suc m) {t = con p}       d le = prog-can (can-con p)
-  prog (suc m) {t = dι j}        d le = prog-can (can-dι j)
+  prog (suc m) {t = dι}        d le = prog-can can-dι
   prog (suc m) {t = dσ S f}      d le = prog-can (can-dσ S f)
   prog (suc m) {t = dρ j C}      d le = prog-can (can-dρ j C)
   prog (suc m) {t = fzero}       d le = prog-can can-fzero
@@ -965,7 +965,7 @@ mutual
   --   type (`canAt`), and each canonical shape fires a head rule.
   prog (suc m) {t = ielim D i e t} d le with ielimS m d (un≤ le)
   ... | _ , r = prog-step r
-  prog (suc m) {t = dpay I D C i} d le with dpayS m d (un≤ le)
+  prog (suc m) {t = dpay I D C} d le with dpayS m d (un≤ le)
   ... | _ , r = prog-step r
   prog (suc m) {t = dih D e C p} d le with dihS m d (un≤ le)
   ... | _ , r = prog-step r
@@ -1009,7 +1009,7 @@ mutual
   usplit (suc m) {c = nzero}      d le = ⊥-elim (notU d can-nzero λ ())
   usplit (suc m) {c = nsuc n}     d le = ⊥-elim (notU d (can-nsuc n) λ ())
   usplit (suc m) {c = con p}      d le = ⊥-elim (notU d (can-con p) λ ())
-  usplit (suc m) {c = dι j}       d le = ⊥-elim (notU d (can-dι j) λ ())
+  usplit (suc m) {c = dι}       d le = ⊥-elim (notU d can-dι λ ())
   usplit (suc m) {c = dσ S f}     d le = ⊥-elim (notU d (can-dσ S f) λ ())
   usplit (suc m) {c = dρ j C}     d le = ⊥-elim (notU d (can-dρ j C) λ ())
   usplit (suc m) {c = fzero}      d le = ⊥-elim (notU d can-fzero λ ())
@@ -1038,7 +1038,7 @@ mutual
   ... | _ , r = u-step r
   usplit (suc m) {c = ielim D i e t} d le with ielimS m d (un≤ le)
   ... | _ , r = u-step r
-  usplit (suc m) {c = dpay I D C i} d le with dpayS m d (un≤ le)
+  usplit (suc m) {c = dpay I D C} d le with dpayS m d (un≤ le)
   ... | _ , r = u-step r
   usplit (suc m) {c = dih D e C p} d le with dihS m d (un≤ le)
   ... | _ , r = u-step r
@@ -1177,29 +1177,28 @@ mutual
 
   -- the payload code and the hypotheses compute on a CLOSED telescope,
   --   which is `dι`/`dσ`/`dρ` or steps.
-  dpayS : (m : ℕ) {I D C i : RTm ε} {T : RTy ε} →
-          ◇ ⊢ dpay I D C i ∷ T → sz I + sz D + sz C + sz i ≤ m →
-          Σ (RTm ε) (λ v → dpay I D C i ⟶ v)
-  dpayS m {I} {D} {C} {i} dv q with gen-dpay dv
-  ... | dI , (dD , (dC , (di , cU)))
-        with prog m dC (≤-trans (≤-trans (≤+ʳ (sz I + sz D) (sz C))
-                                         (≤+ˡ (sz I + sz D + sz C) (sz i))) q)
+  dpayS : (m : ℕ) {I D C : RTm ε} {T : RTy ε} →
+          ◇ ⊢ dpay I D C ∷ T → sz I + sz D + sz C ≤ m →
+          Σ (RTm ε) (λ v → dpay I D C ⟶ v)
+  dpayS m {I} {D} {C} dv q with gen-dpay dv
+  ... | dI , (dD , (dC , cU))
+        with prog m dC (≤-trans (≤+ʳ (sz I + sz D) (sz C)) q)
   ...   | prog-step r = _ , ξ-dpayᶜ r
   ...   | prog-can cn with canAt dC crflᵀ in-Desc (λ ()) cn
-  ...     | co-dι j    = _ , dpay-ι I D j i
-  ...     | co-dσ S f  = _ , dpay-σ I D S f i
-  ...     | co-dρ j C' = _ , dpay-ρ I D j C' i
+  ...     | co-dι      = _ , dpay-ι I D
+  ...     | co-dσ S f  = _ , dpay-σ I D S f
+  ...     | co-dρ j C' = _ , dpay-ρ I D j C'
 
   dihS : (m : ℕ) {D e C p : RTm ε} {T : RTy ε} →
          ◇ ⊢ dih D e C p ∷ T → sz D + sz e + sz C + sz p ≤ m →
          Σ (RTm ε) (λ v → dih D e C p ⟶ v)
   dihS m {D} {e} {C} {p} dv q with gen-dih dv
-  ... | I , (M , (i , (dI , (dD , (dM , (de , (dC , (di , (dp , cC)))))))))
+  ... | I , (M , (dI , (dD , (dM , (de , (dC , (dp , cC)))))))
         with prog m dC (≤-trans (≤-trans (≤+ʳ (sz D + sz e) (sz C))
                                          (≤+ˡ (sz D + sz e + sz C) (sz p))) q)
   ...   | prog-step r = _ , ξ-dihᶜ r
   ...   | prog-can cn with canAt dC crflᵀ in-Desc (λ ()) cn
-  ...     | co-dι j    = _ , dih-ι D e j p
+  ...     | co-dι      = _ , dih-ι D e p
   ...     | co-dσ S f  = _ , dih-σ D e S f p
   ...     | co-dρ j C' = _ , dih-ρ D e j C' p
 
