@@ -57,6 +57,51 @@ is a follow-up stage once everything is green.
   `validity` of `dι j ∷ Desc I` needs it; the other premises give `I` only
   under `El`/`Desc`, i.e. up to conversion, and `El I` may DECODE. This is
   the levitation paper's rule shape (the index type is a premise).
+- ★ KERNEL FINDING (Fundamental): `⊢⌜IMu⌝` also types `Γ ⊢ I ∷ U`. The CODE
+  `⌜IMu⌝ I D i` contains `I`, so `fund` owes `SN I`; a type's semantic
+  witness (`⊩₁Desc`, `⊩₁ne`, …) carries no SN of the terms inside the type.
+  The rule shape is now uniform: every former types each term it CONTAINS.
+- ★ KERNEL FINDING (NormTy): a premise in an EXTENDED context presupposes
+  the extension — the convention `⊢lam`/`ty-Π` already follow (`⊢ctx`'s
+  comment). `ty-DIh`, `⊢dih`, `⊢ielim` (premise `motCtx Γ I D ⊢ty M`) now
+  type `Γ ⊢ I ∷ U`; `⊢psplit` (premises in `Γ ▹ Σ' A B`, `Γ ▹ A ▹ B`) types
+  `A` and `B`. `validity` gives `Desc I` only up to conversion and there is
+  no subject expansion, so `I ∷ U` is NOT recoverable from `D ∷ Desc I`.
+- ★ NormTy is SUBSTITUTION-PARAMETRIC (`normTyS : … → Sub⊢ Γ Δ σ →
+  WNᵀ (subTy σ A)`). `DIh-ρ` exposes the motive's instance
+  `iinst j (fst p) M`; stating the theorem at every substitution keeps the
+  recursion on the formation derivation structural. `DIh-σ`'s
+  `app f (fst p)` has no syntactic measure: `dihNF` recurses on a `Walk`
+  (the syntactic shadow of `dihTy`, read off the LR at `vs` by
+  `dih-walk`, anti-renamed), generalised over a RENAMING so `DIh-ρ`'s
+  second component is the same walk one scope out.
+- ★ LR design change, measured necessary: `⊩₀IMu`/`⊩₁IMu` interpret a
+  CONVERTIBLE REPRESENTATIVE (`I ≅ I₀`, `D ≅ D₀`). Interpreting the reduct's
+  own slots would make `fwd₀` transport an interpretation along an
+  arbitrary reduction of a TERM, which head expansion cannot do.
+- ✅ `Validity`, `DecEq`, `DecideConversion`, `Injectivity`, `SubjectReduction`
+  green after the `motCtx`/`psplit` premise change (committed).
+- `Canonicity` REWRITTEN around ONE lemma (2082 → 1477 lines): inert type
+  heads survive reduction (`inert-conv`), every canonical form but `hrefl`
+  has an inert-headed type (`canTy`), and `canAt` hands a consumer at an
+  inert type only its head's introduction forms — Agda's coverage refutes
+  the rest. The pairwise clash matrix (~50 lemmas) is gone; each levitated
+  eliminator's progress row is one `canAt` match. `hrefl`/Hom consumers use
+  `homCan` (a `Hom` reaches only Hom/Π/Unit/base).
+- `CheckA`: descriptions are terms, so EVERY former now infers (PLAN-BIDI
+  §3d dissolved). New facts the checker needs: `MethTy-wf` (the method
+  type is well-formed), `pairS⊢`, `fsucS⊢`, `motCtx-wf`. `liftTy`/`liftTm`
+  regenerated from `tools/genA.py`'s field table.
+- `Check` (RTm slice 1): `evTy`/`unEl` rows for `IMu`/`Desc`/`⌜Fin⌝`; it
+  depends on `Lib/Eval`, so it compiles with stage 3.
+- `LogicalRelation` ✅ (committed). `Fundamental/Indexed` rewritten:
+  `payInterp₀`, `liftPay₀`/`payLift₀` (definitional — `ILift` is written in
+  `⊩₀Σ`/`⊩₀Id` shape), `dihTy`, `sn-dpay` (SN under the binder by `sn-body`
+  at `x₀`), and `ElimSem` — the eliminator, NOT mutual with `fund`
+  (induction on the membership; the hypotheses are its mutual `dihSem`).
+- `psplit` in `fund`: Σ's semantics is projection-based, so the case
+  inspects the scrutinee's SN derivation (pair ⇒ fire, neutral ⇒ stuck,
+  head step ⇒ expand, any other canonical form ⇒ its `fst` is not SN).
 
 ### LogicalRelation design (the stage's biggest unknown)
 
