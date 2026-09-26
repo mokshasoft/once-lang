@@ -1,190 +1,177 @@
 ------------------------------------------------------------------------
 -- OCP-0009 · INDUCTIVE TYPES — ★ NESTED DATATYPES, end to end.
 --
--- ⚠⚠ WHAT THIS FILE IS FOR.  `⌜Mu⌝` was added for exactly one capability,
---   and a green kernel does not by itself demonstrate it: a description
---   whose `dκ` FIELD IS ANOTHER DATATYPE.  Gate 6c (`SpikeMuMem3`) posed
---   that case semantically as `WrapD`; the kernel could not express it
---   until now, because `dwf-κ` demands the field be `El c` for a CLOSED
---   CODE and there was no code for `Mu`.
+-- ⚠ WHAT THIS FILE IS FOR: a description whose σ-FIELD IS ANOTHER
+--   DATATYPE.  A field must be `El c` for a CODE `c`, so nesting needs a
+--   code for a datatype: `⌜IMu⌝ I D i` (§12's code-in-`U` decision).
 --
---   So this is the acceptance test for the whole ⌜Mu⌝ increment.  If it
---   type-checks, nesting is real; if it were merely "green", nothing here
---   would compile.
+-- ★ THE CHAIN, every link a real derivation:
 --
--- ★ THE CHAIN, and every link is a REAL derivation, not a postulate:
+--     ⊢ℕcode      : Γ ⊢ ⌜IMu⌝ ⌜Unit⌝ NatD unit ∷ U   -- ℕ is a CODE
+--     WrapOK      : a telescope `tσ ℕcode tι` is well-formed
+--     ⊢wrap       : `wrap zero : Wrap`                -- …and INHABITED
+--     ⊢unwrap     : the eliminator at the nested type, whose method
+--                   READS the nested field (`⊢payHyp`)
+--     unwrap-wrap : …and it COMPUTES
 --
---     ⊢⌜Mu⌝ natWf      : ◇ ⊢ ⌜Mu⌝ NatD ∷ U       -- ℕ is a CODE
---     dwf-κ … above …  : DConWf (dκ (El (⌜Mu⌝ NatD)) dι)
---     wrapWf           : DescWf WrapD             -- so Wrap is well-formed
---     ty-Mu wrapWf     : Γ ⊢ty Mu WrapD           -- …and is a TYPE
---     ⊢con wrapWf …    : ◇ ⊢ `wrap `zero ∷ Mu WrapD   -- …and is INHABITED
---
---   The last line is the point: a closed inhabitant of a datatype one of
---   whose fields is a different datatype.
---
--- ⚠ `--safe`, no postulates, no holes.
+-- ★ Levitated (D072): ℕ and `Wrap` are ordinary families over `⌜Unit⌝`,
+--   written as constructor telescopes (`Lib/Tel`).
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.MuNest where
-open import Agda.Builtin.Nat using ( zero; suc )
-open import normalizer.Syntax.Types using ( _≡_; refl )
+open import normalizer.Syntax.Types using ( _,_; sym; subst )
+open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
+open import DirectedHoTT.Spec.Syntax hiding ( Fin )
+open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
+open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-trans )
+open import DirectedHoTT.Metatheory.TySub using ( ⊢wk )
+open import DirectedHoTT.Lib.Sugar
+  using ( Cons; []; _∷_; Dₗ; conₗ; methₗ; selF; selF-β; nth-z; MethK; PerK; []ₘ; _∷ₘ_; ⊢methₗ )
+open import DirectedHoTT.Lib.Tel
 
-open import DirectedHoTT.Spec.Syntax
-  using ( Cx; ε; _∙; RTy; RTm; El; Mu; U; Unit; Σ'; Π
-        ; Desc; DCon; dι; dρ; dκ; dnil; _◃_; ⌜Mu⌝
-        ; con; unit; pair; fst; lam; app; elim; payTy; lookupD
-        ; sel; ihs; fields
-        ; _∈D_; hereD; thereD )
-open import DirectedHoTT.Spec.Typing
-  using ( Ctx; ◇; ⌊_⌋; _⊢_∷_; _⊢ty_
-        ; DConWf; dwf-ι; dwf-ρ; dwf-κ; DescWf; dwf-nil; dwf-cons
-        ; ty-Mu; ⊢con; ⊢⌜Mu⌝; ⊢unit; ⊢pair; ty-Unit
-        ; ⊢conv; _≅ᵀ_; credᵀ; csymᵀ; El-⌜Mu⌝
-        ; ⊢elim; ⊢lam; ty-Σ; ty-El; methsTy
-        ; _⟶_; _⟶*_; done; step; ι-elim; β; βfst; ξ-appˡ )
+⊢u : {Γ : Ctx} → Γ ⊢ unit ∷ El ⌜Unit⌝
+⊢u = ⊢conv ⊢unit (csymᵀ (credᵀ El-⌜Unit⌝))
+
+fromEl : {Γ : Ctx} {I D i t : RTm ⌊ Γ ⌋} → Γ ⊢ t ∷ El (⌜IMu⌝ I D i) → Γ ⊢ t ∷ IMu I D i
+fromEl d = ⊢conv d (credᵀ El-⌜IMu⌝)
+
+-- ★★ THE ONE STEP THAT IS NOT BOOKKEEPING: a field's declared type is
+--   the code's DECODE, which REDUCES to the family but is not it.
+toEl : {Γ : Ctx} {I D i t : RTm ⌊ Γ ⌋} → Γ ⊢ t ∷ IMu I D i → Γ ⊢ t ∷ El (⌜IMu⌝ I D i)
+toEl d = ⊢conv d (csymᵀ (credᵀ El-⌜IMu⌝))
 
 ------------------------------------------------------------------------
--- 1. ℕ as a description — the INNER datatype.
+-- 1. ℕ — the INNER datatype — and its code.
 ------------------------------------------------------------------------
 
-NatD : Desc
-NatD = dι ◃ dρ dι ◃ dnil
+NatTs : {Γ : Cx} → Tels (Γ ∙) 2
+NatTs = tι ∷ᵗ tρ unit tι ∷ᵗ []ᵗ
 
--- ⚠ no `dκ` anywhere in `NatD`, so its well-formedness needs no codes.
-natWf : DescWf NatD
-natWf = dwf-cons dwf-ι (dwf-cons (dwf-ρ dwf-ι) dwf-nil)
+NatD : {Γ : Cx} → RTm Γ
+NatD = Dₗ ⌜ NatTs ⌝ₛ
 
--- ★ …and THIS is what ⌜Mu⌝ bought: `Mu NatD` is now a SMALL type, i.e.
---   it has a code, so it can appear as a `dκ` field below.
-`ℕcode : RTm ε
-`ℕcode = ⌜Mu⌝ NatD
+NatOK : {Γ : Ctx} → AllOK (Γ ▹ El ⌜Unit⌝) ⌜Unit⌝ NatTs
+NatOK = ok-ι ∷ᵒ ok-ρ ⊢u ok-ι ∷ᵒ []ᵒ
 
-⊢ℕcode : ◇ ⊢ `ℕcode ∷ U
-⊢ℕcode = ⊢⌜Mu⌝ natWf
+⊢NatD : {Γ : Ctx} → Γ ⊢ NatD ∷ DescF ⌜Unit⌝
+⊢NatD = ⊢Dₜ ⊢⌜Unit⌝ NatOK
 
-`zero : RTm ⌊ ◇ ⌋
-`zero = con zero unit
+NatT : {Γ : Cx} → RTy Γ
+NatT = IMu ⌜Unit⌝ NatD unit
 
-⊢zero : ◇ ⊢ `zero ∷ Mu NatD
-⊢zero = ⊢con natWf hereD ⊢unit
+ty-NatT : {Γ : Ctx} → Γ ⊢ty NatT
+ty-NatT = ty-IMu ⊢⌜Unit⌝ ⊢NatD ⊢u
+
+`ℕcode : {Γ : Cx} → RTm Γ
+`ℕcode = ⌜IMu⌝ ⌜Unit⌝ NatD unit
+
+⊢ℕcode : {Γ : Ctx} → Γ ⊢ `ℕcode ∷ U
+⊢ℕcode = ⊢⌜IMu⌝ ⊢⌜Unit⌝ ⊢NatD ⊢u
+
+`zero : {Γ : Cx} → RTm Γ
+`zero = conₗ zero unit
+
+⊢zero : {Γ : Ctx} → Γ ⊢ `zero ∷ NatT
+⊢zero = ⊢conₜ ⊢⌜Unit⌝ NatOK nthᵗ-z ⊢u (⊢payι ⊢⌜Unit⌝ ⊢NatD ⊢unit)
 
 ------------------------------------------------------------------------
 -- 2. ★★★ THE NESTED DESCRIPTION.  One constructor, one field, and that
 --    field's type is ANOTHER DATATYPE.
 ------------------------------------------------------------------------
 
-WrapD : Desc
-WrapD = dκ (El `ℕcode) dι ◃ dnil
+wrapT : {Γ : Cx} → Tel (Γ ∙)
+wrapT = tσ `ℕcode tι
 
--- ★ the well-formedness that was UNREACHABLE before ⌜Mu⌝ existed: the
---   κ-slot is discharged by a genuine `◇ ⊢ c ∷ U` whose code is `⌜Mu⌝`.
-wrapWf : DescWf WrapD
-wrapWf = dwf-cons (dwf-κ `ℕcode ⊢ℕcode dwf-ι) dwf-nil
+WrapTs : {Γ : Cx} → Tels (Γ ∙) 1
+WrapTs = wrapT ∷ᵗ []ᵗ
 
--- …so `Mu WrapD` is a type.
-ty-Wrap : ◇ ⊢ty Mu WrapD
-ty-Wrap = ty-Mu wrapWf
+WrapD : {Γ : Cx} → RTm Γ
+WrapD = Dₗ ⌜ WrapTs ⌝ₛ
+
+wrapOK : {Γ : Ctx} → TelOK (Γ ▹ El ⌜Unit⌝) ⌜Unit⌝ wrapT
+wrapOK = ok-σ ⊢ℕcode ok-ι
+
+WrapOK : {Γ : Ctx} → AllOK (Γ ▹ El ⌜Unit⌝) ⌜Unit⌝ WrapTs
+WrapOK = wrapOK ∷ᵒ []ᵒ
+
+⊢WrapD : {Γ : Ctx} → Γ ⊢ WrapD ∷ DescF ⌜Unit⌝
+⊢WrapD = ⊢Dₜ ⊢⌜Unit⌝ WrapOK
+
+Wrap : {Γ : Cx} → RTy Γ
+Wrap = IMu ⌜Unit⌝ WrapD unit
 
 ------------------------------------------------------------------------
--- 3. AN INHABITANT.  `wrap zero : Wrap`.
+-- 3. AN INHABITANT.  `wrap zero : Wrap` — the field must be a genuine
+--    ℕ, crossed into the code's decode by `toEl`.
+------------------------------------------------------------------------
+
+`wrap : {Γ : Cx} → RTm Γ → RTm Γ
+`wrap n = conₗ zero (pair n unit)
+
+⊢wrap : {Γ : Ctx} {n : RTm ⌊ Γ ⌋} → Γ ⊢ n ∷ NatT → Γ ⊢ `wrap n ∷ Wrap
+⊢wrap dn = ⊢conₜ ⊢⌜Unit⌝ WrapOK nthᵗ-z ⊢u
+             (⊢payσ ⊢⌜Unit⌝ ⊢WrapD (ok-σ ⊢ℕcode ok-ι) (toEl dn) (⊢payι ⊢⌜Unit⌝ ⊢WrapD ⊢unit))
+
+⊢wrap-zero : ◇ ⊢ `wrap `zero ∷ Wrap
+⊢wrap-zero = ⊢wrap ⊢zero
+
+------------------------------------------------------------------------
+-- 4. ★★★ ELIMINATING A NESTED VALUE — and watching it COMPUTE.
 --
--- ⚠ the payload's type is `payTy WrapD (lookupD WrapD 0)`, which computes
---   to `Σ' (εwkTy (El `ℕcode)) Unit` — the field, then the `dι` tail.  The
---   `⊢pair` below is what forces the FIELD to be a genuine `Mu NatD`
---   inhabitant, so this derivation could not exist without step 1.
+-- `unwrap : Wrap → ℕ`.  ⚠ The nested ℕ is a σ-field, a PARAMETER, so it
+--   owes NO hypothesis (`IhN` is `Unit`); the method reads it out of the
+--   PAYLOAD instead, at the payload's normal form (`⊢payHyp`).
 ------------------------------------------------------------------------
 
-`wrap : RTm ⌊ ◇ ⌋ → RTm ⌊ ◇ ⌋
-`wrap n = con zero (pair n unit)
+mwrap : {Γ : Cx} → RTm Γ
+mwrap = lam (lam (lam (fst (var (vs vz)))))
 
--- ★★ THE ONE STEP THAT IS NOT BOOKKEEPING.  The field's declared type is
---   the CODE'S DECODE, `El (⌜Mu⌝ NatD)`, which REDUCES to `Mu NatD` but is
---   not syntactically it — so the inhabitant must cross by CONVERSION, and
---   `El-⌜Mu⌝` is exactly the rule that licenses the crossing.  This line is
---   where `⌜Mu⌝` actually does its work.
-⊢zeroAsField : ◇ ⊢ `zero ∷ El `ℕcode
-⊢zeroAsField = ⊢conv ⊢zero (csymᵀ (credᵀ El-⌜Mu⌝))
+WrapMs : {Γ : Cx} → Cons Γ 1
+WrapMs = mwrap ∷ []
 
--- ⚠ `⊢pair`'s type premise lives in the EXTENDED context (under the field
---   binder), which is why `ty-Unit` is given there and not at ◇.
-⊢wrap-zero : ◇ ⊢ `wrap `zero ∷ Mu WrapD
-⊢wrap-zero = ⊢con wrapWf hereD (⊢pair ty-Unit ⊢zeroAsField ⊢unit)
+unwrap : {Γ : Cx} → RTm Γ → RTm Γ
+unwrap w = ielim WrapD unit (methₗ WrapMs) w
 
-------------------------------------------------------------------------
--- 3b. ★★★ ELIMINATING A NESTED VALUE — and watching it COMPUTE.
---
--- ⚠ THE ACCOUNTING THAT MATTERS HERE: a `dκ` field owes NO INDUCTION
---   HYPOTHESIS.  `ihTy WrapD (dκ A dι) q M` computes to `ihTy WrapD dι …`
---   = `Unit`, and `ihs` correspondingly yields `unit` — the nested ℕ is a
---   PARAMETER, not a recursive occurrence, so the method receives the
---   payload and an EMPTY IH tuple.  Getting that wrong in either `ihs` or
---   `ihTy` alone would desynchronise them and nothing below would type.
-------------------------------------------------------------------------
+module _ {Γ : Ctx} where
+  ⊢mwrap : Γ ⊢ mwrap ∷ MethK ⌜Unit⌝ WrapD NatT ⌜ wrapT ⌝ᵗ zero
+  ⊢mwrap = ⊢methT {T = wrapT} {s = conₗ zero (var (vs vz))} ⊢⌜Unit⌝ ⊢WrapD ty-NatT wrapOK
+             (fromEl (⊢fst (⊢payHyp {I = ⌜Unit⌝} {D = WrapD} {M = NatT} {T = wrapT})))
 
--- the motive: constant `Unit` (enough to exercise the machinery without
--- dragging in motive-dependency, which `⊢natrec` already covers)
-MotU : RTy (⌊ ◇ ⌋ ∙)
-MotU = Unit
+  perWrap : PerK Γ ⌜Unit⌝ WrapD NatT (selF ⌜ WrapTs ⌝ₛ) zero WrapMs
+  perWrap = (selF-β {Cs = ⌜ WrapTs ⌝ₛ} nth-z , ⊢mwrap) ∷ₘ []ₘ
 
--- the single method: takes the payload, takes the (empty) IH tuple, and
--- returns `unit`.
-methWrap : RTm ⌊ ◇ ⌋
-methWrap = lam (lam unit)
+  -- ★ the eliminator at a NESTED datatype, fully typed
+  ⊢unwrap : {w : RTm ⌊ Γ ⌋} → Γ ⊢ w ∷ Wrap → Γ ⊢ unwrap w ∷ NatT
+  ⊢unwrap dw =
+    ⊢ielim ⊢⌜Unit⌝ ⊢WrapD ty-NatT (⊢methₗ ⊢⌜Unit⌝ (allD (⊢wk ⊢⌜Unit⌝) WrapOK) ty-NatT perWrap) ⊢u dw
 
-⊢payloadTy : ◇ ⊢ty Σ' (El `ℕcode) Unit
-⊢payloadTy = ty-Σ (ty-El ⊢ℕcode) ty-Unit
-
-⊢methWrap : ◇ ⊢ methWrap ∷ Π (Σ' (El `ℕcode) Unit) (Π Unit Unit)
-⊢methWrap = ⊢lam ⊢payloadTy (⊢lam ty-Unit ⊢unit)
-
--- the method TUPLE — right-nested, so `sel 0` is `fst`.
-msWrap : RTm ⌊ ◇ ⌋
-msWrap = pair methWrap unit
-
-⊢msWrap : ◇ ⊢ msWrap ∷ methsTy WrapD MotU WrapD
-⊢msWrap = ⊢pair ty-Unit ⊢methWrap ⊢unit
-
--- ★ the eliminator at a NESTED datatype, fully typed.
-⊢elimWrap : ◇ ⊢ elim WrapD msWrap (`wrap `zero) ∷ Unit
-⊢elimWrap = ⊢elim wrapWf ty-Unit ⊢msWrap ⊢wrap-zero
-
--- ★★ …and it COMPUTES.  ι fires on the `con` scrutinee, `sel 0` projects
---    the method, then two β's consume the payload and the empty IH tuple.
---    Each step is a REAL constructor of `_⟶_`; nothing is postulated.
-elimWrap-computes : elim WrapD msWrap (`wrap `zero) ⟶* unit
-elimWrap-computes =
-  step (ι-elim WrapD msWrap zero (pair `zero unit))
-  (step (ξ-appˡ (ξ-appˡ (βfst methWrap unit)))
-  (step (ξ-appˡ (β (lam unit) (pair `zero unit)))
-  (step (β unit unit)
-   done)))
+-- ★★ …and it COMPUTES: ι, the method's three β, one projection.
+--   ⚠ The payload is substituted UNDER the hypotheses' binder, so the
+--   field comes back as `n` weakened-then-instantiated: one `wk-single`.
+unwrap-wrap : {Γ : Cx} {n : RTm Γ} → unwrap (`wrap n) ⟶* n
+unwrap-wrap {n = n} =
+  ⟶*-trans (ιT {T = wrapT} (nth-⌜⌝ {Ts = WrapTs} nthᵗ-z) nth-z)
+    (step (ξ-appˡ (ξ-appˡ (β _ _))) (step (ξ-appˡ (β _ _)) (step (β _ _) (step (βfst _ _)
+      (subst (λ t → t ⟶* n) (sym (wk-single n)) done)))))
 
 ------------------------------------------------------------------------
--- 4. ★ WHAT THIS DOES **NOT** SHOW, recorded so the demonstration is not
---    over-read.
---
---   · It exhibits ONE nesting level.  Nothing here proves an arbitrary
---     depth, though nothing obstructs it either: `⌜Mu⌝ WrapD` is itself a
---     code, so `dκ (El (⌜Mu⌝ WrapD))` is the next rung.
---   · The motive is CONSTANT.  A dependent motive over a nested scrutinee
---     is not exercised here; `⊢natrec`'s case in `Fund` is where motive
---     dependency is actually stressed.
+-- 5. THE NEXT RUNG — the construction iterates: `Wrap` has a code too.
 ------------------------------------------------------------------------
 
--- the next rung, to show the construction genuinely iterates
-`Wrapcode : RTm ε
-`Wrapcode = ⌜Mu⌝ WrapD
+`Wrapcode : {Γ : Cx} → RTm Γ
+`Wrapcode = ⌜IMu⌝ ⌜Unit⌝ WrapD unit
 
-⊢Wrapcode : ◇ ⊢ `Wrapcode ∷ U
-⊢Wrapcode = ⊢⌜Mu⌝ wrapWf
+⊢Wrapcode : {Γ : Ctx} → Γ ⊢ `Wrapcode ∷ U
+⊢Wrapcode = ⊢⌜IMu⌝ ⊢⌜Unit⌝ ⊢WrapD ⊢u
 
-Wrap²D : Desc
-Wrap²D = dκ (El `Wrapcode) dι ◃ dnil
+Wrap²Ts : {Γ : Cx} → Tels (Γ ∙) 1
+Wrap²Ts = tσ `Wrapcode tι ∷ᵗ []ᵗ
 
-wrap²Wf : DescWf Wrap²D
-wrap²Wf = dwf-cons (dwf-κ `Wrapcode ⊢Wrapcode dwf-ι) dwf-nil
+Wrap²OK : {Γ : Ctx} → AllOK (Γ ▹ El ⌜Unit⌝) ⌜Unit⌝ Wrap²Ts
+Wrap²OK = ok-σ ⊢Wrapcode ok-ι ∷ᵒ []ᵒ
 
-ty-Wrap² : ◇ ⊢ty Mu Wrap²D
-ty-Wrap² = ty-Mu wrap²Wf
+⊢wrap² : ◇ ⊢ `wrap (`wrap `zero) ∷ IMu ⌜Unit⌝ (Dₗ ⌜ Wrap²Ts ⌝ₛ) unit
+⊢wrap² = ⊢conₜ ⊢⌜Unit⌝ Wrap²OK nthᵗ-z ⊢u
+           (⊢payσ ⊢⌜Unit⌝ (⊢Dₜ ⊢⌜Unit⌝ Wrap²OK) (ok-σ ⊢Wrapcode ok-ι) (toEl ⊢wrap-zero)
+                  (⊢payι ⊢⌜Unit⌝ (⊢Dₜ ⊢⌜Unit⌝ Wrap²OK) ⊢unit))
