@@ -53,6 +53,9 @@ open import Once.Surface.Context using (Ctx; ∅; _,_^_; lookup; svar; SVar; _�
                                         ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many)
   renaming (⟦_⟧ᶜ to ⟦_⟧ᶜᵗ)
 open import Once.Surface.Syntax using (sigOp; poly; Expr; Usage; morph-app; unit)
+import Once.Surface.Syntax as Surface
+open import Once.Surface.Seq using (seq; seq0; embedClosed; closed-usage-eq)
+open import Once.Surface.Properties using (+ᵘ-identityʳ)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; forceᵈ)
 open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_; projTrace; valueT; resT-lift; bindRes-idʳ; fmapT)
 open import Once.Res using (Res; stopped; returns; Res-rel; rel-stopped; rel-returns; mapRes)
@@ -67,7 +70,10 @@ open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_;
   t-id-check; t-fst-check; t-snd-check; t-terminal-morph-check;
   t-initial-morph-check; t-inl-morph-check; t-inr-morph-check;
   t-compose-check-g; t-compose-check-f; d-infer; d-lam; d-compose; d-id; d-fst; d-snd;
-  d-terminal; d-initial; d-case; d-pair; d-cata; _⊢ᵈ_∶_⇒[_]↦_⨾_; t-case-copair-check; t-pair-morph-check;
+  d-terminal; d-initial; d-case; d-pair; d-cata; _⊢ᵈ_∶_⇒[_]↦_⨾_;
+  d-fst-void; d-snd-void; d-case-void; d-cata-void;
+  t-neg-void; t-case-void; t-binop-void-l; t-binop-void-r; t-fst-app-void; t-snd-app-void;
+  t-apply-app-void; t-Out-app-void; t-app-void; t-case-copair-check; t-pair-morph-check;
   t-curry-check; t-cata-check; t-ana-check;
   t-int; t-float; t-str; t-unit; t-unit-var; t-var-local; t-var-qualified;
   t-var-resolved; t-var-import; t-annot; t-pair; t-neg; t-neg-float; t-binop-arith-float; t-binop-arith-float-il; t-binop-arith-float-ir; t-let; t-case;
@@ -78,7 +84,7 @@ open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_;
   t-initial-app-check; t-app-spine; t-var-poly-instantiate;
   t-var-poly-instantiate-infer)
 open import Once.Denotation.Phase using (lookupᴰUsed; restrictᴰ; bindᴰ; bindᴰ0; env0)
-open import Once.Denotation.Meaning using (⟦_⟧ᶜ; ⟦_⟧ᵢ; ⟦_⟧ᵈ;
+open import Once.Denotation.Meaning using (⟦_⟧ᶜ; ⟦_⟧ᵢ; ⟦_⟧ᵈ; seqᴰ;
   lookupᴰ; Env; EnvRun; cata-sem; sigOpValᴰ; sigOpRefᴰ; svarᴰ; in-value; named-sem)
 open import Once.Adequacy.CataErased fmt using (liftFn-SigOp)
 open import Once.Adequacy.LiftFnReduce fmt using
@@ -574,6 +580,41 @@ SD-subst-usage : ∀ {n} {Γ : Ctx n} {A} {Ψ Ψ' : Usage n} (eq : Ψ ≡ Ψ')
     ≡ (SD.⟦ e ⟧ˢ fmt) (subst (λ u → ⟦ ⟦ Γ ↾ u ⟧ᶜᵗ ⟧ᴰ) (sym eq) dγ)
 SD-subst-usage refl dγ = refl
 
+-- Plan 0.94 §13: restricting an environment to its own usage changes nothing,
+-- and a usage transport followed by such a restriction is the identity.
+restrict-self : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} (le : Ψ ⊑ᵘ Ψ) (dγ : ⟦ ⟦ Γ ↾ Ψ ⟧ᶜᵗ ⟧ᴰ)
+              → restrictᴰ {Γ = Γ} le dγ ≡ dγ
+restrict-self {Γ = ∅} ⊑[] dγ = refl
+restrict-self {Γ = Γ , A ^ q} (z≤z ⊑∷ le) dγ = restrict-self {Γ = Γ} le dγ
+restrict-self {Γ = Γ , A ^ q} (o≤o ⊑∷ le) (dγ , a) = cong (_, a) (restrict-self {Γ = Γ} le dγ)
+restrict-self {Γ = Γ , A ^ q} (m≤m ⊑∷ le) (dγ , a) = cong (_, a) (restrict-self {Γ = Γ} le dγ)
+
+restrict-subst : ∀ {n} {Γ : Ctx n} {Ψ Φ : Usage n} (le : Ψ ⊑ᵘ Φ) (p : Φ ≡ Ψ) (dγ : ⟦ ⟦ Γ ↾ Ψ ⟧ᶜᵗ ⟧ᴰ)
+               → restrictᴰ {Γ = Γ} le (subst (λ u → ⟦ ⟦ Γ ↾ u ⟧ᶜᵗ ⟧ᴰ) (sym p) dγ) ≡ dγ
+restrict-subst {Γ = Γ} le refl dγ = restrict-self {Γ = Γ} le dγ
+
+-- `seq0 a b`: `a` runs in the whole environment, then the closed `b`.
+SD-seq0 : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A B} (a : Expr Γ Ψ A) (b : Expr Γ zeroUsage B)
+          (dγ : ⟦ ⟦ Γ ↾ Ψ ⟧ᶜᵗ ⟧ᴰ)
+  → (SD.⟦ seq0 a b ⟧ˢ fmt) dγ
+    ≡ seqᴰ ((SD.⟦ a ⟧ˢ fmt) dγ)
+           ((SD.⟦ b ⟧ˢ fmt) (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ zeroUsage)
+                              (subst (λ u → ⟦ ⟦ Γ ↾ u ⟧ᶜᵗ ⟧ᴰ) (sym (+ᵘ-identityʳ Ψ)) dγ)))
+SD-seq0 {Γ = Γ} {Ψ = Ψ} a b dγ =
+  trans (SD-subst-usage (+ᵘ-identityʳ Ψ) {e = seq a b} dγ)
+        (cong (λ E → seqᴰ ((SD.⟦ a ⟧ˢ fmt) E)
+                          ((SD.⟦ b ⟧ˢ fmt) (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ zeroUsage)
+                              (subst (λ u → ⟦ ⟦ Γ ↾ u ⟧ᶜᵗ ⟧ᴰ) (sym (+ᵘ-identityʳ Ψ)) dγ))))
+              (restrict-subst {Γ = Γ} (⊑ᵘ-+ˡ Ψ zeroUsage) (+ᵘ-identityʳ Ψ) dγ))
+
+-- A closed term evaluated in context means what it means on its own.
+SD-embedClosed : ∀ {n} {Γ : Ctx n} {A} (e : Expr ∅ [] A) (dγ : ⟦ ⟦ Γ ↾ zeroUsage ⟧ᶜᵗ ⟧ᴰ)
+  → (SD.⟦ embedClosed {Γ = Γ} e ⟧ˢ fmt) dγ ≡ (SD.⟦ e ⟧ˢ fmt) tt
+SD-embedClosed {Γ = Γ} {A = A} e dγ =
+  trans (SD-subst-usage {Γ = Γ} {A = A} closed-usage-eq
+           {e = morph-app {Γ = Γ} {Ψ = zeroUsage} {A = Once.Type.Unit} {B = A} (elaborate IR.Heap e) unit} dγ)
+        (T-ext-at (faithful {Γ = ∅} {Ψ = []} {A = A} e tt))
+
 ------------------------------------------------------------------------
 -- D226: the relation respects conversions. `⟦ p ⟧<:` is applied to BOTH sides,
 -- so related values stay related: `Void` has none, base types are equal,
@@ -603,6 +644,20 @@ mutual
   RelT-sub : ∀ {A B} (p : A <: B) {t₁ t₂ : T ⟦ A ⟧ᴰ}
            → RelT A t₁ t₂ → RelT B (fmapT ⟦ p ⟧<: t₁) (fmapT ⟦ p ⟧<: t₂)
   RelT-sub p {t₁} {t₂} rt n = proj₁ (rt n) , Res-rel-map (RelV-sub p) (T.resT t₁) (T.resT t₂) (proj₂ (rt n))
+
+-- Plan 0.94 §13: "evaluate both, keep the second" respects the relation.
+RelT-seqᴰ : ∀ {A B} {m₁ m₁′ : T ⟦ A ⟧ᴰ} {m₂ m₂′ : T ⟦ B ⟧ᴰ}
+          → RelT A m₁ m₁′ → RelT B m₂ m₂′ → RelT B (seqᴰ m₁ m₂) (seqᴰ m₁′ m₂′)
+RelT-seqᴰ {A} {B} r₁ r₂ =
+  RelT-bind {A = A * B} {B = B}
+    (RelT-bind {A = A} {B = A * B} r₁ (λ rx → RelT-bind {A = B} {B = A * B} r₂ (λ ry → RelT-return {A = A * B} (rx , ry))))
+    (λ rv → RelT-return {A = B} (proj₂ rv))
+
+-- `¡` is related to itself (there is nothing to compare).
+RelT-init : ∀ {π} → RelT (Once.Type.Void ⇒[ mk-kind Many π ] Once.Type.Void)
+                         (returnT (λ v → ⊥-elim v))
+                         (SD.liftD fmt {Once.Type.Void} {Once.Type.Void} IR.initial)
+RelT-init k = refl , rel-returns (λ { {a = ()} })
 
 -- D143: over the RUNTIME environment. `RelEnv` needs no change — it is already
 -- generic in the context, and the runtime context IS `debruijn ctx ↾ Ψ`.
@@ -969,6 +1024,22 @@ bridge-i (t-app-spine {X = X} {T = T} _ darg df) re =
   RelT-bind {A = X ⇒[ mk-kind Many pure ] T} {B = T}
             (bridge-d df (reˡ re))
             (λ rf → RelT-bind {A = X} {B = T} (bridge-i darg (reᵐ re)) (λ rx → rf rx))
+-- D229 / plan 0.94 §13: ex falso — the principal's computation, preceded by
+-- what evaluation reaches first.
+bridge-i (t-neg-void d) re = bridge-i d re
+bridge-i (t-case-void dS _ _) re = bridge-i dS re
+bridge-i (t-binop-void-l d₁ _) re = bridge-i d₁ re
+bridge-i (t-app-void _ dF _) re = bridge-i dF re
+bridge-i (t-binop-void-r {A = A} d₁ _ d₂) re =
+  RelT-seqᴰ {A = A} {B = Once.Type.Void} (bridge-i d₁ (reˡ re)) (bridge-i d₂ (reʳ re))
+bridge-i (t-fst-app-void d) re =
+  RelT-bind {A = Once.Type.Void} {B = Once.Type.Void} (bridge-i d (reᵐ re)) (λ {a} _ → ⊥-elim a)
+bridge-i (t-snd-app-void d) re =
+  RelT-bind {A = Once.Type.Void} {B = Once.Type.Void} (bridge-i d (reᵐ re)) (λ {a} _ → ⊥-elim a)
+bridge-i (t-apply-app-void d) re =
+  RelT-bind {A = Once.Type.Void} {B = Once.Type.Void} (bridge-i d (reᵐ re)) (λ {a} _ → ⊥-elim a)
+bridge-i (t-Out-app-void d) re =
+  RelT-bind {A = Once.Type.Void} {B = Once.Type.Void} (bridge-i d (reᵐ re)) (λ {a} _ → ⊥-elim a)
 
 -- D127: the POINT-FREE LEAVES. `realize` sends each to `lift-morphism` of the
 -- plain categorical generator, so these are the OLD `bridge-m` bodies verbatim,
@@ -1188,3 +1259,21 @@ bridge-d (d-cata {F = F} {A = A} {π = π} wfF dalg) re =
               {x = cata-sem wfF c₁}
               {y = λ x → sem-cata wfF (SD.cata-ev-algˢ {F} {A} (returnT c₂)) x}
               (λ {a} {b} rv → cata-bridge {A' = A} {wfF = wfF} c₁ c₂ ralg rv))
+bridge-d d-fst-void re k = refl , rel-returns (λ { {a = ()} })
+bridge-d d-snd-void re k = refl , rel-returns (λ { {a = ()} })
+bridge-d {ctx = ctx} (d-case-void {C₁ = C₁} {C₂ = C₂} {π = π} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} df dg) {dγ₁ = dγ₁} {dγ₂ = dγ₂} re =
+  subst (RelT (Once.Type.Void ⇒[ mk-kind Many π ] Once.Type.Void) ((⟦ d-case-void df dg ⟧ᵈ fmt) dγ₁))
+    (sym (cong (seqᴰ ((SD.⟦ realize-d df ⟧ˢ fmt) E₁))
+               (SD-seq0 {Γ = NamedCtx.debruijn ctx} (realize-d dg) (Surface.lift-morphism IR.initial) E₂)))
+    (RelT-seqᴰ {A = Once.Type.Void ⇒[ mk-kind Many π ] C₁} {B = Once.Type.Void ⇒[ mk-kind Many π ] Once.Type.Void}
+      (bridge-d df (reˡ re))
+      (RelT-seqᴰ {A = Once.Type.Void ⇒[ mk-kind Many π ] C₂} {B = Once.Type.Void ⇒[ mk-kind Many π ] Once.Type.Void} (bridge-d dg (reʳ re))
+        (RelT-init {π = π})))
+  where E₁ = restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ₂
+        E₂ = restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ₂
+bridge-d {ctx = ctx} (d-cata-void {S = S} {π = π} dalg) {dγ₁ = dγ₁} {dγ₂ = dγ₂} re =
+  subst (RelT (Once.Type.Void ⇒[ mk-kind Many π ] Once.Type.Void) ((⟦ d-cata-void {ctx = ctx} {π = π} dalg ⟧ᵈ fmt) dγ₁))
+    (sym (trans (SD-seq0 {Γ = NamedCtx.debruijn ctx} (embedClosed (realize-infer dalg)) (Surface.lift-morphism IR.initial) dγ₂)
+                (cong (λ m → seqᴰ m ((SD.⟦ Surface.lift-morphism {Γ = NamedCtx.debruijn ctx} {A = Once.Type.Void} {B = Once.Type.Void} {π = π} IR.initial ⟧ˢ fmt) dγ₂))
+                      (SD-embedClosed {Γ = NamedCtx.debruijn ctx} (realize-infer dalg) dγ₂))))
+    (RelT-seqᴰ {A = S} {B = Once.Type.Void ⇒[ mk-kind Many π ] Once.Type.Void} (bridge-i dalg (mk↾ tt)) (RelT-init {π = π}))

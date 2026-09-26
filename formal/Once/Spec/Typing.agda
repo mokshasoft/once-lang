@@ -25,6 +25,7 @@ open import Once.TypeCheck.Judgment public
         -- ⊢ᵈ — domain-given (plan 0.94 §10)
         ; d-infer ; d-lam ; d-compose ; d-id ; d-fst ; d-snd ; d-terminal ; d-initial
         ; d-case ; d-pair ; d-cata
+        ; d-fst-void ; d-snd-void ; d-case-void ; d-cata-void
         -- ⊢ᵢ — synthesis
         ; t-int ; t-float ; t-str ; t-unit ; t-unit-var
         ; t-var-local ; t-var-qualified ; t-var-resolved ; t-var-import
@@ -34,6 +35,9 @@ open import Once.TypeCheck.Judgment public
         ; t-binop-arith-float-il ; t-binop-arith-float-ir ; t-binop-cmp
         ; t-id-app ; t-fst-app ; t-snd-app ; t-terminal-app ; t-apply-app-infer
         ; t-app ; t-effApp ; t-app-spine
+        -- D229 / plan 0.94 §13: ex falso
+        ; t-neg-void ; t-case-void ; t-binop-void-l ; t-binop-void-r
+        ; t-fst-app-void ; t-snd-app-void ; t-apply-app-void ; t-Out-app-void ; t-app-void
         -- ⊢ᶜ — checking (D127: the categorical combinators live here)
         ; t-id-check ; t-fst-check ; t-snd-check
         ; t-terminal-morph-check ; t-initial-morph-check

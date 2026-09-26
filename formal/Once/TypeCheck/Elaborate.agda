@@ -69,6 +69,7 @@ open import Once.Surface.Syntax as Surface using (lookupUsage; tailUsage; _+ᵘ_
   renaming (Ctx to SCtx; Expr to SExpr; ∅ to S∅; _,_ to _S,_; _,_^_ to _S,_^_)
 open Surface.Usage using () renaming (_∷_ to _∷ᵘ_)
 open import Once.Surface.Thinning using (weaken; weakenFromEmpty)
+open import Once.Surface.Seq using (seq; seq0; embedClosed)
 open import Once.Surface.Properties using (+ᵘ-identityˡ; +ᵘ-identityʳ; *ᵘ-zeroʳ)
 open import Once.Surface.Elaborate as Elab using (elaborate; intLit; floatLit; strLit)
 
@@ -318,6 +319,16 @@ given-cata ctx alg F π wfF (success (X Once.Type.⇒[ k ] A) Surface.[] algE d 
   given-cata-dec ctx alg F π wfF X A k algE d w
     ((X Once.Type.⇒[ k ] A) ≟T (⟦ F ⟧T A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] A))
 given-cata ctx alg F π wfF (success _ _ _ _ _ , _) = failure (BuiltinTypeMismatch "cata") , tt
+
+-- D229 / plan 0.94 §13: given `Void`, the algebra is built (it must still
+-- synthesize) and the arrow is `¡`.
+given-cata-void : ∀ (ctx : NamedCtx) (alg : RawExpr) (π : Once.Type.Purity)
+                → VerifiedInferResult (ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx)) alg
+                → VerifiedGivenResult ctx (Raw.RApp (Raw.RResolved (gen "cata")) alg) Void π
+given-cata-void ctx alg π (failure err , _) = failure err , tt
+given-cata-void ctx alg π (success S Surface.[] algE d fr , w) =
+  success Void _ (seq0 (embedClosed algE) (Surface.lift-morphism IR.initial)) (suc d) (NamedCtx.freshCounter ctx)
+  , d-cata-void w
 
 
 -- The universal "infer-then-check" combinator — THE MODE SWITCH (D226 / plan
@@ -657,7 +668,8 @@ notNumeric (failure err)                                 = just err
 notNumeric (success Int _ _ _ _)                         = nothing
 notNumeric (success Once.Type.Float _ _ _ _)             = nothing
 notNumeric (success Unit _ _ _ _)                        = just (TypeMismatch Int Unit)
-notNumeric (success Void _ _ _ _)                        = just (TypeMismatch Int Void)
+-- D229 / plan 0.94 §13: a `Void` operand is a good one — ex falso.
+notNumeric (success Void _ _ _ _)                        = nothing
 notNumeric (success Str _ _ _ _)                         = just (TypeMismatch Int Str)
 notNumeric (success Buffer _ _ _ _)                      = just (TypeMismatch Int Buffer)
 notNumeric (success (A Once.Type.* B) _ _ _ _)           = just (TypeMismatch Int (A Once.Type.* B))
@@ -960,6 +972,9 @@ mutual
     → VerifiedCheckResult ctx (Raw.RUnaryOp Raw.OpNeg (Raw.RInt n)) T
   checkElabV-neg-float-aux : (ctx : NamedCtx) (i f l p : ℕ) (T : Type)
     → VerifiedCheckResult ctx (Raw.RUnaryOp Raw.OpNeg (Raw.RFloat i f l p)) T
+  inferElabV-RBinOp-void : (ctx : NamedCtx) (op : Raw.BinOp) (e₁ e₂ : RawExpr)
+    → VerifiedInferResult ctx e₁ → VerifiedInferResult ctx e₂
+    → VerifiedInferResult ctx (Raw.RBinOp op e₁ e₂)
   inferElabV-RBinOp-aux : (ctx : NamedCtx) (op : Raw.BinOp) (e₁ e₂ : RawExpr)
     → VerifiedInferResult ctx e₁ → VerifiedInferResult ctx e₂
     → VerifiedInferResult ctx (Raw.RBinOp op e₁ e₂)
@@ -981,6 +996,15 @@ mutual
   -- case the dispatch without `with`-opacity.
   inferElabV-RDestruct-aux : (ctx : NamedCtx) (scrut : RawExpr) (xL : String) (eL : RawExpr) (xR : String) (eR : RawExpr)
     → VerifiedInferResult ctx scrut
+    → VerifiedInferResult ctx (Raw.RDestruct scrut xL eL xR eR)
+  inferElabV-RDestruct-voidL : (ctx : NamedCtx) (scrut : RawExpr) (xL : String) (eL : RawExpr) (xR : String) (eR : RawExpr)
+    → ∀ {Ψs} → SExpr (NamedCtx.debruijn ctx) Ψs Void → (ds fs : ℕ) → ctx ⊢ᵢ scrut ∶ Void ⨾ Ψs
+    → VerifiedInferResult (extendNamedCtx ctx xL Void) eL
+    → VerifiedInferResult ctx (Raw.RDestruct scrut xL eL xR eR)
+  inferElabV-RDestruct-voidR : (ctx : NamedCtx) (scrut : RawExpr) (xL : String) (eL : RawExpr) (xR : String) (eR : RawExpr)
+    → ∀ {Ψs} → SExpr (NamedCtx.debruijn ctx) Ψs Void → (ds fs : ℕ) → ctx ⊢ᵢ scrut ∶ Void ⨾ Ψs
+    → ∀ {C₁ qℓ Ψₗ} → (extendNamedCtx ctx xL Void) ⊢ᵢ eL ∶ C₁ ⨾ (qℓ ∷ᵘ Ψₗ)
+    → VerifiedInferResult (extendNamedCtx ctx xR Void) eR
     → VerifiedInferResult ctx (Raw.RDestruct scrut xL eL xR eR)
   inferElabV-RDestruct-auxL : (ctx : NamedCtx) (scrut : RawExpr) (xL : String) (eL : RawExpr) (xR : String) (eR : RawExpr)
     (A B : Type) {Ψs : Surface.Usage (NamedCtx.size ctx)}
@@ -1060,6 +1084,12 @@ mutual
   inferElabV-RApp-other-aux :
     ∀ (ctx : NamedCtx) (f x : RawExpr) (lhs : Maybe PolyBuiltinApp)
     → classifyAppHead f ≡ lhs
+    → VerifiedInferResult ctx (Raw.RApp f x)
+  -- D229 / plan 0.94 §13: the head halts; the argument is typed, never reached.
+  inferElabV-RApp-void :
+    ∀ (ctx : NamedCtx) (f x : RawExpr) → classifyAppHead f ≡ nothing
+    → ∀ {Ψ₁} → SExpr (NamedCtx.debruijn ctx) Ψ₁ Void → (df ff : ℕ) → ctx ⊢ᵢ f ∶ Void ⨾ Ψ₁
+    → VerifiedInferResult ctx x
     → VerifiedInferResult ctx (Raw.RApp f x)
   inferElabV-RApp-dispatch :
     ∀ (ctx : NamedCtx) (f arg : RawExpr) (vw : AppHeadView f)
@@ -1308,9 +1338,13 @@ mutual
     success A _ (Surface.lift-morphism IR.id) 0 (NamedCtx.freshCounter ctx) , d-id
   elabGivenLeaf ctx .(gen "fst") (A Once.Type.* B) π ahv-fst _ =
     success A _ (Surface.lift-morphism IR.fst) 0 (NamedCtx.freshCounter ctx) , d-fst
+  elabGivenLeaf ctx .(gen "fst") Void π ahv-fst _ =
+    success Void _ (Surface.lift-morphism IR.initial) 0 (NamedCtx.freshCounter ctx) , d-fst-void
   elabGivenLeaf ctx .(gen "fst") _ π ahv-fst _ = failure (BuiltinTypeMismatch "fst") , tt
   elabGivenLeaf ctx .(gen "snd") (A Once.Type.* B) π ahv-snd _ =
     success B _ (Surface.lift-morphism IR.snd) 0 (NamedCtx.freshCounter ctx) , d-snd
+  elabGivenLeaf ctx .(gen "snd") Void π ahv-snd _ =
+    success Void _ (Surface.lift-morphism IR.initial) 0 (NamedCtx.freshCounter ctx) , d-snd-void
   elabGivenLeaf ctx .(gen "snd") _ π ahv-snd _ = failure (BuiltinTypeMismatch "snd") , tt
   elabGivenLeaf ctx .(gen "terminal") A π ahv-terminal _ =
     success Unit _ (Surface.lift-morphism IR.terminal) 0 (NamedCtx.freshCounter ctx) , d-terminal
@@ -1336,6 +1370,15 @@ mutual
   ...     | no _ = failure (TypeMismatch C C′) , tt
   ...     | yes refl =
               success C _ (Surface.copair' fE gE) (suc (df Data.Nat.⊔ dg)) frg , d-case wF wG
+  -- D229 / plan 0.94 §13: given `Void`, the arms are built and never applied.
+  elabGivenApp ctx .(Raw.RApp (Raw.RResolved (gen "case")) f) g Void π (ahv-case-applied {f}) _
+        with elabGivenV ctx f Void π
+  ... | failure err , _ = failure err , tt
+  ... | success C₁ Ψf fE df frf , wF with elabGivenV ctx g Void π
+  ...   | failure err , _ = failure err , tt
+  ...   | success C₂ Ψg gE dg frg , wG =
+            success Void _ (seq fE (seq0 gE (Surface.lift-morphism IR.initial))) (suc (df Data.Nat.⊔ dg)) frg
+            , d-case-void wF wG
   elabGivenApp ctx .(Raw.RApp (Raw.RResolved (gen "case")) f) g _ π (ahv-case-applied {f}) _ =
     failure (BuiltinTypeMismatch "case") , tt
   elabGivenApp ctx .(Raw.RApp (Raw.RResolved (gen "pair")) f) g A π (ahv-pair-applied {f}) _
@@ -1350,6 +1393,9 @@ mutual
   ... | just wfF =
           given-cata ctx alg F π wfF
             (inferElabV (ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx)) alg)
+  elabGivenApp ctx .(Raw.RResolved (gen "cata")) alg Void π ahv-cata _ =
+    given-cata-void ctx alg π
+      (inferElabV (ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx)) alg)
   elabGivenApp ctx .(Raw.RResolved (gen "cata")) alg _ π ahv-cata _ = failure (BuiltinTypeMismatch "cata") , tt
   elabGivenApp ctx f g A π _ r = given-infer ctx (Raw.RApp f g) A π r
 
@@ -1425,7 +1471,8 @@ mutual
   ... | success (Once.Type.ν-type F) Ψ argE d fr , w =
         inferOutGo ctx arg F Ψ argE d fr w (wellFormedF? F) refl
   ... | success Once.Type.Unit _ _ _ _ , _ = failure (BuiltinTypeMismatch "Out") , tt
-  ... | success Once.Type.Void _ _ _ _ , _ = failure (BuiltinTypeMismatch "Out") , tt
+  ... | success Once.Type.Void Ψ argE d fr , w =
+        success Void _ (Surface.morph-app IR.initial argE) (suc d) fr , t-Out-app-void w
   ... | success Once.Type.Int _ _ _ _ , _ = failure (BuiltinTypeMismatch "Out") , tt
   ... | success Once.Type.Float _ _ _ _ , _ = failure (BuiltinTypeMismatch "Out") , tt
   ... | success Once.Type.Str _ _ _ _ , _ = failure (BuiltinTypeMismatch "Out") , tt
@@ -1623,7 +1670,7 @@ mutual
   ----------------------------------------------------------------------
 
   inferElabV ctx (Raw.RBinOp op e₁ e₂) =
-    inferElabV-RBinOp-aux ctx op e₁ e₂ (inferElabV ctx e₁) (inferElabV ctx e₂)
+    inferElabV-RBinOp-void ctx op e₁ e₂ (inferElabV ctx e₁) (inferElabV ctx e₂)
 
   ----------------------------------------------------------------------
   -- Phase D — `checkElab` clauses.
@@ -1965,7 +2012,7 @@ mutual
 
   inferElabV-RUnaryOp-aux ctx e (failure err , _)                = failure err , tt
   inferElabV-RUnaryOp-aux ctx e (success Unit   _ _ _ _ , _)     = failure (TypeMismatch Int Unit) , tt
-  inferElabV-RUnaryOp-aux ctx e (success Void   _ _ _ _ , _)     = failure (TypeMismatch Int Void) , tt
+  inferElabV-RUnaryOp-aux ctx e (success Void   Ψ eE d fr , w)   = success Void Ψ eE d fr , t-neg-void w
   inferElabV-RUnaryOp-aux ctx e (success Int    Ψ eE d fr , w)   = success Int _ (Surface.neg eE) (suc d) fr , t-neg w
   inferElabV-RUnaryOp-aux ctx e (success Float  _ _ _ _ , _)     = failure (TypeMismatch Int Float) , tt
   inferElabV-RUnaryOp-aux ctx e (success Str    _ _ _ _ , _)     = failure (TypeMismatch Int Str) , tt
@@ -1975,6 +2022,34 @@ mutual
   inferElabV-RUnaryOp-aux ctx e (success (A Once.Type.⇒[ k ] B) _ _ _ _ , _) = failure (TypeMismatch Int (A Once.Type.⇒[ k ] B)) , tt
   inferElabV-RUnaryOp-aux ctx e (success (Once.Type.μ-type F)   _ _ _ _ , _) = failure (TypeMismatch Int (Once.Type.μ-type F)) , tt
   inferElabV-RUnaryOp-aux ctx e (success (Once.Type.ν-type F)   _ _ _ _ , _) = failure (TypeMismatch Int (Once.Type.ν-type F)) , tt
+
+  -- D229 / plan 0.94 §13: ex falso in an operator. A `Void` left operand halts
+  -- first (the right one is typed, never reached); a `Void` right operand halts
+  -- after the left one ran. Everything else is the arithmetic dispatch.
+  inferElabV-RBinOp-void ctx op e₁ e₂ (success Void Ψ₁ e₁E d₁ f₁ , w₁) (failure err , _) = failure (BinOpRightError err) , tt
+  inferElabV-RBinOp-void ctx op e₁ e₂ (success Void Ψ₁ e₁E d₁ f₁ , w₁) (success B Ψ₂ e₂E d₂ f₂ , w₂) =
+    success Void Ψ₁ e₁E d₁ f₁ , t-binop-void-l w₁ w₂
+  inferElabV-RBinOp-void ctx op e₁ e₂ (success Unit Ψ₁ e₁E d₁ f₁ , w₁) (success Void Ψ₂ e₂E d₂ f₂ , w₂) =
+    success Void _ (seq e₁E e₂E) (d₁ ⊔ d₂) f₂ , t-binop-void-r w₁ (λ ()) w₂
+  inferElabV-RBinOp-void ctx op e₁ e₂ (success Int Ψ₁ e₁E d₁ f₁ , w₁) (success Void Ψ₂ e₂E d₂ f₂ , w₂) =
+    success Void _ (seq e₁E e₂E) (d₁ ⊔ d₂) f₂ , t-binop-void-r w₁ (λ ()) w₂
+  inferElabV-RBinOp-void ctx op e₁ e₂ (success Float Ψ₁ e₁E d₁ f₁ , w₁) (success Void Ψ₂ e₂E d₂ f₂ , w₂) =
+    success Void _ (seq e₁E e₂E) (d₁ ⊔ d₂) f₂ , t-binop-void-r w₁ (λ ()) w₂
+  inferElabV-RBinOp-void ctx op e₁ e₂ (success Str Ψ₁ e₁E d₁ f₁ , w₁) (success Void Ψ₂ e₂E d₂ f₂ , w₂) =
+    success Void _ (seq e₁E e₂E) (d₁ ⊔ d₂) f₂ , t-binop-void-r w₁ (λ ()) w₂
+  inferElabV-RBinOp-void ctx op e₁ e₂ (success Buffer Ψ₁ e₁E d₁ f₁ , w₁) (success Void Ψ₂ e₂E d₂ f₂ , w₂) =
+    success Void _ (seq e₁E e₂E) (d₁ ⊔ d₂) f₂ , t-binop-void-r w₁ (λ ()) w₂
+  inferElabV-RBinOp-void ctx op e₁ e₂ (success (A Once.Type.* B) Ψ₁ e₁E d₁ f₁ , w₁) (success Void Ψ₂ e₂E d₂ f₂ , w₂) =
+    success Void _ (seq e₁E e₂E) (d₁ ⊔ d₂) f₂ , t-binop-void-r w₁ (λ ()) w₂
+  inferElabV-RBinOp-void ctx op e₁ e₂ (success (A Once.Type.+ B) Ψ₁ e₁E d₁ f₁ , w₁) (success Void Ψ₂ e₂E d₂ f₂ , w₂) =
+    success Void _ (seq e₁E e₂E) (d₁ ⊔ d₂) f₂ , t-binop-void-r w₁ (λ ()) w₂
+  inferElabV-RBinOp-void ctx op e₁ e₂ (success (A Once.Type.⇒[ k ] B) Ψ₁ e₁E d₁ f₁ , w₁) (success Void Ψ₂ e₂E d₂ f₂ , w₂) =
+    success Void _ (seq e₁E e₂E) (d₁ ⊔ d₂) f₂ , t-binop-void-r w₁ (λ ()) w₂
+  inferElabV-RBinOp-void ctx op e₁ e₂ (success (Once.Type.μ-type F) Ψ₁ e₁E d₁ f₁ , w₁) (success Void Ψ₂ e₂E d₂ f₂ , w₂) =
+    success Void _ (seq e₁E e₂E) (d₁ ⊔ d₂) f₂ , t-binop-void-r w₁ (λ ()) w₂
+  inferElabV-RBinOp-void ctx op e₁ e₂ (success (Once.Type.ν-type F) Ψ₁ e₁E d₁ f₁ , w₁) (success Void Ψ₂ e₂E d₂ f₂ , w₂) =
+    success Void _ (seq e₁E e₂E) (d₁ ⊔ d₂) f₂ , t-binop-void-r w₁ (λ ()) w₂
+  inferElabV-RBinOp-void ctx op e₁ e₂ r₁ r₂ = inferElabV-RBinOp-aux ctx op e₁ e₂ r₁ r₂
 
   -- left non-Int → BinOpLeftError
   inferElabV-RBinOp-aux ctx op e₁ e₂ (failure err , _) _ = failure (BinOpLeftError err) , tt
@@ -2106,7 +2181,8 @@ mutual
   -- `ctx,xR:B`. `-auxR` matches branch types (`C₁ ≟T C₂`) and emits `t-case`.
   inferElabV-RDestruct-aux ctx scrut xL eL xR eR (failure err , _)            = failure err , tt
   inferElabV-RDestruct-aux ctx scrut xL eL xR eR (success Unit   _ _ _ _ , _) = failure CaseScrutineeNotSum , tt
-  inferElabV-RDestruct-aux ctx scrut xL eL xR eR (success Void   _ _ _ _ , _) = failure CaseScrutineeNotSum , tt
+  inferElabV-RDestruct-aux ctx scrut xL eL xR eR (success Void   Ψs scrutE ds fs , wS) =
+    inferElabV-RDestruct-voidL ctx scrut xL eL xR eR scrutE ds fs wS (inferElabV (extendNamedCtx ctx xL Void) eL)
   inferElabV-RDestruct-aux ctx scrut xL eL xR eR (success Int    _ _ _ _ , _) = failure CaseScrutineeNotSum , tt
   inferElabV-RDestruct-aux ctx scrut xL eL xR eR (success Float  _ _ _ _ , _) = failure CaseScrutineeNotSum , tt
   inferElabV-RDestruct-aux ctx scrut xL eL xR eR (success Str    _ _ _ _ , _) = failure CaseScrutineeNotSum , tt
@@ -2117,6 +2193,14 @@ mutual
   inferElabV-RDestruct-aux ctx scrut xL eL xR eR (success (Once.Type.ν-type _) _ _ _ _ , _) = failure CaseScrutineeNotSum , tt
   inferElabV-RDestruct-aux ctx scrut xL eL xR eR (success (A Once.Type.+ B) Ψs scrutE ds fs , wS) =
     inferElabV-RDestruct-auxL ctx scrut xL eL xR eR A B scrutE ds fs wS (inferElabV (extendNamedCtx ctx xL A) eL)
+  -- D229 / plan 0.94 §13: a `Void` scrutinee — the branches are typed with
+  -- their binders at `Void` and never run; the term is the scrutinee's.
+  inferElabV-RDestruct-voidL ctx scrut xL eL xR eR scrutE ds fs wS (failure err , _) = failure err , tt
+  inferElabV-RDestruct-voidL ctx scrut xL eL xR eR scrutE ds fs wS (success C₁ (qℓ ∷ᵘ Ψₗ) eLE dL fL , wL) =
+    inferElabV-RDestruct-voidR ctx scrut xL eL xR eR scrutE ds fs wS wL (inferElabV (extendNamedCtx ctx xR Void) eR)
+  inferElabV-RDestruct-voidR ctx scrut xL eL xR eR scrutE ds fs wS wL (failure err , _) = failure err , tt
+  inferElabV-RDestruct-voidR ctx scrut xL eL xR eR scrutE ds fs wS wL (success C₂ (qr ∷ᵘ Ψᵣ) eRE dR fR , wR) =
+    success Void _ scrutE ds fs , t-case-void wS wL wR
   inferElabV-RDestruct-auxL ctx scrut xL eL xR eR A B scrutE ds fs wS (failure err , _) = failure err , tt
   inferElabV-RDestruct-auxL ctx scrut xL eL xR eR A B scrutE ds fs wS (success C₁ (qℓ ∷ᵘ Ψₗ) eLE dL fL , wL) =
     inferElabV-RDestruct-auxR ctx scrut xL eL xR eR A B scrutE ds fs wS eLE dL fL wL (inferElabV (extendNamedCtx ctx xR B) eR)
@@ -2143,6 +2227,10 @@ mutual
   inferElabV-RVar-import-value-aux ctx x eq-loc ty eq-imp (yes _) _ _ _ =
     failure (UnboundVariable x) , tt
 
+  inferElabV-RApp-void ctx f x eqAH fE df ff wF (failure err , _) = failure err , tt
+  inferElabV-RApp-void ctx f x eqAH fE df ff wF (success X Ψ₂ xE dx fx , wX) =
+    success Void _ fE df ff , t-app-void eqAH wF wX
+
   inferElabV-RApp-other-aux ctx f x (just _) _ =
     failure (BuiltinTypeMismatch "unreachable: ahv-other ⇒ classifyAppHead nothing") , tt
   inferElabV-RApp-other-aux ctx f x nothing eqAH with inferElabV ctx f
@@ -2150,7 +2238,7 @@ mutual
   -- and the head, GIVEN that input, determines the result.
   ... | failure err , _ = inferSpine ctx f x eqAH (inferElabV ctx x)
   ... | success Unit       _ _ _ _ , _ = failure (NotFunction Unit) , tt
-  ... | success Void       _ _ _ _ , _ = failure (NotFunction Void) , tt
+  ... | success Void Ψ₁ fE df ff , wF = inferElabV-RApp-void ctx f x eqAH fE df ff wF (inferElabV ctx x)
   ... | success Int        _ _ _ _ , _ = failure (NotFunction Int) , tt
   ... | success Float      _ _ _ _ , _ = failure (NotFunction Float) , tt
   ... | success Str        _ _ _ _ , _ = failure (NotFunction Str) , tt
@@ -2181,7 +2269,8 @@ mutual
   ... | success (A Once.Type.* B) Ψ argE d fr , w =
     success A _ (Surface.morph-app (IR.fst) argE) (suc d) fr , t-fst-app w
   ... | success Unit _ _ _ _ , _ = failure FstNeedsPair , tt
-  ... | success Void _ _ _ _ , _ = failure FstNeedsPair , tt
+  ... | success Void Ψ argE d fr , w =
+    success Void _ (Surface.morph-app IR.initial argE) (suc d) fr , t-fst-app-void w
   ... | success Int _ _ _ _ , _ = failure FstNeedsPair , tt
   ... | success Float _ _ _ _ , _ = failure FstNeedsPair , tt
   ... | success Str _ _ _ _ , _ = failure FstNeedsPair , tt
@@ -2196,7 +2285,8 @@ mutual
   ... | success (A Once.Type.* B) Ψ argE d fr , w =
     success B _ (Surface.morph-app (IR.snd) argE) (suc d) fr , t-snd-app w
   ... | success Unit _ _ _ _ , _ = failure SndNeedsPair , tt
-  ... | success Void _ _ _ _ , _ = failure SndNeedsPair , tt
+  ... | success Void Ψ argE d fr , w =
+    success Void _ (Surface.morph-app IR.initial argE) (suc d) fr , t-snd-app-void w
   ... | success Int _ _ _ _ , _ = failure SndNeedsPair , tt
   ... | success Float _ _ _ _ , _ = failure SndNeedsPair , tt
   ... | success Str _ _ _ _ , _ = failure SndNeedsPair , tt
@@ -2231,7 +2321,8 @@ mutual
   ...   | no _ =
     failure (BuiltinTypeMismatch "apply") , tt
   inferElabV-RApp-dispatch ctx f arg ahv-apply _ | success Unit _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
-  inferElabV-RApp-dispatch ctx f arg ahv-apply _ | success Void _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
+  inferElabV-RApp-dispatch ctx f arg ahv-apply _ | success Void Ψ argE d fr , w =
+    success Void _ (Surface.morph-app IR.initial argE) (suc d) fr , t-apply-app-void w
   inferElabV-RApp-dispatch ctx f arg ahv-apply _ | success Int _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
   inferElabV-RApp-dispatch ctx f arg ahv-apply _ | success Float _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
   inferElabV-RApp-dispatch ctx f arg ahv-apply _ | success Str _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt

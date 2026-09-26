@@ -249,6 +249,16 @@ module Transfer
     tr-i ld (t-app ah dF dX) = cᵢ (sym (drop-+* ld _ _ _)) (t-app ah (tr-i ld dF) (tr-c ld dX))
     tr-i ld (t-effApp ah dF dX) = cᵢ (sym (drop-+ ld _ _)) (t-effApp ah (tr-i ld dF) (tr-c ld dX))
     tr-i ld (t-app-spine ah dX dF) = cᵢ (sym (drop-+* ld _ _ _)) (t-app-spine ah (tr-i ld dX) (tr-d ld dF))
+    tr-i ld (t-neg-void d) = t-neg-void (tr-i ld d)
+    tr-i ld (t-case-void {xL = xL} {xR = xR} dS dL dR) =
+      t-case-void (tr-i ld dS) (tr-i (ld-under xL T.Void ld) dL) (tr-i (ld-under xR T.Void ld) dR)
+    tr-i ld (t-binop-void-l d₁ d₂) = t-binop-void-l (tr-i ld d₁) (tr-i ld d₂)
+    tr-i ld (t-binop-void-r d₁ ¬v d₂) = cᵢ (sym (drop-+ ld _ _)) (t-binop-void-r (tr-i ld d₁) ¬v (tr-i ld d₂))
+    tr-i ld (t-fst-app-void d) = cᵢ (sym (drop-z+M ld _)) (t-fst-app-void (tr-i ld d))
+    tr-i ld (t-snd-app-void d) = cᵢ (sym (drop-z+M ld _)) (t-snd-app-void (tr-i ld d))
+    tr-i ld (t-apply-app-void d) = cᵢ (sym (drop-z+M ld _)) (t-apply-app-void (tr-i ld d))
+    tr-i ld (t-Out-app-void d) = cᵢ (sym (drop-z+M ld _)) (t-Out-app-void (tr-i ld d))
+    tr-i ld (t-app-void ah dF dX) = t-app-void ah (tr-i ld dF) (tr-i ld dX)
     tr-c ld t-id-check = cᶜ (sym (drop-zero ld)) t-id-check
     tr-c ld t-fst-check = cᶜ (sym (drop-zero ld)) t-fst-check
     tr-c ld t-snd-check = cᶜ (sym (drop-zero ld)) t-snd-check
@@ -284,6 +294,11 @@ module Transfer
     tr-d ld (d-case df dg) = cᵈ (sym (drop-+ ld _ _)) (d-case (tr-d ld df) (tr-d ld dg))
     tr-d ld (d-pair df dg) = cᵈ (sym (drop-+ ld _ _)) (d-pair (tr-d ld df) (tr-d ld dg))
     tr-d ld (d-cata wf dalg) = cᵈ (sym (drop-zero ld)) (d-cata wf (tr-i {GL = Context.∅} {ΔL = SC.∅} ld-top dalg))
+
+    tr-d ld d-fst-void = cᵈ (sym (drop-zero ld)) d-fst-void
+    tr-d ld d-snd-void = cᵈ (sym (drop-zero ld)) d-snd-void
+    tr-d ld (d-case-void df dg) = cᵈ (sym (drop-+ ld _ _)) (d-case-void (tr-d ld df) (tr-d ld dg))
+    tr-d ld (d-cata-void dalg) = cᵈ (sym (drop-zero ld)) (d-cata-void (tr-i {GL = Context.∅} {ΔL = SC.∅} ld-top dalg))
 
 ------------------------------------------------------------------------
 -- The theorem, in all three judgments.

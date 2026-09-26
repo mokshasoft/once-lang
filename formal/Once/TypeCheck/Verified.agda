@@ -433,14 +433,8 @@ record VerifiedTypeChecker : Set₁ where
       → tcInfer ctx (RBinOp op e₁ e₂) ≡ failure outer-err
       → outer-err ≡ BinOpRightError sub-err
 
-    -- G4 exhaustive per-Type coverage
-    tc-err-fst-non-pair-Void :
-      ∀ (ctx : NamedCtx) (arg : RawExpr)
-        {Ψ' eE' d' f' err}
-      → tcInfer ctx arg ≡ success Once.Type.Void Ψ' eE' d' f'
-      → tcInfer ctx (RApp (RResolved (gen "fst")) arg) ≡ failure err
-      → err ≡ FstNeedsPair
-
+    -- G4 exhaustive per-Type coverage. (D229 / plan 0.94 §13: a `Void` operand
+    -- is ex falso, not an error, so it has no error shape here.)
     tc-err-fst-non-pair-Str :
       ∀ (ctx : NamedCtx) (arg : RawExpr)
         {Ψ' eE' d' f' err}
@@ -448,34 +442,12 @@ record VerifiedTypeChecker : Set₁ where
       → tcInfer ctx (RApp (RResolved (gen "fst")) arg) ≡ failure err
       → err ≡ FstNeedsPair
 
-    tc-err-snd-non-pair-Void :
-      ∀ (ctx : NamedCtx) (arg : RawExpr)
-        {Ψ' eE' d' f' err}
-      → tcInfer ctx arg ≡ success Once.Type.Void Ψ' eE' d' f'
-      → tcInfer ctx (RApp (RResolved (gen "snd")) arg) ≡ failure err
-      → err ≡ SndNeedsPair
-
     tc-err-snd-non-pair-Str :
       ∀ (ctx : NamedCtx) (arg : RawExpr)
         {Ψ' eE' d' f' err}
       → tcInfer ctx arg ≡ success Once.Type.Str Ψ' eE' d' f'
       → tcInfer ctx (RApp (RResolved (gen "snd")) arg) ≡ failure err
       → err ≡ SndNeedsPair
-
-    tc-err-neg-non-Int-Void :
-      ∀ (ctx : NamedCtx) (e : RawExpr)
-        {Ψ' eE' d' f' err}
-      → tcInfer ctx e ≡ success Once.Type.Void Ψ' eE' d' f'
-      → tcInfer ctx (RUnaryOp OpNeg e) ≡ failure err
-      → err ≡ TypeMismatch Once.Type.Int Once.Type.Void
-
-    tc-err-case-scrut-Void :
-      ∀ (ctx : NamedCtx) (scrut : RawExpr) (xL : String) (eL : RawExpr)
-        (xR : String) (eR : RawExpr)
-        {Ψ' eE' d' f' err}
-      → tcInfer ctx scrut ≡ success Once.Type.Void Ψ' eE' d' f'
-      → tcInfer ctx (Raw.RDestruct scrut xL eL xR eR) ≡ failure err
-      → err ≡ CaseScrutineeNotSum
 
     tc-err-case-scrut-Str :
       ∀ (ctx : NamedCtx) (scrut : RawExpr) (xL : String) (eL : RawExpr)
@@ -990,12 +962,8 @@ verifiedTypeChecker = record
   ; tc-err-lam-usage-violation    = EP.lam-usage-violation-is-UsageViolation
   ; tc-err-binop-left-wraps       = EP.binop-left-err-wraps
   ; tc-err-binop-right-wraps      = EP.binop-right-err-wraps
-  ; tc-err-fst-non-pair-Void      = EP.fst-non-pair-Void
   ; tc-err-fst-non-pair-Str       = EP.fst-non-pair-Str
-  ; tc-err-snd-non-pair-Void      = EP.snd-non-pair-Void
   ; tc-err-snd-non-pair-Str       = EP.snd-non-pair-Str
-  ; tc-err-neg-non-Int-Void       = EP.neg-non-Int-Void
-  ; tc-err-case-scrut-Void        = EP.case-scrut-Void
   ; tc-err-case-scrut-Str         = EP.case-scrut-Str
   ; tc-err-fst-non-pair-Float     = EP.fst-non-pair-Float
   ; tc-err-snd-non-pair-Float     = EP.snd-non-pair-Float

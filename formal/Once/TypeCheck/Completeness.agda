@@ -85,7 +85,7 @@ open import Once.TypeCheck.Classify using (lookupLocal; lookupImport; lookupPoly
 open import Data.List.Relation.Unary.All using () renaming (_∷_ to _∷ᴬ_)
 open import Once.TypeCheck.ModeAgreement using (mode-agree-ic; mode-agree-dc)
 open import Once.TypeCheck.ElaborateProofs using (
-  checkCaseGo; VerifiedCheckResult;
+  checkCaseGo; VerifiedCheckResult; checkElab-fallback-RUnaryOp-sub; checkElab-fallback-RApp-apply-infer;
   elabGivenV; elabGivenLeaf; elabGivenApp; given-infer; given-cata; checkCompose-g; checkCompose-f;
   inferSpine; VerifiedGivenResult; inferElabV-RVar-fail-bridge;
   inspectWellFormedF; wfv-no; wfv-yes;
@@ -929,6 +929,155 @@ infer-complete-RApp-eff {ctx} f x A {B} eqAH eqF eqX
 
 
 ------------------------------------------------------------------------
+-- D229 / plan 0.94 §13: ex falso — completeness of the `Void` rules.
+------------------------------------------------------------------------
+
+icv-neg : ∀ {ctx : NamedCtx} (e : RawExpr) {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE' : SExpr (NamedCtx.debruijn ctx) Ψ Void} {d' f' : ℕ}
+  → inferElab ctx e ≡ success Void Ψ eE' d' f'
+  → ∃[ eE ] ∃[ d ] ∃[ f ] inferElab ctx (Raw.RUnaryOp Raw.OpNeg e) ≡ success Void Ψ eE d f
+icv-neg {ctx} e eqE with negOperandView e | eqE
+... | nov-int n | ()
+... | nov-float i f l p | ()
+... | nov-other .e | _ with inferElabV ctx e | eqE
+...   | success Void _ _ _ _ , _ | refl = _ , _ , _ , refl
+
+icv-case : ∀ {ctx : NamedCtx} (scrut : RawExpr) (xL : String) (eL : RawExpr) (xR : String) (eR : RawExpr)
+    {CL CR : Type} {qL qR : Quantity} {Ψs Ψₗ Ψᵣ : Surface.Usage (NamedCtx.size ctx)}
+    {sE : SExpr (NamedCtx.debruijn ctx) Ψs Void} {lE : _} {rE : _} {ds fs dl fl dr fr : ℕ}
+  → inferElab ctx scrut ≡ success Void Ψs sE ds fs
+  → inferElab (Once.TypeCheck.ElaborateProofs.extendNamedCtx ctx xL Void) eL ≡ success CL (qL Surface.Usage.∷ Ψₗ) lE dl fl
+  → inferElab (Once.TypeCheck.ElaborateProofs.extendNamedCtx ctx xR Void) eR ≡ success CR (qR Surface.Usage.∷ Ψᵣ) rE dr fr
+  → ∃[ eE ] ∃[ d ] ∃[ f ] inferElab ctx (Raw.RDestruct scrut xL eL xR eR) ≡ success Void Ψs eE d f
+icv-case {ctx} scrut xL eL xR eR eqS eqL eqR
+  with inferElabV ctx scrut | eqS
+... | success Void _ _ _ _ , _ | refl
+    with inferElabV (Once.TypeCheck.ElaborateProofs.extendNamedCtx ctx xL Void) eL | eqL
+...   | success _ (_ Surface.Usage.∷ _) _ _ _ , _ | refl
+      with inferElabV (Once.TypeCheck.ElaborateProofs.extendNamedCtx ctx xR Void) eR | eqR
+...     | success _ (_ Surface.Usage.∷ _) _ _ _ , _ | refl = _ , _ , _ , refl
+
+icv-binop-l : ∀ {ctx : NamedCtx} (op : Raw.BinOp) (e₁ e₂ : RawExpr) {B : Type}
+    {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)} {e₁E : _} {e₂E : _} {d₁ d₂ f₁ f₂ : ℕ}
+  → inferElab ctx e₁ ≡ success Void Ψ₁ e₁E d₁ f₁
+  → inferElab ctx e₂ ≡ success B Ψ₂ e₂E d₂ f₂
+  → ∃[ eE ] ∃[ d ] ∃[ f ] inferElab ctx (Raw.RBinOp op e₁ e₂) ≡ success Void Ψ₁ eE d f
+icv-binop-l {ctx} op e₁ e₂ eq₁ eq₂
+  with inferElabV ctx e₁ | eq₁
+... | success Void _ _ _ _ , _ | refl
+    with inferElabV ctx e₂ | eq₂
+...   | success _ _ _ _ _ , _ | refl = _ , _ , _ , refl
+
+icv-binop-r : ∀ {ctx : NamedCtx} (op : Raw.BinOp) (e₁ e₂ : RawExpr) (A : Type)
+    {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)} {e₁E : _} {e₂E : _} {d₁ d₂ f₁ f₂ : ℕ}
+  → inferElab ctx e₁ ≡ success A Ψ₁ e₁E d₁ f₁
+  → ¬ (A ≡ Void)
+  → inferElab ctx e₂ ≡ success Void Ψ₂ e₂E d₂ f₂
+  → ∃[ eE ] ∃[ d ] ∃[ f ] inferElab ctx (Raw.RBinOp op e₁ e₂) ≡ success Void (Ψ₁ +ᵘ Ψ₂) eE d f
+icv-binop-r op e₁ e₂ Void eq₁ ¬v eq₂ = ⊥-elim (¬v refl)
+icv-binop-r {ctx} op e₁ e₂ T.Unit eq₁ ¬v eq₂
+  with inferElabV ctx e₁ | eq₁
+... | success T.Unit _ _ _ _ , _ | refl
+    with inferElabV ctx e₂ | eq₂
+...   | success Void _ _ _ _ , _ | refl = _ , _ , _ , refl
+icv-binop-r {ctx} op e₁ e₂ Int eq₁ ¬v eq₂
+  with inferElabV ctx e₁ | eq₁
+... | success Int _ _ _ _ , _ | refl
+    with inferElabV ctx e₂ | eq₂
+...   | success Void _ _ _ _ , _ | refl = _ , _ , _ , refl
+icv-binop-r {ctx} op e₁ e₂ T.Float eq₁ ¬v eq₂
+  with inferElabV ctx e₁ | eq₁
+... | success T.Float _ _ _ _ , _ | refl
+    with inferElabV ctx e₂ | eq₂
+...   | success Void _ _ _ _ , _ | refl = _ , _ , _ , refl
+icv-binop-r {ctx} op e₁ e₂ T.Str eq₁ ¬v eq₂
+  with inferElabV ctx e₁ | eq₁
+... | success T.Str _ _ _ _ , _ | refl
+    with inferElabV ctx e₂ | eq₂
+...   | success Void _ _ _ _ , _ | refl = _ , _ , _ , refl
+icv-binop-r {ctx} op e₁ e₂ T.Buffer eq₁ ¬v eq₂
+  with inferElabV ctx e₁ | eq₁
+... | success T.Buffer _ _ _ _ , _ | refl
+    with inferElabV ctx e₂ | eq₂
+...   | success Void _ _ _ _ , _ | refl = _ , _ , _ , refl
+icv-binop-r {ctx} op e₁ e₂ (_ T.* _) eq₁ ¬v eq₂
+  with inferElabV ctx e₁ | eq₁
+... | success (_ T.* _) _ _ _ _ , _ | refl
+    with inferElabV ctx e₂ | eq₂
+...   | success Void _ _ _ _ , _ | refl = _ , _ , _ , refl
+icv-binop-r {ctx} op e₁ e₂ (_ T.+ _) eq₁ ¬v eq₂
+  with inferElabV ctx e₁ | eq₁
+... | success (_ T.+ _) _ _ _ _ , _ | refl
+    with inferElabV ctx e₂ | eq₂
+...   | success Void _ _ _ _ , _ | refl = _ , _ , _ , refl
+icv-binop-r {ctx} op e₁ e₂ (_ T.⇒[ _ ] _) eq₁ ¬v eq₂
+  with inferElabV ctx e₁ | eq₁
+... | success (_ T.⇒[ _ ] _) _ _ _ _ , _ | refl
+    with inferElabV ctx e₂ | eq₂
+...   | success Void _ _ _ _ , _ | refl = _ , _ , _ , refl
+icv-binop-r {ctx} op e₁ e₂ (T.μ-type _) eq₁ ¬v eq₂
+  with inferElabV ctx e₁ | eq₁
+... | success (T.μ-type _) _ _ _ _ , _ | refl
+    with inferElabV ctx e₂ | eq₂
+...   | success Void _ _ _ _ , _ | refl = _ , _ , _ , refl
+icv-binop-r {ctx} op e₁ e₂ (T.ν-type _) eq₁ ¬v eq₂
+  with inferElabV ctx e₁ | eq₁
+... | success (T.ν-type _) _ _ _ _ , _ | refl
+    with inferElabV ctx e₂ | eq₂
+...   | success Void _ _ _ _ , _ | refl = _ , _ , _ , refl
+
+icv-fst : ∀ {ctx : NamedCtx} (arg : RawExpr) {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {argE : SExpr (NamedCtx.debruijn ctx) Ψ Void} {d' f' : ℕ}
+  → inferElab ctx arg ≡ success Void Ψ argE d' f'
+  → ∃[ eE ] ∃[ d ] ∃[ f ]
+      inferElab ctx (Raw.RApp (Raw.RResolved (gen "fst")) arg) ≡ success Void (zeroUsage +ᵘ (T.Many *ᵘ Ψ)) eE d f
+icv-fst {ctx} arg eqArg
+  with inferElabV ctx arg | eqArg
+... | success Void _ _ _ _ , _ | refl = _ , _ , _ , refl
+
+icv-snd : ∀ {ctx : NamedCtx} (arg : RawExpr) {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {argE : SExpr (NamedCtx.debruijn ctx) Ψ Void} {d' f' : ℕ}
+  → inferElab ctx arg ≡ success Void Ψ argE d' f'
+  → ∃[ eE ] ∃[ d ] ∃[ f ]
+      inferElab ctx (Raw.RApp (Raw.RResolved (gen "snd")) arg) ≡ success Void (zeroUsage +ᵘ (T.Many *ᵘ Ψ)) eE d f
+icv-snd {ctx} arg eqArg
+  with inferElabV ctx arg | eqArg
+... | success Void _ _ _ _ , _ | refl = _ , _ , _ , refl
+
+icv-apply : ∀ {ctx : NamedCtx} (arg : RawExpr) {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {argE : SExpr (NamedCtx.debruijn ctx) Ψ Void} {d' f' : ℕ}
+  → inferElab ctx arg ≡ success Void Ψ argE d' f'
+  → ∃[ eE ] ∃[ d ] ∃[ f ]
+      inferElab ctx (Raw.RApp (Raw.RResolved (gen "apply")) arg) ≡ success Void (zeroUsage +ᵘ (T.Many *ᵘ Ψ)) eE d f
+icv-apply {ctx} arg eqArg
+  with inferElabV ctx arg | eqArg
+... | success Void _ _ _ _ , _ | refl = _ , _ , _ , refl
+
+icv-Out : ∀ {ctx : NamedCtx} (arg : RawExpr) {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {argE : SExpr (NamedCtx.debruijn ctx) Ψ Void} {d' f' : ℕ}
+  → inferElab ctx arg ≡ success Void Ψ argE d' f'
+  → ∃[ eE ] ∃[ d ] ∃[ f ]
+      inferElab ctx (Raw.RApp (Raw.RResolved (gen "Out")) arg) ≡ success Void (zeroUsage +ᵘ (T.Many *ᵘ Ψ)) eE d f
+icv-Out {ctx} arg eqArg
+  with inferElabV ctx arg | eqArg
+... | success Void _ _ _ _ , _ | refl = _ , _ , _ , refl
+
+icv-app : ∀ {ctx : NamedCtx} (f x : RawExpr) {X : Type}
+    {Ψf Ψx : Surface.Usage (NamedCtx.size ctx)} {fE : _} {xE : _} {df ff dx fx : ℕ}
+  → Once.TypeCheck.ElaborateProofs.classifyAppHead f ≡ nothing
+  → inferElab ctx f ≡ success Void Ψf fE df ff
+  → inferElab ctx x ≡ success X Ψx xE dx fx
+  → ∃[ eE ] ∃[ d ] ∃[ f' ] inferElab ctx (Raw.RApp f x) ≡ success Void Ψf eE d f'
+icv-app {ctx} f x eqAH eqF eqX
+  rewrite cong proj₁ (viewBridge {ctx} {f} {x} ahv-other (classifyAppHead-nothing⇒view-other eqAH))
+        | cong proj₁ (otherBridge {ctx} {f} {x} nothing eqAH)
+  with inferElabV ctx f | eqF
+... | success Void _ _ _ _ , _ | refl
+    with inferElabV ctx x | eqX
+...   | success _ _ _ _ _ , _ | refl = _ , _ , _ , refl
+
+
+------------------------------------------------------------------------
 -- Plan 0.94 §10 / D230: the domain-given mode, the two compose routes and the
 -- spine. Non-recursive helpers here; the recursion is in the mutual block.
 ------------------------------------------------------------------------
@@ -995,6 +1144,16 @@ given-infer-route (t-terminal-app _) A π = refl
 given-infer-route (t-apply-app-infer _) A π = refl
 given-infer-route (t-apply-eff-app-infer _) A π = refl
 given-infer-route (t-Out-app-infer _ _ _) A π = refl
+given-infer-route (t-neg-void _) A π = refl
+given-infer-route (t-case-void _ _ _) A π = refl
+given-infer-route (t-binop-void-l _ _) A π = refl
+given-infer-route (t-binop-void-r _ _ _) A π = refl
+given-infer-route (t-fst-app-void _) A π = refl
+given-infer-route (t-snd-app-void _) A π = refl
+given-infer-route (t-apply-app-void _) A π = refl
+given-infer-route (t-Out-app-void _) A π = refl
+given-infer-route {ctx} (t-app-void {f = f} {x = x} eqAH _ _) A π =
+  app-other-route ctx f x A π (inferElabV ctx (Raw.RApp f x)) (classifyAppHead-nothing⇒view-other eqAH)
 given-infer-route {ctx} (t-app {f = f} {x = x} eqAH _ _) A π =
   app-other-route ctx f x A π (inferElabV ctx (Raw.RApp f x)) (classifyAppHead-nothing⇒view-other eqAH)
 given-infer-route {ctx} (t-effApp {f = f} {x = x} eqAH _ _) A π =
@@ -1438,6 +1597,24 @@ mutual
   iFromInferSub (t-effApp {f = f} {x = x} {B = B} notPoly dF dX) sb =
     let (_ , _ , _ , eqI) = infer-complete (t-effApp notPoly dF dX)
     in checkElab-fallback-RApp-generic f x (T.Unit T.⇒[ T.mk-kind T.Many T.eff ] B) notPoly eqI sb
+  iFromInferSub d@(t-neg-void {e = e} _) sb =
+    checkElab-fallback-RUnaryOp-sub Raw.OpNeg e Void (proj₂ (proj₂ (proj₂ (infer-complete d)))) sb
+  iFromInferSub d@(t-case-void {scrut = s} {eL = l} {eR = r} {xL = xL} {xR = xR} _ _ _) sb =
+    checkElab-fallback-RDestruct s xL l xR r Void (proj₂ (proj₂ (proj₂ (infer-complete d)))) sb
+  iFromInferSub d@(t-binop-void-l {op = op} {e₁ = e₁} {e₂ = e₂} _ _) sb =
+    checkElab-fallback-RBinOp op e₁ e₂ Void (proj₂ (proj₂ (proj₂ (infer-complete d)))) sb
+  iFromInferSub d@(t-binop-void-r {op = op} {e₁ = e₁} {e₂ = e₂} _ _ _) sb =
+    checkElab-fallback-RBinOp op e₁ e₂ Void (proj₂ (proj₂ (proj₂ (infer-complete d)))) sb
+  iFromInferSub d@(t-fst-app-void {e = e} _) sb =
+    checkElab-fallback-RApp-fst e Void (proj₂ (proj₂ (proj₂ (infer-complete d)))) sb
+  iFromInferSub d@(t-snd-app-void {e = e} _) sb =
+    checkElab-fallback-RApp-snd e Void (proj₂ (proj₂ (proj₂ (infer-complete d)))) sb
+  iFromInferSub d@(t-apply-app-void {e = e} _) sb =
+    checkElab-fallback-RApp-apply-infer e Void (proj₂ (proj₂ (proj₂ (infer-complete d)))) sb
+  iFromInferSub d@(t-Out-app-void {e = e} _) sb =
+    checkElab-fallback-RApp-Out e Void (proj₂ (proj₂ (proj₂ (infer-complete d)))) sb
+  iFromInferSub d@(t-app-void {f = f} {x = x} notPoly _ _) sb =
+    checkElab-fallback-RApp-generic f x Void notPoly (proj₂ (proj₂ (proj₂ (infer-complete d)))) sb
   iFromInferSub (t-app-spine {f = f} {arg = x} {T = B} notPoly dX dF) sb =
     let (_ , _ , _ , eqI) = infer-complete (t-app-spine notPoly dX dF)
     in checkElab-fallback-RApp-generic f x B notPoly eqI sb
@@ -1556,6 +1733,18 @@ mutual
     in infer-complete-RApp-eff f x A notPoly eqF eqX
   -- D230: the spine.
   infer-complete (t-app-spine {f = f} {arg = x} eqAH dX dF) = spine-complete f x eqAH dX dF
+  -- D229 / plan 0.94 §13: ex falso.
+  infer-complete (t-neg-void {e = e} d) = icv-neg e (proj₂ (proj₂ (proj₂ (infer-complete d))))
+  infer-complete (t-case-void {scrut = s} {eL = l} {eR = r} {xL = xL} {xR = xR} dS dL dR) =
+    icv-case s xL l xR r (proj₂ (proj₂ (proj₂ (infer-complete dS)))) (proj₂ (proj₂ (proj₂ (infer-complete dL)))) (proj₂ (proj₂ (proj₂ (infer-complete dR))))
+  infer-complete (t-binop-void-l {op = op} {e₁ = e₁} {e₂ = e₂} d₁ d₂) = icv-binop-l op e₁ e₂ (proj₂ (proj₂ (proj₂ (infer-complete d₁)))) (proj₂ (proj₂ (proj₂ (infer-complete d₂))))
+  infer-complete (t-binop-void-r {op = op} {e₁ = e₁} {e₂ = e₂} {A = A} d₁ ¬v d₂) =
+    icv-binop-r op e₁ e₂ A (proj₂ (proj₂ (proj₂ (infer-complete d₁)))) ¬v (proj₂ (proj₂ (proj₂ (infer-complete d₂))))
+  infer-complete (t-fst-app-void {e = e} d) = icv-fst e (proj₂ (proj₂ (proj₂ (infer-complete d))))
+  infer-complete (t-snd-app-void {e = e} d) = icv-snd e (proj₂ (proj₂ (proj₂ (infer-complete d))))
+  infer-complete (t-apply-app-void {e = e} d) = icv-apply e (proj₂ (proj₂ (proj₂ (infer-complete d))))
+  infer-complete (t-Out-app-void {e = e} d) = icv-Out e (proj₂ (proj₂ (proj₂ (infer-complete d))))
+  infer-complete (t-app-void {f = f} {x = x} eqAH dF dX) = icv-app f x eqAH (proj₂ (proj₂ (proj₂ (infer-complete dF)))) (proj₂ (proj₂ (proj₂ (infer-complete dX))))
 
   -- The spine. A head that synthesizes is `t-app`'s case (its `⊢ᵈ` can only be
   -- `d-infer`, at the pure grade); any other head has no synthesized type (the
@@ -1583,6 +1772,10 @@ mutual
     infer-complete-RApp-spine f x eqAH refl (proj₂ (proj₂ (proj₂ (infer-complete dX)))) (proj₂ (proj₂ (proj₂ (given-complete dF))))
   spine-complete f x eqAH dX dF@(d-cata _ _) =
     infer-complete-RApp-spine f x eqAH refl (proj₂ (proj₂ (proj₂ (infer-complete dX)))) (proj₂ (proj₂ (proj₂ (given-complete dF))))
+  spine-complete f x eqAH dX dF@(d-case-void _ _) =
+    infer-complete-RApp-spine f x eqAH refl (proj₂ (proj₂ (proj₂ (infer-complete dX)))) (proj₂ (proj₂ (proj₂ (given-complete dF))))
+  spine-complete f x eqAH dX dF@(d-cata-void _) =
+    infer-complete-RApp-spine f x eqAH refl (proj₂ (proj₂ (proj₂ (infer-complete dX)))) (proj₂ (proj₂ (proj₂ (given-complete dF))))
   spine-complete f x eqAH dX (d-infer {A′ = A′} w a ⊑-pure) =
     let (_ , _ , _ , eqF) = infer-complete w
         (_ , _ , _ , eqX) = iFromInferSub dX a
@@ -1609,6 +1802,16 @@ mutual
   ... | success _ _ _ _ _ , _ | (_ , _ , _ , refl)
       with elabGivenV ctx f M π | given-complete df
   ...   | success _ _ _ _ _ , _ | (_ , _ , _ , refl) = _ , _ , _ , refl
+  given-complete d-fst-void = _ , _ , _ , refl
+  given-complete d-snd-void = _ , _ , _ , refl
+  given-complete {ctx} (d-case-void {f = f} {g = g} {π = π} df dg)
+    with elabGivenV ctx f Void π | given-complete df
+  ... | success _ _ _ _ _ , _ | (_ , _ , _ , refl)
+      with elabGivenV ctx g Void π | given-complete dg
+  ...   | success _ _ _ _ _ , _ | (_ , _ , _ , refl) = _ , _ , _ , refl
+  given-complete {ctx} (d-cata-void {alg = alg} dalg)
+    with inferElabV (ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx)) alg | infer-complete dalg
+  ... | success _ [] _ _ _ , _ | (_ , _ , _ , refl) = _ , _ , _ , refl
   given-complete d-id = _ , _ , _ , refl
   given-complete d-fst = _ , _ , _ , refl
   given-complete d-snd = _ , _ , _ , refl

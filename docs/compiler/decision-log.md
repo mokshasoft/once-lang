@@ -15348,6 +15348,18 @@ the written branches — it keeps a `case`'s usage under narrowing, but an absur
 `f x` has no arrow quantity to multiply `x` by, so usage cannot be preserved in general
 anyway.
 
+### Amendment 3 (2026-09-26): point-free arms under a `Void` input COUNT (A)
+
+The domain-given mode needs `Void`-input rules for its eliminator combinators (`fst`,
+`snd`, `case f g`, `cata alg`), because the spine hands a narrowed argument's type to the
+head. Their ARMS are built when the arrow is built, before any input (D131), and building is
+observable (an arm can halt); narrowing is PRECOMPOSITION with `¡` on the input and cannot
+change what happens before an input arrives. So the arms are typed, emitted and counted.
+The single rule behind every case: usage is what evaluation REACHES. Emitted as
+`snd' (pair a b)` — evaluate both, keep the second — so no new term former is needed; a
+`cata`'s closed algebra is embedded the way a definition's body is (`embedClosed`).
+Rejected (B): arms count zero — it would change a narrowed program's meaning.
+
 ## D230 — THE SPINE MODE: ARGUMENT-DRIVEN APPLICATION IS AN INFERENCE, `t-arg-driven-app-check` IS DELETED (2026-09-26)
 
 **Status**: Accepted; implementation in plan 0.94 (phase C).

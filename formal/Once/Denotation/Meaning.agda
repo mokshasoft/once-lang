@@ -69,7 +69,9 @@ open import Once.TypeCheck.Judgment
          t-curry-check; t-cata-check; t-ana-check;
          t-sub; t-lam; t-pair-lit-check;
          t-In-app-check; t-apply-check; t-inl-app-check; t-inr-app-check;
-         t-initial-app-check; t-app-spine; t-var-poly-instantiate;
+         t-initial-app-check; t-app-spine;
+         t-neg-void; t-case-void; t-binop-void-l; t-binop-void-r; t-fst-app-void; t-snd-app-void;
+         t-apply-app-void; t-Out-app-void; t-app-void; d-fst-void; d-snd-void; d-case-void; d-cata-void; t-var-poly-instantiate;
          t-var-poly-instantiate-infer;
          t-int; t-float; t-str; t-unit; t-unit-var; t-var-local; t-var-qualified;
          t-var-resolved; t-var-import; t-annot; t-pair; t-neg; t-neg-float; t-binop-arith-float; t-binop-arith-float-il; t-binop-arith-float-ir; t-let; t-case;
@@ -236,6 +238,11 @@ EnvRun ctx Ψ = ⟦ ⟦ NamedCtx.debruijn ctx ↾ Ψ ⟧ᶜᵗ ⟧ᴰ
 ⟦_⟧ᵢ : ∀ {ctx e A Ψ} → ctx ⊢ᵢ e ∶ A ⨾ Ψ → TargetNum → EnvRun ctx Ψ → T ⟦ A ⟧ᴰ
 -- Plan 0.94 §10: a domain-given derivation denotes the term AS the arrow
 -- `A ⇒[π] B` it is determined to be.
+-- Plan 0.94 §13: evaluate both, keep the second — what `seq` emits. A subterm
+-- evaluation REACHES is run even where its value is not used.
+seqᴰ : ∀ {X Y : Set} → T X → T Y → T Y
+seqᴰ m₁ m₂ = (m₁ >>=T λ x → m₂ >>=T λ y → returnT (x , y)) >>=T λ v → returnT (proj₂ v)
+
 ⟦_⟧ᵈ : ∀ {ctx e A π B Ψ} → ctx ⊢ᵈ e ∶ A ⇒[ π ]↦ B ⨾ Ψ → TargetNum → EnvRun ctx Ψ
      → T ⟦ A ⇒[ mk-kind Many π ] B ⟧ᴰ
 
@@ -460,6 +467,19 @@ EnvRun ctx Ψ = ⟦ ⟦ NamedCtx.debruijn ctx ↾ Ψ ⟧ᶜᵗ ⟧ᴰ
 ⟦_⟧ᵢ {ctx = ctx} (t-effApp _ df dx) fmt dγ = returnT (λ _ → (⟦ df ⟧ᵢ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=T λ vf → (⟦ dx ⟧ᶜ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=T λ vx → vf vx)
 -- D230: the spine — the head, given the argument's type, applied to it.
 ⟦_⟧ᵢ {ctx = ctx} (t-app-spine _ darg df) fmt dγ = (⟦ df ⟧ᵈ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=T λ vf → (⟦ darg ⟧ᵢ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-trans (⊑ᵘ-*Many _) (⊑ᵘ-+ʳ _ _)) dγ) >>=T λ vx → vf vx
+-- D229 / plan 0.94 §13: ex falso. The term's computation is its principal
+-- argument's — which halts or has no value — preceded by what evaluation
+-- reaches first (`e + v`'s left operand). Nothing after the principal runs.
+⟦_⟧ᵢ {ctx = ctx} (t-neg-void d) fmt dγ = (⟦ d ⟧ᵢ fmt) dγ
+⟦_⟧ᵢ {ctx = ctx} (t-case-void dS _ _) fmt dγ = (⟦ dS ⟧ᵢ fmt) dγ
+⟦_⟧ᵢ {ctx = ctx} (t-binop-void-l d₁ _) fmt dγ = (⟦ d₁ ⟧ᵢ fmt) dγ
+⟦_⟧ᵢ {ctx = ctx} (t-binop-void-r d₁ _ d₂) fmt dγ =
+  seqᴰ ((⟦ d₁ ⟧ᵢ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ)) ((⟦ d₂ ⟧ᵢ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ))
+⟦_⟧ᵢ {ctx = ctx} (t-fst-app-void d) fmt dγ = (⟦ d ⟧ᵢ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-trans (⊑ᵘ-*Many _) (⊑ᵘ-+ʳ zeroUsage _)) dγ) >>=T λ v → ⊥-elim v
+⟦_⟧ᵢ {ctx = ctx} (t-snd-app-void d) fmt dγ = (⟦ d ⟧ᵢ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-trans (⊑ᵘ-*Many _) (⊑ᵘ-+ʳ zeroUsage _)) dγ) >>=T λ v → ⊥-elim v
+⟦_⟧ᵢ {ctx = ctx} (t-apply-app-void d) fmt dγ = (⟦ d ⟧ᵢ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-trans (⊑ᵘ-*Many _) (⊑ᵘ-+ʳ zeroUsage _)) dγ) >>=T λ v → ⊥-elim v
+⟦_⟧ᵢ {ctx = ctx} (t-Out-app-void d) fmt dγ = (⟦ d ⟧ᵢ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-trans (⊑ᵘ-*Many _) (⊑ᵘ-+ʳ zeroUsage _)) dγ) >>=T λ v → ⊥-elim v
+⟦_⟧ᵢ {ctx = ctx} (t-app-void _ dF _) fmt dγ = (⟦ dF ⟧ᵢ fmt) dγ
 
 -- Plan 0.94 §10: the domain-given realm. `d-infer` is the inferred term under
 -- its arrow conversion; `d-lam` is `t-lam` at `Many`; `d-compose` is `compose`.
@@ -483,3 +503,9 @@ EnvRun ctx Ψ = ⟦ ⟦ NamedCtx.debruijn ctx ↾ Ψ ⟧ᶜᵗ ⟧ᴰ
   returnT (λ a → vf a >>=T λ b → vg a >>=T λ c → returnT (b , c))
 ⟦_⟧ᵈ {ctx = ctx} (d-cata wfF dalg) fmt dγ =
   (⟦ dalg ⟧ᵢ fmt) tt >>=T λ valg → returnT (cata-sem wfF valg)
+⟦_⟧ᵈ {ctx = ctx} d-fst-void fmt dγ = returnT (λ v → ⊥-elim v)
+⟦_⟧ᵈ {ctx = ctx} d-snd-void fmt dγ = returnT (λ v → ⊥-elim v)
+-- The arms are built — before any input — and then never applied.
+⟦_⟧ᵈ {ctx = ctx} (d-case-void df dg) fmt dγ =
+  seqᴰ ((⟦ df ⟧ᵈ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ)) (seqᴰ ((⟦ dg ⟧ᵈ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ)) (returnT (λ v → ⊥-elim v)))
+⟦_⟧ᵈ {ctx = ctx} (d-cata-void dalg) fmt dγ = seqᴰ ((⟦ dalg ⟧ᵢ fmt) tt) (returnT (λ v → ⊥-elim v))

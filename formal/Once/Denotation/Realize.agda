@@ -53,10 +53,13 @@ open import Once.TypeCheck.Judgment
          t-terminal-app; t-apply-app-infer; t-apply-eff-app-infer; t-Out-app-infer; t-app; t-effApp; t-sub; t-lam;
          t-pair-lit-check; t-In-app-check; t-apply-check; t-inl-app-check;
          t-inr-app-check; t-initial-app-check;
-         t-app-spine; t-var-poly-instantiate;
+         t-app-spine;
+         t-neg-void; t-case-void; t-binop-void-l; t-binop-void-r; t-fst-app-void; t-snd-app-void;
+         t-apply-app-void; t-Out-app-void; t-app-void; d-fst-void; d-snd-void; d-case-void; d-cata-void; t-var-poly-instantiate;
          t-var-poly-instantiate-infer)
 open import Once.Float.Decimal using (Decimal; decimalOf; negate)
-open import Once.Surface.Thinning using (weaken)
+open import Once.Surface.Thinning using (weaken; weakenFromEmpty)
+open import Once.Surface.Seq using (seq; seq0; embedClosed)
 open import Once.Surface.Syntax using (Expr; Usage; zeroUsage; var; svar; svar→expr;
   lam; app; effApp; pair; neg; let'; case'; int; float; str; unit;
   add; sub; mul; div; mod'; fadd; fsub; fmul; fdiv; i2f; lt; le; gt; ge; eq; ne; sigOp; poly;
@@ -255,6 +258,17 @@ realize-infer (t-apply-eff-app-infer d) = morph-app (IR.curry (IR.apply IR.∘ I
 realize-infer (t-app _ df dx)    = app    (realize-infer df) (realize dx)
 realize-infer (t-effApp _ df dx) = effApp (realize-infer df) (realize dx)
 realize-infer (t-app-spine _ dx df) = app (realize-d df) (realize-infer dx)
+-- D229 / plan 0.94 §13: ex falso emits what evaluation reaches — the principal,
+-- preceded by `e + v`'s left operand — and nothing after it.
+realize-infer (t-neg-void d) = realize-infer d
+realize-infer (t-case-void dS _ _) = realize-infer dS
+realize-infer (t-binop-void-l d₁ _) = realize-infer d₁
+realize-infer (t-binop-void-r d₁ _ d₂) = seq (realize-infer d₁) (realize-infer d₂)
+realize-infer (t-fst-app-void d) = morph-app IR.initial (realize-infer d)
+realize-infer (t-snd-app-void d) = morph-app IR.initial (realize-infer d)
+realize-infer (t-apply-app-void d) = morph-app IR.initial (realize-infer d)
+realize-infer (t-Out-app-void d) = morph-app IR.initial (realize-infer d)
+realize-infer (t-app-void _ dF _) = realize-infer dF
 
 realize-d (d-infer {B = B} w a g) = coerce (sub-arr a (<:-refl B) g) (realize-infer w)
 realize-d (d-lam ≤p d)            = lam Many ≤p (realize-infer d)
@@ -267,3 +281,8 @@ realize-d d-initial  = lift-morphism IR.initial
 realize-d (d-case df dg) = copair' (realize-d df) (realize-d dg)
 realize-d (d-pair df dg) = fork'   (realize-d df) (realize-d dg)
 realize-d (d-cata wfF dalg) = cata wfF (realize-infer dalg)
+realize-d d-fst-void = lift-morphism IR.initial
+realize-d d-snd-void = lift-morphism IR.initial
+-- The arms are built, then the arrow is `¡`.
+realize-d (d-case-void df dg) = seq (realize-d df) (seq0 (realize-d dg) (lift-morphism IR.initial))
+realize-d (d-cata-void dalg) = seq0 (embedClosed (realize-infer dalg)) (lift-morphism IR.initial)

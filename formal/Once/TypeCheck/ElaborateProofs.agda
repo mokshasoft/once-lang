@@ -15,7 +15,7 @@ module Once.TypeCheck.ElaborateProofs where
 open import Once.TypeCheck.Elaborate public
 open import Once.TypeCheck.Classify using (emptyCtx)
 open import Once.Type.DecEq using (_≟T_; _≟F_)
-open import Once.Type.Sub using (_<:_; _<:?_; <:-refl)
+open import Once.Type.Sub using (_<:_; _<:?_; <:-refl; sub-int; sub-float)
 open import Data.Integer using (+_)
 
 open import Data.String using (String; _++_)
@@ -313,6 +313,53 @@ checkElab-fallback-RUnaryOp {ctx} Raw.OpNeg e T eqInf
 ...   | success T' Ψ' eE' d' fr' , w | refl with T <:? T
 ...     | yes _    = _ , _ , _ , refl
 ...     | no ¬eq   = ⊥-elim (¬eq (<:-refl T))
+
+-- D229 / plan 0.94 §13: the same, at any SUPERtype of the inferred one (a
+-- `Void` result converts to every type). A numeral's fold infers `Int`/`Float`,
+-- whose only supertypes are themselves.
+checkElab-fallback-RUnaryOp-sub :
+  ∀ {ctx : NamedCtx} {τ : Type} (op : Raw.UnaryOp) (e : RawExpr) (T : Type)
+    {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ T}
+    {d f : ℕ}
+  → inferElab ctx (Raw.RUnaryOp op e) ≡ success T Ψ eE d f
+  → T <: τ
+  → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f' →
+      checkElab ctx (Raw.RUnaryOp op e) τ ≡ success Ψ eE' d' f')))
+checkElab-fallback-RUnaryOp-sub {ctx} {τ} Raw.OpNeg e T eqInf sb
+  with negOperandView e | eqInf
+... | nov-int n | refl with sb
+...   | sub-int with Int <:? Int
+...     | yes _    = _ , _ , _ , refl
+...     | no ¬eq   = ⊥-elim (¬eq (<:-refl Int))
+checkElab-fallback-RUnaryOp-sub {ctx} {τ} Raw.OpNeg e T eqInf sb
+  | nov-float i f l p | refl with sb
+...   | sub-float with Float <:? Float
+...     | yes _    = _ , _ , _ , refl
+...     | no ¬eq   = ⊥-elim (¬eq (<:-refl Float))
+checkElab-fallback-RUnaryOp-sub {ctx} {τ} Raw.OpNeg e T eqInf sb
+  | nov-other .e | eqI with inferElabV-RUnaryOp-aux ctx e (inferElabV ctx e) | eqI
+...   | failure _ , _ | ()
+...   | success T' Ψ' eE' d' fr' , w | refl with T <:? τ
+...     | yes _    = _ , _ , _ , refl
+...     | no ¬eq   = ⊥-elim (¬eq sb)
+
+-- D229 / plan 0.94 §13: `apply p` checks through its inference whatever `p`
+-- synthesizes (a `Void` `p` included).
+checkElab-fallback-RApp-apply-infer :
+  ∀ {ctx : NamedCtx} {τ : Type} (arg : RawExpr) (T : Type)
+    {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ T}
+    {d f : ℕ}
+  → inferElab ctx (Raw.RApp (Raw.RResolved (gen "apply")) arg) ≡ success T Ψ eE d f
+  → T <: τ
+  → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f' →
+      checkElab ctx (Raw.RApp (Raw.RResolved (gen "apply")) arg) τ ≡ success Ψ eE' d' f')))
+checkElab-fallback-RApp-apply-infer {ctx} {τ} arg T eqInf sb
+  with inferElabV ctx (Raw.RApp (Raw.RResolved (gen "apply")) arg) | eqInf
+... | success T' _ _ _ _ , _ | refl with T <:? τ
+...   | yes _    = _ , _ , _ , refl
+...   | no ¬eq   = ⊥-elim (¬eq sb)
 
 -- RVar "unit": no specialised check clause for "unit".
 -- The elaborator falls through to the generic fallback.

@@ -367,6 +367,16 @@ module Weaken (imps : Imports) (P : PolyCtx) where
     W-i wk (f₁ , f₂) (t-app ah dF dX) = cᵢ (sym (up-+* wk _ _ _)) (t-app ah (W-i wk f₁ dF) (W-c wk f₂ dX))
     W-i wk (f₁ , f₂) (t-effApp ah dF dX) = cᵢ (sym (up-+ wk _ _)) (t-effApp ah (W-i wk f₁ dF) (W-c wk f₂ dX))
     W-i wk (f₁ , f₂) (t-app-spine ah dX dF) = cᵢ (sym (up-+* wk _ _ _)) (t-app-spine ah (W-i wk f₂ dX) (W-d wk f₁ dF))
+    W-i wk fr (t-neg-void d) = t-neg-void (W-i wk fr d)
+    W-i wk (fS , fL , fR) (t-case-void {xL = xL} {xR = xR} dS dL dR) =
+      t-case-void (W-i wk fS dS) (W-i (wk-under xL T.Void wk) fL dL) (W-i (wk-under xR T.Void wk) fR dR)
+    W-i wk (f₁ , f₂) (t-binop-void-l d₁ d₂) = t-binop-void-l (W-i wk f₁ d₁) (W-i wk f₂ d₂)
+    W-i wk (f₁ , f₂) (t-binop-void-r d₁ ¬v d₂) = cᵢ (sym (up-+ wk _ _)) (t-binop-void-r (W-i wk f₁ d₁) ¬v (W-i wk f₂ d₂))
+    W-i wk (_ , fr) (t-fst-app-void d) = cᵢ (sym (up-z+M wk _)) (t-fst-app-void (W-i wk fr d))
+    W-i wk (_ , fr) (t-snd-app-void d) = cᵢ (sym (up-z+M wk _)) (t-snd-app-void (W-i wk fr d))
+    W-i wk (_ , fr) (t-apply-app-void d) = cᵢ (sym (up-z+M wk _)) (t-apply-app-void (W-i wk fr d))
+    W-i wk (_ , fr) (t-Out-app-void d) = cᵢ (sym (up-z+M wk _)) (t-Out-app-void (W-i wk fr d))
+    W-i wk (f₁ , f₂) (t-app-void ah dF dX) = t-app-void ah (W-i wk f₁ dF) (W-i wk f₂ dX)
     W-c wk _ t-id-check = cᶜ (sym (up-zero wk)) t-id-check
     W-c wk _ t-fst-check = cᶜ (sym (up-zero wk)) t-fst-check
     W-c wk _ t-snd-check = cᶜ (sym (up-zero wk)) t-snd-check
@@ -401,6 +411,10 @@ module Weaken (imps : Imports) (P : PolyCtx) where
     W-d wk _ d-initial = cᵈ (sym (up-zero wk)) d-initial
     W-d wk ((_ , f₁) , f₂) (d-case df dg) = cᵈ (sym (up-+ wk _ _)) (d-case (W-d wk f₁ df) (W-d wk f₂ dg))
     W-d wk ((_ , f₁) , f₂) (d-pair df dg) = cᵈ (sym (up-+ wk _ _)) (d-pair (W-d wk f₁ df) (W-d wk f₂ dg))
+    W-d wk _ d-fst-void = cᵈ (sym (up-zero wk)) d-fst-void
+    W-d wk _ d-snd-void = cᵈ (sym (up-zero wk)) d-snd-void
+    W-d wk ((_ , f₁) , f₂) (d-case-void df dg) = cᵈ (sym (up-+ wk _ _)) (d-case-void (W-d wk f₁ df) (W-d wk f₂ dg))
+    W-d wk _ (d-cata-void dalg) = cᵈ (sym (up-zero wk)) (d-cata-void dalg)
     W-d wk _ (d-cata wf dalg) = cᵈ (sym (up-zero wk)) (d-cata wf dalg)
 
 ------------------------------------------------------------------------
@@ -630,6 +644,16 @@ module Unfolding
     S-i r (n₁ , n₂) (t-app {x = xa} ah dF dX) = app-scope {a = xa} ah (t-app (head-ok ah) (S-i r n₁ dF) (S-c r n₂ dX))
     S-i r (n₁ , n₂) (t-effApp {x = xa} ah dF dX) = app-scope {a = xa} ah (t-effApp (head-ok ah) (S-i r n₁ dF) (S-c r n₂ dX))
     S-i r (n₁ , n₂) (t-app-spine {arg = xa} ah dX dF) = app-scope {a = xa} ah (t-app-spine (head-ok ah) (S-i r n₂ dX) (S-d r n₁ dF))
+    S-i r nc (t-neg-void d) = t-neg-void (S-i r nc d)
+    S-i r (nS , nL , cL , nR , cR) (t-case-void {xL = xL} {xR = xR} dS dL dR) =
+      t-case-void (S-i r nS dS) (S-i (sr-ext r xL T.Void nL) cL dL) (S-i (sr-ext r xR T.Void nR) cR dR)
+    S-i r (n₁ , n₂) (t-binop-void-l d₁ d₂) = t-binop-void-l (S-i r n₁ d₁) (S-i r n₂ d₂)
+    S-i r (n₁ , n₂) (t-binop-void-r d₁ ¬v d₂) = t-binop-void-r (S-i r n₁ d₁) ¬v (S-i r n₂ d₂)
+    S-i r (_ , nc) (t-fst-app-void d) = t-fst-app-void (S-i r nc d)
+    S-i r (_ , nc) (t-snd-app-void d) = t-snd-app-void (S-i r nc d)
+    S-i r (_ , nc) (t-apply-app-void d) = t-apply-app-void (S-i r nc d)
+    S-i r (_ , nc) (t-Out-app-void d) = t-Out-app-void (S-i r nc d)
+    S-i r (n₁ , n₂) (t-app-void {x = xa} ah dF dX) = app-scope {a = xa} ah (t-app-void (head-ok ah) (S-i r n₁ dF) (S-i r n₂ dX))
     S-c r _ t-id-check = t-id-check
     S-c r _ t-fst-check = t-fst-check
     S-c r _ t-snd-check = t-snd-check
@@ -663,6 +687,10 @@ module Unfolding
     S-d r _ d-initial = d-initial
     S-d r ((_ , n₁) , n₂) (d-case df dg) = d-case (S-d r n₁ df) (S-d r n₂ dg)
     S-d r ((_ , n₁) , n₂) (d-pair df dg) = d-pair (S-d r n₁ df) (S-d r n₂ dg)
+    S-d r _ d-fst-void = d-fst-void
+    S-d r _ d-snd-void = d-snd-void
+    S-d r ((_ , n₁) , n₂) (d-case-void df dg) = d-case-void (S-d r n₁ df) (S-d r n₂ dg)
+    S-d r (_ , nc) (d-cata-void dalg) = d-cata-void (S-i sr-alg nc dalg)
     S-d r (_ , nc) (d-cata wf dalg) = d-cata wf (S-i sr-alg nc dalg)
 
 
@@ -1130,6 +1158,35 @@ module Unfolding
         where
           ah₀ = trans (sym (sub-head sh f₀)) ah
           eqX = cong (λ β → sub (scopeOf β sh) a₀) (sym (isAlg-other ah₀))
+    F-i {sh = sh} r {b = b} nc (t-neg-void d) eq with inv-RUnaryOp {sh = sh} {b = b} eq
+    ... | a₀ , refl , e₁ = t-neg-void (F-i r nc d e₁)
+    F-i {sh = sh} r {b = b} nc (t-case-void {xL = xL} {xR = xR} dS dL dR) eq with inv-RDestruct {sh = sh} {b = b} eq
+    ... | s₀ , l₀ , r₀ , refl , eS , eL , eR =
+          t-case-void (F-i r (proj₁ nc) dS eS)
+                      (F-i (sr-ext r xL T.Void (proj₁ (proj₂ nc))) (proj₁ (proj₂ (proj₂ nc))) dL eL)
+                      (F-i (sr-ext r xR T.Void (proj₁ (proj₂ (proj₂ (proj₂ nc))))) (proj₂ (proj₂ (proj₂ (proj₂ nc)))) dR eR)
+    F-i {sh = sh} r {b = b} nc (t-binop-void-l d₁ d₂) eq with inv-RBinOp {sh = sh} {b = b} eq
+    ... | a₀ , u₀ , refl , e₁ , e₂ = t-binop-void-l (F-i r (proj₁ nc) d₁ e₁) (F-i r (proj₂ nc) d₂ e₂)
+    F-i {sh = sh} r {b = b} nc (t-binop-void-r d₁ ¬v d₂) eq with inv-RBinOp {sh = sh} {b = b} eq
+    ... | a₀ , u₀ , refl , e₁ , e₂ = t-binop-void-r (F-i r (proj₁ nc) d₁ e₁) ¬v (F-i r (proj₂ nc) d₂ e₂)
+    F-i {sh = sh} r {b = b} nc (t-fst-app-void d) eq with inv-RApp {sh = sh} {b = b} eq
+    ... | f₀ , a₀ , refl , ef , ea with inv-RResolved {sh = sh} {b = f₀} ef
+    ...   | refl = t-fst-app-void (F-i r (proj₂ nc) d ea)
+    F-i {sh = sh} r {b = b} nc (t-snd-app-void d) eq with inv-RApp {sh = sh} {b = b} eq
+    ... | f₀ , a₀ , refl , ef , ea with inv-RResolved {sh = sh} {b = f₀} ef
+    ...   | refl = t-snd-app-void (F-i r (proj₂ nc) d ea)
+    F-i {sh = sh} r {b = b} nc (t-apply-app-void d) eq with inv-RApp {sh = sh} {b = b} eq
+    ... | f₀ , a₀ , refl , ef , ea with inv-RResolved {sh = sh} {b = f₀} ef
+    ...   | refl = t-apply-app-void (F-i r (proj₂ nc) d ea)
+    F-i {sh = sh} r {b = b} nc (t-Out-app-void d) eq with inv-RApp {sh = sh} {b = b} eq
+    ... | f₀ , a₀ , refl , ef , ea with inv-RResolved {sh = sh} {b = f₀} ef
+    ...   | refl = t-Out-app-void (F-i r (proj₂ nc) d ea)
+    F-i {sh = sh} r {b = b} nc (t-app-void ah dF dX) eq with inv-RApp {sh = sh} {b = b} eq
+    ... | f₀ , a₀ , refl , refl , refl =
+          t-app-void ah₀ (F-i r (proj₁ nc) dF refl) (F-i r (proj₂ nc) dX eqX)
+        where
+          ah₀ = trans (sym (sub-head sh f₀)) ah
+          eqX = cong (λ β → sub (scopeOf β sh) a₀) (sym (isAlg-other ah₀))
     F-c {sh = sh} r {b = b} nc t-id-check eq with inv-RResolved {sh = sh} {b = b} eq
     ... | refl = t-id-check
     F-c {sh = sh} r {b = b} nc t-fst-check eq with inv-RResolved {sh = sh} {b = b} eq
@@ -1216,6 +1273,17 @@ module Unfolding
     ... | h₀ , a₀ , refl , eh , ea with inv-RApp {sh = sh} {b = h₀} eh
     ...   | c₀ , f₁ , refl , ec , ef with inv-RResolved {sh = sh} {b = c₀} ec
     ...     | refl = d-pair (F-d r (proj₂ (proj₁ nc)) df ef) (F-d r (proj₂ nc) dg ea)
+    F-d {sh = sh} r {b = b} nc d-fst-void eq with inv-RResolved {sh = sh} {b = b} eq
+    ... | refl = d-fst-void
+    F-d {sh = sh} r {b = b} nc d-snd-void eq with inv-RResolved {sh = sh} {b = b} eq
+    ... | refl = d-snd-void
+    F-d {sh = sh} r {b = b} nc (d-case-void df dg) eq with inv-RApp {sh = sh} {b = b} eq
+    ... | h₀ , a₀ , refl , eh , ea with inv-RApp {sh = sh} {b = h₀} eh
+    ...   | c₀ , f₁ , refl , ec , ef with inv-RResolved {sh = sh} {b = c₀} ec
+    ...     | refl = d-case-void (F-d r (proj₂ (proj₁ nc)) df ef) (F-d r (proj₂ nc) dg ea)
+    F-d {sh = sh} r {b = b} nc (d-cata-void dalg) eq with inv-RApp {sh = sh} {b = b} eq
+    ... | f₀ , a₀ , refl , ef , ea with inv-RResolved {sh = sh} {b = f₀} ef
+    ...   | refl = d-cata-void (F-i sr-alg (proj₂ nc) dalg ea)
     F-d {sh = sh} r {b = b} nc (d-cata wf dalg) eq with inv-RApp {sh = sh} {b = b} eq
     ... | f₀ , a₀ , refl , ef , ea with inv-RResolved {sh = sh} {b = f₀} ef
     ...   | refl = d-cata wf (F-i sr-alg (proj₂ nc) dalg ea)

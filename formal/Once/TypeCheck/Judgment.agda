@@ -524,6 +524,56 @@ mutual
                 → ctx ⊢ᵈ f ∶ X ⇒[ Once.Type.pure ]↦ T ⨾ Ψ₁
                 → ctx ⊢ᵢ RApp f arg ∶ T ⨾ (Ψ₁ Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ₂))
 
+    -- | D229 (amendments 1–2) / plan 0.94 §13: EX FALSO. An elimination whose
+    -- principal argument SYNTHESIZES `Void` synthesizes `Void` — `¡` is unique.
+    -- Its other subterms still synthesize (nothing untyped stands in a typed
+    -- program); what evaluation never reaches — everything after the principal,
+    -- which halts — counts zero, the nullary sum's join; what it reaches first
+    -- counts as usual.
+    t-neg-void : ∀ {ctx : NamedCtx} {e : RawExpr} {Ψ : Surface.Usage (NamedCtx.size ctx)}
+               → ctx ⊢ᵢ e ∶ Once.Type.Void ⨾ Ψ
+               → ctx ⊢ᵢ RUnaryOp OpNeg e ∶ Once.Type.Void ⨾ Ψ
+    -- The branches are typed with their binders at `Void` and never run.
+    t-case-void : ∀ {ctx : NamedCtx} {scrut eL eR : RawExpr} {xL xR : String} {CL CR : Type}
+                  {qL qR : Quantity} {Ψs Ψₗ Ψᵣ : Surface.Usage (NamedCtx.size ctx)}
+                → ctx ⊢ᵢ scrut ∶ Once.Type.Void ⨾ Ψs
+                → (extendNamedCtx ctx xL Once.Type.Void) ⊢ᵢ eL ∶ CL ⨾ (qL ∷ᵘ Ψₗ)
+                → (extendNamedCtx ctx xR Once.Type.Void) ⊢ᵢ eR ∶ CR ⨾ (qR ∷ᵘ Ψᵣ)
+                → ctx ⊢ᵢ RDestruct scrut xL eL xR eR ∶ Once.Type.Void ⨾ Ψs
+    -- The left operand halts first; the right one is never reached.
+    t-binop-void-l : ∀ {ctx : NamedCtx} {op : BinOp} {e₁ e₂ : RawExpr} {B : Type}
+                     {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
+                   → ctx ⊢ᵢ e₁ ∶ Once.Type.Void ⨾ Ψ₁
+                   → ctx ⊢ᵢ e₂ ∶ B ⨾ Ψ₂
+                   → ctx ⊢ᵢ RBinOp op e₁ e₂ ∶ Once.Type.Void ⨾ Ψ₁
+    -- The left operand runs first, then the right one halts. (A `Void` left
+    -- operand is the rule above, so each term has one type and one usage.)
+    t-binop-void-r : ∀ {ctx : NamedCtx} {op : BinOp} {e₁ e₂ : RawExpr} {A : Type}
+                     {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
+                   → ctx ⊢ᵢ e₁ ∶ A ⨾ Ψ₁
+                   → ¬ (A ≡ Once.Type.Void)
+                   → ctx ⊢ᵢ e₂ ∶ Once.Type.Void ⨾ Ψ₂
+                   → ctx ⊢ᵢ RBinOp op e₁ e₂ ∶ Once.Type.Void ⨾ (Ψ₁ Surface.+ᵘ Ψ₂)
+    t-fst-app-void : ∀ {ctx : NamedCtx} {e : RawExpr} {Ψ : Surface.Usage (NamedCtx.size ctx)}
+                  → ctx ⊢ᵢ e ∶ Once.Type.Void ⨾ Ψ
+                  → ctx ⊢ᵢ RApp (RResolved (gen "fst")) e ∶ Once.Type.Void ⨾ (Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ))
+    t-snd-app-void : ∀ {ctx : NamedCtx} {e : RawExpr} {Ψ : Surface.Usage (NamedCtx.size ctx)}
+                  → ctx ⊢ᵢ e ∶ Once.Type.Void ⨾ Ψ
+                  → ctx ⊢ᵢ RApp (RResolved (gen "snd")) e ∶ Once.Type.Void ⨾ (Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ))
+    t-apply-app-void : ∀ {ctx : NamedCtx} {e : RawExpr} {Ψ : Surface.Usage (NamedCtx.size ctx)}
+                  → ctx ⊢ᵢ e ∶ Once.Type.Void ⨾ Ψ
+                  → ctx ⊢ᵢ RApp (RResolved (gen "apply")) e ∶ Once.Type.Void ⨾ (Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ))
+    t-Out-app-void : ∀ {ctx : NamedCtx} {e : RawExpr} {Ψ : Surface.Usage (NamedCtx.size ctx)}
+                  → ctx ⊢ᵢ e ∶ Once.Type.Void ⨾ Ψ
+                  → ctx ⊢ᵢ RApp (RResolved (gen "Out")) e ∶ Once.Type.Void ⨾ (Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ))
+    -- The head halts; the argument is never reached.
+    t-app-void : ∀ {ctx : NamedCtx} {f x : RawExpr} {X : Type}
+                 {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
+               → classifyAppHead f ≡ nothing
+               → ctx ⊢ᵢ f ∶ Once.Type.Void ⨾ Ψ₁
+               → ctx ⊢ᵢ x ∶ X ⨾ Ψ₂
+               → ctx ⊢ᵢ RApp f x ∶ Once.Type.Void ⨾ Ψ₁
+
   -- | Check-mode judgment.
   --
   -- Contains:
@@ -912,6 +962,23 @@ mutual
                    ⊢ᵢ alg ∶ ((⟦ F ⟧T A) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] A)
                    ⨾ Surface.zeroUsage
                → ctx ⊢ᵈ RApp (RResolved (gen "cata")) alg ∶ (μ-type F) ⇒[ π ]↦ A ⨾ Surface.zeroUsage
+    -- D229 / plan 0.94 §13: the eliminator combinators given `Void` (the spine
+    -- hands a narrowed argument's type to its head). The output is `Void`. A
+    -- combinator's ARMS are built when the arrow is built, before any input
+    -- (D131), so they are typed and their usage counts.
+    d-fst-void  : ∀ {ctx : NamedCtx} {π : Once.Type.Purity}
+                → ctx ⊢ᵈ RResolved (gen "fst") ∶ Once.Type.Void ⇒[ π ]↦ Once.Type.Void ⨾ Surface.zeroUsage
+    d-snd-void  : ∀ {ctx : NamedCtx} {π : Once.Type.Purity}
+                → ctx ⊢ᵈ RResolved (gen "snd") ∶ Once.Type.Void ⇒[ π ]↦ Once.Type.Void ⨾ Surface.zeroUsage
+    d-case-void : ∀ {ctx : NamedCtx} {f g : RawExpr} {C₁ C₂ : Type} {π : Once.Type.Purity}
+                    {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
+                → ctx ⊢ᵈ f ∶ Once.Type.Void ⇒[ π ]↦ C₁ ⨾ Ψ₁
+                → ctx ⊢ᵈ g ∶ Once.Type.Void ⇒[ π ]↦ C₂ ⨾ Ψ₂
+                → ctx ⊢ᵈ RApp (RApp (RResolved (gen "case")) f) g ∶ Once.Type.Void ⇒[ π ]↦ Once.Type.Void ⨾ (Ψ₁ Surface.+ᵘ Ψ₂)
+    d-cata-void : ∀ {ctx : NamedCtx} {alg : RawExpr} {S : Type} {π : Once.Type.Purity}
+                → ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx)
+                    ⊢ᵢ alg ∶ S ⨾ Surface.zeroUsage
+                → ctx ⊢ᵈ RApp (RResolved (gen "cata")) alg ∶ Once.Type.Void ⇒[ π ]↦ Once.Type.Void ⨾ Surface.zeroUsage
 
 _⊢_∶_⨾_ : (ctx : NamedCtx) → RawExpr → (A : Type)
          → Surface.Usage (NamedCtx.size ctx) → Set
