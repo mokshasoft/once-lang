@@ -37,6 +37,8 @@ open import DirectedHoTT.Lib.Sugar
   using ( Cons; []; _∷_; Nth; nth-z; nth-s; tag; Dₗ; conₗ; selF; selF-β; methₗ
         ; AllD; []ᵈ; _∷ᵈ_; ⊢Dₗ; PerK; []ₘ; _∷ₘ_; ⊢methₗ; MethK )
 open import DirectedHoTT.Lib.Tel
+open import DirectedHoTT.Lib.Nat using ( plusTm; ⊢plus )
+open import DirectedHoTT.Lib.NatMax using ( maxTm; ⊢max )
 
 private
   variable
@@ -223,3 +225,20 @@ module _ (A : Alg) where
              (trans (cong (subTm (single h))
                           (trans (nd-sub σ₂ _) (cong nd (foldK-sub σ₂ T (var vz)))))
              (trans (nd-sub (single h) _) (cong nd (foldK-sub (single h) T (var vz)))))
+
+------------------------------------------------------------------------
+-- 7. THE TWO MEASURES.  They differ only where a node BRANCHES: `size`
+--    sums its children, `depth` maxes them.
+------------------------------------------------------------------------
+
+sizeAlg : Alg
+sizeAlg = record
+  { K = Nat ; z = nzero ; op = plusTm ; nd = nsuc
+  ; K-sub = λ σ → refl ; z-sub = λ σ → refl ; op-sub = λ σ a b → refl ; nd-sub = λ σ a → refl
+  ; ⊢K = ty-Nat ; ⊢z = ⊢nzero ; ⊢op = ⊢plus ; ⊢nd = ⊢nsuc }
+
+depthAlg : Alg
+depthAlg = record
+  { K = Nat ; z = nzero ; op = maxTm ; nd = nsuc
+  ; K-sub = λ σ → refl ; z-sub = λ σ → refl ; op-sub = λ σ a b → refl ; nd-sub = λ σ a → refl
+  ; ⊢K = ty-Nat ; ⊢z = ⊢nzero ; ⊢op = ⊢max ; ⊢nd = ⊢nsuc }

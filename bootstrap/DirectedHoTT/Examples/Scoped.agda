@@ -31,11 +31,10 @@ open import DirectedHoTT.Spec.Syntax hiding ( Fin )
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Metatheory.RedCong
   using ( ⟶*-trans; ⟶*-nsuc )
-open import DirectedHoTT.Lib.Nat using ( plusTm; ⊢plus )
 open import DirectedHoTT.Lib.Sugar using ( conₗ; methₗ; Dₗ )
 open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast )
 open import DirectedHoTT.Lib.Tel
-open import DirectedHoTT.Lib.TelFold using ( Alg; foldMs; ⊢foldE; fold-ι )
+open import DirectedHoTT.Lib.TelFold using ( sizeAlg; foldMs; ⊢foldE; fold-ι )
 
 ------------------------------------------------------------------------
 -- 0. The index CODE: context depth.  `El ⌜Nat⌝` decodes to `Nat`.
@@ -194,19 +193,14 @@ idTm = tlam nzero (tvar (nsuc nzero) (ffz nzero))
   where z = toI ⊢nzero
 
 ------------------------------------------------------------------------
--- 4. `size : Tm n → Nat` — the FOLD at (0, +, suc).
+-- 4. `size : Tm n → Nat` — the library FOLD at (0, +, suc)
+--    (`Lib/TelFold.sizeAlg`; `Examples/ScopedDepth` is (0, max, suc)).
 --
 -- ★ The method tuple is COMPUTED from the telescopes: `var` has no
 --   recursive field (↦ 1), `lam` one (↦ suc of it), `app` two
 --   (↦ suc of their sum).  `lam`'s IH is the fold run at `suc n` — the
 --   SHIFTED index — and the fold never had to be told.
 ------------------------------------------------------------------------
-
-sizeAlg : Alg
-sizeAlg = record
-  { K = Nat ; z = nzero ; op = plusTm ; nd = nsuc
-  ; K-sub = λ σ → refl ; z-sub = λ σ → refl ; op-sub = λ σ a b → refl ; nd-sub = λ σ a → refl
-  ; ⊢K = ty-Nat ; ⊢z = ⊢nzero ; ⊢op = ⊢plus ; ⊢nd = ⊢nsuc }
 
 msize : {Γ : Cx} → RTm Γ
 msize = methₗ (foldMs sizeAlg TmTs)
