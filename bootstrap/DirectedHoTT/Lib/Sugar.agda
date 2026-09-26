@@ -2,16 +2,17 @@
 -- OCP-0009 · Lib — ★ THE CONSTRUCTOR-LIST SURFACE, elaborated into the
 --               ONE-TELESCOPE kernel (SPIKE-LEVITATION S4, promoted; D072).
 --
--- The kernel has ONE telescope per family: `IMu I D i` for `D : Desc I`.
--- The surface — examples, the Knot — keeps writing a constructor LIST
--- `C₀ … C_{c-1}` and one method PER constructor.  This module is the
--- elaboration, VERIFIED:
+-- The kernel's family is FIBRED (D074): `IMu I D i` for
+-- `D : Π (El I) (Desc I)` — a telescope over every index.  The surface —
+-- examples, the Knot — keeps writing a constructor LIST `C₀ … C_{c-1}`
+-- (each a telescope OVER THE INDEX VARIABLE) and one method PER
+-- constructor.  This module is the elaboration, VERIFIED:
 --
---   Dₗ Cs     = dσ (⌜Fin⌝ c) (λ t. sel Cs t)      -- the datatype
---   conₗ k p  = con (pair (tag k) p)                -- constructor k
+--   Dₗ Cs     = λ i. dσ (⌜Fin⌝ c) (λ t. sel Cs t)    -- the datatype
+--   conₗ k p  = con (pair (tag k) p)                  -- constructor k
 --
---   (a) `⊢Dₗ`    — each `Cₖ ∷ Desc I`  ⇒  `Dₗ Cs ∷ Desc I`
---   (b) `⊢conₗ`  — `p ∷ El (dpay I D Cₖ i)`  ⇒  `conₗ k p ∷ IMu I D i`
+--   (a) `⊢Dₗ`    — each `Cₖ ∷ Desc I` (over `i`)  ⇒  `Dₗ Cs ∷ Π (El I) (Desc I)`
+--   (b) `⊢conₗ`  — `p ∷ El (dpay I D Cₖ[i])`  ⇒  `conₗ k p ∷ IMu I D i`
 --   (c) `sel-β`  — the constructor LOOKUP is a reduction:
 --                  `app (selF Cs) (tag k) ⟶* Cₖ`
 --
@@ -32,16 +33,24 @@ open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Metatheory.RedCong
-  using ( ⟶*-trans; ⟶*-dpayᶜ; ⟶ᵀ*-El; red→≅ᵀ; _⟶ᵀ*_; doneᵀ; stepᵀ; ⟶ᵀ*-Πˡ; ⟶*-appˡ )
-open import DirectedHoTT.Metatheory.SubjectReductionBase using ( wk-sub; ≅ᵀ-sub )
-open import DirectedHoTT.Metatheory.Fundamental.Syntactic using ( ⟨_⟩ᵣ; subTy-var; subTm-var )
+  using ( ⟶*-trans; ⟶*-dpayᶜ; ⟶ᵀ*-El; red→≅ᵀ; _⟶ᵀ*_; doneᵀ; stepᵀ; ⟶ᵀ*-Πˡ
+        ; ⟶*-appˡ; ⟶*-appʳ )
+open import DirectedHoTT.Metatheory.SubjectReductionBase
+  using ( wk-sub; ≅ᵀ-sub )
+open import DirectedHoTT.Metatheory.Fundamental.Syntactic
+  using ( ⟨_⟩ᵣ; subTy-var; subTm-var )
 open import DirectedHoTT.Metatheory.TySub
-  using ( ⊢wk; ⊢-cast; wk-cancel-tm; ren-ty; sub-ty; Ren⊢-ext; wk-ren; ren-lemma; Ren⊢; ∋-cast; conv-ctxᵀ )
+  using ( ⊢wk; ⊢-cast; wk-cancel-tm; ren-ty; sub-ty; Ren⊢-ext; wk-ren
+        ; ren-lemma; Ren⊢; ∋-cast; conv-ctxᵀ; sub-lemma )
 open import DirectedHoTT.Metatheory.Premises
   using ( fsucS⊢; MethG; MethG-wf; MethCtx; MethG-sub; MethG-monoᶜ; mot-ren
-        ; methSg; MethTy-wf; MethTy-MethG )
-open import DirectedHoTT.Metatheory.Validity using ( wk-app-vz )
-open import DirectedHoTT.Spec.Variance using ( ren-as-sub )
+        ; methSg; MethTy-wf; MethTy-MethG; ⊢wkD )
+open import DirectedHoTT.Metatheory.Validity
+  using ( wk-app-vz; srᵀ* )
+open import DirectedHoTT.Metatheory.SubjectReduction
+  using ( ⊢single )
+open import DirectedHoTT.Spec.Variance
+  using ( ren-as-sub )
 
 private
   variable
@@ -81,8 +90,13 @@ sel (C ∷ Cs) t = fcase t C (sel (wkC Cs) (var vz))
 selF : Cons Δ c → RTm Δ
 selF Cs = lam (sel (wkC Cs) (var vz))
 
-Dₗ : Cons Δ c → RTm Δ
-Dₗ {c = c} Cs = dσ (⌜Fin⌝ c) (selF Cs)
+-- ★ D074: the FIBRE over the index variable — the tag, then the selected
+--   constructor telescope (the list lives OVER the index) — and the family
+Dσ : Cons (Δ ∙) c → RTm (Δ ∙)
+Dσ {c = c} Cs = dσ (⌜Fin⌝ c) (selF Cs)
+
+Dₗ : Cons (Δ ∙) c → RTm Δ
+Dₗ Cs = lam (Dσ Cs)
 
 conₗ : ℕ → RTm Δ → RTm Δ
 conₗ k p = con (pair (tag k) p)
@@ -131,6 +145,24 @@ selF-β {k = k} {Cs = Cs} nt =
               (sym (trans (sel-sub (single (tag k)) (wkC Cs) (var vz))
                           (cong (λ X → sel X (tag k)) (subC-cancel (tag k) Cs))))
               (sel-β nt))
+
+-- the selector commutes with substitution
+selF-sub : {Θ : Cx} (σ : Sub Δ Θ) (Cs : Cons Δ c) → subTm σ (selF Cs) ≡ selF (subC σ Cs)
+selF-sub σ Cs =
+  cong lam (trans (sel-sub (extS σ) (wkC Cs) (var vz)) (cong (λ X → sel X (var vz)) (subC-wkC σ Cs)))
+
+nth-sub : {Θ : Cx} (σ : Sub Δ Θ) {Cs : Cons Δ c} {C : RTm Δ} → Nth Cs k C →
+          Nth (subC σ Cs) k (subTm σ C)
+nth-sub σ nth-z     = nth-z
+nth-sub σ (nth-s n) = nth-s (nth-sub σ n)
+
+-- ★ the FIBRE over an index: one β, the selector at the instantiated list
+fib-β : (Cs : Cons (Δ ∙) c) (i : RTm Δ) →
+        app (Dₗ Cs) i ⟶* dσ (⌜Fin⌝ c) (selF (subC (single i) Cs))
+fib-β {c = c} Cs i =
+  step (β (Dσ Cs) i)
+       (subst (λ X → dσ (⌜Fin⌝ c) (subTm (single i) (selF Cs)) ⟶* dσ (⌜Fin⌝ c) X)
+              (selF-sub (single i) Cs) done)
 
 ------------------------------------------------------------------------
 -- 2. ★ (a) THE DATATYPE TYPES.
@@ -236,10 +268,21 @@ private
 ⊢selF dI ds =
   ⊢lam (ty-El ⊢⌜Fin⌝) (⊢sel (⊢wk dI) (wkAllD ds) (⊢conv (⊢var here) (credᵀ El-⌜Fin⌝)))
 
--- ★ (a)
-⊢Dₗ : {Γ : Ctx} {I : RTm ⌊ Γ ⌋} {Cs : Cons ⌊ Γ ⌋ c} →
-      Γ ⊢ I ∷ U → AllD Γ I Cs → Γ ⊢ Dₗ Cs ∷ Desc I
-⊢Dₗ dI ds = ⊢dσ dI ⊢⌜Fin⌝ (⊢selF dI ds)
+-- ★ (a) the fibre over the index variable, and the family
+⊢Dσ : {Γ : Ctx} {I : RTm ⌊ Γ ⌋} {Cs : Cons (⌊ Γ ⌋ ∙) c} →
+      Γ ⊢ I ∷ U → AllD (Γ ▹ El I) (renTm vs I) Cs → (Γ ▹ El I) ⊢ Dσ Cs ∷ Desc (renTm vs I)
+⊢Dσ dI ds = ⊢dσ (⊢wk dI) ⊢⌜Fin⌝ (⊢selF (⊢wk dI) ds)
+
+⊢Dₗ : {Γ : Ctx} {I : RTm ⌊ Γ ⌋} {Cs : Cons (⌊ Γ ⌋ ∙) c} →
+      Γ ⊢ I ∷ U → AllD (Γ ▹ El I) (renTm vs I) Cs → Γ ⊢ Dₗ Cs ∷ DescF I
+⊢Dₗ dI ds = ⊢lam (ty-El dI) (⊢Dσ dI ds)
+
+-- the entries AT an index: the list instantiated
+subAllD : {Γ : Ctx} {I i : RTm ⌊ Γ ⌋} {Cs : Cons (⌊ Γ ⌋ ∙) c} →
+          AllD (Γ ▹ El I) (renTm vs I) Cs → Γ ⊢ i ∷ El I → AllD Γ I (subC (single i) Cs)
+subAllD []ᵈ di = []ᵈ
+subAllD {I = I} {i = i} (d ∷ᵈ ds) di =
+  ⊢-cast (cong Desc (wk-cancel-tm i I)) (sub-lemma d (⊢single di)) ∷ᵈ subAllD ds di
 
 ------------------------------------------------------------------------
 -- 3. ★ (b) CONSTRUCTOR `k`, from a payload of ITS telescope.  The payload
@@ -249,69 +292,67 @@ private
 
 -- ★ A PAYLOAD, ONE FIELD AT A TIME — the three telescope heads.  A
 --   payload is the Σ-chain `dpay` computes; these type it head by head.
---   `ι`: the index equation (Fording is IN the payload); `σ`: a field of
---   code `S` and the rest at the selected telescope `f a`; `ρ`: a
---   recursive field at its own index, and the rest.
-⊢pay-ι : {Γ : Ctx} {I D j i e : RTm ⌊ Γ ⌋} →
-         Γ ⊢ e ∷ Id (El I) j i → Γ ⊢ e ∷ El (dpay I D (dι j) i)
-⊢pay-ι {I = I} {D} {j} {i} de =
-  ⊢conv de (csymᵀ (ctrnᵀ (credᵀ (ξ-El (dpay-ι I D j i))) (credᵀ (El-⌜Id⌝ I j i))))
+--   `ι`: nothing (the index is the FIBRE's — D074); `σ`: a field of code
+--   `S` and the rest at the selected telescope `f a`; `ρ`: a recursive
+--   field at its own index, and the rest.
+⊢pay-ι : {Γ : Ctx} {I D e : RTm ⌊ Γ ⌋} →
+         Γ ⊢ e ∷ Unit → Γ ⊢ e ∷ El (dpay I D dι)
+⊢pay-ι {I = I} {D} de =
+  ⊢conv de (csymᵀ (ctrnᵀ (credᵀ (ξ-El (dpay-ι I D))) (credᵀ El-⌜Unit⌝)))
 
-⊢pay-σ : {Γ : Ctx} {I D S f i a p : RTm ⌊ Γ ⌋} →
-         Γ ⊢ I ∷ U → Γ ⊢ D ∷ Desc I → Γ ⊢ f ∷ Π (El S) (Desc (renTm vs I)) → Γ ⊢ i ∷ El I →
-         Γ ⊢ a ∷ El S → Γ ⊢ p ∷ El (dpay I D (app f a) i) →
-         Γ ⊢ pair a p ∷ El (dpay I D (dσ S f) i)
-⊢pay-σ {Γ = Γ} {I = I} {D = D} {S = S} {f = f} {i = i} {a = a} dI dD df di da dp =
+⊢pay-σ : {Γ : Ctx} {I D S f a p : RTm ⌊ Γ ⌋} →
+         Γ ⊢ I ∷ U → Γ ⊢ D ∷ DescF I → Γ ⊢ f ∷ Π (El S) (Desc (renTm vs I)) →
+         Γ ⊢ a ∷ El S → Γ ⊢ p ∷ El (dpay I D (app f a)) →
+         Γ ⊢ pair a p ∷ El (dpay I D (dσ S f))
+⊢pay-σ {Γ = Γ} {I = I} {D = D} {S = S} {f = f} {a = a} dI dD df da dp =
   ⊢conv (⊢pair dB da dp') cv
   where
     dapp : (Γ ▹ El S) ⊢ app (renTm vs f) (var vz) ∷ Desc (renTm vs I)
     dapp = ⊢-cast (wk-app-vz (Desc (renTm vs I))) (⊢app (⊢wk df) (⊢var here))
-    dB = ty-El (⊢dpay (⊢wk dI) (⊢wk dD) dapp (⊢wk di))
-    dp' = ⊢-cast (sym (cong₄ (λ x y g k → El (dpay x y (app g a) k))
-                             (wk-cancel-tm a I) (wk-cancel-tm a D)
-                             (wk-cancel-tm a f) (wk-cancel-tm a i)))
+    dB = ty-El (⊢dpay (⊢wk dI) (⊢wkD dD) dapp)
+    dp' = ⊢-cast (sym (cong₃ (λ x y g → El (dpay x y (app g a)))
+                             (wk-cancel-tm a I) (wk-cancel-tm a D) (wk-cancel-tm a f)))
                  dp
-    cv = csymᵀ (ctrnᵀ (credᵀ (ξ-El (dpay-σ I D S f i))) (credᵀ (El-⌜Σ⌝ _ _)))
+    cv = csymᵀ (ctrnᵀ (credᵀ (ξ-El (dpay-σ I D S f))) (credᵀ (El-⌜Σ⌝ _ _)))
 
 -- the common case `f = λ C`: the rest at `C[a]`, one β away
-⊢pay-σλ : {Γ : Ctx} {I D S i a p : RTm ⌊ Γ ⌋} {C : RTm (⌊ Γ ⌋ ∙)} →
-          Γ ⊢ I ∷ U → Γ ⊢ D ∷ Desc I → Γ ⊢ lam C ∷ Π (El S) (Desc (renTm vs I)) → Γ ⊢ i ∷ El I →
-          Γ ⊢ a ∷ El S → Γ ⊢ p ∷ El (dpay I D (subTm (single a) C) i) →
-          Γ ⊢ pair a p ∷ El (dpay I D (dσ S (lam C)) i)
-⊢pay-σλ {a = a} {C = C} dI dD df di da dp =
-  ⊢pay-σ dI dD df di da (⊢conv dp (csymᵀ (credᵀ (ξ-El (ξ-dpayᶜ (β C a))))))
+⊢pay-σλ : {Γ : Ctx} {I D S a p : RTm ⌊ Γ ⌋} {C : RTm (⌊ Γ ⌋ ∙)} →
+          Γ ⊢ I ∷ U → Γ ⊢ D ∷ DescF I → Γ ⊢ lam C ∷ Π (El S) (Desc (renTm vs I)) →
+          Γ ⊢ a ∷ El S → Γ ⊢ p ∷ El (dpay I D (subTm (single a) C)) →
+          Γ ⊢ pair a p ∷ El (dpay I D (dσ S (lam C)))
+⊢pay-σλ {a = a} {C = C} dI dD df da dp =
+  ⊢pay-σ dI dD df da (⊢conv dp (csymᵀ (credᵀ (ξ-El (ξ-dpayᶜ (β C a))))))
 
-⊢pay-ρ : {Γ : Ctx} {I D j C i r p : RTm ⌊ Γ ⌋} →
-         Γ ⊢ I ∷ U → Γ ⊢ D ∷ Desc I → Γ ⊢ C ∷ Desc I → Γ ⊢ i ∷ El I →
-         Γ ⊢ r ∷ IMu I D j → Γ ⊢ p ∷ El (dpay I D C i) →
-         Γ ⊢ pair r p ∷ El (dpay I D (dρ j C) i)
-⊢pay-ρ {Γ = Γ} {I = I} {D = D} {j = j} {C = C} {i = i} {r = r} dI dD dC di dr dp =
+⊢pay-ρ : {Γ : Ctx} {I D j C r p : RTm ⌊ Γ ⌋} →
+         Γ ⊢ I ∷ U → Γ ⊢ D ∷ DescF I → Γ ⊢ C ∷ Desc I →
+         Γ ⊢ r ∷ IMu I D j → Γ ⊢ p ∷ El (dpay I D C) →
+         Γ ⊢ pair r p ∷ El (dpay I D (dρ j C))
+⊢pay-ρ {Γ = Γ} {I = I} {D = D} {j = j} {C = C} {r = r} dI dD dC dr dp =
   ⊢conv (⊢pair dB (⊢conv dr (csymᵀ (credᵀ El-⌜IMu⌝))) dp') cv
   where
-    dB = ty-El (⊢dpay (⊢wk dI) (⊢wk dD) (⊢wk dC) (⊢wk di))
-    dp' = ⊢-cast (sym (cong₄ (λ x y z k → El (dpay x y z k))
-                             (wk-cancel-tm r I) (wk-cancel-tm r D)
-                             (wk-cancel-tm r C) (wk-cancel-tm r i)))
+    dB = ty-El (⊢dpay (⊢wk dI) (⊢wkD dD) (⊢wk dC))
+    dp' = ⊢-cast (sym (cong₃ (λ x y z → El (dpay x y z))
+                             (wk-cancel-tm r I) (wk-cancel-tm r D) (wk-cancel-tm r C)))
                  dp
-    cv = csymᵀ (ctrnᵀ (credᵀ (ξ-El (dpay-ρ I D j C i))) (credᵀ (El-⌜Σ⌝ _ _)))
+    cv = csymᵀ (ctrnᵀ (credᵀ (ξ-El (dpay-ρ I D j C))) (credᵀ (El-⌜Σ⌝ _ _)))
 
--- ★ a constructor of a `dσ` family from a (tag , payload) pair, for ANY
---   tag term: the payload lives at the SELECTED telescope `f t`.
-⊢con-σ : {Γ : Ctx} {I S f i t p : RTm ⌊ Γ ⌋} →
-         Γ ⊢ I ∷ U → Γ ⊢ S ∷ U → Γ ⊢ f ∷ Π (El S) (Desc (renTm vs I)) → Γ ⊢ i ∷ El I →
-         Γ ⊢ t ∷ El S → Γ ⊢ p ∷ El (dpay I (dσ S f) (app f t) i) →
-         Γ ⊢ con (pair t p) ∷ IMu I (dσ S f) i
-⊢con-σ dI dS df di dt dp = ⊢con dI dD di (⊢pay-σ dI dD df di dt dp)
-  where dD = ⊢dσ dI dS df
+-- ★ a constructor, from a payload of ANY telescope its fibre reduces to
+⊢con-fib : {Γ : Ctx} {I D i C p : RTm ⌊ Γ ⌋} →
+           Γ ⊢ I ∷ U → Γ ⊢ D ∷ DescF I → Γ ⊢ i ∷ El I → app D i ⟶* C →
+           Γ ⊢ p ∷ El (dpay I D C) → Γ ⊢ con p ∷ IMu I D i
+⊢con-fib dI dD di r dp = ⊢con dI dD di (⊢conv dp (csymᵀ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ r)))))
 
--- ★ (b) constructor `k` of the list form: `⊢con-σ` at `tag k`, the
---   selection converted to `Cₖ` (`selF-β`)
-⊢conₗ : {Γ : Ctx} {I i p C : RTm ⌊ Γ ⌋} {Cs : Cons ⌊ Γ ⌋ c} →
-        Γ ⊢ I ∷ U → AllD Γ I Cs → Γ ⊢ i ∷ El I → Nth Cs k C →
-        Γ ⊢ p ∷ El (dpay I (Dₗ Cs) C i) → Γ ⊢ conₗ k p ∷ IMu I (Dₗ Cs) i
-⊢conₗ dI ds di nt dp =
-  ⊢con-σ dI ⊢⌜Fin⌝ (⊢selF dI ds) di (⊢conv (⊢tag (nth-lt nt)) (csymᵀ (credᵀ El-⌜Fin⌝)))
-         (⊢conv dp (csymᵀ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (selF-β nt))))))
+-- ★ (b) constructor `k` of the list form: the fibre is `dσ` over the tags,
+--   and the selection at `tag k` converts to `Cₖ[i]` (`selF-β`)
+⊢conₗ : {Γ : Ctx} {I i p : RTm ⌊ Γ ⌋} {C : RTm (⌊ Γ ⌋ ∙)} {Cs : Cons (⌊ Γ ⌋ ∙) c} →
+        Γ ⊢ I ∷ U → AllD (Γ ▹ El I) (renTm vs I) Cs → Γ ⊢ i ∷ El I → Nth Cs k C →
+        Γ ⊢ p ∷ El (dpay I (Dₗ Cs) (subTm (single i) C)) → Γ ⊢ conₗ k p ∷ IMu I (Dₗ Cs) i
+⊢conₗ {i = i} {Cs = Cs} dI ds di nt dp =
+  ⊢con-fib dI dD di (fib-β Cs i)
+    (⊢pay-σ dI dD (⊢selF dI (subAllD ds di))
+            (⊢conv (⊢tag (nth-lt nt)) (csymᵀ (credᵀ El-⌜Fin⌝)))
+            (⊢conv dp (csymᵀ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (selF-β (nth-sub (single i) nt))))))))
+  where dD = ⊢Dₗ dI ds
 
 ------------------------------------------------------------------------
 -- 4. ★ THE ONE METHOD, from one method PER CONSTRUCTOR.
@@ -328,15 +369,16 @@ private
 -- ★ the method type of constructor `k` with telescope `C`: the kernel's
 --   `MethTy` with `C` for the whole telescope and `conₗ k` for `con`
 --   (`Premises.MethG`, the general form).
-MethK : RTm Δ → RTm Δ → RTy ((Δ ∙) ∙) → RTm Δ → ℕ → RTy Δ
+MethK : RTm Δ → RTm Δ → RTy ((Δ ∙) ∙) → RTm (Δ ∙) → ℕ → RTy Δ
 MethK I D M C k = MethG I D M C (conₗ k (var (vs vz)))
 
--- ★ the TAG-GENERIC method type, over the tag: the selected telescope
---   `f tag`, and the scrutinee `con (tag , p)`.  The motive of the method
---   selection; `MethK … Cₖ k` converts to its instance at `tag k`.
-MethT : RTm Δ → RTm Δ → RTy ((Δ ∙) ∙) → RTm Δ → RTy (Δ ∙)
+-- ★ the TAG-GENERIC method type, over the tag: the selector `f` (over the
+--   INDEX) at the method's index and the tag, and the scrutinee
+--   `con (tag , p)`.  The motive of the method selection; `MethK … Cₖ k`
+--   converts to its instance at `tag k`.
+MethT : RTm Δ → RTm Δ → RTy ((Δ ∙) ∙) → RTm (Δ ∙) → RTy (Δ ∙)
 MethT I D M f =
-  MethG (renTm vs I) (renTm vs D) (renTy (extR (extR vs)) M) (app (renTm vs f) (var vz))
+  MethG (renTm vs I) (renTm vs D) (renTy (extR (extR vs)) M) (app (renTm (extR vs) f) (var (vs vz)))
         (con (pair (var (vs (vs (vs vz)))) (var (vs vz))))
 
 -- the method SELECTOR: a function of the tag, like `selF`
@@ -432,23 +474,39 @@ private
       pt (vs vz)     = refl
       pt (vs (vs x)) = refl
 
+-- a weakening under a binder, instantiated at the binder's own variable
+--   or at any term under it: itself
+ext-cancel : (a : RTm Δ) (t : RTm (Δ ∙)) → subTm (extS (single a)) (renTm (extR vs) t) ≡ t
+ext-cancel a t = trans (subTm-renTm t) (trans (subTm-cong pt t) (subTm-id t))
+  where
+    pt : ∀ x → (extS (single a) ₛ∘ᵣ extR vs) x ≡ idₛ x
+    pt vz     = refl
+    pt (vs x) = refl
+
+vz-cancel : (t : RTm (Δ ∙)) → subTm (single (var vz)) (renTm (extR vs) t) ≡ t
+vz-cancel t = trans (subTm-renTm t) (trans (subTm-cong pt t) (subTm-id t))
+  where
+    pt : ∀ x → (single (var vz) ₛ∘ᵣ extR vs) x ≡ idₛ x
+    pt vz     = refl
+    pt (vs x) = refl
+
 -- ★ the tag-generic method type at `tag k` IS constructor `k`'s, with the
 --   selection `f (tag k)` for its telescope
-MethT-inst : (I D : RTm Δ) (M : RTy ((Δ ∙) ∙)) (f : RTm Δ) (k : ℕ) →
+MethT-inst : (I D : RTm Δ) (M : RTy ((Δ ∙) ∙)) (f : RTm (Δ ∙)) (k : ℕ) →
              subTy (single (tag k)) (MethT I D M f)
              ≡ MethG I D M (app f (tag k)) (conₗ k (var (vs vz)))
 MethT-inst I D M f k =
   trans (MethG-sub (single (tag k)) (renTm vs I) (renTm vs D) (renTy (extR (extR vs)) M)
-                   (app (renTm vs f) (var vz)) (con (pair (var (vs (vs (vs vz)))) (var (vs vz)))))
+                   (app (renTm (extR vs) f) (var (vs vz))) (con (pair (var (vs (vs (vs vz)))) (var (vs vz)))))
         (cong₅ MethG (wk-cancel-tm (tag k) I) (wk-cancel-tm (tag k) D) (M-cancel (tag k) M)
-                     (cong (λ g → app g (tag k)) (wk-cancel-tm (tag k) f))
+                     (cong₂ app (ext-cancel (tag k) f) (tag-ren vs k))
                      (cong (λ z → con (pair z (var (vs vz))))
                            (trans (cong (λ z → renTm vs (renTm vs z)) (tag-ren vs k))
                                   (trans (cong (renTm vs) (tag-ren vs k)) (tag-ren vs k)))))
 
 -- ★ constructor `k`'s method type converts to the tag-generic one's
 --   instance: the lookup `f (tag k) ⟶* Cₖ` inside `dpay`/`DIh`
-MethK≅T : {I D f C : RTm Δ} {M : RTy ((Δ ∙) ∙)} (k : ℕ) → app f (tag k) ⟶* C →
+MethK≅T : {I D : RTm Δ} {f C : RTm (Δ ∙)} {M : RTy ((Δ ∙) ∙)} (k : ℕ) → app f (tag k) ⟶* C →
           MethK I D M C k ≅ᵀ subTy (single (tag k)) (MethT I D M f)
 MethK≅T {I = I} {D} {f} {C} {M} k r =
   subst (λ X → MethK I D M C k ≅ᵀ X) (sym (MethT-inst I D M f k))
@@ -472,37 +530,100 @@ MethK≅T {I = I} {D} {f} {C} {M} k r =
 ⊢wkF {S = S} {I = I} df =
   ⊢-cast (cong (λ z → Π (El (renTm vs S)) (Desc z)) (wk-ren vs I)) (⊢wk df)
 
+private
+  -- a substitution after a renaming that lands on variables is a renaming
+  sr-flat : {Θ Ξ Ω : Cx} (σ : Sub Θ Ξ) (ρ : Ren Ω Θ) (ρ' : Ren Ω Ξ) →
+            (∀ x → σ (ρ x) ≡ var (ρ' x)) → (t : RTm Ω) → subTm σ (renTm ρ t) ≡ renTm ρ' t
+  sr-flat σ ρ ρ' h t = trans (subTm-renTm t) (trans (subTm-cong h t) (subTm-var ρ' t))
+
+  -- the index binder mapped to a variable deep in the context, the rest
+  --   weakened past four binders
+  ρidx : {Γ : Cx} → Ren (Γ ∙) ((((Γ ∙) ∙) ∙) ∙)
+  ρidx vz     = vs (vs vz)
+  ρidx (vs x) = vs (vs (vs (vs x)))
+
+  -- four weakenings are one renaming
+  r4 : {Γ : Cx} (t : RTm Γ) → renTm vs (renTm vs (renTm vs (renTm vs t)))
+                              ≡ renTm (λ x → vs (vs (vs (vs x)))) t
+  r4 t = trans (cong (λ z → renTm vs (renTm vs z)) (renTm-renTm t))
+               (trans (cong (renTm vs) (renTm-renTm t)) (renTm-renTm t))
+
+  r4ᵀ : {Γ : Cx} (A : RTy Γ) → renTy vs (renTy vs (renTy vs (renTy vs A)))
+                               ≡ renTy (λ x → vs (vs (vs (vs x)))) A
+  r4ᵀ A = trans (cong (λ z → renTy vs (renTy vs z)) (renTy-renTy A))
+                (trans (cong (renTy vs) (renTy-renTy A)) (renTy-renTy A))
+
 -- the tag-generic method type is well-formed over the tag
-MethT-wf : {Γ : Ctx} {I : RTm ⌊ Γ ⌋} {M : RTy ((⌊ Γ ⌋ ∙) ∙)} {Cs : Cons ⌊ Γ ⌋ c} →
-           Γ ⊢ I ∷ U → AllD Γ I Cs → motCtx Γ I (Dₗ Cs) ⊢ty M →
+MethT-wf : {Γ : Ctx} {I : RTm ⌊ Γ ⌋} {M : RTy ((⌊ Γ ⌋ ∙) ∙)} {Cs : Cons (⌊ Γ ⌋ ∙) c} →
+           Γ ⊢ I ∷ U → AllD (Γ ▹ El I) (renTm vs I) Cs → motCtx Γ I (Dₗ Cs) ⊢ty M →
            (Γ ▹ Fin c) ⊢ty MethT I (Dₗ Cs) M (selF Cs)
 MethT-wf {c = c} {Γ = Γ} {I = I} {M = M} {Cs = Cs} dI ds dM =
-  MethG-wf (⊢wk dI) (⊢wk dD) dC (mot-ren there dM)
-           (⊢con-σ (⊢wk (⊢wk (⊢wk (⊢wk dI)))) ⊢⌜Fin⌝ (⊢wkF (⊢wkF (⊢wkF (⊢wkF df))))
-                   (⊢var (there (there here)))
-                   (⊢conv (⊢var (there (there (there here)))) (csymᵀ (credᵀ El-⌜Fin⌝)))
-                   (⊢var (there here)))
+  MethG-wf (⊢wk dI) (⊢wkD dD) dC (mot-ren there dM) dscr
   where
     D = Dₗ Cs
     f = selF Cs
-    df = ⊢selF dI ds
     dD = ⊢Dₗ dI ds
-    dC : (Γ ▹ Fin c) ⊢ app (renTm vs f) (var vz) ∷ Desc (renTm vs I)
-    dC = ⊢-cast (wk-app-vz (Desc (renTm vs I)))
-                (⊢app (⊢wk df) (⊢conv (⊢var here) (csymᵀ (credᵀ El-⌜Fin⌝))))
+    df : (Γ ▹ El I) ⊢ f ∷ Π (El (⌜Fin⌝ c)) (Desc (renTm vs (renTm vs I)))
+    df = ⊢selF (⊢wk dI) ds
+    I2 = renTm vs (renTm vs I)
+    -- the selector at the method's index and the tag
+    eqI : subTm (single (var (vs vz))) (renTm (extR (extR vs)) (renTm vs (renTm vs I))) ≡ I2
+    eqI = trans (cong (subTm (single (var (vs vz)))) (trans (cong (renTm (extR (extR vs))) (renTm-renTm I))
+                                                             (renTm-renTm I)))
+                (trans (sr-flat _ _ (λ x → vs (vs x)) (λ x → refl) I) (sym (renTm-renTm I)))
+    dC : ((Γ ▹ Fin c) ▹ El (renTm vs I)) ⊢ app (renTm (extR vs) f) (var (vs vz)) ∷ Desc I2
+    dC = ⊢-cast (cong Desc eqI)
+           (⊢app (ren-lemma df (Ren⊢-ext there))
+                 (⊢conv (⊢var (there here)) (csymᵀ (credᵀ El-⌜Fin⌝))))
+    -- the scrutinee `con (tag , p)` at the method's index
+    I4 = renTm vs (renTm vs (renTm vs (renTm vs I)))
+    D4 = renTm vs (renTm vs (renTm vs (renTm vs D)))
+    dI4 = ⊢wk (⊢wk (⊢wk (⊢wk dI)))
+    dD4 = ⊢wkD (⊢wkD (⊢wkD (⊢wkD dD)))
+    eqf : subTm (single (var (vs (vs vz))))
+            (renTm (extR vs) (renTm (extR vs) (renTm (extR vs) (renTm (extR vs) f))))
+          ≡ renTm ρidx f
+    eqf = trans (cong (subTm (single (var (vs (vs vz)))))
+                      (trans (cong (renTm (extR vs)) (trans (cong (renTm (extR vs)) (renTm-renTm f))
+                                                             (renTm-renTm f)))
+                             (renTm-renTm f)))
+                (sr-flat _ _ ρidx (λ { vz → refl ; (vs x) → refl }) f)
+    red : app D4 (var (vs (vs vz))) ⟶* dσ (⌜Fin⌝ c) (renTm ρidx f)
+    red = step (β _ _)
+            (subst (λ X → dσ (⌜Fin⌝ c) (subTm (single (var (vs (vs vz))))
+                            (renTm (extR vs) (renTm (extR vs) (renTm (extR vs) (renTm (extR vs) f)))))
+                          ⟶* dσ (⌜Fin⌝ c) X) eqf done)
+    hidx : Ren⊢ (Γ ▹ El I) (MethCtx (Γ ▹ Fin c) (renTm vs I) (renTm vs D)
+                              (renTy (extR (extR vs)) M) (app (renTm (extR vs) f) (var (vs vz))))
+                ρidx
+    hidx here = ∋-cast (cong El (trans (r4 I) (sym (renTm-renTm I)))) (there (there here))
+    hidx (there {A = A₀} v) = ∋-cast (trans (r4ᵀ A₀) (sym (renTy-renTy A₀))) (there (there (there (there v))))
+    dfi : _ ⊢ renTm ρidx f ∷ Π (El (⌜Fin⌝ c)) (Desc (renTm vs I4))
+    dfi = ⊢-cast (cong (λ X → Π (El (⌜Fin⌝ c)) (Desc X))
+                       (trans (cong (renTm (extR ρidx)) (renTm-renTm I))
+                              (trans (renTm-renTm I)
+                                     (sym (trans (cong (renTm vs) (r4 I)) (renTm-renTm I))))))
+                 (ren-lemma df hidx)
+    eqp : renTm vs (renTm vs (renTm (extR vs) f)) ≡ renTm ρidx f
+    eqp = trans (cong (renTm vs) (renTm-renTm f))
+                (trans (renTm-renTm f) (renTm-cong (λ { vz → refl ; (vs x) → refl }) f))
+    dp4 = ⊢-cast (cong (λ g → El (dpay I4 D4 (app g (var (vs (vs (vs vz))))))) eqp)
+                 (⊢var (there here))
+    dscr = ⊢con-fib dI4 dD4 (⊢var (there (there here))) red
+             (⊢pay-σ dI4 dD4 dfi (⊢conv (⊢var (there (there (there here)))) (csymᵀ (credᵀ El-⌜Fin⌝))) dp4)
 
 -- ★ one method PER CONSTRUCTOR, each at ITS constructor's method type,
 --   with the selection's lookup for that constructor (`selF-β` gives it
 --   from an `Nth`)
 infixr 5 _∷ₘ_
-data PerK (Γ : Ctx) (I D : RTm ⌊ Γ ⌋) (M : RTy ((⌊ Γ ⌋ ∙) ∙)) (f : RTm ⌊ Γ ⌋) :
+data PerK (Γ : Ctx) (I D : RTm ⌊ Γ ⌋) (M : RTy ((⌊ Γ ⌋ ∙) ∙)) (f : RTm (⌊ Γ ⌋ ∙)) :
           ℕ → {n : ℕ} → Cons ⌊ Γ ⌋ n → Set where
   []ₘ  : {k : ℕ} → PerK Γ I D M f k []
-  _∷ₘ_ : {k n : ℕ} {C m : RTm ⌊ Γ ⌋} {ms : Cons ⌊ Γ ⌋ n} →
+  _∷ₘ_ : {k n : ℕ} {C : RTm (⌊ Γ ⌋ ∙)} {m : RTm ⌊ Γ ⌋} {ms : Cons ⌊ Γ ⌋ n} →
          (app f (tag k) ⟶* C) × (Γ ⊢ m ∷ MethK I D M C k) →
          PerK Γ I D M f (suc k) ms → PerK Γ I D M f k (m ∷ ms)
 
-mkAllQ : {Γ : Ctx} {I D f : RTm ⌊ Γ ⌋} {M : RTy ((⌊ Γ ⌋ ∙) ∙)} {B : RTy ⌊ Γ ⌋} {k n : ℕ}
+mkAllQ : {Γ : Ctx} {I D : RTm ⌊ Γ ⌋} {f : RTm (⌊ Γ ⌋ ∙)} {M : RTy ((⌊ Γ ⌋ ∙) ∙)} {B : RTy ⌊ Γ ⌋} {k n : ℕ}
          {ms : Cons ⌊ Γ ⌋ n} → PerK Γ I D M f k ms →
          AllQ (Γ ▹ B) (subTy (fsucsS k) (renTy (extR vs) (MethT I D M f))) (wkC ms)
 mkAllQ []ₘ = []q
@@ -513,8 +634,8 @@ mkAllQ {I = I} {D} {f} {M} {k = k} ((r , dm) ∷ₘ ps) =
   ∷q castQ (sym (fsucsS-suc k (renTy (extR vs) (MethT I D M f)))) (mkAllQ ps)
 
 -- ★ the SELECTOR: a function of the tag, at the tag-generic method type
-⊢selM : {Γ : Ctx} {I : RTm ⌊ Γ ⌋} {M : RTy ((⌊ Γ ⌋ ∙) ∙)} {Cs ms : Cons ⌊ Γ ⌋ c} →
-        Γ ⊢ I ∷ U → AllD Γ I Cs → motCtx Γ I (Dₗ Cs) ⊢ty M →
+⊢selM : {Γ : Ctx} {I : RTm ⌊ Γ ⌋} {M : RTy ((⌊ Γ ⌋ ∙) ∙)} {Cs : Cons (⌊ Γ ⌋ ∙) c} {ms : Cons ⌊ Γ ⌋ c} →
+        Γ ⊢ I ∷ U → AllD (Γ ▹ El I) (renTm vs I) Cs → motCtx Γ I (Dₗ Cs) ⊢ty M →
         PerK Γ I (Dₗ Cs) M (selF Cs) zero ms →
         Γ ⊢ selM ms ∷ Π (El (⌜Fin⌝ c)) (MethT I (Dₗ Cs) M (selF Cs))
 ⊢selM {I = I} {M = M} {Cs = Cs} dI ds dM ps =
@@ -559,45 +680,50 @@ private
                   (trans (cong (renTy vs) (renTy-renTy A)) (renTy-renTy A))
 
 
-⊢methₗ : {Γ : Ctx} {I : RTm ⌊ Γ ⌋} {M : RTy ((⌊ Γ ⌋ ∙) ∙)} {Cs ms : Cons ⌊ Γ ⌋ c} →
-         Γ ⊢ I ∷ U → AllD Γ I Cs → motCtx Γ I (Dₗ Cs) ⊢ty M →
+-- ★ the one method at the family's OPEN FIBRE `Dσ Cs` (over the method's
+--   index binder); the kernel's `MethTy` is one β from it (`⊢methₗ`).
+⊢methσ : {Γ : Ctx} {I : RTm ⌊ Γ ⌋} {M : RTy ((⌊ Γ ⌋ ∙) ∙)} {Cs : Cons (⌊ Γ ⌋ ∙) c} {ms : Cons ⌊ Γ ⌋ c} →
+         Γ ⊢ I ∷ U → AllD (Γ ▹ El I) (renTm vs I) Cs → motCtx Γ I (Dₗ Cs) ⊢ty M →
          PerK Γ I (Dₗ Cs) M (selF Cs) zero ms →
-         Γ ⊢ methₗ ms ∷ MethTy I (Dₗ Cs) M
-⊢methₗ {c = c} {Γ = Γ} {I = I} {M = M} {Cs = Cs} {ms = ms} dI ds dM ps =
-  subst (λ X → Γ ⊢ methₗ ms ∷ X) (sym (MethTy-MethG I D M))
-    (⊢lam (ty-El dI) (⊢lam dP₁ (⊢-cast eqP (⊢psplit dA dB dP dq db))))
+         Γ ⊢ methₗ ms ∷ MethG I (Dₗ Cs) M (Dσ Cs) (con (var (vs vz)))
+⊢methσ {c = c} {Γ = Γ} {I = I} {M = M} {Cs = Cs} {ms = ms} dI ds dM ps =
+  ⊢lam (ty-El dI) (⊢lam dP₁ (⊢-cast eqP (⊢psplit dA dB dP dq db)))
   where
     D = Dₗ Cs
-    S = ⌜Fin⌝ {⌊ Γ ⌋} c
+    Cσ = Dσ Cs
     f = selF Cs
     dD = ⊢Dₗ dI ds
-    df = ⊢selF dI ds
-    P₁ = El (dpay (renTm vs I) (renTm vs D) (renTm vs D) (var vz))
-    dP₁ = ty-El (⊢dpay (⊢wk dI) (⊢wk dD) (⊢wk dD) (⊢var here))
+    df : (Γ ▹ El I) ⊢ f ∷ Π (El (⌜Fin⌝ c)) (Desc (renTm vs (renTm vs I)))
+    df = ⊢selF (⊢wk dI) ds
+    P₁ = El (dpay (renTm vs I) (renTm vs D) Cσ)
+    dP₁ = ty-El (⊢dpay (⊢wk dI) (⊢wkD dD) (⊢Dσ dI ds))
     Γ₂ = (Γ ▹ El I) ▹ P₁
     s₁ : RTm (((⌊ Γ ⌋ ∙) ∙) ∙)
     s₁ = con (var (vs vz))
     T : RTy ⌊ Γ₂ ⌋
-    T = Π (DIh (renTm vs (renTm vs D)) (wk2M M) (renTm vs (renTm vs D)) (var vz)) (subTy (methSg s₁) M)
+    T = Π (DIh (renTm vs (renTm vs D)) (wk2M M) (renTm vs Cσ) (var vz)) (subTy (methSg s₁) M)
+    -- the kernel's method type is well-formed, and one β from this one
+    fib : app (renTm vs D) (var vz) ⟶* Cσ
+    fib = step (β _ _) (subst (_⟶*_ (subTm (single (var vz)) (renTm (extR vs) Cσ))) (vz-cancel Cσ) done)
     dT : Γ₂ ⊢ty T
-    dT = Π-cod (Π-cod (subst (λ X → Γ ⊢ty X) (MethTy-MethG I D M) (MethTy-wf dI dD dM)))
+    dT = Π-cod (Π-cod (srᵀ* (subst (λ X → Γ ⊢ty X) (MethTy-MethG I D M) (MethTy-wf dI dD dM))
+                            (MethG-monoᶜ fib)))
     I₂ = renTm vs (renTm vs I)
     D₂ = renTm vs (renTm vs D)
-    f₂ = renTm vs (renTm vs f)
+    f₂ = renTm vs f
     Q₂ = renTy vs P₁
     A = El (⌜Fin⌝ {⌊ Γ₂ ⌋} c)
-    B = El (dpay (renTm vs I₂) (renTm vs D₂) (app (renTm vs f₂) (var vz)) (var (vs (vs vz))))
+    B = El (dpay (renTm vs I₂) (renTm vs D₂) (app (renTm vs f₂) (var vz)))
     cvq : Q₂ ≅ᵀ Σ' A B
-    cvq = ctrnᵀ (credᵀ (ξ-El (dpay-σ I₂ D₂ (⌜Fin⌝ c) f₂ (var (vs vz))))) (credᵀ (El-⌜Σ⌝ _ _))
+    cvq = ctrnᵀ (credᵀ (ξ-El (dpay-σ I₂ D₂ (⌜Fin⌝ c) f₂))) (credᵀ (El-⌜Σ⌝ _ _))
     dq = ⊢conv (⊢var here) cvq
     dA = ty-El (⊢⌜Fin⌝ {n = c})
     dI₂ = ⊢wk (⊢wk dI)
-    dD₂ = ⊢wk (⊢wk dD)
+    dD₂ = ⊢wkD (⊢wkD dD)
     dB : (Γ₂ ▹ A) ⊢ty B
-    dB = ty-El (⊢dpay (⊢wk dI₂) (⊢wk dD₂)
+    dB = ty-El (⊢dpay (⊢wk dI₂) (⊢wkD dD₂)
                       (⊢-cast (cong Desc (wk-cancel-tm (var vz) (renTm vs I₂)))
-                              (⊢app (⊢wkF (⊢wkF (⊢wkF df))) (⊢var here)))
-                      (⊢var (there (there here))))
+                              (⊢app (⊢wkF (⊢wkF df)) (⊢var here))))
     -- the motive: the method type's inner Π, its payload variable read as
     --   the Σ variable
     ρP : Ren ⌊ Γ₂ ⌋ (⌊ Γ₂ ⌋ ∙)
@@ -627,18 +753,27 @@ private
     i = var (vs (vs (vs vz)))
     I₄ = renTm w4 I
     D₄ = renTm w4 D
-    f₄ = renTm w4 f
     M₄ = renTy (extR (extR w4)) M
+    f₄ : RTm (⌊ Γ₄ ⌋ ∙)
+    f₄ = renTm (extR w4) f
+    -- `f` at the branch's index
+    ρi : Ren (⌊ Γ ⌋ ∙) ⌊ Γ₄ ⌋
+    ρi vz     = vs (vs (vs vz))
+    ρi (vs x) = w4 x
+    fi = renTm ρi f
     s₄ : RTm ((((⌊ Γ₄ ⌋ ∙) ∙) ∙))
     s₄ = con (pair (var (vs (vs (vs (vs vz))))) (var (vs vz)))
     τ = single t ₛ∘ᵣ extR w4
     wk-τ : (x : RTm ⌊ Γ ⌋) → subTm τ (renTm vs x) ≡ renTm w4 x
     wk-τ x = trans (subTm-renTm x) (subTm-var w4 x)
-    E1 : subTy (single t) (renTy (extR w4) MT) ≡ MethG I₄ D₄ M₄ (app f₄ t) s₄
+    E1 : subTy (single t) (renTy (extR w4) MT) ≡ MethG I₄ D₄ M₄ (app f₄ (renTm vs t)) s₄
     E1 = trans (subTy-renTy MT)
            (trans (MethG-sub τ (renTm vs I) (renTm vs D) (renTy (extR (extR vs)) M)
-                             (app (renTm vs f) (var vz)) (con (pair (var (vs (vs (vs vz)))) (var (vs vz)))))
-                  (cong₅ MethG (wk-τ I) (wk-τ D) eM (cong (λ g → app g t) (wk-τ f)) refl))
+                             (app (renTm (extR vs) f) (var (vs vz))) (con (pair (var (vs (vs (vs vz)))) (var (vs vz)))))
+                  (cong₅ MethG (wk-τ I) (wk-τ D) eM
+                               (cong₂ app (sr-flat (extS τ) (extR vs) (extR w4) (λ { vz → refl ; (vs x) → refl }) f)
+                                          refl)
+                               refl))
       where
         eM : subTy (extS (extS τ)) (renTy (extR (extR vs)) M) ≡ M₄
         eM = trans (subTy-renTy M) (trans (subTy-cong pt M) (subTy-var (extR (extR w4)) M))
@@ -650,16 +785,23 @@ private
     d1 = ⊢-cast E1 (⊢app dF (⊢var (there here)))
     di : Γ₄ ⊢ i ∷ El I₄
     di = ⊢-cast (cong El (ren4 I)) (⊢var (there (there (there here))))
-    C₄ = app f₄ t
+    C₄ : RTm (⌊ Γ₄ ⌋ ∙)
+    C₄ = app f₄ (renTm vs t)
+    Csub : subTm (single i) C₄ ≡ app fi t
+    Csub = cong₂ app (sr-flat (single i) (extR w4) ρi (λ { vz → refl ; (vs x) → refl }) f)
+                     (wk-cancel-tm i t)
     d2 = ⊢app d1 di
-    dp : Γ₄ ⊢ var vz ∷ El (dpay I₄ D₄ C₄ i)
-    dp = ⊢-cast (cong₃ (λ a b g → El (dpay a b (app g t) i)) (ren4 I) (ren4 D) (ren4 f)) (⊢var here)
+    eqfi : renTm vs (renTm vs (renTm vs f)) ≡ fi
+    eqfi = trans (cong (renTm vs) (renTm-renTm f))
+                 (trans (renTm-renTm f) (renTm-cong (λ { vz → refl ; (vs x) → refl }) f))
+    dp : Γ₄ ⊢ var vz ∷ El (dpay I₄ D₄ (app fi t))
+    dp = ⊢-cast (cong₃ (λ a b g → El (dpay a b (app g t))) (ren4 I) (ren4 D) eqfi) (⊢var here)
     Y : RTy (⌊ Γ₄ ⌋ ∙)
-    Y = Π (subTy (extS (single i)) (DIh (renTm vs (renTm vs D₄)) (wk2M M₄) (renTm vs (renTm vs C₄)) (var vz)))
+    Y = Π (subTy (extS (single i)) (DIh (renTm vs (renTm vs D₄)) (wk2M M₄) (renTm vs C₄) (var vz)))
           (subTy (extS (extS (single i))) (subTy (methSg s₄) M₄))
     d2' = ⊢-cast (cong (λ X → Π X Y)
-                       (cong₃ (λ a b g → El (dpay a b g i))
-                              (wk-cancel-tm i I₄) (wk-cancel-tm i D₄) (wk-cancel-tm i C₄)))
+                       (cong₃ (λ a b g → El (dpay a b g))
+                              (wk-cancel-tm i I₄) (wk-cancel-tm i D₄) Csub))
                  d2
     d3 = ⊢app d2' dp
     p' : RTm ⌊ Γ₄ ⌋
@@ -670,10 +812,13 @@ private
     cancel2 x = trans (cong (subTm (single p')) (trans (wk-sub (single i) (renTm vs x))
                                                        (cong (renTm vs) (wk-cancel-tm i x))))
                       (wk-cancel-tm p' x)
+    cancelC : subTm (single p') (subTm (extS (single i)) (renTm vs C₄)) ≡ app fi t
+    cancelC = trans (cong (subTm (single p')) (trans (wk-sub (single i) C₄) (cong (renTm vs) Csub)))
+                    (wk-cancel-tm p' (app fi t))
     domL : subTy (single p') (subTy (extS (single i))
-             (DIh (renTm vs (renTm vs D₄)) (wk2M M₄) (renTm vs (renTm vs C₄)) (var vz)))
-           ≡ DIh D₄ M₄ C₄ p'
-    domL = cong₄ DIh (cancel2 D₄) eM (cancel2 C₄) refl
+             (DIh (renTm vs (renTm vs D₄)) (wk2M M₄) (renTm vs C₄) (var vz)))
+           ≡ DIh D₄ M₄ (app fi t) p'
+    domL = cong₄ DIh (cancel2 D₄) eM cancelC refl
       where
         eM : subTy (extS (extS (single p'))) (subTy (extS (extS (extS (single i)))) (wk2M M₄)) ≡ M₄
         eM = trans (cong (subTy (extS (extS (single p')))) (subTy-renTy M₄))
@@ -684,13 +829,16 @@ private
             pt vz          = refl
             pt (vs vz)     = refl
             pt (vs (vs x)) = refl
-    domR : subTy pairS (renTy ρP (DIh (renTm vs (renTm vs D)) (wk2M M) (renTm vs (renTm vs D)) (var vz)))
-           ≡ DIh D₄ M₄ D₄ (pair t p')
-    domR = cong₄ DIh eD eM eD refl
+    domR : subTy pairS (renTy ρP (DIh (renTm vs (renTm vs D)) (wk2M M) (renTm vs Cσ) (var vz)))
+           ≡ DIh D₄ M₄ (renTm ρi Cσ) (pair t p')
+    domR = cong₄ DIh eD eM eC refl
       where
         eD : subTm pairS (renTm ρP (renTm vs (renTm vs D))) ≡ D₄
         eD = trans (cong (subTm pairS) (trans (renTm-renTm (renTm vs D)) (renTm-renTm D)))
                    (trans (subTm-renTm D) (trans (subTm-cong (λ x → refl) D) (subTm-var w4 D)))
+        eC : subTm pairS (renTm ρP (renTm vs Cσ)) ≡ renTm ρi Cσ
+        eC = trans (cong (subTm pairS) (renTm-renTm Cσ))
+                   (sr-flat pairS _ ρi (λ { vz → refl ; (vs x) → refl }) Cσ)
         eM : subTy (extS (extS pairS)) (renTy (extR (extR ρP)) (wk2M M)) ≡ M₄
         eM = trans (cong (subTy (extS (extS pairS))) (renTy-renTy M))
                (trans (subTy-renTy M) (trans (subTy-cong pt M) (subTy-var (extR (extR w4)) M)))
@@ -712,22 +860,35 @@ private
         pt vz          = refl
         pt (vs vz)     = refl
         pt (vs (vs x)) = refl
-    -- the hypotheses at the whole telescope compute to those at the selection
-    red : DIh D₄ M₄ D₄ (pair t p') ⟶ᵀ* DIh D₄ M₄ C₄ p'
-    red = stepᵀ (DIh-σ D₄ M₄ (⌜Fin⌝ c) f₄ (pair t p'))
+    -- the hypotheses at the whole fibre compute to those at the selection
+    red : DIh D₄ M₄ (renTm ρi Cσ) (pair t p') ⟶ᵀ* DIh D₄ M₄ (app fi t) p'
+    red = stepᵀ (DIh-σ D₄ M₄ (⌜Fin⌝ c) fi (pair t p'))
             (stepᵀ (ξ-DIhᶜ (ξ-appʳ (βfst t p'))) (stepᵀ (ξ-DIhᵖ (βsnd t p')) doneᵀ))
     cvfinal : subTy (single p') Y ≅ᵀ subTy pairS (renTy ρP T)
     cvfinal = subst (λ X → X ≅ᵀ subTy pairS (renTy ρP T)) (sym (cong₂ Π domL cod))
-                (subst (λ X → Π (DIh D₄ M₄ C₄ p') Gc ≅ᵀ X) (sym (cong (λ X → Π X Gc) domR))
+                (subst (λ X → Π (DIh D₄ M₄ (app fi t) p') Gc ≅ᵀ X) (sym (cong (λ X → Π X Gc) domR))
                   (csymᵀ (red→≅ᵀ (⟶ᵀ*-Πˡ red))))
     db : Γ₄ ⊢ app (app (app (renTm w4 (selM ms)) t) i) (var vz) ∷ subTy pairS (renTy ρP T)
     db = ⊢conv d3 cvfinal
+
+-- ★ (c) the one method inhabits the kernel's `MethTy`: one β (the fibre
+--   at the method's own index variable) from `⊢methσ`
+⊢methₗ : {Γ : Ctx} {I : RTm ⌊ Γ ⌋} {M : RTy ((⌊ Γ ⌋ ∙) ∙)} {Cs : Cons (⌊ Γ ⌋ ∙) c} {ms : Cons ⌊ Γ ⌋ c} →
+         Γ ⊢ I ∷ U → AllD (Γ ▹ El I) (renTm vs I) Cs → motCtx Γ I (Dₗ Cs) ⊢ty M →
+         PerK Γ I (Dₗ Cs) M (selF Cs) zero ms →
+         Γ ⊢ methₗ ms ∷ MethTy I (Dₗ Cs) M
+⊢methₗ {Γ = Γ} {I = I} {M = M} {Cs = Cs} {ms = ms} dI ds dM ps =
+  subst (λ X → Γ ⊢ methₗ ms ∷ X) (sym (MethTy-MethG I (Dₗ Cs) M))
+    (⊢conv (⊢methσ dI ds dM ps) (csymᵀ (red→≅ᵀ (MethG-monoᶜ fib))))
+  where
+    fib : app (renTm vs (Dₗ Cs)) (var vz) ⟶* Dσ Cs
+    fib = step (β _ _) (subst (_⟶*_ (subTm (single (var vz)) (renTm (extR vs) (Dσ Cs)))) (vz-cancel (Dσ Cs)) done)
 
 -- ★ THE DERIVED ι: the one method at constructor `k` IS constructor `k`'s
 --   method — ι, two β, the split, and the tag selection.
 ιₗ : {Δ : Cx} {k : ℕ} {D i p m : RTm Δ} {ms : Cons Δ c} → Nth ms k m →
      ielim D i (methₗ ms) (conₗ k p)
-       ⟶* app (app (app m i) p) (dih D (methₗ ms) D (pair (tag k) p))
+       ⟶* app (app (app m i) p) (dih D (methₗ ms) (app D i) (pair (tag k) p))
 ιₗ {Δ = Δ} {k = k} {D = D} {i = i} {p = p} {m = m} {ms = ms} nt =
   step (ι D i e q)
    (step (ξ-appˡ (ξ-appˡ (β (lam (psplit b (var vz))) i)))
@@ -738,7 +899,7 @@ private
   where
     e = methₗ ms
     q = pair (tag k) p
-    h = dih D e D q
+    h = dih D e (app D i) q
     b : RTm ((((Δ ∙) ∙) ∙) ∙)
     b = app (app (app (renTm w4 (selM ms)) (var (vs vz))) (var (vs (vs (vs vz))))) (var vz)
     b₁ = subTm (extS (extS (extS (single i)))) b
