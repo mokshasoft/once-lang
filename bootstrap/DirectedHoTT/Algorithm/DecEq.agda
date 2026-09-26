@@ -153,12 +153,12 @@ mutual
   encTm ⌜Nat⌝               = n0 2 6
   encTm ⌜Unit⌝              = n0 2 9
   encTm (con p) = n1 2 2 (encTm p)
-  encTm (dι j) = n1 2 3 (encTm j)
+  encTm dι = n0 2 3
   encTm (dσ S f) = n2 2 4 (encTm S) (encTm f)
   encTm (ielim D i e t) = n4 2 5 (encTm D) (encTm i) (encTm e) (encTm t)
   encTm (dρ j C) = n2 2 7 (encTm j) (encTm C)
   encTm (⌜IMu⌝ I D i) = n3 2 8 (encTm I) (encTm D) (encTm i)
-  encTm (dpay I D C i) = n4 3 0 (encTm I) (encTm D) (encTm C) (encTm i)
+  encTm (dpay I D C) = n3 3 0 (encTm I) (encTm D) (encTm C)
   encTm (dih D e C p) = n4 3 1 (encTm D) (encTm e) (encTm C) (encTm p)
   encTm fzero = n0 3 2
   encTm (fsuc t) = n1 3 3 (encTm t)
@@ -235,12 +235,12 @@ mutual
   decTm Γ (node 2 6 [])               = just ⌜Nat⌝
   decTm Γ (node 2 9 [])               = just ⌜Unit⌝
   decTm Γ (node 2 2 (a ∷ [])) = decTm Γ a >>= λ p₀ → just (con p₀)
-  decTm Γ (node 2 3 (a ∷ [])) = decTm Γ a >>= λ j₀ → just (dι j₀)
+  decTm Γ (node 2 3 []) = just dι
   decTm Γ (node 2 4 (a ∷ b ∷ [])) = decTm Γ a >>= λ S₀ → decTm Γ b >>= λ f₀ → just (dσ S₀ f₀)
   decTm Γ (node 2 5 (a ∷ b ∷ c ∷ d ∷ [])) = decTm Γ a >>= λ D₀ → decTm Γ b >>= λ i₀ → decTm Γ c >>= λ e₀ → decTm Γ d >>= λ t₀ → just (ielim D₀ i₀ e₀ t₀)
   decTm Γ (node 2 7 (a ∷ b ∷ [])) = decTm Γ a >>= λ j₀ → decTm Γ b >>= λ C₀ → just (dρ j₀ C₀)
   decTm Γ (node 2 8 (a ∷ b ∷ c ∷ [])) = decTm Γ a >>= λ I₀ → decTm Γ b >>= λ D₀ → decTm Γ c >>= λ i₀ → just (⌜IMu⌝ I₀ D₀ i₀)
-  decTm Γ (node 3 0 (a ∷ b ∷ c ∷ d ∷ [])) = decTm Γ a >>= λ I₀ → decTm Γ b >>= λ D₀ → decTm Γ c >>= λ C₀ → decTm Γ d >>= λ i₀ → just (dpay I₀ D₀ C₀ i₀)
+  decTm Γ (node 3 0 (a ∷ b ∷ c ∷ [])) = decTm Γ a >>= λ I₀ → decTm Γ b >>= λ D₀ → decTm Γ c >>= λ C₀ → just (dpay I₀ D₀ C₀)
   decTm Γ (node 3 1 (a ∷ b ∷ c ∷ d ∷ [])) = decTm Γ a >>= λ D₀ → decTm Γ b >>= λ e₀ → decTm Γ c >>= λ C₀ → decTm Γ d >>= λ p₀ → just (dih D₀ e₀ C₀ p₀)
   decTm Γ (node 3 2 []) = just (fzero)
   decTm Γ (node 3 3 (a ∷ [])) = decTm Γ a >>= λ t₀ → just (fsuc t₀)
@@ -301,12 +301,12 @@ mutual
   dec-encTm ⌜Nat⌝ = refl
   dec-encTm ⌜Unit⌝ = refl
   dec-encTm (con p) = dec-encTm p ⟫ refl
-  dec-encTm (dι j) = dec-encTm j ⟫ refl
+  dec-encTm dι = refl
   dec-encTm (dσ S f) = dec-encTm S ⟫ dec-encTm f ⟫ refl
   dec-encTm (ielim D i e t) = dec-encTm D ⟫ dec-encTm i ⟫ dec-encTm e ⟫ dec-encTm t ⟫ refl
   dec-encTm (dρ j C) = dec-encTm j ⟫ dec-encTm C ⟫ refl
   dec-encTm (⌜IMu⌝ I D i) = dec-encTm I ⟫ dec-encTm D ⟫ dec-encTm i ⟫ refl
-  dec-encTm (dpay I D C i) = dec-encTm I ⟫ dec-encTm D ⟫ dec-encTm C ⟫ dec-encTm i ⟫ refl
+  dec-encTm (dpay I D C) = dec-encTm I ⟫ dec-encTm D ⟫ dec-encTm C ⟫ refl
   dec-encTm (dih D e C p) = dec-encTm D ⟫ dec-encTm e ⟫ dec-encTm C ⟫ dec-encTm p ⟫ refl
   dec-encTm fzero = refl
   dec-encTm (fsuc t) = dec-encTm t ⟫ refl
@@ -371,10 +371,10 @@ private
 
   -- a family whose description is a TERM (one recursive field, then stop)
   A₁ : RTy ε
-  A₁ = IMu ⌜Unit⌝ (dρ unit (dι unit)) unit
+  A₁ = IMu ⌜Unit⌝ (lam (dρ unit dι)) unit
 
   runs-ty : ⌊ A₁ ≟Ty A₁ ⌋ ≡ true
   runs-ty = refl
 
-  runs-ty-no : ⌊ A₁ ≟Ty IMu ⌜Unit⌝ (dι unit) unit ⌋ ≡ false
+  runs-ty-no : ⌊ A₁ ≟Ty IMu ⌜Unit⌝ (lam dι) unit ⌋ ≡ false
   runs-ty-no = refl
