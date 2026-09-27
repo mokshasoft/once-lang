@@ -19,6 +19,7 @@ import Layer5Spec (layer5Tests)
 import OptimizeSpec (optimizeTests)
 import ParseSpec (parseTests)
 import QttSpec (qttTests)
+import PuritySpec (purityTests)
 import SymbolNameSpec (symbolNameTests, thunkSymbolTests)
 import TraceSpec (traceTests)
 import TypeCheckSpec (typeCheckTests)
@@ -36,6 +37,7 @@ main = defaultMain $ localOption (NumThreads 1) $ testGroup "Once"
   , typeCheckTests
   , typeErrorTests
   , qttTests
+  , purityTests
   , generatorTests
   , irTests
   , layer0Tests

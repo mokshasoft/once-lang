@@ -716,6 +716,7 @@ test-suite once-test
       OptimizeSpec
       ParseSpec
       QttSpec
+      PuritySpec
       SymbolNameSpec
       TraceSpec
       TypeCheckSpec

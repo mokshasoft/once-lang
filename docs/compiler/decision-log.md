@@ -15452,11 +15452,52 @@ surface does:
 * `sigop`: referencing a base-typed FFI constant at `Unit`/`Void` is a SigOp call that
   emits or halts (D225), and an FFI arrow's grade is trusted from its signature.
 
-**Open (a language decision, not this plan's):** should `pure` mean "evaluation emits
-nothing"? If so, `ν-type` gains a grade, the two leaves are graded by what they do, and
-the surface rejects a pure `lam` whose body emits. The core states that in one place
-(its three rules). Today's grade is exactly as sound as today's surface.
+**Decided (2026-09-27): `pure` means no side effects**, so the grade is a semantic claim
+(evaluation at a pure arrow emits nothing). A pure term that can hide a SigOp event would
+make the correctness statement, which is about exactly those events, unprovable. The
+core grades by what terms do:
+
+* `ν-type` records its layers' grade, so forcing a pure ν is pure and forcing an
+  effectful one is `eff`;
+* an FFI signature must be honest. An arrow into `Unit` or `Void` (which emits or halts,
+  D225) must be `Eff`, and a base-typed constant of type `Unit`/`Void` is rejected: a
+  nullary effect is `Eff Unit Unit`, because effects live on arrows (D032);
+* the surface rejects a pure `lam` whose body emits.
+
+Red tests: `compiler/test/PuritySpec.hs`. Until the surface is fixed, the core's
+`⊢out`/`⊢sigop` stay at any grade, matching today's surface. They are tightened together
+with it.
 
 The equality judgment is not written yet. Following the top-down rule it lands when
 something first consumes it: the combinators' defining equations (plan 0.102 C) or the
 optimizer's normalization postulates.
+
+## D232 — STANDARD QTT FOR APPLICATION: `compose`'s INNER ARM AND `effApp`'s ARGUMENT ARE SCALED (AMENDS D127) (2026-09-27)
+
+**Relates**: D127, D231, plan 0.102.
+
+D127 made `compose` linear in BOTH arms and `effApp` linear in its argument, arguing that
+an arm is a value used once. Grades in Once live on the MORPHISM: `A ^q-> B` says how
+often the function uses its argument. This is variable-based QTT (Atkey/McBride; the
+POC's §7; Linear Haskell's `a %1 -> b`), and values carry no grade. In `compose f g =
+λx. f (g x)`, the term `g x` is `f`'s ARGUMENT, so every resource it mentions, `g`
+included, is scaled by `f`'s grade. D127's exception breaks two invariants:
+
+* **Usage soundness.** `\(h : H ^1-> …) -> compose dup (\_ -> h)` is accepted with `h`
+  used once, and at runtime returns `(h, h)`. Likewise `effApp dup h`.
+* **A definition is interchangeable with its body** (plan 0.94 §0 at the combinator
+  level). Unfolding `compose f g` to its definition changes the usage from `Ψf + Ψg` to
+  `Ψf + ω·Ψg`.
+
+### Decision
+
+Standard QTT everywhere. `compose`'s inner arm costs `ω·Ψg` (generally `q·Ψg` for the
+outer arm's grade `q`), and `effApp f x` costs `Ψf + ω·Ψx`, like any application. The
+outer arm, `pair`, `case`, `curry`, `cata`, `ana` and the closed combinators already get
+their D127 usage under the standard rule, and stay unchanged. No program in the repository
+writes `^1 ->`, so no existing program changes status. The red tests are in
+`compiler/test/QttSpec.hs`.
+
+Not reopened: graded VALUES (a pair with one linear and one ω component). The standard
+form is a graded tensor or Σ, `(x :1 A) ⊗ B`, a possible future former of the core. It
+pays off only once linearity has runtime meaning; today only `0` (erasure) does.

@@ -67,6 +67,46 @@ qttTests = testGroup "QTT / linearity"
       result <- typeCheckSource source
       result @?= Right ()
 
+  -- D232 (amends D127): standard QTT. In `compose f g = λx. f (g x)` the
+  -- inner arm's term is the ARGUMENT of `f`, so it is scaled by `f`'s grade.
+  -- Here `dup` (ω) duplicates what `\y -> h` returns: two copies of `h`.
+  , testCase "linear (^1) parameter in compose's inner arm is rejected" $ do
+      let source = T.unlines
+            [ "dup : Int -> (Int * Int)"
+            , "dup x = (x, x)"
+            , ""
+            , "f : Int^1 -> (Int -> (Int * Int))"
+            , "f h = compose dup (\\y -> h)"
+            ]
+      result <- typeCheckSource source
+      assertBool "Should reject duplicating a linear parameter through compose" (isLeft result)
+
+  , testCase "linear (^1) parameter in compose's outer arm is accepted" $ do
+      -- The outer arm is used once per call, and `f`'s result is not
+      -- duplicated by anything: standard QTT charges `h` once.
+      let source = T.unlines
+            [ "dup : Int -> (Int * Int)"
+            , "dup x = (x, x)"
+            , ""
+            , "f : Int^1 -> (Int -> Int)"
+            , "f h = compose (\\y -> h) dup"
+            ]
+      result <- typeCheckSource source
+      result @?= Right ()
+
+  , testCase "linear (^1) argument of an effectful application is rejected" $ do
+      -- `dupE h` is the suspension `λ_. dupE h`: its argument is scaled by
+      -- `dupE`'s grade ω, exactly as a pure application's is.
+      let source = T.unlines
+            [ "dupE : Eff Int (Int * Int)"
+            , "dupE = pair id id"
+            , ""
+            , "g : Int^1 -> Eff Unit (Int * Int)"
+            , "g h = dupE h"
+            ]
+      result <- typeCheckSource source
+      assertBool "Should reject duplicating a linear argument through an effectful arrow" (isLeft result)
+
   , testCase "examples/qtt-test-basic.once type-checks" $ do
       -- A small QTT sampler (id/const/dup/compose/let) that ships in examples/
       -- but had no driving test.
