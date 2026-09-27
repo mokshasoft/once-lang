@@ -45,33 +45,43 @@ purityTests = testGroup "Purity (pure emits nothing)"
         ]
       assertBool "Should reject an emitting constant hidden in a pure function" (isLeft r)
 
-  , testCase "pure function forcing an effectful ν is rejected" $ do
-      -- Forcing a layer runs the coalgebra, which emits. `peek` is typed pure.
-      -- (Also rejected today, but for an unrelated reason: see the twin below.)
+  , testCase "pure function forcing an effectful stream is rejected" $ do
+      -- D233: an effectful coalgebra builds `Nu (Eff F)` = ν(T ∘ F). `peek`
+      -- takes a PURE stream, so passing it the effectful one is a type error:
+      -- otherwise forcing the layer would emit inside a pure function.
       r <- checkLib
         [ "import I.Test.Emit as E"
         , ""
-        , "mkNu : Eff Int (Nu (K Int))"
+        , "mkNu : Int -> Nu (Eff (K Int))"
         , "mkNu = ana (compose (\\_ -> 7) emit@E)"
         , ""
         , "peek : Nu (K Int) -> Int"
         , "peek v = Out v"
         , ""
-        , "run : Eff Int Int"
-        , "run = compose peek mkNu"
+        , "run : Int"
+        , "run = peek (mkNu 3)"
         ]
-      assertBool "Should reject forcing an effectful ν inside a pure function" (isLeft r)
+      assertBool "Should reject forcing an effectful stream inside a pure function" (isLeft r)
 
-  , testCase "effectful function forcing an effectful ν is accepted" $ do
-      -- The honest twin: the forcing happens at an effectful arrow.
+  , testCase "an effectful coalgebra cannot build a pure stream" $ do
       r <- checkLib
         [ "import I.Test.Emit as E"
         , ""
-        , "mkNu : Eff Int (Nu (K Int))"
+        , "mkNu : Int -> Nu (K Int)"
+        , "mkNu = ana (compose (\\_ -> 7) emit@E)"
+        ]
+      assertBool "Should reject an effectful coalgebra at a pure stream type" (isLeft r)
+
+  , testCase "forcing an effectful stream is an effectful suspension" $ do
+      -- The honest twin: `Out` on `Nu (Eff F)` is `Eff Unit (F …)`.
+      r <- checkLib
+        [ "import I.Test.Emit as E"
+        , ""
+        , "mkNu : Int -> Nu (Eff (K Int))"
         , "mkNu = ana (compose (\\_ -> 7) emit@E)"
         , ""
-        , "run : Eff Int Int"
-        , "run = compose (\\v -> Out v) mkNu"
+        , "run : Eff Unit Int"
+        , "run = Out (mkNu 3)"
         ]
       r @?= Right ()
   ]
