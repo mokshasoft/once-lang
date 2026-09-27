@@ -17,7 +17,7 @@ module DirectedHoTT.Examples.Knot.Ctx where
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax hiding ( Fin )
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
-open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast )
+open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast; wk-cancel-tm )
 open import DirectedHoTT.Metatheory.Fundamental.Syntactic using ( ⟨_⟩ᵣ; subTy-var; subTm-var )
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂ )
 open import DirectedHoTT.Lib.Sugar using ( conₗ; tag; nth-z; lt-z; _∷ᵈ_; []ᵈ; []; _∷_; subC; AllD )
@@ -99,9 +99,18 @@ KCtx-ren ρ d = trans (sym (subTy-var ρ (KCtx d))) (cong₂ (IMu ⌜Nat⌝) (Ct
 ⌜Ty⌝-ren ρ d = trans (sym (subTm-var ρ (⌜Ty⌝ d))) (trans (⌜Ty⌝-sub ⟨ ρ ⟩ᵣ d)
                  (cong ⌜Ty⌝ {x = subTm ⟨ ρ ⟩ᵣ d} {y = renTm ρ d} (subTm-var ρ d)))
 
+KCtx-sub : {Δ Θ : Cx} (σ : Sub Δ Θ) (d : RTm Δ) → subTy σ (KCtx d) ≡ KCtx (subTm σ d)
+KCtx-sub σ d = cong (λ D → IMu ⌜Nat⌝ D (subTm σ d)) (CtxD-sub σ)
+
+CtxD-ren : {Δ Θ : Cx} (ρ : Ren Δ Θ) → renTm ρ (CtxD {Δ}) ≡ CtxD
+CtxD-ren ρ = trans (sym (subTm-var ρ CtxD)) (CtxD-sub ⟨ ρ ⟩ᵣ)
+
 -- the typed weakenings the rows use
 ⊢wkCtx : {Γ : Ctx} {B : RTy ⌊ Γ ⌋} {d g : RTm ⌊ Γ ⌋} → Γ ⊢ g ∷ KCtx d → (Γ ▹ B) ⊢ renTm vs g ∷ KCtx (renTm vs d)
 ⊢wkCtx {Γ} {B} {d} {g} dg = ⊢-cast {Γ ▹ B} {renTm vs g} {renTy vs (KCtx d)} {KCtx (renTm vs d)} (KCtx-ren vs d) (⊢wk {Γ} {B} {g} {KCtx d} dg)
+
+hereCtx : {Γ : Ctx} {d : RTm ⌊ Γ ⌋} → (Γ ▹ KCtx d) ⊢ var vz ∷ KCtx (renTm vs d)
+hereCtx {Γ} {d} = ⊢-cast {Γ ▹ KCtx d} {var vz} {renTy vs (KCtx d)} {KCtx (renTm vs d)} (KCtx-ren vs d) (⊢var here)
 
 ------------------------------------------------------------------------
 -- 2. THE CONSTRUCTORS.
@@ -143,6 +152,29 @@ module _ {Γ : Ctx} where
              (⊢payσ {Γ} {⌜Nat⌝} {CtxD} ⊢⌜Nat⌝ ⊢CtxD {⌜Ty⌝ m} {a} {unit} {tι}
                 (ok-σ (⊢⌜Ty⌝ dm) ok-ι) (⊢conv da (csymᵀ (credᵀ El-⌜IMu⌝)))
                 (⊢payι {Γ} {⌜Nat⌝} {CtxD} ⊢⌜Nat⌝ ⊢CtxD {unit} ⊢unit))
+
+------------------------------------------------------------------------
+-- 2½. A METHOD'S VIEW of an extension's payload (under any pending
+--   substitution, as `Lib/TelAt.⊢payAt` presents it): its two fields.
+------------------------------------------------------------------------
+
+module _ {Θ : Ctx} {Δ : Cx} {σ : Sub (Δ ∙) ⌊ Θ ⌋} {D p : RTm ⌊ Θ ⌋} (eD : D ≡ CtxD) where
+  private
+    fp = fst p
+    T2 : RTy ⌊ Θ ⌋
+    T2 = subTy (single fp) (El (subTm (vs ᵣ∘ₛ σ) (⌜Ty⌝ (var vz))))
+    eT : T2 ≡ El (⌜Ty⌝ (σ vz))
+    eT = cong El (trans {x = subTm (single fp) (subTm (vs ᵣ∘ₛ σ) (⌜Ty⌝ (var vz)))}
+                        {y = subTm (single fp) (⌜Ty⌝ (renTm vs (σ vz)))} {z = ⌜Ty⌝ (σ vz)}
+                        (cong (subTm (single fp)) (⌜Ty⌝-sub (vs ᵣ∘ₛ σ) (var vz)))
+                        (trans (⌜Ty⌝-sub (single fp) (renTm vs (σ vz)))
+                               (cong ⌜Ty⌝ {x = subTm (single fp) (renTm vs (σ vz))} {y = σ vz} (wk-cancel-tm fp (σ vz)))))
+
+  extFst : Θ ⊢ p ∷ PayN σ extT ⌜Nat⌝ D → Θ ⊢ fst p ∷ KCtx (σ vz)
+  extFst dp = ⊢-cast {Θ} {fst p} {IMu ⌜Nat⌝ D (σ vz)} {KCtx (σ vz)} (cong (λ X → IMu ⌜Nat⌝ X (σ vz)) eD) (⊢fst dp)
+
+  extSnd : Θ ⊢ p ∷ PayN σ extT ⌜Nat⌝ D → Θ ⊢ fst (snd p) ∷ K 0 (σ vz)
+  extSnd dp = ⊢conv (⊢-cast {Θ} {fst (snd p)} {T2} {El (⌜Ty⌝ (σ vz))} eT (⊢fst (⊢snd dp))) (credᵀ El-⌜IMu⌝)
 
 ------------------------------------------------------------------------
 -- 3. ★ THE QUOTATION of a kernel context, typed at its depth.
