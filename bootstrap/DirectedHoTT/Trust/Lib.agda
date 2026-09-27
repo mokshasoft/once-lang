@@ -67,6 +67,7 @@ import DirectedHoTT.Lib.RedChain
 import DirectedHoTT.Lib.Sorted
 import DirectedHoTT.Lib.Strong
 import DirectedHoTT.Lib.Sugar
+import DirectedHoTT.Lib.Syn
 import DirectedHoTT.Lib.Tel
 import DirectedHoTT.Lib.TelAt
 import DirectedHoTT.Lib.TelFold
