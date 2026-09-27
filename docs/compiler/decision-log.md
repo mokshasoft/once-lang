@@ -5223,3 +5223,29 @@ it:
 ### See Also
 
 D074, `bootstrap/DirectedHoTT/PLAN-LEVITATION.md` Stage 5.
+
+## D076: `Fin` Is FIBRED OVER ℕ — Families With a Numeric Index Case on It (OCP-0009, levitation)
+
+**Date**: 2026-09-27
+**Status**: Accepted (D075's reasoning at a numeric index)
+
+### Decision
+
+A family whose fibres are computable by case on a natural-number index is
+presented that way. The index case is a `natrec` into `Desc`:
+
+    DN C₀ Cₛ = λ i. natrec (Dσ C₀) (Dσ Cₛ)[m] i                 (Lib/NatFib)
+
+`Fin 0 = ∅` and `Fin (suc m) = fzero | fsuc (Fin m)`. No constructor
+carries its index or an equation.
+
+- Methods are a `natrec`-case on the index (`⊢methN`). Each case is a
+  method at the index term `0` or `suc m` (`Lib/MethAt`).
+- The Forded `Fin` made every consumer transport `fsuc`'s field along
+  `suc m ≡ n` (`jsub`); the old Knot also needed `Lib/IdSuc` and a
+  `predTm`. Both are gone. Weakening `Fin` is transport-free
+  (`Examples/WkFin`).
+
+### See Also
+
+D074, D075.
