@@ -30,7 +30,7 @@ open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong�
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax hiding ( Fin )
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
-open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-trans; red→≅ᵀ; ⟶ᵀ*-IMu; ⟶ᵀ*-El )
+open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-trans; red→≅ᵀ; ⟶ᵀ*-IMu; ⟶ᵀ*-El; ⟶ᵀ*-Πˡ; ⟶*-pairˡ )
 open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast; ren-lemma; sub-lemma; Sub⊢ )
 open import DirectedHoTT.Metatheory.Premises using ( mot-ren )
 open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_; nth-z; nth-s; []ᵈ; selF; subC; tag; conₗ )
@@ -41,6 +41,8 @@ open import DirectedHoTT.Lib.NatFib
 open import DirectedHoTT.Lib.FinFam
 open import DirectedHoTT.Lib.Syn
 open import DirectedHoTT.Lib.Sorted using ( unSortI )
+open import DirectedHoTT.Lib.SynView
+open import DirectedHoTT.Spec.Syntax using ( cong₄ )
 
 private
   variable
@@ -296,3 +298,98 @@ module _ {sg : Sig n} (ok : SigOK n sg) (κ : Kit n sg) where
                 (ty-IMu ⊢SI (⊢SD ok) (⊢conv (⊢pair (ty-El ⊢⌜Nat⌝) (⊢fst (unSortI (⊢var (there (there (there here))))))
                                                    (⊢var (there here)))
                                             (csymᵀ (credᵀ (El-⌜Σ⌝ _ _))))))
+
+  private
+    wkS : (σ : Sub Γ Δ) (t : RTm Γ) → subTm (extS σ) (renTm vs t) ≡ renTm vs (subTm σ t)
+    wkS = wk-sub
+      where open import DirectedHoTT.Metatheory.SubjectReductionBase using ( wk-sub )
+
+    -- three binders instantiated back: a thrice-weakened term
+    wkc3 : (v e t J : RTm Γ) →
+           subTm (single v) (subTm (extS (single e)) (subTm (extS (extS (single t))) (renTm vs (renTm vs (renTm vs J))))) ≡ J
+    wkc3 v e t J =
+      trans (cong (λ z → subTm (single v) (subTm (extS (single e)) z))
+                  (trans (wkS (extS (single t)) (renTm vs (renTm vs J)))
+                         (cong (renTm vs) (trans (wkS (single t) (renTm vs J)) (cong (renTm vs) (wkc t J))))))
+            (wkc2 v e J)
+
+  -- ★ a hypothesis at the traversal's motive, applied to a depth and an
+  --   environment at its index
+  ⊢TM· : {Γ : Ctx} {J t f e v : RTm ⌊ Γ ⌋} →
+         Γ ⊢ f ∷ iinst J t TM → Γ ⊢ e ∷ El ⌜Nat⌝ → Γ ⊢ v ∷ Env (snd J) e →
+         Γ ⊢ app (app f e) v ∷ IMu (SI n) (SD sg) (pair (fst J) e)
+  ⊢TM· {J = J} {t} {f} {e} {v} df de dv =
+    ⊢-cast eqR (⊢app (⊢app df de) (⊢-cast (sym eqA) dv))
+    where
+      eqA : subTy (single e) (subTy (extS (single t)) (subTy (extS (extS (single J))) (Env (snd (var (vs (vs vz)))) (var vz))))
+            ≡ Env (snd J) e
+      eqA = trans (cong (λ z → subTy (single e) (subTy (extS (single t)) z))
+                        (Env-sub (extS (extS (single J))) (snd (var (vs (vs vz)))) (var vz)))
+            (trans (cong (subTy (single e)) (Env-sub (extS (single t)) (snd (renTm vs (renTm vs J))) (var vz)))
+            (trans (Env-sub (single e) (snd (subTm (extS (single t)) (renTm vs (renTm vs J)))) (var vz))
+                   (cong (λ z → Env (snd z) e) (wkc2 e t J))))
+      eqR : subTy (single v) (subTy (extS (single e)) (subTy (extS (extS (single t)))
+              (subTy (extS (extS (extS (single J)))) (IMu (SI n) (SD sg) (pair (fst (var (vs (vs (vs vz))))) (var (vs vz)))))))
+            ≡ IMu (SI n) (SD sg) (pair (fst J) e)
+      eqR = cong₂ (λ D j → IMu (SI n) D j)
+              (trans (cong (λ z → subTm (single v) (subTm (extS (single e)) (subTm (extS (extS (single t))) z)))
+                           (SD-sub (extS (extS (extS (single J)))) sg))
+                (trans (cong (λ z → subTm (single v) (subTm (extS (single e)) z)) (SD-sub (extS (extS (single t))) sg))
+                  (trans (cong (subTm (single v)) (SD-sub (extS (single e)) sg)) (SD-sub (single v) sg))))
+              (cong₂ pair (cong fst (wkc3 v e t J)) (wkc v e))
+
+  ------------------------------------------------------------------------
+  -- 5. ★★ ONE NODE, generically: the payload rebuilt field by field — a
+  --    subterm under `k` binders is its hypothesis at depth `k + e` with
+  --    the environment lifted `k` times; a natural is copied.
+  ------------------------------------------------------------------------
+
+  tpay : Shape → RTm Γ → RTm Γ → RTm Γ → RTm Γ → RTm Γ → RTm Γ
+  tpay []ʰ             p h e f d = unit
+  tpay (rec s k ∷ʰ sh) p h e f d = pair (app (app (fst h) (nsucs k e)) (LIFTS k e d f)) (tpay sh (snd p) (snd h) e f d)
+  tpay (nat ∷ʰ sh)     p h e f d = pair (fst p) (tpay sh (snd p) h e f d)
+  tpay vʰ              p h e f d = unit
+
+  private
+    M-cancel : (a : RTm Γ) (M : RTy ((Γ ∙) ∙)) → subTy (extS (extS (single a))) (renTy (extR (extR vs)) M) ≡ M
+    M-cancel a M = trans (subTy-renTy M) (trans (subTy-cong pt M) (subTy-id M))
+      where
+        pt : ∀ x → (extS (extS (single a)) ₛ∘ᵣ extR (extR vs)) x ≡ idₛ x
+        pt vz          = refl
+        pt (vs vz)     = refl
+        pt (vs (vs x)) = refl
+
+  -- a FIELDS shape (not the variable), well-formed
+  data FOK : Shape → Set where
+    []ᶠ  : FOK []ʰ
+    _∷ᶠ_ : {fl : Fld} {sh : Shape} → FldOK n fl → FOK sh → FOK (fl ∷ʰ sh)
+
+  ⊢tpay : {Γ : Ctx} {sh : Shape} {i p h e f d : RTm ⌊ Γ ⌋} → FOK sh →
+          Γ ⊢ p ∷ PayV sh i (SI n) (SD sg) → Γ ⊢ h ∷ IhV sh i (SD sg) TM p →
+          Γ ⊢ e ∷ El ⌜Nat⌝ → Γ ⊢ d ∷ El ⌜Nat⌝ → snd i ⟶* d → Γ ⊢ f ∷ Env d e →
+          Args Γ n (SD sg) e sh (tpay sh p h e f d)
+  ⊢tpay []ᶠ dp dh de dd r df = a[]
+  ⊢tpay {Γ = Γ} {sh = rec s k ∷ʰ sh} {i} {p} {h} {e} {f} {d} (ok-rec lt ∷ᶠ ok) dp dh de dd r df =
+    a-rec (⊢conv (⊢TM· (⊢fst dh) (⊢nsucs k de)
+                       (⊢conv (⊢LIFTS k de dd df)
+                              (csymᵀ (red→≅ᵀ (⟶ᵀ*-Πˡ (⟶ᵀ*-IMu (step (βsnd _ _) (⟶*-nsucs k r))))))))
+                 (red→≅ᵀ (⟶ᵀ*-IMu (⟶*-pairˡ (step (βfst _ _) done)))))
+          (⊢tpay ok dp' dh' de dd r df)
+    where
+      dp' : Γ ⊢ snd p ∷ PayV sh i (SI n) (SD sg)
+      dp' = ⊢-cast (trans (PayV-sub (single (fst p)) sh (renTm vs i) (renTm vs (SI n)) (renTm vs (SD sg)))
+                          (cong₂ (λ a b → PayV sh a (SI n) b) (wkc (fst p) i) (wkc (fst p) (SD sg))))
+                   (⊢snd dp)
+      dh' : Γ ⊢ snd h ∷ IhV sh i (SD sg) TM (snd p)
+      dh' = ⊢-cast (trans (IhV-sub (single (fst h)) sh (renTm vs i) (renTm vs (SD sg)) (renTy (extR (extR vs)) TM)
+                                   (snd (renTm vs p)))
+                          (cong₄ (IhV sh) (wkc (fst h) i) (wkc (fst h) (SD sg)) (M-cancel (fst h) TM)
+                                 (cong snd (wkc (fst h) p))))
+                   (⊢snd dh)
+  ⊢tpay {Γ = Γ} {sh = nat ∷ʰ sh} {i} {p} {h} (ok-nat ∷ᶠ ok) dp dh de dd r df =
+    a-nat (⊢fst dp) (⊢tpay ok dp' dh de dd r df)
+    where
+      dp' : Γ ⊢ snd p ∷ PayV sh i (SI n) (SD sg)
+      dp' = ⊢-cast (trans (PayV-sub (single (fst p)) sh (renTm vs i) (renTm vs (SI n)) (renTm vs (SD sg)))
+                          (cong₂ (λ a b → PayV sh a (SI n) b) (wkc (fst p) i) (wkc (fst p) (SD sg))))
+                   (⊢snd dp)
