@@ -15501,3 +15501,44 @@ writes `^1 ->`, so no existing program changes status. The red tests are in
 Not reopened: graded VALUES (a pair with one linear and one ω component). The standard
 form is a graded tensor or Σ, `(x :1 A) ⊗ B`, a possible future former of the core. It
 pays off only once linearity has runtime meaning; today only `0` (erasure) does.
+
+## D233 — CODATA CARRIES THE EFFECT GRADE: THE EFFECTFUL STREAM IS `Nu (Eff F)` = ν(T ∘ F) (2026-09-27)
+
+**Relates**: D032/D046/D068 (effects live on arrows), D192/D193/D194 (ν, `ana`, `Out`),
+D222 (read the grade off the denotation), D231 (`pure` means no side effects).
+
+### Context
+
+`ana coalg` returns a LAZY stream. Its coalgebra runs later, one step per `Out`, after
+`ana`'s own arrow has returned. An effectful coalgebra's effects therefore escape the
+arrow that built the stream. Today both kinds of stream share the type `Nu F`, and `Out`
+is typed pure, so `peek : Nu F -> …; peek v = Out v` hides the coalgebra's effects
+inside a pure function. `cata` has no such problem: it consumes a finite structure
+within one call, so its arrow's grade covers every algebra step.
+
+### Decision
+
+* **The rule.** A type carries an effect grade exactly when its values hold computations
+  that have not run yet and run when the value is eliminated: the CODATA types. Once has
+  two of them, arrows (`A -> B` / `Eff A B`, eliminated by application) and ν
+  (eliminated by `Out`). Data types (`Unit`, `Void`, products, sums, `μ`, base types)
+  hold only evaluated values and carry no grade.
+* **Mathematically.** A pure coalgebra `A → F A` has the final coalgebra `ν F`, with a
+  pure destructor. An effectful coalgebra `A → T (F A)` is a coalgebra of `T ∘ F`, whose
+  final coalgebra `ν (T ∘ F)` is the effectful stream (a resumption), with destructor
+  `ν(T∘F) → T (F (ν(T∘F)))`, an effectful arrow. A server is such a stream.
+* **Internally** `ν-type F π`: one former with a grade, `ν-type F pure <: ν-type F eff`,
+  and the grade is erased by the IR like an arrow's.
+* **Surface syntax** `Nu F` (pure) and `Nu (Eff F)` (effectful). `Eff` in the functor
+  position means "the effectful variant of this codata", as `Eff A B` does for `A -> B`.
+  It is not a general functor code: `Mu (Eff F)` is ill-formed, because data carries no
+  effects. `Eff (Nu F)` stays what it would mean literally, `T (ν F)`.
+* **`ana`** with a coalgebra at grade `π` builds `ν-type F π`. Building runs nothing, so
+  `ana`'s own arrow has an independent grade (as `curry`'s outer arrow does, D222).
+* **`Out`** on `ν-type F pure` gives the layer. On `ν-type F eff`, a term-level `Out v`
+  is a suspension `Eff Unit (F (ν-type F eff))`, exactly as applying an effectful arrow
+  at the surface is (`effApp`).
+
+The red test `compiler/test/PuritySpec.hs` ("pure function forcing an effectful ν")
+becomes a type error for the right reason: `peek`'s parameter is a pure stream, and an
+effectful one is not.
