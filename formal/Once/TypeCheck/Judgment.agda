@@ -52,7 +52,6 @@ open import Once.Functor.Translate using (WellFormedF; IsBaseType; IsConcrete; c
 open import Data.Bool using (true)
 open import Relation.Nullary using (¬_)
 open import Once.Type.Sub using (_<:_; _⊑π_)
-open import Once.Type.Honest using (HonestFFI)
 open import Once.TypeCheck.Raw as Raw
   using (RawExpr; RVar; RQualified; RResolved; RApp; RInt; RStringLit; RUnit; RAnnot; RPair;
          RFloat;
@@ -148,7 +147,6 @@ mutual
     t-var-qualified : ∀ {ctx : NamedCtx} {name alias : String} {T : Type}
                     → lookupImport (NamedCtx.imports ctx) (alias ++ "." ++ name) ≡ just T
                     → IsConcrete T  -- Plan 0.58: FFI value reference is concrete
-                    → HonestFFI T   -- D231: its type hides no effect
                     → ctx ⊢ᵢ RQualified name alias ∶ T ⨾ zeroUsage
 
     -- Plan 0.50: a qualified ref RESOLVED to its canonical identity. `canon`
@@ -167,7 +165,6 @@ mutual
                    → NotGenerator cn
                    → lookupImport (NamedCtx.imports ctx) (showCanonical cn) ≡ just T
                    → IsConcrete T  -- Plan 0.58: FFI value reference is concrete
-                    → HonestFFI T   -- D231: its type hides no effect
                    → ctx ⊢ᵢ RResolved cn ∶ T ⨾ zeroUsage
 
     -- D136: a RESERVED WORD is never a bare reference to an import or an
@@ -180,7 +177,6 @@ mutual
                   → lookupLocal ctx x ≡ nothing
                  → lookupImport (NamedCtx.imports ctx) x ≡ just T
                  → IsConcrete T  -- Plan 0.58: FFI value reference is concrete
-                    → HonestFFI T   -- D231: its type hides no effect
                  → ctx ⊢ᵢ RVar x ∶ T ⨾ zeroUsage
 
     -- Plan 0.58 / D071: infer-mode reference to a GROUND own-module telescope

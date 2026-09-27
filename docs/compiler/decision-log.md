@@ -15462,6 +15462,9 @@ core grades by what terms do:
 * an FFI signature must be honest. An arrow into `Unit` or `Void` (which emits or halts,
   D225) must be `Eff`, and a base-typed constant of type `Unit`/`Void` is rejected: a
   nullary effect is `Eff Unit Unit`, because effects live on arrows (D032);
+  this is checked on the `signature` DECLARATION (`projectSig`, so `ModuleTyped` rejects a
+  dishonest one), not on references: user definitions share the reference rules, and
+  a pure user `f : Int -> Unit` (e.g. `terminal`) is honest and must stay accepted;
 * the surface rejects a pure `lam` whose body emits.
 
 Red tests: `compiler/test/PuritySpec.hs`. Until the surface is fixed, the core's

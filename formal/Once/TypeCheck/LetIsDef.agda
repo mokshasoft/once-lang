@@ -221,9 +221,9 @@ module Transfer
     tr-i ld t-unit-var = cᵢ (sym (drop-zero ld)) t-unit-var
     tr-i {GL = GL} {ΔL = ΔL} {GD = GD} {ΔD = ΔD} ld (t-var-local {x = y} eq) =
         var-tr ld y (lookupLocal-go y GL ΔL) (lookupLocal-go y GD ΔD) (loc-tr ld y) eq refl
-    tr-i ld (t-var-qualified l c h) = cᵢ (sym (drop-zero ld)) (t-var-qualified l c h)
-    tr-i ld (t-var-resolved ng l c h) = cᵢ (sym (drop-zero ld)) (t-var-resolved ng l c h)
-    tr-i ld (t-var-import {x = y} ¬gw ln li c h) = cᵢ (sym (drop-zero ld)) (t-var-import ¬gw (none-tr (loc-tr ld y) ln) li c h)
+    tr-i ld (t-var-qualified l c) = cᵢ (sym (drop-zero ld)) (t-var-qualified l c)
+    tr-i ld (t-var-resolved ng l c) = cᵢ (sym (drop-zero ld)) (t-var-resolved ng l c)
+    tr-i ld (t-var-import {x = y} ¬gw ln li c) = cᵢ (sym (drop-zero ld)) (t-var-import ¬gw (none-tr (loc-tr ld y) ln) li c)
     tr-i ld (t-var-poly-instantiate-infer {x = y} ln li lp gr eT body) =
         cᵢ (sym (drop-zero ld)) (t-var-poly-instantiate-infer (none-tr (loc-tr ld y) ln) li (lpp-tr y lp) gr eT body)
     tr-i ld (t-annot c) = t-annot (tr-c ld c)

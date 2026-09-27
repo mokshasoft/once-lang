@@ -65,9 +65,6 @@ data TypeError : Set where
   -- Plan 0.58: a SigOp/FFI reference whose type is not concrete (not a base
   -- type nor a first-order function pointer) cannot cross the register ABI.
   NonConcreteSigOpType    : (name : String) (T : Type) → TypeError
-  -- D231: an FFI declaration whose type hides an effect — a pure arrow into
-  -- `Unit`/`Void`, or a bare `Unit`/`Void` constant (`Once.Type.Honest`).
-  DishonestSigOpType      : (name : String) (T : Type) → TypeError
 
 
   -- PLAN 0.71/0.72, in flight: the lexer and parser accept a float literal and
@@ -146,10 +143,6 @@ renderError (UnboundQualified name alias) =
 renderError (NonConcreteSigOpType name T) =
   "Reference '" ++ name ++ "' has non-concrete type " ++ showType T
     ++ " (FFI/SigOp references must be base types or first-order function pointers)"
-renderError (DishonestSigOpType name T) =
-  "Reference '" ++ name ++ "' has type " ++ showType T
-    ++ ", which hides an effect: a SigOp returning Unit emits and one returning Void halts,"
-    ++ " so its arrow must be Eff (and a bare Unit/Void constant is written Eff Unit Unit)"
 renderError FloatLiteralUnsupported =
   "Float literals are not supported yet (the lexer and parser accept them; the"
     ++ " elaborator's rule lands with plan 0.71 F3b)"

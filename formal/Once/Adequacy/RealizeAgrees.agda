@@ -83,7 +83,6 @@ open import Once.Adequacy.SourceFaithful fmt using (faithful; T-ext-at)
 open import Once.CanonicalName using (CanonicalName; showCanonical; bare; NotGenerator; gen; GenWord; genWord?)
 open import Once.Functor.Translate using (WellFormedF; IsBaseType; IsConcrete; con-base; con-fun; base-Unit)
 open import Once.Functor.Decide using (wellFormedF?; isBaseType?; isConcrete?)
-open import Once.Type.Honest using (HonestFFI; honest?)
 
 private
   -- D143: the RUNTIME environment. `⟦_⟧ˢ` is phase-indexed, so agreement is
@@ -937,25 +936,21 @@ agree-RResolved-arrowᴴ : ∀ (ctx : NamedCtx) (cn : CanonicalName) (ng : NotGe
   (lkup : lookupImport (NamedCtx.imports ctx) (showCanonical cn) ≡ just (A ⇒[ mk-kind Many π ] B))
   (mbA : Maybe (IsBaseType A)) (eqbA : isBaseType? A ≡ mbA)
   (mcB : Maybe (IsConcrete B)) (eqcB : isConcrete? B ≡ mcB)
-  (mh : Maybe (HonestFFI (A ⇒[ mk-kind Many π ] B))) (eqh : honest? (A ⇒[ mk-kind Many π ] B) ≡ mh)
   {A' Ψ se d f w}
-  → E.inferElabV-RResolved-arrow-aux ctx cn ng lkup mbA eqbA mcB eqcB mh eqh ≡ (success A' Ψ se d f , w)
+  → E.inferElabV-RResolved-arrow-aux ctx cn ng lkup mbA eqbA mcB eqcB ≡ (success A' Ψ se d f , w)
   → ∀ (dγ : Env ctx Ψ) → SD.⟦ se ⟧ˢ fmt dγ ≡ SD.⟦ realize-infer w ⟧ˢ fmt dγ
-agree-RResolved-arrowᴴ ctx cn ng {A} {B} π lkup (just bA) eqbA (just cB) eqcB (just _) eqh refl dγ = masq {ctx} {A} {B} cn π bA cB dγ
-agree-RResolved-arrowᴴ ctx cn ng π lkup (just _) eqbA (just _) eqcB nothing eqh eqS dγ = ⊥-elim (fail≢succ (cong proj₁ eqS))
-agree-RResolved-arrowᴴ ctx cn ng π lkup nothing eqbA _ eqcB _ eqh eqS dγ = ⊥-elim (fail≢succ (cong proj₁ eqS))
-agree-RResolved-arrowᴴ ctx cn ng π lkup (just _) eqbA nothing eqcB _ eqh eqS dγ = ⊥-elim (fail≢succ (cong proj₁ eqS))
+agree-RResolved-arrowᴴ ctx cn ng {A} {B} π lkup (just bA) eqbA (just cB) eqcB refl dγ = masq {ctx} {A} {B} cn π bA cB dγ
+agree-RResolved-arrowᴴ ctx cn ng π lkup nothing eqbA _ eqcB eqS dγ = ⊥-elim (fail≢succ (cong proj₁ eqS))
+agree-RResolved-arrowᴴ ctx cn ng π lkup (just _) eqbA nothing eqcB eqS dγ = ⊥-elim (fail≢succ (cong proj₁ eqS))
 
 agree-RResolved-valueᴴ : ∀ (ctx : NamedCtx) (cn : CanonicalName) (ng : NotGenerator cn) (ty : Type)
   (lkup : lookupImport (NamedCtx.imports ctx) (showCanonical cn) ≡ just ty)
   (mc : Maybe (IsConcrete ty)) (eqc : isConcrete? ty ≡ mc)
-  (mh : Maybe (HonestFFI ty)) (eqh : honest? ty ≡ mh)
   {A' Ψ se d f w}
-  → E.inferElabV-RResolved-value-aux ctx cn ng ty lkup mc eqc mh eqh ≡ (success A' Ψ se d f , w)
+  → E.inferElabV-RResolved-value-aux ctx cn ng ty lkup mc eqc ≡ (success A' Ψ se d f , w)
   → ∀ (dγ : Env ctx Ψ) → SD.⟦ se ⟧ˢ fmt dγ ≡ SD.⟦ realize-infer w ⟧ˢ fmt dγ
-agree-RResolved-valueᴴ ctx cn ng ty lkup (just conc) eqc (just _) eqh refl dγ = refl
-agree-RResolved-valueᴴ ctx cn ng ty lkup (just _) eqc nothing eqh eqS dγ = ⊥-elim (fail≢succ (cong proj₁ eqS))
-agree-RResolved-valueᴴ ctx cn ng ty lkup nothing eqc _ eqh eqS dγ = ⊥-elim (fail≢succ (cong proj₁ eqS))
+agree-RResolved-valueᴴ ctx cn ng ty lkup (just conc) eqc refl dγ = refl
+agree-RResolved-valueᴴ ctx cn ng ty lkup nothing eqc eqS dγ = ⊥-elim (fail≢succ (cong proj₁ eqS))
 
 agree-RResolved : ∀ (ctx : NamedCtx) (cn : CanonicalName) (ng : NotGenerator cn) (lhs : Maybe Type)
   (lkup : lookupImport (NamedCtx.imports ctx) (showCanonical cn) ≡ lhs)
@@ -963,21 +958,21 @@ agree-RResolved : ∀ (ctx : NamedCtx) (cn : CanonicalName) (ng : NotGenerator c
   → E.inferElabV-RResolved-aux ctx cn ng lhs lkup ≡ (success A Ψ se d f , w)
   → ∀ (dγ : Env ctx Ψ) → SD.⟦ se ⟧ˢ fmt dγ ≡ SD.⟦ realize-infer w ⟧ˢ fmt dγ
 agree-RResolved ctx cn ng (just (A ⇒[ mk-kind Many π ] B)) lkup eqS dγ =
-  agree-RResolved-arrowᴴ ctx cn ng π lkup (isBaseType? A) refl (isConcrete? B) refl (honest? (A ⇒[ mk-kind Many π ] B)) refl eqS dγ
+  agree-RResolved-arrowᴴ ctx cn ng π lkup (isBaseType? A) refl (isConcrete? B) refl eqS dγ
 agree-RResolved ctx cn ng (just (A ⇒[ mk-kind One π ] B)) lkup eqS dγ =
-  agree-RResolved-valueᴴ ctx cn ng (A ⇒[ mk-kind One π ] B) lkup (isConcrete? (A ⇒[ mk-kind One π ] B)) refl (honest? (A ⇒[ mk-kind One π ] B)) refl eqS dγ
+  agree-RResolved-valueᴴ ctx cn ng (A ⇒[ mk-kind One π ] B) lkup (isConcrete? (A ⇒[ mk-kind One π ] B)) refl eqS dγ
 agree-RResolved ctx cn ng (just (A ⇒[ mk-kind Zero π ] B)) lkup eqS dγ =
-  agree-RResolved-valueᴴ ctx cn ng (A ⇒[ mk-kind Zero π ] B) lkup (isConcrete? (A ⇒[ mk-kind Zero π ] B)) refl (honest? (A ⇒[ mk-kind Zero π ] B)) refl eqS dγ
-agree-RResolved ctx cn ng (just Unit) lkup eqS dγ = agree-RResolved-valueᴴ ctx cn ng Unit lkup (isConcrete? Unit) refl (honest? Unit) refl eqS dγ
-agree-RResolved ctx cn ng (just Void) lkup eqS dγ = agree-RResolved-valueᴴ ctx cn ng Void lkup (isConcrete? Void) refl (honest? Void) refl eqS dγ
-agree-RResolved ctx cn ng (just Int) lkup eqS dγ = agree-RResolved-valueᴴ ctx cn ng Int lkup (isConcrete? Int) refl (honest? Int) refl eqS dγ
-agree-RResolved ctx cn ng (just Float) lkup eqS dγ = agree-RResolved-valueᴴ ctx cn ng Float lkup (isConcrete? Float) refl (honest? Float) refl eqS dγ
-agree-RResolved ctx cn ng (just Str) lkup eqS dγ = agree-RResolved-valueᴴ ctx cn ng Str lkup (isConcrete? Str) refl (honest? Str) refl eqS dγ
-agree-RResolved ctx cn ng (just Buffer) lkup eqS dγ = agree-RResolved-valueᴴ ctx cn ng Buffer lkup (isConcrete? Buffer) refl (honest? Buffer) refl eqS dγ
-agree-RResolved ctx cn ng (just (A * B)) lkup eqS dγ = agree-RResolved-valueᴴ ctx cn ng (A * B) lkup (isConcrete? (A * B)) refl (honest? (A * B)) refl eqS dγ
-agree-RResolved ctx cn ng (just (A + B)) lkup eqS dγ = agree-RResolved-valueᴴ ctx cn ng (A + B) lkup (isConcrete? (A + B)) refl (honest? (A + B)) refl eqS dγ
-agree-RResolved ctx cn ng (just (μ-type F)) lkup eqS dγ = agree-RResolved-valueᴴ ctx cn ng (μ-type F) lkup (isConcrete? (μ-type F)) refl (honest? (μ-type F)) refl eqS dγ
-agree-RResolved ctx cn ng (just (ν-type F π)) lkup eqS dγ = agree-RResolved-valueᴴ ctx cn ng (ν-type F π) lkup (isConcrete? (ν-type F π)) refl (honest? (ν-type F π)) refl eqS dγ
+  agree-RResolved-valueᴴ ctx cn ng (A ⇒[ mk-kind Zero π ] B) lkup (isConcrete? (A ⇒[ mk-kind Zero π ] B)) refl eqS dγ
+agree-RResolved ctx cn ng (just Unit) lkup eqS dγ = agree-RResolved-valueᴴ ctx cn ng Unit lkup (isConcrete? Unit) refl eqS dγ
+agree-RResolved ctx cn ng (just Void) lkup eqS dγ = agree-RResolved-valueᴴ ctx cn ng Void lkup (isConcrete? Void) refl eqS dγ
+agree-RResolved ctx cn ng (just Int) lkup eqS dγ = agree-RResolved-valueᴴ ctx cn ng Int lkup (isConcrete? Int) refl eqS dγ
+agree-RResolved ctx cn ng (just Float) lkup eqS dγ = agree-RResolved-valueᴴ ctx cn ng Float lkup (isConcrete? Float) refl eqS dγ
+agree-RResolved ctx cn ng (just Str) lkup eqS dγ = agree-RResolved-valueᴴ ctx cn ng Str lkup (isConcrete? Str) refl eqS dγ
+agree-RResolved ctx cn ng (just Buffer) lkup eqS dγ = agree-RResolved-valueᴴ ctx cn ng Buffer lkup (isConcrete? Buffer) refl eqS dγ
+agree-RResolved ctx cn ng (just (A * B)) lkup eqS dγ = agree-RResolved-valueᴴ ctx cn ng (A * B) lkup (isConcrete? (A * B)) refl eqS dγ
+agree-RResolved ctx cn ng (just (A + B)) lkup eqS dγ = agree-RResolved-valueᴴ ctx cn ng (A + B) lkup (isConcrete? (A + B)) refl eqS dγ
+agree-RResolved ctx cn ng (just (μ-type F)) lkup eqS dγ = agree-RResolved-valueᴴ ctx cn ng (μ-type F) lkup (isConcrete? (μ-type F)) refl eqS dγ
+agree-RResolved ctx cn ng (just (ν-type F π)) lkup eqS dγ = agree-RResolved-valueᴴ ctx cn ng (ν-type F π) lkup (isConcrete? (ν-type F π)) refl eqS dγ
 agree-RResolved ctx cn ng nothing lkup eq dγ = ⊥-elim (fail≢succ (cong proj₁ eq))
 
 -- D136: the elaborator dispatches `RResolved` on `classifyGen cn` first, so
@@ -1011,16 +1006,13 @@ agree-RVar-importᴴ : ∀ (ctx : NamedCtx) (x : String)
   (eq-imp : lookupImport (NamedCtx.imports ctx) x ≡ just ty)
   (gw : Dec (GenWord x)) (eqg : genWord? x ≡ gw)
   (mc : Maybe (IsConcrete ty)) (eqc : isConcrete? ty ≡ mc)
-  (mh : Maybe (HonestFFI ty)) (eqh : honest? ty ≡ mh)
   {A' Ψ se d f w}
-  → E.inferElabV-RVar-import-value-aux ctx x eq-loc ty eq-imp gw eqg mc eqc mh eqh ≡ (success A' Ψ se d f , w)
+  → E.inferElabV-RVar-import-value-aux ctx x eq-loc ty eq-imp gw eqg mc eqc ≡ (success A' Ψ se d f , w)
   → ∀ (dγ : Env ctx Ψ) → SD.⟦ se ⟧ˢ fmt dγ ≡ SD.⟦ realize-infer w ⟧ˢ fmt dγ
-agree-RVar-importᴴ ctx x eq-loc ty eq-imp (no _) eqg (just conc) eqc (just _) eqh refl dγ = refl
-agree-RVar-importᴴ ctx x eq-loc ty eq-imp (no _) eqg (just _) eqc nothing eqh eqS dγ =
+agree-RVar-importᴴ ctx x eq-loc ty eq-imp (no _) eqg (just conc) eqc refl dγ = refl
+agree-RVar-importᴴ ctx x eq-loc ty eq-imp (no _) eqg nothing eqc eqS dγ =
   ⊥-elim (fail≢succ (cong proj₁ eqS))
-agree-RVar-importᴴ ctx x eq-loc ty eq-imp (no _) eqg nothing eqc _ eqh eqS dγ =
-  ⊥-elim (fail≢succ (cong proj₁ eqS))
-agree-RVar-importᴴ ctx x eq-loc ty eq-imp (yes _) eqg _ eqc _ eqh eqS dγ =
+agree-RVar-importᴴ ctx x eq-loc ty eq-imp (yes _) eqg _ eqc eqS dγ =
   ⊥-elim (fail≢succ (cong proj₁ eqS))
 
 agree-RVar : ∀ (ctx : NamedCtx) (x : String)
@@ -1032,7 +1024,7 @@ agree-RVar : ∀ (ctx : NamedCtx) (x : String)
   → ∀ (dγ : Env ctx Ψ) → SD.⟦ se ⟧ˢ fmt dγ ≡ SD.⟦ realize-infer w ⟧ˢ fmt dγ
 agree-RVar ctx x (just (A , Ψ , se)) eq-loc impLhs eq-imp refl dγ = refl
 agree-RVar ctx x nothing eq-loc (just ty) eq-imp eqS dγ =
-  agree-RVar-importᴴ ctx x eq-loc ty eq-imp (genWord? x) refl (isConcrete? ty) refl (honest? ty) refl eqS dγ
+  agree-RVar-importᴴ ctx x eq-loc ty eq-imp (genWord? x) refl (isConcrete? ty) refl eqS dγ
 -- Plan 0.58 / D071: both lookups failed → the POLY FALLBACK (a ground
 -- telescope name infers at its declared type). Its success rides the
 -- premise-erased witness, so agreement is the narrow infer-poly residual.
@@ -1049,25 +1041,21 @@ agree-RQualified-arrowᴴ : ∀ (ctx : NamedCtx) (name alias : String) {A B : Ty
   (lkup : lookupImport (NamedCtx.imports ctx) (alias ++ "." ++ name) ≡ just (A ⇒[ mk-kind Many π ] B))
   (mbA : Maybe (IsBaseType A)) (eqbA : isBaseType? A ≡ mbA)
   (mcB : Maybe (IsConcrete B)) (eqcB : isConcrete? B ≡ mcB)
-  (mh : Maybe (HonestFFI (A ⇒[ mk-kind Many π ] B))) (eqh : honest? (A ⇒[ mk-kind Many π ] B) ≡ mh)
   {A' Ψ se d f w}
-  → E.inferElabV-RQualified-arrow-aux ctx name alias lkup mbA eqbA mcB eqcB mh eqh ≡ (success A' Ψ se d f , w)
+  → E.inferElabV-RQualified-arrow-aux ctx name alias lkup mbA eqbA mcB eqcB ≡ (success A' Ψ se d f , w)
   → ∀ (dγ : Env ctx Ψ) → SD.⟦ se ⟧ˢ fmt dγ ≡ SD.⟦ realize-infer w ⟧ˢ fmt dγ
-agree-RQualified-arrowᴴ ctx name alias {A} {B} π lkup (just bA) eqbA (just cB) eqcB (just _) eqh refl dγ = masq-arrow {ctx} {A} {B} alias name π bA cB dγ
-agree-RQualified-arrowᴴ ctx name alias π lkup (just _) eqbA (just _) eqcB nothing eqh eqS dγ = ⊥-elim (fail≢succ (cong proj₁ eqS))
-agree-RQualified-arrowᴴ ctx name alias π lkup nothing eqbA _ eqcB _ eqh eqS dγ = ⊥-elim (fail≢succ (cong proj₁ eqS))
-agree-RQualified-arrowᴴ ctx name alias π lkup (just _) eqbA nothing eqcB _ eqh eqS dγ = ⊥-elim (fail≢succ (cong proj₁ eqS))
+agree-RQualified-arrowᴴ ctx name alias {A} {B} π lkup (just bA) eqbA (just cB) eqcB refl dγ = masq-arrow {ctx} {A} {B} alias name π bA cB dγ
+agree-RQualified-arrowᴴ ctx name alias π lkup nothing eqbA _ eqcB eqS dγ = ⊥-elim (fail≢succ (cong proj₁ eqS))
+agree-RQualified-arrowᴴ ctx name alias π lkup (just _) eqbA nothing eqcB eqS dγ = ⊥-elim (fail≢succ (cong proj₁ eqS))
 
 agree-RQualified-valueᴴ : ∀ (ctx : NamedCtx) (name alias : String) (ty : Type)
   (lkup : lookupImport (NamedCtx.imports ctx) (alias ++ "." ++ name) ≡ just ty)
   (mc : Maybe (IsConcrete ty)) (eqc : isConcrete? ty ≡ mc)
-  (mh : Maybe (HonestFFI ty)) (eqh : honest? ty ≡ mh)
   {A' Ψ se d f w}
-  → E.inferElabV-RQualified-value-aux ctx name alias ty lkup mc eqc mh eqh ≡ (success A' Ψ se d f , w)
+  → E.inferElabV-RQualified-value-aux ctx name alias ty lkup mc eqc ≡ (success A' Ψ se d f , w)
   → ∀ (dγ : Env ctx Ψ) → SD.⟦ se ⟧ˢ fmt dγ ≡ SD.⟦ realize-infer w ⟧ˢ fmt dγ
-agree-RQualified-valueᴴ ctx name alias ty lkup (just conc) eqc (just _) eqh refl dγ = refl
-agree-RQualified-valueᴴ ctx name alias ty lkup (just _) eqc nothing eqh eqS dγ = ⊥-elim (fail≢succ (cong proj₁ eqS))
-agree-RQualified-valueᴴ ctx name alias ty lkup nothing eqc _ eqh eqS dγ = ⊥-elim (fail≢succ (cong proj₁ eqS))
+agree-RQualified-valueᴴ ctx name alias ty lkup (just conc) eqc refl dγ = refl
+agree-RQualified-valueᴴ ctx name alias ty lkup nothing eqc eqS dγ = ⊥-elim (fail≢succ (cong proj₁ eqS))
 
 agree-RQualified : ∀ (ctx : NamedCtx) (name alias : String) (lhs : Maybe Type)
   (lkup : lookupImport (NamedCtx.imports ctx) (alias ++ "." ++ name) ≡ lhs)
@@ -1075,21 +1063,21 @@ agree-RQualified : ∀ (ctx : NamedCtx) (name alias : String) (lhs : Maybe Type)
   → E.inferElabV-RQualified-aux ctx name alias lhs lkup ≡ (success A Ψ se d f , w)
   → ∀ (dγ : Env ctx Ψ) → SD.⟦ se ⟧ˢ fmt dγ ≡ SD.⟦ realize-infer w ⟧ˢ fmt dγ
 agree-RQualified ctx name alias (just (A ⇒[ mk-kind Many π ] B)) lkup eqS dγ =
-  agree-RQualified-arrowᴴ ctx name alias π lkup (isBaseType? A) refl (isConcrete? B) refl (honest? (A ⇒[ mk-kind Many π ] B)) refl eqS dγ
+  agree-RQualified-arrowᴴ ctx name alias π lkup (isBaseType? A) refl (isConcrete? B) refl eqS dγ
 agree-RQualified ctx name alias (just (A ⇒[ mk-kind One π ] B)) lkup eqS dγ =
-  agree-RQualified-valueᴴ ctx name alias (A ⇒[ mk-kind One π ] B) lkup (isConcrete? (A ⇒[ mk-kind One π ] B)) refl (honest? (A ⇒[ mk-kind One π ] B)) refl eqS dγ
+  agree-RQualified-valueᴴ ctx name alias (A ⇒[ mk-kind One π ] B) lkup (isConcrete? (A ⇒[ mk-kind One π ] B)) refl eqS dγ
 agree-RQualified ctx name alias (just (A ⇒[ mk-kind Zero π ] B)) lkup eqS dγ =
-  agree-RQualified-valueᴴ ctx name alias (A ⇒[ mk-kind Zero π ] B) lkup (isConcrete? (A ⇒[ mk-kind Zero π ] B)) refl (honest? (A ⇒[ mk-kind Zero π ] B)) refl eqS dγ
-agree-RQualified ctx name alias (just Unit) lkup eqS dγ = agree-RQualified-valueᴴ ctx name alias Unit lkup (isConcrete? Unit) refl (honest? Unit) refl eqS dγ
-agree-RQualified ctx name alias (just Void) lkup eqS dγ = agree-RQualified-valueᴴ ctx name alias Void lkup (isConcrete? Void) refl (honest? Void) refl eqS dγ
-agree-RQualified ctx name alias (just Int) lkup eqS dγ = agree-RQualified-valueᴴ ctx name alias Int lkup (isConcrete? Int) refl (honest? Int) refl eqS dγ
-agree-RQualified ctx name alias (just Float) lkup eqS dγ = agree-RQualified-valueᴴ ctx name alias Float lkup (isConcrete? Float) refl (honest? Float) refl eqS dγ
-agree-RQualified ctx name alias (just Str) lkup eqS dγ = agree-RQualified-valueᴴ ctx name alias Str lkup (isConcrete? Str) refl (honest? Str) refl eqS dγ
-agree-RQualified ctx name alias (just Buffer) lkup eqS dγ = agree-RQualified-valueᴴ ctx name alias Buffer lkup (isConcrete? Buffer) refl (honest? Buffer) refl eqS dγ
-agree-RQualified ctx name alias (just (A * B)) lkup eqS dγ = agree-RQualified-valueᴴ ctx name alias (A * B) lkup (isConcrete? (A * B)) refl (honest? (A * B)) refl eqS dγ
-agree-RQualified ctx name alias (just (A + B)) lkup eqS dγ = agree-RQualified-valueᴴ ctx name alias (A + B) lkup (isConcrete? (A + B)) refl (honest? (A + B)) refl eqS dγ
-agree-RQualified ctx name alias (just (μ-type F)) lkup eqS dγ = agree-RQualified-valueᴴ ctx name alias (μ-type F) lkup (isConcrete? (μ-type F)) refl (honest? (μ-type F)) refl eqS dγ
-agree-RQualified ctx name alias (just (ν-type F π)) lkup eqS dγ = agree-RQualified-valueᴴ ctx name alias (ν-type F π) lkup (isConcrete? (ν-type F π)) refl (honest? (ν-type F π)) refl eqS dγ
+  agree-RQualified-valueᴴ ctx name alias (A ⇒[ mk-kind Zero π ] B) lkup (isConcrete? (A ⇒[ mk-kind Zero π ] B)) refl eqS dγ
+agree-RQualified ctx name alias (just Unit) lkup eqS dγ = agree-RQualified-valueᴴ ctx name alias Unit lkup (isConcrete? Unit) refl eqS dγ
+agree-RQualified ctx name alias (just Void) lkup eqS dγ = agree-RQualified-valueᴴ ctx name alias Void lkup (isConcrete? Void) refl eqS dγ
+agree-RQualified ctx name alias (just Int) lkup eqS dγ = agree-RQualified-valueᴴ ctx name alias Int lkup (isConcrete? Int) refl eqS dγ
+agree-RQualified ctx name alias (just Float) lkup eqS dγ = agree-RQualified-valueᴴ ctx name alias Float lkup (isConcrete? Float) refl eqS dγ
+agree-RQualified ctx name alias (just Str) lkup eqS dγ = agree-RQualified-valueᴴ ctx name alias Str lkup (isConcrete? Str) refl eqS dγ
+agree-RQualified ctx name alias (just Buffer) lkup eqS dγ = agree-RQualified-valueᴴ ctx name alias Buffer lkup (isConcrete? Buffer) refl eqS dγ
+agree-RQualified ctx name alias (just (A * B)) lkup eqS dγ = agree-RQualified-valueᴴ ctx name alias (A * B) lkup (isConcrete? (A * B)) refl eqS dγ
+agree-RQualified ctx name alias (just (A + B)) lkup eqS dγ = agree-RQualified-valueᴴ ctx name alias (A + B) lkup (isConcrete? (A + B)) refl eqS dγ
+agree-RQualified ctx name alias (just (μ-type F)) lkup eqS dγ = agree-RQualified-valueᴴ ctx name alias (μ-type F) lkup (isConcrete? (μ-type F)) refl eqS dγ
+agree-RQualified ctx name alias (just (ν-type F π)) lkup eqS dγ = agree-RQualified-valueᴴ ctx name alias (ν-type F π) lkup (isConcrete? (ν-type F π)) refl eqS dγ
 agree-RQualified ctx name alias nothing lkup eq dγ = ⊥-elim (fail≢succ (cong proj₁ eq))
 
 -- D230: the spine's agreement — the application congruence, the head on its

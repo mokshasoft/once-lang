@@ -10,6 +10,8 @@
 
 module Once.Parser where
 
+open import Once.Type.Honest using (HonestFFI; honest?)
+
 open import Data.Bool using (Bool; true; false; not; _∧_; _∨_)
 open import Data.List using (List; []; _∷_; map)
 open import Data.Maybe using (Maybe; just; nothing)
@@ -245,9 +247,22 @@ record PolyFunInfo : Set where
 -- Applies alias expansion after projection (aliases currently live
 -- in ground `Type` land — see `expandAliases`). If a future phase
 -- introduces polymorphic aliases, expansion moves pre-projection.
+-- D231: an FFI declaration must be HONEST (`Once.Type.Honest`): a SigOp
+-- returning `Unit` emits and one returning `Void` halts, so such an arrow must
+-- be `Eff`, and a bare `Unit`/`Void` constant is not a declaration. Checked
+-- HERE — on the `signature` itself — so it constrains FFI declarations and
+-- nothing else (a user `f : Int -> Unit` stays a pure function).
+honestSig : String → (T : Type) → Maybe (HonestFFI T) → String ⊎ Type
+honestSig name T (just _) = inj₂ T
+honestSig name T nothing  =
+  inj₁ ("Signature `" ++ name ++ "` : " ++ Once.Type.showType T ++ " hides an effect: a SigOp "
+        ++ "returning Unit emits and one returning Void halts, so its arrow must be Eff "
+        ++ "(a bare Unit/Void constant is written Eff Unit Unit)")
+
 projectSig : TypeAliasEnv → String → PolyType → String ⊎ Type
 projectSig aliases name ty with isGround ty
-... | inj₁ g  = inj₂ (expandAliases aliases (extractGround ty g))
+... | inj₁ g  = honestSig name (expandAliases aliases (extractGround ty g))
+                               (honest? (expandAliases aliases (extractGround ty g)))
 ... | inj₂ _  = inj₁ ("Polymorphic signature not admissible here for `" ++ name
                         ++ "`: " ++ showPolyType ty
                         ++ " — primitives and type aliases must be ground. "
