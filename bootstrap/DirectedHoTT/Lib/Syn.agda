@@ -36,7 +36,7 @@ open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-trans; ⟶*-pairʳ; ⟶*-nsuc; red→≅ᵀ; ⟶ᵀ*-IMu )
 open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast; wk-cancel-tm )
 open import DirectedHoTT.Metatheory.SubjectReductionBase using ( wk-sub )
-open import DirectedHoTT.Lib.Sugar using ( tag; conₗ; Lt; lt-z; lt-s )
+open import DirectedHoTT.Lib.Sugar using ( tag; conₗ; Lt; lt-z; lt-s; Cons; []; _∷_; subC; sel; selF; sel-sub; selF-sub )
 open import DirectedHoTT.Lib.Tel
 open import DirectedHoTT.Lib.Sorted
 open import DirectedHoTT.Lib.TelAt
@@ -256,3 +256,26 @@ private
          (nth-stels ng) (nth-tels nh) dd
     (subst (λ X → Γ ⊢ p ∷ El (dpay (SI n) (SD sg) X)) (sym (sub-tel (single (pair (tag s) d)) sh (var vz)))
            (⊢payArgs (⊢SD ok) (nthSh-ok (nthG-ok ok ng) nh) (⊢ix (nthG-lt ng) dd) (step (βsnd _ _) done) as))
+
+------------------------------------------------------------------------
+-- 5. THE FAMILY IS CLOSED: substitution fixes it.
+------------------------------------------------------------------------
+
+private
+  tels-sub : (σ : Sub Δ Θ) (shs : Shapes c) → subC (extS σ) ⌜ tels {Δ = Δ} shs ⌝ₛ ≡ ⌜ tels shs ⌝ₛ
+  tels-sub σ []ˢʰ         = refl
+  tels-sub σ (sh ∷ˢʰ shs) = cong₂ _∷_ (sub-tel (extS σ) sh (var vz)) (tels-sub σ shs)
+
+  sds-sub : (σ : Sub Δ Θ) (sg : Sig n) → subC (extS σ) (SDs ⌜ stels {Δ = Δ} sg ⌝ₛₛ) ≡ SDs ⌜ stels sg ⌝ₛₛ
+  sds-sub σ []ᵍ         = refl
+  sds-sub σ (shs ∷ᵍ sg) =
+    cong₂ _∷_ (cong (dσ (⌜Fin⌝ _)) (trans (selF-sub (extS σ) ⌜ tels shs ⌝ₛ) (cong selF (tels-sub σ shs))))
+              (sds-sub σ sg)
+
+SD-sub : (σ : Sub Δ Θ) (sg : Sig n) → subTm σ (SD {Δ = Δ} sg) ≡ SD sg
+SD-sub σ sg =
+  cong lam (trans (sel-sub (extS σ) (SDs ⌜ stels sg ⌝ₛₛ) (fst (var vz)))
+                  (cong (λ X → sel X (fst (var vz))) (sds-sub σ sg)))
+
+SK-sub : (σ : Sub Δ Θ) (sg : Sig n) (s : ℕ) (d : RTm Δ) → subTy σ (SK sg s d) ≡ SK sg s (subTm σ d)
+SK-sub {n = n} σ sg s d = cong₂ (λ D j → IMu (SI n) D j) (SD-sub σ sg) (cong₂ pair (tag-sub σ s) refl)
