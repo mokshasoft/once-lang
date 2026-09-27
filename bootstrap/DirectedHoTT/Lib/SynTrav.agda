@@ -77,7 +77,7 @@ record Kit (n : ℕ) (sg : Sig n) : Set₁ where
 -- 2. ENVIRONMENTS, and LIFTING one under a binder.
 ------------------------------------------------------------------------
 
-module _ {sg : Sig n} (ok : SigOK n sg) (κ : Kit n sg) where
+module Trav {sg : Sig n} (ok : SigOK n sg) (κ : Kit n sg) where
   open Kit κ
 
   -- `Fin d → V e`
@@ -374,12 +374,7 @@ module _ {sg : Sig n} (ok : SigOK n sg) (κ : Kit n sg) where
         pt (vs vz)     = refl
         pt (vs (vs x)) = refl
 
-  -- a FIELDS shape (not the variable), well-formed
-  data FOK : Shape → Set where
-    []ᶠ  : FOK []ʰ
-    _∷ᶠ_ : {fl : Fld} {sh : Shape} → FldOK n fl → FOK sh → FOK (fl ∷ʰ sh)
-
-  ⊢tpay : {Γ : Ctx} {sh : Shape} {i p h e f d : RTm ⌊ Γ ⌋} → FOK sh →
+  ⊢tpay : {Γ : Ctx} {sh : Shape} {i p h e f d : RTm ⌊ Γ ⌋} → FOK n sh →
           Γ ⊢ p ∷ PayV sh i (SI n) (SD sg) → Γ ⊢ h ∷ IhV sh i (SD sg) TM p →
           Γ ⊢ e ∷ El ⌜Nat⌝ → Γ ⊢ d ∷ El ⌜Nat⌝ → snd i ⟶* d → Γ ⊢ f ∷ Env d e →
           Args Γ n (SD sg) e sh (tpay sh p h e f d)
@@ -450,40 +445,39 @@ module _ {sg : Sig n} (ok : SigOK n sg) (κ : Kit n sg) where
   mT (fl ∷ʰ sh)  k = mTf (fl ∷ʰ sh) k
   mT vʰ          k = mTv
 
-  private
-    r4 : (t : RTm Γ) → RTm ((((Γ ∙) ∙) ∙) ∙)
-    r4 t = renTm vs (renTm vs (renTm vs (renTm vs t)))
+  r4 : (t : RTm Γ) → RTm ((((Γ ∙) ∙) ∙) ∙)
+  r4 t = renTm vs (renTm vs (renTm vs (renTm vs t)))
 
-    SDr : {Θ : Cx} {t : RTm Γ} → t ≡ SD sg → (ρ : Ren Γ Θ) → renTm ρ t ≡ SD sg
-    SDr refl ρ = SD-ren ρ
+  SDr : {Θ : Cx} {t : RTm Γ} → t ≡ SD sg → (ρ : Ren Γ Θ) → renTm ρ t ≡ SD sg
+  SDr refl ρ = SD-ren ρ
 
-    SD-r4 : r4 (renTm vs (SD {Δ = Γ} sg)) ≡ SD sg
-    SD-r4 = SDr (SDr (SDr (SDr (SDr refl vs) vs) vs) vs) vs
+  SD-r4 : r4 (renTm vs (SD {Δ = Γ} sg)) ≡ SD sg
+  SD-r4 = SDr (SDr (SDr (SDr (SDr refl vs) vs) vs) vs) vs
 
-    -- a telescope instantiated at `ιₛ s`, then renamed four times
-    tel-r4 : (s : ℕ) (sh : Shape) →
-             r4 (subTm (σₛ s) ⌜ tel sh (var vz) ⌝ᵗ) ≡ ⌜ tel {Δ = (((((Γ ∙) ∙) ∙) ∙) ∙)} sh (r4 (ιₛ s)) ⌝ᵗ
-    tel-r4 s sh =
-      trans (cong r4 (sub-tel (σₛ s) sh (var vz)))
-        (trans (cong (λ z → renTm vs (renTm vs (renTm vs z))) (ren-tel vs sh _))
-          (trans (cong (λ z → renTm vs (renTm vs z)) (ren-tel vs sh _))
-            (trans (cong (renTm vs) (ren-tel vs sh _)) (ren-tel vs sh _))))
+  -- a telescope instantiated at `ιₛ s`, then renamed four times
+  tel-r4 : (s : ℕ) (sh : Shape) →
+           r4 (subTm (σₛ s) ⌜ tel sh (var vz) ⌝ᵗ) ≡ ⌜ tel {Δ = (((((Γ ∙) ∙) ∙) ∙) ∙)} sh (r4 (ιₛ s)) ⌝ᵗ
+  tel-r4 s sh =
+    trans (cong r4 (sub-tel (σₛ s) sh (var vz)))
+      (trans (cong (λ z → renTm vs (renTm vs (renTm vs z))) (ren-tel vs sh _))
+        (trans (cong (λ z → renTm vs (renTm vs z)) (ren-tel vs sh _))
+          (trans (cong (renTm vs) (ren-tel vs sh _)) (ren-tel vs sh _))))
 
-    TMr : {Θ : Cx} {M : RTy ((Γ ∙) ∙)} → M ≡ TM → (ρ : Ren Γ Θ) → renTy (extR (extR ρ)) M ≡ TM
-    TMr refl ρ = TM-ren ρ
+  TMr : {Θ : Cx} {M : RTy ((Γ ∙) ∙)} → M ≡ TM → (ρ : Ren Γ Θ) → renTy (extR (extR ρ)) M ≡ TM
+  TMr refl ρ = TM-ren ρ
 
-    tagr4 : (s : ℕ) → r4 {Γ = Γ} (tag s) ≡ tag s
-    tagr4 s = trans (cong (λ z → renTm vs (renTm vs (renTm vs z))) (tag-ren vs s))
-                (trans (cong (λ z → renTm vs (renTm vs z)) (tag-ren vs s))
-                  (trans (cong (renTm vs) (tag-ren vs s)) (tag-ren vs s)))
-      where open import DirectedHoTT.Lib.Sugar using ( tag-ren )
+  tagr4 : (s : ℕ) → r4 {Γ = Γ} (tag s) ≡ tag s
+  tagr4 s = trans (cong (λ z → renTm vs (renTm vs (renTm vs z))) (tag-ren vs s))
+              (trans (cong (λ z → renTm vs (renTm vs z)) (tag-ren vs s))
+                (trans (cong (renTm vs) (tag-ren vs s)) (tag-ren vs s)))
+    where open import DirectedHoTT.Lib.Sugar using ( tag-ren )
 
   -- ★ a FIELDS row's method, typed
   ⊢mT-f : {Γ : Ctx} {s k c : ℕ} {shs : Shapes c} {sh : Shape} →
-          FOK sh → ShOK n sh → NthG sg s shs → NthSh shs k sh →
+          FOK n sh → NthG sg s shs → NthSh shs k sh →
           (Γ ▹ El ⌜Nat⌝) ⊢ mTf sh k ∷ MethKAt (renTm vs (SI n)) (renTm vs (SD sg)) (wk1M TM) (ιₛ s)
                                              (subTm (σₛ s) ⌜ tel sh (var vz) ⌝ᵗ) k
-  ⊢mT-f {Γ = Γ} {s = s} {k = k} {sh = sh} fok shok ng nh =
+  ⊢mT-f {Γ = Γ} {s = s} {k = k} {sh = sh} fok ng nh =
     ⊢lam dPay (⊢lam dHyp (⊢-cast (sym eqT) BODY))
     where
       Γ' = Γ ▹ El ⌜Nat⌝
@@ -492,7 +486,7 @@ module _ {sg : Sig n} (ok : SigOK n sg) (κ : Kit n sg) where
       dix : Γ' ⊢ ιx ∷ El (SI n)
       dix = ⊢ιₛ ⊢⌜Nat⌝ (nthG-lt ng)
       dC : Γ' ⊢ C ∷ Desc (SI n)
-      dC = subst (λ X → Γ' ⊢ X ∷ Desc (SI n)) (sym (sub-tel (σₛ s) sh (var vz))) (⊢tel ⊢SI (telOK shok dix))
+      dC = subst (λ X → Γ' ⊢ X ∷ Desc (SI n)) (sym (sub-tel (σₛ s) sh (var vz))) (⊢tel ⊢SI (telOKf fok dix))
       dD' = ⊢wkD {B = El ⌜Nat⌝} (⊢SD {Γ = Γ} ok)
       dPay = ty-El (⊢dpay ⊢SI dD' dC)
       dHyp = ty-DIh ⊢SI (⊢wkD dD') (mot-ren there (mot-ren there (⊢TM {Γ = Γ}))) (⊢wk dC) (⊢var here)

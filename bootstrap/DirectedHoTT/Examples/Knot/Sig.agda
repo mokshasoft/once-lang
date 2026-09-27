@@ -233,107 +233,107 @@ KSig : Sig 2
 KSig = TyShs ∷ᵍ TmShs ∷ᵍ []ᵍ
 
 ok-kbase : ShOK 2 sh-kbase
-ok-kbase = []ᵒʰ
+ok-kbase = fᵒʰ ([]ᶠ)
 ok-kU : ShOK 2 sh-kU
-ok-kU = []ᵒʰ
+ok-kU = fᵒʰ ([]ᶠ)
 ok-kPi : ShOK 2 sh-kPi
-ok-kPi = (ok-rec lt-z) ∷ᵒʰ (ok-rec lt-z) ∷ᵒʰ []ᵒʰ
+ok-kPi = fᵒʰ ((ok-rec lt-z) ∷ᶠ (ok-rec lt-z) ∷ᶠ []ᶠ)
 ok-kSg : ShOK 2 sh-kSg
-ok-kSg = (ok-rec lt-z) ∷ᵒʰ (ok-rec lt-z) ∷ᵒʰ []ᵒʰ
+ok-kSg = fᵒʰ ((ok-rec lt-z) ∷ᶠ (ok-rec lt-z) ∷ᶠ []ᶠ)
 ok-kEl : ShOK 2 sh-kEl
-ok-kEl = (ok-rec (lt-s lt-z)) ∷ᵒʰ []ᵒʰ
+ok-kEl = fᵒʰ ((ok-rec (lt-s lt-z)) ∷ᶠ []ᶠ)
 ok-kHom : ShOK 2 sh-kHom
-ok-kHom = (ok-rec lt-z) ∷ᵒʰ (ok-rec (lt-s lt-z)) ∷ᵒʰ (ok-rec (lt-s lt-z)) ∷ᵒʰ []ᵒʰ
+ok-kHom = fᵒʰ ((ok-rec lt-z) ∷ᶠ (ok-rec (lt-s lt-z)) ∷ᶠ (ok-rec (lt-s lt-z)) ∷ᶠ []ᶠ)
 ok-kUnit : ShOK 2 sh-kUnit
-ok-kUnit = []ᵒʰ
+ok-kUnit = fᵒʰ ([]ᶠ)
 ok-kNat : ShOK 2 sh-kNat
-ok-kNat = []ᵒʰ
+ok-kNat = fᵒʰ ([]ᶠ)
 ok-kId : ShOK 2 sh-kId
-ok-kId = (ok-rec lt-z) ∷ᵒʰ (ok-rec (lt-s lt-z)) ∷ᵒʰ (ok-rec (lt-s lt-z)) ∷ᵒʰ []ᵒʰ
+ok-kId = fᵒʰ ((ok-rec lt-z) ∷ᶠ (ok-rec (lt-s lt-z)) ∷ᶠ (ok-rec (lt-s lt-z)) ∷ᶠ []ᶠ)
 ok-kIMu : ShOK 2 sh-kIMu
-ok-kIMu = (ok-rec (lt-s lt-z)) ∷ᵒʰ (ok-rec (lt-s lt-z)) ∷ᵒʰ (ok-rec (lt-s lt-z)) ∷ᵒʰ []ᵒʰ
+ok-kIMu = fᵒʰ ((ok-rec (lt-s lt-z)) ∷ᶠ (ok-rec (lt-s lt-z)) ∷ᶠ (ok-rec (lt-s lt-z)) ∷ᶠ []ᶠ)
 ok-kDesc : ShOK 2 sh-kDesc
-ok-kDesc = (ok-rec (lt-s lt-z)) ∷ᵒʰ []ᵒʰ
+ok-kDesc = fᵒʰ ((ok-rec (lt-s lt-z)) ∷ᶠ []ᶠ)
 ok-kDIh : ShOK 2 sh-kDIh
-ok-kDIh = (ok-rec (lt-s lt-z)) ∷ᵒʰ (ok-rec lt-z) ∷ᵒʰ (ok-rec (lt-s lt-z)) ∷ᵒʰ (ok-rec (lt-s lt-z)) ∷ᵒʰ []ᵒʰ
+ok-kDIh = fᵒʰ ((ok-rec (lt-s lt-z)) ∷ᶠ (ok-rec lt-z) ∷ᶠ (ok-rec (lt-s lt-z)) ∷ᶠ (ok-rec (lt-s lt-z)) ∷ᶠ []ᶠ)
 ok-kFin : ShOK 2 sh-kFin
-ok-kFin = (ok-nat) ∷ᵒʰ []ᵒʰ
+ok-kFin = fᵒʰ ((ok-nat) ∷ᶠ []ᶠ)
 ok-kvar : ShOK 2 sh-kvar
 ok-kvar = vᵒʰ
 ok-klam : ShOK 2 sh-klam
-ok-klam = (ok-rec (lt-s lt-z)) ∷ᵒʰ []ᵒʰ
+ok-klam = fᵒʰ ((ok-rec (lt-s lt-z)) ∷ᶠ []ᶠ)
 ok-kapp : ShOK 2 sh-kapp
-ok-kapp = (ok-rec (lt-s lt-z)) ∷ᵒʰ (ok-rec (lt-s lt-z)) ∷ᵒʰ []ᵒʰ
+ok-kapp = fᵒʰ ((ok-rec (lt-s lt-z)) ∷ᶠ (ok-rec (lt-s lt-z)) ∷ᶠ []ᶠ)
 ok-kpair : ShOK 2 sh-kpair
-ok-kpair = (ok-rec (lt-s lt-z)) ∷ᵒʰ (ok-rec (lt-s lt-z)) ∷ᵒʰ []ᵒʰ
+ok-kpair = fᵒʰ ((ok-rec (lt-s lt-z)) ∷ᶠ (ok-rec (lt-s lt-z)) ∷ᶠ []ᶠ)
 ok-kabsurd : ShOK 2 sh-kabsurd
-ok-kabsurd = (ok-rec (lt-s lt-z)) ∷ᵒʰ (ok-rec (lt-s lt-z)) ∷ᵒʰ []ᵒʰ
+ok-kabsurd = fᵒʰ ((ok-rec (lt-s lt-z)) ∷ᶠ (ok-rec (lt-s lt-z)) ∷ᶠ []ᶠ)
 ok-kordtr : ShOK 2 sh-kordtr
-ok-kordtr = (ok-rec (lt-s lt-z)) ∷ᵒʰ (ok-rec (lt-s lt-z)) ∷ᵒʰ (ok-rec (lt-s lt-z)) ∷ᵒʰ (ok-rec (lt-s lt-z)) ∷ᵒʰ (ok-rec (lt-s lt-z)) ∷ᵒʰ []ᵒʰ
+ok-kordtr = fᵒʰ ((ok-rec (lt-s lt-z)) ∷ᶠ (ok-rec (lt-s lt-z)) ∷ᶠ (ok-rec (lt-s lt-z)) ∷ᶠ (ok-rec (lt-s lt-z)) ∷ᶠ (ok-rec (lt-s lt-z)) ∷ᶠ []ᶠ)
 ok-kfst : ShOK 2 sh-kfst
-ok-kfst = (ok-rec (lt-s lt-z)) ∷ᵒʰ []ᵒʰ
+ok-kfst = fᵒʰ ((ok-rec (lt-s lt-z)) ∷ᶠ []ᶠ)
 ok-ksnd : ShOK 2 sh-ksnd
-ok-ksnd = (ok-rec (lt-s lt-z)) ∷ᵒʰ []ᵒʰ
+ok-ksnd = fᵒʰ ((ok-rec (lt-s lt-z)) ∷ᶠ []ᶠ)
 ok-kcbase : ShOK 2 sh-kcbase
-ok-kcbase = []ᵒʰ
+ok-kcbase = fᵒʰ ([]ᶠ)
 ok-kcPi : ShOK 2 sh-kcPi
-ok-kcPi = (ok-rec (lt-s lt-z)) ∷ᵒʰ (ok-rec (lt-s lt-z)) ∷ᵒʰ []ᵒʰ
+ok-kcPi = fᵒʰ ((ok-rec (lt-s lt-z)) ∷ᶠ (ok-rec (lt-s lt-z)) ∷ᶠ []ᶠ)
 ok-kcSg : ShOK 2 sh-kcSg
-ok-kcSg = (ok-rec (lt-s lt-z)) ∷ᵒʰ (ok-rec (lt-s lt-z)) ∷ᵒʰ []ᵒʰ
+ok-kcSg = fᵒʰ ((ok-rec (lt-s lt-z)) ∷ᶠ (ok-rec (lt-s lt-z)) ∷ᶠ []ᶠ)
 ok-kcHom : ShOK 2 sh-kcHom
-ok-kcHom = (ok-rec (lt-s lt-z)) ∷ᵒʰ (ok-rec (lt-s lt-z)) ∷ᵒʰ (ok-rec (lt-s lt-z)) ∷ᵒʰ []ᵒʰ
+ok-kcHom = fᵒʰ ((ok-rec (lt-s lt-z)) ∷ᶠ (ok-rec (lt-s lt-z)) ∷ᶠ (ok-rec (lt-s lt-z)) ∷ᶠ []ᶠ)
 ok-khrefl : ShOK 2 sh-khrefl
-ok-khrefl = (ok-rec (lt-s lt-z)) ∷ᵒʰ (ok-rec (lt-s lt-z)) ∷ᵒʰ []ᵒʰ
+ok-khrefl = fᵒʰ ((ok-rec (lt-s lt-z)) ∷ᶠ (ok-rec (lt-s lt-z)) ∷ᶠ []ᶠ)
 ok-ktr : ShOK 2 sh-ktr
-ok-ktr = (ok-rec (lt-s lt-z)) ∷ᵒʰ (ok-rec (lt-s lt-z)) ∷ᵒʰ (ok-rec (lt-s lt-z)) ∷ᵒʰ []ᵒʰ
+ok-ktr = fᵒʰ ((ok-rec (lt-s lt-z)) ∷ᶠ (ok-rec (lt-s lt-z)) ∷ᶠ (ok-rec (lt-s lt-z)) ∷ᶠ []ᶠ)
 ok-kap : ShOK 2 sh-kap
-ok-kap = (ok-rec (lt-s lt-z)) ∷ᵒʰ (ok-rec (lt-s lt-z)) ∷ᵒʰ (ok-rec (lt-s lt-z)) ∷ᵒʰ []ᵒʰ
+ok-kap = fᵒʰ ((ok-rec (lt-s lt-z)) ∷ᶠ (ok-rec (lt-s lt-z)) ∷ᶠ (ok-rec (lt-s lt-z)) ∷ᶠ []ᶠ)
 ok-kcId : ShOK 2 sh-kcId
-ok-kcId = (ok-rec (lt-s lt-z)) ∷ᵒʰ (ok-rec (lt-s lt-z)) ∷ᵒʰ (ok-rec (lt-s lt-z)) ∷ᵒʰ []ᵒʰ
+ok-kcId = fᵒʰ ((ok-rec (lt-s lt-z)) ∷ᶠ (ok-rec (lt-s lt-z)) ∷ᶠ (ok-rec (lt-s lt-z)) ∷ᶠ []ᶠ)
 ok-kidrefl : ShOK 2 sh-kidrefl
-ok-kidrefl = (ok-rec (lt-s lt-z)) ∷ᵒʰ (ok-rec (lt-s lt-z)) ∷ᵒʰ []ᵒʰ
+ok-kidrefl = fᵒʰ ((ok-rec (lt-s lt-z)) ∷ᶠ (ok-rec (lt-s lt-z)) ∷ᶠ []ᶠ)
 ok-kjsub : ShOK 2 sh-kjsub
-ok-kjsub = (ok-rec (lt-s lt-z)) ∷ᵒʰ (ok-rec (lt-s lt-z)) ∷ᵒʰ (ok-rec (lt-s lt-z)) ∷ᵒʰ []ᵒʰ
+ok-kjsub = fᵒʰ ((ok-rec (lt-s lt-z)) ∷ᶠ (ok-rec (lt-s lt-z)) ∷ᶠ (ok-rec (lt-s lt-z)) ∷ᶠ []ᶠ)
 ok-kunit : ShOK 2 sh-kunit
-ok-kunit = []ᵒʰ
+ok-kunit = fᵒʰ ([]ᶠ)
 ok-knzero : ShOK 2 sh-knzero
-ok-knzero = []ᵒʰ
+ok-knzero = fᵒʰ ([]ᶠ)
 ok-knsuc : ShOK 2 sh-knsuc
-ok-knsuc = (ok-rec (lt-s lt-z)) ∷ᵒʰ []ᵒʰ
+ok-knsuc = fᵒʰ ((ok-rec (lt-s lt-z)) ∷ᶠ []ᶠ)
 ok-knatrec : ShOK 2 sh-knatrec
-ok-knatrec = (ok-rec (lt-s lt-z)) ∷ᵒʰ (ok-rec (lt-s lt-z)) ∷ᵒʰ (ok-rec (lt-s lt-z)) ∷ᵒʰ []ᵒʰ
+ok-knatrec = fᵒʰ ((ok-rec (lt-s lt-z)) ∷ᶠ (ok-rec (lt-s lt-z)) ∷ᶠ (ok-rec (lt-s lt-z)) ∷ᶠ []ᶠ)
 ok-kcon : ShOK 2 sh-kcon
-ok-kcon = (ok-rec (lt-s lt-z)) ∷ᵒʰ []ᵒʰ
+ok-kcon = fᵒʰ ((ok-rec (lt-s lt-z)) ∷ᶠ []ᶠ)
 ok-kielim : ShOK 2 sh-kielim
-ok-kielim = (ok-rec (lt-s lt-z)) ∷ᵒʰ (ok-rec (lt-s lt-z)) ∷ᵒʰ (ok-rec (lt-s lt-z)) ∷ᵒʰ (ok-rec (lt-s lt-z)) ∷ᵒʰ []ᵒʰ
+ok-kielim = fᵒʰ ((ok-rec (lt-s lt-z)) ∷ᶠ (ok-rec (lt-s lt-z)) ∷ᶠ (ok-rec (lt-s lt-z)) ∷ᶠ (ok-rec (lt-s lt-z)) ∷ᶠ []ᶠ)
 ok-kdI : ShOK 2 sh-kdI
-ok-kdI = []ᵒʰ
+ok-kdI = fᵒʰ ([]ᶠ)
 ok-kdS : ShOK 2 sh-kdS
-ok-kdS = (ok-rec (lt-s lt-z)) ∷ᵒʰ (ok-rec (lt-s lt-z)) ∷ᵒʰ []ᵒʰ
+ok-kdS = fᵒʰ ((ok-rec (lt-s lt-z)) ∷ᶠ (ok-rec (lt-s lt-z)) ∷ᶠ []ᶠ)
 ok-kdR : ShOK 2 sh-kdR
-ok-kdR = (ok-rec (lt-s lt-z)) ∷ᵒʰ (ok-rec (lt-s lt-z)) ∷ᵒʰ []ᵒʰ
+ok-kdR = fᵒʰ ((ok-rec (lt-s lt-z)) ∷ᶠ (ok-rec (lt-s lt-z)) ∷ᶠ []ᶠ)
 ok-kdpay : ShOK 2 sh-kdpay
-ok-kdpay = (ok-rec (lt-s lt-z)) ∷ᵒʰ (ok-rec (lt-s lt-z)) ∷ᵒʰ (ok-rec (lt-s lt-z)) ∷ᵒʰ []ᵒʰ
+ok-kdpay = fᵒʰ ((ok-rec (lt-s lt-z)) ∷ᶠ (ok-rec (lt-s lt-z)) ∷ᶠ (ok-rec (lt-s lt-z)) ∷ᶠ []ᶠ)
 ok-kdih : ShOK 2 sh-kdih
-ok-kdih = (ok-rec (lt-s lt-z)) ∷ᵒʰ (ok-rec (lt-s lt-z)) ∷ᵒʰ (ok-rec (lt-s lt-z)) ∷ᵒʰ (ok-rec (lt-s lt-z)) ∷ᵒʰ []ᵒʰ
+ok-kdih = fᵒʰ ((ok-rec (lt-s lt-z)) ∷ᶠ (ok-rec (lt-s lt-z)) ∷ᶠ (ok-rec (lt-s lt-z)) ∷ᶠ (ok-rec (lt-s lt-z)) ∷ᶠ []ᶠ)
 ok-kfzero : ShOK 2 sh-kfzero
-ok-kfzero = []ᵒʰ
+ok-kfzero = fᵒʰ ([]ᶠ)
 ok-kfsuc : ShOK 2 sh-kfsuc
-ok-kfsuc = (ok-rec (lt-s lt-z)) ∷ᵒʰ []ᵒʰ
+ok-kfsuc = fᵒʰ ((ok-rec (lt-s lt-z)) ∷ᶠ []ᶠ)
 ok-kfcase : ShOK 2 sh-kfcase
-ok-kfcase = (ok-rec (lt-s lt-z)) ∷ᵒʰ (ok-rec (lt-s lt-z)) ∷ᵒʰ (ok-rec (lt-s lt-z)) ∷ᵒʰ []ᵒʰ
+ok-kfcase = fᵒʰ ((ok-rec (lt-s lt-z)) ∷ᶠ (ok-rec (lt-s lt-z)) ∷ᶠ (ok-rec (lt-s lt-z)) ∷ᶠ []ᶠ)
 ok-kfcase0 : ShOK 2 sh-kfcase0
-ok-kfcase0 = (ok-rec (lt-s lt-z)) ∷ᵒʰ []ᵒʰ
+ok-kfcase0 = fᵒʰ ((ok-rec (lt-s lt-z)) ∷ᶠ []ᶠ)
 ok-kpsplit : ShOK 2 sh-kpsplit
-ok-kpsplit = (ok-rec (lt-s lt-z)) ∷ᵒʰ (ok-rec (lt-s lt-z)) ∷ᵒʰ []ᵒʰ
+ok-kpsplit = fᵒʰ ((ok-rec (lt-s lt-z)) ∷ᶠ (ok-rec (lt-s lt-z)) ∷ᶠ []ᶠ)
 ok-kcNat : ShOK 2 sh-kcNat
-ok-kcNat = []ᵒʰ
+ok-kcNat = fᵒʰ ([]ᶠ)
 ok-kcIMu : ShOK 2 sh-kcIMu
-ok-kcIMu = (ok-rec (lt-s lt-z)) ∷ᵒʰ (ok-rec (lt-s lt-z)) ∷ᵒʰ (ok-rec (lt-s lt-z)) ∷ᵒʰ []ᵒʰ
+ok-kcIMu = fᵒʰ ((ok-rec (lt-s lt-z)) ∷ᶠ (ok-rec (lt-s lt-z)) ∷ᶠ (ok-rec (lt-s lt-z)) ∷ᶠ []ᶠ)
 ok-kcFin : ShOK 2 sh-kcFin
-ok-kcFin = (ok-nat) ∷ᵒʰ []ᵒʰ
+ok-kcFin = fᵒʰ ((ok-nat) ∷ᶠ []ᶠ)
 ok-kcUnit : ShOK 2 sh-kcUnit
-ok-kcUnit = []ᵒʰ
+ok-kcUnit = fᵒʰ ([]ᶠ)
 
 KOK : SigOK 2 KSig
 KOK = (ok-kbase ∷ᵒˢ ok-kU ∷ᵒˢ ok-kPi ∷ᵒˢ ok-kSg ∷ᵒˢ ok-kEl ∷ᵒˢ ok-kHom ∷ᵒˢ ok-kUnit ∷ᵒˢ ok-kNat ∷ᵒˢ ok-kId ∷ᵒˢ ok-kIMu ∷ᵒˢ ok-kDesc ∷ᵒˢ ok-kDIh ∷ᵒˢ ok-kFin ∷ᵒˢ []ᵒˢ)

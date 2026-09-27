@@ -55,7 +55,7 @@ data Fld : Set where
   rec : ℕ → ℕ → Fld      -- a subterm: its sort, and the binders it is under
   nat : Fld              -- a meta natural
 
-infixr 5 _∷ʰ_ _∷ˢʰ_ _∷ᵍ_ _∷ᵒʰ_ _∷ᵒˢ_ _∷ᵒᵍ_
+infixr 5 _∷ʰ_ _∷ˢʰ_ _∷ᵍ_ _∷ᶠ_ _∷ᵒˢ_ _∷ᵒᵍ_
 data Shape : Set where
   []ʰ  : Shape
   _∷ʰ_ : Fld → Shape → Shape
@@ -74,10 +74,16 @@ data FldOK (n : ℕ) : Fld → Set where
   ok-rec : Lt s n → FldOK n (rec s k)
   ok-nat : FldOK n nat
 
+-- a FIELDS shape, well-formed
+data FOK (n : ℕ) : Shape → Set where
+  []ᶠ  : FOK n []ʰ
+  _∷ᶠ_ : {f : Fld} {sh : Shape} → FldOK n f → FOK n sh → FOK n (f ∷ʰ sh)
+
+-- ★ a well-formed shape: fields, or the variable ALONE (`f ∷ʰ vʰ` is not
+--   a constructor of any syntax)
 data ShOK (n : ℕ) : Shape → Set where
-  []ᵒʰ  : ShOK n []ʰ
-  _∷ᵒʰ_ : {f : Fld} {sh : Shape} → FldOK n f → ShOK n sh → ShOK n (f ∷ʰ sh)
-  vᵒʰ   : ShOK n vʰ
+  fᵒʰ : {sh : Shape} → FOK n sh → ShOK n sh
+  vᵒʰ : ShOK n vʰ
 
 data ShsOK (n : ℕ) : Shapes c → Set where
   []ᵒˢ  : ShsOK n []ˢʰ
@@ -170,12 +176,16 @@ SK {n = n} sg s d = IMu (SI n) (SD sg) (pair (tag s) d)
 ⊢ix : {Γ : Ctx} {d : RTm ⌊ Γ ⌋} → Lt s n → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ pair (tag s) d ∷ El (SI n)
 ⊢ix lt dd = ⊢ixₛ ⊢⌜Nat⌝ lt dd
 
+telOKf : {Γ : Ctx} {sh : Shape} {i : RTm ⌊ Γ ⌋} →
+         FOK n sh → Γ ⊢ i ∷ El (SI n) → TelOK Γ (SI n) (tel sh i)
+telOKf []ᶠ                        di = ok-ι
+telOKf {sh = rec s k ∷ʰ _} (ok-rec lt ∷ᶠ ok) di = ok-ρ (⊢ix lt (⊢nsucs k (⊢depth di))) (telOKf ok di)
+telOKf (ok-nat ∷ᶠ ok)             di = ok-σ ⊢⌜Nat⌝ (telOKf ok (⊢wk di))
+
 telOK : {Γ : Ctx} {sh : Shape} {i : RTm ⌊ Γ ⌋} →
         ShOK n sh → Γ ⊢ i ∷ El (SI n) → TelOK Γ (SI n) (tel sh i)
-telOK []ᵒʰ                        di = ok-ι
-telOK {sh = rec s k ∷ʰ _} (ok-rec lt ∷ᵒʰ ok) di = ok-ρ (⊢ix lt (⊢nsucs k (⊢depth di))) (telOK ok di)
-telOK (ok-nat ∷ᵒʰ ok)             di = ok-σ ⊢⌜Nat⌝ (telOK ok (⊢wk di))
-telOK vᵒʰ                         di = ok-σ (⊢⌜IMu⌝ ⊢⌜Nat⌝ ⊢FinD (⊢depth di)) ok-ι
+telOK (fᵒʰ ok) di = telOKf ok di
+telOK vᵒʰ      di = ok-σ (⊢⌜IMu⌝ ⊢⌜Nat⌝ ⊢FinD (⊢depth di)) ok-ι
 
 telsOK : {Γ : Ctx} {shs : Shapes c} → ShsOK n shs → AllOK (Γ ▹ El (SI n)) (SI n) (tels shs)
 telsOK []ᵒˢ         = []ᵒ
@@ -232,16 +242,21 @@ private
   sub-rest a sh i = trans (sub-tel (single a) sh (renTm vs i)) (cong (λ z → ⌜ tel sh z ⌝ᵗ) (wk-cancel-tm a i))
 
 -- ★ the payload, field by field, at ANY index whose depth reduces to `d`
+⊢payArgsF : {Γ : Ctx} {D i d p : RTm ⌊ Γ ⌋} {sh : Shape} →
+            Γ ⊢ D ∷ DescF (SI n) → FOK n sh → Γ ⊢ i ∷ El (SI n) → snd i ⟶* d →
+            Args Γ n D d sh p → Γ ⊢ p ∷ El (dpay (SI n) D ⌜ tel sh i ⌝ᵗ)
+⊢payArgsF dD []ᶠ di r a[] = ⊢payι ⊢SI dD ⊢unit
+⊢payArgsF {sh = rec s k ∷ʰ sh} dD (ok-rec lt ∷ᶠ ok) di r (a-rec da as) =
+  ⊢payρ ⊢SI dD (ok-ρ (⊢ix lt (⊢nsucs k (⊢depth di))) (telOKf ok di))
+        (ixConv (⟶*-pairʳ (⟶*-nsucs k r)) da) (⊢payArgsF dD ok di r as)
+⊢payArgsF {D = D} {i = i} {sh = nat ∷ʰ sh} dD (ok-nat ∷ᶠ ok) di r (a-nat {a = a} {p = p} da as) =
+  ⊢payσ ⊢SI dD (ok-σ ⊢⌜Nat⌝ (telOKf ok (⊢wk di))) da
+    (subst (λ X → _ ⊢ p ∷ El (dpay (SI _) D X)) (sym (sub-rest a sh i)) (⊢payArgsF dD ok di r as))
+
 ⊢payArgs : {Γ : Ctx} {D i d p : RTm ⌊ Γ ⌋} {sh : Shape} →
            Γ ⊢ D ∷ DescF (SI n) → ShOK n sh → Γ ⊢ i ∷ El (SI n) → snd i ⟶* d →
            Args Γ n D d sh p → Γ ⊢ p ∷ El (dpay (SI n) D ⌜ tel sh i ⌝ᵗ)
-⊢payArgs dD []ᵒʰ di r a[] = ⊢payι ⊢SI dD ⊢unit
-⊢payArgs {sh = rec s k ∷ʰ sh} dD (ok-rec lt ∷ᵒʰ ok) di r (a-rec da as) =
-  ⊢payρ ⊢SI dD (ok-ρ (⊢ix lt (⊢nsucs k (⊢depth di))) (telOK ok di))
-        (ixConv (⟶*-pairʳ (⟶*-nsucs k r)) da) (⊢payArgs dD ok di r as)
-⊢payArgs {D = D} {i = i} {sh = nat ∷ʰ sh} dD (ok-nat ∷ᵒʰ ok) di r (a-nat {a = a} {p = p} da as) =
-  ⊢payσ ⊢SI dD (ok-σ ⊢⌜Nat⌝ (telOK ok (⊢wk di))) da
-    (subst (λ X → _ ⊢ p ∷ El (dpay (SI _) D X)) (sym (sub-rest a sh i)) (⊢payArgs dD ok di r as))
+⊢payArgs dD (fᵒʰ ok) di r as = ⊢payArgsF dD ok di r as
 ⊢payArgs {Γ = Γ} {D = D} {i = i} {sh = vʰ} dD vᵒʰ di r (a-v {a = a} da) =
   ⊢payσ ⊢SI dD (ok-σ (⊢⌜IMu⌝ ⊢⌜Nat⌝ ⊢FinD (⊢depth di)) ok-ι)
     (⊢conv da (csymᵀ (ctrnᵀ (credᵀ El-⌜IMu⌝) (red→≅ᵀ (⟶ᵀ*-IMu r)))))
