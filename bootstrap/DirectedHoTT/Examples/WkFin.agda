@@ -21,41 +21,30 @@
 --   is a motive that mentions the INDEX slot and lands in the family
 --   being eliminated.
 --
--- ★ D074 (fibred): a method sees the INDEX `i` it is at, so the
---   `fzero` case needs NO ford at all — the answer is `fzero` at `i`
---   (`ffz i : Fin (suc i)`), read straight off the fibre.
+-- ★ `Fin` IS FIBRED OVER ℕ (`Lib/FinFam`, `Lib/NatFib`): `Fin 0 = ∅`,
+--   `Fin (suc m) = fzero | fsuc (Fin m)`.  So the method is a case on
+--   the index, each constructor's method sits at `suc m` — where `fsuc`'s
+--   field is at `m` DEFINITIONALLY — and weakening is
 --
--- ⚠ THE SECOND CONSTRUCTOR IS WHERE IT BITES.  `fsuc`'s field `k` sits
---   at `m`, known to relate to `i` only through its FORD `suc m ≡ i` —
---   an `Id`, PROPOSITIONAL — so using the IH (at `suc m`) where the
---   answer needs `Fin i` is a TRANSPORT, not a conversion: Fording's
---   debt, called in once per forded recursive field.
+--       fzero  ↦ fzero        fsuc y ↦ fsuc (wk y)
 --
--- ★★★ RESULT: IT WORKS, AND THE TRANSPORT IS ONE FORWARD `⊢jsub`
---   (`jsub (⌜IMu⌝ ⌜Nat⌝ FinD ⟨-⟩) ford ih : Fin i` — no `sym`, since
---   the ford already points at the fibre).  ⚠ IT WORKS ONLY BECAUSE
---   `⌜IMu⌝` IS A CODE: `⊢jsub` transports along a CODE family.
---
--- ⇒ OBJECT-LEVEL RENAMING OVER AN ENCODED INDEXED FAMILY IS FEASIBLE.
---   The judgement layer's gate is open; what remains is BULK plus the
---   same transport once per Forded recursive field.
+--   with NO transport.  (Under the Forded `Fin` the `fsuc` case needed a
+--   `jsub` along its equation: 2026-09-27's version of this file.)
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.WkFin where
-open import normalizer.Syntax.Types using ( _,_; cong )
+open import normalizer.Syntax.Types using ( _,_; cong; sym ) renaming ( subst to subst' )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax hiding ( Fin )
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-trans )
 open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast )
-open import DirectedHoTT.Lib.Sugar
-  using ( Cons; []; _∷_; conₗ; methₗ; selF; selF-β; nth-z; nth-s; MethK; PerK; []ₘ; _∷ₘ_; ⊢methₗ )
+open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_; nth-z; nth-s; []ᵈ; selF; subC; tag )
 open import DirectedHoTT.Lib.Tel
-open import DirectedHoTT.Metatheory.Fundamental.Syntactic using ( ⟨_⟩ᵣ )
-open import DirectedHoTT.Examples.Scoped
-  using ( FinTs; FinD; ⊢FinD; FinOK; FinI; fzeroT; fsucT; fzeroOK; fsucOK
-        ; ffz; ffs; ⊢ffz; ⊢ffs; ⊢isuc; toI )
+open import DirectedHoTT.Lib.MethAt
+open import DirectedHoTT.Lib.NatFib
+open import DirectedHoTT.Lib.FinFam
 
 -- `El (⌜IMu⌝ ⌜Nat⌝ FinD n) ≅ᵀ Fin n`
 fromFin : {Γ : Ctx} {n t : RTm ⌊ Γ ⌋} → Γ ⊢ t ∷ El (⌜IMu⌝ ⌜Nat⌝ FinD n) → Γ ⊢ t ∷ FinI n
@@ -65,7 +54,7 @@ toFin : {Γ : Ctx} {n t : RTm ⌊ Γ ⌋} → Γ ⊢ t ∷ FinI n → Γ ⊢ t �
 toFin d = ⊢conv d (csymᵀ (credᵀ El-⌜IMu⌝))
 
 ------------------------------------------------------------------------
--- 1. ★★★ THE MOTIVE THAT MOVES THE INDEX:  M(i, t) = Fin (suc i).
+-- 1. THE MOTIVE THAT MOVES THE INDEX:  M(i, t) = Fin (suc i).
 ------------------------------------------------------------------------
 
 wkMot : {Γ : Cx} → RTy ((Γ ∙) ∙)
@@ -75,75 +64,42 @@ wkMot = FinI (nsuc (var (vs vz)))
 ⊢wkMot = ty-IMu ⊢⌜Nat⌝ ⊢FinD (⊢isuc (⊢var (there here)))
 
 ------------------------------------------------------------------------
--- 2. THE METHODS.  In the method context (`HypCtx`): `v₂` the index,
---    `v₁` the payload, `v₀` the hypotheses.
+-- 2. THE METHODS, at the successor case's index `suc m`: the method
+--    context is `m`, the payload, the hypotheses.
 ------------------------------------------------------------------------
 
-v₀ v₁ v₂ : {Γ : Cx} → RTm (((Γ ∙) ∙) ∙)
-v₀ = var vz
-v₁ = var (vs vz)
-v₂ = var (vs (vs vz))
-
--- `fzero`: the answer is `fzero` AT THE FIBRE — no ford consulted.
-mfz : {Γ : Cx} → RTm Γ
-mfz = lam (lam (lam (ffz v₂)))
-
--- ★★★ `fsuc`: transport the IH (at `suc m`) along the ford (`suc m ≡ i`).
-fordOf ihOf : {Γ : Cx} → RTm (((Γ ∙) ∙) ∙)
-fordOf = fst (snd (snd v₁))
-ihOf   = fst v₀
-
-trFin : {Γ : Cx} → RTm (((Γ ∙) ∙) ∙)
-trFin = jsub (⌜IMu⌝ ⌜Nat⌝ FinD (var vz)) fordOf ihOf
-
-mfs : {Γ : Cx} → RTm Γ
-mfs = lam (lam (lam (ffs v₂ trFin)))
+mfz mfs : {Γ : Cx} → RTm Γ
+mfz = lam (lam ffz)                          -- fzero  ↦ fzero
+mfs = lam (lam (ffs (fst (var vz))))         -- fsuc y ↦ fsuc (wk y)
 
 WkMs : {Γ : Cx} → Cons Γ 2
 WkMs = mfz ∷ mfs ∷ []
 
+wkM : {Γ : Cx} → RTm Γ
+wkM = methN (methAt []) (methAt WkMs)
+
 module _ {Γ : Ctx} where
   private
-    HZ = HypCtx Γ ⌜Nat⌝ FinD wkMot fzeroT
-    HS = HypCtx Γ ⌜Nat⌝ FinD wkMot fsucT
+    dS = allD (⊢wk ⊢⌜Nat⌝) (FinOK {Γ})
+    -- `m`, two binders out
+    dm₂ : {A : RTy _} {B : RTy _} → (((Γ ▹ El ⌜Nat⌝) ▹ A) ▹ B) ⊢ var (vs (vs vz)) ∷ El ⌜Nat⌝
+    dm₂ = ⊢var (there (there here))
 
-  ⊢mfz : Γ ⊢ mfz ∷ MethK ⌜Nat⌝ FinD wkMot ⌜ fzeroT ⌝ᵗ zero
-  ⊢mfz = ⊢methT {T = fzeroT} {s = conₗ zero (var (vs vz))} ⊢⌜Nat⌝ ⊢FinD ⊢wkMot fzeroOK
-           (⊢ffz (⊢var (there (there here))))
+  perS : PerKAt (Γ ▹ El ⌜Nat⌝) ⌜Nat⌝ (renTm vs FinD) (wk1M wkMot) (nsuc (var vz))
+                (selF (subC τS ⌜ FinTs ⌝ₛ)) zero WkMs
+  perS = entN {Ts = FinTs} {T = fzeroT} []ᵈ FinOK ⊢wkMot nthᵗ-z (⊢ffz (⊢isuc dm₂))
+      ∷ₐ entN {Ts = FinTs} {T = fsucT} []ᵈ FinOK ⊢wkMot (nthᵗ-s nthᵗ-z) (⊢ffs (⊢isuc dm₂) (⊢fst (⊢var here)))
+      ∷ₐ []ₐ
 
-  -- the pieces of the `fsuc` body, each at its own named type
-  ⊢idx : HS ⊢ v₂ ∷ El ⌜Nat⌝
-  ⊢idx = ⊢var (there (there here))
-
-  ⊢pay : HS ⊢ v₁ ∷ PayN ⟨ (λ x → vs (vs x)) ⟩ᵣ fsucT ⌜Nat⌝ FinD
-  ⊢pay = ⊢payHyp {I = ⌜Nat⌝} {D = FinD} {M = wkMot} {T = fsucT}
-
-  ⊢m : HS ⊢ fst v₁ ∷ El ⌜Nat⌝
-  ⊢m = ⊢fst ⊢pay
-
-  ⊢ford : HS ⊢ fordOf ∷ Id (El ⌜Nat⌝) (nsuc (fst v₁)) v₂
-  ⊢ford = ⊢conv (⊢fst (⊢snd (⊢snd ⊢pay))) (credᵀ (El-⌜Id⌝ ⌜Nat⌝ _ _))
-
-  ⊢ih : HS ⊢ ihOf ∷ El (⌜IMu⌝ ⌜Nat⌝ FinD (nsuc (fst v₁)))
-  ⊢ih = toFin (⊢fst (⊢var here))
-
-  ⊢trF : HS ⊢ trFin ∷ FinI v₂
-  ⊢trF = fromFin (⊢jsub (⊢⌜IMu⌝ ⊢⌜Nat⌝ ⊢FinD (⊢var here)) (⊢isuc ⊢m) ⊢idx ⊢ford ⊢ih)
-
-  ⊢mfs : Γ ⊢ mfs ∷ MethK ⌜Nat⌝ FinD wkMot ⌜ fsucT ⌝ᵗ (suc zero)
-  ⊢mfs = ⊢methT {T = fsucT} {s = conₗ (suc zero) (var (vs vz))}
-           ⊢⌜Nat⌝ ⊢FinD ⊢wkMot fsucOK (⊢ffs ⊢idx ⊢trF)
-
-  perWk : PerK Γ ⌜Nat⌝ FinD wkMot (selF ⌜ FinTs ⌝ₛ) zero WkMs
-  perWk = (selF-β {Cs = ⌜ FinTs ⌝ₛ} nth-z , ⊢mfz)
-       ∷ₘ ((selF-β {Cs = ⌜ FinTs ⌝ₛ} (nth-s nth-z) , ⊢mfs) ∷ₘ []ₘ)
+  ⊢wkM : Γ ⊢ wkM ∷ MethTy ⌜Nat⌝ FinD wkMot
+  ⊢wkM = ⊢methN ⊢FinD ⊢wkMot (⊢caseZ []ᵈ dS ⊢wkMot []ₐ) (⊢caseS []ᵈ dS ⊢wkMot perS)
 
 ------------------------------------------------------------------------
 -- 3. ★★★ OBJECT-LEVEL WEAKENING: `Fin n → Fin (suc n)`, by `ielim`.
 ------------------------------------------------------------------------
 
 wkFinTm : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ
-wkFinTm n k = ielim FinD n (methₗ WkMs) k
+wkFinTm n k = ielim FinD n wkM k
 
 -- ⚠ ONE `wk-single`: `iinst n k M` weakens the index past the scrutinee
 --   binder and substitutes it back — the residue every two-slot motive pays.
@@ -151,21 +107,19 @@ wkFinTm n k = ielim FinD n (methₗ WkMs) k
            Γ ⊢ n ∷ El ⌜Nat⌝ → Γ ⊢ k ∷ FinI n → Γ ⊢ wkFinTm n k ∷ FinI (nsuc n)
 ⊢wkFinTm {n = n} dn dk =
   ⊢-cast (cong (λ z → FinI (nsuc z)) (wk-single n))
-    (⊢ielim ⊢⌜Nat⌝ ⊢FinD ⊢wkMot (⊢methₗ ⊢⌜Nat⌝ (allD (⊢wk ⊢⌜Nat⌝) FinOK) ⊢wkMot perWk) dn dk)
+    (⊢ielim ⊢⌜Nat⌝ ⊢FinD ⊢wkMot ⊢wkM dn dk)
 
 ------------------------------------------------------------------------
--- 4. ★★ …AND IT COMPUTES.  `fz : Fin 1` weakens to `fzero` at index 2:
---    ι, then the method's three β — and the fibre hands the method its
---    index, so the answer is literally `ffz 1`.
+-- 4. ★★ …AND IT COMPUTES: `fz : Fin 1` weakens to `fzero` at index 2 —
+--    the index case, the tag selection, two β.
 ------------------------------------------------------------------------
 
-wk-fz : {Γ : Cx} → wkFinTm {Γ} (nsuc nzero) (ffz nzero) ⟶* ffz (nsuc nzero)
-wk-fz =
-  ⟶*-trans (ιT {T = fzeroT} (nth-⌜⌝ {Ts = FinTs} nthᵗ-z) nth-z)
-    (step (ξ-appˡ (ξ-appˡ (β _ _))) (step (ξ-appˡ (β _ _)) (step (β _ _) done)))
-
--- ★★ AND THE TRANSPORT COMPUTES: at a concrete `fsuc` the ford IS an
---   `idrefl`, so the `jsub` fires once and the IH passes through.
-transport-fires : {Γ : Cx} (d : RTm (Γ ∙)) (x e : RTm Γ) →
-                  jsub d (idrefl ⌜Nat⌝ x) e ⟶* e
-transport-fires d x e = step (jsub-refl d ⌜Nat⌝ x e) done
+wk-fz : {Γ : Cx} → wkFinTm {Γ} (nsuc nzero) ffz ⟶* ffz
+wk-fz {Γ} =
+  ⟶*-trans ιN-s
+    (subst' (λ X → app (app X q) h ⟶* ffz) (sym (methAt-sub (single nzero) WkMs))
+      (⟶*-trans (methAt-β nth-z) (step (ξ-appˡ (β _ _)) (step (β _ _) done))))
+  where
+    q : RTm Γ
+    q = pair (tag zero) unit
+    h = dih FinD wkM (app FinD (nsuc nzero)) q

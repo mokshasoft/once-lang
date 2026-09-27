@@ -116,14 +116,14 @@ wkTmTm n t = ielim TmD n (methₗ WkMs) t
 ⟶*-arg₁ : {Γ : Cx} {k : ℕ} {a a' r : RTm Γ} → a ⟶* a' → conₗ k (pair a r) ⟶* conₗ k (pair a' r)
 ⟶*-arg₁ s = ⟶*-con (⟶*-pairʳ (⟶*-pairˡ s))
 
-wk-var : {Γ : Cx} → wkTmTm {Γ} (nsuc nzero) (tvar fz) ⟶* tvar (ffz (nsuc nzero))
+wk-var : {Γ : Cx} → wkTmTm {Γ} (nsuc nzero) (tvar fz) ⟶* tvar ffz
 wk-var =
   ⟶*-trans (ιT {Cs = ⌜ TmTs ⌝ₛ} {ms = WkMs} {T = varT} (nth-⌜⌝ {Ts = TmTs} nthᵗ-z) nth-z)
     (step (ξ-appˡ (ξ-appˡ (β _ _))) (step (ξ-appˡ (β _ _)) (step (β _ _)
     (step (ξ-con (ξ-pairʳ (ξ-pairˡ (ξ-ielimᵗ (βfst _ _)))))
       (⟶*-arg₁ wk-fz)))))
 
-wk-id : {Γ : Cx} → wkTmTm {Γ} nzero idTm ⟶* tlam (tvar (ffz (nsuc nzero)))
+wk-id : {Γ : Cx} → wkTmTm {Γ} nzero idTm ⟶* tlam (tvar ffz)
 wk-id =
   ⟶*-trans (ιT {Cs = ⌜ TmTs ⌝ₛ} {ms = WkMs} {T = lamT} (nth-⌜⌝ {Ts = TmTs} (nthᵗ-s nthᵗ-z)) (nth-s nth-z))
     (step (ξ-appˡ (ξ-appˡ (β _ _))) (step (ξ-appˡ (β _ _)) (step (β _ _)
