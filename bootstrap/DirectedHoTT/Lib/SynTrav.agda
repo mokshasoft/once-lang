@@ -17,8 +17,8 @@
 --
 -- ★ EVERY OPERATION IS A CLOSED OBJECT-LEVEL FUNCTION whose parameters are
 --   λ-bound VARIABLES, so every renaming of it computes definitionally
---   (`variable-is-the-cheapest-position`).  The kit's own terms are closed
---   too, and say so (`*-sub`, `refl` for a concrete kit).
+--   (`variable-is-the-cheapest-position`).  The kit's value code is closed
+--   too, and says so (`VF-sub`, `refl` for a concrete kit).
 --
 -- `--safe`, ZERO axioms.
 ------------------------------------------------------------------------
@@ -65,9 +65,6 @@ record Kit (n : ℕ) (sg : Sig n) : Set₁ where
     V0    : {Γ : Cx} → RTm Γ       -- λ e. the fresh variable
     NODE  : {Γ : Cx} → RTm Γ       -- λ e v. the variable node v stands for
     VF-sub   : {Γ Δ : Cx} (σ : Sub Γ Δ) → subTm σ (VF {Γ}) ≡ VF {Δ}
-    WK-sub   : {Γ Δ : Cx} (σ : Sub Γ Δ) → subTm σ (WK {Γ}) ≡ WK {Δ}
-    V0-sub   : {Γ Δ : Cx} (σ : Sub Γ Δ) → subTm σ (V0 {Γ}) ≡ V0 {Δ}
-    NODE-sub : {Γ Δ : Cx} (σ : Sub Γ Δ) → subTm σ (NODE {Γ}) ≡ NODE {Δ}
     ⊢VF   : {Γ : Ctx} → Γ ⊢ VF ∷ Π (El ⌜Nat⌝) U
     ⊢WK   : {Γ : Ctx} → Γ ⊢ WK ∷ Π (El ⌜Nat⌝) (Π (Vat VF (var vz)) (Vat VF (nsuc (var (vs vz)))))
     ⊢V0   : {Γ : Ctx} → Γ ⊢ V0 ∷ Π (El ⌜Nat⌝) (Vat VF (nsuc (var vz)))
