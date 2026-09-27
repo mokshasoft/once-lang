@@ -5,9 +5,10 @@
 --     WK = weaken (`Lib/SynRen`)   V0 = the variable node `var fzero`
 --     NODE e t = t                 (a variable node BECOMES its value)
 --
--- and the environment of `single u`:
+-- and the environments of the σ-calculus: the identity `IDS d = λ x. var x`
+-- and `single u = (IDS , u)` — `CONS` (`Lib/SynTrav`) applied:
 --
---     SINGLE d u = λ x. case x of fzero ↦ u ; fsuc y ↦ var y
+--     SINGLE d u = CONS d d u (IDS d)
 --
 -- `--safe`, ZERO axioms.
 ------------------------------------------------------------------------
@@ -101,80 +102,34 @@ module Sub {sg : Sig n} (ok : SigOK n sg) {v kv : ℕ} {shs : Shapes c}
       ⊢VFs = ⊢lam (ty-El ⊢⌜Nat⌝) (⊢⌜IMu⌝ ⊢SI (⊢SD ok) (⊢ix lt (⊢var here)))
 
   open TravM ok subKit vok public
-  open Trav ok subKit using ( Env; Env-ren; Vat-sub; predT; ⊢predT; ty-Vat; ty-Env ) public
+  open Trav ok subKit using ( Env; Env-ren; Vat-sub; predT; ⊢predT; ty-Vat; ty-Env; CONS; ⊢CONS· ) public
 
   ------------------------------------------------------------------------
-  -- ★ `single u`: SINGLE d u = λ x. case x of fzero ↦ u ; fsuc y ↦ var y
-  --   (a case on the fibred `Fin`, `u` passed as an argument so the
-  --   method is closed — as `LIFT`'s environment is)
+  -- ★ THE IDENTITY ENVIRONMENT, and `single u = (id , u)`
   ------------------------------------------------------------------------
 
-  -- the case's motive:  M(i, x) = V (pred i) → V (pred i)
-  SMot : RTy ((Γ ∙) ∙)
-  SMot = Π (Vat VFs (predT (var (vs vz)))) (Vat VFs (predT (var (vs (vs vz)))))
+  -- IDS = λ x. var x : Env d d
+  IDS : RTm Γ
+  IDS = lam (vnode (var vz))
 
-  SMot-sub : {Δ : Cx} (τ : Sub ((Γ ∙) ∙) Δ) →
-             subTy τ SMot ≡ Π (Vat VFs (predT (τ (vs vz)))) (Vat VFs (predT (renTm vs (τ (vs vz)))))
-  SMot-sub τ = cong₂ Π (Vat-sub τ (predT (var (vs vz)))) (Vat-sub (extS τ) (predT (var (vs (vs vz)))))
-
-  -- at `suc m`: fzero ↦ λ u. u ; fsuc y ↦ λ u. var y
-  sz ss : RTm (Γ ∙)
-  sz = lam (lam (lam (var vz)))
-  ss = lam (lam (lam (vnode (fst (var (vs (vs vz)))))))
-
-  SM : RTm Γ
-  SM = methN (methAt []) (methAt (sz ∷ ss ∷ []))
-
-  private
-    bodyTyS : (k : ℕ) → subTy (atS (nsuc (var vz)) (conₗ k (var (vs vz)))) (wk1M (SMot {Γ}))
-              ≡ Π (Vat VFs (predT (nsuc (var (vs (vs vz)))))) (Vat VFs (predT (nsuc (var (vs (vs (vs vz)))))))
-    bodyTyS k = trans (subTy-renTy SMot) (SMot-sub _)
-
-  ⊢SM : {Γ : Ctx} → Γ ⊢ SM ∷ MethTy ⌜Nat⌝ FinD SMot
-  ⊢SM {Γ} = ⊢methN ⊢FinD dM (⊢caseZ []ᵈ dS dM []ₐ) (⊢caseS []ᵈ dS dM perS)
-    where
-      dS = allD (⊢wk ⊢⌜Nat⌝) (FinOK {Γ})
-      dM : motCtx Γ ⌜Nat⌝ FinD ⊢ty SMot
-      dM = ty-Π (ty-Vat (⊢predT (⊢var (there here)))) (ty-Vat (⊢predT (⊢var (there (there here)))))
-      perS : PerKAt (Γ ▹ El ⌜Nat⌝) ⌜Nat⌝ (renTm vs FinD) (wk1M SMot) (nsuc (var vz))
-                    (selF (subC τS ⌜ FinTs ⌝ₛ)) zero (sz ∷ ss ∷ [])
-      perS = entN {Ts = FinTs} {T = fzeroT} []ᵈ FinOK dM nthᵗ-z
-               (⊢-cast (sym (bodyTyS zero))
-                 (⊢lam (ty-Vat (⊢predT (⊢isuc (⊢var (there (there here)))))) hereV))
-          ∷ₐ entN {Ts = FinTs} {T = fsucT} []ᵈ FinOK dM (nthᵗ-s nthᵗ-z)
-               (⊢-cast (sym (bodyTyS (suc zero)))
-                 (⊢lam (ty-Vat (⊢predT (⊢isuc (⊢var (there (there here))))))
-                   (⊢conv (fromSK (⊢vnode (⊢wk (⊢var (there (there here))))
-                                          (⊢wk (⊢fst (⊢payAt {I = ⌜Nat⌝} {D = renTm vs FinD} {M = wk1M SMot}
-                                                             {σ = τS} {T = fsucT})))))
-                          (csymᵀ (credᵀ (ξ-El (ξ-appʳ (natrec-suc _ _ _))))))))
-          ∷ₐ []ₐ
+  ⊢IDS : {Γ : Ctx} {d : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ IDS ∷ Env d d
+  ⊢IDS dd = ⊢lam (ty-IMu ⊢⌜Nat⌝ ⊢FinD dd) (fromSK (⊢vnode (⊢wk dd) (⊢var here)))
 
   SINGLE : RTm Γ
-  SINGLE = lam (lam (lam (app (ielim FinD (nsuc (var (vs (vs vz)))) SM (var vz)) (var (vs vz)))))
+  SINGLE = lam (lam (app (app (app (app CONS (var (vs vz))) (var (vs vz))) (var vz)) IDS))
 
   -- ★ `SINGLE d u : Fin (suc d) → V d`
   ⊢SINGLE : {Γ : Ctx} → Γ ⊢ SINGLE ∷ Π (El ⌜Nat⌝) (Π (Vat VFs (var vz)) (Env (nsuc (var (vs vz))) (var (vs vz))))
-  ⊢SINGLE {Γ} = ⊢lam (ty-El ⊢⌜Nat⌝) (⊢lam (ty-Vat (⊢var here))
-                  (⊢lam (ty-IMu ⊢⌜Nat⌝ ⊢FinD (⊢isuc (⊢var (there here)))) body))
+  ⊢SINGLE {Γ} = ⊢lam (ty-El ⊢⌜Nat⌝) (⊢lam (ty-Vat (⊢var here)) body)
     where
-      Γ3 : Ctx
-      Γ3 = ((Γ ▹ El ⌜Nat⌝) ▹ Vat VFs (var vz)) ▹ FinI (nsuc (var (vs vz)))
-      d3 : RTm ⌊ Γ3 ⌋
-      d3 = var (vs (vs vz))
-      τ3 : Sub ((⌊ Γ3 ⌋ ∙) ∙) ⌊ Γ3 ⌋
-      τ3 = single (var vz) ∘ₛ extS (single (nsuc d3))
-      d1 : Γ3 ⊢ ielim FinD (nsuc d3) SM (var vz) ∷ iinst (nsuc d3) (var vz) SMot
-      d1 = ⊢ielim ⊢⌜Nat⌝ ⊢FinD (ty-Π (ty-Vat (⊢predT (⊢var (there here)))) (ty-Vat (⊢predT (⊢var (there (there here))))))
-                  ⊢SM (⊢isuc (⊢var (there (there here)))) (⊢var here)
-      d2 : Γ3 ⊢ ielim FinD (nsuc d3) SM (var vz) ∷ Π (Vat VFs (predT (nsuc d3))) (Vat VFs (predT (nsuc (var (vs (vs (vs vz)))))))
-      d2 = ⊢-cast (trans (subTy-subTy SMot) (SMot-sub τ3)) d1
-      du : Γ3 ⊢ var (vs vz) ∷ Vat VFs (predT (nsuc d3))
-      du = ⊢conv (⊢-cast (trans (cong (renTy vs) (VatR (var vz))) (VatR (var (vs vz)))) (⊢var (there here)))
-                 (csymᵀ (credᵀ (ξ-El (ξ-appʳ (natrec-suc _ _ _)))))
-      body : Γ3 ⊢ app (ielim FinD (nsuc d3) SM (var vz)) (var (vs vz)) ∷ Vat VFs d3
-      body = ⊢conv (⊢-cast (Vat-sub (single (var (vs vz))) (predT (nsuc (var (vs (vs (vs vz))))))) (⊢app d2 du))
-                   (credᵀ (ξ-El (ξ-appʳ (natrec-suc _ _ _))))
+      Γ2 : Ctx
+      Γ2 = (Γ ▹ El ⌜Nat⌝) ▹ Vat VFs (var vz)
+      d2 : RTm ⌊ Γ2 ⌋
+      d2 = var (vs vz)
+      dd2 : Γ2 ⊢ d2 ∷ El ⌜Nat⌝
+      dd2 = ⊢var (there here)
+      body : Γ2 ⊢ app (app (app (app CONS d2) d2) (var vz)) IDS ∷ Env (nsuc d2) d2
+      body = ⊢CONS· {Γ2} {d2} {d2} {var vz} {IDS} dd2 dd2 hereV (⊢IDS dd2)
 
   ------------------------------------------------------------------------
   -- ★ SUBSTITUTION, and `single u` applied: `t[u/0]`
