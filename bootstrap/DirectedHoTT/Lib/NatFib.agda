@@ -59,16 +59,19 @@ DN C0 CS = lam (natrec (Dσ C0) (renTm ρS (Dσ CS)) (var vz))
 Dσ-sub : {Θ : Cx} (τ : Sub (Δ ∙) (Θ ∙)) (Cs : Cons (Δ ∙) c) → subTm τ (Dσ Cs) ≡ Dσ (subC τ Cs)
 Dσ-sub τ Cs = cong (dσ (⌜Fin⌝ _)) (selF-sub τ Cs)
 
-DN-sub : {Θ : Cx} (σ : Sub Δ Θ) (C0 : Cons (Δ ∙) c₀) (CS : Cons (Δ ∙) cₛ) →
-         subTm σ (DN C0 CS) ≡ DN (subC (extS σ) C0) (subC (extS σ) CS)
-DN-sub σ C0 CS =
-  cong lam (cong₂ (λ a b → natrec a b (var vz)) (Dσ-sub (extS σ) C0)
-                  (trans (trans (subTm-renTm (Dσ CS)) (trans (subTm-cong pt (Dσ CS)) (sym (renTm-subTm (Dσ CS)))))
-                         (cong (renTm ρS) (Dσ-sub (extS σ) CS))))
+-- the step's predecessor renaming commutes with substitution
+ρS-sub : {Θ : Cx} (σ : Sub Δ Θ) (t : RTm (Δ ∙)) → subTm (extS (extS (extS σ))) (renTm ρS t) ≡ renTm ρS (subTm (extS σ) t)
+ρS-sub σ t = trans (subTm-renTm t) (trans (subTm-cong pt t) (sym (renTm-subTm t)))
   where
     pt : ∀ x → (extS (extS (extS σ)) ₛ∘ᵣ ρS) x ≡ (ρS ᵣ∘ₛ extS σ) x
     pt vz     = refl
     pt (vs y) = trans (trans (cong (renTm vs) (renTm-renTm (σ y))) (renTm-renTm (σ y))) (sym (renTm-renTm (σ y)))
+
+DN-sub : {Θ : Cx} (σ : Sub Δ Θ) (C0 : Cons (Δ ∙) c₀) (CS : Cons (Δ ∙) cₛ) →
+         subTm σ (DN C0 CS) ≡ DN (subC (extS σ) C0) (subC (extS σ) CS)
+DN-sub σ C0 CS =
+  cong lam (cong₂ (λ a b → natrec a b (var vz)) (Dσ-sub (extS σ) C0)
+                  (trans (ρS-sub σ (Dσ CS)) (cong (renTm ρS) (Dσ-sub (extS σ) CS))))
 
 elNat : El (⌜Nat⌝ {Δ}) ≅ᵀ Nat
 elNat = credᵀ El-⌜Nat⌝
@@ -175,6 +178,12 @@ NTS D M = subTy σS (T₀ ⌜Nat⌝ D M)
 
 methN : RTm Δ → RTm (Δ ∙) → RTm Δ
 methN E0 ES = lam (natrec (renTm vs E0) (renTm ρS ES) (var vz))
+
+-- ★ a case method commutes with substitution
+methN-sub : {Θ : Cx} (σ : Sub Δ Θ) (E0 : RTm Δ) (ES : RTm (Δ ∙)) →
+            subTm σ (methN E0 ES) ≡ methN (subTm σ E0) (subTm (extS σ) ES)
+methN-sub σ E0 ES = cong lam (cong₂ (λ a b → natrec a b (var vz)) (wk-sub σ E0) (ρS-sub σ ES))
+  where open import DirectedHoTT.Metatheory.SubjectReductionBase using ( wk-sub )
 
 private
   Π-cod : {Γ : Ctx} {A : RTy ⌊ Γ ⌋} {B : RTy (⌊ Γ ⌋ ∙)} → Γ ⊢ty Π A B → (Γ ▹ A) ⊢ty B
