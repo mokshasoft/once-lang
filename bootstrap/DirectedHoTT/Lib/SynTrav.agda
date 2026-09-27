@@ -40,6 +40,7 @@ open import DirectedHoTT.Lib.MethAt
 open import DirectedHoTT.Lib.NatFib
 open import DirectedHoTT.Lib.FinFam
 open import DirectedHoTT.Lib.Syn
+open import DirectedHoTT.Lib.Sorted using ( unSortI )
 
 private
   variable
@@ -74,7 +75,7 @@ record Kit (n : ℕ) (sg : Sig n) : Set₁ where
 -- 2. ENVIRONMENTS, and LIFTING one under a binder.
 ------------------------------------------------------------------------
 
-module _ {sg : Sig n} (κ : Kit n sg) where
+module _ {sg : Sig n} (ok : SigOK n sg) (κ : Kit n sg) where
   open Kit κ
 
   -- `Fin d → V e`
@@ -239,3 +240,59 @@ module _ {sg : Sig n} (κ : Kit n sg) where
       d1 = ⊢ielim ⊢⌜Nat⌝ ⊢FinD
              (ty-Π (ty-Env (⊢predT (⊢var (there here))) (⊢wk (⊢wk de5))) (ty-Vat (⊢isuc (⊢wk (⊢wk (⊢wk de5))))))
              (⊢liftM de5) (⊢isuc (⊢var (there (there here)))) (⊢var here)
+
+  ------------------------------------------------------------------------
+  -- 3. LIFTING UNDER k BINDERS.
+  ------------------------------------------------------------------------
+
+  private
+    wkc : (a t : RTm Γ) → subTm (single a) (renTm vs t) ≡ t
+    wkc = wk-cancel-tm
+      where open import DirectedHoTT.Metatheory.TySub using ( wk-cancel-tm )
+
+    -- the two-binder instantiation of a twice-weakened term
+    wkc2 : (a b t : RTm Γ) → subTm (single a) (subTm (extS (single b)) (renTm vs (renTm vs t))) ≡ t
+    wkc2 a b t = trans (cong (subTm (single a)) (trans (wk-sub (single b) (renTm vs t)) (cong (renTm vs) (wkc b t))))
+                       (wkc a t)
+      where open import DirectedHoTT.Metatheory.SubjectReductionBase using ( wk-sub )
+
+  ⊢LIFT· : {Γ : Ctx} {e d f : RTm ⌊ Γ ⌋} → Γ ⊢ e ∷ El ⌜Nat⌝ → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ f ∷ Env d e →
+           Γ ⊢ app (app (app LIFT e) d) f ∷ Env (nsuc d) (nsuc e)
+  ⊢LIFT· {e = e} {d} {f} de dd df =
+    ⊢-cast eqC (⊢app (⊢app (⊢app ⊢LIFT de) dd) (⊢-cast (sym eqD) df))
+    where
+      eqD : subTy (single d) (subTy (extS (single e)) (Env (var vz) (var (vs vz)))) ≡ Env d e
+      eqD = trans (cong (subTy (single d)) (Env-sub (extS (single e)) (var vz) (var (vs vz))))
+                  (trans (Env-sub (single d) (var vz) (renTm vs e)) (cong (Env d) (wkc d e)))
+      eqC : subTy (single f) (subTy (extS (single d)) (subTy (extS (extS (single e)))
+              (Env (nsuc (var (vs vz))) (nsuc (var (vs (vs vz)))))))
+            ≡ Env (nsuc d) (nsuc e)
+      eqC = trans (cong (λ z → subTy (single f) (subTy (extS (single d)) z))
+                        (Env-sub (extS (extS (single e))) (nsuc (var (vs vz))) (nsuc (var (vs (vs vz))))))
+            (trans (cong (subTy (single f)) (Env-sub (extS (single d)) (nsuc (var (vs vz))) (nsuc (renTm vs (renTm vs e)))))
+            (trans (Env-sub (single f) (nsuc (renTm vs d)) (nsuc (subTm (extS (single d)) (renTm vs (renTm vs e)))))
+                   (cong₂ (λ a b → Env (nsuc a) (nsuc b)) (wkc f d) (wkc2 f d e))))
+
+  LIFTS : ℕ → RTm Γ → RTm Γ → RTm Γ → RTm Γ
+  LIFTS zero    e d f = f
+  LIFTS (suc k) e d f = app (app (app LIFT (nsucs k e)) (nsucs k d)) (LIFTS k e d f)
+
+  ⊢LIFTS : {Γ : Ctx} (k : ℕ) {e d f : RTm ⌊ Γ ⌋} → Γ ⊢ e ∷ El ⌜Nat⌝ → Γ ⊢ d ∷ El ⌜Nat⌝ →
+           Γ ⊢ f ∷ Env d e → Γ ⊢ LIFTS k e d f ∷ Env (nsucs k d) (nsucs k e)
+  ⊢LIFTS zero    de dd df = df
+  ⊢LIFTS (suc k) de dd df = ⊢LIFT· (⊢nsucs k de) (⊢nsucs k dd) (⊢LIFTS k de dd df)
+
+  ------------------------------------------------------------------------
+  -- 4. ★ THE TRAVERSAL'S MOTIVE:  M(i, t) = ∀ e. Env (snd i) e → Syn (fst i) e
+  ------------------------------------------------------------------------
+
+  TM : RTy ((Γ ∙) ∙)
+  TM = Π (El ⌜Nat⌝) (Π (Env (snd (var (vs (vs vz)))) (var vz))
+                       (IMu (SI n) (SD sg) (pair (fst (var (vs (vs (vs vz))))) (var (vs vz)))))
+
+  ⊢TM : {Γ : Ctx} → motCtx Γ (SI n) (SD sg) ⊢ty TM
+  ⊢TM = ty-Π (ty-El ⊢⌜Nat⌝)
+          (ty-Π (ty-Env (⊢depth (⊢var (there (there here)))) (⊢var here))
+                (ty-IMu ⊢SI (⊢SD ok) (⊢conv (⊢pair (ty-El ⊢⌜Nat⌝) (⊢fst (unSortI (⊢var (there (there (there here))))))
+                                                   (⊢var (there here)))
+                                            (csymᵀ (credᵀ (El-⌜Σ⌝ _ _))))))
