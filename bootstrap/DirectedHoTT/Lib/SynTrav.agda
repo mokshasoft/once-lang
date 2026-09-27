@@ -85,31 +85,6 @@ module Trav {sg : Sig n} (ok : SigOK n sg) (κ : Kit n sg) where
   predT : RTm Γ → RTm Γ
   predT i = natrec nzero (var (vs vz)) i
 
-  -- the lift's motive, at a target depth `e` two binders out:
-  --   L(i, x) = Env (pred i) e → V (suc e)
-  LM : RTm Γ → RTy ((Γ ∙) ∙)
-  LM e = Π (Env (predT (var (vs vz))) (renTm vs (renTm vs e))) (Vat VF (nsuc (renTm vs (renTm vs (renTm vs e)))))
-
-  -- the lift's methods at `suc m`: fzero ↦ V0 e ; fsuc y ↦ WK e (env y)
-  --   (binders: m, payload, hypotheses, env)
-  wk3 : RTm Γ → RTm (((Γ ∙) ∙) ∙)
-  wk3 t = renTm vs (renTm vs (renTm vs t))
-
-  wk4 : RTm Γ → RTm ((((Γ ∙) ∙) ∙) ∙)
-  wk4 t = renTm vs (wk3 t)
-
-  lz ls : RTm Γ → RTm (Γ ∙)
-  lz e = lam (lam (lam (app V0 (wk4 e))))
-  ls e = lam (lam (lam (app (app WK (wk4 e)) (app (var vz) (fst (var (vs (vs vz))))))))
-
-  liftM : RTm Γ → RTm Γ
-  liftM e = methN (methAt []) (methAt (lz e ∷ ls e ∷ []))
-
-  -- ★ LIFT = λ e d env x. (case x of fzero ↦ V0 e ; fsuc y ↦ WK e (env y))
-  LIFT : RTm Γ
-  LIFT = lam (lam (lam (lam
-           (app (ielim FinD (nsuc (var (vs (vs vz)))) (liftM (var (vs (vs (vs vz))))) (var vz)) (var (vs vz))))))
-
   -- the kit's code commutes with substitution, hence so do its decodes
   Vat-sub : (σ : Sub Γ Δ) (e : RTm Γ) → subTy σ (Vat VF e) ≡ Vat VF (subTm σ e)
   Vat-sub σ e = cong (λ X → El (app X (subTm σ e))) (VF-sub σ)
@@ -125,6 +100,10 @@ module Trav {sg : Sig n} (ok : SigOK n sg) (κ : Kit n sg) where
                     (trans (Env-sub ⟨ ρ ⟩ᵣ d e) (cong₂ Env (subTm-var ρ d) (subTm-var ρ e)))
     where open import DirectedHoTT.Metatheory.Fundamental.Syntactic using ( ⟨_⟩ᵣ; subTy-var; subTm-var )
 
+  Vat-ren : (ρ : Ren Γ Δ) (e : RTm Γ) → renTy ρ (Vat VF e) ≡ Vat VF (renTm ρ e)
+  Vat-ren ρ e = trans (sym (subTy-var ρ (Vat VF e))) (trans (Vat-sub ⟨ ρ ⟩ᵣ e) (cong (Vat VF) (subTm-var ρ e)))
+    where open import DirectedHoTT.Metatheory.Fundamental.Syntactic using ( ⟨_⟩ᵣ; subTy-var; subTm-var )
+
   ⊢predT : {Γ : Ctx} {i : RTm ⌊ Γ ⌋} → Γ ⊢ i ∷ El ⌜Nat⌝ → Γ ⊢ predT i ∷ El ⌜Nat⌝
   ⊢predT di = ⊢natrec (ty-El ⊢⌜Nat⌝) (⊢conv ⊢nzero (csymᵀ elNat))
                       (⊢conv (⊢var (there here)) (csymᵀ elNat)) (⊢conv di elNat)
@@ -134,13 +113,6 @@ module Trav {sg : Sig n} (ok : SigOK n sg) (κ : Kit n sg) where
 
   ty-Vat : {Γ : Ctx} {e : RTm ⌊ Γ ⌋} → Γ ⊢ e ∷ El ⌜Nat⌝ → Γ ⊢ty Vat VF e
   ty-Vat de = ty-El (⊢app ⊢VF de)
-
-  -- the lift's motive under any substitution of its two binders
-  LM-sub : (e : RTm Γ) (τ : Sub ((Γ ∙) ∙) Δ) →
-           subTy τ (LM e) ≡ Π (Env (predT (τ (vs vz))) (subTm τ (renTm vs (renTm vs e))))
-                              (Vat VF (nsuc (subTm (extS τ) (renTm vs (renTm vs (renTm vs e))))))
-  LM-sub e τ = cong₂ Π (Env-sub τ (predT (var (vs vz))) (renTm vs (renTm vs e)))
-                       (Vat-sub (extS τ) (nsuc (renTm vs (renTm vs (renTm vs e)))))
 
   -- ★ the kit's terms, applied — the laws' casts confined here
   ⊢V0· : {Γ : Ctx} {e : RTm ⌊ Γ ⌋} → Γ ⊢ e ∷ El ⌜Nat⌝ → Γ ⊢ app V0 e ∷ Vat VF (nsuc e)
@@ -167,6 +139,82 @@ module Trav {sg : Sig n} (ok : SigOK n sg) (κ : Kit n sg) where
     where open import DirectedHoTT.Metatheory.TySub using ( wk-cancel-tm )
 
   private
+    wkc : (a t : RTm Γ) → subTm (single a) (renTm vs t) ≡ t
+    wkc = wk-cancel-tm
+      where open import DirectedHoTT.Metatheory.TySub using ( wk-cancel-tm )
+
+    -- the two-binder instantiation of a twice-weakened term
+    wkc2 : (a b t : RTm Γ) → subTm (single a) (subTm (extS (single b)) (renTm vs (renTm vs t))) ≡ t
+    wkc2 a b t = trans (cong (subTm (single a)) (trans (wk-sub (single b) (renTm vs t)) (cong (renTm vs) (wkc b t))))
+                       (wkc a t)
+      where open import DirectedHoTT.Metatheory.SubjectReductionBase using ( wk-sub )
+
+    wkS : (σ : Sub Γ Δ) (t : RTm Γ) → subTm (extS σ) (renTm vs t) ≡ renTm vs (subTm σ t)
+    wkS = wk-sub
+      where open import DirectedHoTT.Metatheory.SubjectReductionBase using ( wk-sub )
+
+    -- three binders instantiated back: a thrice-weakened term
+    wkc3 : (v e t J : RTm Γ) →
+           subTm (single v) (subTm (extS (single e)) (subTm (extS (extS (single t))) (renTm vs (renTm vs (renTm vs J))))) ≡ J
+    wkc3 v e t J =
+      trans (cong (λ z → subTm (single v) (subTm (extS (single e)) z))
+                  (trans (wkS (extS (single t)) (renTm vs (renTm vs J)))
+                         (cong (renTm vs) (trans (wkS (single t) (renTm vs J)) (cong (renTm vs) (wkc t J))))))
+            (wkc2 v e J)
+
+  -- a value, one binder further out
+  ⊢wkV : {Γ : Ctx} {B : RTy ⌊ Γ ⌋} {e t : RTm ⌊ Γ ⌋} → Γ ⊢ t ∷ Vat VF e → (Γ ▹ B) ⊢ renTm vs t ∷ Vat VF (renTm vs e)
+  ⊢wkV {e = e} dt = ⊢-cast (Vat-ren vs e) (⊢wk dt)
+
+  hereV : {Γ : Ctx} {e : RTm ⌊ Γ ⌋} → (Γ ▹ Vat VF e) ⊢ var vz ∷ Vat VF (renTm vs e)
+  hereV {e = e} = ⊢-cast (Vat-ren vs e) (⊢var here)
+
+  ⊢wkE : {Γ : Ctx} {B : RTy ⌊ Γ ⌋} {d e t : RTm ⌊ Γ ⌋} → Γ ⊢ t ∷ Env d e → (Γ ▹ B) ⊢ renTm vs t ∷ Env (renTm vs d) (renTm vs e)
+  ⊢wkE {d = d} {e} dt = ⊢-cast (Env-ren vs d e) (⊢wk dt)
+
+  hereE : {Γ : Ctx} {d e : RTm ⌊ Γ ⌋} → (Γ ▹ Env d e) ⊢ var vz ∷ Env (renTm vs d) (renTm vs e)
+  hereE {d = d} {e} = ⊢-cast (Env-ren vs d e) (⊢var here)
+
+  ------------------------------------------------------------------------
+  -- ★ CONS — the σ-calculus's one primitive, `(ρ , u)`:
+  --
+  --     CONS e d u ρ x = case x of fzero ↦ u ; fsuc y ↦ ρ y
+  --
+  --   `LIFT` and `single` are its instances.  The motive is the convoy
+  --   `Env (pred i) e → V e` (the case's index is not `d`); `e` and `u`
+  --   ride free in it — λ-bound variables of the closed `CONS`.
+  --   (Quantifying them INSIDE the motive instead costs: measured, the
+  --   module went from 42 s to an OOM at 5.5 GB.)
+  ------------------------------------------------------------------------
+
+  wk3 : RTm Γ → RTm (((Γ ∙) ∙) ∙)
+  wk3 t = renTm vs (renTm vs (renTm vs t))
+
+  wk4 : RTm Γ → RTm ((((Γ ∙) ∙) ∙) ∙)
+  wk4 t = renTm vs (wk3 t)
+
+  -- C(i, x) = Env (pred i) e → V e, at a target depth `e` two binders out
+  CM : RTm Γ → RTy ((Γ ∙) ∙)
+  CM e = Π (Env (predT (var (vs vz))) (renTm vs (renTm vs e))) (Vat VF (wk3 e))
+
+  CM-sub : (e : RTm Γ) (τ : Sub ((Γ ∙) ∙) Δ) →
+           subTy τ (CM e) ≡ Π (Env (predT (τ (vs vz))) (subTm τ (renTm vs (renTm vs e)))) (Vat VF (subTm (extS τ) (wk3 e)))
+  CM-sub e τ = cong₂ Π (Env-sub τ (predT (var (vs vz))) (renTm vs (renTm vs e))) (Vat-sub (extS τ) (wk3 e))
+
+  ⊢CM : {Γ : Ctx} {e : RTm ⌊ Γ ⌋} → Γ ⊢ e ∷ El ⌜Nat⌝ → motCtx Γ ⌜Nat⌝ FinD ⊢ty CM e
+  ⊢CM de = ty-Π (ty-Env (⊢predT (⊢var (there here))) (⊢wk (⊢wk de))) (ty-Vat (⊢wk (⊢wk (⊢wk de))))
+
+  -- at `suc m` (binders: m, payload, hypotheses, ρ)
+  cz : RTm Γ → RTm (Γ ∙)
+  cz u = lam (lam (lam (wk4 u)))
+
+  cs : RTm (Γ ∙)
+  cs = lam (lam (lam (app (var vz) (fst (var (vs (vs vz)))))))
+
+  consM : RTm Γ → RTm Γ
+  consM u = methN (methAt []) (methAt (cz u ∷ cs ∷ []))
+
+  private
     sr-flat : {Θ Ξ Ω : Cx} (σ : Sub Θ Ξ) (ρ : Ren Ω Θ) (ρ' : Ren Ω Ξ) →
               (∀ x → σ (ρ x) ≡ var (ρ' x)) → (t : RTm Ω) → subTm σ (renTm ρ t) ≡ renTm ρ' t
     sr-flat σ ρ ρ' h t = trans (subTm-renTm t) (trans (subTm-cong h t) (subTm-var ρ' t))
@@ -181,94 +229,184 @@ module Trav {sg : Sig n} (ok : SigOK n sg) (κ : Kit n sg) where
     rr4 : (t : RTm Γ) → wk4 t ≡ renTm (λ x → vs (vs (vs (vs x)))) t
     rr4 t = trans (cong (renTm vs) (rr3 t)) (renTm-renTm t)
 
-  -- the lift's method type at constructor `k` of the successor case
-  bodyTy : (e : RTm Γ) (k : ℕ) →
-           subTy (atS (nsuc (var vz)) (conₗ k (var (vs vz)))) (wk1M (LM e))
-           ≡ Π (Env (predT (nsuc (var (vs (vs vz))))) (wk3 e)) (Vat VF (nsuc (wk4 e)))
-  bodyTy e k =
-    trans (subTy-renTy (LM e))
-      (trans (LM-sub e τ)
-        (cong₂ (λ a b → Π (Env (predT (nsuc (var (vs (vs vz))))) a) (Vat VF (nsuc b)))
-               (trans (trans (cong (subTm τ) (rr2 e)) (sr-flat τ _ (λ x → vs (vs (vs x))) (λ x → refl) e)) (sym (rr3 e)))
-               (trans (trans (cong (subTm (extS τ)) (rr3 e)) (sr-flat (extS τ) _ (λ x → vs (vs (vs (vs x))))
-                                                                      (λ x → refl) e)) (sym (rr4 e)))))
-    where τ = atS (nsuc (var vz)) (conₗ k (var (vs vz))) ₛ∘ᵣ extR (extR vs)
+    -- the method type at constructor `k` of the successor case
+    bodyTy : (e : RTm Γ) (k : ℕ) →
+             subTy (atS (nsuc (var vz)) (conₗ k (var (vs vz)))) (wk1M (CM e))
+             ≡ Π (Env (predT (nsuc (var (vs (vs vz))))) (wk3 e)) (Vat VF (wk4 e))
+    bodyTy e k =
+      trans (subTy-renTy (CM e))
+        (trans (CM-sub e τ)
+          (cong₂ (λ a b → Π (Env (predT (nsuc (var (vs (vs vz))))) a) (Vat VF b))
+                 (trans (trans (cong (subTm τ) (rr2 e)) (sr-flat τ _ (λ x → vs (vs (vs x))) (λ x → refl) e)) (sym (rr3 e)))
+                 (trans (trans (cong (subTm (extS τ)) (rr3 e)) (sr-flat (extS τ) _ (λ x → vs (vs (vs (vs x))))
+                                                                        (λ x → refl) e)) (sym (rr4 e)))))
+      where τ = atS (nsuc (var vz)) (conₗ k (var (vs vz))) ₛ∘ᵣ extR (extR vs)
 
-  ⊢liftM : {Γ : Ctx} {e : RTm ⌊ Γ ⌋} → Γ ⊢ e ∷ El ⌜Nat⌝ → Γ ⊢ liftM e ∷ MethTy ⌜Nat⌝ FinD (LM e)
-  ⊢liftM {Γ = Γ} {e = e} de =
-    ⊢methN ⊢FinD dLM (⊢caseZ []ᵈ dS dLM []ₐ) (⊢caseS []ᵈ dS dLM perL)
+  ⊢consM : {Γ : Ctx} {e u : RTm ⌊ Γ ⌋} → Γ ⊢ e ∷ El ⌜Nat⌝ → Γ ⊢ u ∷ Vat VF e →
+           Γ ⊢ consM u ∷ MethTy ⌜Nat⌝ FinD (CM e)
+  ⊢consM {Γ = Γ} {e = e} {u = u} de du =
+    ⊢methN ⊢FinD (⊢CM de) (⊢caseZ []ᵈ dS (⊢CM de) []ₐ) (⊢caseS []ᵈ dS (⊢CM de) perC)
     where
       dS = allD (⊢wk ⊢⌜Nat⌝) (FinOK {Γ})
-      dLM : motCtx Γ ⌜Nat⌝ FinD ⊢ty LM e
-      dLM = ty-Π (ty-Env (⊢predT (⊢var (there here))) (⊢wk (⊢wk de))) (ty-Vat (⊢isuc (⊢wk (⊢wk (⊢wk de)))))
-      perL : PerKAt (Γ ▹ El ⌜Nat⌝) ⌜Nat⌝ (renTm vs FinD) (wk1M (LM e)) (nsuc (var vz))
-                    (selF (subC τS ⌜ FinTs ⌝ₛ)) zero (lz e ∷ ls e ∷ [])
-      perL = entN {Ts = FinTs} {T = fzeroT} []ᵈ FinOK dLM nthᵗ-z
+      perC : PerKAt (Γ ▹ El ⌜Nat⌝) ⌜Nat⌝ (renTm vs FinD) (wk1M (CM e)) (nsuc (var vz))
+                    (selF (subC τS ⌜ FinTs ⌝ₛ)) zero (cz u ∷ cs ∷ [])
+      perC = entN {Ts = FinTs} {T = fzeroT} []ᵈ FinOK (⊢CM de) nthᵗ-z
                (⊢-cast (sym (bodyTy e zero))
                  (⊢lam (ty-Env (⊢predT (⊢isuc (⊢var (there (there here))))) (⊢wk (⊢wk (⊢wk de))))
-                       (⊢V0· (⊢wk (⊢wk (⊢wk (⊢wk de)))))))
-          ∷ₐ entN {Ts = FinTs} {T = fsucT} []ᵈ FinOK dLM (nthᵗ-s nthᵗ-z)
+                       (⊢wkV (⊢wkV (⊢wkV (⊢wkV du))))))
+          ∷ₐ entN {Ts = FinTs} {T = fsucT} []ᵈ FinOK (⊢CM de) (nthᵗ-s nthᵗ-z)
                (⊢-cast (sym (bodyTy e (suc zero)))
                  (⊢lam (ty-Env (⊢predT (⊢isuc (⊢var (there (there here))))) (⊢wk (⊢wk (⊢wk de))))
-                       (⊢WK· (⊢wk (⊢wk (⊢wk (⊢wk de))))
-                             (⊢Env· (⊢-cast (Env-ren vs _ _) (⊢var here))
-                                    (⊢conv (⊢wk (⊢fst (⊢payAt {I = ⌜Nat⌝} {D = renTm vs FinD} {M = wk1M (LM e)}
-                                                               {σ = τS} {T = fsucT})))
-                                           (csymᵀ (credᵀ (ξ-IMuⁱ (natrec-suc _ _ _)))))))))
+                       (⊢Env· hereE
+                              (⊢conv (⊢wk (⊢fst (⊢payAt {I = ⌜Nat⌝} {D = renTm vs FinD} {M = wk1M (CM e)}
+                                                         {σ = τS} {T = fsucT})))
+                                     (csymᵀ (credᵀ (ξ-IMuⁱ (natrec-suc _ _ _))))))))
           ∷ₐ []ₐ
 
-  -- ★ LIFT's type: an environment `Fin d → V e` lifted under one binder
+  -- ★ CONS = λ e d u ρ x. (case x) ρ
+  CONS : RTm Γ
+  CONS = lam (lam (lam (lam (lam
+           (app (ielim FinD (nsuc (var (vs (vs (vs vz))))) (consM (var (vs (vs vz)))) (var vz)) (var (vs vz)))))))
+
+  CONSTy : RTy Γ
+  CONSTy = Π (El ⌜Nat⌝) (Π (El ⌜Nat⌝) (Π (Vat VF (var (vs vz))) (Π (Env (var (vs vz)) (var (vs (vs vz))))
+             (Env (nsuc (var (vs (vs vz)))) (var (vs (vs (vs vz))))))))
+
+  -- the body of CONS, in its five binders (e, d, u, ρ, x)
+  module _ {Γ : Ctx} where
+    private
+      Γ5 : Ctx
+      Γ5 = ((((Γ ▹ El ⌜Nat⌝) ▹ El ⌜Nat⌝) ▹ Vat VF (var (vs vz))) ▹ Env (var (vs vz)) (var (vs (vs vz))))
+           ▹ FinI (nsuc (var (vs (vs vz))))
+      e5 d5 u5 : RTm ⌊ Γ5 ⌋
+      e5 = var (vs (vs (vs (vs vz))))
+      d5 = var (vs (vs (vs vz)))
+      u5 = var (vs (vs vz))
+      de5 : Γ5 ⊢ e5 ∷ El ⌜Nat⌝
+      de5 = ⊢var (there (there (there (there here))))
+      du5 : Γ5 ⊢ u5 ∷ Vat VF e5
+      du5 = ⊢wkV (⊢wkV hereV)
+      τ5 : Sub ((⌊ Γ5 ⌋ ∙) ∙) ⌊ Γ5 ⌋
+      τ5 = single (var vz) ∘ₛ extS (single (nsuc d5))
+      d1 : Γ5 ⊢ ielim FinD (nsuc d5) (consM u5) (var vz) ∷ iinst (nsuc d5) (var vz) (CM e5)
+      d1 = ⊢ielim {Γ5} {⌜Nat⌝} {FinD} {CM e5} {consM u5} {nsuc d5} {var vz}
+                  ⊢⌜Nat⌝ ⊢FinD (⊢CM {Γ5} {e5} de5) (⊢consM {Γ5} {e5} {u5} de5 du5) (⊢isuc (⊢var (there (there (there here))))) (⊢var here)
+      eq1 : iinst (nsuc d5) (var vz) (CM e5) ≡ Π (Env (predT (nsuc d5)) e5) (Vat VF (renTm vs e5))
+      eq1 = trans {x = iinst (nsuc d5) (var vz) (CM e5)} {y = subTy (single (var vz) ∘ₛ extS (single (nsuc d5))) (CM e5)}
+                  {z = Π (Env (predT (nsuc d5)) e5) (Vat VF (renTm vs e5))}
+                  (subTy-subTy {τ = single (var vz)} {σ = extS (single (nsuc d5))} (CM e5))
+                  (CM-sub e5 (single (var vz) ∘ₛ extS (single (nsuc d5))))
+      d2 : Γ5 ⊢ ielim FinD (nsuc d5) (consM u5) (var vz) ∷ Π (Env (predT (nsuc d5)) e5) (Vat VF (renTm vs e5))
+      d2 = ⊢-cast {Γ5} {ielim FinD (nsuc d5) (consM u5) (var vz)} {iinst (nsuc d5) (var vz) (CM e5)}
+                  {Π (Env (predT (nsuc d5)) e5) (Vat VF (renTm vs e5))} eq1 d1
+      denv : Γ5 ⊢ var (vs vz) ∷ Env (predT (nsuc d5)) e5
+      denv = ⊢conv {Γ5} {var (vs vz)} {Env d5 e5} {Env (predT (nsuc d5)) e5}
+                   (⊢wkE hereE) (csymᵀ (credᵀ (ξ-Πˡ (ξ-IMuⁱ (natrec-suc nzero (var (vs vz)) d5)))))
+      body : Γ5 ⊢ app (ielim FinD (nsuc d5) (consM u5) (var vz)) (var (vs vz)) ∷ Vat VF e5
+      bapp : Γ5 ⊢ app (ielim FinD (nsuc d5) (consM u5) (var vz)) (var (vs vz)) ∷ subTy (single (var (vs vz))) (Vat VF (renTm vs e5))
+      bapp = ⊢app {Γ5} {Env (predT (nsuc d5)) e5} {Vat VF (renTm vs e5)} {ielim FinD (nsuc d5) (consM u5) (var vz)} {var (vs vz)} d2 denv
+      beq : subTy (single (var (vs vz))) (Vat VF (renTm vs e5)) ≡ Vat VF e5
+      beq = Vat-sub (single (var (vs vz))) (renTm vs e5)
+      body = ⊢-cast {Γ5} {app (ielim FinD (nsuc d5) (consM u5) (var vz)) (var (vs vz))} beq bapp
+
+    ⊢CONS : Γ ⊢ CONS ∷ CONSTy
+    ⊢CONS = ⊢lam (ty-El ⊢⌜Nat⌝) (⊢lam (ty-El ⊢⌜Nat⌝) (⊢lam (ty-Vat (⊢var (there here)))
+              (⊢lam (ty-Env (⊢var (there here)) (⊢var (there (there here))))
+                (⊢lam (ty-IMu ⊢⌜Nat⌝ ⊢FinD (⊢isuc (⊢var (there (there here))))) body))))
+
+  -- ★ CONS applied: `(ρ , u) : Env (suc d) e`
+  ⊢CONS· : {Γ : Ctx} {e d u f : RTm ⌊ Γ ⌋} → Γ ⊢ e ∷ El ⌜Nat⌝ → Γ ⊢ d ∷ El ⌜Nat⌝ →
+           Γ ⊢ u ∷ Vat VF e → Γ ⊢ f ∷ Env d e → Γ ⊢ app (app (app (app CONS e) d) u) f ∷ Env (nsuc d) e
+  ⊢CONS· {Γ} {e} {d} {u} {f} de dd du df = ⊢-cast eqC f4
+    where
+      R : RTy (((⌊ Γ ⌋ ∙) ∙) ∙)
+      R = Π (Env (var (vs vz)) (var (vs (vs vz)))) (Env (nsuc (var (vs (vs vz)))) (var (vs (vs (vs vz)))))
+      eqU : subTy (single d) (subTy (extS (single e)) (Π (Vat VF (var (vs vz))) R))
+            ≡ Π (Vat VF e) (subTy (extS (single d)) (subTy (extS (extS (single e))) R))
+      eqU = cong (λ X → Π X (subTy (extS (single d)) (subTy (extS (extS (single e))) R)))
+                 (trans (cong (subTy (single d)) (Vat-sub (extS (single e)) (var (vs vz))))
+                        (trans (Vat-sub (single d) (renTm vs e)) (cong (Vat VF) (wkc d e))))
+      eqD : subTy (single u) (subTy (extS (single d)) (subTy (extS (extS (single e))) (Env (var (vs vz)) (var (vs (vs vz))))))
+            ≡ Env d e
+      eqD = trans (cong (λ z → subTy (single u) (subTy (extS (single d)) z))
+                        (Env-sub (extS (extS (single e))) (var (vs vz)) (var (vs (vs vz)))))
+            (trans (cong (subTy (single u)) (Env-sub (extS (single d)) (var (vs vz)) (renTm vs (renTm vs e))))
+            (trans (Env-sub (single u) (renTm vs d) (subTm (extS (single d)) (renTm vs (renTm vs e))))
+                   (cong₂ Env (wkc u d) (wkc2 u d e))))
+      f1 : Γ ⊢ app CONS e ∷ Π (El ⌜Nat⌝) (subTy (extS (single e)) (Π (Vat VF (var (vs vz))) R))
+      f1 = ⊢app {Γ} {El ⌜Nat⌝} {Π (El ⌜Nat⌝) (Π (Vat VF (var (vs vz))) R)} {CONS} {e} ⊢CONS de
+      f2 : Γ ⊢ app (app CONS e) d ∷ subTy (single d) (subTy (extS (single e)) (Π (Vat VF (var (vs vz))) R))
+      f2 = ⊢app {Γ} {El ⌜Nat⌝} {subTy (extS (single e)) (Π (Vat VF (var (vs vz))) R)} {app CONS e} {d} f1 dd
+      R' : RTy (⌊ Γ ⌋ ∙)
+      R' = subTy (extS (single d)) (subTy (extS (extS (single e))) R)
+      f3 : Γ ⊢ app (app (app CONS e) d) u ∷ subTy (single u) R'
+      f3 = ⊢app {Γ} {Vat VF e} {R'} {app (app CONS e) d} {u}
+                (⊢-cast {Γ} {app (app CONS e) d} {subTy (single d) (subTy (extS (single e)) (Π (Vat VF (var (vs vz))) R))} {Π (Vat VF e) R'} eqU f2) du
+      df' : Γ ⊢ f ∷ subTy (single u) (subTy (extS (single d)) (subTy (extS (extS (single e))) (Env (var (vs vz)) (var (vs (vs vz))))))
+      df' = ⊢-cast (sym eqD) df
+      f4 : Γ ⊢ app (app (app (app CONS e) d) u) f
+             ∷ subTy (single f) (subTy (extS (single u)) (subTy (extS (extS (single d))) (subTy (extS (extS (extS (single e))))
+                 (Env (nsuc (var (vs (vs vz)))) (var (vs (vs (vs vz))))))))
+      f4 = ⊢app {Γ} {subTy (single u) (subTy (extS (single d)) (subTy (extS (extS (single e))) (Env (var (vs vz)) (var (vs (vs vz))))))}
+                {subTy (extS (single u)) (subTy (extS (extS (single d))) (subTy (extS (extS (extS (single e))))
+                   (Env (nsuc (var (vs (vs vz)))) (var (vs (vs (vs vz)))))))}
+                {app (app (app CONS e) d) u} {f} f3 df'
+      eqC : subTy (single f) (subTy (extS (single u)) (subTy (extS (extS (single d))) (subTy (extS (extS (extS (single e))))
+              (Env (nsuc (var (vs (vs vz)))) (var (vs (vs (vs vz))))))))
+            ≡ Env (nsuc d) e
+      eqC = trans (cong (λ z → subTy (single f) (subTy (extS (single u)) (subTy (extS (extS (single d))) z)))
+                        (Env-sub (extS (extS (extS (single e)))) (nsuc (var (vs (vs vz)))) (var (vs (vs (vs vz))))))
+            (trans (cong (λ z → subTy (single f) (subTy (extS (single u)) z))
+                         (Env-sub (extS (extS (single d))) (nsuc (var (vs (vs vz)))) (renTm vs (renTm vs (renTm vs e)))))
+            (trans (cong (subTy (single f))
+                         (Env-sub (extS (single u)) (nsuc (renTm vs (renTm vs d)))
+                                  (subTm (extS (extS (single d))) (renTm vs (renTm vs (renTm vs e))))))
+            (trans (Env-sub (single f) (nsuc (subTm (extS (single u)) (renTm vs (renTm vs d))))
+                            (subTm (extS (single u)) (subTm (extS (extS (single d))) (renTm vs (renTm vs (renTm vs e))))))
+                   (cong₂ (λ a b → Env (nsuc a) b) (wkc2 f u d) (wkc3 f u d e)))))
+
+  ------------------------------------------------------------------------
+  -- ★ LIFT = λ e d ρ. (λ y. WK e (ρ y) , V0 e) — one binder further
+  ------------------------------------------------------------------------
+
+  LIFT : RTm Γ
+  LIFT = lam (lam (lam (app (app (app (app CONS (nsuc (var (vs (vs vz))))) (var (vs vz)))
+                                 (app V0 (var (vs (vs vz)))))
+                            (lam (app (app WK (var (vs (vs (vs vz))))) (app (var (vs vz)) (var vz)))))))
+
   LIFTTy : RTy Γ
   LIFTTy = Π (El ⌜Nat⌝) (Π (El ⌜Nat⌝) (Π (Env (var vz) (var (vs vz)))
              (Env (nsuc (var (vs vz))) (nsuc (var (vs (vs vz)))))))
 
-  -- the body of LIFT, in its four binders (e, d, env, x)
   module _ {Γ : Ctx} where
     private
-      Γ4 : Ctx
-      Γ4 = (((Γ ▹ El ⌜Nat⌝) ▹ El ⌜Nat⌝) ▹ Env (var vz) (var (vs vz))) ▹ FinI (nsuc (var (vs vz)))
-      e5 d5 : RTm ⌊ Γ4 ⌋
-      e5 = var (vs (vs (vs vz)))
-      d5 = var (vs (vs vz))
-      τ5 : Sub ((⌊ Γ4 ⌋ ∙) ∙) ⌊ Γ4 ⌋
-      τ5 = single (var vz) ∘ₛ extS (single (nsuc d5))
-      de5 : Γ4 ⊢ e5 ∷ El ⌜Nat⌝
-      de5 = ⊢var (there (there (there here)))
-      dLM5 : motCtx Γ4 ⌜Nat⌝ FinD ⊢ty LM e5
-      dLM5 = ty-Π (ty-Env (⊢predT (⊢var (there here))) (⊢wk (⊢wk de5))) (ty-Vat (⊢isuc (⊢wk (⊢wk (⊢wk de5)))))
-      d1 : Γ4 ⊢ ielim FinD (nsuc d5) (liftM e5) (var vz) ∷ iinst (nsuc d5) (var vz) (LM e5)
-      d1 = ⊢ielim ⊢⌜Nat⌝ ⊢FinD dLM5 (⊢liftM de5) (⊢isuc (⊢var (there (there here)))) (⊢var here)
-      eq1 : iinst (nsuc d5) (var vz) (LM e5)
-            ≡ Π (Env (predT (nsuc d5)) e5) (Vat VF (nsuc (renTm vs e5)))
-      eq1 = trans (subTy-subTy (LM e5)) (LM-sub e5 τ5)
-      d2 : Γ4 ⊢ ielim FinD (nsuc d5) (liftM e5) (var vz) ∷ Π (Env (predT (nsuc d5)) e5) (Vat VF (nsuc (renTm vs e5)))
-      d2 = ⊢-cast eq1 d1
-      denv : Γ4 ⊢ var (vs vz) ∷ Env (predT (nsuc d5)) e5
-      denv = ⊢conv (⊢-cast (trans (cong (renTy vs) (Env-ren vs (var vz) (var (vs vz))))
-                                  (Env-ren vs (var (vs vz)) (var (vs (vs vz)))))
-                           (⊢var (there here)))
-                   (csymᵀ (credᵀ (ξ-Πˡ (ξ-IMuⁱ (natrec-suc _ _ _)))))
-      body : Γ4 ⊢ app (ielim FinD (nsuc d5) (liftM e5) (var vz)) (var (vs vz)) ∷ Vat VF (nsuc e5)
-      body = ⊢-cast (Vat-sub (single (var (vs vz))) (nsuc (renTm vs e5))) (⊢app d2 denv)
+      Γ3 : Ctx
+      Γ3 = ((Γ ▹ El ⌜Nat⌝) ▹ El ⌜Nat⌝) ▹ Env (var vz) (var (vs vz))
+      e3 d3 : RTm ⌊ Γ3 ⌋
+      e3 = var (vs (vs vz))
+      d3 = var (vs vz)
+      de3 : Γ3 ⊢ e3 ∷ El ⌜Nat⌝
+      de3 = ⊢var (there (there here))
+      dd3 : Γ3 ⊢ d3 ∷ El ⌜Nat⌝
+      dd3 = ⊢var (there here)
+      dy : (Γ3 ▹ FinI d3) ⊢ app (var (vs vz)) (var vz) ∷ Vat VF (renTm vs e3)
+      dy = ⊢Env· (⊢wkE hereE) (⊢var here)
+      dwk : Γ3 ⊢ lam (app (app WK (var (vs (vs (vs vz))))) (app (var (vs vz)) (var vz))) ∷ Env d3 (nsuc e3)
+      dwk = ⊢lam (ty-IMu ⊢⌜Nat⌝ ⊢FinD dd3) (⊢WK· (⊢wk de3) dy)
+      dv0 : Γ3 ⊢ app V0 e3 ∷ Vat VF (nsuc e3)
+      dv0 = ⊢V0· de3
+      body : Γ3 ⊢ app (app (app (app CONS (nsuc e3)) d3) (app V0 e3))
+                      (lam (app (app WK (var (vs (vs (vs vz))))) (app (var (vs vz)) (var vz))))
+               ∷ Env (nsuc d3) (nsuc e3)
+      body = ⊢CONS· {Γ3} {nsuc e3} {d3} {app V0 e3} {lam (app (app WK (var (vs (vs (vs vz))))) (app (var (vs vz)) (var vz)))}
+                    (⊢isuc de3) dd3 dv0 dwk
 
     ⊢LIFT : Γ ⊢ LIFT ∷ LIFTTy
-    ⊢LIFT = ⊢lam (ty-El ⊢⌜Nat⌝) (⊢lam (ty-El ⊢⌜Nat⌝) (⊢lam (ty-Env (⊢var here) (⊢var (there here)))
-              (⊢lam (ty-IMu ⊢⌜Nat⌝ ⊢FinD (⊢isuc (⊢var (there here)))) body)))
+    ⊢LIFT = ⊢lam (ty-El ⊢⌜Nat⌝) (⊢lam (ty-El ⊢⌜Nat⌝) (⊢lam (ty-Env (⊢var here) (⊢var (there here))) body))
 
   ------------------------------------------------------------------------
   -- 3. LIFTING UNDER k BINDERS.
   ------------------------------------------------------------------------
-
-  private
-    wkc : (a t : RTm Γ) → subTm (single a) (renTm vs t) ≡ t
-    wkc = wk-cancel-tm
-      where open import DirectedHoTT.Metatheory.TySub using ( wk-cancel-tm )
-
-    -- the two-binder instantiation of a twice-weakened term
-    wkc2 : (a b t : RTm Γ) → subTm (single a) (subTm (extS (single b)) (renTm vs (renTm vs t))) ≡ t
-    wkc2 a b t = trans (cong (subTm (single a)) (trans (wk-sub (single b) (renTm vs t)) (cong (renTm vs) (wkc b t))))
-                       (wkc a t)
-      where open import DirectedHoTT.Metatheory.SubjectReductionBase using ( wk-sub )
 
   ⊢LIFT· : {Γ : Ctx} {e d f : RTm ⌊ Γ ⌋} → Γ ⊢ e ∷ El ⌜Nat⌝ → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ f ∷ Env d e →
            Γ ⊢ app (app (app LIFT e) d) f ∷ Env (nsuc d) (nsuc e)
@@ -310,20 +448,6 @@ module Trav {sg : Sig n} (ok : SigOK n sg) (κ : Kit n sg) where
                 (ty-IMu ⊢SI (⊢SD ok) (⊢conv (⊢pair (ty-El ⊢⌜Nat⌝) (⊢fst (unSortI (⊢var (there (there (there here))))))
                                                    (⊢var (there here)))
                                             (csymᵀ (credᵀ (El-⌜Σ⌝ _ _))))))
-
-  private
-    wkS : (σ : Sub Γ Δ) (t : RTm Γ) → subTm (extS σ) (renTm vs t) ≡ renTm vs (subTm σ t)
-    wkS = wk-sub
-      where open import DirectedHoTT.Metatheory.SubjectReductionBase using ( wk-sub )
-
-    -- three binders instantiated back: a thrice-weakened term
-    wkc3 : (v e t J : RTm Γ) →
-           subTm (single v) (subTm (extS (single e)) (subTm (extS (extS (single t))) (renTm vs (renTm vs (renTm vs J))))) ≡ J
-    wkc3 v e t J =
-      trans (cong (λ z → subTm (single v) (subTm (extS (single e)) z))
-                  (trans (wkS (extS (single t)) (renTm vs (renTm vs J)))
-                         (cong (renTm vs) (trans (wkS (single t) (renTm vs J)) (cong (renTm vs) (wkc t J))))))
-            (wkc2 v e J)
 
   -- ★ a hypothesis at the traversal's motive, applied to a depth and an
   --   environment at its index
