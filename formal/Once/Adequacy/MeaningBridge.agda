@@ -1018,7 +1018,7 @@ bridge-i (t-app {A = A} {B = B} {q = Many} _ df dx) re =
 -- closure, related pointwise via the same application reasoning.
 bridge-i (t-effApp {A = A} {B = B} _ df dx) re k = refl , rel-returns λ {a} {b} _ →
   RelT-bind {A = A ⇒[ mk-kind Many eff ] B} {B = B} (bridge-i df (reˡ re))
-            (λ rf → RelT-bind {A = A} {B = B} (bridge-c dx (reʳ re)) (λ rx → rf rx))
+            (λ rf → RelT-bind {A = A} {B = B} (bridge-c dx (reᵐ re)) (λ rx → rf rx))
 -- D230: the spine — the head's domain-given meaning, applied to the argument's.
 bridge-i (t-app-spine {X = X} {T = T} _ darg df) re =
   RelT-bind {A = X ⇒[ mk-kind Many pure ] T} {B = T}
@@ -1072,7 +1072,7 @@ bridge-c (t-compose-check-g {A = A} {B = B} {C = C} {π = π} dg df) re =
   RelT-bind {A = B ⇒[ mk-kind Many π ] C} {B = A ⇒[ mk-kind Many π ] C}
             (bridge-c df (reˡ re)) (λ {f₁} {f₂} rf →
   RelT-bind {A = A ⇒[ mk-kind Many π ] B} {B = A ⇒[ mk-kind Many π ] C}
-            (bridge-d dg (reʳ re)) (λ {g₁} {g₂} rg →
+            (bridge-d dg (reᵐ re)) (λ {g₁} {g₂} rg →
   RelT-return {A = A ⇒[ mk-kind Many π ] C}
               {x = λ a → g₁ a >>=T f₁} {y = λ a → g₂ a >>=T f₂}
               (λ rv → RelT-bind {A = B} {B = C} (rg rv) rf)))
@@ -1080,7 +1080,7 @@ bridge-c (t-compose-check-f {A = A} {B = B} {C = C} {π = π} wf p dg) re =
   RelT-bind {A = B ⇒[ mk-kind Many π ] C} {B = A ⇒[ mk-kind Many π ] C}
             (RelT-sub p (bridge-i wf (reˡ re))) (λ {f₁} {f₂} rf →
   RelT-bind {A = A ⇒[ mk-kind Many π ] B} {B = A ⇒[ mk-kind Many π ] C}
-            (bridge-c dg (reʳ re)) (λ {g₁} {g₂} rg →
+            (bridge-c dg (reᵐ re)) (λ {g₁} {g₂} rg →
   RelT-return {A = A ⇒[ mk-kind Many π ] C}
               {x = λ a → g₁ a >>=T f₁} {y = λ a → g₂ a >>=T f₂}
               (λ rv → RelT-bind {A = B} {B = C} (rg rv) rf)))
@@ -1211,7 +1211,7 @@ bridge-d (d-compose {A = A} {M = M} {B = B} {π = π} dg df) re =
   RelT-bind {A = M ⇒[ mk-kind Many π ] B} {B = A ⇒[ mk-kind Many π ] B}
             (bridge-d df (reˡ re)) (λ {f₁} {f₂} rf →
   RelT-bind {A = A ⇒[ mk-kind Many π ] M} {B = A ⇒[ mk-kind Many π ] B}
-            (bridge-d dg (reʳ re)) (λ {g₁} {g₂} rg →
+            (bridge-d dg (reᵐ re)) (λ {g₁} {g₂} rg →
   RelT-return {A = A ⇒[ mk-kind Many π ] B}
               {x = λ a → g₁ a >>=T f₁} {y = λ a → g₂ a >>=T f₂}
               (λ rv → RelT-bind {A = M} {B = B} (rg rv) rf)))

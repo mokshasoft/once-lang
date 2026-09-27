@@ -542,11 +542,11 @@ mutual
   agree-cc (t-compose-check-g dg df) (t-compose-check-g dg′ df′) with agree-dd dg dg′
   ... | refl , refl = cong (_+ᵘ _) (agree-cc df df′)
   agree-cc (t-compose-check-g dg df) (t-compose-check-f wf _ dg′) =
-    cong₂ _+ᵘ_ (sym (agree-ic wf df)) (agree-dc dg dg′)
+    cong₂ (λ a b → a +ᵘ (T.Many *ᵘ b)) (sym (agree-ic wf df)) (agree-dc dg dg′)
   agree-cc (t-compose-check-f wf _ dg) (t-compose-check-g dg′ df′) =
-    cong₂ _+ᵘ_ (agree-ic wf df′) (sym (agree-dc dg′ dg))
+    cong₂ (λ a b → a +ᵘ (T.Many *ᵘ b)) (agree-ic wf df′) (sym (agree-dc dg′ dg))
   agree-cc (t-compose-check-f wf _ dg) (t-compose-check-f wf′ _ dg′) with agree-ii wf wf′
-  ... | refl , refl = cong (_ +ᵘ_) (agree-cc dg dg′)
+  ... | refl , refl = cong (λ b → _ +ᵘ (T.Many *ᵘ b)) (agree-cc dg dg′)
   agree-cc (t-case-copair-check df dg) (t-case-copair-check df′ dg′) = cong₂ _+ᵘ_ (agree-cc df df′) (agree-cc dg dg′)
   agree-cc (t-pair-morph-check df dg) (t-pair-morph-check df′ dg′) = cong₂ _+ᵘ_ (agree-cc df df′) (agree-cc dg dg′)
   agree-cc (t-curry-check d) (t-curry-check d′) = agree-cc d d′
@@ -607,7 +607,7 @@ mutual
   agree-dc (d-compose dg df) (t-compose-check-g dg′ df′) with agree-dd dg dg′
   ... | refl , refl = cong (_+ᵘ _) (agree-dc df df′)
   agree-dc (d-compose dg df) (t-compose-check-f wf _ dg′) =
-    cong₂ _+ᵘ_ (proj₂ (proj₂ (proj₂ (proj₂ (agree-di df wf))))) (agree-dc dg dg′)
+    cong₂ (λ a b → a +ᵘ (T.Many *ᵘ b)) (proj₂ (proj₂ (proj₂ (proj₂ (agree-di df wf))))) (agree-dc dg dg′)
   agree-dc d-id t-id-check = refl
   agree-dc d-fst t-fst-check = refl
   agree-dc d-snd t-snd-check = refl

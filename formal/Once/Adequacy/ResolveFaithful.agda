@@ -232,38 +232,39 @@ binop-faithful {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {C = C} polys imps userFns fresh 
 --   recovered from a `(m >>=T f) j` proof — `(m >>=T f) j` REDUCES, so the match
 --   is higher-order — hence `inner` carries an explicit signature that pins them.
 thunk-binop-faithful :
-  ∀ {n} {Γ : Srf.Ctx n} {Ψ₁ Ψ₂ : Usage n} {A B C : Type}
+  ∀ {n} {Γ : Srf.Ctx n} {Ψ₁ Ψ₂ Ψ' : Usage n} {A B C : Type}
     (polys : PolyCtx) (imps userFns : Imports) (fresh : ℕ)
     (a : Expr Γ Ψ₁ A) (b : Expr Γ Ψ₂ B)
+    (le₁ : Ψ₁ Srf.⊑ᵘ Ψ') (le₂ : Ψ₂ Srf.⊑ᵘ Ψ')
     (g : ⟦ A ⟧ᴰ → ⟦ B ⟧ᴰ → T ⟦ C ⟧ᴰ)
-    (dγ : ⟦ ⟦ Γ Srf.↾ (Ψ₁ Srf.+ᵘ Ψ₂) ⟧ᶜ ⟧ᴰ)
+    (dγ : ⟦ ⟦ Γ Srf.↾ Ψ' ⟧ᶜ ⟧ᴰ)
     (ihA : ∀ j → SD.⟦ resolveExpr polys imps userFns fresh a ⟧ˢ fmt
-                     (restrictᴰ {Γ = Γ} (Srf.⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) ⟨$⟩ j
-                   ≡ SD.⟦ a ⟧ˢ fmt (restrictᴰ {Γ = Γ} (Srf.⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) ⟨$⟩ j)
+                     (restrictᴰ {Γ = Γ} le₁ dγ) ⟨$⟩ j
+                   ≡ SD.⟦ a ⟧ˢ fmt (restrictᴰ {Γ = Γ} le₁ dγ) ⟨$⟩ j)
     (ihB : ∀ j → SD.⟦ resolveExpr polys imps userFns fresh b ⟧ˢ fmt
-                     (restrictᴰ {Γ = Γ} (Srf.⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) ⟨$⟩ j
-                   ≡ SD.⟦ b ⟧ˢ fmt (restrictᴰ {Γ = Γ} (Srf.⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) ⟨$⟩ j)
+                     (restrictᴰ {Γ = Γ} le₂ dγ) ⟨$⟩ j
+                   ≡ SD.⟦ b ⟧ˢ fmt (restrictᴰ {Γ = Γ} le₂ dγ) ⟨$⟩ j)
     (k : ℕ)
   → returnT (λ (_ : Data.Unit.⊤) →
        SD.⟦ resolveExpr polys imps userFns fresh a ⟧ˢ fmt
-         (restrictᴰ {Γ = Γ} (Srf.⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=T λ va →
+         (restrictᴰ {Γ = Γ} le₁ dγ) >>=T λ va →
        SD.⟦ resolveExpr polys imps userFns fresh b ⟧ˢ fmt
-         (restrictᴰ {Γ = Γ} (Srf.⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vb → g va vb) ⟨$⟩ k
+         (restrictᴰ {Γ = Γ} le₂ dγ) >>=T λ vb → g va vb) ⟨$⟩ k
       ≡ returnT (λ (_ : Data.Unit.⊤) →
        SD.⟦ a ⟧ˢ fmt
-         (restrictᴰ {Γ = Γ} (Srf.⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=T λ va →
+         (restrictᴰ {Γ = Γ} le₁ dγ) >>=T λ va →
        SD.⟦ b ⟧ˢ fmt
-         (restrictᴰ {Γ = Γ} (Srf.⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vb → g va vb) ⟨$⟩ k
-thunk-binop-faithful {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {C = C} polys imps userFns fresh a b g dγ ihA ihB k =
+         (restrictᴰ {Γ = Γ} le₂ dγ) >>=T λ vb → g va vb) ⟨$⟩ k
+thunk-binop-faithful {Γ = Γ} {C = C} polys imps userFns fresh a b le₁ le₂ g dγ ihA ihB k =
   cong (λ h → [] , returns h) (extensionality (λ _ → inner))
   where
-    Ea = restrictᴰ {Γ = Γ} (Srf.⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ
-    Eb = restrictᴰ {Γ = Γ} (Srf.⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ
+    Ea = restrictᴰ {Γ = Γ} le₁ dγ
+    Eb = restrictᴰ {Γ = Γ} le₂ dγ
     inner : (SD.⟦ resolveExpr polys imps userFns fresh a ⟧ˢ fmt Ea >>=T λ va →
              SD.⟦ resolveExpr polys imps userFns fresh b ⟧ˢ fmt Eb >>=T λ vb → g va vb)
               ≡ (SD.⟦ a ⟧ˢ fmt Ea >>=T λ va →
                  SD.⟦ b ⟧ˢ fmt Eb >>=T λ vb → g va vb)
-    inner = T-ext-at (binop-faithful {C = C} polys imps userFns fresh a b g dγ ihA ihB)
+    inner = T-ext-at (binop-le-faithful {C = C} polys imps userFns fresh a b le₁ le₂ g dγ ihA ihB)
 
 -- | The UNARY-OPERAND shape: one sub-expression under an arbitrary narrowing
 --   `le`, then a continuation the resolver leaves alone (`morph-app`, `fst'`,
@@ -383,9 +384,9 @@ resolveExpr-faithful polys imps userFns fresh
 -- D127: the combinators resolve componentwise; both arms' IHs rewrite and the
 -- meaning is a function of the two results, so `refl` closes each.
 resolveExpr-faithful polys imps userFns fresh (Srf.comp' {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {A = A} {C = C} {π = π} a b) dγ k =
-  binop-faithful {C = A T.⇒[ T.mk-kind Many π ] C} polys imps userFns fresh a b (λ va vb → returnT (λ a → vb a >>=T va)) dγ
-    (resolveExpr-faithful polys imps userFns fresh a (restrictᴰ {Γ = Γ} (Srf.⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ))
-    (resolveExpr-faithful polys imps userFns fresh b (restrictᴰ {Γ = Γ} (Srf.⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ)) k
+  binop-le-faithful {C = A T.⇒[ T.mk-kind Many π ] C} polys imps userFns fresh a b (Srf.⊑ᵘ-+ˡ Ψ₁ (Many Srf.*ᵘ Ψ₂)) (Srf.⊑ᵘ-trans (Srf.⊑ᵘ-*Many Ψ₂) (Srf.⊑ᵘ-+ʳ Ψ₁ (Many Srf.*ᵘ Ψ₂))) (λ va vb → returnT (λ a → vb a >>=T va)) dγ
+    (resolveExpr-faithful polys imps userFns fresh a (restrictᴰ {Γ = Γ} (Srf.⊑ᵘ-+ˡ Ψ₁ (Many Srf.*ᵘ Ψ₂)) dγ))
+    (resolveExpr-faithful polys imps userFns fresh b (restrictᴰ {Γ = Γ} (Srf.⊑ᵘ-trans (Srf.⊑ᵘ-*Many Ψ₂) (Srf.⊑ᵘ-+ʳ Ψ₁ (Many Srf.*ᵘ Ψ₂))) dγ)) k
 resolveExpr-faithful polys imps userFns fresh (Srf.copair' {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {A = A} {B = B} {C = C} {π = π} a b) dγ k =
   binop-faithful {C = (A T.+ B) T.⇒[ T.mk-kind Many π ] C} polys imps userFns fresh a b (λ va vb → returnT (λ ab → [ va , vb ]′ ab)) dγ
     (resolveExpr-faithful polys imps userFns fresh a (restrictᴰ {Γ = Γ} (Srf.⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ))
@@ -561,9 +562,9 @@ resolveExpr-faithful polys imps userFns fresh
 
 resolveExpr-faithful polys imps userFns fresh
     (Srf.effApp {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {A = A} {B = B} f x) dγ k =
-  thunk-binop-faithful {C = B} polys imps userFns fresh f x (λ vf vx → vf vx) dγ
-    (resolveExpr-faithful polys imps userFns fresh f (restrictᴰ {Γ = Γ} (Srf.⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ))
-    (resolveExpr-faithful polys imps userFns fresh x (restrictᴰ {Γ = Γ} (Srf.⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ)) k
+  thunk-binop-faithful {C = B} polys imps userFns fresh f x (Srf.⊑ᵘ-+ˡ Ψ₁ (Many Srf.*ᵘ Ψ₂)) (Srf.⊑ᵘ-trans (Srf.⊑ᵘ-*Many Ψ₂) (Srf.⊑ᵘ-+ʳ Ψ₁ (Many Srf.*ᵘ Ψ₂))) (λ vf vx → vf vx) dγ
+    (resolveExpr-faithful polys imps userFns fresh f (restrictᴰ {Γ = Γ} (Srf.⊑ᵘ-+ˡ Ψ₁ (Many Srf.*ᵘ Ψ₂)) dγ))
+    (resolveExpr-faithful polys imps userFns fresh x (restrictᴰ {Γ = Γ} (Srf.⊑ᵘ-trans (Srf.⊑ᵘ-*Many Ψ₂) (Srf.⊑ᵘ-+ʳ Ψ₁ (Many Srf.*ᵘ Ψ₂))) dγ)) k
 -- cata: D131 — the algebra is BOUND, so both sides are `⟦alg⟧ˢ tt >>=T` the
 -- same continuation and the whole clause is ONE `cong` over the algebra
 -- denotation (the IH at empty env `tt`, lifted to a full T-value by funext

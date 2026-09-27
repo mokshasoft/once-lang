@@ -366,7 +366,7 @@ module Weaken (imps : Imports) (P : PolyCtx) where
     W-i wk (_ , fr) (t-apply-eff-app-infer d) = cᵢ (sym (up-z+M wk _)) (t-apply-eff-app-infer (W-i wk fr d))
     W-i wk (_ , fr) (t-Out-app-infer wf eq d) = cᵢ (sym (up-z+M wk _)) (t-Out-app-infer wf eq (W-i wk fr d))
     W-i wk (f₁ , f₂) (t-app ah dF dX) = cᵢ (sym (up-+* wk _ _ _)) (t-app ah (W-i wk f₁ dF) (W-c wk f₂ dX))
-    W-i wk (f₁ , f₂) (t-effApp ah dF dX) = cᵢ (sym (up-+ wk _ _)) (t-effApp ah (W-i wk f₁ dF) (W-c wk f₂ dX))
+    W-i wk (f₁ , f₂) (t-effApp ah dF dX) = cᵢ (sym (up-+* wk _ _ _)) (t-effApp ah (W-i wk f₁ dF) (W-c wk f₂ dX))
     W-i wk (f₁ , f₂) (t-app-spine ah dX dF) = cᵢ (sym (up-+* wk _ _ _)) (t-app-spine ah (W-i wk f₂ dX) (W-d wk f₁ dF))
     W-i wk fr (t-neg-void d) = t-neg-void (W-i wk fr d)
     W-i wk (fS , fL , fR) (t-case-void {xL = xL} {xR = xR} dS dL dR) =
@@ -385,8 +385,8 @@ module Weaken (imps : Imports) (P : PolyCtx) where
     W-c wk _ t-initial-morph-check = cᶜ (sym (up-zero wk)) t-initial-morph-check
     W-c wk _ t-inl-morph-check = cᶜ (sym (up-zero wk)) t-inl-morph-check
     W-c wk _ t-inr-morph-check = cᶜ (sym (up-zero wk)) t-inr-morph-check
-    W-c wk ((_ , f₁) , f₂) (t-compose-check-g dg df) = cᶜ (sym (up-+ wk _ _)) (t-compose-check-g (W-d wk f₂ dg) (W-c wk f₁ df))
-    W-c wk ((_ , f₁) , f₂) (t-compose-check-f wf p dg) = cᶜ (sym (up-+ wk _ _)) (t-compose-check-f (W-i wk f₁ wf) p (W-c wk f₂ dg))
+    W-c wk ((_ , f₁) , f₂) (t-compose-check-g dg df) = cᶜ (sym (up-+* wk _ _ _)) (t-compose-check-g (W-d wk f₂ dg) (W-c wk f₁ df))
+    W-c wk ((_ , f₁) , f₂) (t-compose-check-f wf p dg) = cᶜ (sym (up-+* wk _ _ _)) (t-compose-check-f (W-i wk f₁ wf) p (W-c wk f₂ dg))
     W-c wk ((_ , f₁) , f₂) (t-case-copair-check df dg) = cᶜ (sym (up-+ wk _ _)) (t-case-copair-check (W-c wk f₁ df) (W-c wk f₂ dg))
     W-c wk ((_ , f₁) , f₂) (t-pair-morph-check df dg) = cᶜ (sym (up-+ wk _ _)) (t-pair-morph-check (W-c wk f₁ df) (W-c wk f₂ dg))
     W-c wk (_ , fr) (t-curry-check d) = t-curry-check (W-c wk fr d)
@@ -404,7 +404,7 @@ module Weaken (imps : Imports) (P : PolyCtx) where
         cᶜ (sym (up-zero wk)) (t-var-poly-instantiate (wnone (wloc wk z fr) ln) li lp ¬g body)
     W-d wk fr (d-infer w sb gr) = d-infer (W-i wk fr w) sb gr
     W-d wk fb (d-lam {x = y} {A = B} leq body) = d-lam leq (W-i (wk-under y B wk) fb body)
-    W-d wk ((_ , f₁) , f₂) (d-compose dg df) = cᵈ (sym (up-+ wk _ _)) (d-compose (W-d wk f₂ dg) (W-d wk f₁ df))
+    W-d wk ((_ , f₁) , f₂) (d-compose dg df) = cᵈ (sym (up-+* wk _ _ _)) (d-compose (W-d wk f₂ dg) (W-d wk f₁ df))
     W-d wk _ d-id = cᵈ (sym (up-zero wk)) d-id
     W-d wk _ d-fst = cᵈ (sym (up-zero wk)) d-fst
     W-d wk _ d-snd = cᵈ (sym (up-zero wk)) d-snd

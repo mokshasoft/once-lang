@@ -247,7 +247,7 @@ module Transfer
     tr-i ld (t-apply-eff-app-infer d) = cᵢ (sym (drop-z+M ld _)) (t-apply-eff-app-infer (tr-i ld d))
     tr-i ld (t-Out-app-infer wf eq d) = cᵢ (sym (drop-z+M ld _)) (t-Out-app-infer wf eq (tr-i ld d))
     tr-i ld (t-app ah dF dX) = cᵢ (sym (drop-+* ld _ _ _)) (t-app ah (tr-i ld dF) (tr-c ld dX))
-    tr-i ld (t-effApp ah dF dX) = cᵢ (sym (drop-+ ld _ _)) (t-effApp ah (tr-i ld dF) (tr-c ld dX))
+    tr-i ld (t-effApp ah dF dX) = cᵢ (sym (drop-+* ld _ _ _)) (t-effApp ah (tr-i ld dF) (tr-c ld dX))
     tr-i ld (t-app-spine ah dX dF) = cᵢ (sym (drop-+* ld _ _ _)) (t-app-spine ah (tr-i ld dX) (tr-d ld dF))
     tr-i ld (t-neg-void d) = t-neg-void (tr-i ld d)
     tr-i ld (t-case-void {xL = xL} {xR = xR} dS dL dR) =
@@ -266,8 +266,8 @@ module Transfer
     tr-c ld t-initial-morph-check = cᶜ (sym (drop-zero ld)) t-initial-morph-check
     tr-c ld t-inl-morph-check = cᶜ (sym (drop-zero ld)) t-inl-morph-check
     tr-c ld t-inr-morph-check = cᶜ (sym (drop-zero ld)) t-inr-morph-check
-    tr-c ld (t-compose-check-g dg df) = cᶜ (sym (drop-+ ld _ _)) (t-compose-check-g (tr-d ld dg) (tr-c ld df))
-    tr-c ld (t-compose-check-f wf p dg) = cᶜ (sym (drop-+ ld _ _)) (t-compose-check-f (tr-i ld wf) p (tr-c ld dg))
+    tr-c ld (t-compose-check-g dg df) = cᶜ (sym (drop-+* ld _ _ _)) (t-compose-check-g (tr-d ld dg) (tr-c ld df))
+    tr-c ld (t-compose-check-f wf p dg) = cᶜ (sym (drop-+* ld _ _ _)) (t-compose-check-f (tr-i ld wf) p (tr-c ld dg))
     tr-c ld (t-case-copair-check df dg) = cᶜ (sym (drop-+ ld _ _)) (t-case-copair-check (tr-c ld df) (tr-c ld dg))
     tr-c ld (t-pair-morph-check df dg) = cᶜ (sym (drop-+ ld _ _)) (t-pair-morph-check (tr-c ld df) (tr-c ld dg))
     tr-c ld (t-curry-check d) = t-curry-check (tr-c ld d)
@@ -285,7 +285,7 @@ module Transfer
         cᶜ (sym (drop-zero ld)) (t-var-poly-instantiate (none-tr (loc-tr ld y) ln) li (lpp-tr y lp) ¬g body)
     tr-d ld (d-infer w sb gr) = d-infer (tr-i ld w) sb gr
     tr-d ld (d-lam {x = y} {A = B} leq body) = d-lam leq (tr-i (ld-under y B ld) body)
-    tr-d ld (d-compose dg df) = cᵈ (sym (drop-+ ld _ _)) (d-compose (tr-d ld dg) (tr-d ld df))
+    tr-d ld (d-compose dg df) = cᵈ (sym (drop-+* ld _ _ _)) (d-compose (tr-d ld dg) (tr-d ld df))
     tr-d ld d-id = cᵈ (sym (drop-zero ld)) d-id
     tr-d ld d-fst = cᵈ (sym (drop-zero ld)) d-fst
     tr-d ld d-snd = cᵈ (sym (drop-zero ld)) d-snd

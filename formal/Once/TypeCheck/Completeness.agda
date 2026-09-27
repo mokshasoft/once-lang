@@ -927,7 +927,7 @@ infer-complete-RApp-eff :
   → checkElab ctx x A ≡ success Ψx xE dx fx
   → ∃[ eE ] ∃[ d ] ∃[ f' ]
       inferElab ctx (Raw.RApp f x)
-        ≡ success (T.Unit T.⇒[ T.mk-kind T.Many T.eff ] B) (Ψf +ᵘ Ψx) eE d f'
+        ≡ success (T.Unit T.⇒[ T.mk-kind T.Many T.eff ] B) (Ψf +ᵘ (T.Many *ᵘ Ψx)) eE d f'
 infer-complete-RApp-eff {ctx} f x A {B} eqAH eqF eqX
   rewrite cong proj₁ (viewBridge {ctx} {f} {x} ahv-other (classifyAppHead-nothing⇒view-other eqAH))
         | cong proj₁ (otherBridge {ctx} {f} {x} nothing eqAH)
@@ -1201,7 +1201,7 @@ compose-f-complete : ∀ {ctx : NamedCtx} (f g : RawExpr) (A B C C′ : Type) (�
   → inferElab ctx f ≡ success (B T.⇒[ T.mk-kind T.Many π′ ] C′) Ψ₁ fE df ff
   → (B T.⇒[ T.mk-kind T.Many π′ ] C′) <: (B T.⇒[ T.mk-kind T.Many π ] C)
   → checkElab ctx g (A T.⇒[ T.mk-kind T.Many π ] B) ≡ success Ψ₂ gE dg fg
-  → ∃[ eE ] ∃[ d ] ∃[ fr ] proj₁ (checkCompose-f ctx f g A C π) ≡ success (Ψ₁ +ᵘ Ψ₂) eE d fr
+  → ∃[ eE ] ∃[ d ] ∃[ fr ] proj₁ (checkCompose-f ctx f g A C π) ≡ success (Ψ₁ +ᵘ (T.Many *ᵘ Ψ₂)) eE d fr
 compose-f-complete {ctx} f g A B C C′ π π′ eqF p eqG
   with inferElabV ctx f | eqF
 ... | success _ _ _ _ _ , _ | refl
@@ -1221,7 +1221,7 @@ compose-g-complete : ∀ {ctx : NamedCtx} (f g : RawExpr) (A B C C′ : Type) (�
   → inferElab ctx f ≡ success (B T.⇒[ T.mk-kind T.Many π′ ] C′) Ψ₁ fE df ff
   → (B T.⇒[ T.mk-kind T.Many π′ ] C′) <: (B T.⇒[ T.mk-kind T.Many π ] C)
   → checkElab ctx g (A T.⇒[ T.mk-kind T.Many π ] B) ≡ success Ψ₂ gE dg fg
-  → ∃[ eE ] ∃[ d ] ∃[ fr ] proj₁ (checkCompose-g ctx f g A C π rG) ≡ success (Ψ₁ +ᵘ Ψ₂) eE d fr
+  → ∃[ eE ] ∃[ d ] ∃[ fr ] proj₁ (checkCompose-g ctx f g A C π rG) ≡ success (Ψ₁ +ᵘ (T.Many *ᵘ Ψ₂)) eE d fr
 compose-g-complete f g A B C C′ π π′ (failure _ , _) wf dg eqF p eqG =
   compose-f-complete f g A B C C′ π π′ eqF p eqG
 compose-g-complete {ctx} f g A B C C′ π π′ (success B″ Ψg″ gE″ dg″ fg″ , wG) wf dg eqF p eqG

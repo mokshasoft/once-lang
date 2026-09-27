@@ -267,10 +267,10 @@ seqᴰ m₁ m₂ = (m₁ >>=T λ x → m₂ >>=T λ y → returnT (x , y)) >>=T 
 ⟦_⟧ᶜ {ctx = ctx} (t-inl-morph-check      ) fmt dγ = returnT (λ a  → returnT (inj₁ a))
 ⟦_⟧ᶜ {ctx = ctx} (t-inr-morph-check      ) fmt dγ = returnT (λ b  → returnT (inj₂ b))
 ⟦_⟧ᶜ {ctx = ctx} (t-compose-check-g dg df) fmt dγ =
-  (⟦ df ⟧ᶜ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=T λ vf → (⟦ dg ⟧ᵈ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=T λ vg →
+  (⟦ df ⟧ᶜ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ (Many *ᵘ _)) dγ) >>=T λ vf → (⟦ dg ⟧ᵈ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-trans (⊑ᵘ-*Many _) (⊑ᵘ-+ʳ _ (Many *ᵘ _))) dγ) >>=T λ vg →
   returnT (λ a → vg a >>=T vf)
 ⟦_⟧ᶜ {ctx = ctx} (t-compose-check-f wf p dg) fmt dγ =
-  fmapT ⟦ p ⟧<: ((⟦ wf ⟧ᵢ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ)) >>=T λ vf → (⟦ dg ⟧ᶜ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=T λ vg →
+  fmapT ⟦ p ⟧<: ((⟦ wf ⟧ᵢ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ (Many *ᵘ _)) dγ)) >>=T λ vf → (⟦ dg ⟧ᶜ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-trans (⊑ᵘ-*Many _) (⊑ᵘ-+ʳ _ (Many *ᵘ _))) dγ) >>=T λ vg →
   returnT (λ a → vg a >>=T vf)
 ⟦_⟧ᶜ {ctx = ctx} (t-case-copair-check df dg) fmt dγ =
   (⟦ df ⟧ᶜ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=T λ vf → (⟦ dg ⟧ᶜ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=T λ vg →
@@ -464,7 +464,7 @@ seqᴰ m₁ m₂ = (m₁ >>=T λ x → m₂ >>=T λ y → returnT (x , y)) >>=T 
 ⟦_⟧ᵢ {ctx = ctx} (t-app {q = Many} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} _ df dx) fmt dγ =
   (⟦ df ⟧ᵢ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ Ψ₁ (Many *ᵘ Ψ₂)) dγ) >>=T λ vf →
   (⟦ dx ⟧ᶜ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-trans (⊑ᵘ-*Many Ψ₂) (⊑ᵘ-+ʳ Ψ₁ (Many *ᵘ Ψ₂))) dγ) >>=T λ vx → vf vx
-⟦_⟧ᵢ {ctx = ctx} (t-effApp _ df dx) fmt dγ = returnT (λ _ → (⟦ df ⟧ᵢ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=T λ vf → (⟦ dx ⟧ᶜ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=T λ vx → vf vx)
+⟦_⟧ᵢ {ctx = ctx} (t-effApp _ df dx) fmt dγ = returnT (λ _ → (⟦ df ⟧ᵢ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ (Many *ᵘ _)) dγ) >>=T λ vf → (⟦ dx ⟧ᶜ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-trans (⊑ᵘ-*Many _) (⊑ᵘ-+ʳ _ (Many *ᵘ _))) dγ) >>=T λ vx → vf vx)
 -- D230: the spine — the head, given the argument's type, applied to it.
 ⟦_⟧ᵢ {ctx = ctx} (t-app-spine _ darg df) fmt dγ = (⟦ df ⟧ᵈ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=T λ vf → (⟦ darg ⟧ᵢ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-trans (⊑ᵘ-*Many _) (⊑ᵘ-+ʳ _ _)) dγ) >>=T λ vx → vf vx
 -- D229 / plan 0.94 §13: ex falso. The term's computation is its principal
@@ -488,7 +488,7 @@ seqᴰ m₁ m₂ = (m₁ >>=T λ x → m₂ >>=T λ y → returnT (x , y)) >>=T 
 ⟦_⟧ᵈ {ctx = ctx} (d-lam {A = A} {q' = One}  _ d) fmt dγ = returnT (λ a → (⟦ d ⟧ᵢ fmt) (bindᴰ {Γ = NamedCtx.debruijn ctx} {A = A} One  dγ a))
 ⟦_⟧ᵈ {ctx = ctx} (d-lam {A = A} {q' = Many} _ d) fmt dγ = returnT (λ a → (⟦ d ⟧ᵢ fmt) (bindᴰ {Γ = NamedCtx.debruijn ctx} {A = A} Many dγ a))
 ⟦_⟧ᵈ {ctx = ctx} (d-compose dg df) fmt dγ =
-  (⟦ df ⟧ᵈ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=T λ vf → (⟦ dg ⟧ᵈ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=T λ vg →
+  (⟦ df ⟧ᵈ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ (Many *ᵘ _)) dγ) >>=T λ vf → (⟦ dg ⟧ᵈ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-trans (⊑ᵘ-*Many _) (⊑ᵘ-+ʳ _ (Many *ᵘ _))) dγ) >>=T λ vg →
   returnT (λ a → vg a >>=T vf)
 ⟦_⟧ᵈ {ctx = ctx} d-id       fmt dγ = returnT (λ a  → returnT a)
 ⟦_⟧ᵈ {ctx = ctx} d-fst      fmt dγ = returnT (λ ab → returnT (proj₁ ab))

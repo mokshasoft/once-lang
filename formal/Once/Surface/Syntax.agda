@@ -80,7 +80,7 @@ data Expr : ∀ {n} → Ctx n → Usage n → Type → Set where
   -- — see `Once.Surface.Elaborate` for the structural translation and
   -- `Once.Surface.Correct` for the correctness proof.
   effApp : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} {A B}
-         → Expr Γ Ψ₁ (A ⇒[ mk-kind Many eff ] B) → Expr Γ Ψ₂ A → Expr Γ (Ψ₁ +ᵘ Ψ₂) (Unit ⇒[ mk-kind Many eff ] B)
+         → Expr Γ Ψ₁ (A ⇒[ mk-kind Many eff ] B) → Expr Γ Ψ₂ A → Expr Γ (Ψ₁ +ᵘ (Many *ᵘ Ψ₂)) (Unit ⇒[ mk-kind Many eff ] B)
 
   -- Pair introduction — both components consumed.
   pair  : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} {A B}
@@ -264,29 +264,20 @@ data Expr : ∀ {n} → Ctx n → Usage n → Type → Set where
   ----------------------------------------------------------------
   -- D127: THE CATEGORICAL COMBINATORS AS TERM FORMERS.
   --
-  -- These are PRIMITIVES, not sugar for application, and that is the whole
-  -- point of the usage indices below. Composition is LINEAR in each argument
-  -- — `comp : (B⇒C) × (A⇒B) → (A⇒C)` uses each component of its pair exactly
-  -- once — so `comp' f g` costs `Ψ₁ +ᵘ Ψ₂`.
-  --
-  -- Encoding either of them as an APPLICATION would cost `Many *ᵘ Ψ` instead,
-  -- because QTT's application rule (`Γ + q·Δ ⊢ f x`) is conservative: a
-  -- `Many`-graded function MAY duplicate its argument, so `app`/`morph-app`
-  -- must assume it does. That is right for an arbitrary function and wrong
-  -- for these four, and the difference is observable — it decides whether a
-  -- LINEAR local may be captured in a `compose` arm.
-  --
-  -- So the linearity is stated here, in the term former, and DISCHARGED in
-  -- `Once.Surface.Elaborate`: each of these elaborates to the corresponding
-  -- closed CCC morphism applied to `⟨ arm₁ , arm₂ ⟩`, and the elaboration's
-  -- correctness proof is where "uses each arm once" has to be true rather
-  -- than assumed.
+  -- Each is `λx.` of its arms' use, and its usage is what standard QTT gives
+  -- that definition (D232, amending D127). `copair'`, `fork'` and `curry'`
+  -- use each arm once. `comp' f g` = `λx. f (g x)`: `g x` is the ARGUMENT of
+  -- the ω-graded `f`, so the inner arm is scaled — `Ψ₁ +ᵘ Many *ᵘ Ψ₂` —
+  -- exactly as `app` scales an argument. (D127 had charged it once; that let
+  -- `compose dup (\_ -> h)` duplicate a linear `h`.)
   ----------------------------------------------------------------
 
+  -- D232: the INNER arm's term is the outer arm's argument, so it is scaled
+  -- by the outer arm's grade (standard QTT); the outer arm is used once.
   comp' : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} {A B C} {π : Purity}
         → Expr Γ Ψ₁ (B ⇒[ mk-kind Many π ] C)
         → Expr Γ Ψ₂ (A ⇒[ mk-kind Many π ] B)
-        → Expr Γ (Ψ₁ +ᵘ Ψ₂) (A ⇒[ mk-kind Many π ] C)
+        → Expr Γ (Ψ₁ +ᵘ (Many *ᵘ Ψ₂)) (A ⇒[ mk-kind Many π ] C)
 
   copair' : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} {A B C} {π : Purity}
           → Expr Γ Ψ₁ (A ⇒[ mk-kind Many π ] C)

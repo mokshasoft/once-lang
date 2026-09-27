@@ -190,15 +190,18 @@ rename {Δ = Δ} θ (Surface.app {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = q} f x) =
                     (cong (thin-usage θ Ψ₁ +ᵘ_) (thin-usage-*ᵘ θ q Ψ₂))))
         (Surface.app (rename θ f) (rename θ x))
 rename {Δ = Δ} θ (Surface.effApp {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} f x) =
-  subst (λ Ψ → SExpr Δ Ψ _) (sym (thin-usage-+ᵘ θ Ψ₁ Ψ₂))
+  subst (λ Ψ → SExpr Δ Ψ _) (sym (trans (thin-usage-+ᵘ θ Ψ₁ (Many *ᵘ Ψ₂))
+                    (cong (thin-usage θ Ψ₁ +ᵘ_) (thin-usage-*ᵘ θ Many Ψ₂))))
         (Surface.effApp (rename θ f) (rename θ x))
 rename {Δ = Δ} θ (Surface.pair {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) =
   subst (λ Ψ → SExpr Δ Ψ _) (sym (thin-usage-+ᵘ θ Ψ₁ Ψ₂))
         (Surface.pair (rename θ a) (rename θ b))
--- D127: the four combinators thin componentwise; their usage is `Ψ₁ +ᵘ Ψ₂`,
--- so they need `thin-usage-+ᵘ` exactly as `pair` does.
+-- D127: the combinators thin componentwise; their usage is `Ψ₁ +ᵘ Ψ₂`, so
+-- they need `thin-usage-+ᵘ` exactly as `pair` does — except `comp'`, whose
+-- inner arm is scaled (D232) and thins as `app`'s argument does.
 rename {Δ = Δ} θ (Surface.comp' {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} f g) =
-  subst (λ Ψ → SExpr Δ Ψ _) (sym (thin-usage-+ᵘ θ Ψ₁ Ψ₂))
+  subst (λ Ψ → SExpr Δ Ψ _) (sym (trans (thin-usage-+ᵘ θ Ψ₁ (Many *ᵘ Ψ₂))
+                    (cong (thin-usage θ Ψ₁ +ᵘ_) (thin-usage-*ᵘ θ Many Ψ₂))))
         (Surface.comp' (rename θ f) (rename θ g))
 rename {Δ = Δ} θ (Surface.copair' {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} f g) =
   subst (λ Ψ → SExpr Δ Ψ _) (sym (thin-usage-+ᵘ θ Ψ₁ Ψ₂))

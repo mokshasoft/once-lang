@@ -1246,7 +1246,7 @@ faithful (app {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {A = A} {B = B} {q = Man
 faithful (effApp {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {A = A} {B = B} f x) dγ k =
   trans (cong (λ t → t ⟨$⟩ k) liftFn-curry-reduce-effApp)
         (cong (λ v → ([] , returns v)) (extensionality (λ _ → T-ext-at (λ n →
-          app-body {⟦ Γ ↾ (Ψ₁ +ᵘ Ψ₂) ⟧ᶜ} {A} {B} {eff}
+          app-body {⟦ Γ ↾ (Ψ₁ +ᵘ (Many *ᵘ Ψ₂)) ⟧ᶜ} {A} {B} {eff}
                    (elaborate C.Heap f ∘ restrictEnv {Γ = Γ} C.Heap leF)
                    (elaborate C.Heap x ∘ restrictEnv {Γ = Γ} C.Heap leX)
                    (SD.⟦ f ⟧ˢ fmt (restrictᴰ {Γ = Γ} leF dγ))
@@ -1258,15 +1258,15 @@ faithful (effApp {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {A = A} {B = B} f x) 
                    (λ j → trans (liftFn-∘-restrictEnv {Γ = Γ} {A = A} leX (elaborate C.Heap x) dγ j)
                                 (faithful x (restrictᴰ {Γ = Γ} leX dγ) j))))))
   where
-    leF = ⊑ᵘ-+ˡ Ψ₁ Ψ₂
-    leX = ⊑ᵘ-+ʳ Ψ₁ Ψ₂
-    dγ' = subst id (sym (cohᴰ ⟦ Γ ↾ (Ψ₁ +ᵘ Ψ₂) ⟧ᶜ)) dγ
+    leF = ⊑ᵘ-+ˡ Ψ₁ (Many *ᵘ Ψ₂)
+    leX = ⊑ᵘ-trans (⊑ᵘ-*Many Ψ₂) (⊑ᵘ-+ʳ Ψ₁ (Many *ᵘ Ψ₂))
+    dγ' = subst id (sym (cohᴰ ⟦ Γ ↾ (Ψ₁ +ᵘ (Many *ᵘ Ψ₂)) ⟧ᶜ)) dγ
     inner = apply ∘ ⟨ elaborate C.Heap f ∘ restrictEnv {Γ = Γ} C.Heap leF
                     , elaborate C.Heap x ∘ restrictEnv {Γ = Γ} C.Heap leX ⟩
     body = inner ∘ fst
     liftFn-curry-reduce-effApp :
-      liftFn fmt {⟦ Γ ↾ (Ψ₁ +ᵘ Ψ₂) ⟧ᶜ} {Unit ⇒[ mk-kind Many eff ] B} (curry body) dγ
-      ≡ returnT (λ _ → liftFn fmt {⟦ Γ ↾ (Ψ₁ +ᵘ Ψ₂) ⟧ᶜ} {B} inner dγ)
+      liftFn fmt {⟦ Γ ↾ (Ψ₁ +ᵘ (Many *ᵘ Ψ₂)) ⟧ᶜ} {Unit ⇒[ mk-kind Many eff ] B} (curry body) dγ
+      ≡ returnT (λ _ → liftFn fmt {⟦ Γ ↾ (Ψ₁ +ᵘ (Many *ᵘ Ψ₂)) ⟧ᶜ} {B} inner dγ)
     liftFn-curry-reduce-effApp =
       trans (subst-T-returnT (cong₂ (λ u v → u → T v) (cohᴰ Unit) (cohᴰ B))
                              (λ u → evalᴰ fmt body (dγ' , u)))
@@ -1293,7 +1293,7 @@ faithful (str s) dγ k = refl   -- ⟦str s⟧ˢ fmt now denotes via str-lit-inf
 -- D127: `comp'` delegates to `comp-body`, the same way `app` delegates to
 -- `app-body`.
 faithful (comp' {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {A = A} {B = B} {C = C} {π = π} f g) dγ n =
-  comp-body {⟦ Γ ↾ (Ψ₁ +ᵘ Ψ₂) ⟧ᶜ} {A} {B} {C} {π}
+  comp-body {⟦ Γ ↾ (Ψ₁ +ᵘ (Many *ᵘ Ψ₂)) ⟧ᶜ} {A} {B} {C} {π}
             (elaborate C.Heap f ∘ restrictEnv {Γ = Γ} C.Heap leF)
             (elaborate C.Heap g ∘ restrictEnv {Γ = Γ} C.Heap leG)
             (SD.⟦ f ⟧ˢ fmt (restrictᴰ {Γ = Γ} leF dγ))
@@ -1304,8 +1304,8 @@ faithful (comp' {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {A = A} {B = B} {C = C
             (λ j → trans (liftFn-∘-restrictEnv {Γ = Γ} {A = A ⇒[ mk-kind Many π ] B} leG (elaborate C.Heap g) dγ j)
                          (faithful g (restrictᴰ {Γ = Γ} leG dγ) j))
   where
-    leF = ⊑ᵘ-+ˡ Ψ₁ Ψ₂
-    leG = ⊑ᵘ-+ʳ Ψ₁ Ψ₂
+    leF = ⊑ᵘ-+ˡ Ψ₁ (Many *ᵘ Ψ₂)
+    leG = ⊑ᵘ-trans (⊑ᵘ-*Many Ψ₂) (⊑ᵘ-+ʳ Ψ₁ (Many *ᵘ Ψ₂))
 faithful (curry' {Γ = Γ} {Ψ = Ψ} {A = A} {B = B} {C = C} f) dγ n =
   curry-body {⟦ Γ ↾ Ψ ⟧ᶜ} {A} {B} {C}
              (elaborate C.Heap f) (SD.⟦ f ⟧ˢ fmt dγ) dγ n (λ j → faithful f dγ j)

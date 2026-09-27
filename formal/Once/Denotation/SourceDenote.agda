@@ -153,8 +153,8 @@ liftD fmt {A} {B} ir = returnT (liftFn fmt {A} {B} ir)
 -- coincidence to be maintained by hand — `realize-agrees` is what holds them
 -- together, and it now compares like with like at every combinator.
 ⟦ comp' {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} f g ⟧ˢ fmt dγ =
-  ⟦ f ⟧ˢ fmt (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=T λ vf →
-  ⟦ g ⟧ˢ fmt (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vg →
+  ⟦ f ⟧ˢ fmt (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ (Many *ᵘ Ψ₂)) dγ) >>=T λ vf →
+  ⟦ g ⟧ˢ fmt (restrictᴰ {Γ = Γ} (⊑ᵘ-trans (⊑ᵘ-*Many Ψ₂) (⊑ᵘ-+ʳ Ψ₁ (Many *ᵘ Ψ₂))) dγ) >>=T λ vg →
   returnT (λ a → vg a >>=T vf)
 ⟦ copair' {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} f g ⟧ˢ fmt dγ =
   ⟦ f ⟧ˢ fmt (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=T λ vf →
@@ -267,8 +267,8 @@ liftD fmt {A} {B} ir = returnT (liftFn fmt {A} {B} ir)
 -- immediate-vs-suspended mismatch was SS.eval (retired) vs the IR; one semantics
 -- now, and the Eff type IS suspended.
 ⟦ effApp {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} f x ⟧ˢ fmt dγ =
-  returnT (λ _ → ⟦ f ⟧ˢ fmt (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=T λ vf →
-                 ⟦ x ⟧ˢ fmt (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vx → vf vx)
+  returnT (λ _ → ⟦ f ⟧ˢ fmt (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ (Many *ᵘ Ψ₂)) dγ) >>=T λ vf →
+                 ⟦ x ⟧ˢ fmt (restrictᴰ {Γ = Γ} (⊑ᵘ-trans (⊑ᵘ-*Many Ψ₂) (⊑ᵘ-+ʳ Ψ₁ (Many *ᵘ Ψ₂))) dγ) >>=T λ vx → vf vx)
 -- IR embedding: `lift-morphism`/`morph-app` inject a PRE-BUILT CCC morphism into
 -- the surface; their meaning IS the IR's denotation `evalᴰ ir` (definitionally
 -- matching elaborate, which maps them straight to `ir`). Not the IR-pivot — these

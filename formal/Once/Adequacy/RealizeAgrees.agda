@@ -1198,8 +1198,8 @@ agree-RApp-other-aux {ctx} f arg nothing eqAH eq fInferIH argCheckIH argInferIH 
                           (λ vx → vf vx) (λ vx → vf vx)
                           (argCheckIH xeq Ex) (λ _ → refl))))
   where
-    Ef = restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ
-    Ex = restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ
+    Ef = restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-+ˡ Ψ₁ (Many Surface.*ᵘ Ψ₂)) dγ
+    Ex = restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-trans (Surface.⊑ᵘ-*Many Ψ₂) (Surface.⊑ᵘ-+ʳ Ψ₁ (Many Surface.*ᵘ Ψ₂))) dγ
 agree-RApp-other-aux {ctx} f arg nothing eqAH eq fInferIH argCheckIH argInferIH fGivenIH dγ
   | success (A ⇒[ mk-kind One eff ] B) _ _ _ _ , _ | ()
 agree-RApp-other-aux {ctx} f arg nothing eqAH eq fInferIH argCheckIH argInferIH fGivenIH dγ
@@ -1448,8 +1448,8 @@ agree-checkCompose-f ctx f g A C π disp fIH gIH dγ
                       (λ vf vg → returnT (λ a → vg a >>=T vf))
                       (cong (fmapT ⟦ p ⟧<:) (fIH refl E₁)) (gIH eqg E₂)
   where
-    E₁ = restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-+ˡ Ψf Ψg) dγ
-    E₂ = restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-+ʳ Ψf Ψg) dγ
+    E₁ = restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-+ˡ Ψf (Many Surface.*ᵘ Ψg)) dγ
+    E₂ = restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-trans (Surface.⊑ᵘ-*Many Ψg) (Surface.⊑ᵘ-+ʳ Ψf (Many Surface.*ᵘ Ψg))) dγ
 
 agree-checkCompose-g : ∀ (ctx : NamedCtx) (f g : RawExpr) (A C : Type) (π : Purity)
   (rG : E.VerifiedGivenResult ctx g A π)
@@ -1479,8 +1479,8 @@ agree-checkCompose-g ctx f g A C π (success B Ψg gE dg frg , wG) disp rGIH fCh
                     (SD.⟦ gE ⟧ˢ fmt E₂) (SD.⟦ realize-d wG ⟧ˢ fmt E₂)
                     (λ vf vg → returnT (λ a → vg a >>=T vf)) (fCheckIH eqf E₁) (rGIH refl E₂)
   where
-    E₁ = restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-+ˡ Ψf Ψg) dγ
-    E₂ = restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-+ʳ Ψf Ψg) dγ
+    E₁ = restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-+ˡ Ψf (Many Surface.*ᵘ Ψg)) dγ
+    E₂ = restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-trans (Surface.⊑ᵘ-*Many Ψg) (Surface.⊑ᵘ-+ʳ Ψf (Many Surface.*ᵘ Ψg))) dγ
 
 -- Plan 0.52 (pure⊑eff): the `case` analogue of `agree-compose`, reasoning over
 -- `checkCaseGo` (grade-poly, no clause-split) so it is immune to the eff-clause.
@@ -2233,8 +2233,8 @@ agree-given-app ctx ._ g A π (E.ahv-compose-applied {f}) r eq rIH gIH iIH dγ
                     (gIH ctx f (inner-arm-< (Raw.RResolved (gen "compose")) f g) feq E₁)
                     (gIH ctx g (μ<-r (μ (Raw.RApp (Raw.RResolved (gen "compose")) f)) (μ g)) geq E₂)
   where
-    E₁ = restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-+ˡ Ψf Ψg) dγ
-    E₂ = restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-+ʳ Ψf Ψg) dγ
+    E₁ = restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-+ˡ Ψf (Many Surface.*ᵘ Ψg)) dγ
+    E₂ = restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-trans (Surface.⊑ᵘ-*Many Ψg) (Surface.⊑ᵘ-+ʳ Ψf (Many Surface.*ᵘ Ψg))) dγ
 agree-given-app ctx ._ g (A + B) π (E.ahv-case-applied {f}) r eq rIH gIH iIH dγ
   with E.elabGivenV ctx f A π in feq | eq
 ... | failure _ , _ | ()

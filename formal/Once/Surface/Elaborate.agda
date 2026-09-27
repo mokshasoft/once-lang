@@ -207,6 +207,13 @@ envʳ : ∀ {n} {Γ : Ctx n} (m : AllocMode) (Ψ₁ Ψ₂ : Usage n)
      → IR ⌊ ⟦ Γ ↾ (Ψ₁ +ᵘ Ψ₂) ⟧ᶜ ⌋ ⌊ ⟦ Γ ↾ Ψ₂ ⟧ᶜ ⌋
 envʳ {Γ = Γ} m Ψ₁ Ψ₂ = restrictEnv {Γ = Γ} m (⊑ᵘ-+ʳ Ψ₁ Ψ₂)
 
+-- D232: the right component of `Ψ₁ +ᵘ Many *ᵘ Ψ₂` — an ARGUMENT scaled by an
+-- ω-graded consumer (`comp'`'s inner arm, `effApp`'s argument). The same
+-- restriction the `app`-at-`Many` clause uses.
+envʳω : ∀ {n} {Γ : Ctx n} (m : AllocMode) (Ψ₁ Ψ₂ : Usage n)
+      → IR ⌊ ⟦ Γ ↾ (Ψ₁ +ᵘ (Many *ᵘ Ψ₂)) ⟧ᶜ ⌋ ⌊ ⟦ Γ ↾ Ψ₂ ⟧ᶜ ⌋
+envʳω {Γ = Γ} m Ψ₁ Ψ₂ = restrictEnv {Γ = Γ} m (⊑ᵘ-trans (⊑ᵘ-*Many Ψ₂) (⊑ᵘ-+ʳ Ψ₁ (Many *ᵘ Ψ₂)))
+
 -- | Build a BINDER's environment: given the outer environment narrowed to the
 --   body's usage `Ψ'`, paired with the bound value, produce the environment the
 --   body actually runs in. Cases on the bound variable's usage `q`:
@@ -350,12 +357,14 @@ elaborate {Γ = Γ} m (lam {q' = Many} Many _ e) = curry (elaborate m e)
 -- so an arm that EMITS would re-emit on every call of the composite and the
 -- trace would not match `⟦ comp' f g ⟧ˢ`, which binds both arms OUTSIDE the
 -- function it returns. Same fact the usage index records as `Ψ₁ +ᵘ Ψ₂`
--- rather than `Many *ᵘ …`, seen from the semantics instead of the resources.
+-- — for the arms of `copair'`/`fork'`; `comp'`'s inner arm is scaled (D232), exactly
+-- as an application's argument is (`envʳω`, the `app`-at-`Many` restriction).
 --
 -- The four morphisms are closed and arm-free, which is also what lets O1's
 -- closed-arm equation be about them alone.
 elaborate {Γ = Γ} m (comp' {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} f g)   =
-  compIR m   ∘ ⟨ elaborate m f ∘ envˡ {Γ = Γ} m Ψ₁ Ψ₂ , elaborate m g ∘ envʳ {Γ = Γ} m Ψ₁ Ψ₂ ⟩
+  compIR m   ∘ ⟨ elaborate m f ∘ envˡ {Γ = Γ} m Ψ₁ (Many *ᵘ Ψ₂)
+               , elaborate m g ∘ envʳω {Γ = Γ} m Ψ₁ Ψ₂ ⟩
 elaborate {Γ = Γ} m (copair' {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} f g) =
   copairIR m ∘ ⟨ elaborate m f ∘ envˡ {Γ = Γ} m Ψ₁ Ψ₂ , elaborate m g ∘ envʳ {Γ = Γ} m Ψ₁ Ψ₂ ⟩
 elaborate {Γ = Γ} m (fork' {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} f g)   =
@@ -392,8 +401,8 @@ elaborate {Γ = Γ} m (app {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = Many} f x) =
 -- Built from the existing IR constructors alone. (`arr` retired: pure and
 -- eff arrows are the same ungraded `⇛` object, so no tag needed.)
 elaborate {Γ = Γ} m (effApp {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} f x) =
-  curry ((apply ∘ ⟨ elaborate m f ∘ envˡ {Γ = Γ} m Ψ₁ Ψ₂
-                  , elaborate m x ∘ envʳ {Γ = Γ} m Ψ₁ Ψ₂ ⟩) ∘ fst)
+  curry ((apply ∘ ⟨ elaborate m f ∘ envˡ {Γ = Γ} m Ψ₁ (Many *ᵘ Ψ₂)
+                  , elaborate m x ∘ envʳω {Γ = Γ} m Ψ₁ Ψ₂ ⟩) ∘ fst)
 
 -- Pair: (a, b) becomes ⟨a, b⟩
 elaborate {Γ = Γ} m (pair {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) =

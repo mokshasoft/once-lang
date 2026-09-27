@@ -513,7 +513,7 @@ mutual
              → classifyAppHead f ≡ nothing
              → ctx ⊢ᵢ f ∶ A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B ⨾ Ψ₁
              → ctx ⊢ᶜ x ∶ A ⨾ Ψ₂
-             → ctx ⊢ᵢ RApp f x ∶ Once.Type.Unit Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B ⨾ (Ψ₁ +ᵘ Ψ₂)
+             → ctx ⊢ᵢ RApp f x ∶ Once.Type.Unit Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B ⨾ (Ψ₁ +ᵘ (Once.Type.Many *ᵘ Ψ₂))
 
     -- | D230: THE SPINE. An application whose head does not synthesize: the
     -- argument's type is inferred and given to the head, whose output the
@@ -654,7 +654,7 @@ mutual
                       → ctx ⊢ᶜ f ∶ (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] C) ⨾ Ψ₁
                       → ctx ⊢ᶜ RApp (RApp (RResolved (gen "compose")) f) g
                               ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] C)
-                              ⨾ (Ψ₁ Surface.+ᵘ Ψ₂)
+                              ⨾ (Ψ₁ Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ₂))
 
     t-compose-check-f : ∀ {ctx : NamedCtx} {f g : RawExpr} {A B C C′ : Type}
                         {π π′ : Once.Type.Purity}
@@ -665,7 +665,7 @@ mutual
                       → ctx ⊢ᶜ g ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B) ⨾ Ψ₂
                       → ctx ⊢ᶜ RApp (RApp (RResolved (gen "compose")) f) g
                               ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] C)
-                              ⨾ (Ψ₁ Surface.+ᵘ Ψ₂)
+                              ⨾ (Ψ₁ Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ₂))
 
     t-case-copair-check : ∀ {ctx : NamedCtx} {f g : RawExpr} {A B C : Type}
                           {π : Once.Type.Purity}
@@ -933,7 +933,7 @@ mutual
                   {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
               → ctx ⊢ᵈ g ∶ A ⇒[ π ]↦ M ⨾ Ψ₂
               → ctx ⊢ᵈ f ∶ M ⇒[ π ]↦ B ⨾ Ψ₁
-              → ctx ⊢ᵈ RApp (RApp (RResolved (gen "compose")) f) g ∶ A ⇒[ π ]↦ B ⨾ (Ψ₁ Surface.+ᵘ Ψ₂)
+              → ctx ⊢ᵈ RApp (RApp (RResolved (gen "compose")) f) g ∶ A ⇒[ π ]↦ B ⨾ (Ψ₁ Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ₂))
     -- D230: the point-free generators whose output their input determines.
     d-id       : ∀ {ctx : NamedCtx} {A : Type} {π : Once.Type.Purity}
                → ctx ⊢ᵈ RResolved (gen "id") ∶ A ⇒[ π ]↦ A ⨾ Surface.zeroUsage
