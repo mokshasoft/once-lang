@@ -6,7 +6,10 @@
 --
 --     rec s k   a subterm of sort `s`, under `k` new binders
 --     nat       a meta-level natural (an object `⌜Nat⌝`)
---     var       a variable of the ambient scope (a `Fin d`, `Lib/FinFam`)
+--
+-- and one distinguished shape `vʰ`, THE VARIABLE: a `Fin d` of the
+-- ambient scope (`Lib/FinFam`).  Variables are a shape, not a field kind,
+-- because substitution replaces the whole node (Allais et al.'s `'var`).
 --
 -- and the syntax is the sorted, fibred family (`Lib/Sorted`, D075) over
 -- `Σ (s : Fin ns) Nat` — sort and SCOPE DEPTH, the depth riding (D074).
@@ -51,12 +54,12 @@ private
 data Fld : Set where
   rec : ℕ → ℕ → Fld      -- a subterm: its sort, and the binders it is under
   nat : Fld              -- a meta natural
-  var : Fld              -- a variable of the ambient scope
 
 infixr 5 _∷ʰ_ _∷ˢʰ_ _∷ᵍ_ _∷ᵒʰ_ _∷ᵒˢ_ _∷ᵒᵍ_
 data Shape : Set where
   []ʰ  : Shape
   _∷ʰ_ : Fld → Shape → Shape
+  vʰ   : Shape            -- ★ the variable constructor
 
 data Shapes : ℕ → Set where
   []ˢʰ  : Shapes zero
@@ -70,11 +73,11 @@ data Sig : ℕ → Set where
 data FldOK (n : ℕ) : Fld → Set where
   ok-rec : Lt s n → FldOK n (rec s k)
   ok-nat : FldOK n nat
-  ok-var : FldOK n var
 
 data ShOK (n : ℕ) : Shape → Set where
   []ᵒʰ  : ShOK n []ʰ
   _∷ᵒʰ_ : {f : Fld} {sh : Shape} → FldOK n f → ShOK n sh → ShOK n (f ∷ʰ sh)
+  vᵒʰ   : ShOK n vʰ
 
 data ShsOK (n : ℕ) : Shapes c → Set where
   []ᵒˢ  : ShsOK n []ˢʰ
@@ -120,7 +123,7 @@ tel : Shape → RTm Δ → Tel Δ
 tel []ʰ            i = tι
 tel (rec s k ∷ʰ sh) i = tρ (pair (tag s) (nsucs k (snd i))) (tel sh i)
 tel (nat ∷ʰ sh)     i = tσ ⌜Nat⌝ (tel sh (renTm vs i))
-tel (var ∷ʰ sh)     i = tσ (⌜IMu⌝ ⌜Nat⌝ FinD (snd i)) (tel sh (renTm vs i))
+tel vʰ              i = tσ (⌜IMu⌝ ⌜Nat⌝ FinD (snd i)) tι
 
 tels : Shapes c → Tels (Δ ∙) c
 tels []ˢʰ        = []ᵗ
@@ -142,9 +145,7 @@ sub-tel σ (rec s k ∷ʰ sh) i =
   cong₂ dρ (cong₂ pair (tag-sub σ s) (nsucs-sub σ k (snd i))) (sub-tel σ sh i)
 sub-tel σ (nat ∷ʰ sh)     i =
   cong (λ X → dσ ⌜Nat⌝ (lam X)) (trans (sub-tel (extS σ) sh (renTm vs i)) (cong (λ z → ⌜ tel sh z ⌝ᵗ) (wk-sub σ i)))
-sub-tel σ (var ∷ʰ sh)     i =
-  cong (λ X → dσ (⌜IMu⌝ ⌜Nat⌝ (subTm σ FinD) (snd (subTm σ i))) (lam X))
-       (trans (sub-tel (extS σ) sh (renTm vs i)) (cong (λ z → ⌜ tel sh z ⌝ᵗ) (wk-sub σ i)))
+sub-tel σ vʰ              i = refl
 
 ------------------------------------------------------------------------
 -- 3. THE FAMILY.
@@ -175,7 +176,7 @@ telOK : {Γ : Ctx} {sh : Shape} {i : RTm ⌊ Γ ⌋} →
 telOK []ᵒʰ                        di = ok-ι
 telOK {sh = rec s k ∷ʰ _} (ok-rec lt ∷ᵒʰ ok) di = ok-ρ (⊢ix lt (⊢nsucs k (⊢depth di))) (telOK ok di)
 telOK (ok-nat ∷ᵒʰ ok)             di = ok-σ ⊢⌜Nat⌝ (telOK ok (⊢wk di))
-telOK (ok-var ∷ᵒʰ ok)             di = ok-σ (⊢⌜IMu⌝ ⊢⌜Nat⌝ ⊢FinD (⊢depth di)) (telOK ok (⊢wk di))
+telOK vᵒʰ                         di = ok-σ (⊢⌜IMu⌝ ⊢⌜Nat⌝ ⊢FinD (⊢depth di)) ok-ι
 
 telsOK : {Γ : Ctx} {shs : Shapes c} → ShsOK n shs → AllOK (Γ ▹ El (SI n)) (SI n) (tels shs)
 telsOK []ᵒˢ         = []ᵒ
@@ -220,8 +221,7 @@ data Args (Γ : Ctx) (n : ℕ) (D d : RTm ⌊ Γ ⌋) : Shape → RTm ⌊ Γ ⌋
           Args Γ n D d (rec s k ∷ʰ sh) (pair a p)
   a-nat : {a p : RTm ⌊ Γ ⌋} {sh : Shape} →
           Γ ⊢ a ∷ El ⌜Nat⌝ → Args Γ n D d sh p → Args Γ n D d (nat ∷ʰ sh) (pair a p)
-  a-var : {a p : RTm ⌊ Γ ⌋} {sh : Shape} →
-          Γ ⊢ a ∷ FinI d → Args Γ n D d sh p → Args Γ n D d (var ∷ʰ sh) (pair a p)
+  a-v   : {a : RTm ⌊ Γ ⌋} → Γ ⊢ a ∷ FinI d → Args Γ n D d vʰ (pair a unit)
 
 private
   ixConv : {Γ : Ctx} {I D t i i' : RTm ⌊ Γ ⌋} → i ⟶* i' → Γ ⊢ t ∷ IMu I D i' → Γ ⊢ t ∷ IMu I D i
@@ -243,10 +243,10 @@ private
 ⊢payArgs {D = D} {i = i} {sh = nat ∷ʰ sh} dD (ok-nat ∷ᵒʰ ok) di r (a-nat {a = a} {p = p} da as) =
   ⊢payσ ⊢SI dD (ok-σ ⊢⌜Nat⌝ (telOK ok (⊢wk di))) da
     (subst (λ X → _ ⊢ p ∷ El (dpay (SI _) D X)) (sym (sub-rest a sh i)) (⊢payArgs dD ok di r as))
-⊢payArgs {Γ = Γ} {D = D} {i = i} {sh = var ∷ʰ sh} dD (ok-var ∷ᵒʰ ok) di r (a-var {a = a} {p = p} da as) =
-  ⊢payσ ⊢SI dD (ok-σ (⊢⌜IMu⌝ ⊢⌜Nat⌝ ⊢FinD (⊢depth di)) (telOK ok (⊢wk di)))
+⊢payArgs {Γ = Γ} {D = D} {i = i} {sh = vʰ} dD vᵒʰ di r (a-v {a = a} da) =
+  ⊢payσ ⊢SI dD (ok-σ (⊢⌜IMu⌝ ⊢⌜Nat⌝ ⊢FinD (⊢depth di)) ok-ι)
     (⊢conv da (csymᵀ (ctrnᵀ (credᵀ El-⌜IMu⌝) (red→≅ᵀ (⟶ᵀ*-IMu r)))))
-    (subst (λ X → Γ ⊢ p ∷ El (dpay (SI _) D X)) (sym (sub-rest a sh i)) (⊢payArgs dD ok di r as))
+    (⊢payι ⊢SI dD ⊢unit)
 
 -- ★★ CONSTRUCTOR `k` OF SORT `s`, at depth `d`
 ⊢conSyn : {Γ : Ctx} {sg : Sig n} {shs : Shapes c} {sh : Shape} {d p : RTm ⌊ Γ ⌋} →

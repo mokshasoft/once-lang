@@ -133,7 +133,7 @@ quoteTm ⌜Unit⌝ = kcUnit
   ⊢conSyn {sg = KSig} {shs = TyShs} {sh = sh-kFin} KOK nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))) (⊢dep' Γ) (a-nat (⊢quoteℕ a0) a[])
 
 ⊢quoteTm {Γ} (var a0) =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kvar} KOK (nthᵍ-s nthᵍ-z) nthʰ-z (⊢dep' Γ) (a-var (⊢quoteVar a0) a[])
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kvar} KOK (nthᵍ-s nthᵍ-z) nthʰ-z (⊢dep' Γ) (a-v (⊢quoteVar a0))
 ⊢quoteTm {Γ} (lam a0) =
   ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-klam} KOK (nthᵍ-s nthᵍ-z) (nthʰ-s nthʰ-z) (⊢dep' Γ) (a-rec (⊢quoteTm a0) a[])
 ⊢quoteTm {Γ} (app a0 a1) =
