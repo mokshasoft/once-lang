@@ -53,7 +53,7 @@ data Fld : Set where
   nat : Fld              -- a meta natural
   var : Fld              -- a variable of the ambient scope
 
-infixr 5 _∷ʰ_ _∷ˢʰ_ _∷ᵍ_
+infixr 5 _∷ʰ_ _∷ˢʰ_ _∷ᵍ_ _∷ᵒʰ_ _∷ᵒˢ_ _∷ᵒᵍ_
 data Shape : Set where
   []ʰ  : Shape
   _∷ʰ_ : Fld → Shape → Shape
