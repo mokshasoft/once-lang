@@ -30,7 +30,7 @@ open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-trans; ⟶*-dpayᶜ; �
 open import DirectedHoTT.Metatheory.Fundamental.Syntactic using ( ⟨_⟩ᵣ; subTy-var; subTm-var )
 open import DirectedHoTT.Metatheory.TySub
   using ( ⊢wk; ⊢-cast; wk-cancel-tm; ren-ty; sub-ty; Ren⊢-ext; ren-lemma; Ren⊢; ∋-cast
-        ; conv-ctxᵀ; sub-lemma; Sub⊢ )
+        ; conv-ctxᵀ; sub-lemma; Sub⊢; ⊢single )
 open import DirectedHoTT.Metatheory.Premises using ( mot-ren; ⊢wkD; MethTy-wf )
 open import DirectedHoTT.Lib.Sugar using ( sel )
 open import DirectedHoTT.Lib.Sugar
@@ -54,6 +54,21 @@ private
 
 DN : Cons (Δ ∙) c₀ → Cons (Δ ∙) cₛ → RTm Δ
 DN C0 CS = lam (natrec (Dσ C0) (renTm ρS (Dσ CS)) (var vz))
+
+-- ★ the family commutes with substitution (its lists under the index binder)
+Dσ-sub : {Θ : Cx} (τ : Sub (Δ ∙) (Θ ∙)) (Cs : Cons (Δ ∙) c) → subTm τ (Dσ Cs) ≡ Dσ (subC τ Cs)
+Dσ-sub τ Cs = cong (dσ (⌜Fin⌝ _)) (selF-sub τ Cs)
+
+DN-sub : {Θ : Cx} (σ : Sub Δ Θ) (C0 : Cons (Δ ∙) c₀) (CS : Cons (Δ ∙) cₛ) →
+         subTm σ (DN C0 CS) ≡ DN (subC (extS σ) C0) (subC (extS σ) CS)
+DN-sub σ C0 CS =
+  cong lam (cong₂ (λ a b → natrec a b (var vz)) (Dσ-sub (extS σ) C0)
+                  (trans (trans (subTm-renTm (Dσ CS)) (trans (subTm-cong pt (Dσ CS)) (sym (renTm-subTm (Dσ CS)))))
+                         (cong (renTm ρS) (Dσ-sub (extS σ) CS))))
+  where
+    pt : ∀ x → (extS (extS (extS σ)) ₛ∘ᵣ ρS) x ≡ (ρS ᵣ∘ₛ extS σ) x
+    pt vz     = refl
+    pt (vs y) = trans (trans (cong (renTm vs) (renTm-renTm (σ y))) (renTm-renTm (σ y))) (sym (renTm-renTm (σ y)))
 
 elNat : El (⌜Nat⌝ {Δ}) ≅ᵀ Nat
 elNat = credᵀ El-⌜Nat⌝
@@ -369,3 +384,16 @@ entN {Γ = Γ} {Ts = Ts} {T = T} d0 oks dM nt db =
     hτ : Sub⊢ (Γ ▹ El ⌜Nat⌝) (Γ ▹ El ⌜Nat⌝) τS
     hτ here = ⊢var here
     hτ (there {A = A₀} v) = ⊢-cast (sym (trans (subTy-renTy A₀) (subTy-var vs A₀))) (⊢var (there v))
+
+-- ★ …and ONE METHOD ENTRY of the ZERO case: constructor `k`'s body at `0`
+entZ : {Γ : Ctx} {Ts : Tels (⌊ Γ ⌋ ∙) c₀} {CS : Cons (⌊ Γ ⌋ ∙) cₛ} {T : Tel (⌊ Γ ⌋ ∙)}
+       {M : RTy ((⌊ Γ ⌋ ∙) ∙)} {b : RTm ((⌊ Γ ⌋ ∙) ∙)} →
+       AllOK (Γ ▹ El ⌜Nat⌝) ⌜Nat⌝ Ts → AllD (Γ ▹ El ⌜Nat⌝) ⌜Nat⌝ CS →
+       motCtx Γ ⌜Nat⌝ (DN ⌜ Ts ⌝ₛ CS) ⊢ty M → NthT Ts k T →
+       HypAt Γ ⌜Nat⌝ (DN ⌜ Ts ⌝ₛ CS) M (single nzero) T ⊢ b ∷ subTy (atS nzero (conₗ k (var (vs vz)))) M →
+       (app (selF (subC (single nzero) ⌜ Ts ⌝ₛ)) (tag k) ⟶* subTm (single nzero) ⌜ T ⌝ᵗ)
+       × (Γ ⊢ lam (lam b) ∷ MethKAt ⌜Nat⌝ (DN ⌜ Ts ⌝ₛ CS) M nzero (subTm (single nzero) ⌜ T ⌝ᵗ) k)
+entZ {Γ = Γ} {Ts = Ts} {T = T} oks dS dM nt db =
+  selF-β (nth-sub (single nzero) (nth-⌜⌝ nt)) ,
+  ⊢methTσ {σ = single nzero} {T = T} ⊢⌜Nat⌝ (⊢DN (allD (⊢wk ⊢⌜Nat⌝) oks) dS) dM
+          (sub-lemma (⊢tel (⊢wk ⊢⌜Nat⌝) (nth-OK oks nt)) (⊢single (⊢conv ⊢nzero (csymᵀ elNat)))) db

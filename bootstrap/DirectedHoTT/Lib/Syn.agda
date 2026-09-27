@@ -294,3 +294,17 @@ SD-sub σ sg =
 
 SK-sub : (σ : Sub Δ Θ) (sg : Sig n) (s : ℕ) (d : RTm Δ) → subTy σ (SK sg s d) ≡ SK sg s (subTm σ d)
 SK-sub {n = n} σ sg s d = cong₂ (λ D j → IMu (SI n) D j) (SD-sub σ sg) (cong₂ pair (tag-sub σ s) refl)
+
+-- …and renaming, whose cast is what keeps the checker from normalising
+--   the whole description under `renTm` (measured: 20 s per occurrence)
+SK-ren : (ρ : Ren Δ Θ) (sg : Sig n) (s : ℕ) (d : RTm Δ) → renTy ρ (SK sg s d) ≡ SK sg s (renTm ρ d)
+SK-ren ρ sg s d = trans (sym (subTy-var ρ (SK sg s d))) (trans (SK-sub ⟨ ρ ⟩ᵣ sg s d) (cong (SK sg s) (subTm-var ρ d)))
+  where open import DirectedHoTT.Metatheory.Fundamental.Syntactic using ( ⟨_⟩ᵣ; subTy-var; subTm-var )
+
+-- a term of the syntax, one binder further out; the newest variable
+⊢wkSK : {Γ : Ctx} {B : RTy ⌊ Γ ⌋} {sg : Sig n} {s : ℕ} {d t : RTm ⌊ Γ ⌋} →
+        Γ ⊢ t ∷ SK sg s d → (Γ ▹ B) ⊢ renTm vs t ∷ SK sg s (renTm vs d)
+⊢wkSK {sg = sg} {s} {d} dt = ⊢-cast (SK-ren vs sg s d) (⊢wk dt)
+
+hereSK : {Γ : Ctx} {sg : Sig n} {s : ℕ} {d : RTm ⌊ Γ ⌋} → (Γ ▹ SK sg s d) ⊢ var vz ∷ SK sg s (renTm vs d)
+hereSK {sg = sg} {s} {d} = ⊢-cast (SK-ren vs sg s d) (⊢var here)
