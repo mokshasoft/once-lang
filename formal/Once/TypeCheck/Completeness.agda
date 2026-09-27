@@ -55,6 +55,7 @@ open import Once.Functor.Translate using (WellFormedF; IsConcrete; con-base; con
 -- decider's answer from the property here rather than reading it off a premise.
 open import Once.TypeCheck.DeciderComplete
   using (isGround-complete-at; ¬Ground-isGround-inj₂; wellFormedF?-complete-at)
+open import Once.Type.Honest using (HonestFFI; honest?; honest?-complete)
 open import Once.Functor.Decide using (wellFormedF?; isConcrete?; isBaseType?;
   isConcrete?-complete; isBaseType?-complete)
 open import Once.TypeCheck.Classify using (ctxWithImportsAndPolys;
@@ -138,6 +139,7 @@ infer-complete-RQualified :
   ∀ {ctx : NamedCtx} {name alias : String} {T : Type}
   → lookupImport (NamedCtx.imports ctx) (alias ++ "." ++ name) ≡ just T
   → IsConcrete T  -- Plan 0.58: FFI reference is concrete
+  → HonestFFI T   -- D231
   → ∃[ eE ] ∃[ d ] ∃[ f ]
       inferElab ctx (RQualified name alias) ≡ success T zeroUsage eE d f
 -- Plan 0.36: `inferElabV-RQualified-aux` splits on the looked-up type (a
@@ -149,7 +151,7 @@ infer-complete-RQualified :
 -- Plan 0.58: the aux now also splits on `isBaseType? A`/`isConcrete? B` (the
 -- concreteness guard); the carried `IsConcrete T` witness forces those
 -- deciders to `just` via completeness (`rewrite`), so the success branch fires.
-infer-complete-RQualified {ctx} {name} {alias} {T} eq conc = go T conc eq
+infer-complete-RQualified {ctx} {name} {alias} {T} eq conc hon = go T conc hon eq
   where
     open Once.TypeCheck.ElaborateProofs using (inferElabV-RQualified-aux;
       inferElabV-RQualified-arrow-aux; inferElabV-RQualified-value-aux)
@@ -165,49 +167,50 @@ infer-complete-RQualified {ctx} {name} {alias} {T} eq conc = go T conc eq
                         ≡ just (A T.⇒[ T.mk-kind T.Many π ] B))
               → (mbA : Maybe (IsBaseType A)) (eqb : isBaseType? A ≡ mbA)
                 (mcB : Maybe (IsConcrete B)) (eqc : isConcrete? B ≡ mcB)
-              → inferElabV-RQualified-arrow-aux ctx name alias eq' (isBaseType? A) refl (isConcrete? B) refl
-                ≡ inferElabV-RQualified-arrow-aux ctx name alias eq' mbA eqb mcB eqc
-    helperArr _ _ refl _ refl = refl
+                (mh : Maybe (HonestFFI (A T.⇒[ T.mk-kind T.Many π ] B))) (eqh : honest? (A T.⇒[ T.mk-kind T.Many π ] B) ≡ mh)
+              → inferElabV-RQualified-arrow-aux ctx name alias eq' (isBaseType? A) refl (isConcrete? B) refl (honest? (A T.⇒[ T.mk-kind T.Many π ] B)) refl
+                ≡ inferElabV-RQualified-arrow-aux ctx name alias eq' mbA eqb mcB eqc mh eqh
+    helperArr _ _ refl _ refl _ refl = refl
     helperVal : ∀ {ty}
               → (eq' : lookupImport (NamedCtx.imports ctx) (alias ++ "." ++ name) ≡ just ty)
               → (mc : Maybe (IsConcrete ty)) (eqc : isConcrete? ty ≡ mc)
-              → inferElabV-RQualified-value-aux ctx name alias ty eq' (isConcrete? ty) refl
-                ≡ inferElabV-RQualified-value-aux ctx name alias ty eq' mc eqc
-    helperVal _ _ refl = refl
-    go : ∀ (T' : Type) → IsConcrete T'
+              → (mh : Maybe (HonestFFI ty)) (eqh : honest? ty ≡ mh)
+              → inferElabV-RQualified-value-aux ctx name alias ty eq' (isConcrete? ty) refl (honest? ty) refl
+                ≡ inferElabV-RQualified-value-aux ctx name alias ty eq' mc eqc mh eqh
+    helperVal _ _ refl _ refl = refl
+    go : ∀ (T' : Type) → IsConcrete T' → HonestFFI T'
        → (eq' : lookupImport (NamedCtx.imports ctx) (alias ++ "." ++ name) ≡ just T')
        → ∃[ eE ] ∃[ d ] ∃[ f ]
            inferElab ctx (RQualified name alias) ≡ success T' zeroUsage eE d f
-    go (A ⇒[ T.mk-kind Many π ] B) (con-fun bA cB) eq' = _ , _ , _ ,
+    go (A ⇒[ T.mk-kind Many π ] B) (con-fun bA cB) hon' eq' = _ , _ , _ ,
       trans (cong proj₁ (helper _ eq'))
             (cong proj₁ (helperArr eq' _ (proj₂ (isBaseType?-complete bA))
-                                      _ (proj₂ (isConcrete?-complete cB))))
-    go (A ⇒[ T.mk-kind One  π ] B) conc' eq' = _ , _ , _ ,
+                                      _ (proj₂ (isConcrete?-complete cB))
+                                      _ (proj₂ (honest?-complete {T = (A ⇒[ T.mk-kind Many π ] B)} hon'))))
+    go (A ⇒[ T.mk-kind One  π ] B) conc' hon' eq' = _ , _ , _ ,
       trans (cong proj₁ (helper _ eq'))
-            (cong proj₁ (helperVal eq' _ (proj₂ (isConcrete?-complete conc'))))
-    go (A ⇒[ T.mk-kind Zero π ] B) conc' eq' = _ , _ , _ ,
+            (cong proj₁ (helperVal eq' _ (proj₂ (isConcrete?-complete conc')) _ (proj₂ (honest?-complete {T = (A ⇒[ T.mk-kind One  π ] B)} hon'))))
+    go (A ⇒[ T.mk-kind Zero π ] B) conc' hon' eq' = _ , _ , _ ,
       trans (cong proj₁ (helper _ eq'))
-            (cong proj₁ (helperVal eq' _ (proj₂ (isConcrete?-complete conc'))))
-    go Unit          _ eq' = _ , _ , _ ,
+            (cong proj₁ (helperVal eq' _ (proj₂ (isConcrete?-complete conc')) _ (proj₂ (honest?-complete {T = (A ⇒[ T.mk-kind Zero π ] B)} hon'))))
+    go Unit          _ () eq'
+    go Void          _ () eq'
+    go Int           _ _ eq' = _ , _ , _ ,
       cong proj₁ (helper _ eq')
-    go Void          _ eq' = _ , _ , _ ,
+    go Float         _ _ eq' = _ , _ , _ ,
       cong proj₁ (helper _ eq')
-    go Int           _ eq' = _ , _ , _ ,
+    go Str           _ _ eq' = _ , _ , _ ,
       cong proj₁ (helper _ eq')
-    go Float         _ eq' = _ , _ , _ ,
+    go Buffer        _ _ eq' = _ , _ , _ ,
       cong proj₁ (helper _ eq')
-    go Str           _ eq' = _ , _ , _ ,
-      cong proj₁ (helper _ eq')
-    go Buffer        _ eq' = _ , _ , _ ,
-      cong proj₁ (helper _ eq')
-    go (A * B) conc' eq' = _ , _ , _ ,
+    go (A * B) conc' hon' eq' = _ , _ , _ ,
       trans (cong proj₁ (helper _ eq'))
-            (cong proj₁ (helperVal eq' _ (proj₂ (isConcrete?-complete conc'))))
-    go (A + B) conc' eq' = _ , _ , _ ,
+            (cong proj₁ (helperVal eq' _ (proj₂ (isConcrete?-complete conc')) _ (proj₂ (honest?-complete {T = (A * B)} hon'))))
+    go (A + B) conc' hon' eq' = _ , _ , _ ,
       trans (cong proj₁ (helper _ eq'))
-            (cong proj₁ (helperVal eq' _ (proj₂ (isConcrete?-complete conc'))))
-    go (T.μ-type F)  (con-base ()) eq'
-    go (T.ν-type F)  (con-base ()) eq'
+            (cong proj₁ (helperVal eq' _ (proj₂ (isConcrete?-complete conc')) _ (proj₂ (honest?-complete {T = (A + B)} hon'))))
+    go (T.μ-type F)  (con-base ()) _ eq'
+    go (T.ν-type F)  (con-base ()) _ eq'
 
 -- Plan 0.50: resolved-ref completeness, keyed by `showCanonical cn`.
 -- D136: the elaborator DISPATCHES on `classifyGen cn` first, so the proof has
@@ -221,6 +224,7 @@ infer-complete-RResolved :
   → (ng : NotGenerator cn)
   → lookupImport (NamedCtx.imports ctx) (showCanonical cn) ≡ just T
   → IsConcrete T  -- Plan 0.58: FFI reference is concrete
+  → HonestFFI T   -- D231
   → ∃[ eE ] ∃[ d ] ∃[ f ]
       inferElab ctx (RResolved cn) ≡ success T zeroUsage eE d f
 -- J-style bridge: `inferElabV ctx (RResolved cn)` IS
@@ -245,18 +249,19 @@ infer-complete-RResolved-view :
   → NotGenerator cn
   → lookupImport (NamedCtx.imports ctx) (showCanonical cn) ≡ just T
   → IsConcrete T
+  → HonestFFI T
   → ∃[ eE ] ∃[ d ] ∃[ f ]
       inferElab ctx (RResolved cn) ≡ success T zeroUsage eE d f
-infer-complete-RResolved-view gv-id       _ (e ∷ᴬ _) _ _ = ⊥-elim (e refl)
-infer-complete-RResolved-view gv-fst      _ (_ ∷ᴬ e ∷ᴬ _) _ _ = ⊥-elim (e refl)
-infer-complete-RResolved-view gv-snd      _ (_ ∷ᴬ _ ∷ᴬ e ∷ᴬ _) _ _ = ⊥-elim (e refl)
-infer-complete-RResolved-view gv-terminal _ (_ ∷ᴬ _ ∷ᴬ _ ∷ᴬ e ∷ᴬ _) _ _ = ⊥-elim (e refl)
-infer-complete-RResolved-view gv-initial  _ (_ ∷ᴬ _ ∷ᴬ _ ∷ᴬ _ ∷ᴬ e ∷ᴬ _) _ _ = ⊥-elim (e refl)
-infer-complete-RResolved-view gv-inl      _ (_ ∷ᴬ _ ∷ᴬ _ ∷ᴬ _ ∷ᴬ _ ∷ᴬ e ∷ᴬ _) _ _ = ⊥-elim (e refl)
-infer-complete-RResolved-view gv-inr      _ (_ ∷ᴬ _ ∷ᴬ _ ∷ᴬ _ ∷ᴬ _ ∷ᴬ _ ∷ᴬ e ∷ᴬ _) _ _ = ⊥-elim (e refl)
-infer-complete-RResolved-view gv-unit     _ (_ ∷ᴬ _ ∷ᴬ _ ∷ᴬ _ ∷ᴬ _ ∷ᴬ _ ∷ᴬ _ ∷ᴬ e ∷ᴬ _) _ _ = ⊥-elim (e refl)
-infer-complete-RResolved-view {ctx} {cn} {T} (gv-other ng') eqv _ eq conc =
-  go T conc eq
+infer-complete-RResolved-view gv-id       _ (e ∷ᴬ _) _ _ _ = ⊥-elim (e refl)
+infer-complete-RResolved-view gv-fst      _ (_ ∷ᴬ e ∷ᴬ _) _ _ _ = ⊥-elim (e refl)
+infer-complete-RResolved-view gv-snd      _ (_ ∷ᴬ _ ∷ᴬ e ∷ᴬ _) _ _ _ = ⊥-elim (e refl)
+infer-complete-RResolved-view gv-terminal _ (_ ∷ᴬ _ ∷ᴬ _ ∷ᴬ e ∷ᴬ _) _ _ _ = ⊥-elim (e refl)
+infer-complete-RResolved-view gv-initial  _ (_ ∷ᴬ _ ∷ᴬ _ ∷ᴬ _ ∷ᴬ e ∷ᴬ _) _ _ _ = ⊥-elim (e refl)
+infer-complete-RResolved-view gv-inl      _ (_ ∷ᴬ _ ∷ᴬ _ ∷ᴬ _ ∷ᴬ _ ∷ᴬ e ∷ᴬ _) _ _ _ = ⊥-elim (e refl)
+infer-complete-RResolved-view gv-inr      _ (_ ∷ᴬ _ ∷ᴬ _ ∷ᴬ _ ∷ᴬ _ ∷ᴬ _ ∷ᴬ e ∷ᴬ _) _ _ _ = ⊥-elim (e refl)
+infer-complete-RResolved-view gv-unit     _ (_ ∷ᴬ _ ∷ᴬ _ ∷ᴬ _ ∷ᴬ _ ∷ᴬ _ ∷ᴬ _ ∷ᴬ e ∷ᴬ _) _ _ _ = ⊥-elim (e refl)
+infer-complete-RResolved-view {ctx} {cn} {T} (gv-other ng') eqv _ eq conc hon =
+  go T conc hon eq
   where
     open Once.TypeCheck.ElaborateProofs using (inferElabV-RResolved-aux;
       inferElabV-RResolved-arrow-aux; inferElabV-RResolved-value-aux)
@@ -271,57 +276,58 @@ infer-complete-RResolved-view {ctx} {cn} {T} (gv-other ng') eqv _ eq conc =
                         ≡ just (A T.⇒[ T.mk-kind T.Many π ] B))
               → (mbA : Maybe (IsBaseType A)) (eqb : isBaseType? A ≡ mbA)
                 (mcB : Maybe (IsConcrete B)) (eqc : isConcrete? B ≡ mcB)
-              → inferElabV-RResolved-arrow-aux ctx cn ng' eq' (isBaseType? A) refl (isConcrete? B) refl
-                ≡ inferElabV-RResolved-arrow-aux ctx cn ng' eq' mbA eqb mcB eqc
-    helperArr _ _ refl _ refl = refl
+                (mh : Maybe (HonestFFI (A T.⇒[ T.mk-kind T.Many π ] B))) (eqh : honest? (A T.⇒[ T.mk-kind T.Many π ] B) ≡ mh)
+              → inferElabV-RResolved-arrow-aux ctx cn ng' eq' (isBaseType? A) refl (isConcrete? B) refl (honest? (A T.⇒[ T.mk-kind T.Many π ] B)) refl
+                ≡ inferElabV-RResolved-arrow-aux ctx cn ng' eq' mbA eqb mcB eqc mh eqh
+    helperArr _ _ refl _ refl _ refl = refl
     helperVal : ∀ {ty}
               → (eq' : lookupImport (NamedCtx.imports ctx) (showCanonical cn) ≡ just ty)
               → (mc : Maybe (IsConcrete ty)) (eqc : isConcrete? ty ≡ mc)
-              → inferElabV-RResolved-value-aux ctx cn ng' ty eq' (isConcrete? ty) refl
-                ≡ inferElabV-RResolved-value-aux ctx cn ng' ty eq' mc eqc
-    helperVal _ _ refl = refl
-    go : ∀ (T' : Type) → IsConcrete T'
+              → (mh : Maybe (HonestFFI ty)) (eqh : honest? ty ≡ mh)
+              → inferElabV-RResolved-value-aux ctx cn ng' ty eq' (isConcrete? ty) refl (honest? ty) refl
+                ≡ inferElabV-RResolved-value-aux ctx cn ng' ty eq' mc eqc mh eqh
+    helperVal _ _ refl _ refl = refl
+    go : ∀ (T' : Type) → IsConcrete T' → HonestFFI T'
        → (eq' : lookupImport (NamedCtx.imports ctx) (showCanonical cn) ≡ just T')
        → ∃[ eE ] ∃[ d ] ∃[ f ]
            inferElab ctx (RResolved cn) ≡ success T' zeroUsage eE d f
-    go (A ⇒[ T.mk-kind Many π ] B) (con-fun bA cB) eq' = _ , _ , _ ,
+    go (A ⇒[ T.mk-kind Many π ] B) (con-fun bA cB) hon' eq' = _ , _ , _ ,
       trans (inferElabV-RResolved-J ctx cn _ eqv)
       (trans (cong proj₁ (helper _ eq'))
             (cong proj₁ (helperArr eq' _ (proj₂ (isBaseType?-complete bA))
-                                      _ (proj₂ (isConcrete?-complete cB)))))
-    go (A ⇒[ T.mk-kind One  π ] B) conc' eq' = _ , _ , _ ,
+                                      _ (proj₂ (isConcrete?-complete cB))
+                                      _ (proj₂ (honest?-complete {T = (A ⇒[ T.mk-kind Many π ] B)} hon')))))
+    go (A ⇒[ T.mk-kind One  π ] B) conc' hon' eq' = _ , _ , _ ,
       trans (inferElabV-RResolved-J ctx cn _ eqv)
       (trans (cong proj₁ (helper _ eq'))
-            (cong proj₁ (helperVal eq' _ (proj₂ (isConcrete?-complete conc')))))
-    go (A ⇒[ T.mk-kind Zero π ] B) conc' eq' = _ , _ , _ ,
+            (cong proj₁ (helperVal eq' _ (proj₂ (isConcrete?-complete conc')) _ (proj₂ (honest?-complete {T = (A ⇒[ T.mk-kind One  π ] B)} hon')))))
+    go (A ⇒[ T.mk-kind Zero π ] B) conc' hon' eq' = _ , _ , _ ,
       trans (inferElabV-RResolved-J ctx cn _ eqv)
       (trans (cong proj₁ (helper _ eq'))
-            (cong proj₁ (helperVal eq' _ (proj₂ (isConcrete?-complete conc')))))
-    go Unit          _ eq' = _ , _ , _ ,
+            (cong proj₁ (helperVal eq' _ (proj₂ (isConcrete?-complete conc')) _ (proj₂ (honest?-complete {T = (A ⇒[ T.mk-kind Zero π ] B)} hon')))))
+    go Unit          _ () eq'
+    go Void          _ () eq'
+    go Int           _ _ eq' = _ , _ , _ ,
       trans (inferElabV-RResolved-J ctx cn _ eqv) (cong proj₁ (helper _ eq'))
-    go Void          _ eq' = _ , _ , _ ,
+    go Float         _ _ eq' = _ , _ , _ ,
       trans (inferElabV-RResolved-J ctx cn _ eqv) (cong proj₁ (helper _ eq'))
-    go Int           _ eq' = _ , _ , _ ,
+    go Str           _ _ eq' = _ , _ , _ ,
       trans (inferElabV-RResolved-J ctx cn _ eqv) (cong proj₁ (helper _ eq'))
-    go Float         _ eq' = _ , _ , _ ,
+    go Buffer        _ _ eq' = _ , _ , _ ,
       trans (inferElabV-RResolved-J ctx cn _ eqv) (cong proj₁ (helper _ eq'))
-    go Str           _ eq' = _ , _ , _ ,
-      trans (inferElabV-RResolved-J ctx cn _ eqv) (cong proj₁ (helper _ eq'))
-    go Buffer        _ eq' = _ , _ , _ ,
-      trans (inferElabV-RResolved-J ctx cn _ eqv) (cong proj₁ (helper _ eq'))
-    go (A * B) conc' eq' = _ , _ , _ ,
+    go (A * B) conc' hon' eq' = _ , _ , _ ,
       trans (inferElabV-RResolved-J ctx cn _ eqv)
       (trans (cong proj₁ (helper _ eq'))
-            (cong proj₁ (helperVal eq' _ (proj₂ (isConcrete?-complete conc')))))
-    go (A + B) conc' eq' = _ , _ , _ ,
+            (cong proj₁ (helperVal eq' _ (proj₂ (isConcrete?-complete conc')) _ (proj₂ (honest?-complete {T = (A * B)} hon')))))
+    go (A + B) conc' hon' eq' = _ , _ , _ ,
       trans (inferElabV-RResolved-J ctx cn _ eqv)
       (trans (cong proj₁ (helper _ eq'))
-            (cong proj₁ (helperVal eq' _ (proj₂ (isConcrete?-complete conc')))))
-    go (T.μ-type F)  (con-base ()) eq'
-    go (T.ν-type F)  (con-base ()) eq'
+            (cong proj₁ (helperVal eq' _ (proj₂ (isConcrete?-complete conc')) _ (proj₂ (honest?-complete {T = (A + B)} hon')))))
+    go (T.μ-type F)  (con-base ()) _ eq'
+    go (T.ν-type F)  (con-base ()) _ eq'
 
-infer-complete-RResolved {ctx} {cn} {T} ng eq conc =
-  infer-complete-RResolved-view (classifyGen cn) refl ng eq conc
+infer-complete-RResolved {ctx} {cn} {T} ng eq conc hon =
+  infer-complete-RResolved-view (classifyGen cn) refl ng eq conc hon
 
 ------------------------------------------------------------------------
 -- Sub-expression composition completeness.
@@ -570,13 +576,15 @@ infer-complete-RVar-import :
   → lookupLocal ctx x ≡ nothing
   → lookupImport (NamedCtx.imports ctx) x ≡ just T
   → IsConcrete T  -- Plan 0.58: FFI reference is concrete
+  → HonestFFI T   -- D231
   → ∃[ eE ] ∃[ d ] ∃[ f ]
       inferElab ctx (RVar x) ≡ success T zeroUsage eE d f
-infer-complete-RVar-import {ctx} x {T} ¬gw eqLoc eqImp conc
+infer-complete-RVar-import {ctx} x {T} ¬gw eqLoc eqImp conc hon
              = _ , _ , _ , cong proj₁
                  (trans (trans (helperLoc _ eqLoc) (helperImp _ eqImp))
                         (helperImpVal _ (proj₂ (genWord?-no x ¬gw))
-                                     _ (proj₂ (isConcrete?-complete conc))))
+                                     _ (proj₂ (isConcrete?-complete conc))
+                                     _ (proj₂ (honest?-complete {T = T} hon))))
   where
     open Once.TypeCheck.ElaborateProofs using (inferElabV-RVar-lookup-aux;
       inferElabV-RVar-import-value-aux)
@@ -592,10 +600,11 @@ infer-complete-RVar-import {ctx} x {T} ¬gw eqLoc eqImp conc
     helperImp _ refl = refl
     helperImpVal : (gw : Dec (GenWord x)) (eqg : genWord? x ≡ gw)
                    (mc : Maybe (IsConcrete T)) (eqc : isConcrete? T ≡ mc)
+                   (mh : Maybe (HonestFFI T)) (eqh : honest? T ≡ mh)
                  → inferElabV-RVar-import-value-aux ctx x eqLoc T eqImp
-                     (genWord? x) refl (isConcrete? T) refl
-                   ≡ inferElabV-RVar-import-value-aux ctx x eqLoc T eqImp gw eqg mc eqc
-    helperImpVal _ refl _ refl = refl
+                     (genWord? x) refl (isConcrete? T) refl (honest? T) refl
+                   ≡ inferElabV-RVar-import-value-aux ctx x eqLoc T eqImp gw eqg mc eqc mh eqh
+    helperImpVal _ refl _ refl _ refl = refl
 
 ------------------------------------------------------------------------
 -- RBinOp (arithmetic and comparison)
@@ -1121,10 +1130,10 @@ given-infer-route (t-str _) A π = refl
 given-infer-route t-unit A π = refl
 given-infer-route t-unit-var A π = refl
 given-infer-route (t-var-local _) A π = refl
-given-infer-route (t-var-qualified _ _) A π = refl
-given-infer-route {ctx} (t-var-resolved {cn = cn} ng _ _) A π =
+given-infer-route (t-var-qualified _ _ _) A π = refl
+given-infer-route {ctx} (t-var-resolved {cn = cn} ng _ _ _) A π =
   leaf-route ctx cn A π (inferElabV ctx (RResolved cn)) ng (classifyAppHeadView (RResolved cn))
-given-infer-route (t-var-import _ _ _ _) A π = refl
+given-infer-route (t-var-import _ _ _ _ _) A π = refl
 given-infer-route (t-var-poly-instantiate-infer _ _ _ _ _ _) A π = refl
 given-infer-route (t-annot _) A π = refl
 given-infer-route (t-pair _ _) A π = refl
@@ -1513,14 +1522,14 @@ mutual
   iFromInferSub {ctx} (t-var-local {x = x} {A = T} eqLocal) sb =
     let (_ , _ , _ , eqI) = infer-complete {ctx} (t-var-local eqLocal)
     in checkElab-fallback-RVar {ctx} x T eqI sb
-  iFromInferSub {ctx} (t-var-qualified {name = n} {alias = a} {T = T} eqImp conc) sb =
-    let (_ , _ , _ , eqI) = infer-complete {ctx} (t-var-qualified eqImp conc)
+  iFromInferSub {ctx} (t-var-qualified {name = n} {alias = a} {T = T} eqImp conc hon) sb =
+    let (_ , _ , _ , eqI) = infer-complete {ctx} (t-var-qualified eqImp conc hon)
     in checkElab-fallback-RQualified {ctx} n a T eqI sb
-  iFromInferSub {ctx} (t-var-resolved {cn = cn} {T = T} ng eqImp conc) sb =
-    let (_ , _ , _ , eqI) = infer-complete {ctx} (t-var-resolved ng eqImp conc)
+  iFromInferSub {ctx} (t-var-resolved {cn = cn} {T = T} ng eqImp conc hon) sb =
+    let (_ , _ , _ , eqI) = infer-complete {ctx} (t-var-resolved ng eqImp conc hon)
     in checkElab-fallback-RResolved {ctx} cn T eqI sb
-  iFromInferSub {ctx} (t-var-import {x = x} {T = T} ¬gw eqLoc eqImp conc) sb =
-    let (_ , _ , _ , eqI) = infer-complete {ctx} (t-var-import ¬gw eqLoc eqImp conc)
+  iFromInferSub {ctx} (t-var-import {x = x} {T = T} ¬gw eqLoc eqImp conc hon) sb =
+    let (_ , _ , _ , eqI) = infer-complete {ctx} (t-var-import ¬gw eqLoc eqImp conc hon)
     in checkElab-fallback-RVar {ctx} x T eqI sb
   -- Plan 0.58 / D071: infer-mode ground telescope reference — same shape as
   -- t-var-import (infer at the declared type, embed at the same type).
@@ -1633,12 +1642,12 @@ mutual
   infer-complete {ctx} t-unit-var  = infer-complete-RVar-unit {ctx}
   infer-complete {ctx} (t-var-local {x = x} eqLocal) =
     infer-complete-RVar-local {ctx} x eqLocal
-  infer-complete {ctx} (t-var-qualified {name = name} {alias = alias} eqImp conc) =
-    infer-complete-RQualified {ctx} {name} {alias} eqImp conc
-  infer-complete {ctx} (t-var-resolved {cn = cn} ng eqImp conc) =
-    infer-complete-RResolved {ctx} {cn} ng eqImp conc
-  infer-complete {ctx} (t-var-import {x = x} ¬gw eqLoc eqImp conc) =
-    infer-complete-RVar-import {ctx} x ¬gw eqLoc eqImp conc
+  infer-complete {ctx} (t-var-qualified {name = name} {alias = alias} eqImp conc hon) =
+    infer-complete-RQualified {ctx} {name} {alias} eqImp conc hon
+  infer-complete {ctx} (t-var-resolved {cn = cn} ng eqImp conc hon) =
+    infer-complete-RResolved {ctx} {cn} ng eqImp conc hon
+  infer-complete {ctx} (t-var-import {x = x} ¬gw eqLoc eqImp conc hon) =
+    infer-complete-RVar-import {ctx} x ¬gw eqLoc eqImp conc hon
   -- Plan 0.58 / D071: infer-mode ground telescope reference — matching the
   -- type-pin equation as `refl` aligns the conclusion `T` with the declared
   -- `extractGround schema g`, so the elaborator's poly-fallback success

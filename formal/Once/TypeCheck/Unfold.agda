@@ -47,6 +47,7 @@ open import Once.TypeCheck.Raw as Raw using (RawExpr; RVar; RQualified; RResolve
   RPair; RDestruct; RUnit; RInt; RFloat; RStringLit; RAnnot; RBinOp; RUnaryOp; RAna)
 open import Once.CanonicalName using (CanonicalName; canonical; gen; generatorNS; GenWord)
 open import Once.Functor.Translate using (IsConcrete)
+open import Once.Type.Honest using (HonestFFI)
 open import Once.TypeCheck.Classify
   using (NamedCtx; mkCtx; Imports; PolyCtx; lookupLocal; lookupLocal-go; lookupImport;
          lookupPolyPrefix; ctxWithImportsAndPolys; classifyAppHead; classifyAppHeadView;
@@ -339,9 +340,9 @@ module Weaken (imps : Imports) (P : PolyCtx) where
     W-i wk _ t-unit-var = cᵢ (sym (up-zero wk)) t-unit-var
     W-i {GL = GL} {ΔL = ΔL} {GD = GD} {ΔD = ΔD} wk fr (t-var-local {x = z} eq) =
         wvar wk z (lookupLocal-go z GL ΔL) (lookupLocal-go z GD ΔD) (wloc wk z fr) eq refl
-    W-i wk _ (t-var-qualified l c) = cᵢ (sym (up-zero wk)) (t-var-qualified l c)
-    W-i wk _ (t-var-resolved ng l c) = cᵢ (sym (up-zero wk)) (t-var-resolved ng l c)
-    W-i wk fr (t-var-import {x = z} ¬gw ln li c) = cᵢ (sym (up-zero wk)) (t-var-import ¬gw (wnone (wloc wk z fr) ln) li c)
+    W-i wk _ (t-var-qualified l c h) = cᵢ (sym (up-zero wk)) (t-var-qualified l c h)
+    W-i wk _ (t-var-resolved ng l c h) = cᵢ (sym (up-zero wk)) (t-var-resolved ng l c h)
+    W-i wk fr (t-var-import {x = z} ¬gw ln li c h) = cᵢ (sym (up-zero wk)) (t-var-import ¬gw (wnone (wloc wk z fr) ln) li c h)
     W-i wk fr (t-var-poly-instantiate-infer {x = z} ln li lp gr eT body) =
         cᵢ (sym (up-zero wk)) (t-var-poly-instantiate-infer (wnone (wloc wk z fr) ln) li lp gr eT body)
     W-i wk fr (t-annot c) = t-annot (W-c wk fr c)
@@ -558,11 +559,11 @@ module Unfolding
   s-local r y (no _) eq = t-var-local eq
 
   s-import : ∀ {n G Δ fr sh} → SR {n} sh G Δ → (y : String) (d : Dec (y ≡ x)) → ∀ {T}
-           → ¬ GenWord y → lookupLocal-go y G Δ ≡ nothing → lookupImport imps y ≡ just T → IsConcrete T
+           → ¬ GenWord y → lookupLocal-go y G Δ ≡ nothing → lookupImport imps y ≡ just T → IsConcrete T → HonestFFI T
            → Lc G Δ fr ⊢ᵢ subVar sh y d ∶ T ⨾ zeroUsage
-  s-import r y (yes y≡x) _ _ li _ =
+  s-import r y (yes y≡x) _ _ li _ _ =
     ⊥-elim (just≢nothing (trans (sym li) (subst (λ z → lookupImport imps z ≡ nothing) (sym y≡x) noImp)))
-  s-import r y (no _) ¬gw ln li c = t-var-import ¬gw ln li c
+  s-import r y (no _) ¬gw ln li c h = t-var-import ¬gw ln li c h
 
   s-poly-infer : ∀ {n G Δ fr sh} → SR {n} sh G Δ → (y : String) (d : Dec (y ≡ x))
                  {T : Type} {schema : PolyType} {body : RawExpr} {prefix : PolyCtx} {g′ : Ground schema}
@@ -617,9 +618,9 @@ module Unfolding
     S-i r _ t-unit = t-unit
     S-i r _ t-unit-var = t-unit-var
     S-i r _ (t-var-local {x = y} eq) = s-local r y (y StrProp.≟ x) eq
-    S-i r _ (t-var-qualified l c) = t-var-qualified l c
-    S-i r _ (t-var-resolved ng l c) = t-var-resolved ng l c
-    S-i r _ (t-var-import {x = y} ¬gw ln li c) = s-import r y (y StrProp.≟ x) ¬gw ln li c
+    S-i r _ (t-var-qualified l c h) = t-var-qualified l c h
+    S-i r _ (t-var-resolved ng l c h) = t-var-resolved ng l c h
+    S-i r _ (t-var-import {x = y} ¬gw ln li c h) = s-import r y (y StrProp.≟ x) ¬gw ln li c h
     S-i r _ (t-var-poly-instantiate-infer {x = y} ln li lp gr eT body) =
         s-poly-infer r y (y StrProp.≟ x) ln li lp gr eT body
     S-i r nc (t-annot c) = t-annot (S-c r nc c)
@@ -1081,14 +1082,14 @@ module Unfolding
     ... | refl = t-unit
     F-i {sh = sh} r {b = b} nc t-unit-var eq with inv-RResolved {sh = sh} {b = b} eq
     ... | refl = t-unit-var
-    F-i {sh = sh} r {b = b} nc (t-var-qualified l c) eq with inv-RQualified {sh = sh} {b = b} eq
-    ... | refl = t-var-qualified l c
-    F-i {sh = sh} r {b = b} nc (t-var-resolved ng l c) eq with inv-RResolved {sh = sh} {b = b} eq
-    ... | refl = t-var-resolved ng l c
+    F-i {sh = sh} r {b = b} nc (t-var-qualified l c h) eq with inv-RQualified {sh = sh} {b = b} eq
+    ... | refl = t-var-qualified l c h
+    F-i {sh = sh} r {b = b} nc (t-var-resolved ng l c h) eq with inv-RResolved {sh = sh} {b = b} eq
+    ... | refl = t-var-resolved ng l c h
     F-i {sh = sh} r {b = b} nc (t-var-local q) eq with inv-RVar {sh = sh} {b = b} eq
     ... | refl , _ = t-var-local q
-    F-i {sh = sh} r {b = b} nc (t-var-import ¬gw ln li c) eq with inv-RVar {sh = sh} {b = b} eq
-    ... | refl , _ = t-var-import ¬gw ln li c
+    F-i {sh = sh} r {b = b} nc (t-var-import ¬gw ln li c h) eq with inv-RVar {sh = sh} {b = b} eq
+    ... | refl , _ = t-var-import ¬gw ln li c h
     F-i {sh = sh} r {b = b} nc (t-var-poly-instantiate-infer {x = z} ln li lp gr eT body) eq with inv-RVar {sh = sh} {b = b} eq
     ... | refl , alt = t-var-poly-instantiate-infer ln li (lpp-add r z alt ln lp) gr eT body
     F-i {sh = sh} r {b = b} nc (t-annot c) eq with inv-RAnnot {sh = sh} {b = b} eq

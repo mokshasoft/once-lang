@@ -41,6 +41,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 open import Once.Type using (Type)
 open import Once.Functor.Translate using (IsConcrete)
+open import Once.Type.Honest using (HonestFFI)
 import Once.Type
 import Once.Surface.Syntax
 open import Once.TypeCheck.Raw using (RawExpr)
@@ -638,6 +639,7 @@ record VerifiedTypeChecker : Set₁ where
       ∀ (ctx : NamedCtx) (name alias : String) (T : Type)
       → lookupImport (NamedCtx.imports ctx) (alias Data.String.++ "." Data.String.++ name) ≡ just T
       → IsConcrete T
+      → HonestFFI T
       → ∃[ eE ] ∃[ d ] ∃[ f ]
           tcInfer ctx (RQualified name alias) ≡ success T Surface.zeroUsage eE d f
 
@@ -747,6 +749,7 @@ record VerifiedTypeChecker : Set₁ where
       → lookupLocal ctx x ≡ nothing
       → lookupImport (NamedCtx.imports ctx) x ≡ just T
       → IsConcrete T
+      → HonestFFI T
       → ∃[ eE ] ∃[ d ] ∃[ f ]
           tcInfer ctx (RVar x) ≡ success T Surface.zeroUsage eE d f
 
@@ -977,8 +980,8 @@ verifiedTypeChecker = record
   ; tcInfer-complete-RUnit        = λ ctx → Cmp.infer-complete-RUnit {ctx = ctx}
   ; tcInfer-complete-RStringLit   = λ ctx s → Cmp.infer-complete-RStringLit {ctx = ctx} s
   ; tcInfer-complete-RVar-unit    = λ ctx → Cmp.infer-complete-RVar-unit {ctx = ctx}
-  ; tcInfer-complete-RQualified   = λ ctx name alias T eq conc →
-                                     Cmp.infer-complete-RQualified {ctx = ctx} {name = name} {alias = alias} {T = T} eq conc
+  ; tcInfer-complete-RQualified   = λ ctx name alias T eq conc hon →
+                                     Cmp.infer-complete-RQualified {ctx = ctx} {name = name} {alias = alias} {T = T} eq conc hon
   ; tcInfer-complete-RPair        = λ ctx → Cmp.infer-complete-RPair
   ; tcInfer-complete-RUnaryOp-neg = λ ctx → Cmp.infer-complete-RUnaryOp-neg
   ; tcInfer-complete-RAnnot       = λ ctx → Cmp.infer-complete-RAnnot

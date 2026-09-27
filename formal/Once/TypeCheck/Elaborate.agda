@@ -53,7 +53,7 @@ open import Once.SigOp.Info using (SigOpInfo; mk-info'; pureV; emitsV; haltsV; f
 open import Once.CanonicalName using (CanonicalName; bare; showCanonical; gen; NotGenerator; bare-NotGenerator; GenWord; genWord?)
 open import Once.TypeCheck.Raw using (RawExpr)
 open import Once.TypeCheck.Raw as Raw
-open import Once.TypeCheck.Error using (TypeError; renderError; ComposeMiddleUndetermined;
+open import Once.TypeCheck.Error using (TypeError; renderError; ComposeMiddleUndetermined; DishonestSigOpType;
   LambdaInInferMode; LambdaRequiresFunctionType;
   InlInInferMode; InrInInferMode; InitialInInferMode;
   InlNeedsSumType; InrNeedsSumType;
@@ -76,6 +76,7 @@ open import Once.Surface.Elaborate as Elab using (elaborate; intLit; floatLit; s
 open import Once.TypeCheck.Classify public
 import Once.Functor.Translate
 open import Once.Functor.Translate using (IsConcrete; con-base; con-fun; IsBaseType)
+open import Once.Type.Honest using (HonestFFI; honest?)
 open import Once.Functor.Decide using (wellFormedF?; isConcrete?; isBaseType?;
   isConcrete?-complete; isBaseType?-complete)
 open import Once.TypeCheck.Morph using (MorphRaw; morphRaw?; morphToIR)
@@ -1043,6 +1044,7 @@ mutual
         ≡ just (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B)
     → (mbA : Maybe (IsBaseType A)) → isBaseType? A ≡ mbA
     → (mcB : Maybe (IsConcrete B)) → isConcrete? B ≡ mcB
+    → (mh : Maybe (HonestFFI (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B))) → honest? (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B) ≡ mh
     → VerifiedInferResult ctx (Raw.RQualified name alias)
   inferElabV-RResolved-arrow-aux :
     ∀ (ctx : NamedCtx) (cn : CanonicalName) → NotGenerator cn → ∀ {A B : Type} {π : Once.Type.Purity}
@@ -1050,17 +1052,20 @@ mutual
         ≡ just (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B)
     → (mbA : Maybe (IsBaseType A)) → isBaseType? A ≡ mbA
     → (mcB : Maybe (IsConcrete B)) → isConcrete? B ≡ mcB
+    → (mh : Maybe (HonestFFI (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B))) → honest? (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B) ≡ mh
     → VerifiedInferResult ctx (Raw.RResolved cn)
   -- Non-arrow-Many value refs: DE-WITH the single `isConcrete? ty` decision.
   inferElabV-RQualified-value-aux :
     ∀ (ctx : NamedCtx) (name alias : String) (ty : Type)
     → lookupImport (NamedCtx.imports ctx) (alias ++ "." ++ name) ≡ just ty
     → (mc : Maybe (IsConcrete ty)) → isConcrete? ty ≡ mc
+    → (mh : Maybe (HonestFFI ty)) → honest? ty ≡ mh
     → VerifiedInferResult ctx (Raw.RQualified name alias)
   inferElabV-RResolved-value-aux :
     ∀ (ctx : NamedCtx) (cn : CanonicalName) → NotGenerator cn → ∀ (ty : Type)
     → lookupImport (NamedCtx.imports ctx) (showCanonical cn) ≡ just ty
     → (mc : Maybe (IsConcrete ty)) → isConcrete? ty ≡ mc
+    → (mh : Maybe (HonestFFI ty)) → honest? ty ≡ mh
     → VerifiedInferResult ctx (Raw.RResolved cn)
   inferElabV-RVar-lookup-aux :
     ∀ (ctx : NamedCtx) (x : String)
@@ -1080,6 +1085,7 @@ mutual
     → (ty : Type) → lookupImport (NamedCtx.imports ctx) x ≡ just ty
     → (gw : Dec (GenWord x)) → genWord? x ≡ gw
     → (mc : Maybe (IsConcrete ty)) → isConcrete? ty ≡ mc
+    → (mh : Maybe (HonestFFI ty)) → honest? ty ≡ mh
     → VerifiedInferResult ctx (Raw.RVar x)
   inferElabV-RApp-other-aux :
     ∀ (ctx : NamedCtx) (f x : RawExpr) (lhs : Maybe PolyBuiltinApp)
@@ -1862,29 +1868,34 @@ mutual
   -- externals become `lift-morphism (SigOp …)`.
   inferElabV-RQualified-aux ctx name alias
     (just (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B)) eq =
-    inferElabV-RQualified-arrow-aux ctx name alias eq (isBaseType? A) refl (isConcrete? B) refl
+    inferElabV-RQualified-arrow-aux ctx name alias eq (isBaseType? A) refl (isConcrete? B) refl (honest? (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B)) refl
   inferElabV-RQualified-aux ctx name alias (just ty) eq =
-    inferElabV-RQualified-value-aux ctx name alias ty eq (isConcrete? ty) refl
+    inferElabV-RQualified-value-aux ctx name alias ty eq (isConcrete? ty) refl (honest? ty) refl
   inferElabV-RQualified-aux ctx name alias nothing _ =
     failure (UnboundQualified name alias) , tt
 
   -- Concreteness-driven arrow value emission (de-withed for Completeness).
-  inferElabV-RQualified-arrow-aux ctx name alias {A} {B} {π} eq (just bA) _ (just cB) _ =
+  inferElabV-RQualified-arrow-aux ctx name alias {A} {B} {π} eq (just bA) _ (just cB) _ (just h) _ =
     success (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B) _
       (Surface.lift-morphism {π = π} (IR.SigOp (ext-arrow-info ctx alias name π bA cB)))
       0 (NamedCtx.freshCounter ctx)
-    , t-var-qualified eq (con-fun bA cB)
-  inferElabV-RQualified-arrow-aux ctx name alias {A} {B} {π} eq nothing _ _ _ =
+    , t-var-qualified eq (con-fun bA cB) h
+  inferElabV-RQualified-arrow-aux ctx name alias {A} {B} {π} eq (just _) _ (just _) _ nothing _ =
+    failure (DishonestSigOpType (alias ++ "." ++ name)
+              (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B)) , tt
+  inferElabV-RQualified-arrow-aux ctx name alias {A} {B} {π} eq nothing _ _ _ _ _ =
     failure (NonConcreteSigOpType (alias ++ "." ++ name)
               (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B)) , tt
-  inferElabV-RQualified-arrow-aux ctx name alias {A} {B} {π} eq (just _) _ nothing _ =
+  inferElabV-RQualified-arrow-aux ctx name alias {A} {B} {π} eq (just _) _ nothing _ _ _ =
     failure (NonConcreteSigOpType (alias ++ "." ++ name)
               (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B)) , tt
 
-  inferElabV-RQualified-value-aux ctx name alias ty eq (just conc) _ =
+  inferElabV-RQualified-value-aux ctx name alias ty eq (just conc) _ (just h) _ =
     success ty _ (Surface.sigOp (bare (alias ++ "." ++ name)) conc) 0 (NamedCtx.freshCounter ctx)
-    , t-var-qualified eq conc
-  inferElabV-RQualified-value-aux ctx name alias ty eq nothing _ =
+    , t-var-qualified eq conc h
+  inferElabV-RQualified-value-aux ctx name alias ty eq (just _) _ nothing _ =
+    failure (DishonestSigOpType (alias ++ "." ++ name) ty) , tt
+  inferElabV-RQualified-value-aux ctx name alias ty eq nothing _ _ _ =
     failure (NonConcreteSigOpType (alias ++ "." ++ name) ty) , tt
 
   -- Plan 0.50: resolved external ref. The canonical name `cn` is carried
@@ -1916,28 +1927,33 @@ mutual
 
   inferElabV-RResolved-aux ctx cn ng
     (just (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B)) eq =
-    inferElabV-RResolved-arrow-aux ctx cn ng eq (isBaseType? A) refl (isConcrete? B) refl
+    inferElabV-RResolved-arrow-aux ctx cn ng eq (isBaseType? A) refl (isConcrete? B) refl (honest? (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B)) refl
   inferElabV-RResolved-aux ctx cn ng (just ty) eq =
-    inferElabV-RResolved-value-aux ctx cn ng ty eq (isConcrete? ty) refl
+    inferElabV-RResolved-value-aux ctx cn ng ty eq (isConcrete? ty) refl (honest? ty) refl
   inferElabV-RResolved-aux ctx cn ng nothing _ =
     failure (UnboundVariable (showCanonical cn)) , tt
 
   -- Concreteness-driven arrow value emission (de-withed for Completeness).
-  inferElabV-RResolved-arrow-aux ctx cn ng {A} {B} {π} eq (just bA) _ (just cB) _ =
+  inferElabV-RResolved-arrow-aux ctx cn ng {A} {B} {π} eq (just bA) _ (just cB) _ (just h) _ =
     success (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B) _
       (Surface.lift-morphism {π = π} (IR.SigOp (ext-resolved-info ctx cn π bA cB)))
       0 (NamedCtx.freshCounter ctx)
-    , t-var-resolved ng eq (con-fun bA cB)
-  inferElabV-RResolved-arrow-aux ctx cn ng {A} {B} {π} eq nothing _ _ _ =
+    , t-var-resolved ng eq (con-fun bA cB) h
+  inferElabV-RResolved-arrow-aux ctx cn ng {A} {B} {π} eq (just _) _ (just _) _ nothing _ =
+    failure (DishonestSigOpType (showCanonical cn)
+              (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B)) , tt
+  inferElabV-RResolved-arrow-aux ctx cn ng {A} {B} {π} eq nothing _ _ _ _ _ =
     failure (NonConcreteSigOpType (showCanonical cn)
               (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B)) , tt
-  inferElabV-RResolved-arrow-aux ctx cn ng {A} {B} {π} eq (just _) _ nothing _ =
+  inferElabV-RResolved-arrow-aux ctx cn ng {A} {B} {π} eq (just _) _ nothing _ _ _ =
     failure (NonConcreteSigOpType (showCanonical cn)
               (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B)) , tt
 
-  inferElabV-RResolved-value-aux ctx cn ng ty eq (just conc) _ =
-    success ty _ (Surface.sigOp cn conc) 0 (NamedCtx.freshCounter ctx) , t-var-resolved ng eq conc
-  inferElabV-RResolved-value-aux ctx cn ng ty eq nothing _ =
+  inferElabV-RResolved-value-aux ctx cn ng ty eq (just conc) _ (just h) _ =
+    success ty _ (Surface.sigOp cn conc) 0 (NamedCtx.freshCounter ctx) , t-var-resolved ng eq conc h
+  inferElabV-RResolved-value-aux ctx cn ng ty eq (just _) _ nothing _ =
+    failure (DishonestSigOpType (showCanonical cn) ty) , tt
+  inferElabV-RResolved-value-aux ctx cn ng ty eq nothing _ _ _ =
     failure (NonConcreteSigOpType (showCanonical cn) ty) , tt
 
   -- RPair: pair the two sub-results (a-failure short-circuits without forcing
@@ -2213,18 +2229,20 @@ mutual
   inferElabV-RVar-lookup-aux ctx x (just (A , Ψ , eV)) eq-loc _ _ =
     success A Ψ (Surface.svar→expr eV) 0 (NamedCtx.freshCounter ctx) , t-var-local eq-loc
   inferElabV-RVar-lookup-aux ctx x nothing eq-loc (just ty) eq-imp =
-    inferElabV-RVar-import-value-aux ctx x eq-loc ty eq-imp (genWord? x) refl (isConcrete? ty) refl
+    inferElabV-RVar-import-value-aux ctx x eq-loc ty eq-imp (genWord? x) refl (isConcrete? ty) refl (honest? ty) refl
   -- Plan 0.58 / D071: both lookups failed — try the telescope (poly) fallback:
   -- a GROUND own-module def infers at its declared type; otherwise fail.
   inferElabV-RVar-lookup-aux ctx x nothing eq-loc nothing eq-imp =
     inferElabV-RVar-poly-aux ctx x
 
-  inferElabV-RVar-import-value-aux ctx x eq-loc ty eq-imp (no ¬gw) _ (just conc) _ =
+  inferElabV-RVar-import-value-aux ctx x eq-loc ty eq-imp (no ¬gw) _ (just conc) _ (just h) _ =
     success ty _ (Surface.sigOp (bare x) conc) 0 (NamedCtx.freshCounter ctx)
-    , t-var-import ¬gw eq-loc eq-imp conc
-  inferElabV-RVar-import-value-aux ctx x eq-loc ty eq-imp (no _) _ nothing _ =
+    , t-var-import ¬gw eq-loc eq-imp conc h
+  inferElabV-RVar-import-value-aux ctx x eq-loc ty eq-imp (no _) _ (just _) _ nothing _ =
+    failure (DishonestSigOpType x ty) , tt
+  inferElabV-RVar-import-value-aux ctx x eq-loc ty eq-imp (no _) _ nothing _ _ _ =
     failure (NonConcreteSigOpType x ty) , tt
-  inferElabV-RVar-import-value-aux ctx x eq-loc ty eq-imp (yes _) _ _ _ =
+  inferElabV-RVar-import-value-aux ctx x eq-loc ty eq-imp (yes _) _ _ _ _ _ =
     failure (UnboundVariable x) , tt
 
   inferElabV-RApp-void ctx f x eqAH fE df ff wF (failure err , _) = failure err , tt

@@ -322,9 +322,9 @@ seqᴰ m₁ m₂ = (m₁ >>=T λ x → m₂ >>=T λ y → returnT (x , y)) >>=T 
 ⟦_⟧ᵢ {ctx = ctx} (t-unit) fmt dγ = returnT tt
 ⟦_⟧ᵢ {ctx = ctx} (t-unit-var) fmt dγ = returnT tt
 ⟦_⟧ᵢ {ctx = ctx} (t-var-local {eV = eV} _) fmt dγ = returnT (svarᴰRun eV dγ)
-⟦_⟧ᵢ {A = A} (t-var-qualified {name = name} {alias = alias} _ conc) fmt dγ = sigOpRefᴰ {A = A} fmt (bare (alias ++ "." ++ name)) conc
-⟦_⟧ᵢ {A = A} (t-var-resolved {cn = cn} _ _ conc) fmt dγ = sigOpRefᴰ {A = A} fmt cn conc
-⟦_⟧ᵢ {A = A} (t-var-import {x = x} _ _ _ conc) fmt dγ = sigOpRefᴰ {A = A} fmt (bare x) conc
+⟦_⟧ᵢ {A = A} (t-var-qualified {name = name} {alias = alias} _ conc _) fmt dγ = sigOpRefᴰ {A = A} fmt (bare (alias ++ "." ++ name)) conc
+⟦_⟧ᵢ {A = A} (t-var-resolved {cn = cn} _ _ conc _) fmt dγ = sigOpRefᴰ {A = A} fmt cn conc
+⟦_⟧ᵢ {A = A} (t-var-import {x = x} _ _ _ conc _) fmt dγ = sigOpRefᴰ {A = A} fmt (bare x) conc
 -- Plan 0.58 / D071: an infer-mode ground telescope reference MEANS its body —
 -- the context projection Γ(x). The body is closed (typed in the telescope
 -- prefix over the empty local env), so its meaning runs on `tt`. Structural
