@@ -339,3 +339,33 @@ fibN-s-wk {cₛ = cₛ} C0 CS =
         pt : ∀ x → (single r ∘ₛ (extS (single m) ∘ₛ (extS (extS (single (nsuc m))) ₛ∘ᵣ ρS))) x ≡ single m x
         pt vz     = wk-cancel-tm r m
         pt (vs x) = refl
+
+------------------------------------------------------------------------
+-- 6. ★ ONE METHOD ENTRY of the successor case, read along its telescope
+--    (`Lib/TelAt.HypAt`): constructor `k`'s body at the index `suc m`.
+------------------------------------------------------------------------
+
+open import DirectedHoTT.Lib.Tel using ( Tel; Tels; ⌜_⌝ᵗ; ⌜_⌝ₛ; NthT; nth-⌜⌝; AllOK; TelOK; ⊢tel; allD )
+open import DirectedHoTT.Lib.TelAt using ( HypAt; ⊢methTσ; nth-OK )
+
+-- the predecessor's substitution on the successor case's telescopes
+τS : Sub (Δ ∙) (Δ ∙)
+τS = single (var vz) ₛ∘ᵣ extR vs
+
+entN : {Γ : Ctx} {C0 : Cons (⌊ Γ ⌋ ∙) c₀} {Ts : Tels (⌊ Γ ⌋ ∙) cₛ} {T : Tel (⌊ Γ ⌋ ∙)}
+       {M : RTy ((⌊ Γ ⌋ ∙) ∙)} {b : RTm (((⌊ Γ ⌋ ∙) ∙) ∙)} →
+       AllD (Γ ▹ El ⌜Nat⌝) ⌜Nat⌝ C0 → AllOK (Γ ▹ El ⌜Nat⌝) ⌜Nat⌝ Ts →
+       motCtx Γ ⌜Nat⌝ (DN C0 ⌜ Ts ⌝ₛ) ⊢ty M → NthT Ts k T →
+       HypAt (Γ ▹ El ⌜Nat⌝) ⌜Nat⌝ (renTm vs (DN C0 ⌜ Ts ⌝ₛ)) (wk1M M) τS T
+         ⊢ b ∷ subTy (atS (nsuc (var vz)) (conₗ k (var (vs vz)))) (wk1M M) →
+       (app (selF (subC τS ⌜ Ts ⌝ₛ)) (tag k) ⟶* subTm τS ⌜ T ⌝ᵗ)
+       × ((Γ ▹ El ⌜Nat⌝) ⊢ lam (lam b) ∷ MethKAt ⌜Nat⌝ (renTm vs (DN C0 ⌜ Ts ⌝ₛ)) (wk1M M) (nsuc (var vz))
+                                                 (subTm τS ⌜ T ⌝ᵗ) k)
+entN {Γ = Γ} {Ts = Ts} {T = T} d0 oks dM nt db =
+  selF-β (nth-sub τS (nth-⌜⌝ nt)) ,
+  ⊢methTσ {σ = τS} {T = T} ⊢⌜Nat⌝ (⊢wkD (⊢DN d0 (allD (⊢wk ⊢⌜Nat⌝) oks))) (mot-ren there dM)
+          (sub-lemma (⊢tel (⊢wk ⊢⌜Nat⌝) (nth-OK oks nt)) hτ) db
+  where
+    hτ : Sub⊢ (Γ ▹ El ⌜Nat⌝) (Γ ▹ El ⌜Nat⌝) τS
+    hτ here = ⊢var here
+    hτ (there {A = A₀} v) = ⊢-cast (sym (trans (subTy-renTy A₀) (subTy-var vs A₀))) (⊢var (there v))

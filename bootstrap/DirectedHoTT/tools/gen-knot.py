@@ -220,8 +220,8 @@ quoteℕ (suc n) = nsuc (quoteℕ n)
 
 -- a variable is a `Fin` of the depth
 quoteVar : {Γ : Cx} → Var Γ → {Θ : Cx} → RTm Θ
-quoteVar {Γ ∙} vz     = ffz (dep Γ)
-quoteVar {Γ ∙} (vs x) = ffs (dep Γ) (quoteVar x)
+quoteVar {Γ ∙} vz     = ffz
+quoteVar {Γ ∙} (vs x) = ffs (quoteVar x)
 
 ⊢quoteVar : {Γ : Cx} (x : Var Γ) {Θ : Ctx} → Θ ⊢ quoteVar x ∷ FinI (dep Γ)
 ⊢quoteVar {Γ ∙} vz     = ⊢ffz (⊢dep' Γ)

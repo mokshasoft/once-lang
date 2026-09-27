@@ -109,7 +109,7 @@ module _ {Γ : Ctx} {n : RTm ⌊ Γ ⌋} (dn : Γ ⊢ n ∷ El ⌜Nat⌝) where
 
 -- `fz : Fin 1` — the de Bruijn variable `0`, at depth 1.
 fz : {Γ : Cx} → RTm Γ
-fz = ffz nzero
+fz = ffz
 
 -- `λ x. x` at depth 0.  ⚠ THE SCOPE CHECK IS IN THE TYPE: the bound
 --   occurrence sits at depth `suc zero`, so its `Fin` must be `FinI 1`.

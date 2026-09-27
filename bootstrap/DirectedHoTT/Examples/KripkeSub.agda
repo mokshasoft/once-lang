@@ -56,7 +56,7 @@ sMot = Π (El ⌜Nat⌝) (Π (Π (FinI (var (vs (vs vz)))) (Tm (var (vs vz)))) (
           (ty-IMu ⊢⌜Nat⌝ ⊢TmD (⊢var (there here))))
 
 ------------------------------------------------------------------------
--- ★ A `Fin` ZERO AT A **VARIABLE** DEPTH is simply `Scoped.ffz n`:
+-- ★ A `Fin` ZERO AT A **VARIABLE** DEPTH is simply `ffz` (at `suc n`):
 --   under D074 its constructor telescopes are depth-generic, so the
 --   variable-index twin the one-telescope form needed (and its
 --   `wk-single` round trip) is gone.  Every `Tm` at a variable depth
@@ -86,7 +86,7 @@ sMot = Π (El ⌜Nat⌝) (Π (Π (FinI (var (vs (vs vz)))) (Tm (var (vs vz)))) (
 sLam : {Γ : Cx} → RTm Γ
 sLam = lam (lam (lam (lam (lam
          (tlam (app (app (fst (var (vs (vs vz)))) (nsuc (var (vs vz))))
-                    (lam (tvar (ffz (var (vs (vs vz))))))))))))
+                    (lam (tvar ffz))))))))
 
 module _ {Γ : Ctx} where
   private
@@ -99,7 +99,7 @@ module _ {Γ : Ctx} where
     di = ⊢var (there (there (there (there here))))
 
   -- the stub extension: `Fin (suc i) → Tm (suc n)`
-  ⊢stub : Hσ ⊢ lam (tvar (ffz (var (vs (vs vz))))) ∷ Π (FinI (nsuc (var (vs (vs (vs (vs vz))))))) (Tm (nsuc (var (vs (vs vz)))))
+  ⊢stub : Hσ ⊢ lam (tvar ffz) ∷ Π (FinI (nsuc (var (vs (vs (vs (vs vz))))))) (Tm (nsuc (var (vs (vs vz)))))
   ⊢stub = ⊢lam (ty-IMu ⊢⌜Nat⌝ ⊢FinD (⊢isuc di))
             (⊢tvar (⊢isuc (⊢var (there (there here)))) (⊢ffz (⊢var (there (there here)))))
 
