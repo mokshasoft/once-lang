@@ -36,10 +36,10 @@ d_lit'45'int'45'name_8 v0
       (MAlonzo.Code.Data.Integer.Show.d_show_6 (coe v0))
 -- Once.Arith.SigOp.IntLit.lit-int-info
 d_lit'45'int'45'info_12 ::
-  Integer -> MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_160
+  Integer -> MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_162
 d_lit'45'int'45'info_12 v0
   = coe
-      MAlonzo.Code.Once.SigOp.Info.du_mk'45'info_238
+      MAlonzo.Code.Once.SigOp.Info.du_mk'45'info_280
       (coe
          MAlonzo.Code.Once.CanonicalName.d_bare_12
          (coe d_lit'45'int'45'name_8 (coe v0)))
@@ -48,7 +48,7 @@ d_lit'45'int'45'info_12 v0
             MAlonzo.Code.Once.Word.d_fromℤ_20
               (coe MAlonzo.Code.Once.Target.Arch.d_int'45'bits_22 (coe v1))
               (coe v0)))
-      (coe MAlonzo.Code.Once.SigOp.Info.C_Pure_124)
+      (coe MAlonzo.Code.Once.SigOp.Info.C_Pure_126)
       (coe MAlonzo.Code.Once.Functor.Translate.C_base'45'Unit_202)
       (coe
          MAlonzo.Code.Once.Functor.Translate.C_con'45'base_230

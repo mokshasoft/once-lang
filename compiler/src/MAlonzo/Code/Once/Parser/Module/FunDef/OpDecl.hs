@@ -56,7 +56,7 @@ d_toda'45'sig_14 v0 v1 v2
                                        MAlonzo.Code.Data.Nat.Properties.du_'60''45''8804''45'trans_3134
                                        (coe v7)
                                        (coe
-                                          MAlonzo.Code.Once.Parser.Module.DeclTail.d_colDrop1'45''8804'_308
+                                          MAlonzo.Code.Once.Parser.Module.DeclTail.d_colDrop1'45''8804'_252
                                           (coe v1))))))
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
@@ -104,7 +104,7 @@ d_toda'45'go_54 v0 v1 v2
              (coe
                 MAlonzo.Code.Once.Parser.PolyType.d_parsePolyTypeB_34
                 (coe
-                   MAlonzo.Code.Once.Parser.Module.DeclTail.d_colDrop1_302 (coe v1)))
+                   MAlonzo.Code.Once.Parser.Module.DeclTail.d_colDrop1_246 (coe v1)))
       else coe
              du_toda'45'fun_34
              (coe
@@ -119,7 +119,7 @@ d_tryOpDeclAfterB_66 v0 v1
   = coe
       d_toda'45'go_54 (coe v0) (coe v1)
       (coe
-         MAlonzo.Code.Once.Parser.Module.DeclTail.d_colonHead_300 (coe v1))
+         MAlonzo.Code.Once.Parser.Module.DeclTail.d_colonHead_244 (coe v1))
 -- Once.Parser.Module.FunDef.OpDecl.tryOpDeclAfter
 d_tryOpDeclAfter_72 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
@@ -130,7 +130,7 @@ d_tryOpDeclAfter_72 v0 v1
           = d_toda'45'go_54
               (coe v0) (coe v1)
               (coe
-                 MAlonzo.Code.Once.Parser.Module.DeclTail.d_colonHead_300
+                 MAlonzo.Code.Once.Parser.Module.DeclTail.d_colonHead_244
                  (coe v1)) in
     coe
       (case coe v2 of
@@ -165,7 +165,7 @@ d_tryOpDeclB_96 v0
                                   = d_toda'45'go_54
                                       (coe v3) (coe v5)
                                       (coe
-                                         MAlonzo.Code.Once.Parser.Module.DeclTail.d_colonHead_300
+                                         MAlonzo.Code.Once.Parser.Module.DeclTail.d_colonHead_244
                                          (coe v5)) in
                             coe
                               (case coe v7 of
@@ -212,7 +212,7 @@ d_tryOpDecl_140 v0
                                   = d_toda'45'go_54
                                       (coe v3) (coe v5)
                                       (coe
-                                         MAlonzo.Code.Once.Parser.Module.DeclTail.d_colonHead_300
+                                         MAlonzo.Code.Once.Parser.Module.DeclTail.d_colonHead_244
                                          (coe v5)) in
                             coe
                               (case coe v7 of

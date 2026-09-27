@@ -214,7 +214,7 @@ du_sound'45'opAfter_200 ::
   MAlonzo.Code.Once.Spec.Grammar.OpDecl.T_ParsesOpAfter_36
 du_sound'45'opAfter_200 v0 v1
   = let v2
-          = MAlonzo.Code.Once.Parser.Module.DeclTail.d_colonHead_300
+          = MAlonzo.Code.Once.Parser.Module.DeclTail.d_colonHead_244
               (coe v1) in
     coe
       (if coe v2
@@ -222,7 +222,7 @@ du_sound'45'opAfter_200 v0 v1
                     = coe
                         MAlonzo.Code.Once.Parser.PolyType.du_ppB'45'go_18
                         (coe
-                           MAlonzo.Code.Once.Parser.Module.DeclTail.d_colDrop1_302 (coe v1))
+                           MAlonzo.Code.Once.Parser.Module.DeclTail.d_colDrop1_246 (coe v1))
                         (let v3
                                = MAlonzo.Code.Once.Parser.Generic.PolyInst.d_PolyAlg_118 in
                          coe
@@ -236,13 +236,13 @@ du_sound'45'opAfter_200 v0 v1
                                         = MAlonzo.Code.Once.Parser.Generic.PolyInst.d_PolyAlg_118 in
                                   coe
                                     (let v7
-                                           = MAlonzo.Code.Once.Parser.Module.DeclTail.d_colDrop1_302
+                                           = MAlonzo.Code.Once.Parser.Module.DeclTail.d_colDrop1_246
                                                (coe v1) in
                                      coe
                                        (let v8
                                               = MAlonzo.Code.Once.Parser.Generic.PolyInst.d_tvarP_46
                                                   (coe
-                                                     MAlonzo.Code.Once.Parser.Module.DeclTail.d_colDrop1_302
+                                                     MAlonzo.Code.Once.Parser.Module.DeclTail.d_colDrop1_246
                                                      (coe v1)) in
                                         coe
                                           (case coe v8 of
@@ -252,7 +252,7 @@ du_sound'45'opAfter_200 v0 v1
                                                       -> case coe v11 of
                                                            MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v12 v13
                                                              -> let v14
-                                                                      = MAlonzo.Code.Once.Parser.Generic.Parser.d_prodTailP_88
+                                                                      = MAlonzo.Code.Once.Parser.Generic.Parser.d_prodTailP_112
                                                                           (coe v5) (coe v10)
                                                                           (coe v12) in
                                                                 coe
@@ -261,7 +261,7 @@ du_sound'45'opAfter_200 v0 v1
                                                                        -> case coe v15 of
                                                                             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v16 v17
                                                                               -> let v18
-                                                                                       = MAlonzo.Code.Once.Parser.Generic.Parser.d_sumTailP_90
+                                                                                       = MAlonzo.Code.Once.Parser.Generic.Parser.d_sumTailP_114
                                                                                            (coe v4)
                                                                                            (coe v16)
                                                                                            (coe
@@ -273,7 +273,7 @@ du_sound'45'opAfter_200 v0 v1
                                                                                                   v19 of
                                                                                              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v20 v21
                                                                                                -> coe
-                                                                                                    MAlonzo.Code.Once.Parser.Generic.Parser.d_arrowTailP_92
+                                                                                                    MAlonzo.Code.Once.Parser.Generic.Parser.d_arrowTailP_116
                                                                                                     (coe
                                                                                                        v3)
                                                                                                     (coe
@@ -291,7 +291,7 @@ du_sound'45'opAfter_200 v0 v1
                                                                               -> case coe v15 of
                                                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v16 v17
                                                                                      -> coe
-                                                                                          MAlonzo.Code.Once.Parser.Generic.Parser.d_arrowTailP_92
+                                                                                          MAlonzo.Code.Once.Parser.Generic.Parser.d_arrowTailP_116
                                                                                           (coe v3)
                                                                                           (coe v16)
                                                                                           (coe v17)
@@ -304,7 +304,7 @@ du_sound'45'opAfter_200 v0 v1
                                                     _ -> MAlonzo.RTE.mazUnreachableError
                                              MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                                                -> let v9
-                                                        = MAlonzo.Code.Once.Parser.Generic.Parser.d_atomKw_104
+                                                        = MAlonzo.Code.Once.Parser.Generic.Parser.d_atomKw_128
                                                             (coe v6) (coe v7) in
                                                   coe
                                                     (case coe v9 of
@@ -312,7 +312,7 @@ du_sound'45'opAfter_200 v0 v1
                                                          -> case coe v10 of
                                                               MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v11 v12
                                                                 -> let v13
-                                                                         = MAlonzo.Code.Once.Parser.Generic.Parser.d_prodTailP_88
+                                                                         = MAlonzo.Code.Once.Parser.Generic.Parser.d_prodTailP_112
                                                                              (coe v5) (coe v11)
                                                                              (coe v12) in
                                                                    coe
@@ -321,7 +321,7 @@ du_sound'45'opAfter_200 v0 v1
                                                                           -> case coe v14 of
                                                                                MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v15 v16
                                                                                  -> let v17
-                                                                                          = MAlonzo.Code.Once.Parser.Generic.Parser.d_sumTailP_90
+                                                                                          = MAlonzo.Code.Once.Parser.Generic.Parser.d_sumTailP_114
                                                                                               (coe
                                                                                                  v4)
                                                                                               (coe
@@ -336,7 +336,7 @@ du_sound'45'opAfter_200 v0 v1
                                                                                                      v18 of
                                                                                                 MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v19 v20
                                                                                                   -> coe
-                                                                                                       MAlonzo.Code.Once.Parser.Generic.Parser.d_arrowTailP_92
+                                                                                                       MAlonzo.Code.Once.Parser.Generic.Parser.d_arrowTailP_116
                                                                                                        (coe
                                                                                                           v3)
                                                                                                        (coe
@@ -355,7 +355,7 @@ du_sound'45'opAfter_200 v0 v1
                                                                                  -> case coe v14 of
                                                                                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v15 v16
                                                                                         -> coe
-                                                                                             MAlonzo.Code.Once.Parser.Generic.Parser.d_arrowTailP_92
+                                                                                             MAlonzo.Code.Once.Parser.Generic.Parser.d_arrowTailP_116
                                                                                              (coe
                                                                                                 v3)
                                                                                              (coe
@@ -374,7 +374,7 @@ du_sound'45'opAfter_200 v0 v1
                                                                 -> case coe v10 of
                                                                      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v11 v12
                                                                        -> let v13
-                                                                                = MAlonzo.Code.Once.Parser.Generic.Parser.d_sumTailP_90
+                                                                                = MAlonzo.Code.Once.Parser.Generic.Parser.d_sumTailP_114
                                                                                     (coe v4)
                                                                                     (coe v11)
                                                                                     (coe v12) in
@@ -384,7 +384,7 @@ du_sound'45'opAfter_200 v0 v1
                                                                                  -> case coe v14 of
                                                                                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v15 v16
                                                                                         -> coe
-                                                                                             MAlonzo.Code.Once.Parser.Generic.Parser.d_arrowTailP_92
+                                                                                             MAlonzo.Code.Once.Parser.Generic.Parser.d_arrowTailP_116
                                                                                              (coe
                                                                                                 v3)
                                                                                              (coe
@@ -402,7 +402,7 @@ du_sound'45'opAfter_200 v0 v1
                                                                        -> case coe v10 of
                                                                             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v11 v12
                                                                               -> coe
-                                                                                   MAlonzo.Code.Once.Parser.Generic.Parser.d_arrowTailP_92
+                                                                                   MAlonzo.Code.Once.Parser.Generic.Parser.d_arrowTailP_116
                                                                                    (coe v3)
                                                                                    (coe v11)
                                                                                    (coe v12)
@@ -425,7 +425,7 @@ du_sound'45'opAfter_200 v0 v1
                                     (coe
                                        MAlonzo.Code.Once.Grammar.PolyTypeBridge.du_parsePolyTypeB'45'sound_42
                                        (coe
-                                          MAlonzo.Code.Once.Parser.Module.DeclTail.d_colDrop1_302
+                                          MAlonzo.Code.Once.Parser.Module.DeclTail.d_colDrop1_246
                                           (coe v1))))
                           _ -> MAlonzo.RTE.mazUnreachableError
                    _ -> MAlonzo.RTE.mazUnreachableError)
@@ -508,7 +508,7 @@ du_complete'45'opAfter_280 v0 v1
                  = coe
                      MAlonzo.Code.Once.Grammar.PolyTypeBridge.du_ppB'45'go'45'complete_60
                      (coe
-                        MAlonzo.Code.Once.Parser.Module.DeclTail.d_colDrop1_302 (coe v0))
+                        MAlonzo.Code.Once.Parser.Module.DeclTail.d_colDrop1_246 (coe v0))
                      (let v7
                             = MAlonzo.Code.Once.Parser.Generic.PolyInst.d_PolyAlg_118 in
                       coe
@@ -522,13 +522,13 @@ du_complete'45'opAfter_280 v0 v1
                                      = MAlonzo.Code.Once.Parser.Generic.PolyInst.d_PolyAlg_118 in
                                coe
                                  (let v11
-                                        = MAlonzo.Code.Once.Parser.Module.DeclTail.d_colDrop1_302
+                                        = MAlonzo.Code.Once.Parser.Module.DeclTail.d_colDrop1_246
                                             (coe v0) in
                                   coe
                                     (let v12
                                            = MAlonzo.Code.Once.Parser.Generic.PolyInst.d_tvarP_46
                                                (coe
-                                                  MAlonzo.Code.Once.Parser.Module.DeclTail.d_colDrop1_302
+                                                  MAlonzo.Code.Once.Parser.Module.DeclTail.d_colDrop1_246
                                                   (coe v0)) in
                                      coe
                                        (case coe v12 of
@@ -538,7 +538,7 @@ du_complete'45'opAfter_280 v0 v1
                                                    -> case coe v15 of
                                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v16 v17
                                                           -> let v18
-                                                                   = MAlonzo.Code.Once.Parser.Generic.Parser.d_prodTailP_88
+                                                                   = MAlonzo.Code.Once.Parser.Generic.Parser.d_prodTailP_112
                                                                        (coe v9) (coe v14)
                                                                        (coe v16) in
                                                              coe
@@ -547,7 +547,7 @@ du_complete'45'opAfter_280 v0 v1
                                                                     -> case coe v19 of
                                                                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v20 v21
                                                                            -> let v22
-                                                                                    = MAlonzo.Code.Once.Parser.Generic.Parser.d_sumTailP_90
+                                                                                    = MAlonzo.Code.Once.Parser.Generic.Parser.d_sumTailP_114
                                                                                         (coe v8)
                                                                                         (coe v20)
                                                                                         (coe v21) in
@@ -558,7 +558,7 @@ du_complete'45'opAfter_280 v0 v1
                                                                                                v23 of
                                                                                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v24 v25
                                                                                             -> coe
-                                                                                                 MAlonzo.Code.Once.Parser.Generic.Parser.d_arrowTailP_92
+                                                                                                 MAlonzo.Code.Once.Parser.Generic.Parser.d_arrowTailP_116
                                                                                                  (coe
                                                                                                     v7)
                                                                                                  (coe
@@ -576,7 +576,7 @@ du_complete'45'opAfter_280 v0 v1
                                                                            -> case coe v19 of
                                                                                 MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v20 v21
                                                                                   -> coe
-                                                                                       MAlonzo.Code.Once.Parser.Generic.Parser.d_arrowTailP_92
+                                                                                       MAlonzo.Code.Once.Parser.Generic.Parser.d_arrowTailP_116
                                                                                        (coe v7)
                                                                                        (coe v20)
                                                                                        (coe v21)
@@ -589,7 +589,7 @@ du_complete'45'opAfter_280 v0 v1
                                                  _ -> MAlonzo.RTE.mazUnreachableError
                                           MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                                             -> let v13
-                                                     = MAlonzo.Code.Once.Parser.Generic.Parser.d_atomKw_104
+                                                     = MAlonzo.Code.Once.Parser.Generic.Parser.d_atomKw_128
                                                          (coe v10) (coe v11) in
                                                coe
                                                  (case coe v13 of
@@ -597,7 +597,7 @@ du_complete'45'opAfter_280 v0 v1
                                                       -> case coe v14 of
                                                            MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v15 v16
                                                              -> let v17
-                                                                      = MAlonzo.Code.Once.Parser.Generic.Parser.d_prodTailP_88
+                                                                      = MAlonzo.Code.Once.Parser.Generic.Parser.d_prodTailP_112
                                                                           (coe v9) (coe v15)
                                                                           (coe v16) in
                                                                 coe
@@ -606,7 +606,7 @@ du_complete'45'opAfter_280 v0 v1
                                                                        -> case coe v18 of
                                                                             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v19 v20
                                                                               -> let v21
-                                                                                       = MAlonzo.Code.Once.Parser.Generic.Parser.d_sumTailP_90
+                                                                                       = MAlonzo.Code.Once.Parser.Generic.Parser.d_sumTailP_114
                                                                                            (coe v8)
                                                                                            (coe v19)
                                                                                            (coe
@@ -618,7 +618,7 @@ du_complete'45'opAfter_280 v0 v1
                                                                                                   v22 of
                                                                                              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v23 v24
                                                                                                -> coe
-                                                                                                    MAlonzo.Code.Once.Parser.Generic.Parser.d_arrowTailP_92
+                                                                                                    MAlonzo.Code.Once.Parser.Generic.Parser.d_arrowTailP_116
                                                                                                     (coe
                                                                                                        v7)
                                                                                                     (coe
@@ -636,7 +636,7 @@ du_complete'45'opAfter_280 v0 v1
                                                                               -> case coe v18 of
                                                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v19 v20
                                                                                      -> coe
-                                                                                          MAlonzo.Code.Once.Parser.Generic.Parser.d_arrowTailP_92
+                                                                                          MAlonzo.Code.Once.Parser.Generic.Parser.d_arrowTailP_116
                                                                                           (coe v7)
                                                                                           (coe v19)
                                                                                           (coe v20)
@@ -652,7 +652,7 @@ du_complete'45'opAfter_280 v0 v1
                                                              -> case coe v14 of
                                                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v15 v16
                                                                     -> let v17
-                                                                             = MAlonzo.Code.Once.Parser.Generic.Parser.d_sumTailP_90
+                                                                             = MAlonzo.Code.Once.Parser.Generic.Parser.d_sumTailP_114
                                                                                  (coe v8) (coe v15)
                                                                                  (coe v16) in
                                                                        coe
@@ -661,7 +661,7 @@ du_complete'45'opAfter_280 v0 v1
                                                                               -> case coe v18 of
                                                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v19 v20
                                                                                      -> coe
-                                                                                          MAlonzo.Code.Once.Parser.Generic.Parser.d_arrowTailP_92
+                                                                                          MAlonzo.Code.Once.Parser.Generic.Parser.d_arrowTailP_116
                                                                                           (coe v7)
                                                                                           (coe v19)
                                                                                           (coe v20)
@@ -676,7 +676,7 @@ du_complete'45'opAfter_280 v0 v1
                                                                     -> case coe v14 of
                                                                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v15 v16
                                                                            -> coe
-                                                                                MAlonzo.Code.Once.Parser.Generic.Parser.d_arrowTailP_92
+                                                                                MAlonzo.Code.Once.Parser.Generic.Parser.d_arrowTailP_116
                                                                                 (coe v7) (coe v15)
                                                                                 (coe v16)
                                                                          _ -> MAlonzo.RTE.mazUnreachableError
@@ -697,7 +697,7 @@ du_complete'45'opAfter_280 v0 v1
                              MAlonzo.Code.Data.Nat.Properties.du_'60''45''8804''45'trans_3134
                              (coe v8)
                              (coe
-                                MAlonzo.Code.Once.Parser.Module.DeclTail.d_colDrop1'45''8804'_308
+                                MAlonzo.Code.Once.Parser.Module.DeclTail.d_colDrop1'45''8804'_252
                                 (coe v0))))
                        erased
                 _ -> MAlonzo.RTE.mazUnreachableError)
@@ -748,7 +748,7 @@ du_sound'45'opDecl_338 v0
                                             = MAlonzo.Code.Once.Parser.Module.FunDef.OpDecl.d_toda'45'go_54
                                                 (coe v5) (coe v7)
                                                 (coe
-                                                   MAlonzo.Code.Once.Parser.Module.DeclTail.d_colonHead_300
+                                                   MAlonzo.Code.Once.Parser.Module.DeclTail.d_colonHead_244
                                                    (coe v7)) in
                                       coe
                                         (case coe v9 of

@@ -44,8 +44,7 @@ d_validateMain'45'EffUU_10 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_validateMain'45'EffUU_10 = erased
 -- Once.Adequacy.MainIRForm.compileFun-main-EffUU
-d_compileFun'45'main'45'EffUU_76 ::
-  [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
+d_compileFun'45'main'45'EffUU_74 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
@@ -53,29 +52,29 @@ d_compileFun'45'main'45'EffUU_76 ::
   MAlonzo.Code.Once.IR.T_IR_16 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_compileFun'45'main'45'EffUU_76 = erased
+d_compileFun'45'main'45'EffUU_74 = erased
 -- Once.Adequacy.MainIRForm.findMain-here-no
-d_findMain'45'here'45'no_138 ::
-  MAlonzo.Code.Once.Compile.T_CompiledFun_246 ->
+d_findMain'45'here'45'no_130 ::
+  MAlonzo.Code.Once.Compile.T_CompiledFun_234 ->
   Bool ->
   Maybe MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   Maybe MAlonzo.Code.Once.IR.T_IR_16 ->
   (MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
    MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20) ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_findMain'45'here'45'no_138 = erased
+d_findMain'45'here'45'no_130 = erased
 -- Once.Adequacy.MainIRForm.bare-injective
-d_bare'45'injective_160 ::
+d_bare'45'injective_152 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_bare'45'injective_160 = erased
+d_bare'45'injective_152 = erased
 -- Once.Adequacy.MainIRForm.findMain-skip
-d_findMain'45'skip_166 ::
-  MAlonzo.Code.Once.Compile.T_CompiledFun_246 ->
-  [MAlonzo.Code.Once.Compile.T_CompiledFun_246] ->
+d_findMain'45'skip_158 ::
+  MAlonzo.Code.Once.Compile.T_CompiledFun_234 ->
+  [MAlonzo.Code.Once.Compile.T_CompiledFun_234] ->
   (MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
    MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20) ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_findMain'45'skip_166 = erased
+d_findMain'45'skip_158 = erased

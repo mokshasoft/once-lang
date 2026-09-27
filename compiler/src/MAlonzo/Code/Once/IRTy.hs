@@ -70,7 +70,7 @@ d_'8970'_'8971'_52 v0
              (coe d_'8970'_'8971'_52 (coe v1)) (coe d_'8970'_'8971'_52 (coe v3))
       MAlonzo.Code.Once.Type.C_μ'45'type_128 v1
         -> coe C_μ'45'type_26 (coe d_eraseF_54 (coe v1))
-      MAlonzo.Code.Once.Type.C_ν'45'type_130 v1
+      MAlonzo.Code.Once.Type.C_ν'45'type_130 v1 v2
         -> coe C_ν'45'type_28 (coe d_eraseF_54 (coe v1))
       MAlonzo.Code.Once.Type.C_Int_132 -> coe C_Int_30
       MAlonzo.Code.Once.Type.C_Float_134 -> coe C_Float_32
@@ -923,6 +923,7 @@ d_'8968'_'8969'_622 v0
         -> coe
              MAlonzo.Code.Once.Type.C_ν'45'type_130
              (coe d_'8968'_'8969'F_624 (coe v1))
+             (coe MAlonzo.Code.Once.Type.C_eff_36)
       C_Int_30 -> coe MAlonzo.Code.Once.Type.C_Int_132
       C_Float_32 -> coe MAlonzo.Code.Once.Type.C_Float_134
       C_Str_34 -> coe MAlonzo.Code.Once.Type.C_Str_136

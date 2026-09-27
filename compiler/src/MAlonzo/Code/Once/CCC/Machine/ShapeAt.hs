@@ -84,12 +84,12 @@ du_prim'45'sv'45'at_68 v0 v1
         -> coe
              MAlonzo.Code.Once.CCC.Machine.SMCore.C_SV'45'Lit_76
              (coe MAlonzo.Code.Once.Type.C_Int_132)
-             (coe MAlonzo.Code.Once.Type.C_fits'45'int_194) (coe v1)
+             (coe MAlonzo.Code.Once.Type.C_fits'45'int_198) (coe v1)
       MAlonzo.Code.Once.IRTy.C_fits'45'float_530
         -> coe
              MAlonzo.Code.Once.CCC.Machine.SMCore.C_SV'45'Lit_76
              (coe MAlonzo.Code.Once.Type.C_Float_134)
-             (coe MAlonzo.Code.Once.Type.C_fits'45'float_196) (coe v1)
+             (coe MAlonzo.Code.Once.Type.C_fits'45'float_200) (coe v1)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Machine.ShapeAt.InlineRepAt
 d_InlineRepAt_76 a0 a1 = ()
@@ -196,7 +196,7 @@ d_cell'8594'shape_460 ::
   AgdaAny ->
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_402 ->
-  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_CellAt_584 ->
+  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_CellAt_580 ->
   T_CellShapeAt_96
 d_cell'8594'shape_460 v0 v1 v2 v3 v4 ~v5 v6 v7
   = du_cell'8594'shape_460 v0 v1 v2 v3 v4 v6 v7
@@ -207,25 +207,25 @@ du_cell'8594'shape_460 ::
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   AgdaAny ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_402 ->
-  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_CellAt_584 ->
+  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_CellAt_580 ->
   T_CellShapeAt_96
 du_cell'8594'shape_460 v0 v1 v2 v3 v4 v5 v6
   = case coe v6 of
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_cell'45'ptr_786 v10 v12 v14 v15
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_cell'45'ptr_784 v10 v12 v14 v15
         -> coe
              C_cell'45'shape'45'ptr_112 v10 v12 v14
              (coe
                 du_valid'8594'shape_474 (coe v0) (coe v1) (coe v2) (coe v3)
                 (coe v4) (coe v10) (coe v5) (coe v15))
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_cell'45'inline_798 v11
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_cell'45'inline_796 v11
         -> case coe v11 of
-             MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_rep'45'prim_566 v13
+             MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_rep'45'prim_562 v13
                -> coe
                     seq (coe v13)
                     (coe
                        C_cell'45'shape'45'inline_124 v4
                        (coe C_rep'45'prim'45'at_80 (coe v13)))
-             MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_rep'45'unit_568 v14
+             MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_rep'45'unit_564 v14
                -> coe
                     C_cell'45'shape'45'inline_124 v4 (coe C_rep'45'unit'45'at_82 v14)
              _ -> MAlonzo.RTE.mazUnreachableError
@@ -240,7 +240,7 @@ d_valid'8594'shape_474 ::
   AgdaAny ->
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_402 ->
-  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ValidAtWF_588 ->
+  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ValidAtWF_584 ->
   T_ShapeAt_98
 d_valid'8594'shape_474 v0 v1 ~v2 v3 v4 v5 v6 v7 v8
   = du_valid'8594'shape_474 v0 v1 v3 v4 v5 v6 v7 v8
@@ -252,13 +252,13 @@ du_valid'8594'shape_474 ::
   AgdaAny ->
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_402 ->
-  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ValidAtWF_588 ->
+  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ValidAtWF_584 ->
   T_ShapeAt_98
 du_valid'8594'shape_474 v0 v1 v2 v3 v4 v5 v6 v7
   = case coe v7 of
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_valid'45'unit'45'wf_808
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_valid'45'unit'45'wf_806
         -> coe C_shape'45'unit_134
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_valid'45'pair'45'wf_826 v16 v17 v18 v19
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_valid'45'pair'45'wf_824 v16 v17 v18 v19
         -> case coe v3 of
              MAlonzo.Code.Once.IRTy.C__'42'__20 v20 v21
                -> case coe v4 of
@@ -273,15 +273,15 @@ du_valid'8594'shape_474 v0 v1 v2 v3 v4 v5 v6 v7
                               (coe v23) (coe v6) (coe v19))
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_valid'45'closure'45'wf_852 v8 v11 v12 v15 v17 v18 v19 v22 v23 v24
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_valid'45'closure'45'wf_850 v8 v11 v12 v15 v17 v18 v19 v22 v23 v24
         -> coe
              C_shape'45'closure_170 v8 v15 v17 v18 v19 v22 v23
              (coe
                 du_valid'8594'shape_474 (coe v0) (coe v1) (coe v2) (coe v8)
                 (coe v12) (coe v15) (coe v6) (coe v24))
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_valid'45'closure'45'reg'45'wf_876 v8 v11 v12 v16 v17 v18 v21
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_valid'45'closure'45'reg'45'wf_874 v8 v11 v12 v16 v17 v18 v21
         -> case coe v18 of
-             MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_rep'45'prim_566 v22
+             MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_rep'45'prim_562 v22
                -> case coe v22 of
                     MAlonzo.Code.Once.IRTy.C_fits'45'int_528
                       -> coe
@@ -293,19 +293,19 @@ du_valid'8594'shape_474 v0 v1 v2 v3 v4 v5 v6 v7
                            (coe MAlonzo.Code.Once.IRTy.C_Float_32) v12 v16 v17
                            (coe C_rep'45'prim'45'at_80 (coe v22)) v21
                     _ -> MAlonzo.RTE.mazUnreachableError
-             MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_rep'45'unit_568 v23
+             MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_rep'45'unit_564 v23
                -> coe
                     C_shape'45'closure'45'reg_228 v8 v12 v16 v17
                     (coe C_rep'45'unit'45'at_82 v23) v21
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_valid'45'ν'45'susp'45'wf_896 v9 v10 v11 v12 v16 v17 v18 v20
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_valid'45'ν'45'susp'45'wf_894 v9 v10 v11 v12 v16 v17 v18 v20
         -> coe
              C_shape'45'ν'45'susp_294 v9 v16 v17
              (coe
                 du_cell'8594'shape_460 (coe v0) (coe v1) (coe v2) (coe v9)
                 (coe v12) (coe v6) (coe v18))
              v20
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_valid'45'inl'45'wf_916 v14 v16 v17 v20 v21 v22
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_valid'45'inl'45'wf_914 v14 v16 v17 v20 v21 v22
         -> case coe v3 of
              MAlonzo.Code.Once.IRTy.C__'43'__22 v23 v24
                -> case coe v4 of
@@ -317,7 +317,7 @@ du_valid'8594'shape_474 v0 v1 v2 v3 v4 v5 v6 v7
                               (coe v25) (coe v14) (coe v6) (coe v22))
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_valid'45'inr'45'wf_936 v14 v16 v17 v20 v21 v22
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_valid'45'inr'45'wf_934 v14 v16 v17 v20 v21 v22
         -> case coe v3 of
              MAlonzo.Code.Once.IRTy.C__'43'__22 v23 v24
                -> case coe v4 of
@@ -329,39 +329,39 @@ du_valid'8594'shape_474 v0 v1 v2 v3 v4 v5 v6 v7
                               (coe v25) (coe v14) (coe v6) (coe v22))
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_valid'45'inl'45'reg'45'wf_954 v15 v17 v19
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_valid'45'inl'45'reg'45'wf_952 v15 v17 v19
         -> case coe v4 of
              MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 v20
                -> case coe v17 of
-                    MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_rep'45'prim_566 v21
+                    MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_rep'45'prim_562 v21
                       -> coe
                            seq (coe v21)
                            (coe
                               C_shape'45'inl'45'reg_246 v20 v15
                               (coe C_rep'45'prim'45'at_80 (coe v21)) v19)
-                    MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_rep'45'unit_568 v22
+                    MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_rep'45'unit_564 v22
                       -> coe
                            C_shape'45'inl'45'reg_246 v20 v15 (coe C_rep'45'unit'45'at_82 v22)
                            v19
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_valid'45'inr'45'reg'45'wf_972 v15 v17 v19
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_valid'45'inr'45'reg'45'wf_970 v15 v17 v19
         -> case coe v4 of
              MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42 v20
                -> case coe v17 of
-                    MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_rep'45'prim_566 v21
+                    MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_rep'45'prim_562 v21
                       -> coe
                            seq (coe v21)
                            (coe
                               C_shape'45'inr'45'reg_264 v20 v15
                               (coe C_rep'45'prim'45'at_80 (coe v21)) v19)
-                    MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_rep'45'unit_568 v22
+                    MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_rep'45'unit_564 v22
                       -> coe
                            C_shape'45'inr'45'reg_264 v20 v15 (coe C_rep'45'unit'45'at_82 v22)
                            v19
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_valid'45'μ'45'wf_988 v13 v15
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_valid'45'μ'45'wf_986 v13 v15
         -> case coe v3 of
              MAlonzo.Code.Once.IRTy.C_μ'45'type_26 v16
                -> coe
@@ -371,21 +371,20 @@ du_valid'8594'shape_474 v0 v1 v2 v3 v4 v5 v6 v7
                        (coe
                           MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_84 (coe v16) (coe v3))
                        (coe
-                          MAlonzo.Code.Once.Denotation.TraceMonad.du_valueT_72
+                          MAlonzo.Code.Once.Denotation.TraceMonad.du_valueT_138
                           (coe
-                             MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_eval'7472'_28 v0
+                             MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_eval'7472'_22 v0
                              v3
                              (MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_84 (coe v16) (coe v3))
-                             (coe MAlonzo.Code.Once.IR.C_out'45'μ_100 v13) v4)
-                          (coe (0 :: Integer)))
+                             (coe MAlonzo.Code.Once.IR.C_out'45'μ_98 v13) v4))
                        (coe v5) (coe v6) (coe v15))
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_valid'45'int'45'wf_1000 v13
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_valid'45'int'45'wf_998 v13
         -> coe C_shape'45'int_306 v4 v13
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_valid'45'float'45'wf_1012 v13
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_valid'45'float'45'wf_1010 v13
         -> coe C_shape'45'float_318 v4 v13
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_valid'45'str'45'wf_1024 v13
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_valid'45'str'45'wf_1022 v13
         -> coe C_shape'45'str_328 v13
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_valid'45'buffer'45'wf_1036 v13
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_valid'45'buffer'45'wf_1034 v13
         -> coe C_shape'45'buffer_338 v13
       _ -> MAlonzo.RTE.mazUnreachableError

@@ -28,7 +28,7 @@ import qualified MAlonzo.Code.Once.TypeCheck.Raw
 -- Once.Adequacy.RealizeBridge._.realize-agrees
 d_realize'45'agrees_10 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
-  MAlonzo.Code.Once.TypeCheck.Classify.T_NamedCtx_338 ->
+  MAlonzo.Code.Once.TypeCheck.Classify.T_NamedCtx_304 ->
   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Surface.Context.T_Usage_60 ->
@@ -36,6 +36,5 @@ d_realize'45'agrees_10 ::
   Integer ->
   Integer ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  AgdaAny ->
-  Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+  AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_realize'45'agrees_10 = erased

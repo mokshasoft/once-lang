@@ -117,7 +117,7 @@ validSyntaxTests = testGroup "Valid syntax"
             [ "signature ex : Eff Int Void"
             ]
       result <- parseSource source
-      assertParsedContains result "ex : "
+      assertParsedContains result "ex : Eff Int Void"
 
   , testCase "the effect-shape annotation is gone" $ do
       -- `! halts` / `! emits` were deleted with the SigEffect table (plan 0.98 E):

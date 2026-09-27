@@ -323,7 +323,7 @@ d_declFloatLits_280 v0
         -> coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16
       MAlonzo.Code.Once.Parser.Module.Core.C_DFunDef_24 v1 v2
         -> coe d_rawFloatLits_240 (coe v2)
-      MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_26 v1 v2 v3 v4
+      MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_26 v1 v2 v3
         -> coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16
       MAlonzo.Code.Once.Parser.Module.Core.C_DTypeAlias_28 v1 v2 v3
         -> coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16

@@ -19,6 +19,7 @@ import qualified MAlonzo.RTE
 import qualified Data.Text
 import qualified MAlonzo.Code.Agda.Builtin.Equality
 import qualified MAlonzo.Code.Once.IR
+import qualified MAlonzo.Code.Once.Res
 import qualified MAlonzo.Code.Once.Target.Arch
 import qualified MAlonzo.Code.Once.Type
 
@@ -43,3 +44,12 @@ d_wrap'45'trace_16 ::
   MAlonzo.Code.Once.IR.T_IR_16 ->
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_wrap'45'trace_16 = erased
+-- Once.Adequacy.WrapBridge._.go
+d_go_30 ::
+  MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
+  MAlonzo.Code.Once.IR.T_IR_16 ->
+  Integer ->
+  MAlonzo.Code.Once.Res.T_Res_6 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_go_30 = erased

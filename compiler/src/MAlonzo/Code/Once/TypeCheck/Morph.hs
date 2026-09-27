@@ -384,7 +384,7 @@ d_morphToIR_200 v0 v1 v2 v3
                 MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v5
                   -> coe
                        MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-                       (coe MAlonzo.Code.Once.IR.C_id_22)
+                       (coe MAlonzo.Code.Once.IR.C_id_20)
                 MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v4
                 _ -> MAlonzo.RTE.mazUnreachableError)
       C_mr'45'fst_72
@@ -398,7 +398,7 @@ d_morphToIR_200 v0 v1 v2 v3
                           MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v8
                             -> coe
                                  MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-                                 (coe MAlonzo.Code.Once.IR.C_fst_44)
+                                 (coe MAlonzo.Code.Once.IR.C_fst_42)
                           MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v7
                           _ -> MAlonzo.RTE.mazUnreachableError)
                 _ -> coe v4)
@@ -413,7 +413,7 @@ d_morphToIR_200 v0 v1 v2 v3
                           MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v8
                             -> coe
                                  MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-                                 (coe MAlonzo.Code.Once.IR.C_snd_50)
+                                 (coe MAlonzo.Code.Once.IR.C_snd_48)
                           MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v7
                           _ -> MAlonzo.RTE.mazUnreachableError)
                 _ -> coe v4)
@@ -428,7 +428,7 @@ d_morphToIR_200 v0 v1 v2 v3
                           MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v8
                             -> coe
                                  MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-                                 (coe MAlonzo.Code.Once.IR.C_inl_56)
+                                 (coe MAlonzo.Code.Once.IR.C_inl_54)
                           MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v7
                           _ -> MAlonzo.RTE.mazUnreachableError)
                 _ -> coe v4)
@@ -443,7 +443,7 @@ d_morphToIR_200 v0 v1 v2 v3
                           MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v8
                             -> coe
                                  MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-                                 (coe MAlonzo.Code.Once.IR.C_inr_62)
+                                 (coe MAlonzo.Code.Once.IR.C_inr_60)
                           MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v7
                           _ -> MAlonzo.RTE.mazUnreachableError)
                 _ -> coe v4)
@@ -454,7 +454,7 @@ d_morphToIR_200 v0 v1 v2 v3
                 MAlonzo.Code.Once.Type.C_Unit_118
                   -> coe
                        MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-                       (coe MAlonzo.Code.Once.IR.C_terminal_74)
+                       (coe MAlonzo.Code.Once.IR.C_terminal_72)
                 _ -> coe v4)
       C_mr'45'initial_82
         -> let v4 = coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 in
@@ -463,7 +463,7 @@ d_morphToIR_200 v0 v1 v2 v3
                 MAlonzo.Code.Once.Type.C_Void_120
                   -> coe
                        MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-                       (coe MAlonzo.Code.Once.IR.C_initial_78)
+                       (coe MAlonzo.Code.Once.IR.C_initial_76)
                 _ -> coe v4)
       C_mr'45'case_88 v6 v7
         -> case coe v0 of
@@ -488,7 +488,7 @@ d_morphToIR_200 v0 v1 v2 v3
                                                     -> coe
                                                          MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                          (coe
-                                                            MAlonzo.Code.Once.IR.C_case_70 v17 v18)
+                                                            MAlonzo.Code.Once.IR.C_case_68 v17 v18)
                                                   _ -> coe
                                                          MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                                            _ -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18))

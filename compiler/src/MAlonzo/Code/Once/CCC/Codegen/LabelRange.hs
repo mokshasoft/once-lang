@@ -311,10 +311,10 @@ d_label'45'mono_150 ::
   Integer -> Integer -> MAlonzo.Code.Data.Nat.Base.T__'8804'__22
 d_label'45'mono_150 v0 v1 v2 v3 v4 v5
   = case coe v3 of
-      MAlonzo.Code.Once.IR.C_id_22
+      MAlonzo.Code.Once.IR.C_id_20
         -> coe
              MAlonzo.Code.Data.Nat.Properties.d_'8804''45'refl_2900 (coe v5)
-      MAlonzo.Code.Once.IR.C__'8728'__30 v7 v9 v10
+      MAlonzo.Code.Once.IR.C__'8728'__28 v7 v9 v10
         -> coe
              MAlonzo.Code.Data.Nat.Properties.du_'8804''45'trans_2908
              (coe
@@ -332,7 +332,7 @@ d_label'45'mono_150 v0 v1 v2 v3 v4 v5
                    (coe
                       MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace''_488
                       (coe v0) (coe v1) (coe v7) (coe v4) (coe v5) (coe v10))))
-      MAlonzo.Code.Once.IR.C_'10216'_'44'_'10217'_38 v9 v10
+      MAlonzo.Code.Once.IR.C_'10216'_'44'_'10217'_36 v9 v10
         -> case coe v2 of
              MAlonzo.Code.Once.IRTy.C__'42'__20 v11 v12
                -> coe
@@ -355,19 +355,19 @@ d_label'45'mono_150 v0 v1 v2 v3 v4 v5
                              (coe v0) (coe v1) (coe v11)
                              (coe addInt (coe (4 :: Integer)) (coe v4)) (coe v5) (coe v9))))
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.IR.C_fst_44
+      MAlonzo.Code.Once.IR.C_fst_42
         -> coe
              MAlonzo.Code.Data.Nat.Properties.d_'8804''45'refl_2900 (coe v5)
-      MAlonzo.Code.Once.IR.C_snd_50
+      MAlonzo.Code.Once.IR.C_snd_48
         -> coe
              MAlonzo.Code.Data.Nat.Properties.d_'8804''45'refl_2900 (coe v5)
-      MAlonzo.Code.Once.IR.C_inl_56
+      MAlonzo.Code.Once.IR.C_inl_54
         -> coe
              MAlonzo.Code.Data.Nat.Properties.d_'8804''45'refl_2900 (coe v5)
-      MAlonzo.Code.Once.IR.C_inr_62
+      MAlonzo.Code.Once.IR.C_inr_60
         -> coe
              MAlonzo.Code.Data.Nat.Properties.d_'8804''45'refl_2900 (coe v5)
-      MAlonzo.Code.Once.IR.C_case_70 v9 v10
+      MAlonzo.Code.Once.IR.C_case_68 v9 v10
         -> case coe v1 of
              MAlonzo.Code.Once.IRTy.C__'43'__22 v11 v12
                -> coe
@@ -399,13 +399,13 @@ d_label'45'mono_150 v0 v1 v2 v3 v4 v5
                                    (coe v0) (coe v11) (coe v2) (coe v4)
                                    (coe addInt (coe (2 :: Integer)) (coe v5)) (coe v9))))))
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.IR.C_terminal_74
+      MAlonzo.Code.Once.IR.C_terminal_72
         -> coe
              MAlonzo.Code.Data.Nat.Properties.d_'8804''45'refl_2900 (coe v5)
-      MAlonzo.Code.Once.IR.C_initial_78
+      MAlonzo.Code.Once.IR.C_initial_76
         -> coe
              MAlonzo.Code.Data.Nat.Properties.d_'8804''45'refl_2900 (coe v5)
-      MAlonzo.Code.Once.IR.C_curry_86 v9
+      MAlonzo.Code.Once.IR.C_curry_84 v9
         -> case coe v2 of
              MAlonzo.Code.Once.IRTy.C__'8667'__24 v10 v11
                -> coe
@@ -423,16 +423,16 @@ d_label'45'mono_150 v0 v1 v2 v3 v4 v5
                           (coe v11) (coe v9) (coe (0 :: Integer))
                           (coe addInt (coe (2 :: Integer)) (coe v5))))
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.IR.C_apply_92
+      MAlonzo.Code.Once.IR.C_apply_90
         -> coe
              MAlonzo.Code.Data.Nat.Properties.d_'8804''45'refl_2900 (coe v5)
-      MAlonzo.Code.Once.IR.C_In_96 v7
+      MAlonzo.Code.Once.IR.C_In_94 v7
         -> coe
              MAlonzo.Code.Data.Nat.Properties.d_'8804''45'refl_2900 (coe v5)
-      MAlonzo.Code.Once.IR.C_out'45'μ_100 v7
+      MAlonzo.Code.Once.IR.C_out'45'μ_98 v7
         -> coe
              MAlonzo.Code.Data.Nat.Properties.d_'8804''45'refl_2900 (coe v5)
-      MAlonzo.Code.Once.IR.C_Cata_108 v7 v10
+      MAlonzo.Code.Once.IR.C_Cata_106 v7 v10
         -> case coe v1 of
              MAlonzo.Code.Once.IRTy.C__'42'__20 v11 v12
                -> case coe v12 of
@@ -465,16 +465,13 @@ d_label'45'mono_150 v0 v1 v2 v3 v4 v5
                                     (coe v2) (coe (0 :: Integer)) (coe v5) (coe v10))))
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.IR.C_Para_114 v7 v9
+      MAlonzo.Code.Once.IR.C_Out_110 v7
         -> coe
              MAlonzo.Code.Data.Nat.Properties.d_'8804''45'refl_2900 (coe v5)
-      MAlonzo.Code.Once.IR.C_Out_118 v7
-        -> coe
-             MAlonzo.Code.Data.Nat.Properties.d_'8804''45'refl_2900 (coe v5)
-      MAlonzo.Code.Once.IR.C_in'45'ν_122 v7
+      MAlonzo.Code.Once.IR.C_in'45'ν_114 v7
         -> coe
              MAlonzo.Code.Data.Nat.Properties.d_n'8804'1'43'n_2988 (coe v5)
-      MAlonzo.Code.Once.IR.C_Ana_128 v7 v9
+      MAlonzo.Code.Once.IR.C_Ana_120 v7 v9
         -> case coe v2 of
              MAlonzo.Code.Once.IRTy.C_ν'45'type_28 v10
                -> coe
@@ -515,18 +512,12 @@ d_label'45'mono_150 v0 v1 v2 v3 v4 v5
                           (coe MAlonzo.Code.Once.CCC.Label.d_ℓ_266 (coe v0) (coe v5))
                           (coe v10) (coe v7)))
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.IR.C_Hylo_136 v6 v8 v9 v11 v12
-        -> coe
-             MAlonzo.Code.Data.Nat.Properties.d_'8804''45'refl_2900 (coe v5)
-      MAlonzo.Code.Once.IR.C_Fuse_144 v6 v8 v9 v11 v12
-        -> coe
-             MAlonzo.Code.Data.Nat.Properties.d_'8804''45'refl_2900 (coe v5)
-      MAlonzo.Code.Once.IR.C_const_148 v7 v8
+      MAlonzo.Code.Once.IR.C_const_124 v7 v8
         -> coe
              seq (coe v7)
              (coe
                 MAlonzo.Code.Data.Nat.Properties.d_'8804''45'refl_2900 (coe v5))
-      MAlonzo.Code.Once.IR.C_SigOp_154 v6 v7 v8
+      MAlonzo.Code.Once.IR.C_SigOp_130 v6 v7 v8
         -> coe
              MAlonzo.Code.Data.Nat.Properties.d_'8804''45'refl_2900 (coe v5)
       _ -> MAlonzo.RTE.mazUnreachableError

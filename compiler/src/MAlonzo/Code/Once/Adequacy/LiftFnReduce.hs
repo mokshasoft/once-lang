@@ -20,6 +20,7 @@ import qualified Data.Text
 import qualified MAlonzo.Code.Agda.Builtin.Equality
 import qualified MAlonzo.Code.Agda.Builtin.Sigma
 import qualified MAlonzo.Code.Data.Sum.Base
+import qualified MAlonzo.Code.Once.Denotation.TraceMonad
 import qualified MAlonzo.Code.Once.IR
 import qualified MAlonzo.Code.Once.Target.Arch
 import qualified MAlonzo.Code.Once.Type
@@ -41,7 +42,7 @@ d_subst'45'arrow'7472'_46 ::
   () ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (AgdaAny -> Integer -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14) ->
+  (AgdaAny -> MAlonzo.Code.Once.Denotation.TraceMonad.T_T_10) ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_subst'45'arrow'7472'_46 = erased
 -- Once.Adequacy.LiftFnReduce.pair-subst⁻
@@ -109,8 +110,8 @@ d_subst'45'bind_162 ::
   () ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (Integer -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14) ->
-  (AgdaAny -> Integer -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14) ->
+  MAlonzo.Code.Once.Denotation.TraceMonad.T_T_10 ->
+  (AgdaAny -> MAlonzo.Code.Once.Denotation.TraceMonad.T_T_10) ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_subst'45'bind_162 = erased
 -- Once.Adequacy.LiftFnReduce.subst-pair-bind
@@ -122,8 +123,8 @@ d_subst'45'pair'45'bind_192 ::
   () ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (Integer -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14) ->
-  (Integer -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14) ->
+  MAlonzo.Code.Once.Denotation.TraceMonad.T_T_10 ->
+  MAlonzo.Code.Once.Denotation.TraceMonad.T_T_10 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_subst'45'pair'45'bind_192 = erased
 -- Once.Adequacy.LiftFnReduce.liftFn-id
@@ -189,8 +190,8 @@ d_lift'45'inj'8321''45'red_306 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   (MAlonzo.Code.Data.Sum.Base.T__'8846'__30 ->
-   Integer -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14) ->
-  (AgdaAny -> Integer -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14) ->
+   MAlonzo.Code.Once.Denotation.TraceMonad.T_T_10) ->
+  (AgdaAny -> MAlonzo.Code.Once.Denotation.TraceMonad.T_T_10) ->
   (AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12) ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_lift'45'inj'8321''45'red_306 = erased
@@ -207,8 +208,8 @@ d_lift'45'inj'8322''45'red_344 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   (MAlonzo.Code.Data.Sum.Base.T__'8846'__30 ->
-   Integer -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14) ->
-  (AgdaAny -> Integer -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14) ->
+   MAlonzo.Code.Once.Denotation.TraceMonad.T_T_10) ->
+  (AgdaAny -> MAlonzo.Code.Once.Denotation.TraceMonad.T_T_10) ->
   (AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12) ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_lift'45'inj'8322''45'red_344 = erased
@@ -255,7 +256,7 @@ d_curry'45'red_450 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   (MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
-   Integer -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14) ->
+   MAlonzo.Code.Once.Denotation.TraceMonad.T_T_10) ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_curry'45'red_450 = erased
 -- Once.Adequacy.LiftFnReduce.liftFn-curry
@@ -297,8 +298,16 @@ du_P_500 v0 v1
             (coe MAlonzo.Code.Once.Type.C_eff_36))
          (coe v1))
       (coe v0)
+-- Once.Adequacy.LiftFnReduce.liftFn-curry-fst
+d_liftFn'45'curry'45'fst_526 ::
+  MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
+  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.IR.T_IR_16 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_liftFn'45'curry'45'fst_526 = erased
 -- Once.Adequacy.LiftFnReduce.liftFn-case-inj₁
-d_liftFn'45'case'45'inj'8321'_528 ::
+d_liftFn'45'case'45'inj'8321'_558 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
@@ -306,9 +315,9 @@ d_liftFn'45'case'45'inj'8321'_528 ::
   MAlonzo.Code.Once.IR.T_IR_16 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_liftFn'45'case'45'inj'8321'_528 = erased
+d_liftFn'45'case'45'inj'8321'_558 = erased
 -- Once.Adequacy.LiftFnReduce.liftFn-case-inj₂
-d_liftFn'45'case'45'inj'8322'_556 ::
+d_liftFn'45'case'45'inj'8322'_586 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
@@ -316,4 +325,4 @@ d_liftFn'45'case'45'inj'8322'_556 ::
   MAlonzo.Code.Once.IR.T_IR_16 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_liftFn'45'case'45'inj'8322'_556 = erased
+d_liftFn'45'case'45'inj'8322'_586 = erased

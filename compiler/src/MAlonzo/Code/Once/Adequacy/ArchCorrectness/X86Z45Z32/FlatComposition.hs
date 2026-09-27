@@ -133,7 +133,7 @@ d_reg'45'op'45'no'45'label_208 = erased
 d_const'45'no'45'label_216 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.Type.T_FitsInReg_192 ->
+  MAlonzo.Code.Once.Type.T_FitsInReg_196 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_const'45'no'45'label_216 = erased
 -- Once.Adequacy.ArchCorrectness.X86-32.FlatComposition.headView

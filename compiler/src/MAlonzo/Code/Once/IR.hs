@@ -31,32 +31,18 @@ data T_Allocator_10
 -- Once.IR.IR
 d_IR_16 a0 a1 = ()
 data T_IR_16
-  = C_id_22 |
-    C__'8728'__30 MAlonzo.Code.Once.IRTy.T_IRTy_6 T_IR_16 T_IR_16 |
-    C_'10216'_'44'_'10217'_38 T_IR_16 T_IR_16 | C_fst_44 | C_snd_50 |
-    C_inl_56 | C_inr_62 | C_case_70 T_IR_16 T_IR_16 | C_terminal_74 |
-    C_initial_78 | C_curry_86 T_IR_16 | C_apply_92 |
-    C_In_96 MAlonzo.Code.Once.IRTy.T_WellFormedFI_130 |
-    C_out'45'μ_100 MAlonzo.Code.Once.IRTy.T_WellFormedFI_130 |
-    C_Cata_108 MAlonzo.Code.Once.IRTy.T_WellFormedFI_130 T_IR_16 |
-    C_Para_114 MAlonzo.Code.Once.IRTy.T_WellFormedFI_130 T_IR_16 |
-    C_Out_118 MAlonzo.Code.Once.IRTy.T_WellFormedFI_130 |
-    C_in'45'ν_122 MAlonzo.Code.Once.IRTy.T_WellFormedFI_130 |
-    C_Ana_128 MAlonzo.Code.Once.IRTy.T_WellFormedFI_130 T_IR_16 |
-    C_Hylo_136 MAlonzo.Code.Once.IRTy.T_IRFunctor_4
-               MAlonzo.Code.Once.IRTy.T_WellFormedFI_130
-               MAlonzo.Code.Once.IRTy.T_WellFormedFI_130 T_IR_16 T_NatTr_18 |
-    C_Fuse_144 MAlonzo.Code.Once.IRTy.T_IRFunctor_4
-               MAlonzo.Code.Once.IRTy.T_WellFormedFI_130
-               MAlonzo.Code.Once.IRTy.T_WellFormedFI_130 T_IR_16 T_NatTr_18 |
-    C_const_148 MAlonzo.Code.Once.IRTy.T_FitsInRegI_526 AgdaAny |
-    C_SigOp_154 MAlonzo.Code.Once.Type.T_Type_108
+  = C_id_20 |
+    C__'8728'__28 MAlonzo.Code.Once.IRTy.T_IRTy_6 T_IR_16 T_IR_16 |
+    C_'10216'_'44'_'10217'_36 T_IR_16 T_IR_16 | C_fst_42 | C_snd_48 |
+    C_inl_54 | C_inr_60 | C_case_68 T_IR_16 T_IR_16 | C_terminal_72 |
+    C_initial_76 | C_curry_84 T_IR_16 | C_apply_90 |
+    C_In_94 MAlonzo.Code.Once.IRTy.T_WellFormedFI_130 |
+    C_out'45'μ_98 MAlonzo.Code.Once.IRTy.T_WellFormedFI_130 |
+    C_Cata_106 MAlonzo.Code.Once.IRTy.T_WellFormedFI_130 T_IR_16 |
+    C_Out_110 MAlonzo.Code.Once.IRTy.T_WellFormedFI_130 |
+    C_in'45'ν_114 MAlonzo.Code.Once.IRTy.T_WellFormedFI_130 |
+    C_Ana_120 MAlonzo.Code.Once.IRTy.T_WellFormedFI_130 T_IR_16 |
+    C_const_124 MAlonzo.Code.Once.IRTy.T_FitsInRegI_526 AgdaAny |
+    C_SigOp_130 MAlonzo.Code.Once.Type.T_Type_108
                 MAlonzo.Code.Once.Type.T_Type_108
-                MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_160
--- Once.IR.NatTr
-d_NatTr_18 a0 a1 = ()
-data T_NatTr_18
-  = C_ntId_156 | C_ntK_162 T_IR_16 | C_ntFst_170 T_NatTr_18 |
-    C_ntSnd_178 T_NatTr_18 | C_ntCase_186 T_NatTr_18 T_NatTr_18 |
-    C_ntInl_194 T_NatTr_18 | C_ntInr_202 T_NatTr_18 |
-    C_ntPair_210 T_NatTr_18 T_NatTr_18
+                MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_162

@@ -48,6 +48,24 @@ library
       Once.Value
       MAlonzo.RTE
   other-modules:
+      MAlonzo.Code.Once.Adequacy.CoerceFaithful
+      MAlonzo.Code.Once.CCC.Codegen.BlockLayout
+      MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Case
+      MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.CaseArmL
+      MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.CaseArmR
+      MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.CaseRun
+      MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.CaseShape
+      MAlonzo.Code.Once.CCC.Codegen.LabelResolve
+      MAlonzo.Code.Once.CCC.Codegen.LabelsUnique
+      MAlonzo.Code.Once.CCC.Codegen.ThunkScope
+      MAlonzo.Code.Once.Denotation.Sub
+      MAlonzo.Code.Once.Res
+      MAlonzo.Code.Once.Surface.CoerceIR
+      MAlonzo.Code.Once.Surface.Seq
+      MAlonzo.Code.Once.Type.DecEq
+      MAlonzo.Code.Once.Type.Honest
+      MAlonzo.Code.Once.Type.Sub
+      MAlonzo.Code.Once.TypeCheck.ModeAgreement
       Paths_once
       MAlonzo.Code.Data.Maybe.Relation.Binary.Pointwise
       MAlonzo.Code.Once.CanonicalName
@@ -169,6 +187,7 @@ library
       MAlonzo.Code.Data.List.Relation.Unary.All
       MAlonzo.Code.Data.List.Relation.Unary.AllPairs
       MAlonzo.Code.Data.List.Relation.Unary.AllPairs.Core
+      MAlonzo.Code.Data.List.Relation.Unary.AllPairs.Properties
       MAlonzo.Code.Data.List.Relation.Unary.All.Properties
       MAlonzo.Code.Data.List.Relation.Unary.All.Properties.Core
       MAlonzo.Code.Data.List.Relation.Unary.Any
@@ -313,7 +332,6 @@ library
       MAlonzo.Code.Once.CCC.Machine.FrameFree
       MAlonzo.Code.Once.CCC.Machine.ShapeAt
       MAlonzo.Code.Once.CCC.Machine.InstrSlot
-      MAlonzo.Code.Once.CCC.Eval
       MAlonzo.Code.Once.CCC.FrameSemantics
       MAlonzo.Code.Once.IR
       MAlonzo.Code.Once.IR.Size
@@ -337,7 +355,6 @@ library
       MAlonzo.Code.Once.CCC.Machine.SMPrimitives
       MAlonzo.Code.Once.CCC.Machine.Validity
       MAlonzo.Code.Once.CCC.Machine.WriteOps
-      MAlonzo.Code.Once.SigEffect
       MAlonzo.Code.Once.SigOp.Info
       MAlonzo.Code.Once.CCC.Target.RiscV64.AbstractToRiscV
       MAlonzo.Code.Once.CCC.Target.RiscV64.Emit

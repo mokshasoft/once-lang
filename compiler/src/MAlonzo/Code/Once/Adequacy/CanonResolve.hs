@@ -99,29 +99,29 @@ d_noImports'63'_16 v0
                                         (coe v6)
                                         (coe MAlonzo.Code.Relation.Nullary.Reflects.C_of'8319'_26))
                        _ -> MAlonzo.RTE.mazUnreachableError)
-             MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_26 v3 v4 v5 v6
-               -> let v7 = d_noImports'63'_16 (coe v2) in
+             MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_26 v3 v4 v5
+               -> let v6 = d_noImports'63'_16 (coe v2) in
                   coe
-                    (case coe v7 of
-                       MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v8 v9
-                         -> if coe v8
-                              then case coe v9 of
-                                     MAlonzo.Code.Relation.Nullary.Reflects.C_of'696'_22 v10
+                    (case coe v6 of
+                       MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v7 v8
+                         -> if coe v7
+                              then case coe v8 of
+                                     MAlonzo.Code.Relation.Nullary.Reflects.C_of'696'_22 v9
                                        -> coe
                                             MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32
-                                            (coe v8)
+                                            (coe v7)
                                             (coe
                                                MAlonzo.Code.Relation.Nullary.Reflects.C_of'696'_22
                                                (coe
                                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                   (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
-                                                  (coe v10)))
+                                                  (coe v9)))
                                      _ -> MAlonzo.RTE.mazUnreachableError
                               else coe
-                                     seq (coe v9)
+                                     seq (coe v8)
                                      (coe
                                         MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32
-                                        (coe v8)
+                                        (coe v7)
                                         (coe MAlonzo.Code.Relation.Nullary.Reflects.C_of'8319'_26))
                        _ -> MAlonzo.RTE.mazUnreachableError)
              MAlonzo.Code.Once.Parser.Module.Core.C_DTypeAlias_28 v3 v4 v5
@@ -177,8 +177,8 @@ d_resolveDecls'45'ni_154 ::
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_resolveDecls'45'ni_154 = erased
 -- Once.Adequacy.CanonResolve.resolveImports-ni
-d_resolveImports'45'ni_254 ::
+d_resolveImports'45'ni_252 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Once.Parser.Module.Core.T_Decl_20] ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_resolveImports'45'ni_254 = erased
+d_resolveImports'45'ni_252 = erased

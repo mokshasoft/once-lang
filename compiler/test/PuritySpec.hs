@@ -69,6 +69,11 @@ purityTests = testGroup "Purity (pure emits nothing)"
         , ""
         , "mkNu : Int -> Nu (K Int)"
         , "mkNu = ana (compose (\\_ -> 7) emit@E)"
+        , ""
+        -- USED, because a definition whose signature mentions `Nu`/`Mu` is
+        -- only checked at its use sites today (a separate, pre-existing gap).
+        , "run : Int"
+        , "run = Out (mkNu 3)"
         ]
       assertBool "Should reject an effectful coalgebra at a pure stream type" (isLeft r)
 

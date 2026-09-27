@@ -21,15 +21,9 @@ import qualified MAlonzo.Code.Agda.Builtin.Equality
 import qualified MAlonzo.Code.Agda.Builtin.String
 import qualified MAlonzo.Code.Once.Parser.Generic.Relation
 import qualified MAlonzo.Code.Once.Parser.Token
-import qualified MAlonzo.Code.Once.SigEffect
 import qualified MAlonzo.Code.Once.Type
 
--- Once.Spec.Grammar.Signature.ParsesEffAnnot
-d_ParsesEffAnnot_8 a0 a1 a2 = ()
-data T_ParsesEffAnnot_8 = C_pea'45'some_14 | C_pea'45'none_18
 -- Once.Spec.Grammar.Signature.ParsesSignature
-d_ParsesSignature_20 a0 a1 a2 = ()
-data T_ParsesSignature_20
-  = C_psig'45'mk_34 [MAlonzo.Code.Once.Parser.Token.T_Token_6]
-                    MAlonzo.Code.Once.Parser.Generic.Relation.T_ParsesTypeG_390
-                    T_ParsesEffAnnot_8
+d_ParsesSignature_8 a0 a1 a2 = ()
+newtype T_ParsesSignature_8
+  = C_psig'45'mk_18 MAlonzo.Code.Once.Parser.Generic.Relation.T_ParsesTypeG_396

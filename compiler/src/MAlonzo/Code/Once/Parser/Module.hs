@@ -84,7 +84,7 @@ du_pdb'45'sub_10 v0 v1
 d_pdb'45'fb'45'sig'45'go_36 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Type.T_PolyType_240 ->
+  MAlonzo.Code.Once.Type.T_PolyType_246 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   Bool -> Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
@@ -108,7 +108,7 @@ d_pdb'45'fb'45'sig'45'go_36 v0 v1 v2 v3 v4 v5
                             MAlonzo.Code.Data.Nat.Properties.du_'60''45''8804''45'trans_3134
                             (coe v4)
                             (coe
-                               MAlonzo.Code.Once.Parser.Module.DeclTail.d_colDrop1'45''8804'_308
+                               MAlonzo.Code.Once.Parser.Module.DeclTail.d_colDrop1'45''8804'_252
                                (coe v1)))))))
 -- Once.Parser.Module.pdb-fb-sig
 d_pdb'45'fb'45'sig_62 ::
@@ -144,7 +144,7 @@ d_pdb'45'fb'45'go_82 v0 v1 v2
              (coe
                 MAlonzo.Code.Once.Parser.PolyType.d_parsePolyTypeB_34
                 (coe
-                   MAlonzo.Code.Once.Parser.Module.DeclTail.d_colDrop1_302 (coe v1)))
+                   MAlonzo.Code.Once.Parser.Module.DeclTail.d_colDrop1_246 (coe v1)))
       else coe
              du_pdb'45'sub_10 (coe v1)
              (coe
@@ -159,7 +159,7 @@ d_pdb'45'fb_96 v0 v1
   = coe
       d_pdb'45'fb'45'go_82 (coe v0) (coe v1)
       (coe
-         MAlonzo.Code.Once.Parser.Module.DeclTail.d_colonHead_300 (coe v1))
+         MAlonzo.Code.Once.Parser.Module.DeclTail.d_colonHead_244 (coe v1))
 -- Once.Parser.Module.pdb-kw3
 d_pdb'45'kw3_106 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
@@ -175,7 +175,7 @@ d_pdb'45'kw3_106 v0 v1 v2
                     (coe
                        du_pdb'45'sub_10 (coe v1)
                        (coe
-                          MAlonzo.Code.Once.Parser.Module.DeclTail.d_parseSignatureB_372
+                          MAlonzo.Code.Once.Parser.Module.DeclTail.d_parseSignatureB_316
                           (coe v1)))
              else coe seq (coe v4) (coe d_pdb'45'fb_96 (coe v0) (coe v1))
       _ -> MAlonzo.RTE.mazUnreachableError

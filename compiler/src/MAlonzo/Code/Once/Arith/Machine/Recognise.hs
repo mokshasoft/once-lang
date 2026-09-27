@@ -55,9 +55,9 @@ d_recognise'45'path'45'through_18 v0 v1 v2 v3
   = let v4 = coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 in
     coe
       (case coe v2 of
-         MAlonzo.Code.Once.IR.C_id_22
+         MAlonzo.Code.Once.IR.C_id_20
            -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe v3)
-         MAlonzo.Code.Once.IR.C__'8728'__30 v6 v8 v9
+         MAlonzo.Code.Once.IR.C__'8728'__28 v6 v8 v9
            -> let v10
                     = d_recognise'45'path'45'through_18
                         (coe v6) (coe v1) (coe v8) (coe v3) in
@@ -69,7 +69,7 @@ d_recognise'45'path'45'through_18 v0 v1 v2 v3
                           (coe v11)
                    MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v10
                    _ -> MAlonzo.RTE.mazUnreachableError)
-         MAlonzo.Code.Once.IR.C_'10216'_'44'_'10217'_38 v8 v9
+         MAlonzo.Code.Once.IR.C_'10216'_'44'_'10217'_36 v8 v9
            -> case coe v1 of
                 MAlonzo.Code.Once.IRTy.C__'42'__20 v10 v11
                   -> case coe v3 of
@@ -87,7 +87,7 @@ d_recognise'45'path'45'through_18 v0 v1 v2 v3
                               _ -> MAlonzo.RTE.mazUnreachableError
                        _ -> MAlonzo.RTE.mazUnreachableError
                 _ -> coe v4
-         MAlonzo.Code.Once.IR.C_fst_44
+         MAlonzo.Code.Once.IR.C_fst_42
            -> case coe v0 of
                 MAlonzo.Code.Once.IRTy.C__'42'__20 v7 v8
                   -> coe
@@ -96,7 +96,7 @@ d_recognise'45'path'45'through_18 v0 v1 v2 v3
                           MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                           (coe MAlonzo.Code.Once.Arith.Machine.Shape.C_Fst_26) (coe v3))
                 _ -> coe v4
-         MAlonzo.Code.Once.IR.C_snd_50
+         MAlonzo.Code.Once.IR.C_snd_48
            -> case coe v0 of
                 MAlonzo.Code.Once.IRTy.C__'42'__20 v7 v8
                   -> coe
@@ -137,15 +137,15 @@ d_recognise'45'body_74 v0 v1 v2 v3
                  _ -> MAlonzo.RTE.mazUnreachableError) in
     coe
       (case coe v3 of
-         MAlonzo.Code.Once.IR.C__'8728'__30 v6 v8 v9
+         MAlonzo.Code.Once.IR.C__'8728'__28 v6 v8 v9
            -> case coe v8 of
-                MAlonzo.Code.Once.IR.C__'8728'__30 v11 v13 v14
+                MAlonzo.Code.Once.IR.C__'8728'__28 v11 v13 v14
                   -> coe
                        d_recognise'45'body_74 (coe v0) (coe v1) (coe v2)
                        (coe
-                          MAlonzo.Code.Once.IR.C__'8728'__30 v11 v13
-                          (coe MAlonzo.Code.Once.IR.C__'8728'__30 v6 v14 v9))
-                MAlonzo.Code.Once.IR.C_const_148 v11 v12
+                          MAlonzo.Code.Once.IR.C__'8728'__28 v11 v13
+                          (coe MAlonzo.Code.Once.IR.C__'8728'__28 v6 v14 v9))
+                MAlonzo.Code.Once.IR.C_const_124 v11 v12
                   -> case coe v11 of
                        MAlonzo.Code.Once.IRTy.C_fits'45'int_528
                          -> let v13 = coe du_is'45'terminal'63'_386 (coe v9) in
@@ -158,14 +158,14 @@ d_recognise'45'body_74 v0 v1 v2 v3
                        MAlonzo.Code.Once.IRTy.C_fits'45'float_530
                          -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                        _ -> MAlonzo.RTE.mazUnreachableError
-                MAlonzo.Code.Once.IR.C_SigOp_154 v10 v11 v12
+                MAlonzo.Code.Once.IR.C_SigOp_130 v10 v11 v12
                   -> let v13
                            = coe
                                MAlonzo.Code.Data.List.Properties.du_'8801''45'dec_60
                                (coe MAlonzo.Code.Data.String.Properties.d__'8799'__54)
                                (coe
                                   MAlonzo.Code.Once.CanonicalName.d_parts_8
-                                  (coe MAlonzo.Code.Once.SigOp.Info.d_name_174 (coe v12)))
+                                  (coe MAlonzo.Code.Once.SigOp.Info.d_name_176 (coe v12)))
                                (coe
                                   MAlonzo.Code.Once.CanonicalName.d_parts_8
                                   (coe
@@ -221,7 +221,7 @@ d_recognise'45'body_74 v0 v1 v2 v3
                                                                     (coe
                                                                        MAlonzo.Code.Once.CanonicalName.d_parts_8
                                                                        (coe
-                                                                          MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                          MAlonzo.Code.Once.SigOp.Info.d_name_176
                                                                           (coe v12)))
                                                                     (coe
                                                                        MAlonzo.Code.Once.CanonicalName.d_parts_8
@@ -294,7 +294,7 @@ d_recognise'45'body_74 v0 v1 v2 v3
                                                                                                          (coe
                                                                                                             MAlonzo.Code.Once.CanonicalName.d_parts_8
                                                                                                             (coe
-                                                                                                               MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                               MAlonzo.Code.Once.SigOp.Info.d_name_176
                                                                                                                (coe
                                                                                                                   v12)))
                                                                                                          (coe
@@ -374,7 +374,7 @@ d_recognise'45'body_74 v0 v1 v2 v3
                                                                                                                                               (coe
                                                                                                                                                  MAlonzo.Code.Once.CanonicalName.d_parts_8
                                                                                                                                                  (coe
-                                                                                                                                                    MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                                                                    MAlonzo.Code.Once.SigOp.Info.d_name_176
                                                                                                                                                     (coe
                                                                                                                                                        v12)))
                                                                                                                                               (coe
@@ -454,7 +454,7 @@ d_recognise'45'body_74 v0 v1 v2 v3
                                                                                                                                                                                    (coe
                                                                                                                                                                                       MAlonzo.Code.Once.CanonicalName.d_parts_8
                                                                                                                                                                                       (coe
-                                                                                                                                                                                         MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                                                                                                         MAlonzo.Code.Once.SigOp.Info.d_name_176
                                                                                                                                                                                          (coe
                                                                                                                                                                                             v12)))
                                                                                                                                                                                    (coe
@@ -536,7 +536,7 @@ d_recognise'45'body_74 v0 v1 v2 v3
                                                                                                                                                                                                                         (coe
                                                                                                                                                                                                                            MAlonzo.Code.Once.CanonicalName.d_parts_8
                                                                                                                                                                                                                            (coe
-                                                                                                                                                                                                                              MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                                                                                                                                              MAlonzo.Code.Once.SigOp.Info.d_name_176
                                                                                                                                                                                                                               (coe
                                                                                                                                                                                                                                  v12)))
                                                                                                                                                                                                                         (coe
@@ -724,7 +724,7 @@ d_recognise'45'body_74 v0 v1 v2 v3
                                                                                                                                                                                                                          (coe
                                                                                                                                                                                                                             MAlonzo.Code.Once.CanonicalName.d_parts_8
                                                                                                                                                                                                                             (coe
-                                                                                                                                                                                                                               MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                                                                                                                                               MAlonzo.Code.Once.SigOp.Info.d_name_176
                                                                                                                                                                                                                                (coe
                                                                                                                                                                                                                                   v12)))
                                                                                                                                                                                                                          (coe
@@ -912,7 +912,7 @@ d_recognise'45'body_74 v0 v1 v2 v3
                                                                                                                                                                                     (coe
                                                                                                                                                                                        MAlonzo.Code.Once.CanonicalName.d_parts_8
                                                                                                                                                                                        (coe
-                                                                                                                                                                                          MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                                                                                                          MAlonzo.Code.Once.SigOp.Info.d_name_176
                                                                                                                                                                                           (coe
                                                                                                                                                                                              v12)))
                                                                                                                                                                                     (coe
@@ -994,7 +994,7 @@ d_recognise'45'body_74 v0 v1 v2 v3
                                                                                                                                                                                                                          (coe
                                                                                                                                                                                                                             MAlonzo.Code.Once.CanonicalName.d_parts_8
                                                                                                                                                                                                                             (coe
-                                                                                                                                                                                                                               MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                                                                                                                                               MAlonzo.Code.Once.SigOp.Info.d_name_176
                                                                                                                                                                                                                                (coe
                                                                                                                                                                                                                                   v12)))
                                                                                                                                                                                                                          (coe
@@ -1182,7 +1182,7 @@ d_recognise'45'body_74 v0 v1 v2 v3
                                                                                                                                                                                                                           (coe
                                                                                                                                                                                                                              MAlonzo.Code.Once.CanonicalName.d_parts_8
                                                                                                                                                                                                                              (coe
-                                                                                                                                                                                                                                MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                                                                                                                                                MAlonzo.Code.Once.SigOp.Info.d_name_176
                                                                                                                                                                                                                                 (coe
                                                                                                                                                                                                                                    v12)))
                                                                                                                                                                                                                           (coe
@@ -1372,7 +1372,7 @@ d_recognise'45'body_74 v0 v1 v2 v3
                                                                                                                                                (coe
                                                                                                                                                   MAlonzo.Code.Once.CanonicalName.d_parts_8
                                                                                                                                                   (coe
-                                                                                                                                                     MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                                                                     MAlonzo.Code.Once.SigOp.Info.d_name_176
                                                                                                                                                      (coe
                                                                                                                                                         v12)))
                                                                                                                                                (coe
@@ -1452,7 +1452,7 @@ d_recognise'45'body_74 v0 v1 v2 v3
                                                                                                                                                                                     (coe
                                                                                                                                                                                        MAlonzo.Code.Once.CanonicalName.d_parts_8
                                                                                                                                                                                        (coe
-                                                                                                                                                                                          MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                                                                                                          MAlonzo.Code.Once.SigOp.Info.d_name_176
                                                                                                                                                                                           (coe
                                                                                                                                                                                              v12)))
                                                                                                                                                                                     (coe
@@ -1534,7 +1534,7 @@ d_recognise'45'body_74 v0 v1 v2 v3
                                                                                                                                                                                                                          (coe
                                                                                                                                                                                                                             MAlonzo.Code.Once.CanonicalName.d_parts_8
                                                                                                                                                                                                                             (coe
-                                                                                                                                                                                                                               MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                                                                                                                                               MAlonzo.Code.Once.SigOp.Info.d_name_176
                                                                                                                                                                                                                                (coe
                                                                                                                                                                                                                                   v12)))
                                                                                                                                                                                                                          (coe
@@ -1722,7 +1722,7 @@ d_recognise'45'body_74 v0 v1 v2 v3
                                                                                                                                                                                                                           (coe
                                                                                                                                                                                                                              MAlonzo.Code.Once.CanonicalName.d_parts_8
                                                                                                                                                                                                                              (coe
-                                                                                                                                                                                                                                MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                                                                                                                                                MAlonzo.Code.Once.SigOp.Info.d_name_176
                                                                                                                                                                                                                                 (coe
                                                                                                                                                                                                                                    v12)))
                                                                                                                                                                                                                           (coe
@@ -1910,7 +1910,7 @@ d_recognise'45'body_74 v0 v1 v2 v3
                                                                                                                                                                                      (coe
                                                                                                                                                                                         MAlonzo.Code.Once.CanonicalName.d_parts_8
                                                                                                                                                                                         (coe
-                                                                                                                                                                                           MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                                                                                                           MAlonzo.Code.Once.SigOp.Info.d_name_176
                                                                                                                                                                                            (coe
                                                                                                                                                                                               v12)))
                                                                                                                                                                                      (coe
@@ -1992,7 +1992,7 @@ d_recognise'45'body_74 v0 v1 v2 v3
                                                                                                                                                                                                                           (coe
                                                                                                                                                                                                                              MAlonzo.Code.Once.CanonicalName.d_parts_8
                                                                                                                                                                                                                              (coe
-                                                                                                                                                                                                                                MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                                                                                                                                                MAlonzo.Code.Once.SigOp.Info.d_name_176
                                                                                                                                                                                                                                 (coe
                                                                                                                                                                                                                                    v12)))
                                                                                                                                                                                                                           (coe
@@ -2180,7 +2180,7 @@ d_recognise'45'body_74 v0 v1 v2 v3
                                                                                                                                                                                                                            (coe
                                                                                                                                                                                                                               MAlonzo.Code.Once.CanonicalName.d_parts_8
                                                                                                                                                                                                                               (coe
-                                                                                                                                                                                                                                 MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                                                                                                                                                 MAlonzo.Code.Once.SigOp.Info.d_name_176
                                                                                                                                                                                                                                  (coe
                                                                                                                                                                                                                                     v12)))
                                                                                                                                                                                                                            (coe
@@ -2368,7 +2368,7 @@ d_recognise'45'body_74 v0 v1 v2 v3
                                                                                                           (coe
                                                                                                              MAlonzo.Code.Once.CanonicalName.d_parts_8
                                                                                                              (coe
-                                                                                                                MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                                MAlonzo.Code.Once.SigOp.Info.d_name_176
                                                                                                                 (coe
                                                                                                                    v12)))
                                                                                                           (coe
@@ -2448,7 +2448,7 @@ d_recognise'45'body_74 v0 v1 v2 v3
                                                                                                                                                (coe
                                                                                                                                                   MAlonzo.Code.Once.CanonicalName.d_parts_8
                                                                                                                                                   (coe
-                                                                                                                                                     MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                                                                     MAlonzo.Code.Once.SigOp.Info.d_name_176
                                                                                                                                                      (coe
                                                                                                                                                         v12)))
                                                                                                                                                (coe
@@ -2528,7 +2528,7 @@ d_recognise'45'body_74 v0 v1 v2 v3
                                                                                                                                                                                     (coe
                                                                                                                                                                                        MAlonzo.Code.Once.CanonicalName.d_parts_8
                                                                                                                                                                                        (coe
-                                                                                                                                                                                          MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                                                                                                          MAlonzo.Code.Once.SigOp.Info.d_name_176
                                                                                                                                                                                           (coe
                                                                                                                                                                                              v12)))
                                                                                                                                                                                     (coe
@@ -2610,7 +2610,7 @@ d_recognise'45'body_74 v0 v1 v2 v3
                                                                                                                                                                                                                          (coe
                                                                                                                                                                                                                             MAlonzo.Code.Once.CanonicalName.d_parts_8
                                                                                                                                                                                                                             (coe
-                                                                                                                                                                                                                               MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                                                                                                                                               MAlonzo.Code.Once.SigOp.Info.d_name_176
                                                                                                                                                                                                                                (coe
                                                                                                                                                                                                                                   v12)))
                                                                                                                                                                                                                          (coe
@@ -2798,7 +2798,7 @@ d_recognise'45'body_74 v0 v1 v2 v3
                                                                                                                                                                                                                           (coe
                                                                                                                                                                                                                              MAlonzo.Code.Once.CanonicalName.d_parts_8
                                                                                                                                                                                                                              (coe
-                                                                                                                                                                                                                                MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                                                                                                                                                MAlonzo.Code.Once.SigOp.Info.d_name_176
                                                                                                                                                                                                                                 (coe
                                                                                                                                                                                                                                    v12)))
                                                                                                                                                                                                                           (coe
@@ -2986,7 +2986,7 @@ d_recognise'45'body_74 v0 v1 v2 v3
                                                                                                                                                                                      (coe
                                                                                                                                                                                         MAlonzo.Code.Once.CanonicalName.d_parts_8
                                                                                                                                                                                         (coe
-                                                                                                                                                                                           MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                                                                                                           MAlonzo.Code.Once.SigOp.Info.d_name_176
                                                                                                                                                                                            (coe
                                                                                                                                                                                               v12)))
                                                                                                                                                                                      (coe
@@ -3068,7 +3068,7 @@ d_recognise'45'body_74 v0 v1 v2 v3
                                                                                                                                                                                                                           (coe
                                                                                                                                                                                                                              MAlonzo.Code.Once.CanonicalName.d_parts_8
                                                                                                                                                                                                                              (coe
-                                                                                                                                                                                                                                MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                                                                                                                                                MAlonzo.Code.Once.SigOp.Info.d_name_176
                                                                                                                                                                                                                                 (coe
                                                                                                                                                                                                                                    v12)))
                                                                                                                                                                                                                           (coe
@@ -3256,7 +3256,7 @@ d_recognise'45'body_74 v0 v1 v2 v3
                                                                                                                                                                                                                            (coe
                                                                                                                                                                                                                               MAlonzo.Code.Once.CanonicalName.d_parts_8
                                                                                                                                                                                                                               (coe
-                                                                                                                                                                                                                                 MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                                                                                                                                                 MAlonzo.Code.Once.SigOp.Info.d_name_176
                                                                                                                                                                                                                                  (coe
                                                                                                                                                                                                                                     v12)))
                                                                                                                                                                                                                            (coe
@@ -3446,7 +3446,7 @@ d_recognise'45'body_74 v0 v1 v2 v3
                                                                                                                                                 (coe
                                                                                                                                                    MAlonzo.Code.Once.CanonicalName.d_parts_8
                                                                                                                                                    (coe
-                                                                                                                                                      MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                                                                      MAlonzo.Code.Once.SigOp.Info.d_name_176
                                                                                                                                                       (coe
                                                                                                                                                          v12)))
                                                                                                                                                 (coe
@@ -3526,7 +3526,7 @@ d_recognise'45'body_74 v0 v1 v2 v3
                                                                                                                                                                                      (coe
                                                                                                                                                                                         MAlonzo.Code.Once.CanonicalName.d_parts_8
                                                                                                                                                                                         (coe
-                                                                                                                                                                                           MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                                                                                                           MAlonzo.Code.Once.SigOp.Info.d_name_176
                                                                                                                                                                                            (coe
                                                                                                                                                                                               v12)))
                                                                                                                                                                                      (coe
@@ -3608,7 +3608,7 @@ d_recognise'45'body_74 v0 v1 v2 v3
                                                                                                                                                                                                                           (coe
                                                                                                                                                                                                                              MAlonzo.Code.Once.CanonicalName.d_parts_8
                                                                                                                                                                                                                              (coe
-                                                                                                                                                                                                                                MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                                                                                                                                                MAlonzo.Code.Once.SigOp.Info.d_name_176
                                                                                                                                                                                                                                 (coe
                                                                                                                                                                                                                                    v12)))
                                                                                                                                                                                                                           (coe
@@ -3796,7 +3796,7 @@ d_recognise'45'body_74 v0 v1 v2 v3
                                                                                                                                                                                                                            (coe
                                                                                                                                                                                                                               MAlonzo.Code.Once.CanonicalName.d_parts_8
                                                                                                                                                                                                                               (coe
-                                                                                                                                                                                                                                 MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                                                                                                                                                 MAlonzo.Code.Once.SigOp.Info.d_name_176
                                                                                                                                                                                                                                  (coe
                                                                                                                                                                                                                                     v12)))
                                                                                                                                                                                                                            (coe
@@ -3984,7 +3984,7 @@ d_recognise'45'body_74 v0 v1 v2 v3
                                                                                                                                                                                       (coe
                                                                                                                                                                                          MAlonzo.Code.Once.CanonicalName.d_parts_8
                                                                                                                                                                                          (coe
-                                                                                                                                                                                            MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                                                                                                            MAlonzo.Code.Once.SigOp.Info.d_name_176
                                                                                                                                                                                             (coe
                                                                                                                                                                                                v12)))
                                                                                                                                                                                       (coe
@@ -4066,7 +4066,7 @@ d_recognise'45'body_74 v0 v1 v2 v3
                                                                                                                                                                                                                            (coe
                                                                                                                                                                                                                               MAlonzo.Code.Once.CanonicalName.d_parts_8
                                                                                                                                                                                                                               (coe
-                                                                                                                                                                                                                                 MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                                                                                                                                                 MAlonzo.Code.Once.SigOp.Info.d_name_176
                                                                                                                                                                                                                                  (coe
                                                                                                                                                                                                                                     v12)))
                                                                                                                                                                                                                            (coe
@@ -4254,7 +4254,7 @@ d_recognise'45'body_74 v0 v1 v2 v3
                                                                                                                                                                                                                             (coe
                                                                                                                                                                                                                                MAlonzo.Code.Once.CanonicalName.d_parts_8
                                                                                                                                                                                                                                (coe
-                                                                                                                                                                                                                                  MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                                                                                                                                                  MAlonzo.Code.Once.SigOp.Info.d_name_176
                                                                                                                                                                                                                                   (coe
                                                                                                                                                                                                                                      v12)))
                                                                                                                                                                                                                             (coe
@@ -4431,7 +4431,7 @@ d_recognise'45'body_74 v0 v1 v2 v3
                                                                      (coe
                                                                         MAlonzo.Code.Once.CanonicalName.d_parts_8
                                                                         (coe
-                                                                           MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                           MAlonzo.Code.Once.SigOp.Info.d_name_176
                                                                            (coe v12)))
                                                                      (coe
                                                                         MAlonzo.Code.Once.CanonicalName.d_parts_8
@@ -4504,7 +4504,7 @@ d_recognise'45'body_74 v0 v1 v2 v3
                                                                                                           (coe
                                                                                                              MAlonzo.Code.Once.CanonicalName.d_parts_8
                                                                                                              (coe
-                                                                                                                MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                                MAlonzo.Code.Once.SigOp.Info.d_name_176
                                                                                                                 (coe
                                                                                                                    v12)))
                                                                                                           (coe
@@ -4584,7 +4584,7 @@ d_recognise'45'body_74 v0 v1 v2 v3
                                                                                                                                                (coe
                                                                                                                                                   MAlonzo.Code.Once.CanonicalName.d_parts_8
                                                                                                                                                   (coe
-                                                                                                                                                     MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                                                                     MAlonzo.Code.Once.SigOp.Info.d_name_176
                                                                                                                                                      (coe
                                                                                                                                                         v12)))
                                                                                                                                                (coe
@@ -4664,7 +4664,7 @@ d_recognise'45'body_74 v0 v1 v2 v3
                                                                                                                                                                                     (coe
                                                                                                                                                                                        MAlonzo.Code.Once.CanonicalName.d_parts_8
                                                                                                                                                                                        (coe
-                                                                                                                                                                                          MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                                                                                                          MAlonzo.Code.Once.SigOp.Info.d_name_176
                                                                                                                                                                                           (coe
                                                                                                                                                                                              v12)))
                                                                                                                                                                                     (coe
@@ -4746,7 +4746,7 @@ d_recognise'45'body_74 v0 v1 v2 v3
                                                                                                                                                                                                                          (coe
                                                                                                                                                                                                                             MAlonzo.Code.Once.CanonicalName.d_parts_8
                                                                                                                                                                                                                             (coe
-                                                                                                                                                                                                                               MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                                                                                                                                               MAlonzo.Code.Once.SigOp.Info.d_name_176
                                                                                                                                                                                                                                (coe
                                                                                                                                                                                                                                   v12)))
                                                                                                                                                                                                                          (coe
@@ -4934,7 +4934,7 @@ d_recognise'45'body_74 v0 v1 v2 v3
                                                                                                                                                                                                                           (coe
                                                                                                                                                                                                                              MAlonzo.Code.Once.CanonicalName.d_parts_8
                                                                                                                                                                                                                              (coe
-                                                                                                                                                                                                                                MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                                                                                                                                                MAlonzo.Code.Once.SigOp.Info.d_name_176
                                                                                                                                                                                                                                 (coe
                                                                                                                                                                                                                                    v12)))
                                                                                                                                                                                                                           (coe
@@ -5122,7 +5122,7 @@ d_recognise'45'body_74 v0 v1 v2 v3
                                                                                                                                                                                      (coe
                                                                                                                                                                                         MAlonzo.Code.Once.CanonicalName.d_parts_8
                                                                                                                                                                                         (coe
-                                                                                                                                                                                           MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                                                                                                           MAlonzo.Code.Once.SigOp.Info.d_name_176
                                                                                                                                                                                            (coe
                                                                                                                                                                                               v12)))
                                                                                                                                                                                      (coe
@@ -5204,7 +5204,7 @@ d_recognise'45'body_74 v0 v1 v2 v3
                                                                                                                                                                                                                           (coe
                                                                                                                                                                                                                              MAlonzo.Code.Once.CanonicalName.d_parts_8
                                                                                                                                                                                                                              (coe
-                                                                                                                                                                                                                                MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                                                                                                                                                MAlonzo.Code.Once.SigOp.Info.d_name_176
                                                                                                                                                                                                                                 (coe
                                                                                                                                                                                                                                    v12)))
                                                                                                                                                                                                                           (coe
@@ -5392,7 +5392,7 @@ d_recognise'45'body_74 v0 v1 v2 v3
                                                                                                                                                                                                                            (coe
                                                                                                                                                                                                                               MAlonzo.Code.Once.CanonicalName.d_parts_8
                                                                                                                                                                                                                               (coe
-                                                                                                                                                                                                                                 MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                                                                                                                                                 MAlonzo.Code.Once.SigOp.Info.d_name_176
                                                                                                                                                                                                                                  (coe
                                                                                                                                                                                                                                     v12)))
                                                                                                                                                                                                                            (coe
@@ -5582,7 +5582,7 @@ d_recognise'45'body_74 v0 v1 v2 v3
                                                                                                                                                 (coe
                                                                                                                                                    MAlonzo.Code.Once.CanonicalName.d_parts_8
                                                                                                                                                    (coe
-                                                                                                                                                      MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                                                                      MAlonzo.Code.Once.SigOp.Info.d_name_176
                                                                                                                                                       (coe
                                                                                                                                                          v12)))
                                                                                                                                                 (coe
@@ -5662,7 +5662,7 @@ d_recognise'45'body_74 v0 v1 v2 v3
                                                                                                                                                                                      (coe
                                                                                                                                                                                         MAlonzo.Code.Once.CanonicalName.d_parts_8
                                                                                                                                                                                         (coe
-                                                                                                                                                                                           MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                                                                                                           MAlonzo.Code.Once.SigOp.Info.d_name_176
                                                                                                                                                                                            (coe
                                                                                                                                                                                               v12)))
                                                                                                                                                                                      (coe
@@ -5744,7 +5744,7 @@ d_recognise'45'body_74 v0 v1 v2 v3
                                                                                                                                                                                                                           (coe
                                                                                                                                                                                                                              MAlonzo.Code.Once.CanonicalName.d_parts_8
                                                                                                                                                                                                                              (coe
-                                                                                                                                                                                                                                MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                                                                                                                                                MAlonzo.Code.Once.SigOp.Info.d_name_176
                                                                                                                                                                                                                                 (coe
                                                                                                                                                                                                                                    v12)))
                                                                                                                                                                                                                           (coe
@@ -5932,7 +5932,7 @@ d_recognise'45'body_74 v0 v1 v2 v3
                                                                                                                                                                                                                            (coe
                                                                                                                                                                                                                               MAlonzo.Code.Once.CanonicalName.d_parts_8
                                                                                                                                                                                                                               (coe
-                                                                                                                                                                                                                                 MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                                                                                                                                                 MAlonzo.Code.Once.SigOp.Info.d_name_176
                                                                                                                                                                                                                                  (coe
                                                                                                                                                                                                                                     v12)))
                                                                                                                                                                                                                            (coe
@@ -6120,7 +6120,7 @@ d_recognise'45'body_74 v0 v1 v2 v3
                                                                                                                                                                                       (coe
                                                                                                                                                                                          MAlonzo.Code.Once.CanonicalName.d_parts_8
                                                                                                                                                                                          (coe
-                                                                                                                                                                                            MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                                                                                                            MAlonzo.Code.Once.SigOp.Info.d_name_176
                                                                                                                                                                                             (coe
                                                                                                                                                                                                v12)))
                                                                                                                                                                                       (coe
@@ -6202,7 +6202,7 @@ d_recognise'45'body_74 v0 v1 v2 v3
                                                                                                                                                                                                                            (coe
                                                                                                                                                                                                                               MAlonzo.Code.Once.CanonicalName.d_parts_8
                                                                                                                                                                                                                               (coe
-                                                                                                                                                                                                                                 MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                                                                                                                                                 MAlonzo.Code.Once.SigOp.Info.d_name_176
                                                                                                                                                                                                                                  (coe
                                                                                                                                                                                                                                     v12)))
                                                                                                                                                                                                                            (coe
@@ -6390,7 +6390,7 @@ d_recognise'45'body_74 v0 v1 v2 v3
                                                                                                                                                                                                                             (coe
                                                                                                                                                                                                                                MAlonzo.Code.Once.CanonicalName.d_parts_8
                                                                                                                                                                                                                                (coe
-                                                                                                                                                                                                                                  MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                                                                                                                                                  MAlonzo.Code.Once.SigOp.Info.d_name_176
                                                                                                                                                                                                                                   (coe
                                                                                                                                                                                                                                      v12)))
                                                                                                                                                                                                                             (coe
@@ -6578,7 +6578,7 @@ d_recognise'45'body_74 v0 v1 v2 v3
                                                                                                            (coe
                                                                                                               MAlonzo.Code.Once.CanonicalName.d_parts_8
                                                                                                               (coe
-                                                                                                                 MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                                 MAlonzo.Code.Once.SigOp.Info.d_name_176
                                                                                                                  (coe
                                                                                                                     v12)))
                                                                                                            (coe
@@ -6658,7 +6658,7 @@ d_recognise'45'body_74 v0 v1 v2 v3
                                                                                                                                                 (coe
                                                                                                                                                    MAlonzo.Code.Once.CanonicalName.d_parts_8
                                                                                                                                                    (coe
-                                                                                                                                                      MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                                                                      MAlonzo.Code.Once.SigOp.Info.d_name_176
                                                                                                                                                       (coe
                                                                                                                                                          v12)))
                                                                                                                                                 (coe
@@ -6738,7 +6738,7 @@ d_recognise'45'body_74 v0 v1 v2 v3
                                                                                                                                                                                      (coe
                                                                                                                                                                                         MAlonzo.Code.Once.CanonicalName.d_parts_8
                                                                                                                                                                                         (coe
-                                                                                                                                                                                           MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                                                                                                           MAlonzo.Code.Once.SigOp.Info.d_name_176
                                                                                                                                                                                            (coe
                                                                                                                                                                                               v12)))
                                                                                                                                                                                      (coe
@@ -6820,7 +6820,7 @@ d_recognise'45'body_74 v0 v1 v2 v3
                                                                                                                                                                                                                           (coe
                                                                                                                                                                                                                              MAlonzo.Code.Once.CanonicalName.d_parts_8
                                                                                                                                                                                                                              (coe
-                                                                                                                                                                                                                                MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                                                                                                                                                MAlonzo.Code.Once.SigOp.Info.d_name_176
                                                                                                                                                                                                                                 (coe
                                                                                                                                                                                                                                    v12)))
                                                                                                                                                                                                                           (coe
@@ -7008,7 +7008,7 @@ d_recognise'45'body_74 v0 v1 v2 v3
                                                                                                                                                                                                                            (coe
                                                                                                                                                                                                                               MAlonzo.Code.Once.CanonicalName.d_parts_8
                                                                                                                                                                                                                               (coe
-                                                                                                                                                                                                                                 MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                                                                                                                                                 MAlonzo.Code.Once.SigOp.Info.d_name_176
                                                                                                                                                                                                                                  (coe
                                                                                                                                                                                                                                     v12)))
                                                                                                                                                                                                                            (coe
@@ -7196,7 +7196,7 @@ d_recognise'45'body_74 v0 v1 v2 v3
                                                                                                                                                                                       (coe
                                                                                                                                                                                          MAlonzo.Code.Once.CanonicalName.d_parts_8
                                                                                                                                                                                          (coe
-                                                                                                                                                                                            MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                                                                                                            MAlonzo.Code.Once.SigOp.Info.d_name_176
                                                                                                                                                                                             (coe
                                                                                                                                                                                                v12)))
                                                                                                                                                                                       (coe
@@ -7278,7 +7278,7 @@ d_recognise'45'body_74 v0 v1 v2 v3
                                                                                                                                                                                                                            (coe
                                                                                                                                                                                                                               MAlonzo.Code.Once.CanonicalName.d_parts_8
                                                                                                                                                                                                                               (coe
-                                                                                                                                                                                                                                 MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                                                                                                                                                 MAlonzo.Code.Once.SigOp.Info.d_name_176
                                                                                                                                                                                                                                  (coe
                                                                                                                                                                                                                                     v12)))
                                                                                                                                                                                                                            (coe
@@ -7466,7 +7466,7 @@ d_recognise'45'body_74 v0 v1 v2 v3
                                                                                                                                                                                                                             (coe
                                                                                                                                                                                                                                MAlonzo.Code.Once.CanonicalName.d_parts_8
                                                                                                                                                                                                                                (coe
-                                                                                                                                                                                                                                  MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                                                                                                                                                  MAlonzo.Code.Once.SigOp.Info.d_name_176
                                                                                                                                                                                                                                   (coe
                                                                                                                                                                                                                                      v12)))
                                                                                                                                                                                                                             (coe
@@ -7656,7 +7656,7 @@ d_recognise'45'body_74 v0 v1 v2 v3
                                                                                                                                                  (coe
                                                                                                                                                     MAlonzo.Code.Once.CanonicalName.d_parts_8
                                                                                                                                                     (coe
-                                                                                                                                                       MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                                                                       MAlonzo.Code.Once.SigOp.Info.d_name_176
                                                                                                                                                        (coe
                                                                                                                                                           v12)))
                                                                                                                                                  (coe
@@ -7736,7 +7736,7 @@ d_recognise'45'body_74 v0 v1 v2 v3
                                                                                                                                                                                       (coe
                                                                                                                                                                                          MAlonzo.Code.Once.CanonicalName.d_parts_8
                                                                                                                                                                                          (coe
-                                                                                                                                                                                            MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                                                                                                            MAlonzo.Code.Once.SigOp.Info.d_name_176
                                                                                                                                                                                             (coe
                                                                                                                                                                                                v12)))
                                                                                                                                                                                       (coe
@@ -7818,7 +7818,7 @@ d_recognise'45'body_74 v0 v1 v2 v3
                                                                                                                                                                                                                            (coe
                                                                                                                                                                                                                               MAlonzo.Code.Once.CanonicalName.d_parts_8
                                                                                                                                                                                                                               (coe
-                                                                                                                                                                                                                                 MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                                                                                                                                                 MAlonzo.Code.Once.SigOp.Info.d_name_176
                                                                                                                                                                                                                                  (coe
                                                                                                                                                                                                                                     v12)))
                                                                                                                                                                                                                            (coe
@@ -8006,7 +8006,7 @@ d_recognise'45'body_74 v0 v1 v2 v3
                                                                                                                                                                                                                             (coe
                                                                                                                                                                                                                                MAlonzo.Code.Once.CanonicalName.d_parts_8
                                                                                                                                                                                                                                (coe
-                                                                                                                                                                                                                                  MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                                                                                                                                                  MAlonzo.Code.Once.SigOp.Info.d_name_176
                                                                                                                                                                                                                                   (coe
                                                                                                                                                                                                                                      v12)))
                                                                                                                                                                                                                             (coe
@@ -8194,7 +8194,7 @@ d_recognise'45'body_74 v0 v1 v2 v3
                                                                                                                                                                                        (coe
                                                                                                                                                                                           MAlonzo.Code.Once.CanonicalName.d_parts_8
                                                                                                                                                                                           (coe
-                                                                                                                                                                                             MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                                                                                                             MAlonzo.Code.Once.SigOp.Info.d_name_176
                                                                                                                                                                                              (coe
                                                                                                                                                                                                 v12)))
                                                                                                                                                                                        (coe
@@ -8276,7 +8276,7 @@ d_recognise'45'body_74 v0 v1 v2 v3
                                                                                                                                                                                                                             (coe
                                                                                                                                                                                                                                MAlonzo.Code.Once.CanonicalName.d_parts_8
                                                                                                                                                                                                                                (coe
-                                                                                                                                                                                                                                  MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                                                                                                                                                  MAlonzo.Code.Once.SigOp.Info.d_name_176
                                                                                                                                                                                                                                   (coe
                                                                                                                                                                                                                                      v12)))
                                                                                                                                                                                                                             (coe
@@ -8464,7 +8464,7 @@ d_recognise'45'body_74 v0 v1 v2 v3
                                                                                                                                                                                                                              (coe
                                                                                                                                                                                                                                 MAlonzo.Code.Once.CanonicalName.d_parts_8
                                                                                                                                                                                                                                 (coe
-                                                                                                                                                                                                                                   MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                                                                                                                                                   MAlonzo.Code.Once.SigOp.Info.d_name_176
                                                                                                                                                                                                                                    (coe
                                                                                                                                                                                                                                       v12)))
                                                                                                                                                                                                                              (coe
@@ -8610,20 +8610,20 @@ d_recognise'45'binop_82 v0 v1 v2 v3
   = let v4 = coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 in
     coe
       (case coe v3 of
-         MAlonzo.Code.Once.IR.C__'8728'__30 v6 v8 v9
+         MAlonzo.Code.Once.IR.C__'8728'__28 v6 v8 v9
            -> case coe v8 of
-                MAlonzo.Code.Once.IR.C_'10216'_'44'_'10217'_38 v13 v14
+                MAlonzo.Code.Once.IR.C_'10216'_'44'_'10217'_36 v13 v14
                   -> case coe v2 of
                        MAlonzo.Code.Once.IRTy.C__'42'__20 v15 v16
                          -> let v17
                                   = d_recognise'45'body_74
                                       (coe v0) (coe v1) (coe v15)
-                                      (coe MAlonzo.Code.Once.IR.C__'8728'__30 v6 v13 v9) in
+                                      (coe MAlonzo.Code.Once.IR.C__'8728'__28 v6 v13 v9) in
                             coe
                               (let v18
                                      = d_recognise'45'body_74
                                          (coe v0) (coe v1) (coe v16)
-                                         (coe MAlonzo.Code.Once.IR.C__'8728'__30 v6 v14 v9) in
+                                         (coe MAlonzo.Code.Once.IR.C__'8728'__28 v6 v14 v9) in
                                coe
                                  (case coe v17 of
                                     MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v19
@@ -8638,7 +8638,7 @@ d_recognise'45'binop_82 v0 v1 v2 v3
                                     _ -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18))
                        _ -> coe v4
                 _ -> coe v4
-         MAlonzo.Code.Once.IR.C_'10216'_'44'_'10217'_38 v8 v9
+         MAlonzo.Code.Once.IR.C_'10216'_'44'_'10217'_36 v8 v9
            -> case coe v2 of
                 MAlonzo.Code.Once.IRTy.C__'42'__20 v10 v11
                   -> let v12
@@ -8676,12 +8676,12 @@ du_is'45'terminal'63'_386 v0
   = let v1 = coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8 in
     coe
       (case coe v0 of
-         MAlonzo.Code.Once.IR.C__'8728'__30 v3 v5 v6
+         MAlonzo.Code.Once.IR.C__'8728'__28 v3 v5 v6
            -> case coe v5 of
-                MAlonzo.Code.Once.IR.C_terminal_74
+                MAlonzo.Code.Once.IR.C_terminal_72
                   -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
                 _ -> coe v1
-         MAlonzo.Code.Once.IR.C_terminal_74
+         MAlonzo.Code.Once.IR.C_terminal_72
            -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
          _ -> coe v1)
 -- Once.Arith.Machine.Recognise.recognise-body-float
@@ -8715,15 +8715,15 @@ d_recognise'45'body'45'float_448 v0 v1 v2 v3
                  _ -> MAlonzo.RTE.mazUnreachableError) in
     coe
       (case coe v3 of
-         MAlonzo.Code.Once.IR.C__'8728'__30 v6 v8 v9
+         MAlonzo.Code.Once.IR.C__'8728'__28 v6 v8 v9
            -> case coe v8 of
-                MAlonzo.Code.Once.IR.C__'8728'__30 v11 v13 v14
+                MAlonzo.Code.Once.IR.C__'8728'__28 v11 v13 v14
                   -> coe
                        d_recognise'45'body'45'float_448 (coe v0) (coe v1) (coe v2)
                        (coe
-                          MAlonzo.Code.Once.IR.C__'8728'__30 v11 v13
-                          (coe MAlonzo.Code.Once.IR.C__'8728'__30 v6 v14 v9))
-                MAlonzo.Code.Once.IR.C_const_148 v11 v12
+                          MAlonzo.Code.Once.IR.C__'8728'__28 v11 v13
+                          (coe MAlonzo.Code.Once.IR.C__'8728'__28 v6 v14 v9))
+                MAlonzo.Code.Once.IR.C_const_124 v11 v12
                   -> case coe v11 of
                        MAlonzo.Code.Once.IRTy.C_fits'45'int_528
                          -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
@@ -8737,14 +8737,14 @@ d_recognise'45'body'45'float_448 v0 v1 v2 v3
                                            MAlonzo.Code.Once.Arith.Machine.IR.C_aflit_16 (coe v12))
                                  else coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18)
                        _ -> MAlonzo.RTE.mazUnreachableError
-                MAlonzo.Code.Once.IR.C_SigOp_154 v10 v11 v12
+                MAlonzo.Code.Once.IR.C_SigOp_130 v10 v11 v12
                   -> let v13
                            = coe
                                MAlonzo.Code.Data.List.Properties.du_'8801''45'dec_60
                                (coe MAlonzo.Code.Data.String.Properties.d__'8799'__54)
                                (coe
                                   MAlonzo.Code.Once.CanonicalName.d_parts_8
-                                  (coe MAlonzo.Code.Once.SigOp.Info.d_name_174 (coe v12)))
+                                  (coe MAlonzo.Code.Once.SigOp.Info.d_name_176 (coe v12)))
                                (coe
                                   MAlonzo.Code.Once.CanonicalName.d_parts_8
                                   (coe
@@ -8800,7 +8800,7 @@ d_recognise'45'body'45'float_448 v0 v1 v2 v3
                                                                     (coe
                                                                        MAlonzo.Code.Once.CanonicalName.d_parts_8
                                                                        (coe
-                                                                          MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                          MAlonzo.Code.Once.SigOp.Info.d_name_176
                                                                           (coe v12)))
                                                                     (coe
                                                                        MAlonzo.Code.Once.CanonicalName.d_parts_8
@@ -8873,7 +8873,7 @@ d_recognise'45'body'45'float_448 v0 v1 v2 v3
                                                                                                          (coe
                                                                                                             MAlonzo.Code.Once.CanonicalName.d_parts_8
                                                                                                             (coe
-                                                                                                               MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                               MAlonzo.Code.Once.SigOp.Info.d_name_176
                                                                                                                (coe
                                                                                                                   v12)))
                                                                                                          (coe
@@ -8953,7 +8953,7 @@ d_recognise'45'body'45'float_448 v0 v1 v2 v3
                                                                                                                                               (coe
                                                                                                                                                  MAlonzo.Code.Once.CanonicalName.d_parts_8
                                                                                                                                                  (coe
-                                                                                                                                                    MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                                                                    MAlonzo.Code.Once.SigOp.Info.d_name_176
                                                                                                                                                     (coe
                                                                                                                                                        v12)))
                                                                                                                                               (coe
@@ -9033,7 +9033,7 @@ d_recognise'45'body'45'float_448 v0 v1 v2 v3
                                                                                                                                                                                    (coe
                                                                                                                                                                                       MAlonzo.Code.Once.CanonicalName.d_parts_8
                                                                                                                                                                                       (coe
-                                                                                                                                                                                         MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                                                                                                         MAlonzo.Code.Once.SigOp.Info.d_name_176
                                                                                                                                                                                          (coe
                                                                                                                                                                                             v12)))
                                                                                                                                                                                    (coe
@@ -9221,7 +9221,7 @@ d_recognise'45'body'45'float_448 v0 v1 v2 v3
                                                                                                                                                                                     (coe
                                                                                                                                                                                        MAlonzo.Code.Once.CanonicalName.d_parts_8
                                                                                                                                                                                        (coe
-                                                                                                                                                                                          MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                                                                                                          MAlonzo.Code.Once.SigOp.Info.d_name_176
                                                                                                                                                                                           (coe
                                                                                                                                                                                              v12)))
                                                                                                                                                                                     (coe
@@ -9411,7 +9411,7 @@ d_recognise'45'body'45'float_448 v0 v1 v2 v3
                                                                                                                                                (coe
                                                                                                                                                   MAlonzo.Code.Once.CanonicalName.d_parts_8
                                                                                                                                                   (coe
-                                                                                                                                                     MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                                                                     MAlonzo.Code.Once.SigOp.Info.d_name_176
                                                                                                                                                      (coe
                                                                                                                                                         v12)))
                                                                                                                                                (coe
@@ -9491,7 +9491,7 @@ d_recognise'45'body'45'float_448 v0 v1 v2 v3
                                                                                                                                                                                     (coe
                                                                                                                                                                                        MAlonzo.Code.Once.CanonicalName.d_parts_8
                                                                                                                                                                                        (coe
-                                                                                                                                                                                          MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                                                                                                          MAlonzo.Code.Once.SigOp.Info.d_name_176
                                                                                                                                                                                           (coe
                                                                                                                                                                                              v12)))
                                                                                                                                                                                     (coe
@@ -9679,7 +9679,7 @@ d_recognise'45'body'45'float_448 v0 v1 v2 v3
                                                                                                                                                                                      (coe
                                                                                                                                                                                         MAlonzo.Code.Once.CanonicalName.d_parts_8
                                                                                                                                                                                         (coe
-                                                                                                                                                                                           MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                                                                                                           MAlonzo.Code.Once.SigOp.Info.d_name_176
                                                                                                                                                                                            (coe
                                                                                                                                                                                               v12)))
                                                                                                                                                                                      (coe
@@ -9867,7 +9867,7 @@ d_recognise'45'body'45'float_448 v0 v1 v2 v3
                                                                                                           (coe
                                                                                                              MAlonzo.Code.Once.CanonicalName.d_parts_8
                                                                                                              (coe
-                                                                                                                MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                                MAlonzo.Code.Once.SigOp.Info.d_name_176
                                                                                                                 (coe
                                                                                                                    v12)))
                                                                                                           (coe
@@ -9947,7 +9947,7 @@ d_recognise'45'body'45'float_448 v0 v1 v2 v3
                                                                                                                                                (coe
                                                                                                                                                   MAlonzo.Code.Once.CanonicalName.d_parts_8
                                                                                                                                                   (coe
-                                                                                                                                                     MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                                                                     MAlonzo.Code.Once.SigOp.Info.d_name_176
                                                                                                                                                      (coe
                                                                                                                                                         v12)))
                                                                                                                                                (coe
@@ -10027,7 +10027,7 @@ d_recognise'45'body'45'float_448 v0 v1 v2 v3
                                                                                                                                                                                     (coe
                                                                                                                                                                                        MAlonzo.Code.Once.CanonicalName.d_parts_8
                                                                                                                                                                                        (coe
-                                                                                                                                                                                          MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                                                                                                          MAlonzo.Code.Once.SigOp.Info.d_name_176
                                                                                                                                                                                           (coe
                                                                                                                                                                                              v12)))
                                                                                                                                                                                     (coe
@@ -10215,7 +10215,7 @@ d_recognise'45'body'45'float_448 v0 v1 v2 v3
                                                                                                                                                                                      (coe
                                                                                                                                                                                         MAlonzo.Code.Once.CanonicalName.d_parts_8
                                                                                                                                                                                         (coe
-                                                                                                                                                                                           MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                                                                                                           MAlonzo.Code.Once.SigOp.Info.d_name_176
                                                                                                                                                                                            (coe
                                                                                                                                                                                               v12)))
                                                                                                                                                                                      (coe
@@ -10405,7 +10405,7 @@ d_recognise'45'body'45'float_448 v0 v1 v2 v3
                                                                                                                                                 (coe
                                                                                                                                                    MAlonzo.Code.Once.CanonicalName.d_parts_8
                                                                                                                                                    (coe
-                                                                                                                                                      MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                                                                      MAlonzo.Code.Once.SigOp.Info.d_name_176
                                                                                                                                                       (coe
                                                                                                                                                          v12)))
                                                                                                                                                 (coe
@@ -10485,7 +10485,7 @@ d_recognise'45'body'45'float_448 v0 v1 v2 v3
                                                                                                                                                                                      (coe
                                                                                                                                                                                         MAlonzo.Code.Once.CanonicalName.d_parts_8
                                                                                                                                                                                         (coe
-                                                                                                                                                                                           MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                                                                                                           MAlonzo.Code.Once.SigOp.Info.d_name_176
                                                                                                                                                                                            (coe
                                                                                                                                                                                               v12)))
                                                                                                                                                                                      (coe
@@ -10673,7 +10673,7 @@ d_recognise'45'body'45'float_448 v0 v1 v2 v3
                                                                                                                                                                                       (coe
                                                                                                                                                                                          MAlonzo.Code.Once.CanonicalName.d_parts_8
                                                                                                                                                                                          (coe
-                                                                                                                                                                                            MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                                                                                                            MAlonzo.Code.Once.SigOp.Info.d_name_176
                                                                                                                                                                                             (coe
                                                                                                                                                                                                v12)))
                                                                                                                                                                                       (coe
@@ -10850,7 +10850,7 @@ d_recognise'45'body'45'float_448 v0 v1 v2 v3
                                                                      (coe
                                                                         MAlonzo.Code.Once.CanonicalName.d_parts_8
                                                                         (coe
-                                                                           MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                           MAlonzo.Code.Once.SigOp.Info.d_name_176
                                                                            (coe v12)))
                                                                      (coe
                                                                         MAlonzo.Code.Once.CanonicalName.d_parts_8
@@ -10923,7 +10923,7 @@ d_recognise'45'body'45'float_448 v0 v1 v2 v3
                                                                                                           (coe
                                                                                                              MAlonzo.Code.Once.CanonicalName.d_parts_8
                                                                                                              (coe
-                                                                                                                MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                                MAlonzo.Code.Once.SigOp.Info.d_name_176
                                                                                                                 (coe
                                                                                                                    v12)))
                                                                                                           (coe
@@ -11003,7 +11003,7 @@ d_recognise'45'body'45'float_448 v0 v1 v2 v3
                                                                                                                                                (coe
                                                                                                                                                   MAlonzo.Code.Once.CanonicalName.d_parts_8
                                                                                                                                                   (coe
-                                                                                                                                                     MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                                                                     MAlonzo.Code.Once.SigOp.Info.d_name_176
                                                                                                                                                      (coe
                                                                                                                                                         v12)))
                                                                                                                                                (coe
@@ -11083,7 +11083,7 @@ d_recognise'45'body'45'float_448 v0 v1 v2 v3
                                                                                                                                                                                     (coe
                                                                                                                                                                                        MAlonzo.Code.Once.CanonicalName.d_parts_8
                                                                                                                                                                                        (coe
-                                                                                                                                                                                          MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                                                                                                          MAlonzo.Code.Once.SigOp.Info.d_name_176
                                                                                                                                                                                           (coe
                                                                                                                                                                                              v12)))
                                                                                                                                                                                     (coe
@@ -11271,7 +11271,7 @@ d_recognise'45'body'45'float_448 v0 v1 v2 v3
                                                                                                                                                                                      (coe
                                                                                                                                                                                         MAlonzo.Code.Once.CanonicalName.d_parts_8
                                                                                                                                                                                         (coe
-                                                                                                                                                                                           MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                                                                                                           MAlonzo.Code.Once.SigOp.Info.d_name_176
                                                                                                                                                                                            (coe
                                                                                                                                                                                               v12)))
                                                                                                                                                                                      (coe
@@ -11461,7 +11461,7 @@ d_recognise'45'body'45'float_448 v0 v1 v2 v3
                                                                                                                                                 (coe
                                                                                                                                                    MAlonzo.Code.Once.CanonicalName.d_parts_8
                                                                                                                                                    (coe
-                                                                                                                                                      MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                                                                      MAlonzo.Code.Once.SigOp.Info.d_name_176
                                                                                                                                                       (coe
                                                                                                                                                          v12)))
                                                                                                                                                 (coe
@@ -11541,7 +11541,7 @@ d_recognise'45'body'45'float_448 v0 v1 v2 v3
                                                                                                                                                                                      (coe
                                                                                                                                                                                         MAlonzo.Code.Once.CanonicalName.d_parts_8
                                                                                                                                                                                         (coe
-                                                                                                                                                                                           MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                                                                                                           MAlonzo.Code.Once.SigOp.Info.d_name_176
                                                                                                                                                                                            (coe
                                                                                                                                                                                               v12)))
                                                                                                                                                                                      (coe
@@ -11729,7 +11729,7 @@ d_recognise'45'body'45'float_448 v0 v1 v2 v3
                                                                                                                                                                                       (coe
                                                                                                                                                                                          MAlonzo.Code.Once.CanonicalName.d_parts_8
                                                                                                                                                                                          (coe
-                                                                                                                                                                                            MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                                                                                                            MAlonzo.Code.Once.SigOp.Info.d_name_176
                                                                                                                                                                                             (coe
                                                                                                                                                                                                v12)))
                                                                                                                                                                                       (coe
@@ -11917,7 +11917,7 @@ d_recognise'45'body'45'float_448 v0 v1 v2 v3
                                                                                                            (coe
                                                                                                               MAlonzo.Code.Once.CanonicalName.d_parts_8
                                                                                                               (coe
-                                                                                                                 MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                                 MAlonzo.Code.Once.SigOp.Info.d_name_176
                                                                                                                  (coe
                                                                                                                     v12)))
                                                                                                            (coe
@@ -11997,7 +11997,7 @@ d_recognise'45'body'45'float_448 v0 v1 v2 v3
                                                                                                                                                 (coe
                                                                                                                                                    MAlonzo.Code.Once.CanonicalName.d_parts_8
                                                                                                                                                    (coe
-                                                                                                                                                      MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                                                                      MAlonzo.Code.Once.SigOp.Info.d_name_176
                                                                                                                                                       (coe
                                                                                                                                                          v12)))
                                                                                                                                                 (coe
@@ -12077,7 +12077,7 @@ d_recognise'45'body'45'float_448 v0 v1 v2 v3
                                                                                                                                                                                      (coe
                                                                                                                                                                                         MAlonzo.Code.Once.CanonicalName.d_parts_8
                                                                                                                                                                                         (coe
-                                                                                                                                                                                           MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                                                                                                           MAlonzo.Code.Once.SigOp.Info.d_name_176
                                                                                                                                                                                            (coe
                                                                                                                                                                                               v12)))
                                                                                                                                                                                      (coe
@@ -12265,7 +12265,7 @@ d_recognise'45'body'45'float_448 v0 v1 v2 v3
                                                                                                                                                                                       (coe
                                                                                                                                                                                          MAlonzo.Code.Once.CanonicalName.d_parts_8
                                                                                                                                                                                          (coe
-                                                                                                                                                                                            MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                                                                                                            MAlonzo.Code.Once.SigOp.Info.d_name_176
                                                                                                                                                                                             (coe
                                                                                                                                                                                                v12)))
                                                                                                                                                                                       (coe
@@ -12455,7 +12455,7 @@ d_recognise'45'body'45'float_448 v0 v1 v2 v3
                                                                                                                                                  (coe
                                                                                                                                                     MAlonzo.Code.Once.CanonicalName.d_parts_8
                                                                                                                                                     (coe
-                                                                                                                                                       MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                                                                       MAlonzo.Code.Once.SigOp.Info.d_name_176
                                                                                                                                                        (coe
                                                                                                                                                           v12)))
                                                                                                                                                  (coe
@@ -12535,7 +12535,7 @@ d_recognise'45'body'45'float_448 v0 v1 v2 v3
                                                                                                                                                                                       (coe
                                                                                                                                                                                          MAlonzo.Code.Once.CanonicalName.d_parts_8
                                                                                                                                                                                          (coe
-                                                                                                                                                                                            MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                                                                                                            MAlonzo.Code.Once.SigOp.Info.d_name_176
                                                                                                                                                                                             (coe
                                                                                                                                                                                                v12)))
                                                                                                                                                                                       (coe
@@ -12723,7 +12723,7 @@ d_recognise'45'body'45'float_448 v0 v1 v2 v3
                                                                                                                                                                                        (coe
                                                                                                                                                                                           MAlonzo.Code.Once.CanonicalName.d_parts_8
                                                                                                                                                                                           (coe
-                                                                                                                                                                                             MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                                                                                                             MAlonzo.Code.Once.SigOp.Info.d_name_176
                                                                                                                                                                                              (coe
                                                                                                                                                                                                 v12)))
                                                                                                                                                                                        (coe
@@ -12869,20 +12869,20 @@ d_recognise'45'binop'45'float_456 v0 v1 v2 v3
   = let v4 = coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 in
     coe
       (case coe v3 of
-         MAlonzo.Code.Once.IR.C__'8728'__30 v6 v8 v9
+         MAlonzo.Code.Once.IR.C__'8728'__28 v6 v8 v9
            -> case coe v8 of
-                MAlonzo.Code.Once.IR.C_'10216'_'44'_'10217'_38 v13 v14
+                MAlonzo.Code.Once.IR.C_'10216'_'44'_'10217'_36 v13 v14
                   -> case coe v2 of
                        MAlonzo.Code.Once.IRTy.C__'42'__20 v15 v16
                          -> let v17
                                   = d_recognise'45'body'45'float_448
                                       (coe v0) (coe v1) (coe v15)
-                                      (coe MAlonzo.Code.Once.IR.C__'8728'__30 v6 v13 v9) in
+                                      (coe MAlonzo.Code.Once.IR.C__'8728'__28 v6 v13 v9) in
                             coe
                               (let v18
                                      = d_recognise'45'body'45'float_448
                                          (coe v0) (coe v1) (coe v16)
-                                         (coe MAlonzo.Code.Once.IR.C__'8728'__30 v6 v14 v9) in
+                                         (coe MAlonzo.Code.Once.IR.C__'8728'__28 v6 v14 v9) in
                                coe
                                  (case coe v17 of
                                     MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v19
@@ -12897,7 +12897,7 @@ d_recognise'45'binop'45'float_456 v0 v1 v2 v3
                                     _ -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18))
                        _ -> coe v4
                 _ -> coe v4
-         MAlonzo.Code.Once.IR.C_'10216'_'44'_'10217'_38 v8 v9
+         MAlonzo.Code.Once.IR.C_'10216'_'44'_'10217'_36 v8 v9
            -> case coe v2 of
                 MAlonzo.Code.Once.IRTy.C__'42'__20 v10 v11
                   -> let v12
@@ -12938,12 +12938,12 @@ du_is'45'terminal'45'f'63'_724 v0
   = let v1 = coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8 in
     coe
       (case coe v0 of
-         MAlonzo.Code.Once.IR.C__'8728'__30 v3 v5 v6
+         MAlonzo.Code.Once.IR.C__'8728'__28 v3 v5 v6
            -> case coe v5 of
-                MAlonzo.Code.Once.IR.C_terminal_74
+                MAlonzo.Code.Once.IR.C_terminal_72
                   -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
                 _ -> coe v1
-         MAlonzo.Code.Once.IR.C_terminal_74
+         MAlonzo.Code.Once.IR.C_terminal_72
            -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
          _ -> coe v1)
 -- Once.Arith.Machine.Recognise.recognise

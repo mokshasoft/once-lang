@@ -95,13 +95,13 @@ d_ir'45'stack'45'requirement_40 ::
   MAlonzo.Code.Once.IR.T_IR_16 -> Integer
 d_ir'45'stack'45'requirement_40 v0 v1 v2
   = case coe v2 of
-      MAlonzo.Code.Once.IR.C_id_22 -> coe (0 :: Integer)
-      MAlonzo.Code.Once.IR.C__'8728'__30 v4 v6 v7
+      MAlonzo.Code.Once.IR.C_id_20 -> coe (0 :: Integer)
+      MAlonzo.Code.Once.IR.C__'8728'__28 v4 v6 v7
         -> coe
              addInt
              (coe d_ir'45'stack'45'requirement_40 (coe v0) (coe v4) (coe v7))
              (coe d_ir'45'stack'45'requirement_40 (coe v4) (coe v1) (coe v6))
-      MAlonzo.Code.Once.IR.C_'10216'_'44'_'10217'_38 v6 v7
+      MAlonzo.Code.Once.IR.C_'10216'_'44'_'10217'_36 v6 v7
         -> case coe v1 of
              MAlonzo.Code.Once.IRTy.C__'42'__20 v8 v9
                -> coe
@@ -114,11 +114,11 @@ d_ir'45'stack'45'requirement_40 v0 v1 v2
                        (coe d_ir'45'stack'45'requirement_40 (coe v0) (coe v9) (coe v7)))
                     (coe d_pair'45'slots_8)
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.IR.C_fst_44 -> coe (0 :: Integer)
-      MAlonzo.Code.Once.IR.C_snd_50 -> coe (0 :: Integer)
-      MAlonzo.Code.Once.IR.C_inl_56 -> coe d_pair'45'slots_8
-      MAlonzo.Code.Once.IR.C_inr_62 -> coe d_pair'45'slots_8
-      MAlonzo.Code.Once.IR.C_case_70 v6 v7
+      MAlonzo.Code.Once.IR.C_fst_42 -> coe (0 :: Integer)
+      MAlonzo.Code.Once.IR.C_snd_48 -> coe (0 :: Integer)
+      MAlonzo.Code.Once.IR.C_inl_54 -> coe d_pair'45'slots_8
+      MAlonzo.Code.Once.IR.C_inr_60 -> coe d_pair'45'slots_8
+      MAlonzo.Code.Once.IR.C_case_68 v6 v7
         -> case coe v0 of
              MAlonzo.Code.Once.IRTy.C__'43'__22 v8 v9
                -> coe
@@ -126,13 +126,13 @@ d_ir'45'stack'45'requirement_40 v0 v1 v2
                     (coe d_ir'45'stack'45'requirement_40 (coe v8) (coe v1) (coe v6))
                     (coe d_ir'45'stack'45'requirement_40 (coe v9) (coe v1) (coe v7))
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.IR.C_terminal_74 -> coe (0 :: Integer)
-      MAlonzo.Code.Once.IR.C_initial_78 -> coe (0 :: Integer)
-      MAlonzo.Code.Once.IR.C_curry_86 v6 -> coe d_pair'45'slots_8
-      MAlonzo.Code.Once.IR.C_apply_92 -> coe d_pair'45'slots_8
-      MAlonzo.Code.Once.IR.C_In_96 v4 -> coe (1 :: Integer)
-      MAlonzo.Code.Once.IR.C_out'45'μ_100 v4 -> coe (0 :: Integer)
-      MAlonzo.Code.Once.IR.C_Cata_108 v4 v7
+      MAlonzo.Code.Once.IR.C_terminal_72 -> coe (0 :: Integer)
+      MAlonzo.Code.Once.IR.C_initial_76 -> coe (0 :: Integer)
+      MAlonzo.Code.Once.IR.C_curry_84 v6 -> coe d_pair'45'slots_8
+      MAlonzo.Code.Once.IR.C_apply_90 -> coe d_pair'45'slots_8
+      MAlonzo.Code.Once.IR.C_In_94 v4 -> coe (1 :: Integer)
+      MAlonzo.Code.Once.IR.C_out'45'μ_98 v4 -> coe (0 :: Integer)
+      MAlonzo.Code.Once.IR.C_Cata_106 v4 v7
         -> case coe v0 of
              MAlonzo.Code.Once.IRTy.C__'42'__20 v8 v9
                -> case coe v9 of
@@ -158,30 +158,9 @@ d_ir'45'stack'45'requirement_40 v0 v1 v2
                            (coe d_pair'45'slots_8)
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.IR.C_Para_114 v4 v6
-        -> case coe v0 of
-             MAlonzo.Code.Once.IRTy.C_μ'45'type_26 v7
-               -> coe
-                    addInt
-                    (coe
-                       addInt
-                       (coe
-                          addInt
-                          (coe
-                             d_ir'45'stack'45'requirement_40
-                             (coe
-                                MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_84 (coe v7)
-                                (coe MAlonzo.Code.Once.IRTy.C__'42'__20 (coe v0) (coe v1)))
-                             (coe v1) (coe v6))
-                          (coe d_product'45'depth_14 (coe v7) (coe v4)))
-                       (coe
-                          mulInt (coe d_sum'45'depth_26 (coe v7) (coe v4))
-                          (coe (2 :: Integer))))
-                    (coe d_pair'45'slots_8)
-             _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.IR.C_Out_118 v4 -> coe (0 :: Integer)
-      MAlonzo.Code.Once.IR.C_in'45'ν_122 v4 -> coe (1 :: Integer)
-      MAlonzo.Code.Once.IR.C_Ana_128 v4 v6
+      MAlonzo.Code.Once.IR.C_Out_110 v4 -> coe (0 :: Integer)
+      MAlonzo.Code.Once.IR.C_in'45'ν_114 v4 -> coe (1 :: Integer)
+      MAlonzo.Code.Once.IR.C_Ana_120 v4 v6
         -> case coe v1 of
              MAlonzo.Code.Once.IRTy.C_ν'45'type_28 v7
                -> coe
@@ -193,111 +172,18 @@ d_ir'45'stack'45'requirement_40 v0 v1 v2
                        (coe v6))
                     (coe d_pair'45'slots_8)
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.IR.C_Hylo_136 v3 v5 v6 v8 v9
-        -> case coe v0 of
-             MAlonzo.Code.Once.IRTy.C_μ'45'type_26 v10
-               -> coe
-                    addInt
-                    (coe
-                       addInt
-                       (coe
-                          d_ir'45'stack'45'requirement'45'nt_46 (coe v10) (coe v3) (coe v9))
-                       (coe
-                          d_ir'45'stack'45'requirement_40
-                          (coe
-                             MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_84 (coe v3) (coe v1))
-                          (coe v1) (coe v8)))
-                    (coe d_pair'45'slots_8)
-             _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.IR.C_Fuse_144 v3 v5 v6 v8 v9
-        -> case coe v0 of
-             MAlonzo.Code.Once.IRTy.C_μ'45'type_26 v10
-               -> coe
-                    addInt
-                    (coe
-                       addInt
-                       (coe
-                          d_ir'45'stack'45'requirement'45'nt_46 (coe v10) (coe v3) (coe v9))
-                       (coe
-                          d_ir'45'stack'45'requirement_40
-                          (coe
-                             MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_84 (coe v3) (coe v1))
-                          (coe v1) (coe v8)))
-                    (coe d_pair'45'slots_8)
-             _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.IR.C_const_148 v4 v5 -> coe (0 :: Integer)
-      MAlonzo.Code.Once.IR.C_SigOp_154 v3 v4 v5 -> coe (0 :: Integer)
-      _ -> MAlonzo.RTE.mazUnreachableError
--- Once.CCC.IR.Stack.ir-stack-requirement-nt
-d_ir'45'stack'45'requirement'45'nt_46 ::
-  MAlonzo.Code.Once.IRTy.T_IRFunctor_4 ->
-  MAlonzo.Code.Once.IRTy.T_IRFunctor_4 ->
-  MAlonzo.Code.Once.IR.T_NatTr_18 -> Integer
-d_ir'45'stack'45'requirement'45'nt_46 v0 v1 v2
-  = case coe v2 of
-      MAlonzo.Code.Once.IR.C_ntId_156 -> coe (0 :: Integer)
-      MAlonzo.Code.Once.IR.C_ntK_162 v5
-        -> case coe v0 of
-             MAlonzo.Code.Once.IRTy.C_K_8 v6
-               -> case coe v1 of
-                    MAlonzo.Code.Once.IRTy.C_K_8 v7
-                      -> coe d_ir'45'stack'45'requirement_40 (coe v6) (coe v7) (coe v5)
-                    _ -> MAlonzo.RTE.mazUnreachableError
-             _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.IR.C_ntFst_170 v6
-        -> case coe v0 of
-             MAlonzo.Code.Once.IRTy.C__'8855'__14 v7 v8
-               -> coe
-                    d_ir'45'stack'45'requirement'45'nt_46 (coe v7) (coe v1) (coe v6)
-             _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.IR.C_ntSnd_178 v6
-        -> case coe v0 of
-             MAlonzo.Code.Once.IRTy.C__'8855'__14 v7 v8
-               -> coe
-                    d_ir'45'stack'45'requirement'45'nt_46 (coe v8) (coe v1) (coe v6)
-             _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.IR.C_ntCase_186 v6 v7
-        -> case coe v0 of
-             MAlonzo.Code.Once.IRTy.C__'8853'__12 v8 v9
-               -> coe
-                    addInt
-                    (coe
-                       d_ir'45'stack'45'requirement'45'nt_46 (coe v8) (coe v1) (coe v6))
-                    (coe
-                       d_ir'45'stack'45'requirement'45'nt_46 (coe v9) (coe v1) (coe v7))
-             _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.IR.C_ntInl_194 v6
-        -> case coe v1 of
-             MAlonzo.Code.Once.IRTy.C__'8853'__12 v7 v8
-               -> coe
-                    d_ir'45'stack'45'requirement'45'nt_46 (coe v0) (coe v7) (coe v6)
-             _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.IR.C_ntInr_202 v6
-        -> case coe v1 of
-             MAlonzo.Code.Once.IRTy.C__'8853'__12 v7 v8
-               -> coe
-                    d_ir'45'stack'45'requirement'45'nt_46 (coe v0) (coe v8) (coe v6)
-             _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.IR.C_ntPair_210 v6 v7
-        -> case coe v1 of
-             MAlonzo.Code.Once.IRTy.C__'8855'__14 v8 v9
-               -> coe
-                    addInt
-                    (coe
-                       d_ir'45'stack'45'requirement'45'nt_46 (coe v0) (coe v8) (coe v6))
-                    (coe
-                       d_ir'45'stack'45'requirement'45'nt_46 (coe v0) (coe v9) (coe v7))
-             _ -> MAlonzo.RTE.mazUnreachableError
+      MAlonzo.Code.Once.IR.C_const_124 v4 v5 -> coe (0 :: Integer)
+      MAlonzo.Code.Once.IR.C_SigOp_130 v3 v4 v5 -> coe (0 :: Integer)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.IR.Stack.ir-scratch-requirement
-d_ir'45'scratch'45'requirement_100 ::
+d_ir'45'scratch'45'requirement_64 ::
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IR.T_IR_16 -> Integer
-d_ir'45'scratch'45'requirement_100 v0 v1
+d_ir'45'scratch'45'requirement_64 v0 v1
   = coe d_ir'45'stack'45'requirement_40 (coe v0) (coe v1)
 -- Once.CCC.IR.Stack.layer-capacity
-d_layer'45'capacity_110 ::
+d_layer'45'capacity_74 ::
   MAlonzo.Code.Once.IRTy.T_IRFunctor_4 ->
   MAlonzo.Code.Once.IRTy.T_IRFunctor_4 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
@@ -305,7 +191,7 @@ d_layer'45'capacity_110 ::
   MAlonzo.Code.Once.IRTy.T_WellFormedFI_130 ->
   MAlonzo.Code.Once.IRTy.T_WellFormedFI_130 ->
   MAlonzo.Code.Once.IR.T_IR_16 -> Integer
-d_layer'45'capacity_110 v0 v1 v2 v3 v4 v5 v6
+d_layer'45'capacity_74 v0 v1 v2 v3 v4 v5 v6
   = case coe v4 of
       MAlonzo.Code.Once.IRTy.C_wf'45'K_134 v8
         -> coe
@@ -324,7 +210,7 @@ d_layer'45'capacity_110 v0 v1 v2 v3 v4 v5 v6
              (coe
                 MAlonzo.Code.Once.IRTy.C__'42'__20 (coe v2)
                 (coe MAlonzo.Code.Once.IRTy.C_μ'45'type_26 (coe v1)))
-             (coe v3) (coe MAlonzo.Code.Once.IR.C_Cata_108 v5 v6)
+             (coe v3) (coe MAlonzo.Code.Once.IR.C_Cata_106 v5 v6)
       MAlonzo.Code.Once.IRTy.C_wf'45'Sum_142 v9 v10
         -> case coe v0 of
              MAlonzo.Code.Once.IRTy.C__'8853'__12 v11 v12
@@ -333,10 +219,10 @@ d_layer'45'capacity_110 v0 v1 v2 v3 v4 v5 v6
                     (coe
                        MAlonzo.Code.Data.Nat.Base.d__'8852'__208
                        (coe
-                          d_layer'45'capacity_110 (coe v11) (coe v1) (coe v2) (coe v3)
+                          d_layer'45'capacity_74 (coe v11) (coe v1) (coe v2) (coe v3)
                           (coe v9) (coe v5) (coe v6))
                        (coe
-                          d_layer'45'capacity_110 (coe v12) (coe v1) (coe v2) (coe v3)
+                          d_layer'45'capacity_74 (coe v12) (coe v1) (coe v2) (coe v3)
                           (coe v10) (coe v5) (coe v6)))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.IRTy.C_wf'45'Prod_148 v9 v10
@@ -347,38 +233,38 @@ d_layer'45'capacity_110 v0 v1 v2 v3 v4 v5 v6
                     (coe
                        addInt (coe (1 :: Integer))
                        (coe
-                          d_layer'45'capacity_110 (coe v11) (coe v1) (coe v2) (coe v3)
+                          d_layer'45'capacity_74 (coe v11) (coe v1) (coe v2) (coe v3)
                           (coe v9) (coe v5) (coe v6)))
                     (coe
-                       d_layer'45'capacity_110 (coe v12) (coe v1) (coe v2) (coe v3)
+                       d_layer'45'capacity_74 (coe v12) (coe v1) (coe v2) (coe v3)
                        (coe v10) (coe v5) (coe v6))
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.IR.Stack.∘-stack-req
-d_'8728''45'stack'45'req_144 ::
+d_'8728''45'stack'45'req_108 ::
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'8728''45'stack'45'req_144 = erased
+d_'8728''45'stack'45'req_108 = erased
 -- Once.CCC.IR.Stack.⟨,⟩-stack-req
-d_'10216''44''10217''45'stack'45'req_160 ::
+d_'10216''44''10217''45'stack'45'req_124 ::
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'10216''44''10217''45'stack'45'req_160 = erased
+d_'10216''44''10217''45'stack'45'req_124 = erased
 -- Once.CCC.IR.Stack.sigOp-stack-req
-d_sigOp'45'stack'45'req_172 ::
-  MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_160 ->
+d_sigOp'45'stack'45'req_136 ::
+  MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_162 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_sigOp'45'stack'45'req_172 = erased
+d_sigOp'45'stack'45'req_136 = erased
 -- Once.CCC.IR.Stack.⟨,⟩-capacity-for-pair
-d_'10216''44''10217''45'capacity'45'for'45'pair_188 ::
+d_'10216''44''10217''45'capacity'45'for'45'pair_152 ::
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
@@ -388,15 +274,15 @@ d_'10216''44''10217''45'capacity'45'for'45'pair_188 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-d_'10216''44''10217''45'capacity'45'for'45'pair_188 ~v0 ~v1 ~v2 ~v3
+d_'10216''44''10217''45'capacity'45'for'45'pair_152 ~v0 ~v1 ~v2 ~v3
                                                     ~v4 ~v5 ~v6 v7
-  = du_'10216''44''10217''45'capacity'45'for'45'pair_188 v7
-du_'10216''44''10217''45'capacity'45'for'45'pair_188 ::
+  = du_'10216''44''10217''45'capacity'45'for'45'pair_152 v7
+du_'10216''44''10217''45'capacity'45'for'45'pair_152 ::
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-du_'10216''44''10217''45'capacity'45'for'45'pair_188 v0 = coe v0
+du_'10216''44''10217''45'capacity'45'for'45'pair_152 v0 = coe v0
 -- Once.CCC.IR.Stack.layer-capacity-prod-left
-d_layer'45'capacity'45'prod'45'left_244 ::
+d_layer'45'capacity'45'prod'45'left_208 ::
   MAlonzo.Code.Once.IRTy.T_IRFunctor_4 ->
   MAlonzo.Code.Once.IRTy.T_IRFunctor_4 ->
   MAlonzo.Code.Once.IRTy.T_IRFunctor_4 ->
@@ -410,11 +296,11 @@ d_layer'45'capacity'45'prod'45'left_244 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-d_layer'45'capacity'45'prod'45'left_244 v0 v1 v2 v3 v4 v5 v6 v7 v8
+d_layer'45'capacity'45'prod'45'left_208 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                         v9 ~v10 v11
-  = du_layer'45'capacity'45'prod'45'left_244
+  = du_layer'45'capacity'45'prod'45'left_208
       v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v11
-du_layer'45'capacity'45'prod'45'left_244 ::
+du_layer'45'capacity'45'prod'45'left_208 ::
   MAlonzo.Code.Once.IRTy.T_IRFunctor_4 ->
   MAlonzo.Code.Once.IRTy.T_IRFunctor_4 ->
   MAlonzo.Code.Once.IRTy.T_IRFunctor_4 ->
@@ -427,30 +313,30 @@ du_layer'45'capacity'45'prod'45'left_244 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-du_layer'45'capacity'45'prod'45'left_244 v0 v1 v2 v3 v4 v5 v6 v7 v8
+du_layer'45'capacity'45'prod'45'left_208 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                          v9 v10
   = coe
       MAlonzo.Code.Data.Nat.Properties.du_'8804''45'trans_2908
       (coe
          MAlonzo.Code.Data.Nat.Properties.d_'43''45'mono'691''45''8804'_3684
          (addInt (coe (1 :: Integer)) (coe v9))
-         (d_layer'45'capacity_110
+         (d_layer'45'capacity_74
             (coe v0) (coe v2) (coe v3) (coe v4) (coe v5) (coe v7) (coe v8))
          (addInt
             (coe
-               d_layer'45'capacity_110 (coe v0) (coe v2) (coe v3) (coe v4)
-               (coe v5) (coe v7) (coe v8))
+               d_layer'45'capacity_74 (coe v0) (coe v2) (coe v3) (coe v4) (coe v5)
+               (coe v7) (coe v8))
             (coe
-               d_layer'45'capacity_110 (coe v1) (coe v2) (coe v3) (coe v4)
-               (coe v6) (coe v7) (coe v8)))
+               d_layer'45'capacity_74 (coe v1) (coe v2) (coe v3) (coe v4) (coe v6)
+               (coe v7) (coe v8)))
          (coe
             MAlonzo.Code.Data.Nat.Properties.du_m'8804'm'43'n_3624
             (coe
-               d_layer'45'capacity_110 (coe v0) (coe v2) (coe v3) (coe v4)
-               (coe v5) (coe v7) (coe v8))))
+               d_layer'45'capacity_74 (coe v0) (coe v2) (coe v3) (coe v4) (coe v5)
+               (coe v7) (coe v8))))
       (coe v10)
 -- Once.CCC.IR.Stack.layer-capacity-prod-right
-d_layer'45'capacity'45'prod'45'right_296 ::
+d_layer'45'capacity'45'prod'45'right_260 ::
   MAlonzo.Code.Once.IRTy.T_IRFunctor_4 ->
   MAlonzo.Code.Once.IRTy.T_IRFunctor_4 ->
   MAlonzo.Code.Once.IRTy.T_IRFunctor_4 ->
@@ -464,11 +350,11 @@ d_layer'45'capacity'45'prod'45'right_296 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-d_layer'45'capacity'45'prod'45'right_296 v0 v1 v2 v3 v4 v5 v6 v7 v8
+d_layer'45'capacity'45'prod'45'right_260 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                          v9 ~v10 v11
-  = du_layer'45'capacity'45'prod'45'right_296
+  = du_layer'45'capacity'45'prod'45'right_260
       v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v11
-du_layer'45'capacity'45'prod'45'right_296 ::
+du_layer'45'capacity'45'prod'45'right_260 ::
   MAlonzo.Code.Once.IRTy.T_IRFunctor_4 ->
   MAlonzo.Code.Once.IRTy.T_IRFunctor_4 ->
   MAlonzo.Code.Once.IRTy.T_IRFunctor_4 ->
@@ -481,30 +367,30 @@ du_layer'45'capacity'45'prod'45'right_296 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-du_layer'45'capacity'45'prod'45'right_296 v0 v1 v2 v3 v4 v5 v6 v7
+du_layer'45'capacity'45'prod'45'right_260 v0 v1 v2 v3 v4 v5 v6 v7
                                           v8 v9 v10
   = coe
       MAlonzo.Code.Data.Nat.Properties.du_'8804''45'trans_2908
       (coe
          MAlonzo.Code.Data.Nat.Properties.d_'43''45'mono'691''45''8804'_3684
          (addInt (coe (1 :: Integer)) (coe v9))
-         (d_layer'45'capacity_110
+         (d_layer'45'capacity_74
             (coe v1) (coe v2) (coe v3) (coe v4) (coe v6) (coe v7) (coe v8))
          (addInt
             (coe
-               d_layer'45'capacity_110 (coe v0) (coe v2) (coe v3) (coe v4)
-               (coe v5) (coe v7) (coe v8))
+               d_layer'45'capacity_74 (coe v0) (coe v2) (coe v3) (coe v4) (coe v5)
+               (coe v7) (coe v8))
             (coe
-               d_layer'45'capacity_110 (coe v1) (coe v2) (coe v3) (coe v4)
-               (coe v6) (coe v7) (coe v8)))
+               d_layer'45'capacity_74 (coe v1) (coe v2) (coe v3) (coe v4) (coe v6)
+               (coe v7) (coe v8)))
          (coe
             MAlonzo.Code.Data.Nat.Properties.du_m'8804'n'43'm_3636
             (coe
-               d_layer'45'capacity_110 (coe v1) (coe v2) (coe v3) (coe v4)
-               (coe v6) (coe v7) (coe v8))))
+               d_layer'45'capacity_74 (coe v1) (coe v2) (coe v3) (coe v4) (coe v6)
+               (coe v7) (coe v8))))
       (coe v10)
 -- Once.CCC.IR.Stack.layer-capacity-sum-left
-d_layer'45'capacity'45'sum'45'left_348 ::
+d_layer'45'capacity'45'sum'45'left_312 ::
   MAlonzo.Code.Once.IRTy.T_IRFunctor_4 ->
   MAlonzo.Code.Once.IRTy.T_IRFunctor_4 ->
   MAlonzo.Code.Once.IRTy.T_IRFunctor_4 ->
@@ -518,11 +404,11 @@ d_layer'45'capacity'45'sum'45'left_348 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-d_layer'45'capacity'45'sum'45'left_348 v0 v1 v2 v3 v4 v5 v6 v7 v8
+d_layer'45'capacity'45'sum'45'left_312 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                        v9 ~v10 v11
-  = du_layer'45'capacity'45'sum'45'left_348
+  = du_layer'45'capacity'45'sum'45'left_312
       v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v11
-du_layer'45'capacity'45'sum'45'left_348 ::
+du_layer'45'capacity'45'sum'45'left_312 ::
   MAlonzo.Code.Once.IRTy.T_IRFunctor_4 ->
   MAlonzo.Code.Once.IRTy.T_IRFunctor_4 ->
   MAlonzo.Code.Once.IRTy.T_IRFunctor_4 ->
@@ -535,25 +421,25 @@ du_layer'45'capacity'45'sum'45'left_348 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-du_layer'45'capacity'45'sum'45'left_348 v0 v1 v2 v3 v4 v5 v6 v7 v8
+du_layer'45'capacity'45'sum'45'left_312 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                         v9 v10
   = coe
       MAlonzo.Code.Data.Nat.Properties.du_'8804''45'trans_2908
       (coe
          MAlonzo.Code.Data.Nat.Properties.d_'43''45'mono'691''45''8804'_3684
          v9
-         (d_layer'45'capacity_110
+         (d_layer'45'capacity_74
             (coe v0) (coe v2) (coe v3) (coe v4) (coe v5) (coe v7) (coe v8))
          (addInt
             (coe (2 :: Integer))
             (coe
                MAlonzo.Code.Data.Nat.Base.d__'8852'__208
                (coe
-                  d_layer'45'capacity_110 (coe v0) (coe v2) (coe v3) (coe v4)
-                  (coe v5) (coe v7) (coe v8))
+                  d_layer'45'capacity_74 (coe v0) (coe v2) (coe v3) (coe v4) (coe v5)
+                  (coe v7) (coe v8))
                (coe
-                  d_layer'45'capacity_110 (coe v1) (coe v2) (coe v3) (coe v4)
-                  (coe v6) (coe v7) (coe v8))))
+                  d_layer'45'capacity_74 (coe v1) (coe v2) (coe v3) (coe v4) (coe v6)
+                  (coe v7) (coe v8))))
          (coe
             MAlonzo.Code.Data.Nat.Properties.du_'8804''45'trans_2908
             (coe
@@ -566,24 +452,24 @@ du_layer'45'capacity'45'sum'45'left_348 v0 v1 v2 v3 v4 v5 v6 v7 v8
                   MAlonzo.Code.Algebra.Construct.NaturalChoice.Base.du_MaxOp'8658'MinOp_186
                   (coe MAlonzo.Code.Data.Nat.Properties.d_'8852''45'operator_4582))
                (coe
-                  d_layer'45'capacity_110 (coe v0) (coe v2) (coe v3) (coe v4)
-                  (coe v5) (coe v7) (coe v8))
+                  d_layer'45'capacity_74 (coe v0) (coe v2) (coe v3) (coe v4) (coe v5)
+                  (coe v7) (coe v8))
                (coe
-                  d_layer'45'capacity_110 (coe v1) (coe v2) (coe v3) (coe v4)
-                  (coe v6) (coe v7) (coe v8)))
+                  d_layer'45'capacity_74 (coe v1) (coe v2) (coe v3) (coe v4) (coe v6)
+                  (coe v7) (coe v8)))
             (coe
                MAlonzo.Code.Data.Nat.Properties.du_m'8804'n'43'm_3636
                (coe
                   MAlonzo.Code.Data.Nat.Base.d__'8852'__208
                   (coe
-                     d_layer'45'capacity_110 (coe v0) (coe v2) (coe v3) (coe v4)
-                     (coe v5) (coe v7) (coe v8))
+                     d_layer'45'capacity_74 (coe v0) (coe v2) (coe v3) (coe v4) (coe v5)
+                     (coe v7) (coe v8))
                   (coe
-                     d_layer'45'capacity_110 (coe v1) (coe v2) (coe v3) (coe v4)
-                     (coe v6) (coe v7) (coe v8))))))
+                     d_layer'45'capacity_74 (coe v1) (coe v2) (coe v3) (coe v4) (coe v6)
+                     (coe v7) (coe v8))))))
       (coe v10)
 -- Once.CCC.IR.Stack.layer-capacity-sum-right
-d_layer'45'capacity'45'sum'45'right_394 ::
+d_layer'45'capacity'45'sum'45'right_358 ::
   MAlonzo.Code.Once.IRTy.T_IRFunctor_4 ->
   MAlonzo.Code.Once.IRTy.T_IRFunctor_4 ->
   MAlonzo.Code.Once.IRTy.T_IRFunctor_4 ->
@@ -597,11 +483,11 @@ d_layer'45'capacity'45'sum'45'right_394 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-d_layer'45'capacity'45'sum'45'right_394 v0 v1 v2 v3 v4 v5 v6 v7 v8
+d_layer'45'capacity'45'sum'45'right_358 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                         v9 ~v10 v11
-  = du_layer'45'capacity'45'sum'45'right_394
+  = du_layer'45'capacity'45'sum'45'right_358
       v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v11
-du_layer'45'capacity'45'sum'45'right_394 ::
+du_layer'45'capacity'45'sum'45'right_358 ::
   MAlonzo.Code.Once.IRTy.T_IRFunctor_4 ->
   MAlonzo.Code.Once.IRTy.T_IRFunctor_4 ->
   MAlonzo.Code.Once.IRTy.T_IRFunctor_4 ->
@@ -614,25 +500,25 @@ du_layer'45'capacity'45'sum'45'right_394 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-du_layer'45'capacity'45'sum'45'right_394 v0 v1 v2 v3 v4 v5 v6 v7 v8
+du_layer'45'capacity'45'sum'45'right_358 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                          v9 v10
   = coe
       MAlonzo.Code.Data.Nat.Properties.du_'8804''45'trans_2908
       (coe
          MAlonzo.Code.Data.Nat.Properties.d_'43''45'mono'691''45''8804'_3684
          v9
-         (d_layer'45'capacity_110
+         (d_layer'45'capacity_74
             (coe v1) (coe v2) (coe v3) (coe v4) (coe v6) (coe v7) (coe v8))
          (addInt
             (coe (2 :: Integer))
             (coe
                MAlonzo.Code.Data.Nat.Base.d__'8852'__208
                (coe
-                  d_layer'45'capacity_110 (coe v0) (coe v2) (coe v3) (coe v4)
-                  (coe v5) (coe v7) (coe v8))
+                  d_layer'45'capacity_74 (coe v0) (coe v2) (coe v3) (coe v4) (coe v5)
+                  (coe v7) (coe v8))
                (coe
-                  d_layer'45'capacity_110 (coe v1) (coe v2) (coe v3) (coe v4)
-                  (coe v6) (coe v7) (coe v8))))
+                  d_layer'45'capacity_74 (coe v1) (coe v2) (coe v3) (coe v4) (coe v6)
+                  (coe v7) (coe v8))))
          (coe
             MAlonzo.Code.Data.Nat.Properties.du_'8804''45'trans_2908
             (coe
@@ -645,24 +531,24 @@ du_layer'45'capacity'45'sum'45'right_394 v0 v1 v2 v3 v4 v5 v6 v7 v8
                   MAlonzo.Code.Algebra.Construct.NaturalChoice.Base.du_MaxOp'8658'MinOp_186
                   (coe MAlonzo.Code.Data.Nat.Properties.d_'8852''45'operator_4582))
                (coe
-                  d_layer'45'capacity_110 (coe v0) (coe v2) (coe v3) (coe v4)
-                  (coe v5) (coe v7) (coe v8))
+                  d_layer'45'capacity_74 (coe v0) (coe v2) (coe v3) (coe v4) (coe v5)
+                  (coe v7) (coe v8))
                (coe
-                  d_layer'45'capacity_110 (coe v1) (coe v2) (coe v3) (coe v4)
-                  (coe v6) (coe v7) (coe v8)))
+                  d_layer'45'capacity_74 (coe v1) (coe v2) (coe v3) (coe v4) (coe v6)
+                  (coe v7) (coe v8)))
             (coe
                MAlonzo.Code.Data.Nat.Properties.du_m'8804'n'43'm_3636
                (coe
                   MAlonzo.Code.Data.Nat.Base.d__'8852'__208
                   (coe
-                     d_layer'45'capacity_110 (coe v0) (coe v2) (coe v3) (coe v4)
-                     (coe v5) (coe v7) (coe v8))
+                     d_layer'45'capacity_74 (coe v0) (coe v2) (coe v3) (coe v4) (coe v5)
+                     (coe v7) (coe v8))
                   (coe
-                     d_layer'45'capacity_110 (coe v1) (coe v2) (coe v3) (coe v4)
-                     (coe v6) (coe v7) (coe v8))))))
+                     d_layer'45'capacity_74 (coe v1) (coe v2) (coe v3) (coe v4) (coe v6)
+                     (coe v7) (coe v8))))))
       (coe v10)
 -- Once.CCC.IR.Stack.sum-wrapper-fits-left
-d_sum'45'wrapper'45'fits'45'left_436 ::
+d_sum'45'wrapper'45'fits'45'left_400 ::
   MAlonzo.Code.Once.IRTy.T_IRFunctor_4 ->
   MAlonzo.Code.Once.IRTy.T_IRFunctor_4 ->
   MAlonzo.Code.Once.IRTy.T_IRFunctor_4 ->
@@ -673,19 +559,19 @@ d_sum'45'wrapper'45'fits'45'left_436 ::
   MAlonzo.Code.Once.IRTy.T_WellFormedFI_130 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-d_sum'45'wrapper'45'fits'45'left_436 v0 v1 v2 v3 v4 v5 v6 v7 v8
+d_sum'45'wrapper'45'fits'45'left_400 v0 v1 v2 v3 v4 v5 v6 v7 v8
   = coe
       MAlonzo.Code.Data.Nat.Properties.d_'43''45'mono'737''45''8804'_3682
       (2 :: Integer)
-      (d_layer'45'capacity_110
+      (d_layer'45'capacity_74
          (coe v0) (coe v2) (coe v3) (coe v4) (coe v5) (coe v7) (coe v8))
       (MAlonzo.Code.Data.Nat.Base.d__'8852'__208
          (coe
-            d_layer'45'capacity_110 (coe v0) (coe v2) (coe v3) (coe v4)
-            (coe v5) (coe v7) (coe v8))
+            d_layer'45'capacity_74 (coe v0) (coe v2) (coe v3) (coe v4) (coe v5)
+            (coe v7) (coe v8))
          (coe
-            d_layer'45'capacity_110 (coe v1) (coe v2) (coe v3) (coe v4)
-            (coe v6) (coe v7) (coe v8)))
+            d_layer'45'capacity_74 (coe v1) (coe v2) (coe v3) (coe v4) (coe v6)
+            (coe v7) (coe v8)))
       (coe
          MAlonzo.Code.Algebra.Construct.NaturalChoice.MinOp.du_x'8851'y'8804'x_2924
          (coe
@@ -696,13 +582,13 @@ d_sum'45'wrapper'45'fits'45'left_436 v0 v1 v2 v3 v4 v5 v6 v7 v8
             MAlonzo.Code.Algebra.Construct.NaturalChoice.Base.du_MaxOp'8658'MinOp_186
             (coe MAlonzo.Code.Data.Nat.Properties.d_'8852''45'operator_4582))
          (coe
-            d_layer'45'capacity_110 (coe v0) (coe v2) (coe v3) (coe v4)
-            (coe v5) (coe v7) (coe v8))
+            d_layer'45'capacity_74 (coe v0) (coe v2) (coe v3) (coe v4) (coe v5)
+            (coe v7) (coe v8))
          (coe
-            d_layer'45'capacity_110 (coe v1) (coe v2) (coe v3) (coe v4)
-            (coe v6) (coe v7) (coe v8)))
+            d_layer'45'capacity_74 (coe v1) (coe v2) (coe v3) (coe v4) (coe v6)
+            (coe v7) (coe v8)))
 -- Once.CCC.IR.Stack.sum-wrapper-fits-right
-d_sum'45'wrapper'45'fits'45'right_476 ::
+d_sum'45'wrapper'45'fits'45'right_440 ::
   MAlonzo.Code.Once.IRTy.T_IRFunctor_4 ->
   MAlonzo.Code.Once.IRTy.T_IRFunctor_4 ->
   MAlonzo.Code.Once.IRTy.T_IRFunctor_4 ->
@@ -713,19 +599,19 @@ d_sum'45'wrapper'45'fits'45'right_476 ::
   MAlonzo.Code.Once.IRTy.T_WellFormedFI_130 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-d_sum'45'wrapper'45'fits'45'right_476 v0 v1 v2 v3 v4 v5 v6 v7 v8
+d_sum'45'wrapper'45'fits'45'right_440 v0 v1 v2 v3 v4 v5 v6 v7 v8
   = coe
       MAlonzo.Code.Data.Nat.Properties.d_'43''45'mono'737''45''8804'_3682
       (2 :: Integer)
-      (d_layer'45'capacity_110
+      (d_layer'45'capacity_74
          (coe v1) (coe v2) (coe v3) (coe v4) (coe v6) (coe v7) (coe v8))
       (MAlonzo.Code.Data.Nat.Base.d__'8852'__208
          (coe
-            d_layer'45'capacity_110 (coe v0) (coe v2) (coe v3) (coe v4)
-            (coe v5) (coe v7) (coe v8))
+            d_layer'45'capacity_74 (coe v0) (coe v2) (coe v3) (coe v4) (coe v5)
+            (coe v7) (coe v8))
          (coe
-            d_layer'45'capacity_110 (coe v1) (coe v2) (coe v3) (coe v4)
-            (coe v6) (coe v7) (coe v8)))
+            d_layer'45'capacity_74 (coe v1) (coe v2) (coe v3) (coe v4) (coe v6)
+            (coe v7) (coe v8)))
       (coe
          MAlonzo.Code.Algebra.Construct.NaturalChoice.MinOp.du_x'8851'y'8804'y_2950
          (coe
@@ -736,21 +622,21 @@ d_sum'45'wrapper'45'fits'45'right_476 v0 v1 v2 v3 v4 v5 v6 v7 v8
             MAlonzo.Code.Algebra.Construct.NaturalChoice.Base.du_MaxOp'8658'MinOp_186
             (coe MAlonzo.Code.Data.Nat.Properties.d_'8852''45'operator_4582))
          (coe
-            d_layer'45'capacity_110 (coe v0) (coe v2) (coe v3) (coe v4)
-            (coe v5) (coe v7) (coe v8))
+            d_layer'45'capacity_74 (coe v0) (coe v2) (coe v3) (coe v4) (coe v5)
+            (coe v7) (coe v8))
          (coe
-            d_layer'45'capacity_110 (coe v1) (coe v2) (coe v3) (coe v4)
-            (coe v6) (coe v7) (coe v8)))
+            d_layer'45'capacity_74 (coe v1) (coe v2) (coe v3) (coe v4) (coe v6)
+            (coe v7) (coe v8)))
 -- Once.CCC.IR.Stack.sum-layer-cap-bound
-d_sum'45'layer'45'cap'45'bound_532
+d_sum'45'layer'45'cap'45'bound_496
   = error
       "MAlonzo Runtime Error: postulate evaluated: Once.CCC.IR.Stack.sum-layer-cap-bound"
 -- Once.CCC.IR.Stack.prod-layer-cap-bound
-d_prod'45'layer'45'cap'45'bound_552
+d_prod'45'layer'45'cap'45'bound_516
   = error
       "MAlonzo Runtime Error: postulate evaluated: Once.CCC.IR.Stack.prod-layer-cap-bound"
 -- Once.CCC.IR.Stack.layer-cap-bound
-d_layer'45'cap'45'bound_568 ::
+d_layer'45'cap'45'bound_532 ::
   MAlonzo.Code.Once.IRTy.T_IRFunctor_4 ->
   MAlonzo.Code.Once.IRTy.T_IRFunctor_4 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
@@ -759,7 +645,7 @@ d_layer'45'cap'45'bound_568 ::
   MAlonzo.Code.Once.IRTy.T_WellFormedFI_130 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-d_layer'45'cap'45'bound_568 v0 v1 v2 v3 v4 v5 v6
+d_layer'45'cap'45'bound_532 v0 v1 v2 v3 v4 v5 v6
   = case coe v4 of
       MAlonzo.Code.Once.IRTy.C_wf'45'K_134 v8
         -> coe
@@ -778,23 +664,23 @@ d_layer'45'cap'45'bound_568 v0 v1 v2 v3 v4 v5 v6
         -> coe
              MAlonzo.Code.Data.Nat.Properties.d_'8804''45'refl_2900
              (coe
-                d_layer'45'capacity_110 (coe MAlonzo.Code.Once.IRTy.C_Id_10)
+                d_layer'45'capacity_74 (coe MAlonzo.Code.Once.IRTy.C_Id_10)
                 (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v6))
       MAlonzo.Code.Once.IRTy.C_wf'45'Sum_142 v9 v10
         -> case coe v0 of
              MAlonzo.Code.Once.IRTy.C__'8853'__12 v11 v12
                -> coe
-                    d_sum'45'layer'45'cap'45'bound_532 v11 v12 v1 v2 v3 v9 v10 v5 v6
+                    d_sum'45'layer'45'cap'45'bound_496 v11 v12 v1 v2 v3 v9 v10 v5 v6
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.IRTy.C_wf'45'Prod_148 v9 v10
         -> case coe v0 of
              MAlonzo.Code.Once.IRTy.C__'8855'__14 v11 v12
                -> coe
-                    d_prod'45'layer'45'cap'45'bound_552 v11 v12 v1 v2 v3 v9 v10 v5 v6
+                    d_prod'45'layer'45'cap'45'bound_516 v11 v12 v1 v2 v3 v9 v10 v5 v6
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.IR.Stack.ir-stack-req-geq-layer-cap
-d_ir'45'stack'45'req'45'geq'45'layer'45'cap_622 ::
+d_ir'45'stack'45'req'45'geq'45'layer'45'cap_586 ::
   MAlonzo.Code.Once.IRTy.T_IRFunctor_4 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
@@ -804,11 +690,11 @@ d_ir'45'stack'45'req'45'geq'45'layer'45'cap_622 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-d_ir'45'stack'45'req'45'geq'45'layer'45'cap_622 v0 v1 v2 v3 v4 v5
+d_ir'45'stack'45'req'45'geq'45'layer'45'cap_586 v0 v1 v2 v3 v4 v5
                                                 ~v6 v7
-  = du_ir'45'stack'45'req'45'geq'45'layer'45'cap_622
+  = du_ir'45'stack'45'req'45'geq'45'layer'45'cap_586
       v0 v1 v2 v3 v4 v5 v7
-du_ir'45'stack'45'req'45'geq'45'layer'45'cap_622 ::
+du_ir'45'stack'45'req'45'geq'45'layer'45'cap_586 ::
   MAlonzo.Code.Once.IRTy.T_IRFunctor_4 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
@@ -817,20 +703,20 @@ du_ir'45'stack'45'req'45'geq'45'layer'45'cap_622 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-du_ir'45'stack'45'req'45'geq'45'layer'45'cap_622 v0 v1 v2 v3 v4 v5
+du_ir'45'stack'45'req'45'geq'45'layer'45'cap_586 v0 v1 v2 v3 v4 v5
                                                  v6
   = coe
       MAlonzo.Code.Data.Nat.Properties.du_'8804''45'trans_2908
       (coe
          MAlonzo.Code.Data.Nat.Properties.d_'43''45'mono'691''45''8804'_3684
          v5
-         (d_layer'45'capacity_110
+         (d_layer'45'capacity_74
             (coe v0) (coe v0) (coe v1) (coe v2) (coe v3) (coe v3) (coe v4))
          (d_ir'45'stack'45'requirement_40
             (coe
                MAlonzo.Code.Once.IRTy.C__'42'__20 (coe v1)
                (coe MAlonzo.Code.Once.IRTy.C_μ'45'type_26 (coe v0)))
-            (coe v2) (coe MAlonzo.Code.Once.IR.C_Cata_108 v3 v4))
-         (d_layer'45'cap'45'bound_568
+            (coe v2) (coe MAlonzo.Code.Once.IR.C_Cata_106 v3 v4))
+         (d_layer'45'cap'45'bound_532
             (coe v0) (coe v0) (coe v1) (coe v2) (coe v3) (coe v3) (coe v4)))
       (coe v6)

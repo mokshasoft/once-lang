@@ -25,7 +25,6 @@ import qualified MAlonzo.Code.Data.List.Relation.Unary.All
 import qualified MAlonzo.Code.Data.List.Relation.Unary.Any
 import qualified MAlonzo.Code.Once.CanonicalName
 import qualified MAlonzo.Code.Once.Parser.Module.Core
-import qualified MAlonzo.Code.Once.SigEffect
 import qualified MAlonzo.Code.Once.Type
 import qualified MAlonzo.Code.Once.TypeCheck.Raw
 
@@ -80,21 +79,21 @@ data T_ResolvesExpr_98
 d_ResolvesDecl_290 a0 a1 a2 a3 a4 = ()
 data T_ResolvesDecl_290
   = C_rd'45'fundef_304 T_ResolvesExpr_98 | C_rd'45'typesig_310 |
-    C_rd'45'signature_320 | C_rd'45'typealias_328 | C_rd'45'import_332
+    C_rd'45'signature_318 | C_rd'45'typealias_326 | C_rd'45'import_330
 -- Once.Spec.Resolution.NotImport
-d_NotImport_334 a0 = ()
-data T_NotImport_334
-  = C_nim'45'typesig_340 | C_nim'45'fundef_346 | C_nim'45'sig_356 |
-    C_nim'45'alias_364
+d_NotImport_332 a0 = ()
+data T_NotImport_332
+  = C_nim'45'typesig_338 | C_nim'45'fundef_344 | C_nim'45'sig_352 |
+    C_nim'45'alias_360
 -- Once.Spec.Resolution.ResolvesDecls
-d_ResolvesDecls_374 a0 a1 a2 a3 a4 a5 = ()
-data T_ResolvesDecls_374
-  = C_rds'45'nil_384 |
-    C_rds'45'cons_394 T_NotImport_334 T_ResolvesDecl_290
-                      T_ResolvesDecls_374 |
-    C_rds'45'import_404 [MAlonzo.Code.Once.Parser.Module.Core.T_Decl_20]
+d_ResolvesDecls_370 a0 a1 a2 a3 a4 a5 = ()
+data T_ResolvesDecls_370
+  = C_rds'45'nil_380 |
+    C_rds'45'cons_390 T_NotImport_332 T_ResolvesDecl_290
+                      T_ResolvesDecls_370 |
+    C_rds'45'import_400 [MAlonzo.Code.Once.Parser.Module.Core.T_Decl_20]
                         [MAlonzo.Code.Once.Parser.Module.Core.T_Decl_20] T_FirstAt_18
-                        T_ResolvesDecls_374
+                        T_ResolvesDecls_370
 -- Once.Spec.Resolution.ResolvesModule
-d_ResolvesModule_410 a0 a1 a2 a3 = ()
-newtype T_ResolvesModule_410 = C_rm_420 T_ResolvesDecls_374
+d_ResolvesModule_406 a0 a1 a2 a3 = ()
+newtype T_ResolvesModule_406 = C_rm_416 T_ResolvesDecls_370

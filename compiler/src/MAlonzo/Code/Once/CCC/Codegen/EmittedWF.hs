@@ -264,38 +264,38 @@ d_labels'45'resolvable_64 v0
 d_sigop'45'owed_72 ::
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_160 ->
+  MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_162 ->
   [MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4]
 d_sigop'45'owed_72 ~v0 ~v1 v2 = du_sigop'45'owed_72 v2
 du_sigop'45'owed_72 ::
-  MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_160 ->
+  MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_162 ->
   [MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4]
 du_sigop'45'owed_72 v0
   = coe
       du_go_84 (coe v0)
-      (coe MAlonzo.Code.Once.SigOp.Info.d_sem_176 (coe v0))
+      (coe MAlonzo.Code.Once.SigOp.Info.d_sem_178 (coe v0))
 -- Once.CCC.Codegen.EmittedWF._.go
 d_go_84 ::
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_160 ->
-  MAlonzo.Code.Once.SigOp.Info.T_SigOpSem_134 ->
+  MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_162 ->
+  MAlonzo.Code.Once.SigOp.Info.T_SigOpSem_136 ->
   [MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4]
 d_go_84 ~v0 ~v1 v2 v3 = du_go_84 v2 v3
 du_go_84 ::
-  MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_160 ->
-  MAlonzo.Code.Once.SigOp.Info.T_SigOpSem_134 ->
+  MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_162 ->
+  MAlonzo.Code.Once.SigOp.Info.T_SigOpSem_136 ->
   [MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4]
 du_go_84 v0 v1
   = case coe v1 of
-      MAlonzo.Code.Once.SigOp.Info.C_pureV_140 v2
+      MAlonzo.Code.Once.SigOp.Info.C_pureV_142 v2
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
-             (coe MAlonzo.Code.Once.SigOp.Info.d_name_174 (coe v0))
+             (coe MAlonzo.Code.Once.SigOp.Info.d_name_176 (coe v0))
              (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
-      MAlonzo.Code.Once.SigOp.Info.C_emitsV_142
+      MAlonzo.Code.Once.SigOp.Info.C_emitsV_144
         -> coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16
-      MAlonzo.Code.Once.SigOp.Info.C_haltsV_144
+      MAlonzo.Code.Once.SigOp.Info.C_haltsV_146
         -> coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Codegen.EmittedWF.syms-ref

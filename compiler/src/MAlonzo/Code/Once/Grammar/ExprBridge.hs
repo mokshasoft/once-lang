@@ -35964,7 +35964,7 @@ du_complete'45'parenContWFraw_636 v0 v1 v2 v3
                     MAlonzo.Code.Once.TypeCheck.Raw.C_RAnnot_60 v11 v12
                       -> let v13
                                = coe
-                                   MAlonzo.Code.Once.Grammar.ParserBridge.du_complete'45'typeWFraw_300
+                                   MAlonzo.Code.Once.Grammar.ParserBridge.du_complete'45'typeWFraw_380
                                    (coe v10) (coe v12)
                                    (coe
                                       MAlonzo.Code.Agda.Builtin.List.C__'8759'__22

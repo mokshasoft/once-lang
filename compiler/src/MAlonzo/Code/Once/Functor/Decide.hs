@@ -68,7 +68,7 @@ d_isBaseType'63'_8 v0
         -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
       MAlonzo.Code.Once.Type.C_μ'45'type_128 v1
         -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
-      MAlonzo.Code.Once.Type.C_ν'45'type_130 v1
+      MAlonzo.Code.Once.Type.C_ν'45'type_130 v1 v2
         -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
       MAlonzo.Code.Once.Type.C_Int_132
         -> coe

@@ -116,10 +116,10 @@ d_expandAliases_48 v0 v1
         -> coe
              MAlonzo.Code.Once.Type.C_μ'45'type_128
              (coe d_expandAliasesF_46 (coe v0) (coe v2))
-      MAlonzo.Code.Once.Type.C_ν'45'type_130 v2
+      MAlonzo.Code.Once.Type.C_ν'45'type_130 v2 v3
         -> coe
              MAlonzo.Code.Once.Type.C_ν'45'type_130
-             (coe d_expandAliasesF_46 (coe v0) (coe v2))
+             (coe d_expandAliasesF_46 (coe v0) (coe v2)) (coe v3)
       MAlonzo.Code.Once.Type.C_Int_132 -> coe v1
       MAlonzo.Code.Once.Type.C_Float_134 -> coe v1
       MAlonzo.Code.Once.Type.C_Str_136 -> coe v1
