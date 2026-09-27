@@ -88,7 +88,7 @@ mutual
   extractGround-irr (PEff A B) (gA , gB) (gA′ , gB′) =
     cong₂ (λ X Y → X ⇒[ T.mk-kind T.Many T.eff ] Y) (extractGround-irr A gA gA′) (extractGround-irr B gB gB′)
   extractGround-irr (Pμ-type F) g g′ = cong μ-type (extractGroundF-irr F g g′)
-  extractGround-irr (Pν-type F) g g′ = cong ν-type (extractGroundF-irr F g g′)
+  extractGround-irr (Pν-type F π) g g′ = cong (λ G → ν-type G π) (extractGroundF-irr F g g′)
   extractGround-irr PInt _ _ = refl
   extractGround-irr PFloat _ _ = refl
   extractGround-irr PStr _ _ = refl
@@ -318,6 +318,26 @@ mutual
   ... | refl , refl = refl , refl
   agree-ii (t-Out-app-infer _ refl d) (t-Out-app-infer _ refl d′) with agree-ii d d′
   ... | refl , refl = refl , refl
+  -- D233: the argument's type decides the rule — a pure and an effectful
+  -- stream are different types, so the two `Out` rules never overlap.
+  agree-ii (t-Out-eff-app-infer _ refl d) (t-Out-eff-app-infer _ refl d′) with agree-ii d d′
+  ... | refl , refl = refl , refl
+  agree-ii (t-Out-eff-app-infer _ _ d) (t-Out-app-infer _ _ d′) with agree-ii d d′
+  ... | () , _
+  agree-ii (t-Out-app-infer _ _ d) (t-Out-eff-app-infer _ _ d′) with agree-ii d d′
+  ... | () , _
+  agree-ii (t-Out-eff-app-infer _ _ d) (t-Out-app-void d′) with agree-ii d d′
+  ... | () , _
+  agree-ii (t-Out-app-void d) (t-Out-eff-app-infer _ _ d′) with agree-ii d d′
+  ... | () , _
+  agree-ii (t-Out-eff-app-infer _ _ _) (t-app () _ _)
+  agree-ii (t-app () _ _) (t-Out-eff-app-infer _ _ _)
+  agree-ii (t-Out-eff-app-infer _ _ _) (t-effApp () _ _)
+  agree-ii (t-effApp () _ _) (t-Out-eff-app-infer _ _ _)
+  agree-ii (t-Out-eff-app-infer _ _ _) (t-app-spine () _ _)
+  agree-ii (t-app-spine () _ _) (t-Out-eff-app-infer _ _ _)
+  agree-ii (t-Out-eff-app-infer _ _ _) (t-app-void () _ _)
+  agree-ii (t-app-void () _ _) (t-Out-eff-app-infer _ _ _)
   agree-ii (t-id-app _) (t-app () _ _)
   agree-ii (t-app () _ _) (t-id-app _)
   agree-ii (t-id-app _) (t-effApp () _ _)

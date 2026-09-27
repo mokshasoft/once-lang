@@ -32,7 +32,7 @@ open import Relation.Binary.PropositionalEquality
   using (_≡_; refl; cong; cong₂; trans; sym; subst; subst-subst-sym)
 
 open import Once.Word using (Carrier)
-open import Once.Type using (Type; Functor; ν-type; ⟦_⟧T)
+open import Once.Type using (Type; Functor; ν-type; ⟦_⟧T; Purity)
 open import Once.Functor.Translate using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod; translateF;
   IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Str; base-Buffer; base-Prod; base-Sum)
 open import Once.IRTy using (IRTy; eraseF; ⌈_⌉F; ⌈_⌉; ⌊_⌋; ⌊⟧T-commute; ⌈⟧TI-commute)
@@ -60,9 +60,9 @@ import Once.IR as IR
 -- The transported `Out` morphism `realize-infer` uses
 ------------------------------------------------------------------------
 
-Out-ir : ∀ {F : Functor} → WellFormedF F → IR.IR ⌊ ν-type F ⌋ ⌊ ⟦ F ⟧T (ν-type F) ⌋
-Out-ir {F} wfF = subst (λ o → IR.IR ⌊ ν-type F ⌋ o)
-                       (sym (⌊⟧T-commute F (ν-type F)))
+Out-ir : ∀ {F : Functor} {π : Purity} → WellFormedF F → IR.IR ⌊ ν-type F π ⌋ ⌊ ⟦ F ⟧T (ν-type F π) ⌋
+Out-ir {F} {π} wfF = subst (λ o → IR.IR ⌊ ν-type F π ⌋ o)
+                       (sym (⌊⟧T-commute F (ν-type F π)))
                        (IR.Out (wf-⌊⌋ wfF))
 
 -- The CODOMAIN mirror of `CataErased.evalᴰ-subst-dom`. Match-to-refl.
@@ -113,17 +113,17 @@ force-subst-res : ∀ {H₁ H₂ : SFunctor} (p : H₁ ≡ H₂) (v : νᵈ H₂
 force-subst-res refl v = sym (mapRes-id (T.resT (forceᵈ v)))
 
 -- The TRACE half.
-out-trace : ∀ {F : Functor} (wfF : WellFormedF F) (v : ⟦ ν-type F ⟧ᴰ) (n : ℕ)
-  → projTrace (liftFn fmt {ν-type F} {⟦ F ⟧T (ν-type F)} (Out-ir wfF) v) n
+out-trace : ∀ {F : Functor} {π : Purity} (wfF : WellFormedF F) (v : ⟦ ν-type F π ⟧ᴰ) (n : ℕ)
+  → projTrace (liftFn fmt {ν-type F π} {⟦ F ⟧T (ν-type F π)} (Out-ir wfF) v) n
     ≡ projTrace (forceᵈ v) n
-out-trace {F} wfF v n =
-  trans (subst-T-projTrace (cohᴰ (⟦ F ⟧T (ν-type F)))
-          (evalᴰ fmt (Out-ir wfF) (subst id (sym (cohᴰ (ν-type F))) v)) n)
+out-trace {F} {π} wfF v n =
+  trans (subst-T-projTrace (cohᴰ (⟦ F ⟧T (ν-type F π)))
+          (evalᴰ fmt (Out-ir wfF) (subst id (sym (cohᴰ (ν-type F π))) v)) n)
   (trans (cong (λ hh → projTrace hh n)
-            (evalᴰ-subst-cod (sym (⌊⟧T-commute F (ν-type F))) (IR.Out (wf-⌊⌋ wfF))
-              (subst id (sym (cohᴰ (ν-type F))) v)))
-  (trans (subst-TI-projTrace (sym (⌊⟧T-commute F (ν-type F)))
-            (evalᴰ fmt (IR.Out (wf-⌊⌋ wfF)) (subst id (sym (cohᴰ (ν-type F))) v)) n)
+            (evalᴰ-subst-cod (sym (⌊⟧T-commute F (ν-type F π))) (IR.Out (wf-⌊⌋ wfF))
+              (subst id (sym (cohᴰ (ν-type F π))) v)))
+  (trans (subst-TI-projTrace (sym (⌊⟧T-commute F (ν-type F π)))
+            (evalᴰ fmt (IR.Out (wf-⌊⌋ wfF)) (subst id (sym (cohᴰ (ν-type F π))) v)) n)
          (force-subst-trace (tF-coh F) v n)))
 
 -- The ⌈⌉-side layer map that `evalᴰ (Out …)` applies, transcribed from
@@ -396,18 +396,18 @@ base-out (X Once.Type.+ Y) (base-Sum ibA ibB) A (inj₂ b) =
 -- the old pointwise chain run under `mapRes-cong`, with `mapRes-∘` fusing the
 -- transports that used to be applied one at a time. The budget index is gone:
 -- only the trace ever depended on it.
-out-coh : ∀ (F : Functor) (wfF : WellFormedF F) (v : ⟦ ν-type F ⟧ᴰ)
-  → mapRes (λ z → subst id (cohᴰ (⟦ F ⟧T (ν-type F)))
-                    (subst ⟦_⟧ᴰᴵ (sym (⌊⟧T-commute F (ν-type F))) z))
+out-coh : ∀ (F : Functor) {π : Purity} (wfF : WellFormedF F) (v : ⟦ ν-type F π ⟧ᴰ)
+  → mapRes (λ z → subst id (cohᴰ (⟦ F ⟧T (ν-type F π)))
+                    (subst ⟦_⟧ᴰᴵ (sym (⌊⟧T-commute F (ν-type F π))) z))
       (T.resT (evalᴰ fmt (IR.Out (wf-⌊⌋ wfF))
-                (subst id (sym (cohᴰ (ν-type F))) v)))
-    ≡ T.resT (out-sem wfF v)
-out-coh F wfF v =
-  trans (mapRes-∘ OUT (out-layer-gen F wfF (ν-type F))
-          (T.resT (forceᵈ (subst id (sym (cohᴰ (ν-type F))) v))))
-  (trans (cong (mapRes (λ ℓ → OUT (out-layer-gen F wfF (ν-type F) ℓ)))
+                (subst id (sym (cohᴰ (ν-type F π))) v)))
+    ≡ T.resT (out-sem {π = π} wfF v)
+out-coh F {π} wfF v =
+  trans (mapRes-∘ OUT (out-layer-gen F wfF (ν-type F π))
+          (T.resT (forceᵈ (subst id (sym (cohᴰ (ν-type F π))) v))))
+  (trans (cong (mapRes (λ ℓ → OUT (out-layer-gen F wfF (ν-type F π) ℓ)))
                (force-subst-res (tF-coh F) v))
-  (trans (mapRes-∘ (λ ℓ → OUT (out-layer-gen F wfF (ν-type F) ℓ))
+  (trans (mapRes-∘ (λ ℓ → OUT (out-layer-gen F wfF (ν-type F π) ℓ))
                    (subst (λ H → ⟦ H ⟧SF (νᵈ H)) (sym (tF-coh F)))
                    (T.resT (forceᵈ v)))
          (mapRes-cong
@@ -415,35 +415,35 @@ out-coh F wfF v =
             -- transport `force-subst-res` leaves is split (`subst-diag-ν⁻`)
             -- into the carrier-then-functor form the carrier-generic lemma is
             -- stated in, and `νout-erase-D` closes it.
-            (λ ℓ → trans (cong (λ z → OUT (out-layer-gen F wfF (ν-type F) z))
+            (λ ℓ → trans (cong (λ z → OUT (out-layer-gen F wfF (ν-type F π) z))
                                (subst-diag-ν⁻ (tF-coh F) ℓ))
-                         (νout-erase-D F wfF (ν-type F) ℓ))
+                         (νout-erase-D F wfF (ν-type F π) ℓ))
             (T.resT (forceᵈ v)))))
   where
-    OUT : ⟦ IT.⟦ eraseF F ⟧TI ⌊ ν-type F ⌋ ⟧ᴰᴵ → ⟦ ⟦ F ⟧T (ν-type F) ⟧ᴰ
-    OUT z = subst id (cohᴰ (⟦ F ⟧T (ν-type F)))
-              (subst ⟦_⟧ᴰᴵ (sym (⌊⟧T-commute F (ν-type F))) z)
+    OUT : ⟦ IT.⟦ eraseF F ⟧TI ⌊ ν-type F π ⌋ ⟧ᴰᴵ → ⟦ ⟦ F ⟧T (ν-type F π) ⟧ᴰ
+    OUT z = subst id (cohᴰ (⟦ F ⟧T (ν-type F π)))
+              (subst ⟦_⟧ᴰᴵ (sym (⌊⟧T-commute F (ν-type F π))) z)
 
 -- plan 0.98: an equation between the two RESULTS, with no budget. The old
 -- statement (`valueT … n ≡ valueT … n`) cannot even be written now — `valueT`
 -- demands a witness that the computation returned, and for a forced ν there is
 -- none to give.
-out-value : ∀ {F : Functor} (wfF : WellFormedF F) (v : ⟦ ν-type F ⟧ᴰ)
-  → T.resT (liftFn fmt {ν-type F} {⟦ F ⟧T (ν-type F)} (Out-ir wfF) v)
-    ≡ T.resT (out-sem wfF v)
-out-value {F} wfF v =
-  trans (subst-T-resT (cohᴰ (⟦ F ⟧T (ν-type F)))
-          (evalᴰ fmt (Out-ir wfF) (subst id (sym (cohᴰ (ν-type F))) v)))
-  (trans (cong (λ hh → mapRes (subst id (cohᴰ (⟦ F ⟧T (ν-type F)))) (T.resT hh))
-            (evalᴰ-subst-cod (sym (⌊⟧T-commute F (ν-type F))) (IR.Out (wf-⌊⌋ wfF))
-              (subst id (sym (cohᴰ (ν-type F))) v)))
-  (trans (cong (mapRes (subst id (cohᴰ (⟦ F ⟧T (ν-type F)))))
-            (subst-TI-resT (sym (⌊⟧T-commute F (ν-type F)))
-              (evalᴰ fmt (IR.Out (wf-⌊⌋ wfF)) (subst id (sym (cohᴰ (ν-type F))) v))))
-  (trans (mapRes-∘ (subst id (cohᴰ (⟦ F ⟧T (ν-type F))))
-                   (subst ⟦_⟧ᴰᴵ (sym (⌊⟧T-commute F (ν-type F))))
+out-value : ∀ {F : Functor} {π : Purity} (wfF : WellFormedF F) (v : ⟦ ν-type F π ⟧ᴰ)
+  → T.resT (liftFn fmt {ν-type F π} {⟦ F ⟧T (ν-type F π)} (Out-ir wfF) v)
+    ≡ T.resT (out-sem {π = π} wfF v)
+out-value {F} {π} wfF v =
+  trans (subst-T-resT (cohᴰ (⟦ F ⟧T (ν-type F π)))
+          (evalᴰ fmt (Out-ir wfF) (subst id (sym (cohᴰ (ν-type F π))) v)))
+  (trans (cong (λ hh → mapRes (subst id (cohᴰ (⟦ F ⟧T (ν-type F π)))) (T.resT hh))
+            (evalᴰ-subst-cod (sym (⌊⟧T-commute F (ν-type F π))) (IR.Out (wf-⌊⌋ wfF))
+              (subst id (sym (cohᴰ (ν-type F π))) v)))
+  (trans (cong (mapRes (subst id (cohᴰ (⟦ F ⟧T (ν-type F π)))))
+            (subst-TI-resT (sym (⌊⟧T-commute F (ν-type F π)))
+              (evalᴰ fmt (IR.Out (wf-⌊⌋ wfF)) (subst id (sym (cohᴰ (ν-type F π))) v))))
+  (trans (mapRes-∘ (subst id (cohᴰ (⟦ F ⟧T (ν-type F π))))
+                   (subst ⟦_⟧ᴰᴵ (sym (⌊⟧T-commute F (ν-type F π))))
                    (T.resT (evalᴰ fmt (IR.Out (wf-⌊⌋ wfF))
-                             (subst id (sym (cohᴰ (ν-type F))) v))))
+                             (subst id (sym (cohᴰ (ν-type F π))) v))))
          (out-coh F wfF v))))
 
 ------------------------------------------------------------------------
@@ -467,7 +467,7 @@ layer-refl (F Once.Type.⊗ G) (wf-Prod a b) rA (x , y) =
   layer-refl F a rA x , layer-refl G b rA y
 
 -- D201: the DUAL of `AnaBridge.in-rel`, and the relational content that
--- `RelV (ν-type F) = _≡_` used to hide.
+-- `RelV (ν-type F π) = _≡_` used to hide.
 --
 -- `out-sem` forces and then coerces, so relating two forces means pushing a
 -- functor-lifted BISIMILARITY out through `coerce-ν-out` / `coerce-functor⁻¹-D`
@@ -500,7 +500,7 @@ res-rel-refl rr stopped     = rel-stopped
 res-rel-refl rr (returns x) = rel-returns (rr x)
 
 -- The two halves, in the order `RelT` wants them.
-liftFn-Out-pair : ∀ {F : Functor} (wfF : WellFormedF F) (v : ⟦ ν-type F ⟧ᴰ) (n : ℕ)
+liftFn-Out-pair : ∀ {F : Functor} {π : Purity} (wfF : WellFormedF F) (v : ⟦ ν-type F π ⟧ᴰ) (n : ℕ)
 -- Stated in the order `RelT` wants: DIRECT meaning first, IR second. `RelV` is
 -- not symmetric (at an arrow it is a Π over related inputs), so the order is
 -- not a cosmetic choice and `sym` is not available to fix it afterwards.
@@ -508,17 +508,17 @@ liftFn-Out-pair : ∀ {F : Functor} (wfF : WellFormedF F) (v : ⟦ ν-type F ⟧
 -- plan 0.98: the second component is `Res-rel`, matching `RelT`'s own shape —
 -- the stop channel and the value channel were always one fact — and it no
 -- longer mentions the budget, because the result does not depend on it.
-  → (projTrace (out-sem wfF v) n
-      ≡ projTrace (liftFn fmt {ν-type F} {⟦ F ⟧T (ν-type F)} (Out-ir wfF) v) n)
-  × Res-rel (RelV (⟦ F ⟧T (ν-type F)))
-      (T.resT (out-sem wfF v))
-      (T.resT (liftFn fmt {ν-type F} {⟦ F ⟧T (ν-type F)} (Out-ir wfF) v))
-liftFn-Out-pair {F} wfF v n =
+  → (projTrace (out-sem {π = π} wfF v) n
+      ≡ projTrace (liftFn fmt {ν-type F π} {⟦ F ⟧T (ν-type F π)} (Out-ir wfF) v) n)
+  × Res-rel (RelV (⟦ F ⟧T (ν-type F π)))
+      (T.resT (out-sem {π = π} wfF v))
+      (T.resT (liftFn fmt {ν-type F π} {⟦ F ⟧T (ν-type F π)} (Out-ir wfF) v))
+liftFn-Out-pair {F} {π} wfF v n =
     sym (out-trace wfF v n)
-  , subst (λ z → Res-rel (RelV (⟦ F ⟧T (ν-type F))) (T.resT (out-sem wfF v)) z)
+  , subst (λ z → Res-rel (RelV (⟦ F ⟧T (ν-type F π))) (T.resT (out-sem {π = π} wfF v)) z)
           (sym (out-value wfF v))
           -- D201: the carrier here is `ν-type F`, where the observational
           -- relation is BISIMILARITY — so the carrier's reflexivity is the
           -- coinductive `∼ᵈ-refl`, not `refl`.
           (res-rel-refl (layer-refl F wfF (λ z → ∼ᵈ-refl z))
-                        (T.resT (out-sem wfF v)))
+                        (T.resT (out-sem {π = π} wfF v)))

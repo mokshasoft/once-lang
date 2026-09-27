@@ -75,7 +75,7 @@ PolyAlg = record
   ; aProd = _P*_ ; aSum = _P+_ ; aEff = PEff
   ; aArrow = λ q A B → A P⇒[ q ] B
   ; aMu = Pμ-type
-  ; aNu = Pν-type
+  ; aNu = λ F → Pν-type F Once.Type.pure
   ; fK = PK ; fId = PId ; fSum = _P⊕_ ; fProd = _P⊗_
   ; Extra = TVarRel ; extraShrink = tvar-shrink ; extraP = tvarP
   ; extraComplete = tvar-complete

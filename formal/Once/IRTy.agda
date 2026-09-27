@@ -122,7 +122,7 @@ mutual
   ⌊ A Type.+ B       ⌋ = ⌊ A ⌋ + ⌊ B ⌋
   ⌊ A Type.⇒[ k ] B  ⌋ = eraseArrow (T.ArrowKind.quantity k) ⌊ A ⌋ ⌊ B ⌋
   ⌊ Type.μ-type F    ⌋ = μ-type (eraseF F)
-  ⌊ Type.ν-type F    ⌋ = ν-type (eraseF F)
+  ⌊ Type.ν-type F _  ⌋ = ν-type (eraseF F)   -- D233: the grade is erased, as an arrow's
   ⌊ Type.Int         ⌋ = Int
   ⌊ Type.Float       ⌋ = Float
   ⌊ Type.Str         ⌋ = Str
@@ -333,7 +333,7 @@ mutual
   ⌈ A + B    ⌉ = ⌈ A ⌉ T.+ ⌈ B ⌉
   ⌈ A ⇛ B    ⌉ = ⌈ A ⌉ T.⇒[ T.effK ] ⌈ B ⌉   -- canonical grade
   ⌈ μ-type F ⌉ = T.μ-type ⌈ F ⌉F
-  ⌈ ν-type F ⌉ = T.ν-type ⌈ F ⌉F
+  ⌈ ν-type F ⌉ = T.ν-type ⌈ F ⌉F T.eff   -- canonical grade
   ⌈ Int      ⌉ = T.Int
   ⌈ Float    ⌉ = T.Float
   ⌈ Str      ⌉ = T.Str

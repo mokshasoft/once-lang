@@ -51,7 +51,7 @@ open import Once.Semantics.Functor
 ⟦ IntRep , FloatRep ⟧-base (A + B) = ⟦ IntRep , FloatRep ⟧-base A ⊎ ⟦ IntRep , FloatRep ⟧-base B
 ⟦ IntRep , FloatRep ⟧-base (_ ⇒[ _ ] _) = ⊤  -- Functions (all kinds): return ⊤ (not used in K)
 ⟦ IntRep , FloatRep ⟧-base (μ-type _) = ⊤    -- Recursive: return ⊤ (not used in K)
-⟦ IntRep , FloatRep ⟧-base (ν-type _) = ⊤    -- Corecursive: return ⊤ (not used in K)
+⟦ IntRep , FloatRep ⟧-base (ν-type _ _) = ⊤    -- Corecursive: return ⊤ (not used in K)
 ⟦ IntRep , FloatRep ⟧-base Int = IntRep
 ⟦ IntRep , FloatRep ⟧-base Float = FloatRep
 ⟦ IntRep , FloatRep ⟧-base Str = String

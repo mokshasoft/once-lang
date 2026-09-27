@@ -137,10 +137,10 @@ primSem p-i2f  fmt v = resT-lift (semM i2f-info  fmt v)
 ⟦ ⊢fold {Γ = Γ} {Ψa = Ψa} {Ψt = Ψt} wf da dt ⟧ fmt dγ =
   ⟦ da ⟧ fmt (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψa Ψt) dγ) >>=T λ valg →
   ⟦ dt ⟧ fmt (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψa Ψt) dγ) >>=T cata-sem wf valg
-⟦ ⊢unfold {Γ = Γ} {Ψc = Ψc} {Ψs = Ψs} wf dc ds ⟧ fmt dγ =
+⟦ ⊢unfold {Γ = Γ} {Ψc = Ψc} {Ψs = Ψs} {π = π} wf dc ds ⟧ fmt dγ =
   ⟦ dc ⟧ fmt (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψc Ψs) dγ) >>=T λ vc →
-  ⟦ ds ⟧ fmt (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψc Ψs) dγ) >>=T ana-sem wf (returnT vc)
-⟦ ⊢out wf d ⟧ fmt dγ = ⟦ d ⟧ fmt dγ >>=T out-sem wf
+  ⟦ ds ⟧ fmt (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψc Ψs) dγ) >>=T ana-sem {π = π} wf (returnT vc)
+⟦ ⊢out {π = π} wf d ⟧ fmt dγ = ⟦ d ⟧ fmt dγ >>=T out-sem {π = π} wf
 
 ⟦ ⊢coerce p d ⟧ fmt dγ = fmapT ⟦ p ⟧<: (⟦ d ⟧ fmt dγ)
 
@@ -150,6 +150,6 @@ primSem p-i2f  fmt v = resT-lift (semM i2f-info  fmt v)
 
 ⟦ ⊢prim p d ⟧ fmt dγ = ⟦ d ⟧ fmt dγ >>=T primSem p fmt
 
-⟦ ⊢sigop {A = A} c k ⟧ fmt dγ = sigOpRefᴰ {A = A} fmt c k
+⟦ ⊢sigop {A = A} c k _ ⟧ fmt dγ = sigOpRefᴰ {A = A} fmt c k
 
 ⟦ ⊢sub-eff _ d ⟧ fmt dγ = ⟦ d ⟧ fmt dγ

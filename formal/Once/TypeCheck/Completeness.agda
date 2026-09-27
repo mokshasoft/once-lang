@@ -210,7 +210,7 @@ infer-complete-RQualified {ctx} {name} {alias} {T} eq conc hon = go T conc hon e
       trans (cong proj₁ (helper _ eq'))
             (cong proj₁ (helperVal eq' _ (proj₂ (isConcrete?-complete conc')) _ (proj₂ (honest?-complete {T = (A + B)} hon'))))
     go (T.μ-type F)  (con-base ()) _ eq'
-    go (T.ν-type F)  (con-base ()) _ eq'
+    go (T.ν-type F _)  (con-base ()) _ eq'
 
 -- Plan 0.50: resolved-ref completeness, keyed by `showCanonical cn`.
 -- D136: the elaborator DISPATCHES on `classifyGen cn` first, so the proof has
@@ -324,7 +324,7 @@ infer-complete-RResolved-view {ctx} {cn} {T} (gv-other ng') eqv _ eq conc hon =
       (trans (cong proj₁ (helper _ eq'))
             (cong proj₁ (helperVal eq' _ (proj₂ (isConcrete?-complete conc')) _ (proj₂ (honest?-complete {T = (A + B)} hon')))))
     go (T.μ-type F)  (con-base ()) _ eq'
-    go (T.ν-type F)  (con-base ()) _ eq'
+    go (T.ν-type F _)  (con-base ()) _ eq'
 
 infer-complete-RResolved {ctx} {cn} {T} ng eq conc hon =
   infer-complete-RResolved-view (classifyGen cn) refl ng eq conc hon
@@ -464,13 +464,13 @@ infer-complete-RApp-terminal {ctx} arg eqArg
 infer-complete-RApp-Out :
   ∀ {ctx : NamedCtx} (arg : RawExpr) {F : T.Functor}
     {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    {argE : SExpr (NamedCtx.debruijn ctx) Ψ (T.ν-type F)}
+    {argE : SExpr (NamedCtx.debruijn ctx) Ψ (T.ν-type F T.pure)}
     {d' f' : ℕ}
     (wfF : WellFormedF F)
-  → inferElab ctx arg ≡ success (T.ν-type F) Ψ argE d' f'
+  → inferElab ctx arg ≡ success (T.ν-type F T.pure) Ψ argE d' f'
   → ∃[ eE ] ∃[ d ] ∃[ f ]
       inferElab ctx (Raw.RApp (Raw.RResolved (gen "Out")) arg)
-        ≡ success (T.⟦ F ⟧T (T.ν-type F)) (zeroUsage +ᵘ (T.Many *ᵘ Ψ)) eE d f
+        ≡ success (T.⟦ F ⟧T (T.ν-type F T.pure)) (zeroUsage +ᵘ (T.Many *ᵘ Ψ)) eE d f
 -- The move from the elaborator's `(wellFormedF? F, refl)` to the witness's
 -- `(just wfF, eqW)` goes through `inferOutGo-J`, not a `rewrite`: the equation
 -- a rewrite would use mentions the very term it must abstract, so it clashes
@@ -478,7 +478,28 @@ infer-complete-RApp-Out :
 infer-complete-RApp-Out {ctx} arg {F} wfF eqArg
   with inferElabV ctx arg | eqArg
 ... | success _ Ψ' argE' d' fr' , w' | refl
-      rewrite inferOutGo-J ctx arg F Ψ' argE' d' fr' w'
+      rewrite inferOutGo-J ctx arg F T.pure Ψ' argE' d' fr' w'
+                (just wfF) (wellFormedF?-complete-at wfF)
+      = _ , _ , _ , refl
+
+infer-complete-RApp-Out-eff :
+  ∀ {ctx : NamedCtx} (arg : RawExpr) {F : T.Functor}
+    {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {argE : SExpr (NamedCtx.debruijn ctx) Ψ (T.ν-type F T.eff)}
+    {d' f' : ℕ}
+    (wfF : WellFormedF F)
+  → inferElab ctx arg ≡ success (T.ν-type F T.eff) Ψ argE d' f'
+  → ∃[ eE ] ∃[ d ] ∃[ f ]
+      inferElab ctx (Raw.RApp (Raw.RResolved (gen "Out")) arg)
+        ≡ success (T.Unit T.⇒[ T.mk-kind T.Many T.eff ] T.⟦ F ⟧T (T.ν-type F T.eff)) (zeroUsage +ᵘ (T.Many *ᵘ Ψ)) eE d f
+-- The move from the elaborator's `(wellFormedF? F, refl)` to the witness's
+-- `(just wfF, eqW)` goes through `inferOutGo-J`, not a `rewrite`: the equation
+-- a rewrite would use mentions the very term it must abstract, so it clashes
+-- however the decision is obtained (parameter or `inspectWellFormedF` view).
+infer-complete-RApp-Out-eff {ctx} arg {F} wfF eqArg
+  with inferElabV ctx arg | eqArg
+... | success _ Ψ' argE' d' fr' , w' | refl
+      rewrite inferOutGo-J ctx arg F T.eff Ψ' argE' d' fr' w'
                 (just wfF) (wellFormedF?-complete-at wfF)
       = _ , _ , _ , refl
 
@@ -1029,9 +1050,9 @@ icv-binop-r {ctx} op e₁ e₂ (T.μ-type _) eq₁ ¬v eq₂
 ... | success (T.μ-type _) _ _ _ _ , _ | refl
     with inferElabV ctx e₂ | eq₂
 ...   | success Void _ _ _ _ , _ | refl = _ , _ , _ , refl
-icv-binop-r {ctx} op e₁ e₂ (T.ν-type _) eq₁ ¬v eq₂
+icv-binop-r {ctx} op e₁ e₂ (T.ν-type _ _) eq₁ ¬v eq₂
   with inferElabV ctx e₁ | eq₁
-... | success (T.ν-type _) _ _ _ _ , _ | refl
+... | success (T.ν-type _ _) _ _ _ _ , _ | refl
     with inferElabV ctx e₂ | eq₂
 ...   | success Void _ _ _ _ , _ | refl = _ , _ , _ , refl
 
@@ -1153,6 +1174,7 @@ given-infer-route (t-terminal-app _) A π = refl
 given-infer-route (t-apply-app-infer _) A π = refl
 given-infer-route (t-apply-eff-app-infer _) A π = refl
 given-infer-route (t-Out-app-infer _ _ _) A π = refl
+given-infer-route (t-Out-eff-app-infer _ _ _) A π = refl
 given-infer-route (t-neg-void _) A π = refl
 given-infer-route (t-case-void _ _ _) A π = refl
 given-infer-route (t-binop-void-l _ _) A π = refl
@@ -1593,7 +1615,10 @@ mutual
   -- so its switch is `terminal`'s.
   iFromInferSub (t-Out-app-infer {v = v} {F = F} wfF refl d) sb =
     let (_ , _ , _ , eqI) = infer-complete (t-Out-app-infer wfF refl d)
-    in checkElab-fallback-RApp-Out v (T.⟦ F ⟧T (T.ν-type F)) eqI sb
+    in checkElab-fallback-RApp-Out v (T.⟦ F ⟧T (T.ν-type F T.pure)) eqI sb
+  iFromInferSub (t-Out-eff-app-infer {v = v} {F = F} wfF refl d) sb =
+    let (_ , _ , _ , eqI) = infer-complete (t-Out-eff-app-infer wfF refl d)
+    in checkElab-fallback-RApp-Out v (T.Unit T.⇒[ T.mk-kind T.Many T.eff ] T.⟦ F ⟧T (T.ν-type F T.eff)) eqI sb
   iFromInferSub (t-apply-app-infer {p = p} {A = A} {B = B} d) sb =
     let (_ , _ , _ , eqI) = infer-complete d
     in checkElab-fallback-RApp-apply p A B eqI sb
@@ -1723,6 +1748,9 @@ mutual
   infer-complete (t-Out-app-infer {v = v} {F = F} wfF refl d) =
     let (_ , _ , _ , eqSub) = infer-complete d
     in infer-complete-RApp-Out v wfF eqSub
+  infer-complete (t-Out-eff-app-infer {v = v} {F = F} wfF refl d) =
+    let (_ , _ , _ , eqSub) = infer-complete d
+    in infer-complete-RApp-Out-eff v wfF eqSub
   infer-complete (t-apply-app-infer {p = p} {A = A} d) =
     let (_ , _ , _ , eqSub) = infer-complete d
     in infer-complete-RApp-apply p A eqSub
@@ -1960,14 +1988,14 @@ mutual
             _ , _ , _ , refl
   -- D192: ana. One clause, not two: `checkAna` is grade-generic, so there is
   -- no pure/eff dispatch to bridge — the coalgebra's grade IS the unfold's.
-  check-complete {ctx} (t-ana-check {coalg = coalg} {F = F} {A = A} {π = π} wfF dcoalg)
+  check-complete {ctx} (t-ana-check {coalg = coalg} {F = F} {A = A} {π₀ = π₀} {π = π} wfF dcoalg)
     with wellFormedF?-complete-at wfF
   ... | eqW
     with check-completeV dcoalg
   ... | (_ , _ , _ , W , eqA)
-        with checkAnaGo-just-success ctx coalg F A π wfF eqW eqA
+        with checkAnaGo-just-success ctx coalg F A π₀ π wfF eqW eqA
   ...     | eqGo = _ , _ , _ ,
-            cong proj₁ (trans (checkAnaGoV-J ctx coalg F A π (just wfF) eqW) eqGo)
+            cong proj₁ (trans (checkAnaGoV-J ctx coalg F A π₀ π (just wfF) eqW) eqGo)
   check-complete (t-In-app-check {arg = arg} {F = F} wfF dArg) =
     let (_ , _ , _ , eqA) = check-complete dArg
     -- PLAN 0.80 A1: witness in, decider equation recovered (as for cata).

@@ -50,7 +50,7 @@ open import Once.TypeCheck.Judgment
          t-var-import; t-annot; t-pair; t-neg; t-neg-float; t-let; t-case;
          t-binop-arith; t-binop-arith-float; t-binop-arith-float-il;
          t-binop-arith-float-ir; t-binop-cmp; t-id-app; t-fst-app; t-snd-app;
-         t-terminal-app; t-apply-app-infer; t-apply-eff-app-infer; t-Out-app-infer; t-app; t-effApp; t-sub; t-lam;
+         t-terminal-app; t-apply-app-infer; t-apply-eff-app-infer; t-Out-app-infer; t-Out-eff-app-infer; t-app; t-effApp; t-sub; t-lam;
          t-pair-lit-check; t-In-app-check; t-apply-check; t-inl-app-check;
          t-inr-app-check; t-initial-app-check;
          t-app-spine;
@@ -240,9 +240,19 @@ realize-infer (t-snd-app d)      = morph-app IR.snd      (realize-infer d)
 -- direction — `In` lands AT `⌊ μ-type F ⌋`, `Out` STARTS there.
 realize-infer {ctx = ctx} (t-Out-app-infer {F = F} wfF ceq d) =
   subst (λ Z → Expr (NamedCtx.debruijn ctx) _ Z) ceq
-    (morph-app (subst (λ o → IR ⌊ ν-type F ⌋ o)
-                      (sym (⌊⟧T-commute F (ν-type F)))
+    (morph-app (subst (λ o → IR ⌊ ν-type F Once.Type.pure ⌋ o)
+                      (sym (⌊⟧T-commute F (ν-type F Once.Type.pure)))
                       (IR.Out (wf-⌊⌋ wfF)))
+               (realize-infer d))
+-- D233: at an EFFECTFUL stream the force is suspended (`curry (Out ∘ fst)`),
+-- as `t-apply-eff-app-infer` suspends `apply` — the elaborator's term exactly.
+realize-infer {ctx = ctx} (t-Out-eff-app-infer {F = F} wfF ceq d) =
+  subst (λ Z → Expr (NamedCtx.debruijn ctx) _
+                 (Once.Type.Unit ⇒[ mk-kind Many Once.Type.eff ] Z)) ceq
+    (morph-app (IR.curry (subst (λ o → IR ⌊ ν-type F Once.Type.eff ⌋ o)
+                                (sym (⌊⟧T-commute F (ν-type F Once.Type.eff)))
+                                (IR.Out (wf-⌊⌋ wfF))
+                          IR.∘ IR.fst))
                (realize-infer d))
 realize-infer (t-terminal-app d) = morph-app IR.terminal (realize-infer d)
 realize-infer (t-apply-app-infer d) = morph-app IR.apply (realize-infer d)

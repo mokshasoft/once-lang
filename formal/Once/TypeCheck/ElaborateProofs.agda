@@ -1260,14 +1260,14 @@ checkElab-fallback-RApp-generic {ctx} {τ} f x T eqAH eqInf sb
 -- because the equation it would rewrite by mentions the very term being
 -- abstracted.
 inferOutGo-J :
-  ∀ (ctx : NamedCtx) (arg : RawExpr) (F : Once.Type.Functor)
+  ∀ (ctx : NamedCtx) (arg : RawExpr) (F : Once.Type.Functor) (π : Once.Type.Purity)
     (Ψ : Surface.Usage (NamedCtx.size ctx))
-    (argE : SExpr (NamedCtx.debruijn ctx) Ψ (Once.Type.ν-type F))
-    (d fr : ℕ) (w : ctx ⊢ᵢ arg ∶ Once.Type.ν-type F ⨾ Ψ)
+    (argE : SExpr (NamedCtx.debruijn ctx) Ψ (Once.Type.ν-type F π))
+    (d fr : ℕ) (w : ctx ⊢ᵢ arg ∶ Once.Type.ν-type F π ⨾ Ψ)
     (mw : Maybe (Once.Functor.Translate.WellFormedF F)) (eq : wellFormedF? F ≡ mw)
-  → inferOutGo ctx arg F Ψ argE d fr w (wellFormedF? F) refl
-    ≡ inferOutGo ctx arg F Ψ argE d fr w mw eq
-inferOutGo-J ctx arg F Ψ argE d fr w .(wellFormedF? F) refl = refl
+  → inferOutGo ctx arg F π Ψ argE d fr w (wellFormedF? F) refl
+    ≡ inferOutGo ctx arg F π Ψ argE d fr w mw eq
+inferOutGo-J ctx arg F π Ψ argE d fr w .(wellFormedF? F) refl = refl
 
 -- Plan 0.54: relate the two `(mw, eq)` instantiations of `checkCataGo` by
 -- singleton contractibility (mirrors compose's `go-canonical`). Used to bridge
@@ -1335,22 +1335,22 @@ checkCataGo-just-success ctx alg F A π wfF eqW eqAlgV
 -- cata needs five: the dispatch bridge at any grade, and the success lemma.
 checkAnaGo-J :
   ∀ (ctx : NamedCtx) (coalg : RawExpr) (F : Once.Type.Functor) (A : Type)
-    (π : Once.Type.Purity)
+    (π₀ π : Once.Type.Purity)
     (mw : Maybe (Once.Functor.Translate.WellFormedF F)) (eq : wellFormedF? F ≡ mw)
-  → checkAnaGo ctx coalg F A π (wellFormedF? F) refl ≡ checkAnaGo ctx coalg F A π mw eq
-checkAnaGo-J ctx coalg F A π .(wellFormedF? F) refl = refl
+  → checkAnaGo ctx coalg F A π₀ π (wellFormedF? F) refl ≡ checkAnaGo ctx coalg F A π₀ π mw eq
+checkAnaGo-J ctx coalg F A π₀ π .(wellFormedF? F) refl = refl
 
 checkAnaGoV-J :
   ∀ (ctx : NamedCtx) (coalg : RawExpr) (F : Once.Type.Functor) (A : Type)
-    (π : Once.Type.Purity)
+    (π₀ π : Once.Type.Purity)
     (mw : Maybe (Once.Functor.Translate.WellFormedF F)) (eq : wellFormedF? F ≡ mw)
   → checkElabV ctx (Raw.RApp (Raw.RResolved (gen "ana")) coalg)
-              (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] Once.Type.ν-type F)
-      ≡ checkAnaGo ctx coalg F A π mw eq
-checkAnaGoV-J ctx coalg F A π .(wellFormedF? F) refl = refl
+              (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π₀ ] Once.Type.ν-type F π)
+      ≡ checkAnaGo ctx coalg F A π₀ π mw eq
+checkAnaGoV-J ctx coalg F A π₀ π .(wellFormedF? F) refl = refl
 
 checkAnaGo-just-success :
-  ∀ (ctx : NamedCtx) (coalg : RawExpr) (F : Once.Type.Functor) (A : Type) (π : Once.Type.Purity)
+  ∀ (ctx : NamedCtx) (coalg : RawExpr) (F : Once.Type.Functor) (A : Type) (π₀ π : Once.Type.Purity)
     (wfF : Once.Functor.Translate.WellFormedF F) (eqW : wellFormedF? F ≡ just wfF)
     {coalgE : SExpr (NamedCtx.debruijn (ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx)))
                   Surface.zeroUsage (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] Once.Type.⟦ F ⟧T A)}
@@ -1361,10 +1361,10 @@ checkAnaGo-just-success :
   → checkElabV (ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx))
               coalg (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] Once.Type.⟦ F ⟧T A)
       ≡ (success Surface.zeroUsage coalgE d fr , w)
-  → checkAnaGo ctx coalg F A π (just wfF) eqW
+  → checkAnaGo ctx coalg F A π₀ π (just wfF) eqW
       ≡ (success Surface.zeroUsage (Surface.ana wfF coalgE) (suc d) (NamedCtx.freshCounter ctx)
           , t-ana-check wfF w)
-checkAnaGo-just-success ctx coalg F A π wfF eqW eqCoalgV
+checkAnaGo-just-success ctx coalg F A π₀ π wfF eqW eqCoalgV
   with checkElabV (ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx))
                   coalg (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] Once.Type.⟦ F ⟧T A) | eqCoalgV
 ... | (success Surface.[] _ _ _ , w) | refl = refl

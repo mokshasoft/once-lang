@@ -233,7 +233,7 @@ parseTypeAtomWF (TWord name ∷ rest) (acc rec)
   | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ with name ≟ "Nu"
 ... | yes refl with parseFunctorSumWF rest (rec (s≤s ≤-refl))
 ...   | nothing = nothing
-...   | just (F , rest1 , dF) = just (ν-type F , rest1 , pa-nu dF)
+...   | just (F , rest1 , dF) = just (ν-type F pure , rest1 , pa-nu dF)
 -- Non-keyword TWord: no derivation exists.
 parseTypeAtomWF (TWord name ∷ rest) _
   | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ = nothing

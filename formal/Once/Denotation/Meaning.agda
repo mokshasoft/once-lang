@@ -76,7 +76,7 @@ open import Once.TypeCheck.Judgment
          t-int; t-float; t-str; t-unit; t-unit-var; t-var-local; t-var-qualified;
          t-var-resolved; t-var-import; t-annot; t-pair; t-neg; t-neg-float; t-binop-arith-float; t-binop-arith-float-il; t-binop-arith-float-ir; t-let; t-case;
          t-binop-arith; t-binop-cmp; t-id-app; t-fst-app; t-snd-app;
-         t-terminal-app; t-apply-app-infer; t-apply-eff-app-infer; t-Out-app-infer; t-app; t-effApp)
+         t-terminal-app; t-apply-app-infer; t-apply-eff-app-infer; t-Out-app-infer; t-Out-eff-app-infer; t-app; t-effApp)
 
 ------------------------------------------------------------------------
 -- P1 scaffolds (discharged in P2). NAMED and narrow — each is exactly one
@@ -109,8 +109,9 @@ cata-sem {F} {A} wf dalg v = sem-cata wf (cata-ev-algᴰ-D {F} {A} dalg) (forget
 -- is forced at, and `FaithfulLemmas` relates the surface node to `IR.Ana`
 -- through exactly that. Binding it outside would make this clause disagree
 -- with both.
-ana-sem : ∀ {F : Functor} {A : Type} → WellFormedF F
-        → T (⟦ A ⟧ᴰ → T ⟦ ⟦ F ⟧T A ⟧ᴰ) → ⟦ A ⟧ᴰ → T ⟦ Once.Type.ν-type F ⟧ᴰ
+-- D233: at any grade — the value domain of a stream does not depend on it.
+ana-sem : ∀ {F : Functor} {A : Type} {π : Purity} → WellFormedF F
+        → T (⟦ A ⟧ᴰ → T ⟦ ⟦ F ⟧T A ⟧ᴰ) → ⟦ A ⟧ᴰ → T ⟦ Once.Type.ν-type F π ⟧ᴰ
 ana-sem {F} {A} wf cT a =
   returnT (anaFᵈ F (λ a' → fmapT (coerce-functor-D F A)
                              (cT >>=T λ clo → clo a')) a)
@@ -119,10 +120,10 @@ ana-sem {F} {A} wf cT a =
 -- `ana-sem` stores the coalgebra; this is where it runs. Mirrors
 -- `evalᴰ (Out wf)` exactly, minus the IRTy transports (those live on the
 -- other side of `⌈_⌉`).
-out-sem : ∀ {F : Functor} → WellFormedF F
-        → ⟦ Once.Type.ν-type F ⟧ᴰ → T ⟦ ⟦ F ⟧T (Once.Type.ν-type F) ⟧ᴰ
-out-sem {F} wf v =
-  fmapT (λ layer → coerce-functor⁻¹-D F (Once.Type.ν-type F)
+out-sem : ∀ {F : Functor} {π : Purity} → WellFormedF F
+        → ⟦ Once.Type.ν-type F π ⟧ᴰ → T ⟦ ⟦ F ⟧T (Once.Type.ν-type F π) ⟧ᴰ
+out-sem {F} {π} wf v =
+  fmapT (λ layer → coerce-functor⁻¹-D F (Once.Type.ν-type F π)
                      (coerce-ν-out wf _ layer))
         (forceᵈ v)
 
@@ -146,10 +147,10 @@ in-value {F} x = sem-In F (coerce-functor F (μ-type F) (forget x))
 --
 -- No `WellFormedF` argument: `coerce-ν-in` is `coerce-μ-in` (Value.agda:574-575)
 -- and needs none. `out-sem` needs one only because `coerce-ν-out` inverts.
-in-ν-value : ∀ {F : Functor} → ⟦ ⟦ F ⟧T (Once.Type.ν-type F) ⟧ᴰ → ⟦ Once.Type.ν-type F ⟧ᴰ
-in-ν-value {F} x =
-  in-νᵈ (coerce-ν-in F ⟦ Once.Type.ν-type F ⟧ᴰ
-          (coerce-functor-D F (Once.Type.ν-type F) x))
+in-ν-value : ∀ {F : Functor} {π : Purity} → ⟦ ⟦ F ⟧T (Once.Type.ν-type F π) ⟧ᴰ → ⟦ Once.Type.ν-type F π ⟧ᴰ
+in-ν-value {F} {π} x =
+  in-νᵈ (coerce-ν-in F ⟦ Once.Type.ν-type F π ⟧ᴰ
+          (coerce-functor-D F (Once.Type.ν-type F π) x))
 
 -- m-named / m-named-resolved: the named arrow's meaning, IR-free. This is
 -- DEFINITIONALLY `evalᴰ (SigOp (value-info cn))` (same RHS), so the `bridgeᵈ`
@@ -285,8 +286,8 @@ seqᴰ m₁ m₂ = (m₁ >>=T λ x → m₂ >>=T λ y → returnT (x , y)) >>=T 
 -- `tt` the telescope rules use.
 ⟦_⟧ᶜ {ctx = ctx} (t-cata-check wfF dalg) fmt dγ =
   (⟦ dalg ⟧ᶜ fmt) tt >>=T λ valg → returnT (cata-sem wfF valg)
-⟦_⟧ᶜ {ctx = ctx} (t-ana-check wfF dcoalg) fmt dγ =
-  returnT (ana-sem wfF ((⟦ dcoalg ⟧ᶜ fmt) tt))
+⟦_⟧ᶜ {ctx = ctx} (t-ana-check {π = π} wfF dcoalg) fmt dγ =
+  returnT (ana-sem {π = π} wfF ((⟦ dcoalg ⟧ᶜ fmt) tt))
 -- D226: the mode switch maps the inferred computation's RESULT along `p`.
 ⟦_⟧ᶜ {ctx = ctx} (t-sub d p) fmt dγ = fmapT ⟦ p ⟧<: ((⟦ d ⟧ᵢ fmt) dγ)
 -- D143: the arrow's declared quantity `q` decides whether the meaning receives
@@ -435,7 +436,13 @@ seqᴰ m₁ m₂ = (m₁ >>=T λ x → m₂ >>=T λ y → returnT (x , y)) >>=T 
   subst (λ Z → T ⟦ Z ⟧ᴰ) ceq
     ((⟦ d ⟧ᵢ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx}
                     (⊑ᵘ-trans (⊑ᵘ-*Many _) (⊑ᵘ-+ʳ zeroUsage _)) dγ)
-       >>=T out-sem wfF)
+       >>=T out-sem {π = Once.Type.pure} wfF)
+-- D233: forcing an EFFECTFUL stream at the surface — the stream is evaluated
+-- now, the force runs when the suspension is applied (as `t-apply-eff-app-infer`).
+⟦_⟧ᵢ {ctx = ctx} (t-Out-eff-app-infer {F = F} wfF ceq d) fmt dγ =
+  (⟦ d ⟧ᵢ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx}
+                  (⊑ᵘ-trans (⊑ᵘ-*Many _) (⊑ᵘ-+ʳ zeroUsage _)) dγ) >>=T λ v →
+  returnT (λ _ → subst (λ Z → T ⟦ Z ⟧ᴰ) ceq (out-sem {π = Once.Type.eff} wfF v))
 ⟦_⟧ᵢ {ctx = ctx} (t-terminal-app d) fmt dγ = (⟦ d ⟧ᵢ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-trans (⊑ᵘ-*Many _) (⊑ᵘ-+ʳ zeroUsage _)) dγ) >>=T λ _ → returnT tt
 ⟦_⟧ᵢ {ctx = ctx} (t-apply-app-infer d) fmt dγ = (⟦ d ⟧ᵢ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-trans (⊑ᵘ-*Many _) (⊑ᵘ-+ʳ zeroUsage _)) dγ) >>=T λ fa → proj₁ fa (proj₂ fa)
 -- D222 / plan 0.95 A′: the EFF closure's elimination is a SUSPENSION — but only

@@ -111,7 +111,7 @@ mutual
   zonk (suc n) s (a P⇒[ q ] b) = zonk n s a P⇒[ q ] zonk n s b
   zonk (suc n) s (PEff a b)    = PEff (zonk n s a) (zonk n s b)
   zonk (suc n) s (Pμ-type F)   = Pμ-type (zonkF n s F)
-  zonk (suc n) s (Pν-type F)   = Pν-type (zonkF n s F)
+  zonk (suc n) s (Pν-type F π)   = Pν-type (zonkF n s F) π
   zonk (suc _) _ t = t
 
   zonkF : ℕ → PSubst → PolyFunctor → PolyFunctor
@@ -132,7 +132,7 @@ mutual
   occurs x (a P⇒[ _ ] b) = occurs x a ∨ occurs x b
   occurs x (PEff a b)    = occurs x a ∨ occurs x b
   occurs x (Pμ-type F)   = occursF x F
-  occurs x (Pν-type F)   = occursF x F
+  occurs x (Pν-type F _) = occursF x F
   occurs _ _ = false
 
   occursF : String → PolyFunctor → Bool
@@ -177,7 +177,8 @@ mutual
     if eqQuantity q q' then unify2 n s a a' b b' else nothing
   unify' n s (PEff a b) (PEff a' b') = unify2 n s a a' b b'
   unify' n s (Pμ-type F) (Pμ-type G) = unifyF n s F G
-  unify' n s (Pν-type F) (Pν-type G) = unifyF n s F G
+  unify' n s (Pν-type F π) (Pν-type G π′) =
+    if purityEqBool π π′ then unifyF n s F G else nothing
   unify' _ _ _ _ = nothing
 
   unify2 : ℕ → PSubst → PolyType → PolyType → PolyType → PolyType → Maybe PSubst
@@ -221,8 +222,8 @@ mutual
   typeToPoly (μ-type F) with functorToPoly F
   ... | just G  = just (Pμ-type G)
   ... | nothing = nothing
-  typeToPoly (ν-type F) with functorToPoly F
-  ... | just G  = just (Pν-type G)
+  typeToPoly (ν-type F π) with functorToPoly F
+  ... | just G  = just (Pν-type G π)
   ... | nothing = nothing
 
   functorToPoly : Functor → Maybe PolyFunctor
@@ -320,8 +321,8 @@ mutual
     in PEff a' b' , n₂ , acc₂
   freshen (Pμ-type F) n acc =
     let (F' , n₁ , acc₁) = freshenF F n acc in Pμ-type F' , n₁ , acc₁
-  freshen (Pν-type F) n acc =
-    let (F' , n₁ , acc₁) = freshenF F n acc in Pν-type F' , n₁ , acc₁
+  freshen (Pν-type F π) n acc =
+    let (F' , n₁ , acc₁) = freshenF F n acc in Pν-type F' π , n₁ , acc₁
   freshen t n acc = t , n , acc
 
   freshenF : PolyFunctor → ℕ → List (String × String)
@@ -570,8 +571,8 @@ renameVars t = proj₁ (freshen' t 0 [])
       in PEff a' b' , k₂ , acc₂
     freshen' (Pμ-type F) k acc =
       let (F' , k₁ , acc₁) = freshenF' F k acc in Pμ-type F' , k₁ , acc₁
-    freshen' (Pν-type F) k acc =
-      let (F' , k₁ , acc₁) = freshenF' F k acc in Pν-type F' , k₁ , acc₁
+    freshen' (Pν-type F π) k acc =
+      let (F' , k₁ , acc₁) = freshenF' F k acc in Pν-type F' π , k₁ , acc₁
     freshen' u k acc = u , k , acc
 
     freshenF' : PolyFunctor → ℕ → List (String × String)

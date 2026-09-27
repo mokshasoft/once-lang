@@ -77,7 +77,7 @@ RelV (μ-type F)  x y = x ≡ y
 -- BISIMILARITY, not propositional equality. `anaᵈ-∼` proves this one directly
 -- and coinductively; it is only the conversion to `≡` that needs the
 -- `bisimᵈ-to-eq` axiom.
-RelV (ν-type F)  x y = x ∼ᵈ y
+RelV (ν-type F _)  x y = x ∼ᵈ y
 RelV (A * B) (a₁ , b₁) (a₂ , b₂) = RelV A a₁ a₂ × RelV B b₁ b₂
 RelV (A + B) (inj₁ a₁) (inj₁ a₂) = RelV A a₁ a₂
 RelV (A + B) (inj₂ b₁) (inj₂ b₂) = RelV B b₁ b₂

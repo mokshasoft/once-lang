@@ -223,6 +223,21 @@ liftFn-eff-apply {A} {B} = extensionality λ p →
     P : Type
     P = (A ⇒[ mk-kind Many Once.Type.eff ] B) * A
 
+-- D233: `curry (g ∘ fst)` is the SUSPENSION of `g` — what forcing an effectful
+-- stream at the surface elaborates to (`g = Out`). `liftFn-eff-apply` is the
+-- same shape at `g = apply`; the final `refl` is `returnT a >>=T f ≡ f a`.
+liftFn-curry-fst : ∀ {A C : Type} (g : IR IR.⌊ A ⌋ IR.⌊ C ⌋)
+  → liftFn fmt {A} {Unit ⇒[ mk-kind Many Once.Type.eff ] C} (IR.curry (g ∘ fst))
+    ≡ (λ a → returnT (λ _ → liftFn fmt {A} {C} g a))
+liftFn-curry-fst {A} {C} g = extensionality λ a →
+  trans (cong (λ h → h a)
+              (liftFn-curry {A = A} {B = Unit} {C = C} {π = Once.Type.eff} (g ∘ fst)))
+        (cong returnT (extensionality λ b →
+          trans (cong (λ h → h (a , b)) (liftFn-∘ {B = A} {C = C} {A = A * Unit} g fst))
+                (trans (cong (_>>=T liftFn fmt {A} {C} g)
+                             (cong (λ h → h (a , b)) (liftFn-fst {A} {Unit})))
+                       refl)))
+
 liftFn-case-inj₁ : ∀ {A B C : Type} (f : IR IR.⌊ A ⌋ IR.⌊ C ⌋) (g : IR IR.⌊ B ⌋ IR.⌊ C ⌋) (a : ⟦ A ⟧ᴰ)
   → liftFn fmt {A + B} {C} (case f g) (inj₁ a) ≡ liftFn fmt {A} {C} f a
 liftFn-case-inj₁ {A} {B} {C} f g a =

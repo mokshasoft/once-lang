@@ -85,7 +85,8 @@ data _<:_ : Type → Type → Set where
   sub-prod   : ∀ {A A′ B B′} → A <: A′ → B <: B′ → (A * B) <: (A′ * B′)
   sub-sum    : ∀ {A A′ B B′} → A <: A′ → B <: B′ → (A + B) <: (A′ + B′)
   sub-μ      : ∀ {F} → μ-type F <: μ-type F
-  sub-ν      : ∀ {F} → ν-type F <: ν-type F
+  -- D233: a pure stream is an effectful one with no effects — covariant in the grade.
+  sub-ν      : ∀ {F π π′} → π ⊑π π′ → ν-type F π <: ν-type F π′
 
 ------------------------------------------------------------------------
 -- Coherence: at most one derivation.
@@ -103,7 +104,7 @@ data _<:_ : Type → Type → Set where
 <:-unique (sub-prod a b) (sub-prod a′ b′) = cong₂ sub-prod (<:-unique a a′) (<:-unique b b′)
 <:-unique (sub-sum a b)  (sub-sum a′ b′)  = cong₂ sub-sum  (<:-unique a a′) (<:-unique b b′)
 <:-unique sub-μ sub-μ = refl
-<:-unique sub-ν sub-ν = refl
+<:-unique (sub-ν g) (sub-ν h) = cong sub-ν (⊑π-unique g h)
 
 ------------------------------------------------------------------------
 -- Admissible reflexivity and transitivity.
@@ -120,7 +121,7 @@ data _<:_ : Type → Type → Set where
 <:-refl (A * B) = sub-prod (<:-refl A) (<:-refl B)
 <:-refl (A + B) = sub-sum (<:-refl A) (<:-refl B)
 <:-refl (μ-type F) = sub-μ
-<:-refl (ν-type F) = sub-ν
+<:-refl (ν-type F π) = sub-ν (⊑π-refl π)
 
 <:-trans : ∀ {A B C} → A <: B → B <: C → A <: C
 <:-trans sub-void   _          = sub-void
@@ -133,7 +134,7 @@ data _<:_ : Type → Type → Set where
 <:-trans (sub-prod a b)  (sub-prod a′ b′)   = sub-prod (<:-trans a a′) (<:-trans b b′)
 <:-trans (sub-sum a b)   (sub-sum a′ b′)    = sub-sum  (<:-trans a a′) (<:-trans b b′)
 <:-trans sub-μ q = q
-<:-trans sub-ν q = q
+<:-trans (sub-ν g) (sub-ν h) = sub-ν (⊑π-trans g h)
 
 ------------------------------------------------------------------------
 -- Decidability. Mismatched heads are refuted clause by clause (no catch-all:
@@ -164,9 +165,10 @@ private
   μ-aux (yes refl) = yes sub-μ
   μ-aux (no ¬e)    = no λ { sub-μ → ¬e refl }
 
-  ν-aux : ∀ {F G} → Dec (F ≡ G) → Dec (ν-type F <: ν-type G)
-  ν-aux (yes refl) = yes sub-ν
-  ν-aux (no ¬e)    = no λ { sub-ν → ¬e refl }
+  ν-aux : ∀ {F G π π′} → Dec (F ≡ G) → Dec (π ⊑π π′) → Dec (ν-type F π <: ν-type G π′)
+  ν-aux (yes refl) (yes g) = yes (sub-ν g)
+  ν-aux (no ¬e)    _       = no λ { (sub-ν _) → ¬e refl }
+  ν-aux (yes refl) (no ¬g) = no λ { (sub-ν g) → ¬g g }
 
 _<:?_ : (A B : Type) → Dec (A <: B)
 Void <:? _ = yes sub-void
@@ -180,7 +182,7 @@ Unit <:? (_ * _) = no λ ()
 Unit <:? (_ + _) = no λ ()
 Unit <:? (_ ⇒[ _ ] _) = no λ ()
 Unit <:? (μ-type _) = no λ ()
-Unit <:? (ν-type _) = no λ ()
+Unit <:? (ν-type _ _) = no λ ()
 Int <:? Int = yes sub-int
 Int <:? Unit = no λ ()
 Int <:? Void = no λ ()
@@ -191,7 +193,7 @@ Int <:? (_ * _) = no λ ()
 Int <:? (_ + _) = no λ ()
 Int <:? (_ ⇒[ _ ] _) = no λ ()
 Int <:? (μ-type _) = no λ ()
-Int <:? (ν-type _) = no λ ()
+Int <:? (ν-type _ _) = no λ ()
 Float <:? Float = yes sub-float
 Float <:? Unit = no λ ()
 Float <:? Void = no λ ()
@@ -202,7 +204,7 @@ Float <:? (_ * _) = no λ ()
 Float <:? (_ + _) = no λ ()
 Float <:? (_ ⇒[ _ ] _) = no λ ()
 Float <:? (μ-type _) = no λ ()
-Float <:? (ν-type _) = no λ ()
+Float <:? (ν-type _ _) = no λ ()
 Str <:? Str = yes sub-str
 Str <:? Unit = no λ ()
 Str <:? Void = no λ ()
@@ -213,7 +215,7 @@ Str <:? (_ * _) = no λ ()
 Str <:? (_ + _) = no λ ()
 Str <:? (_ ⇒[ _ ] _) = no λ ()
 Str <:? (μ-type _) = no λ ()
-Str <:? (ν-type _) = no λ ()
+Str <:? (ν-type _ _) = no λ ()
 Buffer <:? Buffer = yes sub-buffer
 Buffer <:? Unit = no λ ()
 Buffer <:? Void = no λ ()
@@ -224,7 +226,7 @@ Buffer <:? (_ * _) = no λ ()
 Buffer <:? (_ + _) = no λ ()
 Buffer <:? (_ ⇒[ _ ] _) = no λ ()
 Buffer <:? (μ-type _) = no λ ()
-Buffer <:? (ν-type _) = no λ ()
+Buffer <:? (ν-type _ _) = no λ ()
 (A ⇒[ mk-kind q π ] B) <:? (A′ ⇒[ mk-kind q′ π′ ] B′) = arr-aux (q ≟q q′) (A′ <:? A) (B <:? B′) (π ⊑π? π′)
 (_ ⇒[ _ ] _) <:? Unit = no λ ()
 (_ ⇒[ _ ] _) <:? Void = no λ ()
@@ -235,7 +237,7 @@ Buffer <:? (ν-type _) = no λ ()
 (_ ⇒[ _ ] _) <:? (_ * _) = no λ ()
 (_ ⇒[ _ ] _) <:? (_ + _) = no λ ()
 (_ ⇒[ _ ] _) <:? (μ-type _) = no λ ()
-(_ ⇒[ _ ] _) <:? (ν-type _) = no λ ()
+(_ ⇒[ _ ] _) <:? (ν-type _ _) = no λ ()
 (A * B) <:? (A′ * B′) = prod-aux (A <:? A′) (B <:? B′)
 (_ * _) <:? Unit = no λ ()
 (_ * _) <:? Void = no λ ()
@@ -246,7 +248,7 @@ Buffer <:? (ν-type _) = no λ ()
 (_ * _) <:? (_ + _) = no λ ()
 (_ * _) <:? (_ ⇒[ _ ] _) = no λ ()
 (_ * _) <:? (μ-type _) = no λ ()
-(_ * _) <:? (ν-type _) = no λ ()
+(_ * _) <:? (ν-type _ _) = no λ ()
 (A + B) <:? (A′ + B′) = sum-aux (A <:? A′) (B <:? B′)
 (_ + _) <:? Unit = no λ ()
 (_ + _) <:? Void = no λ ()
@@ -257,7 +259,7 @@ Buffer <:? (ν-type _) = no λ ()
 (_ + _) <:? (_ * _) = no λ ()
 (_ + _) <:? (_ ⇒[ _ ] _) = no λ ()
 (_ + _) <:? (μ-type _) = no λ ()
-(_ + _) <:? (ν-type _) = no λ ()
+(_ + _) <:? (ν-type _ _) = no λ ()
 μ-type F <:? μ-type G = μ-aux (F ≟F G)
 μ-type _ <:? Unit = no λ ()
 μ-type _ <:? Void = no λ ()
@@ -268,15 +270,15 @@ Buffer <:? (ν-type _) = no λ ()
 μ-type _ <:? (_ * _) = no λ ()
 μ-type _ <:? (_ + _) = no λ ()
 μ-type _ <:? (_ ⇒[ _ ] _) = no λ ()
-μ-type _ <:? (ν-type _) = no λ ()
-ν-type F <:? ν-type G = ν-aux (F ≟F G)
-ν-type _ <:? Unit = no λ ()
-ν-type _ <:? Void = no λ ()
-ν-type _ <:? Int = no λ ()
-ν-type _ <:? Float = no λ ()
-ν-type _ <:? Str = no λ ()
-ν-type _ <:? Buffer = no λ ()
-ν-type _ <:? (_ * _) = no λ ()
-ν-type _ <:? (_ + _) = no λ ()
-ν-type _ <:? (_ ⇒[ _ ] _) = no λ ()
-ν-type _ <:? (μ-type _) = no λ ()
+μ-type _ <:? (ν-type _ _) = no λ ()
+ν-type F π <:? ν-type G π′ = ν-aux (F ≟F G) (π ⊑π? π′)
+ν-type _ _ <:? Unit = no λ ()
+ν-type _ _ <:? Void = no λ ()
+ν-type _ _ <:? Int = no λ ()
+ν-type _ _ <:? Float = no λ ()
+ν-type _ _ <:? Str = no λ ()
+ν-type _ _ <:? Buffer = no λ ()
+ν-type _ _ <:? (_ * _) = no λ ()
+ν-type _ _ <:? (_ + _) = no λ ()
+ν-type _ _ <:? (_ ⇒[ _ ] _) = no λ ()
+ν-type _ _ <:? (μ-type _) = no λ ()

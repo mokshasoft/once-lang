@@ -1743,7 +1743,7 @@ faithful (sigOp {A = Buffer}   name conc) dγ k = refl
 faithful {Γ = Γ} (sigOp {A = _ * _}    name conc) dγ k = sigop-value {⟦ Γ ↾ zeroUsage ⟧ᶜ} (value-info name base-Unit conc) dγ k
 faithful {Γ = Γ} (sigOp {A = _ + _}    name conc) dγ k = sigop-value {⟦ Γ ↾ zeroUsage ⟧ᶜ} (value-info name base-Unit conc) dγ k
 faithful {Γ = Γ} (sigOp {A = μ-type _} name conc) dγ k = sigop-value {⟦ Γ ↾ zeroUsage ⟧ᶜ} (value-info name base-Unit conc) dγ k
-faithful {Γ = Γ} (sigOp {A = ν-type _} name conc) dγ k = sigop-value {⟦ Γ ↾ zeroUsage ⟧ᶜ} (value-info name base-Unit conc) dγ k
+faithful {Γ = Γ} (sigOp {A = ν-type _ _} name conc) dγ k = sigop-value {⟦ Γ ↾ zeroUsage ⟧ᶜ} (value-info name base-Unit conc) dγ k
 faithful (case' {Γ = Γ} {Ψs = Ψs} {Ψₗ = Ψₗ} {Ψᵣ = Ψᵣ} {qℓ = qℓ} {qr = qr}
                 {A = A} {B = B} {C = C} s l r) dγ n =
   trans (cong (λ t → subst T (cohᴰ C) t ⟨$⟩ n)
@@ -1849,7 +1849,7 @@ faithful (case' {Γ = Γ} {Ψs = Ψs} {Ψₗ = Ψₗ} {Ψᵣ = Ψᵣ} {qℓ = q�
 faithful {Γ = Γ} (cata wf alg) dγ k = cong (_⟨$⟩ k) (FL.cata-body {Γ = Γ} wf alg (T-ext-at (faithful alg tt)) dγ)
 -- ana: dual of cata; reduces to the same closure-bridge via `ana-body`
 -- (+ the `ana-ev-bridge` trace lemma).
-faithful {Γ = Γ} (ana wf coalg) dγ k = cong (_⟨$⟩ k) (FL.ana-body {Γ = Γ} wf coalg (T-ext-at (faithful coalg tt)) dγ)
+faithful {Γ = Γ} (ana {π₀ = π₀} {π = π} wf coalg) dγ k = cong (_⟨$⟩ k) (FL.ana-body {Γ = Γ} {π₀ = π₀} {π = π} wf coalg (T-ext-at (faithful coalg tt)) dγ)
 
 ------------------------------------------------------------------------
 -- D143: faithfulness at the EMPTY context, stated for `elaborateFull`.

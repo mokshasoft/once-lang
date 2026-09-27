@@ -262,7 +262,7 @@ anaFᵈ F {A} coalg = anaᵈ (translateF Carrier Carrier F) (λ a → fmapT (coe
 -- re-invented by a separate eager left-to-right unfold, which ordered events
 -- the anamorphism does not order. Here the order is the order the program
 -- FORCES layers, which is the order the machine runs them in.
-⟦ ν-type F ⟧ᴰ   = νᵈ (translateF Carrier Carrier F)
+⟦ ν-type F _ ⟧ᴰ = νᵈ (translateF Carrier Carrier F)
 ⟦ Int ⟧ᴰ        = Val.⟦ Int ⟧
 ⟦ Float ⟧ᴰ      = Val.⟦ Float ⟧
 ⟦ Str ⟧ᴰ        = Val.⟦ Str ⟧
@@ -291,7 +291,7 @@ cohᴰ (A ⇒[ mk-kind Many π ] B) = cong₂ (λ x y → x → T y) (cohᴰ A) 
 cohᴰ (μ-type F)   = coh (μ-type F)
 -- ν's monadic meaning is no longer its pure one, so this transport stops
 -- borrowing `coh` and names its own constructor. Structurally identical.
-cohᴰ (ν-type F)   = cong νᵈ (tF-coh F)
+cohᴰ (ν-type F _) = cong νᵈ (tF-coh F)
 cohᴰ Int          = refl
 cohᴰ Float        = refl
 cohᴰ Str          = refl
@@ -324,7 +324,7 @@ mutual
   forget {A ⇒[ mk-kind One  π ] B} clo = λ va → mapRes forget (T.resT (clo (inject va)))
   forget {A ⇒[ mk-kind Many π ] B} clo = λ va → mapRes forget (T.resT (clo (inject va)))
   forget {μ-type F}   x        = x
-  forget {ν-type F}   v        = forgetν v
+  forget {ν-type F _} v        = forgetν v
   forget {Int}        x        = x
   forget {Float}      x        = x
   forget {Str}        x        = x
@@ -342,7 +342,7 @@ mutual
   inject {A ⇒[ mk-kind One  π ] B} pf = λ da → resT-lift (mapRes inject (pf (forget da)))
   inject {A ⇒[ mk-kind Many π ] B} pf = λ da → resT-lift (mapRes inject (pf (forget da)))
   inject {μ-type F}   x        = x
-  inject {ν-type F}   x        = injectν x
+  inject {ν-type F _} x        = injectν x
   inject {Int}        x        = x
   inject {Float}      x        = x
   inject {Str}        x        = x

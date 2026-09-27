@@ -33,7 +33,7 @@ open import Once.TypeCheck.Judgment public
         ; t-annot ; t-pair ; t-neg ; t-neg-float ; t-let ; t-case
         ; t-binop-arith ; t-binop-arith-float
         ; t-binop-arith-float-il ; t-binop-arith-float-ir ; t-binop-cmp
-        ; t-id-app ; t-fst-app ; t-snd-app ; t-terminal-app ; t-apply-app-infer
+        ; t-id-app ; t-fst-app ; t-snd-app ; t-terminal-app ; t-apply-app-infer ; t-Out-eff-app-infer
         ; t-app ; t-effApp ; t-app-spine
         -- D229 / plan 0.94 §13: ex falso
         ; t-neg-void ; t-case-void ; t-binop-void-l ; t-binop-void-r

@@ -87,7 +87,7 @@ forget-inject {Buffer} v        = refl
 forget-inject {μ-type F} v      = refl
 -- D179: no longer definitional — the round trip rebuilds every layer, so it
 -- is coinductive (discharged via the existing `bisimS-to-eq`).
-forget-inject {ν-type F} v      = forgetν-injectν v
+forget-inject {ν-type F _} v      = forgetν-injectν v
 forget-inject {A * B}  (a , b)  = cong₂ _,_ (forget-inject {A} a) (forget-inject {B} b)
 forget-inject {A + B}  (inj₁ a) = cong inj₁ (forget-inject {A} a)
 forget-inject {A + B}  (inj₂ b) = cong inj₂ (forget-inject {B} b)
@@ -370,27 +370,27 @@ subst-fam-T P refl m = refl
 --
 -- D143: same restriction as `morph-app-bridge` — the coalgebra is applied
 -- through `apply`, so its arrow must be NON-erased.
-ana-body : ∀ {mm} {Γ : Ctx mm} {F : Functor} {A} {π : Purity}
+ana-body : ∀ {mm} {Γ : Ctx mm} {F : Functor} {A} {π₀ π : Purity}
              (wf : WellFormedF F)
              (coalg : Expr ∅ zeroUsage (A ⇒[ mk-kind Many π ] ⟦ F ⟧T A))
              (ih : liftFn fmt {⟦ ∅ ⟧ᶜ} {A ⇒[ mk-kind Many π ] ⟦ F ⟧T A} (elaborate C.Heap coalg) tt ≡ SD.⟦ coalg ⟧ˢ fmt tt)
              (dγ : ⟦ ⟦ Γ ↾ zeroUsage ⟧ᶜ ⟧ᴰ)
-           → liftFn fmt {⟦ Γ ↾ zeroUsage ⟧ᶜ} {A ⇒[ mk-kind Many π ] ν-type F} (elaborate C.Heap (ana {Γ = Γ} wf coalg)) dγ
-             ≡ SD.⟦ ana {Γ = Γ} wf coalg ⟧ˢ fmt dγ
-ana-body {Γ = Γ} {F = F} {A = A} {π = π} wf coalg ih dγ =
+           → liftFn fmt {⟦ Γ ↾ zeroUsage ⟧ᶜ} {A ⇒[ mk-kind Many π₀ ] ν-type F π} (elaborate C.Heap (ana {Γ = Γ} {π₀ = π₀} {π = π} wf coalg)) dγ
+             ≡ SD.⟦ ana {Γ = Γ} {π₀ = π₀} {π = π} wf coalg ⟧ˢ fmt dγ
+ana-body {Γ = Γ} {F = F} {A = A} {π₀ = π₀} {π = π} wf coalg ih dγ =
   trans elab-ana-reduce (cong returnT per-a)
   where
     coalgIR : IR ⌊ A ⌋ ⌊ ⟦ F ⟧T A ⌋
     coalgIR = apply ∘ ⟨ elaborate C.Heap coalg ∘ terminal , id ⟩
     coalg' = subst (λ o → IR ⌊ A ⌋ o) (⌊⟧T-commute F A) coalgIR
-    Ana-IR : IR ⌊ A ⌋ ⌊ ν-type F ⌋
+    Ana-IR : IR ⌊ A ⌋ ⌊ ν-type F π ⌋
     Ana-IR = Ana (wf-⌊⌋ wf) coalg'
 
-    elab-ana-reduce : liftFn fmt {⟦ Γ ↾ zeroUsage ⟧ᶜ} {A ⇒[ mk-kind Many π ] ν-type F} (elaborate C.Heap (ana {Γ = Γ} wf coalg)) dγ
-                      ≡ returnT (λ a → liftFn fmt {A} {ν-type F} Ana-IR a)
+    elab-ana-reduce : liftFn fmt {⟦ Γ ↾ zeroUsage ⟧ᶜ} {A ⇒[ mk-kind Many π₀ ] ν-type F π} (elaborate C.Heap (ana {Γ = Γ} {π₀ = π₀} {π = π} wf coalg)) dγ
+                      ≡ returnT (λ a → liftFn fmt {A} {ν-type F π} Ana-IR a)
     elab-ana-reduce =
-      (trans (subst-T-returnT (cong₂ (λ x y → x → T y) (cohᴰ A) (cohᴰ (ν-type F))) (λ a → evalᴰ fmt Ana-IR a))
-             (cong returnT (subst-arrow (cohᴰ A) (cohᴰ (ν-type F)) (λ a → evalᴰ fmt Ana-IR a))))
+      (trans (subst-T-returnT (cong₂ (λ x y → x → T y) (cohᴰ A) (cohᴰ (ν-type F π))) (λ a → evalᴰ fmt Ana-IR a))
+             (cong returnT (subst-arrow (cohᴰ A) (cohᴰ (ν-type F π)) (λ a → evalᴰ fmt Ana-IR a))))
 
     -- The IR-side coalgebra, as `anaFᵈ` receives it.
     cE : ⟦ ⌊ A ⌋ ⟧ᴰᴵ → T (⟦ ⌈ eraseF F ⌉F ⟧F ⟦ ⌊ A ⌋ ⟧ᴰᴵ)
@@ -586,7 +586,7 @@ ana-body {Γ = Γ} {F = F} {A = A} {π = π} wf coalg ih dγ =
             (extensionality per-x-D179)
 
     ana-agree : ∀ (a : ⟦ A ⟧ᴰ)
-              → subst (λ z → z) (cohᴰ (ν-type F))
+              → subst (λ z → z) (cohᴰ (ν-type F π))
                   (anaFᵈ ⌈ eraseF F ⌉F cE (subst (λ z → z) (sym (cohᴰ A)) a))
                 ≡ anaFᵈ F cS a
     ana-agree a =
@@ -598,9 +598,9 @@ ana-body {Γ = Γ} {F = F} {A = A} {π = π} wf coalg ih dγ =
                   coalg-agree)
                (cong (anaFᵈ F cS) (subst-subst-sym (cohᴰ A))))
 
-    per-a : (λ a → liftFn fmt {A} {ν-type F} Ana-IR a)
-            ≡ valueT (SD.⟦ ana {Γ = Γ} wf coalg ⟧ˢ fmt dγ) 0
+    per-a : (λ a → liftFn fmt {A} {ν-type F π} Ana-IR a)
+            ≡ valueT (SD.⟦ ana {Γ = Γ} {π₀ = π₀} {π = π} wf coalg ⟧ˢ fmt dγ) 0
     per-a = extensionality (λ a →
-      trans (subst-T-returnT (cohᴰ (ν-type F))
+      trans (subst-T-returnT (cohᴰ (ν-type F π))
                (anaFᵈ ⌈ eraseF F ⌉F cE (subst (λ z → z) (sym (cohᴰ A)) a)))
             (cong returnT (ana-agree a)))

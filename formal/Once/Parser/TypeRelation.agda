@@ -124,7 +124,7 @@ mutual
     -- sub-grammar, so the shrink and bridge lemmas are `pa-mu`'s verbatim.
     pa-nu : ∀ {toks rest} {F : Functor}
           → ParsesFunctorSum toks F rest
-          → ParsesAtom (TWord "Nu" ∷ toks) (ν-type F) rest
+          → ParsesAtom (TWord "Nu" ∷ toks) (ν-type F pure) rest
 
   -- prod ::= atom ('*' atom)*
   data ParsesProd : List Token → Type → List Token → Set where

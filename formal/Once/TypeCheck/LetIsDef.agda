@@ -246,6 +246,7 @@ module Transfer
     tr-i ld (t-apply-app-infer d) = cᵢ (sym (drop-z+M ld _)) (t-apply-app-infer (tr-i ld d))
     tr-i ld (t-apply-eff-app-infer d) = cᵢ (sym (drop-z+M ld _)) (t-apply-eff-app-infer (tr-i ld d))
     tr-i ld (t-Out-app-infer wf eq d) = cᵢ (sym (drop-z+M ld _)) (t-Out-app-infer wf eq (tr-i ld d))
+    tr-i ld (t-Out-eff-app-infer wf eq d) = cᵢ (sym (drop-z+M ld _)) (t-Out-eff-app-infer wf eq (tr-i ld d))
     tr-i ld (t-app ah dF dX) = cᵢ (sym (drop-+* ld _ _ _)) (t-app ah (tr-i ld dF) (tr-c ld dX))
     tr-i ld (t-effApp ah dF dX) = cᵢ (sym (drop-+* ld _ _ _)) (t-effApp ah (tr-i ld dF) (tr-c ld dX))
     tr-i ld (t-app-spine ah dX dF) = cᵢ (sym (drop-+* ld _ _ _)) (t-app-spine ah (tr-i ld dX) (tr-d ld dF))

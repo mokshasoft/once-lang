@@ -630,7 +630,7 @@ asFun (success Buffer Ψ _ _ _)                           = notFun (NotFunction 
 asFun (success (A Once.Type.* B) _ _ _ _)                = notFun (NotFunction (A Once.Type.* B))
 asFun (success (A Once.Type.+ B) _ _ _ _)                = notFun (NotFunction (A Once.Type.+ B))
 asFun (success (μ-type F) _ _ _ _)                       = notFun (NotFunction (μ-type F))
-asFun (success (ν-type F) _ _ _ _)                       = notFun (NotFunction (ν-type F))
+asFun (success (ν-type F π) _ _ _ _)                       = notFun (NotFunction (ν-type F π))
 
 data IntProjection {n : ℕ} (Δ : SCtx n) : Set where
   isInt  : (Ψ : Surface.Usage n) → SExpr Δ Ψ Int → ℕ → ℕ → IntProjection Δ
@@ -650,7 +650,7 @@ asInt (success (A Once.Type.* B) _ _ _ _)                = notInt (TypeMismatch 
 asInt (success (A Once.Type.+ B) _ _ _ _)                = notInt (TypeMismatch Int (A Once.Type.+ B))
 asInt (success (A ⇒[ k ] B) _ _ _ _)                     = notInt (TypeMismatch Int (A ⇒[ k ] B))
 asInt (success (μ-type F) _ _ _ _)                       = notInt (TypeMismatch Int (μ-type F))
-asInt (success (ν-type F) _ _ _ _)                       = notInt (TypeMismatch Int (ν-type F))
+asInt (success (ν-type F π) _ _ _ _)                       = notInt (TypeMismatch Int (ν-type F π))
 
 -- | NOT NUMERIC — neither `Int` nor `Float` — with the error the elaborator
 -- wraps in that case (plan 0.75 F4).
@@ -677,7 +677,7 @@ notNumeric (success (A Once.Type.* B) _ _ _ _)           = just (TypeMismatch In
 notNumeric (success (A Once.Type.+ B) _ _ _ _)           = just (TypeMismatch Int (A Once.Type.+ B))
 notNumeric (success (A ⇒[ k ] B) _ _ _ _)                = just (TypeMismatch Int (A ⇒[ k ] B))
 notNumeric (success (μ-type F) _ _ _ _)                  = just (TypeMismatch Int (μ-type F))
-notNumeric (success (ν-type F) _ _ _ _)                  = just (TypeMismatch Int (ν-type F))
+notNumeric (success (ν-type F π) _ _ _ _)                  = just (TypeMismatch Int (ν-type F π))
 
 ------------------------------------------------------------------------
 -- Decide-with-proof helpers
@@ -867,13 +867,16 @@ mutual
   -- reduce them with plain nested `with | eq` — like `checkPair`.
   -- D194: `Out v` — the ν eliminator, INFER-mode (a check rule would have to
   -- invert `⟦ F ⟧T (ν-type F) ≡ T` to recover `F`).
+  -- The IR `Out` at a stream of grade `π`, retyped to the layer's surface type.
+  outIR : (F : Once.Type.Functor) (π : Once.Type.Purity) → Once.Functor.Translate.WellFormedF F
+        → IR ⌊ Once.Type.ν-type F π ⌋ ⌊ ⟦ F ⟧T (Once.Type.ν-type F π) ⌋
   inferOut : (ctx : NamedCtx) → (arg : RawExpr)
            → VerifiedInferResult ctx (Raw.RApp (Raw.RResolved (gen "Out")) arg)
-  inferOutGo : (ctx : NamedCtx) (arg : RawExpr) (F : Once.Type.Functor)
+  inferOutGo : (ctx : NamedCtx) (arg : RawExpr) (F : Once.Type.Functor) (π : Once.Type.Purity)
                (Ψ : Surface.Usage (NamedCtx.size ctx))
-               (argE : SExpr (NamedCtx.debruijn ctx) Ψ (Once.Type.ν-type F))
+               (argE : SExpr (NamedCtx.debruijn ctx) Ψ (Once.Type.ν-type F π))
                (d fr : ℕ)
-               (w : ctx ⊢ᵢ arg ∶ Once.Type.ν-type F ⨾ Ψ)
+               (w : ctx ⊢ᵢ arg ∶ Once.Type.ν-type F π ⨾ Ψ)
              → (mw : Maybe (Once.Functor.Translate.WellFormedF F)) → wellFormedF? F ≡ mw
              → VerifiedInferResult ctx (Raw.RApp (Raw.RResolved (gen "Out")) arg)
 
@@ -899,10 +902,10 @@ mutual
   checkAna : (ctx : NamedCtx) → (arg : RawExpr) → (T : Type)
            → VerifiedCheckResult ctx (Raw.RApp (Raw.RResolved (gen "ana")) arg) T
   checkAnaGo : (ctx : NamedCtx) (coalg : RawExpr) (F : Once.Type.Functor) (A : Type)
-               (π : Once.Type.Purity)
+               (π₀ π : Once.Type.Purity)
              → (mw : Maybe (Once.Functor.Translate.WellFormedF F)) → wellFormedF? F ≡ mw
              → VerifiedCheckResult ctx (Raw.RApp (Raw.RResolved (gen "ana")) coalg)
-                                       (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] Once.Type.ν-type F)
+                                       (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π₀ ] Once.Type.ν-type F π)
 
   -- Plan 0.4 T0 Option A: hoist the `ahv-other` (generic application)
   -- branch of `inferElab RApp` into its own top-level mutual member.
@@ -1454,9 +1457,9 @@ mutual
   checkApply ctx arg T | success ((_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.One Once.Type.pure ] _) Once.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
   checkApply ctx arg T | success ((_ Once.Type.⇒[ Once.Type.mk-kind _ Once.Type.eff ] _) Once.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
   checkApply ctx arg T | success ((Once.Type.μ-type _) Once.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
-  checkApply ctx arg T | success ((Once.Type.ν-type _) Once.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
+  checkApply ctx arg T | success ((Once.Type.ν-type _ _) Once.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
   checkApply ctx arg T | success (Once.Type.μ-type _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
-  checkApply ctx arg T | success (Once.Type.ν-type _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
+  checkApply ctx arg T | success (Once.Type.ν-type _ _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
 
   -- Plan 0.28 Commit 2: `In arg` (μ-introduction) check-mode at `μ-type F`.
   -- Read F from the expected μ-type, gate on `wellFormedF? F` (threaded
@@ -1474,8 +1477,8 @@ mutual
   -- nested `with | eq`.
   inferOut ctx arg with inferElabV ctx arg
   ... | failure err , _ = failure err , tt
-  ... | success (Once.Type.ν-type F) Ψ argE d fr , w =
-        inferOutGo ctx arg F Ψ argE d fr w (wellFormedF? F) refl
+  ... | success (Once.Type.ν-type F π) Ψ argE d fr , w =
+        inferOutGo ctx arg F π Ψ argE d fr w (wellFormedF? F) refl
   ... | success Once.Type.Unit _ _ _ _ , _ = failure (BuiltinTypeMismatch "Out") , tt
   ... | success Once.Type.Void Ψ argE d fr , w =
         success Void _ (Surface.morph-app IR.initial argE) (suc d) fr , t-Out-app-void w
@@ -1488,16 +1491,25 @@ mutual
   ... | success (_ Once.Type.⇒[ _ ] _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "Out") , tt
   ... | success (Once.Type.μ-type _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "Out") , tt
 
-  inferOutGo ctx arg F Ψ argE d fr w nothing _ = failure (BuiltinTypeMismatch "Out") , tt
-  inferOutGo ctx arg F Ψ argE d fr w (just wfF) eqW =
-    success (⟦ F ⟧T (Once.Type.ν-type F)) _
-      (Surface.morph-app
-        (subst (λ o → IR ⌊ Once.Type.ν-type F ⌋ o)
-               (sym (⌊⟧T-commute F (Once.Type.ν-type F)))
-               (IR.Out (wf-⌊⌋ wfF)))
-        argE)
+  outIR F π wfF =
+    subst (λ o → IR ⌊ Once.Type.ν-type F π ⌋ o)
+          (sym (⌊⟧T-commute F (Once.Type.ν-type F π)))
+          (IR.Out (wf-⌊⌋ wfF))
+
+  inferOutGo ctx arg F π Ψ argE d fr w nothing _ = failure (BuiltinTypeMismatch "Out") , tt
+  inferOutGo ctx arg F Once.Type.pure Ψ argE d fr w (just wfF) eqW =
+    success (⟦ F ⟧T (Once.Type.ν-type F Once.Type.pure)) _
+      (Surface.morph-app (outIR F Once.Type.pure wfF) argE)
       (suc d) fr
     , t-Out-app-infer wfF refl w
+  -- D233: an EFFECTFUL stream — the stream is evaluated now, the force is
+  -- suspended (`curry (Out ∘ fst)`), as `t-apply-eff-app-infer` suspends `apply`.
+  inferOutGo ctx arg F Once.Type.eff Ψ argE d fr w (just wfF) eqW =
+    success (Once.Type.Unit Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ]
+               ⟦ F ⟧T (Once.Type.ν-type F Once.Type.eff)) _
+      (Surface.morph-app (IR.curry (outIR F Once.Type.eff wfF IR.∘ IR.fst)) argE)
+      (suc d) fr
+    , t-Out-eff-app-infer wfF refl w
 
   checkInGo ctx arg F nothing _ = failure (BuiltinTypeMismatch "In") , tt
   checkInGo ctx arg F (just wfF) eqW with checkElabV ctx arg (⟦ F ⟧T (Once.Type.μ-type F))
@@ -1551,12 +1563,12 @@ mutual
   -- D192: the unfold. Same three moves as the fold — read `F` from the
   -- expected type, decide `WellFormedF F`, check the coalgebra CLOSED in the
   -- cleared context — with the coalgebra's arrow pointing the other way.
-  checkAna ctx coalg (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] Once.Type.ν-type F) =
-    checkAnaGo ctx coalg F A π (wellFormedF? F) refl
+  checkAna ctx coalg (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π₀ ] Once.Type.ν-type F π) =
+    checkAnaGo ctx coalg F A π₀ π (wellFormedF? F) refl
   checkAna _ _ _ = failure (BuiltinTypeMismatch "ana") , tt
 
-  checkAnaGo ctx coalg F A π nothing _ = failure (BuiltinTypeMismatch "ana") , tt
-  checkAnaGo ctx coalg F A π (just wfF) eqW
+  checkAnaGo ctx coalg F A π₀ π nothing _ = failure (BuiltinTypeMismatch "ana") , tt
+  checkAnaGo ctx coalg F A π₀ π (just wfF) eqW
     with checkElabV (ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx))
                     coalg (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] ⟦ F ⟧T A)
   ... | failure err , _ = failure err , tt
@@ -2037,7 +2049,7 @@ mutual
   inferElabV-RUnaryOp-aux ctx e (success (A Once.Type.+ B)      _ _ _ _ , _) = failure (TypeMismatch Int (A Once.Type.+ B)) , tt
   inferElabV-RUnaryOp-aux ctx e (success (A Once.Type.⇒[ k ] B) _ _ _ _ , _) = failure (TypeMismatch Int (A Once.Type.⇒[ k ] B)) , tt
   inferElabV-RUnaryOp-aux ctx e (success (Once.Type.μ-type F)   _ _ _ _ , _) = failure (TypeMismatch Int (Once.Type.μ-type F)) , tt
-  inferElabV-RUnaryOp-aux ctx e (success (Once.Type.ν-type F)   _ _ _ _ , _) = failure (TypeMismatch Int (Once.Type.ν-type F)) , tt
+  inferElabV-RUnaryOp-aux ctx e (success (Once.Type.ν-type F π)   _ _ _ _ , _) = failure (TypeMismatch Int (Once.Type.ν-type F π)) , tt
 
   -- D229 / plan 0.94 §13: ex falso in an operator. A `Void` left operand halts
   -- first (the right one is typed, never reached); a `Void` right operand halts
@@ -2063,7 +2075,7 @@ mutual
     success Void _ (seq e₁E e₂E) (d₁ ⊔ d₂) f₂ , t-binop-void-r w₁ (λ ()) w₂
   inferElabV-RBinOp-void ctx op e₁ e₂ (success (Once.Type.μ-type F) Ψ₁ e₁E d₁ f₁ , w₁) (success Void Ψ₂ e₂E d₂ f₂ , w₂) =
     success Void _ (seq e₁E e₂E) (d₁ ⊔ d₂) f₂ , t-binop-void-r w₁ (λ ()) w₂
-  inferElabV-RBinOp-void ctx op e₁ e₂ (success (Once.Type.ν-type F) Ψ₁ e₁E d₁ f₁ , w₁) (success Void Ψ₂ e₂E d₂ f₂ , w₂) =
+  inferElabV-RBinOp-void ctx op e₁ e₂ (success (Once.Type.ν-type F π) Ψ₁ e₁E d₁ f₁ , w₁) (success Void Ψ₂ e₂E d₂ f₂ , w₂) =
     success Void _ (seq e₁E e₂E) (d₁ ⊔ d₂) f₂ , t-binop-void-r w₁ (λ ()) w₂
   inferElabV-RBinOp-void ctx op e₁ e₂ r₁ r₂ = inferElabV-RBinOp-aux ctx op e₁ e₂ r₁ r₂
 
@@ -2077,7 +2089,7 @@ mutual
   inferElabV-RBinOp-aux ctx op e₁ e₂ (success (A Once.Type.+ B)      _ _ _ _ , _) _ = failure (BinOpLeftError (TypeMismatch Int (A Once.Type.+ B))) , tt
   inferElabV-RBinOp-aux ctx op e₁ e₂ (success (A Once.Type.⇒[ k ] B) _ _ _ _ , _) _ = failure (BinOpLeftError (TypeMismatch Int (A Once.Type.⇒[ k ] B))) , tt
   inferElabV-RBinOp-aux ctx op e₁ e₂ (success (Once.Type.μ-type F)   _ _ _ _ , _) _ = failure (BinOpLeftError (TypeMismatch Int (Once.Type.μ-type F))) , tt
-  inferElabV-RBinOp-aux ctx op e₁ e₂ (success (Once.Type.ν-type F)   _ _ _ _ , _) _ = failure (BinOpLeftError (TypeMismatch Int (Once.Type.ν-type F))) , tt
+  inferElabV-RBinOp-aux ctx op e₁ e₂ (success (Once.Type.ν-type F π)   _ _ _ _ , _) _ = failure (BinOpLeftError (TypeMismatch Int (Once.Type.ν-type F π))) , tt
   -- left Int, right non-Int → BinOpRightError
   inferElabV-RBinOp-aux ctx op e₁ e₂ (success Int _ _ _ _ , _) (failure err , _) = failure (BinOpRightError err) , tt
   inferElabV-RBinOp-aux ctx op e₁ e₂ (success Int _ _ _ _ , _) (success Unit   _ _ _ _ , _) = failure (BinOpRightError (TypeMismatch Int Unit)) , tt
@@ -2088,7 +2100,7 @@ mutual
   inferElabV-RBinOp-aux ctx op e₁ e₂ (success Int _ _ _ _ , _) (success (A Once.Type.+ B)      _ _ _ _ , _) = failure (BinOpRightError (TypeMismatch Int (A Once.Type.+ B))) , tt
   inferElabV-RBinOp-aux ctx op e₁ e₂ (success Int _ _ _ _ , _) (success (A Once.Type.⇒[ k ] B) _ _ _ _ , _) = failure (BinOpRightError (TypeMismatch Int (A Once.Type.⇒[ k ] B))) , tt
   inferElabV-RBinOp-aux ctx op e₁ e₂ (success Int _ _ _ _ , _) (success (Once.Type.μ-type F)   _ _ _ _ , _) = failure (BinOpRightError (TypeMismatch Int (Once.Type.μ-type F))) , tt
-  inferElabV-RBinOp-aux ctx op e₁ e₂ (success Int _ _ _ _ , _) (success (Once.Type.ν-type F)   _ _ _ _ , _) = failure (BinOpRightError (TypeMismatch Int (Once.Type.ν-type F))) , tt
+  inferElabV-RBinOp-aux ctx op e₁ e₂ (success Int _ _ _ _ , _) (success (Once.Type.ν-type F π)   _ _ _ _ , _) = failure (BinOpRightError (TypeMismatch Int (Once.Type.ν-type F π))) , tt
   -- both Int → op dispatch
   inferElabV-RBinOp-aux ctx Raw.OpAdd e₁ e₂ (success Int Ψ₁ e₁E d₁ f₁ , w₁) (success Int Ψ₂ e₂E d₂ f₂ , w₂) = success Int _ (Surface.add e₁E e₂E) (d₁ ⊔ d₂) f₂ , t-binop-arith refl w₁ w₂
   inferElabV-RBinOp-aux ctx Raw.OpSub e₁ e₂ (success Int Ψ₁ e₁E d₁ f₁ , w₁) (success Int Ψ₂ e₂E d₂ f₂ , w₂) = success Int _ (Surface.sub e₁E e₂E) (d₁ ⊔ d₂) f₂ , t-binop-arith refl w₁ w₂
@@ -2125,7 +2137,7 @@ mutual
   inferElabV-RBinOp-aux ctx op e₁ e₂ (success Float _ _ _ _ , _) (success (A Once.Type.+ B) _ _ _ _ , _) = failure (BinOpRightError (TypeMismatch Float (A Once.Type.+ B))) , tt
   inferElabV-RBinOp-aux ctx op e₁ e₂ (success Float _ _ _ _ , _) (success (A Once.Type.⇒[ k ] B) _ _ _ _ , _) = failure (BinOpRightError (TypeMismatch Float (A Once.Type.⇒[ k ] B))) , tt
   inferElabV-RBinOp-aux ctx op e₁ e₂ (success Float _ _ _ _ , _) (success (Once.Type.μ-type F) _ _ _ _ , _) = failure (BinOpRightError (TypeMismatch Float (Once.Type.μ-type F))) , tt
-  inferElabV-RBinOp-aux ctx op e₁ e₂ (success Float _ _ _ _ , _) (success (Once.Type.ν-type F) _ _ _ _ , _) = failure (BinOpRightError (TypeMismatch Float (Once.Type.ν-type F))) , tt
+  inferElabV-RBinOp-aux ctx op e₁ e₂ (success Float _ _ _ _ , _) (success (Once.Type.ν-type F π) _ _ _ _ , _) = failure (BinOpRightError (TypeMismatch Float (Once.Type.ν-type F π))) , tt
   -- both Float → op dispatch. Only `+`, `−` and `×` exist here
   -- (`isFloatArithmeticOp`), and `Once.Float.Arith` records why.
   inferElabV-RBinOp-aux ctx Raw.OpAdd e₁ e₂ (success Float Ψ₁ e₁E d₁ f₁ , w₁) (success Float Ψ₂ e₂E d₂ f₂ , w₂) = success Float _ (Surface.fadd e₁E e₂E) (d₁ ⊔ d₂) f₂ , t-binop-arith-float refl w₁ w₂
@@ -2206,7 +2218,7 @@ mutual
   inferElabV-RDestruct-aux ctx scrut xL eL xR eR (success (_ Once.Type.* _) _ _ _ _ , _) = failure CaseScrutineeNotSum , tt
   inferElabV-RDestruct-aux ctx scrut xL eL xR eR (success (_ Once.Type.⇒[ _ ] _) _ _ _ _ , _) = failure CaseScrutineeNotSum , tt
   inferElabV-RDestruct-aux ctx scrut xL eL xR eR (success (Once.Type.μ-type _) _ _ _ _ , _) = failure CaseScrutineeNotSum , tt
-  inferElabV-RDestruct-aux ctx scrut xL eL xR eR (success (Once.Type.ν-type _) _ _ _ _ , _) = failure CaseScrutineeNotSum , tt
+  inferElabV-RDestruct-aux ctx scrut xL eL xR eR (success (Once.Type.ν-type _ _) _ _ _ _ , _) = failure CaseScrutineeNotSum , tt
   inferElabV-RDestruct-aux ctx scrut xL eL xR eR (success (A Once.Type.+ B) Ψs scrutE ds fs , wS) =
     inferElabV-RDestruct-auxL ctx scrut xL eL xR eR A B scrutE ds fs wS (inferElabV (extendNamedCtx ctx xL A) eL)
   -- D229 / plan 0.94 §13: a `Void` scrutinee — the branches are typed with
@@ -2264,7 +2276,7 @@ mutual
   ... | success (A Once.Type.* B) _ _ _ _ , _ = failure (NotFunction (A Once.Type.* B)) , tt
   ... | success (A Once.Type.+ B) _ _ _ _ , _ = failure (NotFunction (A Once.Type.+ B)) , tt
   ... | success (Once.Type.μ-type F) _ _ _ _ , _ = failure (NotFunction (Once.Type.μ-type F)) , tt
-  ... | success (Once.Type.ν-type F) _ _ _ _ , _ = failure (NotFunction (Once.Type.ν-type F)) , tt
+  ... | success (Once.Type.ν-type F π) _ _ _ _ , _ = failure (NotFunction (Once.Type.ν-type F π)) , tt
   ... | success (A Once.Type.⇒[ Once.Type.mk-kind q Once.Type.pure ] B) Ψ₁ fE df ff , wF with checkElabV ctx x A
   ...   | failure err , _ = failure err , tt
   ...   | success Ψ₂ xE dx fx , wX =
@@ -2296,7 +2308,7 @@ mutual
   ... | success (_ Once.Type.+ _) _ _ _ _ , _ = failure FstNeedsPair , tt
   ... | success (_ Once.Type.⇒[ _ ] _) _ _ _ _ , _ = failure FstNeedsPair , tt
   ... | success (Once.Type.μ-type _) _ _ _ _ , _ = failure FstNeedsPair , tt
-  ... | success (Once.Type.ν-type _) _ _ _ _ , _ = failure FstNeedsPair , tt
+  ... | success (Once.Type.ν-type _ _) _ _ _ _ , _ = failure FstNeedsPair , tt
   -- ahv-snd : argument must have product type.
   inferElabV-RApp-dispatch ctx f arg ahv-snd _ with inferElabV ctx arg
   ... | failure err , _ = failure err , tt
@@ -2312,7 +2324,7 @@ mutual
   ... | success (_ Once.Type.+ _) _ _ _ _ , _ = failure SndNeedsPair , tt
   ... | success (_ Once.Type.⇒[ _ ] _) _ _ _ _ , _ = failure SndNeedsPair , tt
   ... | success (Once.Type.μ-type _) _ _ _ _ , _ = failure SndNeedsPair , tt
-  ... | success (Once.Type.ν-type _) _ _ _ _ , _ = failure SndNeedsPair , tt
+  ... | success (Once.Type.ν-type _ _) _ _ _ _ , _ = failure SndNeedsPair , tt
   -- ahv-terminal : any-typed argument, Unit result.
   inferElabV-RApp-dispatch ctx f arg ahv-terminal _ with inferElabV ctx arg
   ... | failure err , _ = failure err , tt
@@ -2359,9 +2371,9 @@ mutual
   inferElabV-RApp-dispatch ctx f arg ahv-apply _ | success ((_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Zero Once.Type.pure ] _) Once.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
   inferElabV-RApp-dispatch ctx f arg ahv-apply _ | success ((_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.One Once.Type.pure ] _) Once.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
   inferElabV-RApp-dispatch ctx f arg ahv-apply _ | success ((Once.Type.μ-type _) Once.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
-  inferElabV-RApp-dispatch ctx f arg ahv-apply _ | success ((Once.Type.ν-type _) Once.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
+  inferElabV-RApp-dispatch ctx f arg ahv-apply _ | success ((Once.Type.ν-type _ _) Once.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
   inferElabV-RApp-dispatch ctx f arg ahv-apply _ | success (Once.Type.μ-type _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
-  inferElabV-RApp-dispatch ctx f arg ahv-apply _ | success (Once.Type.ν-type _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
+  inferElabV-RApp-dispatch ctx f arg ahv-apply _ | success (Once.Type.ν-type _ _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
   -- ahv-inl / ahv-inr / ahv-initial : check-only builtins, infer fails.
   inferElabV-RApp-dispatch ctx f arg ahv-inl     _ = failure InlInInferMode , tt
   inferElabV-RApp-dispatch ctx f arg ahv-inr     _ = failure InrInInferMode , tt
@@ -2418,7 +2430,7 @@ mutual
   checkElabV-RApp-dispatch ctx f arg T ahv-inl _ | (_ Once.Type.* _) = failure InlNeedsSumType , tt
   checkElabV-RApp-dispatch ctx f arg T ahv-inl _ | (_ Once.Type.⇒[ _ ] _) = failure InlNeedsSumType , tt
   checkElabV-RApp-dispatch ctx f arg T ahv-inl _ | (μ-type _) = failure InlNeedsSumType , tt
-  checkElabV-RApp-dispatch ctx f arg T ahv-inl _ | (ν-type _) = failure InlNeedsSumType , tt
+  checkElabV-RApp-dispatch ctx f arg T ahv-inl _ | (ν-type _ _) = failure InlNeedsSumType , tt
   -- ahv-inr: T must be sum type A+B; check arg at B.
   checkElabV-RApp-dispatch ctx f arg T ahv-inr _ with T
   ... | (A Once.Type.+ B) with checkElabV ctx arg B
@@ -2434,7 +2446,7 @@ mutual
   checkElabV-RApp-dispatch ctx f arg T ahv-inr _ | (_ Once.Type.* _) = failure InrNeedsSumType , tt
   checkElabV-RApp-dispatch ctx f arg T ahv-inr _ | (_ Once.Type.⇒[ _ ] _) = failure InrNeedsSumType , tt
   checkElabV-RApp-dispatch ctx f arg T ahv-inr _ | (μ-type _) = failure InrNeedsSumType , tt
-  checkElabV-RApp-dispatch ctx f arg T ahv-inr _ | (ν-type _) = failure InrNeedsSumType , tt
+  checkElabV-RApp-dispatch ctx f arg T ahv-inr _ | (ν-type _ _) = failure InrNeedsSumType , tt
   -- ahv-initial: arg must be Void; result has any expected T.
   checkElabV-RApp-dispatch ctx f arg T ahv-initial _ with checkElabV ctx arg Once.Type.Void
   ... | failure err , _ = failure err , tt
@@ -2485,7 +2497,7 @@ mutual
   checkElabV-RVar-bbc-id-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Zero _ ] _) err = failure err , tt
   checkElabV-RVar-bbc-id-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.One _ ] _) err = failure err , tt
   checkElabV-RVar-bbc-id-failure-aux ctx (Once.Type.μ-type _) err = failure err , tt
-  checkElabV-RVar-bbc-id-failure-aux ctx (Once.Type.ν-type _) err = failure err , tt
+  checkElabV-RVar-bbc-id-failure-aux ctx (Once.Type.ν-type _ _) err = failure err , tt
 
   checkElabV-RVar-bbc-fst-failure-aux ctx ((A Once.Type.* B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] A') err with A ≟T A'
   ... | yes refl =
@@ -2506,13 +2518,13 @@ mutual
   checkElabV-RVar-bbc-fst-failure-aux ctx ((_ Once.Type.+ _) Once.Type.⇒[ _ ] _) err = failure err , tt
   checkElabV-RVar-bbc-fst-failure-aux ctx ((_ Once.Type.⇒[ _ ] _) Once.Type.⇒[ _ ] _) err = failure err , tt
   checkElabV-RVar-bbc-fst-failure-aux ctx ((Once.Type.μ-type _) Once.Type.⇒[ _ ] _) err = failure err , tt
-  checkElabV-RVar-bbc-fst-failure-aux ctx ((Once.Type.ν-type _) Once.Type.⇒[ _ ] _) err = failure err , tt
+  checkElabV-RVar-bbc-fst-failure-aux ctx ((Once.Type.ν-type _ _) Once.Type.⇒[ _ ] _) err = failure err , tt
   checkElabV-RVar-bbc-fst-failure-aux ctx ((_ Once.Type.* _) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Zero _ ] _) err = failure err , tt
   checkElabV-RVar-bbc-fst-failure-aux ctx ((_ Once.Type.* _) Once.Type.⇒[ Once.Type.mk-kind Once.Type.One _ ] _) err = failure err , tt
   checkElabV-RVar-bbc-fst-failure-aux ctx (_ Once.Type.* _) err = failure err , tt
   checkElabV-RVar-bbc-fst-failure-aux ctx (_ Once.Type.+ _) err = failure err , tt
   checkElabV-RVar-bbc-fst-failure-aux ctx (Once.Type.μ-type _) err = failure err , tt
-  checkElabV-RVar-bbc-fst-failure-aux ctx (Once.Type.ν-type _) err = failure err , tt
+  checkElabV-RVar-bbc-fst-failure-aux ctx (Once.Type.ν-type _ _) err = failure err , tt
 
   -- bbc-snd: canonical T = (A * B) ⇒[Many,pure] B'
   checkElabV-RVar-bbc-snd-failure-aux ctx ((A Once.Type.* B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B') err with B ≟T B'
@@ -2534,13 +2546,13 @@ mutual
   checkElabV-RVar-bbc-snd-failure-aux ctx ((_ Once.Type.+ _) Once.Type.⇒[ _ ] _) err = failure err , tt
   checkElabV-RVar-bbc-snd-failure-aux ctx ((_ Once.Type.⇒[ _ ] _) Once.Type.⇒[ _ ] _) err = failure err , tt
   checkElabV-RVar-bbc-snd-failure-aux ctx ((Once.Type.μ-type _) Once.Type.⇒[ _ ] _) err = failure err , tt
-  checkElabV-RVar-bbc-snd-failure-aux ctx ((Once.Type.ν-type _) Once.Type.⇒[ _ ] _) err = failure err , tt
+  checkElabV-RVar-bbc-snd-failure-aux ctx ((Once.Type.ν-type _ _) Once.Type.⇒[ _ ] _) err = failure err , tt
   checkElabV-RVar-bbc-snd-failure-aux ctx ((_ Once.Type.* _) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Zero _ ] _) err = failure err , tt
   checkElabV-RVar-bbc-snd-failure-aux ctx ((_ Once.Type.* _) Once.Type.⇒[ Once.Type.mk-kind Once.Type.One _ ] _) err = failure err , tt
   checkElabV-RVar-bbc-snd-failure-aux ctx (_ Once.Type.* _) err = failure err , tt
   checkElabV-RVar-bbc-snd-failure-aux ctx (_ Once.Type.+ _) err = failure err , tt
   checkElabV-RVar-bbc-snd-failure-aux ctx (Once.Type.μ-type _) err = failure err , tt
-  checkElabV-RVar-bbc-snd-failure-aux ctx (Once.Type.ν-type _) err = failure err , tt
+  checkElabV-RVar-bbc-snd-failure-aux ctx (Once.Type.ν-type _ _) err = failure err , tt
 
   -- bbc-terminal: canonical T = A ⇒[Many,pure] Unit
   checkElabV-RVar-bbc-terminal-failure-aux ctx (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] Unit) err =
@@ -2562,11 +2574,11 @@ mutual
   checkElabV-RVar-bbc-terminal-failure-aux ctx (_ Once.Type.⇒[ _ ] (_ Once.Type.+ _)) err = failure err , tt
   checkElabV-RVar-bbc-terminal-failure-aux ctx (_ Once.Type.⇒[ _ ] (_ Once.Type.⇒[ _ ] _)) err = failure err , tt
   checkElabV-RVar-bbc-terminal-failure-aux ctx (_ Once.Type.⇒[ _ ] (Once.Type.μ-type _)) err = failure err , tt
-  checkElabV-RVar-bbc-terminal-failure-aux ctx (_ Once.Type.⇒[ _ ] (Once.Type.ν-type _)) err = failure err , tt
+  checkElabV-RVar-bbc-terminal-failure-aux ctx (_ Once.Type.⇒[ _ ] (Once.Type.ν-type _ _)) err = failure err , tt
   checkElabV-RVar-bbc-terminal-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Zero _ ] Unit) err = failure err , tt
   checkElabV-RVar-bbc-terminal-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.One _ ] Unit) err = failure err , tt
   checkElabV-RVar-bbc-terminal-failure-aux ctx (Once.Type.μ-type _) err = failure err , tt
-  checkElabV-RVar-bbc-terminal-failure-aux ctx (Once.Type.ν-type _) err = failure err , tt
+  checkElabV-RVar-bbc-terminal-failure-aux ctx (Once.Type.ν-type _ _) err = failure err , tt
 
   -- bbc-initial: canonical T = Void ⇒[Many,pure] A
   checkElabV-RVar-bbc-initial-failure-aux ctx (Void Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] A) err =
@@ -2588,11 +2600,11 @@ mutual
   checkElabV-RVar-bbc-initial-failure-aux ctx ((_ Once.Type.+ _) Once.Type.⇒[ _ ] _) err = failure err , tt
   checkElabV-RVar-bbc-initial-failure-aux ctx ((_ Once.Type.⇒[ _ ] _) Once.Type.⇒[ _ ] _) err = failure err , tt
   checkElabV-RVar-bbc-initial-failure-aux ctx ((Once.Type.μ-type _) Once.Type.⇒[ _ ] _) err = failure err , tt
-  checkElabV-RVar-bbc-initial-failure-aux ctx ((Once.Type.ν-type _) Once.Type.⇒[ _ ] _) err = failure err , tt
+  checkElabV-RVar-bbc-initial-failure-aux ctx ((Once.Type.ν-type _ _) Once.Type.⇒[ _ ] _) err = failure err , tt
   checkElabV-RVar-bbc-initial-failure-aux ctx (Void Once.Type.⇒[ Once.Type.mk-kind Once.Type.Zero _ ] _) err = failure err , tt
   checkElabV-RVar-bbc-initial-failure-aux ctx (Void Once.Type.⇒[ Once.Type.mk-kind Once.Type.One _ ] _) err = failure err , tt
   checkElabV-RVar-bbc-initial-failure-aux ctx (Once.Type.μ-type _) err = failure err , tt
-  checkElabV-RVar-bbc-initial-failure-aux ctx (Once.Type.ν-type _) err = failure err , tt
+  checkElabV-RVar-bbc-initial-failure-aux ctx (Once.Type.ν-type _ _) err = failure err , tt
 
   -- bbc-inl: canonical T = A ⇒[Many,pure] (A' + B)
   checkElabV-RVar-bbc-inl-failure-aux ctx (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] (A' Once.Type.+ B)) err with A ≟T A'
@@ -2616,11 +2628,11 @@ mutual
   checkElabV-RVar-bbc-inl-failure-aux ctx (_ Once.Type.⇒[ _ ] (_ Once.Type.* _)) err = failure err , tt
   checkElabV-RVar-bbc-inl-failure-aux ctx (_ Once.Type.⇒[ _ ] (_ Once.Type.⇒[ _ ] _)) err = failure err , tt
   checkElabV-RVar-bbc-inl-failure-aux ctx (_ Once.Type.⇒[ _ ] (Once.Type.μ-type _)) err = failure err , tt
-  checkElabV-RVar-bbc-inl-failure-aux ctx (_ Once.Type.⇒[ _ ] (Once.Type.ν-type _)) err = failure err , tt
+  checkElabV-RVar-bbc-inl-failure-aux ctx (_ Once.Type.⇒[ _ ] (Once.Type.ν-type _ _)) err = failure err , tt
   checkElabV-RVar-bbc-inl-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Zero _ ] (_ Once.Type.+ _)) err = failure err , tt
   checkElabV-RVar-bbc-inl-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.One _ ] (_ Once.Type.+ _)) err = failure err , tt
   checkElabV-RVar-bbc-inl-failure-aux ctx (Once.Type.μ-type _) err = failure err , tt
-  checkElabV-RVar-bbc-inl-failure-aux ctx (Once.Type.ν-type _) err = failure err , tt
+  checkElabV-RVar-bbc-inl-failure-aux ctx (Once.Type.ν-type _ _) err = failure err , tt
 
   -- bbc-inr: canonical T = B ⇒[Many,pure] (A + B')
   checkElabV-RVar-bbc-inr-failure-aux ctx (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] (A Once.Type.+ B')) err with B ≟T B'
@@ -2644,11 +2656,11 @@ mutual
   checkElabV-RVar-bbc-inr-failure-aux ctx (_ Once.Type.⇒[ _ ] (_ Once.Type.* _)) err = failure err , tt
   checkElabV-RVar-bbc-inr-failure-aux ctx (_ Once.Type.⇒[ _ ] (_ Once.Type.⇒[ _ ] _)) err = failure err , tt
   checkElabV-RVar-bbc-inr-failure-aux ctx (_ Once.Type.⇒[ _ ] (Once.Type.μ-type _)) err = failure err , tt
-  checkElabV-RVar-bbc-inr-failure-aux ctx (_ Once.Type.⇒[ _ ] (Once.Type.ν-type _)) err = failure err , tt
+  checkElabV-RVar-bbc-inr-failure-aux ctx (_ Once.Type.⇒[ _ ] (Once.Type.ν-type _ _)) err = failure err , tt
   checkElabV-RVar-bbc-inr-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Zero _ ] (_ Once.Type.+ _)) err = failure err , tt
   checkElabV-RVar-bbc-inr-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.One _ ] (_ Once.Type.+ _)) err = failure err , tt
   checkElabV-RVar-bbc-inr-failure-aux ctx (Once.Type.μ-type _) err = failure err , tt
-  checkElabV-RVar-bbc-inr-failure-aux ctx (Once.Type.ν-type _) err = failure err , tt
+  checkElabV-RVar-bbc-inr-failure-aux ctx (Once.Type.ν-type _ _) err = failure err , tt
 
   -- RFloat: F4's decision, made once and passed in.
   --

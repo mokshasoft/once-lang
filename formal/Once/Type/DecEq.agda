@@ -18,7 +18,7 @@ open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 import Once.Type
 open import Once.Type using (Type; Functor; K; Id; _⊕_; _⊗_; Unit; Void; Int; Float; Str; Buffer;
-                             _⇒[_]_; μ-type; ν-type; _≟k_)
+                             _⇒[_]_; μ-type; ν-type; _≟k_; _≟p_)
 
 -- Helpers for ≟T / ≟F matching-constructor cases (avoid `with`-blocks).
 
@@ -77,9 +77,11 @@ open import Once.Type using (Type; Functor; K; Id; _⊕_; _⊗_; Unit; Void; Int
 ≟T-μ-aux (yes refl) = yes refl
 ≟T-μ-aux (no ¬p)    = no λ { refl → ¬p refl }
 
-≟T-ν-aux : ∀ {F₁ F₂} → Dec (F₁ ≡ F₂) → Dec (ν-type F₁ ≡ ν-type F₂)
-≟T-ν-aux (yes refl) = yes refl
-≟T-ν-aux (no ¬p)    = no λ { refl → ¬p refl }
+-- D233: the grade is decided FIRST, for the reason `≟T-⇒-aux` gives.
+≟T-ν-aux : ∀ {F₁ F₂ π₁ π₂} → Dec (π₁ ≡ π₂) → Dec (F₁ ≡ F₂) → Dec (ν-type F₁ π₁ ≡ ν-type F₂ π₂)
+≟T-ν-aux (no ¬π)    _          = no λ { refl → ¬π refl }
+≟T-ν-aux _          (no ¬p)    = no λ { refl → ¬p refl }
+≟T-ν-aux (yes refl) (yes refl) = yes refl
 
 
 -- | Decidable functor and type equality (mutually recursive)
@@ -193,7 +195,7 @@ mutual
   -- TVar removed from Type; now in PolyType (see Once.Type)
   -- OCP-0003: μ-type and ν-type cases
   (μ-type F₁) ≟T (μ-type F₂) = ≟T-μ-aux (F₁ ≟F F₂)
-  (ν-type F₁) ≟T (ν-type F₂) = ≟T-ν-aux (F₁ ≟F F₂)
+  (ν-type F₁ π₁) ≟T (ν-type F₂ π₂) = ≟T-ν-aux (π₁ ≟p π₂) (F₁ ≟F F₂)
   μ-type _ ≟T Unit = no λ ()
   μ-type _ ≟T Void = no λ ()
   μ-type _ ≟T Int = no λ ()
@@ -203,34 +205,34 @@ mutual
   μ-type _ ≟T (_ Once.Type.* _) = no λ ()
   μ-type _ ≟T (_ Once.Type.+ _) = no λ ()
   μ-type _ ≟T (_ ⇒[ _ ] _) = no λ ()
-  μ-type _ ≟T ν-type _ = no λ ()
-  ν-type _ ≟T Unit = no λ ()
-  ν-type _ ≟T Void = no λ ()
-  ν-type _ ≟T Int = no λ ()
-  ν-type _ ≟T Float = no λ ()
-  ν-type _ ≟T Str = no λ ()
-  ν-type _ ≟T Buffer = no λ ()
-  ν-type _ ≟T (_ Once.Type.* _) = no λ ()
-  ν-type _ ≟T (_ Once.Type.+ _) = no λ ()
-  ν-type _ ≟T (_ ⇒[ _ ] _) = no λ ()
-  ν-type _ ≟T μ-type _ = no λ ()
+  μ-type _ ≟T ν-type _ _ = no λ ()
+  ν-type _ _ ≟T Unit = no λ ()
+  ν-type _ _ ≟T Void = no λ ()
+  ν-type _ _ ≟T Int = no λ ()
+  ν-type _ _ ≟T Float = no λ ()
+  ν-type _ _ ≟T Str = no λ ()
+  ν-type _ _ ≟T Buffer = no λ ()
+  ν-type _ _ ≟T (_ Once.Type.* _) = no λ ()
+  ν-type _ _ ≟T (_ Once.Type.+ _) = no λ ()
+  ν-type _ _ ≟T (_ ⇒[ _ ] _) = no λ ()
+  ν-type _ _ ≟T μ-type _ = no λ ()
   Unit ≟T μ-type _ = no λ ()
-  Unit ≟T ν-type _ = no λ ()
+  Unit ≟T ν-type _ _ = no λ ()
   Void ≟T μ-type _ = no λ ()
-  Void ≟T ν-type _ = no λ ()
+  Void ≟T ν-type _ _ = no λ ()
   Int ≟T μ-type _ = no λ ()
-  Int ≟T ν-type _ = no λ ()
+  Int ≟T ν-type _ _ = no λ ()
   Float ≟T μ-type _ = no λ ()
-  Float ≟T ν-type _ = no λ ()
+  Float ≟T ν-type _ _ = no λ ()
   Str ≟T μ-type _ = no λ ()
-  Str ≟T ν-type _ = no λ ()
+  Str ≟T ν-type _ _ = no λ ()
   Buffer ≟T μ-type _ = no λ ()
-  Buffer ≟T ν-type _ = no λ ()
+  Buffer ≟T ν-type _ _ = no λ ()
   (_ Once.Type.* _) ≟T μ-type _ = no λ ()
-  (_ Once.Type.* _) ≟T ν-type _ = no λ ()
+  (_ Once.Type.* _) ≟T ν-type _ _ = no λ ()
   (_ Once.Type.+ _) ≟T μ-type _ = no λ ()
-  (_ Once.Type.+ _) ≟T ν-type _ = no λ ()
+  (_ Once.Type.+ _) ≟T ν-type _ _ = no λ ()
   (_ ⇒[ _ ] _) ≟T μ-type _ = no λ ()
-  (_ ⇒[ _ ] _) ≟T ν-type _ = no λ ()
+  (_ ⇒[ _ ] _) ≟T ν-type _ _ = no λ ()
   -- GuardedT removed: productivity follows from IR totality
   -- TVar removed from Type; now in PolyType (see Once.Type)

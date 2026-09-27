@@ -118,7 +118,7 @@ Good (A ⇒[ mk-kind Zero π ] B) f = ∀ u → GoodT B (f u)
 Good (A ⇒[ mk-kind One  π ] B) f = ∀ a → Good A a → GoodT B (f a)
 Good (A ⇒[ mk-kind Many π ] B) f = ∀ a → Good A a → GoodT B (f a)
 Good (μ-type F)  _        = ⊤     -- finite first-order data: no suspension
-Good (ν-type F)  v        = Goodν v
+Good (ν-type F _)  v        = Goodν v
 Good Int         _        = ⊤
 Good Float       _        = ⊤
 Good Str         _        = ⊤
@@ -203,7 +203,7 @@ mutual
  inject-Good (A ⇒[ mk-kind One  π ] B) pf = λ a _ → (const-empty-pf _ , inject-GoodRes B (pf (forget a)))
  inject-Good (A ⇒[ mk-kind Many π ] B) pf = λ a _ → (const-empty-pf _ , inject-GoodRes B (pf (forget a)))
  inject-Good (μ-type F)  v        = tt
- inject-Good (ν-type F)  v        = injectν-Good v
+ inject-Good (ν-type F _)  v        = injectν-Good v
  inject-Good Int         v        = tt
  inject-Good Float       v        = tt
  inject-Good Str         v        = tt

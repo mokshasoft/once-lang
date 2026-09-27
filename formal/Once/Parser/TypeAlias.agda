@@ -82,4 +82,4 @@ mutual
   expandAliases env (a + b) = expandAliases env a + expandAliases env b
   expandAliases env (a ⇒[ k ] b) = expandAliases env a ⇒[ k ] expandAliases env b
   expandAliases env (μ-type F) = μ-type (expandAliasesF env F)
-  expandAliases env (ν-type F) = ν-type (expandAliasesF env F)
+  expandAliases env (ν-type F π) = ν-type (expandAliasesF env F) π

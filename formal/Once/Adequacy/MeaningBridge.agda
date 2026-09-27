@@ -78,7 +78,7 @@ open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_;
   t-int; t-float; t-str; t-unit; t-unit-var; t-var-local; t-var-qualified;
   t-var-resolved; t-var-import; t-annot; t-pair; t-neg; t-neg-float; t-binop-arith-float; t-binop-arith-float-il; t-binop-arith-float-ir; t-let; t-case;
   t-binop-arith; t-binop-cmp; t-id-app; t-fst-app; t-snd-app;
-  t-terminal-app; t-apply-app-infer; t-apply-eff-app-infer; t-Out-app-infer; t-app; t-effApp;
+  t-terminal-app; t-apply-app-infer; t-apply-eff-app-infer; t-Out-app-infer; t-Out-eff-app-infer; t-app; t-effApp;
   t-sub; t-lam; t-pair-lit-check;
   t-In-app-check; t-apply-check; t-inl-app-check; t-inr-app-check;
   t-initial-app-check; t-app-spine; t-var-poly-instantiate;
@@ -89,7 +89,7 @@ open import Once.Denotation.Meaning using (⟦_⟧ᶜ; ⟦_⟧ᵢ; ⟦_⟧ᵈ; s
 open import Once.Adequacy.CataErased fmt using (liftFn-SigOp)
 open import Once.Adequacy.LiftFnReduce fmt using
   (liftFn-id; liftFn-fst; liftFn-snd; liftFn-terminal; liftFn-inl; liftFn-inr;
-   liftFn-∘; liftFn-case-inj₁; liftFn-case-inj₂; liftFn-apply; liftFn-eff-apply)
+   liftFn-∘; liftFn-case-inj₁; liftFn-case-inj₂; liftFn-apply; liftFn-eff-apply; liftFn-curry-fst)
 import Once.IR as IR
 open import Once.Arith.SigOp.Builders using (value-info;
   add-info; sub-info; mul-info; div-info; mod-info; neg-info;
@@ -457,20 +457,20 @@ Res-rel-map h stopped     (returns _) ()
 Res-rel-map h (returns _) stopped     ()
 Res-rel-map h (returns x) (returns y) (rel-returns rr) = rel-returns (h rr)
 
-out-app-bridge : ∀ {F : Functor} {wfF : WellFormedF F} {vᴸ vᴿ : ⟦ ν-type F ⟧ᴰ}
-               → RelV (ν-type F) vᴸ vᴿ
-               → RelT (⟦ F ⟧T (ν-type F)) (out-sem wfF vᴸ)
-                      (liftFn fmt {ν-type F} {⟦ F ⟧T (ν-type F)} (Out-ir wfF) vᴿ)
+out-app-bridge : ∀ {F : Functor} {π : Purity} {wfF : WellFormedF F} {vᴸ vᴿ : ⟦ ν-type F π ⟧ᴰ}
+               → RelV (ν-type F π) vᴸ vᴿ
+               → RelT (⟦ F ⟧T (ν-type F π)) (out-sem {π = π} wfF vᴸ)
+                      (liftFn fmt {ν-type F π} {⟦ F ⟧T (ν-type F π)} (Out-ir {π = π} wfF) vᴿ)
 -- plan 0.98: the layer half is ONE fact, not a value equation. `layerᵈ-∼` is
 -- `Res-rel` now — forcing a ν need not produce a layer at all — and `out-sem`
 -- is a `fmapT`, so pushing the bisimulation through the `Out` coercions is
 -- `Res-rel-map` of `out-rel`. The budget index went with the value: only the
 -- trace ever depended on it.
-out-app-bridge {F} {wfF} {vᴸ} {vᴿ} rel k =
-    trans (traceᵈ-∼ rel k) (sym (out-trace wfF vᴿ k))
-  , subst (Res-rel (RelV (⟦ F ⟧T (ν-type F))) (T.resT (out-sem wfF vᴸ)))
-          (sym (out-value wfF vᴿ))
-          (Res-rel-map (out-rel wfF)
+out-app-bridge {F} {π} {wfF} {vᴸ} {vᴿ} rel k =
+    trans (traceᵈ-∼ rel k) (sym (out-trace {π = π} wfF vᴿ k))
+  , subst (Res-rel (RelV (⟦ F ⟧T (ν-type F π))) (T.resT (out-sem {π = π} wfF vᴸ)))
+          (sym (out-value {π = π} wfF vᴿ))
+          (Res-rel-map (out-rel {A = ν-type F π} wfF)
                        (T.resT (forceᵈ vᴸ)) (T.resT (forceᵈ vᴿ))
                        (layerᵈ-∼ rel))
 
@@ -631,7 +631,7 @@ mutual
   RelV-sub sub-str    r = r
   RelV-sub sub-buffer r = r
   RelV-sub sub-μ      r = r
-  RelV-sub sub-ν      r = r
+  RelV-sub (sub-ν _)  r = r
   RelV-sub (sub-arr {q = Zero} a b _) r = RelT-sub b r
   RelV-sub (sub-arr {q = One}  a b _) r = λ ra → RelT-sub b (r (RelV-sub a ra))
   RelV-sub (sub-arr {q = Many} a b _) r = λ ra → RelT-sub b (r (RelV-sub a ra))
@@ -975,8 +975,19 @@ bridge-i {ctx = ctx} (t-snd-app {A = A} {B = B} d) {dγ₁ = dγ₁} {dγ₂ = d
         (RelT-bind {A = A * B} {B = B} (bridge-i d (reᵐ re))
                    (λ rv → RelT-return {A = B} (proj₂ rv)))
 bridge-i (t-Out-app-infer {F = F} wfF refl d) re =
-  RelT-bind {A = ν-type F} {B = ⟦ F ⟧T (ν-type F)}
-            (bridge-i d (reᵐ re)) (λ rv → out-app-bridge {wfF = wfF} rv)
+  RelT-bind {A = ν-type F pure} {B = ⟦ F ⟧T (ν-type F pure)}
+            (bridge-i d (reᵐ re)) (λ rv → out-app-bridge {π = pure} {wfF = wfF} rv)
+-- D233: at an EFFECTFUL stream both sides evaluate the stream, then return the
+-- suspension of the force — `liftFn-curry-fst` is the IR side's reduction.
+bridge-i {ctx = ctx} (t-Out-eff-app-infer {F = F} wfF refl d) {dγ₁ = dγ₁} {dγ₂ = dγ₂} re =
+  subst (RelT (Unit ⇒[ mk-kind Many eff ] ⟦ F ⟧T (ν-type F eff))
+              ((⟦ t-Out-eff-app-infer wfF refl d ⟧ᵢ fmt) dγ₁))
+        (sym (cong ((SD.⟦ realize-infer d ⟧ˢ fmt) (resᵐ {Γ = NamedCtx.debruijn ctx} dγ₂) >>=T_)
+                   (liftFn-curry-fst {A = ν-type F eff} {C = ⟦ F ⟧T (ν-type F eff)} (Out-ir {π = eff} wfF))))
+        (RelT-bind {A = ν-type F eff} {B = Unit ⇒[ mk-kind Many eff ] ⟦ F ⟧T (ν-type F eff)}
+                   (bridge-i d (reᵐ re))
+                   (λ rv → RelT-return {A = Unit ⇒[ mk-kind Many eff ] ⟦ F ⟧T (ν-type F eff)}
+                             (λ _ → out-app-bridge {π = eff} {wfF = wfF} rv)))
 bridge-i {ctx = ctx} (t-terminal-app {T = T} d) {dγ₁ = dγ₁} {dγ₂ = dγ₂} re =
   subst (RelT Unit ((⟦ t-terminal-app d ⟧ᵢ fmt) dγ₁)) (sym (cong ((SD.⟦ realize-infer d ⟧ˢ fmt) (resᵐ {Γ = NamedCtx.debruijn ctx} dγ₂) >>=T_) (liftFn-terminal {T})))
         (RelT-bind {A = T} {B = Unit} (bridge-i d (reᵐ re))
@@ -1135,10 +1146,10 @@ bridge-c (t-cata-check {F = F} {A = A} {π = π} wfF dalg) re =
 -- `ana-bridge`, whose premise is the coalgebra's own bridge bound through
 -- `RelT-bind`. The equality at the ν (which is what `RelV` asks for there)
 -- comes from coalgebraic extensionality, not from structural work.
-bridge-c (t-ana-check {F = F} {A = A} {π = π} wfF dcoalg) re =
-  RelT-return {A = A ⇒[ mk-kind Many π ] ν-type F}
+bridge-c (t-ana-check {F = F} {A = A} {π₀ = π₀} {π = π} wfF dcoalg) re =
+  RelT-return {A = A ⇒[ mk-kind Many π₀ ] ν-type F π}
     (λ {a} {b} rab →
-      RelT-return {A = ν-type F}
+      RelT-return {A = ν-type F π}
         (ana-bridge wfF
           (λ {x} {y} rxy →
             RelT-bind {A = A ⇒[ mk-kind Many π ] ⟦ F ⟧T A} {B = ⟦ F ⟧T A}

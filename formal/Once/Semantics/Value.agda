@@ -143,7 +143,7 @@ open import Once.Semantics.Functor
 ⟦ A ⇒[ mk-kind Many π ] B ⟧ = ⟦ A ⟧ → Res ⟦ B ⟧
 -- OCP-0003: Fix removed, use μ-type/ν-type
 ⟦ μ-type F ⟧     = ⟦μ⟧ F
-⟦ ν-type F ⟧     = ⟦ν⟧ F
+⟦ ν-type F _ ⟧   = ⟦ν⟧ F
 -- GuardedT removed: productivity follows from IR totality
 ⟦ Int ⟧          = IntRep
 ⟦ Float ⟧        = FloatRep
@@ -385,7 +385,7 @@ coerce-full-to-base (A + B) (inj₁ a) = inj₁ (coerce-full-to-base A a)
 coerce-full-to-base (A + B) (inj₂ b) = inj₂ (coerce-full-to-base B b)
 coerce-full-to-base (_ ⇒[ _ ] _) _ = tt   -- Functions (all kinds) → ⊤
 coerce-full-to-base (μ-type _) _ = tt      -- μ → ⊤
-coerce-full-to-base (ν-type _) _ = tt      -- ν → ⊤
+coerce-full-to-base (ν-type _ _) _ = tt      -- ν → ⊤
 -- GuardedT removed: productivity follows from IR totality
 coerce-full-to-base Int x = x
 coerce-full-to-base Float x = x

@@ -243,7 +243,7 @@ mutual
   forget-coh-gen (μ-type F) arg = subst-subst-sym (coh (μ-type F))
   -- D179: no longer `subst-subst-sym` — ν's two domains differ, so this is
   -- the naturality square for `forgetν` rather than a transport cancelling.
-  forget-coh-gen (ν-type F) arg = forgetν-coh (tF-coh F) arg
+  forget-coh-gen (ν-type F _) arg = forgetν-coh (tF-coh F) arg
   forget-coh-gen (A * B) (a , b) =
     trans (cong (λ p → subst id (coh (A * B)) (forget p)) (push×⁻ (cohᴰ A) (cohᴰ B) a b))
       (trans (push× (coh A) (coh B) (forget (subst id (sym (cohᴰ A)) a))
@@ -319,7 +319,7 @@ mutual
   inject-coh-nat Void       ()
   inject-coh-nat (μ-type F) v = refl
   -- ν is no longer the identity on either side of the square (D179).
-  inject-coh-nat (ν-type F) v = injectν-coh (tF-coh F) v
+  inject-coh-nat (ν-type F _) v = injectν-coh (tF-coh F) v
   inject-coh-nat (A * B) (a , b) =
     trans (cong (λ p → inject p) (push×⁻ (coh A) (coh B) a b))
       (trans (cong₂ _,_ (inject-coh-nat A a) (inject-coh-nat B b))
@@ -484,7 +484,7 @@ base-in Buffer     v0 = refl
 base-in Void       ()
 base-in (A ⇒[ k ] B) v0 = refl
 base-in (μ-type F) v0 = refl
-base-in (ν-type F) v0 = refl
+base-in (ν-type F _) v0 = refl
 base-in (A * B) (a , b) =
   trans (push× (base-coh A) (base-coh B)
                (coerce-full-to-base ⌈ ⌊ A ⌋ ⌉ (forget a)) (coerce-full-to-base ⌈ ⌊ B ⌋ ⌉ (forget b)))

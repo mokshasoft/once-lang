@@ -67,7 +67,7 @@ fmapT-cong h (mkT tr r) = cong (mkT tr) (mapRes-cong h r)
 ⟦ sub-sum a b ⟧<: (inj₁ x) = inj₁ (⟦ a ⟧<: x)
 ⟦ sub-sum a b ⟧<: (inj₂ y) = inj₂ (⟦ b ⟧<: y)
 ⟦ sub-μ ⟧<: x = x
-⟦ sub-ν ⟧<: x = x
+⟦ sub-ν _ ⟧<: x = x
 
 ------------------------------------------------------------------------
 -- Coherence, semantic half: reflexivity is the identity …
@@ -92,7 +92,7 @@ fmapT-cong h (mkT tr r) = cong (mkT tr) (mapRes-cong h r)
 <:-refl-id (A Type.+ B) (inj₁ x) = cong inj₁ (<:-refl-id A x)
 <:-refl-id (A Type.+ B) (inj₂ y) = cong inj₂ (<:-refl-id B y)
 <:-refl-id (Type.μ-type F) x = refl
-<:-refl-id (Type.ν-type F) x = refl
+<:-refl-id (Type.ν-type F _) x = refl
 
 ------------------------------------------------------------------------
 -- … and transitivity is composition.
@@ -121,7 +121,7 @@ fmapT-cong h (mkT tr r) = cong (mkT tr) (mapRes-cong h r)
 <:-trans-∘ (sub-sum a b) (sub-sum a′ b′) (inj₁ x) = cong inj₁ (<:-trans-∘ a a′ x)
 <:-trans-∘ (sub-sum a b) (sub-sum a′ b′) (inj₂ y) = cong inj₂ (<:-trans-∘ b b′ y)
 <:-trans-∘ sub-μ q x = refl
-<:-trans-∘ sub-ν q x = refl
+<:-trans-∘ (sub-ν _) (sub-ν _) x = refl
 
 ------------------------------------------------------------------------
 -- Plan 0.94 §4: the middle type through `Void` is irrelevant.

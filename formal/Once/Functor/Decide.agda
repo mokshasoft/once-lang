@@ -45,7 +45,7 @@ isBaseType? (A + B) with isBaseType? A | isBaseType? B
 ... | _       | _       = nothing
 isBaseType? (_ ⇒[ _ ] _) = nothing
 isBaseType? (μ-type _) = nothing
-isBaseType? (ν-type _) = nothing
+isBaseType? (ν-type _ _) = nothing
 
 -- | Decide whether a type is CONCRETE / FFI-representable (Plan 0.58): a base
 -- type, or a first-order function pointer (base argument, concrete result).

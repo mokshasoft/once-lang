@@ -271,7 +271,9 @@ mutual
     _⇒[_]_ : Type → ArrowKind → Type → Type
     -- Polynomial functor fixed points (OCP-0003: total/productive)
     μ-type : Functor → Type          -- Initial algebra (inductive, total)
-    ν-type : Functor → Type          -- Final coalgebra (coinductive, productive)
+    -- D233: ν is CODATA, so it carries the effect grade of its layers: `ν-type F
+    -- eff` is ν(T ∘ F), the effectful stream (surface `Nu (Eff F)`).
+    ν-type : Functor → Purity → Type  -- Final coalgebra (coinductive, productive)
     -- Base types for practical programming
     Int    : Type                    -- Machine integers
     Float  : Type                    -- IEEE 754 double-precision floats
@@ -346,7 +348,7 @@ isVoid? (_ * _)       = no (λ ())
 isVoid? (_ + _)       = no (λ ())
 isVoid? (_ ⇒[ _ ] _)  = no (λ ())
 isVoid? (μ-type _)    = no (λ ())
-isVoid? (ν-type _)    = no (λ ())
+isVoid? (ν-type _ _)    = no (λ ())
 isVoid? Int           = no (λ ())
 isVoid? Float         = no (λ ())
 isVoid? Str           = no (λ ())
@@ -359,7 +361,7 @@ isUnit? (_ * _)       = no (λ ())
 isUnit? (_ + _)       = no (λ ())
 isUnit? (_ ⇒[ _ ] _)  = no (λ ())
 isUnit? (μ-type _)    = no (λ ())
-isUnit? (ν-type _)    = no (λ ())
+isUnit? (ν-type _ _)    = no (λ ())
 isUnit? Int           = no (λ ())
 isUnit? Float         = no (λ ())
 isUnit? Str           = no (λ ())
@@ -455,7 +457,8 @@ mutual
   showType (A ⇒[ mk-kind q pure ] B) = "(" ++ showType A ++ " " ++ showQuantity q ++ "→ " ++ showType B ++ ")"
   showType (A ⇒[ mk-kind _ eff ] B)  = "Eff " ++ showType A ++ " " ++ showType B
   showType (μ-type F) = "μ " ++ showFunctor F
-  showType (ν-type F) = "ν " ++ showFunctor F
+  showType (ν-type F pure) = "ν " ++ showFunctor F
+  showType (ν-type F eff)  = "ν (Eff " ++ showFunctor F ++ ")"
   showType Int = "Int"
   showType Float = "Float"
   showType Str = "String"
@@ -506,7 +509,7 @@ mutual
     PEff    : PolyType → PolyType → PolyType
     -- Polynomial functor fixed points
     Pμ-type : PolyFunctor → PolyType
-    Pν-type : PolyFunctor → PolyType
+    Pν-type : PolyFunctor → Purity → PolyType
     -- Base types
     PInt    : PolyType
     PFloat  : PolyType
@@ -549,7 +552,7 @@ mutual
   Ground (A P⇒[ _ ] B)   = Ground A × Ground B
   Ground (PEff A B)      = Ground A × Ground B
   Ground (Pμ-type F)     = GroundF F
-  Ground (Pν-type F)     = GroundF F
+  Ground (Pν-type F _)   = GroundF F
   Ground PInt            = ⊤
   Ground PFloat          = ⊤
   Ground PStr            = ⊤
@@ -575,7 +578,7 @@ mutual
   extractGround (A P⇒[ q ] B)    (gA , gB) = extractGround A gA ⇒[ mk-kind q pure ] extractGround B gB
   extractGround (PEff A B)       (gA , gB) = extractGround A gA ⇒[ mk-kind Many eff ] extractGround B gB
   extractGround (Pμ-type F)      g        = μ-type (extractGroundF F g)
-  extractGround (Pν-type F)      g        = ν-type (extractGroundF F g)
+  extractGround (Pν-type F π)    g        = ν-type (extractGroundF F g) π
   extractGround PInt             _        = Int
   extractGround PFloat           _        = Float
   extractGround PStr             _        = Str
@@ -605,7 +608,7 @@ mutual
   embed (A ⇒[ mk-kind q pure ] B) = embed A P⇒[ q ] embed B
   embed (A ⇒[ mk-kind _ eff ] B)  = PEff (embed A) (embed B)
   embed (μ-type F)     = Pμ-type (embedFunctor F)
-  embed (ν-type F)     = Pν-type (embedFunctor F)
+  embed (ν-type F π)   = Pν-type (embedFunctor F) π
   embed Int            = PInt
   embed Float          = PFloat
   embed Str            = PStr
@@ -643,7 +646,7 @@ mutual
   isGround (A P⇒[ _ ] B)  = both-ground (isGround A) (isGround B)
   isGround (PEff A B)     = both-ground (isGround A) (isGround B)
   isGround (Pμ-type F)    = isGroundF F     -- Ground (Pμ-type F) = GroundF F
-  isGround (Pν-type F)    = isGroundF F     -- Ground (Pν-type F) = GroundF F
+  isGround (Pν-type F _)  = isGroundF F     -- Ground (Pν-type F) = GroundF F
   isGround PInt         = inj₁ tt
   isGround PFloat       = inj₁ tt
   isGround PStr         = inj₁ tt
@@ -663,7 +666,8 @@ mutual
   showPolyType (A P⇒[ q ] B)    = "(" ++ showPolyType A ++ " " ++ showQuantity q ++ "→ " ++ showPolyType B ++ ")"
   showPolyType (PEff A B)       = "Eff " ++ showPolyType A ++ " " ++ showPolyType B
   showPolyType (Pμ-type F)      = "μ " ++ showPolyFunctor F
-  showPolyType (Pν-type F)      = "ν " ++ showPolyFunctor F
+  showPolyType (Pν-type F pure) = "ν " ++ showPolyFunctor F
+  showPolyType (Pν-type F eff)  = "ν (Eff " ++ showPolyFunctor F ++ ")"
   showPolyType PInt             = "Int"
   showPolyType PFloat           = "Float"
   showPolyType PStr             = "String"
@@ -711,7 +715,7 @@ mutual
   typeEqBool Unit (_ + _) = false
   typeEqBool Unit (_ ⇒[ _ ] _) = false
   typeEqBool Unit (μ-type _) = false
-  typeEqBool Unit (ν-type _) = false
+  typeEqBool Unit (ν-type _ _) = false
   typeEqBool Unit Int = false
   typeEqBool Unit Float = false
   typeEqBool Unit Str = false
@@ -722,7 +726,7 @@ mutual
   typeEqBool Void (_ + _) = false
   typeEqBool Void (_ ⇒[ _ ] _) = false
   typeEqBool Void (μ-type _) = false
-  typeEqBool Void (ν-type _) = false
+  typeEqBool Void (ν-type _ _) = false
   typeEqBool Void Int = false
   typeEqBool Void Float = false
   typeEqBool Void Str = false
@@ -733,7 +737,7 @@ mutual
   typeEqBool (_ * _) (_ + _) = false
   typeEqBool (_ * _) (_ ⇒[ _ ] _) = false
   typeEqBool (_ * _) (μ-type _) = false
-  typeEqBool (_ * _) (ν-type _) = false
+  typeEqBool (_ * _) (ν-type _ _) = false
   typeEqBool (_ * _) Int = false
   typeEqBool (_ * _) Float = false
   typeEqBool (_ * _) Str = false
@@ -744,7 +748,7 @@ mutual
   typeEqBool (a + b) (a' + b') = typeEqBool a a' ∧ typeEqBool b b'
   typeEqBool (_ + _) (_ ⇒[ _ ] _) = false
   typeEqBool (_ + _) (μ-type _) = false
-  typeEqBool (_ + _) (ν-type _) = false
+  typeEqBool (_ + _) (ν-type _ _) = false
   typeEqBool (_ + _) Int = false
   typeEqBool (_ + _) Float = false
   typeEqBool (_ + _) Str = false
@@ -756,7 +760,7 @@ mutual
   typeEqBool (a ⇒[ mk-kind q p ] b) (a' ⇒[ mk-kind q' p' ] b') =
     quantityEqBool q q' ∧ purityEqBool p p' ∧ typeEqBool a a' ∧ typeEqBool b b'
   typeEqBool (_ ⇒[ _ ] _) (μ-type _) = false
-  typeEqBool (_ ⇒[ _ ] _) (ν-type _) = false
+  typeEqBool (_ ⇒[ _ ] _) (ν-type _ _) = false
   typeEqBool (_ ⇒[ _ ] _) Int = false
   typeEqBool (_ ⇒[ _ ] _) Float = false
   typeEqBool (_ ⇒[ _ ] _) Str = false
@@ -767,29 +771,29 @@ mutual
   typeEqBool (μ-type _) (_ + _) = false
   typeEqBool (μ-type _) (_ ⇒[ _ ] _) = false
   typeEqBool (μ-type f) (μ-type f') = functorEqBool f f'
-  typeEqBool (μ-type _) (ν-type _) = false
+  typeEqBool (μ-type _) (ν-type _ _) = false
   typeEqBool (μ-type _) Int = false
   typeEqBool (μ-type _) Float = false
   typeEqBool (μ-type _) Str = false
   typeEqBool (μ-type _) Buffer = false
-  typeEqBool (ν-type _) Unit = false
-  typeEqBool (ν-type _) Void = false
-  typeEqBool (ν-type _) (_ * _) = false
-  typeEqBool (ν-type _) (_ + _) = false
-  typeEqBool (ν-type _) (_ ⇒[ _ ] _) = false
-  typeEqBool (ν-type _) (μ-type _) = false
-  typeEqBool (ν-type f) (ν-type f') = functorEqBool f f'
-  typeEqBool (ν-type _) Int = false
-  typeEqBool (ν-type _) Float = false
-  typeEqBool (ν-type _) Str = false
-  typeEqBool (ν-type _) Buffer = false
+  typeEqBool (ν-type _ _) Unit = false
+  typeEqBool (ν-type _ _) Void = false
+  typeEqBool (ν-type _ _) (_ * _) = false
+  typeEqBool (ν-type _ _) (_ + _) = false
+  typeEqBool (ν-type _ _) (_ ⇒[ _ ] _) = false
+  typeEqBool (ν-type _ _) (μ-type _) = false
+  typeEqBool (ν-type f p) (ν-type f' p') = purityEqBool p p' ∧ functorEqBool f f'
+  typeEqBool (ν-type _ _) Int = false
+  typeEqBool (ν-type _ _) Float = false
+  typeEqBool (ν-type _ _) Str = false
+  typeEqBool (ν-type _ _) Buffer = false
   typeEqBool Int Unit = false
   typeEqBool Int Void = false
   typeEqBool Int (_ * _) = false
   typeEqBool Int (_ + _) = false
   typeEqBool Int (_ ⇒[ _ ] _) = false
   typeEqBool Int (μ-type _) = false
-  typeEqBool Int (ν-type _) = false
+  typeEqBool Int (ν-type _ _) = false
   typeEqBool Int Int = true
   typeEqBool Int Float = false
   typeEqBool Int Str = false
@@ -800,7 +804,7 @@ mutual
   typeEqBool Float (_ + _) = false
   typeEqBool Float (_ ⇒[ _ ] _) = false
   typeEqBool Float (μ-type _) = false
-  typeEqBool Float (ν-type _) = false
+  typeEqBool Float (ν-type _ _) = false
   typeEqBool Float Int = false
   typeEqBool Float Float = true
   typeEqBool Float Str = false
@@ -811,7 +815,7 @@ mutual
   typeEqBool Str (_ + _) = false
   typeEqBool Str (_ ⇒[ _ ] _) = false
   typeEqBool Str (μ-type _) = false
-  typeEqBool Str (ν-type _) = false
+  typeEqBool Str (ν-type _ _) = false
   typeEqBool Str Int = false
   typeEqBool Str Float = false
   typeEqBool Str Str = true
@@ -822,7 +826,7 @@ mutual
   typeEqBool Buffer (_ + _) = false
   typeEqBool Buffer (_ ⇒[ _ ] _) = false
   typeEqBool Buffer (μ-type _) = false
-  typeEqBool Buffer (ν-type _) = false
+  typeEqBool Buffer (ν-type _ _) = false
   typeEqBool Buffer Int = false
   typeEqBool Buffer Float = false
   typeEqBool Buffer Str = false
@@ -923,14 +927,17 @@ mutual
   instantiateAcc (PEff A B)      (a ⇒[ mk-kind _ eff ] b)     s =
     maybe-bind (instantiateAcc B b) (instantiateAcc A a s)
   instantiateAcc (Pμ-type F)     (μ-type f)      s = instantiateFunctor F f s
-  instantiateAcc (Pν-type F)     (ν-type f)      s = instantiateFunctor F f s
+  instantiateAcc (Pν-type F pure) (ν-type f pure) s = instantiateFunctor F f s
+  instantiateAcc (Pν-type F eff)  (ν-type f eff)  s = instantiateFunctor F f s
+  instantiateAcc (Pν-type _ pure) (ν-type _ eff)  _ = nothing
+  instantiateAcc (Pν-type _ eff)  (ν-type _ pure) _ = nothing
   -- Shape mismatch on each PolyType constructor (no catch-all).
   instantiateAcc PUnit           Void            _ = nothing
   instantiateAcc PUnit           (_ * _)         _ = nothing
   instantiateAcc PUnit           (_ + _)         _ = nothing
   instantiateAcc PUnit           (_ ⇒[ _ ] _)    _ = nothing
   instantiateAcc PUnit           (μ-type _)      _ = nothing
-  instantiateAcc PUnit           (ν-type _)      _ = nothing
+  instantiateAcc PUnit           (ν-type _ _)      _ = nothing
   instantiateAcc PUnit           Int             _ = nothing
   instantiateAcc PUnit           Float           _ = nothing
   instantiateAcc PUnit           Str             _ = nothing
@@ -940,7 +947,7 @@ mutual
   instantiateAcc PVoid           (_ + _)         _ = nothing
   instantiateAcc PVoid           (_ ⇒[ _ ] _)    _ = nothing
   instantiateAcc PVoid           (μ-type _)      _ = nothing
-  instantiateAcc PVoid           (ν-type _)      _ = nothing
+  instantiateAcc PVoid           (ν-type _ _)      _ = nothing
   instantiateAcc PVoid           Int             _ = nothing
   instantiateAcc PVoid           Float           _ = nothing
   instantiateAcc PVoid           Str             _ = nothing
@@ -950,7 +957,7 @@ mutual
   instantiateAcc (_ P* _)        (_ + _)         _ = nothing
   instantiateAcc (_ P* _)        (_ ⇒[ _ ] _)    _ = nothing
   instantiateAcc (_ P* _)        (μ-type _)      _ = nothing
-  instantiateAcc (_ P* _)        (ν-type _)      _ = nothing
+  instantiateAcc (_ P* _)        (ν-type _ _)      _ = nothing
   instantiateAcc (_ P* _)        Int             _ = nothing
   instantiateAcc (_ P* _)        Float           _ = nothing
   instantiateAcc (_ P* _)        Str             _ = nothing
@@ -960,7 +967,7 @@ mutual
   instantiateAcc (_ P+ _)        (_ * _)         _ = nothing
   instantiateAcc (_ P+ _)        (_ ⇒[ _ ] _)    _ = nothing
   instantiateAcc (_ P+ _)        (μ-type _)      _ = nothing
-  instantiateAcc (_ P+ _)        (ν-type _)      _ = nothing
+  instantiateAcc (_ P+ _)        (ν-type _ _)      _ = nothing
   instantiateAcc (_ P+ _)        Int             _ = nothing
   instantiateAcc (_ P+ _)        Float           _ = nothing
   instantiateAcc (_ P+ _)        Str             _ = nothing
@@ -971,7 +978,7 @@ mutual
   instantiateAcc (_ P⇒[ _ ] _)   (_ + _)         _ = nothing
   instantiateAcc (_ P⇒[ _ ] _)   (_ ⇒[ mk-kind _ eff ] _) _ = nothing
   instantiateAcc (_ P⇒[ _ ] _)   (μ-type _)      _ = nothing
-  instantiateAcc (_ P⇒[ _ ] _)   (ν-type _)      _ = nothing
+  instantiateAcc (_ P⇒[ _ ] _)   (ν-type _ _)      _ = nothing
   instantiateAcc (_ P⇒[ _ ] _)   Int             _ = nothing
   instantiateAcc (_ P⇒[ _ ] _)   Float           _ = nothing
   instantiateAcc (_ P⇒[ _ ] _)   Str             _ = nothing
@@ -982,7 +989,7 @@ mutual
   instantiateAcc (PEff _ _)      (_ + _)         _ = nothing
   instantiateAcc (PEff _ _)      (_ ⇒[ mk-kind _ pure ] _) _ = nothing
   instantiateAcc (PEff _ _)      (μ-type _)      _ = nothing
-  instantiateAcc (PEff _ _)      (ν-type _)      _ = nothing
+  instantiateAcc (PEff _ _)      (ν-type _ _)      _ = nothing
   instantiateAcc (PEff _ _)      Int             _ = nothing
   instantiateAcc (PEff _ _)      Float           _ = nothing
   instantiateAcc (PEff _ _)      Str             _ = nothing
@@ -992,28 +999,28 @@ mutual
   instantiateAcc (Pμ-type _)     (_ * _)         _ = nothing
   instantiateAcc (Pμ-type _)     (_ + _)         _ = nothing
   instantiateAcc (Pμ-type _)     (_ ⇒[ _ ] _)    _ = nothing
-  instantiateAcc (Pμ-type _)     (ν-type _)      _ = nothing
+  instantiateAcc (Pμ-type _)     (ν-type _ _)      _ = nothing
   instantiateAcc (Pμ-type _)     Int             _ = nothing
   instantiateAcc (Pμ-type _)     Float           _ = nothing
   instantiateAcc (Pμ-type _)     Str             _ = nothing
   instantiateAcc (Pμ-type _)     Buffer          _ = nothing
-  instantiateAcc (Pν-type _)     Unit            _ = nothing
-  instantiateAcc (Pν-type _)     Void            _ = nothing
-  instantiateAcc (Pν-type _)     (_ * _)         _ = nothing
-  instantiateAcc (Pν-type _)     (_ + _)         _ = nothing
-  instantiateAcc (Pν-type _)     (_ ⇒[ _ ] _)    _ = nothing
-  instantiateAcc (Pν-type _)     (μ-type _)      _ = nothing
-  instantiateAcc (Pν-type _)     Int             _ = nothing
-  instantiateAcc (Pν-type _)     Float           _ = nothing
-  instantiateAcc (Pν-type _)     Str             _ = nothing
-  instantiateAcc (Pν-type _)     Buffer          _ = nothing
+  instantiateAcc (Pν-type _ _)     Unit            _ = nothing
+  instantiateAcc (Pν-type _ _)     Void            _ = nothing
+  instantiateAcc (Pν-type _ _)     (_ * _)         _ = nothing
+  instantiateAcc (Pν-type _ _)     (_ + _)         _ = nothing
+  instantiateAcc (Pν-type _ _)     (_ ⇒[ _ ] _)    _ = nothing
+  instantiateAcc (Pν-type _ _)     (μ-type _)      _ = nothing
+  instantiateAcc (Pν-type _ _)     Int             _ = nothing
+  instantiateAcc (Pν-type _ _)     Float           _ = nothing
+  instantiateAcc (Pν-type _ _)     Str             _ = nothing
+  instantiateAcc (Pν-type _ _)     Buffer          _ = nothing
   instantiateAcc PInt            Unit            _ = nothing
   instantiateAcc PInt            Void            _ = nothing
   instantiateAcc PInt            (_ * _)         _ = nothing
   instantiateAcc PInt            (_ + _)         _ = nothing
   instantiateAcc PInt            (_ ⇒[ _ ] _)    _ = nothing
   instantiateAcc PInt            (μ-type _)      _ = nothing
-  instantiateAcc PInt            (ν-type _)      _ = nothing
+  instantiateAcc PInt            (ν-type _ _)      _ = nothing
   instantiateAcc PInt            Float           _ = nothing
   instantiateAcc PInt            Str             _ = nothing
   instantiateAcc PInt            Buffer          _ = nothing
@@ -1023,7 +1030,7 @@ mutual
   instantiateAcc PFloat          (_ + _)         _ = nothing
   instantiateAcc PFloat          (_ ⇒[ _ ] _)    _ = nothing
   instantiateAcc PFloat          (μ-type _)      _ = nothing
-  instantiateAcc PFloat          (ν-type _)      _ = nothing
+  instantiateAcc PFloat          (ν-type _ _)      _ = nothing
   instantiateAcc PFloat          Int             _ = nothing
   instantiateAcc PFloat          Str             _ = nothing
   instantiateAcc PFloat          Buffer          _ = nothing
@@ -1033,7 +1040,7 @@ mutual
   instantiateAcc PStr            (_ + _)         _ = nothing
   instantiateAcc PStr            (_ ⇒[ _ ] _)    _ = nothing
   instantiateAcc PStr            (μ-type _)      _ = nothing
-  instantiateAcc PStr            (ν-type _)      _ = nothing
+  instantiateAcc PStr            (ν-type _ _)      _ = nothing
   instantiateAcc PStr            Int             _ = nothing
   instantiateAcc PStr            Float           _ = nothing
   instantiateAcc PStr            Buffer          _ = nothing
@@ -1043,7 +1050,7 @@ mutual
   instantiateAcc PBuffer         (_ + _)         _ = nothing
   instantiateAcc PBuffer         (_ ⇒[ _ ] _)    _ = nothing
   instantiateAcc PBuffer         (μ-type _)      _ = nothing
-  instantiateAcc PBuffer         (ν-type _)      _ = nothing
+  instantiateAcc PBuffer         (ν-type _ _)      _ = nothing
   instantiateAcc PBuffer         Int             _ = nothing
   instantiateAcc PBuffer         Float           _ = nothing
   instantiateAcc PBuffer         Str             _ = nothing
@@ -1088,7 +1095,7 @@ mutual
   applySubst s (PEff A B)      =
     maybe-pair (λ a b → a ⇒[ mk-kind Many eff ] b) (applySubst s A) (applySubst s B)
   applySubst s (Pμ-type F)     = maybe-bind (λ f → just (μ-type f)) (applySubstFunctor s F)
-  applySubst s (Pν-type F)     = maybe-bind (λ f → just (ν-type f)) (applySubstFunctor s F)
+  applySubst s (Pν-type F π)   = maybe-bind (λ f → just (ν-type f π)) (applySubstFunctor s F)
 
   applySubstFunctor : Subst → PolyFunctor → Maybe Functor
   applySubstFunctor s (PK A)   = maybe-bind (λ a → just (K a)) (applySubst s A)
@@ -1119,7 +1126,7 @@ schemaArrowCodomain (_ P* _)     _ = nothing
 schemaArrowCodomain (_ P+ _)     _ = nothing
 schemaArrowCodomain (PEff _ _)   _ = nothing
 schemaArrowCodomain (Pμ-type _)  _ = nothing
-schemaArrowCodomain (Pν-type _)  _ = nothing
+schemaArrowCodomain (Pν-type _ _)  _ = nothing
 schemaArrowCodomain PInt         _ = nothing
 schemaArrowCodomain PFloat       _ = nothing
 schemaArrowCodomain PStr         _ = nothing

@@ -365,6 +365,7 @@ module Weaken (imps : Imports) (P : PolyCtx) where
     W-i wk (_ , fr) (t-apply-app-infer d) = cᵢ (sym (up-z+M wk _)) (t-apply-app-infer (W-i wk fr d))
     W-i wk (_ , fr) (t-apply-eff-app-infer d) = cᵢ (sym (up-z+M wk _)) (t-apply-eff-app-infer (W-i wk fr d))
     W-i wk (_ , fr) (t-Out-app-infer wf eq d) = cᵢ (sym (up-z+M wk _)) (t-Out-app-infer wf eq (W-i wk fr d))
+    W-i wk (_ , fr) (t-Out-eff-app-infer wf eq d) = cᵢ (sym (up-z+M wk _)) (t-Out-eff-app-infer wf eq (W-i wk fr d))
     W-i wk (f₁ , f₂) (t-app ah dF dX) = cᵢ (sym (up-+* wk _ _ _)) (t-app ah (W-i wk f₁ dF) (W-c wk f₂ dX))
     W-i wk (f₁ , f₂) (t-effApp ah dF dX) = cᵢ (sym (up-+* wk _ _ _)) (t-effApp ah (W-i wk f₁ dF) (W-c wk f₂ dX))
     W-i wk (f₁ , f₂) (t-app-spine ah dX dF) = cᵢ (sym (up-+* wk _ _ _)) (t-app-spine ah (W-i wk f₂ dX) (W-d wk f₁ dF))
@@ -642,6 +643,7 @@ module Unfolding
     S-i r (_ , nc) (t-apply-app-infer d) = t-apply-app-infer (S-i r nc d)
     S-i r (_ , nc) (t-apply-eff-app-infer d) = t-apply-eff-app-infer (S-i r nc d)
     S-i r (_ , nc) (t-Out-app-infer wf eq d) = t-Out-app-infer wf eq (S-i r nc d)
+    S-i r (_ , nc) (t-Out-eff-app-infer wf eq d) = t-Out-eff-app-infer wf eq (S-i r nc d)
     S-i r (n₁ , n₂) (t-app {x = xa} ah dF dX) = app-scope {a = xa} ah (t-app (head-ok ah) (S-i r n₁ dF) (S-c r n₂ dX))
     S-i r (n₁ , n₂) (t-effApp {x = xa} ah dF dX) = app-scope {a = xa} ah (t-effApp (head-ok ah) (S-i r n₁ dF) (S-c r n₂ dX))
     S-i r (n₁ , n₂) (t-app-spine {arg = xa} ah dX dF) = app-scope {a = xa} ah (t-app-spine (head-ok ah) (S-i r n₂ dX) (S-d r n₁ dF))
@@ -1141,6 +1143,9 @@ module Unfolding
     F-i {sh = sh} r {b = b} nc (t-Out-app-infer wf eqC d) eq with inv-RApp {sh = sh} {b = b} eq
     ... | f₀ , a₀ , refl , ef , ea with inv-RResolved {sh = sh} {b = f₀} ef
     ...   | refl = t-Out-app-infer wf eqC (F-i r (proj₂ nc) d ea)
+    F-i {sh = sh} r {b = b} nc (t-Out-eff-app-infer wf eqC d) eq with inv-RApp {sh = sh} {b = b} eq
+    ... | f₀ , a₀ , refl , ef , ea with inv-RResolved {sh = sh} {b = f₀} ef
+    ...   | refl = t-Out-eff-app-infer wf eqC (F-i r (proj₂ nc) d ea)
     F-i {sh = sh} r {b = b} nc (t-app ah dF dX) eq with inv-RApp {sh = sh} {b = b} eq
     ... | f₀ , a₀ , refl , refl , refl =
           t-app ah₀ (F-i r (proj₁ nc) dF refl) (F-c r (proj₂ nc) dX eqX)

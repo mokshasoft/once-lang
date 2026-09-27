@@ -466,13 +466,28 @@ mutual
     -- is a pure arrow — and it CAN be, at `F = K (A ⇒ B)`, so the case is
     -- neither refutable nor solvable). With `C` free the split succeeds and
     -- the equation is there to transport along.
+    -- D233: at a PURE stream only — forcing it runs nothing.
     t-Out-app-infer : ∀ {ctx : NamedCtx} {v : RawExpr} {F : Functor} {C : Type}
                       {Ψ : Surface.Usage (NamedCtx.size ctx)}
                     → WellFormedF F
-                    → ⟦ F ⟧T (ν-type F) ≡ C
-                    → ctx ⊢ᵢ v ∶ ν-type F ⨾ Ψ
+                    → ⟦ F ⟧T (ν-type F Once.Type.pure) ≡ C
+                    → ctx ⊢ᵢ v ∶ ν-type F Once.Type.pure ⨾ Ψ
                     → ctx ⊢ᵢ RApp (RResolved (gen "Out")) v
                             ∶ C ⨾ (zeroUsage +ᵘ (Once.Type.Many *ᵘ Ψ))
+
+    -- | D233: `Out v` at an EFFECTFUL stream (`Nu (Eff F)` = ν(T∘F)). Forcing a
+    -- layer runs the coalgebra, so — exactly as applying an effectful arrow at
+    -- the surface does (`t-effApp`, `t-apply-eff-app-infer`) — the term is the
+    -- SUSPENSION `Eff Unit C`: the stream is evaluated now, the force runs when
+    -- the suspension is applied.
+    t-Out-eff-app-infer : ∀ {ctx : NamedCtx} {v : RawExpr} {F : Functor} {C : Type}
+                          {Ψ : Surface.Usage (NamedCtx.size ctx)}
+                        → WellFormedF F
+                        → ⟦ F ⟧T (ν-type F Once.Type.eff) ≡ C
+                        → ctx ⊢ᵢ v ∶ ν-type F Once.Type.eff ⨾ Ψ
+                        → ctx ⊢ᵢ RApp (RResolved (gen "Out")) v
+                                ∶ (Once.Type.Unit Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] C)
+                                ⨾ (zeroUsage +ᵘ (Once.Type.Many *ᵘ Ψ))
 
     ----------------------------------------------------------------
     -- Generic function application.
@@ -750,14 +765,16 @@ mutual
     -- `F` is read from the EXPECTED type, which is what makes `ana` need no
     -- syntax of its own: it is an ordinary applied builtin, like `cata`, and
     -- D191's `Nu` is what lets the annotation that determines `F` be written.
+    -- D233: the stream carries the coalgebra's grade; building it runs
+    -- nothing, so `ana`'s own arrow is free (`π₀`, as `curry`'s outer arrow).
     t-ana-check : ∀ {ctx : NamedCtx} {coalg : RawExpr} {F : Functor} {A : Type}
-                  {π : Once.Type.Purity}
+                  {π₀ π : Once.Type.Purity}
                 → WellFormedF F
                 → ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx)
                     ⊢ᶜ coalg ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] (⟦ F ⟧T A))
                     ⨾ Surface.zeroUsage
                 → ctx ⊢ᶜ RApp (RResolved (gen "ana")) coalg
-                        ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] (ν-type F))
+                        ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π₀ ] (ν-type F π))
                         ⨾ Surface.zeroUsage
 
     -- | THE MODE SWITCH, with subsumption (D226 / plan 0.99). A term whose type

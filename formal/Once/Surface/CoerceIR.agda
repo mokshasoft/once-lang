@@ -53,7 +53,7 @@ coeIR (sub-arr {q = Many} a b _) = wrapArr (coeIR a) (coeIR b)
 coeIR (sub-prod a b) = ⟨ coeIR a ∘ fst , coeIR b ∘ snd ⟩
 coeIR (sub-sum a b)  = case (inl ∘ coeIR a) (inr ∘ coeIR b)
 coeIR sub-μ = id
-coeIR sub-ν = id
+coeIR (sub-ν _) = id
 
 ------------------------------------------------------------------------
 -- Void-free derivations relate types with the same IR type.
@@ -73,7 +73,7 @@ data VoidFree : ∀ {A B} → A <: B → Set where
   vf-sum    : ∀ {A A′ B B′} {a : A <: A′} {b : B <: B′}
             → VoidFree a → VoidFree b → VoidFree (sub-sum a b)
   vf-μ      : ∀ {F} → VoidFree (sub-μ {F})
-  vf-ν      : ∀ {F} → VoidFree (sub-ν {F})
+  vf-ν      : ∀ {F π π′} {g : π ⊑π π′} → VoidFree (sub-ν {F} {π} {π′} g)
 
 private
   two : ∀ {P Q R : Set} → (P → Q → R) → (R → P) → (R → Q) → Dec P → Dec Q → Dec R
@@ -107,7 +107,7 @@ voidFree? (sub-void {_ T.* _})        = no λ ()
 voidFree? (sub-void {_ T.+ _})        = no λ ()
 voidFree? (sub-void {_ T.⇒[ _ ] _})  = no λ ()
 voidFree? (sub-void {T.μ-type _})     = no λ ()
-voidFree? (sub-void {T.ν-type _})     = no λ ()
+voidFree? (sub-void {T.ν-type _ _})     = no λ ()
 voidFree? sub-unit   = yes vf-unit
 voidFree? sub-int    = yes vf-int
 voidFree? sub-float  = yes vf-float
@@ -117,7 +117,7 @@ voidFree? (sub-arr a b g) = two vf-arr arr-a arr-b (voidFree? a) (voidFree? b)
 voidFree? (sub-prod a b)  = two vf-prod prod-a prod-b (voidFree? a) (voidFree? b)
 voidFree? (sub-sum a b)   = two vf-sum sum-a sum-b (voidFree? a) (voidFree? b)
 voidFree? sub-μ = yes vf-μ
-voidFree? sub-ν = yes vf-ν
+voidFree? (sub-ν _) = yes vf-ν
 
 -- For every CONCRETE derivation this reduces to `refl`.
 erase-eq : ∀ {A B} (p : A <: B) → VoidFree p → ⌊ A ⌋ ≡ ⌊ B ⌋
