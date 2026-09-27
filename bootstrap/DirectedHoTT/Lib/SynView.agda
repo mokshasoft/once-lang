@@ -22,6 +22,8 @@ open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Metatheory.RedCong
   using ( ⟶*-trans; ⟶*-pairʳ; ⟶*-dihᶜ; _⟶ᵀ*_; doneᵀ; stepᵀ; ⟶ᵀ*-Σʳ; ⟶ᵀ*-Σˡ; ⟶ᵀ*-trans )
 open import DirectedHoTT.Metatheory.TySub using ( wk-cancel-tm )
+open import DirectedHoTT.Metatheory.SubjectReductionBase using ( wk-sub; iinst-sub; wk2-subTy )
+open import DirectedHoTT.Spec.Syntax using ( cong₃; cong₄ )
 open import DirectedHoTT.Metatheory.Fundamental.Syntactic using ( ⟨_⟩ᵣ; subTm-var )
 open import DirectedHoTT.Lib.Sugar using ( tag; vz-cancel )
 open import DirectedHoTT.Lib.Tel using ( ⌜_⌝ᵗ )
@@ -130,3 +132,35 @@ dihV-red (nat ∷ʰ sh) i D e p =
     (subst (λ C → dih D e C (snd p) ⟶* DihV sh i D e (snd p)) (sym (sub-rest (fst p) sh i))
            (dihV-red sh i D e (snd p))))
 dihV-red vʰ i D e p = step (dih-σ D e _ _ p) (step (ξ-dihᶜ (β _ (fst p))) (step (dih-ι D e (snd p)) done))
+
+------------------------------------------------------------------------
+-- 4. THE VIEWS COMMUTE WITH SUBSTITUTION.
+------------------------------------------------------------------------
+
+private
+  ix-sub : (σ : Sub Δ Θ) (s k : ℕ) (i : RTm Δ) →
+           subTm σ (pair (tag s) (nsucs k (snd i))) ≡ pair (tag s) (nsucs k (snd (subTm σ i)))
+  ix-sub σ s k i = cong₂ pair (tag-sub σ s) (nsucs-sub σ k (snd i))
+
+PayV-sub : (σ : Sub Δ Θ) (sh : Shape) (i I D : RTm Δ) →
+           subTy σ (PayV sh i I D) ≡ PayV sh (subTm σ i) (subTm σ I) (subTm σ D)
+PayV-sub σ []ʰ i I D = refl
+PayV-sub σ (rec s k ∷ʰ sh) i I D =
+  cong₂ Σ' (cong (IMu (subTm σ I) (subTm σ D)) (ix-sub σ s k i))
+    (trans (PayV-sub (extS σ) sh (renTm vs i) (renTm vs I) (renTm vs D))
+           (cong₃ (PayV sh) (wk-sub σ i) (wk-sub σ I) (wk-sub σ D)))
+PayV-sub σ (nat ∷ʰ sh) i I D =
+  cong (Σ' (El ⌜Nat⌝))
+    (trans (PayV-sub (extS σ) sh (renTm vs i) (renTm vs I) (renTm vs D))
+           (cong₃ (PayV sh) (wk-sub σ i) (wk-sub σ I) (wk-sub σ D)))
+PayV-sub σ vʰ i I D = refl
+
+IhV-sub : (σ : Sub Δ Θ) (sh : Shape) (i D : RTm Δ) (M : RTy ((Δ ∙) ∙)) (p : RTm Δ) →
+          subTy σ (IhV sh i D M p) ≡ IhV sh (subTm σ i) (subTm σ D) (subTy (extS (extS σ)) M) (subTm σ p)
+IhV-sub σ []ʰ i D M p = refl
+IhV-sub σ (rec s k ∷ʰ sh) i D M p =
+  cong₂ Σ' (trans (iinst-sub σ M _ (fst p)) (cong (λ j → iinst j (fst (subTm σ p)) (subTy (extS (extS σ)) M)) (ix-sub σ s k i)))
+    (trans (IhV-sub (extS σ) sh (renTm vs i) (renTm vs D) (renTy (extR (extR vs)) M) (snd (renTm vs p)))
+           (cong₄ (IhV sh) (wk-sub σ i) (wk-sub σ D) (wk2-subTy σ M) (cong snd (wk-sub σ p))))
+IhV-sub σ (nat ∷ʰ sh) i D M p = IhV-sub σ sh i D M (snd p)
+IhV-sub σ vʰ i D M p = refl

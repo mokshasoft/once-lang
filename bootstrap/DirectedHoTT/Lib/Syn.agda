@@ -133,10 +133,9 @@ stels : Sig n → STels (Δ ∙) n
 stels []ᵍ        = []ˢᵗ
 stels (shs ∷ᵍ sg) = tels shs ∷ˢᵗ stels sg
 
-private
-  tag-sub : (σ : Sub Δ Θ) (s : ℕ) → subTm σ (tag s) ≡ tag s
-  tag-sub σ zero    = refl
-  tag-sub σ (suc s) = cong fsuc (tag-sub σ s)
+tag-sub : (σ : Sub Δ Θ) (s : ℕ) → subTm σ (tag s) ≡ tag s
+tag-sub σ zero    = refl
+tag-sub σ (suc s) = cong fsuc (tag-sub σ s)
 
 -- ★ a telescope instantiated IS the telescope at the instantiated index
 sub-tel : (σ : Sub Δ Θ) (sh : Shape) (i : RTm Δ) → subTm σ ⌜ tel sh i ⌝ᵗ ≡ ⌜ tel sh (subTm σ i) ⌝ᵗ
