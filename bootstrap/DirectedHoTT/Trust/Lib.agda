@@ -55,6 +55,7 @@ import DirectedHoTT.Lib.Nat
 import DirectedHoTT.Lib.NatEq
 import DirectedHoTT.Lib.NatEqNum
 import DirectedHoTT.Lib.NatEval
+import DirectedHoTT.Lib.NatFib
 import DirectedHoTT.Lib.NatMax
 import DirectedHoTT.Lib.NatMaxNum
 import DirectedHoTT.Lib.NatNum
@@ -68,6 +69,10 @@ import DirectedHoTT.Lib.Sorted
 import DirectedHoTT.Lib.Strong
 import DirectedHoTT.Lib.Sugar
 import DirectedHoTT.Lib.Syn
+import DirectedHoTT.Lib.SynRen
+import DirectedHoTT.Lib.SynTrav
+import DirectedHoTT.Lib.SynTravM
+import DirectedHoTT.Lib.SynView
 import DirectedHoTT.Lib.Tel
 import DirectedHoTT.Lib.TelAt
 import DirectedHoTT.Lib.TelFold
