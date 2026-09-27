@@ -100,10 +100,29 @@ CongMacro → Vec, Scoped, ScopedDepth → continue stage 4.
   modules (before `Terms`).
 - Lesson: pin `{Tss}{Ts}{T}` at concrete `⊢conₛₜ` uses; inferred, one row
   cost 16.5 s instead of 0.12 s.
-- ⬜ Next: `Knot/Sz` (`⊢foldₛ sizeAlg`, plus adequacy on `quote`); generic
-  renaming/substitution over sorted telescopes (the old IWk/ISub
-  redesign, depth riding); `CtxD`; the judgement layer (`Judge`, rows
-  parsed from `Spec/Typing`); `scopeAt` over Tel (restore `ScopeHazard`).
+- ✅ The syntax's operations, generic (`Lib/Syn`, `Lib/SynView`,
+  `Lib/SynTrav`, `Lib/SynTravM`, `Lib/SynRen`, `Lib/SynSub`): one
+  traversal per signature and kit. Renaming, weakening, substitution and
+  `sub0` are all typed. `CONS` (`(ρ , u)`) is the σ-calculus primitive,
+  and `LIFT`/`SINGLE` are its instances. Instantiated for the Knot in
+  `Knot/Sig` (generated), `Knot/Ren`, `Knot/Sub`.
+- ✅ `Knot/Ctx`: contexts fibred over the depth (NatFib), with typed
+  `quoteCtx`. ✅ `Knot/Sz`: `⊢foldₛ sizeAlg` at the Knot signature.
+  ⬜ Its adequacy on `quote`.
+- ✅ D077 (decision log): judgement families are FIBRED BY THEIR SUBJECT,
+  with a Ford only for computed outputs, one family per mutual block.
+- ✅ `Knot/Lookup`: `Γ ∋ x ∷ A`. Case on the context, then on the
+  variable, with a convoy; `⊢D∋` well formed. 🟡 `Knot/LookupCon`:
+  closedness of the fibre function, and the here/there fibre chains built
+  at variables and moved by `⟶*-sub`, plus the constructors (in progress).
+- ★ Lesson (memory `knot-description-normalisation-trap`): every
+  unpinned implicit, and every renamed type that mentions `KD`, makes
+  Agda normalise the whole description. So: structural `-sub` lemmas,
+  casting weakenings (`⊢wkSK`, `⊢wkCtx`), and every implicit pinned.
+  Knot/Ctx went 70 s/3.8 GB → 6.5 s/0.77 GB.
+- ⬜ Next: the remaining judgements under D077 (`⟶`, `⟶ᵀ`, `≅`/`≅ᵀ`,
+  `⊢ty`/`⊢`), generated from `Spec/Typing`; `scopeAt` over Tel (restore
+  `ScopeHazard`); Stage 6 metrics.
 
 ## Stage 1 — DONE (2026-09-26, branch `ocp-0009-levitation`)
 

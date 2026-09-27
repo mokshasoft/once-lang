@@ -7,11 +7,12 @@
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Knot.Ren where
 
-open import normalizer.Syntax.Types using ( refl )
+open import normalizer.Syntax.Types using ( _≡_; refl; trans; sym; cong )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax hiding ( Fin )
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
-open import DirectedHoTT.Lib.Sugar using ( lt-z; lt-s )
+open import DirectedHoTT.Lib.Sugar using ( lt-z; lt-s; tag )
+open import normalizer.Syntax.Types using ( cong₂ )
 open import DirectedHoTT.Lib.Syn
 open import DirectedHoTT.Lib.SynTravM using ( VarsAt )
 open import DirectedHoTT.Lib.SynRen
@@ -27,3 +28,27 @@ open Ren KOK {v = 1} {kv = 0} (nthᵍ-s nthᵍ-z) nthʰ-z KVars public
 -- ★ weakening a quoted term: `renTm vs`, object-level, typed
 ⊢wk-quote : {Γ : Cx} (t : RTm Γ) {Θ : Ctx} → Θ ⊢ wk 1 (dep Γ) (quoteTm t) ∷ K 1 (nsuc (dep Γ))
 ⊢wk-quote {Γ} t = ⊢wkS (lt-s lt-z) (⊢dep' Γ) (⊢quoteTm t)
+
+------------------------------------------------------------------------
+-- ★ CLOSEDNESS: weakening commutes with substitution.  The traversal's
+--   methods contain no description, so their closedness is one `refl`
+--   (measured 0.7 s); the description's goes through `SD-sub`.
+------------------------------------------------------------------------
+
+TRAVM-sub : {Δ Θ : Cx} (σ : Sub Δ Θ) → subTm σ (TRAVM {Δ}) ≡ TRAVM
+TRAVM-sub σ = refl
+
+WKρ-sub : {Δ Θ : Cx} (σ : Sub Δ Θ) → subTm σ (WKρ {Δ}) ≡ WKρ
+WKρ-sub σ = refl
+
+wk-sub : {Δ Θ : Cx} (σ : Sub Δ Θ) (s : ℕ) (d t : RTm Δ) → subTm σ (wk s d t) ≡ wk s (subTm σ d) (subTm σ t)
+wk-sub σ s d t =
+  cong₄ (λ D T M W → app (app (ielim D (pair T (subTm σ d)) M (subTm σ t)) (nsuc (subTm σ d))) W)
+        (SD-sub σ KSig) (tag-sub σ s) (TRAVM-sub σ) (WKρ-sub σ)
+
+wk-ren : {Δ Θ : Cx} (ρ : Ren Δ Θ) (s : ℕ) (d t : RTm Δ) → renTm ρ (wk s d t) ≡ wk s (renTm ρ d) (renTm ρ t)
+wk-ren ρ s d t = trans (sym (subTm-var ρ (wk s d t)))
+                       (trans (wk-sub ⟨ ρ ⟩ᵣ s d t)
+                              (cong₂ (wk s) {x = subTm ⟨ ρ ⟩ᵣ d} {x' = renTm ρ d} {y = subTm ⟨ ρ ⟩ᵣ t} {y' = renTm ρ t}
+                                     (subTm-var ρ d) (subTm-var ρ t)))
+  where open import DirectedHoTT.Metatheory.Fundamental.Syntactic using ( ⟨_⟩ᵣ; subTm-var )
