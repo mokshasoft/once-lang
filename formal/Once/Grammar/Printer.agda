@@ -67,6 +67,8 @@ printGType (G.GMu gf) =
   TWord "Mu" ∷ TLParen ∷ printGFunctor gf ++ TRParen ∷ []
 printGType (G.GNu gf) =
   TWord "Nu" ∷ TLParen ∷ printGFunctor gf ++ TRParen ∷ []
+printGType (G.GNuEff gf) =
+  TWord "Nu" ∷ TLParen ∷ TWord "Eff" ∷ printGFunctor gf ++ TRParen ∷ []
 
 -- | Print a grammar-level functor (canonical, fully parenthesised).
 printGFunctor (G.GFK g) =

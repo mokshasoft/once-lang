@@ -58,6 +58,7 @@ gtypeToPolyType (a G.⇒[ q ] b)   = gtypeToPolyType a P⇒[ q ] gtypeToPolyType
 gtypeToPolyType (G.TEff a b)     = PEff (gtypeToPolyType a) (gtypeToPolyType b)
 gtypeToPolyType (G.GMu gf)       = Pμ-type (gtypeToPolyFunctor gf)
 gtypeToPolyType (G.GNu gf)       = Pν-type (gtypeToPolyFunctor gf) pure
+gtypeToPolyType (G.GNuEff gf)    = Pν-type (gtypeToPolyFunctor gf) Once.Type.eff
 
 gtypeToPolyFunctor (G.GFK g)      = PK (gtypeToPolyType g)
 gtypeToPolyFunctor G.GFId         = PId

@@ -26,7 +26,7 @@ open import Once.Grammar as G
   using ( GExpr; GType
         ; EUnit; EInt; EString; EVar; EQualified; ELam; EApp; EPair
         ; EAnnot; EBinOp; EUnaryOp; ECompose; ELet; EDestruct
-        ; TUnit; TVoid; TInt; TFloat; TBuffer; TString; TEff; TVar; GMu; GNu
+        ; TUnit; TVoid; TInt; TFloat; TBuffer; TString; TEff; TVar; GMu; GNu; GNuEff
         ; _⊗_; _⊕_; _⇒[_]_ )
 open import Once.Grammar.Printer using
   ( Concrete; c-unit; c-void; c-int; c-float; c-buffer; c-string
@@ -67,6 +67,7 @@ concreteType? (TVar _) = nothing
 -- not via the printed-GType round-trip.
 concreteType? (GMu _) = nothing
 concreteType? (GNu _) = nothing
+concreteType? (GNuEff _) = nothing
 
 ------------------------------------------------------------------------
 -- Expression concreteness (no `TVar` in annotations, no reserved-word

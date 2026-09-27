@@ -71,6 +71,9 @@ mutual
   -- was unreachable from source. See D189.
   GNu     : GFunctor → GType
 
+  -- D233: the EFFECTFUL stream `Nu (Eff F)` = ν(T ∘ F).
+  GNuEff  : GFunctor → GType
+
   -- Type variable (for polymorphism and aliases)
   TVar    : UpperIdent → GType
 

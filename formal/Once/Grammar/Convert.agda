@@ -80,6 +80,9 @@ mutual
   gtypeToType (G.GNu gf) with gfunctorToFunctor gf
   ... | just F  = just (T.ν-type F T.pure)
   ... | nothing = nothing
+  gtypeToType (G.GNuEff gf) with gfunctorToFunctor gf
+  ... | just F  = just (T.ν-type F T.eff)
+  ... | nothing = nothing
   gtypeToType (G.TVar _) = nothing
 
   -- | Convert a grammar-level functor to an internal `Functor`.
@@ -132,8 +135,9 @@ mutual
   typeToGType (T.ν-type F T.pure) with functorToGFunctor F
   ... | just gf = just (G.GNu gf)
   ... | nothing = nothing
-  -- D233: the effectful stream `Nu (Eff F)` has no grammar form yet.
-  typeToGType (T.ν-type F T.eff) = nothing
+  typeToGType (T.ν-type F T.eff) with functorToGFunctor F
+  ... | just gf = just (G.GNuEff gf)
+  ... | nothing = nothing
 
   -- | Convert an internal `Functor` to a grammar-level functor.
   -- Fails iff a constant `K t` holds a non-expressible `t` (e.g. ν).
@@ -189,7 +193,9 @@ typeToGType-gtypeToType (T.μ-type F) g eq with functorToGFunctor F in eqF
 typeToGType-gtypeToType (T.μ-type F) .(G.GMu gf) refl | just gf
   rewrite functorToGFunctor-gfunctorToFunctor F gf eqF = refl
 -- D191: the ν row, the μ row's mirror.
-typeToGType-gtypeToType (T.ν-type F T.eff) g ()
+typeToGType-gtypeToType (T.ν-type F T.eff) g eq with functorToGFunctor F in eqF
+typeToGType-gtypeToType (T.ν-type F T.eff) .(G.GNuEff gf) refl | just gf
+  rewrite functorToGFunctor-gfunctorToFunctor F gf eqF = refl
 typeToGType-gtypeToType (T.ν-type F T.pure) g eq with functorToGFunctor F in eqF
 typeToGType-gtypeToType (T.ν-type F T.pure) .(G.GNu gf) refl | just gf
   rewrite functorToGFunctor-gfunctorToFunctor F gf eqF = refl
@@ -243,6 +249,9 @@ gtypeToType-typeToGType (G.GMu gf) .(T.μ-type F) refl | just F
   rewrite gfunctorToFunctor-functorToGFunctor gf F eqG = refl
 gtypeToType-typeToGType (G.GNu gf) t eq with gfunctorToFunctor gf in eqG
 gtypeToType-typeToGType (G.GNu gf) .(T.ν-type F T.pure) refl | just F
+  rewrite gfunctorToFunctor-functorToGFunctor gf F eqG = refl
+gtypeToType-typeToGType (G.GNuEff gf) t eq with gfunctorToFunctor gf in eqG
+gtypeToType-typeToGType (G.GNuEff gf) .(T.ν-type F T.eff) refl | just F
   rewrite gfunctorToFunctor-functorToGFunctor gf F eqG = refl
 
 gfunctorToFunctor-functorToGFunctor (G.GFK g) F eq with gtypeToType g in eqg
@@ -378,6 +387,7 @@ mutual
     ex-eff    : ∀ {A B} → Expressible A → Expressible B → Expressible (A T.⇒[ T.mk-kind T.Many T.eff ] B)
     ex-mu     : ∀ {F} → ExpressibleF F → Expressible (T.μ-type F)
     ex-nu     : ∀ {F} → ExpressibleF F → Expressible (T.ν-type F T.pure)
+    ex-nu-eff : ∀ {F} → ExpressibleF F → Expressible (T.ν-type F T.eff)
 
   data ExpressibleF : T.Functor → Set where
     exf-k    : ∀ {t} → Expressible t → ExpressibleF (T.K t)
@@ -414,6 +424,9 @@ typeToGType-Expressible (ex-mu nf)
 typeToGType-Expressible (ex-nu nf)
   with functorToGFunctor-ExpressibleF nf
 ... | gf , eqf rewrite eqf = G.GNu gf , refl
+typeToGType-Expressible (ex-nu-eff nf)
+  with functorToGFunctor-ExpressibleF nf
+... | gf , eqf rewrite eqf = G.GNuEff gf , refl
 
 functorToGFunctor-ExpressibleF (exf-k nt)
   with typeToGType-Expressible nt

@@ -24,6 +24,10 @@ module Make (alg : TyAlg) where
   open Gen alg
   open P.Make alg
 
+  -- The functor parser rejects `Eff`, hence `( Eff …`.
+  fSum-parenEff : ∀ toks → fSumP (TLParen ∷ TWord "Eff" ∷ toks) ≡ nothing
+  fSum-parenEff toks = refl
+
   mutual
     complete-atom : ∀ {toks T rest} → ParsesAtomG toks T rest → atomP toks ≡ just (T , rest)
     complete-atom (pa-unit rest)   rewrite extraMiss-Unit rest   = refl
@@ -40,6 +44,9 @@ module Make (alg : TyAlg) where
       rewrite extraMiss-Mu toks | complete-fSum dF = refl
     complete-atom (pa-nu {toks} dF)
       rewrite extraMiss-Nu toks | complete-fSum dF = refl
+    -- D233: the pure attempt fails on `( Eff` (`Eff` is no functor keyword).
+    complete-atom (pa-nu-eff {toks} dF)
+      rewrite extraMiss-Nu (TLParen ∷ TWord "Eff" ∷ toks) | fSum-parenEff toks | complete-fSum dF = refl
     complete-atom (pa-extra ex) rewrite extraComplete ex = refl
     complete-atom (pa-paren {toks} dT refl)
       rewrite extraMiss-LParen toks | complete-type dT = refl

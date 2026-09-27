@@ -15,13 +15,21 @@ open import Data.Bool using (Bool; true; false)
 open import Data.List using (List; []; _∷_)
 open import Data.String using (String) renaming (_≟_ to _≟s_)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Product using (_×_; _,_)
+open import Data.Product using (_×_; _,_; Σ-syntax)
 open import Relation.Nullary using (yes; no)
-open import Relation.Binary.PropositionalEquality using (refl)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 open import Once.Type using (Quantity; One; Zero; Many)
 open import Once.Parser.Token
 open import Once.Parser.Generic.Relation
+
+-- D233: does the token stream start `( Eff`? The equation is what lets the
+-- soundness proof recover the shape without enumerating tokens.
+effHead? : (rest : List Token) → Maybe (Σ[ r ∈ List Token ] rest ≡ TLParen ∷ TWord "Eff" ∷ r)
+effHead? (TLParen ∷ TWord w ∷ r) with w ≟s "Eff"
+... | yes refl = just (r , refl)
+... | no _     = nothing
+effHead? _ = nothing
 
 module Make (alg : TyAlg) where
   open TyAlg alg
@@ -32,6 +40,13 @@ module Make (alg : TyAlg) where
   fAtomP fProdP fSumP : List Token → Maybe (RF × List Token)
   fProdTailP fSumTailP : RF → List Token → Maybe (RF × List Token)
   atomKw : List Token → Maybe (R × List Token)
+  -- D233: `Nu` — the pure stream first; `( Eff F )` exactly when that fails
+  -- (a functor never starts with `( Eff`).
+  nuP nuEffP : List Token → Maybe (R × List Token)
+  nuTryP : List Token → Maybe (RF × List Token) → Maybe (R × List Token)
+  nuCloseP : Maybe (RF × List Token) → Maybe (R × List Token)
+  nuEffWith : (rest : List Token) → Maybe (Σ[ r ∈ List Token ] rest ≡ TLParen ∷ TWord "Eff" ∷ r)
+            → Maybe (R × List Token)
 
   atomP toks with extraP toks
   ... | just (a , rest , _) = just (a , rest)
@@ -66,9 +81,7 @@ module Make (alg : TyAlg) where
   ...   | just (F , r1) = just (aMu F , r1)
   atomKw (TWord name ∷ rest)
     | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ with name ≟s "Nu"
-  ... | yes refl with fSumP rest
-  ...   | nothing = nothing
-  ...   | just (F , r1) = just (aNu F , r1)
+  ... | yes refl = nuP rest
   atomKw (TWord name ∷ rest)
     | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ = nothing
   atomKw (TLParen ∷ rest) with typeP rest
@@ -76,6 +89,17 @@ module Make (alg : TyAlg) where
   ... | just (_ , _) = nothing
   ... | nothing = nothing
   atomKw _ = nothing
+
+  nuP rest = nuTryP rest (fSumP rest)
+  nuTryP rest (just (F , r1)) = just (aNu F , r1)
+  nuTryP rest nothing         = nuEffP rest
+  nuEffP rest = nuEffWith rest (effHead? rest)
+  nuCloseP (just (F , TRParen ∷ r2)) = just (aNuEff F , r2)
+  nuCloseP (just (F , _))            = nothing
+  nuCloseP nothing                   = nothing
+
+  nuEffWith rest nothing = nothing
+  nuEffWith .(TLParen ∷ TWord "Eff" ∷ r) (just (r , refl)) = nuCloseP (fSumP r)
 
   prodP toks with atomP toks
   ... | nothing = nothing
