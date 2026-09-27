@@ -72,7 +72,7 @@ sh-kFin = nat ∷ʰ []ʰ
 
 -- var
 sh-kvar : Shape
-sh-kvar = var ∷ʰ []ʰ
+sh-kvar = vʰ
 
 -- lam
 sh-klam : Shape
@@ -259,7 +259,7 @@ ok-kDIh = (ok-rec (lt-s lt-z)) ∷ᵒʰ (ok-rec lt-z) ∷ᵒʰ (ok-rec (lt-s lt-
 ok-kFin : ShOK 2 sh-kFin
 ok-kFin = (ok-nat) ∷ᵒʰ []ᵒʰ
 ok-kvar : ShOK 2 sh-kvar
-ok-kvar = (ok-var) ∷ᵒʰ []ᵒʰ
+ok-kvar = vᵒʰ
 ok-klam : ShOK 2 sh-klam
 ok-klam = (ok-rec (lt-s lt-z)) ∷ᵒʰ []ᵒʰ
 ok-kapp : ShOK 2 sh-kapp

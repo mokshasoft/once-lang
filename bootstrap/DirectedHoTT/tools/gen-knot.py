@@ -109,9 +109,13 @@ def fldok(f):
     return "ok-" + f[0]
 
 def shape(fs):
+    if any(f[0] == "var" for f in fs):
+        assert fs == [("var",)], "a variable is a whole shape (`vʰ`), not a field"
+        return "vʰ"
     return " ∷ʰ ".join([fld(f) for f in fs] + ["[]ʰ"])
 
 def shapeok(fs):
+    if fs == [("var",)]: return "vᵒʰ"
     return " ∷ᵒʰ ".join(["(%s)" % fldok(f) for f in fs] + ["[]ᵒʰ"])
 
 HDR = """------------------------------------------------------------------------
@@ -238,8 +242,9 @@ quoteTm : {Γ : Cx} → RTm Γ → {Θ : Cx} → RTm Θ
     def df(f, a):
         if f[0] == "rec": return "a-rec (⊢%s %s)" % (["quoteTy", "quoteTm"][f[1]], a)
         if f[0] == "nat": return "a-nat (⊢quoteℕ %s)" % a
-        if f[0] == "var": return "a-var (⊢quoteVar %s)" % a
+        if f[0] == "var": return "a-v (⊢quoteVar %s)" % a
     def args_proof(fs, args):
+        if fs == [("var",)]: return "(a-v (⊢quoteVar %s))" % args[0]
         t = "a[]"
         for f, a in reversed(list(zip(fs, args))): t = "(%s %s)" % (df(f, a), t)
         return t
