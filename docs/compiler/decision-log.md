@@ -5249,3 +5249,50 @@ carries its index or an equation.
 ### See Also
 
 D074, D075.
+
+## D077: Judgement Families Are FIBRED BY THEIR SUBJECT — Ford Only Computed Outputs (OCP-0009, levitation; the Knot's judgement layer)
+
+**Date**: 2026-09-27
+**Status**: Accepted (D074–D076's principle applied to the judgements. The record check found no prior decision: PLAN-JUDGEMENT's uniform Ford predates D072 and its substrate is deleted.)
+
+### Context
+
+The kernel's judgements (`Spec/Typing`: `_∋_∷_`, `_⊢ty_`/`_⊢_∷_`, `_⟶_`,
+`_⟶ᵀ_`, `_≅_`, `_≅ᵀ_`) become object-level families over the Knot. The
+pre-levitation Knot Forded EVERY conclusion component of every row, with
+one `⌜Id⌝` field plus a transport per component. Measured
+(FUTURE.md, "THE JUDGE LAYER IS TELESCOPE DEPTH"): that telescope depth
+was the old Knot's dominant cost, e.g. `Judge/Ielim` took 358 s / 4.3 GB.
+
+### Decision
+
+A judgement's fibre over its index is presented BY CASE on the index
+wherever the rules' targets are patterns, as D076 does for `Fin`.
+- The SUBJECT decides the rows. That is the term for `⊢`/`⟶`, the type for
+  `⊢ty`/`⟶ᵀ`, and the variable (then the context) for `∋`. The fibre
+  function eliminates the subject with a `Desc`-valued motive. Each head
+  gets exactly the rules whose conclusion has that head. Rules whose
+  subject is a bare variable, such as `⊢conv`, `crfl`, `csym`, `ctrn`,
+  are in every fibre.
+- A NESTED pattern (`β`'s `app (lam t) u`, `natrec-suc`, `ι-ielim`,
+  `ordtr`) is a nested case, not a Ford.
+- A component that is a computed OUTPUT (`⊢app`'s `B[u]`, `here`'s
+  `wk A`) Fords explicitly, with a `dσ (⌜Id⌝ …)` field (D074).
+- ONE FAMILY PER MUTUAL BLOCK (D075). `⊢ty`/`⊢` are one family, sorted.
+  The others are separate families, stratified: `∋`; `⟶`; `⟶ᵀ` (cites
+  `⟶`); `≅`/`≅ᵀ`. A premise of a lower stratum is a σ-field of its code.
+
+### Rationale
+
+- **Mathematics:** the fibre of the target map. Where the target is a
+  constructor pattern, the fibre is computed by unification, i.e. by case.
+  The `Id`-encoding is needed only where the target is not invertible.
+- **The fibre IS the inversion principle.** Inversion on a derivation is
+  computation, not object-level no-confusion.
+- **Cost:** it removes most of the Ford fields and transports that made
+  the old rows deep.
+
+### See Also
+
+D074, D075, D076; PLAN-LEVITATION Stage 5; PLAN-JUDGEMENT (superseded
+mechanism, still-valid cost evidence).
