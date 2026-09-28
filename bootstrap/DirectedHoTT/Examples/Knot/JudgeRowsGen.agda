@@ -29,6 +29,7 @@ open import DirectedHoTT.Examples.Knot.SubEnv using ( nrsK; ⊢nrsK; nrsK-sub; p
 open import DirectedHoTT.Examples.Knot.JudgeIx
 open import DirectedHoTT.Examples.Knot.JudgeTmIx
 open import DirectedHoTT.Examples.Knot.JudgeCase
+open import DirectedHoTT.Examples.Knot.GenHelpers
 open import DirectedHoTT.Examples.Knot.JudgeRowsTy using ( RowOK; okNone )
 open import DirectedHoTT.Examples.Knot.Preds using ( ⌜Flat⌝; ⊢⌜Flat⌝; ⌜Flat⌝-sub; ⌜NNC⌝; ⊢⌜NNC⌝; ⌜NNC⌝-sub )
 open import DirectedHoTT.Metatheory.SubjectReductionBase using () renaming ( wk-sub to wkS )
@@ -37,47 +38,6 @@ open import DirectedHoTT.Examples.Knot.JudgeRowsTm using ( rVar; okVar; rLam; ok
 private
   variable
     Δ Θ : Cx
-
-w4 : RTm Δ → RTm _
-w4 x = renTm vs (w3 x)
-w4-sub : (σ : Sub Δ Θ) (x : RTm Δ) → subTm (extS (extS (extS (extS σ)))) (w4 x) ≡ w4 (subTm σ x)
-w4-sub σ x = trans (wkS (extS (extS (extS σ))) (w3 x)) (cong w1 (w3-sub σ x))
-
-w5 : RTm Δ → RTm _
-w5 x = renTm vs (w4 x)
-w5-sub : (σ : Sub Δ Θ) (x : RTm Δ) → subTm (extS (extS (extS (extS (extS σ))))) (w5 x) ≡ w5 (subTm σ x)
-w5-sub σ x = trans (wkS (extS (extS (extS (extS σ)))) (w4 x)) (cong w1 (w4-sub σ x))
-
-w6 : RTm Δ → RTm _
-w6 x = renTm vs (w5 x)
-w6-sub : (σ : Sub Δ Θ) (x : RTm Δ) → subTm (extS (extS (extS (extS (extS (extS σ)))))) (w6 x) ≡ w6 (subTm σ x)
-w6-sub σ x = trans (wkS (extS (extS (extS (extS (extS σ))))) (w5 x)) (cong w1 (w5-sub σ x))
-
-w7 : RTm Δ → RTm _
-w7 x = renTm vs (w6 x)
-w7-sub : (σ : Sub Δ Θ) (x : RTm Δ) → subTm (extS (extS (extS (extS (extS (extS (extS σ))))))) (w7 x) ≡ w7 (subTm σ x)
-w7-sub σ x = trans (wkS (extS (extS (extS (extS (extS (extS σ)))))) (w6 x)) (cong w1 (w6-sub σ x))
-
-dσ-cong1 : (X0 X0' : RTm Δ) (Z Z' : RTm (Δ ∙)) → X0 ≡ X0' → Z ≡ Z' → dσ X0 (lam (Z)) ≡ dσ X0' (lam (Z'))
-dσ-cong1 X0 X0' Z Z' refl refl = refl
-
-dσ-cong2 : (X0 X0' : RTm Δ) (X1 X1' : RTm (Δ ∙)) (Z Z' : RTm ((Δ ∙) ∙)) → X0 ≡ X0' → X1 ≡ X1' → Z ≡ Z' → dσ X0 (lam (dσ X1 (lam (Z)))) ≡ dσ X0' (lam (dσ X1' (lam (Z'))))
-dσ-cong2 X0 X0' X1 X1' Z Z' refl refl refl = refl
-
-dσ-cong3 : (X0 X0' : RTm Δ) (X1 X1' : RTm (Δ ∙)) (X2 X2' : RTm ((Δ ∙) ∙)) (Z Z' : RTm (((Δ ∙) ∙) ∙)) → X0 ≡ X0' → X1 ≡ X1' → X2 ≡ X2' → Z ≡ Z' → dσ X0 (lam (dσ X1 (lam (dσ X2 (lam (Z)))))) ≡ dσ X0' (lam (dσ X1' (lam (dσ X2' (lam (Z'))))))
-dσ-cong3 X0 X0' X1 X1' X2 X2' Z Z' refl refl refl refl = refl
-
-dσ-cong4 : (X0 X0' : RTm Δ) (X1 X1' : RTm (Δ ∙)) (X2 X2' : RTm ((Δ ∙) ∙)) (X3 X3' : RTm (((Δ ∙) ∙) ∙)) (Z Z' : RTm ((((Δ ∙) ∙) ∙) ∙)) → X0 ≡ X0' → X1 ≡ X1' → X2 ≡ X2' → X3 ≡ X3' → Z ≡ Z' → dσ X0 (lam (dσ X1 (lam (dσ X2 (lam (dσ X3 (lam (Z)))))))) ≡ dσ X0' (lam (dσ X1' (lam (dσ X2' (lam (dσ X3' (lam (Z'))))))))
-dσ-cong4 X0 X0' X1 X1' X2 X2' X3 X3' Z Z' refl refl refl refl refl = refl
-
-dσ-cong5 : (X0 X0' : RTm Δ) (X1 X1' : RTm (Δ ∙)) (X2 X2' : RTm ((Δ ∙) ∙)) (X3 X3' : RTm (((Δ ∙) ∙) ∙)) (X4 X4' : RTm ((((Δ ∙) ∙) ∙) ∙)) (Z Z' : RTm (((((Δ ∙) ∙) ∙) ∙) ∙)) → X0 ≡ X0' → X1 ≡ X1' → X2 ≡ X2' → X3 ≡ X3' → X4 ≡ X4' → Z ≡ Z' → dσ X0 (lam (dσ X1 (lam (dσ X2 (lam (dσ X3 (lam (dσ X4 (lam (Z)))))))))) ≡ dσ X0' (lam (dσ X1' (lam (dσ X2' (lam (dσ X3' (lam (dσ X4' (lam (Z'))))))))))
-dσ-cong5 X0 X0' X1 X1' X2 X2' X3 X3' X4 X4' Z Z' refl refl refl refl refl refl = refl
-
-dσ-cong6 : (X0 X0' : RTm Δ) (X1 X1' : RTm (Δ ∙)) (X2 X2' : RTm ((Δ ∙) ∙)) (X3 X3' : RTm (((Δ ∙) ∙) ∙)) (X4 X4' : RTm ((((Δ ∙) ∙) ∙) ∙)) (X5 X5' : RTm (((((Δ ∙) ∙) ∙) ∙) ∙)) (Z Z' : RTm ((((((Δ ∙) ∙) ∙) ∙) ∙) ∙)) → X0 ≡ X0' → X1 ≡ X1' → X2 ≡ X2' → X3 ≡ X3' → X4 ≡ X4' → X5 ≡ X5' → Z ≡ Z' → dσ X0 (lam (dσ X1 (lam (dσ X2 (lam (dσ X3 (lam (dσ X4 (lam (dσ X5 (lam (Z)))))))))))) ≡ dσ X0' (lam (dσ X1' (lam (dσ X2' (lam (dσ X3' (lam (dσ X4' (lam (dσ X5' (lam (Z'))))))))))))
-dσ-cong6 X0 X0' X1 X1' X2 X2' X3 X3' X4 X4' X5 X5' Z Z' refl refl refl refl refl refl refl = refl
-
-dσ-cong7 : (X0 X0' : RTm Δ) (X1 X1' : RTm (Δ ∙)) (X2 X2' : RTm ((Δ ∙) ∙)) (X3 X3' : RTm (((Δ ∙) ∙) ∙)) (X4 X4' : RTm ((((Δ ∙) ∙) ∙) ∙)) (X5 X5' : RTm (((((Δ ∙) ∙) ∙) ∙) ∙)) (X6 X6' : RTm ((((((Δ ∙) ∙) ∙) ∙) ∙) ∙)) (Z Z' : RTm (((((((Δ ∙) ∙) ∙) ∙) ∙) ∙) ∙)) → X0 ≡ X0' → X1 ≡ X1' → X2 ≡ X2' → X3 ≡ X3' → X4 ≡ X4' → X5 ≡ X5' → X6 ≡ X6' → Z ≡ Z' → dσ X0 (lam (dσ X1 (lam (dσ X2 (lam (dσ X3 (lam (dσ X4 (lam (dσ X5 (lam (dσ X6 (lam (Z)))))))))))))) ≡ dσ X0' (lam (dσ X1' (lam (dσ X2' (lam (dσ X3' (lam (dσ X4' (lam (dσ X5' (lam (dσ X6' (lam (Z'))))))))))))))
-dσ-cong7 X0 X0' X1 X1' X2 X2' X3 X3' X4 X4' X5 X5' X6 X6' Z Z' refl refl refl refl refl refl refl refl = refl
 
 -- ⊢pair
 T⊢pairA : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
@@ -1614,247 +1574,247 @@ ok⊢ap : RowOK 1 sh-kap r⊢ap
 ok⊢ap {Ξ} {j} {p} {c} dj dp dc = ⊢rows {Ξ} {JT} {1} {⌜ T⊢ap j p c ⌝ᵗ ∷ []} ⊢JT (⊢tel {Ξ} {JT} {T⊢ap j p c} ⊢JT (okT⊢ap dj dp dc) ∷ᵈ  []ᵈ)
 
 -- ⊢tr
-C⊢trᵃ_0A : RTm Δ → RTm Δ → RTm Δ
-C⊢trᵃ_0A J A0 = A0
+C⊢tr₁_0A : RTm Δ → RTm Δ → RTm Δ
+C⊢tr₁_0A J A0 = A0
 
-C⊢trᵃ_0I : RTm Δ → RTm Δ
-C⊢trᵃ_0I J = C⊢trᵃ_0A J (⌜Tm⌝ J)
+C⊢tr₁_0I : RTm Δ → RTm Δ
+C⊢tr₁_0I J = C⊢tr₁_0A J (⌜Tm⌝ J)
 
-C⊢trᵃ_0A-cong : {Δ : Cx} → (J : RTm Δ) → (A0 A0' : RTm Δ) → A0 ≡ A0' → (C⊢trᵃ_0A {Δ} J A0) ≡ (C⊢trᵃ_0A J A0')
-C⊢trᵃ_0A-cong J A0 A0' refl = refl
+C⊢tr₁_0A-cong : {Δ : Cx} → (J : RTm Δ) → (A0 A0' : RTm Δ) → A0 ≡ A0' → (C⊢tr₁_0A {Δ} J A0) ≡ (C⊢tr₁_0A J A0')
+C⊢tr₁_0A-cong J A0 A0' refl = refl
 
-C⊢trᵃ_0I-sub : (σ : Sub Δ Θ) (J : RTm Δ) → subTm σ (C⊢trᵃ_0I J) ≡ (C⊢trᵃ_0I (subTm σ J))
-C⊢trᵃ_0I-sub σ J = C⊢trᵃ_0A-cong (subTm σ J) (subTm σ (⌜Tm⌝ J)) (⌜Tm⌝ (subTm σ J)) (⌜Tm⌝-sub σ J)
+C⊢tr₁_0I-sub : (σ : Sub Δ Θ) (J : RTm Δ) → subTm σ (C⊢tr₁_0I J) ≡ (C⊢tr₁_0I (subTm σ J))
+C⊢tr₁_0I-sub σ J = C⊢tr₁_0A-cong (subTm σ J) (subTm σ (⌜Tm⌝ J)) (⌜Tm⌝ (subTm σ J)) (⌜Tm⌝-sub σ J)
 
-C⊢trᵃ_0I-cong : {Δ : Cx} → (J J' : RTm Δ) → J ≡ J' → (C⊢trᵃ_0I {Δ} J) ≡ (C⊢trᵃ_0I J')
-C⊢trᵃ_0I-cong J J' refl = refl
+C⊢tr₁_0I-cong : {Δ : Cx} → (J J' : RTm Δ) → J ≡ J' → (C⊢tr₁_0I {Δ} J) ≡ (C⊢tr₁_0I J')
+C⊢tr₁_0I-cong J J' refl = refl
 
-okC⊢trᵃ_0I : {Ξ : Ctx} {J : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ C⊢trᵃ_0I J ∷ U
-okC⊢trᵃ_0I dJ = (⊢⌜Tm⌝ dJ)
+okC⊢tr₁_0I : {Ξ : Ctx} {J : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ C⊢tr₁_0I J ∷ U
+okC⊢tr₁_0I dJ = (⊢⌜Tm⌝ dJ)
 
-C⊢trᵃ_1A : RTm Δ → RTm Δ → RTm Δ
-C⊢trᵃ_1A J A0 = A0
+C⊢tr₁_1A : RTm Δ → RTm Δ → RTm Δ
+C⊢tr₁_1A J A0 = A0
 
-C⊢trᵃ_1I : RTm Δ → RTm Δ
-C⊢trᵃ_1I J = C⊢trᵃ_1A J (⌜Tm⌝ J)
+C⊢tr₁_1I : RTm Δ → RTm Δ
+C⊢tr₁_1I J = C⊢tr₁_1A J (⌜Tm⌝ J)
 
-C⊢trᵃ_1A-cong : {Δ : Cx} → (J : RTm Δ) → (A0 A0' : RTm Δ) → A0 ≡ A0' → (C⊢trᵃ_1A {Δ} J A0) ≡ (C⊢trᵃ_1A J A0')
-C⊢trᵃ_1A-cong J A0 A0' refl = refl
+C⊢tr₁_1A-cong : {Δ : Cx} → (J : RTm Δ) → (A0 A0' : RTm Δ) → A0 ≡ A0' → (C⊢tr₁_1A {Δ} J A0) ≡ (C⊢tr₁_1A J A0')
+C⊢tr₁_1A-cong J A0 A0' refl = refl
 
-C⊢trᵃ_1I-sub : (σ : Sub Δ Θ) (J : RTm Δ) → subTm σ (C⊢trᵃ_1I J) ≡ (C⊢trᵃ_1I (subTm σ J))
-C⊢trᵃ_1I-sub σ J = C⊢trᵃ_1A-cong (subTm σ J) (subTm σ (⌜Tm⌝ J)) (⌜Tm⌝ (subTm σ J)) (⌜Tm⌝-sub σ J)
+C⊢tr₁_1I-sub : (σ : Sub Δ Θ) (J : RTm Δ) → subTm σ (C⊢tr₁_1I J) ≡ (C⊢tr₁_1I (subTm σ J))
+C⊢tr₁_1I-sub σ J = C⊢tr₁_1A-cong (subTm σ J) (subTm σ (⌜Tm⌝ J)) (⌜Tm⌝ (subTm σ J)) (⌜Tm⌝-sub σ J)
 
-C⊢trᵃ_1I-cong : {Δ : Cx} → (J J' : RTm Δ) → J ≡ J' → (C⊢trᵃ_1I {Δ} J) ≡ (C⊢trᵃ_1I J')
-C⊢trᵃ_1I-cong J J' refl = refl
+C⊢tr₁_1I-cong : {Δ : Cx} → (J J' : RTm Δ) → J ≡ J' → (C⊢tr₁_1I {Δ} J) ≡ (C⊢tr₁_1I J')
+C⊢tr₁_1I-cong J J' refl = refl
 
-okC⊢trᵃ_1I : {Ξ : Ctx} {J : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ C⊢trᵃ_1I J ∷ U
-okC⊢trᵃ_1I dJ = (⊢⌜Tm⌝ dJ)
+okC⊢tr₁_1I : {Ξ : Ctx} {J : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ C⊢tr₁_1I J ∷ U
+okC⊢tr₁_1I dJ = (⊢⌜Tm⌝ dJ)
 
-C⊢trᵃ_2A : RTm Δ → RTm Δ → RTm Δ → RTm Δ
-C⊢trᵃ_2A J F0 A0 = (⌜Id⌝ A0 F0 (kvar ffz))
+C⊢tr₁_2A : RTm Δ → RTm Δ → RTm Δ → RTm Δ
+C⊢tr₁_2A J F0 A0 = (⌜Id⌝ A0 F0 (kvar ffz))
 
-C⊢trᵃ_2I : RTm Δ → RTm Δ → RTm Δ
-C⊢trᵃ_2I J F0 = C⊢trᵃ_2A J F0 (⌜Tm⌝ (nsuc J))
+C⊢tr₁_2I : RTm Δ → RTm Δ → RTm Δ
+C⊢tr₁_2I J F0 = C⊢tr₁_2A J F0 (⌜Tm⌝ (nsuc J))
 
-C⊢trᵃ_2A-cong : {Δ : Cx} → (J : RTm Δ) → (F0 : RTm Δ) → (A0 A0' : RTm Δ) → A0 ≡ A0' → (C⊢trᵃ_2A {Δ} J F0 A0) ≡ (C⊢trᵃ_2A J F0 A0')
-C⊢trᵃ_2A-cong J F0 A0 A0' refl = refl
+C⊢tr₁_2A-cong : {Δ : Cx} → (J : RTm Δ) → (F0 : RTm Δ) → (A0 A0' : RTm Δ) → A0 ≡ A0' → (C⊢tr₁_2A {Δ} J F0 A0) ≡ (C⊢tr₁_2A J F0 A0')
+C⊢tr₁_2A-cong J F0 A0 A0' refl = refl
 
-C⊢trᵃ_2I-sub : (σ : Sub Δ Θ) (J : RTm Δ) (F0 : RTm Δ) → subTm σ (C⊢trᵃ_2I J F0) ≡ (C⊢trᵃ_2I (subTm σ J) (subTm σ F0))
-C⊢trᵃ_2I-sub σ J F0 = C⊢trᵃ_2A-cong (subTm σ J) (subTm σ F0) (subTm σ (⌜Tm⌝ (nsuc J))) (⌜Tm⌝ (nsuc (subTm σ J))) (⌜Tm⌝-sub σ (nsuc J))
+C⊢tr₁_2I-sub : (σ : Sub Δ Θ) (J : RTm Δ) (F0 : RTm Δ) → subTm σ (C⊢tr₁_2I J F0) ≡ (C⊢tr₁_2I (subTm σ J) (subTm σ F0))
+C⊢tr₁_2I-sub σ J F0 = C⊢tr₁_2A-cong (subTm σ J) (subTm σ F0) (subTm σ (⌜Tm⌝ (nsuc J))) (⌜Tm⌝ (nsuc (subTm σ J))) (⌜Tm⌝-sub σ (nsuc J))
 
-C⊢trᵃ_2I-cong : {Δ : Cx} → (J J' : RTm Δ) → (F0 F0' : RTm Δ) → J ≡ J' → F0 ≡ F0' → (C⊢trᵃ_2I {Δ} J F0) ≡ (C⊢trᵃ_2I J' F0')
-C⊢trᵃ_2I-cong J J' F0 F0' refl refl = refl
+C⊢tr₁_2I-cong : {Δ : Cx} → (J J' : RTm Δ) → (F0 F0' : RTm Δ) → J ≡ J' → F0 ≡ F0' → (C⊢tr₁_2I {Δ} J F0) ≡ (C⊢tr₁_2I J' F0')
+C⊢tr₁_2I-cong J J' F0 F0' refl refl = refl
 
-okC⊢trᵃ_2I : {Ξ : Ctx} {J F0 : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ F0 ∷ K 1 (nsuc J) → Ξ ⊢ C⊢trᵃ_2I J F0 ∷ U
-okC⊢trᵃ_2I dJ dF0 = (⊢⌜Id⌝ (⊢⌜Tm⌝ (⊢isuc dJ)) (toTm dF0) (toTm (⊢kvar (⊢isuc dJ) (⊢ffz dJ))))
+okC⊢tr₁_2I : {Ξ : Ctx} {J F0 : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ F0 ∷ K 1 (nsuc J) → Ξ ⊢ C⊢tr₁_2I J F0 ∷ U
+okC⊢tr₁_2I dJ dF0 = (⊢⌜Id⌝ (⊢⌜Tm⌝ (⊢isuc dJ)) (toTm dF0) (toTm (⊢kvar (⊢isuc dJ) (⊢ffz dJ))))
 
-T⊢trᵃA : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
-T⊢trᵃA J G X F1 F2 E0 E1 A0 = tρ (tmIx J G E0 (kU)) (tρ (tmIx J G E1 (kU)) (tρ (tmIx J G F1 (kHom (kU) E0 E1)) (tρ (tmIx J G F2 (kEl E0)) (tσ (⌜Id⌝ A0 X (kEl E1)) tι))))
+T⊢tr₁A : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
+T⊢tr₁A J G X F1 F2 E0 E1 A0 = tρ (tmIx J G E0 (kU)) (tρ (tmIx J G E1 (kU)) (tρ (tmIx J G F1 (kHom (kU) E0 E1)) (tρ (tmIx J G F2 (kEl E0)) (tσ (⌜Id⌝ A0 X (kEl E1)) tι))))
 
-T⊢trᵃI : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
-T⊢trᵃI J G X F1 F2 E0 E1 = T⊢trᵃA J G X F1 F2 E0 E1 (⌜Ty⌝ J)
+T⊢tr₁I : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
+T⊢tr₁I J G X F1 F2 E0 E1 = T⊢tr₁A J G X F1 F2 E0 E1 (⌜Ty⌝ J)
 
-T⊢trᵃA-cong : {Δ : Cx} → (J : RTm Δ) → (G : RTm Δ) → (X : RTm Δ) → (F1 : RTm Δ) → (F2 : RTm Δ) → (E0 : RTm Δ) → (E1 : RTm Δ) → (A0 A0' : RTm Δ) → A0 ≡ A0' → ⌜ T⊢trᵃA {Δ} J G X F1 F2 E0 E1 A0 ⌝ᵗ ≡ ⌜ T⊢trᵃA J G X F1 F2 E0 E1 A0' ⌝ᵗ
-T⊢trᵃA-cong J G X F1 F2 E0 E1 A0 A0' refl = refl
+T⊢tr₁A-cong : {Δ : Cx} → (J : RTm Δ) → (G : RTm Δ) → (X : RTm Δ) → (F1 : RTm Δ) → (F2 : RTm Δ) → (E0 : RTm Δ) → (E1 : RTm Δ) → (A0 A0' : RTm Δ) → A0 ≡ A0' → ⌜ T⊢tr₁A {Δ} J G X F1 F2 E0 E1 A0 ⌝ᵗ ≡ ⌜ T⊢tr₁A J G X F1 F2 E0 E1 A0' ⌝ᵗ
+T⊢tr₁A-cong J G X F1 F2 E0 E1 A0 A0' refl = refl
 
-T⊢trᵃI-sub : (σ : Sub Δ Θ) (J : RTm Δ) (G : RTm Δ) (X : RTm Δ) (F1 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) (E1 : RTm Δ) → subTm σ ⌜ T⊢trᵃI J G X F1 F2 E0 E1 ⌝ᵗ ≡ ⌜ T⊢trᵃI (subTm σ J) (subTm σ G) (subTm σ X) (subTm σ F1) (subTm σ F2) (subTm σ E0) (subTm σ E1) ⌝ᵗ
-T⊢trᵃI-sub σ J G X F1 F2 E0 E1 = T⊢trᵃA-cong (subTm σ J) (subTm σ G) (subTm σ X) (subTm σ F1) (subTm σ F2) (subTm σ E0) (subTm σ E1) (subTm σ (⌜Ty⌝ J)) (⌜Ty⌝ (subTm σ J)) (⌜Ty⌝-sub σ J)
+T⊢tr₁I-sub : (σ : Sub Δ Θ) (J : RTm Δ) (G : RTm Δ) (X : RTm Δ) (F1 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) (E1 : RTm Δ) → subTm σ ⌜ T⊢tr₁I J G X F1 F2 E0 E1 ⌝ᵗ ≡ ⌜ T⊢tr₁I (subTm σ J) (subTm σ G) (subTm σ X) (subTm σ F1) (subTm σ F2) (subTm σ E0) (subTm σ E1) ⌝ᵗ
+T⊢tr₁I-sub σ J G X F1 F2 E0 E1 = T⊢tr₁A-cong (subTm σ J) (subTm σ G) (subTm σ X) (subTm σ F1) (subTm σ F2) (subTm σ E0) (subTm σ E1) (subTm σ (⌜Ty⌝ J)) (⌜Ty⌝ (subTm σ J)) (⌜Ty⌝-sub σ J)
 
-T⊢trᵃI-cong : {Δ : Cx} → (J J' : RTm Δ) → (G G' : RTm Δ) → (X X' : RTm Δ) → (F1 F1' : RTm Δ) → (F2 F2' : RTm Δ) → (E0 E0' : RTm Δ) → (E1 E1' : RTm Δ) → J ≡ J' → G ≡ G' → X ≡ X' → F1 ≡ F1' → F2 ≡ F2' → E0 ≡ E0' → E1 ≡ E1' → ⌜ T⊢trᵃI {Δ} J G X F1 F2 E0 E1 ⌝ᵗ ≡ ⌜ T⊢trᵃI J' G' X' F1' F2' E0' E1' ⌝ᵗ
-T⊢trᵃI-cong J J' G G' X X' F1 F1' F2 F2' E0 E0' E1 E1' refl refl refl refl refl refl refl = refl
+T⊢tr₁I-cong : {Δ : Cx} → (J J' : RTm Δ) → (G G' : RTm Δ) → (X X' : RTm Δ) → (F1 F1' : RTm Δ) → (F2 F2' : RTm Δ) → (E0 E0' : RTm Δ) → (E1 E1' : RTm Δ) → J ≡ J' → G ≡ G' → X ≡ X' → F1 ≡ F1' → F2 ≡ F2' → E0 ≡ E0' → E1 ≡ E1' → ⌜ T⊢tr₁I {Δ} J G X F1 F2 E0 E1 ⌝ᵗ ≡ ⌜ T⊢tr₁I J' G' X' F1' F2' E0' E1' ⌝ᵗ
+T⊢tr₁I-cong J J' G G' X X' F1 F1' F2 F2' E0 E0' E1 E1' refl refl refl refl refl refl refl = refl
 
-okT⊢trᵃI : {Ξ : Ctx} {J G X F1 F2 E0 E1 : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ G ∷ KCtx J → Ξ ⊢ X ∷ K 0 J → Ξ ⊢ F1 ∷ K 1 J → Ξ ⊢ F2 ∷ K 1 J → Ξ ⊢ E0 ∷ K 1 J → Ξ ⊢ E1 ∷ K 1 J → TelOK Ξ JT (T⊢trᵃI J G X F1 F2 E0 E1)
-okT⊢trᵃI dJ dG dX dF1 dF2 dE0 dE1 = ok-ρ (⊢tmIx dJ dG dE0 (⊢kU dJ)) (ok-ρ (⊢tmIx dJ dG dE1 (⊢kU dJ)) (ok-ρ (⊢tmIx dJ dG dF1 (⊢kHom dJ (⊢kU dJ) dE0 dE1)) (ok-ρ (⊢tmIx dJ dG dF2 (⊢kEl dJ dE0)) (ok-σ (⊢⌜Id⌝ (⊢⌜Ty⌝ dJ) (toTy dX) (toTy (⊢kEl dJ dE1))) ok-ι))))
+okT⊢tr₁I : {Ξ : Ctx} {J G X F1 F2 E0 E1 : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ G ∷ KCtx J → Ξ ⊢ X ∷ K 0 J → Ξ ⊢ F1 ∷ K 1 J → Ξ ⊢ F2 ∷ K 1 J → Ξ ⊢ E0 ∷ K 1 J → Ξ ⊢ E1 ∷ K 1 J → TelOK Ξ JT (T⊢tr₁I J G X F1 F2 E0 E1)
+okT⊢tr₁I dJ dG dX dF1 dF2 dE0 dE1 = ok-ρ (⊢tmIx dJ dG dE0 (⊢kU dJ)) (ok-ρ (⊢tmIx dJ dG dE1 (⊢kU dJ)) (ok-ρ (⊢tmIx dJ dG dF1 (⊢kHom dJ (⊢kU dJ) dE0 dE1)) (ok-ρ (⊢tmIx dJ dG dF2 (⊢kEl dJ dE0)) (ok-σ (⊢⌜Id⌝ (⊢⌜Ty⌝ dJ) (toTy dX) (toTy (⊢kEl dJ dE1))) ok-ι))))
 
-T⊢trᵃ : RTm Δ → RTm Δ → RTm Δ → Tel Δ
-T⊢trᵃ j p c = (tσ (C⊢trᵃ_0I j) (tσ (C⊢trᵃ_1I (w1 j)) (tσ (C⊢trᵃ_2I (w2 j) (w2 (fst p))) (T⊢trᵃI (w3 j) (w3 (fst c)) (w3 (snd c)) (w3 (fst (snd p))) (w3 (fst (snd (snd p)))) (var (vs (vs vz))) (var (vs vz))))))
+T⊢tr₁ : RTm Δ → RTm Δ → RTm Δ → Tel Δ
+T⊢tr₁ j p c = (tσ (C⊢tr₁_0I j) (tσ (C⊢tr₁_1I (w1 j)) (tσ (C⊢tr₁_2I (w2 j) (w2 (fst p))) (T⊢tr₁I (w3 j) (w3 (fst c)) (w3 (snd c)) (w3 (fst (snd p))) (w3 (fst (snd (snd p)))) (var (vs (vs vz))) (var (vs vz))))))
 
-T⊢trᵃ-law : TelLaw T⊢trᵃ
-T⊢trᵃ-law σ j p c =
-  dσ-cong3 (subTm σ (C⊢trᵃ_0I j)) (C⊢trᵃ_0I (subTm σ j)) (subTm (extS σ) (C⊢trᵃ_1I (w1 j))) (C⊢trᵃ_1I (w1 (subTm σ j))) (subTm (extS (extS σ)) (C⊢trᵃ_2I (w2 j) (w2 (fst p)))) (C⊢trᵃ_2I (w2 (subTm σ j)) (w2 (fst (subTm σ p)))) (subTm (extS (extS (extS σ))) ⌜ (T⊢trᵃI (w3 j) (w3 (fst c)) (w3 (snd c)) (w3 (fst (snd p))) (w3 (fst (snd (snd p)))) (var (vs (vs vz))) (var (vs vz))) ⌝ᵗ) ⌜ (T⊢trᵃI (w3 (subTm σ j)) (w3 (fst (subTm σ c))) (w3 (snd (subTm σ c))) (w3 (fst (snd (subTm σ p)))) (w3 (fst (snd (snd (subTm σ p))))) (var (vs (vs vz))) (var (vs vz))) ⌝ᵗ (trans (C⊢trᵃ_0I-sub σ j) (C⊢trᵃ_0I-cong (subTm σ j) (subTm σ j) refl)) (trans (C⊢trᵃ_1I-sub (extS σ) (w1 j)) (C⊢trᵃ_1I-cong (subTm (extS σ) (w1 j)) (w1 (subTm σ j)) (w1-sub σ j))) (trans (C⊢trᵃ_2I-sub (extS (extS σ)) (w2 j) (w2 (fst p))) (C⊢trᵃ_2I-cong (subTm (extS (extS σ)) (w2 j)) (w2 (subTm σ j)) (subTm (extS (extS σ)) (w2 (fst p))) (w2 (fst (subTm σ p))) (w2-sub σ j) (w2-sub σ (fst p)))) (trans (T⊢trᵃI-sub (extS (extS (extS σ))) (w3 j) (w3 (fst c)) (w3 (snd c)) (w3 (fst (snd p))) (w3 (fst (snd (snd p)))) (var (vs (vs vz))) (var (vs vz))) (T⊢trᵃI-cong (subTm (extS (extS (extS σ))) (w3 j)) (w3 (subTm σ j)) (subTm (extS (extS (extS σ))) (w3 (fst c))) (w3 (fst (subTm σ c))) (subTm (extS (extS (extS σ))) (w3 (snd c))) (w3 (snd (subTm σ c))) (subTm (extS (extS (extS σ))) (w3 (fst (snd p)))) (w3 (fst (snd (subTm σ p)))) (subTm (extS (extS (extS σ))) (w3 (fst (snd (snd p))))) (w3 (fst (snd (snd (subTm σ p))))) (subTm (extS (extS (extS σ))) (var (vs (vs vz)))) (var (vs (vs vz))) (subTm (extS (extS (extS σ))) (var (vs vz))) (var (vs vz)) (w3-sub σ j) (w3-sub σ (fst c)) (w3-sub σ (snd c)) (w3-sub σ (fst (snd p))) (w3-sub σ (fst (snd (snd p)))) refl refl))
+T⊢tr₁-law : TelLaw T⊢tr₁
+T⊢tr₁-law σ j p c =
+  dσ-cong3 (subTm σ (C⊢tr₁_0I j)) (C⊢tr₁_0I (subTm σ j)) (subTm (extS σ) (C⊢tr₁_1I (w1 j))) (C⊢tr₁_1I (w1 (subTm σ j))) (subTm (extS (extS σ)) (C⊢tr₁_2I (w2 j) (w2 (fst p)))) (C⊢tr₁_2I (w2 (subTm σ j)) (w2 (fst (subTm σ p)))) (subTm (extS (extS (extS σ))) ⌜ (T⊢tr₁I (w3 j) (w3 (fst c)) (w3 (snd c)) (w3 (fst (snd p))) (w3 (fst (snd (snd p)))) (var (vs (vs vz))) (var (vs vz))) ⌝ᵗ) ⌜ (T⊢tr₁I (w3 (subTm σ j)) (w3 (fst (subTm σ c))) (w3 (snd (subTm σ c))) (w3 (fst (snd (subTm σ p)))) (w3 (fst (snd (snd (subTm σ p))))) (var (vs (vs vz))) (var (vs vz))) ⌝ᵗ (trans (C⊢tr₁_0I-sub σ j) (C⊢tr₁_0I-cong (subTm σ j) (subTm σ j) refl)) (trans (C⊢tr₁_1I-sub (extS σ) (w1 j)) (C⊢tr₁_1I-cong (subTm (extS σ) (w1 j)) (w1 (subTm σ j)) (w1-sub σ j))) (trans (C⊢tr₁_2I-sub (extS (extS σ)) (w2 j) (w2 (fst p))) (C⊢tr₁_2I-cong (subTm (extS (extS σ)) (w2 j)) (w2 (subTm σ j)) (subTm (extS (extS σ)) (w2 (fst p))) (w2 (fst (subTm σ p))) (w2-sub σ j) (w2-sub σ (fst p)))) (trans (T⊢tr₁I-sub (extS (extS (extS σ))) (w3 j) (w3 (fst c)) (w3 (snd c)) (w3 (fst (snd p))) (w3 (fst (snd (snd p)))) (var (vs (vs vz))) (var (vs vz))) (T⊢tr₁I-cong (subTm (extS (extS (extS σ))) (w3 j)) (w3 (subTm σ j)) (subTm (extS (extS (extS σ))) (w3 (fst c))) (w3 (fst (subTm σ c))) (subTm (extS (extS (extS σ))) (w3 (snd c))) (w3 (snd (subTm σ c))) (subTm (extS (extS (extS σ))) (w3 (fst (snd p)))) (w3 (fst (snd (subTm σ p)))) (subTm (extS (extS (extS σ))) (w3 (fst (snd (snd p))))) (w3 (fst (snd (snd (subTm σ p))))) (subTm (extS (extS (extS σ))) (var (vs (vs vz)))) (var (vs (vs vz))) (subTm (extS (extS (extS σ))) (var (vs vz))) (var (vs vz)) (w3-sub σ j) (w3-sub σ (fst c)) (w3-sub σ (snd c)) (w3-sub σ (fst (snd p))) (w3-sub σ (fst (snd (snd p)))) refl refl))
 
-okT⊢trᵃ : {Ξ : Ctx} {j p c : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ p ∷ PayV sh-ktr (pair (tag 1) j) (SI 2) (SD KSig) → Ξ ⊢ c ∷ El (CTat (pair (tag 1) j)) → TelOK Ξ JT (T⊢trᵃ j p c)
-okT⊢trᵃ {Ξ} {j} {p} {c} dj dp dc = (okσJ (okC⊢trᵃ_0I {_} {j} dj) (okσJ (okC⊢trᵃ_1I {_} {(w1 j)} (wkN {t = j} dj)) (okσJ (okC⊢trᵃ_2I {_} {(w2 j)} {(w2 (fst p))} (wkN {t = (w1 j)} (wkN {t = j} dj)) (wkK {s = 1} {d = (w1 (nsuc j))} {t = (w1 (fst p))} (wkK {s = 1} {d = (nsuc j)} {t = (fst p)} (⊢atDepth {a = tag 1} {j = j} {s = 1} {k = 1} (⊢recFst {s = 1} {k = 1} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp))))) (okT⊢trᵃI {_} {(w3 j)} {(w3 (fst c))} {(w3 (snd c))} {(w3 (fst (snd p)))} {(w3 (fst (snd (snd p))))} {(var (vs (vs vz)))} {(var (vs vz))} (wkN {t = (w2 j)} (wkN {t = (w1 j)} (wkN {t = j} dj))) (wkG {d = (w2 j)} {g = (w2 (fst c))} (wkG {d = (w1 j)} {g = (w1 (fst c))} (wkG {d = j} {g = (fst c)} (⊢ctxOf dc)))) (wkK {s = 0} {d = (w2 j)} {t = (w2 (snd c))} (wkK {s = 0} {d = (w1 j)} {t = (w1 (snd c))} (wkK {s = 0} {d = j} {t = (snd c)} (⊢tyOf dc)))) (wkK {s = 1} {d = (w2 j)} {t = (w2 (fst (snd p)))} (wkK {s = 1} {d = (w1 j)} {t = (w1 (fst (snd p)))} (wkK {s = 1} {d = j} {t = (fst (snd p))} (⊢atDepth {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 1} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp)))))) (wkK {s = 1} {d = (w2 j)} {t = (w2 (fst (snd (snd p))))} (wkK {s = 1} {d = (w1 j)} {t = (w1 (fst (snd (snd p))))} (wkK {s = 1} {d = j} {t = (fst (snd (snd p)))} (⊢atDepth {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = ([]ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 1} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp))))))) (wkK {s = 1} {d = (w1 (renTm vs j))} {t = (var (vs vz))} (wkK {s = 1} {d = (renTm vs j)} {t = (var vz)} (hereTm {m = j}))) (wkK {s = 1} {d = (renTm vs (w1 j))} {t = (var vz)} (hereTm {m = (w1 j)}))))))
+okT⊢tr₁ : {Ξ : Ctx} {j p c : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ p ∷ PayV sh-ktr (pair (tag 1) j) (SI 2) (SD KSig) → Ξ ⊢ c ∷ El (CTat (pair (tag 1) j)) → TelOK Ξ JT (T⊢tr₁ j p c)
+okT⊢tr₁ {Ξ} {j} {p} {c} dj dp dc = (okσJ (okC⊢tr₁_0I {_} {j} dj) (okσJ (okC⊢tr₁_1I {_} {(w1 j)} (wkN {t = j} dj)) (okσJ (okC⊢tr₁_2I {_} {(w2 j)} {(w2 (fst p))} (wkN {t = (w1 j)} (wkN {t = j} dj)) (wkK {s = 1} {d = (w1 (nsuc j))} {t = (w1 (fst p))} (wkK {s = 1} {d = (nsuc j)} {t = (fst p)} (⊢atDepth {a = tag 1} {j = j} {s = 1} {k = 1} (⊢recFst {s = 1} {k = 1} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp))))) (okT⊢tr₁I {_} {(w3 j)} {(w3 (fst c))} {(w3 (snd c))} {(w3 (fst (snd p)))} {(w3 (fst (snd (snd p))))} {(var (vs (vs vz)))} {(var (vs vz))} (wkN {t = (w2 j)} (wkN {t = (w1 j)} (wkN {t = j} dj))) (wkG {d = (w2 j)} {g = (w2 (fst c))} (wkG {d = (w1 j)} {g = (w1 (fst c))} (wkG {d = j} {g = (fst c)} (⊢ctxOf dc)))) (wkK {s = 0} {d = (w2 j)} {t = (w2 (snd c))} (wkK {s = 0} {d = (w1 j)} {t = (w1 (snd c))} (wkK {s = 0} {d = j} {t = (snd c)} (⊢tyOf dc)))) (wkK {s = 1} {d = (w2 j)} {t = (w2 (fst (snd p)))} (wkK {s = 1} {d = (w1 j)} {t = (w1 (fst (snd p)))} (wkK {s = 1} {d = j} {t = (fst (snd p))} (⊢atDepth {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 1} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp)))))) (wkK {s = 1} {d = (w2 j)} {t = (w2 (fst (snd (snd p))))} (wkK {s = 1} {d = (w1 j)} {t = (w1 (fst (snd (snd p))))} (wkK {s = 1} {d = j} {t = (fst (snd (snd p)))} (⊢atDepth {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = ([]ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 1} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp))))))) (wkK {s = 1} {d = (w1 (renTm vs j))} {t = (var (vs vz))} (wkK {s = 1} {d = (renTm vs j)} {t = (var vz)} (hereTm {m = j}))) (wkK {s = 1} {d = (renTm vs (w1 j))} {t = (var vz)} (hereTm {m = (w1 j)}))))))
 
-C⊢trᵇ_0A : RTm Δ → RTm Δ → RTm Δ
-C⊢trᵇ_0A J A0 = A0
+C⊢tr₂_0A : RTm Δ → RTm Δ → RTm Δ
+C⊢tr₂_0A J A0 = A0
 
-C⊢trᵇ_0I : RTm Δ → RTm Δ
-C⊢trᵇ_0I J = C⊢trᵇ_0A J (⌜Ty⌝ J)
+C⊢tr₂_0I : RTm Δ → RTm Δ
+C⊢tr₂_0I J = C⊢tr₂_0A J (⌜Ty⌝ J)
 
-C⊢trᵇ_0A-cong : {Δ : Cx} → (J : RTm Δ) → (A0 A0' : RTm Δ) → A0 ≡ A0' → (C⊢trᵇ_0A {Δ} J A0) ≡ (C⊢trᵇ_0A J A0')
-C⊢trᵇ_0A-cong J A0 A0' refl = refl
+C⊢tr₂_0A-cong : {Δ : Cx} → (J : RTm Δ) → (A0 A0' : RTm Δ) → A0 ≡ A0' → (C⊢tr₂_0A {Δ} J A0) ≡ (C⊢tr₂_0A J A0')
+C⊢tr₂_0A-cong J A0 A0' refl = refl
 
-C⊢trᵇ_0I-sub : (σ : Sub Δ Θ) (J : RTm Δ) → subTm σ (C⊢trᵇ_0I J) ≡ (C⊢trᵇ_0I (subTm σ J))
-C⊢trᵇ_0I-sub σ J = C⊢trᵇ_0A-cong (subTm σ J) (subTm σ (⌜Ty⌝ J)) (⌜Ty⌝ (subTm σ J)) (⌜Ty⌝-sub σ J)
+C⊢tr₂_0I-sub : (σ : Sub Δ Θ) (J : RTm Δ) → subTm σ (C⊢tr₂_0I J) ≡ (C⊢tr₂_0I (subTm σ J))
+C⊢tr₂_0I-sub σ J = C⊢tr₂_0A-cong (subTm σ J) (subTm σ (⌜Ty⌝ J)) (⌜Ty⌝ (subTm σ J)) (⌜Ty⌝-sub σ J)
 
-C⊢trᵇ_0I-cong : {Δ : Cx} → (J J' : RTm Δ) → J ≡ J' → (C⊢trᵇ_0I {Δ} J) ≡ (C⊢trᵇ_0I J')
-C⊢trᵇ_0I-cong J J' refl = refl
+C⊢tr₂_0I-cong : {Δ : Cx} → (J J' : RTm Δ) → J ≡ J' → (C⊢tr₂_0I {Δ} J) ≡ (C⊢tr₂_0I J')
+C⊢tr₂_0I-cong J J' refl = refl
 
-okC⊢trᵇ_0I : {Ξ : Ctx} {J : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ C⊢trᵇ_0I J ∷ U
-okC⊢trᵇ_0I dJ = (⊢⌜Ty⌝ dJ)
+okC⊢tr₂_0I : {Ξ : Ctx} {J : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ C⊢tr₂_0I J ∷ U
+okC⊢tr₂_0I dJ = (⊢⌜Ty⌝ dJ)
 
-C⊢trᵇ_1A : RTm Δ → RTm Δ → RTm Δ
-C⊢trᵇ_1A J A0 = A0
+C⊢tr₂_1A : RTm Δ → RTm Δ → RTm Δ
+C⊢tr₂_1A J A0 = A0
 
-C⊢trᵇ_1I : RTm Δ → RTm Δ
-C⊢trᵇ_1I J = C⊢trᵇ_1A J (⌜Tm⌝ J)
+C⊢tr₂_1I : RTm Δ → RTm Δ
+C⊢tr₂_1I J = C⊢tr₂_1A J (⌜Tm⌝ J)
 
-C⊢trᵇ_1A-cong : {Δ : Cx} → (J : RTm Δ) → (A0 A0' : RTm Δ) → A0 ≡ A0' → (C⊢trᵇ_1A {Δ} J A0) ≡ (C⊢trᵇ_1A J A0')
-C⊢trᵇ_1A-cong J A0 A0' refl = refl
+C⊢tr₂_1A-cong : {Δ : Cx} → (J : RTm Δ) → (A0 A0' : RTm Δ) → A0 ≡ A0' → (C⊢tr₂_1A {Δ} J A0) ≡ (C⊢tr₂_1A J A0')
+C⊢tr₂_1A-cong J A0 A0' refl = refl
 
-C⊢trᵇ_1I-sub : (σ : Sub Δ Θ) (J : RTm Δ) → subTm σ (C⊢trᵇ_1I J) ≡ (C⊢trᵇ_1I (subTm σ J))
-C⊢trᵇ_1I-sub σ J = C⊢trᵇ_1A-cong (subTm σ J) (subTm σ (⌜Tm⌝ J)) (⌜Tm⌝ (subTm σ J)) (⌜Tm⌝-sub σ J)
+C⊢tr₂_1I-sub : (σ : Sub Δ Θ) (J : RTm Δ) → subTm σ (C⊢tr₂_1I J) ≡ (C⊢tr₂_1I (subTm σ J))
+C⊢tr₂_1I-sub σ J = C⊢tr₂_1A-cong (subTm σ J) (subTm σ (⌜Tm⌝ J)) (⌜Tm⌝ (subTm σ J)) (⌜Tm⌝-sub σ J)
 
-C⊢trᵇ_1I-cong : {Δ : Cx} → (J J' : RTm Δ) → J ≡ J' → (C⊢trᵇ_1I {Δ} J) ≡ (C⊢trᵇ_1I J')
-C⊢trᵇ_1I-cong J J' refl = refl
+C⊢tr₂_1I-cong : {Δ : Cx} → (J J' : RTm Δ) → J ≡ J' → (C⊢tr₂_1I {Δ} J) ≡ (C⊢tr₂_1I J')
+C⊢tr₂_1I-cong J J' refl = refl
 
-okC⊢trᵇ_1I : {Ξ : Ctx} {J : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ C⊢trᵇ_1I J ∷ U
-okC⊢trᵇ_1I dJ = (⊢⌜Tm⌝ dJ)
+okC⊢tr₂_1I : {Ξ : Ctx} {J : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ C⊢tr₂_1I J ∷ U
+okC⊢tr₂_1I dJ = (⊢⌜Tm⌝ dJ)
 
-C⊢trᵇ_2A : RTm Δ → RTm Δ → RTm Δ
-C⊢trᵇ_2A J A0 = A0
+C⊢tr₂_2A : RTm Δ → RTm Δ → RTm Δ
+C⊢tr₂_2A J A0 = A0
 
-C⊢trᵇ_2I : RTm Δ → RTm Δ
-C⊢trᵇ_2I J = C⊢trᵇ_2A J (⌜Tm⌝ J)
+C⊢tr₂_2I : RTm Δ → RTm Δ
+C⊢tr₂_2I J = C⊢tr₂_2A J (⌜Tm⌝ J)
 
-C⊢trᵇ_2A-cong : {Δ : Cx} → (J : RTm Δ) → (A0 A0' : RTm Δ) → A0 ≡ A0' → (C⊢trᵇ_2A {Δ} J A0) ≡ (C⊢trᵇ_2A J A0')
-C⊢trᵇ_2A-cong J A0 A0' refl = refl
+C⊢tr₂_2A-cong : {Δ : Cx} → (J : RTm Δ) → (A0 A0' : RTm Δ) → A0 ≡ A0' → (C⊢tr₂_2A {Δ} J A0) ≡ (C⊢tr₂_2A J A0')
+C⊢tr₂_2A-cong J A0 A0' refl = refl
 
-C⊢trᵇ_2I-sub : (σ : Sub Δ Θ) (J : RTm Δ) → subTm σ (C⊢trᵇ_2I J) ≡ (C⊢trᵇ_2I (subTm σ J))
-C⊢trᵇ_2I-sub σ J = C⊢trᵇ_2A-cong (subTm σ J) (subTm σ (⌜Tm⌝ J)) (⌜Tm⌝ (subTm σ J)) (⌜Tm⌝-sub σ J)
+C⊢tr₂_2I-sub : (σ : Sub Δ Θ) (J : RTm Δ) → subTm σ (C⊢tr₂_2I J) ≡ (C⊢tr₂_2I (subTm σ J))
+C⊢tr₂_2I-sub σ J = C⊢tr₂_2A-cong (subTm σ J) (subTm σ (⌜Tm⌝ J)) (⌜Tm⌝ (subTm σ J)) (⌜Tm⌝-sub σ J)
 
-C⊢trᵇ_2I-cong : {Δ : Cx} → (J J' : RTm Δ) → J ≡ J' → (C⊢trᵇ_2I {Δ} J) ≡ (C⊢trᵇ_2I J')
-C⊢trᵇ_2I-cong J J' refl = refl
+C⊢tr₂_2I-cong : {Δ : Cx} → (J J' : RTm Δ) → J ≡ J' → (C⊢tr₂_2I {Δ} J) ≡ (C⊢tr₂_2I J')
+C⊢tr₂_2I-cong J J' refl = refl
 
-okC⊢trᵇ_2I : {Ξ : Ctx} {J : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ C⊢trᵇ_2I J ∷ U
-okC⊢trᵇ_2I dJ = (⊢⌜Tm⌝ dJ)
+okC⊢tr₂_2I : {Ξ : Ctx} {J : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ C⊢tr₂_2I J ∷ U
+okC⊢tr₂_2I dJ = (⊢⌜Tm⌝ dJ)
 
-C⊢trᵇ_3A : RTm Δ → RTm Δ → RTm Δ → RTm Δ
-C⊢trᵇ_3A J E1 A0 = A0
+C⊢tr₂_3A : RTm Δ → RTm Δ → RTm Δ → RTm Δ
+C⊢tr₂_3A J E1 A0 = A0
 
-C⊢trᵇ_3I : RTm Δ → RTm Δ → RTm Δ
-C⊢trᵇ_3I J E1 = C⊢trᵇ_3A J E1 (⌜NNC⌝ J E1)
+C⊢tr₂_3I : RTm Δ → RTm Δ → RTm Δ
+C⊢tr₂_3I J E1 = C⊢tr₂_3A J E1 (⌜NNC⌝ J E1)
 
-C⊢trᵇ_3A-cong : {Δ : Cx} → (J : RTm Δ) → (E1 : RTm Δ) → (A0 A0' : RTm Δ) → A0 ≡ A0' → (C⊢trᵇ_3A {Δ} J E1 A0) ≡ (C⊢trᵇ_3A J E1 A0')
-C⊢trᵇ_3A-cong J E1 A0 A0' refl = refl
+C⊢tr₂_3A-cong : {Δ : Cx} → (J : RTm Δ) → (E1 : RTm Δ) → (A0 A0' : RTm Δ) → A0 ≡ A0' → (C⊢tr₂_3A {Δ} J E1 A0) ≡ (C⊢tr₂_3A J E1 A0')
+C⊢tr₂_3A-cong J E1 A0 A0' refl = refl
 
-C⊢trᵇ_3I-sub : (σ : Sub Δ Θ) (J : RTm Δ) (E1 : RTm Δ) → subTm σ (C⊢trᵇ_3I J E1) ≡ (C⊢trᵇ_3I (subTm σ J) (subTm σ E1))
-C⊢trᵇ_3I-sub σ J E1 = C⊢trᵇ_3A-cong (subTm σ J) (subTm σ E1) (subTm σ (⌜NNC⌝ J E1)) (⌜NNC⌝ (subTm σ J) (subTm σ E1)) (⌜NNC⌝-sub σ J E1)
+C⊢tr₂_3I-sub : (σ : Sub Δ Θ) (J : RTm Δ) (E1 : RTm Δ) → subTm σ (C⊢tr₂_3I J E1) ≡ (C⊢tr₂_3I (subTm σ J) (subTm σ E1))
+C⊢tr₂_3I-sub σ J E1 = C⊢tr₂_3A-cong (subTm σ J) (subTm σ E1) (subTm σ (⌜NNC⌝ J E1)) (⌜NNC⌝ (subTm σ J) (subTm σ E1)) (⌜NNC⌝-sub σ J E1)
 
-C⊢trᵇ_3I-cong : {Δ : Cx} → (J J' : RTm Δ) → (E1 E1' : RTm Δ) → J ≡ J' → E1 ≡ E1' → (C⊢trᵇ_3I {Δ} J E1) ≡ (C⊢trᵇ_3I J' E1')
-C⊢trᵇ_3I-cong J J' E1 E1' refl refl = refl
+C⊢tr₂_3I-cong : {Δ : Cx} → (J J' : RTm Δ) → (E1 E1' : RTm Δ) → J ≡ J' → E1 ≡ E1' → (C⊢tr₂_3I {Δ} J E1) ≡ (C⊢tr₂_3I J' E1')
+C⊢tr₂_3I-cong J J' E1 E1' refl refl = refl
 
-okC⊢trᵇ_3I : {Ξ : Ctx} {J E1 : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ E1 ∷ K 1 J → Ξ ⊢ C⊢trᵇ_3I J E1 ∷ U
-okC⊢trᵇ_3I dJ dE1 = (⊢⌜NNC⌝ dJ dE1)
+okC⊢tr₂_3I : {Ξ : Ctx} {J E1 : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ E1 ∷ K 1 J → Ξ ⊢ C⊢tr₂_3I J E1 ∷ U
+okC⊢tr₂_3I dJ dE1 = (⊢⌜NNC⌝ dJ dE1)
 
-C⊢trᵇ_4A : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ
-C⊢trᵇ_4A J F0 E1 E2 A0 A1 A2 = (⌜Id⌝ A0 F0 (kcHom A1 A2 (kvar ffz)))
+C⊢tr₂_4A : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ
+C⊢tr₂_4A J F0 E1 E2 A0 A1 A2 = (⌜Id⌝ A0 F0 (kcHom A1 A2 (kvar ffz)))
 
-C⊢trᵇ_4I : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ
-C⊢trᵇ_4I J F0 E1 E2 = C⊢trᵇ_4A J F0 E1 E2 (⌜Tm⌝ (nsuc J)) (wk 1 J E1) (wk 1 J E2)
+C⊢tr₂_4I : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ
+C⊢tr₂_4I J F0 E1 E2 = C⊢tr₂_4A J F0 E1 E2 (⌜Tm⌝ (nsuc J)) (wk 1 J E1) (wk 1 J E2)
 
-C⊢trᵇ_4A-cong : {Δ : Cx} → (J : RTm Δ) → (F0 : RTm Δ) → (E1 : RTm Δ) → (E2 : RTm Δ) → (A0 A0' : RTm Δ) → (A1 A1' : RTm Δ) → (A2 A2' : RTm Δ) → A0 ≡ A0' → A1 ≡ A1' → A2 ≡ A2' → (C⊢trᵇ_4A {Δ} J F0 E1 E2 A0 A1 A2) ≡ (C⊢trᵇ_4A J F0 E1 E2 A0' A1' A2')
-C⊢trᵇ_4A-cong J F0 E1 E2 A0 A0' A1 A1' A2 A2' refl refl refl = refl
+C⊢tr₂_4A-cong : {Δ : Cx} → (J : RTm Δ) → (F0 : RTm Δ) → (E1 : RTm Δ) → (E2 : RTm Δ) → (A0 A0' : RTm Δ) → (A1 A1' : RTm Δ) → (A2 A2' : RTm Δ) → A0 ≡ A0' → A1 ≡ A1' → A2 ≡ A2' → (C⊢tr₂_4A {Δ} J F0 E1 E2 A0 A1 A2) ≡ (C⊢tr₂_4A J F0 E1 E2 A0' A1' A2')
+C⊢tr₂_4A-cong J F0 E1 E2 A0 A0' A1 A1' A2 A2' refl refl refl = refl
 
-C⊢trᵇ_4I-sub : (σ : Sub Δ Θ) (J : RTm Δ) (F0 : RTm Δ) (E1 : RTm Δ) (E2 : RTm Δ) → subTm σ (C⊢trᵇ_4I J F0 E1 E2) ≡ (C⊢trᵇ_4I (subTm σ J) (subTm σ F0) (subTm σ E1) (subTm σ E2))
-C⊢trᵇ_4I-sub σ J F0 E1 E2 = C⊢trᵇ_4A-cong (subTm σ J) (subTm σ F0) (subTm σ E1) (subTm σ E2) (subTm σ (⌜Tm⌝ (nsuc J))) (⌜Tm⌝ (nsuc (subTm σ J))) (subTm σ (wk 1 J E1)) (wk 1 (subTm σ J) (subTm σ E1)) (subTm σ (wk 1 J E2)) (wk 1 (subTm σ J) (subTm σ E2)) (⌜Tm⌝-sub σ (nsuc J)) (wk-sub σ 1 J E1) (wk-sub σ 1 J E2)
+C⊢tr₂_4I-sub : (σ : Sub Δ Θ) (J : RTm Δ) (F0 : RTm Δ) (E1 : RTm Δ) (E2 : RTm Δ) → subTm σ (C⊢tr₂_4I J F0 E1 E2) ≡ (C⊢tr₂_4I (subTm σ J) (subTm σ F0) (subTm σ E1) (subTm σ E2))
+C⊢tr₂_4I-sub σ J F0 E1 E2 = C⊢tr₂_4A-cong (subTm σ J) (subTm σ F0) (subTm σ E1) (subTm σ E2) (subTm σ (⌜Tm⌝ (nsuc J))) (⌜Tm⌝ (nsuc (subTm σ J))) (subTm σ (wk 1 J E1)) (wk 1 (subTm σ J) (subTm σ E1)) (subTm σ (wk 1 J E2)) (wk 1 (subTm σ J) (subTm σ E2)) (⌜Tm⌝-sub σ (nsuc J)) (wk-sub σ 1 J E1) (wk-sub σ 1 J E2)
 
-C⊢trᵇ_4I-cong : {Δ : Cx} → (J J' : RTm Δ) → (F0 F0' : RTm Δ) → (E1 E1' : RTm Δ) → (E2 E2' : RTm Δ) → J ≡ J' → F0 ≡ F0' → E1 ≡ E1' → E2 ≡ E2' → (C⊢trᵇ_4I {Δ} J F0 E1 E2) ≡ (C⊢trᵇ_4I J' F0' E1' E2')
-C⊢trᵇ_4I-cong J J' F0 F0' E1 E1' E2 E2' refl refl refl refl = refl
+C⊢tr₂_4I-cong : {Δ : Cx} → (J J' : RTm Δ) → (F0 F0' : RTm Δ) → (E1 E1' : RTm Δ) → (E2 E2' : RTm Δ) → J ≡ J' → F0 ≡ F0' → E1 ≡ E1' → E2 ≡ E2' → (C⊢tr₂_4I {Δ} J F0 E1 E2) ≡ (C⊢tr₂_4I J' F0' E1' E2')
+C⊢tr₂_4I-cong J J' F0 F0' E1 E1' E2 E2' refl refl refl refl = refl
 
-okC⊢trᵇ_4I : {Ξ : Ctx} {J F0 E1 E2 : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ F0 ∷ K 1 (nsuc J) → Ξ ⊢ E1 ∷ K 1 J → Ξ ⊢ E2 ∷ K 1 J → Ξ ⊢ C⊢trᵇ_4I J F0 E1 E2 ∷ U
-okC⊢trᵇ_4I dJ dF0 dE1 dE2 = (⊢⌜Id⌝ (⊢⌜Tm⌝ (⊢isuc dJ)) (toTm dF0) (toTm (⊢kcHom (⊢isuc dJ) (⊢wkS (lt-s lt-z) dJ dE1) (⊢wkS (lt-s lt-z) dJ dE2) (⊢kvar (⊢isuc dJ) (⊢ffz dJ)))))
+okC⊢tr₂_4I : {Ξ : Ctx} {J F0 E1 E2 : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ F0 ∷ K 1 (nsuc J) → Ξ ⊢ E1 ∷ K 1 J → Ξ ⊢ E2 ∷ K 1 J → Ξ ⊢ C⊢tr₂_4I J F0 E1 E2 ∷ U
+okC⊢tr₂_4I dJ dF0 dE1 dE2 = (⊢⌜Id⌝ (⊢⌜Tm⌝ (⊢isuc dJ)) (toTm dF0) (toTm (⊢kcHom (⊢isuc dJ) (⊢wkS (lt-s lt-z) dJ dE1) (⊢wkS (lt-s lt-z) dJ dE2) (⊢kvar (⊢isuc dJ) (⊢ffz dJ)))))
 
-C⊢trᵇ_5A : RTm Δ → RTm Δ → RTm Δ
-C⊢trᵇ_5A J A0 = A0
+C⊢tr₂_5A : RTm Δ → RTm Δ → RTm Δ
+C⊢tr₂_5A J A0 = A0
 
-C⊢trᵇ_5I : RTm Δ → RTm Δ
-C⊢trᵇ_5I J = C⊢trᵇ_5A J (⌜Tm⌝ J)
+C⊢tr₂_5I : RTm Δ → RTm Δ
+C⊢tr₂_5I J = C⊢tr₂_5A J (⌜Tm⌝ J)
 
-C⊢trᵇ_5A-cong : {Δ : Cx} → (J : RTm Δ) → (A0 A0' : RTm Δ) → A0 ≡ A0' → (C⊢trᵇ_5A {Δ} J A0) ≡ (C⊢trᵇ_5A J A0')
-C⊢trᵇ_5A-cong J A0 A0' refl = refl
+C⊢tr₂_5A-cong : {Δ : Cx} → (J : RTm Δ) → (A0 A0' : RTm Δ) → A0 ≡ A0' → (C⊢tr₂_5A {Δ} J A0) ≡ (C⊢tr₂_5A J A0')
+C⊢tr₂_5A-cong J A0 A0' refl = refl
 
-C⊢trᵇ_5I-sub : (σ : Sub Δ Θ) (J : RTm Δ) → subTm σ (C⊢trᵇ_5I J) ≡ (C⊢trᵇ_5I (subTm σ J))
-C⊢trᵇ_5I-sub σ J = C⊢trᵇ_5A-cong (subTm σ J) (subTm σ (⌜Tm⌝ J)) (⌜Tm⌝ (subTm σ J)) (⌜Tm⌝-sub σ J)
+C⊢tr₂_5I-sub : (σ : Sub Δ Θ) (J : RTm Δ) → subTm σ (C⊢tr₂_5I J) ≡ (C⊢tr₂_5I (subTm σ J))
+C⊢tr₂_5I-sub σ J = C⊢tr₂_5A-cong (subTm σ J) (subTm σ (⌜Tm⌝ J)) (⌜Tm⌝ (subTm σ J)) (⌜Tm⌝-sub σ J)
 
-C⊢trᵇ_5I-cong : {Δ : Cx} → (J J' : RTm Δ) → J ≡ J' → (C⊢trᵇ_5I {Δ} J) ≡ (C⊢trᵇ_5I J')
-C⊢trᵇ_5I-cong J J' refl = refl
+C⊢tr₂_5I-cong : {Δ : Cx} → (J J' : RTm Δ) → J ≡ J' → (C⊢tr₂_5I {Δ} J) ≡ (C⊢tr₂_5I J')
+C⊢tr₂_5I-cong J J' refl = refl
 
-okC⊢trᵇ_5I : {Ξ : Ctx} {J : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ C⊢trᵇ_5I J ∷ U
-okC⊢trᵇ_5I dJ = (⊢⌜Tm⌝ dJ)
+okC⊢tr₂_5I : {Ξ : Ctx} {J : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ C⊢tr₂_5I J ∷ U
+okC⊢tr₂_5I dJ = (⊢⌜Tm⌝ dJ)
 
-C⊢trᵇ_6A : RTm Δ → RTm Δ → RTm Δ
-C⊢trᵇ_6A J A0 = A0
+C⊢tr₂_6A : RTm Δ → RTm Δ → RTm Δ
+C⊢tr₂_6A J A0 = A0
 
-C⊢trᵇ_6I : RTm Δ → RTm Δ
-C⊢trᵇ_6I J = C⊢trᵇ_6A J (⌜Tm⌝ J)
+C⊢tr₂_6I : RTm Δ → RTm Δ
+C⊢tr₂_6I J = C⊢tr₂_6A J (⌜Tm⌝ J)
 
-C⊢trᵇ_6A-cong : {Δ : Cx} → (J : RTm Δ) → (A0 A0' : RTm Δ) → A0 ≡ A0' → (C⊢trᵇ_6A {Δ} J A0) ≡ (C⊢trᵇ_6A J A0')
-C⊢trᵇ_6A-cong J A0 A0' refl = refl
+C⊢tr₂_6A-cong : {Δ : Cx} → (J : RTm Δ) → (A0 A0' : RTm Δ) → A0 ≡ A0' → (C⊢tr₂_6A {Δ} J A0) ≡ (C⊢tr₂_6A J A0')
+C⊢tr₂_6A-cong J A0 A0' refl = refl
 
-C⊢trᵇ_6I-sub : (σ : Sub Δ Θ) (J : RTm Δ) → subTm σ (C⊢trᵇ_6I J) ≡ (C⊢trᵇ_6I (subTm σ J))
-C⊢trᵇ_6I-sub σ J = C⊢trᵇ_6A-cong (subTm σ J) (subTm σ (⌜Tm⌝ J)) (⌜Tm⌝ (subTm σ J)) (⌜Tm⌝-sub σ J)
+C⊢tr₂_6I-sub : (σ : Sub Δ Θ) (J : RTm Δ) → subTm σ (C⊢tr₂_6I J) ≡ (C⊢tr₂_6I (subTm σ J))
+C⊢tr₂_6I-sub σ J = C⊢tr₂_6A-cong (subTm σ J) (subTm σ (⌜Tm⌝ J)) (⌜Tm⌝ (subTm σ J)) (⌜Tm⌝-sub σ J)
 
-C⊢trᵇ_6I-cong : {Δ : Cx} → (J J' : RTm Δ) → J ≡ J' → (C⊢trᵇ_6I {Δ} J) ≡ (C⊢trᵇ_6I J')
-C⊢trᵇ_6I-cong J J' refl = refl
+C⊢tr₂_6I-cong : {Δ : Cx} → (J J' : RTm Δ) → J ≡ J' → (C⊢tr₂_6I {Δ} J) ≡ (C⊢tr₂_6I J')
+C⊢tr₂_6I-cong J J' refl = refl
 
-okC⊢trᵇ_6I : {Ξ : Ctx} {J : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ C⊢trᵇ_6I J ∷ U
-okC⊢trᵇ_6I dJ = (⊢⌜Tm⌝ dJ)
+okC⊢tr₂_6I : {Ξ : Ctx} {J : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ C⊢tr₂_6I J ∷ U
+okC⊢tr₂_6I dJ = (⊢⌜Tm⌝ dJ)
 
-T⊢trᵇA : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
-T⊢trᵇA J G X F1 F2 E0 E1 E2 E5 E6 A0 A1 A2 = tρ (tmIx (nsuc J) (cext G E0) A0 (kU)) (tρ (tmIx (nsuc J) (cext G E0) A1 (kEl A0)) (tρ (tmIx (nsuc J) (cext G E0) (kvar ffz) (kEl A0)) (tρ (tmIx J G E5 E0) (tρ (tmIx J G E6 E0) (tρ (tmIx J G F1 (kHom E0 E5 E6)) (tρ (tmIx J G F2 (kEl (kcHom E1 E2 E5))) (tσ (⌜Id⌝ A2 X (kEl (kcHom E1 E2 E6))) tι)))))))
+T⊢tr₂A : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
+T⊢tr₂A J G X F1 F2 E0 E1 E2 E5 E6 A0 A1 A2 = tρ (tmIx (nsuc J) (cext G E0) A0 (kU)) (tρ (tmIx (nsuc J) (cext G E0) A1 (kEl A0)) (tρ (tmIx (nsuc J) (cext G E0) (kvar ffz) (kEl A0)) (tρ (tmIx J G E5 E0) (tρ (tmIx J G E6 E0) (tρ (tmIx J G F1 (kHom E0 E5 E6)) (tρ (tmIx J G F2 (kEl (kcHom E1 E2 E5))) (tσ (⌜Id⌝ A2 X (kEl (kcHom E1 E2 E6))) tι)))))))
 
-T⊢trᵇI : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
-T⊢trᵇI J G X F1 F2 E0 E1 E2 E5 E6 = T⊢trᵇA J G X F1 F2 E0 E1 E2 E5 E6 (wk 1 J E1) (wk 1 J E2) (⌜Ty⌝ J)
+T⊢tr₂I : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
+T⊢tr₂I J G X F1 F2 E0 E1 E2 E5 E6 = T⊢tr₂A J G X F1 F2 E0 E1 E2 E5 E6 (wk 1 J E1) (wk 1 J E2) (⌜Ty⌝ J)
 
-T⊢trᵇA-cong : {Δ : Cx} → (J : RTm Δ) → (G : RTm Δ) → (X : RTm Δ) → (F1 : RTm Δ) → (F2 : RTm Δ) → (E0 : RTm Δ) → (E1 : RTm Δ) → (E2 : RTm Δ) → (E5 : RTm Δ) → (E6 : RTm Δ) → (A0 A0' : RTm Δ) → (A1 A1' : RTm Δ) → (A2 A2' : RTm Δ) → A0 ≡ A0' → A1 ≡ A1' → A2 ≡ A2' → ⌜ T⊢trᵇA {Δ} J G X F1 F2 E0 E1 E2 E5 E6 A0 A1 A2 ⌝ᵗ ≡ ⌜ T⊢trᵇA J G X F1 F2 E0 E1 E2 E5 E6 A0' A1' A2' ⌝ᵗ
-T⊢trᵇA-cong J G X F1 F2 E0 E1 E2 E5 E6 A0 A0' A1 A1' A2 A2' refl refl refl = refl
+T⊢tr₂A-cong : {Δ : Cx} → (J : RTm Δ) → (G : RTm Δ) → (X : RTm Δ) → (F1 : RTm Δ) → (F2 : RTm Δ) → (E0 : RTm Δ) → (E1 : RTm Δ) → (E2 : RTm Δ) → (E5 : RTm Δ) → (E6 : RTm Δ) → (A0 A0' : RTm Δ) → (A1 A1' : RTm Δ) → (A2 A2' : RTm Δ) → A0 ≡ A0' → A1 ≡ A1' → A2 ≡ A2' → ⌜ T⊢tr₂A {Δ} J G X F1 F2 E0 E1 E2 E5 E6 A0 A1 A2 ⌝ᵗ ≡ ⌜ T⊢tr₂A J G X F1 F2 E0 E1 E2 E5 E6 A0' A1' A2' ⌝ᵗ
+T⊢tr₂A-cong J G X F1 F2 E0 E1 E2 E5 E6 A0 A0' A1 A1' A2 A2' refl refl refl = refl
 
-T⊢trᵇI-sub : (σ : Sub Δ Θ) (J : RTm Δ) (G : RTm Δ) (X : RTm Δ) (F1 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) (E1 : RTm Δ) (E2 : RTm Δ) (E5 : RTm Δ) (E6 : RTm Δ) → subTm σ ⌜ T⊢trᵇI J G X F1 F2 E0 E1 E2 E5 E6 ⌝ᵗ ≡ ⌜ T⊢trᵇI (subTm σ J) (subTm σ G) (subTm σ X) (subTm σ F1) (subTm σ F2) (subTm σ E0) (subTm σ E1) (subTm σ E2) (subTm σ E5) (subTm σ E6) ⌝ᵗ
-T⊢trᵇI-sub σ J G X F1 F2 E0 E1 E2 E5 E6 = T⊢trᵇA-cong (subTm σ J) (subTm σ G) (subTm σ X) (subTm σ F1) (subTm σ F2) (subTm σ E0) (subTm σ E1) (subTm σ E2) (subTm σ E5) (subTm σ E6) (subTm σ (wk 1 J E1)) (wk 1 (subTm σ J) (subTm σ E1)) (subTm σ (wk 1 J E2)) (wk 1 (subTm σ J) (subTm σ E2)) (subTm σ (⌜Ty⌝ J)) (⌜Ty⌝ (subTm σ J)) (wk-sub σ 1 J E1) (wk-sub σ 1 J E2) (⌜Ty⌝-sub σ J)
+T⊢tr₂I-sub : (σ : Sub Δ Θ) (J : RTm Δ) (G : RTm Δ) (X : RTm Δ) (F1 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) (E1 : RTm Δ) (E2 : RTm Δ) (E5 : RTm Δ) (E6 : RTm Δ) → subTm σ ⌜ T⊢tr₂I J G X F1 F2 E0 E1 E2 E5 E6 ⌝ᵗ ≡ ⌜ T⊢tr₂I (subTm σ J) (subTm σ G) (subTm σ X) (subTm σ F1) (subTm σ F2) (subTm σ E0) (subTm σ E1) (subTm σ E2) (subTm σ E5) (subTm σ E6) ⌝ᵗ
+T⊢tr₂I-sub σ J G X F1 F2 E0 E1 E2 E5 E6 = T⊢tr₂A-cong (subTm σ J) (subTm σ G) (subTm σ X) (subTm σ F1) (subTm σ F2) (subTm σ E0) (subTm σ E1) (subTm σ E2) (subTm σ E5) (subTm σ E6) (subTm σ (wk 1 J E1)) (wk 1 (subTm σ J) (subTm σ E1)) (subTm σ (wk 1 J E2)) (wk 1 (subTm σ J) (subTm σ E2)) (subTm σ (⌜Ty⌝ J)) (⌜Ty⌝ (subTm σ J)) (wk-sub σ 1 J E1) (wk-sub σ 1 J E2) (⌜Ty⌝-sub σ J)
 
-T⊢trᵇI-cong : {Δ : Cx} → (J J' : RTm Δ) → (G G' : RTm Δ) → (X X' : RTm Δ) → (F1 F1' : RTm Δ) → (F2 F2' : RTm Δ) → (E0 E0' : RTm Δ) → (E1 E1' : RTm Δ) → (E2 E2' : RTm Δ) → (E5 E5' : RTm Δ) → (E6 E6' : RTm Δ) → J ≡ J' → G ≡ G' → X ≡ X' → F1 ≡ F1' → F2 ≡ F2' → E0 ≡ E0' → E1 ≡ E1' → E2 ≡ E2' → E5 ≡ E5' → E6 ≡ E6' → ⌜ T⊢trᵇI {Δ} J G X F1 F2 E0 E1 E2 E5 E6 ⌝ᵗ ≡ ⌜ T⊢trᵇI J' G' X' F1' F2' E0' E1' E2' E5' E6' ⌝ᵗ
-T⊢trᵇI-cong J J' G G' X X' F1 F1' F2 F2' E0 E0' E1 E1' E2 E2' E5 E5' E6 E6' refl refl refl refl refl refl refl refl refl refl = refl
+T⊢tr₂I-cong : {Δ : Cx} → (J J' : RTm Δ) → (G G' : RTm Δ) → (X X' : RTm Δ) → (F1 F1' : RTm Δ) → (F2 F2' : RTm Δ) → (E0 E0' : RTm Δ) → (E1 E1' : RTm Δ) → (E2 E2' : RTm Δ) → (E5 E5' : RTm Δ) → (E6 E6' : RTm Δ) → J ≡ J' → G ≡ G' → X ≡ X' → F1 ≡ F1' → F2 ≡ F2' → E0 ≡ E0' → E1 ≡ E1' → E2 ≡ E2' → E5 ≡ E5' → E6 ≡ E6' → ⌜ T⊢tr₂I {Δ} J G X F1 F2 E0 E1 E2 E5 E6 ⌝ᵗ ≡ ⌜ T⊢tr₂I J' G' X' F1' F2' E0' E1' E2' E5' E6' ⌝ᵗ
+T⊢tr₂I-cong J J' G G' X X' F1 F1' F2 F2' E0 E0' E1 E1' E2 E2' E5 E5' E6 E6' refl refl refl refl refl refl refl refl refl refl = refl
 
-okT⊢trᵇI : {Ξ : Ctx} {J G X F1 F2 E0 E1 E2 E5 E6 : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ G ∷ KCtx J → Ξ ⊢ X ∷ K 0 J → Ξ ⊢ F1 ∷ K 1 J → Ξ ⊢ F2 ∷ K 1 J → Ξ ⊢ E0 ∷ K 0 J → Ξ ⊢ E1 ∷ K 1 J → Ξ ⊢ E2 ∷ K 1 J → Ξ ⊢ E5 ∷ K 1 J → Ξ ⊢ E6 ∷ K 1 J → TelOK Ξ JT (T⊢trᵇI J G X F1 F2 E0 E1 E2 E5 E6)
-okT⊢trᵇI dJ dG dX dF1 dF2 dE0 dE1 dE2 dE5 dE6 = ok-ρ (⊢tmIx (⊢isuc dJ) (⊢cext dJ dG dE0) (⊢wkS (lt-s lt-z) dJ dE1) (⊢kU (⊢isuc dJ))) (ok-ρ (⊢tmIx (⊢isuc dJ) (⊢cext dJ dG dE0) (⊢wkS (lt-s lt-z) dJ dE2) (⊢kEl (⊢isuc dJ) (⊢wkS (lt-s lt-z) dJ dE1))) (ok-ρ (⊢tmIx (⊢isuc dJ) (⊢cext dJ dG dE0) (⊢kvar (⊢isuc dJ) (⊢ffz dJ)) (⊢kEl (⊢isuc dJ) (⊢wkS (lt-s lt-z) dJ dE1))) (ok-ρ (⊢tmIx dJ dG dE5 dE0) (ok-ρ (⊢tmIx dJ dG dE6 dE0) (ok-ρ (⊢tmIx dJ dG dF1 (⊢kHom dJ dE0 dE5 dE6)) (ok-ρ (⊢tmIx dJ dG dF2 (⊢kEl dJ (⊢kcHom dJ dE1 dE2 dE5))) (ok-σ (⊢⌜Id⌝ (⊢⌜Ty⌝ dJ) (toTy dX) (toTy (⊢kEl dJ (⊢kcHom dJ dE1 dE2 dE6)))) ok-ι)))))))
+okT⊢tr₂I : {Ξ : Ctx} {J G X F1 F2 E0 E1 E2 E5 E6 : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ G ∷ KCtx J → Ξ ⊢ X ∷ K 0 J → Ξ ⊢ F1 ∷ K 1 J → Ξ ⊢ F2 ∷ K 1 J → Ξ ⊢ E0 ∷ K 0 J → Ξ ⊢ E1 ∷ K 1 J → Ξ ⊢ E2 ∷ K 1 J → Ξ ⊢ E5 ∷ K 1 J → Ξ ⊢ E6 ∷ K 1 J → TelOK Ξ JT (T⊢tr₂I J G X F1 F2 E0 E1 E2 E5 E6)
+okT⊢tr₂I dJ dG dX dF1 dF2 dE0 dE1 dE2 dE5 dE6 = ok-ρ (⊢tmIx (⊢isuc dJ) (⊢cext dJ dG dE0) (⊢wkS (lt-s lt-z) dJ dE1) (⊢kU (⊢isuc dJ))) (ok-ρ (⊢tmIx (⊢isuc dJ) (⊢cext dJ dG dE0) (⊢wkS (lt-s lt-z) dJ dE2) (⊢kEl (⊢isuc dJ) (⊢wkS (lt-s lt-z) dJ dE1))) (ok-ρ (⊢tmIx (⊢isuc dJ) (⊢cext dJ dG dE0) (⊢kvar (⊢isuc dJ) (⊢ffz dJ)) (⊢kEl (⊢isuc dJ) (⊢wkS (lt-s lt-z) dJ dE1))) (ok-ρ (⊢tmIx dJ dG dE5 dE0) (ok-ρ (⊢tmIx dJ dG dE6 dE0) (ok-ρ (⊢tmIx dJ dG dF1 (⊢kHom dJ dE0 dE5 dE6)) (ok-ρ (⊢tmIx dJ dG dF2 (⊢kEl dJ (⊢kcHom dJ dE1 dE2 dE5))) (ok-σ (⊢⌜Id⌝ (⊢⌜Ty⌝ dJ) (toTy dX) (toTy (⊢kEl dJ (⊢kcHom dJ dE1 dE2 dE6)))) ok-ι)))))))
 
-T⊢trᵇ : RTm Δ → RTm Δ → RTm Δ → Tel Δ
-T⊢trᵇ j p c = (tσ (C⊢trᵇ_0I j) (tσ (C⊢trᵇ_1I (w1 j)) (tσ (C⊢trᵇ_2I (w2 j)) (tσ (C⊢trᵇ_3I (w3 j) (var (vs vz))) (tσ (C⊢trᵇ_4I (w4 j) (w4 (fst p)) (var (vs (vs vz))) (var (vs vz))) (tσ (C⊢trᵇ_5I (w5 j)) (tσ (C⊢trᵇ_6I (w6 j)) (T⊢trᵇI (w7 j) (w7 (fst c)) (w7 (snd c)) (w7 (fst (snd p))) (w7 (fst (snd (snd p)))) (var (vs (vs (vs (vs (vs (vs vz))))))) (var (vs (vs (vs (vs (vs vz)))))) (var (vs (vs (vs (vs vz))))) (var (vs vz)) (var vz)))))))))
+T⊢tr₂ : RTm Δ → RTm Δ → RTm Δ → Tel Δ
+T⊢tr₂ j p c = (tσ (C⊢tr₂_0I j) (tσ (C⊢tr₂_1I (w1 j)) (tσ (C⊢tr₂_2I (w2 j)) (tσ (C⊢tr₂_3I (w3 j) (var (vs vz))) (tσ (C⊢tr₂_4I (w4 j) (w4 (fst p)) (var (vs (vs vz))) (var (vs vz))) (tσ (C⊢tr₂_5I (w5 j)) (tσ (C⊢tr₂_6I (w6 j)) (T⊢tr₂I (w7 j) (w7 (fst c)) (w7 (snd c)) (w7 (fst (snd p))) (w7 (fst (snd (snd p)))) (var (vs (vs (vs (vs (vs (vs vz))))))) (var (vs (vs (vs (vs (vs vz)))))) (var (vs (vs (vs (vs vz))))) (var (vs vz)) (var vz)))))))))
 
-T⊢trᵇ-law : TelLaw T⊢trᵇ
-T⊢trᵇ-law σ j p c =
-  dσ-cong7 (subTm σ (C⊢trᵇ_0I j)) (C⊢trᵇ_0I (subTm σ j)) (subTm (extS σ) (C⊢trᵇ_1I (w1 j))) (C⊢trᵇ_1I (w1 (subTm σ j))) (subTm (extS (extS σ)) (C⊢trᵇ_2I (w2 j))) (C⊢trᵇ_2I (w2 (subTm σ j))) (subTm (extS (extS (extS σ))) (C⊢trᵇ_3I (w3 j) (var (vs vz)))) (C⊢trᵇ_3I (w3 (subTm σ j)) (var (vs vz))) (subTm (extS (extS (extS (extS σ)))) (C⊢trᵇ_4I (w4 j) (w4 (fst p)) (var (vs (vs vz))) (var (vs vz)))) (C⊢trᵇ_4I (w4 (subTm σ j)) (w4 (fst (subTm σ p))) (var (vs (vs vz))) (var (vs vz))) (subTm (extS (extS (extS (extS (extS σ))))) (C⊢trᵇ_5I (w5 j))) (C⊢trᵇ_5I (w5 (subTm σ j))) (subTm (extS (extS (extS (extS (extS (extS σ)))))) (C⊢trᵇ_6I (w6 j))) (C⊢trᵇ_6I (w6 (subTm σ j))) (subTm (extS (extS (extS (extS (extS (extS (extS σ))))))) ⌜ (T⊢trᵇI (w7 j) (w7 (fst c)) (w7 (snd c)) (w7 (fst (snd p))) (w7 (fst (snd (snd p)))) (var (vs (vs (vs (vs (vs (vs vz))))))) (var (vs (vs (vs (vs (vs vz)))))) (var (vs (vs (vs (vs vz))))) (var (vs vz)) (var vz)) ⌝ᵗ) ⌜ (T⊢trᵇI (w7 (subTm σ j)) (w7 (fst (subTm σ c))) (w7 (snd (subTm σ c))) (w7 (fst (snd (subTm σ p)))) (w7 (fst (snd (snd (subTm σ p))))) (var (vs (vs (vs (vs (vs (vs vz))))))) (var (vs (vs (vs (vs (vs vz)))))) (var (vs (vs (vs (vs vz))))) (var (vs vz)) (var vz)) ⌝ᵗ (trans (C⊢trᵇ_0I-sub σ j) (C⊢trᵇ_0I-cong (subTm σ j) (subTm σ j) refl)) (trans (C⊢trᵇ_1I-sub (extS σ) (w1 j)) (C⊢trᵇ_1I-cong (subTm (extS σ) (w1 j)) (w1 (subTm σ j)) (w1-sub σ j))) (trans (C⊢trᵇ_2I-sub (extS (extS σ)) (w2 j)) (C⊢trᵇ_2I-cong (subTm (extS (extS σ)) (w2 j)) (w2 (subTm σ j)) (w2-sub σ j))) (trans (C⊢trᵇ_3I-sub (extS (extS (extS σ))) (w3 j) (var (vs vz))) (C⊢trᵇ_3I-cong (subTm (extS (extS (extS σ))) (w3 j)) (w3 (subTm σ j)) (subTm (extS (extS (extS σ))) (var (vs vz))) (var (vs vz)) (w3-sub σ j) refl)) (trans (C⊢trᵇ_4I-sub (extS (extS (extS (extS σ)))) (w4 j) (w4 (fst p)) (var (vs (vs vz))) (var (vs vz))) (C⊢trᵇ_4I-cong (subTm (extS (extS (extS (extS σ)))) (w4 j)) (w4 (subTm σ j)) (subTm (extS (extS (extS (extS σ)))) (w4 (fst p))) (w4 (fst (subTm σ p))) (subTm (extS (extS (extS (extS σ)))) (var (vs (vs vz)))) (var (vs (vs vz))) (subTm (extS (extS (extS (extS σ)))) (var (vs vz))) (var (vs vz)) (w4-sub σ j) (w4-sub σ (fst p)) refl refl)) (trans (C⊢trᵇ_5I-sub (extS (extS (extS (extS (extS σ))))) (w5 j)) (C⊢trᵇ_5I-cong (subTm (extS (extS (extS (extS (extS σ))))) (w5 j)) (w5 (subTm σ j)) (w5-sub σ j))) (trans (C⊢trᵇ_6I-sub (extS (extS (extS (extS (extS (extS σ)))))) (w6 j)) (C⊢trᵇ_6I-cong (subTm (extS (extS (extS (extS (extS (extS σ)))))) (w6 j)) (w6 (subTm σ j)) (w6-sub σ j))) (trans (T⊢trᵇI-sub (extS (extS (extS (extS (extS (extS (extS σ))))))) (w7 j) (w7 (fst c)) (w7 (snd c)) (w7 (fst (snd p))) (w7 (fst (snd (snd p)))) (var (vs (vs (vs (vs (vs (vs vz))))))) (var (vs (vs (vs (vs (vs vz)))))) (var (vs (vs (vs (vs vz))))) (var (vs vz)) (var vz)) (T⊢trᵇI-cong (subTm (extS (extS (extS (extS (extS (extS (extS σ))))))) (w7 j)) (w7 (subTm σ j)) (subTm (extS (extS (extS (extS (extS (extS (extS σ))))))) (w7 (fst c))) (w7 (fst (subTm σ c))) (subTm (extS (extS (extS (extS (extS (extS (extS σ))))))) (w7 (snd c))) (w7 (snd (subTm σ c))) (subTm (extS (extS (extS (extS (extS (extS (extS σ))))))) (w7 (fst (snd p)))) (w7 (fst (snd (subTm σ p)))) (subTm (extS (extS (extS (extS (extS (extS (extS σ))))))) (w7 (fst (snd (snd p))))) (w7 (fst (snd (snd (subTm σ p))))) (subTm (extS (extS (extS (extS (extS (extS (extS σ))))))) (var (vs (vs (vs (vs (vs (vs vz)))))))) (var (vs (vs (vs (vs (vs (vs vz))))))) (subTm (extS (extS (extS (extS (extS (extS (extS σ))))))) (var (vs (vs (vs (vs (vs vz))))))) (var (vs (vs (vs (vs (vs vz)))))) (subTm (extS (extS (extS (extS (extS (extS (extS σ))))))) (var (vs (vs (vs (vs vz)))))) (var (vs (vs (vs (vs vz))))) (subTm (extS (extS (extS (extS (extS (extS (extS σ))))))) (var (vs vz))) (var (vs vz)) (subTm (extS (extS (extS (extS (extS (extS (extS σ))))))) (var vz)) (var vz) (w7-sub σ j) (w7-sub σ (fst c)) (w7-sub σ (snd c)) (w7-sub σ (fst (snd p))) (w7-sub σ (fst (snd (snd p)))) refl refl refl refl refl))
+T⊢tr₂-law : TelLaw T⊢tr₂
+T⊢tr₂-law σ j p c =
+  dσ-cong7 (subTm σ (C⊢tr₂_0I j)) (C⊢tr₂_0I (subTm σ j)) (subTm (extS σ) (C⊢tr₂_1I (w1 j))) (C⊢tr₂_1I (w1 (subTm σ j))) (subTm (extS (extS σ)) (C⊢tr₂_2I (w2 j))) (C⊢tr₂_2I (w2 (subTm σ j))) (subTm (extS (extS (extS σ))) (C⊢tr₂_3I (w3 j) (var (vs vz)))) (C⊢tr₂_3I (w3 (subTm σ j)) (var (vs vz))) (subTm (extS (extS (extS (extS σ)))) (C⊢tr₂_4I (w4 j) (w4 (fst p)) (var (vs (vs vz))) (var (vs vz)))) (C⊢tr₂_4I (w4 (subTm σ j)) (w4 (fst (subTm σ p))) (var (vs (vs vz))) (var (vs vz))) (subTm (extS (extS (extS (extS (extS σ))))) (C⊢tr₂_5I (w5 j))) (C⊢tr₂_5I (w5 (subTm σ j))) (subTm (extS (extS (extS (extS (extS (extS σ)))))) (C⊢tr₂_6I (w6 j))) (C⊢tr₂_6I (w6 (subTm σ j))) (subTm (extS (extS (extS (extS (extS (extS (extS σ))))))) ⌜ (T⊢tr₂I (w7 j) (w7 (fst c)) (w7 (snd c)) (w7 (fst (snd p))) (w7 (fst (snd (snd p)))) (var (vs (vs (vs (vs (vs (vs vz))))))) (var (vs (vs (vs (vs (vs vz)))))) (var (vs (vs (vs (vs vz))))) (var (vs vz)) (var vz)) ⌝ᵗ) ⌜ (T⊢tr₂I (w7 (subTm σ j)) (w7 (fst (subTm σ c))) (w7 (snd (subTm σ c))) (w7 (fst (snd (subTm σ p)))) (w7 (fst (snd (snd (subTm σ p))))) (var (vs (vs (vs (vs (vs (vs vz))))))) (var (vs (vs (vs (vs (vs vz)))))) (var (vs (vs (vs (vs vz))))) (var (vs vz)) (var vz)) ⌝ᵗ (trans (C⊢tr₂_0I-sub σ j) (C⊢tr₂_0I-cong (subTm σ j) (subTm σ j) refl)) (trans (C⊢tr₂_1I-sub (extS σ) (w1 j)) (C⊢tr₂_1I-cong (subTm (extS σ) (w1 j)) (w1 (subTm σ j)) (w1-sub σ j))) (trans (C⊢tr₂_2I-sub (extS (extS σ)) (w2 j)) (C⊢tr₂_2I-cong (subTm (extS (extS σ)) (w2 j)) (w2 (subTm σ j)) (w2-sub σ j))) (trans (C⊢tr₂_3I-sub (extS (extS (extS σ))) (w3 j) (var (vs vz))) (C⊢tr₂_3I-cong (subTm (extS (extS (extS σ))) (w3 j)) (w3 (subTm σ j)) (subTm (extS (extS (extS σ))) (var (vs vz))) (var (vs vz)) (w3-sub σ j) refl)) (trans (C⊢tr₂_4I-sub (extS (extS (extS (extS σ)))) (w4 j) (w4 (fst p)) (var (vs (vs vz))) (var (vs vz))) (C⊢tr₂_4I-cong (subTm (extS (extS (extS (extS σ)))) (w4 j)) (w4 (subTm σ j)) (subTm (extS (extS (extS (extS σ)))) (w4 (fst p))) (w4 (fst (subTm σ p))) (subTm (extS (extS (extS (extS σ)))) (var (vs (vs vz)))) (var (vs (vs vz))) (subTm (extS (extS (extS (extS σ)))) (var (vs vz))) (var (vs vz)) (w4-sub σ j) (w4-sub σ (fst p)) refl refl)) (trans (C⊢tr₂_5I-sub (extS (extS (extS (extS (extS σ))))) (w5 j)) (C⊢tr₂_5I-cong (subTm (extS (extS (extS (extS (extS σ))))) (w5 j)) (w5 (subTm σ j)) (w5-sub σ j))) (trans (C⊢tr₂_6I-sub (extS (extS (extS (extS (extS (extS σ)))))) (w6 j)) (C⊢tr₂_6I-cong (subTm (extS (extS (extS (extS (extS (extS σ)))))) (w6 j)) (w6 (subTm σ j)) (w6-sub σ j))) (trans (T⊢tr₂I-sub (extS (extS (extS (extS (extS (extS (extS σ))))))) (w7 j) (w7 (fst c)) (w7 (snd c)) (w7 (fst (snd p))) (w7 (fst (snd (snd p)))) (var (vs (vs (vs (vs (vs (vs vz))))))) (var (vs (vs (vs (vs (vs vz)))))) (var (vs (vs (vs (vs vz))))) (var (vs vz)) (var vz)) (T⊢tr₂I-cong (subTm (extS (extS (extS (extS (extS (extS (extS σ))))))) (w7 j)) (w7 (subTm σ j)) (subTm (extS (extS (extS (extS (extS (extS (extS σ))))))) (w7 (fst c))) (w7 (fst (subTm σ c))) (subTm (extS (extS (extS (extS (extS (extS (extS σ))))))) (w7 (snd c))) (w7 (snd (subTm σ c))) (subTm (extS (extS (extS (extS (extS (extS (extS σ))))))) (w7 (fst (snd p)))) (w7 (fst (snd (subTm σ p)))) (subTm (extS (extS (extS (extS (extS (extS (extS σ))))))) (w7 (fst (snd (snd p))))) (w7 (fst (snd (snd (subTm σ p))))) (subTm (extS (extS (extS (extS (extS (extS (extS σ))))))) (var (vs (vs (vs (vs (vs (vs vz)))))))) (var (vs (vs (vs (vs (vs (vs vz))))))) (subTm (extS (extS (extS (extS (extS (extS (extS σ))))))) (var (vs (vs (vs (vs (vs vz))))))) (var (vs (vs (vs (vs (vs vz)))))) (subTm (extS (extS (extS (extS (extS (extS (extS σ))))))) (var (vs (vs (vs (vs vz)))))) (var (vs (vs (vs (vs vz))))) (subTm (extS (extS (extS (extS (extS (extS (extS σ))))))) (var (vs vz))) (var (vs vz)) (subTm (extS (extS (extS (extS (extS (extS (extS σ))))))) (var vz)) (var vz) (w7-sub σ j) (w7-sub σ (fst c)) (w7-sub σ (snd c)) (w7-sub σ (fst (snd p))) (w7-sub σ (fst (snd (snd p)))) refl refl refl refl refl))
 
-okT⊢trᵇ : {Ξ : Ctx} {j p c : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ p ∷ PayV sh-ktr (pair (tag 1) j) (SI 2) (SD KSig) → Ξ ⊢ c ∷ El (CTat (pair (tag 1) j)) → TelOK Ξ JT (T⊢trᵇ j p c)
-okT⊢trᵇ {Ξ} {j} {p} {c} dj dp dc = (okσJ (okC⊢trᵇ_0I {_} {j} dj) (okσJ (okC⊢trᵇ_1I {_} {(w1 j)} (wkN {t = j} dj)) (okσJ (okC⊢trᵇ_2I {_} {(w2 j)} (wkN {t = (w1 j)} (wkN {t = j} dj))) (okσJ (okC⊢trᵇ_3I {_} {(w3 j)} {(var (vs vz))} (wkN {t = (w2 j)} (wkN {t = (w1 j)} (wkN {t = j} dj))) (wkK {s = 1} {d = (renTm vs (w1 j))} {t = (var vz)} (hereTm {m = (w1 j)}))) (okσJ (okC⊢trᵇ_4I {_} {(w4 j)} {(w4 (fst p))} {(var (vs (vs vz)))} {(var (vs vz))} (wkN {t = (w3 j)} (wkN {t = (w2 j)} (wkN {t = (w1 j)} (wkN {t = j} dj)))) (wkK {s = 1} {d = (w3 (nsuc j))} {t = (w3 (fst p))} (wkK {s = 1} {d = (w2 (nsuc j))} {t = (w2 (fst p))} (wkK {s = 1} {d = (w1 (nsuc j))} {t = (w1 (fst p))} (wkK {s = 1} {d = (nsuc j)} {t = (fst p)} (⊢atDepth {a = tag 1} {j = j} {s = 1} {k = 1} (⊢recFst {s = 1} {k = 1} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp)))))) (wkK {s = 1} {d = (w1 (renTm vs (w1 j)))} {t = (var (vs vz))} (wkK {s = 1} {d = (renTm vs (w1 j))} {t = (var vz)} (hereTm {m = (w1 j)}))) (wkK {s = 1} {d = (renTm vs (w2 j))} {t = (var vz)} (hereTm {m = (w2 j)}))) (okσJ (okC⊢trᵇ_5I {_} {(w5 j)} (wkN {t = (w4 j)} (wkN {t = (w3 j)} (wkN {t = (w2 j)} (wkN {t = (w1 j)} (wkN {t = j} dj)))))) (okσJ (okC⊢trᵇ_6I {_} {(w6 j)} (wkN {t = (w5 j)} (wkN {t = (w4 j)} (wkN {t = (w3 j)} (wkN {t = (w2 j)} (wkN {t = (w1 j)} (wkN {t = j} dj))))))) (okT⊢trᵇI {_} {(w7 j)} {(w7 (fst c))} {(w7 (snd c))} {(w7 (fst (snd p)))} {(w7 (fst (snd (snd p))))} {(var (vs (vs (vs (vs (vs (vs vz)))))))} {(var (vs (vs (vs (vs (vs vz))))))} {(var (vs (vs (vs (vs vz)))))} {(var (vs vz))} {(var vz)} (wkN {t = (w6 j)} (wkN {t = (w5 j)} (wkN {t = (w4 j)} (wkN {t = (w3 j)} (wkN {t = (w2 j)} (wkN {t = (w1 j)} (wkN {t = j} dj))))))) (wkG {d = (w6 j)} {g = (w6 (fst c))} (wkG {d = (w5 j)} {g = (w5 (fst c))} (wkG {d = (w4 j)} {g = (w4 (fst c))} (wkG {d = (w3 j)} {g = (w3 (fst c))} (wkG {d = (w2 j)} {g = (w2 (fst c))} (wkG {d = (w1 j)} {g = (w1 (fst c))} (wkG {d = j} {g = (fst c)} (⊢ctxOf dc)))))))) (wkK {s = 0} {d = (w6 j)} {t = (w6 (snd c))} (wkK {s = 0} {d = (w5 j)} {t = (w5 (snd c))} (wkK {s = 0} {d = (w4 j)} {t = (w4 (snd c))} (wkK {s = 0} {d = (w3 j)} {t = (w3 (snd c))} (wkK {s = 0} {d = (w2 j)} {t = (w2 (snd c))} (wkK {s = 0} {d = (w1 j)} {t = (w1 (snd c))} (wkK {s = 0} {d = j} {t = (snd c)} (⊢tyOf dc)))))))) (wkK {s = 1} {d = (w6 j)} {t = (w6 (fst (snd p)))} (wkK {s = 1} {d = (w5 j)} {t = (w5 (fst (snd p)))} (wkK {s = 1} {d = (w4 j)} {t = (w4 (fst (snd p)))} (wkK {s = 1} {d = (w3 j)} {t = (w3 (fst (snd p)))} (wkK {s = 1} {d = (w2 j)} {t = (w2 (fst (snd p)))} (wkK {s = 1} {d = (w1 j)} {t = (w1 (fst (snd p)))} (wkK {s = 1} {d = j} {t = (fst (snd p))} (⊢atDepth {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 1} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp)))))))))) (wkK {s = 1} {d = (w6 j)} {t = (w6 (fst (snd (snd p))))} (wkK {s = 1} {d = (w5 j)} {t = (w5 (fst (snd (snd p))))} (wkK {s = 1} {d = (w4 j)} {t = (w4 (fst (snd (snd p))))} (wkK {s = 1} {d = (w3 j)} {t = (w3 (fst (snd (snd p))))} (wkK {s = 1} {d = (w2 j)} {t = (w2 (fst (snd (snd p))))} (wkK {s = 1} {d = (w1 j)} {t = (w1 (fst (snd (snd p))))} (wkK {s = 1} {d = j} {t = (fst (snd (snd p)))} (⊢atDepth {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = ([]ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 1} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp))))))))))) (wkK {s = 0} {d = (w5 (renTm vs j))} {t = (var (vs (vs (vs (vs (vs vz))))))} (wkK {s = 0} {d = (w4 (renTm vs j))} {t = (var (vs (vs (vs (vs vz)))))} (wkK {s = 0} {d = (w3 (renTm vs j))} {t = (var (vs (vs (vs vz))))} (wkK {s = 0} {d = (w2 (renTm vs j))} {t = (var (vs (vs vz)))} (wkK {s = 0} {d = (w1 (renTm vs j))} {t = (var (vs vz))} (wkK {s = 0} {d = (renTm vs j)} {t = (var vz)} (hereTy {m = j}))))))) (wkK {s = 1} {d = (w4 (renTm vs (w1 j)))} {t = (var (vs (vs (vs (vs vz)))))} (wkK {s = 1} {d = (w3 (renTm vs (w1 j)))} {t = (var (vs (vs (vs vz))))} (wkK {s = 1} {d = (w2 (renTm vs (w1 j)))} {t = (var (vs (vs vz)))} (wkK {s = 1} {d = (w1 (renTm vs (w1 j)))} {t = (var (vs vz))} (wkK {s = 1} {d = (renTm vs (w1 j))} {t = (var vz)} (hereTm {m = (w1 j)})))))) (wkK {s = 1} {d = (w3 (renTm vs (w2 j)))} {t = (var (vs (vs (vs vz))))} (wkK {s = 1} {d = (w2 (renTm vs (w2 j)))} {t = (var (vs (vs vz)))} (wkK {s = 1} {d = (w1 (renTm vs (w2 j)))} {t = (var (vs vz))} (wkK {s = 1} {d = (renTm vs (w2 j))} {t = (var vz)} (hereTm {m = (w2 j)}))))) (wkK {s = 1} {d = (renTm vs (w5 j))} {t = (var vz)} (hereTm {m = (w5 j)})) (hereTm {m = (w6 j)})))))))))
+okT⊢tr₂ : {Ξ : Ctx} {j p c : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ p ∷ PayV sh-ktr (pair (tag 1) j) (SI 2) (SD KSig) → Ξ ⊢ c ∷ El (CTat (pair (tag 1) j)) → TelOK Ξ JT (T⊢tr₂ j p c)
+okT⊢tr₂ {Ξ} {j} {p} {c} dj dp dc = (okσJ (okC⊢tr₂_0I {_} {j} dj) (okσJ (okC⊢tr₂_1I {_} {(w1 j)} (wkN {t = j} dj)) (okσJ (okC⊢tr₂_2I {_} {(w2 j)} (wkN {t = (w1 j)} (wkN {t = j} dj))) (okσJ (okC⊢tr₂_3I {_} {(w3 j)} {(var (vs vz))} (wkN {t = (w2 j)} (wkN {t = (w1 j)} (wkN {t = j} dj))) (wkK {s = 1} {d = (renTm vs (w1 j))} {t = (var vz)} (hereTm {m = (w1 j)}))) (okσJ (okC⊢tr₂_4I {_} {(w4 j)} {(w4 (fst p))} {(var (vs (vs vz)))} {(var (vs vz))} (wkN {t = (w3 j)} (wkN {t = (w2 j)} (wkN {t = (w1 j)} (wkN {t = j} dj)))) (wkK {s = 1} {d = (w3 (nsuc j))} {t = (w3 (fst p))} (wkK {s = 1} {d = (w2 (nsuc j))} {t = (w2 (fst p))} (wkK {s = 1} {d = (w1 (nsuc j))} {t = (w1 (fst p))} (wkK {s = 1} {d = (nsuc j)} {t = (fst p)} (⊢atDepth {a = tag 1} {j = j} {s = 1} {k = 1} (⊢recFst {s = 1} {k = 1} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp)))))) (wkK {s = 1} {d = (w1 (renTm vs (w1 j)))} {t = (var (vs vz))} (wkK {s = 1} {d = (renTm vs (w1 j))} {t = (var vz)} (hereTm {m = (w1 j)}))) (wkK {s = 1} {d = (renTm vs (w2 j))} {t = (var vz)} (hereTm {m = (w2 j)}))) (okσJ (okC⊢tr₂_5I {_} {(w5 j)} (wkN {t = (w4 j)} (wkN {t = (w3 j)} (wkN {t = (w2 j)} (wkN {t = (w1 j)} (wkN {t = j} dj)))))) (okσJ (okC⊢tr₂_6I {_} {(w6 j)} (wkN {t = (w5 j)} (wkN {t = (w4 j)} (wkN {t = (w3 j)} (wkN {t = (w2 j)} (wkN {t = (w1 j)} (wkN {t = j} dj))))))) (okT⊢tr₂I {_} {(w7 j)} {(w7 (fst c))} {(w7 (snd c))} {(w7 (fst (snd p)))} {(w7 (fst (snd (snd p))))} {(var (vs (vs (vs (vs (vs (vs vz)))))))} {(var (vs (vs (vs (vs (vs vz))))))} {(var (vs (vs (vs (vs vz)))))} {(var (vs vz))} {(var vz)} (wkN {t = (w6 j)} (wkN {t = (w5 j)} (wkN {t = (w4 j)} (wkN {t = (w3 j)} (wkN {t = (w2 j)} (wkN {t = (w1 j)} (wkN {t = j} dj))))))) (wkG {d = (w6 j)} {g = (w6 (fst c))} (wkG {d = (w5 j)} {g = (w5 (fst c))} (wkG {d = (w4 j)} {g = (w4 (fst c))} (wkG {d = (w3 j)} {g = (w3 (fst c))} (wkG {d = (w2 j)} {g = (w2 (fst c))} (wkG {d = (w1 j)} {g = (w1 (fst c))} (wkG {d = j} {g = (fst c)} (⊢ctxOf dc)))))))) (wkK {s = 0} {d = (w6 j)} {t = (w6 (snd c))} (wkK {s = 0} {d = (w5 j)} {t = (w5 (snd c))} (wkK {s = 0} {d = (w4 j)} {t = (w4 (snd c))} (wkK {s = 0} {d = (w3 j)} {t = (w3 (snd c))} (wkK {s = 0} {d = (w2 j)} {t = (w2 (snd c))} (wkK {s = 0} {d = (w1 j)} {t = (w1 (snd c))} (wkK {s = 0} {d = j} {t = (snd c)} (⊢tyOf dc)))))))) (wkK {s = 1} {d = (w6 j)} {t = (w6 (fst (snd p)))} (wkK {s = 1} {d = (w5 j)} {t = (w5 (fst (snd p)))} (wkK {s = 1} {d = (w4 j)} {t = (w4 (fst (snd p)))} (wkK {s = 1} {d = (w3 j)} {t = (w3 (fst (snd p)))} (wkK {s = 1} {d = (w2 j)} {t = (w2 (fst (snd p)))} (wkK {s = 1} {d = (w1 j)} {t = (w1 (fst (snd p)))} (wkK {s = 1} {d = j} {t = (fst (snd p))} (⊢atDepth {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 1} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp)))))))))) (wkK {s = 1} {d = (w6 j)} {t = (w6 (fst (snd (snd p))))} (wkK {s = 1} {d = (w5 j)} {t = (w5 (fst (snd (snd p))))} (wkK {s = 1} {d = (w4 j)} {t = (w4 (fst (snd (snd p))))} (wkK {s = 1} {d = (w3 j)} {t = (w3 (fst (snd (snd p))))} (wkK {s = 1} {d = (w2 j)} {t = (w2 (fst (snd (snd p))))} (wkK {s = 1} {d = (w1 j)} {t = (w1 (fst (snd (snd p))))} (wkK {s = 1} {d = j} {t = (fst (snd (snd p)))} (⊢atDepth {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = ([]ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 1} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp))))))))))) (wkK {s = 0} {d = (w5 (renTm vs j))} {t = (var (vs (vs (vs (vs (vs vz))))))} (wkK {s = 0} {d = (w4 (renTm vs j))} {t = (var (vs (vs (vs (vs vz)))))} (wkK {s = 0} {d = (w3 (renTm vs j))} {t = (var (vs (vs (vs vz))))} (wkK {s = 0} {d = (w2 (renTm vs j))} {t = (var (vs (vs vz)))} (wkK {s = 0} {d = (w1 (renTm vs j))} {t = (var (vs vz))} (wkK {s = 0} {d = (renTm vs j)} {t = (var vz)} (hereTy {m = j}))))))) (wkK {s = 1} {d = (w4 (renTm vs (w1 j)))} {t = (var (vs (vs (vs (vs vz)))))} (wkK {s = 1} {d = (w3 (renTm vs (w1 j)))} {t = (var (vs (vs (vs vz))))} (wkK {s = 1} {d = (w2 (renTm vs (w1 j)))} {t = (var (vs (vs vz)))} (wkK {s = 1} {d = (w1 (renTm vs (w1 j)))} {t = (var (vs vz))} (wkK {s = 1} {d = (renTm vs (w1 j))} {t = (var vz)} (hereTm {m = (w1 j)})))))) (wkK {s = 1} {d = (w3 (renTm vs (w2 j)))} {t = (var (vs (vs (vs vz))))} (wkK {s = 1} {d = (w2 (renTm vs (w2 j)))} {t = (var (vs (vs vz)))} (wkK {s = 1} {d = (w1 (renTm vs (w2 j)))} {t = (var (vs vz))} (wkK {s = 1} {d = (renTm vs (w2 j))} {t = (var vz)} (hereTm {m = (w2 j)}))))) (wkK {s = 1} {d = (renTm vs (w5 j))} {t = (var vz)} (hereTm {m = (w5 j)})) (hereTm {m = (w6 j)})))))))))
 
 r⊢tr : Row
-r⊢tr = record { R = λ j p c → rows (⌜ T⊢trᵃ j p c ⌝ᵗ ∷ ⌜ T⊢trᵇ j p c ⌝ᵗ ∷ [])
-  ; R-sub = λ σ j p c → trans (rows-sub' σ (⌜ T⊢trᵃ j p c ⌝ᵗ ∷ ⌜ T⊢trᵇ j p c ⌝ᵗ ∷ [])) (cong₂ (λ X Y → rows (X ∷ Y ∷ [])) (T⊢trᵃ-law σ j p c) (T⊢trᵇ-law σ j p c)) }
+r⊢tr = record { R = λ j p c → rows (⌜ T⊢tr₁ j p c ⌝ᵗ ∷ ⌜ T⊢tr₂ j p c ⌝ᵗ ∷ [])
+  ; R-sub = λ σ j p c → trans (rows-sub' σ (⌜ T⊢tr₁ j p c ⌝ᵗ ∷ ⌜ T⊢tr₂ j p c ⌝ᵗ ∷ [])) (cong (λ X → rows X) (∷-cong2 _ _ (T⊢tr₁-law σ j p c) _ _ (T⊢tr₂-law σ j p c))) }
 ok⊢tr : RowOK 1 sh-ktr r⊢tr
-ok⊢tr {Ξ} {j} {p} {c} dj dp dc = ⊢rows {Ξ} {JT} {2} {⌜ T⊢trᵃ j p c ⌝ᵗ ∷ ⌜ T⊢trᵇ j p c ⌝ᵗ ∷ []} ⊢JT (⊢tel {Ξ} {JT} {T⊢trᵃ j p c} ⊢JT (okT⊢trᵃ dj dp dc) ∷ᵈ ⊢tel {Ξ} {JT} {T⊢trᵇ j p c} ⊢JT (okT⊢trᵇ dj dp dc) ∷ᵈ  []ᵈ)
+ok⊢tr {Ξ} {j} {p} {c} dj dp dc = ⊢rows {Ξ} {JT} {2} {⌜ T⊢tr₁ j p c ⌝ᵗ ∷ ⌜ T⊢tr₂ j p c ⌝ᵗ ∷ []} ⊢JT (⊢tel {Ξ} {JT} {T⊢tr₁ j p c} ⊢JT (okT⊢tr₁ dj dp dc) ∷ᵈ ⊢tel {Ξ} {JT} {T⊢tr₂ j p c} ⊢JT (okT⊢tr₂ dj dp dc) ∷ᵈ  []ᵈ)
 
 ------------------------------------------------------------------------
 -- ★ THE `⊢` ROW TABLE, by term head (all 38; `rNone` = not yet a row)
