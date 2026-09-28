@@ -164,3 +164,38 @@ IhV-sub σ (rec s k ∷ʰ sh) i D M p =
            (cong₄ (IhV sh) (wk-sub σ i) (wk-sub σ D) (wk2-subTy σ M) (cong snd (wk-sub σ p))))
 IhV-sub σ (nat ∷ʰ sh) i D M p = IhV-sub σ sh i D M (snd p)
 IhV-sub σ vʰ i D M p = refl
+
+------------------------------------------------------------------------
+-- 5. ★ A PAYLOAD, TYPED FIELD BY FIELD (what a row's typing reads).
+------------------------------------------------------------------------
+
+private
+  open import DirectedHoTT.Metatheory.TySub using ( ⊢-cast )
+  open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; ⟶ᵀ*-IMu; ⟶*-pairʳ )
+
+  wkc3 : (a : RTm Δ) (sh : Shape) (i I D : RTm Δ) →
+         subTy (single a) (PayV sh (renTm vs i) (renTm vs I) (renTm vs D)) ≡ PayV sh i I D
+  wkc3 a sh i I D = trans (PayV-sub (single a) sh (renTm vs i) (renTm vs I) (renTm vs D))
+                          (cong₃ (PayV sh) (wk-cancel-tm a i) (wk-cancel-tm a I) (wk-cancel-tm a D))
+
+module _ {Ξ : Ctx} {i I D p : RTm ⌊ Ξ ⌋} where
+  -- a recursive field: the node at its index, and the rest
+  ⊢recFst : {s k : ℕ} {sh : Shape} → Ξ ⊢ p ∷ PayV (rec s k ∷ʰ sh) i I D →
+            Ξ ⊢ fst p ∷ IMu I D (pair (tag s) (nsucs k (snd i)))
+  ⊢recFst dp = ⊢fst dp
+
+  ⊢recSnd : {s k : ℕ} {sh : Shape} → Ξ ⊢ p ∷ PayV (rec s k ∷ʰ sh) i I D → Ξ ⊢ snd p ∷ PayV sh i I D
+  ⊢recSnd {sh = sh} dp = ⊢-cast (wkc3 (fst p) sh i I D) (⊢snd dp)
+
+  -- a number field, and the rest
+  ⊢natFst : {sh : Shape} → Ξ ⊢ p ∷ PayV (nat ∷ʰ sh) i I D → Ξ ⊢ fst p ∷ El ⌜Nat⌝
+  ⊢natFst dp = ⊢fst dp
+
+  ⊢natSnd : {sh : Shape} → Ξ ⊢ p ∷ PayV (nat ∷ʰ sh) i I D → Ξ ⊢ snd p ∷ PayV sh i I D
+  ⊢natSnd {sh = sh} dp = ⊢-cast (wkc3 (fst p) sh i I D) (⊢snd dp)
+
+-- a field's index at a sorted index `(a , j)`, its depth read off
+⊢atDepth : {Ξ : Ctx} {I D t a j : RTm ⌊ Ξ ⌋} {s k : ℕ} →
+           Ξ ⊢ t ∷ IMu I D (pair (tag s) (nsucs k (snd (pair a j)))) → Ξ ⊢ t ∷ IMu I D (pair (tag s) (nsucs k j))
+⊢atDepth {a = a} {j = j} {k = k} dt =
+  ⊢conv dt (red→≅ᵀ (⟶ᵀ*-IMu (⟶*-pairʳ (⟶*-nsucs k (step (βsnd a j) done)))))
