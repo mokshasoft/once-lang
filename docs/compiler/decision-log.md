@@ -15691,3 +15691,11 @@ entries are typed ONCE, over their kinds, in their prefix's signature; a `Progra
 `main : IO Unit`. Its meaning is the environment of families — entry `d` at a ground
 instantiation `τ` means the ground meaning of `instantiate τ D` in the prefix's environment —
 so `∀` means `Π(σ). ⟦T[σ]⟧` constructively, with no parametricity claim.
+
+## D240 — THE TYPE-SUBSTITUTION LEMMA IS PROVED (PLAN 0.103 PHASE 5) (2026-09-28)
+
+`Spec.Core.TySubst.tsubst`: `Δ ⊩ Γ ⊢[Ψ] t ∷ A ! π ⟹ Δ′ ⊩ Γ⟨σ⟩ ⊢[Ψ] t⟨σ⟩ ∷ A⟨σ⟩ ! π` for every
+kind-respecting substitution `σ` of open types — a metatheorem about the core judgment,
+postulate-free. "Typed once, instances for free" is now a valid argument in the core. Its
+semantic counterpart is not needed: `∀` means its instances by definition (D239), and a
+reference means an environment lookup at its instantiated types.
