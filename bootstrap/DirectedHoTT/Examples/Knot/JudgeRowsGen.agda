@@ -30,7 +30,7 @@ open import DirectedHoTT.Examples.Knot.JudgeIx
 open import DirectedHoTT.Examples.Knot.JudgeTmIx
 open import DirectedHoTT.Examples.Knot.JudgeCase
 open import DirectedHoTT.Examples.Knot.JudgeRowsTy using ( RowOK; okNone )
-open import DirectedHoTT.Examples.Knot.JudgeRowsTm using ( rVar; okVar; rLam; okLam; rApp; okApp )
+open import DirectedHoTT.Examples.Knot.JudgeRowsTm using ( rVar; okVar; rLam; okLam; rApp; okApp; rFz; okFz; rFs; okFs )
 
 private
   variable
@@ -1192,8 +1192,8 @@ rowTmGen (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (
 rowTmGen (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc zero)))))))))))))))))))))))))) = r⊢dR   -- dR
 rowTmGen (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc zero))))))))))))))))))))))))))) = r⊢dpay   -- dpay
 rowTmGen (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc zero)))))))))))))))))))))))))))) = r⊢dih   -- dih
-rowTmGen (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc zero))))))))))))))))))))))))))))) = rNone   -- fzero
-rowTmGen (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc zero)))))))))))))))))))))))))))))) = rNone   -- fsuc
+rowTmGen (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc zero))))))))))))))))))))))))))))) = rFz   -- fzero
+rowTmGen (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc zero)))))))))))))))))))))))))))))) = rFs   -- fsuc
 rowTmGen (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc zero))))))))))))))))))))))))))))))) = r⊢fcase   -- fcase
 rowTmGen (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc zero)))))))))))))))))))))))))))))))) = r⊢fcase0   -- fcase0
 rowTmGen (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc zero))))))))))))))))))))))))))))))))) = r⊢psplit   -- psplit
@@ -1233,8 +1233,8 @@ okTmGen (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s 
 okTmGen (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))))))))))))))))) = ok⊢dR
 okTmGen (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))))))))))))))))))))) = ok⊢dpay
 okTmGen (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))))))))))))))))))) = ok⊢dih
-okTmGen (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))))))))))))))))))))))) = okNone {1} {sh-kfzero}
-okTmGen (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))))))))))))))))))))) = okNone {1} {sh-kfsuc}
+okTmGen (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))))))))))))))))))))))) = okFz
+okTmGen (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))))))))))))))))))))) = okFs
 okTmGen (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))))))))))))))))))))))))) = ok⊢fcase
 okTmGen (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))))))))))))))))))))))) = ok⊢fcase0
 okTmGen (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))))))))))))))))))))))))))) = ok⊢psplit
