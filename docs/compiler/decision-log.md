@@ -15631,3 +15631,15 @@ exactly the `Many` effectful arrow; it now requires `Many`.
 Without the premise the schema was decorative: any type the body happened to check at passed.
 The body premise is still not established by the elaborator (defect 7,
 `bbc-other-poly-witness`), which plan 0.103 phase 6 removes.
+
+### D236 amendment (2026-09-28): the check-mode witness is CONSTRUCTED; one residual, stated exactly
+
+The postulate `bbc-other-poly-witness : ∀ ctx x T → ctx ⊢ᶜ RVar x ∶ T` (defect 7: it derives `⊥`
+for an unbound name) is DELETED. The elaborator's check-mode polymorphic fallback now decides
+every premise of `t-var-poly-instantiate` (not a local, not an import, a non-ground telescope
+entry, at an instance of its schema — `instantiate` is proved SOUND as well as complete,
+`Type.Instance`) and builds the rule. The one premise it cannot establish is the body's typing at
+the instance, postulated as `Elaborate.poly-body-typed`: a polymorphic entry's body types at every
+instance of its schema. That is exactly what plan 0.103 phase 6 derives (parametric typing plus
+the type-substitution lemma) and then deletes; until then it is false in general. The matcher
+moved to `Once.Type.Match` and decides equality with `_≟T_`.

@@ -84,6 +84,9 @@ open import Once.Float.Decimal using (Decimal; decimalOf)
 import Once.Float.Decimal as Decimal
 open import Once.Type.Sub using (_<:_; _<:?_; _⊑π_; _⊑π?_; sub-arr; <:-refl)
 open import Once.Type.DecEq using (_≟F_; _≟T_)
+open import Once.Type.Match using (Subst; instantiate)
+open import Once.Type.Instance using (instantiate-sound)
+open import Once.TypeCheck.DeciderComplete using (isGround-complete-at)
 open import Once.TypeCheck.Judgment
 
 ------------------------------------------------------------------------
@@ -748,11 +751,63 @@ inferElab-RApp-id ctx (success T Ψ argE d f') =
 -- them.
 ------------------------------------------------------------------------
 
+-- Plan 0.103 phase 2a: the ONE residual of the check-mode polymorphic
+-- reference, stated exactly: a polymorphic telescope entry's body types at
+-- every INSTANCE of its schema. Plan 0.103 phase 6 derives it from the entry's
+-- parametric typing and the type-substitution lemma, and deletes it. Until
+-- then it is FALSE in general (an ill-typed polymorphic body in some
+-- telescope), i.e. the known gap (defect 7); every other premise of the rule
+-- is now established by the elaborator.
 postulate
-  -- Witness for the `bbc-other` poly-instantiate case (Phase 2 gap).
-  bbc-other-poly-witness :
-    ∀ (ctx : NamedCtx) (x : String) (T : Type)
-    → ctx ⊢ᶜ Raw.RVar x ∶ T ⨾ Surface.zeroUsage
+  poly-body-typed :
+    ∀ {imps : Imports} {polys : PolyCtx} {x : String} {schema : PolyType} {body : RawExpr}
+      {prefix : PolyCtx} {T : Type}
+    → lookupPolyPrefix polys x ≡ just (schema , body , prefix)
+    → ¬ Ground schema → IsInstance schema T
+    → ctxWithImportsAndPolys imps prefix ⊢ᶜ body ∶ T ⨾ Surface.zeroUsage
+
+isGround-inj₂→¬Ground : ∀ (s : PolyType) → isGround s ≡ inj₂ tt → ¬ Ground s
+isGround-inj₂→¬Ground s eq g with trans (sym eq) (isGround-complete-at s g)
+... | ()
+
+-- The check-mode polymorphic reference, de-withed: each decision is an
+-- explicit argument with its equation, so the proofs reduce each stage.
+checkElabV-RVar-poly-inst-aux :
+  ∀ (ctx : NamedCtx) (x : String) (T : Type) (err : TypeError)
+    {schema : PolyType} {body : RawExpr} {prefix : PolyCtx}
+  → lookupLocal ctx x ≡ nothing → lookupImport (NamedCtx.imports ctx) x ≡ nothing
+  → lookupPolyPrefix (NamedCtx.polys ctx) x ≡ just (schema , body , prefix)
+  → ¬ Ground schema
+  → (mi : Maybe Subst) → instantiate schema T ≡ mi
+  → VerifiedCheckResult ctx (Raw.RVar x) T
+checkElabV-RVar-poly-inst-aux ctx x T err eL eI eP ¬g nothing _ = failure err , tt
+checkElabV-RVar-poly-inst-aux ctx x T err {schema = schema} eL eI eP ¬g (just σ) eS =
+  success Surface.zeroUsage (Surface.poly x T) 0 (NamedCtx.freshCounter ctx)
+  , t-var-poly-instantiate eL eI eP ¬g inst (poly-body-typed {imps = NamedCtx.imports ctx} {polys = NamedCtx.polys ctx} {x = x} {T = T} eP ¬g inst)
+  where inst = instantiate-sound schema T eS
+
+checkElabV-RVar-poly-ground-aux :
+  ∀ (ctx : NamedCtx) (x : String) (T : Type) (err : TypeError)
+    (schema : PolyType) {body : RawExpr} {prefix : PolyCtx}
+  → lookupLocal ctx x ≡ nothing → lookupImport (NamedCtx.imports ctx) x ≡ nothing
+  → lookupPolyPrefix (NamedCtx.polys ctx) x ≡ just (schema , body , prefix)
+  → (ig : Ground schema ⊎ ⊤) → isGround schema ≡ ig
+  → VerifiedCheckResult ctx (Raw.RVar x) T
+checkElabV-RVar-poly-ground-aux ctx x T err schema eL eI eP (inj₁ _) _ = failure err , tt
+checkElabV-RVar-poly-ground-aux ctx x T err schema eL eI eP (inj₂ tt) eG =
+  checkElabV-RVar-poly-inst-aux ctx x T err eL eI eP (isGround-inj₂→¬Ground schema eG) (instantiate schema T) refl
+
+checkElabV-RVar-poly-check-aux :
+  ∀ (ctx : NamedCtx) (x : String) (T : Type) (err : TypeError)
+  → (ll : Maybe (∃[ A ] ∃[ Ψ ] (Surface.SVar (NamedCtx.debruijn ctx) Ψ A))) → lookupLocal ctx x ≡ ll
+  → (li : Maybe Type) → lookupImport (NamedCtx.imports ctx) x ≡ li
+  → (lp : Maybe (PolyType × RawExpr × PolyCtx)) → lookupPolyPrefix (NamedCtx.polys ctx) x ≡ lp
+  → VerifiedCheckResult ctx (Raw.RVar x) T
+checkElabV-RVar-poly-check-aux ctx x T err (just _) _ _ _ _ _ = failure err , tt
+checkElabV-RVar-poly-check-aux ctx x T err nothing _ (just _) _ _ _ = failure err , tt
+checkElabV-RVar-poly-check-aux ctx x T err nothing _ nothing _ nothing _ = failure err , tt
+checkElabV-RVar-poly-check-aux ctx x T err nothing eL nothing eI (just (schema , body , prefix)) eP =
+  checkElabV-RVar-poly-ground-aux ctx x T err schema eL eI eP (isGround schema) refl
 
 ------------------------------------------------------------------------
 -- Plan 0.58 / D071: infer-mode ground telescope reference (the poly fallback
@@ -2720,11 +2775,11 @@ mutual
   -- bbc-other: success-via-infer mirrors the others; failure goes
   -- through lookupPoly fallback (still postulate-witnessed).
   checkElabV-RVar-bbc-other-aux ctx x T r@(success _ _ _ _ _ , _) = embedOrSubsume ctx (Raw.RVar x) T r
-  checkElabV-RVar-bbc-other-aux ctx x T (failure err , _) with lookupPoly (NamedCtx.polys ctx) x
-  ... | nothing = failure err , tt
-  -- Plan 0.103 phase 2a: only at an INSTANCE of the schema. (The body at `T`
-  -- is still unchecked here — the witness is plan 0.103 phase 6's to delete.)
-  ... | just (schema , _) with instantiate schema T
-  ...   | nothing = failure err , tt
-  ...   | just _  = success Surface.zeroUsage (Surface.poly x T) 0 (NamedCtx.freshCounter ctx) , bbc-other-poly-witness ctx x T
+  -- Plan 0.103 phase 2a: the rule's premises are DECIDED — not a local or an
+  -- import, a non-ground telescope entry, at an instance of its schema; only
+  -- the body's typing at the instance is the phase-6 residual.
+  checkElabV-RVar-bbc-other-aux ctx x T (failure err , _) =
+    checkElabV-RVar-poly-check-aux ctx x T err
+      (lookupLocal ctx x) refl (lookupImport (NamedCtx.imports ctx) x) refl
+      (lookupPolyPrefix (NamedCtx.polys ctx) x) refl
 

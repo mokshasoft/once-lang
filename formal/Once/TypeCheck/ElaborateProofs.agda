@@ -34,6 +34,7 @@ open import Relation.Nullary using (Dec; yes; no; ¬_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Product using (_×_; _,_; ∃-syntax; Σ-syntax; proj₂)
 open import Once.Type.Instance using (instantiate-complete)
+open import Once.Type.Match using (instantiate)
 open import Once.Float.Dyadic using (Dyadic)
 open import Once.Float.Decimal using (decimalOf)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst; cong; cong₂; sym; trans)
@@ -1078,41 +1079,55 @@ resolveExpr-sigOp-extern _ _ _ _ _ conc eq rewrite eq = refl
 -- POSTULATE DELETED (Option A, 2026-04-22). Phase 1 emits a proper
 -- `poly` constructor; the typechecker's behavior doesn't depend on
 -- body. Existential witnesses are satisfied by the `poly x T` placeholder.
+-- Plan 0.103 phase 2a: J-style specialisations of the de-withed check-mode
+-- polymorphic-reference stages.
+poly-check-eq : ∀ (ctx : NamedCtx) (x : String) (T : Type) (err : TypeError) ll eL li eI lp eP
+  → checkElabV-RVar-poly-check-aux ctx x T err (lookupLocal ctx x) refl (lookupImport (NamedCtx.imports ctx) x) refl
+      (lookupPolyPrefix (NamedCtx.polys ctx) x) refl
+    ≡ checkElabV-RVar-poly-check-aux ctx x T err ll eL li eI lp eP
+poly-check-eq ctx x T err .(lookupLocal ctx x) refl .(lookupImport (NamedCtx.imports ctx) x) refl
+  .(lookupPolyPrefix (NamedCtx.polys ctx) x) refl = refl
+
+poly-ground-eq : ∀ (ctx : NamedCtx) (x : String) (T : Type) (err : TypeError) (schema : PolyType)
+  {body prefix} eL eI (eP : lookupPolyPrefix (NamedCtx.polys ctx) x ≡ just (schema , body , prefix)) ig eG
+  → checkElabV-RVar-poly-ground-aux ctx x T err schema eL eI eP (isGround schema) refl
+    ≡ checkElabV-RVar-poly-ground-aux ctx x T err schema eL eI eP ig eG
+poly-ground-eq ctx x T err schema eL eI eP .(isGround schema) refl = refl
+
+poly-inst-eq : ∀ (ctx : NamedCtx) (x : String) (T : Type) (err : TypeError) {schema : PolyType}
+  {body prefix} eL eI (eP : lookupPolyPrefix (NamedCtx.polys ctx) x ≡ just (schema , body , prefix)) ¬g mi eS
+  → checkElabV-RVar-poly-inst-aux ctx x T err eL eI eP ¬g (instantiate schema T) refl
+    ≡ checkElabV-RVar-poly-inst-aux ctx x T err eL eI eP ¬g mi eS
+poly-inst-eq ctx x T err {schema} eL eI eP ¬g .(instantiate schema T) refl = refl
+
 checkElab-fallback-RVar-poly :
   ∀ {ctx : NamedCtx} (x : String) (T : Type)
     {schema : PolyType} {body : RawExpr} {prefix : PolyCtx}
-    {eE_body : SExpr S∅ Surface.zeroUsage T}
-    {d_body f_body : ℕ}
   → lookupLocal ctx x ≡ nothing
   → lookupImport (NamedCtx.imports ctx) x ≡ nothing
-  -- The poly-node emission depends only on `lookupPoly` succeeding (checkElab
-  -- is unchanged — E1-full deferred); the body-elaboration premise (at the
-  -- telescope PREFIX) is threaded for the caller but not read here.
-  → lookupPoly (NamedCtx.polys ctx) x ≡ just (schema , body)
+  → lookupPolyPrefix (NamedCtx.polys ctx) x ≡ just (schema , body , prefix)
   -- Plan 0.58 / D071: NON-ground only — a ground schema INFERS at its declared
   -- type (`t-var-poly-instantiate-infer`), so the check-mode fallback (poly
   -- node at arbitrary `T`) fires only when infer failed, i.e. non-ground.
   → isGround schema ≡ inj₂ tt
   → IsInstance schema T
-  → checkElab (ctxWithImportsAndPolys (NamedCtx.imports ctx) prefix)
-              body T
-      ≡ success Surface.zeroUsage eE_body d_body f_body
   → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ fr →
       checkElab ctx (Raw.RVar x) T
         ≡ success Surface.zeroUsage eE d fr)))
--- D136: the `classifyBareBuiltin` column is gone with the premise — the
--- fallback no longer asks whether a bare name looks like a generator.
--- Plan 0.103 phase 2a: the instance premise makes `instantiate` succeed
+-- Plan 0.103 phase 2a: each stage of the de-withed fallback reduces on its
+-- decided premise; the instance premise makes `instantiate` succeed
 -- (`instantiate-complete`).
-checkElab-fallback-RVar-poly {ctx} x T {schema = schema} eqLoc eqImp eqPoly eqG inst _
+checkElab-fallback-RVar-poly {ctx} x T {schema = schema} eqLoc eqImp eqP eqG inst
   with inferElabV ctx (Raw.RVar x)
      | inferElabV-RVar-fail-bridge ctx x eqLoc eqImp
-         (inferElabV-RVar-poly-aux-fail-nonground ctx x eqLoc eqImp eqPoly eqG)
-... | (failure _ , _) | refl
-  with lookupPoly (NamedCtx.polys ctx) x | eqPoly
-... | just _ | refl
-  with instantiate schema T | proj₂ (instantiate-complete schema T inst)
-...   | just _ | refl = _ , _ , _ , refl
+         (inferElabV-RVar-poly-aux-fail-nonground ctx x eqLoc eqImp
+            (lookupPolyPrefix⇒lookupPoly (NamedCtx.polys ctx) x eqP) eqG)
+... | (failure err , _) | refl =
+  _ , _ , _ ,
+  trans (cong proj₁ (poly-check-eq ctx x T err nothing eqLoc nothing eqImp (just _) eqP))
+    (trans (cong proj₁ (poly-ground-eq ctx x T err schema eqLoc eqImp eqP (inj₂ tt) eqG))
+           (cong proj₁ (poly-inst-eq ctx x T err eqLoc eqImp eqP _ _ (proj₂ (instantiate-complete schema T inst)))))
+  where open import Data.Product using (proj₁)
 
 -- Plan 0.58 / D071: the INFER-mode twin — a GROUND telescope name infers at
 -- its declared type, emitting the `poly` placeholder (Phase 2 splices).
