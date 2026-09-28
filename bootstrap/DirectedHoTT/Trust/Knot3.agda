@@ -24,4 +24,5 @@
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Trust.Knot3 where
 
-import DirectedHoTT.Examples.Knot.LookupCon
+import DirectedHoTT.Examples.Knot.Ren
+import DirectedHoTT.Examples.Knot.Sig

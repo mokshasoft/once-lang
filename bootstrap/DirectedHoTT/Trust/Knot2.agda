@@ -25,3 +25,4 @@
 module DirectedHoTT.Trust.Knot2 where
 
 import DirectedHoTT.Examples.Knot.Lookup
+import DirectedHoTT.Examples.Knot.LookupCon
