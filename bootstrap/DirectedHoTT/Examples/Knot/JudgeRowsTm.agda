@@ -14,7 +14,7 @@ open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong�
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax hiding ( Fin )
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
-open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_; tag; lt-z; lt-s; []ᵈ; _∷ᵈ_ )
+open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_; tag; Lt; lt-z; lt-s; []ᵈ; _∷ᵈ_ )
 open import DirectedHoTT.Lib.SynView using ( PayV; ⊢recFst; ⊢recSnd; ⊢atDepth )
 open import DirectedHoTT.Lib.FinFam using ( ⊢isuc )
 open import DirectedHoTT.Examples.Knot.Ctors
@@ -28,6 +28,10 @@ open import DirectedHoTT.Examples.Knot.Lookup using ( rows; ⊢rows )
 open import DirectedHoTT.Examples.Knot.JudgeIx
 open import DirectedHoTT.Examples.Knot.JudgeTmIx
 open import DirectedHoTT.Examples.Knot.JudgeRowsTy using ( RowOK; f0; r1 )
+open import DirectedHoTT.Examples.Knot.Lookup using ( toTy; hereTy )
+open import DirectedHoTT.Examples.Knot.Sub using ( sub0; ⊢sub0; sub0-sub )
+open import DirectedHoTT.Metatheory.TySub using ( ⊢wk )
+open import DirectedHoTT.Metatheory.SubjectReductionBase using () renaming ( wk-sub to wkS )
 
 private
   variable
@@ -78,7 +82,95 @@ rLam = record
 ⊢CLam : {Ξ : Ctx} {j p c : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El ⌜Nat⌝ →
         Ξ ⊢ p ∷ PayV sh-klam (pair (tag 1) j) (SI 2) (SD KSig) → Ξ ⊢ c ∷ El (CTat (pair (tag 1) j)) →
         Ξ ⊢ CLam j p c ∷ Desc JT
-⊢CLam dj dp dc = PLam.⊢CASE okLamI lt-z dj (⊢tyOf dc) (⊢cI sh-klam ok-klam dj (⊢ctxOf dc) dp)
+⊢CLam {Ξ} {j} {p} {c} dj dp dc =
+  PLam.⊢CASE {Ξ} {j} {snd c} {pair (fst c) p} okLamI lt-z dj (⊢tyOf dc) (⊢cI sh-klam ok-klam dj (⊢ctxOf dc) dp)
 
 okLam : RowOK 1 sh-klam rLam
-okLam dj dp dc = ⊢rows ⊢JT (⊢CLam dj dp dc ∷ᵈ []ᵈ)
+okLam {Ξ} {j} {p} {c} dj dp dc = ⊢rows {Ξ} {JT} {1} {CLam j p c ∷ []} ⊢JT (⊢CLam {Ξ} {j} {p} {c} dj dp dc ∷ᵈ []ᵈ)
+
+------------------------------------------------------------------------
+-- ⊢app : Γ ⊢ t ∷ Π A B → Γ ⊢ u ∷ A → Γ ⊢ app t u ∷ B[u]
+--   `A`, `B` are not in the subject: σ-fields; `B[u]` is COMPUTED: Ford
+--   (`sub0` is opaque — see Knot/Sub)
+------------------------------------------------------------------------
+
+w1 w2 : RTm Δ → RTm _
+w1 x = renTm vs x
+w2 x = renTm vs (renTm vs x)
+
+w2-sub : (σ : Sub Δ Θ) (x : RTm Δ) → subTm (extS (extS σ)) (w2 x) ≡ w2 (subTm σ x)
+w2-sub σ x = trans (wkS (extS σ) (w1 x)) (cong w1 (wkS σ x))
+
+TAppI : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
+TAppI J G T Q A B X = tρ (tmIx J G T (kPi A B)) (tρ (tmIx J G Q A) (tσ (⌜Id⌝ (⌜Ty⌝ J) X (sub0 0 J B Q)) tι))
+
+TAppI-sub : (σ : Sub Δ Θ) (J G T Q A B X : RTm Δ) →
+            subTm σ ⌜ TAppI J G T Q A B X ⌝ᵗ
+            ≡ ⌜ TAppI (subTm σ J) (subTm σ G) (subTm σ T) (subTm σ Q) (subTm σ A) (subTm σ B) (subTm σ X) ⌝ᵗ
+TAppI-sub σ J G T Q A B X =
+  cong₂ (λ Y Z → dρ (tmIx J' (subTm σ G) (subTm σ T) (kPi A' B'))
+                   (dρ (tmIx J' (subTm σ G) Q' A') (dσ (⌜Id⌝ Y (subTm σ X) Z) (lam dι))))
+        {x = subTm σ (⌜Ty⌝ J)} {x' = ⌜Ty⌝ J'} {y = subTm σ (sub0 0 J B Q)} {y' = sub0 0 J' B' Q'}
+        (⌜Ty⌝-sub σ J) (sub0-sub σ 0 J B Q)
+  where J' = subTm σ J ; Q' = subTm σ Q ; A' = subTm σ A ; B' = subTm σ B
+
+TAppI-cong : (J J' G G' T T' Q Q' A B X X' : RTm Δ) → J ≡ J' → G ≡ G' → T ≡ T' → Q ≡ Q' → X ≡ X' →
+             ⌜ TAppI J G T Q A B X ⌝ᵗ ≡ ⌜ TAppI J' G' T' Q' A B X' ⌝ᵗ
+TAppI-cong J J' G G' T T' Q Q' A B X X' refl refl refl refl refl = refl
+
+dσ²-cong : (X X' : RTm Δ) (Y Y' : RTm (Δ ∙)) (Z Z' : RTm ((Δ ∙) ∙)) → X ≡ X' → Y ≡ Y' → Z ≡ Z' →
+           dσ X (lam (dσ Y (lam Z))) ≡ dσ X' (lam (dσ Y' (lam Z')))
+dσ²-cong X X' Y Y' Z Z' refl refl refl = refl
+
+TApp : RTm Δ → RTm Δ → RTm Δ → Tel Δ
+TApp j p c = tσ (⌜Ty⌝ j) (tσ (⌜Ty⌝ (nsuc (w1 j)))
+               (TAppI (w2 j) (w2 (fst c)) (w2 (fst p)) (w2 (fst (snd p))) (var (vs vz)) (var vz) (w2 (snd c))))
+
+TApp-law : TelLaw TApp
+TApp-law σ j p c =
+  dσ²-cong (subTm σ (⌜Ty⌝ j)) (⌜Ty⌝ (subTm σ j))
+           (subTm (extS σ) (⌜Ty⌝ (nsuc (w1 j)))) (⌜Ty⌝ (nsuc (w1 (subTm σ j))))
+           (subTm (extS (extS σ)) ⌜ TAppI (w2 j) (w2 (fst c)) (w2 (fst p)) (w2 (fst (snd p))) (var (vs vz)) (var vz) (w2 (snd c)) ⌝ᵗ)
+           ⌜ TAppI (w2 (subTm σ j)) (w2 (fst (subTm σ c))) (w2 (fst (subTm σ p))) (w2 (fst (snd (subTm σ p)))) (var (vs vz)) (var vz) (w2 (snd (subTm σ c))) ⌝ᵗ
+           (⌜Ty⌝-sub σ j)
+           (trans (⌜Ty⌝-sub (extS σ) (nsuc (w1 j))) (cong (λ z → ⌜Ty⌝ (nsuc z)) {x = subTm (extS σ) (w1 j)} {y = w1 (subTm σ j)} (wkS σ j)))
+           (trans (TAppI-sub (extS (extS σ)) (w2 j) (w2 (fst c)) (w2 (fst p)) (w2 (fst (snd p))) (var (vs vz)) (var vz) (w2 (snd c)))
+                  (TAppI-cong _ _ _ _ _ _ _ _ (var (vs vz)) (var vz) _ _ (w2-sub σ j) (w2-sub σ (fst c)) (w2-sub σ (fst p)) (w2-sub σ (fst (snd p))) (w2-sub σ (snd c))))
+
+rApp : Row
+rApp = defRow TApp TApp-law
+
+okAppT : {Ξ : Ctx} {j p c : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El ⌜Nat⌝ →
+         Ξ ⊢ p ∷ PayV sh-kapp (pair (tag 1) j) (SI 2) (SD KSig) → Ξ ⊢ c ∷ El (CTat (pair (tag 1) j)) →
+         TelOK Ξ JT (TApp j p c)
+okAppT {Ξ} {j} {p} {c} dj dp dc =
+  ok-σ (⊢⌜Ty⌝ dj) (subst (λ X → TelOK Ξ₁ X T₁) (sym (JT-ren vs))
+    (ok-σ (⊢⌜Ty⌝ (⊢isuc dj₁)) (subst (λ X → TelOK Ξ₂ X T₂) (sym (JT-ren vs)) okI)))
+  where
+    Ξ₁ Ξ₂ : Ctx
+    Ξ₁ = Ξ ▹ El (⌜Ty⌝ j)
+    Ξ₂ = Ξ₁ ▹ El (⌜Ty⌝ (nsuc (w1 j)))
+    T₂ = TAppI (w2 j) (w2 (fst c)) (w2 (fst p)) (w2 (fst (snd p))) (var (vs vz)) (var vz) (w2 (snd c))
+    T₁ = tσ (⌜Ty⌝ (nsuc (w1 j))) T₂
+    dj₁ : Ξ₁ ⊢ w1 j ∷ El ⌜Nat⌝
+    dj₁ = ⊢wk {Ξ} {El (⌜Ty⌝ j)} {j} {El ⌜Nat⌝} dj
+    dj₂ : Ξ₂ ⊢ w2 j ∷ El ⌜Nat⌝
+    dj₂ = ⊢wk {Ξ₁} {El (⌜Ty⌝ (nsuc (w1 j)))} {w1 j} {El ⌜Nat⌝} dj₁
+    wk2K : {s : ℕ} {d x : RTm ⌊ Ξ ⌋} → Ξ ⊢ x ∷ K s d → Ξ₂ ⊢ w2 x ∷ K s (w2 d)
+    wk2K {s} {d} {x} dx = ⊢wkSK {Γ = Ξ₁} {B = El (⌜Ty⌝ (nsuc (w1 j)))} {sg = KSig} {s = s} {d = w1 d} {t = w1 x}
+                            (⊢wkSK {Γ = Ξ} {B = El (⌜Ty⌝ j)} {sg = KSig} {s = s} {d = d} {t = x} dx)
+    dg₂ : Ξ₂ ⊢ w2 (fst c) ∷ KCtx (w2 j)
+    dg₂ = ⊢wkCtx {Ξ₁} {El (⌜Ty⌝ (nsuc (w1 j)))} {w1 j} {w1 (fst c)} (⊢wkCtx {Ξ} {El (⌜Ty⌝ j)} {j} {fst c} (⊢ctxOf dc))
+    dt = wk2K (g0 1 0 (rec 1 0 ∷ʰ []ʰ) dp)
+    du = wk2K (g0 1 0 []ʰ (⊢recSnd {s = 1} {k = 0} {sh = rec 1 0 ∷ʰ []ʰ} dp))
+    dA : Ξ₂ ⊢ var (vs vz) ∷ K 0 (w2 j)
+    dA = ⊢wkSK {Γ = Ξ₁} {B = El (⌜Ty⌝ (nsuc (w1 j)))} {sg = KSig} {s = 0} {d = w1 j} {t = var vz} (hereTy {Ξ} {j})
+    dB : Ξ₂ ⊢ var vz ∷ K 0 (nsuc (w2 j))
+    dB = hereTy {Ξ₁} {nsuc (w1 j)}
+    okI : TelOK Ξ₂ JT T₂
+    okI = ok-ρ (⊢tmIx dj₂ dg₂ dt (⊢kPi dj₂ dA dB))
+            (ok-ρ (⊢tmIx dj₂ dg₂ du dA)
+              (ok-σ (⊢⌜Id⌝ (⊢⌜Ty⌝ dj₂) (toTy (wk2K (⊢tyOf dc))) (toTy (⊢sub0 lt-z dj₂ dB du))) ok-ι))
+
+okApp : RowOK 1 sh-kapp rApp
+okApp {Ξ} {j} {p} {c} dj dp dc = ⊢rows {Ξ} {JT} {1} {⌜ TApp j p c ⌝ᵗ ∷ []} ⊢JT (⊢tel {Ξ} {JT} {TApp j p c} ⊢JT (okAppT dj dp dc) ∷ᵈ []ᵈ)
