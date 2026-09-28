@@ -29,7 +29,10 @@
 -- them), so REFERENCING one is pure and its effect is paid at application.
 ------------------------------------------------------------------------
 
-module Once.Spec.Core.Typing where
+open import Data.Nat using (ℕ)
+open import Once.Spec.Core.PolyTy using (Sig; _!!_; arity; kinds; type; Respects; _⟪_⟫; GSub)
+
+module Once.Spec.Core.Typing {s : ℕ} (S : Sig s) where
 
 open import Data.Nat using (ℕ)
 open import Data.Bool using (true)
@@ -44,7 +47,7 @@ open import Once.Type.Honest using (HonestFFI)
 open import Once.CanonicalName using (CanonicalName)
 open import Once.Surface.Context
   using (Ctx; _,_; lookup; Usage; _∷_; zeroUsage; singleUse; _+ᵘ_; _*ᵘ_; _⊔ᵘ_)
-open import Once.Spec.Core.Syntax
+open import Once.Spec.Core.Syntax S
 
 ------------------------------------------------------------------------
 -- The judgment
@@ -149,6 +152,12 @@ data _⊢[_]_∷_!_ : ∀ {n} → Ctx n → Usage n → Tm n → Type → Purity
   -- referencing it is pure.
   ⊢sigop : ∀ {n} {Γ : Ctx n} {A} (c : CanonicalName) (k : IsConcrete A) → HonestFFI A
          → Γ ⊢[ zeroUsage ] sigop c A ∷ A ! pure
+
+  -- Plan 0.103 phase 4: a definition at a kind-respecting ground instance of
+  -- its schema. Closed and pure (a definition is a value of its type).
+  ⊢ref : ∀ {n} {Γ : Ctx n} (d : _) (τ : GSub (arity (S !! d)))
+       → Respects (kinds (S !! d)) τ
+       → Γ ⊢[ zeroUsage ] ref d τ ∷ type (S !! d) ⟪ τ ⟫ ! pure
 
   -- D068: pure ⊑ eff is SUBSUMPTION — no term, identity meaning.
   ⊢sub-eff : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {π π′ : Purity} {A t}

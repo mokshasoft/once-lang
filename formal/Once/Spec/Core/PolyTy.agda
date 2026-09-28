@@ -270,3 +270,26 @@ wf-⟪⟫ r (wf-K b)      = WellFormedF.wf-K (base-⟪⟫ r b)
 wf-⟪⟫ r wf-Id         = WellFormedF.wf-Id
 wf-⟪⟫ r (wf-Sum f g)  = WellFormedF.wf-Sum (wf-⟪⟫ r f) (wf-⟪⟫ r g)
 wf-⟪⟫ r (wf-Prod f g) = WellFormedF.wf-Prod (wf-⟪⟫ r f) (wf-⟪⟫ r g)
+
+------------------------------------------------------------------------
+-- Plan 0.103 phase 4: the DEFINITIONS SIGNATURE of a core telescope — the
+-- schema `∀ Δ. T` of each definition, in declaration order.
+------------------------------------------------------------------------
+
+record Schema : Set where
+  constructor schema
+  field
+    arity : ℕ
+    kinds : KCtx arity
+    type  : Ty arity
+open Schema public
+
+data Sig : ℕ → Set where
+  []  : Sig 0
+  _▷_ : ∀ {s} → Sig s → Schema → Sig (suc s)
+
+infixl 5 _▷_
+
+_!!_ : ∀ {s} → Sig s → Fin s → Schema
+(S ▷ sc) !! zero  = sc
+(S ▷ sc) !! suc d = S !! d

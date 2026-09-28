@@ -20,7 +20,10 @@
 -- derivation — the meaning of `∀` as the family `Π(σ). ⟦T[σ]⟧` (phase 4).
 ------------------------------------------------------------------------
 
-module Once.Spec.Core.PolyTyping where
+open import Data.Nat using (ℕ)
+open import Once.Spec.Core.PolyTy using (Sig)
+
+module Once.Spec.Core.PolyTyping {s : ℕ} (S : Sig s) where
 
 open import Data.Nat using (ℕ; suc)
 open import Data.Fin using (Fin; zero; suc)
@@ -36,9 +39,9 @@ open import Once.Type.Honest using (HonestFFI)
 open import Once.CanonicalName using (CanonicalName)
 open import Once.Surface.Context as C using (Usage; _∷_; zeroUsage; singleUse; _+ᵘ_; _*ᵘ_; _⊔ᵘ_)
 open import Once.Spec.Core.PolyTy
-import Once.Spec.Core.Syntax as G
+import Once.Spec.Core.Syntax S as G
 open G using (Lit; lit-int; lit-float; lit-str; Prim; primDom; primCod)
-import Once.Spec.Core.Typing as GT
+import Once.Spec.Core.Typing S as GT
 
 ------------------------------------------------------------------------
 -- Contexts and terms over `m` type variables
@@ -78,6 +81,8 @@ data PTm (m n : ℕ) : Set where
   lit    : Lit → PTm m n
   prim   : Prim → PTm m n → PTm m n
   sigop  : CanonicalName → T.Type → PTm m n
+  -- Plan 0.103 phase 4: a definition at an instance of its schema (open types).
+  ref    : (d : Fin s) → Sub (arity (S !! d)) m → PTm m n
 
 ------------------------------------------------------------------------
 -- Ground instantiation of contexts and terms
@@ -112,6 +117,7 @@ coerce A B t ⟪ σ ⟫ₜ = G.coerce (A ⟪ σ ⟫) (B ⟪ σ ⟫) (t ⟪ σ �
 lit l        ⟪ σ ⟫ₜ = G.lit l
 prim p t     ⟪ σ ⟫ₜ = G.prim p (t ⟪ σ ⟫ₜ)
 sigop c A    ⟪ σ ⟫ₜ = G.sigop c A
+ref d τ      ⟪ σ ⟫ₜ = G.ref d (λ i → τ i ⟪ σ ⟫)
 
 infixl 60 _⟪_⟫ᶜ _⟪_⟫ₜ
 
@@ -243,6 +249,13 @@ data _⊩_⊢[_]_∷_!_ {m} (Δ : KCtx m) : ∀ {n} → PCtx m n → Usage n →
   ⊢sub-eff : ∀ {n} {Γ : PCtx m n} {Ψ : Usage n} {π π′ : Purity} {A t}
            → π ⊑π π′ → Δ ⊩ Γ ⊢[ Ψ ] t ∷ A ! π → Δ ⊩ Γ ⊢[ Ψ ] t ∷ A ! π′
 
+  -- Plan 0.103 phase 4: a definition at an instance of its schema — the
+  -- instantiation respects the schema's kinds (a base variable gets a type
+  -- that is base under `Δ`).
+  ⊢ref : ∀ {n} {Γ : PCtx m n} (d : Fin s) (τ : Sub (arity (S !! d)) m)
+       → (∀ i → kinds (S !! d) i ≡ base → Base Δ (τ i))
+       → Δ ⊩ Γ ⊢[ zeroUsage ] ref d τ ∷ type (S !! d) ⟨ τ ⟩ ! pure
+
 ------------------------------------------------------------------------
 -- THE GROUND INSTANTIATION THEOREM
 ------------------------------------------------------------------------
@@ -294,3 +307,7 @@ instantiate {Γ = Γ} {Ψ = Ψ} {π = π} σ r (⊢prim {t = t} p d) =
 instantiate {Γ = Γ} σ r (⊢sigop {A = A} c k h) =
   subst (λ X → Γ ⟪ σ ⟫ᶜ GT.⊢[ zeroUsage ] G.sigop c A ∷ X ! pure) (sym (⌈⌉-⟪⟫ A σ)) (GT.⊢sigop c k h)
 instantiate σ r (⊢sub-eff g d) = GT.⊢sub-eff g (instantiate σ r d)
+instantiate {Γ = Γ} σ r (⊢ref d τ k) =
+  subst (λ X → Γ ⟪ σ ⟫ᶜ GT.⊢[ zeroUsage ] G.ref d (λ i → τ i ⟪ σ ⟫) ∷ X ! pure)
+        (sym (⟨⟩-⟪⟫ (type (S !! d)) τ σ))
+        (GT.⊢ref d (λ i → τ i ⟪ σ ⟫) (λ i e → base-⟪⟫ r (k i e)))

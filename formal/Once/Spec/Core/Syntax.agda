@@ -30,7 +30,12 @@
 --   FFI                  sigop (a declared constant with a contract, D061/D071)
 ------------------------------------------------------------------------
 
-module Once.Spec.Core.Syntax where
+open import Data.Nat using (ℕ)
+open import Once.Spec.Core.PolyTy using (Sig; _!!_; arity; GSub)
+
+-- Plan 0.103 phase 4: the core is relative to a DEFINITIONS SIGNATURE `S` —
+-- the schemas of the telescope's earlier definitions.
+module Once.Spec.Core.Syntax {s : ℕ} (S : Sig s) where
 
 open import Data.Nat using (ℕ; suc)
 open import Data.Fin using (Fin; zero; suc)
@@ -122,6 +127,8 @@ data Tm (n : ℕ) : Set where
   lit    : Lit → Tm n
   prim   : Prim → Tm n → Tm n
   sigop  : CanonicalName → Type → Tm n
+  -- Plan 0.103 phase 4: a DEFINITION at a ground instance of its schema.
+  ref    : (d : Fin s) → GSub (arity (S !! d)) → Tm n
 
 ------------------------------------------------------------------------
 -- Renaming and substitution (strict, as in the POC's K0)
@@ -155,6 +162,7 @@ ren ρ (coerce A B t) = coerce A B (ren ρ t)
 ren ρ (lit l)        = lit l
 ren ρ (prim p t)     = prim p (ren ρ t)
 ren ρ (sigop c A)    = sigop c A
+ren ρ (ref d τ)      = ref d τ
 
 wk : ∀ {n} → Tm n → Tm (suc n)
 wk = ren suc
@@ -187,6 +195,7 @@ sub σ (coerce A B t) = coerce A B (sub σ t)
 sub σ (lit l)        = lit l
 sub σ (prim p t)     = prim p (sub σ t)
 sub σ (sigop c A)    = sigop c A
+sub σ (ref d τ)      = ref d τ
 
 -- What β plugs in.
 single : ∀ {n} → Tm n → Sub (suc n) n

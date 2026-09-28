@@ -15681,3 +15681,13 @@ former, the ground core's rules read over `Ty m`).
   `t⟪σ⟫ ∷ A⟪σ⟫`. This is the type-substitution lemma at ground targets (plan 0.103 phase 5),
   and it DEFINES the meaning of a polymorphic term at an instance: the ground meaning of the
   instantiated derivation — `∀` as the family `Π(σ). ⟦T[σ]⟧`. The ground core is unchanged.
+
+## D239 — THE CORE TELESCOPE WITH ∀ (PLAN 0.103 PHASE 4) (2026-09-28)
+
+The core is relative to a DEFINITIONS SIGNATURE (`Sig`: the schemas `∀Δ. T` of the earlier
+definitions); both the ground and the polymorphic core gain `ref d τ`, a definition at an
+instance of its schema (kind-respecting). `Spec.Core.Telescope`: a module is a telescope whose
+entries are typed ONCE, over their kinds, in their prefix's signature; a `Program` ends in
+`main : IO Unit`. Its meaning is the environment of families — entry `d` at a ground
+instantiation `τ` means the ground meaning of `instantiate τ D` in the prefix's environment —
+so `∀` means `Π(σ). ⟦T[σ]⟧` constructively, with no parametricity claim.

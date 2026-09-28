@@ -21,12 +21,15 @@
 -- what the definition means). Their typing rules are admissible (plan 0.102 B).
 ------------------------------------------------------------------------
 
-module Once.Spec.Core.Derived where
+open import Data.Nat using (ℕ)
+open import Once.Spec.Core.PolyTy using (Sig)
+
+module Once.Spec.Core.Derived {s : ℕ} (S : Sig s) where
 
 open import Data.Nat using (ℕ)
 open import Data.Fin using (zero; suc)
 open import Once.Type using (Functor; K; Id; _⊕_; _⊗_)
-open import Once.Spec.Core.Syntax
+open import Once.Spec.Core.Syntax S
 
 private
   v0 : ∀ {n} → Tm (ℕ.suc n)
