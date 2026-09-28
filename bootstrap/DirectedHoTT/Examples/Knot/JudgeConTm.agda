@@ -19,17 +19,19 @@ open import DirectedHoTT.Metatheory.SubjectReductionBase using () renaming ( wk-
 open import DirectedHoTT.Examples.Knot.Lookup using ( toTy; hereTy; K∋; I∋; D∋; ix∋ )
 open import DirectedHoTT.Lib.FinFam using ( FinI )
 open import DirectedHoTT.Examples.Knot.Sub using ( sub0; ⊢sub0; ⟶*-sub0ᵘ )
-open import DirectedHoTT.Lib.Sugar using ( tag; conₗ; lt-z; lt-s )
+open import DirectedHoTT.Lib.Sugar using ( tag; conₗ; lt-z; lt-s; nth-z; []; _∷_; []ᵈ; _∷ᵈ_ )
 open import DirectedHoTT.Examples.Knot.Ctors
 open import DirectedHoTT.Lib.Tel
 open import DirectedHoTT.Lib.Syn
-open import DirectedHoTT.Lib.SynFib using ( ⊢conRow )
+open import DirectedHoTT.Lib.SynFib using ( ⊢conRowₖ )
 open import DirectedHoTT.Examples.Knot.Sig
 open import DirectedHoTT.Examples.Knot.Ctx
 open import DirectedHoTT.Examples.Knot.JudgeIx
 open import DirectedHoTT.Examples.Knot.JudgeTmIx
-open import DirectedHoTT.Examples.Knot.JudgeRowsTm
-open import DirectedHoTT.Examples.Knot.JudgeCase using ( w1; w2 )
+open import DirectedHoTT.Examples.Knot.JudgeRowsGen
+open import DirectedHoTT.Examples.Knot.JudgeRowsTm using ( g0 )
+open import DirectedHoTT.Examples.Knot.JudgeCase using ( w1; w2; okσJ; wkN; wkG; wkK; dσ¹-cong )
+open import DirectedHoTT.Examples.Knot.JudgeConv using ( TCVat; okTCVat; El-⌜∋⌝ )
 open import DirectedHoTT.Examples.Knot.Judge
 
 -- ★ `⊢lam : Γ ⊢ty A → (Γ ▹ A) ⊢ t ∷ B → Γ ⊢ lam t ∷ Π A B`
@@ -38,10 +40,12 @@ open import DirectedHoTT.Examples.Knot.Judge
           Ξ ⊢ r₁ ∷ K⊢ (tyIx j g A) → Ξ ⊢ r₂ ∷ K⊢ (tmIx (nsuc j) (cext g A) t B) →
           Ξ ⊢ conₗ 0 (pair r₁ (pair r₂ unit)) ∷ K⊢ (tmIx j g (klam t) (kPi A B))
 ⊢tm-lam {Ξ} {j} {g} {A} {B} {t} {r₁} {r₂} dj dg dA dB dt dr₁ dr₂ =
-  ⊢conRow {Ξ} {JT} {D⊢} {tmIx j g (klam t) (kPi A B)} {CLam j p c} {pair r₁ (pair r₂ unit)} ⊢JT ⊢D⊢
+  ⊢conRowₖ {Ξ} {2} {0} {JT} {D⊢} {tmIx j g (klam t) (kPi A B)} {PT⊢lam.CX j p c} {pair r₁ (pair r₂ unit)}
+           {PT⊢lam.CX j p c ∷ ⌜ TCVat 1 j p c ⌝ᵗ ∷ []} nth-z ⊢JT ⊢D⊢
           (⊢tmIx dj dg (⊢klam dj dt) (⊢kPi dj dA dB))
           (fibK {s = 1} {k = 1} {j = j} {p = p} {c = c} (nthᵍ-s nthᵍ-z) (nthʰ-s nthʰ-z))
-          (⊢CLam dj dp dc)
+          (PT⊢lam.⊢CX okC⊢lamI {Ξ} {j} {p} {c} dj dp dc
+             ∷ᵈ ⊢tel {Ξ} {JT} {TCVat 1 j p c} ⊢JT (okTCVat (nthᵍ-s nthᵍ-z) (nthʰ-s nthʰ-z) dj dp dc) ∷ᵈ []ᵈ)
           (⊢conv payT (csymᵀ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ redC)))))
   where
     p c q c' : RTm ⌊ Ξ ⌋
@@ -52,17 +56,17 @@ open import DirectedHoTT.Examples.Knot.Judge
     dp = ⊢payK (lt-s lt-z) ok-klam dj (a-rec dt a[])
     dc = ⊢cTm dj dg (⊢kPi dj dA dB)
     -- the outer row's one rule: the case on `Π A B`
-    redC : CLam j p c ⟶* ⌜ TLam j q c' ⌝ᵗ
-    redC = ⟶*-trans {t = CLam j p c} {u = PLam.CASE j (kPi A B) (pair (fst c) p)} {v = ⌜ TLam j q c' ⌝ᵗ}
-             (⟶*-appˡ (⟶*-ielimᵗ (step (βsnd g (kPi A B)) done)))
-             (⟶*-trans {t = PLam.CASE j (kPi A B) (pair (fst c) p)} {u = PLam.CASE j (kPi A B) c'} {v = ⌜ TLam j q c' ⌝ᵗ}
-                (⟶*-appʳ (⟶*-pairˡ (step (βfst g (kPi A B)) done)))
-                (PLam.case-β {j = j} {q = q} {c = c'} nthᵍ-z (nthʰ-s (nthʰ-s nthʰ-z))))
+    redC : PT⊢lam.CX j p c ⟶* ⌜ T⊢lam j q c' ⌝ᵗ
+    redC = ⟶*-trans {t = PT⊢lam.CX j p c} {u = PT⊢lam.CASE j (kPi A B) (pair (fst c) p)} {v = ⌜ T⊢lam j q c' ⌝ᵗ}
+             (PT⊢lam.CASE-⟶ᵃ (step (βsnd g (kPi A B)) done))
+             (⟶*-trans {t = PT⊢lam.CASE j (kPi A B) (pair (fst c) p)} {u = PT⊢lam.CASE j (kPi A B) c'} {v = ⌜ T⊢lam j q c' ⌝ᵗ}
+                (PT⊢lam.CASE-⟶ᶜ (⟶*-pairˡ (step (βfst g (kPi A B)) done)))
+                (PT⊢lam.case-β {j = j} {q = q} {c = c'} nthᵍ-z (nthʰ-s (nthʰ-s nthʰ-z))))
     J1 J2 : RTm ⌊ Ξ ⌋
     J1 = tyIx j (fst c') (fst q)
     J2 = tmIx (nsuc j) (cext (fst c') (fst q)) (fst (snd c')) (fst (snd q))
-    ok : TelOK Ξ JT (TLam j q c')
-    ok = okLamT dj (⊢payK lt-z ok-kPi dj (a-rec dA (a-rec dB a[]))) (⊢cI sh-klam ok-klam dj dg dp)
+    ok : TelOK Ξ JT (T⊢lam j q c')
+    ok = okT⊢lam dj (⊢payK lt-z ok-kPi dj (a-rec dA (a-rec dB a[]))) (⊢cI sh-klam ok-klam dj dg dp)
     okRest : {J : RTm ⌊ Ξ ⌋} {T : Tel ⌊ Ξ ⌋} → TelOK Ξ JT (tρ J T) → TelOK Ξ JT T
     okRest (ok-ρ _ o) = o
     fA : fst q ⟶* A
@@ -84,7 +88,7 @@ open import DirectedHoTT.Examples.Knot.Judge
                                      (⟶*-pairˡ fg) (⟶*-pairʳ (⟶*-pairˡ fA))))))
                         (⟶*-pairʳ (⟶*-trans {t = fst (snd q)} {u = fst (pair B unit)} {v = B}
                                      (⟶*-fst (step (βsnd A (pair B unit)) done)) (step (βfst B unit) done))))))
-    payT : Ξ ⊢ pair r₁ (pair r₂ unit) ∷ El (dpay JT D⊢ ⌜ TLam j q c' ⌝ᵗ)
+    payT : Ξ ⊢ pair r₁ (pair r₂ unit) ∷ El (dpay JT D⊢ ⌜ T⊢lam j q c' ⌝ᵗ)
     payT = ⊢payρ {Ξ} {JT} {D⊢} ⊢JT ⊢D⊢ {J1} {r₁} {pair r₂ unit} {tρ J2 tι} ok
                  (⊢conv dr₁ (csymᵀ (red→≅ᵀ (⟶ᵀ*-IMu rix1))))
                  (⊢payρ {Ξ} {JT} {D⊢} ⊢JT ⊢D⊢ {J2} {r₂} {unit} {tι} (okRest ok)
@@ -111,14 +115,16 @@ private
           Ξ ⊢ conₗ 0 (pair A (pair B (pair r₁ (pair r₂ (pair (idrefl (⌜Ty⌝ j) (sub0 0 j B u)) unit)))))
             ∷ K⊢ (tmIx j g (kapp t u) (sub0 0 j B u))
 ⊢tm-app {Ξ} {j} {g} {A} {B} {t} {u} {r₁} {r₂} dj dg dA dB dt du dr₁ dr₂ =
-  ⊢conRow {Ξ} {JT} {D⊢} {tmIx j g (kapp t u) X} {⌜ TApp j p c ⌝ᵗ} {pay} ⊢JT ⊢D⊢
+  ⊢conRowₖ {Ξ} {2} {0} {JT} {D⊢} {tmIx j g (kapp t u) X} {⌜ T⊢app j p c ⌝ᵗ} {pay}
+           {⌜ T⊢app j p c ⌝ᵗ ∷ ⌜ TCVat 2 j p c ⌝ᵗ ∷ []} nth-z ⊢JT ⊢D⊢
           (⊢tmIx dj dg (⊢kapp dj dt du) dX)
           (fibK {s = 1} {k = 2} {j = j} {p = p} {c = c} (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s nthʰ-z)))
-          (⊢tel {Ξ} {JT} {TApp j p c} ⊢JT ok0)
-          (⊢payσ {Ξ} {JT} {D⊢} ⊢JT ⊢D⊢ {⌜Ty⌝ j} {A} {pay1} {T0} ok0 (toTy dA)
+          (⊢tel {Ξ} {JT} {T⊢app j p c} ⊢JT ok0
+             ∷ᵈ ⊢tel {Ξ} {JT} {TCVat 2 j p c} ⊢JT (okTCVat (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s nthʰ-z)) dj dp dc) ∷ᵈ []ᵈ)
+          (⊢payσ {Ξ} {JT} {D⊢} ⊢JT ⊢D⊢ {C⊢app_0I j} {A} {pay1} {T0} ok0 (toTy dA)
             (⊢-cast {Ξ} {pay1} {El (dpay JT D⊢ ⌜ T1 ⌝ᵗ)} {El (dpay JT D⊢ (subTm (single A) ⌜ T0 ⌝ᵗ))}
                     (cong (λ Z → El (dpay JT D⊢ Z)) (sym e1))
-              (⊢payσ {Ξ} {JT} {D⊢} ⊢JT ⊢D⊢ {⌜Ty⌝ (nsuc j)} {B} {pay2} {T1'} ok1 (toTy dB)
+              (⊢payσ {Ξ} {JT} {D⊢} ⊢JT ⊢D⊢ {C⊢app_1I j} {B} {pay2} {T1'} ok1 (toTy dB)
                 (⊢-cast {Ξ} {pay2} {El (dpay JT D⊢ ⌜ T2 ⌝ᵗ)} {El (dpay JT D⊢ (subTm (single B) ⌜ T1' ⌝ᵗ))}
                         (cong (λ Z → El (dpay JT D⊢ Z)) (sym e2))
                   (⊢payρ {Ξ} {JT} {D⊢} ⊢JT ⊢D⊢ {J1} {r₁} {pair r₂ (pair e unit)} {tρ J2 TE} ok2
@@ -140,17 +146,17 @@ private
     dX = ⊢sub0 lt-z dj dB du
     dp = ⊢payK (lt-s lt-z) ok-kapp dj (a-rec dt (a-rec du a[]))
     dc = ⊢cTm dj dg dX
-    ok0 : TelOK Ξ JT (TApp j p c)
-    ok0 = okAppT dj dp dc
+    ok0 : TelOK Ξ JT (T⊢app j p c)
+    ok0 = okT⊢app dj dp dc
     -- the telescope after each σ-field
     T0 : Tel (⌊ Ξ ⌋ ∙)
-    T0 = tσ (⌜Ty⌝ (nsuc (w1 j))) (TAppI (w2 j) (w2 (fst c)) (w2 (fst p)) (w2 (fst (snd p))) (var (vs vz)) (var vz) (w2 (snd c)))
+    T0 = tσ (C⊢app_1I (w1 j)) (T⊢appI (w2 j) (w2 (fst c)) (w2 (snd c)) (w2 (fst p)) (w2 (fst (snd p))) (var (vs vz)) (var vz))
     T1' : Tel (⌊ Ξ ⌋ ∙)
-    T1' = TAppI (w1 j) (w1 (fst c)) (w1 (fst p)) (w1 (fst (snd p))) (w1 A) (var vz) (w1 (snd c))
+    T1' = T⊢appI (w1 j) (w1 (fst c)) (w1 (snd c)) (w1 (fst p)) (w1 (fst (snd p))) (w1 A) (var vz)
     T1 : Tel ⌊ Ξ ⌋
-    T1 = tσ (⌜Ty⌝ (nsuc j)) T1'
+    T1 = tσ (C⊢app_1I j) T1'
     T2 : Tel ⌊ Ξ ⌋
-    T2 = TAppI j (fst c) (fst p) (fst (snd p)) A B (snd c)
+    T2 = T⊢appI j (fst c) (snd c) (fst p) (fst (snd p)) A B
     SE = ⌜Id⌝ (⌜Ty⌝ j) (snd c) (sub0 0 j B (fst (snd p)))
     TE : Tel ⌊ Ξ ⌋
     TE = tσ SE tι
@@ -159,13 +165,13 @@ private
     J2 = tmIx j (fst c) (fst (snd p)) A
     e1 : subTm (single A) ⌜ T0 ⌝ᵗ ≡ ⌜ T1 ⌝ᵗ
     e1 = dσ-cong _ _ _ _
-           (trans (⌜Ty⌝-sub (single A) (nsuc (w1 j))) (cong (λ z → ⌜Ty⌝ (nsuc z)) {x = subTm (single A) (w1 j)} {y = j} (wk-cancel-tm A j)))
-           (trans (TAppI-sub (extS (single A)) (w2 j) (w2 (fst c)) (w2 (fst p)) (w2 (fst (snd p))) (var (vs vz)) (var vz) (w2 (snd c)))
-                  (TAppI-cong _ _ _ _ _ _ _ _ _ _ _ _ _ _ (kc1 A j) (kc1 A (fst c)) (kc1 A (fst p)) (kc1 A (fst (snd p))) refl refl (kc1 A (snd c))))
+           (trans (C⊢app_1I-sub (single A) (w1 j)) (C⊢app_1I-cong _ _ (wk-cancel-tm A j)))
+           (trans (T⊢appI-sub (extS (single A)) (w2 j) (w2 (fst c)) (w2 (snd c)) (w2 (fst p)) (w2 (fst (snd p))) (var (vs vz)) (var vz))
+                  (T⊢appI-cong _ _ _ _ _ _ _ _ _ _ _ _ _ _ (kc1 A j) (kc1 A (fst c)) (kc1 A (snd c)) (kc1 A (fst p)) (kc1 A (fst (snd p))) refl refl))
     e2 : subTm (single B) ⌜ T1' ⌝ᵗ ≡ ⌜ T2 ⌝ᵗ
-    e2 = trans (TAppI-sub (single B) (w1 j) (w1 (fst c)) (w1 (fst p)) (w1 (fst (snd p))) (w1 A) (var vz) (w1 (snd c)))
-               (TAppI-cong _ _ _ _ _ _ _ _ _ _ _ _ _ _ (wk-cancel-tm B j) (wk-cancel-tm B (fst c)) (wk-cancel-tm B (fst p))
-                           (wk-cancel-tm B (fst (snd p))) (wk-cancel-tm B A) refl (wk-cancel-tm B (snd c)))
+    e2 = trans (T⊢appI-sub (single B) (w1 j) (w1 (fst c)) (w1 (snd c)) (w1 (fst p)) (w1 (fst (snd p))) (w1 A) (var vz))
+               (T⊢appI-cong _ _ _ _ _ _ _ _ _ _ _ _ _ _ (wk-cancel-tm B j) (wk-cancel-tm B (fst c)) (wk-cancel-tm B (snd c))
+                            (wk-cancel-tm B (fst p)) (wk-cancel-tm B (fst (snd p))) (wk-cancel-tm B A) refl)
     -- the projections' typings (as the row types them)
     dfc : Ξ ⊢ fst c ∷ KCtx j
     dfc = ⊢ctxOf dc
@@ -173,18 +179,12 @@ private
     dfp = g0 1 0 (rec 1 0 ∷ʰ []ʰ) dp
     dfsp : Ξ ⊢ fst (snd p) ∷ K 1 j
     dfsp = g0 {j = j} {p = snd p} 1 0 []ʰ (⊢recSnd {s = 1} {k = 0} {sh = rec 1 0 ∷ʰ []ʰ} dp)
-    wkK : {s : ℕ} {d x : RTm ⌊ Ξ ⌋} → Ξ ⊢ x ∷ K s d → (Ξ ▹ El (⌜Ty⌝ (nsuc j))) ⊢ w1 x ∷ K s (w1 d)
-    wkK {s} {d} {x} dx = ⊢wkSK {Γ = Ξ} {B = El (⌜Ty⌝ (nsuc j))} {sg = KSig} {s = s} {d = d} {t = x} dx
     ok1 : TelOK Ξ JT T1
-    ok1 = ok-σ (⊢⌜Ty⌝ (⊢isuc dj))
-            (subst (λ Y → TelOK (Ξ ▹ El (⌜Ty⌝ (nsuc j))) Y T1') (sym (JT-ren vs))
-              (okTAppI {Ξ ▹ El (⌜Ty⌝ (nsuc j))} {w1 j} {w1 (fst c)} {w1 (fst p)} {w1 (fst (snd p))} {w1 A} {var vz} {w1 (snd c)}
-                       (⊢wk {Ξ} {El (⌜Ty⌝ (nsuc j))} {j} {El ⌜Nat⌝} dj)
-                       (⊢wkCtx {Ξ} {El (⌜Ty⌝ (nsuc j))} {j} {fst c} dfc)
-                       (wkK {1} {j} {fst p} dfp) (wkK {1} {j} {fst (snd p)} dfsp) (wkK {0} {j} {A} dA)
-                       (hereTy {Ξ} {nsuc j}) (wkK {0} {j} {snd c} (⊢tyOf dc))))
+    ok1 = okσJ (okC⊢app_1I dj)
+            (okT⊢appI {_} {w1 j} {w1 (fst c)} {w1 (snd c)} {w1 (fst p)} {w1 (fst (snd p))} {w1 A} {var vz}
+                      (wkN dj) (wkG dfc) (wkK (⊢tyOf dc)) (wkK dfp) (wkK dfsp) (wkK dA) (hereTy {m = nsuc j}))
     ok2 : TelOK Ξ JT T2
-    ok2 = okTAppI {Ξ} {j} {fst c} {fst p} {fst (snd p)} {A} {B} {snd c} dj dfc dfp dfsp dA dB (⊢tyOf dc)
+    ok2 = okT⊢appI {Ξ} {j} {fst c} {snd c} {fst p} {fst (snd p)} {A} {B} dj dfc (⊢tyOf dc) dfp dfsp dA dB
     okRest : {J : RTm ⌊ Ξ ⌋} {T : Tel ⌊ Ξ ⌋} → TelOK Ξ JT (tρ J T) → TelOK Ξ JT T
     okRest (ok-ρ _ o) = o
     fg : fst c ⟶* g
@@ -212,20 +212,24 @@ private
           Ξ ⊢ x ∷ FinI j → Ξ ⊢ A ∷ K 0 j → Ξ ⊢ r ∷ K∋ (ix∋ j g x A) →
           Ξ ⊢ conₗ 0 (pair r unit) ∷ K⊢ (tmIx j g (kvar x) A)
 ⊢tm-var {Ξ} {j} {g} {x} {A} {r} dj dg dx dA dr =
-  ⊢conRow {Ξ} {JT} {D⊢} {tmIx j g (kvar x) A} {⌜ TVar j p c ⌝ᵗ} {pair r unit} ⊢JT ⊢D⊢
+  ⊢conRowₖ {Ξ} {2} {0} {JT} {D⊢} {tmIx j g (kvar x) A} {⌜ T⊢var j p c ⌝ᵗ} {pair r unit}
+           {⌜ T⊢var j p c ⌝ᵗ ∷ ⌜ TCVat 0 j p c ⌝ᵗ ∷ []} nth-z ⊢JT ⊢D⊢
           (⊢tmIx dj dg (⊢kvar dj dx) dA)
           (fibK {s = 1} {k = 0} {j = j} {p = p} {c = c} (nthᵍ-s nthᵍ-z) nthʰ-z)
-          (⊢tel {Ξ} {JT} {TVar j p c} ⊢JT ok)
-          (⊢payσ {Ξ} {JT} {D⊢} ⊢JT ⊢D⊢ {⌜IMu⌝ I∋ D∋ ix} {r} {unit} {tι} ok
-                 (⊢conv dr (csymᵀ (ctrnᵀ (credᵀ El-⌜IMu⌝) (red→≅ᵀ (⟶ᵀ*-IMu rix)))))
+          (⊢tel {Ξ} {JT} {T⊢var j p c} ⊢JT ok
+             ∷ᵈ ⊢tel {Ξ} {JT} {TCVat 0 j p c} ⊢JT (okTCVat (nthᵍ-s nthᵍ-z) nthʰ-z dj dp dc) ∷ᵈ []ᵈ)
+          (⊢payσ {Ξ} {JT} {D⊢} ⊢JT ⊢D⊢ {C⊢var_0I j (fst c) (snd c) (fst p)} {r} {unit} {T⊢varI} ok
+                 (⊢conv dr (csymᵀ (ctrnᵀ (credᵀ El-⌜∋⌝) (red→≅ᵀ (⟶ᵀ*-IMu rix)))))
                  (⊢payι {Ξ} {JT} {D⊢} ⊢JT ⊢D⊢ {unit} ⊢unit))
   where
     p c ix : RTm ⌊ Ξ ⌋
     p = pair x unit
     c = pair g A
     ix = ix∋ j (fst c) (fst p) (snd c)
-    ok : TelOK Ξ JT (TVar j p c)
-    ok = okVarT dj (⊢payK (lt-s lt-z) ok-kvar dj (a-v dx)) (⊢cTm dj dg dA)
+    dp = ⊢payK (lt-s lt-z) ok-kvar dj (a-v dx)
+    dc = ⊢cTm dj dg dA
+    ok : TelOK Ξ JT (T⊢var j p c)
+    ok = okT⊢var dj dp dc
     rix : ix ⟶* ix∋ j g x A
     rix = ⟶*-pairʳ (⟶*-trans {t = pair (fst c) (pair (fst p) (snd c))} {u = pair g (pair (fst p) (snd c))} {v = pair g (pair x A)}
                      (⟶*-pairˡ (step (βfst g A) done))
