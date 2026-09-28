@@ -25,3 +25,4 @@
 module DirectedHoTT.Trust.Knot1 where
 
 import DirectedHoTT.Examples.Knot.Ctx
+import DirectedHoTT.Examples.Knot.Judge
