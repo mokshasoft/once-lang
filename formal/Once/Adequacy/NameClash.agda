@@ -197,9 +197,12 @@ program-no-clash (mkModule ds)
   with extractFunctions (extractAliases (mkModule ds)) (mkModule ds) in efeq
 ... | inj₁ _ = []
 ... | inj₂ (funs , polys)
-    with C.compileAllFuns C.Heap false funs (C.buildPolyCtx polys) in caeq
+    with C.polysWalkCheck funs C.emptyFunCtx (C.buildPolyCtx polys) polys
 ...   | inj₁ _ = []
-...   | inj₂ cfs =
+...   | inj₂ _
+    with C.compileAllFuns C.Heap false funs (C.buildPolyCtx polys) in caeq
+...     | inj₁ _ = []
+...     | inj₂ cfs =
         subst (AllPairs _≢_) (sym bridge)
           (map-allpairs-own (emittedNames funs)
             (namesDistinct-sound  _ (∧-elimˡ guard))

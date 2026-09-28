@@ -238,6 +238,10 @@ record PolyFunInfo : Set where
     pfunName  : String
     pfunType  : PolyType
     pfunBody  : RawExpr
+    -- Plan 0.103 phase 1: the entry's POSITION in the module telescope — the
+    -- number of monomorphic `FunInfo`s declared AFTER it. The two lists lose
+    -- their interleaving; this recovers the entry's declaration context.
+    pfunAfter : ℕ
 
 -- | Project a parsed `PolyType` signature to a ground `Type`. Used
 -- for declarations (primitives, ground-typed user defs) where
@@ -287,9 +291,9 @@ extractFunctions-consFun : EFResult → FunInfo → EFResult
 extractFunctions-consFun (inj₁ err)        _  = inj₁ err
 extractFunctions-consFun (inj₂ (gs , ps)) fi = inj₂ (fi ∷ gs , ps)
 
-extractFunctions-consPoly : EFResult → PolyFunInfo → EFResult
-extractFunctions-consPoly (inj₁ err)        _   = inj₁ err
-extractFunctions-consPoly (inj₂ (gs , ps)) pfi = inj₂ (gs , pfi ∷ ps)
+extractFunctions-consPoly : EFResult → String → PolyType → RawExpr → EFResult
+extractFunctions-consPoly (inj₁ err)        _ _ _ = inj₁ err
+extractFunctions-consPoly (inj₂ (gs , ps)) n t b = inj₂ (gs , mkPolyFunInfo n t b (length gs) ∷ ps)
 
 extractFunctions-go : TypeAliasEnv → List Decl → Maybe PendingSig → EFResult
 extractFunctions-sigless : TypeAliasEnv → (name : String) → RawExpr → List Decl → Dec (name ≡ "main") → EFResult
@@ -313,7 +317,7 @@ extractFunctions-go aliases (DFunDef name body ∷ rest) (just (sigName , inj₁
 ... | no  _ = extractFunctions-go aliases rest nothing
 -- DFunDef with matching polymorphic sig → PolyFunInfo
 extractFunctions-go aliases (DFunDef name body ∷ rest) (just (sigName , inj₂ pty)) with sigName ≟ name
-... | yes _ = extractFunctions-consPoly (extractFunctions-go aliases rest nothing) (mkPolyFunInfo name pty body)
+... | yes _ = extractFunctions-consPoly (extractFunctions-go aliases rest nothing) name pty body
 ... | no  _ = extractFunctions-go aliases rest nothing
 -- D007: NO explicit signature → KEEP the definition (was dropped).
 -- D072 M3: if the body's principal type is a SCHEMA (`siglessSchema`),
@@ -352,7 +356,7 @@ extractFunctions-sigless aliases name body rest (yes _) =
   extractFunctions-consFun (extractFunctions-go aliases rest nothing)
     (mkFunInfo name (just (Unit ⇒[ mk-kind Many eff ] Unit)) body false)
 extractFunctions-sigless aliases name body rest (no _) with siglessSchema body
-... | just pty = extractFunctions-consPoly (extractFunctions-go aliases rest nothing) (mkPolyFunInfo name pty body)
+... | just pty = extractFunctions-consPoly (extractFunctions-go aliases rest nothing) name pty body
 ... | nothing  = extractFunctions-consFun (extractFunctions-go aliases rest nothing) (mkFunInfo name nothing body false)
 
 

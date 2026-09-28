@@ -44,7 +44,7 @@ open import Once.TypeCheck.Raw using (RawExpr)
 open import Once.Spec.Module
   using (EffUU; AllFunsTyped; tnil; tcons; ModuleTyped-ef; ModuleTyped;
          AllMainEffUU; MainExists; ModuleMainEffUU-ef;
-         ModuleMainExists-ef; HasValidMain-decl)
+         ModuleMainExists-ef; HasValidMain-decl; PolysTyped)
 open import Once.TypeCheck.Elaborate
   using (checkElab; ctxWithImportsAndSelfAndPolys; PolyCtx)
 open import Once.Type.DecEq using (_≟T_)
@@ -52,6 +52,7 @@ open import Once.TypeCheck.ElaborateProofs using (resolveExpr)
 open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_)
 open import Once.TypeCheck.Completeness using (check-complete)
 import Once.Compile as C
+import Once.Adequacy.PolysCheck as PC
 import Once.Adequacy.AcceptSound as AS
 open import Once.Parser using (FunInfo)
 open FunInfo
@@ -190,10 +191,11 @@ caf-go-find-complete polys ctx (tcons {fi = fi} {rest = rest} {ty = ty} rf deriv
 -- `Once.Spec.Module` (plan 0.84).
 
 moduleToIR-complete : ∀ (m : C.Module) (mt : ModuleTyped m) →
-  HasValidMain-decl m mt →
+  HasValidMain-decl m mt → PolysTyped m →
   Σ-syntax (IR ⌊ Unit ⌋ ⌊ Unit ⌋) (λ ir → moduleToIR m ≡ just ir)
-moduleToIR-complete m mt (amu , me) with C.extractFunctions (C.extractAliases m) m
+moduleToIR-complete m mt (amu , me) pt with C.extractFunctions (C.extractAliases m) m
 ... | inj₂ (funs , polys)
+    rewrite PC.walk-complete funs C.emptyFunCtx (C.buildPolyCtx polys) polys pt
     with caf-go-find-complete (C.buildPolyCtx polys)
            C.emptyFunCtx mt amu me
 ...   | (compiled , ir , ca-eq , fm-eq) =
@@ -343,6 +345,8 @@ moduleToIR-sound m mt mi with C.extractFunctions (C.extractAliases m) m
 ... | inj₂ (funs , polys)
     with C.compileAllFuns-go C.Heap false (C.buildPolyCtx polys)
            funs C.emptyFunCtx in ca-eq
-...   | inj₂ compiled =
+       | C.polysWalkCheck funs C.emptyFunCtx (C.buildPolyCtx polys) polys
+...   | inj₂ compiled | inj₁ _ = case mi of λ ()
+...   | inj₂ compiled | inj₂ _ =
         caf-go-mains (C.buildPolyCtx polys) C.emptyFunCtx mt ca-eq
         , caf-go-mainexists (C.buildPolyCtx polys) C.emptyFunCtx mt ca-eq mi

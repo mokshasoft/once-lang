@@ -137,13 +137,21 @@ caf-doOpt doOpt funs polys eq =
 -- Layer 3 — `compileResolvedModule` success is `doOpt`-independent.
 ------------------------------------------------------------------------
 
+-- The gate is `doOpt`-independent: split on the check, as an explicit argument.
+gated-doOpt : ∀ (doOpt : Bool) (funs : List C.FunInfo) (polys : List C.PolyFunInfo)
+  (g : String ⊎ ⊤) {c : List C.CompiledFun} →
+  C.polysGate g (C.compileAllFuns C.Heap false funs (C.buildPolyCtx polys)) ≡ inj₂ c →
+  Σ-syntax (List C.CompiledFun) (λ c' → C.polysGate g (C.compileAllFuns C.Heap doOpt funs (C.buildPolyCtx polys)) ≡ inj₂ c')
+gated-doOpt doOpt funs polys (inj₁ _) ()
+gated-doOpt doOpt funs polys (inj₂ _) eq = caf-doOpt doOpt funs (C.buildPolyCtx polys) eq
+
 crm-aux-doOpt : ∀ (doOpt : Bool) (m : P.Module)
   (ef : String ⊎ (List C.FunInfo × List C.PolyFunInfo)) {c : List C.CompiledFun} →
   C.compileResolvedModule-aux C.Heap false m ef ≡ inj₂ c →
   Σ-syntax (List C.CompiledFun) (λ c' → C.compileResolvedModule-aux C.Heap doOpt m ef ≡ inj₂ c')
 crm-aux-doOpt doOpt m (inj₁ err) ()
 crm-aux-doOpt doOpt m (inj₂ (funs , polys)) eq =
-  caf-doOpt doOpt funs (C.buildPolyCtx polys) eq
+  gated-doOpt doOpt funs polys (C.polysWalkCheck funs C.emptyFunCtx (C.buildPolyCtx polys) polys) eq
 
 crm-doOpt : ∀ (doOpt : Bool) (m : P.Module) {c : List C.CompiledFun} →
   C.compileResolvedModule C.Heap false m ≡ inj₂ c →
@@ -166,7 +174,7 @@ cfm-built-gated : ∀ (doOpt : Bool) (arch : Arch) (m : P.Module)
   (funs : List C.FunInfo) (polys : List C.PolyFunInfo)
   (d : Dec (AdmissibleM arch m)) → AdmissibleM arch m →
   {c : List C.CompiledFun} →
-  C.compileAllFuns C.Heap doOpt funs (C.buildPolyCtx polys) ≡ inj₂ c →
+  C.compileGated C.Heap doOpt funs polys ≡ inj₂ c →
   Σ-syntax String (λ asm → C.cfm-build-gated C.Heap doOpt arch m funs polys d ≡ C.Built asm)
 cfm-built-gated doOpt arch m funs polys (yes _)  adm eq = _ , cong (C.cfm-build-emit arch) eq
 cfm-built-gated doOpt arch m funs polys (no ¬adm) adm eq = ⊥-elim (¬adm adm)

@@ -30,7 +30,7 @@ module Once.Adequacy.MainForm (fmt : TargetNum) where
 open import Once.Spec.Module using (AllFunsTyped; HasValidMain-decl; MainExists; ModuleMainEffUU-ef; ModuleMainExists-ef; ModuleTyped; ModuleTyped-ef)
 open import Data.Bool using (Bool; false; true)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Data.Unit using (tt)
+open import Data.Unit using (⊤; tt)
 open import Data.Nat using (ℕ)
 open import Data.Product using (Σ-syntax; _×_; _,_; proj₁; proj₂)
 open import Data.Maybe using (Maybe; just; nothing)
@@ -164,12 +164,21 @@ mnf-caf m ir funs polys (inj₁ err) caf-eq mi ef-eq = case mi of λ ()
 mnf-caf m ir funs polys (inj₂ compiled) caf-eq mi ef-eq =
   build-node m funs polys compiled ir caf-eq mi ef-eq
 
+mnf-gate : ∀ (m : C.Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) (funs : List FunInfo) (polys : List C.PolyFunInfo)
+  (g : String ⊎ ⊤) →
+  moduleToIR-aux (C.polysGate g (C.compileAllFuns C.Heap false funs (C.buildPolyCtx polys))) ≡ just ir →
+  C.extractFunctions (C.extractAliases m) m ≡ inj₂ (funs , polys) → MainNode m ir
+
 mnf-ef : ∀ (m : C.Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋)
   (efv : String ⊎ (List FunInfo × List C.PolyFunInfo)) →
   C.extractFunctions (C.extractAliases m) m ≡ efv →
   moduleToIR-aux (C.compileResolvedModule-aux C.Heap false m efv) ≡ just ir → MainNode m ir
 mnf-ef m ir (inj₁ err) ef-eq mi = case mi of λ ()
 mnf-ef m ir (inj₂ (funs , polys)) ef-eq mi =
+  mnf-gate m ir funs polys (C.polysWalkCheck funs C.emptyFunCtx (C.buildPolyCtx polys) polys) mi ef-eq
+
+mnf-gate m ir funs polys (inj₁ _) mi ef-eq = case mi of λ ()
+mnf-gate m ir funs polys (inj₂ _) mi ef-eq =
   mnf-caf m ir funs polys
     (C.compileAllFuns-go C.Heap false (C.buildPolyCtx polys) funs C.emptyFunCtx)
     refl mi ef-eq

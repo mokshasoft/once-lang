@@ -25,7 +25,7 @@ open import Data.Product using (_×_; Σ-syntax; _,_; proj₁; proj₂)
 open import Data.List using (List; []; _∷_)
 open import Data.Maybe using (just)
 open import Data.String using (String; _==_)
-open import Data.Unit using (⊤)
+open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Function using (case_of_)
@@ -34,13 +34,14 @@ open import Once.IR using (IR)
 open import Once.IRTy using (⌊_⌋)
 open import Once.Type using (Unit; Type)
 import Once.Compile as C
+import Once.Adequacy.PolysCheck as PC
 import Once.Surface.Syntax as Srf
 open import Once.TypeCheck.Elaborate as TE using (CheckElabResult; checkElab; ctxWithImportsAndSelfAndPolys)
 open import Once.TypeCheck.Classify using (NamedCtx)
 open import Once.TypeCheck.Raw using (RawExpr)
 open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_)
 open import Once.Spec.Module
-  using (AllFunsTyped; tnil; tcons; ModuleTyped-ef; ModuleTyped)
+  using (AllFunsTyped; tnil; tcons; ModuleTyped-ef; ModuleTyped; PolysWalkTyped; PolysTyped-ef; PolysTyped)
 -- Import `check-sound` DIRECTLY from `Soundness` (not via `Verified`, which
 -- transitively pulls in the still-rotted `ErrorProofs`; soundness needs only
 -- this): `checkElab ctx e T ≡ success … ⇒ ctx ⊢ᶜ e ∶ T ⨾ Ψ`.
@@ -169,19 +170,51 @@ caf-sound doOpt funs polys eq =
 
 -- `ModuleTyped-ef`/`ModuleTyped` are in `Once.Spec.Module` (plan 0.84).
 
+gated-caf-sound : ∀ (doOpt : Bool) (funs : List C.FunInfo) (polys : List C.PolyFunInfo)
+  (g : String ⊎ ⊤) {compiled : List C.CompiledFun} →
+  C.polysGate g (C.compileAllFuns C.Heap doOpt funs (C.buildPolyCtx polys)) ≡ inj₂ compiled →
+  AllFunsTyped (C.buildPolyCtx polys) funs C.emptyFunCtx
+gated-caf-sound doOpt funs polys (inj₁ _) ()
+gated-caf-sound doOpt funs polys (inj₂ _) eq = caf-sound doOpt funs (C.buildPolyCtx polys) eq
+
 crm-aux-sound : ∀ (doOpt : Bool) (m : P.Module)
   (ef : String ⊎ (List C.FunInfo × List C.PolyFunInfo)) {compiled : List C.CompiledFun} →
   C.compileResolvedModule-aux C.Heap doOpt m ef ≡ inj₂ compiled →
   ModuleTyped-ef m ef
 crm-aux-sound doOpt m (inj₁ err) ()
 crm-aux-sound doOpt m (inj₂ (funs , polys)) eq =
-  caf-sound doOpt funs (C.buildPolyCtx polys) eq
+  gated-caf-sound doOpt funs polys (C.polysWalkCheck funs C.emptyFunCtx (C.buildPolyCtx polys) polys) eq
 
 crm-sound : ∀ (doOpt : Bool) (m : P.Module) {compiled : List C.CompiledFun} →
   C.compileResolvedModule C.Heap doOpt m ≡ inj₂ compiled →
   ModuleTyped m
 crm-sound doOpt m eq =
   crm-aux-sound doOpt m (C.extractFunctions (C.extractAliases m) m) eq
+
+-- Plan 0.103 phase 1: the gate passed ⇒ every ground telescope entry is typed
+-- at its declaration.
+gate-polys-sound : ∀ (doOpt : Bool) (funs : List C.FunInfo) (polys : List C.PolyFunInfo)
+  (g : String ⊎ ⊤) → C.polysWalkCheck funs C.emptyFunCtx (C.buildPolyCtx polys) polys ≡ g →
+  {compiled : List C.CompiledFun} →
+  C.polysGate g (C.compileAllFuns C.Heap doOpt funs (C.buildPolyCtx polys)) ≡ inj₂ compiled →
+  PolysWalkTyped funs C.emptyFunCtx (C.buildPolyCtx polys) polys
+gate-polys-sound doOpt funs polys (inj₁ _) _ ()
+gate-polys-sound doOpt funs polys (inj₂ tt) g-eq _ =
+  PC.walk-sound funs C.emptyFunCtx (C.buildPolyCtx polys) polys g-eq
+
+crm-aux-polys : ∀ (doOpt : Bool) (m : P.Module)
+  (ef : String ⊎ (List C.FunInfo × List C.PolyFunInfo)) {compiled : List C.CompiledFun} →
+  C.compileResolvedModule-aux C.Heap doOpt m ef ≡ inj₂ compiled →
+  PolysTyped-ef ef
+crm-aux-polys doOpt m (inj₁ err) ()
+crm-aux-polys doOpt m (inj₂ (funs , polys)) eq =
+  gate-polys-sound doOpt funs polys _ refl eq
+
+crm-polys : ∀ (doOpt : Bool) (m : P.Module) {compiled : List C.CompiledFun} →
+  C.compileResolvedModule C.Heap doOpt m ≡ inj₂ compiled →
+  PolysTyped m
+crm-polys doOpt m eq =
+  crm-aux-polys doOpt m (C.extractFunctions (C.extractAliases m) m) eq
 
 ------------------------------------------------------------------------
 -- THE front-end soundness: a module with a compilable `main` is
@@ -194,3 +227,9 @@ moduleToIR-typed : ∀ (m : P.Module) {ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋} →
   ModuleTyped m
 moduleToIR-typed m mi =
   crm-sound false m (proj₂ (moduleToIR-inj₂ m mi))
+
+moduleToIR-polys : ∀ (m : P.Module) {ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋} →
+  moduleToIR m ≡ just ir →
+  PolysTyped m
+moduleToIR-polys m mi =
+  crm-polys false m (proj₂ (moduleToIR-inj₂ m mi))

@@ -293,7 +293,7 @@ open import Once.Adequacy.MainBuilds using (main⇒built)
 -- declaratively well-typed programs, so `⟦_⟧⊥`'s `just` domain is genuine
 -- (not true-by-construction). `ModuleTyped m` is the INDEPENDENT predicate
 -- "every function of `m` has a `_⊢ᶜ_∶_⨾_` derivation".
-open import Once.Adequacy.AcceptSound as AS using (moduleToIR-typed)
+open import Once.Adequacy.AcceptSound as AS using (moduleToIR-typed; moduleToIR-polys)
 -- Plan 0.50 (row-3 apex connection): the COMPOSITION discharging
 -- `main-realize-agrees` from `RealizeBridge.realize-agrees`. Importing it here
 -- puts `realize-agrees` on the apex path (no longer an island).
@@ -744,19 +744,19 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   -- over the SURFACE semantics: the compiler's own theorem supplies them.
   sd-eq : ∀ (arch : Arch) (tp : Typed) (n : ℕ)
         → at (⟦ moduleToIR (proj₁ tp) ⟧IR (arch-numerics arch)) n
-          ≡ ME.runMainˢ (arch-numerics arch) (proj₂ (MC.mainRealized (proj₁ tp) (proj₁ (proj₂ tp)) (proj₂ (proj₂ tp)))) n
-  sd-eq arch (m , mt , hvm) n =
-    trans (trans (cong (λ x → at (⟦ x ⟧IR (arch-numerics arch)) n) (proj₂ (MC.moduleToIR-complete m mt hvm)))
+          ≡ ME.runMainˢ (arch-numerics arch) (proj₂ (MC.mainRealized (proj₁ tp) (proj₁ (proj₂ tp)) (proj₁ (proj₂ (proj₂ tp))))) n
+  sd-eq arch (m , mt , hvm , pts) n =
+    trans (trans (cong (λ x → at (⟦ x ⟧IR (arch-numerics arch)) n) (proj₂ (MC.moduleToIR-complete m mt hvm pts)))
                  (proj₂ (proj₂ (ME.source-meaningᴰ (arch-numerics arch) m
-                   (proj₁ (MC.moduleToIR-complete m mt hvm)) (proj₂ (MC.moduleToIR-complete m mt hvm)))) n))
+                   (proj₁ (MC.moduleToIR-complete m mt hvm pts)) (proj₂ (MC.moduleToIR-complete m mt hvm pts)))) n))
           (main-realize-agrees arch m mt hvm
-            (proj₁ (MC.moduleToIR-complete m mt hvm)) (proj₂ (MC.moduleToIR-complete m mt hvm)) n)
+            (proj₁ (MC.moduleToIR-complete m mt hvm pts)) (proj₂ (MC.moduleToIR-complete m mt hvm pts)) n)
 
   ⟦_⟧ˢ : Arch → Typed → Behavior
   ⟦ arch ⟧ˢ tp =
     behavior-by (⟦ moduleToIR (proj₁ tp) ⟧IR (arch-numerics arch))
                 (ME.runMainˢ (arch-numerics arch)
-                  (proj₂ (MC.mainRealized (proj₁ tp) (proj₁ (proj₂ tp)) (proj₂ (proj₂ tp)))))
+                  (proj₂ (MC.mainRealized (proj₁ tp) (proj₁ (proj₂ tp)) (proj₁ (proj₂ (proj₂ tp))))))
                 (sd-eq arch tp)
 
   -- The SD bridge — a PROOF: the compiled `main` IR's denotational trace equals
@@ -825,7 +825,7 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   ...   | (ir , mi) with srcToModule-inv src mR stm-eq
   ...     | (mU , p-eq , res-eq) =
               let hvm = MC.moduleToIR-sound mR MT mi
-                  tp  = (mR , MT , hvm)
+                  tp  = (mR , MT , hvm , AS.moduleToIR-polys mR mi)
                   -- Plan 0.81: `tp` is the RESOLVED module, so `accept-sound`
                   -- already gives its typing — the reverse transport
                   -- (`resolver-reflects-typing`) is GONE, and with it the last
@@ -868,8 +868,8 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   -- over the un-resolved `mU`, its grammar parse, and the resolution relation;
   -- `resolvesModule-sound` turns the last of those into the executable
   -- `resolveImports` fact that `srcToModule-just` needs.
-  correctR-complete arch doOpt src (mR , mt , hvm) (mU , pt , rmR) adm
-    with MC.moduleToIR-complete mR mt hvm
+  correctR-complete arch doOpt src (mR , mt , hvm , pts) (mU , pt , rmR) adm
+    with MC.moduleToIR-complete mR mt hvm pts
   ... | (ir , mi) with main⇒built arch doOpt mR ir adm mi
   ...   | (asm , built-eq) = string-to-bytes arch asm , c≡j
     where p-eq : parseStrict (Source.srcText src) ≡ inj₂ mU
@@ -909,14 +909,14 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   -- D113: arch-indexed, exactly as `⟦_⟧ˢ` is. This is THE reference meaning
   -- the apex `CorrectCompiler` field is filled with.
   ⟦_⟧ᵈ : Arch → Typed → Behavior
-  ⟦ arch ⟧ᵈ (m , mt , hvm) = MM.meaningᵈ (arch-numerics arch) m mt hvm
+  ⟦ arch ⟧ᵈ (m , mt , hvm , _) = MM.meaningᵈ (arch-numerics arch) m mt hvm
   -- `bridgeᵈ` (the observational `⟦_⟧ᵈ ≈ SD∘realize`) — Plan 0.58 part 7:
   -- DISCHARGED via the selection lemma `MMB.main-bridge`, which parallel-inducts
   -- over the shared `mainRealized`/`mainMeaningᵈ` dispatch and bottoms in
   -- `bridge-c` at `main : EffUU` (env `∅`, thunk `tt`). The residual content is
   -- the seven narrow leaf postulates in `Once.Adequacy.MeaningBridge`.
   bridgeᵈ : ∀ (arch : Arch) (tp : Typed) (n : ℕ) → at (⟦ arch ⟧ˢ tp) n ≡ at (⟦ arch ⟧ᵈ tp) n
-  bridgeᵈ arch (m , mt , hvm) n = MMB.main-bridge (arch-numerics arch) m mt hvm n
+  bridgeᵈ arch (m , mt , hvm , _) n = MMB.main-bridge (arch-numerics arch) m mt hvm n
 
   -- D115/D116: which programs this target owes an answer for. `Typed` is
   -- target-free; this is the target-relative half, and it is `Int`-only —

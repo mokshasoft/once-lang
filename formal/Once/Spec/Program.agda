@@ -42,7 +42,7 @@ import Once.Parser.Module.Core as P
 -- The four predicates `Typed` / `_⊢R_` are built from. Named explicitly, so a
 -- reader of the criterion has the whole statement in one place.
 open import Once.Spec.Parsing public using (ParsesText)
-open import Once.Spec.Module public using (ModuleTyped; HasValidMain-decl)
+open import Once.Spec.Module public using (ModuleTyped; HasValidMain-decl; PolysTyped)
 open import Once.Denotation.Behavior     public using (Source)
 open import Once.Spec.Resolution         public using (ResolvesModule; rm)
 open import Once.Parser.Module.Resolve   using (polyDefNames)
@@ -55,9 +55,12 @@ open Once.Denotation.Behavior.Source public using (srcText; srcImports)
 -- from these, never assumed.
 ------------------------------------------------------------------------
 
+-- Plan 0.103 phase 1: `PolysTyped m` — every GROUND telescope entry is typed
+-- at its declaration, used or not. With `ModuleTyped` (the monomorphic
+-- `FunInfo`s) every monomorphic definition is typed exactly once.
 Typed : Set
 Typed = Σ-syntax P.Module (λ m →
-          Σ-syntax (ModuleTyped m) (λ mt → HasValidMain-decl m mt))
+          Σ-syntax (ModuleTyped m) (λ mt → HasValidMain-decl m mt × PolysTyped m))
 
 ------------------------------------------------------------------------
 -- `src ⊢R tp` — the source TEXT denotes `tp`'s module, by the grammar

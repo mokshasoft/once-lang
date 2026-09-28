@@ -105,7 +105,11 @@ open import Once.TypeCheck.Elaborate as TE using (CheckElabResult)
 import Once.Surface.Syntax as Srf
 open import Relation.Binary.PropositionalEquality using (subst; cong)
 -- D007 inference: the self-less context for inferring a sig-less def's type.
-open import Once.TypeCheck.Classify using (ctxWithImportsAndPolys; NamedCtx)
+open import Once.TypeCheck.Classify using (ctxWithImportsAndPolys; NamedCtx; lookupPolyPrefix)
+open import Once.TypeCheck.Error using (renderError)
+open import Relation.Nullary using (Dec; yes; no)
+open import Relation.Binary.PropositionalEquality using (_≡_)
+import Data.Nat
 -- D072: the untrusted principal-type oracle (validated by checkElab).
 import Once.TypeCheck.Principal as Principal
 
@@ -397,10 +401,64 @@ parseSourceToModule = parseStrict
 -- Explicit-argument aux form (Plan 0.48): dispatch on the `extractFunctions`
 -- result so the proof relating this to `compileFromModule` (which shares the
 -- same call) can match a bound `⊎` variable.
+------------------------------------------------------------------------
+-- Plan 0.103 phase 1: type every GROUND telescope entry once, at its
+-- declaration (`Spec.Module.PolysTyped`). A walk over the monomorphic defs
+-- mirroring `AllFunsTyped`, checking the entries declared at each position.
+-- De-withed: every decision is an explicit argument (the proofs reduce it).
+------------------------------------------------------------------------
+
+seqCheck : String ⊎ ⊤ → String ⊎ ⊤ → String ⊎ ⊤
+seqCheck (inj₁ e) _ = inj₁ e
+seqCheck (inj₂ _) r = r
+
+checkOK : ∀ {ctx e T} → TE.VerifiedCheckResult ctx e T → String ⊎ ⊤
+checkOK (TE.failure err , _)       = inj₁ (renderError err)
+checkOK (TE.success _ _ _ _ , _)   = inj₂ tt
+
+polyDeclCheck-l : FunCtx → (pfi : PolyFunInfo) → (g : Ground (pfunType pfi))
+                → Maybe (PolyType × RawExpr × PolyCtx) → String ⊎ ⊤
+polyDeclCheck-l ctx pfi g nothing = inj₁ ("telescope entry `" ++ pfunName pfi ++ "` not found")
+polyDeclCheck-l ctx pfi g (just (s , b , prefix)) =
+  checkOK (TE.checkElabV (ctxWithImportsAndPolys ctx prefix) (pfunBody pfi) (extractGround (pfunType pfi) g))
+
+polyDeclCheck-g : FunCtx → PolyCtx → (pfi : PolyFunInfo) → (Ground (pfunType pfi)) ⊎ ⊤ → String ⊎ ⊤
+polyDeclCheck-g ctx pctx pfi (inj₂ _) = inj₂ tt      -- polymorphic: typed parametrically in phase 6
+polyDeclCheck-g ctx pctx pfi (inj₁ g) = polyDeclCheck-l ctx pfi g (lookupPolyPrefix pctx (pfunName pfi))
+
+polyPosCheck : FunCtx → PolyCtx → (r : ℕ) → (pfi : PolyFunInfo) → Dec (pfunAfter pfi ≡ r) → String ⊎ ⊤
+polyPosCheck ctx pctx r pfi (yes _) = polyDeclCheck-g ctx pctx pfi (isGround (pfunType pfi))
+polyPosCheck ctx pctx r pfi (no _)  = inj₂ tt
+
+polysAtCheck : FunCtx → PolyCtx → ℕ → List PolyFunInfo → String ⊎ ⊤
+polysAtCheck ctx pctx r []           = inj₂ tt
+polysAtCheck ctx pctx r (pfi ∷ pfis) =
+  seqCheck (polyPosCheck ctx pctx r pfi (pfunAfter pfi Data.Nat.≟ r)) (polysAtCheck ctx pctx r pfis)
+
+polysWalkCheck : List FunInfo → FunCtx → PolyCtx → List PolyFunInfo → String ⊎ ⊤
+polysWalkStep  : List FunInfo → FunInfo → FunCtx → PolyCtx → List PolyFunInfo → String ⊎ Type → String ⊎ ⊤
+polysWalkCheck []          ctx pctx pfis = polysAtCheck ctx pctx 0 pfis
+polysWalkCheck (fi ∷ rest) ctx pctx pfis =
+  seqCheck (polysAtCheck ctx pctx (Data.Nat.suc (DL.length rest)) pfis)
+           (polysWalkStep rest fi ctx pctx pfis (resolveFunType ctx pctx (funType fi) (funBody fi)))
+polysWalkStep rest fi ctx pctx pfis (inj₁ _)  = inj₂ tt   -- compilation fails on its own
+polysWalkStep rest fi ctx pctx pfis (inj₂ ty) = polysWalkCheck rest (extendFunCtx ctx (funName fi) ty) pctx pfis
+
+-- The gate: a module whose ground telescope entries do not type is rejected.
+polysGate : String ⊎ ⊤ → String ⊎ List CompiledFun → String ⊎ List CompiledFun
+polysGate (inj₁ e) _ = inj₁ e
+polysGate (inj₂ _) r = r
+
+-- Every stage compiles THROUGH the gate: one call, shared by
+-- `compileResolvedModule` and `compileFromModule`'s Check/Build stages.
+compileGated : AllocMode → Bool → List FunInfo → List PolyFunInfo → String ⊎ List CompiledFun
+compileGated m doOpt funs polys =
+  polysGate (polysWalkCheck funs emptyFunCtx (buildPolyCtx polys) polys)
+            (compileAllFuns m doOpt funs (buildPolyCtx polys))
+
 compileResolvedModule-aux : AllocMode → Bool → Module → String ⊎ (List FunInfo × List PolyFunInfo) → String ⊎ List CompiledFun
 compileResolvedModule-aux m doOpt mod (inj₁ err)            = inj₁ err
-compileResolvedModule-aux m doOpt mod (inj₂ (funs , polys)) =
-  compileAllFuns m doOpt funs (buildPolyCtx polys)
+compileResolvedModule-aux m doOpt mod (inj₂ (funs , polys)) = compileGated m doOpt funs polys
 
 compileResolvedModule : AllocMode → Bool → Module → String ⊎ List CompiledFun
 compileResolvedModule m doOpt mod =
@@ -818,12 +876,12 @@ cfm-build-gated : AllocMode → Bool → (arch : Arch) → (mod : Module)
                 → Dec (AdmissibleM arch mod) → CompileResult
 cfm-build-gated m doOpt arch mod funs polys (no  _) = Error (litRangeError arch mod)
 cfm-build-gated m doOpt arch mod funs polys (yes _) =
-  cfm-build-emit arch (compileAllFuns m doOpt funs (buildPolyCtx polys))
+  cfm-build-emit arch (compileGated m doOpt funs polys)
 
 cfm-stage-aux : AllocMode → Stage → Bool → Arch → Module → List FunInfo → List PolyFunInfo → CompileResult
 cfm-stage-aux m Parse doOpt arch mod funs polys = Parsed funs polys
 cfm-stage-aux m Check doOpt arch mod funs polys =
-  cfm-check-emit (compileAllFuns m doOpt funs (buildPolyCtx polys))
+  cfm-check-emit (compileGated m doOpt funs polys)
 cfm-stage-aux m Build doOpt arch mod funs polys =
   cfm-build-gated m doOpt arch mod funs polys (admissibleM? arch mod)
 

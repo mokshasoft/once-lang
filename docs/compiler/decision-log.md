@@ -15554,3 +15554,27 @@ failed the exact `IO Unit` requirement (11 tests: every sig-less exit program). 
 `main` is therefore declared at `Eff Unit Unit` (`extractFunctions-sigless`, mirrored by
 `Resolve.pdn-sigless`) and CHECKED there, where `Void <: Unit` (D226) accepts the halting
 body. Programs that write `main : IO Unit` are unaffected.
+
+## D234 — EVERY GROUND DEFINITION IS TYPED AT ITS DECLARATION: THE MODULE IS A TELESCOPE (PLAN 0.103 PHASE 1) (2026-09-28)
+
+A module is well-typed iff every definition is typed ONCE, at its declaration, in its
+prefix. Before this, a GROUND definition that `extractFunctions` routes to the telescope
+(`PolyFunInfo`) — every `Mu`/`Nu` definition, because routing is by FFI concreteness —
+was typed only at its use sites: an unused ill-typed one was accepted
+(`f : Nu (K Int); f = 5`), and a used one was typed in the USE site's context.
+
+* **Spec.** `Typed` (Once.Spec.Program) gains a fourth component `PolysTyped m`
+  (Once.Spec.Module): walking the `FunInfo`s in order, every ground telescope entry whose
+  declaration position (`pfunAfter` = number of `FunInfo`s declared before it) is the
+  current prefix length is typed `ctxWithImportsAndPolys prefix polys ⊢ᶜ body ∶ T ⨾ 0`,
+  with `polys` its OWN telescope prefix (`lookupPolyPrefix`). Polymorphic entries are
+  not constrained here: typing them once needs the type-substitution lemma (plan 0.103
+  phase 5).
+* **Implementation.** `Compile.compileGated` runs the decider `polysWalkCheck` before
+  `compileAllFuns`, for `compileResolvedModule` and for `compileFromModule`'s Check and
+  Build stages (one gate, every entry point).
+* **Adequacy.** `Once.Adequacy.PolysCheck` proves the decider sound and complete for
+  `PolysWalkTyped` (postulate-free); `AcceptSound.moduleToIR-polys` produces the new
+  component, `ModuleComplete.moduleToIR-complete` consumes it.
+* **Routing** by concreteness still decides CODEGEN (direct call vs δ-reduction); it no
+  longer decides whether a definition is typed.
