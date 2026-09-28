@@ -105,55 +105,40 @@ HasValidMain-decl m mt =
   × ModuleMainExists-ef m (C.extractFunctions (C.extractAliases m) m) mt
 
 ------------------------------------------------------------------------
--- Plan 0.103 phase 1: EVERY definition is typed once, at its declaration.
+-- Plan 0.103 phase 1 (D234): EVERY definition is typed once, at its declaration.
 --
 -- `AllFunsTyped` types the monomorphic `FunInfo`s. A GROUND telescope entry
 -- (a `PolyFunInfo` whose schema is ground — every `Mu`/`Nu`-typed def, which
 -- concreteness routes away from `FunInfo`) was typed only at its USES, so an
--- unused one was never typed. `PolysTyped` types each ground entry in its
--- DECLARATION context: the monomorphic defs declared before it (the `FunCtx`
--- at its position, `pfunAfter`) and its telescope prefix. Genuinely
--- polymorphic entries are typed parametrically in phase 6.
+-- unused one was never typed. `PolysTyped` types each ground entry ONCE, in its
+-- DECLARATION context: the monomorphic defs declared before it
+-- (`C.funCtxAt … (pfunAfter pfi)`) and its telescope TAIL — the entries after
+-- it in the list, which is exactly what a reference's `lookupPolyPrefix`
+-- returns as the prefix. Stated structurally over the telescope, so the
+-- meaning of the telescope (an environment of its entries' meanings) is a
+-- plain recursion. Genuinely polymorphic entries are typed parametrically in
+-- phase 6.
 ------------------------------------------------------------------------
 
-open import Data.Nat using (ℕ; zero; suc)
-open import Data.List using (length)
-open import Data.Product using (Σ-syntax; proj₂)
-import Once.TypeCheck.Raw
-open import Data.Maybe using (just)
+open import Data.Nat using (ℕ)
 open import Once.Type using (Ground; extractGround)
-open import Once.TypeCheck.Classify using (lookupPolyPrefix; ctxWithImportsAndPolys)
+open import Once.TypeCheck.Classify using (ctxWithImportsAndPolys)
 open import Once.Surface.Context using (zeroUsage)
 open C.PolyFunInfo using (pfunName; pfunType; pfunBody; pfunAfter)
 
-PolyDeclTyped : C.FunCtx → TE.PolyCtx → C.PolyFunInfo → Set
-PolyDeclTyped ctx pctx pfi =
+PolyEntryTyped : C.FunCtx → C.PolyFunInfo → List C.PolyFunInfo → Set
+PolyEntryTyped imps pfi tail =
   (g : Ground (pfunType pfi)) →
-  Σ-syntax (Once.Type.PolyType × Once.TypeCheck.Raw.RawExpr × TE.PolyCtx) (λ e →
-    (lookupPolyPrefix pctx (pfunName pfi) ≡ just e)
-    × (ctxWithImportsAndPolys ctx (proj₂ (proj₂ e)) ⊢ᶜ pfunBody pfi ∶ extractGround (pfunType pfi) g ⨾ zeroUsage))
+  ctxWithImportsAndPolys imps (C.buildPolyCtx tail) ⊢ᶜ pfunBody pfi ∶ extractGround (pfunType pfi) g ⨾ zeroUsage
 
--- The entries declared at position `r` (exactly `r` monomorphic defs after them).
-PolysTypedAt : C.FunCtx → TE.PolyCtx → ℕ → List C.PolyFunInfo → Set
-PolysTypedAt ctx pctx r []           = ⊤
-PolysTypedAt ctx pctx r (pfi ∷ pfis) =
-  (pfunAfter pfi ≡ r → PolyDeclTyped ctx pctx pfi) × PolysTypedAt ctx pctx r pfis
-
--- Walk the monomorphic defs in order, as `AllFunsTyped` does, typing the
--- telescope entries at their positions.
-PolysWalkTyped : List C.FunInfo → C.FunCtx → TE.PolyCtx → List C.PolyFunInfo → Set
-PolysWalkStep  : List C.FunInfo → C.FunInfo → C.FunCtx → TE.PolyCtx → List C.PolyFunInfo
-               → String ⊎ Type → Set
-PolysWalkTyped []          ctx pctx pfis = PolysTypedAt ctx pctx zero pfis
-PolysWalkTyped (fi ∷ rest) ctx pctx pfis =
-  PolysTypedAt ctx pctx (suc (length rest)) pfis
-  × PolysWalkStep rest fi ctx pctx pfis (C.resolveFunType ctx pctx (funType fi) (funBody fi))
-PolysWalkStep rest fi ctx pctx pfis (inj₁ _)  = ⊤    -- `AllFunsTyped` is already uninhabited
-PolysWalkStep rest fi ctx pctx pfis (inj₂ ty) = PolysWalkTyped rest (C.extendFunCtx ctx (funName fi) ty) pctx pfis
+EntriesTyped : (ℕ → C.FunCtx) → List C.PolyFunInfo → Set
+EntriesTyped at []           = ⊤
+EntriesTyped at (pfi ∷ pfis) = PolyEntryTyped (at (pfunAfter pfi)) pfi pfis × EntriesTyped at pfis
 
 PolysTyped-ef : String ⊎ (List C.FunInfo × List C.PolyFunInfo) → Set
 PolysTyped-ef (inj₁ _)               = ⊤    -- `ModuleTyped` is already uninhabited
-PolysTyped-ef (inj₂ (funs , polys))  = PolysWalkTyped funs C.emptyFunCtx (C.buildPolyCtx polys) polys
+PolysTyped-ef (inj₂ (funs , polys))  =
+  EntriesTyped (C.funCtxAt funs C.emptyFunCtx (C.buildPolyCtx polys)) polys
 
 PolysTyped : P.Module → Set
 PolysTyped m = PolysTyped-ef (C.extractFunctions (C.extractAliases m) m)

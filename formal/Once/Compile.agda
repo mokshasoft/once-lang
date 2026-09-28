@@ -416,33 +416,36 @@ checkOK : ∀ {ctx e T} → TE.VerifiedCheckResult ctx e T → String ⊎ ⊤
 checkOK (TE.failure err , _)       = inj₁ (renderError err)
 checkOK (TE.success _ _ _ _ , _)   = inj₂ tt
 
-polyDeclCheck-l : FunCtx → (pfi : PolyFunInfo) → (g : Ground (pfunType pfi))
-                → Maybe (PolyType × RawExpr × PolyCtx) → String ⊎ ⊤
-polyDeclCheck-l ctx pfi g nothing = inj₁ ("telescope entry `" ++ pfunName pfi ++ "` not found")
-polyDeclCheck-l ctx pfi g (just (s , b , prefix)) =
-  checkOK (TE.checkElabV (ctxWithImportsAndPolys ctx prefix) (pfunBody pfi) (extractGround (pfunType pfi) g))
+-- The monomorphic context at declaration position `r` (`pfunAfter`: the number
+-- of `FunInfo`s declared AFTER the entry): the `FunCtx` of the defs before it.
+-- Total; a position the walk never reaches (impossible for `extractFunctions`
+-- output) gets the final context, and a failed resolve stops the walk (the
+-- module is then rejected by `compileAllFuns` on its own).
+funCtxAt      : List FunInfo → FunCtx → PolyCtx → ℕ → FunCtx
+funCtxAt-step : List FunInfo → FunInfo → FunCtx → PolyCtx → ℕ → Bool → String ⊎ Type → FunCtx
+funCtxAt []          ctx pctx r = ctx
+funCtxAt (fi ∷ rest) ctx pctx r =
+  funCtxAt-step rest fi ctx pctx r (Data.Nat.suc (DL.length rest) Data.Nat.≡ᵇ r)
+                (resolveFunType ctx pctx (funType fi) (funBody fi))
+funCtxAt-step rest fi ctx pctx r true  _         = ctx
+funCtxAt-step rest fi ctx pctx r false (inj₁ _)  = ctx
+funCtxAt-step rest fi ctx pctx r false (inj₂ ty) = funCtxAt rest (extendFunCtx ctx (funName fi) ty) pctx r
 
-polyDeclCheck-g : FunCtx → PolyCtx → (pfi : PolyFunInfo) → (Ground (pfunType pfi)) ⊎ ⊤ → String ⊎ ⊤
-polyDeclCheck-g ctx pctx pfi (inj₂ _) = inj₂ tt      -- polymorphic: typed parametrically in phase 6
-polyDeclCheck-g ctx pctx pfi (inj₁ g) = polyDeclCheck-l ctx pfi g (lookupPolyPrefix pctx (pfunName pfi))
+-- One entry, in its declaration context and its telescope TAIL (the entries
+-- after it in the list, which `lookupPolyPrefix` returns as its prefix).
+polyEntryCheck : FunCtx → PolyCtx → (pfi : PolyFunInfo) → (Ground (pfunType pfi)) ⊎ ⊤ → String ⊎ ⊤
+polyEntryCheck imps tail pfi (inj₂ _) = inj₂ tt      -- polymorphic: typed parametrically in phase 6
+polyEntryCheck imps tail pfi (inj₁ g) =
+  checkOK (TE.checkElabV (ctxWithImportsAndPolys imps tail) (pfunBody pfi) (extractGround (pfunType pfi) g))
 
-polyPosCheck : FunCtx → PolyCtx → (r : ℕ) → (pfi : PolyFunInfo) → Dec (pfunAfter pfi ≡ r) → String ⊎ ⊤
-polyPosCheck ctx pctx r pfi (yes _) = polyDeclCheck-g ctx pctx pfi (isGround (pfunType pfi))
-polyPosCheck ctx pctx r pfi (no _)  = inj₂ tt
+polysCheck : (ℕ → FunCtx) → List PolyFunInfo → String ⊎ ⊤
+polysCheck at []           = inj₂ tt
+polysCheck at (pfi ∷ pfis) =
+  seqCheck (polyEntryCheck (at (pfunAfter pfi)) (buildPolyCtx pfis) pfi (isGround (pfunType pfi)))
+           (polysCheck at pfis)
 
-polysAtCheck : FunCtx → PolyCtx → ℕ → List PolyFunInfo → String ⊎ ⊤
-polysAtCheck ctx pctx r []           = inj₂ tt
-polysAtCheck ctx pctx r (pfi ∷ pfis) =
-  seqCheck (polyPosCheck ctx pctx r pfi (pfunAfter pfi Data.Nat.≟ r)) (polysAtCheck ctx pctx r pfis)
-
-polysWalkCheck : List FunInfo → FunCtx → PolyCtx → List PolyFunInfo → String ⊎ ⊤
-polysWalkStep  : List FunInfo → FunInfo → FunCtx → PolyCtx → List PolyFunInfo → String ⊎ Type → String ⊎ ⊤
-polysWalkCheck []          ctx pctx pfis = polysAtCheck ctx pctx 0 pfis
-polysWalkCheck (fi ∷ rest) ctx pctx pfis =
-  seqCheck (polysAtCheck ctx pctx (Data.Nat.suc (DL.length rest)) pfis)
-           (polysWalkStep rest fi ctx pctx pfis (resolveFunType ctx pctx (funType fi) (funBody fi)))
-polysWalkStep rest fi ctx pctx pfis (inj₁ _)  = inj₂ tt   -- compilation fails on its own
-polysWalkStep rest fi ctx pctx pfis (inj₂ ty) = polysWalkCheck rest (extendFunCtx ctx (funName fi) ty) pctx pfis
+polysOK : List FunInfo → List PolyFunInfo → String ⊎ ⊤
+polysOK funs polys = polysCheck (funCtxAt funs emptyFunCtx (buildPolyCtx polys)) polys
 
 -- The gate: a module whose ground telescope entries do not type is rejected.
 polysGate : String ⊎ ⊤ → String ⊎ List CompiledFun → String ⊎ List CompiledFun
@@ -453,8 +456,7 @@ polysGate (inj₂ _) r = r
 -- `compileResolvedModule` and `compileFromModule`'s Check/Build stages.
 compileGated : AllocMode → Bool → List FunInfo → List PolyFunInfo → String ⊎ List CompiledFun
 compileGated m doOpt funs polys =
-  polysGate (polysWalkCheck funs emptyFunCtx (buildPolyCtx polys) polys)
-            (compileAllFuns m doOpt funs (buildPolyCtx polys))
+  polysGate (polysOK funs polys) (compileAllFuns m doOpt funs (buildPolyCtx polys))
 
 compileResolvedModule-aux : AllocMode → Bool → Module → String ⊎ (List FunInfo × List PolyFunInfo) → String ⊎ List CompiledFun
 compileResolvedModule-aux m doOpt mod (inj₁ err)            = inj₁ err

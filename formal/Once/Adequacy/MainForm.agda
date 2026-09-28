@@ -175,7 +175,7 @@ mnf-ef : ∀ (m : C.Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋)
   moduleToIR-aux (C.compileResolvedModule-aux C.Heap false m efv) ≡ just ir → MainNode m ir
 mnf-ef m ir (inj₁ err) ef-eq mi = case mi of λ ()
 mnf-ef m ir (inj₂ (funs , polys)) ef-eq mi =
-  mnf-gate m ir funs polys (C.polysWalkCheck funs C.emptyFunCtx (C.buildPolyCtx polys) polys) mi ef-eq
+  mnf-gate m ir funs polys (C.polysOK funs polys) mi ef-eq
 
 mnf-gate m ir funs polys (inj₁ _) mi ef-eq = case mi of λ ()
 mnf-gate m ir funs polys (inj₂ _) mi ef-eq =

@@ -15564,17 +15564,19 @@ was typed only at its use sites: an unused ill-typed one was accepted
 (`f : Nu (K Int); f = 5`), and a used one was typed in the USE site's context.
 
 * **Spec.** `Typed` (Once.Spec.Program) gains a fourth component `PolysTyped m`
-  (Once.Spec.Module): walking the `FunInfo`s in order, every ground telescope entry whose
-  declaration position (`pfunAfter` = number of `FunInfo`s declared before it) is the
-  current prefix length is typed `ctxWithImportsAndPolys prefix polys ⊢ᶜ body ∶ T ⨾ 0`,
-  with `polys` its OWN telescope prefix (`lookupPolyPrefix`). Polymorphic entries are
-  not constrained here: typing them once needs the type-substitution lemma (plan 0.103
+  (Once.Spec.Module): every ground telescope entry is typed ONCE,
+  `ctxWithImportsAndPolys (funCtxAt … (pfunAfter pfi)) tail ⊢ᶜ body ∶ T ⨾ 0`, in the
+  monomorphic context at its declaration position (`pfunAfter` = the number of `FunInfo`s
+  declared after it) and its telescope TAIL (exactly the prefix a reference's
+  `lookupPolyPrefix` returns). It is stated structurally over the telescope list, so the
+  telescope's meaning (an environment, phase 1c) is a plain recursion. Polymorphic entries
+  are not constrained here: typing them once needs the type-substitution lemma (plan 0.103
   phase 5).
-* **Implementation.** `Compile.compileGated` runs the decider `polysWalkCheck` before
+* **Implementation.** `Compile.compileGated` runs the decider `polysOK` before
   `compileAllFuns`, for `compileResolvedModule` and for `compileFromModule`'s Check and
   Build stages (one gate, every entry point).
 * **Adequacy.** `Once.Adequacy.PolysCheck` proves the decider sound and complete for
-  `PolysWalkTyped` (postulate-free); `AcceptSound.moduleToIR-polys` produces the new
+  `EntriesTyped` (postulate-free); `AcceptSound.moduleToIR-polys` produces the new
   component, `ModuleComplete.moduleToIR-complete` consumes it.
 * **Routing** by concreteness still decides CODEGEN (direct call vs δ-reduction); it no
   longer decides whether a definition is typed.

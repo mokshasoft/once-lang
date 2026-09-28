@@ -151,7 +151,7 @@ crm-aux-doOpt : ∀ (doOpt : Bool) (m : P.Module)
   Σ-syntax (List C.CompiledFun) (λ c' → C.compileResolvedModule-aux C.Heap doOpt m ef ≡ inj₂ c')
 crm-aux-doOpt doOpt m (inj₁ err) ()
 crm-aux-doOpt doOpt m (inj₂ (funs , polys)) eq =
-  gated-doOpt doOpt funs polys (C.polysWalkCheck funs C.emptyFunCtx (C.buildPolyCtx polys) polys) eq
+  gated-doOpt doOpt funs polys (C.polysOK funs polys) eq
 
 crm-doOpt : ∀ (doOpt : Bool) (m : P.Module) {c : List C.CompiledFun} →
   C.compileResolvedModule C.Heap false m ≡ inj₂ c →

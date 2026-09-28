@@ -197,7 +197,7 @@ program-no-clash (mkModule ds)
   with extractFunctions (extractAliases (mkModule ds)) (mkModule ds) in efeq
 ... | inj₁ _ = []
 ... | inj₂ (funs , polys)
-    with C.polysWalkCheck funs C.emptyFunCtx (C.buildPolyCtx polys) polys
+    with C.polysOK funs polys
 ...   | inj₁ _ = []
 ...   | inj₂ _
     with C.compileAllFuns C.Heap false funs (C.buildPolyCtx polys) in caeq

@@ -41,7 +41,7 @@ open import Once.TypeCheck.Classify using (NamedCtx)
 open import Once.TypeCheck.Raw using (RawExpr)
 open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_)
 open import Once.Spec.Module
-  using (AllFunsTyped; tnil; tcons; ModuleTyped-ef; ModuleTyped; PolysWalkTyped; PolysTyped-ef; PolysTyped)
+  using (AllFunsTyped; tnil; tcons; ModuleTyped-ef; ModuleTyped; PolysTyped-ef; PolysTyped)
 -- Import `check-sound` DIRECTLY from `Soundness` (not via `Verified`, which
 -- transitively pulls in the still-rotted `ErrorProofs`; soundness needs only
 -- this): `checkElab ctx e T ≡ success … ⇒ ctx ⊢ᶜ e ∶ T ⨾ Ψ`.
@@ -183,7 +183,7 @@ crm-aux-sound : ∀ (doOpt : Bool) (m : P.Module)
   ModuleTyped-ef m ef
 crm-aux-sound doOpt m (inj₁ err) ()
 crm-aux-sound doOpt m (inj₂ (funs , polys)) eq =
-  gated-caf-sound doOpt funs polys (C.polysWalkCheck funs C.emptyFunCtx (C.buildPolyCtx polys) polys) eq
+  gated-caf-sound doOpt funs polys (C.polysOK funs polys) eq
 
 crm-sound : ∀ (doOpt : Bool) (m : P.Module) {compiled : List C.CompiledFun} →
   C.compileResolvedModule C.Heap doOpt m ≡ inj₂ compiled →
@@ -194,13 +194,13 @@ crm-sound doOpt m eq =
 -- Plan 0.103 phase 1: the gate passed ⇒ every ground telescope entry is typed
 -- at its declaration.
 gate-polys-sound : ∀ (doOpt : Bool) (funs : List C.FunInfo) (polys : List C.PolyFunInfo)
-  (g : String ⊎ ⊤) → C.polysWalkCheck funs C.emptyFunCtx (C.buildPolyCtx polys) polys ≡ g →
+  (g : String ⊎ ⊤) → C.polysOK funs polys ≡ g →
   {compiled : List C.CompiledFun} →
   C.polysGate g (C.compileAllFuns C.Heap doOpt funs (C.buildPolyCtx polys)) ≡ inj₂ compiled →
-  PolysWalkTyped funs C.emptyFunCtx (C.buildPolyCtx polys) polys
+  PolysTyped-ef (inj₂ (funs , polys))
 gate-polys-sound doOpt funs polys (inj₁ _) _ ()
 gate-polys-sound doOpt funs polys (inj₂ tt) g-eq _ =
-  PC.walk-sound funs C.emptyFunCtx (C.buildPolyCtx polys) polys g-eq
+  PC.polys-sound _ polys g-eq
 
 crm-aux-polys : ∀ (doOpt : Bool) (m : P.Module)
   (ef : String ⊎ (List C.FunInfo × List C.PolyFunInfo)) {compiled : List C.CompiledFun} →

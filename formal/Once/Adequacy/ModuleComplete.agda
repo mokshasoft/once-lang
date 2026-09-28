@@ -195,7 +195,7 @@ moduleToIR-complete : ∀ (m : C.Module) (mt : ModuleTyped m) →
   Σ-syntax (IR ⌊ Unit ⌋ ⌊ Unit ⌋) (λ ir → moduleToIR m ≡ just ir)
 moduleToIR-complete m mt (amu , me) pt with C.extractFunctions (C.extractAliases m) m
 ... | inj₂ (funs , polys)
-    rewrite PC.walk-complete funs C.emptyFunCtx (C.buildPolyCtx polys) polys pt
+    rewrite PC.polys-complete _ polys pt
     with caf-go-find-complete (C.buildPolyCtx polys)
            C.emptyFunCtx mt amu me
 ...   | (compiled , ir , ca-eq , fm-eq) =
@@ -345,7 +345,7 @@ moduleToIR-sound m mt mi with C.extractFunctions (C.extractAliases m) m
 ... | inj₂ (funs , polys)
     with C.compileAllFuns-go C.Heap false (C.buildPolyCtx polys)
            funs C.emptyFunCtx in ca-eq
-       | C.polysWalkCheck funs C.emptyFunCtx (C.buildPolyCtx polys) polys
+       | C.polysOK funs polys
 ...   | inj₂ compiled | inj₁ _ = case mi of λ ()
 ...   | inj₂ compiled | inj₂ _ =
         caf-go-mains (C.buildPolyCtx polys) C.emptyFunCtx mt ca-eq
