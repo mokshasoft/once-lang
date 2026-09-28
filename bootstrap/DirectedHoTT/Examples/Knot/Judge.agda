@@ -42,7 +42,7 @@ open import DirectedHoTT.Examples.Knot.Lookup using ( ⌜Ctx⌝; rows; ⊢rows )
 
 open import DirectedHoTT.Examples.Knot.JudgeIx
 open import DirectedHoTT.Examples.Knot.JudgeRowsTy
-open import DirectedHoTT.Examples.Knot.JudgeRowsTm using ( rLam; okLam )
+open import DirectedHoTT.Examples.Knot.JudgeRowsTm using ( rLam; okLam; rApp; okApp )
 
 private
   variable
@@ -51,6 +51,7 @@ private
 -- the `⊢` rows, by constructor (the rest are the next batches)
 rowTm : ℕ → Row
 rowTm 1 = rLam      -- lam
+rowTm 2 = rApp      -- app
 rowTm _ = rNone
 
 -- ★ the rows, by (sort, constructor)
@@ -99,7 +100,8 @@ rowOK (nthᵍ-s nthᵍ-z) nh = rowOKTm nh
     rowOKTm : {k : ℕ} {sh : Shape} → NthSh TmShs k sh → RowOK 1 sh (rowTm k)
     rowOKTm {sh = sh} nthʰ-z = okNone {1} {sh}
     rowOKTm (nthʰ-s nthʰ-z) = okLam
-    rowOKTm {sh = sh} (nthʰ-s (nthʰ-s nh)) = okNone {1} {sh}
+    rowOKTm (nthʰ-s (nthʰ-s nthʰ-z)) = okApp
+    rowOKTm {sh = sh} (nthʰ-s (nthʰ-s (nthʰ-s nh))) = okNone {1} {sh}
 
 ⊢FIBMT : {Γ : Ctx} → Γ ⊢ FIBM ∷ MethTy (SI 2) (SD KSig) FM
 ⊢FIBMT = ⊢FIBM rowOK
