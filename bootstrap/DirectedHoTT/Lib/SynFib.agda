@@ -31,12 +31,12 @@ open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong�
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax hiding ( Fin )
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
-open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-trans; ⟶*-appˡ; red→≅ᵀ )
+open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-trans; ⟶*-appˡ; red→≅ᵀ; ⟶ᵀ*-El; ⟶*-dpayᶜ )
 open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast; wk-cancel-tm; sub-lemma; ⊢single )
 open import DirectedHoTT.Metatheory.SubjectReductionBase using ( wk-sub )
 open import DirectedHoTT.Metatheory.Fundamental.Syntactic using ( ⟨_⟩ᵣ; subTm-var )
 open import DirectedHoTT.Metatheory.Premises using ( mot-ren; ⊢wkD )
-open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_; Nth; nth-z; nth-s; selF; subC; tag; conₗ; tag-ren; Lt )
+open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_; Nth; nth-z; nth-s; selF; subC; tag; conₗ; tag-ren; Lt; lt-z; ⊢selF; selF-β; ⊢tag; ⊢pay-σ; ⊢con-fib; []ᵈ; _∷ᵈ_ )
 open import DirectedHoTT.Lib.Tel
 open import DirectedHoTT.Lib.TelAt using ( HypAt; entₛ; nth-⌜⌝ₛₛ; allSD )
 open import DirectedHoTT.Lib.MethAt
@@ -310,3 +310,20 @@ module Fib {sg : Sig n} (ok : SigOK n sg)
   FIBM-sub σ = trans {x = subTm σ (FIBM {_})} {y = methAt (subC σ (sortMsF sg zero))} {z = FIBM}
                      (methAt-sub σ (sortMsF sg zero))
                      (cong methAt {x = subC σ (sortMsF sg zero)} {y = sortMsF sg zero} (sortMsF-sub σ sg zero))
+
+------------------------------------------------------------------------
+-- 6. ★ A CONSTRUCTOR OF A ONE-ROW FIBRE: tag 0, then the row's payload.
+------------------------------------------------------------------------
+
+private
+  rowsR : {c : ℕ} → Cons Δ c → RTm Δ
+  rowsR {c = c} Cs = dσ (⌜Fin⌝ c) (selF Cs)
+
+-- a constructor of a one-row fibre
+⊢conRow : {Ξ : Ctx} {I D i C p : RTm ⌊ Ξ ⌋} → Ξ ⊢ I ∷ U → Ξ ⊢ D ∷ DescF I → Ξ ⊢ i ∷ El I →
+          app D i ⟶* dσ (⌜Fin⌝ 1) (selF (C ∷ [])) → Ξ ⊢ C ∷ Desc I → Ξ ⊢ p ∷ El (dpay I D C) → Ξ ⊢ conₗ 0 p ∷ IMu I D i
+⊢conRow {Ξ} {I} {D} {i} {C} {p} dI dD di r dC dp =
+  ⊢con-fib dI dD di r
+    (⊢pay-σ dI dD (⊢selF dI (dC ∷ᵈ []ᵈ)) (⊢conv (⊢tag lt-z) (csymᵀ (credᵀ El-⌜Fin⌝)))
+            (⊢conv dp (csymᵀ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (selF-β {Cs = C ∷ []} nth-z)))))))
+
