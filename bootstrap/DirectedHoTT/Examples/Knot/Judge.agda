@@ -25,7 +25,8 @@ open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast; wk-cancel-tm )
 open import DirectedHoTT.Metatheory.SubjectReductionBase using () renaming ( wk-sub to wkS )
 open import DirectedHoTT.Metatheory.Fundamental.Syntactic using ( ⟨_⟩ᵣ; subTm-var )
-open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_; conₗ; tag; lt-z; lt-s )
+open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; _⟶ᵀ*_; stepᵀ; doneᵀ )
+open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_; conₗ; tag; Lt; lt-z; lt-s )
 open import DirectedHoTT.Lib.Tel
 open import DirectedHoTT.Lib.Sorted using ( ⊢sortOf )
 open import DirectedHoTT.Lib.Syn
@@ -114,3 +115,134 @@ ixJ i t c = pair i (pair t c)
     p1 = ⊢pair tyB1 di
                (⊢-cast {Ξ} {pair t c} {El (⌜Σ⌝ (⌜IMu⌝ (SI 2) KD i) B2)} {subTy (single i) (El B1)} (sym e1)
                        (⊢conv p2 (csymᵀ (credᵀ (El-⌜Σ⌝ (⌜IMu⌝ (SI 2) KD i) B2)))))
+
+------------------------------------------------------------------------
+-- 2. THE CONVOY AT A SORT, and the two index builders.
+------------------------------------------------------------------------
+
+private
+  k1 : (u t : RTm Δ) → subTm (extS (single u)) (renTm vs (renTm vs t)) ≡ renTm vs t
+  k1 u t = trans (wkS (single u) (renTm vs t)) (cong (renTm vs) (wk-cancel-tm u t))
+
+-- the convoy's code at an index, its two substitutions cast
+eCT : (ix : RTm Δ) → CTat ix ≡ ⌜Σ⌝ (⌜Ctx⌝ (snd ix)) (fcase (fst (renTm vs ix)) ⌜Unit⌝ (⌜Ty⌝ (snd (renTm vs (renTm vs ix)))))
+eCT {Δ} ix =
+  cong₂ (λ D X → ⌜Σ⌝ (⌜IMu⌝ ⌜Nat⌝ D (snd ix)) (fcase (fst (renTm vs ix)) ⌜Unit⌝ X))
+        {x = subTm (single ix) (CtxD {Δ ∙})} {x' = CtxD}
+        {y = subTm (extS (extS (single ix))) (⌜Ty⌝ (snd (var (vs (vs vz)))))} {y' = ⌜Ty⌝ (snd (renTm vs (renTm vs ix)))}
+        (CtxD-sub (single ix)) (⌜Ty⌝-sub (extS (extS (single ix))) (snd (var (vs (vs vz)))))
+
+-- the sort-dependent half, at its two sorts
+FT : RTm Δ → RTm (Δ ∙)
+FT ix = fcase (fst (renTm vs ix)) ⌜Unit⌝ (⌜Ty⌝ (snd (renTm vs (renTm vs ix))))
+
+-- …instantiated (the pair's second component's type)
+eFTat : (ix u : RTm Δ) → subTy (single u) (El (FT ix)) ≡ El (fcase (fst ix) ⌜Unit⌝ (⌜Ty⌝ (snd (renTm vs ix))))
+eFTat ix u = cong₂ (λ a X → El (fcase (fst a) ⌜Unit⌝ X))
+                   {x = subTm (single u) (renTm vs ix)} {x' = ix}
+                   {y = subTm (extS (single u)) (⌜Ty⌝ (snd (renTm vs (renTm vs ix))))} {y' = ⌜Ty⌝ (snd (renTm vs ix))}
+                   (wk-cancel-tm u ix)
+                   (trans (⌜Ty⌝-sub (extS (single u)) (snd (renTm vs (renTm vs ix))))
+                          (cong (λ z → ⌜Ty⌝ (snd z)) {x = subTm (extS (single u)) (renTm vs (renTm vs ix))} {y = renTm vs ix}
+                                (k1 u ix)))
+
+-- the type half at sort 1 converts to the Knot's types
+eTy1 : (j : RTm Δ) → El (subTm (single fzero) (⌜Ty⌝ (snd (renTm vs (pair (tag 1) j))))) ≡ El (⌜Ty⌝ (snd (pair (tag 1) j)))
+eTy1 j = cong El (trans (⌜Ty⌝-sub (single fzero) (snd (renTm vs (pair (tag 1) j))))
+                        (cong (λ z → ⌜Ty⌝ (snd z)) {x = subTm (single fzero) (renTm vs (pair (tag 1) j))} {y = pair (tag 1) j}
+                              (wk-cancel-tm fzero (pair (tag 1) j))))
+
+red1 : (j : RTm Δ) → El (fcase (fst (pair (tag 1) j)) ⌜Unit⌝ (⌜Ty⌝ (snd (renTm vs (pair (tag 1) j)))))
+                     ≅ᵀ El (subTm (single fzero) (⌜Ty⌝ (snd (renTm vs (pair (tag 1) j)))))
+red1 j = red→≅ᵀ (stepᵀ (ξ-El (ξ-fcaseᵗ (βfst (tag 1) j)))
+                 (stepᵀ (ξ-El (fcase-s fzero ⌜Unit⌝ (⌜Ty⌝ (snd (renTm vs (pair (tag 1) j)))))) doneᵀ))
+
+tyK≅ : (j : RTm Δ) → El (⌜Ty⌝ (snd (pair (tag 1) j))) ≅ᵀ K 0 j
+tyK≅ j = ctrnᵀ (credᵀ El-⌜IMu⌝) (credᵀ (ξ-IMuⁱ (ξ-pairʳ (βsnd (tag 1) j))))
+
+red0 : (j : RTm Δ) → El (fcase (fst (pair (tag 0) j)) ⌜Unit⌝ (⌜Ty⌝ (snd (renTm vs (pair (tag 0) j))))) ≅ᵀ Unit
+red0 j = red→≅ᵀ (stepᵀ (ξ-El (ξ-fcaseᵗ (βfst (tag 0) j)))
+                 (stepᵀ (ξ-El (fcase-z ⌜Unit⌝ (⌜Ty⌝ (snd (renTm vs (pair (tag 0) j)))))) (stepᵀ El-⌜Unit⌝ doneᵀ)))
+
+ctxK≅ : {s : ℕ} (j : RTm Δ) → El (⌜Ctx⌝ (snd (pair (tag s) j))) ≅ᵀ KCtx j
+ctxK≅ {s = s} j = ctrnᵀ (credᵀ El-⌜IMu⌝) (credᵀ (ξ-IMuⁱ (βsnd (tag s) j)))
+
+module _ {Ξ : Ctx} {s : ℕ} {j c : RTm ⌊ Ξ ⌋} where
+  private
+    ix : RTm ⌊ Ξ ⌋
+    ix = pair (tag s) j
+    dΣ : Ξ ⊢ c ∷ El (CTat ix) → Ξ ⊢ c ∷ Σ' (El (⌜Ctx⌝ (snd ix))) (El (FT ix))
+    dΣ dc = ⊢conv (⊢-cast {Ξ} {c} {El (CTat ix)} {El (⌜Σ⌝ (⌜Ctx⌝ (snd ix)) (FT ix))} (cong El (eCT ix)) dc)
+                  (credᵀ (El-⌜Σ⌝ (⌜Ctx⌝ (snd ix)) (FT ix)))
+
+  -- the context, at any sort
+  ⊢ctxOf : Ξ ⊢ c ∷ El (CTat ix) → Ξ ⊢ fst c ∷ KCtx j
+  ⊢ctxOf dc = ⊢conv (⊢fst (dΣ dc)) (ctrnᵀ (credᵀ El-⌜IMu⌝) (credᵀ (ξ-IMuⁱ (βsnd (tag s) j))))
+
+  -- the type half, read at the instance of its sort
+  eFT : subTy (single (fst c)) (El (FT ix)) ≡ El (fcase (fst ix) ⌜Unit⌝ (⌜Ty⌝ (snd (renTm vs ix))))
+  eFT = cong₂ (λ a X → El (fcase (fst a) ⌜Unit⌝ X))
+              {x = subTm (single (fst c)) (renTm vs ix)} {x' = ix}
+              {y = subTm (extS (single (fst c))) (⌜Ty⌝ (snd (renTm vs (renTm vs ix))))} {y' = ⌜Ty⌝ (snd (renTm vs ix))}
+              (wk-cancel-tm (fst c) ix)
+              (trans (⌜Ty⌝-sub (extS (single (fst c))) (snd (renTm vs (renTm vs ix))))
+                     (cong (λ z → ⌜Ty⌝ (snd z)) {x = subTm (extS (single (fst c))) (renTm vs (renTm vs ix))} {y = renTm vs ix}
+                           (k1 (fst c) ix)))
+
+  ⊢sndFT : Ξ ⊢ c ∷ El (CTat ix) → Ξ ⊢ snd c ∷ El (fcase (fst ix) ⌜Unit⌝ (⌜Ty⌝ (snd (renTm vs ix))))
+  ⊢sndFT dc = ⊢-cast {Ξ} {snd c} {subTy (single (fst c)) (El (FT ix))} eFT (⊢snd (dΣ dc))
+
+-- a term's type (sort 1)
+⊢tyOf : {Ξ : Ctx} {j c : RTm ⌊ Ξ ⌋} → Ξ ⊢ c ∷ El (CTat (pair (tag 1) j)) → Ξ ⊢ snd c ∷ K 0 j
+⊢tyOf {Ξ} {j} {c} dc =
+  ⊢conv (⊢-cast {Ξ} {snd c} {El (subTm (single fzero) (⌜Ty⌝ (snd (renTm vs (pair (tag 1) j)))))}
+                {El (⌜Ty⌝ (snd (pair (tag 1) j)))} (eTy1 j)
+                (⊢conv (⊢sndFT {s = 1} dc) (red1 j)))
+        (tyK≅ j)
+
+------------------------------------------------------------------------
+-- 3. BUILDING AN INDEX: the convoy at each sort, and `Γ ⊢ty A` / `Γ ⊢ t ∷ A`.
+------------------------------------------------------------------------
+
+module _ {Ξ : Ctx} {s : ℕ} {j g u : RTm ⌊ Ξ ⌋} (lt : Lt s 2) (dj : Ξ ⊢ j ∷ El ⌜Nat⌝) where
+  private
+    ix : RTm ⌊ Ξ ⌋
+    ix = pair (tag s) j
+    dix : Ξ ⊢ ix ∷ El (SI 2)
+    dix = ⊢ix lt dj
+    tyF : (Ξ ▹ El (⌜Ctx⌝ (snd ix))) ⊢ty El (FT ix)
+    tyF = ty-El (⊢fcase ty-U (⊢sortOf (⊢wk dix)) ⊢⌜Unit⌝ (⊢⌜Ty⌝ (⊢depth (⊢wk (⊢wk dix)))))
+  -- a convoy from its two halves
+  ⊢conv₂ : Ξ ⊢ g ∷ KCtx j → Ξ ⊢ u ∷ El (fcase (fst ix) ⌜Unit⌝ (⌜Ty⌝ (snd (renTm vs ix)))) →
+           Ξ ⊢ pair g u ∷ El (CTat ix)
+  ⊢conv₂ dg du =
+    ⊢-cast {Ξ} {pair g u} {El (⌜Σ⌝ (⌜Ctx⌝ (snd ix)) (FT ix))} {El (CTat ix)} (cong El (sym (eCT ix)))
+      (⊢conv (⊢pair tyF (⊢conv dg (csymᵀ (ctxK≅ j)))
+                        (⊢-cast {Ξ} {u} {El (fcase (fst ix) ⌜Unit⌝ (⌜Ty⌝ (snd (renTm vs ix))))} {subTy (single g) (El (FT ix))}
+                                (sym (eFTat ix g)) du))
+             (csymᵀ (credᵀ (El-⌜Σ⌝ (⌜Ctx⌝ (snd ix)) (FT ix)))))
+
+⊢cTy : {Ξ : Ctx} {j g : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ g ∷ KCtx j → Ξ ⊢ pair g unit ∷ El (CTat (pair (tag 0) j))
+⊢cTy {j = j} dj dg = ⊢conv₂ lt-z dj dg (⊢conv ⊢unit (csymᵀ (red0 j)))
+
+⊢cTm : {Ξ : Ctx} {j g a : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ g ∷ KCtx j → Ξ ⊢ a ∷ K 0 j →
+       Ξ ⊢ pair g a ∷ El (CTat (pair (tag 1) j))
+⊢cTm {Ξ} {j} {g} {a} dj dg da =
+  ⊢conv₂ (lt-s lt-z) dj dg
+    (⊢conv (⊢-cast {Ξ} {a} {El (⌜Ty⌝ (snd (pair (tag 1) j)))} {El (subTm (single fzero) (⌜Ty⌝ (snd (renTm vs (pair (tag 1) j)))))}
+                   (sym (eTy1 j)) (⊢conv da (csymᵀ (tyK≅ j))))
+           (csymᵀ (red1 j)))
+
+-- ★ the two judgement forms' indices
+tyIx : RTm Δ → RTm Δ → RTm Δ → RTm Δ
+tyIx j g A = ixJ (pair (tag 0) j) A (pair g unit)
+
+tmIx : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ
+tmIx j g t A = ixJ (pair (tag 1) j) t (pair g A)
+
+⊢tyIx : {Ξ : Ctx} {j g A : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ g ∷ KCtx j → Ξ ⊢ A ∷ K 0 j → Ξ ⊢ tyIx j g A ∷ El JT
+⊢tyIx dj dg dA = ⊢ixJ (⊢ix lt-z dj) dA (⊢cTy dj dg)
+
+⊢tmIx : {Ξ : Ctx} {j g t A : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ g ∷ KCtx j → Ξ ⊢ t ∷ K 1 j → Ξ ⊢ A ∷ K 0 j →
+        Ξ ⊢ tmIx j g t A ∷ El JT
+⊢tmIx dj dg dt dA = ⊢ixJ (⊢ix (lt-s lt-z) dj) dt (⊢cTm dj dg dA)
