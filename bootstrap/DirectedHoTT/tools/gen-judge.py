@@ -154,57 +154,113 @@ RULES.update({
                        ("id", ("Ty", "J"), "X", k("DIh", F(0), E(1), F(2), F(3)))]),
 })
 
+V0 = ("v0",)
+RULES.update({
+  # flat? cA ≡ true is a σ-field of the `Flat` family (a lower stratum)
+  "ap": dict(ex=[("Tm", "J"), ("Pred", "Flat", "J", E(0)), ("Tm", "J"), ("Tm", "J")],
+             ents=[tm("J", "G", E(0), U), tm("J", "G", F(0), U), tm("J+1", ("cext", "G", El(E(0))), F(1), El(("wk", 1, "J", F(0)))),
+                   tm("J", "G", E(2), El(E(0))), tm("J", "G", E(3), El(E(0))), tm("J", "G", F(2), k("Hom", El(E(0)), E(2), E(3))),
+                   ("id", ("Ty", "J"), "X", k("Hom", El(F(0)), ("sub0", 1, "J", F(1), E(2)), ("sub0", 1, "J", F(1), E(3))))]),
+  # two rules on one head; the motive is a pattern UNDER A BINDER, so it Fords
+  # (a case's convoy cannot be re-based from `j+1` to `j`); `occTm vz c ≡ false`
+  # is `c = wk c₀` (strengthening), and NoNatC is renaming-invariant
+  "tr": dict(alts=[
+      dict(ex=[("Tm", "J"), ("Tm", "J"), ("IdC", ("Tm", "J+1"), F(0), V0)],
+           ents=[tm("J", "G", E(0), U), tm("J", "G", E(1), U), tm("J", "G", F(1), k("Hom", U, E(0), E(1))),
+                 tm("J", "G", F(2), El(E(0))), ("id", ("Ty", "J"), "X", El(E(1)))]),
+      dict(ex=[("Ty", "J"), ("Tm", "J"), ("Tm", "J"), ("Pred", "NNC", "J", E(1)),
+               ("IdC", ("Tm", "J+1"), F(0), k("cHom", ("wk", 1, "J", E(1)), ("wk", 1, "J", E(2)), V0)), ("Tm", "J"), ("Tm", "J")],
+           ents=[tm("J+1", ("cext", "G", E(0)), ("wk", 1, "J", E(1)), U),
+                 tm("J+1", ("cext", "G", E(0)), ("wk", 1, "J", E(2)), El(("wk", 1, "J", E(1)))),
+                 tm("J+1", ("cext", "G", E(0)), V0, El(("wk", 1, "J", E(1)))),
+                 tm("J", "G", E(5), E(0)), tm("J", "G", E(6), E(0)), tm("J", "G", F(1), k("Hom", E(0), E(5), E(6))),
+                 tm("J", "G", F(2), El(k("cHom", E(1), E(2), E(5)))),
+                 ("id", ("Ty", "J"), "X", El(k("cHom", E(1), E(2), E(6))))])]),
+})
+
+TESTRULES = {
+  "trNoEq": dict(ex=[("Ty", "J"), ("Tm", "J"), ("Tm", "J"), ("Pred", "NNC", "J", E(1)), ("Tm", "J"), ("Tm", "J")],
+           ents=[tm("J+1", ("cext", "G", E(0)), ("wk", 1, "J", E(1)), U),
+                 tm("J", "G", E(4), E(0)), tm("J", "G", E(5), E(0)), tm("J", "G", F(1), k("Hom", E(0), E(4), E(5))),
+                 ("id", ("Ty", "J"), "X", El(k("cHom", E(1), E(2), E(5))))]),
+}
+
 HAND = {"var": ("rVar", "okVar"), "lam": ("rLam", "okLam"), "app": ("rApp", "okApp"), "fzero": ("rFz", "okFz"), "fsuc": ("rFs", "okFs")}
 
 # ------------------------------------------------------------ rendering
-def dep(d):
-    return {"J": "J", "J+1": "(nsuc J)", "J+2": "(nsuc (nsuc J))"}[d]
-def dnum(d):
-    return {"J": 0, "J+1": 1, "J+2": 2}[d]
-def dty(d):          # the depth's typing
-    return {"J": "dJ", "J+1": "(⊢isuc dJ)", "J+2": "(⊢isuc (⊢isuc dJ))"}[d]
+DEPTHS = ["J", "J+1", "J+2", "J+3", "J+4"]
+def dnum(d): return DEPTHS.index(d)
+def plus(d, n): return DEPTHS[dnum(d) + n]
+def minus1(d): return DEPTHS[dnum(d) - 1]
+def nsucs(k, x):
+    for _ in range(k): x = "(nsuc %s)" % x
+    return x
+def dep(d, J="J"): return nsucs(dnum(d), J)
+def dty(d, dJ="dJ"):
+    t = dJ
+    for _ in range(dnum(d)): t = "(⊢isuc %s)" % t
+    return t
 def pname(p):
     if p in ("J", "G", "X"): return p
     return {"f": "F", "q": "Q", "e": "E"}[p[0]] + str(p[1])
-
 def is_param(e): return e in ("J", "G", "X") or (isinstance(e, tuple) and e[0] in ("f", "q", "e"))
+def var(m):
+    t = "vz"
+    for _ in range(m): t = "(vs %s)" % t
+    return t
+def wN(i, x): return x if i == 0 else "(w%d %s)" % (i, x)
+def extS(i, sig="σ"):
+    t = sig
+    for _ in range(i): t = "(extS %s)" % t
+    return t
+def fieldexpr(P, i):
+    t = P
+    for _ in range(i): t = "(snd %s)" % t
+    return "(fst %s)" % t
+def shape_expr(fs): return "(" + gk.shape(fs) + ")"
 
-class Row:
-    def __init__(self, name, spec):
-        self.n = name
-        self.case = spec.get("case")
-        self.ex = spec.get("ex", [])
-        self.ents = spec["ents"]
-        self.sort, self.fields, self.idx = SIG[name]
-        assert self.sort == 1
-        self.sh = shape_name(name)
-        if self.case:
-            self.tsort, self.tfields, self.tidx = SIG[self.case]
-            assert self.tsort == 0
-        self.atoms = []           # (kind, args) in order of appearance, deduplicated by rendering
-        self.params = []
-        for ent in self.ents: self.collect(ent)
-        order = ["J", "G", "X"] + [("f", i) for i in range(len(self.fields))] \
-              + [("q", i) for i in range(len(self.tfields) if self.case else 0)] + [("e", i) for i in range(len(self.ex))]
-        used = set(self.params)
+# ------------------------------------------------------------ a parametric object
+class PObj:
+    """A telescope (`kind = 'tel'`, a list of entries) or a code (`kind = 'code'`),
+    parametric in the positions it mentions; its atoms abstracted for the law."""
+    def __init__(self, rc, name, kind, body):
+        self.rc, self.name, self.kind, self.body = rc, name, kind, body
+        self.atoms, used = [], []
+        self.used = used
+        if kind == "tel":
+            for ent in body: self.collect(ent)
+        else:
+            self.collect_code(body)
+        order = ["J", "G", "X"] + [("f", i) for i in range(len(rc.fields))] \
+              + [("q", i) for i in range(len(rc.tfields))] + [("e", i) for i in range(len(rc.ex))]
         self.params = [p for p in order if p in used]
-        self.pfx = "T⊢" + name
 
-    # every parameter and atom the entries mention
+    def use(self, p):
+        if p not in self.used: self.used.append(p)
+
+    def collect_code(self, c):
+        t = c[0]
+        if t in ("Ty", "Tm"):
+            self.collect(c[1]); self.add_atom((t, (c[1],)))
+        elif t == "Nat":
+            pass
+        elif t == "Pred":
+            self.collect(c[2]); self.collect(c[3]); self.add_atom(("Pred:" + c[1], (c[2], c[3])))
+        elif t == "IdC":
+            self.collect_code(c[1]); self.collect(c[2]); self.collect(c[3])
+        else:
+            raise ValueError(c)
+
     def collect(self, x):
         if is_param(x):
-            if x not in self.params: self.params.append(x)
-            return
+            self.use(x); return
         if isinstance(x, str) and x.startswith("J"):
-            if "J" not in self.params: self.params.append("J")
-            return
-        if not isinstance(x, tuple): return
+            self.use("J"); return
         tag = x[0]
         if tag in ("ty", "tm"):
             for y in x[1:]: self.collect(y)
         elif tag == "id":
-            self.collect(x[1][1]); self.collect(x[2]); self.collect(x[3])
-            self.add_atom((x[1][0], (x[1][1],)))
+            self.collect(x[1][1]); self.collect(x[2]); self.collect(x[3]); self.add_atom((x[1][0], (x[1][1],)))
         elif tag == "k":
             for y in x[2:]: self.collect(y)
         elif tag == "cext":
@@ -217,7 +273,7 @@ class Row:
             self.add_atom((tag, x[1:]))
         elif tag == "nsuc":
             self.collect(x[1])
-        elif tag == "nzero":
+        elif tag in ("nzero", "v0"):
             pass
         else:
             raise ValueError(x)
@@ -225,34 +281,31 @@ class Row:
     def add_atom(self, a):
         if a not in self.atoms: self.atoms.append(a)
 
-    # an expression; `atoms` renders atoms as their parameter names
     def expr(self, x, env, atoms=False):
         if is_param(x): return env[x]
-        if isinstance(x, str): return {"J": env["J"], "J+1": "(nsuc %s)" % env["J"], "J+2": "(nsuc (nsuc %s))" % env["J"]}[x]
+        if isinstance(x, str): return dep(x, env["J"])
         tag = x[0]
         if tag == "k":
             args = " ".join(self.expr(y, env, atoms) for y in x[2:])
             return "(k%s%s)" % (x[1], (" " + args) if args else "")
-        if tag == "cext":
-            return "(cext %s %s)" % (self.expr(x[1], env, atoms), self.expr(x[2], env, atoms))
-        if tag == "nsuc":
-            return "(nsuc %s)" % self.expr(x[1], env, atoms)
-        if tag == "nzero":
-            return "nzero"
+        if tag == "cext": return "(cext %s %s)" % (self.expr(x[1], env, atoms), self.expr(x[2], env, atoms))
+        if tag == "nsuc": return "(nsuc %s)" % self.expr(x[1], env, atoms)
+        if tag == "nzero": return "nzero"
+        if tag == "v0": return "(kvar ffz)"
         if tag in ("sub0", "wk", "DF", "mc") or tag in OPS:
             key = (tag, x[1:])
             if atoms: return "A%d" % self.atoms.index(key)
             return self.atom_expr(key, env)
         raise ValueError(x)
 
-    def atom_expr(self, a, env, sub=None):
+    def atom_expr(self, a, env):
         kind, args = a
-        r = lambda y: self.expr(y, env) if sub is None else "(subTm %s %s)" % (sub, self.expr(y, env))
+        r = lambda y: self.expr(y, env)
         if kind == "sub0": return "(sub0 %d %s %s %s)" % (args[0], r(args[1]), r(args[2]), r(args[3]))
         if kind == "wk":   return "(wk %d %s %s)" % (args[0], r(args[1]), r(args[2]))
         if kind == "DF":   return "(DF %s %s)" % (r(args[0]), r(args[1]))
-        if kind == "Ty":   return "(⌜Ty⌝ %s)" % r(args[0])
-        if kind == "Tm":   return "(⌜Tm⌝ %s)" % r(args[0])
+        if kind in ("Ty", "Tm"): return "(⌜%s⌝ %s)" % (kind, r(args[0]))
+        if kind.startswith("Pred:"): return "(⌜%s⌝ %s %s)" % (kind[5:], r(args[0]), r(args[1]))
         if kind in OPS or kind == "mc": return "(%s %s)" % (kind, " ".join(r(y) for y in args))
         raise ValueError(a)
 
@@ -262,15 +315,28 @@ class Row:
         if kind == "sub0": return "(sub0-sub %s %d %s %s %s)" % (sigma, args[0], r(args[1]), r(args[2]), r(args[3]))
         if kind == "wk":   return "(wk-sub %s %d %s %s)" % (sigma, args[0], r(args[1]), r(args[2]))
         if kind == "DF":   return "(DF-sub %s %s %s)" % (sigma, r(args[0]), r(args[1]))
-        if kind == "Ty":   return "(⌜Ty⌝-sub %s %s)" % (sigma, r(args[0]))
-        if kind == "Tm":   return "(⌜Tm⌝-sub %s %s)" % (sigma, r(args[0]))
+        if kind in ("Ty", "Tm"): return "(⌜%s⌝-sub %s %s)" % (kind, sigma, r(args[0]))
+        if kind.startswith("Pred:"): return "(⌜%s⌝-sub %s %s %s)" % (kind[5:], sigma, r(args[0]), r(args[1]))
         if kind in OPS or kind == "mc": return "(%s-sub %s %s)" % (kind, sigma, " ".join(r(y) for y in args))
         raise ValueError(a)
 
-    # the telescope's Desc, atoms abstracted
-    def tel(self, env, atoms):
+    def code_render(self, c, env, atoms):
+        t = c[0]
+        if t in ("Ty", "Tm"):
+            key = (t, (c[1],))
+            return ("A%d" % self.atoms.index(key)) if atoms else self.atom_expr(key, env)
+        if t == "Nat": return "⌜Nat⌝"
+        if t == "Pred":
+            key = ("Pred:" + c[1], (c[2], c[3]))
+            return ("A%d" % self.atoms.index(key)) if atoms else self.atom_expr(key, env)
+        if t == "IdC":
+            return "(⌜Id⌝ %s %s %s)" % (self.code_render(c[1], env, atoms), self.expr(c[2], env, atoms), self.expr(c[3], env, atoms))
+        raise ValueError(c)
+
+    def render(self, env, atoms):
+        if self.kind == "code": return self.code_render(self.body, env, atoms)
         out = "tι"
-        for ent in reversed(self.ents):
+        for ent in reversed(self.body):
             if ent[0] == "ty":
                 _, d, g, A = ent
                 out = "tρ (tyIx %s %s %s) (%s)" % (self.expr(d, env, atoms), self.expr(g, env, atoms), self.expr(A, env, atoms), out)
@@ -286,11 +352,13 @@ class Row:
                 out = "tσ (⌜Id⌝ %s %s %s) tι" % (c, self.expr(a, env, atoms), self.expr(b, env, atoms))
         return out
 
-    # ---- the typing synthesizer: an expression at a sort and depth
+    # ---- typing
     def typ(self, x, s, d, denv):
-        if is_param(x):
-            return denv[x]
+        if is_param(x): return denv[x]
         tag = x[0]
+        if tag == "v0":
+            assert s == 1 and dnum(d) >= 1
+            return "(⊢kvar %s (⊢ffz %s))" % (dty(d, denv["J"]), dty(minus1(d), denv["J"]))
         if tag == "k":
             srt, fs, _ = SIG[x[1]]
             assert srt == s, (x, s)
@@ -300,25 +368,25 @@ class Row:
                     ds.append(self.nattyp(y, denv)); continue
                 assert f[0] == "rec", (x, f)
                 ds.append(self.typ(y, f[1], plus(d, f[2]), denv))
-            return "(⊢k%s %s%s)" % (x[1], dty(d), "".join(" " + q for q in ds))
+            return "(⊢k%s %s%s)" % (x[1], dty(d, denv["J"]), "".join(" " + q for q in ds))
         if tag == "sub0":
             _, s0, d0, t, u = x
-            assert s0 == s and d0 == d
-            return "(⊢sub0 %s %s %s %s)" % (gk.lt(s0), dty(d0), self.typ(t, s0, plus(d0, 1), denv), self.typ(u, 1, d0, denv))
+            assert s0 == s and d0 == d, (x, s, d)
+            return "(⊢sub0 %s %s %s %s)" % (gk.lt(s0), dty(d0, denv["J"]), self.typ(t, s0, plus(d0, 1), denv), self.typ(u, 1, d0, denv))
         if tag == "wk":
             _, s0, d0, t = x
-            assert s0 == s and plus(d0, 1) == d
-            return "(⊢wkS %s %s %s)" % (gk.lt(s0), dty(d0), self.typ(t, s0, d0, denv))
+            assert s0 == s and plus(d0, 1) == d, (x, s, d)
+            return "(⊢wkS %s %s %s)" % (gk.lt(s0), dty(d0, denv["J"]), self.typ(t, s0, d0, denv))
         if tag == "DF":
             _, d0, I = x
             assert s == 0 and d0 == d
-            return "(⊢DF %s %s)" % (dty(d0), self.typ(I, 1, d0, denv))
+            return "(⊢DF %s %s)" % (dty(d0, denv["J"]), self.typ(I, 1, d0, denv))
         if tag in OPS:
-            sig = OPS[tag]
+            sg = OPS[tag]
             d0 = x[1]
-            assert s == 0 and plus(d0, sig["out"]) == d, (x, s, d)
-            ds = [self.typ(y, srt, plus(d0, k), denv) for y, (srt, k) in zip(x[2:], sig["args"])]
-            return "(⊢%s %s%s)" % (tag, dty(d0), "".join(" " + q for q in ds))
+            assert s == 0 and plus(d0, sg["out"]) == d, (x, s, d)
+            ds = [self.typ(y, srt, plus(d0, kk), denv) for y, (srt, kk) in zip(x[2:], sg["args"])]
+            return "(⊢%s %s%s)" % (tag, dty(d0, denv["J"]), "".join(" " + q for q in ds))
         raise ValueError(x)
 
     def nattyp(self, x, denv):
@@ -332,336 +400,321 @@ class Row:
         if g[0] == "mc":
             _, d0, g0, I, D = g
             assert plus(d0, 2) == d
-            return "(⊢mc %s %s %s %s)" % (dty(d0), self.ctxtyp(g0, d0, denv), self.typ(I, 1, d0, denv), self.typ(D, 1, d0, denv))
+            return "(⊢mc %s %s %s %s)" % (dty(d0, denv["J"]), self.ctxtyp(g0, d0, denv), self.typ(I, 1, d0, denv), self.typ(D, 1, d0, denv))
         assert g[0] == "cext"
         dm = minus1(d)
-        return "(⊢cext %s %s %s)" % (dty(dm), self.ctxtyp(g[1], dm, denv), self.typ(g[2], 0, dm, denv))
+        return "(⊢cext %s %s %s)" % (dty(dm, denv["J"]), self.ctxtyp(g[1], dm, denv), self.typ(g[2], 0, dm, denv))
 
-def plus(d, n):
-    v = dnum(d) + n
-    return ["J", "J+1", "J+2"][v]
-def minus1(d):
-    return ["J", "J+1", "J+2"][dnum(d) - 1]
+    def codetyp(self, c, denv):
+        t = c[0]
+        if t in ("Ty", "Tm"): return "(⊢⌜%s⌝ %s)" % (t, dty(c[1], denv["J"]))
+        if t == "Nat": return "⊢⌜Nat⌝"
+        if t == "Pred": return "(⊢⌜%s⌝ %s %s)" % (c[1], dty(c[2], denv["J"]), self.typ(c[3], 1, c[2], denv))
+        if t == "IdC":
+            k0, d0 = c[1]
+            srt = 0 if k0 == "Ty" else 1
+            to = "toTy" if srt == 0 else "toTm"
+            return "(⊢⌜Id⌝ %s (%s %s) (%s %s))" % (self.codetyp(c[1], denv), to, self.typ(c[2], srt, d0, denv), to, self.typ(c[3], srt, d0, denv))
+        raise ValueError(c)
 
-# ------------------------------------------------------------ one row
-def pty(row, p):
+    def typing(self, denv):
+        if self.kind == "code": return self.codetyp(self.body, denv)
+        body = "ok-ι"
+        for ent in reversed(self.body):
+            if ent[0] == "ty":
+                _, d, g, Aa = ent
+                body = "ok-ρ (⊢tyIx %s %s %s) (%s)" % (dty(d, denv["J"]), self.ctxtyp(g, d, denv), self.typ(Aa, 0, d, denv), body)
+            elif ent[0] == "tm":
+                _, d, g, t, Aa = ent
+                body = "ok-ρ (⊢tmIx %s %s %s %s) (%s)" % (dty(d, denv["J"]), self.ctxtyp(g, d, denv), self.typ(t, 1, d, denv),
+                                                           self.typ(Aa, 0, d, denv), body)
+            elif ent[0] == "id":
+                _, code, a, b = ent
+                srt = 0 if code[0] == "Ty" else 1
+                to = "toTy" if srt == 0 else "toTm"
+                body = "ok-σ (⊢⌜Id⌝ (⊢⌜%s⌝ %s) (%s %s) (%s %s)) ok-ι" % (code[0], dty(code[1], denv["J"]),
+                    to, self.typ(a, srt, code[1], denv), to, self.typ(b, srt, code[1], denv))
+        return body
+
+def pty(rc, p):
     """a position's type, for the generic typing"""
     if p == "J": return "El ⌜Nat⌝"
     if p == "G": return "KCtx J"
     if p == "X": return "K 0 J"
     if p[0] in ("f", "q"):
-        fs = row.fields if p[0] == "f" else row.tfields
+        fs = rc.fields if p[0] == "f" else rc.tfields
         f = fs[p[1]]
-        assert f[0] == "rec", (row.n, p, f)
-        return "K %d %s" % (f[1], dep(["J", "J+1", "J+2"][f[2]]))
+        assert f[0] == "rec", (rc.n, p, f)
+        return "K %d %s" % (f[1], dep(DEPTHS[f[2]]))
     if p[0] == "e":
-        c = row.ex[p[1]]
+        c = rc.ex[p[1]]
         if c[0] == "Ty": return "K 0 %s" % dep(c[1])
         if c[0] == "Tm": return "K 1 %s" % dep(c[1])
-        return "El ⌜Nat⌝"
+        if c[0] == "Nat": return "El ⌜Nat⌝"
+        raise ValueError("a witness is not a position: %r" % (c,))
     raise ValueError(p)
 
-def gen_row(row):
+def gen_pobj(po):
     L = []
-    P = row.params
+    rc = po.rc
+    P = po.params
     pn = [pname(p) for p in P]
     env = {p: pname(p) for p in P}
-    na = len(row.atoms)
+    env.setdefault("J", "J")
+    na = len(po.atoms)
     an = ["A%d" % i for i in range(na)]
-    I, A = row.pfx + "I", row.pfx + "A"
-    L.append("-- ⊢%s" % row.n)
-    # the parametric telescope, atoms abstracted, and with its atoms
-    L.append("%s : %sTel Δ" % (A, "RTm Δ → " * (len(P) + na)))
-    L.append("%s %s = %s" % (A, " ".join(pn + an), row.tel(env, True)) if P or na else "%s = %s" % (A, row.tel(env, True)))
+    I, A = po.name + "I", po.name + "A"
+    tel = po.kind == "tel"
+    Ret = "Tel Δ" if tel else "RTm Δ"
+    q = (lambda x: "⌜ %s ⌝ᵗ" % x) if tel else (lambda x: "(%s)" % x)
+    L.append("%s : %s%s" % (A, "RTm Δ → " * (len(P) + na), Ret))
+    L.append("%s = %s" % (" ".join([A] + pn + an), po.render(env, True)))
     L.append("")
-    L.append("%s : %sTel Δ" % (I, "RTm Δ → " * len(P)))
-    atomvals = " ".join(row.atom_expr(a, env) for a in row.atoms)
-    L.append("%s%s = %s%s" % (I, "".join(" " + q for q in pn), A, "".join(" " + q for q in pn) + ((" " + atomvals) if na else "")))
+    L.append("%s : %s%s" % (I, "RTm Δ → " * len(P), Ret))
+    L.append("%s = %s" % (" ".join([I] + pn), " ".join([A] + pn + [po.atom_expr(a, env) for a in po.atoms])))
     L.append("")
-    # the atom congruence
-    L.append("%s-cong : {Δ : Cx} → %s%s⌜ %s ⌝ᵗ ≡ ⌜ %s ⌝ᵗ" % (A,
-        "".join("(%s : RTm Δ) → " % q for q in pn) + "".join("(%s %s' : RTm Δ) → " % (a, a) for a in an),
+    L.append("%s-cong : {Δ : Cx} → %s%s%s ≡ %s" % (A,
+        "".join("(%s : RTm Δ) → " % x for x in pn) + "".join("(%s %s' : RTm Δ) → " % (a, a) for a in an),
         "".join("%s ≡ %s' → " % (a, a) for a in an),
-        " ".join([A + " {Δ}"] + pn + an), " ".join([A] + pn + [a + "'" for a in an])))
+        q(" ".join([A + " {Δ}"] + pn + an)), q(" ".join([A] + pn + [a + "'" for a in an]))))
     L.append("%s-cong %s%s = refl" % (A, " ".join(pn + [x for a in an for x in (a, a + "'")]), "".join(" refl" for _ in an)))
     L.append("")
-    # the law
-    L.append("%s-sub : (σ : Sub Δ Θ)%s → subTm σ ⌜ %s ⌝ᵗ ≡ ⌜ %s ⌝ᵗ" % (I,
-        "".join(" (%s : RTm Δ)" % q for q in pn) if pn else "", " ".join([I] + pn),
-        " ".join([I] + ["(subTm σ %s)" % q for q in pn])))
+    L.append("%s-sub : (σ : Sub Δ Θ)%s → subTm σ %s ≡ %s" % (I,
+        "".join(" (%s : RTm Δ)" % x for x in pn), q(" ".join([I] + pn)), q(" ".join([I] + ["(subTm σ %s)" % x for x in pn]))))
     if na:
         senv = {p: "(subTm σ %s)" % pname(p) for p in P}
-        L.append("%s-sub σ%s = %s-cong %s %s %s" % (I, "".join(" " + q for q in pn), A,
-            " ".join("(subTm σ %s)" % q for q in pn),
-            " ".join("(subTm σ %s) %s" % (row.atom_expr(a, env), row.atom_expr(a, senv)) for a in row.atoms),
-            " ".join(row.atom_sub(a, env, "σ") for a in row.atoms)))
+        senv.setdefault("J", "J")
+        L.append("%s-sub σ%s = %s-cong %s %s %s" % (I, "".join(" " + x for x in pn), A,
+            " ".join("(subTm σ %s)" % x for x in pn),
+            " ".join("(subTm σ %s) %s" % (po.atom_expr(a, env), po.atom_expr(a, senv)) for a in po.atoms),
+            " ".join(po.atom_sub(a, env, "σ") for a in po.atoms)))
     else:
-        L.append("%s-sub σ%s = refl" % (I, "".join(" " + q for q in pn)))
+        L.append("%s-sub σ%s = refl" % (I, "".join(" " + x for x in pn)))
     L.append("")
-    # the congruence
-    L.append("%s-cong : {Δ : Cx} → %s⌜ %s ⌝ᵗ ≡ ⌜ %s ⌝ᵗ" % (I,
-        "".join("(%s %s' : RTm Δ) → " % (q, q) for q in pn) + "".join("%s ≡ %s' → " % (q, q) for q in pn),
-        " ".join([I + " {Δ}"] + pn), " ".join([I] + [q + "'" for q in pn])))
-    L.append("%s-cong %s%s = refl" % (I, " ".join(x for q in pn for x in (q, q + "'")), "".join(" refl" for _ in pn)))
+    L.append("%s-cong : {Δ : Cx} → %s%s ≡ %s" % (I,
+        "".join("(%s %s' : RTm Δ) → " % (x, x) for x in pn) + "".join("%s ≡ %s' → " % (x, x) for x in pn),
+        q(" ".join([I + " {Δ}"] + pn)), q(" ".join([I] + [x + "'" for x in pn]))))
+    L.append("%s-cong %s%s = refl" % (I, " ".join(x for y in pn for x in (y, y + "'")), "".join(" refl" for _ in pn)))
     L.append("")
-    # the generic typing
     denv = {p: "d" + pname(p) for p in P}
-    denv_ctx = dict(denv)
-    L.append("ok%s : {Ξ : Ctx}%s → %sTelOK Ξ JT (%s)" % (I,
-        (" {%s : RTm ⌊ Ξ ⌋}" % " ".join(pn)) if pn else "",
-        "".join("Ξ ⊢ %s ∷ %s → " % (pname(p), pty(row, p)) for p in P),
-        " ".join([I] + pn)))
-    body = "ok-ι"
-    for ent in reversed(row.ents):
-        if ent[0] == "ty":
-            _, d, g, Aa = ent
-            body = "ok-ρ (⊢tyIx %s %s %s) (%s)" % (dty(d), row.ctxtyp(g, d, denv), row.typ(Aa, 0, d, denv), body)
-        elif ent[0] == "tm":
-            _, d, g, t, Aa = ent
-            body = "ok-ρ (⊢tmIx %s %s %s %s) (%s)" % (dty(d), row.ctxtyp(g, d, denv), row.typ(t, 1, d, denv), row.typ(Aa, 0, d, denv), body)
-        elif ent[0] == "id":
-            _, code, a, b = ent
-            srt = 0 if code[0] == "Ty" else 1
-            to = "toTy" if srt == 0 else "toTm"
-            body = "ok-σ (⊢⌜Id⌝ (⊢⌜%s⌝ %s) (%s %s) (%s %s)) ok-ι" % (code[0], dty(code[1]),
-                to, row.typ(a, srt, code[1], denv), to, row.typ(b, srt, code[1], denv))
-    L.append("ok%s%s = %s" % (I, "".join(" d" + q for q in pn), body.replace("dJ", "dJ")))
+    denv.setdefault("J", "dJ")
+    concl = ("TelOK Ξ JT (%s)" if tel else "Ξ ⊢ %s ∷ U") % " ".join([I] + pn)
+    L.append("ok%s : {Ξ : Ctx}%s → %s%s" % (I, (" {%s : RTm ⌊ Ξ ⌋}" % " ".join(pn)) if pn else "",
+        "".join("Ξ ⊢ %s ∷ %s → " % (pname(p), pty(rc, p)) for p in P), concl))
+    L.append("%s = %s" % (" ".join(["ok" + I] + ["d" + x for x in pn]), po.typing(denv)))
     L.append("")
     return L
 
+# ------------------------------------------------------------ a row: its alternatives
+class RowCtx:
+    def __init__(self, name, case, ex):
+        self.n = name
+        self.case = case
+        self.ex = ex
+        self.sort, self.fields, self.idx = SIG[name]
+        self.tfields = SIG[case][1] if case else []
 
-# ------------------------------------------------------------ stage 2: the row
-def var(m):
-    t = "vz"
-    for _ in range(m): t = "(vs %s)" % t
-    return t
+class Alt:
+    """one rule: its existentials (σ-prefix codes) and its premises"""
+    def __init__(self, name, tag, case, spec):
+        self.rc = RowCtx(name, case, spec.get("ex", []))
+        self.n = name
+        self.case = case
+        self.pfx = "T⊢" + name + tag
+        self.codes = [PObj(self.rc, "C⊢%s%s_%d" % (name, tag, i), "code", c) for i, c in enumerate(self.rc.ex)]
+        for i, co in enumerate(self.codes):
+            for p in co.params:
+                assert not (isinstance(p, tuple) and p[0] == "e" and p[1] >= i), (name, i, p)
+        self.body = PObj(self.rc, self.pfx, "tel", spec["ents"])
 
-def wN(i, x):
-    return x if i == 0 else "(w%d %s)" % (i, x)
-
-def extS(i, sig="σ"):
-    t = sig
-    for _ in range(i): t = "(extS %s)" % t
-    return t
-
-def fieldexpr(P, i):
-    t = P
-    for _ in range(i): t = "(snd %s)" % t
-    return "(fst %s)" % t
-
-def shape_expr(fs):
-    return "(" + gk.shape(fs) + ")"
-
-def gen_assembly(row):
+def gen_alt(al):
     L = []
-    P = row.params
-    n = len(row.ex)
-    N, I = row.pfx, row.pfx + "I"
-    case = row.case is not None
-    a, b = ("q", "c") if case else ("p", "c")
+    for co in al.codes: L += gen_pobj(co)
+    L += gen_pobj(al.body)
+    rc = al.rc
+    n = len(rc.ex)
+    N, I = al.pfx, al.pfx + "I"
+    case = al.case is not None
+    a = "q" if case else "p"
     payload = "(snd c)" if case else "p"
-    # the positions' values at the outer context
-    def src(p):
-        if p == "J": return "j"
-        if p == "G": return "(fst c)"
-        if p == "X": return "(snd c)"
-        if p[0] == "f": return fieldexpr(payload, p[1])
-        if p[0] == "q": return fieldexpr("q", p[1])
+    def src(p, sub=False):
+        cc = "(subTm σ c)" if sub else "c"
+        if p == "J": return "(subTm σ j)" if sub else "j"
+        if p == "G": return "(fst %s)" % cc
+        if p == "X": return "(snd %s)" % cc
+        if p[0] == "f": return fieldexpr("(snd %s)" % cc if case else ("(subTm σ p)" if sub else "p"), p[1])
+        if p[0] == "q": return fieldexpr("(subTm σ q)" if sub else "q", p[1])
         raise ValueError(p)
-    def arg(p, lvl, sub=None):
-        if p[0] == "e" if isinstance(p, tuple) else False:
-            return "(var %s)" % var(lvl - 1 - p[1])
-        v = src(p)
-        if sub: v = v.replace("(fst c)", "(fst (subTm σ c))").replace("(snd c)", "(snd (subTm σ c))")
-        if sub and v == "j": v = "(subTm σ j)"
-        if sub and p[0] in ("f", "q") if isinstance(p, tuple) else False:
-            base = "(subTm σ %s)" % ("c" if case and p[0] == "f" else ("q" if p[0] == "q" else "p"))
-            v = fieldexpr("(snd %s)" % base if (case and p[0] == "f") else base, p[1])
-        return wN(lvl, v)
-    def code(i, sub=False):
-        c = row.ex[i]
-        jj = wN(i, "(subTm σ j)" if sub else "j")
-        if c[0] == "Nat": return "⌜Nat⌝"
-        d = {"J": jj, "J+1": "(nsuc %s)" % jj, "J+2": "(nsuc (nsuc %s))" % jj}[c[1]]
-        return "(⌜%s⌝ %s)" % (c[0], d)
+    def arg(p, lvl, sub=False):
+        if isinstance(p, tuple) and p[0] == "e": return "(var %s)" % var(lvl - 1 - p[1])
+        return wN(lvl, src(p, sub))
+    def inst(po, lvl, sub=False):
+        return "(%s)" % " ".join([po.name + "I"] + [arg(p, lvl, sub) for p in po.params]) if po.params else po.name + "I"
     def tel_from(i, sub=False):
-        body = "(%s %s)" % (I, " ".join(arg(p, n, sub) for p in P)) if P else I
+        body = inst(al.body, n, sub)
         for m in reversed(range(i, n)):
-            body = "(tσ %s %s)" % (code(m, sub), body)
+            body = "(tσ %s %s)" % (inst(al.codes[m], m, sub), body)
         return body
     L.append("%s : RTm Δ → RTm Δ → RTm Δ → Tel Δ" % N)
-    L.append("%s j %s %s = %s" % (N, a, b, tel_from(0)))
+    L.append("%s j %s c = %s" % (N, a, tel_from(0)))
     L.append("")
     # the law
+    def piece(po, lvl, isTel):
+        lhs = ("(subTm %s ⌜ %s ⌝ᵗ)" if isTel else "(subTm %s %s)") % (extS(lvl), inst(po, lvl))
+        rhs = ("⌜ %s ⌝ᵗ" if isTel else "%s") % inst(po, lvl, True)
+        if not po.params:
+            return lhs, rhs, "(%s-sub %s)" % (po.name + "I", extS(lvl))
+        pr = []
+        for p in po.params:
+            if isinstance(p, tuple) and p[0] == "e": pr.append("refl")
+            elif lvl == 0: pr.append("refl")
+            else: pr.append("(w%d-sub σ %s)" % (lvl, src(p)))
+        proof = "(trans (%s-sub %s %s) (%s-cong %s %s))" % (po.name + "I", extS(lvl), " ".join(arg(p, lvl) for p in po.params),
+                  po.name + "I", " ".join("(subTm %s %s) %s" % (extS(lvl), arg(p, lvl), arg(p, lvl, True)) for p in po.params),
+                  " ".join(pr))
+        return lhs, rhs, proof
     L.append("%s-law : TelLaw %s" % (N, N))
-    argsσ = " ".join("(subTm %s %s)" % (extS(n), arg(p, n)) for p in P)
-    args2 = " ".join(arg(p, n, True) for p in P)
-    def argproof(p):
-        if isinstance(p, tuple) and p[0] == "e": return "refl"
-        if n == 0: return "refl"
-        v = src(p)
-        return "(w%d-sub σ %s)" % (n, v)
     if n == 0:
-        L.append("%s-law σ j %s %s = %s-sub σ %s" % (N, a, b, I, " ".join(arg(p, 0) for p in P)) if P else
-                 "%s-law σ j %s %s = %s-sub σ" % (N, a, b, I))
+        _, _, pr = piece(al.body, 0, True)
+        L.append("%s-law σ j %s c = %s" % (N, a, pr))
     else:
-        body_l = "(subTm %s ⌜ %s ⌝ᵗ)" % (extS(n), "%s %s" % (I, " ".join(arg(p, n) for p in P)) if P else I)
-        body_r = "⌜ %s ⌝ᵗ" % ("%s %s" % (I, args2) if P else I)
-        bproof = "(trans (%s-sub %s %s) (%s-cong %s))" % (I, extS(n), " ".join(arg(p, n) for p in P),
-                  I, " ".join("(subTm %s %s) %s" % (extS(n), arg(p, n), arg(p, n, True)) for p in P) + " " +
-                  " ".join(argproof(p) for p in P)) if P else "(%s-sub %s)" % (I, extS(n))
-        cs = []
-        for i in range(n):
-            c = row.ex[i]
-            lhs = "(subTm %s %s)" % (extS(i), code(i))
-            rhs = code(i, True)
-            if c[0] == "Nat": pr = "refl"
-            elif i == 0: pr = "(⌜%s⌝-sub σ %s)" % (c[0], code(0)[len("(⌜Ty⌝ "):-1])
-            else:
-                d0 = code(i)[len("(⌜Ty⌝ "):-1]
-                lam = {"J": "z", "J+1": "(nsuc z)", "J+2": "(nsuc (nsuc z))"}[c[1]]
-                pr = "(trans (⌜%s⌝-sub %s %s) (cong (λ z → ⌜%s⌝ %s) {x = subTm %s (w%d j)} {y = w%d (subTm σ j)} (w%d-sub σ j)))" % (
-                      c[0], extS(i), d0, c[0], lam, extS(i), i, i, i)
-            cs.append((lhs, rhs, pr))
-        L.append("%s-law σ j %s %s =" % (N, a, b))
-        L.append("  dσ%s-cong %s %s %s %s" % ("¹²³"[n - 1], " ".join("%s %s" % (l, r) for l, r, _ in cs), body_l, body_r,
-                                             " ".join(pr for _, _, pr in cs) + " " + bproof))
+        ps = [piece(al.codes[i], i, False) for i in range(n)] + [piece(al.body, n, True)]
+        L.append("%s-law σ j %s c =" % (N, a))
+        L.append("  dσ-cong%d %s %s" % (n, " ".join("%s %s" % (l, r) for l, r, _ in ps), " ".join(p for _, _, p in ps)))
     L.append("")
-    return L
-
-# ------------------------------------------------------------ stage 3: the row, typed
-def gen_rowtyped(row):
-    L = []
-    P = row.params
-    n = len(row.ex)
-    N, I = row.pfx, row.pfx + "I"
-    nm = row.n
-    case = row.case is not None
-    a = "q" if case else "p"
-    S = "(pair (tag 1) j)"
-    # contexts along the σ-prefix
-    def code_at(i):
-        c = row.ex[i]
-        jj = wN(i, "j")
-        if c[0] == "Nat": return "⌜Nat⌝"
-        d = {"J": jj, "J+1": "(nsuc %s)" % jj, "J+2": "(nsuc (nsuc %s))" % jj}[c[1]]
-        return "(⌜%s⌝ %s)" % (c[0], d)
+    # the typing, at the row's sources
     ctx = ["Ξ"]
-    for i in range(n): ctx.append("(%s ▹ El %s)" % (ctx[-1], code_at(i)))
-    payload = "(snd c)" if case else "p"
-    def src(p):
-        if p == "J": return "j"
-        if p == "G": return "(fst c)"
-        if p == "X": return "(snd c)"
-        if p[0] == "f": return fieldexpr(payload, p[1])
-        if p[0] == "q": return fieldexpr("q", p[1])
-    # a position's typing at the outer context
-    dP = "(⊢pI %s dc)" % row.sh if case else "dp"
-    def fieldtyp(fs, base, S, i):
+    for i in range(n): ctx.append("(%s ▹ El %s)" % (ctx[-1], inst(al.codes[i], i)))
+    S = "(pair (tag 1) j)"
+    dP = "(⊢pI %s dc)" % shape_name(al.n) if case else "dp"
+    def fieldtyp(fs, base, S_, i):
         d = base
         for m in range(i):
             f = fs[m]
-            assert f[0] == "rec"
             d = "(⊢recSnd {s = %d} {k = %d} {sh = %s} %s)" % (f[1], f[2], shape_expr(fs[m + 1:]), d)
         f = fs[i]
-        assert f[0] == "rec", (row.n, fs, i)
+        assert f[0] == "rec", (al.n, fs, i)
         return "(⊢atDepth {a = tag %d} {j = j} {s = %d} {k = %d} (⊢recFst {s = %d} {k = %d} {sh = %s} %s))" % (
-            S, f[1], f[2], f[1], f[2], shape_expr(fs[i + 1:]), d)
+            S_, f[1], f[2], f[1], f[2], shape_expr(fs[i + 1:]), d)
     def styp(p):
         if p == "J": return "dj"
-        if p == "G": return "(⊢gI %s dc)" % row.sh if case else "(⊢ctxOf dc)"
+        if p == "G": return "(⊢gI %s dc)" % shape_name(al.n) if case else "(⊢ctxOf dc)"
         if p == "X": return "(⊢tyOf dc)"
-        if p[0] == "f": return fieldtyp(row.fields, dP, 1, p[1])
-        if p[0] == "q": return fieldtyp(row.tfields, "dq", 0, p[1])
+        if p[0] == "f": return fieldtyp(rc.fields, dP, 1, p[1])
+        if p[0] == "q": return fieldtyp(rc.tfields, "dq", 0, p[1])
     def kind(p):
         if p == "J": return ("nat",)
         if p == "G": return ("ctx",)
         if p == "X": return ("K", 0, "j")
-        fs = row.fields if p[0] == "f" else row.tfields
+        fs = rc.fields if p[0] == "f" else rc.tfields
         f = fs[p[1]]
-        return ("K", f[1], {0: "j", 1: "(nsuc j)", 2: "(nsuc (nsuc j))"}[f[2]])
-    def weaken(kd, term, typ, frm, to):
+        return ("K", f[1], nsucs(f[2], "j"))
+    def weaken(kd, term, typ, frm, to, termlvl=None):
+        # goal-directed: the contexts are inferred; only the TERMS are pinned
         for i in range(frm, to):
-            B = "El %s" % code_at(i)
+            t_i = wN(i, term) if termlvl is None else termlvl(i)
             if kd[0] == "nat":
-                typ = "(⊢wk {%s} {%s} {%s} {El ⌜Nat⌝} %s)" % (ctx[i], B, wN(i, term), typ)
+                typ = "(wkN {t = %s} %s)" % (t_i, typ)
             elif kd[0] == "ctx":
-                typ = "(⊢wkCtx {%s} {%s} {%s} {%s} %s)" % (ctx[i], B, wN(i, "j"), wN(i, term), typ)
+                typ = "(wkG {d = %s} {g = %s} %s)" % (wN(i, "j"), t_i, typ)
             else:
-                typ = "(⊢wkSK {Γ = %s} {B = %s} {sg = KSig} {s = %d} {d = %s} {t = %s} %s)" % (
-                    ctx[i], B, kd[1], wN(i, kd[2]), wN(i, term), typ)
+                dd = wN(i, kd[2]) if termlvl is None else kd[3](i)
+                typ = "(wkK {s = %d} {d = %s} {t = %s} %s)" % (kd[1], dd, t_i, typ)
         return typ
-    def ptyp(p):
+    def ptyp(p, lvl):
         if isinstance(p, tuple) and p[0] == "e":
-            m = p[1]; c = row.ex[m]
-            jj = wN(m, "j")
+            m = p[1]; c = rc.ex[m]
+            vt = lambda i: "(var %s)" % var(i - m - 1)
             if c[0] == "Nat":
-                base, kd, term = "(⊢var here)", ("nat",), None
-                return weaken(("nat",), "(var vz)", "(⊢var {%s} here)" % ctx[m + 1], m + 1, n) if False else \
-                       weaken_var(m, ("nat",), "(⊢var here)")
-            d = {"J": jj, "J+1": "(nsuc %s)" % jj, "J+2": "(nsuc (nsuc %s))" % jj}[c[1]]
-            here = "(here%s {%s} {%s})" % (c[0], ctx[m], d)
+                return weaken(("nat",), None, "(⊢var here)", m + 1, lvl, termlvl=vt)
+            dd0 = dep(c[1], wN(m, "j"))
+            here = "(here%s {m = %s})" % (c[0], dd0)
             srt = 0 if c[0] == "Ty" else 1
-            return weaken_var(m, ("K", srt, d), here)
-        return weaken(kind(p), src(p), styp(p), 0, n)
-    def weaken_var(m, kd, typ):
-        # the m-th existential, `var vz` at level m+1, weakened to level n
-        term = "(var vz)"
-        for i in range(m + 1, n):
-            B = "El %s" % code_at(i)
-            if kd[0] == "nat":
-                typ = "(⊢wk {%s} {%s} {%s} {El ⌜Nat⌝} %s)" % (ctx[i], B, term, typ)
-            else:
-                typ = "(⊢wkSK {Γ = %s} {B = %s} {sg = KSig} {s = %d} {d = %s} {t = %s} %s)" % (
-                    ctx[i], B, kd[1], wN(i - m - 1, "(renTm vs %s)" % kd[2]) if True else "", term, typ)
-            term = "(renTm vs %s)" % term
-        return typ
-    def argn(p):
-        if isinstance(p, tuple) and p[0] == "e": return "(var %s)" % var(n - 1 - p[1])
-        return wN(n, src(p))
-    inner = "okT⊢%sI {%s}%s%s" % (nm, ctx[n], "".join(" {%s}" % argn(p) for p in P), "".join(" " + ptyp(p) for p in P))
+            dl = lambda i: wN(i - m - 1, "(renTm vs %s)" % dd0) if i > m + 1 else "(renTm vs %s)" % dd0
+            return weaken(("K", srt, None, dl), None, here, m + 1, lvl, termlvl=vt)
+        return weaken(kind(p), src(p), styp(p), 0, lvl)
+    def okinst(po, lvl):
+        return "(ok%s {_}%s%s)" % (po.name + "I", "".join(" {%s}" % arg(p, lvl) for p in po.params),
+                                   "".join(" " + ptyp(p, lvl) for p in po.params))
     if case:
         sig = "Ξ ⊢ q ∷ PayV %s (pair (tag 0) j) (SI 2) (SD KSig) → Ξ ⊢ c ∷ El (CIat %s (pair (tag 0) j))" % (
-            shape_name(row.case), row.sh)
+            shape_name(al.case), shape_name(al.n))
         srcs = "dj dq dc"
     else:
-        sig = "Ξ ⊢ p ∷ PayV %s %s (SI 2) (SD KSig) → Ξ ⊢ c ∷ El (CTat %s)" % (row.sh, S, S)
+        sig = "Ξ ⊢ p ∷ PayV %s %s (SI 2) (SD KSig) → Ξ ⊢ c ∷ El (CTat %s)" % (shape_name(al.n), S, S)
         srcs = "dj dp dc"
     L.append("ok%s : {Ξ : Ctx} {j %s c : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El ⌜Nat⌝ → %s → TelOK Ξ JT (%s j %s c)" % (N, a, sig, N, a))
-    # the telescopes after i σ-fields
     def T_at(i):
-        body = "(%s %s)" % (I, " ".join(argn(p) for p in P)) if P else I
+        body = inst(al.body, n)
         for m in reversed(range(i, n)):
-            body = "(tσ %s %s)" % (code_at(m), body)
+            body = "(tσ %s %s)" % (inst(al.codes[m], m), body)
         return body
-    expr = "(%s)" % inner
+    expr = okinst(al.body, n)
     for i in reversed(range(n)):
-        dj_i = weaken(("nat",), "j", "dj", 0, i)
-        c = row.ex[i]
-        if c[0] == "Nat": dC = "⊢⌜Nat⌝"
-        else:
-            dd = {"J": dj_i, "J+1": "(⊢isuc %s)" % dj_i, "J+2": "(⊢isuc (⊢isuc %s))" % dj_i}[c[1]]
-            dC = "(⊢⌜%s⌝ %s)" % (c[0], dd)
-        expr = "(ok-σ %s (subst (λ Y → TelOK %s Y %s) (sym (JT-ren vs)) %s))" % (dC, ctx[i + 1], T_at(i + 1), expr)
+        expr = "(okσJ %s %s)" % (okinst(al.codes[i], i), expr)
     L.append("ok%s {Ξ} {j} {%s} {c} %s = %s" % (N, a, srcs, expr))
     L.append("")
+    return L
+
+def gen_head(name, spec):
+    L = ["-- ⊢%s" % name]
+    case = spec.get("case")
+    alts = spec.get("alts", [spec])
+    tags = [""] if len(alts) == 1 else ["ᵃ", "ᵇ", "ᶜ", "ᵈ"][:len(alts)]
+    As = [Alt(name, t, case, a) for t, a in zip(tags, alts)]
+    for al in As: L += gen_alt(al)
+    sh = shape_name(name)
     if case:
-        h = SIG[row.case][2]
+        assert len(As) == 1
+        N = As[0].pfx
+        h = SIG[case][2]
         L.append("r%sI : Row" % N)
         L.append("r%sI = defRow₀ %s %s-law" % (N, N, N))
-        L.append("module P%s = CaseRow %s %s %d r%sI" % (N, row.sh, ok_name(nm), h, N))
-        L.append("okC%sI : P%s.RowOK 0 %s r%sI" % (N[1:], N, shape_name(row.case), N))
+        L.append("module P%s = CaseRow %s %s %d r%sI" % (N, sh, ok_name(name), h, N))
+        L.append("okC%sI : P%s.RowOK 0 %s r%sI" % (N[1:], N, shape_name(case), N))
         L.append("okC%sI {Ξ} {j} {q} {c} dj dq dc = ⊢tel {Ξ} {JT} {%s j q c} ⊢JT (ok%s dj dq dc)" % (N[1:], N, N))
-        L.append("r⊢%s : Row" % nm)
-        L.append("r⊢%s = P%s.rX" % (nm, N))
-        L.append("ok⊢%s : RowOK 1 %s r⊢%s" % (nm, row.sh, nm))
-        L.append("ok⊢%s = P%s.okX okC%sI" % (nm, N, N[1:]))
+        L.append("r⊢%s : Row" % name)
+        L.append("r⊢%s = P%s.rX" % (name, N))
+        L.append("ok⊢%s : RowOK 1 %s r⊢%s" % (name, sh, name))
+        L.append("ok⊢%s = P%s.okX okC%sI" % (name, N, N[1:]))
     else:
-        L.append("r⊢%s : Row" % nm)
-        L.append("r⊢%s = defRow %s %s-law" % (nm, N, N))
-        L.append("ok⊢%s : RowOK 1 %s r⊢%s" % (nm, row.sh, nm))
-        L.append("ok⊢%s {Ξ} {j} {p} {c} dj dp dc = ⊢rows {Ξ} {JT} {1} {⌜ %s j p c ⌝ᵗ ∷ []} ⊢JT (⊢tel {Ξ} {JT} {%s j p c} ⊢JT (ok%s dj dp dc) ∷ᵈ []ᵈ)" % (nm, N, N, N))
+        Ns = [al.pfx for al in As]
+        cs = " ∷ ".join("⌜ %s j p c ⌝ᵗ" % N for N in Ns) + " ∷ []"
+        L.append("r⊢%s : Row" % name)
+        if len(Ns) == 1:
+            L.append("r⊢%s = defRow %s %s-law" % (name, Ns[0], Ns[0]))
+        else:
+            assert len(Ns) == 2
+            L.append("r⊢%s = record { R = λ j p c → rows (%s)" % (name, cs))
+            L.append("  ; R-sub = λ σ j p c → trans (rows-sub' σ (%s)) (cong₂ (λ X Y → rows (X ∷ Y ∷ [])) (%s-law σ j p c) (%s-law σ j p c)) }"
+                     % (cs, Ns[0], Ns[1]))
+        L.append("ok⊢%s : RowOK 1 %s r⊢%s" % (name, sh, name))
+        L.append("ok⊢%s {Ξ} {j} {p} {c} dj dp dc = ⊢rows {Ξ} {JT} {%d} {%s} ⊢JT (%s []ᵈ)" % (
+            name, len(Ns), cs, "".join("⊢tel {Ξ} {JT} {%s j p c} ⊢JT (ok%s dj dp dc) ∷ᵈ " % (N, N) for N in Ns)))
     L.append("")
+    return L
+
+def gen_helpers(maxn):
+    """the weakenings past 3 binders, and the σ-prefix congruences (explicit arguments)"""
+    L = []
+    for kk in range(4, maxn + 1):
+        L.append("w%d : RTm Δ → RTm _" % kk)
+        L.append("w%d x = renTm vs (w%d x)" % (kk, kk - 1))
+        L.append("w%d-sub : (σ : Sub Δ Θ) (x : RTm Δ) → subTm %s (w%d x) ≡ w%d (subTm σ x)" % (kk, extS(kk), kk, kk))
+        L.append("w%d-sub σ x = trans (wkS %s (w%d x)) (cong w1 (w%d-sub σ x))" % (kk, extS(kk - 1), kk - 1, kk - 1))
+        L.append("")
+    for kk in range(1, maxn + 1):
+        ctxs = ["Δ"]
+        for _ in range(kk): ctxs.append("(%s ∙)" % ctxs[-1])
+        names = ["X%d" % i for i in range(kk)]
+        args = "".join("(%s %s' : RTm %s) " % (x, x, ctxs[i]) for i, x in enumerate(names)) + "(Z Z' : RTm %s)" % ctxs[kk]
+        def nest(prime):
+            t = "Z" + prime
+            for x in reversed(names): t = "dσ %s%s (lam (%s))" % (x, prime, t)
+            return t
+        L.append("dσ-cong%d : %s → %s%s ≡ %s" % (kk, args, "".join("%s ≡ %s' → " % (x, x) for x in names + ["Z"]), nest(""), nest("'")))
+        L.append("dσ-cong%d %s Z Z' %s = refl" % (kk, " ".join("%s %s'" % (x, x) for x in names), " ".join("refl" for _ in names + ["Z"])))
+        L.append("")
     return L
 
 def gen_table():
@@ -851,12 +904,32 @@ private
 
 def main():
     load_sig()
+    if "--only" in sys.argv:
+        names = sys.argv[sys.argv.index("--only") + 1].split(",")
+        L = [HDR.replace("module DirectedHoTT.Examples.Knot.JudgeRowsGen where", "module DirectedHoTT.tmp.JudgeRowsOne where")]
+        maxn = 7
+        L += gen_helpers(max(maxn, 3))
+        for nm in names:
+            if nm in TESTRULES:
+                al = Alt("tr", "", None, TESTRULES[nm])
+                L += gen_alt(al)
+            elif "#" in nm:
+                base, ix = nm.split("#")
+                al = Alt(base, "", RULES[base].get("case"), RULES[base]["alts"][int(ix)])
+                out = gen_alt(al)
+                if "--notyping" in sys.argv:
+                    cut = [i for i, l in enumerate(out) if l.startswith("ok" + al.pfx + " ")]
+                    out = out[:cut[0]] if cut else out
+                L += out
+            else:
+                L += gen_head(nm, RULES[nm])
+        open(os.path.join(ROOT, "tmp", "JudgeRowsOne.agda"), "w", encoding="utf-8").write("\n".join(L) + "\n")
+        print("wrote tmp/JudgeRowsOne.agda"); return
     L = [HDR]
+    maxn = max(len(a.get("ex", [])) for sp in RULES.values() for a in sp.get("alts", [sp]))
+    L += gen_helpers(max(maxn, 3))
     for name, spec in RULES.items():
-        row = Row(name, spec)
-        L += gen_row(row)
-        L += gen_assembly(row)
-        L += gen_rowtyped(row)
+        L += gen_head(name, spec)
     L += gen_table()
     txt = "\n".join(L) + "\n"
     ptxt = "\n".join(gen_preds()) + "\n"
@@ -888,7 +961,7 @@ open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Metatheory.TySub using ( ⊢wk )
 open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_; tag; Lt; lt-z; lt-s; []ᵈ; _∷ᵈ_ )
 open import DirectedHoTT.Lib.SynView using ( PayV; ⊢recFst; ⊢recSnd; ⊢atDepth )
-open import DirectedHoTT.Lib.FinFam using ( ⊢isuc; toI )
+open import DirectedHoTT.Lib.FinFam using ( ⊢isuc; toI; ffz; ⊢ffz )
 open import DirectedHoTT.Lib.Tel
 open import DirectedHoTT.Lib.Syn
 open import DirectedHoTT.Lib.SynFib using ( Row )
@@ -903,6 +976,8 @@ open import DirectedHoTT.Examples.Knot.JudgeIx
 open import DirectedHoTT.Examples.Knot.JudgeTmIx
 open import DirectedHoTT.Examples.Knot.JudgeCase
 open import DirectedHoTT.Examples.Knot.JudgeRowsTy using ( RowOK; okNone )
+open import DirectedHoTT.Examples.Knot.Preds using ( ⌜Flat⌝; ⊢⌜Flat⌝; ⌜Flat⌝-sub; ⌜NNC⌝; ⊢⌜NNC⌝; ⌜NNC⌝-sub )
+open import DirectedHoTT.Metatheory.SubjectReductionBase using () renaming ( wk-sub to wkS )
 open import DirectedHoTT.Examples.Knot.JudgeRowsTm using ( rVar; okVar; rLam; okLam; rApp; okApp; rFz; okFz; rFs; okFs )
 
 private

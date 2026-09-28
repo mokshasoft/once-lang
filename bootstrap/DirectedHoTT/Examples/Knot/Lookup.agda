@@ -16,7 +16,7 @@
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Knot.Lookup where
 
-open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂; _,_ )
+open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂; _,_; subst )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax hiding ( Fin )
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
@@ -54,12 +54,24 @@ I∋ = ⌜Σ⌝ ⌜Nat⌝ (⌜Σ⌝ (⌜Ctx⌝ (var vz)) (⌜Σ⌝ (⌜Var⌝ (v
 ⊢I∋ = ⊢⌜Σ⌝ ⊢⌜Nat⌝ (⊢⌜Σ⌝ (⊢⌜IMu⌝ ⊢⌜Nat⌝ ⊢CtxD (⊢var here))
         (⊢⌜Σ⌝ (⊢⌜IMu⌝ ⊢⌜Nat⌝ ⊢FinD (⊢var (there here))) (⊢⌜Ty⌝ (⊢var (there (there here))))))
 
+-- its closedness, cast once (`knot-description-normalisation-trap`)
+I∋-sub : {Δ Θ : Cx} (σ : Sub Δ Θ) → subTm σ (I∋ {Δ}) ≡ I∋
+I∋-sub σ =
+  cong (⌜Σ⌝ ⌜Nat⌝) (cong₂ ⌜Σ⌝ (cong (λ D → ⌜IMu⌝ ⌜Nat⌝ D (var vz)) (CtxD-sub (extS σ)))
+                             (cong (⌜Σ⌝ (⌜Var⌝ (var (vs vz)))) (⌜Ty⌝-sub (extS (extS (extS σ))) (var (vs (vs vz))))))
+
+Desc∋-sub : {Δ Θ : Cx} (σ : Sub Δ Θ) → subTy σ (Desc (I∋ {Δ})) ≡ Desc I∋
+Desc∋-sub σ = cong Desc (I∋-sub σ)
+
+I∋-ren : {Δ Θ : Cx} (ρ : Ren Δ Θ) → renTm ρ (I∋ {Δ}) ≡ I∋
+I∋-ren ρ = trans (sym (subTm-var ρ I∋)) (I∋-sub ⟨ ρ ⟩ᵣ)
+
 ix∋ : RTm Γ → RTm Γ → RTm Γ → RTm Γ → RTm Γ
 ix∋ d g x a = pair d (pair g (pair x a))
 
 -- the Knot's types and contexts, as codes and back
 toTy : {Γ : Ctx} {d a : RTm ⌊ Γ ⌋} → Γ ⊢ a ∷ K 0 d → Γ ⊢ a ∷ El (⌜Ty⌝ d)
-toTy da = ⊢conv da (csymᵀ (credᵀ El-⌜IMu⌝))
+toTy da = ⊢conv da (csymᵀ (credᵀ El-⌜Ty⌝))
 
 toVar : {Γ : Ctx} {d x : RTm ⌊ Γ ⌋} → Γ ⊢ x ∷ FinI d → Γ ⊢ x ∷ El (⌜Var⌝ d)
 toVar dx = ⊢conv dx (csymᵀ (credᵀ El-⌜IMu⌝))
@@ -155,12 +167,12 @@ module _ {Θ : Ctx} {m a' a : RTm ⌊ Θ ⌋} where
 hereTy : {Θ : Ctx} {m : RTm ⌊ Θ ⌋} → (Θ ▹ El (⌜Ty⌝ m)) ⊢ var vz ∷ K 0 (renTm vs m)
 hereTy {Θ} {m} = ⊢conv (⊢-cast {Θ ▹ El (⌜Ty⌝ m)} {var vz} {renTy vs (El (⌜Ty⌝ m))} {El (⌜Ty⌝ (renTm vs m))}
                               (cong El (⌜Ty⌝-ren vs m)) (⊢var here))
-                       (credᵀ El-⌜IMu⌝)
+                       (credᵀ El-⌜Ty⌝)
 
 module _ {Θ : Ctx} {m g y a : RTm ⌊ Θ ⌋} where
   thereOK : Θ ⊢ m ∷ El ⌜Nat⌝ → Θ ⊢ g ∷ KCtx m → Θ ⊢ y ∷ FinI m → Θ ⊢ a ∷ K 0 (nsuc m) →
             TelOK Θ I∋ (thereT m g y a)
-  thereOK dm dg dy da = ok-σ (⊢⌜Ty⌝ dm) (ok-ρ dj okI)
+  thereOK dm dg dy da = ok-σ (⊢⌜Ty⌝ dm) (subst (λ X → TelOK Θ₁ X (tρ (ix∋ m₁ (renTm vs g) (renTm vs y) (var vz)) (tσ (⌜Id⌝ (⌜Ty⌝ (nsuc m₁)) (renTm vs a) (wk 0 m₁ (var vz))) tι))) (sym (I∋-ren vs)) (ok-ρ dj okI))
     where
       Θ₁ : Ctx
       Θ₁ = Θ ▹ El (⌜Ty⌝ m)
@@ -187,18 +199,6 @@ module _ {Θ : Ctx} {m g y a : RTm ⌊ Θ ⌋} where
 --   carries the other components along (a convoy: the case's index is
 --   not the outer depth, so they must be re-typed at it).
 ------------------------------------------------------------------------
-
--- its closedness, cast once (`knot-description-normalisation-trap`)
-I∋-sub : {Δ Θ : Cx} (σ : Sub Δ Θ) → subTm σ (I∋ {Δ}) ≡ I∋
-I∋-sub σ =
-  cong (⌜Σ⌝ ⌜Nat⌝) (cong₂ ⌜Σ⌝ (cong (λ D → ⌜IMu⌝ ⌜Nat⌝ D (var vz)) (CtxD-sub (extS σ)))
-                             (cong (⌜Σ⌝ (⌜Var⌝ (var (vs vz)))) (⌜Ty⌝-sub (extS (extS (extS σ))) (var (vs (vs vz))))))
-
-Desc∋-sub : {Δ Θ : Cx} (σ : Sub Δ Θ) → subTy σ (Desc (I∋ {Δ})) ≡ Desc I∋
-Desc∋-sub σ = cong Desc (I∋-sub σ)
-
-I∋-ren : {Δ Θ : Cx} (ρ : Ren Δ Θ) → renTm ρ (I∋ {Δ}) ≡ I∋
-I∋-ren ρ = trans (sym (subTm-var ρ I∋)) (I∋-sub ⟨ ρ ⟩ᵣ)
 
 tyK : {Θ : Ctx} {d : RTm ⌊ Θ ⌋} → Θ ⊢ d ∷ El ⌜Nat⌝ → Θ ⊢ty K 0 d
 tyK dd = ty-IMu ⊢SI ⊢KD (⊢ix lt-z dd)
@@ -536,7 +536,7 @@ module Un∋ {Ξ : Ctx} {v : RTm ⌊ Ξ ⌋} (dv : Ξ ⊢ v ∷ El I∋) where
   dx0 : Ξ ⊢ x0 ∷ FinI d0
   dx0 = ⊢conv (⊢fst s2) (credᵀ El-⌜IMu⌝)
   da0 : Ξ ⊢ a0 ∷ K 0 d0
-  da0 = ⊢conv (⊢-cast {Ξ} {a0} {subTy (single x0) (El B3)} {El (⌜Ty⌝ d0)} eqB3 (⊢snd s2)) (credᵀ El-⌜IMu⌝)
+  da0 = ⊢conv (⊢-cast {Ξ} {a0} {subTy (single x0) (El B3)} {El (⌜Ty⌝ d0)} eqB3 (⊢snd s2)) (credᵀ El-⌜Ty⌝)
 
 ------------------------------------------------------------------------
 -- 4. ★ THE FAMILY IS WELL FORMED.

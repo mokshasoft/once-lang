@@ -28,12 +28,22 @@ open import DirectedHoTT.Lib.Syn
 open import DirectedHoTT.Examples.Knot.Sig
 open import DirectedHoTT.Examples.Knot.Terms
 
--- the code of the Knot's types at a depth
-⌜Ty⌝ : {Γ : Cx} → RTm Γ → RTm Γ
-⌜Ty⌝ d = ⌜IMu⌝ (SI 2) KD (pair (tag 0) d)
+-- the code of the Knot's types at a depth — OPAQUE: it carries the
+-- description, and two syntactic forms of one context would compare it by
+-- normalisation (`context-form-mismatch-opaque`).  Its interface: typing,
+-- closedness, and the one reduction `El (⌜Ty⌝ d) ⟶ K 0 d`.
+opaque
+  ⌜Ty⌝ : {Γ : Cx} → RTm Γ → RTm Γ
+  ⌜Ty⌝ d = ⌜IMu⌝ (SI 2) KD (pair (tag 0) d)
 
-⊢⌜Ty⌝ : {Γ : Ctx} {d : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ ⌜Ty⌝ d ∷ U
-⊢⌜Ty⌝ dd = ⊢⌜IMu⌝ ⊢SI ⊢KD (⊢ix lt-z dd)
+  ⊢⌜Ty⌝ : {Γ : Ctx} {d : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ ⌜Ty⌝ d ∷ U
+  ⊢⌜Ty⌝ dd = ⊢⌜IMu⌝ ⊢SI ⊢KD (⊢ix lt-z dd)
+
+  ⌜Ty⌝-sub : {Δ Θ : Cx} (σ : Sub Δ Θ) (d : RTm Δ) → subTm σ (⌜Ty⌝ d) ≡ ⌜Ty⌝ (subTm σ d)
+  ⌜Ty⌝-sub σ d = cong (λ D → ⌜IMu⌝ (SI 2) D (pair (tag 0) (subTm σ d))) (SD-sub σ KSig)
+
+  El-⌜Ty⌝ : {Γ : Cx} {d : RTm Γ} → El (⌜Ty⌝ d) ⟶ᵀ K 0 d
+  El-⌜Ty⌝ = El-⌜IMu⌝
 
 ------------------------------------------------------------------------
 -- 1. THE FAMILY.
@@ -74,9 +84,6 @@ module _ {Γ : Ctx} where
 --   type mentions the Knot's description; left to the checker, every
 --   weakening of it normalises all 51 constructors.
 ------------------------------------------------------------------------
-
-⌜Ty⌝-sub : {Δ Θ : Cx} (σ : Sub Δ Θ) (d : RTm Δ) → subTm σ (⌜Ty⌝ d) ≡ ⌜Ty⌝ (subTm σ d)
-⌜Ty⌝-sub σ d = cong (λ D → ⌜IMu⌝ (SI 2) D (pair (tag 0) (subTm σ d))) (SD-sub σ KSig)
 
 CtxS-sub : {Δ Θ : Cx} (σ : Sub Δ Θ) → subC (extS σ) (⌜ CtxS {Δ} ⌝ₛ) ≡ ⌜ CtxS {Θ} ⌝ₛ
 CtxS-sub σ = cong (λ X → dρ (var vz) (dσ X (lam dι)) ∷ []) (⌜Ty⌝-sub (extS σ) (var vz))
@@ -150,7 +157,7 @@ module _ {Γ : Ctx} where
       dp = ⊢payρ {Γ} {⌜Nat⌝} {CtxD} ⊢⌜Nat⌝ ⊢CtxD {m} {g} {pair a unit} {tσ (⌜Ty⌝ m) tι}
              (ok-ρ dm (ok-σ (⊢⌜Ty⌝ dm) ok-ι)) dg
              (⊢payσ {Γ} {⌜Nat⌝} {CtxD} ⊢⌜Nat⌝ ⊢CtxD {⌜Ty⌝ m} {a} {unit} {tι}
-                (ok-σ (⊢⌜Ty⌝ dm) ok-ι) (⊢conv da (csymᵀ (credᵀ El-⌜IMu⌝)))
+                (ok-σ (⊢⌜Ty⌝ dm) ok-ι) (⊢conv da (csymᵀ (credᵀ El-⌜Ty⌝)))
                 (⊢payι {Γ} {⌜Nat⌝} {CtxD} ⊢⌜Nat⌝ ⊢CtxD {unit} ⊢unit))
 
 ------------------------------------------------------------------------
@@ -174,7 +181,7 @@ module _ {Θ : Ctx} {Δ : Cx} {σ : Sub (Δ ∙) ⌊ Θ ⌋} {D p : RTm ⌊ Θ �
   extFst dp = ⊢-cast {Θ} {fst p} {IMu ⌜Nat⌝ D (σ vz)} {KCtx (σ vz)} (cong (λ X → IMu ⌜Nat⌝ X (σ vz)) eD) (⊢fst dp)
 
   extSnd : Θ ⊢ p ∷ PayN σ extT ⌜Nat⌝ D → Θ ⊢ fst (snd p) ∷ K 0 (σ vz)
-  extSnd dp = ⊢conv (⊢-cast {Θ} {fst (snd p)} {T2} {El (⌜Ty⌝ (σ vz))} eT (⊢fst (⊢snd dp))) (credᵀ El-⌜IMu⌝)
+  extSnd dp = ⊢conv (⊢-cast {Θ} {fst (snd p)} {T2} {El (⌜Ty⌝ (σ vz))} eT (⊢fst (⊢snd dp))) (credᵀ El-⌜Ty⌝)
 
 ------------------------------------------------------------------------
 -- 3. ★ THE QUOTATION of a kernel context, typed at its depth.
