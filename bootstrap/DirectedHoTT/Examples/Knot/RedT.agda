@@ -135,9 +135,9 @@ okT⟶ᵀPi₂ {Ξ} {j} {p} {c} dj dp dc = (RedTₘ.okσ (okC⟶ᵀPi₂_0I {_} 
 
 r⟶ᵀPi : Row
 r⟶ᵀPi = record { R = λ j p c → rows (⌜ T⟶ᵀPi₁ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀPi₂ j p c ⌝ᵗ ∷ [])
-  ; R-sub = λ σ j p c → trans (rows-sub' σ (⌜ T⟶ᵀPi₁ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀPi₂ j p c ⌝ᵗ ∷ [])) (cong (λ X → rows X) (∷-cong2 _ _ (T⟶ᵀPi₁-law σ j p c) _ _ (T⟶ᵀPi₂-law σ j p c))) }
+  ; R-sub = λ σ j p c → trans (rows-sub' σ (⌜ T⟶ᵀPi₁ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀPi₂ j p c ⌝ᵗ ∷ [])) (cong (λ X → rows X) (∷-cong2 (subTm σ (⌜ T⟶ᵀPi₁ j p c ⌝ᵗ)) (⌜ T⟶ᵀPi₁ (subTm σ j) (subTm σ p) (subTm σ c) ⌝ᵗ) (T⟶ᵀPi₁-law σ j p c) (subTm σ (⌜ T⟶ᵀPi₂ j p c ⌝ᵗ)) (⌜ T⟶ᵀPi₂ (subTm σ j) (subTm σ p) (subTm σ c) ⌝ᵗ) (T⟶ᵀPi₂-law σ j p c))) }
 ok⟶ᵀPi : RedTₘ.RowOK 0 sh-kPi r⟶ᵀPi
-ok⟶ᵀPi {Ξ} {j} {p} {c} dj dp dc = ⊢rows {Ξ} {RedTₘ.J} {2} {⌜ T⟶ᵀPi₁ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀPi₂ j p c ⌝ᵗ ∷ []} RedTₘ.⊢J (⊢tel {Ξ} {RedTₘ.J} {T⟶ᵀPi₁ j p c} RedTₘ.⊢J (okT⟶ᵀPi₁ dj dp dc) ∷ᵈ ⊢tel {Ξ} {RedTₘ.J} {T⟶ᵀPi₂ j p c} RedTₘ.⊢J (okT⟶ᵀPi₂ dj dp dc) ∷ᵈ  []ᵈ)
+ok⟶ᵀPi {Ξ} {j} {p} {c} dj dp dc = ⊢rows {Ξ} {RedTₘ.J} {2} {⌜ T⟶ᵀPi₁ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀPi₂ j p c ⌝ᵗ ∷ []} RedTₘ.⊢J ((⊢tel {Ξ} {RedTₘ.J} {T⟶ᵀPi₁ j p c} RedTₘ.⊢J (okT⟶ᵀPi₁ dj dp dc)) ∷ᵈ (⊢tel {Ξ} {RedTₘ.J} {T⟶ᵀPi₂ j p c} RedTₘ.⊢J (okT⟶ᵀPi₂ dj dp dc)) ∷ᵈ  []ᵈ)
 
 -- ⟶ᵀSg
 C⟶ᵀSg₁_0A : RTm Δ → RTm Δ → RTm Δ
@@ -234,9 +234,9 @@ okT⟶ᵀSg₂ {Ξ} {j} {p} {c} dj dp dc = (RedTₘ.okσ (okC⟶ᵀSg₂_0I {_} 
 
 r⟶ᵀSg : Row
 r⟶ᵀSg = record { R = λ j p c → rows (⌜ T⟶ᵀSg₁ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀSg₂ j p c ⌝ᵗ ∷ [])
-  ; R-sub = λ σ j p c → trans (rows-sub' σ (⌜ T⟶ᵀSg₁ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀSg₂ j p c ⌝ᵗ ∷ [])) (cong (λ X → rows X) (∷-cong2 _ _ (T⟶ᵀSg₁-law σ j p c) _ _ (T⟶ᵀSg₂-law σ j p c))) }
+  ; R-sub = λ σ j p c → trans (rows-sub' σ (⌜ T⟶ᵀSg₁ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀSg₂ j p c ⌝ᵗ ∷ [])) (cong (λ X → rows X) (∷-cong2 (subTm σ (⌜ T⟶ᵀSg₁ j p c ⌝ᵗ)) (⌜ T⟶ᵀSg₁ (subTm σ j) (subTm σ p) (subTm σ c) ⌝ᵗ) (T⟶ᵀSg₁-law σ j p c) (subTm σ (⌜ T⟶ᵀSg₂ j p c ⌝ᵗ)) (⌜ T⟶ᵀSg₂ (subTm σ j) (subTm σ p) (subTm σ c) ⌝ᵗ) (T⟶ᵀSg₂-law σ j p c))) }
 ok⟶ᵀSg : RedTₘ.RowOK 0 sh-kSg r⟶ᵀSg
-ok⟶ᵀSg {Ξ} {j} {p} {c} dj dp dc = ⊢rows {Ξ} {RedTₘ.J} {2} {⌜ T⟶ᵀSg₁ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀSg₂ j p c ⌝ᵗ ∷ []} RedTₘ.⊢J (⊢tel {Ξ} {RedTₘ.J} {T⟶ᵀSg₁ j p c} RedTₘ.⊢J (okT⟶ᵀSg₁ dj dp dc) ∷ᵈ ⊢tel {Ξ} {RedTₘ.J} {T⟶ᵀSg₂ j p c} RedTₘ.⊢J (okT⟶ᵀSg₂ dj dp dc) ∷ᵈ  []ᵈ)
+ok⟶ᵀSg {Ξ} {j} {p} {c} dj dp dc = ⊢rows {Ξ} {RedTₘ.J} {2} {⌜ T⟶ᵀSg₁ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀSg₂ j p c ⌝ᵗ ∷ []} RedTₘ.⊢J ((⊢tel {Ξ} {RedTₘ.J} {T⟶ᵀSg₁ j p c} RedTₘ.⊢J (okT⟶ᵀSg₁ dj dp dc)) ∷ᵈ (⊢tel {Ξ} {RedTₘ.J} {T⟶ᵀSg₂ j p c} RedTₘ.⊢J (okT⟶ᵀSg₂ dj dp dc)) ∷ᵈ  []ᵈ)
 
 -- ⟶ᵀEl
 C⟶ᵀEl_0A : RTm Δ → RTm Δ → RTm Δ
@@ -304,9 +304,9 @@ okT⟶ᵀEl : {Ξ : Ctx} {j p c : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El ⌜Nat⌝ 
 okT⟶ᵀEl {Ξ} {j} {p} {c} dj dp dc = (RedTₘ.okσ (okC⟶ᵀEl_0I {_} {j} dj) (RedTₘ.okσ (okC⟶ᵀEl_1I {_} {(w1 j)} {(w1 (fst p))} {(var vz)} (wkN {t = j} dj) (wkK {s = 1} {d = j} {t = (fst p)} (⊢atDepth {a = tag 0} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = ([]ʰ)} dp))) (hereTm {m = j})) (okT⟶ᵀElI {_} {(w2 j)} {(w2 c)} {(var (vs vz))} (wkN {t = (w1 j)} (wkN {t = j} dj)) (wkK {s = 0} {d = (w1 j)} {t = (w1 c)} (wkK {s = 0} {d = j} {t = c} (⊢tgt {s = 0} dc))) (wkK {s = 1} {d = (renTm vs j)} {t = (var vz)} (hereTm {m = j})))))
 
 r⟶ᵀEl : Row
-r⟶ᵀEl = defRow T⟶ᵀEl T⟶ᵀEl-law
+r⟶ᵀEl = record { R = λ j p c → rows (⌜ T⟶ᵀEl j p c ⌝ᵗ ∷ []) ; R-sub = λ σ j p c → trans (rows-sub' σ (⌜ T⟶ᵀEl j p c ⌝ᵗ ∷ [])) (cong (λ X → rows (X ∷ [])) {x = subTm σ (⌜ T⟶ᵀEl j p c ⌝ᵗ)} {y = ⌜ T⟶ᵀEl (subTm σ j) (subTm σ p) (subTm σ c) ⌝ᵗ} (T⟶ᵀEl-law σ j p c)) }
 ok⟶ᵀEl : RedTₘ.RowOK 0 sh-kEl r⟶ᵀEl
-ok⟶ᵀEl {Ξ} {j} {p} {c} dj dp dc = ⊢rows {Ξ} {RedTₘ.J} {1} {⌜ T⟶ᵀEl j p c ⌝ᵗ ∷ []} RedTₘ.⊢J (⊢tel {Ξ} {RedTₘ.J} {T⟶ᵀEl j p c} RedTₘ.⊢J (okT⟶ᵀEl dj dp dc) ∷ᵈ  []ᵈ)
+ok⟶ᵀEl {Ξ} {j} {p} {c} dj dp dc = ⊢rows {Ξ} {RedTₘ.J} {1} {⌜ T⟶ᵀEl j p c ⌝ᵗ ∷ []} RedTₘ.⊢J ((⊢tel {Ξ} {RedTₘ.J} {T⟶ᵀEl j p c} RedTₘ.⊢J (okT⟶ᵀEl dj dp dc)) ∷ᵈ  []ᵈ)
 
 -- ⟶ᵀHom
 C⟶ᵀHom₁_0A : RTm Δ → RTm Δ → RTm Δ
@@ -485,9 +485,9 @@ okT⟶ᵀHom₃ {Ξ} {j} {p} {c} dj dp dc = (RedTₘ.okσ (okC⟶ᵀHom₃_0I {_
 
 r⟶ᵀHom : Row
 r⟶ᵀHom = record { R = λ j p c → rows (⌜ T⟶ᵀHom₁ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀHom₂ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀHom₃ j p c ⌝ᵗ ∷ [])
-  ; R-sub = λ σ j p c → trans (rows-sub' σ (⌜ T⟶ᵀHom₁ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀHom₂ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀHom₃ j p c ⌝ᵗ ∷ [])) (cong (λ X → rows X) (∷-cong3 _ _ (T⟶ᵀHom₁-law σ j p c) _ _ (T⟶ᵀHom₂-law σ j p c) _ _ (T⟶ᵀHom₃-law σ j p c))) }
+  ; R-sub = λ σ j p c → trans (rows-sub' σ (⌜ T⟶ᵀHom₁ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀHom₂ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀHom₃ j p c ⌝ᵗ ∷ [])) (cong (λ X → rows X) (∷-cong3 (subTm σ (⌜ T⟶ᵀHom₁ j p c ⌝ᵗ)) (⌜ T⟶ᵀHom₁ (subTm σ j) (subTm σ p) (subTm σ c) ⌝ᵗ) (T⟶ᵀHom₁-law σ j p c) (subTm σ (⌜ T⟶ᵀHom₂ j p c ⌝ᵗ)) (⌜ T⟶ᵀHom₂ (subTm σ j) (subTm σ p) (subTm σ c) ⌝ᵗ) (T⟶ᵀHom₂-law σ j p c) (subTm σ (⌜ T⟶ᵀHom₃ j p c ⌝ᵗ)) (⌜ T⟶ᵀHom₃ (subTm σ j) (subTm σ p) (subTm σ c) ⌝ᵗ) (T⟶ᵀHom₃-law σ j p c))) }
 ok⟶ᵀHom : RedTₘ.RowOK 0 sh-kHom r⟶ᵀHom
-ok⟶ᵀHom {Ξ} {j} {p} {c} dj dp dc = ⊢rows {Ξ} {RedTₘ.J} {3} {⌜ T⟶ᵀHom₁ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀHom₂ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀHom₃ j p c ⌝ᵗ ∷ []} RedTₘ.⊢J (⊢tel {Ξ} {RedTₘ.J} {T⟶ᵀHom₁ j p c} RedTₘ.⊢J (okT⟶ᵀHom₁ dj dp dc) ∷ᵈ ⊢tel {Ξ} {RedTₘ.J} {T⟶ᵀHom₂ j p c} RedTₘ.⊢J (okT⟶ᵀHom₂ dj dp dc) ∷ᵈ ⊢tel {Ξ} {RedTₘ.J} {T⟶ᵀHom₃ j p c} RedTₘ.⊢J (okT⟶ᵀHom₃ dj dp dc) ∷ᵈ  []ᵈ)
+ok⟶ᵀHom {Ξ} {j} {p} {c} dj dp dc = ⊢rows {Ξ} {RedTₘ.J} {3} {⌜ T⟶ᵀHom₁ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀHom₂ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀHom₃ j p c ⌝ᵗ ∷ []} RedTₘ.⊢J ((⊢tel {Ξ} {RedTₘ.J} {T⟶ᵀHom₁ j p c} RedTₘ.⊢J (okT⟶ᵀHom₁ dj dp dc)) ∷ᵈ (⊢tel {Ξ} {RedTₘ.J} {T⟶ᵀHom₂ j p c} RedTₘ.⊢J (okT⟶ᵀHom₂ dj dp dc)) ∷ᵈ (⊢tel {Ξ} {RedTₘ.J} {T⟶ᵀHom₃ j p c} RedTₘ.⊢J (okT⟶ᵀHom₃ dj dp dc)) ∷ᵈ  []ᵈ)
 
 -- ⟶ᵀId
 C⟶ᵀId₁_0A : RTm Δ → RTm Δ → RTm Δ
@@ -666,9 +666,9 @@ okT⟶ᵀId₃ {Ξ} {j} {p} {c} dj dp dc = (RedTₘ.okσ (okC⟶ᵀId₃_0I {_} 
 
 r⟶ᵀId : Row
 r⟶ᵀId = record { R = λ j p c → rows (⌜ T⟶ᵀId₁ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀId₂ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀId₃ j p c ⌝ᵗ ∷ [])
-  ; R-sub = λ σ j p c → trans (rows-sub' σ (⌜ T⟶ᵀId₁ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀId₂ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀId₃ j p c ⌝ᵗ ∷ [])) (cong (λ X → rows X) (∷-cong3 _ _ (T⟶ᵀId₁-law σ j p c) _ _ (T⟶ᵀId₂-law σ j p c) _ _ (T⟶ᵀId₃-law σ j p c))) }
+  ; R-sub = λ σ j p c → trans (rows-sub' σ (⌜ T⟶ᵀId₁ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀId₂ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀId₃ j p c ⌝ᵗ ∷ [])) (cong (λ X → rows X) (∷-cong3 (subTm σ (⌜ T⟶ᵀId₁ j p c ⌝ᵗ)) (⌜ T⟶ᵀId₁ (subTm σ j) (subTm σ p) (subTm σ c) ⌝ᵗ) (T⟶ᵀId₁-law σ j p c) (subTm σ (⌜ T⟶ᵀId₂ j p c ⌝ᵗ)) (⌜ T⟶ᵀId₂ (subTm σ j) (subTm σ p) (subTm σ c) ⌝ᵗ) (T⟶ᵀId₂-law σ j p c) (subTm σ (⌜ T⟶ᵀId₃ j p c ⌝ᵗ)) (⌜ T⟶ᵀId₃ (subTm σ j) (subTm σ p) (subTm σ c) ⌝ᵗ) (T⟶ᵀId₃-law σ j p c))) }
 ok⟶ᵀId : RedTₘ.RowOK 0 sh-kId r⟶ᵀId
-ok⟶ᵀId {Ξ} {j} {p} {c} dj dp dc = ⊢rows {Ξ} {RedTₘ.J} {3} {⌜ T⟶ᵀId₁ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀId₂ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀId₃ j p c ⌝ᵗ ∷ []} RedTₘ.⊢J (⊢tel {Ξ} {RedTₘ.J} {T⟶ᵀId₁ j p c} RedTₘ.⊢J (okT⟶ᵀId₁ dj dp dc) ∷ᵈ ⊢tel {Ξ} {RedTₘ.J} {T⟶ᵀId₂ j p c} RedTₘ.⊢J (okT⟶ᵀId₂ dj dp dc) ∷ᵈ ⊢tel {Ξ} {RedTₘ.J} {T⟶ᵀId₃ j p c} RedTₘ.⊢J (okT⟶ᵀId₃ dj dp dc) ∷ᵈ  []ᵈ)
+ok⟶ᵀId {Ξ} {j} {p} {c} dj dp dc = ⊢rows {Ξ} {RedTₘ.J} {3} {⌜ T⟶ᵀId₁ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀId₂ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀId₃ j p c ⌝ᵗ ∷ []} RedTₘ.⊢J ((⊢tel {Ξ} {RedTₘ.J} {T⟶ᵀId₁ j p c} RedTₘ.⊢J (okT⟶ᵀId₁ dj dp dc)) ∷ᵈ (⊢tel {Ξ} {RedTₘ.J} {T⟶ᵀId₂ j p c} RedTₘ.⊢J (okT⟶ᵀId₂ dj dp dc)) ∷ᵈ (⊢tel {Ξ} {RedTₘ.J} {T⟶ᵀId₃ j p c} RedTₘ.⊢J (okT⟶ᵀId₃ dj dp dc)) ∷ᵈ  []ᵈ)
 
 -- ⟶ᵀIMu
 C⟶ᵀIMu₁_0A : RTm Δ → RTm Δ → RTm Δ
@@ -865,9 +865,9 @@ okT⟶ᵀIMu₃ {Ξ} {j} {p} {c} dj dp dc = (RedTₘ.okσ (okC⟶ᵀIMu₃_0I {_
 
 r⟶ᵀIMu : Row
 r⟶ᵀIMu = record { R = λ j p c → rows (⌜ T⟶ᵀIMu₁ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀIMu₂ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀIMu₃ j p c ⌝ᵗ ∷ [])
-  ; R-sub = λ σ j p c → trans (rows-sub' σ (⌜ T⟶ᵀIMu₁ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀIMu₂ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀIMu₃ j p c ⌝ᵗ ∷ [])) (cong (λ X → rows X) (∷-cong3 _ _ (T⟶ᵀIMu₁-law σ j p c) _ _ (T⟶ᵀIMu₂-law σ j p c) _ _ (T⟶ᵀIMu₃-law σ j p c))) }
+  ; R-sub = λ σ j p c → trans (rows-sub' σ (⌜ T⟶ᵀIMu₁ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀIMu₂ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀIMu₃ j p c ⌝ᵗ ∷ [])) (cong (λ X → rows X) (∷-cong3 (subTm σ (⌜ T⟶ᵀIMu₁ j p c ⌝ᵗ)) (⌜ T⟶ᵀIMu₁ (subTm σ j) (subTm σ p) (subTm σ c) ⌝ᵗ) (T⟶ᵀIMu₁-law σ j p c) (subTm σ (⌜ T⟶ᵀIMu₂ j p c ⌝ᵗ)) (⌜ T⟶ᵀIMu₂ (subTm σ j) (subTm σ p) (subTm σ c) ⌝ᵗ) (T⟶ᵀIMu₂-law σ j p c) (subTm σ (⌜ T⟶ᵀIMu₃ j p c ⌝ᵗ)) (⌜ T⟶ᵀIMu₃ (subTm σ j) (subTm σ p) (subTm σ c) ⌝ᵗ) (T⟶ᵀIMu₃-law σ j p c))) }
 ok⟶ᵀIMu : RedTₘ.RowOK 0 sh-kIMu r⟶ᵀIMu
-ok⟶ᵀIMu {Ξ} {j} {p} {c} dj dp dc = ⊢rows {Ξ} {RedTₘ.J} {3} {⌜ T⟶ᵀIMu₁ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀIMu₂ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀIMu₃ j p c ⌝ᵗ ∷ []} RedTₘ.⊢J (⊢tel {Ξ} {RedTₘ.J} {T⟶ᵀIMu₁ j p c} RedTₘ.⊢J (okT⟶ᵀIMu₁ dj dp dc) ∷ᵈ ⊢tel {Ξ} {RedTₘ.J} {T⟶ᵀIMu₂ j p c} RedTₘ.⊢J (okT⟶ᵀIMu₂ dj dp dc) ∷ᵈ ⊢tel {Ξ} {RedTₘ.J} {T⟶ᵀIMu₃ j p c} RedTₘ.⊢J (okT⟶ᵀIMu₃ dj dp dc) ∷ᵈ  []ᵈ)
+ok⟶ᵀIMu {Ξ} {j} {p} {c} dj dp dc = ⊢rows {Ξ} {RedTₘ.J} {3} {⌜ T⟶ᵀIMu₁ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀIMu₂ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀIMu₃ j p c ⌝ᵗ ∷ []} RedTₘ.⊢J ((⊢tel {Ξ} {RedTₘ.J} {T⟶ᵀIMu₁ j p c} RedTₘ.⊢J (okT⟶ᵀIMu₁ dj dp dc)) ∷ᵈ (⊢tel {Ξ} {RedTₘ.J} {T⟶ᵀIMu₂ j p c} RedTₘ.⊢J (okT⟶ᵀIMu₂ dj dp dc)) ∷ᵈ (⊢tel {Ξ} {RedTₘ.J} {T⟶ᵀIMu₃ j p c} RedTₘ.⊢J (okT⟶ᵀIMu₃ dj dp dc)) ∷ᵈ  []ᵈ)
 
 -- ⟶ᵀDesc
 C⟶ᵀDesc_0A : RTm Δ → RTm Δ → RTm Δ
@@ -935,9 +935,9 @@ okT⟶ᵀDesc : {Ξ : Ctx} {j p c : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El ⌜Nat�
 okT⟶ᵀDesc {Ξ} {j} {p} {c} dj dp dc = (RedTₘ.okσ (okC⟶ᵀDesc_0I {_} {j} dj) (RedTₘ.okσ (okC⟶ᵀDesc_1I {_} {(w1 j)} {(w1 (fst p))} {(var vz)} (wkN {t = j} dj) (wkK {s = 1} {d = j} {t = (fst p)} (⊢atDepth {a = tag 0} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = ([]ʰ)} dp))) (hereTm {m = j})) (okT⟶ᵀDescI {_} {(w2 j)} {(w2 c)} {(var (vs vz))} (wkN {t = (w1 j)} (wkN {t = j} dj)) (wkK {s = 0} {d = (w1 j)} {t = (w1 c)} (wkK {s = 0} {d = j} {t = c} (⊢tgt {s = 0} dc))) (wkK {s = 1} {d = (renTm vs j)} {t = (var vz)} (hereTm {m = j})))))
 
 r⟶ᵀDesc : Row
-r⟶ᵀDesc = defRow T⟶ᵀDesc T⟶ᵀDesc-law
+r⟶ᵀDesc = record { R = λ j p c → rows (⌜ T⟶ᵀDesc j p c ⌝ᵗ ∷ []) ; R-sub = λ σ j p c → trans (rows-sub' σ (⌜ T⟶ᵀDesc j p c ⌝ᵗ ∷ [])) (cong (λ X → rows (X ∷ [])) {x = subTm σ (⌜ T⟶ᵀDesc j p c ⌝ᵗ)} {y = ⌜ T⟶ᵀDesc (subTm σ j) (subTm σ p) (subTm σ c) ⌝ᵗ} (T⟶ᵀDesc-law σ j p c)) }
 ok⟶ᵀDesc : RedTₘ.RowOK 0 sh-kDesc r⟶ᵀDesc
-ok⟶ᵀDesc {Ξ} {j} {p} {c} dj dp dc = ⊢rows {Ξ} {RedTₘ.J} {1} {⌜ T⟶ᵀDesc j p c ⌝ᵗ ∷ []} RedTₘ.⊢J (⊢tel {Ξ} {RedTₘ.J} {T⟶ᵀDesc j p c} RedTₘ.⊢J (okT⟶ᵀDesc dj dp dc) ∷ᵈ  []ᵈ)
+ok⟶ᵀDesc {Ξ} {j} {p} {c} dj dp dc = ⊢rows {Ξ} {RedTₘ.J} {1} {⌜ T⟶ᵀDesc j p c ⌝ᵗ ∷ []} RedTₘ.⊢J ((⊢tel {Ξ} {RedTₘ.J} {T⟶ᵀDesc j p c} RedTₘ.⊢J (okT⟶ᵀDesc dj dp dc)) ∷ᵈ  []ᵈ)
 
 -- ⟶ᵀDIh
 C⟶ᵀDIh₁_0A : RTm Δ → RTm Δ → RTm Δ
@@ -1180,9 +1180,9 @@ okT⟶ᵀDIh₄ {Ξ} {j} {p} {c} dj dp dc = (RedTₘ.okσ (okC⟶ᵀDIh₄_0I {_
 
 r⟶ᵀDIh : Row
 r⟶ᵀDIh = record { R = λ j p c → rows (⌜ T⟶ᵀDIh₁ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀDIh₂ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀDIh₃ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀDIh₄ j p c ⌝ᵗ ∷ [])
-  ; R-sub = λ σ j p c → trans (rows-sub' σ (⌜ T⟶ᵀDIh₁ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀDIh₂ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀDIh₃ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀDIh₄ j p c ⌝ᵗ ∷ [])) (cong (λ X → rows X) (∷-cong4 _ _ (T⟶ᵀDIh₁-law σ j p c) _ _ (T⟶ᵀDIh₂-law σ j p c) _ _ (T⟶ᵀDIh₃-law σ j p c) _ _ (T⟶ᵀDIh₄-law σ j p c))) }
+  ; R-sub = λ σ j p c → trans (rows-sub' σ (⌜ T⟶ᵀDIh₁ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀDIh₂ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀDIh₃ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀDIh₄ j p c ⌝ᵗ ∷ [])) (cong (λ X → rows X) (∷-cong4 (subTm σ (⌜ T⟶ᵀDIh₁ j p c ⌝ᵗ)) (⌜ T⟶ᵀDIh₁ (subTm σ j) (subTm σ p) (subTm σ c) ⌝ᵗ) (T⟶ᵀDIh₁-law σ j p c) (subTm σ (⌜ T⟶ᵀDIh₂ j p c ⌝ᵗ)) (⌜ T⟶ᵀDIh₂ (subTm σ j) (subTm σ p) (subTm σ c) ⌝ᵗ) (T⟶ᵀDIh₂-law σ j p c) (subTm σ (⌜ T⟶ᵀDIh₃ j p c ⌝ᵗ)) (⌜ T⟶ᵀDIh₃ (subTm σ j) (subTm σ p) (subTm σ c) ⌝ᵗ) (T⟶ᵀDIh₃-law σ j p c) (subTm σ (⌜ T⟶ᵀDIh₄ j p c ⌝ᵗ)) (⌜ T⟶ᵀDIh₄ (subTm σ j) (subTm σ p) (subTm σ c) ⌝ᵗ) (T⟶ᵀDIh₄-law σ j p c))) }
 ok⟶ᵀDIh : RedTₘ.RowOK 0 sh-kDIh r⟶ᵀDIh
-ok⟶ᵀDIh {Ξ} {j} {p} {c} dj dp dc = ⊢rows {Ξ} {RedTₘ.J} {4} {⌜ T⟶ᵀDIh₁ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀDIh₂ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀDIh₃ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀDIh₄ j p c ⌝ᵗ ∷ []} RedTₘ.⊢J (⊢tel {Ξ} {RedTₘ.J} {T⟶ᵀDIh₁ j p c} RedTₘ.⊢J (okT⟶ᵀDIh₁ dj dp dc) ∷ᵈ ⊢tel {Ξ} {RedTₘ.J} {T⟶ᵀDIh₂ j p c} RedTₘ.⊢J (okT⟶ᵀDIh₂ dj dp dc) ∷ᵈ ⊢tel {Ξ} {RedTₘ.J} {T⟶ᵀDIh₃ j p c} RedTₘ.⊢J (okT⟶ᵀDIh₃ dj dp dc) ∷ᵈ ⊢tel {Ξ} {RedTₘ.J} {T⟶ᵀDIh₄ j p c} RedTₘ.⊢J (okT⟶ᵀDIh₄ dj dp dc) ∷ᵈ  []ᵈ)
+ok⟶ᵀDIh {Ξ} {j} {p} {c} dj dp dc = ⊢rows {Ξ} {RedTₘ.J} {4} {⌜ T⟶ᵀDIh₁ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀDIh₂ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀDIh₃ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀDIh₄ j p c ⌝ᵗ ∷ []} RedTₘ.⊢J ((⊢tel {Ξ} {RedTₘ.J} {T⟶ᵀDIh₁ j p c} RedTₘ.⊢J (okT⟶ᵀDIh₁ dj dp dc)) ∷ᵈ (⊢tel {Ξ} {RedTₘ.J} {T⟶ᵀDIh₂ j p c} RedTₘ.⊢J (okT⟶ᵀDIh₂ dj dp dc)) ∷ᵈ (⊢tel {Ξ} {RedTₘ.J} {T⟶ᵀDIh₃ j p c} RedTₘ.⊢J (okT⟶ᵀDIh₃ dj dp dc)) ∷ᵈ (⊢tel {Ξ} {RedTₘ.J} {T⟶ᵀDIh₄ j p c} RedTₘ.⊢J (okT⟶ᵀDIh₄ dj dp dc)) ∷ᵈ  []ᵈ)
 
 ⟶ᵀNone : Row
 ⟶ᵀNone = record { R = λ j p c → rows [] ; R-sub = λ σ j p c → refl }
