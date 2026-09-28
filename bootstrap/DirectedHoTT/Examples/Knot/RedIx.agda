@@ -61,3 +61,19 @@ ix⟶ᵀ d A B = RedTₘ.ixJ (pair (tag 0) d) A B
 
 ⊢ix⟶ᵀ : {Ξ : Ctx} {d A B : RTm ⌊ Ξ ⌋} → Ξ ⊢ d ∷ El ⌜Nat⌝ → Ξ ⊢ A ∷ K 0 d → Ξ ⊢ B ∷ K 0 d → Ξ ⊢ ix⟶ᵀ d A B ∷ El RedTₘ.J
 ⊢ix⟶ᵀ dd dA dB = RedTₘ.⊢ixJ (⊢ix lt-z dd) dA (⊢toCR dB)
+
+-- ★ the CONVERSIONS `t ≅ u` / `A ≅ᵀ B`: the same index; their rules
+--   (red, refl, sym, trans) have a bare-variable subject, so they sit in
+--   every fibre (D077)
+module Convₘ = SynFam KOK CR CR-sub ⊢CR     -- t ≅ u
+module ConvTₘ = SynFam KOK CR CR-sub ⊢CR    -- A ≅ᵀ B
+
+ix≅ ix≅ᵀ : RTm Δ → RTm Δ → RTm Δ → RTm Δ
+ix≅ d t u = Convₘ.ixJ (pair (tag 1) d) t u
+ix≅ᵀ d A B = ConvTₘ.ixJ (pair (tag 0) d) A B
+
+⊢ix≅ : {Ξ : Ctx} {d t u : RTm ⌊ Ξ ⌋} → Ξ ⊢ d ∷ El ⌜Nat⌝ → Ξ ⊢ t ∷ K 1 d → Ξ ⊢ u ∷ K 1 d → Ξ ⊢ ix≅ d t u ∷ El Convₘ.J
+⊢ix≅ dd dt du = Convₘ.⊢ixJ (⊢ix (lt-s lt-z) dd) dt (⊢toCR du)
+
+⊢ix≅ᵀ : {Ξ : Ctx} {d A B : RTm ⌊ Ξ ⌋} → Ξ ⊢ d ∷ El ⌜Nat⌝ → Ξ ⊢ A ∷ K 0 d → Ξ ⊢ B ∷ K 0 d → Ξ ⊢ ix≅ᵀ d A B ∷ El ConvTₘ.J
+⊢ix≅ᵀ dd dA dB = ConvTₘ.⊢ixJ (⊢ix lt-z dd) dA (⊢toCR dB)
