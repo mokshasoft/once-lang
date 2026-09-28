@@ -15611,4 +15611,9 @@ SEMANTICS.
   linked references' meanings; the poly case is proved.
 * **Bridge.** `MeaningBridge` holds under `EnvRel ρ σ` (entrywise `RelT`); both reference
   clauses are proofs. The apex surface meaning runs in `σR` of main's link data; `bridgeᵈ`
-  needs the telescope lemma `EnvRel ρSpec σR` (`Adequacy.TelescopeEnv`).
+  uses the telescope lemma `EnvRel ρSpec σR` (`Adequacy.TelescopeEnv`, PROVED: completeness
+  on each entry's declaration derivation, the substitution lemma, agreement, derivation
+  independence and the bridge in the tail's environments; Acc-irrelevance of the resolver).
+* **Distinct telescope names.** `guardDistinct` also requires the telescope's names to be
+  distinct: a definitions context with two entries of one name is ill-formed, and linking
+  resolves references by name.

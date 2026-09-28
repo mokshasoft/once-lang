@@ -423,8 +423,12 @@ distinctOrErr false _ = inj₁ "ill-formed top-level definition name (duplicate 
 
 guardDistinct : EFResult → EFResult
 guardDistinct (inj₁ err)            = inj₁ err
+-- Plan 0.103 phase 1c: the TELESCOPE's names are distinct too — a definitions
+-- context with two entries of one name is ill-formed, and linking (a reference
+-- is resolved by name) relies on it.
 guardDistinct (inj₂ (funs , polys)) =
-  distinctOrErr (namesDistinct nms ∧ allValidIdentB nms) (inj₂ (funs , polys))
+  distinctOrErr ((namesDistinct nms ∧ allValidIdentB nms) ∧ namesDistinct (map PolyFunInfo.pfunName polys))
+                (inj₂ (funs , polys))
   where nms = emittedNames funs
 
 extractFunctions : TypeAliasEnv → Module → String ⊎ (List FunInfo × List PolyFunInfo)

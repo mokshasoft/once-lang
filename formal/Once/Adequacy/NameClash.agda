@@ -145,18 +145,34 @@ distinctOrErr-true : ∀ b {p p' : List FunInfo × List PolyFunInfo}
 distinctOrErr-true true  _  = refl
 distinctOrErr-true false ()
 
+guard-all : (r : String ⊎ (List FunInfo × List PolyFunInfo))
+  {funs : List FunInfo} {polys : List PolyFunInfo}
+  → guardDistinct r ≡ inj₂ (funs , polys)
+  → ((namesDistinct (emittedNames funs) ∧ allValidIdentB (emittedNames funs))
+      ∧ namesDistinct (map PolyFunInfo.pfunName polys)) ≡ true
+guard-all (inj₁ _) ()
+guard-all (inj₂ (funs₀ , polys₀)) eq
+  with (namesDistinct (emittedNames funs₀) ∧ allValidIdentB (emittedNames funs₀))
+         ∧ namesDistinct (map PolyFunInfo.pfunName polys₀) in beq
+... | true  =
+      subst (λ p → ((namesDistinct (emittedNames (proj₁ p)) ∧ allValidIdentB (emittedNames (proj₁ p)))
+                     ∧ namesDistinct (map PolyFunInfo.pfunName (proj₂ p))) ≡ true)
+            (inj₂-injective eq) beq
+... | false with eq
+...   | ()
+
 guard-true : (r : String ⊎ (List FunInfo × List PolyFunInfo))
   {funs : List FunInfo} {polys : List PolyFunInfo}
   → guardDistinct r ≡ inj₂ (funs , polys)
   → (namesDistinct (emittedNames funs) ∧ allValidIdentB (emittedNames funs)) ≡ true
-guard-true (inj₁ _) ()
-guard-true (inj₂ (funs₀ , polys₀)) eq
-  with namesDistinct (emittedNames funs₀) ∧ allValidIdentB (emittedNames funs₀) in beq
-... | true  =
-      subst (λ fs → (namesDistinct (emittedNames fs) ∧ allValidIdentB (emittedNames fs)) ≡ true)
-            (cong proj₁ (inj₂-injective eq)) beq
-... | false with eq
-...   | ()
+guard-true r eq = ∧-elimˡ (guard-all r eq)
+
+-- Plan 0.103 phase 1c: the telescope's names are distinct.
+guard-polys : (r : String ⊎ (List FunInfo × List PolyFunInfo))
+  {funs : List FunInfo} {polys : List PolyFunInfo}
+  → guardDistinct r ≡ inj₂ (funs , polys)
+  → AllPairs _≢_ (map PolyFunInfo.pfunName polys)
+guard-polys r eq = namesDistinct-sound _ (∧-elimʳ (guard-all r eq))
 
 -- (b) the CODEGEN-FAITHFULNESS bridge: the symbols `compileAllFuns-go` actually
 -- builds equal `once-symbol-own` of the NON-primitive funNames. Induction through

@@ -20,6 +20,7 @@ import OptimizeSpec (optimizeTests)
 import ParseSpec (parseTests)
 import QttSpec (qttTests)
 import PuritySpec (purityTests)
+import TelescopeSpec (telescopeTests)
 import SymbolNameSpec (symbolNameTests, thunkSymbolTests)
 import TraceSpec (traceTests)
 import TypeCheckSpec (typeCheckTests)
@@ -38,6 +39,7 @@ main = defaultMain $ localOption (NumThreads 1) $ testGroup "Once"
   , typeErrorTests
   , qttTests
   , purityTests
+  , telescopeTests
   , generatorTests
   , irTests
   , layer0Tests

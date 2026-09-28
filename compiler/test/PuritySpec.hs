@@ -70,8 +70,7 @@ purityTests = testGroup "Purity (pure emits nothing)"
         , "mkNu : Int -> Nu (K Int)"
         , "mkNu = ana (compose (\\_ -> 7) emit@E)"
         , ""
-        -- USED, because a definition whose signature mentions `Nu`/`Mu` is
-        -- only checked at its use sites today (a separate, pre-existing gap).
+        -- Typed at its declaration (plan 0.103 phase 1), used or not.
         , "run : Int"
         , "run = Out (mkNu 3)"
         ]
