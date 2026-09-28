@@ -154,7 +154,7 @@ RULES.update({
                        ("id", ("Ty", "J"), "X", k("DIh", F(0), E(1), F(2), F(3)))]),
 })
 
-HAND = {"var": ("rVar", "okVar"), "lam": ("rLam", "okLam"), "app": ("rApp", "okApp")}
+HAND = {"var": ("rVar", "okVar"), "lam": ("rLam", "okLam"), "app": ("rApp", "okApp"), "fzero": ("rFz", "okFz"), "fsuc": ("rFs", "okFs")}
 
 # ------------------------------------------------------------ rendering
 def dep(d):
@@ -736,7 +736,7 @@ open import DirectedHoTT.Examples.Knot.JudgeIx
 open import DirectedHoTT.Examples.Knot.JudgeTmIx
 open import DirectedHoTT.Examples.Knot.JudgeCase
 open import DirectedHoTT.Examples.Knot.JudgeRowsTy using ( RowOK; okNone )
-open import DirectedHoTT.Examples.Knot.JudgeRowsTm using ( rVar; okVar; rLam; okLam; rApp; okApp )
+open import DirectedHoTT.Examples.Knot.JudgeRowsTm using ( rVar; okVar; rLam; okLam; rApp; okApp; rFz; okFz; rFs; okFs )
 
 private
   variable
