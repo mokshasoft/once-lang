@@ -69,6 +69,7 @@ import DirectedHoTT.Lib.Sorted
 import DirectedHoTT.Lib.Strong
 import DirectedHoTT.Lib.Sugar
 import DirectedHoTT.Lib.Syn
+import DirectedHoTT.Lib.SynFam
 import DirectedHoTT.Lib.SynFib
 import DirectedHoTT.Lib.SynPat
 import DirectedHoTT.Lib.SynRen

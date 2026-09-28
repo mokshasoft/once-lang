@@ -686,6 +686,131 @@ def gen_table():
         L.append("okTmGen %s = %s" % (nth, o))
     return L
 
+# ------------------------------------------------------------ the side-condition families
+# A predicate on codes (sort 1), fibred by the code's head; a row is a list of
+# recursive premises `(field, depth-offset)` into the same predicate.
+PREDS = {
+  "NNC":  dict(doc="NoNatC c — no ⌜Nat⌝ along the Π-codomain / Hom-ambient spine (Spec/Variance)",
+               rows={"cbase": [], "cUnit": [], "cFin": [], "cSg": [], "cId": [],
+                     "cPi": [(1, 1)], "cHom": [(0, 0)]}),
+  "StkA": dict(doc="stkA? c ≡ true — a stable ambient (Spec/Variance)",
+               rows={"cbase": [], "cSg": [], "cId": [], "cUnit": [], "cFin": [], "cNat": [], "cIMu": [],
+                     "cHom": [(0, 0)]}),
+}
+
+def gen_preds():
+    L = [PHDR]
+    for P, spec in PREDS.items():
+        L.append("------------------------------------------------------------------------")
+        L.append("-- ★ %s" % spec["doc"])
+        L.append("------------------------------------------------------------------------")
+        L.append("")
+        L.append("module %sₘ = SynFam KOK (λ {Δ} → ⌜Unit⌝ {Δ ∙}) (λ σ → refl) ⊢⌜Unit⌝" % P)
+        L.append("")
+        # the index of a recursive premise at depth `j + k`
+        L.append("ix%s : RTm Δ → RTm Δ → RTm Δ" % P)
+        L.append("ix%s d c = %sₘ.ixJ (pair (tag 1) d) c unit" % (P, P))
+        L.append("")
+        L.append("⊢ix%s : {Ξ : Ctx} {d c : RTm ⌊ Ξ ⌋} → Ξ ⊢ d ∷ El ⌜Nat⌝ → Ξ ⊢ c ∷ K 1 d → Ξ ⊢ ix%s d c ∷ El %sₘ.J" % (P, P, P))
+        L.append("⊢ix%s dd dc = %sₘ.⊢ixJ (⊢ix (lt-s lt-z) dd) dc (⊢conv ⊢unit (csymᵀ (credᵀ El-⌜Unit⌝)))" % (P, P))
+        L.append("")
+        for h, prems in spec["rows"].items():
+            sh = shape_name(h)
+            fs = SIG[h][1]
+            nm = "%s⊢%s" % (P, h)
+            def fld(i):
+                t = "p"
+                for _ in range(i): t = "(snd %s)" % t
+                return "(fst %s)" % t
+            def dep(k):
+                t = "j"
+                for _ in range(k): t = "(nsuc %s)" % t
+                return t
+            tel = "tι"
+            for (f, k) in reversed(prems):
+                tel = "tρ (ix%s %s %s) (%s)" % (P, dep(k), fld(f), tel)
+            L.append("T%s : RTm Δ → RTm Δ → RTm Δ → Tel Δ" % nm)
+            L.append("T%s j p c = %s" % (nm, tel))
+            L.append("")
+            L.append("r%s : Row" % nm)
+            L.append("r%s = defRow T%s (λ σ j p c → refl)" % (nm, nm))
+            L.append("")
+            L.append("ok%s : %sₘ.RowOK 1 %s r%s" % (nm, P, sh, nm))
+            body = "ok-ι"
+            for (f, k) in reversed(prems):
+                ftyp = "(g0 {j = j} {p = p} %d %d %s %s)" % (fs[f][1], fs[f][2], "[]ʰ", "dp") if f == 0 and len(fs) == 1 else None
+                # the field's typing, through the payload's view
+                d = "dp"
+                for m in range(f):
+                    d = "(⊢recSnd {s = %d} {k = %d} {sh = %s} %s)" % (fs[m][1], fs[m][2], shape_expr(fs[m + 1:]), d)
+                ftyp = "(⊢atDepth {a = tag 1} {j = j} {s = %d} {k = %d} (⊢recFst {s = %d} {k = %d} {sh = %s} %s))" % (
+                    fs[f][1], fs[f][2], fs[f][1], fs[f][2], shape_expr(fs[f + 1:]), d)
+                ddep = "dj"
+                for _ in range(k): ddep = "(⊢isuc %s)" % ddep
+                body = "ok-ρ (⊢ix%s %s %s) (%s)" % (P, ddep, ftyp, body)
+            L.append("ok%s {Ξ} {j} {p} {c} dj dp dc = ⊢rows {Ξ} {%sₘ.J} {1} {⌜ T%s j p c ⌝ᵗ ∷ []} %sₘ.⊢J (⊢tel {Ξ} {%sₘ.J} {T%s j p c} %sₘ.⊢J (%s) ∷ᵈ []ᵈ)" % (
+                nm, P, nm, P, P, nm, P, body))
+            L.append("")
+        # the table
+        L.append("%sNone : Row" % P)
+        L.append("%sNone = record { R = λ j p c → rows [] ; R-sub = λ σ j p c → refl }" % P)
+        L.append("")
+        L.append("row%s : ℕ → ℕ → Row" % P)
+        for i, h in enumerate(TMHEADS):
+            if h in spec["rows"]:
+                L.append("row%s (suc zero) %s = r%s⊢%s" % (P, gk.nat(i), P, h))
+        L.append("row%s _ _ = %sNone" % (P, P))
+        L.append("")
+        L.append("ok%sNone : {s : ℕ} {sh : Shape} → %sₘ.RowOK s sh %sNone" % (P, P, P))
+        L.append("ok%sNone dj dp dc = ⊢rows {I = %sₘ.J} {Cs = []} %sₘ.⊢J []ᵈ" % (P, P, P))
+        L.append("")
+        L.append("rowOK%s : {s c k : ℕ} {shs : Shapes c} {sh : Shape} → NthG KSig s shs → NthSh shs k sh → %sₘ.RowOK s sh (row%s s k)" % (P, P, P))
+        L.append("rowOK%s {sh = sh} nthᵍ-z nh = ok%sNone {0} {sh}" % (P, P))
+        for i, h in enumerate(TMHEADS):
+            nth = "nthʰ-z"
+            for _ in range(i): nth = "(nthʰ-s %s)" % nth
+            o = ("ok%s⊢%s" % (P, h)) if h in spec["rows"] else ("ok%sNone {1} {%s}" % (P, shape_name(h)))
+            L.append("rowOK%s (nthᵍ-s nthᵍ-z) %s = %s" % (P, nth, o))
+        L.append("")
+        L.append("module %sF = %sₘ.Family row%s rowOK%s" % (P, P, P, P))
+        L.append("")
+        L.append("-- the predicate at a code `c : K 1 d`")
+        L.append("K%s : RTm Δ → RTm Δ → RTy Δ" % P)
+        L.append("K%s d c = %sF.KF (ix%s d c)" % (P, P, P))
+        L.append("")
+    return L
+
+PHDR = """------------------------------------------------------------------------
+-- ⚠⚠ GENERATED by tools/gen-judge.py — DO NOT EDIT BY HAND. ⚠⚠
+--
+-- The side conditions of the kernel's rules as LOWER-STRATUM families
+-- (D077): predicates on codes, fibred by the code's head (`Lib/SynFam`,
+-- trivial convoy).  A premise `NoNatC c` is a σ-field of its code.
+------------------------------------------------------------------------
+
+{-# OPTIONS --safe #-}
+module DirectedHoTT.Examples.Knot.Preds where
+
+open import normalizer.Syntax.Types using ( _≡_; refl )
+open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
+open import DirectedHoTT.Spec.Syntax hiding ( Fin )
+open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
+open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_; tag; lt-z; lt-s; []ᵈ; _∷ᵈ_ )
+open import DirectedHoTT.Lib.SynView using ( PayV; ⊢recFst; ⊢recSnd; ⊢atDepth )
+open import DirectedHoTT.Lib.FinFam using ( ⊢isuc )
+open import DirectedHoTT.Lib.Tel
+open import DirectedHoTT.Lib.Syn
+open import DirectedHoTT.Lib.SynFib using ( Row )
+open import DirectedHoTT.Lib.SynFam using ( module SynFam )
+open import DirectedHoTT.Examples.Knot.Sig
+open import DirectedHoTT.Examples.Knot.Lookup using ( rows; ⊢rows )
+open import DirectedHoTT.Examples.Knot.JudgeIx using ( defRow )
+
+private
+  variable
+    Δ Θ : Cx
+"""
+
 def main():
     load_sig()
     L = [HDR]
@@ -696,13 +821,17 @@ def main():
         L += gen_rowtyped(row)
     L += gen_table()
     txt = "\n".join(L) + "\n"
+    ptxt = "\n".join(gen_preds()) + "\n"
+    POUT = os.path.join(ROOT, "Examples", "Knot", "Preds.agda")
     if "--check" in sys.argv:
         old = open(OUT, encoding="utf-8").read() if os.path.exists(OUT) else ""
-        if old != txt:
-            print("STALE: %s" % OUT); sys.exit(1)
+        pold = open(POUT, encoding="utf-8").read() if os.path.exists(POUT) else ""
+        if old != txt or pold != ptxt:
+            print("STALE: %s / %s" % (OUT, POUT)); sys.exit(1)
         print("ok"); return
     open(OUT, "w", encoding="utf-8").write(txt)
-    print("wrote %s" % OUT)
+    open(POUT, "w", encoding="utf-8").write(ptxt)
+    print("wrote %s, %s" % (OUT, POUT))
 
 HDR = """------------------------------------------------------------------------
 -- ⚠⚠ GENERATED by tools/gen-judge.py — DO NOT EDIT BY HAND. ⚠⚠
