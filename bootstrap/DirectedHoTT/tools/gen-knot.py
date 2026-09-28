@@ -276,9 +276,66 @@ quoteTm : {Γ : Cx} → RTm Γ → {Θ : Cx} → RTm Θ
         L.append("")
     return "\n".join(L)
 
+# ------------------------------------------------------------ typed formers
+def gen_ctors(rows):
+    L = [HDR, """{-# OPTIONS --safe #-}
+module DirectedHoTT.Examples.Knot.Ctors where
+open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
+open import DirectedHoTT.Spec.Syntax
+open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
+open import DirectedHoTT.Lib.FinFam using ( FinI )
+open import DirectedHoTT.Lib.Syn
+open import DirectedHoTT.Examples.Knot.Sig
+
+------------------------------------------------------------------------
+-- The Knot's term formers, TYPED at any depth `d` — each one `⊢conSyn`
+-- with the signature, the sort's list and the row PINNED (an inferred
+-- one costs seconds per use; see `Knot/Sig`).
+------------------------------------------------------------------------
+"""]
+    def depth(k):
+        t = "d"
+        for _ in range(k): t = "(nsuc %s)" % t
+        return t
+    def fty(f, a):
+        if f[0] == "rec": return "Γ ⊢ %s ∷ K %d %s" % (a, f[1], depth(f[2]))
+        if f[0] == "nat": return "Γ ⊢ %s ∷ El ⌜Nat⌝" % a
+        if f[0] == "var": return "Γ ⊢ %s ∷ FinI d" % a
+    def darg(f, a):
+        if f[0] == "rec": return "a-rec d" + a
+        if f[0] == "nat": return "a-nat d" + a
+        if f[0] == "var": return "a-v d" + a
+    def nthsh(k):
+        t = "nthʰ-z"
+        for _ in range(k): t = "(nthʰ-s %s)" % t
+        return t
+    for data in ("RTy", "RTm"):
+        k = 0
+        for d, name, fs in rows:
+            if d != data: continue
+            kn = kname(name)
+            args = ["a%d" % j for j in range(len(fs))]
+            pay = "unit"
+            for a in reversed(args): pay = "pair %s (%s)" % (a, pay)
+            imp = "{Γ : Ctx} {d%s : RTm ⌊ Γ ⌋}" % "".join(" " + a for a in args)
+            prem = " → ".join(["Γ ⊢ d ∷ El ⌜Nat⌝"] + [fty(f, a) for f, a in zip(fs, args)])
+            L.append("⊢%s : %s → %s → Γ ⊢ %s ∷ K %d d" % (kn, imp, prem, " ".join([kn] + args), SORTS[data]))
+            if fs == [("var",)]:
+                ap = "(a-v da0)"
+            else:
+                ap = "a[]"
+                for f, a in reversed(list(zip(fs, args))): ap = "(%s %s)" % (darg(f, a), ap)
+            L.append("⊢%s {Γ} {d}%s dd%s =" % (kn, "".join(" {%s}" % a for a in args), "".join(" d" + a for a in args)))
+            L.append("  ⊢conSyn {sg = KSig} {shs = %sShs} {sh = sh-%s} {d = d} {p = %s} KOK %s %s dd %s"
+                     % (["Ty", "Tm"][SORTS[data]], kn, pay,
+                        "nthᵍ-z" if SORTS[data] == 0 else "(nthᵍ-s nthᵍ-z)", nthsh(k), ap))
+            L.append("")
+            k += 1
+    return "\n".join(L)
+
 def main():
     rows = parse()
-    outs = {"Sig.agda": gen_sig(rows), "Terms.agda": gen_terms(rows)}
+    outs = {"Sig.agda": gen_sig(rows), "Terms.agda": gen_terms(rows), "Ctors.agda": gen_ctors(rows)}
     check = "--check" in sys.argv
     os.makedirs(OUTDIR, exist_ok=True)
     stale = []
