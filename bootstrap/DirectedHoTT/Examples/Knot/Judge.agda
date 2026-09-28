@@ -42,22 +42,15 @@ open import DirectedHoTT.Examples.Knot.Lookup using ( ⌜Ctx⌝; rows; ⊢rows )
 
 open import DirectedHoTT.Examples.Knot.JudgeIx
 open import DirectedHoTT.Examples.Knot.JudgeRowsTy
-open import DirectedHoTT.Examples.Knot.JudgeRowsTm using ( rVar; okVar; rLam; okLam; rApp; okApp )
+open import DirectedHoTT.Examples.Knot.JudgeRowsGen using ( rowTmGen; okTmGen )
 
 private
   variable
     Δ Θ : Cx
 
--- the `⊢` rows, by constructor (the rest are the next batches)
-rowTm : ℕ → Row
-rowTm 0 = rVar      -- var
-rowTm 1 = rLam      -- lam
-rowTm 2 = rApp      -- app
-rowTm _ = rNone
-
 -- ★ the rows, by (sort, constructor)
 rowT : ℕ → ℕ → Row
-rowT 1 k  = rowTm k
+rowT 1 k  = rowTmGen k   -- the `⊢` rows (`JudgeRowsGen`)
 rowT 0 0  = defRow T0 (λ σ j p c → refl)      -- base
 rowT 0 1  = defRow T0 (λ σ j p c → refl)      -- U
 rowT 0 2  = defRow TPi (λ σ j p c → refl)     -- Π
@@ -96,13 +89,7 @@ rowOK nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (n
 rowOK nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))) = okDesc
 rowOK nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))))) = okDIh
 rowOK nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))) = ok0 {sh-kFin}
-rowOK (nthᵍ-s nthᵍ-z) nh = rowOKTm nh
-  where
-    rowOKTm : {k : ℕ} {sh : Shape} → NthSh TmShs k sh → RowOK 1 sh (rowTm k)
-    rowOKTm nthʰ-z = okVar
-    rowOKTm (nthʰ-s nthʰ-z) = okLam
-    rowOKTm (nthʰ-s (nthʰ-s nthʰ-z)) = okApp
-    rowOKTm {sh = sh} (nthʰ-s (nthʰ-s (nthʰ-s nh))) = okNone {1} {sh}
+rowOK (nthᵍ-s nthᵍ-z) nh = okTmGen nh
 
 ⊢FIBMT : {Γ : Ctx} → Γ ⊢ FIBM ∷ MethTy (SI 2) (SD KSig) FM
 ⊢FIBMT = ⊢FIBM rowOK
