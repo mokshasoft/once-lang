@@ -112,6 +112,48 @@ RULES = {
   "cFin":   dict(case="U", ents=[]),
   "cUnit":  dict(case="U", ents=[]),
 }
+# the opaque operations (`Knot/SubEnv`): result `K 0 (d + out)`, argument sorts and depth offsets
+OPS = {
+  "nrsK":    dict(out=2, args=[(0, 1)]),
+  "pairSK":  dict(out=2, args=[(0, 1)]),
+  "fsucSK":  dict(out=1, args=[(0, 1)]),
+  "iinstK":  dict(out=0, args=[(1, 0), (1, 0), (0, 2)]),
+  "MethTyK": dict(out=0, args=[(1, 0), (1, 0), (0, 2)]),
+}
+def MC(d, g, I, D): return ("mc", d, g, I, D)
+NSUC = lambda e: ("nsuc", e)
+NZERO = ("nzero",)
+
+RULES.update({
+  "natrec": dict(ex=[("Ty", "J+1")],
+                 ents=[ty("J+1", ("cext", "G", NAT), E(0)), tm("J", "G", F(0), ("sub0", 0, "J", E(0), k("nzero"))),
+                       tm("J+2", ("cext", ("cext", "G", NAT), E(0)), F(1), ("nrsK", "J", E(0))), tm("J", "G", F(2), NAT),
+                       ("id", ("Ty", "J"), "X", ("sub0", 0, "J", E(0), F(2)))]),
+  "fcase":  dict(ex=[("Nat",), ("Ty", "J+1")],
+                 ents=[ty("J+1", ("cext", "G", k("Fin", NSUC(E(0)))), E(1)), tm("J", "G", F(0), k("Fin", NSUC(E(0)))),
+                       tm("J", "G", F(1), ("sub0", 0, "J", E(1), k("fzero"))),
+                       tm("J+1", ("cext", "G", k("Fin", E(0))), F(2), ("fsucSK", "J", E(1))),
+                       ("id", ("Ty", "J"), "X", ("sub0", 0, "J", E(1), F(0)))]),
+  "fcase0": dict(ex=[("Ty", "J+1")],
+                 ents=[ty("J+1", ("cext", "G", k("Fin", NZERO)), E(0)), tm("J", "G", F(0), k("Fin", NZERO)),
+                       ("id", ("Ty", "J"), "X", ("sub0", 0, "J", E(0), F(0)))]),
+  "psplit": dict(ex=[("Ty", "J"), ("Ty", "J+1"), ("Ty", "J+1")],
+                 ents=[ty("J", "G", E(0)), ty("J+1", ("cext", "G", E(0)), E(1)), ty("J+1", ("cext", "G", k("Sg", E(0), E(1))), E(2)),
+                       tm("J", "G", F(1), k("Sg", E(0), E(1))),
+                       tm("J+2", ("cext", ("cext", "G", E(0)), E(1)), F(0), ("pairSK", "J", E(2))),
+                       ("id", ("Ty", "J"), "X", ("sub0", 0, "J", E(2), F(1)))]),
+  "ielim":  dict(ex=[("Tm", "J"), ("Ty", "J+2")],
+                 ents=[tm("J", "G", E(0), U), tm("J", "G", F(0), ("DF", "J", E(0))), ty("J+2", MC("J", "G", E(0), F(0)), E(1)),
+                       tm("J", "G", F(2), ("MethTyK", "J", E(0), F(0), E(1))), tm("J", "G", F(1), El(E(0))),
+                       tm("J", "G", F(3), k("IMu", E(0), F(0), F(1))),
+                       ("id", ("Ty", "J"), "X", ("iinstK", "J", F(1), F(3), E(1)))]),
+  "dih":    dict(ex=[("Tm", "J"), ("Ty", "J+2")],
+                 ents=[tm("J", "G", E(0), U), tm("J", "G", F(0), ("DF", "J", E(0))), ty("J+2", MC("J", "G", E(0), F(0)), E(1)),
+                       tm("J", "G", F(1), ("MethTyK", "J", E(0), F(0), E(1))), tm("J", "G", F(2), k("Desc", E(0))),
+                       tm("J", "G", F(3), El(k("dpay", E(0), F(0), F(2)))),
+                       ("id", ("Ty", "J"), "X", k("DIh", F(0), E(1), F(2), F(3)))]),
+})
+
 HAND = {"var": ("rVar", "okVar"), "lam": ("rLam", "okLam"), "app": ("rApp", "okApp")}
 
 # ------------------------------------------------------------ rendering
@@ -167,12 +209,16 @@ class Row:
             for y in x[2:]: self.collect(y)
         elif tag == "cext":
             self.collect(x[1]); self.collect(x[2])
-        elif tag == "sub0":
-            self.collect(x[2]); self.collect(x[3]); self.collect(x[4]); self.add_atom(("sub0", x[1:]))
-        elif tag == "wk":
-            self.collect(x[2]); self.collect(x[3]); self.add_atom(("wk", x[1:]))
-        elif tag == "DF":
-            self.collect(x[1]); self.collect(x[2]); self.add_atom(("DF", x[1:]))
+        elif tag in ("sub0", "wk"):
+            for y in x[2:]: self.collect(y)
+            self.add_atom((tag, x[1:]))
+        elif tag in OPS or tag in ("mc", "DF"):
+            for y in x[1:]: self.collect(y)
+            self.add_atom((tag, x[1:]))
+        elif tag == "nsuc":
+            self.collect(x[1])
+        elif tag == "nzero":
+            pass
         else:
             raise ValueError(x)
 
@@ -189,7 +235,11 @@ class Row:
             return "(k%s%s)" % (x[1], (" " + args) if args else "")
         if tag == "cext":
             return "(cext %s %s)" % (self.expr(x[1], env, atoms), self.expr(x[2], env, atoms))
-        if tag in ("sub0", "wk", "DF"):
+        if tag == "nsuc":
+            return "(nsuc %s)" % self.expr(x[1], env, atoms)
+        if tag == "nzero":
+            return "nzero"
+        if tag in ("sub0", "wk", "DF", "mc") or tag in OPS:
             key = (tag, x[1:])
             if atoms: return "A%d" % self.atoms.index(key)
             return self.atom_expr(key, env)
@@ -203,6 +253,7 @@ class Row:
         if kind == "DF":   return "(DF %s %s)" % (r(args[0]), r(args[1]))
         if kind == "Ty":   return "(⌜Ty⌝ %s)" % r(args[0])
         if kind == "Tm":   return "(⌜Tm⌝ %s)" % r(args[0])
+        if kind in OPS or kind == "mc": return "(%s %s)" % (kind, " ".join(r(y) for y in args))
         raise ValueError(a)
 
     def atom_sub(self, a, env, sigma):
@@ -213,6 +264,7 @@ class Row:
         if kind == "DF":   return "(DF-sub %s %s %s)" % (sigma, r(args[0]), r(args[1]))
         if kind == "Ty":   return "(⌜Ty⌝-sub %s %s)" % (sigma, r(args[0]))
         if kind == "Tm":   return "(⌜Tm⌝-sub %s %s)" % (sigma, r(args[0]))
+        if kind in OPS or kind == "mc": return "(%s-sub %s %s)" % (kind, sigma, " ".join(r(y) for y in args))
         raise ValueError(a)
 
     # the telescope's Desc, atoms abstracted
@@ -244,6 +296,8 @@ class Row:
             assert srt == s, (x, s)
             ds = []
             for f, y in zip(fs, x[2:]):
+                if f[0] == "nat":
+                    ds.append(self.nattyp(y, denv)); continue
                 assert f[0] == "rec", (x, f)
                 ds.append(self.typ(y, f[1], plus(d, f[2]), denv))
             return "(⊢k%s %s%s)" % (x[1], dty(d), "".join(" " + q for q in ds))
@@ -259,10 +313,26 @@ class Row:
             _, d0, I = x
             assert s == 0 and d0 == d
             return "(⊢DF %s %s)" % (dty(d0), self.typ(I, 1, d0, denv))
+        if tag in OPS:
+            sig = OPS[tag]
+            d0 = x[1]
+            assert s == 0 and plus(d0, sig["out"]) == d, (x, s, d)
+            ds = [self.typ(y, srt, plus(d0, k), denv) for y, (srt, k) in zip(x[2:], sig["args"])]
+            return "(⊢%s %s%s)" % (tag, dty(d0), "".join(" " + q for q in ds))
+        raise ValueError(x)
+
+    def nattyp(self, x, denv):
+        if is_param(x): return denv[x]
+        if x[0] == "nsuc": return "(⊢isuc %s)" % self.nattyp(x[1], denv)
+        if x[0] == "nzero": return "(toI ⊢nzero)"
         raise ValueError(x)
 
     def ctxtyp(self, g, d, denv):
         if g == "G": return denv["G"]
+        if g[0] == "mc":
+            _, d0, g0, I, D = g
+            assert plus(d0, 2) == d
+            return "(⊢mc %s %s %s %s)" % (dty(d0), self.ctxtyp(g0, d0, denv), self.typ(I, 1, d0, denv), self.typ(D, 1, d0, denv))
         assert g[0] == "cext"
         dm = minus1(d)
         return "(⊢cext %s %s %s)" % (dty(dm), self.ctxtyp(g[1], dm, denv), self.typ(g[2], 0, dm, denv))
@@ -651,7 +721,7 @@ open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Metatheory.TySub using ( ⊢wk )
 open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_; tag; Lt; lt-z; lt-s; []ᵈ; _∷ᵈ_ )
 open import DirectedHoTT.Lib.SynView using ( PayV; ⊢recFst; ⊢recSnd; ⊢atDepth )
-open import DirectedHoTT.Lib.FinFam using ( ⊢isuc )
+open import DirectedHoTT.Lib.FinFam using ( ⊢isuc; toI )
 open import DirectedHoTT.Lib.Tel
 open import DirectedHoTT.Lib.Syn
 open import DirectedHoTT.Lib.SynFib using ( Row )
@@ -661,6 +731,7 @@ open import DirectedHoTT.Examples.Knot.Ctx
 open import DirectedHoTT.Examples.Knot.Lookup using ( rows; ⊢rows; toTy; hereTy )
 open import DirectedHoTT.Examples.Knot.Sub using ( sub0; ⊢sub0; sub0-sub )
 open import DirectedHoTT.Examples.Knot.Ren using ( wk; ⊢wkS; wk-sub )
+open import DirectedHoTT.Examples.Knot.SubEnv using ( nrsK; ⊢nrsK; nrsK-sub; pairSK; ⊢pairSK; pairSK-sub; fsucSK; ⊢fsucSK; fsucSK-sub; iinstK; ⊢iinstK; iinstK-sub; MethTyK; ⊢MethTyK; MethTyK-sub )
 open import DirectedHoTT.Examples.Knot.JudgeIx
 open import DirectedHoTT.Examples.Knot.JudgeTmIx
 open import DirectedHoTT.Examples.Knot.JudgeCase

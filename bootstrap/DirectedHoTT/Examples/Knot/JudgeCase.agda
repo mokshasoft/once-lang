@@ -28,6 +28,9 @@ open import DirectedHoTT.Examples.Knot.Lookup using ( rows; ⊢rows )
 open import DirectedHoTT.Examples.Knot.JudgeIx
 open import DirectedHoTT.Examples.Knot.JudgeTmIx
 open import DirectedHoTT.Examples.Knot.JudgeRowsTy using () renaming ( RowOK to RowOKₒ )
+open import DirectedHoTT.Examples.Knot.Ctors
+open import DirectedHoTT.Examples.Knot.Ren using ( wk; ⊢wkS )
+open import DirectedHoTT.Lib.FinFam using ( ⊢isuc; ⊢ffz )
 
 private
   variable
@@ -75,6 +78,12 @@ hereTm {Θ} {m} = ⊢conv (⊢-cast {Θ ▹ El (⌜Tm⌝ m)} {var vz} {renTy vs 
 
 toTm : {Γ : Ctx} {d a : RTm ⌊ Γ ⌋} → Γ ⊢ a ∷ K 1 d → Γ ⊢ a ∷ El (⌜Tm⌝ d)
 toTm da = ⊢conv da (csymᵀ (credᵀ El-⌜IMu⌝))
+
+-- the motive's context `(Γ ▹ El I) ▹ IMu (wk I) (wk D) (var 0)`, typed
+⊢mc : {Ξ : Ctx} {j g I D : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ g ∷ KCtx j → Ξ ⊢ I ∷ K 1 j → Ξ ⊢ D ∷ K 1 j →
+      Ξ ⊢ mc j g I D ∷ KCtx (nsuc (nsuc j))
+⊢mc dj dg dI dD = ⊢cext (⊢isuc dj) (⊢cext dj dg (⊢kEl dj dI))
+                        (⊢kIMu (⊢isuc dj) (⊢wkS (lt-s lt-z) dj dI) (⊢wkS (lt-s lt-z) dj dD) (⊢kvar (⊢isuc dj) (⊢ffz dj)))
 
 ------------------------------------------------------------------------
 -- 3. ★ A ROW BY CASE ON THE CONCLUSION TYPE.
