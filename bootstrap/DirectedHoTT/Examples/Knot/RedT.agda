@@ -34,6 +34,9 @@ open import DirectedHoTT.Examples.Knot.JudgeIx using ( defRow; rows-sub'; ⌜Tm�
 open import DirectedHoTT.Examples.Knot.JudgeCase using ( w1; w2; w3; w1-sub; w2-sub; w3-sub; hereTm; toTm; wkN; wkK; wkG )
 open import DirectedHoTT.Examples.Knot.GenHelpers
 open import DirectedHoTT.Examples.Knot.RedIx
+open import DirectedHoTT.Examples.Knot.NestIx
+open import DirectedHoTT.Lib.SynPat using ( module Pat )
+open import DirectedHoTT.Examples.Knot.JudgeCase using ( defRow₀ )
 open import DirectedHoTT.Examples.Knot.Red using ( ⌜⟶⌝; ⊢⌜⟶⌝; ⌜⟶⌝-sub )
 
 private
