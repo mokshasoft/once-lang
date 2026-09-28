@@ -70,6 +70,7 @@ import DirectedHoTT.Lib.Strong
 import DirectedHoTT.Lib.Sugar
 import DirectedHoTT.Lib.Syn
 import DirectedHoTT.Lib.SynFib
+import DirectedHoTT.Lib.SynPat
 import DirectedHoTT.Lib.SynRen
 import DirectedHoTT.Lib.SynSub
 import DirectedHoTT.Lib.SynTrav
