@@ -14,6 +14,7 @@ open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Lib.Sugar using ( Lt; lt-z; lt-s )
 open import DirectedHoTT.Lib.Syn
 open import DirectedHoTT.Lib.SynSub
+open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-appʳ )
 open import DirectedHoTT.Examples.Knot.Sig
 open import DirectedHoTT.Examples.Knot.Terms
 open import DirectedHoTT.Examples.Knot.Ren using ( KVars )
@@ -68,3 +69,9 @@ opaque
  sub0-sub σ s d t u =
   cong₄ (λ D T M S → app (app (ielim D (pair T (nsuc (subTm σ d))) M (subTm σ t)) (subTm σ d)) (app (app S (subTm σ d)) (subTm σ u)))
         (SD-sub σ KSig) (tag-sub σ s) (TRAVMs-sub σ) (SINGLE-sub σ)
+
+-- a reduction in the argument (the substitution's image)
+opaque
+ unfolding sub0
+ ⟶*-sub0ᵘ : {Γ : Cx} {s : ℕ} {d t u u' : RTm Γ} → u ⟶* u' → sub0 s d t u ⟶* sub0 s d t u'
+ ⟶*-sub0ᵘ r = ⟶*-appʳ (⟶*-appʳ r)
