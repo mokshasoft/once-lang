@@ -33,6 +33,7 @@ open import Data.List using (List; []; _∷_; length)
 open import Relation.Nullary using (Dec; yes; no; ¬_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Product using (_×_; _,_; ∃-syntax; Σ-syntax; proj₂)
+open import Once.Type.Instance using (instantiate-complete)
 open import Once.Float.Dyadic using (Dyadic)
 open import Once.Float.Decimal using (decimalOf)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst; cong; cong₂; sym; trans)
@@ -1092,6 +1093,7 @@ checkElab-fallback-RVar-poly :
   -- type (`t-var-poly-instantiate-infer`), so the check-mode fallback (poly
   -- node at arbitrary `T`) fires only when infer failed, i.e. non-ground.
   → isGround schema ≡ inj₂ tt
+  → IsInstance schema T
   → checkElab (ctxWithImportsAndPolys (NamedCtx.imports ctx) prefix)
               body T
       ≡ success Surface.zeroUsage eE_body d_body f_body
@@ -1100,13 +1102,17 @@ checkElab-fallback-RVar-poly :
         ≡ success Surface.zeroUsage eE d fr)))
 -- D136: the `classifyBareBuiltin` column is gone with the premise — the
 -- fallback no longer asks whether a bare name looks like a generator.
-checkElab-fallback-RVar-poly {ctx} x T eqLoc eqImp eqPoly eqG _
+-- Plan 0.103 phase 2a: the instance premise makes `instantiate` succeed
+-- (`instantiate-complete`).
+checkElab-fallback-RVar-poly {ctx} x T {schema = schema} eqLoc eqImp eqPoly eqG inst _
   with inferElabV ctx (Raw.RVar x)
      | inferElabV-RVar-fail-bridge ctx x eqLoc eqImp
          (inferElabV-RVar-poly-aux-fail-nonground ctx x eqLoc eqImp eqPoly eqG)
 ... | (failure _ , _) | refl
   with lookupPoly (NamedCtx.polys ctx) x | eqPoly
-... | just _ | refl = _ , _ , _ , refl
+... | just _ | refl
+  with instantiate schema T | proj₂ (instantiate-complete schema T inst)
+...   | just _ | refl = _ , _ , _ , refl
 
 -- Plan 0.58 / D071: the INFER-mode twin — a GROUND telescope name infers at
 -- its declared type, emitting the `poly` placeholder (Phase 2 splices).

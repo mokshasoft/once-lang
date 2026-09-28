@@ -2722,5 +2722,9 @@ mutual
   checkElabV-RVar-bbc-other-aux ctx x T r@(success _ _ _ _ _ , _) = embedOrSubsume ctx (Raw.RVar x) T r
   checkElabV-RVar-bbc-other-aux ctx x T (failure err , _) with lookupPoly (NamedCtx.polys ctx) x
   ... | nothing = failure err , tt
-  ... | just _  = success Surface.zeroUsage (Surface.poly x T) 0 (NamedCtx.freshCounter ctx) , bbc-other-poly-witness ctx x T
+  -- Plan 0.103 phase 2a: only at an INSTANCE of the schema. (The body at `T`
+  -- is still unchecked here — the witness is plan 0.103 phase 6's to delete.)
+  ... | just (schema , _) with instantiate schema T
+  ...   | nothing = failure err , tt
+  ...   | just _  = success Surface.zeroUsage (Surface.poly x T) 0 (NamedCtx.freshCounter ctx) , bbc-other-poly-witness ctx x T
 

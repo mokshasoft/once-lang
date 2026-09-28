@@ -34,6 +34,8 @@ open import Once.Type public
         ; _P*_ ; _P+_ ; _P⇒[_]_ ; PEff ; Pμ-type ; Pν-type ; PTVar
         ; PolyFunctor ; PK ; PId ; _P⊕_ ; _P⊗_
         ; Ground ; GroundF ; extractGround ; extractGroundF
+          -- instances of a schema (plan 0.103 phase 2a)
+        ; substPoly ; substPolyF ; IsInstance
           -- target expressibility (D115)
         ; FitsInReg ; fits-int ; fits-float
         )

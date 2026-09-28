@@ -400,8 +400,8 @@ module Weaken (imps : Imports) (P : PolyCtx) where
     W-c wk (_ , fr) (t-inl-app-check d) = cᶜ (sym (up-z+M wk _)) (t-inl-app-check (W-c wk fr d))
     W-c wk (_ , fr) (t-inr-app-check d) = cᶜ (sym (up-z+M wk _)) (t-inr-app-check (W-c wk fr d))
     W-c wk (_ , fr) (t-initial-app-check d) = cᶜ (sym (up-z+M wk _)) (t-initial-app-check (W-c wk fr d))
-    W-c wk fr (t-var-poly-instantiate {x = z} ln li lp ¬g body) =
-        cᶜ (sym (up-zero wk)) (t-var-poly-instantiate (wnone (wloc wk z fr) ln) li lp ¬g body)
+    W-c wk fr (t-var-poly-instantiate {x = z} ln li lp ¬g inst body) =
+        cᶜ (sym (up-zero wk)) (t-var-poly-instantiate (wnone (wloc wk z fr) ln) li lp ¬g inst body)
     W-d wk fr (d-infer w sb gr) = d-infer (W-i wk fr w) sb gr
     W-d wk fb (d-lam {x = y} {A = B} leq body) = d-lam leq (W-i (wk-under y B wk) fb body)
     W-d wk ((_ , f₁) , f₂) (d-compose dg df) = cᵈ (sym (up-+* wk _ _ _)) (d-compose (W-d wk f₂ dg) (W-d wk f₁ df))
@@ -585,12 +585,13 @@ module Unfolding
            {T : Type} {schema : PolyType} {body : RawExpr} {prefix : PolyCtx}
          → lookupLocal-go y G Δ ≡ nothing → lookupImport imps y ≡ nothing
          → lookupPolyPrefix P′ y ≡ just (schema , body , prefix) → ¬ Ground schema
+         → T.IsInstance schema T
          → ctxWithImportsAndPolys imps prefix ⊢ᶜ body ∶ T ⨾ zeroUsage
          → Lc G Δ fr ⊢ᶜ subVar sh y d ∶ T ⨾ zeroUsage
-  s-poly r y (yes y≡x) _ _ lp ¬g _
+  s-poly r y (yes y≡x) _ _ lp ¬g _ _
     with trans (sym lpp-head) (subst (λ z → lookupPolyPrefix P′ z ≡ _) y≡x lp)
   ... | refl = ⊥-elim (¬g g)
-  s-poly r y (no y≢x) ln li lp ¬g body = t-var-poly-instantiate ln li (lpp-skip y≢x lp) ¬g body
+  s-poly r y (no y≢x) ln li lp ¬g inst body = t-var-poly-instantiate ln li (lpp-skip y≢x lp) ¬g inst body
 
   -- An application whose head is not a builtin keeps the scope for its argument.
   app-scope : ∀ {n G Δ fr sh} {f a : RawExpr} {T U}
@@ -677,7 +678,7 @@ module Unfolding
     S-c r (_ , nc) (t-inl-app-check d) = t-inl-app-check (S-c r nc d)
     S-c r (_ , nc) (t-inr-app-check d) = t-inr-app-check (S-c r nc d)
     S-c r (_ , nc) (t-initial-app-check d) = t-initial-app-check (S-c r nc d)
-    S-c r _ (t-var-poly-instantiate {x = y} ln li lp ¬g body) = s-poly r y (y StrProp.≟ x) ln li lp ¬g body
+    S-c r _ (t-var-poly-instantiate {x = y} ln li lp ¬g inst body) = s-poly r y (y StrProp.≟ x) ln li lp ¬g inst body
     S-d r nc (d-infer w sb gr) = d-infer (S-i r nc w) sb gr
     S-d r (ny , nb) (d-lam {x = y} {A = B} leq body) = d-lam leq (S-i (sr-ext r y B ny) nb body)
     S-d r ((_ , n₁) , n₂) (d-compose dg df) = d-compose (S-d r n₂ dg) (S-d r n₁ df)
@@ -1250,8 +1251,8 @@ module Unfolding
     F-c {sh = sh} r {b = b} nc (t-initial-app-check d) eq with inv-RApp {sh = sh} {b = b} eq
     ... | f₀ , a₀ , refl , ef , ea with inv-RResolved {sh = sh} {b = f₀} ef
     ...   | refl = t-initial-app-check (F-c r (proj₂ nc) d ea)
-    F-c {sh = sh} r {b = b} nc (t-var-poly-instantiate {x = z} ln li lp ¬g body) eq with inv-RVar {sh = sh} {b = b} eq
-    ... | refl , alt = t-var-poly-instantiate ln li (lpp-add r z alt ln lp) ¬g body
+    F-c {sh = sh} r {b = b} nc (t-var-poly-instantiate {x = z} ln li lp ¬g inst body) eq with inv-RVar {sh = sh} {b = b} eq
+    ... | refl , alt = t-var-poly-instantiate ln li (lpp-add r z alt ln lp) ¬g inst body
     F-d {sh = sh} r {b = b} nc (d-infer w sb gr) eq = d-infer (F-i r nc w eq) sb gr
     F-d {sh = sh} r {b = b} nc (d-lam {x = y} {A = B} leq body) eq with inv-RLam {sh = sh} {b = b} eq
     ... | u₀ , refl , eu = d-lam leq (F-i (sr-ext r y B (proj₁ nc)) (proj₂ nc) body eu)

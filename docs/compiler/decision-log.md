@@ -15617,3 +15617,17 @@ SEMANTICS.
 * **Distinct telescope names.** `guardDistinct` also requires the telescope's names to be
   distinct: a definitions context with two entries of one name is ill-formed, and linking
   resolves references by name.
+
+## D236 — A POLYMORPHIC REFERENCE IS AT AN INSTANCE OF ITS SCHEMA (PLAN 0.103 PHASE 2a) (2026-09-28)
+
+`t-var-poly-instantiate` gains the premise `IsInstance schema T`: some total type-variable
+assignment `θ` has `substPoly θ schema ≡ T`. `substPoly`/`IsInstance` are part of the type
+language (exported by `Spec.Type`); the decider `instantiate` stays implementation. The
+elaborator's check-mode fallback decides the premise before emitting `poly x T`, and
+`Type.Instance.instantiate-complete` proves the decider complete for it. The decider was also
+too loose: it matched `Eff A B` against an effectful arrow of ANY quantity, while `Eff A B` is
+exactly the `Many` effectful arrow; it now requires `Many`.
+
+Without the premise the schema was decorative: any type the body happened to check at passed.
+The body premise is still not established by the elaborator (defect 7,
+`bbc-other-poly-witness`), which plan 0.103 phase 6 removes.

@@ -317,7 +317,7 @@ seqᴰ m₁ m₂ = (m₁ >>=T λ x → m₂ >>=T λ y → returnT (x , y)) >>=T 
 -- (the body derivation is the rule's premise). Env-independent — the body is
 -- typed in the empty local context (the prefix env), so discard `dγ` and feed
 -- `tt`. Structural recursion (bodyD is a premise ⇒ a subterm).
-⟦_⟧ᶜ {ctx = ctx} (t-var-poly-instantiate {x = x} _ _ lp _ bodyD) fmt ρ dγ =
+⟦_⟧ᶜ {ctx = ctx} (t-var-poly-instantiate {x = x} _ _ lp _ _ bodyD) fmt ρ dγ =
   (⟦ bodyD ⟧ᶜ fmt (tailAt (NamedCtx.polys ctx) x ρ lp)) tt
 
 ⟦_⟧ᵢ {ctx = ctx} (t-int n) fmt ρ dγ = returnT (OnceWord.Width.fromℤ (int-bits fmt) n)

@@ -1225,7 +1225,7 @@ bridge-c {ctx = ctx} {A = A} (t-initial-app-check d) re er =
 -- means its body in the PREFIX's environment, on both sides; the realized
 -- body is inlined as a closed surface term, so recurse on the body with the
 -- empty local environment and the tail of the environment relation.
-bridge-c {ctx = ctx} (t-var-poly-instantiate {x = x} _ _ lp _ bodyD) re er =
+bridge-c {ctx = ctx} (t-var-poly-instantiate {x = x} _ _ lp _ _ bodyD) re er =
   bridge-c bodyD {dγ₁ = tt} {dγ₂ = tt} (mk↾ tt) (envrel-tail (NamedCtx.polys ctx) x er lp)
 
 -- Plan 0.94 §10: the domain-given clauses mirror their check-mode twins.

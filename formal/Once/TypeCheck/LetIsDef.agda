@@ -282,8 +282,8 @@ module Transfer
     tr-c ld (t-inl-app-check d) = cᶜ (sym (drop-z+M ld _)) (t-inl-app-check (tr-c ld d))
     tr-c ld (t-inr-app-check d) = cᶜ (sym (drop-z+M ld _)) (t-inr-app-check (tr-c ld d))
     tr-c ld (t-initial-app-check d) = cᶜ (sym (drop-z+M ld _)) (t-initial-app-check (tr-c ld d))
-    tr-c ld (t-var-poly-instantiate {x = y} ln li lp ¬g body) =
-        cᶜ (sym (drop-zero ld)) (t-var-poly-instantiate (none-tr (loc-tr ld y) ln) li (lpp-tr y lp) ¬g body)
+    tr-c ld (t-var-poly-instantiate {x = y} ln li lp ¬g inst body) =
+        cᶜ (sym (drop-zero ld)) (t-var-poly-instantiate (none-tr (loc-tr ld y) ln) li (lpp-tr y lp) ¬g inst body)
     tr-d ld (d-infer w sb gr) = d-infer (tr-i ld w) sb gr
     tr-d ld (d-lam {x = y} {A = B} leq body) = d-lam leq (tr-i (ld-under y B ld) body)
     tr-d ld (d-compose dg df) = cᵈ (sym (drop-+* ld _ _ _)) (d-compose (tr-d ld dg) (tr-d ld df))

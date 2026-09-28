@@ -580,7 +580,7 @@ mutual
   agree-cc (t-inl-app-check d) (t-inl-app-check d′) = cong (λ Ψ → zeroUsage +ᵘ (T.Many *ᵘ Ψ)) (agree-cc d d′)
   agree-cc (t-inr-app-check d) (t-inr-app-check d′) = cong (λ Ψ → zeroUsage +ᵘ (T.Many *ᵘ Ψ)) (agree-cc d d′)
   agree-cc (t-initial-app-check d) (t-initial-app-check d′) = cong (λ Ψ → zeroUsage +ᵘ (T.Many *ᵘ Ψ)) (agree-cc d d′)
-  agree-cc (t-var-poly-instantiate _ _ _ _ _) (t-var-poly-instantiate _ _ _ _ _) = refl
+  agree-cc (t-var-poly-instantiate _ _ _ _ _ _) (t-var-poly-instantiate _ _ _ _ _ _) = refl
 
   ----------------------------------------------------------------------
   -- agree-ic
@@ -594,9 +594,9 @@ mutual
   ... | () , _
   agree-ic (t-effApp () _ _) (t-apply-check _)
   agree-ic (t-app-spine () _ _) (t-apply-check _)
-  agree-ic (t-var-local l) (t-var-poly-instantiate ln _ _ _ _) = ⊥-elim (just≢nothing (trans (sym l) ln))
-  agree-ic (t-var-import _ _ i _) (t-var-poly-instantiate _ inn _ _ _) = ⊥-elim (just≢nothing (trans (sym i) inn))
-  agree-ic (t-var-poly-instantiate-infer _ _ p g _) (t-var-poly-instantiate _ _ p′ ¬g _) with trans (sym p) p′
+  agree-ic (t-var-local l) (t-var-poly-instantiate ln _ _ _ _ _) = ⊥-elim (just≢nothing (trans (sym l) ln))
+  agree-ic (t-var-import _ _ i _) (t-var-poly-instantiate _ inn _ _ _ _) = ⊥-elim (just≢nothing (trans (sym i) inn))
+  agree-ic (t-var-poly-instantiate-infer _ _ p g _) (t-var-poly-instantiate _ _ p′ ¬g _ _) with trans (sym p) p′
   ... | refl = ⊥-elim (¬g g)
   agree-ic () (t-lam _ _)
   agree-ic d t-id-check = ⊥-elim (noinf-id d)

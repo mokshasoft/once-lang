@@ -924,8 +924,12 @@ mutual
   instantiateAcc (A P⇒[ q ] B)   (a ⇒[ mk-kind q' pure ] b)   s =
     if-true-maybe (quantityEqBool q q')
       (maybe-bind (instantiateAcc B b) (instantiateAcc A a s))
-  instantiateAcc (PEff A B)      (a ⇒[ mk-kind _ eff ] b)     s =
+  -- `Eff A B` is exactly the `Many` effectful arrow (plan 0.103 phase 2a:
+  -- the decider agrees with `substPoly`).
+  instantiateAcc (PEff A B)      (a ⇒[ mk-kind Many eff ] b)  s =
     maybe-bind (instantiateAcc B b) (instantiateAcc A a s)
+  instantiateAcc (PEff _ _)      (_ ⇒[ mk-kind Zero eff ] _)  _ = nothing
+  instantiateAcc (PEff _ _)      (_ ⇒[ mk-kind One eff ] _)   _ = nothing
   instantiateAcc (Pμ-type F)     (μ-type f)      s = instantiateFunctor F f s
   instantiateAcc (Pν-type F pure) (ν-type f pure) s = instantiateFunctor F f s
   instantiateAcc (Pν-type F eff)  (ν-type f eff)  s = instantiateFunctor F f s
@@ -1104,6 +1108,36 @@ mutual
     maybe-pair _⊕_ (applySubstFunctor s F) (applySubstFunctor s G)
   applySubstFunctor s (F P⊗ G) =
     maybe-pair _⊗_ (applySubstFunctor s F) (applySubstFunctor s G)
+
+-- | Plan 0.103 phase 2a: SUBSTITUTION of a total type-variable assignment into
+-- a schema — the declarative meaning of "an instance of a schema", part of the
+-- type language (unlike `Subst`/`instantiate`, the decider's machinery).
+mutual
+  substPoly : (String → Type) → PolyType → Type
+  substPoly θ (PTVar x)     = θ x
+  substPoly θ PUnit         = Unit
+  substPoly θ PVoid         = Void
+  substPoly θ PInt          = Int
+  substPoly θ PFloat        = Float
+  substPoly θ PStr          = Str
+  substPoly θ PBuffer       = Buffer
+  substPoly θ (A P* B)      = substPoly θ A * substPoly θ B
+  substPoly θ (A P+ B)      = substPoly θ A + substPoly θ B
+  substPoly θ (A P⇒[ q ] B) = substPoly θ A ⇒[ mk-kind q pure ] substPoly θ B
+  substPoly θ (PEff A B)    = substPoly θ A ⇒[ mk-kind Many eff ] substPoly θ B
+  substPoly θ (Pμ-type F)   = μ-type (substPolyF θ F)
+  substPoly θ (Pν-type F π) = ν-type (substPolyF θ F) π
+
+  substPolyF : (String → Type) → PolyFunctor → Functor
+  substPolyF θ (PK A)   = K (substPoly θ A)
+  substPolyF θ PId      = Id
+  substPolyF θ (F P⊕ G) = substPolyF θ F ⊕ substPolyF θ G
+  substPolyF θ (F P⊗ G) = substPolyF θ F ⊗ substPolyF θ G
+
+-- `T` is an INSTANCE of the schema `s`.
+IsInstance : PolyType → Type → Set
+IsInstance s T = Σ (String → Type) (λ θ → substPoly θ s ≡ T)
+  where open import Data.Product using (Σ)
 
 -- | For a polymorphic arrow schema `A ⇒[q] B` and a known ground
 -- domain `Adom`, compute the ground codomain by matching `A`

@@ -903,6 +903,10 @@ mutual
       -- a decision procedure and belongs to the elaborator, not to the
       -- language definition.
       → ¬ (Once.Type.Ground schema)
+      -- Plan 0.103 phase 2a: the checked type is an INSTANCE of the schema (the
+      -- property; the elaborator decides it with `instantiate`). Without it the
+      -- schema was decorative: any type the body happened to check at passed.
+      → Once.Type.IsInstance schema T
       → (ctxWithImportsAndPolys (NamedCtx.imports ctx) prefix)
           ⊢ᶜ body ∶ T ⨾ Surface.zeroUsage
       -- Plan 0.58 / D071: NO `IsConcrete T`. A same-module def reference is a

@@ -2016,11 +2016,11 @@ mutual
   -- then composes with the lookup premises via the helper.
   check-complete {ctx}
     (t-var-poly-instantiate {x = x} {T = T} {schema = schema}
-                            localN importN polyE eqG bodyD) =
+                            localN importN polyE eqG inst bodyD) =
     let (_ , _ , _ , eqBody) = check-complete bodyD
     in checkElab-fallback-RVar-poly {ctx} x T localN importN
          (lookupPolyPrefix⇒lookupPoly (NamedCtx.polys ctx) x polyE)
-         (¬Ground-isGround-inj₂ schema eqG) eqBody
+         (¬Ground-isGround-inj₂ schema eqG) inst eqBody
 
 -- STRONG check-complete: a trivial VIEW of the weak `check-complete`, not a
 -- per-case rewrite. Abstract `checkElabV`, take the weak proj₁ equation, and

@@ -137,7 +137,7 @@ realize (t-initial-app-check d) = morph-app IR.initial (realize d)
 -- realizes to its body's per-use reference elaboration, inlined as a CLOSED
 -- SURFACE term (plan 0.103 phase 1c) — not through the IR, so the body's own
 -- definition references stay open.
-realize (t-var-poly-instantiate _ _ _ _ bodyD) = closed (realize bodyD)
+realize (t-var-poly-instantiate _ _ _ _ _ bodyD) = closed (realize bodyD)
 
 ------------------------------------------------------------------------
 -- realize-infer (⊢ᵢ) — infer-mode reference elaboration.
