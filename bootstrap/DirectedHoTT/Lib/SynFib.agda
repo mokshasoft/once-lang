@@ -83,12 +83,13 @@ private
 -- 2. ★ THE FIBRE METHOD over a signature.
 ------------------------------------------------------------------------
 
-module Fib {sg : Sig n} (ok : SigOK n sg)
+-- the family's index and convoy, before any row (so rows can be TYPED
+-- in modules of their own)
+module Fib₀ {sg : Sig n} (ok : SigOK n sg)
            (J : {Δ : Cx} → RTm Δ) (J-sub : {Δ Θ : Cx} (σ : Sub Δ Θ) → subTm σ (J {Δ}) ≡ J)
            (⊢J : {Γ : Ctx} → Γ ⊢ J ∷ U)
            (C : {Δ : Cx} → RTm (Δ ∙)) (C-sub : {Δ Θ : Cx} (σ : Sub Δ Θ) → subTm (extS σ) (C {Δ}) ≡ C)
-           (⊢C : {Γ : Ctx} → (Γ ▹ El (SI n)) ⊢ C ∷ U)
-           (row : ℕ → ℕ → Row) where
+           (⊢C : {Γ : Ctx} → (Γ ▹ El (SI n)) ⊢ C ∷ U) where
 
   open Row
 
@@ -122,6 +123,16 @@ module Fib {sg : Sig n} (ok : SigOK n sg)
   RowOK s sh r = {Ξ : Ctx} {j p c : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El ⌜Nat⌝ →
                  Ξ ⊢ p ∷ PayV sh (pair (tag s) j) (SI n) (SD sg) → Ξ ⊢ c ∷ El (Cat (pair (tag s) j)) →
                  Ξ ⊢ R r j p c ∷ Desc J
+
+module Fib {sg : Sig n} (ok : SigOK n sg)
+           (J : {Δ : Cx} → RTm Δ) (J-sub : {Δ Θ : Cx} (σ : Sub Δ Θ) → subTm σ (J {Δ}) ≡ J)
+           (⊢J : {Γ : Ctx} → Γ ⊢ J ∷ U)
+           (C : {Δ : Cx} → RTm (Δ ∙)) (C-sub : {Δ Θ : Cx} (σ : Sub Δ Θ) → subTm (extS σ) (C {Δ}) ≡ C)
+           (⊢C : {Γ : Ctx} → (Γ ▹ El (SI n)) ⊢ C ∷ U)
+           (row : ℕ → ℕ → Row) where
+
+  open Row
+  open Fib₀ ok J J-sub ⊢J C C-sub ⊢C public
 
   -- the methods
   mF : Row → RTm (Δ ∙)
