@@ -197,7 +197,7 @@ module Transfer
   var-tr ld y _ _ (lr-both eT eU) refl q = subst₂ (λ T U → _ ⊢ᵢ RVar y ∶ T ⨾ U) eT eU (t-var-local q)
   var-tr ld y _ _ (lr-let refl refl dz) refl q =
     subst (λ U → _ ⊢ᵢ RVar x ∶ A ⨾ U) (sym dz)
-      (t-var-poly-instantiate-infer {g = g} q noImp lpp-head g (sym eqA) eD)
+      (t-var-poly-instantiate-infer {g = g} q noImp lpp-head g (sym eqA))
 
   cᵢ : ∀ {ctx b T U U′} → U ≡ U′ → ctx ⊢ᵢ b ∶ T ⨾ U → ctx ⊢ᵢ b ∶ T ⨾ U′
   cᵢ refl d = d
@@ -224,8 +224,8 @@ module Transfer
     tr-i ld (t-var-qualified l c) = cᵢ (sym (drop-zero ld)) (t-var-qualified l c)
     tr-i ld (t-var-resolved ng l c) = cᵢ (sym (drop-zero ld)) (t-var-resolved ng l c)
     tr-i ld (t-var-import {x = y} ¬gw ln li c) = cᵢ (sym (drop-zero ld)) (t-var-import ¬gw (none-tr (loc-tr ld y) ln) li c)
-    tr-i ld (t-var-poly-instantiate-infer {x = y} ln li lp gr eT body) =
-        cᵢ (sym (drop-zero ld)) (t-var-poly-instantiate-infer (none-tr (loc-tr ld y) ln) li (lpp-tr y lp) gr eT body)
+    tr-i ld (t-var-poly-instantiate-infer {x = y} ln li lp gr eT) =
+        cᵢ (sym (drop-zero ld)) (t-var-poly-instantiate-infer (none-tr (loc-tr ld y) ln) li (lpp-tr y lp) gr eT)
     tr-i ld (t-annot c) = t-annot (tr-c ld c)
     tr-i ld (t-pair d₁ d₂) = cᵢ (sym (drop-+ ld _ _)) (t-pair (tr-i ld d₁) (tr-i ld d₂))
     tr-i ld (t-neg d) = t-neg (tr-i ld d)

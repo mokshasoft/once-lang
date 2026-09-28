@@ -9,7 +9,7 @@
 -- selected main node off a `FunBundle`). What remains here is the small set of
 -- compile-inversion lemmas still consumed by `ModuleComplete`/`FunBundle`:
 --   * `validateMain-EffUU`   — a compiled `main` has type `EffUU`.
---   * `compileFun-main-EffUU`— its `compileFun`-level corollary.
+--   * `compileFun-main-EffUU`— its impsOf `compileFun`-level corollary.
 --   * `findMain-here-no` / `findMain-skip` — a non-`main` head is skipped.
 --   * `bare-injective`       — `bare` is injective on names.
 ------------------------------------------------------------------------
@@ -94,11 +94,11 @@ validateMain-EffUU ((ν-type _ _) ⇒[ k ] B)   ()
 -- (2) A successfully-compiled "main" has type EffUU.
 ------------------------------------------------------------------------
 
-compileFun-main-EffUU : ∀ (ctx : C.FunCtx) (polys : PolyCtx)
+compileFun-main-EffUU : ∀ (ctx : C.FunCtx) (polys : PolyCtx) (impsOf : C.String → C.FunCtx)
   (ty : Type) (body : RawExpr) (irFun : IR ⌊ Unit ⌋ ⌊ ty ⌋) →
-  C.compileFun C.Heap false ctx polys "main" ty body ≡ inj₂ irFun →
+  C.compileFun C.Heap false ctx polys impsOf "main" ty body ≡ inj₂ irFun →
   ty ≡ EffUU
-compileFun-main-EffUU ctx polys ty body irFun eq with C.validateMain ty in veq
+compileFun-main-EffUU ctx polys impsOf ty body irFun eq with C.validateMain ty in veq
 ... | inj₂ tt  = validateMain-EffUU ty veq
 ... | inj₁ err = case eq of λ ()
 

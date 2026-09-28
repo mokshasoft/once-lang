@@ -229,15 +229,15 @@ mutual
   agree-ii (t-var-local l) (t-var-local l′) with trans (sym l) l′
   ... | refl = refl , refl
   agree-ii (t-var-local l) (t-var-import _ ln _ _) = ⊥-elim (just≢nothing (trans (sym l) ln))
-  agree-ii (t-var-local l) (t-var-poly-instantiate-infer ln _ _ _ _ _) = ⊥-elim (just≢nothing (trans (sym l) ln))
+  agree-ii (t-var-local l) (t-var-poly-instantiate-infer ln _ _ _ _) = ⊥-elim (just≢nothing (trans (sym l) ln))
   agree-ii (t-var-import _ ln _ _) (t-var-local l) = ⊥-elim (just≢nothing (trans (sym l) ln))
   agree-ii (t-var-import _ _ i _) (t-var-import _ _ i′ _) with trans (sym i) i′
   ... | refl = refl , refl
-  agree-ii (t-var-import _ _ i _) (t-var-poly-instantiate-infer _ inn _ _ _ _) = ⊥-elim (just≢nothing (trans (sym i) inn))
-  agree-ii (t-var-poly-instantiate-infer ln _ _ _ _ _) (t-var-local l) = ⊥-elim (just≢nothing (trans (sym l) ln))
-  agree-ii (t-var-poly-instantiate-infer _ inn _ _ _ _) (t-var-import _ _ i _) = ⊥-elim (just≢nothing (trans (sym i) inn))
-  agree-ii (t-var-poly-instantiate-infer {schema = s} {g = g} _ _ p _ refl _)
-           (t-var-poly-instantiate-infer {g = g′} _ _ p′ _ refl _) with trans (sym p) p′
+  agree-ii (t-var-import _ _ i _) (t-var-poly-instantiate-infer _ inn _ _ _) = ⊥-elim (just≢nothing (trans (sym i) inn))
+  agree-ii (t-var-poly-instantiate-infer ln _ _ _ _) (t-var-local l) = ⊥-elim (just≢nothing (trans (sym l) ln))
+  agree-ii (t-var-poly-instantiate-infer _ inn _ _ _) (t-var-import _ _ i _) = ⊥-elim (just≢nothing (trans (sym i) inn))
+  agree-ii (t-var-poly-instantiate-infer {schema = s} {g = g} _ _ p _ refl)
+           (t-var-poly-instantiate-infer {g = g′} _ _ p′ _ refl) with trans (sym p) p′
   ... | refl = extractGround-irr s g g′ , refl
   agree-ii (t-annot c) (t-annot c′) = refl , agree-cc c c′
   agree-ii (t-pair a b) (t-pair a′ b′) with agree-ii a a′ | agree-ii b b′
@@ -596,7 +596,7 @@ mutual
   agree-ic (t-app-spine () _ _) (t-apply-check _)
   agree-ic (t-var-local l) (t-var-poly-instantiate ln _ _ _ _) = ⊥-elim (just≢nothing (trans (sym l) ln))
   agree-ic (t-var-import _ _ i _) (t-var-poly-instantiate _ inn _ _ _) = ⊥-elim (just≢nothing (trans (sym i) inn))
-  agree-ic (t-var-poly-instantiate-infer _ _ p g _ _) (t-var-poly-instantiate _ _ p′ ¬g _) with trans (sym p) p′
+  agree-ic (t-var-poly-instantiate-infer _ _ p g _) (t-var-poly-instantiate _ _ p′ ¬g _) with trans (sym p) p′
   ... | refl = ⊥-elim (¬g g)
   agree-ic () (t-lam _ _)
   agree-ic d t-id-check = ⊥-elim (noinf-id d)

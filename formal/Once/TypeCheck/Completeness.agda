@@ -1146,7 +1146,7 @@ given-infer-route (t-var-qualified _ _) A π = refl
 given-infer-route {ctx} (t-var-resolved {cn = cn} ng _ _) A π =
   leaf-route ctx cn A π (inferElabV ctx (RResolved cn)) ng (classifyAppHeadView (RResolved cn))
 given-infer-route (t-var-import _ _ _ _) A π = refl
-given-infer-route (t-var-poly-instantiate-infer _ _ _ _ _ _) A π = refl
+given-infer-route (t-var-poly-instantiate-infer _ _ _ _ _) A π = refl
 given-infer-route (t-annot _) A π = refl
 given-infer-route (t-pair _ _) A π = refl
 given-infer-route (t-neg _) A π = refl
@@ -1546,7 +1546,7 @@ mutual
     in checkElab-fallback-RVar {ctx} x T eqI sb
   -- Plan 0.58 / D071: infer-mode ground telescope reference — same shape as
   -- t-var-import (infer at the declared type, embed at the same type).
-  iFromInferSub {ctx} dd@(t-var-poly-instantiate-infer {x = x} {T = T} _ _ _ _ _ _) sb =
+  iFromInferSub {ctx} dd@(t-var-poly-instantiate-infer {x = x} {T = T} _ _ _ _ _) sb =
     let (_ , _ , _ , eqI) = infer-complete dd
     in checkElab-fallback-RVar {ctx} x T eqI sb
   iFromInferSub (t-annot {e = e} {T = T} d) sb =
@@ -1669,7 +1669,7 @@ mutual
   -- `extractGround schema g`, so the elaborator's poly-fallback success
   -- equation IS the obligation.
   infer-complete {ctx} (t-var-poly-instantiate-infer {x = x} {schema = schema} {g = g}
-                        eqLoc eqImp polyE eqG refl _) =
+                        eqLoc eqImp polyE eqG refl) =
     checkElab-fallback-RVar-poly-infer {ctx} x eqLoc eqImp
       (lookupPolyPrefix⇒lookupPoly (NamedCtx.polys ctx) x polyE)
       (isGround-complete-at schema g)

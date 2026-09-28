@@ -15580,3 +15580,35 @@ was typed only at its use sites: an unused ill-typed one was accepted
   component, `ModuleComplete.moduleToIR-complete` consumes it.
 * **Routing** by concreteness still decides CODEGEN (direct call vs δ-reduction); it no
   longer decides whether a definition is typed.
+
+## D235 — A TELESCOPE REFERENCE IS A DEFINITION VARIABLE; LINKING IS SUBSTITUTION (PLAN 0.103 PHASE 1c) (2026-09-28)
+
+**Found:** `ResolveFaithful.resolveExpr-poly-splice-faithful` equated the meaning of a spliced body
+with the meaning of the `poly x A` placeholder, for an ARBITRARY elaborated body. Instantiating
+the body with `inl' unit` and `inr' unit` derives `⊥`; it was on the apex path. The reference
+chain pivoted on the placeholder's own meaning (an opaque internal call).
+
+**Decision (the principled choice, not the cheapest):** the definitions environment lives in the
+SEMANTICS.
+
+* **Judgment.** `t-var-poly-instantiate-infer` has no body premise: a ground telescope entry is
+  a variable of the telescope at its declared type; its body is typed once (`PolysTyped`, D234).
+  The elaborator's witness is the rule itself (`bbc-other-poly-infer-witness` deleted).
+* **Meaning.** `⟦_⟧` takes the telescope environment `ρ : DefMeanings (NamedCtx.polys ctx)`
+  (`Denotation.DefEnv`, structural over the telescope); a reference reads it. The spec builds
+  `ρ` from `PolysTyped` (`MainMeaning.defMeanings`); `⟦_⟧ᵈ` now takes `pts`.
+* **Surface semantics.** `SD.⟦_⟧ˢ` takes `σ : DefsSem`; `poly x A` means `σ x A`. The compiled
+  program's environment is `internalDefs` (an unlinked reference is an internal call).
+  `realize` keeps references open (`poly x T`) exactly as the elaborator does, so the
+  reference case of `realize-agrees` is `refl` (`infer-agreeV-RVar-poly-todo` deleted).
+* **`closed`.** A new surface former `closed : Expr ∅ [] A → Expr Γ zeroUsage A` embeds a closed
+  term without going through the IR (which would lower its references to internal calls).
+  `embedClosed` is `closed`.
+* **Linking.** `resolveExpr` splices `closed (resolve body)`, the body elaborated in ITS
+  DECLARATION CONTEXT (telescope tail via `lookupPolyPrefix`, declaration imports via
+  `impsOf = Compile.entryImps`), which is `PolysTyped`'s context: compile once, no dynamic
+  scoping. Its faithfulness is the substitution lemma `SD_σ₀⟦resolve e⟧ ≡ SD_σR⟦e⟧`, `σR` the
+  linked references' meanings; the poly case is proved.
+* **Bridge.** `MeaningBridge` holds under `EnvRel ρ σ` (entrywise `RelT`); both reference
+  clauses are proofs. The apex surface meaning runs in `σR` of main's link data; `bridgeᵈ`
+  needs the telescope lemma `EnvRel ρSpec σR` (`Adequacy.TelescopeEnv`).

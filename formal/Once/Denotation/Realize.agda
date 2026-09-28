@@ -62,7 +62,7 @@ open import Once.Surface.Thinning using (weaken; weakenFromEmpty)
 open import Once.Surface.Seq using (seq; seq0; embedClosed)
 open import Once.Surface.Syntax using (Expr; Usage; zeroUsage; var; svar; svar→expr;
   lam; app; effApp; pair; neg; let'; case'; int; float; str; unit;
-  add; sub; mul; div; mod'; fadd; fsub; fmul; fdiv; i2f; lt; le; gt; ge; eq; ne; sigOp; poly;
+  add; sub; mul; div; mod'; fadd; fsub; fmul; fdiv; i2f; lt; le; gt; ge; eq; ne; sigOp; poly; closed;
   lift-morphism; morph-app; coerce; cata; ana; comp'; copair'; fork'; curry')
 open import Once.Surface.Elaborate using (intLit; floatLit; elaborate)
 open import Once.Arith.SigOp.Builders using (value-info)
@@ -133,13 +133,11 @@ realize (t-apply-check dp)      = morph-app IR.apply (realize-infer dp)
 realize (t-inl-app-check d)     = morph-app (IR.inl) (realize d)
 realize (t-inr-app-check d)     = morph-app (IR.inr) (realize d)
 realize (t-initial-app-check d) = morph-app IR.initial (realize d)
--- Plan 0.58 (telescope / E1): a same-module def reference realizes to its
--- closed body's IR, wrapped as a closed morphism applied to `unit` — so its
--- denotation is env-independent BY DEFINITION (`⟦ morph-app ir unit ⟧ˢ dγ =
--- evalᴰ ir tt`), reusing existing combinators. No `poly` surface node (E1).
-realize {ctx = ctx} {A = A} (t-var-poly-instantiate _ _ _ _ bodyD) =
-  subst (λ u → Expr (NamedCtx.debruijn ctx) u A) poly-usage-eq
-        (morph-app {Ψ = zeroUsage} (elaborate IR.Heap (realize bodyD)) unit)
+-- A polymorphic telescope reference (typed per use until plan 0.103 phase 6)
+-- realizes to its body's per-use reference elaboration, inlined as a CLOSED
+-- SURFACE term (plan 0.103 phase 1c) — not through the IR, so the body's own
+-- definition references stay open.
+realize (t-var-poly-instantiate _ _ _ _ bodyD) = closed (realize bodyD)
 
 ------------------------------------------------------------------------
 -- realize-infer (⊢ᵢ) — infer-mode reference elaboration.
@@ -156,11 +154,12 @@ realize-infer (t-var-qualified {name = name} {alias = alias} _ conc) = sigOp (ba
 -- the elaborator's `SigOpInfo.name` by construction.
 realize-infer (t-var-resolved {cn = cn} _ _ conc) = sigOp cn conc
 realize-infer (t-var-import {x = x} _ _ _ conc) = sigOp (bare x) conc
--- Plan 0.58 / D071: infer-mode ground telescope reference — same closed-body
--- inline as the check-mode `t-var-poly-instantiate` clause above.
-realize-infer {ctx = ctx} {A = A} (t-var-poly-instantiate-infer _ _ _ _ _ bodyD) =
-  subst (λ u → Expr (NamedCtx.debruijn ctx) u A) poly-usage-eq
-        (morph-app {Ψ = zeroUsage} (elaborate IR.Heap (realize bodyD)) unit)
+-- Plan 0.103 phase 1c: a ground telescope reference is a VARIABLE of the
+-- definitions context, so its reference elaboration is the open term
+-- `poly x T` — exactly what the elaborator emits. Its meaning is read from the
+-- definitions environment of the surface semantics, built once from the
+-- entries' declaration-time derivations (`Spec.Module.PolysTyped`).
+realize-infer (t-var-poly-instantiate-infer {x = x} {T = T} _ _ _ _ _) = poly x T
 realize-infer (t-annot d)       = realize d
 realize-infer (t-pair da db)    = pair (realize-infer da) (realize-infer db)
 realize-infer (t-neg d)         = neg (realize-infer d)

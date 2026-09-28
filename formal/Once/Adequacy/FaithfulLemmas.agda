@@ -64,6 +64,12 @@ open import Once.Semantics.Functor using (SFunctor; ⟦_⟧SF)
 open import Once.Denotation.DenotTrace using (⟦_⟧ᴰ; evalᴰ; cata-ev-algᴰ; forget; inject; coerce-functor⁻¹-D; coerce-functor-D; liftFn; cohᴰ; anaFᵈ; anaᵈ-erase-full; subst-νᵈ-cong; νᵈ)
 open import Once.Denotation.TraceDenote using (events-F)
 import Once.Denotation.SourceDenote as SD
+
+-- Plan 0.103 phase 1c: these lemmas relate the surface meaning to the
+-- ELABORATED IR, which lowers an unresolved definition reference to an
+-- internal call — so they hold in the compiled program's environment.
+σ₀ : SD.DefsSem
+σ₀ = SD.internalDefs fmt
 open import Once.Postulates using (extensionality)
 
 open Once.Surface.Syntax.Expr
@@ -170,14 +176,14 @@ T-ext-at h = T-ext (λ n → cong proj₁ (h n)) (cong proj₂ (h 0))
 -- record, equal-at-every-budget IS equality, so the index was carrying
 -- nothing.
 morph-app-bridge : ∀ {D E π} (morph : Expr ∅ zeroUsage (D ⇒[ mk-kind Many π ] E))
-                     (ih : liftFn fmt {⟦ ∅ ⟧ᶜ} {D ⇒[ mk-kind Many π ] E} (elaborate C.Heap morph) tt ≡ SD.⟦ morph ⟧ˢ fmt tt)
+                     (ih : liftFn fmt {⟦ ∅ ⟧ᶜ} {D ⇒[ mk-kind Many π ] E} (elaborate C.Heap morph) tt ≡ SD.⟦ morph ⟧ˢ fmt σ₀ tt)
                      (w : ⟦ D ⟧ᴰ)
                    → liftFn fmt {D} {E} (apply ∘ ⟨ elaborate C.Heap morph ∘ terminal , id ⟩) w
-                     ≡ (SD.⟦ morph ⟧ˢ fmt tt >>=T (λ clo → clo w))
+                     ≡ (SD.⟦ morph ⟧ˢ fmt σ₀ tt >>=T (λ clo → clo w))
 morph-app-bridge {D} {E} {π} morph ih w =
   trans (cong (λ X → subst T (cohᴰ E) X) app-⟨⟩-clean)
     (trans (cong (λ h → subst T (cohᴰ E) (h >>=T (λ vf → vf w'))) ih-evalᴰ)
-           (transport-apply-bind (cohᴰ D) (cohᴰ E) (SD.⟦ morph ⟧ˢ fmt tt) w))
+           (transport-apply-bind (cohᴰ D) (cohᴰ E) (SD.⟦ morph ⟧ˢ fmt σ₀ tt) w))
   where
     w' = subst (λ z → z) (sym (cohᴰ D)) w
     -- The elaborated closed-morphism `apply ∘ ⟨ morph ∘ terminal , id ⟩` applied to `w'`
@@ -222,7 +228,7 @@ morph-app-bridge {D} {E} {π} morph ih w =
         pair-eq j = pair-eq-of (T.resT mc) j
     -- `ih` in `evalᴰ`-form: `evalᴰ (elaborate morph) tt ≡ subst T (sym cohᴰ(D⇒E)) (SD.⟦morph⟧ˢ tt)`.
     ih-evalᴰ : evalᴰ fmt (elaborate C.Heap morph) tt
-               ≡ subst T (sym (cong₂ (λ x y → x → T y) (cohᴰ D) (cohᴰ E))) (SD.⟦ morph ⟧ˢ fmt tt)
+               ≡ subst T (sym (cong₂ (λ x y → x → T y) (cohᴰ D) (cohᴰ E))) (SD.⟦ morph ⟧ˢ fmt σ₀ tt)
     ih-evalᴰ = trans (sym (subst-sym-subst (cong₂ (λ x y → x → T y) (cohᴰ D) (cohᴰ E))))
                      (cong (subst T (sym (cong₂ (λ x y → x → T y) (cohᴰ D) (cohᴰ E)))) ih)
 
@@ -286,11 +292,11 @@ cataM-fold {F} {A} {π} wfF c =
 cata-body : ∀ {m} {Γ : Ctx m} {F : Functor} {A} {π : Purity}
               (wf : WellFormedF F)
               (alg : Expr ∅ zeroUsage (⟦ F ⟧T A ⇒[ mk-kind Many π ] A))
-              (ih : liftFn fmt {⟦ ∅ ⟧ᶜ} {⟦ F ⟧T A ⇒[ mk-kind Many π ] A} (elaborate C.Heap alg) tt ≡ SD.⟦ alg ⟧ˢ fmt tt)
+              (ih : liftFn fmt {⟦ ∅ ⟧ᶜ} {⟦ F ⟧T A ⇒[ mk-kind Many π ] A} (elaborate C.Heap alg) tt ≡ SD.⟦ alg ⟧ˢ fmt σ₀ tt)
               (dγ : ⟦ ⟦ Γ ↾ zeroUsage ⟧ᶜ ⟧ᴰ)
             → liftFn fmt {⟦ Γ ↾ zeroUsage ⟧ᶜ} {μ-type F ⇒[ mk-kind Many π ] A}
                 (elaborate C.Heap (cata {Γ = Γ} wf alg)) dγ
-              ≡ SD.⟦ cata {Γ = Γ} wf alg ⟧ˢ fmt dγ
+              ≡ SD.⟦ cata {Γ = Γ} wf alg ⟧ˢ fmt σ₀ dγ
 cata-body {Γ = Γ} {F = F} {A = A} {π = π} wf alg ih dγ =
   trans split fold-step
   where
@@ -307,7 +313,7 @@ cata-body {Γ = Γ} {F = F} {A = A} {π = π} wf alg ih dγ =
     -- IH applies to it directly.
     split : liftFn fmt {⟦ Γ ↾ zeroUsage ⟧ᶜ} {μ-type F ⇒[ mk-kind Many π ] A}
                    (elaborate C.Heap (cata {Γ = Γ} wf alg)) dγ
-          ≡ (SD.⟦ alg ⟧ˢ fmt tt >>=T liftCataM)
+          ≡ (SD.⟦ alg ⟧ˢ fmt σ₀ tt >>=T liftCataM)
     split = trans (cong (λ h → h dγ) (liftFn-∘ {B = ⟦ F ⟧T A ⇒[ mk-kind Many π ] A} {C = μ-type F ⇒[ mk-kind Many π ] A} {A = ⟦ Γ ↾ zeroUsage ⟧ᶜ} cataM' (ealg C.∘ C.terminal)))
                   (cong (λ t → t >>=T liftCataM)
                         (trans (cong (λ h → h dγ) (liftFn-∘ {B = ⟦ ∅ ⟧ᶜ} {C = ⟦ F ⟧T A ⇒[ mk-kind Many π ] A} {A = ⟦ Γ ↾ zeroUsage ⟧ᶜ} ealg C.terminal))
@@ -316,9 +322,9 @@ cata-body {Γ = Γ} {F = F} {A = A} {π = π} wf alg ih dγ =
                                       ih)))
 
     -- Per obtained closure the fold agrees — `cataM-fold`.
-    fold-step : (SD.⟦ alg ⟧ˢ fmt tt >>=T liftCataM)
-              ≡ SD.⟦ cata {Γ = Γ} wf alg ⟧ˢ fmt dγ
-    fold-step = cong (λ g → SD.⟦ alg ⟧ˢ fmt tt >>=T g)
+    fold-step : (SD.⟦ alg ⟧ˢ fmt σ₀ tt >>=T liftCataM)
+              ≡ SD.⟦ cata {Γ = Γ} wf alg ⟧ˢ fmt σ₀ dγ
+    fold-step = cong (λ g → SD.⟦ alg ⟧ˢ fmt σ₀ tt >>=T g)
                      (extensionality (λ c → cataM-fold {F} {A} {π} wf c))
 
 ------------------------------------------------------------------------
@@ -373,10 +379,10 @@ subst-fam-T P refl m = refl
 ana-body : ∀ {mm} {Γ : Ctx mm} {F : Functor} {A} {π₀ π : Purity}
              (wf : WellFormedF F)
              (coalg : Expr ∅ zeroUsage (A ⇒[ mk-kind Many π ] ⟦ F ⟧T A))
-             (ih : liftFn fmt {⟦ ∅ ⟧ᶜ} {A ⇒[ mk-kind Many π ] ⟦ F ⟧T A} (elaborate C.Heap coalg) tt ≡ SD.⟦ coalg ⟧ˢ fmt tt)
+             (ih : liftFn fmt {⟦ ∅ ⟧ᶜ} {A ⇒[ mk-kind Many π ] ⟦ F ⟧T A} (elaborate C.Heap coalg) tt ≡ SD.⟦ coalg ⟧ˢ fmt σ₀ tt)
              (dγ : ⟦ ⟦ Γ ↾ zeroUsage ⟧ᶜ ⟧ᴰ)
            → liftFn fmt {⟦ Γ ↾ zeroUsage ⟧ᶜ} {A ⇒[ mk-kind Many π₀ ] ν-type F π} (elaborate C.Heap (ana {Γ = Γ} {π₀ = π₀} {π = π} wf coalg)) dγ
-             ≡ SD.⟦ ana {Γ = Γ} {π₀ = π₀} {π = π} wf coalg ⟧ˢ fmt dγ
+             ≡ SD.⟦ ana {Γ = Γ} {π₀ = π₀} {π = π} wf coalg ⟧ˢ fmt σ₀ dγ
 ana-body {Γ = Γ} {F = F} {A = A} {π₀ = π₀} {π = π} wf coalg ih dγ =
   trans elab-ana-reduce (cong returnT per-a)
   where
@@ -400,7 +406,7 @@ ana-body {Γ = Γ} {F = F} {A = A} {π₀ = π₀} {π = π} wf coalg ih dγ =
 
     -- The surface-side coalgebra.
     cS : ⟦ A ⟧ᴰ → T (⟦ F ⟧F ⟦ A ⟧ᴰ)
-    cS = λ a' → fmapT (coerce-functor-D F A) (SD.⟦ coalg ⟧ˢ fmt tt >>=T λ clo → clo a')
+    cS = λ a' → fmapT (coerce-functor-D F A) (SD.⟦ coalg ⟧ˢ fmt σ₀ tt >>=T λ clo → clo a')
 
     -- THE content of `ana`-faithfulness, now that both sides are `anaᵈ`: the
     -- two coalgebras agree after the erasure transports. Everything else is
@@ -435,7 +441,7 @@ ana-body {Γ = Γ} {F = F} {A = A} {π₀ = π₀} {π = π} wf coalg ih dγ =
 
     -- The surface side's computation is the shared one too — that is the IH.
     s-eq : ∀ (x : ⟦ A ⟧ᴰ)
-         → (SD.⟦ coalg ⟧ˢ fmt tt >>=T (λ clo → clo x))
+         → (SD.⟦ coalg ⟧ˢ fmt σ₀ tt >>=T (λ clo → clo x))
            ≡ subst T (cohᴰ (⟦ F ⟧T A)) (evalᴰ fmt coalgIR (seedOf x))
     s-eq x = sym (morph-app-bridge coalg ih x)
 
@@ -599,7 +605,7 @@ ana-body {Γ = Γ} {F = F} {A = A} {π₀ = π₀} {π = π} wf coalg ih dγ =
                (cong (anaFᵈ F cS) (subst-subst-sym (cohᴰ A))))
 
     per-a : (λ a → liftFn fmt {A} {ν-type F π} Ana-IR a)
-            ≡ valueT (SD.⟦ ana {Γ = Γ} {π₀ = π₀} {π = π} wf coalg ⟧ˢ fmt dγ) 0
+            ≡ valueT (SD.⟦ ana {Γ = Γ} {π₀ = π₀} {π = π} wf coalg ⟧ˢ fmt σ₀ dγ) 0
     per-a = extensionality (λ a →
       trans (subst-T-returnT (cohᴰ (ν-type F π))
                (anaFᵈ ⌈ eraseF F ⌉F cE (subst (λ z → z) (sym (cohᴰ A)) a)))

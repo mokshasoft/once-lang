@@ -223,6 +223,13 @@ data Expr : ∀ {n} → Ctx n → Usage n → Type → Set where
   -- downstream consumers reject it as "resolver not run".
   poly    : ∀ {n} {Γ : Ctx n} (name : String) (T : Type) → Expr Γ zeroUsage T
 
+  -- Plan 0.103 phase 1c: a CLOSED term is usable in any context (weakening
+  -- by the whole context). Its meaning is the closed term's, on the empty
+  -- environment — and, unlike embedding through the IR, it keeps the term's
+  -- definition references open, so they are read from the definitions
+  -- environment like any other.
+  closed  : ∀ {n} {Γ : Ctx n} {A} → Expr ∅ [] A → Expr Γ zeroUsage A
+
   -- Plan 0.2.4.5 D2: morphism realm.
   --
   -- Wrap a CCC morphism `m : IR A B` as a Surface function value of

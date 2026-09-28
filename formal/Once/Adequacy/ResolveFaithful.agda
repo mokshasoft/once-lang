@@ -17,7 +17,7 @@
 -- constructors are `sigOp` (name→closure rewrite) and `poly` (body splice), each now
 -- an explicit clause with its `nothing`/`failure` sub-branch PROVEN (`refl`) and the
 -- open denotational fact isolated to a NARROW named postulate
--- (`resolveExpr-sigOp-closure-faithful` / `resolveExpr-poly-splice-faithful`).
+-- (`resolveExpr-sigOp-closure-faithful`; plan 0.103 1c deleted the inconsistent poly-splice one).
 ------------------------------------------------------------------------
 
 open import Once.Target.Arch using (TargetNum; int-bits; float-format)
@@ -44,12 +44,12 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Data.String using (String)
 open import Data.Bool using (Bool; true; false)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
-open import Induction.WellFounded using (Acc)
+open import Induction.WellFounded using (Acc; acc)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; sym; trans; subst)
 
 open import Once.Type using (Type; Int; Float; Unit; _+_; Quantity; Zero; One; Many)
 import Once.Type as T
-open import Once.Functor.Translate using (IsConcrete)
+open import Once.Functor.Translate using (IsConcrete; con-fun; con-base)
 open import Once.Surface.Syntax as Srf using (Expr; Usage; ⟦_⟧ᶜ)
 open import Once.Denotation.DenotTrace using (⟦_⟧ᴰ; inject; forget; evalᴰ; cohᴰ; anaFᵈ; coerce-functor-D)
 open import Once.SigOp.Info using (semM)
@@ -64,7 +64,7 @@ open import Once.Semantics.Machine using (sem-cata; sem-ana; coerce-functor)
 import Once.Denotation.SourceDenote as SD
 open import Once.TypeCheck.ElaborateProofs using (resolveExpr; PolyCtx; Imports;
   resolvePolyCase; applySplice; checkElab; CheckElabResult)
-open import Once.TypeCheck.Classify using (lookupPoly; removePoly; lookupImport; ctxWithImportsAndPolys)
+open import Once.TypeCheck.Classify using (lookupPolyPrefix; lookupImport; ctxWithImportsAndPolys)
 open import Once.CanonicalName using (CanonicalName; showCanonical)
 open import Once.Postulates using (extensionality)
 
@@ -88,50 +88,83 @@ T-ext-at {l = mkT t₁ r₁} {r = mkT t₂ r₂} h =
             (cong proj₂ (h 0))
 
 ------------------------------------------------------------------------
--- The two NARROW denotational residuals (Plan 0.55 D#3). The former broad
--- `resolveExpr-faithful-hard` (any constructor) is REPLACED by:
---   (1) the `sigOp → closure` rewrite no-op (name ∈ userFns) — `emit-D`/`semM` for
---       `value-info s` vs `value-info (bare (showCanonical s))` coincide, and the
---       arrow-vs-value shape at a userFn agrees; a genuine denotational fact.
---   (2) the `poly` SPLICE (matched poly + body elaborates) — the inlined body
---       denotes as the poly placeholder. The `nothing`/`failure` sub-branches are
---       PROVEN (`refl`, poly unchanged). [[feedback_enumerate_over_catchall_postulate]]
+-- Plan 0.103 phase 1c: LINKING IS SUBSTITUTION.
+--
+-- A surface term is open over the definitions context: `poly x A` is a
+-- definition reference, meant in a definitions environment (`SD.DefsSem`).
+-- `resolveExpr` substitutes each reference by the definition's closed, linked
+-- body; the compiled program's environment is `σ₀` (a reference linking left
+-- in place is an internal call). The theorem below is the SUBSTITUTION LEMMA:
+-- the linked term in `σ₀` means the unlinked term in the environment `σR` of
+-- the linked references' meanings. There is no statement relating a
+-- reference's own meaning to a body — the former `resolveExpr-poly-splice-
+-- faithful` did exactly that, for an ARBITRARY body, and derived ⊥.
 ------------------------------------------------------------------------
 
+σ₀ : SD.DefsSem
+σ₀ = SD.internalDefs fmt
+
+-- The meaning of a linked reference: what `resolveExpr` puts at `poly x A`.
+σR : PolyCtx → (String → Imports) → Imports → ℕ → SD.DefsSem
+σR polys imps userFns fresh x A =
+  SD.⟦ resolveExpr {Γ = Srf.∅} {Ψ = Srf.zeroUsage} polys imps userFns fresh (Srf.poly x A) ⟧ˢ fmt σ₀ tt
+
+-- The one remaining residual: the `sigOp → closure` rewrite at a user-fn name
+-- is a denotational no-op (Plan 0.55 D#3 (1)). Neither side reads the
+-- definitions environment.
 postulate
   resolveExpr-sigOp-closure-faithful :
-    ∀ {n} {Γ : Srf.Ctx n} {A : Type}
+    ∀ {n} {Γ : Srf.Ctx n} {A : Type} (σ : SD.DefsSem)
       (s : CanonicalName) (conc : IsConcrete A) (dγ : ⟦ ⟦ Γ Srf.↾ Srf.zeroUsage ⟧ᶜ ⟧ᴰ) (k : ℕ)
-    → SD.⟦ Srf.closure {Γ = Γ} {A = A} (showCanonical s) ⟧ˢ fmt dγ ⟨$⟩ k
-        ≡ SD.⟦ Srf.sigOp {Γ = Γ} {A = A} s conc ⟧ˢ fmt dγ ⟨$⟩ k
+    → SD.⟦ Srf.closure {Γ = Γ} {A = A} (showCanonical s) ⟧ˢ fmt σ₀ dγ ⟨$⟩ k
+        ≡ SD.⟦ Srf.sigOp {Γ = Γ} {A = A} s conc ⟧ˢ fmt σ dγ ⟨$⟩ k
 
-  resolveExpr-poly-splice-faithful :
-    ∀ {n} {Γ : Srf.Ctx n} {A : Type}
-      (polys : PolyCtx) (pAcc : Acc _<_ (length polys)) (imps userFns : Imports) (fresh : ℕ)
-      (x : String) {schema : _} {body : _} {Ψ0 : _} {eE : _} {d f : ℕ}
-      (polyEq : lookupPoly polys x ≡ just (schema , body))
-      (dγ : ⟦ ⟦ Γ Srf.↾ Srf.zeroUsage ⟧ᶜ ⟧ᴰ) (k : ℕ)
-    → SD.⟦ applySplice {Γ = Γ} polys pAcc imps userFns fresh x A polyEq (CheckElabResult.success Ψ0 eE d f) ⟧ˢ fmt dγ ⟨$⟩ k
-        ≡ SD.⟦ Srf.poly {Γ = Γ} x A ⟧ˢ fmt dγ ⟨$⟩ k
+-- A SigOp reference does not read the definitions environment. The surface
+-- meaning dispatches on the type's shape, so the fact is stated per shape.
+sigOp-σ-irrel : ∀ {n} {Γ : Srf.Ctx n} {A : Type} (σ σ′ : SD.DefsSem)
+  (s : CanonicalName) (conc : IsConcrete A) (dγ : ⟦ ⟦ Γ Srf.↾ Srf.zeroUsage ⟧ᶜ ⟧ᴰ)
+  → SD.⟦ Srf.sigOp {Γ = Γ} {A = A} s conc ⟧ˢ fmt σ dγ ≡ SD.⟦ Srf.sigOp {Γ = Γ} {A = A} s conc ⟧ˢ fmt σ′ dγ
+sigOp-σ-irrel {A = _ T.⇒[ T.mk-kind Zero _ ] _} σ σ′ s (con-fun _ _) dγ = refl
+sigOp-σ-irrel {A = _ T.⇒[ T.mk-kind One _ ] _}  σ σ′ s (con-fun _ _) dγ = refl
+sigOp-σ-irrel {A = _ T.⇒[ T.mk-kind Many _ ] _} σ σ′ s (con-fun _ _) dγ = refl
+sigOp-σ-irrel {A = _ T.⇒[ _ ] _} σ σ′ s (con-base ()) dγ
+sigOp-σ-irrel {A = T.Unit}       σ σ′ s conc dγ = refl
+sigOp-σ-irrel {A = T.Void}       σ σ′ s conc dγ = refl
+sigOp-σ-irrel {A = T.Int}        σ σ′ s conc dγ = refl
+sigOp-σ-irrel {A = T.Float}      σ σ′ s conc dγ = refl
+sigOp-σ-irrel {A = T.Str}        σ σ′ s conc dγ = refl
+sigOp-σ-irrel {A = T.Buffer}     σ σ′ s conc dγ = refl
+sigOp-σ-irrel {A = _ T.* _}      σ σ′ s conc dγ = refl
+sigOp-σ-irrel {A = _ T.+ _}      σ σ′ s conc dγ = refl
+sigOp-σ-irrel {A = T.μ-type _}   σ σ′ s conc dγ = refl
+sigOp-σ-irrel {A = T.ν-type _ _} σ σ′ s conc dγ = refl
 
--- The `poly` case, J-style over the `lookupPoly` outcome (`lp`/`eqLP` explicit) so
--- `resolvePolyCase` reduces WITHOUT the documented `rewrite polyEq` with-abstraction
--- trap (Elaborate:3262). nothing / checkElab-failure ⇒ poly unchanged ⇒ refl; the
--- checkElab-success SPLICE ⇒ the narrow `resolveExpr-poly-splice-faithful`.
-resolveExpr-poly-faithful :
+-- A linked reference is CLOSED: `poly x A` either stays (an internal call,
+-- environment-free) or becomes `closed r` — so its meaning does not depend on
+-- the context it sits in. Explicit-argument forms, so both sides reduce on
+-- the same lookup / elaboration answers.
+splice-ctx-indep :
   ∀ {n} {Γ : Srf.Ctx n} {A : Type}
-    (polys : PolyCtx) (pAcc : Acc _<_ (length polys)) (imps userFns : Imports) (fresh : ℕ)
-    (x : String)
-    (lp : Maybe _) (eqLP : lookupPoly polys x ≡ lp)
-    (dγ : ⟦ ⟦ Γ Srf.↾ Srf.zeroUsage ⟧ᶜ ⟧ᴰ) (k : ℕ)
-  → SD.⟦ resolvePolyCase {Γ = Γ} polys pAcc imps userFns fresh x A lp eqLP ⟧ˢ fmt dγ ⟨$⟩ k
-      ≡ SD.⟦ Srf.poly {Γ = Γ} x A ⟧ˢ fmt dγ ⟨$⟩ k
-resolveExpr-poly-faithful polys pAcc imps userFns fresh x nothing eqLP dγ k = refl
-resolveExpr-poly-faithful {A = A} polys pAcc imps userFns fresh x (just (schema , body)) eqLP dγ k
-  with checkElab (ctxWithImportsAndPolys imps (removePoly x polys)) body A
-... | CheckElabResult.failure _ = refl
-... | CheckElabResult.success Ψ0 eE d f =
-      resolveExpr-poly-splice-faithful polys pAcc imps userFns fresh x eqLP dγ k
+    (polys : PolyCtx) (pAcc : Acc _<_ (length polys)) (imps : String → Imports) (userFns : Imports)
+    (fresh : ℕ) (x : String) {schema body prefix}
+    (polyEq : lookupPolyPrefix polys x ≡ just (schema , body , prefix))
+    (r : CheckElabResult Srf.∅ A) (dγ : ⟦ ⟦ Γ Srf.↾ Srf.zeroUsage ⟧ᶜ ⟧ᴰ)
+  → SD.⟦ applySplice {Γ = Γ} polys pAcc imps userFns fresh x A polyEq r ⟧ˢ fmt σ₀ dγ
+      ≡ SD.⟦ applySplice {Γ = Srf.∅} polys pAcc imps userFns fresh x A polyEq r ⟧ˢ fmt σ₀ tt
+splice-ctx-indep polys pAcc imps userFns fresh x polyEq (CheckElabResult.failure _) dγ = refl
+splice-ctx-indep polys (acc rec) imps userFns fresh x polyEq (CheckElabResult.success Srf.[] eE _ _) dγ = refl
+
+poly-ctx-indep :
+  ∀ {n} {Γ : Srf.Ctx n} {A : Type}
+    (polys : PolyCtx) (pAcc : Acc _<_ (length polys)) (imps : String → Imports) (userFns : Imports)
+    (fresh : ℕ) (x : String) (lp : Maybe _) (eqLP : lookupPolyPrefix polys x ≡ lp)
+    (dγ : ⟦ ⟦ Γ Srf.↾ Srf.zeroUsage ⟧ᶜ ⟧ᴰ)
+  → SD.⟦ resolvePolyCase {Γ = Γ} polys pAcc imps userFns fresh x A lp eqLP ⟧ˢ fmt σ₀ dγ
+      ≡ SD.⟦ resolvePolyCase {Γ = Srf.∅} polys pAcc imps userFns fresh x A lp eqLP ⟧ˢ fmt σ₀ tt
+poly-ctx-indep polys pAcc imps userFns fresh x nothing eqLP dγ = refl
+poly-ctx-indep {A = A} polys pAcc imps userFns fresh x (just (_ , body , prefix)) eqLP dγ =
+  splice-ctx-indep polys pAcc imps userFns fresh x eqLP
+    (checkElab (ctxWithImportsAndPolys (imps x) prefix) body A) dγ
 
 -- Two-sided bind congruence at each budget: `>>=T` at `j` reads `m j`, then
 -- runs the continuation at what `m` LEFT (`j ∸ length (proj₁ (m j))`). The
@@ -164,32 +197,32 @@ bind2-faithful mR mU gR gU me ge j =
 --   an explicit parameter, so nothing is inferred.
 binop-le-faithful :
   ∀ {n} {Γ : Srf.Ctx n} {Ψ₁ Ψ₂ Ψ' : Usage n} {A B C : Type}
-    (polys : PolyCtx) (imps userFns : Imports) (fresh : ℕ)
+    (polys : PolyCtx) (imps : String → Imports) (userFns : Imports) (fresh : ℕ)
     (a : Expr Γ Ψ₁ A) (b : Expr Γ Ψ₂ B)
     (le₁ : Ψ₁ Srf.⊑ᵘ Ψ') (le₂ : Ψ₂ Srf.⊑ᵘ Ψ')
     (g : ⟦ A ⟧ᴰ → ⟦ B ⟧ᴰ → T ⟦ C ⟧ᴰ)
     (dγ : ⟦ ⟦ Γ Srf.↾ Ψ' ⟧ᶜ ⟧ᴰ)
-    (ihA : ∀ j → SD.⟦ resolveExpr polys imps userFns fresh a ⟧ˢ fmt (restrictᴰ {Γ = Γ} le₁ dγ) ⟨$⟩ j
-                   ≡ SD.⟦ a ⟧ˢ fmt (restrictᴰ {Γ = Γ} le₁ dγ) ⟨$⟩ j)
-    (ihB : ∀ j → SD.⟦ resolveExpr polys imps userFns fresh b ⟧ˢ fmt (restrictᴰ {Γ = Γ} le₂ dγ) ⟨$⟩ j
-                   ≡ SD.⟦ b ⟧ˢ fmt (restrictᴰ {Γ = Γ} le₂ dγ) ⟨$⟩ j)
+    (ihA : ∀ j → SD.⟦ resolveExpr polys imps userFns fresh a ⟧ˢ fmt σ₀ (restrictᴰ {Γ = Γ} le₁ dγ) ⟨$⟩ j
+                   ≡ SD.⟦ a ⟧ˢ fmt (σR polys imps userFns fresh) (restrictᴰ {Γ = Γ} le₁ dγ) ⟨$⟩ j)
+    (ihB : ∀ j → SD.⟦ resolveExpr polys imps userFns fresh b ⟧ˢ fmt σ₀ (restrictᴰ {Γ = Γ} le₂ dγ) ⟨$⟩ j
+                   ≡ SD.⟦ b ⟧ˢ fmt (σR polys imps userFns fresh) (restrictᴰ {Γ = Γ} le₂ dγ) ⟨$⟩ j)
     (k : ℕ)
-  → ((SD.⟦ resolveExpr polys imps userFns fresh a ⟧ˢ fmt
+  → ((SD.⟦ resolveExpr polys imps userFns fresh a ⟧ˢ fmt σ₀
         (restrictᴰ {Γ = Γ} le₁ dγ) >>=T λ va →
-      SD.⟦ resolveExpr polys imps userFns fresh b ⟧ˢ fmt
+      SD.⟦ resolveExpr polys imps userFns fresh b ⟧ˢ fmt σ₀
         (restrictᴰ {Γ = Γ} le₂ dγ) >>=T λ vb → g va vb) ⟨$⟩ k)
-      ≡ ((SD.⟦ a ⟧ˢ fmt
+      ≡ ((SD.⟦ a ⟧ˢ fmt (σR polys imps userFns fresh)
             (restrictᴰ {Γ = Γ} le₁ dγ) >>=T λ va →
-          SD.⟦ b ⟧ˢ fmt
+          SD.⟦ b ⟧ˢ fmt (σR polys imps userFns fresh)
             (restrictᴰ {Γ = Γ} le₂ dγ) >>=T λ vb → g va vb) ⟨$⟩ k)
 binop-le-faithful {Γ = Γ} polys imps userFns fresh a b le₁ le₂ g dγ ihA ihB k =
   bind2-faithful
-    (SD.⟦ resolveExpr polys imps userFns fresh a ⟧ˢ fmt Ea) (SD.⟦ a ⟧ˢ fmt Ea)
-    (λ va → SD.⟦ resolveExpr polys imps userFns fresh b ⟧ˢ fmt Eb >>=T λ vb → g va vb)
-    (λ va → SD.⟦ b ⟧ˢ fmt Eb >>=T λ vb → g va vb)
+    (SD.⟦ resolveExpr polys imps userFns fresh a ⟧ˢ fmt σ₀ Ea) (SD.⟦ a ⟧ˢ fmt (σR polys imps userFns fresh) Ea)
+    (λ va → SD.⟦ resolveExpr polys imps userFns fresh b ⟧ˢ fmt σ₀ Eb >>=T λ vb → g va vb)
+    (λ va → SD.⟦ b ⟧ˢ fmt (σR polys imps userFns fresh) Eb >>=T λ vb → g va vb)
     ihA
     (λ va j → bind2-faithful
-                (SD.⟦ resolveExpr polys imps userFns fresh b ⟧ˢ fmt Eb) (SD.⟦ b ⟧ˢ fmt Eb)
+                (SD.⟦ resolveExpr polys imps userFns fresh b ⟧ˢ fmt σ₀ Eb) (SD.⟦ b ⟧ˢ fmt (σR polys imps userFns fresh) Eb)
                 (λ vb → g va vb) (λ vb → g va vb)
                 ihB
                 (λ vb j' → refl) j)
@@ -203,24 +236,24 @@ binop-le-faithful {Γ = Γ} polys imps userFns fresh a b le₁ le₂ g dγ ihA i
 --   combinators.
 binop-faithful :
   ∀ {n} {Γ : Srf.Ctx n} {Ψ₁ Ψ₂ : Usage n} {A B C : Type}
-    (polys : PolyCtx) (imps userFns : Imports) (fresh : ℕ)
+    (polys : PolyCtx) (imps : String → Imports) (userFns : Imports) (fresh : ℕ)
     (a : Expr Γ Ψ₁ A) (b : Expr Γ Ψ₂ B)
     (g : ⟦ A ⟧ᴰ → ⟦ B ⟧ᴰ → T ⟦ C ⟧ᴰ)
     (dγ : ⟦ ⟦ Γ Srf.↾ (Ψ₁ Srf.+ᵘ Ψ₂) ⟧ᶜ ⟧ᴰ)
-    (ihA : ∀ j → SD.⟦ resolveExpr polys imps userFns fresh a ⟧ˢ fmt
+    (ihA : ∀ j → SD.⟦ resolveExpr polys imps userFns fresh a ⟧ˢ fmt σ₀
                      (restrictᴰ {Γ = Γ} (Srf.⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) ⟨$⟩ j
-                   ≡ SD.⟦ a ⟧ˢ fmt (restrictᴰ {Γ = Γ} (Srf.⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) ⟨$⟩ j)
-    (ihB : ∀ j → SD.⟦ resolveExpr polys imps userFns fresh b ⟧ˢ fmt
+                   ≡ SD.⟦ a ⟧ˢ fmt (σR polys imps userFns fresh) (restrictᴰ {Γ = Γ} (Srf.⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) ⟨$⟩ j)
+    (ihB : ∀ j → SD.⟦ resolveExpr polys imps userFns fresh b ⟧ˢ fmt σ₀
                      (restrictᴰ {Γ = Γ} (Srf.⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) ⟨$⟩ j
-                   ≡ SD.⟦ b ⟧ˢ fmt (restrictᴰ {Γ = Γ} (Srf.⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) ⟨$⟩ j)
+                   ≡ SD.⟦ b ⟧ˢ fmt (σR polys imps userFns fresh) (restrictᴰ {Γ = Γ} (Srf.⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) ⟨$⟩ j)
     (k : ℕ)
-  → ((SD.⟦ resolveExpr polys imps userFns fresh a ⟧ˢ fmt
+  → ((SD.⟦ resolveExpr polys imps userFns fresh a ⟧ˢ fmt σ₀
         (restrictᴰ {Γ = Γ} (Srf.⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=T λ va →
-      SD.⟦ resolveExpr polys imps userFns fresh b ⟧ˢ fmt
+      SD.⟦ resolveExpr polys imps userFns fresh b ⟧ˢ fmt σ₀
         (restrictᴰ {Γ = Γ} (Srf.⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vb → g va vb) ⟨$⟩ k)
-      ≡ ((SD.⟦ a ⟧ˢ fmt
+      ≡ ((SD.⟦ a ⟧ˢ fmt (σR polys imps userFns fresh)
             (restrictᴰ {Γ = Γ} (Srf.⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=T λ va →
-          SD.⟦ b ⟧ˢ fmt
+          SD.⟦ b ⟧ˢ fmt (σR polys imps userFns fresh)
             (restrictᴰ {Γ = Γ} (Srf.⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vb → g va vb) ⟨$⟩ k)
 binop-faithful {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {C = C} polys imps userFns fresh a b g dγ ihA ihB k =
   binop-le-faithful {C = C} polys imps userFns fresh a b
@@ -233,37 +266,37 @@ binop-faithful {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {C = C} polys imps userFns fresh 
 --   is higher-order — hence `inner` carries an explicit signature that pins them.
 thunk-binop-faithful :
   ∀ {n} {Γ : Srf.Ctx n} {Ψ₁ Ψ₂ Ψ' : Usage n} {A B C : Type}
-    (polys : PolyCtx) (imps userFns : Imports) (fresh : ℕ)
+    (polys : PolyCtx) (imps : String → Imports) (userFns : Imports) (fresh : ℕ)
     (a : Expr Γ Ψ₁ A) (b : Expr Γ Ψ₂ B)
     (le₁ : Ψ₁ Srf.⊑ᵘ Ψ') (le₂ : Ψ₂ Srf.⊑ᵘ Ψ')
     (g : ⟦ A ⟧ᴰ → ⟦ B ⟧ᴰ → T ⟦ C ⟧ᴰ)
     (dγ : ⟦ ⟦ Γ Srf.↾ Ψ' ⟧ᶜ ⟧ᴰ)
-    (ihA : ∀ j → SD.⟦ resolveExpr polys imps userFns fresh a ⟧ˢ fmt
+    (ihA : ∀ j → SD.⟦ resolveExpr polys imps userFns fresh a ⟧ˢ fmt σ₀
                      (restrictᴰ {Γ = Γ} le₁ dγ) ⟨$⟩ j
-                   ≡ SD.⟦ a ⟧ˢ fmt (restrictᴰ {Γ = Γ} le₁ dγ) ⟨$⟩ j)
-    (ihB : ∀ j → SD.⟦ resolveExpr polys imps userFns fresh b ⟧ˢ fmt
+                   ≡ SD.⟦ a ⟧ˢ fmt (σR polys imps userFns fresh) (restrictᴰ {Γ = Γ} le₁ dγ) ⟨$⟩ j)
+    (ihB : ∀ j → SD.⟦ resolveExpr polys imps userFns fresh b ⟧ˢ fmt σ₀
                      (restrictᴰ {Γ = Γ} le₂ dγ) ⟨$⟩ j
-                   ≡ SD.⟦ b ⟧ˢ fmt (restrictᴰ {Γ = Γ} le₂ dγ) ⟨$⟩ j)
+                   ≡ SD.⟦ b ⟧ˢ fmt (σR polys imps userFns fresh) (restrictᴰ {Γ = Γ} le₂ dγ) ⟨$⟩ j)
     (k : ℕ)
   → returnT (λ (_ : Data.Unit.⊤) →
-       SD.⟦ resolveExpr polys imps userFns fresh a ⟧ˢ fmt
+       SD.⟦ resolveExpr polys imps userFns fresh a ⟧ˢ fmt σ₀
          (restrictᴰ {Γ = Γ} le₁ dγ) >>=T λ va →
-       SD.⟦ resolveExpr polys imps userFns fresh b ⟧ˢ fmt
+       SD.⟦ resolveExpr polys imps userFns fresh b ⟧ˢ fmt σ₀
          (restrictᴰ {Γ = Γ} le₂ dγ) >>=T λ vb → g va vb) ⟨$⟩ k
       ≡ returnT (λ (_ : Data.Unit.⊤) →
-       SD.⟦ a ⟧ˢ fmt
+       SD.⟦ a ⟧ˢ fmt (σR polys imps userFns fresh)
          (restrictᴰ {Γ = Γ} le₁ dγ) >>=T λ va →
-       SD.⟦ b ⟧ˢ fmt
+       SD.⟦ b ⟧ˢ fmt (σR polys imps userFns fresh)
          (restrictᴰ {Γ = Γ} le₂ dγ) >>=T λ vb → g va vb) ⟨$⟩ k
 thunk-binop-faithful {Γ = Γ} {C = C} polys imps userFns fresh a b le₁ le₂ g dγ ihA ihB k =
   cong (λ h → [] , returns h) (extensionality (λ _ → inner))
   where
     Ea = restrictᴰ {Γ = Γ} le₁ dγ
     Eb = restrictᴰ {Γ = Γ} le₂ dγ
-    inner : (SD.⟦ resolveExpr polys imps userFns fresh a ⟧ˢ fmt Ea >>=T λ va →
-             SD.⟦ resolveExpr polys imps userFns fresh b ⟧ˢ fmt Eb >>=T λ vb → g va vb)
-              ≡ (SD.⟦ a ⟧ˢ fmt Ea >>=T λ va →
-                 SD.⟦ b ⟧ˢ fmt Eb >>=T λ vb → g va vb)
+    inner : (SD.⟦ resolveExpr polys imps userFns fresh a ⟧ˢ fmt σ₀ Ea >>=T λ va →
+             SD.⟦ resolveExpr polys imps userFns fresh b ⟧ˢ fmt σ₀ Eb >>=T λ vb → g va vb)
+              ≡ (SD.⟦ a ⟧ˢ fmt (σR polys imps userFns fresh) Ea >>=T λ va →
+                 SD.⟦ b ⟧ˢ fmt (σR polys imps userFns fresh) Eb >>=T λ vb → g va vb)
     inner = T-ext-at (binop-le-faithful {C = C} polys imps userFns fresh a b le₁ le₂ g dγ ihA ihB)
 
 -- | The UNARY-OPERAND shape: one sub-expression under an arbitrary narrowing
@@ -272,19 +305,19 @@ thunk-binop-faithful {Γ = Γ} {C = C} polys imps userFns fresh a b le₁ le₂ 
 --   `binop-faithful`: the monadic argument and the continuation are PARAMETERS.
 unop-faithful :
   ∀ {n} {Γ : Srf.Ctx n} {Ψ Ψ' : Usage n} {A C : Type}
-    (polys : PolyCtx) (imps userFns : Imports) (fresh : ℕ)
+    (polys : PolyCtx) (imps : String → Imports) (userFns : Imports) (fresh : ℕ)
     (a : Expr Γ Ψ A) (le : Ψ Srf.⊑ᵘ Ψ') (g : ⟦ A ⟧ᴰ → T ⟦ C ⟧ᴰ)
     (dγ : ⟦ ⟦ Γ Srf.↾ Ψ' ⟧ᶜ ⟧ᴰ)
-    (ih : ∀ j → SD.⟦ resolveExpr polys imps userFns fresh a ⟧ˢ fmt (restrictᴰ {Γ = Γ} le dγ) ⟨$⟩ j
-                  ≡ SD.⟦ a ⟧ˢ fmt (restrictᴰ {Γ = Γ} le dγ) ⟨$⟩ j)
+    (ih : ∀ j → SD.⟦ resolveExpr polys imps userFns fresh a ⟧ˢ fmt σ₀ (restrictᴰ {Γ = Γ} le dγ) ⟨$⟩ j
+                  ≡ SD.⟦ a ⟧ˢ fmt (σR polys imps userFns fresh) (restrictᴰ {Γ = Γ} le dγ) ⟨$⟩ j)
     (k : ℕ)
-  → ((SD.⟦ resolveExpr polys imps userFns fresh a ⟧ˢ fmt
+  → ((SD.⟦ resolveExpr polys imps userFns fresh a ⟧ˢ fmt σ₀
         (restrictᴰ {Γ = Γ} le dγ) >>=T g) ⟨$⟩ k)
-      ≡ ((SD.⟦ a ⟧ˢ fmt (restrictᴰ {Γ = Γ} le dγ) >>=T g) ⟨$⟩ k)
+      ≡ ((SD.⟦ a ⟧ˢ fmt (σR polys imps userFns fresh) (restrictᴰ {Γ = Γ} le dγ) >>=T g) ⟨$⟩ k)
 unop-faithful {Γ = Γ} polys imps userFns fresh a le g dγ ih k =
   bind2-faithful
-    (SD.⟦ resolveExpr polys imps userFns fresh a ⟧ˢ fmt (restrictᴰ {Γ = Γ} le dγ))
-    (SD.⟦ a ⟧ˢ fmt (restrictᴰ {Γ = Γ} le dγ))
+    (SD.⟦ resolveExpr polys imps userFns fresh a ⟧ˢ fmt σ₀ (restrictᴰ {Γ = Γ} le dγ))
+    (SD.⟦ a ⟧ˢ fmt (σR polys imps userFns fresh) (restrictᴰ {Γ = Γ} le dγ))
     g g
     ih (λ v j → refl) k
 
@@ -294,10 +327,10 @@ unop-faithful {Γ = Γ} polys imps userFns fresh a le g dγ ih k =
 
 resolveExpr-faithful :
   ∀ {n} {Γ : Srf.Ctx n} {Ψ : Usage n} {A : Type}
-    (polys : PolyCtx) (imps userFns : Imports) (fresh : ℕ)
+    (polys : PolyCtx) (imps : String → Imports) (userFns : Imports) (fresh : ℕ)
     (e : Expr Γ Ψ A) (dγ : ⟦ ⟦ Γ Srf.↾ Ψ ⟧ᶜ ⟧ᴰ) (k : ℕ)
-  → SD.⟦ resolveExpr polys imps userFns fresh e ⟧ˢ fmt dγ ⟨$⟩ k
-      ≡ SD.⟦ e ⟧ˢ fmt dγ ⟨$⟩ k
+  → SD.⟦ resolveExpr polys imps userFns fresh e ⟧ˢ fmt σ₀ dγ ⟨$⟩ k
+      ≡ SD.⟦ e ⟧ˢ fmt (σR polys imps userFns fresh) dγ ⟨$⟩ k
 -- Leaves (resolveExpr unchanged ⇒ definitionally equal).
 resolveExpr-faithful polys imps userFns fresh (Srf.var i) dγ k = refl
 resolveExpr-faithful polys imps userFns fresh Srf.unit dγ k = refl
@@ -509,9 +542,9 @@ resolveExpr-faithful polys imps userFns fresh
 resolveExpr-faithful polys imps userFns fresh
     (Srf.let' {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = One} {A = A} e₁ e₂) dγ k =
   bind2-faithful
-    (SD.⟦ resolveExpr polys imps userFns fresh e₁ ⟧ˢ fmt E₁) (SD.⟦ e₁ ⟧ˢ fmt E₁)
-    (λ v → SD.⟦ resolveExpr polys imps userFns fresh e₂ ⟧ˢ fmt (bindᴰ {Γ = Γ} {A = A} One E₂ v))
-    (λ v → SD.⟦ e₂ ⟧ˢ fmt (bindᴰ {Γ = Γ} {A = A} One E₂ v))
+    (SD.⟦ resolveExpr polys imps userFns fresh e₁ ⟧ˢ fmt σ₀ E₁) (SD.⟦ e₁ ⟧ˢ fmt (σR polys imps userFns fresh) E₁)
+    (λ v → SD.⟦ resolveExpr polys imps userFns fresh e₂ ⟧ˢ fmt σ₀ (bindᴰ {Γ = Γ} {A = A} One E₂ v))
+    (λ v → SD.⟦ e₂ ⟧ˢ fmt (σR polys imps userFns fresh) (bindᴰ {Γ = Γ} {A = A} One E₂ v))
     (resolveExpr-faithful polys imps userFns fresh e₁ E₁)
     (λ v → resolveExpr-faithful polys imps userFns fresh e₂ (bindᴰ {Γ = Γ} {A = A} One E₂ v))
     k
@@ -521,9 +554,9 @@ resolveExpr-faithful polys imps userFns fresh
 resolveExpr-faithful polys imps userFns fresh
     (Srf.let' {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = Many} {A = A} e₁ e₂) dγ k =
   bind2-faithful
-    (SD.⟦ resolveExpr polys imps userFns fresh e₁ ⟧ˢ fmt E₁) (SD.⟦ e₁ ⟧ˢ fmt E₁)
-    (λ v → SD.⟦ resolveExpr polys imps userFns fresh e₂ ⟧ˢ fmt (bindᴰ {Γ = Γ} {A = A} Many E₂ v))
-    (λ v → SD.⟦ e₂ ⟧ˢ fmt (bindᴰ {Γ = Γ} {A = A} Many E₂ v))
+    (SD.⟦ resolveExpr polys imps userFns fresh e₁ ⟧ˢ fmt σ₀ E₁) (SD.⟦ e₁ ⟧ˢ fmt (σR polys imps userFns fresh) E₁)
+    (λ v → SD.⟦ resolveExpr polys imps userFns fresh e₂ ⟧ˢ fmt σ₀ (bindᴰ {Γ = Γ} {A = A} Many E₂ v))
+    (λ v → SD.⟦ e₂ ⟧ˢ fmt (σR polys imps userFns fresh) (bindᴰ {Γ = Γ} {A = A} Many E₂ v))
     (resolveExpr-faithful polys imps userFns fresh e₁ E₁)
     (λ v → resolveExpr-faithful polys imps userFns fresh e₂ (bindᴰ {Γ = Γ} {A = A} Many E₂ v))
     k
@@ -545,11 +578,11 @@ resolveExpr-faithful polys imps userFns fresh
     (Srf.case' {Γ = Γ} {Ψs = Ψs} {Ψₗ = Ψₗ} {Ψᵣ = Ψᵣ} {qℓ = qℓ} {qr = qr}
                {A = A} {B = B} s l r) dγ k =
   bind2-faithful
-    (SD.⟦ resolveExpr polys imps userFns fresh s ⟧ˢ fmt Es) (SD.⟦ s ⟧ˢ fmt Es)
-    (λ v → [ (λ a → SD.⟦ resolveExpr polys imps userFns fresh l ⟧ˢ fmt (bindᴰ {Γ = Γ} {A = A} qℓ Eₗ a))
-           , (λ b → SD.⟦ resolveExpr polys imps userFns fresh r ⟧ˢ fmt (bindᴰ {Γ = Γ} {A = B} qr Eᵣ b)) ]′ v)
-    (λ v → [ (λ a → SD.⟦ l ⟧ˢ fmt (bindᴰ {Γ = Γ} {A = A} qℓ Eₗ a))
-           , (λ b → SD.⟦ r ⟧ˢ fmt (bindᴰ {Γ = Γ} {A = B} qr Eᵣ b)) ]′ v)
+    (SD.⟦ resolveExpr polys imps userFns fresh s ⟧ˢ fmt σ₀ Es) (SD.⟦ s ⟧ˢ fmt (σR polys imps userFns fresh) Es)
+    (λ v → [ (λ a → SD.⟦ resolveExpr polys imps userFns fresh l ⟧ˢ fmt σ₀ (bindᴰ {Γ = Γ} {A = A} qℓ Eₗ a))
+           , (λ b → SD.⟦ resolveExpr polys imps userFns fresh r ⟧ˢ fmt σ₀ (bindᴰ {Γ = Γ} {A = B} qr Eᵣ b)) ]′ v)
+    (λ v → [ (λ a → SD.⟦ l ⟧ˢ fmt (σR polys imps userFns fresh) (bindᴰ {Γ = Γ} {A = A} qℓ Eₗ a))
+           , (λ b → SD.⟦ r ⟧ˢ fmt (σR polys imps userFns fresh) (bindᴰ {Γ = Γ} {A = B} qr Eᵣ b)) ]′ v)
     (resolveExpr-faithful polys imps userFns fresh s Es)
     (λ { (inj₁ a) → resolveExpr-faithful polys imps userFns fresh l (bindᴰ {Γ = Γ} {A = A} qℓ Eₗ a)
        ; (inj₂ b) → resolveExpr-faithful polys imps userFns fresh r (bindᴰ {Γ = Γ} {A = B} qr Eᵣ b) })
@@ -586,9 +619,13 @@ resolveExpr-faithful polys imps userFns fresh (Srf.ana {F = F} {A = A} wf coalg)
 -- unchanged). nothing ⇒ refl; just ⇒ the narrow sigOp→closure denotational no-op.
 resolveExpr-faithful {Γ = Γ} {A = A} polys imps userFns fresh (Srf.sigOp s conc) dγ k
   with lookupImport userFns (showCanonical s)
-... | just _  = resolveExpr-sigOp-closure-faithful {Γ = Γ} {A = A} s conc dγ k
-... | nothing = refl
--- poly: J-style aux over the `lookupPoly` outcome (dodges the with-abstraction trap).
+... | just _  = resolveExpr-sigOp-closure-faithful {Γ = Γ} {A = A} (σR polys imps userFns fresh) s conc dγ k
+... | nothing = cong (_⟨$⟩ k) (sigOp-σ-irrel {Γ = Γ} {A = A} σ₀ (σR polys imps userFns fresh) s conc dγ)
+-- poly: the substitution lemma's variable case — the linked reference means
+-- `σR x A` by definition, up to its context-independence.
 resolveExpr-faithful {Γ = Γ} {A = A} polys imps userFns fresh (Srf.poly x T) dγ k =
-  resolveExpr-poly-faithful {Γ = Γ} {A = A} polys (<-wellFounded (length polys)) imps userFns fresh x
-    (lookupPoly polys x) refl dγ k
+  cong (_⟨$⟩ k) (poly-ctx-indep {Γ = Γ} {A = A} polys (<-wellFounded (length polys)) imps userFns fresh x
+                   (lookupPolyPrefix polys x) refl dγ)
+-- closed: a closed term runs on the empty environment on both sides.
+resolveExpr-faithful polys imps userFns fresh (Srf.closed e) dγ k =
+  resolveExpr-faithful polys imps userFns fresh e tt k

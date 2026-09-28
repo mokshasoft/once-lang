@@ -35,6 +35,8 @@ seq0 {Γ = Γ} {Ψ} {B = B} a b = subst (λ Ψ′ → Expr Γ Ψ′ B) (+ᵘ-ide
 closed-usage-eq : ∀ {n} → (zeroUsage {n}) +ᵘ (Many *ᵘ zeroUsage) ≡ zeroUsage
 closed-usage-eq = trans (cong (zeroUsage +ᵘ_) (*ᵘ-zeroʳ Many)) (+ᵘ-identityˡ zeroUsage)
 
+-- Plan 0.103 phase 1c: the surface `closed` former, not an embedding through
+-- the IR (which would lower the term's definition references to internal
+-- calls instead of reading them from the definitions environment).
 embedClosed : ∀ {n} {Γ : Ctx n} {A : Type} → Expr ∅ [] A → Expr Γ zeroUsage A
-embedClosed {Γ = Γ} {A = A} e =
-  subst (λ u → Expr Γ u A) closed-usage-eq (morph-app {Ψ = zeroUsage} (elaborate IR.Heap e) unit)
+embedClosed e = closed e

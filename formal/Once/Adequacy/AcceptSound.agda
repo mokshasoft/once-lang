@@ -56,24 +56,24 @@ import Once.Parser.Module.Core as P
 ------------------------------------------------------------------------
 
 compileFunBody-aux-success : ∀ {n} {Δ : Srf.Ctx n}
-  (doOpt : Bool) (ctx : C.FunCtx) (polys : TE.PolyCtx)
+  (doOpt : Bool) (ctx : C.FunCtx) (polys : TE.PolyCtx) (impsOf : C.String → C.FunCtx)
   (name : String) (ty : Type) (δ : Srf.⟦ Δ ⟧ᶜ ≡ Unit)
   (cr : CheckElabResult Δ ty) {ir : IR ⌊ Unit ⌋ ⌊ ty ⌋} →
-  C.compileFunBody-aux C.Heap doOpt ctx polys name ty δ cr ≡ inj₂ ir →
+  C.compileFunBody-aux C.Heap doOpt ctx polys impsOf name ty δ cr ≡ inj₂ ir →
   Σ-syntax (Srf.Usage n) (λ Ψ → Σ-syntax (Srf.Expr Δ Ψ ty) (λ se →
     Σ-syntax ℕ (λ d → Σ-syntax ℕ (λ f → cr ≡ TE.success Ψ se d f))))
-compileFunBody-aux-success doOpt ctx polys name ty δ (TE.failure err) ()
-compileFunBody-aux-success doOpt ctx polys name ty δ (TE.success Ψ se d f) eq =
+compileFunBody-aux-success doOpt ctx polys impsOf name ty δ (TE.failure err) ()
+compileFunBody-aux-success doOpt ctx polys impsOf name ty δ (TE.success Ψ se d f) eq =
   Ψ , se , d , f , refl
 
-compileFunBody-sound : ∀ (doOpt : Bool) (ctx : C.FunCtx) (polys : TE.PolyCtx)
+compileFunBody-sound : ∀ (doOpt : Bool) (ctx : C.FunCtx) (polys : TE.PolyCtx) (impsOf : C.String → C.FunCtx)
   (name : String) (ty : Type) (expr : RawExpr) {ir : IR ⌊ Unit ⌋ ⌊ ty ⌋} →
-  C.compileFunBody C.Heap doOpt ctx polys name ty expr ≡ inj₂ ir →
+  C.compileFunBody C.Heap doOpt ctx polys impsOf name ty expr ≡ inj₂ ir →
   Σ-syntax (Srf.Usage (NamedCtx.size (ctxWithImportsAndSelfAndPolys ctx polys name ty)))
     (λ Ψ → (ctxWithImportsAndSelfAndPolys ctx polys name ty) ⊢ᶜ expr ∶ ty ⨾ Ψ)
-compileFunBody-sound doOpt ctx polys name ty expr eq =
+compileFunBody-sound doOpt ctx polys impsOf name ty expr eq =
   let ce-ctx = ctxWithImportsAndSelfAndPolys ctx polys name ty
-      (Ψ , se , d , f , ce) = compileFunBody-aux-success doOpt ctx polys name ty refl
+      (Ψ , se , d , f , ce) = compileFunBody-aux-success doOpt ctx polys impsOf name ty refl
                                 (checkElab ce-ctx expr ty) eq
   in Ψ , check-sound ce-ctx expr ty ce
 
@@ -90,78 +90,78 @@ compileFunBody-sound doOpt ctx polys name ty expr eq =
 -- Layer 1 — `compileFun` accepts ⇒ its body has a derivation.
 ------------------------------------------------------------------------
 
-compileFun-main-aux-sound : ∀ (doOpt : Bool) (ctx : C.FunCtx) (polys : TE.PolyCtx)
+compileFun-main-aux-sound : ∀ (doOpt : Bool) (ctx : C.FunCtx) (polys : TE.PolyCtx) (impsOf : C.String → C.FunCtx)
   (name : String) (ty : Type) (expr : RawExpr) (vm : String ⊎ ⊤) {ir : IR ⌊ Unit ⌋ ⌊ ty ⌋} →
-  C.compileFun-main-aux C.Heap doOpt ctx polys name ty expr vm ≡ inj₂ ir →
+  C.compileFun-main-aux C.Heap doOpt ctx polys impsOf name ty expr vm ≡ inj₂ ir →
   Σ-syntax (Srf.Usage (NamedCtx.size (ctxWithImportsAndSelfAndPolys ctx polys name ty)))
     (λ Ψ → (ctxWithImportsAndSelfAndPolys ctx polys name ty) ⊢ᶜ expr ∶ ty ⨾ Ψ)
-compileFun-main-aux-sound doOpt ctx polys name ty expr (inj₁ err) ()
-compileFun-main-aux-sound doOpt ctx polys name ty expr (inj₂ _) eq =
-  compileFunBody-sound doOpt ctx polys name ty expr eq
+compileFun-main-aux-sound doOpt ctx polys impsOf name ty expr (inj₁ err) ()
+compileFun-main-aux-sound doOpt ctx polys impsOf name ty expr (inj₂ _) eq =
+  compileFunBody-sound doOpt ctx polys impsOf name ty expr eq
 
-compileFun-aux-sound : ∀ (doOpt : Bool) (ctx : C.FunCtx) (polys : TE.PolyCtx)
+compileFun-aux-sound : ∀ (doOpt : Bool) (ctx : C.FunCtx) (polys : TE.PolyCtx) (impsOf : C.String → C.FunCtx)
   (name : String) (ty : Type) (expr : RawExpr) (b : Bool) {ir : IR ⌊ Unit ⌋ ⌊ ty ⌋} →
-  C.compileFun-aux C.Heap doOpt ctx polys name ty expr b ≡ inj₂ ir →
+  C.compileFun-aux C.Heap doOpt ctx polys impsOf name ty expr b ≡ inj₂ ir →
   Σ-syntax (Srf.Usage (NamedCtx.size (ctxWithImportsAndSelfAndPolys ctx polys name ty)))
     (λ Ψ → (ctxWithImportsAndSelfAndPolys ctx polys name ty) ⊢ᶜ expr ∶ ty ⨾ Ψ)
-compileFun-aux-sound doOpt ctx polys name ty expr true eq =
-  compileFun-main-aux-sound doOpt ctx polys name ty expr (C.validateMain ty) eq
-compileFun-aux-sound doOpt ctx polys name ty expr false eq =
-  compileFunBody-sound doOpt ctx polys name ty expr eq
+compileFun-aux-sound doOpt ctx polys impsOf name ty expr true eq =
+  compileFun-main-aux-sound doOpt ctx polys impsOf name ty expr (C.validateMain ty) eq
+compileFun-aux-sound doOpt ctx polys impsOf name ty expr false eq =
+  compileFunBody-sound doOpt ctx polys impsOf name ty expr eq
 
-compileFun-sound : ∀ (doOpt : Bool) (ctx : C.FunCtx) (polys : TE.PolyCtx)
+compileFun-sound : ∀ (doOpt : Bool) (ctx : C.FunCtx) (polys : TE.PolyCtx) (impsOf : C.String → C.FunCtx)
   (name : String) (ty : Type) (expr : RawExpr) {ir : IR ⌊ Unit ⌋ ⌊ ty ⌋} →
-  C.compileFun C.Heap doOpt ctx polys name ty expr ≡ inj₂ ir →
+  C.compileFun C.Heap doOpt ctx polys impsOf name ty expr ≡ inj₂ ir →
   Σ-syntax (Srf.Usage (NamedCtx.size (ctxWithImportsAndSelfAndPolys ctx polys name ty)))
     (λ Ψ → (ctxWithImportsAndSelfAndPolys ctx polys name ty) ⊢ᶜ expr ∶ ty ⨾ Ψ)
-compileFun-sound doOpt ctx polys name ty expr eq =
-  compileFun-aux-sound doOpt ctx polys name ty expr (name == "main") eq
+compileFun-sound doOpt ctx polys impsOf name ty expr eq =
+  compileFun-aux-sound doOpt ctx polys impsOf name ty expr (name == "main") eq
 
 ------------------------------------------------------------------------
 -- Layer 2 — `compileAllFuns-go` accepts ⇒ `AllFunsTyped` (mutual).
 ------------------------------------------------------------------------
 
-caf-go-sound : ∀ (doOpt : Bool) (polys : TE.PolyCtx)
+caf-go-sound : ∀ (doOpt : Bool) (polys : TE.PolyCtx) (impsOf : C.String → C.FunCtx)
   (funs : List C.FunInfo) (ctx : C.FunCtx) {compiled : List C.CompiledFun} →
-  C.compileAllFuns-go C.Heap doOpt polys funs ctx ≡ inj₂ compiled →
+  C.compileAllFuns-go C.Heap doOpt polys impsOf funs ctx ≡ inj₂ compiled →
   AllFunsTyped polys funs ctx
-caf-go-cf-sound : ∀ (doOpt : Bool) (polys : TE.PolyCtx)
+caf-go-cf-sound : ∀ (doOpt : Bool) (polys : TE.PolyCtx) (impsOf : C.String → C.FunCtx)
   (fi : C.FunInfo) (rest : List C.FunInfo) (ctx : C.FunCtx) (ty : Type) {compiled : List C.CompiledFun} →
   C.resolveFunType ctx polys (C.FunInfo.funType fi) (C.FunInfo.funBody fi) ≡ inj₂ ty →
-  C.caf-go-cf-aux C.Heap doOpt polys fi rest ctx ty (C.compileFun C.Heap doOpt ctx polys (C.FunInfo.funName fi) ty (C.FunInfo.funBody fi)) ≡ inj₂ compiled →
+  C.caf-go-cf-aux C.Heap doOpt polys impsOf fi rest ctx ty (C.compileFun C.Heap doOpt ctx polys impsOf (C.FunInfo.funName fi) ty (C.FunInfo.funBody fi)) ≡ inj₂ compiled →
   AllFunsTyped polys (fi ∷ rest) ctx
-caf-go-rf-sound : ∀ (doOpt : Bool) (polys : TE.PolyCtx)
+caf-go-rf-sound : ∀ (doOpt : Bool) (polys : TE.PolyCtx) (impsOf : C.String → C.FunCtx)
   (fi : C.FunInfo) (rest : List C.FunInfo) (ctx : C.FunCtx) (rf : String ⊎ Type) {compiled : List C.CompiledFun} →
   C.resolveFunType ctx polys (C.FunInfo.funType fi) (C.FunInfo.funBody fi) ≡ rf →
-  C.caf-go-rf-aux C.Heap doOpt polys fi rest ctx rf ≡ inj₂ compiled →
+  C.caf-go-rf-aux C.Heap doOpt polys impsOf fi rest ctx rf ≡ inj₂ compiled →
   AllFunsTyped polys (fi ∷ rest) ctx
 
-caf-go-sound doOpt polys [] ctx eq = tnil
-caf-go-sound doOpt polys (fi ∷ rest) ctx eq =
-  caf-go-rf-sound doOpt polys fi rest ctx
+caf-go-sound doOpt polys impsOf [] ctx eq = tnil
+caf-go-sound doOpt polys impsOf (fi ∷ rest) ctx eq =
+  caf-go-rf-sound doOpt polys impsOf fi rest ctx
     (C.resolveFunType ctx polys (C.FunInfo.funType fi) (C.FunInfo.funBody fi)) refl eq
 
-caf-go-rf-sound doOpt polys fi rest ctx (inj₁ err) rf-conn ()
-caf-go-rf-sound doOpt polys fi rest ctx (inj₂ ty) rf-conn eq =
-  caf-go-cf-sound doOpt polys fi rest ctx ty rf-conn eq
+caf-go-rf-sound doOpt polys impsOf fi rest ctx (inj₁ err) rf-conn ()
+caf-go-rf-sound doOpt polys impsOf fi rest ctx (inj₂ ty) rf-conn eq =
+  caf-go-cf-sound doOpt polys impsOf fi rest ctx ty rf-conn eq
 
-caf-go-cf-sound doOpt polys fi rest ctx ty rf-eq eq
-  with C.compileFun C.Heap doOpt ctx polys (C.FunInfo.funName fi) ty (C.FunInfo.funBody fi) in cf-eq
+caf-go-cf-sound doOpt polys impsOf fi rest ctx ty rf-eq eq
+  with C.compileFun C.Heap doOpt ctx polys impsOf (C.FunInfo.funName fi) ty (C.FunInfo.funBody fi) in cf-eq
 ... | inj₁ err = case eq of λ ()
 ... | inj₂ ir
-      with C.compileAllFuns-go C.Heap doOpt polys rest (C.extendFunCtx ctx (C.FunInfo.funName fi) ty) in rec-eq
+      with C.compileAllFuns-go C.Heap doOpt polys impsOf rest (C.extendFunCtx ctx (C.FunInfo.funName fi) ty) in rec-eq
 ...   | inj₁ err = case eq of λ ()
 ...   | inj₂ compiled-rest =
-        let (Ψ , jud)  = compileFun-sound doOpt ctx polys (C.FunInfo.funName fi) ty (C.FunInfo.funBody fi) cf-eq
-            rest-typed = caf-go-sound doOpt polys rest (C.extendFunCtx ctx (C.FunInfo.funName fi) ty) rec-eq
+        let (Ψ , jud)  = compileFun-sound doOpt ctx polys impsOf (C.FunInfo.funName fi) ty (C.FunInfo.funBody fi) cf-eq
+            rest-typed = caf-go-sound doOpt polys impsOf rest (C.extendFunCtx ctx (C.FunInfo.funName fi) ty) rec-eq
         in tcons rf-eq jud rest-typed
 
-caf-sound : ∀ (doOpt : Bool) (funs : List C.FunInfo) (polys : TE.PolyCtx)
+caf-sound : ∀ (doOpt : Bool) (funs : List C.FunInfo) (polys : TE.PolyCtx) (impsOf : C.String → C.FunCtx)
   {compiled : List C.CompiledFun} →
-  C.compileAllFuns C.Heap doOpt funs polys ≡ inj₂ compiled →
+  C.compileAllFuns C.Heap doOpt funs polys impsOf ≡ inj₂ compiled →
   AllFunsTyped polys funs C.emptyFunCtx
-caf-sound doOpt funs polys eq =
-  caf-go-sound doOpt polys funs C.emptyFunCtx eq
+caf-sound doOpt funs polys impsOf eq =
+  caf-go-sound doOpt polys impsOf funs C.emptyFunCtx eq
 
 ------------------------------------------------------------------------
 -- Layer 3 — module level. `ModuleTyped m` = the independent fact that
@@ -172,10 +172,10 @@ caf-sound doOpt funs polys eq =
 
 gated-caf-sound : ∀ (doOpt : Bool) (funs : List C.FunInfo) (polys : List C.PolyFunInfo)
   (g : String ⊎ ⊤) {compiled : List C.CompiledFun} →
-  C.polysGate g (C.compileAllFuns C.Heap doOpt funs (C.buildPolyCtx polys)) ≡ inj₂ compiled →
+  C.polysGate g (C.compileAllFuns C.Heap doOpt funs (C.buildPolyCtx polys) (C.entryImps funs polys)) ≡ inj₂ compiled →
   AllFunsTyped (C.buildPolyCtx polys) funs C.emptyFunCtx
 gated-caf-sound doOpt funs polys (inj₁ _) ()
-gated-caf-sound doOpt funs polys (inj₂ _) eq = caf-sound doOpt funs (C.buildPolyCtx polys) eq
+gated-caf-sound doOpt funs polys (inj₂ _) eq = caf-sound doOpt funs (C.buildPolyCtx polys) (C.entryImps funs polys) eq
 
 crm-aux-sound : ∀ (doOpt : Bool) (m : P.Module)
   (ef : String ⊎ (List C.FunInfo × List C.PolyFunInfo)) {compiled : List C.CompiledFun} →
@@ -196,7 +196,7 @@ crm-sound doOpt m eq =
 gate-polys-sound : ∀ (doOpt : Bool) (funs : List C.FunInfo) (polys : List C.PolyFunInfo)
   (g : String ⊎ ⊤) → C.polysOK funs polys ≡ g →
   {compiled : List C.CompiledFun} →
-  C.polysGate g (C.compileAllFuns C.Heap doOpt funs (C.buildPolyCtx polys)) ≡ inj₂ compiled →
+  C.polysGate g (C.compileAllFuns C.Heap doOpt funs (C.buildPolyCtx polys) (C.entryImps funs polys)) ≡ inj₂ compiled →
   PolysTyped-ef (inj₂ (funs , polys))
 gate-polys-sound doOpt funs polys (inj₁ _) _ ()
 gate-polys-sound doOpt funs polys (inj₂ tt) g-eq _ =

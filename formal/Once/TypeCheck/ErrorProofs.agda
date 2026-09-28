@@ -275,7 +275,7 @@ var-unbound-is-UnboundVariable :
 -- D136: the `¬ (x ≡ "unit")` premise is gone — `unit` is `RResolved (gen
 -- "unit")` now, so a bare `unit` is an ordinary variable that CAN be unbound.
 var-unbound-is-UnboundVariable ctx x eqLoc eqImp eqOuter
-  = goPolyLp (lookupPoly (NamedCtx.polys ctx) x) refl
+  = goPolyLp eqLoc eqImp (lookupPoly (NamedCtx.polys ctx) x) refl
       (trans (sym (cong proj₁ (trans (helperLoc _ eqLoc) (helperImp _ eqImp)))) eqOuter)
   where
     open Once.TypeCheck.Elaborate using (inferElabV-RVar-lookup-aux)
@@ -296,18 +296,18 @@ var-unbound-is-UnboundVariable ctx x eqLoc eqImp eqOuter
     -- Every FAILURE leaf of the fallback is `UnboundVariable x` (the ground
     -- success leaf contradicts the failure equation), so the normalization
     -- still holds — proved by casing the three de-withed fallback stages.
-    goPolyIg : ∀ (schema : T.PolyType) (ig : (T.Ground schema) ⊎ ⊤)
+    goPolyIg : ∀ eL eI (schema : T.PolyType) body eqLp (ig : (T.Ground schema) ⊎ ⊤)
                  (eqG : T.isGround schema ≡ ig) {err'}
-             → proj₁ (inferElabV-RVar-poly-ground-aux ctx x schema ig eqG) ≡ failure err'
+             → proj₁ (inferElabV-RVar-poly-ground-aux ctx x eL eI schema body eqLp ig eqG) ≡ failure err'
              → err' ≡ UnboundVariable x
-    goPolyIg schema (inj₂ tt) _ eqF = go eqF
-    goPolyIg schema (inj₁ g) _ ()
-    goPolyLp : ∀ (lp : Maybe (T.PolyType × Raw.RawExpr))
+    goPolyIg eL eI schema body eqLp (inj₂ tt) _ eqF = go eqF
+    goPolyIg eL eI schema body eqLp (inj₁ g) _ ()
+    goPolyLp : ∀ eL eI (lp : Maybe (T.PolyType × Raw.RawExpr))
                  (eqLp : lookupPoly (NamedCtx.polys ctx) x ≡ lp) {err'}
-             → proj₁ (inferElabV-RVar-poly-lookup-aux ctx x lp eqLp) ≡ failure err'
+             → proj₁ (inferElabV-RVar-poly-lookup-aux ctx x eL eI lp eqLp) ≡ failure err'
              → err' ≡ UnboundVariable x
-    goPolyLp nothing _ eqF = go eqF
-    goPolyLp (just (schema , body)) _ eqF = goPolyIg schema (T.isGround schema) refl eqF
+    goPolyLp eL eI nothing _ eqF = go eqF
+    goPolyLp eL eI (just (schema , body)) eqLp eqF = goPolyIg eL eI schema body eqLp (T.isGround schema) refl eqF
     -- D136: `goPolyCls` is GONE. The fallback no longer splits on
     -- `classifyBareBuiltin`, so the poly LOOKUP is the whole dispatch.
 check-RInt-type-mismatch :

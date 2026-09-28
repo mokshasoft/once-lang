@@ -183,9 +183,8 @@ mutual
     -- def (incl. ground-NON-concrete, e.g. a cata at `μNat → Int`). A ground
     -- schema has exactly ONE type, so the reference INFERS at the declared type
     -- `extractGround schema g` (pinned by the `isGround` premise — this is what
-    -- makes application heads like `toInt three` typable). The body derivation
-    -- premise (typed in the telescope PREFIX, like `t-var-poly-instantiate`) is
-    -- the context projection Γ(x): the reference MEANS its body. Check-mode
+    -- makes application heads like `toInt three` typable). The reference is the
+    -- context projection Γ(x); its body is typed at the declaration. Check-mode
     -- uses at the declared type embed via `t-embed`; pure⊑eff uses via
     -- `t-subsume` — never via the check-mode instantiate rule (non-ground only).
     -- The conclusion type is a GENERIC `T` pinned by an equation premise
@@ -211,8 +210,10 @@ mutual
       -- particular `g` is the one a decision procedure returns.
       → Once.Type.Ground schema
       → T ≡ Once.Type.extractGround schema g
-      → (ctxWithImportsAndPolys (NamedCtx.imports ctx) prefix)
-          ⊢ᶜ body ∶ T ⨾ Surface.zeroUsage
+      -- Plan 0.103 phase 1c: NO body premise. The entry's body is typed ONCE,
+      -- at its declaration (`Spec.Module.PolysTyped`); a reference is a
+      -- variable of the telescope at its declared type, and its meaning is
+      -- read from the telescope's environment (`Denotation.DefEnv`).
       → ctx ⊢ᵢ RVar x ∶ T ⨾ zeroUsage
 
     ----------------------------------------------------------------

@@ -63,34 +63,34 @@ open FunInfo
 -- (1) a `⊢ᶜ` derivation ⇒ the body compiles, via `check-complete`.
 ------------------------------------------------------------------------
 
-compileFunBody-complete : ∀ (ctx : C.FunCtx) (polys : PolyCtx)
+compileFunBody-complete : ∀ (ctx : C.FunCtx) (polys : PolyCtx) (impsOf : C.String → C.FunCtx)
   (name : String) (ty : Type) (body : RawExpr) {Ψ : Usage 0} →
   (ctxWithImportsAndSelfAndPolys ctx polys name ty) ⊢ᶜ body ∶ ty ⨾ Ψ →
   Σ-syntax (IR ⌊ Unit ⌋ ⌊ ty ⌋) (λ irFun →
-    C.compileFunBody C.Heap false ctx polys name ty body ≡ inj₂ irFun)
+    C.compileFunBody C.Heap false ctx polys impsOf name ty body ≡ inj₂ irFun)
 -- D143: `Ψ : Usage 0` must be MATCHED, not just quantified: `Usage` is a
 -- `data` (no eta), so `∅ ↾ Ψ` is stuck until `Ψ` is `[]`, and the
 -- elaborated IR's domain `⌊ ⟦ ∅ ↾ Ψ ⟧ᶜ ⌋` will not reduce to `Unit`.
-compileFunBody-complete ctx polys name ty body {[]} deriv =
+compileFunBody-complete ctx polys impsOf name ty body {[]} deriv =
   let (eE , d , f , ce) = check-complete deriv
-  in elaborateFull C.Heap (resolveExpr polys ((name , ty) ∷ ctx) ((name , ty) ∷ ctx) 0 eE)
-   , cong (C.compileFunBody-aux C.Heap false ctx polys name ty refl) ce
+  in elaborateFull C.Heap (resolveExpr polys impsOf ((name , ty) ∷ ctx) 0 eE)
+   , cong (C.compileFunBody-aux C.Heap false ctx polys impsOf name ty refl) ce
 
 ------------------------------------------------------------------------
 -- (2) ⇒ the function compiles. `compileFun` dispatches on `name == "main"`
 -- = `isYes (name ≟ "main")`, so casing `name ≟str "main"` reduces it.
 ------------------------------------------------------------------------
 
-compileFun-complete : ∀ (ctx : C.FunCtx) (polys : PolyCtx)
+compileFun-complete : ∀ (ctx : C.FunCtx) (polys : PolyCtx) (impsOf : C.String → C.FunCtx)
   (name : String) (ty : Type) (body : RawExpr) {Ψ : Usage 0} →
   (name ≡ "main" → ty ≡ EffUU) →
   (ctxWithImportsAndSelfAndPolys ctx polys name ty) ⊢ᶜ body ∶ ty ⨾ Ψ →
   Σ-syntax (IR ⌊ Unit ⌋ ⌊ ty ⌋) (λ irFun →
-    C.compileFun C.Heap false ctx polys name ty body ≡ inj₂ irFun)
-compileFun-complete ctx polys name ty body main-ok deriv with name ≟str "main"
-... | no ¬p = compileFunBody-complete ctx polys name ty body deriv
+    C.compileFun C.Heap false ctx polys impsOf name ty body ≡ inj₂ irFun)
+compileFun-complete ctx polys impsOf name ty body main-ok deriv with name ≟str "main"
+... | no ¬p = compileFunBody-complete ctx polys impsOf name ty body deriv
 ... | yes p with main-ok p
-...   | refl = compileFunBody-complete ctx polys name EffUU body deriv
+...   | refl = compileFunBody-complete ctx polys impsOf name EffUU body deriv
 
 ------------------------------------------------------------------------
 -- Derivation-indexed "valid main" predicates (over `AllFunsTyped`'s `ty`).
@@ -102,21 +102,21 @@ compileFun-complete ctx polys name ty body main-ok deriv with name ≟str "main"
 -- (3) ⇒ the whole list compiles (forward mirror of `caf-go-sound`).
 ------------------------------------------------------------------------
 
-caf-go-complete : ∀ (polys : PolyCtx) {funs : List FunInfo}
+caf-go-complete : ∀ (polys : PolyCtx) (impsOf : C.String → C.FunCtx) {funs : List FunInfo}
   (ctx : C.FunCtx) (aft : AllFunsTyped polys funs ctx) →
   AllMainEffUU aft →
   Σ-syntax (List C.CompiledFun) (λ compiled →
-    C.compileAllFuns-go C.Heap false polys funs ctx ≡ inj₂ compiled)
-caf-go-complete polys ctx tnil _ = [] , refl
-caf-go-complete polys ctx (tcons {fi = fi} {rest = rest} {ty = ty} rf deriv rest-typed) (main-ok , prest) =
-  let (irFun , cf-eq) = compileFun-complete ctx polys (funName fi) ty (funBody fi) main-ok deriv
-      (compiled-rest , rec-eq) = caf-go-complete polys (C.extendFunCtx ctx (funName fi) ty) rest-typed prest
+    C.compileAllFuns-go C.Heap false polys impsOf funs ctx ≡ inj₂ compiled)
+caf-go-complete polys impsOf ctx tnil _ = [] , refl
+caf-go-complete polys impsOf ctx (tcons {fi = fi} {rest = rest} {ty = ty} rf deriv rest-typed) (main-ok , prest) =
+  let (irFun , cf-eq) = compileFun-complete ctx polys impsOf (funName fi) ty (funBody fi) main-ok deriv
+      (compiled-rest , rec-eq) = caf-go-complete polys impsOf (C.extendFunCtx ctx (funName fi) ty) rest-typed prest
   in (C.mkCompiledFun (bare (funName fi))
         (proj₁ (C.maybeWrapMain (funName fi) ty irFun))
         (proj₂ (C.maybeWrapMain (funName fi) ty irFun))
         (funIsPrimitive fi) ∷ compiled-rest)
-   , trans (cong (C.caf-go-rf-aux C.Heap false polys fi rest ctx) rf)
-       (trans (cong (C.caf-go-cf-aux C.Heap false polys fi rest ctx ty) cf-eq)
+   , trans (cong (C.caf-go-rf-aux C.Heap false polys impsOf fi rest ctx) rf)
+       (trans (cong (C.caf-go-cf-aux C.Heap false polys impsOf fi rest ctx ty) cf-eq)
               (cong (C.caf-go-wrap fi ty irFun) rec-eq))
 
 ------------------------------------------------------------------------
@@ -132,25 +132,25 @@ findMain-main-or-skip : ∀ (irFun : IR ⌊ Unit ⌋ ⌊ EffUU ⌋) (b : Bool) (
 findMain-main-or-skip irFun false rest ir-rest fm = C.wrapMainAsEntry irFun , refl
 findMain-main-or-skip irFun true  rest ir-rest fm = ir-rest , fm
 
-FindResult : ∀ (polys : PolyCtx) (funs : List FunInfo) (ctx : C.FunCtx) → Set
-FindResult polys funs ctx =
+FindResult : ∀ (polys : PolyCtx) (impsOf : C.String → C.FunCtx) (funs : List FunInfo) (ctx : C.FunCtx) → Set
+FindResult polys impsOf funs ctx =
   Σ-syntax (List C.CompiledFun) (λ compiled → Σ-syntax (IR ⌊ Unit ⌋ ⌊ Unit ⌋) (λ ir →
-    (C.compileAllFuns-go C.Heap false polys funs ctx ≡ inj₂ compiled)
+    (C.compileAllFuns-go C.Heap false polys impsOf funs ctx ≡ inj₂ compiled)
     × (findMain compiled ≡ just ir)))
 
-caf-go-find-complete : ∀ (polys : PolyCtx) {funs : List FunInfo}
+caf-go-find-complete : ∀ (polys : PolyCtx) (impsOf : C.String → C.FunCtx) {funs : List FunInfo}
   (ctx : C.FunCtx) (aft : AllFunsTyped polys funs ctx) →
-  AllMainEffUU aft → MainExists aft → FindResult polys funs ctx
+  AllMainEffUU aft → MainExists aft → FindResult polys impsOf funs ctx
 -- here: fi is the non-prim EffUU main.
-caf-go-find-complete polys ctx (tcons {fi = fi} {rest = rest} {ty = ty} rf deriv rest-typed) (main-ok , prest) (inj₁ (refl , refl , refl))
-  with compileFun-complete ctx polys "main" EffUU (funBody fi) (λ _ → refl) deriv
+caf-go-find-complete polys impsOf ctx (tcons {fi = fi} {rest = rest} {ty = ty} rf deriv rest-typed) (main-ok , prest) (inj₁ (refl , refl , refl))
+  with compileFun-complete ctx polys impsOf "main" EffUU (funBody fi) (λ _ → refl) deriv
 ... | (irFun , cf-eq)
-  with caf-go-complete polys (C.extendFunCtx ctx "main" EffUU) rest-typed prest
+  with caf-go-complete polys impsOf (C.extendFunCtx ctx "main" EffUU) rest-typed prest
 ...   | (compiled-rest , rec-eq) =
         C.mkCompiledFun (bare "main") Unit (C.wrapMainAsEntry irFun) false ∷ compiled-rest
         , C.wrapMainAsEntry irFun
-        , trans (cong (C.caf-go-rf-aux C.Heap false polys fi rest ctx) rf)
-            (trans (cong (C.caf-go-cf-aux C.Heap false polys fi rest ctx EffUU) cf-eq)
+        , trans (cong (C.caf-go-rf-aux C.Heap false polys impsOf fi rest ctx) rf)
+            (trans (cong (C.caf-go-cf-aux C.Heap false polys impsOf fi rest ctx EffUU) cf-eq)
                    (cong (C.caf-go-wrap fi EffUU irFun) rec-eq))
         , findMain-main-here irFun compiled-rest
   where
@@ -158,19 +158,19 @@ caf-go-find-complete polys ctx (tcons {fi = fi} {rest = rest} {ty = ty} rf deriv
       findMain (C.mkCompiledFun (bare "main") Unit (C.wrapMainAsEntry g) false ∷ r) ≡ just (C.wrapMainAsEntry g)
     findMain-main-here g r = refl
 -- there: the main is in `rest`; compile `fi`, recurse, then dispatch `fi`.
-caf-go-find-complete polys ctx (tcons {fi = fi} {rest = rest} {ty = ty} rf deriv rest-typed) (main-ok , prest) (inj₂ me-rest)
-  with compileFun-complete ctx polys (funName fi) ty (funBody fi) main-ok deriv
-     | caf-go-find-complete polys (C.extendFunCtx ctx (funName fi) ty) rest-typed prest me-rest
+caf-go-find-complete polys impsOf ctx (tcons {fi = fi} {rest = rest} {ty = ty} rf deriv rest-typed) (main-ok , prest) (inj₂ me-rest)
+  with compileFun-complete ctx polys impsOf (funName fi) ty (funBody fi) main-ok deriv
+     | caf-go-find-complete polys impsOf (C.extendFunCtx ctx (funName fi) ty) rest-typed prest me-rest
 ... | (irFun , cf-eq) | (compiled-rest , ir , rec-eq , fm-rest) = result
   where
     cf0 : C.CompiledFun
     cf0 = C.mkCompiledFun (bare (funName fi)) (proj₁ (C.maybeWrapMain (funName fi) ty irFun))
             (proj₂ (C.maybeWrapMain (funName fi) ty irFun)) (funIsPrimitive fi)
-    ca-eq : C.compileAllFuns-go C.Heap false polys (fi ∷ rest) ctx ≡ inj₂ (cf0 ∷ compiled-rest)
-    ca-eq = trans (cong (C.caf-go-rf-aux C.Heap false polys fi rest ctx) rf)
-              (trans (cong (C.caf-go-cf-aux C.Heap false polys fi rest ctx ty) cf-eq)
+    ca-eq : C.compileAllFuns-go C.Heap false polys impsOf (fi ∷ rest) ctx ≡ inj₂ (cf0 ∷ compiled-rest)
+    ca-eq = trans (cong (C.caf-go-rf-aux C.Heap false polys impsOf fi rest ctx) rf)
+              (trans (cong (C.caf-go-cf-aux C.Heap false polys impsOf fi rest ctx ty) cf-eq)
                      (cong (C.caf-go-wrap fi ty irFun) rec-eq))
-    result : FindResult polys (fi ∷ rest) ctx
+    result : FindResult polys impsOf (fi ∷ rest) ctx
     result with funName fi ≟str "main"
     ... | no ¬p =
           cf0 ∷ compiled-rest , ir , ca-eq , trans (findMain-skip cf0 compiled-rest (λ e → ¬p (bare-injective e))) fm-rest
@@ -178,8 +178,8 @@ caf-go-find-complete polys ctx (tcons {fi = fi} {rest = rest} {ty = ty} rf deriv
     ...   | refl =
             C.mkCompiledFun (bare "main") Unit (C.wrapMainAsEntry irFun) (funIsPrimitive fi) ∷ compiled-rest
             , proj₁ (findMain-main-or-skip irFun (funIsPrimitive fi) compiled-rest ir fm-rest)
-            , trans (cong (C.caf-go-rf-aux C.Heap false polys fi rest ctx) rf)
-                (trans (cong (C.caf-go-cf-aux C.Heap false polys fi rest ctx EffUU) cf-eq)
+            , trans (cong (C.caf-go-rf-aux C.Heap false polys impsOf fi rest ctx) rf)
+                (trans (cong (C.caf-go-cf-aux C.Heap false polys impsOf fi rest ctx EffUU) cf-eq)
                        (cong (C.caf-go-wrap fi EffUU irFun) rec-eq))
             , proj₂ (findMain-main-or-skip irFun (funIsPrimitive fi) compiled-rest ir fm-rest)
 
@@ -196,7 +196,7 @@ moduleToIR-complete : ∀ (m : C.Module) (mt : ModuleTyped m) →
 moduleToIR-complete m mt (amu , me) pt with C.extractFunctions (C.extractAliases m) m
 ... | inj₂ (funs , polys)
     rewrite PC.polys-complete _ polys pt
-    with caf-go-find-complete (C.buildPolyCtx polys)
+    with caf-go-find-complete (C.buildPolyCtx polys) (C.entryImps funs polys)
            C.emptyFunCtx mt amu me
 ...   | (compiled , ir , ca-eq , fm-eq) =
         ir , trans (cong moduleToIR-aux ca-eq) fm-eq
@@ -265,27 +265,27 @@ mainRealized m mt (amu , me) =
 
 -- Every main-named function compiled ⇒ its resolved ty is EffUU
 -- (validateMain succeeded). Forces nothing new; reuses compileFun-main-EffUU.
-caf-go-mains : ∀ (polys : PolyCtx) {funs : List FunInfo}
+caf-go-mains : ∀ (polys : PolyCtx) (impsOf : C.String → C.FunCtx) {funs : List FunInfo}
   (ctx : C.FunCtx) (aft : AllFunsTyped polys funs ctx) {compiled : List C.CompiledFun} →
-  C.compileAllFuns-go C.Heap false polys funs ctx ≡ inj₂ compiled →
+  C.compileAllFuns-go C.Heap false polys impsOf funs ctx ≡ inj₂ compiled →
   AllMainEffUU aft
-caf-go-mains polys ctx tnil _ = tt
-caf-go-mains polys ctx (tcons {fi = fi} {rest = rest} {ty = ty} rf deriv rest-typed) {compiled} caf-eq =
-  go (subst (λ r → C.caf-go-rf-aux C.Heap false polys fi rest ctx r ≡ inj₂ compiled) rf caf-eq)
+caf-go-mains polys impsOf ctx tnil _ = tt
+caf-go-mains polys impsOf ctx (tcons {fi = fi} {rest = rest} {ty = ty} rf deriv rest-typed) {compiled} caf-eq =
+  go (subst (λ r → C.caf-go-rf-aux C.Heap false polys impsOf fi rest ctx r ≡ inj₂ compiled) rf caf-eq)
   where
-    go : C.caf-go-cf-aux C.Heap false polys fi rest ctx ty
-           (C.compileFun C.Heap false ctx polys (funName fi) ty (funBody fi)) ≡ inj₂ compiled →
+    go : C.caf-go-cf-aux C.Heap false polys impsOf fi rest ctx ty
+           (C.compileFun C.Heap false ctx polys impsOf (funName fi) ty (funBody fi)) ≡ inj₂ compiled →
          (funName fi ≡ "main" → ty ≡ EffUU) × AllMainEffUU rest-typed
-    go eq2 with C.compileFun C.Heap false ctx polys (funName fi) ty (funBody fi) in cf-eq
+    go eq2 with C.compileFun C.Heap false ctx polys impsOf (funName fi) ty (funBody fi) in cf-eq
     ... | inj₁ err = case eq2 of λ ()
     ... | inj₂ irFun
-        with C.compileAllFuns-go C.Heap false polys rest (C.extendFunCtx ctx (funName fi) ty) in rec-eq
+        with C.compileAllFuns-go C.Heap false polys impsOf rest (C.extendFunCtx ctx (funName fi) ty) in rec-eq
     ...   | inj₁ err = case eq2 of λ ()
     ...   | inj₂ compiled-rest =
-            (λ p → compileFun-main-EffUU ctx polys ty (funBody fi) irFun
-                     (subst (λ nm → C.compileFun C.Heap false ctx polys nm ty (funBody fi) ≡ inj₂ irFun)
+            (λ p → compileFun-main-EffUU ctx polys impsOf ty (funBody fi) irFun
+                     (subst (λ nm → C.compileFun C.Heap false ctx polys impsOf nm ty (funBody fi) ≡ inj₂ irFun)
                             p cf-eq))
-            , caf-go-mains polys (C.extendFunCtx ctx (funName fi) ty) rest-typed rec-eq
+            , caf-go-mains polys impsOf (C.extendFunCtx ctx (funName fi) ty) rest-typed rec-eq
 
 -- A primitive head is skipped by findMain (regardless of name/type).
 open C.CompiledFun using (cfIsPrimitive)
@@ -294,23 +294,23 @@ findMain-skip-prim : ∀ (cf : C.CompiledFun) (rest : List C.CompiledFun) →
 findMain-skip-prim cf rest pp rewrite pp = refl
 
 -- findMain found an entry ⇒ some main-named non-primitive EffUU function exists.
-caf-go-mainexists : ∀ (polys : PolyCtx) {funs : List FunInfo}
+caf-go-mainexists : ∀ (polys : PolyCtx) (impsOf : C.String → C.FunCtx) {funs : List FunInfo}
   (ctx : C.FunCtx) (aft : AllFunsTyped polys funs ctx)
   {compiled : List C.CompiledFun} {ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋} →
-  C.compileAllFuns-go C.Heap false polys funs ctx ≡ inj₂ compiled →
+  C.compileAllFuns-go C.Heap false polys impsOf funs ctx ≡ inj₂ compiled →
   findMain compiled ≡ just ir → MainExists aft
-caf-go-mainexists polys ctx tnil caf-eq fm =
+caf-go-mainexists polys impsOf ctx tnil caf-eq fm =
   case subst (λ c → findMain c ≡ just _) (sym (inj₂-injective caf-eq)) fm of λ ()
-caf-go-mainexists polys ctx (tcons {fi = fi} {rest = rest} {ty = ty} rf deriv rest-typed) {compiled} {ir} caf-eq fm =
-  go (subst (λ r → C.caf-go-rf-aux C.Heap false polys fi rest ctx r ≡ inj₂ compiled) rf caf-eq)
+caf-go-mainexists polys impsOf ctx (tcons {fi = fi} {rest = rest} {ty = ty} rf deriv rest-typed) {compiled} {ir} caf-eq fm =
+  go (subst (λ r → C.caf-go-rf-aux C.Heap false polys impsOf fi rest ctx r ≡ inj₂ compiled) rf caf-eq)
   where
-    go : C.caf-go-cf-aux C.Heap false polys fi rest ctx ty
-           (C.compileFun C.Heap false ctx polys (funName fi) ty (funBody fi)) ≡ inj₂ compiled →
+    go : C.caf-go-cf-aux C.Heap false polys impsOf fi rest ctx ty
+           (C.compileFun C.Heap false ctx polys impsOf (funName fi) ty (funBody fi)) ≡ inj₂ compiled →
          MainExists (tcons {fi = fi} {rest = rest} {ty = ty} rf deriv rest-typed)
-    go eq2 with C.compileFun C.Heap false ctx polys (funName fi) ty (funBody fi) in cf-eq
+    go eq2 with C.compileFun C.Heap false ctx polys impsOf (funName fi) ty (funBody fi) in cf-eq
     ... | inj₁ err = case eq2 of λ ()
     ... | inj₂ irFun
-        with C.compileAllFuns-go C.Heap false polys rest (C.extendFunCtx ctx (funName fi) ty) in rec-eq
+        with C.compileAllFuns-go C.Heap false polys impsOf rest (C.extendFunCtx ctx (funName fi) ty) in rec-eq
     ...   | inj₁ err = case eq2 of λ ()
     ...   | inj₂ compiled-rest = dispatch
       where
@@ -322,16 +322,16 @@ caf-go-mainexists polys ctx (tcons {fi = fi} {rest = rest} {ty = ty} rf deriv re
         dispatch : MainExists (tcons {fi = fi} {rest = rest} {ty = ty} rf deriv rest-typed)
         dispatch with funName fi ≟str "main"
         ... | no ¬p =
-              inj₂ (caf-go-mainexists polys (C.extendFunCtx ctx (funName fi) ty) rest-typed
+              inj₂ (caf-go-mainexists polys impsOf (C.extendFunCtx ctx (funName fi) ty) rest-typed
                       rec-eq (trans (sym (findMain-skip cf0 compiled-rest (λ e → ¬p (bare-injective e)))) fm0))
         ... | yes refl = mx (funIsPrimitive fi) refl
-                            (compileFun-main-EffUU ctx polys ty (funBody fi) irFun cf-eq)
+                            (compileFun-main-EffUU ctx polys impsOf ty (funBody fi) irFun cf-eq)
           where
             mx : (b : Bool) → funIsPrimitive fi ≡ b → ty ≡ EffUU →
                  ((funName fi ≡ "main") × (funIsPrimitive fi ≡ false) × (ty ≡ EffUU)) ⊎ MainExists rest-typed
             mx false fp ty-eff = inj₁ (refl , fp , ty-eff)
             mx true  fp ty-eff =
-              inj₂ (caf-go-mainexists polys (C.extendFunCtx ctx "main" ty) rest-typed
+              inj₂ (caf-go-mainexists polys impsOf (C.extendFunCtx ctx "main" ty) rest-typed
                       rec-eq (trans (sym (findMain-skip-prim cf0 compiled-rest fp)) fm0))
 
 ------------------------------------------------------------------------
@@ -343,10 +343,10 @@ moduleToIR-sound : ∀ (m : C.Module) (mt : ModuleTyped m) {ir : IR ⌊ Unit ⌋
   moduleToIR m ≡ just ir → HasValidMain-decl m mt
 moduleToIR-sound m mt mi with C.extractFunctions (C.extractAliases m) m
 ... | inj₂ (funs , polys)
-    with C.compileAllFuns-go C.Heap false (C.buildPolyCtx polys)
+    with C.compileAllFuns-go C.Heap false (C.buildPolyCtx polys) (C.entryImps funs polys)
            funs C.emptyFunCtx in ca-eq
        | C.polysOK funs polys
 ...   | inj₂ compiled | inj₁ _ = case mi of λ ()
 ...   | inj₂ compiled | inj₂ _ =
-        caf-go-mains (C.buildPolyCtx polys) C.emptyFunCtx mt ca-eq
-        , caf-go-mainexists (C.buildPolyCtx polys) C.emptyFunCtx mt ca-eq mi
+        caf-go-mains (C.buildPolyCtx polys) (C.entryImps funs polys) C.emptyFunCtx mt ca-eq
+        , caf-go-mainexists (C.buildPolyCtx polys) (C.entryImps funs polys) C.emptyFunCtx mt ca-eq mi

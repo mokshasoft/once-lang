@@ -560,6 +560,8 @@ elaborate {A = A} m (closure name) = SigOp (internal-info {A = A} (bare name)) �
 -- external SigOp with the unqualified name — matches evalSurface for
 -- the correctness theorem, and codegen will catch it as unresolved.
 elaborate {A = A} m (poly name _) = SigOp (internal-info {A = A} (bare name)) ∘ terminal
+-- Plan 0.103 phase 1c: a closed term runs on the terminal environment.
+elaborate m (closed e) = elaborate m e ∘ terminal
 
 -- Plan 0.2.4.5 D2: morphism realm.
 -- A `lift-morphism morph` used as a value (e.g. assigned to a variable

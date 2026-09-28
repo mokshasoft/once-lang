@@ -753,12 +753,6 @@ postulate
   bbc-other-poly-witness :
     ∀ (ctx : NamedCtx) (x : String) (T : Type)
     → ctx ⊢ᶜ Raw.RVar x ∶ T ⨾ Surface.zeroUsage
-  -- Plan 0.58 / D071: infer-mode twin (Phase 2 gap, premise-erased instance of
-  -- `t-var-poly-instantiate-infer` — the premises hold at the emission site;
-  -- the body derivation is the Phase-2 invariant, same as the check witness).
-  bbc-other-poly-infer-witness :
-    ∀ (ctx : NamedCtx) (x : String) (T : Type)
-    → ctx ⊢ᵢ Raw.RVar x ∶ T ⨾ Surface.zeroUsage
 
 ------------------------------------------------------------------------
 -- Plan 0.58 / D071: infer-mode ground telescope reference (the poly fallback
@@ -776,23 +770,29 @@ postulate
 ------------------------------------------------------------------------
 
 inferElabV-RVar-poly-ground-aux :
-  ∀ (ctx : NamedCtx) (x : String) (schema : PolyType)
+  ∀ (ctx : NamedCtx) (x : String)
+  → lookupLocal ctx x ≡ nothing → lookupImport (NamedCtx.imports ctx) x ≡ nothing
+  → (schema : PolyType) (body : RawExpr) → lookupPoly (NamedCtx.polys ctx) x ≡ just (schema , body)
   → (ig : (Ground schema) ⊎ ⊤) → isGround schema ≡ ig
   → VerifiedInferResult ctx (Raw.RVar x)
-inferElabV-RVar-poly-ground-aux ctx x schema (inj₂ tt) _ =
+inferElabV-RVar-poly-ground-aux ctx x eL eI schema body eqLp (inj₂ tt) _ =
   failure (UnboundVariable x) , tt
-inferElabV-RVar-poly-ground-aux ctx x schema (inj₁ g) _ =
+-- Plan 0.103 phase 1c: the witness is the telescope-variable rule itself —
+-- the lookups ARE its premises (the body is typed at the declaration).
+inferElabV-RVar-poly-ground-aux ctx x eL eI schema body eqLp (inj₁ g) _ =
   success (extractGround schema g) Surface.zeroUsage
           (Surface.poly x (extractGround schema g)) 0 (NamedCtx.freshCounter ctx)
-  , bbc-other-poly-infer-witness ctx x (extractGround schema g)
+  , t-var-poly-instantiate-infer {g = g} eL eI
+      (Data.Product.proj₂ (lookupPoly⇒lookupPolyPrefix (NamedCtx.polys ctx) x eqLp)) g refl
 
 inferElabV-RVar-poly-lookup-aux :
   ∀ (ctx : NamedCtx) (x : String)
+  → lookupLocal ctx x ≡ nothing → lookupImport (NamedCtx.imports ctx) x ≡ nothing
   → (lp : Maybe (PolyType × RawExpr)) → lookupPoly (NamedCtx.polys ctx) x ≡ lp
   → VerifiedInferResult ctx (Raw.RVar x)
-inferElabV-RVar-poly-lookup-aux ctx x nothing _ = failure (UnboundVariable x) , tt
-inferElabV-RVar-poly-lookup-aux ctx x (just (schema , body)) _ =
-  inferElabV-RVar-poly-ground-aux ctx x schema (isGround schema) refl
+inferElabV-RVar-poly-lookup-aux ctx x eL eI nothing _ = failure (UnboundVariable x) , tt
+inferElabV-RVar-poly-lookup-aux ctx x eL eI (just (schema , body)) eqLp =
+  inferElabV-RVar-poly-ground-aux ctx x eL eI schema body eqLp (isGround schema) refl
 
 -- D136: no `classifyBareBuiltin` dispatch. A bare name that survived the local
 -- and import lookups goes straight to the poly telescope. The seven
@@ -801,9 +801,11 @@ inferElabV-RVar-poly-lookup-aux ctx x (just (schema , body)) _ =
 -- explicitly allows. A generator arrives as `RResolved (gen g)` and never
 -- reaches here.
 inferElabV-RVar-poly-aux :
-  ∀ (ctx : NamedCtx) (x : String) → VerifiedInferResult ctx (Raw.RVar x)
-inferElabV-RVar-poly-aux ctx x =
-  inferElabV-RVar-poly-lookup-aux ctx x (lookupPoly (NamedCtx.polys ctx) x) refl
+  ∀ (ctx : NamedCtx) (x : String)
+  → lookupLocal ctx x ≡ nothing → lookupImport (NamedCtx.imports ctx) x ≡ nothing
+  → VerifiedInferResult ctx (Raw.RVar x)
+inferElabV-RVar-poly-aux ctx x eL eI =
+  inferElabV-RVar-poly-lookup-aux ctx x eL eI (lookupPoly (NamedCtx.polys ctx) x) refl
 
 
 mutual
@@ -2229,7 +2231,7 @@ mutual
   -- Plan 0.58 / D071: both lookups failed — try the telescope (poly) fallback:
   -- a GROUND own-module def infers at its declared type; otherwise fail.
   inferElabV-RVar-lookup-aux ctx x nothing eq-loc nothing eq-imp =
-    inferElabV-RVar-poly-aux ctx x
+    inferElabV-RVar-poly-aux ctx x eq-loc eq-imp
 
   inferElabV-RVar-import-value-aux ctx x eq-loc ty eq-imp (no ¬gw) _ (just conc) _ =
     success ty _ (Surface.sigOp (bare x) conc) 0 (NamedCtx.freshCounter ctx)

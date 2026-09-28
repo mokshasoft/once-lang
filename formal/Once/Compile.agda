@@ -108,6 +108,7 @@ open import Relation.Binary.PropositionalEquality using (subst; cong)
 open import Once.TypeCheck.Classify using (ctxWithImportsAndPolys; NamedCtx; lookupPolyPrefix)
 open import Once.TypeCheck.Error using (renderError)
 open import Relation.Nullary using (Dec; yes; no)
+import Data.String.Properties as SProp
 open import Relation.Binary.PropositionalEquality using (_≡_)
 import Data.Nat
 -- D072: the untrusted principal-type oracle (validated by checkElab).
@@ -212,25 +213,25 @@ extendFunCtx ctx name ty = (name , ty) ∷ ctx
 -- to prove `doOpt`-independence of success without the `with`-bite). Generic
 -- over the elaboration context `Δ` so the dependent index need not be spelled.
 compileFunBody-aux : ∀ {n} {Δ : Srf.Ctx n}
-  → AllocMode → Bool → FunCtx → PolyCtx → (name : String) (ty : Type)
+  → AllocMode → Bool → FunCtx → PolyCtx → (String → FunCtx) → (name : String) (ty : Type)
   → Srf.⟦ Δ ⟧ᶜ ≡ Unit
   → CheckElabResult Δ ty → String ⊎ IR ⌊ Unit ⌋ ⌊ ty ⌋
-compileFunBody-aux m doOpt ctx polys name ty δ-unit (TE.failure err) =
+compileFunBody-aux m doOpt ctx polys impsOf name ty δ-unit (TE.failure err) =
   inj₁ ("Type error in " ++ name ++ ": " ++ TE.renderError err)
-compileFunBody-aux m doOpt ctx polys name ty δ-unit (TE.success _ surfaceExpr _ _) =
-  -- Plan 0.19: pass the user-fn list (= `ctx + self`) twice: once as
-  -- `imps` (preserves the resolver's existing typecheck-context use for
-  -- poly bodies) and once as `userFns` (drives sigOp→closure rewrite
-  -- for user-defined top-level fn references). External syscalls are
-  -- handled via the qualified-name path and never reach this resolver.
+compileFunBody-aux m doOpt ctx polys impsOf name ty δ-unit (TE.success _ surfaceExpr _ _) =
+  -- Plan 0.19: the user-fn list (= `ctx + self`) is `userFns` (drives the
+  -- sigOp→closure rewrite for user-defined top-level fn references). Plan
+  -- 0.103 phase 1c: a telescope body is linked in ITS declaration imports
+  -- (`impsOf`), not in this function's. External syscalls are handled via
+  -- the qualified-name path and never reach this resolver.
   let userList = (name , ty) ∷ ctx
-      resolved = resolveExpr polys userList userList 0 surfaceExpr
+      resolved = resolveExpr polys impsOf userList 0 surfaceExpr
       ir = elaborateFull m resolved
   in inj₂ (subst (λ X → IR X ⌊ ty ⌋) (cong ⌊_⌋ δ-unit) (if doOpt then optimize ir else ir))
 
-compileFunBody : AllocMode → Bool → FunCtx → PolyCtx → (name : String) (ty : Type) → RawExpr → String ⊎ IR ⌊ Unit ⌋ ⌊ ty ⌋
-compileFunBody m doOpt ctx polys name ty expr =
-  compileFunBody-aux m doOpt ctx polys name ty refl
+compileFunBody : AllocMode → Bool → FunCtx → PolyCtx → (String → FunCtx) → (name : String) (ty : Type) → RawExpr → String ⊎ IR ⌊ Unit ⌋ ⌊ ty ⌋
+compileFunBody m doOpt ctx polys impsOf name ty expr =
+  compileFunBody-aux m doOpt ctx polys impsOf name ty refl
     (checkElab (ctxWithImportsAndSelfAndPolys ctx polys name ty) expr ty)
 
 -- | Compile a function with main validation
@@ -240,16 +241,16 @@ compileFunBody m doOpt ctx polys name ty expr =
 -- Explicit-argument aux form (Plan 0.48): `compileFun-aux` dispatches on the
 -- `name == "main"` Bool, `compileFun-main-aux` on the `validateMain` result —
 -- both `doOpt`-free guards, so success rides on `compileFunBody` alone.
-compileFun-main-aux : AllocMode → Bool → FunCtx → PolyCtx → (name : String) (ty : Type) → RawExpr → String ⊎ ⊤ → String ⊎ IR ⌊ Unit ⌋ ⌊ ty ⌋
-compileFun-main-aux m doOpt ctx polys name ty expr (inj₁ err) = inj₁ err
-compileFun-main-aux m doOpt ctx polys name ty expr (inj₂ _)   = compileFunBody m doOpt ctx polys name ty expr
+compileFun-main-aux : AllocMode → Bool → FunCtx → PolyCtx → (String → FunCtx) → (name : String) (ty : Type) → RawExpr → String ⊎ ⊤ → String ⊎ IR ⌊ Unit ⌋ ⌊ ty ⌋
+compileFun-main-aux m doOpt ctx polys impsOf name ty expr (inj₁ err) = inj₁ err
+compileFun-main-aux m doOpt ctx polys impsOf name ty expr (inj₂ _)   = compileFunBody m doOpt ctx polys impsOf name ty expr
 
-compileFun-aux : AllocMode → Bool → FunCtx → PolyCtx → (name : String) (ty : Type) → RawExpr → Bool → String ⊎ IR ⌊ Unit ⌋ ⌊ ty ⌋
-compileFun-aux m doOpt ctx polys name ty expr true  = compileFun-main-aux m doOpt ctx polys name ty expr (validateMain ty)
-compileFun-aux m doOpt ctx polys name ty expr false = compileFunBody m doOpt ctx polys name ty expr
+compileFun-aux : AllocMode → Bool → FunCtx → PolyCtx → (String → FunCtx) → (name : String) (ty : Type) → RawExpr → Bool → String ⊎ IR ⌊ Unit ⌋ ⌊ ty ⌋
+compileFun-aux m doOpt ctx polys impsOf name ty expr true  = compileFun-main-aux m doOpt ctx polys impsOf name ty expr (validateMain ty)
+compileFun-aux m doOpt ctx polys impsOf name ty expr false = compileFunBody m doOpt ctx polys impsOf name ty expr
 
-compileFun : AllocMode → Bool → FunCtx → PolyCtx → (name : String) (ty : Type) → RawExpr → String ⊎ IR ⌊ Unit ⌋ ⌊ ty ⌋
-compileFun m doOpt ctx polys name ty expr = compileFun-aux m doOpt ctx polys name ty expr (name == "main")
+compileFun : AllocMode → Bool → FunCtx → PolyCtx → (String → FunCtx) → (name : String) (ty : Type) → RawExpr → String ⊎ IR ⌊ Unit ⌋ ⌊ ty ⌋
+compileFun m doOpt ctx polys impsOf name ty expr = compileFun-aux m doOpt ctx polys impsOf name ty expr (name == "main")
 
 ------------------------------------------------------------------------
 -- Module compilation: source → List (name, IR)
@@ -329,9 +330,9 @@ resolveFunType ctx polys nothing   body = inferType ctx polys body
 -- `caf-go-cf-aux` calls `compileAllFuns-go` (mutual); the self-recursion is on
 -- the structurally-smaller `rest`.
 caf-go-wrap : (fi : FunInfo) (ty : Type) → IR ⌊ Unit ⌋ ⌊ ty ⌋ → String ⊎ List CompiledFun → String ⊎ List CompiledFun
-caf-go-cf-aux : AllocMode → Bool → PolyCtx → (fi : FunInfo) → List FunInfo → FunCtx → (ty : Type) → String ⊎ IR ⌊ Unit ⌋ ⌊ ty ⌋ → String ⊎ List CompiledFun
-caf-go-rf-aux : AllocMode → Bool → PolyCtx → (fi : FunInfo) → List FunInfo → FunCtx → String ⊎ Type → String ⊎ List CompiledFun
-compileAllFuns-go : AllocMode → Bool → PolyCtx → List FunInfo → FunCtx → String ⊎ List CompiledFun
+caf-go-cf-aux : AllocMode → Bool → PolyCtx → (String → FunCtx) → (fi : FunInfo) → List FunInfo → FunCtx → (ty : Type) → String ⊎ IR ⌊ Unit ⌋ ⌊ ty ⌋ → String ⊎ List CompiledFun
+caf-go-rf-aux : AllocMode → Bool → PolyCtx → (String → FunCtx) → (fi : FunInfo) → List FunInfo → FunCtx → String ⊎ Type → String ⊎ List CompiledFun
+compileAllFuns-go : AllocMode → Bool → PolyCtx → (String → FunCtx) → List FunInfo → FunCtx → String ⊎ List CompiledFun
 
 caf-go-wrap fi ty ir (inj₁ err)       = inj₁ err
 caf-go-wrap fi ty ir (inj₂ compiled)  =
@@ -344,41 +345,23 @@ caf-go-wrap fi ty ir (inj₂ compiled)  =
       ir'     = proj₂ wrapped
   in inj₂ (mkCompiledFun (bare (funName fi)) ty' ir' (funIsPrimitive fi) ∷ compiled)
 
-caf-go-cf-aux m doOpt polys fi rest ctx ty (inj₁ err) = inj₁ err
-caf-go-cf-aux m doOpt polys fi rest ctx ty (inj₂ ir) =
-  caf-go-wrap fi ty ir (compileAllFuns-go m doOpt polys rest (extendFunCtx ctx (funName fi) ty))
+caf-go-cf-aux m doOpt polys impsOf fi rest ctx ty (inj₁ err) = inj₁ err
+caf-go-cf-aux m doOpt polys impsOf fi rest ctx ty (inj₂ ir) =
+  caf-go-wrap fi ty ir (compileAllFuns-go m doOpt polys impsOf rest (extendFunCtx ctx (funName fi) ty))
 
-caf-go-rf-aux m doOpt polys fi rest ctx (inj₁ err) = inj₁ err
-caf-go-rf-aux m doOpt polys fi rest ctx (inj₂ ty) =
-  caf-go-cf-aux m doOpt polys fi rest ctx ty (compileFun m doOpt ctx polys (funName fi) ty (funBody fi))
+caf-go-rf-aux m doOpt polys impsOf fi rest ctx (inj₁ err) = inj₁ err
+caf-go-rf-aux m doOpt polys impsOf fi rest ctx (inj₂ ty) =
+  caf-go-cf-aux m doOpt polys impsOf fi rest ctx ty (compileFun m doOpt ctx polys impsOf (funName fi) ty (funBody fi))
 
-compileAllFuns-go m doOpt polys [] _ = inj₂ []
+compileAllFuns-go m doOpt polys impsOf [] _ = inj₂ []
 -- D007: resolve the function's type FIRST (explicit sig, or inferred from
 -- the body), then compile / extend the context / wrap-main with it.
-compileAllFuns-go m doOpt polys (fi ∷ rest) ctx =
-  caf-go-rf-aux m doOpt polys fi rest ctx (resolveFunType ctx polys (funType fi) (funBody fi))
+compileAllFuns-go m doOpt polys impsOf (fi ∷ rest) ctx =
+  caf-go-rf-aux m doOpt polys impsOf fi rest ctx (resolveFunType ctx polys (funType fi) (funBody fi))
 
-compileAllFuns : AllocMode → Bool → List FunInfo → PolyCtx → String ⊎ List CompiledFun
-compileAllFuns m doOpt funs polys = compileAllFuns-go m doOpt polys funs emptyFunCtx
+compileAllFuns : AllocMode → Bool → List FunInfo → PolyCtx → (String → FunCtx) → String ⊎ List CompiledFun
+compileAllFuns m doOpt funs polys impsOf = compileAllFuns-go m doOpt polys impsOf funs emptyFunCtx
 
-
--- | Compile source text to list of compiled functions
--- Returns: Left error | Right list of (name, type, IR)
---
--- Plan 0.6 Phase C.1: ground function bodies are pre-inlined with
--- both ground and polymorphic user-defined sources. Polymorphic names
--- at call sites expand to their NT-combinator body before typechecking,
--- at which point the existing bidirectional machinery specializes each
--- constituent builtin against the call-site expected type.
-compileModule : AllocMode → Bool → String → String ⊎ List CompiledFun
-compileModule m doOpt source with parse source
-... | nothing = inj₁ "Parse error: failed to parse module"
-... | just mod =
-      let aliases = extractAliases mod
-      in case extractFunctions aliases mod of λ where
-           (inj₁ err)             → inj₁ err
-           (inj₂ (funs , polys))  →
-             compileAllFuns m doOpt funs (buildPolyCtx polys)
 
 -- | Parse source text to a Module AST. Haskell uses this to read
 -- both the user's file and each transitive import before calling
@@ -444,6 +427,18 @@ polysCheck at (pfi ∷ pfis) =
   seqCheck (polyEntryCheck (at (pfunAfter pfi)) (buildPolyCtx pfis) pfi (isGround (pfunType pfi)))
            (polysCheck at pfis)
 
+-- The declaration imports of the telescope entry a name refers to — the entry
+-- `lookupPolyPrefix` finds (the first of that name).
+afterOf     : List PolyFunInfo → String → ℕ
+afterOf-aux : (pfi : PolyFunInfo) → List PolyFunInfo → (x : String) → Dec (pfunName pfi ≡ x) → ℕ
+afterOf []           x = 0
+afterOf (pfi ∷ pfis) x = afterOf-aux pfi pfis x (pfunName pfi SProp.≟ x)
+afterOf-aux pfi pfis x (yes _) = pfunAfter pfi
+afterOf-aux pfi pfis x (no _)  = afterOf pfis x
+
+entryImps : List FunInfo → List PolyFunInfo → String → FunCtx
+entryImps funs polys x = funCtxAt funs emptyFunCtx (buildPolyCtx polys) (afterOf polys x)
+
 polysOK : List FunInfo → List PolyFunInfo → String ⊎ ⊤
 polysOK funs polys = polysCheck (funCtxAt funs emptyFunCtx (buildPolyCtx polys)) polys
 
@@ -456,7 +451,7 @@ polysGate (inj₂ _) r = r
 -- `compileResolvedModule` and `compileFromModule`'s Check/Build stages.
 compileGated : AllocMode → Bool → List FunInfo → List PolyFunInfo → String ⊎ List CompiledFun
 compileGated m doOpt funs polys =
-  polysGate (polysOK funs polys) (compileAllFuns m doOpt funs (buildPolyCtx polys))
+  polysGate (polysOK funs polys) (compileAllFuns m doOpt funs (buildPolyCtx polys) (entryImps funs polys))
 
 compileResolvedModule-aux : AllocMode → Bool → Module → String ⊎ (List FunInfo × List PolyFunInfo) → String ⊎ List CompiledFun
 compileResolvedModule-aux m doOpt mod (inj₁ err)            = inj₁ err
@@ -465,6 +460,25 @@ compileResolvedModule-aux m doOpt mod (inj₂ (funs , polys)) = compileGated m d
 compileResolvedModule : AllocMode → Bool → Module → String ⊎ List CompiledFun
 compileResolvedModule m doOpt mod =
   compileResolvedModule-aux m doOpt mod (extractFunctions (extractAliases mod) mod)
+
+-- | Compile source text to list of compiled functions
+-- Returns: Left error | Right list of (name, type, IR)
+--
+-- Plan 0.6 Phase C.1: ground function bodies are pre-inlined with
+-- both ground and polymorphic user-defined sources. Polymorphic names
+-- at call sites expand to their NT-combinator body before typechecking,
+-- at which point the existing bidirectional machinery specializes each
+-- constituent builtin against the call-site expected type.
+compileModule : AllocMode → Bool → String → String ⊎ List CompiledFun
+compileModule m doOpt source with parse source
+... | nothing = inj₁ "Parse error: failed to parse module"
+... | just mod =
+      let aliases = extractAliases mod
+      in case extractFunctions aliases mod of λ where
+           (inj₁ err)             → inj₁ err
+           (inj₂ (funs , polys))  →
+             compileGated m doOpt funs polys
+
 
 -- Plan 0.50 — the symbols THIS codegen actually emits as `.globl` labels, defined
 -- on the SAME `CompiledFun` list `compileFromModule` renders (`compileResolvedModule`).
@@ -788,10 +802,10 @@ compile m stage doOpt arch source with parseStrict source
          let pctx = buildPolyCtx polys
          in case stage of λ where
            Parse → Parsed funs polys
-           Check → case compileAllFuns m doOpt funs pctx of λ where
+           Check → case compileGated m doOpt funs polys of λ where
              (inj₁ err) → Error err
              (inj₂ compiled) → Checked compiled
-           Build → case compileAllFuns m doOpt funs pctx of λ where
+           Build → case compileGated m doOpt funs polys of λ where
              (inj₁ err) → Error err
              (inj₂ compiled) →
                let target = archTarget arch

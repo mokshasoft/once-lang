@@ -33,7 +33,7 @@ open import Data.Fin using (Fin; zero; suc)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.List using (List; []; _∷_; length)
 open import Relation.Nullary using (yes; no; ¬_)
-open import Data.Product using (_×_; _,_; ∃-syntax)
+open import Data.Product using (_×_; _,_; ∃-syntax; Σ)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; _≢_)
 
 open import Once.Type
@@ -155,6 +155,19 @@ lookupPolyPrefix⇒lookupPoly ((n , s' , b') ∷ rest) x lp with StrProp._≟_ n
         → just (s' , b') ≡ just (s , body)
     aux refl = refl
 ... | no  _ = lookupPolyPrefix⇒lookupPoly rest x lp
+
+-- | The converse: a plain lookup's entry is found by the prefix lookup too.
+lookupPoly⇒lookupPolyPrefix : ∀ (p : PolyCtx) (x : String) {s body}
+  → lookupPoly p x ≡ just (s , body)
+  → Σ PolyCtx (λ prefix → lookupPolyPrefix p x ≡ just (s , body , prefix))
+lookupPoly⇒lookupPolyPrefix [] x ()
+lookupPoly⇒lookupPolyPrefix ((n , s' , b') ∷ rest) x lp with StrProp._≟_ n x
+... | yes _ = aux lp
+  where
+    aux : ∀ {s body} → just (s' , b') ≡ just (s , body)
+        → Σ PolyCtx (λ prefix → just (s' , b' , rest) ≡ just (s , body , prefix))
+    aux refl = rest , refl
+... | no  _ = lookupPoly⇒lookupPolyPrefix rest x lp
 
 -- | A named context paired with its de Bruijn representation
 -- Includes a fresh counter for generating unique type variables during instantiation

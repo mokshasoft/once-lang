@@ -298,6 +298,7 @@ open import Once.Adequacy.AcceptSound as AS using (moduleToIR-typed; moduleToIR-
 -- `main-realize-agrees` from `RealizeBridge.realize-agrees`. Importing it here
 -- puts `realize-agrees` on the apex path (no longer an island).
 import Once.Adequacy.MainRealizeAgrees as MRA
+import Once.Adequacy.TelescopeEnv as TE
 -- Plan 0.51: the NAMED resolver-correctness obligations bridging the
 -- un-resolved independent meaning to the resolved compilation. The resolver is
 -- now in the verified loop (`srcToModule`); these are the explicit gaps.
@@ -732,9 +733,15 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   -- faithfulness), NOT this opaque whole-statement axiom.
   main-realize-agrees : ∀ (arch : Arch) (m : P.Module) (mt : ModuleTyped m)
     (hvm : HasValidMain-decl m mt) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) (mi : moduleToIR m ≡ just ir)
-    → ∀ n → ME.runMainˢ (arch-numerics arch) (proj₁ (proj₂ (ME.source-meaningᴰ (arch-numerics arch) m ir mi))) n
-            ≡ ME.runMainˢ (arch-numerics arch) (proj₂ (MC.mainRealized m mt hvm)) n
+    → ∀ n → ME.runMainˢ (arch-numerics arch) (ME.σ₀ (arch-numerics arch)) (proj₁ (proj₂ (ME.source-meaningᴰ (arch-numerics arch) m ir mi))) n
+            ≡ ME.runMainˢ (arch-numerics arch) (MRA.σTp (arch-numerics arch) m ir mi) (proj₂ (MC.mainRealized m mt hvm)) n
   main-realize-agrees arch = MRA.main-realize-agrees-proof (arch-numerics arch)
+
+  -- Plan 0.103 phase 1c: the definitions environment the surface meaning of
+  -- `tp` runs in — the meanings of its main's linked telescope references.
+  σˢ : Arch → Typed → SD.DefsSem
+  σˢ arch (m , mt , hvm , pts) =
+    MRA.σTp (arch-numerics arch) m (proj₁ (MC.moduleToIR-complete m mt hvm pts)) (proj₂ (MC.moduleToIR-complete m mt hvm pts))
 
   -- D113: the INDEPENDENT meaning takes the arch, mirroring `exec`. The
   -- format is the only thing it uses the arch for.
@@ -744,7 +751,7 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   -- over the SURFACE semantics: the compiler's own theorem supplies them.
   sd-eq : ∀ (arch : Arch) (tp : Typed) (n : ℕ)
         → at (⟦ moduleToIR (proj₁ tp) ⟧IR (arch-numerics arch)) n
-          ≡ ME.runMainˢ (arch-numerics arch) (proj₂ (MC.mainRealized (proj₁ tp) (proj₁ (proj₂ tp)) (proj₁ (proj₂ (proj₂ tp))))) n
+          ≡ ME.runMainˢ (arch-numerics arch) (σˢ arch tp) (proj₂ (MC.mainRealized (proj₁ tp) (proj₁ (proj₂ tp)) (proj₁ (proj₂ (proj₂ tp))))) n
   sd-eq arch (m , mt , hvm , pts) n =
     trans (trans (cong (λ x → at (⟦ x ⟧IR (arch-numerics arch)) n) (proj₂ (MC.moduleToIR-complete m mt hvm pts)))
                  (proj₂ (proj₂ (ME.source-meaningᴰ (arch-numerics arch) m
@@ -755,7 +762,7 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   ⟦_⟧ˢ : Arch → Typed → Behavior
   ⟦ arch ⟧ˢ tp =
     behavior-by (⟦ moduleToIR (proj₁ tp) ⟧IR (arch-numerics arch))
-                (ME.runMainˢ (arch-numerics arch)
+                (ME.runMainˢ (arch-numerics arch) (σˢ arch tp)
                   (proj₂ (MC.mainRealized (proj₁ tp) (proj₁ (proj₂ tp)) (proj₁ (proj₂ (proj₂ tp))))))
                 (sd-eq arch tp)
 
@@ -909,14 +916,15 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   -- D113: arch-indexed, exactly as `⟦_⟧ˢ` is. This is THE reference meaning
   -- the apex `CorrectCompiler` field is filled with.
   ⟦_⟧ᵈ : Arch → Typed → Behavior
-  ⟦ arch ⟧ᵈ (m , mt , hvm , _) = MM.meaningᵈ (arch-numerics arch) m mt hvm
+  ⟦ arch ⟧ᵈ (m , mt , hvm , pts) = MM.meaningᵈ (arch-numerics arch) m mt hvm pts
   -- `bridgeᵈ` (the observational `⟦_⟧ᵈ ≈ SD∘realize`) — Plan 0.58 part 7:
   -- DISCHARGED via the selection lemma `MMB.main-bridge`, which parallel-inducts
   -- over the shared `mainRealized`/`mainMeaningᵈ` dispatch and bottoms in
   -- `bridge-c` at `main : EffUU` (env `∅`, thunk `tt`). The residual content is
   -- the seven narrow leaf postulates in `Once.Adequacy.MeaningBridge`.
   bridgeᵈ : ∀ (arch : Arch) (tp : Typed) (n : ℕ) → at (⟦ arch ⟧ˢ tp) n ≡ at (⟦ arch ⟧ᵈ tp) n
-  bridgeᵈ arch (m , mt , hvm , _) n = MMB.main-bridge (arch-numerics arch) m mt hvm n
+  bridgeᵈ arch tp@(m , mt , hvm , pts) n =
+    MMB.main-bridge (arch-numerics arch) (σˢ arch tp) m mt hvm pts (TE.telescope-envrel (arch-numerics arch) m mt hvm pts) n
 
   -- D115/D116: which programs this target owes an answer for. `Typed` is
   -- target-free; this is the target-relative half, and it is `Int`-only —

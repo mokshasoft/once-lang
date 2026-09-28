@@ -342,8 +342,8 @@ module Weaken (imps : Imports) (P : PolyCtx) where
     W-i wk _ (t-var-qualified l c) = cᵢ (sym (up-zero wk)) (t-var-qualified l c)
     W-i wk _ (t-var-resolved ng l c) = cᵢ (sym (up-zero wk)) (t-var-resolved ng l c)
     W-i wk fr (t-var-import {x = z} ¬gw ln li c) = cᵢ (sym (up-zero wk)) (t-var-import ¬gw (wnone (wloc wk z fr) ln) li c)
-    W-i wk fr (t-var-poly-instantiate-infer {x = z} ln li lp gr eT body) =
-        cᵢ (sym (up-zero wk)) (t-var-poly-instantiate-infer (wnone (wloc wk z fr) ln) li lp gr eT body)
+    W-i wk fr (t-var-poly-instantiate-infer {x = z} ln li lp gr eT) =
+        cᵢ (sym (up-zero wk)) (t-var-poly-instantiate-infer (wnone (wloc wk z fr) ln) li lp gr eT)
     W-i wk fr (t-annot c) = t-annot (W-c wk fr c)
     W-i wk (f₁ , f₂) (t-pair d₁ d₂) = cᵢ (sym (up-+ wk _ _)) (t-pair (W-i wk f₁ d₁) (W-i wk f₂ d₂))
     W-i wk fr (t-neg d) = t-neg (W-i wk fr d)
@@ -570,17 +570,16 @@ module Unfolding
                → lookupLocal-go y G Δ ≡ nothing → lookupImport imps y ≡ nothing
                → lookupPolyPrefix P′ y ≡ just (schema , body , prefix) → Ground schema
                → T ≡ extractGround schema g′
-               → ctxWithImportsAndPolys imps prefix ⊢ᶜ body ∶ T ⨾ zeroUsage
                → Lc G Δ fr ⊢ᵢ subVar sh y d ∶ T ⨾ zeroUsage
-  s-poly-infer {G = G} {Δ = Δ} {sh = true} r y (yes y≡x) ln _ _ _ _ _ =
+  s-poly-infer {G = G} {Δ = Δ} {sh = true} r y (yes y≡x) ln _ _ _ _ =
     ⊥-elim (SR.yesX r refl (subst (λ z → lookupLocal-go z G Δ ≡ nothing) y≡x ln))
-  s-poly-infer {G = G} {Δ = Δ} {sh = false} r y (yes y≡x) {g′ = g′} _ _ lp _ eT _
+  s-poly-infer {G = G} {Δ = Δ} {sh = false} r y (yes y≡x) {g′ = g′} _ _ lp _ eT
     with trans (sym lpp-head) (subst (λ z → lookupPolyPrefix P′ z ≡ _) y≡x lp)
   ... | refl =
     subst (λ T → _ ⊢ᵢ RAnnot e A ∶ T ⨾ zeroUsage) (sym (trans eT (trans (extractGround-irr s g′ g) eqA)))
       (t-annot (W-c wk-base (SR.clr r) eD))
-  s-poly-infer r y (no y≢x) ln li lp gr eT body =
-    t-var-poly-instantiate-infer ln li (lpp-skip y≢x lp) gr eT body
+  s-poly-infer r y (no y≢x) ln li lp gr eT =
+    t-var-poly-instantiate-infer ln li (lpp-skip y≢x lp) gr eT
 
   s-poly : ∀ {n G Δ fr sh} → SR {n} sh G Δ → (y : String) (d : Dec (y ≡ x))
            {T : Type} {schema : PolyType} {body : RawExpr} {prefix : PolyCtx}
@@ -621,8 +620,8 @@ module Unfolding
     S-i r _ (t-var-qualified l c) = t-var-qualified l c
     S-i r _ (t-var-resolved ng l c) = t-var-resolved ng l c
     S-i r _ (t-var-import {x = y} ¬gw ln li c) = s-import r y (y StrProp.≟ x) ¬gw ln li c
-    S-i r _ (t-var-poly-instantiate-infer {x = y} ln li lp gr eT body) =
-        s-poly-infer r y (y StrProp.≟ x) ln li lp gr eT body
+    S-i r _ (t-var-poly-instantiate-infer {x = y} ln li lp gr eT) =
+        s-poly-infer r y (y StrProp.≟ x) ln li lp gr eT
     S-i r nc (t-annot c) = t-annot (S-c r nc c)
     S-i r (n₁ , n₂) (t-pair d₁ d₂) = t-pair (S-i r n₁ d₁) (S-i r n₂ d₂)
     S-i r nc (t-neg d) = t-neg (S-i r nc d)
@@ -1063,7 +1062,7 @@ module Unfolding
            → Lc G Δ fr ⊢ᶜ e ∶ A ⨾ U → Dc G Δ fr ⊢ᵢ RVar x ∶ A ⨾ U
   unfolded {G = G} {Δ = Δ} {fr = fr} r {U} c =
     subst (λ U → Dc G Δ fr ⊢ᵢ RVar x ∶ A ⨾ U) (agree-cc (W-c wk-base (SR.clr r) eD) c)
-      (t-var-poly-instantiate-infer {g = g} (SR.noX r refl) noImp lpp-head g (sym eqA) eD)
+      (t-var-poly-instantiate-infer {g = g} (SR.noX r refl) noImp lpp-head g (sym eqA))
 
   mutual
     F-i : ∀ {n G Δ fr sh} → SR {n} sh G Δ → ∀ {b b′ T U}
@@ -1091,8 +1090,8 @@ module Unfolding
     ... | refl , _ = t-var-local q
     F-i {sh = sh} r {b = b} nc (t-var-import ¬gw ln li c) eq with inv-RVar {sh = sh} {b = b} eq
     ... | refl , _ = t-var-import ¬gw ln li c
-    F-i {sh = sh} r {b = b} nc (t-var-poly-instantiate-infer {x = z} ln li lp gr eT body) eq with inv-RVar {sh = sh} {b = b} eq
-    ... | refl , alt = t-var-poly-instantiate-infer ln li (lpp-add r z alt ln lp) gr eT body
+    F-i {sh = sh} r {b = b} nc (t-var-poly-instantiate-infer {x = z} ln li lp gr eT) eq with inv-RVar {sh = sh} {b = b} eq
+    ... | refl , alt = t-var-poly-instantiate-infer ln li (lpp-add r z alt ln lp) gr eT
     F-i {sh = sh} r {b = b} nc (t-annot c) eq with inv-RAnnot {sh = sh} {b = b} eq
     ... | inj₁ (b₀ , refl , eb) = t-annot (F-c r nc c eb)
     ... | inj₂ (refl , refl , refl , refl) = unfolded r c

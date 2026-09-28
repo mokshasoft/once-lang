@@ -74,9 +74,15 @@ EffUU = Unit ⇒[ mk-kind Many eff ] Unit
 -- a Behavior, so the laws are already carried on the side that states the
 -- compiler's claim. Should a consumer ever need them here, `faithful`
 -- transports them rather than reproving them.
-runMainˢ : ∀ {Ψ : Usage 0} → Expr ∅ Ψ EffUU → ℕ → List SigOpEvent
-runMainˢ {Ψ} se n =
-  projTrace ((SD.⟦ se ⟧ˢ fmt) (env0 {Ψ} tt) >>=T (λ clo → clo tt)) n
+-- Plan 0.103 phase 1c: in a definitions environment `σ` — the compiled
+-- program's (`σ₀`) on the implementation side, the telescope's meanings on
+-- the specification side.
+runMainˢ : ∀ {Ψ : Usage 0} → SD.DefsSem → Expr ∅ Ψ EffUU → ℕ → List SigOpEvent
+runMainˢ {Ψ} σ se n =
+  projTrace ((SD.⟦ se ⟧ˢ fmt σ) (env0 {Ψ} tt) >>=T (λ clo → clo tt)) n
+
+σ₀ : SD.DefsSem
+σ₀ = SD.internalDefs fmt
 
 -- Bind respects equality of the bound computation, read at the trace level.
 -- plan 0.98: the premise is ONE equation of computations, not a budget-`n`
@@ -103,24 +109,24 @@ open import Once.Adequacy.MainForm fmt using (main-ir-form; Form)
 source-meaningᴰ-aux : ∀ (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) → Form ir →
   Σ-syntax (Usage 0) (λ Ψ →
     Σ-syntax (Expr ∅ Ψ EffUU) (λ seR →
-      ∀ (n : ℕ) → at (⟦ just ir ⟧IR fmt) n ≡ runMainˢ seR n))
+      ∀ (n : ℕ) → at (⟦ just ir ⟧IR fmt) n ≡ runMainˢ σ₀ seR n))
 -- D143: `Ψ` stays ABSTRACT here — matching it would block this function from
 -- reducing at its call site. `elaborateFull` (the erasure adapter composed in)
 -- keeps the IR's domain `Unit`, and `faithful∅` supplies the denotation at the
 -- empty context, doing the `Usage 0` match inside the lemma instead.
 source-meaningᴰ-aux ir (Ψ , seR , eq , _) = Ψ , seR , bridge
   where
-    bridge : ∀ (n : ℕ) → at (⟦ just ir ⟧IR fmt) n ≡ runMainˢ seR n
+    bridge : ∀ (n : ℕ) → at (⟦ just ir ⟧IR fmt) n ≡ runMainˢ σ₀ seR n
     bridge n =
       trans (cong (λ X → at (⟦ just X ⟧IR fmt) n) eq)
         (trans (wrap-trace (elaborateFull C.Heap seR) n)
                (bind-cong-trace (evalᴰ fmt (elaborateFull C.Heap seR) tt)
-                                (SD.⟦ seR ⟧ˢ fmt (env0 {Ψ} tt)) (λ clo → clo tt) n
+                                (SD.⟦ seR ⟧ˢ fmt σ₀ (env0 {Ψ} tt)) (λ clo → clo tt) n
                                 (T-ext-at (faithful∅ seR))))
 
 source-meaningᴰ : ∀ (m : P.Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) →
   moduleToIR m ≡ just ir →
   Σ-syntax (Usage 0) (λ Ψ →
     Σ-syntax (Expr ∅ Ψ EffUU) (λ seR →
-      ∀ (n : ℕ) → at (⟦ just ir ⟧IR fmt) n ≡ runMainˢ seR n))
+      ∀ (n : ℕ) → at (⟦ just ir ⟧IR fmt) n ≡ runMainˢ σ₀ seR n))
 source-meaningᴰ m ir mi = source-meaningᴰ-aux ir (main-ir-form m ir mi)

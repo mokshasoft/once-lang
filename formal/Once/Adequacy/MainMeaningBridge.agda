@@ -21,10 +21,12 @@ open import Once.Target.Arch using (TargetNum; int-bits; float-format)
 -- downstream uses these as facts and never reduces them — so the "recursive
 -- function in a parameterised module stops reducing" trap does not apply. The
 -- denotations themselves take it as an explicit argument.
-module Once.Adequacy.MainMeaningBridge (fmt : TargetNum) where
+open import Once.Denotation.SourceDenote using (DefsSem)
+
+module Once.Adequacy.MainMeaningBridge (fmt : TargetNum) (σ : DefsSem) where
 
 
-open import Once.Spec.Module using (EffUU; AllFunsTyped; HasValidMain-decl; MainExists; ModuleMainEffUU-ef; ModuleMainExists-ef; ModuleTyped; ModuleTyped-ef; tcons)
+open import Once.Spec.Module using (EffUU; AllFunsTyped; HasValidMain-decl; MainExists; ModuleMainEffUU-ef; ModuleMainExists-ef; ModuleTyped; ModuleTyped-ef; tcons; PolysTyped; PolysTyped-ef)
 open import Data.Bool using (Bool; false; true)
 open import Data.Nat using (ℕ; _∸_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
@@ -45,14 +47,14 @@ open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_)
 open import Once.Denotation.TraceMonad using (T; _>>=T_; projTrace; valueT)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ)
 open import Once.Denotation.Behavior using (Behavior)
-open import Once.Denotation.Meaning using (⟦_⟧ᶜ)
+open import Once.Denotation.Meaning using (⟦_⟧ᶜ; DefMeanings)
 open import Once.Denotation.Realize using (realize)
 import Once.Compile as C
 import Once.Adequacy.AcceptSound as AS
 import Once.Adequacy.ModuleComplete as MC
 import Once.Adequacy.MainExtract fmt as ME
 import Once.Denotation.MainMeaning as MM
-open import Once.Adequacy.MeaningBridge fmt using (bridge-c; RelEnv; RelEnv↾; mk↾; rel-env0)
+open import Once.Adequacy.MeaningBridge fmt σ using (bridge-c; RelEnv; RelEnv↾; mk↾; rel-env0; EnvRel)
 open import Once.Adequacy.MeaningRelation fmt using (RelT-bind)
 open import Once.Denotation.Phase using (env0)
 open import Once.Parser using (FunInfo)
@@ -64,60 +66,60 @@ open FunInfo
 -- applied to the top-level thunk `tt`.
 ------------------------------------------------------------------------
 
-main-bridge-leaf : ∀ {polys nm bdy ctx Ψ}
+-- Plan 0.103 phase 1c: the surface side runs in a definitions environment
+-- `σ` related to the telescope's meanings (`EnvRel`); the relatedness at the
+-- module's telescope is the premise `EnvRelTop`.
+EnvRelTop-ef : (ef : String ⊎ (List FunInfo × List C.PolyFunInfo)) → PolysTyped-ef ef → Set
+EnvRelTop-ef (inj₁ _)              _   = ⊤
+EnvRelTop-ef (inj₂ (funs , polys)) pts =
+  EnvRel (C.buildPolyCtx polys) (MM.defMeanings fmt (C.funCtxAt funs C.emptyFunCtx (C.buildPolyCtx polys)) polys pts)
+
+EnvRelTop : (m : C.Module) → PolysTyped m → Set
+EnvRelTop m pts = EnvRelTop-ef (C.extractFunctions (C.extractAliases m) m) pts
+
+main-bridge-leaf : ∀ {polys nm bdy ctx Ψ} {ρ : DefMeanings polys} (er : EnvRel polys ρ)
   (deriv : (ctxWithImportsAndSelfAndPolys ctx polys nm EffUU) ⊢ᶜ bdy ∶ EffUU ⨾ Ψ)
   (n : ℕ)
-  → ME.runMainˢ (realize deriv) n
-    ≡ MM.runMainᵈ (λ _ → ⟦ deriv ⟧ᶜ fmt (env0 {Ψ} tt)) n
--- plan 0.98: `RelT-bind`. The head relation is `bridge-c` at the empty
--- environment, and the continuation applies the `EffUU` arrow relation at the
--- unit thunk; the composite's trace half, read at `n`, is the goal. The old
--- proof threaded the head's value and the budget `n ∸ length …` it left by
--- hand — `RelT-bind` splits on the head's RESULT, so neither is named here.
-main-bridge-leaf {Ψ = Ψ} deriv n =
-  sym (proj₁ (RelT-bind {A = EffUU} {B = Unit} (bridge-c deriv {env0 {Ψ} tt} {env0 {Ψ} tt} rel-env0)
+  → ME.runMainˢ σ (realize deriv) n
+    ≡ MM.runMainᵈ (λ _ → ⟦ deriv ⟧ᶜ fmt ρ (env0 {Ψ} tt)) n
+main-bridge-leaf {Ψ = Ψ} er deriv n =
+  sym (proj₁ (RelT-bind {A = EffUU} {B = Unit} (bridge-c deriv {dγ₁ = env0 {Ψ} tt} {dγ₂ = env0 {Ψ} tt} rel-env0 er)
                         (λ rf → rf {tt} {tt} tt) n))
 
-------------------------------------------------------------------------
--- The parallel dispatch — identical branching to `mrg-dispatch`/`mmd-dispatch`.
-------------------------------------------------------------------------
 
-main-bridge-go : ∀ {polys funs ctx}
+main-bridge-go : ∀ {polys funs ctx} {ρ : DefMeanings polys} (er : EnvRel polys ρ)
   (aft : AllFunsTyped polys funs ctx) (me : MainExists aft) (n : ℕ)
-  → ME.runMainˢ (proj₂ (MC.mainRealized-go aft me)) n
-    ≡ MM.runMainᵈ (proj₂ (MM.mainMeaningᵈ-go fmt aft me)) n
-main-bridge-dispatch : ∀ {polys nm bdy rest ctx ty Ψ}
+  → ME.runMainˢ σ (proj₂ (MC.mainRealized-go aft me)) n
+    ≡ MM.runMainᵈ (proj₂ (MM.mainMeaningᵈ-go fmt ρ aft me)) n
+main-bridge-dispatch : ∀ {polys nm bdy rest ctx ty Ψ} {ρ : DefMeanings polys} (er : EnvRel polys ρ)
   (deriv : (ctxWithImportsAndSelfAndPolys ctx polys nm ty) ⊢ᶜ bdy ∶ ty ⨾ Ψ)
   (rt : AllFunsTyped polys rest (C.extendFunCtx ctx nm ty))
   (w : MainExists rt)
   (dn : Dec (nm ≡ "main")) (dt : Dec (ty ≡ EffUU)) (b : Bool) (n : ℕ)
-  → ME.runMainˢ (proj₂ (MC.mrg-dispatch deriv rt w dn dt b)) n
-    ≡ MM.runMainᵈ (proj₂ (MM.mmd-dispatch fmt deriv rt w dn dt b)) n
+  → ME.runMainˢ σ (proj₂ (MC.mrg-dispatch deriv rt w dn dt b)) n
+    ≡ MM.runMainᵈ (proj₂ (MM.mmd-dispatch fmt ρ deriv rt w dn dt b)) n
 
-main-bridge-go (tcons rf deriv rest) (inj₁ (_ , _ , refl)) n = main-bridge-leaf deriv n
-main-bridge-go (tcons {fi = fi} {ty = ty} rf deriv rt) (inj₂ w) n =
-  main-bridge-dispatch deriv rt w (funName fi ≟str "main") (ty ≟T EffUU) (funIsPrimitive fi) n
+main-bridge-go er (tcons rf deriv rest) (inj₁ (_ , _ , refl)) n = main-bridge-leaf er deriv n
+main-bridge-go er (tcons {fi = fi} {ty = ty} rf deriv rt) (inj₂ w) n =
+  main-bridge-dispatch er deriv rt w (funName fi ≟str "main") (ty ≟T EffUU) (funIsPrimitive fi) n
 
-main-bridge-dispatch deriv rt w (yes _) (yes refl) false n = main-bridge-leaf deriv n
-main-bridge-dispatch deriv rt w (no _)  _          _     n = main-bridge-go rt w n
-main-bridge-dispatch deriv rt w (yes _) (no _)     _     n = main-bridge-go rt w n
-main-bridge-dispatch deriv rt w (yes _) (yes refl) true  n = main-bridge-go rt w n
+main-bridge-dispatch er deriv rt w (yes _) (yes refl) false n = main-bridge-leaf er deriv n
+main-bridge-dispatch er deriv rt w (no _)  _          _     n = main-bridge-go er rt w n
+main-bridge-dispatch er deriv rt w (yes _) (no _)     _     n = main-bridge-go er rt w n
+main-bridge-dispatch er deriv rt w (yes _) (yes refl) true  n = main-bridge-go er rt w n
 
-------------------------------------------------------------------------
--- Lift through the `-ef` layer (mirrors `mainRealized-ef`/`mainMeaningᵈ-ef`;
--- the `inj₁` case is impossible — `ModuleTyped-ef m (inj₁ _) = ⊥`).
-------------------------------------------------------------------------
 
 main-bridge-ef : ∀ (m : C.Module) (ef : String ⊎ (List FunInfo × List C.PolyFunInfo))
   (mt : ModuleTyped-ef m ef)
-  (amu : ModuleMainEffUU-ef m ef mt) (me : ModuleMainExists-ef m ef mt) (n : ℕ)
-  → ME.runMainˢ (proj₂ (MC.mainRealized-ef m ef mt amu me)) n
-    ≡ MM.runMainᵈ (proj₂ (MM.mainMeaningᵈ-ef fmt m ef mt amu me)) n
-main-bridge-ef m (inj₂ (funs , polys)) mt amu me n = main-bridge-go mt me n
+  (amu : ModuleMainEffUU-ef m ef mt) (me : ModuleMainExists-ef m ef mt)
+  (pts : PolysTyped-ef ef) (er : EnvRelTop-ef ef pts) (n : ℕ)
+  → ME.runMainˢ σ (proj₂ (MC.mainRealized-ef m ef mt amu me)) n
+    ≡ MM.runMainᵈ (proj₂ (MM.mainMeaningᵈ-ef fmt m ef mt amu me pts)) n
+main-bridge-ef m (inj₂ (funs , polys)) mt amu me pts er n = main-bridge-go er mt me n
 
--- THE selection lemma: `⟦ tp ⟧ˢ n ≡ ⟦ tp ⟧ᵈ n` (discharges the apex `bridgeᵈ`).
-main-bridge : ∀ (m : C.Module) (mt : ModuleTyped m) (hvm : HasValidMain-decl m mt) (n : ℕ)
-            → ME.runMainˢ (proj₂ (MC.mainRealized m mt hvm)) n
-              ≡ MM.runMainᵈ (proj₂ (MM.mainMeaningᵈ fmt m mt hvm)) n
-main-bridge m mt (amu , me) n =
-  main-bridge-ef m (C.extractFunctions (C.extractAliases m) m) mt amu me n
+main-bridge : ∀ (m : C.Module) (mt : ModuleTyped m) (hvm : HasValidMain-decl m mt)
+              (pts : PolysTyped m) (er : EnvRelTop m pts) (n : ℕ)
+            → ME.runMainˢ σ (proj₂ (MC.mainRealized m mt hvm)) n
+              ≡ MM.runMainᵈ (proj₂ (MM.mainMeaningᵈ fmt m mt hvm pts)) n
+main-bridge m mt (amu , me) pts er n =
+  main-bridge-ef m (C.extractFunctions (C.extractAliases m) m) mt amu me pts er n

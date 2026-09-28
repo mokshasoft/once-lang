@@ -274,6 +274,9 @@ rename {Δ = Δ} θ (Surface.poly name T) = subst (λ Ψ → SExpr Δ Ψ _) (sym
 -- Plan 0.2.4.5 D2: morphism realm. `lift-morphism` carries no
 -- context dependency (closed by construction, zeroUsage), so renaming
 -- threads through unchanged modulo the `thin-usage-zeroUsage` adjustment.
+-- Plan 0.103 phase 1c: a closed term needs no renaming.
+rename {Δ = Δ} θ (Surface.closed e) =
+  subst (λ Ψ → SExpr Δ Ψ _) (sym (thin-usage-zeroUsage θ)) (Surface.closed e)
 rename {Δ = Δ} θ (Surface.lift-morphism m) =
   subst (λ Ψ → SExpr Δ Ψ _) (sym (thin-usage-zeroUsage θ)) (Surface.lift-morphism m)
 -- Plan 0.36 Phase 2a: cata is zeroUsage and its algebra lives in the

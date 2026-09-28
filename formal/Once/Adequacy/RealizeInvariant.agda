@@ -37,7 +37,8 @@ open import Once.Denotation.Realize using (realize)
 postulate
   realize-invariant :
     ∀ {ctx : NamedCtx} {e : RawExpr} {A : Type} {Ψ : Usage (NamedCtx.size ctx)}
-      (d₁ d₂ : ctx ⊢ᶜ e ∶ A ⨾ Ψ) (dγ : ⟦ ⟦ NamedCtx.debruijn ctx ↾ Ψ ⟧ᶜ ⟧ᴰ)
+      (d₁ d₂ : ctx ⊢ᶜ e ∶ A ⨾ Ψ) (σ : SD.DefsSem) (dγ : ⟦ ⟦ NamedCtx.debruijn ctx ↾ Ψ ⟧ᶜ ⟧ᴰ)
     -- plan 0.97: `T` is a record, so "equal at every budget" IS equality —
     -- the budget index this statement carried is gone.
-    → SD.⟦ realize d₁ ⟧ˢ fmt dγ ≡ SD.⟦ realize d₂ ⟧ˢ fmt dγ
+    -- plan 0.103 1c: in any definitions environment (references stay open).
+    → SD.⟦ realize d₁ ⟧ˢ fmt σ dγ ≡ SD.⟦ realize d₂ ⟧ˢ fmt σ dγ
