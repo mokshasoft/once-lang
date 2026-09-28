@@ -696,6 +696,11 @@ PREDS = {
   "StkA": dict(doc="stkA? c ≡ true — a stable ambient (Spec/Variance)",
                rows={"cbase": [], "cSg": [], "cId": [], "cUnit": [], "cFin": [], "cNat": [], "cIMu": [],
                      "cHom": [(0, 0)]}),
+  "StkC": dict(doc="stkC? c ≡ true — J-able: stkA? minus the literal ⌜Nat⌝; at ⌜Hom⌝ it is stkA? of the ambient",
+               rows={"cbase": [], "cSg": [], "cId": [], "cUnit": [], "cFin": [], "cIMu": [],
+                     "cHom": [("σ", "StkA", 0)]}),
+  "Flat": dict(doc="flat? c ≡ true — ⌜base⌝, or ⌜Hom⌝ at a J-able ambient (Spec/Variance)",
+               rows={"cbase": [], "cHom": [("σ", "StkC", 0)]}),
 }
 
 def gen_preds():
@@ -727,17 +732,36 @@ def gen_preds():
                 for _ in range(k): t = "(nsuc %s)" % t
                 return t
             tel = "tι"
-            for (f, k) in reversed(prems):
-                tel = "tρ (ix%s %s %s) (%s)" % (P, dep(k), fld(f), tel)
+            for pr in reversed(prems):
+                if pr[0] == "σ":
+                    assert tel == "tι", "a σ-premise is last"
+                    tel = "tσ (⌜%s⌝ j %s) tι" % (pr[1], fld(pr[2]))
+                else:
+                    f, kk = pr
+                    tel = "tρ (ix%s %s %s) (%s)" % (P, dep(kk), fld(f), tel)
             L.append("T%s : RTm Δ → RTm Δ → RTm Δ → Tel Δ" % nm)
             L.append("T%s j p c = %s" % (nm, tel))
             L.append("")
             L.append("r%s : Row" % nm)
-            L.append("r%s = defRow T%s (λ σ j p c → refl)" % (nm, nm))
+            sp = [pr for pr in prems if pr[0] == "σ"]
+            if sp:
+                L.append("r%s = defRow T%s (λ σ j p c → cong (λ Z → dσ Z (lam dι)) (⌜%s⌝-sub σ j %s))" % (nm, nm, sp[0][1], fld(sp[0][2])))
+            else:
+                L.append("r%s = defRow T%s (λ σ j p c → refl)" % (nm, nm))
             L.append("")
             L.append("ok%s : %sₘ.RowOK 1 %s r%s" % (nm, P, sh, nm))
             body = "ok-ι"
-            for (f, k) in reversed(prems):
+            def ftyping(f):
+                d = "dp"
+                for m in range(f):
+                    d = "(⊢recSnd {s = %d} {k = %d} {sh = %s} %s)" % (fs[m][1], fs[m][2], shape_expr(fs[m + 1:]), d)
+                return "(⊢atDepth {a = tag 1} {j = j} {s = %d} {k = %d} (⊢recFst {s = %d} {k = %d} {sh = %s} %s))" % (
+                    fs[f][1], fs[f][2], fs[f][1], fs[f][2], shape_expr(fs[f + 1:]), d)
+            for pr in reversed(prems):
+                if pr[0] == "σ":
+                    body = "ok-σ (⊢⌜%s⌝ dj %s) ok-ι" % (pr[1], ftyping(pr[2]))
+                    continue
+                (f, k) = pr
                 ftyp = "(g0 {j = j} {p = p} %d %d %s %s)" % (fs[f][1], fs[f][2], "[]ʰ", "dp") if f == 0 and len(fs) == 1 else None
                 # the field's typing, through the payload's view
                 d = "dp"
@@ -778,6 +802,20 @@ def gen_preds():
         L.append("K%s : RTm Δ → RTm Δ → RTy Δ" % P)
         L.append("K%s d c = %sF.KF (ix%s d c)" % (P, P, P))
         L.append("")
+        L.append("-- ★ …and as a CODE (a premise of a higher stratum is a σ-field of it), OPAQUE")
+        L.append("opaque")
+        L.append("  ⌜%s⌝ : RTm Δ → RTm Δ → RTm Δ" % P)
+        L.append("  ⌜%s⌝ d c = ⌜IMu⌝ %sₘ.J %sF.DF (ix%s d c)" % (P, P, P, P))
+        L.append("")
+        L.append("  ⊢⌜%s⌝ : {Ξ : Ctx} {d c : RTm ⌊ Ξ ⌋} → Ξ ⊢ d ∷ El ⌜Nat⌝ → Ξ ⊢ c ∷ K 1 d → Ξ ⊢ ⌜%s⌝ d c ∷ U" % (P, P))
+        L.append("  ⊢⌜%s⌝ dd dc = ⊢⌜IMu⌝ %sₘ.⊢J %sF.⊢DF (⊢ix%s dd dc)" % (P, P, P, P))
+        L.append("")
+        L.append("  ⌜%s⌝-sub : (σ : Sub Δ Θ) (d c : RTm Δ) → subTm σ (⌜%s⌝ d c) ≡ ⌜%s⌝ (subTm σ d) (subTm σ c)" % (P, P, P))
+        L.append("  ⌜%s⌝-sub σ d c = cong₂ (λ I D → ⌜IMu⌝ I D (ix%s (subTm σ d) (subTm σ c))) (%sₘ.J-sub σ) (%sF.DF-sub σ)" % (P, P, P, P))
+        L.append("")
+        L.append("  El-⌜%s⌝ : {d c : RTm Δ} → El (⌜%s⌝ d c) ≅ᵀ K%s d c" % (P, P, P))
+        L.append("  El-⌜%s⌝ = credᵀ El-⌜IMu⌝" % P)
+        L.append("")
     return L
 
 PHDR = """------------------------------------------------------------------------
@@ -791,7 +829,7 @@ PHDR = """----------------------------------------------------------------------
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Knot.Preds where
 
-open import normalizer.Syntax.Types using ( _≡_; refl )
+open import normalizer.Syntax.Types using ( _≡_; refl; cong; cong₂ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax hiding ( Fin )
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
