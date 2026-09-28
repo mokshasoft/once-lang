@@ -74,10 +74,10 @@ dσ³-cong X X' Y Y' W W' Z Z' refl refl refl refl = refl
 hereTm : {Θ : Ctx} {m : RTm ⌊ Θ ⌋} → (Θ ▹ El (⌜Tm⌝ m)) ⊢ var vz ∷ K 1 (renTm vs m)
 hereTm {Θ} {m} = ⊢conv (⊢-cast {Θ ▹ El (⌜Tm⌝ m)} {var vz} {renTy vs (El (⌜Tm⌝ m))} {El (⌜Tm⌝ (renTm vs m))}
                                (cong El (⌜Tm⌝-ren vs m)) (⊢var here))
-                       (credᵀ El-⌜IMu⌝)
+                       (credᵀ El-⌜Tm⌝)
 
 toTm : {Γ : Ctx} {d a : RTm ⌊ Γ ⌋} → Γ ⊢ a ∷ K 1 d → Γ ⊢ a ∷ El (⌜Tm⌝ d)
-toTm da = ⊢conv da (csymᵀ (credᵀ El-⌜IMu⌝))
+toTm da = ⊢conv da (csymᵀ (credᵀ El-⌜Tm⌝))
 
 -- the motive's context `(Γ ▹ El I) ▹ IMu (wk I) (wk D) (var 0)`, typed
 ⊢mc : {Ξ : Ctx} {j g I D : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ g ∷ KCtx j → Ξ ⊢ I ∷ K 1 j → Ξ ⊢ D ∷ K 1 j →
@@ -116,3 +116,21 @@ module CaseRow (sh : Shape) (shok : ShOK 2 sh) (h : ℕ) (r : Row) where
 
   okX : RowOK 0 (lookSh KSig 0 h) r → RowOKₒ 1 sh rX
   okX rok {Ξ} {j} {p} {c} dj dp dc = ⊢rows {Ξ} {JT} {1} {CX j p c ∷ []} ⊢JT (⊢CX rok {Ξ} {j} {p} {c} dj dp dc ∷ᵈ []ᵈ)
+
+------------------------------------------------------------------------
+-- 4. GOAL-DIRECTED σ-PREFIX TYPING: the contexts flow from the goal (a
+--   pinned context restates the whole prefix at every step and compares it
+--   against the goal's syntactic form — measured quadratic).
+------------------------------------------------------------------------
+
+okσJ : {Γ : Ctx} {S : RTm ⌊ Γ ⌋} {T : Tel (⌊ Γ ⌋ ∙)} → Γ ⊢ S ∷ U → TelOK (Γ ▹ El S) JT T → TelOK Γ JT (tσ S T)
+okσJ {Γ} {S} {T} dS ok = ok-σ dS (subst (λ X → TelOK (Γ ▹ El S) X T) (sym (JT-ren vs)) ok)
+
+wkN : {Γ : Ctx} {B : RTy ⌊ Γ ⌋} {t : RTm ⌊ Γ ⌋} → Γ ⊢ t ∷ El ⌜Nat⌝ → (Γ ▹ B) ⊢ renTm vs t ∷ El ⌜Nat⌝
+wkN {Γ} {B} {t} dt = ⊢wk {Γ} {B} {t} {El ⌜Nat⌝} dt
+
+wkK : {Γ : Ctx} {B : RTy ⌊ Γ ⌋} {s : ℕ} {d t : RTm ⌊ Γ ⌋} → Γ ⊢ t ∷ K s d → (Γ ▹ B) ⊢ renTm vs t ∷ K s (renTm vs d)
+wkK {Γ} {B} {s} {d} {t} dt = ⊢wkSK {Γ = Γ} {B = B} {sg = KSig} {s = s} {d = d} {t = t} dt
+
+wkG : {Γ : Ctx} {B : RTy ⌊ Γ ⌋} {d g : RTm ⌊ Γ ⌋} → Γ ⊢ g ∷ KCtx d → (Γ ▹ B) ⊢ renTm vs g ∷ KCtx (renTm vs d)
+wkG {Γ} {B} {d} {g} dg = ⊢wkCtx {Γ} {B} {d} {g} dg

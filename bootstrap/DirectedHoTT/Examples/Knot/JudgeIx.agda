@@ -154,7 +154,7 @@ red1 j = red→≅ᵀ (stepᵀ (ξ-El (ξ-fcaseᵗ (βfst (tag 1) j)))
                  (stepᵀ (ξ-El (fcase-s fzero ⌜Unit⌝ (⌜Ty⌝ (snd (renTm vs (pair (tag 1) j)))))) doneᵀ))
 
 tyK≅ : (j : RTm Δ) → El (⌜Ty⌝ (snd (pair (tag 1) j))) ≅ᵀ K 0 j
-tyK≅ j = ctrnᵀ (credᵀ El-⌜IMu⌝) (credᵀ (ξ-IMuⁱ (ξ-pairʳ (βsnd (tag 1) j))))
+tyK≅ j = ctrnᵀ (credᵀ El-⌜Ty⌝) (credᵀ (ξ-IMuⁱ (ξ-pairʳ (βsnd (tag 1) j))))
 
 red0 : (j : RTm Δ) → El (fcase (fst (pair (tag 0) j)) ⌜Unit⌝ (⌜Ty⌝ (snd (renTm vs (pair (tag 0) j))))) ≅ᵀ Unit
 red0 j = red→≅ᵀ (stepᵀ (ξ-El (ξ-fcaseᵗ (βfst (tag 0) j)))
@@ -285,18 +285,23 @@ defRow T law = record
 -- ★ DIh: its index code `I` is not a subterm, so it is a σ-field; the
 --   motive context `(Γ ▹ El I) ▹ IMu (wk I) (wk D) (var 0)` is built
 --   object-level (`mc`)
-⌜Tm⌝ : RTm Δ → RTm Δ
-⌜Tm⌝ d = ⌜IMu⌝ (SI 2) KD (pair (tag 1) d)
+opaque
+  ⌜Tm⌝ : RTm Δ → RTm Δ
+  ⌜Tm⌝ d = ⌜IMu⌝ (SI 2) KD (pair (tag 1) d)
 
-⌜Tm⌝-sub : (σ : Sub Δ Θ) (d : RTm Δ) → subTm σ (⌜Tm⌝ d) ≡ ⌜Tm⌝ (subTm σ d)
-⌜Tm⌝-sub σ d = cong (λ D → ⌜IMu⌝ (SI 2) D (pair (tag 1) (subTm σ d))) (SD-sub σ KSig)
+  ⌜Tm⌝-sub : (σ : Sub Δ Θ) (d : RTm Δ) → subTm σ (⌜Tm⌝ d) ≡ ⌜Tm⌝ (subTm σ d)
+  ⌜Tm⌝-sub σ d = cong (λ D → ⌜IMu⌝ (SI 2) D (pair (tag 1) (subTm σ d))) (SD-sub σ KSig)
+
+  El-⌜Tm⌝ : {d : RTm Δ} → El (⌜Tm⌝ d) ⟶ᵀ K 1 d
+  El-⌜Tm⌝ = El-⌜IMu⌝
+
+  ⊢⌜Tm⌝ : {Ξ : Ctx} {d : RTm ⌊ Ξ ⌋} → Ξ ⊢ d ∷ El ⌜Nat⌝ → Ξ ⊢ ⌜Tm⌝ d ∷ U
+  ⊢⌜Tm⌝ dd = ⊢⌜IMu⌝ ⊢SI ⊢KD (⊢ix (lt-s lt-z) dd)
 
 ⌜Tm⌝-ren : (ρ : Ren Δ Θ) (d : RTm Δ) → renTm ρ (⌜Tm⌝ d) ≡ ⌜Tm⌝ (renTm ρ d)
 ⌜Tm⌝-ren ρ d = trans (sym (subTm-var ρ (⌜Tm⌝ d))) (trans (⌜Tm⌝-sub ⟨ ρ ⟩ᵣ d)
                  (cong ⌜Tm⌝ {x = subTm ⟨ ρ ⟩ᵣ d} {y = renTm ρ d} (subTm-var ρ d)))
 
-⊢⌜Tm⌝ : {Ξ : Ctx} {d : RTm ⌊ Ξ ⌋} → Ξ ⊢ d ∷ El ⌜Nat⌝ → Ξ ⊢ ⌜Tm⌝ d ∷ U
-⊢⌜Tm⌝ dd = ⊢⌜IMu⌝ ⊢SI ⊢KD (⊢ix (lt-s lt-z) dd)
 
 mc : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ
 mc j g I D = cext (cext g (kEl I)) (kIMu (wk 1 j I) (wk 1 j D) (kvar ffz))

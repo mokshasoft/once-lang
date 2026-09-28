@@ -189,7 +189,7 @@ module TyOK where
       wkK {s} {d} {t} dt = ⊢wkSK {Γ = Ξ} {B = El (⌜Tm⌝ j)} {sg = KSig} {s = s} {d = d} {t = t} dt
       dv : Ξ₁ ⊢ var vz ∷ K 1 j₁
       dv = ⊢conv (⊢-cast {Ξ₁} {var vz} {renTy vs (El (⌜Tm⌝ j))} {El (⌜Tm⌝ j₁)} (cong El (⌜Tm⌝-ren vs j)) (⊢var here))
-                 (credᵀ El-⌜IMu⌝)
+                 (credᵀ El-⌜Tm⌝)
       dD₁ = wkK dD
       dmc : Ξ₁ ⊢ mc j₁ (renTm vs (fst c)) (var vz) (renTm vs (fst p)) ∷ KCtx (nsuc (nsuc j₁))
       dmc = ⊢cext (⊢isuc dj₁) (⊢cext dj₁ dg₁ (⊢kEl dj₁ dv))
