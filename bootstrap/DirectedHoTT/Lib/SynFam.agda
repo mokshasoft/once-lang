@@ -31,6 +31,7 @@ open import DirectedHoTT.Metatheory.Fundamental.Syntactic using ( ⟨_⟩ᵣ; su
 open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-trans; ⟶*-appˡ; ⟶*-appʳ; ⟶*-ielimⁱ; ⟶*-ielimᵗ; ⟶*-fst; ⟶*-snd )
 open import DirectedHoTT.Lib.Sugar using ( tag; conₗ )
 open import DirectedHoTT.Lib.Syn
+open import DirectedHoTT.Lib.Tel
 open import DirectedHoTT.Lib.SynFib
 
 private
@@ -67,6 +68,10 @@ module SynFam {sg : Sig n} (ok : SigOK n sg)
   ⊢J = ⊢⌜Σ⌝ ⊢SI (⊢⌜Σ⌝ (⊢⌜IMu⌝ ⊢SI (⊢SD ok) (⊢var here)) ⊢wkC)
 
   open Fib₀ ok J J-sub ⊢J C C-sub ⊢C public
+
+  -- a σ-field in a row of this family (the index weakens past it)
+  okσ : {Γ : Ctx} {S : RTm ⌊ Γ ⌋} {T : Tel (⌊ Γ ⌋ ∙)} → Γ ⊢ S ∷ U → TelOK (Γ ▹ El S) J T → TelOK Γ J (tσ S T)
+  okσ {Γ} {S} {T} dS okT = ok-σ dS (subst (λ X → TelOK (Γ ▹ El S) X T) (sym (J-ren vs)) okT)
 
   ixJ : RTm Δ → RTm Δ → RTm Δ → RTm Δ
   ixJ i t c = pair i (pair t c)
