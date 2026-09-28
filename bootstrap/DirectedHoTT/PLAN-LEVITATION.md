@@ -111,18 +111,35 @@ CongMacro → Vec, Scoped, ScopedDepth → continue stage 4.
   ⬜ Its adequacy on `quote`.
 - ✅ D077 (decision log): judgement families are FIBRED BY THEIR SUBJECT,
   with a Ford only for computed outputs, one family per mutual block.
-- ✅ `Knot/Lookup`: `Γ ∋ x ∷ A`. Case on the context, then on the
-  variable, with a convoy; `⊢D∋` well formed. 🟡 `Knot/LookupCon`:
-  closedness of the fibre function, and the here/there fibre chains built
-  at variables and moved by `⟶*-sub`, plus the constructors (in progress).
-- ★ Lesson (memory `knot-description-normalisation-trap`): every
-  unpinned implicit, and every renamed type that mentions `KD`, makes
-  Agda normalise the whole description. So: structural `-sub` lemmas,
-  casting weakenings (`⊢wkSK`, `⊢wkCtx`), and every implicit pinned.
-  Knot/Ctx went 70 s/3.8 GB → 6.5 s/0.77 GB.
-- ⬜ Next: the remaining judgements under D077 (`⟶`, `⟶ᵀ`, `≅`/`≅ᵀ`,
-  `⊢ty`/`⊢`), generated from `Spec/Typing`; `scopeAt` over Tel (restore
-  `ScopeHazard`); Stage 6 metrics.
+- ✅ `Knot/Lookup` + `Knot/LookupCon`: `Γ ∋ x ∷ A` complete. The fibre
+  computes and both constructors are typed (64 s after the β-chain fix;
+  memory `beta-chains-cast-each-step`).
+- ✅ `Lib/SynFib`: a family fibred by case on a SYNTAX term, generic in the
+  signature. Rows are natural families `R j p c` typed at any terms. The
+  fibre method, its typing, its computation rule (`fib-β`) and its
+  closedness are each proven ONCE (8.5 s).
+- ✅ `gen-knot` emits `Knot/Ctors`: the 51 formers typed at any depth.
+- 🟡 `Knot/Judge`: `⊢ty`/`⊢` as ONE family over both sorts, with a
+  sort-dependent convoy (`Γ`, plus `A` for terms, by `fcase`). The
+  family is well formed (`⊢D⊢`) and the fibre computes (`fibK`).
+  Constructors `⊢ty-base` and `⊢ty-Π` are typed. 12 of 13 `⊢ty` rows are
+  done (⬜ `DIh`: its index code is a σ-field).
+- ★ Lessons (memory `knot-description-normalisation-trap`,
+  `beta-chains-cast-each-step`, `agda-profile-script`). Every unpinned
+  implicit, and every renamed type that mentions `KD`, normalises the
+  whole description. A chain of `β _ _` builds substitution towers.
+  `tools/agda-profile.sh` finds both.
+- ⬜ Remaining for the judgement layer, in dependency order:
+  1. the `⊢` term rows (38 heads, plus `⊢conv` in every fibre). They need
+     object-level `pw?`/`flat?`/`NoNatC`/`occTm` (boolean side conditions)
+     and the substitutions `single`/`single2`/`nrs`/`pairS`/`fsucS`/
+     `methS`/`iinst`/`MethTy` over `Knot/Sub`'s `sub`/`CONS`;
+  2. `⟶` (73 rules; nested patterns), `⟶ᵀ`, `≅`/`≅ᵀ`. `⊢conv` needs `≅ᵀ`:
+     the `⊢` family takes its code as a σ-field (stratified, D077);
+  3. extend `gen-knot` to emit the rows, their laws and typings, and the
+     constructors from `Spec/Typing`. The hand-written `⊢ty` rows are its
+     templates;
+  4. `scopeAt` over Tel (restore `ScopeHazard`); Stage 6 metrics.
 
 ## Stage 1 — DONE (2026-09-26, branch `ocp-0009-levitation`)
 
