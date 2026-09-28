@@ -29,6 +29,7 @@ open import DirectedHoTT.Examples.Knot.Ctx
 open import DirectedHoTT.Examples.Knot.JudgeIx
 open import DirectedHoTT.Examples.Knot.JudgeTmIx
 open import DirectedHoTT.Examples.Knot.JudgeRowsTm
+open import DirectedHoTT.Examples.Knot.JudgeCase using ( w1; w2 )
 open import DirectedHoTT.Examples.Knot.Judge
 
 -- ★ `⊢lam : Γ ⊢ty A → (Γ ▹ A) ⊢ t ∷ B → Γ ⊢ lam t ∷ Π A B`

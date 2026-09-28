@@ -24,5 +24,6 @@
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Trust.Knot4 where
 
-import DirectedHoTT.Examples.Knot.JudgeRowsTm
-import DirectedHoTT.Examples.Knot.JudgeRowsTy
+import DirectedHoTT.Examples.Knot.JudgeTmIx
+import DirectedHoTT.Examples.Knot.Lookup
+import DirectedHoTT.Examples.Knot.LookupCon

@@ -21,7 +21,7 @@ open import DirectedHoTT.Examples.Knot.Ctors
 open import DirectedHoTT.Lib.Tel
 open import DirectedHoTT.Lib.Syn
 open import DirectedHoTT.Lib.SynFib using ( Row )
-open import DirectedHoTT.Lib.SynPat using ( module Pat )
+open import DirectedHoTT.Examples.Knot.JudgeCase
 open import DirectedHoTT.Examples.Knot.Sig
 open import DirectedHoTT.Examples.Knot.Ctx
 open import DirectedHoTT.Examples.Knot.Lookup using ( rows; ⊢rows )
@@ -56,7 +56,7 @@ TLam j q c = tρ (tyIx j (fst c) (fst q)) (tρ (tmIx (nsuc j) (cext (fst c) (fst
 rLamI : Row
 rLamI = record { R = λ j q c → ⌜ TLam j q c ⌝ᵗ ; R-sub = λ σ j q c → refl }
 
-module PLam = Pat KOK JT JT-sub ⊢JT (CI sh-klam) (CI-sub sh-klam) (⊢CI ok-klam) 0 2 rLamI
+module PLam = CaseRow sh-klam ok-klam 2 rLamI
 
 okLamT : {Ξ : Ctx} {j q c : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El ⌜Nat⌝ →
          Ξ ⊢ q ∷ PayV sh-kPi (pair (tag 0) j) (SI 2) (SD KSig) → Ξ ⊢ c ∷ El (CIat sh-klam (pair (tag 0) j)) →
@@ -72,37 +72,24 @@ okLamI {Ξ} {j} {q} {c} dj dq dc = ⊢tel {Ξ} {JT} {TLam j q c} ⊢JT (okLamT d
 
 -- the outer row: one rule, the case on the type
 CLam : RTm Δ → RTm Δ → RTm Δ → RTm Δ
-CLam j p c = PLam.CASE j (snd c) (pair (fst c) p)
+CLam = PLam.CX
 
 rLam : Row
-rLam = record
-  { R = λ j p c → rows (CLam j p c ∷ [])
-  ; R-sub = λ σ j p c →
-      trans (rows-sub' σ (CLam j p c ∷ []))
-            (cong (λ X → rows (X ∷ [])) {x = subTm σ (CLam j p c)} {y = CLam (subTm σ j) (subTm σ p) (subTm σ c)}
-                  (PLam.CASE-sub σ j (snd c) (pair (fst c) p))) }
+rLam = PLam.rX
 
 ⊢CLam : {Ξ : Ctx} {j p c : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El ⌜Nat⌝ →
         Ξ ⊢ p ∷ PayV sh-klam (pair (tag 1) j) (SI 2) (SD KSig) → Ξ ⊢ c ∷ El (CTat (pair (tag 1) j)) →
         Ξ ⊢ CLam j p c ∷ Desc JT
-⊢CLam {Ξ} {j} {p} {c} dj dp dc =
-  PLam.⊢CASE {Ξ} {j} {snd c} {pair (fst c) p} okLamI lt-z dj (⊢tyOf dc) (⊢cI sh-klam ok-klam dj (⊢ctxOf dc) dp)
+⊢CLam = PLam.⊢CX okLamI
 
 okLam : RowOK 1 sh-klam rLam
-okLam {Ξ} {j} {p} {c} dj dp dc = ⊢rows {Ξ} {JT} {1} {CLam j p c ∷ []} ⊢JT (⊢CLam {Ξ} {j} {p} {c} dj dp dc ∷ᵈ []ᵈ)
+okLam = PLam.okX okLamI
 
 ------------------------------------------------------------------------
 -- ⊢app : Γ ⊢ t ∷ Π A B → Γ ⊢ u ∷ A → Γ ⊢ app t u ∷ B[u]
 --   `A`, `B` are not in the subject: σ-fields; `B[u]` is COMPUTED: Ford
 --   (`sub0` is opaque — see Knot/Sub)
 ------------------------------------------------------------------------
-
-w1 w2 : RTm Δ → RTm _
-w1 x = renTm vs x
-w2 x = renTm vs (renTm vs x)
-
-w2-sub : (σ : Sub Δ Θ) (x : RTm Δ) → subTm (extS (extS σ)) (w2 x) ≡ w2 (subTm σ x)
-w2-sub σ x = trans (wkS (extS σ) (w1 x)) (cong w1 (wkS σ x))
 
 TAppI : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 TAppI J G T Q A B X = tρ (tmIx J G T (kPi A B)) (tρ (tmIx J G Q A) (tσ (⌜Id⌝ (⌜Ty⌝ J) X (sub0 0 J B Q)) tι))
@@ -130,9 +117,6 @@ okTAppI dJ dG dT dQ dA dB dX =
     (ok-ρ (⊢tmIx dJ dG dQ dA)
       (ok-σ (⊢⌜Id⌝ (⊢⌜Ty⌝ dJ) (toTy dX) (toTy (⊢sub0 lt-z dJ dB dQ))) ok-ι))
 
-dσ²-cong : (X X' : RTm Δ) (Y Y' : RTm (Δ ∙)) (Z Z' : RTm ((Δ ∙) ∙)) → X ≡ X' → Y ≡ Y' → Z ≡ Z' →
-           dσ X (lam (dσ Y (lam Z))) ≡ dσ X' (lam (dσ Y' (lam Z')))
-dσ²-cong X X' Y Y' Z Z' refl refl refl = refl
 
 TApp : RTm Δ → RTm Δ → RTm Δ → Tel Δ
 TApp j p c = tσ (⌜Ty⌝ j) (tσ (⌜Ty⌝ (nsuc (w1 j)))
