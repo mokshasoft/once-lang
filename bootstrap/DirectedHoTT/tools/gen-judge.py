@@ -227,8 +227,9 @@ def dty(d, dJ="dJ"):
     return t
 def pname(p):
     if p in ("J", "G", "X"): return p
+    if p[0] == "r": return "R%dᵢ%d" % (p[1], p[2])
     return {"f": "F", "q": "Q", "e": "E"}[p[0]] + str(p[1])
-def is_param(e): return e in ("J", "G", "X") or (isinstance(e, tuple) and e[0] in ("f", "q", "e"))
+def is_param(e): return e in ("J", "G", "X") or (isinstance(e, tuple) and e[0] in ("f", "q", "e", "r"))
 def var(m):
     t = "vz"
     for _ in range(m): t = "(vs %s)" % t
@@ -257,7 +258,9 @@ class PObj:
         else:
             self.collect_code(body)
         order = ["J", "G", "X"] + [("f", i) for i in range(len(rc.fields))] \
-              + [("q", i) for i in range(len(rc.tfields))] + [("e", i) for i in range(len(rc.ex))]
+              + [("q", i) for i in range(len(rc.tfields))] \
+              + [("r", m, i) for m, (_, hh) in enumerate(rc.nest) for i in range(len(SIG[hh][1]))] \
+              + [("e", i) for i in range(len(rc.ex))]
         self.params = [p for p in order if p in used]
 
     def use(self, p):
@@ -491,6 +494,11 @@ def pty(rc, p):
     if p == "J": return "El ⌜Nat⌝"
     if p == "G": return "KCtx J"
     if p == "X": return FAM["XK"]
+    if p[0] == "r":
+        f = SIG[rc.nest[p[1]][1]][1][p[2]]
+        if f[0] == "nat": return "El ⌜Nat⌝"
+        if f[0] == "var": return "FinI J"
+        return "K %d %s" % (f[1], dep(DEPTHS[f[2]]))
     if p[0] in ("f", "q"):
         fs = rc.fields if p[0] == "f" else rc.tfields
         f = fs[p[1]]
@@ -558,17 +566,18 @@ def gen_pobj(po):
 
 # ------------------------------------------------------------ a row: its alternatives
 class RowCtx:
-    def __init__(self, name, case, ex):
+    def __init__(self, name, case, ex, nest=()):
         self.n = name
         self.case = case
         self.ex = ex
+        self.nest = list(nest)     # [(scrutinee, head)] of the nested cases above the telescope
         self.sort, self.fields, self.idx = SIG[name]
         self.tfields = SIG[case][1] if case else []
 
 class Alt:
     """one rule: its existentials (σ-prefix codes) and its premises"""
     def __init__(self, name, tag, case, spec):
-        self.rc = RowCtx(name, case, spec.get("ex", []))
+        self.rc = RowCtx(name, case, spec.get("ex", []), spec.get("nest", ()))
         self.n = name
         self.case = case
         self.pfx = "T" + FAMKEY + name + tag
@@ -578,6 +587,40 @@ class Alt:
                 assert not (isinstance(p, tuple) and p[0] == "e" and p[1] >= i), (name, i, p)
         self.body = PObj(self.rc, self.pfx, "tel", spec["ents"])
 
+# ------------------------------------------------------------ nested subject cases (NestIx)
+def lt_of(sort): return "lt-z" if sort == 0 else "(lt-s lt-z)"
+def fld_of(rc, scr):
+    """the field a scrutinee names: ('f', i) a subject field, ('r', m, i) the m-th pattern's"""
+    if scr[0] == "f": return rc.fields[scr[1]]
+    return SIG[rc.nest[scr[1]][1]][1][scr[2]]
+def nest_sort(rc, m):
+    f = fld_of(rc, rc.nest[m][0])
+    assert f[0] == "rec" and f[2] == 0, ("a nested case is on a field at the SAME depth", rc.n, m, f)
+    return f[1]
+def stack_of(rc, m):
+    """the stack below level m: the subject's payload, then patterns 0 … m-1"""
+    return [(FAM["S"], rc.n)] + [(nest_sort(rc, k), rc.nest[k][1]) for k in range(m)]
+def stk_expr(st):
+    t = "[]ˢ"
+    for (s0, h) in reversed(st): t = "(%d , %s ∷ˢ %s)" % (s0, shape_name(h), t)
+    return t
+def stkok_expr(st):
+    t = "[]ᵒ"
+    for (s0, h) in reversed(st): t = "(ok∷ %s %s %s)" % (lt_of(s0), ok_name(h), t)
+    return t
+def elem_expr(cc, k):
+    t = "(snd %s)" % cc
+    for _ in range(k): t = "(snd %s)" % t
+    return "(fst %s)" % t
+def elem_typ(st, k, base):
+    """the k-th stack element's typing, from the stack's typing"""
+    d = base
+    for t in range(k):
+        s0, h = st[t]
+        d = "(⊢psTl {s = %d} {sh = %s} {st = %s} {d = j} %s)" % (s0, shape_name(h), stk_expr(st[t + 1:]), d)
+    s0, h = st[k]
+    return "(⊢psHd {s = %d} {sh = %s} {st = %s} {d = j} %s)" % (s0, shape_name(h), stk_expr(st[k + 1:]), d)
+
 def gen_alt(al):
     L = []
     for co in al.codes: L += gen_pobj(co)
@@ -586,10 +629,18 @@ def gen_alt(al):
     n = len(rc.ex)
     N, I = al.pfx, al.pfx + "I"
     case = al.case is not None
-    a = "q" if case else "p"
+    L_ = len(rc.nest)
+    a = "q" if (case or L_) else "p"
     payload = "(snd c)" if case else "p"
     def src(p, sub=False):
         cc = "(subTm σ c)" if sub else "c"
+        if L_:
+            qq = "(subTm σ q)" if sub else "q"
+            if p == "J": return "(subTm σ j)" if sub else "j"
+            if p == "X": return "(fst %s)" % cc
+            if p[0] == "f": return fieldexpr(elem_expr(cc, 0), p[1])
+            if p[0] == "r": return fieldexpr(qq, p[2]) if p[1] == L_ - 1 else fieldexpr(elem_expr(cc, p[1] + 1), p[2])
+            raise ValueError(p)
         if p == "J": return "(subTm σ j)" if sub else "j"
         if p == "G": return "(fst %s)" % cc
         if p == "X": return ("(snd %s)" % cc) if FAMKEY == "⊢" else cc
@@ -644,12 +695,29 @@ def gen_alt(al):
         d = base
         for m in range(i):
             f = fs[m]
-            d = "(⊢recSnd {s = %d} {k = %d} {sh = %s} %s)" % (f[1], f[2], shape_expr(fs[m + 1:]), d)
+            if f[0] == "nat":
+                d = "(⊢natSnd {sh = %s} %s)" % (shape_expr(fs[m + 1:]), d)
+            else:
+                d = "(⊢recSnd {s = %d} {k = %d} {sh = %s} %s)" % (f[1], f[2], shape_expr(fs[m + 1:]), d)
+        if fs[i][0] == "nat":
+            return "(⊢natFst {sh = %s} %s)" % (shape_expr(fs[i + 1:]), d)
         f = fs[i]
         assert f[0] == "rec", (al.n, fs, i)
         return "(⊢atDepth {a = tag %d} {j = j} {s = %d} {k = %d} (⊢recFst {s = %d} {k = %d} {sh = %s} %s))" % (
             S_, f[1], f[2], f[1], f[2], shape_expr(fs[i + 1:]), d)
     def styp(p):
+        if L_:
+            st = stack_of(rc, L_ - 1)
+            sL = nest_sort(rc, L_ - 1)
+            stk = "(⊢ncStk %d %d %s dc)" % (FAM["S"], sL, stk_expr(st))
+            if p == "J": return "dj"
+            if p == "X": return "(⊢ncTgt %d %d %s dc)" % (FAM["S"], sL, stk_expr(st))
+            if p[0] == "f": return fieldtyp(rc.fields, elem_typ(st, 0, stk), FAM["S"], p[1])
+            if p[0] == "r":
+                fsm = SIG[rc.nest[p[1]][1]][1]
+                base = "dq" if p[1] == L_ - 1 else elem_typ(st, p[1] + 1, stk)
+                return fieldtyp(fsm, base, nest_sort(rc, p[1]), p[2])
+            raise ValueError(p)
         if p == "J": return "dj"
         if p == "G": return "(⊢gI %s dc)" % shape_name(al.n) if case else "(⊢ctxOf dc)"
         if p == "X": return FAM["X"]
@@ -659,6 +727,10 @@ def gen_alt(al):
         if p == "J": return ("nat",)
         if p == "G": return ("ctx",)
         if p == "X": return ("K", 0 if FAM["XK"].startswith("K 0") else 1, "j")
+        if p[0] == "r":
+            f = SIG[rc.nest[p[1]][1]][1][p[2]]
+            if f[0] == "nat": return ("nat",)
+            return ("K", f[1], nsucs(f[2], "j"))
         fs = rc.fields if p[0] == "f" else rc.tfields
         f = fs[p[1]]
         if f[0] == "var": return ("fin",)
@@ -690,7 +762,13 @@ def gen_alt(al):
     def okinst(po, lvl):
         return "(ok%s {_}%s%s)" % (po.name + "I", "".join(" {%s}" % arg(p, lvl) for p in po.params),
                                    "".join(" " + ptyp(p, lvl) for p in po.params))
-    if case:
+    if L_:
+        st = stack_of(rc, L_ - 1)
+        sL = nest_sort(rc, L_ - 1)
+        sig = "Ξ ⊢ q ∷ PayV %s (pair (tag %d) j) (SI 2) (SD KSig) → Ξ ⊢ c ∷ El (NCat %d %s (pair (tag %d) j))" % (
+            shape_name(rc.nest[L_ - 1][1]), sL, FAM["S"], stk_expr(st), sL)
+        srcs = "dj dq dc"
+    elif case:
         sig = "Ξ ⊢ q ∷ PayV %s (pair (tag 0) j) (SI 2) (SD KSig) → Ξ ⊢ c ∷ El (CIat %s (pair (tag 0) j))" % (
             shape_name(al.case), shape_name(al.n))
         srcs = "dj dq dc"
@@ -709,6 +787,106 @@ def gen_alt(al):
     L.append("ok%s {Ξ} {j} {%s} {c} %s = %s" % (N, a, srcs, expr))
     L.append("")
     return L
+
+def fieldtyp_g(fs, base, S_, i):
+    """a payload field's typing through the payload's view (`base` types the payload at `(S_ , j)`)"""
+    if fs[i][0] == "var":
+        return "(⊢varOf {j = j} %s)" % base
+    d = base
+    for m in range(i):
+        f = fs[m]
+        if f[0] == "nat":
+            d = "(⊢natSnd {sh = %s} %s)" % (shape_expr(fs[m + 1:]), d)
+        else:
+            d = "(⊢recSnd {s = %d} {k = %d} {sh = %s} %s)" % (f[1], f[2], shape_expr(fs[m + 1:]), d)
+    f = fs[i]
+    if f[0] == "nat":
+        return "(⊢natFst {sh = %s} %s)" % (shape_expr(fs[i + 1:]), d)
+    return "(⊢atDepth {a = tag %d} {j = j} {s = %d} {k = %d} (⊢recFst {s = %d} {k = %d} {sh = %s} %s))" % (
+        S_, f[1], f[2], f[1], f[2], shape_expr(fs[i + 1:]), d)
+
+def gen_nest(al):
+    """a rule whose SUBJECT has a nested pattern: one case per level; returns (lines, outer component)"""
+    rc = al.rc
+    L = len(rc.nest)
+    S = FAM["S"]
+    Jn, dJn = FAM["J"], FAM["dJ"]
+    Jsub = Jn.replace(".J", ".J-sub")
+    N = al.pfx
+    out = gen_alt(al)
+    Pn = lambda m: "P%sᶜ%d" % (N, m)          # the case on scrutinee m (its row is level m+1)
+    Rn = lambda k: "r%sL%d" % (N, k)           # the row at level k (k ≥ 1)
+    OKn = lambda k: "okr%sL%d" % (N, k)
+    def scrut_at(k, scr):
+        """scrutinee `scr` as a term at level k (k = 0: the outer row's `p`)"""
+        if k == 0:
+            assert scr[0] == "f"
+            return fieldexpr("p", scr[1])
+        if scr[0] == "f": return fieldexpr(elem_expr("c", 0), scr[1])
+        return fieldexpr("q", scr[2]) if scr[1] == k - 1 else fieldexpr(elem_expr("c", scr[1] + 1), scr[2])
+    def scrut_typ(k, scr):
+        if k == 0:
+            return fieldtyp_g(rc.fields, "dp", S, scr[1])
+        st = stack_of(rc, k - 1)
+        stk = "(⊢ncStk %d %d %s dc)" % (S, nest_sort(rc, k - 1), stk_expr(st))
+        if scr[0] == "f": return fieldtyp_g(rc.fields, elem_typ(st, 0, stk), S, scr[1])
+        fsm = SIG[rc.nest[scr[1]][1]][1]
+        base = "dq" if scr[1] == k - 1 else elem_typ(st, scr[1] + 1, stk)
+        return fieldtyp_g(fsm, base, nest_sort(rc, scr[1]), scr[2])
+    def convoy_at(k):
+        """the convoy handed to the case at level k"""
+        if k == 0: return "(pair c (pair p unit))"
+        st = stack_of(rc, k - 1)
+        els = [elem_expr("c", t) for t in range(len(st))] + ["q"]
+        v = "unit"
+        for e in reversed(els): v = "(pair %s %s)" % (e, v)
+        return "(pair (fst c) %s)" % v
+    def convoy_typ(k):
+        sk = nest_sort(rc, k)
+        stk_k = stack_of(rc, k)
+        if k == 0:
+            v = "(⊢psCons []ᵒ dj dp (⊢psNil {d = j}))"
+            X = FAM["X"]
+        else:
+            st = stack_of(rc, k - 1)
+            sp = nest_sort(rc, k - 1)
+            stk = "(⊢ncStk %d %d %s dc)" % (S, sp, stk_expr(st))
+            els = [elem_typ(st, t, stk) for t in range(len(st))] + ["dq"]
+            v = "(⊢psNil {d = j})"
+            for t in reversed(range(len(els))):
+                v = "(⊢psCons %s dj %s %s)" % (stkok_expr(stk_k[t + 1:]), els[t], v)
+            X = "(⊢ncTgt %d %d %s dc)" % (S, sp, stk_expr(st))
+        return "(⊢ncMkC %d %d %s %s %s dj %s %s)" % (S, sk, stk_expr(stk_k), lt_of(sk), stkok_expr(stk_k), X, v)
+    # the innermost row: the telescope
+    out.append("%s : Row" % Rn(L))
+    out.append("%s = defRow₀ %s %s-law" % (Rn(L), N, N))
+    for m in reversed(range(L)):
+        sm, hm = nest_sort(rc, m), rc.nest[m][1]
+        st = stack_of(rc, m)
+        k = m + 1
+        if k < L:
+            # an intermediate row: the next case
+            scr = rc.nest[k][0]
+            desc = "%s.CASE j %s %s" % (Pn(k), scrut_at(k, scr), convoy_at(k))
+            out.append("%s : Row" % Rn(k))
+            out.append("%s = record { R = λ j q c → %s ; R-sub = λ σ j q c → %s.CASE-sub σ j %s %s }" % (
+                Rn(k), desc, Pn(k), scrut_at(k, scr), convoy_at(k)))
+        out.append("module %s = Pat KOK %s %s %s (NC %d %s) (NC-sub %d %s) (⊢NC %s %s) %d %d %s" % (
+            Pn(m), Jn, Jsub, dJn, S, stk_expr(st), S, stk_expr(st), lt_of(S), stkok_expr(st), sm, SIG[hm][2], Rn(k)))
+        out.append("%s : %s.RowOK %d %s %s" % (OKn(k), Pn(m), sm, shape_name(hm), Rn(k)))
+        if k == L:
+            out.append("%s {Ξ} {j} {q} {c} dj dq dc = ⊢tel {Ξ} {%s} {%s j q c} %s (ok%s dj dq dc)" % (OKn(k), Jn, N, dJn, N))
+        else:
+            scr = rc.nest[k][0]
+            out.append("%s {Ξ} {j} {q} {c} dj dq dc = %s.⊢CASE {Ξ} {j} {%s} {%s} %s %s dj %s %s" % (
+                OKn(k), Pn(k), scrut_at(k, scr), convoy_at(k), OKn(k + 1), lt_of(nest_sort(rc, k)), scrut_typ(k, scr), convoy_typ(k)))
+        out.append("")
+    scr0 = rc.nest[0][0]
+    comp = ((lambda P, i0: lambda j, p, c: "(%s.CASE %s %s (pair %s (pair %s unit)))" % (P, j, fieldexpr(p, i0), c, p))(Pn(0), scr0[1]),
+            "(%s.CASE-sub σ j %s %s)" % (Pn(0), scrut_at(0, scr0), convoy_at(0)),
+            "%s.⊢CASE {Ξ} {j} {%s} {%s} %s %s dj %s %s" % (Pn(0), scrut_at(0, scr0), convoy_at(0), OKn(1), lt_of(nest_sort(rc, 0)),
+                                                        scrut_typ(0, scr0), convoy_typ(0)))
+    return out, comp
 
 def conv_comp(name):
     ki = SIG[name][2]
@@ -731,7 +909,8 @@ def gen_head(name, spec):
         alts = spec.get("alts", [spec])
         tags = [""] if len(alts) == 1 else ["₁", "₂", "₃", "₄", "₅", "₆", "₇", "₈", "₉"][:len(alts)]
         As = [Alt(name, t, case, a) for t, a in zip(tags, alts)]
-        for al in As: L += gen_alt(al)
+        for al in As:
+            if not al.rc.nest: L += gen_alt(al)
         if case:
             assert len(As) == 1 and FAMKEY == "⊢"
             N = As[0].pfx
@@ -746,6 +925,11 @@ def gen_head(name, spec):
         else:
             for al in As:
                 N = al.pfx
+                if al.rc.nest:
+                    ls, comp = gen_nest(al)
+                    L += ls
+                    comps.append(comp)
+                    continue
                 comps.append(((lambda N: lambda j, p, c: "⌜ %s %s %s %s ⌝ᵗ" % (N, j, p, c))(N), "(%s-law σ j p c)" % N,
                               "⊢tel {Ξ} {%s} {%s j p c} %s (ok%s dj dp dc)" % (FAM["J"], N, FAM["dJ"], N)))
     if FAMKEY == "⊢" and SIG[name][0] == 1:
@@ -1002,7 +1186,14 @@ def xi_rules(fam):
         if alts: out[h] = alts
     return out
 
-COMP = {"⟶": {}, "⟶ᵀ": {}}
+R2 = lambda m, i: ("r", m, i)
+COMP = {"⟶": {
+  "app":    [dict(nest=[(F(0), "lam")], ents=[("id", ("Tm", "J"), "X", ("sub0", 1, "J", R2(0, 0), F(1)))])],      # β
+  "fst":    [dict(nest=[(F(0), "pair")], ents=[("id", ("Tm", "J"), "X", R2(0, 0))])],                              # βfst
+  "snd":    [dict(nest=[(F(0), "pair")], ents=[("id", ("Tm", "J"), "X", R2(0, 1))])],                              # βsnd
+  "fcase":  [dict(nest=[(F(0), "fzero")], ents=[("id", ("Tm", "J"), "X", F(1))])],                                 # fcase-z
+  "natrec": [dict(nest=[(F(2), "nzero")], ents=[("id", ("Tm", "J"), "X", F(0))])],                                 # natrec-zero
+}, "⟶ᵀ": {}}
 
 def gen_red(fam):
     global FAM, FAMKEY
@@ -1101,6 +1292,9 @@ open import DirectedHoTT.Examples.Knot.JudgeIx using ( defRow; rows-sub'; ⌜Tm�
 open import DirectedHoTT.Examples.Knot.JudgeCase using ( w1; w2; w3; w1-sub; w2-sub; w3-sub; hereTm; toTm; wkN; wkK; wkG )
 open import DirectedHoTT.Examples.Knot.GenHelpers
 open import DirectedHoTT.Examples.Knot.RedIx
+open import DirectedHoTT.Examples.Knot.NestIx
+open import DirectedHoTT.Lib.SynPat using ( module Pat )
+open import DirectedHoTT.Examples.Knot.JudgeCase using ( defRow₀ )
 EXTRA
 private
   variable
