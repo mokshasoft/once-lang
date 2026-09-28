@@ -35,6 +35,7 @@ open import DirectedHoTT.Examples.Knot.Sig
 open import DirectedHoTT.Examples.Knot.Ctx
 open import DirectedHoTT.Examples.Knot.Ren using ( wk; wk-sub; ⊢wkS )
 open import DirectedHoTT.Examples.Knot.Lookup
+open import DirectedHoTT.Lib.SynFib using ( ⊢conRow )
 
 private
   variable
@@ -568,14 +569,6 @@ module _ {Γ : Cx} where
 ------------------------------------------------------------------------
 -- 5. ★ THE CONSTRUCTORS.
 ------------------------------------------------------------------------
-
--- a constructor of a one-row fibre
-⊢conRow : {Ξ : Ctx} {I D i C p : RTm ⌊ Ξ ⌋} → Ξ ⊢ I ∷ U → Ξ ⊢ D ∷ DescF I → Ξ ⊢ i ∷ El I →
-          app D i ⟶* rows (C ∷ []) → Ξ ⊢ C ∷ Desc I → Ξ ⊢ p ∷ El (dpay I D C) → Ξ ⊢ conₗ 0 p ∷ IMu I D i
-⊢conRow {Ξ} {I} {D} {i} {C} {p} dI dD di r dC dp =
-  ⊢con-fib dI dD di r
-    (⊢pay-σ dI dD (⊢selF dI (dC ∷ᵈ []ᵈ)) (⊢conv (⊢tag lt-z) (csymᵀ (credᵀ El-⌜Fin⌝)))
-            (⊢conv dp (csymᵀ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (selF-β {Cs = C ∷ []} nth-z)))))))
 
 here∋ : {Γ : Cx} → RTm Γ → RTm Γ
 here∋ e = conₗ 0 (pair e unit)

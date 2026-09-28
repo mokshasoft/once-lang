@@ -25,16 +25,16 @@ open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast; wk-cancel-tm )
 open import DirectedHoTT.Metatheory.SubjectReductionBase using () renaming ( wk-sub to wkS )
 open import DirectedHoTT.Metatheory.Fundamental.Syntactic using ( ⟨_⟩ᵣ; subTm-var )
-open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; _⟶ᵀ*_; stepᵀ; doneᵀ )
+open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; _⟶ᵀ*_; stepᵀ; doneᵀ; ⟶*-trans; ⟶*-appˡ; ⟶*-appʳ; ⟶*-ielimⁱ; ⟶*-ielimᵗ; ⟶*-fst; ⟶*-snd; ⟶*-pairˡ; ⟶*-pairʳ; ⟶*-con; ⟶ᵀ*-IMu )
 open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_; conₗ; tag; Lt; lt-z; lt-s; subC; selF-sub; []ᵈ; _∷ᵈ_ )
-open import DirectedHoTT.Lib.SynView using ( PayV; ⊢recFst; ⊢recSnd; ⊢atDepth )
+open import DirectedHoTT.Lib.SynView using ( PayV; payV-red; ⊢recFst; ⊢recSnd; ⊢atDepth )
 open import DirectedHoTT.Lib.FinFam using ( FinI; ffz; ⊢ffz; ⊢isuc )
 open import DirectedHoTT.Examples.Knot.Ctors
 open import DirectedHoTT.Examples.Knot.Ren using ( wk; wk-sub; ⊢wkS )
 open import DirectedHoTT.Lib.Tel
 open import DirectedHoTT.Lib.Sorted using ( ⊢sortOf )
 open import DirectedHoTT.Lib.Syn
-open import DirectedHoTT.Lib.SynFib using ( Row; module Fib )
+open import DirectedHoTT.Lib.SynFib using ( Row; module Fib; ⊢conRow )
 open import DirectedHoTT.Examples.Knot.Sig
 open import DirectedHoTT.Examples.Knot.Ctx
 open import DirectedHoTT.Examples.Knot.Lookup using ( ⌜Ctx⌝; rows; ⊢rows )
@@ -394,6 +394,14 @@ private
   okNone : {s : ℕ} {sh : Shape} → RowOK s sh rNone
   okNone dj dp dc = ⊢rows {I = JT} {Cs = []} ⊢JT []ᵈ
 
+-- the Π/Σ row's telescope, typed (what a constructor needs)
+okPiT : {Ξ : Ctx} {j p c : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El ⌜Nat⌝ →
+        Ξ ⊢ p ∷ PayV sh-kPi (pair (tag 0) j) (SI 2) (SD KSig) → Ξ ⊢ c ∷ El (CTat (pair (tag 0) j)) → TelOK Ξ JT (TPi j p c)
+okPiT dj dp dc = ok-ρ (⊢tyIx dj dg dA) (ok-ρ (⊢tyIx (⊢isuc dj) (⊢cext dj dg dA) dB) ok-ι)
+  where dg = ⊢ctxOf dc
+        dA = f0 0 0 (rec 0 1 ∷ʰ []ʰ) dp
+        dB = f0 0 1 []ʰ (r1 0 0 (rec 0 1 ∷ʰ []ʰ) dp)
+
 -- ★ every row typed, by its position in the signature
 rowOK : {s c k : ℕ} {shs : Shapes c} {sh : Shape} → NthG KSig s shs → NthSh shs k sh → RowOK s sh (rowT s k)
 rowOK nthᵍ-z nthʰ-z = ok0 {sh-kbase}
@@ -482,3 +490,90 @@ module _ {Γ : Ctx} where
 
   ty-K⊢ : {x : RTm ⌊ Γ ⌋} → Γ ⊢ x ∷ El JT → Γ ⊢ty K⊢ x
   ty-K⊢ dx = ty-IMu ⊢JT ⊢D⊢ dx
+
+------------------------------------------------------------------------
+-- 7. ★ THE FIBRE COMPUTES, and the constructors.
+------------------------------------------------------------------------
+
+-- the fibre function at an index is the case on its subject
+D⊢-β : (i t c : RTm Δ) → app D⊢ (ixJ i t c) ⟶* app (ielim KD i FIBM t) c
+D⊢-β {Δ} i t c =
+  step (β B x)
+    (subst (λ z → z ⟶* app (ielim KD i FIBM t) c) (sym e)
+      (⟶*-trans {t = app (ielim KD (fst x) FIBM (fst (snd x))) (snd (snd x))}
+                {u = app (ielim KD i FIBM t) (snd (snd x))} {v = app (ielim KD i FIBM t) c}
+        (⟶*-appˡ (⟶*-trans {t = ielim KD (fst x) FIBM (fst (snd x))} {u = ielim KD i FIBM (fst (snd x))}
+                            {v = ielim KD i FIBM t}
+                    (⟶*-ielimⁱ (step (βfst i (pair t c)) done))
+                    (⟶*-ielimᵗ (⟶*-trans {t = fst (snd x)} {u = fst (pair t c)} {v = t}
+                                  (⟶*-fst (step (βsnd i (pair t c)) done)) (step (βfst t c) done)))))
+        (⟶*-appʳ (⟶*-trans {t = snd (snd x)} {u = snd (pair t c)} {v = c}
+                   (⟶*-snd (step (βsnd i (pair t c)) done)) (step (βsnd t c) done)))))
+  where
+    x = ixJ i t c
+    B : RTm (Δ ∙)
+    B = app (ielim KD (fst (var vz)) FIBM (fst (snd (var vz)))) (snd (snd (var vz)))
+    e : subTm (single x) B ≡ app (ielim KD (fst x) FIBM (fst (snd x))) (snd (snd x))
+    e = cong₂ (λ D M → app (ielim D (fst x) M (fst (snd x))) (snd (snd x)))
+              {x = subTm (single x) (KD {Δ ∙})} {x' = KD} {y = subTm (single x) (FIBM {Δ ∙})} {y' = FIBM}
+              (SD-sub (single x) KSig) (FIBM-sub (single x))
+
+-- ★ at a canonical subject, the fibre IS the row
+fibK : {s c₀ k : ℕ} {shs : Shapes c₀} {sh : Shape} {j p c : RTm Δ} → NthG KSig s shs → NthSh shs k sh →
+       app D⊢ (ixJ (pair (tag s) j) (conₗ k p) c) ⟶* Row.R (rowT s k) j p c
+fibK {s = s} {k = k} {j = j} {p} {c} ng nh =
+  ⟶*-trans (D⊢-β (pair (tag s) j) (conₗ k p) c) (fib-β {D = KD} {j = j} {p = p} {c₀ = c} ng nh)
+
+-- a payload of the Knot, at its normal form
+⊢payK : {Ξ : Ctx} {s : ℕ} {j p : RTm ⌊ Ξ ⌋} {sh : Shape} → Lt s 2 → ShOK 2 sh → Ξ ⊢ j ∷ El ⌜Nat⌝ →
+        Args Ξ 2 KD j sh p → Ξ ⊢ p ∷ PayV sh (pair (tag s) j) (SI 2) (SD KSig)
+⊢payK {s = s} {j = j} {sh = sh} lt ok dj as =
+  ⊢conv (⊢payArgs ⊢KD ok (⊢ix lt dj) (step (βsnd (tag s) j) done) as) (red→≅ᵀ (payV-red sh (pair (tag s) j) (SI 2) (SD KSig)))
+
+-- ★ `ty-base : Γ ⊢ty base`
+⊢ty-base : {Ξ : Ctx} {j g : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ g ∷ KCtx j →
+           Ξ ⊢ conₗ 0 unit ∷ K⊢ (tyIx j g kbase)
+⊢ty-base {Ξ} {j} {g} dj dg =
+  ⊢conRow {Ξ} {JT} {D⊢} {tyIx j g kbase} {dι} {unit} ⊢JT ⊢D⊢ (⊢tyIx dj dg (⊢kbase dj))
+          (fibK {s = 0} {k = 0} {j = j} {p = unit} {c = pair g unit} nthᵍ-z nthʰ-z)
+          (⊢dι ⊢JT) (⊢payι {Ξ} {JT} {D⊢} ⊢JT ⊢D⊢ {unit} ⊢unit)
+
+-- ★ `ty-Π : Γ ⊢ty A → (Γ ▹ A) ⊢ty B → Γ ⊢ty Π A B`
+⊢ty-Π : {Ξ : Ctx} {j g A B r₁ r₂ : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ g ∷ KCtx j →
+        Ξ ⊢ A ∷ K 0 j → Ξ ⊢ B ∷ K 0 (nsuc j) →
+        Ξ ⊢ r₁ ∷ K⊢ (tyIx j g A) → Ξ ⊢ r₂ ∷ K⊢ (tyIx (nsuc j) (cext g A) B) →
+        Ξ ⊢ conₗ 0 (pair r₁ (pair r₂ unit)) ∷ K⊢ (tyIx j g (kPi A B))
+⊢ty-Π {Ξ} {j} {g} {A} {B} {r₁} {r₂} dj dg dA dB dr₁ dr₂ =
+  ⊢conRow {Ξ} {JT} {D⊢} {tyIx j g (kPi A B)} {⌜ TPi j p c ⌝ᵗ} {pair r₁ (pair r₂ unit)} ⊢JT ⊢D⊢
+          (⊢tyIx dj dg (⊢kPi dj dA dB))
+          (fibK {s = 0} {k = 2} {j = j} {p = p} {c = c} nthᵍ-z (nthʰ-s (nthʰ-s nthʰ-z)))
+          (⊢tel {Ξ} {JT} {TPi j p c} ⊢JT ok)
+          (⊢payρ {Ξ} {JT} {D⊢} ⊢JT ⊢D⊢ {J1} {r₁} {pair r₂ unit} {tρ J2 tι} ok
+                 (⊢conv dr₁ (csymᵀ (red→≅ᵀ (⟶ᵀ*-IMu rix1))))
+                 (⊢payρ {Ξ} {JT} {D⊢} ⊢JT ⊢D⊢ {J2} {r₂} {unit} {tι} (okRest ok)
+                        (⊢conv dr₂ (csymᵀ (red→≅ᵀ (⟶ᵀ*-IMu rix2))))
+                        (⊢payι {Ξ} {JT} {D⊢} ⊢JT ⊢D⊢ {unit} ⊢unit)))
+  where
+    p c : RTm ⌊ Ξ ⌋
+    p = pair A (pair B unit)
+    c = pair g unit
+    J1 J2 : RTm ⌊ Ξ ⌋
+    J1 = tyIx j (fst c) (fst p)
+    J2 = tyIx (nsuc j) (cext (fst c) (fst p)) (fst (snd p))
+    ok : TelOK Ξ JT (TPi j p c)
+    ok = okPiT dj (⊢payK lt-z ok-kPi dj (a-rec dA (a-rec dB a[]))) (⊢cTy dj dg)
+    okRest : {J : RTm ⌊ Ξ ⌋} {T : Tel ⌊ Ξ ⌋} → TelOK Ξ JT (tρ J T) → TelOK Ξ JT T
+    okRest (ok-ρ _ o) = o
+    -- the row's indices, their projections reduced
+    rix1 : J1 ⟶* tyIx j g A
+    rix1 = ⟶*-pairʳ (⟶*-trans {t = pair (fst p) (pair (fst c) unit)} {u = pair A (pair (fst c) unit)} {v = pair A (pair g unit)}
+                     (⟶*-pairˡ (step (βfst A (pair B unit)) done)) (⟶*-pairʳ (⟶*-pairˡ (step (βfst g unit) done))))
+    rix2 : J2 ⟶* tyIx (nsuc j) (cext g A) B
+    rix2 = ⟶*-pairʳ (⟶*-trans {t = pair (fst (snd p)) (pair (cext (fst c) (fst p)) unit)}
+                              {u = pair B (pair (cext (fst c) (fst p)) unit)} {v = pair B (pair (cext g A) unit)}
+                     (⟶*-pairˡ (⟶*-trans {t = fst (snd p)} {u = fst (pair B unit)} {v = B}
+                                  (⟶*-fst (step (βsnd A (pair B unit)) done)) (step (βfst B unit) done)))
+                     (⟶*-pairʳ (⟶*-pairˡ (⟶*-con (⟶*-pairʳ (⟶*-trans {t = pair (fst c) (pair (fst p) unit)}
+                                  {u = pair g (pair (fst p) unit)} {v = pair g (pair A unit)}
+                                  (⟶*-pairˡ (step (βfst g unit) done))
+                                  (⟶*-pairʳ (⟶*-pairˡ (step (βfst A (pair B unit)) done)))))))))
