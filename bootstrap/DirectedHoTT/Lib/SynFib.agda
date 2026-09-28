@@ -36,7 +36,7 @@ open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast; wk-cancel-tm;
 open import DirectedHoTT.Metatheory.SubjectReductionBase using ( wk-sub )
 open import DirectedHoTT.Metatheory.Fundamental.Syntactic using ( ⟨_⟩ᵣ; subTm-var )
 open import DirectedHoTT.Metatheory.Premises using ( mot-ren; ⊢wkD )
-open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_; Nth; nth-z; nth-s; selF; subC; tag; conₗ; tag-ren; Lt; lt-z; ⊢selF; selF-β; ⊢tag; ⊢pay-σ; ⊢con-fib; []ᵈ; _∷ᵈ_ )
+open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_; Nth; nth-z; nth-s; nth-lt; selF; subC; tag; conₗ; tag-ren; Lt; lt-z; ⊢selF; selF-β; ⊢tag; ⊢pay-σ; ⊢con-fib; AllD; []ᵈ; _∷ᵈ_ )
 open import DirectedHoTT.Lib.Tel
 open import DirectedHoTT.Lib.TelAt using ( HypAt; entₛ; nth-⌜⌝ₛₛ; allSD )
 open import DirectedHoTT.Lib.MethAt
@@ -338,3 +338,12 @@ private
     (⊢pay-σ dI dD (⊢selF dI (dC ∷ᵈ []ᵈ)) (⊢conv (⊢tag lt-z) (csymᵀ (credᵀ El-⌜Fin⌝)))
             (⊢conv dp (csymᵀ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (selF-β {Cs = C ∷ []} nth-z)))))))
 
+
+-- ★ …and of an n-row fibre, at row `k`
+⊢conRowₖ : {Ξ : Ctx} {c k : ℕ} {I D i C p : RTm ⌊ Ξ ⌋} {Cs : Cons ⌊ Ξ ⌋ c} → Nth Cs k C →
+           Ξ ⊢ I ∷ U → Ξ ⊢ D ∷ DescF I → Ξ ⊢ i ∷ El I →
+           app D i ⟶* dσ (⌜Fin⌝ c) (selF Cs) → AllD Ξ I Cs → Ξ ⊢ p ∷ El (dpay I D C) → Ξ ⊢ conₗ k p ∷ IMu I D i
+⊢conRowₖ {Ξ} {c} {k} {I} {D} {i} {C} {p} {Cs} nt dI dD di r ds dp =
+  ⊢con-fib dI dD di r
+    (⊢pay-σ dI dD (⊢selF dI ds) (⊢conv (⊢tag (nth-lt nt)) (csymᵀ (credᵀ El-⌜Fin⌝)))
+            (⊢conv dp (csymᵀ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (selF-β {Cs = Cs} nt)))))))

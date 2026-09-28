@@ -24,4 +24,5 @@
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Trust.Knot7 where
 
+import DirectedHoTT.Examples.Knot.Sz
 import DirectedHoTT.Examples.Knot.Terms
