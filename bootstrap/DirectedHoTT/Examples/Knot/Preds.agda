@@ -9,7 +9,7 @@
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Knot.Preds where
 
-open import normalizer.Syntax.Types using ( _≡_; refl )
+open import normalizer.Syntax.Types using ( _≡_; refl; cong; cong₂ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax hiding ( Fin )
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
@@ -166,6 +166,20 @@ module NNCF = NNCₘ.Family rowNNC rowOKNNC
 KNNC : RTm Δ → RTm Δ → RTy Δ
 KNNC d c = NNCF.KF (ixNNC d c)
 
+-- ★ …and as a CODE (a premise of a higher stratum is a σ-field of it), OPAQUE
+opaque
+  ⌜NNC⌝ : RTm Δ → RTm Δ → RTm Δ
+  ⌜NNC⌝ d c = ⌜IMu⌝ NNCₘ.J NNCF.DF (ixNNC d c)
+
+  ⊢⌜NNC⌝ : {Ξ : Ctx} {d c : RTm ⌊ Ξ ⌋} → Ξ ⊢ d ∷ El ⌜Nat⌝ → Ξ ⊢ c ∷ K 1 d → Ξ ⊢ ⌜NNC⌝ d c ∷ U
+  ⊢⌜NNC⌝ dd dc = ⊢⌜IMu⌝ NNCₘ.⊢J NNCF.⊢DF (⊢ixNNC dd dc)
+
+  ⌜NNC⌝-sub : (σ : Sub Δ Θ) (d c : RTm Δ) → subTm σ (⌜NNC⌝ d c) ≡ ⌜NNC⌝ (subTm σ d) (subTm σ c)
+  ⌜NNC⌝-sub σ d c = cong₂ (λ I D → ⌜IMu⌝ I D (ixNNC (subTm σ d) (subTm σ c))) (NNCₘ.J-sub σ) (NNCF.DF-sub σ)
+
+  El-⌜NNC⌝ : {d c : RTm Δ} → El (⌜NNC⌝ d c) ≅ᵀ KNNC d c
+  El-⌜NNC⌝ = credᵀ El-⌜IMu⌝
+
 ------------------------------------------------------------------------
 -- ★ stkA? c ≡ true — a stable ambient (Spec/Variance)
 ------------------------------------------------------------------------
@@ -313,4 +327,272 @@ module StkAF = StkAₘ.Family rowStkA rowOKStkA
 -- the predicate at a code `c : K 1 d`
 KStkA : RTm Δ → RTm Δ → RTy Δ
 KStkA d c = StkAF.KF (ixStkA d c)
+
+-- ★ …and as a CODE (a premise of a higher stratum is a σ-field of it), OPAQUE
+opaque
+  ⌜StkA⌝ : RTm Δ → RTm Δ → RTm Δ
+  ⌜StkA⌝ d c = ⌜IMu⌝ StkAₘ.J StkAF.DF (ixStkA d c)
+
+  ⊢⌜StkA⌝ : {Ξ : Ctx} {d c : RTm ⌊ Ξ ⌋} → Ξ ⊢ d ∷ El ⌜Nat⌝ → Ξ ⊢ c ∷ K 1 d → Ξ ⊢ ⌜StkA⌝ d c ∷ U
+  ⊢⌜StkA⌝ dd dc = ⊢⌜IMu⌝ StkAₘ.⊢J StkAF.⊢DF (⊢ixStkA dd dc)
+
+  ⌜StkA⌝-sub : (σ : Sub Δ Θ) (d c : RTm Δ) → subTm σ (⌜StkA⌝ d c) ≡ ⌜StkA⌝ (subTm σ d) (subTm σ c)
+  ⌜StkA⌝-sub σ d c = cong₂ (λ I D → ⌜IMu⌝ I D (ixStkA (subTm σ d) (subTm σ c))) (StkAₘ.J-sub σ) (StkAF.DF-sub σ)
+
+  El-⌜StkA⌝ : {d c : RTm Δ} → El (⌜StkA⌝ d c) ≅ᵀ KStkA d c
+  El-⌜StkA⌝ = credᵀ El-⌜IMu⌝
+
+------------------------------------------------------------------------
+-- ★ stkC? c ≡ true — J-able: stkA? minus the literal ⌜Nat⌝; at ⌜Hom⌝ it is stkA? of the ambient
+------------------------------------------------------------------------
+
+module StkCₘ = SynFam KOK (λ {Δ} → ⌜Unit⌝ {Δ ∙}) (λ σ → refl) ⊢⌜Unit⌝
+
+ixStkC : RTm Δ → RTm Δ → RTm Δ
+ixStkC d c = StkCₘ.ixJ (pair (tag 1) d) c unit
+
+⊢ixStkC : {Ξ : Ctx} {d c : RTm ⌊ Ξ ⌋} → Ξ ⊢ d ∷ El ⌜Nat⌝ → Ξ ⊢ c ∷ K 1 d → Ξ ⊢ ixStkC d c ∷ El StkCₘ.J
+⊢ixStkC dd dc = StkCₘ.⊢ixJ (⊢ix (lt-s lt-z) dd) dc (⊢conv ⊢unit (csymᵀ (credᵀ El-⌜Unit⌝)))
+
+TStkC⊢cbase : RTm Δ → RTm Δ → RTm Δ → Tel Δ
+TStkC⊢cbase j p c = tι
+
+rStkC⊢cbase : Row
+rStkC⊢cbase = defRow TStkC⊢cbase (λ σ j p c → refl)
+
+okStkC⊢cbase : StkCₘ.RowOK 1 sh-kcbase rStkC⊢cbase
+okStkC⊢cbase {Ξ} {j} {p} {c} dj dp dc = ⊢rows {Ξ} {StkCₘ.J} {1} {⌜ TStkC⊢cbase j p c ⌝ᵗ ∷ []} StkCₘ.⊢J (⊢tel {Ξ} {StkCₘ.J} {TStkC⊢cbase j p c} StkCₘ.⊢J (ok-ι) ∷ᵈ []ᵈ)
+
+TStkC⊢cSg : RTm Δ → RTm Δ → RTm Δ → Tel Δ
+TStkC⊢cSg j p c = tι
+
+rStkC⊢cSg : Row
+rStkC⊢cSg = defRow TStkC⊢cSg (λ σ j p c → refl)
+
+okStkC⊢cSg : StkCₘ.RowOK 1 sh-kcSg rStkC⊢cSg
+okStkC⊢cSg {Ξ} {j} {p} {c} dj dp dc = ⊢rows {Ξ} {StkCₘ.J} {1} {⌜ TStkC⊢cSg j p c ⌝ᵗ ∷ []} StkCₘ.⊢J (⊢tel {Ξ} {StkCₘ.J} {TStkC⊢cSg j p c} StkCₘ.⊢J (ok-ι) ∷ᵈ []ᵈ)
+
+TStkC⊢cId : RTm Δ → RTm Δ → RTm Δ → Tel Δ
+TStkC⊢cId j p c = tι
+
+rStkC⊢cId : Row
+rStkC⊢cId = defRow TStkC⊢cId (λ σ j p c → refl)
+
+okStkC⊢cId : StkCₘ.RowOK 1 sh-kcId rStkC⊢cId
+okStkC⊢cId {Ξ} {j} {p} {c} dj dp dc = ⊢rows {Ξ} {StkCₘ.J} {1} {⌜ TStkC⊢cId j p c ⌝ᵗ ∷ []} StkCₘ.⊢J (⊢tel {Ξ} {StkCₘ.J} {TStkC⊢cId j p c} StkCₘ.⊢J (ok-ι) ∷ᵈ []ᵈ)
+
+TStkC⊢cUnit : RTm Δ → RTm Δ → RTm Δ → Tel Δ
+TStkC⊢cUnit j p c = tι
+
+rStkC⊢cUnit : Row
+rStkC⊢cUnit = defRow TStkC⊢cUnit (λ σ j p c → refl)
+
+okStkC⊢cUnit : StkCₘ.RowOK 1 sh-kcUnit rStkC⊢cUnit
+okStkC⊢cUnit {Ξ} {j} {p} {c} dj dp dc = ⊢rows {Ξ} {StkCₘ.J} {1} {⌜ TStkC⊢cUnit j p c ⌝ᵗ ∷ []} StkCₘ.⊢J (⊢tel {Ξ} {StkCₘ.J} {TStkC⊢cUnit j p c} StkCₘ.⊢J (ok-ι) ∷ᵈ []ᵈ)
+
+TStkC⊢cFin : RTm Δ → RTm Δ → RTm Δ → Tel Δ
+TStkC⊢cFin j p c = tι
+
+rStkC⊢cFin : Row
+rStkC⊢cFin = defRow TStkC⊢cFin (λ σ j p c → refl)
+
+okStkC⊢cFin : StkCₘ.RowOK 1 sh-kcFin rStkC⊢cFin
+okStkC⊢cFin {Ξ} {j} {p} {c} dj dp dc = ⊢rows {Ξ} {StkCₘ.J} {1} {⌜ TStkC⊢cFin j p c ⌝ᵗ ∷ []} StkCₘ.⊢J (⊢tel {Ξ} {StkCₘ.J} {TStkC⊢cFin j p c} StkCₘ.⊢J (ok-ι) ∷ᵈ []ᵈ)
+
+TStkC⊢cIMu : RTm Δ → RTm Δ → RTm Δ → Tel Δ
+TStkC⊢cIMu j p c = tι
+
+rStkC⊢cIMu : Row
+rStkC⊢cIMu = defRow TStkC⊢cIMu (λ σ j p c → refl)
+
+okStkC⊢cIMu : StkCₘ.RowOK 1 sh-kcIMu rStkC⊢cIMu
+okStkC⊢cIMu {Ξ} {j} {p} {c} dj dp dc = ⊢rows {Ξ} {StkCₘ.J} {1} {⌜ TStkC⊢cIMu j p c ⌝ᵗ ∷ []} StkCₘ.⊢J (⊢tel {Ξ} {StkCₘ.J} {TStkC⊢cIMu j p c} StkCₘ.⊢J (ok-ι) ∷ᵈ []ᵈ)
+
+TStkC⊢cHom : RTm Δ → RTm Δ → RTm Δ → Tel Δ
+TStkC⊢cHom j p c = tσ (⌜StkA⌝ j (fst p)) tι
+
+rStkC⊢cHom : Row
+rStkC⊢cHom = defRow TStkC⊢cHom (λ σ j p c → cong (λ Z → dσ Z (lam dι)) (⌜StkA⌝-sub σ j (fst p)))
+
+okStkC⊢cHom : StkCₘ.RowOK 1 sh-kcHom rStkC⊢cHom
+okStkC⊢cHom {Ξ} {j} {p} {c} dj dp dc = ⊢rows {Ξ} {StkCₘ.J} {1} {⌜ TStkC⊢cHom j p c ⌝ᵗ ∷ []} StkCₘ.⊢J (⊢tel {Ξ} {StkCₘ.J} {TStkC⊢cHom j p c} StkCₘ.⊢J (ok-σ (⊢⌜StkA⌝ dj (⊢atDepth {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp))) ok-ι) ∷ᵈ []ᵈ)
+
+StkCNone : Row
+StkCNone = record { R = λ j p c → rows [] ; R-sub = λ σ j p c → refl }
+
+rowStkC : ℕ → ℕ → Row
+rowStkC (suc zero) (suc (suc (suc (suc (suc (suc (suc (suc zero)))))))) = rStkC⊢cbase
+rowStkC (suc zero) (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc zero)))))))))) = rStkC⊢cSg
+rowStkC (suc zero) (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc zero))))))))))) = rStkC⊢cHom
+rowStkC (suc zero) (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc zero))))))))))))))) = rStkC⊢cId
+rowStkC (suc zero) (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc zero))))))))))))))))))))))))))))))))))) = rStkC⊢cIMu
+rowStkC (suc zero) (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc zero)))))))))))))))))))))))))))))))))))) = rStkC⊢cFin
+rowStkC (suc zero) (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc zero))))))))))))))))))))))))))))))))))))) = rStkC⊢cUnit
+rowStkC _ _ = StkCNone
+
+okStkCNone : {s : ℕ} {sh : Shape} → StkCₘ.RowOK s sh StkCNone
+okStkCNone dj dp dc = ⊢rows {I = StkCₘ.J} {Cs = []} StkCₘ.⊢J []ᵈ
+
+rowOKStkC : {s c k : ℕ} {shs : Shapes c} {sh : Shape} → NthG KSig s shs → NthSh shs k sh → StkCₘ.RowOK s sh (rowStkC s k)
+rowOKStkC {sh = sh} nthᵍ-z nh = okStkCNone {0} {sh}
+rowOKStkC (nthᵍ-s nthᵍ-z) nthʰ-z = okStkCNone {1} {sh-kvar}
+rowOKStkC (nthᵍ-s nthᵍ-z) (nthʰ-s nthʰ-z) = okStkCNone {1} {sh-klam}
+rowOKStkC (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s nthʰ-z)) = okStkCNone {1} {sh-kapp}
+rowOKStkC (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))) = okStkCNone {1} {sh-kpair}
+rowOKStkC (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))) = okStkCNone {1} {sh-kabsurd}
+rowOKStkC (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))) = okStkCNone {1} {sh-kordtr}
+rowOKStkC (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))) = okStkCNone {1} {sh-kfst}
+rowOKStkC (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))) = okStkCNone {1} {sh-ksnd}
+rowOKStkC (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))) = okStkC⊢cbase
+rowOKStkC (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))) = okStkCNone {1} {sh-kcPi}
+rowOKStkC (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))) = okStkC⊢cSg
+rowOKStkC (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))))) = okStkC⊢cHom
+rowOKStkC (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))) = okStkCNone {1} {sh-khrefl}
+rowOKStkC (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))))))) = okStkCNone {1} {sh-ktr}
+rowOKStkC (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))))) = okStkCNone {1} {sh-kap}
+rowOKStkC (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))))))))) = okStkC⊢cId
+rowOKStkC (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))))))) = okStkCNone {1} {sh-kidrefl}
+rowOKStkC (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))))))))))) = okStkCNone {1} {sh-kjsub}
+rowOKStkC (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))))))))) = okStkCNone {1} {sh-kunit}
+rowOKStkC (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))))))))))))) = okStkCNone {1} {sh-knzero}
+rowOKStkC (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))))))))))) = okStkCNone {1} {sh-knsuc}
+rowOKStkC (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))))))))))))))) = okStkCNone {1} {sh-knatrec}
+rowOKStkC (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))))))))))))) = okStkCNone {1} {sh-kcon}
+rowOKStkC (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))))))))))))))))) = okStkCNone {1} {sh-kielim}
+rowOKStkC (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))))))))))))))) = okStkCNone {1} {sh-kdI}
+rowOKStkC (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))))))))))))))))))) = okStkCNone {1} {sh-kdS}
+rowOKStkC (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))))))))))))))))) = okStkCNone {1} {sh-kdR}
+rowOKStkC (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))))))))))))))))))))) = okStkCNone {1} {sh-kdpay}
+rowOKStkC (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))))))))))))))))))) = okStkCNone {1} {sh-kdih}
+rowOKStkC (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))))))))))))))))))))))) = okStkCNone {1} {sh-kfzero}
+rowOKStkC (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))))))))))))))))))))) = okStkCNone {1} {sh-kfsuc}
+rowOKStkC (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))))))))))))))))))))))))) = okStkCNone {1} {sh-kfcase}
+rowOKStkC (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))))))))))))))))))))))) = okStkCNone {1} {sh-kfcase0}
+rowOKStkC (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))))))))))))))))))))))))))) = okStkCNone {1} {sh-kpsplit}
+rowOKStkC (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))))))))))))))))))))))))) = okStkCNone {1} {sh-kcNat}
+rowOKStkC (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))))))))))))))))))))))))))))) = okStkC⊢cIMu
+rowOKStkC (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))))))))))))))))))))))))))) = okStkC⊢cFin
+rowOKStkC (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))))))))))))))))))))))))))))))) = okStkC⊢cUnit
+
+module StkCF = StkCₘ.Family rowStkC rowOKStkC
+
+-- the predicate at a code `c : K 1 d`
+KStkC : RTm Δ → RTm Δ → RTy Δ
+KStkC d c = StkCF.KF (ixStkC d c)
+
+-- ★ …and as a CODE (a premise of a higher stratum is a σ-field of it), OPAQUE
+opaque
+  ⌜StkC⌝ : RTm Δ → RTm Δ → RTm Δ
+  ⌜StkC⌝ d c = ⌜IMu⌝ StkCₘ.J StkCF.DF (ixStkC d c)
+
+  ⊢⌜StkC⌝ : {Ξ : Ctx} {d c : RTm ⌊ Ξ ⌋} → Ξ ⊢ d ∷ El ⌜Nat⌝ → Ξ ⊢ c ∷ K 1 d → Ξ ⊢ ⌜StkC⌝ d c ∷ U
+  ⊢⌜StkC⌝ dd dc = ⊢⌜IMu⌝ StkCₘ.⊢J StkCF.⊢DF (⊢ixStkC dd dc)
+
+  ⌜StkC⌝-sub : (σ : Sub Δ Θ) (d c : RTm Δ) → subTm σ (⌜StkC⌝ d c) ≡ ⌜StkC⌝ (subTm σ d) (subTm σ c)
+  ⌜StkC⌝-sub σ d c = cong₂ (λ I D → ⌜IMu⌝ I D (ixStkC (subTm σ d) (subTm σ c))) (StkCₘ.J-sub σ) (StkCF.DF-sub σ)
+
+  El-⌜StkC⌝ : {d c : RTm Δ} → El (⌜StkC⌝ d c) ≅ᵀ KStkC d c
+  El-⌜StkC⌝ = credᵀ El-⌜IMu⌝
+
+------------------------------------------------------------------------
+-- ★ flat? c ≡ true — ⌜base⌝, or ⌜Hom⌝ at a J-able ambient (Spec/Variance)
+------------------------------------------------------------------------
+
+module Flatₘ = SynFam KOK (λ {Δ} → ⌜Unit⌝ {Δ ∙}) (λ σ → refl) ⊢⌜Unit⌝
+
+ixFlat : RTm Δ → RTm Δ → RTm Δ
+ixFlat d c = Flatₘ.ixJ (pair (tag 1) d) c unit
+
+⊢ixFlat : {Ξ : Ctx} {d c : RTm ⌊ Ξ ⌋} → Ξ ⊢ d ∷ El ⌜Nat⌝ → Ξ ⊢ c ∷ K 1 d → Ξ ⊢ ixFlat d c ∷ El Flatₘ.J
+⊢ixFlat dd dc = Flatₘ.⊢ixJ (⊢ix (lt-s lt-z) dd) dc (⊢conv ⊢unit (csymᵀ (credᵀ El-⌜Unit⌝)))
+
+TFlat⊢cbase : RTm Δ → RTm Δ → RTm Δ → Tel Δ
+TFlat⊢cbase j p c = tι
+
+rFlat⊢cbase : Row
+rFlat⊢cbase = defRow TFlat⊢cbase (λ σ j p c → refl)
+
+okFlat⊢cbase : Flatₘ.RowOK 1 sh-kcbase rFlat⊢cbase
+okFlat⊢cbase {Ξ} {j} {p} {c} dj dp dc = ⊢rows {Ξ} {Flatₘ.J} {1} {⌜ TFlat⊢cbase j p c ⌝ᵗ ∷ []} Flatₘ.⊢J (⊢tel {Ξ} {Flatₘ.J} {TFlat⊢cbase j p c} Flatₘ.⊢J (ok-ι) ∷ᵈ []ᵈ)
+
+TFlat⊢cHom : RTm Δ → RTm Δ → RTm Δ → Tel Δ
+TFlat⊢cHom j p c = tσ (⌜StkC⌝ j (fst p)) tι
+
+rFlat⊢cHom : Row
+rFlat⊢cHom = defRow TFlat⊢cHom (λ σ j p c → cong (λ Z → dσ Z (lam dι)) (⌜StkC⌝-sub σ j (fst p)))
+
+okFlat⊢cHom : Flatₘ.RowOK 1 sh-kcHom rFlat⊢cHom
+okFlat⊢cHom {Ξ} {j} {p} {c} dj dp dc = ⊢rows {Ξ} {Flatₘ.J} {1} {⌜ TFlat⊢cHom j p c ⌝ᵗ ∷ []} Flatₘ.⊢J (⊢tel {Ξ} {Flatₘ.J} {TFlat⊢cHom j p c} Flatₘ.⊢J (ok-σ (⊢⌜StkC⌝ dj (⊢atDepth {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp))) ok-ι) ∷ᵈ []ᵈ)
+
+FlatNone : Row
+FlatNone = record { R = λ j p c → rows [] ; R-sub = λ σ j p c → refl }
+
+rowFlat : ℕ → ℕ → Row
+rowFlat (suc zero) (suc (suc (suc (suc (suc (suc (suc (suc zero)))))))) = rFlat⊢cbase
+rowFlat (suc zero) (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc zero))))))))))) = rFlat⊢cHom
+rowFlat _ _ = FlatNone
+
+okFlatNone : {s : ℕ} {sh : Shape} → Flatₘ.RowOK s sh FlatNone
+okFlatNone dj dp dc = ⊢rows {I = Flatₘ.J} {Cs = []} Flatₘ.⊢J []ᵈ
+
+rowOKFlat : {s c k : ℕ} {shs : Shapes c} {sh : Shape} → NthG KSig s shs → NthSh shs k sh → Flatₘ.RowOK s sh (rowFlat s k)
+rowOKFlat {sh = sh} nthᵍ-z nh = okFlatNone {0} {sh}
+rowOKFlat (nthᵍ-s nthᵍ-z) nthʰ-z = okFlatNone {1} {sh-kvar}
+rowOKFlat (nthᵍ-s nthᵍ-z) (nthʰ-s nthʰ-z) = okFlatNone {1} {sh-klam}
+rowOKFlat (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s nthʰ-z)) = okFlatNone {1} {sh-kapp}
+rowOKFlat (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))) = okFlatNone {1} {sh-kpair}
+rowOKFlat (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))) = okFlatNone {1} {sh-kabsurd}
+rowOKFlat (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))) = okFlatNone {1} {sh-kordtr}
+rowOKFlat (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))) = okFlatNone {1} {sh-kfst}
+rowOKFlat (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))) = okFlatNone {1} {sh-ksnd}
+rowOKFlat (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))) = okFlat⊢cbase
+rowOKFlat (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))) = okFlatNone {1} {sh-kcPi}
+rowOKFlat (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))) = okFlatNone {1} {sh-kcSg}
+rowOKFlat (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))))) = okFlat⊢cHom
+rowOKFlat (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))) = okFlatNone {1} {sh-khrefl}
+rowOKFlat (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))))))) = okFlatNone {1} {sh-ktr}
+rowOKFlat (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))))) = okFlatNone {1} {sh-kap}
+rowOKFlat (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))))))))) = okFlatNone {1} {sh-kcId}
+rowOKFlat (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))))))) = okFlatNone {1} {sh-kidrefl}
+rowOKFlat (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))))))))))) = okFlatNone {1} {sh-kjsub}
+rowOKFlat (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))))))))) = okFlatNone {1} {sh-kunit}
+rowOKFlat (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))))))))))))) = okFlatNone {1} {sh-knzero}
+rowOKFlat (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))))))))))) = okFlatNone {1} {sh-knsuc}
+rowOKFlat (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))))))))))))))) = okFlatNone {1} {sh-knatrec}
+rowOKFlat (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))))))))))))) = okFlatNone {1} {sh-kcon}
+rowOKFlat (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))))))))))))))))) = okFlatNone {1} {sh-kielim}
+rowOKFlat (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))))))))))))))) = okFlatNone {1} {sh-kdI}
+rowOKFlat (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))))))))))))))))))) = okFlatNone {1} {sh-kdS}
+rowOKFlat (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))))))))))))))))) = okFlatNone {1} {sh-kdR}
+rowOKFlat (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))))))))))))))))))))) = okFlatNone {1} {sh-kdpay}
+rowOKFlat (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))))))))))))))))))) = okFlatNone {1} {sh-kdih}
+rowOKFlat (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))))))))))))))))))))))) = okFlatNone {1} {sh-kfzero}
+rowOKFlat (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))))))))))))))))))))) = okFlatNone {1} {sh-kfsuc}
+rowOKFlat (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))))))))))))))))))))))))) = okFlatNone {1} {sh-kfcase}
+rowOKFlat (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))))))))))))))))))))))) = okFlatNone {1} {sh-kfcase0}
+rowOKFlat (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))))))))))))))))))))))))))) = okFlatNone {1} {sh-kpsplit}
+rowOKFlat (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))))))))))))))))))))))))) = okFlatNone {1} {sh-kcNat}
+rowOKFlat (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))))))))))))))))))))))))))))) = okFlatNone {1} {sh-kcIMu}
+rowOKFlat (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))))))))))))))))))))))))))) = okFlatNone {1} {sh-kcFin}
+rowOKFlat (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))))))))))))))))))))))))))))))) = okFlatNone {1} {sh-kcUnit}
+
+module FlatF = Flatₘ.Family rowFlat rowOKFlat
+
+-- the predicate at a code `c : K 1 d`
+KFlat : RTm Δ → RTm Δ → RTy Δ
+KFlat d c = FlatF.KF (ixFlat d c)
+
+-- ★ …and as a CODE (a premise of a higher stratum is a σ-field of it), OPAQUE
+opaque
+  ⌜Flat⌝ : RTm Δ → RTm Δ → RTm Δ
+  ⌜Flat⌝ d c = ⌜IMu⌝ Flatₘ.J FlatF.DF (ixFlat d c)
+
+  ⊢⌜Flat⌝ : {Ξ : Ctx} {d c : RTm ⌊ Ξ ⌋} → Ξ ⊢ d ∷ El ⌜Nat⌝ → Ξ ⊢ c ∷ K 1 d → Ξ ⊢ ⌜Flat⌝ d c ∷ U
+  ⊢⌜Flat⌝ dd dc = ⊢⌜IMu⌝ Flatₘ.⊢J FlatF.⊢DF (⊢ixFlat dd dc)
+
+  ⌜Flat⌝-sub : (σ : Sub Δ Θ) (d c : RTm Δ) → subTm σ (⌜Flat⌝ d c) ≡ ⌜Flat⌝ (subTm σ d) (subTm σ c)
+  ⌜Flat⌝-sub σ d c = cong₂ (λ I D → ⌜IMu⌝ I D (ixFlat (subTm σ d) (subTm σ c))) (Flatₘ.J-sub σ) (FlatF.DF-sub σ)
+
+  El-⌜Flat⌝ : {d c : RTm Δ} → El (⌜Flat⌝ d c) ≅ᵀ KFlat d c
+  El-⌜Flat⌝ = credᵀ El-⌜IMu⌝
 

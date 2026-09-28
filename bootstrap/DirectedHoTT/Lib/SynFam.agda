@@ -152,6 +152,11 @@ module SynFam {sg : Sig n} (ok : SigOK n sg)
     KF : RTm Δ → RTy Δ
     KF x = IMu J DF x
 
+    DF-sub : (σ : Sub Δ Θ) → subTm σ (DF {Δ}) ≡ DF
+    DF-sub {Δ} σ = cong₂ (λ D M → lam (app (ielim D (fst (var vz)) M (fst (snd (var vz)))) (snd (snd (var vz)))))
+                         {x = subTm (extS σ) (SD {Δ = Δ ∙} sg)} {x' = SD sg} {y = subTm (extS σ) (FIBMₒ {Δ ∙})} {y' = FIBMₒ}
+                         (SD-sub (extS σ) sg) (FIBMₒ-sub (extS σ))
+
     module _ {Γ : Ctx} where
       private
         dv : (Γ ▹ El J) ⊢ var vz ∷ El J
