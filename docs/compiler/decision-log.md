@@ -5296,3 +5296,58 @@ wherever the rules' targets are patterns, as D076 does for `Fin`.
 
 D074, D075, D076; PLAN-LEVITATION Stage 5; PLAN-JUDGEMENT (superseded
 mechanism, still-valid cost evidence).
+
+## D078: D077 Applied to the `⊢` Rows — When a Case, When a Ford; Side Conditions as Lower Strata (OCP-0009, levitation; the Knot's judgement layer)
+
+**Date**: 2026-09-28
+**Status**: Accepted (refines D077 at the cases its text left open; all 38 `⊢` heads built this way — `Examples/Knot/JudgeRowsGen.agda`, `tools/gen-judge.py`)
+
+### Context
+
+D077 said: a pattern target is a case, a computed output Fords. Building
+the 38 `⊢` rows met four situations that text does not settle: a
+conclusion type determined by the subject (`absurd c e ∷ El c`), a
+pattern under a binder in a subject field (`tr`'s motive `var vz` /
+`⌜Hom⌝ c a (var vz)`), Boolean side conditions (`flat? cA ≡ true`,
+`occTm vz c ≡ false`), and inductive ones (`NoNatC c`).
+
+### Decision
+
+- **The conclusion type is a CASE exactly when it is a constructor
+  pattern whose variables are FRESH** (bound nowhere else): `lam`'s
+  `Π A B`, `pair`'s `Σ A B`, `con`'s `IMu I D i`, the code formers' `U`,
+  `unit`/`nzero`/`nsuc`, the description formers' `Desc I`, `fzero`/
+  `fsuc`'s `Fin (suc n)` (one level deeper: a `Desc`-valued `natrec` on
+  the numeral). The case binds the variables — no existential, no
+  equation (`Lib/SynPat`, `JudgeCase.CaseRow`).
+- **Otherwise the type is ONE Ford field**: when it is determined by the
+  subject (`El c`, `Hom (El c) t t`, `Hom Nat a u`) — a case would only
+  re-derive the subject and then equate — or computed (`B[u]`,
+  `iinst i t M`, `DIh D M C p` with the fresh `M` an existential).
+- **A pattern in a subject field UNDER A BINDER Fords** (`tr`'s motive):
+  the case's convoy is a code over the scrutinee's index `(1 , j+1)` and
+  cannot be re-based to the outer depth `j` (no predecessor on a code).
+  The two rules of `tr` are two rows of one fibre.
+- **`occTm vz c ≡ false` is `c = wk c₀`** (strengthening): an existential
+  and one Ford — no occurrence fold. The conclusion `El (⌜Hom⌝ c a vz)[u]`
+  is then literally `El (⌜Hom⌝ c₀ a₀ u)`.
+- **Inductive or recursive side conditions are LOWER-STRATUM FAMILIES**
+  fibred by the code's head (`Knot/Preds`: `NoNatC`, `stkA?`, `stkC?`,
+  `flat?` — the Boolean ones mirrored clause by clause), a premise being a
+  σ-field of the family's (opaque) code. `NoNatC` of `wk c₀` is stated at
+  `c₀` (NoNatC is renaming-invariant).
+
+### Rationale
+
+- **The fibre is computed by unification** (D077): unification binds fresh
+  pattern variables (a case) and leaves an equation for a determined one
+  (a Ford). A case that only re-derives the subject costs a nested case
+  AND the equations.
+- **Grounded side conditions**: `occTm … ≡ false` means "is a weakening";
+  `flat?`/`stkC?` are decided by the code's head — a family fibred by head
+  is their inversion principle.
+
+### See Also
+
+D074, D075, D077; PLAN-LEVITATION Stage 5; memory
+`context-form-mismatch-opaque` (the cost model the rows are built under).
