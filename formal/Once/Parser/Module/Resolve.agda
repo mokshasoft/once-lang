@@ -36,7 +36,7 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (_×_; _,_)
 open import Data.String using (String; _≟_; _++_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Relation.Nullary using (yes; no; ¬_)
+open import Relation.Nullary using (Dec; yes; no; ¬_)
 open import Relation.Nullary.Decidable using (toWitness; toWitnessFalse; isYes)
 open import Data.Unit using (tt)
 open import Data.Empty using (⊥-elim)
@@ -194,6 +194,7 @@ elemStr x (y ∷ ys) with x ≟ y
 -- the oracle's `siglessSchema` criterion to them — the keep-bare set
 -- and the FunInfo/PolyFunInfo routing must agree exactly.
 pdn-go : List Decl → Maybe String → List String
+pdn-sigless : (name : String) → RawExpr → List Decl → Dec (name ≡ "main") → List String
 pdn-go [] _ = []
 -- Plan 0.58 / D071: keep a def BARE (→ the poly telescope, δ-reduced to its
 -- body) unless it is ground AND concrete. A ground-but-non-concrete def (a cata
@@ -209,12 +210,17 @@ pdn-go (DTypeSig name ty ∷ rest) _       with isGround ty
 -- mirroring `extractFunctions-go`. Sig-less + schema-shaped body
 -- (D072): keep bare (it routes to PolyFunInfo).
 pdn-go (DFunDef name body ∷ rest) (just _) = pdn-go rest nothing
-pdn-go (DFunDef name body ∷ rest) nothing with siglessSchema body
-... | just _  = name ∷ pdn-go rest nothing
-... | nothing = pdn-go rest nothing
+-- D227 amendment: a sig-less `main` is declared at `IO Unit` (a FunInfo), so it
+-- is never kept bare — mirroring `extractFunctions-sigless`.
+pdn-go (DFunDef name body ∷ rest) nothing = pdn-sigless name body rest (name ≟ "main")
 -- A DSignature resets the pending (mirror of `extractFunctions-go`).
 pdn-go (DSignature name owner ty ∷ rest) _ = pdn-go rest nothing
 pdn-go (_ ∷ rest) pending                = pdn-go rest pending
+
+pdn-sigless name body rest (yes _) = pdn-go rest nothing
+pdn-sigless name body rest (no _) with siglessSchema body
+... | just _  = name ∷ pdn-go rest nothing
+... | nothing = pdn-go rest nothing
 
 polyDefNames : List Decl → List String
 polyDefNames ds = pdn-go ds nothing

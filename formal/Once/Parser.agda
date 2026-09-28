@@ -20,9 +20,10 @@ open import Data.String using (String; _≟_; _++_; toList)
 open import Data.Char using (Char)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Nat using (ℕ)
-open import Relation.Nullary using (yes; no; does)
+open import Relation.Nullary using (Dec; yes; no; does)
+open import Relation.Binary.PropositionalEquality using (_≡_)
 
-open import Once.Type using (Type; PolyType; isGround; extractGround; showPolyType)
+open import Once.Type using (Type; PolyType; isGround; extractGround; showPolyType; Unit; _⇒[_]_; mk-kind; Many; eff)
 open import Once.Functor.Decide using (isConcrete?)
 open import Once.TypeCheck.Raw using (RawExpr; RVar)
 -- D072 M3: the principal-type oracle's sig-less schema criterion.
@@ -291,6 +292,7 @@ extractFunctions-consPoly (inj₁ err)        _   = inj₁ err
 extractFunctions-consPoly (inj₂ (gs , ps)) pfi = inj₂ (gs , pfi ∷ ps)
 
 extractFunctions-go : TypeAliasEnv → List Decl → Maybe PendingSig → EFResult
+extractFunctions-sigless : TypeAliasEnv → (name : String) → RawExpr → List Decl → Dec (name ≡ "main") → EFResult
 extractFunctions-go aliases [] _ = inj₂ ([] , [])
 -- Signatures are classified now: ground types get expanded eagerly;
 -- polymorphic types are carried as-is for the matching DFunDef.
@@ -323,10 +325,12 @@ extractFunctions-go aliases (DFunDef name body ∷ rest) (just (sigName , inj₂
 -- compilation — inferElab, or the oracle's ground answers via
 -- inferType, D072 M2). `polyDefNames` (Resolve) uses the SAME
 -- criterion, so the keep-bare set agrees.
-extractFunctions-go aliases (DFunDef name body ∷ rest) nothing
-  with siglessSchema body
-... | just pty = extractFunctions-consPoly (extractFunctions-go aliases rest nothing) (mkPolyFunInfo name pty body)
-... | nothing  = extractFunctions-consFun (extractFunctions-go aliases rest nothing) (mkFunInfo name nothing body false)
+-- D227 amendment: `main`'s type is the language's, not an inference result —
+-- `main : IO Unit` is the program's INTERFACE. A sig-less `main` is therefore
+-- declared at `Eff Unit Unit` and CHECKED there, where `Void <: Unit` (D226)
+-- accepts a halting body (`main = exit@S …` infers `Eff Unit Void`).
+extractFunctions-go aliases (DFunDef name body ∷ rest) nothing =
+  extractFunctions-sigless aliases name body rest (name ≟ "main")
 -- Primitives: use RVar as placeholder body (actual impl is external).
 -- Owned primitives (from resolved imports) get qualified names
 -- `alias.name` — same textual form that the typechecker's
@@ -343,6 +347,14 @@ extractFunctions-go aliases (DSignature name (just owner) ty ∷ rest) _ with pr
          let qname = owner ++ "." ++ name
          in extractFunctions-consFun (extractFunctions-go aliases rest nothing) (mkFunInfo qname (just gty) (RVar qname) true)
 extractFunctions-go aliases (_ ∷ rest) pending = extractFunctions-go aliases rest pending
+
+extractFunctions-sigless aliases name body rest (yes _) =
+  extractFunctions-consFun (extractFunctions-go aliases rest nothing)
+    (mkFunInfo name (just (Unit ⇒[ mk-kind Many eff ] Unit)) body false)
+extractFunctions-sigless aliases name body rest (no _) with siglessSchema body
+... | just pty = extractFunctions-consPoly (extractFunctions-go aliases rest nothing) (mkPolyFunInfo name pty body)
+... | nothing  = extractFunctions-consFun (extractFunctions-go aliases rest nothing) (mkFunInfo name nothing body false)
+
 
 -- Plan 0.50 (clash-freedom): REJECT duplicate top-level definition names. Two
 -- definitions named `foo` both compile to the symbol `once_…foo` → "symbol

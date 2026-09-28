@@ -15545,3 +15545,12 @@ within one call, so its arrow's grade covers every algebra step.
 The red test `compiler/test/PuritySpec.hs` ("pure function forcing an effectful ν")
 becomes a type error for the right reason: `peek`'s parameter is a pure stream, and an
 effectful one is not.
+
+### D227 amendment (2026-09-28): a sig-less `main` is declared at `IO Unit`
+
+`main : IO Unit` is the program's INTERFACE, fixed by the language, not an inference
+result. With `exit` returning `Void` (D227), `main = exit@S …` INFERS `Eff Unit Void` and
+failed the exact `IO Unit` requirement (11 tests: every sig-less exit program). A sig-less
+`main` is therefore declared at `Eff Unit Unit` (`extractFunctions-sigless`, mirrored by
+`Resolve.pdn-sigless`) and CHECKED there, where `Void <: Unit` (D226) accepts the halting
+body. Programs that write `main : IO Unit` are unaffected.
