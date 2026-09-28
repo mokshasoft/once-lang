@@ -20,7 +20,7 @@ open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax hiding ( Fin )
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Metatheory.RedCong
-  using ( ⟶*-trans; ⟶*-pairʳ; ⟶*-dihᶜ; _⟶ᵀ*_; doneᵀ; stepᵀ; ⟶ᵀ*-Σʳ; ⟶ᵀ*-Σˡ; ⟶ᵀ*-trans )
+  using ( ⟶*-trans; ⟶*-pairʳ; ⟶*-snd; ⟶*-⌜IMu⌝ⁱ; ⟶*-dihᶜ; _⟶ᵀ*_; doneᵀ; stepᵀ; ⟶ᵀ*-Σʳ; ⟶ᵀ*-Σˡ; ⟶ᵀ*-El; ⟶ᵀ*-trans )
 open import DirectedHoTT.Metatheory.TySub using ( wk-cancel-tm )
 open import DirectedHoTT.Metatheory.SubjectReductionBase using ( wk-sub; iinst-sub; wk2-subTy )
 open import DirectedHoTT.Spec.Syntax using ( cong₃; cong₄ )
@@ -199,3 +199,13 @@ module _ {Ξ : Ctx} {i I D p : RTm ⌊ Ξ ⌋} where
            Ξ ⊢ t ∷ IMu I D (pair (tag s) (nsucs k (snd (pair a j)))) → Ξ ⊢ t ∷ IMu I D (pair (tag s) (nsucs k j))
 ⊢atDepth {a = a} {j = j} {k = k} dt =
   ⊢conv dt (red→≅ᵀ (⟶ᵀ*-IMu (⟶*-pairʳ (⟶*-nsucs k (step (βsnd a j) done)))))
+
+-- ★ a payload at a sorted index whose depth is itself read off a pair
+--   (a convoy's code instantiated at an index): the inner redex reduces
+payV-ix : (sh : Shape) (a b j I D : RTm Δ) → PayV sh (pair a (snd (pair b j))) I D ⟶ᵀ* PayV sh (pair a j) I D
+payV-ix []ʰ             a b j I D = doneᵀ
+payV-ix (rec s k ∷ʰ sh) a b j I D =
+  ⟶ᵀ*-trans (⟶ᵀ*-Σˡ (⟶ᵀ*-IMu (⟶*-pairʳ (⟶*-nsucs k (⟶*-snd (⟶*-pairʳ (step (βsnd b j) done)))))))
+            (⟶ᵀ*-Σʳ (payV-ix sh (renTm vs a) (renTm vs b) (renTm vs j) (renTm vs I) (renTm vs D)))
+payV-ix (nat ∷ʰ sh)     a b j I D = ⟶ᵀ*-Σʳ (payV-ix sh (renTm vs a) (renTm vs b) (renTm vs j) (renTm vs I) (renTm vs D))
+payV-ix vʰ              a b j I D = ⟶ᵀ*-Σˡ (⟶ᵀ*-El (⟶*-⌜IMu⌝ⁱ (⟶*-snd (⟶*-pairʳ (step (βsnd b j) done)))))
