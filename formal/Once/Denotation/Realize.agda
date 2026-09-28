@@ -56,7 +56,7 @@ open import Once.TypeCheck.Judgment
          t-app-spine;
          t-neg-void; t-case-void; t-binop-void-l; t-binop-void-r; t-fst-app-void; t-snd-app-void;
          t-apply-app-void; t-Out-app-void; t-app-void; d-fst-void; d-snd-void; d-case-void; d-cata-void; t-var-poly-instantiate;
-         t-var-poly-instantiate-infer)
+         t-var-poly-instantiate-infer; d-poly)
 open import Once.Float.Decimal using (Decimal; decimalOf; negate)
 open import Once.Surface.Thinning using (weaken; weakenFromEmpty)
 open import Once.Surface.Seq using (seq; seq0; embedClosed)
@@ -280,6 +280,9 @@ realize-infer (t-Out-app-void d) = morph-app IR.initial (realize-infer d)
 realize-infer (t-app-void _ dF _) = realize-infer dF
 
 realize-d (d-infer {B = B} w a g) = coerce (sub-arr a (<:-refl B) g) (realize-infer w)
+-- Plan 0.103 phase 2b: as the check-mode polymorphic reference — the body's
+-- reference elaboration, closed, converted to the given grade.
+realize-d (d-poly {A = A} {B = B} _ _ _ _ _ _ _ g bodyD) = coerce (sub-arr {q = Many} (<:-refl A) (<:-refl B) g) (closed (realize bodyD))
 realize-d (d-lam ≤p d)            = lam Many ≤p (realize-infer d)
 realize-d (d-compose dg df)       = comp' (realize-d df) (realize-d dg)
 realize-d d-id       = lift-morphism IR.id

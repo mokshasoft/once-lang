@@ -267,6 +267,12 @@ postulate
   check-agreeV-RVar-poly-todo : ∀ (ctx : NamedCtx) (x : String) (T : Type) {fe snd Ψ se d f w}
     → E.checkElabV-RVar-bbc-other-aux ctx x T (failure fe , snd) ≡ (success Ψ se d f , w)
     → ∀ dγ → SD.⟦ se ⟧ˢ fmt σ dγ ≡ SD.⟦ realize w ⟧ˢ fmt σ dγ
+  -- Plan 0.103 phase 2b: the DOMAIN-GIVEN twin (`d-poly`). Same residual: the
+  -- reference elaboration inlines the body's per-use derivation, which only
+  -- plan 0.103 phase 6 establishes (then both are the definition variable).
+  given-agreeV-RVar-poly-todo : ∀ (ctx : NamedCtx) (x : String) (A : Type) (π : Purity) {fe snd B Ψ se d f w}
+    → E.given-var ctx x A π (failure fe , snd) ≡ (success B Ψ se d f , w)
+    → ∀ dγ → SD.⟦ se ⟧ˢ fmt σ dγ ≡ SD.⟦ realize-d w ⟧ˢ fmt σ dγ
   -- (Plan 0.55 D#2: `check-RApp-todo` ELIMINATED — all RApp check views discharged
   -- by explicit `agree-check-RApp` clauses; the residual is the narrow
   -- `agree-cata-denotes` denotational leaf. See below.)
@@ -2142,6 +2148,18 @@ agree-given-infer A π (success (_ + _) _ _ _ _ , _) () rIH
 agree-given-infer A π (success (μ-type _) _ _ _ _ , _) () rIH
 agree-given-infer A π (success (ν-type _ _) _ _ _ _ , _) () rIH
 
+-- Plan 0.103 phase 2b: a variable head — inferred (`d-infer`) or, failing
+-- that, a polymorphic telescope entry at the given domain (`d-poly`).
+agree-given-var : ∀ (ctx : NamedCtx) (x : String) (A : Type) (π : Purity)
+  (r : VerifiedInferResult ctx (Raw.RVar x)) {B Ψ se d fr} {w : ctx ⊢ᵈ Raw.RVar x ∶ A ⇒[ π ]↦ B ⨾ Ψ}
+  → E.given-var ctx x A π r ≡ (success B Ψ se d fr , w)
+  → (rIH : ∀ {T' Ψ' eE' d' fr'} {w' : ctx ⊢ᵢ Raw.RVar x ∶ T' ⨾ Ψ'}
+       → r ≡ (success T' Ψ' eE' d' fr' , w')
+       → ∀ dγ → SD.⟦ eE' ⟧ˢ fmt σ dγ ≡ SD.⟦ realize-infer w' ⟧ˢ fmt σ dγ)
+  → ∀ (dγ : Env ctx Ψ) → SD.⟦ se ⟧ˢ fmt σ dγ ≡ SD.⟦ realize-d w ⟧ˢ fmt σ dγ
+agree-given-var ctx x A π r@(success _ _ _ _ _ , _) eq rIH dγ = agree-given-infer A π r eq rIH dγ
+agree-given-var ctx x A π (failure fe , snd) eq rIH dγ = given-agreeV-RVar-poly-todo ctx x A π eq dγ
+
 -- `d-cata`: the algebra synthesizes `⟦ F ⟧T A ⇒ A`; the fold node is the same.
 agree-given-cata : ∀ (ctx : NamedCtx) (alg : RawExpr) (F : Functor) (π : Purity) (wfF : WellFormedF F)
   (r : VerifiedInferResult (ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx)) alg)
@@ -2686,7 +2704,7 @@ mutual
       (λ ctx' e' h p → given-agreeV ctx' e' _ _ (rec (mC-sub h)) p)
       (λ ctx' e' h p → infer-agreeV ctx' e' (rec (mIC-sub h)) p) dγ
   given-agreeV ctx e@(Raw.RVar x) A π (acc rec) eq dγ =
-    agree-given-infer A π (E.inferElabV ctx e) eq (λ p → infer-agreeV ctx e (rec (infer<check e)) p) dγ
+    agree-given-var ctx x A π (E.inferElabV ctx e) eq (λ p → infer-agreeV ctx e (rec (infer<check e)) p) dγ
   given-agreeV ctx e@(Raw.RQualified n a) A π (acc rec) eq dγ =
     agree-given-infer A π (E.inferElabV ctx e) eq (λ p → infer-agreeV ctx e (rec (infer<check e)) p) dγ
   given-agreeV ctx e@(Raw.RLet x e₁ e₂) A π (acc rec) eq dγ =

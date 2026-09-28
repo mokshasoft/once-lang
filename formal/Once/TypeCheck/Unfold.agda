@@ -30,6 +30,7 @@
 ------------------------------------------------------------------------
 module Once.TypeCheck.Unfold where
 
+open import Once.Type.Sub using (_⊑π_)
 open import Data.Bool using (Bool; true; false)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.List using (List; []; _∷_)
@@ -403,6 +404,8 @@ module Weaken (imps : Imports) (P : PolyCtx) where
     W-c wk fr (t-var-poly-instantiate {x = z} ln li lp ¬g inst body) =
         cᶜ (sym (up-zero wk)) (t-var-poly-instantiate (wnone (wloc wk z fr) ln) li lp ¬g inst body)
     W-d wk fr (d-infer w sb gr) = d-infer (W-i wk fr w) sb gr
+    W-d wk fr (d-poly {x = z} ln li lp ¬g as inc inst gr body) =
+        cᵈ (sym (up-zero wk)) (d-poly (wnone (wloc wk z fr) ln) li lp ¬g as inc inst gr body)
     W-d wk fb (d-lam {x = y} {A = B} leq body) = d-lam leq (W-i (wk-under y B wk) fb body)
     W-d wk ((_ , f₁) , f₂) (d-compose dg df) = cᵈ (sym (up-+* wk _ _ _)) (d-compose (W-d wk f₂ dg) (W-d wk f₁ df))
     W-d wk _ d-id = cᵈ (sym (up-zero wk)) d-id
@@ -593,6 +596,20 @@ module Unfolding
   ... | refl = ⊥-elim (¬g g)
   s-poly r y (no y≢x) ln li lp ¬g inst body = t-var-poly-instantiate ln li (lpp-skip y≢x lp) ¬g inst body
 
+  -- Plan 0.103 phase 2b: the domain-given polymorphic head, as `s-poly`.
+  s-dpoly : ∀ {n G Δ fr sh} → SR {n} sh G Δ → (y : String) (d : Dec (y ≡ x))
+            {A B : Type} {π π′ : T.Purity} {schema sd sc : PolyType} {body : RawExpr} {prefix : PolyCtx}
+          → lookupLocal-go y G Δ ≡ nothing → lookupImport imps y ≡ nothing
+          → lookupPolyPrefix P′ y ≡ just (schema , body , prefix) → ¬ Ground schema
+          → T.ArrowSchema schema sd sc π′ → T.CodVarsInDom sd sc
+          → T.IsInstance schema (A T.⇒[ T.mk-kind T.Many π′ ] B) → π′ ⊑π π
+          → ctxWithImportsAndPolys imps prefix ⊢ᶜ body ∶ (A T.⇒[ T.mk-kind T.Many π′ ] B) ⨾ zeroUsage
+          → Lc G Δ fr ⊢ᵈ subVar sh y d ∶ A ⇒[ π ]↦ B ⨾ zeroUsage
+  s-dpoly r y (yes y≡x) _ _ lp ¬g _ _ _ _ _
+    with trans (sym lpp-head) (subst (λ z → lookupPolyPrefix P′ z ≡ _) y≡x lp)
+  ... | refl = ⊥-elim (¬g g)
+  s-dpoly r y (no y≢x) ln li lp ¬g as inc inst gr body = d-poly ln li (lpp-skip y≢x lp) ¬g as inc inst gr body
+
   -- An application whose head is not a builtin keeps the scope for its argument.
   app-scope : ∀ {n G Δ fr sh} {f a : RawExpr} {T U}
             → classifyAppHead f ≡ nothing
@@ -680,6 +697,7 @@ module Unfolding
     S-c r (_ , nc) (t-initial-app-check d) = t-initial-app-check (S-c r nc d)
     S-c r _ (t-var-poly-instantiate {x = y} ln li lp ¬g inst body) = s-poly r y (y StrProp.≟ x) ln li lp ¬g inst body
     S-d r nc (d-infer w sb gr) = d-infer (S-i r nc w) sb gr
+    S-d r _ (d-poly {x = y} ln li lp ¬g as inc inst gr body) = s-dpoly r y (y StrProp.≟ x) ln li lp ¬g as inc inst gr body
     S-d r (ny , nb) (d-lam {x = y} {A = B} leq body) = d-lam leq (S-i (sr-ext r y B ny) nb body)
     S-d r ((_ , n₁) , n₂) (d-compose dg df) = d-compose (S-d r n₂ dg) (S-d r n₁ df)
     S-d r _ d-id = d-id
@@ -1254,6 +1272,8 @@ module Unfolding
     F-c {sh = sh} r {b = b} nc (t-var-poly-instantiate {x = z} ln li lp ¬g inst body) eq with inv-RVar {sh = sh} {b = b} eq
     ... | refl , alt = t-var-poly-instantiate ln li (lpp-add r z alt ln lp) ¬g inst body
     F-d {sh = sh} r {b = b} nc (d-infer w sb gr) eq = d-infer (F-i r nc w eq) sb gr
+    F-d {sh = sh} r {b = b} nc (d-poly {x = z} ln li lp ¬g as inc inst gr body) eq with inv-RVar {sh = sh} {b = b} eq
+    ... | refl , alt = d-poly ln li (lpp-add r z alt ln lp) ¬g as inc inst gr body
     F-d {sh = sh} r {b = b} nc (d-lam {x = y} {A = B} leq body) eq with inv-RLam {sh = sh} {b = b} eq
     ... | u₀ , refl , eu = d-lam leq (F-i (sr-ext r y B (proj₁ nc)) (proj₂ nc) body eu)
     F-d {sh = sh} r {b = b} nc (d-compose dg df) eq with inv-RApp {sh = sh} {b = b} eq

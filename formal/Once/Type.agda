@@ -878,6 +878,42 @@ mutual
   substPolyF θ (F P⊕ G) = substPolyF θ F ⊕ substPolyF θ G
   substPolyF θ (F P⊗ G) = substPolyF θ F ⊗ substPolyF θ G
 
+-- Plan 0.103 phase 2b: the FREE TYPE VARIABLES of a schema.
+open import Data.List using () renaming (List to Listₗ; _++_ to _++ₗ_; [] to []ₗ; _∷_ to _∷ₗ_)
+open import Data.List.Membership.Propositional using () renaming (_∈_ to _∈ₗ_)
+mutual
+  ftv : PolyType → Listₗ String
+  ftv (PTVar x)     = x ∷ₗ []ₗ
+  ftv PUnit         = []ₗ
+  ftv PVoid         = []ₗ
+  ftv PInt          = []ₗ
+  ftv PFloat        = []ₗ
+  ftv PStr          = []ₗ
+  ftv PBuffer       = []ₗ
+  ftv (A P* B)      = ftv A ++ₗ ftv B
+  ftv (A P+ B)      = ftv A ++ₗ ftv B
+  ftv (A P⇒[ _ ] B) = ftv A ++ₗ ftv B
+  ftv (PEff A B)    = ftv A ++ₗ ftv B
+  ftv (Pμ-type F)   = ftvF F
+  ftv (Pν-type F _) = ftvF F
+
+  ftvF : PolyFunctor → Listₗ String
+  ftvF (PK A)   = ftv A
+  ftvF PId      = []ₗ
+  ftvF (F P⊕ G) = ftvF F ++ₗ ftvF G
+  ftvF (F P⊗ G) = ftvF F ++ₗ ftvF G
+
+-- An ARROW schema, split into its domain, codomain and grade (`A -> B` is the
+-- pure `Many` arrow, `Eff A B` the effectful one).
+data ArrowSchema : PolyType → PolyType → PolyType → Purity → Set where
+  as-pure : ∀ {sd sc} → ArrowSchema (sd P⇒[ Many ] sc) sd sc pure
+  as-eff  : ∀ {sd sc} → ArrowSchema (PEff sd sc) sd sc eff
+
+-- The codomain's variables occur in the domain, so an instance's domain
+-- determines its codomain (local type inference, Pierce–Turner).
+CodVarsInDom : PolyType → PolyType → Set
+CodVarsInDom sd sc = ∀ {x} → x ∈ₗ ftv sc → x ∈ₗ ftv sd
+
 -- `T` is an INSTANCE of the schema `s`.
 IsInstance : PolyType → Type → Set
 IsInstance s T = Σ (String → Type) (λ θ → substPoly θ s ≡ T)

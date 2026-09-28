@@ -86,6 +86,7 @@ open import Once.Type.Sub using (_<:_; _<:?_; _⊑π_; _⊑π?_; sub-arr; <:-ref
 open import Once.Type.DecEq using (_≟F_; _≟T_)
 open import Once.Type.Match using (Subst; instantiate)
 open import Once.Type.Instance using (instantiate-sound)
+open import Once.Type.Determined using (ArrowView; arrowSchema?; arrow-instance; codVarsInDom?)
 open import Once.TypeCheck.DeciderComplete using (isGround-complete-at)
 open import Once.TypeCheck.Judgment
 
@@ -770,6 +771,85 @@ isGround-inj₂→¬Ground : ∀ (s : PolyType) → isGround s ≡ inj₂ tt →
 isGround-inj₂→¬Ground s eq g with trans (sym eq) (isGround-complete-at s g)
 ... | ()
 
+-- Plan 0.103 phase 2b: the domain-given POLYMORPHIC head (`d-poly`), de-withed:
+-- each decision is an explicit argument with its equation.
+given-poly-π : ∀ (ctx : NamedCtx) (x : String) (A : Type) (π : Once.Type.Purity) (err : TypeError)
+  {schema sd sc : PolyType} {π′ : Once.Type.Purity} {body : RawExpr} {prefix : PolyCtx}
+  → lookupLocal ctx x ≡ nothing → lookupImport (NamedCtx.imports ctx) x ≡ nothing
+  → lookupPolyPrefix (NamedCtx.polys ctx) x ≡ just (schema , body , prefix)
+  → ¬ Ground schema → ArrowSchema schema sd sc π′ → CodVarsInDom sd sc
+  → (θ : String → Type) → substPoly θ sd ≡ A
+  → Dec (π′ ⊑π π) → VerifiedGivenResult ctx (Raw.RVar x) A π
+given-poly-π ctx x A π err eL eI eP ¬g as inc θ eθ (no _) = failure err , tt
+given-poly-π ctx x A π err {sc = sc} {π′ = π′} eL eI eP ¬g as inc θ eθ (yes g) =
+  success (substPoly θ sc) Surface.zeroUsage
+    (Surface.coerce (sub-arr {q = Once.Type.Many} (<:-refl A) (<:-refl (substPoly θ sc)) g)
+                    (Surface.poly x (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π′ ] substPoly θ sc)))
+    0 (NamedCtx.freshCounter ctx)
+  , d-poly eL eI eP ¬g as inc inst g
+      (poly-body-typed {imps = NamedCtx.imports ctx} {polys = NamedCtx.polys ctx} {x = x}
+                       {T = A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π′ ] substPoly θ sc} eP ¬g inst)
+  where inst = arrow-instance as θ eθ
+
+given-poly-m : ∀ (ctx : NamedCtx) (x : String) (A : Type) (π : Once.Type.Purity) (err : TypeError)
+  {schema sd sc : PolyType} {π′ : Once.Type.Purity} {body : RawExpr} {prefix : PolyCtx}
+  → lookupLocal ctx x ≡ nothing → lookupImport (NamedCtx.imports ctx) x ≡ nothing
+  → lookupPolyPrefix (NamedCtx.polys ctx) x ≡ just (schema , body , prefix)
+  → ¬ Ground schema → ArrowSchema schema sd sc π′ → CodVarsInDom sd sc
+  → (mσ : Maybe Subst) → instantiate sd A ≡ mσ → VerifiedGivenResult ctx (Raw.RVar x) A π
+given-poly-m ctx x A π err eL eI eP ¬g as inc nothing _ = failure err , tt
+given-poly-m ctx x A π err {sd = sd} {π′ = π′} eL eI eP ¬g as inc (just σ) eS =
+  given-poly-π ctx x A π err eL eI eP ¬g as inc
+    (Data.Product.proj₁ (instantiate-sound sd A eS)) (Data.Product.proj₂ (instantiate-sound sd A eS)) (π′ ⊑π? π)
+
+given-poly-d : ∀ (ctx : NamedCtx) (x : String) (A : Type) (π : Once.Type.Purity) (err : TypeError)
+  {schema sd sc : PolyType} {π′ : Once.Type.Purity} {body : RawExpr} {prefix : PolyCtx}
+  → lookupLocal ctx x ≡ nothing → lookupImport (NamedCtx.imports ctx) x ≡ nothing
+  → lookupPolyPrefix (NamedCtx.polys ctx) x ≡ just (schema , body , prefix)
+  → ¬ Ground schema → ArrowSchema schema sd sc π′
+  → Dec (CodVarsInDom sd sc) → VerifiedGivenResult ctx (Raw.RVar x) A π
+given-poly-d ctx x A π err eL eI eP ¬g as (no _) = failure err , tt
+given-poly-d ctx x A π err {sd = sd} eL eI eP ¬g as (yes inc) =
+  given-poly-m ctx x A π err eL eI eP ¬g as inc (instantiate sd A) refl
+
+given-poly-a : ∀ (ctx : NamedCtx) (x : String) (A : Type) (π : Once.Type.Purity) (err : TypeError)
+  {schema : PolyType} {body : RawExpr} {prefix : PolyCtx}
+  → lookupLocal ctx x ≡ nothing → lookupImport (NamedCtx.imports ctx) x ≡ nothing
+  → lookupPolyPrefix (NamedCtx.polys ctx) x ≡ just (schema , body , prefix)
+  → ¬ Ground schema → Maybe (ArrowView schema) → VerifiedGivenResult ctx (Raw.RVar x) A π
+given-poly-a ctx x A π err eL eI eP ¬g nothing = failure err , tt
+given-poly-a ctx x A π err eL eI eP ¬g (just (sd , sc , π′ , as)) =
+  given-poly-d ctx x A π err eL eI eP ¬g as (codVarsInDom? sd sc)
+
+given-poly-g : ∀ (ctx : NamedCtx) (x : String) (A : Type) (π : Once.Type.Purity) (err : TypeError)
+  (schema : PolyType) {body : RawExpr} {prefix : PolyCtx}
+  → lookupLocal ctx x ≡ nothing → lookupImport (NamedCtx.imports ctx) x ≡ nothing
+  → lookupPolyPrefix (NamedCtx.polys ctx) x ≡ just (schema , body , prefix)
+  → (ig : Ground schema ⊎ ⊤) → isGround schema ≡ ig → VerifiedGivenResult ctx (Raw.RVar x) A π
+given-poly-g ctx x A π err schema eL eI eP (inj₁ _) _ = failure err , tt
+given-poly-g ctx x A π err schema eL eI eP (inj₂ tt) eG =
+  given-poly-a ctx x A π err eL eI eP (isGround-inj₂→¬Ground schema eG) (arrowSchema? schema)
+
+given-poly : ∀ (ctx : NamedCtx) (x : String) (A : Type) (π : Once.Type.Purity) (err : TypeError)
+  → (ll : Maybe (∃[ A′ ] ∃[ Ψ ] (Surface.SVar (NamedCtx.debruijn ctx) Ψ A′))) → lookupLocal ctx x ≡ ll
+  → (li : Maybe Type) → lookupImport (NamedCtx.imports ctx) x ≡ li
+  → (lp : Maybe (PolyType × RawExpr × PolyCtx)) → lookupPolyPrefix (NamedCtx.polys ctx) x ≡ lp
+  → VerifiedGivenResult ctx (Raw.RVar x) A π
+given-poly ctx x A π err (just _) _ _ _ _ _ = failure err , tt
+given-poly ctx x A π err nothing _ (just _) _ _ _ = failure err , tt
+given-poly ctx x A π err nothing _ nothing _ nothing _ = failure err , tt
+given-poly ctx x A π err nothing eL nothing eI (just (schema , body , prefix)) eP =
+  given-poly-g ctx x A π err schema eL eI eP (isGround schema) refl
+
+-- A variable head: inferred when it infers (`d-infer`); otherwise a
+-- polymorphic telescope entry at the given domain (`d-poly`).
+given-var : ∀ (ctx : NamedCtx) (x : String) (A : Type) (π : Once.Type.Purity)
+          → VerifiedInferResult ctx (Raw.RVar x) → VerifiedGivenResult ctx (Raw.RVar x) A π
+given-var ctx x A π r@(success _ _ _ _ _ , _) = given-infer ctx (Raw.RVar x) A π r
+given-var ctx x A π (failure err , _) =
+  given-poly ctx x A π err (lookupLocal ctx x) refl (lookupImport (NamedCtx.imports ctx) x) refl
+    (lookupPolyPrefix (NamedCtx.polys ctx) x) refl
+
 -- The check-mode polymorphic reference, de-withed: each decision is an
 -- explicit argument with its equation, so the proofs reduce each stage.
 checkElabV-RVar-poly-inst-aux :
@@ -1391,6 +1471,7 @@ mutual
   ...   | nothing = failure (UsageViolation x Once.Type.Many q') , tt
   elabGivenV ctx (Raw.RResolved cn) A π = elabGivenLeaf ctx cn A π (classifyAppHeadView (Raw.RResolved cn)) (inferElabV ctx (Raw.RResolved cn))
   elabGivenV ctx (Raw.RApp f g) A π = elabGivenApp ctx f g A π (classifyAppHeadView f) (inferElabV ctx (Raw.RApp f g))
+  elabGivenV ctx (Raw.RVar x) A π = given-var ctx x A π (inferElabV ctx (Raw.RVar x))
   elabGivenV ctx e A π = given-infer ctx e A π (inferElabV ctx e)
 
   -- The generators, read off the same head view the application dispatch uses.

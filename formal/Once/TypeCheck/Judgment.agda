@@ -939,6 +939,25 @@ mutual
             → A <: A′
             → π′ ⊑π π
             → ctx ⊢ᵈ g ∶ A ⇒[ π ]↦ B ⨾ Ψ
+    -- Plan 0.103 phase 2b: ARGUMENT-DRIVEN APPLICATION OF A POLYMORPHIC HEAD
+    -- (local type inference, Pierce–Turner). Given the domain `A`, an arrow
+    -- schema's instance at domain `A` fixes its codomain `B` (its variables
+    -- occur in the domain), and the reference is typed at that instance. The
+    -- body premise is typed per use until plan 0.103 phase 6.
+    d-poly : ∀ {ctx : NamedCtx} {x : String} {A B : Type} {π π′ : Once.Type.Purity}
+               {schema sd sc : Once.Type.PolyType} {body : RawExpr}
+               {prefix : Once.TypeCheck.Classify.PolyCtx}
+           → lookupLocal ctx x ≡ nothing
+           → lookupImport (NamedCtx.imports ctx) x ≡ nothing
+           → lookupPolyPrefix (NamedCtx.polys ctx) x ≡ just (schema , body , prefix)
+           → ¬ (Once.Type.Ground schema)
+           → Once.Type.ArrowSchema schema sd sc π′
+           → Once.Type.CodVarsInDom sd sc
+           → Once.Type.IsInstance schema (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π′ ] B)
+           → π′ ⊑π π
+           → (ctxWithImportsAndPolys (NamedCtx.imports ctx) prefix)
+               ⊢ᶜ body ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π′ ] B) ⨾ Surface.zeroUsage
+           → ctx ⊢ᵈ RVar x ∶ A ⇒[ π ]↦ B ⨾ zeroUsage
     -- A lambda whose body synthesizes once its binder has the given type.
     d-lam : ∀ {ctx : NamedCtx} {x : String} {body : RawExpr} {A B : Type} {q' : Quantity}
               {π : Once.Type.Purity} {Ψ : Surface.Usage (NamedCtx.size ctx)}

@@ -73,7 +73,7 @@ open import Once.TypeCheck.Judgment
          t-initial-app-check; t-app-spine;
          t-neg-void; t-case-void; t-binop-void-l; t-binop-void-r; t-fst-app-void; t-snd-app-void;
          t-apply-app-void; t-Out-app-void; t-app-void; d-fst-void; d-snd-void; d-case-void; d-cata-void; t-var-poly-instantiate;
-         t-var-poly-instantiate-infer;
+         t-var-poly-instantiate-infer; d-poly;
          t-int; t-float; t-str; t-unit; t-unit-var; t-var-local; t-var-qualified;
          t-var-resolved; t-var-import; t-annot; t-pair; t-neg; t-neg-float; t-binop-arith-float; t-binop-arith-float-il; t-binop-arith-float-ir; t-let; t-case;
          t-binop-arith; t-binop-cmp; t-id-app; t-fst-app; t-snd-app;
@@ -500,6 +500,10 @@ seqᴰ m₁ m₂ = (m₁ >>=T λ x → m₂ >>=T λ y → returnT (x , y)) >>=T 
 -- Plan 0.94 §10: the domain-given realm. `d-infer` is the inferred term under
 -- its arrow conversion; `d-lam` is `t-lam` at `Many`; `d-compose` is `compose`.
 ⟦_⟧ᵈ {ctx = ctx} (d-infer {B = B} w a g) fmt ρ dγ = fmapT ⟦ sub-arr {q = Many} a (<:-refl B) g ⟧<: ((⟦ w ⟧ᵢ fmt ρ) dγ)
+-- Plan 0.103 phase 2b: a polymorphic head means its body (at the instance)
+-- in the prefix's environment, converted to the given grade.
+⟦_⟧ᵈ {ctx = ctx} (d-poly {x = x} {A = A} {B = B} {π′ = π′} _ _ lp _ _ _ _ g bodyD) fmt ρ dγ =
+  fmapT ⟦ sub-arr {q = Many} (<:-refl A) (<:-refl B) g ⟧<: ((⟦ bodyD ⟧ᶜ fmt (tailAt (NamedCtx.polys ctx) x ρ lp)) tt)
 ⟦_⟧ᵈ {ctx = ctx} (d-lam {A = A} {q' = Zero} _ d) fmt ρ dγ = returnT (λ a → (⟦ d ⟧ᵢ fmt ρ) (bindᴰ0 {Γ = NamedCtx.debruijn ctx} {A = A} dγ))
 ⟦_⟧ᵈ {ctx = ctx} (d-lam {A = A} {q' = One}  _ d) fmt ρ dγ = returnT (λ a → (⟦ d ⟧ᵢ fmt ρ) (bindᴰ {Γ = NamedCtx.debruijn ctx} {A = A} One  dγ a))
 ⟦_⟧ᵈ {ctx = ctx} (d-lam {A = A} {q' = Many} _ d) fmt ρ dγ = returnT (λ a → (⟦ d ⟧ᵢ fmt ρ) (bindᴰ {Γ = NamedCtx.debruijn ctx} {A = A} Many dγ a))

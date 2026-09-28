@@ -36,6 +36,7 @@ open import Once.Type public
         ; Ground ; GroundF ; extractGround ; extractGroundF
           -- instances of a schema (plan 0.103 phase 2a)
         ; substPoly ; substPolyF ; IsInstance
+        ; ftv ; ftvF ; ArrowSchema ; as-pure ; as-eff ; CodVarsInDom
           -- target expressibility (D115)
         ; FitsInReg ; fits-int ; fits-float
         )

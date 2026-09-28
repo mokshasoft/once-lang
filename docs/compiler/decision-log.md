@@ -15643,3 +15643,41 @@ the instance, postulated as `Elaborate.poly-body-typed`: a polymorphic entry's b
 instance of its schema. That is exactly what plan 0.103 phase 6 derives (parametric typing plus
 the type-substitution lemma) and then deletes; until then it is false in general. The matcher
 moved to `Once.Type.Match` and decides equality with `_≟T_`.
+
+## D237 — ARGUMENT-DRIVEN APPLICATION OF A POLYMORPHIC HEAD: `d-poly` (PLAN 0.103 PHASE 2b/2c) (2026-09-28)
+
+D230 made argument-driven application an inference: the argument's type is the head's GIVEN
+domain (`⊢ᵈ`). A polymorphic head (`myId 0`) had no given-mode rule, so it regressed. `d-poly`
+is local type inference (Pierce–Turner): given the domain `A`, an ARROW schema (`ArrowSchema`:
+`sd -> sc` pure, or `Eff sd sc`) whose codomain's free variables occur in its domain
+(`CodVarsInDom`, stated with `ftv` — the type language) is instantiated at domain `A`, which
+fixes the codomain `B`; the reference is typed at `A ⇒ B` (body per use until phase 6).
+
+* **Determinacy** (`Type.Determined`): substitution sees a schema only through its free
+  variables (`agree-on`/`agree-from`), so `CodVarsInDom` makes the codomain a function of the
+  domain's instance (`cod-determined`). Mode agreement for `d-poly` (against itself, inference
+  and check mode) is PROVED from it; `ModeAgreement` stays postulate-free.
+* **Elaborator.** A variable head in given mode infers when it can (`d-infer`); otherwise the
+  de-withed polymorphic fallback decides the lookups, non-groundness, the arrow split,
+  `codVarsInDom?`, matches the domain (`instantiate`, sound), reads off the codomain, and checks
+  the grade. `Completeness.given-complete`/`spine-complete` prove it complete for `d-poly`.
+* **Meaning / bridge.** As the check-mode polymorphic reference: the body in the prefix's
+  environment, converted to the given grade; `bridge-d` is a proof. The agreement of the
+  elaborator's placeholder with the reference elaboration is the phase-6 residual
+  `given-agreeV-RVar-poly-todo`, twin of `check-agreeV-RVar-poly-todo`.
+
+## D238 — TYPE VARIABLES IN THE CORE ARE KINDED; `∀` MEANS ITS INSTANCES (PLAN 0.103 PHASE 3) (2026-09-28)
+
+The core gains types over `m` de Bruijn type variables (`Spec.Core.PolyTy`) and the judgment
+`Δ ⊩ Γ ⊢[ Ψ ] t ∷ A ! π` over them (`Spec.Core.PolyTyping`), `Δ` a PARAMETER (one rule per
+former, the ground core's rules read over `Ty m`).
+
+* **Kinds are forced, not chosen.** A functor's `K` positions hold BASE types (`WellFormedF`),
+  so a type variable used there (`List a = μ (K Unit ⊕ (K a ⊗ Id))`) must range over the base
+  universe. Variables are kinded `base` / `any` — OCP-0009's universe of monotypes with its
+  base sub-universe — and instantiations must respect kinds (`Respects`).
+* **The ground instantiation theorem** (`PolyTyping.instantiate`, postulate-free): a derivation
+  over `Δ` and a kind-respecting ground instantiation `σ` give a ground core derivation of
+  `t⟪σ⟫ ∷ A⟪σ⟫`. This is the type-substitution lemma at ground targets (plan 0.103 phase 5),
+  and it DEFINES the meaning of a polymorphic term at an instance: the ground meaning of the
+  instantiated derivation — `∀` as the family `Π(σ). ⟦T[σ]⟧`. The ground core is unchanged.

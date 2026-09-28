@@ -91,7 +91,7 @@ open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_;
   t-sub; t-lam; t-pair-lit-check;
   t-In-app-check; t-apply-check; t-inl-app-check; t-inr-app-check;
   t-initial-app-check; t-app-spine; t-var-poly-instantiate;
-  t-var-poly-instantiate-infer)
+  t-var-poly-instantiate-infer; d-poly)
 open import Once.Denotation.Phase using (lookupᴰUsed; restrictᴰ; bindᴰ; bindᴰ0; env0)
 open import Once.Denotation.Meaning using (⟦_⟧ᶜ; ⟦_⟧ᵢ; ⟦_⟧ᵈ; seqᴰ; DefMeanings;
   lookupᴰ; Env; EnvRun; cata-sem; sigOpValᴰ; sigOpRefᴰ; svarᴰ; in-value; named-sem)
@@ -1230,6 +1230,11 @@ bridge-c {ctx = ctx} (t-var-poly-instantiate {x = x} _ _ lp _ _ bodyD) re er =
 
 -- Plan 0.94 §10: the domain-given clauses mirror their check-mode twins.
 bridge-d (d-infer {B = B} w a g) re er = RelT-sub (sub-arr {q = Many} a (<:-refl B) g) (bridge-i w re er)
+-- Plan 0.103 phase 2b: as the check-mode polymorphic reference — the body in the
+-- prefix's environment, closed, converted to the given grade.
+bridge-d {ctx = ctx} (d-poly {x = x} {A = A} {B = B} _ _ lp _ _ _ _ g bodyD) re er =
+  RelT-sub (sub-arr {q = Many} (<:-refl A) (<:-refl B) g)
+    (bridge-c bodyD {dγ₁ = tt} {dγ₂ = tt} (mk↾ tt) (envrel-tail (NamedCtx.polys ctx) x er lp))
 bridge-d (d-lam {q' = Zero} _ d) re er k = refl , rel-returns λ {a} {b} rv → bridge-i d (rel-bind0 re) er
 bridge-d (d-lam {q' = One}  _ d) re er k = refl , rel-returns λ {a} {b} rv → bridge-i d (rel-bind One re rv) er
 bridge-d (d-lam {q' = Many} _ d) re er k = refl , rel-returns λ {a} {b} rv → bridge-i d (rel-bind Many re rv) er

@@ -36,6 +36,8 @@ open import Once.Type as T using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_
   PUnit; PVoid; _P*_; _P+_; _P⇒[_]_; PEff; Pμ-type; Pν-type; PInt; PFloat; PStr; PBuffer; PTVar;
   PK; PId; _P⊕_; _P⊗_)
 open import Once.Type.Sub using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe)
+open import Once.Type.Determined using (cod-determined)
+open import Data.String using (String)
 open import Once.TypeCheck.Raw as Raw using (RawExpr; RResolved; RApp; BinOp; isArithmeticOp; isComparisonOp)
 open import Once.CanonicalName using (gen)
 open import Once.TypeCheck.Classify using (NamedCtx)
@@ -183,6 +185,24 @@ noinf-pair (t-app-void () _ _)
 ------------------------------------------------------------------------
 -- The agreement, one mutual induction over pairs of derivations.
 ------------------------------------------------------------------------
+
+------------------------------------------------------------------------
+-- Plan 0.103 phase 2b: two instances of one arrow schema at the same domain
+-- have the same codomain.
+------------------------------------------------------------------------
+
+⇒-parts : ∀ {a b c d : Type} {k k′} → (a T.⇒[ k ] b) ≡ (c T.⇒[ k′ ] d) → (a ≡ c) × (b ≡ d)
+⇒-parts refl = refl , refl
+
+dpoly-det : ∀ {s sd sc sd′ sc′ : T.PolyType} {π′ π″ : T.Purity} {A B B′ : Type}
+  → T.ArrowSchema s sd sc π′ → T.ArrowSchema s sd′ sc′ π″ → T.CodVarsInDom sd sc
+  → ∀ (θ θ′ : String → Type)
+  → T.substPoly θ s ≡ (A T.⇒[ T.mk-kind T.Many π′ ] B) → T.substPoly θ′ s ≡ (A T.⇒[ T.mk-kind T.Many π″ ] B′)
+  → B ≡ B′
+dpoly-det {sd = sd} {sc = sc} T.as-pure T.as-pure inc θ θ′ refl e′ with ⇒-parts e′
+... | ed , ec = trans (cod-determined {sd} {sc} inc θ θ′ (sym ed)) ec
+dpoly-det {sd = sd} {sc = sc} T.as-eff T.as-eff inc θ θ′ refl e′ with ⇒-parts e′
+... | ed , ec = trans (cod-determined {sd} {sc} inc θ θ′ (sym ed)) ec
 
 mutual
   -- Synthesis is unique.
@@ -636,6 +656,7 @@ mutual
   agree-dc (d-case df dg) (t-case-copair-check df′ dg′) = cong₂ _+ᵘ_ (agree-dc df df′) (agree-dc dg dg′)
   agree-dc (d-pair df dg) (t-pair-morph-check df′ dg′) = cong₂ _+ᵘ_ (agree-dc df df′) (agree-dc dg dg′)
   agree-dc (d-cata _ _) (t-cata-check _ _) = refl
+  agree-dc (d-poly _ _ _ _ _ _ _ _ _) (t-var-poly-instantiate _ _ _ _ _ _) = refl
 
   ----------------------------------------------------------------------
   -- agree-di
@@ -655,6 +676,11 @@ mutual
   agree-di d-snd-void d = ⊥-elim (noinf-snd d)
   agree-di (d-case-void _ _) d = ⊥-elim (noinf-case d)
   agree-di (d-cata-void _) d = ⊥-elim (noinf-cata-app d)
+  -- Plan 0.103 phase 2b: a non-ground telescope entry does not infer.
+  agree-di (d-poly ln _ _ _ _ _ _ _ _) (t-var-local l) = ⊥-elim (just≢nothing (trans (sym l) ln))
+  agree-di (d-poly _ inn _ _ _ _ _ _ _) (t-var-import _ _ i _) = ⊥-elim (just≢nothing (trans (sym i) inn))
+  agree-di (d-poly _ _ p ¬g _ _ _ _ _) (t-var-poly-instantiate-infer _ _ p′ g _) with trans (sym p) p′
+  ... | refl = ⊥-elim (¬g g)
 
   ----------------------------------------------------------------------
   -- agree-dd
@@ -683,6 +709,9 @@ mutual
   agree-dd (d-case-void df dg) (d-case-void df′ dg′) with agree-dd df df′ | agree-dd dg dg′
   ... | refl , refl | refl , refl = refl , refl
   agree-dd (d-cata-void _) (d-cata-void _) = refl , refl
+  -- Plan 0.103 phase 2b: the domain's instance determines the codomain.
+  agree-dd (d-poly _ _ p _ as inc (θ , e) _ _) (d-poly _ _ p′ _ as′ _ (θ′ , e′) _ _) with trans (sym p) p′
+  ... | refl = dpoly-det as as′ inc θ θ′ e e′ , refl
 
 ------------------------------------------------------------------------
 -- The two statements completeness consumes.
