@@ -74,6 +74,9 @@ JT-sub {Δ} σ =
         (SD-sub (extS σ) KSig)
         (trans (wkS (extS σ) CT) (cong (renTm vs) {x = subTm (extS σ) CT} {y = CT} (CT-sub σ)))
 
+JT-ren : (ρ : Ren Δ Θ) → renTm ρ (JT {Δ}) ≡ JT
+JT-ren ρ = trans (sym (subTm-var ρ JT)) (JT-sub ⟨ ρ ⟩ᵣ)
+
 -- ⚠ `⊢wk ⊢CT` PINNED: an unsolved `renTm vs ?t` against `renTm vs CT`
 --   normalises the whole description (`knot-description-normalisation-trap`)
 ⊢wkCT : {Γ : Ctx} → ((Γ ▹ El (SI 2)) ▹ El (⌜IMu⌝ (SI 2) KD (var vz))) ⊢ renTm vs CT ∷ U
@@ -311,6 +314,77 @@ rIMu = record
                   (DF-sub σ j (fst p)))
   }
 
+-- ★ DIh: its index code `I` is not a subterm, so it is a σ-field; the
+--   motive context `(Γ ▹ El I) ▹ IMu (wk I) (wk D) (var 0)` is built
+--   object-level (`mc`)
+⌜Tm⌝ : RTm Δ → RTm Δ
+⌜Tm⌝ d = ⌜IMu⌝ (SI 2) KD (pair (tag 1) d)
+
+⌜Tm⌝-sub : (σ : Sub Δ Θ) (d : RTm Δ) → subTm σ (⌜Tm⌝ d) ≡ ⌜Tm⌝ (subTm σ d)
+⌜Tm⌝-sub σ d = cong (λ D → ⌜IMu⌝ (SI 2) D (pair (tag 1) (subTm σ d))) (SD-sub σ KSig)
+
+⌜Tm⌝-ren : (ρ : Ren Δ Θ) (d : RTm Δ) → renTm ρ (⌜Tm⌝ d) ≡ ⌜Tm⌝ (renTm ρ d)
+⌜Tm⌝-ren ρ d = trans (sym (subTm-var ρ (⌜Tm⌝ d))) (trans (⌜Tm⌝-sub ⟨ ρ ⟩ᵣ d)
+                 (cong ⌜Tm⌝ {x = subTm ⟨ ρ ⟩ᵣ d} {y = renTm ρ d} (subTm-var ρ d)))
+
+⊢⌜Tm⌝ : {Ξ : Ctx} {d : RTm ⌊ Ξ ⌋} → Ξ ⊢ d ∷ El ⌜Nat⌝ → Ξ ⊢ ⌜Tm⌝ d ∷ U
+⊢⌜Tm⌝ dd = ⊢⌜IMu⌝ ⊢SI ⊢KD (⊢ix (lt-s lt-z) dd)
+
+mc : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ
+mc j g I D = cext (cext g (kEl I)) (kIMu (wk 1 j I) (wk 1 j D) (kvar ffz))
+
+mc-sub : (σ : Sub Δ Θ) (j g I D : RTm Δ) → subTm σ (mc j g I D) ≡ mc (subTm σ j) (subTm σ g) (subTm σ I) (subTm σ D)
+mc-sub σ j g I D =
+  cong₂ (λ a b → cext (cext (subTm σ g) (kEl (subTm σ I))) (kIMu a b (kvar ffz)))
+        {x = subTm σ (wk 1 j I)} {x' = wk 1 (subTm σ j) (subTm σ I)} {y = subTm σ (wk 1 j D)} {y' = wk 1 (subTm σ j) (subTm σ D)}
+        (wk-sub σ 1 j I) (wk-sub σ 1 j D)
+
+-- the premises under the σ-field, every position a parameter
+TDIhI : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
+TDIhI J G V D M C Q =
+  tρ (tmIx J G V kU)
+    (tρ (tmIx J G D (DF J V))
+      (tρ (tyIx (nsuc (nsuc J)) (mc J G V D) M)
+        (tρ (tmIx J G C (kDesc V))
+          (tρ (tmIx J G Q (kEl (kdpay V D C))) tι))))
+
+TDIhI-sub : (σ : Sub Δ Θ) (J G V D M C Q : RTm Δ) →
+            subTm σ ⌜ TDIhI J G V D M C Q ⌝ᵗ
+            ≡ ⌜ TDIhI (subTm σ J) (subTm σ G) (subTm σ V) (subTm σ D) (subTm σ M) (subTm σ C) (subTm σ Q) ⌝ᵗ
+TDIhI-sub σ J G V D M C Q =
+  cong₂ (λ X Y → dρ (tmIx J' G' V' kU)
+                   (dρ (tmIx J' G' D' X)
+                     (dρ (tyIx (nsuc (nsuc J')) Y M')
+                       (dρ (tmIx J' G' C' (kDesc V')) (dρ (tmIx J' G' Q' (kEl (kdpay V' D' C'))) dι)))))
+        {x = subTm σ (DF J V)} {x' = DF J' V'} {y = subTm σ (mc J G V D)} {y' = mc J' G' V' D'}
+        (DF-sub σ J V) (mc-sub σ J G V D)
+  where J' = subTm σ J ; G' = subTm σ G ; V' = subTm σ V ; D' = subTm σ D ; M' = subTm σ M ; C' = subTm σ C ; Q' = subTm σ Q
+
+TDIh : RTm Δ → RTm Δ → RTm Δ → Tel Δ
+TDIh j p c = tσ (⌜Tm⌝ j) (TDIhI (renTm vs j) (renTm vs (fst c)) (var vz) (renTm vs (fst p)) (renTm vs (fst (snd p)))
+                                (renTm vs (fst (snd (snd p)))) (renTm vs (fst (snd (snd (snd p))))))
+
+TDIh-law : TelLaw TDIh
+TDIh-law σ j p c =
+  cong₂ (λ S X → dσ S (lam X))
+        {x = subTm σ (⌜Tm⌝ j)} {x' = ⌜Tm⌝ (subTm σ j)}
+        {y = subTm (extS σ) ⌜ TDIhI (w j) (w (fst c)) (var vz) (w (fst p)) (w (fst (snd p))) (w (fst (snd (snd p))))
+                                    (w (fst (snd (snd (snd p))))) ⌝ᵗ}
+        {y' = ⌜ TDIhI (w j') (w (fst c')) (var vz) (w (fst p')) (w (fst (snd p'))) (w (fst (snd (snd p'))))
+                      (w (fst (snd (snd (snd p'))))) ⌝ᵗ}
+        (⌜Tm⌝-sub σ j)
+        (trans (TDIhI-sub (extS σ) (w j) (w (fst c)) (var vz) (w (fst p)) (w (fst (snd p))) (w (fst (snd (snd p))))
+                          (w (fst (snd (snd (snd p))))))
+               (cong₆' (wkS σ j) (wkS σ (fst c)) (wkS σ (fst p)) (wkS σ (fst (snd p))) (wkS σ (fst (snd (snd p))))
+                       (wkS σ (fst (snd (snd (snd p)))))))
+  where
+    w : {Ξ : Cx} → RTm Ξ → RTm (Ξ ∙)
+    w t = renTm vs t
+    j' = subTm σ j ; p' = subTm σ p ; c' = subTm σ c
+    cong₆' : {a a' b b' d d' e e' f f' h h' : RTm _} → a ≡ a' → b ≡ b' → d ≡ d' → e ≡ e' → f ≡ f' → h ≡ h' →
+             ⌜ TDIhI a b (var vz) d e f h ⌝ᵗ ≡ ⌜ TDIhI a' b' (var vz) d' e' f' h' ⌝ᵗ
+    cong₆' refl refl refl refl refl refl = refl
+
 -- empty fibre (a head no rule concludes with)
 rNone : Row
 rNone = record { R = λ j p c → rows [] ; R-sub = λ σ j p c → refl }
@@ -328,7 +402,7 @@ rowT 0 7  = defRow T0 (λ σ j p c → refl)      -- Nat
 rowT 0 8  = defRow THom (λ σ j p c → refl)    -- Id
 rowT 0 9  = rIMu           -- IMu
 rowT 0 10 = defRow TDesc (λ σ j p c → refl)   -- Desc
-rowT 0 11 = rNone          -- DIh  ⬜ (its index code is a σ-field; next)
+rowT 0 11 = defRow TDIh TDIh-law   -- DIh
 rowT 0 12 = defRow T0 (λ σ j p c → refl)      -- Fin
 rowT _ _  = rNone
 
@@ -391,6 +465,42 @@ private
   okDesc {j = j} {p} {c} dj dp dc = done1 (TDesc j p c) (ok-ρ (⊢tmIx dj dg (f0 1 0 []ʰ dp) (⊢kU dj)) ok-ι)
     where open RowTyping dj dc
 
+  okDIh : RowOK 0 sh-kDIh (defRow TDIh TDIh-law)
+  okDIh {Ξ} {j} {p} {c} dj dp dc =
+    done1 (TDIh j p c) (ok-σ (⊢⌜Tm⌝ dj) (subst (λ X → TelOK Ξ₁ X T₁) (sym (JT-ren vs)) okI))
+    where
+      open RowTyping dj dc
+      p1 = r1 1 0 (rec 0 2 ∷ʰ rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ) dp
+      p2 = r1 0 2 (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ) p1
+      p3 = r1 1 0 (rec 1 0 ∷ʰ []ʰ) p2
+      dD = f0 1 0 (rec 0 2 ∷ʰ rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ) dp
+      dM = f0 0 2 (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ) p1
+      dC = f0 1 0 (rec 1 0 ∷ʰ []ʰ) p2
+      dq = f0 1 0 []ʰ p3
+      Ξ₁ : Ctx
+      Ξ₁ = Ξ ▹ El (⌜Tm⌝ j)
+      j₁ = renTm vs j
+      T₁ = TDIhI j₁ (renTm vs (fst c)) (var vz) (renTm vs (fst p)) (renTm vs (fst (snd p)))
+                 (renTm vs (fst (snd (snd p)))) (renTm vs (fst (snd (snd (snd p)))))
+      dj₁ : Ξ₁ ⊢ j₁ ∷ El ⌜Nat⌝
+      dj₁ = ⊢wk {Ξ} {El (⌜Tm⌝ j)} {j} {El ⌜Nat⌝} dj
+      dg₁ = ⊢wkCtx {Ξ} {El (⌜Tm⌝ j)} {j} {fst c} dg
+      wkK : {s : ℕ} {d t : RTm ⌊ Ξ ⌋} → Ξ ⊢ t ∷ K s d → Ξ₁ ⊢ renTm vs t ∷ K s (renTm vs d)
+      wkK {s} {d} {t} dt = ⊢wkSK {Γ = Ξ} {B = El (⌜Tm⌝ j)} {sg = KSig} {s = s} {d = d} {t = t} dt
+      dv : Ξ₁ ⊢ var vz ∷ K 1 j₁
+      dv = ⊢conv (⊢-cast {Ξ₁} {var vz} {renTy vs (El (⌜Tm⌝ j))} {El (⌜Tm⌝ j₁)} (cong El (⌜Tm⌝-ren vs j)) (⊢var here))
+                 (credᵀ El-⌜IMu⌝)
+      dD₁ = wkK dD
+      dmc : Ξ₁ ⊢ mc j₁ (renTm vs (fst c)) (var vz) (renTm vs (fst p)) ∷ KCtx (nsuc (nsuc j₁))
+      dmc = ⊢cext (⊢isuc dj₁) (⊢cext dj₁ dg₁ (⊢kEl dj₁ dv))
+                  (⊢kIMu (⊢isuc dj₁) (⊢wkS (lt-s lt-z) dj₁ dv) (⊢wkS (lt-s lt-z) dj₁ dD₁) (⊢kvar (⊢isuc dj₁) (⊢ffz dj₁)))
+      okI : TelOK Ξ₁ JT T₁
+      okI = ok-ρ (⊢tmIx dj₁ dg₁ dv (⊢kU dj₁))
+              (ok-ρ (⊢tmIx dj₁ dg₁ dD₁ (⊢DF dj₁ dv))
+                (ok-ρ (⊢tyIx (⊢isuc (⊢isuc dj₁)) dmc (wkK dM))
+                  (ok-ρ (⊢tmIx dj₁ dg₁ (wkK dC) (⊢kDesc dj₁ dv))
+                    (ok-ρ (⊢tmIx dj₁ dg₁ (wkK dq) (⊢kEl dj₁ (⊢kdpay dj₁ dv dD₁ (wkK dC)))) ok-ι))))
+
   okNone : {s : ℕ} {sh : Shape} → RowOK s sh rNone
   okNone dj dp dc = ⊢rows {I = JT} {Cs = []} ⊢JT []ᵈ
 
@@ -415,7 +525,7 @@ rowOK nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nt
 rowOK nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))) = okHom
 rowOK nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))) = okIMu
 rowOK nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))) = okDesc
-rowOK nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))))) = okNone {0} {sh-kDIh}
+rowOK nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))))) = okDIh
 rowOK nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))) = ok0 {sh-kFin}
 rowOK {sh = sh} (nthᵍ-s nthᵍ-z) nh = okNone {1} {sh}
 
@@ -432,8 +542,6 @@ D⊢ = lam (app (ielim KD (fst (var vz)) FIBM (fst (snd (var vz)))) (snd (snd (v
 K⊢ : RTm Δ → RTy Δ
 K⊢ x = IMu JT D⊢ x
 
-JT-ren : (ρ : Ren Δ Θ) → renTm ρ (JT {Δ}) ≡ JT
-JT-ren ρ = trans (sym (subTm-var ρ JT)) (JT-sub ⟨ ρ ⟩ᵣ)
 
 -- an index's three components (the inverse of `⊢ixJ`)
 module UnJ {Ξ : Ctx} {x : RTm ⌊ Ξ ⌋} (dx : Ξ ⊢ x ∷ El JT) where
