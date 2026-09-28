@@ -114,9 +114,18 @@ TAppI-sub σ J G T Q A B X =
         (⌜Ty⌝-sub σ J) (sub0-sub σ 0 J B Q)
   where J' = subTm σ J ; Q' = subTm σ Q ; A' = subTm σ A ; B' = subTm σ B
 
-TAppI-cong : (J J' G G' T T' Q Q' A B X X' : RTm Δ) → J ≡ J' → G ≡ G' → T ≡ T' → Q ≡ Q' → X ≡ X' →
-             ⌜ TAppI J G T Q A B X ⌝ᵗ ≡ ⌜ TAppI J' G' T' Q' A B X' ⌝ᵗ
-TAppI-cong J J' G G' T T' Q Q' A B X X' refl refl refl refl refl = refl
+TAppI-cong : (J J' G G' T T' Q Q' A A' B B' X X' : RTm Δ) → J ≡ J' → G ≡ G' → T ≡ T' → Q ≡ Q' → A ≡ A' → B ≡ B' → X ≡ X' →
+             ⌜ TAppI J G T Q A B X ⌝ᵗ ≡ ⌜ TAppI J' G' T' Q' A' B' X' ⌝ᵗ
+TAppI-cong J J' G G' T T' Q Q' A A' B B' X X' refl refl refl refl refl refl refl = refl
+
+-- ★ the premises typed at ANY context and positions (instances: the row, the constructor)
+okTAppI : {Ξ : Ctx} {J G T Q A B X : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ G ∷ KCtx J →
+          Ξ ⊢ T ∷ K 1 J → Ξ ⊢ Q ∷ K 1 J → Ξ ⊢ A ∷ K 0 J → Ξ ⊢ B ∷ K 0 (nsuc J) → Ξ ⊢ X ∷ K 0 J →
+          TelOK Ξ JT (TAppI J G T Q A B X)
+okTAppI dJ dG dT dQ dA dB dX =
+  ok-ρ (⊢tmIx dJ dG dT (⊢kPi dJ dA dB))
+    (ok-ρ (⊢tmIx dJ dG dQ dA)
+      (ok-σ (⊢⌜Id⌝ (⊢⌜Ty⌝ dJ) (toTy dX) (toTy (⊢sub0 lt-z dJ dB dQ))) ok-ι))
 
 dσ²-cong : (X X' : RTm Δ) (Y Y' : RTm (Δ ∙)) (Z Z' : RTm ((Δ ∙) ∙)) → X ≡ X' → Y ≡ Y' → Z ≡ Z' →
            dσ X (lam (dσ Y (lam Z))) ≡ dσ X' (lam (dσ Y' (lam Z')))
@@ -135,7 +144,7 @@ TApp-law σ j p c =
            (⌜Ty⌝-sub σ j)
            (trans (⌜Ty⌝-sub (extS σ) (nsuc (w1 j))) (cong (λ z → ⌜Ty⌝ (nsuc z)) {x = subTm (extS σ) (w1 j)} {y = w1 (subTm σ j)} (wkS σ j)))
            (trans (TAppI-sub (extS (extS σ)) (w2 j) (w2 (fst c)) (w2 (fst p)) (w2 (fst (snd p))) (var (vs vz)) (var vz) (w2 (snd c)))
-                  (TAppI-cong _ _ _ _ _ _ _ _ (var (vs vz)) (var vz) _ _ (w2-sub σ j) (w2-sub σ (fst c)) (w2-sub σ (fst p)) (w2-sub σ (fst (snd p))) (w2-sub σ (snd c))))
+                  (TAppI-cong _ _ _ _ _ _ _ _ _ _ _ _ _ _ (w2-sub σ j) (w2-sub σ (fst c)) (w2-sub σ (fst p)) (w2-sub σ (fst (snd p))) refl refl (w2-sub σ (snd c))))
 
 rApp : Row
 rApp = defRow TApp TApp-law
@@ -168,9 +177,7 @@ okAppT {Ξ} {j} {p} {c} dj dp dc =
     dB : Ξ₂ ⊢ var vz ∷ K 0 (nsuc (w2 j))
     dB = hereTy {Ξ₁} {nsuc (w1 j)}
     okI : TelOK Ξ₂ JT T₂
-    okI = ok-ρ (⊢tmIx dj₂ dg₂ dt (⊢kPi dj₂ dA dB))
-            (ok-ρ (⊢tmIx dj₂ dg₂ du dA)
-              (ok-σ (⊢⌜Id⌝ (⊢⌜Ty⌝ dj₂) (toTy (wk2K (⊢tyOf dc))) (toTy (⊢sub0 lt-z dj₂ dB du))) ok-ι))
+    okI = okTAppI dj₂ dg₂ dt du dA dB (wk2K (⊢tyOf dc))
 
 okApp : RowOK 1 sh-kapp rApp
 okApp {Ξ} {j} {p} {c} dj dp dc = ⊢rows {Ξ} {JT} {1} {⌜ TApp j p c ⌝ᵗ ∷ []} ⊢JT (⊢tel {Ξ} {JT} {TApp j p c} ⊢JT (okAppT dj dp dc) ∷ᵈ []ᵈ)
