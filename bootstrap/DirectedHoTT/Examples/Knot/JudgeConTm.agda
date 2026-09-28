@@ -16,7 +16,8 @@ open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast; wk-cancel-tm 
 open import DirectedHoTT.Lib.SynView using ( ⊢recSnd )
 open import DirectedHoTT.Lib.FinFam using ( ⊢isuc )
 open import DirectedHoTT.Metatheory.SubjectReductionBase using () renaming ( wk-sub to wkS )
-open import DirectedHoTT.Examples.Knot.Lookup using ( toTy; hereTy )
+open import DirectedHoTT.Examples.Knot.Lookup using ( toTy; hereTy; K∋; I∋; D∋; ix∋ )
+open import DirectedHoTT.Lib.FinFam using ( FinI )
 open import DirectedHoTT.Examples.Knot.Sub using ( sub0; ⊢sub0; ⟶*-sub0ᵘ )
 open import DirectedHoTT.Lib.Sugar using ( tag; conₗ; lt-z; lt-s )
 open import DirectedHoTT.Examples.Knot.Ctors
@@ -201,3 +202,31 @@ private
     dE = ⊢conv (⊢idrefl (⊢⌜Ty⌝ dj) (toTy dX))
                (csymᵀ (red→≅ᵀ (stepᵀ (El-⌜Id⌝ (⌜Ty⌝ j) (snd c) (sub0 0 j B (fst (snd p))))
                                (⟶ᵀ*-trans (⟶ᵀ*-Idˡ (step (βsnd g X) done)) (⟶ᵀ*-Idʳ (⟶*-sub0ᵘ fu))))))
+
+------------------------------------------------------------------------
+-- ★ `⊢var : Γ ∋ x ∷ A → Γ ⊢ var x ∷ A` — the ∋-derivation is the payload
+------------------------------------------------------------------------
+
+⊢tm-var : {Ξ : Ctx} {j g x A r : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ g ∷ KCtx j →
+          Ξ ⊢ x ∷ FinI j → Ξ ⊢ A ∷ K 0 j → Ξ ⊢ r ∷ K∋ (ix∋ j g x A) →
+          Ξ ⊢ conₗ 0 (pair r unit) ∷ K⊢ (tmIx j g (kvar x) A)
+⊢tm-var {Ξ} {j} {g} {x} {A} {r} dj dg dx dA dr =
+  ⊢conRow {Ξ} {JT} {D⊢} {tmIx j g (kvar x) A} {⌜ TVar j p c ⌝ᵗ} {pair r unit} ⊢JT ⊢D⊢
+          (⊢tmIx dj dg (⊢kvar dj dx) dA)
+          (fibK {s = 1} {k = 0} {j = j} {p = p} {c = c} (nthᵍ-s nthᵍ-z) nthʰ-z)
+          (⊢tel {Ξ} {JT} {TVar j p c} ⊢JT ok)
+          (⊢payσ {Ξ} {JT} {D⊢} ⊢JT ⊢D⊢ {⌜IMu⌝ I∋ D∋ ix} {r} {unit} {tι} ok
+                 (⊢conv dr (csymᵀ (ctrnᵀ (credᵀ El-⌜IMu⌝) (red→≅ᵀ (⟶ᵀ*-IMu rix)))))
+                 (⊢payι {Ξ} {JT} {D⊢} ⊢JT ⊢D⊢ {unit} ⊢unit))
+  where
+    p c ix : RTm ⌊ Ξ ⌋
+    p = pair x unit
+    c = pair g A
+    ix = ix∋ j (fst c) (fst p) (snd c)
+    ok : TelOK Ξ JT (TVar j p c)
+    ok = okVarT dj (⊢payK (lt-s lt-z) ok-kvar dj (a-v dx)) (⊢cTm dj dg dA)
+    rix : ix ⟶* ix∋ j g x A
+    rix = ⟶*-pairʳ (⟶*-trans {t = pair (fst c) (pair (fst p) (snd c))} {u = pair g (pair (fst p) (snd c))} {v = pair g (pair x A)}
+                     (⟶*-pairˡ (step (βfst g A) done))
+                     (⟶*-pairʳ (⟶*-trans {t = pair (fst p) (snd c)} {u = pair x (snd c)} {v = pair x A}
+                        (⟶*-pairˡ (step (βfst x unit) done)) (⟶*-pairʳ (step (βsnd g A) done)))))

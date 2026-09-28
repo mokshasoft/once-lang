@@ -42,7 +42,7 @@ open import DirectedHoTT.Examples.Knot.Lookup using ( ⌜Ctx⌝; rows; ⊢rows )
 
 open import DirectedHoTT.Examples.Knot.JudgeIx
 open import DirectedHoTT.Examples.Knot.JudgeRowsTy
-open import DirectedHoTT.Examples.Knot.JudgeRowsTm using ( rLam; okLam; rApp; okApp )
+open import DirectedHoTT.Examples.Knot.JudgeRowsTm using ( rVar; okVar; rLam; okLam; rApp; okApp )
 
 private
   variable
@@ -50,6 +50,7 @@ private
 
 -- the `⊢` rows, by constructor (the rest are the next batches)
 rowTm : ℕ → Row
+rowTm 0 = rVar      -- var
 rowTm 1 = rLam      -- lam
 rowTm 2 = rApp      -- app
 rowTm _ = rNone
@@ -98,7 +99,7 @@ rowOK nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (n
 rowOK (nthᵍ-s nthᵍ-z) nh = rowOKTm nh
   where
     rowOKTm : {k : ℕ} {sh : Shape} → NthSh TmShs k sh → RowOK 1 sh (rowTm k)
-    rowOKTm {sh = sh} nthʰ-z = okNone {1} {sh}
+    rowOKTm nthʰ-z = okVar
     rowOKTm (nthʰ-s nthʰ-z) = okLam
     rowOKTm (nthʰ-s (nthʰ-s nthʰ-z)) = okApp
     rowOKTm {sh = sh} (nthʰ-s (nthʰ-s (nthʰ-s nh))) = okNone {1} {sh}

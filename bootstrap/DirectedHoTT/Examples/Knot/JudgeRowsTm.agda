@@ -28,7 +28,10 @@ open import DirectedHoTT.Examples.Knot.Lookup using ( rows; ⊢rows )
 open import DirectedHoTT.Examples.Knot.JudgeIx
 open import DirectedHoTT.Examples.Knot.JudgeTmIx
 open import DirectedHoTT.Examples.Knot.JudgeRowsTy using ( RowOK; f0; r1 )
-open import DirectedHoTT.Examples.Knot.Lookup using ( toTy; hereTy )
+open import DirectedHoTT.Examples.Knot.Lookup using ( toTy; hereTy; I∋; ⊢I∋; I∋-sub; ix∋; ⊢ix∋; D∋; ⊢D∋ )
+open import DirectedHoTT.Examples.Knot.LookupCon using ( D∋-sub )
+open import DirectedHoTT.Lib.FinFam using ( FinI; FinD )
+open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; ⟶ᵀ*-El; ⟶*-⌜IMu⌝ⁱ )
 open import DirectedHoTT.Examples.Knot.Sub using ( sub0; ⊢sub0; sub0-sub )
 open import DirectedHoTT.Metatheory.TySub using ( ⊢wk )
 open import DirectedHoTT.Metatheory.SubjectReductionBase using () renaming ( wk-sub to wkS )
@@ -181,3 +184,32 @@ okAppT {Ξ} {j} {p} {c} dj dp dc =
 
 okApp : RowOK 1 sh-kapp rApp
 okApp {Ξ} {j} {p} {c} dj dp dc = ⊢rows {Ξ} {JT} {1} {⌜ TApp j p c ⌝ᵗ ∷ []} ⊢JT (⊢tel {Ξ} {JT} {TApp j p c} ⊢JT (okAppT dj dp dc) ∷ᵈ []ᵈ)
+
+------------------------------------------------------------------------
+-- ⊢var : Γ ∋ x ∷ A → Γ ⊢ var x ∷ A
+--   the premise is of a LOWER stratum (∋): a σ-field of its code (D077)
+------------------------------------------------------------------------
+
+TVar : RTm Δ → RTm Δ → RTm Δ → Tel Δ
+TVar j p c = tσ (⌜IMu⌝ I∋ D∋ (ix∋ j (fst c) (fst p) (snd c))) tι
+
+imu-cong : (I I' D D' i : RTm Δ) → I ≡ I' → D ≡ D' → dσ (⌜IMu⌝ I D i) (lam dι) ≡ dσ (⌜IMu⌝ I' D' i) (lam dι)
+imu-cong I I' D D' i refl refl = refl
+
+TVar-law : TelLaw TVar
+TVar-law σ j p c = imu-cong _ _ _ _ _ (I∋-sub σ) (D∋-sub σ)
+
+rVar : Row
+rVar = defRow TVar TVar-law
+
+-- a variable payload's field, at the depth
+⊢varOf : {Ξ : Ctx} {j p : RTm ⌊ Ξ ⌋} → Ξ ⊢ p ∷ PayV sh-kvar (pair (tag 1) j) (SI 2) (SD KSig) → Ξ ⊢ fst p ∷ FinI j
+⊢varOf {j = j} dp = ⊢conv (⊢fst dp) (ctrnᵀ (red→≅ᵀ (⟶ᵀ*-El (⟶*-⌜IMu⌝ⁱ (step (βsnd (tag 1) j) done)))) (credᵀ El-⌜IMu⌝))
+
+okVarT : {Ξ : Ctx} {j p c : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El ⌜Nat⌝ →
+         Ξ ⊢ p ∷ PayV sh-kvar (pair (tag 1) j) (SI 2) (SD KSig) → Ξ ⊢ c ∷ El (CTat (pair (tag 1) j)) →
+         TelOK Ξ JT (TVar j p c)
+okVarT dj dp dc = ok-σ (⊢⌜IMu⌝ ⊢I∋ ⊢D∋ (⊢ix∋ dj (⊢ctxOf dc) (⊢varOf dp) (⊢tyOf dc))) ok-ι
+
+okVar : RowOK 1 sh-kvar rVar
+okVar {Ξ} {j} {p} {c} dj dp dc = ⊢rows {Ξ} {JT} {1} {⌜ TVar j p c ⌝ᵗ ∷ []} ⊢JT (⊢tel {Ξ} {JT} {TVar j p c} ⊢JT (okVarT dj dp dc) ∷ᵈ []ᵈ)
