@@ -272,6 +272,15 @@ private
     (subst (λ X → Γ ⊢ p ∷ El (dpay (SI n) (SD sg) X)) (sym (sub-tel (single (pair (tag s) d)) sh (var vz)))
            (⊢payArgs (⊢SD ok) (nthSh-ok (nthG-ok ok ng) nh) (⊢ix (nthG-lt ng) dd) (step (βsnd _ _) done) as))
 
+-- …from the payload at its normal form (the telescope instantiated at the index)
+⊢conV : {Γ : Ctx} {sg : Sig n} {shs : Shapes c} {sh : Shape} {d p : RTm ⌊ Γ ⌋} →
+        SigOK n sg → NthG sg s shs → NthSh shs k sh → Γ ⊢ d ∷ El ⌜Nat⌝ →
+        Γ ⊢ p ∷ El (dpay (SI n) (SD sg) ⌜ tel sh (pair (tag s) d) ⌝ᵗ) → Γ ⊢ conₗ k p ∷ SK sg s d
+⊢conV {n = n} {s = s} {Γ = Γ} {sg = sg} {shs = shs} {sh = sh} {d = d} {p = p} ok ng nh dd dp =
+  ⊢conₛₜ {Tss = stels sg} {Ts = tels shs} {T = tel sh (var vz)} ⊢⌜Nat⌝ (sigOK ok)
+         (nth-stels ng) (nth-tels nh) dd
+    (subst (λ X → Γ ⊢ p ∷ El (dpay (SI n) (SD sg) X)) (sym (sub-tel (single (pair (tag s) d)) sh (var vz))) dp)
+
 ------------------------------------------------------------------------
 -- 5. THE FAMILY IS CLOSED: substitution fixes it.
 ------------------------------------------------------------------------

@@ -21,11 +21,12 @@ open import DirectedHoTT.Spec.Syntax hiding ( Fin )
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Metatheory.RedCong
   using ( ⟶*-trans; ⟶*-pairʳ; ⟶*-snd; ⟶*-⌜IMu⌝ⁱ; ⟶*-dihᶜ; _⟶ᵀ*_; doneᵀ; stepᵀ; ⟶ᵀ*-Σʳ; ⟶ᵀ*-Σˡ; ⟶ᵀ*-El; ⟶ᵀ*-trans )
+open import DirectedHoTT.Metatheory.RedCong using () renaming ( red→≅ᵀ to red→≅ᵀ⁺ )
 open import DirectedHoTT.Metatheory.TySub using ( wk-cancel-tm )
 open import DirectedHoTT.Metatheory.SubjectReductionBase using ( wk-sub; iinst-sub; wk2-subTy )
 open import DirectedHoTT.Spec.Syntax using ( cong₃; cong₄ )
 open import DirectedHoTT.Metatheory.Fundamental.Syntactic using ( ⟨_⟩ᵣ; subTm-var )
-open import DirectedHoTT.Lib.Sugar using ( tag; vz-cancel )
+open import DirectedHoTT.Lib.Sugar using ( tag; conₗ; vz-cancel )
 open import DirectedHoTT.Lib.Tel using ( ⌜_⌝ᵗ )
 open import DirectedHoTT.Lib.FinFam using ( FinD )
 open import DirectedHoTT.Lib.Syn
@@ -209,3 +210,10 @@ payV-ix (rec s k ∷ʰ sh) a b j I D =
             (⟶ᵀ*-Σʳ (payV-ix sh (renTm vs a) (renTm vs b) (renTm vs j) (renTm vs I) (renTm vs D)))
 payV-ix (nat ∷ʰ sh)     a b j I D = ⟶ᵀ*-Σʳ (payV-ix sh (renTm vs a) (renTm vs b) (renTm vs j) (renTm vs I) (renTm vs D))
 payV-ix vʰ              a b j I D = ⟶ᵀ*-Σˡ (⟶ᵀ*-El (⟶*-⌜IMu⌝ⁱ (⟶*-snd (⟶*-pairʳ (step (βsnd b j) done)))))
+
+-- ★ a node from its payload's normal form
+⊢conP : {Ξ : Ctx} {n c s k : ℕ} {sg : Sig n} {shs : Shapes c} {sh : Shape} {d p : RTm ⌊ Ξ ⌋} →
+        SigOK n sg → NthG sg s shs → NthSh shs k sh → Ξ ⊢ d ∷ El ⌜Nat⌝ →
+        Ξ ⊢ p ∷ PayV sh (pair (tag s) d) (SI n) (SD sg) → Ξ ⊢ conₗ k p ∷ SK sg s d
+⊢conP {s = s} {sg = sg} {sh = sh} {d = d} ok ng nh dd dp =
+  ⊢conV ok ng nh dd (⊢conv dp (csymᵀ (red→≅ᵀ⁺ (payV-red sh (pair (tag s) d) (SI _) (SD sg)))))

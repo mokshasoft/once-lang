@@ -195,6 +195,10 @@ FAMS = {
              csig="Ξ ⊢ c ∷ El (Redₘ.Cat (pair (tag 1) j))", ix="ix⟶", dix="⊢ix⟶"),
   "⟶ᵀ": dict(J="RedTₘ.J", dJ="RedTₘ.⊢J", okσ="RedTₘ.okσ", RowOK="RedTₘ.RowOK", S=0, X="(⊢tgt {s = 0} dc)", XK="K 0 J",
              csig="Ξ ⊢ c ∷ El (RedTₘ.Cat (pair (tag 0) j))", ix="ix⟶ᵀ", dix="⊢ix⟶ᵀ"),
+  "≅":  dict(J="Convₘ.J", dJ="Convₘ.⊢J", okσ="Convₘ.okσ", RowOK="Convₘ.RowOK", S=1, X="(⊢tgt {s = 1} dc)", XK="K 1 J",
+             csig="Ξ ⊢ c ∷ El (Convₘ.Cat (pair (tag 1) j))", ix="ix≅", dix="⊢ix≅"),
+  "≅ᵀ": dict(J="ConvTₘ.J", dJ="ConvTₘ.⊢J", okσ="ConvTₘ.okσ", RowOK="ConvTₘ.RowOK", S=0, X="(⊢tgt {s = 0} dc)", XK="K 0 J",
+             csig="Ξ ⊢ c ∷ El (ConvTₘ.Cat (pair (tag 0) j))", ix="ix≅ᵀ", dix="⊢ix≅ᵀ"),
 }
 FAM = FAMS["⊢"]
 FAMKEY = "⊢"
