@@ -134,8 +134,11 @@ moduleToIR mod = moduleToIR-aux (C.compileResolvedModule C.Heap false mod)
 -- entry is evaluated in the ones declared before it (`tableEnv`). The compiler
 -- emits in declaration order, so the table is that list reversed.
 ------------------------------------------------------------------------
+-- Each entry is the DIRECT-CALL morphism the emitter compiles (D064,
+-- `directCallIR`), which is what `once_<name>` implements in the image.
 irFunOf : C.CompiledFun → IRFun
-irFunOf cf = irFun (cfName cf) ⌊ cfType cf ⌋ (cfIR cf)
+irFunOf cf = irFun (cfName cf) ⌊ proj₁ dc ⌋ ⌊ proj₁ (proj₂ dc) ⌋ (proj₂ (proj₂ dc))
+  where dc = C.directCallIR (cfType cf) (cfIR cf)
 
 -- keep an entry: not a primitive, and not the entry `main`.
 tbl-keep : Bool → Bool → C.CompiledFun → List IRFun → List IRFun
