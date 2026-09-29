@@ -1466,6 +1466,102 @@ PREDS = {
                rows={"cbase": [], "cHom": [("σ", "StkC", 0)]}),
 }
 
+PCONL = []   # the side-condition families' constructors (their own module: they cite each `Family`)
+
+def gen_pred_con(P, h, prems):
+    """a side-condition row's constructor: the payload (its premises) at the
+    values, the row read at the sources by one `mono-by`"""
+    fs = SIG[h][1]
+    nm = "%s⊢%s" % (P, h)
+    n = len(fs)
+    fv = ["f%d" % i for i in range(n)]
+    def dep(k, j="j"):
+        t = j
+        for _ in range(k): t = "(nsuc %s)" % t
+        return t
+    def ddep(k):
+        t = "dj"
+        for _ in range(k): t = "(⊢isuc %s)" % t
+        return t
+    # the telescope at values, and its law
+    def telv(xs):
+        tel = "tι"
+        for pr in reversed(prems):
+            if pr[0] == "σ": tel = "tσ (⌜%s⌝ %s %s) tι" % (pr[1], xs[0], xs[1 + pr[2]])
+            else: tel = "tρ (ix%s %s %s) (%s)" % (P, dep(pr[1], xs[0]), xs[1 + pr[0]], tel)
+        return tel
+    TV = "TV" + nm
+    args = ["J"] + ["F%d" % i for i in range(n)]
+    L = []
+    L.append("%s : %sTel Δ" % (TV, "RTm Δ → " * len(args)))
+    L.append("%s %s = %s" % (TV, " ".join(args), telv(args)))
+    L.append("")
+    L.append("%s-sub : (σ : Sub Δ Θ)%s → subTm σ ⌜ %s ⌝ᵗ ≡ ⌜ %s ⌝ᵗ" % (TV, "".join(" (%s : RTm Δ)" % a for a in args),
+             " ".join([TV] + args), " ".join([TV] + ["(subTm σ %s)" % a for a in args])))
+    sp = [pr for pr in prems if pr[0] == "σ"]
+    if sp:
+        L.append("%s-sub σ %s = cong (λ Z → dσ Z (lam dι)) (⌜%s⌝-sub σ J F%d)" % (TV, " ".join(args), sp[0][1], sp[0][2]))
+    else:
+        L.append("%s-sub σ %s = refl" % (TV, " ".join(args)))
+    L.append("")
+    # the constructor
+    hyps = [("j", "El ⌜Nat⌝")] + [(fv[i], "El ⌜Nat⌝" if fs[i][0] == "nat" else "K %d %s" % (fs[i][1], dep(fs[i][2]))) for i in range(n)]
+    items = []
+    for t, pr in enumerate(prems):
+        if pr[0] == "σ":
+            hyps.append(("e%d" % t, "El (⌜%s⌝ j %s)" % (pr[1], fv[pr[2]]))); items.append("e%d" % t)
+        else:
+            hyps.append(("r%d" % t, "K%s %s %s" % (P, dep(pr[1]), fv[pr[0]]))); items.append("r%d" % t)
+    Pay = "unit"
+    for it in reversed(items): Pay = "(pair %s %s)" % (it, Pay)
+    subj = "(k%s%s)" % (h, "".join(" " + x for x in fv))
+    dsubj = "(⊢k%s dj%s)" % (h, "".join(" d" + x for x in fv))
+    p_ = "unit"; args_ = "a[]"
+    for i in reversed(range(n)):
+        p_ = "(pair %s %s)" % (fv[i], p_); args_ = "(%s d%s %s)" % ("a-nat" if fs[i][0] == "nat" else "a-rec", fv[i], args_)
+    # the payload's typing at the values
+    def rest(t):
+        q = "unit"
+        for it in reversed(items[t:]): q = "(pair %s %s)" % (it, q)
+        return q
+    def okv(t):
+        o = "ok-ι"
+        for pr in reversed(prems[t:]):
+            if pr[0] == "σ": o = "ok-σ (⊢⌜%s⌝ dj d%s) ok-ι" % (pr[1], fv[pr[2]])
+            else: o = "ok-ρ (⊢ix%s %s d%s) (%s)" % (P, ddep(pr[1]), fv[pr[0]], o)
+        return "(%s)" % o
+    pay = "(⊢payι %sₘ.⊢J %sF.⊢DF ⊢unit)" % (P, P)
+    for t in reversed(range(len(prems))):
+        pr = prems[t]
+        if pr[0] == "σ":
+            pay = "(⊢payσ %sₘ.⊢J %sF.⊢DF {a = e%d} {p = unit} %s de%d %s)" % (P, P, t, okv(t), t, pay)
+        else:
+            pay = "(⊢payρ %sₘ.⊢J %sF.⊢DF {r = r%d} {p = %s} %s dr%d %s)" % (P, P, t, rest(t + 1), okv(t), t, pay)
+    cn = "con" + nm
+    L.append("%s : {Ξ : Ctx} {%s : RTm ⌊ Ξ ⌋} → %s" % (cn, " ".join(x for x, _ in hyps), "".join("Ξ ⊢ %s ∷ %s → " % (x, ty) for x, ty in hyps)))
+    L.append("  Ξ ⊢ conₗ 0 %s ∷ K%s j %s" % (Pay, P, subj))
+    L.append("%s {Ξ} {%s} %s =" % (cn, "} {".join(x for x, _ in hyps), " ".join("d" + x for x, _ in hyps)))
+    L.append("  ⊢conRowₖ {Ξ} {1} {0} {%sₘ.J} {%sF.DF} {ix%s j %s} {⌜ T%s j p unit ⌝ᵗ} {%s} {⌜ T%s j p unit ⌝ᵗ ∷ []} nth-z %sₘ.⊢J %sF.⊢DF (⊢ix%s dj %s)" % (
+        P, P, P, subj, nm, Pay, nm, P, P, P, dsubj))
+    L.append("    (%sF.fibF {s = 1} {k = %d} {j = j} {p = p} {c = unit} (nthᵍ-s nthᵍ-z) %s)" % (P, SIG[h][2], nth_expr(SIG[h][2], "nthʰ-z", "nthʰ-s")))
+    L.append("    (⊢tel %sₘ.⊢J (tok%s {c = unit} dj dp) ∷ᵈ []ᵈ) (⊢conv dPv (csymᵀ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R)))))" % (P, nm))
+    L.append("  where")
+    L.append("    p : RTm ⌊ Ξ ⌋")
+    L.append("    p = %s" % p_)
+    L.append("    dp = ⊢payK (lt-s lt-z) ok-k%s dj %s" % (h, args_))
+    srcs = ["j"] + [fieldexpr("p", i) for i in range(n)]
+    vals = ["j"] + fv
+    vars_ = ["(var %s)" % var(i) for i in range(len(args))]
+    hs = ["done"] + ["(prj-tup {ws = %s} unit %s)" % (" ∷ ".join(fv + ["[]"]), nth_expr(i)) for i in range(n)]
+    L.append("    R : ⌜ %s ⌝ᵗ ⟶* ⌜ %s ⌝ᵗ" % (" ".join([TV] + srcs), " ".join([TV] + vals)))
+    L.append("    R = mono-by {Δ = ⌊ Ξ ⌋} {n = %d} {as = %s} {as' = %s} ⌜ %s ⌝ᵗ (%s-sub (σₗ (%s)) %s) (%s-sub (σₗ (%s)) %s) (%s)" % (
+        len(args), "(%s)" % " ∷ ".join(srcs + ["[]"]), "(%s)" % " ∷ ".join(vals + ["[]"]), " ".join([TV] + vars_),
+        TV, " ∷ ".join(srcs + ["[]"]), " ".join(vars_), TV, " ∷ ".join(vals + ["[]"]), " ".join(vars_), " ∷ʳ ".join(hs + ["[]ʳ"])))
+    L.append("    dPv : Ξ ⊢ %s ∷ El (dpay %sₘ.J %sF.DF ⌜ %s ⌝ᵗ)" % (Pay, P, P, " ".join([TV] + vals)))
+    L.append("    dPv = %s" % pay)
+    L.append("")
+    return L
+
 def gen_preds():
     L = [PHDR]
     for P, spec in PREDS.items():
@@ -1535,9 +1631,13 @@ def gen_preds():
                 ddep = "dj"
                 for _ in range(k): ddep = "(⊢isuc %s)" % ddep
                 body = "ok-ρ (⊢ix%s %s %s) (%s)" % (P, ddep, ftyp, body)
-            L.append("ok%s {Ξ} {j} {p} {c} dj dp dc = ⊢rows {Ξ} {%sₘ.J} {1} {⌜ T%s j p c ⌝ᵗ ∷ []} %sₘ.⊢J (⊢tel {Ξ} {%sₘ.J} {T%s j p c} %sₘ.⊢J (%s) ∷ᵈ []ᵈ)" % (
-                nm, P, nm, P, P, nm, P, body))
+            L.append("tok%s : {Ξ : Ctx} {j p c : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ p ∷ PayV %s (pair (tag 1) j) (SI 2) (SD KSig) → TelOK Ξ %sₘ.J (T%s j p c)" % (nm, sh, P, nm))
+            L.append("tok%s {Ξ} {j} {p} {c} dj dp = %s" % (nm, body))
             L.append("")
+            L.append("ok%s {Ξ} {j} {p} {c} dj dp dc = ⊢rows {Ξ} {%sₘ.J} {1} {⌜ T%s j p c ⌝ᵗ ∷ []} %sₘ.⊢J (⊢tel {Ξ} {%sₘ.J} {T%s j p c} %sₘ.⊢J (tok%s {c = c} dj dp) ∷ᵈ []ᵈ)" % (
+                nm, P, nm, P, P, nm, P, nm))
+            L.append("")
+            PCONL.extend(gen_pred_con(P, h, prems))
         # the table
         L.append("%sNone : Row" % P)
         L.append("%sNone = record { R = λ j p c → rows [] ; R-sub = λ σ j p c → refl }" % P)
@@ -1878,7 +1978,10 @@ def main():
     ptxt = "\n".join(gen_preds()) + "\n"
     POUT = os.path.join(ROOT, "Examples", "Knot", "Preds.agda")
     K = lambda n: os.path.join(ROOT, "Examples", "Knot", n + ".agda")
-    outs = {OUT: txt, POUT: ptxt, HOUT: hlp, K("JudgeConGen"): CHDR + "\n".join(CONL) + "\n"}
+    outs = {OUT: txt, POUT: ptxt, HOUT: hlp, K("JudgeConGen"): CHDR + "\n".join(CONL) + "\n",
+            K("PredsCon"): PCHDR + "\n".join(PCONL) + "\n",
+            K("PredsAgree"): "\n".join(gen_preds_agree()) + "\n",
+            K("PwAgree"): "\n".join(gen_pw_agree()) + "\n"}
     for fam in ("⟶", "⟶ᵀ", "Pw"):
         outs[K(REDMOD[fam][0])] = "\n".join(gen_red(fam)) + "\n"
     for fam in ("⟶", "⟶β", "⟶ᵀ", "Pw"):
@@ -2012,7 +2115,198 @@ open import DirectedHoTT.Examples.Knot.Conv using ( ⌜≅ᵀ⌝ )
 open import DirectedHoTT.Examples.Knot.JudgeRowsTm using ( module PFz; module PFs )
 open import DirectedHoTT.Examples.Knot.GenHelpers
 open import DirectedHoTT.Examples.Knot.JudgeRowsGen
-open import DirectedHoTT.Examples.Knot.Judge using ( D⊢; ⊢D⊢; fibK; ⊢payK )
+open import DirectedHoTT.Examples.Knot.Judge using ( D⊢; ⊢D⊢; fibK )
+
+"""
+
+# ------------------------------------------------------------ side conditions are COMPLETE (PLAN-FAITHFUL F4)
+NNC_CTORS = {"cbase": "nnc-base", "cUnit": "nnc-Unit", "cFin": "nnc-Fin", "cSg": "nnc-Σ", "cId": "nnc-Id",
+             "cPi": "nnc-Π", "cHom": "nnc-Hom"}
+BOOLPREDS = [("StkA", "stkA?", "stkAC"), ("StkC", "stkC?", "stkCC"), ("Flat", "flat?", "flatC")]
+
+def gen_preds_agree():
+    inv = {v: k for k, v in gk.NAMES.items()}
+    spec = lambda h: inv.get(h, h)
+    def fty(f, a):
+        if f[0] == "rec": return "(⊢quote%s %s)" % ("Ty" if f[1] == 0 else "Tm", a)
+        if f[0] == "nat": return "(⊢quoteℕ %s)" % a
+        return "(⊢quoteVar %s)" % a
+    L = [PAHDR]
+    # NoNatC: an inductive proof, mapped constructor by constructor
+    L.append("nncC : {Γ : Cx} {c : RTm Γ} → NoNatC c → {Θ : Cx} → RTm Θ")
+    L.append("⊢nncC : {Γ : Cx} {c : RTm Γ} (w : NoNatC c) {Θ : Ctx} → Θ ⊢ nncC w ∷ KNNC (dep Γ) (quoteTm c)")
+    for h, prems in PREDS["NNC"]["rows"].items():
+        rec = [pr for pr in prems if pr[0] != "σ"]
+        L.append("nncC %s = conₗ 0 %s" % ("(%s w)" % NNC_CTORS[h] if rec else NNC_CTORS[h], "(pair (nncC w) unit)" if rec else "unit"))
+    for h, prems in PREDS["NNC"]["rows"].items():
+        fs = SIG[h][1]
+        args = ["a%d" % i for i in range(len(fs))]
+        rec = [pr for pr in prems if pr[0] != "σ"]
+        pat = "(%s%s%s)" % (NNC_CTORS[h], "".join(" {%s}" % a for a in args), " w" if rec else "")
+        L.append("⊢nncC {Γ} %s = conNNC⊢%s (⊢dep' Γ)%s%s" % (pat, h, "".join(" " + fty(f, a) for f, a in zip(fs, args)),
+                                                              " (⊢nncC w)" if rec else ""))
+    L.append("")
+    # the Boolean ones: by the code's head; a false head is absurd
+    for P, fn, cn in BOOLPREDS:
+        rows = PREDS[P]["rows"]
+        L.append("%s : {Γ : Cx} (c : RTm Γ) → %s c ≡ true → {Θ : Cx} → RTm Θ" % (cn, fn))
+        L.append("⊢%s : {Γ : Cx} (c : RTm Γ) (e : %s c ≡ true) {Θ : Ctx} → Θ ⊢ %s c e ∷ K%s (dep Γ) (quoteTm c)" % (cn, fn, cn, P))
+        for h in TMHEADS:
+            fs = SIG[h][1]
+            args = ["a%d" % i for i in range(len(fs))]
+            pat = "(%s)" % " ".join([spec(h)] + args) if args else spec(h)
+            if h not in rows:
+                L.append("%s %s ()" % (cn, pat)); continue
+            items = []
+            for pr in rows[h]:
+                if pr[0] == "σ":
+                    q = [b for b in BOOLPREDS if b[0] == pr[1]][0][2]
+                    items.append("(%s %s e)" % (q, args[pr[2]]))
+                else:
+                    items.append("(%s %s e)" % (cn, args[pr[0]]))
+            pay = "unit"
+            for it in reversed(items): pay = "(pair %s %s)" % (it, pay)
+            L.append("%s %s e = conₗ 0 %s" % (cn, pat, pay))
+        for h in TMHEADS:
+            fs = SIG[h][1]
+            args = ["a%d" % i for i in range(len(fs))]
+            pat = "(%s)" % " ".join([spec(h)] + args) if args else spec(h)
+            if h not in rows:
+                L.append("⊢%s %s ()" % (cn, pat)); continue
+            prs = []
+            for pr in rows[h]:
+                if pr[0] == "σ":
+                    q = [b for b in BOOLPREDS if b[0] == pr[1]][0][2]
+                    prs.append("(⊢conv (⊢%s %s e) (csymᵀ El-⌜%s⌝))" % (q, args[pr[2]], pr[1]))
+                else:
+                    prs.append("(⊢%s %s e)" % (cn, args[pr[0]]))
+            L.append("⊢%s {Γ} %s e = con%s⊢%s (⊢dep' Γ)%s%s" % (cn, pat, P, h, "".join(" " + fty(f, a) for f, a in zip(fs, args)),
+                                                            "".join(" " + x for x in prs)))
+        L.append("")
+    return L
+
+def gen_pw_agree():
+    inv = {v: k for k, v in gk.NAMES.items()}
+    spec = lambda h: inv.get(h, h)
+    L = [PWAHDR]
+    L.append("pwC : {Γ : Cx} (c : RTm Γ) → pw? c ≡ true → {Θ : Cx} → RTm Θ")
+    L.append("⊢pwC : {Γ : Cx} (c : RTm Γ) (e : pw? c ≡ true) {Θ : Ctx} → Θ ⊢ pwC c e ∷ KPw (dep Γ) (quoteTm c) (quoteTm (pwBody c))")
+    for h in TMHEADS:
+        fs = SIG[h][1]
+        args = ["a%d" % i for i in range(len(fs))]
+        pat = "(%s)" % " ".join([spec(h)] + args) if args else spec(h)
+        if h == "cPi":
+            L.append("pwC {Γ} %s e = conₗ 0 (pair (idrefl (⌜Tm⌝ (nsuc (dep Γ))) (quoteTm a1)) unit)" % pat)
+        elif h == "cHom":
+            L.append("pwC {Γ} %s e = conₗ 0 (pair (quoteTm (pwBody a0)) (pair (pwC a0 e) (pair (idrefl (⌜Tm⌝ (nsuc (dep Γ))) (Xh Γ a0 a1 a2)) unit)))" % pat)
+        else:
+            L.append("pwC %s ()" % pat)
+    for h in TMHEADS:
+        fs = SIG[h][1]
+        args = ["a%d" % i for i in range(len(fs))]
+        pat = "(%s)" % " ".join([spec(h)] + args) if args else spec(h)
+        if h == "cPi":
+            L.append("⊢pwC {Γ} %s e = conPwcPi (⊢dep' Γ) (⊢quoteTm a0) (⊢quoteTm a1)" % pat)
+        elif h == "cHom":
+            L.append("⊢pwC {Γ} %s e =" % pat)
+            L.append("  ⊢conv (conPwcHom (⊢dep' Γ) (⊢quoteTm a0) (⊢quoteTm a1) (⊢quoteTm a2) (⊢quoteTm (pwBody a0)) (⊢pwC a0 e))")
+            L.append("         (red→≅ᵀ (⟶ᵀ*-IMu (⟶*-pairʳ (⟶*-pairʳ (Xh-agree a0 a1 a2)))))")
+        else:
+            L.append("⊢pwC %s ()" % pat)
+    return L
+
+PWAHDR = """------------------------------------------------------------------------
+-- ⚠⚠ GENERATED by tools/gen-judge.py — DO NOT EDIT BY HAND. ⚠⚠
+--
+-- `pw? c ≡ true` is COMPLETE for the Knot's `Pw` family, AT THE QUOTED BODY
+-- `pwBody c` (PLAN-FAITHFUL F4): a ⌜Π⌝ is its own codomain; a ⌜Hom⌝'s body
+-- is written with the Knot's `wk`, and agrees with `renTm vs` (F3).
+------------------------------------------------------------------------
+
+{-# OPTIONS --safe #-}
+module DirectedHoTT.Examples.Knot.PwAgree where
+
+open import normalizer.Syntax.Types using ( _≡_; refl )
+open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
+open import DirectedHoTT.Spec.Syntax
+open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
+open import DirectedHoTT.Spec.Variance using ( 𝔹; true; false; pw?; pwBody )
+open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; ⟶ᵀ*-IMu; ⟶*-pairʳ; ⟶*-trans )
+open import DirectedHoTT.Lib.Sugar using ( conₗ )
+open import DirectedHoTT.Lib.FinFam using ( ffz )
+open import DirectedHoTT.Examples.Knot.Sig using ( kcHom; kapp; kvar )
+open import DirectedHoTT.Examples.Knot.Terms
+open import DirectedHoTT.Examples.Knot.JudgeIx using ( ⌜Tm⌝ )
+open import DirectedHoTT.Examples.Knot.Ren using ( wk )
+open import DirectedHoTT.Examples.Knot.Pw using ( KPw )
+open import DirectedHoTT.Examples.Knot.PwConGen
+open import DirectedHoTT.Examples.Knot.OpAgree using ( wk-agree-tm; node-2; node-3; node-1 )
+
+-- a ⌜Hom⌝'s pointwise body, as the Knot writes it (with `wk`)
+Xh : {Θ : Cx} (Γ : Cx) (C a b : RTm Γ) → RTm Θ
+Xh Γ C a b = kcHom (quoteTm (pwBody C)) (kapp (wk 1 (dep Γ) (quoteTm a)) (kvar ffz)) (kapp (wk 1 (dep Γ) (quoteTm b)) (kvar ffz))
+
+-- …which is the quoted Spec body
+Xh-agree : {Γ Θ : Cx} (C a b : RTm Γ) → Xh {Θ} Γ C a b ⟶* quoteTm (pwBody (⌜Hom⌝ C a b))
+Xh-agree C a b = ⟶*-trans (node-2 (node-1 (wk-agree-tm a))) (node-3 (node-1 (wk-agree-tm b)))
+
+"""
+
+PAHDR = """------------------------------------------------------------------------
+-- ⚠⚠ GENERATED by tools/gen-judge.py — DO NOT EDIT BY HAND. ⚠⚠
+--
+-- The side-condition families are COMPLETE (PLAN-FAITHFUL F4): every
+-- kernel side condition — `NoNatC c`, `stkA? c ≡ true`, `stkC? c ≡ true`,
+-- `flat? c ≡ true` — maps to a Knot inhabitant AT THE QUOTED CODE.  The
+-- rows mirror `Spec/Variance` clause by clause, and this module is that
+-- claim checked: a true head builds its row, a false head is absurd.
+------------------------------------------------------------------------
+
+{-# OPTIONS --safe #-}
+module DirectedHoTT.Examples.Knot.PredsAgree where
+
+open import normalizer.Syntax.Types using ( _≡_; refl )
+open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
+open import DirectedHoTT.Spec.Syntax
+open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
+open import DirectedHoTT.Spec.Variance using ( 𝔹; true; false; NoNatC; nnc-base; nnc-Unit; nnc-Fin; nnc-Σ; nnc-Id; nnc-Π; nnc-Hom; stkA?; stkC?; flat? )
+open import DirectedHoTT.Lib.Sugar using ( conₗ )
+open import DirectedHoTT.Examples.Knot.Terms
+open import DirectedHoTT.Examples.Knot.Preds using ( KNNC; KStkA; KStkC; KFlat; El-⌜StkA⌝; El-⌜StkC⌝ )
+open import DirectedHoTT.Examples.Knot.PredsCon
+
+"""
+
+PCHDR = """------------------------------------------------------------------------
+-- ⚠⚠ GENERATED by tools/gen-judge.py — DO NOT EDIT BY HAND. ⚠⚠
+--
+-- The CONSTRUCTORS of the side-condition families (`Knot/Preds`): a row's
+-- premises at the values, the row (at the fibre's sources) read there by
+-- one `mono-by` — the scheme of `JudgeConGen`.
+------------------------------------------------------------------------
+
+{-# OPTIONS --safe #-}
+module DirectedHoTT.Examples.Knot.PredsCon where
+
+open import normalizer.Syntax.Types using ( _≡_; refl; cong )
+open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
+open import DirectedHoTT.Spec.Syntax hiding ( Fin )
+open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
+open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; ⟶ᵀ*-El; ⟶*-dpayᶜ )
+open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_; tag; conₗ; lt-z; lt-s; nth-z; nth-s; []ᵈ; _∷ᵈ_ )
+open import DirectedHoTT.Lib.SynFib using ( ⊢conRowₖ )
+open import DirectedHoTT.Lib.SynRed
+open import DirectedHoTT.Lib.FinFam using ( ⊢isuc )
+open import DirectedHoTT.Lib.Tel
+open import DirectedHoTT.Lib.Syn
+open import DirectedHoTT.Examples.Knot.Ctors
+open import DirectedHoTT.Examples.Knot.Sig
+open import DirectedHoTT.Examples.Knot.JudgeIx using ( ⊢payK )
+open import DirectedHoTT.Examples.Knot.Preds
+
+private
+  variable
+    Δ Θ : Cx
 
 """
 
@@ -2052,7 +2346,7 @@ open import DirectedHoTT.Examples.Knot.GenHelpers
 open import DirectedHoTT.Examples.Knot.Preds using ( ⌜StkA⌝; ⊢⌜StkA⌝; ⌜StkC⌝; ⊢⌜StkC⌝ )
 open import DirectedHoTT.Examples.Knot.RedIx
 open import DirectedHoTT.Examples.Knot.NestIx
-open import DirectedHoTT.Examples.Knot.Judge using ( ⊢payK )
+open import DirectedHoTT.Examples.Knot.JudgeIx using ( ⊢payK )
 RCIMPORTS
 """
 RCIMPORTS = {

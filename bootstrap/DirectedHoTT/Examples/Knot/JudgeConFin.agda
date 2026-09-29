@@ -30,7 +30,8 @@ open import DirectedHoTT.Examples.Knot.JudgeCase using ( w1; w2 )
 open import DirectedHoTT.Examples.Knot.JudgeConv using ( TCVat )
 open import DirectedHoTT.Examples.Knot.JudgeRowsTm using ( module PFz; module PFs; TFs )
 open import DirectedHoTT.Examples.Knot.JudgeRowsGen using ( allr⊢fzero; allr⊢fsuc )
-open import DirectedHoTT.Examples.Knot.Judge using ( D⊢; ⊢D⊢; fibK; ⊢payK )
+open import DirectedHoTT.Examples.Knot.Judge using ( D⊢; ⊢D⊢; fibK )
+open import DirectedHoTT.Examples.Knot.JudgeIx using ( ⊢payK )
 
 private
   nh12 : NthSh TyShs 12 sh-kFin

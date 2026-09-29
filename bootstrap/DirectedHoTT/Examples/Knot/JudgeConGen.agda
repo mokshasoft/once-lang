@@ -39,7 +39,7 @@ open import DirectedHoTT.Examples.Knot.Conv using ( ⌜≅ᵀ⌝ )
 open import DirectedHoTT.Examples.Knot.JudgeRowsTm using ( module PFz; module PFs )
 open import DirectedHoTT.Examples.Knot.GenHelpers
 open import DirectedHoTT.Examples.Knot.JudgeRowsGen
-open import DirectedHoTT.Examples.Knot.Judge using ( D⊢; ⊢D⊢; fibK; ⊢payK )
+open import DirectedHoTT.Examples.Knot.Judge using ( D⊢; ⊢D⊢; fibK )
 
 con⊢tybase : {Ξ : Ctx} {j g : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ g ∷ KCtx j → 
   Ξ ⊢ conₗ 0 unit ∷ IMu JT D⊢ (tyIx j g (kbase))

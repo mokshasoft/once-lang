@@ -34,7 +34,7 @@ open import DirectedHoTT.Examples.Knot.GenHelpers
 open import DirectedHoTT.Examples.Knot.Preds using ( ⌜StkA⌝; ⊢⌜StkA⌝; ⌜StkC⌝; ⊢⌜StkC⌝ )
 open import DirectedHoTT.Examples.Knot.RedIx
 open import DirectedHoTT.Examples.Knot.NestIx
-open import DirectedHoTT.Examples.Knot.Judge using ( ⊢payK )
+open import DirectedHoTT.Examples.Knot.JudgeIx using ( ⊢payK )
 open import DirectedHoTT.Examples.Knot.Red using ( ⌜⟶⌝; ⊢⌜⟶⌝ )
 open import DirectedHoTT.Examples.Knot.RedT
 

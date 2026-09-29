@@ -317,3 +317,8 @@ mc-sub σ j g I D =
 rNone : Row
 rNone = record { R = λ j p c → rows [] ; R-sub = λ σ j p c → refl }
 
+-- a payload of the Knot, at its normal form
+⊢payK : {Ξ : Ctx} {s : ℕ} {j p : RTm ⌊ Ξ ⌋} {sh : Shape} → Lt s 2 → ShOK 2 sh → Ξ ⊢ j ∷ El ⌜Nat⌝ →
+        Args Ξ 2 KD j sh p → Ξ ⊢ p ∷ PayV sh (pair (tag s) j) (SI 2) (SD KSig)
+⊢payK {s = s} {j = j} {sh = sh} lt ok dj as =
+  ⊢conv (⊢payArgs ⊢KD ok (⊢ix lt dj) (step (βsnd (tag s) j) done) as) (red→≅ᵀ (payV-red sh (pair (tag s) j) (SI 2) (SD KSig)))
