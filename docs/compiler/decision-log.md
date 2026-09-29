@@ -15699,3 +15699,33 @@ kind-respecting substitution `σ` of open types — a metatheorem about the core
 postulate-free. "Typed once, instances for free" is now a valid argument in the core. Its
 semantic counterpart is not needed: `∀` means its instances by definition (D239), and a
 reference means an environment lookup at its instantiated types.
+
+## D241 — A DEFINITION DOES NOT SEE ITSELF: NO GENERAL RECURSION THROUGH THE SELF-BINDING (PLAN 0.103 PHASE 6) (2026-09-29)
+
+**Relates**: OCP-0003 (general recursion removed), D061/D071 (an internal reference is a
+context projection, never a SigOp), D239 (the core telescope), plan 0.103 phase 6c.
+
+**Defect.** A monomorphic (ground, concrete) definition's body was typed in
+`ctxWithImportsAndSelfAndPolys ctx polys name ty`, which put the definition ITSELF into
+the imports table. So `loop : Int; loop = loop` and `f n = f n` were accepted.
+* That is general recursion, which OCP-0003 removed: Once is CCC plus structured
+  recursion (`cata`/`ana`).
+* The Spec's meaning read the self-reference as an opaque SigOp of the definition's own
+  name (`sigOpRefᴰ`), while the compiler emitted a real call, so the Spec and the
+  compiler disagreed.
+* The core telescope (D239) cannot express it: an entry is typed in its PREFIX.
+
+**Decision.** The body context is `ctxWithImportsAndPolys ctx polys`: a definition sees
+the definitions before it and never itself. `ctxWithImportsAndSelf` and
+`ctxWithImportsAndSelfAndPolys` are deleted. The rule is the one telescope entries
+already obeyed. Monomorphic definitions now follow it too, which is what lets them
+become arity-0 core entries (plan 0.103 phase 6c).
+
+**Tests.** The "Recursion" group of `compiler/test/TypeCheckSpec.hs` asserted acceptance.
+It becomes "No general recursion (D241)", with three rejection tests plus a test that a
+later definition may use an earlier one. It stays red until the user re-extracts MAlonzo.
+
+**Examples affected** (not built by any test; each is an unbounded server loop written as
+a self-call): `examples/seL4/EchoServer/{EchoServer,echo-client,echo-client-simple}.once`
+and `examples/seL4/Rootserver/{Rootserver,Rootserver-simple}.once`. An unbounded loop is a
+ν (`ana`, D192), and porting them is follow-up work.

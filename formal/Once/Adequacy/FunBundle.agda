@@ -44,7 +44,7 @@ open import Once.Surface.Syntax using (Expr; ∅; Usage)
 open import Once.Surface.Elaborate using (elaborate; elaborateFull)
 open import Once.Denotation.Realize using (realize)
 open import Once.TypeCheck.Elaborate as TE
-  using (CheckElabResult; checkElab; ctxWithImportsAndSelfAndPolys; PolyCtx)
+  using (CheckElabResult; checkElab; ctxWithImportsAndPolys; PolyCtx)
 open import Once.Type.DecEq using (_≟T_)
 open import Once.TypeCheck.ElaborateProofs using (resolveExpr)
 open import Once.TypeCheck.Classify using (NamedCtx)
@@ -69,12 +69,12 @@ data FunBundle (polys : PolyCtx) (impsOf : C.String → C.FunCtx)
      : List FunInfo → C.FunCtx → Set where
   bnil : ∀ {ctx} → FunBundle polys impsOf [] ctx
   bcons : ∀ {fi rest ctx ty}
-    {Ψ  : Usage (NamedCtx.size (ctxWithImportsAndSelfAndPolys ctx polys (funName fi) ty))}
-    {se : Expr (NamedCtx.debruijn (ctxWithImportsAndSelfAndPolys ctx polys (funName fi) ty)) Ψ ty}
+    {Ψ  : Usage (NamedCtx.size (ctxWithImportsAndPolys ctx polys))}
+    {se : Expr (NamedCtx.debruijn (ctxWithImportsAndPolys ctx polys)) Ψ ty}
     {d f : ℕ}
     {irFun : IR ⌊ Unit ⌋ ⌊ ty ⌋} →
     (rf : C.resolveFunType ctx polys (funType fi) (funBody fi) ≡ inj₂ ty) →
-    (ce : checkElab (ctxWithImportsAndSelfAndPolys ctx polys (funName fi) ty)
+    (ce : checkElab (ctxWithImportsAndPolys ctx polys)
             (funBody fi) ty ≡ TE.success Ψ se d f) →
     (cf : C.compileFun C.Heap false ctx polys impsOf (funName fi) ty (funBody fi) ≡ inj₂ irFun) →
     FunBundle polys impsOf rest (C.extendFunCtx ctx (funName fi) ty) →
@@ -89,21 +89,21 @@ data FunBundle (polys : PolyCtx) (impsOf : C.String → C.FunCtx)
 compileFunBody-ce : ∀ (doOpt : Bool) (ctx : C.FunCtx) (polys : PolyCtx) (impsOf : C.String → C.FunCtx)
   (name : String) (ty : Type) (expr : RawExpr) {ir : IR ⌊ Unit ⌋ ⌊ ty ⌋} →
   C.compileFunBody C.Heap doOpt ctx polys impsOf name ty expr ≡ inj₂ ir →
-  Σ-syntax (Usage (NamedCtx.size (ctxWithImportsAndSelfAndPolys ctx polys name ty))) (λ Ψ →
-  Σ-syntax (Expr (NamedCtx.debruijn (ctxWithImportsAndSelfAndPolys ctx polys name ty)) Ψ ty) (λ se →
+  Σ-syntax (Usage (NamedCtx.size (ctxWithImportsAndPolys ctx polys))) (λ Ψ →
+  Σ-syntax (Expr (NamedCtx.debruijn (ctxWithImportsAndPolys ctx polys)) Ψ ty) (λ se →
   Σ-syntax ℕ (λ d → Σ-syntax ℕ (λ f →
-    checkElab (ctxWithImportsAndSelfAndPolys ctx polys name ty) expr ty ≡ TE.success Ψ se d f))))
+    checkElab (ctxWithImportsAndPolys ctx polys) expr ty ≡ TE.success Ψ se d f))))
 compileFunBody-ce doOpt ctx polys impsOf name ty expr eq =
   AS.compileFunBody-aux-success doOpt ctx polys impsOf name ty refl
-    (checkElab (ctxWithImportsAndSelfAndPolys ctx polys name ty) expr ty) eq
+    (checkElab (ctxWithImportsAndPolys ctx polys) expr ty) eq
 
 compileFun-main-aux-ce : ∀ (doOpt : Bool) (ctx : C.FunCtx) (polys : PolyCtx) (impsOf : C.String → C.FunCtx)
   (name : String) (ty : Type) (expr : RawExpr) (vm : String ⊎ ⊤) {ir : IR ⌊ Unit ⌋ ⌊ ty ⌋} →
   C.compileFun-main-aux C.Heap doOpt ctx polys impsOf name ty expr vm ≡ inj₂ ir →
-  Σ-syntax (Usage (NamedCtx.size (ctxWithImportsAndSelfAndPolys ctx polys name ty))) (λ Ψ →
-  Σ-syntax (Expr (NamedCtx.debruijn (ctxWithImportsAndSelfAndPolys ctx polys name ty)) Ψ ty) (λ se →
+  Σ-syntax (Usage (NamedCtx.size (ctxWithImportsAndPolys ctx polys))) (λ Ψ →
+  Σ-syntax (Expr (NamedCtx.debruijn (ctxWithImportsAndPolys ctx polys)) Ψ ty) (λ se →
   Σ-syntax ℕ (λ d → Σ-syntax ℕ (λ f →
-    checkElab (ctxWithImportsAndSelfAndPolys ctx polys name ty) expr ty ≡ TE.success Ψ se d f))))
+    checkElab (ctxWithImportsAndPolys ctx polys) expr ty ≡ TE.success Ψ se d f))))
 compileFun-main-aux-ce doOpt ctx polys impsOf name ty expr (inj₁ err) ()
 compileFun-main-aux-ce doOpt ctx polys impsOf name ty expr (inj₂ _) eq =
   compileFunBody-ce doOpt ctx polys impsOf name ty expr eq
@@ -111,10 +111,10 @@ compileFun-main-aux-ce doOpt ctx polys impsOf name ty expr (inj₂ _) eq =
 compileFun-aux-ce : ∀ (doOpt : Bool) (ctx : C.FunCtx) (polys : PolyCtx) (impsOf : C.String → C.FunCtx)
   (name : String) (ty : Type) (expr : RawExpr) (b : Bool) {ir : IR ⌊ Unit ⌋ ⌊ ty ⌋} →
   C.compileFun-aux C.Heap doOpt ctx polys impsOf name ty expr b ≡ inj₂ ir →
-  Σ-syntax (Usage (NamedCtx.size (ctxWithImportsAndSelfAndPolys ctx polys name ty))) (λ Ψ →
-  Σ-syntax (Expr (NamedCtx.debruijn (ctxWithImportsAndSelfAndPolys ctx polys name ty)) Ψ ty) (λ se →
+  Σ-syntax (Usage (NamedCtx.size (ctxWithImportsAndPolys ctx polys))) (λ Ψ →
+  Σ-syntax (Expr (NamedCtx.debruijn (ctxWithImportsAndPolys ctx polys)) Ψ ty) (λ se →
   Σ-syntax ℕ (λ d → Σ-syntax ℕ (λ f →
-    checkElab (ctxWithImportsAndSelfAndPolys ctx polys name ty) expr ty ≡ TE.success Ψ se d f))))
+    checkElab (ctxWithImportsAndPolys ctx polys) expr ty ≡ TE.success Ψ se d f))))
 compileFun-aux-ce doOpt ctx polys impsOf name ty expr true eq =
   compileFun-main-aux-ce doOpt ctx polys impsOf name ty expr (C.validateMain ty) eq
 compileFun-aux-ce doOpt ctx polys impsOf name ty expr false eq =
@@ -123,10 +123,10 @@ compileFun-aux-ce doOpt ctx polys impsOf name ty expr false eq =
 compileFun-ce : ∀ (polys : PolyCtx) (impsOf : C.String → C.FunCtx)
   (ctx : C.FunCtx) (ty : Type) (fi : FunInfo) (irFun : IR ⌊ Unit ⌋ ⌊ ty ⌋) →
   C.compileFun C.Heap false ctx polys impsOf (funName fi) ty (funBody fi) ≡ inj₂ irFun →
-  Σ-syntax (Usage (NamedCtx.size (ctxWithImportsAndSelfAndPolys ctx polys (funName fi) ty))) (λ Ψ →
-  Σ-syntax (Expr (NamedCtx.debruijn (ctxWithImportsAndSelfAndPolys ctx polys (funName fi) ty)) Ψ ty) (λ se →
+  Σ-syntax (Usage (NamedCtx.size (ctxWithImportsAndPolys ctx polys))) (λ Ψ →
+  Σ-syntax (Expr (NamedCtx.debruijn (ctxWithImportsAndPolys ctx polys)) Ψ ty) (λ se →
   Σ-syntax ℕ (λ d → Σ-syntax ℕ (λ f →
-    checkElab (ctxWithImportsAndSelfAndPolys ctx polys (funName fi) ty) (funBody fi) ty
+    checkElab (ctxWithImportsAndPolys ctx polys) (funBody fi) ty
       ≡ TE.success Ψ se d f))))
 compileFun-ce polys impsOf ctx ty fi irFun eq =
   compileFun-aux-ce false ctx polys impsOf (funName fi) ty (funBody fi) (funName fi == "main") eq
@@ -139,7 +139,7 @@ bundle→typed : ∀ {polys impsOf funs ctx} →
   FunBundle polys impsOf funs ctx → AllFunsTyped polys funs ctx
 bundle→typed bnil = tnil
 bundle→typed (bcons {fi = fi} {ty = ty} rf ce cf rest) =
-  tcons rf (check-sound (ctxWithImportsAndSelfAndPolys _ _ (funName fi) ty) (funBody fi) ty ce)
+  tcons rf (check-sound (ctxWithImportsAndPolys _ _) (funBody fi) ty ce)
               (bundle→typed rest)
 
 bundle→compiled : ∀ {polys impsOf funs ctx} →
@@ -249,10 +249,10 @@ bundle-find (bcons {fi = fi} {ty = ty} {irFun = irFun} rf ce cf rest) =
   bf-dispatch irFun (funName fi ≟str "main") (ty ≟T EffUU) (funIsPrimitive fi) (bundle-find rest)
 
 fa-head : ∀ {polys impsOf} (fi : FunInfo) (ctx : C.FunCtx) (ty : Type) (irFun : IR ⌊ Unit ⌋ ⌊ ty ⌋)
-  {Ψ : Usage (NamedCtx.size (ctxWithImportsAndSelfAndPolys ctx polys (funName fi) ty))}
-  {se : Expr (NamedCtx.debruijn (ctxWithImportsAndSelfAndPolys ctx polys (funName fi) ty)) Ψ ty}
+  {Ψ : Usage (NamedCtx.size (ctxWithImportsAndPolys ctx polys))}
+  {se : Expr (NamedCtx.debruijn (ctxWithImportsAndPolys ctx polys)) Ψ ty}
   {d f : ℕ}
-  (ce : checkElab (ctxWithImportsAndSelfAndPolys ctx polys (funName fi) ty) (funBody fi) ty
+  (ce : checkElab (ctxWithImportsAndPolys ctx polys) (funBody fi) ty
           ≡ TE.success Ψ se d f)
   (cf : C.compileFun C.Heap false ctx polys impsOf (funName fi) ty (funBody fi) ≡ inj₂ irFun)
   (rest-c : List C.CompiledFun) (rest-f : Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋)) →
@@ -286,10 +286,10 @@ bme→me (bcons _ _ _ rest) (inj₁ x) = inj₁ x
 bme→me (bcons _ _ _ rest) (inj₂ w) = inj₂ (bme→me rest w)
 
 br-dispatch : ∀ {polys impsOf rest ctx ty} (fi : FunInfo)
-  {Ψ : Usage (NamedCtx.size (ctxWithImportsAndSelfAndPolys ctx polys (funName fi) ty))}
-  {se : Expr (NamedCtx.debruijn (ctxWithImportsAndSelfAndPolys ctx polys (funName fi) ty)) Ψ ty}
+  {Ψ : Usage (NamedCtx.size (ctxWithImportsAndPolys ctx polys))}
+  {se : Expr (NamedCtx.debruijn (ctxWithImportsAndPolys ctx polys)) Ψ ty}
   {d f : ℕ}
-  (ce : checkElab (ctxWithImportsAndSelfAndPolys ctx polys (funName fi) ty) (funBody fi) ty
+  (ce : checkElab (ctxWithImportsAndPolys ctx polys) (funBody fi) ty
           ≡ TE.success Ψ se d f)
   (rt : FunBundle polys impsOf rest (C.extendFunCtx ctx (funName fi) ty)) (w : BMainExists rt)
   → Dec (funName fi ≡ "main") → Dec (ty ≡ EffUU) → Bool
@@ -299,7 +299,7 @@ bundle-realize : ∀ {polys impsOf funs ctx} (b : FunBundle polys impsOf funs ct
   BMainExists b → Σ-syntax (Usage 0) (λ Ψ → Expr ∅ Ψ EffUU)
 bundle-realize {polys = polys} {impsOf = impsOf}
                (bcons {fi = fi} {ctx = ctx} {Ψ = Ψ} rf ce cf rest) (inj₁ (_ , _ , refl)) =
-  Ψ , realize (check-sound (ctxWithImportsAndSelfAndPolys ctx polys (funName fi) EffUU) (funBody fi) EffUU ce)
+  Ψ , realize (check-sound (ctxWithImportsAndPolys ctx polys) (funBody fi) EffUU ce)
 bundle-realize (bcons {fi = fi} {ty = ty} rf ce cf rest) (inj₂ w) =
   br-dispatch fi ce rest w (funName fi ≟str "main") (ty ≟T EffUU) (funIsPrimitive fi)
 
@@ -307,7 +307,7 @@ bundle-realize (bcons {fi = fi} {ty = ty} rf ce cf rest) (inj₂ w) =
 -- `bundle-realize` dispatch identically ⇒ their node-coherence is definitional).
 br-dispatch fi ce rt w _        _          true  = bundle-realize rt w
 br-dispatch {polys = polys} {impsOf = impsOf} {ctx = ctx} fi {Ψ = Ψ} ce rt w (yes _) (yes refl) false =
-  Ψ , realize (check-sound (ctxWithImportsAndSelfAndPolys ctx polys (funName fi) EffUU) (funBody fi) EffUU ce)
+  Ψ , realize (check-sound (ctxWithImportsAndPolys ctx polys) (funBody fi) EffUU ce)
 br-dispatch fi ce rt w (no _)  _          false = bundle-realize rt w
 br-dispatch fi ce rt w (yes _) (no _)     false = bundle-realize rt w
 
@@ -315,13 +315,13 @@ realize-agree : ∀ {polys impsOf funs ctx} (b : FunBundle polys impsOf funs ctx
   MC.mainRealized-go (bundle→typed b) (bme→me b bme) ≡ bundle-realize b bme
 
 ra-head : ∀ {polys impsOf rest ctx ty} (fi : FunInfo)
-  {Ψ : Usage (NamedCtx.size (ctxWithImportsAndSelfAndPolys ctx polys (funName fi) ty))}
-  {se : Expr (NamedCtx.debruijn (ctxWithImportsAndSelfAndPolys ctx polys (funName fi) ty)) Ψ ty}
+  {Ψ : Usage (NamedCtx.size (ctxWithImportsAndPolys ctx polys))}
+  {se : Expr (NamedCtx.debruijn (ctxWithImportsAndPolys ctx polys)) Ψ ty}
   {d f : ℕ}
-  (ce : checkElab (ctxWithImportsAndSelfAndPolys ctx polys (funName fi) ty) (funBody fi) ty
+  (ce : checkElab (ctxWithImportsAndPolys ctx polys) (funBody fi) ty
           ≡ TE.success Ψ se d f)
   (rt : FunBundle polys impsOf rest (C.extendFunCtx ctx (funName fi) ty)) (w : BMainExists rt) →
-  MC.mrg-dispatch (check-sound (ctxWithImportsAndSelfAndPolys ctx polys (funName fi) ty) (funBody fi) ty ce)
+  MC.mrg-dispatch (check-sound (ctxWithImportsAndPolys ctx polys) (funBody fi) ty ce)
       (bundle→typed rt) (bme→me rt w) (funName fi ≟str "main") (ty ≟T EffUU) (funIsPrimitive fi)
   ≡ br-dispatch fi ce rt w (funName fi ≟str "main") (ty ≟T EffUU) (funIsPrimitive fi)
 -- `mrg-dispatch` is name-first, `br-dispatch` (now) prim-first ⇒ case all three
@@ -350,18 +350,18 @@ RNode : ∀ (polys : PolyCtx) (impsOf : C.String → C.FunCtx)
 RNode polys impsOf r =
   Σ-syntax C.FunCtx (λ mctx → Σ-syntax RawExpr (λ mbody →
   Σ-syntax (Usage 0) (λ mΨ → Σ-syntax (Expr ∅ mΨ EffUU) (λ mse → Σ-syntax ℕ (λ md → Σ-syntax ℕ (λ mf →
-  Σ-syntax (checkElab (ctxWithImportsAndSelfAndPolys mctx polys "main" EffUU) mbody EffUU
+  Σ-syntax (checkElab (ctxWithImportsAndPolys mctx polys) mbody EffUU
              ≡ TE.success mΨ mse md mf) (λ mce →
-    r ≡ (mΨ , realize (check-sound (ctxWithImportsAndSelfAndPolys mctx polys "main" EffUU) mbody EffUU mce)))))))))
+    r ≡ (mΨ , realize (check-sound (ctxWithImportsAndPolys mctx polys) mbody EffUU mce)))))))))
 
 bundle-realize-node : ∀ {polys impsOf funs ctx} (b : FunBundle polys impsOf funs ctx)
   (bme : BMainExists b) → RNode polys impsOf (bundle-realize b bme)
 
 brn-dispatch : ∀ {polys impsOf rest ctx ty} (fi : FunInfo)
-  {Ψ : Usage (NamedCtx.size (ctxWithImportsAndSelfAndPolys ctx polys (funName fi) ty))}
-  {se : Expr (NamedCtx.debruijn (ctxWithImportsAndSelfAndPolys ctx polys (funName fi) ty)) Ψ ty}
+  {Ψ : Usage (NamedCtx.size (ctxWithImportsAndPolys ctx polys))}
+  {se : Expr (NamedCtx.debruijn (ctxWithImportsAndPolys ctx polys)) Ψ ty}
   {d f : ℕ}
-  (ce : checkElab (ctxWithImportsAndSelfAndPolys ctx polys (funName fi) ty) (funBody fi) ty
+  (ce : checkElab (ctxWithImportsAndPolys ctx polys) (funBody fi) ty
           ≡ TE.success Ψ se d f)
   (rt : FunBundle polys impsOf rest (C.extendFunCtx ctx (funName fi) ty)) (w : BMainExists rt)
   (nd : Dec (funName fi ≡ "main")) (td : Dec (ty ≡ EffUU)) (pb : Bool)
@@ -407,7 +407,7 @@ bundle-find-exists (bcons {fi = fi} {ty = ty} {irFun = irFun} rf ce cf rest) eq
 irFun-main-form : ∀ (ctx : C.FunCtx) (polys : PolyCtx) (impsOf : C.String → C.FunCtx)
   (body : RawExpr) (irFun : IR ⌊ Unit ⌋ ⌊ EffUU ⌋)
   {Ψ : Usage 0} {se : Expr ∅ Ψ EffUU} {d f : ℕ}
-  (ce : checkElab (ctxWithImportsAndSelfAndPolys ctx polys "main" EffUU) body EffUU
+  (ce : checkElab (ctxWithImportsAndPolys ctx polys) body EffUU
           ≡ TE.success Ψ se d f)
   (cf : C.compileFun C.Heap false ctx polys impsOf "main" EffUU body ≡ inj₂ irFun) →
   irFun ≡ elaborateFull C.Heap (resolveExpr polys impsOf (("main" , EffUU) ∷ ctx) 0 se)
@@ -419,21 +419,21 @@ MNodeAt : ∀ (polys : PolyCtx) (impsOf : C.String → C.FunCtx)
 MNodeAt polys impsOf fr rr =
   Σ-syntax C.FunCtx (λ mctx → Σ-syntax RawExpr (λ mbody →
   Σ-syntax (Usage 0) (λ mΨ → Σ-syntax (Expr ∅ mΨ EffUU) (λ mse → Σ-syntax ℕ (λ md → Σ-syntax ℕ (λ mf →
-  Σ-syntax (checkElab (ctxWithImportsAndSelfAndPolys mctx polys "main" EffUU) mbody EffUU
+  Σ-syntax (checkElab (ctxWithImportsAndPolys mctx polys) mbody EffUU
              ≡ TE.success mΨ mse md mf) (λ mce →
     (fr ≡ just (C.wrapMainAsEntry (elaborateFull C.Heap
             (resolveExpr polys impsOf (("main" , EffUU) ∷ mctx) 0 mse))))
-  × (rr ≡ (mΨ , realize (check-sound (ctxWithImportsAndSelfAndPolys mctx polys "main" EffUU)
+  × (rr ≡ (mΨ , realize (check-sound (ctxWithImportsAndPolys mctx polys)
                            mbody EffUU mce))))))))))
 
 bundle-main-node : ∀ {polys impsOf funs ctx} (b : FunBundle polys impsOf funs ctx)
   (bme : BMainExists b) → MNodeAt polys impsOf (bundle-find b) (bundle-realize b bme)
 
 bmn-dispatch : ∀ {polys impsOf rest ctx ty} (fi : FunInfo)
-  {Ψ : Usage (NamedCtx.size (ctxWithImportsAndSelfAndPolys ctx polys (funName fi) ty))}
-  {se : Expr (NamedCtx.debruijn (ctxWithImportsAndSelfAndPolys ctx polys (funName fi) ty)) Ψ ty}
+  {Ψ : Usage (NamedCtx.size (ctxWithImportsAndPolys ctx polys))}
+  {se : Expr (NamedCtx.debruijn (ctxWithImportsAndPolys ctx polys)) Ψ ty}
   {d f : ℕ} {irFun : IR ⌊ Unit ⌋ ⌊ ty ⌋}
-  (ce : checkElab (ctxWithImportsAndSelfAndPolys ctx polys (funName fi) ty) (funBody fi) ty
+  (ce : checkElab (ctxWithImportsAndPolys ctx polys) (funBody fi) ty
           ≡ TE.success Ψ se d f)
   (cf : C.compileFun C.Heap false ctx polys impsOf (funName fi) ty (funBody fi) ≡ inj₂ irFun)
   (rt : FunBundle polys impsOf rest (C.extendFunCtx ctx (funName fi) ty)) (w : BMainExists rt)

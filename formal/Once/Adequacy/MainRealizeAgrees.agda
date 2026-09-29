@@ -61,7 +61,7 @@ open import Once.TypeCheck.Classify using (NamedCtx)
 open import Once.TypeCheck.Raw using (RawExpr)
 open import Once.TypeCheck.Elaborate
   using (checkElab; InferElabResult; CheckElabResult; success; PolyCtx; Imports;
-         ctxWithImportsAndSelfAndPolys)
+         ctxWithImportsAndPolys)
 open import Once.TypeCheck.ElaborateProofs using (resolveExpr)
 open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_)
 open import Once.TypeCheck.Soundness using (check-sound)
@@ -147,9 +147,9 @@ main-extract :
                ≡ SD.⟦ realize mtder ⟧ˢ fmt (σTp m ir mi) dγ₀))))))))))
 main-extract m mt hvm ir mi =
   let (funs , polys , ef-eq , b , bme , mctx , mbody , mΨ , mse , md , mf , mce , ir≡ , rw) = MF.main-node-of m ir mi
-  in    ctxWithImportsAndSelfAndPolys mctx (C.buildPolyCtx polys) "main" EffUU
+  in    ctxWithImportsAndPolys mctx (C.buildPolyCtx polys)
       , mbody , mΨ , mse , md , mf , env0 {mΨ} tt
-      , check-sound (ctxWithImportsAndSelfAndPolys mctx (C.buildPolyCtx polys) "main" EffUU) mbody EffUU mce
+      , check-sound (ctxWithImportsAndPolys mctx (C.buildPolyCtx polys)) mbody EffUU mce
       , mce
       , refl
       , trans (MF.mainRealized-bundle (σTp m ir mi) m mt hvm b bme ef-eq)

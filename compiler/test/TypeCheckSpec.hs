@@ -1,5 +1,5 @@
 -- | Tests for the Agda-based type checker via CLI integration tests.
--- Tests inter-function calls, recursion, and type checking edge cases.
+-- Tests inter-function calls, the absence of general recursion (D241), and edge cases.
 module TypeCheckSpec (typeCheckTests) where
 
 import Test.Tasty
@@ -123,8 +123,13 @@ interFunctionCallTests = testGroup "Inter-function calls"
 ------------------------------------------------------------------------
 
 recursionTests :: TestTree
-recursionTests = testGroup "Recursion"
-  [ testCase "simple recursion (no args)" $ do
+recursionTests = testGroup "No general recursion (D241)"
+  -- D241: a definition's body sees only the definitions BEFORE it (the
+  -- module is a telescope). Once has structured recursion (cata/ana) and no
+  -- general recursion (OCP-0003), so a body naming its own definition is an
+  -- unbound name. These were accepted while the body context carried the
+  -- definition itself, which the Spec then read as an opaque SigOp.
+  [ testCase "self-reference (no args) is rejected" $ do
       let source = T.unlines
             [ "loop : Int"
             , "loop = loop"
@@ -133,9 +138,9 @@ recursionTests = testGroup "Recursion"
             , "main = id"
             ]
       result <- typeCheckSource source
-      result @?= Right ()
+      assertBool "a body cannot name its own definition" (isLeft result)
 
-  , testCase "recursion with parameter" $ do
+  , testCase "self-call with a parameter is rejected" $ do
       let source = T.unlines
             [ "countdown : Int -> Int"
             , "countdown n = countdown n"
@@ -144,9 +149,9 @@ recursionTests = testGroup "Recursion"
             , "main = id"
             ]
       result <- typeCheckSource source
-      result @?= Right ()
+      assertBool "a body cannot call its own definition" (isLeft result)
 
-  , testCase "recursion with multiple parameters" $ do
+  , testCase "self-call with multiple parameters is rejected" $ do
       let source = T.unlines
             [ "gcd : Int -> Int -> Int"
             , "gcd a b = gcd b a"
@@ -155,17 +160,15 @@ recursionTests = testGroup "Recursion"
             , "main = id"
             ]
       result <- typeCheckSource source
-      result @?= Right ()
+      assertBool "a body cannot call its own definition" (isLeft result)
 
-  , testCase "mutual-style (A calls B, B defined after A's type but calls itself)" $ do
-      -- Note: True mutual recursion isn't supported, but this tests
-      -- that a function can call itself even when other functions exist
+  , testCase "a later definition may use an earlier one" $ do
       let source = T.unlines
-            [ "even : Int -> Int"
-            , "even n = even n"
+            [ "inc : Int -> Int"
+            , "inc n = n + 1"
             , ""
-            , "odd : Int -> Int"
-            , "odd n = odd n"
+            , "twice : Int -> Int"
+            , "twice n = inc (inc n)"
             , ""
             , "main : IO Unit"
             , "main = id"

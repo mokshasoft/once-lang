@@ -24,7 +24,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
 
 open import Once.Type using (Type; Unit)
 open import Once.Surface.Syntax using (Expr; ∅; Usage)
-open import Once.TypeCheck.Elaborate using (ctxWithImportsAndSelfAndPolys; PolyCtx)
+open import Once.TypeCheck.Elaborate using (ctxWithImportsAndPolys; PolyCtx)
 open import Once.Type.DecEq using (_≟T_)
 open import Once.TypeCheck.Classify using (NamedCtx)
 open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_)
@@ -66,7 +66,7 @@ mainMeaningᵈ-go : ∀ {polys funs ctx} (fmt : TargetNum) (ρ : DefMeanings pol
                   (aft : AllFunsTyped polys funs ctx)
                 → MainExists aft → Σ-syntax (Usage 0) (λ _ → MClo)
 mmd-dispatch : ∀ {polys nm bdy rest ctx ty Ψ} (fmt : TargetNum) (ρ : DefMeanings polys)
-  (deriv : (ctxWithImportsAndSelfAndPolys ctx polys nm ty) ⊢ᶜ bdy ∶ ty ⨾ Ψ)
+  (deriv : (ctxWithImportsAndPolys ctx polys) ⊢ᶜ bdy ∶ ty ⨾ Ψ)
   (rest-typed : AllFunsTyped polys rest (C.extendFunCtx ctx nm ty))
   (w : MainExists rest-typed)
   → Dec (nm ≡ "main") → Dec (ty ≡ EffUU) → Bool

@@ -36,7 +36,7 @@ open import Once.Denotation.Phase using (env0)
 open import Once.Denotation.DenotTrace using (⟦_⟧ᴰ)
 open import Once.TypeCheck.Classify using (NamedCtx)
 open import Once.TypeCheck.Raw using (RawExpr)
-open import Once.TypeCheck.Elaborate using (ctxWithImportsAndSelfAndPolys; PolyCtx)
+open import Once.TypeCheck.Elaborate using (ctxWithImportsAndPolys; PolyCtx)
 open import Once.Type.DecEq using (_≟T_)
 open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_)
 open import Once.Denotation.Realize using (realize)
@@ -55,8 +55,8 @@ usage0-unique [] = refl
 -- `Usage 0` mismatch of the two derivations.
 RI0 : ∀ (c : C.FunCtx) (p : PolyCtx) (nm : String) (e : RawExpr)
   {Ψ₁ Ψ₂ : Usage 0}
-  (d₁ : (ctxWithImportsAndSelfAndPolys c p nm EffUU) ⊢ᶜ e ∶ EffUU ⨾ Ψ₁)
-  (d₂ : (ctxWithImportsAndSelfAndPolys c p nm EffUU) ⊢ᶜ e ∶ EffUU ⨾ Ψ₂)
+  (d₁ : (ctxWithImportsAndPolys c p) ⊢ᶜ e ∶ EffUU ⨾ Ψ₁)
+  (d₂ : (ctxWithImportsAndPolys c p) ⊢ᶜ e ∶ EffUU ⨾ Ψ₂)
   (dγ : ⟦ ⟦ ∅ ⟧ᶜ ⟧ᴰ) →
   SD.⟦ realize d₁ ⟧ˢ fmt σ (env0 {Ψ₁} dγ) ≡ SD.⟦ realize d₂ ⟧ˢ fmt σ (env0 {Ψ₂} dγ)
 RI0 c p nm e {[]} {[]} d₁ d₂ dγ = realize-invariant d₁ d₂ σ dγ
@@ -64,9 +64,9 @@ RI0 c p nm e {[]} {[]} d₁ d₂ dγ = realize-invariant d₁ d₂ σ dγ
 -- When the head IS main, `mainRealized-go` returns `realize deriv` for ANY
 -- witness (it does not trust `me`'s `inj₁`; it re-checks `isMain(head)`).
 head-main-realize : ∀ {polys rest ctx} (fi : FunInfo)
-  {Ψ : Usage (NamedCtx.size (ctxWithImportsAndSelfAndPolys ctx polys (funName fi) EffUU))}
+  {Ψ : Usage (NamedCtx.size (ctxWithImportsAndPolys ctx polys))}
   (rf : C.resolveFunType ctx polys (funType fi) (funBody fi) ≡ inj₂ EffUU)
-  (d : (ctxWithImportsAndSelfAndPolys ctx polys (funName fi) EffUU) ⊢ᶜ funBody fi ∶ EffUU ⨾ Ψ)
+  (d : (ctxWithImportsAndPolys ctx polys) ⊢ᶜ funBody fi ∶ EffUU ⨾ Ψ)
   (rt : AllFunsTyped polys rest (C.extendFunCtx ctx (funName fi) EffUU))
   (w : MainExists (tcons {fi = fi} rf d rt)) →
   funName fi ≡ "main" → funIsPrimitive fi ≡ false →

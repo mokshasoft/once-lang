@@ -46,7 +46,7 @@ open import Once.Spec.Module
          AllMainEffUU; MainExists; ModuleMainEffUU-ef;
          ModuleMainExists-ef; HasValidMain-decl; PolysTyped)
 open import Once.TypeCheck.Elaborate
-  using (checkElab; ctxWithImportsAndSelfAndPolys; PolyCtx)
+  using (checkElab; ctxWithImportsAndPolys; PolyCtx)
 open import Once.Type.DecEq using (_≟T_)
 open import Once.TypeCheck.ElaborateProofs using (resolveExpr)
 open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_)
@@ -65,7 +65,7 @@ open FunInfo
 
 compileFunBody-complete : ∀ (ctx : C.FunCtx) (polys : PolyCtx) (impsOf : C.String → C.FunCtx)
   (name : String) (ty : Type) (body : RawExpr) {Ψ : Usage 0} →
-  (ctxWithImportsAndSelfAndPolys ctx polys name ty) ⊢ᶜ body ∶ ty ⨾ Ψ →
+  (ctxWithImportsAndPolys ctx polys) ⊢ᶜ body ∶ ty ⨾ Ψ →
   Σ-syntax (IR ⌊ Unit ⌋ ⌊ ty ⌋) (λ irFun →
     C.compileFunBody C.Heap false ctx polys impsOf name ty body ≡ inj₂ irFun)
 -- D143: `Ψ : Usage 0` must be MATCHED, not just quantified: `Usage` is a
@@ -84,7 +84,7 @@ compileFunBody-complete ctx polys impsOf name ty body {[]} deriv =
 compileFun-complete : ∀ (ctx : C.FunCtx) (polys : PolyCtx) (impsOf : C.String → C.FunCtx)
   (name : String) (ty : Type) (body : RawExpr) {Ψ : Usage 0} →
   (name ≡ "main" → ty ≡ EffUU) →
-  (ctxWithImportsAndSelfAndPolys ctx polys name ty) ⊢ᶜ body ∶ ty ⨾ Ψ →
+  (ctxWithImportsAndPolys ctx polys) ⊢ᶜ body ∶ ty ⨾ Ψ →
   Σ-syntax (IR ⌊ Unit ⌋ ⌊ ty ⌋) (λ irFun →
     C.compileFun C.Heap false ctx polys impsOf name ty body ≡ inj₂ irFun)
 compileFun-complete ctx polys impsOf name ty body main-ok deriv with name ≟str "main"
@@ -207,7 +207,7 @@ moduleToIR-complete m mt (amu , me) pt with C.extractFunctions (C.extractAliases
 -- `mainRealized` reads `main`'s `⊢ᶜ` derivation off `ModuleTyped` and applies
 -- the elaborator-free `realize` — giving the surface term INDEPENDENTLY of
 -- `checkElab` (the row-3 forcing). `main`'s body context is
--- `ctxWithImportsAndSelfAndPolys …` whose `debruijn` is `∅`, so the term lands
+-- `ctxWithImportsAndPolys …` whose `∅`, so the term lands
 -- at `Expr ∅ Ψ EffUU` (what `runMainˢ` needs). The `MainExists` `refl` fixes
 -- `ty ≡ EffUU`. The meaning `⟦tp⟧ˢ` = `runMainˢ` of this.
 ------------------------------------------------------------------------
@@ -227,7 +227,7 @@ mainRealized-go : ∀ {polys funs ctx}
                   (aft : AllFunsTyped polys funs ctx)
                 → MainExists aft → Σ-syntax (Usage 0) (λ Ψ → Expr ∅ Ψ EffUU)
 mrg-dispatch : ∀ {polys nm bdy rest ctx ty Ψ}
-  (deriv : (ctxWithImportsAndSelfAndPolys ctx polys nm ty) ⊢ᶜ bdy ∶ ty ⨾ Ψ)
+  (deriv : (ctxWithImportsAndPolys ctx polys) ⊢ᶜ bdy ∶ ty ⨾ Ψ)
   (rest-typed : AllFunsTyped polys rest (C.extendFunCtx ctx nm ty))
   (w : MainExists rest-typed)
   → Dec (nm ≡ "main") → Dec (ty ≡ EffUU) → Bool

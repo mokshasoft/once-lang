@@ -99,7 +99,7 @@ open PolyFunInfo
 
 -- Type checking / elaboration
 open import Once.TypeCheck.Raw using (RawExpr)
-open import Once.TypeCheck.Elaborate using (ctxWithImportsAndSelf; ctxWithImportsAndSelfAndPolys; PolyCtx; emptyPolyCtx; checkElab)
+open import Once.TypeCheck.Elaborate using (ctxWithImportsAndPolys; PolyCtx; emptyPolyCtx; checkElab)
 open import Once.TypeCheck.ElaborateProofs using (resolveExpr)
 open import Once.TypeCheck.Elaborate as TE using (CheckElabResult)
 import Once.Surface.Syntax as Srf
@@ -232,7 +232,7 @@ compileFunBody-aux m doOpt ctx polys impsOf name ty δ-unit (TE.success _ surfac
 compileFunBody : AllocMode → Bool → FunCtx → PolyCtx → (String → FunCtx) → (name : String) (ty : Type) → RawExpr → String ⊎ IR ⌊ Unit ⌋ ⌊ ty ⌋
 compileFunBody m doOpt ctx polys impsOf name ty expr =
   compileFunBody-aux m doOpt ctx polys impsOf name ty refl
-    (checkElab (ctxWithImportsAndSelfAndPolys ctx polys name ty) expr ty)
+    (checkElab (ctxWithImportsAndPolys ctx polys) expr ty)
 
 -- | Compile a function with main validation
 -- For main: validates type is Eff Unit A before compiling

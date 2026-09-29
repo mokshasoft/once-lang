@@ -36,7 +36,7 @@ open import Once.Type using (Unit; Type)
 import Once.Compile as C
 import Once.Adequacy.PolysCheck as PC
 import Once.Surface.Syntax as Srf
-open import Once.TypeCheck.Elaborate as TE using (CheckElabResult; checkElab; ctxWithImportsAndSelfAndPolys)
+open import Once.TypeCheck.Elaborate as TE using (CheckElabResult; checkElab; ctxWithImportsAndPolys)
 open import Once.TypeCheck.Classify using (NamedCtx)
 open import Once.TypeCheck.Raw using (RawExpr)
 open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_)
@@ -69,10 +69,10 @@ compileFunBody-aux-success doOpt ctx polys impsOf name ty δ (TE.success Ψ se d
 compileFunBody-sound : ∀ (doOpt : Bool) (ctx : C.FunCtx) (polys : TE.PolyCtx) (impsOf : C.String → C.FunCtx)
   (name : String) (ty : Type) (expr : RawExpr) {ir : IR ⌊ Unit ⌋ ⌊ ty ⌋} →
   C.compileFunBody C.Heap doOpt ctx polys impsOf name ty expr ≡ inj₂ ir →
-  Σ-syntax (Srf.Usage (NamedCtx.size (ctxWithImportsAndSelfAndPolys ctx polys name ty)))
-    (λ Ψ → (ctxWithImportsAndSelfAndPolys ctx polys name ty) ⊢ᶜ expr ∶ ty ⨾ Ψ)
+  Σ-syntax (Srf.Usage (NamedCtx.size (ctxWithImportsAndPolys ctx polys)))
+    (λ Ψ → (ctxWithImportsAndPolys ctx polys) ⊢ᶜ expr ∶ ty ⨾ Ψ)
 compileFunBody-sound doOpt ctx polys impsOf name ty expr eq =
-  let ce-ctx = ctxWithImportsAndSelfAndPolys ctx polys name ty
+  let ce-ctx = ctxWithImportsAndPolys ctx polys
       (Ψ , se , d , f , ce) = compileFunBody-aux-success doOpt ctx polys impsOf name ty refl
                                 (checkElab ce-ctx expr ty) eq
   in Ψ , check-sound ce-ctx expr ty ce
@@ -93,8 +93,8 @@ compileFunBody-sound doOpt ctx polys impsOf name ty expr eq =
 compileFun-main-aux-sound : ∀ (doOpt : Bool) (ctx : C.FunCtx) (polys : TE.PolyCtx) (impsOf : C.String → C.FunCtx)
   (name : String) (ty : Type) (expr : RawExpr) (vm : String ⊎ ⊤) {ir : IR ⌊ Unit ⌋ ⌊ ty ⌋} →
   C.compileFun-main-aux C.Heap doOpt ctx polys impsOf name ty expr vm ≡ inj₂ ir →
-  Σ-syntax (Srf.Usage (NamedCtx.size (ctxWithImportsAndSelfAndPolys ctx polys name ty)))
-    (λ Ψ → (ctxWithImportsAndSelfAndPolys ctx polys name ty) ⊢ᶜ expr ∶ ty ⨾ Ψ)
+  Σ-syntax (Srf.Usage (NamedCtx.size (ctxWithImportsAndPolys ctx polys)))
+    (λ Ψ → (ctxWithImportsAndPolys ctx polys) ⊢ᶜ expr ∶ ty ⨾ Ψ)
 compileFun-main-aux-sound doOpt ctx polys impsOf name ty expr (inj₁ err) ()
 compileFun-main-aux-sound doOpt ctx polys impsOf name ty expr (inj₂ _) eq =
   compileFunBody-sound doOpt ctx polys impsOf name ty expr eq
@@ -102,8 +102,8 @@ compileFun-main-aux-sound doOpt ctx polys impsOf name ty expr (inj₂ _) eq =
 compileFun-aux-sound : ∀ (doOpt : Bool) (ctx : C.FunCtx) (polys : TE.PolyCtx) (impsOf : C.String → C.FunCtx)
   (name : String) (ty : Type) (expr : RawExpr) (b : Bool) {ir : IR ⌊ Unit ⌋ ⌊ ty ⌋} →
   C.compileFun-aux C.Heap doOpt ctx polys impsOf name ty expr b ≡ inj₂ ir →
-  Σ-syntax (Srf.Usage (NamedCtx.size (ctxWithImportsAndSelfAndPolys ctx polys name ty)))
-    (λ Ψ → (ctxWithImportsAndSelfAndPolys ctx polys name ty) ⊢ᶜ expr ∶ ty ⨾ Ψ)
+  Σ-syntax (Srf.Usage (NamedCtx.size (ctxWithImportsAndPolys ctx polys)))
+    (λ Ψ → (ctxWithImportsAndPolys ctx polys) ⊢ᶜ expr ∶ ty ⨾ Ψ)
 compileFun-aux-sound doOpt ctx polys impsOf name ty expr true eq =
   compileFun-main-aux-sound doOpt ctx polys impsOf name ty expr (C.validateMain ty) eq
 compileFun-aux-sound doOpt ctx polys impsOf name ty expr false eq =
@@ -112,8 +112,8 @@ compileFun-aux-sound doOpt ctx polys impsOf name ty expr false eq =
 compileFun-sound : ∀ (doOpt : Bool) (ctx : C.FunCtx) (polys : TE.PolyCtx) (impsOf : C.String → C.FunCtx)
   (name : String) (ty : Type) (expr : RawExpr) {ir : IR ⌊ Unit ⌋ ⌊ ty ⌋} →
   C.compileFun C.Heap doOpt ctx polys impsOf name ty expr ≡ inj₂ ir →
-  Σ-syntax (Srf.Usage (NamedCtx.size (ctxWithImportsAndSelfAndPolys ctx polys name ty)))
-    (λ Ψ → (ctxWithImportsAndSelfAndPolys ctx polys name ty) ⊢ᶜ expr ∶ ty ⨾ Ψ)
+  Σ-syntax (Srf.Usage (NamedCtx.size (ctxWithImportsAndPolys ctx polys)))
+    (λ Ψ → (ctxWithImportsAndPolys ctx polys) ⊢ᶜ expr ∶ ty ⨾ Ψ)
 compileFun-sound doOpt ctx polys impsOf name ty expr eq =
   compileFun-aux-sound doOpt ctx polys impsOf name ty expr (name == "main") eq
 

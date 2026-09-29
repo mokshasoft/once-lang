@@ -58,7 +58,7 @@ cfb-doOpt : ∀ (doOpt : Bool) (ctx : C.FunCtx) (polys : TE.PolyCtx) (impsOf : C
   Σ-syntax (IR ⌊ Unit ⌋ ⌊ ty ⌋) (λ ir' → C.compileFunBody C.Heap doOpt ctx polys impsOf name ty expr ≡ inj₂ ir')
 cfb-doOpt doOpt ctx polys impsOf name ty expr eq =
   cfb-aux-doOpt doOpt ctx polys impsOf name ty refl
-    (TE.checkElab (TE.ctxWithImportsAndSelfAndPolys ctx polys name ty) expr ty) eq
+    (TE.checkElab (TE.ctxWithImportsAndPolys ctx polys) expr ty) eq
 
 ------------------------------------------------------------------------
 -- Layer 1 — `compileFun` success is `doOpt`-independent.

@@ -40,7 +40,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong
 open import Once.Type using (Type; Unit)
 open import Once.Surface.Syntax using (Expr; Usage)
 open import Once.Surface.Context using (∅) renaming (⟦_⟧ᶜ to ⟦_⟧ᶜᵗ)
-open import Once.TypeCheck.Elaborate using (ctxWithImportsAndSelfAndPolys)
+open import Once.TypeCheck.Elaborate using (ctxWithImportsAndPolys)
 open import Once.Type.DecEq using (_≟T_)
 open import Once.TypeCheck.Classify using (NamedCtx)
 open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_)
@@ -77,8 +77,8 @@ EnvRelTop-ef (inj₂ (funs , polys)) pts =
 EnvRelTop : (m : C.Module) → PolysTyped m → Set
 EnvRelTop m pts = EnvRelTop-ef (C.extractFunctions (C.extractAliases m) m) pts
 
-main-bridge-leaf : ∀ {polys nm bdy ctx Ψ} {ρ : DefMeanings polys} (er : EnvRel polys ρ)
-  (deriv : (ctxWithImportsAndSelfAndPolys ctx polys nm EffUU) ⊢ᶜ bdy ∶ EffUU ⨾ Ψ)
+main-bridge-leaf : ∀ {polys bdy ctx Ψ} {ρ : DefMeanings polys} (er : EnvRel polys ρ)
+  (deriv : (ctxWithImportsAndPolys ctx polys) ⊢ᶜ bdy ∶ EffUU ⨾ Ψ)
   (n : ℕ)
   → ME.runMainˢ σ (realize deriv) n
     ≡ MM.runMainᵈ (λ _ → ⟦ deriv ⟧ᶜ fmt ρ (env0 {Ψ} tt)) n
@@ -92,7 +92,7 @@ main-bridge-go : ∀ {polys funs ctx} {ρ : DefMeanings polys} (er : EnvRel poly
   → ME.runMainˢ σ (proj₂ (MC.mainRealized-go aft me)) n
     ≡ MM.runMainᵈ (proj₂ (MM.mainMeaningᵈ-go fmt ρ aft me)) n
 main-bridge-dispatch : ∀ {polys nm bdy rest ctx ty Ψ} {ρ : DefMeanings polys} (er : EnvRel polys ρ)
-  (deriv : (ctxWithImportsAndSelfAndPolys ctx polys nm ty) ⊢ᶜ bdy ∶ ty ⨾ Ψ)
+  (deriv : (ctxWithImportsAndPolys ctx polys) ⊢ᶜ bdy ∶ ty ⨾ Ψ)
   (rt : AllFunsTyped polys rest (C.extendFunCtx ctx nm ty))
   (w : MainExists rt)
   (dn : Dec (nm ≡ "main")) (dt : Dec (ty ≡ EffUU)) (b : Bool) (n : ℕ)

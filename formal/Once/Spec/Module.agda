@@ -13,7 +13,7 @@
 --     `ModuleTyped-ef m (extractFunctions (extractAliases m) m)`. The spec's
 --     notion of "well-typed" therefore quantifies over whatever the extractor
 --     happens to produce, instead of over the module's own syntax.
---   * `AllFunsTyped` names `ctxWithImportsAndSelfAndPolys` from
+--   * `AllFunsTyped` names `ctxWithImportsAndPolys` from
 --     `Once.TypeCheck.Elaborate` — the ELABORATOR — and `resolveFunType`,
 --     `extendFunCtx`, `buildPolyCtx`, `collectSigEffects` from `Once.Compile`.
 --
@@ -39,7 +39,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Once.Type using (Type; Unit; _⇒[_]_; mk-kind; Many; eff)
 import Once.Compile as C
 import Once.Parser.Module.Core as P
-open import Once.TypeCheck.Elaborate as TE using (ctxWithImportsAndSelfAndPolys)
+open import Once.TypeCheck.Elaborate as TE using (ctxWithImportsAndPolys)
 open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_)
 
 open C.FunInfo using (funName; funBody; funType; funIsPrimitive)
@@ -55,7 +55,7 @@ data AllFunsTyped (polys : TE.PolyCtx)
   tnil  : ∀ {ctx} → AllFunsTyped polys [] ctx
   tcons : ∀ {fi rest ctx ty Ψ} →
     C.resolveFunType ctx polys (C.FunInfo.funType fi) (C.FunInfo.funBody fi) ≡ inj₂ ty →
-    (ctxWithImportsAndSelfAndPolys ctx polys (C.FunInfo.funName fi) ty)
+    (ctxWithImportsAndPolys ctx polys)
       ⊢ᶜ C.FunInfo.funBody fi ∶ ty ⨾ Ψ →
     AllFunsTyped polys rest (C.extendFunCtx ctx (C.FunInfo.funName fi) ty) →
     AllFunsTyped polys (fi ∷ rest) ctx

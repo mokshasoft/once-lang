@@ -49,7 +49,7 @@ open import Once.Surface.Elaborate using (elaborate; elaborateFull)
 open import Once.TypeCheck.Raw using (RawExpr)
 open import Once.TypeCheck.Classify using (NamedCtx)
 open import Once.TypeCheck.Elaborate
-  using (checkElab; ctxWithImportsAndSelfAndPolys; PolyCtx; success)
+  using (checkElab; ctxWithImportsAndPolys; PolyCtx; success)
 open import Once.TypeCheck.ElaborateProofs using (resolveExpr)
 open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_)
 open import Once.TypeCheck.Soundness using (check-sound)
@@ -85,14 +85,14 @@ Payload Ψ seR =
   Σ-syntax RawExpr (λ body →
   Σ-syntax (Expr ∅ Ψ EffUU) (λ se →
   Σ-syntax ℕ (λ d → Σ-syntax ℕ (λ f →
-  Σ-syntax (checkElab (ctxWithImportsAndSelfAndPolys ctx polys "main" EffUU) body EffUU
+  Σ-syntax (checkElab (ctxWithImportsAndPolys ctx polys) body EffUU
              ≡ success Ψ se d f) (λ ce →
   Σ-syntax (List FunInfo) (λ funs →
   Σ-syntax (FunBundle polys impsOf funs C.emptyFunCtx) (λ b →
   Σ-syntax (BMainExists b) (λ bme →
     (seR ≡ resolveExpr polys impsOf (("main" , EffUU) ∷ ctx) 0 se)
   × (bundle-realize b bme
-       ≡ (Ψ , realize (check-sound (ctxWithImportsAndSelfAndPolys ctx polys "main" EffUU)
+       ≡ (Ψ , realize (check-sound (ctxWithImportsAndPolys ctx polys)
                          body EffUU ce))))))))))))))
 
 Form : IR ⌊ Unit ⌋ ⌊ Unit ⌋ → Set
@@ -116,12 +116,12 @@ MainNode m ir =
   Σ-syntax (BMainExists b) (λ bme →
   Σ-syntax C.FunCtx (λ mctx → Σ-syntax RawExpr (λ mbody →
   Σ-syntax (Usage 0) (λ mΨ → Σ-syntax (Expr ∅ mΨ EffUU) (λ mse → Σ-syntax ℕ (λ md → Σ-syntax ℕ (λ mf →
-  Σ-syntax (checkElab (ctxWithImportsAndSelfAndPolys mctx (C.buildPolyCtx polys) "main" EffUU)
+  Σ-syntax (checkElab (ctxWithImportsAndPolys mctx (C.buildPolyCtx polys))
              mbody EffUU ≡ success mΨ mse md mf) (λ mce →
     (ir ≡ C.wrapMainAsEntry (elaborateFull C.Heap
             (resolveExpr (C.buildPolyCtx polys) (C.entryImps funs polys) (("main" , EffUU) ∷ mctx) 0 mse)))
   × (bundle-realize b bme
-       ≡ (mΨ , realize (check-sound (ctxWithImportsAndSelfAndPolys mctx (C.buildPolyCtx polys) "main" EffUU)
+       ≡ (mΨ , realize (check-sound (ctxWithImportsAndPolys mctx (C.buildPolyCtx polys))
                           mbody EffUU mce)))))))))))))))
 
 build-node : ∀ (m : C.Module) (funs : List FunInfo) (polys : List C.PolyFunInfo)

@@ -194,20 +194,6 @@ ctxWithImports imps = mkCtx 0 ∅ S∅ 0 imps emptyPolyCtx
 ctxWithImportsAndPolys : Imports → PolyCtx → NamedCtx
 ctxWithImportsAndPolys imps polys = mkCtx 0 ∅ S∅ 0 imps polys
 
--- | Create context with imports and self-reference for recursive definitions
--- The function's own name and type are added to the imports list so it can call itself.
--- This causes recursive calls to elaborate to `SigOp "name"` which the C backend
--- handles as a function call.
-ctxWithImportsAndSelf : Imports → String → Type → NamedCtx
-ctxWithImportsAndSelf imps name ty =
-  ctxWithImports ((name , ty) ∷ imps)
-
--- | Same as `ctxWithImportsAndSelf` but also carries a polymorphic
--- context. Plan 0.6.2 — used by `compileFun` to make poly defs
--- available to each ground function's body during typecheck.
-ctxWithImportsAndSelfAndPolys : Imports → PolyCtx → String → Type → NamedCtx
-ctxWithImportsAndSelfAndPolys imps polys name ty =
-  mkCtx 0 ∅ S∅ 0 ((name , ty) ∷ imps) polys
 
 -- | Extend context with a new binding (preserves fresh counter, imports, polys)
 extendNamedCtx : NamedCtx → String → Type → NamedCtx
