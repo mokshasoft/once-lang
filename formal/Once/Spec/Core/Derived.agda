@@ -82,6 +82,18 @@ anaᶜ  c   = let′ c   (lam (unfold v1 v0))
 effAppᶜ : ∀ {n} → Tm n → Tm n → Tm n
 effAppᶜ f x = lam (app (wk f) (wk x))
 
+-- `seq a b`: run `a`, discard its value, then `b` (the surface's ex falso
+-- rules evaluate an operand whose value can never be used).
+seqᶜ : ∀ {n} → Tm n → Tm n → Tm n
+seqᶜ a b = snd (pair a b)
+
+-- The SUSPENDED forms of the surface's effectful applied builtins: the
+-- argument is evaluated now, the effect when the suspension runs
+-- (`t-apply-eff-app-infer`, `t-Out-eff-app-infer`).
+applyEffᶜ outEffᶜ : ∀ {n} → Tm n
+applyEffᶜ = lam (lam (app (fst v1) (snd v1)))
+outEffᶜ   = lam (lam (out v1))
+
 ------------------------------------------------------------------------
 -- The functor's action on terms: `mapᶜ F h v` applies `h` (a body over one
 -- extra variable) at every recursive position of `v : ⟦ F ⟧T A`, left to

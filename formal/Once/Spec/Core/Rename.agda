@@ -19,7 +19,7 @@ open import Data.Fin using (Fin; zero; suc)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; subst; cong; cong₂)
 
 open import Once.Type using (Type; Quantity; Zero; One; Many)
-open import Once.Surface.Context using (Ctx; _,_^_; lookup; Usage; _∷_; zeroUsage; singleUse; _+ᵘ_; _*ᵘ_; _⊔ᵘ_)
+open import Once.Surface.Context using (Ctx; ∅; _,_^_; lookup; Usage; _∷_; zeroUsage; singleUse; _+ᵘ_; _*ᵘ_; _⊔ᵘ_)
 open import Once.Surface.Thinning using (_⊆_; done; skip; keep; thin-var; thin-var-lookup; thin-usage;
   thin-usage-+ᵘ; thin-usage-*ᵘ; thin-usage-⊔ᵘ; thin-usage-zeroUsage; thin-usage-singleUse; ⊆-wk)
 open import Once.Spec.Core.Syntax S
@@ -127,3 +127,17 @@ wk-⊢ : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {t A π} (B : Type)
 wk-⊢ {Γ = Γ} {t = t} B d =
   subst (λ u → _ ⊢[ _ ] u ∷ _ ! _) (ren-cong (λ i → cong suc (thin-var-refl {Γ = Γ} i)) t)
     (ren-⊢ (⊆-wk {Γ = Γ} {A = B} {q = Many}) d)
+
+-- The empty context embeds everywhere.
+∅⊆ : ∀ {n} {Γ : Ctx n} → ∅ ⊆ Γ
+∅⊆ {Γ = ∅}         = done
+∅⊆ {Γ = Γ , _ ^ _} = skip (∅⊆ {Γ = Γ})
+
+-- A CLOSED term, embedded in any context (a cata algebra, D131).
+close : ∀ {n} → Tm 0 → Tm n
+close = ren (λ ())
+
+⊢close : ∀ {n} {Γ : Ctx n} {t A π} → ∅ ⊢[ zeroUsage ] t ∷ A ! π → Γ ⊢[ zeroUsage ] close t ∷ A ! π
+⊢close {Γ = Γ} {t = t} {A} {π} d =
+  subst (λ u → Γ ⊢[ zeroUsage ] u ∷ _ ! _) (ren-cong {ρ = thin-var (∅⊆ {Γ = Γ})} {ρ′ = λ ()} (λ ()) t)
+    (subst (λ U → Γ ⊢[ U ] ren (thin-var (∅⊆ {Γ = Γ})) t ∷ A ! π) (thin-usage-zeroUsage (∅⊆ {Γ = Γ})) (ren-⊢ (∅⊆ {Γ = Γ}) d))
