@@ -27,7 +27,7 @@ open import DirectedHoTT.Examples.Knot.Ctx
 open import DirectedHoTT.Examples.Knot.Lookup using ( rows; ⊢rows )
 open import DirectedHoTT.Examples.Knot.JudgeIx
 open import DirectedHoTT.Examples.Knot.JudgeTmIx
-open import DirectedHoTT.Examples.Knot.JudgeRowsTy using () renaming ( RowOK to RowOKₒ )
+open import DirectedHoTT.Examples.Knot.JudgeFib using () renaming ( RowOK to RowOKₒ )
 open import DirectedHoTT.Examples.Knot.Ctors
 open import DirectedHoTT.Examples.Knot.Ren using ( wk; ⊢wkS )
 open import DirectedHoTT.Lib.FinFam using ( ⊢isuc; ⊢ffz )

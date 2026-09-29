@@ -20,11 +20,15 @@ open import DirectedHoTT.Lib.Tel
 open import DirectedHoTT.Lib.Syn
 open import DirectedHoTT.Examples.Knot.Sig
 open import DirectedHoTT.Examples.Knot.Ctx
-open import DirectedHoTT.Examples.Knot.Lookup using ( hereTy; I∋; ⊢I∋; I∋-sub; D∋; ⊢D∋; ix∋; ⊢ix∋; K∋ )
+open import DirectedHoTT.Examples.Knot.Lookup using ( hereTy; toTy; I∋; ⊢I∋; I∋-sub; D∋; ⊢D∋; ix∋; ⊢ix∋; K∋ )
 open import DirectedHoTT.Examples.Knot.LookupCon using ( D∋-sub )
 open import DirectedHoTT.Examples.Knot.JudgeIx
 open import DirectedHoTT.Examples.Knot.JudgeCase using ( w1; w1-sub; okσJ; wkN; wkK; wkG )
 open import DirectedHoTT.Examples.Knot.Conv using ( ⌜≅ᵀ⌝; ⊢⌜≅ᵀ⌝; ⌜≅ᵀ⌝-sub )
+open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; ⟶ᵀ*-El; ⟶*-dpayᶜ )
+open import DirectedHoTT.Metatheory.TySub using ( ⊢-cast; wk-cancel-tm )
+open import DirectedHoTT.Lib.SynRed using ( mono-by; σₗ; _∷ʳ_; []ʳ )
+open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_ )
 
 private
   variable
@@ -72,6 +76,47 @@ okTCVat : {c₀ k : ℕ} {shs : Shapes c₀} {sh : Shape} → NthG KSig 1 shs �
           Ξ ⊢ p ∷ PayV sh (pair (tag 1) j) (SI 2) (SD KSig) → Ξ ⊢ c ∷ El (CTat (pair (tag 1) j)) →
           TelOK Ξ JT (TCVat k j p c)
 okTCVat ng nh dj dp dc = okTCV dj (⊢ctxOf dc) (⊢conP KOK ng nh dj dp) (⊢tyOf dc)
+
+-- ★ its CONSTRUCTOR's payload `(A , r , e)`, typed ONCE for every head and
+--   any description over `JT`: built at the values, read at the sources
+private
+  cv2-cong : (J J' G G' T T' A : RTm Δ) (C C' : RTm Δ) → J ≡ J' → G ≡ G' → T ≡ T' → C ≡ C' →
+             dρ (tmIx J G T A) (dσ C (lam dι)) ≡ dρ (tmIx J' G' T' A) (dσ C' (lam dι))
+  cv2-cong J J' G G' T T' A C C' refl refl refl refl = refl
+
+module _ {Ξ : Ctx} {D : RTm ⌊ Ξ ⌋} (dD : Ξ ⊢ D ∷ DescF JT) where
+  ⊢payTCV : {j g T A B r e : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ g ∷ KCtx j → Ξ ⊢ T ∷ K 1 j →
+            Ξ ⊢ A ∷ K 0 j → Ξ ⊢ B ∷ K 0 j → Ξ ⊢ r ∷ IMu JT D (tmIx j g T A) → Ξ ⊢ e ∷ El (⌜≅ᵀ⌝ j A B) →
+            Ξ ⊢ pair A (pair r (pair e unit)) ∷ El (dpay JT D ⌜ TCV j g T B ⌝ᵗ)
+  ⊢payTCV {j} {g} {T} {A} {B} {r} {e} dj dg dT dA dB dr de =
+    ⊢payσ ⊢JT dD {a = A} {p = pair r (pair e unit)} (okTCV dj dg dT dB) (toTy dA)
+      (⊢-cast {Ξ} {pair r (pair e unit)} {El (dpay JT D ⌜ tρ (tmIx j g T A) (tσ (⌜≅ᵀ⌝ j A B) tι) ⌝ᵗ)}
+              {El (dpay JT D (subTm (single A) ⌜ tρ (tmIx (w1 j) (w1 g) (w1 T) (var vz)) (tσ (⌜≅ᵀ⌝ (w1 j) (var vz) (w1 B)) tι) ⌝ᵗ))}
+              (cong (λ Z → El (dpay JT D Z)) (sym eq))
+        (⊢payρ ⊢JT dD {r = r} {p = pair e unit} (ok-ρ (⊢tmIx dj dg dT dA) okC) dr
+          (⊢payσ ⊢JT dD {a = e} {p = unit} okC de (⊢payι ⊢JT dD ⊢unit))))
+    where
+      okC : TelOK Ξ JT (tσ (⌜≅ᵀ⌝ j A B) tι)
+      okC = okσJ (⊢⌜≅ᵀ⌝ dj dA dB) ok-ι
+      eq : subTm (single A) ⌜ tρ (tmIx (w1 j) (w1 g) (w1 T) (var vz)) (tσ (⌜≅ᵀ⌝ (w1 j) (var vz) (w1 B)) tι) ⌝ᵗ
+           ≡ ⌜ tρ (tmIx j g T A) (tσ (⌜≅ᵀ⌝ j A B) tι) ⌝ᵗ
+      eq = cv2-cong _ _ _ _ _ _ A _ _ (wk-cancel-tm A j) (wk-cancel-tm A g) (wk-cancel-tm A T)
+             (trans (⌜≅ᵀ⌝-sub (single A) (w1 j) (var vz) (w1 B)) (cong₂ (λ a b → ⌜≅ᵀ⌝ a A b) (wk-cancel-tm A j) (wk-cancel-tm A B)))
+
+  -- …at the fibre's sources `(j , conₗ k p , (g , B))`
+  ⊢payTCVat : {k : ℕ} {j g p A B r e : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ g ∷ KCtx j → Ξ ⊢ conₗ k p ∷ K 1 j →
+              Ξ ⊢ A ∷ K 0 j → Ξ ⊢ B ∷ K 0 j → Ξ ⊢ r ∷ IMu JT D (tmIx j g (conₗ k p) A) → Ξ ⊢ e ∷ El (⌜≅ᵀ⌝ j A B) →
+              Ξ ⊢ pair A (pair r (pair e unit)) ∷ El (dpay JT D ⌜ TCVat k j p (pair g B) ⌝ᵗ)
+  ⊢payTCVat {k} {j} {g} {p} {A} {B} dj dg dT dA dB dr de =
+    ⊢conv (⊢payTCV dj dg dT dA dB dr de) (csymᵀ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R))))
+    where
+      c = pair g B
+      R : ⌜ TCV j (fst c) (conₗ k p) (snd c) ⌝ᵗ ⟶* ⌜ TCV j g (conₗ k p) B ⌝ᵗ
+      R = mono-by {Δ = ⌊ Ξ ⌋} {n = 4} {as = j ∷ fst c ∷ conₗ k p ∷ snd c ∷ []} {as' = j ∷ g ∷ conₗ k p ∷ B ∷ []}
+            ⌜ TCV (var vz) (var (vs vz)) (var (vs (vs vz))) (var (vs (vs (vs vz)))) ⌝ᵗ
+            (TCV-sub (σₗ (j ∷ fst c ∷ conₗ k p ∷ snd c ∷ [])) (var vz) (var (vs vz)) (var (vs (vs vz))) (var (vs (vs (vs vz)))))
+            (TCV-sub (σₗ (j ∷ g ∷ conₗ k p ∷ B ∷ [])) (var vz) (var (vs vz)) (var (vs (vs vz))) (var (vs (vs (vs vz)))))
+            (done ∷ʳ step (βfst g B) done ∷ʳ done ∷ʳ step (βsnd g B) done ∷ʳ []ʳ)
 
 ------------------------------------------------------------------------
 -- the `∋` premise, as a CODE (opaque)

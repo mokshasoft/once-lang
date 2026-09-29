@@ -72,6 +72,7 @@ import DirectedHoTT.Lib.Syn
 import DirectedHoTT.Lib.SynFam
 import DirectedHoTT.Lib.SynFib
 import DirectedHoTT.Lib.SynPat
+import DirectedHoTT.Lib.SynRed
 import DirectedHoTT.Lib.SynRen
 import DirectedHoTT.Lib.SynSub
 import DirectedHoTT.Lib.SynTrav

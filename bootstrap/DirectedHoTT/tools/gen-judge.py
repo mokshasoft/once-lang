@@ -215,8 +215,30 @@ FAMS = {
   "≅ᵀ": dict(J="ConvTₘ.J", dJ="ConvTₘ.⊢J", okσ="ConvTₘ.okσ", RowOK="ConvTₘ.RowOK", S=0, X="(⊢tgt {s = 0} dc)", XK="K 0 J",
              csig="Ξ ⊢ c ∷ El (ConvTₘ.Cat (pair (tag 0) j))", ix="ix≅ᵀ", dix="⊢ix≅ᵀ"),
 }
+FAMS["⊢"].update(D="D⊢", dD="⊢D⊢", fib="fibK")
+for _f, _m in (("⟶", "⟶F"), ("⟶ᵀ", "⟶ᵀF"), ("Pw", "PwF")):
+    FAMS[_f].update(D=_m + ".DF", dD=_m + ".⊢DF", fib=_m + ".fibF", toC="⊢toCP" if _f == "Pw" else "⊢toCR")
+FAMS["⊢ty"] = dict(FAMS["⊢"], S=0, csig="Ξ ⊢ c ∷ El (CTat (pair (tag 0) j))")
+# ★ the `⊢ty` rules (sort 0): one per type former, the premises at their indices
+TYRULES = {
+  "base": dict(ents=[]), "U": dict(ents=[]), "Unit": dict(ents=[]), "Nat": dict(ents=[]), "Fin": dict(ents=[]),
+  "Pi":   dict(ents=[ty("J", "G", F(0)), ty("J+1", ("cext", "G", F(0)), F(1))]),
+  "Sg":   dict(ents=[ty("J", "G", F(0)), ty("J+1", ("cext", "G", F(0)), F(1))]),
+  "El":   dict(ents=[tm("J", "G", F(0), U)]),
+  "Hom":  dict(ents=[ty("J", "G", F(0)), tm("J", "G", F(1), F(0)), tm("J", "G", F(2), F(0))]),
+  "Id":   dict(ents=[ty("J", "G", F(0)), tm("J", "G", F(1), F(0)), tm("J", "G", F(2), F(0))]),
+  "IMu":  dict(ents=[tm("J", "G", F(0), U), tm("J", "G", F(1), ("DF", "J", F(0))), tm("J", "G", F(2), El(F(0)))]),
+  "Desc": dict(ents=[tm("J", "G", F(0), U)]),
+  # the index code is a σ-field (it is not a field of `DIh`)
+  "DIh":  dict(ex=[("Tm", "J")],
+               ents=[tm("J", "G", E(0), U), tm("J", "G", F(0), ("DF", "J", E(0))), ty("J+2", MC("J", "G", E(0), F(0)), F(1)),
+                     tm("J", "G", F(2), k("Desc", E(0))), tm("J", "G", F(3), El(k("dpay", E(0), F(0), F(2))))]),
+}
 FAM = FAMS["⊢"]
 FAMKEY = "⊢"
+CONL = []          # the generated constructors (their own module: they cite `Knot/Judge`)
+REDCON = "--redcon" in sys.argv   # ⚠ in development: the ⟶/⟶ᵀ/Pw constructors
+REDCONL = []       # …of the ⟶/⟶ᵀ/Pw families (they cite each family's `Family` instance)
 
 # ------------------------------------------------------------ rendering
 DEPTHS = ["J", "J+1", "J+2", "J+3", "J+4"]
@@ -676,32 +698,61 @@ def gen_alt(al):
         for m in reversed(range(i, n)):
             body = "(tσ %s %s)" % (inst(al.codes[m], m, sub), body)
         return body
+    # ★ the TAILS: `N⁽ᵏ⁾ xs e₀ … eₖ₋₁`, the telescope after k σ-fields, its
+    #   positions and the first k existentials EXPLICIT — each with its own
+    #   law and congruence.  The row is `N⁽⁰⁾` at the sources; a
+    #   constructor instantiates the tails at VALUES.
+    XP = al.xparams
+    xn = [pname(p) for p in XP]
+    tn = lambda kk: "%s⁽%d⁾" % (N, kk)
+    en = lambda kk: ["E%d" % i for i in range(kk)]
+    def targ(p, xs, es):
+        if isinstance(p, tuple) and p[0] == "e": return es[p[1]]
+        return xs[XP.index(p)]
+    def tinst(po, xs, es):
+        return "(%s)" % " ".join([po.name + "I"] + [targ(p, xs, es) for p in po.params]) if po.params else po.name + "I"
+    for kk in reversed(range(n + 1)):
+        args = xn + en(kk)
+        L.append("%s : %sTel Δ" % (tn(kk), "RTm Δ → " * len(args)))
+        if kk == n:
+            L.append("%s = %s" % (" ".join([tn(kk)] + args), tinst(al.body, xn, en(kk))))
+        else:
+            nxt = ["(w1 %s)" % x for x in args] + ["(var vz)"]
+            L.append("%s = tσ %s (%s)" % (" ".join([tn(kk)] + args), tinst(al.codes[kk], xn, en(kk)), " ".join([tn(kk + 1)] + nxt)))
+        L.append("")
+        L.append("%s-cong : {Δ : Cx} → %s%s ≡ %s" % (tn(kk),
+            "".join("(%s %s' : RTm Δ) → " % (x, x) for x in args) + "".join("%s ≡ %s' → " % (x, x) for x in args),
+            "⌜ %s ⌝ᵗ" % " ".join([tn(kk) + " {Δ}"] + args), "⌜ %s ⌝ᵗ" % " ".join([tn(kk)] + [x + "'" for x in args])))
+        L.append("%s-cong %s%s = refl" % (tn(kk), " ".join(y for x in args for y in (x, x + "'")), "".join(" refl" for _ in args)))
+        L.append("")
+        sa = ["(subTm σ %s)" % x for x in args]
+        L.append("%s-sub : (σ : Sub Δ Θ)%s → subTm σ ⌜ %s ⌝ᵗ ≡ ⌜ %s ⌝ᵗ" % (tn(kk), "".join(" (%s : RTm Δ)" % x for x in args),
+            " ".join([tn(kk)] + args), " ".join([tn(kk)] + sa)))
+        def osub(po, xs, es):
+            if not po.params: return "(%s-sub σ)" % (po.name + "I")
+            return "(%s-sub σ %s)" % (po.name + "I", " ".join(targ(p, xs, es) for p in po.params))
+        if kk == n:
+            L.append("%s-sub σ %s = %s" % (tn(kk), " ".join(args), osub(al.body, xn, en(kk))))
+        else:
+            co = al.codes[kk]
+            nxt = ["(w1 %s)" % x for x in args] + ["(var vz)"]
+            nxt_s = ["(w1 (subTm σ %s))" % x for x in args] + ["(var vz)"]
+            lhsZ = "(subTm (extS σ) ⌜ %s ⌝ᵗ)" % " ".join([tn(kk + 1)] + nxt)
+            rhsZ = "⌜ %s ⌝ᵗ" % " ".join([tn(kk + 1)] + nxt_s)
+            X0 = "(subTm σ %s)" % tinst(co, xn, en(kk))
+            X0s = tinst(co, sa[:len(xn)], sa[len(xn):])
+            inner = "(trans (%s-sub (extS σ) %s) (%s-cong %s %s))" % (tn(kk + 1), " ".join(nxt), tn(kk + 1),
+                " ".join("(subTm (extS σ) %s) %s" % (u, v) for u, v in zip(nxt, nxt_s)),
+                " ".join(["(w1-sub σ %s)" % x for x in args] + ["refl"]))
+            L.append("%s-sub σ %s =" % (tn(kk), " ".join(args)))
+            L.append("  dσ-cong1 %s %s %s %s %s %s" % (X0, X0s, lhsZ, rhsZ, osub(co, xn, en(kk)), inner))
+        L.append("")
+    srcs = [src(p) for p in XP]
     L.append("%s : RTm Δ → RTm Δ → RTm Δ → Tel Δ" % N)
-    L.append("%s j %s c = %s" % (N, a, tel_from(0)))
+    L.append("%s j %s c = %s" % (N, a, " ".join([tn(0)] + srcs)))
     L.append("")
-    # the law
-    def piece(po, lvl, isTel):
-        lhs = ("(subTm %s ⌜ %s ⌝ᵗ)" if isTel else "(subTm %s %s)") % (extS(lvl), inst(po, lvl))
-        rhs = ("⌜ %s ⌝ᵗ" if isTel else "%s") % inst(po, lvl, True)
-        if not po.params:
-            return lhs, rhs, "(%s-sub %s)" % (po.name + "I", extS(lvl))
-        pr = []
-        for p in po.params:
-            if isinstance(p, tuple) and p[0] == "e": pr.append("refl")
-            elif lvl == 0: pr.append("refl")
-            else: pr.append("(w%d-sub σ %s)" % (lvl, src(p)))
-        proof = "(trans (%s-sub %s %s) (%s-cong %s %s))" % (po.name + "I", extS(lvl), " ".join(arg(p, lvl) for p in po.params),
-                  po.name + "I", " ".join("(subTm %s %s) %s" % (extS(lvl), arg(p, lvl), arg(p, lvl, True)) for p in po.params),
-                  " ".join(pr))
-        return lhs, rhs, proof
     L.append("%s-law : TelLaw %s" % (N, N))
-    if n == 0:
-        _, _, pr = piece(al.body, 0, True)
-        L.append("%s-law σ j %s c = %s" % (N, a, pr))
-    else:
-        ps = [piece(al.codes[i], i, False) for i in range(n)] + [piece(al.body, n, True)]
-        L.append("%s-law σ j %s c =" % (N, a))
-        L.append("  dσ-cong%d %s %s" % (n, " ".join("%s %s" % (l, r) for l, r, _ in ps), " ".join(p for _, _, p in ps)))
+    L.append("%s-law σ j %s c = %s-sub σ %s" % (N, a, tn(0), " ".join(srcs)))
     L.append("")
     # the typing, at the row's sources
     ctx = ["Ξ"]
@@ -805,6 +856,317 @@ def gen_alt(al):
         expr = "(%s %s %s)" % (FAM["okσ"], okinst(al.codes[i], i), expr)
     L.append("ok%s {Ξ} {j} {%s} {c} %s = %s" % (N, a, srcs, expr))
     L.append("")
+    al.ctx = dict(kind=kind, weaken=weaken, src=src, tn=tn, XP=XP)
+    return L
+
+# ------------------------------------------------------------ a row's CONSTRUCTOR
+def nth_expr(i, z="nth-z", s_="nth-s"):
+    t = z
+    for _ in range(i): t = "(%s %s)" % (s_, t)
+    return t
+
+def gen_con(al, ci, nc, R, csf):
+    """the constructor of a plain (no case, no nest) row: the payload built at
+    the VALUES through the tails, read back at the sources by one `mono-by`"""
+    rc, ctx = al.rc, al.ctx
+    kind, weaken, src, tn, XP = ctx["kind"], ctx["weaken"], ctx["src"], ctx["tn"], ctx["XP"]
+    n = len(rc.ex)
+    h = al.n
+    fs = rc.fields
+    body = al.body.body
+    S = FAM["S"]
+    Jn, Dn, dJn, dDn = FAM["J"], FAM["D"], FAM["dJ"], FAM["dD"]
+    ford = body[-1] if body and body[-1][0] == "id" and body[-1][2] == "X" else None
+    # the values and their typings
+    val, vty = {"J": "j", "G": "g", "X": "x"}, {"J": "dj", "G": "dg", "X": "dx"}
+    for i in range(len(fs)): val[("f", i)], vty[("f", i)] = "f%d" % i, "df%d" % i
+    for i in range(n): val[("e", i)], vty[("e", i)] = "e%d" % i, "de%d" % i
+    # a NESTED subject: each scrutinised position is its pattern (innermost first)
+    nest = list(rc.nest)
+    Ln = len(nest)
+    scrut, pat = set(), {}
+    for m in range(Ln):
+        for i in range(len(SIG[nest[m][1]][1])): val[("r", m, i)], vty[("r", m, i)] = "a%dᵢ%d" % (m, i), "da%dᵢ%d" % (m, i)
+    for m in reversed(range(Ln)):
+        scr, hm = nest[m]
+        fsm = SIG[hm][1]
+        pat[m] = "(k%s%s)" % (hm, "".join(" " + val[("r", m, i)] for i in range(len(fsm))))
+        key = ("f", scr[1]) if scr[0] == "f" else ("r", scr[1], scr[2])
+        val[key], vty[key] = pat[m], "(⊢k%s dj%s)" % (hm, "".join(" " + vty[("r", m, i)] for i in range(len(fsm))))
+        scrut.add(key)
+    rs = [i for i, e in enumerate(body) if e[0] in ("ty", "tm", "red")]
+    Xv = "x"
+    case = al.case
+    qf = SIG[case][1] if case else []
+    for i in range(len(qf)): val[("q", i)], vty[("q", i)] = "q%d" % i, "dq%d" % i
+    qv = ["q%d" % i for i in range(len(qf))]
+    if case:
+        assert not ford
+        Xv = "(k%s%s)" % (case, "".join(" " + x for x in qv))
+        val["X"], vty["X"] = Xv, "(⊢k%s dj%s)" % (case, "".join(" dq%d" % i for i in range(len(qf))))
+    if ford:
+        Xv = "(%s)" % al.body.expr(ford[3], val)
+        vty["X"] = al.body.typ(ford[3], 0 if FAM["XK"].startswith("K 0") else 1, ford[1][1], vty)
+        val["X"] = Xv
+    def ekind(i):
+        c = rc.ex[i]
+        if c[0] in ("Ty", "Tm"): return ("K", 0 if c[0] == "Ty" else 1, dep(c[1], "j"))
+        if c[0] == "Nat": return ("nat",)
+        return ("raw",)
+    def ehyp(i):
+        c = rc.ex[i]; kd = ekind(i)
+        if kd[0] == "K": return "K %d %s" % (kd[1], kd[2])
+        if kd[0] == "nat": return "El ⌜Nat⌝"
+        return "El %s" % al.codes[i].render(val, False)
+    def vkind(p):
+        kd = kind(p)
+        return kd
+    # arguments / typings of an object at tail level k, object level lvl
+    def arg_v(p, lvl, k):
+        if isinstance(p, tuple) and p[0] == "e":
+            if p[1] >= k: return "(var %s)" % var(lvl - 1 - p[1])
+            return wN(lvl - k, val[p])
+        return wN(lvl - k, val[p])
+    def ptyp_v(p, lvl, k):
+        L_ = lvl - k
+        if isinstance(p, tuple) and p[0] == "e":
+            m = p[1]
+            if m < k:
+                kd = ekind(m)
+                assert kd[0] != "raw", ("a raw existential cited later", al.n, m)
+                return weaken(kd, val[p], vty[p], 0, L_)
+            m_ = m - k
+            c = rc.ex[m]
+            vt = lambda i: "(var %s)" % var(i - m_ - 1)
+            if c[0] == "Nat":
+                return weaken(("nat",), None, "(⊢var here)", m_ + 1, L_, termlvl=vt)
+            dd0 = dep(c[1], wN(m_, "j"))
+            here = "(here%s {m = %s})" % (c[0], dd0)
+            srt = 0 if c[0] == "Ty" else 1
+            dl = lambda i: wN(i - m_ - 1, "(renTm vs %s)" % dd0) if i > m_ + 1 else "(renTm vs %s)" % dd0
+            return weaken(("K", srt, None, dl), None, here, m_ + 1, L_, termlvl=vt)
+        return weaken(vkind(p), val[p], vty[p], 0, L_)
+    def okinst_v(po, lvl, k):
+        return "(ok%s {_}%s%s)" % (po.name + "I", "".join(" {%s}" % arg_v(p, lvl, k) for p in po.params),
+                                   "".join(" " + ptyp_v(p, lvl, k) for p in po.params))
+    def okt(k):
+        expr = okinst_v(al.body, n, k)
+        for i in reversed(range(k, n)):
+            expr = "(%s %s %s)" % (FAM["okσ"], okinst_v(al.codes[i], i, k), expr)
+        return expr
+    xs = [val[p] for p in XP]
+    es = ["e%d" % i for i in range(n)]
+    # the payload, and its typing at the values
+    items = es + []
+    for e in body:
+        if e[0] in ("ty", "tm", "red"): items.append("r%d" % len([x for x in items if x.startswith("r")]))
+        elif e[0] == "id":
+            items.append("(idrefl %s %s)" % (al.body.atom_expr((e[1][0], (e[1][1],)), val), al.body.expr(e[3], val)))
+    P = "unit"
+    for it in reversed(items): P = "(pair %s %s)" % (it, P)
+    def rest_from(t):
+        q = "unit"
+        for it in reversed(items[t:]): q = "(pair %s %s)" % (it, q)
+        return q
+    pay = "⊢pay%s {Ξ} {%s} {%s} %s %s" % ("%s", Jn, Dn, dJn, dDn)
+    # the body entries
+    tail = "(⊢payι {Ξ} {%s} {%s} %s %s {unit} ⊢unit)" % (Jn, Dn, dJn, dDn)
+    oks = ["okB"]
+    for t in range(1, len(body)): oks.append("(okRest %s)" % oks[-1])
+    ri = len(rs) - 1
+    for t in reversed(range(len(body))):
+        e = body[t]
+        pos = n + t
+        if e[0] == "id":
+            code = e[1]; srt = 0 if code[0] == "Ty" else 1
+            to = "toTy" if srt == 0 else "toTm"
+            bv = al.body.expr(e[3], val)
+            dE = "(⊢conv (⊢idrefl (⊢⌜%s⌝ %s) (%s %s)) (csymᵀ (credᵀ (El-⌜Id⌝ (⌜%s⌝ %s) (%s) (%s)))))" % (
+                code[0], dty(code[1], "dj"), to, al.body.typ(e[3], srt, code[1], vty), code[0], dep(code[1], "j"), bv, bv)
+            tail = "(%s {a = %s} {p = %s} %s %s %s)" % (pay % "σ", items[pos], rest_from(pos + 1), oks[t], dE, tail)
+        else:
+            tail = "(%s {r = r%d} {p = %s} %s dr%d %s)" % (pay % "ρ", ri, rest_from(pos + 1), oks[t], ri, tail)
+            ri -= 1
+    for k in reversed(range(n)):
+        args = xs + es[:k]
+        nxt = ["(w1 %s)" % x for x in args] + ["(var vz)"]
+        eq = "(trans (%s-sub (single e%d) %s) (%s-cong %s %s))" % (tn(k + 1), k, " ".join(nxt), tn(k + 1),
+             " ".join("(subTm (single e%d) %s) %s" % (k, u, v) for u, v in zip(nxt, args + ["e%d" % k])),
+             " ".join(["(wk-cancel-tm e%d %s)" % (k, x) for x in args] + ["refl"]))
+        cast = "(⊢-cast {Ξ} {%s} {El (dpay %s %s ⌜ %s ⌝ᵗ)} {El (dpay %s %s (subTm (single e%d) ⌜ %s ⌝ᵗ))} (cong (λ Z → El (dpay %s %s Z)) (sym %s)) %s)" % (
+            rest_from(k + 1), Jn, Dn, " ".join([tn(k + 1)] + args + ["e%d" % k]), Jn, Dn, k, " ".join([tn(k + 1)] + nxt), Jn, Dn, eq, tail)
+        c = rc.ex[k]
+        de = {"Ty": "(toTy de%d)" % k, "Tm": "(toTm de%d)" % k}.get(c[0], "de%d" % k)
+        tail = "(%s {a = e%d} {p = %s} %s %s %s)" % (pay % "σ", k, rest_from(k + 1), "(okT%d)" % k, de, cast)
+    # the subject and convoy
+    fv = [val[("f", i)] for i in range(len(fs))]
+    fd = [vty[("f", i)] for i in range(len(fs))]
+    if len(fs) == 1 and fs[0][0] == "var":
+        p_ = "(pair %s unit)" % fv[0]; args_ = "(a-v %s)" % fd[0]
+    else:
+        p_ = "unit"; args_ = "a[]"
+        for i in reversed(range(len(fs))):
+            p_ = "(pair %s %s)" % (fv[i], p_)
+            args_ = "(%s %s %s)" % ("a-nat" if fs[i][0] == "nat" else "a-rec", fd[i], args_)
+    subj = "(k%s%s)" % (h, "".join(" " + x for x in fv))
+    dsubj = "(⊢k%s dj%s)" % (h, "".join(" " + x for x in fd))
+    ty_ = FAMKEY == "⊢ty"
+    fam_ = FAMKEY not in ("⊢", "⊢ty")      # a family whose convoy IS its computed output
+    if ty_:
+        concl, dconcl = "tyIx j g %s" % subj, "(⊢tyIx dj dg %s)" % dsubj
+        Xv, vty["X"] = "unit", "⊢unit"
+    elif fam_:
+        concl, dconcl = "%s j %s %s" % (FAM["ix"], subj, Xv), "(%s dj %s %s)" % (FAM["dix"], dsubj, vty["X"])
+    else:
+        assert FAMKEY == "⊢" and S == 1
+        concl = "tmIx j g %s %s" % (subj, Xv)
+        dconcl = "(⊢tmIx dj dg %s %s)" % (dsubj, vty["X"])
+    # the hypotheses
+    hyps = [("j", "El ⌜Nat⌝")] + ([] if fam_ else [("g", "KCtx j")])
+    if not ford and not case and not ty_: hyps.append(("x", FAM["XK"].replace("J", "j") if fam_ else "K 0 j"))
+    fty = lambda f: "FinI j" if f[0] == "var" else ("El ⌜Nat⌝" if f[0] == "nat" else "K %d %s" % (f[1], nsucs(f[2], "j")))
+    for i, f in enumerate(fs):
+        if ("f", i) not in scrut: hyps.append(("f%d" % i, fty(f)))
+    for m in range(Ln):
+        for i, f in enumerate(SIG[nest[m][1]][1]):
+            if ("r", m, i) not in scrut: hyps.append((val[("r", m, i)], fty(f)))
+    for i, f in enumerate(qf):
+        hyps.append(("q%d" % i, "FinI j" if f[0] == "var" else ("El ⌜Nat⌝" if f[0] == "nat" else "K %d %s" % (f[1], nsucs(f[2], "j")))))
+    for i in range(n): hyps.append(("e%d" % i, ehyp(i)))
+    for t, ri in enumerate(rs):
+        e = body[ri]
+        if e[0] == "ty": ix = "tyIx %s %s %s" % tuple(al.body.expr(y, val) for y in e[1:])
+        elif e[0] == "tm": ix = "tmIx %s %s %s %s" % tuple(al.body.expr(y, val) for y in e[1:])
+        else: ix = "%s %s %s %s" % ((FAM["ix"],) + tuple(al.body.expr(y, val) for y in e[1:]))
+        hyps.append(("r%d" % t, "IMu %s %s (%s)" % (Jn, Dn, ix)))
+    L = []
+    cn = "con" + al.pfx[1:]
+    L.append("%s : {Ξ : Ctx} {%s : RTm ⌊ Ξ ⌋} → %s" % (cn, " ".join(x for x, _ in hyps), "".join("Ξ ⊢ %s ∷ %s → " % (x, t) for x, t in hyps)))
+    L.append("  Ξ ⊢ conₗ %d %s ∷ IMu %s %s (%s)" % (ci, P, Jn, Dn, concl))
+    L.append("%s {Ξ} {%s} %s =" % (cn, "} {".join(x for x, _ in hyps), " ".join("d" + x for x, _ in hyps)))
+    comp = csf[ci][0]("j", "p", "c")
+    cs = " ∷ ".join(d("j", "p", "c") for d, _, _ in csf) + " ∷ []"
+    ng = "nthᵍ-z" if S == 0 else "(nthᵍ-s nthᵍ-z)"
+    L.append("  ⊢conRowₖ {Ξ} {%d} {%d} {%s} {%s} {%s} {%s} {%s} {%s} %s %s %s %s" % (nc, ci, Jn, Dn, concl, comp, P, cs,
+             nth_expr(ci), dJn, dDn, dconcl))
+    L.append("    (%s {s = %d} {k = %d} {j = j} {p = p} {c = c} %s %s) (all%s dj dp dc)" % (FAM["fib"], S, SIG[h][2], ng, nth_expr(SIG[h][2], "nthʰ-z", "nthʰ-s"), R))
+    L.append("    (⊢conv dPv (csymᵀ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))))")
+    L.append("  where")
+    L.append("    p c : RTm ⌊ Ξ ⌋")
+    L.append("    p = %s" % p_)
+    L.append("    c = %s" % (Xv if fam_ else "pair g %s" % Xv))
+    L.append("    dp = ⊢payK %s ok-k%s dj %s" % (lt_of(S), h, args_))
+    L.append("    dc = %s" % ("⊢cTy dj dg" if ty_ else ("%s %s" % (FAM["toC"], vty["X"]) if fam_ else "⊢cTm dj dg %s" % vty["X"])))
+    # sources → values
+    if case:
+        srcs = [{"J": "j", "G": "(fst c')"}[p] if isinstance(p, str) else
+                (fieldexpr("(snd c')", p[1]) if p[0] == "f" else fieldexpr("q", p[1])) for p in XP]
+    elif Ln:
+        import re as _re
+        at = lambda t, k: _re.sub(r"(?<![\w'])q(?![\w'])", "q%d" % k, _re.sub(r"(?<![\w'])c(?![\w'])", "cv%d" % k, t))
+        srcs = [at(src(p), Ln - 1) for p in XP]
+    else:
+        srcs = [src(p) for p in XP]
+    hs = []
+    if Ln:
+        qn = ["q%d" % m for m in range(Ln)]
+        CW = lambda k: ["c", "p"] + qn[:k]                 # the convoy's elements at level k
+        AS = lambda m: [val[("r", m, i)] for i in range(len(SIG[nest[m][1]][1]))]
+        def wl(xs): return "(%s)" % " ∷ ".join(xs + ["[]"])
+        def red_pos(p, k):
+            """position p read at level k (convoy cv_k, pattern q_k) reduces to its value"""
+            if p == "J": return "done"
+            if p == "X": return "(prj-tup {ws = %s} unit nth-z)" % wl(CW(k))
+            if p[0] == "f":
+                if k < 0: return "(prj-tup {ws = %s} unit %s)" % (wl(fv), nth_expr(p[1]))
+                return "(⟶*-trans (prj-mono %d (prj-tup {ws = %s} unit %s)) (prj-tup {ws = %s} unit %s))" % (
+                    p[1], wl(CW(k)), nth_expr(1), wl(fv), nth_expr(p[1]))
+            m, i = p[1], p[2]
+            if m == k: return "(prj-tup {ws = %s} unit %s)" % (wl(AS(m)), nth_expr(i))
+            return "(⟶*-trans (prj-mono %d (prj-tup {ws = %s} unit %s)) (prj-tup {ws = %s} unit %s))" % (
+                i, wl(CW(k)), nth_expr(m + 2), wl(AS(m)), nth_expr(i))
+        for p in XP: hs.append(red_pos(p, Ln - 1))
+    for p in ([] if Ln else XP):
+        if p == "J": hs.append("done")
+        elif p == "G" and case: hs.append("(prj-tup {ws = %s} unit nth-z)" % " ∷ ".join(["g"] + fv + ["[]"]))
+        elif p == "G": hs.append("(prj-tup {ws = g ∷ []} %s nth-z)" % Xv)
+        elif p == "X": hs.append("done" if fam_ else "(step (βsnd g %s) done)" % Xv)
+        elif p[0] == "f" and case: hs.append("(prj-tup {ws = %s} unit %s)" % (" ∷ ".join(["g"] + fv + ["[]"]), nth_expr(p[1] + 1)))
+        elif p[0] == "f": hs.append("(prj-tup {ws = %s} unit %s)" % (" ∷ ".join(fv + ["[]"]), nth_expr(p[1])))
+        elif p[0] == "q": hs.append("(prj-tup {ws = %s} unit %s)" % (" ∷ ".join(qv + ["[]"]), nth_expr(p[1])))
+        else: raise ValueError(p)
+    m = len(XP)
+    vars_ = ["(var %s)" % var(i) for i in range(m)]
+    if case:
+        PN = "P" + al.pfx
+        tgt = "⌜ %s ⌝ᵗ" % " ".join([tn(0)] + xs)
+        u1 = "%s.CASE j %s (pair (fst c) p)" % (PN, Xv)
+        u2 = "%s.CASE j %s c'" % (PN, Xv)
+        u3 = "⌜ %s j q c' ⌝ᵗ" % al.pfx
+        L.append("    q c' : RTm ⌊ Ξ ⌋")
+        L.append("    q = %s" % ("".join("(pair %s " % x for x in qv) + "unit" + ")" * len(qv)))
+        L.append("    c' = pair g p")
+        R1 = "R₁"
+    else:
+        R1 = "R₁" if Ln else "R₀"
+    L.append("    %s : ⌜ %s ⌝ᵗ ⟶* ⌜ %s ⌝ᵗ" % (R1, " ".join([tn(0)] + srcs), " ".join([tn(0)] + xs)))
+    L.append(("    %s = mono-by" % R1) + " {Δ = ⌊ Ξ ⌋} {n = %d} {as = %s} {as' = %s} ⌜ %s ⌝ᵗ (%s-sub (σₗ (%s)) %s) (%s-sub (σₗ (%s)) %s) (%s)" % (
+        m, "(%s)" % " ∷ ".join(srcs + ["[]"]), "(%s)" % " ∷ ".join(xs + ["[]"]), " ".join([tn(0)] + vars_),
+        tn(0), " ∷ ".join(srcs + ["[]"]), " ".join(vars_), tn(0), " ∷ ".join(xs + ["[]"]), " ".join(vars_),
+        " ∷ʳ ".join(hs + ["[]ʳ"])))
+    if Ln:
+        nc = al.nctx
+        ngf = lambda m: "nthᵍ-z" if nest_sort(rc, m) == 0 else "(nthᵍ-s nthᵍ-z)"
+        nhf = lambda m: nth_expr(SIG[nest[m][1]][2], "nthʰ-z", "nthʰ-s")
+        skey = lambda m: ("f", nest[m][0][1]) if nest[m][0][0] == "f" else ("r", nest[m][0][1], nest[m][0][2])
+        tgt = "⌜ %s ⌝ᵗ" % " ".join([tn(0)] + xs)
+        steps = []
+        P0 = nc["Pn"](0)
+        cur = csf[ci][0]("j", "p", "c")
+        u = "%s.CASE j %s (pair c (pair p unit))" % (P0, pat[0])
+        steps.append((cur, u, "(%s.CASE-⟶ᵃ %s)" % (P0, red_pos(skey(0), -1))))
+        for k in range(1, Ln + 1):
+            if k < Ln:
+                Pk = nc["Pn"](k)
+                land = "%s.CASE j %s %s" % (Pk, at(nc["scrut_at"](k, nest[k][0]), k - 1), at(nc["convoy_at"](k), k - 1))
+            else:
+                land = "⌜ %s j q%d cv%d ⌝ᵗ" % (al.pfx, Ln - 1, Ln - 1)
+            steps.append((u, land, "(%s.case-β {j = j} {q = q%d} {c = cv%d} %s %s)" % (nc["Pn"](k - 1), k - 1, k - 1, ngf(k - 1), nhf(k - 1))))
+            if k < Ln:
+                u1 = "%s.CASE j %s %s" % (Pk, pat[k], at(nc["convoy_at"](k), k - 1))
+                steps.append((land, u1, "(%s.CASE-⟶ᵃ %s)" % (Pk, red_pos(skey(k), k - 1))))
+                u2 = "%s.CASE j %s cv%d" % (Pk, pat[k], k)
+                pw = ["(prj-tup {ws = %s} unit %s)" % (wl(CW(k - 1)), nth_expr(t)) for t in range(len(CW(k - 1)))] + ["done"]
+                steps.append((u1, u2, "(%s.CASE-⟶ᶜ (tup-mono {w = unit} (%s)))" % (Pk, " ∷ʳ ".join(pw + ["[]ʳ"]))))
+                u = u2
+            else:
+                steps.append((land, tgt, "R₁"))
+        pr = steps[-1][2]
+        for (t_, u_, p_r) in reversed(steps[:-1]):
+            pr = "(⟶*-trans {t = %s} {u = %s} {v = %s} %s %s)" % (t_, u_, tgt, p_r, pr)
+        pre = ["    q%d = %s" % (m, "".join("(pair %s " % x for x in AS(m)) + "unit" + ")" * len(AS(m))) for m in range(Ln)]
+        pre += ["    cv%d = %s" % (k, "".join("(pair %s " % x for x in CW(k)) + "unit" + ")" * len(CW(k))) for k in range(Ln)]
+        i1 = max(i for i, l in enumerate(L) if l.startswith("    R₁ : "))
+        L[i1:i1] = ["    %s : RTm ⌊ Ξ ⌋" % " ".join(["q%d" % m for m in range(Ln)] + ["cv%d" % k for k in range(Ln)])] + pre
+        L.append("    R₀ : %s ⟶* %s" % (cur, tgt))
+        L.append("    R₀ = %s" % pr)
+    if case:
+        L.append("    R₀ : %s.CX j p c ⟶* %s" % (PN, tgt))
+        L.append("    R₀ = ⟶*-trans {t = %s.CX j p c} {u = %s} {v = %s} (%s.CASE-⟶ᵃ (step (βsnd g %s) done))" % (PN, u1, tgt, PN, Xv))
+        L.append("           (⟶*-trans {t = %s} {u = %s} {v = %s} (%s.CASE-⟶ᶜ (⟶*-pairˡ (step (βfst g %s) done)))" % (u1, u2, tgt, PN, Xv))
+        L.append("           (⟶*-trans {t = %s} {u = %s} {v = %s} (%s.case-β {j = j} {q = q} {c = c'} nthᵍ-z %s) R₁))" % (
+            u2, u3, tgt, PN, nth_expr(SIG[case][2], "nthʰ-z", "nthʰ-s")))
+
+    L.append("    okRest : {J' : RTm ⌊ Ξ ⌋} {T : Tel ⌊ Ξ ⌋} → TelOK Ξ %s (tρ J' T) → TelOK Ξ %s T" % (Jn, Jn))
+    L.append("    okRest (ok-ρ _ o) = o")
+    for k in range(n):
+        L.append("    okT%d : TelOK Ξ %s (%s)" % (k, Jn, " ".join([tn(k)] + xs + es[:k])))
+        L.append("    okT%d = %s" % (k, okt(k)))
+    L.append("    okB : TelOK Ξ %s (%s)" % (Jn, " ".join([tn(n)] + xs + es)))
+    L.append("    okB = %s" % okt(n))
+    L.append("    dPv : Ξ ⊢ %s ∷ El (dpay %s %s ⌜ %s ⌝ᵗ)" % (P, Jn, Dn, " ".join([tn(0)] + xs)))
+    L.append("    dPv = %s" % tail)
+    L.append("")
     return L
 
 def fieldtyp_g(fs, base, S_, i):
@@ -900,6 +1262,7 @@ def gen_nest(al):
             out.append("%s {Ξ} {j} {q} {c} dj dq dc = %s.⊢CASE {Ξ} {j} {%s} {%s} %s %s dj %s %s" % (
                 OKn(k), Pn(k), scrut_at(k, scr), convoy_at(k), OKn(k + 1), lt_of(nest_sort(rc, k)), scrut_typ(k, scr), convoy_typ(k)))
         out.append("")
+    al.nctx = dict(Pn=Pn, scrut_at=scrut_at, convoy_at=convoy_at)
     scr0 = rc.nest[0][0]
     comp = ((lambda P, i0: lambda j, p, c: "(%s.CASE %s %s (pair %s (pair %s unit)))" % (P, j, fieldexpr(p, i0), c, p))(Pn(0), scr0[1]),
             "(%s.CASE-sub σ j %s %s)" % (Pn(0), scrut_at(0, scr0), convoy_at(0)),
@@ -919,6 +1282,7 @@ def gen_head(name, spec):
     sh = shape_name(name)
     R, OK = "r" + FAMKEY + name, "ok" + FAMKEY + name
     comps = []
+    plain = []
     if name in HANDC and FAMKEY == "⊢":
         PN, okI = HANDC[name]
         comps.append(((lambda PN: lambda j, p, c: "(%s.CX %s %s %s)" % (PN, j, p, c))(PN), "(%s.CASE-sub σ j (snd c) (pair (fst c) p))" % PN,
@@ -939,6 +1303,7 @@ def gen_head(name, spec):
             L.append("module P%s = CaseRow %s %s %d r%sI" % (N, sh, ok_name(name), h, N))
             L.append("okC%sI : P%s.RowOK 0 %s r%sI" % (N[1:], N, shape_name(case), N))
             L.append("okC%sI {Ξ} {j} {q} {c} dj dq dc = ⊢tel {Ξ} {JT} {%s j q c} ⊢JT (ok%s dj dq dc)" % (N[1:], N, N))
+            plain.append((len(comps), As[0]))
             comps.append(((lambda N: lambda j, p, c: "(P%s.CX %s %s %s)" % (N, j, p, c))(N), "(P%s.CASE-sub σ j (snd c) (pair (fst c) p))" % N,
                           "P%s.⊢CX okC%sI {Ξ} {j} {p} {c} dj dp dc" % (N, N[1:])))
         else:
@@ -947,8 +1312,10 @@ def gen_head(name, spec):
                 if al.rc.nest:
                     ls, comp = gen_nest(al)
                     L += ls
+                    plain.append((len(comps), al))
                     comps.append(comp)
                     continue
+                plain.append((len(comps), al))
                 comps.append(((lambda N: lambda j, p, c: "⌜ %s %s %s %s ⌝ᵗ" % (N, j, p, c))(N), "(%s-law σ j p c)" % N,
                               "⊢tel {Ξ} {%s} {%s j p c} %s (ok%s dj dp dc)" % (FAM["J"], N, FAM["dJ"], N)))
     if FAMKEY == "⊢" and SIG[name][0] == 1:
@@ -965,9 +1332,57 @@ def gen_head(name, spec):
         L.append("%s = record { R = λ j p c → rows (%s)" % (R, cs))
         L.append("  ; R-sub = λ σ j p c → trans (rows-sub' σ (%s)) (cong (λ X → rows X) (∷-cong%d %s)) }"
                  % (cs, len(comps), pins))
+    L.append("all%s : {Ξ : Ctx} {j p c : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ p ∷ PayV %s (pair (tag %d) j) (SI 2) (SD KSig) → %s → AllD Ξ %s (%s)" % (
+        R, sh, FAM["S"], FAM["csig"], FAM["J"], cs))
+    L.append("all%s {Ξ} {j} {p} {c} dj dp dc = %s[]ᵈ" % (R, "".join("(%s) ∷ᵈ " % o for _, _, o in comps)))
     L.append("%s : %s %d %s %s" % (OK, FAM["RowOK"], FAM["S"], sh, R))
-    L.append("%s {Ξ} {j} {p} {c} dj dp dc = ⊢rows {Ξ} {%s} {%d} {%s} %s (%s []ᵈ)" % (
-        OK, FAM["J"], len(comps), cs, FAM["dJ"], "".join("(%s) ∷ᵈ " % o for _, _, o in comps)))
+    L.append("%s {Ξ} {j} {p} {c} dj dp dc = ⊢rows {Ξ} {%s} {%d} {%s} %s (all%s dj dp dc)" % (
+        OK, FAM["J"], len(comps), cs, FAM["dJ"], R))
+    L.append("")
+    for ci, al in plain:
+        (CONL if FAMKEY in ("⊢", "⊢ty") else REDCONL).extend(gen_con(al, ci, len(comps), R, comps))
+    if FAMKEY == "⊢" and SIG[name][0] == 1:
+        CONL.extend(gen_conv_con(name, len(comps), R, comps))
+    return L
+
+def subject_parts(h):
+    """a head's subject at field values: payload, its Args typing, the term, its typing"""
+    fs = SIG[h][1]
+    fv = ["f%d" % i for i in range(len(fs))]
+    if len(fs) == 1 and fs[0][0] == "var":
+        p_, args_ = "(pair f0 unit)", "(a-v df0)"
+    else:
+        p_, args_ = "unit", "a[]"
+        for i in reversed(range(len(fs))):
+            p_ = "(pair f%d %s)" % (i, p_)
+            args_ = "(%s df%d %s)" % ("a-nat" if fs[i][0] == "nat" else "a-rec", i, args_)
+    hyps = [("f%d" % i, "FinI j" if f[0] == "var" else ("El ⌜Nat⌝" if f[0] == "nat" else "K %d %s" % (f[1], nsucs(f[2], "j"))))
+            for i, f in enumerate(fs)]
+    return p_, args_, "(k%s%s)" % (h, "".join(" " + x for x in fv)), "(⊢k%s dj%s)" % (h, "".join(" df%d" % i for i in range(len(fs)))), hyps
+
+def gen_conv_con(h, nc, R, csf):
+    """⊢conv's constructor at head h: the last component; its payload typed once (`JudgeConv.⊢payTCVat`)"""
+    p_, args_, subj, dsubj, fh = subject_parts(h)
+    hyps = [("j", "El ⌜Nat⌝"), ("g", "KCtx j")] + fh + [("A", "K 0 j"), ("B", "K 0 j"),
+            ("r", "IMu JT D⊢ (tmIx j g %s A)" % subj), ("e", "El (⌜≅ᵀ⌝ j A B)")]
+    P = "(pair A (pair r (pair e unit)))"
+    cs = " ∷ ".join(d("j", "p", "c") for d, _, _ in csf) + " ∷ []"
+    cn = "conv⊢" + h
+    L = []
+    L.append("%s : {Ξ : Ctx} {%s : RTm ⌊ Ξ ⌋} → %s" % (cn, " ".join(x for x, _ in hyps), "".join("Ξ ⊢ %s ∷ %s → " % (x, t) for x, t in hyps)))
+    L.append("  Ξ ⊢ conₗ %d %s ∷ IMu JT D⊢ (tmIx j g %s B)" % (nc - 1, P, subj))
+    L.append("%s {Ξ} {%s} %s =" % (cn, "} {".join(x for x, _ in hyps), " ".join("d" + x for x, _ in hyps)))
+    L.append("  ⊢conRowₖ {Ξ} {%d} {%d} {JT} {D⊢} {tmIx j g %s B} {%s} {%s} {%s} %s ⊢JT ⊢D⊢ (⊢tmIx dj dg %s dB)" % (
+        nc, nc - 1, subj, csf[nc - 1][0]("j", "p", "c"), P, cs, nth_expr(nc - 1), dsubj))
+    L.append("    (fibK {s = 1} {k = %d} {j = j} {p = p} {c = c} (nthᵍ-s nthᵍ-z) %s) (all%s dj dp dc)" % (
+        SIG[h][2], nth_expr(SIG[h][2], "nthʰ-z", "nthʰ-s"), R))
+    L.append("    (⊢payTCVat ⊢D⊢ {k = %d} dj dg %s dA dB dr de)" % (SIG[h][2], dsubj))
+    L.append("  where")
+    L.append("    p c : RTm ⌊ Ξ ⌋")
+    L.append("    p = %s" % p_)
+    L.append("    c = pair g B")
+    L.append("    dp = ⊢payK (lt-s lt-z) ok-k%s dj %s" % (h, args_))
+    L.append("    dc = ⊢cTm dj dg dB")
     L.append("")
     return L
 
@@ -1003,6 +1418,18 @@ def gen_helpers(maxn):
 
 def gen_table():
     L = ["------------------------------------------------------------------------",
+         "-- ★ THE `⊢ty` ROW TABLE, by type head (all 13)",
+         "------------------------------------------------------------------------", "",
+         "rowTyGen : ℕ → Row"]
+    for i, h in enumerate(TYHEADS):
+        L.append("rowTyGen %s = r⊢ty%s   -- %s" % (gk.nat(i), h, h))
+    L.append("rowTyGen _ = rNone")
+    L.append("")
+    L.append("okTyGen : {k : ℕ} {sh : Shape} → NthSh TyShs k sh → RowOK 0 sh (rowTyGen k)")
+    for i, h in enumerate(TYHEADS):
+        L.append("okTyGen %s = ok⊢ty%s" % (nth_expr(i, "nthʰ-z", "nthʰ-s"), h))
+    L.append("")
+    L += ["------------------------------------------------------------------------",
          "-- ★ THE `⊢` ROW TABLE, by term head (all 38; `rNone` = not yet a row)",
          "------------------------------------------------------------------------", "",
          "rowTmGen : ℕ → Row"]
@@ -1379,7 +1806,7 @@ open import DirectedHoTT.Spec.Syntax hiding ( Fin )
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Metatheory.TySub using ( ⊢wk )
 open import DirectedHoTT.Metatheory.SubjectReductionBase using () renaming ( wk-sub to wkS )
-open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_; tag; Lt; lt-z; lt-s; []ᵈ; _∷ᵈ_ )
+open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_; tag; Lt; lt-z; lt-s; []ᵈ; _∷ᵈ_; AllD )
 open import DirectedHoTT.Lib.SynView using ( PayV; ⊢recFst; ⊢recSnd; ⊢atDepth; ⊢natFst; ⊢natSnd )
 open import DirectedHoTT.Lib.FinFam using ( ⊢isuc; toI; ffz; ⊢ffz; ffs; ⊢ffs )
 open import DirectedHoTT.Lib.Tel
@@ -1437,6 +1864,11 @@ def main():
     HL = [GHDR] + gen_helpers(8)
     hlp = "\n".join(HL) + "\n"
     HOUT = os.path.join(ROOT, "Examples", "Knot", "GenHelpers.agda")
+    global FAM, FAMKEY
+    FAM, FAMKEY = FAMS["⊢ty"], "⊢ty"
+    for name in TYHEADS:
+        L += gen_head(name, TYRULES[name])
+    FAM, FAMKEY = FAMS["⊢"], "⊢"
     for name in TMHEADS:
         if name in RULES or name in HANDC:
             L += gen_head(name, RULES.get(name, {}))
@@ -1445,9 +1877,10 @@ def main():
     ptxt = "\n".join(gen_preds()) + "\n"
     POUT = os.path.join(ROOT, "Examples", "Knot", "Preds.agda")
     K = lambda n: os.path.join(ROOT, "Examples", "Knot", n + ".agda")
-    outs = {OUT: txt, POUT: ptxt, HOUT: hlp}
+    outs = {OUT: txt, POUT: ptxt, HOUT: hlp, K("JudgeConGen"): CHDR + "\n".join(CONL) + "\n"}
     for fam in ("⟶", "⟶ᵀ", "Pw"):
         outs[K(REDMOD[fam][0])] = "\n".join(gen_red(fam)) + "\n"
+    if REDCON: outs[K("RedConGen")] = RCHDR + "\n".join(REDCONL) + "\n"
     if "--check" in sys.argv:
         stale = [f for f, t in outs.items() if not os.path.exists(f) or open(f, encoding="utf-8").read() != t]
         if stale:
@@ -1482,8 +1915,11 @@ private
 HDR = """------------------------------------------------------------------------
 -- ⚠⚠ GENERATED by tools/gen-judge.py — DO NOT EDIT BY HAND. ⚠⚠
 --
--- The Knot's `⊢` rows (D077), one scheme per row; see the generator's
--- header.  The hand-written ⊢lam/⊢app/⊢var (`JudgeRowsTm`) are its templates.
+-- The Knot's `⊢ty` and `⊢` rows (D077), one scheme per row; see the
+-- generator's header.  Each telescope is a chain of TAILS `N⁽ᵏ⁾` (its
+-- positions and first k existentials explicit), each with its own law —
+-- what the constructors (`JudgeConGen`) instantiate at values.  Only
+-- fzero/fsuc are hand-written (`JudgeRowsTm`).
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
@@ -1494,7 +1930,7 @@ open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax hiding ( Fin )
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Metatheory.TySub using ( ⊢wk )
-open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_; tag; Lt; lt-z; lt-s; []ᵈ; _∷ᵈ_ )
+open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_; tag; Lt; lt-z; lt-s; []ᵈ; _∷ᵈ_; AllD )
 open import DirectedHoTT.Lib.SynView using ( PayV; ⊢recFst; ⊢recSnd; ⊢atDepth )
 open import DirectedHoTT.Lib.FinFam using ( ⊢isuc; toI; ffz; ⊢ffz; ffs; ⊢ffs )
 open import DirectedHoTT.Lib.Tel
@@ -1511,7 +1947,7 @@ open import DirectedHoTT.Examples.Knot.JudgeIx
 open import DirectedHoTT.Examples.Knot.JudgeTmIx
 open import DirectedHoTT.Examples.Knot.JudgeCase
 open import DirectedHoTT.Examples.Knot.GenHelpers
-open import DirectedHoTT.Examples.Knot.JudgeRowsTy using ( RowOK; okNone )
+open import DirectedHoTT.Examples.Knot.JudgeFib using ( RowOK; okNone )
 open import DirectedHoTT.Examples.Knot.Preds using ( ⌜Flat⌝; ⊢⌜Flat⌝; ⌜Flat⌝-sub; ⌜NNC⌝; ⊢⌜NNC⌝; ⌜NNC⌝-sub )
 open import DirectedHoTT.Metatheory.SubjectReductionBase using () renaming ( wk-sub to wkS )
 open import DirectedHoTT.Examples.Knot.JudgeRowsTm using ( module PFz; module PFs; okFzI; okFsI; ⊢varOf )
@@ -1521,6 +1957,94 @@ open import DirectedHoTT.Lib.FinFam using ( FinI )
 private
   variable
     Δ Θ : Cx
+"""
+
+CHDR = """------------------------------------------------------------------------
+-- ⚠⚠ GENERATED by tools/gen-judge.py — DO NOT EDIT BY HAND. ⚠⚠
+--
+-- The CONSTRUCTORS of the generated `⊢` rows: a rule's derivation as a Knot
+-- term, at VALUES.  The payload is built through the row's tails (one tail
+-- law + `wk-cancel` per σ-field); the row, written at the fibre's sources,
+-- reduces to it by ONE `mono-by` (`Lib/SynRed`), fed by `prj-tup` per
+-- position.  `⊢conv`'s payload is typed once (`JudgeConv.⊢payTCVat`).
+------------------------------------------------------------------------
+
+{-# OPTIONS --safe #-}
+module DirectedHoTT.Examples.Knot.JudgeConGen where
+
+open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong )
+open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
+open import DirectedHoTT.Spec.Syntax hiding ( Fin )
+open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
+open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; ⟶ᵀ*-El; ⟶*-dpayᶜ; ⟶*-trans; ⟶*-pairˡ )
+open import DirectedHoTT.Metatheory.TySub using ( ⊢-cast; wk-cancel-tm )
+open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_; tag; conₗ; lt-z; lt-s; nth-z; nth-s )
+open import DirectedHoTT.Lib.SynFib using ( ⊢conRowₖ )
+open import DirectedHoTT.Lib.SynRed
+open import DirectedHoTT.Lib.FinFam using ( FinI; ⊢isuc; toI; ffz; ⊢ffz; ffs; ⊢ffs )
+open import DirectedHoTT.Lib.Tel
+open import DirectedHoTT.Lib.Syn
+open import DirectedHoTT.Examples.Knot.Ctors
+open import DirectedHoTT.Examples.Knot.Sig
+open import DirectedHoTT.Examples.Knot.Ctx
+open import DirectedHoTT.Examples.Knot.Lookup using ( toTy; hereTy )
+open import DirectedHoTT.Examples.Knot.Sub using ( sub0; ⊢sub0 )
+open import DirectedHoTT.Examples.Knot.Ren using ( wk; ⊢wkS )
+open import DirectedHoTT.Examples.Knot.SubEnv using ( nrsK; ⊢nrsK; pairSK; ⊢pairSK; fsucSK; ⊢fsucSK; iinstK; ⊢iinstK; MethTyK; ⊢MethTyK )
+open import DirectedHoTT.Examples.Knot.JudgeIx
+open import DirectedHoTT.Examples.Knot.JudgeTmIx
+open import DirectedHoTT.Examples.Knot.JudgeCase
+open import DirectedHoTT.Examples.Knot.Preds using ( ⌜Flat⌝; ⊢⌜Flat⌝; ⌜NNC⌝; ⊢⌜NNC⌝ )
+open import DirectedHoTT.Examples.Knot.JudgeConv using ( TCVat; ⌜∋⌝; ⊢⌜∋⌝; ⊢payTCVat )
+open import DirectedHoTT.Examples.Knot.Conv using ( ⌜≅ᵀ⌝ )
+open import DirectedHoTT.Examples.Knot.JudgeRowsTm using ( module PFz; module PFs )
+open import DirectedHoTT.Examples.Knot.GenHelpers
+open import DirectedHoTT.Examples.Knot.JudgeRowsGen
+open import DirectedHoTT.Examples.Knot.Judge using ( D⊢; ⊢D⊢; fibK; ⊢payK )
+
+"""
+
+RCHDR = """------------------------------------------------------------------------
+-- ⚠⚠ GENERATED by tools/gen-judge.py — DO NOT EDIT BY HAND. ⚠⚠
+--
+-- The CONSTRUCTORS of the generated ⟶ / ⟶ᵀ / Pw rows, at VALUES — the
+-- scheme of `JudgeConGen`: the payload through the row's tails, the row
+-- read at the sources by one `mono-by`.
+------------------------------------------------------------------------
+
+{-# OPTIONS --safe #-}
+module DirectedHoTT.Examples.Knot.RedConGen where
+
+open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong )
+open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
+open import DirectedHoTT.Spec.Syntax hiding ( Fin )
+open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
+open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; ⟶ᵀ*-El; ⟶*-dpayᶜ; ⟶*-trans; ⟶*-pairˡ )
+open import DirectedHoTT.Metatheory.TySub using ( ⊢-cast; wk-cancel-tm )
+open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_; tag; conₗ; lt-z; lt-s; nth-z; nth-s )
+open import DirectedHoTT.Lib.SynFib using ( ⊢conRowₖ )
+open import DirectedHoTT.Lib.SynRed
+open import DirectedHoTT.Lib.FinFam using ( FinI; ⊢isuc; toI; ffz; ⊢ffz; ffs; ⊢ffs )
+open import DirectedHoTT.Lib.Tel
+open import DirectedHoTT.Lib.Syn
+open import DirectedHoTT.Examples.Knot.Ctors
+open import DirectedHoTT.Examples.Knot.Sig
+open import DirectedHoTT.Examples.Knot.Ctx
+open import DirectedHoTT.Examples.Knot.Lookup using ( toTy; hereTy )
+open import DirectedHoTT.Examples.Knot.Sub using ( sub0; ⊢sub0 )
+open import DirectedHoTT.Examples.Knot.Ren using ( wk; ⊢wkS )
+open import DirectedHoTT.Examples.Knot.SubEnv
+open import DirectedHoTT.Examples.Knot.JudgeIx using ( ⌜Tm⌝; ⊢⌜Tm⌝; ⌜Ty⌝; ⊢⌜Ty⌝ )
+open import DirectedHoTT.Examples.Knot.JudgeCase using ( w1; w2; w3; hereTm; toTm; wkN; wkK; wkG )
+open import DirectedHoTT.Examples.Knot.GenHelpers
+open import DirectedHoTT.Examples.Knot.Preds using ( ⌜StkA⌝; ⊢⌜StkA⌝; ⌜StkC⌝; ⊢⌜StkC⌝ )
+open import DirectedHoTT.Examples.Knot.RedIx
+open import DirectedHoTT.Examples.Knot.NestIx
+open import DirectedHoTT.Examples.Knot.Judge using ( ⊢payK )
+open import DirectedHoTT.Examples.Knot.Pw
+open import DirectedHoTT.Examples.Knot.Red
+open import DirectedHoTT.Examples.Knot.RedT
+
 """
 
 if __name__ == "__main__":

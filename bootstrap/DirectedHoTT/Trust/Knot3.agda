@@ -25,6 +25,6 @@
 module DirectedHoTT.Trust.Knot3 where
 
 import DirectedHoTT.Examples.Knot.JudgeConv
+import DirectedHoTT.Examples.Knot.JudgeFib
 import DirectedHoTT.Examples.Knot.JudgeIx
 import DirectedHoTT.Examples.Knot.JudgeRowsGen
-import DirectedHoTT.Examples.Knot.JudgeRowsTm

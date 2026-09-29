@@ -27,7 +27,7 @@ open import DirectedHoTT.Examples.Knot.Ctx
 open import DirectedHoTT.Examples.Knot.Lookup using ( rows; ⊢rows )
 open import DirectedHoTT.Examples.Knot.JudgeIx
 open import DirectedHoTT.Examples.Knot.JudgeTmIx
-open import DirectedHoTT.Examples.Knot.JudgeRowsTy using ( RowOK; f0; r1 )
+open import DirectedHoTT.Examples.Knot.JudgeFib using ( RowOK; f0; r1 )
 open import DirectedHoTT.Examples.Knot.Lookup using ( toTy; hereTy; I∋; ⊢I∋; I∋-sub; ix∋; ⊢ix∋; D∋; ⊢D∋ )
 open import DirectedHoTT.Examples.Knot.LookupCon using ( D∋-sub )
 open import DirectedHoTT.Lib.FinFam using ( FinI; FinD; toI; fromI )
