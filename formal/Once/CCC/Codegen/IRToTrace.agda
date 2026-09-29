@@ -87,7 +87,7 @@ open import Once.IR using (IR; AllocMode; Stack; Heap;
   id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; terminal; initial;
   curry; apply;
   In; out-μ; Cata; Out; in-ν; Ana;
-  SigOp; const)
+  SigOp; Call; const)
 -- Plan 0.36 Phase 2b: functor structure drives the cata codegen strategy.
 open import Once.Type using (Functor; K; Id; _⊕_; _⊗_)
 open import Once.IRTy using (fits-int; fits-float; ⌈_⌉F; ⟦_⟧TI; ν-type;
@@ -110,7 +110,7 @@ open import Once.CCC.Machine.SMCore
          instr-save-closure-reg;
          instr-load-tag-lit; instr-case-on-tag;
          instr-loop; instr-reg-op;
-         instr-ctrl; c-label; c-jmp; c-thunk; c-ret; c-branch-scratch-zero; c-branch-tag-zero;
+         instr-ctrl; c-label; c-jmp; c-thunk; c-ret; c-call-fn; c-branch-scratch-zero; c-branch-tag-zero;
          scratch-one; scratch-zero; scratch-dec; scratch-load-count;
          count-zero; count-inc)
 
@@ -952,6 +952,9 @@ ir-to-trace' n l apply =
 -- ────────────────────────────────────────────────────────────────────
 
 ir-to-trace' n l (SigOp si) = n , l , (instr-sigop si ∷ []) , []
+-- D245: a call runs the callee's table entry, which the program image holds
+-- under its `c-fn` marker.
+ir-to-trace' n l (Call f) = n , l , (instr-ctrl (c-call-fn f) ∷ []) , []
 
 -- Plan 0.11: const literal — emit a single load-const abstract instr.
 -- 0.47: matching the FitsInReg evidence reduces `⟦ ℕ ⟧-base A` to `⟦ A ⟧`.

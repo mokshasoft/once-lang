@@ -203,3 +203,56 @@ labelSym (thunk n)    = thunkSym n
 -- actually makes a cata's two copies of its algebra distinct.
 ℓ : CanonicalName → ℕ → LabelId
 ℓ o n = mkLabelId o [] n
+
+------------------------------------------------------------------------
+-- D245: CALLABLE ENTRIES. Code a call can land on is either a closure body
+-- (`e-thunk`, D082) or one of the program's own functions (`e-fn`). They are
+-- one notion, an entry with a frame budget that a call enters and `c-ret`
+-- leaves, so the machine has ONE entry marker and one entry scan. The two kinds
+-- are disjoint by constructor: a closure call looks up `e-thunk ℓ`, and a
+-- direct call looks up `e-fn f`.
+--
+-- The symbol of a function entry is the function's own (`once-symbol-path`),
+-- the one codegen already emits as `once_<name>:` and calls as `call once_<name>`.
+------------------------------------------------------------------------
+
+data EntryId : Set where
+  e-thunk : LabelId → EntryId
+  e-fn    : CanonicalName → EntryId
+
+_≟ᴱ_ : DecidableEquality EntryId
+e-thunk a ≟ᴱ e-thunk b with a ≟ᴵ b
+... | yes refl = yes refl
+... | no ¬q    = no λ where refl → ¬q refl
+e-fn f    ≟ᴱ e-fn g    with f ≟ᶜ g
+... | yes refl = yes refl
+... | no ¬q    = no λ where refl → ¬q refl
+e-thunk _ ≟ᴱ e-fn _    = no λ ()
+e-fn _    ≟ᴱ e-thunk _ = no λ ()
+
+infix 4 _≡ᵇᴱ_
+_≡ᵇᴱ_ : EntryId → EntryId → Bool
+a ≡ᵇᴱ b = ⌊ a ≟ᴱ b ⌋
+
+≡ᵇᴱ-true : ∀ (a b : EntryId) → (a ≡ᵇᴱ b) ≡ true → a ≡ b
+≡ᵇᴱ-true a b eq = toWitness (subst-T eq)
+  where open import Data.Bool using (T)
+        subst-T : (a ≡ᵇᴱ b) ≡ true → T (a ≡ᵇᴱ b)
+        subst-T e rewrite e = _
+
+≡ᵇᴱ-refl : ∀ (a : EntryId) → (a ≡ᵇᴱ a) ≡ true
+≡ᵇᴱ-refl a with a ≟ᴱ a
+... | yes _ = refl
+... | no ¬q = ⊥-elim (¬q refl)
+  where open import Data.Empty using (⊥-elim)
+
+≢⇒≡ᵇᴱfalse : ∀ (a b : EntryId) → ¬ (a ≡ b) → (a ≡ᵇᴱ b) ≡ false
+≢⇒≡ᵇᴱfalse a b ¬q with a ≟ᴱ b
+... | yes q = ⊥-elim (¬q q)
+  where open import Data.Empty using (⊥-elim)
+... | no  _ = refl
+
+-- An entry's symbol: a closure body's `.L_thunk_…`, a function's `once_<name>`.
+entrySym : EntryId → String
+entrySym (e-thunk n) = thunkSym n
+entrySym (e-fn f)    = once-symbol-path f

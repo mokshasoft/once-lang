@@ -25,7 +25,8 @@ module Once.CCC.Machine.Flat where
 open import Data.Nat using (ℕ; zero; suc; _≡ᵇ_; _+_)
 open import Data.Nat.Properties using (+-identityʳ; +-suc)
 -- Plan 0.63 (D089): the scans key on the STRUCTURED identity.
-open import Once.CCC.Label using (LabelId; _≡ᵇᴵ_; ≡ᵇᴵ-true)
+open import Once.CCC.Label using (LabelId; _≡ᵇᴵ_; ≡ᵇᴵ-true; EntryId; e-thunk; e-fn; _≡ᵇᴱ_; ≡ᵇᴱ-true)
+open import Once.CanonicalName using (CanonicalName)
 open import Data.Bool using (Bool; true; false)
 open import Data.Maybe using (Maybe; just; nothing) renaming (map to mmap)
 open import Data.List using (List; []; _∷_; length; _++_; map)
@@ -149,21 +150,35 @@ module FlatMachine {FS : FrameSemantics} where
   thunk-of? (instr-ctrl (c-thunk m _)) = just m
   thunk-of? _                        = nothing
 
+  -- D245: the scan every call uses finds a CALLABLE ENTRY (`EntryId`), a
+  -- closure body or a program function. `thunk-of?` above is its restriction to
+  -- closure bodies, for the consumers that reason about thunk labels.
+  entry-of? : AbstractInstr → Maybe EntryId
+  entry-of? (instr-ctrl (c-entry e _)) = just e
+  entry-of? _                          = nothing
+
   -- WITH-FREE since D092 (the module's own design rule, and now load-bearing:
   -- `ft-go-sound` below has to reduce under a hypothesis about the head).
   -- Behaviour is unchanged — `ft-at` is the old `with` branch, named.
-  ft-go    : AbstractTrace → LabelId → ℕ → Maybe ℕ
-  ft-at    : Maybe LabelId → AbstractTrace → LabelId → ℕ → Maybe ℕ
-  ft-match : Bool → AbstractTrace → LabelId → ℕ → Maybe ℕ
+  ft-go    : AbstractTrace → EntryId → ℕ → Maybe ℕ
+  ft-at    : Maybe EntryId → AbstractTrace → EntryId → ℕ → Maybe ℕ
+  ft-match : Bool → AbstractTrace → EntryId → ℕ → Maybe ℕ
   ft-go []       _      _ = nothing
-  ft-go (x ∷ is) target i = ft-at (thunk-of? x) is target i
-  ft-at (just m) is target i = ft-match (m ≡ᵇᴵ target) is target i
+  ft-go (x ∷ is) target i = ft-at (entry-of? x) is target i
+  ft-at (just m) is target i = ft-match (m ≡ᵇᴱ target) is target i
   ft-at nothing  is target i = ft-go is target (suc i)
   ft-match true  _  _      i = just i
   ft-match false is target i = ft-go is target (suc i)
 
+  find-entry : AbstractTrace → EntryId → Maybe ℕ
+  find-entry prog target = ft-go prog target 0
+
+  -- A closure call's scan (D082) and a direct call's (D245).
   find-thunk : AbstractTrace → LabelId → Maybe ℕ
-  find-thunk prog target = ft-go prog target 0
+  find-thunk prog target = find-entry prog (e-thunk target)
+
+  find-fn : AbstractTrace → CanonicalName → Maybe ℕ
+  find-fn prog f = find-entry prog (e-fn f)
 
   fetch : AbstractTrace → ℕ → Maybe AbstractInstr
   fetch []       _       = nothing
@@ -237,24 +252,24 @@ module FlatMachine {FS : FrameSemantics} where
     trans (fl-go-++-miss t₁ t₂ target (suc i) miss)
           (cong (fl-go t₂ target) (+-suc (length t₁) i))
 
-  ft-go-++-miss    : ∀ (t₁ t₂ : AbstractTrace) (target : LabelId) (i : ℕ)
+  ft-go-++-miss    : ∀ (t₁ t₂ : AbstractTrace) (target : EntryId) (i : ℕ)
                    → ft-go t₁ target i ≡ nothing
                    → ft-go (t₁ ++ t₂) target i ≡ ft-go t₂ target (length t₁ + i)
-  ft-at-++-miss    : ∀ (mo : Maybe LabelId) (t₁ t₂ : AbstractTrace)
-                       (target : LabelId) (i : ℕ)
+  ft-at-++-miss    : ∀ (mo : Maybe EntryId) (t₁ t₂ : AbstractTrace)
+                       (target : EntryId) (i : ℕ)
                    → ft-at mo t₁ target i ≡ nothing
                    → ft-at mo (t₁ ++ t₂) target i ≡ ft-go t₂ target (suc (length t₁ + i))
   ft-match-++-miss : ∀ (b : Bool) (t₁ t₂ : AbstractTrace)
-                       (target : LabelId) (i : ℕ)
+                       (target : EntryId) (i : ℕ)
                    → ft-match b t₁ target i ≡ nothing
                    → ft-match b (t₁ ++ t₂) target i ≡ ft-go t₂ target (suc (length t₁ + i))
 
   ft-go-++-miss []       t₂ target i _    = refl
   ft-go-++-miss (x ∷ t₁) t₂ target i miss =
-    ft-at-++-miss (thunk-of? x) t₁ t₂ target i miss
+    ft-at-++-miss (entry-of? x) t₁ t₂ target i miss
 
   ft-at-++-miss (just m) t₁ t₂ target i miss =
-    ft-match-++-miss (m ≡ᵇᴵ target) t₁ t₂ target i miss
+    ft-match-++-miss (m ≡ᵇᴱ target) t₁ t₂ target i miss
   ft-at-++-miss nothing  t₁ t₂ target i miss =
     trans (ft-go-++-miss t₁ t₂ target (suc i) miss)
           (cong (ft-go t₂ target) (+-suc (length t₁) i))
@@ -315,24 +330,65 @@ module FlatMachine {FS : FrameSemantics} where
   thunk-of?-sound (instr-load-tag-lit _)                 _ ()
   thunk-of?-sound (instr-alloc-heap _)                   _ ()
   thunk-of?-sound (instr-reg-op _)                       _ ()
+  thunk-of?-sound (instr-ctrl (c-call-fn _))            _ ()
 
-  ft-go-sound : ∀ (prog : AbstractTrace) (target : LabelId) (acc j : ℕ)
+  entry-of?-sound : ∀ (x : AbstractInstr) (m : EntryId) → entry-of? x ≡ just m
+                  → Σ ℕ (λ b → x ≡ instr-ctrl (c-entry m b))
+  entry-of?-sound (instr-ctrl (c-entry m' b)) m refl = b , refl
+  entry-of?-sound (instr-ctrl (c-label _))               _ ()
+  entry-of?-sound (instr-ctrl (c-jmp _))                 _ ()
+  entry-of?-sound (instr-ctrl (c-branch-scratch-zero _)) _ ()
+  entry-of?-sound (instr-ctrl (c-branch-tag-zero _))     _ ()
+  entry-of?-sound (instr-ctrl (c-ret _))                 _ ()
+  entry-of?-sound (instr-alloc-stack _)                  _ ()
+  entry-of?-sound (instr-dealloc-stack _)                _ ()
+  entry-of?-sound (instr-push-frame _)                   _ ()
+  entry-of?-sound instr-pop-frame                        _ ()
+  entry-of?-sound (instr-case-on-tag _ _)                _ ()
+  entry-of?-sound (instr-loop _)                         _ ()
+  entry-of?-sound (lea-slot _)                           _ ()
+  entry-of?-sound (lea-indexed _)                        _ ()
+  entry-of?-sound mov-to-output                          _ ()
+  entry-of?-sound mov-to-input                           _ ()
+  entry-of?-sound load-indirect                          _ ()
+  entry-of?-sound load-indirect-suc                      _ ()
+  entry-of?-sound (load-from-slot _)                     _ ()
+  entry-of?-sound (store-at-slot _)                      _ ()
+  entry-of?-sound store-indirect                         _ ()
+  entry-of?-sound store-indirect-suc                     _ ()
+  entry-of?-sound (restore-input _)                      _ ()
+  entry-of?-sound (instr-reclaim-to _)                   _ ()
+  entry-of?-sound instr-call-closure                     _ ()
+  entry-of?-sound (worklist-init _)                      _ ()
+  entry-of?-sound (worklist-push _)                      _ ()
+  entry-of?-sound (worklist-pop _)                       _ ()
+  entry-of?-sound (worklist-check _)                     _ ()
+  entry-of?-sound (instr-sigop _)                        _ ()
+  entry-of?-sound (instr-load-const _ _)                 _ ()
+  entry-of?-sound (instr-load-code-addr _)               _ ()
+  entry-of?-sound instr-save-closure-reg                 _ ()
+  entry-of?-sound (instr-load-tag-lit _)                 _ ()
+  entry-of?-sound (instr-alloc-heap _)                   _ ()
+  entry-of?-sound (instr-reg-op _)                       _ ()
+  entry-of?-sound (instr-ctrl (c-call-fn _))            _ ()
+
+  ft-go-sound : ∀ (prog : AbstractTrace) (target : EntryId) (acc j : ℕ)
               → ft-go prog target acc ≡ just j
               → Σ ℕ (λ d → (j ≡ acc + d)
-                    × Σ ℕ (λ b → fetch prog d ≡ just (instr-ctrl (c-thunk target b))))
+                    × Σ ℕ (λ b → fetch prog d ≡ just (instr-ctrl (c-entry target b))))
   ft-go-sound []       target acc j ()
-  ft-go-sound (x ∷ is) target acc j eq = go (thunk-of? x) refl
+  ft-go-sound (x ∷ is) target acc j eq = go (entry-of? x) refl
     where
-      go : ∀ (mt : Maybe LabelId) → thunk-of? x ≡ mt
+      go : ∀ (mt : Maybe EntryId) → entry-of? x ≡ mt
          → Σ ℕ (λ d → (j ≡ acc + d)
-               × Σ ℕ (λ b → fetch (x ∷ is) d ≡ just (instr-ctrl (c-thunk target b))))
-      go-m : ∀ (m : LabelId) (bb : Bool) → thunk-of? x ≡ just m → (m ≡ᵇᴵ target) ≡ bb
+               × Σ ℕ (λ b → fetch (x ∷ is) d ≡ just (instr-ctrl (c-entry target b))))
+      go-m : ∀ (m : EntryId) (bb : Bool) → entry-of? x ≡ just m → (m ≡ᵇᴱ target) ≡ bb
            → Σ ℕ (λ d → (j ≡ acc + d)
-                 × Σ ℕ (λ b → fetch (x ∷ is) d ≡ just (instr-ctrl (c-thunk target b))))
+                 × Σ ℕ (λ b → fetch (x ∷ is) d ≡ just (instr-ctrl (c-entry target b))))
       -- MATCHED: the head IS the body entry, at offset 0.
       go-m m true teq beq = 0 , j≡ , proj₁ ts , fe
         where
-          ts = thunk-of?-sound x m teq
+          ts = entry-of?-sound x m teq
           acc≡j : acc ≡ j
           acc≡j = just-injℕ
                     (trans (sym (trans (cong (λ z → ft-at z is target acc) teq)
@@ -340,10 +396,10 @@ module FlatMachine {FS : FrameSemantics} where
                            eq)
           j≡ : j ≡ acc + 0
           j≡ = trans (sym acc≡j) (sym (+-identityʳ acc))
-          fe : fetch (x ∷ is) 0 ≡ just (instr-ctrl (c-thunk target (proj₁ ts)))
+          fe : fetch (x ∷ is) 0 ≡ just (instr-ctrl (c-entry target (proj₁ ts)))
           fe = cong just (trans (proj₂ ts)
-                                (cong (λ z → instr-ctrl (c-thunk z (proj₁ ts)))
-                                      (≡ᵇᴵ-true m target beq)))
+                                (cong (λ z → instr-ctrl (c-entry z (proj₁ ts)))
+                                      (≡ᵇᴱ-true m target beq)))
       -- a DIFFERENT body entry: step past it, one position along.
       go-m m false teq beq =
         let ih = ft-go-sound is target (suc acc) j
@@ -352,7 +408,7 @@ module FlatMachine {FS : FrameSemantics} where
         in suc (proj₁ ih)
          , trans (proj₁ (proj₂ ih)) (sym (+-suc acc (proj₁ ih)))
          , proj₂ (proj₂ ih)
-      go (just m) teq = go-m m (m ≡ᵇᴵ target) teq refl
+      go (just m) teq = go-m m (m ≡ᵇᴱ target) teq refl
       -- not a body entry at all: step past.
       go nothing  teq =
         let ih = ft-go-sound is target (suc acc) j
@@ -462,19 +518,24 @@ module FlatMachine {FS : FrameSemantics} where
       fe   : fetch prog d ≡ just (instr-ctrl (c-label target))
       fe   = proj₂ (proj₂ r)
 
-  find-thunk-sound : ∀ (prog : AbstractTrace) (target : LabelId) (j : ℕ)
-                   → find-thunk prog target ≡ just j
-                   → Σ ℕ (λ b → fetch prog j ≡ just (instr-ctrl (c-thunk target b)))
-  find-thunk-sound prog target j eq =
-    b , subst (λ z → fetch prog z ≡ just (instr-ctrl (c-thunk target b))) (sym j≡d) fe
+  find-entry-sound : ∀ (prog : AbstractTrace) (target : EntryId) (j : ℕ)
+                   → find-entry prog target ≡ just j
+                   → Σ ℕ (λ b → fetch prog j ≡ just (instr-ctrl (c-entry target b)))
+  find-entry-sound prog target j eq =
+    b , subst (λ z → fetch prog z ≡ just (instr-ctrl (c-entry target b))) (sym j≡d) fe
     where
       r    = ft-go-sound prog target 0 j eq
       d    = proj₁ r
       j≡d  : j ≡ d
       j≡d  = proj₁ (proj₂ r)
       b    = proj₁ (proj₂ (proj₂ r))
-      fe   : fetch prog d ≡ just (instr-ctrl (c-thunk target b))
+      fe   : fetch prog d ≡ just (instr-ctrl (c-entry target b))
       fe   = proj₂ (proj₂ (proj₂ r))
+
+  find-thunk-sound : ∀ (prog : AbstractTrace) (target : LabelId) (j : ℕ)
+                   → find-thunk prog target ≡ just j
+                   → Σ ℕ (λ b → fetch prog j ≡ just (instr-ctrl (c-thunk target b)))
+  find-thunk-sound prog target = find-entry-sound prog (e-thunk target)
 
 
 
@@ -854,7 +915,10 @@ module FlatMachine {FS : FrameSemantics} where
 
   flat-exec-instr : AbstractInstr → AbstractTrace → FlatState → FlatState
   flat-exec-instr (instr-ctrl (c-label _))               _    fs = record fs { fpc = suc (fpc fs) }
-  flat-exec-instr (instr-ctrl (c-thunk _ b))             _    fs = do-thunk b fs
+  flat-exec-instr (instr-ctrl (c-entry _ b))             _    fs = do-thunk b fs
+  -- D245: a direct call enters the named function, as a closure call enters
+  -- the body its closure names.
+  flat-exec-instr (instr-ctrl (c-call-fn f))             prog fs = do-call-at (find-fn prog f) fs
   flat-exec-instr (instr-ctrl (c-ret b))                 _    fs = do-ret (fret fs) fs
   flat-exec-instr (instr-ctrl (c-jmp n))                 prog fs = do-jump (find-label prog n) fs
   flat-exec-instr (instr-ctrl (c-branch-scratch-zero n)) prog fs =
@@ -920,6 +984,7 @@ module FlatMachine {FS : FrameSemantics} where
   ProgFree (instr-ctrl (c-branch-scratch-zero _)) = ⊥
   ProgFree (instr-ctrl (c-branch-tag-zero _))     = ⊥
   ProgFree instr-call-closure                     = ⊥
+  ProgFree (instr-ctrl (c-call-fn _))             = ⊥
   {-# CATCHALL #-}
   ProgFree _                                      = ⊤
 
@@ -1082,7 +1147,7 @@ module FlatMachine {FS : FrameSemantics} where
   shifted-instr :
     ∀ (d : ℕ) (i : AbstractInstr) (t₁ t₂ : AbstractTrace) (fs fs' : FlatState)
     → (∀ tg → find-label (t₁ ++ t₂) tg ≡ mmap (d +_) (find-label t₂ tg))
-    → (∀ tg → find-thunk (t₁ ++ t₂) tg ≡ mmap (d +_) (find-thunk t₂ tg))
+    → (∀ tg → find-entry (t₁ ++ t₂) tg ≡ mmap (d +_) (find-entry t₂ tg))
     → Shifted d fs fs'
     → Shifted d (flat-exec-instr i (t₁ ++ t₂) fs) (flat-exec-instr i t₂ fs')
   shifted-instr d mov-to-output                          t₁ t₂ fs fs' _  _  sh = shifted-straight d mov-to-output fs fs' sh
@@ -1111,7 +1176,9 @@ module FlatMachine {FS : FrameSemantics} where
   shifted-instr d (instr-alloc-heap k)                   t₁ t₂ fs fs' _  _  sh = shifted-straight d (instr-alloc-heap k) fs fs' sh
   shifted-instr d (instr-reg-op k)                       t₁ t₂ fs fs' _  _  sh = shifted-straight d (instr-reg-op k) fs fs' sh
   shifted-instr d (instr-ctrl (c-label _))               t₁ t₂ fs fs' _  _  sh = shifted-label d fs fs' sh
-  shifted-instr d (instr-ctrl (c-thunk _ b))             t₁ t₂ fs fs' _  _  sh = shifted-thunk d b fs fs' sh
+  shifted-instr d (instr-ctrl (c-entry _ b))             t₁ t₂ fs fs' _  _  sh = shifted-thunk d b fs fs' sh
+  shifted-instr d (instr-ctrl (c-call-fn f))             t₁ t₂ fs fs' _  fe sh =
+    shifted-call-at d (find-fn (t₁ ++ t₂) f) (find-fn t₂ f) fs fs' sh (fe (e-fn f))
   shifted-instr d (instr-ctrl (c-ret _))                 t₁ t₂ fs fs' _  _  sh = shifted-ret d fs fs' sh
   shifted-instr d (instr-ctrl (c-jmp t))                 t₁ t₂ fs fs' fl _  sh =
     shifted-jump d (find-label (t₁ ++ t₂) t) (find-label t₂ t) fs fs' sh (fl t)
@@ -1125,8 +1192,8 @@ module FlatMachine {FS : FrameSemantics} where
   shifted-instr d (instr-dealloc-stack k)                t₁ t₂ fs fs' _  _  sh = shifted-frame d (instr-dealloc-stack k) leave-frame fs fs' sh
   shifted-instr d (instr-push-frame k)                   t₁ t₂ fs fs' _  _  sh = shifted-frame d (instr-push-frame k) (enter-frame (suc k)) fs fs' sh
   shifted-instr d instr-pop-frame                        t₁ t₂ fs fs' _  _  sh = shifted-frame d instr-pop-frame leave-frame fs fs' sh
-  shifted-instr d instr-call-closure                     t₁ t₂ fs fs' _  ft sh =
-    shifted-call-closure d t₁ t₂ fs fs' ft sh
+  shifted-instr d instr-call-closure                     t₁ t₂ fs fs' _  fe sh =
+    shifted-call-closure d t₁ t₂ fs fs' (λ tg → fe (e-thunk tg)) sh
 
 
   flat-exec-instr-prog-irrelevant :
@@ -1162,7 +1229,8 @@ module FlatMachine {FS : FrameSemantics} where
   flat-exec-instr-prog-irrelevant (instr-alloc-heap _)                   t t' fs _  = refl
   flat-exec-instr-prog-irrelevant (instr-reg-op _)                       t t' fs _  = refl
   flat-exec-instr-prog-irrelevant (instr-ctrl (c-label _))               t t' fs _  = refl
-  flat-exec-instr-prog-irrelevant (instr-ctrl (c-thunk _ _))             t t' fs _  = refl
+  flat-exec-instr-prog-irrelevant (instr-ctrl (c-entry _ _))             t t' fs _  = refl
+  flat-exec-instr-prog-irrelevant (instr-ctrl (c-call-fn _))             t t' fs ()
   flat-exec-instr-prog-irrelevant (instr-ctrl (c-ret _))                 t t' fs _  = refl
   flat-exec-instr-prog-irrelevant (instr-ctrl (c-jmp _))                 t t' fs ()
   flat-exec-instr-prog-irrelevant (instr-ctrl (c-branch-scratch-zero _)) t t' fs ()
@@ -1210,7 +1278,7 @@ module FlatMachine {FS : FrameSemantics} where
   flat-exec-instr-prefix :
     ∀ (i : AbstractInstr) (t₁ t₂ : AbstractTrace) (fs : FlatState)
     → (∀ tg → find-label (t₁ ++ t₂) tg ≡ find-label t₁ tg)
-    → (∀ tg → find-thunk (t₁ ++ t₂) tg ≡ find-thunk t₁ tg)
+    → (∀ tg → find-entry (t₁ ++ t₂) tg ≡ find-entry t₁ tg)
     → flat-exec-instr i (t₁ ++ t₂) fs ≡ flat-exec-instr i t₁ fs
   flat-exec-instr-prefix mov-to-output              t₁ t₂ fs _  _  = refl
   flat-exec-instr-prefix mov-to-input               t₁ t₂ fs _  _  = refl
@@ -1242,7 +1310,9 @@ module FlatMachine {FS : FrameSemantics} where
   flat-exec-instr-prefix (instr-alloc-heap _)       t₁ t₂ fs _  _  = refl
   flat-exec-instr-prefix (instr-reg-op _)           t₁ t₂ fs _  _  = refl
   flat-exec-instr-prefix (instr-ctrl (c-label _))   t₁ t₂ fs _  _  = refl
-  flat-exec-instr-prefix (instr-ctrl (c-thunk _ _)) t₁ t₂ fs _  _  = refl
+  flat-exec-instr-prefix (instr-ctrl (c-entry _ _)) t₁ t₂ fs _  _  = refl
+  flat-exec-instr-prefix (instr-ctrl (c-call-fn f)) t₁ t₂ fs _  fe =
+    cong (λ mj → do-call-at mj fs) (fe (e-fn f))
   flat-exec-instr-prefix (instr-ctrl (c-ret _))     t₁ t₂ fs _  _  = refl
   flat-exec-instr-prefix (instr-ctrl (c-jmp m))                 t₁ t₂ fs fl _  =
     cong (λ mj → do-jump mj fs) (fl m)
@@ -1250,8 +1320,8 @@ module FlatMachine {FS : FrameSemantics} where
     cong (λ mj → do-branch-at (sv-is-zero (readReg (regs (floc fs)) Scratch)) mj fs) (fl m)
   flat-exec-instr-prefix (instr-ctrl (c-branch-tag-zero m))     t₁ t₂ fs fl _  =
     cong (λ mj → do-branch-at (tag-zf (flat-read-tag (floc fs))) mj fs) (fl m)
-  flat-exec-instr-prefix instr-call-closure                     t₁ t₂ fs _  ft =
-    do-call-prefix t₁ t₂ fs ft
+  flat-exec-instr-prefix instr-call-closure                     t₁ t₂ fs _  fe =
+    do-call-prefix t₁ t₂ fs (λ tg → fe (e-thunk tg))
 
   ------------------------------------------------------------------------
   -- `Shifted` IS AN EQUATION (D155). The relation names one equation per
@@ -1303,12 +1373,16 @@ module FlatMachine {FS : FrameSemantics} where
   -- view hands back exactly the evidence that case needs.
   data FlinkView (i : AbstractInstr) : Set where
     fv-call  : i ≡ instr-call-closure → FlinkView i
-    fv-thunk : ∀ (ℓ : LabelId) (bb : ℕ) → i ≡ instr-ctrl (c-thunk ℓ bb) → FlinkView i
+    -- D245: a direct call sets the link as a closure call does.
+    fv-call-fn : ∀ (f : CanonicalName) → i ≡ instr-ctrl (c-call-fn f) → FlinkView i
+    -- …and every callable ENTRY clears it, a closure body or a function.
+    fv-thunk : ∀ (ℓ : EntryId) (bb : ℕ) → i ≡ instr-ctrl (c-entry ℓ bb) → FlinkView i
     fv-pres  : (∀ prog fs → flink (flat-exec-instr i prog fs) ≡ flink fs) → FlinkView i
 
   flinkView : ∀ (i : AbstractInstr) → FlinkView i
   flinkView (instr-ctrl (c-label _))               = fv-pres (λ _ _ → refl)
-  flinkView (instr-ctrl (c-thunk ℓ bb))            = fv-thunk ℓ bb refl
+  flinkView (instr-ctrl (c-entry ℓ bb))            = fv-thunk ℓ bb refl
+  flinkView (instr-ctrl (c-call-fn f))             = fv-call-fn f refl
   flinkView (instr-ctrl (c-ret b))                 = fv-pres (λ _ fs → flink-do-ret (fret fs) fs)
   flinkView (instr-ctrl (c-jmp n))                 = fv-pres (λ prog fs → flink-do-jump (find-label prog n) fs)
   flinkView (instr-ctrl (c-branch-scratch-zero n)) =
@@ -1377,19 +1451,19 @@ module FlatMachine {FS : FrameSemantics} where
   exec-flat-reloc :
     ∀ (fu : ℕ) (t₁ t₂ : AbstractTrace) (fs fs' : FlatState)
     → (∀ tg → find-label (t₁ ++ t₂) tg ≡ mmap (length t₁ +_) (find-label t₂ tg))
-    → (∀ tg → find-thunk (t₁ ++ t₂) tg ≡ mmap (length t₁ +_) (find-thunk t₂ tg))
+    → (∀ tg → find-entry (t₁ ++ t₂) tg ≡ mmap (length t₁ +_) (find-entry t₂ tg))
     → Shifted (length t₁) fs fs'
     → Shifted (length t₁) (exec-flat fu (t₁ ++ t₂) fs) (exec-flat fu t₂ fs')
   reloc-step :
     ∀ (b : Bool) (fu : ℕ) (t₁ t₂ : AbstractTrace) (fs fs' : FlatState)
     → (∀ tg → find-label (t₁ ++ t₂) tg ≡ mmap (length t₁ +_) (find-label t₂ tg))
-    → (∀ tg → find-thunk (t₁ ++ t₂) tg ≡ mmap (length t₁ +_) (find-thunk t₂ tg))
+    → (∀ tg → find-entry (t₁ ++ t₂) tg ≡ mmap (length t₁ +_) (find-entry t₂ tg))
     → Shifted (length t₁) fs fs'
     → Shifted (length t₁) (step-dispatch b fu (t₁ ++ t₂) fs) (step-dispatch b fu t₂ fs')
   reloc-fetch :
     ∀ (mi : Maybe AbstractInstr) (fu : ℕ) (t₁ t₂ : AbstractTrace) (fs fs' : FlatState)
     → (∀ tg → find-label (t₁ ++ t₂) tg ≡ mmap (length t₁ +_) (find-label t₂ tg))
-    → (∀ tg → find-thunk (t₁ ++ t₂) tg ≡ mmap (length t₁ +_) (find-thunk t₂ tg))
+    → (∀ tg → find-entry (t₁ ++ t₂) tg ≡ mmap (length t₁ +_) (find-entry t₂ tg))
     → Shifted (length t₁) fs fs'
     → Shifted (length t₁) (fetch-dispatch mi fu (t₁ ++ t₂) fs) (fetch-dispatch mi fu t₂ fs')
 

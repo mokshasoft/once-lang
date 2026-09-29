@@ -42,7 +42,8 @@ open import Once.CCC.FrameSemantics using (FrameSemantics; fs-numerics)
 -- Plan 0.63 (D089): the structured label identity. Re-exported, so every
 -- importer of the abstract instruction set sees `LabelId` without a second
 -- import — the same courtesy `Locations`/`HeapAddress` already get below.
-open import Once.CCC.Label public using (LabelId; mkLabelId; owner; path; idx)
+open import Once.CCC.Label public using (LabelId; mkLabelId; owner; path; idx; EntryId; e-thunk; e-fn)
+open import Once.CanonicalName using (CanonicalName)
 
 -- Import SigOpInfo so `instr-sigop` carries its full self-describing
 -- info (name + semI + semM), not just the name. This unlocks per-name
@@ -1080,8 +1081,19 @@ data FlatCtrl : Set where
   -- frame moves at exactly the two instructions that also move the pc, and
   -- it moves via `enter-frame`/`leave-frame` — an AllocState-only update,
   -- so the register file is untouched.
-  c-thunk               : LabelId → ℕ → FlatCtrl -- closure-body entry: label, budget
+  -- D245: the marker is a CALLABLE ENTRY (`EntryId`): a closure body
+  -- (`e-thunk ℓ`, written `c-thunk ℓ b` below) or one of the program's own
+  -- functions (`e-fn f`), which a direct call enters. It is one notion with one
+  -- frame discipline, so the invariants about entries are stated once.
+  c-entry               : EntryId → ℕ → FlatCtrl -- callable entry: identity, budget
   c-ret                 : ℕ → FlatCtrl     -- return: budget to release
+  -- D245: a DIRECT call of the program's function `f` (IR `Call f`). It is a
+  -- closure call whose target is named statically instead of read from a
+  -- closure record.
+  c-call-fn             : CanonicalName → FlatCtrl
+
+-- A closure-body entry, the marker's original form (Plan 0.63, D082).
+pattern c-thunk ℓ b = c-entry (e-thunk ℓ) b
 
 data AbstractInstr : Set where
   -- Register operations
