@@ -15729,3 +15729,18 @@ later definition may use an earlier one. It stays red until the user re-extracts
 a self-call): `examples/seL4/EchoServer/{EchoServer,echo-client,echo-client-simple}.once`
 and `examples/seL4/Rootserver/{Rootserver,Rootserver-simple}.once`. An unbounded loop is a
 ν (`ana`, D192), and porting them is follow-up work.
+
+**Amendment (2026-09-29): the telescope order is part of the same defect.** Removing
+the self-binding is not enough. With the pre-D241 binary, `p1 = p3; f2 = p1; p3 = f2`
+(`p1`, `p3` polymorphic, `f2 : Int -> Int`) TYPECHECKS: mutual recursion with no
+self-reference. The cause is two orders that disagree:
+* `extractFunctions` keeps `polys` in DECLARATION order, so the "telescope tail" that
+  D234 calls an entry's prefix is the entries declared AFTER it;
+* a monomorphic function sees ALL telescope entries;
+* an entry sees the monomorphic functions declared BEFORE it (`pfunAfter`).
+
+The rule is D241's, applied everywhere: **a definition sees exactly the definitions
+declared before it**. That makes the module a single declaration-ordered telescope,
+the core `Tele` of D239 (plan 0.103 phase 6c). Red tests: "mutual recursion through
+the telescope is rejected" and "a definition cannot use a later one" in
+`TypeCheckSpec`.

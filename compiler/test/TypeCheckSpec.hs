@@ -162,6 +162,40 @@ recursionTests = testGroup "No general recursion (D241)"
       result <- typeCheckSource source
       assertBool "a body cannot call its own definition" (isLeft result)
 
+  , testCase "mutual recursion through the telescope is rejected" $ do
+      -- f2 -> p1 -> p3 -> f2: no definition names itself, but the cycle is
+      -- general recursion. Each definition must see only the definitions
+      -- declared BEFORE it (D241).
+      let source = T.unlines
+            [ "p1 : a -> a"
+            , "p1 = p3"
+            , ""
+            , "f2 : Int -> Int"
+            , "f2 = p1"
+            , ""
+            , "p3 : a -> a"
+            , "p3 = f2"
+            , ""
+            , "main : IO Unit"
+            , "main = id"
+            ]
+      result <- typeCheckSource source
+      assertBool "a telescope cycle is general recursion" (isLeft result)
+
+  , testCase "a definition cannot use a later one" $ do
+      let source = T.unlines
+            [ "p1 : a -> a"
+            , "p1 = p3"
+            , ""
+            , "p3 : a -> a"
+            , "p3 = id"
+            , ""
+            , "main : IO Unit"
+            , "main = id"
+            ]
+      result <- typeCheckSource source
+      assertBool "a forward reference is unbound" (isLeft result)
+
   , testCase "a later definition may use an earlier one" $ do
       let source = T.unlines
             [ "inc : Int -> Int"
