@@ -237,7 +237,6 @@ TYRULES = {
 FAM = FAMS["⊢"]
 FAMKEY = "⊢"
 CONL = []          # the generated constructors (their own module: they cite `Knot/Judge`)
-REDCON = "--redcon" in sys.argv   # ⚠ in development: the ⟶/⟶ᵀ/Pw constructors
 REDCONL = []       # …of the ⟶/⟶ᵀ/Pw families (they cite each family's `Family` instance)
 
 # ------------------------------------------------------------ rendering
@@ -1880,7 +1879,7 @@ def main():
     outs = {OUT: txt, POUT: ptxt, HOUT: hlp, K("JudgeConGen"): CHDR + "\n".join(CONL) + "\n"}
     for fam in ("⟶", "⟶ᵀ", "Pw"):
         outs[K(REDMOD[fam][0])] = "\n".join(gen_red(fam)) + "\n"
-    if REDCON: outs[K("RedConGen")] = RCHDR + "\n".join(REDCONL) + "\n"
+    outs[K("RedConGen")] = RCHDR + "\n".join(REDCONL) + "\n"
     if "--check" in sys.argv:
         stale = [f for f, t in outs.items() if not os.path.exists(f) or open(f, encoding="utf-8").read() != t]
         if stale:

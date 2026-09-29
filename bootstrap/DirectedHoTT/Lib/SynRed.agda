@@ -19,7 +19,7 @@ open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import normalizer.Syntax.Types using ( _≡_; refl )
 open import DirectedHoTT.Spec.Syntax hiding ( Fin )
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
-open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-trans; ⟶*-fst; ⟶*-snd; subTm-monoˢ )
+open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-trans; ⟶*-fst; ⟶*-snd; ⟶*-pairˡ; ⟶*-pairʳ; subTm-monoˢ )
 open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_; Nth; nth-z; nth-s )
 
 private
@@ -86,6 +86,12 @@ prj-tup : {v : RTm Δ} {ws : Cons Δ n} (w : RTm Δ) → Nth ws i v → prj i (t
 prj-tup {v = v} {ws = v ∷ ws} w nth-z = step (βfst v (tup ws w)) done
 prj-tup {i = suc i} {ws = c ∷ ws} w (nth-s nt) =
   ⟶*-trans (⟶*-fst (sndⁿ-mono i (step (βsnd c (tup ws w)) done))) (prj-tup w nt)
+
+-- a tuple of reducing components reduces
+tup-mono : {as as' : Cons Δ n} {w : RTm Δ} → as ⟶*ₗ as' → tup as w ⟶* tup as' w
+tup-mono []ʳ       = done
+tup-mono {as = a ∷ as} {as' = a' ∷ as'} {w = w} (r ∷ʳ rs) =
+  ⟶*-trans {t = pair a (tup as w)} {u = pair a' (tup as w)} {v = pair a' (tup as' w)} (⟶*-pairˡ r) (⟶*-pairʳ (tup-mono rs))
 
 -- …and its i-th tail
 sndⁿ-tup : (ws : Cons Δ n) (w : RTm Δ) → sndⁿ n (tup ws w) ⟶* w

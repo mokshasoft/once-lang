@@ -5351,3 +5351,45 @@ pattern under a binder in a subject field (`tr`'s motive `var vz` /
 
 D074, D075, D077; PLAN-LEVITATION Stage 5; memory
 `context-form-mismatch-opaque` (the cost model the rows are built under).
+
+## D079: `scopeAt` Over Tel Is Not Built; `ScopeHazard` Stays Retired (OCP-0009, levitation; Stage 5)
+
+**Date**: 2026-09-29
+**Status**: Accepted (retires PLAN-LEVITATION Stage 5's last library item)
+
+### Context
+
+`Lib/IFold.scopeAt` (HANDOFF-2026-09-10 §2) was the third `pick` of the
+pre-levitation folds. A fold that compares raw variable LEVELS (the
+occurrence check `occK`) must not descend into a child at a CLOSED index,
+because that child restarts the scope. `Examples/ScopeHazard` exhibited
+the hazard (`box : Tm 0 → Tm n`) at a second description. Stage 5
+deleted both with the old Knot. The plan said to rebuild `scopeAt` over
+Tel and restore the example.
+
+### Decision
+
+Do not rebuild it. The hazard has no customer in the levitated
+development:
+
+- **No level-comparing fold remains.** D078 made `occTm vz c ≡ false` a
+  strengthening (`c = wk c₀`), so the occurrence fold is gone. The Tel
+  folds (`Lib/TelFold`: size, depth) are level-agnostic.
+- **The Knot cannot express the hazard.** In `Lib/Syn`'s Shape grammar a
+  recursive child is `rec s k`: sort s, at the parent's depth plus k.
+  Every child's depth is RELATIVE, so a closed-index child is not a Shape.
+  The traversals (`SynTrav`: ren, sub, the SubEnv operations) index
+  scopes by that same relative depth.
+
+### Rationale
+
+Library work exists to make the Knot simple. A scope filter for a fold
+nobody computes is machinery without a client. If a level-comparing fold
+over a Tel description with closed-index `dρ` fields is ever written,
+the old rule applies unchanged: skip a child whose index does not
+mention the ambient index. That fold's adequacy lemma is what would
+demand the rule (as it did for `occK`).
+
+### See Also
+
+D072, D077, D078; HANDOFF-2026-09-10 §2; OCC-ATTEMPTS.md §35.
