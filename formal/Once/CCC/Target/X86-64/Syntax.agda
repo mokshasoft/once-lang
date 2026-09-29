@@ -118,6 +118,8 @@ data Instr : Set where
   -- opaque calling-convention transition (see `exec-x86 (call-sym _)`
   -- in DirectSimulation).
   call-sym : String → Instr
+  -- D245: a DIRECT call of a label in the program, a function entry (`call once_<f>`).
+  call-l : Label → Instr
   ret    : Instr                        -- ret (return from function)
 
   -- Stack operations
@@ -230,6 +232,7 @@ instr-consumed-slots (push _)         = 1                  -- push allocates 1 s
 instr-consumed-slots (sub (reg r) o)  = sub-rsp-consumed r o
 instr-consumed-slots (call _)         = 1                  -- call pushes return address
 instr-consumed-slots (call-sym _)     = 1                  -- same as call (pushes return address)
+instr-consumed-slots (call-l _)       = 1                  -- same as call (pushes return address)
 -- `sub` with non-register destination: not a stack op.
 instr-consumed-slots (sub (mem _) _)  = 0
 instr-consumed-slots (sub (imm _) _)  = 0

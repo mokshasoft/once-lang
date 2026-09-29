@@ -25,7 +25,7 @@ open import Data.String using (String)
 -- is the point: the correspondence proofs that today exist only for x86-64 are
 -- meant to be generalised over the target, and a bare-ℕ label space here would
 -- be the one place they could not be.
-open import Once.CCC.Label public using (LabelId; Label; once; sigop; thunk)
+open import Once.CCC.Label public using (LabelId; Label; once; sigop; thunk; callee; e-fn)
 
 ------------------------------------------------------------------------
 -- Registers
@@ -114,6 +114,8 @@ data Instr : Set where
   call  : Operand → Instr             -- call target
   -- Plan 0.11: SigOp call by symbolic name. Linker resolves the name.
   call-sym : String → Instr
+  -- D245: a DIRECT call of a label in the program, a function entry (`call once_<f>`).
+  call-l : Label → Instr
   ret   : Instr                       -- ret
 
   -- Special

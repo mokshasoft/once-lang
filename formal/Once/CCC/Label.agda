@@ -83,10 +83,19 @@ record LabelId : Set where
 
 open LabelId public
 
+-- D245: a CALLABLE ENTRY, a closure body or one of the program's functions.
+-- (Its equality and symbol are defined further down.)
+data EntryId : Set where
+  e-thunk : LabelId → EntryId
+  e-fn    : CanonicalName → EntryId
+
 data Label : Set where
   once  : LabelId → Label      -- compiler-allocated jump target
   sigop : String → ℕ → Label   -- SigOp-allocated; String = the SigOp's name
-  thunk : LabelId → Label      -- closure-body entry (Plan 0.63, D082)
+  callee : EntryId → Label     -- callable entry (Plan 0.63 D082; D245)
+
+-- A closure-body entry, the label's original form.
+pattern thunk n = callee (e-thunk n)
 
 ------------------------------------------------------------------------
 -- Equality.
@@ -131,6 +140,51 @@ a ≡ᵇᴵ b = ⌊ a ≟ᴵ b ⌋
   where open import Data.Empty using (⊥-elim)
 ... | no  _ = refl
 
+------------------------------------------------------------------------
+-- D245: CALLABLE ENTRIES. Code a call can land on is either a closure body
+-- (`e-thunk`, D082) or one of the program's own functions (`e-fn`). They are
+-- one notion, an entry with a frame budget that a call enters and `c-ret`
+-- leaves, so the machine has ONE entry marker and one entry scan. The two kinds
+-- are disjoint by constructor: a closure call looks up `e-thunk ℓ`, and a
+-- direct call looks up `e-fn f`.
+--
+-- The symbol of a function entry is the function's own (`once-symbol-path`),
+-- the one codegen already emits as `once_<name>:` and calls as `call once_<name>`.
+------------------------------------------------------------------------
+
+_≟ᴱ_ : DecidableEquality EntryId
+e-thunk a ≟ᴱ e-thunk b with a ≟ᴵ b
+... | yes refl = yes refl
+... | no ¬q    = no λ where refl → ¬q refl
+e-fn f    ≟ᴱ e-fn g    with f ≟ᶜ g
+... | yes refl = yes refl
+... | no ¬q    = no λ where refl → ¬q refl
+e-thunk _ ≟ᴱ e-fn _    = no λ ()
+e-fn _    ≟ᴱ e-thunk _ = no λ ()
+
+infix 4 _≡ᵇᴱ_
+_≡ᵇᴱ_ : EntryId → EntryId → Bool
+a ≡ᵇᴱ b = ⌊ a ≟ᴱ b ⌋
+
+≡ᵇᴱ-true : ∀ (a b : EntryId) → (a ≡ᵇᴱ b) ≡ true → a ≡ b
+≡ᵇᴱ-true a b eq = toWitness (subst-T eq)
+  where open import Data.Bool using (T)
+        subst-T : (a ≡ᵇᴱ b) ≡ true → T (a ≡ᵇᴱ b)
+        subst-T e rewrite e = _
+
+≡ᵇᴱ-refl : ∀ (a : EntryId) → (a ≡ᵇᴱ a) ≡ true
+≡ᵇᴱ-refl a with a ≟ᴱ a
+... | yes _ = refl
+... | no ¬q = ⊥-elim (¬q refl)
+  where open import Data.Empty using (⊥-elim)
+
+≢⇒≡ᵇᴱfalse : ∀ (a b : EntryId) → ¬ (a ≡ b) → (a ≡ᵇᴱ b) ≡ false
+≢⇒≡ᵇᴱfalse a b ¬q with a ≟ᴱ b
+... | yes q = ⊥-elim (¬q q)
+  where open import Data.Empty using (⊥-elim)
+... | no  _ = refl
+
+
 -- Cross-provenance is `false` by the catch-all (the definitional
 -- disjointness that makes collisions impossible between compiler, SigOp and
 -- closure-body labels — D033, D082). That catch-all is why
@@ -140,7 +194,7 @@ infix 4 _≡ᵇᴸ_
 _≡ᵇᴸ_ : Label → Label → Bool
 once  a   ≡ᵇᴸ once  b   = a ≡ᵇᴵ b
 sigop a n ≡ᵇᴸ sigop b m = (a ==ˢ b) ∧ (n ≡ᵇ m)
-thunk a   ≡ᵇᴸ thunk b   = a ≡ᵇᴵ b
+callee a  ≡ᵇᴸ callee b  = a ≡ᵇᴱ b
 _         ≡ᵇᴸ _         = false
 
 ------------------------------------------------------------------------
@@ -188,6 +242,11 @@ showLabelId lid =
 thunkSym : LabelId → String
 thunkSym n = ".L_thunk_" ++ˢ showLabelId n
 
+-- An entry's symbol: a closure body's `.L_thunk_…`, a function's `once_<name>`.
+entrySym : EntryId → String
+entrySym (e-thunk n) = thunkSym n
+entrySym (e-fn f)    = once-symbol-path f
+
 -- …and the same argument one level out. All three `Emit` modules carried a
 -- byte-identical `showLabel` returning the symbol MINUS its `.L` prefix, with
 -- every call site pasting the prefix back on — three copies of a convention,
@@ -196,7 +255,7 @@ thunkSym n = ".L_thunk_" ++ˢ showLabelId n
 labelSym : Label → String
 labelSym (once n)     = ".Lonce_" ++ˢ showLabelId n
 labelSym (sigop nm k) = ".Lsigops_" ++ˢ nm ++ˢ "_" ++ˢ showNat k
-labelSym (thunk n)    = thunkSym n
+labelSym (callee e)   = entrySym e
 
 -- Build a label identity in the CURRENT context. Sub-step A keeps `path`
 -- empty — the splice-aware paths arrive with sub-step B, which is what
@@ -204,55 +263,3 @@ labelSym (thunk n)    = thunkSym n
 ℓ : CanonicalName → ℕ → LabelId
 ℓ o n = mkLabelId o [] n
 
-------------------------------------------------------------------------
--- D245: CALLABLE ENTRIES. Code a call can land on is either a closure body
--- (`e-thunk`, D082) or one of the program's own functions (`e-fn`). They are
--- one notion, an entry with a frame budget that a call enters and `c-ret`
--- leaves, so the machine has ONE entry marker and one entry scan. The two kinds
--- are disjoint by constructor: a closure call looks up `e-thunk ℓ`, and a
--- direct call looks up `e-fn f`.
---
--- The symbol of a function entry is the function's own (`once-symbol-path`),
--- the one codegen already emits as `once_<name>:` and calls as `call once_<name>`.
-------------------------------------------------------------------------
-
-data EntryId : Set where
-  e-thunk : LabelId → EntryId
-  e-fn    : CanonicalName → EntryId
-
-_≟ᴱ_ : DecidableEquality EntryId
-e-thunk a ≟ᴱ e-thunk b with a ≟ᴵ b
-... | yes refl = yes refl
-... | no ¬q    = no λ where refl → ¬q refl
-e-fn f    ≟ᴱ e-fn g    with f ≟ᶜ g
-... | yes refl = yes refl
-... | no ¬q    = no λ where refl → ¬q refl
-e-thunk _ ≟ᴱ e-fn _    = no λ ()
-e-fn _    ≟ᴱ e-thunk _ = no λ ()
-
-infix 4 _≡ᵇᴱ_
-_≡ᵇᴱ_ : EntryId → EntryId → Bool
-a ≡ᵇᴱ b = ⌊ a ≟ᴱ b ⌋
-
-≡ᵇᴱ-true : ∀ (a b : EntryId) → (a ≡ᵇᴱ b) ≡ true → a ≡ b
-≡ᵇᴱ-true a b eq = toWitness (subst-T eq)
-  where open import Data.Bool using (T)
-        subst-T : (a ≡ᵇᴱ b) ≡ true → T (a ≡ᵇᴱ b)
-        subst-T e rewrite e = _
-
-≡ᵇᴱ-refl : ∀ (a : EntryId) → (a ≡ᵇᴱ a) ≡ true
-≡ᵇᴱ-refl a with a ≟ᴱ a
-... | yes _ = refl
-... | no ¬q = ⊥-elim (¬q refl)
-  where open import Data.Empty using (⊥-elim)
-
-≢⇒≡ᵇᴱfalse : ∀ (a b : EntryId) → ¬ (a ≡ b) → (a ≡ᵇᴱ b) ≡ false
-≢⇒≡ᵇᴱfalse a b ¬q with a ≟ᴱ b
-... | yes q = ⊥-elim (¬q q)
-  where open import Data.Empty using (⊥-elim)
-... | no  _ = refl
-
--- An entry's symbol: a closure body's `.L_thunk_…`, a function's `once_<name>`.
-entrySym : EntryId → String
-entrySym (e-thunk n) = thunkSym n
-entrySym (e-fn f)    = once-symbol-path f

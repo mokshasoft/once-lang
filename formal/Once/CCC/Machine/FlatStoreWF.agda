@@ -591,6 +591,11 @@ wf-call prog fs wf = go (callView prog fs)
         go (cp-halt    e) rewrite e = wf-halt wf
         go (cp-enter ℓ j fq e) rewrite e = wf
 
+-- D245: a DIRECT call is the same transfer with the target named statically.
+wf-call-at : ∀ (mj : Maybe ℕ) (fs : FlatState) → FlatWF fs → FlatWF (do-call-at mj fs)
+wf-call-at (just j) fs wf = wf
+wf-call-at nothing  fs wf = wf-halt wf
+
 -- D097: THE CLOSURE REGISTER STAYS BELOW THE FRONTIER. `fclosure` is a
 -- `FlatState` field, so `StoreWF` (indexed by the `LocState`) says nothing
 -- about it — and the correspondence now needs it: the register's ENCODING has
@@ -627,12 +632,19 @@ cl-call prog fs b = go (callView prog fs)
         go (cp-halt    e) rewrite e = b
         go (cp-enter ℓ j fq e) rewrite e = b
 
+cl-call-at : ∀ (mj : Maybe ℕ) (fs : FlatState)
+           → sv-below (next-heap-ref (falloc fs)) (fclosure fs)
+           → sv-below (next-heap-ref (falloc (do-call-at mj fs))) (fclosure (do-call-at mj fs))
+cl-call-at (just j) fs b = b
+cl-call-at nothing  fs b = b
+
 cl-step : ∀ (i : AbstractInstr) (prog : AbstractTrace) (fs : FlatState) → FlatWF fs
         → sv-below (next-heap-ref (falloc fs)) (fclosure fs)
         → sv-below (next-heap-ref (falloc (flat-exec-instr i prog fs)))
                    (fclosure (flat-exec-instr i prog fs))
 cl-step (instr-ctrl (c-label m))               prog fs wf b = b
-cl-step (instr-ctrl (c-thunk m bb))            prog fs wf b = b
+cl-step (instr-ctrl (c-entry m bb))            prog fs wf b = b
+cl-step (instr-ctrl (c-call-fn f))             prog fs wf b = cl-call-at (find-fn prog f) fs b
 cl-step (instr-ctrl (c-ret bb))                prog fs wf b = cl-ret (fret fs) fs b
 cl-step (instr-ctrl (c-jmp m))                 prog fs wf b = cl-jump (find-label prog m) fs b
 cl-step (instr-ctrl (c-branch-scratch-zero m)) prog fs wf b =
@@ -684,7 +696,8 @@ cl-step (instr-reg-op op)        prog fs wf b = sv-mono (fclosure fs) (proj₂ (
 flat-wf-step : ∀ (i : AbstractInstr) (prog : AbstractTrace) (fs : FlatState)
              → FlatWF fs → FlatWF (flat-exec-instr i prog fs)
 flat-wf-step (instr-ctrl (c-label m))               prog fs wf = wf
-flat-wf-step (instr-ctrl (c-thunk m b))             prog fs wf = wf-thunk b fs wf
+flat-wf-step (instr-ctrl (c-entry m b))             prog fs wf = wf-thunk b fs wf
+flat-wf-step (instr-ctrl (c-call-fn f))             prog fs wf = wf-call-at (find-fn prog f) fs wf
 flat-wf-step (instr-ctrl (c-ret b))                 prog fs wf = wf-ret (fret fs) fs wf
 flat-wf-step (instr-ctrl (c-jmp m))                 prog fs wf = wf-jump (find-label prog m) fs wf
 flat-wf-step (instr-ctrl (c-branch-scratch-zero m)) prog fs wf =

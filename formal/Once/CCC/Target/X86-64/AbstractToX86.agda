@@ -33,7 +33,7 @@ open import Once.CCC.Target.X86-64.Syntax
   using (Reg; rax; rbx; rcx; rdx; rdi; rsi; rbp; rsp; r8; r9; r10; r11; r12; r13; r14; r15;
          Mem; base; base+disp; rip+disp; rip+label;
          Operand; reg; mem; imm;
-         Instr; mov; lea; add; sub; cmp; push; pop; call; ret; jmp; je; jne; label; ud2;
+         Instr; mov; lea; add; sub; cmp; push; pop; call; call-l; ret; jmp; je; jne; label; ud2;
          Program; slot-size; slots)
 
 -- Import AbstractInstr from SMCore
@@ -43,7 +43,7 @@ open import Data.List.Relation.Unary.All using (All; []; _∷_)
 open import Once.CanonicalName using (CanonicalName)
 open import Once.CCC.Label using (ℓ)
 open import Once.SigOp.Info using (SigOpInfo)
-open import Once.CCC.Label using (Label; once; thunk)
+open import Once.CCC.Label using (Label; once; thunk; callee; e-fn)
 
 ------------------------------------------------------------------------
 -- Slot to displacement conversion
@@ -269,7 +269,9 @@ compile-abstract (instr-ctrl (c-jmp n))            = jmp (once n) ∷ []
 -- every jump target by `_≡ᵇᴸ_`'s catch-all — FOLLOWED BY the body's frame
 -- reservation, and a return RELEASES that frame before returning. Both
 -- blocks are byte-for-byte what `emit-thunk-body` emits as text today.
-compile-abstract (instr-ctrl (c-thunk n b))        = label (thunk n) ∷ sub (reg rsp) (imm (slots b)) ∷ []
+compile-abstract (instr-ctrl (c-entry e b))        = label (callee e) ∷ sub (reg rsp) (imm (slots b)) ∷ []
+-- D245: a direct call of a program function is `call once_<f>`.
+compile-abstract (instr-ctrl (c-call-fn f))        = call-l (callee (e-fn f)) ∷ []
 compile-abstract (instr-ctrl (c-ret b))            = add (reg rsp) (imm (slots b)) ∷ ret ∷ []
 -- Plan 0.34: a conditional branch lowers to cmp+je (2 instrs). On a
 -- flag-less target (RISC-V) this would be a single compare-and-branch.

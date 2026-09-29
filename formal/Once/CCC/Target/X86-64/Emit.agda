@@ -80,6 +80,7 @@ showInstr (call (imm n)) =
   "    call " ++ showNat n
 showInstr (call-sym name) =
   "    call " ++ name
+showInstr (call-l l) = "    call " ++ labelSym l
 showInstr ret =
   "    ret"
 showInstr (push (reg r)) =

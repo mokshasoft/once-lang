@@ -50,7 +50,7 @@ open import Once.CCC.Target.RiscV64.Syntax
          s1; s2; s3; s4; t0; t1; t2; t3; t4;
          Instr; ld; sd; add; sub; addi; li; auipc; lla; mv;
          beq; bne; jal; jalr; j; ret; call; call-sym; nop; unimp; label;
-         Label; once; thunk;
+         Label; once; thunk; callee; e-fn;
          Program; slot-size; slots)
 open import Once.CanonicalName using (CanonicalName)
 open import Once.CCC.Label using (ℓ)
@@ -73,7 +73,7 @@ open import Once.CCC.Machine.SMCore
          -- RegOp constructors (Plan 0.53 reg-op lowering)
          scratch-one; scratch-zero; scratch-dec; scratch-load-count; count-zero; count-inc;
          -- FlatCtrl constructors (Plan 0.53 flat-control lowering)
-         c-label; c-jmp; c-branch-scratch-zero; c-branch-tag-zero; c-thunk; c-ret)
+         c-label; c-jmp; c-branch-scratch-zero; c-branch-tag-zero; c-thunk; c-ret; c-entry; c-call-fn)
 open import Once.CCC.Machine.NoNested public
 
 ------------------------------------------------------------------------
@@ -354,9 +354,14 @@ compile-abstract (instr-ctrl (c-jmp n))                 = j (once n) ∷ []
 -- which is the caller-reserved word just above the body's slots 0 … b-1 —
 -- the same cell as before the split, since the total descent is unchanged.
 -- `c-ret` releases `slots (suc b)` for the same reason and is untouched.
-compile-abstract (instr-ctrl (c-thunk n b))             = label (thunk n) ∷ addi sp sp (Data.Integer.-_ (+ (slots b))) ∷ sd ra sp (slots b) ∷ []
+compile-abstract (instr-ctrl (c-entry e b))             = label (callee e) ∷ addi sp sp (Data.Integer.-_ (+ (slots b))) ∷ sd ra sp (slots b) ∷ []
   where import Data.Integer
 compile-abstract (instr-ctrl (c-ret b))                 = ld ra sp (slots b) ∷ addi sp sp (+ (slots (suc b))) ∷ ret ∷ []
+-- D245: a direct call of a program function. The caller reserves the callee's
+-- return-address slot, as at a closure call (`instr-call-closure`), then `jal`.
+compile-abstract (instr-ctrl (c-call-fn f))             =
+  addi sp sp (Data.Integer.-_ (+ slot-size)) ∷ jal ra (callee (e-fn f)) ∷ []
+  where import Data.Integer
 compile-abstract (instr-ctrl (c-branch-scratch-zero n)) = beq s3 zero (once n) ∷ []
 compile-abstract (instr-ctrl (c-branch-tag-zero n))     = ld t1 t0 0 ∷ beq t1 zero (once n) ∷ []
 

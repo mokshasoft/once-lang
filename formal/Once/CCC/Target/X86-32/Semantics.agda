@@ -305,6 +305,19 @@ execInstr prog s (call target) =
 execInstr prog s (call-sym _) =
   just (record s { halted = true })
 
+-- D245: a DIRECT call resolves its label as `jmp` does and transfers as `call`
+-- does: push the return address, jump. An absent label halts.
+execInstr prog s (call-l target) =
+  case find-label prog target of λ where
+    (just addr) →
+      let retAddr = pc s + 1
+          sp     = readReg (regs s) esp
+          newSp  = sp ∸ slot-size
+      in just (record s { regs   = writeReg (regs s) esp newSp
+                        ; memory = writeMem (memory s) newSp retAddr
+                        ; pc     = addr })
+    nothing     → just (record s { halted = true })
+
 execInstr prog s ret =
   case readMem (memory s) (readReg (regs s) esp) of λ where
     nothing        → nothing

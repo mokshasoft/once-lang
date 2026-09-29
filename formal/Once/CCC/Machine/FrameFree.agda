@@ -91,13 +91,15 @@ FrameFreeI (lea-slot _)              = ⊥
 -- set (freshness of the callee frame, from `untouched` + the high-water
 -- mark, plus the honest `stack-room`), and `c-ret`'s additionally needs
 -- the `FlatCorr` field relating the ghost `fret` to the machine stack.
-FrameFreeI (instr-ctrl (c-thunk _ _)) = ⊥
+FrameFreeI (instr-ctrl (c-entry _ _)) = ⊥
 FrameFreeI (instr-ctrl (c-ret _))     = ⊥
 -- …and THE CALL joins them (D092): now that it is modelled, it pushes the
 -- caller's frame and enters one a slot down (`enter-call`), so it moves the
 -- frame stack, the return stack and the pc. Emitted, like the markers — so it
 -- leaves this SEMANTIC fence while staying in `EmittableI` below.
 FrameFreeI instr-call-closure         = ⊥
+-- D245: the direct call moves the frame exactly as the closure call does.
+FrameFreeI (instr-ctrl (c-call-fn _)) = ⊥
 {-# CATCHALL #-}
 FrameFreeI _                         = ⊤
 
@@ -144,7 +146,8 @@ frame-free-emittable (instr-case-on-tag _ _)   ()
 frame-free-emittable (instr-loop _)            ()
 frame-free-emittable (lea-indexed _)           ()
 frame-free-emittable (lea-slot _)              ()
-frame-free-emittable (instr-ctrl (c-thunk _ _)) ()
+frame-free-emittable (instr-ctrl (c-entry _ _)) ()
+frame-free-emittable (instr-ctrl (c-call-fn _)) ()
 frame-free-emittable (instr-ctrl (c-ret _))     ()
 frame-free-emittable (instr-ctrl (c-label _))            _ = tt
 frame-free-emittable (instr-ctrl (c-jmp _))              _ = tt

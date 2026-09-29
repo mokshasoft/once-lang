@@ -22,7 +22,7 @@ open import Data.String using (String)
 -- Plan 0.63: label PROVENANCE, shared with x86-64 (D082). `Once.CCC.Label` is
 -- arch-agnostic; naming code addresses the same way on every target is what
 -- lets the correspondence proofs (today x86-64-only) be generalised over it.
-open import Once.CCC.Label public using (LabelId; Label; once; sigop; thunk)
+open import Once.CCC.Label public using (LabelId; Label; once; sigop; thunk; callee; e-fn)
 
 ------------------------------------------------------------------------
 -- Registers
