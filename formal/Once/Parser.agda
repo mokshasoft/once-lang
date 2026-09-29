@@ -13,7 +13,7 @@ module Once.Parser where
 open import Once.Type.Honest using (HonestFFI; honest?)
 
 open import Data.Bool using (Bool; true; false; not; _∧_; _∨_)
-open import Data.List using (List; []; _∷_; map)
+open import Data.List using (List; []; _∷_; map) renaming (_++_ to _++ₗ_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (_×_; _,_; proj₁)
 open import Data.String using (String; _≟_; _++_; toList)
@@ -226,22 +226,32 @@ record FunInfo : Set where
     -- recursive `once_<name>: ...; call once_<name>; ret` stub.
     funIsPrimitive : Bool
 
--- | Polymorphic counterpart of `FunInfo`. User-declared definitions
--- whose signature carries `TVar`s flow through this record and are
--- handled downstream by schema instantiation at use sites — plan 0.6
--- Phase C.1. Kept structurally separate from `FunInfo` so the ground
--- compile pipeline stays untouched; the two lists are processed
--- independently by `compileAllFuns`.
+-- | A telescope definition: polymorphic, or ground but not concrete (a
+-- context projection, D071). Typed ONCE, at its schema with rigid
+-- parameters, where it is declared (D243).
 record PolyFunInfo : Set where
   constructor mkPolyFunInfo
   field
     pfunName  : String
     pfunType  : PolyType
     pfunBody  : RawExpr
-    -- Plan 0.103 phase 1: the entry's POSITION in the module telescope — the
-    -- number of monomorphic `FunInfo`s declared AFTER it. The two lists lose
-    -- their interleaving; this recovers the entry's declaration context.
-    pfunAfter : ℕ
+
+-- | D241/D242: the module is ONE declaration-ordered telescope. Every
+-- definition sees exactly the definitions declared before it; an FFI
+-- declaration is a `e-fun` whose `funIsPrimitive` is set.
+data Entry : Set where
+  e-fun  : FunInfo → Entry
+  e-poly : PolyFunInfo → Entry
+
+funsOf : List Entry → List FunInfo
+funsOf []              = []
+funsOf (e-fun fi ∷ es)  = fi ∷ funsOf es
+funsOf (e-poly _ ∷ es)  = funsOf es
+
+polysOf : List Entry → List PolyFunInfo
+polysOf []               = []
+polysOf (e-fun _ ∷ es)    = polysOf es
+polysOf (e-poly pfi ∷ es) = pfi ∷ polysOf es
 
 -- | Project a parsed `PolyType` signature to a ground `Type`. Used
 -- for declarations (primitives, ground-typed user defs) where
@@ -285,19 +295,19 @@ PendingSig = String × (Type ⊎ PolyType)
 -- non-primitive "main" `FunInfo` traces back to a `DFunDef "main"`).
 -- `aliases` is now an explicit parameter.
 EFResult : Set
-EFResult = String ⊎ (List FunInfo × List PolyFunInfo)
+EFResult = String ⊎ List Entry
 
 extractFunctions-consFun : EFResult → FunInfo → EFResult
-extractFunctions-consFun (inj₁ err)        _  = inj₁ err
-extractFunctions-consFun (inj₂ (gs , ps)) fi = inj₂ (fi ∷ gs , ps)
+extractFunctions-consFun (inj₁ err) _  = inj₁ err
+extractFunctions-consFun (inj₂ es)  fi = inj₂ (e-fun fi ∷ es)
 
 extractFunctions-consPoly : EFResult → String → PolyType → RawExpr → EFResult
-extractFunctions-consPoly (inj₁ err)        _ _ _ = inj₁ err
-extractFunctions-consPoly (inj₂ (gs , ps)) n t b = inj₂ (gs , mkPolyFunInfo n t b (length gs) ∷ ps)
+extractFunctions-consPoly (inj₁ err) _ _ _ = inj₁ err
+extractFunctions-consPoly (inj₂ es)  n t b = inj₂ (e-poly (mkPolyFunInfo n t b) ∷ es)
 
 extractFunctions-go : TypeAliasEnv → List Decl → Maybe PendingSig → EFResult
 extractFunctions-sigless : TypeAliasEnv → (name : String) → RawExpr → List Decl → Dec (name ≡ "main") → EFResult
-extractFunctions-go aliases [] _ = inj₂ ([] , [])
+extractFunctions-go aliases [] _ = inj₂ []
 -- Signatures are classified now: ground types get expanded eagerly;
 -- polymorphic types are carried as-is for the matching DFunDef.
 -- Plan 0.58 / D071: a ground signature routes to a monomorphic `FunInfo`
@@ -423,15 +433,15 @@ distinctOrErr false _ = inj₁ "ill-formed top-level definition name (duplicate 
 
 guardDistinct : EFResult → EFResult
 guardDistinct (inj₁ err)            = inj₁ err
--- Plan 0.103 phase 1c: the TELESCOPE's names are distinct too — a definitions
--- context with two entries of one name is ill-formed, and linking (a reference
--- is resolved by name) relies on it.
-guardDistinct (inj₂ (funs , polys)) =
-  distinctOrErr ((namesDistinct nms ∧ allValidIdentB nms) ∧ namesDistinct (map PolyFunInfo.pfunName polys))
-                (inj₂ (funs , polys))
-  where nms = emittedNames funs
+-- Plan 0.103 phase 1c / D241: every definition name is distinct — monomorphic
+-- and telescope together (a definitions context with two entries of one name
+-- is ill-formed, and a reference is resolved by name).
+guardDistinct (inj₂ es) =
+  distinctOrErr ((namesDistinct nms ∧ allValidIdentB nms) ∧ namesDistinct (nms ++ₗ map PolyFunInfo.pfunName (polysOf es)))
+                (inj₂ es)
+  where nms = emittedNames (funsOf es)
 
-extractFunctions : TypeAliasEnv → Module → String ⊎ (List FunInfo × List PolyFunInfo)
+extractFunctions : TypeAliasEnv → Module → String ⊎ List Entry
 extractFunctions aliases (mkModule ds) = guardDistinct (extractFunctions-go aliases ds nothing)
 
 -- Plan 0.6.2: `inlineAll`, `inlineAllWithPoly`, `polySeedDefs` all

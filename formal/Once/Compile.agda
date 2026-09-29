@@ -109,6 +109,9 @@ open import Once.TypeCheck.Classify using (ctxWithImportsAndPolys; NamedCtx; loo
 open import Once.TypeCheck.Error using (renderError)
 open import Relation.Nullary using (Dec; yes; no)
 import Data.String.Properties as SProp
+open import Once.Type.Rigid using (rigidOf)
+open import Once.Functor.Translate using (IsConcrete)
+open import Once.Functor.Decide using (isConcrete?)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 import Data.Nat
 -- D072: the untrusted principal-type oracle (validated by checkElab).
@@ -316,23 +319,7 @@ resolveFunType : FunCtx → PolyCtx → Maybe Type → RawExpr → String ⊎ Ty
 resolveFunType ctx polys (just ty) body = inj₂ ty
 resolveFunType ctx polys nothing   body = inferType ctx polys body
 
--- | Compile all functions from parsed module, accumulating context
--- Each function is compiled with access to all previously defined
--- functions (ground, via FunCtx) and all polymorphic user defs
--- (via PolyCtx, plan 0.6.2).
--- `go` lifted to TOP LEVEL (was a `where`-local of `compileAllFuns`) so the
--- verified frontend can induct on it (a compiled `main` traces back to its
--- `FunInfo`). The `ctx` accumulator is now
--- an explicit parameter; `compileAllFuns` seeds it with `emptyFunCtx`.
--- Explicit-argument aux form (Plan 0.48): the three nested scrutinees
--- (`resolveFunType` → `compileFun` → the recursion) each become an aux that
--- matches a bound `⊎` variable, so proofs can case without the `with`-bite.
--- `caf-go-cf-aux` calls `compileAllFuns-go` (mutual); the self-recursion is on
--- the structurally-smaller `rest`.
 caf-go-wrap : (fi : FunInfo) (ty : Type) → IR ⌊ Unit ⌋ ⌊ ty ⌋ → String ⊎ List CompiledFun → String ⊎ List CompiledFun
-caf-go-cf-aux : AllocMode → Bool → PolyCtx → (String → FunCtx) → (fi : FunInfo) → List FunInfo → FunCtx → (ty : Type) → String ⊎ IR ⌊ Unit ⌋ ⌊ ty ⌋ → String ⊎ List CompiledFun
-caf-go-rf-aux : AllocMode → Bool → PolyCtx → (String → FunCtx) → (fi : FunInfo) → List FunInfo → FunCtx → String ⊎ Type → String ⊎ List CompiledFun
-compileAllFuns-go : AllocMode → Bool → PolyCtx → (String → FunCtx) → List FunInfo → FunCtx → String ⊎ List CompiledFun
 
 caf-go-wrap fi ty ir (inj₁ err)       = inj₁ err
 caf-go-wrap fi ty ir (inj₂ compiled)  =
@@ -345,22 +332,6 @@ caf-go-wrap fi ty ir (inj₂ compiled)  =
       ir'     = proj₂ wrapped
   in inj₂ (mkCompiledFun (bare (funName fi)) ty' ir' (funIsPrimitive fi) ∷ compiled)
 
-caf-go-cf-aux m doOpt polys impsOf fi rest ctx ty (inj₁ err) = inj₁ err
-caf-go-cf-aux m doOpt polys impsOf fi rest ctx ty (inj₂ ir) =
-  caf-go-wrap fi ty ir (compileAllFuns-go m doOpt polys impsOf rest (extendFunCtx ctx (funName fi) ty))
-
-caf-go-rf-aux m doOpt polys impsOf fi rest ctx (inj₁ err) = inj₁ err
-caf-go-rf-aux m doOpt polys impsOf fi rest ctx (inj₂ ty) =
-  caf-go-cf-aux m doOpt polys impsOf fi rest ctx ty (compileFun m doOpt ctx polys impsOf (funName fi) ty (funBody fi))
-
-compileAllFuns-go m doOpt polys impsOf [] _ = inj₂ []
--- D007: resolve the function's type FIRST (explicit sig, or inferred from
--- the body), then compile / extend the context / wrap-main with it.
-compileAllFuns-go m doOpt polys impsOf (fi ∷ rest) ctx =
-  caf-go-rf-aux m doOpt polys impsOf fi rest ctx (resolveFunType ctx polys (funType fi) (funBody fi))
-
-compileAllFuns : AllocMode → Bool → List FunInfo → PolyCtx → (String → FunCtx) → String ⊎ List CompiledFun
-compileAllFuns m doOpt funs polys impsOf = compileAllFuns-go m doOpt polys impsOf funs emptyFunCtx
 
 
 -- | Parse source text to a Module AST. Haskell uses this to read
@@ -399,63 +370,97 @@ checkOK : ∀ {ctx e T} → TE.VerifiedCheckResult ctx e T → String ⊎ ⊤
 checkOK (TE.failure err , _)       = inj₁ (renderError err)
 checkOK (TE.success _ _ _ _ , _)   = inj₂ tt
 
--- The monomorphic context at declaration position `r` (`pfunAfter`: the number
--- of `FunInfo`s declared AFTER the entry): the `FunCtx` of the defs before it.
--- Total; a position the walk never reaches (impossible for `extractFunctions`
--- output) gets the final context, and a failed resolve stops the walk (the
--- module is then rejected by `compileAllFuns` on its own).
-funCtxAt      : List FunInfo → FunCtx → PolyCtx → ℕ → FunCtx
-funCtxAt-step : List FunInfo → FunInfo → FunCtx → PolyCtx → ℕ → Bool → String ⊎ Type → FunCtx
-funCtxAt []          ctx pctx r = ctx
-funCtxAt (fi ∷ rest) ctx pctx r =
-  funCtxAt-step rest fi ctx pctx r (Data.Nat.suc (DL.length rest) Data.Nat.≡ᵇ r)
-                (resolveFunType ctx pctx (funType fi) (funBody fi))
-funCtxAt-step rest fi ctx pctx r true  _         = ctx
-funCtxAt-step rest fi ctx pctx r false (inj₁ _)  = ctx
-funCtxAt-step rest fi ctx pctx r false (inj₂ ty) = funCtxAt rest (extendFunCtx ctx (funName fi) ty) pctx r
+------------------------------------------------------------------------
+-- D241 (plan 0.103 6c′): compile the module TELESCOPE, in declaration order.
+-- Each definition is checked in its SCOPE — the definitions declared before
+-- it — exactly as `Spec.Module.ModTele` types it.
+------------------------------------------------------------------------
 
--- One entry, in its declaration context and its telescope TAIL (the entries
--- after it in the list, which `lookupPolyPrefix` returns as its prefix).
-polyEntryCheck : FunCtx → PolyCtx → (pfi : PolyFunInfo) → (Ground (pfunType pfi)) ⊎ ⊤ → String ⊎ ⊤
-polyEntryCheck imps tail pfi (inj₂ _) = inj₂ tt      -- polymorphic: typed parametrically in phase 6
-polyEntryCheck imps tail pfi (inj₁ g) =
-  checkOK (TE.checkElabV (ctxWithImportsAndPolys imps tail) (pfunBody pfi) (extractGround (pfunType pfi) g))
+-- The compile-time scope: `Spec.Module.Scope`, with each telescope entry's
+-- DECLARATION imports (where the resolver elaborates its body at a use).
+record CScope : Set where
+  constructor cscope
+  field
+    cimps : FunCtx
+    ctele : List (PolyFunInfo × FunCtx)
 
-polysCheck : (ℕ → FunCtx) → List PolyFunInfo → String ⊎ ⊤
-polysCheck at []           = inj₂ tt
-polysCheck at (pfi ∷ pfis) =
-  seqCheck (polyEntryCheck (at (pfunAfter pfi)) (buildPolyCtx pfis) pfi (isGround (pfunType pfi)))
-           (polysCheck at pfis)
+emptyCScope : CScope
+emptyCScope = cscope emptyFunCtx []
 
--- The declaration imports of the telescope entry a name refers to — the entry
--- `lookupPolyPrefix` finds (the first of that name).
-afterOf     : List PolyFunInfo → String → ℕ
-afterOf-aux : (pfi : PolyFunInfo) → List PolyFunInfo → (x : String) → Dec (pfunName pfi ≡ x) → ℕ
-afterOf []           x = 0
-afterOf (pfi ∷ pfis) x = afterOf-aux pfi pfis x (pfunName pfi SProp.≟ x)
-afterOf-aux pfi pfis x (yes _) = pfunAfter pfi
-afterOf-aux pfi pfis x (no _)  = afterOf pfis x
+telePolys : List (PolyFunInfo × FunCtx) → List PolyFunInfo
+telePolys = DL.map proj₁
 
-entryImps : List FunInfo → List PolyFunInfo → String → FunCtx
-entryImps funs polys x = funCtxAt funs emptyFunCtx (buildPolyCtx polys) (afterOf polys x)
+cpolys : CScope → PolyCtx
+cpolys sc = buildPolyCtx (telePolys (CScope.ctele sc))
 
-polysOK : List FunInfo → List PolyFunInfo → String ⊎ ⊤
-polysOK funs polys = polysCheck (funCtxAt funs emptyFunCtx (buildPolyCtx polys)) polys
+-- The declaration imports of the telescope entry a name refers to — the first
+-- of that name, as `lookupPolyPrefix` finds it.
+declImps     : List (PolyFunInfo × FunCtx) → String → FunCtx
+declImps-aux : (e : PolyFunInfo × FunCtx) → List (PolyFunInfo × FunCtx) → (x : String)
+             → Dec (pfunName (proj₁ e) ≡ x) → FunCtx
+declImps []       x = emptyFunCtx
+declImps (e ∷ es) x = declImps-aux e es x (pfunName (proj₁ e) SProp.≟ x)
+declImps-aux e es x (yes _) = proj₂ e
+declImps-aux e es x (no _)  = declImps es x
 
--- The gate: a module whose ground telescope entries do not type is rejected.
-polysGate : String ⊎ ⊤ → String ⊎ List CompiledFun → String ⊎ List CompiledFun
-polysGate (inj₁ e) _ = inj₁ e
-polysGate (inj₂ _) r = r
+extendScope : CScope → String → Type → CScope
+extendScope sc x ty = cscope (extendFunCtx (CScope.cimps sc) x ty) (CScope.ctele sc)
 
--- Every stage compiles THROUGH the gate: one call, shared by
--- `compileResolvedModule` and `compileFromModule`'s Check/Build stages.
-compileGated : AllocMode → Bool → List FunInfo → List PolyFunInfo → String ⊎ List CompiledFun
-compileGated m doOpt funs polys =
-  polysGate (polysOK funs polys) (compileAllFuns m doOpt funs (buildPolyCtx polys) (entryImps funs polys))
+addEntry : CScope → PolyFunInfo → CScope
+addEntry sc pfi = cscope (CScope.cimps sc) ((pfi , CScope.cimps sc) ∷ CScope.ctele sc)
 
-compileResolvedModule-aux : AllocMode → Bool → Module → String ⊎ (List FunInfo × List PolyFunInfo) → String ⊎ List CompiledFun
-compileResolvedModule-aux m doOpt mod (inj₁ err)            = inj₁ err
-compileResolvedModule-aux m doOpt mod (inj₂ (funs , polys)) = compileGated m doOpt funs polys
+consCF : CompiledFun → String ⊎ List CompiledFun → String ⊎ List CompiledFun
+consCF cf (inj₁ err) = inj₁ err
+consCF cf (inj₂ cfs) = inj₂ (cf ∷ cfs)
+
+-- The walk, in explicit-aux form: each decision is a bound argument, so the
+-- proofs case on it without the `with`-bite.
+compileEntries : AllocMode → Bool → CScope → List Entry → String ⊎ List CompiledFun
+ce-fun         : AllocMode → Bool → CScope → (fi : FunInfo) → List Entry → Bool → String ⊎ List CompiledFun
+ce-prim        : AllocMode → Bool → CScope → (fi : FunInfo) → List Entry → Maybe Type → String ⊎ List CompiledFun
+ce-prim-conc   : AllocMode → Bool → CScope → (fi : FunInfo) → List Entry → (ty : Type)
+               → Maybe (IsConcrete ty) → String ⊎ List CompiledFun
+ce-mono        : AllocMode → Bool → CScope → (fi : FunInfo) → List Entry → String ⊎ Type → String ⊎ List CompiledFun
+ce-mono-ir     : AllocMode → Bool → CScope → (fi : FunInfo) → List Entry → (ty : Type)
+               → String ⊎ IR ⌊ Unit ⌋ ⌊ ty ⌋ → String ⊎ List CompiledFun
+ce-poly        : AllocMode → Bool → CScope → (pfi : PolyFunInfo) → List Entry → String ⊎ ⊤ → String ⊎ List CompiledFun
+
+compileEntries m doOpt sc []                 = inj₂ []
+compileEntries m doOpt sc (e-fun fi ∷ es)    = ce-fun m doOpt sc fi es (funIsPrimitive fi)
+compileEntries m doOpt sc (e-poly pfi ∷ es)  =
+  ce-poly m doOpt sc pfi es
+    (checkOK (TE.checkElabV (ctxWithImportsAndPolys (CScope.cimps sc) (cpolys sc)) (pfunBody pfi) (rigidOf (pfunType pfi))))
+
+ce-fun m doOpt sc fi es true  = ce-prim m doOpt sc fi es (funType fi)
+ce-fun m doOpt sc fi es false =
+  ce-mono m doOpt sc fi es (resolveFunType (CScope.cimps sc) (cpolys sc) (funType fi) (funBody fi))
+
+-- An FFI declaration has NO body to type (D241): its compiled form is the
+-- SigOp reference itself, at its concrete type.
+ce-prim m doOpt sc fi es nothing   = inj₁ ("FFI signature without a type: " ++ funName fi)
+ce-prim m doOpt sc fi es (just ty) = ce-prim-conc m doOpt sc fi es ty (isConcrete? ty)
+ce-prim-conc m doOpt sc fi es ty nothing =
+  inj₁ ("FFI signature `" ++ funName fi ++ "` is not concrete: " ++ showType ty)
+ce-prim-conc m doOpt sc fi es ty (just conc) =
+  consCF (mkCompiledFun (bare (funName fi)) ty (elaborateFull m (Srf.sigOp {Γ = Srf.∅} (bare (funName fi)) conc)) true)
+         (compileEntries m doOpt (extendScope sc (funName fi) ty) es)
+
+ce-mono m doOpt sc fi es (inj₁ err) = inj₁ err
+ce-mono m doOpt sc fi es (inj₂ ty)  =
+  ce-mono-ir m doOpt sc fi es ty
+    (compileFun m doOpt (CScope.cimps sc) (cpolys sc) (declImps (CScope.ctele sc)) (funName fi) ty (funBody fi))
+ce-mono-ir m doOpt sc fi es ty (inj₁ err) = inj₁ err
+ce-mono-ir m doOpt sc fi es ty (inj₂ ir)  =
+  caf-go-wrap fi ty ir (compileEntries m doOpt (extendScope sc (funName fi) ty) es)
+
+-- D243: a telescope definition is checked ONCE, at its schema with rigid
+-- parameters; its uses are instances of it.
+ce-poly m doOpt sc pfi es (inj₁ err) = inj₁ ("Type error in " ++ pfunName pfi ++ ": " ++ err)
+ce-poly m doOpt sc pfi es (inj₂ _)   = compileEntries m doOpt (addEntry sc pfi) es
+
+compileResolvedModule-aux : AllocMode → Bool → Module → String ⊎ List Entry → String ⊎ List CompiledFun
+compileResolvedModule-aux m doOpt mod (inj₁ err) = inj₁ err
+compileResolvedModule-aux m doOpt mod (inj₂ es)  = compileEntries m doOpt emptyCScope es
 
 compileResolvedModule : AllocMode → Bool → Module → String ⊎ List CompiledFun
 compileResolvedModule m doOpt mod =
@@ -475,9 +480,8 @@ compileModule m doOpt source with parse source
 ... | just mod =
       let aliases = extractAliases mod
       in case extractFunctions aliases mod of λ where
-           (inj₁ err)             → inj₁ err
-           (inj₂ (funs , polys))  →
-             compileGated m doOpt funs polys
+           (inj₁ err) → inj₁ err
+           (inj₂ es)  → compileEntries m doOpt emptyCScope es
 
 
 -- Plan 0.50 — the symbols THIS codegen actually emits as `.globl` labels, defined
@@ -797,15 +801,14 @@ compile m stage doOpt arch source with parseStrict source
 ... | inj₂ mod =
   let aliases = extractAliases mod
   in case extractFunctions aliases mod of λ where
-       (inj₁ err)             → Error err
-       (inj₂ (funs , polys))  →
-         let pctx = buildPolyCtx polys
-         in case stage of λ where
-           Parse → Parsed funs polys
-           Check → case compileGated m doOpt funs polys of λ where
+       (inj₁ err) → Error err
+       (inj₂ es)  →
+         case stage of λ where
+           Parse → Parsed (funsOf es) (polysOf es)
+           Check → case compileEntries m doOpt emptyCScope es of λ where
              (inj₁ err) → Error err
              (inj₂ compiled) → Checked compiled
-           Build → case compileGated m doOpt funs polys of λ where
+           Build → case compileEntries m doOpt emptyCScope es of λ where
              (inj₁ err) → Error err
              (inj₂ compiled) →
                let target = archTarget arch
@@ -818,7 +821,7 @@ compile m stage doOpt arch source with parseStrict source
 -- Plan 0.14 follow-up: takes AllocMode from CLI --alloc flag.
 -- Explicit-argument aux form (Plan 0.48): `cfm-ef-aux` dispatches on
 -- `extractFunctions`, `cfm-stage-aux` on the stage, and the Check/Build emit
--- helpers on the `compileAllFuns` result — the SAME `compileAllFuns` call as
+-- helpers on the `compileEntries` result — the SAME `compileEntries` call as
 -- `compileResolvedModule-aux`, which is what lets `main⇒built` relate them.
 cfm-build-emit : Arch → String ⊎ List CompiledFun → CompileResult
 cfm-build-emit arch (inj₁ err)       = Error err
@@ -888,22 +891,22 @@ litRangeError arch mod = badLit (firstBadLit arch mod)
 -- Explicit-argument aux (no `with`), matching this file's convention, so the
 -- decision stays a subterm downstream proofs can rewrite by.
 cfm-build-gated : AllocMode → Bool → (arch : Arch) → (mod : Module)
-                → List FunInfo → List PolyFunInfo
+                → List Entry
                 → Dec (AdmissibleM arch mod) → CompileResult
-cfm-build-gated m doOpt arch mod funs polys (no  _) = Error (litRangeError arch mod)
-cfm-build-gated m doOpt arch mod funs polys (yes _) =
-  cfm-build-emit arch (compileGated m doOpt funs polys)
+cfm-build-gated m doOpt arch mod es (no  _) = Error (litRangeError arch mod)
+cfm-build-gated m doOpt arch mod es (yes _) =
+  cfm-build-emit arch (compileEntries m doOpt emptyCScope es)
 
-cfm-stage-aux : AllocMode → Stage → Bool → Arch → Module → List FunInfo → List PolyFunInfo → CompileResult
-cfm-stage-aux m Parse doOpt arch mod funs polys = Parsed funs polys
-cfm-stage-aux m Check doOpt arch mod funs polys =
-  cfm-check-emit (compileGated m doOpt funs polys)
-cfm-stage-aux m Build doOpt arch mod funs polys =
-  cfm-build-gated m doOpt arch mod funs polys (admissibleM? arch mod)
+cfm-stage-aux : AllocMode → Stage → Bool → Arch → Module → List Entry → CompileResult
+cfm-stage-aux m Parse doOpt arch mod es = Parsed (funsOf es) (polysOf es)
+cfm-stage-aux m Check doOpt arch mod es =
+  cfm-check-emit (compileEntries m doOpt emptyCScope es)
+cfm-stage-aux m Build doOpt arch mod es =
+  cfm-build-gated m doOpt arch mod es (admissibleM? arch mod)
 
-cfm-ef-aux : AllocMode → Stage → Bool → Arch → Module → String ⊎ (List FunInfo × List PolyFunInfo) → CompileResult
-cfm-ef-aux m stage doOpt arch mod (inj₁ err)            = Error err
-cfm-ef-aux m stage doOpt arch mod (inj₂ (funs , polys)) = cfm-stage-aux m stage doOpt arch mod funs polys
+cfm-ef-aux : AllocMode → Stage → Bool → Arch → Module → String ⊎ List Entry → CompileResult
+cfm-ef-aux m stage doOpt arch mod (inj₁ err) = Error err
+cfm-ef-aux m stage doOpt arch mod (inj₂ es)  = cfm-stage-aux m stage doOpt arch mod es
 
 compileFromModule : AllocMode → Stage → Bool → Arch → Module → CompileResult
 compileFromModule m stage doOpt arch mod =
