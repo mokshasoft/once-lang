@@ -1,0 +1,54 @@
+# PLAN-FAITHFUL — the Knot's judgements are FAITHFUL (`enJudge`)
+
+> Opened 2026-09-29, after PLAN-LEVITATION Stage 6. Branch
+> `ocp-0009-levitation` (no rebase for now).
+
+## Goal
+
+Type-checking proves the Knot's rows WELL-FORMED, never that they encode the
+right rules (memory `typechecking-cannot-see-an-encoding`,
+JUDGEMENT-ATTEMPTS §13: a row encoding the WRONG rule typechecks). The tier
+that closes it is an **adequacy map**: every real derivation maps to a Knot
+inhabitant AT THE QUOTED JUDGEMENT.
+
+    enTy : Γ ⊢ty A     → Θ ⊢ ⌜d⌝ ∷ K⊢ (tyIx (dep Γ) ⌜Γ⌝ ⌜A⌝)
+    enTm : Γ ⊢ t ∷ A   → Θ ⊢ ⌜d⌝ ∷ K⊢ (tmIx (dep Γ) ⌜Γ⌝ ⌜t⌝ ⌜A⌝)
+    (and ∋, ⟶, ⟶ᵀ, ≅, ≅ᵀ, the side-condition families)
+
+The target NAMES the index, so a row meaning something else is a type error.
+The constructors (PLAN-LEVITATION Stage 5, `*ConGen`) are the building blocks.
+The quotation exists (`Knot/Terms`: `quoteTy`/`quoteTm`/`quoteCtx`).
+
+## The obstacle, known from the old Knot (PLAN-RENAMING §16)
+
+A constructor's index uses Knot OPERATIONS (`⊢app` concludes at
+`sub0 0 j ⌜B⌝ ⌜u⌝`), whereas the quoted judgement has `⌜B[u]⌝`. The two meet
+by **agreement**, `sub0 … ⌜B⌝ ⌜u⌝ ⟶* ⌜subTy (single u) B⌝`, and then
+`⊢conv` on the index. There is no `⌜σ⌝` for a Spec `Sub` (an Agda
+function), so an encoded substitution is RELATED:
+
+    Represents σ s  =  ∀ x → app s ⌜x⌝ ⟶* ⌜σ x⌝
+
+⚠ Lesson (§16.2): agreement over a library is provable only if the library
+ships REDUCTION lemmas for its methods. `Lib/SynTrav` ships typings only.
+
+## Steps
+
+| | step | what |
+| --- | --- | --- |
+| F1 | `Lib/SynTravRed` | `trav` COMPUTES at a node and at a variable, generic in the signature (template: `SynFib.fib-β` via `Sorted.ιₛ-red` + `βcast`; then `dih` over the payload so each field is the child's `trav`) |
+| F2 | `Knot/SubAgree` | `Represents σ s → trav ⌜t⌝ s ⟶* ⌜subTm σ t⌝`, by induction on the Spec syntax, one case per former (generated) |
+| F3 | op agreement | `sub0`, `wk`, the SubEnv ops (`nrsK`, `pairSK`, `fsucSK`, `methSK`, `lift2K`, `iinstK`, `MethTyK`, `iinstTmK`, `pwShK`, `wk2uK`): Represents for CONS/LIFT/WK environments |
+| F4 | side conditions | the `Preds` families and `Pw` are COMPLETE for Spec's `NoNatC`, `stkA?`, `stkC?`, `flat?`, `pw?`/`pwBody` |
+| F5 | `enJudge` | mutual maps from Spec derivations through the constructors; F2/F3 bridge indices by `⊢conv` |
+
+## Log
+
+- ✅ F1 (2026-09-29) `Lib/SynTravRed`: `trav-con` (a fields node reduces to
+  `conₗ k (tpayT …)`, every recursive field the child's own `trav` at
+  `nsucs k d` with the environment `LIFTS`-lifted) and `trav-var` (the
+  variable node reduces to `NODE e (f (fst p))`).
+  - Generic in the signature. It ASSUMES `LIFT-sub`/`NODE-sub` (the kit's
+    closed codes; `refl` at a concrete signature) as module parameters.
+  - Built from `Sorted.ιₛ-red`, `fibₛ-β`, `SynView.dihV-red` and one
+    generic `β4`. Checks in 14 s.
