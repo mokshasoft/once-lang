@@ -65,13 +65,13 @@ memberB x (y ∷ ys) with x ≟ y
 ... | yes _ = true
 ... | no  _ = memberB x ys
 
--- First occurrences, in order.
+-- First occurrences, in order (`seen`: the variables already listed).
+nubFrom : List String → List String → List String
+nubFrom seen []       = []
+nubFrom seen (x ∷ xs) = if memberB x seen then nubFrom seen xs else x ∷ nubFrom (x ∷ seen) xs
+
 nub : List String → List String
-nub = go []
-  where
-    go : List String → List String → List String
-    go seen []       = []
-    go seen (x ∷ xs) = if memberB x seen then go seen xs else x ∷ go (x ∷ seen) xs
+nub = nubFrom []
 
 params : PolyType → List String
 params T = nub (ftv T)
