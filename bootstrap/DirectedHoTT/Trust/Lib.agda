@@ -77,6 +77,7 @@ import DirectedHoTT.Lib.SynRen
 import DirectedHoTT.Lib.SynSub
 import DirectedHoTT.Lib.SynTrav
 import DirectedHoTT.Lib.SynTravM
+import DirectedHoTT.Lib.SynTravRed
 import DirectedHoTT.Lib.SynView
 import DirectedHoTT.Lib.Tel
 import DirectedHoTT.Lib.TelAt
