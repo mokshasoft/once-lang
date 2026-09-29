@@ -50,7 +50,7 @@
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore using (AbstractInstr; AbstractTrace)
-open import Once.CCC.Label using (Label; once; thunk; LabelId; _≡ᵇᴸ_; _≡ᵇᴵ_)
+open import Once.CCC.Label using (Label; once; thunk; callee; LabelId; EntryId; _≡ᵇᴸ_; _≡ᵇᴵ_; _≡ᵇᴱ_)
 open import Data.Nat using (ℕ; zero; suc; _+_)
 open import Data.Bool using (Bool; true; false)
 open import Data.Maybe using (Maybe; just; nothing)
@@ -330,11 +330,11 @@ just-inj refl = refl
 -- the catch-all of `_≡ᵇᴸ_` on mismatched provenances, so they are `refl` here
 -- — no label-uniqueness argument anywhere.
 ------------------------------------------------------------------------
-find-thunk-pres : ∀ (prog : AbstractTrace) (target : LabelId) (acc xi j : ℕ)
+find-thunk-pres : ∀ (prog : AbstractTrace) (target : EntryId) (acc xi j : ℕ)
   → All HeadView prog
   → ft-go prog target acc ≡ just j
   → Σ ℕ (λ d → (j ≡ acc + d)
-        × (find-label-go (thunk target) (compile-trace prog) xi ≡ just (xi + blk-off prog d)))
+        × (find-label-go (callee target) (compile-trace prog) xi ≡ just (xi + blk-off prog d)))
 find-thunk-pres [] target acc xi j _ ()
 find-thunk-pres (i ∷ rest) target acc xi j (hv-plain hl _ ft-p ∷ all-rest) ft-eq =
   let ih = find-thunk-pres rest target (suc acc) (xi + blk-len i) j all-rest
@@ -342,8 +342,8 @@ find-thunk-pres (i ∷ rest) target acc xi j (hv-plain hl _ ft-p ∷ all-rest) f
       d' = proj₁ ih
   in suc d'
    , trans (proj₁ (proj₂ ih)) (sym (+-suc acc d'))
-   , cons-step (thunk target) i rest xi d'
-       (skip-plain (thunk target) i rest xi hl) (proj₂ (proj₂ ih))
+   , cons-step (callee target) i rest xi d'
+       (skip-plain (callee target) i rest xi hl) (proj₂ (proj₂ ih))
 -- a JUMP label: the call scan misses it, and so does the compiled scan
 -- (`once m ≡ᵇᴸ thunk target` is `_≡ᵇᴸ_`'s catch-all, hence `refl`).
 find-thunk-pres (i ∷ rest) target acc xi j (hv-clabel m ca-eq _ ft-p ∷ all-rest) ft-eq =
@@ -352,13 +352,13 @@ find-thunk-pres (i ∷ rest) target acc xi j (hv-clabel m ca-eq _ ft-p ∷ all-r
       d' = proj₁ ih
   in suc d'
    , trans (proj₁ (proj₂ ih)) (sym (+-suc acc d'))
-   , cons-step (thunk target) i rest xi d'
-       (skip-labelled (thunk target) (once m) [] i rest xi ca-eq refl refl) (proj₂ (proj₂ ih))
--- THE MATCH CASE: a `c-thunk m` block. Both scans decide on `m ≡ᵇᴵ target`.
+   , cons-step (callee target) i rest xi d'
+       (skip-labelled (callee target) (once m) [] i rest xi ca-eq refl refl) (proj₂ (proj₂ ih))
+-- THE MATCH CASE: an entry block. Both scans decide on `m ≡ᵇᴱ target`.
 find-thunk-pres (i ∷ rest) target acc xi j (hv-otherlabel m tl ca-eq nl _ ft-m ∷ all-rest) ft-eq
-  with m ≡ᵇᴵ target in meq
+  with m ≡ᵇᴱ target in meq
 ... | true = 0 , comp1
-           , trans (hit-labelled (thunk target) (thunk m) tl i rest xi ca-eq meq)
+           , trans (hit-labelled (callee target) (callee m) tl i rest xi ca-eq meq)
                    (cong just (sym (+-identityʳ xi)))
   where
     acc≡j : acc ≡ j
@@ -373,8 +373,8 @@ find-thunk-pres (i ∷ rest) target acc xi j (hv-otherlabel m tl ca-eq nl _ ft-m
       d' = proj₁ ih
   in suc d'
    , trans (proj₁ (proj₂ ih)) (sym (+-suc acc d'))
-   , cons-step (thunk target) i rest xi d'
-       (skip-labelled (thunk target) (thunk m) tl i rest xi ca-eq nl meq) (proj₂ (proj₂ ih))
+   , cons-step (callee target) i rest xi d'
+       (skip-labelled (callee target) (callee m) tl i rest xi ca-eq nl meq) (proj₂ (proj₂ ih))
 
 ------------------------------------------------------------------------
 -- find-label preservation: a flat jump landing at flat index j lands at
@@ -404,7 +404,7 @@ find-label-pres (i ∷ rest) target acc xi j (hv-otherlabel m tl ca-eq nl fl-p _
   in suc d'
    , trans (proj₁ (proj₂ ih)) (sym (+-suc acc d'))
    , cons-step (once target) i rest xi d'
-       (skip-labelled (once target) (thunk m) tl i rest xi ca-eq nl refl) (proj₂ (proj₂ ih))
+       (skip-labelled (once target) (callee m) tl i rest xi ca-eq nl refl) (proj₂ (proj₂ ih))
 find-label-pres (i ∷ rest) target acc xi j (hv-clabel m ca-eq fl-c _ ∷ all-rest) fl-eq
   with m ≡ᵇᴵ target in meq
 ... | true = 0 , comp1
@@ -443,9 +443,9 @@ find-label-corr prog target xi j fl-eq
 -- …and the CALL's, the same statement over the `thunk` provenance: the flat
 -- machine's `find-thunk` and the emitted call's label resolution land on the
 -- same block. This is what `instr-call-closure`'s block-step consumes.
-find-thunk-corr : ∀ (prog : AbstractTrace) (target : LabelId) (xi j : ℕ)
+find-thunk-corr : ∀ (prog : AbstractTrace) (target : EntryId) (xi j : ℕ)
   → ft-go prog target 0 ≡ just j
-  → find-label-go (thunk target) (compile-trace prog) xi ≡ just (xi + blk-off prog j)
+  → find-label-go (callee target) (compile-trace prog) xi ≡ just (xi + blk-off prog j)
 find-thunk-corr prog target xi j ft-eq
   with find-thunk-pres prog target 0 xi j (all-headView prog) ft-eq
 ... | (d , j≡0+d , m-eq) rewrite j≡0+d = m-eq
@@ -472,7 +472,7 @@ find-label-none-go (i ∷ rest) target acc xi (hv-plain nl fl-p _ ∷ all-rest) 
         (find-label-none-go rest target (suc acc) (xi + blk-len i) all-rest
                             (trans (sym (fl-p rest target acc)) fl-eq))
 find-label-none-go (i ∷ rest) target acc xi (hv-otherlabel m tl ca-eq nl fl-p _ ∷ all-rest) fl-eq =
-  trans (skip-labelled (once target) (thunk m) tl i rest xi ca-eq nl refl)
+  trans (skip-labelled (once target) (callee m) tl i rest xi ca-eq nl refl)
         (find-label-none-go rest target (suc acc) (xi + blk-len i) all-rest
                             (trans (sym (fl-p rest target acc)) fl-eq))
 find-label-none-go (i ∷ rest) target acc xi (hv-clabel m ca-eq fl-c _ ∷ all-rest) fl-eq

@@ -24,7 +24,7 @@
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore using (AbstractInstr)
-open import Once.CCC.Label using (Label; once; thunk; LabelId; _≡ᵇᴵ_)
+open import Once.CCC.Label using (Label; once; thunk; callee; LabelId; _≡ᵇᴵ_; EntryId; _≡ᵇᴱ_)
 open import Data.Bool using (Bool; true; false)
 open import Data.Nat using (ℕ; suc)
 open import Data.List using (List; []; _∷_)
@@ -87,9 +87,11 @@ data HeadView (i : AbstractInstr) : Set where
   -- …and it is the THUNK label specifically (the only producer is `c-thunk`),
   -- which is what lets the same view drive the call scan: there this head is
   -- the MATCH decision, exactly as `hv-clabel` is for the jump scan.
-  hv-otherlabel : (m : LabelId) (tail : List Instr)
-    → compile-abstract i ≡ mk-label (thunk m) ∷ tail
+  -- D245: …an ENTRY label, a closure body's or a program function's (`callee`);
+  -- both scans treat the two alike, and the call scan matches on the entry.
+  hv-otherlabel : (m : EntryId) (tail : List Instr)
+    → compile-abstract i ≡ mk-label (callee m) ∷ tail
     → has-label tail ≡ false
     → (∀ rest tgt acc → fl-go (i ∷ rest) tgt acc ≡ fl-go rest tgt (suc acc))
-    → (∀ rest tgt acc → ft-go (i ∷ rest) tgt acc ≡ ft-match (m ≡ᵇᴵ tgt) rest tgt acc)
+    → (∀ rest tgt acc → ft-go (i ∷ rest) tgt acc ≡ ft-match (m ≡ᵇᴱ tgt) rest tgt acc)
     → HeadView i

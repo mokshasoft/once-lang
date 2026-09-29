@@ -41,7 +41,7 @@ import Once.CCC.Target.X86-32.Semantics as X
 import Once.CCC.Target.X86-32.Syntax as XS
 open import Once.CCC.Target.X86-32.Syntax
   using ( Instr; Program
-        ; mov; lea; add; sub; cmp; test; jmp; je; jne; call; call-sym
+        ; mov; lea; add; sub; cmp; test; jmp; je; jne; call; call-sym; call-l
         ; ret; push; pop; nop; ud2; label; mov-code; jmp-l
         ; Operand; reg; imm; esp; slots)
 open import Once.CCC.Target.X86-32.AbstractToX86-32 using (compile-abstract; compile-trace)
@@ -66,6 +66,7 @@ is-label? (je _) = false
 is-label? (jne _) = false
 is-label? (call _) = false
 is-label? (call-sym _) = false
+is-label? (call-l _) = false
 is-label? ret = false
 is-label? (push _) = false
 is-label? (pop _) = false
@@ -91,6 +92,7 @@ skip-law t (je _) rest xi _ = refl
 skip-law t (jne _) rest xi _ = refl
 skip-law t (call _) rest xi _ = refl
 skip-law t (call-sym _) rest xi _ = refl
+skip-law t (call-l _) rest xi _ = refl
 skip-law t ret rest xi _ = refl
 skip-law t (push _) rest xi _ = refl
 skip-law t (pop _) rest xi _ = refl
@@ -162,7 +164,8 @@ headView (instr-load-const p v) = hv-plain (const-no-label p v) (λ _ _ _ → re
 headView (instr-case-on-tag f g) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
 headView (instr-reg-op op) = hv-plain (reg-op-no-label op) (λ _ _ _ → refl) (λ _ _ _ → refl)
 headView (instr-ctrl (c-label m)) = hv-clabel m refl (λ _ _ _ → refl) (λ _ _ _ → refl)
-headView (instr-ctrl (c-thunk m b)) =
+headView (instr-ctrl (c-call-fn f)) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
+headView (instr-ctrl (c-entry m b)) =
   hv-otherlabel m (sub (reg esp) (imm (slots b)) ∷ []) refl refl
                 (λ _ _ _ → refl) (λ _ _ _ → refl)
 headView (instr-ctrl (c-ret b)) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
