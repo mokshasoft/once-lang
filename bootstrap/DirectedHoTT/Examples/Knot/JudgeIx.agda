@@ -1,3 +1,6 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
 ------------------------------------------------------------------------
 -- OCP-0009 · KNOT — the typing judgement's INDEX: the Knot index, the subject, the sort-dependent convoy; building and projecting indices; the generic row machinery (`defRow`, `TelLaw`) and the object-level pieces rows share (`DF`, `⌜Tm⌝`, `mc`).
 ------------------------------------------------------------------------

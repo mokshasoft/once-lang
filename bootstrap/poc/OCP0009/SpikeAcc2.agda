@@ -1,3 +1,6 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
 {-# OPTIONS --prop #-}
 -- SPIKE 7 (OPTION 1, SCALED) — the gating test for the Acc transform of NbEPDirDTTChMF.
 --

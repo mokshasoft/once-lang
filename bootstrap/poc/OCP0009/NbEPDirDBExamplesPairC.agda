@@ -1,3 +1,6 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
 -- OCP-0009 · EXAMPLES — THE SAME PAIR-CARRIER FUNCTION UNDER `AmrecC`.
 --
 -- ⚠ PROMOTED FROM A SPIKE 2026-08-21.  Standing rule: finished library AND

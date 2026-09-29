@@ -1,3 +1,6 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
 ------------------------------------------------------------------------
 -- OCP-0009 · LIB — NUMERALS, AND THE ONE FACT THAT MAKES THEM USEFUL:
 -- `plusTm` ON TWO NUMERALS REDUCES TO A NUMERAL.

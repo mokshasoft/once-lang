@@ -1,3 +1,6 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
 ------------------------------------------------------------------------
 -- OCP-0009 · KNOT — the kernel's NAMED SUBSTITUTIONS, object-level: the
 -- environments `Spec/Typing` uses in its rules (`nrs`, `pairS`, `fsucS`,

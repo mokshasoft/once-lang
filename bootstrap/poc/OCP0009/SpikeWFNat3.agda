@@ -1,3 +1,6 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
 {-# OPTIONS --prop #-}
 -- SPIKE 3: can the NATURALITY layer be stated so it does NOT defeat the structural checker?
 --

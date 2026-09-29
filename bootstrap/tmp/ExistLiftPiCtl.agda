@@ -1,3 +1,6 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
 {-# OPTIONS --safe #-}
 -- ExistLiftPos + a Π clause in ⊩₀ (the real model has one; the recorded
 -- spike did not).  If this is rejected, the existential ILift is not

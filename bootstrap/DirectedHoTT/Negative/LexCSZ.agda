@@ -1,3 +1,6 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
 ------------------------------------------------------------------------
 -- OCP-0009 — LEXREC BRANCH (S,0) ASSEMBLED, at an ABSTRACT AMBIENT
 -- CONTEXT.  Option C: there is no Γ₅.  See NbEPDirDBExamplesLexC.

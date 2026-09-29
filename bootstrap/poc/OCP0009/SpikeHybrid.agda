@@ -1,3 +1,6 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
 {-# OPTIONS --prop #-}
 -- SPIKE 4 — THE HYBRID.  CI/TI/MI/envO fuel-free (SpikeWF); nat-TI/nat-MI keep a FUEL argument,
 -- but their CONCLUSIONS stay bound-free because TI/MI carry no bound.

@@ -1,3 +1,6 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
 ------------------------------------------------------------------------
 -- OCP-0009 · KNOT — the `⊢` rows' shared machinery (D077):
 --   * `CaseRow` — a row whose conclusion TYPE is a constructor pattern

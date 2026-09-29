@@ -1,3 +1,6 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
 ------------------------------------------------------------------------
 -- OCP-0009 — BRANCH (S,S), SHARED DATA:  context, the two recursor
 -- arguments as raw terms, and their expected types.

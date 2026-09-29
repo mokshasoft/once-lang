@@ -1,3 +1,6 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
 {-# OPTIONS --safe #-}
 -- Syntactic single-substitution metatheory for the Church calculus NbEPDirDTTCh.
 -- SubW = the family extSᵏ(single u) of typed substitutions, given by PRIMITIVE constructors

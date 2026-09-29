@@ -1,3 +1,6 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
 {-# OPTIONS --safe #-}
 -- SPIKE-LEVITATION S4 — the TAG TYPE, and the constructor LIST as SUGAR.
 --

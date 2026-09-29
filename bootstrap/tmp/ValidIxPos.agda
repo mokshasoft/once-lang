@@ -1,3 +1,6 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
 {-# OPTIONS --safe #-}
 -- ★ INDEX-DEPENDENT interpretation over VALID indices, respecting the
 --   model's law (gates 6/6b, ExistLiftPi): nothing INSIDE the ⊩₀ block may

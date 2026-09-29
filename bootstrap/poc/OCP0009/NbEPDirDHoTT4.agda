@@ -1,3 +1,6 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
 ------------------------------------------------------------------------
 -- OCP-0009 · dHoTT step 42 (M3+refinements 3,4) — full dHoTT kernel, with a
 --   COVARIANT function hom and an OBJECT directed-path composition.

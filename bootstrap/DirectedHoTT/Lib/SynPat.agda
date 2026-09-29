@@ -1,3 +1,6 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
 ------------------------------------------------------------------------
 -- OCP-0009 · Lib — ★★ A NESTED PATTERN: a `Desc`-valued case on a
 -- syntax term that has ONE live row (D077).

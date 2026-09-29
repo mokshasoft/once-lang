@@ -1,3 +1,6 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
 ------------------------------------------------------------------------
 -- OCP-0009 · dHoTT — ★ ERASURE IS SOUND: the annotated kernel means the
 --                      unannotated one.  (PLAN-BIDI §3d)

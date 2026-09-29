@@ -1,3 +1,6 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
 {-# OPTIONS --prop #-}
 -- SPIKE (risk #2): does a concrete measure make the fuel-sufficiency BOUNDS close?
 -- KEY DESIGN: measure the naturality lemmas by the RENAMED (target) structure, and let dsz

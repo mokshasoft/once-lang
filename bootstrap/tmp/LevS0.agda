@@ -1,3 +1,6 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
 {-# OPTIONS --safe #-}
 -- SPIKE-LEVITATION S0 — STRATIFICATION.  Descriptions are TERMS; their
 -- meaning is their MEMBERSHIP in the LARGE type `IDescT` (level 1), which

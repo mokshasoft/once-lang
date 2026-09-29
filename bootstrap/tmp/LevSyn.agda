@@ -1,3 +1,6 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
 {-# OPTIONS --safe #-}
 -- SPIKE-LEVITATION: generic syntax over an operator table (binder count per
 -- argument), one traversal, and the σ-calculus lemmas — ONCE, for S2 and S3.

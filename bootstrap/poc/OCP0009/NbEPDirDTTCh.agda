@@ -1,3 +1,6 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
 ------------------------------------------------------------------------
 -- OCP-0009 · dHoTT step 43d — RAW-FAITHFUL DEPENDENT SOUNDNESS (M3c), the grind.
 --   A CHURCH-STYLE genuinely-dependent calculus (domain-annotated `lam`, so

@@ -1,3 +1,6 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
 ------------------------------------------------------------------------
 -- OCP-0009 · W1e — `fund` is NOT assembly.  Two findings, both machine-checked:
 --   the relation is not total over `RTy`, and it MUST BE STRATIFIED BY LEVEL.

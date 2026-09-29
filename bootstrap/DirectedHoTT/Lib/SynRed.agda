@@ -1,3 +1,6 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
 ------------------------------------------------------------------------
 -- OCP-0009 · LIB — a SUBSTITUTION-NATURAL operation is ⟶*-MONOTONE in its
 -- arguments, and a tuple's projections reduce to its components.

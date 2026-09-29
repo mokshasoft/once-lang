@@ -1,3 +1,6 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
 ------------------------------------------------------------------------
 -- OCP-0009 · G2 — CODE CANONICITY, CLOSED PROGRESS, and ★ CONSISTENCY
 --                 of the full W2/W2b kernel.

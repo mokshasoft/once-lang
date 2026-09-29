@@ -1,3 +1,6 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
 ------------------------------------------------------------------------
 -- OCP-0009 · Lib — ★ SUBSTITUTION of a `Lib/Syn` syntax: the traversal at
 -- the kit whose values are TERMS of the variable sort.

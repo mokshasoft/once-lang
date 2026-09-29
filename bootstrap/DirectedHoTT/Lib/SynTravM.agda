@@ -1,3 +1,6 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
 ------------------------------------------------------------------------
 -- OCP-0009 · Lib — ★★★ THE GENERIC TRAVERSAL, assembled: the one method
 -- of a `Lib/Syn` syntax at the traversal's motive, and the traversal

@@ -1,3 +1,6 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
 {-# OPTIONS --prop #-}
 -- SPIKE 2: does the NATURALITY layer survive fuel-free?  SpikeFuel.agda was written precisely
 -- because of the cycle MI→wkTI→nat-TI→nat-MI→MI.  SpikeWF.agda showed CI/TI/MI terminate

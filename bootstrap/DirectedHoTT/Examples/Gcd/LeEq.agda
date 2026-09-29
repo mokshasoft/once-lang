@@ -1,3 +1,6 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
 ------------------------------------------------------------------------
 -- OCP-0009 — GAP A, EQUATION 4: `gcd (suc a , suc b) = gcd (suc a , b ∸ a)`
 --             PROPOSITIONALLY, AT VARIABLES.  (Route 8 for `⊢S3s`.)

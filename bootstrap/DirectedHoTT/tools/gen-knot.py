@@ -35,6 +35,8 @@ import os, re, sys
 ROOT = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 SYNTAX = os.path.join(ROOT, "Spec", "Syntax.agda")
 OUTDIR = os.path.join(ROOT, "Examples", "Knot")
+# the licence header every Agda file in bootstrap/ carries
+COPYRIGHT = "-- SPDX-License-Identifier: AGPL-3.0-or-later\n-- Copyright (C) 2025-2026 Jonas Claesson\n\n"
 
 SORTS = {"RTy": 0, "RTm": 1}
 
@@ -540,6 +542,7 @@ def main():
     check = "--check" in sys.argv
     os.makedirs(OUTDIR, exist_ok=True)
     stale = []
+    outs = {fn: COPYRIGHT + txt for fn, txt in outs.items()}
     for fn, txt in outs.items():
         p = os.path.join(OUTDIR, fn)
         if check:

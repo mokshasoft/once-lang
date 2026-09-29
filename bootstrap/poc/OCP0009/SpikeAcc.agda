@@ -1,3 +1,6 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
 {-# OPTIONS --prop #-}
 -- SPIKE 6 (OPTION 1): keep the MEASURE the naturality layer provably needs (§4.2⁷), but move it
 -- OUT of the types via Acc + BOUND-FREE WRAPPERS.  Statements then carry no bounds, so subTI is

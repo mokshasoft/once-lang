@@ -1,3 +1,6 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
 ------------------------------------------------------------------------
 -- OCP-0009 · dHoTT step 42 (M3) — SOUNDNESS OF THE FULL dHoTT KERNEL:
 --   dependency + directed identity `Hom` + object universe `U`/`El` +
