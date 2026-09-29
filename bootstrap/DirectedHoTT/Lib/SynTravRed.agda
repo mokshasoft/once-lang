@@ -34,6 +34,10 @@ open import DirectedHoTT.Lib.SynView using ( DihV; dihV-red )
 open import DirectedHoTT.Lib.SynTrav
 open import DirectedHoTT.Lib.SynTravM
 open import DirectedHoTT.Lib.MethAt using ( methAt )
+open import DirectedHoTT.Lib.NatFib using ( methN; methN-sub; ιN-s )
+open import DirectedHoTT.Lib.FinFam using ( FinD; ffz; ffs )
+open import DirectedHoTT.Lib.Wk using ( sub-w⁴; sub-w³ )
+open import DirectedHoTT.Lib.MethAt using ( methAt-β; methAt-sub )
 open import DirectedHoTT.Spec.Syntax using ( cong₃; cong₄ )
 
 private
@@ -252,3 +256,147 @@ module TravRed {sg : Sig n} (ok : SigOK n sg) (κ : Kit n sg) (vok : VarsAt sg (
   trav-var : {s c k : ℕ} {shs : Shapes c} {d p e f : RTm Γ} → NthG sg s shs → NthSh shs k vʰ →
              trav s d (conₗ k p) e f ⟶* app (app NODE e) (app f (fst p))
   trav-var ng nh = trav-node ng nh
+
+------------------------------------------------------------------------
+-- 4. ★★ ENVIRONMENTS COMPUTE: `(f , u)` at zero is `u`, at `fsuc y` it is
+--    `f y`; the LIFTED environment at zero is the fresh variable, at
+--    `fsuc y` the old value weakened.  (Assumes the kit's `V0`, `WK`
+--    closed; `refl` at a concrete signature.)
+------------------------------------------------------------------------
+
+FinD-sub : (σ : Sub Δ Θ) → subTm σ (FinD {Δ}) ≡ FinD
+FinD-sub σ = refl
+
+-- three β at once, and a triple weakening cancelled by them
+σ3 : RTm Γ → RTm Γ → RTm Γ → Sub (((Γ ∙) ∙) ∙) Γ
+σ3 a b c vz                = c
+σ3 a b c (vs vz)           = b
+σ3 a b c (vs (vs vz))      = a
+σ3 a b c (vs (vs (vs x)))  = var x
+
+β3 : (X : RTm (((Γ ∙) ∙) ∙)) (a b c : RTm Γ) → app (app (app (lam (lam (lam X))) a) b) c ⟶* subTm (σ3 a b c) X
+β3 {Γ} X a b c =
+  step (ξ-appˡ (ξ-appˡ (β (lam (lam X)) a)))
+  (step (ξ-appˡ (β _ b))
+  (step (β _ c)
+    (subst (λ z → z ⟶* subTm (σ3 a b c) X) (sym eq) done)))
+  where
+    pt : (x : Var (((Γ ∙) ∙) ∙)) → subTm (single c) (subTm (extS (single b)) (extS (extS (single a)) x)) ≡ σ3 a b c x
+    pt vz               = refl
+    pt (vs vz)          = wk-cancel-tm c b
+    pt (vs (vs vz))     = trans (cong (subTm (single c)) (trans (wkS (single b) (renTm vs a)) (cong (renTm vs) (wk-cancel-tm b a))))
+                                (wk-cancel-tm c a)
+      where open import DirectedHoTT.Metatheory.SubjectReductionBase using () renaming ( wk-sub to wkS )
+    pt (vs (vs (vs x))) = refl
+    eq : subTm (single c) (subTm (extS (single b)) (subTm (extS (extS (single a))) X)) ≡ subTm (σ3 a b c) X
+    eq = trans (cong (subTm (single c)) (subTm-subTm X)) (trans (subTm-subTm X) (subTm-cong pt X))
+
+σ3-w3 : (a b c t : RTm Γ) → subTm (σ3 a b c) (renTm vs (renTm vs (renTm vs t))) ≡ t
+σ3-w3 a b c t = trans (subTm-renTm (renTm vs (renTm vs t)))
+                (trans (subTm-renTm (renTm vs t))
+                (trans (subTm-renTm t)
+                (trans (subTm-cong (λ x → refl) t) (subTm-id t))))
+
+module EnvRed {sg : Sig n} (ok : SigOK n sg) (κ : Kit n sg)
+              (V0-sub : {Δ Θ : Cx} (σ : Sub Δ Θ) → subTm σ (Kit.V0 κ {Δ}) ≡ Kit.V0 κ)
+              (WK-sub : {Δ Θ : Cx} (σ : Sub Δ Θ) → subTm σ (Kit.WK κ {Δ}) ≡ Kit.WK κ) where
+  open Kit κ using ( V0; WK )
+  open Trav ok κ
+
+  consM-sub : (σ : Sub Δ Θ) (u : RTm Δ) → subTm σ (consM u) ≡ consM (subTm σ u)
+  consM-sub σ u =
+    trans (methN-sub σ (methAt []) (methAt (cz u ∷ cs ∷ [])))
+      (cong₂ methN (methAt-sub σ [])
+        (trans (methAt-sub (extS σ) (cz u ∷ cs ∷ []))
+               (cong (λ z → methAt (lam (lam (lam z)) ∷ cs ∷ [])) (sub-w⁴ u))))
+
+  -- CONS e d u f  =  (f , u)  at  x
+  CONS· : RTm Γ → RTm Γ → RTm Γ → RTm Γ → RTm Γ
+  CONS· e d u f = app (app (app (app CONS e) d) u) f
+
+  private
+    ms : RTm Γ → Cons (Γ ∙) 2
+    ms u = cz u ∷ cs ∷ []
+
+    -- CONS's five binders instantiated: the Fin case, applied to the tail
+    cons-open : (e d u f x : RTm Γ) → app (CONS· e d u f) x ⟶* app (ielim FinD (nsuc d) (consM u) x) f
+    cons-open {Γ} e d u f x =
+      ⟶*-trans (⟶*-appˡ (β4 (lam B) e d u f))
+        (step (β _ x) (subst (λ z → z ⟶* app (ielim FinD (nsuc d) (consM u) x) f) (sym eq) done))
+      where
+        B : RTm (((((Γ ∙) ∙) ∙) ∙) ∙)
+        B = app (ielim FinD (nsuc (var (vs (vs (vs vz))))) (consM (var (vs (vs vz)))) (var vz)) (var (vs vz))
+        S : RTm (((((Γ ∙) ∙) ∙) ∙) ∙) → RTm Γ
+        S t = subTm (single x) (subTm (extS (σ4 e d u f)) t)
+        eq : S B ≡ app (ielim FinD (nsuc d) (consM u) x) f
+        eq = cong₃' (wk-cancel-tm x d)
+                    (trans (cong (subTm (single x)) (consM-sub (extS (σ4 e d u f)) (var (vs (vs vz)))))
+                           (trans (consM-sub (single x) (renTm vs u)) (cong consM (wk-cancel-tm x u))))
+                    (wk-cancel-tm x f)
+          where
+            cong₃' : {a a' M M' c c' : RTm Γ} → a ≡ a' → M ≡ M' → c ≡ c' →
+                     app (ielim FinD (nsuc a) M x) c ≡ app (ielim FinD (nsuc a') M' x) c'
+            cong₃' refl refl refl = refl
+
+  -- ★ (f , u) at zero is u
+  cons-z : {e d u f : RTm Γ} → app (CONS· e d u f) ffz ⟶* u
+  cons-z {Γ} {e} {d} {u} {f} =
+    ⟶*-trans (cons-open e d u f ffz)
+    (⟶*-trans (⟶*-appˡ (ιN-s {D = FinD} {E0 = methAt []} {m = d} {q = pair (tag zero) unit} {ES = methAt (ms u)}))
+    (subst (λ M → app (app (app M (pair (tag zero) unit)) h) f ⟶* u) (sym (methAt-sub (single d) (ms u)))
+      (⟶*-trans (⟶*-appˡ (methAt-β {m = subTm (single d) (cz u)} {p = unit} {h = h} nth-z))
+        (⟶*-trans (β3 _ unit h f)
+          (subst (λ z → z ⟶* u) (sym (trans (cong (subTm (σ3 unit h f)) cancel) (σ3-w3 unit h f u))) done)))))
+    where
+      h = dih FinD (consM u) (app FinD (nsuc d)) (pair (tag zero) unit)
+      cancel : subTm (extS (extS (extS (single d)))) (renTm vs (renTm vs (renTm vs (renTm vs u))))
+               ≡ renTm vs (renTm vs (renTm vs u))
+      cancel = trans (sub-w³ {σ = single d} (renTm vs u)) (cong (λ z → renTm vs (renTm vs (renTm vs z))) (wk-cancel-tm d u))
+
+  -- ★ (f , u) at a successor is f
+  cons-s : {e d u f y : RTm Γ} → app (CONS· e d u f) (ffs y) ⟶* app f y
+  cons-s {Γ} {e} {d} {u} {f} {y} =
+    ⟶*-trans (cons-open e d u f (ffs y))
+    (⟶*-trans (⟶*-appˡ (ιN-s {D = FinD} {E0 = methAt []} {m = d} {q = pair (tag (suc zero)) (pair y unit)} {ES = methAt (ms u)}))
+    (subst (λ M → app (app (app M (pair (tag (suc zero)) (pair y unit))) h) f ⟶* app f y) (sym (methAt-sub (single d) (ms u)))
+      (⟶*-trans (⟶*-appˡ (methAt-β {m = subTm (single d) cs} {p = pair y unit} {h = h} (nth-s nth-z)))
+        (⟶*-trans (β3 _ (pair y unit) h f) (⟶*-appʳ (step (βfst y unit) done))))))
+    where
+      h = dih FinD (consM u) (app FinD (nsuc d)) (pair (tag (suc zero)) (pair y unit))
+
+  -- LIFT e d f  =  (↑ f , the fresh variable)
+  LIFT· : RTm Γ → RTm Γ → RTm Γ → RTm Γ
+  LIFT· e d f = app (app (app LIFT e) d) f
+
+  private
+    lift-open : (e d f x : RTm Γ) →
+                app (LIFT· e d f) x ⟶* app (CONS· (nsuc e) d (app V0 e) (lam (app (app WK (renTm vs e)) (app (renTm vs f) (var vz))))) x
+    lift-open {Γ} e d f x = ⟶*-appˡ (⟶*-trans (β3 LB e d f) (subst (λ z → subTm (σ3 e d f) LB ⟶* z) eq done))
+      where
+        LB : RTm (((Γ ∙) ∙) ∙)
+        LB = app (app (app (app CONS (nsuc (var (vs (vs vz))))) (var (vs vz))) (app V0 (var (vs (vs vz)))))
+                 (lam (app (app WK (var (vs (vs (vs vz))))) (app (var (vs vz)) (var vz))))
+        eq : subTm (σ3 e d f) LB ≡ CONS· (nsuc e) d (app V0 e) (lam (app (app WK (renTm vs e)) (app (renTm vs f) (var vz))))
+        eq = cL (V0-sub (σ3 e d f)) (WK-sub (extS (σ3 e d f)))
+          where
+            cL : {V V' : RTm Γ} {W W' : RTm (Γ ∙)} → V ≡ V' → W ≡ W' →
+                 app (app (app (app (subTm (σ3 e d f) CONS) (nsuc e)) d) (app V e))
+                     (lam (app (app W (renTm vs e)) (app (renTm vs f) (var vz))))
+                 ≡ CONS· (nsuc e) d (app V' e) (lam (app (app W' (renTm vs e)) (app (renTm vs f) (var vz))))
+            cL refl refl = refl
+
+  -- ★ the lifted environment at zero: the fresh variable
+  lift-z : {e d f : RTm Γ} → app (LIFT· e d f) ffz ⟶* app V0 e
+  lift-z {e = e} {d} {f} = ⟶*-trans (lift-open e d f ffz) cons-z
+
+  -- ★ …at a successor: the old value, weakened
+  lift-s : {e d f y : RTm Γ} → app (LIFT· e d f) (ffs y) ⟶* app (app WK e) (app f y)
+  lift-s {e = e} {d} {f} {y} =
+    ⟶*-trans (lift-open e d f (ffs y)) (⟶*-trans cons-s
+      (step (β _ y) (subst (λ z → z ⟶* app (app WK e) (app f y)) (sym eq) done)))
+    where
+      eq : subTm (single y) (app (app WK (renTm vs e)) (app (renTm vs f) (var vz))) ≡ app (app WK e) (app f y)
+      eq = cW (WK-sub (single y)) (wk-cancel-tm y e) (wk-cancel-tm y f)
+        where
+          cW : {W W' a a' b b' : RTm _} → W ≡ W' → a ≡ a' → b ≡ b' → app (app W a) (app b y) ≡ app (app W' a') (app b' y)
+          cW refl refl refl = refl

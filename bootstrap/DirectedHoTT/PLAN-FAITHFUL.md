@@ -52,3 +52,10 @@ ships REDUCTION lemmas for its methods. `Lib/SynTrav` ships typings only.
     closed codes; `refl` at a concrete signature) as module parameters.
   - Built from `Sorted.ιₛ-red`, `fibₛ-β`, `SynView.dihV-red` and one
     generic `β4`. Checks in 14 s.
+- ✅ F2 library half (2026-09-29) `Lib/SynTravRed` §4: ENVIRONMENTS
+  COMPUTE, generically. `cons-z`/`cons-s` (`(f , u)` at zero is `u`, at
+  `fsuc y` it is `f y`) and `lift-z`/`lift-s` (the lifted environment
+  gives the fresh variable, or the old value weakened by `WK`).
+  - New pieces: `consM-sub`, `FinD-sub` (`refl`) and `β3`.
+  - The kit's `V0`/`WK` closedness is a module parameter (`refl` at the
+    Knot).
