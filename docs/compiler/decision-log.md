@@ -15765,3 +15765,31 @@ user's decision on how to stop that class of mistake:
 **Baseline at introduction** (source-level): `Parser/Generic/Sound` 14,
 `Parser/Generic/Parser` 1, `Arith/Machine/Recognise` 2, `Arith/Machine/Rewrite` 1. Four
 modules, 18 pragmas, all on the implementation side and all blocking `--safe`.
+
+## D243 — A POLYMORPHIC DEFINITION IS TYPED ONCE, AT ITS SCHEMA WITH RIGID PARAMETERS (PLAN 0.103 PHASE 6d) (2026-09-29)
+
+**Relates**: D236–D240, D241/D242, OCP-0009 (the DT POC, `origin/ocp-0009-levitation`).
+
+**Decision (user, 2026-09-29).** `d : ∀ā.T = e` is well-typed iff the ONE surface judgment
+types `e` at `T` with each `aᵢ` a RIGID type constant. The surface `Type` gains
+`rigid k i`: the definition's `i`-th parameter, of kind `k`. Two alternatives were rejected:
+* a second typing judgment over open types, which would mean two specs and a coherence
+  obligation;
+* type variables throughout the surface judgment, which plan 0.103 §6 already rejected.
+
+* **Kinds are read off the schema.** A parameter occurring under a functor constant
+  (`PK`) is `base` (it must be a base type for `WellFormedF` to hold at its instances);
+  every other parameter is `any`. `IsBaseType (rigid base i)` holds, and nothing else is
+  known about a rigid constant: the body is parametric by construction.
+* **Elaboration then renaming.** The body's derivation elaborates to the core (6b).
+  `⌈rigid k i⌉ = var i` maps it onto the core entry `Δ ⊩ ∅ ⊢ t ∷ ⌈T⌉`, typed once
+  (D239). A use is `ref d τ` at a kind-respecting instance (`tsubst`/`instantiate`,
+  D240). The per-use body premise of `t-var-poly-instantiate`/`d-poly` is deleted, and a
+  `Respects`-kinds premise replaces it.
+
+**Matches the DT POC.** There, polymorphism is Π over a universe, `(A : U₀) → El₀ A → El₀ A`
+(`polyId`, `NbEPUnivH`). The body is typed once in a context extended by `A`, where `El₀ A`
+is a rigid neutral, and a use is application. `rigid k i` is the non-dependent shadow of
+that context variable: its index is the parameter's position in the definition's telescope
+Δ, and its kind says which universe it ranges over (`base` ⊂ `any`). When OCP-0009 lands,
+the constants become genuine context variables and nothing needs translating.
