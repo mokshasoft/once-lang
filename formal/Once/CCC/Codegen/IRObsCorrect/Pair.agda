@@ -898,17 +898,20 @@ module PairC {FS : FrameSemantics} where
           subst (λ m → fetch prog (k + m) ≡ just i) (sym endG) (tail-span k i eq)
 
         tail-chain : FlatSteps prog 9 fsG u10
+        -- Every link lands on its NAMED state `uₖ` (`step-at`), so no link's
+        -- state is re-derived by conversion (profile 2026-09-29: this chain
+        -- was 52% of `PairAssemble.agda`'s checking).
         tail-chain =
-            (liveG , tfetch 0 (store-at-slot PS.snd-stash)   refl)
-          ∷ (nhU2  , tfetch 1 (instr-alloc-heap 2)           refl)
-          ∷ (nhU3  , tfetch 2 (store-at-slot PS.pair-stash)  refl)
-          ∷ (nhU4  , tfetch 3 mov-to-input                   refl)
-          ∷ (nhU5  , tfetch 4 (load-from-slot PS.fst-stash)  refl)
-          ∷ (nhU6  , tfetch 5 store-indirect                 refl)
-          ∷ (nhU7  , tfetch 6 (load-from-slot PS.snd-stash)  refl)
-          ∷ (nhU8  , tfetch 7 store-indirect-suc             refl)
-          ∷ (nhU9  , tfetch 8 (load-from-slot PS.pair-stash) refl)
-          ∷ []
+            step-at u2  (liveG , tfetch 0 (store-at-slot PS.snd-stash)   refl) refl
+          ( step-at u3  (nhU2  , tfetch 1 (instr-alloc-heap 2)           refl) refl
+          ( step-at u4  (nhU3  , tfetch 2 (store-at-slot PS.pair-stash)  refl) refl
+          ( step-at u5  (nhU4  , tfetch 3 mov-to-input                   refl) refl
+          ( step-at u6  (nhU5  , tfetch 4 (load-from-slot PS.fst-stash)  refl) refl
+          ( step-at u7  (nhU6  , tfetch 5 store-indirect                 refl) refl
+          ( step-at u8  (nhU7  , tfetch 6 (load-from-slot PS.snd-stash)  refl) refl
+          ( step-at u9  (nhU8  , tfetch 7 store-indirect-suc             refl) refl
+          ( step-at u10 (nhU9  , tfetch 8 (load-from-slot PS.pair-stash) refl) refl
+            [] ))))))))
 
         ----------------------------------------------------------------
         -- ══ THE SEVEN FIELDS ══
