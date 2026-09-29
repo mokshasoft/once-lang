@@ -67,6 +67,20 @@ module FlatStepsAPI {FS : FrameSemantics} where
 
   infixr 5 _∷_
 
+  -- A link whose successor state is NAMED. `_∷_` indexes the rest of the chain
+  -- by `flat-exec-instr i prog fs`, so in a literal chain every state is
+  -- inferred as a nest of k steps, and every premise stated at a named state
+  -- (a setup's `aₖ`) forces conversion to evaluate both k-step chains and
+  -- compare them: quadratic, and it was 80% of `Apply.agda`'s checking
+  -- (profile 2026-09-29). Here the step is ONE equation between named states,
+  -- proved once, and the rest of the chain is typed at the name.
+  step-at : ∀ {prog fs k fs''} {i : AbstractInstr} (fs' : FlatState)
+          → (halted (floc fs) ≡ false × fetch prog (fpc fs) ≡ just i)
+          → flat-exec-instr i prog fs ≡ fs'
+          → FlatSteps prog k fs' fs''
+          → FlatSteps prog (suc k) fs fs''
+  step-at {i = i} fs' h eq rest = h ∷ subst (λ z → FlatSteps _ _ z _) (sym eq) rest
+
   -- Peel a whole chain off the fuel (mirrors `StepLemmas.exec-steps`):
   -- a `k`-step chain reduces `exec-flat (k + b)` from `fs` to
   -- `exec-flat b` from `fs'`.

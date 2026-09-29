@@ -174,15 +174,27 @@ module ApplyC {FS : FrameSemantics} where
 
               run17 : FlatSteps prog 17 (entry-flat base s alloc cl)
                         (flat-exec-instr instr-call-closure prog ASP.a16)
-              run17 = (OB.nh0 , span 0 _ refl) ∷ (OB.nh1 , span 1 _ refl)
-                    ∷ (OB.nh2 , span 2 _ refl) ∷ (OB.nh3 , span 3 _ refl)
-                    ∷ (OB.nh4 , span 4 _ refl) ∷ (OB.nh5 , span 5 _ refl)
-                    ∷ (OB.nh6 , span 6 _ refl) ∷ (OB.nh7 , span 7 _ refl)
-                    ∷ (OB.nh8 , span 8 _ refl) ∷ (OB.nh9 , span 9 _ refl)
-                    ∷ (OB.nh10 , span 10 _ refl) ∷ (OB.nh11 , span 11 _ refl)
-                    ∷ (OB.nh12 , span 12 _ refl) ∷ (OB.nh13 , span 13 _ refl)
-                    ∷ (OB.nh14 , span 14 _ refl) ∷ (OB.nh15 , span 15 _ refl)
-                    ∷ (OB.nh16 , span 16 _ refl) ∷ []
+              -- Every link lands on the setup's NAMED state (`step-at`): the
+              -- step is one equation between names, not a k-step chain
+              -- re-derived and compared (profile 2026-09-29).
+              run17 =
+                  step-at ASP.a1 (OB.nh0 , span 0 _ refl) refl
+                  (step-at ASP.a2 (OB.nh1 , span 1 _ refl) refl
+                  (step-at ASP.a3 (OB.nh2 , span 2 _ refl) refl
+                  (step-at ASP.a4 (OB.nh3 , span 3 _ refl) refl
+                  (step-at ASP.a5 (OB.nh4 , span 4 _ refl) refl
+                  (step-at ASP.a6 (OB.nh5 , span 5 _ refl) refl
+                  (step-at ASP.a7 (OB.nh6 , span 6 _ refl) refl
+                  (step-at ASP.a8 (OB.nh7 , span 7 _ refl) refl
+                  (step-at ASP.a9 (OB.nh8 , span 8 _ refl) refl
+                  (step-at ASP.a10 (OB.nh9 , span 9 _ refl) refl
+                  (step-at ASP.a11 (OB.nh10 , span 10 _ refl) refl
+                  (step-at ASP.a12 (OB.nh11 , span 11 _ refl) refl
+                  (step-at ASP.a13 (OB.nh12 , span 12 _ refl) refl
+                  (step-at ASP.a14 (OB.nh13 , span 13 _ refl) refl
+                  (step-at ASP.a15 (OB.nh14 , span 14 _ refl) refl
+                  (step-at ASP.a16 (OB.nh15 , span 15 _ refl) refl
+                  (((OB.nh16 , span 16 _ refl) ∷ [])))))))))))))))))
 
               run : FlatSteps prog (17 + CalleeRun.steps crun)
                       (entry-flat base s alloc cl) (CalleeRun.settle crun)

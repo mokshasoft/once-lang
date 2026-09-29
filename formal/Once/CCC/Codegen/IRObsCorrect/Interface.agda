@@ -63,7 +63,7 @@ module Core {FS : FrameSemantics} where
   open RecSchemeSemantics {FS} using (exec-abstract-preserves-heap-ref) public
 
   open FlatMachine {FS} public
-  open FlatStepsAPI {FS} using (FlatSteps; []; _∷_; exec-flat-steps; FlatSteps-++; FlatSteps-prefix; FlatSteps-reloc) public
+  open FlatStepsAPI {FS} using (FlatSteps; []; _∷_; step-at; exec-flat-steps; FlatSteps-++; FlatSteps-prefix; FlatSteps-reloc) public
   open AbstractExec {FS} using (exec-abstract; exec-sigop-halts; exec-sigop-halts-of; exec-sigop-output-of; pure-sigop-output; pure-sigop-out-aux; pure-sigop-out-val; readTyped; readReg-typed) public
   open FrontierInvariant {FS} using (BeforeFrontier; frontier-monotone) public
   open ClosureWellFormedDef {FS}
