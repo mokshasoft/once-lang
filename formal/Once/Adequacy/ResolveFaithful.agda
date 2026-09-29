@@ -134,6 +134,7 @@ sigOp-σ-irrel {A = T.Int}        σ σ′ s conc dγ = refl
 sigOp-σ-irrel {A = T.Float}      σ σ′ s conc dγ = refl
 sigOp-σ-irrel {A = T.Str}        σ σ′ s conc dγ = refl
 sigOp-σ-irrel {A = T.Buffer}     σ σ′ s conc dγ = refl
+sigOp-σ-irrel {A = T.rigid _ _}  σ σ′ s conc dγ = refl
 sigOp-σ-irrel {A = _ T.* _}      σ σ′ s conc dγ = refl
 sigOp-σ-irrel {A = _ T.+ _}      σ σ′ s conc dγ = refl
 sigOp-σ-irrel {A = T.μ-type _}   σ σ′ s conc dγ = refl

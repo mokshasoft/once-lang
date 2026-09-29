@@ -15,6 +15,7 @@
 ------------------------------------------------------------------------
 
 open import Data.Nat using (ℕ)
+import Once.Type
 open import Once.Spec.Core.PolyTy using (Sig)
 
 module Once.Spec.Core.TySubst {s : ℕ} (S : Sig s) where
@@ -37,7 +38,7 @@ open G using (primDom; primCod)
 ------------------------------------------------------------------------
 
 KSub : ∀ {m k} → KCtx m → KCtx k → Sub m k → Set
-KSub Δ Δ′ σ = ∀ i → Δ i ≡ base → Base Δ′ (σ i)
+KSub Δ Δ′ σ = ∀ i → Δ i ≡ Once.Type.k-base → Base Δ′ (σ i)
 
 base-⟨⟩ : ∀ {m k} {Δ : KCtx m} {Δ′ : KCtx k} {σ : Sub m k} {A} → KSub Δ Δ′ σ → Base Δ A → Base Δ′ (A ⟨ σ ⟩)
 base-⟨⟩ r (b-var {i} e) = r i e
@@ -47,6 +48,7 @@ base-⟨⟩ r b-Int    = b-Int
 base-⟨⟩ r b-Float  = b-Float
 base-⟨⟩ r b-Str    = b-Str
 base-⟨⟩ r b-Buffer = b-Buffer
+base-⟨⟩ r b-rigid  = b-rigid
 base-⟨⟩ r (b-Prod a b) = b-Prod (base-⟨⟩ r a) (base-⟨⟩ r b)
 base-⟨⟩ r (b-Sum a b)  = b-Sum (base-⟨⟩ r a) (base-⟨⟩ r b)
 
@@ -65,6 +67,7 @@ mutual
   ⌈⌉-⟨⟩ T.Float σ = refl
   ⌈⌉-⟨⟩ T.Str σ = refl
   ⌈⌉-⟨⟩ T.Buffer σ = refl
+  ⌈⌉-⟨⟩ (T.rigid k i) σ = refl
   ⌈⌉-⟨⟩ (A T.* B) σ = cong₂ _*_ (⌈⌉-⟨⟩ A σ) (⌈⌉-⟨⟩ B σ)
   ⌈⌉-⟨⟩ (A T.+ B) σ = cong₂ _+_ (⌈⌉-⟨⟩ A σ) (⌈⌉-⟨⟩ B σ)
   ⌈⌉-⟨⟩ (A T.⇒[ k ] B) σ = cong₂ (λ a b → a ⇒[ k ] b) (⌈⌉-⟨⟩ A σ) (⌈⌉-⟨⟩ B σ)
@@ -86,6 +89,7 @@ mutual
 <:ₚ-refl Float = sub-float
 <:ₚ-refl Str = sub-str
 <:ₚ-refl Buffer = sub-buffer
+<:ₚ-refl (rigid k i) = sub-rigid
 <:ₚ-refl (A * B) = sub-prod (<:ₚ-refl A) (<:ₚ-refl B)
 <:ₚ-refl (A + B) = sub-sum (<:ₚ-refl A) (<:ₚ-refl B)
 <:ₚ-refl (A ⇒[ mk-kind q π ] B) = sub-arr (<:ₚ-refl A) (<:ₚ-refl B) (⊑π-refl π)
@@ -100,6 +104,7 @@ mutual
 <:ₚ-⟨⟩ σ sub-float  = sub-float
 <:ₚ-⟨⟩ σ sub-str    = sub-str
 <:ₚ-⟨⟩ σ sub-buffer = sub-buffer
+<:ₚ-⟨⟩ σ sub-rigid  = sub-rigid
 <:ₚ-⟨⟩ σ (sub-arr a b g) = sub-arr (<:ₚ-⟨⟩ σ a) (<:ₚ-⟨⟩ σ b) g
 <:ₚ-⟨⟩ σ (sub-prod a b)  = sub-prod (<:ₚ-⟨⟩ σ a) (<:ₚ-⟨⟩ σ b)
 <:ₚ-⟨⟩ σ (sub-sum a b)   = sub-sum (<:ₚ-⟨⟩ σ a) (<:ₚ-⟨⟩ σ b)

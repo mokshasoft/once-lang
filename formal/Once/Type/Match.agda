@@ -227,6 +227,19 @@ mutual
   instantiateAcc PBuffer         Int             _ = nothing
   instantiateAcc PBuffer         Float           _ = nothing
   instantiateAcc PBuffer         Str             _ = nothing
+  -- D243: a rigid parameter is matched only by a schema variable.
+  instantiateAcc PUnit           (rigid _ _)     _ = nothing
+  instantiateAcc PVoid           (rigid _ _)     _ = nothing
+  instantiateAcc (_ P* _)        (rigid _ _)     _ = nothing
+  instantiateAcc (_ P+ _)        (rigid _ _)     _ = nothing
+  instantiateAcc (_ P⇒[ _ ] _)   (rigid _ _)     _ = nothing
+  instantiateAcc (PEff _ _)      (rigid _ _)     _ = nothing
+  instantiateAcc (Pμ-type _)     (rigid _ _)     _ = nothing
+  instantiateAcc (Pν-type _ _)   (rigid _ _)     _ = nothing
+  instantiateAcc PInt            (rigid _ _)     _ = nothing
+  instantiateAcc PFloat          (rigid _ _)     _ = nothing
+  instantiateAcc PStr            (rigid _ _)     _ = nothing
+  instantiateAcc PBuffer         (rigid _ _)     _ = nothing
 
   instantiateFunctor : PolyFunctor → Functor → Subst → Maybe Subst
   instantiateFunctor (PK A)    (K a)   s = instantiateAcc A a s

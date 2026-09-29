@@ -18,7 +18,8 @@ open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 import Once.Type
 open import Once.Type using (Type; Functor; K; Id; _⊕_; _⊗_; Unit; Void; Int; Float; Str; Buffer;
-                             _⇒[_]_; μ-type; ν-type; _≟k_; _≟p_)
+                             _⇒[_]_; μ-type; ν-type; _≟k_; _≟p_; rigid; TKind; k-base; k-any)
+import Data.Nat as ℕ
 
 -- Helpers for ≟T / ≟F matching-constructor cases (avoid `with`-blocks).
 
@@ -83,6 +84,18 @@ open import Once.Type using (Type; Functor; K; Id; _⊕_; _⊗_; Unit; Void; Int
 ≟T-ν-aux _          (no ¬p)    = no λ { refl → ¬p refl }
 ≟T-ν-aux (yes refl) (yes refl) = yes refl
 
+
+-- D243: rigid parameters are equal iff their kinds and positions are.
+_≟tk_ : (k₁ k₂ : TKind) → Dec (k₁ ≡ k₂)
+k-base ≟tk k-base = yes refl
+k-base ≟tk k-any  = no λ ()
+k-any  ≟tk k-base = no λ ()
+k-any  ≟tk k-any  = yes refl
+
+≟T-rigid-aux : ∀ {k₁ k₂ i₁ i₂} → Dec (k₁ ≡ k₂) → Dec (i₁ ≡ i₂) → Dec (rigid k₁ i₁ ≡ rigid k₂ i₂)
+≟T-rigid-aux (no ¬k)    _          = no λ { refl → ¬k refl }
+≟T-rigid-aux _          (no ¬i)    = no λ { refl → ¬i refl }
+≟T-rigid-aux (yes refl) (yes refl) = yes refl
 
 -- | Decidable functor and type equality (mutually recursive)
 mutual
@@ -234,5 +247,29 @@ mutual
   (_ Once.Type.+ _) ≟T ν-type _ _ = no λ ()
   (_ ⇒[ _ ] _) ≟T μ-type _ = no λ ()
   (_ ⇒[ _ ] _) ≟T ν-type _ _ = no λ ()
+  -- D243
+  rigid k₁ i₁ ≟T rigid k₂ i₂ = ≟T-rigid-aux (k₁ ≟tk k₂) (i₁ ℕ.≟ i₂)
+  rigid _ _ ≟T Unit = no λ ()
+  Unit ≟T rigid _ _ = no λ ()
+  rigid _ _ ≟T Void = no λ ()
+  Void ≟T rigid _ _ = no λ ()
+  rigid _ _ ≟T (_ Once.Type.* _) = no λ ()
+  (_ Once.Type.* _) ≟T rigid _ _ = no λ ()
+  rigid _ _ ≟T (_ Once.Type.+ _) = no λ ()
+  (_ Once.Type.+ _) ≟T rigid _ _ = no λ ()
+  rigid _ _ ≟T (_ ⇒[ _ ] _) = no λ ()
+  (_ ⇒[ _ ] _) ≟T rigid _ _ = no λ ()
+  rigid _ _ ≟T μ-type _ = no λ ()
+  μ-type _ ≟T rigid _ _ = no λ ()
+  rigid _ _ ≟T ν-type _ _ = no λ ()
+  ν-type _ _ ≟T rigid _ _ = no λ ()
+  rigid _ _ ≟T Int = no λ ()
+  Int ≟T rigid _ _ = no λ ()
+  rigid _ _ ≟T Float = no λ ()
+  Float ≟T rigid _ _ = no λ ()
+  rigid _ _ ≟T Str = no λ ()
+  Str ≟T rigid _ _ = no λ ()
+  rigid _ _ ≟T Buffer = no λ ()
+  Buffer ≟T rigid _ _ = no λ ()
   -- GuardedT removed: productivity follows from IR totality
   -- TVar removed from Type; now in PolyType (see Once.Type)

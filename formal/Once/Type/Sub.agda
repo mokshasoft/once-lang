@@ -31,10 +31,10 @@ module Once.Type.Sub where
 
 open import Relation.Nullary using (Dec; yes; no; ¬_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂)
-open import Once.Type using (Type; Functor; Quantity; Purity; pure; eff; mk-kind;
+open import Once.Type using (Type; rigid; Functor; Quantity; Purity; pure; eff; mk-kind;
                              Unit; Void; Int; Float; Str; Buffer; _*_; _+_; _⇒[_]_;
                              μ-type; ν-type; _≟q_)
-open import Once.Type.DecEq using (_≟F_)
+open import Once.Type.DecEq using (_≟F_; _≟T_)
 
 ------------------------------------------------------------------------
 -- The grade order: pure ⊑ eff.
@@ -87,6 +87,8 @@ data _<:_ : Type → Type → Set where
   sub-μ      : ∀ {F} → μ-type F <: μ-type F
   -- D233: a pure stream is an effectful one with no effects — covariant in the grade.
   sub-ν      : ∀ {F π π′} → π ⊑π π′ → ν-type F π <: ν-type F π′
+  -- D243: a rigid parameter is related only to itself (and, as every type, above Void).
+  sub-rigid  : ∀ {k i} → rigid k i <: rigid k i
 
 ------------------------------------------------------------------------
 -- Coherence: at most one derivation.
@@ -105,6 +107,7 @@ data _<:_ : Type → Type → Set where
 <:-unique (sub-sum a b)  (sub-sum a′ b′)  = cong₂ sub-sum  (<:-unique a a′) (<:-unique b b′)
 <:-unique sub-μ sub-μ = refl
 <:-unique (sub-ν g) (sub-ν h) = cong sub-ν (⊑π-unique g h)
+<:-unique sub-rigid sub-rigid = refl
 
 ------------------------------------------------------------------------
 -- Admissible reflexivity and transitivity.
@@ -122,6 +125,7 @@ data _<:_ : Type → Type → Set where
 <:-refl (A + B) = sub-sum (<:-refl A) (<:-refl B)
 <:-refl (μ-type F) = sub-μ
 <:-refl (ν-type F π) = sub-ν (⊑π-refl π)
+<:-refl (rigid _ _) = sub-rigid
 
 <:-trans : ∀ {A B C} → A <: B → B <: C → A <: C
 <:-trans sub-void   _          = sub-void
@@ -135,6 +139,7 @@ data _<:_ : Type → Type → Set where
 <:-trans (sub-sum a b)   (sub-sum a′ b′)    = sub-sum  (<:-trans a a′) (<:-trans b b′)
 <:-trans sub-μ q = q
 <:-trans (sub-ν g) (sub-ν h) = sub-ν (⊑π-trans g h)
+<:-trans sub-rigid q = q
 
 ------------------------------------------------------------------------
 -- Decidability. Mismatched heads are refuted clause by clause (no catch-all:
@@ -169,6 +174,9 @@ private
   ν-aux (yes refl) (yes g) = yes (sub-ν g)
   ν-aux (no ¬e)    _       = no λ { (sub-ν _) → ¬e refl }
   ν-aux (yes refl) (no ¬g) = no λ { (sub-ν g) → ¬g g }
+  rigid-aux : ∀ {k k′ i i′} → Dec (rigid k i ≡ rigid k′ i′) → Dec (rigid k i <: rigid k′ i′)
+  rigid-aux (yes refl) = yes sub-rigid
+  rigid-aux (no ¬e)    = no λ { sub-rigid → ¬e refl }
 
 _<:?_ : (A B : Type) → Dec (A <: B)
 Void <:? _ = yes sub-void
@@ -282,3 +290,26 @@ Buffer <:? (ν-type _ _) = no λ ()
 ν-type _ _ <:? (_ + _) = no λ ()
 ν-type _ _ <:? (_ ⇒[ _ ] _) = no λ ()
 ν-type _ _ <:? (μ-type _) = no λ ()
+-- D243
+rigid k i <:? rigid k′ i′ = rigid-aux (rigid k i ≟T rigid k′ i′)
+rigid _ _ <:? Void = no λ ()
+rigid _ _ <:? Unit = no λ ()
+Unit <:? rigid _ _ = no λ ()
+rigid _ _ <:? (_ * _) = no λ ()
+(_ * _) <:? rigid _ _ = no λ ()
+rigid _ _ <:? (_ + _) = no λ ()
+(_ + _) <:? rigid _ _ = no λ ()
+rigid _ _ <:? (_ ⇒[ _ ] _) = no λ ()
+(_ ⇒[ _ ] _) <:? rigid _ _ = no λ ()
+rigid _ _ <:? μ-type _ = no λ ()
+μ-type _ <:? rigid _ _ = no λ ()
+rigid _ _ <:? ν-type _ _ = no λ ()
+ν-type _ _ <:? rigid _ _ = no λ ()
+rigid _ _ <:? Int = no λ ()
+Int <:? rigid _ _ = no λ ()
+rigid _ _ <:? Float = no λ ()
+Float <:? rigid _ _ = no λ ()
+rigid _ _ <:? Str = no λ ()
+Str <:? rigid _ _ = no λ ()
+rigid _ _ <:? Buffer = no λ ()
+Buffer <:? rigid _ _ = no λ ()

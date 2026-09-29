@@ -11,6 +11,9 @@
 module Once.Type where
 
 open import Level using (Level)
+open import Data.Nat using (ℕ)
+import Data.Nat
+import Data.Nat.Show
 open import Data.String using (String; _++_)
 open import Data.Bool using (Bool; true; false)
 open import Data.Maybe using (Maybe; just; nothing)
@@ -307,6 +310,18 @@ mutual
     -- ──────────────────────────────────────────────────────────────────
     Str    : Type                    -- UTF-8 strings
     Buffer : Type                    -- Raw byte buffers
+    -- D243: a polymorphic definition's `i`-th type PARAMETER, of kind `k`,
+    -- held RIGID while its body is typed once at its schema. Nothing is known
+    -- about it but its kind (`IsBaseType (rigid k-base i)`), so the body is
+    -- parametric by construction; it becomes the core's `var i`. It never
+    -- reaches a runtime type: a definition is USED at ground instances.
+    rigid  : TKind → ℕ → Type
+
+  -- D243: the kind of a type parameter — what it may be instantiated at.
+  -- `k-base`: a base type (it occurs under a functor constant, so
+  -- `WellFormedF` needs it); `k-any`: any type.
+  data TKind : Set where
+    k-base k-any : TKind
 
 infixr 40 _⊕_
 infixr 50 _⊗_
@@ -353,6 +368,7 @@ isVoid? Int           = no (λ ())
 isVoid? Float         = no (λ ())
 isVoid? Str           = no (λ ())
 isVoid? Buffer        = no (λ ())
+isVoid? (rigid _ _)   = no (λ ())
 
 isUnit? : (T : Type) → Dec (T ≡ Unit)
 isUnit? Unit          = yes refl
@@ -366,6 +382,7 @@ isUnit? Int           = no (λ ())
 isUnit? Float         = no (λ ())
 isUnit? Str           = no (λ ())
 isUnit? Buffer        = no (λ ())
+isUnit? (rigid _ _)   = no (λ ())
 
 -- Note: IO sugar removed for clarity in error messages.
 -- The parser desugars "IO A" to "Eff Unit A" at parse time.
@@ -463,6 +480,8 @@ mutual
   showType Float = "Float"
   showType Str = "String"
   showType Buffer = "Buffer"
+  showType (rigid k-base i) = "'b" ++ Data.Nat.Show.show i
+  showType (rigid k-any i)  = "'a" ++ Data.Nat.Show.show i
 
   showFunctor : Functor → String
   showFunctor (K A) = "(K " ++ showType A ++ ")"
@@ -585,34 +604,6 @@ mutual
   extractGround PBuffer          _        = Buffer
   -- PTVar case is unreachable (its Ground = ⊥)
 
-------------------------------------------------------------------------
--- Embedding Type → PolyType (always Ground by construction)
---
--- Lets existing ground `Type` values flow through the PolyType layer
--- when needed (e.g. alias expansion where the RHS was parsed as
--- Type already).
-------------------------------------------------------------------------
-
-mutual
-  embedFunctor : Functor → PolyFunctor
-  embedFunctor (K A)   = PK (embed A)
-  embedFunctor Id      = PId
-  embedFunctor (F ⊕ G) = embedFunctor F P⊕ embedFunctor G
-  embedFunctor (F ⊗ G) = embedFunctor F P⊗ embedFunctor G
-
-  embed : Type → PolyType
-  embed Unit           = PUnit
-  embed Void           = PVoid
-  embed (A * B)        = embed A P* embed B
-  embed (A + B)        = embed A P+ embed B
-  embed (A ⇒[ mk-kind q pure ] B) = embed A P⇒[ q ] embed B
-  embed (A ⇒[ mk-kind _ eff ] B)  = PEff (embed A) (embed B)
-  embed (μ-type F)     = Pμ-type (embedFunctor F)
-  embed (ν-type F π)   = Pν-type (embedFunctor F) π
-  embed Int            = PInt
-  embed Float          = PFloat
-  embed Str            = PStr
-  embed Buffer         = PBuffer
 
 ------------------------------------------------------------------------
 -- Decidable Ground check
@@ -706,6 +697,11 @@ purityEqBool pure pure = true
 purityEqBool pure eff  = false
 purityEqBool eff  pure = false
 purityEqBool eff  eff  = true
+
+tkindEqBool : TKind → TKind → Bool
+tkindEqBool k-base k-base = true
+tkindEqBool k-any  k-any  = true
+tkindEqBool _      _      = false
 
 mutual
   typeEqBool : Type → Type → Bool
@@ -831,6 +827,9 @@ mutual
   typeEqBool Buffer Float = false
   typeEqBool Buffer Str = false
   typeEqBool Buffer Buffer = true
+  typeEqBool (rigid k i) (rigid k′ i′) = tkindEqBool k k′ ∧ (i Data.Nat.≡ᵇ i′)
+  typeEqBool (rigid _ _) _ = false
+  typeEqBool _ (rigid _ _) = false
 
   functorEqBool : Functor → Functor → Bool
   functorEqBool (K a) (K a') = typeEqBool a a'

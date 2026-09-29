@@ -267,6 +267,8 @@ anaFᵈ F {A} coalg = anaᵈ (translateF Carrier Carrier F) (λ a → fmapT (coe
 ⟦ Float ⟧ᴰ      = Val.⟦ Float ⟧
 ⟦ Str ⟧ᴰ        = Val.⟦ Str ⟧
 ⟦ Buffer ⟧ᴰ     = Val.⟦ Buffer ⟧
+-- D243: no runtime value of a rigid parameter (used at ground instances only).
+⟦ rigid _ _ ⟧ᴰ  = ⊥
 
 ------------------------------------------------------------------------
 -- Plan 0.52 M2: the monadic value domain over the UNGRADED IR objects
@@ -296,6 +298,7 @@ cohᴰ Int          = refl
 cohᴰ Float        = refl
 cohᴰ Str          = refl
 cohᴰ Buffer       = refl
+cohᴰ (rigid _ _)  = refl
 
 ------------------------------------------------------------------------
 -- Forgetful coercions between the monadic and the pure value domains.
@@ -329,6 +332,7 @@ mutual
   forget {Float}      x        = x
   forget {Str}        x        = x
   forget {Buffer}     x        = x
+  forget {rigid _ _}  ()
 
   inject : ∀ {A} → Val.⟦ A ⟧ → ⟦ A ⟧ᴰ
   inject {Unit}       x        = x
@@ -347,6 +351,7 @@ mutual
   inject {Float}      x        = x
   inject {Str}        x        = x
   inject {Buffer}     x        = x
+  inject {rigid _ _}  ()
 
 ------------------------------------------------------------------------
 -- The effectful-SigOp emission (unconditional: the budget is consumed by

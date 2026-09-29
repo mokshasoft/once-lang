@@ -49,7 +49,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 
 open import Data.Bool using (true)
 import Once.Type
-open import Once.Type using (Type; Int; Unit; Void; Float; Str; Buffer; _*_; _+_; μ-type; ν-type;
+open import Once.Type using (Type; rigid; Int; Unit; Void; Float; Str; Buffer; _*_; _+_; μ-type; ν-type;
                              Purity; pure; eff; mk-kind; Quantity; Many; One; Zero; _⇒[_]_; isUnit?; isVoid?; ⟦_⟧T; Functor;
                              PolyType; Ground; isGround)
 open import Once.TypeCheck.Raw as Raw using (RawExpr)
@@ -996,6 +996,7 @@ agree-RResolved ctx cn ng (just Int) lkup eqS dγ = agree-RResolved-valueᴴ ctx
 agree-RResolved ctx cn ng (just Float) lkup eqS dγ = agree-RResolved-valueᴴ ctx cn ng Float lkup (isConcrete? Float) refl eqS dγ
 agree-RResolved ctx cn ng (just Str) lkup eqS dγ = agree-RResolved-valueᴴ ctx cn ng Str lkup (isConcrete? Str) refl eqS dγ
 agree-RResolved ctx cn ng (just Buffer) lkup eqS dγ = agree-RResolved-valueᴴ ctx cn ng Buffer lkup (isConcrete? Buffer) refl eqS dγ
+agree-RResolved ctx cn ng (just (rigid kᵣ iᵣ)) lkup eqS dγ = agree-RResolved-valueᴴ ctx cn ng (rigid kᵣ iᵣ) lkup (isConcrete? (rigid kᵣ iᵣ)) refl eqS dγ
 agree-RResolved ctx cn ng (just (A * B)) lkup eqS dγ = agree-RResolved-valueᴴ ctx cn ng (A * B) lkup (isConcrete? (A * B)) refl eqS dγ
 agree-RResolved ctx cn ng (just (A + B)) lkup eqS dγ = agree-RResolved-valueᴴ ctx cn ng (A + B) lkup (isConcrete? (A + B)) refl eqS dγ
 agree-RResolved ctx cn ng (just (μ-type F)) lkup eqS dγ = agree-RResolved-valueᴴ ctx cn ng (μ-type F) lkup (isConcrete? (μ-type F)) refl eqS dγ
@@ -1100,6 +1101,7 @@ agree-RQualified ctx name alias (just Int) lkup eqS dγ = agree-RQualified-value
 agree-RQualified ctx name alias (just Float) lkup eqS dγ = agree-RQualified-valueᴴ ctx name alias Float lkup (isConcrete? Float) refl eqS dγ
 agree-RQualified ctx name alias (just Str) lkup eqS dγ = agree-RQualified-valueᴴ ctx name alias Str lkup (isConcrete? Str) refl eqS dγ
 agree-RQualified ctx name alias (just Buffer) lkup eqS dγ = agree-RQualified-valueᴴ ctx name alias Buffer lkup (isConcrete? Buffer) refl eqS dγ
+agree-RQualified ctx name alias (just (rigid kᵣ iᵣ)) lkup eqS dγ = agree-RQualified-valueᴴ ctx name alias (rigid kᵣ iᵣ) lkup (isConcrete? (rigid kᵣ iᵣ)) refl eqS dγ
 agree-RQualified ctx name alias (just (A * B)) lkup eqS dγ = agree-RQualified-valueᴴ ctx name alias (A * B) lkup (isConcrete? (A * B)) refl eqS dγ
 agree-RQualified ctx name alias (just (A + B)) lkup eqS dγ = agree-RQualified-valueᴴ ctx name alias (A + B) lkup (isConcrete? (A + B)) refl eqS dγ
 agree-RQualified ctx name alias (just (μ-type F)) lkup eqS dγ = agree-RQualified-valueᴴ ctx name alias (μ-type F) lkup (isConcrete? (μ-type F)) refl eqS dγ
@@ -2043,18 +2045,31 @@ agree-RBinOp-void op r₁@(success Str _ _ _ _ , _) r₂@(success (_ ⇒[ _ ] _)
 agree-RBinOp-void op r₁@(success Str _ _ _ _ , _) r₂@(success (μ-type _) _ _ _ _ , _) eq s₁ s₂ dγ = agree-RBinOp op r₁ r₂ eq s₁ s₂ dγ
 agree-RBinOp-void op r₁@(success Str _ _ _ _ , _) r₂@(success (ν-type _ _) _ _ _ _ , _) eq s₁ s₂ dγ = agree-RBinOp op r₁ r₂ eq s₁ s₂ dγ
 agree-RBinOp-void op r₁@(success Buffer _ _ _ _ , _) r₂@(failure _ , _) eq s₁ s₂ dγ = agree-RBinOp op r₁ r₂ eq s₁ s₂ dγ
+agree-RBinOp-void op r₁@(success (rigid _ _) _ _ _ _ , _) r₂@(failure _ , _) eq s₁ s₂ dγ = agree-RBinOp op r₁ r₂ eq s₁ s₂ dγ
 agree-RBinOp-void op (success Buffer _ e₁E _ _ , w₁) (success Void _ e₂E _ _ , w₂) refl s₁ s₂ dγ =
   seq-agree {a = e₁E} {realize-infer w₁} {e₂E} {realize-infer w₂} (s₁ refl) (s₂ refl) dγ
+agree-RBinOp-void op (success (rigid _ _) _ e₁E _ _ , w₁) (success Void _ e₂E _ _ , w₂) refl s₁ s₂ dγ =
+  seq-agree {a = e₁E} {realize-infer w₁} {e₂E} {realize-infer w₂} (s₁ refl) (s₂ refl) dγ
 agree-RBinOp-void op r₁@(success Buffer _ _ _ _ , _) r₂@(success Unit _ _ _ _ , _) eq s₁ s₂ dγ = agree-RBinOp op r₁ r₂ eq s₁ s₂ dγ
+agree-RBinOp-void op r₁@(success (rigid _ _) _ _ _ _ , _) r₂@(success Unit _ _ _ _ , _) eq s₁ s₂ dγ = agree-RBinOp op r₁ r₂ eq s₁ s₂ dγ
 agree-RBinOp-void op r₁@(success Buffer _ _ _ _ , _) r₂@(success Int _ _ _ _ , _) eq s₁ s₂ dγ = agree-RBinOp op r₁ r₂ eq s₁ s₂ dγ
+agree-RBinOp-void op r₁@(success (rigid _ _) _ _ _ _ , _) r₂@(success Int _ _ _ _ , _) eq s₁ s₂ dγ = agree-RBinOp op r₁ r₂ eq s₁ s₂ dγ
 agree-RBinOp-void op r₁@(success Buffer _ _ _ _ , _) r₂@(success Float _ _ _ _ , _) eq s₁ s₂ dγ = agree-RBinOp op r₁ r₂ eq s₁ s₂ dγ
+agree-RBinOp-void op r₁@(success (rigid _ _) _ _ _ _ , _) r₂@(success Float _ _ _ _ , _) eq s₁ s₂ dγ = agree-RBinOp op r₁ r₂ eq s₁ s₂ dγ
 agree-RBinOp-void op r₁@(success Buffer _ _ _ _ , _) r₂@(success Str _ _ _ _ , _) eq s₁ s₂ dγ = agree-RBinOp op r₁ r₂ eq s₁ s₂ dγ
+agree-RBinOp-void op r₁@(success (rigid _ _) _ _ _ _ , _) r₂@(success Str _ _ _ _ , _) eq s₁ s₂ dγ = agree-RBinOp op r₁ r₂ eq s₁ s₂ dγ
 agree-RBinOp-void op r₁@(success Buffer _ _ _ _ , _) r₂@(success Buffer _ _ _ _ , _) eq s₁ s₂ dγ = agree-RBinOp op r₁ r₂ eq s₁ s₂ dγ
+agree-RBinOp-void op r₁@(success (rigid _ _) _ _ _ _ , _) r₂@(success (rigid _ _) _ _ _ _ , _) eq s₁ s₂ dγ = agree-RBinOp op r₁ r₂ eq s₁ s₂ dγ
 agree-RBinOp-void op r₁@(success Buffer _ _ _ _ , _) r₂@(success (_ * _) _ _ _ _ , _) eq s₁ s₂ dγ = agree-RBinOp op r₁ r₂ eq s₁ s₂ dγ
+agree-RBinOp-void op r₁@(success (rigid _ _) _ _ _ _ , _) r₂@(success (_ * _) _ _ _ _ , _) eq s₁ s₂ dγ = agree-RBinOp op r₁ r₂ eq s₁ s₂ dγ
 agree-RBinOp-void op r₁@(success Buffer _ _ _ _ , _) r₂@(success (_ + _) _ _ _ _ , _) eq s₁ s₂ dγ = agree-RBinOp op r₁ r₂ eq s₁ s₂ dγ
+agree-RBinOp-void op r₁@(success (rigid _ _) _ _ _ _ , _) r₂@(success (_ + _) _ _ _ _ , _) eq s₁ s₂ dγ = agree-RBinOp op r₁ r₂ eq s₁ s₂ dγ
 agree-RBinOp-void op r₁@(success Buffer _ _ _ _ , _) r₂@(success (_ ⇒[ _ ] _) _ _ _ _ , _) eq s₁ s₂ dγ = agree-RBinOp op r₁ r₂ eq s₁ s₂ dγ
+agree-RBinOp-void op r₁@(success (rigid _ _) _ _ _ _ , _) r₂@(success (_ ⇒[ _ ] _) _ _ _ _ , _) eq s₁ s₂ dγ = agree-RBinOp op r₁ r₂ eq s₁ s₂ dγ
 agree-RBinOp-void op r₁@(success Buffer _ _ _ _ , _) r₂@(success (μ-type _) _ _ _ _ , _) eq s₁ s₂ dγ = agree-RBinOp op r₁ r₂ eq s₁ s₂ dγ
+agree-RBinOp-void op r₁@(success (rigid _ _) _ _ _ _ , _) r₂@(success (μ-type _) _ _ _ _ , _) eq s₁ s₂ dγ = agree-RBinOp op r₁ r₂ eq s₁ s₂ dγ
 agree-RBinOp-void op r₁@(success Buffer _ _ _ _ , _) r₂@(success (ν-type _ _) _ _ _ _ , _) eq s₁ s₂ dγ = agree-RBinOp op r₁ r₂ eq s₁ s₂ dγ
+agree-RBinOp-void op r₁@(success (rigid _ _) _ _ _ _ , _) r₂@(success (ν-type _ _) _ _ _ _ , _) eq s₁ s₂ dγ = agree-RBinOp op r₁ r₂ eq s₁ s₂ dγ
 agree-RBinOp-void op r₁@(success (_ * _) _ _ _ _ , _) r₂@(failure _ , _) eq s₁ s₂ dγ = agree-RBinOp op r₁ r₂ eq s₁ s₂ dγ
 agree-RBinOp-void op (success (_ * _) _ e₁E _ _ , w₁) (success Void _ e₂E _ _ , w₂) refl s₁ s₂ dγ =
   seq-agree {a = e₁E} {realize-infer w₁} {e₂E} {realize-infer w₂} (s₁ refl) (s₂ refl) dγ

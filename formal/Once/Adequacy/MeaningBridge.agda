@@ -42,7 +42,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong
 
 open import Once.Type using (Type; Purity; Quantity; mk-kind; Zero; One; Many; pure; eff; _⇒[_]_; _+_; _*_; μ-type; ν-type; ⟦_⟧T; Functor; Int; Float; Unit)
 open import Once.Functor.Translate using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod;
-  IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Str; base-Buffer; base-Prod; base-Sum;
+  IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Str; base-Buffer; base-Prod; base-Sum; base-rigid;
   IsConcrete; con-base; con-fun)
 open import Once.Functor.Decide using (wellFormedF?)
 open import Once.Semantics.Machine using (sem-In; coerce-functor; sem-cata)
@@ -382,6 +382,7 @@ sd-sigOp-base≡ cn base-Int           dγ = refl
 sd-sigOp-base≡ cn base-Float         dγ = refl
 sd-sigOp-base≡ cn base-Str           dγ = refl
 sd-sigOp-base≡ cn base-Buffer        dγ = refl
+sd-sigOp-base≡ cn base-rigid         dγ = refl
 sd-sigOp-base≡ cn (base-Prod ibA ibB) dγ = refl
 sd-sigOp-base≡ cn (base-Sum ibA ibB)  dγ = refl
 

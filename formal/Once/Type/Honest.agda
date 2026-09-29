@@ -34,6 +34,7 @@ HonestCod π Int                        = ⊤
 HonestCod π Float                      = ⊤
 HonestCod π Str                        = ⊤
 HonestCod π Buffer                     = ⊤
+HonestCod π (rigid _ _)               = ⊥   -- D243: an FFI signature is ground
 
 HonestFFI : Type → Set
 HonestFFI Unit                    = ⊥
@@ -47,6 +48,7 @@ HonestFFI Int                     = ⊤
 HonestFFI Float                   = ⊤
 HonestFFI Str                     = ⊤
 HonestFFI Buffer                  = ⊤
+HonestFFI (rigid _ _)             = ⊥   -- D243: an FFI signature is ground
 
 ------------------------------------------------------------------------
 -- Deciders (implementation; the elaborator checks a reference with them)
@@ -68,6 +70,7 @@ honestCod? π Int                      = just tt
 honestCod? π Float                    = just tt
 honestCod? π Str                      = just tt
 honestCod? π Buffer                   = just tt
+honestCod? π (rigid _ _)              = nothing
 
 honest? : (T : Type) → Maybe (HonestFFI T)
 honest? Unit                    = nothing
@@ -81,6 +84,7 @@ honest? Int                     = just tt
 honest? Float                   = just tt
 honest? Str                     = just tt
 honest? Buffer                  = just tt
+honest? (rigid _ _)             = nothing
 
 ------------------------------------------------------------------------
 -- Completeness of the deciders: an honest type is decided honest.
@@ -100,6 +104,7 @@ honestCod?-complete π Int                     tt   = tt , refl
 honestCod?-complete π Float                   tt   = tt , refl
 honestCod?-complete π Str                     tt   = tt , refl
 honestCod?-complete π Buffer                  tt   = tt , refl
+honestCod?-complete π (rigid _ _)         ()
 
 honest?-complete : ∀ {T : Type} → HonestFFI T → ∃[ h ] honest? T ≡ just h
 honest?-complete {Unit} ()
@@ -113,3 +118,4 @@ honest?-complete {Int}        tt = tt , refl
 honest?-complete {Float}      tt = tt , refl
 honest?-complete {Str}        tt = tt , refl
 honest?-complete {Buffer}     tt = tt , refl
+honest?-complete {rigid _ _}  ()

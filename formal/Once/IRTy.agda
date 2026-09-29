@@ -127,6 +127,9 @@ mutual
   ⌊ Type.Float       ⌋ = Float
   ⌊ Type.Str         ⌋ = Str
   ⌊ Type.Buffer      ⌋ = Buffer
+  -- D243: a rigid parameter never reaches a runtime type (a definition is used
+  -- at ground instances). It erases to `Void`, matching its value domain `⊥`.
+  ⌊ Type.rigid _ _   ⌋ = Void
 
   -- (plain prefix name, NOT `⌊_⌋F` — a second `⌊_…` mixfix collides with
   -- `⌊_⌋` when an application sits inside the brackets.)

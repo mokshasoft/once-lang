@@ -201,6 +201,9 @@ infer-complete-RQualified {ctx} {name} {alias} {T} eq conc = go T conc eq
       cong proj₁ (helper _ eq')
     go Buffer        _ eq' = _ , _ , _ ,
       cong proj₁ (helper _ eq')
+    go (T.rigid T.k-base _) _ eq' = _ , _ , _ ,
+      cong proj₁ (helper _ eq')
+    go (T.rigid T.k-any _) (con-base ()) eq'
     go (A * B) conc' eq' = _ , _ , _ ,
       trans (cong proj₁ (helper _ eq'))
             (cong proj₁ (helperVal eq' _ (proj₂ (isConcrete?-complete conc'))))
@@ -310,6 +313,9 @@ infer-complete-RResolved-view {ctx} {cn} {T} (gv-other ng') eqv _ eq conc =
       trans (inferElabV-RResolved-J ctx cn _ eqv) (cong proj₁ (helper _ eq'))
     go Buffer        _ eq' = _ , _ , _ ,
       trans (inferElabV-RResolved-J ctx cn _ eqv) (cong proj₁ (helper _ eq'))
+    go (T.rigid T.k-base _) _ eq' = _ , _ , _ ,
+      trans (inferElabV-RResolved-J ctx cn _ eqv) (cong proj₁ (helper _ eq'))
+    go (T.rigid T.k-any _) (con-base ()) eq'
     go (A * B) conc' eq' = _ , _ , _ ,
       trans (inferElabV-RResolved-J ctx cn _ eqv)
       (trans (cong proj₁ (helper _ eq'))
@@ -1020,6 +1026,11 @@ icv-binop-r {ctx} op e₁ e₂ T.Str eq₁ ¬v eq₂
 icv-binop-r {ctx} op e₁ e₂ T.Buffer eq₁ ¬v eq₂
   with inferElabV ctx e₁ | eq₁
 ... | success T.Buffer _ _ _ _ , _ | refl
+    with inferElabV ctx e₂ | eq₂
+...   | success Void _ _ _ _ , _ | refl = _ , _ , _ , refl
+icv-binop-r {ctx} op e₁ e₂ (T.rigid _ _) eq₁ ¬v eq₂
+  with inferElabV ctx e₁ | eq₁
+... | success (T.rigid _ _) _ _ _ _ , _ | refl
     with inferElabV ctx e₂ | eq₂
 ...   | success Void _ _ _ _ , _ | refl = _ , _ , _ , refl
 icv-binop-r {ctx} op e₁ e₂ (_ T.* _) eq₁ ¬v eq₂

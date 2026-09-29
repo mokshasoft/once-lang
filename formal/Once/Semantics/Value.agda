@@ -90,7 +90,7 @@ open import Once.Res using (Res; stopped; returns; mapRes)
 open import Once.Functor.Translate using (μ-sem; ν-sem; translateF; ⟦_,_⟧-base; IsBaseType; WellFormedF)
 open import Once.Functor.Translate
   using ( base-Unit; base-Void; base-Int; base-Float; base-Str; base-Buffer
-        ; base-Prod; base-Sum; wf-K; wf-Id; wf-Sum; wf-Prod)
+        ; base-Prod; base-Sum; base-rigid; wf-K; wf-Id; wf-Sum; wf-Prod)
 open import Once.Semantics.Functor
   using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF; μS; ⟨_⟩; outS; νS; unfoldS;
          sfmap; cataS; cataS-cong; sfmapCata; sfmapCata-is-sfmap; anaS; sfmapAna; sfmapAna-is-sfmap; fuseNatS; fuseNatW;
@@ -149,6 +149,9 @@ open import Once.Semantics.Functor
 ⟦ Float ⟧        = FloatRep
 ⟦ Str ⟧          = String
 ⟦ Buffer ⟧       = String
+-- D243: no runtime value of a rigid parameter exists (a definition is used at
+-- ground instances).
+⟦ rigid _ _ ⟧    = ⊥
 -- TVar removed from Type; now in PolyType (see Once.Type)
 
 ------------------------------------------------------------------------
@@ -391,6 +394,7 @@ coerce-full-to-base Int x = x
 coerce-full-to-base Float x = x
 coerce-full-to-base Str x = x
 coerce-full-to-base Buffer x = x
+coerce-full-to-base (rigid _ _) ()
 -- TVar removed from Type; now in PolyType (see Once.Type)
 
 -- | Coerce from base to full interpretation
@@ -422,6 +426,7 @@ coerce-base-to-full (base-Prod pA pB) (a , b) =
   (coerce-base-to-full pA a , coerce-base-to-full pB b)
 coerce-base-to-full (base-Sum pA pB) (inj₁ a) = inj₁ (coerce-base-to-full pA a)
 coerce-base-to-full (base-Sum pA pB) (inj₂ b) = inj₂ (coerce-base-to-full pB b)
+coerce-base-to-full base-rigid ()
 
 ------------------------------------------------------------------------
 -- Type Coercion Round-Trip Properties (Well-Formed Only)
@@ -448,6 +453,7 @@ coerce-base-type-round-trip (base-Sum pA pB) (inj₁ a) =
   cong inj₁ (coerce-base-type-round-trip pA a)
 coerce-base-type-round-trip (base-Sum pA pB) (inj₂ b) =
   cong inj₂ (coerce-base-type-round-trip pB b)
+coerce-base-type-round-trip base-rigid ()
 
 -- | For base types, coerce-full-to-base ∘ coerce-base-to-full = id (PROVEN)
 --

@@ -28,14 +28,16 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong
 import Once.Type as T
 open T using (Purity; pure; eff; ArrowKind; mk-kind; Quantity)
 open import Once.Functor.Translate using (IsBaseType; WellFormedF; base-Unit; base-Void; base-Int;
-  base-Float; base-Str; base-Buffer; base-Prod; base-Sum; wf-K; wf-Id; wf-Sum; wf-Prod)
+  base-Float; base-Str; base-Buffer; base-Prod; base-Sum; base-rigid; wf-K; wf-Id; wf-Sum; wf-Prod)
 
 ------------------------------------------------------------------------
 -- Kinds
 ------------------------------------------------------------------------
 
-data Kind : Set where
-  base any : Kind
+-- D243: the surface's kinds (`Once.Type.TKind`): a rigid parameter and a core
+-- type variable range over the same universe (`k-base` ⊂ `k-any`).
+Kind : Set
+Kind = T.TKind
 
 -- A kinding context: the kind of each type variable.
 KCtx : ℕ → Set
@@ -60,6 +62,11 @@ mutual
     _⇒[_]_  : Ty m → ArrowKind → Ty m → Ty m
     μ-type  : Fun m → Ty m
     ν-type  : Fun m → Purity → Ty m
+    -- D243: an ENCLOSING definition's rigid parameter — a constant here, left
+    -- alone by substitution and instantiation. Abstraction (`rigid k i ↦ var i`)
+    -- is the separate step that turns a body typed at its rigid schema into a
+    -- `∀` entry.
+    rigid   : T.TKind → ℕ → Ty m
 
   data Fun (m : ℕ) : Set where
     K       : Ty m → Fun m
@@ -89,6 +96,7 @@ mutual
   Float       ⟨ σ ⟩ = Float
   Str         ⟨ σ ⟩ = Str
   Buffer      ⟨ σ ⟩ = Buffer
+  rigid k i   ⟨ σ ⟩ = rigid k i
   (A * B)     ⟨ σ ⟩ = A ⟨ σ ⟩ * B ⟨ σ ⟩
   (A + B)     ⟨ σ ⟩ = A ⟨ σ ⟩ + B ⟨ σ ⟩
   (A ⇒[ k ] B) ⟨ σ ⟩ = A ⟨ σ ⟩ ⇒[ k ] B ⟨ σ ⟩
@@ -118,6 +126,7 @@ mutual
   ⟨⟩-∘ Float σ τ = refl
   ⟨⟩-∘ Str σ τ = refl
   ⟨⟩-∘ Buffer σ τ = refl
+  ⟨⟩-∘ (rigid k i) σ τ = refl
   ⟨⟩-∘ (A * B) σ τ = cong₂ _*_ (⟨⟩-∘ A σ τ) (⟨⟩-∘ B σ τ)
   ⟨⟩-∘ (A + B) σ τ = cong₂ _+_ (⟨⟩-∘ A σ τ) (⟨⟩-∘ B σ τ)
   ⟨⟩-∘ (A ⇒[ k ] B) σ τ = cong₂ (λ a b → a ⇒[ k ] b) (⟨⟩-∘ A σ τ) (⟨⟩-∘ B σ τ)
@@ -142,6 +151,7 @@ mutual
   ⌈ T.Float ⌉       = Float
   ⌈ T.Str ⌉         = Str
   ⌈ T.Buffer ⌉      = Buffer
+  ⌈ T.rigid k i ⌉   = rigid k i
   ⌈ A T.* B ⌉       = ⌈ A ⌉ * ⌈ B ⌉
   ⌈ A T.+ B ⌉       = ⌈ A ⌉ + ⌈ B ⌉
   ⌈ A T.⇒[ k ] B ⌉  = ⌈ A ⌉ ⇒[ k ] ⌈ B ⌉
@@ -167,6 +177,7 @@ mutual
   Float        ⟪ σ ⟫ = T.Float
   Str          ⟪ σ ⟫ = T.Str
   Buffer       ⟪ σ ⟫ = T.Buffer
+  rigid k i    ⟪ σ ⟫ = T.rigid k i
   (A * B)      ⟪ σ ⟫ = A ⟪ σ ⟫ T.* B ⟪ σ ⟫
   (A + B)      ⟪ σ ⟫ = A ⟪ σ ⟫ T.+ B ⟪ σ ⟫
   (A ⇒[ k ] B) ⟪ σ ⟫ = A ⟪ σ ⟫ T.⇒[ k ] B ⟪ σ ⟫
@@ -195,6 +206,7 @@ mutual
   ⌈⌉-⟪⟫ T.Float σ = refl
   ⌈⌉-⟪⟫ T.Str σ = refl
   ⌈⌉-⟪⟫ T.Buffer σ = refl
+  ⌈⌉-⟪⟫ (T.rigid k i) σ = refl
   ⌈⌉-⟪⟫ (A T.* B) σ = cong₂ T._*_ (⌈⌉-⟪⟫ A σ) (⌈⌉-⟪⟫ B σ)
   ⌈⌉-⟪⟫ (A T.+ B) σ = cong₂ T._+_ (⌈⌉-⟪⟫ A σ) (⌈⌉-⟪⟫ B σ)
   ⌈⌉-⟪⟫ (A T.⇒[ k ] B) σ = cong₂ (λ a b → a T.⇒[ k ] b) (⌈⌉-⟪⟫ A σ) (⌈⌉-⟪⟫ B σ)
@@ -217,6 +229,7 @@ mutual
   ⟨⟩-⟪⟫ Float σ ρ = refl
   ⟨⟩-⟪⟫ Str σ ρ = refl
   ⟨⟩-⟪⟫ Buffer σ ρ = refl
+  ⟨⟩-⟪⟫ (rigid k i) σ ρ = refl
   ⟨⟩-⟪⟫ (A * B) σ ρ = cong₂ T._*_ (⟨⟩-⟪⟫ A σ ρ) (⟨⟩-⟪⟫ B σ ρ)
   ⟨⟩-⟪⟫ (A + B) σ ρ = cong₂ T._+_ (⟨⟩-⟪⟫ A σ ρ) (⟨⟩-⟪⟫ B σ ρ)
   ⟨⟩-⟪⟫ (A ⇒[ k ] B) σ ρ = cong₂ (λ a b → a T.⇒[ k ] b) (⟨⟩-⟪⟫ A σ ρ) (⟨⟩-⟪⟫ B σ ρ)
@@ -234,13 +247,14 @@ mutual
 ------------------------------------------------------------------------
 
 data Base {m} (Δ : KCtx m) : Ty m → Set where
-  b-var    : ∀ {i} → Δ i ≡ base → Base Δ (var i)
+  b-var    : ∀ {i} → Δ i ≡ T.k-base → Base Δ (var i)
   b-Unit   : Base Δ Unit
   b-Void   : Base Δ Void
   b-Int    : Base Δ Int
   b-Float  : Base Δ Float
   b-Str    : Base Δ Str
   b-Buffer : Base Δ Buffer
+  b-rigid  : ∀ {i} → Base Δ (rigid T.k-base i)
   b-Prod   : ∀ {A B} → Base Δ A → Base Δ B → Base Δ (A * B)
   b-Sum    : ∀ {A B} → Base Δ A → Base Δ B → Base Δ (A + B)
 
@@ -252,7 +266,7 @@ data WFFun {m} (Δ : KCtx m) : Fun m → Set where
 
 -- A ground instantiation RESPECTS the kinds: base variables become base types.
 Respects : ∀ {m} → KCtx m → GSub m → Set
-Respects Δ σ = ∀ i → Δ i ≡ base → IsBaseType (σ i)
+Respects Δ σ = ∀ i → Δ i ≡ T.k-base → IsBaseType (σ i)
 
 base-⟪⟫ : ∀ {m} {Δ : KCtx m} {σ : GSub m} {A} → Respects Δ σ → Base Δ A → IsBaseType (A ⟪ σ ⟫)
 base-⟪⟫ r (b-var {i} e) = r i e
@@ -262,6 +276,7 @@ base-⟪⟫ r b-Int    = base-Int
 base-⟪⟫ r b-Float  = base-Float
 base-⟪⟫ r b-Str    = base-Str
 base-⟪⟫ r b-Buffer = base-Buffer
+base-⟪⟫ r b-rigid  = base-rigid
 base-⟪⟫ r (b-Prod a b) = base-Prod (base-⟪⟫ r a) (base-⟪⟫ r b)
 base-⟪⟫ r (b-Sum a b)  = base-Sum (base-⟪⟫ r a) (base-⟪⟫ r b)
 

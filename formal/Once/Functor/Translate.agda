@@ -56,6 +56,10 @@ open import Once.Semantics.Functor
 ⟦ IntRep , FloatRep ⟧-base Float = FloatRep
 ⟦ IntRep , FloatRep ⟧-base Str = String
 ⟦ IntRep , FloatRep ⟧-base Buffer = String
+-- D243: a rigid parameter exists only while a definition's body is typed; a
+-- definition is used at GROUND instances, so no runtime value of a rigid type
+-- exists.
+⟦ IntRep , FloatRep ⟧-base (rigid _ _) = ⊥
 -- TVar removed from Type; now in PolyType (see Once.Type)
 
 ------------------------------------------------------------------------
@@ -146,6 +150,8 @@ data IsBaseType : Type → Set where
   base-Buffer : IsBaseType Buffer
   base-Prod   : ∀ {A B} → IsBaseType A → IsBaseType B → IsBaseType (A * B)
   base-Sum    : ∀ {A B} → IsBaseType A → IsBaseType B → IsBaseType (A + B)
+  -- D243: a base-kinded parameter is a base type; nothing else is known of it.
+  base-rigid  : ∀ {i} → IsBaseType (rigid k-base i)
 
 -- | Concrete / FFI-representable type (Plan 0.58, OCP-0006): a SigOp is an
 -- FFI/register-ABI boundary. A CONCRETE type is a base type, or a FIRST-ORDER
@@ -188,6 +194,7 @@ IsBaseType-irrelevant (base-Prod ibA₁ ibB₁) (base-Prod ibA₂ ibB₂) =
   cong₂ base-Prod (IsBaseType-irrelevant ibA₁ ibA₂) (IsBaseType-irrelevant ibB₁ ibB₂)
 IsBaseType-irrelevant (base-Sum ibA₁ ibB₁) (base-Sum ibA₂ ibB₂) =
   cong₂ base-Sum (IsBaseType-irrelevant ibA₁ ibA₂) (IsBaseType-irrelevant ibB₁ ibB₂)
+IsBaseType-irrelevant base-rigid base-rigid = refl
 
 -- | IsConcrete is proof-irrelevant
 --

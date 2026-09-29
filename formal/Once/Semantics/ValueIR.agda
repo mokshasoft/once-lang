@@ -64,6 +64,7 @@ base-coh Int           = refl
 base-coh Float         = refl
 base-coh Str           = refl
 base-coh Buffer        = refl
+base-coh (rigid _ _)   = refl
 
 -- The translated SFunctor is unchanged by re-grading (its only Type-payloads
 -- are the `K`-constants, handled by `base-coh`).
@@ -93,3 +94,4 @@ coh Int           = refl
 coh Float         = refl
 coh Str           = refl
 coh Buffer        = refl
+coh (rigid _ _)   = refl

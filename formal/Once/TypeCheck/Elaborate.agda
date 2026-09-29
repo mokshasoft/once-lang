@@ -630,6 +630,7 @@ asFun (success Int Ψ _ _ _)                              = notFun (NotFunction 
 asFun (success Float Ψ _ _ _)                            = notFun (NotFunction Float)
 asFun (success Str Ψ _ _ _)                              = notFun (NotFunction Str)
 asFun (success Buffer Ψ _ _ _)                           = notFun (NotFunction Buffer)
+asFun (success (rigid kᵣ iᵣ) Ψ _ _ _)                           = notFun (NotFunction (rigid kᵣ iᵣ))
 asFun (success (A Once.Type.* B) _ _ _ _)                = notFun (NotFunction (A Once.Type.* B))
 asFun (success (A Once.Type.+ B) _ _ _ _)                = notFun (NotFunction (A Once.Type.+ B))
 asFun (success (μ-type F) _ _ _ _)                       = notFun (NotFunction (μ-type F))
@@ -649,6 +650,7 @@ asInt (success Void _ _ _ _)                             = notInt (TypeMismatch 
 asInt (success Float _ _ _ _)                            = notInt (TypeMismatch Int Float)
 asInt (success Str _ _ _ _)                              = notInt (TypeMismatch Int Str)
 asInt (success Buffer _ _ _ _)                           = notInt (TypeMismatch Int Buffer)
+asInt (success (rigid kᵣ iᵣ) _ _ _ _)                           = notInt (TypeMismatch Int (rigid kᵣ iᵣ))
 asInt (success (A Once.Type.* B) _ _ _ _)                = notInt (TypeMismatch Int (A Once.Type.* B))
 asInt (success (A Once.Type.+ B) _ _ _ _)                = notInt (TypeMismatch Int (A Once.Type.+ B))
 asInt (success (A ⇒[ k ] B) _ _ _ _)                     = notInt (TypeMismatch Int (A ⇒[ k ] B))
@@ -676,6 +678,7 @@ notNumeric (success Unit _ _ _ _)                        = just (TypeMismatch In
 notNumeric (success Void _ _ _ _)                        = nothing
 notNumeric (success Str _ _ _ _)                         = just (TypeMismatch Int Str)
 notNumeric (success Buffer _ _ _ _)                      = just (TypeMismatch Int Buffer)
+notNumeric (success (rigid kᵣ iᵣ) _ _ _ _)                      = just (TypeMismatch Int (rigid kᵣ iᵣ))
 notNumeric (success (A Once.Type.* B) _ _ _ _)           = just (TypeMismatch Int (A Once.Type.* B))
 notNumeric (success (A Once.Type.+ B) _ _ _ _)           = just (TypeMismatch Int (A Once.Type.+ B))
 notNumeric (success (A ⇒[ k ] B) _ _ _ _)                = just (TypeMismatch Int (A ⇒[ k ] B))
@@ -1575,6 +1578,7 @@ mutual
   checkApply ctx arg T | success Float _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
   checkApply ctx arg T | success Str _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
   checkApply ctx arg T | success Buffer _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
+  checkApply ctx arg T | success (rigid kᵣ iᵣ) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
   checkApply ctx arg T | success (_ Once.Type.+ _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
   checkApply ctx arg T | success (_ Once.Type.⇒[ _ ] _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
   checkApply ctx arg T | success (Unit Once.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
@@ -1583,6 +1587,7 @@ mutual
   checkApply ctx arg T | success (Float Once.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
   checkApply ctx arg T | success (Str Once.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
   checkApply ctx arg T | success (Buffer Once.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
+  checkApply ctx arg T | success ((rigid kᵣ iᵣ) Once.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
   checkApply ctx arg T | success ((_ Once.Type.* _) Once.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
   checkApply ctx arg T | success ((_ Once.Type.+ _) Once.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
   checkApply ctx arg T | success ((_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Zero Once.Type.pure ] _) Once.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
@@ -1618,6 +1623,7 @@ mutual
   ... | success Once.Type.Float _ _ _ _ , _ = failure (BuiltinTypeMismatch "Out") , tt
   ... | success Once.Type.Str _ _ _ _ , _ = failure (BuiltinTypeMismatch "Out") , tt
   ... | success Once.Type.Buffer _ _ _ _ , _ = failure (BuiltinTypeMismatch "Out") , tt
+  ... | success (Once.Type.rigid kᵣ iᵣ) _ _ _ _ , _ = failure (BuiltinTypeMismatch "Out") , tt
   ... | success (_ Once.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "Out") , tt
   ... | success (_ Once.Type.+ _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "Out") , tt
   ... | success (_ Once.Type.⇒[ _ ] _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "Out") , tt
@@ -2167,6 +2173,7 @@ mutual
   inferElabV-RUnaryOp-aux ctx e (success Float  _ _ _ _ , _)     = failure (TypeMismatch Int Float) , tt
   inferElabV-RUnaryOp-aux ctx e (success Str    _ _ _ _ , _)     = failure (TypeMismatch Int Str) , tt
   inferElabV-RUnaryOp-aux ctx e (success Buffer _ _ _ _ , _)     = failure (TypeMismatch Int Buffer) , tt
+  inferElabV-RUnaryOp-aux ctx e (success (rigid kᵣ iᵣ) _ _ _ _ , _)     = failure (TypeMismatch Int (rigid kᵣ iᵣ)) , tt
   inferElabV-RUnaryOp-aux ctx e (success (A Once.Type.* B)      _ _ _ _ , _) = failure (TypeMismatch Int (A Once.Type.* B)) , tt
   inferElabV-RUnaryOp-aux ctx e (success (A Once.Type.+ B)      _ _ _ _ , _) = failure (TypeMismatch Int (A Once.Type.+ B)) , tt
   inferElabV-RUnaryOp-aux ctx e (success (A Once.Type.⇒[ k ] B) _ _ _ _ , _) = failure (TypeMismatch Int (A Once.Type.⇒[ k ] B)) , tt
@@ -2189,6 +2196,8 @@ mutual
     success Void _ (seq e₁E e₂E) (d₁ ⊔ d₂) f₂ , t-binop-void-r w₁ (λ ()) w₂
   inferElabV-RBinOp-void ctx op e₁ e₂ (success Buffer Ψ₁ e₁E d₁ f₁ , w₁) (success Void Ψ₂ e₂E d₂ f₂ , w₂) =
     success Void _ (seq e₁E e₂E) (d₁ ⊔ d₂) f₂ , t-binop-void-r w₁ (λ ()) w₂
+  inferElabV-RBinOp-void ctx op e₁ e₂ (success (rigid kᵣ iᵣ) Ψ₁ e₁E d₁ f₁ , w₁) (success Void Ψ₂ e₂E d₂ f₂ , w₂) =
+    success Void _ (seq e₁E e₂E) (d₁ ⊔ d₂) f₂ , t-binop-void-r w₁ (λ ()) w₂
   inferElabV-RBinOp-void ctx op e₁ e₂ (success (A Once.Type.* B) Ψ₁ e₁E d₁ f₁ , w₁) (success Void Ψ₂ e₂E d₂ f₂ , w₂) =
     success Void _ (seq e₁E e₂E) (d₁ ⊔ d₂) f₂ , t-binop-void-r w₁ (λ ()) w₂
   inferElabV-RBinOp-void ctx op e₁ e₂ (success (A Once.Type.+ B) Ψ₁ e₁E d₁ f₁ , w₁) (success Void Ψ₂ e₂E d₂ f₂ , w₂) =
@@ -2207,6 +2216,7 @@ mutual
   inferElabV-RBinOp-aux ctx op e₁ e₂ (success Void   _ _ _ _ , _) _ = failure (BinOpLeftError (TypeMismatch Int Void)) , tt
   inferElabV-RBinOp-aux ctx op e₁ e₂ (success Str    _ _ _ _ , _) _ = failure (BinOpLeftError (TypeMismatch Int Str)) , tt
   inferElabV-RBinOp-aux ctx op e₁ e₂ (success Buffer _ _ _ _ , _) _ = failure (BinOpLeftError (TypeMismatch Int Buffer)) , tt
+  inferElabV-RBinOp-aux ctx op e₁ e₂ (success (rigid kᵣ iᵣ) _ _ _ _ , _) _ = failure (BinOpLeftError (TypeMismatch Int (rigid kᵣ iᵣ))) , tt
   inferElabV-RBinOp-aux ctx op e₁ e₂ (success (A Once.Type.* B)      _ _ _ _ , _) _ = failure (BinOpLeftError (TypeMismatch Int (A Once.Type.* B))) , tt
   inferElabV-RBinOp-aux ctx op e₁ e₂ (success (A Once.Type.+ B)      _ _ _ _ , _) _ = failure (BinOpLeftError (TypeMismatch Int (A Once.Type.+ B))) , tt
   inferElabV-RBinOp-aux ctx op e₁ e₂ (success (A Once.Type.⇒[ k ] B) _ _ _ _ , _) _ = failure (BinOpLeftError (TypeMismatch Int (A Once.Type.⇒[ k ] B))) , tt
@@ -2218,6 +2228,7 @@ mutual
   inferElabV-RBinOp-aux ctx op e₁ e₂ (success Int _ _ _ _ , _) (success Void   _ _ _ _ , _) = failure (BinOpRightError (TypeMismatch Int Void)) , tt
   inferElabV-RBinOp-aux ctx op e₁ e₂ (success Int _ _ _ _ , _) (success Str    _ _ _ _ , _) = failure (BinOpRightError (TypeMismatch Int Str)) , tt
   inferElabV-RBinOp-aux ctx op e₁ e₂ (success Int _ _ _ _ , _) (success Buffer _ _ _ _ , _) = failure (BinOpRightError (TypeMismatch Int Buffer)) , tt
+  inferElabV-RBinOp-aux ctx op e₁ e₂ (success Int _ _ _ _ , _) (success (rigid kᵣ iᵣ) _ _ _ _ , _) = failure (BinOpRightError (TypeMismatch Int (rigid kᵣ iᵣ))) , tt
   inferElabV-RBinOp-aux ctx op e₁ e₂ (success Int _ _ _ _ , _) (success (A Once.Type.* B)      _ _ _ _ , _) = failure (BinOpRightError (TypeMismatch Int (A Once.Type.* B))) , tt
   inferElabV-RBinOp-aux ctx op e₁ e₂ (success Int _ _ _ _ , _) (success (A Once.Type.+ B)      _ _ _ _ , _) = failure (BinOpRightError (TypeMismatch Int (A Once.Type.+ B))) , tt
   inferElabV-RBinOp-aux ctx op e₁ e₂ (success Int _ _ _ _ , _) (success (A Once.Type.⇒[ k ] B) _ _ _ _ , _) = failure (BinOpRightError (TypeMismatch Int (A Once.Type.⇒[ k ] B))) , tt
@@ -2255,6 +2266,7 @@ mutual
   inferElabV-RBinOp-aux ctx op e₁ e₂ (success Float _ _ _ _ , _) (success Void _ _ _ _ , _) = failure (BinOpRightError (TypeMismatch Float Void)) , tt
   inferElabV-RBinOp-aux ctx op e₁ e₂ (success Float _ _ _ _ , _) (success Str _ _ _ _ , _) = failure (BinOpRightError (TypeMismatch Float Str)) , tt
   inferElabV-RBinOp-aux ctx op e₁ e₂ (success Float _ _ _ _ , _) (success Buffer _ _ _ _ , _) = failure (BinOpRightError (TypeMismatch Float Buffer)) , tt
+  inferElabV-RBinOp-aux ctx op e₁ e₂ (success Float _ _ _ _ , _) (success (rigid kᵣ iᵣ) _ _ _ _ , _) = failure (BinOpRightError (TypeMismatch Float (rigid kᵣ iᵣ))) , tt
   inferElabV-RBinOp-aux ctx op e₁ e₂ (success Float _ _ _ _ , _) (success (A Once.Type.* B) _ _ _ _ , _) = failure (BinOpRightError (TypeMismatch Float (A Once.Type.* B))) , tt
   inferElabV-RBinOp-aux ctx op e₁ e₂ (success Float _ _ _ _ , _) (success (A Once.Type.+ B) _ _ _ _ , _) = failure (BinOpRightError (TypeMismatch Float (A Once.Type.+ B))) , tt
   inferElabV-RBinOp-aux ctx op e₁ e₂ (success Float _ _ _ _ , _) (success (A Once.Type.⇒[ k ] B) _ _ _ _ , _) = failure (BinOpRightError (TypeMismatch Float (A Once.Type.⇒[ k ] B))) , tt
@@ -2337,6 +2349,7 @@ mutual
   inferElabV-RDestruct-aux ctx scrut xL eL xR eR (success Float  _ _ _ _ , _) = failure CaseScrutineeNotSum , tt
   inferElabV-RDestruct-aux ctx scrut xL eL xR eR (success Str    _ _ _ _ , _) = failure CaseScrutineeNotSum , tt
   inferElabV-RDestruct-aux ctx scrut xL eL xR eR (success Buffer _ _ _ _ , _) = failure CaseScrutineeNotSum , tt
+  inferElabV-RDestruct-aux ctx scrut xL eL xR eR (success (rigid kᵣ iᵣ) _ _ _ _ , _) = failure CaseScrutineeNotSum , tt
   inferElabV-RDestruct-aux ctx scrut xL eL xR eR (success (_ Once.Type.* _) _ _ _ _ , _) = failure CaseScrutineeNotSum , tt
   inferElabV-RDestruct-aux ctx scrut xL eL xR eR (success (_ Once.Type.⇒[ _ ] _) _ _ _ _ , _) = failure CaseScrutineeNotSum , tt
   inferElabV-RDestruct-aux ctx scrut xL eL xR eR (success (Once.Type.μ-type _) _ _ _ _ , _) = failure CaseScrutineeNotSum , tt
@@ -2393,6 +2406,7 @@ mutual
   ... | success Float      _ _ _ _ , _ = failure (NotFunction Float) , tt
   ... | success Str        _ _ _ _ , _ = failure (NotFunction Str) , tt
   ... | success Buffer     _ _ _ _ , _ = failure (NotFunction Buffer) , tt
+  ... | success (rigid kᵣ iᵣ)     _ _ _ _ , _ = failure (NotFunction (rigid kᵣ iᵣ)) , tt
   ... | success (A Once.Type.* B) _ _ _ _ , _ = failure (NotFunction (A Once.Type.* B)) , tt
   ... | success (A Once.Type.+ B) _ _ _ _ , _ = failure (NotFunction (A Once.Type.+ B)) , tt
   ... | success (Once.Type.μ-type F) _ _ _ _ , _ = failure (NotFunction (Once.Type.μ-type F)) , tt
@@ -2425,6 +2439,7 @@ mutual
   ... | success Float _ _ _ _ , _ = failure FstNeedsPair , tt
   ... | success Str _ _ _ _ , _ = failure FstNeedsPair , tt
   ... | success Buffer _ _ _ _ , _ = failure FstNeedsPair , tt
+  ... | success (rigid kᵣ iᵣ) _ _ _ _ , _ = failure FstNeedsPair , tt
   ... | success (_ Once.Type.+ _) _ _ _ _ , _ = failure FstNeedsPair , tt
   ... | success (_ Once.Type.⇒[ _ ] _) _ _ _ _ , _ = failure FstNeedsPair , tt
   ... | success (Once.Type.μ-type _) _ _ _ _ , _ = failure FstNeedsPair , tt
@@ -2441,6 +2456,7 @@ mutual
   ... | success Float _ _ _ _ , _ = failure SndNeedsPair , tt
   ... | success Str _ _ _ _ , _ = failure SndNeedsPair , tt
   ... | success Buffer _ _ _ _ , _ = failure SndNeedsPair , tt
+  ... | success (rigid kᵣ iᵣ) _ _ _ _ , _ = failure SndNeedsPair , tt
   ... | success (_ Once.Type.+ _) _ _ _ _ , _ = failure SndNeedsPair , tt
   ... | success (_ Once.Type.⇒[ _ ] _) _ _ _ _ , _ = failure SndNeedsPair , tt
   ... | success (Once.Type.μ-type _) _ _ _ _ , _ = failure SndNeedsPair , tt
@@ -2477,6 +2493,7 @@ mutual
   inferElabV-RApp-dispatch ctx f arg ahv-apply _ | success Float _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
   inferElabV-RApp-dispatch ctx f arg ahv-apply _ | success Str _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
   inferElabV-RApp-dispatch ctx f arg ahv-apply _ | success Buffer _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
+  inferElabV-RApp-dispatch ctx f arg ahv-apply _ | success (rigid kᵣ iᵣ) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
   inferElabV-RApp-dispatch ctx f arg ahv-apply _ | success (_ Once.Type.+ _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
   inferElabV-RApp-dispatch ctx f arg ahv-apply _ | success (_ Once.Type.⇒[ _ ] _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
   inferElabV-RApp-dispatch ctx f arg ahv-apply _ | success (Unit Once.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
@@ -2485,6 +2502,7 @@ mutual
   inferElabV-RApp-dispatch ctx f arg ahv-apply _ | success (Float Once.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
   inferElabV-RApp-dispatch ctx f arg ahv-apply _ | success (Str Once.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
   inferElabV-RApp-dispatch ctx f arg ahv-apply _ | success (Buffer Once.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
+  inferElabV-RApp-dispatch ctx f arg ahv-apply _ | success ((rigid kᵣ iᵣ) Once.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
   inferElabV-RApp-dispatch ctx f arg ahv-apply _ | success ((_ Once.Type.* _) Once.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
   inferElabV-RApp-dispatch ctx f arg ahv-apply _ | success ((_ Once.Type.+ _) Once.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
   inferElabV-RApp-dispatch ctx f arg ahv-apply _ | success ((_ Once.Type.⇒[ Once.Type.mk-kind _ Once.Type.eff ] _) Once.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
@@ -2547,6 +2565,7 @@ mutual
   checkElabV-RApp-dispatch ctx f arg T ahv-inl _ | Float = failure InlNeedsSumType , tt
   checkElabV-RApp-dispatch ctx f arg T ahv-inl _ | Str = failure InlNeedsSumType , tt
   checkElabV-RApp-dispatch ctx f arg T ahv-inl _ | Buffer = failure InlNeedsSumType , tt
+  checkElabV-RApp-dispatch ctx f arg T ahv-inl _ | (rigid kᵣ iᵣ) = failure InlNeedsSumType , tt
   checkElabV-RApp-dispatch ctx f arg T ahv-inl _ | (_ Once.Type.* _) = failure InlNeedsSumType , tt
   checkElabV-RApp-dispatch ctx f arg T ahv-inl _ | (_ Once.Type.⇒[ _ ] _) = failure InlNeedsSumType , tt
   checkElabV-RApp-dispatch ctx f arg T ahv-inl _ | (μ-type _) = failure InlNeedsSumType , tt
@@ -2563,6 +2582,7 @@ mutual
   checkElabV-RApp-dispatch ctx f arg T ahv-inr _ | Float = failure InrNeedsSumType , tt
   checkElabV-RApp-dispatch ctx f arg T ahv-inr _ | Str = failure InrNeedsSumType , tt
   checkElabV-RApp-dispatch ctx f arg T ahv-inr _ | Buffer = failure InrNeedsSumType , tt
+  checkElabV-RApp-dispatch ctx f arg T ahv-inr _ | (rigid kᵣ iᵣ) = failure InrNeedsSumType , tt
   checkElabV-RApp-dispatch ctx f arg T ahv-inr _ | (_ Once.Type.* _) = failure InrNeedsSumType , tt
   checkElabV-RApp-dispatch ctx f arg T ahv-inr _ | (_ Once.Type.⇒[ _ ] _) = failure InrNeedsSumType , tt
   checkElabV-RApp-dispatch ctx f arg T ahv-inr _ | (μ-type _) = failure InrNeedsSumType , tt
@@ -2612,6 +2632,7 @@ mutual
   checkElabV-RVar-bbc-id-failure-aux ctx Float err = failure err , tt
   checkElabV-RVar-bbc-id-failure-aux ctx Str err = failure err , tt
   checkElabV-RVar-bbc-id-failure-aux ctx Buffer err = failure err , tt
+  checkElabV-RVar-bbc-id-failure-aux ctx (rigid kᵣ iᵣ) err = failure err , tt
   checkElabV-RVar-bbc-id-failure-aux ctx (_ Once.Type.* _) err = failure err , tt
   checkElabV-RVar-bbc-id-failure-aux ctx (_ Once.Type.+ _) err = failure err , tt
   checkElabV-RVar-bbc-id-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Zero _ ] _) err = failure err , tt
@@ -2629,12 +2650,14 @@ mutual
   checkElabV-RVar-bbc-fst-failure-aux ctx Float err = failure err , tt
   checkElabV-RVar-bbc-fst-failure-aux ctx Str err = failure err , tt
   checkElabV-RVar-bbc-fst-failure-aux ctx Buffer err = failure err , tt
+  checkElabV-RVar-bbc-fst-failure-aux ctx (rigid kᵣ iᵣ) err = failure err , tt
   checkElabV-RVar-bbc-fst-failure-aux ctx (Unit Once.Type.⇒[ _ ] _) err = failure err , tt
   checkElabV-RVar-bbc-fst-failure-aux ctx (Void Once.Type.⇒[ _ ] _) err = failure err , tt
   checkElabV-RVar-bbc-fst-failure-aux ctx (Int Once.Type.⇒[ _ ] _) err = failure err , tt
   checkElabV-RVar-bbc-fst-failure-aux ctx (Float Once.Type.⇒[ _ ] _) err = failure err , tt
   checkElabV-RVar-bbc-fst-failure-aux ctx (Str Once.Type.⇒[ _ ] _) err = failure err , tt
   checkElabV-RVar-bbc-fst-failure-aux ctx (Buffer Once.Type.⇒[ _ ] _) err = failure err , tt
+  checkElabV-RVar-bbc-fst-failure-aux ctx ((rigid kᵣ iᵣ) Once.Type.⇒[ _ ] _) err = failure err , tt
   checkElabV-RVar-bbc-fst-failure-aux ctx ((_ Once.Type.+ _) Once.Type.⇒[ _ ] _) err = failure err , tt
   checkElabV-RVar-bbc-fst-failure-aux ctx ((_ Once.Type.⇒[ _ ] _) Once.Type.⇒[ _ ] _) err = failure err , tt
   checkElabV-RVar-bbc-fst-failure-aux ctx ((Once.Type.μ-type _) Once.Type.⇒[ _ ] _) err = failure err , tt
@@ -2657,12 +2680,14 @@ mutual
   checkElabV-RVar-bbc-snd-failure-aux ctx Float err = failure err , tt
   checkElabV-RVar-bbc-snd-failure-aux ctx Str err = failure err , tt
   checkElabV-RVar-bbc-snd-failure-aux ctx Buffer err = failure err , tt
+  checkElabV-RVar-bbc-snd-failure-aux ctx (rigid kᵣ iᵣ) err = failure err , tt
   checkElabV-RVar-bbc-snd-failure-aux ctx (Unit Once.Type.⇒[ _ ] _) err = failure err , tt
   checkElabV-RVar-bbc-snd-failure-aux ctx (Void Once.Type.⇒[ _ ] _) err = failure err , tt
   checkElabV-RVar-bbc-snd-failure-aux ctx (Int Once.Type.⇒[ _ ] _) err = failure err , tt
   checkElabV-RVar-bbc-snd-failure-aux ctx (Float Once.Type.⇒[ _ ] _) err = failure err , tt
   checkElabV-RVar-bbc-snd-failure-aux ctx (Str Once.Type.⇒[ _ ] _) err = failure err , tt
   checkElabV-RVar-bbc-snd-failure-aux ctx (Buffer Once.Type.⇒[ _ ] _) err = failure err , tt
+  checkElabV-RVar-bbc-snd-failure-aux ctx ((rigid kᵣ iᵣ) Once.Type.⇒[ _ ] _) err = failure err , tt
   checkElabV-RVar-bbc-snd-failure-aux ctx ((_ Once.Type.+ _) Once.Type.⇒[ _ ] _) err = failure err , tt
   checkElabV-RVar-bbc-snd-failure-aux ctx ((_ Once.Type.⇒[ _ ] _) Once.Type.⇒[ _ ] _) err = failure err , tt
   checkElabV-RVar-bbc-snd-failure-aux ctx ((Once.Type.μ-type _) Once.Type.⇒[ _ ] _) err = failure err , tt
@@ -2683,6 +2708,7 @@ mutual
   checkElabV-RVar-bbc-terminal-failure-aux ctx Float err = failure err , tt
   checkElabV-RVar-bbc-terminal-failure-aux ctx Str err = failure err , tt
   checkElabV-RVar-bbc-terminal-failure-aux ctx Buffer err = failure err , tt
+  checkElabV-RVar-bbc-terminal-failure-aux ctx (rigid kᵣ iᵣ) err = failure err , tt
   checkElabV-RVar-bbc-terminal-failure-aux ctx (_ Once.Type.* _) err = failure err , tt
   checkElabV-RVar-bbc-terminal-failure-aux ctx (_ Once.Type.+ _) err = failure err , tt
   checkElabV-RVar-bbc-terminal-failure-aux ctx (_ Once.Type.⇒[ _ ] Void) err = failure err , tt
@@ -2690,6 +2716,7 @@ mutual
   checkElabV-RVar-bbc-terminal-failure-aux ctx (_ Once.Type.⇒[ _ ] Float) err = failure err , tt
   checkElabV-RVar-bbc-terminal-failure-aux ctx (_ Once.Type.⇒[ _ ] Str) err = failure err , tt
   checkElabV-RVar-bbc-terminal-failure-aux ctx (_ Once.Type.⇒[ _ ] Buffer) err = failure err , tt
+  checkElabV-RVar-bbc-terminal-failure-aux ctx (_ Once.Type.⇒[ _ ] (rigid kᵣ iᵣ)) err = failure err , tt
   checkElabV-RVar-bbc-terminal-failure-aux ctx (_ Once.Type.⇒[ _ ] (_ Once.Type.* _)) err = failure err , tt
   checkElabV-RVar-bbc-terminal-failure-aux ctx (_ Once.Type.⇒[ _ ] (_ Once.Type.+ _)) err = failure err , tt
   checkElabV-RVar-bbc-terminal-failure-aux ctx (_ Once.Type.⇒[ _ ] (_ Once.Type.⇒[ _ ] _)) err = failure err , tt
@@ -2709,6 +2736,7 @@ mutual
   checkElabV-RVar-bbc-initial-failure-aux ctx Float err = failure err , tt
   checkElabV-RVar-bbc-initial-failure-aux ctx Str err = failure err , tt
   checkElabV-RVar-bbc-initial-failure-aux ctx Buffer err = failure err , tt
+  checkElabV-RVar-bbc-initial-failure-aux ctx (rigid kᵣ iᵣ) err = failure err , tt
   checkElabV-RVar-bbc-initial-failure-aux ctx (_ Once.Type.* _) err = failure err , tt
   checkElabV-RVar-bbc-initial-failure-aux ctx (_ Once.Type.+ _) err = failure err , tt
   checkElabV-RVar-bbc-initial-failure-aux ctx (Unit Once.Type.⇒[ _ ] _) err = failure err , tt
@@ -2716,6 +2744,7 @@ mutual
   checkElabV-RVar-bbc-initial-failure-aux ctx (Float Once.Type.⇒[ _ ] _) err = failure err , tt
   checkElabV-RVar-bbc-initial-failure-aux ctx (Str Once.Type.⇒[ _ ] _) err = failure err , tt
   checkElabV-RVar-bbc-initial-failure-aux ctx (Buffer Once.Type.⇒[ _ ] _) err = failure err , tt
+  checkElabV-RVar-bbc-initial-failure-aux ctx ((rigid kᵣ iᵣ) Once.Type.⇒[ _ ] _) err = failure err , tt
   checkElabV-RVar-bbc-initial-failure-aux ctx ((_ Once.Type.* _) Once.Type.⇒[ _ ] _) err = failure err , tt
   checkElabV-RVar-bbc-initial-failure-aux ctx ((_ Once.Type.+ _) Once.Type.⇒[ _ ] _) err = failure err , tt
   checkElabV-RVar-bbc-initial-failure-aux ctx ((_ Once.Type.⇒[ _ ] _) Once.Type.⇒[ _ ] _) err = failure err , tt
@@ -2737,6 +2766,7 @@ mutual
   checkElabV-RVar-bbc-inl-failure-aux ctx Float err = failure err , tt
   checkElabV-RVar-bbc-inl-failure-aux ctx Str err = failure err , tt
   checkElabV-RVar-bbc-inl-failure-aux ctx Buffer err = failure err , tt
+  checkElabV-RVar-bbc-inl-failure-aux ctx (rigid kᵣ iᵣ) err = failure err , tt
   checkElabV-RVar-bbc-inl-failure-aux ctx (_ Once.Type.* _) err = failure err , tt
   checkElabV-RVar-bbc-inl-failure-aux ctx (_ Once.Type.+ _) err = failure err , tt
   checkElabV-RVar-bbc-inl-failure-aux ctx (_ Once.Type.⇒[ _ ] Unit) err = failure err , tt
@@ -2745,6 +2775,7 @@ mutual
   checkElabV-RVar-bbc-inl-failure-aux ctx (_ Once.Type.⇒[ _ ] Float) err = failure err , tt
   checkElabV-RVar-bbc-inl-failure-aux ctx (_ Once.Type.⇒[ _ ] Str) err = failure err , tt
   checkElabV-RVar-bbc-inl-failure-aux ctx (_ Once.Type.⇒[ _ ] Buffer) err = failure err , tt
+  checkElabV-RVar-bbc-inl-failure-aux ctx (_ Once.Type.⇒[ _ ] (rigid kᵣ iᵣ)) err = failure err , tt
   checkElabV-RVar-bbc-inl-failure-aux ctx (_ Once.Type.⇒[ _ ] (_ Once.Type.* _)) err = failure err , tt
   checkElabV-RVar-bbc-inl-failure-aux ctx (_ Once.Type.⇒[ _ ] (_ Once.Type.⇒[ _ ] _)) err = failure err , tt
   checkElabV-RVar-bbc-inl-failure-aux ctx (_ Once.Type.⇒[ _ ] (Once.Type.μ-type _)) err = failure err , tt
@@ -2765,6 +2796,7 @@ mutual
   checkElabV-RVar-bbc-inr-failure-aux ctx Float err = failure err , tt
   checkElabV-RVar-bbc-inr-failure-aux ctx Str err = failure err , tt
   checkElabV-RVar-bbc-inr-failure-aux ctx Buffer err = failure err , tt
+  checkElabV-RVar-bbc-inr-failure-aux ctx (rigid kᵣ iᵣ) err = failure err , tt
   checkElabV-RVar-bbc-inr-failure-aux ctx (_ Once.Type.* _) err = failure err , tt
   checkElabV-RVar-bbc-inr-failure-aux ctx (_ Once.Type.+ _) err = failure err , tt
   checkElabV-RVar-bbc-inr-failure-aux ctx (_ Once.Type.⇒[ _ ] Unit) err = failure err , tt
@@ -2773,6 +2805,7 @@ mutual
   checkElabV-RVar-bbc-inr-failure-aux ctx (_ Once.Type.⇒[ _ ] Float) err = failure err , tt
   checkElabV-RVar-bbc-inr-failure-aux ctx (_ Once.Type.⇒[ _ ] Str) err = failure err , tt
   checkElabV-RVar-bbc-inr-failure-aux ctx (_ Once.Type.⇒[ _ ] Buffer) err = failure err , tt
+  checkElabV-RVar-bbc-inr-failure-aux ctx (_ Once.Type.⇒[ _ ] (rigid kᵣ iᵣ)) err = failure err , tt
   checkElabV-RVar-bbc-inr-failure-aux ctx (_ Once.Type.⇒[ _ ] (_ Once.Type.* _)) err = failure err , tt
   checkElabV-RVar-bbc-inr-failure-aux ctx (_ Once.Type.⇒[ _ ] (_ Once.Type.⇒[ _ ] _)) err = failure err , tt
   checkElabV-RVar-bbc-inr-failure-aux ctx (_ Once.Type.⇒[ _ ] (Once.Type.μ-type _)) err = failure err , tt

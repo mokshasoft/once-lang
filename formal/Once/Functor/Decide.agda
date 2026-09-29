@@ -20,12 +20,12 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (∃-syntax; _,_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
-open import Once.Type using (Type; Unit; Void; Int; Float; Str; Buffer;
+open import Once.Type using (Type; Unit; Void; Int; Float; Str; Buffer; rigid; k-base; k-any;
                              _*_; _+_; _⇒[_]_; μ-type; ν-type;
                              Functor; K; Id; _⊕_; _⊗_)
 open import Once.Functor.Translate
   using (IsBaseType; base-Unit; base-Void; base-Int; base-Float;
-         base-Str; base-Buffer; base-Prod; base-Sum;
+         base-Str; base-Buffer; base-Prod; base-Sum; base-rigid;
          IsConcrete; con-base; con-fun;
          WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod)
 
@@ -46,6 +46,8 @@ isBaseType? (A + B) with isBaseType? A | isBaseType? B
 isBaseType? (_ ⇒[ _ ] _) = nothing
 isBaseType? (μ-type _) = nothing
 isBaseType? (ν-type _ _) = nothing
+isBaseType? (rigid k-base _) = just base-rigid
+isBaseType? (rigid k-any _)  = nothing
 
 -- | Decide whether a type is CONCRETE / FFI-representable (Plan 0.58): a base
 -- type, or a first-order function pointer (base argument, concrete result).
@@ -67,6 +69,7 @@ isBaseType?-complete base-Int    = base-Int , refl
 isBaseType?-complete base-Float  = base-Float , refl
 isBaseType?-complete base-Str    = base-Str , refl
 isBaseType?-complete base-Buffer = base-Buffer , refl
+isBaseType?-complete base-rigid  = base-rigid , refl
 isBaseType?-complete (base-Prod bA bB)
   with isBaseType?-complete bA | isBaseType?-complete bB
 ... | (a , eqA) | (b , eqB) rewrite eqA | eqB = base-Prod a b , refl
@@ -81,6 +84,7 @@ isConcrete?-complete (con-base base-Int)    = con-base base-Int , refl
 isConcrete?-complete (con-base base-Float)  = con-base base-Float , refl
 isConcrete?-complete (con-base base-Str)    = con-base base-Str , refl
 isConcrete?-complete (con-base base-Buffer) = con-base base-Buffer , refl
+isConcrete?-complete (con-base base-rigid)  = con-base base-rigid , refl
 isConcrete?-complete (con-base (base-Prod bA bB))
   with isBaseType?-complete (base-Prod bA bB)
 ... | (b , eq) rewrite eq = con-base b , refl

@@ -212,6 +212,7 @@ mutual
   typeToPoly Float = just PFloat
   typeToPoly Str = just PStr
   typeToPoly Buffer = just PBuffer
+  typeToPoly (rigid _ _) = nothing   -- D243: the oracle never sees a definition's rigid parameters
   typeToPoly (a * b) = map2P _P*_ (typeToPoly a) (typeToPoly b)
   typeToPoly (a + b) = map2P _P+_ (typeToPoly a) (typeToPoly b)
   typeToPoly (a ⇒[ mk-kind q pure ] b) =

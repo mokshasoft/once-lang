@@ -413,6 +413,7 @@ binop-left-err-wraps ctx op e₁ e₂ eqNN eqOuter
 ...     | success T.Float _ _ _ _ , _ | refl = refl
 ...     | success Str _ _ _ _ , _ | refl = refl
 ...     | success T.Buffer _ _ _ _ , _ | refl = refl
+...     | success (T.rigid _ _) _ _ _ _ , _ | refl = refl
 ...     | success (_ T.* _) _ _ _ _ , _ | refl = refl
 ...     | success (_ T.+ _) _ _ _ _ , _ | refl = refl
 ...     | success (_ T.⇒[ _ ] _) _ _ _ _ , _ | refl = refl
@@ -428,6 +429,7 @@ binop-left-err-wraps ctx op e₁ e₂ eqNN eqOuter
 ...     | success T.Float _ _ _ _ , _ | refl = refl
 ...     | success Str _ _ _ _ , _ | refl = refl
 ...     | success T.Buffer _ _ _ _ , _ | refl = refl
+...     | success (T.rigid _ _) _ _ _ _ , _ | refl = refl
 ...     | success (_ T.* _) _ _ _ _ , _ | refl = refl
 ...     | success (_ T.+ _) _ _ _ _ , _ | refl = refl
 ...     | success (_ T.⇒[ _ ] _) _ _ _ _ , _ | refl = refl
@@ -443,11 +445,29 @@ binop-left-err-wraps ctx op e₁ e₂ eqNN eqOuter
 ...     | success T.Float _ _ _ _ , _ | refl = refl
 ...     | success Str _ _ _ _ , _ | refl = refl
 ...     | success T.Buffer _ _ _ _ , _ | refl = refl
+...     | success (T.rigid _ _) _ _ _ _ , _ | refl = refl
 ...     | success (_ T.* _) _ _ _ _ , _ | refl = refl
 ...     | success (_ T.+ _) _ _ _ _ , _ | refl = refl
 ...     | success (_ T.⇒[ _ ] _) _ _ _ _ , _ | refl = refl
 ...     | success (T.μ-type _) _ _ _ _ , _ | refl = refl
 ...     | success (T.ν-type _ _) _ _ _ _ , _ | refl = refl
+binop-left-err-wraps ctx op e₁ e₂ eqNN eqOuter
+    | success (T.rigid _ _) _ _ _ _ , _ with eqNN
+...   | refl with inferElabV ctx e₂ | eqOuter
+...     | failure _ , _ | refl = refl
+...     | success Void _ _ _ _ , _ | ()
+...     | success Unit _ _ _ _ , _ | refl = refl
+...     | success Int _ _ _ _ , _ | refl = refl
+...     | success T.Float _ _ _ _ , _ | refl = refl
+...     | success Str _ _ _ _ , _ | refl = refl
+...     | success T.Buffer _ _ _ _ , _ | refl = refl
+...     | success (T.rigid _ _) _ _ _ _ , _ | refl = refl
+...     | success (_ T.* _) _ _ _ _ , _ | refl = refl
+...     | success (_ T.+ _) _ _ _ _ , _ | refl = refl
+...     | success (_ T.⇒[ _ ] _) _ _ _ _ , _ | refl = refl
+...     | success (T.μ-type _) _ _ _ _ , _ | refl = refl
+...     | success (T.ν-type _ _) _ _ _ _ , _ | refl = refl
+
 binop-left-err-wraps ctx op e₁ e₂ eqNN eqOuter
     | success (_ T.* _) _ _ _ _ , _ with eqNN
 ...   | refl with inferElabV ctx e₂ | eqOuter
@@ -458,6 +478,7 @@ binop-left-err-wraps ctx op e₁ e₂ eqNN eqOuter
 ...     | success T.Float _ _ _ _ , _ | refl = refl
 ...     | success Str _ _ _ _ , _ | refl = refl
 ...     | success T.Buffer _ _ _ _ , _ | refl = refl
+...     | success (T.rigid _ _) _ _ _ _ , _ | refl = refl
 ...     | success (_ T.* _) _ _ _ _ , _ | refl = refl
 ...     | success (_ T.+ _) _ _ _ _ , _ | refl = refl
 ...     | success (_ T.⇒[ _ ] _) _ _ _ _ , _ | refl = refl
@@ -473,6 +494,7 @@ binop-left-err-wraps ctx op e₁ e₂ eqNN eqOuter
 ...     | success T.Float _ _ _ _ , _ | refl = refl
 ...     | success Str _ _ _ _ , _ | refl = refl
 ...     | success T.Buffer _ _ _ _ , _ | refl = refl
+...     | success (T.rigid _ _) _ _ _ _ , _ | refl = refl
 ...     | success (_ T.* _) _ _ _ _ , _ | refl = refl
 ...     | success (_ T.+ _) _ _ _ _ , _ | refl = refl
 ...     | success (_ T.⇒[ _ ] _) _ _ _ _ , _ | refl = refl
@@ -488,6 +510,7 @@ binop-left-err-wraps ctx op e₁ e₂ eqNN eqOuter
 ...     | success T.Float _ _ _ _ , _ | refl = refl
 ...     | success Str _ _ _ _ , _ | refl = refl
 ...     | success T.Buffer _ _ _ _ , _ | refl = refl
+...     | success (T.rigid _ _) _ _ _ _ , _ | refl = refl
 ...     | success (_ T.* _) _ _ _ _ , _ | refl = refl
 ...     | success (_ T.+ _) _ _ _ _ , _ | refl = refl
 ...     | success (_ T.⇒[ _ ] _) _ _ _ _ , _ | refl = refl
@@ -503,6 +526,7 @@ binop-left-err-wraps ctx op e₁ e₂ eqNN eqOuter
 ...     | success T.Float _ _ _ _ , _ | refl = refl
 ...     | success Str _ _ _ _ , _ | refl = refl
 ...     | success T.Buffer _ _ _ _ , _ | refl = refl
+...     | success (T.rigid _ _) _ _ _ _ , _ | refl = refl
 ...     | success (_ T.* _) _ _ _ _ , _ | refl = refl
 ...     | success (_ T.+ _) _ _ _ _ , _ | refl = refl
 ...     | success (_ T.⇒[ _ ] _) _ _ _ _ , _ | refl = refl
@@ -518,6 +542,7 @@ binop-left-err-wraps ctx op e₁ e₂ eqNN eqOuter
 ...     | success T.Float _ _ _ _ , _ | refl = refl
 ...     | success Str _ _ _ _ , _ | refl = refl
 ...     | success T.Buffer _ _ _ _ , _ | refl = refl
+...     | success (T.rigid _ _) _ _ _ _ , _ | refl = refl
 ...     | success (_ T.* _) _ _ _ _ , _ | refl = refl
 ...     | success (_ T.+ _) _ _ _ _ , _ | refl = refl
 ...     | success (_ T.⇒[ _ ] _) _ _ _ _ , _ | refl = refl
@@ -563,6 +588,10 @@ binop-right-err-wraps ctx op e₁ e₂ eqAsInt₁ eqAsInt₂ eqOuter
 binop-right-err-wraps ctx op e₁ e₂ eqAsInt₁ eqAsInt₂ eqOuter
     | success T.Buffer _ _ _ _ , _        with eqAsInt₁
 ...   | ()
+binop-right-err-wraps ctx op e₁ e₂ eqAsInt₁ eqAsInt₂ eqOuter
+    | success (T.rigid _ _) _ _ _ _ , _        with eqAsInt₁
+...   | ()
+
 binop-right-err-wraps ctx op e₁ e₂ eqAsInt₁ eqAsInt₂ eqOuter
     | success (_ T.* _) _ _ _ _ , _       with eqAsInt₁
 ...   | ()
@@ -654,6 +683,11 @@ binop-right-err-wraps ctx op e₁ e₂ eqAsInt₁ eqAsInt₂ eqOuter
     | success Int _ _ _ _ , _ | success T.Buffer _ _ _ _ , _ with eqAsInt₂
 ... | refl with eqOuter
 ...   | refl = refl
+binop-right-err-wraps ctx op e₁ e₂ eqAsInt₁ eqAsInt₂ eqOuter
+    | success Int _ _ _ _ , _ | success (T.rigid _ _) _ _ _ _ , _ with eqAsInt₂
+... | refl with eqOuter
+...   | refl = refl
+
 binop-right-err-wraps ctx op e₁ e₂ eqAsInt₁ eqAsInt₂ eqOuter
     | success Int _ _ _ _ , _ | success (_ T.* _) _ _ _ _ , _ with eqAsInt₂
 ... | refl with eqOuter

@@ -21,6 +21,7 @@
 ------------------------------------------------------------------------
 
 open import Data.Nat using (ℕ)
+import Once.Type
 open import Once.Spec.Core.PolyTy using (Sig)
 
 module Once.Spec.Core.PolyTyping {s : ℕ} (S : Sig s) where
@@ -32,7 +33,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst
 
 import Once.Type as T
 open T using (Purity; pure; eff; ArrowKind; mk-kind; Quantity; Zero; One; Many; _≤q_)
-open import Once.Type.Sub using (_⊑π_; _<:_; sub-void; sub-unit; sub-int; sub-float; sub-str; sub-buffer;
+open import Once.Type.Sub using (_⊑π_; _<:_; sub-void; sub-unit; sub-int; sub-float; sub-str; sub-buffer; sub-rigid;
   sub-arr; sub-prod; sub-sum; sub-μ; sub-ν)
 open import Once.Functor.Translate using (IsConcrete)
 open import Once.Type.Honest using (HonestFFI)
@@ -136,6 +137,7 @@ data _<:ₚ_ {m} : Ty m → Ty m → Set where
   sub-float  : Float <:ₚ Float
   sub-str    : Str <:ₚ Str
   sub-buffer : Buffer <:ₚ Buffer
+  sub-rigid  : ∀ {k i} → rigid k i <:ₚ rigid k i
   sub-arr    : ∀ {A A′ B B′ q π π′}
              → A′ <:ₚ A → B <:ₚ B′ → π ⊑π π′
              → (A ⇒[ mk-kind q π ] B) <:ₚ (A′ ⇒[ mk-kind q π′ ] B′)
@@ -152,6 +154,7 @@ data _<:ₚ_ {m} : Ty m → Ty m → Set where
 <:ₚ-⟪⟫ σ sub-float  = sub-float
 <:ₚ-⟪⟫ σ sub-str    = sub-str
 <:ₚ-⟪⟫ σ sub-buffer = sub-buffer
+<:ₚ-⟪⟫ σ sub-rigid  = sub-rigid
 <:ₚ-⟪⟫ σ (sub-arr a b g) = sub-arr (<:ₚ-⟪⟫ σ a) (<:ₚ-⟪⟫ σ b) g
 <:ₚ-⟪⟫ σ (sub-prod a b)  = sub-prod (<:ₚ-⟪⟫ σ a) (<:ₚ-⟪⟫ σ b)
 <:ₚ-⟪⟫ σ (sub-sum a b)   = sub-sum (<:ₚ-⟪⟫ σ a) (<:ₚ-⟪⟫ σ b)
@@ -253,7 +256,7 @@ data _⊩_⊢[_]_∷_!_ {m} (Δ : KCtx m) : ∀ {n} → PCtx m n → Usage n →
   -- instantiation respects the schema's kinds (a base variable gets a type
   -- that is base under `Δ`).
   ⊢ref : ∀ {n} {Γ : PCtx m n} (d : Fin s) (τ : Sub (arity (S !! d)) m)
-       → (∀ i → kinds (S !! d) i ≡ base → Base Δ (τ i))
+       → (∀ i → kinds (S !! d) i ≡ Once.Type.k-base → Base Δ (τ i))
        → Δ ⊩ Γ ⊢[ zeroUsage ] ref d τ ∷ type (S !! d) ⟨ τ ⟩ ! pure
 
 ------------------------------------------------------------------------

@@ -1748,6 +1748,7 @@ faithful (sigOp {A = Int}      name conc) dγ k = refl
 faithful (sigOp {A = Str}      name conc) dγ k = refl
 faithful (sigOp {A = Float}    name conc) dγ k = refl
 faithful (sigOp {A = Buffer}   name conc) dγ k = refl
+faithful (sigOp {A = Once.Type.rigid _ _} name conc) dγ k = refl
 faithful {Γ = Γ} (sigOp {A = _ * _}    name conc) dγ k = sigop-value {⟦ Γ ↾ zeroUsage ⟧ᶜ} (value-info name base-Unit conc) dγ k
 faithful {Γ = Γ} (sigOp {A = _ + _}    name conc) dγ k = sigop-value {⟦ Γ ↾ zeroUsage ⟧ᶜ} (value-info name base-Unit conc) dγ k
 faithful {Γ = Γ} (sigOp {A = μ-type _} name conc) dγ k = sigop-value {⟦ Γ ↾ zeroUsage ⟧ᶜ} (value-info name base-Unit conc) dγ k
