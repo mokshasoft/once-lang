@@ -80,8 +80,8 @@ CongMacro → Vec, Scoped, ScopedDepth → continue stage 4.
   Desc/DCon/IDesc/ICon sorts are gone: descriptions are terms (D072).
 - No sort Ford: `Dₛ` presents the fibres (`Lib/Sorted`); methods are typed
   at `pair (tag s) j` (`Lib/MethAt`, `Lib/TelAt.entₛ`).
-- Stage-4 status: every example is ported except `ScopeHazard`, which waits
-  on the Tel-based `scopeAt`. `Mutual` is the sorted-family exemplar.
+- Stage-4 status: every example is ported. `ScopeHazard` is retired
+  (D079). `Mutual` is the sorted-family exemplar.
 - Before-metrics (commit 1a98d1bf): 201 Knot modules, 74 494 lines,
   12 474 top-level signatures; 3 854 lines of `Lib/I*`; `gen-knot.py` 7 303
   lines.
@@ -154,11 +154,22 @@ CongMacro → Vec, Scoped, ScopedDepth → continue stage 4.
   `⌜Ty⌝`, `⌜Tm⌝`, the SubEnv operations, every family's `⌜·⌝` code, and
   SynPat's `CASE`. Typings are goal-directed: contexts flow from the goal
   and only terms are pinned (`okσJ`, `wkK`/`wkN`/`wkG`).
-- ⬜ Remaining:
-  1. constructors for the generated rows. The hand templates are
-     `⊢tm-lam/app/var` and `⊢ty-base/Π`. Generating them needs automatic
-     `⟶*` proofs for the projection reductions in indices;
-  2. `scopeAt` over Tel (restore `ScopeHazard`); Stage 6 metrics.
+- ✅ (2026-09-29) CONSTRUCTORS for every rule of every family:
+  - Generated: `Knot/JudgeConGen` (13 `⊢ty`, 37 `⊢`, 38 `⊢conv`) and
+    `Knot/RedConGen` (99 `⟶`, 36 `⟶ᵀ`, 2 `Pw`).
+  - Hand-written: `Knot/JudgeConFin` (fzero, fsuc) and `Knot/ConvCon`
+    (the four `≅`/`≅ᵀ` rules, each ONCE for every head).
+  - Each row telescope is a chain of TAILS `N⁽ᵏ⁾` with their own laws.
+    A constructor builds its payload at VALUES. The source form is read
+    at the values by ONE `mono-by` (`Lib/SynRed`: a substitution-natural
+    object is ⟶*-monotone), fed by `prj-tup` per position. Case and
+    nested rows prefix CASE-⟶ᵃ/CASE-⟶ᶜ/case-β per level.
+  - The `⊢ty` rows are generated too; every hand row and hand
+    constructor they replace is deleted.
+- ✅ D079: `scopeAt` over Tel is NOT built. No level-comparing fold
+  remains, and Shapes cannot express a closed-index child.
+  `ScopeHazard` stays retired.
+- ⬜ Remaining: Stage 6 metrics.
 
 ## Stages (each ends GREEN on its own branch; straight-line history)
 
