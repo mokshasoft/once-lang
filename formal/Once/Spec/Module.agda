@@ -34,11 +34,13 @@ open import Data.Maybe using (just)
 open import Data.String using (String)
 open import Data.Bool using (true; false)
 open import Data.Empty using (⊥)
+open import Data.Unit using (⊤)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
 open import Once.Type using (Type; Unit; _⇒[_]_; mk-kind; Many; eff)
 open import Once.Type.Rigid using (rigidOf)
 open import Once.Functor.Translate using (IsConcrete)
+open import Once.Type.Honest using (HonestFFI)
 open import Once.Surface.Context using (zeroUsage)
 import Once.Compile as C
 import Once.Parser.Module.Core as P
@@ -78,10 +80,11 @@ addPoly sc p = scope (Scope.imps sc) (p ∷ Scope.tele sc)
 
 data ModTele : Scope → List C.Entry → Set where
   []   : ∀ {sc} → ModTele sc []
-  -- An FFI declaration: its (honest, parse-checked) type, CONCRETE — a SigOp
-  -- is a first-order contract (D061/D071). No body.
+  -- An FFI declaration: its type, CONCRETE — a SigOp is a first-order
+  -- contract (D061/D071) — and HONEST (D231: `pure` means no side effects).
+  -- No body.
   ffi  : ∀ {sc fi ty es}
-       → funIsPrimitive fi ≡ true → funType fi ≡ just ty → IsConcrete ty
+       → funIsPrimitive fi ≡ true → funType fi ≡ just ty → IsConcrete ty → HonestFFI ty
        → ModTele (addImp sc (funName fi) ty) es
        → ModTele sc (C.e-fun fi ∷ es)
   -- A monomorphic definition, typed at its (declared or inferred) type.
@@ -112,14 +115,23 @@ ModuleTyped m = ModuleTyped-ef m (C.extractFunctions (C.extractAliases m) m)
 EffUU : Type
 EffUU = Unit ⇒[ mk-kind Many eff ] Unit
 
+-- Every monomorphic definition named `main` is at `IO Unit` (the compiler's
+-- entry point is at that type).
+MainsEffUU : ∀ {sc es} → ModTele sc es → Set
+MainsEffUU []                                  = ⊤
+MainsEffUU (ffi _ _ _ _ rest)                  = MainsEffUU rest
+MainsEffUU (mono {fi = fi} {ty = ty} _ _ _ rest) = (funName fi ≡ "main" → ty ≡ EffUU) × MainsEffUU rest
+MainsEffUU (poly _ rest)                       = MainsEffUU rest
+
+-- Some monomorphic definition is `main : IO Unit`.
 MainIn : ∀ {sc es} → ModTele sc es → Set
-MainIn []                              = ⊥
-MainIn (ffi _ _ _ rest)                = MainIn rest
+MainIn []                                  = ⊥
+MainIn (ffi _ _ _ _ rest)                  = MainIn rest
 MainIn (mono {fi = fi} {ty = ty} _ _ _ rest) = ((funName fi ≡ "main") × (ty ≡ EffUU)) ⊎ MainIn rest
-MainIn (poly _ rest)                   = MainIn rest
+MainIn (poly _ rest)                       = MainIn rest
 
 HasValidMain-ef : ∀ (m : P.Module) (ef : String ⊎ List C.Entry) → ModuleTyped-ef m ef → Set
-HasValidMain-ef m (inj₂ _) mt = MainIn mt
+HasValidMain-ef m (inj₂ _) mt = MainsEffUU mt × MainIn mt
 
 HasValidMain : ∀ (m : P.Module) → ModuleTyped m → Set
 HasValidMain m mt = HasValidMain-ef m (C.extractFunctions (C.extractAliases m) m) mt

@@ -34,14 +34,21 @@ open import Once.IR using (IR)
 open import Once.IRTy using (⌊_⌋)
 open import Once.Type using (Unit; Type)
 import Once.Compile as C
-import Once.Adequacy.PolysCheck as PC
 import Once.Surface.Syntax as Srf
 open import Once.TypeCheck.Elaborate as TE using (CheckElabResult; checkElab; ctxWithImportsAndPolys)
 open import Once.TypeCheck.Classify using (NamedCtx)
 open import Once.TypeCheck.Raw using (RawExpr)
 open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_)
 open import Once.Spec.Module
-  using (AllFunsTyped; tnil; tcons; ModuleTyped-ef; ModuleTyped; PolysTyped-ef; PolysTyped)
+  using (Scope; scope; ModTele; []; ffi; mono; poly; ModuleTyped-ef; ModuleTyped)
+open import Once.Type.Rigid using (rigidOf)
+open import Once.Functor.Translate using (IsConcrete)
+open import Once.Functor.Decide using (isConcrete?)
+open import Once.Type.Honest using (HonestFFI; honest?)
+open import Once.Surface.Context using (zeroUsage)
+import Once.Surface.Context
+open import Data.Maybe using (Maybe; nothing)
+open import Relation.Binary.PropositionalEquality using (subst)
 -- Import `check-sound` DIRECTLY from `Soundness` (not via `Verified`, which
 -- transitively pulls in the still-rotted `ErrorProofs`; soundness needs only
 -- this): `checkElab ctx e T ≡ success … ⇒ ctx ⊢ᶜ e ∶ T ⨾ Ψ`.
@@ -121,69 +128,105 @@ compileFun-sound doOpt ctx polys impsOf name ty expr eq =
 -- Layer 2 — `compileAllFuns-go` accepts ⇒ `AllFunsTyped` (mutual).
 ------------------------------------------------------------------------
 
-caf-go-sound : ∀ (doOpt : Bool) (polys : TE.PolyCtx) (impsOf : C.String → C.FunCtx)
-  (funs : List C.FunInfo) (ctx : C.FunCtx) {compiled : List C.CompiledFun} →
-  C.compileAllFuns-go C.Heap doOpt polys impsOf funs ctx ≡ inj₂ compiled →
-  AllFunsTyped polys funs ctx
-caf-go-cf-sound : ∀ (doOpt : Bool) (polys : TE.PolyCtx) (impsOf : C.String → C.FunCtx)
-  (fi : C.FunInfo) (rest : List C.FunInfo) (ctx : C.FunCtx) (ty : Type) {compiled : List C.CompiledFun} →
-  C.resolveFunType ctx polys (C.FunInfo.funType fi) (C.FunInfo.funBody fi) ≡ inj₂ ty →
-  C.caf-go-cf-aux C.Heap doOpt polys impsOf fi rest ctx ty (C.compileFun C.Heap doOpt ctx polys impsOf (C.FunInfo.funName fi) ty (C.FunInfo.funBody fi)) ≡ inj₂ compiled →
-  AllFunsTyped polys (fi ∷ rest) ctx
-caf-go-rf-sound : ∀ (doOpt : Bool) (polys : TE.PolyCtx) (impsOf : C.String → C.FunCtx)
-  (fi : C.FunInfo) (rest : List C.FunInfo) (ctx : C.FunCtx) (rf : String ⊎ Type) {compiled : List C.CompiledFun} →
-  C.resolveFunType ctx polys (C.FunInfo.funType fi) (C.FunInfo.funBody fi) ≡ rf →
-  C.caf-go-rf-aux C.Heap doOpt polys impsOf fi rest ctx rf ≡ inj₂ compiled →
-  AllFunsTyped polys (fi ∷ rest) ctx
-
-caf-go-sound doOpt polys impsOf [] ctx eq = tnil
-caf-go-sound doOpt polys impsOf (fi ∷ rest) ctx eq =
-  caf-go-rf-sound doOpt polys impsOf fi rest ctx
-    (C.resolveFunType ctx polys (C.FunInfo.funType fi) (C.FunInfo.funBody fi)) refl eq
-
-caf-go-rf-sound doOpt polys impsOf fi rest ctx (inj₁ err) rf-conn ()
-caf-go-rf-sound doOpt polys impsOf fi rest ctx (inj₂ ty) rf-conn eq =
-  caf-go-cf-sound doOpt polys impsOf fi rest ctx ty rf-conn eq
-
-caf-go-cf-sound doOpt polys impsOf fi rest ctx ty rf-eq eq
-  with C.compileFun C.Heap doOpt ctx polys impsOf (C.FunInfo.funName fi) ty (C.FunInfo.funBody fi) in cf-eq
-... | inj₁ err = case eq of λ ()
-... | inj₂ ir
-      with C.compileAllFuns-go C.Heap doOpt polys impsOf rest (C.extendFunCtx ctx (C.FunInfo.funName fi) ty) in rec-eq
-...   | inj₁ err = case eq of λ ()
-...   | inj₂ compiled-rest =
-        let (Ψ , jud)  = compileFun-sound doOpt ctx polys impsOf (C.FunInfo.funName fi) ty (C.FunInfo.funBody fi) cf-eq
-            rest-typed = caf-go-sound doOpt polys impsOf rest (C.extendFunCtx ctx (C.FunInfo.funName fi) ty) rec-eq
-        in tcons rf-eq jud rest-typed
-
-caf-sound : ∀ (doOpt : Bool) (funs : List C.FunInfo) (polys : TE.PolyCtx) (impsOf : C.String → C.FunCtx)
-  {compiled : List C.CompiledFun} →
-  C.compileAllFuns C.Heap doOpt funs polys impsOf ≡ inj₂ compiled →
-  AllFunsTyped polys funs C.emptyFunCtx
-caf-sound doOpt funs polys impsOf eq =
-  caf-go-sound doOpt polys impsOf funs C.emptyFunCtx eq
-
 ------------------------------------------------------------------------
--- Layer 3 — module level. `ModuleTyped m` = the independent fact that
--- `m`'s functions are all declaratively well-typed.
+-- D241 (plan 0.103 6c′): the compiler's telescope walk is SOUND for the
+-- Spec's telescope — each accepted entry is typed in its scope.
 ------------------------------------------------------------------------
 
--- `ModuleTyped-ef`/`ModuleTyped` are in `Once.Spec.Module` (plan 0.84).
+-- The Spec's scope is the compile scope with the declaration imports forgotten.
+scopeOf : C.CScope → Scope
+scopeOf sc = scope (C.CScope.cimps sc) (C.telePolys (C.CScope.ctele sc))
 
-gated-caf-sound : ∀ (doOpt : Bool) (funs : List C.FunInfo) (polys : List C.PolyFunInfo)
-  (g : String ⊎ ⊤) {compiled : List C.CompiledFun} →
-  C.polysGate g (C.compileAllFuns C.Heap doOpt funs (C.buildPolyCtx polys) (C.entryImps funs polys)) ≡ inj₂ compiled →
-  AllFunsTyped (C.buildPolyCtx polys) funs C.emptyFunCtx
-gated-caf-sound doOpt funs polys (inj₁ _) ()
-gated-caf-sound doOpt funs polys (inj₂ _) eq = caf-sound doOpt funs (C.buildPolyCtx polys) (C.entryImps funs polys) eq
+-- Every usage over the empty local context is `zeroUsage`.
+usage0 : (Ψ : Srf.Usage 0) → Ψ ≡ zeroUsage
+usage0 Once.Surface.Context.Usage.[] = refl
+
+consCF-inj : ∀ {cf} (r : String ⊎ List C.CompiledFun) {cfs} → C.consCF cf r ≡ inj₂ cfs
+  → Σ-syntax (List C.CompiledFun) (λ rest → r ≡ inj₂ rest)
+consCF-inj (inj₁ _) ()
+consCF-inj (inj₂ rest) _ = rest , refl
+
+wrap-inj : ∀ fi ty ir (r : String ⊎ List C.CompiledFun) {cfs} → C.caf-go-wrap fi ty ir r ≡ inj₂ cfs
+  → Σ-syntax (List C.CompiledFun) (λ rest → r ≡ inj₂ rest)
+wrap-inj fi ty ir (inj₁ _) ()
+wrap-inj fi ty ir (inj₂ rest) _ = rest , refl
+
+checkOK-sound : ∀ {ctx e T} (r : TE.VerifiedCheckResult ctx e T) → C.checkOK r ≡ inj₂ tt
+  → Σ-syntax (Srf.Usage (NamedCtx.size ctx)) (λ Ψ → ctx ⊢ᶜ e ∶ T ⨾ Ψ)
+checkOK-sound (TE.failure _ , _) ()
+checkOK-sound (TE.success Ψ _ _ _ , w) _ = Ψ , w
+
+ce-sound      : ∀ (doOpt : Bool) (sc : C.CScope) (es : List C.Entry) {cfs}
+              → C.compileEntries C.Heap doOpt sc es ≡ inj₂ cfs → ModTele (scopeOf sc) es
+ce-fun-sound  : ∀ (doOpt : Bool) (sc : C.CScope) (fi : C.FunInfo) (es : List C.Entry) (b : Bool)
+              → C.FunInfo.funIsPrimitive fi ≡ b → ∀ {cfs}
+              → C.ce-fun C.Heap doOpt sc fi es b ≡ inj₂ cfs → ModTele (scopeOf sc) (C.e-fun fi ∷ es)
+ce-prim-sound : ∀ (doOpt : Bool) (sc : C.CScope) (fi : C.FunInfo) (es : List C.Entry)
+              → C.FunInfo.funIsPrimitive fi ≡ true
+              → (mt : Maybe Type) → C.FunInfo.funType fi ≡ mt → ∀ {cfs}
+              → C.ce-prim C.Heap doOpt sc fi es mt ≡ inj₂ cfs → ModTele (scopeOf sc) (C.e-fun fi ∷ es)
+ce-mono-sound : ∀ (doOpt : Bool) (sc : C.CScope) (fi : C.FunInfo) (es : List C.Entry)
+              → C.FunInfo.funIsPrimitive fi ≡ false
+              → (rt : String ⊎ Type)
+              → C.resolveFunType (C.CScope.cimps sc) (C.cpolys sc) (C.FunInfo.funType fi) (C.FunInfo.funBody fi) ≡ rt
+              → ∀ {cfs} → C.ce-mono C.Heap doOpt sc fi es rt ≡ inj₂ cfs → ModTele (scopeOf sc) (C.e-fun fi ∷ es)
+ce-poly-sound : ∀ (doOpt : Bool) (sc : C.CScope) (pfi : C.PolyFunInfo) (es : List C.Entry) {cfs}
+              → C.compileEntries C.Heap doOpt sc (C.e-poly pfi ∷ es) ≡ inj₂ cfs
+              → ModTele (scopeOf sc) (C.e-poly pfi ∷ es)
+
+ce-sound doOpt sc [] eq = []
+ce-sound doOpt sc (C.e-fun fi ∷ es) eq =
+  ce-fun-sound doOpt sc fi es (C.FunInfo.funIsPrimitive fi) refl eq
+ce-sound doOpt sc (C.e-poly pfi ∷ es) eq = ce-poly-sound doOpt sc pfi es eq
+
+ce-fun-sound doOpt sc fi es true  ep eq = ce-prim-sound doOpt sc fi es ep (C.FunInfo.funType fi) refl eq
+ce-fun-sound doOpt sc fi es false ep eq =
+  ce-mono-sound doOpt sc fi es ep _ refl eq
+
+ce-prim-sound doOpt sc fi es ep nothing et ()
+ce-prim-sound doOpt sc fi es ep (just ty) et eq = conc (isConcrete? ty) refl (honest? ty) refl eq
+  where
+    conc : (mc : Maybe (IsConcrete ty)) → isConcrete? ty ≡ mc
+         → (mh : Maybe (HonestFFI ty)) → honest? ty ≡ mh → ∀ {cfs}
+         → C.ce-prim-conc C.Heap doOpt sc fi es ty mc mh ≡ inj₂ cfs → ModTele (scopeOf sc) (C.e-fun fi ∷ es)
+    conc nothing _ _ _ ()
+    conc (just _) _ nothing _ ()
+    conc (just c) _ (just h) _ eq′ =
+      ffi ep et c h (ce-sound doOpt (C.extendScope sc (C.FunInfo.funName fi) ty) es (proj₂ (consCF-inj _ eq′)))
+
+ce-mono-sound doOpt sc fi es ep (inj₁ _) er ()
+ce-mono-sound doOpt sc fi es ep (inj₂ ty) er eq = step
+  (C.compileFun C.Heap doOpt (C.CScope.cimps sc) (C.cpolys sc) (C.declImps (C.CScope.ctele sc))
+     (C.FunInfo.funName fi) ty (C.FunInfo.funBody fi)) refl eq
+  where
+    step : (ri : String ⊎ IR ⌊ Unit ⌋ ⌊ ty ⌋)
+         → C.compileFun C.Heap doOpt (C.CScope.cimps sc) (C.cpolys sc) (C.declImps (C.CScope.ctele sc))
+             (C.FunInfo.funName fi) ty (C.FunInfo.funBody fi) ≡ ri
+         → ∀ {cfs} → C.ce-mono-ir C.Heap doOpt sc fi es ty ri ≡ inj₂ cfs → ModTele (scopeOf sc) (C.e-fun fi ∷ es)
+    step (inj₁ _) _ ()
+    step (inj₂ ir) cf eq′ =
+      let (Ψ , jud) = compileFun-sound doOpt (C.CScope.cimps sc) (C.cpolys sc) (C.declImps (C.CScope.ctele sc))
+                        (C.FunInfo.funName fi) ty (C.FunInfo.funBody fi) cf
+      in mono ep er (subst (λ U → _ ⊢ᶜ _ ∶ ty ⨾ U) (usage0 Ψ) jud)
+           (ce-sound doOpt (C.extendScope sc (C.FunInfo.funName fi) ty) es (proj₂ (wrap-inj fi ty ir _ eq′)))
+
+ce-poly-sound doOpt sc pfi es eq = step _ refl eq
+  where
+    ctx = ctxWithImportsAndPolys (C.CScope.cimps sc) (C.cpolys sc)
+    step : (r : TE.VerifiedCheckResult ctx (C.PolyFunInfo.pfunBody pfi) (rigidOf (C.PolyFunInfo.pfunType pfi)))
+         → TE.checkElabV ctx (C.PolyFunInfo.pfunBody pfi) (rigidOf (C.PolyFunInfo.pfunType pfi)) ≡ r
+         → ∀ {cfs} → C.ce-poly C.Heap doOpt sc pfi es (C.checkOK r) ≡ inj₂ cfs
+         → ModTele (scopeOf sc) (C.e-poly pfi ∷ es)
+    step r@(TE.failure _ , _) _ ()
+    step r@(TE.success Ψ _ _ _ , w) _ eq′ =
+      poly (subst (λ U → _ ⊢ᶜ _ ∶ _ ⨾ U) (usage0 Ψ) w) (ce-sound doOpt (C.addEntry sc pfi) es eq′)
 
 crm-aux-sound : ∀ (doOpt : Bool) (m : P.Module)
-  (ef : String ⊎ (List C.FunInfo × List C.PolyFunInfo)) {compiled : List C.CompiledFun} →
+  (ef : String ⊎ List C.Entry) {compiled : List C.CompiledFun} →
   C.compileResolvedModule-aux C.Heap doOpt m ef ≡ inj₂ compiled →
   ModuleTyped-ef m ef
 crm-aux-sound doOpt m (inj₁ err) ()
-crm-aux-sound doOpt m (inj₂ (funs , polys)) eq =
-  gated-caf-sound doOpt funs polys (C.polysOK funs polys) eq
+crm-aux-sound doOpt m (inj₂ es) eq = ce-sound doOpt C.emptyCScope es eq
 
 crm-sound : ∀ (doOpt : Bool) (m : P.Module) {compiled : List C.CompiledFun} →
   C.compileResolvedModule C.Heap doOpt m ≡ inj₂ compiled →
@@ -191,45 +234,8 @@ crm-sound : ∀ (doOpt : Bool) (m : P.Module) {compiled : List C.CompiledFun} �
 crm-sound doOpt m eq =
   crm-aux-sound doOpt m (C.extractFunctions (C.extractAliases m) m) eq
 
--- Plan 0.103 phase 1: the gate passed ⇒ every ground telescope entry is typed
--- at its declaration.
-gate-polys-sound : ∀ (doOpt : Bool) (funs : List C.FunInfo) (polys : List C.PolyFunInfo)
-  (g : String ⊎ ⊤) → C.polysOK funs polys ≡ g →
-  {compiled : List C.CompiledFun} →
-  C.polysGate g (C.compileAllFuns C.Heap doOpt funs (C.buildPolyCtx polys) (C.entryImps funs polys)) ≡ inj₂ compiled →
-  PolysTyped-ef (inj₂ (funs , polys))
-gate-polys-sound doOpt funs polys (inj₁ _) _ ()
-gate-polys-sound doOpt funs polys (inj₂ tt) g-eq _ =
-  PC.polys-sound _ polys g-eq
-
-crm-aux-polys : ∀ (doOpt : Bool) (m : P.Module)
-  (ef : String ⊎ (List C.FunInfo × List C.PolyFunInfo)) {compiled : List C.CompiledFun} →
-  C.compileResolvedModule-aux C.Heap doOpt m ef ≡ inj₂ compiled →
-  PolysTyped-ef ef
-crm-aux-polys doOpt m (inj₁ err) ()
-crm-aux-polys doOpt m (inj₂ (funs , polys)) eq =
-  gate-polys-sound doOpt funs polys _ refl eq
-
-crm-polys : ∀ (doOpt : Bool) (m : P.Module) {compiled : List C.CompiledFun} →
-  C.compileResolvedModule C.Heap doOpt m ≡ inj₂ compiled →
-  PolysTyped m
-crm-polys doOpt m eq =
-  crm-aux-polys doOpt m (C.extractFunctions (C.extractAliases m) m) eq
-
-------------------------------------------------------------------------
--- THE front-end soundness: a module with a compilable `main` is
--- declaratively well-typed. Hence `⟦_⟧⊥`'s `just` domain admits only
--- genuinely well-typed programs (no longer true-by-construction).
-------------------------------------------------------------------------
-
 moduleToIR-typed : ∀ (m : P.Module) {ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋} →
   moduleToIR m ≡ just ir →
   ModuleTyped m
 moduleToIR-typed m mi =
   crm-sound false m (proj₂ (moduleToIR-inj₂ m mi))
-
-moduleToIR-polys : ∀ (m : P.Module) {ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋} →
-  moduleToIR m ≡ just ir →
-  PolysTyped m
-moduleToIR-polys m mi =
-  crm-polys false m (proj₂ (moduleToIR-inj₂ m mi))

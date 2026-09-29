@@ -25,9 +25,9 @@
 module Once.Adequacy.NameClash where
 
 open import Data.Bool using (Bool; true; false; not; _∧_)
-open import Data.List using (List; []; _∷_; map)
+open import Data.List using (List; []; _∷_; map; _++_)
 open import Data.Char using (Char)
-open import Data.Maybe using (nothing)
+open import Data.Maybe using (nothing; just)
 open import Data.String using (String; toList)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
@@ -41,7 +41,7 @@ open import Data.List.Relation.Unary.All using (All; []; _∷_)
 open import Data.String using (_≟_)
 open import Data.Sum.Properties using (inj₂-injective)
 open import Once.Parser using
-  ( FunInfo; PolyFunInfo
+  ( FunInfo; PolyFunInfo; Entry; e-fun; e-poly; funsOf; polysOf
   ; extractFunctions; extractFunctions-go; extractAliases
   ; namesDistinct; nameElem; allValidIdentB; validIdentB; validCharsB
   ; emittedNames; emittedNames-cons
@@ -53,6 +53,10 @@ open import Once.Target.SymbolInjective using (ValidIdent; ValidIdentChars; once
 open import Once.CanonicalName using (bare)
 open import Once.TypeCheck.Elaborate using (PolyCtx)
 import Once.Compile as C
+import Once.TypeCheck.Elaborate as TE
+open import Once.Type.Rigid using (rigidOf)
+open import Once.Functor.Decide using (isConcrete?)
+open import Once.Type.Honest using (honest?)
 
 ------------------------------------------------------------------------
 -- Boolean elimination helpers.
@@ -140,91 +144,105 @@ DistinctSymbols : Module → Set
 DistinctSymbols m = AllPairs _≢_ (C.moduleSyms C.Heap false m)
 
 -- (a) the extractor guard fired ⇒ the well-formedness Bool was `true`.
-distinctOrErr-true : ∀ b {p p' : List FunInfo × List PolyFunInfo}
+distinctOrErr-true : ∀ b {p p' : List Entry}
   → distinctOrErr b (inj₂ p) ≡ inj₂ p' → b ≡ true
 distinctOrErr-true true  _  = refl
 distinctOrErr-true false ()
 
-guard-all : (r : String ⊎ (List FunInfo × List PolyFunInfo))
-  {funs : List FunInfo} {polys : List PolyFunInfo}
-  → guardDistinct r ≡ inj₂ (funs , polys)
-  → ((namesDistinct (emittedNames funs) ∧ allValidIdentB (emittedNames funs))
-      ∧ namesDistinct (map PolyFunInfo.pfunName polys)) ≡ true
+-- The parser's guard (D241): the emitted names are distinct and valid, and
+-- every definition name — monomorphic and telescope together — is distinct.
+guard-all : (r : String ⊎ List Entry) {es : List Entry}
+  → guardDistinct r ≡ inj₂ es
+  → ((namesDistinct (emittedNames (funsOf es)) ∧ allValidIdentB (emittedNames (funsOf es)))
+      ∧ namesDistinct (emittedNames (funsOf es) ++ map PolyFunInfo.pfunName (polysOf es))) ≡ true
 guard-all (inj₁ _) ()
-guard-all (inj₂ (funs₀ , polys₀)) eq
-  with (namesDistinct (emittedNames funs₀) ∧ allValidIdentB (emittedNames funs₀))
-         ∧ namesDistinct (map PolyFunInfo.pfunName polys₀) in beq
+guard-all (inj₂ es₀) eq
+  with (namesDistinct (emittedNames (funsOf es₀)) ∧ allValidIdentB (emittedNames (funsOf es₀)))
+         ∧ namesDistinct (emittedNames (funsOf es₀) ++ map PolyFunInfo.pfunName (polysOf es₀)) in beq
 ... | true  =
-      subst (λ p → ((namesDistinct (emittedNames (proj₁ p)) ∧ allValidIdentB (emittedNames (proj₁ p)))
-                     ∧ namesDistinct (map PolyFunInfo.pfunName (proj₂ p))) ≡ true)
+      subst (λ es → ((namesDistinct (emittedNames (funsOf es)) ∧ allValidIdentB (emittedNames (funsOf es)))
+                     ∧ namesDistinct (emittedNames (funsOf es) ++ map PolyFunInfo.pfunName (polysOf es))) ≡ true)
             (inj₂-injective eq) beq
 ... | false with eq
 ...   | ()
 
-guard-true : (r : String ⊎ (List FunInfo × List PolyFunInfo))
-  {funs : List FunInfo} {polys : List PolyFunInfo}
-  → guardDistinct r ≡ inj₂ (funs , polys)
-  → (namesDistinct (emittedNames funs) ∧ allValidIdentB (emittedNames funs)) ≡ true
+guard-true : (r : String ⊎ List Entry) {es : List Entry}
+  → guardDistinct r ≡ inj₂ es
+  → (namesDistinct (emittedNames (funsOf es)) ∧ allValidIdentB (emittedNames (funsOf es))) ≡ true
 guard-true r eq = ∧-elimˡ (guard-all r eq)
 
--- Plan 0.103 phase 1c: the telescope's names are distinct.
-guard-polys : (r : String ⊎ (List FunInfo × List PolyFunInfo))
-  {funs : List FunInfo} {polys : List PolyFunInfo}
-  → guardDistinct r ≡ inj₂ (funs , polys)
-  → AllPairs _≢_ (map PolyFunInfo.pfunName polys)
-guard-polys r eq = namesDistinct-sound _ (∧-elimʳ (guard-all r eq))
+-- A suffix of a distinct list is distinct.
+namesDistinct-++ʳ : ∀ (xs ys : List String) → namesDistinct (xs ++ ys) ≡ true → namesDistinct ys ≡ true
+namesDistinct-++ʳ []       ys eq = eq
+namesDistinct-++ʳ (x ∷ xs) ys eq = namesDistinct-++ʳ xs ys (∧-elimʳ eq)
 
--- (b) the CODEGEN-FAITHFULNESS bridge: the symbols `compileAllFuns-go` actually
--- builds equal `once-symbol-own` of the NON-primitive funNames. Induction through
--- the mutual aux (template: `MainIRForm.caf-go-find-form`); `caf-go-wrap` builds
--- `mkCompiledFun (bare (funName fi)) … (funIsPrimitive fi)`, so this is forced.
-caf-syms : ∀ (doOpt : Bool) (polys : PolyCtx) (impsOf : C.String → C.FunCtx)
-  (funs : List FunInfo) (ctx : C.FunCtx) (cfs : List C.CompiledFun)
-  → C.compileAllFuns-go C.Heap doOpt polys impsOf funs ctx ≡ inj₂ cfs
-  → C.emittedSyms cfs ≡ map once-symbol-own (emittedNames funs)
-caf-syms doOpt polys impsOf [] ctx cfs caf-eq =
-  cong C.emittedSyms (sym (inj₂-injective caf-eq))
-caf-syms doOpt polys impsOf (fi ∷ rest) ctx cfs caf-eq
-  with C.resolveFunType ctx polys (FunInfo.funType fi) (FunInfo.funBody fi) in rf-eq
-... | inj₁ err = case caf-eq of λ ()
+guard-polys : (r : String ⊎ List Entry) {es : List Entry}
+  → guardDistinct r ≡ inj₂ es
+  → AllPairs _≢_ (map PolyFunInfo.pfunName (polysOf es))
+guard-polys r {es} eq =
+  namesDistinct-sound _ (namesDistinct-++ʳ (emittedNames (funsOf es)) _ (∧-elimʳ (guard-all r eq)))
+
+-- The telescope walk emits exactly the monomorphic definitions' symbols.
+ce-syms : ∀ (doOpt : Bool) (sc : C.CScope) (es : List Entry) (cfs : List C.CompiledFun)
+  → C.compileEntries C.Heap doOpt sc es ≡ inj₂ cfs
+  → C.emittedSyms cfs ≡ map once-symbol-own (emittedNames (funsOf es))
+ce-syms-fun : ∀ (doOpt : Bool) (sc : C.CScope) (fi : FunInfo) (es : List Entry) (b : Bool)
+  → FunInfo.funIsPrimitive fi ≡ b → (cfs : List C.CompiledFun)
+  → C.ce-fun C.Heap doOpt sc fi es b ≡ inj₂ cfs
+  → C.emittedSyms cfs ≡ map once-symbol-own (emittedNames (funsOf (e-fun fi ∷ es)))
+
+ce-syms doOpt sc [] cfs eq = cong C.emittedSyms (sym (inj₂-injective eq))
+ce-syms doOpt sc (e-fun fi ∷ es) cfs eq = ce-syms-fun doOpt sc fi es (FunInfo.funIsPrimitive fi) refl cfs eq
+ce-syms doOpt sc (e-poly pfi ∷ es) cfs eq
+  with C.checkOK (TE.checkElabV (TE.ctxWithImportsAndPolys (C.CScope.cimps sc) (C.cpolys sc)) (PolyFunInfo.pfunBody pfi) (rigidOf (PolyFunInfo.pfunType pfi)))
+... | inj₁ _ = case eq of λ ()
+... | inj₂ _ = ce-syms doOpt (C.addEntry sc pfi) es cfs eq
+
+ce-syms-fun doOpt sc fi es true ep cfs eq with FunInfo.funType fi
+... | nothing = case eq of λ ()
+... | just ty with isConcrete? ty | honest? ty
+...   | nothing | _ = case eq of λ ()
+...   | just _ | nothing = case eq of λ ()
+...   | just _ | just _
+      with C.compileEntries C.Heap doOpt (C.extendScope sc (FunInfo.funName fi) ty) es in rec
+...     | inj₁ _ = case eq of λ ()
+...     | inj₂ rest =
+          subst (λ c → C.emittedSyms c ≡ map once-symbol-own (emittedNames (funsOf (e-fun fi ∷ es))))
+                (inj₂-injective eq)
+                (subst (λ b → C.emittedSyms rest
+                              ≡ map once-symbol-own (emittedNames-cons b fi (emittedNames (funsOf es))))
+                       (sym ep) (ce-syms doOpt (C.extendScope sc (FunInfo.funName fi) ty) es rest rec))
+ce-syms-fun doOpt sc fi es false ep cfs eq
+  with C.resolveFunType (C.CScope.cimps sc) (C.cpolys sc) (FunInfo.funType fi) (FunInfo.funBody fi)
+... | inj₁ _ = case eq of λ ()
 ... | inj₂ ty
-    with C.compileFun C.Heap doOpt ctx polys impsOf (FunInfo.funName fi) ty (FunInfo.funBody fi) in cf-eq
-...   | inj₁ err = case caf-eq of λ ()
+    with C.compileFun C.Heap doOpt (C.CScope.cimps sc) (C.cpolys sc) (C.declImps (C.CScope.ctele sc)) (FunInfo.funName fi) ty (FunInfo.funBody fi)
+...   | inj₁ _ = case eq of λ ()
 ...   | inj₂ irFun
-      with C.compileAllFuns-go C.Heap doOpt polys impsOf rest (C.extendFunCtx ctx (FunInfo.funName fi) ty) in rec-eq
-...     | inj₁ err = case caf-eq of λ ()
-...     | inj₂ compiled-rest =
-          subst (λ c → C.emittedSyms c ≡ map once-symbol-own (emittedNames (fi ∷ rest)))
-                (inj₂-injective caf-eq)
-                (cons (FunInfo.funIsPrimitive fi) refl)
-      where
-        cfW = C.maybeWrapMain (FunInfo.funName fi) ty irFun
-        IH : C.emittedSyms compiled-rest ≡ map once-symbol-own (emittedNames rest)
-        IH = caf-syms doOpt polys impsOf rest (C.extendFunCtx ctx (FunInfo.funName fi) ty) compiled-rest rec-eq
-        cons : (b : Bool) → FunInfo.funIsPrimitive fi ≡ b
-          → C.emittedSyms (C.mkCompiledFun (bare (FunInfo.funName fi)) (proj₁ cfW) (proj₂ cfW) b ∷ compiled-rest)
-            ≡ map once-symbol-own (emittedNames-cons b fi (emittedNames rest))
-        cons true  _ = IH
-        cons false _ = cong (once-symbol-own (FunInfo.funName fi) ∷_) IH
+      with C.compileEntries C.Heap doOpt (C.extendScope sc (FunInfo.funName fi) ty) es in rec
+...     | inj₁ _ = case eq of λ ()
+...     | inj₂ rest =
+          subst (λ c → C.emittedSyms c ≡ map once-symbol-own (emittedNames (funsOf (e-fun fi ∷ es))))
+                (inj₂-injective eq)
+                (subst (λ b → C.emittedSyms (C.mkCompiledFun (bare (FunInfo.funName fi)) (proj₁ cfW) (proj₂ cfW) b ∷ rest)
+                              ≡ map once-symbol-own (emittedNames-cons b fi (emittedNames (funsOf es))))
+                       (sym ep) (cong (once-symbol-own (FunInfo.funName fi) ∷_) (ce-syms doOpt (C.extendScope sc (FunInfo.funName fi) ty) es rest rec)))
+      where cfW = C.maybeWrapMain (FunInfo.funName fi) ty irFun
 
--- PROVED: the symbols the codegen emits for `m` are distinct.
 program-no-clash : ∀ (m : Module) → DistinctSymbols m
 program-no-clash (mkModule ds)
   with extractFunctions (extractAliases (mkModule ds)) (mkModule ds) in efeq
 ... | inj₁ _ = []
-... | inj₂ (funs , polys)
-    with C.polysOK funs polys
+... | inj₂ es
+    with C.compileEntries C.Heap false C.emptyCScope es in caeq
 ...   | inj₁ _ = []
-...   | inj₂ _
-    with C.compileAllFuns C.Heap false funs (C.buildPolyCtx polys) (C.entryImps funs polys) in caeq
-...     | inj₁ _ = []
-...     | inj₂ cfs =
+...   | inj₂ cfs =
         subst (AllPairs _≢_) (sym bridge)
-          (map-allpairs-own (emittedNames funs)
+          (map-allpairs-own (emittedNames (funsOf es))
             (namesDistinct-sound  _ (∧-elimˡ guard))
             (allValidIdentB-sound _ (∧-elimʳ guard)))
       where
-        guard : (namesDistinct (emittedNames funs) ∧ allValidIdentB (emittedNames funs)) ≡ true
+        guard : (namesDistinct (emittedNames (funsOf es)) ∧ allValidIdentB (emittedNames (funsOf es))) ≡ true
         guard = guard-true (extractFunctions-go (extractAliases (mkModule ds)) ds nothing) efeq
-        bridge : C.emittedSyms cfs ≡ map once-symbol-own (emittedNames funs)
-        bridge = caf-syms false (C.buildPolyCtx polys) (C.entryImps funs polys) funs C.emptyFunCtx cfs caeq
+        bridge : C.emittedSyms cfs ≡ map once-symbol-own (emittedNames (funsOf es))
+        bridge = ce-syms false C.emptyCScope es cfs caeq

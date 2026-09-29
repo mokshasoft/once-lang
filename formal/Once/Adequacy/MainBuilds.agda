@@ -22,7 +22,10 @@ open import Once.Denotation.Admissible using (AdmissibleM; admissibleM?)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Product using (_×_; Σ-syntax; _,_; proj₁; proj₂)
 open import Data.List using (List; []; _∷_)
-open import Data.Maybe using (just)
+open import Data.Maybe using (Maybe; just; nothing)
+open import Once.Functor.Decide using (isConcrete?)
+open import Once.Type.Honest using (honest?)
+open import Once.Type.Rigid using (rigidOf)
 open import Data.String using (String; _==_)
 open import Data.Unit using (⊤)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans; cong)
@@ -92,66 +95,69 @@ cfun-doOpt doOpt ctx polys impsOf name ty expr eq =
 -- Layer 2 — `compileAllFuns-go` success is `doOpt`-independent (mutual).
 ------------------------------------------------------------------------
 
-caf-go-doOpt : ∀ (doOpt : Bool) (polys : TE.PolyCtx) (impsOf : C.String → C.FunCtx)
-  (funs : List C.FunInfo) (ctx : C.FunCtx) {c : List C.CompiledFun} →
-  C.compileAllFuns-go C.Heap false polys impsOf funs ctx ≡ inj₂ c →
-  Σ-syntax (List C.CompiledFun) (λ c' → C.compileAllFuns-go C.Heap doOpt polys impsOf funs ctx ≡ inj₂ c')
-caf-go-cf-doOpt : ∀ (doOpt : Bool) (polys : TE.PolyCtx) (impsOf : C.String → C.FunCtx)
-  (fi : C.FunInfo) (rest : List C.FunInfo) (ctx : C.FunCtx) (ty : C.Type) {c : List C.CompiledFun} →
-  C.caf-go-cf-aux C.Heap false polys impsOf fi rest ctx ty (C.compileFun C.Heap false ctx polys impsOf (C.FunInfo.funName fi) ty (C.FunInfo.funBody fi)) ≡ inj₂ c →
-  Σ-syntax (List C.CompiledFun) (λ c' → C.caf-go-cf-aux C.Heap doOpt polys impsOf fi rest ctx ty (C.compileFun C.Heap doOpt ctx polys impsOf (C.FunInfo.funName fi) ty (C.FunInfo.funBody fi)) ≡ inj₂ c')
-caf-go-rf-doOpt : ∀ (doOpt : Bool) (polys : TE.PolyCtx) (impsOf : C.String → C.FunCtx)
-  (fi : C.FunInfo) (rest : List C.FunInfo) (ctx : C.FunCtx) (rf : String ⊎ C.Type) {c : List C.CompiledFun} →
-  C.caf-go-rf-aux C.Heap false polys impsOf fi rest ctx rf ≡ inj₂ c →
-  Σ-syntax (List C.CompiledFun) (λ c' → C.caf-go-rf-aux C.Heap doOpt polys impsOf fi rest ctx rf ≡ inj₂ c')
+-- D241 (plan 0.103 6c′): acceptance of the telescope walk does not depend on
+-- `doOpt` — only a monomorphic entry's IR does.
+ce-doOpt      : ∀ (doOpt : Bool) (sc : C.CScope) (es : List C.Entry) {c : List C.CompiledFun}
+              → C.compileEntries C.Heap false sc es ≡ inj₂ c
+              → Σ-syntax (List C.CompiledFun) (λ c' → C.compileEntries C.Heap doOpt sc es ≡ inj₂ c')
+ce-fun-doOpt  : ∀ (doOpt : Bool) (sc : C.CScope) (fi : C.FunInfo) (es : List C.Entry) (b : Bool) {c}
+              → C.ce-fun C.Heap false sc fi es b ≡ inj₂ c
+              → Σ-syntax (List C.CompiledFun) (λ c' → C.ce-fun C.Heap doOpt sc fi es b ≡ inj₂ c')
+ce-prim-doOpt : ∀ (doOpt : Bool) (sc : C.CScope) (fi : C.FunInfo) (es : List C.Entry) (mt : Maybe C.Type) {c}
+              → C.ce-prim C.Heap false sc fi es mt ≡ inj₂ c
+              → Σ-syntax (List C.CompiledFun) (λ c' → C.ce-prim C.Heap doOpt sc fi es mt ≡ inj₂ c')
+ce-mono-doOpt : ∀ (doOpt : Bool) (sc : C.CScope) (fi : C.FunInfo) (es : List C.Entry) (rt : String ⊎ C.Type) {c}
+              → C.ce-mono C.Heap false sc fi es rt ≡ inj₂ c
+              → Σ-syntax (List C.CompiledFun) (λ c' → C.ce-mono C.Heap doOpt sc fi es rt ≡ inj₂ c')
+ce-poly-doOpt : ∀ (doOpt : Bool) (sc : C.CScope) (pfi : C.PolyFunInfo) (es : List C.Entry) (ok : String ⊎ ⊤) {c}
+              → C.ce-poly C.Heap false sc pfi es ok ≡ inj₂ c
+              → Σ-syntax (List C.CompiledFun) (λ c' → C.ce-poly C.Heap doOpt sc pfi es ok ≡ inj₂ c')
 
-caf-go-doOpt doOpt polys impsOf [] ctx eq = _ , refl
-caf-go-doOpt doOpt polys impsOf (fi ∷ rest) ctx eq =
-  caf-go-rf-doOpt doOpt polys impsOf fi rest ctx
-    (C.resolveFunType ctx polys (C.FunInfo.funType fi) (C.FunInfo.funBody fi)) eq
+ce-doOpt doOpt sc [] eq = _ , refl
+ce-doOpt doOpt sc (C.e-fun fi ∷ es) eq = ce-fun-doOpt doOpt sc fi es (C.FunInfo.funIsPrimitive fi) eq
+ce-doOpt doOpt sc (C.e-poly pfi ∷ es) eq =
+  ce-poly-doOpt doOpt sc pfi es
+    (C.checkOK (TE.checkElabV (TE.ctxWithImportsAndPolys (C.CScope.cimps sc) (C.cpolys sc)) (C.PolyFunInfo.pfunBody pfi) (rigidOf (C.PolyFunInfo.pfunType pfi)))) eq
 
-caf-go-rf-doOpt doOpt polys impsOf fi rest ctx (inj₁ err) ()
-caf-go-rf-doOpt doOpt polys impsOf fi rest ctx (inj₂ ty) eq =
-  caf-go-cf-doOpt doOpt polys impsOf fi rest ctx ty eq
+ce-fun-doOpt doOpt sc fi es true  eq = ce-prim-doOpt doOpt sc fi es (C.FunInfo.funType fi) eq
+ce-fun-doOpt doOpt sc fi es false eq =
+  ce-mono-doOpt doOpt sc fi es (C.resolveFunType (C.CScope.cimps sc) (C.cpolys sc) (C.FunInfo.funType fi) (C.FunInfo.funBody fi)) eq
 
-caf-go-cf-doOpt doOpt polys impsOf fi rest ctx ty eq
-  with C.compileFun C.Heap false ctx polys impsOf (C.FunInfo.funName fi) ty (C.FunInfo.funBody fi) in cf-eq
-... | inj₁ err = case eq of λ ()
-... | inj₂ ir-f
-      with C.compileAllFuns-go C.Heap false polys impsOf rest (C.extendFunCtx ctx (C.FunInfo.funName fi) ty) in rec-eq
-...   | inj₁ err = case eq of λ ()
-...   | inj₂ c-rec =
-        let (ir-d , cfd)     = cfun-doOpt doOpt ctx polys impsOf (C.FunInfo.funName fi) ty (C.FunInfo.funBody fi) cf-eq
-            (c-rec-d , recd) = caf-go-doOpt doOpt polys impsOf rest (C.extendFunCtx ctx (C.FunInfo.funName fi) ty) rec-eq
-        in _ , trans (cong (C.caf-go-cf-aux C.Heap doOpt polys impsOf fi rest ctx ty) cfd)
-                     (cong (C.caf-go-wrap fi ty ir-d) recd)
+ce-prim-doOpt doOpt sc fi es nothing ()
+ce-prim-doOpt doOpt sc fi es (just ty) eq = conc (isConcrete? ty) (honest? ty) eq
+  where
+    conc : ∀ mc mh {c} → C.ce-prim-conc C.Heap false sc fi es ty mc mh ≡ inj₂ c
+         → Σ-syntax (List C.CompiledFun) (λ c' → C.ce-prim-conc C.Heap doOpt sc fi es ty mc mh ≡ inj₂ c')
+    conc nothing _ ()
+    conc (just _) nothing ()
+    conc (just cc) (just _) eq′ with C.compileEntries C.Heap false (C.extendScope sc (C.FunInfo.funName fi) ty) es in rec
+    ... | inj₁ _ = case eq′ of λ ()
+    ... | inj₂ _ = let (_ , recd) = ce-doOpt doOpt (C.extendScope sc (C.FunInfo.funName fi) ty) es rec
+                   in _ , cong (C.consCF _) recd
 
-caf-doOpt : ∀ (doOpt : Bool) (funs : List C.FunInfo) (polys : TE.PolyCtx) (impsOf : C.String → C.FunCtx)
-  {c : List C.CompiledFun} →
-  C.compileAllFuns C.Heap false funs polys impsOf ≡ inj₂ c →
-  Σ-syntax (List C.CompiledFun) (λ c' → C.compileAllFuns C.Heap doOpt funs polys impsOf ≡ inj₂ c')
-caf-doOpt doOpt funs polys impsOf eq =
-  caf-go-doOpt doOpt polys impsOf funs C.emptyFunCtx eq
+ce-mono-doOpt doOpt sc fi es (inj₁ _) ()
+ce-mono-doOpt doOpt sc fi es (inj₂ ty) eq
+  with C.compileFun C.Heap false (C.CScope.cimps sc) (C.cpolys sc) (C.declImps (C.CScope.ctele sc))
+         (C.FunInfo.funName fi) ty (C.FunInfo.funBody fi) in cf-eq
+... | inj₁ _ = case eq of λ ()
+... | inj₂ _
+      with C.compileEntries C.Heap false (C.extendScope sc (C.FunInfo.funName fi) ty) es in rec
+...   | inj₁ _ = case eq of λ ()
+...   | inj₂ _ =
+        let (ir-d , cfd) = cfun-doOpt doOpt (C.CScope.cimps sc) (C.cpolys sc) (C.declImps (C.CScope.ctele sc))
+                             (C.FunInfo.funName fi) ty (C.FunInfo.funBody fi) cf-eq
+            (_ , recd)   = ce-doOpt doOpt (C.extendScope sc (C.FunInfo.funName fi) ty) es rec
+        in _ , trans (cong (C.ce-mono-ir C.Heap doOpt sc fi es ty) cfd) (cong (C.caf-go-wrap fi ty ir-d) recd)
 
-------------------------------------------------------------------------
--- Layer 3 — `compileResolvedModule` success is `doOpt`-independent.
-------------------------------------------------------------------------
-
--- The gate is `doOpt`-independent: split on the check, as an explicit argument.
-gated-doOpt : ∀ (doOpt : Bool) (funs : List C.FunInfo) (polys : List C.PolyFunInfo)
-  (g : String ⊎ ⊤) {c : List C.CompiledFun} →
-  C.polysGate g (C.compileAllFuns C.Heap false funs (C.buildPolyCtx polys) (C.entryImps funs polys)) ≡ inj₂ c →
-  Σ-syntax (List C.CompiledFun) (λ c' → C.polysGate g (C.compileAllFuns C.Heap doOpt funs (C.buildPolyCtx polys) (C.entryImps funs polys)) ≡ inj₂ c')
-gated-doOpt doOpt funs polys (inj₁ _) ()
-gated-doOpt doOpt funs polys (inj₂ _) eq = caf-doOpt doOpt funs (C.buildPolyCtx polys) (C.entryImps funs polys) eq
+ce-poly-doOpt doOpt sc pfi es (inj₁ _) ()
+ce-poly-doOpt doOpt sc pfi es (inj₂ _) eq = ce-doOpt doOpt (C.addEntry sc pfi) es eq
 
 crm-aux-doOpt : ∀ (doOpt : Bool) (m : P.Module)
-  (ef : String ⊎ (List C.FunInfo × List C.PolyFunInfo)) {c : List C.CompiledFun} →
+  (ef : String ⊎ List C.Entry) {c : List C.CompiledFun} →
   C.compileResolvedModule-aux C.Heap false m ef ≡ inj₂ c →
   Σ-syntax (List C.CompiledFun) (λ c' → C.compileResolvedModule-aux C.Heap doOpt m ef ≡ inj₂ c')
 crm-aux-doOpt doOpt m (inj₁ err) ()
-crm-aux-doOpt doOpt m (inj₂ (funs , polys)) eq =
-  gated-doOpt doOpt funs polys (C.polysOK funs polys) eq
+crm-aux-doOpt doOpt m (inj₂ es) eq = ce-doOpt doOpt C.emptyCScope es eq
 
 crm-doOpt : ∀ (doOpt : Bool) (m : P.Module) {c : List C.CompiledFun} →
   C.compileResolvedModule C.Heap false m ≡ inj₂ c →
@@ -170,22 +176,21 @@ crm-doOpt doOpt m eq =
 -- which is exactly the point: an inadmissible module must NOT build.
 --
 -- Dispatching on the DECISION (explicit argument, no `with`) keeps the gate a
-cfm-built-gated : ∀ (doOpt : Bool) (arch : Arch) (m : P.Module)
-  (funs : List C.FunInfo) (polys : List C.PolyFunInfo)
+cfm-built-gated : ∀ (doOpt : Bool) (arch : Arch) (m : P.Module) (es : List C.Entry)
   (d : Dec (AdmissibleM arch m)) → AdmissibleM arch m →
   {c : List C.CompiledFun} →
-  C.compileGated C.Heap doOpt funs polys ≡ inj₂ c →
-  Σ-syntax String (λ asm → C.cfm-build-gated C.Heap doOpt arch m funs polys d ≡ C.Built asm)
-cfm-built-gated doOpt arch m funs polys (yes _)  adm eq = _ , cong (C.cfm-build-emit arch) eq
-cfm-built-gated doOpt arch m funs polys (no ¬adm) adm eq = ⊥-elim (¬adm adm)
+  C.compileEntries C.Heap doOpt C.emptyCScope es ≡ inj₂ c →
+  Σ-syntax String (λ asm → C.cfm-build-gated C.Heap doOpt arch m es d ≡ C.Built asm)
+cfm-built-gated doOpt arch m es (yes _)  adm eq = _ , cong (C.cfm-build-emit arch) eq
+cfm-built-gated doOpt arch m es (no ¬adm) adm eq = ⊥-elim (¬adm adm)
 
 cfm-built-aux : ∀ (doOpt : Bool) (arch : Arch) (m : P.Module) → AdmissibleM arch m →
-  (ef : String ⊎ (List C.FunInfo × List C.PolyFunInfo)) {c : List C.CompiledFun} →
+  (ef : String ⊎ List C.Entry) {c : List C.CompiledFun} →
   C.compileResolvedModule-aux C.Heap doOpt m ef ≡ inj₂ c →
   Σ-syntax String (λ asm → C.cfm-ef-aux C.Heap C.Build doOpt arch m ef ≡ C.Built asm)
 cfm-built-aux doOpt arch m adm (inj₁ err) ()
-cfm-built-aux doOpt arch m adm (inj₂ (funs , polys)) eq =
-  cfm-built-gated doOpt arch m funs polys (admissibleM? arch m) adm eq
+cfm-built-aux doOpt arch m adm (inj₂ es) eq =
+  cfm-built-gated doOpt arch m es (admissibleM? arch m) adm eq
 
 cfm-built-from-crm : ∀ (doOpt : Bool) (arch : Arch) (m : P.Module) → AdmissibleM arch m →
   {c : List C.CompiledFun} →
