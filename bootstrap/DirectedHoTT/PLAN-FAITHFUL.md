@@ -77,4 +77,6 @@ ships REDUCTION lemmas for its methods. `Lib/SynTrav` ships typings only.
     `methSK`, `iinstK`, `iinstTmK`, `pwShK`, `wk2uK`, `lift2K`.
   - Renamings used as substitutions are bridged by `subTy-var`. The module
     checks in 7.5 s.
-  - ⬜ The composite codes remain: `MethTyK`, `DF`, `mc`.
+  - ✅ …and the composite codes the rows' indices cite: `DF` (`DescF`), `mc`
+    (`motCtx`) and `MethTyK` (`MethTy`). They are the agreements above,
+    threaded through constructor positions (`node-1/2/3`). F3 is done.

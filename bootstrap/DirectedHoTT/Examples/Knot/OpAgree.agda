@@ -21,18 +21,22 @@ open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Spec.Variance using ( pwShift )
-open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-trans )
+open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-trans; ⟶*-con; ⟶*-pairˡ; ⟶*-pairʳ )
 open import DirectedHoTT.Metatheory.TySub using ( wk-cancel-tm )
 open import DirectedHoTT.Metatheory.Fundamental.Syntactic using ( ⟨_⟩ᵣ; subTm-var; subTy-var )
 open import DirectedHoTT.Lib.FinFam using ( ffz; ffs )
+open import DirectedHoTT.Lib.Sugar using ( conₗ )
 open import DirectedHoTT.Lib.Syn
 open import DirectedHoTT.Examples.Knot.Sig
+open import DirectedHoTT.Examples.Knot.Ctors using ( kEl; kdpay; kapp; kDIh )
 open import DirectedHoTT.Examples.Knot.Terms
 open import DirectedHoTT.Examples.Knot.Sub
 open import DirectedHoTT.Examples.Knot.SubEnv
+open import DirectedHoTT.Examples.Knot.Ctx using ( quoteCtx; cext )
+open import DirectedHoTT.Examples.Knot.JudgeIx using ( DF; mc )
 import DirectedHoTT.Examples.Knot.Ren as KR
 open import DirectedHoTT.Examples.Knot.RenAgree using ( RepR; ren-agree-ty; ren-agree-tm )
-open import DirectedHoTT.Examples.Knot.SubAgree using ( RepS; module ES; repS-lift; repR-wk; sub-agree-ty; sub-agree-tm )
+open import DirectedHoTT.Examples.Knot.SubAgree using ( RepS; module ES; module TRR; repS-lift; repR-wk; sub-agree-ty; sub-agree-tm )
 
 private
   variable
@@ -168,3 +172,49 @@ opaque
 
   lift2-agree : (M : RTy ((Γ ∙) ∙)) → lift2K (dep Γ) (quoteTy M {Θ}) ⟶* quoteTy (wk2M M)
   lift2-agree M = ⟶≡ (cong (λ X → quoteTy X) (lift2-ren (λ x → vs (vs x)) M)) (sub-agree-ty M (repS-lift (repS-lift repS-wk2)))
+
+------------------------------------------------------------------------
+-- 3. ★ THE COMPOSITE CODES a row's index cites.
+------------------------------------------------------------------------
+
+-- reduction in a node's i-th field
+node-1 : {k : ℕ} {a a' r : RTm Θ} → a ⟶* a' → conₗ k (pair a r) ⟶* conₗ k (pair a' r)
+node-1 r = ⟶*-con (⟶*-pairʳ (⟶*-pairˡ r))
+
+node-2 : {k : ℕ} {a b b' r : RTm Θ} → b ⟶* b' → conₗ k (pair a (pair b r)) ⟶* conₗ k (pair a (pair b' r))
+node-2 r = ⟶*-con (⟶*-pairʳ (⟶*-pairʳ (⟶*-pairˡ r)))
+
+node-3 : {k : ℕ} {a b c c' r : RTm Θ} → c ⟶* c' → conₗ k (pair a (pair b (pair c r))) ⟶* conₗ k (pair a (pair b (pair c' r)))
+node-3 r = ⟶*-con (⟶*-pairʳ (⟶*-pairʳ (⟶*-pairʳ (⟶*-pairˡ r))))
+
+opaque
+  unfolding KR.wk methSK lift2K MethTyK
+
+  -- a description's type: `Π (El I) (Desc I)`
+  DF-agree : (I : RTm Γ) → DF (dep Γ) (quoteTm I {Θ}) ⟶* quoteTy (DescF I)
+  DF-agree I = node-2 (node-1 (wk-agree-tm I))
+
+  -- the motive's context `(Γ ▹ El I) ▹ IMu I D (var vz)`
+  mc-agree : (G : Ctx) (I D : RTm ⌊ G ⌋) →
+             mc (dep ⌊ G ⌋) (quoteCtx G {Θ}) (quoteTm I) (quoteTm D) ⟶* quoteCtx (motCtx G I D)
+  mc-agree G I D = node-2 (⟶*-trans (node-1 (wk-agree-tm I)) (node-2 (wk-agree-tm D)))
+
+  -- the eliminator's method type
+  MethTy-agree : (I D : RTm Γ) (M : RTy ((Γ ∙) ∙)) →
+                 MethTyK (dep Γ) (quoteTm I {Θ}) (quoteTm D) (quoteTy M) ⟶* quoteTy (MethTy I D M)
+  MethTy-agree {Γ} {Θ} I D M =
+    node-2 (⟶*-trans (node-1 A2r) (node-2 (⟶*-trans (node-1 A3r) (node-2 (methS-agree M)))))
+    where
+      j : RTm Θ
+      j = dep Γ
+      wD wwD' : RTm Θ
+      wD = KR.wk 1 j (quoteTm D)
+      wwD' = KR.wk 1 (nsuc j) wD
+      wwD : wwD' ⟶* quoteTm (renTm vs (renTm vs D))
+      wwD = ⟶*-trans (TRR.trav-t-mono (wk-agree-tm D)) (wk-agree-tm (renTm vs D))
+      A2r : kEl (kdpay (KR.wk 1 j (quoteTm I)) wD (kapp wD v0))
+            ⟶* quoteTy (El (dpay (renTm vs I) (renTm vs D) (app (renTm vs D) (var vz))))
+      A2r = node-1 (⟶*-trans (node-1 (wk-agree-tm I)) (⟶*-trans (node-2 (wk-agree-tm D)) (node-3 (node-1 (wk-agree-tm D)))))
+      A3r : kDIh wwD' (lift2K j (quoteTy M)) (kapp wwD' v1) v0
+            ⟶* quoteTy (DIh (renTm vs (renTm vs D)) (wk2M M) (app (renTm vs (renTm vs D)) (var (vs vz))) (var vz))
+      A3r = ⟶*-trans (node-1 wwD) (⟶*-trans (node-2 (lift2-agree M)) (node-3 (node-1 wwD)))
