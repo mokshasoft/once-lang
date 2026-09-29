@@ -16,11 +16,13 @@
 --   * an applied builtin (`fst e`, `In e`, …) applies the closed definition,
 --     `app Xᶜ e`, which is where the surface's `zeroUsage +ᵘ Many *ᵘ Ψ` comes from;
 --   * arithmetic is the core's saturated `prim`;
---   * an FFI reference is `sigop`, a telescope reference `ref d τ`.
+--   * an FFI reference is `sigop`; a reference to one of the module's own
+--     definitions (monomorphic or telescope) is `ref d τ`.
 --
--- The module layer is an argument, not an assumption: a `View` says the
--- imports are honest (D231: checked at the FFI declaration) and names each
--- telescope entry's core index and the kind-respecting instance a use is at.
+-- The module layer is an argument, not an assumption: a `View` resolves each
+-- imported name to an honest FFI declaration (D231) or one of the module's own
+-- definitions, and names each telescope entry's core index and the
+-- kind-respecting instance a use is at.
 -- Phase 6c/6d construct it from the module.
 ------------------------------------------------------------------------
 
@@ -65,9 +67,16 @@ open import Once.Spec.Core.Rename S using (close; ⊢close)
 InstanceOf : Fin s → Type → Set
 InstanceOf d T = Σ[ τ ∈ GSub (arity (S !! d)) ] Respects (kinds (S !! d)) τ × (type (S !! d) ⟪ τ ⟫ ≡ T)
 
+-- What a name in the imports table denotes: an FFI declaration (a SigOp,
+-- honest by D231) or one of the module's own definitions (D061/D071: an
+-- internal reference is a context projection, never a SigOp).
+data ImportAt (T : Type) : Set where
+  ffi : HonestFFI T → ImportAt T
+  def : (d : Fin s) → InstanceOf d T → ImportAt T
+
 record View (imps : Imports) (polys : PolyCtx) : Set where
   field
-    honest : ∀ {x T} → lookupImport imps x ≡ just T → HonestFFI T
+    imported : ∀ {x T} → lookupImport imps x ≡ just T → ImportAt T
     entry  : ∀ {x sc body prefix} → lookupPolyPrefix polys x ≡ just (sc , body , prefix) → Fin s
     ground : ∀ {x sc body prefix} (lp : lookupPolyPrefix polys x ≡ just (sc , body , prefix)) (g : Ground sc)
            → InstanceOf (entry lp) (extractGround sc g)
@@ -118,12 +127,12 @@ private
   coerceE : A <: B → Elab Γ Ψ A → Elab Γ Ψ B
   coerceE {A = A} {B = B} p = lift1 (coerce A B) (⊢coerce p)
 
-  sigopE : ∀ {imps polys x} (c : Once.CanonicalName.CanonicalName) → View imps polys → lookupImport imps x ≡ just A → IsConcrete A
-         → Elab Γ zeroUsage A
-  sigopE {A = A} c V lk k = sigop c A , ⊢sigop c k (honest V lk)
-
   refE : (d : Fin s) → InstanceOf d A → Elab Γ zeroUsage A
   refE {Γ = Γ} d (τ , r , eq) = ref d τ , subst (λ T → Γ ⊢[ zeroUsage ] ref d τ ∷ T ! pure) eq (⊢ref d τ r)
+
+  importE : Once.CanonicalName.CanonicalName → IsConcrete A → ImportAt A → Elab Γ zeroUsage A
+  importE {A = A} c k (ffi h)   = sigop c A , ⊢sigop c k h
+  importE         c k (def d i) = refE d i
 
   closeE : Elab ∅ zeroUsage A → Elab Γ zeroUsage A
   closeE (t , d) = close t , ⊢close d
@@ -171,9 +180,9 @@ elabᵢ V (t-str s)         = lit (lit-str s) , ⊢lit-str
 elabᵢ V t-unit            = unit , ⊢unit
 elabᵢ V t-unit-var        = unit , ⊢unit
 elabᵢ V (t-var-local {eV = Once.Surface.Context.svar i} _) = var i , ⊢var i
-elabᵢ V (t-var-qualified {name = name} {alias = alias} lk k) = sigopE (bare (alias ++ "." ++ name)) V lk k
-elabᵢ V (t-var-resolved {cn = cn} _ lk k) = sigopE cn V lk k
-elabᵢ V (t-var-import {x = x} _ _ lk k)    = sigopE (bare x) V lk k
+elabᵢ V (t-var-qualified {name = name} {alias = alias} lk k) = importE (bare (alias ++ "." ++ name)) k (imported V lk)
+elabᵢ V (t-var-resolved {cn = cn} _ lk k) = importE cn k (imported V lk)
+elabᵢ V (t-var-import {x = x} _ _ lk k)    = importE (bare x) k (imported V lk)
 elabᵢ V (t-var-poly-instantiate-infer {g = g} _ _ lp _ refl) = refE (entry V lp) (ground V lp g)
 elabᵢ V (t-annot d)       = elabᶜ V d
 elabᵢ V (t-pair da db)    = lift2 pair ⊢pair (elabᵢ V da) (elabᵢ V db)
