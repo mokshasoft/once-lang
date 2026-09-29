@@ -4983,7 +4983,12 @@ bracket abstraction:
   correspondence (CCC ≅ typed λ-calculus), Plan 0.52 M1 (`const-morph-strong`
   discharged; `cata-morph-strong` the remaining leaf this enables).
 
-## D071: SigOp Is FFI-Only; Internal Definition References Are Context Projections (DTT-Aligned)
+## D071: Internal Definition References Are Context Projections, Not SigOps (DTT-Aligned)
+
+> **Heading corrected 2026-09-29 (D245).** This entry was headed "SigOp Is FFI-Only". That
+> overstated it: D061 names two producers of SigOps, interpretations (FFI) AND the compiler
+> itself (the pure `arith.block.<digest>` SigOps). The body's actual decision is that
+> *definition references* are not SigOps. See D245.
 
 **Date**: 2026-07-12
 **Status**: Accepted; **implemented + certified green** (Plan 0.58, 2026-07-12)
@@ -15822,3 +15827,50 @@ would pin one `generic-semM "f"` across every module.
 Rejected: (a) a call node carrying the callee's IR, which makes the IR a tree of inlined bodies
 while codegen emits a table, and needs a linking invariant; (c) linking in the meaning only,
 which is non-modular and whole-program.
+
+## D245 — A SIGOP MEANS ITS CONTRACT; A DEFINITION REFERENCE MEANS ITS ENTRY: THE IR GETS A CALL NODE (PLAN 0.103 PHASE 6a′) (2026-09-29)
+
+**Relates**: D061 (a SigOp carries a contract its producer discharges), D071 (whose heading
+this corrects), D231, D239 (the core `Program`), D244 (the IR is a program).
+
+**Correction.** D071 was headed "SigOp Is FFI-Only". D061 has two producers of SigOps:
+* interpretations, for FFI;
+* the compiler, which mints pure `arith.block.<digest>` SigOps and discharges their contract by
+  lifting.
+
+Both are legitimate. The distinction that matters is between two ways a node can mean
+something, not between FFI and internal producers:
+* **by contract.** The node carries a closed `semM` + `EffectShape` that is independent of the
+  rest of the program. FFI SigOps and compiler-minted SigOps are both of this kind.
+* **by environment.** The node means an entry of the program it belongs to. Definition
+  references are of this kind.
+
+D071's heading now says this.
+
+**Decision.** The IR gets a dedicated call node, the IR twin of core `ref`. `SigOp` keeps
+every contract-carrying operation, FFI and compiler-minted alike. D244's call environment gives
+the call node its meaning, and codegen lowers it to `call once_<name>`, exactly as it lowers an
+internal-ref SigOp today. `internal-info`, the `internal-ref` Linkage and the use of
+`generic-semM` on this path are deleted.
+
+**Grounding in the branch's plans.**
+* **0.102/0.103.** The core already has three formers:
+  * `prim` is the compiler's Pure SigOps, meaning `primSem`;
+  * `sigop` is FFI, meaning `sigOpRefᴰ`;
+  * `ref d τ` means `ρ d τ`, an environment lookup (`Core/Meaning.agda:167`).
+
+  The IR has twins for the first two (`SigOp`) and none for `ref`: `internal-info` fakes one.
+* **0.97/0.98.** `EffectShape` is pure, one event, or halt, and a halting SigOp returns `Void`.
+  A user function may emit many events, return closures, or halt partway (0.97's `CalleeRun`).
+  So any SigOp contract for a call is either false (`internal-info` claims `pureV`) or the
+  callee's whole meaning, which is inlining.
+* **0.88/0.93 §11.** `obs-correct-sigop-rest` covers the Pure fall-throughs, and internal calls
+  are among them: their closure results are not register-resident. With a call node they leave
+  that postulate. Their own obligation is "`call once_f` runs table entry `f`", and that takes
+  a step toward the split by reason that 0.93 lists as owed.
+* **0.89.** The machine already runs `CompUnit`s, an entry plus labelled blocks, `link`ed. An
+  IR whose calls reference table entries has the same shape.
+
+Rejected: keeping `SigOp` for internal calls and dispatching `evalᴰ` on the `internal-ref`
+tag. A SigOp would then mean either its contract or an environment entry depending on a tag,
+which is D071's confusion again.
