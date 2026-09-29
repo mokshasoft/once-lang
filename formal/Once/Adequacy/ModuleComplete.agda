@@ -43,7 +43,7 @@ open import Once.Denotation.Realize using (realize)
 open import Once.TypeCheck.Raw using (RawExpr)
 open import Once.Spec.Module
   using (EffUU; ModTele; []; ffi; mono; poly; ModuleTyped-ef; ModuleTyped;
-         MainsEffUU; MainIn; HasValidMain-ef; HasValidMain)
+         MainsEffUU; MainIn; HasValidMain-ef; HasValidMain; ctxOf; addImp)
 import Once.TypeCheck.Elaborate as TE
 open import Once.Functor.Decide using (isConcrete?-complete)
 open import Once.Type.Honest using (honest?-complete)
@@ -226,11 +226,19 @@ moduleToIR-complete m mt hvm with C.extractFunctions (C.extractAliases m) m
 ------------------------------------------------------------------------
 
 mainRealized-go : ∀ {sc es} (mt : ModTele sc es) → MainIn mt → Σ-syntax (Usage 0) (λ Ψ → Expr ∅ Ψ EffUU)
+-- The FIRST `main`, exactly as the compiler's `findMain` picks it.
+mrg-dispatch : ∀ {sc fi es ty Ψ} (deriv : ctxOf sc ⊢ᶜ funBody fi ∶ ty ⨾ Ψ)
+  {rest : ModTele (addImp sc (funName fi) ty) es} → MainIn rest
+  → Dec (funName fi ≡ "main") → Dec (ty ≡ EffUU) → Σ-syntax (Usage 0) (λ Ψ′ → Expr ∅ Ψ′ EffUU)
 mainRealized-go []                  ()
 mainRealized-go (ffi _ _ _ _ rest)  mi = mainRealized-go rest mi
 mainRealized-go (poly _ rest)       mi = mainRealized-go rest mi
-mainRealized-go (mono _ _ deriv rest) (inj₁ (_ , refl)) = zeroUsage , realize deriv
-mainRealized-go (mono _ _ deriv rest) (inj₂ mi) = mainRealized-go rest mi
+mainRealized-go (mono {Ψ = Ψ} _ _ deriv rest) (inj₁ (_ , refl)) = Ψ , realize deriv
+mainRealized-go {sc} (mono {fi = fi} {ty = ty} {es = es} _ _ deriv rest) (inj₂ mi) =
+  mrg-dispatch {sc = sc} {fi = fi} {es = es} deriv {rest} mi (funName fi ≟str "main") (ty ≟T EffUU)
+mrg-dispatch {Ψ = Ψ} deriv w (yes _) (yes refl) = Ψ , realize deriv
+mrg-dispatch deriv {rest} w (no _) _ = mainRealized-go rest w
+mrg-dispatch deriv {rest} w (yes _) (no _) = mainRealized-go rest w
 
 mainRealized-ef : ∀ (m : C.Module) (ef : String ⊎ List C.Entry) (mt : ModuleTyped-ef m ef)
   → HasValidMain-ef m ef mt → Σ-syntax (Usage 0) (λ Ψ → Expr ∅ Ψ EffUU)

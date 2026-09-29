@@ -5,7 +5,9 @@
 -- Once.Adequacy.FunBundle — Plan 0.55: the per-function bundled
 -- compiled+typed selector that discharges `main-extract`'s selector alignment.
 --
--- ONE inductive `FunBundle` carries, per function, the compile witnesses
+-- D241 (plan 0.103 6c′): indexed by the module TELESCOPE walk.
+--
+-- ONE inductive `FunBundle` carries, per entry, the compile witnesses
 -- (`rf`/`ce`/`cf`+`irFun`) as BOUND fields, so neither `resolveFunType` nor
 -- `compileFun` is ever recomputed over an abstract `fi` (the old neutral). Both
 -- the `findMain`-style selector (`bundle-find`) and the `mainRealized-go`-style
@@ -20,7 +22,7 @@
 module Once.Adequacy.FunBundle where
 
 
-open import Once.Spec.Module using (AllFunsTyped; MainExists; tcons; tnil)
+open import Once.Spec.Module using (ModTele; []; ffi; mono; poly; MainIn; ctxOf; addImp)
 open import Data.Bool using (Bool; false; true)
 open import Data.Nat using (ℕ)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
@@ -40,6 +42,11 @@ open import Once.IR using (IR)
 open import Once.IRTy using (⌊_⌋)
 open import Once.Type using (Unit; Type; _⇒[_]_; mk-kind; Many; eff)
 import Once.Compile as C
+open import Once.Type.Rigid using (rigidOf)
+open import Once.Functor.Translate using (IsConcrete)
+open import Once.Functor.Decide using (isConcrete?)
+open import Once.Type.Honest using (HonestFFI; honest?)
+import Once.Surface.Syntax as Srf
 open import Once.Surface.Syntax using (Expr; ∅; Usage)
 open import Once.Surface.Elaborate using (elaborate; elaborateFull)
 open import Once.Denotation.Realize using (realize)
@@ -61,30 +68,35 @@ import Once.Adequacy.ModuleComplete as MC
 EffUU : Type
 EffUU = Unit ⇒[ mk-kind Many eff ] Unit
 
-------------------------------------------------------------------------
--- (1) The bundled structure.
-------------------------------------------------------------------------
+ctxC : C.CScope → NamedCtx
+ctxC sc = ctxWithImportsAndPolys (C.CScope.cimps sc) (C.cpolys sc)
 
-data FunBundle (polys : PolyCtx) (impsOf : C.String → C.FunCtx)
-     : List FunInfo → C.FunCtx → Set where
-  bnil : ∀ {ctx} → FunBundle polys impsOf [] ctx
-  bcons : ∀ {fi rest ctx ty}
-    {Ψ  : Usage (NamedCtx.size (ctxWithImportsAndPolys ctx polys))}
-    {se : Expr (NamedCtx.debruijn (ctxWithImportsAndPolys ctx polys)) Ψ ty}
+data FunBundle : C.CScope → List C.Entry → Set where
+  bnil  : ∀ {sc} → FunBundle sc []
+  bffi  : ∀ {sc fi ty es} {c : IsConcrete ty} {h : HonestFFI ty}
+        → funIsPrimitive fi ≡ true → funType fi ≡ just ty
+        → isConcrete? ty ≡ just c → honest? ty ≡ just h
+        → FunBundle (C.extendScope sc (funName fi) ty) es
+        → FunBundle sc (C.e-fun fi ∷ es)
+  bcons : ∀ {sc fi es ty}
+    {Ψ  : Usage (NamedCtx.size (ctxC sc))}
+    {se : Expr (NamedCtx.debruijn (ctxC sc)) Ψ ty}
     {d f : ℕ}
     {irFun : IR ⌊ Unit ⌋ ⌊ ty ⌋} →
-    (rf : C.resolveFunType ctx polys (funType fi) (funBody fi) ≡ inj₂ ty) →
-    (ce : checkElab (ctxWithImportsAndPolys ctx polys)
-            (funBody fi) ty ≡ TE.success Ψ se d f) →
-    (cf : C.compileFun C.Heap false ctx polys impsOf (funName fi) ty (funBody fi) ≡ inj₂ irFun) →
-    FunBundle polys impsOf rest (C.extendFunCtx ctx (funName fi) ty) →
-    FunBundle polys impsOf (fi ∷ rest) ctx
-
-------------------------------------------------------------------------
--- (1b) PROVEN plumbing: `compileFun-ce` — ce-returning refinement of
--- `AcceptSound.compileFun-sound` (same inversion, returns the `checkElab`
--- witness instead of `check-sound` of it).
-------------------------------------------------------------------------
+    (ep : funIsPrimitive fi ≡ false) →
+    (rf : C.resolveFunType (C.CScope.cimps sc) (C.cpolys sc) (funType fi) (funBody fi) ≡ inj₂ ty) →
+    (ce : checkElab (ctxC sc) (funBody fi) ty ≡ TE.success Ψ se d f) →
+    (cf : C.compileFun C.Heap false (C.CScope.cimps sc) (C.cpolys sc) (C.declImps (C.CScope.ctele sc))
+            (funName fi) ty (funBody fi) ≡ inj₂ irFun) →
+    FunBundle (C.extendScope sc (funName fi) ty) es →
+    FunBundle sc (C.e-fun fi ∷ es)
+  bpoly : ∀ {sc pfi es}
+    {Ψ  : Usage (NamedCtx.size (ctxC sc))}
+    {se : Expr (NamedCtx.debruijn (ctxC sc)) Ψ (rigidOf (C.PolyFunInfo.pfunType pfi))}
+    {d f : ℕ} →
+    (ce : checkElab (ctxC sc) (C.PolyFunInfo.pfunBody pfi) (rigidOf (C.PolyFunInfo.pfunType pfi)) ≡ TE.success Ψ se d f) →
+    FunBundle (C.addEntry sc pfi) es →
+    FunBundle sc (C.e-poly pfi ∷ es)
 
 compileFunBody-ce : ∀ (doOpt : Bool) (ctx : C.FunCtx) (polys : PolyCtx) (impsOf : C.String → C.FunCtx)
   (name : String) (ty : Type) (expr : RawExpr) {ir : IR ⌊ Unit ⌋ ⌊ ty ⌋} →
@@ -135,106 +147,102 @@ compileFun-ce polys impsOf ctx ty fi irFun eq =
 -- (2) Typing view + compiled view.
 ------------------------------------------------------------------------
 
-bundle→typed : ∀ {polys impsOf funs ctx} →
-  FunBundle polys impsOf funs ctx → AllFunsTyped polys funs ctx
-bundle→typed bnil = tnil
-bundle→typed (bcons {fi = fi} {ty = ty} rf ce cf rest) =
-  tcons rf (check-sound (ctxWithImportsAndPolys _ _) (funBody fi) ty ce)
-              (bundle→typed rest)
 
-bundle→compiled : ∀ {polys impsOf funs ctx} →
-  FunBundle polys impsOf funs ctx → List C.CompiledFun
+bundle→typed : ∀ {sc es} → FunBundle sc es → ModTele (AS.scopeOf sc) es
+bundle→typed bnil = []
+bundle→typed (bffi {c = c} {h = h} ep et _ _ rest) = ffi ep et c h (bundle→typed rest)
+bundle→typed {sc} (bcons {fi = fi} {ty = ty} ep rf ce cf rest) =
+  mono ep rf (check-sound (ctxC sc) (funBody fi) ty ce) (bundle→typed rest)
+bundle→typed {sc} (bpoly {pfi = pfi} ce rest) =
+  poly (check-sound (ctxC sc) (C.PolyFunInfo.pfunBody pfi) (rigidOf (C.PolyFunInfo.pfunType pfi)) ce) (bundle→typed rest)
+
+primCF : ∀ (fi : FunInfo) (ty : Type) → IsConcrete ty → C.CompiledFun
+primCF fi ty c = C.mkCompiledFun (bare (funName fi)) ty (elaborateFull C.Heap (Srf.sigOp {Γ = Srf.∅} (bare (funName fi)) c)) true
+
+bundle→compiled : ∀ {sc es} → FunBundle sc es → List C.CompiledFun
 bundle→compiled bnil = []
-bundle→compiled (bcons {fi = fi} {ty = ty} {irFun = irFun} rf ce cf rest) =
+bundle→compiled (bffi {fi = fi} {ty = ty} {c = c} _ _ _ _ rest) = primCF fi ty c ∷ bundle→compiled rest
+bundle→compiled (bcons {fi = fi} {ty = ty} {irFun = irFun} ep rf ce cf rest) =
   C.mkCompiledFun (bare (funName fi)) (proj₁ (C.maybeWrapMain (funName fi) ty irFun))
     (proj₂ (C.maybeWrapMain (funName fi) ty irFun)) (funIsPrimitive fi)
   ∷ bundle→compiled rest
+bundle→compiled (bpoly ce rest) = bundle→compiled rest
 
-------------------------------------------------------------------------
--- (2b) The builder — reuses the `caf-go-sound` lockstep, additionally
--- threading `ce`/`cf`. Returns the `bundle→compiled ≡ compiled` proof PAIRED,
--- so `bundle→compiled≡compiled` is proven by the SAME recursion (no separate
--- opaque `with`-induction). Explicit-scrutinee helpers (no `with`).
-------------------------------------------------------------------------
+-- A bundle for every accepted telescope, whose compiled list IS the compiler's.
+CGB : C.CScope → List C.Entry → List C.CompiledFun → Set
+CGB sc es compiled = Σ-syntax (FunBundle sc es) (λ b → bundle→compiled b ≡ compiled)
 
-CGB : (polys : PolyCtx) (impsOf : C.String → C.FunCtx) (funs : List FunInfo) (ctx : C.FunCtx)
-      (compiled : List C.CompiledFun) → Set
-CGB polys impsOf funs ctx compiled =
-  Σ-syntax (FunBundle polys impsOf funs ctx) (λ b → bundle→compiled b ≡ compiled)
+ce-bundleP : ∀ (sc : C.CScope) (es : List C.Entry) (compiled : List C.CompiledFun)
+  → C.compileEntries C.Heap false sc es ≡ inj₂ compiled → CGB sc es compiled
+cgb-fun : ∀ (sc : C.CScope) (fi : FunInfo) (es : List C.Entry) (compiled : List C.CompiledFun) (b : Bool)
+  → funIsPrimitive fi ≡ b → C.ce-fun C.Heap false sc fi es b ≡ inj₂ compiled → CGB sc (C.e-fun fi ∷ es) compiled
+cgb-prim : ∀ (sc : C.CScope) (fi : FunInfo) (es : List C.Entry) (compiled : List C.CompiledFun)
+  → funIsPrimitive fi ≡ true → (mt : Maybe Type) → funType fi ≡ mt
+  → C.ce-prim C.Heap false sc fi es mt ≡ inj₂ compiled → CGB sc (C.e-fun fi ∷ es) compiled
+cgb-mono : ∀ (sc : C.CScope) (fi : FunInfo) (es : List C.Entry) (compiled : List C.CompiledFun)
+  → funIsPrimitive fi ≡ false → (rt : String ⊎ Type)
+  → C.resolveFunType (C.CScope.cimps sc) (C.cpolys sc) (funType fi) (funBody fi) ≡ rt
+  → C.ce-mono C.Heap false sc fi es rt ≡ inj₂ compiled → CGB sc (C.e-fun fi ∷ es) compiled
+cgb-poly : ∀ (sc : C.CScope) (pfi : C.PolyFunInfo) (es : List C.Entry) (compiled : List C.CompiledFun)
+  → (r : TE.VerifiedCheckResult (ctxC sc) (C.PolyFunInfo.pfunBody pfi) (rigidOf (C.PolyFunInfo.pfunType pfi)))
+  → TE.checkElabV (ctxC sc) (C.PolyFunInfo.pfunBody pfi) (rigidOf (C.PolyFunInfo.pfunType pfi)) ≡ r
+  → C.ce-poly C.Heap false sc pfi es (C.checkOK r) ≡ inj₂ compiled → CGB sc (C.e-poly pfi ∷ es) compiled
 
-caf-go-bundleP : ∀ (polys : PolyCtx) (impsOf : C.String → C.FunCtx) (funs : List FunInfo) (ctx : C.FunCtx)
-  (compiled : List C.CompiledFun) →
-  C.compileAllFuns-go C.Heap false polys impsOf funs ctx ≡ inj₂ compiled → CGB polys impsOf funs ctx compiled
+ce-bundleP sc [] compiled eq = bnil , inj₂-injective eq
+ce-bundleP sc (C.e-fun fi ∷ es) compiled eq = cgb-fun sc fi es compiled (funIsPrimitive fi) refl eq
+ce-bundleP sc (C.e-poly pfi ∷ es) compiled eq = cgb-poly sc pfi es compiled _ refl eq
 
-cgb-rf : ∀ (polys : PolyCtx) (impsOf : C.String → C.FunCtx) (fi : FunInfo) (rest : List FunInfo)
-  (ctx : C.FunCtx) (compiled : List C.CompiledFun) (rfv : String ⊎ Type) →
-  C.resolveFunType ctx polys (funType fi) (funBody fi) ≡ rfv →
-  C.caf-go-rf-aux C.Heap false polys impsOf fi rest ctx rfv ≡ inj₂ compiled →
-  CGB polys impsOf (fi ∷ rest) ctx compiled
-cgb-cf : ∀ (polys : PolyCtx) (impsOf : C.String → C.FunCtx) (fi : FunInfo) (rest : List FunInfo)
-  (ctx : C.FunCtx) (ty : Type) (compiled : List C.CompiledFun) (cfv : String ⊎ IR ⌊ Unit ⌋ ⌊ ty ⌋) →
-  C.resolveFunType ctx polys (funType fi) (funBody fi) ≡ inj₂ ty →
-  C.compileFun C.Heap false ctx polys impsOf (funName fi) ty (funBody fi) ≡ cfv →
-  C.caf-go-cf-aux C.Heap false polys impsOf fi rest ctx ty cfv ≡ inj₂ compiled →
-  CGB polys impsOf (fi ∷ rest) ctx compiled
-cgb-rec : ∀ (polys : PolyCtx) (impsOf : C.String → C.FunCtx) (fi : FunInfo) (rest : List FunInfo)
-  (ctx : C.FunCtx) (ty : Type) (irFun : IR ⌊ Unit ⌋ ⌊ ty ⌋) (compiled : List C.CompiledFun)
-  (recv : String ⊎ List C.CompiledFun) →
-  C.resolveFunType ctx polys (funType fi) (funBody fi) ≡ inj₂ ty →
-  C.compileFun C.Heap false ctx polys impsOf (funName fi) ty (funBody fi) ≡ inj₂ irFun →
-  C.compileAllFuns-go C.Heap false polys impsOf rest (C.extendFunCtx ctx (funName fi) ty) ≡ recv →
-  C.caf-go-wrap fi ty irFun recv ≡ inj₂ compiled →
-  CGB polys impsOf (fi ∷ rest) ctx compiled
+cgb-fun sc fi es compiled true  ep eq = cgb-prim sc fi es compiled ep (funType fi) refl eq
+cgb-fun sc fi es compiled false ep eq =
+  cgb-mono sc fi es compiled ep (C.resolveFunType (C.CScope.cimps sc) (C.cpolys sc) (funType fi) (funBody fi)) refl eq
 
-caf-go-bundleP polys impsOf [] ctx compiled eq = bnil , inj₂-injective eq
-caf-go-bundleP polys impsOf (fi ∷ rest) ctx compiled eq =
-  cgb-rf polys impsOf fi rest ctx compiled
-    (C.resolveFunType ctx polys (funType fi) (funBody fi)) refl eq
+cgb-prim sc fi es compiled ep nothing et ()
+cgb-prim sc fi es compiled ep (just ty) et eq = conc (isConcrete? ty) refl (honest? ty) refl eq
+  where
+    conc : (mc : Maybe (IsConcrete ty)) → isConcrete? ty ≡ mc → (mh : Maybe (HonestFFI ty)) → honest? ty ≡ mh
+         → C.ce-prim-conc C.Heap false sc fi es ty mc mh ≡ inj₂ compiled → CGB sc (C.e-fun fi ∷ es) compiled
+    conc nothing _ _ _ ()
+    conc (just _) _ nothing _ ()
+    conc (just c) ec (just h) eh eq′ with C.compileEntries C.Heap false (C.extendScope sc (funName fi) ty) es in rec
+    ... | inj₁ _ = case eq′ of λ ()
+    ... | inj₂ rest =
+          let (b , beq) = ce-bundleP (C.extendScope sc (funName fi) ty) es rest rec
+          in bffi {c = c} {h = h} ep et ec eh b , trans (cong (primCF fi ty c ∷_) beq) (inj₂-injective eq′)
 
-cgb-rf polys impsOf fi rest ctx compiled (inj₁ err) rf-conn ()
-cgb-rf polys impsOf fi rest ctx compiled (inj₂ ty) rf-conn eq =
-  cgb-cf polys impsOf fi rest ctx ty compiled
-    (C.compileFun C.Heap false ctx polys impsOf (funName fi) ty (funBody fi)) rf-conn refl eq
+cgb-mono sc fi es compiled ep (inj₁ _) er ()
+cgb-mono sc fi es compiled ep (inj₂ ty) er eq
+  with C.compileFun C.Heap false (C.CScope.cimps sc) (C.cpolys sc) (C.declImps (C.CScope.ctele sc)) (funName fi) ty (funBody fi) in cf
+... | inj₁ _ = case eq of λ ()
+... | inj₂ irFun
+      with C.compileEntries C.Heap false (C.extendScope sc (funName fi) ty) es in rec
+...   | inj₁ _ = case eq of λ ()
+...   | inj₂ rest =
+        let (Ψ , se , d , f , ce) = compileFun-ce (C.cpolys sc) (C.declImps (C.CScope.ctele sc)) (C.CScope.cimps sc) ty fi irFun cf
+            (b , beq) = ce-bundleP (C.extendScope sc (funName fi) ty) es rest rec
+        in bcons {Ψ = Ψ} {se = se} {d = d} {f = f} {irFun = irFun} ep er ce cf b
+         , trans (cong (C.mkCompiledFun (bare (funName fi)) (proj₁ (C.maybeWrapMain (funName fi) ty irFun))
+                          (proj₂ (C.maybeWrapMain (funName fi) ty irFun)) (funIsPrimitive fi) ∷_) beq)
+                 (inj₂-injective eq)
 
-cgb-cf polys impsOf fi rest ctx ty compiled (inj₁ err) rf-conn cf-conn ()
-cgb-cf polys impsOf fi rest ctx ty compiled (inj₂ irFun) rf-conn cf-conn eq =
-  cgb-rec polys impsOf fi rest ctx ty irFun compiled
-    (C.compileAllFuns-go C.Heap false polys impsOf rest (C.extendFunCtx ctx (funName fi) ty))
-    rf-conn cf-conn refl eq
+cgb-poly sc pfi es compiled (TE.failure _ , _) _ ()
+cgb-poly sc pfi es compiled (TE.success Ψ se d f , w) cv eq =
+  let (b , beq) = ce-bundleP (C.addEntry sc pfi) es compiled eq
+  in bpoly {Ψ = Ψ} {se = se} {d = d} {f = f} (cong proj₁ cv) b , beq
 
-cgb-rec polys impsOf fi rest ctx ty irFun compiled (inj₁ err) rf-conn cf-conn rec-conn ()
-cgb-rec polys impsOf fi rest ctx ty irFun compiled (inj₂ compiled-rest) rf-conn cf-conn rec-conn eq =
-  let (Ψ , se , d , f , ce) = compileFun-ce polys impsOf ctx ty fi irFun cf-conn
-      (b-rest , eq-rest) = caf-go-bundleP polys impsOf rest (C.extendFunCtx ctx (funName fi) ty) compiled-rest rec-conn
-  in bcons {Ψ = Ψ} {se = se} {d = d} {f = f} {irFun = irFun} rf-conn ce cf-conn b-rest
-   , trans (cong (C.mkCompiledFun (bare (funName fi)) (proj₁ (C.maybeWrapMain (funName fi) ty irFun))
-                    (proj₂ (C.maybeWrapMain (funName fi) ty irFun)) (funIsPrimitive fi) ∷_) eq-rest)
-           (inj₂-injective eq)
+ce-bundle : ∀ (sc : C.CScope) (es : List C.Entry) {compiled : List C.CompiledFun}
+  → C.compileEntries C.Heap false sc es ≡ inj₂ compiled → FunBundle sc es
+ce-bundle sc es {compiled} eq = proj₁ (ce-bundleP sc es compiled eq)
 
--- The bundle builder + its compiled-list-correspondence, as named exports.
-caf-go-bundle : ∀ (polys : PolyCtx) (impsOf : C.String → C.FunCtx) (funs : List FunInfo) (ctx : C.FunCtx)
-  {compiled : List C.CompiledFun} →
-  C.compileAllFuns-go C.Heap false polys impsOf funs ctx ≡ inj₂ compiled →
-  FunBundle polys impsOf funs ctx
-caf-go-bundle polys impsOf funs ctx {compiled} eq = proj₁ (caf-go-bundleP polys impsOf funs ctx compiled eq)
+bundle→compiled≡compiled : ∀ (sc : C.CScope) (es : List C.Entry) (compiled : List C.CompiledFun)
+  (eq : C.compileEntries C.Heap false sc es ≡ inj₂ compiled) → bundle→compiled (ce-bundle sc es eq) ≡ compiled
+bundle→compiled≡compiled sc es compiled eq = proj₂ (ce-bundleP sc es compiled eq)
 
-bundle→compiled≡compiled : ∀ (polys : PolyCtx) (impsOf : C.String → C.FunCtx) (funs : List FunInfo) (ctx : C.FunCtx)
-  (compiled : List C.CompiledFun) (eq : C.compileAllFuns-go C.Heap false polys impsOf funs ctx ≡ inj₂ compiled) →
-  bundle→compiled (caf-go-bundle polys impsOf funs ctx eq) ≡ compiled
-bundle→compiled≡compiled polys impsOf funs ctx compiled eq = proj₂ (caf-go-bundleP polys impsOf funs ctx compiled eq)
-
-------------------------------------------------------------------------
--- (3) The main selector + extraction (bundle-internal alignment).
-------------------------------------------------------------------------
-
-BMainExists : ∀ {polys impsOf funs ctx} → FunBundle polys impsOf funs ctx → Set
+BMainExists : ∀ {sc es} → FunBundle sc es → Set
 BMainExists bnil = ⊥
-BMainExists (bcons {fi = fi} {ty = ty} _ _ _ rest) =
+BMainExists (bffi _ _ _ _ rest) = BMainExists rest
+BMainExists (bcons {fi = fi} {ty = ty} _ _ _ _ rest) =
   ((funName fi ≡ "main") × (funIsPrimitive fi ≡ false) × (ty ≡ EffUU)) ⊎ BMainExists rest
-
-------------------------------------------------------------------------
--- (3a) Compile-side selector `bundle-find` + agreement with `findMain`.
-------------------------------------------------------------------------
+BMainExists (bpoly _ rest) = BMainExists rest
 
 bf-dispatch : ∀ {P : Set} {ty} → IR ⌊ Unit ⌋ ⌊ ty ⌋ →
   Dec P → Dec (ty ≡ EffUU) → Bool → Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋) → Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋)
@@ -243,24 +251,22 @@ bf-dispatch irFun (yes _) (yes refl) false cont = just (C.wrapMainAsEntry irFun)
 bf-dispatch irFun (no _)  _          false cont = cont
 bf-dispatch irFun (yes _) (no _)     false cont = cont
 
-bundle-find : ∀ {polys impsOf funs ctx} → FunBundle polys impsOf funs ctx → Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋)
+bundle-find : ∀ {sc es} → FunBundle sc es → Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋)
 bundle-find bnil = nothing
-bundle-find (bcons {fi = fi} {ty = ty} {irFun = irFun} rf ce cf rest) =
+bundle-find (bffi _ _ _ _ rest) = bundle-find rest
+bundle-find (bcons {fi = fi} {ty = ty} {irFun = irFun} ep rf ce cf rest) =
   bf-dispatch irFun (funName fi ≟str "main") (ty ≟T EffUU) (funIsPrimitive fi) (bundle-find rest)
+bundle-find (bpoly _ rest) = bundle-find rest
 
-fa-head : ∀ {polys impsOf} (fi : FunInfo) (ctx : C.FunCtx) (ty : Type) (irFun : IR ⌊ Unit ⌋ ⌊ ty ⌋)
-  {Ψ : Usage (NamedCtx.size (ctxWithImportsAndPolys ctx polys))}
-  {se : Expr (NamedCtx.debruijn (ctxWithImportsAndPolys ctx polys)) Ψ ty}
-  {d f : ℕ}
-  (ce : checkElab (ctxWithImportsAndPolys ctx polys) (funBody fi) ty
-          ≡ TE.success Ψ se d f)
-  (cf : C.compileFun C.Heap false ctx polys impsOf (funName fi) ty (funBody fi) ≡ inj₂ irFun)
+fa-head : ∀ {sc} (fi : FunInfo) (ty : Type) (irFun : IR ⌊ Unit ⌋ ⌊ ty ⌋)
+  (cf : C.compileFun C.Heap false (C.CScope.cimps sc) (C.cpolys sc) (C.declImps (C.CScope.ctele sc))
+          (funName fi) ty (funBody fi) ≡ inj₂ irFun)
   (rest-c : List C.CompiledFun) (rest-f : Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋)) →
   findMain rest-c ≡ rest-f →
   findMain (C.mkCompiledFun (bare (funName fi)) (proj₁ (C.maybeWrapMain (funName fi) ty irFun))
              (proj₂ (C.maybeWrapMain (funName fi) ty irFun)) (funIsPrimitive fi) ∷ rest-c)
     ≡ bf-dispatch irFun (funName fi ≟str "main") (ty ≟T EffUU) (funIsPrimitive fi) rest-f
-fa-head {polys = polys} {impsOf = impsOf} fi ctx ty irFun ce cf rest-c rest-f ih
+fa-head {sc} fi ty irFun cf rest-c rest-f ih
   with funIsPrimitive fi
 ... | true = ih
 ... | false with funName fi ≟str "main"
@@ -268,124 +274,62 @@ fa-head {polys = polys} {impsOf = impsOf} fi ctx ty irFun ce cf rest-c rest-f ih
 ...   | yes p with ty ≟T EffUU
 ...     | yes refl rewrite p = refl
 ...     | no ¬q rewrite p =
-          ⊥-elim (¬q (compileFun-main-EffUU ctx polys impsOf ty (funBody fi) irFun cf))
+          ⊥-elim (¬q (compileFun-main-EffUU (C.CScope.cimps sc) (C.cpolys sc) (C.declImps (C.CScope.ctele sc)) ty (funBody fi) irFun cf))
 
-find-agree : ∀ {polys impsOf funs ctx} (b : FunBundle polys impsOf funs ctx) →
-  findMain (bundle→compiled b) ≡ bundle-find b
+find-agree : ∀ {sc es} (b : FunBundle sc es) → findMain (bundle→compiled b) ≡ bundle-find b
 find-agree bnil = refl
-find-agree (bcons {fi = fi} {ctx = ctx} {ty = ty} {irFun = irFun} rf ce cf rest) =
-  fa-head fi ctx ty irFun ce cf (bundle→compiled rest) (bundle-find rest) (find-agree rest)
+find-agree (bffi _ _ _ _ rest) = find-agree rest
+find-agree {sc} (bcons {fi = fi} {ty = ty} {irFun = irFun} ep rf ce cf rest) =
+  fa-head {sc} fi ty irFun cf (bundle→compiled rest) (bundle-find rest) (find-agree rest)
+find-agree (bpoly _ rest) = find-agree rest
 
-------------------------------------------------------------------------
--- (3b) Typing-side selector `bundle-realize` + agreement with `mainRealized-go`.
-------------------------------------------------------------------------
+bme→me : ∀ {sc es} (b : FunBundle sc es) → BMainExists b → MainIn (bundle→typed b)
+bme→me (bffi _ _ _ _ rest) w = bme→me rest w
+bme→me (bcons _ _ _ _ rest) (inj₁ (p , _ , e)) = inj₁ (p , e)
+bme→me (bcons _ _ _ _ rest) (inj₂ w) = inj₂ (bme→me rest w)
+bme→me (bpoly _ rest) w = bme→me rest w
 
-bme→me : ∀ {polys impsOf funs ctx} (b : FunBundle polys impsOf funs ctx) →
-  BMainExists b → MainExists (bundle→typed b)
-bme→me (bcons _ _ _ rest) (inj₁ x) = inj₁ x
-bme→me (bcons _ _ _ rest) (inj₂ w) = inj₂ (bme→me rest w)
+bundle-realize : ∀ {sc es} (b : FunBundle sc es) → BMainExists b → Σ-syntax (Usage 0) (λ Ψ → Expr ∅ Ψ EffUU)
+br-dispatch : ∀ {sc es ty} (fi : FunInfo)
+  {Ψ : Usage (NamedCtx.size (ctxC sc))} {se : Expr (NamedCtx.debruijn (ctxC sc)) Ψ ty} {d f : ℕ}
+  (ce : checkElab (ctxC sc) (funBody fi) ty ≡ TE.success Ψ se d f)
+  (rt : FunBundle (C.extendScope sc (funName fi) ty) es) (w : BMainExists rt)
+  → Dec (funName fi ≡ "main") → Dec (ty ≡ EffUU) → Σ-syntax (Usage 0) (λ Ψ' → Expr ∅ Ψ' EffUU)
+bundle-realize (bffi _ _ _ _ rest) w = bundle-realize rest w
+bundle-realize {sc} (bcons {fi = fi} {Ψ = Ψ} ep rf ce cf rest) (inj₁ (_ , _ , refl)) =
+  Ψ , realize (check-sound (ctxC sc) (funBody fi) EffUU ce)
+bundle-realize {sc} (bcons {fi = fi} {ty = ty} ep rf ce cf rest) (inj₂ w) =
+  br-dispatch {sc} fi ce rest w (funName fi ≟str "main") (ty ≟T EffUU)
+bundle-realize (bpoly _ rest) w = bundle-realize rest w
+br-dispatch {sc} fi {Ψ = Ψ} ce rt w (yes _) (yes refl) = Ψ , realize (check-sound (ctxC sc) (funBody fi) EffUU ce)
+br-dispatch fi ce rt w (no _)  _      = bundle-realize rt w
+br-dispatch fi ce rt w (yes _) (no _) = bundle-realize rt w
 
-br-dispatch : ∀ {polys impsOf rest ctx ty} (fi : FunInfo)
-  {Ψ : Usage (NamedCtx.size (ctxWithImportsAndPolys ctx polys))}
-  {se : Expr (NamedCtx.debruijn (ctxWithImportsAndPolys ctx polys)) Ψ ty}
-  {d f : ℕ}
-  (ce : checkElab (ctxWithImportsAndPolys ctx polys) (funBody fi) ty
-          ≡ TE.success Ψ se d f)
-  (rt : FunBundle polys impsOf rest (C.extendFunCtx ctx (funName fi) ty)) (w : BMainExists rt)
-  → Dec (funName fi ≡ "main") → Dec (ty ≡ EffUU) → Bool
-  → Σ-syntax (Usage 0) (λ Ψ' → Expr ∅ Ψ' EffUU)
-
-bundle-realize : ∀ {polys impsOf funs ctx} (b : FunBundle polys impsOf funs ctx) →
-  BMainExists b → Σ-syntax (Usage 0) (λ Ψ → Expr ∅ Ψ EffUU)
-bundle-realize {polys = polys} {impsOf = impsOf}
-               (bcons {fi = fi} {ctx = ctx} {Ψ = Ψ} rf ce cf rest) (inj₁ (_ , _ , refl)) =
-  Ψ , realize (check-sound (ctxWithImportsAndPolys ctx polys) (funBody fi) EffUU ce)
-bundle-realize (bcons {fi = fi} {ty = ty} rf ce cf rest) (inj₂ w) =
-  br-dispatch fi ce rest w (funName fi ≟str "main") (ty ≟T EffUU) (funIsPrimitive fi)
-
--- PRIM-FIRST clause order, matching `bf-dispatch` (so `bundle-find` and
--- `bundle-realize` dispatch identically ⇒ their node-coherence is definitional).
-br-dispatch fi ce rt w _        _          true  = bundle-realize rt w
-br-dispatch {polys = polys} {impsOf = impsOf} {ctx = ctx} fi {Ψ = Ψ} ce rt w (yes _) (yes refl) false =
-  Ψ , realize (check-sound (ctxWithImportsAndPolys ctx polys) (funBody fi) EffUU ce)
-br-dispatch fi ce rt w (no _)  _          false = bundle-realize rt w
-br-dispatch fi ce rt w (yes _) (no _)     false = bundle-realize rt w
-
-realize-agree : ∀ {polys impsOf funs ctx} (b : FunBundle polys impsOf funs ctx) (bme : BMainExists b) →
+realize-agree : ∀ {sc es} (b : FunBundle sc es) (bme : BMainExists b) →
   MC.mainRealized-go (bundle→typed b) (bme→me b bme) ≡ bundle-realize b bme
+ra-head : ∀ {sc es ty} (fi : FunInfo)
+  {Ψ : Usage (NamedCtx.size (ctxC sc))} {se : Expr (NamedCtx.debruijn (ctxC sc)) Ψ ty} {d f : ℕ}
+  (ce : checkElab (ctxC sc) (funBody fi) ty ≡ TE.success Ψ se d f)
+  (rt : FunBundle (C.extendScope sc (funName fi) ty) es) (w : BMainExists rt)
+  (nd : Dec (funName fi ≡ "main")) (td : Dec (ty ≡ EffUU)) →
+  MC.mrg-dispatch {sc = AS.scopeOf sc} {fi = fi} {es = es} (check-sound (ctxC sc) (funBody fi) ty ce)
+      {bundle→typed rt} (bme→me rt w) nd td
+  ≡ br-dispatch {sc} fi ce rt w nd td
+ra-head fi ce rt w (yes _) (yes refl) = refl
+ra-head fi ce rt w (no _)  _          = realize-agree rt w
+ra-head fi ce rt w (yes _) (no _)     = realize-agree rt w
+realize-agree (bffi _ _ _ _ rest) w = realize-agree rest w
+realize-agree (bcons ep rf ce cf rest) (inj₁ (_ , _ , refl)) = refl
+realize-agree {sc} (bcons {fi = fi} {ty = ty} ep rf ce cf rest) (inj₂ w) =
+  ra-head {sc} fi ce rest w (funName fi ≟str "main") (ty ≟T EffUU)
+realize-agree (bpoly _ rest) w = realize-agree rest w
 
-ra-head : ∀ {polys impsOf rest ctx ty} (fi : FunInfo)
-  {Ψ : Usage (NamedCtx.size (ctxWithImportsAndPolys ctx polys))}
-  {se : Expr (NamedCtx.debruijn (ctxWithImportsAndPolys ctx polys)) Ψ ty}
-  {d f : ℕ}
-  (ce : checkElab (ctxWithImportsAndPolys ctx polys) (funBody fi) ty
-          ≡ TE.success Ψ se d f)
-  (rt : FunBundle polys impsOf rest (C.extendFunCtx ctx (funName fi) ty)) (w : BMainExists rt) →
-  MC.mrg-dispatch (check-sound (ctxWithImportsAndPolys ctx polys) (funBody fi) ty ce)
-      (bundle→typed rt) (bme→me rt w) (funName fi ≟str "main") (ty ≟T EffUU) (funIsPrimitive fi)
-  ≡ br-dispatch fi ce rt w (funName fi ≟str "main") (ty ≟T EffUU) (funIsPrimitive fi)
--- `mrg-dispatch` is name-first, `br-dispatch` (now) prim-first ⇒ case all three
--- concretely (prim always; type when name=yes) so BOTH sides reduce per branch.
-ra-head {ty = ty} fi ce rt w
-  with funName fi ≟str "main" | ty ≟T EffUU | funIsPrimitive fi
-... | no _  | _        | false = realize-agree rt w
-... | no _  | _        | true  = realize-agree rt w
-... | yes _ | yes refl | false = refl
-... | yes _ | yes refl | true  = realize-agree rt w
-... | yes _ | no _     | false = realize-agree rt w
-... | yes _ | no _     | true  = realize-agree rt w
-
-realize-agree (bcons rf ce cf rest) (inj₁ (_ , _ , refl)) = refl
-realize-agree (bcons {fi = fi} rf ce cf rest) (inj₂ w) = ra-head fi ce rest w
-
-------------------------------------------------------------------------
--- (3c) `bundle-realize-node`: extract the selected main node's data
--- (`mctx`/`mbody`/`mΨ`/`mse`/`mce`) with a proof that `bundle-realize` returns
--- exactly `realize (check-sound … mce)` at that node. Feeds eq2 of `main-extract`.
--- Prim-first dispatch (mirrors `br-dispatch`) ⇒ same node as `bundle-find`.
-------------------------------------------------------------------------
-
-RNode : ∀ (polys : PolyCtx) (impsOf : C.String → C.FunCtx)
-  → Σ-syntax (Usage 0) (λ Ψ' → Expr ∅ Ψ' EffUU) → Set
-RNode polys impsOf r =
-  Σ-syntax C.FunCtx (λ mctx → Σ-syntax RawExpr (λ mbody →
-  Σ-syntax (Usage 0) (λ mΨ → Σ-syntax (Expr ∅ mΨ EffUU) (λ mse → Σ-syntax ℕ (λ md → Σ-syntax ℕ (λ mf →
-  Σ-syntax (checkElab (ctxWithImportsAndPolys mctx polys) mbody EffUU
-             ≡ TE.success mΨ mse md mf) (λ mce →
-    r ≡ (mΨ , realize (check-sound (ctxWithImportsAndPolys mctx polys) mbody EffUU mce)))))))))
-
-bundle-realize-node : ∀ {polys impsOf funs ctx} (b : FunBundle polys impsOf funs ctx)
-  (bme : BMainExists b) → RNode polys impsOf (bundle-realize b bme)
-
-brn-dispatch : ∀ {polys impsOf rest ctx ty} (fi : FunInfo)
-  {Ψ : Usage (NamedCtx.size (ctxWithImportsAndPolys ctx polys))}
-  {se : Expr (NamedCtx.debruijn (ctxWithImportsAndPolys ctx polys)) Ψ ty}
-  {d f : ℕ}
-  (ce : checkElab (ctxWithImportsAndPolys ctx polys) (funBody fi) ty
-          ≡ TE.success Ψ se d f)
-  (rt : FunBundle polys impsOf rest (C.extendFunCtx ctx (funName fi) ty)) (w : BMainExists rt)
-  (nd : Dec (funName fi ≡ "main")) (td : Dec (ty ≡ EffUU)) (pb : Bool)
-  → RNode polys impsOf (br-dispatch fi ce rt w nd td pb)
-brn-dispatch fi ce rt w _        _          true  = bundle-realize-node rt w
-brn-dispatch {polys = polys} {impsOf = impsOf} {ctx = ctx} fi {Ψ = Ψ} {se = se} {d = d} {f = f} ce rt w (yes p) (yes refl) false rewrite p =
-  ctx , funBody fi , Ψ , se , d , f , ce , refl
-brn-dispatch fi ce rt w (no _)  _          false = bundle-realize-node rt w
-brn-dispatch fi ce rt w (yes _) (no _)     false = bundle-realize-node rt w
-
-bundle-realize-node {polys = polys} {impsOf = impsOf}
-  (bcons {fi = fi} {ctx = ctx} {Ψ = Ψ} {se = se} {d = d} {f = f} rf ce cf rest) (inj₁ (p , _ , refl)) rewrite p =
-  ctx , funBody fi , Ψ , se , d , f , ce , refl
-bundle-realize-node (bcons {fi = fi} {ty = ty} rf ce cf rest) (inj₂ w) =
-  brn-dispatch fi ce rest w (funName fi ≟str "main") (ty ≟T EffUU) (funIsPrimitive fi)
-
-------------------------------------------------------------------------
--- (3d) `bundle-find-exists`: a `just` find result witnesses `BMainExists`.
-------------------------------------------------------------------------
-
-bundle-find-exists : ∀ {polys impsOf funs ctx} (b : FunBundle polys impsOf funs ctx)
-  {ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋} → bundle-find b ≡ just ir → BMainExists b
+bundle-find-exists : ∀ {sc es} (b : FunBundle sc es) {ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋}
+  → bundle-find b ≡ just ir → BMainExists b
 bundle-find-exists bnil ()
-bundle-find-exists (bcons {fi = fi} {ty = ty} {irFun = irFun} rf ce cf rest) eq
+bundle-find-exists (bffi _ _ _ _ rest) eq = bundle-find-exists rest eq
+bundle-find-exists (bpoly _ rest) eq = bundle-find-exists rest eq
+bundle-find-exists (bcons {fi = fi} {ty = ty} {irFun = irFun} ep rf ce cf rest) eq
   with funName fi ≟str "main" | ty ≟T EffUU | funIsPrimitive fi
 ... | yes p | yes refl | false = inj₁ (p , refl , refl)
 ... | yes _ | yes refl | true  = inj₂ (bundle-find-exists rest eq)
@@ -394,16 +338,6 @@ bundle-find-exists (bcons {fi = fi} {ty = ty} {irFun = irFun} rf ce cf rest) eq
 ... | no _  | _        | false = inj₂ (bundle-find-exists rest eq)
 ... | no _  | _        | true  = inj₂ (bundle-find-exists rest eq)
 
-------------------------------------------------------------------------
--- (3e) `bundle-main-node`: the COMBINED find+realize node extractor. Returns
--- the selected main node's data with BOTH (i) the find-side IR form
--- (`bundle-find b ≡ just (wrapMainAsEntry (elaborate … seR))`) and (ii) the
--- realize-side (`bundle-realize b bme ≡ (Ψ , realize (check-sound … ce))`),
--- over the SAME node. Feeds the bundle-rebased `main-ir-form` (Plan 0.55).
-------------------------------------------------------------------------
-
--- IR-form lemma: from the bound `ce`/`cf` at a "main" node, the compiled IR is
--- the elaboration of the resolved checkElab term (uses the bound `se`/`ce`).
 irFun-main-form : ∀ (ctx : C.FunCtx) (polys : PolyCtx) (impsOf : C.String → C.FunCtx)
   (body : RawExpr) (irFun : IR ⌊ Unit ⌋ ⌊ EffUU ⌋)
   {Ψ : Usage 0} {se : Expr ∅ Ψ EffUU} {d f : ℕ}
@@ -414,47 +348,43 @@ irFun-main-form : ∀ (ctx : C.FunCtx) (polys : PolyCtx) (impsOf : C.String → 
 irFun-main-form ctx polys impsOf body irFun ce cf =
   inj₂-injective (trans (sym cf) (cong (C.compileFunBody-aux C.Heap false ctx polys impsOf "main" EffUU refl) ce))
 
-MNodeAt : ∀ (polys : PolyCtx) (impsOf : C.String → C.FunCtx)
-  → Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋) → Σ-syntax (Usage 0) (λ Ψ' → Expr ∅ Ψ' EffUU) → Set
-MNodeAt polys impsOf fr rr =
-  Σ-syntax C.FunCtx (λ mctx → Σ-syntax RawExpr (λ mbody →
+MNodeAt : Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋) → Σ-syntax (Usage 0) (λ Ψ' → Expr ∅ Ψ' EffUU) → Set
+MNodeAt fr rr =
+  Σ-syntax C.CScope (λ msc → Σ-syntax RawExpr (λ mbody →
   Σ-syntax (Usage 0) (λ mΨ → Σ-syntax (Expr ∅ mΨ EffUU) (λ mse → Σ-syntax ℕ (λ md → Σ-syntax ℕ (λ mf →
-  Σ-syntax (checkElab (ctxWithImportsAndPolys mctx polys) mbody EffUU
-             ≡ TE.success mΨ mse md mf) (λ mce →
+  Σ-syntax (checkElab (ctxC msc) mbody EffUU ≡ TE.success mΨ mse md mf) (λ mce →
     (fr ≡ just (C.wrapMainAsEntry (elaborateFull C.Heap
-            (resolveExpr polys impsOf (("main" , EffUU) ∷ mctx) 0 mse))))
-  × (rr ≡ (mΨ , realize (check-sound (ctxWithImportsAndPolys mctx polys)
-                           mbody EffUU mce))))))))))
+            (resolveExpr (C.cpolys msc) (C.declImps (C.CScope.ctele msc)) (("main" , EffUU) ∷ C.CScope.cimps msc) 0 mse))))
+  × (rr ≡ (mΨ , realize (check-sound (ctxC msc) mbody EffUU mce))))))))))
 
-bundle-main-node : ∀ {polys impsOf funs ctx} (b : FunBundle polys impsOf funs ctx)
-  (bme : BMainExists b) → MNodeAt polys impsOf (bundle-find b) (bundle-realize b bme)
-
-bmn-dispatch : ∀ {polys impsOf rest ctx ty} (fi : FunInfo)
-  {Ψ : Usage (NamedCtx.size (ctxWithImportsAndPolys ctx polys))}
-  {se : Expr (NamedCtx.debruijn (ctxWithImportsAndPolys ctx polys)) Ψ ty}
+bundle-main-node : ∀ {sc es} (b : FunBundle sc es)
+  (bme : BMainExists b) → MNodeAt (bundle-find b) (bundle-realize b bme)
+bmn-dispatch : ∀ {sc es ty} (fi : FunInfo)
+  {Ψ : Usage (NamedCtx.size (ctxC sc))} {se : Expr (NamedCtx.debruijn (ctxC sc)) Ψ ty}
   {d f : ℕ} {irFun : IR ⌊ Unit ⌋ ⌊ ty ⌋}
-  (ce : checkElab (ctxWithImportsAndPolys ctx polys) (funBody fi) ty
-          ≡ TE.success Ψ se d f)
-  (cf : C.compileFun C.Heap false ctx polys impsOf (funName fi) ty (funBody fi) ≡ inj₂ irFun)
-  (rt : FunBundle polys impsOf rest (C.extendFunCtx ctx (funName fi) ty)) (w : BMainExists rt)
-  (nd : Dec (funName fi ≡ "main")) (td : Dec (ty ≡ EffUU)) (pb : Bool)
-  → MNodeAt polys impsOf (bf-dispatch irFun nd td pb (bundle-find rt))
-                          (br-dispatch fi ce rt w nd td pb)
-bmn-dispatch fi ce cf rt w _        _          true  = bundle-main-node rt w
-bmn-dispatch {polys = polys} {impsOf = impsOf} {ctx = ctx} fi {Ψ = Ψ} {se = se} {d = d} {f = f} {irFun = irFun}
-             ce cf rt w (yes p) (yes refl) false rewrite p =
-  ctx , funBody fi , Ψ , se , d , f , ce ,
-    cong (λ x → just (C.wrapMainAsEntry x)) (irFun-main-form ctx polys impsOf (funBody fi) irFun ce cf) , refl
-bmn-dispatch fi ce cf rt w (no _)  _          false = bundle-main-node rt w
-bmn-dispatch fi ce cf rt w (yes _) (no _)     false = bundle-main-node rt w
-
-bundle-main-node {polys = polys} {impsOf = impsOf}
-  (bcons {fi = fi} {ctx = ctx} {Ψ = Ψ} {se = se} {d = d} {f = f} {irFun = irFun} rf ce cf rest) (inj₁ (p , pr , refl))
+  (ce : checkElab (ctxC sc) (funBody fi) ty ≡ TE.success Ψ se d f)
+  (cf : C.compileFun C.Heap false (C.CScope.cimps sc) (C.cpolys sc) (C.declImps (C.CScope.ctele sc))
+          (funName fi) ty (funBody fi) ≡ inj₂ irFun)
+  (ep : funIsPrimitive fi ≡ false)
+  (rt : FunBundle (C.extendScope sc (funName fi) ty) es) (w : BMainExists rt)
+  (nd : Dec (funName fi ≡ "main")) (td : Dec (ty ≡ EffUU))
+  → MNodeAt (bf-dispatch irFun nd td (funIsPrimitive fi) (bundle-find rt)) (br-dispatch {sc} fi ce rt w nd td)
+bundle-main-node (bffi _ _ _ _ rest) w = bundle-main-node rest w
+bundle-main-node (bpoly _ rest) w = bundle-main-node rest w
+bundle-main-node {sc} (bcons {fi = fi} {Ψ = Ψ} {se = se} {d = d} {f = f} {irFun = irFun} ep rf ce cf rest) (inj₁ (p , pr , refl))
   rewrite p | pr with "main" ≟str "main" | EffUU ≟T EffUU
 ... | yes refl | yes refl =
-      ctx , funBody fi , Ψ , se , d , f , ce ,
-        cong (λ x → just (C.wrapMainAsEntry x)) (irFun-main-form ctx polys impsOf (funBody fi) irFun ce cf) , refl
+      sc , funBody fi , Ψ , se , d , f , ce ,
+        cong (λ x → just (C.wrapMainAsEntry x))
+          (irFun-main-form (C.CScope.cimps sc) (C.cpolys sc) (C.declImps (C.CScope.ctele sc)) (funBody fi) irFun ce cf) , refl
 ... | yes _    | no ¬q = ⊥-elim (¬q refl)
 ... | no ¬r    | _     = ⊥-elim (¬r refl)
-bundle-main-node (bcons {fi = fi} {ty = ty} rf ce cf rest) (inj₂ w) =
-  bmn-dispatch fi ce cf rest w (funName fi ≟str "main") (ty ≟T EffUU) (funIsPrimitive fi)
+bundle-main-node {sc} (bcons {fi = fi} {ty = ty} ep rf ce cf rest) (inj₂ w) =
+  bmn-dispatch {sc} fi ce cf ep rest w (funName fi ≟str "main") (ty ≟T EffUU)
+bmn-dispatch {sc} fi {Ψ = Ψ} {se = se} {d = d} {f = f} {irFun = irFun} ce cf ep rt w (yes p) (yes refl)
+  rewrite ep | p =
+  sc , funBody fi , Ψ , se , d , f , ce ,
+    cong (λ x → just (C.wrapMainAsEntry x))
+      (irFun-main-form (C.CScope.cimps sc) (C.cpolys sc) (C.declImps (C.CScope.ctele sc)) (funBody fi) irFun ce cf) , refl
+bmn-dispatch fi ce cf ep rt w (no _)  td rewrite ep = bundle-main-node rt w
+bmn-dispatch fi ce cf ep rt w (yes _) (no _) rewrite ep = bundle-main-node rt w

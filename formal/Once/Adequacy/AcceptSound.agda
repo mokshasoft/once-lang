@@ -207,7 +207,7 @@ ce-mono-sound doOpt sc fi es ep (inj₂ ty) er eq = step
     step (inj₂ ir) cf eq′ =
       let (Ψ , jud) = compileFun-sound doOpt (C.CScope.cimps sc) (C.cpolys sc) (C.declImps (C.CScope.ctele sc))
                         (C.FunInfo.funName fi) ty (C.FunInfo.funBody fi) cf
-      in mono ep er (subst (λ U → _ ⊢ᶜ _ ∶ ty ⨾ U) (usage0 Ψ) jud)
+      in mono ep er jud
            (ce-sound doOpt (C.extendScope sc (C.FunInfo.funName fi) ty) es (proj₂ (wrap-inj fi ty ir _ eq′)))
 
 ce-poly-sound doOpt sc pfi es eq = step _ refl eq
@@ -219,7 +219,7 @@ ce-poly-sound doOpt sc pfi es eq = step _ refl eq
          → ModTele (scopeOf sc) (C.e-poly pfi ∷ es)
     step r@(TE.failure _ , _) _ ()
     step r@(TE.success Ψ _ _ _ , w) _ eq′ =
-      poly (subst (λ U → _ ⊢ᶜ _ ∶ _ ⨾ U) (usage0 Ψ) w) (ce-sound doOpt (C.addEntry sc pfi) es eq′)
+      poly w (ce-sound doOpt (C.addEntry sc pfi) es eq′)
 
 crm-aux-sound : ∀ (doOpt : Bool) (m : P.Module)
   (ef : String ⊎ List C.Entry) {compiled : List C.CompiledFun} →

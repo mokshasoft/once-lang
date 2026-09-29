@@ -88,16 +88,16 @@ data ModTele : Scope → List C.Entry → Set where
        → ModTele (addImp sc (funName fi) ty) es
        → ModTele sc (C.e-fun fi ∷ es)
   -- A monomorphic definition, typed at its (declared or inferred) type.
-  mono : ∀ {sc fi ty es}
+  mono : ∀ {sc fi ty es Ψ}
        → funIsPrimitive fi ≡ false
        → C.resolveFunType (Scope.imps sc) (C.buildPolyCtx (Scope.tele sc)) (funType fi) (funBody fi) ≡ inj₂ ty
-       → ctxOf sc ⊢ᶜ funBody fi ∶ ty ⨾ zeroUsage
+       → ctxOf sc ⊢ᶜ funBody fi ∶ ty ⨾ Ψ
        → ModTele (addImp sc (funName fi) ty) es
        → ModTele sc (C.e-fun fi ∷ es)
   -- D243: a telescope definition, typed ONCE, at its schema with rigid
   -- parameters. A use is at a kinded instance of it.
-  poly : ∀ {sc pfi es}
-       → ctxOf sc ⊢ᶜ pfunBody pfi ∶ rigidOf (pfunType pfi) ⨾ zeroUsage
+  poly : ∀ {sc pfi es Ψ}
+       → ctxOf sc ⊢ᶜ pfunBody pfi ∶ rigidOf (pfunType pfi) ⨾ Ψ
        → ModTele (addPoly sc pfi) es
        → ModTele sc (C.e-poly pfi ∷ es)
 

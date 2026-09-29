@@ -39,7 +39,7 @@ open import Once.Target.Arch using (TargetNum; int-bits; float-format)
 module Once.Adequacy.MainRealizeAgrees (fmt : TargetNum) where
 
 
-open import Once.Spec.Module using (EffUU; HasValidMain-decl; ModuleTyped)
+open import Once.Spec.Module using (EffUU; HasValidMain; ModuleTyped)
 open import Data.Nat using (ℕ)
 open import Data.Maybe using (just)
 open import Data.Unit using (tt)
@@ -121,14 +121,14 @@ LinkData = PolyCtx × (C.String → Imports) × Imports × ℕ
 
 main-link : ∀ (m : P.Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) (mi : moduleToIR m ≡ just ir) → LinkData
 main-link m ir mi =
-  let (funs , polys , ef-eq , b , bme , mctx , mbody , mΨ , mse , md , mf , mce , ir≡ , rw) = MF.main-node-of m ir mi
-  in C.buildPolyCtx polys , C.entryImps funs polys , (("main" , EffUU) ∷ mctx) , 0
+  let (es , ef-eq , b , bme , msc , mbody , mΨ , mse , md , mf , mce , ir≡ , rw) = MF.main-node-of m ir mi
+  in C.cpolys msc , C.declImps (C.CScope.ctele msc) , (("main" , EffUU) ∷ C.CScope.cimps msc) , 0
 
 σTp : ∀ (m : P.Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) (mi : moduleToIR m ≡ just ir) → SD.DefsSem
 σTp m ir mi = let (polys , imps , userFns , fresh) = main-link m ir mi in σR polys imps userFns fresh
 
 main-extract :
-  ∀ (m : P.Module) (mt : ModuleTyped m) (hvm : HasValidMain-decl m mt)
+  ∀ (m : P.Module) (mt : ModuleTyped m) (hvm : HasValidMain m mt)
     (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) (mi : moduleToIR m ≡ just ir)
   → Σ-syntax NamedCtx (λ cctx →
     Σ-syntax RawExpr (λ body →
@@ -146,10 +146,10 @@ main-extract :
           (env0 {proj₁ (MC.mainRealized m mt hvm)} tt)
                ≡ SD.⟦ realize mtder ⟧ˢ fmt (σTp m ir mi) dγ₀))))))))))
 main-extract m mt hvm ir mi =
-  let (funs , polys , ef-eq , b , bme , mctx , mbody , mΨ , mse , md , mf , mce , ir≡ , rw) = MF.main-node-of m ir mi
-  in    ctxWithImportsAndPolys mctx (C.buildPolyCtx polys)
+  let (es , ef-eq , b , bme , msc , mbody , mΨ , mse , md , mf , mce , ir≡ , rw) = MF.main-node-of m ir mi
+  in    ctxWithImportsAndPolys (C.CScope.cimps msc) (C.cpolys msc)
       , mbody , mΨ , mse , md , mf , env0 {mΨ} tt
-      , check-sound (ctxWithImportsAndPolys mctx (C.buildPolyCtx polys)) mbody EffUU mce
+      , check-sound (ctxWithImportsAndPolys (C.CScope.cimps msc) (C.cpolys msc)) mbody EffUU mce
       , mce
       , refl
       , trans (MF.mainRealized-bundle (σTp m ir mi) m mt hvm b bme ef-eq)
@@ -163,7 +163,7 @@ main-extract m mt hvm ir mi =
 -- and any two derivations realize alike (`realize-invariant`).
 ------------------------------------------------------------------------
 main-realize-agrees-proof :
-  ∀ (m : P.Module) (mt : ModuleTyped m) (hvm : HasValidMain-decl m mt)
+  ∀ (m : P.Module) (mt : ModuleTyped m) (hvm : HasValidMain m mt)
     (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) (mi : moduleToIR m ≡ just ir)
   → ∀ n → ME.runMainˢ σ₀ (proj₁ (proj₂ (ME.source-meaningᴰ m ir mi))) n
           ≡ ME.runMainˢ (σTp m ir mi) (proj₂ (MC.mainRealized m mt hvm)) n

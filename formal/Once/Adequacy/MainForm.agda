@@ -27,7 +27,7 @@ open import Once.Target.Arch using (TargetNum; int-bits; float-format)
 module Once.Adequacy.MainForm (fmt : TargetNum) where
 
 
-open import Once.Spec.Module using (AllFunsTyped; HasValidMain-decl; MainExists; ModuleMainEffUU-ef; ModuleMainExists-ef; ModuleTyped; ModuleTyped-ef)
+open import Once.Spec.Module using (ModTele; emptyScope; MainIn; HasValidMain; HasValidMain-ef; ModuleTyped; ModuleTyped-ef)
 open import Data.Bool using (Bool; false; true)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
@@ -61,7 +61,7 @@ open FunInfo
 
 open import Once.Adequacy.SourceTrace using (findMain; moduleToIR; moduleToIR-aux)
 open import Once.Adequacy.FunBundle as FB
-  using (FunBundle; caf-go-bundle; bundle→compiled≡compiled; find-agree;
+  using (FunBundle; ce-bundle; bundle→compiled≡compiled; find-agree;
          bundle-find; bundle-find-exists; bundle-realize; BMainExists; bundle-main-node; MNodeAt;
          bundle→typed; bme→me; realize-agree)
 import Once.Adequacy.AcceptSound as AS
@@ -79,159 +79,103 @@ EffUU = Unit ⇒[ mk-kind Many eff ] Unit
 -- the node.
 ------------------------------------------------------------------------
 
+-- D241 (plan 0.103 6c′): `main`'s compiled form, over the module telescope.
+-- The payload's scope `msc` is `main`'s compile scope — its imports, the
+-- telescope before it, and each entry's declaration imports.
 Payload : (Ψ : Usage 0) → Expr ∅ Ψ EffUU → Set
 Payload Ψ seR =
-  Σ-syntax C.FunCtx (λ ctx → Σ-syntax PolyCtx (λ polys → Σ-syntax (C.String → C.FunCtx) (λ impsOf →
+  Σ-syntax C.CScope (λ msc →
   Σ-syntax RawExpr (λ body →
   Σ-syntax (Expr ∅ Ψ EffUU) (λ se →
   Σ-syntax ℕ (λ d → Σ-syntax ℕ (λ f →
-  Σ-syntax (checkElab (ctxWithImportsAndPolys ctx polys) body EffUU
-             ≡ success Ψ se d f) (λ ce →
-  Σ-syntax (List FunInfo) (λ funs →
-  Σ-syntax (FunBundle polys impsOf funs C.emptyFunCtx) (λ b →
+  Σ-syntax (checkElab (FB.ctxC msc) body EffUU ≡ success Ψ se d f) (λ ce →
+  Σ-syntax (List C.Entry) (λ es →
+  Σ-syntax (FunBundle C.emptyCScope es) (λ b →
   Σ-syntax (BMainExists b) (λ bme →
-    (seR ≡ resolveExpr polys impsOf (("main" , EffUU) ∷ ctx) 0 se)
-  × (bundle-realize b bme
-       ≡ (Ψ , realize (check-sound (ctxWithImportsAndPolys ctx polys)
-                         body EffUU ce))))))))))))))
+    (seR ≡ resolveExpr (C.cpolys msc) (C.declImps (C.CScope.ctele msc)) (("main" , EffUU) ∷ C.CScope.cimps msc) 0 se)
+  × (bundle-realize b bme ≡ (Ψ , realize (check-sound (FB.ctxC msc) body EffUU ce))))))))))))
 
 Form : IR ⌊ Unit ⌋ ⌊ Unit ⌋ → Set
 Form ir = Σ-syntax (Usage 0) (λ Ψ → Σ-syntax (Expr ∅ Ψ EffUU) (λ seR →
             (ir ≡ C.wrapMainAsEntry (elaborateFull C.Heap seR)) × Payload Ψ seR))
 
-------------------------------------------------------------------------
--- `MainNode`: the SHARED main-node extractor (independent of any typing
--- derivation `mt`). Both `main-ir-form` (its Payload) and `main-extract` (eq2)
--- PROJECT from the SAME `main-node-of m ir mi`, so their nodes coincide
--- DEFINITIONALLY — making `main-extract`'s eq1 a `refl`. It also carries the
--- `extractFunctions` witness `ef-eq`, so `main-extract` can transport the
--- typing derivation `mt` onto THIS node's bundle (`mainRealized-bundle`).
-------------------------------------------------------------------------
-
 MainNode : (m : C.Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) → Set
 MainNode m ir =
-  Σ-syntax (List FunInfo) (λ funs → Σ-syntax (List C.PolyFunInfo) (λ polys →
-  Σ-syntax (C.extractFunctions (C.extractAliases m) m ≡ inj₂ (funs , polys)) (λ ef-eq →
-  Σ-syntax (FunBundle (C.buildPolyCtx polys) (C.entryImps funs polys) funs C.emptyFunCtx) (λ b →
+  Σ-syntax (List C.Entry) (λ es →
+  Σ-syntax (C.extractFunctions (C.extractAliases m) m ≡ inj₂ es) (λ ef-eq →
+  Σ-syntax (FunBundle C.emptyCScope es) (λ b →
   Σ-syntax (BMainExists b) (λ bme →
-  Σ-syntax C.FunCtx (λ mctx → Σ-syntax RawExpr (λ mbody →
+  Σ-syntax C.CScope (λ msc → Σ-syntax RawExpr (λ mbody →
   Σ-syntax (Usage 0) (λ mΨ → Σ-syntax (Expr ∅ mΨ EffUU) (λ mse → Σ-syntax ℕ (λ md → Σ-syntax ℕ (λ mf →
-  Σ-syntax (checkElab (ctxWithImportsAndPolys mctx (C.buildPolyCtx polys))
-             mbody EffUU ≡ success mΨ mse md mf) (λ mce →
+  Σ-syntax (checkElab (FB.ctxC msc) mbody EffUU ≡ success mΨ mse md mf) (λ mce →
     (ir ≡ C.wrapMainAsEntry (elaborateFull C.Heap
-            (resolveExpr (C.buildPolyCtx polys) (C.entryImps funs polys) (("main" , EffUU) ∷ mctx) 0 mse)))
-  × (bundle-realize b bme
-       ≡ (mΨ , realize (check-sound (ctxWithImportsAndPolys mctx (C.buildPolyCtx polys))
-                          mbody EffUU mce)))))))))))))))
+            (resolveExpr (C.cpolys msc) (C.declImps (C.CScope.ctele msc)) (("main" , EffUU) ∷ C.CScope.cimps msc) 0 mse)))
+  × (bundle-realize b bme ≡ (mΨ , realize (check-sound (FB.ctxC msc) mbody EffUU mce))))))))))))))
 
-build-node : ∀ (m : C.Module) (funs : List FunInfo) (polys : List C.PolyFunInfo)
-  (compiled : List C.CompiledFun) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋)
-  (caf-eq : C.compileAllFuns-go C.Heap false (C.buildPolyCtx polys) (C.entryImps funs polys) funs C.emptyFunCtx ≡ inj₂ compiled)
+build-node : ∀ (m : C.Module) (es : List C.Entry) (compiled : List C.CompiledFun) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋)
+  (ce-eq : C.compileEntries C.Heap false C.emptyCScope es ≡ inj₂ compiled)
   (mi : findMain compiled ≡ just ir)
-  (ef-eq : C.extractFunctions (C.extractAliases m) m ≡ inj₂ (funs , polys)) →
+  (ef-eq : C.extractFunctions (C.extractAliases m) m ≡ inj₂ es) →
   MainNode m ir
-build-node m funs polys compiled ir caf-eq mi ef-eq =
-  let pc  = C.buildPolyCtx polys
-      io  = C.entryImps funs polys
-      b   = caf-go-bundle pc io funs C.emptyFunCtx caf-eq
+build-node m es compiled ir ce-eq mi ef-eq =
+  let b   = ce-bundle C.emptyCScope es ce-eq
       bf≡ : bundle-find b ≡ just ir
       bf≡ = trans (sym (find-agree b))
-              (trans (cong findMain (bundle→compiled≡compiled pc io funs C.emptyFunCtx compiled caf-eq)) mi)
+              (trans (cong findMain (bundle→compiled≡compiled C.emptyCScope es compiled ce-eq)) mi)
       bme = bundle-find-exists b bf≡
   in node b bf≡ bme (bundle-main-node b bme)
   where
-    node : ∀ (b : FunBundle (C.buildPolyCtx polys) (C.entryImps funs polys) funs C.emptyFunCtx)
-             (bf≡ : bundle-find b ≡ just ir) (bme : BMainExists b) →
-             FB.MNodeAt (C.buildPolyCtx polys) (C.entryImps funs polys) (bundle-find b) (bundle-realize b bme) →
-             MainNode m ir
-    node b bf≡ bme (mctx , mbody , mΨ , mse , md , mf , mce , find-wit , realize-wit) =
-      funs , polys , ef-eq , b , bme , mctx , mbody , mΨ , mse , md , mf , mce
+    node : ∀ (b : FunBundle C.emptyCScope es) (bf≡ : bundle-find b ≡ just ir) (bme : BMainExists b) →
+             FB.MNodeAt (bundle-find b) (bundle-realize b bme) → MainNode m ir
+    node b bf≡ bme (msc , mbody , mΨ , mse , md , mf , mce , find-wit , realize-wit) =
+      es , ef-eq , b , bme , msc , mbody , mΨ , mse , md , mf , mce
         , just-injective (trans (sym bf≡) find-wit) , realize-wit
 
-------------------------------------------------------------------------
--- Unfold `moduleToIR` to `compileAllFuns-go` via explicit-scrutinee helpers
--- (so the `extractFunctions`/`compileAllFuns-go` casing carries the equations
--- and never leaves a bare `refl` blocking a caller's abstraction).
-------------------------------------------------------------------------
-
 main-node-of : ∀ (m : C.Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) → moduleToIR m ≡ just ir → MainNode m ir
-
-mnf-caf : ∀ (m : C.Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) (funs : List FunInfo) (polys : List C.PolyFunInfo)
-  (cv : String ⊎ List C.CompiledFun) →
-  C.compileAllFuns-go C.Heap false (C.buildPolyCtx polys) (C.entryImps funs polys) funs C.emptyFunCtx ≡ cv →
-  moduleToIR-aux cv ≡ just ir →
-  C.extractFunctions (C.extractAliases m) m ≡ inj₂ (funs , polys) → MainNode m ir
-mnf-caf m ir funs polys (inj₁ err) caf-eq mi ef-eq = case mi of λ ()
-mnf-caf m ir funs polys (inj₂ compiled) caf-eq mi ef-eq =
-  build-node m funs polys compiled ir caf-eq mi ef-eq
-
-mnf-gate : ∀ (m : C.Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) (funs : List FunInfo) (polys : List C.PolyFunInfo)
-  (g : String ⊎ ⊤) →
-  moduleToIR-aux (C.polysGate g (C.compileAllFuns C.Heap false funs (C.buildPolyCtx polys) (C.entryImps funs polys))) ≡ just ir →
-  C.extractFunctions (C.extractAliases m) m ≡ inj₂ (funs , polys) → MainNode m ir
-
-mnf-ef : ∀ (m : C.Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋)
-  (efv : String ⊎ (List FunInfo × List C.PolyFunInfo)) →
+mnf-ce : ∀ (m : C.Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) (es : List C.Entry) (cv : String ⊎ List C.CompiledFun) →
+  C.compileEntries C.Heap false C.emptyCScope es ≡ cv → moduleToIR-aux cv ≡ just ir →
+  C.extractFunctions (C.extractAliases m) m ≡ inj₂ es → MainNode m ir
+mnf-ce m ir es (inj₁ err) ce-eq mi ef-eq = case mi of λ ()
+mnf-ce m ir es (inj₂ compiled) ce-eq mi ef-eq = build-node m es compiled ir ce-eq mi ef-eq
+mnf-ef : ∀ (m : C.Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) (efv : String ⊎ List C.Entry) →
   C.extractFunctions (C.extractAliases m) m ≡ efv →
   moduleToIR-aux (C.compileResolvedModule-aux C.Heap false m efv) ≡ just ir → MainNode m ir
 mnf-ef m ir (inj₁ err) ef-eq mi = case mi of λ ()
-mnf-ef m ir (inj₂ (funs , polys)) ef-eq mi =
-  mnf-gate m ir funs polys (C.polysOK funs polys) mi ef-eq
-
-mnf-gate m ir funs polys (inj₁ _) mi ef-eq = case mi of λ ()
-mnf-gate m ir funs polys (inj₂ _) mi ef-eq =
-  mnf-caf m ir funs polys
-    (C.compileAllFuns-go C.Heap false (C.buildPolyCtx polys) (C.entryImps funs polys) funs C.emptyFunCtx)
-    refl mi ef-eq
-
+mnf-ef m ir (inj₂ es) ef-eq mi = mnf-ce m ir es (C.compileEntries C.Heap false C.emptyCScope es) refl mi ef-eq
 main-node-of m ir mi = mnf-ef m ir (C.extractFunctions (C.extractAliases m) m) refl mi
-
-------------------------------------------------------------------------
--- `main-ir-form` — project `main-node-of` into a `Form` (Payload = the node).
-------------------------------------------------------------------------
 
 main-ir-form : ∀ (m : C.Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) → moduleToIR m ≡ just ir → Form ir
 main-ir-form m ir mi = form (main-node-of m ir mi)
   where
     form : MainNode m ir → Form ir
-    form (funs , polys , ef-eq , b , bme , mctx , mbody , mΨ , mse , md , mf , mce , ir≡ , rw) =
-      mΨ , resolveExpr (C.buildPolyCtx polys) (C.entryImps funs polys) (("main" , EffUU) ∷ mctx) 0 mse
+    form (es , ef-eq , b , bme , msc , mbody , mΨ , mse , md , mf , mce , ir≡ , rw) =
+      mΨ , resolveExpr (C.cpolys msc) (C.declImps (C.CScope.ctele msc)) (("main" , EffUU) ∷ C.CScope.cimps msc) 0 mse
          , ir≡
-         , mctx , C.buildPolyCtx polys , C.entryImps funs polys , mbody , mse , md , mf , mce
-         , funs , b , bme , refl , rw
-
-------------------------------------------------------------------------
--- `mainRealized-bundle` — the eq2 core: transport `mt` (via `ef-eq`) onto the
--- node's bundle and compose `mt-den-indep` ∘ `realize-agree`.
-------------------------------------------------------------------------
+         , msc , mbody , mse , md , mf , mce , es , b , bme , refl , rw
 
 subst-app : ∀ {A : Set} {P : A → Set} {Q : Set} (f : (a : A) → P a → Q)
   {a a' : A} (eq : a ≡ a') (x : P a) → f a x ≡ f a' (subst P eq x)
 subst-app f refl x = refl
 
-mainRealized-bundle : ∀ (σ : SD.DefsSem) (m : C.Module) (mt : ModuleTyped m) (hvm : HasValidMain-decl m mt)
-  {funs : List FunInfo} {polys : List C.PolyFunInfo}
-  (b : FunBundle (C.buildPolyCtx polys) (C.entryImps funs polys) funs C.emptyFunCtx)
-  (bme : BMainExists b)
-  (ef-eq : C.extractFunctions (C.extractAliases m) m ≡ inj₂ (funs , polys)) →
+mainRealized-bundle : ∀ (σ : SD.DefsSem) (m : C.Module) (mt : ModuleTyped m) (hvm : HasValidMain m mt)
+  {es : List C.Entry} (b : FunBundle C.emptyCScope es) (bme : BMainExists b)
+  (ef-eq : C.extractFunctions (C.extractAliases m) m ≡ inj₂ es) →
   SD.⟦ proj₂ (MC.mainRealized m mt hvm) ⟧ˢ fmt σ (env0 {proj₁ (MC.mainRealized m mt hvm)} tt)
   ≡ SD.⟦ proj₂ (bundle-realize b bme) ⟧ˢ fmt σ (env0 {proj₁ (bundle-realize b bme)} tt)
-mainRealized-bundle σ m mt hvm {funs} {polys} b bme ef-eq =
+mainRealized-bundle σ m mt hvm {es} b bme ef-eq =
   trans (cong (λ z → SD.⟦ proj₂ z ⟧ˢ fmt σ (env0 {proj₁ z} tt)) (subst-app F ef-eq x))
     (trans (MI.mt-den-indep fmt σ mt' (bundle→typed b) me' (bme→me b bme) tt)
            (cong (λ z → SD.⟦ proj₂ z ⟧ˢ fmt σ (env0 {proj₁ z} tt)) (realize-agree b bme)))
   where
-    Motive : (ef : String ⊎ (List FunInfo × List C.PolyFunInfo)) → Set
-    Motive ef = Σ-syntax (ModuleTyped-ef m ef) (λ mtx →
-                  ModuleMainEffUU-ef m ef mtx × ModuleMainExists-ef m ef mtx)
-    F : (ef : String ⊎ (List FunInfo × List C.PolyFunInfo)) → Motive ef →
-        Σ-syntax (Usage 0) (λ Ψ → Expr ∅ Ψ EffUU)
-    F ef (mtx , amux , mex) = MC.mainRealized-ef m ef mtx amux mex
+    Motive : (ef : String ⊎ List C.Entry) → Set
+    Motive ef = Σ-syntax (ModuleTyped-ef m ef) (λ mtx → HasValidMain-ef m ef mtx)
+    F : (ef : String ⊎ List C.Entry) → Motive ef → Σ-syntax (Usage 0) (λ Ψ → Expr ∅ Ψ EffUU)
+    F ef (mtx , hv) = MC.mainRealized-ef m ef mtx hv
     x : Motive (C.extractFunctions (C.extractAliases m) m)
-    x = mt , proj₁ hvm , proj₂ hvm
-    x' : Motive (inj₂ (funs , polys))
+    x = mt , hvm
+    x' : Motive (inj₂ es)
     x' = subst Motive ef-eq x
-    mt' : AllFunsTyped (C.buildPolyCtx polys) funs C.emptyFunCtx
+    mt' : ModTele emptyScope es
     mt' = proj₁ x'
-    me' : MainExists mt'
+    me' : MainIn mt'
     me' = proj₂ (proj₂ x')
