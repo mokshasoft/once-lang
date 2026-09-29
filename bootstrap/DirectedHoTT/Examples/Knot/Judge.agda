@@ -41,8 +41,8 @@ open import DirectedHoTT.Examples.Knot.Ctx
 open import DirectedHoTT.Examples.Knot.Lookup using ( ⌜Ctx⌝; rows; ⊢rows )
 
 open import DirectedHoTT.Examples.Knot.JudgeIx
-open import DirectedHoTT.Examples.Knot.JudgeRowsTy
-open import DirectedHoTT.Examples.Knot.JudgeRowsGen using ( rowTmGen; okTmGen )
+open import DirectedHoTT.Examples.Knot.JudgeFib
+open import DirectedHoTT.Examples.Knot.JudgeRowsGen using ( rowTmGen; okTmGen; rowTyGen; okTyGen )
 
 private
   variable
@@ -51,19 +51,7 @@ private
 -- ★ the rows, by (sort, constructor)
 rowT : ℕ → ℕ → Row
 rowT 1 k  = rowTmGen k   -- the `⊢` rows (`JudgeRowsGen`)
-rowT 0 0  = defRow T0 (λ σ j p c → refl)      -- base
-rowT 0 1  = defRow T0 (λ σ j p c → refl)      -- U
-rowT 0 2  = defRow TPi (λ σ j p c → refl)     -- Π
-rowT 0 3  = defRow TPi (λ σ j p c → refl)     -- Σ
-rowT 0 4  = defRow TEl (λ σ j p c → refl)     -- El
-rowT 0 5  = defRow THom (λ σ j p c → refl)    -- Hom
-rowT 0 6  = defRow T0 (λ σ j p c → refl)      -- Unit
-rowT 0 7  = defRow T0 (λ σ j p c → refl)      -- Nat
-rowT 0 8  = defRow THom (λ σ j p c → refl)    -- Id
-rowT 0 9  = rIMu           -- IMu
-rowT 0 10 = defRow TDesc (λ σ j p c → refl)   -- Desc
-rowT 0 11 = defRow TDIh TDIh-law   -- DIh
-rowT 0 12 = defRow T0 (λ σ j p c → refl)      -- Fin
+rowT 0 k  = rowTyGen k   -- the `⊢ty` rows (`JudgeRowsGen`)
 rowT _ _  = rNone
 
 
@@ -76,19 +64,7 @@ open Fib KOK JT JT-sub ⊢JT CT CT-sub ⊢CT rowT public hiding ( RowOK; Cat; C-
 
 -- ★ every row typed, by its position in the signature
 rowOK : {s c k : ℕ} {shs : Shapes c} {sh : Shape} → NthG KSig s shs → NthSh shs k sh → RowOK s sh (rowT s k)
-rowOK nthᵍ-z nthʰ-z = ok0 {sh-kbase}
-rowOK nthᵍ-z (nthʰ-s nthʰ-z) = ok0 {sh-kU}
-rowOK nthᵍ-z (nthʰ-s (nthʰ-s nthʰ-z)) = okPi
-rowOK nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))) = okPi
-rowOK nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))) = okEl
-rowOK nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))) = okHom
-rowOK nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))) = ok0 {sh-kUnit}
-rowOK nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))) = ok0 {sh-kNat}
-rowOK nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))) = okHom
-rowOK nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))) = okIMu
-rowOK nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))) = okDesc
-rowOK nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))))) = okDIh
-rowOK nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))) = ok0 {sh-kFin}
+rowOK nthᵍ-z nh = okTyGen nh
 rowOK (nthᵍ-s nthᵍ-z) nh = okTmGen nh
 
 ⊢FIBMT : {Γ : Ctx} → Γ ⊢ FIBM ∷ MethTy (SI 2) (SD KSig) FM
