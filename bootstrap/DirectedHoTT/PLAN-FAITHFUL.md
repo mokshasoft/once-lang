@@ -68,3 +68,13 @@ ships REDUCTION lemmas for its methods. `Lib/SynTrav` ships typings only.
   `fld-rec` (the IH, the environment lifted `k` times) or `fld-nat` per
   field. The `RepS` lift at an old variable IS renaming agreement at `vs`
   (`repR-wk`). The two modules check in 20 s and 23 s.
+- ✅ F3 core (2026-09-29) `Knot/OpAgree`.
+  - Every environment REPRESENTS its Spec substitution. These are the
+    substitutions' own clauses read back: `single`, `nrs`, `pairS`,
+    `fsucS`, `methS`, `single2` (what `iinst` composes to), `pwShift` and
+    the weakenings.
+  - Every operation AGREES: `sub0`, `wk`, `nrsK`, `pairSK`, `fsucSK`,
+    `methSK`, `iinstK`, `iinstTmK`, `pwShK`, `wk2uK`, `lift2K`.
+  - Renamings used as substitutions are bridged by `subTy-var`. The module
+    checks in 7.5 s.
+  - ⬜ The composite codes remain: `MethTyK`, `DF`, `mc`.
