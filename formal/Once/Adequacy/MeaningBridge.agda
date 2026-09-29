@@ -67,6 +67,7 @@ open import Once.Res using (Res; stopped; returns; Res-rel; rel-stopped; rel-ret
 open import Once.Denotation.DenotTrace using (evalᴰ; forget; liftFn; cohᴰ)
 open import Once.TypeCheck.Classify using (NamedCtx; PolyCtx; lookupPolyPrefix)
 open import Once.Denotation.DefEnv using (defAt; tailAt; defAt-found; tailAt-found)
+open import Once.Type.Rigid using (KindedInstance; ground-kinded)
 open import Once.Type using (Ground; extractGround)
 import Data.String.Properties as StrProp
 open import Relation.Nullary using (yes; no)
@@ -676,18 +677,17 @@ RelT-init k = refl , rel-returns (λ { {a = ()} })
 EnvRel : (polys : PolyCtx) → DefMeanings polys → Set
 EnvRel []                   _       = ⊤
 EnvRel ((n , s , _) ∷ rest) (e , ρ) =
-  (∀ (g : Ground s) → RelT (extractGround s g) (e g) (σ n (extractGround s g))) × EnvRel rest ρ
+  (∀ (U : Type) (ki : KindedInstance s U) → RelT U (e U ki) (σ n U)) × EnvRel rest ρ
 
 envrel-at : ∀ (polys : PolyCtx) (x : String) {s b prefix} {ρ : DefMeanings polys}
   → EnvRel polys ρ → (lp : lookupPolyPrefix polys x ≡ just (s , b , prefix))
-  → ∀ (g : Ground s) → RelT (extractGround s g) (defAt polys x ρ lp g) (σ x (extractGround s g))
+  → ∀ (U : Type) (ki : KindedInstance s U) → RelT U (defAt polys x ρ lp U ki) (σ x U)
 envrel-at [] x _ ()
 envrel-at ((n , s′ , b′) ∷ rest) x {ρ = e , ρ} (r , rs) lp with n StrProp.≟ x
 ... | yes refl = found lp
   where
-    found : ∀ {s b prefix} (lp′ : just (s′ , b′ , rest) ≡ just (s , b , prefix)) (g : Ground s)
-      → RelT (extractGround s g) (defAt-found {F = λ s → (g : Ground s) → T ⟦ extractGround s g ⟧ᴰ} lp′ e g)
-             (σ n (extractGround s g))
+    found : ∀ {s b prefix} (lp′ : just (s′ , b′ , rest) ≡ just (s , b , prefix)) (U : Type) (ki : KindedInstance s U)
+      → RelT U (defAt-found {F = λ s → (U : Type) → KindedInstance s U → T ⟦ U ⟧ᴰ} lp′ e U ki) (σ n U)
     found refl = r
 ... | no _ = envrel-at rest x rs lp
 
@@ -699,7 +699,7 @@ envrel-tail ((n , s′ , b′) ∷ rest) x {ρ = e , ρ} (r , rs) lp with n StrP
 ... | yes _ = found lp
   where
     found : ∀ {s b prefix} (lp′ : just (s′ , b′ , rest) ≡ just (s , b , prefix))
-      → EnvRel prefix (tailAt-found {F = λ s → (g : Ground s) → T ⟦ extractGround s g ⟧ᴰ} lp′ ρ)
+      → EnvRel prefix (tailAt-found {F = λ s → (U : Type) → KindedInstance s U → T ⟦ U ⟧ᴰ} lp′ ρ)
     found refl = rs
 ... | no _ = envrel-tail rest x rs lp
 
@@ -746,8 +746,8 @@ bridge-i {ctx = ctx} (t-var-import {T = A} _ _ _ conc)  {dγ₂ = dγ₂} re er 
 -- on both sides — the denotation reads the telescope environment `ρ`, the
 -- surface term `poly x T` reads `σ` — so the bridge is the environments'
 -- relatedness at the entry the reference finds.
-bridge-i {ctx = ctx} (t-var-poly-instantiate-infer {x = x} {g = g} _ _ lp _ refl) re er =
-  envrel-at (NamedCtx.polys ctx) x er lp g
+bridge-i {ctx = ctx} (t-var-poly-instantiate-infer {x = x} {schema = s} {g = g} _ _ lp _ refl) re er =
+  envrel-at (NamedCtx.polys ctx) x er lp (extractGround s g) (ground-kinded s g)
 
 -- Annotation switches to check mode.
 bridge-i (t-annot d) re er = bridge-c d re er
@@ -1222,20 +1222,17 @@ bridge-c {ctx = ctx} (t-inr-app-check {A = A} {B = B} d) {dγ₁ = dγ₁} {dγ�
 -- it is actually bound, and the stopped branch closes on its own.
 bridge-c {ctx = ctx} {A = A} (t-initial-app-check d) re er =
   RelT-bind {A = Once.Type.Void} {B = A} (bridge-c d (reᵐ re) er) (λ {a} _ → ⊥-elim a)
--- A polymorphic telescope reference (typed per use until plan 0.103 phase 6)
--- means its body in the PREFIX's environment, on both sides; the realized
--- body is inlined as a closed surface term, so recurse on the body with the
--- empty local environment and the tail of the environment relation.
-bridge-c {ctx = ctx} (t-var-poly-instantiate {x = x} _ _ lp _ _ bodyD) re er =
-  bridge-c bodyD {dγ₁ = tt} {dγ₂ = tt} (mk↾ tt) (envrel-tail (NamedCtx.polys ctx) x er lp)
+-- D243: a polymorphic reference is the definition variable at its kinded
+-- instance on both sides — the environments' families at that instance.
+bridge-c {ctx = ctx} {A = U} (t-var-poly-instantiate {x = x} _ _ lp _ ki) re er =
+  envrel-at (NamedCtx.polys ctx) x er lp U ki
 
 -- Plan 0.94 §10: the domain-given clauses mirror their check-mode twins.
 bridge-d (d-infer {B = B} w a g) re er = RelT-sub (sub-arr {q = Many} a (<:-refl B) g) (bridge-i w re er)
--- Plan 0.103 phase 2b: as the check-mode polymorphic reference — the body in the
--- prefix's environment, closed, converted to the given grade.
-bridge-d {ctx = ctx} (d-poly {x = x} {A = A} {B = B} _ _ lp _ _ _ _ g bodyD) re er =
+-- D243: as the check-mode polymorphic reference, converted to the given grade.
+bridge-d {ctx = ctx} (d-poly {x = x} {A = A} {B = B} {π′ = π′} _ _ lp _ _ _ ki g) re er =
   RelT-sub (sub-arr {q = Many} (<:-refl A) (<:-refl B) g)
-    (bridge-c bodyD {dγ₁ = tt} {dγ₂ = tt} (mk↾ tt) (envrel-tail (NamedCtx.polys ctx) x er lp))
+    (envrel-at (NamedCtx.polys ctx) x er lp (A ⇒[ mk-kind Many π′ ] B) ki)
 bridge-d (d-lam {q' = Zero} _ d) re er k = refl , rel-returns λ {a} {b} rv → bridge-i d (rel-bind0 re) er
 bridge-d (d-lam {q' = One}  _ d) re er k = refl , rel-returns λ {a} {b} rv → bridge-i d (rel-bind One re rv) er
 bridge-d (d-lam {q' = Many} _ d) re er k = refl , rel-returns λ {a} {b} rv → bridge-i d (rel-bind Many re rv) er

@@ -31,6 +31,7 @@
 module Once.TypeCheck.Unfold where
 
 open import Once.Type.Sub using (_⊑π_)
+open import Once.Type.Rigid using (KindedInstance)
 open import Data.Bool using (Bool; true; false)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.List using (List; []; _∷_)
@@ -401,11 +402,11 @@ module Weaken (imps : Imports) (P : PolyCtx) where
     W-c wk (_ , fr) (t-inl-app-check d) = cᶜ (sym (up-z+M wk _)) (t-inl-app-check (W-c wk fr d))
     W-c wk (_ , fr) (t-inr-app-check d) = cᶜ (sym (up-z+M wk _)) (t-inr-app-check (W-c wk fr d))
     W-c wk (_ , fr) (t-initial-app-check d) = cᶜ (sym (up-z+M wk _)) (t-initial-app-check (W-c wk fr d))
-    W-c wk fr (t-var-poly-instantiate {x = z} ln li lp ¬g inst body) =
-        cᶜ (sym (up-zero wk)) (t-var-poly-instantiate (wnone (wloc wk z fr) ln) li lp ¬g inst body)
+    W-c wk fr (t-var-poly-instantiate {x = z} ln li lp ¬g inst) =
+        cᶜ (sym (up-zero wk)) (t-var-poly-instantiate (wnone (wloc wk z fr) ln) li lp ¬g inst)
     W-d wk fr (d-infer w sb gr) = d-infer (W-i wk fr w) sb gr
-    W-d wk fr (d-poly {x = z} ln li lp ¬g as inc inst gr body) =
-        cᵈ (sym (up-zero wk)) (d-poly (wnone (wloc wk z fr) ln) li lp ¬g as inc inst gr body)
+    W-d wk fr (d-poly {x = z} ln li lp ¬g as inc inst gr) =
+        cᵈ (sym (up-zero wk)) (d-poly (wnone (wloc wk z fr) ln) li lp ¬g as inc inst gr)
     W-d wk fb (d-lam {x = y} {A = B} leq body) = d-lam leq (W-i (wk-under y B wk) fb body)
     W-d wk ((_ , f₁) , f₂) (d-compose dg df) = cᵈ (sym (up-+* wk _ _ _)) (d-compose (W-d wk f₂ dg) (W-d wk f₁ df))
     W-d wk _ d-id = cᵈ (sym (up-zero wk)) d-id
@@ -588,13 +589,12 @@ module Unfolding
            {T : Type} {schema : PolyType} {body : RawExpr} {prefix : PolyCtx}
          → lookupLocal-go y G Δ ≡ nothing → lookupImport imps y ≡ nothing
          → lookupPolyPrefix P′ y ≡ just (schema , body , prefix) → ¬ Ground schema
-         → T.IsInstance schema T
-         → ctxWithImportsAndPolys imps prefix ⊢ᶜ body ∶ T ⨾ zeroUsage
+         → KindedInstance schema T
          → Lc G Δ fr ⊢ᶜ subVar sh y d ∶ T ⨾ zeroUsage
-  s-poly r y (yes y≡x) _ _ lp ¬g _ _
+  s-poly r y (yes y≡x) _ _ lp ¬g _
     with trans (sym lpp-head) (subst (λ z → lookupPolyPrefix P′ z ≡ _) y≡x lp)
   ... | refl = ⊥-elim (¬g g)
-  s-poly r y (no y≢x) ln li lp ¬g inst body = t-var-poly-instantiate ln li (lpp-skip y≢x lp) ¬g inst body
+  s-poly r y (no y≢x) ln li lp ¬g inst = t-var-poly-instantiate ln li (lpp-skip y≢x lp) ¬g inst
 
   -- Plan 0.103 phase 2b: the domain-given polymorphic head, as `s-poly`.
   s-dpoly : ∀ {n G Δ fr sh} → SR {n} sh G Δ → (y : String) (d : Dec (y ≡ x))
@@ -602,13 +602,12 @@ module Unfolding
           → lookupLocal-go y G Δ ≡ nothing → lookupImport imps y ≡ nothing
           → lookupPolyPrefix P′ y ≡ just (schema , body , prefix) → ¬ Ground schema
           → T.ArrowSchema schema sd sc π′ → T.CodVarsInDom sd sc
-          → T.IsInstance schema (A T.⇒[ T.mk-kind T.Many π′ ] B) → π′ ⊑π π
-          → ctxWithImportsAndPolys imps prefix ⊢ᶜ body ∶ (A T.⇒[ T.mk-kind T.Many π′ ] B) ⨾ zeroUsage
+          → KindedInstance schema (A T.⇒[ T.mk-kind T.Many π′ ] B) → π′ ⊑π π
           → Lc G Δ fr ⊢ᵈ subVar sh y d ∶ A ⇒[ π ]↦ B ⨾ zeroUsage
-  s-dpoly r y (yes y≡x) _ _ lp ¬g _ _ _ _ _
+  s-dpoly r y (yes y≡x) _ _ lp ¬g _ _ _ _
     with trans (sym lpp-head) (subst (λ z → lookupPolyPrefix P′ z ≡ _) y≡x lp)
   ... | refl = ⊥-elim (¬g g)
-  s-dpoly r y (no y≢x) ln li lp ¬g as inc inst gr body = d-poly ln li (lpp-skip y≢x lp) ¬g as inc inst gr body
+  s-dpoly r y (no y≢x) ln li lp ¬g as inc inst gr = d-poly ln li (lpp-skip y≢x lp) ¬g as inc inst gr
 
   -- An application whose head is not a builtin keeps the scope for its argument.
   app-scope : ∀ {n G Δ fr sh} {f a : RawExpr} {T U}
@@ -695,9 +694,9 @@ module Unfolding
     S-c r (_ , nc) (t-inl-app-check d) = t-inl-app-check (S-c r nc d)
     S-c r (_ , nc) (t-inr-app-check d) = t-inr-app-check (S-c r nc d)
     S-c r (_ , nc) (t-initial-app-check d) = t-initial-app-check (S-c r nc d)
-    S-c r _ (t-var-poly-instantiate {x = y} ln li lp ¬g inst body) = s-poly r y (y StrProp.≟ x) ln li lp ¬g inst body
+    S-c r _ (t-var-poly-instantiate {x = y} ln li lp ¬g inst) = s-poly r y (y StrProp.≟ x) ln li lp ¬g inst
     S-d r nc (d-infer w sb gr) = d-infer (S-i r nc w) sb gr
-    S-d r _ (d-poly {x = y} ln li lp ¬g as inc inst gr body) = s-dpoly r y (y StrProp.≟ x) ln li lp ¬g as inc inst gr body
+    S-d r _ (d-poly {x = y} ln li lp ¬g as inc inst gr) = s-dpoly r y (y StrProp.≟ x) ln li lp ¬g as inc inst gr
     S-d r (ny , nb) (d-lam {x = y} {A = B} leq body) = d-lam leq (S-i (sr-ext r y B ny) nb body)
     S-d r ((_ , n₁) , n₂) (d-compose dg df) = d-compose (S-d r n₂ dg) (S-d r n₁ df)
     S-d r _ d-id = d-id
@@ -1269,11 +1268,11 @@ module Unfolding
     F-c {sh = sh} r {b = b} nc (t-initial-app-check d) eq with inv-RApp {sh = sh} {b = b} eq
     ... | f₀ , a₀ , refl , ef , ea with inv-RResolved {sh = sh} {b = f₀} ef
     ...   | refl = t-initial-app-check (F-c r (proj₂ nc) d ea)
-    F-c {sh = sh} r {b = b} nc (t-var-poly-instantiate {x = z} ln li lp ¬g inst body) eq with inv-RVar {sh = sh} {b = b} eq
-    ... | refl , alt = t-var-poly-instantiate ln li (lpp-add r z alt ln lp) ¬g inst body
+    F-c {sh = sh} r {b = b} nc (t-var-poly-instantiate {x = z} ln li lp ¬g inst) eq with inv-RVar {sh = sh} {b = b} eq
+    ... | refl , alt = t-var-poly-instantiate ln li (lpp-add r z alt ln lp) ¬g inst
     F-d {sh = sh} r {b = b} nc (d-infer w sb gr) eq = d-infer (F-i r nc w eq) sb gr
-    F-d {sh = sh} r {b = b} nc (d-poly {x = z} ln li lp ¬g as inc inst gr body) eq with inv-RVar {sh = sh} {b = b} eq
-    ... | refl , alt = d-poly ln li (lpp-add r z alt ln lp) ¬g as inc inst gr body
+    F-d {sh = sh} r {b = b} nc (d-poly {x = z} ln li lp ¬g as inc inst gr) eq with inv-RVar {sh = sh} {b = b} eq
+    ... | refl , alt = d-poly ln li (lpp-add r z alt ln lp) ¬g as inc inst gr
     F-d {sh = sh} r {b = b} nc (d-lam {x = y} {A = B} leq body) eq with inv-RLam {sh = sh} {b = b} eq
     ... | u₀ , refl , eu = d-lam leq (F-i (sr-ext r y B (proj₁ nc)) (proj₂ nc) body eu)
     F-d {sh = sh} r {b = b} nc (d-compose dg df) eq with inv-RApp {sh = sh} {b = b} eq

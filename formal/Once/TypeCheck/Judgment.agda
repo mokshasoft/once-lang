@@ -69,6 +69,7 @@ open import Data.String using (_++_)
 -- Plan 0.58 (OCP-0006): IR-FREE `Once.Surface.Context` (not `Surface.Syntax`);
 -- `t-var-local` now carries the de-Bruijn `Fin` index, so no `SExpr` is needed.
 open import Data.Fin using (Fin)
+open import Once.Type.Rigid using (KindedInstance)
 open import Once.Surface.Context as Surface using (zeroUsage; _+ᵘ_; _*ᵘ_; _⊔ᵘ_)
   renaming (Ctx to SCtx)
 open Surface.Usage using () renaming (_∷_ to _∷ᵘ_)
@@ -871,11 +872,8 @@ mutual
     -- isn't in user scope). Disjoint from the bare-builtin
     -- `t-id-check`/`t-fst-check`/... rules because the name isn't a
     -- reserved builtin (checked by `lookupPoly` returning `just`).
-    -- The nested check-mode derivation premise threads the body's
-    -- typecheck at the ground expected type `T`, in the PREFIX
-    -- environment (the defs declared before `x`) — Plan 0.58 telescope:
-    -- a reference reaches only EARLIER defs, so cycles (self OR mutual)
-    -- are unrepresentable and acyclicity is manifest in the rule.
+    -- D243: a use is at a kinded INSTANCE of the definition's schema; the
+    -- body is typed once, at the definition (plan 0.103 phase 6d).
     t-var-poly-instantiate :
       ∀ {ctx : NamedCtx} {x : String} {T : Type} {schema : Once.Type.PolyType} {body : RawExpr}
         {prefix : Once.TypeCheck.Classify.PolyCtx}
@@ -903,12 +901,12 @@ mutual
       -- a decision procedure and belongs to the elaborator, not to the
       -- language definition.
       → ¬ (Once.Type.Ground schema)
-      -- Plan 0.103 phase 2a: the checked type is an INSTANCE of the schema (the
-      -- property; the elaborator decides it with `instantiate`). Without it the
-      -- schema was decorative: any type the body happened to check at passed.
-      → Once.Type.IsInstance schema T
-      → (ctxWithImportsAndPolys (NamedCtx.imports ctx) prefix)
-          ⊢ᶜ body ∶ T ⨾ Surface.zeroUsage
+      -- D243 (plan 0.103 phase 6d): the checked type is a KINDED instance of the
+      -- schema. The body is NOT re-typed here: it is typed ONCE, at its schema
+      -- with rigid parameters, where it is declared (the module telescope), and
+      -- a use is an instance of that. The elaborator decides the premise with
+      -- `kindedInstance?`.
+      → KindedInstance schema T
       -- Plan 0.58 / D071: NO `IsConcrete T`. A same-module def reference is a
       -- projection from the definition context Γ (its body's meaning), NOT an
       -- FFI boundary — so the FFI concreteness gate does not apply, and refs at
@@ -953,10 +951,8 @@ mutual
            → ¬ (Once.Type.Ground schema)
            → Once.Type.ArrowSchema schema sd sc π′
            → Once.Type.CodVarsInDom sd sc
-           → Once.Type.IsInstance schema (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π′ ] B)
+           → KindedInstance schema (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π′ ] B)
            → π′ ⊑π π
-           → (ctxWithImportsAndPolys (NamedCtx.imports ctx) prefix)
-               ⊢ᶜ body ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π′ ] B) ⨾ Surface.zeroUsage
            → ctx ⊢ᵈ RVar x ∶ A ⇒[ π ]↦ B ⨾ zeroUsage
     -- A lambda whose body synthesizes once its binder has the given type.
     d-lam : ∀ {ctx : NamedCtx} {x : String} {body : RawExpr} {A B : Type} {q' : Quantity}

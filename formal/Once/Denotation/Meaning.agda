@@ -53,6 +53,7 @@ open import Data.Nat using (ℕ)
 open import Once.Surface.Context using (Ctx; ∅; _,_^_; svar; SVar; Usage; _↾_; _⊑ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many; _+ᵘ_; _*ᵘ_; _⊔ᵘ_; zeroUsage; _∷_) renaming (⟦_⟧ᶜ to ⟦_⟧ᶜᵗ; lookup to lookupᵗ)
 open import Once.TypeCheck.Classify using (NamedCtx; PolyCtx)
 open import Once.Denotation.DefEnv using (DefEnvOf; defAt; tailAt)
+open import Once.Type.Rigid using (KindedInstance; ground-kinded)
 open import Once.TypeCheck.Raw using (BinOp; OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
 open import Once.Denotation.Sub using (⟦_⟧<:)
 open import Once.Type.Sub using (sub-arr; <:-refl)
@@ -226,8 +227,14 @@ sigOpRefᴰ fmt cn (con-fun {A = Dom} {B = Cod} {k = mk-kind Many π} bDom cCod)
 -- Plan 0.103 phase 1c: the meaning of the telescope — one computation per
 -- ground entry (vacuous for a polymorphic one), built from the entries'
 -- declaration-time derivations (`Denotation.MainMeaning`).
+-- D239/D243: a definition MEANS THE FAMILY OF ITS INSTANCES — at every kinded
+-- instance `T` of its schema, a computation of `T`. A ground definition's only
+-- instance is its declared type (`ground-kinded`).
+DefFamily : Once.Type.PolyType → Set
+DefFamily s = (U : Type) → KindedInstance s U → T ⟦ U ⟧ᴰ
+
 DefMeanings : PolyCtx → Set
-DefMeanings = DefEnvOf (λ s → (g : Ground s) → T ⟦ extractGround s g ⟧ᴰ)
+DefMeanings = DefEnvOf DefFamily
 
 -- So the meaning runs over `Γ ↾ Ψ` — exactly the variables the derivation uses
 -- — for the same reason `elaborate` and `⟦_⟧ˢ` do.
@@ -313,12 +320,11 @@ seqᴰ m₁ m₂ = (m₁ >>=T λ x → m₂ >>=T λ y → returnT (x , y)) >>=T 
 ⟦_⟧ᶜ {ctx = ctx} (t-inl-app-check d) fmt ρ dγ = (⟦ d ⟧ᶜ fmt ρ) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-trans (⊑ᵘ-*Many _) (⊑ᵘ-+ʳ zeroUsage _)) dγ) >>=T λ v → returnT (inj₁ v)
 ⟦_⟧ᶜ {ctx = ctx} (t-inr-app-check d) fmt ρ dγ = (⟦ d ⟧ᶜ fmt ρ) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-trans (⊑ᵘ-*Many _) (⊑ᵘ-+ʳ zeroUsage _)) dγ) >>=T λ v → returnT (inj₂ v)
 ⟦_⟧ᶜ {ctx = ctx} (t-initial-app-check d) fmt ρ dγ = (⟦ d ⟧ᶜ fmt ρ) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-trans (⊑ᵘ-*Many _) (⊑ᵘ-+ʳ zeroUsage _)) dγ) >>=T λ v → ⊥-elim v
--- Plan 0.58 (telescope): a same-module def reference MEANS its closed body
--- (the body derivation is the rule's premise). Env-independent — the body is
--- typed in the empty local context (the prefix env), so discard `dγ` and feed
--- `tt`. Structural recursion (bodyD is a premise ⇒ a subterm).
-⟦_⟧ᶜ {ctx = ctx} (t-var-poly-instantiate {x = x} _ _ lp _ _ bodyD) fmt ρ dγ =
-  (⟦ bodyD ⟧ᶜ fmt (tailAt (NamedCtx.polys ctx) x ρ lp)) tt
+-- D243: a use of a polymorphic definition means the definition's family at
+-- the use's kinded instance — the context projection Γ(x) at T. The body is
+-- typed once, where it is declared; nothing is re-typed here.
+⟦_⟧ᶜ {ctx = ctx} {A = T′} (t-var-poly-instantiate {x = x} _ _ lp _ ki) fmt ρ dγ =
+  defAt (NamedCtx.polys ctx) x ρ lp T′ ki
 
 ⟦_⟧ᵢ {ctx = ctx} (t-int n) fmt ρ dγ = returnT (OnceWord.Width.fromℤ (int-bits fmt) n)
 -- D113, in the INFER realm: same clause, same reason as `g-float` above.
@@ -338,8 +344,8 @@ seqᴰ m₁ m₂ = (m₁ >>=T λ x → m₂ >>=T λ y → returnT (x , y)) >>=T 
 -- the context projection Γ(x). The body is closed (typed in the telescope
 -- prefix over the empty local env), so its meaning runs on `tt`. Structural
 -- recursion (bodyD is a premise ⇒ a subterm) — same as the check-mode rule.
-⟦_⟧ᵢ {ctx = ctx} (t-var-poly-instantiate-infer {x = x} {g = g} _ _ lp _ eT) fmt ρ dγ =
-  subst (λ X → T ⟦ X ⟧ᴰ) (sym eT) (defAt (NamedCtx.polys ctx) x ρ lp g)
+⟦_⟧ᵢ {ctx = ctx} (t-var-poly-instantiate-infer {x = x} {schema = s} {g = g} _ _ lp _ eT) fmt ρ dγ =
+  subst (λ X → T ⟦ X ⟧ᴰ) (sym eT) (defAt (NamedCtx.polys ctx) x ρ lp (extractGround s g) (ground-kinded s g))
 ⟦_⟧ᵢ {ctx = ctx} (t-annot d) fmt ρ dγ = (⟦ d ⟧ᶜ fmt ρ) dγ
 ⟦_⟧ᵢ {ctx = ctx} (t-pair da db) fmt ρ dγ = (⟦ da ⟧ᵢ fmt ρ) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=T λ a → (⟦ db ⟧ᵢ fmt ρ) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=T λ b → returnT (a , b)
 ⟦_⟧ᵢ {ctx = ctx} (t-neg d) fmt ρ dγ = (⟦ d ⟧ᵢ fmt ρ) dγ >>=T λ v → resT-lift (semM neg-info fmt v)
@@ -500,10 +506,10 @@ seqᴰ m₁ m₂ = (m₁ >>=T λ x → m₂ >>=T λ y → returnT (x , y)) >>=T 
 -- Plan 0.94 §10: the domain-given realm. `d-infer` is the inferred term under
 -- its arrow conversion; `d-lam` is `t-lam` at `Many`; `d-compose` is `compose`.
 ⟦_⟧ᵈ {ctx = ctx} (d-infer {B = B} w a g) fmt ρ dγ = fmapT ⟦ sub-arr {q = Many} a (<:-refl B) g ⟧<: ((⟦ w ⟧ᵢ fmt ρ) dγ)
--- Plan 0.103 phase 2b: a polymorphic head means its body (at the instance)
--- in the prefix's environment, converted to the given grade.
-⟦_⟧ᵈ {ctx = ctx} (d-poly {x = x} {A = A} {B = B} {π′ = π′} _ _ lp _ _ _ _ g bodyD) fmt ρ dγ =
-  fmapT ⟦ sub-arr {q = Many} (<:-refl A) (<:-refl B) g ⟧<: ((⟦ bodyD ⟧ᶜ fmt (tailAt (NamedCtx.polys ctx) x ρ lp)) tt)
+-- D243: a polymorphic head means the definition's family at the arrow
+-- instance, converted to the given grade.
+⟦_⟧ᵈ {ctx = ctx} (d-poly {x = x} {A = A} {B = B} {π′ = π′} _ _ lp _ _ _ ki g) fmt ρ dγ =
+  fmapT ⟦ sub-arr {q = Many} (<:-refl A) (<:-refl B) g ⟧<: (defAt (NamedCtx.polys ctx) x ρ lp _ ki)
 ⟦_⟧ᵈ {ctx = ctx} (d-lam {A = A} {q' = Zero} _ d) fmt ρ dγ = returnT (λ a → (⟦ d ⟧ᵢ fmt ρ) (bindᴰ0 {Γ = NamedCtx.debruijn ctx} {A = A} dγ))
 ⟦_⟧ᵈ {ctx = ctx} (d-lam {A = A} {q' = One}  _ d) fmt ρ dγ = returnT (λ a → (⟦ d ⟧ᵢ fmt ρ) (bindᴰ {Γ = NamedCtx.debruijn ctx} {A = A} One  dγ a))
 ⟦_⟧ᵈ {ctx = ctx} (d-lam {A = A} {q' = Many} _ d) fmt ρ dγ = returnT (λ a → (⟦ d ⟧ᵢ fmt ρ) (bindᴰ {Γ = NamedCtx.debruijn ctx} {A = A} Many dγ a))

@@ -86,6 +86,7 @@ open import Once.Type.Sub using (_<:_; _<:?_; _⊑π_; _⊑π?_; sub-arr; <:-ref
 open import Once.Type.DecEq using (_≟F_; _≟T_)
 open import Once.Type.Match using (Subst; instantiate)
 open import Once.Type.Instance using (instantiate-sound)
+open import Once.Type.Rigid using (KindedInstance; kindedInstance?)
 open import Once.Type.Determined using (ArrowView; arrowSchema?; arrow-instance; codVarsInDom?)
 open import Once.TypeCheck.DeciderComplete using (isGround-complete-at)
 open import Once.TypeCheck.Judgment
@@ -755,27 +756,27 @@ inferElab-RApp-id ctx (success T Ψ argE d f') =
 -- them.
 ------------------------------------------------------------------------
 
--- Plan 0.103 phase 2a: the ONE residual of the check-mode polymorphic
--- reference, stated exactly: a polymorphic telescope entry's body types at
--- every INSTANCE of its schema. Plan 0.103 phase 6 derives it from the entry's
--- parametric typing and the type-substitution lemma, and deletes it. Until
--- then it is FALSE in general (an ill-typed polymorphic body in some
--- telescope), i.e. the known gap (defect 7); every other premise of the rule
--- is now established by the elaborator.
-postulate
-  poly-body-typed :
-    ∀ {imps : Imports} {polys : PolyCtx} {x : String} {schema : PolyType} {body : RawExpr}
-      {prefix : PolyCtx} {T : Type}
-    → lookupPolyPrefix polys x ≡ just (schema , body , prefix)
-    → ¬ Ground schema → IsInstance schema T
-    → ctxWithImportsAndPolys imps prefix ⊢ᶜ body ∶ T ⨾ Surface.zeroUsage
-
 isGround-inj₂→¬Ground : ∀ (s : PolyType) → isGround s ≡ inj₂ tt → ¬ Ground s
 isGround-inj₂→¬Ground s eq g with trans (sym eq) (isGround-complete-at s g)
 ... | ()
 
 -- Plan 0.103 phase 2b: the domain-given POLYMORPHIC head (`d-poly`), de-withed:
 -- each decision is an explicit argument with its equation.
+given-poly-k : ∀ (ctx : NamedCtx) (x : String) (A B : Type) (π π′ : Once.Type.Purity) (err : TypeError)
+  {schema sd sc : PolyType} {body : RawExpr} {prefix : PolyCtx}
+  → lookupLocal ctx x ≡ nothing → lookupImport (NamedCtx.imports ctx) x ≡ nothing
+  → lookupPolyPrefix (NamedCtx.polys ctx) x ≡ just (schema , body , prefix)
+  → ¬ Ground schema → ArrowSchema schema sd sc π′ → CodVarsInDom sd sc → π′ ⊑π π
+  → Dec (KindedInstance schema (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π′ ] B))
+  → VerifiedGivenResult ctx (Raw.RVar x) A π
+given-poly-k ctx x A B π π′ err eL eI eP ¬g as inc g (no _) = failure err , tt
+given-poly-k ctx x A B π π′ err eL eI eP ¬g as inc g (yes ki) =
+  success B Surface.zeroUsage
+    (Surface.coerce (sub-arr {q = Once.Type.Many} (<:-refl A) (<:-refl B) g)
+                    (Surface.poly x (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π′ ] B)))
+    0 (NamedCtx.freshCounter ctx)
+  , d-poly eL eI eP ¬g as inc ki g
+
 given-poly-π : ∀ (ctx : NamedCtx) (x : String) (A : Type) (π : Once.Type.Purity) (err : TypeError)
   {schema sd sc : PolyType} {π′ : Once.Type.Purity} {body : RawExpr} {prefix : PolyCtx}
   → lookupLocal ctx x ≡ nothing → lookupImport (NamedCtx.imports ctx) x ≡ nothing
@@ -784,15 +785,9 @@ given-poly-π : ∀ (ctx : NamedCtx) (x : String) (A : Type) (π : Once.Type.Pur
   → (θ : String → Type) → substPoly θ sd ≡ A
   → Dec (π′ ⊑π π) → VerifiedGivenResult ctx (Raw.RVar x) A π
 given-poly-π ctx x A π err eL eI eP ¬g as inc θ eθ (no _) = failure err , tt
-given-poly-π ctx x A π err {sc = sc} {π′ = π′} eL eI eP ¬g as inc θ eθ (yes g) =
-  success (substPoly θ sc) Surface.zeroUsage
-    (Surface.coerce (sub-arr {q = Once.Type.Many} (<:-refl A) (<:-refl (substPoly θ sc)) g)
-                    (Surface.poly x (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π′ ] substPoly θ sc)))
-    0 (NamedCtx.freshCounter ctx)
-  , d-poly eL eI eP ¬g as inc inst g
-      (poly-body-typed {imps = NamedCtx.imports ctx} {polys = NamedCtx.polys ctx} {x = x}
-                       {T = A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π′ ] substPoly θ sc} eP ¬g inst)
-  where inst = arrow-instance as θ eθ
+given-poly-π ctx x A π err {schema = schema} {sc = sc} {π′ = π′} eL eI eP ¬g as inc θ eθ (yes g) =
+  given-poly-k ctx x A (substPoly θ sc) π π′ err eL eI eP ¬g as inc g
+    (kindedInstance? schema (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π′ ] substPoly θ sc))
 
 given-poly-m : ∀ (ctx : NamedCtx) (x : String) (A : Type) (π : Once.Type.Purity) (err : TypeError)
   {schema sd sc : PolyType} {π′ : Once.Type.Purity} {body : RawExpr} {prefix : PolyCtx}
@@ -861,13 +856,12 @@ checkElabV-RVar-poly-inst-aux :
   → lookupLocal ctx x ≡ nothing → lookupImport (NamedCtx.imports ctx) x ≡ nothing
   → lookupPolyPrefix (NamedCtx.polys ctx) x ≡ just (schema , body , prefix)
   → ¬ Ground schema
-  → (mi : Maybe Subst) → instantiate schema T ≡ mi
+  → Dec (KindedInstance schema T)
   → VerifiedCheckResult ctx (Raw.RVar x) T
-checkElabV-RVar-poly-inst-aux ctx x T err eL eI eP ¬g nothing _ = failure err , tt
-checkElabV-RVar-poly-inst-aux ctx x T err {schema = schema} eL eI eP ¬g (just σ) eS =
+checkElabV-RVar-poly-inst-aux ctx x T err eL eI eP ¬g (no _) = failure err , tt
+checkElabV-RVar-poly-inst-aux ctx x T err eL eI eP ¬g (yes ki) =
   success Surface.zeroUsage (Surface.poly x T) 0 (NamedCtx.freshCounter ctx)
-  , t-var-poly-instantiate eL eI eP ¬g inst (poly-body-typed {imps = NamedCtx.imports ctx} {polys = NamedCtx.polys ctx} {x = x} {T = T} eP ¬g inst)
-  where inst = instantiate-sound schema T eS
+  , t-var-poly-instantiate eL eI eP ¬g ki
 
 checkElabV-RVar-poly-ground-aux :
   ∀ (ctx : NamedCtx) (x : String) (T : Type) (err : TypeError)
@@ -878,7 +872,7 @@ checkElabV-RVar-poly-ground-aux :
   → VerifiedCheckResult ctx (Raw.RVar x) T
 checkElabV-RVar-poly-ground-aux ctx x T err schema eL eI eP (inj₁ _) _ = failure err , tt
 checkElabV-RVar-poly-ground-aux ctx x T err schema eL eI eP (inj₂ tt) eG =
-  checkElabV-RVar-poly-inst-aux ctx x T err eL eI eP (isGround-inj₂→¬Ground schema eG) (instantiate schema T) refl
+  checkElabV-RVar-poly-inst-aux ctx x T err eL eI eP (isGround-inj₂→¬Ground schema eG) (kindedInstance? schema T)
 
 checkElabV-RVar-poly-check-aux :
   ∀ (ctx : NamedCtx) (x : String) (T : Type) (err : TypeError)

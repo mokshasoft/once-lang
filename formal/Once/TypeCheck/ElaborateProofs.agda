@@ -34,6 +34,7 @@ open import Relation.Nullary using (Dec; yes; no; ¬_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Product using (_×_; _,_; ∃-syntax; Σ-syntax; proj₂)
 open import Once.Type.Instance using (instantiate-complete)
+open import Once.Type.Rigid using (KindedInstance; kindedInstance?)
 open import Once.Type.Match using (instantiate)
 open import Once.Float.Dyadic using (Dyadic)
 open import Once.Float.Decimal using (decimalOf)
@@ -1094,11 +1095,15 @@ poly-ground-eq : ∀ (ctx : NamedCtx) (x : String) (T : Type) (err : TypeError) 
     ≡ checkElabV-RVar-poly-ground-aux ctx x T err schema eL eI eP ig eG
 poly-ground-eq ctx x T err schema eL eI eP .(isGround schema) refl = refl
 
-poly-inst-eq : ∀ (ctx : NamedCtx) (x : String) (T : Type) (err : TypeError) {schema : PolyType}
-  {body prefix} eL eI (eP : lookupPolyPrefix (NamedCtx.polys ctx) x ≡ just (schema , body , prefix)) ¬g mi eS
-  → checkElabV-RVar-poly-inst-aux ctx x T err eL eI eP ¬g (instantiate schema T) refl
-    ≡ checkElabV-RVar-poly-inst-aux ctx x T err eL eI eP ¬g mi eS
-poly-inst-eq ctx x T err {schema} eL eI eP ¬g .(instantiate schema T) refl = refl
+-- D243: a kinded instance makes the decided premise `yes`.
+poly-inst-yes : ∀ (ctx : NamedCtx) (x : String) (T : Type) (err : TypeError) {schema : PolyType}
+  {body prefix} eL eI (eP : lookupPolyPrefix (NamedCtx.polys ctx) x ≡ just (schema , body , prefix)) ¬g
+  → KindedInstance schema T
+  → Data.Product.proj₁ (checkElabV-RVar-poly-inst-aux ctx x T err eL eI eP ¬g (kindedInstance? schema T))
+    ≡ success Surface.zeroUsage (Surface.poly x T) 0 (NamedCtx.freshCounter ctx)
+poly-inst-yes ctx x T err {schema} eL eI eP ¬g ki with kindedInstance? schema T
+... | yes _ = refl
+... | no ¬k = ⊥-elim (¬k ki)
 
 checkElab-fallback-RVar-poly :
   ∀ {ctx : NamedCtx} (x : String) (T : Type)
@@ -1110,13 +1115,12 @@ checkElab-fallback-RVar-poly :
   -- type (`t-var-poly-instantiate-infer`), so the check-mode fallback (poly
   -- node at arbitrary `T`) fires only when infer failed, i.e. non-ground.
   → isGround schema ≡ inj₂ tt
-  → IsInstance schema T
+  → KindedInstance schema T
   → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ fr →
       checkElab ctx (Raw.RVar x) T
         ≡ success Surface.zeroUsage eE d fr)))
 -- Plan 0.103 phase 2a: each stage of the de-withed fallback reduces on its
--- decided premise; the instance premise makes `instantiate` succeed
--- (`instantiate-complete`).
+-- decided premise; the kinded instance makes `kindedInstance?` say yes.
 checkElab-fallback-RVar-poly {ctx} x T {schema = schema} eqLoc eqImp eqP eqG inst
   with inferElabV ctx (Raw.RVar x)
      | inferElabV-RVar-fail-bridge ctx x eqLoc eqImp
@@ -1126,7 +1130,7 @@ checkElab-fallback-RVar-poly {ctx} x T {schema = schema} eqLoc eqImp eqP eqG ins
   _ , _ , _ ,
   trans (cong proj₁ (poly-check-eq ctx x T err nothing eqLoc nothing eqImp (just _) eqP))
     (trans (cong proj₁ (poly-ground-eq ctx x T err schema eqLoc eqImp eqP (inj₂ tt) eqG))
-           (cong proj₁ (poly-inst-eq ctx x T err eqLoc eqImp eqP _ _ (proj₂ (instantiate-complete schema T inst)))))
+           (poly-inst-yes ctx x T err eqLoc eqImp eqP _ inst))
   where open import Data.Product using (proj₁)
 
 -- Plan 0.58 / D071: the INFER-mode twin — a GROUND telescope name infers at

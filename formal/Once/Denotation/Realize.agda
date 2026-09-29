@@ -137,7 +137,7 @@ realize (t-initial-app-check d) = morph-app IR.initial (realize d)
 -- realizes to its body's per-use reference elaboration, inlined as a CLOSED
 -- SURFACE term (plan 0.103 phase 1c) — not through the IR, so the body's own
 -- definition references stay open.
-realize (t-var-poly-instantiate _ _ _ _ _ bodyD) = closed (realize bodyD)
+realize (t-var-poly-instantiate {x = x} {T = T} _ _ _ _ _) = poly x T
 
 ------------------------------------------------------------------------
 -- realize-infer (⊢ᵢ) — infer-mode reference elaboration.
@@ -282,7 +282,7 @@ realize-infer (t-app-void _ dF _) = realize-infer dF
 realize-d (d-infer {B = B} w a g) = coerce (sub-arr a (<:-refl B) g) (realize-infer w)
 -- Plan 0.103 phase 2b: as the check-mode polymorphic reference — the body's
 -- reference elaboration, closed, converted to the given grade.
-realize-d (d-poly {A = A} {B = B} _ _ _ _ _ _ _ g bodyD) = coerce (sub-arr {q = Many} (<:-refl A) (<:-refl B) g) (closed (realize bodyD))
+realize-d (d-poly {x = x} {A = A} {B = B} {π′ = π′} _ _ _ _ _ _ _ g) = coerce (sub-arr {q = Many} (<:-refl A) (<:-refl B) g) (poly x (A ⇒[ mk-kind Many π′ ] B))
 realize-d (d-lam ≤p d)            = lam Many ≤p (realize-infer d)
 realize-d (d-compose dg df)       = comp' (realize-d df) (realize-d dg)
 realize-d d-id       = lift-morphism IR.id

@@ -600,7 +600,7 @@ mutual
   agree-cc (t-inl-app-check d) (t-inl-app-check d′) = cong (λ Ψ → zeroUsage +ᵘ (T.Many *ᵘ Ψ)) (agree-cc d d′)
   agree-cc (t-inr-app-check d) (t-inr-app-check d′) = cong (λ Ψ → zeroUsage +ᵘ (T.Many *ᵘ Ψ)) (agree-cc d d′)
   agree-cc (t-initial-app-check d) (t-initial-app-check d′) = cong (λ Ψ → zeroUsage +ᵘ (T.Many *ᵘ Ψ)) (agree-cc d d′)
-  agree-cc (t-var-poly-instantiate _ _ _ _ _ _) (t-var-poly-instantiate _ _ _ _ _ _) = refl
+  agree-cc (t-var-poly-instantiate _ _ _ _ _) (t-var-poly-instantiate _ _ _ _ _) = refl
 
   ----------------------------------------------------------------------
   -- agree-ic
@@ -614,9 +614,9 @@ mutual
   ... | () , _
   agree-ic (t-effApp () _ _) (t-apply-check _)
   agree-ic (t-app-spine () _ _) (t-apply-check _)
-  agree-ic (t-var-local l) (t-var-poly-instantiate ln _ _ _ _ _) = ⊥-elim (just≢nothing (trans (sym l) ln))
-  agree-ic (t-var-import _ _ i _) (t-var-poly-instantiate _ inn _ _ _ _) = ⊥-elim (just≢nothing (trans (sym i) inn))
-  agree-ic (t-var-poly-instantiate-infer _ _ p g _) (t-var-poly-instantiate _ _ p′ ¬g _ _) with trans (sym p) p′
+  agree-ic (t-var-local l) (t-var-poly-instantiate ln _ _ _ _) = ⊥-elim (just≢nothing (trans (sym l) ln))
+  agree-ic (t-var-import _ _ i _) (t-var-poly-instantiate _ inn _ _ _) = ⊥-elim (just≢nothing (trans (sym i) inn))
+  agree-ic (t-var-poly-instantiate-infer _ _ p g _) (t-var-poly-instantiate _ _ p′ ¬g _) with trans (sym p) p′
   ... | refl = ⊥-elim (¬g g)
   agree-ic () (t-lam _ _)
   agree-ic d t-id-check = ⊥-elim (noinf-id d)
@@ -656,7 +656,7 @@ mutual
   agree-dc (d-case df dg) (t-case-copair-check df′ dg′) = cong₂ _+ᵘ_ (agree-dc df df′) (agree-dc dg dg′)
   agree-dc (d-pair df dg) (t-pair-morph-check df′ dg′) = cong₂ _+ᵘ_ (agree-dc df df′) (agree-dc dg dg′)
   agree-dc (d-cata _ _) (t-cata-check _ _) = refl
-  agree-dc (d-poly _ _ _ _ _ _ _ _ _) (t-var-poly-instantiate _ _ _ _ _ _) = refl
+  agree-dc (d-poly _ _ _ _ _ _ _ _) (t-var-poly-instantiate _ _ _ _ _) = refl
 
   ----------------------------------------------------------------------
   -- agree-di
@@ -677,9 +677,9 @@ mutual
   agree-di (d-case-void _ _) d = ⊥-elim (noinf-case d)
   agree-di (d-cata-void _) d = ⊥-elim (noinf-cata-app d)
   -- Plan 0.103 phase 2b: a non-ground telescope entry does not infer.
-  agree-di (d-poly ln _ _ _ _ _ _ _ _) (t-var-local l) = ⊥-elim (just≢nothing (trans (sym l) ln))
-  agree-di (d-poly _ inn _ _ _ _ _ _ _) (t-var-import _ _ i _) = ⊥-elim (just≢nothing (trans (sym i) inn))
-  agree-di (d-poly _ _ p ¬g _ _ _ _ _) (t-var-poly-instantiate-infer _ _ p′ g _) with trans (sym p) p′
+  agree-di (d-poly ln _ _ _ _ _ _ _) (t-var-local l) = ⊥-elim (just≢nothing (trans (sym l) ln))
+  agree-di (d-poly _ inn _ _ _ _ _ _) (t-var-import _ _ i _) = ⊥-elim (just≢nothing (trans (sym i) inn))
+  agree-di (d-poly _ _ p ¬g _ _ _ _) (t-var-poly-instantiate-infer _ _ p′ g _) with trans (sym p) p′
   ... | refl = ⊥-elim (¬g g)
 
   ----------------------------------------------------------------------
@@ -710,7 +710,7 @@ mutual
   ... | refl , refl | refl , refl = refl , refl
   agree-dd (d-cata-void _) (d-cata-void _) = refl , refl
   -- Plan 0.103 phase 2b: the domain's instance determines the codomain.
-  agree-dd (d-poly _ _ p _ as inc (θ , e) _ _) (d-poly _ _ p′ _ as′ _ (θ′ , e′) _ _) with trans (sym p) p′
+  agree-dd (d-poly _ _ p _ as inc (θ , e , _) _) (d-poly _ _ p′ _ as′ _ (θ′ , e′ , _) _) with trans (sym p) p′
   ... | refl = dpoly-det as as′ inc θ θ′ e e′ , refl
 
 ------------------------------------------------------------------------

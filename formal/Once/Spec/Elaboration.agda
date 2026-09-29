@@ -39,7 +39,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 open import Relation.Nullary using (¬_)
 
 open import Once.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; mk-kind; Many; Purity; pure; eff;
-  μ-type; ν-type; ⟦_⟧T; PolyType; Ground; extractGround; IsInstance)
+  μ-type; ν-type; ⟦_⟧T; PolyType; Ground; extractGround)
+open import Once.Type.Rigid using (KindedInstance)
 open import Once.Type.Sub using (_<:_; sub-arr; <:-refl)
 open import Once.Type.Honest using (HonestFFI)
 open import Once.CanonicalName using (bare; showCanonical)
@@ -81,8 +82,7 @@ record View (imps : Imports) (polys : PolyCtx) : Set where
     ground : ∀ {x sc body prefix} (lp : lookupPolyPrefix polys x ≡ just (sc , body , prefix)) (g : Ground sc)
            → InstanceOf (entry lp) (extractGround sc g)
     inst   : ∀ {x sc body prefix T} (lp : lookupPolyPrefix polys x ≡ just (sc , body , prefix))
-           → ¬ Ground sc → IsInstance sc T
-           → ctxWithImportsAndPolys imps prefix ⊢ᶜ body ∶ T ⨾ zeroUsage
+           → ¬ Ground sc → KindedInstance sc T
            → InstanceOf (entry lp) T
 open View
 
@@ -172,7 +172,7 @@ elabᶜ V (t-apply-check dp)          = appC ⊢applyᶜ (elabᵢ V dp)
 elabᶜ V (t-inl-app-check d)         = appC ⊢inlᶜ (elabᶜ V d)
 elabᶜ V (t-inr-app-check d)         = appC ⊢inrᶜ (elabᶜ V d)
 elabᶜ V (t-initial-app-check d)     = appC ⊢initialᶜ (elabᶜ V d)
-elabᶜ V (t-var-poly-instantiate _ _ lp ng ins bodyD) = refE (entry V lp) (inst V lp ng ins bodyD)
+elabᶜ V (t-var-poly-instantiate _ _ lp ng ins) = refE (entry V lp) (inst V lp ng ins)
 
 elabᵢ V (t-int n)         = lit (lit-int n) , ⊢lit-int
 elabᵢ V (t-float i f l p) = lit (lit-float (decimalOf i f l)) , ⊢lit-float
@@ -269,8 +269,8 @@ elabᵢ V (t-Out-app-void d)       = appC ⊢initialᶜ (elabᵢ V d)
 elabᵢ V (t-app-void _ dF _)      = elabᵢ V dF
 
 elabᵈ V (d-infer {B = B} w a g) = coerceE (sub-arr a (<:-refl B) g) (elabᵢ V w)
-elabᵈ V (d-poly {A = A} {B = B} _ _ lp ng _ _ ins g bodyD) =
-  coerceE (sub-arr (<:-refl A) (<:-refl B) g) (refE (entry V lp) (inst V lp ng ins bodyD))
+elabᵈ V (d-poly {A = A} {B = B} _ _ lp ng _ _ ins g) =
+  coerceE (sub-arr (<:-refl A) (<:-refl B) g) (refE (entry V lp) (inst V lp ng ins))
 elabᵈ V (d-lam {π = π} ≤p d) = let (b , ⊢b) = elabᵢ V d in lam b , ⊢lam ≤p (⊢sub-eff (pure⊑ π) ⊢b)
 elabᵈ V (d-compose dg df)    = lift2 composeᶜ ⊢composeᶜ (elabᵈ V df) (elabᵈ V dg)
 elabᵈ V d-id       = idᶜ , ⊢idᶜ

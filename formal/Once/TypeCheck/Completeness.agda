@@ -1155,6 +1155,7 @@ module DPoly where
   open import Once.Type.Instance using (instantiate-complete; instantiate-sound)
   open import Once.Type.Determined using (codVarsInDom?; cod-determined; arrowSchema?)
   open import Once.Type.Sub using (_⊑π?_)
+  open import Once.Type.Rigid using (KindedInstance; kindedInstance?)
   open import Once.TypeCheck.Classify using (lookupPolyPrefix; PolyCtx)
   open import Relation.Nullary using (yes; no)
   open import Data.String using (String)
@@ -1195,41 +1196,43 @@ module DPoly where
     {B : Type} {π′ : T.Purity} {schema sd sc : T.PolyType} {body prefix} eL eI
     (eP : lookupPolyPrefix (NamedCtx.polys ctx) x ≡ just (schema , body , prefix)) ¬g
     (as : T.ArrowSchema schema sd sc π′) (inc : T.CodVarsInDom sd sc) (θ₀ : String → Type) (e₀ : T.substPoly θ₀ sd ≡ A)
-    → T.substPoly θ₀ sc ≡ B → π′ ⊑π π
+    → T.substPoly θ₀ sc ≡ B → π′ ⊑π π → KindedInstance schema (A T.⇒[ T.mk-kind T.Many π′ ] B)
     → ∃[ eE ] ∃[ d ] ∃[ f ]
         proj₁ (given-poly-π ctx x A π err eL eI eP ¬g as inc θ₀ e₀ (π′ ⊑π? π)) ≡ success B Surface.zeroUsage eE d f
-  at-π ctx x A π err {π′ = π′} eL eI eP ¬g as inc θ₀ e₀ refl g with π′ ⊑π? π
-  ... | yes _ = _ , _ , _ , refl
+  at-π ctx x A π err {π′ = π′} {schema = schema} {sc = sc} eL eI eP ¬g as inc θ₀ e₀ refl g ki with π′ ⊑π? π
   ... | no ¬g′ = ⊥-elim (¬g′ g)
+  ... | yes _ with kindedInstance? schema (A T.⇒[ T.mk-kind T.Many π′ ] T.substPoly θ₀ sc)
+  ...   | yes _ = _ , _ , _ , refl
+  ...   | no ¬k = ⊥-elim (¬k ki)
 
   at-m : ∀ (ctx : NamedCtx) (x : String) (A : Type) (π : T.Purity) err
     {B : Type} {π′ : T.Purity} {schema sd sc : T.PolyType} {body prefix} eL eI
     (eP : lookupPolyPrefix (NamedCtx.polys ctx) x ≡ just (schema , body , prefix)) ¬g
     (as : T.ArrowSchema schema sd sc π′) (inc : T.CodVarsInDom sd sc)
-    (θ : String → Type) (eθ : T.substPoly θ schema ≡ (A T.⇒[ T.mk-kind T.Many π′ ] B)) (g : π′ ⊑π π)
+    (θ : String → Type) (eθ : T.substPoly θ schema ≡ (A T.⇒[ T.mk-kind T.Many π′ ] B)) (g : π′ ⊑π π) (ki : KindedInstance schema (A T.⇒[ T.mk-kind T.Many π′ ] B))
     → ∃[ eE ] ∃[ d ] ∃[ f ]
         proj₁ (given-poly-m ctx x A π err eL eI eP ¬g as inc (instantiate sd A) refl) ≡ success B Surface.zeroUsage eE d f
-  at-m ctx x A π err {sd = sd} {sc = sc} eL eI eP ¬g as inc θ eθ g =
+  at-m ctx x A π err {sd = sd} {sc = sc} eL eI eP ¬g as inc θ eθ g ki =
     let (ed , ec) = arrow-parts θ as eθ
         (σ , eS)  = instantiate-complete sd A (θ , ed)
         θ₀        = proj₁ (instantiate-sound sd A eS)
         e₀        = proj₂ (instantiate-sound sd A eS)
         eB        = trans (cod-determined {sd} {sc} inc θ₀ θ (trans e₀ (sym ed))) ec
-        (eE , d , f , r) = at-π ctx x A π err eL eI eP ¬g as inc θ₀ e₀ eB g
+        (eE , d , f , r) = at-π ctx x A π err eL eI eP ¬g as inc θ₀ e₀ eB g ki
     in eE , d , f , trans (cong proj₁ (gm-eq ctx x A π err eL eI eP ¬g as inc (just σ) eS)) r
 
   from-arrow : ∀ (ctx : NamedCtx) (x : String) (A : Type) (π : T.Purity) err
     {B : Type} {π′ : T.Purity} {schema sd sc : T.PolyType} {body prefix} eL eI
     (eP : lookupPolyPrefix (NamedCtx.polys ctx) x ≡ just (schema , body , prefix)) ¬g
     (as : T.ArrowSchema schema sd sc π′) (inc : T.CodVarsInDom sd sc)
-    (θ : String → Type) (eθ : T.substPoly θ schema ≡ (A T.⇒[ T.mk-kind T.Many π′ ] B)) (g : π′ ⊑π π)
+    (θ : String → Type) (eθ : T.substPoly θ schema ≡ (A T.⇒[ T.mk-kind T.Many π′ ] B)) (g : π′ ⊑π π) (ki : KindedInstance schema (A T.⇒[ T.mk-kind T.Many π′ ] B))
     → ∃[ eE ] ∃[ d ] ∃[ f ]
         proj₁ (given-poly-a ctx x A π err eL eI eP ¬g (arrowSchema? schema)) ≡ success B Surface.zeroUsage eE d f
-  from-arrow ctx x A π err {sd = sd} {sc = sc} eL eI eP ¬g T.as-pure inc θ eθ g with codVarsInDom? sd sc
-  ... | yes inc′ = at-m ctx x A π err eL eI eP ¬g T.as-pure inc′ θ eθ g
+  from-arrow ctx x A π err {sd = sd} {sc = sc} eL eI eP ¬g T.as-pure inc θ eθ g ki with codVarsInDom? sd sc
+  ... | yes inc′ = at-m ctx x A π err eL eI eP ¬g T.as-pure inc′ θ eθ g ki
   ... | no ¬inc = ⊥-elim (¬inc inc)
-  from-arrow ctx x A π err {sd = sd} {sc = sc} eL eI eP ¬g T.as-eff inc θ eθ g with codVarsInDom? sd sc
-  ... | yes inc′ = at-m ctx x A π err eL eI eP ¬g T.as-eff inc′ θ eθ g
+  from-arrow ctx x A π err {sd = sd} {sc = sc} eL eI eP ¬g T.as-eff inc θ eθ g ki with codVarsInDom? sd sc
+  ... | yes inc′ = at-m ctx x A π err eL eI eP ¬g T.as-eff inc′ θ eθ g ki
   ... | no ¬inc = ⊥-elim (¬inc inc)
 
   -- The whole chain, from the lookups (the head's inference has failed).
@@ -1238,13 +1241,13 @@ module DPoly where
     (eL : lookupLocal ctx x ≡ nothing) (eI : lookupImport (NamedCtx.imports ctx) x ≡ nothing)
     (eP : lookupPolyPrefix (NamedCtx.polys ctx) x ≡ just (schema , body , prefix)) (¬g : ¬ T.Ground schema)
     (as : T.ArrowSchema schema sd sc π′) (inc : T.CodVarsInDom sd sc)
-    (θ : String → Type) (eθ : T.substPoly θ schema ≡ (A T.⇒[ T.mk-kind T.Many π′ ] B)) (g : π′ ⊑π π)
+    (θ : String → Type) (eθ : T.substPoly θ schema ≡ (A T.⇒[ T.mk-kind T.Many π′ ] B)) (g : π′ ⊑π π) (ki : KindedInstance schema (A T.⇒[ T.mk-kind T.Many π′ ] B))
     → ∃[ eE ] ∃[ d ] ∃[ f ]
         proj₁ (given-poly ctx x A π err (lookupLocal ctx x) refl (lookupImport (NamedCtx.imports ctx) x) refl
                  (lookupPolyPrefix (NamedCtx.polys ctx) x) refl) ≡ success B Surface.zeroUsage eE d f
-  from-lookups ctx x A π err {schema = schema} eL eI eP ¬g as inc θ eθ g =
+  from-lookups ctx x A π err {schema = schema} eL eI eP ¬g as inc θ eθ g ki =
     let eG = ¬Ground-isGround-inj₂ schema ¬g
-        (eE , d , f , r) = from-arrow ctx x A π err eL eI eP (isGround-inj₂→¬Ground schema eG) as inc θ eθ g
+        (eE , d , f , r) = from-arrow ctx x A π err eL eI eP (isGround-inj₂→¬Ground schema eG) as inc θ eθ g ki
     in eE , d , f ,
        trans (cong proj₁ (gp-eq ctx x A π err nothing eL nothing eI (just _) eP))
          (trans (cong proj₁ (gg-eq ctx x A π err schema eL eI eP (inj₂ tt) eG)) r)
@@ -1941,7 +1944,7 @@ mutual
     infer-complete-RApp-spine f x eqAH refl (proj₂ (proj₂ (proj₂ (infer-complete dX)))) (proj₂ (proj₂ (proj₂ (given-complete dF))))
   spine-complete f x eqAH dX dF@(d-cata-void _) =
     infer-complete-RApp-spine f x eqAH refl (proj₂ (proj₂ (proj₂ (infer-complete dX)))) (proj₂ (proj₂ (proj₂ (given-complete dF))))
-  spine-complete {ctx} f x eqAH dX dF@(d-poly {x = y} ln li lp ¬g _ _ _ _ _) =
+  spine-complete {ctx} f x eqAH dX dF@(d-poly {x = y} ln li lp ¬g _ _ _ _) =
     infer-complete-RApp-spine f x eqAH (cong proj₁ (poly-head-fails ctx y ln li lp ¬g))
       (proj₂ (proj₂ (proj₂ (infer-complete dX)))) (proj₂ (proj₂ (proj₂ (given-complete dF))))
   spine-complete f x eqAH dX (d-infer {A′ = A′} w a ⊑-pure) =
@@ -1962,9 +1965,9 @@ mutual
       given-infer-complete (inferElabV ctx e) (proj₂ (proj₂ (proj₂ (infer-complete w)))) a g
   -- Plan 0.103 phase 2b: a polymorphic head does not infer, so it is given
   -- through the polymorphic fallback.
-  given-complete {ctx} (d-poly {x = x} {A = A} {π = π} ln li lp ¬g as inc (θ , eθ) g _)
+  given-complete {ctx} (d-poly {x = x} {A = A} {π = π} ln li lp ¬g as inc ki@(θ , eθ , _) g)
     rewrite poly-head-fails ctx x ln li lp ¬g =
-      DPoly.from-lookups ctx x A π (Once.TypeCheck.ElaborateProofs.UnboundVariable x) ln li lp ¬g as inc θ eθ g
+      DPoly.from-lookups ctx x A π (Once.TypeCheck.ElaborateProofs.UnboundVariable x) ln li lp ¬g as inc θ eθ g ki
   given-complete {ctx} (d-lam {x = x} {body = body} {A = A} {q' = q'} leq bd)
     with inferElabV (Once.TypeCheck.ElaborateProofs.extendNamedCtx ctx x A) body | infer-complete bd
   ... | success _ (_ Surface.Usage.∷ _) _ _ _ , _ | (_ , _ , _ , refl)
@@ -2156,12 +2159,10 @@ mutual
   check-complete (t-initial-app-check {arg = arg} {T = T} d) =
     let (_ , _ , _ , eqC) = check-complete d
     in completeness-gap-initial-app-check-eq arg T eqC
-  -- Plan 0.6.2 Phase 4: polymorphic schema-instantiation. Threads
-  -- the body's check-mode derivation through `check-complete`,
-  -- then composes with the lookup premises via the helper.
+  -- D243: a use at a kinded instance; the elaborator decides the instance.
   check-complete {ctx}
     (t-var-poly-instantiate {x = x} {T = T} {schema = schema}
-                            localN importN polyE eqG inst bodyD) =
+                            localN importN polyE eqG inst) =
     checkElab-fallback-RVar-poly {ctx} x T localN importN polyE
       (¬Ground-isGround-inj₂ schema eqG) inst
 

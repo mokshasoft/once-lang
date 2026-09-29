@@ -57,6 +57,14 @@ open import Once.TypeCheck.Classify using (NamedCtx; extendNamedCtx; lookupImpor
   GenView; classifyGen; gv-id; gv-fst; gv-snd; gv-terminal; gv-initial; gv-inl; gv-inr; gv-unit; gv-other)
 open import Once.TypeCheck.Elaborate using (success; failure; VerifiedInferResult; VerifiedCheckResult)
 import Once.TypeCheck.Elaborate as E
+-- D243: the polymorphic-reference agreement proofs.
+open import Once.Type.Rigid using (KindedInstance; kindedInstance?)
+open import Once.Type.Match using (Subst; instantiate)
+open import Once.Type.Instance using (instantiate-sound)
+open import Once.Type.Determined using (ArrowView; arrowSchema?; codVarsInDom?)
+open import Once.Type using (ArrowSchema; CodVarsInDom; substPoly)
+open import Once.TypeCheck.Classify using (lookupPolyPrefix)
+open import Once.Type.Sub using (_⊑π_)
 open import Once.IR as IR using (IR)
 open import Once.IRTy using (⌊_⌋; ⌊⟧T-commute)
 open import Once.IRTy.WF using (wf-⌊⌋)
@@ -261,21 +269,123 @@ CheckAgreeV ctx e T {Ψ = Ψ} {se = se} {w = w} _ =
 -- Only check-mode's
 -- non-`t-embed` specials (RLam/RVar-bbc/RPair-product/RInt-vlift/literals)
 -- remain as a postulate.
-postulate
-  -- The RVar residual: ONLY `poly` (rides the `bbc-other-poly-witness` gap). The 6
-  -- bare builtins (id/fst/snd/terminal/initial/inl/inr) are now DISCHARGED below.
-  check-agreeV-RVar-poly-todo : ∀ (ctx : NamedCtx) (x : String) (T : Type) {fe snd Ψ se d f w}
-    → E.checkElabV-RVar-bbc-other-aux ctx x T (failure fe , snd) ≡ (success Ψ se d f , w)
-    → ∀ dγ → SD.⟦ se ⟧ˢ fmt σ dγ ≡ SD.⟦ realize w ⟧ˢ fmt σ dγ
-  -- Plan 0.103 phase 2b: the DOMAIN-GIVEN twin (`d-poly`). Same residual: the
-  -- reference elaboration inlines the body's per-use derivation, which only
-  -- plan 0.103 phase 6 establishes (then both are the definition variable).
-  given-agreeV-RVar-poly-todo : ∀ (ctx : NamedCtx) (x : String) (A : Type) (π : Purity) {fe snd B Ψ se d f w}
-    → E.given-var ctx x A π (failure fe , snd) ≡ (success B Ψ se d f , w)
-    → ∀ dγ → SD.⟦ se ⟧ˢ fmt σ dγ ≡ SD.⟦ realize-d w ⟧ˢ fmt σ dγ
-  -- (Plan 0.55 D#2: `check-RApp-todo` ELIMINATED — all RApp check views discharged
-  -- by explicit `agree-check-RApp` clauses; the residual is the narrow
-  -- `agree-cata-denotes` denotational leaf. See below.)
+-- (Plan 0.55 D#2: `check-RApp-todo` ELIMINATED — all RApp check views discharged
+-- by explicit `agree-check-RApp` clauses; the residual is the narrow
+-- `agree-cata-denotes` denotational leaf. See below.)
+
+------------------------------------------------------------------------
+-- D243 (plan 0.103 phase 6d): a polymorphic reference agrees, in both modes.
+-- The elaborator emits the definition variable `poly x T` and so does
+-- `realize`: the body is no longer spliced per use, so each success leaf is
+-- `refl` in any definitions environment and every other branch fails. (These
+-- were the phase-6 residuals `check-agreeV-RVar-poly-todo` and
+-- `given-agreeV-RVar-poly-todo`.)
+------------------------------------------------------------------------
+
+agree-poly-inst : ∀ (ctx : NamedCtx) (x : String) (T : Type) err {schema body prefix} eL eI
+  (eP : lookupPolyPrefix (NamedCtx.polys ctx) x ≡ just (schema , body , prefix)) ¬g
+  (dk : Dec (KindedInstance schema T)) {Ψ se d f w}
+  → E.checkElabV-RVar-poly-inst-aux ctx x T err eL eI eP ¬g dk ≡ (success Ψ se d f , w)
+  → ∀ dγ → SD.⟦ se ⟧ˢ fmt σ dγ ≡ SD.⟦ realize w ⟧ˢ fmt σ dγ
+agree-poly-inst ctx x T err eL eI eP ¬g (no _) ()
+agree-poly-inst ctx x T err eL eI eP ¬g (yes _) refl dγ = refl
+
+agree-poly-ground : ∀ (ctx : NamedCtx) (x : String) (T : Type) err (schema : PolyType) {body prefix} eL eI
+  (eP : lookupPolyPrefix (NamedCtx.polys ctx) x ≡ just (schema , body , prefix))
+  (ig : Ground schema ⊎ ⊤) (eG : isGround schema ≡ ig) {Ψ se d f w}
+  → E.checkElabV-RVar-poly-ground-aux ctx x T err schema eL eI eP ig eG ≡ (success Ψ se d f , w)
+  → ∀ dγ → SD.⟦ se ⟧ˢ fmt σ dγ ≡ SD.⟦ realize w ⟧ˢ fmt σ dγ
+agree-poly-ground ctx x T err schema eL eI eP (inj₁ _) _ ()
+agree-poly-ground ctx x T err schema eL eI eP (inj₂ tt) eG eq =
+  agree-poly-inst ctx x T err eL eI eP (E.isGround-inj₂→¬Ground schema eG) (kindedInstance? schema T) eq
+
+agree-poly-check : ∀ (ctx : NamedCtx) (x : String) (T : Type) err ll eL li eI lp eP {Ψ se d f w}
+  → E.checkElabV-RVar-poly-check-aux ctx x T err ll eL li eI lp eP ≡ (success Ψ se d f , w)
+  → ∀ dγ → SD.⟦ se ⟧ˢ fmt σ dγ ≡ SD.⟦ realize w ⟧ˢ fmt σ dγ
+agree-poly-check ctx x T err (just _) _ _ _ _ _ ()
+agree-poly-check ctx x T err nothing _ (just _) _ _ _ ()
+agree-poly-check ctx x T err nothing _ nothing _ nothing _ ()
+agree-poly-check ctx x T err nothing eL nothing eI (just (schema , body , prefix)) eP eq =
+  agree-poly-ground ctx x T err schema eL eI eP (isGround schema) refl eq
+
+check-agreeV-RVar-poly : ∀ (ctx : NamedCtx) (x : String) (T : Type) {fe snd Ψ se d f w}
+  → E.checkElabV-RVar-bbc-other-aux ctx x T (failure fe , snd) ≡ (success Ψ se d f , w)
+  → ∀ dγ → SD.⟦ se ⟧ˢ fmt σ dγ ≡ SD.⟦ realize w ⟧ˢ fmt σ dγ
+check-agreeV-RVar-poly ctx x T {fe} eq =
+  agree-poly-check ctx x T fe (lookupLocal ctx x) refl (lookupImport (NamedCtx.imports ctx) x) refl
+    (lookupPolyPrefix (NamedCtx.polys ctx) x) refl eq
+
+-- The domain-given twin (`d-poly`), stage by stage.
+given-poly-k-agree : ∀ (ctx : NamedCtx) (x : String) (A B : Type) (π π′ : Purity) err
+  {schema sd sc body prefix} eL eI eP ¬g (as : ArrowSchema schema sd sc π′) (inc : CodVarsInDom sd sc) (g : π′ ⊑π π)
+  (dk : Dec (KindedInstance schema (A ⇒[ mk-kind Many π′ ] B))) {B′ Ψ se d f w}
+  → E.given-poly-k ctx x A B π π′ err {schema = schema} {sd = sd} {sc = sc} {body = body} {prefix = prefix}
+      eL eI eP ¬g as inc g dk ≡ (success B′ Ψ se d f , w)
+  → ∀ dγ → SD.⟦ se ⟧ˢ fmt σ dγ ≡ SD.⟦ realize-d w ⟧ˢ fmt σ dγ
+given-poly-k-agree ctx x A B π π′ err eL eI eP ¬g as inc g (no _) ()
+given-poly-k-agree ctx x A B π π′ err eL eI eP ¬g as inc g (yes _) refl dγ = refl
+
+given-poly-π-agree : ∀ (ctx : NamedCtx) (x : String) (A : Type) (π : Purity) err
+  {schema sd sc π′ body prefix} eL eI eP ¬g (as : ArrowSchema schema sd sc π′) (inc : CodVarsInDom sd sc) (θ : String → Type) (eθ : substPoly θ sd ≡ A)
+  (dg : Dec (π′ ⊑π π)) {B′ Ψ se d f w}
+  → E.given-poly-π ctx x A π err {schema = schema} {sd = sd} {sc = sc} {π′ = π′} {body = body} {prefix = prefix}
+      eL eI eP ¬g as inc θ eθ dg ≡ (success B′ Ψ se d f , w)
+  → ∀ dγ → SD.⟦ se ⟧ˢ fmt σ dγ ≡ SD.⟦ realize-d w ⟧ˢ fmt σ dγ
+given-poly-π-agree ctx x A π err eL eI eP ¬g as inc θ eθ (no _) ()
+given-poly-π-agree ctx x A π err {schema = schema} {sc = sc} {π′ = π′} eL eI eP ¬g as inc θ eθ (yes g) eq =
+  given-poly-k-agree ctx x A (substPoly θ sc) π π′ err eL eI eP ¬g as inc g
+    (kindedInstance? schema (A ⇒[ mk-kind Many π′ ] substPoly θ sc)) eq
+
+given-poly-m-agree : ∀ (ctx : NamedCtx) (x : String) (A : Type) (π : Purity) err
+  {schema sd sc π′ body prefix} eL eI eP ¬g (as : ArrowSchema schema sd sc π′) (inc : CodVarsInDom sd sc)
+  (mσ : Maybe Subst) (eS : instantiate sd A ≡ mσ) {B′ Ψ se d f w}
+  → E.given-poly-m ctx x A π err {body = body} {prefix = prefix} eL eI eP ¬g as inc mσ eS ≡ (success B′ Ψ se d f , w)
+  → ∀ dγ → SD.⟦ se ⟧ˢ fmt σ dγ ≡ SD.⟦ realize-d w ⟧ˢ fmt σ dγ
+given-poly-m-agree ctx x A π err eL eI eP ¬g as inc nothing _ ()
+given-poly-m-agree ctx x A π err {sd = sd} {π′ = π′} eL eI eP ¬g as inc (just _) eS eq =
+  given-poly-π-agree ctx x A π err eL eI eP ¬g as inc
+    (Data.Product.proj₁ (instantiate-sound sd A eS)) (Data.Product.proj₂ (instantiate-sound sd A eS)) (π′ ⊑π? π) eq
+
+given-poly-d-agree : ∀ (ctx : NamedCtx) (x : String) (A : Type) (π : Purity) err
+  {schema sd sc π′ body prefix} eL eI eP ¬g (as : ArrowSchema schema sd sc π′)
+  (dc : Dec (CodVarsInDom sd sc)) {B′ Ψ se d f w}
+  → E.given-poly-d ctx x A π err {body = body} {prefix = prefix} eL eI eP ¬g as dc ≡ (success B′ Ψ se d f , w)
+  → ∀ dγ → SD.⟦ se ⟧ˢ fmt σ dγ ≡ SD.⟦ realize-d w ⟧ˢ fmt σ dγ
+given-poly-d-agree ctx x A π err eL eI eP ¬g as (no _) ()
+given-poly-d-agree ctx x A π err {sd = sd} eL eI eP ¬g as (yes inc) eq =
+  given-poly-m-agree ctx x A π err eL eI eP ¬g as inc (instantiate sd A) refl eq
+
+given-poly-a-agree : ∀ (ctx : NamedCtx) (x : String) (A : Type) (π : Purity) err
+  {schema body prefix} eL eI eP ¬g (mv : Maybe (ArrowView schema)) {B′ Ψ se d f w}
+  → E.given-poly-a ctx x A π err {schema = schema} {body = body} {prefix = prefix} eL eI eP ¬g mv ≡ (success B′ Ψ se d f , w)
+  → ∀ dγ → SD.⟦ se ⟧ˢ fmt σ dγ ≡ SD.⟦ realize-d w ⟧ˢ fmt σ dγ
+given-poly-a-agree ctx x A π err eL eI eP ¬g nothing ()
+given-poly-a-agree ctx x A π err eL eI eP ¬g (just (sd , sc , π′ , as)) eq =
+  given-poly-d-agree ctx x A π err eL eI eP ¬g as (codVarsInDom? sd sc) eq
+
+given-poly-g-agree : ∀ (ctx : NamedCtx) (x : String) (A : Type) (π : Purity) err (schema : PolyType)
+  {body prefix} eL eI eP (ig : Ground schema ⊎ ⊤) (eG : isGround schema ≡ ig) {B′ Ψ se d f w}
+  → E.given-poly-g ctx x A π err schema {body = body} {prefix = prefix} eL eI eP ig eG ≡ (success B′ Ψ se d f , w)
+  → ∀ dγ → SD.⟦ se ⟧ˢ fmt σ dγ ≡ SD.⟦ realize-d w ⟧ˢ fmt σ dγ
+given-poly-g-agree ctx x A π err schema eL eI eP (inj₁ _) _ ()
+given-poly-g-agree ctx x A π err schema eL eI eP (inj₂ tt) eG eq =
+  given-poly-a-agree ctx x A π err eL eI eP (E.isGround-inj₂→¬Ground schema eG) (arrowSchema? schema) eq
+
+given-poly-agree : ∀ (ctx : NamedCtx) (x : String) (A : Type) (π : Purity) err ll eL li eI lp eP {B′ Ψ se d f w}
+  → E.given-poly ctx x A π err ll eL li eI lp eP ≡ (success B′ Ψ se d f , w)
+  → ∀ dγ → SD.⟦ se ⟧ˢ fmt σ dγ ≡ SD.⟦ realize-d w ⟧ˢ fmt σ dγ
+given-poly-agree ctx x A π err (just _) _ _ _ _ _ ()
+given-poly-agree ctx x A π err nothing _ (just _) _ _ _ ()
+given-poly-agree ctx x A π err nothing _ nothing _ nothing _ ()
+given-poly-agree ctx x A π err nothing eL nothing eI (just (schema , body , prefix)) eP eq =
+  given-poly-g-agree ctx x A π err schema eL eI eP (isGround schema) refl eq
+
+given-agreeV-RVar-poly : ∀ (ctx : NamedCtx) (x : String) (A : Type) (π : Purity) {fe snd B Ψ se d f w}
+  → E.given-var ctx x A π (failure fe , snd) ≡ (success B Ψ se d f , w)
+  → ∀ dγ → SD.⟦ se ⟧ˢ fmt σ dγ ≡ SD.⟦ realize-d w ⟧ˢ fmt σ dγ
+given-agreeV-RVar-poly ctx x A π {fe} eq =
+  given-poly-agree ctx x A π fe (lookupLocal ctx x) refl (lookupImport (NamedCtx.imports ctx) x) refl
+    (lookupPolyPrefix (NamedCtx.polys ctx) x) refl eq
 
 -- Plan 0.103 phase 1c: the INFER-mode reference agreement is a PROOF. A
 -- ground telescope reference is a definition variable on both sides — the
@@ -2173,7 +2283,7 @@ agree-given-var : ∀ (ctx : NamedCtx) (x : String) (A : Type) (π : Purity)
        → ∀ dγ → SD.⟦ eE' ⟧ˢ fmt σ dγ ≡ SD.⟦ realize-infer w' ⟧ˢ fmt σ dγ)
   → ∀ (dγ : Env ctx Ψ) → SD.⟦ se ⟧ˢ fmt σ dγ ≡ SD.⟦ realize-d w ⟧ˢ fmt σ dγ
 agree-given-var ctx x A π r@(success _ _ _ _ _ , _) eq rIH dγ = agree-given-infer A π r eq rIH dγ
-agree-given-var ctx x A π (failure fe , snd) eq rIH dγ = given-agreeV-RVar-poly-todo ctx x A π eq dγ
+agree-given-var ctx x A π (failure fe , snd) eq rIH dγ = given-agreeV-RVar-poly ctx x A π eq dγ
 
 -- `d-cata`: the algebra synthesizes `⟦ F ⟧T A ⇒ A`; the fold node is the same.
 agree-given-cata : ∀ (ctx : NamedCtx) (alg : RawExpr) (F : Functor) (π : Purity) (wfF : WellFormedF F)
@@ -2691,7 +2801,7 @@ mutual
             cong (fmapT ⟦ p ⟧<:) (infer-agreeV ctx (Raw.RVar x) (rec (infer<check (Raw.RVar x))) ieq dγ)
   ... | no _ | ()
   check-agreeV ctx (Raw.RVar x) T (acc rec) eq dγ
-    | failure fe , snd | eq' = check-agreeV-RVar-poly-todo ctx x T eq' dγ
+    | failure fe , snd | eq' = check-agreeV-RVar-poly ctx x T eq' dγ
 
 
   -- Plan 0.94 §10: the domain-given mode, at the check measure (it synthesizes
