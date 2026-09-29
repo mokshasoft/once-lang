@@ -22,7 +22,7 @@ open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax hiding ( Fin )
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Metatheory.RedCong
-  using ( ⟶*-trans; ⟶*-appˡ; ⟶*-appʳ; ⟶*-pairˡ; ⟶*-pairʳ; ⟶*-fst; ⟶*-snd; ⟶*-con; ⟶*-ielimⁱ; ⟶*-dihᶜ; ⟶*-dihᵖ )
+  using ( ⟶*-trans; ⟶*-appˡ; ⟶*-appʳ; ⟶*-pairˡ; ⟶*-pairʳ; ⟶*-fst; ⟶*-snd; ⟶*-con; ⟶*-ielimⁱ; ⟶*-ielimᵗ; ⟶*-dihᶜ; ⟶*-dihᵖ )
 open import DirectedHoTT.Metatheory.TySub using ( wk-cancel-tm )
 open import DirectedHoTT.Metatheory.SubjectReductionBase using () renaming ( wk-sub to wkS )
 open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_; Nth; nth-z; nth-s; tag; conₗ; selF; selF-β; nth-sub; subC )
@@ -256,6 +256,31 @@ module TravRed {sg : Sig n} (ok : SigOK n sg) (κ : Kit n sg) (vok : VarsAt sg (
   trav-var : {s c k : ℕ} {shs : Shapes c} {d p e f : RTm Γ} → NthG sg s shs → NthSh shs k vʰ →
              trav s d (conₗ k p) e f ⟶* app (app NODE e) (app f (fst p))
   trav-var ng nh = trav-node ng nh
+
+  ----------------------------------------------------------------------
+  -- 3½. ★ AT A CONCRETE PAYLOAD, field by field: what an agreement proof
+  --     consumes (a recursive field is its IH, a natural is copied).
+  ----------------------------------------------------------------------
+
+  trav-t-mono : {s : ℕ} {d t t' e f : RTm Γ} → t ⟶* t' → trav s d t e f ⟶* trav s d t' e f
+  trav-t-mono r = ⟶*-appˡ (⟶*-appˡ (⟶*-ielimᵗ r))
+
+  tpayT-mono : (sh : Shape) {p p' e f d : RTm Γ} → p ⟶* p' → tpayT sh p e f d ⟶* tpayT sh p' e f d
+  tpayT-mono []ʰ             r = done
+  tpayT-mono (rec s k ∷ʰ sh) r = ⟶*-trans (⟶*-pairˡ (trav-t-mono (⟶*-fst r))) (⟶*-pairʳ (tpayT-mono sh (⟶*-snd r)))
+  tpayT-mono (nat ∷ʰ sh)     r = ⟶*-trans (⟶*-pairˡ (⟶*-fst r)) (⟶*-pairʳ (tpayT-mono sh (⟶*-snd r)))
+  tpayT-mono vʰ              r = done
+
+  fld-rec : {s k : ℕ} {sh : Shape} {a a' r r' e f d : RTm Γ} →
+            trav s (nsucs k d) a (nsucs k e) (LIFTS k e d f) ⟶* a' → tpayT sh r e f d ⟶* r' →
+            tpayT (rec s k ∷ʰ sh) (pair a r) e f d ⟶* pair a' r'
+  fld-rec {sh = sh} {a = a} {r = r} ih tl =
+    ⟶*-trans (⟶*-pairˡ (⟶*-trans (trav-t-mono (step (βfst a r) done)) ih))
+             (⟶*-pairʳ (⟶*-trans (tpayT-mono sh (step (βsnd a r) done)) tl))
+
+  fld-nat : {sh : Shape} {a r r' e f d : RTm Γ} → tpayT sh r e f d ⟶* r' → tpayT (nat ∷ʰ sh) (pair a r) e f d ⟶* pair a r'
+  fld-nat {sh = sh} {a = a} {r = r} tl =
+    ⟶*-trans (⟶*-pairˡ (step (βfst a r) done)) (⟶*-pairʳ (⟶*-trans (tpayT-mono sh (step (βsnd a r) done)) tl))
 
 ------------------------------------------------------------------------
 -- 4. ★★ ENVIRONMENTS COMPUTE: `(f , u)` at zero is `u`, at `fsuc y` it is

@@ -333,9 +333,210 @@ open import DirectedHoTT.Examples.Knot.Sig
             k += 1
     return "\n".join(L)
 
+# ------------------------------------------------------------ agreement (PLAN-FAITHFUL F2)
+def agree_cases(rows, fn, TR, lifts, var_case):
+    """the traversal at a quoted node reduces to the quotation of the operated
+    term: `trav-con`, then per field the IH (a recursive field, the environment
+    lifted under its binders) or a copy (a numeral)"""
+    L = []
+    FN = {"RTy": fn + "-ty", "RTm": fn + "-tm"}
+    def nthsh(k):
+        t = "nthʰ-z"
+        for _ in range(k): t = "(nthʰ-s %s)" % t
+        return t
+    for data in ("RTy", "RTm"):
+        srt = SORTS[data]
+        ng = "nthᵍ-z" if srt == 0 else "(nthᵍ-s nthᵍ-z)"
+        k = 0
+        for d, name, fs in rows:
+            if d != data: continue
+            args = ["a%d" % j for j in range(len(fs))]
+            pat = "(%s)" % " ".join([name] + args) if args else name
+            if fs == [("var",)]:
+                L.append("%s %s r = %s" % (FN[data], pat, var_case(ng, nthsh(k))))
+            elif not fs:
+                L.append("%s %s r = %s.trav-con %s %s %s.f-nil" % (FN[data], pat, TR, ng, nthsh(k), TR))
+            else:
+                chain = "done"
+                for j in reversed(range(len(fs))):
+                    f = fs[j]
+                    rest = shape(fs[j + 1:])
+                    pins = "{sh = %s} {e = dep Δ} {f = f} {d = dep Γ}" % rest
+                    if f[0] == "nat":
+                        chain = "(%s.fld-nat %s %s)" % (TR, pins, chain)
+                    else:
+                        ih = "(%s %s (%s %d r))" % (FN["RTy" if f[1] == 0 else "RTm"], args[j], lifts, f[2])
+                        chain = "(%s.fld-rec {s = %d} {k = %d} %s %s %s)" % (TR, f[1], f[2], pins, ih, chain)
+                L.append("%s {Γ} {Δ} %s {f = f} r =" % (FN[data], pat))
+                L.append("  ⟶*-trans (%s.trav-con %s %s %s.f-cons) (⟶*-con (⟶*-pairʳ %s))" % (TR, ng, nthsh(k), TR, chain))
+            k += 1
+        L.append("")
+    return L
+
+AGREE_HDR = """{-# OPTIONS --safe #-}
+module DirectedHoTT.Examples.Knot.RenAgree where
+
+open import normalizer.Syntax.Types using ( _≡_; refl; cong )
+open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
+open import DirectedHoTT.Spec.Syntax
+open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
+open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-trans; ⟶*-appʳ; ⟶*-pairˡ; ⟶*-pairʳ; ⟶*-con )
+open import DirectedHoTT.Lib.FinFam using ( ffz; ffs )
+open import DirectedHoTT.Lib.Syn
+open import DirectedHoTT.Lib.SynRed using ( _∙ⁿ_ )
+open import DirectedHoTT.Lib.SynTrav using ( module Trav )
+open import DirectedHoTT.Lib.SynTravRed
+open import DirectedHoTT.Examples.Knot.Sig
+open import DirectedHoTT.Examples.Knot.Terms
+open import DirectedHoTT.Examples.Knot.Ren
+
+private
+  variable
+    Γ Δ Θ : Cx
+
+open Trav KOK renKit using ( LIFTS )
+module TR = TravRed KOK renKit KVars (λ σ → refl) (λ σ → refl)
+module ER = EnvRed KOK renKit (λ σ → refl) (λ σ → refl)
+
+private
+  subst₂ : {A B : Set} (P : A → B → Set) {a a' : A} {b b' : B} → a ≡ a' → b ≡ b' → P a b → P a' b'
+  subst₂ P refl refl x = x
+
+------------------------------------------------------------------------
+-- ★ an environment REPRESENTS a renaming: at every quoted variable it
+--   reduces to the quoted image
+------------------------------------------------------------------------
+
+RepR : Ren Γ Δ → RTm Θ → Set
+RepR {Γ} ρ f = (x : Var Γ) → app f (quoteVar x) ⟶* quoteVar (ρ x)
+
+ffs-mono : {v v' : RTm Θ} → v ⟶* v' → ffs v ⟶* ffs v'
+ffs-mono r = ⟶*-con (⟶*-pairʳ (⟶*-pairˡ r))
+
+-- …and the lifted environment the lifted renaming
+repR-lift : {ρ : Ren Γ Δ} {f : RTm Θ} → RepR ρ f → RepR (extR ρ) (ER.LIFT· (dep Δ) (dep Γ) f)
+repR-lift {Δ = Δ} r vz     = ⟶*-trans ER.lift-z (step (β ffz (dep Δ)) done)
+repR-lift         r (vs x) = ⟶*-trans ER.lift-s (step (ξ-appˡ (β _ _)) (step (β _ _) (ffs-mono (r x))))
+
+extRⁿ : (k : ℕ) → Ren Γ Δ → Ren (Γ ∙ⁿ k) (Δ ∙ⁿ k)
+extRⁿ zero    ρ = ρ
+extRⁿ (suc k) ρ = extR (extRⁿ k ρ)
+
+-- the depth of `k` more binders
+dep-∙ⁿ : (Γ : Cx) (k : ℕ) {Θ : Cx} → dep (Γ ∙ⁿ k) {Θ} ≡ nsucs k (dep Γ)
+dep-∙ⁿ Γ zero    = refl
+dep-∙ⁿ Γ (suc k) = cong nsuc (dep-∙ⁿ Γ k)
+
+liftsR : (k : ℕ) {ρ : Ren Γ Δ} {f : RTm Θ} → RepR ρ f → RepR (extRⁿ k ρ) (LIFTS k (dep Δ) (dep Γ) f)
+liftsR zero    r = r
+liftsR {Γ} {Δ} (suc k) {ρ} {f} r =
+  subst₂ (λ e d → RepR (extRⁿ (suc k) ρ) (ER.LIFT· e d (LIFTS k (dep Δ) (dep Γ) f))) (dep-∙ⁿ Δ k) (dep-∙ⁿ Γ k) (repR-lift (liftsR k r))
+
+------------------------------------------------------------------------
+-- ★★★ RENAMING AGREES: the Knot's traversal at a quoted term, under an
+--   environment representing ρ, reduces to the quotation of `renTm ρ t`
+------------------------------------------------------------------------
+
+ren-agree-ty : (A : RTy Γ) {ρ : Ren Γ Δ} {f : RTm Θ} → RepR ρ f → trav 0 (dep Γ) (quoteTy A) (dep Δ) f ⟶* quoteTy (renTy ρ A)
+ren-agree-tm : (t : RTm Γ) {ρ : Ren Γ Δ} {f : RTm Θ} → RepR ρ f → trav 1 (dep Γ) (quoteTm t) (dep Δ) f ⟶* quoteTm (renTm ρ t)
+
+"""
+
+def gen_renagree(rows):
+    var = lambda ng, nh: ("⟶*-trans (TR.trav-var %s %s) (step (ξ-appˡ (β _ _)) (step (β _ _) "
+                          "(⟶*-con (⟶*-pairʳ (⟶*-pairˡ (⟶*-trans (⟶*-appʳ (step (βfst _ _) done)) (r a0)))))))") % (ng, nh)
+    return "\n".join([HDR.replace("The kernel's syntax as a SIGNATURE of `Lib/Syn` (sorts 0 RTy · 1 RTm,\n-- index (sort, depth), fibred by sort — D075), rows parsed out of\n-- `Spec/Syntax.agda`.  The encoding is documented in the generator's header.",
+                                   "RENAMING AGREES (PLAN-FAITHFUL F2): the Knot's renaming traversal at a\n-- quoted term reduces to the quotation of the renamed term, one case per\n-- former of `Spec/Syntax` (`Lib/SynTravRed` does the work)."),
+                       AGREE_HDR] + agree_cases(rows, "ren-agree", "TR", "liftsR", var))
+
+SUBAGREE_HDR = """{-# OPTIONS --safe #-}
+module DirectedHoTT.Examples.Knot.SubAgree where
+
+open import normalizer.Syntax.Types using ( _≡_; refl; cong; sym; subst )
+open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
+open import DirectedHoTT.Spec.Syntax
+open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
+open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-trans; ⟶*-appʳ; ⟶*-pairˡ; ⟶*-pairʳ; ⟶*-con )
+open import DirectedHoTT.Lib.FinFam using ( ffz; ffs )
+open import DirectedHoTT.Lib.Syn
+open import DirectedHoTT.Lib.SynRed using ( _∙ⁿ_ )
+open import DirectedHoTT.Lib.SynTrav using ( module Trav )
+open import DirectedHoTT.Lib.SynTravRed
+open import DirectedHoTT.Examples.Knot.Sig
+open import DirectedHoTT.Examples.Knot.Terms
+open import DirectedHoTT.Examples.Knot.Sub
+import DirectedHoTT.Examples.Knot.Ren as KR
+open import DirectedHoTT.Examples.Knot.RenAgree using ( RepR; ren-agree-tm; dep-∙ⁿ )
+
+private
+  variable
+    Γ Δ Θ : Cx
+
+open Trav KOK subKit using ( LIFTS )
+module TS = TravRed KOK subKit KR.KVars (λ σ → refl) (λ σ → refl)
+module ES = EnvRed KOK subKit (λ σ → refl) (λ σ → refl)
+module TRR = TravRed KOK KR.renKit KR.KVars (λ σ → refl) (λ σ → refl)
+
+private
+  subst₂ : {A B : Set} (P : A → B → Set) {a a' : A} {b b' : B} → a ≡ a' → b ≡ b' → P a b → P a' b'
+  subst₂ P refl refl x = x
+
+------------------------------------------------------------------------
+-- ★ an environment REPRESENTS a substitution
+------------------------------------------------------------------------
+
+RepS : Sub Γ Δ → RTm Θ → Set
+RepS {Γ} σ f = (x : Var Γ) → app f (quoteVar x) ⟶* quoteTm (σ x)
+
+-- a depth is CLOSED: a weakening of it cancels
+dep-wk : (v : RTm Θ) (Δ : Cx) → subTm (single v) (renTm vs (dep Δ {Θ})) ≡ dep Δ
+dep-wk v ε       = refl
+dep-wk v (Δ ∙)   = cong nsuc (dep-wk v Δ)
+
+-- the weakening environment represents `vs`
+repR-wk : RepR {Γ} vs (KR.WKρ {Θ})
+repR-wk x = step (β _ _) done
+
+-- …and the lifted environment the lifted substitution: at the fresh
+--   variable its node, at an old one the old value WEAKENED — which is
+--   renaming agreement at `vs`
+repS-lift : {σ : Sub Γ Δ} {f : RTm Θ} → RepS σ f → RepS (extS σ) (ES.LIFT· (dep Δ) (dep Γ) f)
+repS-lift {Δ = Δ} r vz     = ⟶*-trans ES.lift-z (step (β _ (dep Δ)) done)
+repS-lift {Δ = Δ} {σ = σ} {f = f} r (vs x) =
+  ⟶*-trans ES.lift-s (step (ξ-appˡ (β _ _)) (step (β _ _)
+    (subst (λ z → KR.trav 1 z (app f (quoteVar x)) (nsuc z) KR.WKρ ⟶* quoteTm (renTm vs (σ x)))
+           (sym (dep-wk (app f (quoteVar x)) Δ))
+           (⟶*-trans (TRR.trav-t-mono (r x)) (ren-agree-tm (σ x) repR-wk)))))
+
+extSⁿ : (k : ℕ) → Sub Γ Δ → Sub (Γ ∙ⁿ k) (Δ ∙ⁿ k)
+extSⁿ zero    σ = σ
+extSⁿ (suc k) σ = extS (extSⁿ k σ)
+
+liftsS : (k : ℕ) {σ : Sub Γ Δ} {f : RTm Θ} → RepS σ f → RepS (extSⁿ k σ) (LIFTS k (dep Δ) (dep Γ) f)
+liftsS zero    r = r
+liftsS {Γ} {Δ} (suc k) {σ} {f} r =
+  subst₂ (λ e d → RepS (extSⁿ (suc k) σ) (ES.LIFT· e d (LIFTS k (dep Δ) (dep Γ) f))) (dep-∙ⁿ Δ k) (dep-∙ⁿ Γ k) (repS-lift (liftsS k r))
+
+------------------------------------------------------------------------
+-- ★★★ SUBSTITUTION AGREES
+------------------------------------------------------------------------
+
+sub-agree-ty : (A : RTy Γ) {σ : Sub Γ Δ} {f : RTm Θ} → RepS σ f → trav 0 (dep Γ) (quoteTy A) (dep Δ) f ⟶* quoteTy (subTy σ A)
+sub-agree-tm : (t : RTm Γ) {σ : Sub Γ Δ} {f : RTm Θ} → RepS σ f → trav 1 (dep Γ) (quoteTm t) (dep Δ) f ⟶* quoteTm (subTm σ t)
+
+"""
+
+def gen_subagree(rows):
+    var = lambda ng, nh: ("⟶*-trans (TS.trav-var %s %s) (step (ξ-appˡ (β _ _)) (step (β _ _) "
+                          "(⟶*-trans (⟶*-appʳ (step (βfst _ _) done)) (r a0))))") % (ng, nh)
+    return "\n".join([HDR.replace("The kernel's syntax as a SIGNATURE of `Lib/Syn` (sorts 0 RTy · 1 RTm,\n-- index (sort, depth), fibred by sort — D075), rows parsed out of\n-- `Spec/Syntax.agda`.  The encoding is documented in the generator's header.",
+                                   "SUBSTITUTION AGREES (PLAN-FAITHFUL F2): the Knot's substitution traversal\n-- at a quoted term reduces to the quotation of the substituted term, one\n-- case per former; lifting under a binder is renaming agreement at `vs`."),
+                       SUBAGREE_HDR] + agree_cases(rows, "sub-agree", "TS", "liftsS", var))
+
 def main():
     rows = parse()
-    outs = {"Sig.agda": gen_sig(rows), "Terms.agda": gen_terms(rows), "Ctors.agda": gen_ctors(rows)}
+    outs = {"Sig.agda": gen_sig(rows), "Terms.agda": gen_terms(rows), "Ctors.agda": gen_ctors(rows),
+            "RenAgree.agda": gen_renagree(rows), "SubAgree.agda": gen_subagree(rows)}
     check = "--check" in sys.argv
     os.makedirs(OUTDIR, exist_ok=True)
     stale = []
