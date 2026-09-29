@@ -28,3 +28,4 @@ import DirectedHoTT.Examples.Knot.Conv
 import DirectedHoTT.Examples.Knot.ConvCon
 import DirectedHoTT.Examples.Knot.Ctors
 import DirectedHoTT.Examples.Knot.Ctx
+import DirectedHoTT.Examples.Knot.GenHelpers

@@ -169,7 +169,10 @@ CongMacro → Vec, Scoped, ScopedDepth → continue stage 4.
 - ✅ D079: `scopeAt` over Tel is NOT built. No level-comparing fold
   remains, and Shapes cannot express a closed-index child.
   `ScopeHazard` stays retired.
-- ⬜ Remaining: Stage 6 metrics.
+- ✅ Stage 6 metrics (`HANDOFF-2026-09-29.md` §1). The Knot went from 201
+  modules / 74 494 lines / 12 474 signatures to 33 / 24 095 (20 350
+  generated) / 5 080. The generators went from 7 303 lines to 2 426. Cold
+  sweep ≈ 81 min over two runs, not a clean number.
 
 ## Stages (each ends GREEN on its own branch; straight-line history)
 
