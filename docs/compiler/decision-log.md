@@ -15793,3 +15793,32 @@ is a rigid neutral, and a use is application. `rigid k i` is the non-dependent s
 that context variable: its index is the parameter's position in the definition's telescope
 Δ, and its kind says which universe it ranges over (`base` ⊂ `any`). When OCP-0009 lands,
 the constants become genuine context variables and nothing needs translating.
+
+## D244 — INTERNAL CALLS MEAN THEIR CALLEE: THE IR IS A PROGRAM (PLAN 0.103 PHASE 6a′) (2026-09-29)
+
+**Relates**: D061, D064, D071, D239, D241, [[generic-semM]] (the Void inconsistency).
+
+**Finding.** A call to a monomorphic user function has never meant the function:
+* the resolver turns it into `closure f`, and SD and the IR lower it to
+  `SigOp (internal-info f)`;
+* its contract is `pureV (generic-semM "f")`: opaque, claimed pure and eventless, and
+  inconsistent at `Void`;
+* the backend covers it only by `obs-correct-sigop-rest`.
+
+The core (D239) gives `ref d` the definition's body. No bridging postulate is consistent: it
+would pin one `generic-semM "f"` across every module.
+
+**Decision (user).** Option (b), chosen on the final architecture and not on edit cost.
+* The IR's semantic object is a PROGRAM: the compiled function table plus `main`. That is
+  exactly the shape Once's codegen emits (one section per function, D064's direct calls) and
+  the IR twin of the core `Program`.
+* `evalᴰ` reads a call environment: an internal call means the callee's compiled IR, evaluated
+  in the environment of the functions declared before it. It is well-founded because there is
+  no recursion (D241).
+* SD reads the definitions environment at `closure f`.
+* The backend obligation for an internal call is local: `call once_f` runs table entry `f`.
+  Each function is proved correct given its callees.
+
+Rejected: (a) a call node carrying the callee's IR, which makes the IR a tree of inlined bodies
+while codegen emits a table, and needs a linking invariant; (c) linking in the meaning only,
+which is non-modular and whole-program.
