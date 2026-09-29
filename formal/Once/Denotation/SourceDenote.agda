@@ -47,6 +47,7 @@ open import Once.Target.Arch using (TargetNum; int-bits; float-format)
 open import Once.Denotation.TraceDenote using (events-F)
 open import Once.Denotation.Trace using (SigOpEvent)
 open import Once.IR using (IR; ⌊_⌋)
+open import Once.IR.Ref using (refIR)
 open import Once.Functor.Translate using (WellFormedF; con-fun; base-Unit)
 open import Once.Semantics.Machine
   using (sem-cata; sem-ana; sem-fmap; coerce-functor; coerce-functor⁻¹; ⟦_⟧F)
@@ -124,7 +125,7 @@ liftD fmt ρ {A} {B} ir = returnT (liftFn fmt ρ {A} {B} ir)
 --   * `refs`: a surface reference (`poly x A`, `closure x`) means `refs x A`.
 --   * `calls`: the IR call environment. A pre-built morphism (`lift-morphism`,
 --     `morph-app`) is evaluated in it, because its IR may contain a `Call`.
--- The compiled program's environment is `internalDefs ρ`, whose `refs` read the
+-- The compiled program's environment is `internalDefs fmt ρ`, whose `refs` read the
 -- same call environment `ρ` at the erased type (a reference that linking did not
 -- replace is lowered to `Call`).
 record DefsSem : Set where
@@ -135,8 +136,8 @@ record DefsSem : Set where
 
 open DefsSem public
 
-internalDefs : CallEnv → DefsSem
-internalDefs ρ = defsSem ρ (λ x A → subst T (cohᴰ A) (ρ (bare x) ⌊ A ⌋))
+internalDefs : TargetNum → CallEnv → DefsSem
+internalDefs fmt ρ = defsSem ρ (λ x A → subst T (cohᴰ A) (evalᴰ fmt ρ (refIR A (bare x)) tt))
 
 ------------------------------------------------------------------------
 -- THE SOURCE SEMANTICS. Structural on `Expr`; arrows are Kleisli arrows

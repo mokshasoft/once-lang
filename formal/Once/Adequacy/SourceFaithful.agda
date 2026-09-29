@@ -83,7 +83,7 @@ import Once.Denotation.SourceDenote as SD
 -- reference to an internal call, so the surface meaning it agrees with is the
 -- one in the COMPILED program's definitions environment.
 σ₀ : SD.DefsSem
-σ₀ = SD.internalDefs ρ
+σ₀ = SD.internalDefs fmt ρ
 import Once.Compile as C
 import Once.Adequacy.FaithfulLemmas fmt ρ as FL
 open import Once.Postulates using (extensionality)

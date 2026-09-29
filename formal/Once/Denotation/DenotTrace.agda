@@ -130,8 +130,8 @@ open import Once.Denotation.ValueDomain public
 
 ------------------------------------------------------------------------
 -- D244/D245: the CALL ENVIRONMENT. An internal call (`Call f`) means the entry
--- `f` of the program it belongs to. `ρ f B` is that entry's computation, run at
--- the call's result type. The environment is built from the program's function
+-- `f` of the program it belongs to. `ρ f A B` is that entry as a Kleisli arrow
+-- at the call's type (the direct-call morphism `once_f : A → B`, D064). The environment is built from the program's function
 -- table (`Once.Denotation.Program`), each entry in the environment of the
 -- entries before it, and it never needs the entry itself because there is no
 -- recursion (D241). A name the table does not define at `B` is an UNLINKED call.
@@ -139,7 +139,7 @@ open import Once.Denotation.ValueDomain public
 ------------------------------------------------------------------------
 
 CallEnv : Set
-CallEnv = CanonicalName → (B : IRTy) → T ⟦ B ⟧ᴰᴵ
+CallEnv = CanonicalName → (A B : IRTy) → ⟦ A ⟧ᴰᴵ → T ⟦ B ⟧ᴰᴵ
 
 evalᴰ        : (fmt : TargetNum) → CallEnv → ∀ {A B} → IR A B → ⟦ A ⟧ᴰᴵ → T ⟦ B ⟧ᴰᴵ
 -- The two PURE leaves, named once. `In` and `out-μ` have no sub-IR, so their
@@ -198,7 +198,7 @@ evalᴰ fmt ρ (SigOp {A} {B} si) a   =
       (mapRes (λ v → subst (λ z → z) (sym (cohᴰ B)) (inject v))
               (semM si fmt (subst (λ z → z) (coh A) (forget a))))
 -- D245: a call means the program's entry, read from the environment.
-evalᴰ fmt ρ (Call {B} f) _ = ρ f B
+evalᴰ fmt ρ (Call {A} {B} f) a = ρ f A B a
 -- Recursion schemes: VALUE comes from this denotation's OWN trace-fold, NOT a
 -- parallel pure `eval` — `⟦_⟧ᴰ` has ONE model (the trace semantics), exactly
 -- like `⟦_⟧ˢ`. (The old catch-all routed `Cata`/`Ana` values through the pure

@@ -232,7 +232,7 @@ mutual
 ------------------------------------------------------------------------
 
 EnvGood : CallEnv → Set
-EnvGood ρ = ∀ (f : CanonicalName) (B : IRTy) → GoodT ⌈ B ⌉ (ρ f B)
+EnvGood ρ = ∀ (f : CanonicalName) (A B : IRTy) (a : ⟦ A ⟧ᴰᴵ) → Good ⌈ A ⌉ a → GoodT ⌈ B ⌉ (ρ f A B a)
 
 ------------------------------------------------------------------------
 -- THE REMAINING OBLIGATIONS, ONE NAME EACH.
@@ -363,4 +363,4 @@ evalᴰ-good fmt ρ gρ (const {A} fits v) a ga = (const-empty-pf _ , inject-Goo
 evalᴰ-good fmt ρ gρ (SigOp si)          a ga = evalᴰ-good-SigOp fmt ρ gρ si a ga
 -- D245: a call is as good as the entry it calls, which is the environment's
 -- hypothesis.
-evalᴰ-good fmt ρ gρ (Call {B} f)        _ _  = gρ f B
+evalᴰ-good fmt ρ gρ (Call {A} {B} f)    a ga = gρ f A B a ga

@@ -652,23 +652,23 @@ module Core {FS : FrameSemantics} where
   -- D245: the third block kind, the program's own FUNCTIONS. A direct call
   -- (`Call f`, lowered to `c-call-fn f`) names its callee statically, so the
   -- premise is keyed by the call itself rather than by a code cell: for every
-  -- call the table LINKS (`LinkedAt tbl f B`), the image has `f`'s entry, and
-  -- running it from a fresh call refines what the table's environment says
-  -- `f` means at `B`. This is `EnvCorrect`: the table's meaning is what its
+  -- call the table LINKS (`LinkedAt tbl f A B`), the image has `f`'s entry, and
+  -- running it from a fresh call, with the argument where the caller left it,
+  -- refines what the table's environment says `f : A → B` does to it. This is `EnvCorrect`: the table's meaning is what its
   -- code does. Restricted to linked calls it is satisfiable by the linked
   -- program image, and it is discharged along the table, each entry from its
   -- body's correctness in the entries before it.
   FnRuns : AbstractTrace → Set
   FnRuns prog =
-    ∀ (f : CanonicalName) (B : IRTy) → LinkedAt tbl f B
+    ∀ (f : CanonicalName) (A B : IRTy) → LinkedAt tbl f A B
     → ∃[ j ]
         ( (find-fn prog f ≡ just j)
-        × (∀ (fs : FlatState) (pre-alloc : AllocState {FS})
+        × (∀ (fs : FlatState) (pre-alloc : AllocState {FS}) (x : ⟦ A ⟧)
              (ret-pc k : ℕ) (mIn' : AllocMode)
            → fpc fs ≡ j → halted (floc fs) ≡ false → fret fs ≡ ret-pc ∷ []
            → falloc fs ≡ enter-call pre-alloc
-           → InputAt {Once.IRTy.Unit} mIn' pre-alloc tt (floc fs)
-           → CalleeRun prog fs ret-pc B (tableEnv (Once.CCC.FrameSemantics.fs-numerics FS) tbl f B) k))
+           → InputAt {A} mIn' pre-alloc x (floc fs)
+           → CalleeRun prog fs ret-pc B (tableEnv (Once.CCC.FrameSemantics.fs-numerics FS) tbl f A B x) k))
 
   -- All block-table premises in ONE slot, so adding one does not re-thread the
   -- fourteen discharge clauses that only pass it along.

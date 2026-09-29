@@ -68,7 +68,7 @@ open import Once.Denotation.DenotTrace using (evalᴰ)
 open import Once.Target.Arch using (TargetNum; int-bits; float-format)
 open import Once.Denotation.TraceMonad
   using (projTrace; PrefixFamily; bnd; sat; coh)
-open import Once.Denotation.DenotPrefix using (evalᴰ-good)
+open import Once.Denotation.Program using (IRFun; irFun; IRProgram; irProgram; runIR; runIR-good)
 
 ------------------------------------------------------------------------
 -- Source → IR of `main` (option (a): reuse the compiler's elaborator).
@@ -128,6 +128,40 @@ moduleToIR : P.Module → Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋)
 moduleToIR mod = moduleToIR-aux (C.compileResolvedModule C.Heap false mod)
 
 ------------------------------------------------------------------------
+-- D244: THE COMPILED PROGRAM — the function table and `main`. The table is the
+-- program's own definitions (not FFI declarations, whose code is an
+-- interpretation's, and not `main`, the image's entry), LATEST-FIRST, so each
+-- entry is evaluated in the ones declared before it (`tableEnv`). The compiler
+-- emits in declaration order, so the table is that list reversed.
+------------------------------------------------------------------------
+irFunOf : C.CompiledFun → IRFun
+irFunOf cf = irFun (cfName cf) ⌊ cfType cf ⌋ (cfIR cf)
+
+-- keep an entry: not a primitive, and not the entry `main`.
+tbl-keep : Bool → Bool → C.CompiledFun → List IRFun → List IRFun
+tbl-keep false false cf acc = irFunOf cf ∷ acc
+tbl-keep false true  cf acc = acc
+tbl-keep true  _     cf acc = acc
+
+tableOf-go : List C.CompiledFun → List IRFun → List IRFun
+tableOf-go []         acc = acc
+tableOf-go (cf ∷ cfs) acc = tableOf-go cfs (tbl-keep (cfIsPrimitive cf) (isMain cf) cf acc)
+
+tableOf : List C.CompiledFun → List IRFun
+tableOf funs = tableOf-go funs []
+
+programOf : List C.CompiledFun → Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋) → Maybe IRProgram
+programOf funs nothing   = nothing
+programOf funs (just ir) = just (irProgram (tableOf funs) ir)
+
+moduleToProgram-aux : String ⊎ List C.CompiledFun → Maybe IRProgram
+moduleToProgram-aux (inj₁ _)    = nothing
+moduleToProgram-aux (inj₂ funs) = programOf funs (findMain funs)
+
+moduleToProgram : P.Module → Maybe IRProgram
+moduleToProgram mod = moduleToProgram-aux (C.compileResolvedModule C.Heap false mod)
+
+------------------------------------------------------------------------
 -- D165: THE IR THE BACKEND ACTUALLY COMPILES.
 --
 -- `moduleToIR` is `main`'s IR as elaborated. It is NOT what the emitter turns
@@ -165,12 +199,14 @@ moduleToIR-emitted mod = map-rewrite (moduleToIR mod)
 -- are exactly `PrefixFamily`, which `evalᴰ-good` proves for every IR. (`take n`
 -- has gone from `at`: `bounded` says the prefix is already short enough, so the
 -- cap was doing nothing but obscuring which family this is.)
-⟦_⟧IR : Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋) → TargetNum → Behavior
-⟦ just ir ⟧IR fmt = mkBehavior (projTrace m) (coh pf) (bnd pf) sat'
+⟦_⟧IR : Maybe IRProgram → TargetNum → Behavior
+-- D244: the meaning of a compiled program is `main` run in the environment of
+-- its function table (`runIR`); an internal call means its callee.
+⟦ just p ⟧IR fmt = mkBehavior (projTrace m) (coh pf) (bnd pf) sat'
   where
-    m  = evalᴰ fmt ρ ir tt
+    m  = runIR fmt p
     pf : PrefixFamily m
-    pf = proj₁ (evalᴰ-good fmt ir tt tt)
+    pf = proj₁ (runIR-good fmt p)
 
     -- plan 0.97: `Saturating` is stated on the TRACE alone now (the value and
     -- the stop flag are budget-free, so there is nothing to project out of).

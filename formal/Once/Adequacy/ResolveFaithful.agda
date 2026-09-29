@@ -103,7 +103,7 @@ T-ext-at {l = mkT t₁ r₁} {r = mkT t₂ r₂} h =
 ------------------------------------------------------------------------
 
 σ₀ : SD.DefsSem
-σ₀ = SD.internalDefs ρ
+σ₀ = SD.internalDefs fmt ρ
 
 -- The meaning of a linked reference: what `resolveExpr` puts at `poly x A`.
 σR : PolyCtx → (String → Imports) → Imports → ℕ → SD.DefsSem

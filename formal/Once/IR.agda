@@ -276,14 +276,16 @@ data IR where
   -- connects are the erased `⌊ A ⌋`, `⌊ B ⌋`.
   SigOp : ∀ {A B : Type} → SigOpInfo A B → IR ⌊ A ⌋ ⌊ B ⌋
 
-  -- D245: a call to one of the program's own definitions. This is the IR twin of
-  -- the core's `ref`. A SigOp means the closed contract it carries, whether an
-  -- interpretation or the compiler minted it. A call means an ENTRY of the
-  -- program it belongs to, the definition named `f`, so it carries no contract.
-  -- Its meaning is read from `evalᴰ`'s call environment (D244). The domain is
-  -- `Unit` because of the closure-returner ABI (D064): `once_f()` returns f's
-  -- value, and codegen lowers the node to `call once_f`.
-  Call : ∀ {B} → CanonicalName → IR Unit B
+  -- D245: a DIRECT CALL of one of the program's own definitions. This is the IR
+  -- twin of the core's `ref`. A SigOp means the closed contract it carries,
+  -- whether an interpretation or the compiler minted it. A call means an ENTRY
+  -- of the program it belongs to, the definition named `f`, so it carries no
+  -- contract; its meaning is read from `evalᴰ`'s call environment (D244).
+  -- It is the D064 direct-call ABI, the one codegen emits: `once_f` is the
+  -- morphism `A → B` (`directCallIR`: an arrow definition uncurried, anything
+  -- else `Unit → B`), called with its argument in the input register as
+  -- `call once_f`.
+  Call : ∀ {A B} → CanonicalName → IR A B
 
 infixr 9 _∘_
 infixr 4 ⟨_,_⟩

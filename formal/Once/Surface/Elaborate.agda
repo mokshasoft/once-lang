@@ -13,6 +13,7 @@ module Once.Surface.Elaborate where
 open import Once.Type
 open import Once.Float.Decimal using (Decimal)
 open import Once.IR
+open import Once.IR.Ref using (refIR)
 open import Once.Surface.Syntax
 open import Once.Surface.CoerceIR using (runCoe)
 open import Once.IRTy.WF using (wf-⌊⌋)
@@ -540,15 +541,14 @@ elaborate {Γ = Γ} m (sigOp {A = (Dom ⇒[ mk-kind One π ] Cod)} name (con-fun
 elaborate {Γ = Γ} m (sigOp {A = (Dom ⇒[ mk-kind Many π ] Cod)} name (con-fun bDom cCod)) =
   curry (SigOp (arrow-info (mk-kind Many π) name bDom cCod) ∘ snd)
 elaborate {Γ = Γ} m (sigOp name conc) = SigOp (value-info name base-Unit conc) ∘ terminal
--- Plan 0.19 / D245: a reference to one of the program's own definitions is a
--- CALL of its table entry. `once_<name>()` returns the definition's value (a
--- closure pointer at arrow type, D064), so the reference is `Call name ∘
--- terminal`, and `f arg` is `apply (closure "f") arg`. It is not a SigOp: a
--- SigOp means the contract it carries, and a call means the entry.
-elaborate {A = A} m (closure name) = Call {⌊ A ⌋} (bare name) ∘ terminal
+-- Plan 0.19 / D245: a reference to one of the program's own definitions CALLS
+-- its table entry, `once_<name>`, at the direct-call ABI codegen emits (D064):
+-- `refIR` (Once.IR.Ref). It is not a SigOp: a SigOp means the contract it
+-- carries, and a call means the entry.
+elaborate {A = A} m (closure name) = refIR A (bare name) ∘ terminal
 -- A polymorphic placeholder that linking (`resolveExpr`) did not replace is a
 -- reference like any other: a call of the entry by that name.
-elaborate {A = A} m (poly name _) = Call {⌊ A ⌋} (bare name) ∘ terminal
+elaborate {A = A} m (poly name _) = refIR A (bare name) ∘ terminal
 -- Plan 0.103 phase 1c: a closed term runs on the terminal environment.
 elaborate m (closed e) = elaborate m e ∘ terminal
 

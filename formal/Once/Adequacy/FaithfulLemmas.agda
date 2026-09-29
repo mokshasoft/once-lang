@@ -70,7 +70,7 @@ import Once.Denotation.SourceDenote as SD
 -- ELABORATED IR, which lowers an unresolved definition reference to an
 -- internal call — so they hold in the compiled program's environment.
 σ₀ : SD.DefsSem
-σ₀ = SD.internalDefs ρ
+σ₀ = SD.internalDefs fmt ρ
 open import Once.Postulates using (extensionality)
 
 open Once.Surface.Syntax.Expr

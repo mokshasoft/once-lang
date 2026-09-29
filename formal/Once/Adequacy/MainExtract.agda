@@ -83,7 +83,7 @@ runMainˢ {Ψ} σ se n =
   projTrace ((SD.⟦ se ⟧ˢ fmt σ) (env0 {Ψ} tt) >>=T (λ clo → clo tt)) n
 
 σ₀ : SD.DefsSem
-σ₀ = SD.internalDefs ρ
+σ₀ = SD.internalDefs fmt ρ
 
 -- Bind respects equality of the bound computation, read at the trace level.
 -- plan 0.98: the premise is ONE equation of computations, not a budget-`n`

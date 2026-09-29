@@ -317,7 +317,7 @@ f ≟IR g = ≟IRH f g refl refl
 
 ≟IRH-curry-aux f₁ f₂ (no np)    = no (λ { refl → np refl })
 
-≟IRH-Call-aux : ∀ {B} (f₁ f₂ : CanonicalName) → Dec (f₁ ≡ f₂) → Dec (Call {B} f₁ ≡ Call f₂)
+≟IRH-Call-aux : ∀ {A B} (f₁ f₂ : CanonicalName) → Dec (f₁ ≡ f₂) → Dec (Call {A} {B} f₁ ≡ Call f₂)
 ≟IRH-Call-aux f₁ f₂ (yes refl) = yes refl
 ≟IRH-Call-aux f₁ f₂ (no ne)    = no (λ { refl → ne refl })
 

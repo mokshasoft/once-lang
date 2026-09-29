@@ -15874,3 +15874,24 @@ internal-ref SigOp today. `internal-info`, the `internal-ref` Linkage and the us
 Rejected: keeping `SigOp` for internal calls and dispatching `evalᴰ` on the `internal-ref`
 tag. A SigOp would then mean either its contract or an environment entry depending on a tag,
 which is D071's confusion again.
+
+**Amendment (2026-09-29): the call is the DIRECT-CALL morphism.** The first cut
+typed the node `Call : IR Unit B`, modelled on `internal-info`'s closure-returner
+ABI (`once_f()` returns f's value). That is not what codegen emits. D064 emits an
+arrow definition uncurried (`Compile.directCallIR`), and a compiled program calls
+it with the argument in the input register. The disassembly of
+`compiler/test/arith-lambda-1.once` shows `call once_1f` with `%rdi` = the argument.
+
+With the closure-returner type, the image's `once_f` would never implement what
+`Call` means, and `FnRuns` would be unsatisfiable for every arrow definition. So:
+* `Call : CanonicalName → IR A B`, where A and B are the direct-call morphism's
+  objects;
+* table entries carry `directCallIR`'s domain and codomain, and the environment is
+  `ρ f A B : ⟦A⟧ → T⟦B⟧`;
+* a reference is `Once.IR.Ref.refIR`, clause for clause with `directCallIR`:
+  * at an arrow it is `curry (Call f ∘ snd)`, the shape the `SigOp (arrow-info f)`
+    path already had;
+  * otherwise it is `Call f ∘ terminal`.
+
+The erasure agrees definitionally: `⌊ A ⇒[Zero] B ⌋ = Unit ⇛ ⌊B⌋`, the domain
+`directCallIR` gives an erased arrow.

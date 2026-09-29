@@ -42,7 +42,7 @@
 open import Once.CanonicalName using (CanonicalName)
 
 import Data.List as DL
-open import Once.Denotation.Program using (IRFun; tableEnv)
+open import Once.Denotation.Program using (IRFun; tableEnv; Linked)
 module Once.CCC.Codegen.IRObsCorrectFlat (o : CanonicalName) (tbl : DL.List IRFun) where
 
 -- The shared vocabulary comes in ONCE, publicly: `Machine` re-exports
@@ -59,6 +59,7 @@ open import Once.CCC.Codegen.IRObsCorrect.Apply   o tbl
 open import Once.CCC.Codegen.IRObsCorrect.Out     o tbl
 open import Once.CCC.Codegen.IRObsCorrect.Comp    o tbl
 open import Once.CCC.Codegen.IRObsCorrect.Case    o tbl
+open import Once.CCC.Codegen.IRObsCorrect.Call    o tbl
 -- `PairAssemble` imports `Pair` (the four clusters) itself, WITHOUT `public`
 -- — same D200 rule: only this façade re-exports.
 open import Once.CCC.Codegen.IRObsCorrect.PairAssemble o tbl
@@ -78,37 +79,39 @@ module IRObsCorrectFlatness {FS : FrameSemantics} where
   open CompC    {FS} public
   open CaseC    {FS} public
   open PairAsm  {FS} public
+  open CallC    {FS} public
 
   -- TOTAL, and now with NO CATCH-ALL (Plan 0.68 step 0). Every constructor has
   -- its own clause and its own named obligation, in `Once.IR`'s order — so a
   -- constructor that is added, removed or renamed is a TYPE ERROR here rather
   -- than a silent variable pattern absorbing it (the retired-ctor trap).
-  ir-obs-correct : ∀ {A B} (ir : IR A B) → IRObsCorrectF ir
+  ir-obs-correct : ∀ {A B} (ir : IR A B) → Linked tbl ir → IRObsCorrectF ir
   -- category structure
-  ir-obs-correct id                  = obs-correct-id
-  ir-obs-correct (g ∘ f)             = comp-obs-correct (ir-obs-correct g) (ir-obs-correct f)
+  ir-obs-correct id                  _ = obs-correct-id
+  ir-obs-correct (g ∘ f)             (lg , lf) = comp-obs-correct (ir-obs-correct g lg) (ir-obs-correct f lf)
   -- products
-  ir-obs-correct ⟨ f , g ⟩         = obs-correct-pair-proof (ir-obs-correct f) (ir-obs-correct g)
-  ir-obs-correct fst                 = obs-correct-fst
-  ir-obs-correct snd                 = obs-correct-snd
+  ir-obs-correct ⟨ f , g ⟩         (lf , lg) = obs-correct-pair-proof (ir-obs-correct f lf) (ir-obs-correct g lg)
+  ir-obs-correct fst                 _ = obs-correct-fst
+  ir-obs-correct snd                 _ = obs-correct-snd
   -- sums
-  ir-obs-correct inl                 = obs-correct-inl
-  ir-obs-correct inr                 = obs-correct-inr
-  ir-obs-correct (case f g)          = obs-correct-case (ir-obs-correct f) (ir-obs-correct g)
+  ir-obs-correct inl                 _ = obs-correct-inl
+  ir-obs-correct inr                 _ = obs-correct-inr
+  ir-obs-correct (case f g)          (lf , lg) = obs-correct-case (ir-obs-correct f lf) (ir-obs-correct g lg)
   -- terminal / initial
-  ir-obs-correct terminal            = obs-correct-terminal
-  ir-obs-correct initial             = obs-correct-initial
+  ir-obs-correct terminal            _ = obs-correct-terminal
+  ir-obs-correct initial             _ = obs-correct-initial
   -- exponentials — THE LABEL-BEARING PAIR
-  ir-obs-correct (curry body)      = obs-correct-curry body
-  ir-obs-correct apply               = obs-correct-apply
+  ir-obs-correct (curry body)        _ = obs-correct-curry body
+  ir-obs-correct apply               _ = obs-correct-apply
   -- μ / ν structure
-  ir-obs-correct (In wf)           = obs-correct-In wf
-  ir-obs-correct (out-μ wf)          = obs-correct-out-μ wf
-  ir-obs-correct (Cata wf alg)       = cata-correct wf alg (ir-obs-correct alg)
-  ir-obs-correct (Out wf)            = obs-correct-Out wf
-  ir-obs-correct (in-ν wf)         = obs-correct-in-ν wf
-  ir-obs-correct (Ana wf f)          = obs-correct-Ana wf f
+  ir-obs-correct (In wf)             _ = obs-correct-In wf
+  ir-obs-correct (out-μ wf)          _ = obs-correct-out-μ wf
+  ir-obs-correct (Cata wf alg)       la = cata-correct wf alg (ir-obs-correct alg la)
+  ir-obs-correct (Out wf)            _ = obs-correct-Out wf
+  ir-obs-correct (in-ν wf)           _ = obs-correct-in-ν wf
+  ir-obs-correct (Ana wf f)          _ = obs-correct-Ana wf f
   -- misc
-  ir-obs-correct (const fit v)       = obs-correct-const fit v
-  ir-obs-correct (SigOp si)          = obs-correct-sigop si
-
+  ir-obs-correct (const fit v)       _ = obs-correct-const fit v
+  ir-obs-correct (SigOp si)          _ = obs-correct-sigop si
+  -- D245: a direct call of a LINKED table entry.
+  ir-obs-correct (Call f)            lk = obs-correct-call f lk
