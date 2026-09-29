@@ -80,11 +80,28 @@ def balanced(s, i):
 
 IMPORT = re.compile(r"^(open\s+)?import\s+([\w.]+)((?:[^\n]|\n[ \t]+)*)", re.M)
 
+IMPORT_L = re.compile(r"^([ \t]*)(?:where\s+)?(open\s+)?import\s+([\w.]+)(.*)$")
+
+def import_stmts(src):
+    """every `[open] import M …` statement, at ANY indentation (a `private`
+    block's imports too); a statement's continuation lines are the ones
+    indented deeper than its first"""
+    lines = src.split("\n")
+    i = 0
+    while i < len(lines):
+        m = IMPORT_L.match(lines[i])
+        if not m:
+            i += 1; continue
+        ind, rest = len(m.group(1)), [m.group(4)]
+        i += 1
+        while i < len(lines) and lines[i].strip() and len(lines[i]) - len(lines[i].lstrip()) > ind:
+            rest.append(lines[i]); i += 1
+        yield bool(m.group(2)), m.group(3), "\n".join(rest)
+
 def parse_imports(src):
     """[(module, opened?, using|None, hiding, renaming-pairs, public?)]"""
     out = []
-    for m in IMPORT.finditer(src):
-        opened, mod, rest = bool(m.group(1)), m.group(2), m.group(3)
+    for opened, mod, rest in import_stmts(src):
         using = hiding = None; ren = []; public = "public" in rest.split()
         for kw in ("using", "hiding", "renaming"):
             k = rest.find(kw)
@@ -126,7 +143,7 @@ def declared(src):
                 continue
             # ★ `mutual`/`abstract`/`instance` blocks: their indented
             #   declarations are the file's own, exported.
-            if st in ("mutual", "abstract", "instance"):
+            if st in ("mutual", "abstract", "instance", "opaque"):
                 in_modblock = "_"; continue
             m = re.match(r"^(data|record)\s+([^\s:]+)", st)
             if m:
@@ -198,6 +215,9 @@ def bound_names(src):
             b.update(TOK.findall(lhs))
         m = re.match(r"^\s*(\S+)\s+=", l)
         if m: b.add(m.group(1))
+    # a record expression's field assignments `record { f = … ; g = … }`
+    for m in re.finditer(r"[{;]\s*([^\s=;{}()]+)\s*=(?![=>])", src):
+        b.add(m.group(1))
     for m in re.finditer(r"\bwith\b[^\n]*\n((?:\s*\.\.\.[^\n]*\n)+)", src):
         b.update(TOK.findall(m.group(1)))
     for m in re.finditer(r"^\s*\.\.\.\s*\|([^=\n]*)", src, re.M):
@@ -292,16 +312,16 @@ def control():
     """Seed one error of each class into a scratch copy of a real module."""
     files = tree()
     mods = load(files)
-    target = "DirectedHoTT.Examples.Knot.CtxD"
+    target = "DirectedHoTT.Examples.Knot.RedIx"
     src = open(mods[target]["path"], encoding="utf-8").read()
     # class 1: a name the imported module does not export
-    bad1 = src.replace("using ( ⊢-cast; ⊢wk )", "using ( ⊢-cast; ⊢wk; noSuchLemmaXYZ )", 1)
+    bad1 = src.replace("TySub using ( ⊢-cast )", "TySub using ( ⊢-cast; noSuchLemmaXYZ )", 1)
     # class 2: drop an import that the body needs
-    bad2 = bad1.replace("open import DirectedHoTT.Examples.Knot.Build using ( kCast; tmCast )\n", "", 1)
+    bad2 = bad1.replace("open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; _⟶ᵀ*_; stepᵀ; ⟶ᵀ*-IMu; ⟶*-pairʳ; ⟶*-nsuc )\n", "", 1)
     assert bad1 != src and bad2 != bad1, "control anchors moved — update control()"
     tmpd = tempfile.mkdtemp()
     try:
-        p = os.path.join(tmpd, "CtxD.agda"); open(p, "w").write(bad2)
+        p = os.path.join(tmpd, "RedIx.agda"); open(p, "w").write(bad2)
         raw = strip_comments(bad2); exp, loc = declared(raw)
         mods[target] = dict(path=p, src=raw, exp=exp, loc=loc, imps=parse_imports(raw))
         got = lint(mods, only={target})
@@ -309,7 +329,7 @@ def control():
         shutil.rmtree(tmpd)
     msgs = [w for _, _, w in got]
     ok1 = any("noSuchLemmaXYZ" in w for w in msgs)
-    ok2 = any("`kCast`" in w or "`tmCast`" in w for w in msgs)
+    ok2 = any("`⟶*-nsuc`" in w or "`⟶ᵀ*-IMu`" in w for w in msgs)
     print("control: seeded unexported name %s · seeded missing import %s"
           % ("CAUGHT" if ok1 else "MISSED", "CAUGHT" if ok2 else "MISSED"))
     return 0 if (ok1 and ok2) else 2

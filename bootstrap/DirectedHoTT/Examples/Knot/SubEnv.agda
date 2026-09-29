@@ -243,3 +243,58 @@ opaque
            kPi (kEl (subTm σ I)) (kPi (kEl (kdpay a b (kapp b v0))) (kPi (kDIh c m (kapp c v1) v0) n))
            ≡ kPi (kEl (subTm σ I)) (kPi (kEl (kdpay a' b' (kapp b' v0))) (kPi (kDIh c' m' (kapp c' v1) v0) n'))
       c5 refl refl refl refl refl = refl
+
+------------------------------------------------------------------------
+-- 5. The reduction rules' substitutions: `t[x , y]` at sort 1
+--    (`psplit-β`'s single2, `natrec-suc`'s double instantiation),
+--    `pwShift` (`tr-pw`), and `renTy (extR (extR vs))` (`DIh-ρ`).
+------------------------------------------------------------------------
+
+-- pwShift : Env (j+2) (j+2)   0 ↦ 1 , x+1 ↦ x+1
+EPWS : RTm Γ → RTm Γ
+EPWS j = app⁴ CONS (nsuc (nsuc j)) (nsuc j) v1 WK1
+
+-- extR (extR vs) : Env (j+2) (j+3)
+ELIFTW : RTm Γ → RTm Γ
+ELIFTW j = app³ LIFT (nsuc (nsuc j)) (nsuc j) (app³ LIFT (nsuc j) j WK1)
+
+module _ {Ξ : Ctx} {j : RTm ⌊ Ξ ⌋} (dj : Ξ ⊢ j ∷ El ⌜Nat⌝) where
+  ⊢EPWS : Ξ ⊢ EPWS j ∷ Env (nsuc (nsuc j)) (nsuc (nsuc j))
+  ⊢EPWS = ⊢CONS· (⊢isuc (⊢isuc dj)) (⊢isuc dj) (fromSK (⊢v1 dj)) (⊢WK1 (⊢isuc dj))
+  ⊢ELIFTW : Ξ ⊢ ELIFTW j ∷ Env (nsuc (nsuc j)) (nsuc (nsuc (nsuc j)))
+  ⊢ELIFTW = ⊢LIFT· (⊢isuc (⊢isuc dj)) (⊢isuc dj) (⊢LIFT· (⊢isuc dj) dj (⊢WK1 dj))
+
+EPWS-sub : (σ : Sub Δ Θ) (j : RTm Δ) → subTm σ (EPWS j) ≡ EPWS (subTm σ j)
+EPWS-sub σ j = cong (λ C → app⁴ C (nsuc (nsuc (subTm σ j))) (nsuc (subTm σ j)) v1 WK1) (CONS-sub σ)
+
+ELIFTW-sub : (σ : Sub Δ Θ) (j : RTm Δ) → subTm σ (ELIFTW j) ≡ ELIFTW (subTm σ j)
+ELIFTW-sub σ j = cong (λ L → app³ L (nsuc (nsuc (subTm σ j))) (nsuc (subTm σ j)) (app³ L (nsuc (subTm σ j)) (subTm σ j) WK1)) (LIFT-sub σ)
+
+opaque
+  iinstTmK : RTm Γ → RTm Γ → RTm Γ → RTm Γ → RTm Γ
+  iinstTmK j i t M = trav 1 (nsuc (nsuc j)) M j (EINST j i t)
+
+  pwShK wk2uK : RTm Γ → RTm Γ → RTm Γ
+  pwShK j t = trav 1 (nsuc (nsuc j)) t (nsuc (nsuc j)) (EPWS j)
+  wk2uK j M = trav 0 (nsuc (nsuc j)) M (nsuc (nsuc (nsuc j))) (ELIFTW j)
+
+  ⊢iinstTmK : {Ξ : Ctx} {j i t M : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ i ∷ K 1 j → Ξ ⊢ t ∷ K 1 j → Ξ ⊢ M ∷ K 1 (nsuc (nsuc j)) → Ξ ⊢ iinstTmK j i t M ∷ K 1 j
+  ⊢iinstTmK dj di dt dM = ⊢trav (lt-s lt-z) (⊢isuc (⊢isuc dj)) dM dj (⊢EINST dj di dt)
+
+  ⊢pwShK : {Ξ : Ctx} {j t : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ t ∷ K 1 (nsuc (nsuc j)) → Ξ ⊢ pwShK j t ∷ K 1 (nsuc (nsuc j))
+  ⊢pwShK dj dt = ⊢trav (lt-s lt-z) (⊢isuc (⊢isuc dj)) dt (⊢isuc (⊢isuc dj)) (⊢EPWS dj)
+
+  ⊢wk2uK : {Ξ : Ctx} {j M : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ M ∷ K 0 (nsuc (nsuc j)) → Ξ ⊢ wk2uK j M ∷ K 0 (nsuc (nsuc (nsuc j)))
+  ⊢wk2uK dj dM = ⊢trav lt-z (⊢isuc (⊢isuc dj)) dM (⊢isuc (⊢isuc (⊢isuc dj))) (⊢ELIFTW dj)
+
+opaque
+  unfolding iinstTmK pwShK wk2uK
+  iinstTmK-sub : (σ : Sub Δ Θ) (j i t M : RTm Δ) → subTm σ (iinstTmK j i t M) ≡ iinstTmK (subTm σ j) (subTm σ i) (subTm σ t) (subTm σ M)
+  iinstTmK-sub σ j i t M = trans (trav-sub σ 1 (nsuc (nsuc j)) M j (EINST j i t))
+                                 (cong (trav 1 (nsuc (nsuc (subTm σ j))) (subTm σ M) (subTm σ j)) (EINST-sub σ j i t))
+  pwShK-sub : (σ : Sub Δ Θ) (j t : RTm Δ) → subTm σ (pwShK j t) ≡ pwShK (subTm σ j) (subTm σ t)
+  pwShK-sub σ j t = trans (trav-sub σ 1 (nsuc (nsuc j)) t (nsuc (nsuc j)) (EPWS j))
+                          (cong (trav 1 (nsuc (nsuc (subTm σ j))) (subTm σ t) (nsuc (nsuc (subTm σ j)))) (EPWS-sub σ j))
+  wk2uK-sub : (σ : Sub Δ Θ) (j M : RTm Δ) → subTm σ (wk2uK j M) ≡ wk2uK (subTm σ j) (subTm σ M)
+  wk2uK-sub σ j M = trans (trav-sub σ 0 (nsuc (nsuc j)) M (nsuc (nsuc (nsuc j))) (ELIFTW j))
+                          (cong (trav 0 (nsuc (nsuc (subTm σ j))) (subTm σ M) (nsuc (nsuc (nsuc (subTm σ j))))) (ELIFTW-sub σ j))

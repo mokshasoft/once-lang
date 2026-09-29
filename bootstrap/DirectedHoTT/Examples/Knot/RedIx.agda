@@ -13,6 +13,8 @@ open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax hiding ( Fin )
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Metatheory.TySub using ( ⊢-cast )
+open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; _⟶ᵀ*_; stepᵀ; ⟶ᵀ*-IMu; ⟶*-pairʳ; ⟶*-nsuc )
+open import DirectedHoTT.Lib.FinFam using ( ⊢isuc )
 open import DirectedHoTT.Lib.Sugar using ( tag; Lt; lt-z; lt-s )
 open import DirectedHoTT.Lib.Syn
 open import DirectedHoTT.Lib.SynFam using ( module SynFam )
@@ -77,3 +79,42 @@ ix≅ᵀ d A B = ConvTₘ.ixJ (pair (tag 0) d) A B
 
 ⊢ix≅ᵀ : {Ξ : Ctx} {d A B : RTm ⌊ Ξ ⌋} → Ξ ⊢ d ∷ El ⌜Nat⌝ → Ξ ⊢ A ∷ K 0 d → Ξ ⊢ B ∷ K 0 d → Ξ ⊢ ix≅ᵀ d A B ∷ El ConvTₘ.J
 ⊢ix≅ᵀ dd dA dB = ConvTₘ.⊢ixJ (⊢ix lt-z dd) dA (⊢toCR dB)
+
+-- ★ `pwBody`'s GRAPH on the codes `pw?` accepts (`Spec/Variance`): fibred
+--   by the code, the convoy is the BODY — a Knot term ONE BINDER deeper
+module _ where
+  CP : RTm (Δ ∙)
+  CP = ⌜IMu⌝ (SI 2) KD (pair (tag 1) (nsuc (snd (var vz))))
+
+  CP-sub : (σ : Sub Δ Θ) → subTm (extS σ) (CP {Δ}) ≡ CP
+  CP-sub {Δ} σ = cong₂ (λ D t → ⌜IMu⌝ (SI 2) D (pair t (nsuc (snd (var vz))))) (SD-sub (extS σ) KSig) (tag-sub (extS σ) 1)
+
+  ⊢CP : {Γ : Ctx} → (Γ ▹ El (SI 2)) ⊢ CP ∷ U
+  ⊢CP = ⊢⌜IMu⌝ ⊢SI ⊢KD (⊢ix (lt-s lt-z) (⊢isuc (⊢depth (⊢var here))))
+
+module Pwₘ = SynFam KOK CP CP-sub ⊢CP
+
+eCP : (j : RTm Δ) → subTm (single (pair (tag 1) j)) (CP {Δ}) ≡ ⌜IMu⌝ (SI 2) KD (pair (tag 1) (nsuc (snd (pair (tag 1) j))))
+eCP {Δ} j = cong₂ (λ D t → ⌜IMu⌝ (SI 2) D (pair t (nsuc (snd (pair (tag 1) j))))) (SD-sub (single (pair (tag 1) j)) KSig) (tag-sub (single (pair (tag 1) j)) 1)
+
+module _ {Ξ : Ctx} {j c : RTm ⌊ Ξ ⌋} where
+  private
+    bR : El (⌜IMu⌝ (SI 2) KD (pair (tag 1) (nsuc (snd (pair (tag 1) j))))) ⟶ᵀ* K 1 (nsuc j)
+    bR = stepᵀ El-⌜IMu⌝ (⟶ᵀ*-IMu (⟶*-pairʳ (⟶*-nsuc (step (βsnd (tag 1) j) done))))
+
+  -- the body, read off the convoy
+  ⊢pwTgt : Ξ ⊢ c ∷ El (subTm (single (pair (tag 1) j)) CP) → Ξ ⊢ c ∷ K 1 (nsuc j)
+  ⊢pwTgt dc = ⊢conv (⊢-cast {Ξ} {c} {El (subTm (single (pair (tag 1) j)) CP)} {El (⌜IMu⌝ (SI 2) KD (pair (tag 1) (nsuc (snd (pair (tag 1) j)))))}
+                            (cong El (eCP j)) dc)
+                    (red→≅ᵀ bR)
+
+  -- …and put into one
+  ⊢toCP : Ξ ⊢ c ∷ K 1 (nsuc j) → Ξ ⊢ c ∷ El (subTm (single (pair (tag 1) j)) CP)
+  ⊢toCP dc = ⊢-cast {Ξ} {c} {El (⌜IMu⌝ (SI 2) KD (pair (tag 1) (nsuc (snd (pair (tag 1) j)))))} {El (subTm (single (pair (tag 1) j)) CP)}
+                    (cong El (sym (eCP j))) (⊢conv dc (csymᵀ (red→≅ᵀ bR)))
+
+ixPw : RTm Δ → RTm Δ → RTm Δ → RTm Δ
+ixPw d c b = Pwₘ.ixJ (pair (tag 1) d) c b
+
+⊢ixPw : {Ξ : Ctx} {d c b : RTm ⌊ Ξ ⌋} → Ξ ⊢ d ∷ El ⌜Nat⌝ → Ξ ⊢ c ∷ K 1 d → Ξ ⊢ b ∷ K 1 (nsuc d) → Ξ ⊢ ixPw d c b ∷ El Pwₘ.J
+⊢ixPw dd dc db = Pwₘ.⊢ixJ (⊢ix (lt-s lt-z) dd) dc (⊢toCP db)
