@@ -1,0 +1,7 @@
+# pragma-gate baseline (D242): check-disabling pragmas that predate the gate,
+# in the closure of Once/Certified.agda + Once/Compiler.agda. Counts may only
+# go DOWN. Each is a residual to remove (see MERGE.md).
+Once/Arith/Machine/Recognise.agda 2
+Once/Arith/Machine/Rewrite.agda 1
+Once/Parser/Generic/Parser.agda 1
+Once/Parser/Generic/Sound.agda 14

@@ -254,6 +254,30 @@ pragmas — one pragma covers a mutual block, and Agda's generated `-invert*`
 helpers each inherit the marker. Quote source-level numbers in a decision entry;
 declaration counts are for detecting CHANGE, not for stating size.
 
+## 4c. Structured-recursion gate (until the compiler builds with `--safe`)
+
+Once has structured recursion only (OCP-0003), and the structure is enforced
+BY CONSTRUCTION: the module is a telescope (D241), and the core has no `fix`
+and a total meaning. That argument holds only while Agda's own checks are on.
+So, until the whole compiler builds with `--safe` (D242):
+
+    cd formal && make pragma-gate        # = scripts/pragma-gate.sh
+
+It walks the import closure of `Once/Certified.agda` and `Once/Compiler.agda`
+and fails on any pragma that switches off termination, positivity, coverage or
+universe checking beyond `scripts/pragma-gate.baseline`.
+
+- **A failure blocks the merge.** Remove the pragma: make the recursion
+  structural or well-founded (see `feedback_reify_recursion_for_foetus_perf`).
+  If that is not possible on this branch, step 2 owes a decision entry, and only
+  then may the baseline grow.
+- **The baseline only shrinks.** When the gate reports a module below its
+  count, lower or delete its line in the same branch.
+- The residuals at the gate's introduction (4 modules, 18 pragmas: the
+  generic parser and the arith machine recogniser/rewriter) are listed in the
+  baseline file. They are implementation-side totality gaps, not Spec
+  holes, but they block `--safe`.
+
 ## 5. Merge
 
 - Fast-forward or `--no-ff` per repo convention; do not squash away the

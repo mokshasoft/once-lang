@@ -206,6 +206,11 @@ compiler-all: certified compiler-x86-32 compiler-riscv64
 check-extraction-sync:
 	@$(CURDIR)/scripts/check-extraction-sync.sh
 
+.PHONY: pragma-gate
+# D242: no new check-disabling pragma in the certified/compiler closure.
+pragma-gate:
+	@scripts/pragma-gate.sh
+
 .PHONY: malonzo
 malonzo:
 	@if [ -z "$$AGDA_SAFE_ACTIVE" ] && [ -z "$$AGDA_SAFE_DISABLE" ]; then \

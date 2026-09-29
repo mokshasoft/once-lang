@@ -15744,3 +15744,24 @@ declared before it**. That makes the module a single declaration-ordered telesco
 the core `Tele` of D239 (plan 0.103 phase 6c). Red tests: "mutual recursion through
 the telescope is rejected" and "a definition cannot use a later one" in
 `TypeCheckSpec`.
+
+## D242 — STRUCTURED RECURSION IS CORRECT BY CONSTRUCTION; A PRAGMA GATE GUARDS THE CONSTRUCTION (2026-09-29)
+
+**Relates**: OCP-0003, D241, MERGE.md §4c.
+
+D241 found general recursion leaking through the surface module layer twice. The
+user's decision on how to stop that class of mistake:
+* **By construction, not by a check.** The module is one declaration-ordered telescope,
+  each definition typed in its prefix (plan 0.103 6c′). Its core twin `Tele` references
+  only the prefix (`ref d`, `d : Fin s`), the core has no `fix`, and the core meaning is
+  a total Agda function. General recursion then cannot be stated, rather than being
+  rejected.
+* **A gate on the construction's premise.** The argument holds only while Agda checks
+  termination and positivity. Until the whole compiler builds with `--safe`,
+  `formal/scripts/pragma-gate.sh` (`make pragma-gate`) is a merge gate. It fails on any
+  termination, positivity, coverage or universe pragma in the import closure of
+  `Once/Certified.agda` and `Once/Compiler.agda` beyond a baseline that may only shrink.
+
+**Baseline at introduction** (source-level): `Parser/Generic/Sound` 14,
+`Parser/Generic/Parser` 1, `Arith/Machine/Recognise` 2, `Arith/Machine/Rewrite` 1. Four
+modules, 18 pragmas, all on the implementation side and all blocking `--safe`.
