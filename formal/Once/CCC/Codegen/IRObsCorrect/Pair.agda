@@ -603,17 +603,13 @@ module PairC {FS : FrameSemantics} where
         -- `flat-step-straight` exactly as that module defines it, so the two
         -- families of states are definitionally the same.
         ----------------------------------------------------------------
-        u1 u2 u3 u4 u5 u6 u7 u8 u9 u10 : FlatState
-        u1  = fsG
-        u2  = flat-step-straight (store-at-slot PS.snd-stash)   u1
-        u3  = flat-step-straight (instr-alloc-heap 2)           u2
-        u4  = flat-step-straight (store-at-slot PS.pair-stash)  u3
-        u5  = flat-step-straight mov-to-input                   u4
-        u6  = flat-step-straight (load-from-slot PS.fst-stash)  u5
-        u7  = flat-step-straight store-indirect                 u6
-        u8  = flat-step-straight (load-from-slot PS.snd-stash)  u7
-        u9  = flat-step-straight store-indirect-suc             u8
-        u10 = flat-step-straight (load-from-slot PS.pair-stash) u9
+        -- Named THROUGH `NineSteps` (profile 2026-09-29), at the arguments
+        -- `PairPres`' `NineStepPres` is applied at, so the two families are
+        -- the same names rather than two definitionally-equal chains.
+        u1 : FlatState
+        u1 = fsG
+        open NineSteps PS.snd-stash (load-from-slot PS.fst-stash) (load-from-slot PS.snd-stash) fsG
+          using (u2; u3; u4; u5; u6; u7; u8; u9; u10)
 
         -- the pair node, as the bump allocator hands it out at `u3`.
         hl : HeapLocation
@@ -1478,29 +1474,37 @@ module PairC {FS : FrameSemantics} where
     -- reduces: `falloc NSP.u10` is a nest of nine `exec-abstract`s and the
     -- `with`-blocks inside the loads and the indirect stores block it.
     ------------------------------------------------------------------
-    cf-tail : current-frame (falloc NSP.u10) ≡ current-frame (falloc gs)
-    cf-tail =
-      trans (exec-abstract-preserves-frame (load-from-slot pair-stash) (floc NSP.u9) (falloc NSP.u9))
-     (trans (exec-abstract-preserves-frame store-indirect-suc (floc NSP.u8) (falloc NSP.u8))
-     (trans (exec-abstract-preserves-frame (load-from-slot snd-stash) (floc NSP.u7) (falloc NSP.u7))
-     (trans (exec-abstract-preserves-frame store-indirect (floc NSP.u6) (falloc NSP.u6))
-     (trans (exec-abstract-preserves-frame (load-from-slot fst-stash) (floc NSP.u5) (falloc NSP.u5))
-     (trans (exec-abstract-preserves-frame mov-to-input (floc NSP.u4) (falloc NSP.u4))
-     (trans (exec-abstract-preserves-frame (store-at-slot pair-stash) (floc NSP.u3) (falloc NSP.u3))
-     (trans (exec-abstract-preserves-frame (instr-alloc-heap 2) (floc NSP.u2) (falloc NSP.u2))
-            (exec-abstract-preserves-frame (store-at-slot snd-stash) (floc gs) (falloc gs)))))))))
+    -- `abstract` (profile 2026-09-29): consumers need only the TYPE; unfolding
+    -- the body at every use (through `PairAssemble`'s application of this
+    -- module) re-derived the nine-step state and cost gigabytes.
+    abstract
+      cf-tail : current-frame (falloc NSP.u10) ≡ current-frame (falloc gs)
+      cf-tail =
+        trans (exec-abstract-preserves-frame (load-from-slot pair-stash) (floc NSP.u9) (falloc NSP.u9))
+       (trans (exec-abstract-preserves-frame store-indirect-suc (floc NSP.u8) (falloc NSP.u8))
+       (trans (exec-abstract-preserves-frame (load-from-slot snd-stash) (floc NSP.u7) (falloc NSP.u7))
+       (trans (exec-abstract-preserves-frame store-indirect (floc NSP.u6) (falloc NSP.u6))
+       (trans (exec-abstract-preserves-frame (load-from-slot fst-stash) (floc NSP.u5) (falloc NSP.u5))
+       (trans (exec-abstract-preserves-frame mov-to-input (floc NSP.u4) (falloc NSP.u4))
+       (trans (exec-abstract-preserves-frame (store-at-slot pair-stash) (floc NSP.u3) (falloc NSP.u3))
+       (trans (exec-abstract-preserves-frame (instr-alloc-heap 2) (floc NSP.u2) (falloc NSP.u2))
+              (exec-abstract-preserves-frame (store-at-slot snd-stash) (floc gs) (falloc gs)))))))))
 
     -- Rows 4-10 do not allocate, so the heap frontier they leave is the one
     -- `instr-alloc-heap 2` set at row 3 — one above `u2`'s.
-    heapref-tail : next-heap-ref (falloc NSP.u10) ≡ suc (next-heap-ref (falloc NSP.u2))
-    heapref-tail =
-      trans (exec-abstract-preserves-heap-ref (load-from-slot pair-stash) (floc NSP.u9) (falloc NSP.u9) tt)
-     (trans (exec-abstract-preserves-heap-ref store-indirect-suc (floc NSP.u8) (falloc NSP.u8) tt)
-     (trans (exec-abstract-preserves-heap-ref (load-from-slot snd-stash) (floc NSP.u7) (falloc NSP.u7) tt)
-     (trans (exec-abstract-preserves-heap-ref store-indirect (floc NSP.u6) (falloc NSP.u6) tt)
-     (trans (exec-abstract-preserves-heap-ref (load-from-slot fst-stash) (floc NSP.u5) (falloc NSP.u5) tt)
-     (trans (exec-abstract-preserves-heap-ref mov-to-input (floc NSP.u4) (falloc NSP.u4) tt)
-            (exec-abstract-preserves-heap-ref (store-at-slot pair-stash) (floc NSP.u3) (falloc NSP.u3) tt))))))
+    -- `abstract` (profile 2026-09-29): consumers need only the TYPE; unfolding
+    -- the body at every use (through `PairAssemble`'s application of this
+    -- module) re-derived the nine-step state and cost gigabytes.
+    abstract
+      heapref-tail : next-heap-ref (falloc NSP.u10) ≡ suc (next-heap-ref (falloc NSP.u2))
+      heapref-tail =
+        trans (exec-abstract-preserves-heap-ref (load-from-slot pair-stash) (floc NSP.u9) (falloc NSP.u9) tt)
+       (trans (exec-abstract-preserves-heap-ref store-indirect-suc (floc NSP.u8) (falloc NSP.u8) tt)
+       (trans (exec-abstract-preserves-heap-ref (load-from-slot snd-stash) (floc NSP.u7) (falloc NSP.u7) tt)
+       (trans (exec-abstract-preserves-heap-ref store-indirect (floc NSP.u6) (falloc NSP.u6) tt)
+       (trans (exec-abstract-preserves-heap-ref (load-from-slot fst-stash) (floc NSP.u5) (falloc NSP.u5) tt)
+       (trans (exec-abstract-preserves-heap-ref mov-to-input (floc NSP.u4) (falloc NSP.u4) tt)
+              (exec-abstract-preserves-heap-ref (store-at-slot pair-stash) (floc NSP.u3) (falloc NSP.u3) tt))))))
 
     heapref-gs≤ : next-heap-ref (falloc gs) ≤ next-heap-ref (falloc NSP.u10)
     heapref-gs≤ =
@@ -1565,12 +1569,16 @@ module PairC {FS : FrameSemantics} where
              → BeforeFrontier (record (falloc gs) { next-slot = m }) loc
     bf-to-gs m loc b = bf-after-g m loc (bf-to-m2 m loc b)
 
-    bf-tail : ∀ (m : ℕ) (loc : ValueLocation FS)
-            → BeforeFrontier (record (falloc gs) { next-slot = m }) loc
-            → BeforeFrontier (record (falloc NSP.u10) { next-slot = m }) loc
-    bf-tail m = frontier-monotone (record (falloc gs) { next-slot = m })
-                                  (record (falloc NSP.u10) { next-slot = m })
-                                  (sym cf-tail) ≤-refl heapref-gs≤
+    -- `abstract` (profile 2026-09-29): consumers need only the TYPE; unfolding
+    -- the body at every use (through `PairAssemble`'s application of this
+    -- module) re-derived the nine-step state and cost gigabytes.
+    abstract
+      bf-tail : ∀ (m : ℕ) (loc : ValueLocation FS)
+              → BeforeFrontier (record (falloc gs) { next-slot = m }) loc
+              → BeforeFrontier (record (falloc NSP.u10) { next-slot = m }) loc
+      bf-tail m = frontier-monotone (record (falloc gs) { next-slot = m })
+                                    (record (falloc NSP.u10) { next-slot = m })
+                                    (sym cf-tail) ≤-refl heapref-gs≤
 
     ------------------------------------------------------------------
     -- D210: FRAMEPRES. The frame does not move: nine rows of it in the tail,

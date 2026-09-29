@@ -337,15 +337,14 @@ module Mach {FS : FrameSemantics} where
   -- the one the caller's data is measured against. `TenStepPres` below is the
   -- entry-state instance — a wrapper, not a copy.
   ------------------------------------------------------------------------
-  module NineStepPres
-    (n : ℕ) (i6 i8 : AbstractInstr)
-    (u1 : FlatState) (s : LocState FS) (alloc : AllocState {FS})
-    -- the start state's allocator, related to the frontier the CALLER's live
-    -- data is measured against
-    (heapref-u1 : next-heap-ref (falloc u1) ≡ next-heap-ref alloc)
-    (cf-u1      : current-frame (falloc u1) ≡ current-frame alloc)
-    where
-
+  -- THE NINE STATES, on their own, parameterized by exactly what they depend
+  -- on. Every consumer names them THROUGH this module (profile 2026-09-29): two
+  -- families written out separately are definitionally equal, but deciding it
+  -- unfolds both nine-step chains into their normal forms, and that exhausted
+  -- the heap in `PairAssemble.dispatch-g`, where `Pair`'s chain states meet
+  -- `NineStepPres`'s. Named here, both sides are `NineSteps.uₖ` at the same
+  -- arguments and compare in one step.
+  module NineSteps (n : ℕ) (i6 i8 : AbstractInstr) (u1 : FlatState) where
     u2 u3 u4 u5 u6 u7 u8 u9 u10 : FlatState
     u2  = flat-step-straight (store-at-slot n)        u1
     u3  = flat-step-straight (instr-alloc-heap 2)     u2
@@ -356,6 +355,17 @@ module Mach {FS : FrameSemantics} where
     u8  = flat-step-straight i8                       u7
     u9  = flat-step-straight store-indirect-suc       u8
     u10 = flat-step-straight (load-from-slot (suc n)) u9
+
+  module NineStepPres
+    (n : ℕ) (i6 i8 : AbstractInstr)
+    (u1 : FlatState) (s : LocState FS) (alloc : AllocState {FS})
+    -- the start state's allocator, related to the frontier the CALLER's live
+    -- data is measured against
+    (heapref-u1 : next-heap-ref (falloc u1) ≡ next-heap-ref alloc)
+    (cf-u1      : current-frame (falloc u1) ≡ current-frame alloc)
+    where
+
+    open NineSteps n i6 i8 u1 public
 
     hl : HeapLocation
     hl = heap-loc (mkHeapRef (next-heap-ref (falloc u2))) 0
