@@ -42,7 +42,7 @@ open import Once.IR using (IR)
 open import Once.IRTy using (⌊_⌋)
 open import Once.Type using (Unit; Type; _⇒[_]_; mk-kind; Many; eff)
 import Once.Compile as C
-open import Once.Type.Rigid using (rigidOf)
+open import Once.Type.Rigid using (rigidOf; RigidFree; rigidFree?)
 open import Once.Functor.Translate using (IsConcrete)
 open import Once.Functor.Decide using (isConcrete?)
 open import Once.Type.Honest using (HonestFFI; honest?)
@@ -73,9 +73,9 @@ ctxC sc = ctxWithImportsAndPolys (C.CScope.cimps sc) (C.cpolys sc)
 
 data FunBundle : C.CScope → List C.Entry → Set where
   bnil  : ∀ {sc} → FunBundle sc []
-  bffi  : ∀ {sc fi ty es} {c : IsConcrete ty} {h : HonestFFI ty}
+  bffi  : ∀ {sc fi ty es} {c : IsConcrete ty} {h : HonestFFI ty} {g : RigidFree ty}
         → funIsPrimitive fi ≡ true → funType fi ≡ just ty
-        → isConcrete? ty ≡ just c → honest? ty ≡ just h
+        → isConcrete? ty ≡ just c → honest? ty ≡ just h → rigidFree? ty ≡ just g
         → FunBundle (C.extendScope sc (funName fi) ty) es
         → FunBundle sc (C.e-fun fi ∷ es)
   bcons : ∀ {sc fi es ty}
@@ -85,6 +85,7 @@ data FunBundle : C.CScope → List C.Entry → Set where
     {irFun : IR ⌊ Unit ⌋ ⌊ ty ⌋} →
     (ep : funIsPrimitive fi ≡ false) →
     (rf : C.resolveFunType (C.CScope.cimps sc) (C.cpolys sc) (funType fi) (funBody fi) ≡ inj₂ ty) →
+    {g : RigidFree ty} → (eg : rigidFree? ty ≡ just g) →
     (ce : checkElab (ctxC sc) (funBody fi) ty ≡ TE.success Ψ se d f) →
     (cf : C.compileFun C.Heap false (C.CScope.cimps sc) (C.cpolys sc) (C.declImps (C.CScope.ctele sc))
             (funName fi) ty (funBody fi) ≡ inj₂ irFun) →
@@ -150,9 +151,9 @@ compileFun-ce polys impsOf ctx ty fi irFun eq =
 
 bundle→typed : ∀ {sc es} → FunBundle sc es → ModTele (AS.scopeOf sc) es
 bundle→typed bnil = []
-bundle→typed (bffi {c = c} {h = h} ep et _ _ rest) = ffi ep et c h (bundle→typed rest)
-bundle→typed {sc} (bcons {fi = fi} {ty = ty} ep rf ce cf rest) =
-  mono ep rf (check-sound (ctxC sc) (funBody fi) ty ce) (bundle→typed rest)
+bundle→typed (bffi {c = c} {h = h} {g = g} ep et _ _ _ rest) = ffi ep et c h g (bundle→typed rest)
+bundle→typed {sc} (bcons {fi = fi} {ty = ty} ep rf {g} eg ce cf rest) =
+  mono ep rf g (check-sound (ctxC sc) (funBody fi) ty ce) (bundle→typed rest)
 bundle→typed {sc} (bpoly {pfi = pfi} ce rest) =
   poly (check-sound (ctxC sc) (C.PolyFunInfo.pfunBody pfi) (rigidOf (C.PolyFunInfo.pfunType pfi)) ce) (bundle→typed rest)
 
@@ -161,8 +162,8 @@ primCF fi ty c = C.mkCompiledFun (bare (funName fi)) ty (elaborateFull C.Heap (S
 
 bundle→compiled : ∀ {sc es} → FunBundle sc es → List C.CompiledFun
 bundle→compiled bnil = []
-bundle→compiled (bffi {fi = fi} {ty = ty} {c = c} _ _ _ _ rest) = primCF fi ty c ∷ bundle→compiled rest
-bundle→compiled (bcons {fi = fi} {ty = ty} {irFun = irFun} ep rf ce cf rest) =
+bundle→compiled (bffi {fi = fi} {ty = ty} {c = c} _ _ _ _ _ rest) = primCF fi ty c ∷ bundle→compiled rest
+bundle→compiled (bcons {fi = fi} {ty = ty} {irFun = irFun} ep rf eg ce cf rest) =
   C.mkCompiledFun (bare (funName fi)) (proj₁ (C.maybeWrapMain (funName fi) ty irFun))
     (proj₂ (C.maybeWrapMain (funName fi) ty irFun)) (funIsPrimitive fi)
   ∷ bundle→compiled rest
@@ -197,20 +198,24 @@ cgb-fun sc fi es compiled false ep eq =
   cgb-mono sc fi es compiled ep (C.resolveFunType (C.CScope.cimps sc) (C.cpolys sc) (funType fi) (funBody fi)) refl eq
 
 cgb-prim sc fi es compiled ep nothing et ()
-cgb-prim sc fi es compiled ep (just ty) et eq = conc (isConcrete? ty) refl (honest? ty) refl eq
+cgb-prim sc fi es compiled ep (just ty) et eq = conc (isConcrete? ty) refl (honest? ty) refl (rigidFree? ty) refl eq
   where
     conc : (mc : Maybe (IsConcrete ty)) → isConcrete? ty ≡ mc → (mh : Maybe (HonestFFI ty)) → honest? ty ≡ mh
-         → C.ce-prim-conc C.Heap false sc fi es ty mc mh ≡ inj₂ compiled → CGB sc (C.e-fun fi ∷ es) compiled
-    conc nothing _ _ _ ()
-    conc (just _) _ nothing _ ()
-    conc (just c) ec (just h) eh eq′ with C.compileEntries C.Heap false (C.extendScope sc (funName fi) ty) es in rec
+         → (mg : Maybe (RigidFree ty)) → rigidFree? ty ≡ mg
+         → C.ce-prim-conc C.Heap false sc fi es ty mc mh mg ≡ inj₂ compiled → CGB sc (C.e-fun fi ∷ es) compiled
+    conc nothing _ _ _ _ _ ()
+    conc (just _) _ nothing _ _ _ ()
+    conc (just _) _ (just _) _ nothing _ ()
+    conc (just c) ec (just h) eh (just g) eg eq′ with C.compileEntries C.Heap false (C.extendScope sc (funName fi) ty) es in rec
     ... | inj₁ _ = case eq′ of λ ()
     ... | inj₂ rest =
           let (b , beq) = ce-bundleP (C.extendScope sc (funName fi) ty) es rest rec
-          in bffi {c = c} {h = h} ep et ec eh b , trans (cong (primCF fi ty c ∷_) beq) (inj₂-injective eq′)
+          in bffi {c = c} {h = h} {g = g} ep et ec eh eg b , trans (cong (primCF fi ty c ∷_) beq) (inj₂-injective eq′)
 
 cgb-mono sc fi es compiled ep (inj₁ _) er ()
-cgb-mono sc fi es compiled ep (inj₂ ty) er eq
+cgb-mono sc fi es compiled ep (inj₂ ty) er eq with rigidFree? ty in eg
+... | nothing = case eq of λ ()
+... | just g
   with C.compileFun C.Heap false (C.CScope.cimps sc) (C.cpolys sc) (C.declImps (C.CScope.ctele sc)) (funName fi) ty (funBody fi) in cf
 ... | inj₁ _ = case eq of λ ()
 ... | inj₂ irFun
@@ -219,7 +224,7 @@ cgb-mono sc fi es compiled ep (inj₂ ty) er eq
 ...   | inj₂ rest =
         let (Ψ , se , d , f , ce) = compileFun-ce (C.cpolys sc) (C.declImps (C.CScope.ctele sc)) (C.CScope.cimps sc) ty fi irFun cf
             (b , beq) = ce-bundleP (C.extendScope sc (funName fi) ty) es rest rec
-        in bcons {Ψ = Ψ} {se = se} {d = d} {f = f} {irFun = irFun} ep er ce cf b
+        in bcons {Ψ = Ψ} {se = se} {d = d} {f = f} {irFun = irFun} ep er eg ce cf b
          , trans (cong (C.mkCompiledFun (bare (funName fi)) (proj₁ (C.maybeWrapMain (funName fi) ty irFun))
                           (proj₂ (C.maybeWrapMain (funName fi) ty irFun)) (funIsPrimitive fi) ∷_) beq)
                  (inj₂-injective eq)
@@ -239,8 +244,8 @@ bundle→compiled≡compiled sc es compiled eq = proj₂ (ce-bundleP sc es compi
 
 BMainExists : ∀ {sc es} → FunBundle sc es → Set
 BMainExists bnil = ⊥
-BMainExists (bffi _ _ _ _ rest) = BMainExists rest
-BMainExists (bcons {fi = fi} {ty = ty} _ _ _ _ rest) =
+BMainExists (bffi _ _ _ _ _ rest) = BMainExists rest
+BMainExists (bcons {fi = fi} {ty = ty} _ _ _ _ _ rest) =
   ((funName fi ≡ "main") × (funIsPrimitive fi ≡ false) × (ty ≡ EffUU)) ⊎ BMainExists rest
 BMainExists (bpoly _ rest) = BMainExists rest
 
@@ -253,8 +258,8 @@ bf-dispatch irFun (yes _) (no _)     false cont = cont
 
 bundle-find : ∀ {sc es} → FunBundle sc es → Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋)
 bundle-find bnil = nothing
-bundle-find (bffi _ _ _ _ rest) = bundle-find rest
-bundle-find (bcons {fi = fi} {ty = ty} {irFun = irFun} ep rf ce cf rest) =
+bundle-find (bffi _ _ _ _ _ rest) = bundle-find rest
+bundle-find (bcons {fi = fi} {ty = ty} {irFun = irFun} ep rf eg ce cf rest) =
   bf-dispatch irFun (funName fi ≟str "main") (ty ≟T EffUU) (funIsPrimitive fi) (bundle-find rest)
 bundle-find (bpoly _ rest) = bundle-find rest
 
@@ -278,15 +283,15 @@ fa-head {sc} fi ty irFun cf rest-c rest-f ih
 
 find-agree : ∀ {sc es} (b : FunBundle sc es) → findMain (bundle→compiled b) ≡ bundle-find b
 find-agree bnil = refl
-find-agree (bffi _ _ _ _ rest) = find-agree rest
-find-agree {sc} (bcons {fi = fi} {ty = ty} {irFun = irFun} ep rf ce cf rest) =
+find-agree (bffi _ _ _ _ _ rest) = find-agree rest
+find-agree {sc} (bcons {fi = fi} {ty = ty} {irFun = irFun} ep rf eg ce cf rest) =
   fa-head {sc} fi ty irFun cf (bundle→compiled rest) (bundle-find rest) (find-agree rest)
 find-agree (bpoly _ rest) = find-agree rest
 
 bme→me : ∀ {sc es} (b : FunBundle sc es) → BMainExists b → MainIn (bundle→typed b)
-bme→me (bffi _ _ _ _ rest) w = bme→me rest w
-bme→me (bcons _ _ _ _ rest) (inj₁ (p , _ , e)) = inj₁ (p , e)
-bme→me (bcons _ _ _ _ rest) (inj₂ w) = inj₂ (bme→me rest w)
+bme→me (bffi _ _ _ _ _ rest) w = bme→me rest w
+bme→me (bcons _ _ _ _ _ rest) (inj₁ (p , _ , e)) = inj₁ (p , e)
+bme→me (bcons _ _ _ _ _ rest) (inj₂ w) = inj₂ (bme→me rest w)
 bme→me (bpoly _ rest) w = bme→me rest w
 
 bundle-realize : ∀ {sc es} (b : FunBundle sc es) → BMainExists b → Σ-syntax (Usage 0) (λ Ψ → Expr ∅ Ψ EffUU)
@@ -295,10 +300,10 @@ br-dispatch : ∀ {sc es ty} (fi : FunInfo)
   (ce : checkElab (ctxC sc) (funBody fi) ty ≡ TE.success Ψ se d f)
   (rt : FunBundle (C.extendScope sc (funName fi) ty) es) (w : BMainExists rt)
   → Dec (funName fi ≡ "main") → Dec (ty ≡ EffUU) → Σ-syntax (Usage 0) (λ Ψ' → Expr ∅ Ψ' EffUU)
-bundle-realize (bffi _ _ _ _ rest) w = bundle-realize rest w
-bundle-realize {sc} (bcons {fi = fi} {Ψ = Ψ} ep rf ce cf rest) (inj₁ (_ , _ , refl)) =
+bundle-realize (bffi _ _ _ _ _ rest) w = bundle-realize rest w
+bundle-realize {sc} (bcons {fi = fi} {Ψ = Ψ} ep rf eg ce cf rest) (inj₁ (_ , _ , refl)) =
   Ψ , realize (check-sound (ctxC sc) (funBody fi) EffUU ce)
-bundle-realize {sc} (bcons {fi = fi} {ty = ty} ep rf ce cf rest) (inj₂ w) =
+bundle-realize {sc} (bcons {fi = fi} {ty = ty} ep rf eg ce cf rest) (inj₂ w) =
   br-dispatch {sc} fi ce rest w (funName fi ≟str "main") (ty ≟T EffUU)
 bundle-realize (bpoly _ rest) w = bundle-realize rest w
 br-dispatch {sc} fi {Ψ = Ψ} ce rt w (yes _) (yes refl) = Ψ , realize (check-sound (ctxC sc) (funBody fi) EffUU ce)
@@ -318,18 +323,18 @@ ra-head : ∀ {sc es ty} (fi : FunInfo)
 ra-head fi ce rt w (yes _) (yes refl) = refl
 ra-head fi ce rt w (no _)  _          = realize-agree rt w
 ra-head fi ce rt w (yes _) (no _)     = realize-agree rt w
-realize-agree (bffi _ _ _ _ rest) w = realize-agree rest w
-realize-agree (bcons ep rf ce cf rest) (inj₁ (_ , _ , refl)) = refl
-realize-agree {sc} (bcons {fi = fi} {ty = ty} ep rf ce cf rest) (inj₂ w) =
+realize-agree (bffi _ _ _ _ _ rest) w = realize-agree rest w
+realize-agree (bcons ep rf eg ce cf rest) (inj₁ (_ , _ , refl)) = refl
+realize-agree {sc} (bcons {fi = fi} {ty = ty} ep rf eg ce cf rest) (inj₂ w) =
   ra-head {sc} fi ce rest w (funName fi ≟str "main") (ty ≟T EffUU)
 realize-agree (bpoly _ rest) w = realize-agree rest w
 
 bundle-find-exists : ∀ {sc es} (b : FunBundle sc es) {ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋}
   → bundle-find b ≡ just ir → BMainExists b
 bundle-find-exists bnil ()
-bundle-find-exists (bffi _ _ _ _ rest) eq = bundle-find-exists rest eq
+bundle-find-exists (bffi _ _ _ _ _ rest) eq = bundle-find-exists rest eq
 bundle-find-exists (bpoly _ rest) eq = bundle-find-exists rest eq
-bundle-find-exists (bcons {fi = fi} {ty = ty} {irFun = irFun} ep rf ce cf rest) eq
+bundle-find-exists (bcons {fi = fi} {ty = ty} {irFun = irFun} ep rf eg ce cf rest) eq
   with funName fi ≟str "main" | ty ≟T EffUU | funIsPrimitive fi
 ... | yes p | yes refl | false = inj₁ (p , refl , refl)
 ... | yes _ | yes refl | true  = inj₂ (bundle-find-exists rest eq)
@@ -369,9 +374,9 @@ bmn-dispatch : ∀ {sc es ty} (fi : FunInfo)
   (rt : FunBundle (C.extendScope sc (funName fi) ty) es) (w : BMainExists rt)
   (nd : Dec (funName fi ≡ "main")) (td : Dec (ty ≡ EffUU))
   → MNodeAt (bf-dispatch irFun nd td (funIsPrimitive fi) (bundle-find rt)) (br-dispatch {sc} fi ce rt w nd td)
-bundle-main-node (bffi _ _ _ _ rest) w = bundle-main-node rest w
+bundle-main-node (bffi _ _ _ _ _ rest) w = bundle-main-node rest w
 bundle-main-node (bpoly _ rest) w = bundle-main-node rest w
-bundle-main-node {sc} (bcons {fi = fi} {Ψ = Ψ} {se = se} {d = d} {f = f} {irFun = irFun} ep rf ce cf rest) (inj₁ (p , pr , refl))
+bundle-main-node {sc} (bcons {fi = fi} {Ψ = Ψ} {se = se} {d = d} {f = f} {irFun = irFun} ep rf eg ce cf rest) (inj₁ (p , pr , refl))
   rewrite p | pr with "main" ≟str "main" | EffUU ≟T EffUU
 ... | yes refl | yes refl =
       sc , funBody fi , Ψ , se , d , f , ce ,
@@ -379,7 +384,7 @@ bundle-main-node {sc} (bcons {fi = fi} {Ψ = Ψ} {se = se} {d = d} {f = f} {irFu
           (irFun-main-form (C.CScope.cimps sc) (C.cpolys sc) (C.declImps (C.CScope.ctele sc)) (funBody fi) irFun ce cf) , refl
 ... | yes _    | no ¬q = ⊥-elim (¬q refl)
 ... | no ¬r    | _     = ⊥-elim (¬r refl)
-bundle-main-node {sc} (bcons {fi = fi} {ty = ty} ep rf ce cf rest) (inj₂ w) =
+bundle-main-node {sc} (bcons {fi = fi} {ty = ty} ep rf eg ce cf rest) (inj₂ w) =
   bmn-dispatch {sc} fi ce cf ep rest w (funName fi ≟str "main") (ty ≟T EffUU)
 bmn-dispatch {sc} fi {Ψ = Ψ} {se = se} {d = d} {f = f} {irFun = irFun} ce cf ep rt w (yes p) (yes refl)
   rewrite ep | p =

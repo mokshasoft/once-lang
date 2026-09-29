@@ -25,7 +25,7 @@ open import Data.List using (List; []; _∷_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Once.Functor.Decide using (isConcrete?)
 open import Once.Type.Honest using (honest?)
-open import Once.Type.Rigid using (rigidOf)
+open import Once.Type.Rigid using (rigidOf; rigidFree?)
 open import Data.String using (String; _==_)
 open import Data.Unit using (⊤)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans; cong)
@@ -124,30 +124,36 @@ ce-fun-doOpt doOpt sc fi es false eq =
   ce-mono-doOpt doOpt sc fi es (C.resolveFunType (C.CScope.cimps sc) (C.cpolys sc) (C.FunInfo.funType fi) (C.FunInfo.funBody fi)) eq
 
 ce-prim-doOpt doOpt sc fi es nothing ()
-ce-prim-doOpt doOpt sc fi es (just ty) eq = conc (isConcrete? ty) (honest? ty) eq
+ce-prim-doOpt doOpt sc fi es (just ty) eq = conc (isConcrete? ty) (honest? ty) (rigidFree? ty) eq
   where
-    conc : ∀ mc mh {c} → C.ce-prim-conc C.Heap false sc fi es ty mc mh ≡ inj₂ c
-         → Σ-syntax (List C.CompiledFun) (λ c' → C.ce-prim-conc C.Heap doOpt sc fi es ty mc mh ≡ inj₂ c')
-    conc nothing _ ()
-    conc (just _) nothing ()
-    conc (just cc) (just _) eq′ with C.compileEntries C.Heap false (C.extendScope sc (C.FunInfo.funName fi) ty) es in rec
+    conc : ∀ mc mh mg {c} → C.ce-prim-conc C.Heap false sc fi es ty mc mh mg ≡ inj₂ c
+         → Σ-syntax (List C.CompiledFun) (λ c' → C.ce-prim-conc C.Heap doOpt sc fi es ty mc mh mg ≡ inj₂ c')
+    conc nothing _ _ ()
+    conc (just _) nothing _ ()
+    conc (just _) (just _) nothing ()
+    conc (just cc) (just _) (just _) eq′ with C.compileEntries C.Heap false (C.extendScope sc (C.FunInfo.funName fi) ty) es in rec
     ... | inj₁ _ = case eq′ of λ ()
     ... | inj₂ _ = let (_ , recd) = ce-doOpt doOpt (C.extendScope sc (C.FunInfo.funName fi) ty) es rec
                    in _ , cong (C.consCF _) recd
 
 ce-mono-doOpt doOpt sc fi es (inj₁ _) ()
-ce-mono-doOpt doOpt sc fi es (inj₂ ty) eq
-  with C.compileFun C.Heap false (C.CScope.cimps sc) (C.cpolys sc) (C.declImps (C.CScope.ctele sc))
-         (C.FunInfo.funName fi) ty (C.FunInfo.funBody fi) in cf-eq
-... | inj₁ _ = case eq of λ ()
-... | inj₂ _
-      with C.compileEntries C.Heap false (C.extendScope sc (C.FunInfo.funName fi) ty) es in rec
-...   | inj₁ _ = case eq of λ ()
-...   | inj₂ _ =
-        let (ir-d , cfd) = cfun-doOpt doOpt (C.CScope.cimps sc) (C.cpolys sc) (C.declImps (C.CScope.ctele sc))
-                             (C.FunInfo.funName fi) ty (C.FunInfo.funBody fi) cf-eq
-            (_ , recd)   = ce-doOpt doOpt (C.extendScope sc (C.FunInfo.funName fi) ty) es rec
-        in _ , trans (cong (C.ce-mono-ir C.Heap doOpt sc fi es ty) cfd) (cong (C.caf-go-wrap fi ty ir-d) recd)
+ce-mono-doOpt doOpt sc fi es (inj₂ ty) eq = grd (rigidFree? ty) eq
+  where
+    grd : ∀ mg {c} → C.ce-mono-g C.Heap false sc fi es ty mg ≡ inj₂ c
+        → Σ-syntax (List C.CompiledFun) (λ c' → C.ce-mono-g C.Heap doOpt sc fi es ty mg ≡ inj₂ c')
+    grd nothing ()
+    grd (just _) eqg
+      with C.compileFun C.Heap false (C.CScope.cimps sc) (C.cpolys sc) (C.declImps (C.CScope.ctele sc))
+             (C.FunInfo.funName fi) ty (C.FunInfo.funBody fi) in cf-eq
+    ... | inj₁ _ = case eqg of λ ()
+    ... | inj₂ _
+          with C.compileEntries C.Heap false (C.extendScope sc (C.FunInfo.funName fi) ty) es in rec
+    ...   | inj₁ _ = case eqg of λ ()
+    ...   | inj₂ _ =
+            let (ir-d , cfd) = cfun-doOpt doOpt (C.CScope.cimps sc) (C.cpolys sc) (C.declImps (C.CScope.ctele sc))
+                                 (C.FunInfo.funName fi) ty (C.FunInfo.funBody fi) cf-eq
+                (_ , recd)   = ce-doOpt doOpt (C.extendScope sc (C.FunInfo.funName fi) ty) es rec
+            in _ , trans (cong (C.ce-mono-ir C.Heap doOpt sc fi es ty) cfd) (cong (C.caf-go-wrap fi ty ir-d) recd)
 
 ce-poly-doOpt doOpt sc pfi es (inj₁ _) ()
 ce-poly-doOpt doOpt sc pfi es (inj₂ _) eq = ce-doOpt doOpt (C.addEntry sc pfi) es eq

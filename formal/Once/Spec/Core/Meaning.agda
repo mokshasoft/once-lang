@@ -160,7 +160,7 @@ primSem p-i2f  fmt v = resT-lift (semM i2f-info  fmt v)
 
 ⟦ ⊢prim p d ⟧ fmt ρ dγ = ⟦ d ⟧ fmt ρ dγ >>=T primSem p fmt
 
-⟦ ⊢sigop {A = A} c k _ ⟧ fmt ρ dγ = sigOpRefᴰ {A = A} fmt c k
+⟦ ⊢sigop {A = A} c k _ _ ⟧ fmt ρ dγ = sigOpRefᴰ {A = A} fmt c k
 
 ⟦ ⊢sub-eff _ d ⟧ fmt ρ dγ = ⟦ d ⟧ fmt ρ dγ
 

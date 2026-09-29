@@ -44,6 +44,7 @@ open import Once.Type
 open import Once.Type.Sub using (_<:_; _⊑π_)
 open import Once.Functor.Translate using (WellFormedF; IsConcrete)
 open import Once.Type.Honest using (HonestFFI)
+open import Once.Type.Rigid using (RigidFree)
 open import Once.CanonicalName using (CanonicalName)
 open import Once.Surface.Context
   using (Ctx; _,_; lookup; Usage; _∷_; zeroUsage; singleUse; _+ᵘ_; _*ᵘ_; _⊔ᵘ_)
@@ -150,7 +151,7 @@ data _⊢[_]_∷_!_ : ∀ {n} → Ctx n → Usage n → Tm n → Type → Purity
   -- An FFI constant at its declared type (D061/D071: a contract, resolved
   -- by the module layer). Closed: it uses no variable. Honest (D231), so
   -- referencing it is pure.
-  ⊢sigop : ∀ {n} {Γ : Ctx n} {A} (c : CanonicalName) (k : IsConcrete A) → HonestFFI A
+  ⊢sigop : ∀ {n} {Γ : Ctx n} {A} (c : CanonicalName) (k : IsConcrete A) → HonestFFI A → RigidFree A
          → Γ ⊢[ zeroUsage ] sigop c A ∷ A ! pure
 
   -- Plan 0.103 phase 4: a definition at a kind-respecting ground instance of

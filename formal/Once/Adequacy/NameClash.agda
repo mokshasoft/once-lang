@@ -54,7 +54,7 @@ open import Once.CanonicalName using (bare)
 open import Once.TypeCheck.Elaborate using (PolyCtx)
 import Once.Compile as C
 import Once.TypeCheck.Elaborate as TE
-open import Once.Type.Rigid using (rigidOf)
+open import Once.Type.Rigid using (rigidOf; rigidFree?)
 open import Once.Functor.Decide using (isConcrete?)
 open import Once.Type.Honest using (honest?)
 
@@ -200,10 +200,11 @@ ce-syms doOpt sc (e-poly pfi ∷ es) cfs eq
 
 ce-syms-fun doOpt sc fi es true ep cfs eq with FunInfo.funType fi
 ... | nothing = case eq of λ ()
-... | just ty with isConcrete? ty | honest? ty
-...   | nothing | _ = case eq of λ ()
-...   | just _ | nothing = case eq of λ ()
-...   | just _ | just _
+... | just ty with isConcrete? ty | honest? ty | rigidFree? ty
+...   | nothing | _ | _ = case eq of λ ()
+...   | just _ | nothing | _ = case eq of λ ()
+...   | just _ | just _ | nothing = case eq of λ ()
+...   | just _ | just _ | just _
       with C.compileEntries C.Heap doOpt (C.extendScope sc (FunInfo.funName fi) ty) es in rec
 ...     | inj₁ _ = case eq of λ ()
 ...     | inj₂ rest =
@@ -215,13 +216,15 @@ ce-syms-fun doOpt sc fi es true ep cfs eq with FunInfo.funType fi
 ce-syms-fun doOpt sc fi es false ep cfs eq
   with C.resolveFunType (C.CScope.cimps sc) (C.cpolys sc) (FunInfo.funType fi) (FunInfo.funBody fi)
 ... | inj₁ _ = case eq of λ ()
-... | inj₂ ty
+... | inj₂ ty with rigidFree? ty
+...   | nothing = case eq of λ ()
+...   | just _
     with C.compileFun C.Heap doOpt (C.CScope.cimps sc) (C.cpolys sc) (C.declImps (C.CScope.ctele sc)) (FunInfo.funName fi) ty (FunInfo.funBody fi)
-...   | inj₁ _ = case eq of λ ()
-...   | inj₂ irFun
-      with C.compileEntries C.Heap doOpt (C.extendScope sc (FunInfo.funName fi) ty) es in rec
 ...     | inj₁ _ = case eq of λ ()
-...     | inj₂ rest =
+...     | inj₂ irFun
+      with C.compileEntries C.Heap doOpt (C.extendScope sc (FunInfo.funName fi) ty) es in rec
+...       | inj₁ _ = case eq of λ ()
+...       | inj₂ rest =
           subst (λ c → C.emittedSyms c ≡ map once-symbol-own (emittedNames (funsOf (e-fun fi ∷ es))))
                 (inj₂-injective eq)
                 (subst (λ b → C.emittedSyms (C.mkCompiledFun (bare (FunInfo.funName fi)) (proj₁ cfW) (proj₂ cfW) b ∷ rest)

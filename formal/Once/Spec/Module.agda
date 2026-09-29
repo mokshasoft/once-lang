@@ -38,7 +38,7 @@ open import Data.Unit using (⊤)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
 open import Once.Type using (Type; Unit; _⇒[_]_; mk-kind; Many; eff)
-open import Once.Type.Rigid using (rigidOf)
+open import Once.Type.Rigid using (rigidOf; RigidFree)
 open import Once.Functor.Translate using (IsConcrete)
 open import Once.Type.Honest using (HonestFFI)
 open import Once.Surface.Context using (zeroUsage)
@@ -81,16 +81,17 @@ addPoly sc p = scope (Scope.imps sc) (p ∷ Scope.tele sc)
 data ModTele : Scope → List C.Entry → Set where
   []   : ∀ {sc} → ModTele sc []
   -- An FFI declaration: its type, CONCRETE — a SigOp is a first-order
-  -- contract (D061/D071) — and HONEST (D231: `pure` means no side effects).
-  -- No body.
+  -- contract (D061/D071) — HONEST (D231: `pure` means no side effects), and
+  -- GROUND (D243: it cannot mention a definition's parameter). No body.
   ffi  : ∀ {sc fi ty es}
-       → funIsPrimitive fi ≡ true → funType fi ≡ just ty → IsConcrete ty → HonestFFI ty
+       → funIsPrimitive fi ≡ true → funType fi ≡ just ty → IsConcrete ty → HonestFFI ty → RigidFree ty
        → ModTele (addImp sc (funName fi) ty) es
        → ModTele sc (C.e-fun fi ∷ es)
   -- A monomorphic definition, typed at its (declared or inferred) type.
   mono : ∀ {sc fi ty es Ψ}
        → funIsPrimitive fi ≡ false
        → C.resolveFunType (Scope.imps sc) (C.buildPolyCtx (Scope.tele sc)) (funType fi) (funBody fi) ≡ inj₂ ty
+       → RigidFree ty                    -- D243: a monomorphic type is GROUND
        → ctxOf sc ⊢ᶜ funBody fi ∶ ty ⨾ Ψ
        → ModTele (addImp sc (funName fi) ty) es
        → ModTele sc (C.e-fun fi ∷ es)
@@ -119,15 +120,15 @@ EffUU = Unit ⇒[ mk-kind Many eff ] Unit
 -- entry point is at that type).
 MainsEffUU : ∀ {sc es} → ModTele sc es → Set
 MainsEffUU []                                  = ⊤
-MainsEffUU (ffi _ _ _ _ rest)                  = MainsEffUU rest
-MainsEffUU (mono {fi = fi} {ty = ty} _ _ _ rest) = (funName fi ≡ "main" → ty ≡ EffUU) × MainsEffUU rest
+MainsEffUU (ffi _ _ _ _ _ rest)                = MainsEffUU rest
+MainsEffUU (mono {fi = fi} {ty = ty} _ _ _ _ rest) = (funName fi ≡ "main" → ty ≡ EffUU) × MainsEffUU rest
 MainsEffUU (poly _ rest)                       = MainsEffUU rest
 
 -- Some monomorphic definition is `main : IO Unit`.
 MainIn : ∀ {sc es} → ModTele sc es → Set
 MainIn []                                  = ⊥
-MainIn (ffi _ _ _ _ rest)                  = MainIn rest
-MainIn (mono {fi = fi} {ty = ty} _ _ _ rest) = ((funName fi ≡ "main") × (ty ≡ EffUU)) ⊎ MainIn rest
+MainIn (ffi _ _ _ _ _ rest)                = MainIn rest
+MainIn (mono {fi = fi} {ty = ty} _ _ _ _ rest) = ((funName fi ≡ "main") × (ty ≡ EffUU)) ⊎ MainIn rest
 MainIn (poly _ rest)                       = MainIn rest
 
 HasValidMain-ef : ∀ (m : P.Module) (ef : String ⊎ List C.Entry) → ModuleTyped-ef m ef → Set

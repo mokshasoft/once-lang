@@ -20,7 +20,7 @@
 --     definitions (monomorphic or telescope) is `ref d τ`.
 --
 -- The module layer is an argument, not an assumption: a `View` resolves each
--- imported name to an honest FFI declaration (D231) or one of the module's own
+-- imported name to an honest, ground FFI declaration (D231, D243) or one of the module's own
 -- definitions, and names each telescope entry's core index and the
 -- kind-respecting instance a use is at.
 -- Phase 6c/6d construct it from the module.
@@ -40,7 +40,7 @@ open import Relation.Nullary using (¬_)
 
 open import Once.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; mk-kind; Many; Purity; pure; eff;
   μ-type; ν-type; ⟦_⟧T; PolyType; Ground; extractGround)
-open import Once.Type.Rigid using (KindedInstance)
+open import Once.Type.Rigid using (KindedInstance; RigidFree)
 open import Once.Type.Sub using (_<:_; sub-arr; <:-refl)
 open import Once.Type.Honest using (HonestFFI)
 open import Once.CanonicalName using (bare; showCanonical)
@@ -72,7 +72,7 @@ InstanceOf d T = Σ[ τ ∈ GSub (arity (S !! d)) ] Respects (kinds (S !! d)) τ
 -- honest by D231) or one of the module's own definitions (D061/D071: an
 -- internal reference is a context projection, never a SigOp).
 data ImportAt (T : Type) : Set where
-  ffi : HonestFFI T → ImportAt T
+  ffi : HonestFFI T → RigidFree T → ImportAt T
   def : (d : Fin s) → InstanceOf d T → ImportAt T
 
 record View (imps : Imports) (polys : PolyCtx) : Set where
@@ -131,7 +131,7 @@ private
   refE {Γ = Γ} d (τ , r , eq) = ref d τ , subst (λ T → Γ ⊢[ zeroUsage ] ref d τ ∷ T ! pure) eq (⊢ref d τ r)
 
   importE : Once.CanonicalName.CanonicalName → IsConcrete A → ImportAt A → Elab Γ zeroUsage A
-  importE {A = A} c k (ffi h)   = sigop c A , ⊢sigop c k h
+  importE {A = A} c k (ffi h g) = sigop c A , ⊢sigop c k h g
   importE         c k (def d i) = refE d i
 
   closeE : Elab ∅ zeroUsage A → Elab Γ zeroUsage A

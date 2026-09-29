@@ -74,13 +74,13 @@ mt-den-indep : ∀ {sc es} (mt bt : ModTele sc es) (me : MainIn mt) (bme : MainI
   SD.⟦ proj₂ (MC.mainRealized-go mt me) ⟧ˢ fmt σ (env0 {proj₁ (MC.mainRealized-go mt me)} dγ)
   ≡ SD.⟦ proj₂ (MC.mainRealized-go bt bme) ⟧ˢ fmt σ (env0 {proj₁ (MC.mainRealized-go bt bme)} dγ)
 mt-den-indep [] [] () bme dγ
-mt-den-indep (ffi _ et₁ _ _ rt₁) (ffi _ et₂ _ _ rt₂) me bme dγ
+mt-den-indep (ffi _ et₁ _ _ _ rt₁) (ffi _ et₂ _ _ _ rt₂) me bme dγ
   with just-injective (trans (sym et₁) et₂)
 ... | refl = mt-den-indep rt₁ rt₂ me bme dγ
-mt-den-indep (ffi ep₁ _ _ _ _) (mono ep₂ _ _ _) _ _ _ = ⊥-elim (true≢false (trans (sym ep₁) ep₂))
-mt-den-indep (mono ep₁ _ _ _) (ffi ep₂ _ _ _ _) _ _ _ = ⊥-elim (true≢false (trans (sym ep₂) ep₁))
+mt-den-indep (ffi ep₁ _ _ _ _ _) (mono ep₂ _ _ _ _) _ _ _ = ⊥-elim (true≢false (trans (sym ep₁) ep₂))
+mt-den-indep (mono ep₁ _ _ _ _) (ffi ep₂ _ _ _ _ _) _ _ _ = ⊥-elim (true≢false (trans (sym ep₂) ep₁))
 mt-den-indep (poly _ rt₁) (poly _ rt₂) me bme dγ = mt-den-indep rt₁ rt₂ me bme dγ
-mt-den-indep {sc} (mono {fi = fi} {ty = ty₁} {es = es} ep₁ rf₁ d₁ rt₁) (mono {ty = ty₂} ep₂ rf₂ d₂ rt₂) me bme dγ
+mt-den-indep {sc} (mono {fi = fi} {ty = ty₁} {es = es} ep₁ rf₁ g₁ d₁ rt₁) (mono {ty = ty₂} ep₂ rf₂ g₂ d₂ rt₂) me bme dγ
   with inj₂-injective (trans (sym rf₁) rf₂)
 ... | refl = dispatch me bme
   where
@@ -102,9 +102,9 @@ mt-den-indep {sc} (mono {fi = fi} {ty = ty₁} {es = es} ep₁ rf₁ d₁ rt₁)
     ... | yes _ | yes refl = refl
     ... | no ¬p | _ = ⊥-elim (¬p hp)
     ... | yes _ | no ¬e = ⊥-elim (¬e refl)
-    dispatch : (me : MainIn (mono {sc = sc} {fi = fi} ep₁ rf₁ d₁ rt₁)) (bme : MainIn (mono {sc = sc} {fi = fi} ep₂ rf₂ d₂ rt₂)) →
-      SD.⟦ proj₂ (MC.mainRealized-go (mono {sc = sc} {fi = fi} ep₁ rf₁ d₁ rt₁) me) ⟧ˢ fmt σ (env0 {proj₁ (MC.mainRealized-go (mono {sc = sc} {fi = fi} ep₁ rf₁ d₁ rt₁) me)} dγ)
-      ≡ SD.⟦ proj₂ (MC.mainRealized-go (mono {sc = sc} {fi = fi} ep₂ rf₂ d₂ rt₂) bme) ⟧ˢ fmt σ (env0 {proj₁ (MC.mainRealized-go (mono {sc = sc} {fi = fi} ep₂ rf₂ d₂ rt₂) bme)} dγ)
+    dispatch : (me : MainIn (mono {sc = sc} {fi = fi} ep₁ rf₁ g₁ d₁ rt₁)) (bme : MainIn (mono {sc = sc} {fi = fi} ep₂ rf₂ g₂ d₂ rt₂)) →
+      SD.⟦ proj₂ (MC.mainRealized-go (mono {sc = sc} {fi = fi} ep₁ rf₁ g₁ d₁ rt₁) me) ⟧ˢ fmt σ (env0 {proj₁ (MC.mainRealized-go (mono {sc = sc} {fi = fi} ep₁ rf₁ g₁ d₁ rt₁) me)} dγ)
+      ≡ SD.⟦ proj₂ (MC.mainRealized-go (mono {sc = sc} {fi = fi} ep₂ rf₂ g₂ d₂ rt₂) bme) ⟧ˢ fmt σ (env0 {proj₁ (MC.mainRealized-go (mono {sc = sc} {fi = fi} ep₂ rf₂ g₂ d₂ rt₂) bme)} dγ)
     dispatch (inj₁ (_ , refl)) (inj₁ (_ , refl)) = RI d₁ d₂
     dispatch (inj₁ (p₁ , refl)) (inj₂ w₂) =
       trans (RI d₁ d₂) (sym (cong (λ x → SD.⟦ proj₂ x ⟧ˢ fmt σ (env0 {proj₁ x} dγ)) (head d₂ w₂ p₁)))

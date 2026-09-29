@@ -41,7 +41,7 @@ open import Once.TypeCheck.Raw using (RawExpr)
 open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_)
 open import Once.Spec.Module
   using (Scope; scope; ModTele; []; ffi; mono; poly; ModuleTyped-ef; ModuleTyped)
-open import Once.Type.Rigid using (rigidOf)
+open import Once.Type.Rigid using (rigidOf; RigidFree; rigidFree?)
 open import Once.Functor.Translate using (IsConcrete)
 open import Once.Functor.Decide using (isConcrete?)
 open import Once.Type.Honest using (HonestFFI; honest?)
@@ -184,31 +184,39 @@ ce-fun-sound doOpt sc fi es false ep eq =
   ce-mono-sound doOpt sc fi es ep _ refl eq
 
 ce-prim-sound doOpt sc fi es ep nothing et ()
-ce-prim-sound doOpt sc fi es ep (just ty) et eq = conc (isConcrete? ty) refl (honest? ty) refl eq
+ce-prim-sound doOpt sc fi es ep (just ty) et eq =
+  conc (isConcrete? ty) refl (honest? ty) refl (rigidFree? ty) refl eq
   where
     conc : (mc : Maybe (IsConcrete ty)) → isConcrete? ty ≡ mc
-         → (mh : Maybe (HonestFFI ty)) → honest? ty ≡ mh → ∀ {cfs}
-         → C.ce-prim-conc C.Heap doOpt sc fi es ty mc mh ≡ inj₂ cfs → ModTele (scopeOf sc) (C.e-fun fi ∷ es)
-    conc nothing _ _ _ ()
-    conc (just _) _ nothing _ ()
-    conc (just c) _ (just h) _ eq′ =
-      ffi ep et c h (ce-sound doOpt (C.extendScope sc (C.FunInfo.funName fi) ty) es (proj₂ (consCF-inj _ eq′)))
+         → (mh : Maybe (HonestFFI ty)) → honest? ty ≡ mh
+         → (mg : Maybe (RigidFree ty)) → rigidFree? ty ≡ mg → ∀ {cfs}
+         → C.ce-prim-conc C.Heap doOpt sc fi es ty mc mh mg ≡ inj₂ cfs → ModTele (scopeOf sc) (C.e-fun fi ∷ es)
+    conc nothing _ _ _ _ _ ()
+    conc (just _) _ nothing _ _ _ ()
+    conc (just _) _ (just _) _ nothing _ ()
+    conc (just c) _ (just h) _ (just g) _ eq′ =
+      ffi ep et c h g (ce-sound doOpt (C.extendScope sc (C.FunInfo.funName fi) ty) es (proj₂ (consCF-inj _ eq′)))
 
 ce-mono-sound doOpt sc fi es ep (inj₁ _) er ()
-ce-mono-sound doOpt sc fi es ep (inj₂ ty) er eq = step
-  (C.compileFun C.Heap doOpt (C.CScope.cimps sc) (C.cpolys sc) (C.declImps (C.CScope.ctele sc))
-     (C.FunInfo.funName fi) ty (C.FunInfo.funBody fi)) refl eq
+ce-mono-sound doOpt sc fi es ep (inj₂ ty) er eq = grd (rigidFree? ty) eq
   where
-    step : (ri : String ⊎ IR ⌊ Unit ⌋ ⌊ ty ⌋)
-         → C.compileFun C.Heap doOpt (C.CScope.cimps sc) (C.cpolys sc) (C.declImps (C.CScope.ctele sc))
-             (C.FunInfo.funName fi) ty (C.FunInfo.funBody fi) ≡ ri
-         → ∀ {cfs} → C.ce-mono-ir C.Heap doOpt sc fi es ty ri ≡ inj₂ cfs → ModTele (scopeOf sc) (C.e-fun fi ∷ es)
-    step (inj₁ _) _ ()
-    step (inj₂ ir) cf eq′ =
-      let (Ψ , jud) = compileFun-sound doOpt (C.CScope.cimps sc) (C.cpolys sc) (C.declImps (C.CScope.ctele sc))
-                        (C.FunInfo.funName fi) ty (C.FunInfo.funBody fi) cf
-      in mono ep er jud
-           (ce-sound doOpt (C.extendScope sc (C.FunInfo.funName fi) ty) es (proj₂ (wrap-inj fi ty ir _ eq′)))
+    grd : (mg : Maybe (RigidFree ty)) → ∀ {cfs} → C.ce-mono-g C.Heap doOpt sc fi es ty mg ≡ inj₂ cfs
+        → ModTele (scopeOf sc) (C.e-fun fi ∷ es)
+    grd nothing ()
+    grd (just g) eqg = step
+      (C.compileFun C.Heap doOpt (C.CScope.cimps sc) (C.cpolys sc) (C.declImps (C.CScope.ctele sc))
+         (C.FunInfo.funName fi) ty (C.FunInfo.funBody fi)) refl eqg
+      where
+        step : (ri : String ⊎ IR ⌊ Unit ⌋ ⌊ ty ⌋)
+             → C.compileFun C.Heap doOpt (C.CScope.cimps sc) (C.cpolys sc) (C.declImps (C.CScope.ctele sc))
+                 (C.FunInfo.funName fi) ty (C.FunInfo.funBody fi) ≡ ri
+             → ∀ {cfs} → C.ce-mono-ir C.Heap doOpt sc fi es ty ri ≡ inj₂ cfs → ModTele (scopeOf sc) (C.e-fun fi ∷ es)
+        step (inj₁ _) _ ()
+        step (inj₂ ir) cf eq′ =
+          let (Ψ , jud) = compileFun-sound doOpt (C.CScope.cimps sc) (C.cpolys sc) (C.declImps (C.CScope.ctele sc))
+                            (C.FunInfo.funName fi) ty (C.FunInfo.funBody fi) cf
+          in mono ep er g jud
+               (ce-sound doOpt (C.extendScope sc (C.FunInfo.funName fi) ty) es (proj₂ (wrap-inj fi ty ir _ eq′)))
 
 ce-poly-sound doOpt sc pfi es eq = step _ refl eq
   where
