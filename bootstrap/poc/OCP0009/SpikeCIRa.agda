@@ -1,3 +1,6 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
 {-# OPTIONS --prop #-}
 -- SPIKE 8a (ROUTE (a) of §4.2¹⁰) — close `MI ⊢app` with a mutual soundness lemma.
 --

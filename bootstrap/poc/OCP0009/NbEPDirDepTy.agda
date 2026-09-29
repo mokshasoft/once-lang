@@ -1,3 +1,6 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
 ------------------------------------------------------------------------
 -- OCP-0009 · dHoTT step 41 (M1 raw route, milestone 2) — the TYPING RELATION
 --   for the raw dependent calculus (with DEPENDENT universe codes).

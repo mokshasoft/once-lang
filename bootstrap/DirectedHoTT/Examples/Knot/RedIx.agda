@@ -1,3 +1,6 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
 ------------------------------------------------------------------------
 -- OCP-0009 · KNOT — the REDUCTION judgements `t ⟶ u` and `A ⟶ᵀ B` as
 -- families fibred by their SUBJECT (the source; D077), the target in the

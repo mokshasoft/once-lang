@@ -1,3 +1,6 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
 ------------------------------------------------------------------------
 -- OCP-0009 · dHoTT step 27 — (A2) the DIRECTED IDENTITY TYPE over the
 --                            dependent-kernel terms: directed `J`, `no-sym`

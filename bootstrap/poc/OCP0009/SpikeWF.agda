@@ -1,3 +1,6 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
 {-# OPTIONS --prop #-}
 -- SPIKE (design probe): can CI/TI/MI be defined with **NO FUEL and NO BOUNDS** at all?
 --

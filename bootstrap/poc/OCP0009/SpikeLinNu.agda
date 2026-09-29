@@ -1,3 +1,6 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
 ------------------------------------------------------------------------
 -- OCP-0009 · W0e — CODATA IN THE LINEAR CORE.  A SPIKE.
 --

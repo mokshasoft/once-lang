@@ -1,3 +1,6 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
 ------------------------------------------------------------------------
 -- OCP-0009 · Lib — the NORMAL FORMS of a shape's payload, hypotheses and
 -- walked hypotheses, at an index term (`Lib/Syn`).

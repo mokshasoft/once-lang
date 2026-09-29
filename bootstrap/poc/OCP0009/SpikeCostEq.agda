@@ -1,3 +1,6 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
 {-# OPTIONS --safe #-}
 module poc.OCP0009.SpikeCostEq where
 -- Is the hand-reduced REC1TZZ actually equal to the subTy/renTy chain?

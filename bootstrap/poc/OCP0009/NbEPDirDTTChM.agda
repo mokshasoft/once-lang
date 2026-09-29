@@ -1,3 +1,6 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
 -- SCAFFOLD: Û-VALUED interp (codes) ⇒ type-eqs are Û-eqs (π̂ injective, coe collapses via UIP).
 -- FUEL-threaded naturality (shared Nat measure szO(keep r wA)=suc(2*szT wA+szO r); --prop bounds
 -- are defeq-irrelevant; --termination-depth=3 lets SCT compose the nat-TI↔envO cycle — Agda STILL

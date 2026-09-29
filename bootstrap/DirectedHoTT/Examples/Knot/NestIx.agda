@@ -1,3 +1,6 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
 ------------------------------------------------------------------------
 -- OCP-0009 · KNOT — the CONVOY of a nested case on a SUBJECT FIELD (D077:
 -- "a nested pattern is a nested case"): β's `app (lam t) u` cases on the

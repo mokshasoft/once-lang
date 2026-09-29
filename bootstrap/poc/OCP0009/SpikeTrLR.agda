@@ -1,3 +1,6 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
 ------------------------------------------------------------------------
 -- ⚠⚠ FROZEN AT STAGE B — THIS MODULE IS NOT EXPECTED TO COMPILE. ⚠⚠
 --

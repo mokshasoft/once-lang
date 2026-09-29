@@ -1,3 +1,6 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
 ------------------------------------------------------------------------
 -- ⚠⚠⚠ PARKED — A **NEGATIVE RESULT**.  THIS MODULE TYPECHECKS AND IS
 --     NOT USED.  It is the spike that answered "should a judgement

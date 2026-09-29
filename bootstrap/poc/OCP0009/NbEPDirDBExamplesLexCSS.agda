@@ -1,3 +1,6 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
 ------------------------------------------------------------------------
 -- ⚠⚠⚠ THIS MODULE IS **RED**.  IT DOES NOT TYPECHECK — IT RUNS OUT OF
 --     MEMORY.  Do not read it as a verified derivation; it is a MEASURED

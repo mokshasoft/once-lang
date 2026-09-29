@@ -1,3 +1,6 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
 ------------------------------------------------------------------------
 -- BRANCH (S,0), rec₂ — VACUOUS: μ₂ y < μ₂ x ≤ 0, so `⊢strong-base'`.
 --

@@ -1,3 +1,6 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
 ------------------------------------------------------------------------
 -- OCP-0009 · EXAMPLES — ★★★ A SYNTAX AS A DESCRIPTION, inside the
 -- kernel, LEVITATED and FIBRED: the λ-calculus scoped by CONTEXT DEPTH,

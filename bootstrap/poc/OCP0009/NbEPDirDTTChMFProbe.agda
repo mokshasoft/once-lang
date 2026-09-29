@@ -1,3 +1,6 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
 -- PROBE: sub-TI / sub-TI-Π kept REAL; everything else heavy postulated.  Used to test whether
 -- sub-TI's BODY survives changing bC to the PRE-substitution measure.
 {-# OPTIONS --prop --termination-depth=3 #-}

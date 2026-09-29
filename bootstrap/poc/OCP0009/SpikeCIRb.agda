@@ -1,3 +1,6 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
 {-# OPTIONS --prop #-}
 -- SPIKE 8b (TEST B of §4.2¹¹) — put the REAL wkTI/nat-TI back.
 --

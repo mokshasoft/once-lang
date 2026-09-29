@@ -1,3 +1,6 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
 {-# OPTIONS --prop --termination-depth=3 #-}
 -- SPIKE v2 (correctness-free): TRUE uniform fuel — CI/TI/MI ALL carry one threaded fuel n,
 -- decremented uniformly (suc n → n).  ⇓ (fuel restriction) and TI-irr are postulated (the

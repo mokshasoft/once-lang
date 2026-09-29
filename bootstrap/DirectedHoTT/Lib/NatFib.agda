@@ -1,3 +1,6 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
 ------------------------------------------------------------------------
 -- OCP-0009 · Lib — ★ FAMILIES FIBRED OVER ℕ: a family whose fibre is
 -- computed by CASE ON A NATURAL-NUMBER INDEX.

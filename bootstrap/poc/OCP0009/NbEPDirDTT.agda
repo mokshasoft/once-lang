@@ -1,3 +1,6 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
 ------------------------------------------------------------------------
 -- OCP-0009 · dHoTT step 43 — a GENUINELY DEPENDENT raw calculus + its full
 --   SYNTACTIC METATHEORY (renaming and substitution preserve typing).

@@ -1,3 +1,6 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
 ------------------------------------------------------------------------
 -- ⚠ PARTIAL: both branches and `⊢aAux` are GREEN.  Still to come: the Π
 --   form, D7's unfolding lemma, and the SpikeDivC rewrite that measures

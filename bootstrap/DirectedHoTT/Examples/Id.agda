@@ -1,3 +1,6 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
 ------------------------------------------------------------------------
 -- OCP-0009 — EXAMPLES, the SYMMETRIC former: subst / rewrite / sym /
 -- trans / cong as object-language proofs.  THE ACCEPTANCE TEST for the

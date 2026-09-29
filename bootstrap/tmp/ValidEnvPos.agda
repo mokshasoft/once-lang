@@ -1,3 +1,6 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
 {-# OPTIONS --safe #-}
 -- ★ The VALID-ENVIRONMENT interpretation of a constructor telescope, with
 --   the REAL relation's shape (the lesson of `ExistLiftPi`: include every

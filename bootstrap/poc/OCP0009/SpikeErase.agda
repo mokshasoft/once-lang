@@ -1,3 +1,6 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
 {-# OPTIONS --safe #-}
 ------------------------------------------------------------------------
 -- SPIKE 9 (§4.2¹³) — THE ERASED-CARRIER MODEL.  A route that is NOT on the

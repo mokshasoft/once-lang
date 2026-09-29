@@ -1,3 +1,6 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
 ------------------------------------------------------------------------
 -- OCP-0009 · KNOT — the hand-written `⊢` pieces the generated rows (`JudgeRowsGen`) use: the fzero/fsuc rows (a case on `Fin N`, then a Desc-valued natrec), the payload-field views.
 --

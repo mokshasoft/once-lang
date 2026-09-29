@@ -1,3 +1,6 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
 ------------------------------------------------------------------------
 -- OCP-0009 · Lib — ★★★ A FAMILY FIBRED BY CASE ON A SYNTAX TERM (D077),
 -- generic in the signature.

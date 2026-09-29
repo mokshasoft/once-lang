@@ -1,3 +1,6 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
 ------------------------------------------------------------------------
 -- OCP-0009 · KNOT — the CONVERSIONS `t ≅ u` and `A ≅ᵀ B` as families
 -- (D077): their four rules have a bare-variable subject, so every fibre

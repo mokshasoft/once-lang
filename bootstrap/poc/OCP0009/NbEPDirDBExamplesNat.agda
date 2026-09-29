@@ -1,3 +1,6 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
 ------------------------------------------------------------------------
 -- OCP-0009 — EXAMPLES, WF-AXIS STAGE A: the datatype core.  THE
 -- ACCEPTANCE TEST (SPIKE-WF §7): written FIRST, the kernel is landed

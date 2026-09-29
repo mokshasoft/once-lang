@@ -1,3 +1,6 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
 ------------------------------------------------------------------------
 -- OCP-0009 · KNOT — the typing judgement's ROW MACHINERY at the Knot: the
 -- fibred family's index and convoy before any row (`Fib₀`), a payload's

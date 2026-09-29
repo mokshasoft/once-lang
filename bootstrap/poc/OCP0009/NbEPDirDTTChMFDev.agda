@@ -1,3 +1,6 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
 -- DEV STUB of NbEPDirDTTChMF.  Heavy PROVEN lemmas are postulated IN PLACE (declaration order
 -- preserved, so TI-irr's 𝕀 clause still sees MI-irr).  subTI's proof consumes these only through
 -- their TYPE (under coe/trans), never by reduction — so a proof that checks here also checks

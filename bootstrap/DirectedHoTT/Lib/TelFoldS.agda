@@ -1,3 +1,6 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
 ------------------------------------------------------------------------
 -- OCP-0009 · Lib — ★ THE FOLD OF A SORTED FAMILY (`Lib/TelFold` over
 -- `Lib/Sorted`).
