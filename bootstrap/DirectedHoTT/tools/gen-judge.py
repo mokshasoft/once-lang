@@ -112,8 +112,11 @@ RULES = {
   "cFin":   dict(case="U", ents=[]),
   "cUnit":  dict(case="U", ents=[]),
 }
-# the opaque operations (`Knot/SubEnv`): result `K 0 (d + out)`, argument sorts and depth offsets
+# the opaque operations (`Knot/SubEnv`): result `K sort (d + out)` (sort 0 unless given), argument sorts and depth offsets
 OPS = {
+  "iinstTmK": dict(sort=1, out=0, args=[(1, 0), (1, 0), (1, 2)]),
+  "pwShK":    dict(sort=1, out=2, args=[(1, 2)]),
+  "wk2uK":    dict(out=3, args=[(0, 2)]),
   "nrsK":    dict(out=2, args=[(0, 1)]),
   "pairSK":  dict(out=2, args=[(0, 1)]),
   "fsucSK":  dict(out=1, args=[(0, 1)]),
@@ -155,6 +158,7 @@ RULES.update({
 })
 
 V0 = ("v0",)
+V1 = ("v1",)
 RULES.update({
   # flat? cA ≡ true is a σ-field of the `Flat` family (a lower stratum)
   "ap": dict(ex=[("Tm", "J"), ("Pred", "Flat", "J", E(0)), ("Tm", "J"), ("Tm", "J")],
@@ -204,6 +208,8 @@ FAMS = {
              csig="Ξ ⊢ c ∷ El (Redₘ.Cat (pair (tag 1) j))", ix="ix⟶", dix="⊢ix⟶"),
   "⟶ᵀ": dict(J="RedTₘ.J", dJ="RedTₘ.⊢J", okσ="RedTₘ.okσ", RowOK="RedTₘ.RowOK", S=0, X="(⊢tgt {s = 0} dc)", XK="K 0 J",
              csig="Ξ ⊢ c ∷ El (RedTₘ.Cat (pair (tag 0) j))", ix="ix⟶ᵀ", dix="⊢ix⟶ᵀ"),
+  "Pw": dict(J="Pwₘ.J", dJ="Pwₘ.⊢J", okσ="Pwₘ.okσ", RowOK="Pwₘ.RowOK", S=1, X="(⊢pwTgt dc)", XK="K 1 (nsuc J)", Xd=1,
+             csig="Ξ ⊢ c ∷ El (Pwₘ.Cat (pair (tag 1) j))", ix="ixPw", dix="⊢ixPw"),
   "≅":  dict(J="Convₘ.J", dJ="Convₘ.⊢J", okσ="Convₘ.okσ", RowOK="Convₘ.RowOK", S=1, X="(⊢tgt {s = 1} dc)", XK="K 1 J",
              csig="Ξ ⊢ c ∷ El (Convₘ.Cat (pair (tag 1) j))", ix="ix≅", dix="⊢ix≅"),
   "≅ᵀ": dict(J="ConvTₘ.J", dJ="ConvTₘ.⊢J", okσ="ConvTₘ.okσ", RowOK="ConvTₘ.RowOK", S=0, X="(⊢tgt {s = 0} dc)", XK="K 0 J",
@@ -262,6 +268,7 @@ class PObj:
               + [("r", m, i) for m, (_, hh) in enumerate(rc.nest) for i in range(len(SIG[hh][1]))] \
               + [("e", i) for i in range(len(rc.ex))]
         self.params = [p for p in order if p in used]
+        self.order = order
 
     def use(self, p):
         if p not in self.used: self.used.append(p)
@@ -276,9 +283,9 @@ class PObj:
             self.collect(c[2]); self.collect(c[3]); self.add_atom(("Pred:" + c[1], (c[2], c[3])))
         elif t == "IdC":
             self.collect_code(c[1]); self.collect(c[2]); self.collect(c[3])
-        elif t == "RedC":
+        elif t in ("RedC", "PwC"):
             for y in c[1:]: self.collect(y)
-            self.add_atom(("RedC", c[1:]))
+            self.add_atom((t, c[1:]))
         elif t == "NiC":
             for y in c[1:]: self.collect(y)
             self.add_atom(("NiC", c[1:]))
@@ -307,7 +314,7 @@ class PObj:
             self.add_atom((tag, x[1:]))
         elif tag == "nsuc":
             self.collect(x[1])
-        elif tag in ("nzero", "v0"):
+        elif tag in ("nzero", "v0", "v1"):
             pass
         else:
             raise ValueError(x)
@@ -326,6 +333,7 @@ class PObj:
         if tag == "nsuc": return "(nsuc %s)" % self.expr(x[1], env, atoms)
         if tag == "nzero": return "nzero"
         if tag == "v0": return "(kvar ffz)"
+        if tag == "v1": return "(kvar (ffs ffz))"
         if tag in ("sub0", "wk", "DF", "mc") or tag in OPS:
             key = (tag, x[1:])
             if atoms: return "A%d" % self.atoms.index(key)
@@ -341,6 +349,7 @@ class PObj:
         if kind in ("Ty", "Tm"): return "(⌜%s⌝ %s)" % (kind, r(args[0]))
         if kind.startswith("Pred:"): return "(⌜%s⌝ %s %s)" % (kind[5:], r(args[0]), r(args[1]))
         if kind == "RedC": return "(⌜⟶⌝ %s)" % " ".join(r(y) for y in args)
+        if kind == "PwC": return "(⌜Pw⌝ %s)" % " ".join(r(y) for y in args)
         if kind == "NiC": return "(⌜∋⌝ %s)" % " ".join(r(y) for y in args)
         if kind in OPS or kind == "mc": return "(%s %s)" % (kind, " ".join(r(y) for y in args))
         raise ValueError(a)
@@ -354,6 +363,7 @@ class PObj:
         if kind in ("Ty", "Tm"): return "(⌜%s⌝-sub %s %s)" % (kind, sigma, r(args[0]))
         if kind.startswith("Pred:"): return "(⌜%s⌝-sub %s %s %s)" % (kind[5:], sigma, r(args[0]), r(args[1]))
         if kind == "RedC": return "(⌜⟶⌝-sub %s %s)" % (sigma, " ".join(r(y) for y in args))
+        if kind == "PwC": return "(⌜Pw⌝-sub %s %s)" % (sigma, " ".join(r(y) for y in args))
         if kind == "NiC": return "(⌜∋⌝-sub %s %s)" % (sigma, " ".join(r(y) for y in args))
         if kind in OPS or kind == "mc": return "(%s-sub %s %s)" % (kind, sigma, " ".join(r(y) for y in args))
         raise ValueError(a)
@@ -369,7 +379,7 @@ class PObj:
             return ("A%d" % self.atoms.index(key)) if atoms else self.atom_expr(key, env)
         if t == "IdC":
             return "(⌜Id⌝ %s %s %s)" % (self.code_render(c[1], env, atoms), self.expr(c[2], env, atoms), self.expr(c[3], env, atoms))
-        if t in ("RedC", "NiC"):
+        if t in ("RedC", "NiC", "PwC"):
             key = (t, c[1:])
             return ("A%d" % self.atoms.index(key)) if atoms else self.atom_expr(key, env)
         raise ValueError(c)
@@ -403,6 +413,9 @@ class PObj:
         if tag == "v0":
             assert s == 1 and dnum(d) >= 1
             return "(⊢kvar %s (⊢ffz %s))" % (dty(d, denv["J"]), dty(minus1(d), denv["J"]))
+        if tag == "v1":
+            assert s == 1 and dnum(d) >= 2
+            return "(⊢kvar %s (⊢ffs %s (⊢ffz %s)))" % (dty(d, denv["J"]), dty(minus1(d), denv["J"]), dty(minus1(minus1(d)), denv["J"]))
         if tag == "k":
             srt, fs, _ = SIG[x[1]]
             assert srt == s, (x, s)
@@ -428,7 +441,7 @@ class PObj:
         if tag in OPS:
             sg = OPS[tag]
             d0 = x[1]
-            assert s == 0 and plus(d0, sg["out"]) == d, (x, s, d)
+            assert s == sg.get("sort", 0) and plus(d0, sg["out"]) == d, (x, s, d)
             ds = [self.typ(y, srt, plus(d0, kk), denv) for y, (srt, kk) in zip(x[2:], sg["args"])]
             return "(⊢%s %s%s)" % (tag, dty(d0, denv["J"]), "".join(" " + q for q in ds))
         raise ValueError(x)
@@ -462,6 +475,9 @@ class PObj:
         if t == "RedC":
             _, d0, a, b = c
             return "(⊢⌜⟶⌝ %s %s %s)" % (dty(d0, denv["J"]), self.typ(a, 1, d0, denv), self.typ(b, 1, d0, denv))
+        if t == "PwC":
+            _, d0, a, b = c
+            return "(⊢⌜Pw⌝ %s %s %s)" % (dty(d0, denv["J"]), self.typ(a, 1, d0, denv), self.typ(b, 1, plus(d0, 1), denv))
         if t == "NiC":
             _, d0, g, x, a = c
             return "(⊢⌜∋⌝ %s %s %s %s)" % (dty(d0, denv["J"]), self.ctxtyp(g, d0, denv), denv[x], self.typ(a, 0, d0, denv))
@@ -480,7 +496,8 @@ class PObj:
                                                            self.typ(Aa, 0, d, denv), body)
             elif ent[0] == "red":
                 _, d, t, u = ent
-                body = "ok-ρ (%s %s %s %s) (%s)" % (FAM["dix"], dty(d, denv["J"]), self.typ(t, FAM["S"], d, denv), self.typ(u, FAM["S"], d, denv), body)
+                body = "ok-ρ (%s %s %s %s) (%s)" % (FAM["dix"], dty(d, denv["J"]), self.typ(t, FAM["S"], d, denv),
+                                                    self.typ(u, FAM["S"], plus(d, FAM.get("Xd", 0)), denv), body)
             elif ent[0] == "id":
                 _, code, a, b = ent
                 srt = 0 if code[0] == "Ty" else 1
@@ -586,6 +603,8 @@ class Alt:
             for p in co.params:
                 assert not (isinstance(p, tuple) and p[0] == "e" and p[1] >= i), (name, i, p)
         self.body = PObj(self.rc, self.pfx, "tel", spec["ents"])
+        used = [p for po in self.codes + [self.body] for p in po.params if not (isinstance(p, tuple) and p[0] == "e")]
+        self.xparams = [p for p in self.body.order if p in used]
 
 # ------------------------------------------------------------ nested subject cases (NestIx)
 def lt_of(sort): return "lt-z" if sort == 0 else "(lt-s lt-z)"
@@ -696,11 +715,11 @@ def gen_alt(al):
         for m in range(i):
             f = fs[m]
             if f[0] == "nat":
-                d = "(⊢natSnd {sh = %s} %s)" % (shape_expr(fs[m + 1:]), d)
+                d = "(⊢natSnd {i = pair (tag %d) j} {I = SI 2} {D = SD KSig} {sh = %s} %s)" % (S_, shape_expr(fs[m + 1:]), d)
             else:
                 d = "(⊢recSnd {s = %d} {k = %d} {sh = %s} %s)" % (f[1], f[2], shape_expr(fs[m + 1:]), d)
         if fs[i][0] == "nat":
-            return "(⊢natFst {sh = %s} %s)" % (shape_expr(fs[i + 1:]), d)
+            return "(⊢natFst {i = pair (tag %d) j} {I = SI 2} {D = SD KSig} {sh = %s} %s)" % (S_, shape_expr(fs[i + 1:]), d)
         f = fs[i]
         assert f[0] == "rec", (al.n, fs, i)
         return "(⊢atDepth {a = tag %d} {j = j} {s = %d} {k = %d} (⊢recFst {s = %d} {k = %d} {sh = %s} %s))" % (
@@ -726,7 +745,7 @@ def gen_alt(al):
     def kind(p):
         if p == "J": return ("nat",)
         if p == "G": return ("ctx",)
-        if p == "X": return ("K", 0 if FAM["XK"].startswith("K 0") else 1, "j")
+        if p == "X": return ("K", 0 if FAM["XK"].startswith("K 0") else 1, nsucs(FAM.get("Xd", 0), "j"))
         if p[0] == "r":
             f = SIG[rc.nest[p[1]][1]][1][p[2]]
             if f[0] == "nat": return ("nat",)
@@ -796,12 +815,12 @@ def fieldtyp_g(fs, base, S_, i):
     for m in range(i):
         f = fs[m]
         if f[0] == "nat":
-            d = "(⊢natSnd {sh = %s} %s)" % (shape_expr(fs[m + 1:]), d)
+            d = "(⊢natSnd {i = pair (tag %d) j} {I = SI 2} {D = SD KSig} {sh = %s} %s)" % (S_, shape_expr(fs[m + 1:]), d)
         else:
             d = "(⊢recSnd {s = %d} {k = %d} {sh = %s} %s)" % (f[1], f[2], shape_expr(fs[m + 1:]), d)
     f = fs[i]
     if f[0] == "nat":
-        return "(⊢natFst {sh = %s} %s)" % (shape_expr(fs[i + 1:]), d)
+        return "(⊢natFst {i = pair (tag %d) j} {I = SI 2} {D = SD KSig} {sh = %s} %s)" % (S_, shape_expr(fs[i + 1:]), d)
     return "(⊢atDepth {a = tag %d} {j = j} {s = %d} {k = %d} (⊢recFst {s = %d} {k = %d} {sh = %s} %s))" % (
         S_, f[1], f[2], f[1], f[2], shape_expr(fs[i + 1:]), d)
 
@@ -845,7 +864,7 @@ def gen_nest(al):
         sk = nest_sort(rc, k)
         stk_k = stack_of(rc, k)
         if k == 0:
-            v = "(⊢psCons []ᵒ dj dp (⊢psNil {d = j}))"
+            v = "(⊢psCons {s = %d} {sh = %s} []ᵒ dj dp (⊢psNil {d = j}))" % (S, shape_name(rc.n))
             X = FAM["X"]
         else:
             st = stack_of(rc, k - 1)
@@ -854,7 +873,7 @@ def gen_nest(al):
             els = [elem_typ(st, t, stk) for t in range(len(st))] + ["dq"]
             v = "(⊢psNil {d = j})"
             for t in reversed(range(len(els))):
-                v = "(⊢psCons %s dj %s %s)" % (stkok_expr(stk_k[t + 1:]), els[t], v)
+                v = "(⊢psCons {s = %d} {sh = %s} %s dj %s %s)" % (stk_k[t][0], shape_name(stk_k[t][1]), stkok_expr(stk_k[t + 1:]), els[t], v)
             X = "(⊢ncTgt %d %d %s dc)" % (S, sp, stk_expr(st))
         return "(⊢ncMkC %d %d %s %s %s dj %s %s)" % (S, sk, stk_expr(stk_k), lt_of(sk), stkok_expr(stk_k), X, v)
     # the innermost row: the telescope
@@ -907,7 +926,7 @@ def gen_head(name, spec):
     else:
         case = spec.get("case")
         alts = spec.get("alts", [spec])
-        tags = [""] if len(alts) == 1 else ["₁", "₂", "₃", "₄", "₅", "₆", "₇", "₈", "₉"][:len(alts)]
+        tags = [""] if len(alts) == 1 else ["".join("₀₁₂₃₄₅₆₇₈₉"[int(ch)] for ch in str(i + 1)) for i in range(len(alts))]
         As = [Alt(name, t, case, a) for t, a in zip(tags, alts)]
         for al in As:
             if not al.rc.nest: L += gen_alt(al)
@@ -961,7 +980,7 @@ def gen_helpers(maxn):
         L.append("w%d-sub : (σ : Sub Δ Θ) (x : RTm Δ) → subTm %s (w%d x) ≡ w%d (subTm σ x)" % (kk, extS(kk), kk, kk))
         L.append("w%d-sub σ x = trans (wkS %s (w%d x)) (cong w1 (w%d-sub σ x))" % (kk, extS(kk - 1), kk - 1, kk - 1))
         L.append("")
-    for kk in range(2, 10):
+    for kk in range(2, 17):
         xs = ["X%d" % i for i in range(kk)]
         L.append("∷-cong%d : {Δ : Cx} → %s(%s ∷ []) ≡ (%s ∷ [])" % (kk,
             "".join("(%s %s' : RTm Δ) → %s ≡ %s' → " % (x, x, x, x) for x in xs),
@@ -1187,27 +1206,101 @@ def xi_rules(fam):
     return out
 
 R2 = lambda m, i: ("r", m, i)
+W1 = lambda x: ("wk", 1, "J", x)
+TO = lambda t: ("id", ("Tm", "J"), "X", t)
+TOT = lambda A: ("id", ("Ty", "J"), "X", A)
+# `tr`'s motive is under a binder: it Fords (`cHom c a m`, D078); its path is a nested case
+TRM = [("Tm", "J+1"), ("Tm", "J+1"), ("Tm", "J+1"), ("IdC", ("Tm", "J+1"), F(0), k("cHom", E(0), E(1), E(2)))]
+def trJ(h, ex=()): return dict(ex=TRM + list(ex), nest=[(F(1), "hrefl"), (R2(0, 0), h)], ents=[TO(F(2))])
 COMP = {"⟶": {
-  "app":    [dict(nest=[(F(0), "lam")], ents=[("id", ("Tm", "J"), "X", ("sub0", 1, "J", R2(0, 0), F(1)))])],      # β
-  "fst":    [dict(nest=[(F(0), "pair")], ents=[("id", ("Tm", "J"), "X", R2(0, 0))])],                              # βfst
-  "snd":    [dict(nest=[(F(0), "pair")], ents=[("id", ("Tm", "J"), "X", R2(0, 1))])],                              # βsnd
-  "fcase":  [dict(nest=[(F(0), "fzero")], ents=[("id", ("Tm", "J"), "X", F(1))])],                                 # fcase-z
-  "natrec": [dict(nest=[(F(2), "nzero")], ents=[("id", ("Tm", "J"), "X", F(0))])],                                 # natrec-zero
-}, "⟶ᵀ": {}}
+  "app":    [dict(nest=[(F(0), "lam")], ents=[TO(("sub0", 1, "J", R2(0, 0), F(1)))])],                      # β
+  "fst":    [dict(nest=[(F(0), "pair")], ents=[TO(R2(0, 0))])],                                              # βfst
+  "snd":    [dict(nest=[(F(0), "pair")], ents=[TO(R2(0, 1))])],                                              # βsnd
+  "ordtr":  [dict(nest=[(F(0), "nzero")], ents=[TO(k("unit"))]),                                            # ordtr-z
+             dict(nest=[(F(0), "nsuc"), (F(1), "nzero"), (F(2), "nzero")], ents=[TO(F(3))]),                 # ordtr-szz
+             dict(nest=[(F(0), "nsuc"), (F(1), "nsuc"), (F(2), "nzero")], ents=[TO(F(4))]),                  # ordtr-ssz
+             dict(nest=[(F(0), "nsuc"), (F(1), "nzero"), (F(2), "nsuc")],                                    # ordtr-szs
+                  ents=[TO(k("absurd", k("cHom", k("cNat"), R2(0, 0), R2(2, 0)), F(3)))]),
+             dict(nest=[(F(0), "nsuc"), (F(1), "nsuc"), (F(2), "nsuc")],                                     # ordtr-sss
+                  ents=[TO(k("ordtr", R2(0, 0), R2(1, 0), R2(2, 0), F(3), F(4)))])],
+  "tr":     [trJ("cbase"), trJ("cSg"), trJ("cUnit"), trJ("cId"), trJ("cIMu"), trJ("cFin"),                  # tr-J-*
+             trJ("cHom", [("Pred", "StkA", "J", R2(1, 0))]),                                                 # tr-J-Hom
+             dict(ex=[("IdC", ("Tm", "J+1"), F(0), V0)], nest=[(F(1), "lam")], ents=[TO(k("app", F(1), F(2)))]),  # tr-taut
+             dict(ex=[("Tm", "J+1"), ("Tm", "J+1"), ("IdC", ("Tm", "J+1"), F(0), k("cHom", E(0), E(1), V0)),      # tr-pw
+                      ("Tm", "J+2"), ("PwC", "J+1", E(0), E(3))], nest=[(F(1), "lam")],
+                  ents=[TO(k("lam", k("tr", k("cHom", ("pwShK", "J", E(3)), k("app", ("wk", 1, "J+1", E(1)), V1), V0),
+                                          R2(0, 0), k("app", W1(F(2)), V0))))])],
+  "hrefl":  [dict(ex=[("Tm", "J+1"), ("PwC", "J", F(0), E(0))],                                              # hrefl-pw
+                  ents=[TO(k("lam", k("hrefl", E(0), k("app", W1(F(1)), V0))))])],
+  "ap":     [dict(ex=[("Pred", "StkC", "J", R2(0, 0))], nest=[(F(2), "hrefl")],                              # ap-J
+                  ents=[TO(k("hrefl", F(0), ("sub0", 1, "J", F(1), R2(0, 1))))])],
+  "jsub":   [dict(nest=[(F(1), "idrefl")], ents=[TO(F(2))])],                                                # jsub-refl
+  "natrec": [dict(nest=[(F(2), "nzero")], ents=[TO(F(0))]),                                                  # natrec-zero
+             dict(nest=[(F(2), "nsuc")],                                                                     # natrec-suc
+                  ents=[TO(("iinstTmK", "J", R2(0, 0), k("natrec", F(0), F(1), R2(0, 0)), F(1)))])],
+  "ielim":  [dict(nest=[(F(3), "con")],                                                                      # ι
+                  ents=[TO(k("app", k("app", k("app", F(2), F(1)), R2(0, 0)), k("dih", F(0), F(2), k("app", F(0), F(1)), R2(0, 0))))])],
+  "dpay":   [dict(nest=[(F(2), "dI")], ents=[TO(k("cUnit"))]),                                               # dpay-ι
+             dict(nest=[(F(2), "dS")],                                                                       # dpay-σ
+                  ents=[TO(k("cSg", R2(0, 0), k("dpay", W1(F(0)), W1(F(1)), k("app", W1(R2(0, 1)), V0))))]),
+             dict(nest=[(F(2), "dR")],                                                                       # dpay-ρ
+                  ents=[TO(k("cSg", k("cIMu", F(0), F(1), R2(0, 0)), k("dpay", W1(F(0)), W1(F(1)), W1(R2(0, 1)))))])],
+  "dih":    [dict(nest=[(F(2), "dI")], ents=[TO(k("unit"))]),                                                # dih-ι
+             dict(nest=[(F(2), "dS")], ents=[TO(k("dih", F(0), F(1), k("app", R2(0, 1), k("fst", F(3))), k("snd", F(3))))]),  # dih-σ
+             dict(nest=[(F(2), "dR")],                                                                       # dih-ρ
+                  ents=[TO(k("pair", k("ielim", F(0), R2(0, 0), F(1), k("fst", F(3))), k("dih", F(0), F(1), R2(0, 1), k("snd", F(3)))))])],
+  "fcase":  [dict(nest=[(F(0), "fzero")], ents=[TO(F(1))]),                                                  # fcase-z
+             dict(nest=[(F(0), "fsuc")], ents=[TO(("sub0", 1, "J", F(2), R2(0, 0)))])],                      # fcase-s
+  "psplit": [dict(nest=[(F(1), "pair")], ents=[TO(("iinstTmK", "J", R2(0, 0), R2(0, 1), F(0)))])],           # psplit-β
+}, "⟶ᵀ": {
+  "El":     [dict(nest=[(F(0), h)], ents=[TOT(t)]) for h, t in [                                            # El-⌜code⌝
+               ("cbase", BASE), ("cPi", k("Pi", El(R2(0, 0)), El(R2(0, 1)))), ("cSg", k("Sg", El(R2(0, 0)), El(R2(0, 1)))),
+               ("cHom", k("Hom", El(R2(0, 0)), R2(0, 1), R2(0, 2))), ("cId", k("Id", El(R2(0, 0)), R2(0, 1), R2(0, 2))),
+               ("cNat", NAT), ("cIMu", k("IMu", R2(0, 0), R2(0, 1), R2(0, 2))), ("cFin", k("Fin", R2(0, 0))), ("cUnit", k("Unit"))]],
+  "DIh":    [dict(nest=[(F(2), "dI")], ents=[TOT(k("Unit"))]),                                               # DIh-ι
+             dict(nest=[(F(2), "dS")], ents=[TOT(k("DIh", F(0), F(1), k("app", R2(0, 1), k("fst", F(3))), k("snd", F(3))))]),  # DIh-σ
+             dict(nest=[(F(2), "dR")],                                                                       # DIh-ρ
+                  ents=[TOT(k("Sg", ("iinstK", "J", R2(0, 0), k("fst", F(3)), F(1)),
+                              k("DIh", W1(F(0)), ("wk2uK", "J", F(1)), W1(R2(0, 1)), k("snd", W1(F(3))))))])],
+  "Hom":    [dict(nest=[(F(0), "Nat"), (F(1), "nzero")], ents=[TOT(k("Unit"))]),                             # Hom-Nat-z
+             dict(nest=[(F(0), "Nat"), (F(1), "nsuc"), (F(2), "nzero")], ents=[TOT(BASE)]),                  # Hom-Nat-sz
+             dict(nest=[(F(0), "Nat"), (F(1), "nsuc"), (F(2), "nsuc")], ents=[TOT(k("Hom", NAT, R2(1, 0), R2(2, 0)))]),  # Hom-Nat-ss
+             dict(nest=[(F(0), "U")], ents=[TOT(k("Pi", El(F(1)), El(W1(F(2)))))]),                          # Hom-U
+             dict(nest=[(F(0), "Pi")],                                                                       # Hom-Π
+                  ents=[TOT(k("Pi", R2(0, 0), k("Hom", R2(0, 1), k("app", W1(F(1)), V0), k("app", W1(F(2)), V0))))])],
+}}
 
-def gen_red(fam):
+# `pwBody`'s graph on the codes `pw?` accepts: the body in the convoy, one binder deeper
+PWRULES = {
+  "cPi":  [dict(ents=[("id", ("Tm", "J+1"), "X", F(1))])],
+  "cHom": [dict(ex=[("Tm", "J+1")],
+                ents=[("red", "J", F(0), E(0)),
+                      ("id", ("Tm", "J+1"), "X", k("cHom", E(0), k("app", W1(F(1)), V0), k("app", W1(F(2)), V0)))])],
+}
+REDMOD = {"⟶": ("Red", "Redₘ"), "⟶ᵀ": ("RedT", "RedTₘ"), "Pw": ("Pw", "Pwₘ")}
+REDEXTRA = {"⟶": "open import DirectedHoTT.Examples.Knot.Pw using ( ⌜Pw⌝; ⊢⌜Pw⌝; ⌜Pw⌝-sub )\n",
+            "⟶ᵀ": "open import DirectedHoTT.Examples.Knot.Red using ( ⌜⟶⌝; ⊢⌜⟶⌝; ⌜⟶⌝-sub )\n", "Pw": ""}
+
+def gen_red(fam, only=None):
     global FAM, FAMKEY
     FAM, FAMKEY = FAMS[fam], fam
-    rules = xi_rules(fam)
-    for h, alts in COMP[fam].items(): rules.setdefault(h, []).extend(alts)
+    if fam == "Pw":
+        rules = {h: list(a) for h, a in PWRULES.items()}
+    else:
+        rules = xi_rules(fam)
+        for h, alts in COMP[fam].items(): rules.setdefault(h, []).extend(alts)
     S = FAMS[fam]["S"]
-    heads = TMHEADS if fam == "⟶" else TYHEADS
-    m = "Redₘ" if fam == "⟶" else "RedTₘ"
-    L = [RHDR.replace("MODNAME", "Red" if fam == "⟶" else "RedT").replace("FAMNAME", fam)
-             .replace("EXTRA", "" if fam == "⟶" else "open import DirectedHoTT.Examples.Knot.Red using ( ⌜⟶⌝; ⊢⌜⟶⌝; ⌜⟶⌝-sub )\n")]
+    heads = TYHEADS if fam == "⟶ᵀ" else TMHEADS
+    modname, m = REDMOD[fam]
+    hdr = RHDR.replace(RDOC, PWDOC + "\n") if fam == "Pw" else RHDR
+    L = [hdr.replace("MODNAME", modname).replace("FAMNAME", fam).replace("EXTRA", REDEXTRA[fam])]
     for h in heads:
-        if h in rules:
+        if h in rules and (only is None or h in only):
             L += gen_head(h, dict(alts=rules[h]))
+    if only is not None:
+        FAM, FAMKEY = FAMS["⊢"], "⊢"
+        return [l.replace("module DirectedHoTT.Examples.Knot.%s where" % modname,
+                          "module DirectedHoTT.tmp.RedOne where") for l in L]
     none = "%sNone" % fam
     L.append("%s : Row" % none)
     L.append("%s = record { R = λ j p c → rows [] ; R-sub = λ σ j p c → refl }" % none)
@@ -1244,7 +1337,8 @@ def gen_red(fam):
     L.append("  ⌜%s⌝ d t u = ⌜IMu⌝ %s.J %sF.DF (%s d t u)" % (fam, m, fam, ix))
     L.append("")
     srtK = "K %d d" % S
-    L.append("  ⊢⌜%s⌝ : {Ξ : Ctx} {d t u : RTm ⌊ Ξ ⌋} → Ξ ⊢ d ∷ El ⌜Nat⌝ → Ξ ⊢ t ∷ %s → Ξ ⊢ u ∷ %s → Ξ ⊢ ⌜%s⌝ d t u ∷ U" % (fam, srtK, srtK, fam))
+    srtU = "K %d %s" % (S, nsucs(FAM.get("Xd", 0), "d"))
+    L.append("  ⊢⌜%s⌝ : {Ξ : Ctx} {d t u : RTm ⌊ Ξ ⌋} → Ξ ⊢ d ∷ El ⌜Nat⌝ → Ξ ⊢ t ∷ %s → Ξ ⊢ u ∷ %s → Ξ ⊢ ⌜%s⌝ d t u ∷ U" % (fam, srtK, srtU, fam))
     L.append("  ⊢⌜%s⌝ dd dt du = ⊢⌜IMu⌝ %s.⊢J %sF.⊢DF (%s dd dt du)" % (fam, m, fam, FAMS[fam]["dix"]))
     L.append("")
     L.append("  ⌜%s⌝-sub : (σ : Sub Δ Θ) (d t u : RTm Δ) → subTm σ (⌜%s⌝ d t u) ≡ ⌜%s⌝ (subTm σ d) (subTm σ t) (subTm σ u)" % (fam, fam, fam))
@@ -1256,6 +1350,16 @@ def gen_red(fam):
     FAM, FAMKEY = FAMS["⊢"], "⊢"
     return L
 
+RDOC = """-- The reduction judgement `FAMNAME` as a family fibred by its SUBJECT (the
+-- source; D077), the target in the convoy (`RedIx`): per head, one ξ row
+-- per recursive field (the reduct a σ-field, the premise a row of the
+-- same stratum or a σ-field of the lower one, the target Forded) and the
+-- head's computation rules.
+"""
+PWDOC = """-- `pwBody c ≡ b` on the codes `pw? c` accepts (`Spec/Variance`), the
+-- premise of `hrefl-pw` and `tr-pw`, as a LOWER-STRATUM family (D077/D078)
+-- fibred by the code, the body one binder deeper in the convoy (`RedIx`):
+-- a ⌜Π⌝ is its own codomain, a ⌜Hom⌝ recurses on its ambient."""
 RHDR = """------------------------------------------------------------------------
 -- ⚠⚠ GENERATED by tools/gen-judge.py — DO NOT EDIT BY HAND. ⚠⚠
 --
@@ -1277,7 +1381,7 @@ open import DirectedHoTT.Metatheory.TySub using ( ⊢wk )
 open import DirectedHoTT.Metatheory.SubjectReductionBase using () renaming ( wk-sub to wkS )
 open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_; tag; Lt; lt-z; lt-s; []ᵈ; _∷ᵈ_ )
 open import DirectedHoTT.Lib.SynView using ( PayV; ⊢recFst; ⊢recSnd; ⊢atDepth; ⊢natFst; ⊢natSnd )
-open import DirectedHoTT.Lib.FinFam using ( ⊢isuc; toI; ffz; ⊢ffz )
+open import DirectedHoTT.Lib.FinFam using ( ⊢isuc; toI; ffz; ⊢ffz; ffs; ⊢ffs )
 open import DirectedHoTT.Lib.Tel
 open import DirectedHoTT.Lib.Syn
 open import DirectedHoTT.Lib.SynFib using ( Row )
@@ -1291,6 +1395,7 @@ open import DirectedHoTT.Examples.Knot.SubEnv
 open import DirectedHoTT.Examples.Knot.JudgeIx using ( defRow; rows-sub'; ⌜Tm⌝; ⌜Tm⌝-sub; ⊢⌜Tm⌝; TelLaw )
 open import DirectedHoTT.Examples.Knot.JudgeCase using ( w1; w2; w3; w1-sub; w2-sub; w3-sub; hereTm; toTm; wkN; wkK; wkG )
 open import DirectedHoTT.Examples.Knot.GenHelpers
+open import DirectedHoTT.Examples.Knot.Preds using ( ⌜StkA⌝; ⊢⌜StkA⌝; ⌜StkA⌝-sub; ⌜StkC⌝; ⊢⌜StkC⌝; ⌜StkC⌝-sub )
 open import DirectedHoTT.Examples.Knot.RedIx
 open import DirectedHoTT.Examples.Knot.NestIx
 open import DirectedHoTT.Lib.SynPat using ( module Pat )
@@ -1303,6 +1408,11 @@ private
 
 def main():
     load_sig()
+    if "--red" in sys.argv:
+        fam, hs = sys.argv[sys.argv.index("--red") + 1].split("=")
+        txt = "\n".join(gen_red(fam, hs.split(","))) + "\n"
+        open(os.path.join(ROOT, "tmp", "RedOne.agda"), "w", encoding="utf-8").write(txt)
+        print("wrote tmp/RedOne.agda"); return
     if "--only" in sys.argv:
         names = sys.argv[sys.argv.index("--only") + 1].split(",")
         L = [HDR.replace("module DirectedHoTT.Examples.Knot.JudgeRowsGen where", "module DirectedHoTT.tmp.JudgeRowsOne where")]
@@ -1334,23 +1444,17 @@ def main():
     txt = "\n".join(L) + "\n"
     ptxt = "\n".join(gen_preds()) + "\n"
     POUT = os.path.join(ROOT, "Examples", "Knot", "Preds.agda")
+    K = lambda n: os.path.join(ROOT, "Examples", "Knot", n + ".agda")
+    outs = {OUT: txt, POUT: ptxt, HOUT: hlp}
+    for fam in ("⟶", "⟶ᵀ", "Pw"):
+        outs[K(REDMOD[fam][0])] = "\n".join(gen_red(fam)) + "\n"
     if "--check" in sys.argv:
-        old = open(OUT, encoding="utf-8").read() if os.path.exists(OUT) else ""
-        pold = open(POUT, encoding="utf-8").read() if os.path.exists(POUT) else ""
-        hold = open(HOUT, encoding="utf-8").read() if os.path.exists(HOUT) else ""
-        if old != txt or pold != ptxt or hold != hlp:
-            print("STALE: %s / %s" % (OUT, POUT)); sys.exit(1)
+        stale = [f for f, t in outs.items() if not os.path.exists(f) or open(f, encoding="utf-8").read() != t]
+        if stale:
+            print("STALE: %s" % ", ".join(os.path.relpath(f, ROOT) for f in stale)); sys.exit(1)
         print("ok"); return
-    rtxt = "\n".join(gen_red("⟶")) + "\n"
-    rttxt = "\n".join(gen_red("⟶ᵀ")) + "\n"
-    ROUT = os.path.join(ROOT, "Examples", "Knot", "Red.agda")
-    RTOUT = os.path.join(ROOT, "Examples", "Knot", "RedT.agda")
-    open(ROUT, "w", encoding="utf-8").write(rtxt)
-    open(RTOUT, "w", encoding="utf-8").write(rttxt)
-    open(HOUT, "w", encoding="utf-8").write(hlp)
-    open(OUT, "w", encoding="utf-8").write(txt)
-    open(POUT, "w", encoding="utf-8").write(ptxt)
-    print("wrote %s, %s" % (OUT, POUT))
+    for f, t in outs.items(): open(f, "w", encoding="utf-8").write(t)
+    print("wrote %s" % ", ".join(os.path.relpath(f, ROOT) for f in outs))
 
 GHDR = """------------------------------------------------------------------------
 -- ⚠⚠ GENERATED by tools/gen-judge.py — DO NOT EDIT BY HAND. ⚠⚠
@@ -1392,7 +1496,7 @@ open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Metatheory.TySub using ( ⊢wk )
 open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_; tag; Lt; lt-z; lt-s; []ᵈ; _∷ᵈ_ )
 open import DirectedHoTT.Lib.SynView using ( PayV; ⊢recFst; ⊢recSnd; ⊢atDepth )
-open import DirectedHoTT.Lib.FinFam using ( ⊢isuc; toI; ffz; ⊢ffz )
+open import DirectedHoTT.Lib.FinFam using ( ⊢isuc; toI; ffz; ⊢ffz; ffs; ⊢ffs )
 open import DirectedHoTT.Lib.Tel
 open import DirectedHoTT.Lib.Syn
 open import DirectedHoTT.Lib.SynFib using ( Row )

@@ -26,5 +26,5 @@ module DirectedHoTT.Trust.Knot5 where
 
 import DirectedHoTT.Examples.Knot.NestIx
 import DirectedHoTT.Examples.Knot.Preds
+import DirectedHoTT.Examples.Knot.Pw
 import DirectedHoTT.Examples.Knot.Red
-import DirectedHoTT.Examples.Knot.RedIx
