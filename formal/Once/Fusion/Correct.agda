@@ -113,6 +113,7 @@ fusion-once-correct (curry f) x =
 fusion-once-correct apply x = refl
 fusion-once-correct arr x = refl
 fusion-once-correct (SigOp n) x = refl
+fusion-once-correct (Call f) x = refl
 fusion-once-correct (const _ _) x = refl
 fusion-once-correct (In wf) x = refl
 fusion-once-correct (out-μ wf) x = refl

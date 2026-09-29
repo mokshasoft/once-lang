@@ -16,7 +16,8 @@
 
 open import Once.Target.Arch using (TargetNum)
 
-module Once.Adequacy.InNuErased (fmt : TargetNum) where
+open import Once.Denotation.DenotTrace using (CallEnv)
+module Once.Adequacy.InNuErased (fmt : TargetNum) (ρ : CallEnv) where
 
 open import Function using (id)
 open import Data.Product using (_,_; proj₂)
@@ -38,9 +39,9 @@ open import Once.Denotation.ValueDomain
   using (⟦_⟧ᴰ; ⟦_⟧ᴰᴵ; forget; cohᴰ; νᵈ; in-νᵈ; coerce-functor-D)
 open import Once.Denotation.DenotTrace using (evalᴰ; liftFn)
 open import Once.Denotation.Meaning using (in-ν-value)
-open import Once.Adequacy.CataErased fmt using (subst-T-projTrace; subst-T-resT; T-ext; evalᴰ-subst-dom)
-open import Once.Adequacy.AnaErased fmt using (coerce-νin-erase-D)
-open import Once.Adequacy.InErased fmt using (subst-⟦⟧ᴰᴵ-fix; coerce-μ-in-subst)
+open import Once.Adequacy.CataErased fmt ρ using (subst-T-projTrace; subst-T-resT; T-ext; evalᴰ-subst-dom)
+open import Once.Adequacy.AnaErased fmt ρ using (coerce-νin-erase-D)
+open import Once.Adequacy.InErased fmt ρ using (subst-⟦⟧ᴰᴵ-fix; coerce-μ-in-subst)
 open import Once.Postulates using (extensionality)
 import Once.IR as IR
 
@@ -69,10 +70,10 @@ subst-diag-ν refl z = refl
 -- TRACE half: `[]`. `evalᴰ (in-ν wf)` is a `returnT`, so once the two
 -- transports are peeled the trace is `[]` definitionally.
 in-ν-trace : ∀ {F : Functor} (wfF : WellFormedF F) (v : ⟦ ⟦ F ⟧T (ν-type F) ⟧ᴰ) (n : ℕ)
-  → projTrace (liftFn fmt {⟦ F ⟧T (ν-type F)} {ν-type F} (in-ν-ir wfF) v) n ≡ []
+  → projTrace (liftFn fmt ρ {⟦ F ⟧T (ν-type F)} {ν-type F} (in-ν-ir wfF) v) n ≡ []
 in-ν-trace {F} wfF v n =
   trans (subst-T-projTrace (cong νᵈ (tF-coh F))
-          (evalᴰ fmt (in-ν-ir wfF) (subst id (sym (cohᴰ (⟦ F ⟧T (ν-type F)))) v)) n)
+          (evalᴰ fmt ρ (in-ν-ir wfF) (subst id (sym (cohᴰ (⟦ F ⟧T (ν-type F)))) v)) n)
         (cong (λ hh → projTrace hh n)
           (evalᴰ-subst-dom (sym (⌊⟧T-commute F (ν-type F))) (IR.in-ν (wf-⌊⌋ wfF))
                            (subst id (sym (cohᴰ (⟦ F ⟧T (ν-type F)))) v)))
@@ -89,16 +90,16 @@ in-ν-trace {F} wfF v n =
 -- the trace does. `evalᴰ` is still stuck under the domain `subst`, which is
 -- why this is not `refl` (the same reason `in-ν-trace` is not).
 in-ν-res : ∀ {F : Functor} (wfF : WellFormedF F) (v : ⟦ ⟦ F ⟧T (ν-type F) ⟧ᴰ)
-  → T.resT (liftFn fmt {⟦ F ⟧T (ν-type F)} {ν-type F} (in-ν-ir wfF) v)
+  → T.resT (liftFn fmt ρ {⟦ F ⟧T (ν-type F)} {ν-type F} (in-ν-ir wfF) v)
     ≡ returns (in-ν-value v)
 in-ν-res {F} wfF v =
   trans (subst-T-resT (cong νᵈ (tF-coh F))
-                      (evalᴰ fmt (in-ν-ir wfF) (subst id (sym (cohᴰ (⟦ F ⟧T (ν-type F)))) v)))
+                      (evalᴰ fmt ρ (in-ν-ir wfF) (subst id (sym (cohᴰ (⟦ F ⟧T (ν-type F)))) v)))
   (trans (cong (λ hh → mapRes (subst id (cong νᵈ (tF-coh F))) (T.resT hh))
                (evalᴰ-subst-dom (sym (⌊⟧T-commute F (ν-type F))) (IR.in-ν (wf-⌊⌋ wfF))
                                 (subst id (sym (cohᴰ (⟦ F ⟧T (ν-type F)))) v)))
   (trans (cong (λ arg → mapRes (subst id (cong νᵈ (tF-coh F)))
-                          (T.resT (evalᴰ fmt (IR.in-ν (wf-⌊⌋ wfF)) arg)))
+                          (T.resT (evalᴰ fmt ρ (IR.in-ν (wf-⌊⌋ wfF)) arg)))
                (subst-⟦⟧ᴰᴵ-fix (⌊⟧T-commute F (ν-type F)) (subst id (sym (cohᴰ (⟦ F ⟧T (ν-type F)))) v)))
   (cong returns
     (trans (subst-id-νᵈ (tF-coh F) _)
@@ -114,7 +115,7 @@ in-ν-res {F} wfF v =
 -- The combinator reduction: `liftFn` of the transported `in-ν` is
 -- `returnT (in-ν-value v)` — trace `[]`, result `in-ν-res`.
 liftFn-in-ν : ∀ {F : Functor} (wfF : WellFormedF F) (v : ⟦ ⟦ F ⟧T (ν-type F) ⟧ᴰ)
-  → liftFn fmt {⟦ F ⟧T (ν-type F)} {ν-type F} (in-ν-ir wfF) v ≡ returnT (in-ν-value v)
+  → liftFn fmt ρ {⟦ F ⟧T (ν-type F)} {ν-type F} (in-ν-ir wfF) v ≡ returnT (in-ν-value v)
 liftFn-in-ν {F} wfF v =
   -- plan 0.98: record eta over the TWO fields — trace family and result.
   -- The introduction form emits nothing and cannot end the program, so its

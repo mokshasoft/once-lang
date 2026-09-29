@@ -195,3 +195,4 @@ rewrite-ir ir with try-lift ir
       in Ana w f' , bf
     walk (const p v)   = const p v , []
     walk (SigOp si)        = SigOp si , []
+    walk (Call f)          = Call f , []

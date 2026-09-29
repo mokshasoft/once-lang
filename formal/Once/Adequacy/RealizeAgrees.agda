@@ -85,14 +85,14 @@ open import Once.Surface.Syntax as Surface using (Expr; Usage; ⟦_⟧ᶜ; pair;
 open import Once.Denotation.Phase using (restrictᴰ; bindᴰ; bindᴰ0)
 open Surface.Usage using () renaming (_∷_ to _∷ᵘ_)
 open import Once.Denotation.DenotTrace using (⟦_⟧ᴰ; evalᴰ; liftFn; anaFᵈ; coerce-functor-D)
-open import Once.Adequacy.CataErased fmt using (liftFn-SigOp)
+open import Once.Adequacy.CataErased fmt (calls σ) using (liftFn-SigOp)
 open import Once.SigOp.Info using (mk-info'; haltsV; emitsV; pureV; semM)
 open import Once.Arith.SigOp.Builders using (generic-semM; arrow-info-eff; i2f-info; add-info; sub-info; mul-info; div-info; mod-info; fadd-info; fsub-info; fmul-info; fdiv-info; lt-info; le-info; gt-info; ge-info; eq-info; ne-info)
 import Once.Denotation.SourceDenote as SD
 open import Once.Surface.Seq using (seq; seq0; embedClosed; closed-usage-eq)
 open import Once.Surface.Properties using (+ᵘ-identityʳ)
 open import Once.Surface.Elaborate using (elaborate)
-open import Once.Adequacy.SourceFaithful fmt using (faithful; T-ext-at)
+open import Once.Adequacy.SourceFaithful fmt (calls σ) using (faithful; T-ext-at)
 open import Once.CanonicalName using (CanonicalName; showCanonical; bare; NotGenerator; gen; GenWord; genWord?)
 open import Once.Functor.Translate using (WellFormedF; IsBaseType; IsConcrete; con-base; con-fun; base-Unit)
 open import Once.Functor.Decide using (wellFormedF?; isBaseType?; isConcrete?)
@@ -1025,7 +1025,7 @@ masq : ∀ {ctx : NamedCtx} {Dom Cod : Type} (cn : CanonicalName) (π : Purity)
 masq {ctx} {Dom} {Cod} cn pure bDom cCod dγ = cong returnT (liftFn-SigOp {Dom} {Cod} (E.ext-resolved-info ctx cn pure bDom cCod) bDom)
 masq {ctx} {Dom} {Cod} cn eff bDom cCod dγ =
   cong returnT
-    (trans (cong (λ i → liftFn fmt {Dom} {Cod} (IR.SigOp i))
+    (trans (cong (λ i → liftFn fmt (calls σ) {Dom} {Cod} (IR.SigOp i))
                  (info-agree {Dom} {Cod} cn (isVoid? Cod) (isUnit? Cod) bDom cCod))
            (liftFn-SigOp {Dom} {Cod} (arrow-info-eff cn (isVoid? Cod) (isUnit? Cod) bDom cCod) bDom))
 

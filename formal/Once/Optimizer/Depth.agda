@@ -54,6 +54,7 @@ depth (in-ν _)    = 0
 depth (Ana _ coalg) = suc (depth coalg)
 -- Memory and primitives
 depth (SigOp _)      = 0
+depth (Call _)       = 0
 depth (const _ _)  = 0
 
 

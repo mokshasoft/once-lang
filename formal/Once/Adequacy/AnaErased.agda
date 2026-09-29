@@ -27,7 +27,8 @@ open import Once.Target.Arch using (TargetNum; int-bits; float-format)
 -- downstream uses these as facts and never reduces them — so the "recursive
 -- function in a parameterised module stops reducing" trap does not apply. The
 -- denotations themselves take it as an explicit argument.
-module Once.Adequacy.AnaErased (fmt : TargetNum) where
+open import Once.Denotation.DenotTrace using (CallEnv)
+module Once.Adequacy.AnaErased (fmt : TargetNum) (ρ : CallEnv) where
 
 open import Function using (id)
 open import Data.Unit using (⊤; tt)

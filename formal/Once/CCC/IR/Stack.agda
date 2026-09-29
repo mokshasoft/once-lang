@@ -121,6 +121,7 @@ ir-stack-requirement (Ana _ coalg) = ir-stack-requirement coalg +ℕ pair-slots
 -- Guard/Unguard removed: productivity follows from IR totality
 -- Other
 ir-stack-requirement (SigOp _) = 0  -- Primitives manage own stack
+ir-stack-requirement (Call _) = 0   -- the callee has its own frame
 ir-stack-requirement (const _ _) = 0  -- Pure register write, no stack
 
 

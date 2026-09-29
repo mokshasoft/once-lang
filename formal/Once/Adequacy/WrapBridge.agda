@@ -23,7 +23,8 @@ open import Once.Target.Arch using (TargetNum; int-bits; float-format)
 -- downstream uses these as facts and never reduces them — so the "recursive
 -- function in a parameterised module stops reducing" trap does not apply. The
 -- denotations themselves take it as an explicit argument.
-module Once.Adequacy.WrapBridge (fmt : TargetNum) where
+open import Once.Denotation.DenotTrace using (CallEnv)
+module Once.Adequacy.WrapBridge (fmt : TargetNum) (ρ : CallEnv) where
 
 open import Data.Nat using (ℕ)
 open import Data.List using (List; []; _++_)
@@ -46,8 +47,8 @@ EffUU = Unit ⇒[ mk-kind Many eff ] Unit
 
 -- The entry-wrap trace = the closure-application run trace, pointwise in `n`.
 wrap-trace : ∀ (X : IR ⌊ Unit ⌋ ⌊ EffUU ⌋) (n : ℕ) →
-  projTrace (evalᴰ fmt (C.wrapMainAsEntry X) tt) n
-  ≡ projTrace (evalᴰ fmt X tt >>=T (λ clo → clo tt)) n
+  projTrace (evalᴰ fmt ρ (C.wrapMainAsEntry X) tt) n
+  ≡ projTrace (evalᴰ fmt ρ X tt >>=T (λ clo → clo tt)) n
 -- plan 0.98: the split is on `X`'s RESULT. The pair-build's `++ []` only
 -- exists on the branch where `X` RETURNED a closure — on the stopped branch
 -- the pair was never built, so there is nothing to remove and the equation is
@@ -55,8 +56,8 @@ wrap-trace : ∀ (X : IR ⌊ Unit ⌋ ⌊ EffUU ⌋) (n : ℕ) →
 -- different reason: there the sequel WAS built and then discarded.)
 wrap-trace X n = go refl
   where
-    go : ∀ {r} → T.resT (evalᴰ fmt X tt) ≡ r
-       → projTrace (evalᴰ fmt (C.wrapMainAsEntry X) tt) n
-         ≡ projTrace (evalᴰ fmt X tt >>=T (λ clo → clo tt)) n
+    go : ∀ {r} → T.resT (evalᴰ fmt ρ X tt) ≡ r
+       → projTrace (evalᴰ fmt ρ (C.wrapMainAsEntry X) tt) n
+         ≡ projTrace (evalᴰ fmt ρ X tt >>=T (λ clo → clo tt)) n
     go {stopped}   q rewrite q = refl
-    go {returns v} q rewrite q | ++-identityʳ (projTrace (evalᴰ fmt X tt) n) = refl
+    go {returns v} q rewrite q | ++-identityʳ (projTrace (evalᴰ fmt ρ X tt) n) = refl

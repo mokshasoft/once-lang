@@ -33,7 +33,8 @@ open import Once.Target.Arch using (TargetNum; int-bits; float-format)
 -- downstream uses these as facts and never reduces them — so the "recursive
 -- function in a parameterised module stops reducing" trap does not apply. The
 -- denotations themselves take it as an explicit argument.
-module Once.Adequacy.MainExtract (fmt : TargetNum) where
+open import Once.Denotation.DenotTrace using (CallEnv)
+module Once.Adequacy.MainExtract (fmt : TargetNum) (ρ : CallEnv) where
 
 open import Data.Nat using (ℕ; _∸_)
 open import Data.List using (List; _++_; take)
@@ -54,9 +55,9 @@ open import Once.Denotation.Behavior using (Behavior; at)
 open import Once.Denotation.Trace using (SigOpEvent)
 open import Data.List using (List; length)
 open import Once.Adequacy.SourceTrace using (moduleToIR; ⟦_⟧IR)
-open import Once.Adequacy.WrapBridge fmt using (wrap-trace)
-open import Once.Adequacy.SourceFaithful fmt using (faithful; faithful∅)
-open import Once.Adequacy.FaithfulLemmas fmt using (T-ext-at)
+open import Once.Adequacy.WrapBridge fmt ρ using (wrap-trace)
+open import Once.Adequacy.SourceFaithful fmt ρ using (faithful; faithful∅)
+open import Once.Adequacy.FaithfulLemmas fmt ρ using (T-ext-at)
 import Once.Denotation.SourceDenote as SD
 open import Once.Denotation.TraceMonad using (T; _>>=T_; projTrace)
 open import Once.Denotation.DenotTrace using (evalᴰ)
@@ -82,7 +83,7 @@ runMainˢ {Ψ} σ se n =
   projTrace ((SD.⟦ se ⟧ˢ fmt σ) (env0 {Ψ} tt) >>=T (λ clo → clo tt)) n
 
 σ₀ : SD.DefsSem
-σ₀ = SD.internalDefs fmt
+σ₀ = SD.internalDefs ρ
 
 -- Bind respects equality of the bound computation, read at the trace level.
 -- plan 0.98: the premise is ONE equation of computations, not a budget-`n`
@@ -120,7 +121,7 @@ source-meaningᴰ-aux ir (Ψ , seR , eq , _) = Ψ , seR , bridge
     bridge n =
       trans (cong (λ X → at (⟦ just X ⟧IR fmt) n) eq)
         (trans (wrap-trace (elaborateFull C.Heap seR) n)
-               (bind-cong-trace (evalᴰ fmt (elaborateFull C.Heap seR) tt)
+               (bind-cong-trace (evalᴰ fmt ρ (elaborateFull C.Heap seR) tt)
                                 (SD.⟦ seR ⟧ˢ fmt σ₀ (env0 {Ψ} tt)) (λ clo → clo tt) n
                                 (T-ext-at (faithful∅ seR))))
 

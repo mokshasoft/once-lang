@@ -181,6 +181,7 @@ fusion-once arr = arr
 
 -- Primitives: opaque, pass through
 fusion-once (SigOp name) = SigOp name
+fusion-once (Call f) = Call f
 
 -- const literal: opaque, pass through
 fusion-once (const p v) = const p v

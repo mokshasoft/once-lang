@@ -36,6 +36,7 @@ open import Data.Product using (_×_; _,_; proj₁; proj₂; Σ; ∃)
 open import Data.String using (String)
 open import Data.String.Properties using () renaming (_≟_ to _≟String_)
 open import Once.SigOp.Info using (_≟SigOpInfo_)
+open import Once.CanonicalName using (CanonicalName; _≟ᶜ_)
 open import Relation.Nullary using (Dec; yes; no; ¬_)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; cong; cong₂; subst; sym; trans)
 open import Data.Empty using (⊥)
@@ -84,7 +85,7 @@ data IRHead : Set where
   h-id h-∘ h-⟨,⟩ h-fst h-snd h-inl h-inr h-case
     h-terminal h-initial h-curry h-apply h-arr
     h-In h-out-μ h-Cata h-Out h-in-ν h-Ana
-    h-SigOp h-const : IRHead
+    h-SigOp h-const h-Call : IRHead
 
 -- Decidable equality for IRHead via tag-to-ℕ conversion. Plan 0.5 Phase B
 -- / F1. Uses stdlib's `Data.Nat._≟_` for the actual comparison;
@@ -113,6 +114,7 @@ headTag h-in-ν      = 19
 headTag h-Ana       = 20
 headTag h-SigOp      = 24
 headTag h-const      = 25
+headTag h-Call       = 26
 
 -- Injectivity: if tags agree, the constructors agree. 24 diagonals;
 -- off-diagonal cases are automatically covered by Agda because their
@@ -139,6 +141,7 @@ headTag-inj h-in-ν      h-in-ν      _ = refl
 headTag-inj h-Ana       h-Ana       _ = refl
 headTag-inj h-SigOp      h-SigOp      _ = refl
 headTag-inj h-const      h-const      _ = refl
+headTag-inj h-Call       h-Call       _ = refl
 
 _≟IRHead_ : (h₁ h₂ : IRHead) → Dec (h₁ ≡ h₂)
 h₁ ≟IRHead h₂ with headTag h₁ Data.Nat.Properties.≟ headTag h₂
@@ -166,6 +169,7 @@ ir-head (in-ν _) = h-in-ν
 ir-head (Ana _ _) = h-Ana
 ir-head (SigOp _) = h-SigOp
 ir-head (const _ _) = h-const
+ir-head (Call _) = h-Call
 
 -- subst₂ for IR.
 subst₂-IR : ∀ {A B A' B'} → A ≡ A' → B ≡ B' → IR A B → IR A' B'
@@ -313,6 +317,11 @@ f ≟IR g = ≟IRH f g refl refl
 
 ≟IRH-curry-aux f₁ f₂ (no np)    = no (λ { refl → np refl })
 
+≟IRH-Call-aux : ∀ {B} (f₁ f₂ : CanonicalName) → Dec (f₁ ≡ f₂) → Dec (Call {B} f₁ ≡ Call f₂)
+≟IRH-Call-aux f₁ f₂ (yes refl) = yes refl
+≟IRH-Call-aux f₁ f₂ (no ne)    = no (λ { refl → ne refl })
+
+
 
 -- ═══════════════════════════════════════════════════════════════════════
 -- Diagonal (same-constructor) cases
@@ -397,6 +406,9 @@ f ≟IR g = ≟IRH f g refl refl
 ... | yes refl | yes refl rewrite uipK eqA refl | uipK eqB refl with si₁ ≟SigOpInfo si₂
 ...   | yes refl = yes refl
 ...   | no ne    = no (λ { refl → ne refl })
+
+-- D245: two calls are equal when they name the same entry.
+≟IRH-diag (Call f₁) (Call f₂) _ refl refl = ≟IRH-Call-aux f₁ f₂ (f₁ ≟ᶜ f₂)
 
 -- Plan 0.11: const ctor decidable equality.
 -- Postulated for now — proper discharge requires decidable equality
@@ -605,6 +617,7 @@ pairView-gen (Out wf)        eq = is-other-pair (subst (IR _) eq (Out wf))
 pairView-gen (in-ν wf)     eq = is-other-pair (subst (IR _) eq (in-ν wf))
 pairView-gen (Ana wf coalg)  eq = is-other-pair (subst (IR _) eq (Ana wf coalg))
 pairView-gen (SigOp si)      eq = is-other-pair (subst (IR _) eq (SigOp si))
+pairView-gen (Call f)       eq = is-other-pair (subst (IR _) eq (Call f))
 pairView-gen (const p v) eq = is-other-pair (subst (IR _) eq (const p v))
 
 pairView : ∀ {A B C} → (f : IR A (B * C)) → PairView f
@@ -632,6 +645,7 @@ coprodView-gen (Out wf)        eq = is-other-coprod (subst (IR _) eq (Out wf))
 coprodView-gen (in-ν wf)     eq = is-other-coprod (subst (IR _) eq (in-ν wf))
 coprodView-gen (Ana wf coalg)  eq = is-other-coprod (subst (IR _) eq (Ana wf coalg))
 coprodView-gen (SigOp si)      eq = is-other-coprod (subst (IR _) eq (SigOp si))
+coprodView-gen (Call f)       eq = is-other-coprod (subst (IR _) eq (Call f))
 coprodView-gen (const p v) eq = is-other-coprod (subst (IR _) eq (const p v))
 
 coprodView : ∀ {A B D} → (f : IR D (A + B)) → CoprodView f
@@ -664,6 +678,7 @@ composeFirstView (Out wf)        = cf-other (Out wf)
 composeFirstView (in-ν wf)     = cf-other (in-ν wf)
 composeFirstView (Ana wf coalg)  = cf-other (Ana wf coalg)
 composeFirstView (SigOp si)      = cf-other (SigOp si)
+composeFirstView (Call f)       = cf-other (Call f)
 composeFirstView (const p v) = cf-other (const p v)
 
 composeSecondView : ∀ {A B} → (f : IR A B) → ComposeSecondView f
@@ -686,6 +701,7 @@ composeSecondView (Out wf)       = cs-other (Out wf)
 composeSecondView (in-ν wf)    = cs-other (in-ν wf)
 composeSecondView (Ana wf coalg) = cs-other (Ana wf coalg)
 composeSecondView (SigOp si)     = cs-other (SigOp si)
+composeSecondView (Call f)       = cs-other (Call f)
 composeSecondView (const p v) = cs-other (const p v)
 
 fstSndView : ∀ {A B} → (f : IR A B) → FstSndView f
@@ -708,6 +724,7 @@ fstSndView (Out wf)        = fsv-other (Out wf)
 fstSndView (in-ν wf)     = fsv-other (in-ν wf)
 fstSndView (Ana wf coalg)  = fsv-other (Ana wf coalg)
 fstSndView (SigOp si)      = fsv-other (SigOp si)
+fstSndView (Call f)       = fsv-other (Call f)
 fstSndView (const p v) = fsv-other (const p v)
 
 inlInrView : ∀ {A B} → (f : IR A B) → InlInrView f
@@ -730,6 +747,7 @@ inlInrView (Out wf)        = iiv-other (Out wf)
 inlInrView (in-ν wf)     = iiv-other (in-ν wf)
 inlInrView (Ana wf coalg)  = iiv-other (Ana wf coalg)
 inlInrView (SigOp si)      = iiv-other (SigOp si)
+inlInrView (Call f)       = iiv-other (Call f)
 inlInrView (const p v) = iiv-other (const p v)
 
 -- Helper: beta reduction for fst ∘ f (verified given view)
@@ -763,6 +781,8 @@ has-effect? (curry f)       = has-effect? f
 -- (`applyEff ∘ ⟨closure,x⟩ : _ → Unit`) to `terminal`.
 has-effect? apply           = true
 has-effect? (SigOp _)       = true
+-- D245: a call runs its table entry, which may emit or halt.
+has-effect? (Call _)        = true
 has-effect? (const _ _)   = false
 has-effect? (In _)        = false
 has-effect? (out-μ _)       = false
@@ -902,6 +922,8 @@ mutual
   ... | no _     = SigOp n
   -- | const is opaque (constant value of a primitive type, not optimized)
   optimize-once-structural (const p v) = const p v
+  -- | a call is opaque here: its entry is optimized where it is defined
+  optimize-once-structural (Call f) = Call f
   -- | free-heap is opaque (no optimization)
   -- | OCP-0003 recursion schemes: optimize algebras/coalgebras
   --

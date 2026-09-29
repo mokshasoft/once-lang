@@ -48,7 +48,7 @@ open import Once.Functor.Decide using (wellFormedF?)
 open import Once.Semantics.Machine using (sem-In; coerce-functor; sem-cata)
 open import Once.IRTy using (eraseF; ⌊⟧T-commute; IRTy)
 open import Once.IRTy.WF using (wf-⌊⌋)
-open import Once.Adequacy.InErased fmt using (In-ir; liftFn-In)
+open import Once.Adequacy.InErased fmt (calls σ) using (In-ir; liftFn-In)
 open import Once.Denotation.Meaning using (out-sem)
 open import Once.Postulates using (extensionality)
 open import Once.Surface.Context using (Ctx; ∅; _,_^_; lookup; svar; SVar; _↾_;
@@ -96,8 +96,8 @@ open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_;
 open import Once.Denotation.Phase using (lookupᴰUsed; restrictᴰ; bindᴰ; bindᴰ0; env0)
 open import Once.Denotation.Meaning using (⟦_⟧ᶜ; ⟦_⟧ᵢ; ⟦_⟧ᵈ; seqᴰ; DefMeanings;
   lookupᴰ; Env; EnvRun; cata-sem; sigOpValᴰ; sigOpRefᴰ; svarᴰ; in-value; named-sem)
-open import Once.Adequacy.CataErased fmt using (liftFn-SigOp)
-open import Once.Adequacy.LiftFnReduce fmt using
+open import Once.Adequacy.CataErased fmt (calls σ) using (liftFn-SigOp)
+open import Once.Adequacy.LiftFnReduce fmt (calls σ) using
   (liftFn-id; liftFn-fst; liftFn-snd; liftFn-terminal; liftFn-inl; liftFn-inr;
    liftFn-∘; liftFn-case-inj₁; liftFn-case-inj₂; liftFn-apply; liftFn-eff-apply; liftFn-curry-fst)
 import Once.IR as IR
@@ -107,14 +107,14 @@ open import Once.Arith.SigOp.Builders using (value-info;
   lt-info; le-info; gt-info; ge-info; eq-info; ne-info)
 open import Once.CanonicalName using (CanonicalName; bare)
 open import Once.Denotation.Realize using (realize; realize-infer; realize-d; poly-usage-eq)
-open import Once.Adequacy.SourceFaithful fmt using (faithful; T-ext-at)
+open import Once.Adequacy.SourceFaithful fmt (calls σ) using (faithful; T-ext-at)
 open import Once.Surface.Elaborate using (elaborate)
 import Once.Denotation.SourceDenote as SD
 open import Once.Adequacy.MeaningRelation fmt
   using (RelV; RelT; RelT-return; RelT-bind)
-open import Once.Adequacy.CataBridge fmt using (cata-bridge)
+open import Once.Adequacy.CataBridge fmt (calls σ) using (cata-bridge)
 open import Once.Adequacy.AnaBridge fmt using (ana-bridge)
-open import Once.Adequacy.OutErased fmt using (Out-ir; liftFn-Out-pair; out-rel; out-trace; out-value)
+open import Once.Adequacy.OutErased fmt (calls σ) using (Out-ir; liftFn-Out-pair; out-rel; out-trace; out-value)
 open import Once.Denotation.ValueDomainLaws using (traceᵈ-∼; layerᵈ-∼)
 
 -- Move a codomain-subst on `f` across `g ∘_` into a domain-subst on `g`.
@@ -358,7 +358,7 @@ mutual
 -- `concrete-rel→refl` (result is concrete). Funext-free.
 sigop-bridge : ∀ {A B} {cn : CanonicalName} (bA : IsBaseType A) (cB : IsConcrete B) {a b : ⟦ A ⟧ᴰ} → RelV A a b
              → RelT B (named-sem {A} {B} fmt cn bA cB a)
-                      (liftFn fmt {A} {B} (IR.SigOp (value-info {A} {B} cn bA cB)) b)
+                      (liftFn fmt (calls σ) {A} {B} (IR.SigOp (value-info {A} {B} cn bA cB)) b)
 sigop-bridge {A} {B} {cn} bA cB {a} {b} rv
   rewrite base-rel→eq bA rv
   = subst (λ f → RelT B (named-sem fmt cn bA cB b) (f b))
@@ -471,7 +471,7 @@ Res-rel-map h (returns x) (returns y) (rel-returns rr) = rel-returns (h rr)
 out-app-bridge : ∀ {F : Functor} {π : Purity} {wfF : WellFormedF F} {vᴸ vᴿ : ⟦ ν-type F π ⟧ᴰ}
                → RelV (ν-type F π) vᴸ vᴿ
                → RelT (⟦ F ⟧T (ν-type F π)) (out-sem {π = π} wfF vᴸ)
-                      (liftFn fmt {ν-type F π} {⟦ F ⟧T (ν-type F π)} (Out-ir {π = π} wfF) vᴿ)
+                      (liftFn fmt (calls σ) {ν-type F π} {⟦ F ⟧T (ν-type F π)} (Out-ir {π = π} wfF) vᴿ)
 -- plan 0.98: the layer half is ONE fact, not a value equation. `layerᵈ-∼` is
 -- `Res-rel` now — forcing a ν need not produce a layer at all — and `out-sem`
 -- is a `fmapT`, so pushing the bisimulation through the `Out` coercions is
@@ -488,7 +488,7 @@ out-app-bridge {F} {π} {wfF} {vᴸ} {vᴿ} rel k =
 in-app-bridge : ∀ {F : Functor} {wfF : WellFormedF F} {vᴸ vᴿ : ⟦ ⟦ F ⟧T (μ-type F) ⟧ᴰ}
               → RelV (⟦ F ⟧T (μ-type F)) vᴸ vᴿ
               → RelT (μ-type F) (returnT (in-value vᴸ))
-                     (liftFn fmt {⟦ F ⟧T (μ-type F)} {μ-type F} (In-ir wfF) vᴿ)
+                     (liftFn fmt (calls σ) {⟦ F ⟧T (μ-type F)} {μ-type F} (In-ir wfF) vᴿ)
 in-app-bridge {F} {wfF} rv =
   subst (RelT (μ-type F) (returnT (in-value _))) (sym (liftFn-In wfF _))
         (λ k → refl , rel-returns (cong in-value (wfF-layer-eq wfF (λ r → r) rv)))
@@ -664,7 +664,7 @@ RelT-seqᴰ {A} {B} r₁ r₂ =
 -- `¡` is related to itself (there is nothing to compare).
 RelT-init : ∀ {π} → RelT (Once.Type.Void ⇒[ mk-kind Many π ] Once.Type.Void)
                          (returnT (λ v → ⊥-elim v))
-                         (SD.liftD fmt {Once.Type.Void} {Once.Type.Void} IR.initial)
+                         (SD.liftD fmt (calls σ) {Once.Type.Void} {Once.Type.Void} IR.initial)
 RelT-init k = refl , rel-returns (λ { {a = ()} })
 
 ------------------------------------------------------------------------

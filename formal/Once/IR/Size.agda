@@ -44,6 +44,7 @@ ir-size (Ana _ coalg) = 2 +ℕ ir-size coalg  -- Contains coalgebra body
 -- Guard/Unguard removed: productivity follows from IR totality
 -- Other
 ir-size (SigOp _) = 1
+ir-size (Call _) = 1
 ir-size (const _ _) = 1
 
 

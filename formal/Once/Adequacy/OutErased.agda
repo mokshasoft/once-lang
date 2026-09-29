@@ -21,7 +21,8 @@
 
 open import Once.Target.Arch using (TargetNum)
 
-module Once.Adequacy.OutErased (fmt : TargetNum) where
+open import Once.Denotation.DenotTrace using (CallEnv)
+module Once.Adequacy.OutErased (fmt : TargetNum) (ρ : CallEnv) where
 
 open import Function using (id)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
@@ -49,10 +50,10 @@ open import Data.Empty using (⊥-elim)
   using (⟦_⟧ᴰ; ⟦_⟧ᴰᴵ; νᵈ; forceᵈ; cohᴰ; coerce-functor⁻¹-D)
 open import Once.Denotation.DenotTrace using (evalᴰ; liftFn)
 open import Once.Denotation.Meaning using (out-sem)
-open import Once.Adequacy.CataErased fmt using (subst-T-projTrace; subst-T-resT; T-ext)
+open import Once.Adequacy.CataErased fmt ρ using (subst-T-projTrace; subst-T-resT; T-ext)
 open import Once.Adequacy.MeaningRelation fmt using (RelV; RelT)
-open import Once.Adequacy.CataBridge fmt using (base-refl)
-open import Once.Adequacy.AnaErased fmt using (push-⊎fam₁; push-⊎fam₂; push-×fam; push⊎₁; push⊎₂; push×; push⊎₁⁻; push⊎₂⁻; push×⁻)
+open import Once.Adequacy.CataBridge fmt ρ using (base-refl)
+open import Once.Adequacy.AnaErased fmt ρ using (push-⊎fam₁; push-⊎fam₂; push-×fam; push⊎₁; push⊎₂; push×; push⊎₁⁻; push⊎₂⁻; push×⁻)
 open import Once.Postulates using (extensionality)
 import Once.IR as IR
 
@@ -68,8 +69,8 @@ Out-ir {F} {π} wfF = subst (λ o → IR.IR ⌊ ν-type F π ⌋ o)
 -- The CODOMAIN mirror of `CataErased.evalᴰ-subst-dom`. Match-to-refl.
 evalᴰ-subst-cod : ∀ {A : IRTy} {o₁ o₂ : IRTy} (eq : o₁ ≡ o₂)
     (m : IR.IR A o₁) (z : ⟦ A ⟧ᴰᴵ)
-  → evalᴰ fmt (subst (λ o → IR.IR A o) eq m) z
-    ≡ subst (λ o → T ⟦ o ⟧ᴰᴵ) eq (evalᴰ fmt m z)
+  → evalᴰ fmt ρ (subst (λ o → IR.IR A o) eq m) z
+    ≡ subst (λ o → T ⟦ o ⟧ᴰᴵ) eq (evalᴰ fmt ρ m z)
 evalᴰ-subst-cod refl m z = refl
 
 -- `subst` over the IRTy-indexed computation leaves the trace alone.
@@ -114,16 +115,16 @@ force-subst-res refl v = sym (mapRes-id (T.resT (forceᵈ v)))
 
 -- The TRACE half.
 out-trace : ∀ {F : Functor} {π : Purity} (wfF : WellFormedF F) (v : ⟦ ν-type F π ⟧ᴰ) (n : ℕ)
-  → projTrace (liftFn fmt {ν-type F π} {⟦ F ⟧T (ν-type F π)} (Out-ir wfF) v) n
+  → projTrace (liftFn fmt ρ {ν-type F π} {⟦ F ⟧T (ν-type F π)} (Out-ir wfF) v) n
     ≡ projTrace (forceᵈ v) n
 out-trace {F} {π} wfF v n =
   trans (subst-T-projTrace (cohᴰ (⟦ F ⟧T (ν-type F π)))
-          (evalᴰ fmt (Out-ir wfF) (subst id (sym (cohᴰ (ν-type F π))) v)) n)
+          (evalᴰ fmt ρ (Out-ir wfF) (subst id (sym (cohᴰ (ν-type F π))) v)) n)
   (trans (cong (λ hh → projTrace hh n)
             (evalᴰ-subst-cod (sym (⌊⟧T-commute F (ν-type F π))) (IR.Out (wf-⌊⌋ wfF))
               (subst id (sym (cohᴰ (ν-type F π))) v)))
   (trans (subst-TI-projTrace (sym (⌊⟧T-commute F (ν-type F π)))
-            (evalᴰ fmt (IR.Out (wf-⌊⌋ wfF)) (subst id (sym (cohᴰ (ν-type F π))) v)) n)
+            (evalᴰ fmt ρ (IR.Out (wf-⌊⌋ wfF)) (subst id (sym (cohᴰ (ν-type F π))) v)) n)
          (force-subst-trace (tF-coh F) v n)))
 
 -- The ⌈⌉-side layer map that `evalᴰ (Out …)` applies, transcribed from
@@ -399,7 +400,7 @@ base-out (X Once.Type.+ Y) (base-Sum ibA ibB) A (inj₂ b) =
 out-coh : ∀ (F : Functor) {π : Purity} (wfF : WellFormedF F) (v : ⟦ ν-type F π ⟧ᴰ)
   → mapRes (λ z → subst id (cohᴰ (⟦ F ⟧T (ν-type F π)))
                     (subst ⟦_⟧ᴰᴵ (sym (⌊⟧T-commute F (ν-type F π))) z))
-      (T.resT (evalᴰ fmt (IR.Out (wf-⌊⌋ wfF))
+      (T.resT (evalᴰ fmt ρ (IR.Out (wf-⌊⌋ wfF))
                 (subst id (sym (cohᴰ (ν-type F π))) v)))
     ≡ T.resT (out-sem {π = π} wfF v)
 out-coh F {π} wfF v =
@@ -429,20 +430,20 @@ out-coh F {π} wfF v =
 -- demands a witness that the computation returned, and for a forced ν there is
 -- none to give.
 out-value : ∀ {F : Functor} {π : Purity} (wfF : WellFormedF F) (v : ⟦ ν-type F π ⟧ᴰ)
-  → T.resT (liftFn fmt {ν-type F π} {⟦ F ⟧T (ν-type F π)} (Out-ir wfF) v)
+  → T.resT (liftFn fmt ρ {ν-type F π} {⟦ F ⟧T (ν-type F π)} (Out-ir wfF) v)
     ≡ T.resT (out-sem {π = π} wfF v)
 out-value {F} {π} wfF v =
   trans (subst-T-resT (cohᴰ (⟦ F ⟧T (ν-type F π)))
-          (evalᴰ fmt (Out-ir wfF) (subst id (sym (cohᴰ (ν-type F π))) v)))
+          (evalᴰ fmt ρ (Out-ir wfF) (subst id (sym (cohᴰ (ν-type F π))) v)))
   (trans (cong (λ hh → mapRes (subst id (cohᴰ (⟦ F ⟧T (ν-type F π)))) (T.resT hh))
             (evalᴰ-subst-cod (sym (⌊⟧T-commute F (ν-type F π))) (IR.Out (wf-⌊⌋ wfF))
               (subst id (sym (cohᴰ (ν-type F π))) v)))
   (trans (cong (mapRes (subst id (cohᴰ (⟦ F ⟧T (ν-type F π)))))
             (subst-TI-resT (sym (⌊⟧T-commute F (ν-type F π)))
-              (evalᴰ fmt (IR.Out (wf-⌊⌋ wfF)) (subst id (sym (cohᴰ (ν-type F π))) v))))
+              (evalᴰ fmt ρ (IR.Out (wf-⌊⌋ wfF)) (subst id (sym (cohᴰ (ν-type F π))) v))))
   (trans (mapRes-∘ (subst id (cohᴰ (⟦ F ⟧T (ν-type F π))))
                    (subst ⟦_⟧ᴰᴵ (sym (⌊⟧T-commute F (ν-type F π))))
-                   (T.resT (evalᴰ fmt (IR.Out (wf-⌊⌋ wfF))
+                   (T.resT (evalᴰ fmt ρ (IR.Out (wf-⌊⌋ wfF))
                              (subst id (sym (cohᴰ (ν-type F π))) v))))
          (out-coh F wfF v))))
 
@@ -509,10 +510,10 @@ liftFn-Out-pair : ∀ {F : Functor} {π : Purity} (wfF : WellFormedF F) (v : ⟦
 -- the stop channel and the value channel were always one fact — and it no
 -- longer mentions the budget, because the result does not depend on it.
   → (projTrace (out-sem {π = π} wfF v) n
-      ≡ projTrace (liftFn fmt {ν-type F π} {⟦ F ⟧T (ν-type F π)} (Out-ir wfF) v) n)
+      ≡ projTrace (liftFn fmt ρ {ν-type F π} {⟦ F ⟧T (ν-type F π)} (Out-ir wfF) v) n)
   × Res-rel (RelV (⟦ F ⟧T (ν-type F π)))
       (T.resT (out-sem {π = π} wfF v))
-      (T.resT (liftFn fmt {ν-type F π} {⟦ F ⟧T (ν-type F π)} (Out-ir wfF) v))
+      (T.resT (liftFn fmt ρ {ν-type F π} {⟦ F ⟧T (ν-type F π)} (Out-ir wfF) v))
 liftFn-Out-pair {F} {π} wfF v n =
     sym (out-trace wfF v n)
   , subst (λ z → Res-rel (RelV (⟦ F ⟧T (ν-type F π))) (T.resT (out-sem {π = π} wfF v)) z)

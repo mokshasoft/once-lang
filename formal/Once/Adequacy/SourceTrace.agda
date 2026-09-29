@@ -168,7 +168,7 @@ moduleToIR-emitted mod = map-rewrite (moduleToIR mod)
 ⟦_⟧IR : Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋) → TargetNum → Behavior
 ⟦ just ir ⟧IR fmt = mkBehavior (projTrace m) (coh pf) (bnd pf) sat'
   where
-    m  = evalᴰ fmt ir tt
+    m  = evalᴰ fmt ρ ir tt
     pf : PrefixFamily m
     pf = proj₁ (evalᴰ-good fmt ir tt tt)
 

@@ -60,6 +60,7 @@ cost (in-ν _)    = 1                        -- ν-type wrapper allocation
 cost (Ana _ coalg) = cost coalg               -- cost of coalgebra
 -- Memory and primitives
 cost (SigOp _)      = 0                        -- primitives are opaque
+cost (Call _)       = 0                        -- the callee is its own table entry
 cost (const _ _)  = 0                        -- literal global element
 
 

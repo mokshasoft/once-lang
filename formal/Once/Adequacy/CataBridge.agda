@@ -32,7 +32,8 @@ open import Once.Target.Arch using (TargetNum; int-bits; float-format)
 -- downstream uses these as facts and never reduces them — so the "recursive
 -- function in a parameterised module stops reducing" trap does not apply. The
 -- denotations themselves take it as an explicit argument.
-module Once.Adequacy.CataBridge (fmt : TargetNum) where
+open import Once.Denotation.DenotTrace using (CallEnv)
+module Once.Adequacy.CataBridge (fmt : TargetNum) (ρ : CallEnv) where
 
 open import Data.Nat using (ℕ)
 open import Data.Unit using (⊤; tt)
@@ -62,7 +63,7 @@ import Once.IR as IR
 open import Once.Adequacy.MeaningRelation fmt using (RelV; RelT)
 open import Once.Adequacy.CataRel using (RelSF; cataS-rel)
 open import Once.Adequacy.SeqRel using (RelF; seqF-rel)
-open import Once.Adequacy.CataErased fmt using (evalᴰ-Cata-erased)
+open import Once.Adequacy.CataErased fmt ρ using (evalᴰ-Cata-erased)
 
 ------------------------------------------------------------------------
 -- Reflexivity of `RelV` at base types (funext-free; a private copy so
@@ -87,7 +88,7 @@ base-refl (base-Sum ibA ibB) (inj₂ b) = base-refl ibB b
 ------------------------------------------------------------------------
 
 -- D131: stated over TWO ALGEBRAS, not "an algebra and an IR morphism".
--- The proof body only ever used `liftFn fmt mir` as the second algebra, so
+-- The proof body only ever used `liftFn fmt ρ mir` as the second algebra, so
 -- generalising it DROPS `mir` and the `evalᴰ-Cata-erased` rewrite — the
 -- IR-specific half was never doing any work here. What remains is the honest
 -- content: related algebras give related folds.

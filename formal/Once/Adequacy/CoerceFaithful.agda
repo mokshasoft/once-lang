@@ -19,7 +19,8 @@
 
 open import Once.Target.Arch using (TargetNum)
 
-module Once.Adequacy.CoerceFaithful (fmt : TargetNum) where
+open import Once.Denotation.DenotTrace using (CallEnv)
+module Once.Adequacy.CoerceFaithful (fmt : TargetNum) (ρ : CallEnv) where
 
 open import Function using (id)
 open import Data.Empty using (⊥)
@@ -37,10 +38,10 @@ open import Once.Denotation.TraceMonad using (T; mkT; returnT; _>>=T_; fmapT; >>
 open import Once.Denotation.DenotTrace using (evalᴰ; liftFn)
 open import Once.Denotation.Sub using (⟦_⟧<:; fmapT-id; fmapT-cong)
 open import Once.Surface.CoerceIR
-open import Once.Adequacy.LiftFnReduce fmt
+open import Once.Adequacy.LiftFnReduce fmt ρ
   using (liftFn-id; liftFn-fst; liftFn-snd; liftFn-inl; liftFn-inr; liftFn-∘; liftFn-pair;
          liftFn-apply; liftFn-curry; liftFn-case-inj₁; liftFn-case-inj₂; curry-red; apply-red)
-open import Once.Adequacy.FaithfulLemmas fmt using (T-ext-at)
+open import Once.Adequacy.FaithfulLemmas fmt ρ using (T-ext-at)
 open import Once.Postulates using (extensionality)
 
 ------------------------------------------------------------------------
@@ -63,7 +64,7 @@ subst-⟦⟧ : ∀ {X Y : IRTy} (E : X ≡ Y) (m : T ⟦ X ⟧ᴰᴵ)
 subst-⟦⟧ refl m = refl
 
 eval-subst : ∀ {Z X Y : IRTy} (E : X ≡ Y) (f : IR Z X) (v : ⟦ Z ⟧ᴰᴵ)
-           → evalᴰ fmt (subst (IR Z) E f) v ≡ subst (λ W → T ⟦ W ⟧ᴰᴵ) E (evalᴰ fmt f v)
+           → evalᴰ fmt ρ (subst (IR Z) E f) v ≡ subst (λ W → T ⟦ W ⟧ᴰᴵ) E (evalᴰ fmt ρ f v)
 eval-subst refl f v = refl
 
 uip : ∀ {X Y : Set} (p q : X ≡ Y) → p ≡ q
@@ -97,13 +98,13 @@ subst-inj₂ refl refl y = refl
 ------------------------------------------------------------------------
 
 liftFn-apply₁ : ∀ {A B : Type} {π}
-  → liftFn fmt {(A ⇒[ mk-kind One π ] B) * A} {B} apply ≡ (λ v → proj₁ v (proj₂ v))
+  → liftFn fmt ρ {(A ⇒[ mk-kind One π ] B) * A} {B} apply ≡ (λ v → proj₁ v (proj₂ v))
 liftFn-apply₁ {A} {B} = extensionality λ v → apply-red (cohᴰ A) (cohᴰ B) v
 
 liftFn-curry₁ : ∀ {A B C : Type} {π} (g : IR ⌊ A * B ⌋ ⌊ C ⌋)
-  → liftFn fmt {A} {B ⇒[ mk-kind One π ] C} (curry g)
-    ≡ (λ a → returnT (λ b → liftFn fmt {A * B} {C} g (a , b)))
-liftFn-curry₁ {A} {B} {C} g = extensionality λ a → curry-red (cohᴰ A) (cohᴰ B) (cohᴰ C) (evalᴰ fmt g) a
+  → liftFn fmt ρ {A} {B ⇒[ mk-kind One π ] C} (curry g)
+    ≡ (λ a → returnT (λ b → liftFn fmt ρ {A * B} {C} g (a , b)))
+liftFn-curry₁ {A} {B} {C} g = extensionality λ a → curry-red (cohᴰ A) (cohᴰ B) (cohᴰ C) (evalᴰ fmt ρ g) a
 
 private
   apply-red₀ : ∀ {BI BT : Set} (pB : BI ≡ BT) (v : (⊤ → T BT) × ⊤)
@@ -119,20 +120,20 @@ private
   curry-red₀ refl refl gg a = refl
 
 liftFn-apply₀ : ∀ {A B : Type} {π}
-  → liftFn fmt {(A ⇒[ mk-kind Zero π ] B) * Unit} {B} apply ≡ (λ v → proj₁ v (proj₂ v))
+  → liftFn fmt ρ {(A ⇒[ mk-kind Zero π ] B) * Unit} {B} apply ≡ (λ v → proj₁ v (proj₂ v))
 liftFn-apply₀ {A} {B} = extensionality λ v → apply-red₀ (cohᴰ B) v
 
 liftFn-curry₀ : ∀ {A B C : Type} {π} (g : IR ⌊ A * Unit ⌋ ⌊ C ⌋)
-  → liftFn fmt {A} {B ⇒[ mk-kind Zero π ] C} (curry g)
-    ≡ (λ a → returnT (λ u → liftFn fmt {A * Unit} {C} g (a , u)))
-liftFn-curry₀ {A} {B} {C} g = extensionality λ a → curry-red₀ (cohᴰ A) (cohᴰ C) (evalᴰ fmt g) a
+  → liftFn fmt ρ {A} {B ⇒[ mk-kind Zero π ] C} (curry g)
+    ≡ (λ a → returnT (λ u → liftFn fmt ρ {A * Unit} {C} g (a , u)))
+liftFn-curry₀ {A} {B} {C} g = extensionality λ a → curry-red₀ (cohᴰ A) (cohᴰ C) (evalᴰ fmt ρ g) a
 
 ------------------------------------------------------------------------
 -- The structural IR computes `⟦ p ⟧<:`, purely.
 ------------------------------------------------------------------------
 
 mutual
-  coeIR-lift : ∀ {A B} (p : A <: B) (v : ⟦ A ⟧ᴰ) → liftFn fmt {A} {B} (coeIR p) v ≡ returnT (⟦ p ⟧<: v)
+  coeIR-lift : ∀ {A B} (p : A <: B) (v : ⟦ A ⟧ᴰ) → liftFn fmt ρ {A} {B} (coeIR p) v ≡ returnT (⟦ p ⟧<: v)
   coeIR-lift sub-void ()
   coeIR-lift sub-unit   v = cong (λ h → h v) (liftFn-id {A = Unit})
   coeIR-lift sub-int    v = cong (λ h → h v) (liftFn-id {A = Ty.Int})
@@ -158,83 +159,83 @@ mutual
     trans (cong (λ h → h (x , y)) (liftFn-pair {A = A * B} {B = A′} {C = B′} (coeIR a ∘ fst) (coeIR b ∘ snd)))
           (cong₂ (λ m₁ m₂ → m₁ >>=T (λ u → m₂ >>=T (λ w → returnT (u , w)))) l r)
     where
-      l : liftFn fmt {A * B} {A′} (coeIR a ∘ fst) (x , y) ≡ returnT (⟦ a ⟧<: x)
+      l : liftFn fmt ρ {A * B} {A′} (coeIR a ∘ fst) (x , y) ≡ returnT (⟦ a ⟧<: x)
       l = trans (cong (λ h → h (x , y)) (liftFn-∘ {B = A} {C = A′} {A = A * B} (coeIR a) fst))
-                (trans (cong (_>>=T liftFn fmt {A} {A′} (coeIR a)) (cong (λ h → h (x , y)) (liftFn-fst {A = A} {B = B})))
+                (trans (cong (_>>=T liftFn fmt ρ {A} {A′} (coeIR a)) (cong (λ h → h (x , y)) (liftFn-fst {A = A} {B = B})))
                        (coeIR-lift a x))
-      r : liftFn fmt {A * B} {B′} (coeIR b ∘ snd) (x , y) ≡ returnT (⟦ b ⟧<: y)
+      r : liftFn fmt ρ {A * B} {B′} (coeIR b ∘ snd) (x , y) ≡ returnT (⟦ b ⟧<: y)
       r = trans (cong (λ h → h (x , y)) (liftFn-∘ {B = B} {C = B′} {A = A * B} (coeIR b) snd))
-                (trans (cong (_>>=T liftFn fmt {B} {B′} (coeIR b)) (cong (λ h → h (x , y)) (liftFn-snd {A = A} {B = B})))
+                (trans (cong (_>>=T liftFn fmt ρ {B} {B′} (coeIR b)) (cong (λ h → h (x , y)) (liftFn-snd {A = A} {B = B})))
                        (coeIR-lift b y))
   coeIR-lift (sub-sum {A} {A′} {B} {B′} a b) (inj₁ x) =
     trans (liftFn-case-inj₁ {A = A} {B = B} {C = A′ + B′} (inl ∘ coeIR a) (inr ∘ coeIR b) x)
       (trans (cong (λ h → h x) (liftFn-∘ {B = A′} {C = A′ + B′} {A = A} inl (coeIR a)))
-        (trans (cong (_>>=T liftFn fmt {A′} {A′ + B′} inl) (coeIR-lift a x))
+        (trans (cong (_>>=T liftFn fmt ρ {A′} {A′ + B′} inl) (coeIR-lift a x))
                (cong (λ h → h (⟦ a ⟧<: x)) (liftFn-inl {A = A′} {B = B′}))))
   coeIR-lift (sub-sum {A} {A′} {B} {B′} a b) (inj₂ y) =
     trans (liftFn-case-inj₂ {A = A} {B = B} {C = A′ + B′} (inl ∘ coeIR a) (inr ∘ coeIR b) y)
       (trans (cong (λ h → h y) (liftFn-∘ {B = B′} {C = A′ + B′} {A = B} inr (coeIR b)))
-        (trans (cong (_>>=T liftFn fmt {B′} {A′ + B′} inr) (coeIR-lift b y))
+        (trans (cong (_>>=T liftFn fmt ρ {B′} {A′ + B′} inr) (coeIR-lift b y))
                (cong (λ h → h (⟦ b ⟧<: y)) (liftFn-inr {B = B′} {A = A′}))))
 
   -- The closure body at each quantity: `apply` the old closure to the argument
   -- converted backwards, then convert the result forwards.
   arr₀ : ∀ {A A′ B B′ π} (a : A′ <: A) (b : B <: B′) (f : ⟦ A ⇒[ mk-kind Zero π ] B ⟧ᴰ) (u : ⊤)
-       → liftFn fmt {(A ⇒[ mk-kind Zero π ] B) * Unit} {B′} (coeIR b ∘ apply) (f , u)
+       → liftFn fmt ρ {(A ⇒[ mk-kind Zero π ] B) * Unit} {B′} (coeIR b ∘ apply) (f , u)
          ≡ fmapT ⟦ b ⟧<: (f u)
   arr₀ {A} {A′} {B} {B′} {π} a b f u =
     trans (cong (λ h → h (f , u)) (liftFn-∘ {B = B} {C = B′} {A = (A ⇒[ mk-kind Zero π ] B) * Unit} (coeIR b) apply))
-      (trans (cong (_>>=T liftFn fmt {B} {B′} (coeIR b)) (cong (λ h → h (f , u)) (liftFn-apply₀ {A = A} {B = B} {π = π})))
+      (trans (cong (_>>=T liftFn fmt ρ {B} {B′} (coeIR b)) (cong (λ h → h (f , u)) (liftFn-apply₀ {A = A} {B = B} {π = π})))
         (trans (cong (f u >>=T_) (extensionality (coeIR-lift b))) (bind-ret (f u) ⟦ b ⟧<:)))
 
   arr₁ : ∀ {A A′ B B′ π} (a : A′ <: A) (b : B <: B′) (f : ⟦ A ⇒[ mk-kind One π ] B ⟧ᴰ) (x′ : ⟦ A′ ⟧ᴰ)
-       → liftFn fmt {(A ⇒[ mk-kind One π ] B) * A′} {B′}
+       → liftFn fmt ρ {(A ⇒[ mk-kind One π ] B) * A′} {B′}
                 (coeIR b ∘ (apply ∘ ⟨ fst , coeIR a ∘ snd ⟩)) (f , x′)
          ≡ fmapT ⟦ b ⟧<: (f (⟦ a ⟧<: x′))
   arr₁ {A} {A′} {B} {B′} {π} a b f x′ =
     trans (cong (λ h → h (f , x′))
                 (liftFn-∘ {B = B} {C = B′} {A = (A ⇒[ mk-kind One π ] B) * A′} (coeIR b) (apply ∘ ⟨ fst , coeIR a ∘ snd ⟩)))
-      (trans (cong (_>>=T liftFn fmt {B} {B′} (coeIR b)) body)
+      (trans (cong (_>>=T liftFn fmt ρ {B} {B′} (coeIR b)) body)
         (trans (cong (f (⟦ a ⟧<: x′) >>=T_) (extensionality (coeIR-lift b)))
                (bind-ret (f (⟦ a ⟧<: x′)) ⟦ b ⟧<:)))
     where
       AB = A ⇒[ mk-kind One π ] B
-      arg : liftFn fmt {AB * A′} {A} (coeIR a ∘ snd) (f , x′) ≡ returnT (⟦ a ⟧<: x′)
+      arg : liftFn fmt ρ {AB * A′} {A} (coeIR a ∘ snd) (f , x′) ≡ returnT (⟦ a ⟧<: x′)
       arg = trans (cong (λ h → h (f , x′)) (liftFn-∘ {B = A′} {C = A} {A = AB * A′} (coeIR a) snd))
-                  (trans (cong (_>>=T liftFn fmt {A′} {A} (coeIR a)) (cong (λ h → h (f , x′)) (liftFn-snd {A = AB} {B = A′})))
+                  (trans (cong (_>>=T liftFn fmt ρ {A′} {A} (coeIR a)) (cong (λ h → h (f , x′)) (liftFn-snd {A = AB} {B = A′})))
                          (coeIR-lift a x′))
-      pr : liftFn fmt {AB * A′} {AB * A} ⟨ fst , coeIR a ∘ snd ⟩ (f , x′) ≡ returnT (f , ⟦ a ⟧<: x′)
+      pr : liftFn fmt ρ {AB * A′} {AB * A} ⟨ fst , coeIR a ∘ snd ⟩ (f , x′) ≡ returnT (f , ⟦ a ⟧<: x′)
       pr = trans (cong (λ h → h (f , x′)) (liftFn-pair {A = AB * A′} {B = AB} {C = A} fst (coeIR a ∘ snd)))
                  (cong₂ (λ m₁ m₂ → m₁ >>=T (λ u → m₂ >>=T (λ w → returnT (u , w))))
                         (cong (λ h → h (f , x′)) (liftFn-fst {A = AB} {B = A′})) arg)
-      body : liftFn fmt {AB * A′} {B} (apply ∘ ⟨ fst , coeIR a ∘ snd ⟩) (f , x′) ≡ f (⟦ a ⟧<: x′)
+      body : liftFn fmt ρ {AB * A′} {B} (apply ∘ ⟨ fst , coeIR a ∘ snd ⟩) (f , x′) ≡ f (⟦ a ⟧<: x′)
       body = trans (cong (λ h → h (f , x′)) (liftFn-∘ {B = AB * A} {C = B} {A = AB * A′} apply ⟨ fst , coeIR a ∘ snd ⟩))
-                   (trans (cong (_>>=T liftFn fmt {AB * A} {B} apply) pr)
+                   (trans (cong (_>>=T liftFn fmt ρ {AB * A} {B} apply) pr)
                           (cong (λ h → h (f , ⟦ a ⟧<: x′)) (liftFn-apply₁ {A = A} {B = B} {π = π})))
 
   arrω : ∀ {A A′ B B′ π} (a : A′ <: A) (b : B <: B′) (f : ⟦ A ⇒[ mk-kind Many π ] B ⟧ᴰ) (x′ : ⟦ A′ ⟧ᴰ)
-       → liftFn fmt {(A ⇒[ mk-kind Many π ] B) * A′} {B′}
+       → liftFn fmt ρ {(A ⇒[ mk-kind Many π ] B) * A′} {B′}
                 (coeIR b ∘ (apply ∘ ⟨ fst , coeIR a ∘ snd ⟩)) (f , x′)
          ≡ fmapT ⟦ b ⟧<: (f (⟦ a ⟧<: x′))
   arrω {A} {A′} {B} {B′} {π} a b f x′ =
     trans (cong (λ h → h (f , x′))
                 (liftFn-∘ {B = B} {C = B′} {A = (A ⇒[ mk-kind Many π ] B) * A′} (coeIR b) (apply ∘ ⟨ fst , coeIR a ∘ snd ⟩)))
-      (trans (cong (_>>=T liftFn fmt {B} {B′} (coeIR b)) body)
+      (trans (cong (_>>=T liftFn fmt ρ {B} {B′} (coeIR b)) body)
         (trans (cong (f (⟦ a ⟧<: x′) >>=T_) (extensionality (coeIR-lift b)))
                (bind-ret (f (⟦ a ⟧<: x′)) ⟦ b ⟧<:)))
     where
       AB = A ⇒[ mk-kind Many π ] B
-      arg : liftFn fmt {AB * A′} {A} (coeIR a ∘ snd) (f , x′) ≡ returnT (⟦ a ⟧<: x′)
+      arg : liftFn fmt ρ {AB * A′} {A} (coeIR a ∘ snd) (f , x′) ≡ returnT (⟦ a ⟧<: x′)
       arg = trans (cong (λ h → h (f , x′)) (liftFn-∘ {B = A′} {C = A} {A = AB * A′} (coeIR a) snd))
-                  (trans (cong (_>>=T liftFn fmt {A′} {A} (coeIR a)) (cong (λ h → h (f , x′)) (liftFn-snd {A = AB} {B = A′})))
+                  (trans (cong (_>>=T liftFn fmt ρ {A′} {A} (coeIR a)) (cong (λ h → h (f , x′)) (liftFn-snd {A = AB} {B = A′})))
                          (coeIR-lift a x′))
-      pr : liftFn fmt {AB * A′} {AB * A} ⟨ fst , coeIR a ∘ snd ⟩ (f , x′) ≡ returnT (f , ⟦ a ⟧<: x′)
+      pr : liftFn fmt ρ {AB * A′} {AB * A} ⟨ fst , coeIR a ∘ snd ⟩ (f , x′) ≡ returnT (f , ⟦ a ⟧<: x′)
       pr = trans (cong (λ h → h (f , x′)) (liftFn-pair {A = AB * A′} {B = AB} {C = A} fst (coeIR a ∘ snd)))
                  (cong₂ (λ m₁ m₂ → m₁ >>=T (λ u → m₂ >>=T (λ w → returnT (u , w))))
                         (cong (λ h → h (f , x′)) (liftFn-fst {A = AB} {B = A′})) arg)
-      body : liftFn fmt {AB * A′} {B} (apply ∘ ⟨ fst , coeIR a ∘ snd ⟩) (f , x′) ≡ f (⟦ a ⟧<: x′)
+      body : liftFn fmt ρ {AB * A′} {B} (apply ∘ ⟨ fst , coeIR a ∘ snd ⟩) (f , x′) ≡ f (⟦ a ⟧<: x′)
       body = trans (cong (λ h → h (f , x′)) (liftFn-∘ {B = AB * A} {C = B} {A = AB * A′} apply ⟨ fst , coeIR a ∘ snd ⟩))
-                   (trans (cong (_>>=T liftFn fmt {AB * A} {B} apply) pr)
+                   (trans (cong (_>>=T liftFn fmt ρ {AB * A} {B} apply) pr)
                           (cong (λ h → h (f , ⟦ a ⟧<: x′)) (liftFn-apply {A = A} {B = B} {π = π})))
 
 ------------------------------------------------------------------------
@@ -294,7 +295,7 @@ vf-sem (sub-sum a b) (vf-sum va vb) =
                   ; (inj₂ y) → trans (cong inj₂ (pt sb y)) (sym (subst-inj₂ (D sa) (D sb) y)) } }
 
 coerce-lift-yes : ∀ {Δ A B} (p : A <: B) (vf : VoidFree p) (f : IR ⌊ Δ ⌋ ⌊ A ⌋) (x : ⟦ Δ ⟧ᴰ)
-  → liftFn fmt {Δ} {B} (subst (IR ⌊ Δ ⌋) (erase-eq p vf) f) x ≡ fmapT ⟦ p ⟧<: (liftFn fmt {Δ} {A} f x)
+  → liftFn fmt ρ {Δ} {B} (subst (IR ⌊ Δ ⌋) (erase-eq p vf) f) x ≡ fmapT ⟦ p ⟧<: (liftFn fmt ρ {Δ} {A} f x)
 coerce-lift-yes {Δ} {A} {B} p vf f x =
   trans (cong (subst T (cohᴰ B)) (eval-subst E f x₀))
     (trans (cong (subst T (cohᴰ B)) (subst-⟦⟧ E m))
@@ -307,20 +308,20 @@ coerce-lift-yes {Δ} {A} {B} p vf f x =
     E  = erase-eq p vf
     s  = vf-sem p vf
     x₀ = subst id (sym (cohᴰ Δ)) x
-    m  = evalᴰ fmt f x₀
+    m  = evalᴰ fmt ρ f x₀
 
 ------------------------------------------------------------------------
 -- The theorem.
 ------------------------------------------------------------------------
 
 coerce-lift-dec : ∀ {Δ A B} (p : A <: B) (dv : Dec (VoidFree p)) (f : IR ⌊ Δ ⌋ ⌊ A ⌋) (x : ⟦ Δ ⟧ᴰ)
-  → liftFn fmt {Δ} {B} (runCoe-dec p dv f) x ≡ fmapT ⟦ p ⟧<: (liftFn fmt {Δ} {A} f x)
+  → liftFn fmt ρ {Δ} {B} (runCoe-dec p dv f) x ≡ fmapT ⟦ p ⟧<: (liftFn fmt ρ {Δ} {A} f x)
 coerce-lift-dec {Δ} p (yes vf) f x = coerce-lift-yes {Δ} p vf f x
 coerce-lift-dec {Δ} {A} {B} p (no _) f x =
   trans (cong (λ h → h x) (liftFn-∘ {B = A} {C = B} {A = Δ} (coeIR p) f))
-    (trans (cong (liftFn fmt {Δ} {A} f x >>=T_) (extensionality (coeIR-lift p)))
-           (bind-ret (liftFn fmt {Δ} {A} f x) ⟦ p ⟧<:))
+    (trans (cong (liftFn fmt ρ {Δ} {A} f x >>=T_) (extensionality (coeIR-lift p)))
+           (bind-ret (liftFn fmt ρ {Δ} {A} f x) ⟦ p ⟧<:))
 
 coerce-lift : ∀ {Δ A B} (p : A <: B) (f : IR ⌊ Δ ⌋ ⌊ A ⌋) (x : ⟦ Δ ⟧ᴰ)
-  → liftFn fmt {Δ} {B} (runCoe p f) x ≡ fmapT ⟦ p ⟧<: (liftFn fmt {Δ} {A} f x)
+  → liftFn fmt ρ {Δ} {B} (runCoe p f) x ≡ fmapT ⟦ p ⟧<: (liftFn fmt ρ {Δ} {A} f x)
 coerce-lift {Δ} p f x = coerce-lift-dec {Δ} p (voidFree? p) f x

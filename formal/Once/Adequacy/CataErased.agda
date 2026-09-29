@@ -30,7 +30,8 @@ open import Once.Target.Arch using (TargetNum; int-bits; float-format)
 -- downstream uses these as facts and never reduces them — so the "recursive
 -- function in a parameterised module stops reducing" trap does not apply. The
 -- denotations themselves take it as an explicit argument.
-module Once.Adequacy.CataErased (fmt : TargetNum) where
+open import Once.Denotation.DenotTrace using (CallEnv)
+module Once.Adequacy.CataErased (fmt : TargetNum) (ρ : CallEnv) where
 
 open import Data.Nat using (ℕ)
 open import Data.List using (List; _++_; take)
@@ -144,15 +145,15 @@ cataS-subst-functor refl alg x = refl
 -- object of an IR morphism is the same as back-transporting its argument.
 evalᴰ-subst-dom : ∀ {o₁ o₂ : IRTy} {B : IRTy} (eq : o₁ ≡ o₂)
     (m : IR.IR o₁ B) (z : ⟦ o₂ ⟧ᴰᴵ)
-  → evalᴰ fmt (subst (λ o → IR.IR o B) eq m) z ≡ evalᴰ fmt m (subst ⟦_⟧ᴰᴵ (sym eq) z)
+  → evalᴰ fmt ρ (subst (λ o → IR.IR o B) eq m) z ≡ evalᴰ fmt ρ m (subst ⟦_⟧ᴰᴵ (sym eq) z)
 evalᴰ-subst-dom refl m z = refl
 
 -- D131: the same naturality with a PAIRED domain — the transport moves only
 -- the second component; the environment slot is untouched.
 evalᴰ-subst-dom-pair : ∀ {E o₁ o₂ : IRTy} {B : IRTy} (eq : o₁ ≡ o₂)
     (m : IR.IR (E IR.* o₁) B) (env : ⟦ E ⟧ᴰᴵ) (z : ⟦ o₂ ⟧ᴰᴵ)
-  → evalᴰ fmt (subst (λ o → IR.IR (E IR.* o) B) eq m) (env , z)
-    ≡ evalᴰ fmt m (env , subst ⟦_⟧ᴰᴵ (sym eq) z)
+  → evalᴰ fmt ρ (subst (λ o → IR.IR (E IR.* o) B) eq m) (env , z)
+    ≡ evalᴰ fmt ρ m (env , subst ⟦_⟧ᴰᴵ (sym eq) z)
 evalᴰ-subst-dom-pair refl m env z = refl
 
 -- …and the pair transport splits componentwise, so `liftFn` at a paired
@@ -173,9 +174,9 @@ pairᴰ-subst⁻ refl refl a b = refl
 cata-ev-algᴰ-is-D : ∀ {F : IRFunctor} {E C : IRTy}
     (alg : IR.IR (E IR.* ⟦ F ⟧TI C) C) (env : ⟦ E ⟧ᴰᴵ)
     (fc : ⟦ ⌈ F ⌉F ⟧F (T ⟦ C ⟧ᴰᴵ))
-  → cata-ev-algᴰ fmt {F} {E} {C} alg env fc
+  → cata-ev-algᴰ fmt ρ {F} {E} {C} alg env fc
     ≡ cata-ev-algᴰ-D {⌈ F ⌉F} {⌈ C ⌉}
-        (λ z → evalᴰ fmt alg (env , subst ⟦_⟧ᴰ (sym (⌈⟧TI-commute F C)) z)) fc
+        (λ z → evalᴰ fmt ρ alg (env , subst ⟦_⟧ᴰ (sym (⌈⟧TI-commute F C)) z)) fc
 cata-ev-algᴰ-is-D alg env fc = refl
 
 ------------------------------------------------------------------------
@@ -318,10 +319,10 @@ module _ {A' : Type} where
 
   evalᴰ-Cata-erased : ∀ {F : Functor} {Eˢ : Type} (wfF : WellFormedF F)
       (mir : IR.IR (⌊ Eˢ ⌋ IR.* ⌊ ⟦ F ⟧T A' ⌋) ⌊ A' ⌋) (env : ⟦ Eˢ ⟧ᴰ) (w : ⟦ μ-type F ⟧ᴰ)
-    → liftFn fmt {Eˢ TT.* μ-type F} {A'} (IR.Cata (wf-⌊⌋ wfF)
+    → liftFn fmt ρ {Eˢ TT.* μ-type F} {A'} (IR.Cata (wf-⌊⌋ wfF)
                     (subst (λ o → IR.IR (⌊ Eˢ ⌋ IR.* o) ⌊ A' ⌋) (⌊⟧T-commute F A') mir))
              (env , w)
-      ≡ cata-sem wfF (λ z → liftFn fmt {Eˢ TT.* ⟦ F ⟧T A'} {A'} mir (env , z)) w
+      ≡ cata-sem wfF (λ z → liftFn fmt ρ {Eˢ TT.* ⟦ F ⟧T A'} {A'} mir (env , z)) w
   evalᴰ-Cata-erased {F} {Eˢ} wfF mir env w = body
     where
       mir' : IR.IR (⌊ Eˢ ⌋ IR.* ⟦ eraseF F ⟧TI ⌊ A' ⌋) ⌊ A' ⌋
@@ -339,15 +340,15 @@ module _ {A' : Type} where
       -- conclusion is assembled by eta (`to-subst-eq`) from the SAME
       -- relation `rc` the fold already produces — the trace and value halves
       -- no longer have to be re-paired by hand at every budget.
-      body : liftFn fmt {Eˢ TT.* μ-type F} {A'} (IR.Cata (wf-⌊⌋ wfF) mir') (env , w)
-           ≡ cata-sem wfF (λ z → liftFn fmt {Eˢ TT.* ⟦ F ⟧T A'} {A'} mir (env , z)) w
+      body : liftFn fmt ρ {Eˢ TT.* μ-type F} {A'} (IR.Cata (wf-⌊⌋ wfF) mir') (env , w)
+           ≡ cata-sem wfF (λ z → liftFn fmt ρ {Eˢ TT.* ⟦ F ⟧T A'} {A'} mir (env , z)) w
       body = trans (cong (λ W → subst T (cohᴰ A')
-                             (evalᴰ fmt (IR.Cata (wf-⌊⌋ wfF) mir') W))
+                             (evalᴰ fmt ρ (IR.Cata (wf-⌊⌋ wfF) mir') W))
                           (pairᴰ-subst⁻ (cohᴰ Eˢ) (cohᴰ (μ-type F)) env w))
              (trans (cong (subst T (cohᴰ A')) Lr≡) (to-subst-eq rc))
         where
           dalg_L : ⟦ ⟦ ⌈ eraseF F ⌉F ⟧T ⌈ ⌊ A' ⌋ ⌉ ⟧ᴰ → T ⟦ ⌈ ⌊ A' ⌋ ⌉ ⟧ᴰ
-          dalg_L z = evalᴰ fmt mir' ( subst (λ t → t) (sym (cohᴰ Eˢ)) env
+          dalg_L z = evalᴰ fmt ρ mir' ( subst (λ t → t) (sym (cohᴰ Eˢ)) env
                                      , subst ⟦_⟧ᴰ (sym (⌈⟧TI-commute (eraseF F) ⌊ A' ⌋)) z )
 
           algL : ⟦ translateF Carrier Carrier (⌈ eraseF F ⌉F) ⟧SF (T ⟦ ⌊ A' ⌋ ⟧ᴰᴵ) → T ⟦ ⌊ A' ⌋ ⟧ᴰᴵ
@@ -357,11 +358,11 @@ module _ {A' : Type} where
           algL' y = algL (subst (λ H → ⟦ H ⟧SF _) (sym (tF-coh F)) y)
 
           algM : ⟦ translateF Carrier Carrier F ⟧SF (T ⟦ A' ⟧ᴰ) → T ⟦ A' ⟧ᴰ
-          algM y = cata-ev-algᴰ-D {F} {A'} (λ z → liftFn fmt {Eˢ TT.* ⟦ F ⟧T A'} {A'} mir (env , z)) (coerce-μ-out wfF _ y)
+          algM y = cata-ev-algᴰ-D {F} {A'} (λ z → liftFn fmt ρ {Eˢ TT.* ⟦ F ⟧T A'} {A'} mir (env , z)) (coerce-μ-out wfF _ y)
 
           -- D179: an equality of COMPUTATIONS now — the fold produces a `T`
           -- directly, so there is no budget to apply here.
-          Lr≡ : evalᴰ fmt (IR.Cata (wf-⌊⌋ wfF) mir')
+          Lr≡ : evalᴰ fmt ρ (IR.Cata (wf-⌊⌋ wfF) mir')
                       (subst (λ t → t) (sym (cohᴰ Eˢ)) env , w') ≡ cataS {translateF Carrier Carrier F} algL' (forget w)
           Lr≡ = trans (cataS-subst-functor (tF-coh F) algL (forget w'))
                       (cong (cataS {translateF Carrier Carrier F} algL') seed-eq)
@@ -404,7 +405,7 @@ module _ {A' : Type} where
               mM = seqF F (coerce-μ-out wfF _ y₂)
 
               contL = λ layer → dalg_L (coerce-functor⁻¹-D ⌈ eraseF F ⌉F ⌈ ⌊ A' ⌋ ⌉ layer)
-              contM = λ layer → liftFn fmt {Eˢ TT.* ⟦ F ⟧T A'} {A'} mir
+              contM = λ layer → liftFn fmt ρ {Eˢ TT.* ⟦ F ⟧T A'} {A'} mir
                                   (env , coerce-functor⁻¹-D F A' layer)
 
               -- plan 0.98: stated at the VALUES. The budget was only ever a way to
@@ -419,8 +420,8 @@ module _ {A' : Type} where
                            (subst ⟦_⟧ᴰ (sym (⌈⟧TI-commute (eraseF F) ⌊ A' ⌋))
                                   (coerce-functor⁻¹-D ⌈ eraseF F ⌉F ⌈ ⌊ A' ⌋ ⌉ (x)))))
                   (trans (cong (λ Z → subst T (cohᴰ A')
-                                  (evalᴰ fmt mir (subst (λ t → t) (sym (cohᴰ Eˢ)) env , Z))) lr)
-                         (cong (λ W → subst T (cohᴰ A') (evalᴰ fmt mir W))
+                                  (evalᴰ fmt ρ mir (subst (λ t → t) (sym (cohᴰ Eˢ)) env , Z))) lr)
+                         (cong (λ W → subst T (cohᴰ A') (evalᴰ fmt ρ mir W))
                                (sym (pairᴰ-subst⁻ (cohᴰ Eˢ) (cohᴰ (⟦ F ⟧T A')) env _))))
 
           rc : RelC (cataS {translateF Carrier Carrier F} algL' (forget w)) (cataS {translateF Carrier Carrier F} algM (forget w))
@@ -474,19 +475,19 @@ forget-coh (base-Sum {A} {B} ibA ibB) (inj₂ b)
 ------------------------------------------------------------------------
 
 liftFn-SigOp : ∀ {A B : Type} (info : SigOpInfo A B) (bA : IsBaseType A)
-  → liftFn fmt {A} {B} (IR.SigOp info)
+  → liftFn fmt ρ {A} {B} (IR.SigOp info)
     ≡ (λ arg → mkT (λ n → emit-Dᵇ info (forget arg) n)
                    (mapRes inject (semM info fmt (forget arg))))
 liftFn-SigOp {A} {B} info bA = extensionality λ arg →
   T-ext (λ n → trans (subst-T-projTrace (cohᴰ B)
-                        (evalᴰ fmt (IR.SigOp info) (subst (λ z → z) (sym (cohᴰ A)) arg)) n)
+                        (evalᴰ fmt ρ (IR.SigOp info) (subst (λ z → z) (sym (cohᴰ A)) arg)) n)
                      (cong (λ w → emit-Dᵇ info w n) (forget-coh bA arg)))
         -- plan 0.98: ONE premise. The SigOp's result is already a `mapRes`
         -- (`semM` decides whether there is a value; the denotation only
         -- re-types it), so the transport fuses with it and the subst pair
         -- cancels under the map.
         (trans (subst-T-resT (cohᴰ B)
-                  (evalᴰ fmt (IR.SigOp info) (subst (λ z → z) (sym (cohᴰ A)) arg)))
+                  (evalᴰ fmt ρ (IR.SigOp info) (subst (λ z → z) (sym (cohᴰ A)) arg)))
         (trans (mapRes-∘ _ _ (semM info fmt _))
         (trans (mapRes-cong (λ v → subst-subst-sym {P = λ z → z} (cohᴰ B))
                             (semM info fmt _))

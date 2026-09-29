@@ -22,7 +22,8 @@ open import Once.Target.Arch using (TargetNum; int-bits; float-format)
 -- downstream uses these as facts and never reduces them — so the "recursive
 -- function in a parameterised module stops reducing" trap does not apply. The
 -- denotations themselves take it as an explicit argument.
-module Once.Adequacy.LiftFnReduce (fmt : TargetNum) where
+open import Once.Denotation.DenotTrace using (CallEnv)
+module Once.Adequacy.LiftFnReduce (fmt : TargetNum) (ρ : CallEnv) where
 
 open import Function using (id)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
@@ -98,44 +99,44 @@ subst-pair-bind refl refl mf mg = refl
 -- The combinator reductions (funext, for `rewrite` in the bridge clauses).
 ------------------------------------------------------------------------
 
-liftFn-id : liftFn fmt {A} {A} IR.id ≡ (λ a → returnT a)
+liftFn-id : liftFn fmt ρ {A} {A} IR.id ≡ (λ a → returnT a)
 liftFn-id {A} = extensionality λ a →
   trans (subst-T-returnT (cohᴰ A) (subst id (sym (cohᴰ A)) a))
         (cong returnT (subst-subst-sym (cohᴰ A)))
 
-liftFn-fst : liftFn fmt {A * B} {A} fst ≡ (λ ab → returnT (proj₁ ab))
+liftFn-fst : liftFn fmt ρ {A * B} {A} fst ≡ (λ ab → returnT (proj₁ ab))
 liftFn-fst {A} {B} = extensionality λ ab →
   trans (cong (λ w → subst T (cohᴰ A) (returnT (proj₁ w)))
               (pair-subst⁻ (cohᴰ A) (cohᴰ B) (proj₁ ab) (proj₂ ab)))
         (trans (subst-T-returnT (cohᴰ A) (subst id (sym (cohᴰ A)) (proj₁ ab)))
                (cong returnT (subst-subst-sym (cohᴰ A))))
 
-liftFn-snd : liftFn fmt {A * B} {B} snd ≡ (λ ab → returnT (proj₂ ab))
+liftFn-snd : liftFn fmt ρ {A * B} {B} snd ≡ (λ ab → returnT (proj₂ ab))
 liftFn-snd {A} {B} = extensionality λ ab →
   trans (cong (λ w → subst T (cohᴰ B) (returnT (proj₂ w)))
               (pair-subst⁻ (cohᴰ A) (cohᴰ B) (proj₁ ab) (proj₂ ab)))
         (trans (subst-T-returnT (cohᴰ B) (subst id (sym (cohᴰ B)) (proj₂ ab)))
                (cong returnT (subst-subst-sym (cohᴰ B))))
 
-liftFn-terminal : liftFn fmt {A} {Unit} terminal ≡ (λ _ → returnT tt)
+liftFn-terminal : liftFn fmt ρ {A} {Unit} terminal ≡ (λ _ → returnT tt)
 liftFn-terminal {A} = extensionality λ a → subst-T-returnT refl tt
 
-liftFn-inl : liftFn fmt {A} {A + B} (IR.inl) ≡ (λ a → returnT (inj₁ a))
+liftFn-inl : liftFn fmt ρ {A} {A + B} (IR.inl) ≡ (λ a → returnT (inj₁ a))
 liftFn-inl {A} {B} = extensionality λ a →
   trans (subst-T-returnT (cohᴰ (A + B)) (inj₁ (subst id (sym (cohᴰ A)) a)))
         (cong returnT (trans (push⊎₁ (cohᴰ A) (cohᴰ B) (subst id (sym (cohᴰ A)) a))
                              (cong inj₁ (subst-subst-sym (cohᴰ A)))))
 
-liftFn-inr : liftFn fmt {B} {A + B} (IR.inr) ≡ (λ b → returnT (inj₂ b))
+liftFn-inr : liftFn fmt ρ {B} {A + B} (IR.inr) ≡ (λ b → returnT (inj₂ b))
 liftFn-inr {B} {A} = extensionality λ b →
   trans (subst-T-returnT (cohᴰ (A + B)) (inj₂ (subst id (sym (cohᴰ B)) b)))
         (cong returnT (trans (push⊎₂ (cohᴰ A) (cohᴰ B) (subst id (sym (cohᴰ B)) b))
                              (cong inj₂ (subst-subst-sym (cohᴰ B)))))
 
 liftFn-∘ : (g : IR IR.⌊ B ⌋ IR.⌊ C ⌋) (f : IR IR.⌊ A ⌋ IR.⌊ B ⌋)
-  → liftFn fmt {A} {C} (g ∘ f) ≡ (λ a → liftFn fmt {A} {B} f a >>=T liftFn fmt {B} {C} g)
+  → liftFn fmt ρ {A} {C} (g ∘ f) ≡ (λ a → liftFn fmt ρ {A} {B} f a >>=T liftFn fmt ρ {B} {C} g)
 liftFn-∘ {B} {C} {A} g f = extensionality λ a →
-  subst-bind (cohᴰ B) (cohᴰ C) (evalᴰ fmt f (subst id (sym (cohᴰ A)) a)) (evalᴰ fmt g)
+  subst-bind (cohᴰ B) (cohᴰ C) (evalᴰ fmt ρ f (subst id (sym (cohᴰ A)) a)) (evalᴰ fmt ρ g)
 
 
 
@@ -168,18 +169,18 @@ apply-red refl refl v = refl
 -- it, then re-earned a consumer — `liftFn-restrictEnv` in `SourceFaithful`
 -- needs exactly this for `restrictEnv`'s `⟨ … , snd ⟩` case.
 liftFn-pair : (f : IR IR.⌊ A ⌋ IR.⌊ B ⌋) (g : IR IR.⌊ A ⌋ IR.⌊ C ⌋)
-  → liftFn fmt {A} {B * C} (⟨ f , g ⟩)
-    ≡ (λ a → liftFn fmt {A} {B} f a >>=T (λ b → liftFn fmt {A} {C} g a >>=T (λ c → returnT (b , c))))
+  → liftFn fmt ρ {A} {B * C} (⟨ f , g ⟩)
+    ≡ (λ a → liftFn fmt ρ {A} {B} f a >>=T (λ b → liftFn fmt ρ {A} {C} g a >>=T (λ c → returnT (b , c))))
 liftFn-pair {A} {B} {C} f g = extensionality λ a →
   subst-pair-bind (cohᴰ B) (cohᴰ C)
-    (evalᴰ fmt f (subst id (sym (cohᴰ A)) a)) (evalᴰ fmt g (subst id (sym (cohᴰ A)) a))
+    (evalᴰ fmt ρ f (subst id (sym (cohᴰ A)) a)) (evalᴰ fmt ρ g (subst id (sym (cohᴰ A)) a))
 
 -- D143: `⌊_⌋` erases a `Zero`-graded arrow to `Unit ⇛ ⌊B⌋`, so `apply`'s IR
 -- type `(⌊A⌋ ⇛ ⌊B⌋) * ⌊A⌋ → ⌊B⌋` only matches a NON-erased arrow — the lemma
 -- cannot be stated at a variable kind. `Many` is the quantity every consumer
 -- instantiates; a `One` variant belongs here only once something needs it.
 liftFn-apply : ∀ {A B : Type} {π}
-  → liftFn fmt {(A ⇒[ mk-kind Many π ] B) * A} {B} apply ≡ (λ v → proj₁ v (proj₂ v))
+  → liftFn fmt ρ {(A ⇒[ mk-kind Many π ] B) * A} {B} apply ≡ (λ v → proj₁ v (proj₂ v))
 liftFn-apply {A} {B} = extensionality λ v → apply-red (cohᴰ A) (cohᴰ B) v
 
 -- D222 / plan 0.95 A′: `curry`. `evalᴰ (curry g) a = returnT (λ b → evalᴰ g (a , b))`
@@ -196,10 +197,10 @@ curry-red : ∀ {AI AT BI BT CI CT : Set} (pA : AI ≡ AT) (pB : BI ≡ BT) (pC 
 curry-red refl refl refl gg a = refl
 
 liftFn-curry : ∀ {A B C : Type} {π} (g : IR IR.⌊ A * B ⌋ IR.⌊ C ⌋)
-  → liftFn fmt {A} {B ⇒[ mk-kind Many π ] C} (IR.curry g)
-    ≡ (λ a → returnT (λ b → liftFn fmt {A * B} {C} g (a , b)))
+  → liftFn fmt ρ {A} {B ⇒[ mk-kind Many π ] C} (IR.curry g)
+    ≡ (λ a → returnT (λ b → liftFn fmt ρ {A * B} {C} g (a , b)))
 liftFn-curry {A} {B} {C} g =
-  extensionality λ a → curry-red (cohᴰ A) (cohᴰ B) (cohᴰ C) (evalᴰ fmt g) a
+  extensionality λ a → curry-red (cohᴰ A) (cohᴰ B) (cohᴰ C) (evalᴰ fmt ρ g) a
 
 -- D222 / plan 0.95 A′: the composite `realize` emits for `apply` at an EFF
 -- closure. `curry (apply ∘ fst)` builds the suspension; forcing it drops the
@@ -208,7 +209,7 @@ liftFn-curry {A} {B} {C} g =
 -- `returnT p >>=T f` is DEFINITIONALLY `f p` — `_>>=T_` concatenates `[] ++ es`
 -- and threads `n ∸ 0` — so the `fst` step collapses without a monad law.
 liftFn-eff-apply : ∀ {A B : Type}
-  → liftFn fmt {(A ⇒[ mk-kind Many Once.Type.eff ] B) * A} {Unit ⇒[ mk-kind Many Once.Type.eff ] B}
+  → liftFn fmt ρ {(A ⇒[ mk-kind Many Once.Type.eff ] B) * A} {Unit ⇒[ mk-kind Many Once.Type.eff ] B}
            (IR.curry (apply ∘ fst))
     ≡ (λ p → returnT (λ _ → proj₁ p (proj₂ p)))
 liftFn-eff-apply {A} {B} = extensionality λ p →
@@ -216,7 +217,7 @@ liftFn-eff-apply {A} {B} = extensionality λ p →
               (liftFn-curry {A = P} {B = Unit} {C = B} {π = Once.Type.eff} (apply ∘ fst)))
         (cong returnT (extensionality λ b →
           trans (cong (λ h → h (p , b)) (liftFn-∘ {B = P} {C = B} {A = P * Unit} apply fst))
-          (trans (cong (_>>=T liftFn fmt {P} {B} apply)
+          (trans (cong (_>>=T liftFn fmt ρ {P} {B} apply)
                        (cong (λ h → h (p , b)) (liftFn-fst {P} {Unit})))
                  (cong (λ h → h p) (liftFn-apply {A} {B} {Once.Type.eff})))))
   where
@@ -227,23 +228,23 @@ liftFn-eff-apply {A} {B} = extensionality λ p →
 -- stream at the surface elaborates to (`g = Out`). `liftFn-eff-apply` is the
 -- same shape at `g = apply`; the final `refl` is `returnT a >>=T f ≡ f a`.
 liftFn-curry-fst : ∀ {A C : Type} (g : IR IR.⌊ A ⌋ IR.⌊ C ⌋)
-  → liftFn fmt {A} {Unit ⇒[ mk-kind Many Once.Type.eff ] C} (IR.curry (g ∘ fst))
-    ≡ (λ a → returnT (λ _ → liftFn fmt {A} {C} g a))
+  → liftFn fmt ρ {A} {Unit ⇒[ mk-kind Many Once.Type.eff ] C} (IR.curry (g ∘ fst))
+    ≡ (λ a → returnT (λ _ → liftFn fmt ρ {A} {C} g a))
 liftFn-curry-fst {A} {C} g = extensionality λ a →
   trans (cong (λ h → h a)
               (liftFn-curry {A = A} {B = Unit} {C = C} {π = Once.Type.eff} (g ∘ fst)))
         (cong returnT (extensionality λ b →
           trans (cong (λ h → h (a , b)) (liftFn-∘ {B = A} {C = C} {A = A * Unit} g fst))
-                (trans (cong (_>>=T liftFn fmt {A} {C} g)
+                (trans (cong (_>>=T liftFn fmt ρ {A} {C} g)
                              (cong (λ h → h (a , b)) (liftFn-fst {A} {Unit})))
                        refl)))
 
 liftFn-case-inj₁ : ∀ {A B C : Type} (f : IR IR.⌊ A ⌋ IR.⌊ C ⌋) (g : IR IR.⌊ B ⌋ IR.⌊ C ⌋) (a : ⟦ A ⟧ᴰ)
-  → liftFn fmt {A + B} {C} (case f g) (inj₁ a) ≡ liftFn fmt {A} {C} f a
+  → liftFn fmt ρ {A + B} {C} (case f g) (inj₁ a) ≡ liftFn fmt ρ {A} {C} f a
 liftFn-case-inj₁ {A} {B} {C} f g a =
-  lift-inj₁-red (cohᴰ A) (cohᴰ B) (cohᴰ C) (evalᴰ fmt (case {IR.⌊ A ⌋} {IR.⌊ B ⌋} {IR.⌊ C ⌋} f g)) (evalᴰ fmt f) (λ x → refl) a
+  lift-inj₁-red (cohᴰ A) (cohᴰ B) (cohᴰ C) (evalᴰ fmt ρ (case {IR.⌊ A ⌋} {IR.⌊ B ⌋} {IR.⌊ C ⌋} f g)) (evalᴰ fmt ρ f) (λ x → refl) a
 
 liftFn-case-inj₂ : ∀ {A B C : Type} (f : IR IR.⌊ A ⌋ IR.⌊ C ⌋) (g : IR IR.⌊ B ⌋ IR.⌊ C ⌋) (b : ⟦ B ⟧ᴰ)
-  → liftFn fmt {A + B} {C} (case f g) (inj₂ b) ≡ liftFn fmt {B} {C} g b
+  → liftFn fmt ρ {A + B} {C} (case f g) (inj₂ b) ≡ liftFn fmt ρ {B} {C} g b
 liftFn-case-inj₂ {A} {B} {C} f g b =
-  lift-inj₂-red (cohᴰ A) (cohᴰ B) (cohᴰ C) (evalᴰ fmt (case {IR.⌊ A ⌋} {IR.⌊ B ⌋} {IR.⌊ C ⌋} f g)) (evalᴰ fmt g) (λ x → refl) b
+  lift-inj₂-red (cohᴰ A) (cohᴰ B) (cohᴰ C) (evalᴰ fmt ρ (case {IR.⌊ A ⌋} {IR.⌊ B ⌋} {IR.⌊ C ⌋} f g)) (evalᴰ fmt ρ g) (λ x → refl) b

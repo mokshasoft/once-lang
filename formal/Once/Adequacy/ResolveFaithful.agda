@@ -30,7 +30,8 @@ open import Once.Denotation.Phase using (restrictᴰ; bindᴰ; bindᴰ0)
 -- below is a PROOF — downstream uses these as facts, never reduces them — so
 -- the "recursive function in a parameterised module stops reducing" trap does
 -- not apply. The denotations themselves take it as an explicit argument.
-module Once.Adequacy.ResolveFaithful (fmt : TargetNum) where
+open import Once.Denotation.DenotTrace using (CallEnv)
+module Once.Adequacy.ResolveFaithful (fmt : TargetNum) (ρ : CallEnv) where
 
 open import Once.Denotation.Sub using (⟦_⟧<:)
 open import Once.Res using (mapRes)
@@ -102,7 +103,7 @@ T-ext-at {l = mkT t₁ r₁} {r = mkT t₂ r₂} h =
 ------------------------------------------------------------------------
 
 σ₀ : SD.DefsSem
-σ₀ = SD.internalDefs fmt
+σ₀ = SD.internalDefs ρ
 
 -- The meaning of a linked reference: what `resolveExpr` puts at `poly x A`.
 σR : PolyCtx → (String → Imports) → Imports → ℕ → SD.DefsSem
@@ -378,7 +379,7 @@ resolveExpr-faithful polys imps userFns fresh
     (Srf.morph-app {Γ = Γ} {Ψ = Ψₑ} {A = A} {B = B} ir a) dγ k =
   unop-faithful {C = B} polys imps userFns fresh a
     (Srf.⊑ᵘ-trans (Srf.⊑ᵘ-*Many Ψₑ) (Srf.⊑ᵘ-+ʳ Srf.zeroUsage (Many Srf.*ᵘ Ψₑ)))
-    (λ v → subst T (cohᴰ B) (evalᴰ fmt ir (subst (λ z → z) (sym (cohᴰ A)) v)))
+    (λ v → subst T (cohᴰ B) (evalᴰ fmt ρ ir (subst (λ z → z) (sym (cohᴰ A)) v)))
     dγ (resolveExpr-faithful polys imps userFns fresh a
           (restrictᴰ {Γ = Γ} (Srf.⊑ᵘ-trans (Srf.⊑ᵘ-*Many Ψₑ)
                         (Srf.⊑ᵘ-+ʳ Srf.zeroUsage (Many Srf.*ᵘ Ψₑ))) dγ)) k

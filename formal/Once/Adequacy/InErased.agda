@@ -22,7 +22,8 @@ open import Once.Target.Arch using (TargetNum; int-bits; float-format)
 -- downstream uses these as facts and never reduces them — so the "recursive
 -- function in a parameterised module stops reducing" trap does not apply. The
 -- denotations themselves take it as an explicit argument.
-module Once.Adequacy.InErased (fmt : TargetNum) where
+open import Once.Denotation.DenotTrace using (CallEnv)
+module Once.Adequacy.InErased (fmt : TargetNum) (ρ : CallEnv) where
 
 open import Function using (id)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
@@ -44,8 +45,8 @@ open import Once.Denotation.TraceMonad using (T; returnT; projTrace)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; ⟦_⟧ᴰᴵ; forget; inject; cohᴰ)
 open import Once.Denotation.DenotTrace using (evalᴰ; liftFn)
 open import Once.Denotation.Meaning using (in-value)
-open import Once.Adequacy.CataErased fmt using (subst-T-projTrace; subst-T-resT; T-ext; evalᴰ-subst-dom)
-open import Once.Adequacy.AnaErased fmt using (coerce-νin-erase)
+open import Once.Adequacy.CataErased fmt ρ using (subst-T-projTrace; subst-T-resT; T-ext; evalᴰ-subst-dom)
+open import Once.Adequacy.AnaErased fmt ρ using (coerce-νin-erase)
 open import Once.Postulates using (extensionality)
 import Once.IR as IR
 
@@ -92,10 +93,10 @@ subst-⟦⟧ᴰᴵ-fix refl x = refl
 -- TRACE half: `[]` — `subst T` doesn't touch the trace; `evalᴰ-subst-dom` peels
 -- the domain subst; `rec-trace-D (In) = []` is definitional.
 in-trace : ∀ {F : Functor} (wfF : WellFormedF F) (v : ⟦ ⟦ F ⟧T (μ-type F) ⟧ᴰ) (n : ℕ)
-  → projTrace (liftFn fmt {⟦ F ⟧T (μ-type F)} {μ-type F} (In-ir wfF) v) n ≡ []
+  → projTrace (liftFn fmt ρ {⟦ F ⟧T (μ-type F)} {μ-type F} (In-ir wfF) v) n ≡ []
 in-trace {F} wfF v n =
   trans (subst-T-projTrace (cong μS (tF-coh F))
-          (evalᴰ fmt (In-ir wfF) (subst id (sym (cohᴰ (⟦ F ⟧T (μ-type F)))) v)) n)
+          (evalᴰ fmt ρ (In-ir wfF) (subst id (sym (cohᴰ (⟦ F ⟧T (μ-type F)))) v)) n)
         (cong (λ hh → projTrace hh n)
           (evalᴰ-subst-dom (sym (⌊⟧T-commute F (μ-type F))) (IR.In (wf-⌊⌋ wfF))
                            (subst id (sym (cohᴰ (⟦ F ⟧T (μ-type F)))) v)))
@@ -111,16 +112,16 @@ in-trace {F} wfF v n =
 -- the trace does. `evalᴰ` is still stuck under the domain `subst`, which is
 -- why this is not `refl` (the same reason `in-trace` is not).
 in-res : ∀ {F : Functor} (wfF : WellFormedF F) (v : ⟦ ⟦ F ⟧T (μ-type F) ⟧ᴰ)
-  → T.resT (liftFn fmt {⟦ F ⟧T (μ-type F)} {μ-type F} (In-ir wfF) v)
+  → T.resT (liftFn fmt ρ {⟦ F ⟧T (μ-type F)} {μ-type F} (In-ir wfF) v)
     ≡ returns (in-value v)
 in-res {F} wfF v =
   trans (subst-T-resT (cong μS (tF-coh F))
-                      (evalᴰ fmt (In-ir wfF) (subst id (sym (cohᴰ (⟦ F ⟧T (μ-type F)))) v)))
+                      (evalᴰ fmt ρ (In-ir wfF) (subst id (sym (cohᴰ (⟦ F ⟧T (μ-type F)))) v)))
   (trans (cong (λ hh → mapRes (subst id (cong μS (tF-coh F))) (T.resT hh))
                (evalᴰ-subst-dom (sym (⌊⟧T-commute F (μ-type F))) (IR.In (wf-⌊⌋ wfF))
                                 (subst id (sym (cohᴰ (⟦ F ⟧T (μ-type F)))) v)))
   (trans (cong (λ arg → mapRes (subst id (cong μS (tF-coh F)))
-                          (T.resT (evalᴰ fmt (IR.In (wf-⌊⌋ wfF)) arg)))
+                          (T.resT (evalᴰ fmt ρ (IR.In (wf-⌊⌋ wfF)) arg)))
                (subst-⟦⟧ᴰᴵ-fix (⌊⟧T-commute F (μ-type F)) (subst id (sym (cohᴰ (⟦ F ⟧T (μ-type F)))) v)))
   (cong returns
     (trans (subst-id-μS (tF-coh F) _)
@@ -136,7 +137,7 @@ in-res {F} wfF v =
 -- The combinator reduction (like `LiftFnReduce.liftFn-fst`): `liftFn` of the
 -- transported `In` is `returnT (in-value v)` — trace `[]`, result `in-res`.
 liftFn-In : ∀ {F : Functor} (wfF : WellFormedF F) (v : ⟦ ⟦ F ⟧T (μ-type F) ⟧ᴰ)
-  → liftFn fmt {⟦ F ⟧T (μ-type F)} {μ-type F} (In-ir wfF) v ≡ returnT (in-value v)
+  → liftFn fmt ρ {⟦ F ⟧T (μ-type F)} {μ-type F} (In-ir wfF) v ≡ returnT (in-value v)
 liftFn-In {F} wfF v =
   -- plan 0.98: record eta over the TWO fields — trace family and result.
   -- The introduction form emits nothing and cannot end the program, so its
