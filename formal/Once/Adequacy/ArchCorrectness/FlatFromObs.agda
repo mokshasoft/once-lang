@@ -45,7 +45,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; subst)
 open import Once.CanonicalName using (CanonicalName)
 
 open import Data.List using (List)
-open import Once.Denotation.Program using (IRFun; tableEnv; tableEnv-good)
+open import Once.Denotation.Program using (IRFun; tableEnv; tableEnv-good; irProgram; runIR-good; Linked; fname; fbody)
 module Once.Adequacy.ArchCorrectness.FlatFromObs (o : CanonicalName) (tbl : List IRFun)
   (arch          : Arch)
   (FS            : FrameSemantics)
@@ -88,14 +88,22 @@ open import Once.IR.Size using (ir-size)
 open import Once.Denotation.Behavior using (Behavior; at; behavior-by)
 open import Once.Denotation.Trace using (SigOpEvent)
 open import Once.Adequacy.Compile using (ArchCorrect)
-open import Once.Adequacy.SourceTrace using (moduleToIR; moduleToIR-emitted; map-rewrite; ⟦_⟧IR)
+open import Once.Adequacy.SourceTrace using (moduleToIR; ⟦_⟧IR)
+open import Once.CCC.Codegen.ProgramImage using (program-image; fns-image)
+import Once.CCC.Codegen.CataIRSlotStable as CIS
+open import Data.List.Relation.Unary.All using (All; []; _∷_)
+open import Data.List.Relation.Unary.All.Properties using (++⁺)
+open import Data.Product using (_×_; _,_)
+open import Once.CCC.Label using (LabelId)
+open import Data.Nat using (ℕ)
+open import Relation.Binary.PropositionalEquality using (subst)
 open import Once.CCC.Codegen.IRObsCorrectFlat o tbl using (module IRObsCorrectFlatness)
 open import Once.CCC.Codegen.IRToTrace o using (ir-to-trace; ir-stack-budget)
 open import Once.CCC.Codegen.BlockLayout using (module Layout)
 open import Once.CCC.Codegen.LabelsUnique o using (module Unique)
 open Layout {FS} using (MissBefore; NoThunks; missBefore-from; blocks-at; Span)
 open import Data.List using (_++_; []; _∷_)
-open import Once.CCC.Machine.SMCore using (instr-ctrl; c-ret; blocks-layout)
+open import Once.CCC.Machine.SMCore using (instr-ctrl; c-ret; blocks-layout; AbstractTrace; e-thunk)
 open import Data.List.Properties using (++-assoc)
 open import Data.List.Properties using (++-identityʳ; take-all)
 open import Once.Denotation.TraceMonad using (projTrace; bnd)
@@ -122,10 +130,12 @@ open import Once.Adequacy.LabelClash using (DistinctLabels; LabelsResolvable)
 open import Once.Adequacy.SymbolClash using (SymbolsResolvable)
 
 open IRObsCorrectFlatness {FS} using (IRObsCorrectF; CalleeRuns; BlockRuns; MachineRefinesObsF; ValueRealized; in-unit; SpanAt; LabelsAt; emitted; BlocksAt; blocks)
-open FlatMachine {FS} using (mkFlat; fetch; fetch-++-left; find-label)
+open FlatMachine {FS} using (mkFlat; fetch; fetch-++-left; find-label; ft-go-prefix)
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
 open FlatStepsAPI {FS} using (fl-go-prefix)
 open CataIRSlotStable {FS} using (ir-to-trace-slot-stable)
+open import Once.CCC.Codegen.CataNextSlot using (module CataNextSlot)
+open CataNextSlot {FS} using (AllSlotStable)
 open FlatEventTrace {FS} using (flat-events; chain-events; flat-events-steps)
 open FrontierInvariant {FS} using (BeforeFrontier; heap-before)
 open ClosureWellFormedDef {FS} using (ValidAtWF; valid-unit-wf)
@@ -231,16 +241,16 @@ entry-nh = refl
 -- real content at last. Under D158 this was the identity span (`k + 0 ≡ k`)
 -- and said nothing; now it is `fetch-++-left`, i.e. "the entry block sits at
 -- offset 0 of the linked image".
-entry-span : (ir : IR Unit Unit) → SpanAt (ir-to-trace ir) 0 (emitted 0 0 ir)
-entry-span ir k i eq =
+main-span : (ir : IR Unit Unit) → SpanAt (ir-to-trace ir) 0 (emitted 0 0 ir)
+main-span ir k i eq =
   subst (λ m → fetch (ir-to-trace ir) m ≡ just i) (sym (+-identityʳ k))
         (fetch-++-left (emitted 0 0 ir) _ k i eq)
 
 -- plan 0.88: …and its LABEL half, which at the entry is the easy end of
 -- `LabelsAt`: the entry trace is a PREFIX of the linked image, so a scan that
 -- resolves inside it never reaches the `c-ret` or the block layouts.
-entry-labels : (ir : IR Unit Unit) → LabelsAt (ir-to-trace ir) 0 (emitted 0 0 ir)
-entry-labels ir m j eq =
+main-labels : (ir : IR Unit Unit) → LabelsAt (ir-to-trace ir) 0 (emitted 0 0 ir)
+main-labels ir m j eq =
   subst (λ z → find-label (ir-to-trace ir) m ≡ just z) (sym (+-identityʳ j))
         (fl-go-prefix (emitted 0 0 ir) _ m 0 j eq)
 
@@ -383,8 +393,8 @@ entry-no-thunks ir = Unique.entry-noThunks {FS} ir (ir-stack-budget ir)
 -- …and `entry-blocks` is now a DEFINITION: the proved composition, transported
 -- across `link`'s own associativity
 -- (`entry ++ c-ret ∷ layout` vs `(entry ++ c-ret ∷ []) ++ layout`).
-entry-blocks : (ir : IR Unit Unit) → BlocksAt (ir-to-trace ir) (blocks 0 0 ir)
-entry-blocks ir =
+main-blocks : (ir : IR Unit Unit) → BlocksAt (ir-to-trace ir) (blocks 0 0 ir)
+main-blocks ir =
   subst (λ prog → BlocksAt prog (blocks 0 0 ir))
         (++-assoc (emitted 0 0 ir) (instr-ctrl (c-ret (ir-stack-budget ir)) ∷ [])
                   (blocks-layout (blocks 0 0 ir)))
@@ -393,162 +403,106 @@ entry-blocks ir =
                    (missBefore-from (emitted 0 0 ir ++ instr-ctrl (c-ret (ir-stack-budget ir)) ∷ [])
                                     (blocks 0 0 ir) (entry-no-thunks ir)))
 
+------------------------------------------------------------------------
+-- D244/D245: THE PROGRAM IMAGE. `main`'s unit is its PREFIX and the table's
+-- function entries follow (`ProgramImage`), so every fact about `main`'s own
+-- code carries over by the prefix laws: a fetch, a jump-label scan and an
+-- entry scan that resolve inside the prefix resolve identically in the image.
+------------------------------------------------------------------------
+
+image : IR Unit Unit → AbstractTrace
+image ir = program-image o (irProgram tbl ir)
+
+-- The image's block table: the premise the apex carries (D188), now naming the
+-- table's functions as well as the closure bodies and coalgebras.
+BlockRunsT : Set
+BlockRunsT = (ir : IR Unit Unit) → BlockRuns (image ir)
+
+span-prefix : ∀ (t₁ t₂ : AbstractTrace) (j : ℕ) (t : AbstractTrace)
+            → SpanAt t₁ j t → SpanAt (t₁ ++ t₂) j t
+span-prefix t₁ t₂ j t sp k i eq = fetch-++-left t₁ t₂ (k + j) i (sp k i eq)
+
+blocks-prefix : ∀ (t₁ t₂ : AbstractTrace) (bs : List (LabelId × ℕ × AbstractTrace))
+              → BlocksAt t₁ bs → BlocksAt (t₁ ++ t₂) bs
+blocks-prefix t₁ t₂ []                    []                        = []
+blocks-prefix t₁ t₂ ((lbl , b , t) ∷ bs) ((j , feq , sp) ∷ rest) =
+  (j , ft-go-prefix t₁ t₂ (e-thunk lbl) 0 j feq , span-prefix t₁ t₂ j _ sp)
+  ∷ blocks-prefix t₁ t₂ bs rest
+
+entry-span : (ir : IR Unit Unit) → SpanAt (image ir) 0 (emitted 0 0 ir)
+entry-span ir = span-prefix (ir-to-trace ir) (fns-image tbl) 0 (emitted 0 0 ir) (main-span ir)
+
+entry-labels : (ir : IR Unit Unit) → LabelsAt (image ir) 0 (emitted 0 0 ir)
+entry-labels ir m j eq = fl-go-prefix (ir-to-trace ir) (fns-image tbl) m 0 _ (main-labels ir m j eq)
+
+entry-blocks : (ir : IR Unit Unit) → BlocksAt (image ir) (blocks 0 0 ir)
+entry-blocks ir = blocks-prefix (ir-to-trace ir) (fns-image tbl) (blocks 0 0 ir) (main-blocks ir)
+
+-- Every function entry is slot-stable: its marker moves only the frame, and
+-- its unit is the emitter's, stable under its OWN owner.
+fns-slot-stable : ∀ (es : List IRFun) → AllSlotStable (fns-image es)
+fns-slot-stable []       = []
+fns-slot-stable (e ∷ es) =
+  ++⁺ (tt ∷ CIS.CataIRSlotStable.ir-to-trace-slot-stable (fname e) {FS} (fbody e))
+      (fns-slot-stable es)
+
+image-slot-stable : (ir : IR Unit Unit) → AllSlotStable (image ir)
+image-slot-stable ir = ++⁺ (ir-to-trace-slot-stable ir) (fns-slot-stable tbl)
+
 entry-witness : (ir : IR Unit Unit) → IRObsCorrectF ir
-              → (brs : (ir : IR Unit Unit) → BlockRuns (ir-to-trace ir)) → (k : ℕ)
-              → MachineRefinesObsF (ir-to-trace ir) 0 0 0 ir tt entry-s
+              → (brs : BlockRunsT) → (k : ℕ)
+              → MachineRefinesObsF (image ir) 0 0 0 ir tt entry-s
                   (entry-alloc (ir-stack-budget ir)) (SV-Tag 0) k
 entry-witness ir ioc brs k =
-  ioc 0 0 (ir-to-trace ir) 0 (ir-to-trace-slot-stable ir)
+  ioc 0 0 (image ir) 0 (image-slot-stable ir)
       (brs ir) (entry-span ir) (entry-blocks ir) (entry-labels ir)
       Stack tt entry-s (entry-alloc (ir-stack-budget ir)) (SV-Tag 0)
       (entry-ns (ir-stack-budget ir)) entry-nh
-      -- D153: ONE residence premise. `main : IR Unit Unit`, so its input has
-      -- no residence at all and `in-unit` discharges it outright — the
-      -- `entry-loc` / `valid-unit-wf` / `entry-bf` triple that used to be
-      -- threaded here was only ever satisfying a premise that should not have
-      -- existed.
+      -- D153: `main : IR Unit Unit`, so its input has no residence at all.
       (in-unit refl) k
 
 ------------------------------------------------------------------------
--- `flat-trace` — DEFINED. D159: the adequate fuel is the witness's OWN STEP
--- COUNT, not an existential per observation depth. `traces-agree` is now
--- bounded by `value-realized`'s chain (a fragment's events are the events along
--- its chain, not everything a fuel happens to reach), so the fuel that realises
--- it is exactly `steps` — and it no longer varies with `n`.
+-- `flat-main` — DEFINED. D159: the adequate fuel is the witness's OWN STEP
+-- COUNT. D244: the machine runs the PROGRAM IMAGE, and the meaning is the
+-- program's (`main` in its table's environment).
 ------------------------------------------------------------------------
 
-entry-vr : (ir : IR Unit Unit) → (∀ {A B} (ir' : IR A B) → IRObsCorrectF ir')
-         → (brs : (ir : IR Unit Unit) → BlockRuns (ir-to-trace ir)) → (k : ℕ)
-         → ValueRealized (ir-to-trace ir) 0 0 0 ir tt entry-s
+IOC : Set
+IOC = ∀ {A B} (ir : IR A B) → Linked tbl ir → IRObsCorrectF ir
+
+entry-vr : (ir : IR Unit Unit) → Linked tbl ir → IOC → (brs : BlockRunsT) → (k : ℕ)
+         → ValueRealized (image ir) 0 0 0 ir tt entry-s
              (entry-alloc (ir-stack-budget ir)) (SV-Tag 0) k
-entry-vr ir ioc brs k = MachineRefinesObsF.value-realized (entry-witness ir (ioc ir) brs k)
+entry-vr ir lk ioc brs k = MachineRefinesObsF.value-realized (entry-witness ir (ioc ir lk) brs k)
 
--- The machine's trace FAMILY. The fuel is the depth-`n` witness's own step
--- count — "for each depth there is a fuel that reaches it", D058's
--- productivity shape, now carried by the statement rather than an ∃.
-flat-trace-fam : (∀ {A B} (ir : IR A B) → IRObsCorrectF ir)
-               → (brs : (ir : IR Unit Unit) → BlockRuns (ir-to-trace ir))
-               → Maybe (IR Unit Unit) → ℕ → List SigOpEvent
-flat-trace-fam ioc brs nothing   _ = []
-flat-trace-fam ioc brs (just ir) n =
-  take n (flat-events (ValueRealized.steps (entry-vr ir ioc brs n) + 0)
-                      (ir-to-trace ir) (mkFlat entry-s (entry-alloc (ir-stack-budget ir)) 0))
+flat-trace-fam : IOC → BlockRunsT → (ir : IR Unit Unit) → Linked tbl ir → ℕ → List SigOpEvent
+flat-trace-fam ioc brs ir lk n =
+  take n (flat-events (ValueRealized.steps (entry-vr ir lk ioc brs n) + 0)
+                      (image ir) (mkFlat entry-s (entry-alloc (ir-stack-budget ir)) 0))
 
-------------------------------------------------------------------------
--- The concrete↔abstract seam (Plan 0.54 rung B). At THIS module the machine
--- (`as : ArchSemantics`) is OPAQUE (injected), so `asm-trace-correct` cannot be
--- decomposed here — it would be an un-dischargeable internal postulate. Instead
--- it is a PARAMETER of `flat-from-obs`, supplied by the per-arch instance where
--- the concrete `X64.State`/`run-events` machine IS visible, so the arith slice
--- can consume `dispatch-arith-preserves` there (the rest = the explicit ISA /
--- printer / loader trust). Same move that un-postulated `ir-flat-correct`:
--- localise the obligation to where it can be discharged.
---
--- The `AsmTraceCorrect ft` type is the shape the per-arch instance must supply
--- (against the DEFINED `flat-trace-of ioc`).
-------------------------------------------------------------------------
-
--- D100: the HONEST precondition on the toolchain. `as` refuses a file that
--- defines a label twice, so for such a program `asm-sem asm` is the trace of
--- nothing at all and this equation is FALSE — not merely unproved. Stating
--- `DistinctLabels` here (and NOT on `assemble-correct`, where the same class of
--- premise already went vacuous when `asm-sem` was defined) narrows every arch's
--- `loader-faithful` axiom to the programs the assembler actually accepts. The
--- apex supplies it, so `correct` gains no hypothesis — it gains an obligation.
-AsmTraceCorrect : (Maybe (IR Unit Unit) → Behavior) → Set
-AsmTraceCorrect ft =
-  ∀ (m : P.Module) (asm : String) →
-  C.compileFromModule C.Heap C.Build false arch m ≡ C.Built asm →
-  DistinctLabels arch m →
-  -- D167: …and the text LINKS — every compiler-minted SigOp it calls has its
-  -- arith block emitted. `ld`'s rejection, which nothing stated before.
-  -- D169: …and every jump/branch/code-address it names is defined in it.
-  LabelsResolvable arch m →
-  SymbolsResolvable arch m →
-  -- D165: the EMITTED IR — `rewrite-ir`-lifted, which is what the text was
-  -- generated from. Was `moduleToIR m`, the raw IR, which made this shape
-  -- relate two different programs.
-  ∀ (n : ℕ) → at (asm-sem asm) n ≡ at (ft (moduleToIR-emitted m)) n
-
-------------------------------------------------------------------------
--- `ir-flat-correct` — PROVED from `traces-agree` (was a postulate).
-------------------------------------------------------------------------
-
--- D113/D115: at THIS target's NUMERICS — the format and the width — which
--- is where `IRObsCorrectFlat`'s `evalᴰ` alias reads them from too, so the
--- two sides mean one thing.
-ir-flat-correct-fam : (ioc : ∀ {A B} (ir : IR A B) → IRObsCorrectF ir)
-                   → (brs : (ir : IR Unit Unit) → BlockRuns (ir-to-trace ir))
-                   → ∀ (mir : Maybe (IR Unit Unit)) (n : ℕ)
-                   → flat-trace-fam ioc brs mir n ≡ at (⟦ mir ⟧IR (Once.CCC.FrameSemantics.fs-numerics FS)) n
-ir-flat-correct-fam ioc brs nothing   n = refl
--- D159: peel the chain off the fuel (`flat-events-steps`), and the leftover is
--- `flat-events 0`, i.e. `[]`. So the run's events ARE the chain's events, and
--- the chain's events are what `traces-agree` now speaks about.
-ir-flat-correct-fam ioc brs (just ir) n =
+-- D113/D115: at THIS target's NUMERICS, which is where `IRObsCorrectFlat`'s
+-- `evalᴰ` alias reads them from too, so the two sides mean one thing.
+ir-flat-correct-fam : (ioc : IOC) (brs : BlockRunsT) (ir : IR Unit Unit) (lk : Linked tbl ir) (n : ℕ)
+                    → flat-trace-fam ioc brs ir lk n
+                      ≡ at (⟦ just (irProgram tbl ir) ⟧IR (Once.CCC.FrameSemantics.fs-numerics FS)) n
+ir-flat-correct-fam ioc brs ir lk n =
   trans (cong (take n)
-          (trans (flat-events-steps (ValueRealized.run (entry-vr ir ioc brs n)) 0)
-                 (++-identityʳ (chain-events (ValueRealized.run (entry-vr ir ioc brs n))))))
-        (trans (MachineRefinesObsF.traces-agree (entry-witness ir (ioc ir) brs n))
-               -- `at` no longer caps: `bounded` says the depth-`n` prefix is
-               -- already at most `n` long, so the cap was the identity.
-               (take-all n _ (bnd (proj₁ (evalᴰ-good (Once.CCC.FrameSemantics.fs-numerics FS) (tableEnv (Once.CCC.FrameSemantics.fs-numerics FS) tbl) (tableEnv-good (Once.CCC.FrameSemantics.fs-numerics FS) tbl) ir tt tt)) n)))
+          (trans (flat-events-steps (ValueRealized.run (entry-vr ir lk ioc brs n)) 0)
+                 (++-identityʳ (chain-events (ValueRealized.run (entry-vr ir lk ioc brs n))))))
+        (trans (MachineRefinesObsF.traces-agree (entry-witness ir (ioc ir lk) brs n))
+               (take-all n _ (bnd (proj₁ (runIR-good (Once.CCC.FrameSemantics.fs-numerics FS) (irProgram tbl ir))) n)))
 
 -- …and THAT is what makes the machine's family a `Behavior`: it borrows the
--- three laws from the denotation it is proved equal to (`behavior-by`). The
--- machine side never needs a prefix-family induction of its own — the
--- correctness theorem is the transport.
-flat-trace-of : (∀ {A B} (ir : IR A B) → IRObsCorrectF ir)
-              → (brs : (ir : IR Unit Unit) → BlockRuns (ir-to-trace ir))
-              → Maybe (IR Unit Unit) → Behavior
-flat-trace-of ioc brs mir =
-  behavior-by (⟦ mir ⟧IR (Once.CCC.FrameSemantics.fs-numerics FS))
-              (flat-trace-fam ioc brs mir)
-              (λ n → sym (ir-flat-correct-fam ioc brs mir n))
+-- three laws from the denotation it is proved equal to (`behavior-by`).
+flat-main : IOC → BlockRunsT → (ir : IR Unit Unit) → Linked tbl ir → Behavior
+flat-main ioc brs ir lk =
+  behavior-by (⟦ just (irProgram tbl ir) ⟧IR (Once.CCC.FrameSemantics.fs-numerics FS))
+              (flat-trace-fam ioc brs ir lk)
+              (λ n → sym (ir-flat-correct-fam ioc brs ir lk n))
 
-ir-flat-correct-of : (ioc : ∀ {A B} (ir : IR A B) → IRObsCorrectF ir)
-                   → (brs : (ir : IR Unit Unit) → BlockRuns (ir-to-trace ir))
-                   → ∀ (mir : Maybe (IR Unit Unit)) (n : ℕ)
-                   → at (flat-trace-of ioc brs mir) n ≡ at (⟦ mir ⟧IR (Once.CCC.FrameSemantics.fs-numerics FS)) n
-ir-flat-correct-of ioc brs mir n = ir-flat-correct-fam ioc brs mir n
-
-------------------------------------------------------------------------
--- The constructed ArchCorrect record — now CONSUMING `ir-obs-correct`.
-------------------------------------------------------------------------
-
--- D165 — THE ARITH PASS PRESERVES THE FLAT TRACE.
---
--- `rewrite-ir` swaps a recognised arith subtree for one `arith.block.<digest>`
--- SigOp. Both sides emit nothing (arith SigOps are pure, Plan 0.25/0.26), so
--- the EVENT lists agree; what has real content is that the block's VALUE
--- equals the subtree's, because an arith result reaches an observable SigOp's
--- argument and a wrong value is a different trace.
---
--- Postulated HERE rather than left inside `asm-trace-correct`: it is compiler
--- logic, not toolchain trust, and it is the obligation D163's regression walked
--- through. Class **deferred proof / codegen**.
-postulate
-  rewrite-preserves-of :
-    (ioc : ∀ {A B} (ir : IR A B) → IRObsCorrectF ir)
-    → (brs : (ir : IR Unit Unit) → BlockRuns (ir-to-trace ir))
-    → ∀ (mir : Maybe (IR Unit Unit)) (n : ℕ)
-    → at (flat-trace-of ioc brs (map-rewrite mir)) n ≡ at (flat-trace-of ioc brs mir) n
-
-flat-from-obs :
-  (ioc : ∀ {A B} (ir : IR A B) → IRObsCorrectF ir)
-  → (brs : (ir : IR Unit Unit) → BlockRuns (ir-to-trace ir))
-  → AsmTraceCorrect (flat-trace-of ioc brs)
-  → ArchCorrect arch as
-flat-from-obs ioc brs atc = record
-  { asm-sem           = asm-sem
-  ; flat-trace        = flat-trace-of ioc brs
-  ; assemble-correct  = λ _ _ _ _ _ → refl
-  ; asm-trace-correct = atc
-  -- D165: a NAMED RESIDUAL — the arith pass preserves the flat trace. It was
-  -- previously folded into `asm-trace-correct`'s two mismatched sides.
-  ; rewrite-preserves = rewrite-preserves-of ioc brs
-  -- the one place `fmt-agree` is spent
-  ; ir-flat-correct   = λ mir n →
-      subst (λ F → at (flat-trace-of ioc brs mir) n ≡ at (⟦ mir ⟧IR F) n)
-            fmt-agree (ir-flat-correct-of ioc brs mir n)
-  }
+ir-flat-correct-main : (ioc : IOC) (brs : BlockRunsT) (ir : IR Unit Unit) (lk : Linked tbl ir) (n : ℕ)
+                     → at (flat-main ioc brs ir lk) n
+                       ≡ at (⟦ just (irProgram tbl ir) ⟧IR (arch-numerics arch)) n
+ir-flat-correct-main ioc brs ir lk n =
+  subst (λ F → at (flat-main ioc brs ir lk) n ≡ at (⟦ just (irProgram tbl ir) ⟧IR F) n)
+        fmt-agree (ir-flat-correct-fam ioc brs ir lk n)

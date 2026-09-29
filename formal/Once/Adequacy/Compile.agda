@@ -48,7 +48,9 @@ open import Once.Type using (Unit; Type; _⇒[_]_; mk-kind; Many; eff)
 
 open import Once.Denotation.Behavior using (Source; Behavior; at; behavior-by)
 open import Once.Adequacy.SourceTrace
-  using (⟦_⟧; ⟦⟧-via-module; moduleToIR; moduleToIR-emitted; map-rewrite; ⟦_⟧IR; srcToModule; srcToModule-just; srcToModule-inv)
+  using (⟦_⟧; ⟦⟧-via-module; moduleToIR; moduleToIR-emitted; map-rewrite; ⟦_⟧IR; srcToModule; srcToModule-just; srcToModule-inv;
+         moduleToProgram; moduleTable; programAt; rewrite-program; rewrite-program-linked; moduleToProgram-linked)
+open import Once.Denotation.Program using (IRProgram; irProgram; table; main; Linked)
 
 -- Plan 0.49 (route 3): the INDEPENDENT surface denotation `SD.⟦_⟧ˢ` (over the
 -- intrinsically-typed `Expr`, NOT through the compiler's `evalᴰ ∘ moduleToIR`),
@@ -158,7 +160,7 @@ compile-cli-asm allocMode stage doOpt arch m =
 -- target reaches the denotation — `arch-float-format` is the whole of it,
 -- and `⟦_⟧A` next door has taken an arch all along for the same reason.
 ⟦_⟧M : P.Module → Arch → Behavior
-⟦ m ⟧M arch = ⟦ moduleToIR m ⟧IR (arch-numerics arch)
+⟦ m ⟧M arch = ⟦ moduleToProgram m ⟧IR (arch-numerics arch)
 
 -- DISTINCT EMITTED SYMBOLS (`DistinctSymbols`) + its proof (`program-no-clash`)
 -- now live in `Once.Adequacy.NameClash` (imported above). The assembler trust
@@ -190,7 +192,9 @@ record ArchCorrect (arch : Arch) (as : ArchSemantics) : Set where
     -- this arch's flat-machine SigOp trace of the compiled `main` IR
     -- (`nothing` ⇒ a library, no entry ⇒ []); def = `flat-events ∘
     -- ir-to-trace` from the loader entry (rides the per-target flat-sim).
-    flat-trace : Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋) → Behavior
+    -- D244/D245: …of the compiled PROGRAM (main and its function table), for a
+    -- LINKED one — every internal call names an entry of the table.
+    flat-trace : (p : IRProgram) → Linked (table p) (main p) → Behavior
     -- assemble-then-execute reproduces the asm-text meaning. HONEST
     -- precondition (Plan 0.50): `as` is trusted only for asm produced by
     -- compiling a module whose emitted symbols are distinct — the apex
@@ -233,7 +237,11 @@ record ArchCorrect (arch : Arch) (as : ArchSemantics) : Set where
       DistinctLabels arch m →
       LabelsResolvable arch m →
       SymbolsResolvable arch m →
-      ∀ (n : ℕ) → at (asm-sem asm) n ≡ at (flat-trace (moduleToIR-emitted m)) n
+      ∀ (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) (mi : moduleToIR m ≡ just ir) →
+      ∀ (n : ℕ) → at (asm-sem asm) n
+                ≡ at (flat-trace (rewrite-program (irProgram (moduleTable m) ir))
+                                 (rewrite-program-linked (irProgram (moduleTable m) ir)
+                                    (moduleToProgram-linked m ir mi))) n
     -- D165 — THE ARITH PASS PRESERVES THE FLAT TRACE. Split out of
     -- `asm-trace-correct`, where it was invisible.
     --
@@ -250,15 +258,15 @@ record ArchCorrect (arch : Arch) (as : ArchSemantics) : Set where
     -- error — a pass that stops firing must still be trace-equal, and one that
     -- fires wrongly cannot be.
     rewrite-preserves :
-      ∀ (mir : Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋)) (n : ℕ)
-      → at (flat-trace (map-rewrite mir)) n ≡ at (flat-trace mir) n
+      ∀ (p : IRProgram) (lk : Linked (table p) (main p)) (n : ℕ)
+      → at (flat-trace (rewrite-program p) (rewrite-program-linked p lk)) n ≡ at (flat-trace p lk) n
     -- the flat machine's SigOp trace of a compiled IR equals its `obs`.
     -- D113: at THIS arch's float format. The record is already indexed by
     -- `arch`, so the obligation sharpens without changing shape — the flat
     -- machine's trace must match the denotation the SAME target means.
     ir-flat-correct :
-      ∀ (mir : Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋)) (n : ℕ)
-      → at (flat-trace mir) n ≡ at (⟦ mir ⟧IR (arch-numerics arch)) n
+      ∀ (p : IRProgram) (lk : Linked (table p) (main p)) (n : ℕ)
+      → at (flat-trace p lk) n ≡ at (⟦ just p ⟧IR (arch-numerics arch)) n
 
 -- (The former `no-main-empty` library-case postulate is gone: with
 -- `⟦_⟧M = ⟦ moduleToIR m ⟧IR`, the library case `moduleToIR m ≡ nothing` is
@@ -385,18 +393,20 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   -- with the per-arch IR-observable theorem (`ir-flat-correct`). A theorem here;
   -- the obligations live (and are discharged or postulated) in the arch instance.
   codegen-asm-correct :
-    ∀ (arch : Arch) (m : P.Module) (asm : String) →
+    ∀ (arch : Arch) (m : P.Module) (asm : String) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) →
     C.compileFromModule C.Heap C.Build false arch m ≡ C.Built asm →
-    ∀ (n : ℕ) → at (⟦ arch ⟧A asm) n ≡ at (⟦ moduleToIR m ⟧IR (arch-numerics arch)) n
+    moduleToIR m ≡ just ir →
+    ∀ (n : ℕ) → at (⟦ arch ⟧A asm) n ≡ at (⟦ just (irProgram (moduleTable m) ir) ⟧IR (arch-numerics arch)) n
   -- D165: three steps now, not two — the middle one is the arith pass, which
-  -- used to be folded into the first.
-  codegen-asm-correct arch m asm eq n =
+  -- used to be folded into the first. D244: all three are about the PROGRAM.
+  codegen-asm-correct arch m asm ir eq mi n =
     trans (ArchCorrect.asm-trace-correct (arch-correct arch) m asm eq
              (program-labels-distinct arch m)
              (program-labels-resolvable arch m)
-             (program-symbols-resolvable arch m) n)
-    (trans (ArchCorrect.rewrite-preserves (arch-correct arch) (moduleToIR m) n)
-           (ArchCorrect.ir-flat-correct  (arch-correct arch) (moduleToIR m) n))
+             (program-symbols-resolvable arch m) ir mi n)
+    (trans (ArchCorrect.rewrite-preserves (arch-correct arch) (irProgram (moduleTable m) ir) lk n)
+           (ArchCorrect.ir-flat-correct  (arch-correct arch) (irProgram (moduleTable m) ir) lk n))
+    where lk = moduleToProgram-linked m ir mi
 
   -- Stage 2 — asm trace = SOURCE trace. With `⟦_⟧M = ⟦ moduleToIR m ⟧IR`
   -- (D059/D060: the source meaning IS the denotational `evalᴰ`), this is
@@ -405,10 +415,11 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   -- (`moduleToIR m ≡ nothing`) case is handled by `codegen-asm-correct` via
   -- `⟦ nothing ⟧IR = []` (no `mta-aux`/`no-main-empty` needed).
   module-to-asm-correct :
-    ∀ (arch : Arch) (m : P.Module) (asm : String) →
+    ∀ (arch : Arch) (m : P.Module) (asm : String) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) →
     C.compileFromModule C.Heap C.Build false arch m ≡ C.Built asm →
-    ∀ (n : ℕ) → at (⟦ arch ⟧A asm) n ≡ at (⟦ m ⟧M arch) n
-  module-to-asm-correct arch m asm eq n = codegen-asm-correct arch m asm eq n
+    moduleToIR m ≡ just ir →
+    ∀ (n : ℕ) → at (⟦ arch ⟧A asm) n ≡ at (⟦ just (irProgram (moduleTable m) ir) ⟧IR (arch-numerics arch)) n
+  module-to-asm-correct arch m asm ir eq mi n = codegen-asm-correct arch m asm ir eq mi n
 
   --------------------------------------------------------------------
   -- The grand theorem — by composition of the per-stage postulates.
@@ -437,9 +448,9 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   -- nothing`), has no behaviour. NOTE (0.48 0b): still THROUGH the front-end —
   -- making it independent (a declarative meaning) is the front-end phase.
   -- D113: arch-indexed, like everything else that lands in a `Behavior`.
-  ⟦_⟧⊥-ir : Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋) → Arch → Maybe Behavior
+  ⟦_⟧⊥-ir : Maybe IRProgram → Arch → Maybe Behavior
   ⟦ nothing  ⟧⊥-ir _    = nothing
-  ⟦ just ir  ⟧⊥-ir arch = just (⟦ just ir ⟧IR (arch-numerics arch))
+  ⟦ just p   ⟧⊥-ir arch = just (⟦ just p ⟧IR (arch-numerics arch))
   -- D115: THE MEANING IS GATED ON ADMISSIBILITY, and this is where Option 2
   -- of the design lands. `⟦_⟧ˢ` stays TOTAL — a literal out of range still
   -- denotes its (unreachable) wrapped value — and the partiality lives HERE,
@@ -450,7 +461,7 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   -- the meaning accepts breaks completeness, and the reverse breaks soundness.
   ⟦_⟧⊥-adm : (m : P.Module) → (arch : Arch) → Dec (AdmissibleM arch m) → Maybe Behavior
   ⟦ m ⟧⊥-adm arch (no  _) = nothing
-  ⟦ m ⟧⊥-adm arch (yes _) = ⟦ moduleToIR m ⟧⊥-ir arch
+  ⟦ m ⟧⊥-adm arch (yes _) = ⟦ programAt (moduleTable m) (moduleToIR m) ⟧⊥-ir arch
 
   ⟦_⟧⊥-m : Maybe P.Module → Arch → Maybe Behavior
   ⟦ nothing ⟧⊥-m _    = nothing
@@ -464,10 +475,10 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   -- genuinely well-typed programs — soundness is no longer by-construction,
   -- it is discharged against the INDEPENDENT judgment via `AcceptSound`.
   -- With-free (explicit-`Maybe`-argument helpers).
-  ⟦⟧⊥-ir-sound : ∀ (mir : Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋)) (arch : Arch) (beh : Behavior) →
-    ⟦ mir ⟧⊥-ir arch ≡ just beh → Σ-syntax (IR ⌊ Unit ⌋ ⌊ Unit ⌋) (λ ir → mir ≡ just ir)
-  ⟦⟧⊥-ir-sound nothing   arch beh ()
-  ⟦⟧⊥-ir-sound (just ir) arch beh eq = ir , refl
+  ⟦⟧⊥-ir-sound : ∀ (tbl : _) (mir : Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋)) (arch : Arch) (beh : Behavior) →
+    ⟦ programAt tbl mir ⟧⊥-ir arch ≡ just beh → Σ-syntax (IR ⌊ Unit ⌋ ⌊ Unit ⌋) (λ ir → mir ≡ just ir)
+  ⟦⟧⊥-ir-sound tbl nothing   arch beh ()
+  ⟦⟧⊥-ir-sound tbl (just ir) arch beh eq = ir , refl
 
   -- Dispatch on the SAME gate the meaning does. An inadmissible module has no
   -- meaning, so `⟦ … ⟧⊥-m ≡ just beh` is absurd there — which is what makes
@@ -477,7 +488,7 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
     ⟦ m ⟧⊥-adm arch d ≡ just beh → ModuleTyped m
   ⟦⟧⊥-adm-sound m arch (no  _) beh ()
   ⟦⟧⊥-adm-sound m arch (yes _) beh eq =
-    moduleToIR-typed m (proj₂ (⟦⟧⊥-ir-sound (moduleToIR m) arch beh eq))
+    moduleToIR-typed m (proj₂ (⟦⟧⊥-ir-sound (moduleTable m) (moduleToIR m) arch beh eq))
 
   ⟦⟧⊥-m-sound : ∀ (mm : Maybe P.Module) (arch : Arch) (beh : Behavior) →
     ⟦ mm ⟧⊥-m arch ≡ just beh →
@@ -502,7 +513,7 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
     opt-trace : ∀ (arch : Arch) (m : P.Module) (asm : String) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) →
       C.compileFromModule C.Heap C.Build true arch m ≡ C.Built asm →
       moduleToIR m ≡ just ir →
-      ∀ (n : ℕ) → at (exec arch (string-to-bytes arch asm)) n ≡ at (⟦ just ir ⟧IR (arch-numerics arch)) n
+      ∀ (n : ℕ) → at (exec arch (string-to-bytes arch asm)) n ≡ at (⟦ just (irProgram (moduleTable m) ir) ⟧IR (arch-numerics arch)) n
 
   -- Behavioural equivalence (matches the record's `_≈_`); the trace witnesses
   -- below are exactly proofs at this relation.
@@ -516,7 +527,7 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   TraceAt : Arch → Bool → P.Module → IR ⌊ Unit ⌋ ⌊ Unit ⌋ → Set
   TraceAt arch doOpt m ir =
     ∀ (asm : String) → C.compileFromModule C.Heap C.Build doOpt arch m ≡ C.Built asm →
-    exec arch (string-to-bytes arch asm) ≋ ⟦ just ir ⟧IR (arch-numerics arch)
+    exec arch (string-to-bytes arch asm) ≋ ⟦ just (irProgram (moduleTable m) ir) ⟧IR (arch-numerics arch)
 
   -- Layer 3 — over the compile RESULT. The accept case is `PW.just` of the
   -- supplied trace witness; the three reject results are ruled out by
@@ -526,7 +537,7 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
                  C.compileFromModule C.Heap C.Build doOpt arch m ≡ cr →
                  moduleToIR m ≡ just ir →
                  TraceAt arch doOpt m ir →
-                 Pointwise _≋_ (map (exec arch) (compile-cr arch cr)) (⟦ just ir ⟧⊥-ir arch)
+                 Pointwise _≋_ (map (exec arch) (compile-cr arch cr)) (⟦ programAt (moduleTable m) (just ir) ⟧⊥-ir arch)
   correct-cr arch doOpt m ir (C.Built asm)  adm cf-eq mi-eq tw = PW.just (tw asm cf-eq)
   correct-cr arch doOpt m ir (C.Parsed _ _) adm cf-eq mi-eq tw =
     case trans (sym cf-eq) (proj₂ (main⇒built arch doOpt m ir adm mi-eq)) of λ ()
@@ -541,7 +552,7 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
                   AdmissibleM arch m →
                   moduleToIR m ≡ mir →
                   (∀ (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) → mir ≡ just ir → TraceAt arch doOpt m ir) →
-                  Pointwise _≋_ (map (exec arch) (compile-mir arch doOpt m mir)) (⟦ mir ⟧⊥-ir arch)
+                  Pointwise _≋_ (map (exec arch) (compile-mir arch doOpt m mir)) (⟦ programAt (moduleTable m) mir ⟧⊥-ir arch)
   correct-mir arch doOpt m nothing   adm mi-eq tw = PW.nothing
   correct-mir arch doOpt m (just ir) adm mi-eq tw =
     correct-cr arch doOpt m ir (C.compileFromModule C.Heap C.Build doOpt arch m) adm refl mi-eq (tw ir refl)
@@ -646,8 +657,7 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
             Pointwise _≋_ (map (exec arch) (compile arch doOpt src)) (⟦ src ⟧⊥ arch)
   correct arch false src = correct-gm arch false (srcToModule src)
     (λ m _ ir mi asm cf n → trans (string-to-bytes-correct arch m asm cf n)
-                                   (trans (module-to-asm-correct arch m asm cf n)
-                                          (cong (λ x → at (⟦ x ⟧IR (arch-numerics arch)) n) mi)))
+                                   (module-to-asm-correct arch m asm ir cf mi n))
   correct arch true src = correct-gm arch true (srcToModule src)
     (λ m _ ir mi asm cf n → opt-trace arch m asm ir cf mi n)
 

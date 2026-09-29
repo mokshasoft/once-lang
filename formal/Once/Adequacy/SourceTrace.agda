@@ -68,7 +68,9 @@ open import Once.Denotation.DenotTrace using (evalᴰ)
 open import Once.Target.Arch using (TargetNum; int-bits; float-format)
 open import Once.Denotation.TraceMonad
   using (projTrace; PrefixFamily; bnd; sat; coh)
-open import Once.Denotation.Program using (IRFun; irFun; fname; fdom; fcod; fbody; IRProgram; irProgram; table; main; runIR; runIR-good)
+open import Once.Denotation.Program using (IRFun; irFun; fname; fdom; fcod; fbody; IRProgram; irProgram; table; main; runIR; runIR-good; LinkedAt; LinkedAt-at; Linked)
+import Once.IR as I
+open import Once.IRTy using (IRTy; _≟IRTy_)
 
 ------------------------------------------------------------------------
 -- Source → IR of `main` (option (a): reuse the compiler's elaborator).
@@ -153,16 +155,23 @@ tableOf-go (cf ∷ cfs) acc = tableOf-go cfs (tbl-keep (cfIsPrimitive cf) (isMai
 tableOf : List C.CompiledFun → List IRFun
 tableOf funs = tableOf-go funs []
 
-programOf : List C.CompiledFun → Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋) → Maybe IRProgram
-programOf funs nothing   = nothing
-programOf funs (just ir) = just (irProgram (tableOf funs) ir)
+-- The table of a compile RESULT (a failed compile has none), and of a module.
+tableOfResult : String ⊎ List C.CompiledFun → List IRFun
+tableOfResult (inj₁ _)    = []
+tableOfResult (inj₂ funs) = tableOf funs
 
-moduleToProgram-aux : String ⊎ List C.CompiledFun → Maybe IRProgram
-moduleToProgram-aux (inj₁ _)    = nothing
-moduleToProgram-aux (inj₂ funs) = programOf funs (findMain funs)
+moduleTable : P.Module → List IRFun
+moduleTable mod = tableOfResult (C.compileResolvedModule C.Heap false mod)
+
+-- The program at a table, given `main`. Stated over `moduleToIR` so that every
+-- apex step that already has `moduleToIR m ≡ just ir` reaches the program by
+-- rewriting with it.
+programAt : List IRFun → Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋) → Maybe IRProgram
+programAt tbl nothing   = nothing
+programAt tbl (just ir) = just (irProgram tbl ir)
 
 moduleToProgram : P.Module → Maybe IRProgram
-moduleToProgram mod = moduleToProgram-aux (C.compileResolvedModule C.Heap false mod)
+moduleToProgram mod = programAt (moduleTable mod) (moduleToIR mod)
 
 ------------------------------------------------------------------------
 -- D165: THE IR THE BACKEND ACTUALLY COMPILES.
@@ -209,6 +218,71 @@ map-rewrite-program (just p) = just (rewrite-program p)
 
 moduleToProgram-emitted : P.Module → Maybe IRProgram
 moduleToProgram-emitted mod = map-rewrite-program (moduleToProgram mod)
+
+------------------------------------------------------------------------
+-- LINKEDNESS of the compiled program (D245). The backend's correctness is for
+-- linked IR: every `Call` names an entry of the table at its objects.
+------------------------------------------------------------------------
+
+-- Rewriting a table keeps every entry's name and objects, which is all
+-- `LinkedAt` reads.
+linkedAt-rewrite : ∀ (tbl : List IRFun) (f : CanonicalName) (A B : IRTy)
+                 → LinkedAt tbl f A B → LinkedAt (rewrite-table tbl) f A B
+linkedAt-rewrite-at : ∀ (e : IRFun) (es : List IRFun) (f : CanonicalName) (A B : IRTy)
+                      (d₁ : Dec (fname e ≡ f)) (d₂ : Dec (fdom e ≡ A)) (d₃ : Dec (fcod e ≡ B))
+                    → LinkedAt-at e es f A B d₁ d₂ d₃
+                    → LinkedAt-at (rewrite-fun e) (rewrite-table es) f A B d₁ d₂ d₃
+linkedAt-rewrite-at e es f A B (yes _) (yes _) (yes _) lk = tt
+linkedAt-rewrite-at e es f A B (yes _) (yes _) (no _)  lk = linkedAt-rewrite es f A B lk
+linkedAt-rewrite-at e es f A B (yes _) (no _)  _       lk = linkedAt-rewrite es f A B lk
+linkedAt-rewrite-at e es f A B (no _)  _       _       lk = linkedAt-rewrite es f A B lk
+linkedAt-rewrite []       f A B ()
+linkedAt-rewrite (e ∷ es) f A B lk =
+  linkedAt-rewrite-at e es f A B (fname e ≟cn f) (fdom e ≟IRTy A) (fcod e ≟IRTy B) lk
+
+linked-retable : ∀ (tbl : List IRFun) {A B} (ir : IR A B) → Linked tbl ir → Linked (rewrite-table tbl) ir
+linked-retable tbl (g I.∘ f)       (lg , lf) = linked-retable tbl g lg , linked-retable tbl f lf
+linked-retable tbl I.⟨ f , g ⟩     (lf , lg) = linked-retable tbl f lf , linked-retable tbl g lg
+linked-retable tbl (I.case f g)    (lf , lg) = linked-retable tbl f lf , linked-retable tbl g lg
+linked-retable tbl (I.curry f)     lf = linked-retable tbl f lf
+linked-retable tbl (I.Cata _ alg)  la = linked-retable tbl alg la
+linked-retable tbl (I.Ana _ coalg) lc = linked-retable tbl coalg lc
+linked-retable tbl (I.Call {A} {B} f) lk = linkedAt-rewrite tbl f A B lk
+linked-retable tbl I.id            _ = tt
+linked-retable tbl I.fst           _ = tt
+linked-retable tbl I.snd           _ = tt
+linked-retable tbl I.inl           _ = tt
+linked-retable tbl I.inr           _ = tt
+linked-retable tbl I.terminal      _ = tt
+linked-retable tbl I.initial       _ = tt
+linked-retable tbl I.apply         _ = tt
+linked-retable tbl (I.In _)        _ = tt
+linked-retable tbl (I.out-μ _)     _ = tt
+linked-retable tbl (I.Out _)       _ = tt
+linked-retable tbl (I.in-ν _)      _ = tt
+linked-retable tbl (I.SigOp _)     _ = tt
+linked-retable tbl (I.const _ _)   _ = tt
+
+-- RESIDUALS, class DEFERRED PROOF (plan 0.103 6a″), both claims about the
+-- compiler's own output and both true of a correct compiler:
+--   * the compiled program is linked. References elaborate to `refIR` of an
+--     EARLIER entry (the telescope, D241) at `directCallIR`'s objects, and
+--     resolution leaves no `poly` placeholder behind. A false instance is a
+--     compiler bug (a dangling `call once_f`), which is why it is stated, not
+--     decided inside the meaning.
+--   * the arith lifting keeps a body linked. It replaces closed arithmetic
+--     subtrees by SigOps and leaves every `Call` in place; `rewrite-ir` is
+--     TERMINATING, so this rides with `rewrite-preserves`' residual class.
+postulate
+  moduleToProgram-linked : ∀ (m : P.Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋)
+                         → moduleToIR m ≡ just ir → Linked (moduleTable m) ir
+  rewrite-ir-linked : ∀ (tbl : List IRFun) {A B} (ir : IR A B)
+                    → Linked tbl ir → Linked tbl (proj₁ (rewrite-ir ir))
+
+rewrite-program-linked : ∀ (p : IRProgram) → Linked (table p) (main p)
+                       → Linked (table (rewrite-program p)) (main (rewrite-program p))
+rewrite-program-linked p lk =
+  rewrite-ir-linked (rewrite-table (table p)) (main p) (linked-retable (table p) (main p) lk)
 
 ------------------------------------------------------------------------
 -- IR-level meaning (the source observable).
@@ -304,13 +378,13 @@ srcToModule-inv src mR eq =
 
 -- D059/D060: the source meaning is the DENOTATIONAL `evalᴰ` (compositional →
 -- reasons about Once programs; observation-depth → commensurable apex meter),
--- via `⟦_⟧IR ∘ moduleToIR`. The surface presentation `⟦_⟧ˢ` agrees with this
+-- via `⟦_⟧IR ∘ moduleToProgram` (D244: main in its function table's environment). The surface presentation `⟦_⟧ˢ` agrees with this
 -- IR presentation by the proven `faithful` (a standalone fact, no longer a
 -- conjunct of the compiler theorem).
 -- J-style dispatch on the parse result (explicit `Maybe`, no `with`), so
 -- `⟦⟧-via-module` below can `rewrite` the parse equation through it.
 sourceTrace-aux : Maybe P.Module → TargetNum → Behavior
-sourceTrace-aux (just m) fmt = ⟦ moduleToIR m ⟧IR fmt
+sourceTrace-aux (just m) fmt = ⟦ moduleToProgram m ⟧IR fmt
 sourceTrace-aux nothing  _   = silent
 
 sourceTrace : Source → TargetNum → Behavior
@@ -332,5 +406,5 @@ abstract
   -- no `with`-opacity. This discharges `Compile.gmoduleToModule-correct`.
   ⟦⟧-via-module :
     ∀ (src : Source) (m : P.Module) → srcToModule src ≡ just m →
-    ∀ (fmt : TargetNum) → ⟦ src ⟧ fmt ≡ ⟦ moduleToIR m ⟧IR fmt
+    ∀ (fmt : TargetNum) → ⟦ src ⟧ fmt ≡ ⟦ moduleToProgram m ⟧IR fmt
   ⟦⟧-via-module src m eq fmt rewrite eq = refl
