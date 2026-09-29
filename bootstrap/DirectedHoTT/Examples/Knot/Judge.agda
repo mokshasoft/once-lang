@@ -187,9 +187,3 @@ fibK : {s c₀ k : ℕ} {shs : Shapes c₀} {sh : Shape} {j p c : RTm Δ} → Nt
 fibK {s = s} {k = k} {j = j} {p} {c} ng nh =
   ⟶*-trans (D⊢-β (pair (tag s) j) (conₗ k p) c) (fib-βₒ {D = KD} {j = j} {p = p} {c = c} ng nh)
 
--- a payload of the Knot, at its normal form
-⊢payK : {Ξ : Ctx} {s : ℕ} {j p : RTm ⌊ Ξ ⌋} {sh : Shape} → Lt s 2 → ShOK 2 sh → Ξ ⊢ j ∷ El ⌜Nat⌝ →
-        Args Ξ 2 KD j sh p → Ξ ⊢ p ∷ PayV sh (pair (tag s) j) (SI 2) (SD KSig)
-⊢payK {s = s} {j = j} {sh = sh} lt ok dj as =
-  ⊢conv (⊢payArgs ⊢KD ok (⊢ix lt dj) (step (βsnd (tag s) j) done) as) (red→≅ᵀ (payV-red sh (pair (tag s) j) (SI 2) (SD KSig)))
-

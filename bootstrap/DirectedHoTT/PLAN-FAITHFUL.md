@@ -80,3 +80,14 @@ ships REDUCTION lemmas for its methods. `Lib/SynTrav` ships typings only.
   - ✅ …and the composite codes the rows' indices cite: `DF` (`DescF`), `mc`
     (`motCtx`) and `MethTyK` (`MethTy`). They are the agreements above,
     threaded through constructor positions (`node-1/2/3`). F3 is done.
+- ✅ F4 (2026-09-29) the side conditions are COMPLETE, all generated:
+  - `Knot/PredsCon`: constructors for all 24 side-condition rows, by the
+    `JudgeConGen` scheme.
+  - `Knot/PredsAgree`: `NoNatC c`, `stkA? c ≡ true`, `stkC? c ≡ true` and
+    `flat? c ≡ true` each map to a Knot inhabitant at `⌜c⌝`. A true head
+    builds its row, a false head is absurd. This is the "mirrored clause by
+    clause" claim, checked.
+  - `Knot/PwAgree`: `pw? c ≡ true` maps to `Pw` at `⌜c⌝`, `⌜pwBody c⌝`.
+    The Knot's `wk` in the ⌜Hom⌝ body is bridged by F3's `wk-agree`.
+  - `⊢payK` moved from `Judge` to `JudgeIx`, so constructor modules no
+    longer import the whole ⊢ family.

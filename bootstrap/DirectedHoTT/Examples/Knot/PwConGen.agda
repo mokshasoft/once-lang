@@ -34,7 +34,7 @@ open import DirectedHoTT.Examples.Knot.GenHelpers
 open import DirectedHoTT.Examples.Knot.Preds using ( ⌜StkA⌝; ⊢⌜StkA⌝; ⌜StkC⌝; ⊢⌜StkC⌝ )
 open import DirectedHoTT.Examples.Knot.RedIx
 open import DirectedHoTT.Examples.Knot.NestIx
-open import DirectedHoTT.Examples.Knot.Judge using ( ⊢payK )
+open import DirectedHoTT.Examples.Knot.JudgeIx using ( ⊢payK )
 open import DirectedHoTT.Examples.Knot.Pw
 
 conPwcPi : {Ξ : Ctx} {j f0 f1 : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ f0 ∷ K 1 j → Ξ ⊢ f1 ∷ K 1 (nsuc j) → 
