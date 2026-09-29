@@ -68,7 +68,7 @@ open import Once.Denotation.DenotTrace using (evalᴰ)
 open import Once.Target.Arch using (TargetNum; int-bits; float-format)
 open import Once.Denotation.TraceMonad
   using (projTrace; PrefixFamily; bnd; sat; coh)
-open import Once.Denotation.Program using (IRFun; irFun; IRProgram; irProgram; runIR; runIR-good)
+open import Once.Denotation.Program using (IRFun; irFun; fname; fdom; fcod; fbody; IRProgram; irProgram; table; main; runIR; runIR-good)
 
 ------------------------------------------------------------------------
 -- Source → IR of `main` (option (a): reuse the compiler's elaborator).
@@ -189,6 +189,26 @@ map-rewrite (just ir) = just (proj₁ (rewrite-ir ir))
 
 moduleToIR-emitted : P.Module → Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋)
 moduleToIR-emitted mod = map-rewrite (moduleToIR mod)
+
+-- D244: …and the whole PROGRAM the backend compiles. The emitter runs the arith
+-- lifting on EVERY definition (`compileFunWithTarget`), so the emitted program
+-- rewrites `main` and each table entry alike.
+rewrite-fun : IRFun → IRFun
+rewrite-fun e = irFun (fname e) (fdom e) (fcod e) (proj₁ (rewrite-ir (fbody e)))
+
+rewrite-table : List IRFun → List IRFun
+rewrite-table []       = []
+rewrite-table (e ∷ es) = rewrite-fun e ∷ rewrite-table es
+
+rewrite-program : IRProgram → IRProgram
+rewrite-program p = irProgram (rewrite-table (table p)) (proj₁ (rewrite-ir (main p)))
+
+map-rewrite-program : Maybe IRProgram → Maybe IRProgram
+map-rewrite-program nothing  = nothing
+map-rewrite-program (just p) = just (rewrite-program p)
+
+moduleToProgram-emitted : P.Module → Maybe IRProgram
+moduleToProgram-emitted mod = map-rewrite-program (moduleToProgram mod)
 
 ------------------------------------------------------------------------
 -- IR-level meaning (the source observable).

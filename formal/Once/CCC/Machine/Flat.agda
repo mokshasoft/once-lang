@@ -280,6 +280,22 @@ module FlatMachine {FS : FrameSemantics} where
     trans (ft-go-++-miss t₁ t₂ target (suc i) miss)
           (cong (ft-go t₂ target) (+-suc (length t₁) i))
 
+  -- …and the HIT half (D245): an entry the scan finds in a prefix is found at
+  -- the same index in any extension. What a program image built by appending
+  -- (`ProgramImage`) needs for the part it was built from.
+  ft-go-prefix    : ∀ (t₁ t₂ : AbstractTrace) (target : EntryId) (i j : ℕ)
+                  → ft-go t₁ target i ≡ just j → ft-go (t₁ ++ t₂) target i ≡ just j
+  ft-at-prefix    : ∀ (mo : Maybe EntryId) (t₁ t₂ : AbstractTrace) (target : EntryId) (i j : ℕ)
+                  → ft-at mo t₁ target i ≡ just j → ft-at mo (t₁ ++ t₂) target i ≡ just j
+  ft-match-prefix : ∀ (b : Bool) (t₁ t₂ : AbstractTrace) (target : EntryId) (i j : ℕ)
+                  → ft-match b t₁ target i ≡ just j → ft-match b (t₁ ++ t₂) target i ≡ just j
+  ft-go-prefix []       t₂ target i j ()
+  ft-go-prefix (x ∷ t₁) t₂ target i j eq = ft-at-prefix (entry-of? x) t₁ t₂ target i j eq
+  ft-at-prefix (just m) t₁ t₂ target i j eq = ft-match-prefix (m ≡ᵇᴱ target) t₁ t₂ target i j eq
+  ft-at-prefix nothing  t₁ t₂ target i j eq = ft-go-prefix t₁ t₂ target (suc i) j eq
+  ft-match-prefix true  t₁ t₂ target i j eq = eq
+  ft-match-prefix false t₁ t₂ target i j eq = ft-go-prefix t₁ t₂ target (suc i) j eq
+
   ------------------------------------------------------------------------
   -- THE CALL SCAN IS SOUND: what it finds IS a body entry for that label.
   --
