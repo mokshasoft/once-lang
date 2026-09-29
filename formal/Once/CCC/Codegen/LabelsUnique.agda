@@ -65,7 +65,7 @@ open import Once.CCC.Codegen.LabelScope o using (trace-of; cata-trace-of)
 open import Once.CCC.Codegen.SlotBudget o using (bodies-of)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore
-  using (AbstractTrace; AbstractInstr; instr-ctrl; c-thunk; c-ret; c-label; block-layout;
+  using (AbstractTrace; AbstractInstr; instr-ctrl; c-thunk; c-entry; c-call-fn; c-ret; c-label; block-layout;
          mov-to-input; mov-to-output; store-at-slot; restore-input; instr-alloc-heap;
          load-from-slot; store-indirect; store-indirect-suc; c-jmp; c-branch-tag-zero;
          load-indirect-suc)
@@ -477,6 +477,7 @@ module Unique {FS : FrameSemantics} where
   defs-uniq (const fits-int   v)  n l = []
   defs-uniq (const fits-float v)  n l = []
   defs-uniq (SigOp _)             n l = []
+  defs-uniq (Call _)             n l = []
   -- `in-ν`'s block is a one-instruction stub and it owns no children, so its
   -- single minted label has nothing to be distinct from.
   defs-uniq (in-ν _)              n l = [] ∷ []

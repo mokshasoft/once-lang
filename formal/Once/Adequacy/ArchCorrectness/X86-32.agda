@@ -27,8 +27,10 @@ open import Data.Nat using (ℕ)
 
 import Once.Adequacy.ArchCorrectness.X86-32.ResourceBounds as RB
 
+open import Data.List using (List)
+open import Once.Denotation.Program using (IRFun; tableEnv)
 module Once.Adequacy.ArchCorrectness.X86-32
-  (o : CanonicalName)
+  (o : CanonicalName) (tbl : List IRFun)
   (x86-32-heap-room : RB.HeapRoom o) (x86-32-stack-room : RB.StackRoom o)
   (x86-32-call-room : RB.CallRoom o)
   -- PLAN 0.70 PHASE C: the machine is finite. Same class and same threading as
@@ -81,7 +83,7 @@ open import Once.Adequacy.SourceTrace using (moduleToIR; moduleToIR-emitted)
 open import Once.CCC.Target.X86-32.Layout using (InStack; stack-addr)
 open import Once.CCC.Target.X86-32.FrameInstantiation using (X86-32Frame)
 open import Once.CCC.Target.X86-32.FrameInstantiation using (x86-32-frame-semantics)
-open import Once.CCC.Codegen.IRObsCorrectFlat o using (module IRObsCorrectFlatness)
+open import Once.CCC.Codegen.IRObsCorrectFlat o tbl using (module IRObsCorrectFlatness)
 open import Once.CCC.Codegen.IRToTrace o using (ir-to-trace; ir-stack-budget)
 open import Once.CCC.Codegen.ShapeTable using (HeapModed)
 open import Once.CCC.Target.X86-32.AbstractToX86-32
@@ -131,7 +133,7 @@ postulate
 entry-frame-x86-32 : X86-32Frame
 entry-frame-x86-32 = stack-addr X.stack-top stack-top-in-stack
 
-module FFOx = FFO o x86-32 x86-32-frame-semantics refl entry-frame-x86-32 (arch-semantics x86-32)
+module FFOx = FFO o tbl x86-32 x86-32-frame-semantics refl entry-frame-x86-32 (arch-semantics x86-32)
 
 -- A THEOREM: the entry frame IS the loader's `%esp`
 -- (`entry-frame-x86-32 = stack-addr stack-top _`) and `frame-base` on x86-32 is
@@ -493,5 +495,5 @@ BlockRunsHyp-x86-32 = (ir : IR Unit Unit) → BlockRuns (ir-to-trace ir)
 
 x86-32-correct : BlockRunsHyp-x86-32 → ArchCorrect x86-32 (arch-semantics x86-32)
 x86-32-correct brs =
-  FFO.flat-from-obs o x86-32 x86-32-frame-semantics refl entry-frame-x86-32 (arch-semantics x86-32)
+  FFO.flat-from-obs o tbl x86-32 x86-32-frame-semantics refl entry-frame-x86-32 (arch-semantics x86-32)
     ir-obs-correct brs (asm-trace-correct-x86-32 brs)

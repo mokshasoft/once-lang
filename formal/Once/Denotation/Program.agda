@@ -20,12 +20,15 @@ module Once.Denotation.Program where
 
 open import Data.List using (List; []; _∷_)
 open import Data.Unit using (tt)
-open import Data.Product using (_,_)
+open import Data.Product using (_,_; _×_)
+open import Data.Empty using (⊥)
+open import Data.Unit using (⊤)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Relation.Nullary using (Dec; yes; no)
 
 open import Once.CanonicalName using (CanonicalName; _≟ᶜ_)
 open import Once.IR using (IR; IRTy; Unit)
+open Once.IR.IR
 open import Once.IRTy using (_≟IRTy_; ⌈_⌉)
 open import Once.Denotation.DenotPrefix using (GoodT; EnvGood; evalᴰ-good; const-empty-pf)
 open import Once.Target.Arch using (TargetNum)
@@ -94,3 +97,46 @@ tableEnv-at-good fmt e es f B (no _)  _      = tableEnv-good fmt es f B
 
 tableEnv-good fmt []       f B = unlinkedT-good B
 tableEnv-good fmt (e ∷ es) f B = tableEnv-at-good fmt e es f B (fname e ≟ᶜ f) (fcod e ≟IRTy B)
+
+------------------------------------------------------------------------
+-- LINKEDNESS. `LinkedAt tbl f B`: the table answers a call of `f` at `B`, i.e.
+-- the lookup `tableEnv` performs SUCCEEDS (it is that lookup's success,
+-- clause for clause). A compiled program's calls are all linked (the
+-- telescope, D241/TeleSig). An unlinked call has no machine counterpart: the
+-- image may hold `f` at another type, so the backend's correctness is stated
+-- for linked IR (`Linked tbl ir`: every `Call` in it is linked).
+------------------------------------------------------------------------
+
+LinkedAt : List IRFun → CanonicalName → IRTy → Set
+
+LinkedAt-at : (e : IRFun) → List IRFun → (f : CanonicalName) → (B : IRTy)
+            → Dec (fname e ≡ f) → Dec (fcod e ≡ B) → Set
+LinkedAt-at e es f B (yes _) (yes _) = ⊤
+LinkedAt-at e es f B (yes _) (no _)  = LinkedAt es f B
+LinkedAt-at e es f B (no _)  _       = LinkedAt es f B
+
+LinkedAt []       f B = ⊥
+LinkedAt (e ∷ es) f B = LinkedAt-at e es f B (fname e ≟ᶜ f) (fcod e ≟IRTy B)
+
+Linked : List IRFun → ∀ {A B} → IR A B → Set
+Linked tbl (g ∘ f)        = Linked tbl g × Linked tbl f
+Linked tbl ⟨ f , g ⟩      = Linked tbl f × Linked tbl g
+Linked tbl (case f g)     = Linked tbl f × Linked tbl g
+Linked tbl (curry f)      = Linked tbl f
+Linked tbl (Cata _ alg)   = Linked tbl alg
+Linked tbl (Ana _ coalg)  = Linked tbl coalg
+Linked tbl (Call {B} f)   = LinkedAt tbl f B
+Linked tbl id             = ⊤
+Linked tbl fst            = ⊤
+Linked tbl snd            = ⊤
+Linked tbl inl            = ⊤
+Linked tbl inr            = ⊤
+Linked tbl terminal       = ⊤
+Linked tbl initial        = ⊤
+Linked tbl apply          = ⊤
+Linked tbl (In _)         = ⊤
+Linked tbl (out-μ _)      = ⊤
+Linked tbl (Out _)        = ⊤
+Linked tbl (in-ν _)       = ⊤
+Linked tbl (SigOp _)      = ⊤
+Linked tbl (const _ _)    = ⊤

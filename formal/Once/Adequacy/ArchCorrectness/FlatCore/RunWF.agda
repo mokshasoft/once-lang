@@ -49,7 +49,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_)
 -- before the body, where the applied `open import … FS word-eq` has not run.
 open import Data.Maybe using (just)
 open import Once.CCC.Machine.SMCore
-  using (AbstractTrace; instr-alloc-heap; instr-ctrl; c-thunk; instr-call-closure)
+  using (AbstractTrace; instr-alloc-heap; instr-ctrl; c-thunk; c-entry; c-call-fn; instr-call-closure)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CanonicalName using (CanonicalName)
 

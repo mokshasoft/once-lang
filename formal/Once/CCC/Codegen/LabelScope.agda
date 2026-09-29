@@ -54,7 +54,7 @@ open import Once.IR using (IR; AllocMode; Stack; Heap;
   id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; terminal; initial;
   curry; apply;
   In; out-μ; Cata; Out; in-ν; Ana;
-  SigOp; const)
+  SigOp; Call; const)
 open import Once.IRTy using (fits-int; fits-float; ⌈_⌉F; ⟦_⟧TI; ν-type;
   WellFormedFI; wf-K; wf-Id; wf-Sum; wf-Prod)
 open import Once.Type using (Functor; K; Id; _⊕_; _⊗_)
@@ -617,6 +617,7 @@ labels-in (Ana _ c) n l =
   li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
   li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ []
 labels-in (SigOp _)      n l = li-none refl ∷ []
+labels-in (Call _)      n l = li-none refl ∷ []
 labels-in (const fits-int _)   n l = li-none refl ∷ []
 labels-in (const fits-float _) n l = li-none refl ∷ []
 
@@ -1745,6 +1746,7 @@ seg-agree (Ana w c) n l =
   segagree-nolab _ (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷
                     refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ [])
 seg-agree (SigOp w) n l = segagree-nolab _ (refl ∷ [])
+seg-agree (Call _) n l = segagree-nolab _ (refl ∷ [])
 seg-agree (const fits-int v) n l = segagree-nolab _ (refl ∷ [])
 seg-agree (const fits-float v) n l = segagree-nolab _ (refl ∷ [])
 -- POST-FLIP: the body is inline inside a `c-thunk`/`c-ret` bracket, so this is
@@ -2090,6 +2092,7 @@ scope-ok (Ana wf c) n l =
     ana-bl-agree : SegAgree (blocks-layout ((ℓ o l , bb , bt) ∷ bodies-of D))
     ana-bl-agree = segagree-++ⁿ blk BB nc1 nc2 blkA (ScopeOK.bl-agree S)
 scope-ok (SigOp _)           n l = scope-nil _ _ _
+scope-ok (Call _)           n l = scope-nil _ _ _
 scope-ok (const fits-int _)  n l = scope-nil _ _ _
 scope-ok (const fits-float _) n l = scope-nil _ _ _
 

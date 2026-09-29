@@ -50,7 +50,7 @@ open import Once.CCC.Machine.SMCore
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CCC.Label using (_≡ᵇᴵ_; ≡ᵇᴵ-refl)
-open import Once.CCC.Machine.SMCore using (instr-ctrl; c-thunk)
+open import Once.CCC.Machine.SMCore using (instr-ctrl; c-thunk; c-entry; c-call-fn)
 
 ------------------------------------------------------------------------
 -- Fetch agreement, spelled out (= `Interface.Core.SpanAt`).

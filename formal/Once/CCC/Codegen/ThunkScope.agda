@@ -43,7 +43,7 @@ open import Data.Empty using (⊥; ⊥-elim)
 open import Once.CCC.Label using (LabelId; idx)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore
-  using (AbstractTrace; AbstractInstr; instr-ctrl; c-thunk; c-ret; c-jmp; c-label)
+  using (AbstractTrace; AbstractInstr; instr-ctrl; c-thunk; c-entry; c-call-fn; c-ret; c-jmp; c-label)
 open import Once.IRTy using (FitsInRegI; fits-int; fits-float)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.IR using (IR)
@@ -311,6 +311,7 @@ module Scope {FS : FrameSemantics} where
   thunks-in (const fits-int   v) n l = all-no-thunk-in _ refl
   thunks-in (const fits-float v) n l = all-no-thunk-in _ refl
   thunks-in (SigOp x)  n l = all-no-thunk-in _ refl
+  thunks-in (Call _)  n l = all-no-thunk-in _ refl
   thunks-in (Ana x c)  n l = all-no-thunk-in _ refl
   thunks-in (g ∘ f)    n l =
     ++⁺ (ts-weaken ≤-refl (label-mono g _ _) (thunks-in f n l))
@@ -381,6 +382,7 @@ module Scope {FS : FrameSemantics} where
   blocks-thunks-in (out-μ _) n l = []
   blocks-thunks-in (Out _)   n l = []
   blocks-thunks-in (SigOp _)  n l = []
+  blocks-thunks-in (Call _)  n l = []
   blocks-thunks-in (const fits-int   v) n l = []
   blocks-thunks-in (const fits-float v) n l = []
   blocks-thunks-in (g ∘ f)  n l =

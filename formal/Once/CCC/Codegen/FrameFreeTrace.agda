@@ -56,7 +56,7 @@ open import Once.IR using (IR; AllocMode; Stack; Heap;
   id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; terminal; initial;
   curry; apply;
   In; out-μ; Cata; Out; in-ν; Ana;
-  SigOp; const)
+  SigOp; Call; const)
 open import Once.IRTy using (fits-int; fits-float; ⌈_⌉F; ⟦_⟧TI; ν-type; WellFormedFI; wf-K; wf-Id; wf-Sum; wf-Prod)
 open import Once.Type using (Functor; K; Id; _⊕_; _⊗_)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
@@ -323,6 +323,7 @@ frame-free-trace' (in-ν _)     hm n l =
 frame-free-trace' (Ana _ c)      hm n l =
   tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
 frame-free-trace' (SigOp _)      hm n l = tt ∷ []
+frame-free-trace' (Call _)      hm n l = tt ∷ []
 frame-free-trace' (const fits-int _)   hm n l = tt ∷ []
 frame-free-trace' (const fits-float _) hm n l = tt ∷ []
 
@@ -415,6 +416,7 @@ frame-free-blocks' (Ana wf c)     hc n l =
                     (proj₁ (proj₂ (ir-to-trace' 0 (suc l) c))) (ℓ o l) wf)
     ∷ frame-free-blocks' c hc 0 (suc l)
 frame-free-blocks' (SigOp _)      hm n l = []
+frame-free-blocks' (Call _)      hm n l = []
 frame-free-blocks' (const fits-int _)   hm n l = []
 frame-free-blocks' (const fits-float _) hm n l = []
 

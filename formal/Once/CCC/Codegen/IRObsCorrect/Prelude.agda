@@ -17,7 +17,9 @@
 
 open import Once.CanonicalName using (CanonicalName)
 
-module Once.CCC.Codegen.IRObsCorrect.Prelude (o : CanonicalName) where
+open import Data.List using (List)
+open import Once.Denotation.Program using (IRFun; tableEnv)
+module Once.CCC.Codegen.IRObsCorrect.Prelude (o : CanonicalName) (tbl : List IRFun) where
 open import Data.Nat using (ℕ; zero; suc; _<_; _≤_; _+_; _∸_) public
 open import Data.Nat.Properties using (n<1+n; n≤1+n; ≤-refl; <-≤-trans) public
 open import Data.Empty using (⊥; ⊥-elim) public
@@ -92,7 +94,7 @@ open import Once.CCC.Machine.SMCore
          -- it lives without restating `c-thunk … ∷ t ++ c-ret … ∷ []`.
          block-layout) public
 open import Once.CCC.Machine.Validity using (module ReadLocEq) public
-open import Once.CCC.Machine.ValidAtWFHalted o using (validAtWF-set-halted) public
+open import Once.CCC.Machine.ValidAtWFHalted o tbl using (validAtWF-set-halted) public
 open import Once.CCC.Machine.Allocation using (AllocState; next-slot; next-heap-ref; module FrontierInvariant) public
 open import Once.CCC.Machine.Flat using (module FlatMachine) public
 open import Once.CCC.Machine.SMPrimitives using (module TracePrimitives; module InstrPrimitives; module RecSchemeSemantics) public
@@ -102,7 +104,7 @@ open import Once.CCC.Codegen.IRToTrace o using (ir-to-trace; ir-to-trace') publi
 open import Once.CCC.Codegen.CataNextSlot using (module CataNextSlot) public
 open import Once.CCC.Codegen.SlotBudget o using (frontier-mono; budget-of) public
 open import Once.CCC.Codegen.CataIRSlotStable o using (module CataIRSlotStable) public
-open import Once.CCC.Machine.ClosureWellFormed o using (module ClosureWellFormedDef) public
+open import Once.CCC.Machine.ClosureWellFormed o tbl using (module ClosureWellFormedDef) public
 import Once.CCC.Machine.ReadTypedAdequate as RTA
 open import Once.Denotation.Trace using (SigOpEvent) public
 import Once.Denotation.DenotTrace as DT

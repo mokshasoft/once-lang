@@ -44,7 +44,9 @@ open import Relation.Binary.PropositionalEquality using (_≡_; subst)
 -- UNCHANGED: the emitter is imported APPLIED, so each call site reads as before.
 open import Once.CanonicalName using (CanonicalName)
 
-module Once.Adequacy.ArchCorrectness.FlatFromObs (o : CanonicalName)
+open import Data.List using (List)
+open import Once.Denotation.Program using (IRFun; tableEnv; tableEnv-good)
+module Once.Adequacy.ArchCorrectness.FlatFromObs (o : CanonicalName) (tbl : List IRFun)
   (arch          : Arch)
   (FS            : FrameSemantics)
   -- Plan 0.54 rung D: the loader's initial FRAME is supplied BY THE ARCH, not
@@ -87,7 +89,7 @@ open import Once.Denotation.Behavior using (Behavior; at; behavior-by)
 open import Once.Denotation.Trace using (SigOpEvent)
 open import Once.Adequacy.Compile using (ArchCorrect)
 open import Once.Adequacy.SourceTrace using (moduleToIR; moduleToIR-emitted; map-rewrite; ⟦_⟧IR)
-open import Once.CCC.Codegen.IRObsCorrectFlat o using (module IRObsCorrectFlatness)
+open import Once.CCC.Codegen.IRObsCorrectFlat o tbl using (module IRObsCorrectFlatness)
 open import Once.CCC.Codegen.IRToTrace o using (ir-to-trace; ir-stack-budget)
 open import Once.CCC.Codegen.BlockLayout using (module Layout)
 open import Once.CCC.Codegen.LabelsUnique o using (module Unique)
@@ -111,7 +113,7 @@ open import Once.CCC.Machine.Allocation
   using (AllocState; mkAllocState; next-slot; module FrontierInvariant)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
-open import Once.CCC.Machine.ClosureWellFormed o using (module ClosureWellFormedDef)
+open import Once.CCC.Machine.ClosureWellFormed o tbl using (module ClosureWellFormedDef)
 import Once.Compile as C
 import Once.Parser.Module.Core as P
 -- D100: the assembler's own precondition — the emitted local labels are
@@ -490,7 +492,7 @@ ir-flat-correct-fam ioc brs (just ir) n =
         (trans (MachineRefinesObsF.traces-agree (entry-witness ir (ioc ir) brs n))
                -- `at` no longer caps: `bounded` says the depth-`n` prefix is
                -- already at most `n` long, so the cap was the identity.
-               (take-all n _ (bnd (proj₁ (evalᴰ-good (Once.CCC.FrameSemantics.fs-numerics FS) ir tt tt)) n)))
+               (take-all n _ (bnd (proj₁ (evalᴰ-good (Once.CCC.FrameSemantics.fs-numerics FS) (tableEnv (Once.CCC.FrameSemantics.fs-numerics FS) tbl) (tableEnv-good (Once.CCC.FrameSemantics.fs-numerics FS) tbl) ir tt tt)) n)))
 
 -- …and THAT is what makes the machine's family a `Behavior`: it borrows the
 -- three laws from the denotation it is proved equal to (`behavior-by`). The

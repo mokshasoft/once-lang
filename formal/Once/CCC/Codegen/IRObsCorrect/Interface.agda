@@ -23,9 +23,11 @@
 
 open import Once.CanonicalName using (CanonicalName)
 
-module Once.CCC.Codegen.IRObsCorrect.Interface (o : CanonicalName) where
+import Data.List as DL
+open import Once.Denotation.Program using (IRFun; tableEnv; LinkedAt)
+module Once.CCC.Codegen.IRObsCorrect.Interface (o : CanonicalName) (tbl : DL.List IRFun) where
 
-open import Once.CCC.Codegen.IRObsCorrect.Prelude o public
+open import Once.CCC.Codegen.IRObsCorrect.Prelude o tbl public
 
 -- Qualified aliases cannot be re-exported, so each part repeats these. The
 -- bare `import` of FrameSemantics is for the FULLY QUALIFIED
@@ -47,7 +49,7 @@ module Core {FS : FrameSemantics} where
   -- obligations discharge: `float-format FS` is what `exec-abstract` encodes a
   -- float literal at, so it is what `evalᴰ` must mean by one.
   evalᴰ : ∀ {A B} → IR A B → DT.⟦ A ⟧ᴰᴵ → TM.T DT.⟦ B ⟧ᴰᴵ
-  evalᴰ = DT.evalᴰ (Once.CCC.FrameSemantics.fs-numerics FS)
+  evalᴰ = DT.evalᴰ (Once.CCC.FrameSemantics.fs-numerics FS) (tableEnv (Once.CCC.FrameSemantics.fs-numerics FS) tbl)
 
   -- D174: the STEP vocabulary for a run that allocates and dereferences.
   -- `flat-step-straight` threads `exec-abstract` definitionally, so the
@@ -93,7 +95,7 @@ module Core {FS : FrameSemantics} where
   open MemOps {FS} using (readLoc) public
   open ReadLocEq {FS} using (readLoc-stack-heap-eq) public
   open FlatEventTrace {FS} using (flat-events; event-of; flat-events-[]; chain-events; chain-events-nil; chain-events-++; chain-events-subst-start) public
-  open RTA o {FS} using (Readable; r-unit; r-int; r-pair; readable?; readTyped-adequate) public
+  open RTA o tbl {FS} using (Readable; r-unit; r-int; r-pair; readable?; readTyped-adequate) public
   open CataNextSlot {FS} using (exec-flat-keeps-next-slot; AllSlotStable) public
   open CataIRSlotStable {FS} using (ir-to-trace-slot-stable; ir-stable) public
 
@@ -647,12 +649,34 @@ module Core {FS : FrameSemantics} where
            → CalleeRun prog fs ret-pc (⟦ F ⟧TI (ν-type F))
                (evalᴰ (Out wf) (TM.valueT (evalᴰ (Ana wf coalg) seed) 0)) k))
 
-  -- Both block-table premises in ONE slot, so adding the second does not
-  -- re-thread the fourteen discharge clauses that only pass it along.
+  -- D245: the third block kind, the program's own FUNCTIONS. A direct call
+  -- (`Call f`, lowered to `c-call-fn f`) names its callee statically, so the
+  -- premise is keyed by the call itself rather than by a code cell: for every
+  -- call the table LINKS (`LinkedAt tbl f B`), the image has `f`'s entry, and
+  -- running it from a fresh call refines what the table's environment says
+  -- `f` means at `B`. This is `EnvCorrect`: the table's meaning is what its
+  -- code does. Restricted to linked calls it is satisfiable by the linked
+  -- program image, and it is discharged along the table, each entry from its
+  -- body's correctness in the entries before it.
+  FnRuns : AbstractTrace → Set
+  FnRuns prog =
+    ∀ (f : CanonicalName) (B : IRTy) → LinkedAt tbl f B
+    → ∃[ j ]
+        ( (find-fn prog f ≡ just j)
+        × (∀ (fs : FlatState) (pre-alloc : AllocState {FS})
+             (ret-pc k : ℕ) (mIn' : AllocMode)
+           → fpc fs ≡ j → halted (floc fs) ≡ false → fret fs ≡ ret-pc ∷ []
+           → falloc fs ≡ enter-call pre-alloc
+           → InputAt {Once.IRTy.Unit} mIn' pre-alloc tt (floc fs)
+           → CalleeRun prog fs ret-pc B (tableEnv (Once.CCC.FrameSemantics.fs-numerics FS) tbl f B) k))
+
+  -- All block-table premises in ONE slot, so adding one does not re-thread the
+  -- fourteen discharge clauses that only pass it along.
   record BlockRuns (prog : AbstractTrace) : Set where
     field
-      closures : CalleeRuns prog
-      coalgs   : CoalgRuns prog
+      closures  : CalleeRuns prog
+      coalgs    : CoalgRuns prog
+      functions : FnRuns prog
 
   IRObsCorrectF : ∀ {A B} → IR A B → Set
   IRObsCorrectF {A} {B} ir =

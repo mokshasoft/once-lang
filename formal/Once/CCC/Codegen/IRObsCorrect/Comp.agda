@@ -10,9 +10,11 @@
 
 open import Once.CanonicalName using (CanonicalName)
 
-module Once.CCC.Codegen.IRObsCorrect.Comp (o : CanonicalName) where
+import Data.List as DL
+open import Once.Denotation.Program using (IRFun; tableEnv)
+module Once.CCC.Codegen.IRObsCorrect.Comp (o : CanonicalName) (tbl : DL.List IRFun) where
 
-open import Once.CCC.Codegen.IRObsCorrect.Machine o
+open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
 open import Once.CCC.Codegen.LabelResolve o using (module Resolve)
 open import Once.CCC.Codegen.LabelScope o using (labels-in)
 open import Once.CCC.Label using (idx)

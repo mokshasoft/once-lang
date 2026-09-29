@@ -45,7 +45,7 @@ open import Once.IRTy using (IRTy; IRFunctor; Unit; Void; Int; Float; Str; Buffe
 open import Once.IR using (⟦_⟧TI; IR; AllocMode; Heap; Stack;
   id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; terminal; initial;
   curry; apply; In; out-μ; Cata; Out; in-ν; Ana;
-  SigOp; const)
+  SigOp; Call; const)
 open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥)
 open import Once.CCC.Machine.SMCore using
@@ -58,7 +58,7 @@ open import Once.CCC.Machine.SMCore using
    instr-load-const; instr-load-code-addr; instr-save-closure-reg;
    instr-load-tag-lit; instr-alloc-heap; instr-loop; instr-case-on-tag;
    instr-reg-op; instr-ctrl; c-label; c-jmp; c-branch-scratch-zero;
-   c-branch-tag-zero; c-thunk; c-ret)
+   c-branch-tag-zero; c-thunk; c-entry; c-call-fn; c-ret)
 open import Once.CCC.Label using (LabelId)
 
 ------------------------------------------------------------------------
@@ -492,6 +492,7 @@ HeapModed (Out _)   = ⊤
 HeapModed (in-ν _) = ⊤
 HeapModed (Ana _ coalg) = HeapModed coalg
 HeapModed (SigOp _) = ⊤
+HeapModed (Call _) = ⊤
 HeapModed (const _ _) = ⊤
 
 -- the entry expectation of a fragment with input type `A` (`main`'s is

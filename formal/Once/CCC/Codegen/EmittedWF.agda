@@ -47,7 +47,7 @@ open import Once.CCC.Machine.SMCore using
   ( AbstractInstr; AbstractTrace
   ; instr-ctrl; instr-load-code-addr
   ; instr-case-on-tag; instr-loop
-  ; FlatCtrl; c-label; c-jmp; c-thunk; c-ret
+  ; FlatCtrl; c-label; c-jmp; c-thunk; c-entry; c-call-fn; c-ret
   ; c-branch-scratch-zero; c-branch-tag-zero
   -- D164: the rest of `AbstractInstr`, so both walks can be ENUMERATED
   -- instead of resting on a catch-all.

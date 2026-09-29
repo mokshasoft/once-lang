@@ -47,7 +47,7 @@ open import Once.Float.Dyadic using (binary32; binary64)
 open import Once.Float.Decimal using (Decimal; round)
 open import Data.Integer using (ℤ)
 open import Once.CCC.Machine.SMCore
-  using (AbstractTrace; instr-alloc-heap; instr-ctrl; c-thunk; c-ret; instr-call-closure
+  using (AbstractTrace; instr-alloc-heap; instr-ctrl; c-thunk; c-entry; c-call-fn; c-ret; instr-call-closure
         ; instr-reg-op; scratch-dec; count-inc; instr-dealloc-stack
         ; instr-load-tag-lit; instr-load-const)
 open import Once.CCC.Machine.Flat using (module FlatMachine)

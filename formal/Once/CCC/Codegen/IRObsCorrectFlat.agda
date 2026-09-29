@@ -41,25 +41,27 @@
 
 open import Once.CanonicalName using (CanonicalName)
 
-module Once.CCC.Codegen.IRObsCorrectFlat (o : CanonicalName) where
+import Data.List as DL
+open import Once.Denotation.Program using (IRFun; tableEnv)
+module Once.CCC.Codegen.IRObsCorrectFlat (o : CanonicalName) (tbl : DL.List IRFun) where
 
 -- The shared vocabulary comes in ONCE, publicly: `Machine` re-exports
 -- `Interface`, which re-exports `Prelude`. The parts import it WITHOUT
 -- `public` — seven public re-exports of the same prelude is seven paths to
 -- `Data.Nat._+_`, which Agda rejects as a clashing definition.
-open import Once.CCC.Codegen.IRObsCorrect.Machine o public
+open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl public
 
-open import Once.CCC.Codegen.IRObsCorrect.Simple  o
-open import Once.CCC.Codegen.IRObsCorrect.SigOp   o
-open import Once.CCC.Codegen.IRObsCorrect.Sum     o
-open import Once.CCC.Codegen.IRObsCorrect.TwoCell o
-open import Once.CCC.Codegen.IRObsCorrect.Apply   o
-open import Once.CCC.Codegen.IRObsCorrect.Out     o
-open import Once.CCC.Codegen.IRObsCorrect.Comp    o
-open import Once.CCC.Codegen.IRObsCorrect.Case    o
+open import Once.CCC.Codegen.IRObsCorrect.Simple  o tbl
+open import Once.CCC.Codegen.IRObsCorrect.SigOp   o tbl
+open import Once.CCC.Codegen.IRObsCorrect.Sum     o tbl
+open import Once.CCC.Codegen.IRObsCorrect.TwoCell o tbl
+open import Once.CCC.Codegen.IRObsCorrect.Apply   o tbl
+open import Once.CCC.Codegen.IRObsCorrect.Out     o tbl
+open import Once.CCC.Codegen.IRObsCorrect.Comp    o tbl
+open import Once.CCC.Codegen.IRObsCorrect.Case    o tbl
 -- `PairAssemble` imports `Pair` (the four clusters) itself, WITHOUT `public`
 -- — same D200 rule: only this façade re-exports.
-open import Once.CCC.Codegen.IRObsCorrect.PairAssemble o
+open import Once.CCC.Codegen.IRObsCorrect.PairAssemble o tbl
 
 -- The name every importer uses. Each part re-exports `Core`/`Mach`, so the
 -- surface here is what the single file's `IRObsCorrectFlatness` had.

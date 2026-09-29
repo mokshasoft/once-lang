@@ -31,7 +31,9 @@ open import Data.Nat using (ℕ)
 import Once.Adequacy.ArchCorrectness.RiscV64.ResourceBounds as RBr
 import Once.Adequacy.ArchCorrectness.RiscV64.FlatCorrespondence as FCr
 
-module Once.Adequacy.ArchCorrectness.RiscV64 (o : CanonicalName)
+open import Data.List using (List)
+open import Once.Denotation.Program using (IRFun; tableEnv)
+module Once.Adequacy.ArchCorrectness.RiscV64 (o : CanonicalName) (tbl : List IRFun)
   -- Plan 0.65: the resource bounds, as PARAMETERS threaded from the apex (D087),
   -- symmetric with x86-64. G3 (2026-08-17) is where they finally get CONSUMED:
   -- until the simulation was whole-cloth nothing below had asked for them, and
@@ -63,7 +65,7 @@ open import Once.Adequacy.CPU.Interface using (ArchSemantics)
 open import Once.Adequacy.Compile using (ArchCorrect)
 open import Once.Adequacy.SourceTrace using (moduleToIR; moduleToIR-emitted)
 open import Once.CCC.Target.RiscV64.FrameInstantiation using (rv64-frame-semantics)
-open import Once.CCC.Codegen.IRObsCorrectFlat o using (module IRObsCorrectFlatness)
+open import Once.CCC.Codegen.IRObsCorrectFlat o tbl using (module IRObsCorrectFlatness)
 open import Once.CCC.Codegen.IRToTrace o using (ir-to-trace)
 open import Once.CCC.Target.RiscV64.AbstractToRiscV using (compile-trace-cnt; compile-trace-cnt-agrees; compile-trace; slot-to-disp)
 open import Once.CCC.Machine.NoNested using (no-nested-of-all)
@@ -121,7 +123,7 @@ postulate
 entry-frame-riscv64 : FrameSemantics.Frame rv64-frame-semantics
 entry-frame-riscv64 = stack-addr RS.stack-top stack-top-in-stack
 
-module FFOr = FFO o riscv64 rv64-frame-semantics refl entry-frame-riscv64 (arch-semantics riscv64)
+module FFOr = FFO o tbl riscv64 rv64-frame-semantics refl entry-frame-riscv64 (arch-semantics riscv64)
 asR = arch-semantics riscv64
 
 -- The concrete machine's SigOp trace of a compiled IR (see X86-64 for the full
@@ -375,5 +377,5 @@ BlockRunsHyp-riscv64 = (ir : IR Unit Unit) → BlockRuns (ir-to-trace ir)
 
 riscv64-correct : BlockRunsHyp-riscv64 → ArchCorrect riscv64 (arch-semantics riscv64)
 riscv64-correct brs =
-  FFO.flat-from-obs o riscv64 rv64-frame-semantics refl entry-frame-riscv64 (arch-semantics riscv64)
+  FFO.flat-from-obs o tbl riscv64 rv64-frame-semantics refl entry-frame-riscv64 (arch-semantics riscv64)
     ir-obs-correct brs (asm-trace-correct-riscv64 brs)

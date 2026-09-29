@@ -55,7 +55,7 @@ open import Once.IR using (IR; AllocMode; Stack; Heap;
   id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; terminal; initial;
   curry; apply;
   In; out-μ; Cata; Out; in-ν; Ana;
-  SigOp; const)
+  SigOp; Call; const)
 open import Once.IRTy using (fits-int; fits-float; ⌈_⌉F; ⟦_⟧TI; ν-type;
   WellFormedFI; wf-K; wf-Id; wf-Sum; wf-Prod)
 open import Once.Type using (Functor; K; Id; _⊕_; _⊗_)
@@ -64,7 +64,7 @@ open import Once.CCC.Machine.SMCore using
   (AbstractInstr; AbstractTrace; Slot; lea-slot;
    mov-to-output; mov-to-input; store-at-slot; load-from-slot;
    store-indirect; store-indirect-suc; instr-alloc-heap; instr-load-tag-lit;
-   instr-ctrl; c-thunk; c-ret; c-label; c-jmp;
+   instr-ctrl; c-thunk; c-entry; c-call-fn; c-ret; c-label; c-jmp;
    restore-input; load-indirect; load-indirect-suc; instr-load-code-addr;
    c-branch-tag-zero)
 open import Once.CCC.Machine.InstrSlot using (slot-of)
@@ -177,7 +177,7 @@ data SegAction : Set where
   seg-pop  : SegAction
 
 seg-action : AbstractInstr → SegAction
-seg-action (instr-ctrl (c-thunk _ b)) = seg-push b
+seg-action (instr-ctrl (c-entry _ b)) = seg-push b
 seg-action (instr-ctrl (c-ret _))     = seg-pop
 {-# CATCHALL #-}
 seg-action _                          = seg-id
@@ -509,6 +509,7 @@ frontier-mono (in-ν _)     n l = ≤-trans (n≤1+n n) (n≤1+n (suc n))
 -- closure body, emitted at frontier 0 under the ν's own label.
 frontier-mono (Ana _ c)      n l = ≤-trans (n≤1+n n) (n≤1+n (suc n))
 frontier-mono (SigOp _)      n l = ≤-refl
+frontier-mono (Call _)      n l = ≤-refl
 frontier-mono (const fits-int _)   n l = ≤-refl
 frontier-mono (const fits-float _) n l = ≤-refl
 
@@ -1203,6 +1204,7 @@ slots-below (Ana _ c) n l =
      sb-slot refl ≤-refl (λ _ ()) ∷ sb-none refl ∷ sb-slot refl (≤-step ≤-refl) (λ _ ()) ∷
      sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ sb-slot refl ≤-refl (λ _ ()) ∷ [])
 slots-below (SigOp _)      n l = segok-idle _ refl (sb-none refl ∷ [])
+slots-below (Call _)      n l = segok-idle _ refl (sb-none refl ∷ [])
 slots-below (const fits-int _)   n l = segok-idle _ refl (sb-none refl ∷ [])
 slots-below (const fits-float _) n l = segok-idle _ refl (sb-none refl ∷ [])
 
@@ -1340,6 +1342,7 @@ blocks-below (Ana wf c)          n l =
                             (proj₁ (proj₂ (ir-to-trace' 0 (suc l) c))) (ℓ o l) wf)
     ∷ blocks-below c 0 (suc l)
 blocks-below (SigOp _)           n l = []
+blocks-below (Call _)           n l = []
 blocks-below (const fits-int _)  n l = []
 blocks-below (const fits-float _) n l = []
 

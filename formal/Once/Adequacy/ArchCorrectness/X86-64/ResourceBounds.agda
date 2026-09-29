@@ -39,7 +39,7 @@ import Once.CCC.Target.X86-64.Semantics as X
 import Once.Word as W64
 module W = W64.Width 64
 open import Once.CCC.Machine.SMCore
-  using (AbstractTrace; instr-alloc-heap; instr-ctrl; c-thunk; c-ret; instr-call-closure
+  using (AbstractTrace; instr-alloc-heap; instr-ctrl; c-thunk; c-entry; c-call-fn; c-ret; instr-call-closure
         ; instr-reg-op; scratch-dec; count-inc; instr-load-tag-lit; instr-load-const)
 open import Once.CCC.Label using (LabelId)
 open import Once.Type using (fits-int; fits-float)

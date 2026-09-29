@@ -28,9 +28,11 @@
 
 open import Once.CanonicalName using (CanonicalName)
 
-module Once.CCC.Codegen.IRObsCorrect.CaseRun (o : CanonicalName) where
+import Data.List as DL
+open import Once.Denotation.Program using (IRFun; tableEnv)
+module Once.CCC.Codegen.IRObsCorrect.CaseRun (o : CanonicalName) (tbl : DL.List IRFun) where
 
-open import Once.CCC.Codegen.IRObsCorrect.Machine o
+open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
 open import Once.CCC.Codegen.LabelResolve o using (module Resolve)
 open import Once.CCC.Codegen.LabelScope o using (labels-in; LabelsIn; LabelIn; li-none; li-lab; in-range)
 open import Once.CCC.Codegen.LabelRange o using (label-mono)
@@ -55,7 +57,7 @@ import Once.CCC.Machine.ReadTypedAdequate as RTA
 import Once.Denotation.DenotTrace as DT
 import Once.Denotation.TraceMonad as TM
 
-open import Once.CCC.Codegen.IRObsCorrect.CaseShape o
+open import Once.CCC.Codegen.IRObsCorrect.CaseShape o tbl
 
 ------------------------------------------------------------------------
 -- THE SHARED RUN SCAFFOLDING: where every instruction sits, how long the

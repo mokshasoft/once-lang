@@ -26,7 +26,9 @@
 -- reads as it always did.
 open import Once.CanonicalName using (CanonicalName)
 
-module Once.CCC.Machine.ClosureWellFormed (o : CanonicalName) where
+open import Data.List using (List)
+open import Once.Denotation.Program using (IRFun; tableEnv)
+module Once.CCC.Machine.ClosureWellFormed (o : CanonicalName) (tbl : List IRFun) where
 
 open import Data.Nat using (ℕ; _<_; _≤_; _≥_; suc; zero) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
 open import Data.Nat.Properties using (≤-antisym; ≤-trans; +-identityʳ; m≤n+m; +-monoʳ-≤; +-comm)
@@ -82,7 +84,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} where
   -- `ValidAtWF` indexes on `⟦_⟧ᴰᴵ`, so a closure's meaning is a Kleisli arrow
   -- and must come from `evalᴰ`, not the pure `eval`.
   evalᴰ : ∀ {A B} → IR A B → ⟦ A ⟧ → TM.T ⟦ B ⟧
-  evalᴰ = DT.evalᴰ (Once.CCC.FrameSemantics.fs-numerics FS)
+  evalᴰ = DT.evalᴰ (Once.CCC.FrameSemantics.fs-numerics FS) (tableEnv (Once.CCC.FrameSemantics.fs-numerics FS) tbl)
 
   open import Once.CCC.Machine.Validity
   open ReadLocEq {FS}

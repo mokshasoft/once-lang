@@ -44,7 +44,7 @@ open import Once.CCC.Machine.SMCore
   using (halted; regs; readReg; Scratch; AtStack; AbstractInstr; AbstractTrace; LocState; StoredValue;
          SV-Tag; SV-Ptr; SV-Lit; SV-Code;
          instr-ctrl; c-label; c-jmp; c-branch-scratch-zero; c-branch-tag-zero;
-         c-thunk; c-ret;
+         c-thunk; c-entry; c-call-fn; c-ret;
          load-from-slot; restore-input; instr-alloc-stack; instr-reclaim-to; instr-loop;
          instr-case-on-tag;
          mov-to-output; mov-to-input; load-indirect; load-indirect-suc; store-at-slot; store-indirect; store-indirect-suc;
@@ -183,7 +183,7 @@ module CataNextSlot {FS : FrameSemantics} where
   -- only `current-frame`/`saved-frames` — `next-slot` rides through it
   -- (0.61's `leave-frame-next-slot`; `enter-frame` is a plain record
   -- update, so its side is `refl`).
-  flat-keeps-next-slot prog fs (instr-ctrl (c-thunk _ b)) _ = refl
+  flat-keeps-next-slot prog fs (instr-ctrl (c-entry _ b)) _ = refl
   flat-keeps-next-slot prog fs (instr-ctrl (c-ret b)) _
     with fret fs
   ... | []     = leave-frame-next-slot (falloc fs)
@@ -247,6 +247,11 @@ module CataNextSlot {FS : FrameSemantics} where
                   → next-slot (falloc (do-call prog fs)) ≡ next-slot (falloc fs)
           call-go (cp-halt    e) rewrite e = refl
           call-go (cp-enter ℓ j fq e) rewrite e = refl
+  -- D245: a direct call is the same transfer, to a statically named entry.
+  flat-keeps-next-slot prog fs (instr-ctrl (c-call-fn f)) _ = call-at (find-fn prog f)
+    where call-at : ∀ (mj : Maybe ℕ) → next-slot (falloc (do-call-at mj fs)) ≡ next-slot (falloc fs)
+          call-at (just _) = refl
+          call-at nothing  = refl
   flat-keeps-next-slot prog fs (worklist-init k)       _ = refl
   flat-keeps-next-slot prog fs (worklist-push k)       _ = refl
   flat-keeps-next-slot prog fs (worklist-check k)      _ = refl

@@ -21,8 +21,10 @@ open import Data.Nat using (ℕ)
 
 import Once.Adequacy.ArchCorrectness.X86-64.ResourceBounds as RB
 
+open import Data.List using (List)
+open import Once.Denotation.Program using (IRFun; tableEnv)
 module Once.Adequacy.ArchCorrectness.X86-64
-  (o : CanonicalName)
+  (o : CanonicalName) (tbl : List IRFun)
   (x86-64-heap-room : RB.HeapRoom o) (x86-64-stack-room : RB.StackRoom o)
   (x86-64-call-room : RB.CallRoom o)
   -- PLAN 0.70 PHASE C: the machine is finite. Same class and same threading as
@@ -72,7 +74,7 @@ open import Once.Adequacy.SourceTrace using (moduleToIR; moduleToIR-emitted)
 open import Once.CCC.Target.X86-64.Layout using (InStack; stack-addr)
 open import Once.CCC.Target.X86-64.FrameInstantiation using (X86Frame)
 open import Once.CCC.Target.X86-64.FrameInstantiation using (x86-64-frame-semantics)
-open import Once.CCC.Codegen.IRObsCorrectFlat o using (module IRObsCorrectFlatness)
+open import Once.CCC.Codegen.IRObsCorrectFlat o tbl using (module IRObsCorrectFlatness)
 open import Once.CCC.Codegen.IRToTrace o using (ir-to-trace; ir-stack-budget)
 open import Once.CCC.Codegen.ShapeTable using (HeapModed)
 open import Once.CCC.Target.X86-64.AbstractToX86
@@ -122,7 +124,7 @@ postulate
 entry-frame-x86-64 : X86Frame
 entry-frame-x86-64 = stack-addr X.stack-top stack-top-in-stack
 
-module FFOx = FFO o x86-64 x86-64-frame-semantics refl entry-frame-x86-64 (arch-semantics x86-64)
+module FFOx = FFO o tbl x86-64 x86-64-frame-semantics refl entry-frame-x86-64 (arch-semantics x86-64)
 
 -- A THEOREM: the entry frame IS the loader's `%rsp`
 -- (`entry-frame-x86-64 = stack-addr stack-top _`) and `frame-base` on x86-64 is
@@ -484,5 +486,5 @@ BlockRunsHyp-x86-64 = (ir : IR Unit Unit) → BlockRuns (ir-to-trace ir)
 
 x86-64-correct : BlockRunsHyp-x86-64 → ArchCorrect x86-64 (arch-semantics x86-64)
 x86-64-correct brs =
-  FFO.flat-from-obs o x86-64 x86-64-frame-semantics refl entry-frame-x86-64 (arch-semantics x86-64)
+  FFO.flat-from-obs o tbl x86-64 x86-64-frame-semantics refl entry-frame-x86-64 (arch-semantics x86-64)
     ir-obs-correct brs (asm-trace-correct-x86-64 brs)

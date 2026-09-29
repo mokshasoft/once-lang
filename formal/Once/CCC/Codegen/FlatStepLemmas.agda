@@ -42,7 +42,7 @@ open import Once.CCC.Machine.SMCore
          instr-ctrl; c-label; c-jmp; c-branch-scratch-zero; c-branch-tag-zero;
          -- D168 / Phase D1: the compilation unit and where a block sits in it.
          CompUnit; blocks; entry; entry-budget; link; link-pre; link-post;
-         link-block-split; blocks-layout; c-ret; c-thunk; LabelId)
+         link-block-split; blocks-layout; c-ret; c-thunk; c-entry; c-call-fn; LabelId)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 
 -- `m ≢ n` ⇒ the boolean `m ≡ᵇ n` is `false` (induction on m,n, matching `≡ᵇ`).

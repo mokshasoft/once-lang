@@ -45,7 +45,7 @@ open import Once.IR using (IR; AllocMode; Stack; Heap;
   id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; terminal; initial;
   curry; apply;
   In; out-μ; Cata; Out; in-ν; Ana;
-  SigOp; const)
+  SigOp; Call; const)
 open import Once.IRTy using (fits-int; fits-float; ⌈_⌉F; ⟦_⟧TI; ν-type;
   WellFormedFI; wf-K; wf-Id; wf-Sum; wf-Prod)
 open import Once.CCC.Label using (ℓ)
@@ -169,5 +169,6 @@ label-mono (Ana wf c)     n l =
                                    (proj₁ (proj₂ (ir-to-trace' 0 (suc l) c)))
                                    (ℓ o l) wf))
 label-mono (SigOp _)      n l = ≤-refl
+label-mono (Call _)      n l = ≤-refl
 label-mono (const fits-int _)   n l = ≤-refl
 label-mono (const fits-float _) n l = ≤-refl

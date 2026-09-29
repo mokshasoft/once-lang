@@ -14,9 +14,11 @@
 
 open import Once.CanonicalName using (CanonicalName)
 
-module Once.CCC.Codegen.IRObsCorrect.Machine (o : CanonicalName) where
+import Data.List as DL
+open import Once.Denotation.Program using (IRFun; tableEnv)
+module Once.CCC.Codegen.IRObsCorrect.Machine (o : CanonicalName) (tbl : DL.List IRFun) where
 
-open import Once.CCC.Codegen.IRObsCorrect.Interface o public
+open import Once.CCC.Codegen.IRObsCorrect.Interface o tbl public
 
 import Once.CCC.FrameSemantics
 import Once.CCC.Machine.SMPrimitives

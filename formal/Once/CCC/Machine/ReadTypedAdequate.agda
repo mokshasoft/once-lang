@@ -24,7 +24,9 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 -- UNCHANGED: the emitter is imported APPLIED, so each call site reads as before.
 open import Once.CanonicalName using (CanonicalName)
 
-module Once.CCC.Machine.ReadTypedAdequate (o : CanonicalName)
+open import Data.List using (List)
+open import Once.Denotation.Program using (IRFun; tableEnv)
+module Once.CCC.Machine.ReadTypedAdequate (o : CanonicalName) (tbl : List IRFun)
   {FS : FrameSemantics} where
 
 open import Data.Maybe using (Maybe; just; nothing)
@@ -41,7 +43,7 @@ open import Once.Denotation.ValueDomain using (forget) renaming (⟦_⟧ᴰᴵ t
 open import Once.CCC.Machine.SMCore
 open AbstractExec {FS}
 open MemOps {FS}
-open import Once.CCC.Machine.ClosureWellFormed o
+open import Once.CCC.Machine.ClosureWellFormed o tbl
 open ClosureWellFormedDef {FS}
   using (ValidAtWF; valid-unit-wf; valid-int-wf; valid-pair-wf; prim-sv;
          CellAt; cell-ptr; cell-inline; InlineRep; rep-prim; rep-unit; inline-sv)

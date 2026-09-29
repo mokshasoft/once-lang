@@ -36,7 +36,7 @@ import Once.Adequacy.ArchCorrectness.RiscV64.FlatCorrespondence as FCr
 import Once.Adequacy.ArchCorrectness.FlatCore.RunContext as RCr
 import Once.CCC.Target.RiscV64.Semantics as RS
 open import Once.CCC.Machine.SMCore using
-  (AbstractTrace; lea-slot; instr-alloc-heap; instr-ctrl; c-thunk; c-ret
+  (AbstractTrace; lea-slot; instr-alloc-heap; instr-ctrl; c-thunk; c-entry; c-call-fn; c-ret
   ; instr-call-closure; instr-reg-op; scratch-dec; count-inc
   ; instr-load-tag-lit; instr-load-const)
 open import Once.CCC.Machine.Flat using (module FlatMachine)

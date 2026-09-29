@@ -349,6 +349,7 @@ module CataIRSlotStable {FS : FrameSemantics} where
   -- body moved to `ir-blocks-stable`, where the body actually lives.
   ir-stable (curry b)  n l = all-stable?-sound _ refl
   ir-stable (SigOp _)       n l = all-stable?-sound _ refl
+  ir-stable (Call _)       n l = all-stable?-sound _ refl
   ir-stable (const fits-int _)   n l = all-stable?-sound _ refl
   ir-stable (const fits-float _) n l = all-stable?-sound _ refl
   ir-stable inl             n l = all-stable?-sound _ refl
@@ -440,6 +441,7 @@ module CataIRSlotStable {FS : FrameSemantics} where
   ir-blocks-stable (curry b)       n l = ir-stable b 0 (suc (suc l))
                                             ∷ᴬ ir-blocks-stable b 0 (suc (suc l))
   ir-blocks-stable (SigOp _)            n l = []ᴬ
+  ir-blocks-stable (Call _)            n l = []ᴬ
   ir-blocks-stable (const fits-int _)   n l = []ᴬ
   ir-blocks-stable (const fits-float _) n l = []ᴬ
   ir-blocks-stable inl                  n l = []ᴬ

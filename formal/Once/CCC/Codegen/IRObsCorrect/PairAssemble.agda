@@ -39,10 +39,12 @@
 
 open import Once.CanonicalName using (CanonicalName)
 
-module Once.CCC.Codegen.IRObsCorrect.PairAssemble (o : CanonicalName) where
+import Data.List as DL
+open import Once.Denotation.Program using (IRFun; tableEnv)
+module Once.CCC.Codegen.IRObsCorrect.PairAssemble (o : CanonicalName) (tbl : DL.List IRFun) where
 
-open import Once.CCC.Codegen.IRObsCorrect.Machine o
-open import Once.CCC.Codegen.IRObsCorrect.Pair    o
+open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open import Once.CCC.Codegen.IRObsCorrect.Pair    o tbl
 open import Data.Nat using (z≤n)
 
 import Once.CCC.FrameSemantics

@@ -11,9 +11,11 @@
 
 open import Once.CanonicalName using (CanonicalName)
 
-module Once.CCC.Codegen.IRObsCorrect.SigOp (o : CanonicalName) where
+import Data.List as DL
+open import Once.Denotation.Program using (IRFun; tableEnv)
+module Once.CCC.Codegen.IRObsCorrect.SigOp (o : CanonicalName) (tbl : DL.List IRFun) where
 
-open import Once.CCC.Codegen.IRObsCorrect.Machine o
+open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
 open import Once.Denotation.Trace using (mkEvent; mk-event)
 open import Once.Type using () renaming (Unit to Unitᵀ; Void to Voidᵀ)
 open import Once.Functor.Translate using (IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Str; base-Buffer; base-Prod; base-Sum)

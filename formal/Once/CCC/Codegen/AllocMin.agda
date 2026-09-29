@@ -42,7 +42,7 @@ open import Once.IR using (IR; AllocMode; Stack; Heap;
   id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; terminal; initial;
   curry; apply;
   In; out-μ; Cata; Out; in-ν; Ana;
-  SigOp; const)
+  SigOp; Call; const)
 open import Once.IRTy using (fits-int; fits-float; ⌈_⌉F; ⟦_⟧TI; ν-type;
   WellFormedFI; wf-K; wf-Id; wf-Sum; wf-Prod)
 open import Once.Type using (Functor; K; Id; _⊕_; _⊗_)
@@ -288,6 +288,7 @@ alloc-min-trace' (in-ν _)     n l =
 alloc-min-trace' (Ana _ c)      n l =
   tt ∷ tt ∷ am2 ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
 alloc-min-trace' (SigOp _)      n l = tt ∷ []
+alloc-min-trace' (Call _)      n l = tt ∷ []
 alloc-min-trace' (const fits-int _)   n l = tt ∷ []
 alloc-min-trace' (const fits-float _) n l = tt ∷ []
 
@@ -366,6 +367,7 @@ alloc-min-blocks (Ana wf c) n l =
                 (tt ∷ []))
       (alloc-min-blocks c 0 (suc l))
 alloc-min-blocks (SigOp _)      n l = []
+alloc-min-blocks (Call _)      n l = []
 alloc-min-blocks (const fits-int _)   n l = []
 alloc-min-blocks (const fits-float _) n l = []
 -- the closure's block: `c-thunk`, the body, `c-ret` — then the body's own

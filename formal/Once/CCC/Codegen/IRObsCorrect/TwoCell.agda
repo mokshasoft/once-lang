@@ -12,9 +12,11 @@
 
 open import Once.CanonicalName using (CanonicalName)
 
-module Once.CCC.Codegen.IRObsCorrect.TwoCell (o : CanonicalName) where
+import Data.List as DL
+open import Once.Denotation.Program using (IRFun; tableEnv)
+module Once.CCC.Codegen.IRObsCorrect.TwoCell (o : CanonicalName) (tbl : DL.List IRFun) where
 
-open import Once.CCC.Codegen.IRObsCorrect.Machine o
+open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
 
 import Once.CCC.FrameSemantics
 import Once.CCC.Machine.SMPrimitives
