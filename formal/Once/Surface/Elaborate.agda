@@ -540,26 +540,15 @@ elaborate {Γ = Γ} m (sigOp {A = (Dom ⇒[ mk-kind One π ] Cod)} name (con-fun
 elaborate {Γ = Γ} m (sigOp {A = (Dom ⇒[ mk-kind Many π ] Cod)} name (con-fun bDom cCod)) =
   curry (SigOp (arrow-info (mk-kind Many π) name bDom cCod) ∘ snd)
 elaborate {Γ = Γ} m (sigOp name conc) = SigOp (value-info name base-Unit conc) ∘ terminal
--- Plan 0.19: user-defined closure reference.
---
--- Unlike `sigOp`, `closure name` does NOT curry-wrap at arrow type.
--- The asm-level `once_<name>` returns the function-value (a closure
--- ptr) directly when called with Unit input; `SigOp ∘ terminal`
--- expresses exactly that: invoke `once_<name>` with terminal (empty)
--- input, and the result IS the function value. Use sites desugar
--- `f arg` to `apply (closure "f") arg`, which then invokes the
--- returned closure's body with `arg` — matching the asm contract.
---
--- This is the same shape as `sigOp` at non-arrow type. The split
--- exists so the elaborator never silently wraps a user-defined
--- entry in a curry that mismatches its asm signature.
-elaborate {A = A} m (closure name) = SigOp (internal-info {A = A} (bare name)) ∘ terminal
--- Unresolved polymorphic placeholder. A well-formed Surface Expr
--- reaching elaborate has been through `resolveExpr`, so `poly` nodes
--- only survive when resolution failed (e.g. cycle). Treat as an
--- external SigOp with the unqualified name — matches evalSurface for
--- the correctness theorem, and codegen will catch it as unresolved.
-elaborate {A = A} m (poly name _) = SigOp (internal-info {A = A} (bare name)) ∘ terminal
+-- Plan 0.19 / D245: a reference to one of the program's own definitions is a
+-- CALL of its table entry. `once_<name>()` returns the definition's value (a
+-- closure pointer at arrow type, D064), so the reference is `Call name ∘
+-- terminal`, and `f arg` is `apply (closure "f") arg`. It is not a SigOp: a
+-- SigOp means the contract it carries, and a call means the entry.
+elaborate {A = A} m (closure name) = Call {⌊ A ⌋} (bare name) ∘ terminal
+-- A polymorphic placeholder that linking (`resolveExpr`) did not replace is a
+-- reference like any other: a call of the entry by that name.
+elaborate {A = A} m (poly name _) = Call {⌊ A ⌋} (bare name) ∘ terminal
 -- Plan 0.103 phase 1c: a closed term runs on the terminal environment.
 elaborate m (closed e) = elaborate m e ∘ terminal
 

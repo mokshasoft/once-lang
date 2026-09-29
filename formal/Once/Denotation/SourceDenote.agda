@@ -40,7 +40,7 @@ open import Once.Type
 open import Once.Surface.Syntax using (Expr; Ctx; Usage; lookup; _,_^_; ∅; ⟦_⟧ᶜ; _↾_; _⊑ᵘ_; ⊑[]; _⊑∷_; z≤z; z≤o; z≤m; o≤o; o≤m; m≤m; singleUse; _∷_; _+ᵘ_; _*ᵘ_; _⊔ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many; zeroUsage)
 open import Once.Denotation.TraceMonad using (T; mkT; returnT; _>>=T_; projTrace; valueT; fmapT; resT-lift)
 open import Once.Denotation.Phase using (lookupᴰUsed; restrictᴰ; bindᴰ; bindᴰ0)
-open import Once.Denotation.DenotTrace using (⟦_⟧ᴰ; evalᴰ; forget; inject; emit-D; emit-Dᵇ; coerce-functor⁻¹-D; coerce-functor-D; cohᴰ; liftFn; anaFᵈ; seqF)
+open import Once.Denotation.DenotTrace using (⟦_⟧ᴰ; evalᴰ; forget; inject; emit-D; emit-Dᵇ; coerce-functor⁻¹-D; coerce-functor-D; cohᴰ; liftFn; CallEnv; anaFᵈ; seqF)
 open import Once.Float.Dyadic using (encode)
 open import Once.Float.Decimal using (Decimal; decimalOf; round)
 open import Once.Target.Arch using (TargetNum; int-bits; float-format)
@@ -106,8 +106,8 @@ cata-ev-algˢ {F} {C} algComp fc =
 -- transported form without re-importing the `⟦_⟧ˢ`-mixfix (Plan 0.52 M2).
 ------------------------------------------------------------------------
 
-liftD : (fmt : TargetNum) → ∀ {A B : Type} → IR ⌊ A ⌋ ⌊ B ⌋ → T (⟦ A ⟧ᴰ → T ⟦ B ⟧ᴰ)
-liftD fmt {A} {B} ir = returnT (liftFn fmt {A} {B} ir)
+liftD : (fmt : TargetNum) → CallEnv → ∀ {A B : Type} → IR ⌊ A ⌋ ⌊ B ⌋ → T (⟦ A ⟧ᴰ → T ⟦ B ⟧ᴰ)
+liftD fmt ρ {A} {B} ir = returnT (liftFn fmt ρ {A} {B} ir)
 
 ------------------------------------------------------------------------
 -- Plan 0.103 phase 1c: the DEFINITIONS ENVIRONMENT of an open surface term.
@@ -120,12 +120,23 @@ liftD fmt {A} {B} ir = returnT (liftFn fmt {A} {B} ir)
 -- substitution, and its faithfulness is the substitution lemma.
 ------------------------------------------------------------------------
 
-DefsSem : Set
-DefsSem = (x : String) (A : Type) → T ⟦ A ⟧ᴰ
+-- D245: the environment has TWO views of the definitions.
+--   * `refs`: a surface reference (`poly x A`, `closure x`) means `refs x A`.
+--   * `calls`: the IR call environment. A pre-built morphism (`lift-morphism`,
+--     `morph-app`) is evaluated in it, because its IR may contain a `Call`.
+-- The compiled program's environment is `internalDefs ρ`, whose `refs` read the
+-- same call environment `ρ` at the erased type (a reference that linking did not
+-- replace is lowered to `Call`).
+record DefsSem : Set where
+  constructor defsSem
+  field
+    calls : CallEnv
+    refs  : (x : String) (A : Type) → T ⟦ A ⟧ᴰ
 
-internalDefs : TargetNum → DefsSem
-internalDefs fmt x A =
-  mkT (λ n → emit-Dᵇ (internal-info {A} (bare x)) tt n) (mapRes inject (semM (internal-info {A} (bare x)) fmt tt))
+open DefsSem public
+
+internalDefs : CallEnv → DefsSem
+internalDefs ρ = defsSem ρ (λ x A → subst T (cohᴰ A) (ρ (bare x) ⌊ A ⌋))
 
 ------------------------------------------------------------------------
 -- THE SOURCE SEMANTICS. Structural on `Expr`; arrows are Kleisli arrows
@@ -293,14 +304,14 @@ internalDefs fmt x A =
 -- are leaves embedding a fixed morphism, not the elaboration of a user subterm.
 -- Plan 0.52 M2: `ir : IR ⌊A⌋ ⌊B⌋`, so `evalᴰ ir : ⟦⌊A⌋⟧ᴰᴵ → T ⟦⌊B⌋⟧ᴰᴵ`;
 -- `cohᴰ` transports it to the surface `⟦A⟧ᴰ → T ⟦B⟧ᴰ` (grade-blind erasure).
-⟦ lift-morphism {A = A} {B = B} ir ⟧ˢ fmt σ dγ = liftD fmt {A} {B} ir
+⟦ lift-morphism {A = A} {B = B} ir ⟧ˢ fmt σ dγ = liftD fmt (calls σ) {A} {B} ir
 -- D226: a conversion along `p` maps the RESULT by `⟦ p ⟧<:`; the trace is
 -- untouched. At the grade instance (the former `arr'`) this is the identity
 -- up to `<:-refl-id`.
 ⟦ coerce p e ⟧ˢ fmt σ   dγ = fmapT ⟦ p ⟧<: (⟦ e ⟧ˢ fmt σ dγ)
 ⟦ morph-app {Γ = Γ} {Ψ = Ψₑ} {A = A} {B = B} ir e ⟧ˢ fmt σ dγ =
   ⟦ e ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-trans (⊑ᵘ-*Many Ψₑ) (⊑ᵘ-+ʳ zeroUsage (Many *ᵘ Ψₑ))) dγ)
-  >>=T λ v → subst T (cohᴰ B) (evalᴰ fmt ir (subst (λ z → z) (sym (cohᴰ A)) v))
+  >>=T λ v → subst T (cohᴰ B) (evalᴰ fmt (calls σ) ir (subst (λ z → z) (sym (cohᴰ A)) v))
 -- Cata: the structural fold. D131 — the algebra is OBTAINED ONCE, here, and
 -- the fold sees a PURE closure (`returnT valg`) at every layer. It used to
 -- pass `⟦ alg ⟧ˢ fmt σ tt` — a computation — straight into `cata-ev-algˢ`, which
@@ -351,6 +362,6 @@ internalDefs fmt x A =
 -- interpretation-agnostic (no `classify-name`). Matches elaborate's
 -- `SigOp (value-info name) ∘ terminal` ⇒ `faithful` stays `refl`.
 ⟦ sigOp {Γ = Γ} {A = A} name conc ⟧ˢ fmt σ   dγ = mkT (λ n → emit-Dᵇ (value-info {Unit} {A} name base-Unit conc) tt n) (mapRes inject (semM (value-info {Unit} {A} name base-Unit conc) fmt tt))
-⟦ closure {Γ = Γ} {A = A} name ⟧ˢ fmt σ dγ = mkT (λ n → emit-Dᵇ (internal-info {A} (bare name)) tt n) (mapRes inject (semM (internal-info {A} (bare name)) fmt tt))
-⟦ poly name PT ⟧ˢ fmt σ dγ = σ name PT
+⟦ closure {Γ = Γ} {A = A} name ⟧ˢ fmt σ dγ = refs σ name A
+⟦ poly name PT ⟧ˢ fmt σ dγ = refs σ name PT
 ⟦ closed e ⟧ˢ fmt σ dγ = ⟦ e ⟧ˢ fmt σ tt

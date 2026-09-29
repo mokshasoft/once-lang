@@ -49,9 +49,10 @@ open import Once.SigOp.Info using (SigOpInfo)
 open import Once.Float.Decimal using (Decimal)
 open import Data.Integer using (ℤ)
 open import Once.Target.Arch using (TargetNum)
-open import Once.Denotation.DenotTrace using (evalᴰ; ⟦_⟧ᴰᴵ; in-val; out-μ-val; const-val)
+open import Once.Denotation.DenotTrace using (evalᴰ; CallEnv; ⟦_⟧ᴰᴵ; in-val; out-μ-val; const-val)
 open import Once.Denotation.TraceMonad using (_>>=T_; >>=T-pf)
 open Once.IR.IR
+open import Once.CanonicalName using (CanonicalName)
 
 ------------------------------------------------------------------------
 -- A computation whose trace is CONSTANTLY EMPTY is a prefix family, and all
@@ -225,6 +226,15 @@ mutual
 ------------------------------------------------------------------------
 
 ------------------------------------------------------------------------
+-- D245: a GOOD call environment answers every call with a good computation.
+-- `evalᴰ-good` takes it as a hypothesis, and a table's environment discharges
+-- it entry by entry.
+------------------------------------------------------------------------
+
+EnvGood : CallEnv → Set
+EnvGood ρ = ∀ (f : CanonicalName) (B : IRTy) → GoodT ⌈ B ⌉ (ρ f B)
+
+------------------------------------------------------------------------
 -- THE REMAINING OBLIGATIONS, ONE NAME EACH.
 --
 -- This block used to be a SINGLE postulate:
@@ -254,100 +264,103 @@ mutual
 postulate
 
 
-  evalᴰ-good-Cata : ∀ (fmt : TargetNum) {F} (wf : WellFormedFI F) {E A}
+  evalᴰ-good-Cata : ∀ (fmt : TargetNum) (ρ : CallEnv) → EnvGood ρ → ∀ {F} (wf : WellFormedFI F) {E A}
                     (alg : IR (E IT.* IT.⟦ F ⟧TI A) A) (a : ⟦ E IT.* IT.μ-type F ⟧ᴰᴵ)
                   → Good ⌈ E IT.* IT.μ-type F ⌉ a
-                  → GoodT ⌈ A ⌉ (evalᴰ fmt (Cata wf alg) a)
+                  → GoodT ⌈ A ⌉ (evalᴰ fmt ρ (Cata wf alg) a)
 
 
-  evalᴰ-good-Out : ∀ (fmt : TargetNum) {F} (wf : WellFormedFI F)
+  evalᴰ-good-Out : ∀ (fmt : TargetNum) (ρ : CallEnv) → EnvGood ρ → ∀ {F} (wf : WellFormedFI F)
                    (a : ⟦ IT.ν-type F ⟧ᴰᴵ)
                  → Good ⌈ IT.ν-type F ⌉ a
-                 → GoodT ⌈ (IT.⟦ F ⟧TI (IT.ν-type F)) ⌉ (evalᴰ fmt (Out wf) a)
+                 → GoodT ⌈ (IT.⟦ F ⟧TI (IT.ν-type F)) ⌉ (evalᴰ fmt ρ (Out wf) a)
 
-  evalᴰ-good-in-ν : ∀ (fmt : TargetNum) {F} (wf : WellFormedFI F)
+  evalᴰ-good-in-ν : ∀ (fmt : TargetNum) (ρ : CallEnv) → EnvGood ρ → ∀ {F} (wf : WellFormedFI F)
                     (a : ⟦ (IT.⟦ F ⟧TI (IT.ν-type F)) ⟧ᴰᴵ)
                   → Good ⌈ (IT.⟦ F ⟧TI (IT.ν-type F)) ⌉ a
-                  → GoodT ⌈ IT.ν-type F ⌉ (evalᴰ fmt (in-ν wf) a)
+                  → GoodT ⌈ IT.ν-type F ⌉ (evalᴰ fmt ρ (in-ν wf) a)
 
-  evalᴰ-good-Ana : ∀ (fmt : TargetNum) {F} (wf : WellFormedFI F) {A}
+  evalᴰ-good-Ana : ∀ (fmt : TargetNum) (ρ : CallEnv) → EnvGood ρ → ∀ {F} (wf : WellFormedFI F) {A}
                    (coalg : IR A (IT.⟦ F ⟧TI A)) (a : ⟦ A ⟧ᴰᴵ)
                  → Good ⌈ A ⌉ a
-                 → GoodT ⌈ IT.ν-type F ⌉ (evalᴰ fmt (Ana wf coalg) a)
+                 → GoodT ⌈ IT.ν-type F ⌉ (evalᴰ fmt ρ (Ana wf coalg) a)
 
 
-  evalᴰ-good-SigOp : ∀ (fmt : TargetNum) {A B : Type} (si : SigOpInfo A B)
+  evalᴰ-good-SigOp : ∀ (fmt : TargetNum) (ρ : CallEnv) → EnvGood ρ → ∀ {A B : Type} (si : SigOpInfo A B)
                      (a : ⟦ ⌊ A ⌋ ⟧ᴰᴵ)
                    → Good ⌈ ⌊ A ⌋ ⌉ a
-                   → GoodT ⌈ ⌊ B ⌋ ⌉ (evalᴰ fmt (SigOp si) a)
+                   → GoodT ⌈ ⌊ B ⌋ ⌉ (evalᴰ fmt ρ (SigOp si) a)
 
-evalᴰ-good : ∀ (fmt : TargetNum) {A B : IRTy} (ir : IR A B) (a : ⟦ A ⟧ᴰᴵ)
-           → Good ⌈ A ⌉ a → GoodT ⌈ B ⌉ (evalᴰ fmt ir a)
+evalᴰ-good : ∀ (fmt : TargetNum) (ρ : CallEnv) → EnvGood ρ → ∀ {A B : IRTy} (ir : IR A B) (a : ⟦ A ⟧ᴰᴵ)
+           → Good ⌈ A ⌉ a → GoodT ⌈ B ⌉ (evalᴰ fmt ρ ir a)
 -- plan 0.98: every one of these RETURNS, so `GoodRes` reduces to `Good` and
 -- the value half is handed over directly — the `λ k` that used to feed
 -- `valueT` a budget has nothing left to bind.
-evalᴰ-good fmt id        a ga = (returnT-pf a , ga)
-evalᴰ-good fmt fst       p ga = (returnT-pf _ , proj₁ ga)
-evalᴰ-good fmt snd       p ga = (returnT-pf _ , proj₂ ga)
-evalᴰ-good fmt inl       a ga = (returnT-pf _ , ga)
-evalᴰ-good fmt inr       b gb = (returnT-pf _ , gb)
-evalᴰ-good fmt terminal  _ _  = (returnT-pf _ , tt)
-evalᴰ-good fmt initial   ()
+evalᴰ-good fmt ρ gρ id        a ga = (returnT-pf a , ga)
+evalᴰ-good fmt ρ gρ fst       p ga = (returnT-pf _ , proj₁ ga)
+evalᴰ-good fmt ρ gρ snd       p ga = (returnT-pf _ , proj₂ ga)
+evalᴰ-good fmt ρ gρ inl       a ga = (returnT-pf _ , ga)
+evalᴰ-good fmt ρ gρ inr       b gb = (returnT-pf _ , gb)
+evalᴰ-good fmt ρ gρ terminal  _ _  = (returnT-pf _ , tt)
+evalᴰ-good fmt ρ gρ initial   ()
 -- `case` dispatches to a sub-morphism; the payload's goodness comes straight
 -- from the scrutinee's.
-evalᴰ-good fmt (case f g) (inj₁ a) ga = evalᴰ-good fmt f a ga
-evalᴰ-good fmt (case f g) (inj₂ b) gb = evalᴰ-good fmt g b gb
+evalᴰ-good fmt ρ gρ (case f g) (inj₁ a) ga = evalᴰ-good fmt ρ gρ f a ga
+evalᴰ-good fmt ρ gρ (case f g) (inj₂ b) gb = evalᴰ-good fmt ρ gρ g b gb
 -- `curry` ESTABLISHES the arrow clause: the closure is good because the body
 -- is, for every good argument.
-evalᴰ-good fmt (curry f) a ga =
-  (returnT-pf _ , λ b gb → evalᴰ-good fmt f (a , b) (ga , gb))
+evalᴰ-good fmt ρ gρ (curry f) a ga =
+  (returnT-pf _ , λ b gb → evalᴰ-good fmt ρ gρ f (a , b) (ga , gb))
 -- `apply` CONSUMES it: the pair carries a good closure and a good argument.
-evalᴰ-good fmt apply p ga = proj₁ ga (proj₂ p) (proj₂ ga)
+evalᴰ-good fmt ρ gρ apply p ga = proj₁ ga (proj₂ p) (proj₂ ga)
 -- Composition: `>>=T-pf` with the continuation hypothesis at exactly the
 -- values `f` produces — which is why that hypothesis had to be weakened.
-evalᴰ-good fmt (_∘_ {A} {B} {C} g f) a ga =
+evalᴰ-good fmt ρ gρ (_∘_ {A} {B} {C} g f) a ga =
   -- plan 0.98: the induction hypothesis for `g` is owed at the value `f`
   -- RETURNS, and is indexed by the proof that it returned — not by a budget.
   -- If `f` stopped there is no second computation at all, which is what makes
   -- the result half (`good-bindRes`) discharge that branch with nothing.
-  ( >>=T-pf (evalᴰ fmt f a) (evalᴰ fmt g) (proj₁ ihf) (λ b eq → proj₁ (ihg b eq))
-  , good-bindRes ⌈ B ⌉ ⌈ C ⌉ (T.trT (evalᴰ fmt f a)) (T.resT (evalᴰ fmt f a))
-      (evalᴰ fmt g) (λ b eq → proj₂ (ihg b eq)) )
+  ( >>=T-pf (evalᴰ fmt ρ f a) (evalᴰ fmt ρ g) (proj₁ ihf) (λ b eq → proj₁ (ihg b eq))
+  , good-bindRes ⌈ B ⌉ ⌈ C ⌉ (T.trT (evalᴰ fmt ρ f a)) (T.resT (evalᴰ fmt ρ f a))
+      (evalᴰ fmt ρ g) (λ b eq → proj₂ (ihg b eq)) )
   where
-    ihf : GoodT ⌈ B ⌉ (evalᴰ fmt f a)
-    ihf = evalᴰ-good fmt f a ga
+    ihf : GoodT ⌈ B ⌉ (evalᴰ fmt ρ f a)
+    ihf = evalᴰ-good fmt ρ gρ f a ga
 
-    ihg : ∀ b → T.resT (evalᴰ fmt f a) ≡ returns b → GoodT ⌈ C ⌉ (evalᴰ fmt g b)
-    ihg b eq = evalᴰ-good fmt g b (GoodRes-at ⌈ B ⌉ eq (proj₂ ihf))
+    ihg : ∀ b → T.resT (evalᴰ fmt ρ f a) ≡ returns b → GoodT ⌈ C ⌉ (evalᴰ fmt ρ g b)
+    ihg b eq = evalᴰ-good fmt ρ gρ g b (GoodRes-at ⌈ B ⌉ eq (proj₂ ihf))
 
 -- Pairing: two nested binds over the SAME argument, closed by `returnT`.
-evalᴰ-good fmt (⟨_,_⟩ {A} {B} {C} f g) a ga =
-  ( >>=T-pf (evalᴰ fmt f a)
-      (λ b → evalᴰ fmt g a >>=T λ c → returnT (b , c)) (proj₁ ihf)
-      (λ b eqb → >>=T-pf (evalᴰ fmt g a)
+evalᴰ-good fmt ρ gρ (⟨_,_⟩ {A} {B} {C} f g) a ga =
+  ( >>=T-pf (evalᴰ fmt ρ f a)
+      (λ b → evalᴰ fmt ρ g a >>=T λ c → returnT (b , c)) (proj₁ ihf)
+      (λ b eqb → >>=T-pf (evalᴰ fmt ρ g a)
                (λ c → returnT (b , c)) (proj₁ ihg)
                (λ c eqc → returnT-pf _))
   -- The pair is good only where BOTH components exist: two nested
   -- `good-bindRes`, each reading its own component out of its own result.
-  , good-bindRes ⌈ B ⌉ ⌈ B IT.* C ⌉ (T.trT (evalᴰ fmt f a)) (T.resT (evalᴰ fmt f a))
-      (λ b → evalᴰ fmt g a >>=T λ c → returnT (b , c))
+  , good-bindRes ⌈ B ⌉ ⌈ B IT.* C ⌉ (T.trT (evalᴰ fmt ρ f a)) (T.resT (evalᴰ fmt ρ f a))
+      (λ b → evalᴰ fmt ρ g a >>=T λ c → returnT (b , c))
       (λ b eqb → good-bindRes ⌈ C ⌉ ⌈ B IT.* C ⌉
-        (T.trT (evalᴰ fmt g a)) (T.resT (evalᴰ fmt g a))
+        (T.trT (evalᴰ fmt ρ g a)) (T.resT (evalᴰ fmt ρ g a))
         (λ c → returnT (b , c))
         (λ c eqc → (GoodRes-at ⌈ B ⌉ eqb (proj₂ ihf)
                   , GoodRes-at ⌈ C ⌉ eqc (proj₂ ihg)))) )
   where
-    ihf : GoodT ⌈ B ⌉ (evalᴰ fmt f a)
-    ihf = evalᴰ-good fmt f a ga
+    ihf : GoodT ⌈ B ⌉ (evalᴰ fmt ρ f a)
+    ihf = evalᴰ-good fmt ρ gρ f a ga
 
-    ihg : GoodT ⌈ C ⌉ (evalᴰ fmt g a)
-    ihg = evalᴰ-good fmt g a ga
+    ihg : GoodT ⌈ C ⌉ (evalᴰ fmt ρ g a)
+    ihg = evalᴰ-good fmt ρ gρ g a ga
 
-evalᴰ-good fmt (In {F} wf) a ga = (const-empty-pf _ , inject-Good ⌈ IT.μ-type F ⌉ (in-val F (forget a)))
-evalᴰ-good fmt (out-μ {F} wf) a ga = (const-empty-pf _ , inject-Good ⌈ (IT.⟦ F ⟧TI (IT.μ-type F)) ⌉ (out-μ-val F wf (forget a)))
-evalᴰ-good fmt (Cata wf alg)       a ga = evalᴰ-good-Cata  fmt wf alg a ga
-evalᴰ-good fmt (Out wf)            a ga = evalᴰ-good-Out   fmt wf a ga
-evalᴰ-good fmt (in-ν wf)           a ga = evalᴰ-good-in-ν  fmt wf a ga
-evalᴰ-good fmt (Ana wf coalg)      a ga = evalᴰ-good-Ana   fmt wf coalg a ga
-evalᴰ-good fmt (const {A} fits v) a ga = (const-empty-pf _ , inject-Good ⌈ A ⌉ (const-val fmt fits v))
-evalᴰ-good fmt (SigOp si)          a ga = evalᴰ-good-SigOp fmt si a ga
+evalᴰ-good fmt ρ gρ (In {F} wf) a ga = (const-empty-pf _ , inject-Good ⌈ IT.μ-type F ⌉ (in-val F (forget a)))
+evalᴰ-good fmt ρ gρ (out-μ {F} wf) a ga = (const-empty-pf _ , inject-Good ⌈ (IT.⟦ F ⟧TI (IT.μ-type F)) ⌉ (out-μ-val F wf (forget a)))
+evalᴰ-good fmt ρ gρ (Cata wf alg)       a ga = evalᴰ-good-Cata fmt ρ gρ wf alg a ga
+evalᴰ-good fmt ρ gρ (Out wf)            a ga = evalᴰ-good-Out fmt ρ gρ wf a ga
+evalᴰ-good fmt ρ gρ (in-ν wf)           a ga = evalᴰ-good-in-ν fmt ρ gρ wf a ga
+evalᴰ-good fmt ρ gρ (Ana wf coalg)      a ga = evalᴰ-good-Ana fmt ρ gρ wf coalg a ga
+evalᴰ-good fmt ρ gρ (const {A} fits v) a ga = (const-empty-pf _ , inject-Good ⌈ A ⌉ (const-val fmt fits v))
+evalᴰ-good fmt ρ gρ (SigOp si)          a ga = evalᴰ-good-SigOp fmt ρ gρ si a ga
+-- D245: a call is as good as the entry it calls, which is the environment's
+-- hypothesis.
+evalᴰ-good fmt ρ gρ (Call {B} f)        _ _  = gρ f B

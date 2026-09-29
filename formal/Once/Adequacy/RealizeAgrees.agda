@@ -86,7 +86,7 @@ open import Once.Denotation.Phase using (restrictᴰ; bindᴰ; bindᴰ0)
 open Surface.Usage using () renaming (_∷_ to _∷ᵘ_)
 open import Once.Denotation.DenotTrace using (⟦_⟧ᴰ; evalᴰ; liftFn; anaFᵈ; coerce-functor-D)
 open import Once.Adequacy.CataErased fmt using (liftFn-SigOp)
-open import Once.SigOp.Info using (mk-info'; haltsV; emitsV; pureV; ffi-concrete; semM)
+open import Once.SigOp.Info using (mk-info'; haltsV; emitsV; pureV; semM)
 open import Once.Arith.SigOp.Builders using (generic-semM; arrow-info-eff; i2f-info; add-info; sub-info; mul-info; div-info; mod-info; fadd-info; fsub-info; fmul-info; fdiv-info; lt-info; le-info; gt-info; ge-info; eq-info; ne-info)
 import Once.Denotation.SourceDenote as SD
 open import Once.Surface.Seq using (seq; seq0; embedClosed; closed-usage-eq)
@@ -1041,13 +1041,13 @@ masq-arrow : ∀ {ctx : NamedCtx} {Dom Cod : Type} (alias name : String) (π : P
       ≡ SD.⟦ sigOp {Γ = NamedCtx.debruijn ctx} {A = Dom ⇒[ mk-kind Many π ] Cod} (bare (alias ++ "." ++ name)) (con-fun bDom cCod) ⟧ˢ fmt σ dγ
 masq-arrow {ctx} {Dom} {Cod} alias name pure bDom cCod dγ = cong returnT (liftFn-SigOp {Dom} {Cod} (E.ext-arrow-info ctx alias name pure bDom cCod) bDom)
 masq-arrow {ctx} {Dom} {Cod} alias name eff bDom cCod dγ with Cod ≟T Void
-... | yes refl = cong returnT (liftFn-SigOp {Dom} {Cod} (mk-info' (bare (alias ++ "." ++ name)) (haltsV refl) bDom (ffi-concrete cCod)) bDom)
+... | yes refl = cong returnT (liftFn-SigOp {Dom} {Cod} (mk-info' (bare (alias ++ "." ++ name)) (haltsV refl) bDom cCod) bDom)
 ... | no ¬v with Cod ≟T Unit
-...   | yes refl = cong returnT (liftFn-SigOp {Dom} {Cod} (mk-info' (bare (alias ++ "." ++ name)) (emitsV refl) bDom (ffi-concrete cCod)) bDom)
+...   | yes refl = cong returnT (liftFn-SigOp {Dom} {Cod} (mk-info' (bare (alias ++ "." ++ name)) (emitsV refl) bDom cCod) bDom)
 ...   | no ¬u with isVoid? Cod | isUnit? Cod
 ...     | yes refl | _        = ⊥-elim (¬v refl)
 ...     | no _     | yes refl = ⊥-elim (¬u refl)
-...     | no _     | no _     = cong returnT (liftFn-SigOp {Dom} {Cod} (mk-info' (bare (alias ++ "." ++ name)) (pureV (generic-semM (alias ++ "." ++ name))) bDom (ffi-concrete cCod)) bDom)
+...     | no _     | no _     = cong returnT (liftFn-SigOp {Dom} {Cod} (mk-info' (bare (alias ++ "." ++ name)) (pureV (generic-semM (alias ++ "." ++ name))) bDom cCod) bDom)
 
 -- RResolved agreement, dispatched on the import-lookup result exactly as the
 -- elaborator's `inferElabV-RResolved-aux` does. A `Many`-arrow type resolves to

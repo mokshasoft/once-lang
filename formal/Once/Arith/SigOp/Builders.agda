@@ -33,7 +33,7 @@ open import Data.Unit using (⊤)
 open import Once.Type using (Type; Unit; Void; Int; Str; _*_; _+_;
                               ArrowKind; mk-kind; Purity; pure; eff; isUnit?; isVoid?)
 open import Relation.Nullary using (Dec; yes; no)
-open import Once.SigOp.Info using (SigOpInfo; mk-info; mk-info'; pureV; emitsV; haltsV; EffectShape; Pure; Halts; Linkage; ffi-concrete; internal-ref)
+open import Once.SigOp.Info using (SigOpInfo; mk-info; mk-info'; pureV; emitsV; haltsV; EffectShape; Pure; Halts)
 open import Once.Functor.Translate using (IsBaseType; IsConcrete; con-base;
   base-Unit; base-Int; base-Float; base-Str; base-Prod; base-Sum)
 open import Once.CanonicalName using (CanonicalName; bare; showCanonical)
@@ -278,16 +278,6 @@ postulate
 value-info : ∀ {A B} → CanonicalName → IsBaseType A → IsConcrete B → SigOpInfo A B
 value-info name bA cB = mk-info name (generic-semM (showCanonical name)) Pure bA cB
 
--- | Plan 0.58 / D071: a SAME-MODULE definition reference (`closure`/`poly`)
--- as an internal-linkage value. Domain is `Unit` (the closure-returner ABI
--- calls `once_<name>()`); the result type `A` is UNCONSTRAINED — an internal
--- reference is a code/closure pointer, representable at ANY type, so it carries
--- NO concreteness witness (`internal-ref` linkage). This is the value-position
--- twin of `value-info` for internal refs: same `Pure`/`generic-semM` shape (so
--- `faithful` stays `refl`), but no FFI concreteness gate — the fix for the
--- non-concrete `cata`/closure reference wall (D071).
-internal-info : ∀ {A} → CanonicalName → SigOpInfo Unit A
-internal-info name = mk-info' name (pureV (generic-semM (showCanonical name))) base-Unit internal-ref
 
 -- | Compat shims for the surface/meaning sites (`Surface.Desugar`,
 -- `Surface.Elaborate`, `Denotation.SourceDenote`) that still name these.
@@ -316,8 +306,8 @@ generic-info = value-info
 -- so the masquerade proof folds both with one split.
 arrow-info-eff : ∀ {A B} → CanonicalName → Dec (B ≡ Void) → Dec (B ≡ Unit)
                → IsBaseType A → IsConcrete B → SigOpInfo A B
-arrow-info-eff name (yes refl) _          bA cB = mk-info' name (haltsV refl) bA (ffi-concrete cB)
-arrow-info-eff name (no _)     (yes refl) bA cB = mk-info' name (emitsV refl) bA (ffi-concrete cB)
+arrow-info-eff name (yes refl) _          bA cB = mk-info' name (haltsV refl) bA cB
+arrow-info-eff name (no _)     (yes refl) bA cB = mk-info' name (emitsV refl) bA cB
 arrow-info-eff name (no _)     (no _)     bA cB = value-info name bA cB
 
 arrow-info : ∀ {A B} → ArrowKind → CanonicalName → IsBaseType A → IsConcrete B → SigOpInfo A B

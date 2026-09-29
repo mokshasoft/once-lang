@@ -23,6 +23,7 @@
 module Once.IR where
 
 open import Data.String using (String)
+open import Once.CanonicalName using (CanonicalName)
 
 open import Once.Float.Decimal using (Decimal)
 open import Data.Integer using (ℤ)
@@ -274,6 +275,15 @@ data IR where
   -- (its value semantics `M.⟦A⟧→M.⟦B⟧` lives on `Type`); the IR OBJECTS it
   -- connects are the erased `⌊ A ⌋`, `⌊ B ⌋`.
   SigOp : ∀ {A B : Type} → SigOpInfo A B → IR ⌊ A ⌋ ⌊ B ⌋
+
+  -- D245: a call to one of the program's own definitions. This is the IR twin of
+  -- the core's `ref`. A SigOp means the closed contract it carries, whether an
+  -- interpretation or the compiler minted it. A call means an ENTRY of the
+  -- program it belongs to, the definition named `f`, so it carries no contract.
+  -- Its meaning is read from `evalᴰ`'s call environment (D244). The domain is
+  -- `Unit` because of the closure-returner ABI (D064): `once_f()` returns f's
+  -- value, and codegen lowers the node to `call once_f`.
+  Call : ∀ {B} → CanonicalName → IR Unit B
 
 infixr 9 _∘_
 infixr 4 ⟨_,_⟩
