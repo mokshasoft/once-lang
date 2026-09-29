@@ -24,8 +24,8 @@
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Trust.Knot5 where
 
+import DirectedHoTT.Examples.Knot.Pw
 import DirectedHoTT.Examples.Knot.PwConGen
 import DirectedHoTT.Examples.Knot.Red
 import DirectedHoTT.Examples.Knot.RedCompConGen
 import DirectedHoTT.Examples.Knot.RedIx
-import DirectedHoTT.Examples.Knot.RedT
