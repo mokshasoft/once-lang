@@ -72,7 +72,7 @@ open X using (mkstate; execInstr; mkflags; _<ᵇ_; writeMem; updateFlags)
   renaming (readReg to xreadReg; writeReg to xwriteReg; readMem to xreadMem)
 open X.State using (memory; flags; pc) renaming (regs to xregs; halted to xhalted)
 open import Once.CCC.Target.X86-64.Syntax
-  using (rax; rbx; rsi; rdi; rsp; rbp; r14; r15; rcx; Reg; Operand; Program; reg; imm; mem; mov; add; sub; cmp; label; jmp; je; push; pop; lea; rip+label; r12; base; base+disp; slots; slot-size; ret; call)
+  using (rax; rbx; rsi; rdi; rsp; rbp; r14; r15; rcx; Reg; Operand; Program; reg; imm; mem; mov; add; sub; cmp; label; jmp; je; push; pop; lea; rip+label; r12; base; base+disp; slots; slot-size; ret; call; call-l)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Bool using (true; false)
 open import Data.List using (_∷_; []; _++_; drop; length)
@@ -420,7 +420,6 @@ block-step-c-label {hv} prog fs s n cc h ft = post , exec-eq , record
   { dataCorr = record { in1-eq = C.in1-eq (dataCorr cc)
                       ; out-eq = C.out-eq (dataCorr cc) ; scratch-eq = C.scratch-eq (dataCorr cc) ; count-eq = C.count-eq (dataCorr cc)
                       ; clos-eq = C.clos-eq (dataCorr cc) ; halt-eq = C.halt-eq (dataCorr cc) ; heap-eq = C.heap-eq (dataCorr cc)
-                      ; sp-eq = C.sp-eq (dataCorr cc)
                       ; sp-eq = C.sp-eq (dataCorr cc) ; frontier-eq = C.frontier-eq (dataCorr cc) ; dom-fresh = C.dom-fresh (dataCorr cc) ; dom-written = C.dom-written (dataCorr cc) ; dom-sized = C.dom-sized (dataCorr cc)
                       ; lo-le = C.lo-le (dataCorr cc) ; untouched = C.untouched (dataCorr cc) ; stack-eq = C.stack-eq (dataCorr cc) }
   ; pc-off = pco' ; ret-eq = ret-eq cc ; code-eq = code-eq cc }
@@ -788,7 +787,7 @@ block-step-c-thunk {hv} prog fs s n b r rpc rest cc h ft lo' lo'≤lo front-lo' 
     post-lab : X.State
     post-lab = record s { pc = pc s + 1 }
     step-lab : X.step-not-halted (compile-trace prog) s ≡ just post-lab
-    step-lab = step-label {compile-trace prog} {s} {thunk n} fetch-lab
+    step-lab = step-label {compile-trace prog} {s} {callee n} fetch-lab
     -- step 2: the reservation
     fetch-sub : X.fetch (compile-trace prog) (X.State.pc post-lab) ≡ just (sub (reg rsp) (imm (slots b)))
     fetch-sub = trans (cong (λ q → X.fetch (compile-trace prog) (q + 1)) po)

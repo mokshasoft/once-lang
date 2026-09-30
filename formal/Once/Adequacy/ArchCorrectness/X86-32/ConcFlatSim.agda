@@ -23,12 +23,12 @@
 
 open import Once.CCC.FrameSemantics using (FrameSemantics; shift-frame; frame-word; frame-base; slot-addr; slot-addr-linear)
 open import Once.Memory.HeapAddress using (HeapLocation; sucHL; heap-offset; heap-ref; ref-id)
-open import Once.CCC.Machine.SMCore using (AllocState)
-open import Once.CCC.Label using (once; LabelId)
+open import Once.CCC.Machine.SMCore using (AllocState; AbstractInstr; CallI)
+open import Once.CCC.Label using (once; LabelId; EntryId)
 open import Once.CCC.Target.X86-32.Syntax using
   ( slot-size; slots; Program; Instr; Reg; Operand; reg; imm; mem; base; base+disp; esp; ebp; eax; ecx; edx; edi
   ; mov; lea; add; sub; cmp; test; jmp; je; jne; call; call-sym
-  ; ret; push; pop; nop; ud2; label; mov-code; jmp-l )
+  ; ret; push; pop; nop; ud2; label; mov-code; jmp-l; call-l )
 open import Data.Nat using (ℕ; suc; _+_; _*_; _<_; _≤_; _∸_; _≡ᵇ_; _⊓_)
 open import Data.Nat.Properties using (≤-reflexive; ≤-trans; <-transˡ; <-irrefl; m≤m+n; m≤n+m; m∸n≤m
                                       ; ⊓-glb; m⊓n≤m; m⊓n≤n; m+n≤o⇒m≤o∸n; +-identityʳ)
@@ -97,20 +97,20 @@ module Once.Adequacy.ArchCorrectness.X86-32.ConcFlatSim (o : CanonicalName)
   -- `…X86-32.ResourceBounds.StackRoom`, which is where the statement lives.
   (stack-room : ∀ {hv : FC.HeapView FS word-eq}
                   (prog : AbstractTrace) (fs : FlatMachine.FlatState {FS})
-                  (s : X.State) (m : LabelId) (b : ℕ)
+                  (s : X.State) (m : EntryId) (b : ℕ)
               → RC.RunAt o FS word-eq prog fs
               → FSim.CompiledCorr o FS word-eq fmt-eq hv prog fs s
               → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs)
-                ≡ just (instr-ctrl (c-thunk m b))
+                ≡ just (instr-ctrl (c-entry m b))
               → FC.hfront hv + slots b ≤ X.readReg (X.State.regs s) esp)
   -- CALL DEPTH (D098), the third of the family and the smallest: room for the
   -- ONE slot a call spends on the return address. See `ResourceBounds.CallRoom`.
   (call-room : ∀ {hv : FC.HeapView FS word-eq}
-                 (prog : AbstractTrace) (fs : FlatMachine.FlatState {FS}) (s : X.State)
+                 (prog : AbstractTrace) (fs : FlatMachine.FlatState {FS}) (s : X.State) (c : AbstractInstr)
              → RC.RunAt o FS word-eq prog fs
              → FSim.CompiledCorr o FS word-eq fmt-eq hv prog fs s
              → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs)
-               ≡ just instr-call-closure
+               ≡ just c → CallI c
              → FC.hfront hv + slot-size ≤ X.readReg (X.State.regs s) esp)
   -- PLAN 0.70 PHASE C: the machine is finite. Both D087-class. Spelled out
   -- against this module's own `FS`, exactly as the three rooms are — the
@@ -291,6 +291,7 @@ nonhalt-noncall prog s ud2        eq hnh = refl
 nonhalt-noncall prog s (mov-code _ _) eq hnh = refl
 nonhalt-noncall prog s (jmp-l _)  eq hnh = refl
 nonhalt-noncall prog s (label _)  eq hnh = refl
+nonhalt-noncall prog s (call-l _) eq hnh = refl
 
 ------------------------------------------------------------------------
 -- HOW FUEL PEELS, as six premise-free readouts (plan 0.65 G2 item 4, slice 3).

@@ -1264,6 +1264,14 @@ data AbstractInstr : Set where
   lea-indexed : ℕ → AbstractInstr
 
 -- | A trace is a sequence of abstract instructions
+-- D245: the two CALLS, a closure call and a direct call of a program function.
+-- A return address is one past either.
+CallI : AbstractInstr → Set
+CallI instr-call-closure         = ⊤
+CallI (instr-ctrl (c-call-fn _)) = ⊤
+{-# CATCHALL #-}
+CallI _                          = ⊥
+
 AbstractTrace : Set
 AbstractTrace = List AbstractInstr
 

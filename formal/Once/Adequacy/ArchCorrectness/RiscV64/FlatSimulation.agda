@@ -76,7 +76,7 @@ open import Once.Adequacy.ArchCorrectness.RiscV64.FlatComposition FS
   using (blk-off; blk-len; blk-off-suc; fetch-block-head; fetch-block-2nd; fetch-block-3rd; find-label-corr; find-thunk-corr)
 open import Once.Adequacy.ArchCorrectness.RiscV64.StepLemmas
   using (exec-1; step-mv; step-li; step-label; step-ld; step-sd; step-addi; step-lla; step-j-found; step-beq-taken; step-beq-not; step-ret; step-jalr; step-jal-found)
-open import Once.CCC.Target.RiscV64.Syntax using (Reg; mv; li; label; ld; sd; addi; lla; beq; j; ret; jalr; a0; a1; t0; t1; s1; s2; s3; s4; sp; ra; zero; slots)
+open import Once.CCC.Target.RiscV64.Syntax using (Reg; mv; li; label; ld; sd; addi; lla; beq; j; ret; jalr; jal; a0; a1; t0; t1; s1; s2; s3; s4; sp; ra; zero; slots)
 import Data.Integer as ℤ
 import Once.Word as OnceWord
 module IntW = OnceWord.Width 64
@@ -1782,7 +1782,7 @@ block-step-c-thunk {hv} prog fs s n b r rpc rest cc h ft lo' lo'≤lo front-lo' 
     post-lab : R.State
     post-lab = record s { pc = R.State.pc s + 1 }
     step-lab : R.step-not-halted (compile-trace prog) s ≡ just post-lab
-    step-lab = step-label {compile-trace prog} {s} {thunk n} fetch-lab
+    step-lab = step-label {compile-trace prog} {s} {callee n} fetch-lab
     -- step 2: the reservation
     fetch-addi : R.fetch (compile-trace prog) (R.State.pc post-lab)
                ≡ just (addi sp sp (ℤ.-_ (ℤ.+ (slots b))))

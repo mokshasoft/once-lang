@@ -135,7 +135,7 @@ open FlatMachine {FS} using
   -- CONCRETE program's scan, and the flat machine's is the abstract one. Two
   -- different functions over two different types — see `bs-c-jmp`'s comment.
   (FlatState; fpc; falloc; floc; fclosure; fetch; flat-exec-instr; find-thunk
-  ; enter-call; do-call-sv; do-call-code; do-call-at; flat-halt; fret; flink)
+  ; find-fn; enter-call; do-call-sv; do-call-code; do-call-at; flat-halt; fret; flink)
   renaming (find-label to flat-find-label)
 open MemOps {FS} using (readLoc; writeLoc; writeLocToHeap; writeLoc-halted)
 open import Once.CCC.Machine.FlatStoreWF FS using

@@ -127,13 +127,7 @@ data Reachable (prog : AbstractTrace) (B : ℕ) : FlatState → Set where
 Emitted : AbstractTrace → Set
 Emitted prog = Σ (List IRFun) (λ tbl → Σ (IR Unit Unit) (λ ir → prog ≡ program-image o (irProgram tbl ir)))
 
--- D245: the two CALLS, a closure call and a direct call of a program function.
--- A return address is one past either.
-CallI : AbstractInstr → Set
-CallI instr-call-closure         = ⊤
-CallI (instr-ctrl (c-call-fn _)) = ⊤
-{-# CATCHALL #-}
-CallI _                          = ⊥
+-- (`CallI`, the two calls, lives beside the instruction set: `SMCore`.)
 
 -- A call neither jumps nor returns.
 call-not-jmp : ∀ (c : AbstractInstr) → CallI c → ∀ m → c ≡ instr-ctrl (c-jmp m) → ⊥

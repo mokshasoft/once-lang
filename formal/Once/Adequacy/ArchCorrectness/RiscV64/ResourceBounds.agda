@@ -43,7 +43,7 @@ open import Once.CCC.Machine.SMCore
   using (AbstractTrace; instr-alloc-heap; instr-ctrl; c-thunk; c-entry; c-call-fn; c-ret; instr-call-closure
         ; lea-slot; instr-reg-op; scratch-dec; count-inc; instr-load-tag-lit
         ; instr-load-const)
-open import Once.CCC.Label using (LabelId)
+open import Once.CCC.Label using (LabelId; EntryId)
 open import Once.CCC.Target.RiscV64.Syntax using (slots; slot-size; sp; s3; s4; Reg)
 open import Once.CCC.Target.RiscV64.AbstractToRiscV using (slot-to-disp)
 open import Data.Nat using (_<_)
@@ -88,11 +88,11 @@ StackRoom : Set₁
 StackRoom =
   ∀ {hv : FCr.HeapView rv64-frame-semantics refl}
     (prog : AbstractTrace) (fs : FlatMachine.FlatState {rv64-frame-semantics})
-    (s : R.State) (m : LabelId) (b : ℕ)
+    (s : R.State) (m : EntryId) (b : ℕ)
   → RCr.RunAt o rv64-frame-semantics slot-size refl prog fs
   → FSimr.CompiledCorr o rv64-frame-semantics refl refl hv prog fs s
   → FlatMachine.fetch {rv64-frame-semantics} prog
-      (FlatMachine.fpc {rv64-frame-semantics} fs) ≡ just (instr-ctrl (c-thunk m b))
+      (FlatMachine.fpc {rv64-frame-semantics} fs) ≡ just (instr-ctrl (c-entry m b))
   → FCr.hfront hv + slots b ≤ R.readReg (R.State.regs s) sp
 
 ------------------------------------------------------------------------
@@ -103,11 +103,11 @@ CallRoom : Set₁
 CallRoom =
   ∀ {hv : FCr.HeapView rv64-frame-semantics refl}
     (prog : AbstractTrace) (fs : FlatMachine.FlatState {rv64-frame-semantics})
-    (s : R.State)
+    (s : R.State) (c : AbstractInstr)
   → RCr.RunAt o rv64-frame-semantics slot-size refl prog fs
   → FSimr.CompiledCorr o rv64-frame-semantics refl refl hv prog fs s
   → FlatMachine.fetch {rv64-frame-semantics} prog
-      (FlatMachine.fpc {rv64-frame-semantics} fs) ≡ just instr-call-closure
+      (FlatMachine.fpc {rv64-frame-semantics} fs) ≡ just c → CallI c
   → FCr.hfront hv + slot-size ≤ R.readReg (R.State.regs s) sp
 
 ------------------------------------------------------------------------

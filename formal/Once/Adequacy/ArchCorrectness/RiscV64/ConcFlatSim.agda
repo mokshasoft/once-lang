@@ -38,12 +38,12 @@ import Once.CCC.Target.RiscV64.Semantics as RS
 open import Once.CCC.Machine.SMCore using
   (AbstractTrace; lea-slot; instr-alloc-heap; instr-ctrl; c-thunk; c-entry; c-call-fn; c-ret
   ; instr-call-closure; instr-reg-op; scratch-dec; count-inc
-  ; instr-load-tag-lit; instr-load-const)
+  ; instr-load-tag-lit; instr-load-const; AbstractInstr; CallI)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CCC.Target.RiscV64.Syntax using (sp; s3; s4; slots) renaming (Reg to Reg')
 open import Once.CCC.Target.RiscV64.AbstractToRiscV using (slot-to-disp)
 open import Data.Nat using (ℕ; suc; _+_; _<_; _≤_)
-open import Once.CCC.Label using (LabelId)
+open import Once.CCC.Label using (LabelId; EntryId)
 open import Once.Word using (Carrier)
 open import Once.Type using (fits-int; fits-float)
 open import Once.Float.Dyadic using (binary32; binary64)
@@ -98,18 +98,18 @@ module Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim
              → FCr.hfront hv + slots n ≤ FCr.lo hv)
   (stack-room : ∀ {hv : FCr.HeapView FS word-eq} (prog : AbstractTrace)
                   (fs : FlatMachine.FlatState {FS}) (s : RS.State)
-                  (m : LabelId) (b : ℕ)
+                  (m : EntryId) (b : ℕ)
               → RCr.RunAt o FS slot-size word-eq prog fs
               → FSimr.CompiledCorr o FS word-eq fmt-eq hv prog fs s
               → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs)
-                  ≡ just (instr-ctrl (c-thunk m b))
+                  ≡ just (instr-ctrl (c-entry m b))
               → FCr.hfront hv + slots b ≤ RS.readReg (RS.State.regs s) sp)
   (call-room : ∀ {hv : FCr.HeapView FS word-eq} (prog : AbstractTrace)
-                 (fs : FlatMachine.FlatState {FS}) (s : RS.State)
+                 (fs : FlatMachine.FlatState {FS}) (s : RS.State) (c : AbstractInstr)
              → RCr.RunAt o FS slot-size word-eq prog fs
              → FSimr.CompiledCorr o FS word-eq fmt-eq hv prog fs s
              → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs)
-                 ≡ just instr-call-closure
+                 ≡ just c → CallI c
              → FCr.hfront hv + slot-size ≤ RS.readReg (RS.State.regs s) sp)
   (reg-range : ∀ {hv : FCr.HeapView FS word-eq} (prog : AbstractTrace)
                  (fs : FlatMachine.FlatState {FS}) (s : RS.State) (r : Reg')

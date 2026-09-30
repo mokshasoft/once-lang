@@ -45,7 +45,7 @@ module W = W32.Width 32
 open import Once.CCC.Machine.SMCore
   using (AbstractTrace; instr-alloc-heap; instr-ctrl; c-thunk; c-entry; c-call-fn; c-ret; instr-call-closure
         ; instr-reg-op; scratch-dec; count-inc; instr-load-tag-lit; instr-load-const)
-open import Once.CCC.Label using (LabelId)
+open import Once.CCC.Label using (LabelId; EntryId)
 open import Once.Type using (fits-int; fits-float)
 open import Once.Word using (Carrier)
 open import Once.Float.Dyadic using (binary32; binary64)
@@ -104,11 +104,11 @@ StackRoom : Set₁
 StackRoom =
   ∀ {hv : FCx.HeapView x86-32-frame-semantics refl}
     (prog : AbstractTrace) (fs : FlatMachine.FlatState {x86-32-frame-semantics})
-    (s : X.State) (m : LabelId) (b : ℕ)
+    (s : X.State) (m : EntryId) (b : ℕ)
   → RCx.RunAt o x86-32-frame-semantics refl prog fs
   → FSimx.CompiledCorr o x86-32-frame-semantics refl refl hv prog fs s
   → FlatMachine.fetch {x86-32-frame-semantics} prog
-      (FlatMachine.fpc {x86-32-frame-semantics} fs) ≡ just (instr-ctrl (c-thunk m b))
+      (FlatMachine.fpc {x86-32-frame-semantics} fs) ≡ just (instr-ctrl (c-entry m b))
   → FCx.hfront hv + slots b ≤ X.readReg (X.State.regs s) esp
 
 ------------------------------------------------------------------------
@@ -129,11 +129,11 @@ CallRoom : Set₁
 CallRoom =
   ∀ {hv : FCx.HeapView x86-32-frame-semantics refl}
     (prog : AbstractTrace) (fs : FlatMachine.FlatState {x86-32-frame-semantics})
-    (s : X.State)
+    (s : X.State) (c : AbstractInstr)
   → RCx.RunAt o x86-32-frame-semantics refl prog fs
   → FSimx.CompiledCorr o x86-32-frame-semantics refl refl hv prog fs s
   → FlatMachine.fetch {x86-32-frame-semantics} prog
-      (FlatMachine.fpc {x86-32-frame-semantics} fs) ≡ just instr-call-closure
+      (FlatMachine.fpc {x86-32-frame-semantics} fs) ≡ just c → CallI c
   → FCx.hfront hv + slot-size ≤ X.readReg (X.State.regs s) esp
 
 ------------------------------------------------------------------------
