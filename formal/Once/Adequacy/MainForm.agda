@@ -61,7 +61,7 @@ open FunInfo
 
 open import Once.Adequacy.SourceTrace using (findMain; moduleToIR; moduleToIR-aux)
 open import Once.Adequacy.FunBundle as FB
-  using (FunBundle; ce-bundle; bundle→compiled≡compiled; find-agree;
+  using (FunBundle; ce-bundle; bundle→compiled≡compiled; bundle→compiled; find-agree;
          bundle-find; bundle-find-exists; bundle-realize; BMainExists; bundle-main-node; MNodeAt;
          bundle→typed; bme→me; realize-agree)
 import Once.Adequacy.AcceptSound as AS
@@ -110,7 +110,11 @@ MainNode m ir =
   Σ-syntax (checkElab (FB.ctxC msc) mbody EffUU ≡ success mΨ mse md mf) (λ mce →
     (ir ≡ C.wrapMainAsEntry (elaborateFull C.Heap
             (resolveExpr (C.cpolys msc) (C.declImps (C.CScope.ctele msc)) (("main" , EffUU) ∷ C.CScope.cimps msc) 0 mse)))
-  × (bundle-realize b bme ≡ (mΨ , realize (check-sound (FB.ctxC msc) mbody EffUU mce))))))))))))))
+  × (bundle-realize b bme ≡ (mΨ , realize (check-sound (FB.ctxC msc) mbody EffUU mce)))
+  -- plan 0.103 C: `main`'s scope IS the bundle's, and the module compiles to
+  -- the bundle's list (so the program's table is the bundle's).
+  × (proj₁ (bundle-main-node b bme) ≡ msc)
+  × (C.compileResolvedModule C.Heap false m ≡ inj₂ (FB.bundle→compiled b)))))))))))))
 
 build-node : ∀ (m : C.Module) (es : List C.Entry) (compiled : List C.CompiledFun) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋)
   (ce-eq : C.compileEntries C.Heap false C.emptyCScope es ≡ inj₂ compiled)
@@ -123,13 +127,17 @@ build-node m es compiled ir ce-eq mi ef-eq =
       bf≡ = trans (sym (find-agree b))
               (trans (cong findMain (bundle→compiled≡compiled C.emptyCScope es compiled ce-eq)) mi)
       bme = bundle-find-exists b bf≡
-  in node b bf≡ bme (bundle-main-node b bme)
+      ceq : C.compileResolvedModule C.Heap false m ≡ inj₂ (bundle→compiled b)
+      ceq = trans (cong (C.compileResolvedModule-aux C.Heap false m) ef-eq)
+                  (trans ce-eq (cong inj₂ (sym (bundle→compiled≡compiled C.emptyCScope es compiled ce-eq))))
+  in node b bf≡ bme (bundle-main-node b bme) refl ceq
   where
-    node : ∀ (b : FunBundle C.emptyCScope es) (bf≡ : bundle-find b ≡ just ir) (bme : BMainExists b) →
-             FB.MNodeAt (bundle-find b) (bundle-realize b bme) → MainNode m ir
-    node b bf≡ bme (msc , mbody , mΨ , mse , md , mf , mce , find-wit , realize-wit) =
+    node : ∀ (b : FunBundle C.emptyCScope es) (bf≡ : bundle-find b ≡ just ir) (bme : BMainExists b)
+             (nd : FB.MNodeAt (bundle-find b) (bundle-realize b bme)) → proj₁ (bundle-main-node b bme) ≡ proj₁ nd
+           → C.compileResolvedModule C.Heap false m ≡ inj₂ (bundle→compiled b) → MainNode m ir
+    node b bf≡ bme (msc , mbody , mΨ , mse , md , mf , mce , find-wit , realize-wit) msc≡ ceq =
       es , ef-eq , b , bme , msc , mbody , mΨ , mse , md , mf , mce
-        , just-injective (trans (sym bf≡) find-wit) , realize-wit
+        , just-injective (trans (sym bf≡) find-wit) , realize-wit , msc≡ , ceq
 
 main-node-of : ∀ (m : C.Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) → moduleToIR m ≡ just ir → MainNode m ir
 mnf-ce : ∀ (m : C.Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) (es : List C.Entry) (cv : String ⊎ List C.CompiledFun) →
@@ -148,7 +156,7 @@ main-ir-form : ∀ (m : C.Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) → module
 main-ir-form m ir mi = form (main-node-of m ir mi)
   where
     form : MainNode m ir → Form ir
-    form (es , ef-eq , b , bme , msc , mbody , mΨ , mse , md , mf , mce , ir≡ , rw) =
+    form (es , ef-eq , b , bme , msc , mbody , mΨ , mse , md , mf , mce , ir≡ , rw , _ , _) =
       mΨ , resolveExpr (C.cpolys msc) (C.declImps (C.CScope.ctele msc)) (("main" , EffUU) ∷ C.CScope.cimps msc) 0 mse
          , ir≡
          , msc , mbody , mse , md , mf , mce , es , b , bme , refl , rw

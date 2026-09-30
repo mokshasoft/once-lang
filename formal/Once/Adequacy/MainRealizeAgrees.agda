@@ -122,7 +122,7 @@ LinkData = PolyCtx × (C.String → Imports) × Imports × ℕ
 
 main-link : ∀ (m : P.Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) (mi : moduleToIR m ≡ just ir) → LinkData
 main-link m ir mi =
-  let (es , ef-eq , b , bme , msc , mbody , mΨ , mse , md , mf , mce , ir≡ , rw) = MF.main-node-of m ir mi
+  let (es , ef-eq , b , bme , msc , mbody , mΨ , mse , md , mf , mce , ir≡ , rw , _ , _) = MF.main-node-of m ir mi
   in C.cpolys msc , C.declImps (C.CScope.ctele msc) , (("main" , EffUU) ∷ C.CScope.cimps msc) , 0
 
 σTp : ∀ (m : P.Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) (mi : moduleToIR m ≡ just ir) → SD.DefsSem
@@ -147,7 +147,7 @@ main-extract :
           (env0 {proj₁ (MC.mainRealized m mt hvm)} tt)
                ≡ SD.⟦ realize mtder ⟧ˢ fmt (σTp m ir mi) dγ₀))))))))))
 main-extract m mt hvm ir mi =
-  let (es , ef-eq , b , bme , msc , mbody , mΨ , mse , md , mf , mce , ir≡ , rw) = MF.main-node-of m ir mi
+  let (es , ef-eq , b , bme , msc , mbody , mΨ , mse , md , mf , mce , ir≡ , rw , _ , _) = MF.main-node-of m ir mi
   in    ctxWithImportsAndPolys (C.CScope.cimps msc) (C.cpolys msc)
       , mbody , mΨ , mse , md , mf , env0 {mΨ} tt
       , check-sound (ctxWithImportsAndPolys (C.CScope.cimps msc) (C.cpolys msc)) mbody EffUU mce

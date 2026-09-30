@@ -113,6 +113,7 @@ open import Once.Type.Rigid using (rigidOf; RigidFree; rigidFree?)
 open import Once.Functor.Translate using (IsConcrete)
 open import Once.Functor.Decide using (isConcrete?)
 open import Once.Type.Honest using (HonestFFI; honest?)
+open import Once.Type.DecEq using (_≟T_)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 import Data.Nat
 -- D072: the untrusted principal-type oracle (validated by checkElab).
@@ -161,10 +162,17 @@ wrapMainAsEntry mainIR = apply ∘ ⟨ mainIR , terminal ⟩
 -- | Apply the entry wrap conditionally for the function named "main".
 -- Returns the (possibly-rewritten) type and IR. Non-main functions and
 -- main with a non-validated type pass through unchanged.
+-- Plan 0.103 C: the two decisions are ARGUMENTS (not literal patterns), so a
+-- proof about an abstract name reduces it once it knows the answer.
+maybeWrapMain-at : ∀ {ty : Type} → Dec (ty ≡ Unit ⇒[ mk-kind Many eff ] Unit) → Bool → IR ⌊ Unit ⌋ ⌊ ty ⌋
+                 → ∃[ ty' ] IR ⌊ Unit ⌋ ⌊ ty' ⌋
+maybeWrapMain-at {.(Unit ⇒[ mk-kind Many eff ] Unit)} (yes refl) true  ir = Unit , wrapMainAsEntry ir
+maybeWrapMain-at {.(Unit ⇒[ mk-kind Many eff ] Unit)} (yes refl) false ir = Unit ⇒[ mk-kind Many eff ] Unit , ir
+maybeWrapMain-at {ty} (no _) _    ir = ty , ir
+
 maybeWrapMain : (name : String) (ty : Type) → IR ⌊ Unit ⌋ ⌊ ty ⌋
               → ∃[ ty' ] IR ⌊ Unit ⌋ ⌊ ty' ⌋
-maybeWrapMain "main" (Unit ⇒[ mk-kind Many eff ] Unit) ir = Unit , wrapMainAsEntry ir
-maybeWrapMain _ ty ir = ty , ir
+maybeWrapMain name ty ir = maybeWrapMain-at (ty ≟T (Unit ⇒[ mk-kind Many eff ] Unit)) (name == "main") ir
 
 -- | Plan 0.50 Stage 2 (D064): emit a top-level definition as a DIRECT-CALL
 -- MORPHISM. References now elaborate to `lift-morphism (SigOp once_f)` and

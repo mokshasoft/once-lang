@@ -52,6 +52,21 @@ open import Once.Adequacy.SourceTrace using (moduleToIR)
 import Once.Adequacy.MainExtract fmt as ME
 import Once.Adequacy.MainRealizeAgrees fmt as MRA
 import Once.Adequacy.ModuleComplete as MC
+import Once.Adequacy.MainForm fmt as MF
+import Once.Adequacy.FunBundle as FB
+import Once.Adequacy.ResolveFaithful as RF
+import Once.Adequacy.TeleWalk fmt as TW
+import Once.Spec.Core.Translate as TR
+open import Once.Adequacy.SourceTrace using (tableOfResult)
+open import Once.Denotation.Program using (tableEnv)
+open import Once.Spec.Module using (EffUU)
+open import Data.List using (List; []; _∷_; map)
+open import Data.List.Relation.Unary.All using (All; []; _∷_)
+open import Data.List.Relation.Unary.AllPairs using (AllPairs)
+open import Data.String using (String)
+open import Data.Sum using (_⊎_)
+open import Data.Unit using (tt)
+open import Relation.Binary.PropositionalEquality using (_≢_; refl; sym; trans; cong; cong₂)
 
 ------------------------------------------------------------------------
 -- The typed module as a core program (6c).
@@ -91,16 +106,60 @@ coreBehavior P = mkBehavior (runProgram fmt P) (coh (core-pf P)) (bnd (core-pf P
 -- The one open link (6b + TelescopeEnv over ModTele + 6e).
 ------------------------------------------------------------------------
 
+-- The walk's premises at the start: the empty scope, and the entries' names.
 postulate
-  -- RESIDUAL, class DEFERRED PROOF (plan 0.103 6b/6e). The surface meaning of
-  -- `main` in the COMPILED program's environment (calls: its function table;
-  -- references: the resolver's splices) is the core meaning of the program.
-  -- Discharge: the 6b bridge `SD⟦realize d⟧ ≈ core⟦elabᶜ V d⟧` clause by
-  -- clause, at an environment relation built by induction on the telescope —
-  -- a table entry's call means its core entry (faithful + the bridge on its
-  -- body), a telescope reference's splice means the entry's instance.
-  realize-core :
-    ∀ (m : P.Module) (mt : ModuleTyped m) (hvm : HasValidMain m mt) (n : ℕ)
-    → ME.runMainˢ (MRA.σTp m (proj₁ (MC.moduleToIR-complete m mt hvm)) (proj₂ (MC.moduleToIR-complete m mt hvm)))
-                  (proj₂ (MC.mainRealized m mt hvm)) n
-      ≡ runProgram fmt (typedProgram (m , mt , hvm)) n
+  -- RESIDUAL, class DEFERRED PROOF (plan 0.103 C, D249 pending): every entry
+  -- of an accepted module has its own name — definitions, telescope entries
+  -- AND FFI declarations. The extractor's guard covers the first two today;
+  -- a function table must not hold two entries of one name.
+  entries-distinct : ∀ (m : P.Module) {es : List C.Entry}
+    → C.extractFunctions (C.extractAliases m) m ≡ inj₂ es → AllPairs _≢_ (map TW.entryName es)
+
+private
+  none-in-empty : ∀ (xs : List String) → All (λ x → All (x ≢_) (TW.scopeNames C.emptyCScope)) xs
+  none-in-empty []       = []
+  none-in-empty (x ∷ xs) = [] ∷ none-in-empty xs
+
+  inv₀ : TW.Inv C.emptyCScope Tele.[] TR.[] TR.[] []
+  inv₀ = record { valid = tt ; iself = [] ; rel = λ _ _ _ _ _ → tt , tt }
+
+  run-at : ∀ {σ σ′} {Ψ} (se : _) (n : ℕ) → σ ≡ σ′ → ME.runMainˢ {Ψ} σ se n ≡ ME.runMainˢ σ′ se n
+  run-at se n refl = refl
+
+  core-ef : ∀ (m : P.Module) (ef : String ⊎ List C.Entry) (mt : ModuleTyped-ef m ef) (hvm : HasValidMain-ef m ef mt)
+              {es} → ef ≡ inj₂ es → AllPairs _≢_ (map TW.entryName es)
+            → (b : FB.FunBundle C.emptyCScope es) (bme : FB.BMainExists b) (n : ℕ)
+            → ME.runMainˢ (TW.σMain b bme []) (proj₂ (MC.mainRealized-ef m ef mt hvm)) n
+              ≡ runProgram fmt (typedProgram-ef m ef mt hvm) n
+  core-ef m .(inj₂ _) mt (_ , mi) refl dist b bme n =
+    TW.walk mt b mi bme Tele.[] TR.[] TR.[] _ [] inv₀ (dist , none-in-empty _) n
+
+  -- `main`'s node: the compiled program's environment is the walk's at `main`.
+  core-node : ∀ (m : P.Module) (mt : ModuleTyped m) (hvm : HasValidMain m mt) {ir} (N : MF.MainNode m ir) (n : ℕ)
+            → ME.runMainˢ (RF.σR fmt (ME.ρ-of m)
+                             (C.cpolys (proj₁ (proj₂ (proj₂ (proj₂ (proj₂ N))))))
+                             (C.declImps (C.CScope.ctele (proj₁ (proj₂ (proj₂ (proj₂ (proj₂ N)))))))
+                             (("main" , EffUU) ∷ C.CScope.cimps (proj₁ (proj₂ (proj₂ (proj₂ (proj₂ N)))))) 0)
+                          (proj₂ (MC.mainRealized m mt hvm)) n
+              ≡ runProgram fmt (typedProgram (m , mt , hvm)) n
+  core-node m mt hvm (es , ef-eq , b , bme , msc , mbody , mΨ , mse , md , mf , mce , ir≡ , rw , msc≡ , ceq) n =
+    trans (run-at (proj₂ (MC.mainRealized m mt hvm)) n
+             (cong₂ (λ tbl sc → RF.σR fmt (tableEnv fmt tbl) (C.cpolys sc) (C.declImps (C.CScope.ctele sc))
+                                        (("main" , EffUU) ∷ C.CScope.cimps sc) 0)
+                    (cong tableOfResult ceq) (sym msc≡)))
+          (core-ef m (C.extractFunctions (C.extractAliases m) m) mt hvm ef-eq (entries-distinct m ef-eq) b bme n)
+
+------------------------------------------------------------------------
+-- THE LINK (6b + the telescope walk, `TeleWalk`; its steps are the residuals)
+------------------------------------------------------------------------
+
+-- The surface meaning of `main` in the COMPILED program's environment (calls:
+-- its function table; references: the resolver's splices) is the core meaning
+-- of the program.
+realize-core :
+  ∀ (m : P.Module) (mt : ModuleTyped m) (hvm : HasValidMain m mt) (n : ℕ)
+  → ME.runMainˢ (MRA.σTp m (proj₁ (MC.moduleToIR-complete m mt hvm)) (proj₂ (MC.moduleToIR-complete m mt hvm)))
+                (proj₂ (MC.mainRealized m mt hvm)) n
+    ≡ runProgram fmt (typedProgram (m , mt , hvm)) n
+realize-core m mt hvm n =
+  core-node m mt hvm (MF.main-node-of m (proj₁ (MC.moduleToIR-complete m mt hvm)) (proj₂ (MC.moduleToIR-complete m mt hvm))) n
