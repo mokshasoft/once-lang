@@ -740,16 +740,16 @@ moduleSymRefs : Arch → AllocMode → Bool → Module → List CanonicalName
 moduleSymRefs arch m doOpt mod =
   moduleSymRefs-aux (archTarget arch) (compileResolvedModule m doOpt mod)
 
--- …and what the module DEFINES for them: the arith blocks `emitArithBlocks`
--- writes. (A user function is not here: D071 — a named definition is a CONTEXT
--- PROJECTION with a direct-call ABI, not a SigOp, so it never appears in
--- `syms-ref`.)
+-- …and what the module DEFINES for them: every emitted function's own symbol
+-- (D245: a definition reference is a DIRECT CALL of `once_<f>`, D064's ABI, so
+-- `f` is owed exactly when something calls it), and the arith blocks
+-- `emitArithBlocks` writes.
 funBlockSyms-cons : Bool → CompiledFun → List CanonicalName
 funBlockSyms-cons true  cf = []
 funBlockSyms-cons false cf =
   let (_ , _ , dcIR) = directCallIR (cfType cf) (cfIR cf)
       (_ , blks)     = rewrite-ir dcIR
-  in DL.map (λ b → bare (block-name (block-body b))) blks
+  in cfName cf ∷ DL.map (λ b → bare (block-name (block-body b))) blks
 
 emittedSymDefs : List CompiledFun → List CanonicalName
 emittedSymDefs []         = []

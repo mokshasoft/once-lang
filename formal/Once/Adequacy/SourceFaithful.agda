@@ -64,7 +64,7 @@ open import Data.Bool using (Bool; true; false)
 open import Once.Denotation.TraceMonad using (T; mkT; atT; Stopped; stoppedT; returnT; _>>=T_; >>=T-assoc; >>=T-identityʳ; bindRes-idʳ; bindRes-mapʳ; bindRes-trʳ; >>=T-mapʳ; valueT; projTrace; bindRes; resT-lift)
 open import Once.Res using (Res; stopped; returns; is-stopped; mapRes; mapRes-id; mapRes-∘; mapRes-cong)
 open import Once.IR using (_∘_; ⟨_,_⟩; apply; fst; snd; curry; SigOp; terminal; case; initial) renaming (id to idIR)
-open import Once.Arith.SigOp.Builders using (arrow-info; value-info; internal-info;
+open import Once.Arith.SigOp.Builders using (arrow-info; value-info;
                                              add-info; sub-info; mul-info; div-info; mod-info; fadd-info; fsub-info; fmul-info; fdiv-info; lt-info; le-info; gt-info; ge-info; eq-info; ne-info)
 open import Once.Adequacy.CataErased fmt ρ using (liftFn-SigOp)
 open import Once.Adequacy.LiftFnReduce fmt ρ using (liftFn-id; liftFn-fst; liftFn-snd; liftFn-∘; liftFn-pair;
@@ -1735,8 +1735,10 @@ faithful (sigOp {A = (Dom ⇒[ mk-kind Many π ] Cod)} name (con-fun bDom cCod))
              (trans (subst-arrowᴰ (cohᴰ Dom) (cohᴰ Cod)
                        (λ a → evalᴰ fmt ρ (SigOp (arrow-info (mk-kind Many π) name bDom cCod)) a))
                     (liftFn-SigOp (arrow-info (mk-kind Many π) name bDom cCod) bDom))))
-faithful {Γ = Γ} {A = A} (closure name) dγ k = sigop-value {⟦ Γ ↾ zeroUsage ⟧ᶜ} {A} (internal-info (bare name)) dγ k
-faithful {Γ = Γ} (poly name PT) dγ k = sigop-value {⟦ Γ ↾ zeroUsage ⟧ᶜ} {PT} (internal-info (bare name)) dγ k
+-- D245: a reference is a CALL of the entry (`refIR`), and SD's `refs` read the
+-- same call environment at the same entry — the two sides are one term.
+faithful (closure name) dγ k = refl
+faithful (poly name PT) dγ k = refl
 -- Plan 0.103 phase 1c: a closed term runs on the terminal environment.
 faithful (closed e) dγ k = faithful e tt k
 -- NON-ARROW `sigOp`: `elaborate`/`⟦_⟧ˢ` dispatch on `A`'s shape (it stays stuck for

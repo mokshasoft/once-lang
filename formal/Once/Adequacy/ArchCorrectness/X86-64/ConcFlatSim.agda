@@ -237,9 +237,11 @@ open import Once.CCC.Codegen.ShapeTable as ST using
   (LabelEnv; Expect; entry-expect; check-shapes; state-at; check-at; at-pc;
    HeapModed; e-in1)
 open ST.Sem FS using (Meets; site-load-ptr; site-branch-tag; site-store-ptr; fetch-at-pc; site-slot-written)
-open import Once.CCC.Codegen.LabelScope o using (emitted-jump-in-segment; mention-at; mention-of; once-label-of)
+open import Once.CCC.Codegen.LabelScope o using (emitted-jump-in-segment)
+open import Once.CCC.Codegen.LabelSeg using (mention-at; mention-of; once-label-of)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Once.CCC.Codegen.SlotBudget o using (emitted-slot-seg; trace-lookup; seg-at; seg-at-suc)
+open import Once.CCC.Codegen.SlotBudget o using (emitted-slot-seg)
+open import Once.CCC.Codegen.SlotSeg using (trace-lookup; seg-at; seg-at-suc)
 open import Once.CCC.Codegen.SlotSeg using (below; pair-below; SegState; mkSeg; cur; seg-action; is-id?; seg-idle?; idle-step; idle-head; idle-tail; seg-step; saved)
 open import Once.IR using (IR; Unit)
 open import Once.CCC.Target.X86-64.Syntax using (slots; r15)

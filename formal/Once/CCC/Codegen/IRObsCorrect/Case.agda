@@ -34,7 +34,8 @@ module Once.CCC.Codegen.IRObsCorrect.Case (o : CanonicalName) (tbl : DL.List IRF
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
 open import Once.CCC.Codegen.LabelResolve o using (module Resolve)
-open import Once.CCC.Codegen.LabelScope o using (labels-in; LabelsIn; LabelIn; li-none; li-lab; in-range)
+open import Once.CCC.Codegen.LabelScope o using (labels-in)
+open import Once.CCC.Codegen.LabelSeg using (LabelIn; LabelsIn; li-none; li-lab; in-range)
 open import Once.CCC.Codegen.LabelRange o using (label-mono)
 open import Once.CCC.Label using (idx)
 open import Once.CCC.Machine.SMCore using (instr-ctrl; c-branch-tag-zero; c-jmp; c-label)

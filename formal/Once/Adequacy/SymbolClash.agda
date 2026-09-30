@@ -37,8 +37,9 @@
 -- So this predicate is the CHECKABLE CONSEQUENCE of that discharge: every
 -- compiler-minted SigOp the emitted text calls has its block emitted. It is
 -- NOT the claim that "a SigOp owes a symbol" — a named definition is a context
--- projection with a direct-call ABI (D071), never a SigOp, and does not appear
--- in `syms-ref` at all.
+-- projection with a direct-call ABI (D071), never a SigOp. D245: that direct
+-- call (`call once_<f>`) DOES name a symbol, the callee's own section, so it
+-- is in `syms-ref` and every emitted function is in the defined list.
 --
 -- SCOPE, honestly. Reading `sem` as "pureV ⇒ ours to emit" holds only because
 -- an interpretation's contract is always `emitsV`/`haltsV`; a PURE EXTERNAL

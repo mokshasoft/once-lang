@@ -146,16 +146,27 @@ module FlatMachine {FS : FrameSemantics} where
   -- D082: the CALL's scan. Separate from `find-label` because a body entry
   -- (`c-thunk`) and a jump target (`c-label`) are different provenances —
   -- a call can never land on a jump label, definitionally.
-  thunk-of? : AbstractInstr → Maybe LabelId
-  thunk-of? (instr-ctrl (c-thunk m _)) = just m
-  thunk-of? _                        = nothing
-
   -- D245: the scan every call uses finds a CALLABLE ENTRY (`EntryId`), a
-  -- closure body or a program function. `thunk-of?` above is its restriction to
-  -- closure bodies, for the consumers that reason about thunk labels.
+  -- closure body or a program function.
   entry-of? : AbstractInstr → Maybe EntryId
   entry-of? (instr-ctrl (c-entry e _)) = just e
   entry-of? _                          = nothing
+
+  -- …and `thunk-of?` is its restriction to closure bodies, for the consumers
+  -- that reason about thunk labels. DEFINED through `entry-of?`, so the two
+  -- scans agree by `cong` (`entry→thunk`) while `thunk-of?` still computes on
+  -- every concrete instruction.
+  thunk-part : Maybe EntryId → Maybe LabelId
+  thunk-part (just (e-thunk m)) = just m
+  thunk-part (just (e-fn _))    = nothing
+  thunk-part nothing            = nothing
+
+  thunk-of? : AbstractInstr → Maybe LabelId
+  thunk-of? i = thunk-part (entry-of? i)
+
+  entry→thunk : ∀ (i : AbstractInstr) (m : LabelId)
+              → entry-of? i ≡ just (e-thunk m) → thunk-of? i ≡ just m
+  entry→thunk i m e = cong thunk-part e
 
   -- WITH-FREE since D092 (the module's own design rule, and now load-bearing:
   -- `ft-go-sound` below has to reduce under a hypothesis about the head).

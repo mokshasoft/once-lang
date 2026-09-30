@@ -49,7 +49,7 @@ open import Once.CCC.Machine.SMCore
   using (block-layout; blocks-layout; AbstractTrace; AbstractInstr; LabelId)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
-open import Once.CCC.Label using (_≡ᵇᴵ_; ≡ᵇᴵ-refl)
+open import Once.CCC.Label using (_≡ᵇᴵ_; ≡ᵇᴵ-refl; EntryId; e-thunk; _≡ᵇᴱ_; ≡ᵇᴱ-refl; ≡ᵇᴱ-true)
 open import Once.CCC.Machine.SMCore using (instr-ctrl; c-thunk; c-entry; c-call-fn)
 
 ------------------------------------------------------------------------
@@ -60,7 +60,7 @@ open import Once.CCC.Machine.SMCore using (instr-ctrl; c-thunk; c-entry; c-call-
 ------------------------------------------------------------------------
 
 module Layout {FS : FrameSemantics} where
-  open FlatMachine {FS} using (fetch; find-thunk; ft-go; ft-at; ft-match; thunk-of?; ft-go-++-miss)
+  open FlatMachine {FS} using (fetch; find-thunk; ft-go; ft-at; ft-match; thunk-of?; entry-of?; entry→thunk; ft-go-++-miss)
 
 
 
@@ -144,17 +144,17 @@ module Layout {FS : FrameSemantics} where
 
   -- The scan HITS a block's own marker immediately.
   ft-hit : ∀ (lbl : LabelId) (b : ℕ) (rest : AbstractTrace) (i : ℕ)
-         → ft-go (instr-ctrl (c-thunk lbl b) ∷ rest) lbl i ≡ just i
-  ft-hit lbl b rest i rewrite ≡ᵇᴵ-refl lbl = refl
+         → ft-go (instr-ctrl (c-thunk lbl b) ∷ rest) (e-thunk lbl) i ≡ just i
+  ft-hit lbl b rest i rewrite ≡ᵇᴱ-refl (e-thunk lbl) = refl
 
   -- …and therefore resolves to the block's offset, GIVEN the miss.
   block-resolves : ∀ (pre : AbstractTrace) (lbl : LabelId) (b : ℕ)
                      (t post : AbstractTrace)
-                 → ft-go pre lbl 0 ≡ nothing
+                 → ft-go pre (e-thunk lbl) 0 ≡ nothing
                  → find-thunk (pre ++ block-layout (lbl , b , t) ++ post) lbl
                    ≡ just (length pre + 0)
   block-resolves pre lbl b t post miss =
-    trans (ft-go-++-miss pre (block-layout (lbl , b , t) ++ post) lbl 0 miss)
+    trans (ft-go-++-miss pre (block-layout (lbl , b , t) ++ post) (e-thunk lbl) 0 miss)
           (ft-hit lbl b _ (length pre + 0))
 
   ------------------------------------------------------------------------
@@ -175,7 +175,7 @@ module Layout {FS : FrameSemantics} where
 
   MissBefore : AbstractTrace → List (LabelId × ℕ × AbstractTrace) → Set
   MissBefore pre []       = ⊤
-  MissBefore pre (b ∷ bs) = (ft-go pre (proj₁ b) 0 ≡ nothing)
+  MissBefore pre (b ∷ bs) = (ft-go pre (e-thunk (proj₁ b)) 0 ≡ nothing)
                           × MissBefore (pre ++ block-layout b) bs
 
   -- Each block resolves to its own offset AND spans there. This is `BlockAt`
@@ -211,22 +211,25 @@ module Layout {FS : FrameSemantics} where
   NoThunk lbl = All (λ i → ¬ (thunk-of? i ≡ just lbl))
 
   no-thunk-miss    : ∀ (lbl : LabelId) (t : AbstractTrace) (i : ℕ)
-                   → NoThunk lbl t → ft-go t lbl i ≡ nothing
-  no-thunk-at      : ∀ (mo : Maybe LabelId) (lbl : LabelId) (t : AbstractTrace) (i : ℕ)
-                   → ¬ (mo ≡ just lbl) → NoThunk lbl t → ft-at mo t lbl i ≡ nothing
-  no-thunk-match   : ∀ (b : Bool) (m lbl : LabelId) (t : AbstractTrace) (i : ℕ)
-                   → (m ≡ᵇᴵ lbl) ≡ b → ¬ (m ≡ lbl) → NoThunk lbl t
-                   → ft-match b t lbl i ≡ nothing
+                   → NoThunk lbl t → ft-go t (e-thunk lbl) i ≡ nothing
+  no-thunk-at      : ∀ (mo : Maybe EntryId) (lbl : LabelId) (t : AbstractTrace) (i : ℕ)
+                   → ¬ (mo ≡ just (e-thunk lbl)) → NoThunk lbl t → ft-at mo t (e-thunk lbl) i ≡ nothing
+  no-thunk-match   : ∀ (b : Bool) (m : EntryId) (lbl : LabelId) (t : AbstractTrace) (i : ℕ)
+                   → (m ≡ᵇᴱ e-thunk lbl) ≡ b → ¬ (m ≡ e-thunk lbl) → NoThunk lbl t
+                   → ft-match b t (e-thunk lbl) i ≡ nothing
 
   no-thunk-miss lbl []       i _          = refl
-  no-thunk-miss lbl (x ∷ t') i (px ∷ pt)  = no-thunk-at (thunk-of? x) lbl t' i px pt
+  -- D245: the scan reads `entry-of?`; `thunk-of?` is its restriction, so a
+  -- `c-thunk`-free fact is an entry-free one at `e-thunk lbl` by `entry→thunk`.
+  no-thunk-miss lbl (x ∷ t') i (px ∷ pt)  =
+    no-thunk-at (entry-of? x) lbl t' i (λ e → px (entry→thunk x lbl e)) pt
 
   no-thunk-at (just m) lbl t i ne nt =
-    no-thunk-match (m ≡ᵇᴵ lbl) m lbl t i refl (λ eq → ne (cong just eq)) nt
+    no-thunk-match (m ≡ᵇᴱ e-thunk lbl) m lbl t i refl (λ eq → ne (cong just eq)) nt
   no-thunk-at nothing  lbl t i _  nt = no-thunk-miss lbl t (suc i) nt
 
-  -- `true` would mean `m ≡ lbl`, which the hypothesis forbids.
-  no-thunk-match true  m lbl t i beq ne nt = ⊥-elim (ne (≡ᵇᴵ-true m lbl beq))
+  -- `true` would mean `m ≡ e-thunk lbl`, which the hypothesis forbids.
+  no-thunk-match true  m lbl t i beq ne nt = ⊥-elim (ne (≡ᵇᴱ-true m (e-thunk lbl) beq))
   no-thunk-match false m lbl t i _   _  nt = no-thunk-miss lbl t (suc i) nt
 
   ------------------------------------------------------------------------

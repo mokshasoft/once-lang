@@ -44,7 +44,8 @@ import Once.Word as W32
 module W = W32.Width 32
 open import Once.CCC.Machine.SMCore
   using (AbstractTrace; instr-alloc-heap; instr-ctrl; c-thunk; c-entry; c-call-fn; c-ret; instr-call-closure
-        ; instr-reg-op; scratch-dec; count-inc; instr-load-tag-lit; instr-load-const)
+        ; instr-reg-op; scratch-dec; count-inc; instr-load-tag-lit; instr-load-const
+        ; AbstractInstr; CallI)
 open import Once.CCC.Label using (LabelId; EntryId)
 open import Once.Type using (fits-int; fits-float)
 open import Once.Word using (Carrier)

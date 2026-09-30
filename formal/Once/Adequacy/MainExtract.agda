@@ -34,7 +34,9 @@ open import Once.Target.Arch using (TargetNum; int-bits; float-format)
 -- function in a parameterised module stops reducing" trap does not apply. The
 -- denotations themselves take it as an explicit argument.
 open import Once.Denotation.DenotTrace using (CallEnv)
-module Once.Adequacy.MainExtract (fmt : TargetNum) (ρ : CallEnv) where
+-- D244: the environment is not a parameter — it is the MODULE's own function
+-- table (`ρ-of m`), which is what the compiled program's meaning reads.
+module Once.Adequacy.MainExtract (fmt : TargetNum) where
 
 open import Data.Nat using (ℕ; _∸_)
 open import Data.List using (List; _++_; take)
@@ -54,10 +56,11 @@ open import Once.Denotation.Phase using (env0)
 open import Once.Denotation.Behavior using (Behavior; at)
 open import Once.Denotation.Trace using (SigOpEvent)
 open import Data.List using (List; length)
-open import Once.Adequacy.SourceTrace using (moduleToIR; ⟦_⟧IR)
-open import Once.Adequacy.WrapBridge fmt ρ using (wrap-trace)
-open import Once.Adequacy.SourceFaithful fmt ρ using (faithful; faithful∅)
-open import Once.Adequacy.FaithfulLemmas fmt ρ using (T-ext-at)
+open import Once.Adequacy.SourceTrace using (moduleToIR; moduleTable; ⟦_⟧IR)
+open import Once.Denotation.Program using (irProgram; tableEnv)
+import Once.Adequacy.WrapBridge as WB
+import Once.Adequacy.SourceFaithful as SF
+import Once.Adequacy.FaithfulLemmas as FLm
 import Once.Denotation.SourceDenote as SD
 open import Once.Denotation.TraceMonad using (T; _>>=T_; projTrace)
 open import Once.Denotation.DenotTrace using (evalᴰ)
@@ -82,8 +85,12 @@ runMainˢ : ∀ {Ψ : Usage 0} → SD.DefsSem → Expr ∅ Ψ EffUU → ℕ → 
 runMainˢ {Ψ} σ se n =
   projTrace ((SD.⟦ se ⟧ˢ fmt σ) (env0 {Ψ} tt) >>=T (λ clo → clo tt)) n
 
-σ₀ : SD.DefsSem
-σ₀ = SD.internalDefs fmt ρ
+-- The call environment of a module's compiled program: its function table.
+ρ-of : P.Module → CallEnv
+ρ-of m = tableEnv fmt (moduleTable m)
+
+σ₀ : P.Module → SD.DefsSem
+σ₀ m = SD.internalDefs fmt (ρ-of m)
 
 -- Bind respects equality of the bound computation, read at the trace level.
 -- plan 0.98: the premise is ONE equation of computations, not a budget-`n`
@@ -107,27 +114,26 @@ open import Once.Adequacy.MainForm fmt using (main-ir-form; Form)
 -- reducible to `source-meaningᴰ-aux ir (main-ir-form m ir mi)`, so
 -- `MainRealizeAgrees.main-extract` can `with main-ir-form m ir mi` and share the
 -- abstracted value with this call (recovering `seR`).
-source-meaningᴰ-aux : ∀ (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) → Form ir →
+source-meaningᴰ-aux : ∀ (m : P.Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) → Form ir →
   Σ-syntax (Usage 0) (λ Ψ →
     Σ-syntax (Expr ∅ Ψ EffUU) (λ seR →
-      ∀ (n : ℕ) → at (⟦ just ir ⟧IR fmt) n ≡ runMainˢ σ₀ seR n))
--- D143: `Ψ` stays ABSTRACT here — matching it would block this function from
--- reducing at its call site. `elaborateFull` (the erasure adapter composed in)
--- keeps the IR's domain `Unit`, and `faithful∅` supplies the denotation at the
--- empty context, doing the `Usage 0` match inside the lemma instead.
-source-meaningᴰ-aux ir (Ψ , seR , eq , _) = Ψ , seR , bridge
+      ∀ (n : ℕ) → at (⟦ just (irProgram (moduleTable m) ir) ⟧IR fmt) n ≡ runMainˢ (σ₀ m) seR n))
+source-meaningᴰ-aux m ir (Ψ , seR , eq , _) = Ψ , seR , bridge
   where
-    bridge : ∀ (n : ℕ) → at (⟦ just ir ⟧IR fmt) n ≡ runMainˢ σ₀ seR n
+    ρ = ρ-of m
+    bridge : ∀ (n : ℕ) → at (⟦ just (irProgram (moduleTable m) ir) ⟧IR fmt) n ≡ runMainˢ (σ₀ m) seR n
     bridge n =
-      trans (cong (λ X → at (⟦ just X ⟧IR fmt) n) eq)
-        (trans (wrap-trace (elaborateFull C.Heap seR) n)
+      trans (cong (λ X → at (⟦ just (irProgram (moduleTable m) X) ⟧IR fmt) n) eq)
+        (trans (WB.wrap-trace fmt ρ (elaborateFull C.Heap seR) n)
                (bind-cong-trace (evalᴰ fmt ρ (elaborateFull C.Heap seR) tt)
-                                (SD.⟦ seR ⟧ˢ fmt σ₀ (env0 {Ψ} tt)) (λ clo → clo tt) n
-                                (T-ext-at (faithful∅ seR))))
+                                (SD.⟦ seR ⟧ˢ fmt (σ₀ m) (env0 {Ψ} tt)) (λ clo → clo tt) n
+                                (FLm.T-ext-at fmt ρ (SF.faithful∅ fmt ρ seR))))
 
+-- D244: `main`'s compiled PROGRAM (its IR in its module's function table)
+-- means what its surface term means in that table's definitions environment.
 source-meaningᴰ : ∀ (m : P.Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) →
   moduleToIR m ≡ just ir →
   Σ-syntax (Usage 0) (λ Ψ →
     Σ-syntax (Expr ∅ Ψ EffUU) (λ seR →
-      ∀ (n : ℕ) → at (⟦ just ir ⟧IR fmt) n ≡ runMainˢ σ₀ seR n))
-source-meaningᴰ m ir mi = source-meaningᴰ-aux ir (main-ir-form m ir mi)
+      ∀ (n : ℕ) → at (⟦ just (irProgram (moduleTable m) ir) ⟧IR fmt) n ≡ runMainˢ (σ₀ m) seR n))
+source-meaningᴰ m ir mi = source-meaningᴰ-aux m ir (main-ir-form m ir mi)

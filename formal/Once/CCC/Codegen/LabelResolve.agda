@@ -48,7 +48,8 @@ open import Once.CCC.Machine.SMCore
   using (AbstractTrace; AbstractInstr; instr-ctrl; c-label)
 open import Once.CCC.Machine.SMCore as SM using ()
 open import Once.CCC.Machine.Flat using (module FlatMachine)
-open import Once.CCC.Codegen.LabelScope o using (once-label-of; LabelIn; LabelsIn; in-range)
+
+open import Once.CCC.Codegen.LabelSeg using (LabelIn; once-label-of; LabelsIn; in-range)
 
 module Resolve {FS : FrameSemantics} where
   open FlatMachine {FS}

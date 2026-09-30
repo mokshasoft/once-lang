@@ -87,8 +87,9 @@ import Once.Adequacy.RealizeBridge as RB
 --     structural constructors (incl. effApp/cata/ana) are PROVEN by induction in
 --     `Once.Adequacy.ResolveFaithful`; the only residuals are two NARROW
 --     denotational postulates there (sigOp→closure rewrite, poly body-splice).
-open import Once.Adequacy.ResolveFaithful fmt using (resolveExpr-faithful; σ₀; σR)
-open import Once.Adequacy.FaithfulLemmas fmt using (T-ext-at)
+-- D244: the resolver's faithfulness at the MODULE's own call environment.
+import Once.Adequacy.ResolveFaithful as RF
+import Once.Adequacy.FaithfulLemmas as FLm
 
 -- (B) realize denotational-invariance — ANY two `⊢ᶜ` derivations of the SAME
 --     judgment realize to denotationally-equal terms. This is what lets the
@@ -125,7 +126,7 @@ main-link m ir mi =
   in C.cpolys msc , C.declImps (C.CScope.ctele msc) , (("main" , EffUU) ∷ C.CScope.cimps msc) , 0
 
 σTp : ∀ (m : P.Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) (mi : moduleToIR m ≡ just ir) → SD.DefsSem
-σTp m ir mi = let (polys , imps , userFns , fresh) = main-link m ir mi in σR polys imps userFns fresh
+σTp m ir mi = let (polys , imps , userFns , fresh) = main-link m ir mi in RF.σR fmt (ME.ρ-of m) polys imps userFns fresh
 
 main-extract :
   ∀ (m : P.Module) (mt : ModuleTyped m) (hvm : HasValidMain m mt)
@@ -138,10 +139,10 @@ main-extract :
     Σ-syntax (⟦ ⟦ NamedCtx.debruijn cctx Srf.↾ Ψ ⟧ᶜ ⟧ᴰ) (λ dγ₀ →
     Σ-syntax (cctx ⊢ᶜ body ∶ EffUU ⨾ Ψ) (λ mtder →
     Σ-syntax (checkElab cctx body EffUU ≡ success Ψ se d f) (λ ce →
-      (SD.⟦ proj₁ (proj₂ (ME.source-meaningᴰ m ir mi)) ⟧ˢ fmt σ₀
+      (SD.⟦ proj₁ (proj₂ (ME.source-meaningᴰ m ir mi)) ⟧ˢ fmt (ME.σ₀ m)
           (env0 {proj₁ (ME.source-meaningᴰ m ir mi)} tt)
                ≡ SD.⟦ resolveExpr (proj₁ (main-link m ir mi)) (proj₁ (proj₂ (main-link m ir mi)))
-                                  (proj₁ (proj₂ (proj₂ (main-link m ir mi)))) (proj₂ (proj₂ (proj₂ (main-link m ir mi)))) se ⟧ˢ fmt σ₀ dγ₀)
+                                  (proj₁ (proj₂ (proj₂ (main-link m ir mi)))) (proj₂ (proj₂ (proj₂ (main-link m ir mi)))) se ⟧ˢ fmt (ME.σ₀ m) dγ₀)
     × (SD.⟦ proj₂ (MC.mainRealized m mt hvm) ⟧ˢ fmt (σTp m ir mi)
           (env0 {proj₁ (MC.mainRealized m mt hvm)} tt)
                ≡ SD.⟦ realize mtder ⟧ˢ fmt (σTp m ir mi) dγ₀))))))))))
@@ -165,19 +166,19 @@ main-extract m mt hvm ir mi =
 main-realize-agrees-proof :
   ∀ (m : P.Module) (mt : ModuleTyped m) (hvm : HasValidMain m mt)
     (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) (mi : moduleToIR m ≡ just ir)
-  → ∀ n → ME.runMainˢ σ₀ (proj₁ (proj₂ (ME.source-meaningᴰ m ir mi))) n
+  → ∀ n → ME.runMainˢ (ME.σ₀ m) (proj₁ (proj₂ (ME.source-meaningᴰ m ir mi))) n
           ≡ ME.runMainˢ (σTp m ir mi) (proj₂ (MC.mainRealized m mt hvm)) n
 main-realize-agrees-proof m mt hvm ir mi n
   with main-extract m mt hvm ir mi
 ... | cctx , body , Ψ , se , d , f , dγ₀ , mtder , ce , seR-syn , rt-syn =
       ME.bind-cong-trace
-          (SD.⟦ proj₁ (proj₂ (ME.source-meaningᴰ m ir mi)) ⟧ˢ fmt σ₀
+          (SD.⟦ proj₁ (proj₂ (ME.source-meaningᴰ m ir mi)) ⟧ˢ fmt (ME.σ₀ m)
           (env0 {proj₁ (ME.source-meaningᴰ m ir mi)} tt))
           (SD.⟦ proj₂ (MC.mainRealized m mt hvm) ⟧ˢ fmt (σTp m ir mi)
           (env0 {proj₁ (MC.mainRealized m mt hvm)} tt))
           (λ clo → clo tt) n
           (trans seR-syn
-            (trans (T-ext-at (resolveExpr-faithful polys imps userFns fresh se dγ₀))
+            (trans (FLm.T-ext-at fmt (ME.ρ-of m) (RF.resolveExpr-faithful fmt (ME.ρ-of m) polys imps userFns fresh se dγ₀))
               (trans (RB.realize-agrees fmt (σTp m ir mi) cctx body EffUU ce dγ₀)
                 (trans (realize-invariant (check-sound cctx body EffUU ce) mtder (σTp m ir mi) dγ₀)
                        (sym rt-syn)))))

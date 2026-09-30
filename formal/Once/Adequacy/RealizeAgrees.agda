@@ -31,7 +31,7 @@ import Data.List as DL
 -- downstream uses these as facts and never reduces them — so the "recursive
 -- function in a parameterised module stops reducing" trap does not apply. The
 -- denotations themselves take it as an explicit argument.
-open import Once.Denotation.SourceDenote using (DefsSem)
+open import Once.Denotation.SourceDenote using (DefsSem; calls)
 
 -- Plan 0.103 phase 1c: agreement holds in ANY definitions environment `σ` —
 -- both sides leave definition references open (`poly x T`).

@@ -88,7 +88,7 @@ open import Once.IR.Size using (ir-size)
 open import Once.Denotation.Behavior using (Behavior; at; behavior-by)
 open import Once.Denotation.Trace using (SigOpEvent)
 open import Once.Adequacy.SourceTrace using (moduleToIR; ⟦_⟧IR)
-open import Once.CCC.Codegen.ProgramImage using (program-image; fns-image)
+open import Once.CCC.Codegen.ProgramImage using (program-image; fns-image; fn-next)
 import Once.CCC.Codegen.CataIRSlotStable as CIS
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
 open import Data.List.Relation.Unary.All.Properties using (++⁺)
@@ -97,12 +97,12 @@ open import Once.CCC.Label using (LabelId)
 open import Data.Nat using (ℕ)
 open import Relation.Binary.PropositionalEquality using (subst)
 open import Once.CCC.Codegen.IRObsCorrectFlat o tbl using (module IRObsCorrectFlatness)
-open import Once.CCC.Codegen.IRToTrace o using (ir-to-trace; ir-stack-budget)
+open import Once.CCC.Codegen.IRToTrace o using (ir-to-trace; ir-stack-budget; ir-next-label)
 open import Once.CCC.Codegen.BlockLayout using (module Layout)
 open import Once.CCC.Codegen.LabelsUnique o using (module Unique)
 open Layout {FS} using (MissBefore; NoThunks; missBefore-from; blocks-at; Span)
 open import Data.List using (_++_; []; _∷_)
-open import Once.CCC.Machine.SMCore using (instr-ctrl; c-ret; blocks-layout; AbstractTrace; e-thunk)
+open import Once.CCC.Machine.SMCore using (instr-ctrl; c-ret; blocks-layout; block-layout; AbstractTrace; e-thunk)
 open import Data.List.Properties using (++-assoc)
 open import Data.List.Properties using (++-identityʳ; take-all)
 open import Once.Denotation.TraceMonad using (projTrace; bnd)
@@ -425,28 +425,28 @@ blocks-prefix : ∀ (t₁ t₂ : AbstractTrace) (bs : List (LabelId × ℕ × Ab
               → BlocksAt t₁ bs → BlocksAt (t₁ ++ t₂) bs
 blocks-prefix t₁ t₂ []                    []                        = []
 blocks-prefix t₁ t₂ ((lbl , b , t) ∷ bs) ((j , feq , sp) ∷ rest) =
-  (j , ft-go-prefix t₁ t₂ (e-thunk lbl) 0 j feq , span-prefix t₁ t₂ j _ sp)
+  (j , ft-go-prefix t₁ t₂ (e-thunk lbl) 0 j feq , span-prefix t₁ t₂ j (block-layout (lbl , b , t)) sp)
   ∷ blocks-prefix t₁ t₂ bs rest
 
 entry-span : (ir : IR Unit Unit) → SpanAt (image ir) 0 (emitted 0 0 ir)
-entry-span ir = span-prefix (ir-to-trace ir) (fns-image tbl) 0 (emitted 0 0 ir) (main-span ir)
+entry-span ir = span-prefix (ir-to-trace ir) (fns-image (ir-next-label 0 ir) tbl) 0 (emitted 0 0 ir) (main-span ir)
 
 entry-labels : (ir : IR Unit Unit) → LabelsAt (image ir) 0 (emitted 0 0 ir)
-entry-labels ir m j eq = fl-go-prefix (ir-to-trace ir) (fns-image tbl) m 0 _ (main-labels ir m j eq)
+entry-labels ir m j eq = fl-go-prefix (ir-to-trace ir) (fns-image (ir-next-label 0 ir) tbl) m 0 _ (main-labels ir m j eq)
 
 entry-blocks : (ir : IR Unit Unit) → BlocksAt (image ir) (blocks 0 0 ir)
-entry-blocks ir = blocks-prefix (ir-to-trace ir) (fns-image tbl) (blocks 0 0 ir) (main-blocks ir)
+entry-blocks ir = blocks-prefix (ir-to-trace ir) (fns-image (ir-next-label 0 ir) tbl) (blocks 0 0 ir) (main-blocks ir)
 
 -- Every function entry is slot-stable: its marker moves only the frame, and
 -- its unit is the emitter's, stable under its OWN owner.
-fns-slot-stable : ∀ (es : List IRFun) → AllSlotStable (fns-image es)
-fns-slot-stable []       = []
-fns-slot-stable (e ∷ es) =
-  ++⁺ (tt ∷ CIS.CataIRSlotStable.ir-to-trace-slot-stable (fname e) {FS} (fbody e))
-      (fns-slot-stable es)
+fns-slot-stable : ∀ (l : ℕ) (es : List IRFun) → AllSlotStable (fns-image l es)
+fns-slot-stable l []       = []
+fns-slot-stable l (e ∷ es) =
+  ++⁺ (tt ∷ CIS.CataIRSlotStable.ir-to-trace-lab-slot-stable (fname e) {FS} (fbody e) l)
+      (fns-slot-stable (fn-next l e) es)
 
 image-slot-stable : (ir : IR Unit Unit) → AllSlotStable (image ir)
-image-slot-stable ir = ++⁺ (ir-to-trace-slot-stable ir) (fns-slot-stable tbl)
+image-slot-stable ir = ++⁺ (ir-to-trace-slot-stable ir) (fns-slot-stable (ir-next-label 0 ir) tbl)
 
 entry-witness : (ir : IR Unit Unit) → IRObsCorrectF ir
               → (brs : BlockRunsT) → (k : ℕ)

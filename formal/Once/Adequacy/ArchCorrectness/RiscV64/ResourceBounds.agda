@@ -42,7 +42,7 @@ import Once.CCC.Target.RiscV64.Semantics as R
 open import Once.CCC.Machine.SMCore
   using (AbstractTrace; instr-alloc-heap; instr-ctrl; c-thunk; c-entry; c-call-fn; c-ret; instr-call-closure
         ; lea-slot; instr-reg-op; scratch-dec; count-inc; instr-load-tag-lit
-        ; instr-load-const)
+        ; instr-load-const; AbstractInstr; CallI)
 open import Once.CCC.Label using (LabelId; EntryId)
 open import Once.CCC.Target.RiscV64.Syntax using (slots; slot-size; sp; s3; s4; Reg)
 open import Once.CCC.Target.RiscV64.AbstractToRiscV using (slot-to-disp)

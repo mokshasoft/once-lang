@@ -40,7 +40,7 @@ open import Data.List.Relation.Unary.All using (All)
 open import Data.List.Relation.Unary.AllPairs using (AllPairs)
 open import Relation.Binary.PropositionalEquality using (_≢_)
 
-open import Once.CCC.Label using (Label; once; thunk; LabelId)
+open import Once.CCC.Label using (Label; once; thunk; LabelId; e-fn)
 open import Once.CanonicalName using (CanonicalName)
 open import Once.SigOp.Info using (SigOpInfo; name; sem; SigOpSem; pureV; emitsV; haltsV)
 open import Once.CCC.Machine.SMCore using
@@ -83,6 +83,10 @@ labels-def (i ∷ is) = labels-def-i i ++ labels-def is
 -- verdict here rather than silently defining nothing.
 labels-def-i (instr-ctrl (c-label m))                = once  m ∷ []
 labels-def-i (instr-ctrl (c-thunk m _))              = thunk m ∷ []
+-- D245: a function entry is a GLOBAL symbol (`once_<f>:`), not a local label;
+-- and a direct call defines nothing.
+labels-def-i (instr-ctrl (c-entry (e-fn _) _))       = []
+labels-def-i (instr-ctrl (c-call-fn _))              = []
 labels-def-i (instr-ctrl (c-jmp _))                  = []
 labels-def-i (instr-ctrl (c-branch-scratch-zero _))  = []
 labels-def-i (instr-ctrl (c-branch-tag-zero _))      = []
@@ -141,6 +145,9 @@ labels-ref-i (instr-ctrl (c-branch-scratch-zero m))  = once  m ∷ []
 labels-ref-i (instr-ctrl (c-branch-tag-zero m))      = once  m ∷ []
 labels-ref-i (instr-ctrl (c-label _))                = []
 labels-ref-i (instr-ctrl (c-thunk _ _))              = []
+labels-ref-i (instr-ctrl (c-entry (e-fn _) _))       = []
+-- D245: `call once_<f>` names a SYMBOL (`syms-ref` has it), not a local label.
+labels-ref-i (instr-ctrl (c-call-fn _))              = []
 labels-ref-i (instr-ctrl (c-ret _))                  = []
 labels-ref-i (instr-load-code-addr m)                = thunk m ∷ []
 labels-ref-i (instr-case-on-tag f g)                 = labels-ref f ++ labels-ref g
@@ -280,6 +287,10 @@ syms-ref-i (instr-case-on-tag f g)                   = syms-ref f ++ syms-ref g
 syms-ref-i (instr-loop b)                            = syms-ref b
 syms-ref-i (instr-ctrl (c-label _))                  = []
 syms-ref-i (instr-ctrl (c-thunk _ _))                = []
+syms-ref-i (instr-ctrl (c-entry (e-fn _) _))         = []
+-- D245: a DIRECT CALL names its callee's global symbol, which the module owes:
+-- `ld` resolves `call once_<f>` against `f`'s own emitted section.
+syms-ref-i (instr-ctrl (c-call-fn f))                = f ∷ []
 syms-ref-i (instr-ctrl (c-jmp _))                    = []
 syms-ref-i (instr-ctrl (c-branch-scratch-zero _))    = []
 syms-ref-i (instr-ctrl (c-branch-tag-zero _))        = []

@@ -56,7 +56,7 @@ open import Once.CCC.Machine.SMCore using (LabelId; AbstractTrace; AbstractInstr
          instr-reg-op; instr-ctrl; lea-indexed;
          module AbstractExec)
 open import Once.CCC.Codegen.IRToTrace o
-  using (ir-to-trace; ir-to-trace'; cata-strategy; cata-dispatch; resuspend-layer;
+  using (ir-to-trace; ir-to-trace-lab; ir-to-trace'; cata-strategy; cata-dispatch; resuspend-layer;
          CataStrategy; strat-const; strat-nat; strat-linear; strat-branching;
          cata-trace-nat; cata-trace-linear; cata-trace-branching;
          visit-walk; rebuild-walk; lsize; cata-br-I₁; cata-br-I₂;

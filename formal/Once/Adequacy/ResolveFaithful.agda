@@ -107,8 +107,10 @@ T-ext-at {l = mkT t₁ r₁} {r = mkT t₂ r₂} h =
 
 -- The meaning of a linked reference: what `resolveExpr` puts at `poly x A`.
 σR : PolyCtx → (String → Imports) → Imports → ℕ → SD.DefsSem
-σR polys imps userFns fresh x A =
-  SD.⟦ resolveExpr {Γ = Srf.∅} {Ψ = Srf.zeroUsage} polys imps userFns fresh (Srf.poly x A) ⟧ˢ fmt σ₀ tt
+-- D245: the CALLS are the program's (`ρ`); only the surface references read
+-- the linked meaning.
+σR polys imps userFns fresh = SD.defsSem ρ (λ x A →
+  SD.⟦ resolveExpr {Γ = Srf.∅} {Ψ = Srf.zeroUsage} polys imps userFns fresh (Srf.poly x A) ⟧ˢ fmt σ₀ tt)
 
 -- The one remaining residual: the `sigOp → closure` rewrite at a user-fn name
 -- is a denotational no-op (Plan 0.55 D#3 (1)). Neither side reads the
