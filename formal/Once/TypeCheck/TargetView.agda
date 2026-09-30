@@ -90,3 +90,29 @@ data SumTarget : Type → Set where
 sumTarget : (T : Type) → SumTarget T
 sumTarget (A + B) = sum-at A B
 sumTarget _ = sum-other
+
+------------------------------------------------------------------------
+-- Operand view: is an operand's type `Void`? (D229: ex falso in an operator.)
+-- The other case carries its evidence, which `t-binop-void-r` needs.
+------------------------------------------------------------------------
+
+open import Relation.Binary.PropositionalEquality using (_≡_)
+open import Relation.Nullary using (¬_)
+
+data VoidView : Type → Set where
+  is-void  : VoidView Void
+  non-void : ∀ {T} → ¬ (T ≡ Void) → VoidView T
+
+voidView : (T : Type) → VoidView T
+voidView Void          = is-void
+voidView Unit          = non-void (λ ())
+voidView Int           = non-void (λ ())
+voidView Float         = non-void (λ ())
+voidView Str           = non-void (λ ())
+voidView Buffer        = non-void (λ ())
+voidView (rigid _ _)   = non-void (λ ())
+voidView (_ * _)       = non-void (λ ())
+voidView (_ + _)       = non-void (λ ())
+voidView (_ ⇒[ _ ] _)  = non-void (λ ())
+voidView (μ-type _)    = non-void (λ ())
+voidView (ν-type _ _)  = non-void (λ ())

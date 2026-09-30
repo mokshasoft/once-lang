@@ -1131,6 +1131,17 @@ mutual
   inferElabV-RBinOp-aux : (ctx : NamedCtx) (op : Raw.BinOp) (e₁ e₂ : RawExpr)
     → VerifiedInferResult ctx e₁ → VerifiedInferResult ctx e₂
     → VerifiedInferResult ctx (Raw.RBinOp op e₁ e₂)
+  -- The `Void` cases at the operands' `VoidView`s (left, then right).
+  inferElabV-RBinOp-void-l : (ctx : NamedCtx) (op : Raw.BinOp) (e₁ e₂ : RawExpr)
+    {A : Type} (Ψ₁ : Surface.Usage (NamedCtx.size ctx)) (e₁E : SExpr (NamedCtx.debruijn ctx) Ψ₁ A) (d₁ f₁ : ℕ)
+    → ctx ⊢ᵢ e₁ ∶ A ⨾ Ψ₁ → VoidView A → VerifiedInferResult ctx e₂
+    → VerifiedInferResult ctx (Raw.RBinOp op e₁ e₂)
+  inferElabV-RBinOp-void-r : (ctx : NamedCtx) (op : Raw.BinOp) (e₁ e₂ : RawExpr)
+    {A : Type} (Ψ₁ : Surface.Usage (NamedCtx.size ctx)) (e₁E : SExpr (NamedCtx.debruijn ctx) Ψ₁ A) (d₁ f₁ : ℕ)
+    → ctx ⊢ᵢ e₁ ∶ A ⨾ Ψ₁ → ¬ (A ≡ Once.Type.Void)
+    → {B : Type} (Ψ₂ : Surface.Usage (NamedCtx.size ctx)) (e₂E : SExpr (NamedCtx.debruijn ctx) Ψ₂ B) (d₂ f₂ : ℕ)
+    → ctx ⊢ᵢ e₂ ∶ B ⨾ Ψ₂ → VoidView B
+    → VerifiedInferResult ctx (Raw.RBinOp op e₁ e₂)
   -- RLet/RDestruct: the later sub-expressions live in EXTENDED contexts whose
   -- types come from the earlier sub-results, so they fold through nested auxes
   -- (each takes the prior result's data explicitly — no inline `with`).
@@ -2215,32 +2226,22 @@ mutual
   -- D229 / plan 0.94 §13: ex falso in an operator. A `Void` left operand halts
   -- first (the right one is typed, never reached); a `Void` right operand halts
   -- after the left one ran. Everything else is the arithmetic dispatch.
-  inferElabV-RBinOp-void ctx op e₁ e₂ (success Void Ψ₁ e₁E d₁ f₁ , w₁) (failure err , _) = failure (BinOpRightError err) , tt
-  inferElabV-RBinOp-void ctx op e₁ e₂ (success Void Ψ₁ e₁E d₁ f₁ , w₁) (success B Ψ₂ e₂E d₂ f₂ , w₂) =
+  inferElabV-RBinOp-void ctx op e₁ e₂ r₁@(failure _ , _) r₂ = inferElabV-RBinOp-aux ctx op e₁ e₂ r₁ r₂
+  inferElabV-RBinOp-void ctx op e₁ e₂ (success A Ψ₁ e₁E d₁ f₁ , w₁) r₂ =
+    inferElabV-RBinOp-void-l ctx op e₁ e₂ Ψ₁ e₁E d₁ f₁ w₁ (voidView A) r₂
+
+  inferElabV-RBinOp-void-l ctx op e₁ e₂ Ψ₁ e₁E d₁ f₁ w₁ is-void (failure err , _) = failure (BinOpRightError err) , tt
+  inferElabV-RBinOp-void-l ctx op e₁ e₂ Ψ₁ e₁E d₁ f₁ w₁ is-void (success B Ψ₂ e₂E d₂ f₂ , w₂) =
     success Void Ψ₁ e₁E d₁ f₁ , t-binop-void-l w₁ w₂
-  inferElabV-RBinOp-void ctx op e₁ e₂ (success Unit Ψ₁ e₁E d₁ f₁ , w₁) (success Void Ψ₂ e₂E d₂ f₂ , w₂) =
-    success Void _ (seq e₁E e₂E) (d₁ ⊔ d₂) f₂ , t-binop-void-r w₁ (λ ()) w₂
-  inferElabV-RBinOp-void ctx op e₁ e₂ (success Int Ψ₁ e₁E d₁ f₁ , w₁) (success Void Ψ₂ e₂E d₂ f₂ , w₂) =
-    success Void _ (seq e₁E e₂E) (d₁ ⊔ d₂) f₂ , t-binop-void-r w₁ (λ ()) w₂
-  inferElabV-RBinOp-void ctx op e₁ e₂ (success Float Ψ₁ e₁E d₁ f₁ , w₁) (success Void Ψ₂ e₂E d₂ f₂ , w₂) =
-    success Void _ (seq e₁E e₂E) (d₁ ⊔ d₂) f₂ , t-binop-void-r w₁ (λ ()) w₂
-  inferElabV-RBinOp-void ctx op e₁ e₂ (success Str Ψ₁ e₁E d₁ f₁ , w₁) (success Void Ψ₂ e₂E d₂ f₂ , w₂) =
-    success Void _ (seq e₁E e₂E) (d₁ ⊔ d₂) f₂ , t-binop-void-r w₁ (λ ()) w₂
-  inferElabV-RBinOp-void ctx op e₁ e₂ (success Buffer Ψ₁ e₁E d₁ f₁ , w₁) (success Void Ψ₂ e₂E d₂ f₂ , w₂) =
-    success Void _ (seq e₁E e₂E) (d₁ ⊔ d₂) f₂ , t-binop-void-r w₁ (λ ()) w₂
-  inferElabV-RBinOp-void ctx op e₁ e₂ (success (rigid kᵣ iᵣ) Ψ₁ e₁E d₁ f₁ , w₁) (success Void Ψ₂ e₂E d₂ f₂ , w₂) =
-    success Void _ (seq e₁E e₂E) (d₁ ⊔ d₂) f₂ , t-binop-void-r w₁ (λ ()) w₂
-  inferElabV-RBinOp-void ctx op e₁ e₂ (success (A Once.Type.* B) Ψ₁ e₁E d₁ f₁ , w₁) (success Void Ψ₂ e₂E d₂ f₂ , w₂) =
-    success Void _ (seq e₁E e₂E) (d₁ ⊔ d₂) f₂ , t-binop-void-r w₁ (λ ()) w₂
-  inferElabV-RBinOp-void ctx op e₁ e₂ (success (A Once.Type.+ B) Ψ₁ e₁E d₁ f₁ , w₁) (success Void Ψ₂ e₂E d₂ f₂ , w₂) =
-    success Void _ (seq e₁E e₂E) (d₁ ⊔ d₂) f₂ , t-binop-void-r w₁ (λ ()) w₂
-  inferElabV-RBinOp-void ctx op e₁ e₂ (success (A Once.Type.⇒[ k ] B) Ψ₁ e₁E d₁ f₁ , w₁) (success Void Ψ₂ e₂E d₂ f₂ , w₂) =
-    success Void _ (seq e₁E e₂E) (d₁ ⊔ d₂) f₂ , t-binop-void-r w₁ (λ ()) w₂
-  inferElabV-RBinOp-void ctx op e₁ e₂ (success (Once.Type.μ-type F) Ψ₁ e₁E d₁ f₁ , w₁) (success Void Ψ₂ e₂E d₂ f₂ , w₂) =
-    success Void _ (seq e₁E e₂E) (d₁ ⊔ d₂) f₂ , t-binop-void-r w₁ (λ ()) w₂
-  inferElabV-RBinOp-void ctx op e₁ e₂ (success (Once.Type.ν-type F π) Ψ₁ e₁E d₁ f₁ , w₁) (success Void Ψ₂ e₂E d₂ f₂ , w₂) =
-    success Void _ (seq e₁E e₂E) (d₁ ⊔ d₂) f₂ , t-binop-void-r w₁ (λ ()) w₂
-  inferElabV-RBinOp-void ctx op e₁ e₂ r₁ r₂ = inferElabV-RBinOp-aux ctx op e₁ e₂ r₁ r₂
+  inferElabV-RBinOp-void-l ctx op e₁ e₂ Ψ₁ e₁E d₁ f₁ w₁ (non-void _) r₂@(failure _ , _) =
+    inferElabV-RBinOp-aux ctx op e₁ e₂ (success _ Ψ₁ e₁E d₁ f₁ , w₁) r₂
+  inferElabV-RBinOp-void-l ctx op e₁ e₂ Ψ₁ e₁E d₁ f₁ w₁ (non-void ne) (success B Ψ₂ e₂E d₂ f₂ , w₂) =
+    inferElabV-RBinOp-void-r ctx op e₁ e₂ Ψ₁ e₁E d₁ f₁ w₁ ne Ψ₂ e₂E d₂ f₂ w₂ (voidView B)
+
+  inferElabV-RBinOp-void-r ctx op e₁ e₂ Ψ₁ e₁E d₁ f₁ w₁ ne Ψ₂ e₂E d₂ f₂ w₂ is-void =
+    success Void _ (seq e₁E e₂E) (d₁ ⊔ d₂) f₂ , t-binop-void-r w₁ ne w₂
+  inferElabV-RBinOp-void-r ctx op e₁ e₂ Ψ₁ e₁E d₁ f₁ w₁ ne Ψ₂ e₂E d₂ f₂ w₂ (non-void _) =
+    inferElabV-RBinOp-aux ctx op e₁ e₂ (success _ Ψ₁ e₁E d₁ f₁ , w₁) (success _ Ψ₂ e₂E d₂ f₂ , w₂)
 
   -- left non-Int → BinOpLeftError
   inferElabV-RBinOp-aux ctx op e₁ e₂ (failure err , _) _ = failure (BinOpLeftError err) , tt
