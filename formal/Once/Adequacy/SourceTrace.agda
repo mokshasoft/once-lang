@@ -143,15 +143,16 @@ irFunOf : C.CompiledFun → IRFun
 irFunOf cf = irFun (cfName cf) ⌊ proj₁ dc ⌋ ⌊ proj₁ (proj₂ dc) ⌋ (proj₂ (proj₂ dc))
   where dc = C.directCallIR (cfType cf) (cfIR cf)
 
--- keep an entry: not a primitive, and not the entry `main`.
-tbl-keep : Bool → Bool → C.CompiledFun → List IRFun → List IRFun
-tbl-keep false false cf acc = irFunOf cf ∷ acc
-tbl-keep false true  cf acc = acc
-tbl-keep true  _     cf acc = acc
+-- keep every entry but the entry point `main`. D246: an FFI declaration is an
+-- entry too — its compiled form is its SigOp wrapper, and a reference to it is
+-- a call of it like any other.
+tbl-keep : Bool → C.CompiledFun → List IRFun → List IRFun
+tbl-keep false cf acc = irFunOf cf ∷ acc
+tbl-keep true  cf acc = acc
 
 tableOf-go : List C.CompiledFun → List IRFun → List IRFun
 tableOf-go []         acc = acc
-tableOf-go (cf ∷ cfs) acc = tableOf-go cfs (tbl-keep (cfIsPrimitive cf) (isMain cf) cf acc)
+tableOf-go (cf ∷ cfs) acc = tableOf-go cfs (tbl-keep (isMain cf) cf acc)
 
 tableOf : List C.CompiledFun → List IRFun
 tableOf funs = tableOf-go funs []

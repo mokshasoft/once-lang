@@ -363,6 +363,9 @@ internalDefs fmt ρ = defsSem ρ (λ x A → subst T (cohᴰ A) (evalᴰ fmt ρ 
 -- interpretation-agnostic (no `classify-name`). Matches elaborate's
 -- `SigOp (value-info name) ∘ terminal` ⇒ `faithful` stays `refl`.
 ⟦ sigOp {Γ = Γ} {A = A} name conc ⟧ˢ fmt σ   dγ = mkT (λ n → emit-Dᵇ (value-info {Unit} {A} name base-Unit conc) tt n) (mapRes inject (semM (value-info {Unit} {A} name base-Unit conc) fmt tt))
-⟦ closure {Γ = Γ} {A = A} name ⟧ˢ fmt σ dγ = refs σ name A
+-- D246: a reference to a module ENTRY is a CALL of it (the IR's `Call`), so it
+-- reads the CALL environment; a spliced telescope reference (`poly`) reads the
+-- reference environment.
+⟦ closure {Γ = Γ} {A = A} name ⟧ˢ fmt σ dγ = subst T (cohᴰ A) (evalᴰ fmt (calls σ) (refIR A (bare name)) tt)
 ⟦ poly name PT ⟧ˢ fmt σ dγ = refs σ name PT
 ⟦ closed e ⟧ˢ fmt σ dγ = ⟦ e ⟧ˢ fmt σ tt

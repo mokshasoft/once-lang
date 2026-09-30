@@ -112,16 +112,6 @@ T-ext-at {l = mkT t₁ r₁} {r = mkT t₂ r₂} h =
 σR polys imps userFns fresh = SD.defsSem ρ (λ x A →
   SD.⟦ resolveExpr {Γ = Srf.∅} {Ψ = Srf.zeroUsage} polys imps userFns fresh (Srf.poly x A) ⟧ˢ fmt σ₀ tt)
 
--- The one remaining residual: the `sigOp → closure` rewrite at a user-fn name
--- is a denotational no-op (Plan 0.55 D#3 (1)). Neither side reads the
--- definitions environment.
-postulate
-  resolveExpr-sigOp-closure-faithful :
-    ∀ {n} {Γ : Srf.Ctx n} {A : Type} (σ : SD.DefsSem)
-      (s : CanonicalName) (conc : IsConcrete A) (dγ : ⟦ ⟦ Γ Srf.↾ Srf.zeroUsage ⟧ᶜ ⟧ᴰ) (k : ℕ)
-    → SD.⟦ Srf.closure {Γ = Γ} {A = A} (showCanonical s) ⟧ˢ fmt σ₀ dγ ⟨$⟩ k
-        ≡ SD.⟦ Srf.sigOp {Γ = Γ} {A = A} s conc ⟧ˢ fmt σ dγ ⟨$⟩ k
-
 -- A SigOp reference does not read the definitions environment. The surface
 -- meaning dispatches on the type's shape, so the fact is stated per shape.
 sigOp-σ-irrel : ∀ {n} {Γ : Srf.Ctx n} {A : Type} (σ σ′ : SD.DefsSem)
@@ -619,12 +609,9 @@ resolveExpr-faithful polys imps userFns fresh (Srf.ana {F = F} {A = A} wf coalg)
   cong (λ ac → [] , returns (λ a → returnT (anaFᵈ F
          (λ a' → fmapT (coerce-functor-D F A) (ac >>=T λ clo → clo a')) a)))
        (T-ext-at (λ j → resolveExpr-faithful polys imps userFns fresh coalg tt j))
--- sigOp: the resolver rewrites to `closure` iff the name is a user fn (else
--- unchanged). nothing ⇒ refl; just ⇒ the narrow sigOp→closure denotational no-op.
-resolveExpr-faithful {Γ = Γ} {A = A} polys imps userFns fresh (Srf.sigOp s conc) dγ k
-  with lookupImport userFns (showCanonical s)
-... | just _  = resolveExpr-sigOp-closure-faithful {Γ = Γ} {A = A} (σR polys imps userFns fresh) s conc dγ k
-... | nothing = cong (_⟨$⟩ k) (sigOp-σ-irrel {Γ = Γ} {A = A} σ₀ (σR polys imps userFns fresh) s conc dγ)
+-- sigOp: D246 — the resolver passes it through, and a SigOp reads no environment.
+resolveExpr-faithful {Γ = Γ} {A = A} polys imps userFns fresh (Srf.sigOp s conc) dγ k =
+  cong (_⟨$⟩ k) (sigOp-σ-irrel {Γ = Γ} {A = A} σ₀ (σR polys imps userFns fresh) s conc dγ)
 -- poly: the substitution lemma's variable case — the linked reference means
 -- `σR x A` by definition, up to its context-independence.
 resolveExpr-faithful {Γ = Γ} {A = A} polys imps userFns fresh (Srf.poly x T) dγ k =

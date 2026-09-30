@@ -772,9 +772,12 @@ resolveExprWF polys pAcc imps userFns fresh (Surface.coerce p e) = Surface.coerc
 -- Semantic preservation: `evalSurface (sigOp x) ≡ evalSurface (closure x)`
 -- by construction (both go through `generic-semI`); the rewrite is a
 -- no-op in the denotation.
-resolveExprWF polys _ imps userFns _ (Surface.sigOp s conc) with lookupImport userFns (showCanonical s)
-... | just _  = Surface.closure (showCanonical s)
-... | nothing = Surface.sigOp s conc
+-- D246: a module entry's reference is ALREADY a call (`closure`) when it reaches
+-- the resolver, so a `sigOp` is a real SigOp (a qualified external or a
+-- compiler-minted one) and passes through. (The old sigOp→closure rewrite at a
+-- user-fn name is gone, and with it its faithfulness residual — false once a
+-- definition's call means its body.)
+resolveExprWF polys _ imps userFns _ (Surface.sigOp s conc) = Surface.sigOp s conc
 -- Plan 0.19: closure already classified. Pass through unchanged.
 resolveExprWF polys _ imps userFns _ (Surface.closure s) = Surface.closure s
 -- Plan 0.2.4.5 D2: morphism-realm forms carry CCC IR directly (no

@@ -62,7 +62,7 @@ open import Once.Surface.Thinning using (weaken; weakenFromEmpty)
 open import Once.Surface.Seq using (seq; seq0; embedClosed)
 open import Once.Surface.Syntax using (Expr; Usage; zeroUsage; var; svar; svar→expr;
   lam; app; effApp; pair; neg; let'; case'; int; float; str; unit;
-  add; sub; mul; div; mod'; fadd; fsub; fmul; fdiv; i2f; lt; le; gt; ge; eq; ne; sigOp; poly; closed;
+  add; sub; mul; div; mod'; fadd; fsub; fmul; fdiv; i2f; lt; le; gt; ge; eq; ne; sigOp; closure; poly; closed;
   lift-morphism; morph-app; coerce; cata; ana; comp'; copair'; fork'; curry')
 open import Once.Surface.Elaborate using (intLit; floatLit; elaborate)
 open import Once.Arith.SigOp.Builders using (value-info)
@@ -153,7 +153,8 @@ realize-infer (t-var-qualified {name = name} {alias = alias} _ conc) = sigOp (ba
 -- reference elaboration reads it with NO String render, so it agrees with
 -- the elaborator's `SigOpInfo.name` by construction.
 realize-infer (t-var-resolved {cn = cn} _ _ conc) = sigOp cn conc
-realize-infer (t-var-import {x = x} _ _ _ conc) = sigOp (bare x) conc
+-- D246: a module entry's reference is a call of the entry.
+realize-infer (t-var-import {x = x} _ _ _ conc) = closure x
 -- Plan 0.103 phase 1c: a ground telescope reference is a VARIABLE of the
 -- definitions context, so its reference elaboration is the open term
 -- `poly x T` — exactly what the elaborator emits. Its meaning is read from the

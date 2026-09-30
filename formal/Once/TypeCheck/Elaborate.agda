@@ -2377,7 +2377,8 @@ mutual
     inferElabV-RVar-poly-aux ctx x eq-loc eq-imp
 
   inferElabV-RVar-import-value-aux ctx x eq-loc ty eq-imp (no ¬gw) _ (just conc) _ =
-    success ty _ (Surface.sigOp (bare x) conc) 0 (NamedCtx.freshCounter ctx)
+    -- D246: a module entry's reference is a CALL of the entry, not a SigOp.
+    success ty _ (Surface.closure x) 0 (NamedCtx.freshCounter ctx)
     , t-var-import ¬gw eq-loc eq-imp conc
   inferElabV-RVar-import-value-aux ctx x eq-loc ty eq-imp (no _) _ nothing _ =
     failure (NonConcreteSigOpType x ty) , tt
