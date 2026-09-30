@@ -90,6 +90,7 @@ open import Once.Type.Rigid using (KindedInstance; kindedInstance?)
 open import Once.Type.Determined using (ArrowView; arrowSchema?; arrow-instance; codVarsInDom?)
 open import Once.TypeCheck.DeciderComplete using (isGround-complete-at)
 open import Once.TypeCheck.Judgment
+open import Once.TypeCheck.TargetView
 
 ------------------------------------------------------------------------
 -- Weakening from Empty Context
@@ -950,6 +951,9 @@ mutual
   -- `A ⇒[Many] (B * C)` shape.
   checkPair : (ctx : NamedCtx) → (pairHead arg : RawExpr) → (T : Type)
             → VerifiedCheckResult ctx (Raw.RApp pairHead arg) T
+  -- The rule at its target view (`Once.TypeCheck.TargetView`); likewise below.
+  checkPairOn : (ctx : NamedCtx) (f g : RawExpr) (T : Type) → PairTarget T
+              → VerifiedCheckResult ctx (Raw.RApp (Raw.RApp (Raw.RResolved (gen "pair")) f) g) T
   -- Plan 0.36 Phase 2a follow-up: check-mode for the pair LITERAL
   -- `(a , b)` at a product type — checks components bidirectionally.
   checkPairLit : (ctx : NamedCtx) → (a b : RawExpr) → (A B : Type)
@@ -959,6 +963,8 @@ mutual
   -- `(A + B) ⇒[Many] C` shape.
   checkCase : (ctx : NamedCtx) → (caseHead arg : RawExpr) → (T : Type)
             → VerifiedCheckResult ctx (Raw.RApp caseHead arg) T
+  checkCaseOn : (ctx : NamedCtx) (f g : RawExpr) (T : Type) → CaseTarget T
+              → VerifiedCheckResult ctx (Raw.RApp (Raw.RApp (Raw.RResolved (gen "case")) f) g) T
   -- The arm-checking core of `case`, parameterised by the copair domains A B, codomain C, and grade π.
   -- Extracting it lets the eff-subsumption clause of `checkCase` call it at two
   -- grades (try eff; else pure + arr'/t-subsume) without duplicating the body.
@@ -970,6 +976,8 @@ mutual
   -- POC-3).
   checkCompose : (ctx : NamedCtx) → (composeHead arg : RawExpr) → (T : Type)
                → VerifiedCheckResult ctx (Raw.RApp composeHead arg) T
+  checkComposeOn : (ctx : NamedCtx) (f g : RawExpr) (T : Type) → ArrowTarget T
+                 → VerifiedCheckResult ctx (Raw.RApp (Raw.RApp (Raw.RResolved (gen "compose")) f) g) T
   -- Plan 0.94 §10: the middle type, locally determined. `g`'s side first (the
   -- domain-given mode), then `f`'s (its synthesized input), else an annotation
   -- is needed.
@@ -992,6 +1000,8 @@ mutual
                      (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] C)
   checkCurry : (ctx : NamedCtx) → (arg : RawExpr) → (T : Type)
              → VerifiedCheckResult ctx (Raw.RApp (Raw.RResolved (gen "curry")) arg) T
+  checkCurryOn : (ctx : NamedCtx) (arg : RawExpr) (T : Type) → CurryTarget T
+               → VerifiedCheckResult ctx (Raw.RApp (Raw.RResolved (gen "curry")) arg) T
   checkApply : (ctx : NamedCtx) → (arg : RawExpr) → (T : Type)
              → VerifiedCheckResult ctx (Raw.RApp (Raw.RResolved (gen "apply")) arg) T
   -- Recursion-scheme generators (Plan 0.28 Commit 2). The `…Go`/`…A/B/C`
@@ -1015,12 +1025,16 @@ mutual
 
   checkIn : (ctx : NamedCtx) → (arg : RawExpr) → (T : Type)
           → VerifiedCheckResult ctx (Raw.RApp (Raw.RResolved (gen "In")) arg) T
+  checkInOn : (ctx : NamedCtx) (arg : RawExpr) (T : Type) → InTarget T
+            → VerifiedCheckResult ctx (Raw.RApp (Raw.RResolved (gen "In")) arg) T
   checkInGo : (ctx : NamedCtx) (arg : RawExpr) (F : Once.Type.Functor)
             → (mw : Maybe (Once.Functor.Translate.WellFormedF F))
             → wellFormedF? F ≡ mw
             → VerifiedCheckResult ctx (Raw.RApp (Raw.RResolved (gen "In")) arg) (Once.Type.μ-type F)
   checkCata : (ctx : NamedCtx) → (arg : RawExpr) → (T : Type)
             → VerifiedCheckResult ctx (Raw.RApp (Raw.RResolved (gen "cata")) arg) T
+  checkCataOn : (ctx : NamedCtx) (arg : RawExpr) (T : Type) → CataTarget T
+              → VerifiedCheckResult ctx (Raw.RApp (Raw.RResolved (gen "cata")) arg) T
   -- Plan 0.36 Phase 2a: dispatch on `wellFormedF? F`; the algebra is
   -- elaborated as an ordinary function in the EMPTY context (see clause).
   checkCataGo : (ctx : NamedCtx) (alg : RawExpr) (F : Once.Type.Functor) (A : Type)
@@ -1034,6 +1048,8 @@ mutual
   -- cata reads it from `μ-type F ⇒ A`.
   checkAna : (ctx : NamedCtx) → (arg : RawExpr) → (T : Type)
            → VerifiedCheckResult ctx (Raw.RApp (Raw.RResolved (gen "ana")) arg) T
+  checkAnaOn : (ctx : NamedCtx) (arg : RawExpr) (T : Type) → AnaTarget T
+             → VerifiedCheckResult ctx (Raw.RApp (Raw.RResolved (gen "ana")) arg) T
   checkAnaGo : (ctx : NamedCtx) (coalg : RawExpr) (F : Once.Type.Functor) (A : Type)
                (π₀ π : Once.Type.Purity)
              → (mw : Maybe (Once.Functor.Translate.WellFormedF F)) → wellFormedF? F ≡ mw
@@ -1375,8 +1391,10 @@ mutual
   -- eff clause that checked the arms at `pure` and wrapped the result in
   -- `arr'`/`t-subsume`: that route could type an effectful pair EXPRESSION but
   -- never an effectful ARM, which is what an emitting `ana` coalgebra needs.
-  checkPair ctx (Raw.RApp (Raw.RResolved (gen "pair")) f_inner) arg
-            (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] (B Once.Type.* C))
+  checkPair ctx (Raw.RApp (Raw.RResolved (gen "pair")) f_inner) arg T =
+    checkPairOn ctx f_inner arg T (pairTarget T)
+  checkPair _ _ _ _ = failure (BuiltinTypeMismatch "pair") , tt
+  checkPairOn ctx f_inner arg _ (pair-at A π B C)
     with checkElabV ctx f_inner (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B)
   ... | failure err , _ = failure err , tt
   ... | success Ψf fE df frf , wF
@@ -1386,9 +1404,8 @@ mutual
             =
               success _ (Surface.fork' fE gE)
                 (suc (df Data.Nat.⊔ dg)) frg , t-pair-morph-check wF wG
-  -- Any other shape falls through to failure. Consistent with
-  -- ahv-inl's per-shape exhaustive enumeration pattern.
-  checkPair _ _ _ _ = failure (BuiltinTypeMismatch "pair") , tt
+  -- Any other shape fails.
+  checkPairOn _ _ _ _ pair-other = failure (BuiltinTypeMismatch "pair") , tt
 
   -- Plan 0.36 Phase 2a follow-up: pair literal `(a , b)` at `A * B`.
   -- CHECK each component against its expected type (so check-only
@@ -1414,10 +1431,11 @@ mutual
   -- direct `lift-morphism (IR.case m_f m_g)`; no closure fallback.
   -- Plan 0.52 (pure⊑eff): case at an EFF outer arrow — mirror of the compose
   -- eff-clause. Try eff arms; else check the whole case at PURE and subsume.
-  checkCase ctx (Raw.RApp (Raw.RResolved (gen "case")) f_inner) arg
-            ((A Once.Type.+ B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] C) =
-    checkCaseGo ctx f_inner arg A B C π
+  checkCase ctx (Raw.RApp (Raw.RResolved (gen "case")) f_inner) arg T =
+    checkCaseOn ctx f_inner arg T (caseTarget T)
   checkCase _ _ _ _ = failure (BuiltinTypeMismatch "case") , tt
+  checkCaseOn ctx f_inner arg _ (case-at A B π C) = checkCaseGo ctx f_inner arg A B C π
+  checkCaseOn _ _ _ _ case-other = failure (BuiltinTypeMismatch "case") , tt
 
   checkCaseGo ctx f g A B C π
     with checkElabV ctx f (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] C)
@@ -1433,10 +1451,12 @@ mutual
   -- `compose f g` at `A ⇒[Many π] C` (plan 0.94 §10): the middle type is
   -- determined LOCALLY — by `g` given `A` (`elabGivenV`), else by `f`'s own
   -- synthesized input — and otherwise needs an annotation.
-  checkCompose ctx (Raw.RApp (Raw.RResolved (gen "compose")) f_inner) arg
-               (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] C) =
-    checkCompose-g ctx f_inner arg A C π (elabGivenV ctx arg A π)
+  checkCompose ctx (Raw.RApp (Raw.RResolved (gen "compose")) f_inner) arg T =
+    checkComposeOn ctx f_inner arg T (arrowTarget T)
   checkCompose _ _ _ _ = failure (BuiltinTypeMismatch "compose") , tt
+  checkComposeOn ctx f_inner arg _ (arrow-at A π C) =
+    checkCompose-g ctx f_inner arg A C π (elabGivenV ctx arg A π)
+  checkComposeOn _ _ _ _ arrow-other = failure (BuiltinTypeMismatch "compose") , tt
 
   -- `g` determined the middle: check `f` there; if `f` does not fit, `f`'s own
   -- synthesized input may still (it can name a LARGER middle `g` converts to).
@@ -1548,12 +1568,13 @@ mutual
   -- (and the body) to `pure` and varied the OUTER one, so `Eff Int (Int -> Int)`
   -- was accepted while `Int -> Eff Int Unit` — a curried effectful
   -- continuation, the case that actually needs a grade — was rejected.
-  checkCurry ctx arg (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π₀ ] (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] C))
+  checkCurry ctx arg T = checkCurryOn ctx arg T (curryTarget T)
+  checkCurryOn ctx arg _ (curry-at A π₀ B π C)
     with checkElabV ctx arg ((A Once.Type.* B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] C)
   ... | failure err , _ = failure err , tt
   ... | success Ψ argE d fr , w =
           success _ (Surface.curry' argE) (suc d) fr , t-curry-check w
-  checkCurry _ _ _ = failure (BuiltinTypeMismatch "curry") , tt
+  checkCurryOn _ _ _ curry-other = failure (BuiltinTypeMismatch "curry") , tt
 
   -- Plan 0.6 Phase C.7 POC-3: `apply p` check-mode.
   -- Check mode falls through to infer (apply's infer mode succeeds
@@ -1596,10 +1617,11 @@ mutual
   -- Read F from the expected μ-type, gate on `wellFormedF? F` (threaded
   -- through `checkInGo`), check the argument at the functor layer, emit
   -- `morph-app (IR.In wfF Heap) argE`.
-  checkIn ctx arg (Once.Type.μ-type F) = checkInGo ctx arg F (wellFormedF? F) refl
+  checkIn ctx arg T = checkInOn ctx arg T (inTarget T)
+  checkInOn ctx arg _ (in-at F) = checkInGo ctx arg F (wellFormedF? F) refl
   -- D127: `In arg` at an ARROW type is no longer a lift. It falls through to
   -- the mismatch below, and the program writes `\_ -> In arg`.
-  checkIn _ _ _ = failure (BuiltinTypeMismatch "In") , tt
+  checkInOn _ _ _ in-other = failure (BuiltinTypeMismatch "In") , tt
 
   -- D194: `Out v` — INFER. The argument is inferred, `ν-type F` read off its
   -- type, and `F`'s well-formedness decided exactly as `In`/`cata`/`ana` do.
@@ -1662,9 +1684,9 @@ mutual
   -- `extractMorphWitness`), check the whole cata at PURE and subsume via
   -- arr'/t-subsume. This ACCEPTS `cata pureAlg` at an eff position (soundness of
   -- the `subsume-complete` m-cata bridge).
-  checkCata ctx alg (Once.Type.μ-type F Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] A) =
-    checkCataGo ctx alg F A π (wellFormedF? F) refl
-  checkCata _ _ _ = failure (BuiltinTypeMismatch "cata") , tt
+  checkCata ctx alg T = checkCataOn ctx alg T (cataTarget T)
+  checkCataOn ctx alg _ (cata-at F π A) = checkCataGo ctx alg F A π (wellFormedF? F) refl
+  checkCataOn _ _ _ cata-other = failure (BuiltinTypeMismatch "cata") , tt
 
   -- Plan 0.36 Phase 2a: the algebra is ANY closed function `⟦F⟧T A → A`.
   -- Elaborate it in the EMPTY debruijn context (closed ⇔ empty ctx),
@@ -1695,9 +1717,9 @@ mutual
   -- D192: the unfold. Same three moves as the fold — read `F` from the
   -- expected type, decide `WellFormedF F`, check the coalgebra CLOSED in the
   -- cleared context — with the coalgebra's arrow pointing the other way.
-  checkAna ctx coalg (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π₀ ] Once.Type.ν-type F π) =
-    checkAnaGo ctx coalg F A π₀ π (wellFormedF? F) refl
-  checkAna _ _ _ = failure (BuiltinTypeMismatch "ana") , tt
+  checkAna ctx coalg T = checkAnaOn ctx coalg T (anaTarget T)
+  checkAnaOn ctx coalg _ (ana-at A π₀ F π) = checkAnaGo ctx coalg F A π₀ π (wellFormedF? F) refl
+  checkAnaOn _ _ _ ana-other = failure (BuiltinTypeMismatch "ana") , tt
 
   checkAnaGo ctx coalg F A π₀ π nothing _ = failure (BuiltinTypeMismatch "ana") , tt
   checkAnaGo ctx coalg F A π₀ π (just wfF) eqW

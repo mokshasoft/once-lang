@@ -25,6 +25,9 @@ module Once.TypeCheck.Classify where
 
 open import Data.String using (String; _++_)
 open import Data.String.Properties as StrProp using (_≟_)
+open import Agda.Builtin.Equality.Erase using (primEraseEquality)
+open import Relation.Nullary.Decidable using (map′)
+open import Relation.Binary.Definitions using (DecidableEquality)
 import Data.String
 open import Data.Nat using (ℕ; zero; suc; _<_; s≤s)
 open import Data.Nat.Properties using (≤-refl; m≤n⇒m≤1+n)
@@ -50,6 +53,15 @@ open import Once.TypeCheck.Context as Context using () renaming (_,_∷_ to exte
 -- and hence `NamedCtx`/the typing judgment — is IR-free.
 open import Once.Surface.Context as Surface using ()
   renaming (Ctx to SCtx; ∅ to S∅; _,_ to _S,_; _,_^_ to _S,_^_)
+
+-- | String equality for the head dispatch. The same decision as stdlib's `_≟_`,
+-- but its `yes` proof is erased: it reduces to `refl` as soon as the two
+-- strings are equal, instead of normalising a ℕ-equality proof per character
+-- (`≡ᵇ⇒≡`, one step per code point). Every proof that reduces a classified
+-- head (the elaborator's dispatch on `gen "pair"` …) paid that normalisation.
+infix 4 _≟ₛ_
+_≟ₛ_ : DecidableEquality String
+x ≟ₛ y = map′ primEraseEquality (λ p → p) (x ≟ y)
 
 ------------------------------------------------------------------------
 ------------------------------------------------------------------------
@@ -346,42 +358,42 @@ data AppHeadView : RawExpr → Set where
 -- other shape — a bare `RVar`, a user path (ONE component), a deeper path — is
 -- `ahv-other` by construction.
 classifyAppHeadView : (f : RawExpr) → AppHeadView f
-classifyAppHeadView (Raw.RResolved (canonical (ns ∷ g ∷ []))) with ns ≟ generatorNS
+classifyAppHeadView (Raw.RResolved (canonical (ns ∷ g ∷ []))) with ns ≟ₛ generatorNS
 ... | no _ = ahv-other
-... | yes refl with g ≟ "id"
+... | yes refl with g ≟ₛ "id"
 ...   | yes refl = ahv-id
-...   | no  _ with g ≟ "fst"
+...   | no  _ with g ≟ₛ "fst"
 ...     | yes refl = ahv-fst
-...     | no  _ with g ≟ "snd"
+...     | no  _ with g ≟ₛ "snd"
 ...       | yes refl = ahv-snd
-...       | no  _ with g ≟ "terminal"
+...       | no  _ with g ≟ₛ "terminal"
 ...         | yes refl = ahv-terminal
-...         | no  _ with g ≟ "inl"
+...         | no  _ with g ≟ₛ "inl"
 ...           | yes refl = ahv-inl
-...           | no  _ with g ≟ "inr"
+...           | no  _ with g ≟ₛ "inr"
 ...             | yes refl = ahv-inr
-...             | no  _ with g ≟ "initial"
+...             | no  _ with g ≟ₛ "initial"
 ...               | yes refl = ahv-initial
-...               | no  _ with g ≟ "curry"
+...               | no  _ with g ≟ₛ "curry"
 ...                 | yes refl = ahv-curry
-...                 | no  _ with g ≟ "apply"
+...                 | no  _ with g ≟ₛ "apply"
 ...                   | yes refl = ahv-apply
-...                   | no  _ with g ≟ "In"
+...                   | no  _ with g ≟ₛ "In"
 ...                     | yes refl = ahv-In
-...                     | no  _ with g ≟ "cata"
+...                     | no  _ with g ≟ₛ "cata"
 ...                       | yes refl = ahv-cata
-...                       | no  _ with g ≟ "ana"
+...                       | no  _ with g ≟ₛ "ana"
 ...                         | yes refl = ahv-ana
-...                         | no  _ with g ≟ "Out"
+...                         | no  _ with g ≟ₛ "Out"
 ...                           | yes refl = ahv-Out
 ...                           | no  _ = ahv-other
-classifyAppHeadView (Raw.RApp (Raw.RResolved (canonical (ns ∷ g ∷ []))) _) with ns ≟ generatorNS
+classifyAppHeadView (Raw.RApp (Raw.RResolved (canonical (ns ∷ g ∷ []))) _) with ns ≟ₛ generatorNS
 ... | no _ = ahv-other
-... | yes refl with g ≟ "pair"
+... | yes refl with g ≟ₛ "pair"
 ...   | yes refl = ahv-pair-applied
-...   | no  _ with g ≟ "compose"
+...   | no  _ with g ≟ₛ "compose"
 ...     | yes refl = ahv-compose-applied
-...     | no  _ with g ≟ "case"
+...     | no  _ with g ≟ₛ "case"
 ...       | yes refl = ahv-case-applied
 ...       | no  _ = ahv-other
 classifyAppHeadView (Raw.RResolved (canonical []))            = ahv-other
@@ -520,23 +532,23 @@ notGen-shape : ∀ {ps} → (∀ {h : String} → canonical ps ≢ gen h) → No
 notGen-shape f = f ∷ᴬ f ∷ᴬ f ∷ᴬ f ∷ᴬ f ∷ᴬ f ∷ᴬ f ∷ᴬ f ∷ᴬ []ᴬ
 
 classifyGen : (cn : CanonicalName) → GenView cn
-classifyGen (canonical (ns ∷ g ∷ [])) with ns ≟ generatorNS
+classifyGen (canonical (ns ∷ g ∷ [])) with ns ≟ₛ generatorNS
 ... | no ¬ns = gv-other (notGen-ns ¬ns)
-... | yes refl with g ≟ "id"
+... | yes refl with g ≟ₛ "id"
 ...   | yes refl = gv-id
-...   | no  ¬id with g ≟ "fst"
+...   | no  ¬id with g ≟ₛ "fst"
 ...     | yes refl = gv-fst
-...     | no  ¬fs with g ≟ "snd"
+...     | no  ¬fs with g ≟ₛ "snd"
 ...       | yes refl = gv-snd
-...       | no  ¬sn with g ≟ "terminal"
+...       | no  ¬sn with g ≟ₛ "terminal"
 ...         | yes refl = gv-terminal
-...         | no  ¬te with g ≟ "initial"
+...         | no  ¬te with g ≟ₛ "initial"
 ...           | yes refl = gv-initial
-...           | no  ¬in with g ≟ "inl"
+...           | no  ¬in with g ≟ₛ "inl"
 ...             | yes refl = gv-inl
-...             | no  ¬il with g ≟ "inr"
+...             | no  ¬il with g ≟ₛ "inr"
 ...               | yes refl = gv-inr
-...               | no  ¬ir with g ≟ "unit"
+...               | no  ¬ir with g ≟ₛ "unit"
 ...                 | yes refl = gv-unit
 ...                 | no  ¬un = gv-other
                                  ( (λ e → ¬id (gen-inj e))

@@ -52,7 +52,7 @@ open import Once.Functor.Translate using (IsConcrete)
 open import Once.TypeCheck.Classify
   using (NamedCtx; mkCtx; Imports; PolyCtx; lookupLocal; lookupLocal-go; lookupImport;
          lookupPolyPrefix; ctxWithImportsAndPolys; classifyAppHead; classifyAppHeadView;
-         AppHeadView; ahv-cata; ahv-ana; ahv-other; classifyAppHead-nothing⇒view-other)
+         AppHeadView; ahv-cata; ahv-ana; ahv-other; classifyAppHead-nothing⇒view-other; _≟ₛ_)
 open import Once.TypeCheck.Context using (Ctx)
 open import Once.TypeCheck.Context as Context using () renaming (_,_∷_ to extendCtx)
 open import Once.TypeCheck.Judgment
@@ -161,13 +161,13 @@ isAlg-other {f} ah rewrite classifyAppHead-nothing⇒view-other ah = refl
 
 -- The head classification does not look at an application's argument.
 app-head-irr : ∀ (h a a′ : RawExpr) → classifyAppHead (RApp h a) ≡ classifyAppHead (RApp h a′)
-app-head-irr (RResolved (canonical (ns ∷ g ∷ []))) a a′ with ns StrProp.≟ generatorNS
+app-head-irr (RResolved (canonical (ns ∷ g ∷ []))) a a′ with ns ≟ₛ generatorNS
 ... | no _ = refl
-... | yes refl with g StrProp.≟ "pair"
+... | yes refl with g ≟ₛ "pair"
 ...   | yes refl = refl
-...   | no _ with g StrProp.≟ "compose"
+...   | no _ with g ≟ₛ "compose"
 ...     | yes refl = refl
-...     | no _ with g StrProp.≟ "case"
+...     | no _ with g ≟ₛ "case"
 ...       | yes refl = refl
 ...       | no _ = refl
 app-head-irr (RResolved (canonical [])) a a′ = refl
