@@ -85,7 +85,11 @@ import Once.Spec.Core.PolyTyping as PT
 import Once.Denotation.Meaning as MeaningM
 open import Once.Adequacy.MeaningRelation fmt using (RelT; RelT-bind)
 open import Once.Denotation.TraceMonad using (T; projTrace)
-open import Once.Adequacy.TeleEnvLemmas fmt using (σW)
+open import Once.Adequacy.TeleEnvLemmas fmt using (σW; callSD-later)
+import Once.Adequacy.TeleEntry fmt as TE
+open import Once.Functor.Decide using (isConcrete?)
+open import Once.Denotation.Meaning using (sigOpRefᴰ)
+open import Data.List.Properties using (++-assoc)
 
 ------------------------------------------------------------------------
 -- Position predicates
@@ -135,11 +139,6 @@ Fresh csc es = AllPairs _≢_ (map entryName es) × All (λ x → All (x ≢_) (
 ------------------------------------------------------------------------
 
 postulate
-  inv-ffi : ∀ {s} {S : Sig s} {csc tl is ts pre} {fi : C.FunInfo} {ty : Type} {c : IsConcrete ty}
-              {h : HonestFFI ty} {g : RigidFree ty}
-          → Inv {S = S} csc tl is ts pre → All (funName fi ≢_) (scopeNames csc)
-          → Inv (C.extendScope csc (funName fi) ty) tl (i-ffi h g is) ts (irFunOf (FB.primCF fi ty c) ∷ pre)
-
   inv-poly : ∀ {s} {S : Sig s} {csc tl is ts pre} (sg : SigCF S) {pfi : C.PolyFunInfo} {Ψ : Ctx.Usage 0}
                (D : ctxOf (AS.scopeOf csc) ⊢ᶜ pfunBody pfi ∶ rigidOf (pfunType pfi) ⨾ Ψ)
            → Inv {S = S} csc tl is ts pre → All (pfunName pfi ≢_) (scopeNames csc)
@@ -189,6 +188,61 @@ main-step {S = S} {csc} {tl} {is} {ts} {pre} sg {fi} {Ctx.Usage.[]} D inv later 
     relAF : RelT EffUU (GM.⟦_⟧ S (PT.instantiate S noVars _ (A.abs-⊢ S noKinds sg Dc)) fmt δ tt) (SD.⟦ realize D ⟧ˢ fmt σ tt)
     relAF = subst (λ m → RelT EffUU m (SD.⟦ realize D ⟧ˢ fmt σ tt))
                   (trans eqB (CAS.rt-sem S noKinds noVars _ sg Dc fmt δ)) relA
+
+------------------------------------------------------------------------
+-- An FFI entry: its call is its contract (TeleEntry.ffi-entry).
+------------------------------------------------------------------------
+
+private
+  bare-ne : ∀ {x : String} (imps : C.FunCtx) (rest : List String) → All (x ≢_) (map proj₁ imps ++ rest)
+          → All (λ p → bare x ≢ bare (proj₁ p)) imps
+  bare-ne []       rest hs       = []
+  bare-ne (p ∷ ps) rest (h ∷ hs) = (λ e → h (MIF.bare-injective e)) ∷ bare-ne ps rest hs
+
+  -- A later table, seen from the scope before an entry, gains that entry.
+  ns-step : ∀ (later : List IRFun) {x : String} {ty : Type} (imps : C.FunCtx) (e : IRFun) → fname e ≡ bare x
+          → All (λ p → bare x ≢ bare (proj₁ p)) imps
+          → NoShadow later ((x , ty) ∷ imps) → NoShadow (later ++ e ∷ []) imps
+  ns-step []            imps e eq hs ns       = subst (λ n → All (λ p → n ≢ bare (proj₁ p)) imps) (sym eq) hs ∷ []
+  ns-step (e′ ∷ later) imps e eq hs ((_ ∷ a) ∷ ns) = a ∷ ns-step later imps e eq hs ns
+
+  ns-head : ∀ (later : List IRFun) {x : String} {ty : Type} (imps : C.FunCtx)
+          → NoShadow later ((x , ty) ∷ imps) → All (λ e → fname e ≢ bare x) later
+  ns-head []           imps []             = []
+  ns-head (e ∷ later) imps ((h ∷ _) ∷ ns) = h ∷ ns-head later imps ns
+
+inv-ffi : ∀ {s} {S : Sig s} {csc tl is ts pre} {fi : C.FunInfo} {ty : Type} {c : IsConcrete ty}
+            {h : HonestFFI ty} {g : RigidFree ty}
+        → Inv {S = S} csc tl is ts pre → All (funName fi ≢_) (scopeNames csc)
+        → Inv (C.extendScope csc (funName fi) ty) tl (i-ffi h g is) ts (irFunOf (FB.primCF fi ty c) ∷ pre)
+inv-ffi {S = S} {csc} {tl} {is} {ts} {pre} {fi} {ty} {c} {h} {g} inv fr = record
+  { valid = Inv.valid inv
+  ; iself = Inv.iself inv
+  ; rel   = rel′
+  }
+  where
+    x = funName fi
+    δ = teleSem fmt tl
+    e = irFunOf (FB.primCF fi ty c)
+    rel′ : ∀ (later : List IRFun) → NoShadow later ((x , ty) ∷ C.CScope.cimps csc)
+         → ∀ (I : String → Imports) → IAgree I (C.CScope.ctele csc) → ∀ (uf : Imports)
+         → MB.MRel fmt (σW (later ++ e ∷ pre) (C.cpolys csc) I uf) (ctxOf (AS.scopeOf (C.extendScope csc x ty)))
+                   (CE.envOf fmt S δ (i-ffi h g is) ts)
+    rel′ later ns I ia uf = proj₁ old , (new , proj₂ old)
+      where
+        old : MB.MRel fmt (σW (later ++ e ∷ pre) (C.cpolys csc) I uf) (ctxOf (AS.scopeOf csc)) (CE.envOf fmt S δ is ts)
+        old = subst (λ tbl → MB.MRel fmt (σW tbl (C.cpolys csc) I uf) (ctxOf (AS.scopeOf csc)) (CE.envOf fmt S δ is ts))
+                    (++-assoc later (e ∷ []) pre)
+                    (Inv.rel inv (later ++ e ∷ [])
+                       (ns-step later (C.CScope.cimps csc) e refl
+                          (bare-ne (C.CScope.cimps csc) (map (λ q → pfunName (proj₁ q)) (C.CScope.ctele csc)) fr) ns)
+                       I ia uf)
+        new : RelT ty (CE.ffiSem fmt S δ x ty (isConcrete? ty)) (MB.callSD fmt (σW (later ++ e ∷ pre) (C.cpolys csc) I uf) x ty)
+        new = subst (λ m → RelT ty m (MB.callSD fmt (σW (later ++ e ∷ pre) (C.cpolys csc) I uf) x ty))
+                    (sym (CE.ffiSem-conc fmt S δ x ty c))
+                    (subst (RelT ty (sigOpRefᴰ fmt (bare x) c))
+                           (sym (callSD-later later (e ∷ pre) (C.cpolys csc) I uf x ty (ns-head later (C.CScope.cimps csc) ns)))
+                           (TE.ffi-entry pre x ty c))
 
 ------------------------------------------------------------------------
 -- Freshness along the walk

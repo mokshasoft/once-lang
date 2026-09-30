@@ -114,6 +114,10 @@ module _ (δ : GM.DefSem) where
     ... | c , e with trans (sym e) eq
     ...   | ()
 
+  -- An FFI entry means its contract.
+  ffiSem-conc : ∀ x U (k : IsConcrete U) → ffiSem x U (isConcrete? U) ≡ sigOpRefᴰ fmt (bare x) k
+  ffiSem-conc x U k = ffiSem-k x U (isConcrete? U) refl k
+
   agree-imp : ∀ {imps} (is : ImpSig S imps) {x U} (lk : lookupImport imps x ≡ just U) (k : IsConcrete U)
             → impAt imps x (impEnv is) lk ≡ impSem δ (bare x) k (sigAt {S = S} is lk)
   agree-imp TR.[] () k
