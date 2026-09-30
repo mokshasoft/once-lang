@@ -76,11 +76,11 @@ record Agree {imps : Imports} {polys : PolyCtx} (V : View imps polys) (ρ : Mean
 ------------------------------------------------------------------------
 
 open import Once.Surface.Context using (Ctx; Usage; _+ᵘ_; _*ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-trans; ⊑ᵘ-*Many; zeroUsage; _⊑ᵘ_; _⊑∷_; _∷_; _,_^_)
-open import Once.Type using (Quantity; Zero; One; _*_; _+_; Functor; ⟦_⟧T; μ-type)
+open import Once.Type using (Quantity; Zero; One; _*_; _+_; Functor; ⟦_⟧T; μ-type; ν-type)
 open import Once.Functor.Translate using (WellFormedF)
-open import Once.Denotation.Meaning using (cata-sem)
+open import Once.Denotation.Meaning using (cata-sem; ana-sem)
 open import Once.Surface.Context using (_⊔ᵘ_; ⊑ᵘ-refl)
-open import Once.Surface.Properties using (+ᵘ-identityˡ; *ᵘ-identityˡ)
+open import Once.Surface.Properties using (+ᵘ-identityˡ; +ᵘ-identityʳ; *ᵘ-identityˡ)
 open import Once.Denotation.Phase using (bindᴰ)
 open import Data.Fin using (zero; suc)
   renaming (⟦_⟧ᶜ to ⟦_⟧ᶜᵗ)
@@ -194,6 +194,39 @@ module Comb {δ : GM.DefSem} where
                     (+ᵘ-identityˡ Ψ)
           _∙_ = trans
 
+  -- A closed combinator whose meaning is `returnT F`, applied: its argument, bound into `F`.
+  appC-sem : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A B : Type} {c t} (F : ⟦ A ⟧ᴰ → T ⟦ B ⟧ᴰ)
+    (dc : Γ ⊢[ zeroUsage ] c ∷ A ⇒[ mk-kind Many pure ] B ! pure)
+    (hc : ∀ y → GM.⟦ dc ⟧ fmt δ y ≡ returnT F)
+    (dt : Γ ⊢[ Ψ ] t ∷ A ! pure) (x : RS.Env Γ (zeroUsage +ᵘ Many *ᵘ Ψ))
+    → GM.⟦ ⊢app dc dt ⟧ fmt δ x
+      ≡ (GM.⟦ dt ⟧ fmt δ (restrictᴰ {Γ = Γ} (⊑ᵘ-trans (⊑ᵘ-*Many Ψ) (⊑ᵘ-+ʳ zeroUsage (Many *ᵘ Ψ))) x) >>=T F)
+  appC-sem {Γ = Γ} {Ψ} F dc hc dt x rewrite hc (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ zeroUsage (Many *ᵘ Ψ)) x) = refl
+
+  apply-sem : ∀ {n} {Γ : Ctx n} {A B : Type} (x : RS.Env Γ zeroUsage)
+    → GM.⟦ ⊢applyᶜ {Γ = Γ} {A = A} {B = B} ⟧ fmt δ x ≡ returnT (λ fa → proj₁ fa (proj₂ fa))
+  apply-sem {Γ = Γ} x = trans (RS.⟦⟧-substΨ {Γ = Γ} (z+qz Many) (⊢lam refl (⊢app (⊢fst (⊢var zero)) (⊢snd (⊢var zero)))) fmt δ x) refl
+
+  -- The transport under a binder used once.
+  substΨ1 : ∀ {n} {Γ : Ctx n} {X : Type} {U U' : Usage n} {t B π} (e : U ≡ U')
+    (d : (Γ , X ^ Many) ⊢[ One ∷ U ] t ∷ B ! π) (x : RS.Env Γ U') (a : ⟦ X ⟧ᴰ)
+    → GM.⟦ subst (λ V → (Γ , X ^ Many) ⊢[ One ∷ V ] t ∷ B ! π) e d ⟧ fmt δ (x , a)
+      ≡ GM.⟦ d ⟧ fmt δ (subst (RS.Env Γ) (sym e) x , a)
+  substΨ1 refl d x a = refl
+
+  ana-sem″ : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {F : Functor} {A : Type} {π₀ π} {c}
+    (wf : WellFormedF F) (dc : Γ ⊢[ Ψ ] c ∷ A ⇒[ mk-kind Many π ] ⟦ F ⟧T A ! pure) (x : RS.Env Γ Ψ)
+    → GM.⟦ ⊢anaᶜ {π₀ = π₀} wf dc ⟧ fmt δ x ≡ returnT (λ a → ana-sem {π = π} wf (GM.⟦ dc ⟧ fmt δ x) a)
+  ana-sem″ {Γ = Γ} {Ψ} {A = A} {π₀ = π₀} {π} wf dc x =
+    cong returnT (extensionality λ a →
+      trans (substΨ1 (+ᵘ-identityʳ Ψ)
+                     (⊢unfold wf (⊢sub-eff (pure⊑ π₀) (wk-⊢′ A dc)) (⊢var′ zero π₀)) x a)
+            (cong (λ C → ana-sem {π = π} wf C a)
+                  (trans (RS.wk-sem A dc fmt δ _)
+                         (cong (GM.⟦ dc ⟧ fmt δ)
+                               (trans (env-subst {Γ = Γ} (+ᵘ-identityʳ Ψ) _ (⊑ᵘ-refl Ψ) x)
+                                      (EA.restrict-refl {Γ = Γ} (⊑ᵘ-refl Ψ) x))))))
+
   cata-sem′ : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {F : Functor} {A : Type} {π} {alg}
     (wf : WellFormedF F) (da : Γ ⊢[ Ψ ] alg ∷ ⟦ F ⟧T A ⇒[ mk-kind Many π ] A ! pure) (x : RS.Env Γ Ψ)
     → GM.⟦ ⊢cataᶜ wf da ⟧ fmt δ x ≡ (GM.⟦ da ⟧ fmt δ x >>=T λ valg → returnT (cata-sem wf valg))
@@ -274,9 +307,17 @@ module _ {δ : GM.DefSem} where
   bridge-c V ag (t-inl-app-check d) dγ = bindC (bridge-c V ag d _) (λ v → refl)
   bridge-c V ag (t-inr-app-check d) dγ = bindC (bridge-c V ag d _) (λ v → refl)
   bridge-c V ag (t-initial-app-check d) dγ = bindC (bridge-c V ag d _) (λ v → refl)
+  bridge-c {ctx = ctx} V ag (t-ana-check {π = π} wf dcoalg) dγ =
+    trans (cong (λ C → returnT (ana-sem {π = π} wf C))
+                (trans (bridge-c {ctx = ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx)} V ag dcoalg tt)
+                       (sym (RS.close-sem {Γ = NamedCtx.debruijn ctx} (proj₂ (elabᶜ V dcoalg)) fmt δ dγ))))
+          (sym (Comb.ana-sem″ {δ = δ} wf (⊢close {Γ = NamedCtx.debruijn ctx} (proj₂ (elabᶜ V dcoalg))) dγ))
+  bridge-c {ctx = ctx} V ag (t-apply-check {A = A} {B = B} dp) dγ =
+    trans (bindC (bridge-i V ag dp _) (λ fa → refl))
+          (sym (Comb.appC-sem {δ = δ} (λ fa → proj₁ fa (proj₂ fa)) (⊢applyᶜ {Γ = NamedCtx.debruijn ctx} {A = A} {B = B})
+                 (λ y → Comb.apply-sem {δ = δ} {Γ = NamedCtx.debruijn ctx} {A = A} {B = B} y) (proj₂ (elabᵢ V dp)) dγ))
   bridge-c V ag (t-var-poly-instantiate _ _ lp ng ki) dγ =
     trans (Agree.agree-inst ag lp ng ki) (refSem-⊢ (inst V lp ng ki) dγ)
-  bridge-c V ag _ dγ = {!!}
 
   bridge-d V ag d dγ = {!!}
 
