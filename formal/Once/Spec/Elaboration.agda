@@ -103,42 +103,44 @@ private
     Ψ Ψ₁ Ψ₂ Ψ′ : Usage n
     A B : Type
 
-  lift1 : (f : Tm n → Tm n) → (∀ {t} → Γ ⊢[ Ψ ] t ∷ A ! pure → Γ ⊢[ Ψ′ ] f t ∷ B ! pure)
-        → Elab Γ Ψ A → Elab Γ Ψ′ B
-  lift1 f h (t , d) = f t , h d
+-- The elaboration's building blocks (public: the 6b bridge names the
+-- transports they carry).
+lift1 : (f : Tm n → Tm n) → (∀ {t} → Γ ⊢[ Ψ ] t ∷ A ! pure → Γ ⊢[ Ψ′ ] f t ∷ B ! pure)
+      → Elab Γ Ψ A → Elab Γ Ψ′ B
+lift1 f h (t , d) = f t , h d
 
-  lift2 : ∀ {C : Type} {Ψ₃ : Usage n} (f : Tm n → Tm n → Tm n)
-        → (∀ {t u} → Γ ⊢[ Ψ₁ ] t ∷ A ! pure → Γ ⊢[ Ψ₂ ] u ∷ B ! pure → Γ ⊢[ Ψ₃ ] f t u ∷ C ! pure)
-        → Elab Γ Ψ₁ A → Elab Γ Ψ₂ B → Elab Γ Ψ₃ C
-  lift2 f h (t , d) (u , e) = f t u , h d e
+lift2 : ∀ {C : Type} {Ψ₃ : Usage n} (f : Tm n → Tm n → Tm n)
+      → (∀ {t u} → Γ ⊢[ Ψ₁ ] t ∷ A ! pure → Γ ⊢[ Ψ₂ ] u ∷ B ! pure → Γ ⊢[ Ψ₃ ] f t u ∷ C ! pure)
+      → Elab Γ Ψ₁ A → Elab Γ Ψ₂ B → Elab Γ Ψ₃ C
+lift2 f h (t , d) (u , e) = f t u , h d e
 
-  -- A closed combinator applied: the surface's `zeroUsage +ᵘ Many *ᵘ Ψ`.
-  appC : ∀ {c} → Γ ⊢[ zeroUsage ] c ∷ A ⇒[ mk-kind Many pure ] B ! pure
-       → Elab Γ Ψ A → Elab Γ (zeroUsage +ᵘ Many *ᵘ Ψ) B
-  appC {c = c} dc = lift1 (app c) (⊢app dc)
+-- A closed combinator applied: the surface's `zeroUsage +ᵘ Many *ᵘ Ψ`.
+appC : ∀ {c} → Γ ⊢[ zeroUsage ] c ∷ A ⇒[ mk-kind Many pure ] B ! pure
+     → Elab Γ Ψ A → Elab Γ (zeroUsage +ᵘ Many *ᵘ Ψ) B
+appC {c = c} dc = lift1 (app c) (⊢app dc)
 
-  -- A binary operation: the saturated primitive on the pair of its operands.
-  bin : (p : Prim) → primDom p ≡ A * B → Elab Γ Ψ₁ A → Elab Γ Ψ₂ B → Elab Γ (Ψ₁ +ᵘ Ψ₂) (primCod p)
-  bin p eq = lift2 (λ t u → prim p (pair t u)) (λ d e → ⊢prim p (subst (λ D → _ ⊢[ _ ] _ ∷ D ! pure) (sym eq) (⊢pair d e)))
+-- A binary operation: the saturated primitive on the pair of its operands.
+bin : (p : Prim) → primDom p ≡ A * B → Elab Γ Ψ₁ A → Elab Γ Ψ₂ B → Elab Γ (Ψ₁ +ᵘ Ψ₂) (primCod p)
+bin p eq = lift2 (λ t u → prim p (pair t u)) (λ d e → ⊢prim p (subst (λ D → _ ⊢[ _ ] _ ∷ D ! pure) (sym eq) (⊢pair d e)))
 
-  i2f : Elab Γ Ψ Int → Elab Γ Ψ Float
-  i2f = lift1 (prim p-i2f) (⊢prim p-i2f)
+i2f : Elab Γ Ψ Int → Elab Γ Ψ Float
+i2f = lift1 (prim p-i2f) (⊢prim p-i2f)
 
-  coerceE : A <: B → Elab Γ Ψ A → Elab Γ Ψ B
-  coerceE {A = A} {B = B} p = lift1 (coerce A B) (⊢coerce p)
+coerceE : A <: B → Elab Γ Ψ A → Elab Γ Ψ B
+coerceE {A = A} {B = B} p = lift1 (coerce A B) (⊢coerce p)
 
-  refE : (d : Fin s) → InstanceOf d A → Elab Γ zeroUsage A
-  refE {Γ = Γ} d (τ , r , eq) = ref d τ , subst (λ T → Γ ⊢[ zeroUsage ] ref d τ ∷ T ! pure) eq (⊢ref d τ r)
+refE : (d : Fin s) → InstanceOf d A → Elab Γ zeroUsage A
+refE {Γ = Γ} d (τ , r , eq) = ref d τ , subst (λ T → Γ ⊢[ zeroUsage ] ref d τ ∷ T ! pure) eq (⊢ref d τ r)
 
-  importE : Once.CanonicalName.CanonicalName → IsConcrete A → ImportAt A → Elab Γ zeroUsage A
-  importE {A = A} c k (ffi h g) = sigop c A , ⊢sigop c k h g
-  importE         c k (def d i) = refE d i
+importE : Once.CanonicalName.CanonicalName → IsConcrete A → ImportAt A → Elab Γ zeroUsage A
+importE {A = A} c k (ffi h g) = sigop c A , ⊢sigop c k h g
+importE         c k (def d i) = refE d i
 
-  closeE : Elab ∅ zeroUsage A → Elab Γ zeroUsage A
-  closeE (t , d) = close t , ⊢close d
+closeE : Elab ∅ zeroUsage A → Elab Γ zeroUsage A
+closeE (t , d) = close t , ⊢close d
 
-  subE : Ψ ≡ Ψ′ → Elab Γ Ψ A → Elab Γ Ψ′ A
-  subE refl e = e
+subE : Ψ ≡ Ψ′ → Elab Γ Ψ A → Elab Γ Ψ′ A
+subE refl e = e
 
 
 ------------------------------------------------------------------------
