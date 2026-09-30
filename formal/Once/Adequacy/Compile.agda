@@ -47,6 +47,7 @@ open import Once.IRTy using (⌊_⌋)
 open import Once.Type using (Unit; Type; _⇒[_]_; mk-kind; Many; eff)
 
 open import Once.Denotation.Behavior using (Source; Behavior; at; behavior-by)
+open import Once.Spec.Core.Telescope using (runProgram)
 open import Once.Adequacy.SourceTrace
   using (⟦_⟧; ⟦⟧-via-module; moduleToIR; moduleToIR-emitted; map-rewrite; ⟦_⟧IR; srcToModule; srcToModule-just; srcToModule-inv;
          moduleToProgram; moduleTable; programAt; rewrite-program; rewrite-program-linked; moduleToProgram-linked;
@@ -919,7 +920,14 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   -- (`CoreBridge.coreBehavior`). The surface direct meaning (`MainMeaning`)
   -- is retired from the apex: it could not give a polymorphic entry, typed
   -- once at rigid parameters (D243), a meaning at an instance.
-  ⟦ arch ⟧ᵈ tp = CB.coreBehavior (arch-numerics arch) (CB.typedProgram (arch-numerics arch) tp)
+  -- Its trace family IS the core run; the three laws are BORROWED from the
+  -- compiled chain it is proved equal to (`behavior-by`, D179 — the laws are
+  -- about `at` alone, so they transport along the equality; nothing about the
+  -- core is assumed).
+  ⟦ arch ⟧ᵈ (m , mt , hvm) =
+    behavior-by (⟦ arch ⟧ˢ (m , mt , hvm))
+                (runProgram (arch-numerics arch) (CB.typedProgram (arch-numerics arch) (m , mt , hvm)))
+                (CB.realize-core (arch-numerics arch) m mt hvm)
   -- The bridge from the compiled chain's surface meaning to the core — the one
   -- open link, `CoreBridge.realize-core` (6b + TelescopeEnv + 6e).
   bridgeᵈ : ∀ (arch : Arch) (tp : Typed) (n : ℕ) → at (⟦ arch ⟧ˢ tp) n ≡ at (⟦ arch ⟧ᵈ tp) n

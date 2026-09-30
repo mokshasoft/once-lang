@@ -83,33 +83,6 @@ typedProgram-ef m (inj₂ es) mt (_ , mi) = toProgram Tele.[] TR.[] TR.[] (λ ()
 typedProgram : Typed → Program
 typedProgram (m , mt , hvm) = typedProgram-ef m (C.extractFunctions (C.extractAliases m) m) mt hvm
 
-------------------------------------------------------------------------
--- Its meaning, as a Behavior.
-------------------------------------------------------------------------
-
--- The run of `main` in the telescope's environment — what `runProgram` reads.
-mainRun : Program → T ⟦ Unit ⟧ᴰ
-mainRun (program defs main mainTy) =
-  GM.⟦_⟧ _ (PT.instantiate _ noVars (λ ()) mainTy) fmt (Tele.teleSem fmt defs) (Data.Unit.tt)
-    >>=T (λ clo → clo Data.Unit.tt)
-  where import Data.Unit
-
-postulate
-  -- RESIDUAL, class DEFERRED PROOF (plan 0.103 6a). The core meaning is a
-  -- prefix family: the analogue of `evalᴰ-good` (DenotPrefix) for the core
-  -- denotation, by the same induction — `GM.⟦_⟧` is built from the same
-  -- `returnT`/`>>=T`/`emit` combinators. Stated about `mainRun` of a PROGRAM,
-  -- not an arbitrary computation (which would be false). It replaces
-  -- `MainMeaning.mainMeaningᵈ-pf`, the surface meaning's twin.
-  core-pf : ∀ (P : Program) → PrefixFamily (mainRun P)
-
-coreBehavior : Program → Behavior
-coreBehavior P = mkBehavior (runProgram fmt P) (coh (core-pf P)) (bnd (core-pf P)) (sat (core-pf P))
-
-------------------------------------------------------------------------
--- The one open link (6b + TelescopeEnv over ModTele + 6e).
-------------------------------------------------------------------------
-
 -- The walk's premises at the start: the empty scope, and the entries' names
 -- (D249: the extractor's guard).
 entries-distinct : ∀ (m : P.Module) {es : List C.Entry}
