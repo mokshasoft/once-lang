@@ -423,6 +423,12 @@ regtag-call prog fs wf = go (callView prog fs)
         go (cp-halt    e) rewrite e = regtag-halt wf
         go (cp-enter ℓ j fq e) rewrite e = wf
 
+-- D245: a direct call writes no register either — it only moves control.
+regtag-call-at : ∀ (mj : Maybe ℕ) (fs : FlatState)
+               → FlatRegTag fs → FlatRegTag (do-call-at mj fs)
+regtag-call-at (just j) fs wf = wf
+regtag-call-at nothing  fs wf = regtag-halt wf
+
 -- ONE flat step preserves the counter-tag invariant. The straight-line cases
 -- are ENUMERATED (a catch-all would not reduce `flat-exec-instr`'s own
 -- catch-all in the case tree); each is `regtag-abstract`. The four frame-moving
@@ -435,8 +441,9 @@ flat-regtag-step (instr-ctrl (c-label m))               prog fs wf = wf
 -- Plan 0.54 rung D: `do-thunk` CLEARS the entered frame, so its `LocState`
 -- differs from the pre-state's and the record must be REBUILT. Its fields only
 -- read `regs`, which a record update leaves alone, so both come straight over.
-flat-regtag-step (instr-ctrl (c-thunk m b))             prog fs wf =
+flat-regtag-step (instr-ctrl (c-entry m b))             prog fs wf =
   mkRegTagWF (scratch-tag wf) (count-tag wf)
+flat-regtag-step (instr-ctrl (c-call-fn f))             prog fs wf = regtag-call-at (find-fn prog f) fs wf
 flat-regtag-step (instr-ctrl (c-ret b))                 prog fs wf = regtag-ret (fret fs) fs wf
 flat-regtag-step (instr-ctrl (c-jmp m))                 prog fs wf = regtag-jump (find-label prog m) fs wf
 flat-regtag-step (instr-ctrl (c-branch-scratch-zero m)) prog fs wf =

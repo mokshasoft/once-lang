@@ -469,3 +469,9 @@ module CataIRSlotStable {FS : FrameSemantics} where
   ir-to-trace-slot-stable ir =
     ++⁺ (ir-stable ir 0 0)
         (tt ∷ᴬ blocks-stable _ (ir-blocks-stable ir 0 0))
+
+  -- D244/D245: …and a program's unit placed at label counter `l`.
+  ir-to-trace-lab-slot-stable : ∀ {A B} (ir : IR A B) (l : ℕ) → AllSlotStable (ir-to-trace-lab l ir)
+  ir-to-trace-lab-slot-stable ir l =
+    ++⁺ (ir-stable ir 0 l)
+        (tt ∷ᴬ blocks-stable _ (ir-blocks-stable ir 0 l))

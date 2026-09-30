@@ -507,14 +507,23 @@ pb-call prog fs wf = go (callView prog fs)
         go (cp-halt    e) rewrite e = pb-halt _ (floc fs) true wf
         go (cp-enter ℓ j fq e) rewrite e = wf
 
+
+-- D245: a direct call, likewise — control only.
+pb-call-at : ∀ (mj : Maybe ℕ) (fs : FlatState)
+           → PtrBoundsWF fs → PtrBoundsWF (do-call-at mj fs)
+pb-call-at (just j) fs wf = wf
+pb-call-at nothing  fs wf = pb-halt _ (floc fs) true wf
+
 flat-ptr-bounds : ∀ (i : AbstractInstr) (prog : AbstractTrace) (fs : FlatState)
                 → EmittableI i
                 → (∀ n → i ≡ instr-alloc-heap n → 2 ≤ n)
                 → StoreWF (next-heap-ref (falloc fs)) (floc fs)
                 → PtrBoundsWF fs → PtrBoundsWF (flat-exec-instr i prog fs)
 flat-ptr-bounds (instr-ctrl (c-label m))               prog fs ff am wfS wf = wf
-flat-ptr-bounds (instr-ctrl (c-thunk m b))             prog fs ff am wfS wf =
+flat-ptr-bounds (instr-ctrl (c-entry m b))             prog fs ff am wfS wf =
   pb-thunk b fs wf
+flat-ptr-bounds (instr-ctrl (c-call-fn f))             prog fs ff am wfS wf =
+  pb-call-at (find-fn prog f) fs wf
 flat-ptr-bounds (instr-ctrl (c-ret b))                 prog fs ff am wfS wf =
   pb-ret (fret fs) fs wf
 flat-ptr-bounds (instr-ctrl (c-jmp m))                 prog fs ff am wfS wf =

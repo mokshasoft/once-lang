@@ -554,6 +554,13 @@ sp-call prog fs wf = go (callView prog fs)
         go (cp-halt    e) rewrite e = sp-halt (current-frame (falloc fs)) (floc fs) true wf
         go (cp-enter ℓ j fq e) rewrite e = wf
 
+
+-- D245: a direct call, likewise — control only.
+sp-call-at : ∀ (mj : Maybe ℕ) (fs : FlatState)
+           → StackPtrWF fs → StackPtrWF (do-call-at mj fs)
+sp-call-at (just j) fs wf = wf
+sp-call-at nothing  fs wf = sp-halt (current-frame (falloc fs)) (floc fs) true wf
+
 flat-stack-ptr : ∀ (i : AbstractInstr) (prog : AbstractTrace) (fs : FlatState)
                → EmittableI i
                → StackPtrWF fs → StackPtrWF (flat-exec-instr i prog fs)
@@ -568,8 +575,10 @@ flat-stack-ptr (instr-ctrl (c-label m))               prog fs ff wf = wf
 -- `do-thunk` now also CLEARS the entered frame — the `LocState` differs, so
 -- the record must be REBUILT. Only `sp-stack` sees the clear, and it survives
 -- it trivially: a cleared cell is `nothing`, and `StackPtrOK? nothing = ⊤`.
-flat-stack-ptr (instr-ctrl (c-thunk m b))             prog fs ff wf =
+flat-stack-ptr (instr-ctrl (c-entry m b))             prog fs ff wf =
   sp-thunk b fs wf
+flat-stack-ptr (instr-ctrl (c-call-fn f))             prog fs ff wf =
+  sp-call-at (find-fn prog f) fs wf
 flat-stack-ptr (instr-ctrl (c-ret b))                 prog fs ff wf =
   sp-ret (fret fs) fs wf
 flat-stack-ptr (instr-ctrl (c-jmp m))                 prog fs ff wf =

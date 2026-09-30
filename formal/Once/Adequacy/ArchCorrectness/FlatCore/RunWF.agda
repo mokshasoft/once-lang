@@ -94,15 +94,17 @@ open import Once.CCC.Codegen.AllocMin o
 open import Once.CCC.Codegen.ShapeTable as ST
 open ST.Sem FS using (Meets; site-load-ptr; site-branch-tag; site-store-ptr; fetch-at-pc; site-slot-written)
 open import Once.CCC.Codegen.LabelScope o
+open import Once.CCC.Codegen.LabelSeg
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Once.CCC.Codegen.SlotBudget o
+open import Once.CCC.Codegen.SlotSeg
 import Once.CCC.Codegen.SlotBudget as SB
 import Once.CCC.Codegen.FrameFreeTrace as FFT
 import Once.CCC.Codegen.AllocMin as AM
 open import Once.CCC.Codegen.ProgramImage using (program-image; fns-image)
 open import Once.Denotation.Program using (IRFun; irProgram; fname; fbody)
 open import Data.List.Relation.Unary.All.Properties using (++⁺)
-open import Once.CCC.Codegen.ProgramImageFacts o using (image-frame-free; image-alloc-min; image-slots)
+open import Once.CCC.Codegen.ProgramImageFacts o using (image-frame-free; image-alloc-min; image-slots; image-jump-in-segment)
 open import Once.IR using (IR; Unit)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Unit using (⊤; tt)
@@ -778,7 +780,7 @@ run-seg-wf prog fs (mkRunAt tbl ir eq lkd reach) = go fs reach
                               (trans seg-suc
                                      (idle-step i (ff→seg-id i ff) (seg-at prog (fpc fs'') B₀))))
         -- FRAME-FREE JUMP: frames untouched; the segment survives by LABEL
-        -- SCOPING (`LabelScope.emitted-jump-in-segment`).
+        -- SCOPING (`ProgramImageFacts.image-jump-in-segment`).
         step (pv-jump ff m mlab jp) =
           mkSegWF
             (inj₁ (trans (sf-slots same)
@@ -805,7 +807,7 @@ run-seg-wf prog fs (mkRunAt tbl ir eq lkd reach) = go fs reach
             jgo (jp-to q fq e) =
               cong cur (trans (cong (λ z → seg-at prog z B₀) e)
                         (subst (λ pr → seg-at pr q B₀ ≡ seg-at pr (fpc fs'') B₀) (sym eq)
-                          (emitted-jump-in-segment {FS} ir (fpc fs'') q m B₀
+                          (image-jump-in-segment {FS} tbl ir (fpc fs'') q m B₀
                             (subst (λ pr → mention-at pr (fpc fs'') ≡ just m) eq lkm)
                             (subst (λ pr → find-label pr m ≡ just q) eq fq))))
             -- …and the same three rows, for the body-entry claim
@@ -960,7 +962,7 @@ run-seg-wf prog fs (mkRunAt tbl ir eq lkd reach) = go fs reach
                           -- the pc has not moved: this instruction is the call
                           (λ ℓ bb H → ⊥-elim (call-clash (just-injI (trans (sym ftq) H))))
                 cgo (cp-enter ℓ j fteq e) rewrite e =
-                  mkSegWF (inj₂ (ℓ , proj₁ landing , proj₂ landing , refl))
+                  mkSegWF (inj₂ (e-thunk ℓ , proj₁ landing , proj₂ landing , refl))
                           (rm-∷ beq (fpc fs'' , refl , instr-call-closure , ftq , tt) (seg-stack ih))
                           -- …and THIS is the case the whole invariant is about:
                           -- the frame a call enters reserves nothing (D086),
@@ -1594,7 +1596,7 @@ run-link-at-thunk prog fs (mkRunAt tbl ir eq lkd reach) = go fs reach
       where
         -- the IH, once the link is known live at the PRE-state
         ih-thunk : flink fs'' ≡ just r → Σ EntryId (λ ℓ → Σ ℕ (λ bb →
-                     i ≡ instr-ctrl (c-thunk ℓ bb)))
+                     i ≡ instr-ctrl (c-entry ℓ bb)))
         ih-thunk pre = proj₁ ihr , proj₁ (proj₂ ihr) ,
                        just-injective (trans (sym ftq) (proj₂ (proj₂ ihr)))
           where ihr = go fs'' r' pre

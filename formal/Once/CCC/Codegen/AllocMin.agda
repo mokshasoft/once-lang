@@ -54,7 +54,7 @@ open import Once.CCC.Machine.SMCore using (AbstractInstr; AbstractTrace; instr-a
   ; load-from-slot; store-indirect-suc; instr-load-tag-lit; store-indirect)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CCC.Codegen.IRToTrace o using
-  (ir-to-trace'; ir-to-trace; ir-to-trace-at-frontier;
+  (ir-to-trace'; ir-to-trace; ir-to-trace-at-frontier; ir-to-trace-lab;
    CataStrategy; strat-const; strat-nat; strat-linear; strat-branching;
    cata-strategy; cata-dispatch; cata-trace-nat; cata-trace-linear;
    cata-trace-branching; push2; pop2; wrap-sum; visit-walk; rebuild-walk; lsize;
@@ -403,6 +403,10 @@ alloc-min-at-frontier ir n =
 
 ir-to-trace-alloc-min : ∀ {A B} (ir : IR A B) → AllocMinTrace (ir-to-trace ir)
 ir-to-trace-alloc-min ir = alloc-min-at-frontier ir 0
+
+-- D244/D245: …and a program's unit placed at label counter `l`.
+ir-to-trace-lab-alloc-min : ∀ {A B} (ir : IR A B) (l : ℕ) → AllocMinTrace (ir-to-trace-lab l ir)
+ir-to-trace-lab-alloc-min ir l = ++⁺ (alloc-min-trace' ir 0 l) (tt ∷ alloc-min-blocks ir 0 l)
 
 module _ {FS : FrameSemantics} where
   open FlatMachine {FS}

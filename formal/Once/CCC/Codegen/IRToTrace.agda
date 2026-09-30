@@ -1192,6 +1192,9 @@ private
   proj-budget : ℕ × ℕ × AbstractTrace × List (LabelId × ℕ × AbstractTrace) → ℕ
   proj-budget (n , _ , _ , _) = n
 
+  proj-label : ℕ × ℕ × AbstractTrace × List (LabelId × ℕ × AbstractTrace) → ℕ
+  proj-label (_ , l , _ , _) = l
+
 ------------------------------------------------------------------------
 -- D159: THE EMITTER'S CODOMAIN IS A COMPILATION UNIT, NOT A PLACEMENT.
 --
@@ -1296,6 +1299,17 @@ ir-to-linked-from : ∀ {A B} → ℕ → IR A B → ℕ × AbstractTrace
 ir-to-linked-from l ir =
   let (b , l' , t , bs) = ir-to-trace' 0 l ir
   in l' , link (unit b t bs)
+
+-- | D244/D245: ONE DEFINITION OF A PROGRAM, placed at label counter `l` — the
+-- linked unit exactly as `Once.Compile.funLabels` emits it (the counter is
+-- threaded from one definition to the next, so no two units share a label
+-- index). `ir-to-trace` is the `l = 0` instance, definitionally.
+ir-to-trace-lab : ∀ {A B} → ℕ → IR A B → AbstractTrace
+ir-to-trace-lab l ir = link (ir-to-unit-at 0 l ir)
+
+-- …and the counter it hands to the next definition.
+ir-next-label : ∀ {A B} → ℕ → IR A B → ℕ
+ir-next-label l ir = proj-label (ir-to-trace' 0 l ir)
 
 -- | Closure bodies + next-label, given a starting label counter.
 ir-to-bodies-from : ∀ {A B} → ℕ → IR A B → ℕ × List (LabelId × ℕ × AbstractTrace)

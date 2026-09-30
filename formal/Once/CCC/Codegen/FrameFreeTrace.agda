@@ -71,7 +71,7 @@ open import Once.CCC.Machine.FrameFree using
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CCC.Codegen.ShapeTable using (HeapModed; IsHeap)
 open import Once.CCC.Codegen.IRToTrace o using
-  (ir-to-trace'; ir-to-trace; ir-to-trace-at-frontier;
+  (ir-to-trace'; ir-to-trace; ir-to-trace-at-frontier; ir-to-trace-lab;
    CataStrategy; strat-const; strat-nat; strat-linear; strat-branching;
    cata-strategy; cata-dispatch; cata-trace-nat; cata-trace-linear;
    cata-trace-branching; push2; pop2; wrap-sum; visit-walk; rebuild-walk; lsize;
@@ -429,6 +429,13 @@ frame-free-at-frontier ir hm n =
 ir-to-trace-frame-free : ∀ {A B} (ir : IR A B) (hm : HeapModed ir)
                        → FrameFreeTrace (ir-to-trace ir)
 ir-to-trace-frame-free ir hm = frame-free-at-frontier ir hm 0
+
+-- D244/D245: …and a program's unit placed at label counter `l`.
+ir-to-trace-lab-frame-free : ∀ {A B} (ir : IR A B) (hm : HeapModed ir) (l : ℕ)
+                           → FrameFreeTrace (ir-to-trace-lab l ir)
+ir-to-trace-lab-frame-free ir hm l =
+  ++⁺ (frame-free-trace' ir hm 0 l)
+      (tt ∷ frame-free-blocks _ (frame-free-blocks' ir hm 0 l))
 
 -- (`ir-to-trace-frame-free-deep` is GONE with the flip: `FrameFreeT` is the
 -- SEMANTIC predicate and an emitted trace no longer satisfies it — the markers
