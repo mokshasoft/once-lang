@@ -15895,3 +15895,42 @@ With the closure-returner type, the image's `once_f` would never implement what
 
 The erasure agrees definitionally: `⌊ A ⇒[Zero] B ⌋ = Unit ⇛ ⌊B⌋`, the domain
 `directCallIR` gives an erased arrow.
+
+## D246 — A MODULE ENTRY'S REFERENCE IS A CALL AND MEANS THE ENTRY; THE SPEC READS AN IMPORT ENVIRONMENT (PLAN 0.103 PHASE 6a) (2026-09-30)
+
+**Relates**: D071, D241, D244, D245, plan 0.103 phases 1c and 6a.
+
+**Found.** After D245 the compiled program CALLS a module definition's body at every bare
+reference: the compile walk hands the resolver every in-scope entry (`userList = self ∷
+cimps`), so every `t-var-import` reference becomes `closure f`, which elaborates to `Call f`.
+The Spec disagreed in two places:
+* `⟦ t-var-import ⟧ᵢ = sigOpRefᴰ` gave a reference to a monomorphic DEFINITION an opaque
+  SigOp contract (6c′ types a monomorphic definition like an import, `ModTele.mono ↦
+  addImp`).
+* The typechecker and `realize` emitted `sigOp x`, and the resolver rewrote it to
+  `closure x`. The rewrite's faithfulness residual (`resolveExpr-sigOp-closure-faithful`,
+  "a denotational no-op") is FALSE once a definition's call means its body.
+
+**Decided (principled path, following D071 and plan 0.103 1c).**
+* **A bare reference to a module entry elaborates to a call** (`closure x`), in the
+  typechecker and in `realize` alike. The sigOp→closure rewrite and its postulate are
+  deleted. `sigOp` remains only for SigOps: qualified external references and the
+  compiler's arith blocks (D245).
+* **A call means the entry.** An FFI declaration's compiled entry is its SigOp wrapper, so
+  its call means the contract. A definition's call means its body. The compiled function
+  table includes the FFI entries, since the emitted `call once_f` resolves to them too.
+* **The Spec's meaning reads an IMPORT ENVIRONMENT**, alongside the telescope's
+  `DefMeanings`. It gives each in-scope entry its meaning (FFI → contract; definition →
+  its declaration-time derivation's meaning in its scope), built by the same telescope
+  recursion as `defMeanings` (plan 0.103 1c: "the meaning of a context with definitions is
+  an ENVIRONMENT").
+* SD reads the CALL environment at `closure` (the IR's `Call`) and the reference
+  environment at `poly` (a spliced telescope reference). The resolver's reference case is
+  then `refl`, and the obligation "a call means its callee's body" sits where the
+  environments are related (`TelescopeEnv`), by induction on the telescope.
+
+**Why not make monomorphic definitions telescope entries instead** (plan 1b's wording)?
+6b's translation and 6c′'s judgment already classify each import as FFI or definition (the
+View's `ImportAt`). The import environment is that classification's meaning. Moving
+definitions into the telescope would undo a landed, postulate-free design for no gain in
+honesty.
