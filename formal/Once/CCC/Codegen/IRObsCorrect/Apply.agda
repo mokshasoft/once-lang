@@ -31,6 +31,26 @@ module ApplyC {FS : FrameSemantics} where
   open Core {FS}
   open Mach {FS}
 
+  -- THE CALL at ANY state: `callView`'s three levels, from the closure
+  -- register, the code cell and the thunk scan. Stated over a variable state
+  -- and instantiated at the setup's `a16`, so conversion never unfolds the
+  -- setup's sixteen steps (profile 2026-09-30: 14.5M unfoldings, 77 s, when
+  -- the chain was written at `a16` directly).
+  call-at : ∀ (prog : AbstractTrace) (fs : FlatState) (hl : _) (ℓ : LabelId) (j : ℕ)
+          → fclosure fs ≡ SV-Ptr (AtDynamic hl)
+          → MemOps.readLoc (floc fs) (sucLoc (AtDynamic hl)) ≡ just (SV-Code ℓ)
+          → find-thunk prog ℓ ≡ just j
+          → flat-exec-instr instr-call-closure prog fs
+            ≡ record fs
+                { falloc = enter-call (falloc fs)
+                ; fret   = suc (fpc fs) ∷ fret fs
+                ; flink  = just (suc (fpc fs))
+                ; fpc    = j }
+  call-at prog fs hl ℓ j reg code feq =
+    trans (cong (λ z → do-call-sv prog z fs) reg)
+      (trans (cong (λ z → do-call-code prog z fs) code)
+             (cong (λ z → do-call-at z fs) feq))
+
   obs-correct-apply : ∀ {A B} → IRObsCorrectF (apply {A} {B})
   -- A PAIR fits no register and is not `Unit`, so the two off-pointer input
   -- residences are refuted outright.
@@ -150,13 +170,12 @@ module ApplyC {FS : FrameSemantics} where
                           ; flink  = just (suc (fpc ASP.a16))
                           ; fpc    = j }
               call-eq =
-                trans (cong (λ z → do-call-sv prog z ASP.a16)
-                         (ASP.closure-reg pair-loc fst-loc (arg-sv-of sc') n≤ bf rdi
-                            (arg-cell-of sc') fst-cell))
-                (trans (cong (λ z → do-call-code prog z ASP.a16)
-                         (ASP.code-cell fst-loc blbl n≤ OB.rdi12' OB.rdi14'
-                            (ClosureValidWF.sucLoc-before cvw) (ClosureValidWF.code-ptr cvw)))
-                       (cong (λ z → do-call-at z ASP.a16) feq))
+                call-at prog ASP.a16 chl blbl j
+                  (ASP.closure-reg pair-loc fst-loc (arg-sv-of sc') n≤ bf rdi
+                     (arg-cell-of sc') fst-cell)
+                  (ASP.code-cell fst-loc blbl n≤ OB.rdi12' OB.rdi14'
+                     (ClosureValidWF.sucLoc-before cvw) (ClosureValidWF.code-ptr cvw))
+                  feq
 
               crun : CalleeRun prog (flat-exec-instr instr-call-closure prog ASP.a16)
                        (suc (fpc ASP.a16)) B (evalᴰ body (env , proj₂ x)) k
