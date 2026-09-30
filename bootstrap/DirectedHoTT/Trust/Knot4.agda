@@ -27,8 +27,9 @@
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Trust.Knot4 where
 
-import DirectedHoTT.Examples.Knot.Lookup
+import DirectedHoTT.Examples.Knot.LookupAgree
 import DirectedHoTT.Examples.Knot.LookupCon
 import DirectedHoTT.Examples.Knot.NestIx
 import DirectedHoTT.Examples.Knot.OpAgree
 import DirectedHoTT.Examples.Knot.Preds
+import DirectedHoTT.Examples.Knot.PredsAgree

@@ -31,7 +31,6 @@ open import DirectedHoTT.Lib.FinFam using ( ffz; ffs )
 open import DirectedHoTT.Lib.Sugar using ( conₗ )
 open import DirectedHoTT.Lib.Syn
 open import DirectedHoTT.Examples.Knot.Sig
-open import DirectedHoTT.Examples.Knot.Ctors using ( kEl; kdpay; kapp; kDIh )
 open import DirectedHoTT.Examples.Knot.Terms
 open import DirectedHoTT.Examples.Knot.Sub
 open import DirectedHoTT.Examples.Knot.SubEnv
@@ -96,6 +95,15 @@ repS-wk2 x = step (β _ _) done
 -- 2. ★★ THE OPERATIONS AGREE.
 ------------------------------------------------------------------------
 
+-- a term's two binders instantiated one at a time ARE `single2`
+inst-single2 : (i t : RTm Γ) (s : RTm ((Γ ∙) ∙)) → subTm (single t) (subTm (extS (single i)) s) ≡ subTm (single2 i t) s
+inst-single2 i t s = trans (subTm-subTm s) (subTm-cong pt s)
+  where
+    pt : (x : Var (_ ∙ ∙)) → (single t ∘ₛ extS (single i)) x ≡ single2 i t x
+    pt vz          = refl
+    pt (vs vz)     = wk-cancel-tm t i
+    pt (vs (vs x)) = refl
+
 private
   -- a motive's two binders instantiated one at a time ARE `single2`
   iinst-single2 : (i t : RTm Γ) (M : RTy ((Γ ∙) ∙)) → iinst i t M ≡ subTy (single2 i t) M
@@ -106,13 +114,6 @@ private
       pt (vs vz)     = wk-cancel-tm t i
       pt (vs (vs x)) = refl
 
-  inst-single2 : (i t : RTm Γ) (s : RTm ((Γ ∙) ∙)) → subTm (single t) (subTm (extS (single i)) s) ≡ subTm (single2 i t) s
-  inst-single2 i t s = trans (subTm-subTm s) (subTm-cong pt s)
-    where
-      pt : (x : Var (_ ∙ ∙)) → (single t ∘ₛ extS (single i)) x ≡ single2 i t x
-      pt vz          = refl
-      pt (vs vz)     = wk-cancel-tm t i
-      pt (vs (vs x)) = refl
 
   -- two lifts of a renaming, as a substitution
   lift2-ren : (ρ : Ren Γ Δ) (M : RTy ((Γ ∙) ∙)) → subTy (extS (extS ⟨ ρ ⟩ᵣ)) M ≡ renTy (extR (extR ρ)) M
@@ -189,6 +190,9 @@ node-2 r = ⟶*-con (⟶*-pairʳ (⟶*-pairʳ (⟶*-pairˡ r)))
 
 node-3 : {k : ℕ} {a b c c' r : RTm Θ} → c ⟶* c' → conₗ k (pair a (pair b (pair c r))) ⟶* conₗ k (pair a (pair b (pair c' r)))
 node-3 r = ⟶*-con (⟶*-pairʳ (⟶*-pairʳ (⟶*-pairʳ (⟶*-pairˡ r))))
+
+node-4 : {k : ℕ} {a b c d d' r : RTm Θ} → d ⟶* d' → conₗ k (pair a (pair b (pair c (pair d r)))) ⟶* conₗ k (pair a (pair b (pair c (pair d' r))))
+node-4 r = ⟶*-con (⟶*-pairʳ (⟶*-pairʳ (⟶*-pairʳ (⟶*-pairʳ (⟶*-pairˡ r)))))
 
 opaque
   unfolding KR.wk methSK lift2K MethTyK
