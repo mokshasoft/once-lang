@@ -1859,34 +1859,24 @@ agree-check-RApp : ∀ (ctx : NamedCtx) (f arg : RawExpr) (T : Type) {Ψ se d fr
 agree-check-RApp ctx f arg T E.ahv-id veq disp inferIH argCheckIH argInferIH argGivenIH subIH subInferIH dγ
   with E.inferElabV ctx (Raw.RApp f arg) | disp
 ... | failure _ , _ | ()
-... | success T' Ψ eE d fr , w | eq₁ with T' <:? T | eq₁
-... | yes p | refl = cong (fmapT ⟦ p ⟧<:) (inferIH refl dγ)
-... | no _ | ()
+... | r@(success _ _ _ _ _ , _) | eq₁ = agree-embedOrSubsume-at T r eq₁ inferIH dγ
 agree-check-RApp ctx f arg T E.ahv-fst veq disp inferIH argCheckIH argInferIH argGivenIH subIH subInferIH dγ
   with E.inferElabV ctx (Raw.RApp f arg) | disp
 ... | failure _ , _ | ()
-... | success T' Ψ eE d fr , w | eq₁ with T' <:? T | eq₁
-... | yes p | refl = cong (fmapT ⟦ p ⟧<:) (inferIH refl dγ)
-... | no _ | ()
+... | r@(success _ _ _ _ _ , _) | eq₁ = agree-embedOrSubsume-at T r eq₁ inferIH dγ
 agree-check-RApp ctx f arg T E.ahv-snd veq disp inferIH argCheckIH argInferIH argGivenIH subIH subInferIH dγ
   with E.inferElabV ctx (Raw.RApp f arg) | disp
 ... | failure _ , _ | ()
-... | success T' Ψ eE d fr , w | eq₁ with T' <:? T | eq₁
-... | yes p | refl = cong (fmapT ⟦ p ⟧<:) (inferIH refl dγ)
-... | no _ | ()
+... | r@(success _ _ _ _ _ , _) | eq₁ = agree-embedOrSubsume-at T r eq₁ inferIH dγ
 -- D194: `Out`'s CHECK is infer-then-check, so this is `terminal`'s verbatim.
 agree-check-RApp ctx f arg T E.ahv-Out veq disp inferIH argCheckIH argInferIH argGivenIH subIH subInferIH dγ
   with E.inferElabV ctx (Raw.RApp f arg) | disp
 ... | failure _ , _ | ()
-... | success T' Ψ eE d fr , w | eq₁ with T' <:? T | eq₁
-... | yes p | refl = cong (fmapT ⟦ p ⟧<:) (inferIH refl dγ)
-... | no _ | ()
+... | r@(success _ _ _ _ _ , _) | eq₁ = agree-embedOrSubsume-at T r eq₁ inferIH dγ
 agree-check-RApp ctx f arg T E.ahv-terminal veq disp inferIH argCheckIH argInferIH argGivenIH subIH subInferIH dγ
   with E.inferElabV ctx (Raw.RApp f arg) | disp
 ... | failure _ , _ | ()
-... | success T' Ψ eE d fr , w | eq₁ with T' <:? T | eq₁
-... | yes p | refl = cong (fmapT ⟦ p ⟧<:) (inferIH refl dγ)
-... | no _ | ()
+... | r@(success _ _ _ _ _ , _) | eq₁ = agree-embedOrSubsume-at T r eq₁ inferIH dγ
 -- ahv-initial: arg checked at Void; se = morph-app initial argE (unary >>=T),
 -- witness t-initial-app-check w, realize = morph-app initial (realize w) ⇒
 -- rewrite the arg check IH.
