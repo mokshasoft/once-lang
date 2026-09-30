@@ -66,6 +66,10 @@ open import Data.List.Relation.Unary.AllPairs using (AllPairs)
 open import Data.String using (String)
 open import Data.Sum using (_⊎_)
 open import Data.Unit using (tt)
+open import Data.Bool using (true; false)
+import Once.Parser
+open import Function using (case_of_)
+import Once.Adequacy.NameClash as NC
 open import Relation.Binary.PropositionalEquality using (_≢_; refl; sym; trans; cong; cong₂)
 
 ------------------------------------------------------------------------
@@ -126,13 +130,25 @@ private
   run-at : ∀ {σ σ′} {Ψ} (se : _) (n : ℕ) → σ ≡ σ′ → ME.runMainˢ {Ψ} σ se n ≡ ME.runMainˢ σ′ se n
   run-at se n refl = refl
 
+  -- Every definition's name is an identifier: the extractor's guard.
+  valid-of : ∀ (es : List C.Entry) → Once.Parser.allValidIdentB (Once.Parser.emittedNames (Once.Parser.funsOf es)) ≡ true
+           → All TW.MonoValid es
+  valid-of []                   eq = []
+  valid-of (C.e-poly pfi ∷ es) eq = tt ∷ valid-of es eq
+  valid-of (C.e-fun fi ∷ es)   eq with C.FunInfo.funIsPrimitive fi in ep
+  ... | true  = (λ p → case trans (sym ep) p of λ ()) ∷ valid-of es eq
+  ... | false = (λ _ → NC.∧-elimˡ eq) ∷ valid-of es (NC.∧-elimʳ eq)
+
+  valid-mod : ∀ (m : P.Module) {es} → C.extractFunctions (C.extractAliases m) m ≡ inj₂ es → All TW.MonoValid es
+  valid-mod (P.mkModule ds) {es} eq = valid-of es (NC.∧-elimʳ (NC.guard-true (C.extractFunctions-go (C.extractAliases (P.mkModule ds)) ds C.nothing) eq))
+
   core-ef : ∀ (m : P.Module) (ef : String ⊎ List C.Entry) (mt : ModuleTyped-ef m ef) (hvm : HasValidMain-ef m ef mt)
-              {es} → ef ≡ inj₂ es → AllPairs _≢_ (map TW.entryName es)
+              {es} → ef ≡ inj₂ es → AllPairs _≢_ (map TW.entryName es) → All TW.MonoValid es
             → (b : FB.FunBundle C.emptyCScope es) (bme : FB.BMainExists b) (n : ℕ)
             → ME.runMainˢ (TW.σMain b bme []) (proj₂ (MC.mainRealized-ef m ef mt hvm)) n
               ≡ runProgram fmt (typedProgram-ef m ef mt hvm) n
-  core-ef m .(inj₂ _) mt (_ , mi) refl dist b bme n =
-    TW.walk mt b mi bme Tele.[] TR.[] TR.[] _ [] inv₀ (dist , none-in-empty _) n
+  core-ef m .(inj₂ _) mt (_ , mi) refl dist vd b bme n =
+    TW.walk mt b mi bme Tele.[] TR.[] TR.[] _ [] inv₀ (dist , none-in-empty _) vd n
 
   -- `main`'s node: the compiled program's environment is the walk's at `main`.
   core-node : ∀ (m : P.Module) (mt : ModuleTyped m) (hvm : HasValidMain m mt) {ir} (N : MF.MainNode m ir) (n : ℕ)
@@ -147,7 +163,7 @@ private
              (cong₂ (λ tbl sc → RF.σR fmt (tableEnv fmt tbl) (C.cpolys sc) (C.declImps (C.CScope.ctele sc))
                                         (("main" , EffUU) ∷ C.CScope.cimps sc) 0)
                     (cong tableOfResult ceq) (sym msc≡)))
-          (core-ef m (C.extractFunctions (C.extractAliases m) m) mt hvm ef-eq (entries-distinct m ef-eq) b bme n)
+          (core-ef m (C.extractFunctions (C.extractAliases m) m) mt hvm ef-eq (entries-distinct m ef-eq) (valid-mod m ef-eq) b bme n)
 
 ------------------------------------------------------------------------
 -- THE LINK (6b + the telescope walk, `TeleWalk`; its steps are the residuals)

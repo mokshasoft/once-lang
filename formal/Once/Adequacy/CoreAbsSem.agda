@@ -389,3 +389,27 @@ rt-sem : ∀ (Δ : KCtx 0) (σ : GSub 0) (r : Respects Δ σ) (sg : SigGround)
 rt-sem Δ σ r sg {t} {A} D fmt δ =
   trans (cong (λ E → GM.⟦ E ⟧ fmt δ tt) (sym (RoundTrip.RT-id Δ σ r sg D)))
         (tr-sem refl (RoundTrip.rtT-id Δ σ r sg t) (RoundTrip.rt-id Δ σ r sg A) (RoundTrip.RT Δ σ r sg D) fmt δ tt)
+
+-- A MONOMORPHIC ENTRY (`Translate.monoBody`: the abstraction, retyped at the
+-- embedded ground type) read back at arity 0 means its elaboration.
+open import Once.Spec.Core.AbsTy using (absTy-ground)
+open import Once.Spec.Core.PolyTy using (⌈_⌉; ⌈⌉-⟪⟫)
+open import Once.Type.Rigid using (RigidFree)
+
+mono-entry-sem : ∀ (Δ : KCtx 0) (σ : GSub 0) (r : Respects Δ σ) (sg : SigGround)
+                   {t A} (g : RigidFree A) (D : C.∅ ⊢[ [] ] t ∷ A ! T.pure) (fmt : TargetNum) (δ : GM.DefSem)
+               → subst (λ X → T ⟦ X ⟧ᴰ) (⌈⌉-⟪⟫ A σ)
+                   (GM.⟦ PT.instantiate σ r
+                           (subst (λ X → Δ PT.⊩ PT.∅ ⊢[ [] ] absTm Δ t ∷ X ! T.pure) (absTy-ground Δ g) (abs-⊢ Δ sg D)) ⟧ fmt δ tt)
+                 ≡ GM.⟦ D ⟧ fmt δ tt
+mono-entry-sem Δ σ r sg {t} {A} g D fmt δ =
+  trans (sym (tr-sem refl (RoundTrip.rtT-id Δ σ r sg t) (⌈⌉-⟪⟫ A σ) X fmt δ tt))
+        (cong (λ E → GM.⟦ E ⟧ fmt δ tt)
+          (trans (tr-isubst {Δ = Δ} {σ = σ} {r = r} {f = λ X → X} {eΓ = refl} {et = RoundTrip.rtT-id Δ σ r sg t}
+                            {eA = ⌈⌉-⟪⟫ A σ} (absTy-ground Δ g) (abs-⊢ Δ sg D))
+            (trans (tr-irr refl refl (RoundTrip.rtT-id Δ σ r sg t) (RoundTrip.rtT-id Δ σ r sg t)
+                           (trans (cong (λ y → y ⟪ σ ⟫) (absTy-ground Δ g)) (⌈⌉-⟪⟫ A σ)) (RoundTrip.rt-id Δ σ r sg A)
+                           (PT.instantiate σ r (abs-⊢ Δ sg D)))
+                   (RoundTrip.RT-id Δ σ r sg D))))
+  where
+    X = PT.instantiate σ r (subst (λ X → Δ PT.⊩ PT.∅ ⊢[ [] ] absTm Δ t ∷ X ! T.pure) (absTy-ground Δ g) (abs-⊢ Δ sg D))
