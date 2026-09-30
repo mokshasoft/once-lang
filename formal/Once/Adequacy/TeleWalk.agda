@@ -46,7 +46,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym
 
 open import Once.Type using (Type)
 open import Once.Type.DecEq using (_≟T_)
-open import Once.Type.Rigid using (RigidFree)
+open import Once.Type.Rigid using (RigidFree; KindedInstance)
 open import Once.Type.Honest using (HonestFFI)
 open import Once.CanonicalName using (bare)
 open import Once.Functor.Translate using (IsConcrete)
@@ -65,7 +65,7 @@ open import Once.Denotation.Program using (IRFun; fname)
 open import Once.Spec.Module using (ModTele; []; ffi; mono; poly; MainIn; EffUU; ctxOf)
 open import Once.Spec.Core.PolyTy using (Sig)
 open import Once.Spec.Core.Telescope using (Tele; def; teleSem; runProgram; noKinds; noVars)
-open import Once.Spec.Core.Schema using (schemaOf; kindsOf)
+open import Once.Spec.Core.Schema using (schemaOf; kindsOf; kinded-instance)
 open import Once.Spec.Core.Translate using (ImpSig; TeleSig; i-ffi; i-def; t-def; wkI; wkT; SigCF; toProgram; viewOf;
   monoHere; monoElab; monoBody; monoSchema; monoSg; polyElab; polyBody; polySg)
 import Once.Spec.Core.Abstract as A
@@ -86,7 +86,8 @@ import Once.Spec.Core.PolyTyping as PT
 import Once.Denotation.Meaning as MeaningM
 open import Once.Adequacy.MeaningRelation fmt using (RelT; RelT-bind)
 open import Once.Denotation.TraceMonad using (T; projTrace)
-open import Once.Adequacy.TeleEnvLemmas fmt using (σW; callSD-later)
+open import Once.Adequacy.TeleEnvLemmas fmt using (σW; callSD-later; refs-skip; refs-head; spliceClosed; RefsAgree; envrel-transport;
+  imprel-transport; calls-same)
 import Once.Adequacy.TeleEntry fmt as TE
 import Once.Adequacy.SourceFaithful as SF
 import Once.Adequacy.FaithfulLemmas as FLm
@@ -105,6 +106,7 @@ open import Once.Denotation.DenotTrace using (evalᴰ; cohᴰ)
 open import Once.Denotation.Program using (tableEnv)
 open import Once.Adequacy.TableCall fmt using (abiT; abi)
 import Data.Maybe
+open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ)
 import Relation.Nullary
 open import Once.Functor.Decide using (isConcrete?)
 open import Once.Denotation.Meaning using (sigOpRefᴰ)
@@ -156,17 +158,6 @@ Fresh csc es = AllPairs _≢_ (map entryName es) × All (λ x → All (x ≢_) (
 ------------------------------------------------------------------------
 -- SCAFFOLD (plan 0.103 C): the steps, discharged next.
 ------------------------------------------------------------------------
-
-postulate
-  inv-poly : ∀ {s} {S : Sig s} {csc tl is ts pre} (sg : SigCF S) {pfi : C.PolyFunInfo} {Ψ : Ctx.Usage 0}
-               (D : ctxOf (AS.scopeOf csc) ⊢ᶜ pfunBody pfi ∶ rigidOf (pfunType pfi) ⨾ Ψ)
-           → Inv {S = S} csc tl is ts pre → All (pfunName pfi ≢_) (scopeNames csc)
-           → Inv (C.addEntry csc pfi)
-                 (def tl (schemaOf (pfunType pfi))
-                         (A.absTm S (kindsOf (pfunType pfi)) (proj₁ (polyElab {S = S} {sc = AS.scopeOf csc} {pfi = pfi} {Ψ = Ψ} is ts D)))
-                         (polyBody {S = S} {sc = AS.scopeOf csc} {pfi = pfi} {Ψ = Ψ} is ts sg D))
-                 (wkI is) (t-def zero refl (wkT ts)) pre
-
 
 ------------------------------------------------------------------------
 -- `main`: legs A (SD ~ surface), B (surface = core of the elaboration) and F
@@ -401,6 +392,144 @@ inv-mono {S = S} {csc} {tl} {is} {ts} {pre} sg {fi} {ty} {g} {Ctx.Usage.[]} D {i
         new : RelT ty (CMB.refSem fmt S′ δ′ {d = zero} {U = ty} (TR.mono-inst {S = S′} {d = zero} {T′ = ty} refl)) (MB.callSD fmt σ x ty)
         new = subst (λ m → RelT ty m (MB.callSD fmt σ x ty)) entry≡
                     (subst (RelT ty (GM.⟦_⟧ S Dc fmt δ tt)) (sym callEq) relM)
+
+------------------------------------------------------------------------
+-- A telescope entry: typed once at its rigid schema; each reference to it is
+-- the resolver's splice of its body at the instance (6e).
+------------------------------------------------------------------------
+
+postulate
+  -- RESIDUAL, class DEFERRED PROOF (plan 0.103 D, 6e): a body typed at its
+  -- rigid schema checks at every kinded instance — the surface judgment's
+  -- substitution lemma (a rigid parameter is related only to itself, so its
+  -- instance is typed by the same rules).
+  poly-typed-at : ∀ {ctx : Once.TypeCheck.Classify.NamedCtx} {body : _} (sc : Once.Type.PolyType) {Ψ}
+                → ctx ⊢ᶜ body ∶ rigidOf sc ⨾ Ψ → ∀ {U} → KindedInstance sc U
+                → Σ-syntax (Ctx.Usage (Once.TypeCheck.Classify.NamedCtx.size ctx)) (λ Ψ′ → ctx ⊢ᶜ body ∶ U ⨾ Ψ′)
+
+  -- RESIDUAL, class DEFERRED PROOF (plan 0.103 D, 6e): the elaboration at an
+  -- instance means what the entry's abstraction, instantiated there, means —
+  -- the core's semantic substitution lemma, in one environment.
+  poly-instance-sem : ∀ {s} {S : Sig s} {csc : C.CScope} (is : ImpSig S (C.CScope.cimps csc))
+                        (ts : TeleSig S (C.telePolys (C.CScope.ctele csc))) (sg : SigCF S) (δ : GM.DefSem S)
+                        {body : _} (sc : Once.Type.PolyType)
+                        (D : ctxOf (AS.scopeOf csc) ⊢ᶜ body ∶ rigidOf sc ⨾ Ctx.Usage.[]) {U : Type} (ki : KindedInstance sc U)
+                        (D-U : ctxOf (AS.scopeOf csc) ⊢ᶜ body ∶ U ⨾ Ctx.Usage.[])
+                    → GM.⟦_⟧ S (proj₂ (ElabM.elabᶜ S (viewOf {S = S} is ts) D-U)) fmt δ tt
+                      ≡ subst (λ X → T ⟦ X ⟧ᴰ) (proj₂ (proj₂ (kinded-instance sc ki)))
+                          (GM.⟦_⟧ S (PT.instantiate S (proj₁ (kinded-instance sc ki)) (proj₁ (proj₂ (kinded-instance sc ki)))
+                                       (A.abs-⊢ S (kindsOf sc) sg (proj₂ (ElabM.elabᶜ S (viewOf {S = S} is ts) D)))) fmt δ tt)
+
+private
+  declImps-head : ∀ (e : C.PolyFunInfo × C.FunCtx) (es : List (C.PolyFunInfo × C.FunCtx))
+                    (d : Dec (pfunName (proj₁ e) ≡ pfunName (proj₁ e)))
+                → C.declImps-aux e es (pfunName (proj₁ e)) d ≡ proj₂ e
+  declImps-head e es (yes _) = refl
+  declImps-head e es (no ¬p) = ⊥-elim (¬p refl)
+
+  declImps-skip : ∀ (e : C.PolyFunInfo × C.FunCtx) (es : List (C.PolyFunInfo × C.FunCtx)) (x : String)
+                    (d : Dec (pfunName (proj₁ e) ≡ x)) → pfunName (proj₁ e) ≢ x
+                → C.declImps-aux e es x d ≡ C.declImps es x
+  declImps-skip e es x (yes p) ne = ⊥-elim (ne p)
+  declImps-skip e es x (no _)  ne = refl
+
+  iself-step : ∀ (e : C.PolyFunInfo × C.FunCtx) (tele : List (C.PolyFunInfo × C.FunCtx)) (qs : List (C.PolyFunInfo × C.FunCtx))
+             → All (pfunName (proj₁ e) ≢_) (map (λ q → pfunName (proj₁ q)) qs)
+             → IAgree (C.declImps tele) qs → IAgree (C.declImps (e ∷ tele)) qs
+  iself-step e tele []       []       []       = []
+  iself-step e tele (q ∷ qs) (h ∷ hs) (a ∷ as) =
+    trans (declImps-skip e tele (pfunName (proj₁ q)) (pfunName (proj₁ e) ≟str pfunName (proj₁ q)) h) a ∷ iself-step e tele qs hs as
+
+  ++⁻ʳ : ∀ {x : String} (as : List String) {bs : List String} → All (x ≢_) (as ++ bs) → All (x ≢_) bs
+  ++⁻ʳ []       a        = a
+  ++⁻ʳ (_ ∷ as) (_ ∷ a) = ++⁻ʳ as a
+
+inv-poly : ∀ {s} {S : Sig s} {csc tl is ts pre} (sg : SigCF S) {pfi : C.PolyFunInfo} {Ψ : Ctx.Usage 0}
+             (D : ctxOf (AS.scopeOf csc) ⊢ᶜ pfunBody pfi ∶ rigidOf (pfunType pfi) ⨾ Ψ)
+         → Inv {S = S} csc tl is ts pre → All (pfunName pfi ≢_) (scopeNames csc)
+         → Inv (C.addEntry csc pfi)
+               (def tl (schemaOf (pfunType pfi))
+                       (A.absTm S (kindsOf (pfunType pfi)) (proj₁ (polyElab {S = S} {sc = AS.scopeOf csc} {pfi = pfi} {Ψ = Ψ} is ts D)))
+                       (polyBody {S = S} {sc = AS.scopeOf csc} {pfi = pfi} {Ψ = Ψ} is ts sg D))
+               (wkI is) (t-def zero refl (wkT ts)) pre
+inv-poly {S = S} {csc} {tl} {is} {ts} {pre} sg {pfi} {Ctx.Usage.[]} D inv fr = record
+  { valid = valid-wk {sc = schemaOf scT} {tl = tl} {body = bodyT} {D = bodyD} is (Inv.valid inv)
+  ; iself = declImps-head (pfi , C.CScope.cimps csc) (C.CScope.ctele csc) (y ≟str y)
+            ∷ iself-step (pfi , C.CScope.cimps csc) (C.CScope.ctele csc) (C.CScope.ctele csc) frT (Inv.iself inv)
+  ; rel   = rel′
+  }
+  where
+    y     = pfunName pfi
+    scT   = pfunType pfi
+    bodyT = A.absTm S (kindsOf scT) (proj₁ (polyElab {S = S} {sc = AS.scopeOf csc} {pfi = pfi} {Ψ = Ctx.Usage.[]} is ts D))
+    bodyD = polyBody {S = S} {sc = AS.scopeOf csc} {pfi = pfi} {Ψ = Ctx.Usage.[]} is ts sg D
+    S′    = S Once.Spec.Core.PolyTy.▷ schemaOf scT
+    δ     = teleSem fmt tl
+    δ′    = teleSem fmt (def tl (schemaOf scT) bodyT bodyD)
+    ctx   = ctxOf (AS.scopeOf csc)
+    ρ     = CE.envOf fmt S δ is ts
+    V     = viewOf {S = S} is ts
+    Dc    = proj₂ (ElabM.elabᶜ S V D)
+    frT   = ++⁻ʳ (map proj₁ (C.CScope.cimps csc)) fr
+
+    rel′ : ∀ (later : List IRFun) → NoShadow later (C.CScope.cimps csc)
+         → ∀ (I : String → Imports) → IAgree I ((pfi , C.CScope.cimps csc) ∷ C.CScope.ctele csc) → ∀ (uf : Imports)
+         → MB.MRel fmt (σW (later ++ pre) (C.cpolys (C.addEntry csc pfi)) I uf) (ctxOf (AS.scopeOf (C.addEntry csc pfi)))
+                   (CE.envOf fmt S′ δ′ (wkI is) (t-def zero refl (wkT ts)))
+    rel′ later ns I (iy ∷ ia) uf =
+      ( head
+      , envrel-transport σo σ (C.cpolys csc) (ra (C.CScope.ctele csc) frT)
+          (subst (λ dm → MB.EnvRel fmt σo (C.cpolys csc) dm)
+                 (sym (defEnv-wk {sc = schemaOf scT} {tl = tl} {body = bodyT} {D = bodyD} ts)) (proj₁ old)) )
+      , subst (λ im → MB.ImpRel fmt σ (C.CScope.cimps csc) im)
+              (sym (impEnv-wk {sc = schemaOf scT} {tl = tl} {body = bodyT} {D = bodyD} is))
+              (imprel-transport σo σ (C.CScope.cimps csc)
+                 (calls-same tbl (C.cpolys csc) (C.cpolys (C.addEntry csc pfi)) I I uf uf (C.CScope.cimps csc)) (proj₂ old))
+      where
+        tbl = later ++ pre
+        σo  = σW tbl (C.cpolys csc) I uf
+        σ   = σW tbl (C.cpolys (C.addEntry csc pfi)) I uf
+        old : MB.MRel fmt σo ctx ρ
+        old = Inv.rel inv later ns I ia uf
+
+        -- the telescope's earlier entries are not the new one
+        ra : ∀ (qs : List (C.PolyFunInfo × C.FunCtx)) → All (y ≢_) (map (λ q → pfunName (proj₁ q)) qs)
+           → RefsAgree σo σ (C.buildPolyCtx (map proj₁ qs))
+        ra []       []       = tt
+        ra (q ∷ qs) (h ∷ hs) =
+          (λ A → sym (refs-skip I uf (tableEnv fmt tbl) y {pfunType pfi} {pfunBody pfi} (C.cpolys csc) (pfunName (proj₁ q)) A h))
+          , ra qs hs
+
+        -- the new entry: its splice at an instance is its core instance (6e)
+        head : ∀ (U : Type) (ki : KindedInstance scT U)
+             → RelT U (CMB.refSem fmt S′ δ′ {d = zero} {U = U} (TR.poly-inst {S = S′} {d = zero} {sc = scT} refl ki))
+                      (SD.refs σ y U)
+        head U ki = head′ (poly-typed-at scT D ki)
+          where
+            head′ : Σ-syntax (Ctx.Usage 0) (λ Ψ′ → ctx ⊢ᶜ pfunBody pfi ∶ U ⨾ Ψ′)
+                  → RelT U (CMB.refSem fmt S′ δ′ {d = zero} {U = U} (TR.poly-inst {S = S′} {d = zero} {sc = scT} refl ki))
+                           (SD.refs σ y U)
+            head′ (Ctx.Usage.[] , D-U) =
+              subst (λ m → RelT U m (SD.refs σ y U))
+                    (trans (CMB.bridge-c fmt S {δ = δ} V (CE.agree fmt S δ is ts (Inv.valid inv)) D-sound tt)
+                           (poly-instance-sem is ts sg δ scT D ki D-sound))
+                    (subst (RelT U (MeaningM.⟦_⟧ᶜ D-sound fmt ρ tt)) (sym eqSD)
+                           (MB.bridge-c fmt σo D-sound {dγ₁ = tt} {dγ₂ = tt} (MB.mk↾ tt) old))
+              where
+                ccU = Once.TypeCheck.Completeness.check-complete D-U
+                eE  = proj₁ ccU
+                ce  = proj₂ (proj₂ (proj₂ ccU))
+                D-sound = Once.TypeCheck.Soundness.check-sound ctx (pfunBody pfi) U ce
+                eqSD : SD.refs σ y U ≡ SD.⟦ realize D-sound ⟧ˢ fmt σo tt
+                eqSD =
+                  trans (refs-head I uf (tableEnv fmt tbl) y {pfunType pfi} {pfunBody pfi} (C.cpolys csc) U)
+                    (trans (cong (λ X → SD.⟦ spliceClosed I uf (C.cpolys csc) y
+                                              (Once.TypeCheck.Elaborate.checkElab (Once.TypeCheck.Classify.ctxWithImportsAndPolys X (C.cpolys csc))
+                                                 (pfunBody pfi) U) ⟧ˢ fmt (RF.σ₀ fmt (tableEnv fmt tbl)) tt) iy)
+                      (trans (cong (λ r → SD.⟦ spliceClosed I uf (C.cpolys csc) y r ⟧ˢ fmt (RF.σ₀ fmt (tableEnv fmt tbl)) tt) ce)
+                        (trans (FLm.T-ext-at fmt (tableEnv fmt tbl)
+                                 (RF.resolveExpr-faithful fmt (tableEnv fmt tbl) (C.cpolys csc) I uf 0 eE tt))
+                               (RB.realize-agrees fmt σo ctx (pfunBody pfi) U ce tt))))
 
 ------------------------------------------------------------------------
 -- Freshness along the walk

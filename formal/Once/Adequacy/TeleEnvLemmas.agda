@@ -193,3 +193,9 @@ callSD-later : ∀ (later pre : List IRFun) (P : PolyCtx) (I : String → Import
   → MB.callSD fmt (σW (later ++ pre) P I uf) x U ≡ MB.callSD fmt (σW pre P I uf) x U
 callSD-later later pre P I uf x U nes =
   cong (subst T (cohᴰ U)) (refIR-cong U (bare x) _ _ (tableEnv-later later pre (bare x) nes))
+
+-- Two walk environments over one table make the same calls.
+calls-same : ∀ (tbl : List IRFun) (P P′ : PolyCtx) (I I′ : String → Imports) (uf uf′ : Imports) (imps : Imports)
+           → CallsAgree (σW tbl P I uf) (σW tbl P′ I′ uf′) imps
+calls-same tbl P P′ I I′ uf uf′ []             = tt
+calls-same tbl P P′ I I′ uf uf′ ((n , U) ∷ is) = refl , calls-same tbl P P′ I I′ uf uf′ is
