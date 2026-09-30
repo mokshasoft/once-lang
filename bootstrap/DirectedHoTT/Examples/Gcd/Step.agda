@@ -773,76 +773,113 @@ gtRHS ih A B = app (app ih (pair (monusTm (nsuc A) (nsuc B)) (nsuc B)))
 -- ⇒ also needed: `σ3` must carry `d`, since the comparison's reduct appears
 --   in the SECOND half.  Two variables are not enough.
 
--- ★★★★ THE ARBITRARY-TERM FORM.  Every chain step PINNED via
---   `gcdBody`/`gcdInn1`/`gcdInn2`, so the target is stable; the hypothesis
---   is carried to the substituted `a'` by `⟶*-ren` plus one `cong`.
+-- ★★★★ THE ARBITRARY-TERM FORM, over ABSTRACT branch payloads (2026-09-30).
+--   The chain never looks inside the two branches' payloads (`PAIRᶻ`/`CERTᶻ`,
+--   `PAIRˢ`/`CERTˢ`): it only carries them to `ih`.  Stated over VARIABLES,
+--   every `subTm` on them stays stuck and small; at the concrete payloads the
+--   certificate — a large `plusMonoLTm` term — was pushed through all eight
+--   substitution layers by every conversion of the chain (the 2026-09-30
+--   profile: 286 s, 48 M unfoldings, the build's largest site).  Memory
+--   `abstract-the-substituted-terms`.
+G3zG : {Γ : Cx} → RTm (Γ ∙ ∙ ∙ ∙ ∙ ∙) → RTm (Γ ∙ ∙ ∙ ∙ ∙ ∙) → RTm (Γ ∙ ∙ ∙ ∙ ∙)
+G3zG P C = lam (app (app (var vz) P) C)
+
+G3sG : {Γ : Cx} → RTm (Γ ∙ ∙ ∙ ∙ ∙ ∙ ∙ ∙) → RTm (Γ ∙ ∙ ∙ ∙ ∙ ∙ ∙ ∙) → RTm (Γ ∙ ∙ ∙ ∙ ∙ ∙ ∙)
+G3sG P C = lam (app (app (var vz) P) C)
+
+gcdInn2G : {Γ : Cx} (P₀ C₀ : RTm (Γ ∙ ∙ ∙ ∙ ∙ ∙)) (P C : RTm (Γ ∙ ∙ ∙ ∙ ∙ ∙ ∙ ∙)) → RTm (Γ ∙ ∙ ∙ ∙ ∙)
+gcdInn2G P₀ C₀ P C = natrec (G3zG P₀ C₀) (G3sG P C)
+                            (monusTm (nsuc (var (vs vz))) (nsuc (var (vs (vs (vs vz))))))
+
+gcdInn1G : {Γ : Cx} (P₀ C₀ : RTm (Γ ∙ ∙ ∙ ∙ ∙ ∙)) (P C : RTm (Γ ∙ ∙ ∙ ∙ ∙ ∙ ∙ ∙)) → RTm (Γ ∙ ∙ ∙)
+gcdInn1G P₀ C₀ P C = natrec G2z (gcdInn2G P₀ C₀ P C) (fst (var (vs (vs vz))))
+
+gcdBodyG : {Γ : Cx} (P₀ C₀ : RTm (Γ ∙ ∙ ∙ ∙ ∙ ∙)) (P C : RTm (Γ ∙ ∙ ∙ ∙ ∙ ∙ ∙ ∙)) → RTm (Γ ∙)
+gcdBodyG P₀ C₀ P C = natrec G1z (gcdInn1G P₀ C₀ P C) (snd (var vz))
+
+module GT {Γ : Cx} (a' b' d ih : RTm Γ)
+          (P₀ C₀ : RTm (Γ ∙ ∙ ∙ ∙ ∙ ∙)) (P C : RTm (Γ ∙ ∙ ∙ ∙ ∙ ∙ ∙ ∙)) where
+  gX : RTm Γ
+  gX = pair (nsuc a') (nsuc b')
+
+  -- ★★★ THE FOUR INTERMEDIATE SCRUTINEES, NAMED.  Agda cannot INFER these:
+  --   they sit under `subTm`, and a substitution is a FUNCTION, so the
+  --   unifier has nothing to invert.  Named, each one is ordinary text; they
+  --   nest: R₂ is written with R₁, R₃ with both.
+  R₁ : RTm Γ
+  R₁ = natrec (subTm (single gX) G1z)
+              (subTm (extS (extS (single gX))) (gcdInn1G P₀ C₀ P C)) b'
+
+  -- the descent's first argument, `a ∸ b`, after the outer substitutions
+  W : RTm Γ
+  W = subTm (single R₁) (subTm (extS (single b')) (renTm vs (renTm vs a')))
+
+  R₂ : RTm Γ
+  R₂ = natrec (subTm (single R₁)
+                (subTm (extS (single b')) (subTm (extS (extS (single gX))) G2z)))
+              (subTm (extS (extS (single R₁)))
+                (subTm (extS (extS (extS (single b'))))
+                  (subTm (extS (extS (extS (extS (single gX))))) (gcdInn2G P₀ C₀ P C))))
+              W
+
+  R₃ : RTm Γ
+  R₃ = natrec (subTm (single R₂)
+                (subTm (extS (single W))
+                  (subTm (extS (extS (single R₁)))
+                    (subTm (extS (extS (extS (single b'))))
+                      (subTm (extS (extS (extS (extS (single gX))))) (G3zG P₀ C₀))))))
+              (subTm (extS (extS (single R₂)))
+                (subTm (extS (extS (extS (single W))))
+                  (subTm (extS (extS (extS (extS (single R₁)))))
+                    (subTm (extS (extS (extS (extS (extS (single b'))))))
+                      (subTm (extS (extS (extS (extS (extS (extS (single gX)))))))
+                             (G3sG P C))))))
+              d
+
+  -- the eight layers a successor-branch payload travels through, innermost
+  -- first (six `natrec` binders + the branch `lam`, then the final β on `ih`)
+  τ₁ = extS (extS (extS (extS (extS (extS (extS (single gX)))))))
+  τ₂ = extS (extS (extS (extS (extS (extS (single b'))))))
+  τ₃ = extS (extS (extS (extS (extS (single R₁)))))
+  τ₄ = extS (extS (extS (extS (single W))))
+  τ₅ = extS (extS (extS (single R₂)))
+  τ₆ = extS (extS (single d))
+  τ₇ = extS (single R₃)
+  τ₈ = single ih
+
+  T : RTm (Γ ∙ ∙ ∙ ∙ ∙ ∙ ∙ ∙) → RTm Γ
+  T x = subTm τ₈ (subTm τ₇ (subTm τ₆ (subTm τ₅ (subTm τ₄ (subTm τ₃ (subTm τ₂ (subTm τ₁ x)))))))
+
+  core : monusTm (nsuc a') (nsuc b') ⟶* nsuc d →
+         app (app (lam (gcdBodyG P₀ C₀ P C)) gX) ih ⟶* app (app ih (T P)) (T C)
+  core mh =
+    --  each line is ONE reduction of the trace, read top to bottom
+      one (ξ-appˡ (β (gcdBodyG P₀ C₀ P C) gX))              -- unfold the step fn
+    ⟫ ⟶*-appˡ (⟶*-natrecⁿ (one (βsnd _ _)))               -- scrutinee snd = suc b
+    ⟫ ⟶*-appˡ (one (natrec-suc (subTm (single gX) G1z)
+                               (subTm (extS (extS (single gX))) (gcdInn1G P₀ C₀ P C)) b'))
+    ⟫ ⟶*-appˡ (⟶*-natrecⁿ (one (βfst _ _)))               -- scrutinee fst = suc a
+    ⟫ ⟶*-appˡ (one (natrec-suc _ _ _))
+    ⟫ ⟶*-appˡ (⟶*-natrecⁿ (mhAt (wkS3 a') (wkS3e b') mh)) -- run the descent a∸b
+    ⟫ ⟶*-appˡ (one (natrec-suc _ _ _))                    -- it hit suc d ⇒ G3s
+    ⟫ one (β _ ih)                                        -- …and feed in ih
+
+-- the concrete step, at the concrete payloads: `gcdBody` IS `gcdBodyG …`
 gcd-gt-term : {Γ : Cx} (a' b' d ih : RTm Γ) →
               monusTm (nsuc a') (nsuc b') ⟶* nsuc d →
               RecCall (app (app gcdStp (pair (nsuc a') (nsuc b'))) ih) ih
                      (monusTm (nsuc a') (nsuc b')) (nsuc b')
-gcd-gt-term {Γ} a' b' d ih mh = recCall (gtCert a' b') (certAt certEq
-  --  each line is ONE reduction of the trace, read top to bottom
-  ( one (ξ-appˡ (β gcdBody gX))                         -- unfold the step fn
-  ⟫ ⟶*-appˡ (⟶*-natrecⁿ (one (βsnd _ _)))               -- scrutinee snd = suc b
-  ⟫ ⟶*-appˡ (one (natrec-suc (subTm (single gX) G1z)
-                             (subTm (extS (extS (single gX))) gcdInn1) b'))
-  ⟫ ⟶*-appˡ (⟶*-natrecⁿ (one (βfst _ _)))               -- scrutinee fst = suc a
-  ⟫ ⟶*-appˡ (one (natrec-suc _ _ _))
-  ⟫ ⟶*-appˡ (⟶*-natrecⁿ (mhAt (wkS3 a') (wkS3e b') mh)) -- run the descent a∸b
-  ⟫ ⟶*-appˡ (one (natrec-suc _ _ _))                    -- it hit suc d ⇒ G3s
-  ⟫ appAt _                                             -- …and feed in ih
-      (cong₃g (λ I A B → app I (pair (monusTm (nsuc A) (nsuc B)) (nsuc B)))
-              refl
-              (trans (peel4 {u₁ = R₂} {u₂ = d} {u₃ = R₃} {u₄ = ih} W)
-                     (wkS2 {u = R₁} {v = b'} a'))
-              (peel6 {u₁ = R₁} {u₂ = W} {u₃ = R₂}
-                     {u₄ = d} {u₅ = R₃} {u₆ = ih} b'))
-      (one (β _ ih))
-  ))
+gcd-gt-term {Γ} a' b' d ih mh =
+  recCall (gtCert a' b')
+    (certAt certEq
+      (appAt _ (cong₃g (λ I A B → app I (pair (monusTm (nsuc A) (nsuc B)) (nsuc B))) refl pA pB)
+               (core mh)))
   where
-    gX : RTm Γ
-    gX = pair (nsuc a') (nsuc b')
-
-    -- ★★★ THE FOUR INTERMEDIATE SCRUTINEES, NAMED.  Agda cannot INFER these:
-    --   they sit under `subTm`, and a substitution is a FUNCTION, so the
-    --   unifier has nothing to invert — every attempt to leave them as `_`
-    --   leaves an unsolved meta.  Named, each one is ordinary text, and note
-    --   they nest: R₂ is written with R₁, R₃ with both.  That is the same
-    --   move that made `gcdBody`'s branches pinnable, one level deeper.
-    R₁ : RTm Γ
-    R₁ = natrec (subTm (single gX) G1z)
-                (subTm (extS (extS (single gX))) gcdInn1) b'
-
-    -- the descent's first argument, `a ∸ b`, after the outer substitutions
-    W : RTm Γ
-    W = subTm (single R₁) (subTm (extS (single b')) (renTm vs (renTm vs a')))
-
-    R₂ : RTm Γ
-    R₂ = natrec (subTm (single R₁)
-                  (subTm (extS (single b')) (subTm (extS (extS (single gX))) G2z)))
-                (subTm (extS (extS (single R₁)))
-                  (subTm (extS (extS (extS (single b'))))
-                    (subTm (extS (extS (extS (extS (single gX))))) gcdInn2)))
-                W
-
-    R₃ : RTm Γ
-    R₃ = natrec (subTm (single R₂)
-                  (subTm (extS (single W))
-                    (subTm (extS (extS (single R₁)))
-                      (subTm (extS (extS (extS (single b'))))
-                        (subTm (extS (extS (extS (extS (single gX))))) G3z)))))
-                (subTm (extS (extS (single R₂)))
-                  (subTm (extS (extS (extS (single W))))
-                    (subTm (extS (extS (extS (extS (single R₁)))))
-                      (subTm (extS (extS (extS (extS (extS (single b'))))))
-                        (subTm (extS (extS (extS (extS (extS (extS (single gX)))))))
-                               G3s)))))
-                d
-
+    open GT a' b' d ih PAIRᶻ CERTᶻ PAIRˢ CERTˢ
 
     ------------------------------------------------------------------------
     -- ★★★★ THE CERTIFICATE, IN CLEAN FORM — proved HERE, where `R₁`/`W`/
-    --      `R₂`/`R₃` are already bound, so nothing is reconstructed.
+    --      `R₂`/`R₃` are already bound (from `GT`), so nothing is reconstructed.
     --
     -- ★ Push the substitution through the certificate by NATURALITY
     --   (`plusMonoLTm-sub`/`monusLtTm-sub`), one layer at a time, then peel
@@ -851,14 +888,6 @@ gcd-gt-term {Γ} a' b' d ih mh = recCall (gtCert a' b') (certAt certEq
     --   `subTm σ x` needs `subTm` inverted, which is the whole problem.
     ------------------------------------------------------------------------
 
-    τ₁ = extS (extS (extS (extS (extS (extS (extS (single gX)))))))
-    τ₂ = extS (extS (extS (extS (extS (extS (single b'))))))
-    τ₃ = extS (extS (extS (extS (extS (single R₁)))))
-    τ₄ = extS (extS (extS (extS (single W))))
-    τ₅ = extS (extS (extS (single R₂)))
-    τ₆ = extS (extS (single d))
-    τ₇ = extS (single R₃)
-    τ₈ = single ih
 
     pushPM : {Γ₁ Γ₂ : Cx} {t x y c q : RTm Γ₁} → t ≡ plusMonoLTm x y c q →
              (σ : Sub Γ₁ Γ₂) →
@@ -902,7 +931,6 @@ gcd-gt-term {Γ} a' b' d ih mh = recCall (gtCert a' b') (certAt certEq
     certEq = trans e8 (congPM (cong₂ (λ A B → monusTm (nsuc A) (nsuc B)) pA pB)
                               (cong nsuc pA) (cong nsuc pB)
                               (trans f8 (cong₂ monusLtTm pA pB)))
-
 -- ★★★ NON-VACUITY.  A conditional lemma proves NOTHING until its premise
 --   is discharged — that is exactly what killed the earlier `gcd-gt-gen`
 --   (see the ⛔ block below), so the equation above does not count until an
