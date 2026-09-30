@@ -2,16 +2,25 @@
 # ============================================================================
 # agda-profile.sh — WHERE DOES A SLOW MODULE SPEND ITS TIME?
 #
-# Runs ONE module under the patched Agda (the build `once-lang2`'s
-# run-ast-dumps.sh uses) with per-definition counters:
-#   --profile=reduction    how often each definition is UNFOLDED
-#   --profile=conversion   how often each definition is in a CONVERSION check
-# The report names the definitions the checker keeps normalising — for the
-# Knot that is typically `KD`/`SD`/`CtxD` under a substitution
-# (memory: knot-description-normalisation-trap).
+# Runs under the patched Agda (the build `once-lang2`'s run-ast-dumps.sh
+# uses; its `perf-intro.md` documents the reports) with, per SITE — each
+# definition, and each `[positivity]`/`[termination]`/… check after a block:
+#   --profile=definitions  CPU time        --profile=allocation  bytes allocated
+#   --profile=reduction    unfoldings, and which site caused them
+#   --profile=conversion   conversion checks per head
+# Only the project's own modules are counted; every row names its file.
 #
-#   tools/agda-profile.sh DirectedHoTT/Examples/Knot/LookupCon.agda
-#   HEAP=2G TIMEOUT=900 tools/agda-profile.sh <module.agda>
+#   tools/agda-profile.sh DirectedHoTT/Examples/Knot/LookupCon.agda   # one module
+#   tools/agda-profile.sh --survey    # COLD, every Trust root in turn: ranks
+#                                     # every module and definition we build
+#   HEAP=4G TIMEOUT=900 tools/agda-profile.sh <module.agda>
+#
+# The survey checks each `Trust/` root in its own process, in order, in the
+# staged tree with IDENTICAL flags, so every module is checked (and counted)
+# exactly once — in the report of the first root that reaches it.  A root
+# that dies still leaves its last snapshot (`--counters-snapshot`), and the
+# next root resumes from the interfaces already written.  Summary:
+# `tools/profile-report.py $STAGE/reports/survey/*.json`.
 #
 # ★ WHAT WAS HARD TO GET RIGHT (each of these cost a run):
 #   1. The patched Agda has its OWN version string, so it cannot reuse the
@@ -25,11 +34,12 @@
 #      imports are built with EXACTLY the flags of the profiled run (their
 #      counters go to a separate file), and the script lists what the
 #      profiled run rechecked — anything but the target means a polluted report.
-#   3. The report is written when the run stops on an error or a HEAP
-#      EXHAUSTION — but NOT on a SIGTERM/SIGINT timeout (measured: a
-#      `timeout -s INT` run left no report).  So the heap is CAPPED (`HEAP`):
-#      a runaway module dies of heap exhaustion and the report is written.
-#      The timeout is only a last resort.
+#   3. The report is written when the run stops on an error, a HEAP
+#      EXHAUSTION or SIGINT (the 2026-09-29 build; `timeout --foreground -s
+#      INT`), and rewritten every 60 s as a SNAPSHOT, which is what survives
+#      a kill -9 / OOM kill.  The heap is still CAPPED (`HEAP`) so a runaway
+#      module dies of heap exhaustion, with a complete report, rather than
+#      of the OOM killer.
 #   4. Without `--no-fast-reduce` the unfolding counts are near zero (the
 #      fast evaluator is not counted); WITH it, rechecking the imports alone
 #      exhausted 3 GB.  It is opt-in: NOFAST=1.  The conversion counts are
@@ -42,16 +52,17 @@
 
 set -uo pipefail
 
-TARGET="${1:?usage: $0 <module path relative to bootstrap/, e.g. DirectedHoTT/Examples/Knot/Lookup.agda>}"
+TARGET="${1:?usage: $0 <module path relative to bootstrap/, e.g. DirectedHoTT/Examples/Knot/Lookup.agda> | --survey}"
+SURVEY=0; [ "$TARGET" = --survey ] && SURVEY=1
 
 HERE="$(cd "$(dirname "$0")" && pwd)"            # bootstrap/DirectedHoTT/tools
 BOOT="$(cd "$HERE/../.." && pwd)"                # bootstrap/
 REPO="$(cd "$BOOT/.." && pwd)"                   # repo root
 STAGE="${STAGE:-$HOME/.cache/once-lang5-profile}"
 OUT="${OUT:-$STAGE/reports}"
-HEAP="${HEAP:-3G}"
+HEAP="${HEAP:-4G}"
 COMPACT="${COMPACT:--c30}"
-TIMEOUT="${TIMEOUT:-2400}"
+TIMEOUT="${TIMEOUT:-$([ "$SURVEY" = 1 ] && echo 14400 || echo 2400)}"
 NOFAST="${NOFAST:-0}"
 LOCALE="${LOCALE:-en_US.utf8}"
 
@@ -65,10 +76,10 @@ say() { printf '%s  %s\n' "$(date +%H:%M:%S)" "$*"; }
 die() { printf 'error: %s\n' "$*" >&2; exit 1; }
 
 [ -n "${AGDA:-}" ] && [ -x "$AGDA" ] || die "no patched agda under $AGDA_TREE (set \$AGDA)"
-[ -f "$BOOT/$TARGET" ] || die "no such module: $BOOT/$TARGET"
+[ "$SURVEY" = 1 ] || [ -f "$BOOT/$TARGET" ] || die "no such module: $BOOT/$TARGET"
 case "$(LC_ALL="$LOCALE" "$AGDA" --help 2>&1)" in
-  *--counters-file*) ;;
-  *) die "$AGDA has no --counters-file; build the branch that adds it" ;;
+  *--counters-folded*) ;;
+  *) die "$AGDA has no --counters-folded; build the branch that adds it (perf-intro.md)" ;;
 esac
 
 STDLIB="$(find /nix/store -maxdepth 2 -name standard-library.agda-lib 2>/dev/null | head -1)"
@@ -96,8 +107,36 @@ run_agda() {  # heap-arg, then agda args
       --library-file="$LIBS" --transliterate "$@" )
 }
 
-PFLAGS=(--profile=reduction --profile=conversion)
+PFLAGS=(--profile=definitions --profile=allocation --profile=reduction --profile=conversion)
 [ "$NOFAST" = 1 ] && PFLAGS=(--no-fast-reduce "${PFLAGS[@]}")
+
+# ★ SURVEY: every Trust root, cold, one process each
+if [ "$SURVEY" = 1 ]; then
+  if [ "${KEEP:-0}" != 1 ]; then
+    say "survey: COLD — removing the staged interfaces (KEEP=1 keeps them)"
+    rm -rf "$STAGE/bootstrap/_build" "$STAGE/formal/_build"
+    find "$STAGE/bootstrap" -name '*.agdai' -delete
+  fi
+  SDIR="$OUT/survey"; mkdir -p "$SDIR"
+  ROOTS="${ROOTS:-Kernel Lib Knot1 Knot2 Knot3 Knot4 Knot5 Knot6 Knot7 Knot8 Examples Comparison}"
+  for r in $ROOTS; do
+    f="DirectedHoTT/Trust/$r.agda"
+    [ -f "$STAGE/bootstrap/$f" ] || { say "survey: no $f, skipped"; continue; }
+    start=$(date +%s)
+    say "survey: $r"
+    timeout --foreground -s INT "$TIMEOUT" bash -c "$(declare -f run_agda); STAGE='$STAGE' LOCALE='$LOCALE' AGDA='$AGDA' COMPACT='$COMPACT' LIBS='$LIBS' \
+      run_agda '$HEAP' ${PFLAGS[*]} --counters-file='$SDIR/$r.json' --counters-folded='$SDIR/$r' '$f'" > "$SDIR/$r.log" 2>&1
+    rc=$?
+    n=$(grep -ac 'Checking' "$SDIR/$r.log")
+    say "survey: $r exit $rc after $(( $(date +%s) - start ))s, $n module(s) checked"
+    grep -q "Heap exhausted" "$SDIR/$r.log" && say "survey: ⚠ $r exhausted $HEAP — rerun with ROOTS=$r HEAP=5G KEEP=1"
+    [ "$rc" -ne 0 ] && [ "${STOP_ON_FAIL:-0}" = 1 ] && break
+  done
+  say "survey done. Summary:"
+  python3 "$HERE/profile-report.py" "$SDIR"/*.json | tee "$SDIR/SUMMARY.txt"
+  say "summary: $SDIR/SUMMARY.txt   flame graphs: $SDIR/*.time.folded (speedscope.app)"
+  exit 0
+fi
 
 # 2. the target's imports, with the SAME flags (else they are rechecked under the profile)
 slug="$(basename "$TARGET" .agda)"
@@ -112,11 +151,11 @@ for m in $deps; do
 done
 
 # 3. the target, profiled
-report="$OUT/$slug.counters.txt"; log="$OUT/$slug.log"; rm -f "$report"
+report="$OUT/$slug.json"; log="$OUT/$slug.log"; rm -f "$report"
 say "profile: $TARGET  (report: $report)"
 start=$(date +%s)
-timeout -s INT "$TIMEOUT" bash -c "$(declare -f run_agda); STAGE='$STAGE' LOCALE='$LOCALE' AGDA='$AGDA' COMPACT='$COMPACT' LIBS='$LIBS' \
-  run_agda '$HEAP' ${PFLAGS[*]} --counters-file='$report' --counters-format=text '$TARGET'" > "$log" 2>&1
+timeout --foreground -s INT "$TIMEOUT" bash -c "$(declare -f run_agda); STAGE='$STAGE' LOCALE='$LOCALE' AGDA='$AGDA' COMPACT='$COMPACT' LIBS='$LIBS' \
+  run_agda '$HEAP' ${PFLAGS[*]} --counters-file='$report' --counters-folded='$OUT/$slug' '$TARGET'" > "$log" 2>&1
 rc=$?
 say "exit $rc after $(( $(date +%s) - start ))s  (log: $log)"
 rechecked="$(grep -a 'Checking' "$log" | sed 's/^ *Checking //;s/ *(.*//' | grep -v "^$(echo "$TARGET" | sed 's|/|.|g;s|\.agda$||')$")"
@@ -124,8 +163,9 @@ rechecked="$(grep -a 'Checking' "$log" | sed 's/^ *Checking //;s/ *(.*//' | grep
 grep -q "Heap exhausted" "$log" && say "heap exhausted at $HEAP — the report below is what it had counted"
 
 if [ -s "$report" ]; then
-  echo; head -60 "$report"
+  echo; python3 "$HERE/profile-report.py" "$report"
+  say "flame graphs: $OUT/$slug.{time,allocation,unfoldings}.folded (speedscope.app)"
 else
-  say "no report written (a timeout kill writes none — lower HEAP so it dies of heap instead)"
+  say "no report written (a kill -9 before the first 60 s snapshot writes none)"
   exit 1
 fi
