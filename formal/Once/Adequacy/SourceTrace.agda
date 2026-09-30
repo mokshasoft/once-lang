@@ -53,6 +53,8 @@ import Once.Parser.Module.Core as P
 -- D165: the arith-block lifting the BACKEND runs before codegen. Imported here
 -- so the IR the emitter actually compiles can be NAMED (`moduleToIR-emitted`).
 open import Once.Arith.Machine.Rewrite using (rewrite-ir)
+-- plan 0.103: the arith pass adds no call (proved).
+open import Once.Adequacy.RewriteLinked using (rewrite-ir-linked)
 open import Data.Product using (proj₁)
 -- Plan 0.52: pull the LEXER+PARSER into the verified front-end — `srcToModule`
 -- runs the executable `parseStrict` on the source TEXT (a front-end bug reds the
@@ -265,21 +267,17 @@ linked-retable tbl (I.in-ν _)      _ = tt
 linked-retable tbl (I.SigOp _)     _ = tt
 linked-retable tbl (I.const _ _)   _ = tt
 
--- RESIDUALS, class DEFERRED PROOF (plan 0.103 6a″), both claims about the
--- compiler's own output and both true of a correct compiler:
+-- RESIDUAL, class DEFERRED PROOF (plan 0.103 6a″), a claim about the compiler's
+-- own output, true of a correct compiler:
 --   * the compiled program is linked. References elaborate to `refIR` of an
 --     EARLIER entry (the telescope, D241) at `directCallIR`'s objects, and
 --     resolution leaves no `poly` placeholder behind. A false instance is a
 --     compiler bug (a dangling `call once_f`), which is why it is stated, not
 --     decided inside the meaning.
---   * the arith lifting keeps a body linked. It replaces closed arithmetic
---     subtrees by SigOps and leaves every `Call` in place; `rewrite-ir` is
---     TERMINATING, so this rides with `rewrite-program-preserves`' residual class.
+--   (the arith lifting keeps a body linked: PROVED, `RewriteLinked`.)
 postulate
   moduleToProgram-linked : ∀ (m : P.Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋)
                          → moduleToIR m ≡ just ir → LinkedProgram (irProgram (moduleTable m) ir)
-  rewrite-ir-linked : ∀ (tbl : List IRFun) {A B} (ir : IR A B)
-                    → Linked tbl ir → Linked tbl (proj₁ (rewrite-ir ir))
 
 -- …every entry of a table, rewritten, against the rewritten table.
 all-rewrite-linked : ∀ (tbl es : List IRFun)
