@@ -368,3 +368,55 @@ ren-sem θ (⊢prim p d) fmt δ x = bindC (ren-sem θ d fmt δ x) (λ _ → refl
 ren-sem θ (⊢sigop c k h g) fmt δ x = ⟦⟧-substΨ (sym (thin-usage-zeroUsage θ)) (⊢sigop c k h g) fmt δ x
 ren-sem θ (⊢sub-eff g d) fmt δ x = ren-sem θ d fmt δ x
 ren-sem θ (⊢ref d τ r) fmt δ x = ⟦⟧-substΨ (sym (thin-usage-zeroUsage θ)) (⊢ref d τ r) fmt δ x
+
+------------------------------------------------------------------------
+-- Weakening by one unused variable (`wk-⊢′`, what the derived combinators use).
+------------------------------------------------------------------------
+
+open import Once.Surface.Thinning using (⊆-refl; thin-usage-refl)
+open import Once.Spec.Core.DerivedTyping S using (wk-⊢′)
+open import Once.Spec.Core.Rename S using (wk-⊢; thin-var-refl)
+
+-- The identity thinning is the identity, across its usage transport.
+thin-refl : ∀ {n} {Γ : Ctx n} (Ψ : Usage n) (e : thin-usage (⊆-refl {Γ = Γ}) Ψ ≡ Ψ) (y : Env Γ Ψ)
+          → thinᴰ (⊆-refl {Γ = Γ}) Ψ (subst (Env Γ) (sym e) y) ≡ y
+thin-refl {Γ = ∅} [] refl y = refl
+thin-refl {Γ = Γ , X ^ r} (Zero ∷ Ψ) e y = trans (cong (thinᴰ (⊆-refl {Γ = Γ}) Ψ) (peel0' e y)) (thin-refl {Γ = Γ} Ψ (tail≡ e) y)
+  where
+    peel0' : ∀ {A B : Usage _} (e : Zero ∷ A ≡ Zero ∷ B) (y : Env Γ B)
+           → subst (Env (Γ , X ^ r)) (sym e) y ≡ subst (Env Γ) (sym (tail≡ e)) y
+    peel0' e y with tail≡ e
+    ... | refl with e
+    ...   | refl = refl
+thin-refl {Γ = Γ , X ^ r} (One ∷ Ψ) e (y , a) =
+  trans (cong (λ z → thinᴰ (⊆-refl {Γ = Γ}) Ψ (proj₁ z) , proj₂ z) (peel1' e y a)) (cong (_, a) (thin-refl {Γ = Γ} Ψ (tail≡ e) y))
+  where
+    peel1' : ∀ {A B : Usage _} (e : One ∷ A ≡ One ∷ B) (y : Env Γ B) (a : ⟦ X ⟧ᴰ)
+           → subst (Env (Γ , X ^ r)) (sym e) (y , a) ≡ (subst (Env Γ) (sym (tail≡ e)) y , a)
+    peel1' e y a with tail≡ e
+    ... | refl with e
+    ...   | refl = refl
+thin-refl {Γ = Γ , X ^ r} (Many ∷ Ψ) e (y , a) =
+  trans (cong (λ z → thinᴰ (⊆-refl {Γ = Γ}) Ψ (proj₁ z) , proj₂ z) (peelm' e y a)) (cong (_, a) (thin-refl {Γ = Γ} Ψ (tail≡ e) y))
+  where
+    peelm' : ∀ {A B : Usage _} (e : Many ∷ A ≡ Many ∷ B) (y : Env Γ B) (a : ⟦ X ⟧ᴰ)
+           → subst (Env (Γ , X ^ r)) (sym e) (y , a) ≡ (subst (Env Γ) (sym (tail≡ e)) y , a)
+    peelm' e y a with tail≡ e
+    ... | refl with e
+    ...   | refl = refl
+
+-- `wk-⊢′`'s usage transport sits under `Zero ∷_`.
+⟦⟧-substΨ0 : ∀ {n} {Γ : Ctx n} {B : Type} {Ψ Ψ' : Usage n} {t A π} (e : Ψ ≡ Ψ')
+               (d : (Γ , B ^ Many) ⊢[ Zero ∷ Ψ ] t ∷ A ! π) (fmt : TargetNum) (δ : GM.DefSem) (x : Env Γ Ψ')
+           → GM.⟦ subst (λ U → (Γ , B ^ Many) ⊢[ Zero ∷ U ] t ∷ A ! π) e d ⟧ fmt δ x ≡ GM.⟦ d ⟧ fmt δ (subst (Env Γ) (sym e) x)
+⟦⟧-substΨ0 refl d fmt δ x = refl
+
+-- THE WEAKENING LEMMA: a term weakened by one unused variable means what it meant.
+wk-sem : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {t A π} (B : Type) (d : Γ ⊢[ Ψ ] t ∷ A ! π)
+           (fmt : TargetNum) (δ : GM.DefSem) (x : Env Γ Ψ)
+       → GM.⟦ wk-⊢′ B d ⟧ fmt δ x ≡ GM.⟦ d ⟧ fmt δ x
+wk-sem {Γ = Γ} {Ψ = Ψ} {t = t} B d fmt δ x =
+  trans (⟦⟧-substΨ0 (thin-usage-refl {Γ = Γ} Ψ) (wk-⊢ B d) fmt δ x)
+  (trans (⟦⟧-substt (ren-cong (λ i → cong suc (thin-var-refl {Γ = Γ} i)) t) (ren-⊢ (skip {A = B} {q = Many} ⊆-refl) d) fmt δ _)
+  (trans (ren-sem (skip ⊆-refl) d fmt δ _)
+         (cong (GM.⟦ d ⟧ fmt δ) (thin-refl {Γ = Γ} Ψ (thin-usage-refl {Γ = Γ} Ψ) x))))
