@@ -431,13 +431,21 @@ distinctOrErr : Bool → EFResult → EFResult
 distinctOrErr true  r = r
 distinctOrErr false _ = inj₁ "ill-formed top-level definition name (duplicate or not an identifier)"
 
+-- The name an entry binds.
+entryNameOf : Entry → String
+entryNameOf (e-fun fi)   = FunInfo.funName fi
+entryNameOf (e-poly pfi) = PolyFunInfo.pfunName pfi
+
 guardDistinct : EFResult → EFResult
 guardDistinct (inj₁ err)            = inj₁ err
 -- Plan 0.103 phase 1c / D241: every definition name is distinct — monomorphic
 -- and telescope together (a definitions context with two entries of one name
 -- is ill-formed, and a reference is resolved by name).
+-- D249: and so is every ENTRY name, FFI declarations included — the function
+-- table holds them all, and a call is resolved by name.
 guardDistinct (inj₂ es) =
-  distinctOrErr ((namesDistinct nms ∧ allValidIdentB nms) ∧ namesDistinct (nms ++ₗ map PolyFunInfo.pfunName (polysOf es)))
+  distinctOrErr (((namesDistinct nms ∧ allValidIdentB nms) ∧ namesDistinct (nms ++ₗ map PolyFunInfo.pfunName (polysOf es)))
+                 ∧ namesDistinct (map entryNameOf es))
                 (inj₂ es)
   where nms = emittedNames (funsOf es)
 

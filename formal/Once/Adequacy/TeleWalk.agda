@@ -102,6 +102,7 @@ import Once.Spec.Core.Syntax
 open import Once.Surface.Elaborate using (elaborateFull)
 open import Once.TypeCheck.ElaborateProofs using (resolveExpr)
 open import Once.Parser using (validIdentB)
+import Once.Parser
 open import Once.Denotation.DenotTrace using (evalᴰ; cohᴰ)
 open import Once.Denotation.Program using (tableEnv)
 open import Once.Adequacy.TableCall fmt using (abiT; abi)
@@ -137,8 +138,7 @@ record Inv {s} {S : Sig s} (csc : C.CScope) (tl : Tele S) (is : ImpSig S (C.CSco
 
 -- The remaining entries' names: distinct, and new to the scope.
 entryName : C.Entry → String
-entryName (C.e-fun fi)   = funName fi
-entryName (C.e-poly pfi) = pfunName pfi
+entryName = Once.Parser.entryNameOf
 
 scopeNames : C.CScope → List String
 scopeNames csc = map proj₁ (C.CScope.cimps csc) ++ map (λ q → pfunName (proj₁ q)) (C.CScope.ctele csc)

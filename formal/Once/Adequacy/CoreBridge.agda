@@ -110,14 +110,11 @@ coreBehavior P = mkBehavior (runProgram fmt P) (coh (core-pf P)) (bnd (core-pf P
 -- The one open link (6b + TelescopeEnv over ModTele + 6e).
 ------------------------------------------------------------------------
 
--- The walk's premises at the start: the empty scope, and the entries' names.
-postulate
-  -- RESIDUAL, class DEFERRED PROOF (plan 0.103 C, D249 pending): every entry
-  -- of an accepted module has its own name — definitions, telescope entries
-  -- AND FFI declarations. The extractor's guard covers the first two today;
-  -- a function table must not hold two entries of one name.
-  entries-distinct : ∀ (m : P.Module) {es : List C.Entry}
-    → C.extractFunctions (C.extractAliases m) m ≡ inj₂ es → AllPairs _≢_ (map TW.entryName es)
+-- The walk's premises at the start: the empty scope, and the entries' names
+-- (D249: the extractor's guard).
+entries-distinct : ∀ (m : P.Module) {es : List C.Entry}
+  → C.extractFunctions (C.extractAliases m) m ≡ inj₂ es → AllPairs _≢_ (map TW.entryName es)
+entries-distinct (P.mkModule ds) eq = NC.guard-entries (C.extractFunctions-go (C.extractAliases (P.mkModule ds)) ds C.nothing) eq
 
 private
   none-in-empty : ∀ (xs : List String) → All (λ x → All (x ≢_) (TW.scopeNames C.emptyCScope)) xs

@@ -45,7 +45,7 @@ open import Once.Parser using
   ; extractFunctions; extractFunctions-go; extractAliases
   ; namesDistinct; nameElem; allValidIdentB; validIdentB; validCharsB
   ; emittedNames; emittedNames-cons
-  ; allIdentContinue; guardDistinct; distinctOrErr )
+  ; allIdentContinue; guardDistinct; distinctOrErr; entryNameOf )
 open import Once.Parser.Module.Core using (Module; mkModule)
 open import Once.Parser.Lexer using (isIdentStart; isIdentContinue)
 open import Once.Target.Symbol using (once-symbol-own)
@@ -151,20 +151,29 @@ distinctOrErr-true false ()
 
 -- The parser's guard (D241): the emitted names are distinct and valid, and
 -- every definition name — monomorphic and telescope together — is distinct.
+-- D249: the whole guard, one more conjunct — every entry name is distinct.
+GuardB : List Entry → Bool
+GuardB es = ((namesDistinct (emittedNames (funsOf es)) ∧ allValidIdentB (emittedNames (funsOf es)))
+              ∧ namesDistinct (emittedNames (funsOf es) ++ map PolyFunInfo.pfunName (polysOf es)))
+            ∧ namesDistinct (map entryNameOf es)
+
+guard-whole : (r : String ⊎ List Entry) {es : List Entry} → guardDistinct r ≡ inj₂ es → GuardB es ≡ true
+guard-whole (inj₁ _) ()
+guard-whole (inj₂ es₀) eq with GuardB es₀ in beq
+... | true  = subst (λ es → GuardB es ≡ true) (inj₂-injective eq) beq
+... | false with eq
+...   | ()
+
 guard-all : (r : String ⊎ List Entry) {es : List Entry}
   → guardDistinct r ≡ inj₂ es
   → ((namesDistinct (emittedNames (funsOf es)) ∧ allValidIdentB (emittedNames (funsOf es)))
       ∧ namesDistinct (emittedNames (funsOf es) ++ map PolyFunInfo.pfunName (polysOf es))) ≡ true
-guard-all (inj₁ _) ()
-guard-all (inj₂ es₀) eq
-  with (namesDistinct (emittedNames (funsOf es₀)) ∧ allValidIdentB (emittedNames (funsOf es₀)))
-         ∧ namesDistinct (emittedNames (funsOf es₀) ++ map PolyFunInfo.pfunName (polysOf es₀)) in beq
-... | true  =
-      subst (λ es → ((namesDistinct (emittedNames (funsOf es)) ∧ allValidIdentB (emittedNames (funsOf es)))
-                     ∧ namesDistinct (emittedNames (funsOf es) ++ map PolyFunInfo.pfunName (polysOf es))) ≡ true)
-            (inj₂-injective eq) beq
-... | false with eq
-...   | ()
+guard-all r eq = ∧-elimˡ (guard-whole r eq)
+
+-- D249: every entry of an accepted module has its own name.
+guard-entries : (r : String ⊎ List Entry) {es : List Entry}
+  → guardDistinct r ≡ inj₂ es → AllPairs _≢_ (map entryNameOf es)
+guard-entries r eq = namesDistinct-sound _ (∧-elimʳ (guard-whole r eq))
 
 guard-true : (r : String ⊎ List Entry) {es : List Entry}
   → guardDistinct r ≡ inj₂ es

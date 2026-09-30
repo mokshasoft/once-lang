@@ -15990,3 +15990,26 @@ View's classification. `Agree.agree-resolved` now covers only names that are not
 
 **Runtime.** The emitted code for an own reference is `call once_x`, as it was under the
 pre-D246 resolver rewrite. A reference into another module is unchanged.
+
+## D249 — EVERY MODULE ENTRY HAS ITS OWN NAME, FFI DECLARATIONS INCLUDED (2026-09-30)
+
+**Relates**: D241, D244, D245, D246, plan 0.103 C.
+
+**Found** by the telescope walk (plan 0.103 C). A reference is a call, and a call is resolved
+by name: the function table is searched latest-first for `(name, ABI)`, and the image
+resolves `call once_f` by the symbol. D241 made every DEFINITION name distinct, monomorphic
+and telescope together. FFI declarations were outside the guard. Since D246 they are table
+entries too. Suppose an FFI declaration `f` and a definition `f` both appear. Then a
+reference to the earlier one, made before the later one is declared, calls the later one at
+run time. The Spec, like the typechecker, means the earlier one. That is a miscompilation,
+and the walk cannot prove it away.
+
+**Decided (D241's own principle: "a definitions context with two entries of one name is
+ill-formed").** The extractor's guard also requires the names of ALL entries (definitions,
+telescope entries and FFI declarations, own and imported) to be pairwise distinct
+(`Parser.entryNameOf`, `NameClash.guard-entries`). Validity (identifier syntax) is still
+required of the emitted names only. Imported signatures carry dotted, owner-tagged names.
+
+**Consequence.** A module that imports the same module twice now gets its signatures twice
+and is rejected. No program in `tests/`, `test/` or `examples/` does this. If it is ever
+wanted, the resolver should import a path once, rather than the guard admitting duplicates.
