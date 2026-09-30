@@ -404,6 +404,7 @@ inv-mono {S = S} {csc} {tl} {is} {ts} {pre} sg {fi} {ty} {g} {Ctx.Usage.[]} D {i
 -- the resolver's splice of its body at the instance (6e).
 ------------------------------------------------------------------------
 
+-- The substitution instance, over a context without locals (its usage is `[]`).
 postulate
   -- RESIDUAL, class DEFERRED PROOF (plan 0.103 D, 6e): a body typed at its
   -- rigid schema checks at every kinded instance — the surface judgment's
@@ -413,15 +414,22 @@ postulate
                 → ctx ⊢ᶜ body ∶ rigidOf sc ⨾ Ψ → ∀ {U} → KindedInstance sc U
                 → Σ-syntax (Ctx.Usage (Once.TypeCheck.Classify.NamedCtx.size ctx)) (λ Ψ′ → ctx ⊢ᶜ body ∶ U ⨾ Ψ′)
 
-  -- RESIDUAL, class DEFERRED PROOF (plan 0.103 D, 6e): the elaboration at an
-  -- instance means what the entry's abstraction, instantiated there, means —
-  -- the core's semantic substitution lemma, in one environment.
+inst-at : ∀ {csc : C.CScope} {body : _} (sc : Once.Type.PolyType)
+        → ctxOf (AS.scopeOf csc) ⊢ᶜ body ∶ rigidOf sc ⨾ Ctx.Usage.[] → ∀ {U} → KindedInstance sc U
+        → ctxOf (AS.scopeOf csc) ⊢ᶜ body ∶ U ⨾ Ctx.Usage.[]
+inst-at sc D ki with poly-typed-at sc D ki
+... | Ctx.Usage.[] , d = d
+
+postulate
+  -- RESIDUAL, class DEFERRED PROOF (plan 0.103 D, 6e): the entry's body at the
+  -- instance — the SUBSTITUTION INSTANCE of its rigid derivation — elaborates to
+  -- what the entry's abstraction, instantiated there, means: the core's
+  -- semantic substitution lemma, in one environment.
   poly-instance-sem : ∀ {s} {S : Sig s} {csc : C.CScope} (is : ImpSig S (C.CScope.cimps csc))
                         (ts : TeleSig S (C.telePolys (C.CScope.ctele csc))) (sg : SigCF S) (δ : GM.DefSem S)
                         {body : _} (sc : Once.Type.PolyType)
                         (D : ctxOf (AS.scopeOf csc) ⊢ᶜ body ∶ rigidOf sc ⨾ Ctx.Usage.[]) {U : Type} (ki : KindedInstance sc U)
-                        (D-U : ctxOf (AS.scopeOf csc) ⊢ᶜ body ∶ U ⨾ Ctx.Usage.[])
-                    → GM.⟦_⟧ S (proj₂ (ElabM.elabᶜ S (viewOf {S = S} is ts) D-U)) fmt δ tt
+                    → GM.⟦_⟧ S (proj₂ (ElabM.elabᶜ S (viewOf {S = S} is ts) (inst-at sc D ki))) fmt δ tt
                       ≡ subst (λ X → T ⟦ X ⟧ᴰ) (proj₂ (proj₂ (kinded-instance sc ki)))
                           (GM.⟦_⟧ S (PT.instantiate S (proj₁ (kinded-instance sc ki)) (proj₁ (proj₂ (kinded-instance sc ki)))
                                        (A.abs-⊢ S (kindsOf sc) sg (proj₂ (ElabM.elabᶜ S (viewOf {S = S} is ts) D)))) fmt δ tt)
@@ -510,32 +518,28 @@ inv-poly {S = S} {csc} {tl} {is} {ts} {pre} sg {pfi} {Ctx.Usage.[]} D inv fr = r
         head : ∀ (U : Type) (ki : KindedInstance scT U)
              → RelT U (CMB.refSem fmt S′ δ′ {d = zero} {U = U} (TR.poly-inst {S = S′} {d = zero} {sc = scT} refl ki))
                       (SD.refs σ y U)
-        head U ki = head′ (poly-typed-at scT D ki)
+        head U ki =
+          subst (λ m → RelT U m (SD.refs σ y U))
+                (trans (CMB.bridge-c fmt S {δ = δ} V (CE.agree fmt S δ is ts (Inv.valid inv)) D-U tt)
+                       (poly-instance-sem is ts sg δ scT D ki))
+                (subst (RelT U (MeaningM.⟦_⟧ᶜ D-U fmt ρ tt)) (sym eqSD)
+                       (MB.bridge-c fmt σo D-U {dγ₁ = tt} {dγ₂ = tt} (MB.mk↾ tt) old))
           where
-            head′ : Σ-syntax (Ctx.Usage 0) (λ Ψ′ → ctx ⊢ᶜ pfunBody pfi ∶ U ⨾ Ψ′)
-                  → RelT U (CMB.refSem fmt S′ δ′ {d = zero} {U = U} (TR.poly-inst {S = S′} {d = zero} {sc = scT} refl ki))
-                           (SD.refs σ y U)
-            head′ (Ctx.Usage.[] , D-U) =
-              subst (λ m → RelT U m (SD.refs σ y U))
-                    (trans (CMB.bridge-c fmt S {δ = δ} V (CE.agree fmt S δ is ts (Inv.valid inv)) D-sound tt)
-                           (poly-instance-sem is ts sg δ scT D ki D-sound))
-                    (subst (RelT U (MeaningM.⟦_⟧ᶜ D-sound fmt ρ tt)) (sym eqSD)
-                           (MB.bridge-c fmt σo D-sound {dγ₁ = tt} {dγ₂ = tt} (MB.mk↾ tt) old))
-              where
-                ccU = Once.TypeCheck.Completeness.check-complete D-U
-                eE  = proj₁ ccU
-                ce  = proj₂ (proj₂ (proj₂ ccU))
-                D-sound = Once.TypeCheck.Soundness.check-sound ctx (pfunBody pfi) U ce
-                eqSD : SD.refs σ y U ≡ SD.⟦ realize D-sound ⟧ˢ fmt σo tt
-                eqSD =
-                  trans (refs-head I uf (tableEnv fmt tbl) y {pfunType pfi} {pfunBody pfi} (C.cpolys csc) U)
-                    (trans (cong (λ X → SD.⟦ spliceClosed I uf (C.cpolys csc) y
-                                              (Once.TypeCheck.Elaborate.checkElab (Once.TypeCheck.Classify.ctxWithImportsAndPolys X (C.cpolys csc))
-                                                 (pfunBody pfi) U) ⟧ˢ fmt (RF.σ₀ fmt (tableEnv fmt tbl)) tt) iy)
-                      (trans (cong (λ r → SD.⟦ spliceClosed I uf (C.cpolys csc) y r ⟧ˢ fmt (RF.σ₀ fmt (tableEnv fmt tbl)) tt) ce)
-                        (trans (FLm.T-ext-at fmt (tableEnv fmt tbl)
-                                 (RF.resolveExpr-faithful fmt (tableEnv fmt tbl) (C.cpolys csc) I uf 0 eE tt))
-                               (RB.realize-agrees fmt σo ctx (pfunBody pfi) U ce tt))))
+            D-U = inst-at {csc = csc} scT D ki
+            ccU = Once.TypeCheck.Completeness.check-complete D-U
+            eE  = proj₁ ccU
+            ce  = proj₂ (proj₂ (proj₂ ccU))
+            eqSD : SD.refs σ y U ≡ SD.⟦ realize D-U ⟧ˢ fmt σo tt
+            eqSD =
+              trans (refs-head I uf (tableEnv fmt tbl) y {pfunType pfi} {pfunBody pfi} (C.cpolys csc) U)
+                (trans (cong (λ X → SD.⟦ spliceClosed I uf (C.cpolys csc) y
+                                          (Once.TypeCheck.Elaborate.checkElab (Once.TypeCheck.Classify.ctxWithImportsAndPolys X (C.cpolys csc))
+                                             (pfunBody pfi) U) ⟧ˢ fmt (RF.σ₀ fmt (tableEnv fmt tbl)) tt) iy)
+                  (trans (cong (λ r → SD.⟦ spliceClosed I uf (C.cpolys csc) y r ⟧ˢ fmt (RF.σ₀ fmt (tableEnv fmt tbl)) tt) ce)
+                    (trans (FLm.T-ext-at fmt (tableEnv fmt tbl)
+                             (RF.resolveExpr-faithful fmt (tableEnv fmt tbl) (C.cpolys csc) I uf 0 eE tt))
+                      (trans (RB.realize-agrees fmt σo ctx (pfunBody pfi) U ce tt)
+                             (realize-invariant (Once.TypeCheck.Soundness.check-sound ctx (pfunBody pfi) U ce) D-U σo tt)))))
 
 ------------------------------------------------------------------------
 -- Freshness along the walk
