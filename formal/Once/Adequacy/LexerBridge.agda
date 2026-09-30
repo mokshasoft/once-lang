@@ -183,50 +183,61 @@ lexer-sound text = lexes-tok (toList text) 0 (<-wellFounded (length (toList text
 -- `tokenize-WF (c ∷ cs)` even for a variable head.
 ------------------------------------------------------------------------
 
+-- The per-rule step, NON-recursive: the recursion arrives as `IH`, at
+-- lengths below the input's. Every clause's `rewrite` lives here, so the
+-- termination checker sees `tok-complete` as two clauses rather than a block
+-- of ~90 with-functions (its graph completion took 15.6 s).
+private
+  tok-step : ∀ {cs ts off} (rec : ∀ {y} → y < length cs → Acc _<_ y) → LexesChars off cs ts
+           → (IH : ∀ {cs' ts' off'} (lt : length cs' < length cs) → LexesChars off' cs' ts'
+                 → tokenize-WF cs' off' (rec lt) ≡ ts')
+           → tokenize-WF cs off (acc rec) ≡ ts
+  tok-step rec lex-eof IH = refl
+  tok-step rec (lex-ws eqh d) IH rewrite eqh = IH (s≤s ≤-refl) d
+  tok-step rec (lex-nl-ind eqh eq d) IH rewrite eqh | eq = IH (n<1+n _) d
+  tok-step rec (lex-nl eqh eq d) IH rewrite eqh | eq = cong (TNewline ∷_) (IH (n<1+n _) d)
+  tok-step rec (lex-caret1 {cs = cs} eqh eq d) IH rewrite eqh | eq = cong (TCaret1 ∷_) (IH (s≤s (drop1-≤ cs)) d)
+  tok-step rec (lex-caret0 {cs = cs} eqh eq d) IH rewrite eqh | eq = cong (TCaret0 ∷_) (IH (s≤s (drop1-≤ cs)) d)
+  tok-step rec (lex-caretw {cs = cs} eqh eq d) IH rewrite eqh | eq = cong (TCaretW ∷_) (IH (s≤s (drop1-≤ cs)) d)
+  tok-step rec (lex-caret-gen eqh eq d) IH rewrite eqh | eq = IH (s≤s ≤-refl) d
+  tok-step rec (lex-lcomment-ind {cs = cs} eqh eq d) IH rewrite eqh | eq = IH (s≤s (≤-trans (proj₂ (skipLineB (drop1 cs))) (drop1-≤ cs))) d
+  tok-step rec (lex-arrow-ind {cs = cs} eqh eq d) IH rewrite eqh | eq = cong (TArrow ∷_) (IH (s≤s (drop1-≤ cs)) d)
+  tok-step rec (lex-minus eqh eq d) IH rewrite eqh | eq = cong (TMinus ∷_) (IH (n<1+n _) d)
+  tok-step rec (lex-bcomment-ind {cs = cs} eqh eq d) IH rewrite eqh | eq = IH (s≤s (≤-trans (proj₂ (skipBlockB 1 (drop1 cs))) (drop1-≤ cs))) d
+  tok-step rec (lex-lbrace eqh eq d) IH rewrite eqh | eq = cong (TLBrace ∷_) (IH (n<1+n _) d)
+  tok-step rec (lex-le-ind {cs = cs} eqh eq d) IH rewrite eqh | eq = cong (TLe ∷_) (IH (s≤s (drop1-≤ cs)) d)
+  tok-step rec (lex-lt eqh eq d) IH rewrite eqh | eq = cong (TLt ∷_) (IH (n<1+n _) d)
+  tok-step rec (lex-ge-ind {cs = cs} eqh eq d) IH rewrite eqh | eq = cong (TGe ∷_) (IH (s≤s (drop1-≤ cs)) d)
+  tok-step rec (lex-gt eqh eq d) IH rewrite eqh | eq = cong (TGt ∷_) (IH (n<1+n _) d)
+  tok-step rec (lex-eqeq-ind {cs = cs} eqh eq d) IH rewrite eqh | eq = cong (TEqEq ∷_) (IH (s≤s (drop1-≤ cs)) d)
+  tok-step rec (lex-equals eqh eq d) IH rewrite eqh | eq = cong (TEquals ∷_) (IH (n<1+n _) d)
+  tok-step rec (lex-neq-ind {cs = cs} eqh eq d) IH rewrite eqh | eq = cong (TNeq ∷_) (IH (s≤s (drop1-≤ cs)) d)
+  tok-step rec (lex-bang eqh eq d) IH rewrite eqh | eq = cong (TBang ∷_) (IH (n<1+n _) d)
+  tok-step rec (lex-lparen eqh d) IH rewrite eqh = cong (TLParen ∷_) (IH (s≤s ≤-refl) d)
+  tok-step rec (lex-rparen eqh d) IH rewrite eqh = cong (TRParen ∷_) (IH (s≤s ≤-refl) d)
+  tok-step rec (lex-rbrace eqh d) IH rewrite eqh = cong (TRBrace ∷_) (IH (s≤s ≤-refl) d)
+  tok-step rec (lex-colon eqh d) IH rewrite eqh = cong (TColon ∷_) (IH (s≤s ≤-refl) d)
+  tok-step rec (lex-lambda eqh d) IH rewrite eqh = cong (TLambda ∷_) (IH (s≤s ≤-refl) d)
+  tok-step rec (lex-comma eqh d) IH rewrite eqh = cong (TComma ∷_) (IH (s≤s ≤-refl) d)
+  tok-step rec (lex-semi eqh d) IH rewrite eqh = cong (TSemicolon ∷_) (IH (s≤s ≤-refl) d)
+  tok-step rec (lex-at eqh d) IH rewrite eqh = cong (TAt ∷_) (IH (s≤s ≤-refl) d)
+  tok-step rec (lex-pipe eqh d) IH rewrite eqh = cong (TPipe ∷_) (IH (s≤s ≤-refl) d)
+  tok-step rec (lex-plus eqh d) IH rewrite eqh = cong (TPlus ∷_) (IH (s≤s ≤-refl) d)
+  tok-step rec (lex-star eqh d) IH rewrite eqh = cong (TStar ∷_) (IH (s≤s ≤-refl) d)
+  tok-step rec (lex-slash eqh d) IH rewrite eqh = cong (TSlash ∷_) (IH (s≤s ≤-refl) d)
+  tok-step rec (lex-pct eqh d) IH rewrite eqh = cong (TPercent ∷_) (IH (s≤s ≤-refl) d)
+  tok-step rec (lex-amp eqh d) IH rewrite eqh = cong (TAmpersand ∷_) (IH (s≤s ≤-refl) d)
+  tok-step rec (lex-dot eqh d) IH rewrite eqh = cong (TDot ∷_) (IH (s≤s ≤-refl) d)
+  tok-step rec (lex-string eqh s rest bnd eq d) IH rewrite eqh | eq = cong (TString (fromList s) ∷_) (IH (m≤n⇒m≤1+n bnd) d)
+  tok-step rec (lex-string-err eqh eq) IH rewrite eqh | eq = refl
+  tok-step rec (lex-digit {cs = cs} eqh eq eqf d) IH rewrite eqh | eq | eqf = cong (_ ∷_) (IH (s≤s (proj₂ (proj₂ (collectDigitsB cs)))) d)
+  tok-step rec (lex-float {cs = cs} {bnd = fbnd} eqh eq eqf d) IH rewrite eqh | eq | eqf =
+    cong (_ ∷_) (IH (s≤s (≤-trans (<⇒≤ fbnd) (proj₂ (proj₂ (collectDigitsB cs))))) d)
+  tok-step rec (lex-ident {cs = cs} eqh eqd eqi d) IH rewrite eqh | eqd | eqi = cong (_ ∷_) (IH (s≤s (proj₂ (proj₂ (collectIdentB cs)))) d)
+  tok-step rec (lex-skip eqh eqd eqi d) IH rewrite eqh | eqd | eqi = IH (s≤s ≤-refl) d
+
 tok-complete : ∀ {cs ts off} (a : Acc _<_ (length cs)) → LexesChars off cs ts → tokenize-WF cs off a ≡ ts
-tok-complete _ lex-eof = refl
-tok-complete (acc rec) (lex-ws eqh d) rewrite eqh = tok-complete (rec (s≤s ≤-refl)) d
-tok-complete (acc rec) (lex-nl-ind eqh eq d) rewrite eqh | eq = tok-complete (rec (n<1+n _)) d
-tok-complete (acc rec) (lex-nl eqh eq d) rewrite eqh | eq = cong (TNewline ∷_) (tok-complete (rec (n<1+n _)) d)
-tok-complete (acc rec) (lex-caret1 {cs = cs} eqh eq d) rewrite eqh | eq = cong (TCaret1 ∷_) (tok-complete (rec (s≤s (drop1-≤ cs))) d)
-tok-complete (acc rec) (lex-caret0 {cs = cs} eqh eq d) rewrite eqh | eq = cong (TCaret0 ∷_) (tok-complete (rec (s≤s (drop1-≤ cs))) d)
-tok-complete (acc rec) (lex-caretw {cs = cs} eqh eq d) rewrite eqh | eq = cong (TCaretW ∷_) (tok-complete (rec (s≤s (drop1-≤ cs))) d)
-tok-complete (acc rec) (lex-caret-gen eqh eq d) rewrite eqh | eq = tok-complete (rec (s≤s ≤-refl)) d
-tok-complete (acc rec) (lex-lcomment-ind {cs = cs} eqh eq d) rewrite eqh | eq = tok-complete (rec (s≤s (≤-trans (proj₂ (skipLineB (drop1 cs))) (drop1-≤ cs)))) d
-tok-complete (acc rec) (lex-arrow-ind {cs = cs} eqh eq d) rewrite eqh | eq = cong (TArrow ∷_) (tok-complete (rec (s≤s (drop1-≤ cs))) d)
-tok-complete (acc rec) (lex-minus eqh eq d) rewrite eqh | eq = cong (TMinus ∷_) (tok-complete (rec (n<1+n _)) d)
-tok-complete (acc rec) (lex-bcomment-ind {cs = cs} eqh eq d) rewrite eqh | eq = tok-complete (rec (s≤s (≤-trans (proj₂ (skipBlockB 1 (drop1 cs))) (drop1-≤ cs)))) d
-tok-complete (acc rec) (lex-lbrace eqh eq d) rewrite eqh | eq = cong (TLBrace ∷_) (tok-complete (rec (n<1+n _)) d)
-tok-complete (acc rec) (lex-le-ind {cs = cs} eqh eq d) rewrite eqh | eq = cong (TLe ∷_) (tok-complete (rec (s≤s (drop1-≤ cs))) d)
-tok-complete (acc rec) (lex-lt eqh eq d) rewrite eqh | eq = cong (TLt ∷_) (tok-complete (rec (n<1+n _)) d)
-tok-complete (acc rec) (lex-ge-ind {cs = cs} eqh eq d) rewrite eqh | eq = cong (TGe ∷_) (tok-complete (rec (s≤s (drop1-≤ cs))) d)
-tok-complete (acc rec) (lex-gt eqh eq d) rewrite eqh | eq = cong (TGt ∷_) (tok-complete (rec (n<1+n _)) d)
-tok-complete (acc rec) (lex-eqeq-ind {cs = cs} eqh eq d) rewrite eqh | eq = cong (TEqEq ∷_) (tok-complete (rec (s≤s (drop1-≤ cs))) d)
-tok-complete (acc rec) (lex-equals eqh eq d) rewrite eqh | eq = cong (TEquals ∷_) (tok-complete (rec (n<1+n _)) d)
-tok-complete (acc rec) (lex-neq-ind {cs = cs} eqh eq d) rewrite eqh | eq = cong (TNeq ∷_) (tok-complete (rec (s≤s (drop1-≤ cs))) d)
-tok-complete (acc rec) (lex-bang eqh eq d) rewrite eqh | eq = cong (TBang ∷_) (tok-complete (rec (n<1+n _)) d)
-tok-complete (acc rec) (lex-lparen eqh d) rewrite eqh = cong (TLParen ∷_) (tok-complete (rec (s≤s ≤-refl)) d)
-tok-complete (acc rec) (lex-rparen eqh d) rewrite eqh = cong (TRParen ∷_) (tok-complete (rec (s≤s ≤-refl)) d)
-tok-complete (acc rec) (lex-rbrace eqh d) rewrite eqh = cong (TRBrace ∷_) (tok-complete (rec (s≤s ≤-refl)) d)
-tok-complete (acc rec) (lex-colon eqh d) rewrite eqh = cong (TColon ∷_) (tok-complete (rec (s≤s ≤-refl)) d)
-tok-complete (acc rec) (lex-lambda eqh d) rewrite eqh = cong (TLambda ∷_) (tok-complete (rec (s≤s ≤-refl)) d)
-tok-complete (acc rec) (lex-comma eqh d) rewrite eqh = cong (TComma ∷_) (tok-complete (rec (s≤s ≤-refl)) d)
-tok-complete (acc rec) (lex-semi eqh d) rewrite eqh = cong (TSemicolon ∷_) (tok-complete (rec (s≤s ≤-refl)) d)
-tok-complete (acc rec) (lex-at eqh d) rewrite eqh = cong (TAt ∷_) (tok-complete (rec (s≤s ≤-refl)) d)
-tok-complete (acc rec) (lex-pipe eqh d) rewrite eqh = cong (TPipe ∷_) (tok-complete (rec (s≤s ≤-refl)) d)
-tok-complete (acc rec) (lex-plus eqh d) rewrite eqh = cong (TPlus ∷_) (tok-complete (rec (s≤s ≤-refl)) d)
-tok-complete (acc rec) (lex-star eqh d) rewrite eqh = cong (TStar ∷_) (tok-complete (rec (s≤s ≤-refl)) d)
-tok-complete (acc rec) (lex-slash eqh d) rewrite eqh = cong (TSlash ∷_) (tok-complete (rec (s≤s ≤-refl)) d)
-tok-complete (acc rec) (lex-pct eqh d) rewrite eqh = cong (TPercent ∷_) (tok-complete (rec (s≤s ≤-refl)) d)
-tok-complete (acc rec) (lex-amp eqh d) rewrite eqh = cong (TAmpersand ∷_) (tok-complete (rec (s≤s ≤-refl)) d)
-tok-complete (acc rec) (lex-dot eqh d) rewrite eqh = cong (TDot ∷_) (tok-complete (rec (s≤s ≤-refl)) d)
-tok-complete (acc rec) (lex-string eqh s rest bnd eq d) rewrite eqh | eq = cong (TString (fromList s) ∷_) (tok-complete (rec (m≤n⇒m≤1+n bnd)) d)
-tok-complete (acc rec) (lex-string-err eqh eq) rewrite eqh | eq = refl
-tok-complete (acc rec) (lex-digit {cs = cs} eqh eq eqf d) rewrite eqh | eq | eqf = cong (_ ∷_) (tok-complete (rec (s≤s (proj₂ (proj₂ (collectDigitsB cs))))) d)
-tok-complete (acc rec) (lex-float {cs = cs} {bnd = fbnd} eqh eq eqf d) rewrite eqh | eq | eqf =
-  cong (_ ∷_) (tok-complete (rec (s≤s (≤-trans (<⇒≤ fbnd) (proj₂ (proj₂ (collectDigitsB cs)))))) d)
-tok-complete (acc rec) (lex-ident {cs = cs} eqh eqd eqi d) rewrite eqh | eqd | eqi = cong (_ ∷_) (tok-complete (rec (s≤s (proj₂ (proj₂ (collectIdentB cs))))) d)
-tok-complete (acc rec) (lex-skip eqh eqd eqi d) rewrite eqh | eqd | eqi = tok-complete (rec (s≤s ≤-refl)) d
+tok-complete (acc rec) d = tok-step rec d (λ lt d′ → tok-complete (rec lt) d′)
 
 lexer-complete : ∀ (text : String) (toks : List Token) → Lexes text toks → tokenizeString text ≡ toks
 lexer-complete text toks d = tok-complete (<-wellFounded (length (toList text))) d
