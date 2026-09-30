@@ -37,10 +37,10 @@ open import Once.CanonicalName using (CanonicalName; bare)
 open import Once.Postulates using (extensionality)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ)
 open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_)
-open import Once.TypeCheck.Classify using (NamedCtx; lookupImport; lookupPolyPrefix)
+open import Once.TypeCheck.Classify using (NamedCtx; lookupImport; lookupPolyPrefix; ctxWithImportsAndPolys; Imports; PolyCtx)
 open import Once.TypeCheck.Judgment
 open import Once.Denotation.DefEnv using (defAt; impAt)
-open import Once.Denotation.Meaning using (⟦_⟧ᶜ; ⟦_⟧ᵢ; ⟦_⟧ᵈ; MeaningsOf; defs; entries; sigOpRefᴰ)
+open import Once.Denotation.Meaning using (⟦_⟧ᶜ; ⟦_⟧ᵢ; ⟦_⟧ᵈ; MeaningsOf; Meanings; defs; entries; sigOpRefᴰ)
 import Once.Spec.Core.Meaning S as GM
 open import Once.Spec.Elaboration S using (Views; View; ImportAt; ffi; def; InstanceOf; elabᶜ; elabᵢ; elabᵈ)
 open View
@@ -59,17 +59,17 @@ impSem δ c k (ffi _ _) = sigOpRefᴰ fmt c k
 impSem δ c k (def d i) = refSem δ i
 
 -- `ρ` agrees with `δ` at every reference the View resolves.
-record Agree {ctx : NamedCtx} (V : Views ctx) (ρ : MeaningsOf ctx) (δ : GM.DefSem) : Set where
+record Agree {imps : Imports} {polys : PolyCtx} (V : View imps polys) (ρ : Meanings polys imps) (δ : GM.DefSem) : Set where
   field
-    agree-inst : ∀ {x sc body prefix U} (lp : lookupPolyPrefix (NamedCtx.polys ctx) x ≡ just (sc , body , prefix))
+    agree-inst : ∀ {x sc body prefix U} (lp : lookupPolyPrefix polys x ≡ just (sc , body , prefix))
                    (ng : ¬ Ground sc) (ki : KindedInstance sc U)
-               → defAt (NamedCtx.polys ctx) x (defs ρ) lp U ki ≡ refSem δ (inst V lp ng ki)
-    agree-ground : ∀ {x sc body prefix} (lp : lookupPolyPrefix (NamedCtx.polys ctx) x ≡ just (sc , body , prefix))
+               → defAt polys x (defs ρ) lp U ki ≡ refSem δ (inst V lp ng ki)
+    agree-ground : ∀ {x sc body prefix} (lp : lookupPolyPrefix polys x ≡ just (sc , body , prefix))
                      (g : Ground sc)
-                 → defAt (NamedCtx.polys ctx) x (defs ρ) lp (extractGround sc g) (ground-kinded sc g)
+                 → defAt polys x (defs ρ) lp (extractGround sc g) (ground-kinded sc g)
                    ≡ refSem δ (ground V lp g)
-    agree-import : ∀ {x U} (lk : lookupImport (NamedCtx.imports ctx) x ≡ just U) (k : IsConcrete U)
-                 → impAt (NamedCtx.imports ctx) x (entries ρ) lk ≡ impSem δ (bare x) k (imported V lk)
+    agree-import : ∀ {x U} (lk : lookupImport imps x ≡ just U) (k : IsConcrete U)
+                 → impAt imps x (entries ρ) lk ≡ impSem δ (bare x) k (imported V lk)
 
 ------------------------------------------------------------------------
 -- The derived combinators' meanings (one lemma per combinator)
@@ -90,6 +90,7 @@ open import Once.Spec.Core.Syntax S
 open import Once.Spec.Core.Typing S
 open import Once.Spec.Core.DerivedTyping S
 import Once.Adequacy.CoreRenameSem S as RS
+open import Once.Spec.Core.Rename S using (⊢close)
 import Once.Denotation.EnvAlgebra as EA
 
 -- A restriction of a transported environment is any restriction of the original.
@@ -207,16 +208,28 @@ module Comb {δ : GM.DefSem} where
 ------------------------------------------------------------------------
 
 open import Once.Denotation.Meaning using (EnvRun)
+open import Once.Denotation.TraceMonad using (fmapT)
+open import Once.Surface.Context using (zeroUsage)
+
+-- A resolved reference means its entry at the instance (refE's typing).
+refSem-⊢ : ∀ {δ : GM.DefSem} {n} {Γ : Ctx n} {d : Fin s} {U : Type} (i : InstanceOf d U) (x : RS.Env Γ zeroUsage)
+         → refSem δ i ≡ GM.⟦ subst (λ X → Γ ⊢[ zeroUsage ] ref d (proj₁ i) ∷ X ! pure) (proj₂ (proj₂ i))
+                                  (⊢ref d (proj₁ i) (proj₁ (proj₂ i))) ⟧ fmt δ x
+refSem-⊢ {δ} {d = d} (τ , r , eq) x = sym (RS.⟦⟧-substA eq (⊢ref d τ r) fmt δ x)
 
 module _ {δ : GM.DefSem} where
   bindC : ∀ {X Y : Set} {a a' : T X} {f g : X → T Y} → a ≡ a' → (∀ v → f v ≡ g v) → (a >>=T f) ≡ (a' >>=T g)
   bindC {a = a} refl h = cong (a >>=T_) (extensionality h)
 
-  bridge-d : ∀ {ctx e A B π Ψ} (V : Views ctx) {ρ : MeaningsOf ctx} (ag : Agree {ctx} V ρ δ)
+  bridge-d : ∀ {ctx e A B π Ψ} (V : Views ctx) {ρ : MeaningsOf ctx} (ag : Agree V ρ δ)
              (d : ctx ⊢ᵈ e ∶ A ⇒[ π ]↦ B ⨾ Ψ) (dγ : EnvRun ctx Ψ)
            → ⟦ d ⟧ᵈ fmt ρ dγ ≡ GM.⟦ proj₂ (elabᵈ V d) ⟧ fmt δ dγ
 
-  bridge-c : ∀ {ctx e A Ψ} (V : Views ctx) {ρ : MeaningsOf ctx} (ag : Agree {ctx} V ρ δ)
+  bridge-i : ∀ {ctx e A Ψ} (V : Views ctx) {ρ : MeaningsOf ctx} (ag : Agree V ρ δ)
+             (d : ctx ⊢ᵢ e ∶ A ⨾ Ψ) (dγ : EnvRun ctx Ψ)
+           → ⟦ d ⟧ᵢ fmt ρ dγ ≡ GM.⟦ proj₂ (elabᵢ V d) ⟧ fmt δ dγ
+
+  bridge-c : ∀ {ctx e A Ψ} (V : Views ctx) {ρ : MeaningsOf ctx} (ag : Agree V ρ δ)
              (d : ctx ⊢ᶜ e ∶ A ⨾ Ψ) (dγ : EnvRun ctx Ψ)
            → ⟦ d ⟧ᶜ fmt ρ dγ ≡ GM.⟦ proj₂ (elabᶜ V d) ⟧ fmt δ dγ
 
@@ -230,6 +243,41 @@ module _ {δ : GM.DefSem} where
   bridge-c V ag (t-compose-check-g dg df) dγ =
     trans (bindC (bridge-c V ag df _) (λ vf → bindC (bridge-d V ag dg _) (λ vg → refl)))
           (sym (Comb.compose-sem {δ = δ} (proj₂ (elabᶜ V df)) (proj₂ (elabᵈ V dg)) dγ))
+  bridge-c V ag (t-compose-check-f wf p dg) dγ =
+    trans (bindC (cong (fmapT _) (bridge-i V ag wf _)) (λ vf → bindC (bridge-c V ag dg _) (λ vg → refl)))
+          (sym (Comb.compose-sem {δ = δ} (⊢coerce p (proj₂ (elabᵢ V wf))) (proj₂ (elabᶜ V dg)) dγ))
+  bridge-c V ag (t-case-copair-check df dg) dγ =
+    trans (bindC (bridge-c V ag df _) (λ vf → bindC (bridge-c V ag dg _) (λ vg → refl)))
+          (sym (Comb.case-sem {δ = δ} (proj₂ (elabᶜ V df)) (proj₂ (elabᶜ V dg)) dγ))
+  bridge-c V ag (t-pair-morph-check df dg) dγ =
+    trans (bindC (bridge-c V ag df _) (λ vf → bindC (bridge-c V ag dg _) (λ vg → refl)))
+          (sym (Comb.pair-sem {δ = δ} (proj₂ (elabᶜ V df)) (proj₂ (elabᶜ V dg)) dγ))
+  bridge-c V ag (t-curry-check df) dγ =
+    trans (bindC (bridge-c V ag df dγ) (λ vf → refl))
+          (sym (Comb.curry-sem {δ = δ} (proj₂ (elabᶜ V df)) dγ))
+  bridge-c {ctx = ctx} V ag (t-cata-check wf dalg) dγ =
+    trans (bindC (trans (bridge-c {ctx = ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx)} V ag dalg tt) (sym (RS.close-sem {Γ = NamedCtx.debruijn ctx} (proj₂ (elabᶜ V dalg)) fmt δ dγ))) (λ valg → refl))
+          (sym (Comb.cata-sem′ {δ = δ} wf (⊢close {Γ = NamedCtx.debruijn ctx} (proj₂ (elabᶜ V dalg))) dγ))
+  bridge-c V ag (t-sub d p) dγ = cong (fmapT _) (bridge-i V ag d dγ)
+  bridge-c V ag (t-lam {q = Zero} {q' = Zero} le d) dγ = cong returnT (extensionality λ a → bridge-c V ag d _)
+  bridge-c V ag (t-lam {q = One}  {q' = Zero} le d) dγ = cong returnT (extensionality λ a → bridge-c V ag d _)
+  bridge-c V ag (t-lam {q = Many} {q' = Zero} le d) dγ = cong returnT (extensionality λ a → bridge-c V ag d _)
+  bridge-c V ag (t-lam {q = One}  {q' = One}  le d) dγ = cong returnT (extensionality λ a → bridge-c V ag d _)
+  bridge-c V ag (t-lam {q = Many} {q' = One}  le d) dγ = cong returnT (extensionality λ a → bridge-c V ag d _)
+  bridge-c V ag (t-lam {q = Many} {q' = Many} le d) dγ = cong returnT (extensionality λ a → bridge-c V ag d _)
+  bridge-c V ag (t-lam {q = Zero} {q' = One}  () d) dγ
+  bridge-c V ag (t-lam {q = Zero} {q' = Many} () d) dγ
+  bridge-c V ag (t-lam {q = One}  {q' = Many} () d) dγ
+  bridge-c V ag (t-pair-lit-check da db) dγ =
+    bindC (bridge-c V ag da _) (λ a → bindC (bridge-c V ag db _) (λ b → refl))
+  bridge-c V ag (t-In-app-check wf d) dγ = bindC (bridge-c V ag d _) (λ v → refl)
+  bridge-c V ag (t-inl-app-check d) dγ = bindC (bridge-c V ag d _) (λ v → refl)
+  bridge-c V ag (t-inr-app-check d) dγ = bindC (bridge-c V ag d _) (λ v → refl)
+  bridge-c V ag (t-initial-app-check d) dγ = bindC (bridge-c V ag d _) (λ v → refl)
+  bridge-c V ag (t-var-poly-instantiate _ _ lp ng ki) dγ =
+    trans (Agree.agree-inst ag lp ng ki) (refSem-⊢ (inst V lp ng ki) dγ)
   bridge-c V ag _ dγ = {!!}
 
   bridge-d V ag d dγ = {!!}
+
+  bridge-i V ag d dγ = {!!}

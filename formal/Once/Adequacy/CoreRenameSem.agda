@@ -422,3 +422,18 @@ wk-sem {Γ = Γ} {Ψ = Ψ} {t = t} B d fmt δ x =
   (trans (⟦⟧-substt (ren-cong (λ i → cong suc (thin-var-refl {Γ = Γ} i)) t) (ren-⊢ (skip {A = B} {q = Many} ⊆-refl) d) fmt δ _)
   (trans (ren-sem (skip ⊆-refl) d fmt δ _)
          (cong (GM.⟦ d ⟧ fmt δ) (thin-refl {Γ = Γ} Ψ (thin-usage-refl {Γ = Γ} Ψ) x))))
+
+------------------------------------------------------------------------
+-- A closed term, embedded in any context (`⊢close`), means what it meant.
+------------------------------------------------------------------------
+
+open import Once.Spec.Core.Rename S using (⊢close; ∅⊆; close)
+open import Once.Surface.Thinning using (thin-usage-zeroUsage)
+
+close-sem : ∀ {n} {Γ : Ctx n} {t A π} (d : ∅ ⊢[ zeroUsage ] t ∷ A ! π)
+              (fmt : TargetNum) (δ : GM.DefSem) (x : Env Γ zeroUsage)
+          → GM.⟦ ⊢close {Γ = Γ} d ⟧ fmt δ x ≡ GM.⟦ d ⟧ fmt δ tt
+close-sem {Γ = Γ} {t = t} d fmt δ x =
+  trans (⟦⟧-substt (ren-cong {ρ = thin-var (∅⊆ {Γ = Γ})} {ρ′ = λ ()} (λ ()) t) _ fmt δ x)
+  (trans (⟦⟧-substΨ (thin-usage-zeroUsage (∅⊆ {Γ = Γ})) (ren-⊢ (∅⊆ {Γ = Γ}) d) fmt δ x)
+         (ren-sem (∅⊆ {Γ = Γ}) d fmt δ _))
