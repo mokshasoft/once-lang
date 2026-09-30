@@ -93,7 +93,8 @@ open import Once.Surface.Seq using (seq; seq0; embedClosed; closed-usage-eq)
 open import Once.Surface.Properties using (+ᵘ-identityʳ)
 open import Once.Surface.Elaborate using (elaborate)
 open import Once.Adequacy.SourceFaithful fmt (calls σ) using (faithful; T-ext-at)
-open import Once.CanonicalName using (CanonicalName; showCanonical; bare; NotGenerator; gen; GenWord; genWord?)
+import Data.List as L
+open import Once.CanonicalName using (CanonicalName; canonical; own; showCanonical; bare; NotGenerator; gen; GenWord; genWord?)
 open import Once.Functor.Translate using (WellFormedF; IsBaseType; IsConcrete; con-base; con-fun; base-Unit)
 open import Once.Functor.Decide using (wellFormedF?; isBaseType?; isConcrete?)
 
@@ -1076,7 +1077,9 @@ agree-RResolved-arrowᴴ : ∀ (ctx : NamedCtx) (cn : CanonicalName) (ng : NotGe
   {A' Ψ se d f w}
   → E.inferElabV-RResolved-arrow-aux ctx cn ng lkup mbA eqbA mcB eqcB ≡ (success A' Ψ se d f , w)
   → ∀ (dγ : Env ctx Ψ) → SD.⟦ se ⟧ˢ fmt σ dγ ≡ SD.⟦ realize-infer w ⟧ˢ fmt σ dγ
-agree-RResolved-arrowᴴ ctx cn ng {A} {B} π lkup (just bA) eqbA (just cB) eqcB refl dγ = masq {ctx} {A} {B} cn π bA cB dγ
+agree-RResolved-arrowᴴ ctx (own x) ng {A} {B} π lkup (just bA) eqbA (just cB) eqcB refl dγ = refl
+agree-RResolved-arrowᴴ ctx cn@(canonical L.[]) ng {A} {B} π lkup (just bA) eqbA (just cB) eqcB refl dγ = masq {ctx} {A} {B} cn π bA cB dγ
+agree-RResolved-arrowᴴ ctx cn@(canonical (_ L.∷ _ L.∷ _)) ng {A} {B} π lkup (just bA) eqbA (just cB) eqcB refl dγ = masq {ctx} {A} {B} cn π bA cB dγ
 agree-RResolved-arrowᴴ ctx cn ng π lkup nothing eqbA _ eqcB eqS dγ = ⊥-elim (fail≢succ (cong proj₁ eqS))
 agree-RResolved-arrowᴴ ctx cn ng π lkup (just _) eqbA nothing eqcB eqS dγ = ⊥-elim (fail≢succ (cong proj₁ eqS))
 
@@ -1086,7 +1089,9 @@ agree-RResolved-valueᴴ : ∀ (ctx : NamedCtx) (cn : CanonicalName) (ng : NotGe
   {A' Ψ se d f w}
   → E.inferElabV-RResolved-value-aux ctx cn ng ty lkup mc eqc ≡ (success A' Ψ se d f , w)
   → ∀ (dγ : Env ctx Ψ) → SD.⟦ se ⟧ˢ fmt σ dγ ≡ SD.⟦ realize-infer w ⟧ˢ fmt σ dγ
-agree-RResolved-valueᴴ ctx cn ng ty lkup (just conc) eqc refl dγ = refl
+agree-RResolved-valueᴴ ctx (own x) ng ty lkup (just conc) eqc refl dγ = refl
+agree-RResolved-valueᴴ ctx (canonical L.[]) ng ty lkup (just conc) eqc refl dγ = refl
+agree-RResolved-valueᴴ ctx (canonical (_ L.∷ _ L.∷ _)) ng ty lkup (just conc) eqc refl dγ = refl
 agree-RResolved-valueᴴ ctx cn ng ty lkup nothing eqc eqS dγ = ⊥-elim (fail≢succ (cong proj₁ eqS))
 
 agree-RResolved : ∀ (ctx : NamedCtx) (cn : CanonicalName) (ng : NotGenerator cn) (lhs : Maybe Type)

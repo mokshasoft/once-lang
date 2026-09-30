@@ -106,7 +106,8 @@ open import Once.Arith.SigOp.Builders using (value-info;
   add-info; sub-info; mul-info; div-info; mod-info; neg-info;
   fadd-info; fsub-info; fmul-info; fdiv-info; i2f-info;
   lt-info; le-info; gt-info; ge-info; eq-info; ne-info)
-open import Once.CanonicalName using (CanonicalName; bare)
+import Data.List as L
+open import Once.CanonicalName using (CanonicalName; canonical; own; bare)
 open import Once.Denotation.Realize using (realize; realize-infer; realize-d; poly-usage-eq)
 open import Once.Adequacy.SourceFaithful fmt (calls σ) using (faithful; T-ext-at)
 open import Once.Surface.Elaborate using (elaborate)
@@ -767,7 +768,12 @@ bridge-i {ctx = ctx} (t-var-local {eV = svar i} _) re er k =
 
 -- Named value references — the sigop-reference leaf (dispatch on result type).
 bridge-i {ctx = ctx} (t-var-qualified {T = A} _ conc)   {dγ₂ = dγ₂} re er = sigop-ref-bridge {Γ = NamedCtx.debruijn ctx} {A = A} _ conc dγ₂
-bridge-i {ctx = ctx} (t-var-resolved {T = A} _ _ conc)    {dγ₂ = dγ₂} re er = sigop-ref-bridge {Γ = NamedCtx.debruijn ctx} {A = A} _ conc dγ₂
+-- D248: an own-module resolved reference is a call of the entry, as a bare one.
+bridge-i {ctx = ctx} (t-var-resolved {cn = own x} _ lk _) re er = imprel-at (NamedCtx.imports ctx) x (proj₂ er) lk
+bridge-i {ctx = ctx} (t-var-resolved {cn = canonical L.[]} {T = A} _ _ conc) {dγ₂ = dγ₂} re er =
+  sigop-ref-bridge {Γ = NamedCtx.debruijn ctx} {A = A} _ conc dγ₂
+bridge-i {ctx = ctx} (t-var-resolved {cn = canonical (_ L.∷ _ L.∷ _)} {T = A} _ _ conc) {dγ₂ = dγ₂} re er =
+  sigop-ref-bridge {Γ = NamedCtx.debruijn ctx} {A = A} _ conc dγ₂
 -- D246: a module entry's reference is a CALL of it on the SD side and the
 -- entry's meaning on the Spec side — related by the import half of the
 -- environment relation.

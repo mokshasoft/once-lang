@@ -37,7 +37,7 @@ open import Data.String using (String; _++_)
 
 open import Once.Type
   using (Type; Unit; Void; Int; _*_; _+_; _⇒[_]_; μ-type; Functor; ⟦_⟧T; Purity; mk-kind; Quantity; Zero; One; Many; Ground; extractGround)
-open import Once.CanonicalName using (CanonicalName; showCanonical; bare)
+open import Once.CanonicalName using (CanonicalName; own; showCanonical; bare)
 open import Relation.Binary.PropositionalEquality using (subst; sym)
 open import Once.Denotation.TraceMonad using (T; mkT; returnT; _>>=T_; valueT; projTrace; fmapT; resT-lift)
 -- P5: the value-domain vocabulary comes from the IR-free `ValueDomain`
@@ -354,6 +354,8 @@ seqᴰ m₁ m₂ = (m₁ >>=T λ x → m₂ >>=T λ y → returnT (x , y)) >>=T 
 ⟦_⟧ᵢ {ctx = ctx} (t-unit-var) fmt ρ dγ = returnT tt
 ⟦_⟧ᵢ {ctx = ctx} (t-var-local {eV = eV} _) fmt ρ dγ = returnT (svarᴰRun eV dγ)
 ⟦_⟧ᵢ {A = A} (t-var-qualified {name = name} {alias = alias} _ conc) fmt ρ dγ = sigOpRefᴰ {A = A} fmt (bare (alias ++ "." ++ name)) conc
+-- D248: an own-module resolved reference names a module entry (a call of it).
+⟦_⟧ᵢ {ctx = ctx} (t-var-resolved {cn = own x} _ lk _) fmt ρ dγ = impAt (NamedCtx.imports ctx) x (entries ρ) lk
 ⟦_⟧ᵢ {A = A} (t-var-resolved {cn = cn} _ _ conc) fmt ρ dγ = sigOpRefᴰ {A = A} fmt cn conc
 -- D246: a reference to a module ENTRY is a call of it, and means the entry —
 -- read from the scope's import environment (an FFI entry's is its contract).

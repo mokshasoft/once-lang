@@ -50,7 +50,7 @@ open import Once.IRTy.WF using (wf-⌊⌋)
 -- not a value, so `Emits`/`Halts` drop it entirely.
 open import Once.Arith.SigOp.Builders using (generic-semM)
 open import Once.SigOp.Info using (SigOpInfo; mk-info'; pureV; emitsV; haltsV)
-open import Once.CanonicalName using (CanonicalName; bare; showCanonical; gen; NotGenerator; bare-NotGenerator; GenWord; genWord?)
+open import Once.CanonicalName using (CanonicalName; own; bare; showCanonical; gen; NotGenerator; bare-NotGenerator; GenWord; genWord?)
 open import Once.TypeCheck.Raw using (RawExpr)
 open import Once.TypeCheck.Raw as Raw
 open import Once.TypeCheck.Error using (TypeError; renderError; ComposeMiddleUndetermined;
@@ -2064,6 +2064,22 @@ mutual
     -- the realize-agrees masquerade folds both with one case-split.
     ext-resolved-info-aux cn π (Once.Type.isVoid? B) (Once.Type.isUnit? B) bA cB
 
+  -- D248: a resolved reference to the OWN module (`canonical [x]`, the resolver's
+  -- `rv-own`/`name@this`) names a module entry, so it is a CALL of that entry
+  -- (D246), exactly as a bare reference is. Only a reference into ANOTHER module
+  -- (a path of two or more parts, an inlined FFI signature) is a SigOp.
+  resolvedArrowTerm : ∀ {A B} (ctx : NamedCtx) → CanonicalName → (π : Purity)
+                    → IsBaseType A → IsConcrete B
+                    → Surface.Expr (NamedCtx.debruijn ctx) Surface.zeroUsage
+                                   (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B)
+  resolvedArrowTerm ctx (own x) π bA cB = Surface.closure x
+  resolvedArrowTerm ctx cn π bA cB =
+    Surface.lift-morphism {π = π} (IR.SigOp (ext-resolved-info ctx cn π bA cB))
+
+  resolvedValueTerm : ∀ {n} {Γ : Surface.Ctx n} {A} → CanonicalName → IsConcrete A → Surface.Expr Γ Surface.zeroUsage A
+  resolvedValueTerm (own x) conc = Surface.closure x
+  resolvedValueTerm cn conc = Surface.sigOp cn conc
+
   inferElabV-RResolved-aux ctx cn ng
     (just (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B)) eq =
     inferElabV-RResolved-arrow-aux ctx cn ng eq (isBaseType? A) refl (isConcrete? B) refl
@@ -2075,7 +2091,7 @@ mutual
   -- Concreteness-driven arrow value emission (de-withed for Completeness).
   inferElabV-RResolved-arrow-aux ctx cn ng {A} {B} {π} eq (just bA) _ (just cB) _ =
     success (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B) _
-      (Surface.lift-morphism {π = π} (IR.SigOp (ext-resolved-info ctx cn π bA cB)))
+      (resolvedArrowTerm ctx cn π bA cB)
       0 (NamedCtx.freshCounter ctx)
     , t-var-resolved ng eq (con-fun bA cB)
   inferElabV-RResolved-arrow-aux ctx cn ng {A} {B} {π} eq nothing _ _ _ =
@@ -2086,7 +2102,7 @@ mutual
               (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B)) , tt
 
   inferElabV-RResolved-value-aux ctx cn ng ty eq (just conc) _ =
-    success ty _ (Surface.sigOp cn conc) 0 (NamedCtx.freshCounter ctx) , t-var-resolved ng eq conc
+    success ty _ (resolvedValueTerm cn conc) 0 (NamedCtx.freshCounter ctx) , t-var-resolved ng eq conc
   inferElabV-RResolved-value-aux ctx cn ng ty eq nothing _ =
     failure (NonConcreteSigOpType (showCanonical cn) ty) , tt
 

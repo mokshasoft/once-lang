@@ -15956,3 +15956,37 @@ compiled program, and after plan 0.103 6a the core is the apex meaning.
 * `anaᶜ c = lam (unfold (wk c) v0)`: building the arrow runs nothing.
 
 `cata` is unchanged. An algebra is evaluated once, at build (D131), in every meaning.
+
+## D248 — AN OWN-MODULE RESOLVED REFERENCE IS A CALL (D246 FOR `RResolved`) (2026-09-30)
+
+**Relates**: D061, D071, D136, D246, plan 0.50, plan 0.81, plan 0.103 6b/6c.
+
+**Found** while building the telescope's environment for `realize-core` (plan 0.103 C). The
+6b bridge's `Agree` asks that a `t-var-resolved` reference mean its FFI contract. That is
+false for the COMMON case. The resolver (`rv-own`, `name@this`; `Spec.Resolution`) rewrites
+every bare reference to an own-module definition into `RResolved (canonical [x])`. The
+typechecker then took the resolved path and emitted a SigOp, as `realize` did:
+* `sigOp cn` for a value;
+* `lift-morphism (SigOp (ext-resolved-info …))` at a `Many` arrow.
+
+So a program's reference to its own definition meant an opaque SigOp contract (a generic
+`semM` keyed by the name), not the definition. D246 had fixed this only for `t-var-import`
+(a bare `RVar`), which a resolved module no longer contains for own definitions. Before
+D246 the resolver's sigOp→closure rewrite had hidden it; D246 deleted that rewrite.
+
+**Decided (D071, D246).** A resolved reference whose canonical name has ONE part (`own x`,
+a new pattern synonym for `bare x`) names an entry of this module. That entry is a
+definition or the module's own FFI declaration, and either way it is in the function
+table. So the reference is a CALL of it (`closure x`), exactly like a bare reference:
+* in the typechecker (`resolvedValueTerm`/`resolvedArrowTerm`), in `realize`, and in the
+  surface meaning (`impAt`, the import environment);
+* a path of two or more parts is another module's inlined FFI signature (`resolveImports`
+  inlines only signatures, keyed by the full dotted path), so it stays a SigOp with its
+  canonical identity.
+
+The core's elaboration needs no change: `own x = bare x`, so `importE` already reads the
+View's classification. `Agree.agree-resolved` now covers only names that are not own
+(`NotOwn`). An own-module name's agreement is `agree-import`.
+
+**Runtime.** The emitted code for an own reference is `call once_x`, as it was under the
+pre-D246 resolver rewrite. A reference into another module is unchanged.

@@ -66,7 +66,7 @@ open import Once.Surface.Syntax using (Expr; Usage; zeroUsage; var; svar; svar�
   lift-morphism; morph-app; coerce; cata; ana; comp'; copair'; fork'; curry')
 open import Once.Surface.Elaborate using (intLit; floatLit; elaborate)
 open import Once.Arith.SigOp.Builders using (value-info)
-open import Once.CanonicalName using (bare)
+open import Once.CanonicalName using (bare; own)
 open import Once.Surface.Syntax using (_+ᵘ_; _*ᵘ_)
 open import Once.Surface.Properties using (+ᵘ-identityˡ; *ᵘ-zeroʳ)
 open import Relation.Binary.PropositionalEquality using (_≡_; subst; trans; cong; sym)
@@ -152,6 +152,9 @@ realize-infer (t-var-qualified {name = name} {alias = alias} _ conc) = sigOp (ba
 -- Plan 0.50: a resolved ref carries its canonical identity directly — the
 -- reference elaboration reads it with NO String render, so it agrees with
 -- the elaborator's `SigOpInfo.name` by construction.
+-- D248: a reference to the OWN module's entry is a call of it (D246); only a
+-- reference into another module (an inlined FFI signature) is a SigOp.
+realize-infer (t-var-resolved {cn = own x} _ _ conc) = closure x
 realize-infer (t-var-resolved {cn = cn} _ _ conc) = sigOp cn conc
 -- D246: a module entry's reference is a call of the entry.
 realize-infer (t-var-import {x = x} _ _ _ conc) = closure x

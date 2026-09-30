@@ -33,7 +33,10 @@ open import Relation.Nullary using (¬_)
 open import Once.Type using (Type; PolyType; Ground; extractGround)
 open import Once.Type.Rigid using (KindedInstance; ground-kinded)
 open import Once.Functor.Translate using (IsConcrete)
-open import Once.CanonicalName using (CanonicalName; bare; showCanonical)
+open import Once.CanonicalName using (CanonicalName; canonical; own; bare; showCanonical)
+open import Data.List using ([]; _∷_)
+open import Data.Empty using (⊥)
+open import Data.Unit using (⊤)
 open import Data.String using (_++_)
 open import Once.Postulates using (extensionality)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ)
@@ -59,6 +62,11 @@ impSem : ∀ (δ : GM.DefSem) {U : Type} → CanonicalName → IsConcrete U → 
 impSem δ c k (ffi _ _) = sigOpRefᴰ fmt c k
 impSem δ c k (def d i) = refSem δ i
 
+-- D248: a canonical name that is not an own-module entry's (`own x`).
+NotOwn : CanonicalName → Set
+NotOwn (own _) = ⊥
+NotOwn _       = ⊤
+
 -- `ρ` agrees with `δ` at every reference the View resolves.
 record Agree {imps : Imports} {polys : PolyCtx} (V : View imps polys) (ρ : Meanings polys imps) (δ : GM.DefSem) : Set where
   field
@@ -75,7 +83,9 @@ record Agree {imps : Imports} {polys : PolyCtx} (V : View imps polys) (ρ : Mean
     -- View classifies it as FFI, so it means the contract.
     agree-qualified : ∀ {name alias U} (lk : lookupImport imps (alias ++ "." ++ name) ≡ just U) (k : IsConcrete U)
                     → impSem δ (bare (alias ++ "." ++ name)) k (imported V lk) ≡ sigOpRefᴰ fmt (bare (alias ++ "." ++ name)) k
-    agree-resolved : ∀ {cn U} (lk : lookupImport imps (showCanonical cn) ≡ just U) (k : IsConcrete U)
+    -- D248: only a path of two or more parts (another module's inlined FFI
+    -- signature); an own-module name is a call (`agree-import`).
+    agree-resolved : ∀ {cn U} → NotOwn cn → (lk : lookupImport imps (showCanonical cn) ≡ just U) (k : IsConcrete U)
                    → impSem δ cn k (imported V lk) ≡ sigOpRefᴰ fmt cn k
 
 ------------------------------------------------------------------------
@@ -383,7 +393,15 @@ module _ {δ : GM.DefSem} where
   bridge-i V ag (t-var-qualified {name = name} {alias = alias} lk k) dγ with imported V lk | Agree.agree-qualified ag {name = name} {alias = alias} lk k
   ... | ffi h g   | eq = refl
   ... | def d′ i′ | eq = trans (sym eq) (refSem-⊢ i′ dγ)
-  bridge-i V ag (t-var-resolved {cn = cn} _ lk k) dγ with imported V lk | Agree.agree-resolved ag {cn = cn} lk k
+  bridge-i V ag (t-var-resolved {cn = own x} _ lk k) dγ with imported V lk | Agree.agree-import ag {x = x} lk k
+  ... | ffi h g   | eq = eq
+  ... | def d′ i′ | eq = trans eq (refSem-⊢ i′ dγ)
+  bridge-i V ag (t-var-resolved {cn = canonical []} _ lk k) dγ
+    with imported V lk | Agree.agree-resolved ag {cn = canonical []} tt lk k
+  ... | ffi h g   | eq = refl
+  ... | def d′ i′ | eq = trans (sym eq) (refSem-⊢ i′ dγ)
+  bridge-i V ag (t-var-resolved {cn = canonical (a ∷ b ∷ rest)} _ lk k) dγ
+    with imported V lk | Agree.agree-resolved ag {cn = canonical (a ∷ b ∷ rest)} tt lk k
   ... | ffi h g   | eq = refl
   ... | def d′ i′ | eq = trans (sym eq) (refSem-⊢ i′ dγ)
   bridge-i V ag (t-var-import {x = x} _ _ lk k) dγ with imported V lk | Agree.agree-import ag {x = x} lk k

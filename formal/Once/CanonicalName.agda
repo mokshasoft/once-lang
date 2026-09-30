@@ -67,6 +67,10 @@ generatorNS = "Generators"
 -- only mention constructors and literals.
 pattern gen g = canonical ("Generators" ∷ g ∷ [])
 
+-- D248: the canonical name of an OWN-module entry — one part, the entry's name
+-- (the resolver's `rv-own`/`name@this`). `bare x` as a PATTERN.
+pattern own x = canonical (x ∷ [])
+
 -- A user path can never BE a generator name: `bare x = canonical [x]` has one
 -- component and `gen g` has two, so the two families are disjoint by length —
 -- which is the property that replaces every "this name is not a builtin" side
