@@ -254,12 +254,18 @@ MonoValid (C.e-fun fi)   = funIsPrimitive fi ≡ false → validIdentB (funName 
 MonoValid (C.e-poly pfi) = ⊤
 
 postulate
-  -- RESIDUAL, class DEFERRED PROOF (plan 0.103 G): a PURE core computation
-  -- returns a value and emits nothing. A telescope's entries are pure
-  -- (`Telescope.def`), so its environment is, and so is an entry's body. By
-  -- induction on the core derivation with a logical predicate on values (a
-  -- pure arrow's closure is pure on every argument); `core-pf`'s induction
-  -- (E) is the same shape.
+  -- RESIDUAL, class OPEN DECISION (plan 0.103 G): a PURE core computation
+  -- returns a value and emits nothing. D245's direct-call ABI runs an
+  -- arrow-typed definition's body at each APPLICATION; the core runs it at the
+  -- REFERENCE. The two agree exactly when the body's computation returns
+  -- silently. Emitting is excluded by the grade, and a fundamental lemma over
+  -- pure derivations proves the rest — EXCEPT one case the model leaves open: a
+  -- pure FFI contract may return a PARTIAL function pointer
+  -- (`Val.⟦A ⇒ B⟧ = ⟦A⟧ → Res ⟦B⟧`), and applying it may stop. D231's honesty
+  -- (`pure` = no effects; halting is `Halts`, an effect) says it may not; the
+  -- model does not say so. Closing this is a decision: make pure pointers total
+  -- in the contract, OR make every arrow-typed definition mean its uncurried
+  -- morphism (per-application, D064) in the core and at the resolver's splice.
   core-pure : ∀ {s} {S : Sig s} (tl : Tele S) {t : Once.Spec.Core.Syntax.Tm S 0} {A : Type}
               (D : GTM._⊢[_]_∷_!_ S Ctx.∅ Ctx.Usage.[] t A Once.Type.pure)
             → TE.PureAt A (GM.⟦_⟧ S D fmt (teleSem fmt tl) tt)
