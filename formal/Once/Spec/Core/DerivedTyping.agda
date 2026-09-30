@@ -154,10 +154,9 @@ wk-⊢′ {Γ = Γ} {Ψ = Ψ} B d = subst (λ U → _ ⊢[ Zero ∷ U ] _ ∷ _ 
       → WellFormedF F
       → Γ ⊢[ Ψ ] c ∷ A ⇒[ mk-kind Many π ] ⟦ F ⟧T A ! pure
       → Γ ⊢[ Ψ ] anaᶜ c ∷ A ⇒[ mk-kind Many π₀ ] ν-type F π ! pure
-⊢anaᶜ {Γ = Γ} {Ψ} {π₀ = π₀} wf dc =
-  subst (λ U → Γ ⊢[ U ] _ ∷ _ ! pure)
-        (trans (cong₂ _+ᵘ_ (+ᵘ-identityˡ zeroUsage) (*ᵘ-identityˡ Ψ)) (+ᵘ-identityˡ Ψ))
-        (⊢let dc (⊢lam refl (⊢unfold wf (⊢var′ (suc zero) π₀) (⊢var′ zero π₀))))
+⊢anaᶜ {Γ = Γ} {Ψ} {A = A} {π₀ = π₀} wf dc =
+  ⊢lam refl (subst (λ U → (Γ , A) ⊢[ One ∷ U ] _ ∷ _ ! π₀) (+ᵘ-identityʳ Ψ)
+                   (⊢unfold wf (⊢sub-eff (pure⊑ π₀) (wk-⊢′ A dc)) (⊢var′ zero π₀)))
 
 ------------------------------------------------------------------------
 -- The remaining closed combinators and the suspensions.

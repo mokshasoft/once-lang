@@ -46,6 +46,7 @@ open import Once.Spec.Core.Rename S using (ren-⊢; ren-cong; keep-extR)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ)
 open import Once.Denotation.TraceMonad using (T; _>>=T_; returnT; fmapT)
 open import Once.Denotation.Phase using (restrictᴰ; bindᴰ; bindᴰ0; lookupᴰUsed)
+open import Once.Denotation.Meaning using (ana-sem)
 open import Once.Spec.Core.Syntax S
 open import Once.Spec.Core.Typing S
 import Once.Spec.Core.Meaning S as GM
@@ -352,13 +353,14 @@ ren-sem θ (⊢fold {Ψa = Ψa} {Ψt = Ψt} wf da dt) fmt δ x =
                (λ valg → bindC (trans (ren-sem θ dt fmt δ _)
                                       (cong (GM.⟦ dt ⟧ fmt δ) (envEq θ (⊑ᵘ-+ʳ Ψa Ψt) (sym (sym (thin-usage-+ᵘ θ Ψa Ψt))) _ x)))
                                (λ _ → refl)))
-ren-sem θ (⊢unfold {Ψc = Ψc} {Ψs = Ψs} wf dc ds) fmt δ x =
+ren-sem θ (⊢unfold {Ψc = Ψc} {Ψs = Ψs} {π = π} wf dc ds) fmt δ x =
   trans (⟦⟧-substΨ (sym (thin-usage-+ᵘ θ Ψc Ψs)) _ fmt δ x)
-        (bindC (trans (ren-sem θ dc fmt δ _)
-                      (cong (GM.⟦ dc ⟧ fmt δ) (envEq θ (⊑ᵘ-+ˡ Ψc Ψs) (sym (sym (thin-usage-+ᵘ θ Ψc Ψs))) _ x)))
-               (λ vc → bindC (trans (ren-sem θ ds fmt δ _)
-                                    (cong (GM.⟦ ds ⟧ fmt δ) (envEq θ (⊑ᵘ-+ʳ Ψc Ψs) (sym (sym (thin-usage-+ᵘ θ Ψc Ψs))) _ x)))
-                             (λ _ → refl)))
+        (cong₂ _>>=T_
+          (trans (ren-sem θ ds fmt δ _)
+                 (cong (GM.⟦ ds ⟧ fmt δ) (envEq θ (⊑ᵘ-+ʳ Ψc Ψs) (sym (sym (thin-usage-+ᵘ θ Ψc Ψs))) _ x)))
+          (cong (ana-sem {π = π} wf)
+            (trans (ren-sem θ dc fmt δ _)
+                   (cong (GM.⟦ dc ⟧ fmt δ) (envEq θ (⊑ᵘ-+ˡ Ψc Ψs) (sym (sym (thin-usage-+ᵘ θ Ψc Ψs))) _ x)))))
 ren-sem θ (⊢out wf d) fmt δ x = bindC (ren-sem θ d fmt δ x) (λ _ → refl)
 ren-sem θ (⊢coerce p d) fmt δ x = cong (fmapT _) (ren-sem θ d fmt δ x)
 ren-sem θ ⊢lit-int fmt δ x = ⟦⟧-substΨ (sym (thin-usage-zeroUsage θ)) ⊢lit-int fmt δ x

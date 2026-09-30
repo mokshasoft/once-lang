@@ -147,9 +147,11 @@ primSem p-i2f  fmt v = resT-lift (semM i2f-info  fmt v)
 ⟦ ⊢fold {Γ = Γ} {Ψa = Ψa} {Ψt = Ψt} wf da dt ⟧ fmt ρ dγ =
   ⟦ da ⟧ fmt ρ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψa Ψt) dγ) >>=T λ valg →
   ⟦ dt ⟧ fmt ρ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψa Ψt) dγ) >>=T cata-sem wf valg
+-- D247 (D192 in the core): the coalgebra is STORED as a computation, run inside
+-- each forced layer — as `ana-sem`, SD and the IR's `Ana` all do.
 ⟦ ⊢unfold {Γ = Γ} {Ψc = Ψc} {Ψs = Ψs} {π = π} wf dc ds ⟧ fmt ρ dγ =
-  ⟦ dc ⟧ fmt ρ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψc Ψs) dγ) >>=T λ vc →
-  ⟦ ds ⟧ fmt ρ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψc Ψs) dγ) >>=T ana-sem {π = π} wf (returnT vc)
+  ⟦ ds ⟧ fmt ρ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψc Ψs) dγ) >>=T
+    ana-sem {π = π} wf (⟦ dc ⟧ fmt ρ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψc Ψs) dγ))
 ⟦ ⊢out {π = π} wf d ⟧ fmt ρ dγ = ⟦ d ⟧ fmt ρ dγ >>=T out-sem {π = π} wf
 
 ⟦ ⊢coerce p d ⟧ fmt ρ dγ = fmapT ⟦ p ⟧<: (⟦ d ⟧ fmt ρ dγ)

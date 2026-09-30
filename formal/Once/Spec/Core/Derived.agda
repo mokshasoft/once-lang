@@ -74,7 +74,8 @@ curryᶜ f = let′ f (lam (lam (app v2 (pair v1 v0))))
 -- `cata alg` / `ana coalg`: the algebra is evaluated once (D131).
 cataᶜ anaᶜ : ∀ {n} → Tm n → Tm n
 cataᶜ alg = let′ alg (lam (fold v1 v0))
-anaᶜ  c   = let′ c   (lam (unfold v1 v0))
+-- D247: `ana`'s coalgebra is not evaluated at build — the ν stores it (D192).
+anaᶜ  c   = lam (unfold (wk c) v0)
 
 -- Applying an effectful arrow at the surface builds a SUSPENSION
 -- `Unit ⇒[eff] B`; head and argument are evaluated when it runs
