@@ -435,8 +435,12 @@ module PairAsm {FS : FrameSemantics} where
                          PPresF.stack-pres-pair PPresF.heap-pres-pair
                          PPres.frame-pres-pair PPres.bf-mono-pair
             ; traces-agree =
-                PT.pair-traces PC.pre-chain chainF₀ PCF.mid-chain
-                               chainG₀ PCG.tail-chain refl refl refl sfeq tf tg
+                -- the SAME chain names `PCG.RUN` is built from (`PCF.chainF`,
+                -- `PCG.chainG`), so the conclusion matches `RUN` after one
+                -- unfolding instead of by normalising both runs' events
+                -- (profile 2026-09-30: this call was 91% of the module).
+                PT.pair-traces PC.pre-chain PCF.chainF PCF.mid-chain
+                               PCG.chainG PCG.tail-chain refl refl refl sfeq tf tg
             }
             where
               sgeq : TM.stoppedT (evalᴰ g x) PT.kg ≡ false

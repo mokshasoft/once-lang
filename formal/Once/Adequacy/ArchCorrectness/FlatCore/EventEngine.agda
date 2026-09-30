@@ -173,8 +173,8 @@ flat-inv-step i prog fs ftq h inv = record
   ; inv-regtag  = flat-regtag-step i prog fs (inv-regtag inv)
   ; inv-ev      = inv-ev inv
   ; inv-env     = inv-env inv
-  ; inv-run     = mkRunAt (run-ir (inv-run inv)) (run-emit (inv-run inv))
-                          (run-heap (inv-run inv))
+  ; inv-run     = mkRunAt (run-tbl (inv-run inv)) (run-ir (inv-run inv)) (run-emit (inv-run inv))
+                          (run-linked (inv-run inv))
                           (reach-step i fs (run-reach (inv-run inv)) ftq h)
   }
 
@@ -446,11 +446,12 @@ record Supply : Set₁ where
              → CFC.hfront hv + slots n ≤ CFC.lo hv
     stack-room : ∀ {hv : HeapView} prog fs s m b → RunAt prog fs
               → CompiledCorr hv prog fs s
-              → fetch prog (fpc fs) ≡ just (instr-ctrl (c-thunk m b))
+              → fetch prog (fpc fs) ≡ just (instr-ctrl (c-entry m b))
               → CFC.hfront hv + slots b ≤ rreg s sp-reg
-    call-room : ∀ {hv : HeapView} prog fs s → RunAt prog fs
+    -- D245: at EITHER call, closure or direct: both spend one slot.
+    call-room : ∀ {hv : HeapView} prog fs s (c : AbstractInstr) → RunAt prog fs
              → CompiledCorr hv prog fs s
-             → fetch prog (fpc fs) ≡ just instr-call-closure
+             → fetch prog (fpc fs) ≡ just c → CallI c
              → CFC.hfront hv + slot-size ≤ rreg s sp-reg
     -- THE MACHINE IS FINITE, and the four `add` sites do not wrap (plan 0.70).
     reg-range : ∀ {hv : HeapView} prog fs s r → RunAt prog fs

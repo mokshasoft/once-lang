@@ -66,7 +66,7 @@ open FlatMachine {FS} using (FlatState; fpc; fret; flink; falloc; floc; fclosure
                              fetch; find-label; tag-zf; flat-read-tag; flat-read-at; sv-is-zero;
                              flink-do-ret; leave-frame; do-ret-pc-∷; do-ret-fret-∷; do-ret-alloc;
                              enter-call; do-call-sv; do-call-code; do-call-at; find-thunk)
-open import Once.CCC.Label using (once; thunk; LabelId)
+open import Once.CCC.Label using (once; thunk; LabelId; callee; e-fn; e-thunk)
 
 import Once.CCC.Target.RiscV64.Semantics as R
 import Once.Adequacy.ArchCorrectness.RiscV64.FlatCorrespondence as FC
@@ -75,7 +75,7 @@ open C using (HeapView; haddr; HDom; hfront)
 open import Once.Adequacy.ArchCorrectness.RiscV64.FlatComposition FS
   using (blk-off; blk-len; blk-off-suc; fetch-block-head; fetch-block-2nd; fetch-block-3rd; find-label-corr; find-thunk-corr)
 open import Once.Adequacy.ArchCorrectness.RiscV64.StepLemmas
-  using (exec-1; step-mv; step-li; step-label; step-ld; step-sd; step-addi; step-lla; step-j-found; step-beq-taken; step-beq-not; step-ret; step-jalr)
+  using (exec-1; step-mv; step-li; step-label; step-ld; step-sd; step-addi; step-lla; step-j-found; step-beq-taken; step-beq-not; step-ret; step-jalr; step-jal-found)
 open import Once.CCC.Target.RiscV64.Syntax using (Reg; mv; li; label; ld; sd; addi; lla; beq; j; ret; jalr; a0; a1; t0; t1; s1; s2; s3; s4; sp; ra; zero; slots)
 import Data.Integer as ℤ
 import Once.Word as OnceWord
@@ -1758,7 +1758,7 @@ block-step-alloc-heap {hv} prog fs s n cc h ft wf1 wfs wfc wfcl wf-heap wf-stack
 ------------------------------------------------------------------------
 block-step-c-thunk : ∀ {hv : HeapView} prog fs s n b r rpc rest → CompiledCorr hv prog fs s
   → halted (floc fs) ≡ false
-  → fetch prog (fpc fs) ≡ just (instr-ctrl (c-thunk n b))
+  → fetch prog (fpc fs) ≡ just (instr-ctrl (c-entry n b))
   → (lo' : ℕ) (lo'≤lo : lo' ≤ C.lo hv) (front-lo' : C.hfront hv ≤ lo')
   → lo' ≤ R.readReg (R.State.regs s) sp ∸ slots b
   → slots b ≤ R.readReg (R.State.regs s) sp
@@ -1766,7 +1766,7 @@ block-step-c-thunk : ∀ {hv : HeapView} prog fs s n b r rpc rest → CompiledCo
   → R.readReg (R.State.regs s) sp < R.W.modulus
   → flink fs ≡ just r
   → fret fs ≡ rpc ∷ rest
-  → BlockStepAt hv (C.descend-view hv lo' lo'≤lo front-lo') prog fs s (instr-ctrl (c-thunk n b))
+  → BlockStepAt hv (C.descend-view hv lo' lo'≤lo front-lo') prog fs s (instr-ctrl (c-entry n b))
 block-step-c-thunk {hv} prog fs s n b r rpc rest cc h ft lo' lo'≤lo front-lo' lo'≤sp fits
                    empty-frame sp<mod no-link pend =
   post-sd , exec-eq , record { dataCorr = dataPost ; pc-off = pco'
@@ -1776,9 +1776,9 @@ block-step-c-thunk {hv} prog fs s n b r rpc rest cc h ft lo' lo'≤lo front-lo' 
     halt-s : R.State.halted s ≡ false
     halt-s = trans (C.halt-eq dc) h
     -- step 1: the body-entry label (pc only)
-    fetch-lab : R.fetch (compile-trace prog) (R.State.pc s) ≡ just (label (thunk n))
+    fetch-lab : R.fetch (compile-trace prog) (R.State.pc s) ≡ just (label (callee n))
     fetch-lab = trans (cong (R.fetch (compile-trace prog)) po)
-                      (fetch-block-head prog (fpc fs) (instr-ctrl (c-thunk n b)) ft)
+                      (fetch-block-head prog (fpc fs) (instr-ctrl (c-entry n b)) ft)
     post-lab : R.State
     post-lab = record s { pc = R.State.pc s + 1 }
     step-lab : R.step-not-halted (compile-trace prog) s ≡ just post-lab
@@ -1787,7 +1787,7 @@ block-step-c-thunk {hv} prog fs s n b r rpc rest cc h ft lo' lo'≤lo front-lo' 
     fetch-addi : R.fetch (compile-trace prog) (R.State.pc post-lab)
                ≡ just (addi sp sp (ℤ.-_ (ℤ.+ (slots b))))
     fetch-addi = trans (cong (λ q → R.fetch (compile-trace prog) (q + 1)) po)
-                       (fetch-block-2nd prog (fpc fs) (instr-ctrl (c-thunk n b)) ft)
+                       (fetch-block-2nd prog (fpc fs) (instr-ctrl (c-entry n b)) ft)
     post-addi : R.State
     post-addi = record s { regs = R.writeReg (R.State.regs s) sp
                                     (R.readReg (R.State.regs s) sp ∸ slots b)
@@ -1805,7 +1805,7 @@ block-step-c-thunk {hv} prog fs s n b r rpc rest cc h ft lo' lo'≤lo front-lo' 
              ≡ just (sd ra sp (slots b))
     fetch-sd = trans (cong (R.fetch (compile-trace prog))
                            (trans (+-assoc (R.State.pc s) 1 1) (cong (_+ 2) po)))
-                     (fetch-block-3rd prog (fpc fs) (instr-ctrl (c-thunk n b)) ft)
+                     (fetch-block-3rd prog (fpc fs) (instr-ctrl (c-entry n b)) ft)
     waddr : ℕ
     waddr = R.effectiveAddr (R.State.regs post-addi) sp (slots b)
     post-sd : R.State
@@ -1860,12 +1860,12 @@ block-step-c-thunk {hv} prog fs s n b r rpc rest cc h ft lo' lo'≤lo front-lo' 
                           (sym (cong slots empty-frame)))))
     -- the data correspondence at the RESERVATION, then across the spill
     dataAddi : C.FlatCorr (C.descend-view hv lo' lo'≤lo front-lo')
-                          (flat-exec-instr (instr-ctrl (c-thunk n b)) prog fs) post-addi
+                          (flat-exec-instr (instr-ctrl (c-entry n b)) prog fs) post-addi
     dataAddi = C.sim-thunk b fs s _ dc lo' lo'≤lo front-lo' lo'≤sp fits
                            (C.sets-role-riscv64 s role-sp _ _)
     dataPost : C.FlatCorr (C.descend-view hv lo' lo'≤lo front-lo')
-                          (flat-exec-instr (instr-ctrl (c-thunk n b)) prog fs) post-sd
-    dataPost = C.corr-store-gap (flat-exec-instr (instr-ctrl (c-thunk n b)) prog fs)
+                          (flat-exec-instr (instr-ctrl (c-entry n b)) prog fs) post-sd
+    dataPost = C.corr-store-gap (flat-exec-instr (instr-ctrl (c-entry n b)) prog fs)
                  post-addi post-sd (R.readReg (R.State.regs post-addi) ra) dataAddi
                  (λ _ → refl) refl
                  (cong (λ z → R.writeMem (R.State.memory post-addi) z
@@ -1873,10 +1873,10 @@ block-step-c-thunk {hv} prog fs s n b r rpc rest cc h ft lo' lo'≤lo front-lo' 
                        (trans waddr-eq (sym addr-eq)))
                  (subst (λ z → C.GapNext z (saved-frames (falloc fs))) (sym addr-eq) gap)
     pco' : R.State.pc post-sd
-         ≡ blk-off prog (fpc (flat-exec-instr (instr-ctrl (c-thunk n b)) prog fs))
+         ≡ blk-off prog (fpc (flat-exec-instr (instr-ctrl (c-entry n b)) prog fs))
     pco' = trans (trans (+-assoc (R.State.pc s + 1) 1 1)
                         (trans (+-assoc (R.State.pc s) 1 2) (cong (_+ 3) po)))
-                 (sym (blk-off-suc prog (fpc fs) (instr-ctrl (c-thunk n b)) ft))
+                 (sym (blk-off-suc prog (fpc fs) (instr-ctrl (c-entry n b)) ft))
     -- THE ROW CONVERSION, WHICH ON THIS ARCH IS THE STORE: the head cell now
     -- holds what `ra` held, and `head` says that was the return address. Every
     -- older row rides across by `GapNext` — the caller's base is one slot up.
@@ -1906,9 +1906,9 @@ block-step-c-thunk {hv} prog fs s n b r rpc rest cc h ft lo' lo'≤lo front-lo' 
                        (λ w p → p)
                        head)
     retPost : C.RetAddrs (blk-off prog) (R.State.memory post-sd) (riscv64-link-claim post-sd)
-                         (flink (flat-exec-instr (instr-ctrl (c-thunk n b)) prog fs))
-                         (C.frames-of (falloc (flat-exec-instr (instr-ctrl (c-thunk n b)) prog fs)))
-                         (fret (flat-exec-instr (instr-ctrl (c-thunk n b)) prog fs))
+                         (flink (flat-exec-instr (instr-ctrl (c-entry n b)) prog fs))
+                         (C.frames-of (falloc (flat-exec-instr (instr-ctrl (c-entry n b)) prog fs)))
+                         (fret (flat-exec-instr (instr-ctrl (c-entry n b)) prog fs))
     retPost = C.ret-head (blk-off prog) (R.State.memory post-sd)
                          (riscv64-link-claim post-sd) nothing
                          (current-frame (falloc fs))
@@ -2128,7 +2128,7 @@ block-step-call {hv} prog fs s hl ℓ jx cc h ft ceq heq live fteq lo' lo'≤lo 
     cell-addr : R.effectiveAddr (R.State.regs s) s1 slot-size ≡ haddr hv (sucHL hl)
     cell-addr = trans (cong (_+ slot-size) s1-val) (sym (C.haddr-suc hv hl))
     conc-res : R.find-label (compile-trace prog) (thunk ℓ) ≡ just (blk-off prog jx)
-    conc-res = find-thunk-corr prog ℓ 0 jx fteq
+    conc-res = find-thunk-corr prog (e-thunk ℓ) 0 jx fteq
     rd : R.readMem (R.State.memory s) (R.effectiveAddr (R.State.regs s) s1 slot-size)
        ≡ just (blk-off prog jx)
     rd = trans (cong (R.readMem (R.State.memory s)) cell-addr)
@@ -2233,6 +2233,120 @@ block-step-call {hv} prog fs s hl ℓ jx cc h ft ceq heq live fteq lo' lo'≤lo 
                           (C.frames-of (falloc fs)) (fret fs)
         tail = C.ret-agree-nothing (blk-off prog) (R.State.memory s) (R.State.memory s)
                  (riscv64-link-claim s) (riscv64-link-claim post-jalr)
+                 (stackMem (floc fs)) (C.lo hv) (C.frames-of (falloc fs)) (fret fs)
+                 (λ _ _ → refl) (C.stack-eq dc)
+                 (subst (λ lk → C.RetAddrs (blk-off prog) (R.State.memory s)
+                                  (riscv64-link-claim s) lk
+                                  (C.frames-of (falloc fs)) (fret fs))
+                        no-link (ret-eq cc))
+
+------------------------------------------------------------------------
+-- D245: THE DIRECT CALL, `c-call-fn f` ↔ `addi sp, sp, -8 ; jal ra, once_f`.
+-- `block-step-call` without its first step: the target is named statically,
+-- so there is no closure record to load through. The caller still reserves the
+-- return-address slot (the `addi`), and `jal` writes the link and transfers to
+-- the label the abstract entry scan resolves (`find-thunk-corr` at `e-fn f`).
+------------------------------------------------------------------------
+block-step-call-fn : ∀ {hv : HeapView} prog fs s (f : CanonicalName) jx → CompiledCorr hv prog fs s
+  → halted (floc fs) ≡ false
+  → fetch prog (fpc fs) ≡ just (instr-ctrl (c-call-fn f))
+  → FlatMachine.find-fn {FS} prog f ≡ just jx
+  → (lo' : ℕ) (lo'≤lo : lo' ≤ C.lo hv) (front-lo' : C.hfront hv ≤ lo')
+  → lo' ≤ R.readReg (R.State.regs s) sp ∸ slot-size
+  → slot-size ≤ R.readReg (R.State.regs s) sp
+  → R.readReg (R.State.regs s) sp < R.W.modulus
+  → flink fs ≡ nothing
+  → BlockStepAt hv (C.descend-view hv lo' lo'≤lo front-lo') prog fs s (instr-ctrl (c-call-fn f))
+block-step-call-fn {hv} prog fs s f jx cc h ft fteq lo' lo'≤lo front-lo' lo'≤sp fits sp<mod no-link =
+  post-jal , exec-eq , record { dataCorr = dataPost ; pc-off = pco'
+                              ; ret-eq = retPost ; code-eq = code-eq cc }
+  where
+    dc = dataCorr cc ; po = pc-off cc
+    halt-s : R.State.halted s ≡ false
+    halt-s = trans (C.halt-eq dc) h
+    conc-res : R.find-label (compile-trace prog) (callee (e-fn f)) ≡ just (blk-off prog jx)
+    conc-res = find-thunk-corr prog (e-fn f) 0 jx fteq
+    -- step 1: THE CALLER RESERVES THE SLOT
+    fetch-addi : R.fetch (compile-trace prog) (R.State.pc s)
+               ≡ just (addi sp sp (ℤ.-_ (ℤ.+ slot-size)))
+    fetch-addi = trans (cong (R.fetch (compile-trace prog)) po)
+                       (fetch-block-head prog (fpc fs) (instr-ctrl (c-call-fn f)) ft)
+    post-addi : R.State
+    post-addi = record s
+                  { regs = R.writeReg (R.State.regs s) sp
+                             (R.readReg (R.State.regs s) sp ∸ slot-size)
+                  ; pc = R.State.pc s + 1 }
+    step-addi' : R.step-not-halted (compile-trace prog) s ≡ just post-addi
+    step-addi' = subst (λ w → R.step-not-halted (compile-trace prog) s
+                              ≡ just (record s
+                                        { regs = R.writeReg (R.State.regs s) sp w
+                                        ; pc = R.State.pc s + 1 }))
+                       (R.W.⊕-neg (R.readReg (R.State.regs s) sp) slot-size fits sp<mod)
+                       (step-addi {compile-trace prog} {s} {sp} {sp}
+                                  {ℤ.-_ (ℤ.+ slot-size)} fetch-addi)
+    -- step 2: the transfer, and the LINK
+    fetch-jal : R.fetch (compile-trace prog) (R.State.pc post-addi) ≡ just (jal ra (callee (e-fn f)))
+    fetch-jal = trans (cong (λ q → R.fetch (compile-trace prog) (q + 1)) po)
+                      (fetch-block-2nd prog (fpc fs) (instr-ctrl (c-call-fn f)) ft)
+    post-jal : R.State
+    post-jal = record post-addi
+                 { regs = R.writeReg (R.State.regs post-addi) ra (R.State.pc post-addi + 1)
+                 ; pc = blk-off prog jx }
+    step-jal' : R.step-not-halted (compile-trace prog) post-addi ≡ just post-jal
+    step-jal' = step-jal-found {compile-trace prog} {post-addi} {ra} {callee (e-fn f)} {blk-off prog jx}
+                               fetch-jal conc-res
+    exec-eq : R.exec 2 (compile-trace prog) s ≡ just post-jal
+    exec-eq = trans (exec-1 {compile-trace prog} {1} {s} {post-addi} halt-s step-addi' halt-s)
+                    (exec-1 {compile-trace prog} {0} {post-addi} {post-jal} halt-s step-jal' halt-s)
+    absPost : FlatState
+    absPost = record fs { falloc = enter-call (falloc fs)
+                        ; fret   = suc (fpc fs) ∷ fret fs
+                        ; flink  = just (suc (fpc fs))
+                        ; fpc    = jx }
+    step-eq : flat-exec-instr (instr-ctrl (c-call-fn f)) prog fs ≡ absPost
+    step-eq = cong (λ z → do-call-at z fs) fteq
+    dataAddi : C.FlatCorr (C.descend-view hv lo' lo'≤lo front-lo') absPost post-addi
+    dataAddi = C.sim-call-frame jx fs s post-addi dc lo' lo'≤lo front-lo' lo'≤sp fits
+                 (C.sets-role-riscv64 s role-sp _ _)
+    dataPost : C.FlatCorr (C.descend-view hv lo' lo'≤lo front-lo')
+                          (flat-exec-instr (instr-ctrl (c-call-fn f)) prog fs) post-jal
+    dataPost = subst (λ z → C.FlatCorr (C.descend-view hv lo' lo'≤lo front-lo') z post-jal)
+                     (sym step-eq)
+                     (C.corr-regs-agree absPost post-addi post-jal dataAddi
+                        (λ ρ → C.role-off-ra post-addi ρ (R.State.pc post-addi + 1))
+                        refl refl)
+    pco' : R.State.pc post-jal ≡ blk-off prog (fpc (flat-exec-instr (instr-ctrl (c-call-fn f)) prog fs))
+    pco' = cong (λ z → blk-off prog (fpc z)) (sym step-eq)
+    -- THE LINK, which is what the head row now claims
+    ret-val : R.State.pc post-addi + 1 ≡ blk-off prog (suc (fpc fs))
+    ret-val = trans (trans (+-assoc (R.State.pc s) 1 1) (cong (_+ 2) po))
+                    (sym (blk-off-suc prog (fpc fs) (instr-ctrl (c-call-fn f)) ft))
+    newbase : R.readReg (R.State.regs s) sp ∸ slot-size
+            ≡ frame-base FS (shift-frame FS (current-frame (falloc fs)) 1)
+    newbase = trans (cong (_∸ slot-size) (C.sp-eq dc))
+                    (trans (cong (λ w → frame-base FS (current-frame (falloc fs)) ∸ 1 * w)
+                                 (sym word-eq))
+                           (sym (shift-base FS (current-frame (falloc fs)) 1)))
+    gap-post : C.GapNext (frame-base FS (shift-frame FS (current-frame (falloc fs)) 1) + slots 0)
+                         (C.frames-of (falloc fs))
+    gap-post = trans (cong (_+ slot-size) (trans (+-identityʳ _) (sym newbase)))
+                     (trans (m∸n+n≡m fits) (C.sp-eq dc))
+    retPost : C.RetAddrs (blk-off prog) (R.State.memory post-jal)
+                         (riscv64-link-claim post-jal)
+                         (flink (flat-exec-instr (instr-ctrl (c-call-fn f)) prog fs))
+                         (C.frames-of (falloc (flat-exec-instr (instr-ctrl (c-call-fn f)) prog fs)))
+                         (fret (flat-exec-instr (instr-ctrl (c-call-fn f)) prog fs))
+    retPost = subst (λ z → C.RetAddrs (blk-off prog) (R.State.memory post-jal)
+                             (riscv64-link-claim post-jal) (flink z)
+                             (C.frames-of (falloc z)) (fret z))
+                    (sym step-eq)
+                    ( ret-val , gap-post , tail )
+      where
+        tail : C.RetAddrs (blk-off prog) (R.State.memory post-jal)
+                          (riscv64-link-claim post-jal) nothing
+                          (C.frames-of (falloc fs)) (fret fs)
+        tail = C.ret-agree-nothing (blk-off prog) (R.State.memory s) (R.State.memory s)
+                 (riscv64-link-claim s) (riscv64-link-claim post-jal)
                  (stackMem (floc fs)) (C.lo hv) (C.frames-of (falloc fs)) (fret fs)
                  (λ _ _ → refl) (C.stack-eq dc)
                  (subst (λ lk → C.RetAddrs (blk-off prog) (R.State.memory s)

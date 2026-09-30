@@ -45,7 +45,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; subst)
 open import Once.CanonicalName using (CanonicalName)
 
 open import Data.List using (List)
-open import Once.Denotation.Program using (IRFun; tableEnv; tableEnv-good; irProgram; runIR-good; Linked; fname; fbody)
+open import Once.Denotation.Program using (IRFun; tableEnv; tableEnv-good; irProgram; runIR-good; Linked; LinkedProgram; fname; fbody)
 module Once.Adequacy.ArchCorrectness.FlatFromObs (o : CanonicalName) (tbl : List IRFun)
   (arch          : Arch)
   (FS            : FrameSemantics)
@@ -87,7 +87,6 @@ open import Once.IR using (IR; Unit; AllocMode; Stack)
 open import Once.IR.Size using (ir-size)
 open import Once.Denotation.Behavior using (Behavior; at; behavior-by)
 open import Once.Denotation.Trace using (SigOpEvent)
-open import Once.Adequacy.Compile using (ArchCorrect)
 open import Once.Adequacy.SourceTrace using (moduleToIR; ⟦_⟧IR)
 open import Once.CCC.Codegen.ProgramImage using (program-image; fns-image)
 import Once.CCC.Codegen.CataIRSlotStable as CIS
@@ -470,37 +469,37 @@ entry-witness ir ioc brs k =
 IOC : Set
 IOC = ∀ {A B} (ir : IR A B) → Linked tbl ir → IRObsCorrectF ir
 
-entry-vr : (ir : IR Unit Unit) → Linked tbl ir → IOC → (brs : BlockRunsT) → (k : ℕ)
+entry-vr : (ir : IR Unit Unit) → LinkedProgram (irProgram tbl ir) → IOC → (brs : BlockRunsT) → (k : ℕ)
          → ValueRealized (image ir) 0 0 0 ir tt entry-s
              (entry-alloc (ir-stack-budget ir)) (SV-Tag 0) k
-entry-vr ir lk ioc brs k = MachineRefinesObsF.value-realized (entry-witness ir (ioc ir lk) brs k)
+entry-vr ir lk ioc brs k = MachineRefinesObsF.value-realized (entry-witness ir (ioc ir (proj₁ lk)) brs k)
 
-flat-trace-fam : IOC → BlockRunsT → (ir : IR Unit Unit) → Linked tbl ir → ℕ → List SigOpEvent
+flat-trace-fam : IOC → BlockRunsT → (ir : IR Unit Unit) → LinkedProgram (irProgram tbl ir) → ℕ → List SigOpEvent
 flat-trace-fam ioc brs ir lk n =
   take n (flat-events (ValueRealized.steps (entry-vr ir lk ioc brs n) + 0)
                       (image ir) (mkFlat entry-s (entry-alloc (ir-stack-budget ir)) 0))
 
 -- D113/D115: at THIS target's NUMERICS, which is where `IRObsCorrectFlat`'s
 -- `evalᴰ` alias reads them from too, so the two sides mean one thing.
-ir-flat-correct-fam : (ioc : IOC) (brs : BlockRunsT) (ir : IR Unit Unit) (lk : Linked tbl ir) (n : ℕ)
+ir-flat-correct-fam : (ioc : IOC) (brs : BlockRunsT) (ir : IR Unit Unit) (lk : LinkedProgram (irProgram tbl ir)) (n : ℕ)
                     → flat-trace-fam ioc brs ir lk n
                       ≡ at (⟦ just (irProgram tbl ir) ⟧IR (Once.CCC.FrameSemantics.fs-numerics FS)) n
 ir-flat-correct-fam ioc brs ir lk n =
   trans (cong (take n)
           (trans (flat-events-steps (ValueRealized.run (entry-vr ir lk ioc brs n)) 0)
                  (++-identityʳ (chain-events (ValueRealized.run (entry-vr ir lk ioc brs n))))))
-        (trans (MachineRefinesObsF.traces-agree (entry-witness ir (ioc ir lk) brs n))
+        (trans (MachineRefinesObsF.traces-agree (entry-witness ir (ioc ir (proj₁ lk)) brs n))
                (take-all n _ (bnd (proj₁ (runIR-good (Once.CCC.FrameSemantics.fs-numerics FS) (irProgram tbl ir))) n)))
 
 -- …and THAT is what makes the machine's family a `Behavior`: it borrows the
 -- three laws from the denotation it is proved equal to (`behavior-by`).
-flat-main : IOC → BlockRunsT → (ir : IR Unit Unit) → Linked tbl ir → Behavior
+flat-main : IOC → BlockRunsT → (ir : IR Unit Unit) → LinkedProgram (irProgram tbl ir) → Behavior
 flat-main ioc brs ir lk =
   behavior-by (⟦ just (irProgram tbl ir) ⟧IR (Once.CCC.FrameSemantics.fs-numerics FS))
               (flat-trace-fam ioc brs ir lk)
               (λ n → sym (ir-flat-correct-fam ioc brs ir lk n))
 
-ir-flat-correct-main : (ioc : IOC) (brs : BlockRunsT) (ir : IR Unit Unit) (lk : Linked tbl ir) (n : ℕ)
+ir-flat-correct-main : (ioc : IOC) (brs : BlockRunsT) (ir : IR Unit Unit) (lk : LinkedProgram (irProgram tbl ir)) (n : ℕ)
                      → at (flat-main ioc brs ir lk) n
                        ≡ at (⟦ just (irProgram tbl ir) ⟧IR (arch-numerics arch)) n
 ir-flat-correct-main ioc brs ir lk n =

@@ -322,7 +322,9 @@ step-expect env st (instr-ctrl (c-label m)) = env m
 -- every state, so the walk stays sound. Step 2, which emits the bodies,
 -- owns giving body entries a real per-body entry claim (and `c-ret` a real
 -- obligation against the caller's continuation).
-step-expect env st (instr-ctrl (c-thunk m b)) = mkExpect e-any e-any []
+step-expect env st (instr-ctrl (c-entry m b)) = mkExpect e-any e-any []
+-- D245: a direct call, like a closure call, leaves no claim standing.
+step-expect env st (instr-ctrl (c-call-fn f)) = mkExpect e-any e-any []
 -- after a return the fall-through is dead, exactly as after `c-jmp`
 step-expect env st (instr-ctrl (c-ret b)) = mkExpect e-any e-any []
 step-expect env st (instr-ctrl (c-jmp m)) =
@@ -408,7 +410,7 @@ ctrl-ok env st (instr-ctrl (c-label m)) = sub-expect st (env m)
 -- entails it trivially; a return transfers to a pc this layer does not
 -- track. Both are vacuous while `c-thunk`/`c-ret` have no producer — step 2
 -- replaces them with the per-body entry/return obligations.
-ctrl-ok env st (instr-ctrl (c-thunk m b)) = true
+ctrl-ok env st (instr-ctrl (c-entry m b)) = true
 ctrl-ok env st (instr-ctrl (c-ret b)) = true
 ctrl-ok env st _ = true
 
@@ -494,6 +496,31 @@ HeapModed (Ana _ coalg) = HeapModed coalg
 HeapModed (SigOp _) = ⊤
 HeapModed (Call _) = ⊤
 HeapModed (const _ _) = ⊤
+
+-- Since stage G no IR node carries a mode, so EVERY IR is heap-moded. This
+-- used to be assumed at each arch's apex (`main-heap-moded`, a postulate).
+heap-moded : ∀ {A B} (ir : IR A B) → HeapModed ir
+heap-moded id           = tt
+heap-moded fst          = tt
+heap-moded snd          = tt
+heap-moded terminal     = tt
+heap-moded initial      = tt
+heap-moded apply        = tt
+heap-moded (g ∘ f)      = heap-moded f , heap-moded g
+heap-moded ⟨ f , g ⟩    = heap-moded f , heap-moded g
+heap-moded (curry b)    = heap-moded b
+heap-moded inl          = tt
+heap-moded inr          = tt
+heap-moded (case f g)   = heap-moded f , heap-moded g
+heap-moded (In _)       = tt
+heap-moded (out-μ _)    = tt
+heap-moded (Cata _ alg) = heap-moded alg
+heap-moded (Out _)      = tt
+heap-moded (in-ν _)     = tt
+heap-moded (Ana _ c)    = heap-moded c
+heap-moded (SigOp _)    = tt
+heap-moded (Call _)     = tt
+heap-moded (const _ _)  = tt
 
 -- the entry expectation of a fragment with input type `A` (`main`'s is
 -- `entry-expect Unit`, which the D074 all-tag entry state meets via

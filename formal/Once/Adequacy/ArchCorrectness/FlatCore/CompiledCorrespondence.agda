@@ -588,7 +588,7 @@ record BlockSteps : Set₁ where
     bs-c-thunk :
       ∀ {hv : HeapView} prog fs s n b r rpc rest → CompiledCorr hv prog fs s
       → halted (floc fs) ≡ false
-      → fetch prog (fpc fs) ≡ just (instr-ctrl (c-thunk n b))
+      → fetch prog (fpc fs) ≡ just (instr-ctrl (c-entry n b))
       → (lo' : ℕ) (lo'≤lo : lo' ≤ lo hv) (front-lo' : hfront hv ≤ lo')
       → lo' ≤ rreg s sp-reg ∸ b * slot-size
       → b * slot-size ≤ rreg s sp-reg
@@ -608,7 +608,7 @@ record BlockSteps : Set₁ where
       -- since its floor is only a `≤`.
       → fret fs ≡ rpc ∷ rest
       → BlockStepAt hv (descend-view hv lo' lo'≤lo front-lo') prog fs s
-                    (instr-ctrl (c-thunk n b))
+                    (instr-ctrl (c-entry n b))
     -- `c-ret` (D095): the two shapes only the RUN knows — the return stack is
     -- a cons and the released budget IS the reservation in force — plus the
     -- frame it returns into, which `RetMatch` pairs with the return stack for
@@ -698,6 +698,22 @@ record BlockSteps : Set₁ where
       → flink fs ≡ nothing
       → BlockStepAt hv (descend-view hv lo' lo'≤lo front-lo') prog fs s
                     instr-call-closure
+    -- D245: THE DIRECT CALL. `bs-call` without the closure record: the target
+    -- is the function's entry, found by the static scan, so the only site
+    -- premise is the scan itself. The frame and the pushed return address are
+    -- the closure call's.
+    bs-call-fn :
+      ∀ {hv : HeapView} prog fs s (f : CanonicalName) j → CompiledCorr hv prog fs s
+      → halted (floc fs) ≡ false
+      → fetch prog (fpc fs) ≡ just (instr-ctrl (c-call-fn f))
+      → FlatMachine.find-fn {FS} prog f ≡ just j
+      → (lo' : ℕ) (lo'≤lo : lo' ≤ lo hv) (front-lo' : hfront hv ≤ lo')
+      → lo' ≤ rreg s sp-reg ∸ slot-size
+      → slot-size ≤ rreg s sp-reg
+      → rreg s sp-reg < modulus
+      → flink fs ≡ nothing
+      → BlockStepAt hv (descend-view hv lo' lo'≤lo front-lo') prog fs s
+                    (instr-ctrl (c-call-fn f))
     -- ALLOCATION, the widest field and the one a transcription slip would
     -- quietly wreck. It is wide because it EXTENDS the view, and a view
     -- extension has to know that the new block's references are fresh and its

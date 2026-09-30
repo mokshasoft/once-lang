@@ -246,3 +246,12 @@ step-j-found : ∀ {prog s target tgt}
              → find-label prog target ≡ just tgt
              → step-not-halted prog s ≡ just (record s { pc = tgt })
 step-j-found ft fl rewrite ft | fl = refl
+
+-- D245: THE DIRECT CALL's transfer, `jal rd, label`: the link is written, then
+-- the label resolves as `j`'s does.
+step-jal-found : ∀ {prog s rd target tgt}
+               → fetch prog (pc s) ≡ just (jal rd target)
+               → find-label prog target ≡ just tgt
+               → step-not-halted prog s
+                 ≡ just (record s { regs = writeReg (regs s) rd (pc s + 1) ; pc = tgt })
+step-jal-found ft fl rewrite ft | fl = refl

@@ -170,12 +170,16 @@ open FlatEventTrace {FS} using (flat-events; flat-events-step; flat-events-fetch
 -- and these are the two clashes it needs: a live link means a BODY MARKER is
 -- fetched, and neither branch fetched one.
 ------------------------------------------------------------------------
-call≢thunk : ∀ {ℓ : LabelId} {bb : ℕ}
-           → just instr-call-closure ≡ just (instr-ctrl (c-thunk ℓ bb)) → ⊥
+call≢thunk : ∀ {ℓ : EntryId} {bb : ℕ}
+           → just instr-call-closure ≡ just (instr-ctrl (c-entry ℓ bb)) → ⊥
 call≢thunk ()
 
-ret≢thunk : ∀ {b : ℕ} {ℓ : LabelId} {bb : ℕ}
-          → just (instr-ctrl (c-ret b)) ≡ just (instr-ctrl (c-thunk ℓ bb)) → ⊥
+callfn≢thunk : ∀ {f} {ℓ : EntryId} {bb : ℕ}
+             → just (instr-ctrl (c-call-fn f)) ≡ just (instr-ctrl (c-entry ℓ bb)) → ⊥
+callfn≢thunk ()
+
+ret≢thunk : ∀ {b : ℕ} {ℓ : EntryId} {bb : ℕ}
+          → just (instr-ctrl (c-ret b)) ≡ just (instr-ctrl (c-entry ℓ bb)) → ⊥
 ret≢thunk ()
 
 ------------------------------------------------------------------------
@@ -251,7 +255,7 @@ module Dispatch (sup : Supply) where
     -- THE FOUR FRAME OPS ARE UNREACHABLE (plan 0.54 rung D, item 2): `ir-to-trace`
     -- emits none of them, and `FlatInv` carries `Emitted prog`. See `FrameFree`.
     events-running-fetch {hv} n ev env prog fs s (instr-alloc-stack k) cc wf h ftq =
-      ⊥-elim (frame-op-absurd prog fs (instr-alloc-stack k) (run-emitted (inv-run wf)) (run-heap (inv-run wf)) ftq)
+      ⊥-elim (frame-op-absurd prog fs (instr-alloc-stack k) (run-emitted (inv-run wf)) ftq)
     events-running-fetch {hv} n ev env prog fs s (instr-alloc-heap k) cc wf h ftq =
       ccc-step-bs n ev env prog fs s (instr-alloc-heap k)
         (bs-alloc-heap bss prog fs s k cc h ftq
@@ -263,11 +267,11 @@ module Dispatch (sup : Supply) where
            (heap-room prog fs s k (inv-run wf) cc ftq)
            (lo-fits prog fs s (inv-run wf) cc)) wf ftq h refl h
     events-running-fetch {hv} n ev env prog fs s (instr-dealloc-stack k) cc wf h ftq =
-      ⊥-elim (frame-op-absurd prog fs (instr-dealloc-stack k) (run-emitted (inv-run wf)) (run-heap (inv-run wf)) ftq)
+      ⊥-elim (frame-op-absurd prog fs (instr-dealloc-stack k) (run-emitted (inv-run wf)) ftq)
     events-running-fetch {hv} n ev env prog fs s (instr-push-frame k) cc wf h ftq =
-      ⊥-elim (frame-op-absurd prog fs (instr-push-frame k) (run-emitted (inv-run wf)) (run-heap (inv-run wf)) ftq)
+      ⊥-elim (frame-op-absurd prog fs (instr-push-frame k) (run-emitted (inv-run wf)) ftq)
     events-running-fetch {hv} n ev env prog fs s instr-pop-frame cc wf h ftq =
-      ⊥-elim (frame-op-absurd prog fs instr-pop-frame (run-emitted (inv-run wf)) (run-heap (inv-run wf)) ftq)
+      ⊥-elim (frame-op-absurd prog fs instr-pop-frame (run-emitted (inv-run wf)) ftq)
     events-running-fetch {hv} n ev env prog fs s (instr-load-const fits-int v) cc wf h ftq =
       ccc-step-bs {hv} n ev env prog fs s (instr-load-const fits-int v)
         (bs-load-const bss prog fs s v cc h ftq
@@ -280,7 +284,7 @@ module Dispatch (sup : Supply) where
     -- `lea-indexed` joined the unemittable set 2026-08-01 (heap-linked stacks,
     -- no indexed cursor) — the route is absurd, like the frame ops and the loop.
     events-running-fetch {hv} n ev env prog fs s (lea-indexed slot) cc wf h ftq =
-      ⊥-elim (frame-op-absurd prog fs (lea-indexed slot) (run-emitted (inv-run wf)) (run-heap (inv-run wf)) ftq)
+      ⊥-elim (frame-op-absurd prog fs (lea-indexed slot) (run-emitted (inv-run wf)) ftq)
     -- plan 0.61: a stack POINTER now has an address, so lea-slot routes.
     events-running-fetch {hv} n ev env prog fs s (lea-slot slot) cc wf h ftq =
       ccc-step-bs {hv} n ev env prog fs s (lea-slot slot)
@@ -300,13 +304,13 @@ module Dispatch (sup : Supply) where
           ccc-step-bs {hv} n ev env prog fs s (instr-load-code-addr k)
             (bs-load-code-addr bss prog fs s k (blk-off prog j) cc h ftq
                (trans (find-label-def (compile-trace prog) (thunk k))
-                      (find-thunk-corr prog k 0 j fteq)))
+                      (find-thunk-corr prog (e-thunk k) 0 j fteq)))
             wf ftq h refl h
         go nothing fteq = ⊥-elim (no-body (proj₂ (has-body)))
           where
             has-body : Σ ℕ (λ j → find-thunk prog k ≡ just j)
             has-body = subst (λ pr → Σ ℕ (λ j → find-thunk pr k ≡ just j)) (sym (run-emit (inv-run wf)))
-                         (emitted-code-addr-has-body (run-ir (inv-run wf)) (fpc fs) k
+                         (emitted-code-addr-has-body (run-tbl (inv-run wf)) (run-ir (inv-run wf)) (fpc fs) k
                            (subst (λ pr → fetch pr (fpc fs) ≡ just (instr-load-code-addr k))
                                   (run-emit (inv-run wf)) ftq))
             no-body : ∀ {j : ℕ} → find-thunk prog k ≡ just j → ⊥
@@ -330,8 +334,11 @@ module Dispatch (sup : Supply) where
     -- coming from `untouched` + the high-water mark, plus the honest
     -- `stack-room`); `c-ret` additionally needs the `FlatCorr` component
     -- relating the ghost `fret` to the machine stack.
-    events-running-fetch {hv} n ev env prog fs s (instr-ctrl (c-thunk m b)) cc wf h ftq =
+    events-running-fetch {hv} n ev env prog fs s (instr-ctrl (c-entry m b)) cc wf h ftq =
       thunk-step n ev env prog fs s m b cc wf h ftq
+    -- D245: the direct call of a program function.
+    events-running-fetch {hv} n ev env prog fs s (instr-ctrl (c-call-fn f)) cc wf h ftq =
+      callfn-step n ev env prog fs s f cc wf h ftq
     events-running-fetch {hv} n ev env prog fs s (instr-ctrl (c-ret b)) cc wf h ftq =
       ret-step n ev env prog fs s b cc wf h ftq
     events-running-fetch {hv} n ev env prog fs s (instr-ctrl (c-jmp m)) cc wf h ftq = cjmp-step n ev env prog fs s m cc wf h ftq
@@ -346,7 +353,7 @@ module Dispatch (sup : Supply) where
     -- (`c-label`/`c-jmp`/`c-branch-*`), so `ir-to-trace` never emits it and the
     -- route is UNREACHABLE, exactly like the four frame ops.
     events-running-fetch {hv} n ev env prog fs s (instr-loop body) cc wf h ftq =
-      ⊥-elim (frame-op-absurd prog fs (instr-loop body) (run-emitted (inv-run wf)) (run-heap (inv-run wf)) ftq)
+      ⊥-elim (frame-op-absurd prog fs (instr-loop body) (run-emitted (inv-run wf)) ftq)
     -- `instr-case-on-tag` — GENUINELY EMITTED (`case f g`, and the Tier-2 functor
     -- walks). One flat step runs a whole nested trace through `exec-case-dispatch`
     -- → `exec-trace`, while the x86 side is a `cmp`/`je`/branch-block: this needs a
@@ -355,7 +362,7 @@ module Dispatch (sup : Supply) where
     -- item 6: `case` compiles to flat control — `instr-case-on-tag` has no
     -- producer, so the route is absurd like the frame ops and the loop.
     events-running-fetch {hv} n ev env prog fs s (instr-case-on-tag f g) cc wf h ftq =
-      ⊥-elim (frame-op-absurd prog fs (instr-case-on-tag f g) (run-emitted (inv-run wf)) (run-heap (inv-run wf)) ftq)
+      ⊥-elim (frame-op-absurd prog fs (instr-case-on-tag f g) (run-emitted (inv-run wf)) ftq)
     -- `instr-call-closure` — GENUINELY EMITTED (`apply`), and a MODEL gap rather
     -- than a proof gap: the abstract semantics is the IDENTITY while the concrete
     -- `call *0x8(%r12)` transfers control. Closing it needs the abstract machine to
@@ -416,19 +423,19 @@ module Dispatch (sup : Supply) where
     -- yields `fits` (`8b ≤ %rsp`, the `sub` does not underflow) — which is why
     -- the parameter is stated additively rather than as its two consequences.
     thunk-step : ∀ {hv : HeapView} n (ev : RT.EvExtractor) (env : RT.ArithEnv)
-                   prog fs s (m : LabelId) (b : ℕ) → CompiledCorr hv prog fs s → FlatInv ev env prog fs
+                   prog fs s (m : EntryId) (b : ℕ) → CompiledCorr hv prog fs s → FlatInv ev env prog fs
                → halted (floc fs) ≡ false
-               → fetch prog (fpc fs) ≡ just (instr-ctrl (c-thunk m b))
+               → fetch prog (fpc fs) ≡ just (instr-ctrl (c-entry m b))
                → Σ ℕ (λ M → RT.run-events ev env M (compile-trace prog) s
-                     ≡ event-of (instr-ctrl (c-thunk m b)) fs
-                       ++ flat-events n prog (flat-exec-instr (instr-ctrl (c-thunk m b)) prog fs))
+                     ≡ event-of (instr-ctrl (c-entry m b)) fs
+                       ++ flat-events n prog (flat-exec-instr (instr-ctrl (c-entry m b)) prog fs))
     thunk-step {hv} n ev env prog fs s m b cc wf h ftq =
       -- (the post view is the DESCENDED one, so `ccc-step-bs`'s `hv'` is left to
       -- inference — pinning it to `hv` here would demand `lo' ≡ lo hv`)
-      ccc-step-bs n ev env prog fs s (instr-ctrl (c-thunk m b))
+      ccc-step-bs n ev env prog fs s (instr-ctrl (c-entry m b))
         (bs-c-thunk bss prog fs s m b (proj₁ lnk) (proj₁ pend) (proj₁ (proj₂ pend))
                             cc h ftq lo' lo'≤lo front-lo' lo'≤rsp fits
-                            (thunk-entry-empty prog fs m b (inv-run wf) ftq)
+                            (entry-empty prog fs m b (inv-run wf) ftq)
                             (reg-range prog fs s sp-reg (inv-run wf) cc)
                             (proj₂ lnk) (proj₂ (proj₂ pend)))
         wf ftq h refl h
@@ -437,9 +444,9 @@ module Dispatch (sup : Supply) where
         -- what an arch whose marker SPILLS needs before it may store.
         -- (`lnk`, not `link`: D159 gave `SMCore` a top-level `link`, the
         -- placement, and a where-block may not shadow it.)
-        lnk = thunk-entry-link prog fs m b (inv-run wf) ftq
+        lnk = entry-link prog fs m b (inv-run wf) ftq
         -- …and the pending return it was pushed with
-        pend = thunk-entry-ret prog fs m b (inv-run wf) ftq
+        pend = entry-ret prog fs m b (inv-run wf) ftq
         -- the site's resource fact: the reservation stays above the heap frontier
         room : CFC.hfront hv + slots b ≤ rreg s sp-reg
         room = stack-room prog fs s m b (inv-run wf) cc ftq
@@ -540,7 +547,7 @@ module Dispatch (sup : Supply) where
             wf ftq h refl hpost
           where
             room : CFC.hfront hv + slot-size ≤ rreg s sp-reg
-            room = call-room prog fs s (inv-run wf) cc ftq
+            room = call-room prog fs s instr-call-closure (inv-run wf) cc ftq tt
             fits : slot-size ≤ rreg s sp-reg
             fits = ≤-trans (m≤n+m slot-size (CFC.hfront hv)) room
             front-rsp : CFC.hfront hv ≤ rreg s sp-reg ∸ slot-size
@@ -565,6 +572,49 @@ module Dispatch (sup : Supply) where
                             (cong (λ z → do-call-at z fs) fteq))
             hpost : halted (floc (flat-exec-instr instr-call-closure prog fs)) ≡ false
             hpost rewrite step-eq = h
+
+    -- D245: THE DIRECT CALL. `call-step` without the closure record: the
+    -- callee is found by the static scan, which in a linked image always
+    -- succeeds (`emitted-call-fn-resolves`), and `bs-call-fn` does the machine
+    -- work. The room is the one slot the call spends, as at a closure call.
+    callfn-step : ∀ {hv : HeapView} n (ev : RT.EvExtractor) (env : RT.ArithEnv)
+                    prog fs s (f : CanonicalName) → CompiledCorr hv prog fs s → FlatInv ev env prog fs
+                → halted (floc fs) ≡ false
+                → fetch prog (fpc fs) ≡ just (instr-ctrl (c-call-fn f))
+                → Σ ℕ (λ M → RT.run-events ev env M (compile-trace prog) s
+                      ≡ event-of (instr-ctrl (c-call-fn f)) fs
+                        ++ flat-events n prog (flat-exec-instr (instr-ctrl (c-call-fn f)) prog fs))
+    callfn-step {hv} n ev env prog fs s f cc wf h ftq =
+      go (emitted-call-fn-resolves prog fs f (inv-run wf) ftq)
+      where
+        go : Σ ℕ (λ j → find-fn prog f ≡ just j)
+           → Σ ℕ (λ M → RT.run-events ev env M (compile-trace prog) s
+                 ≡ event-of (instr-ctrl (c-call-fn f)) fs
+                   ++ flat-events n prog (flat-exec-instr (instr-ctrl (c-call-fn f)) prog fs))
+        go (j , fe) =
+          ccc-step-bs n ev env prog fs s (instr-ctrl (c-call-fn f))
+            (bs-call-fn bss prog fs s f j cc h ftq fe lo' lo'≤lo front-lo' lo'≤rsp fits
+               (reg-range prog fs s sp-reg (inv-run wf) cc)
+               (run-link-nothing prog fs (inv-run wf)
+                  (λ ℓ bb teq → callfn≢thunk (trans (sym ftq) teq))))
+            wf ftq h refl hpost
+          where
+            room : CFC.hfront hv + slot-size ≤ rreg s sp-reg
+            room = call-room prog fs s (instr-ctrl (c-call-fn f)) (inv-run wf) cc ftq tt
+            fits : slot-size ≤ rreg s sp-reg
+            fits = ≤-trans (m≤n+m slot-size (CFC.hfront hv)) room
+            front-rsp : CFC.hfront hv ≤ rreg s sp-reg ∸ slot-size
+            front-rsp = m+n≤o⇒m≤o∸n (CFC.hfront hv) room
+            lo' : ℕ
+            lo' = CFC.lo hv ⊓ (rreg s sp-reg ∸ slot-size)
+            lo'≤lo : lo' ≤ CFC.lo hv
+            lo'≤lo = m⊓n≤m (CFC.lo hv) (rreg s sp-reg ∸ slot-size)
+            lo'≤rsp : lo' ≤ rreg s sp-reg ∸ slot-size
+            lo'≤rsp = m⊓n≤n (CFC.lo hv) (rreg s sp-reg ∸ slot-size)
+            front-lo' : CFC.hfront hv ≤ lo'
+            front-lo' = ⊓-glb (CFC.front-lo hv) front-rsp
+            hpost : halted (floc (flat-exec-instr (instr-ctrl (c-call-fn f)) prog fs)) ≡ false
+            hpost rewrite fe = h
 
     -- CONTROL c-jmp: case the found label (J-bridge on find-label, no with). Found ⇒
     -- do-jump just bumps fpc (halted preserved: hpost=h) and the PROVEN block-step-c-jmp

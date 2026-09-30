@@ -50,7 +50,7 @@ open import Once.Denotation.Behavior using (Source; Behavior; at; behavior-by)
 open import Once.Adequacy.SourceTrace
   using (⟦_⟧; ⟦⟧-via-module; moduleToIR; moduleToIR-emitted; map-rewrite; ⟦_⟧IR; srcToModule; srcToModule-just; srcToModule-inv;
          moduleToProgram; moduleTable; programAt; rewrite-program; rewrite-program-linked; moduleToProgram-linked)
-open import Once.Denotation.Program using (IRProgram; irProgram; table; main; Linked)
+open import Once.Denotation.Program using (IRProgram; irProgram; table; main; Linked; LinkedProgram)
 
 -- Plan 0.49 (route 3): the INDEPENDENT surface denotation `SD.⟦_⟧ˢ` (over the
 -- intrinsically-typed `Expr`, NOT through the compiler's `evalᴰ ∘ moduleToIR`),
@@ -194,7 +194,7 @@ record ArchCorrect (arch : Arch) (as : ArchSemantics) : Set where
     -- ir-to-trace` from the loader entry (rides the per-target flat-sim).
     -- D244/D245: …of the compiled PROGRAM (main and its function table), for a
     -- LINKED one — every internal call names an entry of the table.
-    flat-trace : (p : IRProgram) → Linked (table p) (main p) → Behavior
+    flat-trace : (p : IRProgram) → LinkedProgram p → Behavior
     -- assemble-then-execute reproduces the asm-text meaning. HONEST
     -- precondition (Plan 0.50): `as` is trusted only for asm produced by
     -- compiling a module whose emitted symbols are distinct — the apex
@@ -222,7 +222,7 @@ record ArchCorrect (arch : Arch) (as : ArchSemantics) : Set where
     -- TWO DIFFERENT PROGRAMS and silently asserting the arith-lifting pass
     -- preserved meaning — compiler logic inside a toolchain axiom, which is
     -- D161's fault one level up. The pass is now named (`moduleToIR-emitted`)
-    -- and its preservation is `rewrite-preserves` below, so what THIS field
+    -- and its preservation is `SourceTrace.rewrite-program-preserves`, so what THIS field
     -- trusts is only the assembler/loader/printer round trip.
     -- D167 — HONEST PRECONDITION, the third: the emitted text LINKS. `as`
     -- rejects a duplicate definition (`DistinctSymbols`, `DistinctLabels`);
@@ -242,30 +242,16 @@ record ArchCorrect (arch : Arch) (as : ArchSemantics) : Set where
                 ≡ at (flat-trace (rewrite-program (irProgram (moduleTable m) ir))
                                  (rewrite-program-linked (irProgram (moduleTable m) ir)
                                     (moduleToProgram-linked m ir mi))) n
-    -- D165 — THE ARITH PASS PRESERVES THE FLAT TRACE. Split out of
-    -- `asm-trace-correct`, where it was invisible.
-    --
-    -- NOT trivial, and not merely about events: `rewrite-ir` replaces a
-    -- recognised arith subtree by one `arith.block.<digest>` SigOp, so the
-    -- block's VALUE must equal the subtree's — an arith result flows into an
-    -- observable SigOp's argument (`exit (f 20)`), and a wrong value is a
-    -- different trace. The event lists agree only because arith SigOps are
-    -- pure (Plan 0.25/0.26) and neither side emits.
-    --
-    -- A NAMED RESIDUAL, class **deferred proof / codegen**. It was ALWAYS being
-    -- assumed; it is now countable, and it is the obligation that would have
-    -- made D163's silent recogniser failure a type error rather than a link
-    -- error — a pass that stops firing must still be trace-equal, and one that
-    -- fires wrongly cannot be.
-    rewrite-preserves :
-      ∀ (p : IRProgram) (lk : Linked (table p) (main p)) (n : ℕ)
-      → at (flat-trace (rewrite-program p) (rewrite-program-linked p lk)) n ≡ at (flat-trace p lk) n
+    -- (D165's `rewrite-preserves` field is GONE from this record: at D244 the
+    -- arith pass is stated at the MEANING, `SourceTrace.rewrite-program-
+    -- preserves`, once for every target, and the flat side follows from
+    -- `ir-flat-correct` at the rewritten program.)
     -- the flat machine's SigOp trace of a compiled IR equals its `obs`.
     -- D113: at THIS arch's float format. The record is already indexed by
     -- `arch`, so the obligation sharpens without changing shape — the flat
     -- machine's trace must match the denotation the SAME target means.
     ir-flat-correct :
-      ∀ (p : IRProgram) (lk : Linked (table p) (main p)) (n : ℕ)
+      ∀ (p : IRProgram) (lk : LinkedProgram p) (n : ℕ)
       → at (flat-trace p lk) n ≡ at (⟦ just p ⟧IR (arch-numerics arch)) n
 
 -- (The former `no-main-empty` library-case postulate is gone: with
@@ -404,9 +390,10 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
              (program-labels-distinct arch m)
              (program-labels-resolvable arch m)
              (program-symbols-resolvable arch m) ir mi n)
-    (trans (ArchCorrect.rewrite-preserves (arch-correct arch) (irProgram (moduleTable m) ir) lk n)
-           (ArchCorrect.ir-flat-correct  (arch-correct arch) (irProgram (moduleTable m) ir) lk n))
-    where lk = moduleToProgram-linked m ir mi
+    (trans (ArchCorrect.ir-flat-correct (arch-correct arch) (rewrite-program P)
+              (rewrite-program-linked P (moduleToProgram-linked m ir mi)) n)
+           (rewrite-program-preserves (arch-numerics arch) P n))
+    where P = irProgram (moduleTable m) ir
 
   -- Stage 2 — asm trace = SOURCE trace. With `⟦_⟧M = ⟦ moduleToIR m ⟧IR`
   -- (D059/D060: the source meaning IS the denotational `evalᴰ`), this is

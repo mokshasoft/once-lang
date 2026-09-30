@@ -373,7 +373,7 @@ open import Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation o FS word-eq fm
   ; block-step-scratch-dec; block-step-count-inc
   ; block-step-c-thunk; block-step-c-ret
   ; block-step-load-const; block-step-load-const-float
-  ; block-step-load-code-addr; block-step-call; block-step-alloc-heap
+  ; block-step-load-code-addr; block-step-call; block-step-call-fn; block-step-alloc-heap
   ; load-indirect-heap-empty-stuck; load-indirect-suc-heap-empty-stuck
   -- RE-EXPORTED (`public`): the APEX name `CompiledCorr`, when it exhibits the
   -- entry correspondence. It comes from here rather than from `EE`'s public
@@ -582,6 +582,7 @@ riscv64-block-steps = record
   ; bs-load-const-float         = block-step-load-const-float
   ; bs-load-code-addr           = block-step-load-code-addr
   ; bs-call                     = block-step-call
+  ; bs-call-fn                  = block-step-call-fn
   ; bs-alloc-heap               = block-step-alloc-heap
   }
 

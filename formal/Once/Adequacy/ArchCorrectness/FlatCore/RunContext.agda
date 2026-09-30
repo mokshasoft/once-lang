@@ -45,6 +45,7 @@ open import Data.Nat using (zero; suc)
 open import Data.Bool using (Bool; true; false)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Empty using (⊥)
+open import Data.Unit using (⊤)
 open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
 open import Data.List using ([])
 open import Relation.Binary.PropositionalEquality using (refl)
@@ -55,6 +56,11 @@ open FlatMachine {FS}
 open import Once.IR using (IR; Unit)
 open import Once.CCC.Codegen.IRToTrace o using (ir-to-trace; ir-stack-budget)
 open import Once.CCC.Codegen.ShapeTable using (HeapModed)
+open import Once.CCC.Codegen.ProgramImage using (program-image)
+open import Once.Denotation.Program using (IRFun; irProgram; fbody; Linked; LinkedProgram)
+open import Data.Product using (_×_)
+open import Data.List using (List)
+open import Data.List.Relation.Unary.All using (All)
 
 -- A state a program can START in: at the first instruction, running, with nothing
 -- allocated on either side. (The apex's entry state is one — see `entry-run`.)
@@ -115,8 +121,30 @@ data Reachable (prog : AbstractTrace) (B : ℕ) : FlatState → Set where
 -- …and the program is one the compiler EMITTED. Without this, a hand-picked
 -- `prog` refutes the program-shape residuals AT THE ENTRY STATE (e.g.
 -- `load-from-slot 5 ∷ []` reads a slot the entry frame does not have).
+-- D244/D245: the program is a PROGRAM IMAGE — `main`'s unit, then every entry
+-- of its function table (`ProgramImage`). A program whose table is empty is
+-- `main`'s unit alone, the shape this module assumed before.
 Emitted : AbstractTrace → Set
-Emitted prog = Σ (IR Unit Unit) (λ ir → prog ≡ ir-to-trace ir)
+Emitted prog = Σ (List IRFun) (λ tbl → Σ (IR Unit Unit) (λ ir → prog ≡ program-image o (irProgram tbl ir)))
+
+-- D245: the two CALLS, a closure call and a direct call of a program function.
+-- A return address is one past either.
+CallI : AbstractInstr → Set
+CallI instr-call-closure         = ⊤
+CallI (instr-ctrl (c-call-fn _)) = ⊤
+{-# CATCHALL #-}
+CallI _                          = ⊥
+
+-- A call neither jumps nor returns.
+call-not-jmp : ∀ (c : AbstractInstr) → CallI c → ∀ m → c ≡ instr-ctrl (c-jmp m) → ⊥
+call-not-jmp c ci m refl = ci
+
+call-not-ret : ∀ (c : AbstractInstr) → CallI c → ∀ b → c ≡ instr-ctrl (c-ret b) → ⊥
+call-not-ret c ci b refl = ci
+
+-- Every call in the image is linked (`Once.Denotation.Program.Linked`).
+LinkedImage : List IRFun → IR Unit Unit → Set
+LinkedImage tbl ir = LinkedProgram (irProgram tbl ir)
 
 -- THE RUN CONTEXT every state/program fact below needs, as ONE record: the
 -- program is `ir`'s emitted trace, and the state is reachable in a run that
@@ -126,14 +154,17 @@ Emitted prog = Σ (IR Unit Unit) (λ ir → prog ≡ ir-to-trace ir)
 record RunAt (prog : AbstractTrace) (fs : FlatState) : Set where
   constructor mkRunAt
   field
+    run-tbl   : List IRFun
     run-ir    : IR Unit Unit
-    run-emit  : prog ≡ ir-to-trace run-ir
-    -- Plan 0.62 wiring: the run's IR is HEAP-MODED (the pipeline compiles
-    -- with `C.Heap`; supplied at the apex via `moduleToIR-heap`). The shape
-    -- checker's claims are heap-shaped, so its emitter fact needs this.
-    run-heap  : HeapModed run-ir
+    run-emit  : prog ≡ program-image o (irProgram run-tbl run-ir)
+    -- (`run-heap`/`run-fns` are GONE: every IR is heap-moded now,
+    -- `ShapeTable.heap-moded`, so the premise carried nothing.)
+    -- D245: …and LINKED: every call in `main` and in every entry names an entry
+    -- of the table at its objects (the compiler's output is; the backend's
+    -- correctness is stated for linked IR).
+    run-linked : LinkedImage run-tbl run-ir
     run-reach : Reachable prog (ir-stack-budget run-ir) fs
 open RunAt public
 
 run-emitted : ∀ {prog fs} → RunAt prog fs → Emitted prog
-run-emitted r = run-ir r , run-emit r
+run-emitted r = run-tbl r , run-ir r , run-emit r

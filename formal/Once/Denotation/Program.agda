@@ -19,6 +19,7 @@
 module Once.Denotation.Program where
 
 open import Data.List using (List; []; _∷_)
+open import Data.List.Relation.Unary.All using (All)
 open import Data.Unit using (tt)
 open import Data.Product using (_,_; _×_)
 open import Data.Empty using (⊥)
@@ -174,3 +175,9 @@ runIR fmt p = evalᴰ fmt (tableEnv fmt (table p)) (main p) tt
 
 runIR-good : ∀ (fmt : TargetNum) (p : IRProgram) → GoodT ⌈ Unit ⌉ (runIR fmt p)
 runIR-good fmt p = evalᴰ-good fmt (tableEnv fmt (table p)) (tableEnv-good fmt (table p)) (main p) tt tt
+
+-- A LINKED PROGRAM: every call, in `main` and in every entry of the table, names
+-- an entry of the table at its objects. The compiler's output is linked (the
+-- telescope, D241); the backend's correctness is stated for linked programs.
+LinkedProgram : IRProgram → Set
+LinkedProgram p = Linked (table p) (main p) × All (λ e → Linked (table p) (fbody e)) (table p)

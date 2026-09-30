@@ -1371,3 +1371,35 @@ emitted-slot-seg : ∀ {A B} (ir : IR A B) (pc : ℕ) (i : AbstractInstr) (slot 
                  → slot < cur (seg-at (ir-to-trace ir) pc (mkSeg (ir-stack-budget ir) []))
 emitted-slot-seg ir pc i slot ftq soq =
   below (allseg-at (ir-to-trace ir) pc (ir-slots-below-all ir) ftq) slot soq
+
+------------------------------------------------------------------------
+-- D245: a unit UNDER A SAVED STACK. In a program image a function's unit runs
+-- after its entry marker pushed the function's budget over the caller's, so
+-- the unit starts at `mkSeg b sv` with `sv` non-empty. Everything is as in
+-- `ir-slots-below-all` except the terminator: `c-ret` now pops to the head of
+-- `sv` rather than being the identity, and the blocks after it are
+-- self-bracketed (`SegOK` at any state, by eta on `SegState`).
+------------------------------------------------------------------------
+ir-slots-below-under : ∀ {A B} (ir : IR A B) (sv : List ℕ)
+                     → AllSeg (mkSeg (ir-stack-budget ir) sv) (ir-to-trace ir)
+ir-slots-below-under ir sv =
+  allseg-++ (ok-all (slots-below ir 0 0))
+    (subst (λ z → AllSeg z (instr-ctrl (c-ret (ir-stack-budget ir)) ∷
+                            blocks-layout (bodies-of (ir-to-trace' 0 0 ir))))
+           (sym (ok-neu (slots-below ir 0 0) (mkSeg (ir-stack-budget ir) sv)))
+           (sb-none refl ∷ ok-all (segok-blocks _ (blocks-below ir 0 0))))
+
+-- …and where it leaves the segment state: the terminator's pop, nothing else.
+ir-seg-fold : ∀ {A B} (ir : IR A B) (sv : List ℕ)
+            → seg-fold (ir-to-trace ir) (mkSeg (ir-stack-budget ir) sv)
+              ≡ pop-with sv (mkSeg (ir-stack-budget ir) sv)
+ir-seg-fold ir sv =
+  trans (seg-fold-++ (trace-of (ir-to-trace' 0 0 ir))
+                     (instr-ctrl (c-ret (ir-stack-budget ir)) ∷
+                      blocks-layout (bodies-of (ir-to-trace' 0 0 ir)))
+                     (mkSeg (ir-stack-budget ir) sv))
+        (trans (cong (seg-fold (instr-ctrl (c-ret (ir-stack-budget ir)) ∷
+                                blocks-layout (bodies-of (ir-to-trace' 0 0 ir))))
+                     (ok-neu (slots-below ir 0 0) (mkSeg (ir-stack-budget ir) sv)))
+               (ok-neu (segok-blocks {ir-stack-budget ir} _ (blocks-below ir 0 0))
+                       (pop-with sv (mkSeg (ir-stack-budget ir) sv))))

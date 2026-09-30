@@ -229,6 +229,18 @@ step-call : ∀ {prog s m v}
                              ; pc     = v })
 step-call ft rd rewrite ft | rd = refl
 
+-- D245: THE DIRECT CALL: resolve the label as `jmp` does, push the return
+-- address as `call` does, transfer.
+step-call-l : ∀ {prog s n tgt}
+            → fetch prog (pc s) ≡ just (call-l n)
+            → find-label prog n ≡ just tgt
+            → step-not-halted prog s
+              ≡ just (record s { regs   = writeReg (regs s) rsp (readReg (regs s) rsp ∸ slot-size)
+                               ; memory = writeMem (memory s) (readReg (regs s) rsp ∸ slot-size)
+                                                   (pc s + 1)
+                               ; pc     = tgt })
+step-call-l ft fl rewrite ft | fl = refl
+
 -- THE RETURN (D095): pop the address at `[%rsp]`, raise `%rsp` by a slot and
 -- jump there. Same shape as `step-mov-rm` — a fetch and a READ — which is why
 -- the correspondence needs the pending-return component before it can use

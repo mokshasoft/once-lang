@@ -37,10 +37,8 @@ import Once.Adequacy.ArchCorrectness.X86-64.ResourceBounds as RB
 import Once.Adequacy.ArchCorrectness.RiscV64.ResourceBounds as RBr
 import Once.Adequacy.ArchCorrectness.X86-32.ResourceBounds as RB32
 
-open import Data.List using (List)
-open import Once.Denotation.Program using (IRFun; tableEnv)
 module Once.Adequacy.ArchCorrectness
-  (o : CanonicalName) (tbl : List IRFun)
+  (o : CanonicalName)
   (x86-64-heap-room : RB.HeapRoom o) (x86-64-stack-room : RB.StackRoom o)
   (x86-64-call-room : RB.CallRoom o)
   (x86-64-reg-range : RB.RegRange o)
@@ -70,36 +68,68 @@ module Once.Adequacy.ArchCorrectness
 
 open import Once.Adequacy.CPU using (Arch; x86-64; x86-32; riscv64; arch-semantics)
 open import Once.Adequacy.Compile using (ArchCorrect)
+open import Data.List using (List)
+open import Data.Product using (proj₁)
+open import Relation.Binary.PropositionalEquality using (refl)
+open import Once.Denotation.Program using (IRFun; table; main)
 
--- All three targets are DISCHARGED THROUGH the generic IR-observable theorem
--- (`ir-obs-correct` → `cata-correct`) — see `…ArchCorrectness.{X86-64,X86-32,RiscV64}`.
--- So `cata-correct` is load-bearing for the apex on every target; each carries
--- only its single named `<arch>-flat-from-obs` FS-plumbing residual (Plan 0.53).
-open import Once.Adequacy.ArchCorrectness.X86-64 o tbl  x86-64-heap-room x86-64-stack-room x86-64-call-room
-       x86-64-reg-range x86-64-scratch-dec-guarded x86-64-addr-no-wrap x86-64-lit-fits using (x86-64-correct; BlockRunsHyp-x86-64)
--- plan 0.92: this `public` is the ONE defensible kind — this module IS the
--- interface to the three arch modules, and the name re-exported is a TYPE the
--- consumer must be able to NAME to state its own signature. No constructors.
-       public
-open import Once.Adequacy.ArchCorrectness.X86-32 o tbl  x86-32-heap-room x86-32-stack-room x86-32-call-room
-       x86-32-reg-range x86-32-scratch-dec-guarded x86-32-addr-no-wrap x86-32-lit-fits using (x86-32-correct; BlockRunsHyp-x86-32)
--- plan 0.92: this `public` is the ONE defensible kind — this module IS the
--- interface to the three arch modules, and the name re-exported is a TYPE the
--- consumer must be able to NAME to state its own signature. No constructors.
-       public
-open import Once.Adequacy.ArchCorrectness.RiscV64 o tbl
+import Once.Adequacy.ArchCorrectness.X86-64 as A64
+import Once.Adequacy.ArchCorrectness.X86-32 as A32
+import Once.Adequacy.ArchCorrectness.RiscV64 as ARV
+
+-- D244/D245: each instance is AT A TABLE — the program image it simulates is
+-- `main` together with that table's functions. The record below is per
+-- PROGRAM, so it instantiates the arch module at the program's own table.
+module X64 (tbl : List IRFun) = A64 o tbl x86-64-heap-room x86-64-stack-room x86-64-call-room
+       x86-64-reg-range x86-64-scratch-dec-guarded x86-64-addr-no-wrap x86-64-lit-fits
+module X32 (tbl : List IRFun) = A32 o tbl x86-32-heap-room x86-32-stack-room x86-32-call-room
+       x86-32-reg-range x86-32-scratch-dec-guarded x86-32-addr-no-wrap x86-32-lit-fits
+module RV (tbl : List IRFun) = ARV o tbl
        riscv64-heap-room riscv64-stack-room riscv64-call-room
        riscv64-reg-range riscv64-scratch-dec-guarded riscv64-slot-addr-no-wrap
-       riscv64-addr-no-wrap riscv64-lit-fits using (riscv64-correct; BlockRunsHyp-riscv64)
--- plan 0.92: this `public` is the ONE defensible kind — this module IS the
--- interface to the three arch modules, and the name re-exported is a TYPE the
--- consumer must be able to NAME to state its own signature. No constructors.
-       public
+       riscv64-addr-no-wrap riscv64-lit-fits
 
--- Total over `Arch` ⇒ adding a target forces a new witness here.
--- plan 0.91 parallel track: THREE hypotheses, one per target, because
--- `BlockRuns` is `FrameSemantics`-relative. Each was the false postulate
--- `block-runs` at that target's FS; plan 0.93 discharges them.
+-- The block-table coherence hypotheses (plan 0.91; D188), one per target and
+-- now one per TABLE: every program brings its own image.
+BlockRunsHyp-x86-64 : Set
+BlockRunsHyp-x86-64 = (tbl : List IRFun) → X64.BlockRunsHyp-x86-64 tbl
+
+BlockRunsHyp-x86-32 : Set
+BlockRunsHyp-x86-32 = (tbl : List IRFun) → X32.BlockRunsHyp-x86-32 tbl
+
+BlockRunsHyp-riscv64 : Set
+BlockRunsHyp-riscv64 = (tbl : List IRFun) → RV.BlockRunsHyp-riscv64 tbl
+
+x86-64-correct : BlockRunsHyp-x86-64 → ArchCorrect x86-64 (arch-semantics x86-64)
+x86-64-correct brs = record
+  { asm-sem           = X64.asm-sem-x86-64 []
+  ; flat-trace        = λ p lk → X64.flat-x86-64 (table p) (brs (table p)) (main p) lk
+  ; assemble-correct  = λ _ _ _ _ _ → refl
+  ; asm-trace-correct = λ m asm eq dl lr sr ir mi n →
+      X64.asm-flat-x86-64 _ (brs _) m asm eq dl lr sr ir mi refl _ n
+  ; ir-flat-correct   = λ p lk → X64.ir-flat-correct-x86-64 (table p) (brs (table p)) (main p) lk
+  }
+
+x86-32-correct : BlockRunsHyp-x86-32 → ArchCorrect x86-32 (arch-semantics x86-32)
+x86-32-correct brs = record
+  { asm-sem           = X32.asm-sem-x86-32 []
+  ; flat-trace        = λ p lk → X32.flat-x86-32 (table p) (brs (table p)) (main p) lk
+  ; assemble-correct  = λ _ _ _ _ _ → refl
+  ; asm-trace-correct = λ m asm eq dl lr sr ir mi n →
+      X32.asm-flat-x86-32 _ (brs _) m asm eq dl lr sr ir mi refl _ n
+  ; ir-flat-correct   = λ p lk → X32.ir-flat-correct-x86-32 (table p) (brs (table p)) (main p) lk
+  }
+
+riscv64-correct : BlockRunsHyp-riscv64 → ArchCorrect riscv64 (arch-semantics riscv64)
+riscv64-correct brs = record
+  { asm-sem           = RV.asm-sem-riscv64 []
+  ; flat-trace        = λ p lk → RV.flat-riscv64 (table p) (brs (table p)) (main p) lk
+  ; assemble-correct  = λ _ _ _ _ _ → refl
+  ; asm-trace-correct = λ m asm eq dl lr sr ir mi n →
+      RV.asm-flat-riscv64 _ (brs _) m asm eq dl lr sr ir mi refl _ n
+  ; ir-flat-correct   = λ p lk → RV.ir-flat-correct-riscv64 (table p) (brs (table p)) (main p) lk
+  }
+
 arch-correctness : BlockRunsHyp-x86-64 → BlockRunsHyp-x86-32 → BlockRunsHyp-riscv64
                  → ∀ (arch : Arch) → ArchCorrect arch (arch-semantics arch)
 arch-correctness b64 b32 brv x86-64  = x86-64-correct b64
