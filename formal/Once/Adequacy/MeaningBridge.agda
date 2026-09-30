@@ -20,7 +20,7 @@ open import Once.Target.Arch using (TargetNum; int-bits; float-format)
 -- downstream uses these as facts and never reduces them — so the "recursive
 -- function in a parameterised module stops reducing" trap does not apply. The
 -- denotations themselves take it as an explicit argument.
-open import Once.Denotation.SourceDenote using (DefsSem)
+open import Once.Denotation.SourceDenote using (DefsSem; calls; refs)
 
 -- Plan 0.103 phase 1c: the surface side is meant in a definitions environment
 -- `σ`; the bridge holds whenever `σ` is related, entry by entry, to the
@@ -65,8 +65,9 @@ open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; forceᵈ)
 open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_; projTrace; valueT; resT-lift; bindRes-idʳ; fmapT)
 open import Once.Res using (Res; stopped; returns; Res-rel; rel-stopped; rel-returns; mapRes)
 open import Once.Denotation.DenotTrace using (evalᴰ; forget; liftFn; cohᴰ)
-open import Once.TypeCheck.Classify using (NamedCtx; PolyCtx; lookupPolyPrefix)
-open import Once.Denotation.DefEnv using (defAt; tailAt; defAt-found; tailAt-found)
+open import Once.TypeCheck.Classify using (NamedCtx; PolyCtx; lookupPolyPrefix; Imports; lookupImport)
+open import Once.Denotation.DefEnv using (defAt; tailAt; defAt-found; tailAt-found; impAt; impAt-found)
+open import Once.IR.Ref using (refIR)
 open import Once.Type.Rigid using (KindedInstance; ground-kinded)
 open import Once.Type using (Ground; extractGround)
 import Data.String.Properties as StrProp
@@ -94,7 +95,7 @@ open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_;
   t-initial-app-check; t-app-spine; t-var-poly-instantiate;
   t-var-poly-instantiate-infer; d-poly)
 open import Once.Denotation.Phase using (lookupᴰUsed; restrictᴰ; bindᴰ; bindᴰ0; env0)
-open import Once.Denotation.Meaning using (⟦_⟧ᶜ; ⟦_⟧ᵢ; ⟦_⟧ᵈ; seqᴰ; DefMeanings;
+open import Once.Denotation.Meaning using (⟦_⟧ᶜ; ⟦_⟧ᵢ; ⟦_⟧ᵈ; seqᴰ; DefMeanings; ImpMeanings; MeaningsOf; defs; entries;
   lookupᴰ; Env; EnvRun; cata-sem; sigOpValᴰ; sigOpRefᴰ; svarᴰ; in-value; named-sem)
 open import Once.Adequacy.CataErased fmt (calls σ) using (liftFn-SigOp)
 open import Once.Adequacy.LiftFnReduce fmt (calls σ) using
@@ -677,17 +678,17 @@ RelT-init k = refl , rel-returns (λ { {a = ()} })
 EnvRel : (polys : PolyCtx) → DefMeanings polys → Set
 EnvRel []                   _       = ⊤
 EnvRel ((n , s , _) ∷ rest) (e , ρ) =
-  (∀ (U : Type) (ki : KindedInstance s U) → RelT U (e U ki) (σ n U)) × EnvRel rest ρ
+  (∀ (U : Type) (ki : KindedInstance s U) → RelT U (e U ki) (refs σ n U)) × EnvRel rest ρ
 
 envrel-at : ∀ (polys : PolyCtx) (x : String) {s b prefix} {ρ : DefMeanings polys}
   → EnvRel polys ρ → (lp : lookupPolyPrefix polys x ≡ just (s , b , prefix))
-  → ∀ (U : Type) (ki : KindedInstance s U) → RelT U (defAt polys x ρ lp U ki) (σ x U)
+  → ∀ (U : Type) (ki : KindedInstance s U) → RelT U (defAt polys x ρ lp U ki) (refs σ x U)
 envrel-at [] x _ ()
 envrel-at ((n , s′ , b′) ∷ rest) x {ρ = e , ρ} (r , rs) lp with n StrProp.≟ x
 ... | yes refl = found lp
   where
     found : ∀ {s b prefix} (lp′ : just (s′ , b′ , rest) ≡ just (s , b , prefix)) (U : Type) (ki : KindedInstance s U)
-      → RelT U (defAt-found {F = λ s → (U : Type) → KindedInstance s U → T ⟦ U ⟧ᴰ} lp′ e U ki) (σ n U)
+      → RelT U (defAt-found {F = λ s → (U : Type) → KindedInstance s U → T ⟦ U ⟧ᴰ} lp′ e U ki) (refs σ n U)
     found refl = r
 ... | no _ = envrel-at rest x rs lp
 
@@ -703,20 +704,47 @@ envrel-tail ((n , s′ , b′) ∷ rest) x {ρ = e , ρ} (r , rs) lp with n StrP
     found refl = rs
 ... | no _ = envrel-tail rest x rs lp
 
+-- D246: THE IMPORT HALF. On the SD side a module entry's reference is a call
+-- of it in σ's call environment (`SD.⟦ closure x ⟧ˢ`); on the Spec side it is
+-- the entry's meaning in the import environment. Related entrywise, walked as
+-- `lookupImport` walks the list.
+callSD : String → (U : Type) → T ⟦ U ⟧ᴰ
+callSD x U = subst T (cohᴰ U) (evalᴰ fmt (calls σ) (refIR U (bare x)) tt)
+
+ImpRel : (imps : Imports) → ImpMeanings imps → Set
+ImpRel []               _       = ⊤
+ImpRel ((n , U) ∷ rest) (e , ι) = RelT U e (callSD n U) × ImpRel rest ι
+
+imprel-at : ∀ (imps : Imports) (x : String) {U} {ι : ImpMeanings imps}
+  → ImpRel imps ι → (lk : lookupImport imps x ≡ just U)
+  → RelT U (impAt imps x ι lk) (callSD x U)
+imprel-at [] x _ ()
+imprel-at ((n , U′) ∷ rest) x {ι = e , ι} (r , rs) lk with n StrProp.≟ x
+... | yes refl = found lk
+  where
+    found : ∀ {U} (lk′ : just U′ ≡ just U)
+      → RelT U (impAt-found {F = λ V → T ⟦ V ⟧ᴰ} lk′ e) (callSD n U)
+    found refl = r
+... | no _ = imprel-at rest x rs lk
+
+-- The whole environment relation: the telescope half and the import half.
+MRel : (ctx : NamedCtx) → MeaningsOf ctx → Set
+MRel ctx ρ = EnvRel (NamedCtx.polys ctx) (defs ρ) × ImpRel (NamedCtx.imports ctx) (entries ρ)
+
 -- D143: over the RUNTIME environment. `RelEnv` needs no change — it is already
 -- generic in the context, and the runtime context IS `debruijn ctx ↾ Ψ`.
 bridge-i : ∀ {ctx : NamedCtx} {e A Ψ} (d : ctx ⊢ᵢ e ∶ A ⨾ Ψ)
-           {ρ : DefMeanings (NamedCtx.polys ctx)} {dγ₁ dγ₂ : EnvRun ctx Ψ}
-           (re : RelEnv↾ (NamedCtx.debruijn ctx) Ψ dγ₁ dγ₂) (er : EnvRel (NamedCtx.polys ctx) ρ)
+           {ρ : MeaningsOf ctx} {dγ₁ dγ₂ : EnvRun ctx Ψ}
+           (re : RelEnv↾ (NamedCtx.debruijn ctx) Ψ dγ₁ dγ₂) (er : MRel ctx ρ)
          → RelT A ((⟦ d ⟧ᵢ fmt ρ) dγ₁) ((SD.⟦ realize-infer d ⟧ˢ fmt σ) dγ₂)
 bridge-c : ∀ {ctx : NamedCtx} {e A Ψ} (d : ctx ⊢ᶜ e ∶ A ⨾ Ψ)
-           {ρ : DefMeanings (NamedCtx.polys ctx)} {dγ₁ dγ₂ : EnvRun ctx Ψ}
-           (re : RelEnv↾ (NamedCtx.debruijn ctx) Ψ dγ₁ dγ₂) (er : EnvRel (NamedCtx.polys ctx) ρ)
+           {ρ : MeaningsOf ctx} {dγ₁ dγ₂ : EnvRun ctx Ψ}
+           (re : RelEnv↾ (NamedCtx.debruijn ctx) Ψ dγ₁ dγ₂) (er : MRel ctx ρ)
          → RelT A ((⟦ d ⟧ᶜ fmt ρ) dγ₁) ((SD.⟦ realize d ⟧ˢ fmt σ) dγ₂)
 -- Plan 0.94 §10: the domain-given realm, related at the arrow it determines.
 bridge-d : ∀ {ctx : NamedCtx} {e A π B Ψ} (d : ctx ⊢ᵈ e ∶ A ⇒[ π ]↦ B ⨾ Ψ)
-           {ρ : DefMeanings (NamedCtx.polys ctx)} {dγ₁ dγ₂ : EnvRun ctx Ψ}
-           (re : RelEnv↾ (NamedCtx.debruijn ctx) Ψ dγ₁ dγ₂) (er : EnvRel (NamedCtx.polys ctx) ρ)
+           {ρ : MeaningsOf ctx} {dγ₁ dγ₂ : EnvRun ctx Ψ}
+           (re : RelEnv↾ (NamedCtx.debruijn ctx) Ψ dγ₁ dγ₂) (er : MRel ctx ρ)
          → RelT (A ⇒[ mk-kind Many π ] B) ((⟦ d ⟧ᵈ fmt ρ) dγ₁) ((SD.⟦ realize-d d ⟧ˢ fmt σ) dγ₂)
 
 -- Literals — pure `returnT`, identical values.
@@ -740,14 +768,17 @@ bridge-i {ctx = ctx} (t-var-local {eV = svar i} _) re er k =
 -- Named value references — the sigop-reference leaf (dispatch on result type).
 bridge-i {ctx = ctx} (t-var-qualified {T = A} _ conc)   {dγ₂ = dγ₂} re er = sigop-ref-bridge {Γ = NamedCtx.debruijn ctx} {A = A} _ conc dγ₂
 bridge-i {ctx = ctx} (t-var-resolved {T = A} _ _ conc)    {dγ₂ = dγ₂} re er = sigop-ref-bridge {Γ = NamedCtx.debruijn ctx} {A = A} _ conc dγ₂
-bridge-i {ctx = ctx} (t-var-import {T = A} _ _ _ conc)  {dγ₂ = dγ₂} re er = sigop-ref-bridge {Γ = NamedCtx.debruijn ctx} {A = A} _ conc dγ₂
+-- D246: a module entry's reference is a CALL of it on the SD side and the
+-- entry's meaning on the Spec side — related by the import half of the
+-- environment relation.
+bridge-i {ctx = ctx} (t-var-import {x = x} {T = A} _ _ lk _)  re er = imprel-at (NamedCtx.imports ctx) x (proj₂ er) lk
 
 -- Plan 0.103 phase 1c: a ground telescope reference is a definition VARIABLE
 -- on both sides — the denotation reads the telescope environment `ρ`, the
 -- surface term `poly x T` reads `σ` — so the bridge is the environments'
 -- relatedness at the entry the reference finds.
 bridge-i {ctx = ctx} (t-var-poly-instantiate-infer {x = x} {schema = s} {g = g} _ _ lp _ refl) re er =
-  envrel-at (NamedCtx.polys ctx) x er lp (extractGround s g) (ground-kinded s g)
+  envrel-at (NamedCtx.polys ctx) x (proj₁ er) lp (extractGround s g) (ground-kinded s g)
 
 -- Annotation switches to check mode.
 bridge-i (t-annot d) re er = bridge-c d re er
@@ -1225,14 +1256,14 @@ bridge-c {ctx = ctx} {A = A} (t-initial-app-check d) re er =
 -- D243: a polymorphic reference is the definition variable at its kinded
 -- instance on both sides — the environments' families at that instance.
 bridge-c {ctx = ctx} {A = U} (t-var-poly-instantiate {x = x} _ _ lp _ ki) re er =
-  envrel-at (NamedCtx.polys ctx) x er lp U ki
+  envrel-at (NamedCtx.polys ctx) x (proj₁ er) lp U ki
 
 -- Plan 0.94 §10: the domain-given clauses mirror their check-mode twins.
 bridge-d (d-infer {B = B} w a g) re er = RelT-sub (sub-arr {q = Many} a (<:-refl B) g) (bridge-i w re er)
 -- D243: as the check-mode polymorphic reference, converted to the given grade.
 bridge-d {ctx = ctx} (d-poly {x = x} {A = A} {B = B} {π′ = π′} _ _ lp _ _ _ ki g) re er =
   RelT-sub (sub-arr {q = Many} (<:-refl A) (<:-refl B) g)
-    (envrel-at (NamedCtx.polys ctx) x er lp (A ⇒[ mk-kind Many π′ ] B) ki)
+    (envrel-at (NamedCtx.polys ctx) x (proj₁ er) lp (A ⇒[ mk-kind Many π′ ] B) ki)
 bridge-d (d-lam {q' = Zero} _ d) re er k = refl , rel-returns λ {a} {b} rv → bridge-i d (rel-bind0 re) er
 bridge-d (d-lam {q' = One}  _ d) re er k = refl , rel-returns λ {a} {b} rv → bridge-i d (rel-bind One re rv) er
 bridge-d (d-lam {q' = Many} _ d) re er k = refl , rel-returns λ {a} {b} rv → bridge-i d (rel-bind Many re rv) er
