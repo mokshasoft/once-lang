@@ -535,10 +535,128 @@ def gen_subagree(rows):
                                    "SUBSTITUTION AGREES (PLAN-FAITHFUL F2): the Knot's substitution traversal\n-- at a quoted term reduces to the quotation of the substituted term, one\n-- case per former; lifting under a binder is renaming agreement at `vs`."),
                        SUBAGREE_HDR] + agree_cases(rows, "sub-agree", "TS", "liftsS", var))
 
+QVIEW_HDR = """{-# OPTIONS --safe #-}
+module DirectedHoTT.Examples.Knot.QView where
+
+open import normalizer.Syntax.Types using ( _≡_; refl )
+open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
+open import DirectedHoTT.Spec.Syntax
+open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
+open import DirectedHoTT.Lib.Sugar using ( tag; conₗ; lt-z; lt-s )
+open import DirectedHoTT.Lib.SynView using ( PayV )
+open import DirectedHoTT.Lib.Syn
+open import DirectedHoTT.Examples.Knot.Sig
+open import DirectedHoTT.Examples.Knot.Terms
+open import DirectedHoTT.Examples.Knot.JudgeIx using ( ⊢payK )
+
+------------------------------------------------------------------------
+-- ★ A QUOTED TERM IS A NODE: its head, its payload (the quoted fields) and
+--   the payload's typing — what a family generic in the subject's head
+--   (`Knot/ConvCon`) consumes.  One clause per former, `eq = refl`.
+------------------------------------------------------------------------
+
+-- the sort's constructor list, as the lookup a head view carries
+NthS : ℕ → ℕ → Shape → Set
+NthS zero    = NthSh TyShs
+NthS (suc _) = NthSh TmShs
+
+record HeadV (s : ℕ) {Θ : Ctx} (j t : RTm ⌊ Θ ⌋) : Set where
+  field
+    k  : ℕ
+    sh : Shape
+    p  : RTm ⌊ Θ ⌋
+    nh : NthS s k sh
+    eq : t ≡ conₗ k p
+    dp : Θ ⊢ p ∷ PayV sh (pair (tag s) j) (SI 2) (SD KSig)
+
+qviewTy : {Γ : Cx} (A : RTy Γ) {Θ : Ctx} → HeadV 0 {Θ} (dep Γ) (quoteTy A)
+qviewTm : {Γ : Cx} (t : RTm Γ) {Θ : Ctx} → HeadV 1 {Θ} (dep Γ) (quoteTm t)
+"""
+
+def gen_qview(rows):
+    L = [HDR.replace("The kernel's syntax as a SIGNATURE of `Lib/Syn` (sorts 0 RTy · 1 RTm,\n-- index (sort, depth), fibred by sort — D075), rows parsed out of\n-- `Spec/Syntax.agda`.  The encoding is documented in the generator's header.",
+                     "THE HEAD VIEW of the quotation (PLAN-FAITHFUL F5): a quoted term is a\n-- node, with its head, payload and payload typing, one clause per former."),
+         QVIEW_HDR]
+    def nthsh(k):
+        t = "nthʰ-z"
+        for _ in range(k): t = "(nthʰ-s %s)" % t
+        return t
+    for data in ("RTy", "RTm"):
+        srt = SORTS[data]
+        k = 0
+        for d, name, fs in rows:
+            if d != data: continue
+            args = ["a%d" % j for j in range(len(fs))]
+            pat = "(%s)" % " ".join([name] + args) if args else name
+            def qf(f, a):
+                if f[0] == "rec": return "(%s %s)" % (["quoteTy", "quoteTm"][f[1]], a)
+                if f[0] == "nat": return "(quoteℕ %s)" % a
+                return "(quoteVar %s)" % a
+            def df(f, a):
+                if f[0] == "rec": return "a-rec (⊢%s %s)" % (["quoteTy", "quoteTm"][f[1]], a)
+                if f[0] == "nat": return "a-nat (⊢quoteℕ %s)" % a
+                return "a-v (⊢quoteVar %s)" % a
+            if fs == [("var",)]:
+                pay, argp = "(pair (quoteVar a0) unit)", "(a-v (⊢quoteVar a0))"
+            else:
+                pay, argp = "unit", "a[]"
+                for f, a in reversed(list(zip(fs, args))):
+                    pay = "(pair %s %s)" % (qf(f, a), pay); argp = "(%s %s)" % (df(f, a), argp)
+            L.append("%s {Γ} %s = record { k = %d ; sh = sh-%s ; p = %s ; nh = %s ; eq = refl ; dp = ⊢payK %s ok-%s (⊢dep' Γ) %s }" % (
+                "qviewTy" if srt == 0 else "qviewTm", pat, k, kname(name), pay, nthsh(k), lt(srt), kname(name), argp))
+            k += 1
+        L.append("")
+    return "\n".join(L)
+
+CONVHEAD_HDR = """{-# OPTIONS --safe #-}
+module DirectedHoTT.Examples.Knot.ConvHead where
+
+open import normalizer.Syntax.Types using ( Σ; _,_ )
+open import DirectedHoTT.Spec.Syntax
+open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
+open import DirectedHoTT.Examples.Knot.Sig using ( K )
+open import DirectedHoTT.Examples.Knot.Terms
+open import DirectedHoTT.Examples.Knot.Ctx using ( quoteCtx; ⊢quoteCtx )
+open import DirectedHoTT.Examples.Knot.JudgeIx using ( JT; tmIx )
+open import DirectedHoTT.Examples.Knot.Judge using ( D⊢ )
+open import DirectedHoTT.Examples.Knot.Conv using ( ⌜≅ᵀ⌝ )
+open import DirectedHoTT.Examples.Knot.JudgeConGen
+
+------------------------------------------------------------------------
+-- ★ The Knot's `⊢conv` rows are ONE PER SUBJECT HEAD (`conv⊢…`), so the
+--   Spec's head-generic `⊢conv` dispatches on the subject: one clause per
+--   term former, its fields' typings the quotation's.
+------------------------------------------------------------------------
+
+convAt : (Γ : Ctx) (t : RTm ⌊ Γ ⌋) {Θ : Ctx} {A B r e : RTm ⌊ Θ ⌋} →
+         Θ ⊢ A ∷ K 0 (dep ⌊ Γ ⌋) → Θ ⊢ B ∷ K 0 (dep ⌊ Γ ⌋) →
+         Θ ⊢ r ∷ IMu JT D⊢ (tmIx (dep ⌊ Γ ⌋) (quoteCtx Γ) (quoteTm t) A) → Θ ⊢ e ∷ El (⌜≅ᵀ⌝ (dep ⌊ Γ ⌋) A B) →
+         Σ (RTm ⌊ Θ ⌋) (λ c → Θ ⊢ c ∷ IMu JT D⊢ (tmIx (dep ⌊ Γ ⌋) (quoteCtx Γ) (quoteTm t) B))
+"""
+
+def gen_convhead(rows):
+    L = [HDR.replace("The kernel's syntax as a SIGNATURE of `Lib/Syn` (sorts 0 RTy · 1 RTm,\n-- index (sort, depth), fibred by sort — D075), rows parsed out of\n-- `Spec/Syntax.agda`.  The encoding is documented in the generator's header.",
+                     "THE CONVERSION ROW BY HEAD (PLAN-FAITHFUL F5): the Spec's `⊢conv`, whose\n-- subject is any term, reaches the Knot's per-head `conv⊢…` rows."),
+         CONVHEAD_HDR]
+    for d, name, fs in rows:
+        if d != "RTm": continue
+        args = ["a%d" % j for j in range(len(fs))]
+        pat = "(%s)" % " ".join([name] + args) if args else name
+        def df(f, a):
+            if f[0] == "rec": return "(⊢%s %s)" % (["quoteTy", "quoteTm"][f[1]], a)
+            if f[0] == "nat": return "(⊢quoteℕ %s)" % a
+            return "(⊢quoteVar %s)" % a
+        ds = " ".join(df(f, a) for f, a in zip(fs, args))
+        L.append("convAt Γ %s dA dB dr de = _ , conv⊢%s (⊢dep' ⌊ Γ ⌋) (⊢quoteCtx Γ) %sdA dB dr de" % (
+            pat, kname(name)[1:], ds + " " if ds else ""))
+    L.append("")
+    return "\n".join(L)
+
 def main():
     rows = parse()
     outs = {"Sig.agda": gen_sig(rows), "Terms.agda": gen_terms(rows), "Ctors.agda": gen_ctors(rows),
-            "RenAgree.agda": gen_renagree(rows), "SubAgree.agda": gen_subagree(rows)}
+            "RenAgree.agda": gen_renagree(rows), "SubAgree.agda": gen_subagree(rows), "QView.agda": gen_qview(rows),
+            "ConvHead.agda": gen_convhead(rows)}
     check = "--check" in sys.argv
     os.makedirs(OUTDIR, exist_ok=True)
     stale = []

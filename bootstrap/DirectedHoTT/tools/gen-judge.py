@@ -40,6 +40,7 @@ existentials: ('Ty', d) | ('Tm', d) | ('Nat',)
 
 Usage:  python3 tools/gen-judge.py [--check]
 """
+import re
 import os, sys, importlib.util
 
 # the licence header every Agda file in bootstrap/ carries
@@ -1984,7 +1985,9 @@ def main():
     outs = {OUT: txt, POUT: ptxt, HOUT: hlp, K("JudgeConGen"): CHDR + "\n".join(CONL) + "\n",
             K("PredsCon"): PCHDR + "\n".join(PCONL) + "\n",
             K("PredsAgree"): "\n".join(gen_preds_agree()) + "\n",
-            K("PwAgree"): "\n".join(gen_pw_agree()) + "\n"}
+            K("PwAgree"): "\n".join(gen_pw_agree()) + "\n",
+            K("RedAgree"): "\n".join(gen_enred()) + "\n",
+            K("RedTAgree"): "\n".join(gen_enredT()) + "\n"}
     for fam in ("⟶", "⟶ᵀ", "Pw"):
         outs[K(REDMOD[fam][0])] = "\n".join(gen_red(fam)) + "\n"
     for fam in ("⟶", "⟶β", "⟶ᵀ", "Pw"):
@@ -2279,6 +2282,265 @@ open import DirectedHoTT.Examples.Knot.Terms
 open import DirectedHoTT.Examples.Knot.Preds using ( KNNC; KStkA; KStkC; KFlat; El-⌜StkA⌝; El-⌜StkC⌝ )
 open import DirectedHoTT.Examples.Knot.PredsCon
 
+"""
+
+
+# ------------------------------------------------------------ the adequacy map for ⟶ (PLAN-FAITHFUL F5)
+def spec_ctors(data):
+    """the constructors of a Spec data block: [(name, type-text)]"""
+    txt = open(os.path.join(ROOT, "Spec", "Typing.agda"), encoding="utf-8").read()
+    i = txt.index("data %s " % data)
+    lines = txt[i:].split("\n")[1:]
+    out, cur = [], None
+    for l in lines:
+        if l and not l.startswith(" "): break
+        l = l.split("--")[0].rstrip()
+        if not l.strip(): continue
+        m = re.match(r"^  (\S+)\s+:\s*(.*)$", l)
+        if m and not l.startswith("   "):
+            if cur: out.append(cur)
+            cur = [m.group(1), m.group(2)]
+        elif cur: cur[1] += " " + l.strip()
+    if cur: out.append(cur)
+    return out
+
+def binders(ty):
+    """implicit binder names in order, from the leading `{…}` groups"""
+    names = []
+    for g in re.findall(r"\{([^{}:]+):", ty):
+        names += g.split()
+    return names
+
+SUB = "₀₁₂₃₄₅₆₇₈₉"
+def alt_tag(h, i, n):
+    return "" if n == 1 else "".join(SUB[int(c)] for c in str(i))
+
+def red_alts(fam):
+    """per Knot head: [(kind, data)] in fibre order — ξ alts then computation alts"""
+    xi = xi_rules(fam)
+    out = {}
+    for h in (TMHEADS if fam == "⟶" else TYHEADS):
+        n_xi = len(xi.get(h, []))
+        n_comp = len(COMP[fam].get(h, []))
+        out[h] = (n_xi, n_comp)
+    return out
+
+# ⟶ computation rules: Spec pattern → (Knot head, alt among the head's computation rules, hypothesis typings, target reduction)
+def _q(x): return "(⊢quoteTm %s)" % x
+IDP = lambda M: "(⊢conv (⊢idrefl (⊢⌜Tm⌝ (⊢isuc dj)) (toTm (⊢quoteTm %s))) (csymᵀ (credᵀ (El-⌜Id⌝ _ _ _))))" % M
+STKA = lambda c: "(⊢conv (⊢stkAC %s st) (csymᵀ El-⌜StkA⌝))" % c
+STKC = lambda c: "(⊢conv (⊢stkCC %s st) (csymᵀ El-⌜StkC⌝))" % c
+PWP = lambda c: "(⊢conv (⊢pwC %s pc) (csymᵀ El-⌜Pw⌝))" % c
+WK = lambda x: "(wk-agree-tm %s)" % x
+TRM = lambda c, a, m: "(⌜Hom⌝ %s %s %s)" % (c, a, m)
+RED_COMP = [
+  ("β t u", "app", 0, [_q("u"), _q("t")], "(sub0-agree-tm t u)"),
+  ("βfst a b", "fst", 0, [_q("a"), _q("b")], None),
+  ("βsnd a b", "snd", 0, [_q("a"), _q("b")], None),
+  ("ordtr-z t u p q", "ordtr", 0, [_q("t"), _q("u"), _q("p"), _q("q")], None),
+  ("ordtr-szz a p q", "ordtr", 1, [_q("p"), _q("q"), _q("a")], None),
+  ("ordtr-ssz a t p q", "ordtr", 2, [_q("p"), _q("q"), _q("a"), _q("t")], None),
+  ("ordtr-szs a u p q", "ordtr", 3, [_q("p"), _q("q"), _q("a"), _q("u")], None),
+  ("ordtr-sss a t u p q", "ordtr", 4, [_q("p"), _q("q"), _q("a"), _q("t"), _q("u")], None),
+  ("tr-J-base c a m s e", "tr", 0, [_q(TRM("c","a","m")), _q("e"), _q("s"), _q("c"), _q("a"), _q("m"), IDP(TRM("c","a","m"))], None),
+  ("tr-J-Σ c a m c₁ c₂ s e", "tr", 1, [_q(TRM("c","a","m")), _q("e"), _q("s"), _q("c₁"), _q("c₂"), _q("c"), _q("a"), _q("m"), IDP(TRM("c","a","m"))], None),
+  ("tr-J-Unit c a m s e", "tr", 2, [_q(TRM("c","a","m")), _q("e"), _q("s"), _q("c"), _q("a"), _q("m"), IDP(TRM("c","a","m"))], None),
+  ("tr-J-Id c a m c₁ a₁ b₁ s e", "tr", 3, [_q(TRM("c","a","m")), _q("e"), _q("s"), _q("c₁"), _q("a₁"), _q("b₁"), _q("c"), _q("a"), _q("m"), IDP(TRM("c","a","m"))], None),
+  ("tr-J-IMu {I} {D} {iˣ} c a m s e", "tr", 4, [_q(TRM("c","a","m")), _q("e"), _q("s"), _q("I"), _q("D"), _q("iˣ"), _q("c"), _q("a"), _q("m"), IDP(TRM("c","a","m"))], None),
+  ("tr-J-Fin {n} c a m s e", "tr", 5, [_q(TRM("c","a","m")), _q("e"), _q("s"), "(⊢quoteℕ n)", _q("c"), _q("a"), _q("m"), IDP(TRM("c","a","m"))], None),
+  ("tr-J-Hom c a m c₁ a₁ b₁ s e st", "tr", 6, [_q(TRM("c","a","m")), _q("e"), _q("s"), _q("c₁"), _q("a₁"), _q("b₁"), _q("c"), _q("a"), _q("m"), IDP(TRM("c","a","m")), STKA("c₁")], None),
+  ("tr-taut f e", "tr", 7, [_q("(var vz)"), _q("e"), _q("f"), IDP("(var vz)")], None),
+  ("tr-pw c a f e pc", "tr", 8, [_q(TRM("c","a","(var vz)")), _q("e"), _q("f"), _q("c"), _q("a"), IDP(TRM("c","a","(var vz)")), _q("(pwBody c)"), PWP("c")],
+     "(node-1 (⟶*-trans (node-1 (⟶*-trans (node-1 (pwSh-agree (pwBody c))) (node-2 (node-1 %s)))) (node-3 (node-1 %s))))" % (WK("a"), WK("e"))),
+  ("hrefl-pw C s pc", "hrefl", 0, [_q("C"), _q("s"), _q("(pwBody C)"), PWP("C")], "(node-1 (node-2 (node-1 %s)))" % WK("s")),
+  ("ap-J cB b c₁ s st", "ap", 0, [_q("cB"), _q("b"), _q("c₁"), _q("s"), STKC("c₁")], "(node-2 (sub0-agree-tm b s))"),
+  ("jsub-refl d c s e", "jsub", 0, [_q("d"), _q("e"), _q("c"), _q("s")], None),
+  ("natrec-zero z s", "natrec", 0, [_q("z"), _q("s")], None),
+  ("natrec-suc z s n", "natrec", 1, [_q("z"), _q("s"), _q("n")], "(inst-agree n (natrec z s n) s)"),
+  ("ι D i e p", "ielim", 0, [_q("D"), _q("i"), _q("e"), _q("p")], None),
+  ("dpay-ι I D", "dpay", 0, [_q("I"), _q("D")], None),
+  ("dpay-σ I D S f", "dpay", 1, [_q("I"), _q("D"), _q("S"), _q("f")],
+     "(node-2 (⟶*-trans (node-1 %s) (⟶*-trans (node-2 %s) (node-3 (node-1 %s)))))" % (WK("I"), WK("D"), WK("f"))),
+  ("dpay-ρ I D j C", "dpay", 2, [_q("I"), _q("D"), _q("j"), _q("C")],
+     "(node-2 (⟶*-trans (node-1 %s) (⟶*-trans (node-2 %s) (node-3 %s))))" % (WK("I"), WK("D"), WK("C"))),
+  ("dih-ι D e p", "dih", 0, [_q("D"), _q("e"), _q("p")], None),
+  ("dih-σ D e S f p", "dih", 1, [_q("D"), _q("e"), _q("p"), _q("S"), _q("f")], None),
+  ("dih-ρ D e j C p", "dih", 2, [_q("D"), _q("e"), _q("p"), _q("j"), _q("C")], None),
+  ("fcase-z a b", "fcase", 0, [_q("a"), _q("b")], None),
+  ("fcase-s t a b", "fcase", 1, [_q("a"), _q("b"), _q("t")], "(sub0-agree-tm b t)"),
+  ("psplit-β b x y", "psplit", 0, [_q("b"), _q("x"), _q("y")],
+     "(⟶≡ (cong (λ X → quoteTm X) (inst-single2 x y b)) (inst-agree x y b))"),
+]
+
+# the reduction constructors' FIRST implicit is the generalised `Γ`
+# (`variable Γ : Cx` in Spec/Typing): a positional `{x}` would bind it
+def hidΓ(spat):
+    h, _, rest = spat.partition(" ")
+    return "%s {_} %s" % (h, rest) if rest.startswith("{") else spat
+
+def gen_enred():
+    fam = "⟶"
+    alts = red_alts(fam)
+    xi = xi_rules(fam)
+    inv = {v: k for k, v in gk.NAMES.items()}
+    L = [ENRED_HDR]
+    seen = set()
+    # ξ: parsed from the Spec
+    for name, ty in spec_ctors("_⟶_"):
+        if not name.startswith("ξ-"): continue
+        m = re.search(r"→\s*(\S+)\s*⟶\s*(\S+)\s*→\s*(.+?)\s*⟶\s*(.+)$", ty)
+        assert m, (name, ty)
+        lt, rt = m.group(3).split(), m.group(4).split()
+        H, largs, rargs = lt[0], lt[1:], rt[1:]
+        h = gk.NAMES.get(H, H)
+        fs = SIG[h][1]
+        i = [k for k in range(len(largs)) if largs[k] != rargs[k]]
+        assert len(i) == 1 and len(largs) == len(fs), (name, lt, rt)
+        i = i[0]
+        n_xi, n_comp = alts[h]
+        rank = [k for k, f in enumerate(fs) if f[0] == "rec"].index(i) + 1
+        con = "con⟶%s%s" % (h, alt_tag(h, rank, n_xi + n_comp))
+        bs = binders(ty)
+        pat = "(%s {_} %s r)" % (name, " ".join("{%s}" % b for b in bs))
+        fty = lambda k, x: "(⊢quoteTm %s)" % x if fs[k][0] == "rec" else "(⊢quoteℕ %s)" % x
+        args = " ".join([fty(k, largs[k]) for k in range(len(fs))] + ["(⊢quoteTm %s)" % rargs[i], "(Σ.snd (enRed r))"])
+        L.append("enRed {Γ} %s = _ , %s (⊢dep' Γ) %s" % (pat, con, args))
+        seen.add(name)
+    # the computation rules
+    for spat, h, k, hyps, red in RED_COMP:
+        n_xi, n_comp = alts[h]
+        con = "con⟶%s%s" % (h, alt_tag(h, n_xi + k + 1, n_xi + n_comp))
+        app = "%s dj %s" % (con, " ".join(hyps))
+        body = app if red is None else "⊢conv (%s) (red→≅ᵀ (⟶ᵀ*-IMu (⟶*-pairʳ (⟶*-pairʳ %s))))" % (app, red)
+        L.append("enRed {Γ} (%s) = _ , %s" % (hidΓ(spat), body))
+        L.append("  where dj = ⊢dep' Γ")
+        seen.add(spat.split()[0])
+    return L
+
+ENRED_HDR = """------------------------------------------------------------------------
+-- ⚠⚠ GENERATED by tools/gen-judge.py — DO NOT EDIT BY HAND. ⚠⚠
+--
+-- ★ THE REDUCTION JUDGEMENT IS FAITHFUL (PLAN-FAITHFUL F5, `⟶`): every Spec
+-- reduction `t ⟶ u` maps to a Knot inhabitant AT THE QUOTED JUDGEMENT
+-- `K⟶ ⌜Γ⌝ ⌜t⌝ ⌜u⌝` — the type names the index, so a row encoding the wrong
+-- rule is a type error here.  ξ rules are parsed from `Spec/Typing`; a
+-- computation rule's Knot target meets the Spec's by F3's agreements.
+------------------------------------------------------------------------
+
+{-# OPTIONS --safe #-}
+module DirectedHoTT.Examples.Knot.RedAgree where
+
+open import normalizer.Syntax.Types using ( _≡_; refl; cong; Σ; _,_ )
+open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
+open import DirectedHoTT.Spec.Syntax
+open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
+open import DirectedHoTT.Spec.Variance using ( pwBody )
+open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; ⟶ᵀ*-IMu; ⟶*-pairʳ; ⟶*-trans )
+open import DirectedHoTT.Lib.FinFam using ( ⊢isuc )
+open import DirectedHoTT.Examples.Knot.Terms
+open import DirectedHoTT.Examples.Knot.JudgeIx using ( ⊢⌜Tm⌝ )
+open import DirectedHoTT.Examples.Knot.JudgeCase using ( toTm )
+open import DirectedHoTT.Examples.Knot.RedIx
+open import DirectedHoTT.Examples.Knot.Red using ( K⟶ )
+open import DirectedHoTT.Examples.Knot.Preds using ( El-⌜StkA⌝; El-⌜StkC⌝ )
+open import DirectedHoTT.Examples.Knot.Pw using ( El-⌜Pw⌝ )
+open import DirectedHoTT.Examples.Knot.PredsAgree using ( ⊢stkAC; ⊢stkCC )
+open import DirectedHoTT.Examples.Knot.PwAgree using ( ⊢pwC )
+open import DirectedHoTT.Examples.Knot.OpAgree
+open import DirectedHoTT.Examples.Knot.RedXiConGen
+open import DirectedHoTT.Examples.Knot.RedCompConGen
+
+private
+  ⟶≡ : {Θ : Cx} {t u u' : RTm Θ} → u ≡ u' → t ⟶* u → t ⟶* u'
+  ⟶≡ refl r = r
+
+enRed : {Γ : Cx} {t u : RTm Γ} → t ⟶ u → {Θ : Ctx} → Σ (RTm ⌊ Θ ⌋) (λ c → Θ ⊢ c ∷ K⟶ (dep Γ) (quoteTm t) (quoteTm u))
+"""
+
+
+def _qT(x): return "(⊢quoteTy %s)" % x
+REDT_COMP = [
+  ("El-⌜base⌝", "El", 0, [], None),
+  ("El-⌜Π⌝ c d", "El", 1, [_q("c"), _q("d")], None),
+  ("El-⌜Σ⌝ c d", "El", 2, [_q("c"), _q("d")], None),
+  ("El-⌜Hom⌝ c a b", "El", 3, [_q("c"), _q("a"), _q("b")], None),
+  ("El-⌜Id⌝ c a b", "El", 4, [_q("c"), _q("a"), _q("b")], None),
+  ("El-⌜Nat⌝", "El", 5, [], None),
+  ("El-⌜IMu⌝ {I} {D} {i}", "El", 6, [_q("I"), _q("D"), _q("i")], None),
+  ("El-⌜Fin⌝ {n}", "El", 7, ["(⊢quoteℕ n)"], None),
+  ("El-⌜Unit⌝", "El", 8, [], None),
+  ("DIh-ι D M p", "DIh", 0, [_q("D"), _qT("M"), _q("p")], None),
+  ("DIh-σ D M S f p", "DIh", 1, [_q("D"), _qT("M"), _q("p"), _q("S"), _q("f")], None),
+  ("DIh-ρ D M j C p", "DIh", 2, [_q("D"), _qT("M"), _q("p"), _q("j"), _q("C")],
+     "(⟶*-trans (node-1 (iinst-agree j (fst p) M)) (node-2 (⟶*-trans (node-1 %s) (⟶*-trans (node-2 (wk2u-agree M)) (⟶*-trans (node-3 %s) (node-4 (node-1 %s)))))))" % (WK("D"), WK("C"), WK("p"))),
+  ("Hom-Nat-z n", "Hom", 0, [_q("n")], None),
+  ("Hom-Nat-sz m", "Hom", 1, [_q("m")], None),
+  ("Hom-Nat-ss m n", "Hom", 2, [_q("m"), _q("n")], None),
+  ("Hom-U c d", "Hom", 3, [_q("c"), _q("d")], "(node-2 (node-1 %s))" % WK("d")),
+  ("Hom-Π A B f g", "Hom", 4, [_q("f"), _q("g"), _qT("A"), _qT("B")],
+     "(node-2 (⟶*-trans (node-2 (node-1 %s)) (node-3 (node-1 %s))))" % (WK("f"), WK("g"))),
+]
+
+def gen_enredT():
+    fam = "⟶ᵀ"
+    alts = red_alts(fam)
+    L = [ENREDT_HDR]
+    for name, ty in spec_ctors("_⟶ᵀ_"):
+        if not name.startswith("ξ-"): continue
+        m = re.search(r"→\s*(\S+)\s*(⟶ᵀ|⟶)\s*(\S+)\s*→\s*(.+?)\s*⟶ᵀ\s*(.+)$", ty)
+        assert m, (name, ty)
+        lt, rt = m.group(4).split(), m.group(5).split()
+        H, largs, rargs = lt[0], lt[1:], rt[1:]
+        h = gk.NAMES.get(H, H)
+        fs = SIG[h][1]
+        i = [k for k in range(len(largs)) if largs[k] != rargs[k]]
+        assert len(i) == 1 and len(largs) == len(fs), (name, lt, rt)
+        i = i[0]
+        n_xi, n_comp = alts[h]
+        rank = [k for k, f in enumerate(fs) if f[0] == "rec"].index(i) + 1
+        con = "con⟶ᵀ%s%s" % (h, alt_tag(h, rank, n_xi + n_comp))
+        pat = "(%s {_} %s r)" % (name, " ".join("{%s}" % b for b in binders(ty)))
+        fty = lambda k, x: ("(⊢quoteTy %s)" if fs[k][1] == 0 else "(⊢quoteTm %s)") % x if fs[k][0] == "rec" else "(⊢quoteℕ %s)" % x
+        if fs[i][1] == 0:
+            tail = ["(⊢quoteTy %s)" % rargs[i], "(Σ.snd (enRedT r))"]
+        else:
+            tail = ["(⊢quoteTm %s)" % rargs[i], "(⊢conv (Σ.snd (enRed r)) (csymᵀ El-⌜⟶⌝))"]
+        L.append("enRedT {Γ} %s = _ , %s (⊢dep' Γ) %s" % (pat, con, " ".join([fty(k, largs[k]) for k in range(len(fs))] + tail)))
+    for spat, h, k, hyps, red in REDT_COMP:
+        n_xi, n_comp = alts[h]
+        con = "con⟶ᵀ%s%s" % (h, alt_tag(h, n_xi + k + 1, n_xi + n_comp))
+        app = "%s dj%s" % (con, "".join(" " + x for x in hyps))
+        body = app if red is None else "⊢conv (%s) (red→≅ᵀ (⟶ᵀ*-IMu (⟶*-pairʳ (⟶*-pairʳ %s))))" % (app, red)
+        pat = "(%s)" % hidΓ(spat) if " " in spat else spat
+        L.append("enRedT {Γ} %s = _ , %s" % (pat, body))
+        L.append("  where dj = ⊢dep' Γ")
+    return L
+
+ENREDT_HDR = """------------------------------------------------------------------------
+-- ⚠⚠ GENERATED by tools/gen-judge.py — DO NOT EDIT BY HAND. ⚠⚠
+--
+-- ★ THE TYPE REDUCTION IS FAITHFUL (PLAN-FAITHFUL F5, `⟶ᵀ`): every Spec
+-- `A ⟶ᵀ B` maps to a Knot inhabitant at `K⟶ᵀ ⌜Γ⌝ ⌜A⌝ ⌜B⌝`; a ξ rule on a
+-- term field cites `enRed` through the lower stratum's code `⌜⟶⌝`.
+------------------------------------------------------------------------
+
+{-# OPTIONS --safe #-}
+module DirectedHoTT.Examples.Knot.RedTAgree where
+
+open import normalizer.Syntax.Types using ( _≡_; refl; Σ; _,_ )
+open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
+open import DirectedHoTT.Spec.Syntax
+open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
+open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; ⟶ᵀ*-IMu; ⟶*-pairʳ; ⟶*-trans )
+open import DirectedHoTT.Examples.Knot.Terms
+open import DirectedHoTT.Examples.Knot.RedIx
+open import DirectedHoTT.Examples.Knot.Red using ( El-⌜⟶⌝ )
+open import DirectedHoTT.Examples.Knot.RedT using ( K⟶ᵀ )
+open import DirectedHoTT.Examples.Knot.OpAgree
+open import DirectedHoTT.Examples.Knot.RedAgree using ( enRed )
+open import DirectedHoTT.Examples.Knot.RedTConGen
+
+enRedT : {Γ : Cx} {A B : RTy Γ} → A ⟶ᵀ B → {Θ : Ctx} → Σ (RTm ⌊ Θ ⌋) (λ c → Θ ⊢ c ∷ K⟶ᵀ (dep Γ) (quoteTy A) (quoteTy B))
 """
 
 PCHDR = """------------------------------------------------------------------------
