@@ -43,7 +43,7 @@
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Metatheory.LogicalRelation where
 open import normalizer.Syntax.Types
-  using ( _≡_; refl; sym; trans; subst; cong; cong₂; ¬_; ⊥; ⊥-elim; Σ; _,_; _×_; ⊤ )
+  using ( _≡_; refl; sym; trans; subst; cong; cong₂; ¬_; ⊥; ⊥-elim; Σ; _,_; _×_; ⊤; tt )
 
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Typing using ( wk-single ) public
@@ -5474,6 +5474,456 @@ bwd₀-mem⁻ q (⊩₀Fin _)   h = h
 -- strict subterm of its own side.
 ------------------------------------------------------------------------
 
+-- ★ the OFF-DIAGONAL pairs of `irrel₀`, refuted OUTSIDE its mutual block.
+--   Written inline, their `with` chains were 264 with-functions INSIDE the
+--   recursive block, and positivity closed a graph of thousands of argument
+--   nodes (2026-09-30 trace: the build's largest positivity site).  `Cross₀`
+--   is ⊤ exactly on the refuted pairs; the rest are discharged by coverage.
+Cross₀ : {A B : RTy Γ} → ⊩₀ A → ⊩₀ B → Set
+Cross₀ (⊩₀base p) (⊩₀Π q _ _) = ⊤
+Cross₀ (⊩₀ne p n) (⊩₀Π q _ _) = ⊤
+Cross₀ (⊩₀Π p _ _) (⊩₀base q) = ⊤
+Cross₀ (⊩₀Π p _ _) (⊩₀ne q n) = ⊤
+Cross₀ (⊩₀base p) (⊩₀Σ q _ _) = ⊤
+Cross₀ (⊩₀ne p n) (⊩₀Σ q _ _) = ⊤
+Cross₀ (⊩₀Σ p _ _) (⊩₀base q) = ⊤
+Cross₀ (⊩₀Σ p _ _) (⊩₀ne q n) = ⊤
+Cross₀ (⊩₀Π p _ _) (⊩₀Σ q _ _) = ⊤
+Cross₀ (⊩₀Σ p _ _) (⊩₀Π q _ _) = ⊤
+Cross₀ (⊩₀Id p) (⊩₀base q) = ⊤
+Cross₀ (⊩₀base p) (⊩₀Id q) = ⊤
+Cross₀ (⊩₀Id p) (⊩₀ne q n) = ⊤
+Cross₀ (⊩₀ne p n) (⊩₀Id q) = ⊤
+Cross₀ (⊩₀Id p) (⊩₀Π q _ _) = ⊤
+Cross₀ (⊩₀Π p _ _) (⊩₀Id q) = ⊤
+Cross₀ (⊩₀Id p) (⊩₀Σ q _ _) = ⊤
+Cross₀ (⊩₀Σ p _ _) (⊩₀Id q) = ⊤
+Cross₀ (⊩₀Id p) (⊩₀Hom q sh) = ⊤
+Cross₀ (⊩₀Hom p sh) (⊩₀Id q) = ⊤
+Cross₀ (⊩₀Fin p) (⊩₀IMu q _ _ _ _ _ _) = ⊤
+Cross₀ (⊩₀IMu p _ _ _ _ _ _) (⊩₀Fin q) = ⊤
+Cross₀ (⊩₀base p) (⊩₀Hom q s) = ⊤
+Cross₀ (⊩₀Hom p s) (⊩₀base q) = ⊤
+Cross₀ (⊩₀ne p n) (⊩₀Hom q s) = ⊤
+Cross₀ (⊩₀Hom p s) (⊩₀ne q n) = ⊤
+Cross₀ (⊩₀Π p _ _) (⊩₀Hom q s) = ⊤
+Cross₀ (⊩₀Hom p s) (⊩₀Π q _ _) = ⊤
+Cross₀ (⊩₀Σ p _ _) (⊩₀Hom q s) = ⊤
+Cross₀ (⊩₀Hom p s) (⊩₀Σ q _ _) = ⊤
+Cross₀ (⊩₀Unit p) (⊩₀base q) = ⊤
+Cross₀ (⊩₀base p) (⊩₀Unit q) = ⊤
+Cross₀ (⊩₀Unit p) (⊩₀ne q n) = ⊤
+Cross₀ (⊩₀ne p n) (⊩₀Unit q) = ⊤
+Cross₀ (⊩₀Unit p) (⊩₀Π q _ _) = ⊤
+Cross₀ (⊩₀Π p _ _) (⊩₀Unit q) = ⊤
+Cross₀ (⊩₀Unit p) (⊩₀Σ q _ _) = ⊤
+Cross₀ (⊩₀Σ p _ _) (⊩₀Unit q) = ⊤
+Cross₀ (⊩₀Unit p) (⊩₀Hom q sh) = ⊤
+Cross₀ (⊩₀Hom p sh) (⊩₀Unit q) = ⊤
+Cross₀ (⊩₀Unit p) (⊩₀Id q) = ⊤
+Cross₀ (⊩₀Id p) (⊩₀Unit q) = ⊤
+Cross₀ (⊩₀Nat p) (⊩₀base q) = ⊤
+Cross₀ (⊩₀base p) (⊩₀Nat q) = ⊤
+Cross₀ (⊩₀Nat p) (⊩₀ne q n) = ⊤
+Cross₀ (⊩₀ne p n) (⊩₀Nat q) = ⊤
+Cross₀ (⊩₀Nat p) (⊩₀Π q _ _) = ⊤
+Cross₀ (⊩₀Π p _ _) (⊩₀Nat q) = ⊤
+Cross₀ (⊩₀Nat p) (⊩₀Σ q _ _) = ⊤
+Cross₀ (⊩₀Σ p _ _) (⊩₀Nat q) = ⊤
+Cross₀ (⊩₀Nat p) (⊩₀Hom q sh) = ⊤
+Cross₀ (⊩₀Hom p sh) (⊩₀Nat q) = ⊤
+Cross₀ (⊩₀Nat p) (⊩₀Id q) = ⊤
+Cross₀ (⊩₀Id p) (⊩₀Nat q) = ⊤
+Cross₀ (⊩₀Unit p) (⊩₀Nat q) = ⊤
+Cross₀ (⊩₀Nat p) (⊩₀Unit q) = ⊤
+Cross₀ (⊩₀Fin p) (⊩₀base q) = ⊤
+Cross₀ (⊩₀IMu p _ _ _ _ _ _) (⊩₀base q) = ⊤
+Cross₀ (⊩₀base p) (⊩₀Fin q) = ⊤
+Cross₀ (⊩₀base p) (⊩₀IMu q _ _ _ _ _ _) = ⊤
+Cross₀ (⊩₀Fin p) (⊩₀ne q n) = ⊤
+Cross₀ (⊩₀IMu p _ _ _ _ _ _) (⊩₀ne q n) = ⊤
+Cross₀ (⊩₀ne p n) (⊩₀Fin q) = ⊤
+Cross₀ (⊩₀ne p n) (⊩₀IMu q _ _ _ _ _ _) = ⊤
+Cross₀ (⊩₀Fin p) (⊩₀Π q _ _) = ⊤
+Cross₀ (⊩₀IMu p _ _ _ _ _ _) (⊩₀Π q _ _) = ⊤
+Cross₀ (⊩₀Π p _ _) (⊩₀Fin q) = ⊤
+Cross₀ (⊩₀Π p _ _) (⊩₀IMu q _ _ _ _ _ _) = ⊤
+Cross₀ (⊩₀Fin p) (⊩₀Σ q _ _) = ⊤
+Cross₀ (⊩₀IMu p _ _ _ _ _ _) (⊩₀Σ q _ _) = ⊤
+Cross₀ (⊩₀Σ p _ _) (⊩₀Fin q) = ⊤
+Cross₀ (⊩₀Σ p _ _) (⊩₀IMu q _ _ _ _ _ _) = ⊤
+Cross₀ (⊩₀Fin p) (⊩₀Hom q sh) = ⊤
+Cross₀ (⊩₀IMu p _ _ _ _ _ _) (⊩₀Hom q sh) = ⊤
+Cross₀ (⊩₀Hom p sh) (⊩₀Fin q) = ⊤
+Cross₀ (⊩₀Hom p sh) (⊩₀IMu q _ _ _ _ _ _) = ⊤
+Cross₀ (⊩₀Fin p) (⊩₀Id q) = ⊤
+Cross₀ (⊩₀IMu p _ _ _ _ _ _) (⊩₀Id q) = ⊤
+Cross₀ (⊩₀Id p) (⊩₀Fin q) = ⊤
+Cross₀ (⊩₀Id p) (⊩₀IMu q _ _ _ _ _ _) = ⊤
+Cross₀ (⊩₀Fin p) (⊩₀Unit q) = ⊤
+Cross₀ (⊩₀IMu p _ _ _ _ _ _) (⊩₀Unit q) = ⊤
+Cross₀ (⊩₀Unit p) (⊩₀Fin q) = ⊤
+Cross₀ (⊩₀Unit p) (⊩₀IMu q _ _ _ _ _ _) = ⊤
+Cross₀ (⊩₀Fin p) (⊩₀Nat q) = ⊤
+Cross₀ (⊩₀IMu p _ _ _ _ _ _) (⊩₀Nat q) = ⊤
+Cross₀ (⊩₀Nat p) (⊩₀Fin q) = ⊤
+Cross₀ (⊩₀Nat p) (⊩₀IMu q _ _ _ _ _ _) = ⊤
+Cross₀ _ _ = ⊥
+
+irrel₀✗ : {A B : RTy Γ} → A ≅ᵀ B → (R : ⊩₀ A) (S : ⊩₀ B) → Cross₀ R S → ⊥
+irrel₀✗ c (⊩₀base p) (⊩₀Π q _ _) _ with joinW c p q
+... | E , (bE , πE) with base-nf bE
+...   | refl with Π-reduct πE
+...     | mkΠRed _ _ () _ _
+irrel₀✗ c (⊩₀ne p n) (⊩₀Π q _ _) _ with joinW c p q
+... | E , (eE , πE) with El-ne-reduct n eE
+...   | mkElNe _ _ refl with Π-reduct πE
+...     | mkΠRed _ _ () _ _
+irrel₀✗ c (⊩₀Π p _ _) (⊩₀base q) _ with joinW c p q
+... | E , (πE , bE) with base-nf bE
+...   | refl with Π-reduct πE
+...     | mkΠRed _ _ () _ _
+irrel₀✗ c (⊩₀Π p _ _) (⊩₀ne q n) _ with joinW c p q
+... | E , (πE , eE) with El-ne-reduct n eE
+...   | mkElNe _ _ refl with Π-reduct πE
+...     | mkΠRed _ _ () _ _
+irrel₀✗ c (⊩₀base p) (⊩₀Σ q _ _) _ with joinW c p q
+... | E , (bE , σE) with base-nf bE
+...   | refl with Σ-reduct σE
+...     | mkΣRed _ _ () _ _
+irrel₀✗ c (⊩₀ne p n) (⊩₀Σ q _ _) _ with joinW c p q
+... | E , (eE , σE) with El-ne-reduct n eE
+...   | mkElNe _ _ refl with Σ-reduct σE
+...     | mkΣRed _ _ () _ _
+irrel₀✗ c (⊩₀Σ p _ _) (⊩₀base q) _ with joinW c p q
+... | E , (σE , bE) with base-nf bE
+...   | refl with Σ-reduct σE
+...     | mkΣRed _ _ () _ _
+irrel₀✗ c (⊩₀Σ p _ _) (⊩₀ne q n) _ with joinW c p q
+... | E , (σE , eE) with El-ne-reduct n eE
+...   | mkElNe _ _ refl with Σ-reduct σE
+...     | mkΣRed _ _ () _ _
+irrel₀✗ c (⊩₀Π p _ _) (⊩₀Σ q _ _) _ with joinW c p q
+... | E , (πE , σE) with Π-reduct πE
+...   | mkΠRed _ _ refl _ _ with Σ-reduct σE
+...     | mkΣRed _ _ () _ _
+irrel₀✗ c (⊩₀Σ p _ _) (⊩₀Π q _ _) _ with joinW c p q
+... | E , (σE , πE) with Π-reduct πE
+...   | mkΠRed _ _ refl _ _ with Σ-reduct σE
+...     | mkΣRed _ _ () _ _
+irrel₀✗ c (⊩₀Id p) (⊩₀base q) _ with joinW c p q
+... | E , (iE , bE) with base-nf bE
+...   | refl with Id-reduct iE
+...     | _ , (_ , (_ , ((), _)))
+irrel₀✗ c (⊩₀base p) (⊩₀Id q) _ with joinW c p q
+... | E , (bE , iE) with base-nf bE
+...   | refl with Id-reduct iE
+...     | _ , (_ , (_ , ((), _)))
+irrel₀✗ c (⊩₀Id p) (⊩₀ne q n) _ with joinW c p q
+... | E , (iE , eE) with El-ne-reduct n eE
+...   | mkElNe _ _ refl with Id-reduct iE
+...     | _ , (_ , (_ , ((), _)))
+irrel₀✗ c (⊩₀ne p n) (⊩₀Id q) _ with joinW c p q
+... | E , (eE , iE) with El-ne-reduct n eE
+...   | mkElNe _ _ refl with Id-reduct iE
+...     | _ , (_ , (_ , ((), _)))
+irrel₀✗ c (⊩₀Id p) (⊩₀Π q _ _) _ with joinW c p q
+... | E , (iE , πE) with Π-reduct πE
+...   | mkΠRed _ _ refl _ _ with Id-reduct iE
+...     | _ , (_ , (_ , ((), _)))
+irrel₀✗ c (⊩₀Π p _ _) (⊩₀Id q) _ with joinW c p q
+... | E , (πE , iE) with Π-reduct πE
+...   | mkΠRed _ _ refl _ _ with Id-reduct iE
+...     | _ , (_ , (_ , ((), _)))
+irrel₀✗ c (⊩₀Id p) (⊩₀Σ q _ _) _ with joinW c p q
+... | E , (iE , σE) with Σ-reduct σE
+...   | mkΣRed _ _ refl _ _ with Id-reduct iE
+...     | _ , (_ , (_ , ((), _)))
+irrel₀✗ c (⊩₀Σ p _ _) (⊩₀Id q) _ with joinW c p q
+... | E , (σE , iE) with Σ-reduct σE
+...   | mkΣRed _ _ refl _ _ with Id-reduct iE
+...     | _ , (_ , (_ , ((), _)))
+irrel₀✗ c (⊩₀Id p) (⊩₀Hom q sh) _ with joinW c p q
+... | E , (iE , hE) with Hom-stk-reduct sh hE
+...   | mkHomStk _ _ _ _ refl with Id-reduct iE
+...     | _ , (_ , (_ , ((), _)))
+irrel₀✗ c (⊩₀Hom p sh) (⊩₀Id q) _ with joinW c p q
+... | E , (hE , iE) with Hom-stk-reduct sh hE
+...   | mkHomStk _ _ _ _ refl with Id-reduct iE
+...     | _ , (_ , (_ , ((), _)))
+irrel₀✗ c (⊩₀Fin p) (⊩₀IMu q _ _ _ _ _ _) _ with joinW c p q
+... | E , (mE , iE) with Fin-nf mE
+...   | refl with IMu-reduct iE
+...     | mkIMuRed _ _ _ () _ _ _
+irrel₀✗ c (⊩₀IMu p _ _ _ _ _ _) (⊩₀Fin q) _ with joinW c p q
+... | E , (iE , mE) with Fin-nf mE
+...   | refl with IMu-reduct iE
+...     | mkIMuRed _ _ _ () _ _ _
+irrel₀✗ c (⊩₀base p) (⊩₀Hom q s) _ with joinW c p q
+... | E , (bE , hE) with base-nf bE
+...   | refl with Hom-stk-reduct s hE
+...     | mkHomStk _ _ _ _ ()
+irrel₀✗ c (⊩₀Hom p s) (⊩₀base q) _ with joinW c p q
+... | E , (hE , bE) with base-nf bE
+...   | refl with Hom-stk-reduct s hE
+...     | mkHomStk _ _ _ _ ()
+irrel₀✗ c (⊩₀ne p n) (⊩₀Hom q s) _ with joinW c p q
+... | E , (eE , hE) with El-ne-reduct n eE
+...   | mkElNe _ _ refl with Hom-stk-reduct s hE
+...     | mkHomStk _ _ _ _ ()
+irrel₀✗ c (⊩₀Hom p s) (⊩₀ne q n) _ with joinW c p q
+... | E , (hE , eE) with El-ne-reduct n eE
+...   | mkElNe _ _ refl with Hom-stk-reduct s hE
+...     | mkHomStk _ _ _ _ ()
+irrel₀✗ c (⊩₀Π p _ _) (⊩₀Hom q s) _ with joinW c p q
+... | E , (πE , hE) with Π-reduct πE
+...   | mkΠRed _ _ refl _ _ with Hom-stk-reduct s hE
+...     | mkHomStk _ _ _ _ ()
+irrel₀✗ c (⊩₀Hom p s) (⊩₀Π q _ _) _ with joinW c p q
+... | E , (hE , πE) with Π-reduct πE
+...   | mkΠRed _ _ refl _ _ with Hom-stk-reduct s hE
+...     | mkHomStk _ _ _ _ ()
+irrel₀✗ c (⊩₀Σ p _ _) (⊩₀Hom q s) _ with joinW c p q
+... | E , (σE , hE) with Σ-reduct σE
+...   | mkΣRed _ _ refl _ _ with Hom-stk-reduct s hE
+...     | mkHomStk _ _ _ _ ()
+irrel₀✗ c (⊩₀Hom p s) (⊩₀Σ q _ _) _ with joinW c p q
+... | E , (hE , σE) with Σ-reduct σE
+...   | mkΣRed _ _ refl _ _ with Hom-stk-reduct s hE
+...     | mkHomStk _ _ _ _ ()
+irrel₀✗ c (⊩₀Unit p) (⊩₀base q) _ with joinW c p q
+... | E , (mE , bE) with base-nf bE
+...   | refl with Unit-nf mE
+...     | ()
+irrel₀✗ c (⊩₀base p) (⊩₀Unit q) _ with joinW c p q
+... | E , (bE , mE) with base-nf bE
+...   | refl with Unit-nf mE
+...     | ()
+irrel₀✗ c (⊩₀Unit p) (⊩₀ne q n) _ with joinW c p q
+... | E , (mE , eE) with El-ne-reduct n eE
+...   | mkElNe _ _ refl with Unit-nf mE
+...     | ()
+irrel₀✗ c (⊩₀ne p n) (⊩₀Unit q) _ with joinW c p q
+... | E , (eE , mE) with El-ne-reduct n eE
+...   | mkElNe _ _ refl with Unit-nf mE
+...     | ()
+irrel₀✗ c (⊩₀Unit p) (⊩₀Π q _ _) _ with joinW c p q
+... | E , (mE , πE) with Π-reduct πE
+...   | mkΠRed _ _ refl _ _ with Unit-nf mE
+...     | ()
+irrel₀✗ c (⊩₀Π p _ _) (⊩₀Unit q) _ with joinW c p q
+... | E , (πE , mE) with Π-reduct πE
+...   | mkΠRed _ _ refl _ _ with Unit-nf mE
+...     | ()
+irrel₀✗ c (⊩₀Unit p) (⊩₀Σ q _ _) _ with joinW c p q
+... | E , (mE , σE) with Σ-reduct σE
+...   | mkΣRed _ _ refl _ _ with Unit-nf mE
+...     | ()
+irrel₀✗ c (⊩₀Σ p _ _) (⊩₀Unit q) _ with joinW c p q
+... | E , (σE , mE) with Σ-reduct σE
+...   | mkΣRed _ _ refl _ _ with Unit-nf mE
+...     | ()
+irrel₀✗ c (⊩₀Unit p) (⊩₀Hom q sh) _ with joinW c p q
+... | E , (mE , hE) with Hom-stk-reduct sh hE
+...   | mkHomStk _ _ _ _ refl with Unit-nf mE
+...     | ()
+irrel₀✗ c (⊩₀Hom p sh) (⊩₀Unit q) _ with joinW c p q
+... | E , (hE , mE) with Hom-stk-reduct sh hE
+...   | mkHomStk _ _ _ _ refl with Unit-nf mE
+...     | ()
+irrel₀✗ c (⊩₀Unit p) (⊩₀Id q) _ with joinW c p q
+... | E , (mE , iE) with Id-reduct iE
+...   | _ , (_ , (_ , (refl , _))) with Unit-nf mE
+...     | ()
+irrel₀✗ c (⊩₀Id p) (⊩₀Unit q) _ with joinW c p q
+... | E , (iE , mE) with Id-reduct iE
+...   | _ , (_ , (_ , (refl , _))) with Unit-nf mE
+...     | ()
+irrel₀✗ c (⊩₀Nat p) (⊩₀base q) _ with joinW c p q
+... | E , (mE , bE) with base-nf bE
+...   | refl with Nat-nf mE
+...     | ()
+irrel₀✗ c (⊩₀base p) (⊩₀Nat q) _ with joinW c p q
+... | E , (bE , mE) with base-nf bE
+...   | refl with Nat-nf mE
+...     | ()
+irrel₀✗ c (⊩₀Nat p) (⊩₀ne q n) _ with joinW c p q
+... | E , (mE , eE) with El-ne-reduct n eE
+...   | mkElNe _ _ refl with Nat-nf mE
+...     | ()
+irrel₀✗ c (⊩₀ne p n) (⊩₀Nat q) _ with joinW c p q
+... | E , (eE , mE) with El-ne-reduct n eE
+...   | mkElNe _ _ refl with Nat-nf mE
+...     | ()
+irrel₀✗ c (⊩₀Nat p) (⊩₀Π q _ _) _ with joinW c p q
+... | E , (mE , πE) with Π-reduct πE
+...   | mkΠRed _ _ refl _ _ with Nat-nf mE
+...     | ()
+irrel₀✗ c (⊩₀Π p _ _) (⊩₀Nat q) _ with joinW c p q
+... | E , (πE , mE) with Π-reduct πE
+...   | mkΠRed _ _ refl _ _ with Nat-nf mE
+...     | ()
+irrel₀✗ c (⊩₀Nat p) (⊩₀Σ q _ _) _ with joinW c p q
+... | E , (mE , σE) with Σ-reduct σE
+...   | mkΣRed _ _ refl _ _ with Nat-nf mE
+...     | ()
+irrel₀✗ c (⊩₀Σ p _ _) (⊩₀Nat q) _ with joinW c p q
+... | E , (σE , mE) with Σ-reduct σE
+...   | mkΣRed _ _ refl _ _ with Nat-nf mE
+...     | ()
+irrel₀✗ c (⊩₀Nat p) (⊩₀Hom q sh) _ with joinW c p q
+... | E , (mE , hE) with Hom-stk-reduct sh hE
+...   | mkHomStk _ _ _ _ refl with Nat-nf mE
+...     | ()
+irrel₀✗ c (⊩₀Hom p sh) (⊩₀Nat q) _ with joinW c p q
+... | E , (hE , mE) with Hom-stk-reduct sh hE
+...   | mkHomStk _ _ _ _ refl with Nat-nf mE
+...     | ()
+irrel₀✗ c (⊩₀Nat p) (⊩₀Id q) _ with joinW c p q
+... | E , (mE , iE) with Id-reduct iE
+...   | _ , (_ , (_ , (refl , _))) with Nat-nf mE
+...     | ()
+irrel₀✗ c (⊩₀Id p) (⊩₀Nat q) _ with joinW c p q
+... | E , (iE , mE) with Id-reduct iE
+...   | _ , (_ , (_ , (refl , _))) with Nat-nf mE
+...     | ()
+irrel₀✗ c (⊩₀Unit p) (⊩₀Nat q) _ with joinW c p q
+... | E , (uE , nE) with Nat-nf nE
+...   | refl with Unit-nf uE
+...     | ()
+irrel₀✗ c (⊩₀Nat p) (⊩₀Unit q) _ with joinW c p q
+... | E , (nE , uE) with Nat-nf nE
+...   | refl with Unit-nf uE
+...     | ()
+irrel₀✗ c (⊩₀Fin p) (⊩₀base q) _ with joinW c p q
+... | E , (mE , bE) with base-nf bE
+...   | refl with Fin-nf mE
+...     | ()
+irrel₀✗ c (⊩₀IMu p _ _ _ _ _ _) (⊩₀base q) _ with joinW c p q
+... | E , (mE , bE) with base-nf bE
+...   | refl with IMu-reduct mE
+...     | mkIMuRed _ _ _ () _ _ _
+irrel₀✗ c (⊩₀base p) (⊩₀Fin q) _ with joinW c p q
+... | E , (bE , mE) with base-nf bE
+...   | refl with Fin-nf mE
+...     | ()
+irrel₀✗ c (⊩₀base p) (⊩₀IMu q _ _ _ _ _ _) _ with joinW c p q
+... | E , (bE , mE) with base-nf bE
+...   | refl with IMu-reduct mE
+...     | mkIMuRed _ _ _ () _ _ _
+irrel₀✗ c (⊩₀Fin p) (⊩₀ne q n) _ with joinW c p q
+... | E , (mE , eE) with El-ne-reduct n eE
+...   | mkElNe _ _ refl with Fin-nf mE
+...     | ()
+irrel₀✗ c (⊩₀IMu p _ _ _ _ _ _) (⊩₀ne q n) _ with joinW c p q
+... | E , (mE , eE) with El-ne-reduct n eE
+...   | mkElNe _ _ refl with IMu-reduct mE
+...     | mkIMuRed _ _ _ () _ _ _
+irrel₀✗ c (⊩₀ne p n) (⊩₀Fin q) _ with joinW c p q
+... | E , (eE , mE) with El-ne-reduct n eE
+...   | mkElNe _ _ refl with Fin-nf mE
+...     | ()
+irrel₀✗ c (⊩₀ne p n) (⊩₀IMu q _ _ _ _ _ _) _ with joinW c p q
+... | E , (eE , mE) with El-ne-reduct n eE
+...   | mkElNe _ _ refl with IMu-reduct mE
+...     | mkIMuRed _ _ _ () _ _ _
+irrel₀✗ c (⊩₀Fin p) (⊩₀Π q _ _) _ with joinW c p q
+... | E , (mE , πE) with Π-reduct πE
+...   | mkΠRed _ _ refl _ _ with Fin-nf mE
+...     | ()
+irrel₀✗ c (⊩₀IMu p _ _ _ _ _ _) (⊩₀Π q _ _) _ with joinW c p q
+... | E , (mE , πE) with Π-reduct πE
+...   | mkΠRed _ _ refl _ _ with IMu-reduct mE
+...     | mkIMuRed _ _ _ () _ _ _
+irrel₀✗ c (⊩₀Π p _ _) (⊩₀Fin q) _ with joinW c p q
+... | E , (πE , mE) with Π-reduct πE
+...   | mkΠRed _ _ refl _ _ with Fin-nf mE
+...     | ()
+irrel₀✗ c (⊩₀Π p _ _) (⊩₀IMu q _ _ _ _ _ _) _ with joinW c p q
+... | E , (πE , mE) with Π-reduct πE
+...   | mkΠRed _ _ refl _ _ with IMu-reduct mE
+...     | mkIMuRed _ _ _ () _ _ _
+irrel₀✗ c (⊩₀Fin p) (⊩₀Σ q _ _) _ with joinW c p q
+... | E , (mE , σE) with Σ-reduct σE
+...   | mkΣRed _ _ refl _ _ with Fin-nf mE
+...     | ()
+irrel₀✗ c (⊩₀IMu p _ _ _ _ _ _) (⊩₀Σ q _ _) _ with joinW c p q
+... | E , (mE , σE) with Σ-reduct σE
+...   | mkΣRed _ _ refl _ _ with IMu-reduct mE
+...     | mkIMuRed _ _ _ () _ _ _
+irrel₀✗ c (⊩₀Σ p _ _) (⊩₀Fin q) _ with joinW c p q
+... | E , (σE , mE) with Σ-reduct σE
+...   | mkΣRed _ _ refl _ _ with Fin-nf mE
+...     | ()
+irrel₀✗ c (⊩₀Σ p _ _) (⊩₀IMu q _ _ _ _ _ _) _ with joinW c p q
+... | E , (σE , mE) with Σ-reduct σE
+...   | mkΣRed _ _ refl _ _ with IMu-reduct mE
+...     | mkIMuRed _ _ _ () _ _ _
+irrel₀✗ c (⊩₀Fin p) (⊩₀Hom q sh) _ with joinW c p q
+... | E , (mE , hE) with Hom-stk-reduct sh hE
+...   | mkHomStk _ _ _ _ refl with Fin-nf mE
+...     | ()
+irrel₀✗ c (⊩₀IMu p _ _ _ _ _ _) (⊩₀Hom q sh) _ with joinW c p q
+... | E , (mE , hE) with Hom-stk-reduct sh hE
+...   | mkHomStk _ _ _ _ refl with IMu-reduct mE
+...     | mkIMuRed _ _ _ () _ _ _
+irrel₀✗ c (⊩₀Hom p sh) (⊩₀Fin q) _ with joinW c p q
+... | E , (hE , mE) with Hom-stk-reduct sh hE
+...   | mkHomStk _ _ _ _ refl with Fin-nf mE
+...     | ()
+irrel₀✗ c (⊩₀Hom p sh) (⊩₀IMu q _ _ _ _ _ _) _ with joinW c p q
+... | E , (hE , mE) with Hom-stk-reduct sh hE
+...   | mkHomStk _ _ _ _ refl with IMu-reduct mE
+...     | mkIMuRed _ _ _ () _ _ _
+irrel₀✗ c (⊩₀Fin p) (⊩₀Id q) _ with joinW c p q
+... | E , (mE , iE) with Id-reduct iE
+...   | _ , (_ , (_ , (refl , _))) with Fin-nf mE
+...     | ()
+irrel₀✗ c (⊩₀IMu p _ _ _ _ _ _) (⊩₀Id q) _ with joinW c p q
+... | E , (mE , iE) with Id-reduct iE
+...   | _ , (_ , (_ , (refl , _))) with IMu-reduct mE
+...     | mkIMuRed _ _ _ () _ _ _
+irrel₀✗ c (⊩₀Id p) (⊩₀Fin q) _ with joinW c p q
+... | E , (iE , mE) with Id-reduct iE
+...   | _ , (_ , (_ , (refl , _))) with Fin-nf mE
+...     | ()
+irrel₀✗ c (⊩₀Id p) (⊩₀IMu q _ _ _ _ _ _) _ with joinW c p q
+... | E , (iE , mE) with Id-reduct iE
+...   | _ , (_ , (_ , (refl , _))) with IMu-reduct mE
+...     | mkIMuRed _ _ _ () _ _ _
+irrel₀✗ c (⊩₀Fin p) (⊩₀Unit q) _ with joinW c p q
+... | E , (mE , uE) with Unit-nf uE
+...   | refl with Fin-nf mE
+...     | ()
+irrel₀✗ c (⊩₀IMu p _ _ _ _ _ _) (⊩₀Unit q) _ with joinW c p q
+... | E , (mE , uE) with Unit-nf uE
+...   | refl with IMu-reduct mE
+...     | mkIMuRed _ _ _ () _ _ _
+irrel₀✗ c (⊩₀Unit p) (⊩₀Fin q) _ with joinW c p q
+... | E , (uE , mE) with Unit-nf uE
+...   | refl with Fin-nf mE
+...     | ()
+irrel₀✗ c (⊩₀Unit p) (⊩₀IMu q _ _ _ _ _ _) _ with joinW c p q
+... | E , (uE , mE) with Unit-nf uE
+...   | refl with IMu-reduct mE
+...     | mkIMuRed _ _ _ () _ _ _
+irrel₀✗ c (⊩₀Fin p) (⊩₀Nat q) _ with joinW c p q
+... | E , (mE , nE) with Nat-nf nE
+...   | refl with Fin-nf mE
+...     | ()
+irrel₀✗ c (⊩₀IMu p _ _ _ _ _ _) (⊩₀Nat q) _ with joinW c p q
+... | E , (mE , nE) with Nat-nf nE
+...   | refl with IMu-reduct mE
+...     | mkIMuRed _ _ _ () _ _ _
+irrel₀✗ c (⊩₀Nat p) (⊩₀Fin q) _ with joinW c p q
+... | E , (nE , mE) with Nat-nf nE
+...   | refl with Fin-nf mE
+...     | ()
+irrel₀✗ c (⊩₀Nat p) (⊩₀IMu q _ _ _ _ _ _) _ with joinW c p q
+... | E , (nE , mE) with Nat-nf nE
+...   | refl with IMu-reduct mE
+...     | mkIMuRed _ _ _ () _ _ _
+
 irrel₀ : {A B : RTy Γ} → A ≅ᵀ B → (R : ⊩₀ A) (S : ⊩₀ B) →
          ((t : RTm Γ) → R ⊩₀∋ t → S ⊩₀∋ t) × ((t : RTm Γ) → S ⊩₀∋ t → R ⊩₀∋ t)
 
@@ -5513,48 +5963,18 @@ irrel₀ c (⊩₀ne _ _) (⊩₀base _) = (λ _ h → h) , (λ _ h → h)
 irrel₀ c (⊩₀ne _ _) (⊩₀ne _ _) = (λ _ h → h) , (λ _ h → h)
 
 -- one side `Π`, the other not: impossible, and `joinW` + the shape lemmas say so.
-irrel₀ c (⊩₀base p) (⊩₀Π q _ _) with joinW c p q
-... | E , (bE , πE) with base-nf bE
-...   | refl with Π-reduct πE
-...     | mkΠRed _ _ () _ _
-irrel₀ c (⊩₀ne p n) (⊩₀Π q _ _) with joinW c p q
-... | E , (eE , πE) with El-ne-reduct n eE
-...   | mkElNe _ _ refl with Π-reduct πE
-...     | mkΠRed _ _ () _ _
-irrel₀ c (⊩₀Π p _ _) (⊩₀base q) with joinW c p q
-... | E , (πE , bE) with base-nf bE
-...   | refl with Π-reduct πE
-...     | mkΠRed _ _ () _ _
-irrel₀ c (⊩₀Π p _ _) (⊩₀ne q n) with joinW c p q
-... | E , (πE , eE) with El-ne-reduct n eE
-...   | mkElNe _ _ refl with Π-reduct πE
-...     | mkΠRed _ _ () _ _
+irrel₀ c R@(⊩₀base p) S@(⊩₀Π q _ _) = ⊥-elim (irrel₀✗ c R S tt)
+irrel₀ c R@(⊩₀ne p n) S@(⊩₀Π q _ _) = ⊥-elim (irrel₀✗ c R S tt)
+irrel₀ c R@(⊩₀Π p _ _) S@(⊩₀base q) = ⊥-elim (irrel₀✗ c R S tt)
+irrel₀ c R@(⊩₀Π p _ _) S@(⊩₀ne q n) = ⊥-elim (irrel₀✗ c R S tt)
 
 -- `Σ'` against `base`/`ne`/`Π`, both ways: impossible.
-irrel₀ c (⊩₀base p) (⊩₀Σ q _ _) with joinW c p q
-... | E , (bE , σE) with base-nf bE
-...   | refl with Σ-reduct σE
-...     | mkΣRed _ _ () _ _
-irrel₀ c (⊩₀ne p n) (⊩₀Σ q _ _) with joinW c p q
-... | E , (eE , σE) with El-ne-reduct n eE
-...   | mkElNe _ _ refl with Σ-reduct σE
-...     | mkΣRed _ _ () _ _
-irrel₀ c (⊩₀Σ p _ _) (⊩₀base q) with joinW c p q
-... | E , (σE , bE) with base-nf bE
-...   | refl with Σ-reduct σE
-...     | mkΣRed _ _ () _ _
-irrel₀ c (⊩₀Σ p _ _) (⊩₀ne q n) with joinW c p q
-... | E , (σE , eE) with El-ne-reduct n eE
-...   | mkElNe _ _ refl with Σ-reduct σE
-...     | mkΣRed _ _ () _ _
-irrel₀ c (⊩₀Π p _ _) (⊩₀Σ q _ _) with joinW c p q
-... | E , (πE , σE) with Π-reduct πE
-...   | mkΠRed _ _ refl _ _ with Σ-reduct σE
-...     | mkΣRed _ _ () _ _
-irrel₀ c (⊩₀Σ p _ _) (⊩₀Π q _ _) with joinW c p q
-... | E , (σE , πE) with Π-reduct πE
-...   | mkΠRed _ _ refl _ _ with Σ-reduct σE
-...     | mkΣRed _ _ () _ _
+irrel₀ c R@(⊩₀base p) S@(⊩₀Σ q _ _) = ⊥-elim (irrel₀✗ c R S tt)
+irrel₀ c R@(⊩₀ne p n) S@(⊩₀Σ q _ _) = ⊥-elim (irrel₀✗ c R S tt)
+irrel₀ c R@(⊩₀Σ p _ _) S@(⊩₀base q) = ⊥-elim (irrel₀✗ c R S tt)
+irrel₀ c R@(⊩₀Σ p _ _) S@(⊩₀ne q n) = ⊥-elim (irrel₀✗ c R S tt)
+irrel₀ c R@(⊩₀Π p _ _) S@(⊩₀Σ q _ _) = ⊥-elim (irrel₀✗ c R S tt)
+irrel₀ c R@(⊩₀Σ p _ _) S@(⊩₀Π q _ _) = ⊥-elim (irrel₀✗ c R S tt)
 
 -- W2 stage 1: stuck-`Hom` identity, and its refutations against the
 -- other heads (`Hom-stk-reduct` pins the head, the other side's shape
@@ -5562,46 +5982,16 @@ irrel₀ c (⊩₀Σ p _ _) (⊩₀Π q _ _) with joinW c p q
 -- ★ `Id` against everything: the clashes ride `Id-reduct` (Id is
 -- inert); Id-Id is the REAL transfer — component joins re-base the
 -- endpoint payload (`idpay-transfer`).
-irrel₀ c (⊩₀Id p) (⊩₀base q) with joinW c p q
-... | E , (iE , bE) with base-nf bE
-...   | refl with Id-reduct iE
-...     | _ , (_ , (_ , ((), _)))
-irrel₀ c (⊩₀base p) (⊩₀Id q) with joinW c p q
-... | E , (bE , iE) with base-nf bE
-...   | refl with Id-reduct iE
-...     | _ , (_ , (_ , ((), _)))
-irrel₀ c (⊩₀Id p) (⊩₀ne q n) with joinW c p q
-... | E , (iE , eE) with El-ne-reduct n eE
-...   | mkElNe _ _ refl with Id-reduct iE
-...     | _ , (_ , (_ , ((), _)))
-irrel₀ c (⊩₀ne p n) (⊩₀Id q) with joinW c p q
-... | E , (eE , iE) with El-ne-reduct n eE
-...   | mkElNe _ _ refl with Id-reduct iE
-...     | _ , (_ , (_ , ((), _)))
-irrel₀ c (⊩₀Id p) (⊩₀Π q _ _) with joinW c p q
-... | E , (iE , πE) with Π-reduct πE
-...   | mkΠRed _ _ refl _ _ with Id-reduct iE
-...     | _ , (_ , (_ , ((), _)))
-irrel₀ c (⊩₀Π p _ _) (⊩₀Id q) with joinW c p q
-... | E , (πE , iE) with Π-reduct πE
-...   | mkΠRed _ _ refl _ _ with Id-reduct iE
-...     | _ , (_ , (_ , ((), _)))
-irrel₀ c (⊩₀Id p) (⊩₀Σ q _ _) with joinW c p q
-... | E , (iE , σE) with Σ-reduct σE
-...   | mkΣRed _ _ refl _ _ with Id-reduct iE
-...     | _ , (_ , (_ , ((), _)))
-irrel₀ c (⊩₀Σ p _ _) (⊩₀Id q) with joinW c p q
-... | E , (σE , iE) with Σ-reduct σE
-...   | mkΣRed _ _ refl _ _ with Id-reduct iE
-...     | _ , (_ , (_ , ((), _)))
-irrel₀ c (⊩₀Id p) (⊩₀Hom q sh) with joinW c p q
-... | E , (iE , hE) with Hom-stk-reduct sh hE
-...   | mkHomStk _ _ _ _ refl with Id-reduct iE
-...     | _ , (_ , (_ , ((), _)))
-irrel₀ c (⊩₀Hom p sh) (⊩₀Id q) with joinW c p q
-... | E , (hE , iE) with Hom-stk-reduct sh hE
-...   | mkHomStk _ _ _ _ refl with Id-reduct iE
-...     | _ , (_ , (_ , ((), _)))
+irrel₀ c R@(⊩₀Id p) S@(⊩₀base q) = ⊥-elim (irrel₀✗ c R S tt)
+irrel₀ c R@(⊩₀base p) S@(⊩₀Id q) = ⊥-elim (irrel₀✗ c R S tt)
+irrel₀ c R@(⊩₀Id p) S@(⊩₀ne q n) = ⊥-elim (irrel₀✗ c R S tt)
+irrel₀ c R@(⊩₀ne p n) S@(⊩₀Id q) = ⊥-elim (irrel₀✗ c R S tt)
+irrel₀ c R@(⊩₀Id p) S@(⊩₀Π q _ _) = ⊥-elim (irrel₀✗ c R S tt)
+irrel₀ c R@(⊩₀Π p _ _) S@(⊩₀Id q) = ⊥-elim (irrel₀✗ c R S tt)
+irrel₀ c R@(⊩₀Id p) S@(⊩₀Σ q _ _) = ⊥-elim (irrel₀✗ c R S tt)
+irrel₀ c R@(⊩₀Σ p _ _) S@(⊩₀Id q) = ⊥-elim (irrel₀✗ c R S tt)
+irrel₀ c R@(⊩₀Id p) S@(⊩₀Hom q sh) = ⊥-elim (irrel₀✗ c R S tt)
+irrel₀ c R@(⊩₀Hom p sh) S@(⊩₀Id q) = ⊥-elim (irrel₀✗ c R S tt)
 irrel₀ c (⊩₀Id {a = a} {b = b} p) (⊩₀Id {a = a'} {b = b'} q)
   with joinW c p q
 ... | E , (iE , iE') with Id-reduct iE | Id-reduct iE'
@@ -5617,14 +6007,8 @@ irrel₀ c (⊩₀Id {a = a} {b = b} p) (⊩₀Id {a = a'} {b = b'} q)
                                     (projr h) )) )
 -- ★ `Mu` vs `IMu` — DIFFERENT FORMERS, so no common reduct.  `Mu-nf`
 --   pins one side syntactically; `IMu-reduct` gives the other's shape.
-irrel₀ c (⊩₀Fin p) (⊩₀IMu q _ _ _ _ _ _) with joinW c p q
-... | E , (mE , iE) with Fin-nf mE
-...   | refl with IMu-reduct iE
-...     | mkIMuRed _ _ _ () _ _ _
-irrel₀ c (⊩₀IMu p _ _ _ _ _ _) (⊩₀Fin q) with joinW c p q
-... | E , (iE , mE) with Fin-nf mE
-...   | refl with IMu-reduct iE
-...     | mkIMuRed _ _ _ () _ _ _
+irrel₀ c R@(⊩₀Fin p) S@(⊩₀IMu q _ _ _ _ _ _) = ⊥-elim (irrel₀✗ c R S tt)
+irrel₀ c R@(⊩₀IMu p _ _ _ _ _ _) S@(⊩₀Fin q) = ⊥-elim (irrel₀✗ c R S tt)
 -- ★★★ THE DIAGONAL — the one case with real content, and the reason the
 --   `irrelIMu`/`iliftK` transfer layer exists.  ⚠ `⊩₀Mu`'s two reducts are
 --   SYNTACTICALLY EQUAL (`Mu-nf` twice, then `refl`).  `⊩₀IMu`'s are not:
@@ -5650,38 +6034,14 @@ irrel₀ c (⊩₀IMu p cI₁ cD₁ ci₁ ⊩I₁ vi₁ K₁) (⊩₀IMu q cI₂
           ( (λ _ h → (projl h , irrelIMu K₁ K₂ d₁ d₂ s₁ s₂ (projr h)))
           , (λ _ h → (projl h , irrelIMu K₂ K₁ d₂ d₁ s₂ s₁ (projr h))) )
 irrel₀ c (⊩₀Hom _ _) (⊩₀Hom _ _) = (λ _ h → h) , (λ _ h → h)
-irrel₀ c (⊩₀base p) (⊩₀Hom q s) with joinW c p q
-... | E , (bE , hE) with base-nf bE
-...   | refl with Hom-stk-reduct s hE
-...     | mkHomStk _ _ _ _ ()
-irrel₀ c (⊩₀Hom p s) (⊩₀base q) with joinW c p q
-... | E , (hE , bE) with base-nf bE
-...   | refl with Hom-stk-reduct s hE
-...     | mkHomStk _ _ _ _ ()
-irrel₀ c (⊩₀ne p n) (⊩₀Hom q s) with joinW c p q
-... | E , (eE , hE) with El-ne-reduct n eE
-...   | mkElNe _ _ refl with Hom-stk-reduct s hE
-...     | mkHomStk _ _ _ _ ()
-irrel₀ c (⊩₀Hom p s) (⊩₀ne q n) with joinW c p q
-... | E , (hE , eE) with El-ne-reduct n eE
-...   | mkElNe _ _ refl with Hom-stk-reduct s hE
-...     | mkHomStk _ _ _ _ ()
-irrel₀ c (⊩₀Π p _ _) (⊩₀Hom q s) with joinW c p q
-... | E , (πE , hE) with Π-reduct πE
-...   | mkΠRed _ _ refl _ _ with Hom-stk-reduct s hE
-...     | mkHomStk _ _ _ _ ()
-irrel₀ c (⊩₀Hom p s) (⊩₀Π q _ _) with joinW c p q
-... | E , (hE , πE) with Π-reduct πE
-...   | mkΠRed _ _ refl _ _ with Hom-stk-reduct s hE
-...     | mkHomStk _ _ _ _ ()
-irrel₀ c (⊩₀Σ p _ _) (⊩₀Hom q s) with joinW c p q
-... | E , (σE , hE) with Σ-reduct σE
-...   | mkΣRed _ _ refl _ _ with Hom-stk-reduct s hE
-...     | mkHomStk _ _ _ _ ()
-irrel₀ c (⊩₀Hom p s) (⊩₀Σ q _ _) with joinW c p q
-... | E , (hE , σE) with Σ-reduct σE
-...   | mkΣRed _ _ refl _ _ with Hom-stk-reduct s hE
-...     | mkHomStk _ _ _ _ ()
+irrel₀ c R@(⊩₀base p) S@(⊩₀Hom q s) = ⊥-elim (irrel₀✗ c R S tt)
+irrel₀ c R@(⊩₀Hom p s) S@(⊩₀base q) = ⊥-elim (irrel₀✗ c R S tt)
+irrel₀ c R@(⊩₀ne p n) S@(⊩₀Hom q s) = ⊥-elim (irrel₀✗ c R S tt)
+irrel₀ c R@(⊩₀Hom p s) S@(⊩₀ne q n) = ⊥-elim (irrel₀✗ c R S tt)
+irrel₀ c R@(⊩₀Π p _ _) S@(⊩₀Hom q s) = ⊥-elim (irrel₀✗ c R S tt)
+irrel₀ c R@(⊩₀Hom p s) S@(⊩₀Π q _ _) = ⊥-elim (irrel₀✗ c R S tt)
+irrel₀ c R@(⊩₀Σ p _ _) S@(⊩₀Hom q s) = ⊥-elim (irrel₀✗ c R S tt)
+irrel₀ c R@(⊩₀Hom p s) S@(⊩₀Σ q _ _) = ⊥-elim (irrel₀✗ c R S tt)
 
 -- the real case: confluence forces convertible domain AND codomain.
 irrel₀ c (⊩₀Π p ⊩F ⊩G) (⊩₀Π q ⊩F' ⊩G') with joinW c p q
@@ -5749,243 +6109,69 @@ irrel₀ c (⊩₀Σ p ⊩F ⊩G) (⊩₀Σ q ⊩F' ⊩G') with joinW c p q
 -- ★ WF stage C: the datatype rows of the level-0 clash matrix (the
 -- ~28 the level-1 matrix already carries, minus the `U` column that
 -- level 0 does not have).
-irrel₀ c (⊩₀Unit p) (⊩₀base q) with joinW c p q
-... | E , (mE , bE) with base-nf bE
-...   | refl with Unit-nf mE
-...     | ()
-irrel₀ c (⊩₀base p) (⊩₀Unit q) with joinW c p q
-... | E , (bE , mE) with base-nf bE
-...   | refl with Unit-nf mE
-...     | ()
-irrel₀ c (⊩₀Unit p) (⊩₀ne q n) with joinW c p q
-... | E , (mE , eE) with El-ne-reduct n eE
-...   | mkElNe _ _ refl with Unit-nf mE
-...     | ()
-irrel₀ c (⊩₀ne p n) (⊩₀Unit q) with joinW c p q
-... | E , (eE , mE) with El-ne-reduct n eE
-...   | mkElNe _ _ refl with Unit-nf mE
-...     | ()
-irrel₀ c (⊩₀Unit p) (⊩₀Π q _ _) with joinW c p q
-... | E , (mE , πE) with Π-reduct πE
-...   | mkΠRed _ _ refl _ _ with Unit-nf mE
-...     | ()
-irrel₀ c (⊩₀Π p _ _) (⊩₀Unit q) with joinW c p q
-... | E , (πE , mE) with Π-reduct πE
-...   | mkΠRed _ _ refl _ _ with Unit-nf mE
-...     | ()
-irrel₀ c (⊩₀Unit p) (⊩₀Σ q _ _) with joinW c p q
-... | E , (mE , σE) with Σ-reduct σE
-...   | mkΣRed _ _ refl _ _ with Unit-nf mE
-...     | ()
-irrel₀ c (⊩₀Σ p _ _) (⊩₀Unit q) with joinW c p q
-... | E , (σE , mE) with Σ-reduct σE
-...   | mkΣRed _ _ refl _ _ with Unit-nf mE
-...     | ()
-irrel₀ c (⊩₀Unit p) (⊩₀Hom q sh) with joinW c p q
-... | E , (mE , hE) with Hom-stk-reduct sh hE
-...   | mkHomStk _ _ _ _ refl with Unit-nf mE
-...     | ()
-irrel₀ c (⊩₀Hom p sh) (⊩₀Unit q) with joinW c p q
-... | E , (hE , mE) with Hom-stk-reduct sh hE
-...   | mkHomStk _ _ _ _ refl with Unit-nf mE
-...     | ()
-irrel₀ c (⊩₀Unit p) (⊩₀Id q) with joinW c p q
-... | E , (mE , iE) with Id-reduct iE
-...   | _ , (_ , (_ , (refl , _))) with Unit-nf mE
-...     | ()
-irrel₀ c (⊩₀Id p) (⊩₀Unit q) with joinW c p q
-... | E , (iE , mE) with Id-reduct iE
-...   | _ , (_ , (_ , (refl , _))) with Unit-nf mE
-...     | ()
-irrel₀ c (⊩₀Nat p) (⊩₀base q) with joinW c p q
-... | E , (mE , bE) with base-nf bE
-...   | refl with Nat-nf mE
-...     | ()
-irrel₀ c (⊩₀base p) (⊩₀Nat q) with joinW c p q
-... | E , (bE , mE) with base-nf bE
-...   | refl with Nat-nf mE
-...     | ()
-irrel₀ c (⊩₀Nat p) (⊩₀ne q n) with joinW c p q
-... | E , (mE , eE) with El-ne-reduct n eE
-...   | mkElNe _ _ refl with Nat-nf mE
-...     | ()
-irrel₀ c (⊩₀ne p n) (⊩₀Nat q) with joinW c p q
-... | E , (eE , mE) with El-ne-reduct n eE
-...   | mkElNe _ _ refl with Nat-nf mE
-...     | ()
-irrel₀ c (⊩₀Nat p) (⊩₀Π q _ _) with joinW c p q
-... | E , (mE , πE) with Π-reduct πE
-...   | mkΠRed _ _ refl _ _ with Nat-nf mE
-...     | ()
-irrel₀ c (⊩₀Π p _ _) (⊩₀Nat q) with joinW c p q
-... | E , (πE , mE) with Π-reduct πE
-...   | mkΠRed _ _ refl _ _ with Nat-nf mE
-...     | ()
-irrel₀ c (⊩₀Nat p) (⊩₀Σ q _ _) with joinW c p q
-... | E , (mE , σE) with Σ-reduct σE
-...   | mkΣRed _ _ refl _ _ with Nat-nf mE
-...     | ()
-irrel₀ c (⊩₀Σ p _ _) (⊩₀Nat q) with joinW c p q
-... | E , (σE , mE) with Σ-reduct σE
-...   | mkΣRed _ _ refl _ _ with Nat-nf mE
-...     | ()
-irrel₀ c (⊩₀Nat p) (⊩₀Hom q sh) with joinW c p q
-... | E , (mE , hE) with Hom-stk-reduct sh hE
-...   | mkHomStk _ _ _ _ refl with Nat-nf mE
-...     | ()
-irrel₀ c (⊩₀Hom p sh) (⊩₀Nat q) with joinW c p q
-... | E , (hE , mE) with Hom-stk-reduct sh hE
-...   | mkHomStk _ _ _ _ refl with Nat-nf mE
-...     | ()
-irrel₀ c (⊩₀Nat p) (⊩₀Id q) with joinW c p q
-... | E , (mE , iE) with Id-reduct iE
-...   | _ , (_ , (_ , (refl , _))) with Nat-nf mE
-...     | ()
-irrel₀ c (⊩₀Id p) (⊩₀Nat q) with joinW c p q
-... | E , (iE , mE) with Id-reduct iE
-...   | _ , (_ , (_ , (refl , _))) with Nat-nf mE
-...     | ()
-irrel₀ c (⊩₀Unit p) (⊩₀Nat q) with joinW c p q
-... | E , (uE , nE) with Nat-nf nE
-...   | refl with Unit-nf uE
-...     | ()
-irrel₀ c (⊩₀Nat p) (⊩₀Unit q) with joinW c p q
-... | E , (nE , uE) with Nat-nf nE
-...   | refl with Unit-nf uE
-...     | ()
+irrel₀ c R@(⊩₀Unit p) S@(⊩₀base q) = ⊥-elim (irrel₀✗ c R S tt)
+irrel₀ c R@(⊩₀base p) S@(⊩₀Unit q) = ⊥-elim (irrel₀✗ c R S tt)
+irrel₀ c R@(⊩₀Unit p) S@(⊩₀ne q n) = ⊥-elim (irrel₀✗ c R S tt)
+irrel₀ c R@(⊩₀ne p n) S@(⊩₀Unit q) = ⊥-elim (irrel₀✗ c R S tt)
+irrel₀ c R@(⊩₀Unit p) S@(⊩₀Π q _ _) = ⊥-elim (irrel₀✗ c R S tt)
+irrel₀ c R@(⊩₀Π p _ _) S@(⊩₀Unit q) = ⊥-elim (irrel₀✗ c R S tt)
+irrel₀ c R@(⊩₀Unit p) S@(⊩₀Σ q _ _) = ⊥-elim (irrel₀✗ c R S tt)
+irrel₀ c R@(⊩₀Σ p _ _) S@(⊩₀Unit q) = ⊥-elim (irrel₀✗ c R S tt)
+irrel₀ c R@(⊩₀Unit p) S@(⊩₀Hom q sh) = ⊥-elim (irrel₀✗ c R S tt)
+irrel₀ c R@(⊩₀Hom p sh) S@(⊩₀Unit q) = ⊥-elim (irrel₀✗ c R S tt)
+irrel₀ c R@(⊩₀Unit p) S@(⊩₀Id q) = ⊥-elim (irrel₀✗ c R S tt)
+irrel₀ c R@(⊩₀Id p) S@(⊩₀Unit q) = ⊥-elim (irrel₀✗ c R S tt)
+irrel₀ c R@(⊩₀Nat p) S@(⊩₀base q) = ⊥-elim (irrel₀✗ c R S tt)
+irrel₀ c R@(⊩₀base p) S@(⊩₀Nat q) = ⊥-elim (irrel₀✗ c R S tt)
+irrel₀ c R@(⊩₀Nat p) S@(⊩₀ne q n) = ⊥-elim (irrel₀✗ c R S tt)
+irrel₀ c R@(⊩₀ne p n) S@(⊩₀Nat q) = ⊥-elim (irrel₀✗ c R S tt)
+irrel₀ c R@(⊩₀Nat p) S@(⊩₀Π q _ _) = ⊥-elim (irrel₀✗ c R S tt)
+irrel₀ c R@(⊩₀Π p _ _) S@(⊩₀Nat q) = ⊥-elim (irrel₀✗ c R S tt)
+irrel₀ c R@(⊩₀Nat p) S@(⊩₀Σ q _ _) = ⊥-elim (irrel₀✗ c R S tt)
+irrel₀ c R@(⊩₀Σ p _ _) S@(⊩₀Nat q) = ⊥-elim (irrel₀✗ c R S tt)
+irrel₀ c R@(⊩₀Nat p) S@(⊩₀Hom q sh) = ⊥-elim (irrel₀✗ c R S tt)
+irrel₀ c R@(⊩₀Hom p sh) S@(⊩₀Nat q) = ⊥-elim (irrel₀✗ c R S tt)
+irrel₀ c R@(⊩₀Nat p) S@(⊩₀Id q) = ⊥-elim (irrel₀✗ c R S tt)
+irrel₀ c R@(⊩₀Id p) S@(⊩₀Nat q) = ⊥-elim (irrel₀✗ c R S tt)
+irrel₀ c R@(⊩₀Unit p) S@(⊩₀Nat q) = ⊥-elim (irrel₀✗ c R S tt)
+irrel₀ c R@(⊩₀Nat p) S@(⊩₀Unit q) = ⊥-elim (irrel₀✗ c R S tt)
 irrel₀ c (⊩₀Unit _) (⊩₀Unit _) = (λ _ h → h) , (λ _ h → h)
 irrel₀ c (⊩₀Nat _)  (⊩₀Nat _)  = (λ _ h → h) , (λ _ h → h)
 
 -- ★ `Mu` versus every other former: `Mu D` is a NORMAL FORM (`Mu-nf`), so
 --   any join with a differently-headed type is absurd.
-irrel₀ c (⊩₀Fin p) (⊩₀base q) with joinW c p q
-... | E , (mE , bE) with base-nf bE
-...   | refl with Fin-nf mE
-...     | ()
-irrel₀ c (⊩₀IMu p _ _ _ _ _ _) (⊩₀base q) with joinW c p q
-... | E , (mE , bE) with base-nf bE
-...   | refl with IMu-reduct mE
-...     | mkIMuRed _ _ _ () _ _ _
-irrel₀ c (⊩₀base p) (⊩₀Fin q) with joinW c p q
-... | E , (bE , mE) with base-nf bE
-...   | refl with Fin-nf mE
-...     | ()
-irrel₀ c (⊩₀base p) (⊩₀IMu q _ _ _ _ _ _) with joinW c p q
-... | E , (bE , mE) with base-nf bE
-...   | refl with IMu-reduct mE
-...     | mkIMuRed _ _ _ () _ _ _
-irrel₀ c (⊩₀Fin p) (⊩₀ne q n) with joinW c p q
-... | E , (mE , eE) with El-ne-reduct n eE
-...   | mkElNe _ _ refl with Fin-nf mE
-...     | ()
-irrel₀ c (⊩₀IMu p _ _ _ _ _ _) (⊩₀ne q n) with joinW c p q
-... | E , (mE , eE) with El-ne-reduct n eE
-...   | mkElNe _ _ refl with IMu-reduct mE
-...     | mkIMuRed _ _ _ () _ _ _
-irrel₀ c (⊩₀ne p n) (⊩₀Fin q) with joinW c p q
-... | E , (eE , mE) with El-ne-reduct n eE
-...   | mkElNe _ _ refl with Fin-nf mE
-...     | ()
-irrel₀ c (⊩₀ne p n) (⊩₀IMu q _ _ _ _ _ _) with joinW c p q
-... | E , (eE , mE) with El-ne-reduct n eE
-...   | mkElNe _ _ refl with IMu-reduct mE
-...     | mkIMuRed _ _ _ () _ _ _
-irrel₀ c (⊩₀Fin p) (⊩₀Π q _ _) with joinW c p q
-... | E , (mE , πE) with Π-reduct πE
-...   | mkΠRed _ _ refl _ _ with Fin-nf mE
-...     | ()
-irrel₀ c (⊩₀IMu p _ _ _ _ _ _) (⊩₀Π q _ _) with joinW c p q
-... | E , (mE , πE) with Π-reduct πE
-...   | mkΠRed _ _ refl _ _ with IMu-reduct mE
-...     | mkIMuRed _ _ _ () _ _ _
-irrel₀ c (⊩₀Π p _ _) (⊩₀Fin q) with joinW c p q
-... | E , (πE , mE) with Π-reduct πE
-...   | mkΠRed _ _ refl _ _ with Fin-nf mE
-...     | ()
-irrel₀ c (⊩₀Π p _ _) (⊩₀IMu q _ _ _ _ _ _) with joinW c p q
-... | E , (πE , mE) with Π-reduct πE
-...   | mkΠRed _ _ refl _ _ with IMu-reduct mE
-...     | mkIMuRed _ _ _ () _ _ _
-irrel₀ c (⊩₀Fin p) (⊩₀Σ q _ _) with joinW c p q
-... | E , (mE , σE) with Σ-reduct σE
-...   | mkΣRed _ _ refl _ _ with Fin-nf mE
-...     | ()
-irrel₀ c (⊩₀IMu p _ _ _ _ _ _) (⊩₀Σ q _ _) with joinW c p q
-... | E , (mE , σE) with Σ-reduct σE
-...   | mkΣRed _ _ refl _ _ with IMu-reduct mE
-...     | mkIMuRed _ _ _ () _ _ _
-irrel₀ c (⊩₀Σ p _ _) (⊩₀Fin q) with joinW c p q
-... | E , (σE , mE) with Σ-reduct σE
-...   | mkΣRed _ _ refl _ _ with Fin-nf mE
-...     | ()
-irrel₀ c (⊩₀Σ p _ _) (⊩₀IMu q _ _ _ _ _ _) with joinW c p q
-... | E , (σE , mE) with Σ-reduct σE
-...   | mkΣRed _ _ refl _ _ with IMu-reduct mE
-...     | mkIMuRed _ _ _ () _ _ _
-irrel₀ c (⊩₀Fin p) (⊩₀Hom q sh) with joinW c p q
-... | E , (mE , hE) with Hom-stk-reduct sh hE
-...   | mkHomStk _ _ _ _ refl with Fin-nf mE
-...     | ()
-irrel₀ c (⊩₀IMu p _ _ _ _ _ _) (⊩₀Hom q sh) with joinW c p q
-... | E , (mE , hE) with Hom-stk-reduct sh hE
-...   | mkHomStk _ _ _ _ refl with IMu-reduct mE
-...     | mkIMuRed _ _ _ () _ _ _
-irrel₀ c (⊩₀Hom p sh) (⊩₀Fin q) with joinW c p q
-... | E , (hE , mE) with Hom-stk-reduct sh hE
-...   | mkHomStk _ _ _ _ refl with Fin-nf mE
-...     | ()
-irrel₀ c (⊩₀Hom p sh) (⊩₀IMu q _ _ _ _ _ _) with joinW c p q
-... | E , (hE , mE) with Hom-stk-reduct sh hE
-...   | mkHomStk _ _ _ _ refl with IMu-reduct mE
-...     | mkIMuRed _ _ _ () _ _ _
-irrel₀ c (⊩₀Fin p) (⊩₀Id q) with joinW c p q
-... | E , (mE , iE) with Id-reduct iE
-...   | _ , (_ , (_ , (refl , _))) with Fin-nf mE
-...     | ()
-irrel₀ c (⊩₀IMu p _ _ _ _ _ _) (⊩₀Id q) with joinW c p q
-... | E , (mE , iE) with Id-reduct iE
-...   | _ , (_ , (_ , (refl , _))) with IMu-reduct mE
-...     | mkIMuRed _ _ _ () _ _ _
-irrel₀ c (⊩₀Id p) (⊩₀Fin q) with joinW c p q
-... | E , (iE , mE) with Id-reduct iE
-...   | _ , (_ , (_ , (refl , _))) with Fin-nf mE
-...     | ()
-irrel₀ c (⊩₀Id p) (⊩₀IMu q _ _ _ _ _ _) with joinW c p q
-... | E , (iE , mE) with Id-reduct iE
-...   | _ , (_ , (_ , (refl , _))) with IMu-reduct mE
-...     | mkIMuRed _ _ _ () _ _ _
-irrel₀ c (⊩₀Fin p) (⊩₀Unit q) with joinW c p q
-... | E , (mE , uE) with Unit-nf uE
-...   | refl with Fin-nf mE
-...     | ()
-irrel₀ c (⊩₀IMu p _ _ _ _ _ _) (⊩₀Unit q) with joinW c p q
-... | E , (mE , uE) with Unit-nf uE
-...   | refl with IMu-reduct mE
-...     | mkIMuRed _ _ _ () _ _ _
-irrel₀ c (⊩₀Unit p) (⊩₀Fin q) with joinW c p q
-... | E , (uE , mE) with Unit-nf uE
-...   | refl with Fin-nf mE
-...     | ()
-irrel₀ c (⊩₀Unit p) (⊩₀IMu q _ _ _ _ _ _) with joinW c p q
-... | E , (uE , mE) with Unit-nf uE
-...   | refl with IMu-reduct mE
-...     | mkIMuRed _ _ _ () _ _ _
-irrel₀ c (⊩₀Fin p) (⊩₀Nat q) with joinW c p q
-... | E , (mE , nE) with Nat-nf nE
-...   | refl with Fin-nf mE
-...     | ()
-irrel₀ c (⊩₀IMu p _ _ _ _ _ _) (⊩₀Nat q) with joinW c p q
-... | E , (mE , nE) with Nat-nf nE
-...   | refl with IMu-reduct mE
-...     | mkIMuRed _ _ _ () _ _ _
-irrel₀ c (⊩₀Nat p) (⊩₀Fin q) with joinW c p q
-... | E , (nE , mE) with Nat-nf nE
-...   | refl with Fin-nf mE
-...     | ()
-irrel₀ c (⊩₀Nat p) (⊩₀IMu q _ _ _ _ _ _) with joinW c p q
-... | E , (nE , mE) with Nat-nf nE
-...   | refl with IMu-reduct mE
-...     | mkIMuRed _ _ _ () _ _ _
+irrel₀ c R@(⊩₀Fin p) S@(⊩₀base q) = ⊥-elim (irrel₀✗ c R S tt)
+irrel₀ c R@(⊩₀IMu p _ _ _ _ _ _) S@(⊩₀base q) = ⊥-elim (irrel₀✗ c R S tt)
+irrel₀ c R@(⊩₀base p) S@(⊩₀Fin q) = ⊥-elim (irrel₀✗ c R S tt)
+irrel₀ c R@(⊩₀base p) S@(⊩₀IMu q _ _ _ _ _ _) = ⊥-elim (irrel₀✗ c R S tt)
+irrel₀ c R@(⊩₀Fin p) S@(⊩₀ne q n) = ⊥-elim (irrel₀✗ c R S tt)
+irrel₀ c R@(⊩₀IMu p _ _ _ _ _ _) S@(⊩₀ne q n) = ⊥-elim (irrel₀✗ c R S tt)
+irrel₀ c R@(⊩₀ne p n) S@(⊩₀Fin q) = ⊥-elim (irrel₀✗ c R S tt)
+irrel₀ c R@(⊩₀ne p n) S@(⊩₀IMu q _ _ _ _ _ _) = ⊥-elim (irrel₀✗ c R S tt)
+irrel₀ c R@(⊩₀Fin p) S@(⊩₀Π q _ _) = ⊥-elim (irrel₀✗ c R S tt)
+irrel₀ c R@(⊩₀IMu p _ _ _ _ _ _) S@(⊩₀Π q _ _) = ⊥-elim (irrel₀✗ c R S tt)
+irrel₀ c R@(⊩₀Π p _ _) S@(⊩₀Fin q) = ⊥-elim (irrel₀✗ c R S tt)
+irrel₀ c R@(⊩₀Π p _ _) S@(⊩₀IMu q _ _ _ _ _ _) = ⊥-elim (irrel₀✗ c R S tt)
+irrel₀ c R@(⊩₀Fin p) S@(⊩₀Σ q _ _) = ⊥-elim (irrel₀✗ c R S tt)
+irrel₀ c R@(⊩₀IMu p _ _ _ _ _ _) S@(⊩₀Σ q _ _) = ⊥-elim (irrel₀✗ c R S tt)
+irrel₀ c R@(⊩₀Σ p _ _) S@(⊩₀Fin q) = ⊥-elim (irrel₀✗ c R S tt)
+irrel₀ c R@(⊩₀Σ p _ _) S@(⊩₀IMu q _ _ _ _ _ _) = ⊥-elim (irrel₀✗ c R S tt)
+irrel₀ c R@(⊩₀Fin p) S@(⊩₀Hom q sh) = ⊥-elim (irrel₀✗ c R S tt)
+irrel₀ c R@(⊩₀IMu p _ _ _ _ _ _) S@(⊩₀Hom q sh) = ⊥-elim (irrel₀✗ c R S tt)
+irrel₀ c R@(⊩₀Hom p sh) S@(⊩₀Fin q) = ⊥-elim (irrel₀✗ c R S tt)
+irrel₀ c R@(⊩₀Hom p sh) S@(⊩₀IMu q _ _ _ _ _ _) = ⊥-elim (irrel₀✗ c R S tt)
+irrel₀ c R@(⊩₀Fin p) S@(⊩₀Id q) = ⊥-elim (irrel₀✗ c R S tt)
+irrel₀ c R@(⊩₀IMu p _ _ _ _ _ _) S@(⊩₀Id q) = ⊥-elim (irrel₀✗ c R S tt)
+irrel₀ c R@(⊩₀Id p) S@(⊩₀Fin q) = ⊥-elim (irrel₀✗ c R S tt)
+irrel₀ c R@(⊩₀Id p) S@(⊩₀IMu q _ _ _ _ _ _) = ⊥-elim (irrel₀✗ c R S tt)
+irrel₀ c R@(⊩₀Fin p) S@(⊩₀Unit q) = ⊥-elim (irrel₀✗ c R S tt)
+irrel₀ c R@(⊩₀IMu p _ _ _ _ _ _) S@(⊩₀Unit q) = ⊥-elim (irrel₀✗ c R S tt)
+irrel₀ c R@(⊩₀Unit p) S@(⊩₀Fin q) = ⊥-elim (irrel₀✗ c R S tt)
+irrel₀ c R@(⊩₀Unit p) S@(⊩₀IMu q _ _ _ _ _ _) = ⊥-elim (irrel₀✗ c R S tt)
+irrel₀ c R@(⊩₀Fin p) S@(⊩₀Nat q) = ⊥-elim (irrel₀✗ c R S tt)
+irrel₀ c R@(⊩₀IMu p _ _ _ _ _ _) S@(⊩₀Nat q) = ⊥-elim (irrel₀✗ c R S tt)
+irrel₀ c R@(⊩₀Nat p) S@(⊩₀Fin q) = ⊥-elim (irrel₀✗ c R S tt)
+irrel₀ c R@(⊩₀Nat p) S@(⊩₀IMu q _ _ _ _ _ _) = ⊥-elim (irrel₀✗ c R S tt)
 -- ★★ `Mu`/`Mu`: the join forces the two DESCRIPTIONS equal (matching the
 --   second `refl` inverts `Mu`'s injectivity), but NOT the two `DPred`s —
 --   that residual difference is precisely what `irrelMu` collapses.
@@ -6513,474 +6699,912 @@ DIhNe-reduct n (stepᵀ (ξ-DIhᵖ r) p) = DIhNe-reduct n p
 -- carried `⊩₀ (El t)` does not mention the `⊩₁` derivation.
 ------------------------------------------------------------------------
 
+-- ★ the OFF-DIAGONAL pairs of `irrel₁`, refuted OUTSIDE its mutual block.
+--   Written inline, their `with` chains were 462 with-functions INSIDE the
+--   recursive block, and positivity closed a graph of thousands of argument
+--   nodes (2026-09-30 trace: the build's largest positivity site).  `Cross₁`
+--   is ⊤ exactly on the refuted pairs; the rest are discharged by coverage.
+Cross₁ : {A B : RTy Γ} → ⊩₁ A → ⊩₁ B → Set
+Cross₁ (⊩₁Unit p) (⊩₁base q) = ⊤
+Cross₁ (⊩₁base p) (⊩₁Unit q) = ⊤
+Cross₁ (⊩₁Unit p) (⊩₁U q) = ⊤
+Cross₁ (⊩₁U p) (⊩₁Unit q) = ⊤
+Cross₁ (⊩₁Unit p) (⊩₁ne q n) = ⊤
+Cross₁ (⊩₁ne p n) (⊩₁Unit q) = ⊤
+Cross₁ (⊩₁Unit p) (⊩₁Π q _ _) = ⊤
+Cross₁ (⊩₁Π p _ _) (⊩₁Unit q) = ⊤
+Cross₁ (⊩₁Unit p) (⊩₁Σ q _ _) = ⊤
+Cross₁ (⊩₁Σ p _ _) (⊩₁Unit q) = ⊤
+Cross₁ (⊩₁Unit p) (⊩₁Hom q sh) = ⊤
+Cross₁ (⊩₁Hom p sh) (⊩₁Unit q) = ⊤
+Cross₁ (⊩₁Unit p) (⊩₁Id q) = ⊤
+Cross₁ (⊩₁Id p) (⊩₁Unit q) = ⊤
+Cross₁ (⊩₁Nat p) (⊩₁base q) = ⊤
+Cross₁ (⊩₁base p) (⊩₁Nat q) = ⊤
+Cross₁ (⊩₁Nat p) (⊩₁U q) = ⊤
+Cross₁ (⊩₁U p) (⊩₁Nat q) = ⊤
+Cross₁ (⊩₁Nat p) (⊩₁ne q n) = ⊤
+Cross₁ (⊩₁ne p n) (⊩₁Nat q) = ⊤
+Cross₁ (⊩₁Nat p) (⊩₁Π q _ _) = ⊤
+Cross₁ (⊩₁Π p _ _) (⊩₁Nat q) = ⊤
+Cross₁ (⊩₁Nat p) (⊩₁Σ q _ _) = ⊤
+Cross₁ (⊩₁Σ p _ _) (⊩₁Nat q) = ⊤
+Cross₁ (⊩₁Nat p) (⊩₁Hom q sh) = ⊤
+Cross₁ (⊩₁Hom p sh) (⊩₁Nat q) = ⊤
+Cross₁ (⊩₁Nat p) (⊩₁Id q) = ⊤
+Cross₁ (⊩₁Id p) (⊩₁Nat q) = ⊤
+Cross₁ (⊩₁Unit p) (⊩₁Nat q) = ⊤
+Cross₁ (⊩₁Nat p) (⊩₁Unit q) = ⊤
+Cross₁ (⊩₁Fin p) (⊩₁base q) = ⊤
+Cross₁ (⊩₁IMu p _ _ _ _ _ _) (⊩₁base q) = ⊤
+Cross₁ (⊩₁base p) (⊩₁Fin q) = ⊤
+Cross₁ (⊩₁base p) (⊩₁IMu q _ _ _ _ _ _) = ⊤
+Cross₁ (⊩₁Fin p) (⊩₁U q) = ⊤
+Cross₁ (⊩₁IMu p _ _ _ _ _ _) (⊩₁U q) = ⊤
+Cross₁ (⊩₁U p) (⊩₁Fin q) = ⊤
+Cross₁ (⊩₁U p) (⊩₁IMu q _ _ _ _ _ _) = ⊤
+Cross₁ (⊩₁Fin p) (⊩₁ne q n) = ⊤
+Cross₁ (⊩₁IMu p _ _ _ _ _ _) (⊩₁ne q n) = ⊤
+Cross₁ (⊩₁ne p n) (⊩₁Fin q) = ⊤
+Cross₁ (⊩₁ne p n) (⊩₁IMu q _ _ _ _ _ _) = ⊤
+Cross₁ (⊩₁Fin p) (⊩₁Π q _ _) = ⊤
+Cross₁ (⊩₁IMu p _ _ _ _ _ _) (⊩₁Π q _ _) = ⊤
+Cross₁ (⊩₁Π p _ _) (⊩₁Fin q) = ⊤
+Cross₁ (⊩₁Π p _ _) (⊩₁IMu q _ _ _ _ _ _) = ⊤
+Cross₁ (⊩₁Fin p) (⊩₁Σ q _ _) = ⊤
+Cross₁ (⊩₁IMu p _ _ _ _ _ _) (⊩₁Σ q _ _) = ⊤
+Cross₁ (⊩₁Σ p _ _) (⊩₁Fin q) = ⊤
+Cross₁ (⊩₁Σ p _ _) (⊩₁IMu q _ _ _ _ _ _) = ⊤
+Cross₁ (⊩₁Fin p) (⊩₁Hom q sh) = ⊤
+Cross₁ (⊩₁IMu p _ _ _ _ _ _) (⊩₁Hom q sh) = ⊤
+Cross₁ (⊩₁Hom p sh) (⊩₁Fin q) = ⊤
+Cross₁ (⊩₁Hom p sh) (⊩₁IMu q _ _ _ _ _ _) = ⊤
+Cross₁ (⊩₁Fin p) (⊩₁Unit q) = ⊤
+Cross₁ (⊩₁IMu p _ _ _ _ _ _) (⊩₁Unit q) = ⊤
+Cross₁ (⊩₁Unit p) (⊩₁Fin q) = ⊤
+Cross₁ (⊩₁Unit p) (⊩₁IMu q _ _ _ _ _ _) = ⊤
+Cross₁ (⊩₁Fin p) (⊩₁Nat q) = ⊤
+Cross₁ (⊩₁IMu p _ _ _ _ _ _) (⊩₁Nat q) = ⊤
+Cross₁ (⊩₁Nat p) (⊩₁Fin q) = ⊤
+Cross₁ (⊩₁Nat p) (⊩₁IMu q _ _ _ _ _ _) = ⊤
+Cross₁ (⊩₁Fin p) (⊩₁Id q) = ⊤
+Cross₁ (⊩₁IMu p _ _ _ _ _ _) (⊩₁Id q) = ⊤
+Cross₁ (⊩₁Id p) (⊩₁Fin q) = ⊤
+Cross₁ (⊩₁Id p) (⊩₁IMu q _ _ _ _ _ _) = ⊤
+Cross₁ (⊩₁Fin p) (⊩₁IMu q _ _ _ _ _ _) = ⊤
+Cross₁ (⊩₁IMu p _ _ _ _ _ _) (⊩₁Fin q) = ⊤
+Cross₁ (⊩₁Desc p _ _) (⊩₁base q) = ⊤
+Cross₁ (⊩₁base p) (⊩₁Desc q _ _) = ⊤
+Cross₁ (⊩₁Desc p _ _) (⊩₁U q) = ⊤
+Cross₁ (⊩₁U p) (⊩₁Desc q _ _) = ⊤
+Cross₁ (⊩₁Desc p _ _) (⊩₁ne q n₂) = ⊤
+Cross₁ (⊩₁ne p n₁) (⊩₁Desc q _ _) = ⊤
+Cross₁ (⊩₁Desc p _ _) (⊩₁Π q _ _) = ⊤
+Cross₁ (⊩₁Π p _ _) (⊩₁Desc q _ _) = ⊤
+Cross₁ (⊩₁Desc p _ _) (⊩₁Σ q _ _) = ⊤
+Cross₁ (⊩₁Σ p _ _) (⊩₁Desc q _ _) = ⊤
+Cross₁ (⊩₁Desc p _ _) (⊩₁Hom q sh₂) = ⊤
+Cross₁ (⊩₁Hom p sh₁) (⊩₁Desc q _ _) = ⊤
+Cross₁ (⊩₁Desc p _ _) (⊩₁Unit q) = ⊤
+Cross₁ (⊩₁Unit p) (⊩₁Desc q _ _) = ⊤
+Cross₁ (⊩₁Desc p _ _) (⊩₁Nat q) = ⊤
+Cross₁ (⊩₁Nat p) (⊩₁Desc q _ _) = ⊤
+Cross₁ (⊩₁Desc p _ _) (⊩₁Id q) = ⊤
+Cross₁ (⊩₁Id p) (⊩₁Desc q _ _) = ⊤
+Cross₁ (⊩₁Desc p _ _) (⊩₁IMu q _ _ _ _ _ _) = ⊤
+Cross₁ (⊩₁IMu p _ _ _ _ _ _) (⊩₁Desc q _ _) = ⊤
+Cross₁ (⊩₁Desc p _ _) (⊩₁Fin q) = ⊤
+Cross₁ (⊩₁Fin p) (⊩₁Desc q _ _) = ⊤
+Cross₁ (⊩₁Desc p _ _) (⊩₁DIhNe q n₂) = ⊤
+Cross₁ (⊩₁DIhNe p n₁) (⊩₁base q) = ⊤
+Cross₁ (⊩₁base p) (⊩₁DIhNe q n₂) = ⊤
+Cross₁ (⊩₁DIhNe p n₁) (⊩₁U q) = ⊤
+Cross₁ (⊩₁U p) (⊩₁DIhNe q n₂) = ⊤
+Cross₁ (⊩₁DIhNe p n₁) (⊩₁ne q n₂) = ⊤
+Cross₁ (⊩₁ne p n₁) (⊩₁DIhNe q n₂) = ⊤
+Cross₁ (⊩₁DIhNe p n₁) (⊩₁Π q _ _) = ⊤
+Cross₁ (⊩₁Π p _ _) (⊩₁DIhNe q n₂) = ⊤
+Cross₁ (⊩₁DIhNe p n₁) (⊩₁Σ q _ _) = ⊤
+Cross₁ (⊩₁Σ p _ _) (⊩₁DIhNe q n₂) = ⊤
+Cross₁ (⊩₁DIhNe p n₁) (⊩₁Hom q sh₂) = ⊤
+Cross₁ (⊩₁Hom p sh₁) (⊩₁DIhNe q n₂) = ⊤
+Cross₁ (⊩₁DIhNe p n₁) (⊩₁Unit q) = ⊤
+Cross₁ (⊩₁Unit p) (⊩₁DIhNe q n₂) = ⊤
+Cross₁ (⊩₁DIhNe p n₁) (⊩₁Nat q) = ⊤
+Cross₁ (⊩₁Nat p) (⊩₁DIhNe q n₂) = ⊤
+Cross₁ (⊩₁DIhNe p n₁) (⊩₁Id q) = ⊤
+Cross₁ (⊩₁Id p) (⊩₁DIhNe q n₂) = ⊤
+Cross₁ (⊩₁DIhNe p n₁) (⊩₁IMu q _ _ _ _ _ _) = ⊤
+Cross₁ (⊩₁IMu p _ _ _ _ _ _) (⊩₁DIhNe q n₂) = ⊤
+Cross₁ (⊩₁DIhNe p n₁) (⊩₁Fin q) = ⊤
+Cross₁ (⊩₁Fin p) (⊩₁DIhNe q n₂) = ⊤
+Cross₁ (⊩₁DIhNe p n₁) (⊩₁Desc q _ _) = ⊤
+Cross₁ (⊩₁Id p) (⊩₁base q) = ⊤
+Cross₁ (⊩₁base p) (⊩₁Id q) = ⊤
+Cross₁ (⊩₁Id p) (⊩₁U q) = ⊤
+Cross₁ (⊩₁U p) (⊩₁Id q) = ⊤
+Cross₁ (⊩₁Id p) (⊩₁ne q n) = ⊤
+Cross₁ (⊩₁ne p n) (⊩₁Id q) = ⊤
+Cross₁ (⊩₁Id p) (⊩₁Π q _ _) = ⊤
+Cross₁ (⊩₁Π p _ _) (⊩₁Id q) = ⊤
+Cross₁ (⊩₁Id p) (⊩₁Σ q _ _) = ⊤
+Cross₁ (⊩₁Σ p _ _) (⊩₁Id q) = ⊤
+Cross₁ (⊩₁Id p) (⊩₁Hom q sh) = ⊤
+Cross₁ (⊩₁Hom p sh) (⊩₁Id q) = ⊤
+Cross₁ (⊩₁base p) (⊩₁Hom q s) = ⊤
+Cross₁ (⊩₁Hom p s) (⊩₁base q) = ⊤
+Cross₁ (⊩₁U p) (⊩₁Hom q s) = ⊤
+Cross₁ (⊩₁Hom p s) (⊩₁U q) = ⊤
+Cross₁ (⊩₁ne p n) (⊩₁Hom q s) = ⊤
+Cross₁ (⊩₁Hom p s) (⊩₁ne q n) = ⊤
+Cross₁ (⊩₁Π p _ _) (⊩₁Hom q s) = ⊤
+Cross₁ (⊩₁Hom p s) (⊩₁Π q _ _) = ⊤
+Cross₁ (⊩₁Σ p _ _) (⊩₁Hom q s) = ⊤
+Cross₁ (⊩₁Hom p s) (⊩₁Σ q _ _) = ⊤
+Cross₁ (⊩₁U p) (⊩₁base q) = ⊤
+Cross₁ (⊩₁U p) (⊩₁ne q n) = ⊤
+Cross₁ (⊩₁U p) (⊩₁Π q _ _) = ⊤
+Cross₁ (⊩₁base p) (⊩₁U q) = ⊤
+Cross₁ (⊩₁ne p n) (⊩₁U q) = ⊤
+Cross₁ (⊩₁Π p _ _) (⊩₁U q) = ⊤
+Cross₁ (⊩₁base p) (⊩₁Π q _ _) = ⊤
+Cross₁ (⊩₁ne p n) (⊩₁Π q _ _) = ⊤
+Cross₁ (⊩₁Π p _ _) (⊩₁base q) = ⊤
+Cross₁ (⊩₁Π p _ _) (⊩₁ne q n) = ⊤
+Cross₁ (⊩₁base p) (⊩₁Σ q _ _) = ⊤
+Cross₁ (⊩₁ne p n) (⊩₁Σ q _ _) = ⊤
+Cross₁ (⊩₁U p) (⊩₁Σ q _ _) = ⊤
+Cross₁ (⊩₁Σ p _ _) (⊩₁base q) = ⊤
+Cross₁ (⊩₁Σ p _ _) (⊩₁ne q n) = ⊤
+Cross₁ (⊩₁Σ p _ _) (⊩₁U q) = ⊤
+Cross₁ (⊩₁Π p _ _) (⊩₁Σ q _ _) = ⊤
+Cross₁ (⊩₁Σ p _ _) (⊩₁Π q _ _) = ⊤
+Cross₁ _ _ = ⊥
+
+irrel₁✗ : {A B : RTy Γ} → A ≅ᵀ B → (R : ⊩₁ A) (S : ⊩₁ B) → Cross₁ R S → ⊥
+irrel₁✗ c (⊩₁Unit p) (⊩₁base q) _ with joinW c p q
+... | E , (mE , bE) with base-nf bE
+...   | refl with Unit-nf mE
+...     | ()
+irrel₁✗ c (⊩₁base p) (⊩₁Unit q) _ with joinW c p q
+... | E , (bE , mE) with base-nf bE
+...   | refl with Unit-nf mE
+...     | ()
+irrel₁✗ c (⊩₁Unit p) (⊩₁U q) _ with joinW c p q
+... | E , (mE , uE2) with U-nf uE2
+...   | refl with Unit-nf mE
+...     | ()
+irrel₁✗ c (⊩₁U p) (⊩₁Unit q) _ with joinW c p q
+... | E , (uE2 , mE) with U-nf uE2
+...   | refl with Unit-nf mE
+...     | ()
+irrel₁✗ c (⊩₁Unit p) (⊩₁ne q n) _ with joinW c p q
+... | E , (mE , eE) with El-ne-reduct n eE
+...   | mkElNe _ _ refl with Unit-nf mE
+...     | ()
+irrel₁✗ c (⊩₁ne p n) (⊩₁Unit q) _ with joinW c p q
+... | E , (eE , mE) with El-ne-reduct n eE
+...   | mkElNe _ _ refl with Unit-nf mE
+...     | ()
+irrel₁✗ c (⊩₁Unit p) (⊩₁Π q _ _) _ with joinW c p q
+... | E , (mE , πE) with Π-reduct πE
+...   | mkΠRed _ _ refl _ _ with Unit-nf mE
+...     | ()
+irrel₁✗ c (⊩₁Π p _ _) (⊩₁Unit q) _ with joinW c p q
+... | E , (πE , mE) with Π-reduct πE
+...   | mkΠRed _ _ refl _ _ with Unit-nf mE
+...     | ()
+irrel₁✗ c (⊩₁Unit p) (⊩₁Σ q _ _) _ with joinW c p q
+... | E , (mE , σE) with Σ-reduct σE
+...   | mkΣRed _ _ refl _ _ with Unit-nf mE
+...     | ()
+irrel₁✗ c (⊩₁Σ p _ _) (⊩₁Unit q) _ with joinW c p q
+... | E , (σE , mE) with Σ-reduct σE
+...   | mkΣRed _ _ refl _ _ with Unit-nf mE
+...     | ()
+irrel₁✗ c (⊩₁Unit p) (⊩₁Hom q sh) _ with joinW c p q
+... | E , (mE , hE) with Hom-stk-reduct sh hE
+...   | mkHomStk _ _ _ _ refl with Unit-nf mE
+...     | ()
+irrel₁✗ c (⊩₁Hom p sh) (⊩₁Unit q) _ with joinW c p q
+... | E , (hE , mE) with Hom-stk-reduct sh hE
+...   | mkHomStk _ _ _ _ refl with Unit-nf mE
+...     | ()
+irrel₁✗ c (⊩₁Unit p) (⊩₁Id q) _ with joinW c p q
+... | E , (mE , iE) with Id-reduct iE
+...   | _ , (_ , (_ , (refl , _))) with Unit-nf mE
+...     | ()
+irrel₁✗ c (⊩₁Id p) (⊩₁Unit q) _ with joinW c p q
+... | E , (iE , mE) with Id-reduct iE
+...   | _ , (_ , (_ , (refl , _))) with Unit-nf mE
+...     | ()
+irrel₁✗ c (⊩₁Nat p) (⊩₁base q) _ with joinW c p q
+... | E , (mE , bE) with base-nf bE
+...   | refl with Nat-nf mE
+...     | ()
+irrel₁✗ c (⊩₁base p) (⊩₁Nat q) _ with joinW c p q
+... | E , (bE , mE) with base-nf bE
+...   | refl with Nat-nf mE
+...     | ()
+irrel₁✗ c (⊩₁Nat p) (⊩₁U q) _ with joinW c p q
+... | E , (mE , uE2) with U-nf uE2
+...   | refl with Nat-nf mE
+...     | ()
+irrel₁✗ c (⊩₁U p) (⊩₁Nat q) _ with joinW c p q
+... | E , (uE2 , mE) with U-nf uE2
+...   | refl with Nat-nf mE
+...     | ()
+irrel₁✗ c (⊩₁Nat p) (⊩₁ne q n) _ with joinW c p q
+... | E , (mE , eE) with El-ne-reduct n eE
+...   | mkElNe _ _ refl with Nat-nf mE
+...     | ()
+irrel₁✗ c (⊩₁ne p n) (⊩₁Nat q) _ with joinW c p q
+... | E , (eE , mE) with El-ne-reduct n eE
+...   | mkElNe _ _ refl with Nat-nf mE
+...     | ()
+irrel₁✗ c (⊩₁Nat p) (⊩₁Π q _ _) _ with joinW c p q
+... | E , (mE , πE) with Π-reduct πE
+...   | mkΠRed _ _ refl _ _ with Nat-nf mE
+...     | ()
+irrel₁✗ c (⊩₁Π p _ _) (⊩₁Nat q) _ with joinW c p q
+... | E , (πE , mE) with Π-reduct πE
+...   | mkΠRed _ _ refl _ _ with Nat-nf mE
+...     | ()
+irrel₁✗ c (⊩₁Nat p) (⊩₁Σ q _ _) _ with joinW c p q
+... | E , (mE , σE) with Σ-reduct σE
+...   | mkΣRed _ _ refl _ _ with Nat-nf mE
+...     | ()
+irrel₁✗ c (⊩₁Σ p _ _) (⊩₁Nat q) _ with joinW c p q
+... | E , (σE , mE) with Σ-reduct σE
+...   | mkΣRed _ _ refl _ _ with Nat-nf mE
+...     | ()
+irrel₁✗ c (⊩₁Nat p) (⊩₁Hom q sh) _ with joinW c p q
+... | E , (mE , hE) with Hom-stk-reduct sh hE
+...   | mkHomStk _ _ _ _ refl with Nat-nf mE
+...     | ()
+irrel₁✗ c (⊩₁Hom p sh) (⊩₁Nat q) _ with joinW c p q
+... | E , (hE , mE) with Hom-stk-reduct sh hE
+...   | mkHomStk _ _ _ _ refl with Nat-nf mE
+...     | ()
+irrel₁✗ c (⊩₁Nat p) (⊩₁Id q) _ with joinW c p q
+... | E , (mE , iE) with Id-reduct iE
+...   | _ , (_ , (_ , (refl , _))) with Nat-nf mE
+...     | ()
+irrel₁✗ c (⊩₁Id p) (⊩₁Nat q) _ with joinW c p q
+... | E , (iE , mE) with Id-reduct iE
+...   | _ , (_ , (_ , (refl , _))) with Nat-nf mE
+...     | ()
+irrel₁✗ c (⊩₁Unit p) (⊩₁Nat q) _ with joinW c p q
+... | E , (uE , nE) with Nat-nf nE
+...   | refl with Unit-nf uE
+...     | ()
+irrel₁✗ c (⊩₁Nat p) (⊩₁Unit q) _ with joinW c p q
+... | E , (nE , uE) with Nat-nf nE
+...   | refl with Unit-nf uE
+...     | ()
+irrel₁✗ c (⊩₁Fin p) (⊩₁base q) _ with joinW c p q
+... | E , (mE , oE) with base-nf oE
+...   | refl with Fin-nf mE
+...     | ()
+irrel₁✗ c (⊩₁IMu p _ _ _ _ _ _) (⊩₁base q) _ with joinW c p q
+... | E , (mE , oE) with base-nf oE
+...   | refl with IMu-reduct mE
+...     | mkIMuRed _ _ _ () _ _ _
+irrel₁✗ c (⊩₁base p) (⊩₁Fin q) _ with joinW c p q
+... | E , (oE , mE) with base-nf oE
+...   | refl with Fin-nf mE
+...     | ()
+irrel₁✗ c (⊩₁base p) (⊩₁IMu q _ _ _ _ _ _) _ with joinW c p q
+... | E , (oE , mE) with base-nf oE
+...   | refl with IMu-reduct mE
+...     | mkIMuRed _ _ _ () _ _ _
+irrel₁✗ c (⊩₁Fin p) (⊩₁U q) _ with joinW c p q
+... | E , (mE , oE) with U-nf oE
+...   | refl with Fin-nf mE
+...     | ()
+irrel₁✗ c (⊩₁IMu p _ _ _ _ _ _) (⊩₁U q) _ with joinW c p q
+... | E , (mE , oE) with U-nf oE
+...   | refl with IMu-reduct mE
+...     | mkIMuRed _ _ _ () _ _ _
+irrel₁✗ c (⊩₁U p) (⊩₁Fin q) _ with joinW c p q
+... | E , (oE , mE) with U-nf oE
+...   | refl with Fin-nf mE
+...     | ()
+irrel₁✗ c (⊩₁U p) (⊩₁IMu q _ _ _ _ _ _) _ with joinW c p q
+... | E , (oE , mE) with U-nf oE
+...   | refl with IMu-reduct mE
+...     | mkIMuRed _ _ _ () _ _ _
+irrel₁✗ c (⊩₁Fin p) (⊩₁ne q n) _ with joinW c p q
+... | E , (mE , oE) with El-ne-reduct n oE
+...   | mkElNe _ _ refl with Fin-nf mE
+...     | ()
+irrel₁✗ c (⊩₁IMu p _ _ _ _ _ _) (⊩₁ne q n) _ with joinW c p q
+... | E , (mE , oE) with El-ne-reduct n oE
+...   | mkElNe _ _ refl with IMu-reduct mE
+...     | mkIMuRed _ _ _ () _ _ _
+irrel₁✗ c (⊩₁ne p n) (⊩₁Fin q) _ with joinW c p q
+... | E , (oE , mE) with El-ne-reduct n oE
+...   | mkElNe _ _ refl with Fin-nf mE
+...     | ()
+irrel₁✗ c (⊩₁ne p n) (⊩₁IMu q _ _ _ _ _ _) _ with joinW c p q
+... | E , (oE , mE) with El-ne-reduct n oE
+...   | mkElNe _ _ refl with IMu-reduct mE
+...     | mkIMuRed _ _ _ () _ _ _
+irrel₁✗ c (⊩₁Fin p) (⊩₁Π q _ _) _ with joinW c p q
+... | E , (mE , oE) with Π-reduct oE
+...   | mkΠRed _ _ refl _ _ with Fin-nf mE
+...     | ()
+irrel₁✗ c (⊩₁IMu p _ _ _ _ _ _) (⊩₁Π q _ _) _ with joinW c p q
+... | E , (mE , oE) with Π-reduct oE
+...   | mkΠRed _ _ refl _ _ with IMu-reduct mE
+...     | mkIMuRed _ _ _ () _ _ _
+irrel₁✗ c (⊩₁Π p _ _) (⊩₁Fin q) _ with joinW c p q
+... | E , (oE , mE) with Π-reduct oE
+...   | mkΠRed _ _ refl _ _ with Fin-nf mE
+...     | ()
+irrel₁✗ c (⊩₁Π p _ _) (⊩₁IMu q _ _ _ _ _ _) _ with joinW c p q
+... | E , (oE , mE) with Π-reduct oE
+...   | mkΠRed _ _ refl _ _ with IMu-reduct mE
+...     | mkIMuRed _ _ _ () _ _ _
+irrel₁✗ c (⊩₁Fin p) (⊩₁Σ q _ _) _ with joinW c p q
+... | E , (mE , oE) with Σ-reduct oE
+...   | mkΣRed _ _ refl _ _ with Fin-nf mE
+...     | ()
+irrel₁✗ c (⊩₁IMu p _ _ _ _ _ _) (⊩₁Σ q _ _) _ with joinW c p q
+... | E , (mE , oE) with Σ-reduct oE
+...   | mkΣRed _ _ refl _ _ with IMu-reduct mE
+...     | mkIMuRed _ _ _ () _ _ _
+irrel₁✗ c (⊩₁Σ p _ _) (⊩₁Fin q) _ with joinW c p q
+... | E , (oE , mE) with Σ-reduct oE
+...   | mkΣRed _ _ refl _ _ with Fin-nf mE
+...     | ()
+irrel₁✗ c (⊩₁Σ p _ _) (⊩₁IMu q _ _ _ _ _ _) _ with joinW c p q
+... | E , (oE , mE) with Σ-reduct oE
+...   | mkΣRed _ _ refl _ _ with IMu-reduct mE
+...     | mkIMuRed _ _ _ () _ _ _
+irrel₁✗ c (⊩₁Fin p) (⊩₁Hom q sh) _ with joinW c p q
+... | E , (mE , oE) with Hom-stk-reduct sh oE
+...   | mkHomStk _ _ _ _ refl with Fin-nf mE
+...     | ()
+irrel₁✗ c (⊩₁IMu p _ _ _ _ _ _) (⊩₁Hom q sh) _ with joinW c p q
+... | E , (mE , oE) with Hom-stk-reduct sh oE
+...   | mkHomStk _ _ _ _ refl with IMu-reduct mE
+...     | mkIMuRed _ _ _ () _ _ _
+irrel₁✗ c (⊩₁Hom p sh) (⊩₁Fin q) _ with joinW c p q
+... | E , (oE , mE) with Hom-stk-reduct sh oE
+...   | mkHomStk _ _ _ _ refl with Fin-nf mE
+...     | ()
+irrel₁✗ c (⊩₁Hom p sh) (⊩₁IMu q _ _ _ _ _ _) _ with joinW c p q
+... | E , (oE , mE) with Hom-stk-reduct sh oE
+...   | mkHomStk _ _ _ _ refl with IMu-reduct mE
+...     | mkIMuRed _ _ _ () _ _ _
+irrel₁✗ c (⊩₁Fin p) (⊩₁Unit q) _ with joinW c p q
+... | E , (mE , oE) with Unit-nf oE
+...   | refl with Fin-nf mE
+...     | ()
+irrel₁✗ c (⊩₁IMu p _ _ _ _ _ _) (⊩₁Unit q) _ with joinW c p q
+... | E , (mE , oE) with Unit-nf oE
+...   | refl with IMu-reduct mE
+...     | mkIMuRed _ _ _ () _ _ _
+irrel₁✗ c (⊩₁Unit p) (⊩₁Fin q) _ with joinW c p q
+... | E , (oE , mE) with Unit-nf oE
+...   | refl with Fin-nf mE
+...     | ()
+irrel₁✗ c (⊩₁Unit p) (⊩₁IMu q _ _ _ _ _ _) _ with joinW c p q
+... | E , (oE , mE) with Unit-nf oE
+...   | refl with IMu-reduct mE
+...     | mkIMuRed _ _ _ () _ _ _
+irrel₁✗ c (⊩₁Fin p) (⊩₁Nat q) _ with joinW c p q
+... | E , (mE , oE) with Nat-nf oE
+...   | refl with Fin-nf mE
+...     | ()
+irrel₁✗ c (⊩₁IMu p _ _ _ _ _ _) (⊩₁Nat q) _ with joinW c p q
+... | E , (mE , oE) with Nat-nf oE
+...   | refl with IMu-reduct mE
+...     | mkIMuRed _ _ _ () _ _ _
+irrel₁✗ c (⊩₁Nat p) (⊩₁Fin q) _ with joinW c p q
+... | E , (oE , mE) with Nat-nf oE
+...   | refl with Fin-nf mE
+...     | ()
+irrel₁✗ c (⊩₁Nat p) (⊩₁IMu q _ _ _ _ _ _) _ with joinW c p q
+... | E , (oE , mE) with Nat-nf oE
+...   | refl with IMu-reduct mE
+...     | mkIMuRed _ _ _ () _ _ _
+irrel₁✗ c (⊩₁Fin p) (⊩₁Id q) _ with joinW c p q
+... | E , (mE , oE) with Id-reduct oE
+...   | _ , (_ , (_ , (refl , _))) with Fin-nf mE
+...     | ()
+irrel₁✗ c (⊩₁IMu p _ _ _ _ _ _) (⊩₁Id q) _ with joinW c p q
+... | E , (mE , oE) with Id-reduct oE
+...   | _ , (_ , (_ , (refl , _))) with IMu-reduct mE
+...     | mkIMuRed _ _ _ () _ _ _
+irrel₁✗ c (⊩₁Id p) (⊩₁Fin q) _ with joinW c p q
+... | E , (oE , mE) with Id-reduct oE
+...   | _ , (_ , (_ , (refl , _))) with Fin-nf mE
+...     | ()
+irrel₁✗ c (⊩₁Id p) (⊩₁IMu q _ _ _ _ _ _) _ with joinW c p q
+... | E , (oE , mE) with Id-reduct oE
+...   | _ , (_ , (_ , (refl , _))) with IMu-reduct mE
+...     | mkIMuRed _ _ _ () _ _ _
+irrel₁✗ c (⊩₁Fin p) (⊩₁IMu q _ _ _ _ _ _) _ with joinW c p q
+... | E , (mE , iE) with Fin-nf mE
+...   | refl with IMu-reduct iE
+...     | mkIMuRed _ _ _ () _ _ _
+irrel₁✗ c (⊩₁IMu p _ _ _ _ _ _) (⊩₁Fin q) _ with joinW c p q
+... | E , (iE , mE) with Fin-nf mE
+...   | refl with IMu-reduct iE
+...     | mkIMuRed _ _ _ () _ _ _
+irrel₁✗ c (⊩₁Desc p _ _) (⊩₁base q) _ with joinW c p q
+... | E , (aE , bE) with base-nf bE
+...   | refl with Desc-reduct aE
+...     | _ , ((), _)
+irrel₁✗ c (⊩₁base p) (⊩₁Desc q _ _) _ with joinW c p q
+... | E , (aE , bE) with Desc-reduct bE
+...   | _ , (refl , _) with base-nf aE
+...     | ()
+irrel₁✗ c (⊩₁Desc p _ _) (⊩₁U q) _ with joinW c p q
+... | E , (aE , bE) with U-nf bE
+...   | refl with Desc-reduct aE
+...     | _ , ((), _)
+irrel₁✗ c (⊩₁U p) (⊩₁Desc q _ _) _ with joinW c p q
+... | E , (aE , bE) with Desc-reduct bE
+...   | _ , (refl , _) with U-nf aE
+...     | ()
+irrel₁✗ c (⊩₁Desc p _ _) (⊩₁ne q n₂) _ with joinW c p q
+... | E , (aE , bE) with El-ne-reduct n₂ bE
+...   | mkElNe _ _ refl with Desc-reduct aE
+...     | _ , ((), _)
+irrel₁✗ c (⊩₁ne p n₁) (⊩₁Desc q _ _) _ with joinW c p q
+... | E , (aE , bE) with Desc-reduct bE
+...   | _ , (refl , _) with El-ne-reduct n₁ aE
+...     | mkElNe _ _ ()
+irrel₁✗ c (⊩₁Desc p _ _) (⊩₁Π q _ _) _ with joinW c p q
+... | E , (aE , bE) with Π-reduct bE
+...   | mkΠRed _ _ refl _ _ with Desc-reduct aE
+...     | _ , ((), _)
+irrel₁✗ c (⊩₁Π p _ _) (⊩₁Desc q _ _) _ with joinW c p q
+... | E , (aE , bE) with Desc-reduct bE
+...   | _ , (refl , _) with Π-reduct aE
+...     | mkΠRed _ _ () _ _
+irrel₁✗ c (⊩₁Desc p _ _) (⊩₁Σ q _ _) _ with joinW c p q
+... | E , (aE , bE) with Σ-reduct bE
+...   | mkΣRed _ _ refl _ _ with Desc-reduct aE
+...     | _ , ((), _)
+irrel₁✗ c (⊩₁Σ p _ _) (⊩₁Desc q _ _) _ with joinW c p q
+... | E , (aE , bE) with Desc-reduct bE
+...   | _ , (refl , _) with Σ-reduct aE
+...     | mkΣRed _ _ () _ _
+irrel₁✗ c (⊩₁Desc p _ _) (⊩₁Hom q sh₂) _ with joinW c p q
+... | E , (aE , bE) with Hom-stk-reduct sh₂ bE
+...   | mkHomStk _ _ _ _ refl with Desc-reduct aE
+...     | _ , ((), _)
+irrel₁✗ c (⊩₁Hom p sh₁) (⊩₁Desc q _ _) _ with joinW c p q
+... | E , (aE , bE) with Desc-reduct bE
+...   | _ , (refl , _) with Hom-stk-reduct sh₁ aE
+...     | mkHomStk _ _ _ _ ()
+irrel₁✗ c (⊩₁Desc p _ _) (⊩₁Unit q) _ with joinW c p q
+... | E , (aE , bE) with Unit-nf bE
+...   | refl with Desc-reduct aE
+...     | _ , ((), _)
+irrel₁✗ c (⊩₁Unit p) (⊩₁Desc q _ _) _ with joinW c p q
+... | E , (aE , bE) with Desc-reduct bE
+...   | _ , (refl , _) with Unit-nf aE
+...     | ()
+irrel₁✗ c (⊩₁Desc p _ _) (⊩₁Nat q) _ with joinW c p q
+... | E , (aE , bE) with Nat-nf bE
+...   | refl with Desc-reduct aE
+...     | _ , ((), _)
+irrel₁✗ c (⊩₁Nat p) (⊩₁Desc q _ _) _ with joinW c p q
+... | E , (aE , bE) with Desc-reduct bE
+...   | _ , (refl , _) with Nat-nf aE
+...     | ()
+irrel₁✗ c (⊩₁Desc p _ _) (⊩₁Id q) _ with joinW c p q
+... | E , (aE , bE) with Id-reduct bE
+...   | _ , (_ , (_ , (refl , _))) with Desc-reduct aE
+...     | _ , ((), _)
+irrel₁✗ c (⊩₁Id p) (⊩₁Desc q _ _) _ with joinW c p q
+... | E , (aE , bE) with Desc-reduct bE
+...   | _ , (refl , _) with Id-reduct aE
+...     | _ , (_ , (_ , ((), _)))
+irrel₁✗ c (⊩₁Desc p _ _) (⊩₁IMu q _ _ _ _ _ _) _ with joinW c p q
+... | E , (aE , bE) with IMu-reduct bE
+...   | mkIMuRed _ _ _ refl _ _ _ with Desc-reduct aE
+...     | _ , ((), _)
+irrel₁✗ c (⊩₁IMu p _ _ _ _ _ _) (⊩₁Desc q _ _) _ with joinW c p q
+... | E , (aE , bE) with Desc-reduct bE
+...   | _ , (refl , _) with IMu-reduct aE
+...     | mkIMuRed _ _ _ () _ _ _
+irrel₁✗ c (⊩₁Desc p _ _) (⊩₁Fin q) _ with joinW c p q
+... | E , (aE , bE) with Fin-nf bE
+...   | refl with Desc-reduct aE
+...     | _ , ((), _)
+irrel₁✗ c (⊩₁Fin p) (⊩₁Desc q _ _) _ with joinW c p q
+... | E , (aE , bE) with Desc-reduct bE
+...   | _ , (refl , _) with Fin-nf aE
+...     | ()
+irrel₁✗ c (⊩₁Desc p _ _) (⊩₁DIhNe q n₂) _ with joinW c p q
+... | E , (aE , bE) with DIhNe-reduct n₂ bE
+...   | mkDIhNe _ _ _ _ _ refl with Desc-reduct aE
+...     | _ , ((), _)
+irrel₁✗ c (⊩₁DIhNe p n₁) (⊩₁base q) _ with joinW c p q
+... | E , (aE , bE) with base-nf bE
+...   | refl with DIhNe-reduct n₁ aE
+...     | mkDIhNe _ _ _ _ _ ()
+irrel₁✗ c (⊩₁base p) (⊩₁DIhNe q n₂) _ with joinW c p q
+... | E , (aE , bE) with DIhNe-reduct n₂ bE
+...   | mkDIhNe _ _ _ _ _ refl with base-nf aE
+...     | ()
+irrel₁✗ c (⊩₁DIhNe p n₁) (⊩₁U q) _ with joinW c p q
+... | E , (aE , bE) with U-nf bE
+...   | refl with DIhNe-reduct n₁ aE
+...     | mkDIhNe _ _ _ _ _ ()
+irrel₁✗ c (⊩₁U p) (⊩₁DIhNe q n₂) _ with joinW c p q
+... | E , (aE , bE) with DIhNe-reduct n₂ bE
+...   | mkDIhNe _ _ _ _ _ refl with U-nf aE
+...     | ()
+irrel₁✗ c (⊩₁DIhNe p n₁) (⊩₁ne q n₂) _ with joinW c p q
+... | E , (aE , bE) with El-ne-reduct n₂ bE
+...   | mkElNe _ _ refl with DIhNe-reduct n₁ aE
+...     | mkDIhNe _ _ _ _ _ ()
+irrel₁✗ c (⊩₁ne p n₁) (⊩₁DIhNe q n₂) _ with joinW c p q
+... | E , (aE , bE) with DIhNe-reduct n₂ bE
+...   | mkDIhNe _ _ _ _ _ refl with El-ne-reduct n₁ aE
+...     | mkElNe _ _ ()
+irrel₁✗ c (⊩₁DIhNe p n₁) (⊩₁Π q _ _) _ with joinW c p q
+... | E , (aE , bE) with Π-reduct bE
+...   | mkΠRed _ _ refl _ _ with DIhNe-reduct n₁ aE
+...     | mkDIhNe _ _ _ _ _ ()
+irrel₁✗ c (⊩₁Π p _ _) (⊩₁DIhNe q n₂) _ with joinW c p q
+... | E , (aE , bE) with DIhNe-reduct n₂ bE
+...   | mkDIhNe _ _ _ _ _ refl with Π-reduct aE
+...     | mkΠRed _ _ () _ _
+irrel₁✗ c (⊩₁DIhNe p n₁) (⊩₁Σ q _ _) _ with joinW c p q
+... | E , (aE , bE) with Σ-reduct bE
+...   | mkΣRed _ _ refl _ _ with DIhNe-reduct n₁ aE
+...     | mkDIhNe _ _ _ _ _ ()
+irrel₁✗ c (⊩₁Σ p _ _) (⊩₁DIhNe q n₂) _ with joinW c p q
+... | E , (aE , bE) with DIhNe-reduct n₂ bE
+...   | mkDIhNe _ _ _ _ _ refl with Σ-reduct aE
+...     | mkΣRed _ _ () _ _
+irrel₁✗ c (⊩₁DIhNe p n₁) (⊩₁Hom q sh₂) _ with joinW c p q
+... | E , (aE , bE) with Hom-stk-reduct sh₂ bE
+...   | mkHomStk _ _ _ _ refl with DIhNe-reduct n₁ aE
+...     | mkDIhNe _ _ _ _ _ ()
+irrel₁✗ c (⊩₁Hom p sh₁) (⊩₁DIhNe q n₂) _ with joinW c p q
+... | E , (aE , bE) with DIhNe-reduct n₂ bE
+...   | mkDIhNe _ _ _ _ _ refl with Hom-stk-reduct sh₁ aE
+...     | mkHomStk _ _ _ _ ()
+irrel₁✗ c (⊩₁DIhNe p n₁) (⊩₁Unit q) _ with joinW c p q
+... | E , (aE , bE) with Unit-nf bE
+...   | refl with DIhNe-reduct n₁ aE
+...     | mkDIhNe _ _ _ _ _ ()
+irrel₁✗ c (⊩₁Unit p) (⊩₁DIhNe q n₂) _ with joinW c p q
+... | E , (aE , bE) with DIhNe-reduct n₂ bE
+...   | mkDIhNe _ _ _ _ _ refl with Unit-nf aE
+...     | ()
+irrel₁✗ c (⊩₁DIhNe p n₁) (⊩₁Nat q) _ with joinW c p q
+... | E , (aE , bE) with Nat-nf bE
+...   | refl with DIhNe-reduct n₁ aE
+...     | mkDIhNe _ _ _ _ _ ()
+irrel₁✗ c (⊩₁Nat p) (⊩₁DIhNe q n₂) _ with joinW c p q
+... | E , (aE , bE) with DIhNe-reduct n₂ bE
+...   | mkDIhNe _ _ _ _ _ refl with Nat-nf aE
+...     | ()
+irrel₁✗ c (⊩₁DIhNe p n₁) (⊩₁Id q) _ with joinW c p q
+... | E , (aE , bE) with Id-reduct bE
+...   | _ , (_ , (_ , (refl , _))) with DIhNe-reduct n₁ aE
+...     | mkDIhNe _ _ _ _ _ ()
+irrel₁✗ c (⊩₁Id p) (⊩₁DIhNe q n₂) _ with joinW c p q
+... | E , (aE , bE) with DIhNe-reduct n₂ bE
+...   | mkDIhNe _ _ _ _ _ refl with Id-reduct aE
+...     | _ , (_ , (_ , ((), _)))
+irrel₁✗ c (⊩₁DIhNe p n₁) (⊩₁IMu q _ _ _ _ _ _) _ with joinW c p q
+... | E , (aE , bE) with IMu-reduct bE
+...   | mkIMuRed _ _ _ refl _ _ _ with DIhNe-reduct n₁ aE
+...     | mkDIhNe _ _ _ _ _ ()
+irrel₁✗ c (⊩₁IMu p _ _ _ _ _ _) (⊩₁DIhNe q n₂) _ with joinW c p q
+... | E , (aE , bE) with DIhNe-reduct n₂ bE
+...   | mkDIhNe _ _ _ _ _ refl with IMu-reduct aE
+...     | mkIMuRed _ _ _ () _ _ _
+irrel₁✗ c (⊩₁DIhNe p n₁) (⊩₁Fin q) _ with joinW c p q
+... | E , (aE , bE) with Fin-nf bE
+...   | refl with DIhNe-reduct n₁ aE
+...     | mkDIhNe _ _ _ _ _ ()
+irrel₁✗ c (⊩₁Fin p) (⊩₁DIhNe q n₂) _ with joinW c p q
+... | E , (aE , bE) with DIhNe-reduct n₂ bE
+...   | mkDIhNe _ _ _ _ _ refl with Fin-nf aE
+...     | ()
+irrel₁✗ c (⊩₁DIhNe p n₁) (⊩₁Desc q _ _) _ with joinW c p q
+... | E , (aE , bE) with Desc-reduct bE
+...   | _ , (refl , _) with DIhNe-reduct n₁ aE
+...     | mkDIhNe _ _ _ _ _ ()
+irrel₁✗ c (⊩₁Id p) (⊩₁base q) _ with joinW c p q
+... | E , (iE , bE) with base-nf bE
+...   | refl with Id-reduct iE
+...     | _ , (_ , (_ , ((), _)))
+irrel₁✗ c (⊩₁base p) (⊩₁Id q) _ with joinW c p q
+... | E , (bE , iE) with base-nf bE
+...   | refl with Id-reduct iE
+...     | _ , (_ , (_ , ((), _)))
+irrel₁✗ c (⊩₁Id p) (⊩₁U q) _ with joinW c p q
+... | E , (iE , uE) with U-nf uE
+...   | refl with Id-reduct iE
+...     | _ , (_ , (_ , ((), _)))
+irrel₁✗ c (⊩₁U p) (⊩₁Id q) _ with joinW c p q
+... | E , (uE , iE) with U-nf uE
+...   | refl with Id-reduct iE
+...     | _ , (_ , (_ , ((), _)))
+irrel₁✗ c (⊩₁Id p) (⊩₁ne q n) _ with joinW c p q
+... | E , (iE , eE) with El-ne-reduct n eE
+...   | mkElNe _ _ refl with Id-reduct iE
+...     | _ , (_ , (_ , ((), _)))
+irrel₁✗ c (⊩₁ne p n) (⊩₁Id q) _ with joinW c p q
+... | E , (eE , iE) with El-ne-reduct n eE
+...   | mkElNe _ _ refl with Id-reduct iE
+...     | _ , (_ , (_ , ((), _)))
+irrel₁✗ c (⊩₁Id p) (⊩₁Π q _ _) _ with joinW c p q
+... | E , (iE , πE) with Π-reduct πE
+...   | mkΠRed _ _ refl _ _ with Id-reduct iE
+...     | _ , (_ , (_ , ((), _)))
+irrel₁✗ c (⊩₁Π p _ _) (⊩₁Id q) _ with joinW c p q
+... | E , (πE , iE) with Π-reduct πE
+...   | mkΠRed _ _ refl _ _ with Id-reduct iE
+...     | _ , (_ , (_ , ((), _)))
+irrel₁✗ c (⊩₁Id p) (⊩₁Σ q _ _) _ with joinW c p q
+... | E , (iE , σE) with Σ-reduct σE
+...   | mkΣRed _ _ refl _ _ with Id-reduct iE
+...     | _ , (_ , (_ , ((), _)))
+irrel₁✗ c (⊩₁Σ p _ _) (⊩₁Id q) _ with joinW c p q
+... | E , (σE , iE) with Σ-reduct σE
+...   | mkΣRed _ _ refl _ _ with Id-reduct iE
+...     | _ , (_ , (_ , ((), _)))
+irrel₁✗ c (⊩₁Id p) (⊩₁Hom q sh) _ with joinW c p q
+... | E , (iE , hE) with Hom-stk-reduct sh hE
+...   | mkHomStk _ _ _ _ refl with Id-reduct iE
+...     | _ , (_ , (_ , ((), _)))
+irrel₁✗ c (⊩₁Hom p sh) (⊩₁Id q) _ with joinW c p q
+... | E , (hE , iE) with Hom-stk-reduct sh hE
+...   | mkHomStk _ _ _ _ refl with Id-reduct iE
+...     | _ , (_ , (_ , ((), _)))
+irrel₁✗ c (⊩₁base p) (⊩₁Hom q s) _ with joinW c p q
+... | E , (bE , hE) with base-nf bE
+...   | refl with Hom-stk-reduct s hE
+...     | mkHomStk _ _ _ _ ()
+irrel₁✗ c (⊩₁Hom p s) (⊩₁base q) _ with joinW c p q
+... | E , (hE , bE) with base-nf bE
+...   | refl with Hom-stk-reduct s hE
+...     | mkHomStk _ _ _ _ ()
+irrel₁✗ c (⊩₁U p) (⊩₁Hom q s) _ with joinW c p q
+... | E , (uE , hE) with U-nf uE
+...   | refl with Hom-stk-reduct s hE
+...     | mkHomStk _ _ _ _ ()
+irrel₁✗ c (⊩₁Hom p s) (⊩₁U q) _ with joinW c p q
+... | E , (hE , uE) with U-nf uE
+...   | refl with Hom-stk-reduct s hE
+...     | mkHomStk _ _ _ _ ()
+irrel₁✗ c (⊩₁ne p n) (⊩₁Hom q s) _ with joinW c p q
+... | E , (eE , hE) with El-ne-reduct n eE
+...   | mkElNe _ _ refl with Hom-stk-reduct s hE
+...     | mkHomStk _ _ _ _ ()
+irrel₁✗ c (⊩₁Hom p s) (⊩₁ne q n) _ with joinW c p q
+... | E , (hE , eE) with El-ne-reduct n eE
+...   | mkElNe _ _ refl with Hom-stk-reduct s hE
+...     | mkHomStk _ _ _ _ ()
+irrel₁✗ c (⊩₁Π p _ _) (⊩₁Hom q s) _ with joinW c p q
+... | E , (πE , hE) with Π-reduct πE
+...   | mkΠRed _ _ refl _ _ with Hom-stk-reduct s hE
+...     | mkHomStk _ _ _ _ ()
+irrel₁✗ c (⊩₁Hom p s) (⊩₁Π q _ _) _ with joinW c p q
+... | E , (hE , πE) with Π-reduct πE
+...   | mkΠRed _ _ refl _ _ with Hom-stk-reduct s hE
+...     | mkHomStk _ _ _ _ ()
+irrel₁✗ c (⊩₁Σ p _ _) (⊩₁Hom q s) _ with joinW c p q
+... | E , (σE , hE) with Σ-reduct σE
+...   | mkΣRed _ _ refl _ _ with Hom-stk-reduct s hE
+...     | mkHomStk _ _ _ _ ()
+irrel₁✗ c (⊩₁Hom p s) (⊩₁Σ q _ _) _ with joinW c p q
+... | E , (hE , σE) with Σ-reduct σE
+...   | mkΣRed _ _ refl _ _ with Hom-stk-reduct s hE
+...     | mkHomStk _ _ _ _ ()
+irrel₁✗ c (⊩₁U p) (⊩₁base q) _ with joinW c p q
+... | E , (uE , bE) with U-nf uE
+...   | refl with base-nf bE
+...     | ()
+irrel₁✗ c (⊩₁U p) (⊩₁ne q n) _ with joinW c p q
+... | E , (uE , eE) with U-nf uE
+...   | refl with El-ne-reduct n eE
+...     | mkElNe _ _ ()
+irrel₁✗ c (⊩₁U p) (⊩₁Π q _ _) _ with joinW c p q
+... | E , (uE , πE) with U-nf uE
+...   | refl with Π-reduct πE
+...     | mkΠRed _ _ () _ _
+irrel₁✗ c (⊩₁base p) (⊩₁U q) _ with joinW c p q
+... | E , (bE , uE) with base-nf bE
+...   | refl with U-nf uE
+...     | ()
+irrel₁✗ c (⊩₁ne p n) (⊩₁U q) _ with joinW c p q
+... | E , (eE , uE) with El-ne-reduct n eE
+...   | mkElNe _ _ refl with U-nf uE
+...     | ()
+irrel₁✗ c (⊩₁Π p _ _) (⊩₁U q) _ with joinW c p q
+... | E , (πE , uE) with U-nf uE
+...   | refl with Π-reduct πE
+...     | mkΠRed _ _ () _ _
+irrel₁✗ c (⊩₁base p) (⊩₁Π q _ _) _ with joinW c p q
+... | E , (bE , πE) with base-nf bE
+...   | refl with Π-reduct πE
+...     | mkΠRed _ _ () _ _
+irrel₁✗ c (⊩₁ne p n) (⊩₁Π q _ _) _ with joinW c p q
+... | E , (eE , πE) with El-ne-reduct n eE
+...   | mkElNe _ _ refl with Π-reduct πE
+...     | mkΠRed _ _ () _ _
+irrel₁✗ c (⊩₁Π p _ _) (⊩₁base q) _ with joinW c p q
+... | E , (πE , bE) with base-nf bE
+...   | refl with Π-reduct πE
+...     | mkΠRed _ _ () _ _
+irrel₁✗ c (⊩₁Π p _ _) (⊩₁ne q n) _ with joinW c p q
+... | E , (πE , eE) with El-ne-reduct n eE
+...   | mkElNe _ _ refl with Π-reduct πE
+...     | mkΠRed _ _ () _ _
+irrel₁✗ c (⊩₁base p) (⊩₁Σ q _ _) _ with joinW c p q
+... | E , (bE , σE) with base-nf bE
+...   | refl with Σ-reduct σE
+...     | mkΣRed _ _ () _ _
+irrel₁✗ c (⊩₁ne p n) (⊩₁Σ q _ _) _ with joinW c p q
+... | E , (eE , σE) with El-ne-reduct n eE
+...   | mkElNe _ _ refl with Σ-reduct σE
+...     | mkΣRed _ _ () _ _
+irrel₁✗ c (⊩₁U p) (⊩₁Σ q _ _) _ with joinW c p q
+... | E , (uE , σE) with U-nf uE
+...   | refl with Σ-reduct σE
+...     | mkΣRed _ _ () _ _
+irrel₁✗ c (⊩₁Σ p _ _) (⊩₁base q) _ with joinW c p q
+... | E , (σE , bE) with base-nf bE
+...   | refl with Σ-reduct σE
+...     | mkΣRed _ _ () _ _
+irrel₁✗ c (⊩₁Σ p _ _) (⊩₁ne q n) _ with joinW c p q
+... | E , (σE , eE) with El-ne-reduct n eE
+...   | mkElNe _ _ refl with Σ-reduct σE
+...     | mkΣRed _ _ () _ _
+irrel₁✗ c (⊩₁Σ p _ _) (⊩₁U q) _ with joinW c p q
+... | E , (σE , uE) with U-nf uE
+...   | refl with Σ-reduct σE
+...     | mkΣRed _ _ () _ _
+irrel₁✗ c (⊩₁Π p _ _) (⊩₁Σ q _ _) _ with joinW c p q
+... | E , (πE , σE) with Π-reduct πE
+...   | mkΠRed _ _ refl _ _ with Σ-reduct σE
+...     | mkΣRed _ _ () _ _
+irrel₁✗ c (⊩₁Σ p _ _) (⊩₁Π q _ _) _ with joinW c p q
+... | E , (σE , πE) with Π-reduct πE
+...   | mkΠRed _ _ refl _ _ with Σ-reduct σE
+...     | mkΣRed _ _ () _ _
+
 irrel₁ : {A B : RTy Γ} → A ≅ᵀ B → (R : ⊩₁ A) (S : ⊩₁ B) →
          ((t : RTm Γ) → R ⊩₁∋ t → S ⊩₁∋ t) × ((t : RTm Γ) → S ⊩₁∋ t → R ⊩₁∋ t)
 
 -- identities: both sides `SN`-valued, or both `U`.
-irrel₁ c (⊩₁Unit p) (⊩₁base q) with joinW c p q
-... | E , (mE , bE) with base-nf bE
-...   | refl with Unit-nf mE
-...     | ()
-irrel₁ c (⊩₁base p) (⊩₁Unit q) with joinW c p q
-... | E , (bE , mE) with base-nf bE
-...   | refl with Unit-nf mE
-...     | ()
-irrel₁ c (⊩₁Unit p) (⊩₁U q) with joinW c p q
-... | E , (mE , uE2) with U-nf uE2
-...   | refl with Unit-nf mE
-...     | ()
-irrel₁ c (⊩₁U p) (⊩₁Unit q) with joinW c p q
-... | E , (uE2 , mE) with U-nf uE2
-...   | refl with Unit-nf mE
-...     | ()
-irrel₁ c (⊩₁Unit p) (⊩₁ne q n) with joinW c p q
-... | E , (mE , eE) with El-ne-reduct n eE
-...   | mkElNe _ _ refl with Unit-nf mE
-...     | ()
-irrel₁ c (⊩₁ne p n) (⊩₁Unit q) with joinW c p q
-... | E , (eE , mE) with El-ne-reduct n eE
-...   | mkElNe _ _ refl with Unit-nf mE
-...     | ()
-irrel₁ c (⊩₁Unit p) (⊩₁Π q _ _) with joinW c p q
-... | E , (mE , πE) with Π-reduct πE
-...   | mkΠRed _ _ refl _ _ with Unit-nf mE
-...     | ()
-irrel₁ c (⊩₁Π p _ _) (⊩₁Unit q) with joinW c p q
-... | E , (πE , mE) with Π-reduct πE
-...   | mkΠRed _ _ refl _ _ with Unit-nf mE
-...     | ()
-irrel₁ c (⊩₁Unit p) (⊩₁Σ q _ _) with joinW c p q
-... | E , (mE , σE) with Σ-reduct σE
-...   | mkΣRed _ _ refl _ _ with Unit-nf mE
-...     | ()
-irrel₁ c (⊩₁Σ p _ _) (⊩₁Unit q) with joinW c p q
-... | E , (σE , mE) with Σ-reduct σE
-...   | mkΣRed _ _ refl _ _ with Unit-nf mE
-...     | ()
-irrel₁ c (⊩₁Unit p) (⊩₁Hom q sh) with joinW c p q
-... | E , (mE , hE) with Hom-stk-reduct sh hE
-...   | mkHomStk _ _ _ _ refl with Unit-nf mE
-...     | ()
-irrel₁ c (⊩₁Hom p sh) (⊩₁Unit q) with joinW c p q
-... | E , (hE , mE) with Hom-stk-reduct sh hE
-...   | mkHomStk _ _ _ _ refl with Unit-nf mE
-...     | ()
-irrel₁ c (⊩₁Unit p) (⊩₁Id q) with joinW c p q
-... | E , (mE , iE) with Id-reduct iE
-...   | _ , (_ , (_ , (refl , _))) with Unit-nf mE
-...     | ()
-irrel₁ c (⊩₁Id p) (⊩₁Unit q) with joinW c p q
-... | E , (iE , mE) with Id-reduct iE
-...   | _ , (_ , (_ , (refl , _))) with Unit-nf mE
-...     | ()
-irrel₁ c (⊩₁Nat p) (⊩₁base q) with joinW c p q
-... | E , (mE , bE) with base-nf bE
-...   | refl with Nat-nf mE
-...     | ()
-irrel₁ c (⊩₁base p) (⊩₁Nat q) with joinW c p q
-... | E , (bE , mE) with base-nf bE
-...   | refl with Nat-nf mE
-...     | ()
-irrel₁ c (⊩₁Nat p) (⊩₁U q) with joinW c p q
-... | E , (mE , uE2) with U-nf uE2
-...   | refl with Nat-nf mE
-...     | ()
-irrel₁ c (⊩₁U p) (⊩₁Nat q) with joinW c p q
-... | E , (uE2 , mE) with U-nf uE2
-...   | refl with Nat-nf mE
-...     | ()
-irrel₁ c (⊩₁Nat p) (⊩₁ne q n) with joinW c p q
-... | E , (mE , eE) with El-ne-reduct n eE
-...   | mkElNe _ _ refl with Nat-nf mE
-...     | ()
-irrel₁ c (⊩₁ne p n) (⊩₁Nat q) with joinW c p q
-... | E , (eE , mE) with El-ne-reduct n eE
-...   | mkElNe _ _ refl with Nat-nf mE
-...     | ()
-irrel₁ c (⊩₁Nat p) (⊩₁Π q _ _) with joinW c p q
-... | E , (mE , πE) with Π-reduct πE
-...   | mkΠRed _ _ refl _ _ with Nat-nf mE
-...     | ()
-irrel₁ c (⊩₁Π p _ _) (⊩₁Nat q) with joinW c p q
-... | E , (πE , mE) with Π-reduct πE
-...   | mkΠRed _ _ refl _ _ with Nat-nf mE
-...     | ()
-irrel₁ c (⊩₁Nat p) (⊩₁Σ q _ _) with joinW c p q
-... | E , (mE , σE) with Σ-reduct σE
-...   | mkΣRed _ _ refl _ _ with Nat-nf mE
-...     | ()
-irrel₁ c (⊩₁Σ p _ _) (⊩₁Nat q) with joinW c p q
-... | E , (σE , mE) with Σ-reduct σE
-...   | mkΣRed _ _ refl _ _ with Nat-nf mE
-...     | ()
-irrel₁ c (⊩₁Nat p) (⊩₁Hom q sh) with joinW c p q
-... | E , (mE , hE) with Hom-stk-reduct sh hE
-...   | mkHomStk _ _ _ _ refl with Nat-nf mE
-...     | ()
-irrel₁ c (⊩₁Hom p sh) (⊩₁Nat q) with joinW c p q
-... | E , (hE , mE) with Hom-stk-reduct sh hE
-...   | mkHomStk _ _ _ _ refl with Nat-nf mE
-...     | ()
-irrel₁ c (⊩₁Nat p) (⊩₁Id q) with joinW c p q
-... | E , (mE , iE) with Id-reduct iE
-...   | _ , (_ , (_ , (refl , _))) with Nat-nf mE
-...     | ()
-irrel₁ c (⊩₁Id p) (⊩₁Nat q) with joinW c p q
-... | E , (iE , mE) with Id-reduct iE
-...   | _ , (_ , (_ , (refl , _))) with Nat-nf mE
-...     | ()
-irrel₁ c (⊩₁Unit p) (⊩₁Nat q) with joinW c p q
-... | E , (uE , nE) with Nat-nf nE
-...   | refl with Unit-nf uE
-...     | ()
-irrel₁ c (⊩₁Nat p) (⊩₁Unit q) with joinW c p q
-... | E , (nE , uE) with Nat-nf nE
-...   | refl with Unit-nf uE
-...     | ()
+irrel₁ c R@(⊩₁Unit p) S@(⊩₁base q) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁base p) S@(⊩₁Unit q) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁Unit p) S@(⊩₁U q) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁U p) S@(⊩₁Unit q) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁Unit p) S@(⊩₁ne q n) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁ne p n) S@(⊩₁Unit q) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁Unit p) S@(⊩₁Π q _ _) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁Π p _ _) S@(⊩₁Unit q) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁Unit p) S@(⊩₁Σ q _ _) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁Σ p _ _) S@(⊩₁Unit q) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁Unit p) S@(⊩₁Hom q sh) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁Hom p sh) S@(⊩₁Unit q) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁Unit p) S@(⊩₁Id q) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁Id p) S@(⊩₁Unit q) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁Nat p) S@(⊩₁base q) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁base p) S@(⊩₁Nat q) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁Nat p) S@(⊩₁U q) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁U p) S@(⊩₁Nat q) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁Nat p) S@(⊩₁ne q n) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁ne p n) S@(⊩₁Nat q) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁Nat p) S@(⊩₁Π q _ _) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁Π p _ _) S@(⊩₁Nat q) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁Nat p) S@(⊩₁Σ q _ _) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁Σ p _ _) S@(⊩₁Nat q) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁Nat p) S@(⊩₁Hom q sh) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁Hom p sh) S@(⊩₁Nat q) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁Nat p) S@(⊩₁Id q) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁Id p) S@(⊩₁Nat q) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁Unit p) S@(⊩₁Nat q) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁Nat p) S@(⊩₁Unit q) = ⊥-elim (irrel₁✗ c R S tt)
 irrel₁ c (⊩₁Unit _) (⊩₁Unit _) = (λ _ h → h) , (λ _ h → h)
 
 -- ★ `Mu` versus every other level-1 former: `Mu D` is a normal form.
-irrel₁ c (⊩₁Fin p) (⊩₁base q) with joinW c p q
-... | E , (mE , oE) with base-nf oE
-...   | refl with Fin-nf mE
-...     | ()
-irrel₁ c (⊩₁IMu p _ _ _ _ _ _) (⊩₁base q) with joinW c p q
-... | E , (mE , oE) with base-nf oE
-...   | refl with IMu-reduct mE
-...     | mkIMuRed _ _ _ () _ _ _
-irrel₁ c (⊩₁base p) (⊩₁Fin q) with joinW c p q
-... | E , (oE , mE) with base-nf oE
-...   | refl with Fin-nf mE
-...     | ()
-irrel₁ c (⊩₁base p) (⊩₁IMu q _ _ _ _ _ _) with joinW c p q
-... | E , (oE , mE) with base-nf oE
-...   | refl with IMu-reduct mE
-...     | mkIMuRed _ _ _ () _ _ _
-irrel₁ c (⊩₁Fin p) (⊩₁U q) with joinW c p q
-... | E , (mE , oE) with U-nf oE
-...   | refl with Fin-nf mE
-...     | ()
-irrel₁ c (⊩₁IMu p _ _ _ _ _ _) (⊩₁U q) with joinW c p q
-... | E , (mE , oE) with U-nf oE
-...   | refl with IMu-reduct mE
-...     | mkIMuRed _ _ _ () _ _ _
-irrel₁ c (⊩₁U p) (⊩₁Fin q) with joinW c p q
-... | E , (oE , mE) with U-nf oE
-...   | refl with Fin-nf mE
-...     | ()
-irrel₁ c (⊩₁U p) (⊩₁IMu q _ _ _ _ _ _) with joinW c p q
-... | E , (oE , mE) with U-nf oE
-...   | refl with IMu-reduct mE
-...     | mkIMuRed _ _ _ () _ _ _
-irrel₁ c (⊩₁Fin p) (⊩₁ne q n) with joinW c p q
-... | E , (mE , oE) with El-ne-reduct n oE
-...   | mkElNe _ _ refl with Fin-nf mE
-...     | ()
-irrel₁ c (⊩₁IMu p _ _ _ _ _ _) (⊩₁ne q n) with joinW c p q
-... | E , (mE , oE) with El-ne-reduct n oE
-...   | mkElNe _ _ refl with IMu-reduct mE
-...     | mkIMuRed _ _ _ () _ _ _
-irrel₁ c (⊩₁ne p n) (⊩₁Fin q) with joinW c p q
-... | E , (oE , mE) with El-ne-reduct n oE
-...   | mkElNe _ _ refl with Fin-nf mE
-...     | ()
-irrel₁ c (⊩₁ne p n) (⊩₁IMu q _ _ _ _ _ _) with joinW c p q
-... | E , (oE , mE) with El-ne-reduct n oE
-...   | mkElNe _ _ refl with IMu-reduct mE
-...     | mkIMuRed _ _ _ () _ _ _
-irrel₁ c (⊩₁Fin p) (⊩₁Π q _ _) with joinW c p q
-... | E , (mE , oE) with Π-reduct oE
-...   | mkΠRed _ _ refl _ _ with Fin-nf mE
-...     | ()
-irrel₁ c (⊩₁IMu p _ _ _ _ _ _) (⊩₁Π q _ _) with joinW c p q
-... | E , (mE , oE) with Π-reduct oE
-...   | mkΠRed _ _ refl _ _ with IMu-reduct mE
-...     | mkIMuRed _ _ _ () _ _ _
-irrel₁ c (⊩₁Π p _ _) (⊩₁Fin q) with joinW c p q
-... | E , (oE , mE) with Π-reduct oE
-...   | mkΠRed _ _ refl _ _ with Fin-nf mE
-...     | ()
-irrel₁ c (⊩₁Π p _ _) (⊩₁IMu q _ _ _ _ _ _) with joinW c p q
-... | E , (oE , mE) with Π-reduct oE
-...   | mkΠRed _ _ refl _ _ with IMu-reduct mE
-...     | mkIMuRed _ _ _ () _ _ _
-irrel₁ c (⊩₁Fin p) (⊩₁Σ q _ _) with joinW c p q
-... | E , (mE , oE) with Σ-reduct oE
-...   | mkΣRed _ _ refl _ _ with Fin-nf mE
-...     | ()
-irrel₁ c (⊩₁IMu p _ _ _ _ _ _) (⊩₁Σ q _ _) with joinW c p q
-... | E , (mE , oE) with Σ-reduct oE
-...   | mkΣRed _ _ refl _ _ with IMu-reduct mE
-...     | mkIMuRed _ _ _ () _ _ _
-irrel₁ c (⊩₁Σ p _ _) (⊩₁Fin q) with joinW c p q
-... | E , (oE , mE) with Σ-reduct oE
-...   | mkΣRed _ _ refl _ _ with Fin-nf mE
-...     | ()
-irrel₁ c (⊩₁Σ p _ _) (⊩₁IMu q _ _ _ _ _ _) with joinW c p q
-... | E , (oE , mE) with Σ-reduct oE
-...   | mkΣRed _ _ refl _ _ with IMu-reduct mE
-...     | mkIMuRed _ _ _ () _ _ _
-irrel₁ c (⊩₁Fin p) (⊩₁Hom q sh) with joinW c p q
-... | E , (mE , oE) with Hom-stk-reduct sh oE
-...   | mkHomStk _ _ _ _ refl with Fin-nf mE
-...     | ()
-irrel₁ c (⊩₁IMu p _ _ _ _ _ _) (⊩₁Hom q sh) with joinW c p q
-... | E , (mE , oE) with Hom-stk-reduct sh oE
-...   | mkHomStk _ _ _ _ refl with IMu-reduct mE
-...     | mkIMuRed _ _ _ () _ _ _
-irrel₁ c (⊩₁Hom p sh) (⊩₁Fin q) with joinW c p q
-... | E , (oE , mE) with Hom-stk-reduct sh oE
-...   | mkHomStk _ _ _ _ refl with Fin-nf mE
-...     | ()
-irrel₁ c (⊩₁Hom p sh) (⊩₁IMu q _ _ _ _ _ _) with joinW c p q
-... | E , (oE , mE) with Hom-stk-reduct sh oE
-...   | mkHomStk _ _ _ _ refl with IMu-reduct mE
-...     | mkIMuRed _ _ _ () _ _ _
-irrel₁ c (⊩₁Fin p) (⊩₁Unit q) with joinW c p q
-... | E , (mE , oE) with Unit-nf oE
-...   | refl with Fin-nf mE
-...     | ()
-irrel₁ c (⊩₁IMu p _ _ _ _ _ _) (⊩₁Unit q) with joinW c p q
-... | E , (mE , oE) with Unit-nf oE
-...   | refl with IMu-reduct mE
-...     | mkIMuRed _ _ _ () _ _ _
-irrel₁ c (⊩₁Unit p) (⊩₁Fin q) with joinW c p q
-... | E , (oE , mE) with Unit-nf oE
-...   | refl with Fin-nf mE
-...     | ()
-irrel₁ c (⊩₁Unit p) (⊩₁IMu q _ _ _ _ _ _) with joinW c p q
-... | E , (oE , mE) with Unit-nf oE
-...   | refl with IMu-reduct mE
-...     | mkIMuRed _ _ _ () _ _ _
-irrel₁ c (⊩₁Fin p) (⊩₁Nat q) with joinW c p q
-... | E , (mE , oE) with Nat-nf oE
-...   | refl with Fin-nf mE
-...     | ()
-irrel₁ c (⊩₁IMu p _ _ _ _ _ _) (⊩₁Nat q) with joinW c p q
-... | E , (mE , oE) with Nat-nf oE
-...   | refl with IMu-reduct mE
-...     | mkIMuRed _ _ _ () _ _ _
-irrel₁ c (⊩₁Nat p) (⊩₁Fin q) with joinW c p q
-... | E , (oE , mE) with Nat-nf oE
-...   | refl with Fin-nf mE
-...     | ()
-irrel₁ c (⊩₁Nat p) (⊩₁IMu q _ _ _ _ _ _) with joinW c p q
-... | E , (oE , mE) with Nat-nf oE
-...   | refl with IMu-reduct mE
-...     | mkIMuRed _ _ _ () _ _ _
-irrel₁ c (⊩₁Fin p) (⊩₁Id q) with joinW c p q
-... | E , (mE , oE) with Id-reduct oE
-...   | _ , (_ , (_ , (refl , _))) with Fin-nf mE
-...     | ()
-irrel₁ c (⊩₁IMu p _ _ _ _ _ _) (⊩₁Id q) with joinW c p q
-... | E , (mE , oE) with Id-reduct oE
-...   | _ , (_ , (_ , (refl , _))) with IMu-reduct mE
-...     | mkIMuRed _ _ _ () _ _ _
-irrel₁ c (⊩₁Id p) (⊩₁Fin q) with joinW c p q
-... | E , (oE , mE) with Id-reduct oE
-...   | _ , (_ , (_ , (refl , _))) with Fin-nf mE
-...     | ()
-irrel₁ c (⊩₁Id p) (⊩₁IMu q _ _ _ _ _ _) with joinW c p q
-... | E , (oE , mE) with Id-reduct oE
-...   | _ , (_ , (_ , (refl , _))) with IMu-reduct mE
-...     | mkIMuRed _ _ _ () _ _ _
+irrel₁ c R@(⊩₁Fin p) S@(⊩₁base q) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁IMu p _ _ _ _ _ _) S@(⊩₁base q) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁base p) S@(⊩₁Fin q) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁base p) S@(⊩₁IMu q _ _ _ _ _ _) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁Fin p) S@(⊩₁U q) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁IMu p _ _ _ _ _ _) S@(⊩₁U q) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁U p) S@(⊩₁Fin q) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁U p) S@(⊩₁IMu q _ _ _ _ _ _) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁Fin p) S@(⊩₁ne q n) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁IMu p _ _ _ _ _ _) S@(⊩₁ne q n) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁ne p n) S@(⊩₁Fin q) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁ne p n) S@(⊩₁IMu q _ _ _ _ _ _) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁Fin p) S@(⊩₁Π q _ _) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁IMu p _ _ _ _ _ _) S@(⊩₁Π q _ _) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁Π p _ _) S@(⊩₁Fin q) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁Π p _ _) S@(⊩₁IMu q _ _ _ _ _ _) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁Fin p) S@(⊩₁Σ q _ _) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁IMu p _ _ _ _ _ _) S@(⊩₁Σ q _ _) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁Σ p _ _) S@(⊩₁Fin q) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁Σ p _ _) S@(⊩₁IMu q _ _ _ _ _ _) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁Fin p) S@(⊩₁Hom q sh) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁IMu p _ _ _ _ _ _) S@(⊩₁Hom q sh) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁Hom p sh) S@(⊩₁Fin q) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁Hom p sh) S@(⊩₁IMu q _ _ _ _ _ _) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁Fin p) S@(⊩₁Unit q) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁IMu p _ _ _ _ _ _) S@(⊩₁Unit q) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁Unit p) S@(⊩₁Fin q) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁Unit p) S@(⊩₁IMu q _ _ _ _ _ _) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁Fin p) S@(⊩₁Nat q) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁IMu p _ _ _ _ _ _) S@(⊩₁Nat q) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁Nat p) S@(⊩₁Fin q) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁Nat p) S@(⊩₁IMu q _ _ _ _ _ _) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁Fin p) S@(⊩₁Id q) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁IMu p _ _ _ _ _ _) S@(⊩₁Id q) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁Id p) S@(⊩₁Fin q) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁Id p) S@(⊩₁IMu q _ _ _ _ _ _) = ⊥-elim (irrel₁✗ c R S tt)
 -- ★★ `Mu`/`Mu` at level 1 — the same residual-`DInterp` difference as at
 --   level 0, collapsed by the very same `irrelMu`.
-irrel₁ c (⊩₁Fin p) (⊩₁IMu q _ _ _ _ _ _) with joinW c p q
-... | E , (mE , iE) with Fin-nf mE
-...   | refl with IMu-reduct iE
-...     | mkIMuRed _ _ _ () _ _ _
-irrel₁ c (⊩₁IMu p _ _ _ _ _ _) (⊩₁Fin q) with joinW c p q
-... | E , (iE , mE) with Fin-nf mE
-...   | refl with IMu-reduct iE
-...     | mkIMuRed _ _ _ () _ _ _
+irrel₁ c R@(⊩₁Fin p) S@(⊩₁IMu q _ _ _ _ _ _) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁IMu p _ _ _ _ _ _) S@(⊩₁Fin q) = ⊥-elim (irrel₁✗ c R S tt)
 -- ★★ LEVITATED FAMILIES at level 1: the description type and the stuck
 --   hypotheses' type against every other head — one side's shape fixes the
 --   common reduct, the other's clashes with it.
-irrel₁ c (⊩₁Desc p _ _) (⊩₁base q) with joinW c p q
-... | E , (aE , bE) with base-nf bE
-...   | refl with Desc-reduct aE
-...     | _ , ((), _)
-irrel₁ c (⊩₁base p) (⊩₁Desc q _ _) with joinW c p q
-... | E , (aE , bE) with Desc-reduct bE
-...   | _ , (refl , _) with base-nf aE
-...     | ()
-irrel₁ c (⊩₁Desc p _ _) (⊩₁U q) with joinW c p q
-... | E , (aE , bE) with U-nf bE
-...   | refl with Desc-reduct aE
-...     | _ , ((), _)
-irrel₁ c (⊩₁U p) (⊩₁Desc q _ _) with joinW c p q
-... | E , (aE , bE) with Desc-reduct bE
-...   | _ , (refl , _) with U-nf aE
-...     | ()
-irrel₁ c (⊩₁Desc p _ _) (⊩₁ne q n₂) with joinW c p q
-... | E , (aE , bE) with El-ne-reduct n₂ bE
-...   | mkElNe _ _ refl with Desc-reduct aE
-...     | _ , ((), _)
-irrel₁ c (⊩₁ne p n₁) (⊩₁Desc q _ _) with joinW c p q
-... | E , (aE , bE) with Desc-reduct bE
-...   | _ , (refl , _) with El-ne-reduct n₁ aE
-...     | mkElNe _ _ ()
-irrel₁ c (⊩₁Desc p _ _) (⊩₁Π q _ _) with joinW c p q
-... | E , (aE , bE) with Π-reduct bE
-...   | mkΠRed _ _ refl _ _ with Desc-reduct aE
-...     | _ , ((), _)
-irrel₁ c (⊩₁Π p _ _) (⊩₁Desc q _ _) with joinW c p q
-... | E , (aE , bE) with Desc-reduct bE
-...   | _ , (refl , _) with Π-reduct aE
-...     | mkΠRed _ _ () _ _
-irrel₁ c (⊩₁Desc p _ _) (⊩₁Σ q _ _) with joinW c p q
-... | E , (aE , bE) with Σ-reduct bE
-...   | mkΣRed _ _ refl _ _ with Desc-reduct aE
-...     | _ , ((), _)
-irrel₁ c (⊩₁Σ p _ _) (⊩₁Desc q _ _) with joinW c p q
-... | E , (aE , bE) with Desc-reduct bE
-...   | _ , (refl , _) with Σ-reduct aE
-...     | mkΣRed _ _ () _ _
-irrel₁ c (⊩₁Desc p _ _) (⊩₁Hom q sh₂) with joinW c p q
-... | E , (aE , bE) with Hom-stk-reduct sh₂ bE
-...   | mkHomStk _ _ _ _ refl with Desc-reduct aE
-...     | _ , ((), _)
-irrel₁ c (⊩₁Hom p sh₁) (⊩₁Desc q _ _) with joinW c p q
-... | E , (aE , bE) with Desc-reduct bE
-...   | _ , (refl , _) with Hom-stk-reduct sh₁ aE
-...     | mkHomStk _ _ _ _ ()
-irrel₁ c (⊩₁Desc p _ _) (⊩₁Unit q) with joinW c p q
-... | E , (aE , bE) with Unit-nf bE
-...   | refl with Desc-reduct aE
-...     | _ , ((), _)
-irrel₁ c (⊩₁Unit p) (⊩₁Desc q _ _) with joinW c p q
-... | E , (aE , bE) with Desc-reduct bE
-...   | _ , (refl , _) with Unit-nf aE
-...     | ()
-irrel₁ c (⊩₁Desc p _ _) (⊩₁Nat q) with joinW c p q
-... | E , (aE , bE) with Nat-nf bE
-...   | refl with Desc-reduct aE
-...     | _ , ((), _)
-irrel₁ c (⊩₁Nat p) (⊩₁Desc q _ _) with joinW c p q
-... | E , (aE , bE) with Desc-reduct bE
-...   | _ , (refl , _) with Nat-nf aE
-...     | ()
-irrel₁ c (⊩₁Desc p _ _) (⊩₁Id q) with joinW c p q
-... | E , (aE , bE) with Id-reduct bE
-...   | _ , (_ , (_ , (refl , _))) with Desc-reduct aE
-...     | _ , ((), _)
-irrel₁ c (⊩₁Id p) (⊩₁Desc q _ _) with joinW c p q
-... | E , (aE , bE) with Desc-reduct bE
-...   | _ , (refl , _) with Id-reduct aE
-...     | _ , (_ , (_ , ((), _)))
-irrel₁ c (⊩₁Desc p _ _) (⊩₁IMu q _ _ _ _ _ _) with joinW c p q
-... | E , (aE , bE) with IMu-reduct bE
-...   | mkIMuRed _ _ _ refl _ _ _ with Desc-reduct aE
-...     | _ , ((), _)
-irrel₁ c (⊩₁IMu p _ _ _ _ _ _) (⊩₁Desc q _ _) with joinW c p q
-... | E , (aE , bE) with Desc-reduct bE
-...   | _ , (refl , _) with IMu-reduct aE
-...     | mkIMuRed _ _ _ () _ _ _
-irrel₁ c (⊩₁Desc p _ _) (⊩₁Fin q) with joinW c p q
-... | E , (aE , bE) with Fin-nf bE
-...   | refl with Desc-reduct aE
-...     | _ , ((), _)
-irrel₁ c (⊩₁Fin p) (⊩₁Desc q _ _) with joinW c p q
-... | E , (aE , bE) with Desc-reduct bE
-...   | _ , (refl , _) with Fin-nf aE
-...     | ()
-irrel₁ c (⊩₁Desc p _ _) (⊩₁DIhNe q n₂) with joinW c p q
-... | E , (aE , bE) with DIhNe-reduct n₂ bE
-...   | mkDIhNe _ _ _ _ _ refl with Desc-reduct aE
-...     | _ , ((), _)
-irrel₁ c (⊩₁DIhNe p n₁) (⊩₁base q) with joinW c p q
-... | E , (aE , bE) with base-nf bE
-...   | refl with DIhNe-reduct n₁ aE
-...     | mkDIhNe _ _ _ _ _ ()
-irrel₁ c (⊩₁base p) (⊩₁DIhNe q n₂) with joinW c p q
-... | E , (aE , bE) with DIhNe-reduct n₂ bE
-...   | mkDIhNe _ _ _ _ _ refl with base-nf aE
-...     | ()
-irrel₁ c (⊩₁DIhNe p n₁) (⊩₁U q) with joinW c p q
-... | E , (aE , bE) with U-nf bE
-...   | refl with DIhNe-reduct n₁ aE
-...     | mkDIhNe _ _ _ _ _ ()
-irrel₁ c (⊩₁U p) (⊩₁DIhNe q n₂) with joinW c p q
-... | E , (aE , bE) with DIhNe-reduct n₂ bE
-...   | mkDIhNe _ _ _ _ _ refl with U-nf aE
-...     | ()
-irrel₁ c (⊩₁DIhNe p n₁) (⊩₁ne q n₂) with joinW c p q
-... | E , (aE , bE) with El-ne-reduct n₂ bE
-...   | mkElNe _ _ refl with DIhNe-reduct n₁ aE
-...     | mkDIhNe _ _ _ _ _ ()
-irrel₁ c (⊩₁ne p n₁) (⊩₁DIhNe q n₂) with joinW c p q
-... | E , (aE , bE) with DIhNe-reduct n₂ bE
-...   | mkDIhNe _ _ _ _ _ refl with El-ne-reduct n₁ aE
-...     | mkElNe _ _ ()
-irrel₁ c (⊩₁DIhNe p n₁) (⊩₁Π q _ _) with joinW c p q
-... | E , (aE , bE) with Π-reduct bE
-...   | mkΠRed _ _ refl _ _ with DIhNe-reduct n₁ aE
-...     | mkDIhNe _ _ _ _ _ ()
-irrel₁ c (⊩₁Π p _ _) (⊩₁DIhNe q n₂) with joinW c p q
-... | E , (aE , bE) with DIhNe-reduct n₂ bE
-...   | mkDIhNe _ _ _ _ _ refl with Π-reduct aE
-...     | mkΠRed _ _ () _ _
-irrel₁ c (⊩₁DIhNe p n₁) (⊩₁Σ q _ _) with joinW c p q
-... | E , (aE , bE) with Σ-reduct bE
-...   | mkΣRed _ _ refl _ _ with DIhNe-reduct n₁ aE
-...     | mkDIhNe _ _ _ _ _ ()
-irrel₁ c (⊩₁Σ p _ _) (⊩₁DIhNe q n₂) with joinW c p q
-... | E , (aE , bE) with DIhNe-reduct n₂ bE
-...   | mkDIhNe _ _ _ _ _ refl with Σ-reduct aE
-...     | mkΣRed _ _ () _ _
-irrel₁ c (⊩₁DIhNe p n₁) (⊩₁Hom q sh₂) with joinW c p q
-... | E , (aE , bE) with Hom-stk-reduct sh₂ bE
-...   | mkHomStk _ _ _ _ refl with DIhNe-reduct n₁ aE
-...     | mkDIhNe _ _ _ _ _ ()
-irrel₁ c (⊩₁Hom p sh₁) (⊩₁DIhNe q n₂) with joinW c p q
-... | E , (aE , bE) with DIhNe-reduct n₂ bE
-...   | mkDIhNe _ _ _ _ _ refl with Hom-stk-reduct sh₁ aE
-...     | mkHomStk _ _ _ _ ()
-irrel₁ c (⊩₁DIhNe p n₁) (⊩₁Unit q) with joinW c p q
-... | E , (aE , bE) with Unit-nf bE
-...   | refl with DIhNe-reduct n₁ aE
-...     | mkDIhNe _ _ _ _ _ ()
-irrel₁ c (⊩₁Unit p) (⊩₁DIhNe q n₂) with joinW c p q
-... | E , (aE , bE) with DIhNe-reduct n₂ bE
-...   | mkDIhNe _ _ _ _ _ refl with Unit-nf aE
-...     | ()
-irrel₁ c (⊩₁DIhNe p n₁) (⊩₁Nat q) with joinW c p q
-... | E , (aE , bE) with Nat-nf bE
-...   | refl with DIhNe-reduct n₁ aE
-...     | mkDIhNe _ _ _ _ _ ()
-irrel₁ c (⊩₁Nat p) (⊩₁DIhNe q n₂) with joinW c p q
-... | E , (aE , bE) with DIhNe-reduct n₂ bE
-...   | mkDIhNe _ _ _ _ _ refl with Nat-nf aE
-...     | ()
-irrel₁ c (⊩₁DIhNe p n₁) (⊩₁Id q) with joinW c p q
-... | E , (aE , bE) with Id-reduct bE
-...   | _ , (_ , (_ , (refl , _))) with DIhNe-reduct n₁ aE
-...     | mkDIhNe _ _ _ _ _ ()
-irrel₁ c (⊩₁Id p) (⊩₁DIhNe q n₂) with joinW c p q
-... | E , (aE , bE) with DIhNe-reduct n₂ bE
-...   | mkDIhNe _ _ _ _ _ refl with Id-reduct aE
-...     | _ , (_ , (_ , ((), _)))
-irrel₁ c (⊩₁DIhNe p n₁) (⊩₁IMu q _ _ _ _ _ _) with joinW c p q
-... | E , (aE , bE) with IMu-reduct bE
-...   | mkIMuRed _ _ _ refl _ _ _ with DIhNe-reduct n₁ aE
-...     | mkDIhNe _ _ _ _ _ ()
-irrel₁ c (⊩₁IMu p _ _ _ _ _ _) (⊩₁DIhNe q n₂) with joinW c p q
-... | E , (aE , bE) with DIhNe-reduct n₂ bE
-...   | mkDIhNe _ _ _ _ _ refl with IMu-reduct aE
-...     | mkIMuRed _ _ _ () _ _ _
-irrel₁ c (⊩₁DIhNe p n₁) (⊩₁Fin q) with joinW c p q
-... | E , (aE , bE) with Fin-nf bE
-...   | refl with DIhNe-reduct n₁ aE
-...     | mkDIhNe _ _ _ _ _ ()
-irrel₁ c (⊩₁Fin p) (⊩₁DIhNe q n₂) with joinW c p q
-... | E , (aE , bE) with DIhNe-reduct n₂ bE
-...   | mkDIhNe _ _ _ _ _ refl with Fin-nf aE
-...     | ()
-irrel₁ c (⊩₁DIhNe p n₁) (⊩₁Desc q _ _) with joinW c p q
-... | E , (aE , bE) with Desc-reduct bE
-...   | _ , (refl , _) with DIhNe-reduct n₁ aE
-...     | mkDIhNe _ _ _ _ _ ()
+irrel₁ c R@(⊩₁Desc p _ _) S@(⊩₁base q) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁base p) S@(⊩₁Desc q _ _) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁Desc p _ _) S@(⊩₁U q) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁U p) S@(⊩₁Desc q _ _) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁Desc p _ _) S@(⊩₁ne q n₂) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁ne p n₁) S@(⊩₁Desc q _ _) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁Desc p _ _) S@(⊩₁Π q _ _) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁Π p _ _) S@(⊩₁Desc q _ _) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁Desc p _ _) S@(⊩₁Σ q _ _) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁Σ p _ _) S@(⊩₁Desc q _ _) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁Desc p _ _) S@(⊩₁Hom q sh₂) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁Hom p sh₁) S@(⊩₁Desc q _ _) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁Desc p _ _) S@(⊩₁Unit q) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁Unit p) S@(⊩₁Desc q _ _) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁Desc p _ _) S@(⊩₁Nat q) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁Nat p) S@(⊩₁Desc q _ _) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁Desc p _ _) S@(⊩₁Id q) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁Id p) S@(⊩₁Desc q _ _) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁Desc p _ _) S@(⊩₁IMu q _ _ _ _ _ _) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁IMu p _ _ _ _ _ _) S@(⊩₁Desc q _ _) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁Desc p _ _) S@(⊩₁Fin q) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁Fin p) S@(⊩₁Desc q _ _) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁Desc p _ _) S@(⊩₁DIhNe q n₂) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁DIhNe p n₁) S@(⊩₁base q) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁base p) S@(⊩₁DIhNe q n₂) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁DIhNe p n₁) S@(⊩₁U q) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁U p) S@(⊩₁DIhNe q n₂) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁DIhNe p n₁) S@(⊩₁ne q n₂) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁ne p n₁) S@(⊩₁DIhNe q n₂) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁DIhNe p n₁) S@(⊩₁Π q _ _) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁Π p _ _) S@(⊩₁DIhNe q n₂) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁DIhNe p n₁) S@(⊩₁Σ q _ _) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁Σ p _ _) S@(⊩₁DIhNe q n₂) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁DIhNe p n₁) S@(⊩₁Hom q sh₂) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁Hom p sh₁) S@(⊩₁DIhNe q n₂) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁DIhNe p n₁) S@(⊩₁Unit q) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁Unit p) S@(⊩₁DIhNe q n₂) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁DIhNe p n₁) S@(⊩₁Nat q) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁Nat p) S@(⊩₁DIhNe q n₂) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁DIhNe p n₁) S@(⊩₁Id q) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁Id p) S@(⊩₁DIhNe q n₂) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁DIhNe p n₁) S@(⊩₁IMu q _ _ _ _ _ _) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁IMu p _ _ _ _ _ _) S@(⊩₁DIhNe q n₂) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁DIhNe p n₁) S@(⊩₁Fin q) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁Fin p) S@(⊩₁DIhNe q n₂) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁DIhNe p n₁) S@(⊩₁Desc q _ _) = ⊥-elim (irrel₁✗ c R S tt)
 irrel₁ c (⊩₁DIhNe _ _) (⊩₁DIhNe _ _) = (λ _ h → h) , (λ _ h → h)
 -- ★ `Desc`/`Desc`: the two index witnesses are convertible, and the
 --   membership is the interpretation itself — re-based on the other
@@ -7017,54 +7641,18 @@ irrel₁ c (⊩₁base _) (⊩₁ne _ _) = (λ _ h → h) , (λ _ h → h)
 irrel₁ c (⊩₁ne _ _) (⊩₁base _) = (λ _ h → h) , (λ _ h → h)
 irrel₁ c (⊩₁ne _ _) (⊩₁ne _ _) = (λ _ h → h) , (λ _ h → h)
 irrel₁ c (⊩₁U _)    (⊩₁U _)    = (λ _ h → h) , (λ _ h → h)
-irrel₁ c (⊩₁Id p) (⊩₁base q) with joinW c p q
-... | E , (iE , bE) with base-nf bE
-...   | refl with Id-reduct iE
-...     | _ , (_ , (_ , ((), _)))
-irrel₁ c (⊩₁base p) (⊩₁Id q) with joinW c p q
-... | E , (bE , iE) with base-nf bE
-...   | refl with Id-reduct iE
-...     | _ , (_ , (_ , ((), _)))
-irrel₁ c (⊩₁Id p) (⊩₁U q) with joinW c p q
-... | E , (iE , uE) with U-nf uE
-...   | refl with Id-reduct iE
-...     | _ , (_ , (_ , ((), _)))
-irrel₁ c (⊩₁U p) (⊩₁Id q) with joinW c p q
-... | E , (uE , iE) with U-nf uE
-...   | refl with Id-reduct iE
-...     | _ , (_ , (_ , ((), _)))
-irrel₁ c (⊩₁Id p) (⊩₁ne q n) with joinW c p q
-... | E , (iE , eE) with El-ne-reduct n eE
-...   | mkElNe _ _ refl with Id-reduct iE
-...     | _ , (_ , (_ , ((), _)))
-irrel₁ c (⊩₁ne p n) (⊩₁Id q) with joinW c p q
-... | E , (eE , iE) with El-ne-reduct n eE
-...   | mkElNe _ _ refl with Id-reduct iE
-...     | _ , (_ , (_ , ((), _)))
-irrel₁ c (⊩₁Id p) (⊩₁Π q _ _) with joinW c p q
-... | E , (iE , πE) with Π-reduct πE
-...   | mkΠRed _ _ refl _ _ with Id-reduct iE
-...     | _ , (_ , (_ , ((), _)))
-irrel₁ c (⊩₁Π p _ _) (⊩₁Id q) with joinW c p q
-... | E , (πE , iE) with Π-reduct πE
-...   | mkΠRed _ _ refl _ _ with Id-reduct iE
-...     | _ , (_ , (_ , ((), _)))
-irrel₁ c (⊩₁Id p) (⊩₁Σ q _ _) with joinW c p q
-... | E , (iE , σE) with Σ-reduct σE
-...   | mkΣRed _ _ refl _ _ with Id-reduct iE
-...     | _ , (_ , (_ , ((), _)))
-irrel₁ c (⊩₁Σ p _ _) (⊩₁Id q) with joinW c p q
-... | E , (σE , iE) with Σ-reduct σE
-...   | mkΣRed _ _ refl _ _ with Id-reduct iE
-...     | _ , (_ , (_ , ((), _)))
-irrel₁ c (⊩₁Id p) (⊩₁Hom q sh) with joinW c p q
-... | E , (iE , hE) with Hom-stk-reduct sh hE
-...   | mkHomStk _ _ _ _ refl with Id-reduct iE
-...     | _ , (_ , (_ , ((), _)))
-irrel₁ c (⊩₁Hom p sh) (⊩₁Id q) with joinW c p q
-... | E , (hE , iE) with Hom-stk-reduct sh hE
-...   | mkHomStk _ _ _ _ refl with Id-reduct iE
-...     | _ , (_ , (_ , ((), _)))
+irrel₁ c R@(⊩₁Id p) S@(⊩₁base q) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁base p) S@(⊩₁Id q) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁Id p) S@(⊩₁U q) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁U p) S@(⊩₁Id q) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁Id p) S@(⊩₁ne q n) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁ne p n) S@(⊩₁Id q) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁Id p) S@(⊩₁Π q _ _) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁Π p _ _) S@(⊩₁Id q) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁Id p) S@(⊩₁Σ q _ _) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁Σ p _ _) S@(⊩₁Id q) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁Id p) S@(⊩₁Hom q sh) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁Hom p sh) S@(⊩₁Id q) = ⊥-elim (irrel₁✗ c R S tt)
 irrel₁ c (⊩₁Id {a = a} {b = b} p) (⊩₁Id {a = a'} {b = b'} q)
   with joinW c p q
 ... | E , (iE , iE') with Id-reduct iE | Id-reduct iE'
@@ -7083,124 +7671,40 @@ irrel₁ c (⊩₁Hom _ _) (⊩₁Hom _ _) = (λ _ h → h) , (λ _ h → h)
 -- W2 `Hom` (stuck) against everything else, both ways: impossible — reducts
 -- of a stuck `Hom` stay `Hom`-headed (`Hom-stk-reduct`), and the other side's
 -- shape lemma pins a different head.
-irrel₁ c (⊩₁base p) (⊩₁Hom q s) with joinW c p q
-... | E , (bE , hE) with base-nf bE
-...   | refl with Hom-stk-reduct s hE
-...     | mkHomStk _ _ _ _ ()
-irrel₁ c (⊩₁Hom p s) (⊩₁base q) with joinW c p q
-... | E , (hE , bE) with base-nf bE
-...   | refl with Hom-stk-reduct s hE
-...     | mkHomStk _ _ _ _ ()
-irrel₁ c (⊩₁U p) (⊩₁Hom q s) with joinW c p q
-... | E , (uE , hE) with U-nf uE
-...   | refl with Hom-stk-reduct s hE
-...     | mkHomStk _ _ _ _ ()
-irrel₁ c (⊩₁Hom p s) (⊩₁U q) with joinW c p q
-... | E , (hE , uE) with U-nf uE
-...   | refl with Hom-stk-reduct s hE
-...     | mkHomStk _ _ _ _ ()
-irrel₁ c (⊩₁ne p n) (⊩₁Hom q s) with joinW c p q
-... | E , (eE , hE) with El-ne-reduct n eE
-...   | mkElNe _ _ refl with Hom-stk-reduct s hE
-...     | mkHomStk _ _ _ _ ()
-irrel₁ c (⊩₁Hom p s) (⊩₁ne q n) with joinW c p q
-... | E , (hE , eE) with El-ne-reduct n eE
-...   | mkElNe _ _ refl with Hom-stk-reduct s hE
-...     | mkHomStk _ _ _ _ ()
-irrel₁ c (⊩₁Π p _ _) (⊩₁Hom q s) with joinW c p q
-... | E , (πE , hE) with Π-reduct πE
-...   | mkΠRed _ _ refl _ _ with Hom-stk-reduct s hE
-...     | mkHomStk _ _ _ _ ()
-irrel₁ c (⊩₁Hom p s) (⊩₁Π q _ _) with joinW c p q
-... | E , (hE , πE) with Π-reduct πE
-...   | mkΠRed _ _ refl _ _ with Hom-stk-reduct s hE
-...     | mkHomStk _ _ _ _ ()
-irrel₁ c (⊩₁Σ p _ _) (⊩₁Hom q s) with joinW c p q
-... | E , (σE , hE) with Σ-reduct σE
-...   | mkΣRed _ _ refl _ _ with Hom-stk-reduct s hE
-...     | mkHomStk _ _ _ _ ()
-irrel₁ c (⊩₁Hom p s) (⊩₁Σ q _ _) with joinW c p q
-... | E , (hE , σE) with Σ-reduct σE
-...   | mkΣRed _ _ refl _ _ with Hom-stk-reduct s hE
-...     | mkHomStk _ _ _ _ ()
+irrel₁ c R@(⊩₁base p) S@(⊩₁Hom q s) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁Hom p s) S@(⊩₁base q) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁U p) S@(⊩₁Hom q s) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁Hom p s) S@(⊩₁U q) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁ne p n) S@(⊩₁Hom q s) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁Hom p s) S@(⊩₁ne q n) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁Π p _ _) S@(⊩₁Hom q s) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁Hom p s) S@(⊩₁Π q _ _) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁Σ p _ _) S@(⊩₁Hom q s) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁Hom p s) S@(⊩₁Σ q _ _) = ⊥-elim (irrel₁✗ c R S tt)
 
 -- `U` against a non-`U`: refuted.
-irrel₁ c (⊩₁U p) (⊩₁base q) with joinW c p q
-... | E , (uE , bE) with U-nf uE
-...   | refl with base-nf bE
-...     | ()
-irrel₁ c (⊩₁U p) (⊩₁ne q n) with joinW c p q
-... | E , (uE , eE) with U-nf uE
-...   | refl with El-ne-reduct n eE
-...     | mkElNe _ _ ()
-irrel₁ c (⊩₁U p) (⊩₁Π q _ _) with joinW c p q
-... | E , (uE , πE) with U-nf uE
-...   | refl with Π-reduct πE
-...     | mkΠRed _ _ () _ _
-irrel₁ c (⊩₁base p) (⊩₁U q) with joinW c p q
-... | E , (bE , uE) with base-nf bE
-...   | refl with U-nf uE
-...     | ()
-irrel₁ c (⊩₁ne p n) (⊩₁U q) with joinW c p q
-... | E , (eE , uE) with El-ne-reduct n eE
-...   | mkElNe _ _ refl with U-nf uE
-...     | ()
-irrel₁ c (⊩₁Π p _ _) (⊩₁U q) with joinW c p q
-... | E , (πE , uE) with U-nf uE
-...   | refl with Π-reduct πE
-...     | mkΠRed _ _ () _ _
+irrel₁ c R@(⊩₁U p) S@(⊩₁base q) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁U p) S@(⊩₁ne q n) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁U p) S@(⊩₁Π q _ _) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁base p) S@(⊩₁U q) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁ne p n) S@(⊩₁U q) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁Π p _ _) S@(⊩₁U q) = ⊥-elim (irrel₁✗ c R S tt)
 
 -- `Π` against `base`/`ne`: refuted.
-irrel₁ c (⊩₁base p) (⊩₁Π q _ _) with joinW c p q
-... | E , (bE , πE) with base-nf bE
-...   | refl with Π-reduct πE
-...     | mkΠRed _ _ () _ _
-irrel₁ c (⊩₁ne p n) (⊩₁Π q _ _) with joinW c p q
-... | E , (eE , πE) with El-ne-reduct n eE
-...   | mkElNe _ _ refl with Π-reduct πE
-...     | mkΠRed _ _ () _ _
-irrel₁ c (⊩₁Π p _ _) (⊩₁base q) with joinW c p q
-... | E , (πE , bE) with base-nf bE
-...   | refl with Π-reduct πE
-...     | mkΠRed _ _ () _ _
-irrel₁ c (⊩₁Π p _ _) (⊩₁ne q n) with joinW c p q
-... | E , (πE , eE) with El-ne-reduct n eE
-...   | mkElNe _ _ refl with Π-reduct πE
-...     | mkΠRed _ _ () _ _
+irrel₁ c R@(⊩₁base p) S@(⊩₁Π q _ _) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁ne p n) S@(⊩₁Π q _ _) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁Π p _ _) S@(⊩₁base q) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁Π p _ _) S@(⊩₁ne q n) = ⊥-elim (irrel₁✗ c R S tt)
 
 -- `Σ'` against everything else, both ways: impossible.
-irrel₁ c (⊩₁base p) (⊩₁Σ q _ _) with joinW c p q
-... | E , (bE , σE) with base-nf bE
-...   | refl with Σ-reduct σE
-...     | mkΣRed _ _ () _ _
-irrel₁ c (⊩₁ne p n) (⊩₁Σ q _ _) with joinW c p q
-... | E , (eE , σE) with El-ne-reduct n eE
-...   | mkElNe _ _ refl with Σ-reduct σE
-...     | mkΣRed _ _ () _ _
-irrel₁ c (⊩₁U p) (⊩₁Σ q _ _) with joinW c p q
-... | E , (uE , σE) with U-nf uE
-...   | refl with Σ-reduct σE
-...     | mkΣRed _ _ () _ _
-irrel₁ c (⊩₁Σ p _ _) (⊩₁base q) with joinW c p q
-... | E , (σE , bE) with base-nf bE
-...   | refl with Σ-reduct σE
-...     | mkΣRed _ _ () _ _
-irrel₁ c (⊩₁Σ p _ _) (⊩₁ne q n) with joinW c p q
-... | E , (σE , eE) with El-ne-reduct n eE
-...   | mkElNe _ _ refl with Σ-reduct σE
-...     | mkΣRed _ _ () _ _
-irrel₁ c (⊩₁Σ p _ _) (⊩₁U q) with joinW c p q
-... | E , (σE , uE) with U-nf uE
-...   | refl with Σ-reduct σE
-...     | mkΣRed _ _ () _ _
-irrel₁ c (⊩₁Π p _ _) (⊩₁Σ q _ _) with joinW c p q
-... | E , (πE , σE) with Π-reduct πE
-...   | mkΠRed _ _ refl _ _ with Σ-reduct σE
-...     | mkΣRed _ _ () _ _
-irrel₁ c (⊩₁Σ p _ _) (⊩₁Π q _ _) with joinW c p q
-... | E , (σE , πE) with Π-reduct πE
-...   | mkΠRed _ _ refl _ _ with Σ-reduct σE
-...     | mkΣRed _ _ () _ _
+irrel₁ c R@(⊩₁base p) S@(⊩₁Σ q _ _) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁ne p n) S@(⊩₁Σ q _ _) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁U p) S@(⊩₁Σ q _ _) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁Σ p _ _) S@(⊩₁base q) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁Σ p _ _) S@(⊩₁ne q n) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁Σ p _ _) S@(⊩₁U q) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁Π p _ _) S@(⊩₁Σ q _ _) = ⊥-elim (irrel₁✗ c R S tt)
+irrel₁ c R@(⊩₁Σ p _ _) S@(⊩₁Π q _ _) = ⊥-elim (irrel₁✗ c R S tt)
 
 irrel₁ c (⊩₁Σ p ⊩F ⊩G) (⊩₁Σ q ⊩F' ⊩G') with joinW c p q
 ... | E , (σE₁ , σE₂) with Σ-reduct σE₁ | Σ-reduct σE₂
