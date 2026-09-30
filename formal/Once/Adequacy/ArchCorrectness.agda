@@ -68,10 +68,17 @@ module Once.Adequacy.ArchCorrectness
 
 open import Once.Adequacy.CPU using (Arch; x86-64; x86-32; riscv64; arch-semantics)
 open import Once.Adequacy.Compile using (ArchCorrect)
-open import Data.List using (List)
+open import Data.List using (List; [])
 open import Data.Product using (proj₁)
 open import Relation.Binary.PropositionalEquality using (refl)
-open import Once.Denotation.Program using (IRFun; table; main)
+open import Once.Denotation.Program using (IRFun; table; main; irProgram; LinkedProgram)
+open import Once.Adequacy.SourceTrace using (moduleToIR; moduleTable; rewrite-program; rewrite-program-linked; moduleToProgram-linked)
+open import Once.IR using (IR)
+open import Once.IRTy using (⌊_⌋)
+open import Once.Type using (Unit)
+open import Data.Maybe using (just)
+open import Relation.Binary.PropositionalEquality using (_≡_)
+import Once.Parser.Module.Core as P
 
 import Once.Adequacy.ArchCorrectness.X86-64 as A64
 import Once.Adequacy.ArchCorrectness.X86-32 as A32
@@ -88,6 +95,14 @@ module RV (tbl : List IRFun) = ARV o tbl
        riscv64-heap-room riscv64-stack-room riscv64-call-room
        riscv64-reg-range riscv64-scratch-dec-guarded riscv64-slot-addr-no-wrap
        riscv64-addr-no-wrap riscv64-lit-fits
+
+-- The emitted (arith-rewritten) program's table, and its linkedness.
+TP : P.Module → IR ⌊ Unit ⌋ ⌊ Unit ⌋ → List IRFun
+TP m ir = table (rewrite-program (irProgram (moduleTable m) ir))
+
+LK : ∀ (m : P.Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) → moduleToIR m ≡ just ir
+   → LinkedProgram (rewrite-program (irProgram (moduleTable m) ir))
+LK m ir mi = rewrite-program-linked (irProgram (moduleTable m) ir) (moduleToProgram-linked m ir mi)
 
 -- The block-table coherence hypotheses (plan 0.91; D188), one per target and
 -- now one per TABLE: every program brings its own image.
@@ -106,7 +121,7 @@ x86-64-correct brs = record
   ; flat-trace        = λ p lk → X64.flat-x86-64 (table p) (brs (table p)) (main p) lk
   ; assemble-correct  = λ _ _ _ _ _ → refl
   ; asm-trace-correct = λ m asm eq dl lr sr ir mi n →
-      X64.asm-flat-x86-64 _ (brs _) m asm eq dl lr sr ir mi refl _ n
+      X64.asm-flat-x86-64 (TP m ir) (brs (TP m ir)) m asm eq dl lr sr ir mi refl (LK m ir mi) n
   ; ir-flat-correct   = λ p lk → X64.ir-flat-correct-x86-64 (table p) (brs (table p)) (main p) lk
   }
 
@@ -116,7 +131,7 @@ x86-32-correct brs = record
   ; flat-trace        = λ p lk → X32.flat-x86-32 (table p) (brs (table p)) (main p) lk
   ; assemble-correct  = λ _ _ _ _ _ → refl
   ; asm-trace-correct = λ m asm eq dl lr sr ir mi n →
-      X32.asm-flat-x86-32 _ (brs _) m asm eq dl lr sr ir mi refl _ n
+      X32.asm-flat-x86-32 (TP m ir) (brs (TP m ir)) m asm eq dl lr sr ir mi refl (LK m ir mi) n
   ; ir-flat-correct   = λ p lk → X32.ir-flat-correct-x86-32 (table p) (brs (table p)) (main p) lk
   }
 
@@ -126,7 +141,7 @@ riscv64-correct brs = record
   ; flat-trace        = λ p lk → RV.flat-riscv64 (table p) (brs (table p)) (main p) lk
   ; assemble-correct  = λ _ _ _ _ _ → refl
   ; asm-trace-correct = λ m asm eq dl lr sr ir mi n →
-      RV.asm-flat-riscv64 _ (brs _) m asm eq dl lr sr ir mi refl _ n
+      RV.asm-flat-riscv64 (TP m ir) (brs (TP m ir)) m asm eq dl lr sr ir mi refl (LK m ir mi) n
   ; ir-flat-correct   = λ p lk → RV.ir-flat-correct-riscv64 (table p) (brs (table p)) (main p) lk
   }
 

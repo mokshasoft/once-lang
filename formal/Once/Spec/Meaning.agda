@@ -25,8 +25,13 @@
 --     `saturates`), so pointwise equality of behaviours IS trace equality.
 --   * `Once.Denotation.Meaning` — `⟦_⟧ᶜ`/`⟦_⟧ᵢ`: the typing derivation's
 --     denotation, defined by direct induction on `_⊢ᶜ_`/`_⊢ᵢ_`.
---   * `Once.Denotation.MainMeaning` — `meaningᵈ`: a typed module's
---     `Behavior` (the denotation of its `main` derivation).
+--   * PLAN 0.103 6a — THE PROGRAM MEANING IS THE CORE'S. A typed module IS a
+--     core program (`Once.Spec.Core.Translate.toProgram`: the module telescope,
+--     every definition typed once, a reference meaning its entry — D239, D243,
+--     D246), and its meaning is `Once.Spec.Core.Telescope.runProgram`: `main`
+--     run in the telescope's environment. (The surface direct meaning
+--     `MainMeaning.meaningᵈ` is retired: it could not give a polymorphic
+--     entry, typed once at rigid parameters, a meaning at an instance.)
 --
 -- NOT spec (implementation, checked against this): `realize` (the
 -- derivation→IR-morphism bridge), `evalᴰ` (`Once.Denotation.DenotTrace`,
@@ -66,6 +71,7 @@ open import Once.Denotation.Behavior public
 open import Once.Denotation.Meaning public
   using ( ⟦_⟧ᵢ ; ⟦_⟧ᶜ ; Env ; lookupᴰ ; svarᴰ ; sigOpValᴰ ; sigOpRefᴰ
         ; in-value ; named-sem ; cata-sem ; cata-ev-algᴰ-D )
-open import Once.Denotation.MainMeaning public
-  using ( meaningᵈ ; runMainᵈ ; mainMeaningᵈ ; mainMeaningᵈ-go
-        ; mainMeaningᵈ-ef ; mmd-dispatch ; MClo )
+open import Once.Spec.Core.Telescope public
+  using ( Program ; program ; runProgram ; Tele ; teleSem )
+open import Once.Spec.Core.Translate public
+  using ( toProgram )

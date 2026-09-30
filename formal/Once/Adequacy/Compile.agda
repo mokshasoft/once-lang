@@ -32,7 +32,7 @@
 module Once.Adequacy.Compile where
 
 
-open import Once.Spec.Module using (HasValidMain-decl; ModuleTyped)
+open import Once.Spec.Module using (HasValidMain; ModuleTyped)
 open import Data.Bool using (Bool; false; true)
 open import Data.Nat using (ℕ)
 open import Data.List using (List)
@@ -49,7 +49,8 @@ open import Once.Type using (Unit; Type; _⇒[_]_; mk-kind; Many; eff)
 open import Once.Denotation.Behavior using (Source; Behavior; at; behavior-by)
 open import Once.Adequacy.SourceTrace
   using (⟦_⟧; ⟦⟧-via-module; moduleToIR; moduleToIR-emitted; map-rewrite; ⟦_⟧IR; srcToModule; srcToModule-just; srcToModule-inv;
-         moduleToProgram; moduleTable; programAt; rewrite-program; rewrite-program-linked; moduleToProgram-linked)
+         moduleToProgram; moduleTable; programAt; rewrite-program; rewrite-program-linked; moduleToProgram-linked;
+         rewrite-program-preserves)
 open import Once.Denotation.Program using (IRProgram; irProgram; table; main; Linked; LinkedProgram)
 
 -- Plan 0.49 (route 3): the INDEPENDENT surface denotation `SD.⟦_⟧ˢ` (over the
@@ -69,8 +70,7 @@ import Once.Adequacy.MainExtract as ME
 -- lifts. `moduleToIR-complete` (forces `check-complete`) discharges
 -- completeness; `moduleToIR-sound` produces the predicate for soundness.
 import Once.Adequacy.ModuleComplete as MC
-import Once.Denotation.MainMeaning as MM     -- Plan 0.58: the direct IR-free meaning
-import Once.Adequacy.MainMeaningBridge as MMB -- Plan 0.58: the selection lemma (⟦_⟧ˢ ≈ ⟦_⟧ᵈ)
+import Once.Adequacy.CoreBridge as CB   -- plan 0.103 6a: the apex means the core
 open import Data.Product using (_×_; _,_; Σ-syntax; proj₁; proj₂)
 open import Data.Maybe.Properties using (just-injective)
 open import Data.Empty using (⊥-elim)
@@ -292,7 +292,6 @@ open import Once.Adequacy.AcceptSound as AS using (moduleToIR-typed; moduleToIR-
 -- `main-realize-agrees` from `RealizeBridge.realize-agrees`. Importing it here
 -- puts `realize-agrees` on the apex path (no longer an island).
 import Once.Adequacy.MainRealizeAgrees as MRA
-import Once.Adequacy.TelescopeEnv as TE
 -- Plan 0.51: the NAMED resolver-correctness obligations bridging the
 -- un-resolved independent meaning to the resolved compilation. The resolver is
 -- now in the verified loop (`srcToModule`); these are the explicit gaps.
@@ -555,18 +554,18 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   -- what makes this the compiler's refusal rather than a coincidence about
   -- some other path returning `nothing`.
   refuse-gated : ∀ (arch : Arch) (doOpt : Bool) (m : P.Module)
-                   (funs : List C.FunInfo) (polys : List C.PolyFunInfo)
+                   (es : List C.Entry)
                    (d : Dec (AdmissibleM arch m)) → ¬ AdmissibleM arch m
-               → compile-cr arch (C.cfm-build-gated C.Heap doOpt arch m funs polys d) ≡ nothing
-  refuse-gated arch doOpt m funs polys (yes p) ¬adm = ⊥-elim (¬adm p)
-  refuse-gated arch doOpt m funs polys (no  _) ¬adm = refl
+               → compile-cr arch (C.cfm-build-gated C.Heap doOpt arch m es d) ≡ nothing
+  refuse-gated arch doOpt m es (yes p) ¬adm = ⊥-elim (¬adm p)
+  refuse-gated arch doOpt m es (no  _) ¬adm = refl
 
   refuse-ef : ∀ (arch : Arch) (doOpt : Bool) (m : P.Module)
-                (ef : String ⊎ (List C.FunInfo × List C.PolyFunInfo)) → ¬ AdmissibleM arch m
+                (ef : String ⊎ List C.Entry) → ¬ AdmissibleM arch m
             → compile-cr arch (C.cfm-ef-aux C.Heap C.Build doOpt arch m ef) ≡ nothing
   refuse-ef arch doOpt m (inj₁ err)            ¬adm = refl
-  refuse-ef arch doOpt m (inj₂ (funs , polys)) ¬adm =
-    refuse-gated arch doOpt m funs polys (admissibleM? arch m) ¬adm
+  refuse-ef arch doOpt m (inj₂ es) ¬adm =
+    refuse-gated arch doOpt m es (admissibleM? arch m) ¬adm
 
   refuse-mir : ∀ (arch : Arch) (doOpt : Bool) (m : P.Module)
                  (mir : Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋)) → ¬ AdmissibleM arch m
@@ -585,20 +584,20 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   -- `nothing`, which is not `just`), which is precisely the statement that the
   -- gate is what stands between an inadmissible program and an output.
   accept-gated : ∀ (arch : Arch) (doOpt : Bool) (m : P.Module)
-                   (funs : List C.FunInfo) (polys : List C.PolyFunInfo)
+                   (es : List C.Entry)
                    (d : Dec (AdmissibleM arch m)) {bytes : List Byte}
-               → compile-cr arch (C.cfm-build-gated C.Heap doOpt arch m funs polys d) ≡ just bytes
+               → compile-cr arch (C.cfm-build-gated C.Heap doOpt arch m es d) ≡ just bytes
                → AdmissibleM arch m
-  accept-gated arch doOpt m funs polys (yes p) eq = p
-  accept-gated arch doOpt m funs polys (no  _) ()
+  accept-gated arch doOpt m es (yes p) eq = p
+  accept-gated arch doOpt m es (no  _) ()
 
   accept-ef : ∀ (arch : Arch) (doOpt : Bool) (m : P.Module)
-                (ef : String ⊎ (List C.FunInfo × List C.PolyFunInfo)) {bytes : List Byte}
+                (ef : String ⊎ List C.Entry) {bytes : List Byte}
             → compile-cr arch (C.cfm-ef-aux C.Heap C.Build doOpt arch m ef) ≡ just bytes
             → AdmissibleM arch m
   accept-ef arch doOpt m (inj₁ err)            ()
-  accept-ef arch doOpt m (inj₂ (funs , polys)) eq =
-    accept-gated arch doOpt m funs polys (admissibleM? arch m) eq
+  accept-ef arch doOpt m (inj₂ es) eq =
+    accept-gated arch doOpt m es (admissibleM? arch m) eq
 
   accept-mir : ∀ (arch : Arch) (doOpt : Bool) (m : P.Module)
                  (mir : Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋)) {bytes : List Byte}
@@ -729,16 +728,16 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   -- and the `main-checkElab-coherence` hook (strengthened extraction + resolveExpr
   -- faithfulness), NOT this opaque whole-statement axiom.
   main-realize-agrees : ∀ (arch : Arch) (m : P.Module) (mt : ModuleTyped m)
-    (hvm : HasValidMain-decl m mt) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) (mi : moduleToIR m ≡ just ir)
-    → ∀ n → ME.runMainˢ (arch-numerics arch) (ME.σ₀ (arch-numerics arch)) (proj₁ (proj₂ (ME.source-meaningᴰ (arch-numerics arch) m ir mi))) n
+    (hvm : HasValidMain m mt) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) (mi : moduleToIR m ≡ just ir)
+    → ∀ n → ME.runMainˢ (arch-numerics arch) (ME.σ₀ (arch-numerics arch) m) (proj₁ (proj₂ (ME.source-meaningᴰ (arch-numerics arch) m ir mi))) n
             ≡ ME.runMainˢ (arch-numerics arch) (MRA.σTp (arch-numerics arch) m ir mi) (proj₂ (MC.mainRealized m mt hvm)) n
   main-realize-agrees arch = MRA.main-realize-agrees-proof (arch-numerics arch)
 
-  -- Plan 0.103 phase 1c: the definitions environment the surface meaning of
-  -- `tp` runs in — the meanings of its main's linked telescope references.
+  -- Plan 0.103 phase 1c / D244: the definitions environment the surface meaning
+  -- of `tp` runs in — its compiled program's calls and linked references.
   σˢ : Arch → Typed → SD.DefsSem
-  σˢ arch (m , mt , hvm , pts) =
-    MRA.σTp (arch-numerics arch) m (proj₁ (MC.moduleToIR-complete m mt hvm pts)) (proj₂ (MC.moduleToIR-complete m mt hvm pts))
+  σˢ arch (m , mt , hvm) =
+    MRA.σTp (arch-numerics arch) m (proj₁ (MC.moduleToIR-complete m mt hvm)) (proj₂ (MC.moduleToIR-complete m mt hvm))
 
   -- D113: the INDEPENDENT meaning takes the arch, mirroring `exec`. The
   -- format is the only thing it uses the arch for.
@@ -746,28 +745,29 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   -- meaning — `sd-eq` below, which is exactly the content `sd-bridge` used to
   -- state. So `⟦_⟧ˢ` carries the three laws without a prefix-family induction
   -- over the SURFACE semantics: the compiler's own theorem supplies them.
+  -- D244: the IR meaning is the module's PROGRAM (main in its function table).
   sd-eq : ∀ (arch : Arch) (tp : Typed) (n : ℕ)
-        → at (⟦ moduleToIR (proj₁ tp) ⟧IR (arch-numerics arch)) n
-          ≡ ME.runMainˢ (arch-numerics arch) (σˢ arch tp) (proj₂ (MC.mainRealized (proj₁ tp) (proj₁ (proj₂ tp)) (proj₁ (proj₂ (proj₂ tp))))) n
-  sd-eq arch (m , mt , hvm , pts) n =
-    trans (trans (cong (λ x → at (⟦ x ⟧IR (arch-numerics arch)) n) (proj₂ (MC.moduleToIR-complete m mt hvm pts)))
+        → at (⟦ moduleToProgram (proj₁ tp) ⟧IR (arch-numerics arch)) n
+          ≡ ME.runMainˢ (arch-numerics arch) (σˢ arch tp) (proj₂ (MC.mainRealized (proj₁ tp) (proj₁ (proj₂ tp)) (proj₂ (proj₂ tp)))) n
+  sd-eq arch (m , mt , hvm) n =
+    trans (trans (cong (λ x → at (⟦ programAt (moduleTable m) x ⟧IR (arch-numerics arch)) n) (proj₂ (MC.moduleToIR-complete m mt hvm)))
                  (proj₂ (proj₂ (ME.source-meaningᴰ (arch-numerics arch) m
-                   (proj₁ (MC.moduleToIR-complete m mt hvm pts)) (proj₂ (MC.moduleToIR-complete m mt hvm pts)))) n))
+                   (proj₁ (MC.moduleToIR-complete m mt hvm)) (proj₂ (MC.moduleToIR-complete m mt hvm)))) n))
           (main-realize-agrees arch m mt hvm
-            (proj₁ (MC.moduleToIR-complete m mt hvm pts)) (proj₂ (MC.moduleToIR-complete m mt hvm pts)) n)
+            (proj₁ (MC.moduleToIR-complete m mt hvm)) (proj₂ (MC.moduleToIR-complete m mt hvm)) n)
 
   ⟦_⟧ˢ : Arch → Typed → Behavior
   ⟦ arch ⟧ˢ tp =
-    behavior-by (⟦ moduleToIR (proj₁ tp) ⟧IR (arch-numerics arch))
+    behavior-by (⟦ moduleToProgram (proj₁ tp) ⟧IR (arch-numerics arch))
                 (ME.runMainˢ (arch-numerics arch) (σˢ arch tp)
-                  (proj₂ (MC.mainRealized (proj₁ tp) (proj₁ (proj₂ tp)) (proj₁ (proj₂ (proj₂ tp))))))
+                  (proj₂ (MC.mainRealized (proj₁ tp) (proj₁ (proj₂ tp)) (proj₂ (proj₂ tp)))))
                 (sd-eq arch tp)
 
-  -- The SD bridge — a PROOF: the compiled `main` IR's denotational trace equals
-  -- `main`'s INDEPENDENT surface meaning. Reuses `ME.source-meaningᴰ (arch-numerics arch)` (=
-  -- `wrap-trace` ∘ `faithful` ∘ `main-ir-form`). Row-2 (`elaborate`) is FORCED.
+  -- The SD bridge — a PROOF: the compiled PROGRAM's denotational trace equals
+  -- `main`'s surface meaning in that program's environment. Reuses
+  -- `ME.source-meaningᴰ` (= `wrap-trace` ∘ `faithful` ∘ `main-ir-form`).
   sd-bridge : ∀ (arch : Arch) (tp : Typed)
-            → ⟦ moduleToIR (proj₁ tp) ⟧IR (arch-numerics arch) ≋ ⟦ arch ⟧ˢ tp
+            → ⟦ moduleToProgram (proj₁ tp) ⟧IR (arch-numerics arch) ≋ ⟦ arch ⟧ˢ tp
   sd-bridge arch tp n = sd-eq arch tp n
 
   pw-just-rel : ∀ {x y : Behavior} → Pointwise _≋_ (just x) (just y) → x ≋ y
@@ -786,26 +786,26 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
     where c≡n : compile arch doOpt src ≡ nothing
           c≡n rewrite g-eq | mi = refl
 
-  -- The total meaning at an accepted source: `⟦ src ⟧⊥ ≡ just (⟦ moduleToIR m ⟧IR)`.
+  -- The total meaning at an accepted source: `⟦ src ⟧⊥ ≡ just (⟦ moduleToProgram m ⟧IR)`.
   -- D115: only for an ADMISSIBLE module. Inadmissible ones have no meaning
   -- here, which is the whole point of the gate.
   ⟦⟧⊥-just-adm : ∀ (arch : Arch) (m : P.Module) (d : Dec (AdmissibleM arch m))
                → AdmissibleM arch m
-               → ⟦ m ⟧⊥-adm arch d ≡ ⟦ moduleToIR m ⟧⊥-ir arch
+               → ⟦ m ⟧⊥-adm arch d ≡ ⟦ moduleToProgram m ⟧⊥-ir arch
   ⟦⟧⊥-just-adm arch m (yes _)   adm = refl
   ⟦⟧⊥-just-adm arch m (no ¬adm) adm = ⊥-elim (¬adm adm)
 
   ⟦⟧⊥-just : ∀ (src : Source) (arch : Arch) (m : P.Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) →
     AdmissibleM arch m →
     srcToModule src ≡ just m → moduleToIR m ≡ just ir →
-    ⟦ src ⟧⊥ arch ≡ just (⟦ moduleToIR m ⟧IR (arch-numerics arch))
+    ⟦ src ⟧⊥ arch ≡ just (⟦ moduleToProgram m ⟧IR (arch-numerics arch))
   ⟦⟧⊥-just src arch m ir adm g-eq mi rewrite g-eq =
     trans (go (admissibleM? arch m) adm)
-          (trans (cong (λ x → ⟦ x ⟧⊥-ir arch) mi)
-                 (cong (λ x → just (⟦ x ⟧IR (arch-numerics arch))) (sym mi)))
+          (trans (cong (λ x → ⟦ programAt (moduleTable m) x ⟧⊥-ir arch) mi)
+                 (cong (λ x → just (⟦ programAt (moduleTable m) x ⟧IR (arch-numerics arch))) (sym mi)))
     where
       go : ∀ (d : Dec (AdmissibleM arch m)) → AdmissibleM arch m →
-           ⟦ m ⟧⊥-adm arch d ≡ ⟦ moduleToIR m ⟧⊥-ir arch
+           ⟦ m ⟧⊥-adm arch d ≡ ⟦ moduleToProgram m ⟧⊥-ir arch
       go (yes _)   _ = refl
       go (no ¬adm) a = ⊥-elim (¬adm a)
 
@@ -829,7 +829,7 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   ...   | (ir , mi) with srcToModule-inv src mR stm-eq
   ...     | (mU , p-eq , res-eq) =
               let hvm = MC.moduleToIR-sound mR MT mi
-                  tp  = (mR , MT , hvm , AS.moduleToIR-polys mR mi)
+                  tp  = (mR , MT , hvm)
                   -- Plan 0.81: `tp` is the RESOLVED module, so `accept-sound`
                   -- already gives its typing — the reverse transport
                   -- (`resolver-reflects-typing`) is GONE, and with it the last
@@ -872,8 +872,8 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   -- over the un-resolved `mU`, its grammar parse, and the resolution relation;
   -- `resolvesModule-sound` turns the last of those into the executable
   -- `resolveImports` fact that `srcToModule-just` needs.
-  correctR-complete arch doOpt src (mR , mt , hvm , pts) (mU , pt , rmR) adm
-    with MC.moduleToIR-complete mR mt hvm pts
+  correctR-complete arch doOpt src (mR , mt , hvm) (mU , pt , rmR) adm
+    with MC.moduleToIR-complete mR mt hvm
   ... | (ir , mi) with main⇒built arch doOpt mR ir adm mi
   ...   | (asm , built-eq) = string-to-bytes arch asm , c≡j
     where p-eq : parseStrict (Source.srcText src) ≡ inj₂ mU
@@ -913,19 +913,17 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   -- D113: arch-indexed, exactly as `⟦_⟧ˢ` is. This is THE reference meaning
   -- the apex `CorrectCompiler` field is filled with.
   ⟦_⟧ᵈ : Arch → Typed → Behavior
-  ⟦ arch ⟧ᵈ (m , mt , hvm , pts) = MM.meaningᵈ (arch-numerics arch) m mt hvm pts
-  -- `bridgeᵈ` (the observational `⟦_⟧ᵈ ≈ SD∘realize`) — Plan 0.58 part 7:
-  -- DISCHARGED via the selection lemma `MMB.main-bridge`, which parallel-inducts
-  -- over the shared `mainRealized`/`mainMeaningᵈ` dispatch and bottoms in
-  -- `bridge-c` at `main : EffUU` (env `∅`, thunk `tt`). The residual content is
-  -- the seven narrow leaf postulates in `Once.Adequacy.MeaningBridge`.
+  -- PLAN 0.103 6a: THE APEX MEANS THE CORE. A typed module IS a core program
+  -- (`Spec.Core.Translate.toProgram`), every definition typed once and a
+  -- reference meaning its entry; its meaning is `runProgram`
+  -- (`CoreBridge.coreBehavior`). The surface direct meaning (`MainMeaning`)
+  -- is retired from the apex: it could not give a polymorphic entry, typed
+  -- once at rigid parameters (D243), a meaning at an instance.
+  ⟦ arch ⟧ᵈ tp = CB.coreBehavior (arch-numerics arch) (CB.typedProgram (arch-numerics arch) tp)
+  -- The bridge from the compiled chain's surface meaning to the core — the one
+  -- open link, `CoreBridge.realize-core` (6b + TelescopeEnv + 6e).
   bridgeᵈ : ∀ (arch : Arch) (tp : Typed) (n : ℕ) → at (⟦ arch ⟧ˢ tp) n ≡ at (⟦ arch ⟧ᵈ tp) n
-  bridgeᵈ arch tp@(m , mt , hvm , pts) n =
-    MMB.main-bridge (arch-numerics arch) (σˢ arch tp) m mt hvm pts (TE.telescope-envrel (arch-numerics arch) m mt hvm pts) n
-
-  -- D115/D116: which programs this target owes an answer for. `Typed` is
-  -- target-free; this is the target-relative half, and it is `Int`-only —
-  -- floats always lower, rounding when the target cannot hold them exactly.
+  bridgeᵈ arch (m , mt , hvm) n = CB.realize-core (arch-numerics arch) m mt hvm n
   Admissible : Arch → Typed → Set
   Admissible arch (m , _ , _) = AdmissibleM arch m
 
