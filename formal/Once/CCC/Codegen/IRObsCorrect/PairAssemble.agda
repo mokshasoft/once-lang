@@ -101,12 +101,19 @@ module PairAsm {FS : FrameSemantics} where
   -- keystone is actually spent) and the allocator bookkeeping `PairPlace`
   -- asks for.
   ----------------------------------------------------------------------
-  obs-correct-pair-proof :
-    ∀ {A B C} {f : IR A B} {g : IR A C}
-    → IRObsCorrectF f → IRObsCorrectF g → IRObsCorrectF ⟨ f , g ⟩
-  obs-correct-pair-proof {A} {B} {C} {f} {g} ihf ihg n l prog base
-                         ss cr span bl la mIn x s alloc cl n≤ nh inp k =
-    dispatch (TM.T.resT (evalᴰ f x)) refl
+  -- The proof's body, as a MODULE over the clause's binders rather than its
+  -- `where`: a `where` block is one mutual block, and the positivity checker
+  -- closes that block's whole occurrence graph — every definition's every
+  -- argument, including the module applications' generated copies — at cubic
+  -- cost (profile 2026-09-30: 323 members, 17 495 nodes, 38 s). Here each
+  -- definition is its own block.
+  module PairProof {A B C} {f : IR A B} {g : IR A C}
+    (ihf : IRObsCorrectF f) (ihg : IRObsCorrectF g) (n l : ℕ) (prog : AbstractTrace) (base : ℕ)
+    (ss : AllSlotStable prog) (cr : BlockRuns prog)
+    (span : SpanAt prog base (emitted n l ⟨ f , g ⟩)) (bl : BlocksAt prog (blocks n l ⟨ f , g ⟩))
+    (la : LabelsAt prog base (emitted n l ⟨ f , g ⟩))
+    (mIn : AllocMode) (x : DT.⟦ A ⟧ᴰᴵ) (s : LocState FS) (alloc : AllocState {FS}) (cl : StoredValue FS)
+    (n≤ : next-slot alloc ≤ n) (nh : halted s ≡ false) (inp : InputAt {A} mIn alloc x s) (k : ℕ)
     where
       module PS = PairShape f g n l
       module PC = PairChain f g n l prog base s alloc cl n≤ nh span
@@ -149,7 +156,7 @@ module PairAsm {FS : FrameSemantics} where
                  (exec-abstract-preserves-frame mov-to-output s alloc) n≤ b)
               (mem-untouched mov-to-output s alloc loc nhw-mov-to-output refl)
 
-      inpF-of : InputAt mIn alloc x s → InputAt mIn alloc x (floc PC.PR.p2)
+      inpF-of : InputAt {A} mIn alloc x s → InputAt {A} mIn alloc x (floc PC.PR.p2)
       inpF-of (in-loc loc vd bf rd) =
         in-loc loc (validityWF-mem-preserved x loc s (floc PC.PR.p2) bf
                       (λ loc' b' → memP loc' b') vd)
@@ -213,49 +220,7 @@ module PairAsm {FS : FrameSemantics} where
       -- plan 0.98: the split is on `f`'s RESULT. `returns vB` binds the value
       -- `PairPlace` has to place, so it is no longer fetched out of a total
       -- field on a branch that may not have one.
-      dispatch : (r : Res ⟦ B ⟧) → TM.T.resT (evalᴰ f x) ≡ r
-               → MachineRefinesObsF prog base n l ⟨ f , g ⟩ x s alloc cl k
-
-      -- ── `f` ENDED THE PROGRAM ───────────────────────────────────────
-      -- The pair's run is the prologue and `f`; the two mid rows, `g` and the
-      -- nine-row tail never execute, and the pair's observable is `f`'s.
-      dispatch stopped rfeq = record
-        { value-realized =
-            realized (2 + VR.steps vrf) (VR.settle vrf)
-                     (VR.out-mode vrf) (VR.cont-alloc vrf)
-                     (FlatSteps-++ PC.pre-chain chainF₀)
-                     absurd-f absurd-f (λ _ → VR.stops vrf sfeq)
-                     (VR.no-ret vrf) (VR.no-link vrf) absurd-f-res
-                     (λ fr j b → mem-to-fsF (AtStack fr j) b)
-                     (λ hl b → mem-to-fsF (AtDynamic hl) b)
-                     (VR.frame-pres vrf)
-                     (λ m loc b → VR.bf-mono vrf m loc b)
-        ; traces-agree =
-            PT.pair-traces-stopped PC.pre-chain chainF₀ refl sfeq tf
-        }
-        where
-          mem-to-fsF : ∀ (loc : ValueLocation FS)
-                     → BeforeFrontier (record alloc { next-slot = n }) loc
-                     → MemOps.readLoc (floc (VR.settle vrf)) loc ≡ MemOps.readLoc s loc
-          mem-to-fsF loc b = trans (vr-mem-pres vrf loc (bf-f loc b)) (mem-to-p2 loc b)
-
-          sfeq : TM.stoppedT (evalᴰ f x) k ≡ true
-          sfeq = cong is-stopped rfeq
-
-          absurd-f : ∀ {X : Set} → TM.stoppedT (evalᴰ ⟨ f , g ⟩ x) k ≡ false → X
-          absurd-f p with trans (sym (st-pair-of stopped rfeq)) p
-          ... | ()
-
-          -- …and the pair has NO result, so `place`'s premise refutes itself.
-          absurd-f-res : ∀ {X : Set} {v}
-                       → TM.T.resT (evalᴰ ⟨ f , g ⟩ x) ≡ returns v → X
-          absurd-f-res p
-            with trans (sym (cong (λ z → TM.T.resT (PT.pairOf z)) rfeq)) p
-          ... | ()
-
-      -- ── `f` REACHED ITS END ─────────────────────────────────────────
-      dispatch (returns vB) rfeq = dispatch-g (TM.T.resT (evalᴰ g x)) refl
-        where
+      module Returns (vB : ⟦ B ⟧) (rfeq : TM.T.resT (evalᴰ f x) ≡ returns vB) where
           sfeq : TM.stoppedT (evalᴰ f x) k ≡ false
           sfeq = cong is-stopped rfeq
 
@@ -338,7 +303,7 @@ module PairAsm {FS : FrameSemantics} where
               (≤-reflexive (sym ns-m2)) (≤-reflexive (sym hr-mid))
               loc (VR.bf-mono vrf (next-slot alloc) loc b)
 
-          inpG-of : InputAt mIn alloc x s → InputAt mIn (falloc PCF.m2) x (floc PCF.m2)
+          inpG-of : InputAt {A} mIn alloc x s → InputAt {A} mIn (falloc PCF.m2) x (floc PCF.m2)
           inpG-of (in-loc loc vd bf rd) =
             in-loc loc
               (validityWF-frontier-advance x loc (floc PCF.m2)
@@ -377,72 +342,7 @@ module PairAsm {FS : FrameSemantics} where
           module PPres = PairPres f g n l prog base s alloc cl vrf
                            PS.n1 PS.l1 n≤n1 vrg
 
-          dispatch-g : (r : Res ⟦ C ⟧) → TM.T.resT (evalᴰ g x) ≡ r
-                     → MachineRefinesObsF prog base n l ⟨ f , g ⟩ x s alloc cl k
-
-          -- ── `g` ENDED THE PROGRAM ───────────────────────────────────
-          -- Four segments run, not five: the nine-row tail that builds the
-          -- pair node never executes, so there is no pair value to place —
-          -- and the observable is still `dEvF ++ dEvG`, because a stopped
-          -- `g` contributes everything it emitted before stopping.
-          dispatch-g stopped rgeq = record
-            { value-realized =
-                realized (2 + (VR.steps vrf + (2 + VR.steps vrg)))
-                         (VR.settle vrg) (VR.out-mode vrg) (VR.cont-alloc vrg)
-                         (FlatSteps-++ PC.pre-chain
-                           (FlatSteps-++ chainF₀ (FlatSteps-++ PCF.mid-chain chainG₀)))
-                         absurd-g absurd-g (λ _ → VR.stops vrg sgeq)
-                         (VR.no-ret vrg) (VR.no-link vrg) absurd-g-res
-                         (λ fr j b → PPres.mem-pres-to-gs (AtStack fr j) b)
-                         (λ hl b → PPres.mem-pres-to-gs (AtDynamic hl) b)
-                         PPres.frame-pres-to-gs
-                         PPres.bf-to-gs
-            ; traces-agree =
-                PT.pair-traces-stopped-g PC.pre-chain chainF₀ PCF.mid-chain chainG₀
-                                         refl refl sfeq tf tg
-            }
-            where
-              sgeq : TM.stoppedT (evalᴰ g x) PT.kg ≡ true
-              sgeq = cong is-stopped rgeq
-
-              st-inner-g : TM.stoppedT (PT.innerT vB) PT.kg ≡ true
-              st-inner-g = cong (λ z → TM.stoppedT (PT.innerOf vB z) PT.kg) rgeq
-
-              absurd-g : ∀ {X : Set} → TM.stoppedT (evalᴰ ⟨ f , g ⟩ x) k ≡ false → X
-              absurd-g p with trans (sym (trans st-inner st-inner-g)) p
-              ... | ()
-
-              absurd-g-res : ∀ {X : Set} {v}
-                           → TM.T.resT (evalᴰ ⟨ f , g ⟩ x) ≡ returns v → X
-              absurd-g-res p
-                with trans (sym (trans (cong (λ z → TM.T.resT (PT.pairOf z)) rfeq)
-                                       (cong (λ z → TM.T.resT (PT.innerOf vB z)) rgeq))) p
-              ... | ()
-
-          -- ── BOTH REACHED THEIR END — the pair is assembled. ──────────
-          dispatch-g (returns vC) rgeq = record
-            { value-realized =
-                realized PCG.STEPS PCG.SETTLE PPlace.out-mode PPlace.cont-alloc
-                         PCG.RUN (λ _ → PCG.LIVE) (λ _ → PCG.ATEND)
-                         not-stopped
-                         PCG.NORET PCG.NOLINK
-                         -- plan 0.98: the premise binds `v`; `res-pair` says
-                         -- what the pair actually returned, and `returns-inj`
-                         -- identifies the two.
-                         (λ p → subst (λ w → ResultPlace _ _ _ _ w _)
-                                      (returns-inj (trans (sym res-pair) p))
-                                      PPlace.place)
-                         PPresF.stack-pres-pair PPresF.heap-pres-pair
-                         PPres.frame-pres-pair PPres.bf-mono-pair
-            ; traces-agree =
-                -- the SAME chain names `PCG.RUN` is built from (`PCF.chainF`,
-                -- `PCG.chainG`), so the conclusion matches `RUN` after one
-                -- unfolding instead of by normalising both runs' events
-                -- (profile 2026-09-30: this call was 91% of the module).
-                PT.pair-traces PC.pre-chain PCF.chainF PCF.mid-chain
-                               PCG.chainG PCG.tail-chain refl refl refl sfeq tf tg
-            }
-            where
+          module ReturnsG (vC : ⟦ C ⟧) (rgeq : TM.T.resT (evalᴰ g x) ≡ returns vC) where
               sgeq : TM.stoppedT (evalᴰ g x) PT.kg ≡ false
               sgeq = cong is-stopped rgeq
 
@@ -526,3 +426,123 @@ module PairAsm {FS : FrameSemantics} where
                                 mem-F→G fst-cell-gs
 
               module PPresF = PPres.Fill PPlace.rdi-u6 PPlace.rdi-u8
+
+              result : MachineRefinesObsF prog base n l ⟨ f , g ⟩ x s alloc cl k
+              result = record
+                { value-realized =
+                    realized PCG.STEPS PCG.SETTLE PPlace.out-mode PPlace.cont-alloc
+                             PCG.RUN (λ _ → PCG.LIVE) (λ _ → PCG.ATEND)
+                             not-stopped
+                             PCG.NORET PCG.NOLINK
+                             -- plan 0.98: the premise binds `v`; `res-pair` says
+                             -- what the pair actually returned, and `returns-inj`
+                             -- identifies the two.
+                             (λ p → subst (λ w → ResultPlace _ _ _ _ w _)
+                                          (returns-inj (trans (sym res-pair) p))
+                                          PPlace.place)
+                             PPresF.stack-pres-pair PPresF.heap-pres-pair
+                             PPres.frame-pres-pair PPres.bf-mono-pair
+                ; traces-agree =
+                    -- the SAME chain names `PCG.RUN` is built from (`PCF.chainF`,
+                    -- `PCG.chainG`), so the conclusion matches `RUN` after one
+                    -- unfolding instead of by normalising both runs' events
+                    -- (profile 2026-09-30: this call was 91% of the module).
+                    PT.pair-traces PC.pre-chain PCF.chainF PCF.mid-chain
+                                   PCG.chainG PCG.tail-chain refl refl refl sfeq tf tg
+                }
+
+          dispatch-g : (r : Res ⟦ C ⟧) → TM.T.resT (evalᴰ g x) ≡ r
+                     → MachineRefinesObsF prog base n l ⟨ f , g ⟩ x s alloc cl k
+
+          -- ── `g` ENDED THE PROGRAM ───────────────────────────────────
+          -- Four segments run, not five: the nine-row tail that builds the
+          -- pair node never executes, so there is no pair value to place —
+          -- and the observable is still `dEvF ++ dEvG`, because a stopped
+          -- `g` contributes everything it emitted before stopping.
+          dispatch-g stopped rgeq = record
+            { value-realized =
+                realized (2 + (VR.steps vrf + (2 + VR.steps vrg)))
+                         (VR.settle vrg) (VR.out-mode vrg) (VR.cont-alloc vrg)
+                         (FlatSteps-++ PC.pre-chain
+                           (FlatSteps-++ chainF₀ (FlatSteps-++ PCF.mid-chain chainG₀)))
+                         absurd-g absurd-g (λ _ → VR.stops vrg sgeq)
+                         (VR.no-ret vrg) (VR.no-link vrg) absurd-g-res
+                         (λ fr j b → PPres.mem-pres-to-gs (AtStack fr j) b)
+                         (λ hl b → PPres.mem-pres-to-gs (AtDynamic hl) b)
+                         PPres.frame-pres-to-gs
+                         PPres.bf-to-gs
+            ; traces-agree =
+                PT.pair-traces-stopped-g PC.pre-chain chainF₀ PCF.mid-chain chainG₀
+                                         refl refl sfeq tf tg
+            }
+            where
+              sgeq : TM.stoppedT (evalᴰ g x) PT.kg ≡ true
+              sgeq = cong is-stopped rgeq
+
+              st-inner-g : TM.stoppedT (PT.innerT vB) PT.kg ≡ true
+              st-inner-g = cong (λ z → TM.stoppedT (PT.innerOf vB z) PT.kg) rgeq
+
+              absurd-g : ∀ {X : Set} → TM.stoppedT (evalᴰ ⟨ f , g ⟩ x) k ≡ false → X
+              absurd-g p with trans (sym (trans st-inner st-inner-g)) p
+              ... | ()
+
+              absurd-g-res : ∀ {X : Set} {v}
+                           → TM.T.resT (evalᴰ ⟨ f , g ⟩ x) ≡ returns v → X
+              absurd-g-res p
+                with trans (sym (trans (cong (λ z → TM.T.resT (PT.pairOf z)) rfeq)
+                                       (cong (λ z → TM.T.resT (PT.innerOf vB z)) rgeq))) p
+              ... | ()
+
+          -- ── BOTH REACHED THEIR END — the pair is assembled. ──────────
+          dispatch-g (returns vC) rgeq = ReturnsG.result vC rgeq
+
+      dispatch : (r : Res ⟦ B ⟧) → TM.T.resT (evalᴰ f x) ≡ r
+               → MachineRefinesObsF prog base n l ⟨ f , g ⟩ x s alloc cl k
+
+      -- ── `f` ENDED THE PROGRAM ───────────────────────────────────────
+      -- The pair's run is the prologue and `f`; the two mid rows, `g` and the
+      -- nine-row tail never execute, and the pair's observable is `f`'s.
+      dispatch stopped rfeq = record
+        { value-realized =
+            realized (2 + VR.steps vrf) (VR.settle vrf)
+                     (VR.out-mode vrf) (VR.cont-alloc vrf)
+                     (FlatSteps-++ PC.pre-chain chainF₀)
+                     absurd-f absurd-f (λ _ → VR.stops vrf sfeq)
+                     (VR.no-ret vrf) (VR.no-link vrf) absurd-f-res
+                     (λ fr j b → mem-to-fsF (AtStack fr j) b)
+                     (λ hl b → mem-to-fsF (AtDynamic hl) b)
+                     (VR.frame-pres vrf)
+                     (λ m loc b → VR.bf-mono vrf m loc b)
+        ; traces-agree =
+            PT.pair-traces-stopped PC.pre-chain chainF₀ refl sfeq tf
+        }
+        where
+          mem-to-fsF : ∀ (loc : ValueLocation FS)
+                     → BeforeFrontier (record alloc { next-slot = n }) loc
+                     → MemOps.readLoc (floc (VR.settle vrf)) loc ≡ MemOps.readLoc s loc
+          mem-to-fsF loc b = trans (vr-mem-pres vrf loc (bf-f loc b)) (mem-to-p2 loc b)
+
+          sfeq : TM.stoppedT (evalᴰ f x) k ≡ true
+          sfeq = cong is-stopped rfeq
+
+          absurd-f : ∀ {X : Set} → TM.stoppedT (evalᴰ ⟨ f , g ⟩ x) k ≡ false → X
+          absurd-f p with trans (sym (st-pair-of stopped rfeq)) p
+          ... | ()
+
+          -- …and the pair has NO result, so `place`'s premise refutes itself.
+          absurd-f-res : ∀ {X : Set} {v}
+                       → TM.T.resT (evalᴰ ⟨ f , g ⟩ x) ≡ returns v → X
+          absurd-f-res p
+            with trans (sym (cong (λ z → TM.T.resT (PT.pairOf z)) rfeq)) p
+          ... | ()
+
+      -- ── `f` REACHED ITS END ─────────────────────────────────────────
+      dispatch (returns vB) rfeq = Returns.dispatch-g vB rfeq (TM.T.resT (evalᴰ g x)) refl
+
+  obs-correct-pair-proof :
+    ∀ {A B C} {f : IR A B} {g : IR A C}
+    → IRObsCorrectF f → IRObsCorrectF g → IRObsCorrectF ⟨ f , g ⟩
+  obs-correct-pair-proof {A} {B} {C} {f} {g} ihf ihg n l prog base
+                         ss cr span bl la mIn x s alloc cl n≤ nh inp k =
+    PairProof.dispatch ihf ihg n l prog base ss cr span bl la mIn x s alloc cl n≤ nh inp k
+      (TM.T.resT (evalᴰ f x)) refl
