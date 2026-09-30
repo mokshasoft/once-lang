@@ -15934,3 +15934,25 @@ The Spec disagreed in two places:
 View's `ImportAt`). The import environment is that classification's meaning. Moving
 definitions into the telescope would undo a landed, postulate-free design for no gain in
 honesty.
+
+## D247 — THE CORE'S `unfold` STORES ITS COALGEBRA AS A COMPUTATION (D192 IN THE CORE) (2026-09-30)
+
+**Relates**: D192, D194, D131, plan 0.102 A, plan 0.103 6b.
+
+**Found** while proving the 6b bridge (surface meaning = core meaning of the elaboration).
+D192 decided that a ν stores its coalgebra as a COMPUTATION, bound inside each forced layer.
+The surface meaning (`ana-sem`), SD and the IR's `Ana` all do this, and D192 records that
+binding it outside "would make this clause disagree with both". The core did bind it
+outside:
+* `⟦ ⊢unfold dc ds ⟧` evaluated the coalgebra first and stored its value;
+* `anaᶜ c = let′ c (lam (unfold v1 v0))` evaluated `c` once, at build.
+
+For a coalgebra whose evaluation emits, the core then meant something different from the
+compiled program, and after plan 0.103 6a the core is the apex meaning.
+
+**Decided.** The core follows D192:
+* `⟦ ⊢unfold dc ds ⟧ = ⟦ ds ⟧ >>=T ana-sem wf (⟦ dc ⟧ …)`: the coalgebra's computation
+  goes into the suspension.
+* `anaᶜ c = lam (unfold (wk c) v0)`: building the arrow runs nothing.
+
+`cata` is unchanged. An algebra is evaluated once, at build (D131), in every meaning.
