@@ -891,6 +891,10 @@ stk⊥dead (⌜Fin⌝ n) h = refl
 -- app/fst/snd/hrefl/tr-headed, never ⌜Π⌝/⌜Hom⌝-constructor-headed) —
 -- proven after SNRed below (snr-nonpw).
 
+-- ★ Each lemma below opens with `{t = var _} () _` (a variable never
+--   reduces).  It is not there for the proof: Agda splits on the leftmost
+--   argument the FIRST clause matches, so it makes the case tree split the
+--   source head before the derivation (see RedCong's `stkA?-red`, 100 s → 5.5 s).
 homheaded?-red : {t t' : RTm Γ} → t ⟶ t' →
                  homheaded? t ≡ true → homheaded? t' ≡ true
 spine?-red    : {t t' : RTm Γ} → t ⟶ t' → spine? t ≡ true → spine? t' ≡ true
