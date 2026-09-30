@@ -51,7 +51,7 @@ open import Once.Float.Decimal using (Decimal; round) public
 open import Data.Integer using (ℤ) public
 open import Once.IRTy using (WellFormedFI-irrelevant) public
 open import Once.Denotation.ValueDomain using () renaming (⟦_⟧ᴰᴵ to ⟦_⟧) public
-open import Once.IR using (IR; IRTy; Unit; AllocMode; Stack; Heap; Cata; SigOp; SigOpInfo; out-μ; _∘_;
+open import Once.IR using (IR; IRTy; Unit; AllocMode; Stack; Heap; Cata; SigOp; Call; SigOpInfo; out-μ; _∘_;
   μ-type; ⟦_⟧TI; WellFormedFI; FitsInRegI; fits-int; fits-float; ⌊_⌋;
   -- Plan 0.68 step 0: the enumeration needs EVERY constructor in scope, not
   -- just the ones with a clause of their own before it.
