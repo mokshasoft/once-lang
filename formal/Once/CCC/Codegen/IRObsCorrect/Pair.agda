@@ -608,7 +608,11 @@ module PairC {FS : FrameSemantics} where
         -- the same names rather than two definitionally-equal chains.
         u1 : FlatState
         u1 = fsG
-        open NineSteps PS.snd-stash (load-from-slot PS.fst-stash) (load-from-slot PS.snd-stash) fsG
+        -- …and at LITERAL arguments (profile 2026-09-30): `PS.snd-stash`,
+        -- `PairPlace.snd-stash` and `PairPres.gs`/`fsG` are equal only by
+        -- unfolding, and conversion unfolds the nine steps before it gets to
+        -- the arguments. Every instantiation spells the same four terms.
+        open NineSteps (suc (suc n)) (load-from-slot (suc n)) (load-from-slot (suc (suc n))) (VR.settle vrg)
           using (u2; u3; u4; u5; u6; u7; u8; u9; u10)
 
         -- the pair node, as the bump allocator hands it out at `u3`.
@@ -1012,9 +1016,10 @@ module PairC {FS : FrameSemantics} where
     a' : AllocState {FS}
     a' = record (falloc gs) { next-slot = snd-stash }
 
-    module NSP = NineStepPres snd-stash
-                   (load-from-slot fst-stash)   -- i6
-                   (load-from-slot snd-stash)   -- i8
+    -- the literal arguments `WithG` names the tail at (see there)
+    module NSP = NineStepPres (suc (suc n))
+                   (load-from-slot (suc n))        -- i6
+                   (load-from-slot (suc (suc n)))  -- i8
                    gs (floc gs) a' refl refl
 
     u2 u3 u4 u5 u6 u7 u8 u9 u10 : FlatState
@@ -1458,10 +1463,11 @@ module PairC {FS : FrameSemantics} where
     tail-alloc : AllocState {FS}
     tail-alloc = record (falloc gs) { next-slot = snd-stash }
 
-    module NSP = NineStepPres snd-stash
-                   (load-from-slot fst-stash)   -- i6: the fst component
-                   (load-from-slot snd-stash)   -- i8: the snd component
-                   gs (floc gs) tail-alloc refl refl
+    -- the literal arguments `WithG` names the tail at (see there)
+    module NSP = NineStepPres (suc (suc n))
+                   (load-from-slot (suc n))        -- i6: the fst component
+                   (load-from-slot (suc (suc n)))  -- i8: the snd component
+                   (VR.settle vrG) (floc gs) tail-alloc refl refl
 
     settle : FlatState
     settle = NSP.u10

@@ -517,7 +517,7 @@ module PairAsm {FS : FrameSemantics} where
                           Once.CCC.Machine.SMPrimitives.nhw-restore-input refl)
                        PCF.read-fst-m1')
 
-              module PPlace = PairPlace {B} {C} n alloc n≤ PCF.fsF PCG.fsG
+              module PPlace = PairPlace {B} {C} n alloc n≤ PCF.fsF (VR.settle vrg)
                                 PCF.cf-fsF PCG.cf-fsG ns-fsF ns-gs hr-gs
                                 vB vC
                                 (VR.out-mode vrf) (VR.out-mode vrg)
