@@ -142,3 +142,14 @@ applyView : (T : Type) → ApplyView T
 applyView ((A ⇒[ mk-kind Many π ] B) * A') = apply-at A π B A'
 applyView Void = apply-void
 applyView _ = apply-other
+
+-- `fst` / `snd` : a pair, or `Void`.
+data ProdView : Type → Set where
+  prod-at    : ∀ A B → ProdView (A * B)
+  prod-void  : ProdView Void
+  prod-other : ∀ {T} → ProdView T
+
+prodView : (T : Type) → ProdView T
+prodView (A * B) = prod-at A B
+prodView Void    = prod-void
+prodView _       = prod-other

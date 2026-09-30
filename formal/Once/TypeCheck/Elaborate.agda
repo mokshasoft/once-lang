@@ -1021,6 +1021,16 @@ mutual
   inferOutAt : (ctx : NamedCtx) (arg : RawExpr) {T : Type} (Ψ : Surface.Usage (NamedCtx.size ctx))
                (argE : SExpr (NamedCtx.debruijn ctx) Ψ T) (d fr : ℕ) → ctx ⊢ᵢ arg ∶ T ⨾ Ψ → NuView T
              → VerifiedInferResult ctx (Raw.RApp (Raw.RResolved (gen "Out")) arg)
+  inferFstOn : (ctx : NamedCtx) (arg : RawExpr) → VerifiedInferResult ctx arg
+             → VerifiedInferResult ctx (Raw.RApp (Raw.RResolved (gen "fst")) arg)
+  inferFstAt : (ctx : NamedCtx) (arg : RawExpr) {T : Type} (Ψ : Surface.Usage (NamedCtx.size ctx))
+               (argE : SExpr (NamedCtx.debruijn ctx) Ψ T) (d fr : ℕ) → ctx ⊢ᵢ arg ∶ T ⨾ Ψ → ProdView T
+             → VerifiedInferResult ctx (Raw.RApp (Raw.RResolved (gen "fst")) arg)
+  inferSndOn : (ctx : NamedCtx) (arg : RawExpr) → VerifiedInferResult ctx arg
+             → VerifiedInferResult ctx (Raw.RApp (Raw.RResolved (gen "snd")) arg)
+  inferSndAt : (ctx : NamedCtx) (arg : RawExpr) {T : Type} (Ψ : Surface.Usage (NamedCtx.size ctx))
+               (argE : SExpr (NamedCtx.debruijn ctx) Ψ T) (d fr : ℕ) → ctx ⊢ᵢ arg ∶ T ⨾ Ψ → ProdView T
+             → VerifiedInferResult ctx (Raw.RApp (Raw.RResolved (gen "snd")) arg)
   inferApplyOn : (ctx : NamedCtx) (arg : RawExpr) → VerifiedInferResult ctx arg
                → VerifiedInferResult ctx (Raw.RApp (Raw.RResolved (gen "apply")) arg)
   inferApplyAt : (ctx : NamedCtx) (arg : RawExpr) {T : Type} (Ψ : Surface.Usage (NamedCtx.size ctx))
@@ -1657,6 +1667,22 @@ mutual
   inferOutAt ctx arg Ψ argE d fr w nu-void =
     success Void _ (Surface.morph-app IR.initial argE) (suc d) fr , t-Out-app-void w
   inferOutAt ctx arg Ψ argE d fr w nu-other = failure (BuiltinTypeMismatch "Out") , tt
+
+  inferFstOn ctx arg (failure err , _) = failure err , tt
+  inferFstOn ctx arg (success T Ψ argE d fr , w) = inferFstAt ctx arg Ψ argE d fr w (prodView T)
+  inferFstAt ctx arg Ψ argE d fr w (prod-at A B) =
+    success A _ (Surface.morph-app (IR.fst) argE) (suc d) fr , t-fst-app w
+  inferFstAt ctx arg Ψ argE d fr w prod-void =
+    success Void _ (Surface.morph-app IR.initial argE) (suc d) fr , t-fst-app-void w
+  inferFstAt ctx arg Ψ argE d fr w prod-other = failure FstNeedsPair , tt
+
+  inferSndOn ctx arg (failure err , _) = failure err , tt
+  inferSndOn ctx arg (success T Ψ argE d fr , w) = inferSndAt ctx arg Ψ argE d fr w (prodView T)
+  inferSndAt ctx arg Ψ argE d fr w (prod-at A B) =
+    success B _ (Surface.morph-app (IR.snd) argE) (suc d) fr , t-snd-app w
+  inferSndAt ctx arg Ψ argE d fr w prod-void =
+    success Void _ (Surface.morph-app IR.initial argE) (suc d) fr , t-snd-app-void w
+  inferSndAt ctx arg Ψ argE d fr w prod-other = failure SndNeedsPair , tt
 
   inferApplyOn ctx arg (failure err , _) = failure err , tt
   inferApplyOn ctx arg (success T Ψ argE d fr , w) = inferApplyAt ctx arg Ψ argE d fr w (applyView T)
@@ -2483,39 +2509,9 @@ mutual
   ... | success T Ψ argE d fr , w =
     success T _ (Surface.morph-app IR.id argE) (suc d) fr , t-id-app w
   -- ahv-fst : argument must have product type.
-  inferElabV-RApp-dispatch ctx f arg ahv-fst _ with inferElabV ctx arg
-  ... | failure err , _ = failure err , tt
-  ... | success (A Once.Type.* B) Ψ argE d fr , w =
-    success A _ (Surface.morph-app (IR.fst) argE) (suc d) fr , t-fst-app w
-  ... | success Unit _ _ _ _ , _ = failure FstNeedsPair , tt
-  ... | success Void Ψ argE d fr , w =
-    success Void _ (Surface.morph-app IR.initial argE) (suc d) fr , t-fst-app-void w
-  ... | success Int _ _ _ _ , _ = failure FstNeedsPair , tt
-  ... | success Float _ _ _ _ , _ = failure FstNeedsPair , tt
-  ... | success Str _ _ _ _ , _ = failure FstNeedsPair , tt
-  ... | success Buffer _ _ _ _ , _ = failure FstNeedsPair , tt
-  ... | success (rigid kᵣ iᵣ) _ _ _ _ , _ = failure FstNeedsPair , tt
-  ... | success (_ Once.Type.+ _) _ _ _ _ , _ = failure FstNeedsPair , tt
-  ... | success (_ Once.Type.⇒[ _ ] _) _ _ _ _ , _ = failure FstNeedsPair , tt
-  ... | success (Once.Type.μ-type _) _ _ _ _ , _ = failure FstNeedsPair , tt
-  ... | success (Once.Type.ν-type _ _) _ _ _ _ , _ = failure FstNeedsPair , tt
+  inferElabV-RApp-dispatch ctx f arg ahv-fst _ = inferFstOn ctx arg (inferElabV ctx arg)
   -- ahv-snd : argument must have product type.
-  inferElabV-RApp-dispatch ctx f arg ahv-snd _ with inferElabV ctx arg
-  ... | failure err , _ = failure err , tt
-  ... | success (A Once.Type.* B) Ψ argE d fr , w =
-    success B _ (Surface.morph-app (IR.snd) argE) (suc d) fr , t-snd-app w
-  ... | success Unit _ _ _ _ , _ = failure SndNeedsPair , tt
-  ... | success Void Ψ argE d fr , w =
-    success Void _ (Surface.morph-app IR.initial argE) (suc d) fr , t-snd-app-void w
-  ... | success Int _ _ _ _ , _ = failure SndNeedsPair , tt
-  ... | success Float _ _ _ _ , _ = failure SndNeedsPair , tt
-  ... | success Str _ _ _ _ , _ = failure SndNeedsPair , tt
-  ... | success Buffer _ _ _ _ , _ = failure SndNeedsPair , tt
-  ... | success (rigid kᵣ iᵣ) _ _ _ _ , _ = failure SndNeedsPair , tt
-  ... | success (_ Once.Type.+ _) _ _ _ _ , _ = failure SndNeedsPair , tt
-  ... | success (_ Once.Type.⇒[ _ ] _) _ _ _ _ , _ = failure SndNeedsPair , tt
-  ... | success (Once.Type.μ-type _) _ _ _ _ , _ = failure SndNeedsPair , tt
-  ... | success (Once.Type.ν-type _ _) _ _ _ _ , _ = failure SndNeedsPair , tt
+  inferElabV-RApp-dispatch ctx f arg ahv-snd _ = inferSndOn ctx arg (inferElabV ctx arg)
   -- ahv-terminal : any-typed argument, Unit result.
   inferElabV-RApp-dispatch ctx f arg ahv-terminal _ with inferElabV ctx arg
   ... | failure err , _ = failure err , tt
