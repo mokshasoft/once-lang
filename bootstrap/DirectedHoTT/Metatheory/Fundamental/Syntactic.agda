@@ -259,6 +259,17 @@ sub-comm-Ty σ a B =
 -- reachable without a Kripke-indexed relation.
 ------------------------------------------------------------------------
 
+-- ★ the ξ rows' shape, once: recurse on the premise, rebuild with the same
+--   constructor.  (It replaced 83 `with snr-anti r` clauses, each its own
+--   with-function over a `renTm`-laden goal — the 2026-09-30 profile's
+--   90 s `snr-anti`.)  `G` is the renamed context, solved from the goal.
+lift↑ : {ρ : Ren Θ Ξ} {t : RTm Θ} {v : RTm Ξ} (F : RTm Θ → RTm Θ) {G : RTm Ξ → RTm Ξ} →
+        (∀ {a b} → SNRed a b → SNRed (F a) (F b)) →
+        (∀ a → G (renTm ρ a) ≡ renTm ρ (F a)) →
+        Σ (RTm Θ) (λ t' → SNRed t t' × (v ≡ renTm ρ t')) →
+        Σ (RTm Θ) (λ t' → SNRed (F t) t' × (G v ≡ renTm ρ t'))
+lift↑ F st com (t' , (r' , refl)) = F t' , (st r' , com t')
+
 sne-anti : {ρ : Ren Θ Ξ} {t : RTm Θ} → SNe (renTm ρ t) → SNe t
 sn-anti  : {ρ : Ren Θ Ξ} {t : RTm Θ} → SN  (renTm ρ t) → SN t
 snr-anti : {ρ : Ren Θ Ξ} {t : RTm Θ} {v : RTm Ξ} → SNRed (renTm ρ t) v →
@@ -401,8 +412,7 @@ snr-anti {ρ = ρ} {t = natrec z w (nsuc m)} (snr-natrec-suc hz hw hn) =
                                                     (renTm (extR (extR ρ)) w)
                                                     (renTm ρ m))) q)
                        (ren-comm-ext ρ w m))) )
-snr-anti {t = natrec z w n} (snr-natrecⁿ r) with snr-anti r
-... | n' , (r' , refl) = natrec z w n' , (snr-natrecⁿ r' , refl)
+snr-anti {t = natrec z w n} (snr-natrecⁿ r) = lift↑ (λ n' → natrec z w n') snr-natrecⁿ (λ _ → refl) (snr-anti r)
 -- ★ INDUCTIVE TYPES: the scrutinee is matched SHAPED (`con k q`) for the
 -- reason the comment below gives — otherwise `renTm ρ (con k q)` does not
 -- reduce and the index unification sticks.  The equation is `ren-fields`
@@ -410,8 +420,7 @@ snr-anti {t = natrec z w n} (snr-natrecⁿ r) with snr-anti r
 -- ★ the INDEXED ι.  Same shape, one extra `SN` premise, and the equation
 --   is `ren-ifieldsⁱ` — the specialised form that already folds in
 --   `isingle-ren`, so the environment lands as `isingle (renTm ρ i)`.
-snr-anti {t = ielim D i ms t₀} (snr-ielimᵗ r) with snr-anti r
-... | t' , (r' , refl) = ielim D i ms t' , (snr-ielimᵗ r' , refl)
+snr-anti {t = ielim D i ms t₀} (snr-ielimᵗ r) = lift↑ (λ t' → ielim D i ms t') snr-ielimᵗ (λ _ → refl) (snr-anti r)
 -- ★★ WF stage E: the bounds must be matched SHAPED, or `renTm ρ a` does
 -- not reduce and the index unification gets stuck (the `snr-βfst`
 -- SplitError is the same disease).  The serialized xi's each carry the
@@ -426,22 +435,15 @@ snr-anti {t = ordtr (nsuc a) nzero (nsuc u) p q} (snr-ordtr-szs hq) =
   absurd (⌜Hom⌝ ⌜Nat⌝ a u) p , (snr-ordtr-szs (sn-anti hq) , refl)
 snr-anti {t = ordtr (nsuc a) (nsuc t) (nsuc u) p q} snr-ordtr-sss =
   ordtr a t u p q , (snr-ordtr-sss , refl)
-snr-anti {t = ordtr a t u p q} (snr-ordtrᵃ r) with snr-anti r
-... | a' , (r' , refl) = ordtr a' t u p q , (snr-ordtrᵃ r' , refl)
-snr-anti {t = ordtr (nsuc a) t u p q} (snr-ordtrᵗ r) with snr-anti r
-... | t' , (r' , refl) = ordtr (nsuc a) t' u p q , (snr-ordtrᵗ r' , refl)
-snr-anti {t = ordtr (nsuc a) nzero u p q} (snr-ordtrᵘᶻ r) with snr-anti r
-... | u' , (r' , refl) = ordtr (nsuc a) nzero u' p q , (snr-ordtrᵘᶻ r' , refl)
-snr-anti {t = ordtr (nsuc a) (nsuc t) u p q} (snr-ordtrᵘˢ r) with snr-anti r
-... | u' , (r' , refl) = ordtr (nsuc a) (nsuc t) u' p q , (snr-ordtrᵘˢ r' , refl)
+snr-anti {t = ordtr a t u p q} (snr-ordtrᵃ r) = lift↑ (λ a' → ordtr a' t u p q) snr-ordtrᵃ (λ _ → refl) (snr-anti r)
+snr-anti {t = ordtr (nsuc a) t u p q} (snr-ordtrᵗ r) = lift↑ (λ t' → ordtr (nsuc a) t' u p q) snr-ordtrᵗ (λ _ → refl) (snr-anti r)
+snr-anti {t = ordtr (nsuc a) nzero u p q} (snr-ordtrᵘᶻ r) = lift↑ (λ u' → ordtr (nsuc a) nzero u' p q) snr-ordtrᵘᶻ (λ _ → refl) (snr-anti r)
+snr-anti {t = ordtr (nsuc a) (nsuc t) u p q} (snr-ordtrᵘˢ r) = lift↑ (λ u' → ordtr (nsuc a) (nsuc t) u' p q) snr-ordtrᵘˢ (λ _ → refl) (snr-anti r)
 snr-anti {ρ = ρ} {t = app (lam s) u} (snr-β h) =
   subTm (single u) s , (snr-β (sn-anti h) , ren-single ρ u s)
-snr-anti {t = app (app a b) u}  (snr-app r) with snr-anti r
-... | t' , (r' , refl) = app t' u , (snr-app r' , refl)
-snr-anti {t = app (fst p) u}    (snr-app r) with snr-anti r
-... | t' , (r' , refl) = app t' u , (snr-app r' , refl)
-snr-anti {t = app (snd p) u}    (snr-app r) with snr-anti r
-... | t' , (r' , refl) = app t' u , (snr-app r' , refl)
+snr-anti {t = app (app a b) u}  (snr-app r) = lift↑ (λ t' → app t' u) snr-app (λ _ → refl) (snr-anti r)
+snr-anti {t = app (fst p) u}    (snr-app r) = lift↑ (λ t' → app t' u) snr-app (λ _ → refl) (snr-anti r)
+snr-anti {t = app (snd p) u}    (snr-app r) = lift↑ (λ t' → app t' u) snr-app (λ _ → refl) (snr-anti r)
 snr-anti {t = app unit u}       (snr-app ())
 snr-anti {t = app nzero u}      (snr-app ())
 snr-anti {t = app (nsuc k) u}   (snr-app ())
@@ -453,20 +455,14 @@ snr-anti {t = app fzero u}   (snr-app ())
 snr-anti {t = app (fsuc _) u}   (snr-app ())
 snr-anti {t = app (fcase0 _) u}   (snr-app ())
 snr-anti {t = app (⌜Fin⌝ _) u}   (snr-app ())
-snr-anti {t = app (natrec z w n) u} (snr-app r) with snr-anti r
-... | t' , (r' , refl) = app t' u , (snr-app r' , refl)
-snr-anti {t = app (dpay _ _ _) u} (snr-app r) with snr-anti r
-... | t' , (r' , refl) = app t' u , (snr-app r' , refl)
-snr-anti {t = app (dih _ _ _ _) u} (snr-app r) with snr-anti r
-... | t' , (r' , refl) = app t' u , (snr-app r' , refl)
-snr-anti {t = app (fcase _ _ _) u} (snr-app r) with snr-anti r
-... | t' , (r' , refl) = app t' u , (snr-app r' , refl)
-snr-anti {t = app (psplit _ _) u} (snr-app r) with snr-anti r
-... | t' , (r' , refl) = app t' u , (snr-app r' , refl)
+snr-anti {t = app (natrec z w n) u} (snr-app r) = lift↑ (λ t' → app t' u) snr-app (λ _ → refl) (snr-anti r)
+snr-anti {t = app (dpay _ _ _) u} (snr-app r) = lift↑ (λ t' → app t' u) snr-app (λ _ → refl) (snr-anti r)
+snr-anti {t = app (dih _ _ _ _) u} (snr-app r) = lift↑ (λ t' → app t' u) snr-app (λ _ → refl) (snr-anti r)
+snr-anti {t = app (fcase _ _ _) u} (snr-app r) = lift↑ (λ t' → app t' u) snr-app (λ _ → refl) (snr-anti r)
+snr-anti {t = app (psplit _ _) u} (snr-app r) = lift↑ (λ t' → app t' u) snr-app (λ _ → refl) (snr-anti r)
 -- ★ INDUCTIVE TYPES: in a SPINE position a `con` head is inert (no SNRed
 -- rule steps it) and an `elim` head recurses — `nsuc`/`natrec` exactly.
-snr-anti {t = app (ielim D i ms t₀) u} (snr-app r) with snr-anti r
-... | t' , (r' , refl) = app t' u , (snr-app r' , refl)
+snr-anti {t = app (ielim D i ms t₀) u} (snr-app r) = lift↑ (λ t' → app t' u) snr-app (λ _ → refl) (snr-anti r)
 snr-anti {t = absurd c e} ()
 -- ex falso is a permanent neutral, so as a SCRUTINEE it never lets an
 -- eliminator fire — every one of these is `()` on the inner step.
@@ -476,12 +472,9 @@ snr-anti {t = app (absurd c e) u}   (snr-app ())
 -- ⚠ NOT the `absurd` shape: ex falso never steps, so its rows are `()`,
 -- whereas an `ordtr` SCRUTINEE does step and each row must recurse —
 -- the `natrec` shape.
-snr-anti {t = fst (ordtr a t u p q)} (snr-fst r) with snr-anti r
-... | t' , (r' , refl) = fst t' , (snr-fst r' , refl)
-snr-anti {t = snd (ordtr a t u p q)} (snr-snd r) with snr-anti r
-... | t' , (r' , refl) = snd t' , (snr-snd r' , refl)
-snr-anti {t = app (ordtr a t u p q) w} (snr-app r) with snr-anti r
-... | t' , (r' , refl) = app t' w , (snr-app r' , refl)
+snr-anti {t = fst (ordtr a t u p q)} (snr-fst r) = lift↑ (λ t' → fst t') snr-fst (λ _ → refl) (snr-anti r)
+snr-anti {t = snd (ordtr a t u p q)} (snr-snd r) = lift↑ (λ t' → snd t') snr-snd (λ _ → refl) (snr-anti r)
+snr-anti {t = app (ordtr a t u p q) w} (snr-app r) = lift↑ (λ t' → app t' w) snr-app (λ _ → refl) (snr-anti r)
 snr-anti {t = fst unit}         (snr-fst ())
 snr-anti {t = fst nzero}        (snr-fst ())
 snr-anti {t = fst (nsuc k)}     (snr-fst ())
@@ -493,16 +486,11 @@ snr-anti {t = fst fzero}     (snr-fst ())
 snr-anti {t = fst (fsuc _)}     (snr-fst ())
 snr-anti {t = fst (fcase0 _)}     (snr-fst ())
 snr-anti {t = fst (⌜Fin⌝ _)}     (snr-fst ())
-snr-anti {t = fst (natrec z w n)} (snr-fst r) with snr-anti r
-... | t' , (r' , refl) = fst t' , (snr-fst r' , refl)
-snr-anti {t = fst (dpay _ _ _)} (snr-fst r) with snr-anti r
-... | t' , (r' , refl) = fst t' , (snr-fst r' , refl)
-snr-anti {t = fst (dih _ _ _ _)} (snr-fst r) with snr-anti r
-... | t' , (r' , refl) = fst t' , (snr-fst r' , refl)
-snr-anti {t = fst (fcase _ _ _)} (snr-fst r) with snr-anti r
-... | t' , (r' , refl) = fst t' , (snr-fst r' , refl)
-snr-anti {t = fst (psplit _ _)} (snr-fst r) with snr-anti r
-... | t' , (r' , refl) = fst t' , (snr-fst r' , refl)
+snr-anti {t = fst (natrec z w n)} (snr-fst r) = lift↑ (λ t' → fst t') snr-fst (λ _ → refl) (snr-anti r)
+snr-anti {t = fst (dpay _ _ _)} (snr-fst r) = lift↑ (λ t' → fst t') snr-fst (λ _ → refl) (snr-anti r)
+snr-anti {t = fst (dih _ _ _ _)} (snr-fst r) = lift↑ (λ t' → fst t') snr-fst (λ _ → refl) (snr-anti r)
+snr-anti {t = fst (fcase _ _ _)} (snr-fst r) = lift↑ (λ t' → fst t') snr-fst (λ _ → refl) (snr-anti r)
+snr-anti {t = fst (psplit _ _)} (snr-fst r) = lift↑ (λ t' → fst t') snr-fst (λ _ → refl) (snr-anti r)
 snr-anti {t = snd unit}         (snr-snd ())
 snr-anti {t = snd nzero}        (snr-snd ())
 snr-anti {t = snd (nsuc k)}     (snr-snd ())
@@ -514,36 +502,23 @@ snr-anti {t = snd fzero}     (snr-snd ())
 snr-anti {t = snd (fsuc _)}     (snr-snd ())
 snr-anti {t = snd (fcase0 _)}     (snr-snd ())
 snr-anti {t = snd (⌜Fin⌝ _)}     (snr-snd ())
-snr-anti {t = snd (natrec z w n)} (snr-snd r) with snr-anti r
-... | t' , (r' , refl) = snd t' , (snr-snd r' , refl)
-snr-anti {t = snd (dpay _ _ _)} (snr-snd r) with snr-anti r
-... | t' , (r' , refl) = snd t' , (snr-snd r' , refl)
-snr-anti {t = snd (dih _ _ _ _)} (snr-snd r) with snr-anti r
-... | t' , (r' , refl) = snd t' , (snr-snd r' , refl)
-snr-anti {t = snd (fcase _ _ _)} (snr-snd r) with snr-anti r
-... | t' , (r' , refl) = snd t' , (snr-snd r' , refl)
-snr-anti {t = snd (psplit _ _)} (snr-snd r) with snr-anti r
-... | t' , (r' , refl) = snd t' , (snr-snd r' , refl)
-snr-anti {t = snd (ielim D i ms t₀)} (snr-snd r) with snr-anti r
-... | t' , (r' , refl) = snd t' , (snr-snd r' , refl)
-snr-anti {t = fst (ielim D i ms t₀)} (snr-fst r) with snr-anti r
-... | t' , (r' , refl) = fst t' , (snr-fst r' , refl)
+snr-anti {t = snd (natrec z w n)} (snr-snd r) = lift↑ (λ t' → snd t') snr-snd (λ _ → refl) (snr-anti r)
+snr-anti {t = snd (dpay _ _ _)} (snr-snd r) = lift↑ (λ t' → snd t') snr-snd (λ _ → refl) (snr-anti r)
+snr-anti {t = snd (dih _ _ _ _)} (snr-snd r) = lift↑ (λ t' → snd t') snr-snd (λ _ → refl) (snr-anti r)
+snr-anti {t = snd (fcase _ _ _)} (snr-snd r) = lift↑ (λ t' → snd t') snr-snd (λ _ → refl) (snr-anti r)
+snr-anti {t = snd (psplit _ _)} (snr-snd r) = lift↑ (λ t' → snd t') snr-snd (λ _ → refl) (snr-anti r)
+snr-anti {t = snd (ielim D i ms t₀)} (snr-snd r) = lift↑ (λ t' → snd t') snr-snd (λ _ → refl) (snr-anti r)
+snr-anti {t = fst (ielim D i ms t₀)} (snr-fst r) = lift↑ (λ t' → fst t') snr-fst (λ _ → refl) (snr-anti r)
 snr-anti {t = fst (pair a b)}   (snr-βfst h) =
   a , (snr-βfst (sn-anti h) , refl)
-snr-anti {t = fst (app a b)}    (snr-fst r) with snr-anti r
-... | t' , (r' , refl) = fst t' , (snr-fst r' , refl)
-snr-anti {t = fst (fst p)}      (snr-fst r) with snr-anti r
-... | t' , (r' , refl) = fst t' , (snr-fst r' , refl)
-snr-anti {t = fst (snd p)}      (snr-fst r) with snr-anti r
-... | t' , (r' , refl) = fst t' , (snr-fst r' , refl)
+snr-anti {t = fst (app a b)}    (snr-fst r) = lift↑ (λ t' → fst t') snr-fst (λ _ → refl) (snr-anti r)
+snr-anti {t = fst (fst p)}      (snr-fst r) = lift↑ (λ t' → fst t') snr-fst (λ _ → refl) (snr-anti r)
+snr-anti {t = fst (snd p)}      (snr-fst r) = lift↑ (λ t' → fst t') snr-fst (λ _ → refl) (snr-anti r)
 snr-anti {t = snd (pair a b)}   (snr-βsnd h) =
   b , (snr-βsnd (sn-anti h) , refl)
-snr-anti {t = snd (app a b)}    (snr-snd r) with snr-anti r
-... | t' , (r' , refl) = snd t' , (snr-snd r' , refl)
-snr-anti {t = snd (fst p)}      (snr-snd r) with snr-anti r
-... | t' , (r' , refl) = snd t' , (snr-snd r' , refl)
-snr-anti {t = snd (snd p)}      (snr-snd r) with snr-anti r
-... | t' , (r' , refl) = snd t' , (snr-snd r' , refl)
+snr-anti {t = snd (app a b)}    (snr-snd r) = lift↑ (λ t' → snd t') snr-snd (λ _ → refl) (snr-anti r)
+snr-anti {t = snd (fst p)}      (snr-snd r) = lift↑ (λ t' → snd t') snr-snd (λ _ → refl) (snr-anti r)
+snr-anti {t = snd (snd p)}      (snr-snd r) = lift↑ (λ t' → snd t') snr-snd (λ _ → refl) (snr-anti r)
 snr-anti {t = hrefl c s} (snr-hreflᶜ σ) with csr-anti σ
 ... | c' , (σ' , refl) = hrefl c' s , (snr-hreflᶜ σ' , refl)
 snr-anti {ρ = ρ} {t = hrefl c s} (snr-hrefl-pw kp) =
@@ -611,47 +586,32 @@ snr-anti {t = tr d (hrefl (var x) s) e} (snr-trᵖ (snr-hreflᶜ (csr-here ())))
 snr-anti {t = tr d (hrefl (var x) s) e} (snr-trᵖ (snr-hrefl-pw ()))
 snr-anti {t = tr d (hrefl (lam g) s) e} (snr-trᵖ (snr-hreflᶜ (csr-here ())))
 snr-anti {t = tr d (hrefl (lam g) s) e} (snr-trᵖ (snr-hrefl-pw ()))
-snr-anti {t = tr d (hrefl (app g w) s) e} (snr-trᵖ r) with snr-anti r
-... | p' , (r' , refl) = tr d p' e , (snr-trᵖ r' , refl)
+snr-anti {t = tr d (hrefl (app g w) s) e} (snr-trᵖ r) = lift↑ (λ p' → tr d p' e) snr-trᵖ (λ _ → refl) (snr-anti r)
 snr-anti {t = tr d (hrefl (pair g w) s) e} (snr-trᵖ (snr-hreflᶜ (csr-here ())))
 snr-anti {t = tr d (hrefl (pair g w) s) e} (snr-trᵖ (snr-hrefl-pw ()))
-snr-anti {t = tr d (hrefl (fst g) s) e} (snr-trᵖ r) with snr-anti r
-... | p' , (r' , refl) = tr d p' e , (snr-trᵖ r' , refl)
-snr-anti {t = tr d (hrefl (snd g) s) e} (snr-trᵖ r) with snr-anti r
-... | p' , (r' , refl) = tr d p' e , (snr-trᵖ r' , refl)
-snr-anti {t = tr d (hrefl (⌜Π⌝ g w) s) e} (snr-trᵖ r) with snr-anti r
-... | p' , (r' , refl) = tr d p' e , (snr-trᵖ r' , refl)
-snr-anti {t = tr d (hrefl (⌜Hom⌝ g w v) s) e} (snr-trᵖ r) with snr-anti r
-... | p' , (r' , refl) = tr d p' e , (snr-trᵖ r' , refl)
-snr-anti {t = tr d (hrefl (hrefl g w) s) e} (snr-trᵖ r) with snr-anti r
-... | p' , (r' , refl) = tr d p' e , (snr-trᵖ r' , refl)
-snr-anti {t = tr d (hrefl (tr g w v) s) e} (snr-trᵖ r) with snr-anti r
-... | p' , (r' , refl) = tr d p' e , (snr-trᵖ r' , refl)
-snr-anti {t = tr d (hrefl (ap g w v) s) e} (snr-trᵖ r) with snr-anti r
-... | p' , (r' , refl) = tr d p' e , (snr-trᵖ r' , refl)
-snr-anti {t = tr d (hrefl (ordtr a₉ t₉ u₉ p₉ q₉) s) e} (snr-trᵖ r) with snr-anti r
-... | p' , (r' , refl) = tr d p' e , (snr-trᵖ r' , refl)
+snr-anti {t = tr d (hrefl (fst g) s) e} (snr-trᵖ r) = lift↑ (λ p' → tr d p' e) snr-trᵖ (λ _ → refl) (snr-anti r)
+snr-anti {t = tr d (hrefl (snd g) s) e} (snr-trᵖ r) = lift↑ (λ p' → tr d p' e) snr-trᵖ (λ _ → refl) (snr-anti r)
+snr-anti {t = tr d (hrefl (⌜Π⌝ g w) s) e} (snr-trᵖ r) = lift↑ (λ p' → tr d p' e) snr-trᵖ (λ _ → refl) (snr-anti r)
+snr-anti {t = tr d (hrefl (⌜Hom⌝ g w v) s) e} (snr-trᵖ r) = lift↑ (λ p' → tr d p' e) snr-trᵖ (λ _ → refl) (snr-anti r)
+snr-anti {t = tr d (hrefl (hrefl g w) s) e} (snr-trᵖ r) = lift↑ (λ p' → tr d p' e) snr-trᵖ (λ _ → refl) (snr-anti r)
+snr-anti {t = tr d (hrefl (tr g w v) s) e} (snr-trᵖ r) = lift↑ (λ p' → tr d p' e) snr-trᵖ (λ _ → refl) (snr-anti r)
+snr-anti {t = tr d (hrefl (ap g w v) s) e} (snr-trᵖ r) = lift↑ (λ p' → tr d p' e) snr-trᵖ (λ _ → refl) (snr-anti r)
+snr-anti {t = tr d (hrefl (ordtr a₉ t₉ u₉ p₉ q₉) s) e} (snr-trᵖ r) = lift↑ (λ p' → tr d p' e) snr-trᵖ (λ _ → refl) (snr-anti r)
 snr-anti {t = tr d (var x) e} (snr-trᵖ ())
 snr-anti {t = tr d (lam g) e} (snr-trᵖ ())
-snr-anti {t = tr d (app g w) e} (snr-trᵖ r) with snr-anti r
-... | p' , (r' , refl) = tr d p' e , (snr-trᵖ r' , refl)
+snr-anti {t = tr d (app g w) e} (snr-trᵖ r) = lift↑ (λ p' → tr d p' e) snr-trᵖ (λ _ → refl) (snr-anti r)
 snr-anti {t = tr d (pair g w) e} (snr-trᵖ ())
-snr-anti {t = tr d (fst g) e} (snr-trᵖ r) with snr-anti r
-... | p' , (r' , refl) = tr d p' e , (snr-trᵖ r' , refl)
-snr-anti {t = tr d (snd g) e} (snr-trᵖ r) with snr-anti r
-... | p' , (r' , refl) = tr d p' e , (snr-trᵖ r' , refl)
-snr-anti {t = tr d (ap g w v) e} (snr-trᵖ r) with snr-anti r
-... | p' , (r' , refl) = tr d p' e , (snr-trᵖ r' , refl)
+snr-anti {t = tr d (fst g) e} (snr-trᵖ r) = lift↑ (λ p' → tr d p' e) snr-trᵖ (λ _ → refl) (snr-anti r)
+snr-anti {t = tr d (snd g) e} (snr-trᵖ r) = lift↑ (λ p' → tr d p' e) snr-trᵖ (λ _ → refl) (snr-anti r)
+snr-anti {t = tr d (ap g w v) e} (snr-trᵖ r) = lift↑ (λ p' → tr d p' e) snr-trᵖ (λ _ → refl) (snr-anti r)
 snr-anti {t = tr d ⌜base⌝ e} (snr-trᵖ ())
 snr-anti {t = tr d (⌜Π⌝ g w) e} (snr-trᵖ ())
 snr-anti {t = tr d (⌜Σ⌝ g w) e} (snr-trᵖ ())
 snr-anti {t = tr d (⌜Hom⌝ g w v) e} (snr-trᵖ ())
-snr-anti {t = tr d (tr g w v) e} (snr-trᵖ r) with snr-anti r
-... | p' , (r' , refl) = tr d p' e , (snr-trᵖ r' , refl)
+snr-anti {t = tr d (tr g w v) e} (snr-trᵖ r) = lift↑ (λ p' → tr d p' e) snr-trᵖ (λ _ → refl) (snr-anti r)
 -- an `ordtr` PATH steps, so the row recurses (the `app`/`fst` shape),
 -- not `()` (the `pair`/`lam` shape).
-snr-anti {t = tr d (ordtr a₉ t₉ u₉ p₉ q₉) e} (snr-trᵖ r) with snr-anti r
-... | p' , (r' , refl) = tr d p' e , (snr-trᵖ r' , refl)
+snr-anti {t = tr d (ordtr a₉ t₉ u₉ p₉ q₉) e} (snr-trᵖ r) = lift↑ (λ p' → tr d p' e) snr-trᵖ (λ _ → refl) (snr-anti r)
 
 -- the heads that reduce to nothing: a renaming cannot turn them into redexes.
 snr-anti {t = app (var x) u}    (snr-app ())
@@ -671,20 +631,14 @@ snr-anti {t = fst (⌜IMu⌝ Dⁱ Iⁱ i₉)} (snr-fst ())
 snr-anti {t = fst (⌜Π⌝ c d)}    (snr-fst ())
 snr-anti {t = fst (⌜Σ⌝ c d)}    (snr-fst ())
 snr-anti {t = app (⌜Hom⌝ c a b) u} (snr-app ())
-snr-anti {t = app (hrefl c s) u}   (snr-app r) with snr-anti r
-... | t' , (r' , refl) = app t' u , (snr-app r' , refl)
-snr-anti {t = app (tr d p e) u}    (snr-app r) with snr-anti r
-... | t' , (r' , refl) = app t' u , (snr-app r' , refl)
+snr-anti {t = app (hrefl c s) u}   (snr-app r) = lift↑ (λ t' → app t' u) snr-app (λ _ → refl) (snr-anti r)
+snr-anti {t = app (tr d p e) u}    (snr-app r) = lift↑ (λ t' → app t' u) snr-app (λ _ → refl) (snr-anti r)
 snr-anti {t = fst (⌜Hom⌝ c a b)}   (snr-fst ())
-snr-anti {t = fst (hrefl c s)}     (snr-fst r) with snr-anti r
-... | t' , (r' , refl) = fst t' , (snr-fst r' , refl)
-snr-anti {t = fst (tr d p e)}      (snr-fst r) with snr-anti r
-... | t' , (r' , refl) = fst t' , (snr-fst r' , refl)
+snr-anti {t = fst (hrefl c s)}     (snr-fst r) = lift↑ (λ t' → fst t') snr-fst (λ _ → refl) (snr-anti r)
+snr-anti {t = fst (tr d p e)}      (snr-fst r) = lift↑ (λ t' → fst t') snr-fst (λ _ → refl) (snr-anti r)
 snr-anti {t = snd (⌜Hom⌝ c a b)}   (snr-snd ())
-snr-anti {t = snd (hrefl c s)}     (snr-snd r) with snr-anti r
-... | t' , (r' , refl) = snd t' , (snr-snd r' , refl)
-snr-anti {t = snd (tr d p e)}      (snr-snd r) with snr-anti r
-... | t' , (r' , refl) = snd t' , (snr-snd r' , refl)
+snr-anti {t = snd (hrefl c s)}     (snr-snd r) = lift↑ (λ t' → snd t') snr-snd (λ _ → refl) (snr-anti r)
+snr-anti {t = snd (tr d p e)}      (snr-snd r) = lift↑ (λ t' → snd t') snr-snd (λ _ → refl) (snr-anti r)
 snr-anti {t = snd (var x)}      (snr-snd ())
 snr-anti {t = snd (lam s)}      (snr-snd ())
 snr-anti {t = snd ⌜base⌝}       (snr-snd ())
@@ -693,29 +647,22 @@ snr-anti {t = snd ⌜Unit⌝}       (snr-snd ())
 snr-anti {t = snd (⌜IMu⌝ Dⁱ Iⁱ i₉)} (snr-snd ())
 snr-anti {t = snd (⌜Π⌝ c d)}    (snr-snd ())
 snr-anti {t = snd (⌜Σ⌝ c d)}    (snr-snd ())
-snr-anti {t = app (ap c b p) u} (snr-app r) with snr-anti r
-... | t' , (r' , refl) = app t' u , (snr-app r' , refl)
-snr-anti {t = fst (ap c b p)}   (snr-fst r) with snr-anti r
-... | t' , (r' , refl) = fst t' , (snr-fst r' , refl)
-snr-anti {t = snd (ap c b p)}   (snr-snd r) with snr-anti r
-... | t' , (r' , refl) = snd t' , (snr-snd r' , refl)
+snr-anti {t = app (ap c b p) u} (snr-app r) = lift↑ (λ t' → app t' u) snr-app (λ _ → refl) (snr-anti r)
+snr-anti {t = fst (ap c b p)}   (snr-fst r) = lift↑ (λ t' → fst t') snr-fst (λ _ → refl) (snr-anti r)
+snr-anti {t = snd (ap c b p)}   (snr-snd r) = lift↑ (λ t' → snd t') snr-snd (λ _ → refl) (snr-anti r)
 snr-anti {t = app (⌜Id⌝ c a b) u} (snr-app ())
 snr-anti {t = app (idrefl c t) u} (snr-app ())
-snr-anti {t = app (jsub d p e) u} (snr-app r) with snr-anti r
-... | t' , (r' , refl) = app t' u , (snr-app r' , refl)
+snr-anti {t = app (jsub d p e) u} (snr-app r) = lift↑ (λ t' → app t' u) snr-app (λ _ → refl) (snr-anti r)
 snr-anti {t = fst (⌜Id⌝ c a b)} (snr-fst ())
 snr-anti {t = fst (idrefl c t)} (snr-fst ())
-snr-anti {t = fst (jsub d p e)} (snr-fst r) with snr-anti r
-... | t' , (r' , refl) = fst t' , (snr-fst r' , refl)
+snr-anti {t = fst (jsub d p e)} (snr-fst r) = lift↑ (λ t' → fst t') snr-fst (λ _ → refl) (snr-anti r)
 snr-anti {t = snd (⌜Id⌝ c a b)} (snr-snd ())
 snr-anti {t = snd (idrefl c t)} (snr-snd ())
-snr-anti {t = snd (jsub d p e)} (snr-snd r) with snr-anti r
-... | t' , (r' , refl) = snd t' , (snr-snd r' , refl)
+snr-anti {t = snd (jsub d p e)} (snr-snd r) = lift↑ (λ t' → snd t') snr-snd (λ _ → refl) (snr-anti r)
 -- the two-former kernel: jsub root steps + the tr-with-Id-family paths
 snr-anti {ρ = ρ} {t = jsub d (idrefl c s) e} (snr-jsub-refl hd hc hs) =
   e , (snr-jsub-refl (sn-anti hd) (sn-anti hc) (sn-anti hs) , refl)
-snr-anti {t = jsub d p e} (snr-jsubᵖ r) with snr-anti r
-... | p' , (r' , refl) = jsub d p' e , (snr-jsubᵖ r' , refl)
+snr-anti {t = jsub d p e} (snr-jsubᵖ r) = lift↑ (λ p' → jsub d p' e) snr-jsubᵖ (λ _ → refl) (snr-anti r)
 snr-anti {ρ = ρ} {t = tr (⌜Hom⌝ c a m) (hrefl (⌜Id⌝ c₁ a₁ b₁) s) e}
          (snr-J-Id hd h₁ h₂ h₃ hs) =
   e , ( snr-J-Id (sn-anti hd) (sn-anti h₁) (sn-anti h₂) (sn-anti h₃)
@@ -725,8 +672,7 @@ snr-anti {t = tr d (hrefl (⌜Id⌝ c₁ a₁ b₁) s) e} (snr-trᵖ (snr-hrefl�
 snr-anti {t = tr d (hrefl (⌜Id⌝ c₁ a₁ b₁) s) e} (snr-trᵖ (snr-hrefl-pw ()))
 snr-anti {t = tr d (hrefl (idrefl c₁ s₁) s) e} (snr-trᵖ (snr-hreflᶜ (csr-here ())))
 snr-anti {t = tr d (hrefl (idrefl c₁ s₁) s) e} (snr-trᵖ (snr-hrefl-pw ()))
-snr-anti {t = tr d (hrefl (jsub d₁ p₁ e₁) s) e} (snr-trᵖ r) with snr-anti r
-... | p' , (r' , refl) = tr d p' e , (snr-trᵖ r' , refl)
+snr-anti {t = tr d (hrefl (jsub d₁ p₁ e₁) s) e} (snr-trᵖ r) = lift↑ (λ p' → tr d p' e) snr-trᵖ (λ _ → refl) (snr-anti r)
 snr-anti {t = tr d (⌜Id⌝ c a b) e} (snr-trᵖ ())
 snr-anti {t = tr d (idrefl c s) e} (snr-trᵖ ())
 snr-anti {t = tr d (hrefl unit s) e} (snr-trᵖ (snr-hreflᶜ (csr-here ())))
@@ -751,24 +697,18 @@ snr-anti {t = tr d (hrefl fzero s) e} (snr-trᵖ (snr-hrefl-pw ()))
 snr-anti {t = tr d (hrefl (fsuc _) s) e} (snr-trᵖ (snr-hrefl-pw ()))
 snr-anti {t = tr d (hrefl (fcase0 _) s) e} (snr-trᵖ (snr-hrefl-pw ()))
 snr-anti {t = tr d (hrefl (⌜Fin⌝ _) s) e} (snr-trᵖ (snr-hrefl-pw ()))
-snr-anti {t = tr d (hrefl (natrec z w n) s) e} (snr-trᵖ r) with snr-anti r
-... | t' , (r' , refl) = tr d t' e , (snr-trᵖ r' , refl)
-snr-anti {t = tr d (hrefl (dpay _ _ _) s) e} (snr-trᵖ r) with snr-anti r
-... | t' , (r' , refl) = tr d t' e , (snr-trᵖ r' , refl)
-snr-anti {t = tr d (hrefl (dih _ _ _ _) s) e} (snr-trᵖ r) with snr-anti r
-... | t' , (r' , refl) = tr d t' e , (snr-trᵖ r' , refl)
-snr-anti {t = tr d (hrefl (fcase _ _ _) s) e} (snr-trᵖ r) with snr-anti r
-... | t' , (r' , refl) = tr d t' e , (snr-trᵖ r' , refl)
-snr-anti {t = tr d (hrefl (psplit _ _) s) e} (snr-trᵖ r) with snr-anti r
-... | t' , (r' , refl) = tr d t' e , (snr-trᵖ r' , refl)
+snr-anti {t = tr d (hrefl (natrec z w n) s) e} (snr-trᵖ r) = lift↑ (λ t' → tr d t' e) snr-trᵖ (λ _ → refl) (snr-anti r)
+snr-anti {t = tr d (hrefl (dpay _ _ _) s) e} (snr-trᵖ r) = lift↑ (λ t' → tr d t' e) snr-trᵖ (λ _ → refl) (snr-anti r)
+snr-anti {t = tr d (hrefl (dih _ _ _ _) s) e} (snr-trᵖ r) = lift↑ (λ t' → tr d t' e) snr-trᵖ (λ _ → refl) (snr-anti r)
+snr-anti {t = tr d (hrefl (fcase _ _ _) s) e} (snr-trᵖ r) = lift↑ (λ t' → tr d t' e) snr-trᵖ (λ _ → refl) (snr-anti r)
+snr-anti {t = tr d (hrefl (psplit _ _) s) e} (snr-trᵖ r) = lift↑ (λ t' → tr d t' e) snr-trᵖ (λ _ → refl) (snr-anti r)
 -- ★ INDUCTIVE TYPES: the MOTIVE stays a variable here, as in the `natrec`
 -- rows above — `trstk?` falls to `pathstk?` on a `con`/`elim` path, so it
 -- does not look at the motive at all.
 -- ⚠ the INDEXED code has NO J root (unlike `⌜Mu⌝`): `pathstk? (⌜IMu⌝ …)`
 --   is `true`, so a `hrefl ⌜IMu⌝` path is permanently STUCK — the `⌜Nat⌝`
 --   rows' shape, not `⌜Mu⌝`'s.
-snr-anti {t = tr d (hrefl (ielim D₁ i₁ ms₁ t₁) s) e} (snr-trᵖ r) with snr-anti r
-... | t' , (r' , refl) = tr d t' e , (snr-trᵖ r' , refl)
+snr-anti {t = tr d (hrefl (ielim D₁ i₁ ms₁ t₁) s) e} (snr-trᵖ r) = lift↑ (λ t' → tr d t' e) snr-trᵖ (λ _ → refl) (snr-anti r)
 snr-anti {t = tr d (hrefl (⌜IMu⌝ Dⁱ Iⁱ i₉) s) e} (snr-trᵖ (snr-hreflᶜ (csr-here ())))
 snr-anti {t = tr d (hrefl (⌜IMu⌝ Dⁱ Iⁱ i₉) s) e} (snr-trᵖ (snr-hrefl-pw ()))
 snr-anti {t = tr d unit e} (snr-trᵖ ())
@@ -782,27 +722,19 @@ snr-anti {t = tr d fzero e} (snr-trᵖ ())
 snr-anti {t = tr d (fsuc _) e} (snr-trᵖ ())
 snr-anti {t = tr d (fcase0 _) e} (snr-trᵖ ())
 snr-anti {t = tr d (⌜Fin⌝ _) e} (snr-trᵖ ())
-snr-anti {t = tr d (natrec z w n) e} (snr-trᵖ r) with snr-anti r
-... | t' , (r' , refl) = tr d t' e , (snr-trᵖ r' , refl)
-snr-anti {t = tr d (dpay _ _ _) e} (snr-trᵖ r) with snr-anti r
-... | t' , (r' , refl) = tr d t' e , (snr-trᵖ r' , refl)
-snr-anti {t = tr d (dih _ _ _ _) e} (snr-trᵖ r) with snr-anti r
-... | t' , (r' , refl) = tr d t' e , (snr-trᵖ r' , refl)
-snr-anti {t = tr d (fcase _ _ _) e} (snr-trᵖ r) with snr-anti r
-... | t' , (r' , refl) = tr d t' e , (snr-trᵖ r' , refl)
-snr-anti {t = tr d (psplit _ _) e} (snr-trᵖ r) with snr-anti r
-... | t' , (r' , refl) = tr d t' e , (snr-trᵖ r' , refl)
+snr-anti {t = tr d (natrec z w n) e} (snr-trᵖ r) = lift↑ (λ t' → tr d t' e) snr-trᵖ (λ _ → refl) (snr-anti r)
+snr-anti {t = tr d (dpay _ _ _) e} (snr-trᵖ r) = lift↑ (λ t' → tr d t' e) snr-trᵖ (λ _ → refl) (snr-anti r)
+snr-anti {t = tr d (dih _ _ _ _) e} (snr-trᵖ r) = lift↑ (λ t' → tr d t' e) snr-trᵖ (λ _ → refl) (snr-anti r)
+snr-anti {t = tr d (fcase _ _ _) e} (snr-trᵖ r) = lift↑ (λ t' → tr d t' e) snr-trᵖ (λ _ → refl) (snr-anti r)
+snr-anti {t = tr d (psplit _ _) e} (snr-trᵖ r) = lift↑ (λ t' → tr d t' e) snr-trᵖ (λ _ → refl) (snr-anti r)
 snr-anti {t = tr d (⌜IMu⌝ Dⁱ Iⁱ i₉) e} (snr-trᵖ ())
-snr-anti {t = tr d (ielim D₁ i₁ ms₁ t₁) e} (snr-trᵖ r) with snr-anti r
-... | t' , (r' , refl) = tr d t' e , (snr-trᵖ r' , refl)
-snr-anti {t = tr d (jsub d₁ p₁ e₁) e} (snr-trᵖ r) with snr-anti r
-... | p' , (r' , refl) = tr d p' e , (snr-trᵖ r' , refl)
+snr-anti {t = tr d (ielim D₁ i₁ ms₁ t₁) e} (snr-trᵖ r) = lift↑ (λ t' → tr d t' e) snr-trᵖ (λ _ → refl) (snr-anti r)
+snr-anti {t = tr d (jsub d₁ p₁ e₁) e} (snr-trᵖ r) = lift↑ (λ p' → tr d p' e) snr-trᵖ (λ _ → refl) (snr-anti r)
 snr-anti {ρ = ρ} {t = ap c b (hrefl c₁ s)} (snr-ap-J h₁ kh) =
   hrefl c (subTm (single s) b)
   , ( snr-ap-J (sn-anti h₁) (trans (sym (stkC?-ren ρ c₁)) kh)
     , cong (hrefl (renTm ρ c)) (ren-single ρ s b) )
-snr-anti {t = ap c b p} (snr-apᵖ r) with snr-anti r
-... | p' , (r' , refl) = ap c b p' , (snr-apᵖ r' , refl)
+snr-anti {t = ap c b p} (snr-apᵖ r) = lift↑ (λ p' → ap c b p') snr-apᵖ (λ _ → refl) (snr-anti r)
 -- ★★ LEVITATED FAMILIES: the root rules (the scrutinee matched SHAPED, so
 --   `renTm ρ` reduces), then each scrutinee ξ.  A reduct built under a
 --   binder is related by `wk-ren-tm`; `fcase-s`/`psplit-β` by the
@@ -824,27 +756,23 @@ snr-anti {ρ = ρ} {t = dpay I D (dρ j C)} snr-dpay-ρ =
     , cong (⌜Σ⌝ (⌜IMu⌝ (renTm ρ I) (renTm ρ D) (renTm ρ j)))
            (cong₃ dpay (sym (wk-ren-tm ρ I)) (sym (wk-ren-tm ρ D))
                        (sym (wk-ren-tm ρ C))) )
-snr-anti {t = dpay I D C} (snr-dpayᶜ r) with snr-anti r
-... | C' , (r' , refl) = dpay I D C' , (snr-dpayᶜ r' , refl)
+snr-anti {t = dpay I D C} (snr-dpayᶜ r) = lift↑ (λ C' → dpay I D C') snr-dpayᶜ (λ _ → refl) (snr-anti r)
 snr-anti {t = dih D e dι p} (snr-dih-ι hD he hp) =
   unit , (snr-dih-ι (sn-anti hD) (sn-anti he) (sn-anti hp) , refl)
 snr-anti {t = dih D e (dσ S f) p} (snr-dih-σ hS) =
   dih D e (app f (fst p)) (snd p) , (snr-dih-σ (sn-anti hS) , refl)
 snr-anti {t = dih D e (dρ j C) p} snr-dih-ρ =
   pair (ielim D j e (fst p)) (dih D e C (snd p)) , (snr-dih-ρ , refl)
-snr-anti {t = dih D e C p} (snr-dihᶜ r) with snr-anti r
-... | C' , (r' , refl) = dih D e C' p , (snr-dihᶜ r' , refl)
+snr-anti {t = dih D e C p} (snr-dihᶜ r) = lift↑ (λ C' → dih D e C' p) snr-dihᶜ (λ _ → refl) (snr-anti r)
 snr-anti {t = fcase fzero a b} (snr-fcase-z hb) =
   a , (snr-fcase-z (sn-anti hb) , refl)
 snr-anti {ρ = ρ} {t = fcase (fsuc t₀) a b} (snr-fcase-s ht ha) =
   subTm (single t₀) b , (snr-fcase-s (sn-anti ht) (sn-anti ha) , ren-single ρ t₀ b)
-snr-anti {t = fcase t₀ a b} (snr-fcaseᵗ r) with snr-anti r
-... | t' , (r' , refl) = fcase t' a b , (snr-fcaseᵗ r' , refl)
+snr-anti {t = fcase t₀ a b} (snr-fcaseᵗ r) = lift↑ (λ t' → fcase t' a b) snr-fcaseᵗ (λ _ → refl) (snr-anti r)
 snr-anti {ρ = ρ} {t = psplit b (pair x y)} (snr-psplit-β hx hy) =
   subTm (single2 x y) b
   , (snr-psplit-β (sn-anti hx) (sn-anti hy) , sym (ren-comm2 ρ b x y))
-snr-anti {t = psplit b q} (snr-psplitᵍ r) with snr-anti r
-... | q' , (r' , refl) = psplit b q' , (snr-psplitᵍ r' , refl)
+snr-anti {t = psplit b q} (snr-psplitᵍ r) = lift↑ (λ q' → psplit b q') snr-psplitᵍ (λ _ → refl) (snr-anti r)
 snr-anti {t = tr (⌜Hom⌝ c a m) (hrefl (⌜Fin⌝ n) s) e} (snr-J-Fin hd hs) =
   e , (snr-J-Fin (sn-anti hd) (sn-anti hs) , refl)
 snr-anti {t = tr d (hrefl (⌜Fin⌝ n) s) e} (snr-trᵖ (snr-hreflᶜ (csr-here ())))

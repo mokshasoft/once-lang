@@ -922,6 +922,7 @@ trstk?-red-d  : {d d' : RTm (Γ ∙)} {p : RTm Γ} → d ⟶ d' →
 trstk?-red-p  : {d : RTm (Γ ∙)} {p p' : RTm Γ} → p ⟶ p' →
                 trstk? d p ≡ true → trstk? d p' ≡ true
 
+homheaded?-red {t = var _} () _   -- forces the source-head split first (see RedCong's `stkA?-red`)
 homheaded?-red (β _ _) ()
 homheaded?-red (βfst _ _) ()
 homheaded?-red (βsnd _ _) ()
@@ -951,6 +952,7 @@ homheaded?-red (ξ-trᵈ _) ()
 homheaded?-red (ξ-trᵖ _) ()
 homheaded?-red (ξ-trᵉ _) ()
 
+spine?-red {t = var _} () _   -- forces the source-head split first (see RedCong's `stkA?-red`)
 spine?-red (β _ _) ()
 spine?-red (βfst _ _) ()
 spine?-red (βsnd _ _) ()
@@ -1054,6 +1056,7 @@ spine?-red (ξ-psplitᵍ r) h = spine?-red r h
 -- ★ the `stableA?` peer of `stablecd?-red`: identical except that the
 -- ⌜Hom⌝-code congruence recurses into ITSELF, so ⌜Nat⌝ under a ⌜Hom⌝
 -- keeps its `false` verdict.  Every other row delegates definitionally.
+stableA?-red {t = var _} () _   -- forces the source-head split first (see RedCong's `stkA?-red`)
 stableA?-red (β _ _) ()
 stableA?-red (βfst _ _) ()
 stableA?-red (βsnd _ _) ()
@@ -1152,6 +1155,7 @@ stableA?-red (ξ-fcase0 r) h = h
 stableA?-red (ξ-psplitᵇ r) h = h
 stableA?-red (ξ-psplitᵍ r) h = spine?-red r h
 
+stablecd?-red {t = var _} () _   -- forces the source-head split first (see RedCong's `stkA?-red`)
 stablecd?-red (β _ _) ()
 stablecd?-red (βfst _ _) ()
 stablecd?-red (βsnd _ _) ()
@@ -1250,6 +1254,7 @@ stablecd?-red (ξ-fcase0 r) h = h
 stablecd?-red (ξ-psplitᵇ r) h = h
 stablecd?-red (ξ-psplitᵍ r) h = spine?-red r h
 
+pathstk?-red {t = var _} () _   -- forces the source-head split first (see RedCong's `stkA?-red`)
 pathstk?-red (β _ _) ()
 pathstk?-red (βfst _ _) ()
 pathstk?-red (βsnd _ _) ()
@@ -1351,6 +1356,7 @@ pathstk?-red (ξ-psplitᵍ r) h = spine?-red r h
 -- ★ `ap`-stuckness is closed under reduction: the J key clashes with
 -- the dead-code key; the pw/taut unfoldings land on LAM paths, which
 -- are permanently ap-stuck (unlike `pathstk?`, where lams are live).
+apstk?-red {t = var _} () _   -- forces the source-head split first (see RedCong's `stkA?-red`)
 apstk?-red (β _ _) ()
 apstk?-red (βfst _ _) ()
 apstk?-red (βsnd _ _) ()
@@ -1451,6 +1457,7 @@ apstk?-red (ξ-psplitᵇ r) h = h
 apstk?-red (ξ-psplitᵍ r) h = spine?-red r h
 
 -- ★ jsub-stuckness is closed under reduction (the idstk? mirror).
+idstk?-red {t = var _} () _   -- forces the source-head split first (see RedCong's `stkA?-red`)
 idstk?-red (β _ _) ()
 idstk?-red (βfst _ _) ()
 idstk?-red (βsnd _ _) ()
@@ -1550,6 +1557,7 @@ idstk?-red (ξ-fcase0 r) h = h
 idstk?-red (ξ-psplitᵇ r) h = h
 idstk?-red (ξ-psplitᵍ r) h = spine?-red r h
 
+natstk?-red {t = var _} () _   -- forces the source-head split first (see RedCong's `stkA?-red`)
 natstk?-red (β _ _) ()
 natstk?-red (βfst _ _) ()
 natstk?-red (βsnd _ _) ()
@@ -1649,6 +1657,7 @@ natstk?-red (ξ-fcase0 r) h = h
 natstk?-red (ξ-psplitᵇ r) h = h
 natstk?-red (ξ-psplitᵍ r) h = spine?-red r h
 
+mustk?-red {t = var _} () _   -- forces the source-head split first (see RedCong's `stkA?-red`)
 mustk?-red (β _ _) ()
 mustk?-red (βfst _ _) ()
 mustk?-red (βsnd _ _) ()
@@ -1750,6 +1759,7 @@ mustk?-red (ξ-fcase0 r) h = h
 mustk?-red (ξ-psplitᵇ r) h = h
 mustk?-red (ξ-psplitᵍ r) h = spine?-red r h
 
+dstk?-red {t = var _} () _   -- forces the source-head split first (see RedCong's `stkA?-red`)
 dstk?-red (β _ _) ()
 dstk?-red (βfst _ _) ()
 dstk?-red (βsnd _ _) ()
@@ -1851,6 +1861,7 @@ dstk?-red (ξ-fcase0 r) h = h
 dstk?-red (ξ-psplitᵇ r) h = h
 dstk?-red (ξ-psplitᵍ r) h = spine?-red r h
 
+finstk?-red {t = var _} () _   -- forces the source-head split first (see RedCong's `stkA?-red`)
 finstk?-red (β _ _) ()
 finstk?-red (βfst _ _) ()
 finstk?-red (βsnd _ _) ()
@@ -1952,6 +1963,7 @@ finstk?-red (ξ-fcase0 r) h = h
 finstk?-red (ξ-psplitᵇ r) h = h
 finstk?-red (ξ-psplitᵍ r) h = spine?-red r h
 
+ordstk?-redᵃ {a = var _} () _   -- forces the source-head split first (see RedCong's `stkA?-red`)
 ordstk?-redᵃ (β _ _) ()
 ordstk?-redᵃ (βfst _ _) ()
 ordstk?-redᵃ (βsnd _ _) ()
@@ -2060,6 +2072,7 @@ ordstk?-redᵃ (ξ-psplitᵍ r) h = spine?-red r h
 -- reduction of `t`/`u` cannot reveal it.  Every non-numeral head lands
 -- in `ordstk?`'s catch-all, where the value is `natstk? a` and the row
 -- is `h`; only `nzero` (refuted) and `nsuc` (the Boolean lemmas) differ.
+ordstk?-redᵗ {t = var _} () _   -- forces the source-head split first (see RedCong's `stkA?-red`)
 ordstk?-redᵗ {a = nzero} r ()
 ordstk?-redᵗ {a = nsuc a₀} {t = t} {t' = t'} r h =
   ordS?-monoᵇ (natstk? t) (natstk? t') (natstk?-red r) _ h
@@ -2099,6 +2112,7 @@ ordstk?-redᵗ {a = fsuc a} r h = h
 ordstk?-redᵗ {a = fcase a a₁ a₂} r h = h
 ordstk?-redᵗ {a = fcase0 a} r h = h
 ordstk?-redᵗ {a = psplit a a₁} r h = h
+ordstk?-redᵘ {u = var _} () _   -- forces the source-head split first (see RedCong's `stkA?-red`)
 ordstk?-redᵘ {a = nzero} r ()
 ordstk?-redᵘ {a = nsuc a₀} {t = t} r h =
   ordS?-monoᵘ (natstk? t) (natstk?-red r) h
@@ -2139,6 +2153,7 @@ ordstk?-redᵘ {a = fcase a a₁ a₂} r h = h
 ordstk?-redᵘ {a = fcase0 a} r h = h
 ordstk?-redᵘ {a = psplit a a₁} r h = h
 
+nopw?-red {t = var _} () _   -- forces the source-head split first (see RedCong's `stkA?-red`)
 nopw?-red (β _ _) ()
 nopw?-red (βfst _ _) ()
 nopw?-red (βsnd _ _) ()
@@ -2236,6 +2251,7 @@ nopw?-red (ξ-fcase0 r) h = h
 nopw?-red (ξ-psplitᵇ r) h = h
 nopw?-red (ξ-psplitᵍ r) h = spine?-red r h
 
+deadmot?-red {t = var _} () _   -- forces the source-head split first (see RedCong's `stkA?-red`)
 deadmot?-red (β _ _) ()
 deadmot?-red (βfst _ _) ()
 deadmot?-red (βsnd _ _) ()
@@ -2466,6 +2482,7 @@ trstk-hrefl-any (psplit b q) h = h
 -- does.
 -- ★ INDUCTIVE TYPES: a `con`/`elim` MOTIVE is not a `var`, so `trstk?`
 -- falls to `pathstk?` on both sides — `trstk-hrefl-any` at the reduct.
+trstk?-red-d {d = var _} () _   -- forces the source-head split first (see RedCong's `stkA?-red`)
 trstk?-red-d {d = ielim dD di dm dt} {d' = d'} {p = hrefl c s} r h = trstk-hrefl-any d' h
 trstk?-red-d {d = ⌜IMu⌝ dD dI di} {d' = d'} {p = hrefl c s} r h = trstk-hrefl-any d' h
 trstk?-red-d {p = absurd p₂ e₂} r h = refl

@@ -297,132 +297,135 @@ data _⟹_ : {Γ : Cx} → RTm Γ → RTm Γ → Set where
 
 -- W2b: the keys and the body function move along PARALLEL steps too —
 -- what the triangle's helper rows consume.
+-- split on the SOURCE's head first: a non-key head is refuted on the key
+-- alone, a key head admits one derivation constructor (2026-09-30: the
+-- derivation-first form spent ~25 s unifying all 72 constructors' indices).
 pw?-⟹ : {C C' : RTm Γ} → C ⟹ C' → pw? C ≡ true → pw? C' ≡ true
-pw?-⟹ (pvar _) ()
-pw?-⟹ (plam _) ()
-pw?-⟹ (papp _ _) ()
-pw?-⟹ (pβ _ _) ()
-pw?-⟹ (ppair _ _) ()
-pw?-⟹ (pabsurd _ _) ()
-pw?-⟹ (pfst _) ()
-pw?-⟹ (psnd _) ()
-pw?-⟹ (pβfst _ _) ()
-pw?-⟹ (pβsnd _ _) ()
-pw?-⟹ p⌜base⌝ ()
-pw?-⟹ (p⌜Π⌝ _ _) h = refl
-pw?-⟹ (p⌜Σ⌝ _ _) ()
-pw?-⟹ (p⌜Hom⌝ pc _ _) h = pw?-⟹ pc h
-pw?-⟹ (phrefl _ _) ()
-pw?-⟹ (phrefl-pw _ _ _) ()
-pw?-⟹ (ptr _ _ _) ()
-pw?-⟹ (ptr-J-base _) ()
-pw?-⟹ (p⌜Nat⌝) ()
-pw?-⟹ (p⌜Unit⌝) ()
-pw?-⟹ (ptr-J-Unit _) ()
-pw?-⟹ (ptr-J-IMu _) ()
-pw?-⟹ (ptr-J-Σ _) ()
-pw?-⟹ (ptr-J-Hom _ _) ()
-pw?-⟹ (pap _ _ _) ()
-pw?-⟹ (pap-J _ _ _ _) ()
-pw?-⟹ (p⌜Id⌝ _ _ _) ()
-pw?-⟹ (pidrefl _ _) ()
-pw?-⟹ (pjsub _ _ _) ()
-pw?-⟹ (pjsub-refl _) ()
-pw?-⟹ (ptr-J-Id _) ()
-pw?-⟹ (ptr-taut _ _) ()
-pw?-⟹ (ptr-pw _ _ _ _ _) ()
-pw?-⟹ (punit) ()
-pw?-⟹ (pnzero) ()
-pw?-⟹ (pnsuc _) ()
-pw?-⟹ (pnatrec _ _ _) ()
-pw?-⟹ (pnatrec-zero _ _) ()
-pw?-⟹ (pnatrec-suc _ _ _) ()
+pw?-⟹ {C = var _} _ ()
+pw?-⟹ {C = lam _} _ ()
+pw?-⟹ {C = app _ _} _ ()
+pw?-⟹ {C = pair _ _} _ ()
+pw?-⟹ {C = absurd _ _} _ ()
+pw?-⟹ {C = ordtr _ _ _ _ _} _ ()
+pw?-⟹ {C = fst _} _ ()
+pw?-⟹ {C = snd _} _ ()
+pw?-⟹ {C = ⌜base⌝} _ ()
+pw?-⟹ {C = ⌜Π⌝ _ _} (p⌜Π⌝ _ _) h = refl
+pw?-⟹ {C = ⌜Σ⌝ _ _} _ ()
+pw?-⟹ {C = ⌜Hom⌝ _ _ _} (p⌜Hom⌝ pc _ _) h = pw?-⟹ pc h
+pw?-⟹ {C = hrefl _ _} _ ()
+pw?-⟹ {C = tr _ _ _} _ ()
+pw?-⟹ {C = ap _ _ _} _ ()
+pw?-⟹ {C = ⌜Id⌝ _ _ _} _ ()
+pw?-⟹ {C = idrefl _ _} _ ()
+pw?-⟹ {C = jsub _ _ _} _ ()
+pw?-⟹ {C = unit} _ ()
+pw?-⟹ {C = nzero} _ ()
+pw?-⟹ {C = nsuc _} _ ()
+pw?-⟹ {C = natrec _ _ _} _ ()
+pw?-⟹ {C = con _} _ ()
+pw?-⟹ {C = ielim _ _ _ _} _ ()
+pw?-⟹ {C = dι} _ ()
+pw?-⟹ {C = dσ _ _} _ ()
+pw?-⟹ {C = dρ _ _} _ ()
+pw?-⟹ {C = dpay _ _ _} _ ()
+pw?-⟹ {C = dih _ _ _ _} _ ()
+pw?-⟹ {C = fzero} _ ()
+pw?-⟹ {C = fsuc _} _ ()
+pw?-⟹ {C = fcase _ _ _} _ ()
+pw?-⟹ {C = fcase0 _} _ ()
+pw?-⟹ {C = psplit _ _} _ ()
+pw?-⟹ {C = ⌜Nat⌝} _ ()
+pw?-⟹ {C = ⌜IMu⌝ _ _ _} _ ()
+pw?-⟹ {C = ⌜Fin⌝ _} _ ()
+pw?-⟹ {C = ⌜Unit⌝} _ ()
 
 -- ★ the `stkA?` peer for parallel reduction (SpikeNatJ split).
+-- split on the SOURCE's head first: a non-key head is refuted on the key
+-- alone, a key head admits one derivation constructor (2026-09-30: the
+-- derivation-first form spent ~25 s unifying all 72 constructors' indices).
 stkA?-⟹ : {C C' : RTm Γ} → C ⟹ C' → stkA? C ≡ true → stkA? C' ≡ true
-stkA?-⟹ (pvar _) ()
-stkA?-⟹ (plam _) ()
-stkA?-⟹ (papp _ _) ()
-stkA?-⟹ (pβ _ _) ()
-stkA?-⟹ (ppair _ _) ()
-stkA?-⟹ (pabsurd _ _) ()
-stkA?-⟹ (pfst _) ()
-stkA?-⟹ (psnd _) ()
-stkA?-⟹ (pβfst _ _) ()
-stkA?-⟹ (pβsnd _ _) ()
-stkA?-⟹ p⌜base⌝ h = refl
-stkA?-⟹ (p⌜Π⌝ _ _) ()
-stkA?-⟹ (p⌜Σ⌝ _ _) h = refl
-stkA?-⟹ (p⌜Hom⌝ pc _ _) h = stkA?-⟹ pc h
-stkA?-⟹ (phrefl _ _) ()
-stkA?-⟹ (phrefl-pw _ _ _) ()
-stkA?-⟹ (ptr _ _ _) ()
-stkA?-⟹ (ptr-J-base _) ()
-stkA?-⟹ (p⌜Nat⌝) h = refl
-stkA?-⟹ (p⌜Unit⌝) h = refl
-stkA?-⟹ (p⌜IMu⌝ _ _ _) h = refl
-stkA?-⟹ p⌜Fin⌝ h = refl
-stkA?-⟹ (ptr-J-Unit _) ()
-stkA?-⟹ (ptr-J-IMu _) ()
-stkA?-⟹ (ptr-J-Σ _) ()
-stkA?-⟹ (ptr-J-Hom _ _) ()
-stkA?-⟹ (pap _ _ _) ()
-stkA?-⟹ (pap-J _ _ _ _) ()
-stkA?-⟹ (p⌜Id⌝ _ _ _) h = refl
-stkA?-⟹ (pidrefl _ _) ()
-stkA?-⟹ (pjsub _ _ _) ()
-stkA?-⟹ (pjsub-refl _) ()
-stkA?-⟹ (ptr-J-Id _) ()
-stkA?-⟹ (ptr-taut _ _) ()
-stkA?-⟹ (ptr-pw _ _ _ _ _) ()
-stkA?-⟹ (punit) ()
-stkA?-⟹ (pnzero) ()
-stkA?-⟹ (pnsuc _) ()
-stkA?-⟹ (pnatrec _ _ _) ()
-stkA?-⟹ (pnatrec-zero _ _) ()
-stkA?-⟹ (pnatrec-suc _ _ _) ()
+stkA?-⟹ {C = var _} _ ()
+stkA?-⟹ {C = lam _} _ ()
+stkA?-⟹ {C = app _ _} _ ()
+stkA?-⟹ {C = pair _ _} _ ()
+stkA?-⟹ {C = absurd _ _} _ ()
+stkA?-⟹ {C = ordtr _ _ _ _ _} _ ()
+stkA?-⟹ {C = fst _} _ ()
+stkA?-⟹ {C = snd _} _ ()
+stkA?-⟹ {C = ⌜base⌝} p⌜base⌝ h = refl
+stkA?-⟹ {C = ⌜Π⌝ _ _} _ ()
+stkA?-⟹ {C = ⌜Σ⌝ _ _} (p⌜Σ⌝ _ _) h = refl
+stkA?-⟹ {C = ⌜Hom⌝ _ _ _} (p⌜Hom⌝ pc _ _) h = stkA?-⟹ pc h
+stkA?-⟹ {C = hrefl _ _} _ ()
+stkA?-⟹ {C = tr _ _ _} _ ()
+stkA?-⟹ {C = ap _ _ _} _ ()
+stkA?-⟹ {C = ⌜Id⌝ _ _ _} (p⌜Id⌝ _ _ _) h = refl
+stkA?-⟹ {C = idrefl _ _} _ ()
+stkA?-⟹ {C = jsub _ _ _} _ ()
+stkA?-⟹ {C = unit} _ ()
+stkA?-⟹ {C = nzero} _ ()
+stkA?-⟹ {C = nsuc _} _ ()
+stkA?-⟹ {C = natrec _ _ _} _ ()
+stkA?-⟹ {C = con _} _ ()
+stkA?-⟹ {C = ielim _ _ _ _} _ ()
+stkA?-⟹ {C = dι} _ ()
+stkA?-⟹ {C = dσ _ _} _ ()
+stkA?-⟹ {C = dρ _ _} _ ()
+stkA?-⟹ {C = dpay _ _ _} _ ()
+stkA?-⟹ {C = dih _ _ _ _} _ ()
+stkA?-⟹ {C = fzero} _ ()
+stkA?-⟹ {C = fsuc _} _ ()
+stkA?-⟹ {C = fcase _ _ _} _ ()
+stkA?-⟹ {C = fcase0 _} _ ()
+stkA?-⟹ {C = psplit _ _} _ ()
+stkA?-⟹ {C = ⌜Nat⌝} p⌜Nat⌝ h = refl
+stkA?-⟹ {C = ⌜IMu⌝ _ _ _} (p⌜IMu⌝ _ _ _) h = refl
+stkA?-⟹ {C = ⌜Fin⌝ _} p⌜Fin⌝ h = refl
+stkA?-⟹ {C = ⌜Unit⌝} p⌜Unit⌝ h = refl
 
+-- split on the SOURCE's head first: a non-key head is refuted on the key
+-- alone, a key head admits one derivation constructor (2026-09-30: the
+-- derivation-first form spent ~25 s unifying all 72 constructors' indices).
 stkC?-⟹ : {C C' : RTm Γ} → C ⟹ C' → stkC? C ≡ true → stkC? C' ≡ true
-stkC?-⟹ (pvar _) ()
-stkC?-⟹ (plam _) ()
-stkC?-⟹ (papp _ _) ()
-stkC?-⟹ (pβ _ _) ()
-stkC?-⟹ (ppair _ _) ()
-stkC?-⟹ (pabsurd _ _) ()
-stkC?-⟹ (pfst _) ()
-stkC?-⟹ (psnd _) ()
-stkC?-⟹ (pβfst _ _) ()
-stkC?-⟹ (pβsnd _ _) ()
-stkC?-⟹ p⌜base⌝ h = refl
-stkC?-⟹ (p⌜Π⌝ _ _) ()
-stkC?-⟹ (p⌜Σ⌝ _ _) h = refl
-stkC?-⟹ (p⌜Hom⌝ pc _ _) h = stkA?-⟹ pc h
-stkC?-⟹ (phrefl _ _) ()
-stkC?-⟹ (phrefl-pw _ _ _) ()
-stkC?-⟹ (ptr _ _ _) ()
-stkC?-⟹ (ptr-J-base _) ()
-stkC?-⟹ (p⌜Nat⌝) ()
-stkC?-⟹ (p⌜Unit⌝) h = refl
-stkC?-⟹ (p⌜IMu⌝ _ _ _) h = refl
-stkC?-⟹ p⌜Fin⌝ h = refl
-stkC?-⟹ (ptr-J-Unit _) ()
-stkC?-⟹ (ptr-J-Σ _) ()
-stkC?-⟹ (ptr-J-Hom _ _) ()
-stkC?-⟹ (pap _ _ _) ()
-stkC?-⟹ (pap-J _ _ _ _) ()
-stkC?-⟹ (p⌜Id⌝ _ _ _) h = refl
-stkC?-⟹ (pidrefl _ _) ()
-stkC?-⟹ (pjsub _ _ _) ()
-stkC?-⟹ (pjsub-refl _) ()
-stkC?-⟹ (ptr-J-Id _) ()
-stkC?-⟹ (ptr-taut _ _) ()
-stkC?-⟹ (ptr-pw _ _ _ _ _) ()
-stkC?-⟹ (punit) ()
-stkC?-⟹ (pnzero) ()
-stkC?-⟹ (pnsuc _) ()
-stkC?-⟹ (pnatrec _ _ _) ()
-stkC?-⟹ (pnatrec-zero _ _) ()
-stkC?-⟹ (pnatrec-suc _ _ _) ()
+stkC?-⟹ {C = var _} _ ()
+stkC?-⟹ {C = lam _} _ ()
+stkC?-⟹ {C = app _ _} _ ()
+stkC?-⟹ {C = pair _ _} _ ()
+stkC?-⟹ {C = absurd _ _} _ ()
+stkC?-⟹ {C = ordtr _ _ _ _ _} _ ()
+stkC?-⟹ {C = fst _} _ ()
+stkC?-⟹ {C = snd _} _ ()
+stkC?-⟹ {C = ⌜base⌝} p⌜base⌝ h = refl
+stkC?-⟹ {C = ⌜Π⌝ _ _} _ ()
+stkC?-⟹ {C = ⌜Σ⌝ _ _} (p⌜Σ⌝ _ _) h = refl
+stkC?-⟹ {C = ⌜Hom⌝ _ _ _} (p⌜Hom⌝ pc _ _) h = stkA?-⟹ pc h
+stkC?-⟹ {C = hrefl _ _} _ ()
+stkC?-⟹ {C = tr _ _ _} _ ()
+stkC?-⟹ {C = ap _ _ _} _ ()
+stkC?-⟹ {C = ⌜Id⌝ _ _ _} (p⌜Id⌝ _ _ _) h = refl
+stkC?-⟹ {C = idrefl _ _} _ ()
+stkC?-⟹ {C = jsub _ _ _} _ ()
+stkC?-⟹ {C = unit} _ ()
+stkC?-⟹ {C = nzero} _ ()
+stkC?-⟹ {C = nsuc _} _ ()
+stkC?-⟹ {C = natrec _ _ _} _ ()
+stkC?-⟹ {C = con _} _ ()
+stkC?-⟹ {C = ielim _ _ _ _} _ ()
+stkC?-⟹ {C = dι} _ ()
+stkC?-⟹ {C = dσ _ _} _ ()
+stkC?-⟹ {C = dρ _ _} _ ()
+stkC?-⟹ {C = dpay _ _ _} _ ()
+stkC?-⟹ {C = dih _ _ _ _} _ ()
+stkC?-⟹ {C = fzero} _ ()
+stkC?-⟹ {C = fsuc _} _ ()
+stkC?-⟹ {C = fcase _ _ _} _ ()
+stkC?-⟹ {C = fcase0 _} _ ()
+stkC?-⟹ {C = psplit _ _} _ ()
+stkC?-⟹ {C = ⌜Nat⌝} _ ()
+stkC?-⟹ {C = ⌜IMu⌝ _ _ _} (p⌜IMu⌝ _ _ _) h = refl
+stkC?-⟹ {C = ⌜Fin⌝ _} p⌜Fin⌝ h = refl
+stkC?-⟹ {C = ⌜Unit⌝} p⌜Unit⌝ h = refl
 
 
 
@@ -843,50 +846,52 @@ stkC?-⟹ (pnatrec-suc _ _ _) ()
         (pap-J (trans (stkC?-ren ρ c₁) key)
                (⟹-ren ρ p) (⟹-ren (extR ρ) q) (⟹-ren ρ r))
 
+-- split on the SOURCE's head first: a non-key head is refuted on the key
+-- alone, a key head admits one derivation constructor (2026-09-30: the
+-- derivation-first form spent ~25 s unifying all 72 constructors' indices).
 pwBody-⟹ : {C C' : RTm Γ} → C ⟹ C' → pw? C ≡ true →
             pwBody C ⟹ pwBody C'
-pwBody-⟹ (pvar _) ()
-pwBody-⟹ (plam _) ()
-pwBody-⟹ (papp _ _) ()
-pwBody-⟹ (pβ _ _) ()
-pwBody-⟹ (ppair _ _) ()
-pwBody-⟹ (pabsurd _ _) ()
-pwBody-⟹ (pfst _) ()
-pwBody-⟹ (psnd _) ()
-pwBody-⟹ (pβfst _ _) ()
-pwBody-⟹ (pβsnd _ _) ()
-pwBody-⟹ p⌜base⌝ ()
-pwBody-⟹ (p⌜Π⌝ pγ pδ) h = pδ
-pwBody-⟹ (p⌜Σ⌝ _ _) ()
-pwBody-⟹ (p⌜Hom⌝ pc pa pb) h =
+pwBody-⟹ {C = var _} _ ()
+pwBody-⟹ {C = lam _} _ ()
+pwBody-⟹ {C = app _ _} _ ()
+pwBody-⟹ {C = pair _ _} _ ()
+pwBody-⟹ {C = absurd _ _} _ ()
+pwBody-⟹ {C = ordtr _ _ _ _ _} _ ()
+pwBody-⟹ {C = fst _} _ ()
+pwBody-⟹ {C = snd _} _ ()
+pwBody-⟹ {C = ⌜base⌝} _ ()
+pwBody-⟹ {C = ⌜Π⌝ _ _} (p⌜Π⌝ pγ pδ) h = pδ
+pwBody-⟹ {C = ⌜Σ⌝ _ _} _ ()
+pwBody-⟹ {C = ⌜Hom⌝ _ _ _} (p⌜Hom⌝ pc pa pb) h =
   p⌜Hom⌝ (pwBody-⟹ pc h)
          (papp (⟹-ren vs pa) (pvar vz))
          (papp (⟹-ren vs pb) (pvar vz))
-pwBody-⟹ (phrefl _ _) ()
-pwBody-⟹ (phrefl-pw _ _ _) ()
-pwBody-⟹ (ptr _ _ _) ()
-pwBody-⟹ (ptr-J-base _) ()
-pwBody-⟹ (p⌜Nat⌝) ()
-pwBody-⟹ (p⌜Unit⌝) ()
-pwBody-⟹ (ptr-J-Unit _) ()
-pwBody-⟹ (ptr-J-IMu _) ()
-pwBody-⟹ (ptr-J-Σ _) ()
-pwBody-⟹ (ptr-J-Hom _ _) ()
-pwBody-⟹ (pap _ _ _) ()
-pwBody-⟹ (pap-J _ _ _ _) ()
-pwBody-⟹ (p⌜Id⌝ _ _ _) ()
-pwBody-⟹ (pidrefl _ _) ()
-pwBody-⟹ (pjsub _ _ _) ()
-pwBody-⟹ (pjsub-refl _) ()
-pwBody-⟹ (ptr-J-Id _) ()
-pwBody-⟹ (ptr-taut _ _) ()
-pwBody-⟹ (ptr-pw _ _ _ _ _) ()
-pwBody-⟹ (punit) ()
-pwBody-⟹ (pnzero) ()
-pwBody-⟹ (pnsuc _) ()
-pwBody-⟹ (pnatrec _ _ _) ()
-pwBody-⟹ (pnatrec-zero _ _) ()
-pwBody-⟹ (pnatrec-suc _ _ _) ()
+pwBody-⟹ {C = hrefl _ _} _ ()
+pwBody-⟹ {C = tr _ _ _} _ ()
+pwBody-⟹ {C = ap _ _ _} _ ()
+pwBody-⟹ {C = ⌜Id⌝ _ _ _} _ ()
+pwBody-⟹ {C = idrefl _ _} _ ()
+pwBody-⟹ {C = jsub _ _ _} _ ()
+pwBody-⟹ {C = unit} _ ()
+pwBody-⟹ {C = nzero} _ ()
+pwBody-⟹ {C = nsuc _} _ ()
+pwBody-⟹ {C = natrec _ _ _} _ ()
+pwBody-⟹ {C = con _} _ ()
+pwBody-⟹ {C = ielim _ _ _ _} _ ()
+pwBody-⟹ {C = dι} _ ()
+pwBody-⟹ {C = dσ _ _} _ ()
+pwBody-⟹ {C = dρ _ _} _ ()
+pwBody-⟹ {C = dpay _ _ _} _ ()
+pwBody-⟹ {C = dih _ _ _ _} _ ()
+pwBody-⟹ {C = fzero} _ ()
+pwBody-⟹ {C = fsuc _} _ ()
+pwBody-⟹ {C = fcase _ _ _} _ ()
+pwBody-⟹ {C = fcase0 _} _ ()
+pwBody-⟹ {C = psplit _ _} _ ()
+pwBody-⟹ {C = ⌜Nat⌝} _ ()
+pwBody-⟹ {C = ⌜IMu⌝ _ _ _} _ ()
+pwBody-⟹ {C = ⌜Fin⌝ _} _ ()
+pwBody-⟹ {C = ⌜Unit⌝} _ ()
 
 ⟹-exts : {σ σ' : Sub Γ Δ} → (∀ x → σ x ⟹ σ' x) →
          ∀ (x : Var (Γ ∙)) → extS σ x ⟹ extS σ' x
