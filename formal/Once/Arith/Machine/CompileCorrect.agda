@@ -210,12 +210,10 @@ private
   <-suc : ∀ {i d : ℕ} → i < d → i < suc d
   <-suc lt = m≤n⇒m≤1+n lt
 
-compile-go-correct : ∀ {sh n} (d : ℕ) (e : MArithIR sh n) (s : ArithAbsState sh) →
-  CompileGoInv d e s
-
 aneg-correct : ∀ {sh} (d : ℕ) (a : MArithIR sh NInt) (s : ArithAbsState sh) →
+  CompileGoInv d a s →
   CompileGoInv d (aneg a) s
-aneg-correct {sh} d a s = record
+aneg-correct {sh} d a s ih = record
   { reg0      = trans (cong (λ x → regs x [ 0 ]) bridge)
                       (cong (un-op (⊝_)) (reg0 ih))
   ; scratch≤  = λ i lt → trans (cong (λ x → scratch x [ i ]) bridge)
@@ -224,16 +222,14 @@ aneg-correct {sh} d a s = record
   ; output-eq = trans (cong output bridge) (output-eq ih)
   }
   where
-    ih : CompileGoInv d a s
-    ih = compile-go-correct d a s
-
     bridge : run-abstract (compile-go d (aneg a)) s
            ≡ step (neg-rr 0 0) (run-abstract (compile-go d a) s)
     bridge = run-abstract-app (compile-go d a) (neg-rr 0 0 ∷ []) s
 
 aadd-correct : ∀ {sh} (d : ℕ) (a b : MArithIR sh NInt) (s : ArithAbsState sh) →
+  CompileGoInv d a s → (∀ s′ → CompileGoInv (suc d) b s′) →
   CompileGoInv d (aadd a b) s
-aadd-correct {sh} d a b s = record
+aadd-correct {sh} d a b s ih-a IHb = record
   { reg0      = trans (cong (λ x → regs x [ 0 ]) bridge)
                       (cong₂ (bin-op _⊕_)
                              (trans scratch-s3-d (reg0 ih-a))
@@ -249,10 +245,9 @@ aadd-correct {sh} d a b s = record
                       (trans (output-eq ih-b) (output-eq ih-a))
   }
   where
-    ih-a = compile-go-correct d a s
     s1   = run-abstract (compile-go d a) s
     s2   = step (spill 0 d) s1
-    ih-b = compile-go-correct (suc d) b s2
+    ih-b = IHb s2
     s3   = run-abstract (compile-go (suc d) b) s2
     s4   = step (reload d 1) s3
     s5   = step (add-rrr 0 1 0) s4
@@ -273,8 +268,9 @@ aadd-correct {sh} d a b s = record
                       (cong (λ x → just (eval-arith-W b x)) (input-eq ih-a))
 
 asub-correct : ∀ {sh} (d : ℕ) (a b : MArithIR sh NInt) (s : ArithAbsState sh) →
+  CompileGoInv d a s → (∀ s′ → CompileGoInv (suc d) b s′) →
   CompileGoInv d (asub a b) s
-asub-correct {sh} d a b s = record
+asub-correct {sh} d a b s ih-a IHb = record
   { reg0      = trans (cong (λ x → regs x [ 0 ]) bridge)
                       (cong₂ (bin-op _⊖_)
                              (trans scratch-s3-d (reg0 ih-a))
@@ -290,10 +286,9 @@ asub-correct {sh} d a b s = record
                       (trans (output-eq ih-b) (output-eq ih-a))
   }
   where
-    ih-a = compile-go-correct d a s
     s1   = run-abstract (compile-go d a) s
     s2   = step (spill 0 d) s1
-    ih-b = compile-go-correct (suc d) b s2
+    ih-b = IHb s2
     s3   = run-abstract (compile-go (suc d) b) s2
     s4   = step (reload d 1) s3
     s5   = step (sub-rrr 0 1 0) s4
@@ -314,8 +309,9 @@ asub-correct {sh} d a b s = record
                       (cong (λ x → just (eval-arith-W b x)) (input-eq ih-a))
 
 amul-correct : ∀ {sh} (d : ℕ) (a b : MArithIR sh NInt) (s : ArithAbsState sh) →
+  CompileGoInv d a s → (∀ s′ → CompileGoInv (suc d) b s′) →
   CompileGoInv d (amul a b) s
-amul-correct {sh} d a b s = record
+amul-correct {sh} d a b s ih-a IHb = record
   { reg0      = trans (cong (λ x → regs x [ 0 ]) bridge)
                       (cong₂ (bin-op _⊗_)
                              (trans scratch-s3-d (reg0 ih-a))
@@ -331,10 +327,9 @@ amul-correct {sh} d a b s = record
                       (trans (output-eq ih-b) (output-eq ih-a))
   }
   where
-    ih-a = compile-go-correct d a s
     s1   = run-abstract (compile-go d a) s
     s2   = step (spill 0 d) s1
-    ih-b = compile-go-correct (suc d) b s2
+    ih-b = IHb s2
     s3   = run-abstract (compile-go (suc d) b) s2
     s4   = step (reload d 1) s3
     s5   = step (mul-rrr 0 1 0) s4
@@ -362,8 +357,9 @@ amul-correct {sh} d a b s = record
                          (store-write-same (scratch s1) d (regs s1 [ 0 ]))
 
 adiv-correct : ∀ {sh} (d : ℕ) (a b : MArithIR sh NInt) (s : ArithAbsState sh) →
+  CompileGoInv d a s → (∀ s′ → CompileGoInv (suc d) b s′) →
   CompileGoInv d (adiv a b) s
-adiv-correct {sh} d a b s = record
+adiv-correct {sh} d a b s ih-a IHb = record
   { reg0      = trans (cong (λ x → regs x [ 0 ]) bridge)
                       (cong₂ (bin-op _/ˢ_)
                              (trans scratch-s3-d (reg0 ih-a))
@@ -379,10 +375,9 @@ adiv-correct {sh} d a b s = record
                       (trans (output-eq ih-b) (output-eq ih-a))
   }
   where
-    ih-a = compile-go-correct d a s
     s1   = run-abstract (compile-go d a) s
     s2   = step (spill 0 d) s1
-    ih-b = compile-go-correct (suc d) b s2
+    ih-b = IHb s2
     s3   = run-abstract (compile-go (suc d) b) s2
     s4   = step (reload d 1) s3
     s5   = step (div-rrr 0 1 0) s4
@@ -410,8 +405,9 @@ adiv-correct {sh} d a b s = record
                          (store-write-same (scratch s1) d (regs s1 [ 0 ]))
 
 amod-correct : ∀ {sh} (d : ℕ) (a b : MArithIR sh NInt) (s : ArithAbsState sh) →
+  CompileGoInv d a s → (∀ s′ → CompileGoInv (suc d) b s′) →
   CompileGoInv d (amod a b) s
-amod-correct {sh} d a b s = record
+amod-correct {sh} d a b s ih-a IHb = record
   { reg0      = trans (cong (λ x → regs x [ 0 ]) bridge)
                       (cong₂ (bin-op _%ˢ_)
                              (trans scratch-s3-d (reg0 ih-a))
@@ -427,10 +423,9 @@ amod-correct {sh} d a b s = record
                       (trans (output-eq ih-b) (output-eq ih-a))
   }
   where
-    ih-a = compile-go-correct d a s
     s1   = run-abstract (compile-go d a) s
     s2   = step (spill 0 d) s1
-    ih-b = compile-go-correct (suc d) b s2
+    ih-b = IHb s2
     s3   = run-abstract (compile-go (suc d) b) s2
     s4   = step (reload d 1) s3
     s5   = step (rem-rrr 0 1 0) s4
@@ -455,8 +450,9 @@ amod-correct {sh} d a b s = record
 -- operation swapped — the bookkeeping fields never mention it, which is the
 -- evidence that the register discipline really is kind-independent.
 fneg-correct : ∀ {sh} (d : ℕ) (a : MArithIR sh NFloat) (s : ArithAbsState sh) →
+  CompileGoInv d a s →
   CompileGoInv d (aneg a) s
-fneg-correct {sh} d a s = record
+fneg-correct {sh} d a s ih = record
   { reg0      = trans (cong (λ x → regs x [ 0 ]) bridge)
                       (cong (un-op (FA.fneg F)) (reg0 ih))
   ; scratch≤  = λ i lt → trans (cong (λ x → scratch x [ i ]) bridge)
@@ -465,17 +461,15 @@ fneg-correct {sh} d a s = record
   ; output-eq = trans (cong output bridge) (output-eq ih)
   }
   where
-    ih : CompileGoInv d a s
-    ih = compile-go-correct d a s
-
     bridge : run-abstract (compile-go d (aneg a)) s
            ≡ step (fneg-rr 0 0) (run-abstract (compile-go d a) s)
     bridge = run-abstract-app (compile-go d a) (fneg-rr 0 0 ∷ []) s
 
 -- …and D125's widening, the one node that crosses the kinds.
 i2f-correct : ∀ {sh} (d : ℕ) (a : MArithIR sh NInt) (s : ArithAbsState sh) →
+  CompileGoInv d a s →
   CompileGoInv d (ai2f a) s
-i2f-correct {sh} d a s = record
+i2f-correct {sh} d a s ih = record
   { reg0      = trans (cong (λ x → regs x [ 0 ]) bridge)
                       (cong (un-op (λ w → FA.i2f F (toℤ w))) (reg0 ih))
   ; scratch≤  = λ i lt → trans (cong (λ x → scratch x [ i ]) bridge)
@@ -484,9 +478,6 @@ i2f-correct {sh} d a s = record
   ; output-eq = trans (cong output bridge) (output-eq ih)
   }
   where
-    ih : CompileGoInv d a s
-    ih = compile-go-correct d a s
-
     bridge : run-abstract (compile-go d (ai2f a)) s
            ≡ step (i2f-rr 0 0) (run-abstract (compile-go d a) s)
     bridge = run-abstract-app (compile-go d a) (i2f-rr 0 0 ∷ []) s
@@ -496,8 +487,9 @@ i2f-correct {sh} d a s = record
 -- that is exact for every operand, so `fmul-correct` mirrors `aadd` rather
 -- than `amul` — simpler, and the reason is in `compile-go`.
 fadd-correct : ∀ {sh} (d : ℕ) (a b : MArithIR sh NFloat) (s : ArithAbsState sh) →
+  CompileGoInv d a s → (∀ s′ → CompileGoInv (suc d) b s′) →
   CompileGoInv d (aadd a b) s
-fadd-correct {sh} d a b s = record
+fadd-correct {sh} d a b s ih-a IHb = record
   { reg0      = trans (cong (λ x → regs x [ 0 ]) bridge)
                       (cong₂ (bin-op (FA.fadd F))
                              (trans scratch-s3-d (reg0 ih-a))
@@ -513,10 +505,9 @@ fadd-correct {sh} d a b s = record
                       (trans (output-eq ih-b) (output-eq ih-a))
   }
   where
-    ih-a = compile-go-correct d a s
     s1   = run-abstract (compile-go d a) s
     s2   = step (spill 0 d) s1
-    ih-b = compile-go-correct (suc d) b s2
+    ih-b = IHb s2
     s3   = run-abstract (compile-go (suc d) b) s2
     s4   = step (reload d 1) s3
     s5   = step (fadd-rrr 0 1 0) s4
@@ -537,8 +528,9 @@ fadd-correct {sh} d a b s = record
                       (cong (λ x → just (eval-arith-W b x)) (input-eq ih-a))
 
 fsub-correct : ∀ {sh} (d : ℕ) (a b : MArithIR sh NFloat) (s : ArithAbsState sh) →
+  CompileGoInv d a s → (∀ s′ → CompileGoInv (suc d) b s′) →
   CompileGoInv d (asub a b) s
-fsub-correct {sh} d a b s = record
+fsub-correct {sh} d a b s ih-a IHb = record
   { reg0      = trans (cong (λ x → regs x [ 0 ]) bridge)
                       (cong₂ (bin-op (FA.fsub F))
                              (trans scratch-s3-d (reg0 ih-a))
@@ -554,10 +546,9 @@ fsub-correct {sh} d a b s = record
                       (trans (output-eq ih-b) (output-eq ih-a))
   }
   where
-    ih-a = compile-go-correct d a s
     s1   = run-abstract (compile-go d a) s
     s2   = step (spill 0 d) s1
-    ih-b = compile-go-correct (suc d) b s2
+    ih-b = IHb s2
     s3   = run-abstract (compile-go (suc d) b) s2
     s4   = step (reload d 1) s3
     s5   = step (fsub-rrr 0 1 0) s4
@@ -578,8 +569,9 @@ fsub-correct {sh} d a b s = record
                       (cong (λ x → just (eval-arith-W b x)) (input-eq ih-a))
 
 fmul-correct : ∀ {sh} (d : ℕ) (a b : MArithIR sh NFloat) (s : ArithAbsState sh) →
+  CompileGoInv d a s → (∀ s′ → CompileGoInv (suc d) b s′) →
   CompileGoInv d (amul a b) s
-fmul-correct {sh} d a b s = record
+fmul-correct {sh} d a b s ih-a IHb = record
   { reg0      = trans (cong (λ x → regs x [ 0 ]) bridge)
                       (cong₂ (bin-op (FA.fmul F))
                              (trans scratch-s3-d (reg0 ih-a))
@@ -595,10 +587,9 @@ fmul-correct {sh} d a b s = record
                       (trans (output-eq ih-b) (output-eq ih-a))
   }
   where
-    ih-a = compile-go-correct d a s
     s1   = run-abstract (compile-go d a) s
     s2   = step (spill 0 d) s1
-    ih-b = compile-go-correct (suc d) b s2
+    ih-b = IHb s2
     s3   = run-abstract (compile-go (suc d) b) s2
     s4   = step (reload d 1) s3
     s5   = step (fmul-rrr 0 1 0) s4
@@ -623,8 +614,9 @@ fmul-correct {sh} d a b s = record
 -- `FA.fmul` — the sticky bit lives inside `fdiv`, not in the compilation, so
 -- nothing here has to know about it.
 fdiv-correct : ∀ {sh} (d : ℕ) (a b : MArithIR sh NFloat) (s : ArithAbsState sh) →
+  CompileGoInv d a s → (∀ s′ → CompileGoInv (suc d) b s′) →
   CompileGoInv d (adiv a b) s
-fdiv-correct {sh} d a b s = record
+fdiv-correct {sh} d a b s ih-a IHb = record
   { reg0      = trans (cong (λ x → regs x [ 0 ]) bridge)
                       (cong₂ (bin-op (FA.fdiv F))
                              (trans scratch-s3-d (reg0 ih-a))
@@ -640,10 +632,9 @@ fdiv-correct {sh} d a b s = record
                       (trans (output-eq ih-b) (output-eq ih-a))
   }
   where
-    ih-a = compile-go-correct d a s
     s1   = run-abstract (compile-go d a) s
     s2   = step (spill 0 d) s1
-    ih-b = compile-go-correct (suc d) b s2
+    ih-b = IHb s2
     s3   = run-abstract (compile-go (suc d) b) s2
     s4   = step (reload d 1) s3
     s5   = step (fdiv-rrr 0 1 0) s4
@@ -665,6 +656,12 @@ fdiv-correct {sh} d a b s = record
 
 
 -- Kind dispatch: the same node name selects the integer or the float proof.
+-- The only recursion: each node's lemma takes its operands' invariants as
+-- arguments, so the termination checker sees one structural function rather
+-- than a block of thirteen mutually recursive lemmas (whose call-graph
+-- completion took 24 s).
+compile-go-correct : ∀ {sh n} (d : ℕ) (e : MArithIR sh n) (s : ArithAbsState sh) →
+  CompileGoInv d e s
 compile-go-correct d (alit z) s = record
   { reg0      = refl
   ; scratch≤  = λ _ _ → refl
@@ -672,23 +669,23 @@ compile-go-correct d (alit z) s = record
   ; output-eq = refl
   }
 compile-go-correct {sh} {NInt} d (ainput p) s = compile-go-correct-ainput {sh} d p s
-compile-go-correct {n = NInt} d (aneg a) s = aneg-correct d a s
+compile-go-correct {n = NInt} d (aneg a) s = aneg-correct d a s (compile-go-correct d a s)
 compile-go-correct {n = NFloat} d (aflit dc) s = record
   { reg0 = refl ; scratch≤ = λ _ _ → refl ; input-eq = refl ; output-eq = refl }
 compile-go-correct {n = NFloat} d (ainput p) s = record
   { reg0 = cong just (sym (eval-arith-W-finput p (input s)))
   ; scratch≤ = λ _ _ → refl ; input-eq = refl ; output-eq = refl }
-compile-go-correct {n = NFloat} d (aneg a) s = fneg-correct d a s
-compile-go-correct {n = NFloat} d (aadd a b) s = fadd-correct d a b s
-compile-go-correct {n = NFloat} d (asub a b) s = fsub-correct d a b s
-compile-go-correct {n = NFloat} d (amul a b) s = fmul-correct d a b s
-compile-go-correct d (ai2f a) s = i2f-correct d a s
-compile-go-correct {n = NInt} d (aadd a b) s = aadd-correct d a b s
-compile-go-correct {n = NInt} d (asub a b) s = asub-correct d a b s
-compile-go-correct {n = NInt} d (amul a b) s = amul-correct d a b s
-compile-go-correct {n = NInt}   d (adiv a b) s = adiv-correct d a b s
-compile-go-correct {n = NFloat} d (adiv a b) s = fdiv-correct d a b s
-compile-go-correct d (amod a b) s = amod-correct d a b s
+compile-go-correct {n = NFloat} d (aneg a) s = fneg-correct d a s (compile-go-correct d a s)
+compile-go-correct {n = NFloat} d (aadd a b) s = fadd-correct d a b s (compile-go-correct d a s) (λ s′ → compile-go-correct (suc d) b s′)
+compile-go-correct {n = NFloat} d (asub a b) s = fsub-correct d a b s (compile-go-correct d a s) (λ s′ → compile-go-correct (suc d) b s′)
+compile-go-correct {n = NFloat} d (amul a b) s = fmul-correct d a b s (compile-go-correct d a s) (λ s′ → compile-go-correct (suc d) b s′)
+compile-go-correct d (ai2f a) s = i2f-correct d a s (compile-go-correct d a s)
+compile-go-correct {n = NInt} d (aadd a b) s = aadd-correct d a b s (compile-go-correct d a s) (λ s′ → compile-go-correct (suc d) b s′)
+compile-go-correct {n = NInt} d (asub a b) s = asub-correct d a b s (compile-go-correct d a s) (λ s′ → compile-go-correct (suc d) b s′)
+compile-go-correct {n = NInt} d (amul a b) s = amul-correct d a b s (compile-go-correct d a s) (λ s′ → compile-go-correct (suc d) b s′)
+compile-go-correct {n = NInt}   d (adiv a b) s = adiv-correct d a b s (compile-go-correct d a s) (λ s′ → compile-go-correct (suc d) b s′)
+compile-go-correct {n = NFloat} d (adiv a b) s = fdiv-correct d a b s (compile-go-correct d a s) (λ s′ → compile-go-correct (suc d) b s′)
+compile-go-correct d (amod a b) s = amod-correct d a b s (compile-go-correct d a s) (λ s′ → compile-go-correct (suc d) b s′)
 
 ------------------------------------------------------------------------
 -- Block validity: `output-of (run-abstract (compile-abs e) (init env))`
