@@ -51,8 +51,8 @@ open import Once.Denotation.TraceDenote using (events-F)
 open import Data.List using (List; take) renaming (_++_ to _++ₗ_)
 open import Data.Nat using (ℕ)
 open import Once.Surface.Context using (Ctx; ∅; _,_^_; svar; SVar; Usage; _↾_; _⊑ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many; _+ᵘ_; _*ᵘ_; _⊔ᵘ_; zeroUsage; _∷_) renaming (⟦_⟧ᶜ to ⟦_⟧ᶜᵗ; lookup to lookupᵗ)
-open import Once.TypeCheck.Classify using (NamedCtx; PolyCtx)
-open import Once.Denotation.DefEnv using (DefEnvOf; defAt; tailAt)
+open import Once.TypeCheck.Classify using (NamedCtx; PolyCtx; Imports)
+open import Once.Denotation.DefEnv using (DefEnvOf; defAt; tailAt; ImpEnvOf; impAt)
 open import Once.Type.Rigid using (KindedInstance; ground-kinded)
 open import Once.TypeCheck.Raw using (BinOp; OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
 open import Once.Denotation.Sub using (⟦_⟧<:)
@@ -236,6 +236,22 @@ DefFamily s = (U : Type) → KindedInstance s U → T ⟦ U ⟧ᴰ
 DefMeanings : PolyCtx → Set
 DefMeanings = DefEnvOf DefFamily
 
+-- D246: …and the meaning of every in-scope module ENTRY at its type: an FFI
+-- declaration means its contract, a monomorphic definition its body. A
+-- reference to either is a call of the entry (`t-var-import`).
+ImpMeanings : Imports → Set
+ImpMeanings = ImpEnvOf (λ U → T ⟦ U ⟧ᴰ)
+
+record Meanings (polys : PolyCtx) (imps : Imports) : Set where
+  constructor meanings
+  field
+    defs    : DefMeanings polys
+    entries : ImpMeanings imps
+open Meanings public
+
+MeaningsOf : NamedCtx → Set
+MeaningsOf ctx = Meanings (NamedCtx.polys ctx) (NamedCtx.imports ctx)
+
 -- So the meaning runs over `Γ ↾ Ψ` — exactly the variables the derivation uses
 -- — for the same reason `elaborate` and `⟦_⟧ˢ` do.
 Env : NamedCtx → Set
@@ -249,8 +265,8 @@ EnvRun ctx Ψ = ⟦ ⟦ NamedCtx.debruijn ctx ↾ Ψ ⟧ᶜᵗ ⟧ᴰ
 -- IR-free: morphisms via `⟦_⟧ᵐ`, values via `⟦_⟧ᵍ`, locals via `lookupᴰ`.
 ------------------------------------------------------------------------
 
-⟦_⟧ᶜ : ∀ {ctx e A Ψ} → ctx ⊢ᶜ e ∶ A ⨾ Ψ → TargetNum → DefMeanings (NamedCtx.polys ctx) → EnvRun ctx Ψ → T ⟦ A ⟧ᴰ
-⟦_⟧ᵢ : ∀ {ctx e A Ψ} → ctx ⊢ᵢ e ∶ A ⨾ Ψ → TargetNum → DefMeanings (NamedCtx.polys ctx) → EnvRun ctx Ψ → T ⟦ A ⟧ᴰ
+⟦_⟧ᶜ : ∀ {ctx e A Ψ} → ctx ⊢ᶜ e ∶ A ⨾ Ψ → TargetNum → MeaningsOf ctx → EnvRun ctx Ψ → T ⟦ A ⟧ᴰ
+⟦_⟧ᵢ : ∀ {ctx e A Ψ} → ctx ⊢ᵢ e ∶ A ⨾ Ψ → TargetNum → MeaningsOf ctx → EnvRun ctx Ψ → T ⟦ A ⟧ᴰ
 -- Plan 0.94 §10: a domain-given derivation denotes the term AS the arrow
 -- `A ⇒[π] B` it is determined to be.
 -- Plan 0.94 §13: evaluate both, keep the second — what `seq` emits. A subterm
@@ -258,7 +274,7 @@ EnvRun ctx Ψ = ⟦ ⟦ NamedCtx.debruijn ctx ↾ Ψ ⟧ᶜᵗ ⟧ᴰ
 seqᴰ : ∀ {X Y : Set} → T X → T Y → T Y
 seqᴰ m₁ m₂ = (m₁ >>=T λ x → m₂ >>=T λ y → returnT (x , y)) >>=T λ v → returnT (proj₂ v)
 
-⟦_⟧ᵈ : ∀ {ctx e A π B Ψ} → ctx ⊢ᵈ e ∶ A ⇒[ π ]↦ B ⨾ Ψ → TargetNum → DefMeanings (NamedCtx.polys ctx) → EnvRun ctx Ψ
+⟦_⟧ᵈ : ∀ {ctx e A π B Ψ} → ctx ⊢ᵈ e ∶ A ⇒[ π ]↦ B ⨾ Ψ → TargetNum → MeaningsOf ctx → EnvRun ctx Ψ
      → T ⟦ A ⇒[ mk-kind Many π ] B ⟧ᴰ
 
 ------------------------------------------------------------------------
@@ -324,7 +340,7 @@ seqᴰ m₁ m₂ = (m₁ >>=T λ x → m₂ >>=T λ y → returnT (x , y)) >>=T 
 -- the use's kinded instance — the context projection Γ(x) at T. The body is
 -- typed once, where it is declared; nothing is re-typed here.
 ⟦_⟧ᶜ {ctx = ctx} {A = T′} (t-var-poly-instantiate {x = x} _ _ lp _ ki) fmt ρ dγ =
-  defAt (NamedCtx.polys ctx) x ρ lp T′ ki
+  defAt (NamedCtx.polys ctx) x (defs ρ) lp T′ ki
 
 ⟦_⟧ᵢ {ctx = ctx} (t-int n) fmt ρ dγ = returnT (OnceWord.Width.fromℤ (int-bits fmt) n)
 -- D113, in the INFER realm: same clause, same reason as `g-float` above.
@@ -339,13 +355,15 @@ seqᴰ m₁ m₂ = (m₁ >>=T λ x → m₂ >>=T λ y → returnT (x , y)) >>=T 
 ⟦_⟧ᵢ {ctx = ctx} (t-var-local {eV = eV} _) fmt ρ dγ = returnT (svarᴰRun eV dγ)
 ⟦_⟧ᵢ {A = A} (t-var-qualified {name = name} {alias = alias} _ conc) fmt ρ dγ = sigOpRefᴰ {A = A} fmt (bare (alias ++ "." ++ name)) conc
 ⟦_⟧ᵢ {A = A} (t-var-resolved {cn = cn} _ _ conc) fmt ρ dγ = sigOpRefᴰ {A = A} fmt cn conc
-⟦_⟧ᵢ {A = A} (t-var-import {x = x} _ _ _ conc) fmt ρ dγ = sigOpRefᴰ {A = A} fmt (bare x) conc
+-- D246: a reference to a module ENTRY is a call of it, and means the entry —
+-- read from the scope's import environment (an FFI entry's is its contract).
+⟦_⟧ᵢ {ctx = ctx} (t-var-import {x = x} _ _ lk _) fmt ρ dγ = impAt (NamedCtx.imports ctx) x (entries ρ) lk
 -- Plan 0.58 / D071: an infer-mode ground telescope reference MEANS its body —
 -- the context projection Γ(x). The body is closed (typed in the telescope
 -- prefix over the empty local env), so its meaning runs on `tt`. Structural
 -- recursion (bodyD is a premise ⇒ a subterm) — same as the check-mode rule.
 ⟦_⟧ᵢ {ctx = ctx} (t-var-poly-instantiate-infer {x = x} {schema = s} {g = g} _ _ lp _ eT) fmt ρ dγ =
-  subst (λ X → T ⟦ X ⟧ᴰ) (sym eT) (defAt (NamedCtx.polys ctx) x ρ lp (extractGround s g) (ground-kinded s g))
+  subst (λ X → T ⟦ X ⟧ᴰ) (sym eT) (defAt (NamedCtx.polys ctx) x (defs ρ) lp (extractGround s g) (ground-kinded s g))
 ⟦_⟧ᵢ {ctx = ctx} (t-annot d) fmt ρ dγ = (⟦ d ⟧ᶜ fmt ρ) dγ
 ⟦_⟧ᵢ {ctx = ctx} (t-pair da db) fmt ρ dγ = (⟦ da ⟧ᵢ fmt ρ) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=T λ a → (⟦ db ⟧ᵢ fmt ρ) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=T λ b → returnT (a , b)
 ⟦_⟧ᵢ {ctx = ctx} (t-neg d) fmt ρ dγ = (⟦ d ⟧ᵢ fmt ρ) dγ >>=T λ v → resT-lift (semM neg-info fmt v)
@@ -509,7 +527,7 @@ seqᴰ m₁ m₂ = (m₁ >>=T λ x → m₂ >>=T λ y → returnT (x , y)) >>=T 
 -- D243: a polymorphic head means the definition's family at the arrow
 -- instance, converted to the given grade.
 ⟦_⟧ᵈ {ctx = ctx} (d-poly {x = x} {A = A} {B = B} {π′ = π′} _ _ lp _ _ _ ki g) fmt ρ dγ =
-  fmapT ⟦ sub-arr {q = Many} (<:-refl A) (<:-refl B) g ⟧<: (defAt (NamedCtx.polys ctx) x ρ lp _ ki)
+  fmapT ⟦ sub-arr {q = Many} (<:-refl A) (<:-refl B) g ⟧<: (defAt (NamedCtx.polys ctx) x (defs ρ) lp _ ki)
 ⟦_⟧ᵈ {ctx = ctx} (d-lam {A = A} {q' = Zero} _ d) fmt ρ dγ = returnT (λ a → (⟦ d ⟧ᵢ fmt ρ) (bindᴰ0 {Γ = NamedCtx.debruijn ctx} {A = A} dγ))
 ⟦_⟧ᵈ {ctx = ctx} (d-lam {A = A} {q' = One}  _ d) fmt ρ dγ = returnT (λ a → (⟦ d ⟧ᵢ fmt ρ) (bindᴰ {Γ = NamedCtx.debruijn ctx} {A = A} One  dγ a))
 ⟦_⟧ᵈ {ctx = ctx} (d-lam {A = A} {q' = Many} _ d) fmt ρ dγ = returnT (λ a → (⟦ d ⟧ᵢ fmt ρ) (bindᴰ {Γ = NamedCtx.debruijn ctx} {A = A} Many dγ a))

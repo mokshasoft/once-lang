@@ -28,8 +28,8 @@ open import Data.Unit using (⊤; tt)
 open import Relation.Nullary using (yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
-open import Once.Type using (PolyType)
-open import Once.TypeCheck.Classify using (PolyCtx; lookupPolyPrefix)
+open import Once.Type using (PolyType; Type)
+open import Once.TypeCheck.Classify using (PolyCtx; lookupPolyPrefix; Imports; lookupImport)
 open import Once.TypeCheck.Raw using (RawExpr)
 
 DefEnvOf : (PolyType → Set) → PolyCtx → Set
@@ -98,3 +98,23 @@ tailAt-all {R = R} ((n , s′ , b′) ∷ rest) x {s} {b} {prefix} {e₁ , ρ₁
           → DefEnvAll R prefix (tailAt-found {F = _} lp′ ρ₁) (tailAt-found {F = _} lp′ ρ₂)
     found refl = rs
 ... | no _ = tailAt-all rest x rs lp
+
+------------------------------------------------------------------------
+-- D246: THE IMPORT ENVIRONMENT — one meaning per in-scope module entry (an FFI
+-- declaration or a monomorphic definition), read at a `t-var-import`. Walked
+-- exactly as `lookupImport` walks the list, so the first entry of a name wins.
+------------------------------------------------------------------------
+
+ImpEnvOf : (Type → Set) → Imports → Set
+ImpEnvOf F []               = ⊤
+ImpEnvOf F ((_ , T) ∷ rest) = F T × ImpEnvOf F rest
+
+impAt-found : ∀ {F : Type → Set} {T′ T : Type} → just T′ ≡ just T → F T′ → F T
+impAt-found refl e = e
+
+impAt : ∀ {F : Type → Set} (imps : Imports) (x : String) {T}
+  → ImpEnvOf F imps → lookupImport imps x ≡ just T → F T
+impAt [] x _ ()
+impAt ((n , T′) ∷ rest) x (e , ι) lk with StrProp._≟_ n x
+... | yes _ = impAt-found lk e
+... | no _  = impAt rest x ι lk
