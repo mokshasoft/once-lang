@@ -171,6 +171,58 @@ ir-head (SigOp _) = h-SigOp
 ir-head (const _ _) = h-const
 ir-head (Call _) = h-Call
 
+-- The head as a VIEW of the term: `HeadView h g` holds exactly when `g`'s
+-- head is `h`, and casing it once the head is known is a clash on the
+-- `IRHead` index alone. `≟IRH-diag` transports `g`'s view along the head
+-- equality and cases it — instead of the coverage checker refuting every
+-- off-diagonal constructor pair through that equation, with IR-index
+-- unification each time (25 s).
+data HeadView : ∀ {A B} → IRHead → IR A B → Set where
+  hv-id       : ∀ {A} → HeadView h-id (id {A})
+  hv-∘        : ∀ {A B C g f} → HeadView h-∘ (_∘_ {A} {B} {C} g f)
+  hv-⟨,⟩      : ∀ {A B C f g} → HeadView h-⟨,⟩ (⟨_,_⟩ {A} {B} {C} f g)
+  hv-fst      : ∀ {A B} → HeadView h-fst (fst {A} {B})
+  hv-snd      : ∀ {A B} → HeadView h-snd (snd {A} {B})
+  hv-inl      : ∀ {A B} → HeadView h-inl (inl {A} {B})
+  hv-inr      : ∀ {A B} → HeadView h-inr (inr {A} {B})
+  hv-case     : ∀ {A B C f g} → HeadView h-case (case {A} {B} {C} f g)
+  hv-terminal : ∀ {A} → HeadView h-terminal (terminal {A})
+  hv-initial  : ∀ {A} → HeadView h-initial (initial {A})
+  hv-curry    : ∀ {A B C f} → HeadView h-curry (curry {A} {B} {C} f)
+  hv-apply    : ∀ {A B} → HeadView h-apply (apply {A} {B})
+  hv-In       : ∀ {F wf} → HeadView h-In (In {F} wf)
+  hv-out-μ    : ∀ {F wf} → HeadView h-out-μ (out-μ {F} wf)
+  hv-Cata     : ∀ {F wf E A alg} → HeadView h-Cata (Cata {F} wf {E} {A} alg)
+  hv-Out      : ∀ {F wf} → HeadView h-Out (Out {F} wf)
+  hv-in-ν     : ∀ {F wf} → HeadView h-in-ν (in-ν {F} wf)
+  hv-Ana      : ∀ {F wf A coalg} → HeadView h-Ana (Ana {F} wf {A} coalg)
+  hv-SigOp    : ∀ {A B si} → HeadView h-SigOp (SigOp {A} {B} si)
+  hv-const    : ∀ {A p v} → HeadView h-const (const {A} p v)
+  hv-Call     : ∀ {A B f} → HeadView h-Call (Call {A} {B} f)
+
+headView : ∀ {A B} (g : IR A B) → HeadView (ir-head g) g
+headView id          = hv-id
+headView (_ ∘ _)     = hv-∘
+headView ⟨ _ , _ ⟩   = hv-⟨,⟩
+headView fst         = hv-fst
+headView snd         = hv-snd
+headView inl         = hv-inl
+headView inr         = hv-inr
+headView (case _ _)  = hv-case
+headView terminal    = hv-terminal
+headView initial     = hv-initial
+headView (curry _)   = hv-curry
+headView apply       = hv-apply
+headView (In _)      = hv-In
+headView (out-μ _)   = hv-out-μ
+headView (Cata _ _)  = hv-Cata
+headView (Out _)     = hv-Out
+headView (in-ν _)    = hv-in-ν
+headView (Ana _ _)   = hv-Ana
+headView (SigOp _)   = hv-SigOp
+headView (const _ _) = hv-const
+headView (Call _)    = hv-Call
+
 -- subst₂ for IR.
 subst₂-IR : ∀ {A B A' B'} → A ≡ A' → B ≡ B' → IR A B → IR A' B'
 subst₂-IR refl refl f = f
@@ -238,6 +290,10 @@ cross-no {f = f} {g = g} hneq eqA eqB = head-mismatch-abs f g hneq eqA eqB
           → ir-head f ≡ ir-head g
           → (eqA : A ≡ A') (eqB : B ≡ B')
           → Dec (f ≡ subst₂-IR (sym eqA) (sym eqB) g)
+≟IRH-on : ∀ {A B A' B'} (f : IR A B) (g : IR A' B')
+        → HeadView (ir-head f) g
+        → (eqA : A ≡ A') (eqB : B ≡ B')
+        → Dec (f ≡ subst₂-IR (sym eqA) (sym eqB) g)
 
 -- Helper: dispatch ≟IRH on the head-equality decision (no-with form).
 ≟IRH-aux : ∀ {A B A' B'} (f : IR A B) (g : IR A' B')
@@ -246,6 +302,8 @@ cross-no {f = f} {g = g} hneq eqA eqB = head-mismatch-abs f g hneq eqA eqB
          → Dec (f ≡ subst₂-IR (sym eqA) (sym eqB) g)
 ≟IRH-aux f g (yes heq) eqA eqB = ≟IRH-diag f g heq eqA eqB
 ≟IRH-aux f g (no hne)  eqA eqB = no (cross-no hne eqA eqB)
+
+≟IRH-diag f g heq = ≟IRH-on f g (subst (λ h → HeadView h g) (sym heq) (headView g))
 
 ≟IRH f g eqA eqB = ≟IRH-aux f g (ir-head f ≟IRHead ir-head g) eqA eqB
 
@@ -328,49 +386,49 @@ f ≟IR g = ≟IRH f g refl refl
 -- ═══════════════════════════════════════════════════════════════════════
 
 -- id
-≟IRH-diag id id _ refl refl = yes refl
+≟IRH-on id _ hv-id refl refl = yes refl
 
 -- _∘_: compare the intermediate (middle) type first, then sub-IRs
-≟IRH-diag (_∘_ {_} {B} g₁ f₁) (_∘_ {_} {B'} g₂ f₂) _ refl refl =
+≟IRH-on (_∘_ {_} {B} g₁ f₁) _ (hv-∘ {B = B'} {g = g₂} {f = f₂}) refl refl =
   ≟IRH-∘-aux g₁ f₁ g₂ f₂ (B ≟IRTy B')
 
 -- ⟨_,_⟩: B * C equality refl-unifies both component types
-≟IRH-diag (⟨ f₁ , g₁ ⟩) (⟨ f₂ , g₂ ⟩) _ refl refl =
+≟IRH-on (⟨ f₁ , g₁ ⟩) _ (hv-⟨,⟩ {f = f₂} {g = g₂}) refl refl =
   ≟IRH-⟨,⟩-aux f₁ f₂ g₁ g₂
     (≟IRH f₁ f₂ refl refl) (≟IRH g₁ g₂ refl refl)
 
-≟IRH-diag fst fst _ refl refl = yes refl
-≟IRH-diag snd snd _ refl refl = yes refl
+≟IRH-on fst _ hv-fst refl refl = yes refl
+≟IRH-on snd _ hv-snd refl refl = yes refl
 
-≟IRH-diag inl inl _ refl refl = yes refl
-≟IRH-diag inr inr _ refl refl = yes refl
+≟IRH-on inl _ hv-inl refl refl = yes refl
+≟IRH-on inr _ hv-inr refl refl = yes refl
 
-≟IRH-diag (case f₁ g₁) (case f₂ g₂) _ refl refl =
+≟IRH-on (case f₁ g₁) _ (hv-case {f = f₂} {g = g₂}) refl refl =
   ≟IRH-case-aux f₁ f₂ g₁ g₂ (≟IRH f₁ f₂ refl refl) (≟IRH g₁ g₂ refl refl)
 
-≟IRH-diag terminal terminal _ refl refl = yes refl
-≟IRH-diag initial initial _ refl refl = yes refl
+≟IRH-on terminal _ hv-terminal refl refl = yes refl
+≟IRH-on initial _ hv-initial refl refl = yes refl
 
-≟IRH-diag (curry f₁) (curry f₂) _ refl refl =
+≟IRH-on (curry f₁) _ (hv-curry {f = f₂}) refl refl =
   ≟IRH-curry-aux f₁ f₂ (≟IRH f₁ f₂ refl refl)
 
-≟IRH-diag apply apply _ refl refl = yes refl
+≟IRH-on apply _ hv-apply refl refl = yes refl
 
 -- In: eqB : μ-type F ≡ μ-type F' gives the Functor tag
-≟IRH-diag (In {F} wf₁) (In {F'} wf₂) _ eqA eqB with F ≟IRFun F'
+≟IRH-on (In {F} wf₁) _ (hv-In {F = F'} {wf = wf₂}) eqA eqB with F ≟IRFun F'
 ... | no fne = no (λ _ → fne (μ-inj eqB))
 ... | yes refl with eqA | eqB
 ...   | refl | refl rewrite WellFormedFI-irrelevant wf₁ wf₂ = yes refl
 
 -- out-μ: eqA : μ-type F ≡ μ-type F'
-≟IRH-diag (out-μ {F} wf₁) (out-μ {F'} wf₂) _ eqA eqB with F ≟IRFun F'
+≟IRH-on (out-μ {F} wf₁) _ (hv-out-μ {F = F'} {wf = wf₂}) eqA eqB with F ≟IRFun F'
 ... | no fne = no (λ _ → fne (μ-inj eqA))
 ... | yes refl with eqA | eqB
 ...   | refl | refl rewrite WellFormedFI-irrelevant wf₁ wf₂ = yes refl
 
 -- Cata (D131): eqA : (E * μ-type F) ≡ (E' * μ-type F'), eqB : A ≡ A'.
 -- Decompose the product first, then compare the functor as before.
-≟IRH-diag (Cata {F} wf₁ alg₁) (Cata {F'} wf₂ alg₂) _ eqA eqB
+≟IRH-on (Cata {F} wf₁ alg₁) _ (hv-Cata {F = F'} {wf = wf₂} {alg = alg₂}) eqA eqB
   with F ≟IRFun F'
 ... | no fne = no (λ _ → fne (μ-inj (*-injʳ eqA)))
 ... | yes refl with eqA | eqB
@@ -379,20 +437,20 @@ f ≟IR g = ≟IRH f g refl refl
 ...     | no np = no (λ { refl → np refl })
 
 -- Out: eqA : ν-type F ≡ ν-type F'
-≟IRH-diag (Out {F} wf₁) (Out {F'} wf₂) _ eqA eqB with F ≟IRFun F'
+≟IRH-on (Out {F} wf₁) _ (hv-Out {F = F'} {wf = wf₂}) eqA eqB with F ≟IRFun F'
 ... | no fne = no (λ _ → fne (ν-inj eqA))
 ... | yes refl with eqA | eqB
 ...   | refl | refl rewrite WellFormedFI-irrelevant wf₁ wf₂ = yes refl
 
 -- in-ν: eqB : ν-type F ≡ ν-type F'
-≟IRH-diag (in-ν {F} wf₁) (in-ν {F'} wf₂) _ eqA eqB
+≟IRH-on (in-ν {F} wf₁) _ (hv-in-ν {F = F'} {wf = wf₂}) eqA eqB
   with F ≟IRFun F'
 ... | no fne = no (λ _ → fne (ν-inj eqB))
 ... | yes refl with eqA | eqB
 ...   | refl | refl rewrite WellFormedFI-irrelevant wf₁ wf₂ = yes refl
 
 -- Ana: eqB : ν-type F ≡ ν-type F'
-≟IRH-diag (Ana {F} wf₁ coalg₁) (Ana {F'} wf₂ coalg₂) _ eqA eqB
+≟IRH-on (Ana {F} wf₁ coalg₁) _ (hv-Ana {F = F'} {wf = wf₂} {coalg = coalg₂}) eqA eqB
   with F ≟IRFun F'
 ... | no fne = no (λ _ → fne (ν-inj eqB))
 ... | yes refl with eqA | eqB
@@ -400,7 +458,7 @@ f ≟IR g = ≟IRH f g refl refl
 ...     | yes refl rewrite WellFormedFI-irrelevant wf₁ wf₂ = yes refl
 ...     | no np = no (λ { refl → np refl })
 
-≟IRH-diag (SigOp {A₁} {B₁} si₁) (SigOp {A₂} {B₂} si₂) _ eqA eqB with A₁ ≟T A₂ | B₁ ≟T B₂
+≟IRH-on (SigOp {A₁} {B₁} si₁) _ (hv-SigOp {A = A₂} {B = B₂} {si = si₂}) eqA eqB with A₁ ≟T A₂ | B₁ ≟T B₂
 ... | no ne  | _     = no (λ heq → ne (just-injective (trans (cong sigop-dom heq) (sigop-dom-subst (sym eqA) (sym eqB) (SigOp si₂)))))
 ... | yes _  | no ne = no (λ heq → ne (just-injective (trans (cong sigop-cod heq) (sigop-cod-subst (sym eqA) (sym eqB) (SigOp si₂)))))
 ... | yes refl | yes refl rewrite uipK eqA refl | uipK eqB refl with si₁ ≟SigOpInfo si₂
@@ -408,14 +466,14 @@ f ≟IR g = ≟IRH f g refl refl
 ...   | no ne    = no (λ { refl → ne refl })
 
 -- D245: two calls are equal when they name the same entry.
-≟IRH-diag (Call f₁) (Call f₂) _ refl refl = ≟IRH-Call-aux f₁ f₂ (f₁ ≟ᶜ f₂)
+≟IRH-on (Call f₁) _ (hv-Call {f = f₂}) refl refl = ≟IRH-Call-aux f₁ f₂ (f₁ ≟ᶜ f₂)
 
 -- Plan 0.11: const ctor decidable equality.
 -- Postulated for now — proper discharge requires decidable equality
 -- on FitsInReg + per-register-fittable-type decidable equality on the
 -- proof-level and machine-level values. Tractable but adds scope.
 -- Trusted-base entry until then.
-≟IRH-diag (const p₁ v₁) (const p₂ v₂) _ refl refl =
+≟IRH-on (const p₁ v₁) _ (hv-const {p = p₂} {v = v₂}) refl refl =
   ≟const-irrelevant p₁ p₂ v₁ v₂
   where
     open import Once.IRTy using (⟦_,_⟧-baseI)
