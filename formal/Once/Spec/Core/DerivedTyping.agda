@@ -68,19 +68,20 @@ pure⊑ eff  = ⊑-pe
 -- Usage algebra
 ------------------------------------------------------------------------
 
-private
-  z+qz : ∀ {n} (q : Once.Type.Quantity) → zeroUsage {n} +ᵘ q *ᵘ zeroUsage ≡ zeroUsage
-  z+qz q = trans (cong (zeroUsage +ᵘ_) (*ᵘ-zeroʳ q)) (+ᵘ-identityˡ _)
+-- The usage arithmetic the derived typings transport along (public: the 6b
+-- bridge names these transports when it moves them onto the environment).
+z+qz : ∀ {n} (q : Once.Type.Quantity) → zeroUsage {n} +ᵘ q *ᵘ zeroUsage ≡ zeroUsage
+z+qz q = trans (cong (zeroUsage +ᵘ_) (*ᵘ-zeroʳ q)) (+ᵘ-identityˡ _)
 
-  z⊔z : ∀ {n} → zeroUsage {n} ⊔ᵘ zeroUsage ≡ zeroUsage
-  z⊔z {0}     = refl
-  z⊔z {suc n} = cong (Zero ∷_) (z⊔z {n})
+z⊔z : ∀ {n} → zeroUsage {n} ⊔ᵘ zeroUsage ≡ zeroUsage
+z⊔z {0}     = refl
+z⊔z {suc n} = cong (Zero ∷_) (z⊔z {n})
 
-  -- `Z +ᵘ q *ᵘ Ψ₂ +ᵘ One *ᵘ Ψ₁ ≡ Ψ₁ +ᵘ q *ᵘ Ψ₂` once `Z` is zero.
-  arms : ∀ {n} (q : Once.Type.Quantity) {Z : Usage n} (Ψ₁ Ψ₂ : Usage n) → Z ≡ zeroUsage
-       → Z +ᵘ q *ᵘ Ψ₂ +ᵘ One *ᵘ Ψ₁ ≡ Ψ₁ +ᵘ q *ᵘ Ψ₂
-  arms q Ψ₁ Ψ₂ refl =
-    trans (cong₂ _+ᵘ_ (+ᵘ-identityˡ (q *ᵘ Ψ₂)) (*ᵘ-identityˡ Ψ₁)) (+ᵘ-comm (q *ᵘ Ψ₂) Ψ₁)
+-- `Z +ᵘ q *ᵘ Ψ₂ +ᵘ One *ᵘ Ψ₁ ≡ Ψ₁ +ᵘ q *ᵘ Ψ₂` once `Z` is zero.
+arms : ∀ {n} (q : Once.Type.Quantity) {Z : Usage n} (Ψ₁ Ψ₂ : Usage n) → Z ≡ zeroUsage
+     → Z +ᵘ q *ᵘ Ψ₂ +ᵘ One *ᵘ Ψ₁ ≡ Ψ₁ +ᵘ q *ᵘ Ψ₂
+arms q Ψ₁ Ψ₂ refl =
+  trans (cong₂ _+ᵘ_ (+ᵘ-identityˡ (q *ᵘ Ψ₂)) (*ᵘ-identityˡ Ψ₁)) (+ᵘ-comm (q *ᵘ Ψ₂) Ψ₁)
 
 -- Weakening under one `Many` binder, at the usage `Zero ∷ Ψ`.
 wk-⊢′ : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {t A π} (B : Type)

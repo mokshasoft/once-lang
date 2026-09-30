@@ -72,12 +72,78 @@ record Agree {ctx : NamedCtx} (V : Views ctx) (ρ : MeaningsOf ctx) (δ : GM.Def
                  → impAt (NamedCtx.imports ctx) x (entries ρ) lk ≡ impSem δ (bare x) k (imported V lk)
 
 ------------------------------------------------------------------------
+-- The derived combinators' meanings (one lemma per combinator)
+------------------------------------------------------------------------
+
+open import Once.Surface.Context using (Ctx; Usage; _+ᵘ_; _*ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-trans; ⊑ᵘ-*Many; zeroUsage; _⊑ᵘ_; _⊑∷_; _∷_; _,_^_)
+open import Once.Type using (Quantity; Zero)
+open import Once.Denotation.Phase using (bindᴰ)
+open import Data.Fin using (zero; suc)
+  renaming (⟦_⟧ᶜ to ⟦_⟧ᶜᵗ)
+open import Once.Type using (Many; mk-kind; _⇒[_]_; pure)
+open import Once.Denotation.Phase using (restrictᴰ)
+open import Once.Spec.Core.Syntax S
+open import Once.Spec.Core.Typing S
+open import Once.Spec.Core.DerivedTyping S
+import Once.Adequacy.CoreRenameSem S as RS
+import Once.Denotation.EnvAlgebra as EA
+
+-- A restriction of a transported environment is any restriction of the original.
+env-subst : ∀ {n} {Γ : Ctx n} {U U' Ψ' : Usage n} (e : U ≡ U') (u : Ψ' ⊑ᵘ U) (u' : Ψ' ⊑ᵘ U') (x : RS.Env Γ U')
+          → restrictᴰ {Γ = Γ} u (subst (RS.Env Γ) (sym e) x) ≡ restrictᴰ {Γ = Γ} u' x
+env-subst {Γ = Γ} refl u u' x = EA.restrict-irr {Γ = Γ} u u' x
+
+-- Restrict, bind a value the restricted usage does not use, restrict again:
+-- a restriction of the original (the pipeline `let′` builds for a weakened arm).
+drop-bind : ∀ {n} {Γ : Ctx n} {A : Type} {Ψ' Ψm U U' : Usage n} {q : Quantity}
+              (W3 : (Zero ∷ Ψ') ⊑ᵘ (q ∷ Ψm)) (W2 : Ψm ⊑ᵘ U) (e : U ≡ U') (w : Ψ' ⊑ᵘ U')
+              (x : RS.Env Γ U') (a : ⟦ A ⟧ᴰ)
+          → restrictᴰ {Γ = Γ , A ^ Many} W3 (bindᴰ {Γ = Γ} {A = A} q (restrictᴰ {Γ = Γ} W2 (subst (RS.Env Γ) (sym e) x)) a)
+            ≡ restrictᴰ {Γ = Γ} w x
+drop-bind {Γ = Γ} {q = q} (c ⊑∷ u) W2 refl w x a =
+  trans (EA.restrict-bind {Γ = Γ} Zero q (c ⊑∷ u) u (restrictᴰ {Γ = Γ} W2 x) a)
+        (EA.restrict-≡ {Γ = Γ} u W2 w x)
+
+-- Two restrictions of a transported environment: any restriction of the original.
+env-subst₂ : ∀ {n} {Γ : Ctx n} {Ψ' Um U U' : Usage n} (u : Ψ' ⊑ᵘ Um) (v : Um ⊑ᵘ U) (e : U ≡ U') (w : Ψ' ⊑ᵘ U')
+               (x : RS.Env Γ U')
+           → restrictᴰ {Γ = Γ} u (restrictᴰ {Γ = Γ} v (subst (RS.Env Γ) (sym e) x)) ≡ restrictᴰ {Γ = Γ} w x
+env-subst₂ {Γ = Γ} u v refl w x = EA.restrict-≡ {Γ = Γ} u v w x
+
+module Comb {δ : GM.DefSem} where
+  bindC : ∀ {X Y : Set} {a a' : T X} {f g : X → T Y} → a ≡ a' → (∀ v → f v ≡ g v) → (a >>=T f) ≡ (a' >>=T g)
+  bindC {a = a} refl h = cong (a >>=T_) (extensionality h)
+
+  compose-sem : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} {A B C : Type} {π} {f g}
+    (df : Γ ⊢[ Ψ₁ ] f ∷ B ⇒[ mk-kind Many π ] C ! pure) (dg : Γ ⊢[ Ψ₂ ] g ∷ A ⇒[ mk-kind Many π ] B ! pure)
+    (x : RS.Env Γ (Ψ₁ +ᵘ Many *ᵘ Ψ₂))
+    → GM.⟦ ⊢composeᶜ df dg ⟧ fmt δ x
+      ≡ (GM.⟦ df ⟧ fmt δ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ (Many *ᵘ Ψ₂)) x) >>=T λ vf →
+         GM.⟦ dg ⟧ fmt δ (restrictᴰ {Γ = Γ} (⊑ᵘ-trans (⊑ᵘ-*Many Ψ₂) (⊑ᵘ-+ʳ Ψ₁ (Many *ᵘ Ψ₂))) x) >>=T λ vg →
+         returnT (λ a → vg a >>=T vf))
+  compose-sem {Γ = Γ} {Ψ₁} {Ψ₂} {π = π} df dg x =
+    trans (RS.⟦⟧-substΨ (arms Many Ψ₁ Ψ₂ (trans (cong (zeroUsage +ᵘ_) (cong (Many *ᵘ_) (z+qz Many))) (z+qz Many)))
+                        (⊢let df (⊢let (wk-⊢′ _ dg)
+                          (⊢lam refl (⊢app (⊢var′ (suc (suc zero)) π) (⊢app (⊢var′ (suc zero) π) (⊢var′ zero π))))))
+                        fmt δ x)
+          (bindC (cong (GM.⟦ df ⟧ fmt δ) (env-subst {Γ = Γ} E _ (⊑ᵘ-+ˡ Ψ₁ (Many *ᵘ Ψ₂)) x))
+                 (λ vf → bindC (trans (RS.wk-sem _ dg fmt δ _) (cong (GM.⟦ dg ⟧ fmt δ) (env-subst₂ {Γ = Γ} _ _ E (⊑ᵘ-trans (⊑ᵘ-*Many Ψ₂) (⊑ᵘ-+ʳ Ψ₁ (Many *ᵘ Ψ₂))) x)))
+                               (λ vg → refl)))
+    where E = arms Many Ψ₁ Ψ₂ (trans (cong (zeroUsage +ᵘ_) (cong (Many *ᵘ_) (z+qz Many))) (z+qz Many))
+
+------------------------------------------------------------------------
 -- The bridge
 ------------------------------------------------------------------------
 
 open import Once.Denotation.Meaning using (EnvRun)
 
 module _ {δ : GM.DefSem} where
+  bindC : ∀ {X Y : Set} {a a' : T X} {f g : X → T Y} → a ≡ a' → (∀ v → f v ≡ g v) → (a >>=T f) ≡ (a' >>=T g)
+  bindC {a = a} refl h = cong (a >>=T_) (extensionality h)
+
+  bridge-d : ∀ {ctx e A B π Ψ} (V : Views ctx) {ρ : MeaningsOf ctx} (ag : Agree {ctx} V ρ δ)
+             (d : ctx ⊢ᵈ e ∶ A ⇒[ π ]↦ B ⨾ Ψ) (dγ : EnvRun ctx Ψ)
+           → ⟦ d ⟧ᵈ fmt ρ dγ ≡ GM.⟦ proj₂ (elabᵈ V d) ⟧ fmt δ dγ
 
   bridge-c : ∀ {ctx e A Ψ} (V : Views ctx) {ρ : MeaningsOf ctx} (ag : Agree {ctx} V ρ δ)
              (d : ctx ⊢ᶜ e ∶ A ⨾ Ψ) (dγ : EnvRun ctx Ψ)
@@ -90,5 +156,9 @@ module _ {δ : GM.DefSem} where
   bridge-c V ag t-initial-morph-check  dγ = refl
   bridge-c V ag t-inl-morph-check      dγ = refl
   bridge-c V ag t-inr-morph-check      dγ = refl
-  bridge-c V ag (t-compose-check-g dg df) dγ = refl
+  bridge-c V ag (t-compose-check-g dg df) dγ =
+    trans (bindC (bridge-c V ag df _) (λ vf → bindC (bridge-d V ag dg _) (λ vg → refl)))
+          (sym (Comb.compose-sem {δ = δ} (proj₂ (elabᶜ V df)) (proj₂ (elabᵈ V dg)) dγ))
   bridge-c V ag _ dγ = {!!}
+
+  bridge-d V ag d dγ = {!!}
