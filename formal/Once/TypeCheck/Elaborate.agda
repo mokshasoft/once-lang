@@ -1015,6 +1015,17 @@ mutual
         → IR ⌊ Once.Type.ν-type F π ⌋ ⌊ ⟦ F ⟧T (Once.Type.ν-type F π) ⌋
   inferOut : (ctx : NamedCtx) → (arg : RawExpr)
            → VerifiedInferResult ctx (Raw.RApp (Raw.RResolved (gen "Out")) arg)
+  -- `Out` / `apply` at the argument's result, then at its type's view.
+  inferOutOn : (ctx : NamedCtx) (arg : RawExpr) → VerifiedInferResult ctx arg
+             → VerifiedInferResult ctx (Raw.RApp (Raw.RResolved (gen "Out")) arg)
+  inferOutAt : (ctx : NamedCtx) (arg : RawExpr) {T : Type} (Ψ : Surface.Usage (NamedCtx.size ctx))
+               (argE : SExpr (NamedCtx.debruijn ctx) Ψ T) (d fr : ℕ) → ctx ⊢ᵢ arg ∶ T ⨾ Ψ → NuView T
+             → VerifiedInferResult ctx (Raw.RApp (Raw.RResolved (gen "Out")) arg)
+  inferApplyOn : (ctx : NamedCtx) (arg : RawExpr) → VerifiedInferResult ctx arg
+               → VerifiedInferResult ctx (Raw.RApp (Raw.RResolved (gen "apply")) arg)
+  inferApplyAt : (ctx : NamedCtx) (arg : RawExpr) {T : Type} (Ψ : Surface.Usage (NamedCtx.size ctx))
+                 (argE : SExpr (NamedCtx.debruijn ctx) Ψ T) (d fr : ℕ) → ctx ⊢ᵢ arg ∶ T ⨾ Ψ → ApplyView T
+               → VerifiedInferResult ctx (Raw.RApp (Raw.RResolved (gen "apply")) arg)
   inferOutGo : (ctx : NamedCtx) (arg : RawExpr) (F : Once.Type.Functor) (π : Once.Type.Purity)
                (Ψ : Surface.Usage (NamedCtx.size ctx))
                (argE : SExpr (NamedCtx.debruijn ctx) Ψ (Once.Type.ν-type F π))
@@ -1639,22 +1650,32 @@ mutual
   -- `Go` takes the decision as an explicit argument with its `refl` witness,
   -- for `checkInGo`'s reason: the completeness fallbacks reduce it with plain
   -- nested `with | eq`.
-  inferOut ctx arg with inferElabV ctx arg
-  ... | failure err , _ = failure err , tt
-  ... | success (Once.Type.ν-type F π) Ψ argE d fr , w =
-        inferOutGo ctx arg F π Ψ argE d fr w (wellFormedF? F) refl
-  ... | success Once.Type.Unit _ _ _ _ , _ = failure (BuiltinTypeMismatch "Out") , tt
-  ... | success Once.Type.Void Ψ argE d fr , w =
-        success Void _ (Surface.morph-app IR.initial argE) (suc d) fr , t-Out-app-void w
-  ... | success Once.Type.Int _ _ _ _ , _ = failure (BuiltinTypeMismatch "Out") , tt
-  ... | success Once.Type.Float _ _ _ _ , _ = failure (BuiltinTypeMismatch "Out") , tt
-  ... | success Once.Type.Str _ _ _ _ , _ = failure (BuiltinTypeMismatch "Out") , tt
-  ... | success Once.Type.Buffer _ _ _ _ , _ = failure (BuiltinTypeMismatch "Out") , tt
-  ... | success (Once.Type.rigid kᵣ iᵣ) _ _ _ _ , _ = failure (BuiltinTypeMismatch "Out") , tt
-  ... | success (_ Once.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "Out") , tt
-  ... | success (_ Once.Type.+ _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "Out") , tt
-  ... | success (_ Once.Type.⇒[ _ ] _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "Out") , tt
-  ... | success (Once.Type.μ-type _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "Out") , tt
+  inferOut ctx arg = inferOutOn ctx arg (inferElabV ctx arg)
+  inferOutOn ctx arg (failure err , _) = failure err , tt
+  inferOutOn ctx arg (success T Ψ argE d fr , w) = inferOutAt ctx arg Ψ argE d fr w (nuView T)
+  inferOutAt ctx arg Ψ argE d fr w (nu-at F π) = inferOutGo ctx arg F π Ψ argE d fr w (wellFormedF? F) refl
+  inferOutAt ctx arg Ψ argE d fr w nu-void =
+    success Void _ (Surface.morph-app IR.initial argE) (suc d) fr , t-Out-app-void w
+  inferOutAt ctx arg Ψ argE d fr w nu-other = failure (BuiltinTypeMismatch "Out") , tt
+
+  inferApplyOn ctx arg (failure err , _) = failure err , tt
+  inferApplyOn ctx arg (success T Ψ argE d fr , w) = inferApplyAt ctx arg Ψ argE d fr w (applyView T)
+  inferApplyAt ctx arg Ψ argE d fr w (apply-at A Once.Type.pure B A') with A ≟T A'
+  ... | yes refl = success B _ (Surface.morph-app IR.apply argE) (suc d) fr , t-apply-app-infer w
+  ... | no _     = failure (BuiltinTypeMismatch "apply") , tt
+  -- D222 / plan 0.95 A′: an EFFECTFUL closure. The result is a SUSPENSION
+  -- `Unit ⇒[eff] B`, so the morphism is the thunk-builder `curry (apply ∘ fst)`
+  -- rather than `apply` — the same shape `elaborate` gives `effApp`. The IR
+  -- arrow is UNGRADED, so no new Surface former is needed.
+  inferApplyAt ctx arg Ψ argE d fr w (apply-at A Once.Type.eff B A') with A ≟T A'
+  ... | yes refl =
+    success (Once.Type.Unit Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B) _
+            (Surface.morph-app (IR.curry (IR.apply IR.∘ IR.fst)) argE) (suc d) fr
+    , t-apply-eff-app-infer w
+  ... | no _ = failure (BuiltinTypeMismatch "apply") , tt
+  inferApplyAt ctx arg Ψ argE d fr w apply-void =
+    success Void _ (Surface.morph-app IR.initial argE) (suc d) fr , t-apply-app-void w
+  inferApplyAt ctx arg Ψ argE d fr w apply-other = failure (BuiltinTypeMismatch "apply") , tt
 
   outIR F π wfF =
     subst (λ o → IR ⌊ Once.Type.ν-type F π ⌋ o)
@@ -2500,52 +2521,8 @@ mutual
   ... | failure err , _ = failure err , tt
   ... | success T Ψ argE d fr , w =
     success Unit _ (Surface.morph-app IR.terminal argE) (suc d) fr , t-terminal-app w
-  -- ahv-apply : argument must be `(A ⇒[Many,pure] B) * A`.
-  inferElabV-RApp-dispatch ctx f arg ahv-apply _ with inferElabV ctx arg
-  ... | failure err , _ = failure err , tt
-  ... | success ((A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) Once.Type.* A') Ψ argE d fr , w with A ≟T A'
-  ...   | yes refl =
-    success B _ (Surface.morph-app IR.apply argE) (suc d) fr , t-apply-app-infer w
-  ...   | no _ =
-    failure (BuiltinTypeMismatch "apply") , tt
-  -- D222 / plan 0.95 A′: an EFFECTFUL closure. The result is a SUSPENSION
-  -- `Unit ⇒[eff] B`, so the morphism is the thunk-builder `curry (apply ∘ fst)`
-  -- rather than `apply` — the same shape `elaborate` gives `effApp`. The IR
-  -- arrow is UNGRADED, so no new Surface former is needed.
-  inferElabV-RApp-dispatch ctx f arg ahv-apply _
-    | success ((A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B) Once.Type.* A') Ψ argE d fr , w with A ≟T A'
-  ...   | yes refl =
-    success (Once.Type.Unit Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B) _
-            (Surface.morph-app (IR.curry (IR.apply IR.∘ IR.fst)) argE) (suc d) fr
-    , t-apply-eff-app-infer w
-  ...   | no _ =
-    failure (BuiltinTypeMismatch "apply") , tt
-  inferElabV-RApp-dispatch ctx f arg ahv-apply _ | success Unit _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
-  inferElabV-RApp-dispatch ctx f arg ahv-apply _ | success Void Ψ argE d fr , w =
-    success Void _ (Surface.morph-app IR.initial argE) (suc d) fr , t-apply-app-void w
-  inferElabV-RApp-dispatch ctx f arg ahv-apply _ | success Int _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
-  inferElabV-RApp-dispatch ctx f arg ahv-apply _ | success Float _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
-  inferElabV-RApp-dispatch ctx f arg ahv-apply _ | success Str _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
-  inferElabV-RApp-dispatch ctx f arg ahv-apply _ | success Buffer _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
-  inferElabV-RApp-dispatch ctx f arg ahv-apply _ | success (rigid kᵣ iᵣ) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
-  inferElabV-RApp-dispatch ctx f arg ahv-apply _ | success (_ Once.Type.+ _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
-  inferElabV-RApp-dispatch ctx f arg ahv-apply _ | success (_ Once.Type.⇒[ _ ] _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
-  inferElabV-RApp-dispatch ctx f arg ahv-apply _ | success (Unit Once.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
-  inferElabV-RApp-dispatch ctx f arg ahv-apply _ | success (Void Once.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
-  inferElabV-RApp-dispatch ctx f arg ahv-apply _ | success (Int Once.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
-  inferElabV-RApp-dispatch ctx f arg ahv-apply _ | success (Float Once.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
-  inferElabV-RApp-dispatch ctx f arg ahv-apply _ | success (Str Once.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
-  inferElabV-RApp-dispatch ctx f arg ahv-apply _ | success (Buffer Once.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
-  inferElabV-RApp-dispatch ctx f arg ahv-apply _ | success ((rigid kᵣ iᵣ) Once.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
-  inferElabV-RApp-dispatch ctx f arg ahv-apply _ | success ((_ Once.Type.* _) Once.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
-  inferElabV-RApp-dispatch ctx f arg ahv-apply _ | success ((_ Once.Type.+ _) Once.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
-  inferElabV-RApp-dispatch ctx f arg ahv-apply _ | success ((_ Once.Type.⇒[ Once.Type.mk-kind _ Once.Type.eff ] _) Once.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
-  inferElabV-RApp-dispatch ctx f arg ahv-apply _ | success ((_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Zero Once.Type.pure ] _) Once.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
-  inferElabV-RApp-dispatch ctx f arg ahv-apply _ | success ((_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.One Once.Type.pure ] _) Once.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
-  inferElabV-RApp-dispatch ctx f arg ahv-apply _ | success ((Once.Type.μ-type _) Once.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
-  inferElabV-RApp-dispatch ctx f arg ahv-apply _ | success ((Once.Type.ν-type _ _) Once.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
-  inferElabV-RApp-dispatch ctx f arg ahv-apply _ | success (Once.Type.μ-type _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
-  inferElabV-RApp-dispatch ctx f arg ahv-apply _ | success (Once.Type.ν-type _ _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
+  -- ahv-apply : argument must be `(A ⇒[Many] B) * A` (or `Void`).
+  inferElabV-RApp-dispatch ctx f arg ahv-apply _ = inferApplyOn ctx arg (inferElabV ctx arg)
   -- ahv-inl / ahv-inr / ahv-initial : check-only builtins, infer fails.
   inferElabV-RApp-dispatch ctx f arg ahv-inl     _ = failure InlInInferMode , tt
   inferElabV-RApp-dispatch ctx f arg ahv-inr     _ = failure InrInInferMode , tt

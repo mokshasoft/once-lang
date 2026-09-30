@@ -1355,6 +1355,49 @@ agree-inferOutGo : ∀ (ctx : NamedCtx) (arg : RawExpr) (F : Functor) (π : Puri
   → (argAgree : ∀ dγ' → SD.⟦ argE ⟧ˢ fmt σ dγ' ≡ SD.⟦ realize-infer w ⟧ˢ fmt σ dγ')
   → ∀ (dγ : Env ctx Ψ') → SD.⟦ se ⟧ˢ fmt σ dγ ≡ SD.⟦ realize-infer w' ⟧ˢ fmt σ dγ
 
+private
+  RIH : ∀ {ctx : NamedCtx} {e : RawExpr} → VerifiedInferResult ctx e → Set
+  RIH {ctx} {e} r = ∀ {A₁ Ψ₁ e₁E d₁ f₁} {w₁ : ctx ⊢ᵢ e ∶ A₁ ⨾ Ψ₁}
+    → r ≡ (success A₁ Ψ₁ e₁E d₁ f₁ , w₁) → ∀ dγ → SD.⟦ e₁E ⟧ˢ fmt σ dγ ≡ SD.⟦ realize-infer w₁ ⟧ˢ fmt σ dγ
+
+-- `Out` / `apply` at the argument's result, then at its type's view (the
+-- elaborator's `inferOutOn`/`inferApplyOn`): the rejected types are ONE case.
+agree-inferOutAt : ∀ (ctx : NamedCtx) (arg : RawExpr) {T : Type} (Ψ : Usage (NamedCtx.size ctx))
+    (argE : Expr (NamedCtx.debruijn ctx) Ψ T) (d fr : ℕ) (w : ctx ⊢ᵢ arg ∶ T ⨾ Ψ) (v : NuView T)
+    {A : Type} {Ψ' : Usage (NamedCtx.size ctx)} {se : Expr (NamedCtx.debruijn ctx) Ψ' A} {d' fr' : ℕ}
+    {w' : ctx ⊢ᵢ Raw.RApp (Raw.RResolved (gen "Out")) arg ∶ A ⨾ Ψ'}
+  → E.inferOutAt ctx arg Ψ argE d fr w v ≡ (success A Ψ' se d' fr' , w')
+  → (argAgree : ∀ dγ' → SD.⟦ argE ⟧ˢ fmt σ dγ' ≡ SD.⟦ realize-infer w ⟧ˢ fmt σ dγ')
+  → ∀ (dγ : Env ctx Ψ') → SD.⟦ se ⟧ˢ fmt σ dγ ≡ SD.⟦ realize-infer w' ⟧ˢ fmt σ dγ
+agree-inferOutAt ctx arg Ψ argE d fr w (nu-at F π) eq argAgree dγ =
+  agree-inferOutGo ctx arg F π Ψ argE d fr w (wellFormedF? F) refl eq argAgree dγ
+agree-inferOutAt ctx arg Ψ argE d fr w nu-void refl argAgree dγ
+  rewrite argAgree (restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-trans (Surface.⊑ᵘ-*Many Ψ)
+                      (Surface.⊑ᵘ-+ʳ Surface.zeroUsage (Many Surface.*ᵘ Ψ))) dγ) = refl
+agree-inferOutAt ctx arg Ψ argE d fr w nu-other () argAgree
+
+agree-inferApplyAt : ∀ (ctx : NamedCtx) (arg : RawExpr) {T : Type} (Ψ : Usage (NamedCtx.size ctx))
+    (argE : Expr (NamedCtx.debruijn ctx) Ψ T) (d fr : ℕ) (w : ctx ⊢ᵢ arg ∶ T ⨾ Ψ) (v : ApplyView T)
+    {A : Type} {Ψ' : Usage (NamedCtx.size ctx)} {se : Expr (NamedCtx.debruijn ctx) Ψ' A} {d' fr' : ℕ}
+    {w' : ctx ⊢ᵢ Raw.RApp (Raw.RResolved (gen "apply")) arg ∶ A ⨾ Ψ'}
+  → E.inferApplyAt ctx arg Ψ argE d fr w v ≡ (success A Ψ' se d' fr' , w')
+  → (argAgree : ∀ dγ' → SD.⟦ argE ⟧ˢ fmt σ dγ' ≡ SD.⟦ realize-infer w ⟧ˢ fmt σ dγ')
+  → ∀ (dγ : Env ctx Ψ') → SD.⟦ se ⟧ˢ fmt σ dγ ≡ SD.⟦ realize-infer w' ⟧ˢ fmt σ dγ
+-- The pure and the effectful closure rows emit `morph-app <morphism> argE`, and
+-- `realize-infer` emits the same morphism: agreement is the argument's.
+agree-inferApplyAt ctx arg Ψ argE d fr w (apply-at A pure B A') eq argAgree dγ with A ≟T A' | eq
+... | yes refl | refl rewrite argAgree (restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-trans (Surface.⊑ᵘ-*Many Ψ)
+                      (Surface.⊑ᵘ-+ʳ Surface.zeroUsage (Many Surface.*ᵘ Ψ))) dγ) = refl
+... | no _ | ()
+agree-inferApplyAt ctx arg Ψ argE d fr w (apply-at A eff B A') eq argAgree dγ with A ≟T A' | eq
+... | yes refl | refl rewrite argAgree (restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-trans (Surface.⊑ᵘ-*Many Ψ)
+                      (Surface.⊑ᵘ-+ʳ Surface.zeroUsage (Many Surface.*ᵘ Ψ))) dγ) = refl
+... | no _ | ()
+agree-inferApplyAt ctx arg Ψ argE d fr w apply-void refl argAgree dγ
+  rewrite argAgree (restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-trans (Surface.⊑ᵘ-*Many Ψ)
+                      (Surface.⊑ᵘ-+ʳ Surface.zeroUsage (Many Surface.*ᵘ Ψ))) dγ) = refl
+agree-inferApplyAt ctx arg Ψ argE d fr w apply-other () argAgree
+
 agree-RApp : ∀ (ctx : NamedCtx) (f arg : RawExpr) {A Ψ se d fr w}
   (vw : E.AppHeadView f) (veq : E.classifyAppHeadView f ≡ vw)
   → E.inferElabV-RApp-dispatch ctx f arg vw veq ≡ (success A Ψ se d fr , w)
@@ -1397,13 +1440,10 @@ agree-RApp ctx f arg E.ahv-terminal veq eq argIH fInferIH argCheckIH fGivenIH d�
 -- — it sits under the `refl` the argument's own `with` produced — so it goes
 -- to a helper that takes it explicitly, exactly as `agree-checkCataGo` does.
 agree-RApp ctx f arg E.ahv-Out veq eq argIH fInferIH argCheckIH fGivenIH dγ
-  with E.inferElabV ctx arg | eq
-... | failure _ , _ | ()
-... | success (ν-type F π) Ψ argE d fr , w | eq₁ =
-      agree-inferOutGo ctx arg F π Ψ argE d fr w (wellFormedF? F) refl eq₁
-        (λ dγ' → argIH refl dγ') dγ
-... | success Void Ψ argE d fr , w | refl rewrite argIH refl (restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-trans (Surface.⊑ᵘ-*Many Ψ)
-                      (Surface.⊑ᵘ-+ʳ Surface.zeroUsage (Many Surface.*ᵘ Ψ))) dγ) = refl
+  with E.inferElabV ctx arg | eq | argIH
+... | failure _ , _ | () | _
+... | success T Ψ argE d fr , w | eq₁ | argIH′ =
+      agree-inferOutAt ctx arg Ψ argE d fr w (nuView T) eq₁ (λ dγ' → argIH′ refl dγ') dγ
 
 -- ahv-fst : arg must be a product; other shapes fail.
 agree-RApp ctx f arg E.ahv-fst veq eq argIH fInferIH argCheckIH fGivenIH dγ with E.inferElabV ctx arg | eq
@@ -1443,48 +1483,11 @@ agree-RApp ctx f arg E.ahv-snd veq eq argIH fInferIH argCheckIH fGivenIH dγ wit
 -- (elaborator emits the apply MORPHISM directly — no specApply lambda / weakening),
 -- witness `t-apply-app-infer w`, realize = `morph-app apply (realize-infer w)` ⇒ a
 -- plain morph-app congruence (rewrite the arg IH). Every other arg-type fails ⇒ absurd.
-agree-RApp ctx f arg E.ahv-apply veq eq argIH fInferIH argCheckIH fGivenIH dγ with E.inferElabV ctx arg | eq
-... | failure _ , _ | ()
-... | success Unit _ _ _ _ , _ | ()
-... | success Void Ψ argE d fr , w | refl rewrite argIH refl (restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-trans (Surface.⊑ᵘ-*Many Ψ)
-                      (Surface.⊑ᵘ-+ʳ Surface.zeroUsage (Many Surface.*ᵘ Ψ))) dγ) = refl
-... | success Int _ _ _ _ , _ | ()
-... | success Float _ _ _ _ , _ | ()
-... | success Str _ _ _ _ , _ | ()
-... | success Buffer _ _ _ _ , _ | ()
-... | success (_ + _) _ _ _ _ , _ | ()
-... | success (_ ⇒[ _ ] _) _ _ _ _ , _ | ()
-... | success (μ-type _) _ _ _ _ , _ | ()
-... | success (ν-type _ _) _ _ _ _ , _ | ()
-... | success (Unit * _) _ _ _ _ , _ | ()
-... | success (Void * _) _ _ _ _ , _ | ()
-... | success (Int * _) _ _ _ _ , _ | ()
-... | success (Float * _) _ _ _ _ , _ | ()
-... | success (Str * _) _ _ _ _ , _ | ()
-... | success (Buffer * _) _ _ _ _ , _ | ()
-... | success ((_ * _) * _) _ _ _ _ , _ | ()
-... | success ((_ + _) * _) _ _ _ _ , _ | ()
-... | success ((μ-type _) * _) _ _ _ _ , _ | ()
-... | success ((ν-type _ _) * _) _ _ _ _ , _ | ()
-... | success ((_ ⇒[ mk-kind One pure ] _) * _) _ _ _ _ , _ | ()
-... | success ((_ ⇒[ mk-kind One eff ] _) * _) _ _ _ _ , _ | ()
-... | success ((_ ⇒[ mk-kind Zero pure ] _) * _) _ _ _ _ , _ | ()
-... | success ((_ ⇒[ mk-kind Zero eff ] _) * _) _ _ _ _ , _ | ()
-... | success ((A ⇒[ mk-kind Many pure ] B) * A') Ψ argE d fr , w | eq₁ with A ≟T A' | eq₁
-... | yes refl | refl rewrite argIH refl (restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-trans (Surface.⊑ᵘ-*Many Ψ)
-                      (Surface.⊑ᵘ-+ʳ Surface.zeroUsage (Many Surface.*ᵘ Ψ))) dγ) = refl
-... | no _ | ()
--- D222 / plan 0.95 A′: the EFF-closure row. This USED TO BE an absurd pattern
--- (`… (_ ⇒[ mk-kind Many eff ] _) * _ … | ()`), sound only because the
--- elaborator's `ahv-apply` dispatch FAILED at an effectful closure. It succeeds
--- now, so the row is live and needs the pure row's proof — which transfers
--- unchanged: both emit `morph-app <morphism> argE` and `realize-infer` emits the
--- same morphism, so agreement is the argument's IH and `refl`.
 agree-RApp ctx f arg E.ahv-apply veq eq argIH fInferIH argCheckIH fGivenIH dγ
-  | success ((A ⇒[ mk-kind Many eff ] B) * A') Ψ argE d fr , w | eq₁ with A ≟T A' | eq₁
-... | yes refl | refl rewrite argIH refl (restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-trans (Surface.⊑ᵘ-*Many Ψ)
-                      (Surface.⊑ᵘ-+ʳ Surface.zeroUsage (Many Surface.*ᵘ Ψ))) dγ) = refl
-... | no _ | ()
+  with E.inferElabV ctx arg | eq | argIH
+... | failure _ , _ | () | _
+... | success T Ψ argE d fr , w | eq₁ | argIH′ =
+      agree-inferApplyAt ctx arg Ψ argE d fr w (applyView T) eq₁ (λ dγ' → argIH′ refl dγ') dγ
 -- ahv-other: the dispatch reduces to `inferElabV-RApp-other ctx f arg =
 -- inferElabV-RApp-other-aux ctx f arg (classifyAppHead f) refl`, so `eq` already
 -- has the aux's type; delegate (the IHs ride f-infer and arg-check).
@@ -2167,10 +2170,6 @@ agree-given-cata-void {ctx = ctx} {π = π} (success _ Surface.[] algE _ _ , w) 
 
 -- The elaborator's `Void` cases at the operands' `VoidView`s: the left
 -- operand's view, then (left not `Void`) the right one's.
-private
-  RIH : ∀ {ctx : NamedCtx} {e : RawExpr} → VerifiedInferResult ctx e → Set
-  RIH {ctx} {e} r = ∀ {A₁ Ψ₁ e₁E d₁ f₁} {w₁ : ctx ⊢ᵢ e ∶ A₁ ⨾ Ψ₁}
-    → r ≡ (success A₁ Ψ₁ e₁E d₁ f₁ , w₁) → ∀ dγ → SD.⟦ e₁E ⟧ˢ fmt σ dγ ≡ SD.⟦ realize-infer w₁ ⟧ˢ fmt σ dγ
 
 agree-RBinOp-void-r : ∀ {ctx : NamedCtx} (op : Raw.BinOp) {e₁ e₂ : RawExpr} {A₁}
   (Ψ₁ : Usage (NamedCtx.size ctx)) (e₁E : Expr (NamedCtx.debruijn ctx) Ψ₁ A₁) (d₁ f₁ : ℕ) (w₁ : ctx ⊢ᵢ e₁ ∶ A₁ ⨾ Ψ₁)

@@ -116,3 +116,29 @@ voidView (_ + _)       = non-void (λ ())
 voidView (_ ⇒[ _ ] _)  = non-void (λ ())
 voidView (μ-type _)    = non-void (λ ())
 voidView (ν-type _ _)  = non-void (λ ())
+
+------------------------------------------------------------------------
+-- Argument views of the infer-mode builtins whose argument's type decides
+-- the rule: `Out` (a stream, or `Void`) and `apply` (a closure paired with its
+-- argument, or `Void`).
+------------------------------------------------------------------------
+
+data NuView : Type → Set where
+  nu-at    : ∀ F π → NuView (ν-type F π)
+  nu-void  : NuView Void
+  nu-other : ∀ {T} → NuView T
+
+nuView : (T : Type) → NuView T
+nuView (ν-type F π) = nu-at F π
+nuView Void         = nu-void
+nuView _            = nu-other
+
+data ApplyView : Type → Set where
+  apply-at    : ∀ A π B A' → ApplyView ((A ⇒[ mk-kind Many π ] B) * A')
+  apply-void  : ApplyView Void
+  apply-other : ∀ {T} → ApplyView T
+
+applyView : (T : Type) → ApplyView T
+applyView ((A ⇒[ mk-kind Many π ] B) * A') = apply-at A π B A'
+applyView Void = apply-void
+applyView _ = apply-other
