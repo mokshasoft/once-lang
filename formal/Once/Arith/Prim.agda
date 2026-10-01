@@ -81,9 +81,15 @@ fdiv-semM tn (a , b) = FA.fdiv (float-format tn) a b
 i2f-semM : TargetNum → M.⟦ Int ⟧ → M.⟦ Float ⟧
 i2f-semM tn w = FA.i2f (float-format tn) (W.toℤ tn w)
 
-postulate
-  -- Binary arithmetic with division-by-zero edge case still pending
-  div-semM mod-semM : TargetNum → M.⟦ Int * Int ⟧ → M.⟦ Int ⟧
+-- | Division and remainder (D055): TOTAL over `Word`, RISC-V's defined results
+-- (`x / 0`, `MIN / -1`), no trap — `Word.Width._/ˢ_`/`_%ˢ_`. These were
+-- postulated placeholders "pending a division-by-zero policy"; D055 is that
+-- policy, and the arith block's own meaning (`block-semM`) already read it.
+div-semM : TargetNum → M.⟦ Int * Int ⟧ → M.⟦ Int ⟧
+div-semM tn (a , b) = W._/ˢ_ tn a b
+
+mod-semM : TargetNum → M.⟦ Int * Int ⟧ → M.⟦ Int ⟧
+mod-semM tn (a , b) = W._%ˢ_ tn a b
 
 ------------------------------------------------------------------------
 -- The primitives
