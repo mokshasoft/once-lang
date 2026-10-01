@@ -59,7 +59,7 @@ open import Once.Adequacy.CoreAbsSem S using (tr; tr-subst; tr-lam; tr-app; tr-l
 ρ̂-cod : ∀ p → ρ̂ (G.primCod p) ≡ G.primCod p
 ρ̂-cod p = trans (cong (_⟪ τ ⟫) (primCod-abs Δ p)) (⌈⌉-⟪⟫ (G.primCod p) τ)
 
-module _ (sg : SigGround) where
+module WithSG (sg : SigGround) where
 
   -- A definition's instance, substituted, is the substituted instance.
   ρ̂-ref : ∀ d (τ′ : GSub (Once.Spec.Core.PolyTy.arity (S !! d)))
