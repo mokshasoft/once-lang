@@ -28,7 +28,7 @@
 
 module Once.Arith.Machine.Recognise where
 
-open import Data.Bool using (Bool; true; false)
+open import Data.Bool using (Bool; true; false; _∧_)
 open import Data.Integer using (ℤ; +_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.List using (List; []; _∷_; _++_)
@@ -92,8 +92,28 @@ unop : ∀ {X Y : Set} → (X → Y) → Maybe X → Maybe Y
 unop k (just a) = just (k a)
 unop k nothing  = nothing
 
+-- ENVIRONMENT PLUMBING: projections, pairing, `terminal` and their
+-- composites. Its meaning is a value and no event, so a literal may absorb it.
+plumbing? : ∀ {X Y} → IR X Y → Bool
+plumbing? id          = true
+plumbing? fst         = true
+plumbing? snd         = true
+plumbing? terminal    = true
+plumbing? ⟨ f , g ⟩   = plumbing? f ∧ plumbing? g
+plumbing? (f ∘ g)     = plumbing? f ∧ plumbing? g
+{-# CATCHALL #-}
+plumbing? _           = false
+
+-- A literal's right-hand side: `terminal`, after plumbing.
+is-terminal? : ∀ {X Y} → IR X Y → Bool
+is-terminal? terminal       = true
+is-terminal? (terminal ∘ g) = plumbing? g
+{-# CATCHALL #-}
+is-terminal? _              = false
+
 recognise-path         : ∀ {A B} → IR A B → Maybe InputPath
 recognise-path-through : ∀ {A B} → IR A B → InputPath → Maybe InputPath
+pair-path              : ∀ {A B} → Bool → IR A B → InputPath → Maybe InputPath
 
 -- `recognise-path-through m p` is the path of `p ∘ m` — apply `m`, then follow
 -- `p`. Everything is one recursion on that, which is what makes the pair case
@@ -106,8 +126,10 @@ recognise-path-through fst p = just (Fst ∷ p)
 recognise-path-through snd p = just (Snd ∷ p)
 -- product beta: `fst ∘ ⟨a,b⟩ ≡ a`, `snd ∘ ⟨a,b⟩ ≡ b`. This is the case QTT's
 -- `restrictEnv` needs — its "variable kept" shape is exactly `⟨ … ∘ fst , snd ⟩`.
-recognise-path-through (⟨ a , b ⟩) (Fst ∷ p) = recognise-path-through a p
-recognise-path-through (⟨ a , b ⟩) (Snd ∷ p) = recognise-path-through b p
+-- A pair is navigated only when the component NOT taken is plumbing: its
+-- meaning is a value and no event, so reading through the pair drops nothing.
+recognise-path-through (⟨ a , b ⟩) (Fst ∷ p) = pair-path (plumbing? b) a p
+recognise-path-through (⟨ a , b ⟩) (Snd ∷ p) = pair-path (plumbing? a) b p
 -- landing ON the pair: a product, not an `Int` leaf.
 recognise-path-through (⟨ a , b ⟩) []        = nothing
 -- `p ∘ (f ∘ g)` = apply g, then f, then p — so `f` consumes `p` and `g`
@@ -117,6 +139,9 @@ recognise-path-through (f ∘ g) p with recognise-path-through f p
 ... | just pf = recognise-path-through g pf
 ... | nothing = nothing
 recognise-path-through _ _ = nothing
+
+pair-path true  m p = recognise-path-through m p
+pair-path false m p = nothing
 
 ------------------------------------------------------------------------
 -- Arith body recognition (type-agnostic on IR's codomain)
@@ -141,16 +166,23 @@ recognise-binop : (sh : InputShape) → ∀ {X Y} → IR X Y → Maybe (MArithIR
 -- compiler's primitive (`primV`), whose meaning is fixed by it — not when its
 -- name looks like one.
 recognise-prim : (sh : InputShape) → ∀ {X Y A} → SigOpSem X Y → IR A ⌊ X ⌋ → Maybe (MArithIR sh NInt)
+binop-at       : (sh : InputShape) → ∀ {X Y Z W} → Bool → IR Z X → IR Z Y → IR W Z
+               → Maybe (MArithIR sh NInt × MArithIR sh NInt)
 recognise-binop sh (⟨ a , b ⟩) with recognise-body sh a | recognise-body sh b
 ... | just ra | just rb = just (ra , rb)
 ... | _       | _       = nothing
 -- D163: `⟨a,b⟩ ∘ h ≡ ⟨ a ∘ h , b ∘ h ⟩` — composition distributes over pairing.
 -- QTT hands the operand pair an environment restriction `h`, and pushing it
 -- into the components is what lets each one be recognised on its own.
-recognise-binop sh (⟨ a , b ⟩ ∘ h) with recognise-body sh (a ∘ h) | recognise-body sh (b ∘ h)
+-- …and only when `h` is plumbing: distributing runs `h` twice, which means
+-- the same only when `h`'s meaning is a value and no event.
+recognise-binop sh (⟨ a , b ⟩ ∘ h) = binop-at sh (plumbing? h) a b h
+recognise-binop sh _ = nothing
+
+binop-at sh true a b h with recognise-body sh (a ∘ h) | recognise-body sh (b ∘ h)
 ... | just ra | just rb = just (ra , rb)
 ... | _       | _       = nothing
-recognise-binop sh _ = nothing
+binop-at sh false a b h = nothing
 
 recognise-prim sh (primV p-add) e = binop aadd (recognise-binop sh e)
 recognise-prim sh (primV p-sub) e = binop asub (recognise-binop sh e)
@@ -180,16 +212,13 @@ recognise-body sh (SigOp si ∘ e) = recognise-prim sh (sem si) e
 -- Bool helper to keep the case-tree of `recognise-body` from
 -- forcing an intermediate `Unit` type (which collides with
 -- `out-μ`'s codomain unification).
+-- D163: `terminal ∘ h` IS `terminal` when `h` is environment plumbing (its
+-- meaning is a value and no event; in the Kleisli meaning terminality holds
+-- only for such an `h`). QTT's `envʳ` composes one on: a literal operand
+-- arrives as `const v ∘ (terminal ∘ envʳ)`, and refusing it here is what
+-- stopped `alit` being built. An arbitrary `h` is refused: lifting would drop
+-- its events.
 recognise-body sh (const fits-int v ∘ rhs) with is-terminal? rhs
-  where
-    -- D163: `terminal ∘ h` IS `terminal` — every morphism into `Unit` is, by
-    -- terminality. QTT's `envʳ` composes one on: a literal operand arrives as
-    -- `const v ∘ (terminal ∘ envʳ)`, and refusing it here is what stopped
-    -- `alit` being built.
-    is-terminal? : ∀ {X Y} → IR X Y → Bool
-    is-terminal? terminal      = true
-    is-terminal? (terminal ∘ _) = true
-    is-terminal? _             = false
 -- D115: `const`'s payload is a `ℤ` now, and `alit` always took one, so the
 -- `+ v` injection is gone. That injection was itself the symptom — it forced
 -- every recognised literal to be non-negative, which is exactly the
@@ -230,14 +259,19 @@ recognise-body-float : (sh : InputShape) → ∀ {A B} → IR A B → Maybe (MAr
 recognise-binop-float : (sh : InputShape) → ∀ {X Y} → IR X Y
                       → Maybe (MArithIR sh NFloat × MArithIR sh NFloat)
 recognise-prim-float : (sh : InputShape) → ∀ {X Y A} → SigOpSem X Y → IR A ⌊ X ⌋ → Maybe (MArithIR sh NFloat)
+binop-at-float       : (sh : InputShape) → ∀ {X Y Z W} → Bool → IR Z X → IR Z Y → IR W Z
+                     → Maybe (MArithIR sh NFloat × MArithIR sh NFloat)
 recognise-binop-float sh (⟨ a , b ⟩) with recognise-body-float sh a | recognise-body-float sh b
 ... | just ra | just rb = just (ra , rb)
 ... | _       | _       = nothing
 -- D163: distribution, the float twin. See the int version.
-recognise-binop-float sh (⟨ a , b ⟩ ∘ h) with recognise-body-float sh (a ∘ h) | recognise-body-float sh (b ∘ h)
+recognise-binop-float sh (⟨ a , b ⟩ ∘ h) = binop-at-float sh (plumbing? h) a b h
+recognise-binop-float sh _ = nothing
+
+binop-at-float sh true a b h with recognise-body-float sh (a ∘ h) | recognise-body-float sh (b ∘ h)
 ... | just ra | just rb = just (ra , rb)
 ... | _       | _       = nothing
-recognise-binop-float sh _ = nothing
+binop-at-float sh false a b h = nothing
 
 recognise-prim-float sh (primV p-fadd) e = binop aadd (recognise-binop-float sh e)
 recognise-prim-float sh (primV p-fsub) e = binop asub (recognise-binop-float sh e)
@@ -255,13 +289,8 @@ recognise-body-float sh (SigOp si ∘ e) = recognise-prim-float sh (sem si) e
 
 -- A float LITERAL. The payload stays a `Decimal` — the one rounding happens at
 -- the backend, at the target's format (D117).
-recognise-body-float sh (const fits-float d ∘ rhs) with is-terminal-f? rhs
-  where
-    -- D163: `terminal ∘ h` IS terminal (terminality). See the int twin.
-    is-terminal-f? : ∀ {X Y} → IR X Y → Bool
-    is-terminal-f? terminal       = true
-    is-terminal-f? (terminal ∘ _) = true
-    is-terminal-f? _              = false
+-- D163: as the int twin — `terminal` after plumbing only.
+recognise-body-float sh (const fits-float d ∘ rhs) with is-terminal? rhs
 ... | true  = just (aflit d)
 ... | false = nothing
 recognise-body-float sh (const fits-int _ ∘ _) = nothing
