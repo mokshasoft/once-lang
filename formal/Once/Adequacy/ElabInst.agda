@@ -20,6 +20,7 @@ open import Once.Spec.Core.PolyTy using (Sig)
 module Once.Adequacy.ElabInst {s : ℕ} (S : Sig s) where
 
 open import Data.Product using (Σ-syntax; _×_; _,_; proj₁; proj₂)
+open import Data.List using (_∷_)
 open import Data.Unit using (tt)
 import Data.Maybe
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
@@ -112,3 +113,55 @@ poly-instance-sem V sg fmt δ sc nat irf D ki =
     τ  = proj₁ (kinded-instance sc ki)
     rk = proj₁ (proj₂ (kinded-instance sc ki))
     e  = proj₂ (proj₂ (kinded-instance sc ki))
+
+------------------------------------------------------------------------
+-- The module's view is natural (it builds every instance pointwise).
+------------------------------------------------------------------------
+
+open import Data.Fin using (Fin)
+open import Data.String using (String)
+import Data.String.Properties as StrProp
+open import Data.Maybe.Properties using (just-injective)
+open import Relation.Nullary using (yes; no)
+open import Once.Postulates using (extensionality)
+open import Once.Spec.Core.PolyTy using (Schema; arity; kinds; type; _!!_)
+import Once.Compile as Cmp
+open import Once.Spec.Core.Translate using (ImpSig; TeleSig; viewOf; telFind; poly-inst; mono-inst; i-ffi; i-def)
+import Once.Spec.Core.Translate as TR
+
+module _ {m} (Δ : KCtx m) (τ : GSub m) (r : Respects Δ τ) where
+  private
+    Inst : Type → Schema → Set
+    Inst T sch = Σ-syntax (GSub (arity sch)) (λ τ′ → Respects (kinds sch) τ′ × (type sch ⟪ τ′ ⟫ ≡ T))
+
+    -- Pointwise ρ̂ survives the transport along the schema equation.
+    subst-pt : ∀ {sch sch′ : Schema} (e : sch′ ≡ sch) {T₁ T₂} (X : Inst T₁ sch) (Y : Inst T₂ sch)
+             → proj₁ Y ≡ (λ i → RS.ρ̂ Δ τ r (proj₁ X i))
+             → proj₁ (subst (Inst T₂) (sym e) Y) ≡ (λ i → RS.ρ̂ Δ τ r (proj₁ (subst (Inst T₁) (sym e) X) i))
+    subst-pt refl X Y h = h
+
+    subst-fix : ∀ {sch sch′ : Schema} (e : sch′ ≡ sch) {T} (X : Inst T sch)
+              → (λ i → RS.ρ̂ Δ τ r (proj₁ X i)) ≡ proj₁ X
+              → (λ i → RS.ρ̂ Δ τ r (proj₁ (subst (Inst T) (sym e) X) i)) ≡ proj₁ (subst (Inst T) (sym e) X)
+    subst-fix refl X h = h
+
+    nat-imp′ : ∀ {imps} (is : ImpSig S imps) {x T} (lk : Once.TypeCheck.Classify.lookupImport imps x ≡ Data.Maybe.just T)
+             → NatImp Δ τ r (TR.impAt is lk)
+    nat-imp′ TR.[] ()
+    nat-imp′ {(n , T₀) ∷ rest} (i-ffi c h g is) {x} lk with StrProp._≟_ n x
+    ... | yes _ with just-injective lk
+    ...   | refl = tt
+    nat-imp′ {(n , T₀) ∷ rest} (i-ffi c h g is) {x} lk | no _ = nat-imp′ is lk
+    nat-imp′ {(n , T₀) ∷ rest} (i-def d e is) {x} lk with StrProp._≟_ n x
+    ... | yes _ with just-injective lk
+    ...   | refl = subst-fix e _ (extensionality (λ ()))
+    nat-imp′ {(n , T₀) ∷ rest} (i-def d e is) {x} lk | no _ = nat-imp′ is lk
+
+  viewOf-natural : ∀ {imps ps} (is : ImpSig S imps) (ts : TeleSig S ps) → Natural Δ τ r (viewOf {S = S} is ts)
+  viewOf-natural is ts = record
+    { nat-inst   = λ {x} {sc} lp ng ki →
+        subst-pt (proj₂ (telFind ts lp)) (kinded-instance sc ki) (kinded-instance sc (RS.ρ̂-ki Δ τ r {sc} ki)) refl
+    ; nat-ground = λ {x} {sc} lp g →
+        subst-fix (proj₂ (telFind ts lp)) (kinded-instance sc (Once.Type.Rigid.ground-kinded sc g)) refl
+    ; nat-imp    = nat-imp′ is
+    }

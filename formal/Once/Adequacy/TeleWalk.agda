@@ -401,14 +401,6 @@ inv-mono {S = S} {csc} {tl} {is} {ts} {pre} sg {fi} {ty} {g} {Ctx.Usage.[]} D {i
 -- Plan 0.104 E: the body at a kinded instance is the surface substitution
 -- instance of its rigid derivation (`ElabInst.inst-at`, proved), and it means
 -- the entry's abstraction instantiated there (`ElabInst.poly-instance-sem`).
-postulate
-  -- RESIDUAL (plan 0.104 E.2, deferred proof, discharged next): the module's
-  -- view finds, at a substituted instance, the substituted instance.
-  viewOf-natural : ∀ {s} {S : Sig s} {imps ps} (is : ImpSig S imps) (ts : TeleSig S ps)
-                     {m} (Δ : Once.Spec.Core.PolyTy.KCtx m) (τ : Once.Spec.Core.PolyTy.GSub m)
-                     (r : Once.Spec.Core.PolyTy.Respects Δ τ)
-                 → EI.Natural S Δ τ r (viewOf {S = S} is ts)
-
 private
   declImps-head : ∀ (e : C.PolyFunInfo × C.FunCtx) (es : List (C.PolyFunInfo × C.FunCtx))
                     (d : Dec (pfunName (proj₁ e) ≡ pfunName (proj₁ e)))
@@ -498,7 +490,7 @@ inv-poly {S = S} {csc} {tl} {is} {ts} {pre} sg {pfi} {Ctx.Usage.[]} D inv fr = r
           subst (λ m → RelGM Once.Type.pure U m (SD.refs σ y U))
                 (trans (CMB.bridge-c fmt S {δ = δ} V (CE.agree fmt S δ is ts (Inv.valid inv)) D-U tt)
                        (EI.poly-instance-sem S (viewOf {S = S} is ts) sg fmt δ scT
-                         (λ ki′ → viewOf-natural is ts (kindsOf scT) _ _) (Inv.irf inv) D ki))
+                         (λ ki′ → EI.viewOf-natural S (kindsOf scT) _ _ is ts) (Inv.irf inv) D ki))
                 (subst (RelGM Once.Type.pure U (MeaningM.⟦_⟧ᶜ D-U fmt ρ tt)) (sym eqSD)
                        (MB.bridge-c fmt σo D-U {dγ₁ = tt} {dγ₂ = tt} (MB.mk↾ tt) old))
           where
