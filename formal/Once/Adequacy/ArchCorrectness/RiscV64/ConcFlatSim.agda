@@ -303,8 +303,16 @@ riscv64-traceloop = record
   ; nonhalt-noncall = r-nonhalt-noncall
   }
 
+-- `using`, for the same reason as the dispatch's application at the end.
 module EE = Engine o FS slot-size word-eq Reg riscv64-roles R.W.modulus
                    riscv64-emitter riscv64-machine riscv64-traceloop
+  using ( FlatInv; mkFlatInv; inv-wf; inv-closure; inv-regtag; inv-ev; inv-env
+        ; inv-run; flat-inv-step; block-run-exec
+        ; events-running-end; sigop-concrete-fetch; sigop-run-arith
+        ; sigop-run-external; event-of-pure; StuckAt; StuckSteps
+        ; EntryLike; Reachable; reach-start; mkRunAt
+        ; RunAt; stuck-result; Supply; fetch-block-head; fetch-block-2nd
+        ; module CFC; module RT )
 
 open EE using (FlatInv; mkFlatInv; inv-wf; inv-closure; inv-regtag; inv-ev; inv-env
               ; inv-run; flat-inv-step; block-run-exec
@@ -637,6 +645,10 @@ riscv64-supply = record
   ; external-sigop-contract = external-sigop-contract
   }
 
-module ED = Dispatch o FS slot-size word-eq Reg riscv64-roles RS.W.modulus
-                     riscv64-emitter riscv64-machine riscv64-traceloop
-open ED.Dispatch riscv64-supply public
+-- ONE application, of the nested module, restricted to what the arch
+-- module consumes: a module application copies every definition it lets
+-- through into this interface, and the unrestricted pair copied the whole
+-- dispatch twice.
+open Dispatch.Dispatch o FS slot-size word-eq Reg riscv64-roles RS.W.modulus
+                       riscv64-emitter riscv64-machine riscv64-traceloop riscv64-supply
+  using (events-agree) public

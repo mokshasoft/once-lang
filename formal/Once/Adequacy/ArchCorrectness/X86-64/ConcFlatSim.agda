@@ -205,7 +205,13 @@ open import Once.CCC.Machine.Flat
 open FlatMachine {FS}
 import Once.CCC.Target.X86-64.Semantics as X
 
-open import Once.Adequacy.ArchCorrectness.X86-64.FlatSimulation o FS word-eq fmt-eq public
+-- `using`: an unrestricted application copies all of the simulation (and
+-- the correspondence it re-exports) into this interface.
+open import Once.Adequacy.ArchCorrectness.X86-64.FlatSimulation o FS word-eq fmt-eq
+  using ( CompiledCorr; b-cmp-reg-imm; code-eq; dataCorr
+        ; load-indirect-heap-empty-stuck; load-indirect-suc-heap-empty-stuck
+        ; pc-off; ret-eq; x86-64-block-steps; x86-64-link-claim; xrreg
+        ; module C; module CompiledCorr ) public
 open import Once.CCC.Machine.FlatStoreWF FS using
   (FlatWF; flat-wf-step; cl-step; wf-regs; wf-heap; wf-stack; wf-fresh; sv-below; svm-below)
 open import Once.CCC.Machine.FlatRegTagWF FS using
@@ -372,8 +378,8 @@ open import Data.List using ([])   -- for `EntryLike`'s empty frame stack
 -- (The run context — `EntryLike`, `Reachable`, `Emitted`, `RunAt` — now
 -- lives in `…X86-64.RunContext`, one layer down, so that the resource bounds
 -- can be MODULE PARAMETERS here rather than postulates. See that module.)
-open import Once.Adequacy.ArchCorrectness.X86-64.RunContext o FS word-eq public
-
+open import Once.Adequacy.ArchCorrectness.X86-64.RunContext o FS word-eq
+  using ( EntryLike; Reachable; RunAt; mkRunAt; reach-start; module RunAt ) public
 
 ------------------------------------------------------------------------
 -- THE GENERIC EVENT ENGINE, instantiated (plan 0.65 G2 item 4, slice 3).
@@ -434,8 +440,14 @@ x86-64-traceloop = record
   ; nonhalt-noncall = nonhalt-noncall
   }
 
+-- `using`, for the same reason as the dispatch's application at the end.
 module EE = Engine o FS slot-size word-eq Reg x86-64-roles X.W.modulus
                    x86-64-emitter x86-64-machine x86-64-traceloop
+  using ( FlatInv; mkFlatInv; inv-wf; inv-closure; inv-regtag; inv-ev
+        ; inv-env; inv-run; flat-inv-step; block-run-exec
+        ; events-running-end; sigop-concrete-fetch; sigop-run-arith
+        ; sigop-run-external; event-of-pure; StuckAt; StuckSteps; Supply
+        ; stuck-result )
 
 open EE using (FlatInv; mkFlatInv; inv-wf; inv-closure; inv-regtag; inv-ev; inv-env
               ; inv-run; flat-inv-step; block-run-exec
@@ -731,8 +743,9 @@ postulate
 -- 1,099 lines lived here and mentioned the machine ZERO times — no `X.State`,
 -- no register, no state literal, and not even the correspondence. They are
 -- facts about the ABSTRACT machine and the EMITTER, which all three arches
--- share, so they now live in `FlatCore.RunWF` and this module INSTANTIATES
--- them. Ten of the imports above are machine-specific and none of them is
+-- share, so they now live in `FlatCore.RunWF`, which the event dispatch
+-- instantiates (nothing here names them, so this module does not apply it).
+-- Ten of the imports above are machine-specific and none of them is
 -- needed there; that is the same statement, mechanically.
 --
 -- The three obligations it consumes stay HERE, as the residuals the ledger
@@ -743,8 +756,6 @@ postulate
 -- instead of each declaring their own copy. What stayed here is the two that
 -- really are x86-64s — arith-sigop-contract and external-sigop-contract, both
 -- quantified over HeapView and the x86-64 arith runtime.
-open import Once.Adequacy.ArchCorrectness.FlatCore.RunWF o FS slot-size word-eq
-  public
 
 -- The event-trace induction, fully with-FREE (J-style aux bridges for every case
 -- split — no `with … in` goal-abstraction). `ccc-step` is the reusable CCC engine:
@@ -770,6 +781,10 @@ x86-64-supply = record
   ; external-sigop-contract = external-sigop-contract
   }
 
-module ED = Dispatch o FS slot-size word-eq Reg x86-64-roles X.W.modulus
-                     x86-64-emitter x86-64-machine x86-64-traceloop
-open ED.Dispatch x86-64-supply public
+-- ONE application, of the nested module, restricted to what the arch
+-- module consumes: a module application copies every definition it lets
+-- through into this interface, and the unrestricted pair copied the whole
+-- dispatch twice.
+open Dispatch.Dispatch o FS slot-size word-eq Reg x86-64-roles X.W.modulus
+                       x86-64-emitter x86-64-machine x86-64-traceloop x86-64-supply
+  using (events-agree) public
