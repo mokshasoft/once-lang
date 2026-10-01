@@ -108,7 +108,7 @@ compileFunBody-ce : ∀ (doOpt : Bool) (ctx : C.FunCtx) (polys : PolyCtx) (impsO
     checkElab (ctxWithImportsAndPolys ctx polys) expr ty ≡ TE.success Ψ se d f))))
 compileFunBody-ce doOpt ctx polys impsOf name ty expr eq =
   AS.compileFunBody-aux-success doOpt ctx polys impsOf name ty refl
-    (checkElab (ctxWithImportsAndPolys ctx polys) expr ty) eq
+    (TE.checkElabV (ctxWithImportsAndPolys ctx polys) expr ty) eq
 
 compileFun-main-aux-ce : ∀ (doOpt : Bool) (ctx : C.FunCtx) (polys : PolyCtx) (impsOf : C.String → C.FunCtx)
   (name : String) (ty : Type) (expr : RawExpr) (vm : String ⊎ ⊤) {ir : IR ⌊ Unit ⌋ ⌊ ty ⌋} →

@@ -62,15 +62,15 @@ import Once.Parser.Module.Core as P
 -- body has a declarative check-mode derivation.
 ------------------------------------------------------------------------
 
-compileFunBody-aux-success : ∀ {n} {Δ : Srf.Ctx n}
+compileFunBody-aux-success : ∀ {nctx : NamedCtx} {body : RawExpr}
   (doOpt : Bool) (ctx : C.FunCtx) (polys : TE.PolyCtx) (impsOf : C.String → C.FunCtx)
-  (name : String) (ty : Type) (δ : Srf.⟦ Δ ⟧ᶜ ≡ Unit)
-  (cr : CheckElabResult Δ ty) {ir : IR ⌊ Unit ⌋ ⌊ ty ⌋} →
+  (name : String) (ty : Type) (δ : Srf.⟦ NamedCtx.debruijn nctx ⟧ᶜ ≡ Unit)
+  (cr : TE.VerifiedCheckResult nctx body ty) {ir : IR ⌊ Unit ⌋ ⌊ ty ⌋} →
   C.compileFunBody-aux C.Heap doOpt ctx polys impsOf name ty δ cr ≡ inj₂ ir →
-  Σ-syntax (Srf.Usage n) (λ Ψ → Σ-syntax (Srf.Expr Δ Ψ ty) (λ se →
-    Σ-syntax ℕ (λ d → Σ-syntax ℕ (λ f → cr ≡ TE.success Ψ se d f))))
-compileFunBody-aux-success doOpt ctx polys impsOf name ty δ (TE.failure err) ()
-compileFunBody-aux-success doOpt ctx polys impsOf name ty δ (TE.success Ψ se d f) eq =
+  Σ-syntax (Srf.Usage (NamedCtx.size nctx)) (λ Ψ → Σ-syntax (Srf.Expr (NamedCtx.debruijn nctx) Ψ ty) (λ se →
+    Σ-syntax ℕ (λ d → Σ-syntax ℕ (λ f → proj₁ cr ≡ TE.success Ψ se d f))))
+compileFunBody-aux-success doOpt ctx polys impsOf name ty δ (TE.failure err , _) ()
+compileFunBody-aux-success doOpt ctx polys impsOf name ty δ (TE.success Ψ se d f , _) eq =
   Ψ , se , d , f , refl
 
 compileFunBody-sound : ∀ (doOpt : Bool) (ctx : C.FunCtx) (polys : TE.PolyCtx) (impsOf : C.String → C.FunCtx)
@@ -81,7 +81,7 @@ compileFunBody-sound : ∀ (doOpt : Bool) (ctx : C.FunCtx) (polys : TE.PolyCtx) 
 compileFunBody-sound doOpt ctx polys impsOf name ty expr eq =
   let ce-ctx = ctxWithImportsAndPolys ctx polys
       (Ψ , se , d , f , ce) = compileFunBody-aux-success doOpt ctx polys impsOf name ty refl
-                                (checkElab ce-ctx expr ty) eq
+                                (TE.checkElabV ce-ctx expr ty) eq
   in Ψ , check-sound ce-ctx expr ty ce
 
 ------------------------------------------------------------------------

@@ -16140,3 +16140,28 @@ residual `moduleToProgram-linked` claimed the program was linked and hid it.
 
 **Consequence.** Linkedness is uniform: every reference names an earlier entry, and every
 entry is in the table.
+
+## D254 — THE COMPILER COMPILES THE REALIZATION OF ITS DERIVATION (PLAN 0.103 6a‴) (2026-10-01)
+
+**Relates**: D063 C4 (`realize` is the reference elaboration), D253, plan 0.49.
+
+**Context.** The verified checker (`checkElabV`) returns two things: a surface term `se` and
+a typing derivation `w` of the raw body. The compiler compiled `se`. The Spec reads the
+derivation: its meaning is `realize`'s term, built rule by rule from a derivation. So two
+elaborations of one body lived on the apex path, and a proven 2700-line bridge
+(`RealizeAgrees`: `SD⟦se⟧ ≡ SD⟦realize w⟧`) joined them. Any syntactic fact about the
+compiled term had to be re-proved over the elaborator's algorithm, e.g. that every call it
+emits names an entry in scope (`moduleToProgram-linked`).
+
+**Decision.** The compiler compiles `realize w`, the realization of the derivation the
+checker returns. This holds both for a definition's body (`compileFunBody`) and for the
+resolver's splice of a telescope body (`applySplice`). The elaborator's `se` is no longer
+compiled.
+
+**Consequence.**
+* There is one elaboration on the apex path. `realize-agrees` leaves it.
+* A syntactic fact about the compiled term is an induction over the typing judgment: in
+  `realize`, every call is a reference the rule found in scope, at its type.
+* `RealizeAgrees`/`RealizeBridge` are deleted. They held no postulates, and nothing on the
+  apex path reads `se` any more. The meaning is unchanged: the compiled term was always
+  proved equal in meaning to `realize`'s, and now it simply is `realize`'s.

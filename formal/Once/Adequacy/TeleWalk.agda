@@ -59,6 +59,7 @@ open import Once.IR using (IR)
 import Once.IR
 open import Once.IRTy using (⌊_⌋)
 import Once.Surface.Context as Ctx
+import Once.Surface.Syntax as Srf
 open import Once.TypeCheck.Classify using (Imports)
 open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_)
 open import Once.Type.Rigid using (rigidOf)
@@ -96,7 +97,6 @@ open import Once.Type.Rigid using (RigidFree)
 import Once.Adequacy.SourceFaithful as SF
 import Once.Adequacy.FaithfulLemmas as FLm
 import Once.Adequacy.ResolveFaithful as RF
-import Once.Adequacy.RealizeBridge as RB
 open import Once.Adequacy.RealizeInvariant fmt using (realize-invariant)
 import Once.TypeCheck.Completeness
 import Once.TypeCheck.Soundness
@@ -254,17 +254,39 @@ private
   irFun-body ctx polys impsOf x ty body true  cf = irFun-main ctx polys impsOf x ty body (C.validateMain ty) cf refl
   irFun-body ctx polys impsOf x ty body false cf = cf
 
+  -- The checker's derivation, read off its verified result.
+  sound-of : ∀ {ctx : Once.TypeCheck.Classify.NamedCtx} {e : _} {T : Type} {Ψ se d f}
+               (cr : Once.TypeCheck.Elaborate.VerifiedCheckResult ctx e T)
+           → proj₁ cr ≡ Once.TypeCheck.Elaborate.success Ψ se d f → ctx ⊢ᶜ e ∶ T ⨾ Ψ
+  sound-of (Once.TypeCheck.Elaborate.success _ _ _ _ , w) refl = w
+
+  aux-form : ∀ (ctx : C.FunCtx) (polys : Once.TypeCheck.Classify.PolyCtx) (impsOf : String → C.FunCtx)
+               (x : String) (ty : Type) {body : _} {se : _} {d f : ℕ}
+               (cr : Once.TypeCheck.Elaborate.VerifiedCheckResult (Once.TypeCheck.Classify.ctxWithImportsAndPolys ctx polys) body ty)
+               (ce : proj₁ cr ≡ Once.TypeCheck.Elaborate.success Ctx.Usage.[] se d f)
+           → C.compileFunBody-aux C.Heap false ctx polys impsOf x ty refl cr
+             ≡ inj₂ (elaborateFull C.Heap (resolveExpr polys impsOf ((x , ty) ∷ ctx) 0 (realize (sound-of cr ce))))
+  aux-form ctx polys impsOf x ty (Once.TypeCheck.Elaborate.success _ _ _ _ , w) refl = refl
+
   irFun-form : ∀ (ctx : C.FunCtx) (polys : Once.TypeCheck.Classify.PolyCtx) (impsOf : String → C.FunCtx)
                  (x : String) (ty : Type) (body : _) {irFun : IR ⌊ Once.Type.Unit ⌋ ⌊ ty ⌋}
                  {se : _} {d f : ℕ}
              → C.compileFun C.Heap false ctx polys impsOf x ty body ≡ inj₂ irFun
-             → Once.TypeCheck.Elaborate.checkElab (Once.TypeCheck.Classify.ctxWithImportsAndPolys ctx polys) body ty
-                 ≡ Once.TypeCheck.Elaborate.success Ctx.Usage.[] se d f
-             → irFun ≡ elaborateFull C.Heap (resolveExpr polys impsOf ((x , ty) ∷ ctx) 0 se)
+             → (ce : Once.TypeCheck.Elaborate.checkElab (Once.TypeCheck.Classify.ctxWithImportsAndPolys ctx polys) body ty
+                       ≡ Once.TypeCheck.Elaborate.success Ctx.Usage.[] se d f)
+             → irFun ≡ elaborateFull C.Heap (resolveExpr polys impsOf ((x , ty) ∷ ctx) 0
+                         (realize (sound-of (Once.TypeCheck.Elaborate.checkElabV (Once.TypeCheck.Classify.ctxWithImportsAndPolys ctx polys) body ty) ce)))
   irFun-form ctx polys impsOf x ty body cf ce =
     inj₂-injective (trans (sym (irFun-body ctx polys impsOf x ty body (Relation.Nullary.isYes (x ≟str "main")) cf))
-                          (cong (C.compileFunBody-aux C.Heap false ctx polys impsOf x ty refl) ce))
+                          (aux-form ctx polys impsOf x ty (Once.TypeCheck.Elaborate.checkElabV (Once.TypeCheck.Classify.ctxWithImportsAndPolys ctx polys) body ty) ce))
 
+  -- The splice of a telescope body is its derivation's realization, resolved.
+  splice-form : ∀ (I : String → Imports) (uf : Imports) (pre : Once.TypeCheck.Classify.PolyCtx) (y : String)
+                  {Xs : Imports} {b : _} {A : Type} {se : _} {d f : ℕ}
+                  (cr : Once.TypeCheck.Elaborate.VerifiedCheckResult (Once.TypeCheck.Classify.ctxWithImportsAndPolys Xs pre) b A)
+                  (ce : proj₁ cr ≡ Once.TypeCheck.Elaborate.success Ctx.Usage.[] se d f)
+              → spliceClosed I uf pre y cr ≡ Srf.closed (resolveExpr pre I uf 0 (realize (sound-of cr ce)))
+  splice-form I uf pre y (Once.TypeCheck.Elaborate.success _ _ _ _ , w) refl = refl
 
 impEnv-wk : ∀ {s} {S : Sig s} {sc} {tl : Tele S} {body : _} {D : _} {imps} (is : ImpSig S imps)
           → CE.impEnv fmt (S Once.Spec.Core.PolyTy.▷ sc) (teleSem fmt (def tl sc body D)) (wkI is) ≡ CE.impEnv fmt S (teleSem fmt tl) is
@@ -309,8 +331,8 @@ module MonoStep {s} {S : Sig s} {csc : C.CScope} {tl : Tele S} {is : ImpSig S (C
   uf   = (x , ty) ∷ C.CScope.cimps csc
   σx   = σW pre (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) uf
   ccE  = Once.TypeCheck.Completeness.check-complete D
-  eE   = proj₁ ccE
   ce   = proj₂ (proj₂ (proj₂ ccE))
+  D′   = sound-of (Once.TypeCheck.Elaborate.checkElabV ctx (funBody fi) ty) ce
   M    = evalᴰ fmt (tableEnv fmt pre) irFun tt
 
   -- the compiled body means the elaboration's surface meaning (the compile chain)
@@ -318,11 +340,10 @@ module MonoStep {s} {S : Sig s} {csc : C.CScope} {tl : Tele S} {is : ImpSig S (C
   chain =
     trans (cong (λ ir → subst T (cohᴰ ty) (evalᴰ fmt (tableEnv fmt pre) ir tt))
                 (irFun-form (C.CScope.cimps csc) (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) x ty (funBody fi) cf ce))
-      (trans (FLm.T-ext-at fmt (tableEnv fmt pre) (SF.faithful∅ fmt (tableEnv fmt pre) (resolveExpr (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) uf 0 eE)))
+      (trans (FLm.T-ext-at fmt (tableEnv fmt pre) (SF.faithful∅ fmt (tableEnv fmt pre) (resolveExpr (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) uf 0 (realize D′))))
         (trans (FLm.T-ext-at fmt (tableEnv fmt pre)
-                 (RF.resolveExpr-faithful fmt (tableEnv fmt pre) (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) uf 0 eE tt))
-          (trans (RB.realize-agrees fmt σx ctx (funBody fi) ty ce tt)
-                 (realize-invariant (Once.TypeCheck.Soundness.check-sound ctx (funBody fi) ty ce) D σx tt))))
+                 (RF.resolveExpr-faithful fmt (tableEnv fmt pre) (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) uf 0 (realize D′) tt))
+               (realize-invariant D′ D σx tt)))
 
   relA : RelGM Once.Type.pure ty (MeaningM.⟦_⟧ᶜ D fmt ρ tt) (SD.⟦ realize D ⟧ˢ fmt σx tt)
   relA = MB.bridge-c fmt σx D {dγ₁ = tt} {dγ₂ = tt} (MB.mk↾ tt)
@@ -485,19 +506,19 @@ inv-poly {S = S} {csc} {tl} {is} {ts} {pre} sg {pfi} {Ctx.Usage.[]} D inv fr = r
           where
             D-U = EI.inst-at S scT (Inv.irf inv) D ki
             ccU = Once.TypeCheck.Completeness.check-complete D-U
-            eE  = proj₁ ccU
             ce  = proj₂ (proj₂ (proj₂ ccU))
+            cr  = Once.TypeCheck.Elaborate.checkElabV (Once.TypeCheck.Classify.ctxWithImportsAndPolys (C.CScope.cimps csc) (C.cpolys csc)) (pfunBody pfi) U
+            D′  = sound-of cr ce
             eqSD : SD.refs σ y U ≡ SD.⟦ realize D-U ⟧ˢ fmt σo tt
             eqSD =
               trans (refs-head I uf (tableEnv fmt tbl) y {pfunType pfi} {pfunBody pfi} (C.cpolys csc) U)
                 (trans (cong (λ X → SD.⟦ spliceClosed I uf (C.cpolys csc) y
-                                          (Once.TypeCheck.Elaborate.checkElab (Once.TypeCheck.Classify.ctxWithImportsAndPolys X (C.cpolys csc))
+                                          (Once.TypeCheck.Elaborate.checkElabV (Once.TypeCheck.Classify.ctxWithImportsAndPolys X (C.cpolys csc))
                                              (pfunBody pfi) U) ⟧ˢ fmt (RF.σ₀ fmt (tableEnv fmt tbl)) tt) iy)
-                  (trans (cong (λ r → SD.⟦ spliceClosed I uf (C.cpolys csc) y r ⟧ˢ fmt (RF.σ₀ fmt (tableEnv fmt tbl)) tt) ce)
+                  (trans (cong (λ e′ → SD.⟦ e′ ⟧ˢ fmt (RF.σ₀ fmt (tableEnv fmt tbl)) tt) (splice-form I uf (C.cpolys csc) y cr ce))
                     (trans (FLm.T-ext-at fmt (tableEnv fmt tbl)
-                             (RF.resolveExpr-faithful fmt (tableEnv fmt tbl) (C.cpolys csc) I uf 0 eE tt))
-                      (trans (RB.realize-agrees fmt σo ctx (pfunBody pfi) U ce tt)
-                             (realize-invariant (Once.TypeCheck.Soundness.check-sound ctx (pfunBody pfi) U ce) D-U σo tt)))))
+                             (RF.resolveExpr-faithful fmt (tableEnv fmt tbl) (C.cpolys csc) I uf 0 (realize D′) tt))
+                           (realize-invariant D′ D-U σo tt))))
 
 ------------------------------------------------------------------------
 -- Freshness along the walk

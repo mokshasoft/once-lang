@@ -64,7 +64,7 @@ open import Once.Denotation.Trace using (SigOpEvent)
 open import Once.Semantics.Machine using (sem-cata; sem-ana; coerce-functor)
 import Once.Denotation.SourceDenote as SD
 open import Once.TypeCheck.ElaborateProofs using (resolveExpr; PolyCtx; Imports;
-  resolvePolyCase; applySplice; checkElab; CheckElabResult)
+  resolvePolyCase; applySplice; checkElab; checkElabV; CheckElabResult; VerifiedCheckResult)
 open import Once.TypeCheck.Classify using (lookupPolyPrefix; lookupImport; ctxWithImportsAndPolys)
 open import Once.CanonicalName using (CanonicalName; showCanonical)
 open import Once.Postulates using (extensionality)
@@ -142,11 +142,11 @@ splice-ctx-indep :
     (polys : PolyCtx) (pAcc : Acc _<_ (length polys)) (imps : String → Imports) (userFns : Imports)
     (fresh : ℕ) (x : String) {schema body prefix}
     (polyEq : lookupPolyPrefix polys x ≡ just (schema , body , prefix))
-    (r : CheckElabResult Srf.∅ A) (dγ : ⟦ ⟦ Γ Srf.↾ Srf.zeroUsage ⟧ᶜ ⟧ᴰ)
+    (r : VerifiedCheckResult (ctxWithImportsAndPolys (imps x) prefix) body A) (dγ : ⟦ ⟦ Γ Srf.↾ Srf.zeroUsage ⟧ᶜ ⟧ᴰ)
   → SD.⟦ applySplice {Γ = Γ} polys pAcc imps userFns fresh x A polyEq r ⟧ˢ fmt σ₀ dγ
       ≡ SD.⟦ applySplice {Γ = Srf.∅} polys pAcc imps userFns fresh x A polyEq r ⟧ˢ fmt σ₀ tt
-splice-ctx-indep polys pAcc imps userFns fresh x polyEq (CheckElabResult.failure _) dγ = refl
-splice-ctx-indep polys (acc rec) imps userFns fresh x polyEq (CheckElabResult.success Srf.[] eE _ _) dγ = refl
+splice-ctx-indep polys pAcc imps userFns fresh x polyEq (CheckElabResult.failure _ , _) dγ = refl
+splice-ctx-indep polys (acc rec) imps userFns fresh x polyEq (CheckElabResult.success Srf.[] eE _ _ , _) dγ = refl
 
 poly-ctx-indep :
   ∀ {n} {Γ : Srf.Ctx n} {A : Type}
@@ -158,7 +158,7 @@ poly-ctx-indep :
 poly-ctx-indep polys pAcc imps userFns fresh x nothing eqLP dγ = refl
 poly-ctx-indep {A = A} polys pAcc imps userFns fresh x (just (_ , body , prefix)) eqLP dγ =
   splice-ctx-indep polys pAcc imps userFns fresh x eqLP
-    (checkElab (ctxWithImportsAndPolys (imps x) prefix) body A) dγ
+    (checkElabV (ctxWithImportsAndPolys (imps x) prefix) body A) dγ
 
 -- Two-sided bind congruence at each budget: `>>=T` at `j` reads `m j`, then
 -- runs the continuation at what `m` LEFT (`j ∸ length (proj₁ (m j))`). The

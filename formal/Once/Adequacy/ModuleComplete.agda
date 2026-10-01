@@ -79,9 +79,12 @@ compileFunBody-complete : ∀ (ctx : C.FunCtx) (polys : PolyCtx) (impsOf : C.Str
 -- `data` (no eta), so `∅ ↾ Ψ` is stuck until `Ψ` is `[]`, and the
 -- elaborated IR's domain `⌊ ⟦ ∅ ↾ Ψ ⟧ᶜ ⌋` will not reduce to `Unit`.
 compileFunBody-complete ctx polys impsOf name ty body {[]} deriv =
-  let (eE , d , f , ce) = check-complete deriv
-  in elaborateFull C.Heap (resolveExpr polys impsOf ((name , ty) ∷ ctx) 0 eE)
-   , cong (C.compileFunBody-aux C.Heap false ctx polys impsOf name ty refl) ce
+  succ (TE.checkElabV (ctxWithImportsAndPolys ctx polys) body ty) (proj₂ (proj₂ (proj₂ (check-complete deriv))))
+  where
+    succ : ∀ (cr : TE.VerifiedCheckResult (ctxWithImportsAndPolys ctx polys) body ty) {eE d f}
+         → proj₁ cr ≡ TE.success [] eE d f
+         → Σ-syntax (IR ⌊ Unit ⌋ ⌊ ty ⌋) (λ irFun → C.compileFunBody-aux C.Heap false ctx polys impsOf name ty refl cr ≡ inj₂ irFun)
+    succ (TE.success _ _ _ _ , _) refl = _ , refl
 
 ------------------------------------------------------------------------
 -- (2) ⇒ the function compiles. `compileFun` dispatches on `name == "main"`

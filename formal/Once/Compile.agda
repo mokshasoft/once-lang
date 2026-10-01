@@ -121,6 +121,7 @@ import Once.TypeCheck.Principal as Principal
 
 -- Surface → IR elaboration
 open import Once.Surface.Elaborate using (elaborate; elaborateFull)
+open import Once.Denotation.Realize using (realize)
 
 ------------------------------------------------------------------------
 -- Main function validation
@@ -186,32 +187,32 @@ extendFunCtx ctx name ty = (name , ty) ∷ ctx
 -- Returns IR or error message
 -- Plan 0.14 follow-up: take the default AllocMode from the caller
 -- (threaded from CLI --alloc).
--- `compileFunBody-aux` takes the elaboration RESULT explicitly (instead of a
--- `with` on `checkElab`), so proofs can case on a bound variable and the
--- original `compileFunBody` is `aux ∘ checkElab` by `refl` (Plan 0.48: needed
--- to prove `doOpt`-independence of success without the `with`-bite). Generic
--- over the elaboration context `Δ` so the dependent index need not be spelled.
-compileFunBody-aux : ∀ {n} {Δ : Srf.Ctx n}
+-- `compileFunBody-aux` takes the VERIFIED check result explicitly (instead of a
+-- `with` on `checkElabV`), so proofs can case on a bound variable and the
+-- original `compileFunBody` is `aux ∘ checkElabV` by `refl` (Plan 0.48: needed
+-- to prove `doOpt`-independence of success without the `with`-bite).
+-- D254: the compiled term is the REALIZATION of the checker's derivation
+-- (`realize`), the reference elaboration the Spec reads.
+compileFunBody-aux : ∀ {ctx : NamedCtx} {body : RawExpr}
   → AllocMode → Bool → FunCtx → PolyCtx → (String → FunCtx) → (name : String) (ty : Type)
-  → Srf.⟦ Δ ⟧ᶜ ≡ Unit
-  → CheckElabResult Δ ty → String ⊎ IR ⌊ Unit ⌋ ⌊ ty ⌋
-compileFunBody-aux m doOpt ctx polys impsOf name ty δ-unit (TE.failure err) =
+  → Srf.⟦ NamedCtx.debruijn ctx ⟧ᶜ ≡ Unit
+  → TE.VerifiedCheckResult ctx body ty → String ⊎ IR ⌊ Unit ⌋ ⌊ ty ⌋
+compileFunBody-aux m doOpt ctx polys impsOf name ty δ-unit (TE.failure err , _) =
   inj₁ ("Type error in " ++ name ++ ": " ++ TE.renderError err)
-compileFunBody-aux m doOpt ctx polys impsOf name ty δ-unit (TE.success _ surfaceExpr _ _) =
-  -- Plan 0.19: the user-fn list (= `ctx + self`) is `userFns` (drives the
-  -- sigOp→closure rewrite for user-defined top-level fn references). Plan
-  -- 0.103 phase 1c: a telescope body is linked in ITS declaration imports
+compileFunBody-aux m doOpt ctx polys impsOf name ty δ-unit (TE.success _ _ _ _ , w) =
+  -- Plan 0.19: the user-fn list (= `ctx + self`) is `userFns`. Plan 0.103
+  -- phase 1c: a telescope body is linked in ITS declaration imports
   -- (`impsOf`), not in this function's. External syscalls are handled via
   -- the qualified-name path and never reach this resolver.
   let userList = (name , ty) ∷ ctx
-      resolved = resolveExpr polys impsOf userList 0 surfaceExpr
+      resolved = resolveExpr polys impsOf userList 0 (realize w)
       ir = elaborateFull m resolved
   in inj₂ (subst (λ X → IR X ⌊ ty ⌋) (cong ⌊_⌋ δ-unit) (if doOpt then optimize ir else ir))
 
 compileFunBody : AllocMode → Bool → FunCtx → PolyCtx → (String → FunCtx) → (name : String) (ty : Type) → RawExpr → String ⊎ IR ⌊ Unit ⌋ ⌊ ty ⌋
 compileFunBody m doOpt ctx polys impsOf name ty expr =
   compileFunBody-aux m doOpt ctx polys impsOf name ty refl
-    (checkElab (ctxWithImportsAndPolys ctx polys) expr ty)
+    (TE.checkElabV (ctxWithImportsAndPolys ctx polys) expr ty)
 
 -- | Compile a function with main validation
 -- For main: validates type is Eff Unit A before compiling

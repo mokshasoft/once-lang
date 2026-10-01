@@ -47,14 +47,14 @@ import Once.Parser.Module.Core as P
 -- Layer 0 — `compileFunBody-aux` success is `doOpt`-independent.
 ------------------------------------------------------------------------
 
-cfb-aux-doOpt : ∀ {n} {Δ : Srf.Ctx n}
+cfb-aux-doOpt : ∀ {nctx : TE.NamedCtx} {body : RawExpr}
   (doOpt : Bool) (ctx : C.FunCtx) (polys : TE.PolyCtx) (impsOf : C.String → C.FunCtx)
-  (name : String) (ty : C.Type) (δ : Srf.⟦ Δ ⟧ᶜ ≡ Unit)
-  (cr : CheckElabResult Δ ty) {ir : IR ⌊ Unit ⌋ ⌊ ty ⌋} →
+  (name : String) (ty : C.Type) (δ : Srf.⟦ TE.NamedCtx.debruijn nctx ⟧ᶜ ≡ Unit)
+  (cr : TE.VerifiedCheckResult nctx body ty) {ir : IR ⌊ Unit ⌋ ⌊ ty ⌋} →
   C.compileFunBody-aux C.Heap false ctx polys impsOf name ty δ cr ≡ inj₂ ir →
   Σ-syntax (IR ⌊ Unit ⌋ ⌊ ty ⌋) (λ ir' → C.compileFunBody-aux C.Heap doOpt ctx polys impsOf name ty δ cr ≡ inj₂ ir')
-cfb-aux-doOpt doOpt ctx polys impsOf name ty δ (TE.failure err) ()
-cfb-aux-doOpt doOpt ctx polys impsOf name ty δ (TE.success _ se _ _) eq = _ , refl
+cfb-aux-doOpt doOpt ctx polys impsOf name ty δ (TE.failure err , _) ()
+cfb-aux-doOpt doOpt ctx polys impsOf name ty δ (TE.success _ se _ _ , _) eq = _ , refl
 
 cfb-doOpt : ∀ (doOpt : Bool) (ctx : C.FunCtx) (polys : TE.PolyCtx) (impsOf : C.String → C.FunCtx)
   (name : String) (ty : C.Type) (expr : RawExpr) {ir : IR ⌊ Unit ⌋ ⌊ ty ⌋} →
@@ -62,7 +62,7 @@ cfb-doOpt : ∀ (doOpt : Bool) (ctx : C.FunCtx) (polys : TE.PolyCtx) (impsOf : C
   Σ-syntax (IR ⌊ Unit ⌋ ⌊ ty ⌋) (λ ir' → C.compileFunBody C.Heap doOpt ctx polys impsOf name ty expr ≡ inj₂ ir')
 cfb-doOpt doOpt ctx polys impsOf name ty expr eq =
   cfb-aux-doOpt doOpt ctx polys impsOf name ty refl
-    (TE.checkElab (TE.ctxWithImportsAndPolys ctx polys) expr ty) eq
+    (TE.checkElabV (TE.ctxWithImportsAndPolys ctx polys) expr ty) eq
 
 ------------------------------------------------------------------------
 -- Layer 1 — `compileFun` success is `doOpt`-independent.

@@ -13,6 +13,7 @@
 module Once.TypeCheck.ElaborateProofs where
 
 open import Once.TypeCheck.Elaborate public
+open import Once.Denotation.Realize using (realize)
 open import Once.TypeCheck.Classify using (emptyCtx)
 open import Once.TypeCheck.TargetView using (apply-at)
 open import Once.Type.DecEq using (_≟T_; _≟F_)
@@ -708,10 +709,10 @@ resolvePolyCase : ∀ {n} {Γ : Surface.Ctx n}
                 → Surface.Expr Γ Surface.zeroUsage A
 applySplice : ∀ {n} {Γ : Surface.Ctx n}
             → (polys : PolyCtx) → Acc _<_ (length polys)
-            → (String → Imports) → Imports → ℕ → (x : String) (A : Type)
+            → (imps : String → Imports) → Imports → ℕ → (x : String) (A : Type)
             → {schema : PolyType} {body : RawExpr} {prefix : PolyCtx}
             → lookupPolyPrefix polys x ≡ just (schema , body , prefix)
-            → CheckElabResult S∅ A
+            → VerifiedCheckResult (ctxWithImportsAndPolys (imps x) prefix) body A
             → Surface.Expr Γ Surface.zeroUsage A
 
 resolveExprWF polys _ imps userFns _ (Surface.var i) = Surface.var i
@@ -823,11 +824,12 @@ resolveExprWF {A = A} polys pAcc imps userFns fresh (Surface.poly x _) =
 resolvePolyCase polys _ imps userFns _ x A nothing _ = Surface.poly x A
 resolvePolyCase polys pAcc imps userFns fresh x A (just (_ , body , prefix)) polyEq =
   applySplice polys pAcc imps userFns fresh x A polyEq
-              (checkElab (ctxWithImportsAndPolys (imps x) prefix) body A)
+              (checkElabV (ctxWithImportsAndPolys (imps x) prefix) body A)
 
-applySplice polys _ imps userFns _ x A _ (failure _) = Surface.poly x A
-applySplice polys (acc rec) imps userFns fresh x A {prefix = prefix} polyEq (success Surface.[] eE _ _) =
-  Surface.closed (resolveExprWF prefix (rec (lookupPolyPrefix-decreases x polys polyEq)) imps userFns fresh eE)
+-- D254: the spliced body is the realization of its derivation.
+applySplice polys _ imps userFns _ x A _ (failure _ , _) = Surface.poly x A
+applySplice polys (acc rec) imps userFns fresh x A {prefix = prefix} polyEq (success Surface.[] eE _ _ , w) =
+  Surface.closed (resolveExprWF prefix (rec (lookupPolyPrefix-decreases x polys polyEq)) imps userFns fresh (realize w))
 
 -- Public entry. Computes `<-wellFounded` once; no callers need updating.
 -- Plan 0.19: `userFns` carries the set of user-defined top-level fn
