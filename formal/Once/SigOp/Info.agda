@@ -213,6 +213,16 @@ effect-of (haltsV e) = Halts e
 semM : ∀ {A B} → SigOpInfo A B → TargetNum → M.⟦ A ⟧ → Res M.⟦ B ⟧
 semM si = semM-of (sem si)
 
+-- D250: the same reading in the GRADED contract domain — what the Spec's
+-- effectful references mean (an effectful op's value is `tt`; a halt has none).
+semMᵍ-of : ∀ {A B} → SigOpSem A B → TargetNum → M.⟦ A ⟧ → Res M.⟦ B ⟧ᵍ
+semMᵍ-of (pureV f)     = λ tn x → returns (f tn x)
+semMᵍ-of (emitsV refl) = λ _ _ → returns tt
+semMᵍ-of (haltsV refl) = λ _ _ → stopped
+
+semMᵍ : ∀ {A B} → SigOpInfo A B → TargetNum → M.⟦ A ⟧ → Res M.⟦ B ⟧ᵍ
+semMᵍ si = semMᵍ-of (sem si)
+
 
 effect : ∀ {A B} → SigOpInfo A B → EffectShape B
 effect si = effect-of (sem si)

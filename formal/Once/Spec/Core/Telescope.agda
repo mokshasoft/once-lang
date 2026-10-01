@@ -75,9 +75,9 @@ record Program : Set where
     main   : PT.PTm sig 0 0
     mainTy : PT._⊩_⊢[_]_∷_!_ sig noKinds PT.∅ Usage.[] main IOUnit T.pure
 
--- THE CORE MEANING OF A PROGRAM: run `main` in the telescope's environment,
+-- THE CORE MEANING OF A PROGRAM: `main` is pure (D250: it denotes a VALUE, the
+-- suspension `Unit ⇒[eff] Unit`); run it in the telescope's environment and
 -- read the depth-`n` event-trace prefix.
 runProgram : TargetNum → Program → ℕ → Data.List.List SigOpEvent
 runProgram fmt (program defs main mainTy) n =
-  projTrace (GM.⟦_⟧ _ (PT.instantiate _ noVars (λ ()) mainTy) fmt (teleSem fmt defs) tt
-               >>=T (λ clo → clo tt)) n
+  projTrace (GM.⟦_⟧ _ (PT.instantiate _ noVars (λ ()) mainTy) fmt (teleSem fmt defs) tt tt) n
