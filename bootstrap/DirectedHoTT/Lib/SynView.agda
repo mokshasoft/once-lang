@@ -204,6 +204,12 @@ module _ {Ξ : Ctx} {i I D p : RTm ⌊ Ξ ⌋} where
 ⊢atDepth {a = a} {j = j} {k = k} dt =
   ⊢conv dt (red→≅ᵀ (⟶ᵀ*-IMu (⟶*-pairʳ (⟶*-nsucs k (step (βsnd a j) done)))))
 
+-- …a field of a signature's payload: a term of the sort (`SK`, opaque)
+⊢atDepthSK : {n : ℕ} {Ξ : Ctx} {sg : Sig n} {t a j : RTm ⌊ Ξ ⌋} {s k : ℕ} →
+             Ξ ⊢ t ∷ IMu (SI n) (SD sg) (pair (tag s) (nsucs k (snd (pair a j)))) → Ξ ⊢ t ∷ SK sg s (nsucs k j)
+⊢atDepthSK {sg = sg} {a = a} {j = j} {s = s} {k = k} dt =
+  ⊢IMu→SK {sg = sg} {s = s} {d = nsucs k j} (⊢atDepth {a = a} {j = j} {s = s} {k = k} dt)
+
 -- ★ a payload at a sorted index whose depth is itself read off a pair
 --   (a convoy's code instantiated at an index): the inner redex reduces
 payV-ix : (sh : Shape) (a b j I D : RTm Δ) → PayV sh (pair a (snd (pair b j))) I D ⟶ᵀ* PayV sh (pair a j) I D

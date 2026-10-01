@@ -46,7 +46,7 @@ opaque
   ⌜Ty⌝-sub σ d = cong (λ D → ⌜IMu⌝ (SI 2) D (pair (tag 0) (subTm σ d))) (SD-sub σ KSig)
 
   El-⌜Ty⌝ : {Γ : Cx} {d : RTm Γ} → El (⌜Ty⌝ d) ⟶ᵀ K 0 d
-  El-⌜Ty⌝ = El-⌜IMu⌝
+  El-⌜Ty⌝ = El-⌜SK⌝
 
 ------------------------------------------------------------------------
 -- 1. THE FAMILY.

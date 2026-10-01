@@ -501,13 +501,13 @@ module Trav {sg : Sig n} (ok : SigOK n sg) (κ : Kit n sg) where
   ⊢tpay : {Γ : Ctx} {sh : Shape} {i p h e f d : RTm ⌊ Γ ⌋} → FOK n sh →
           Γ ⊢ p ∷ PayV sh i (SI n) (SD sg) → Γ ⊢ h ∷ IhV sh i (SD sg) TM p →
           Γ ⊢ e ∷ El ⌜Nat⌝ → Γ ⊢ d ∷ El ⌜Nat⌝ → snd i ⟶* d → Γ ⊢ f ∷ Env d e →
-          Args Γ n (SD sg) e sh (tpay sh p h e f d)
+          Args Γ n sg e sh (tpay sh p h e f d)
   ⊢tpay []ᶠ dp dh de dd r df = a[]
   ⊢tpay {Γ = Γ} {sh = rec s k ∷ʰ sh} {i} {p} {h} {e} {f} {d} (ok-rec lt ∷ᶠ ok) dp dh de dd r df =
-    a-rec (⊢conv (⊢TM· (⊢fst dh) (⊢nsucs k de)
+    a-rec (⊢IMu→SK {sg = sg} {s = s} {d = nsucs k e} (⊢conv (⊢TM· (⊢fst dh) (⊢nsucs k de)
                        (⊢conv (⊢LIFTS k de dd df)
                               (csymᵀ (red→≅ᵀ (⟶ᵀ*-Πˡ (⟶ᵀ*-IMu (step (βsnd _ _) (⟶*-nsucs k r))))))))
-                 (red→≅ᵀ (⟶ᵀ*-IMu (⟶*-pairˡ (step (βfst _ _) done)))))
+                 (red→≅ᵀ (⟶ᵀ*-IMu (⟶*-pairˡ (step (βfst _ _) done))))))
           (⊢tpay ok dp' dh' de dd r df)
     where
       dp' : Γ ⊢ snd p ∷ PayV sh i (SI n) (SD sg)
@@ -651,5 +651,5 @@ module Trav {sg : Sig n} (ok : SigOK n sg) (κ : Kit n sg) where
                                    (IMu (SI n) (SD sg) (pair (fst ι₄) (var (vs vz)))))
       BODY = ⊢lam (ty-El ⊢⌜Nat⌝)
                (⊢lam (ty-Env (⊢depth (⊢wk (⊢wk (⊢wk dix)))) (⊢var here))
-                 (⊢conv (⊢-cast (cong (λ z → IMu (SI n) (SD sg) (pair z e₄)) (sym (tagr4 s))) CON)
+                 (⊢conv (⊢-cast (trans (SK-def {sg = sg} {s = s} {d = e₄}) (cong (λ z → IMu (SI n) (SD sg) (pair z e₄)) (sym (tagr4 s)))) CON)
                         (csymᵀ (red→≅ᵀ (⟶ᵀ*-IMu (⟶*-pairˡ (step (βfst _ _) done)))))))

@@ -69,13 +69,13 @@ module Sub {sg : Sig n} (ok : SigOK n sg) {v kv : ℕ} {shs : Shapes c}
 
   -- a value IS a term of the variable sort
   toSK : {Γ : Ctx} {e t : RTm ⌊ Γ ⌋} → Γ ⊢ t ∷ Vat VFs e → Γ ⊢ t ∷ SK sg v e
-  toSK {e = e} dt =
+  toSK {e = e} dt = ⊢IMu→SK {sg = sg} {s = v} {d = e} (
     ⊢-cast (cong₂ (λ D x → IMu (SI n) D (pair x e)) (SD-sub (single e) sg) (tag-sub (single e) v))
-      (⊢conv dt (ctrnᵀ (credᵀ (ξ-El (β _ e))) (credᵀ El-⌜IMu⌝)))
+      (⊢conv dt (ctrnᵀ (credᵀ (ξ-El (β _ e))) (credᵀ El-⌜IMu⌝))))
 
   fromSK : {Γ : Ctx} {e t : RTm ⌊ Γ ⌋} → Γ ⊢ t ∷ SK sg v e → Γ ⊢ t ∷ Vat VFs e
   fromSK {e = e} dt =
-    ⊢conv (⊢-cast (sym (cong₂ (λ D x → IMu (SI n) D (pair x e)) (SD-sub (single e) sg) (tag-sub (single e) v))) dt)
+    ⊢conv (⊢-cast (sym (cong₂ (λ D x → IMu (SI n) D (pair x e)) (SD-sub (single e) sg) (tag-sub (single e) v))) (⊢SK→IMu {sg = sg} {s = v} {d = e} dt))
           (csymᵀ (ctrnᵀ (credᵀ (ξ-El (β _ e))) (credᵀ El-⌜IMu⌝)))
 
   -- the variable node at `x : Fin e`

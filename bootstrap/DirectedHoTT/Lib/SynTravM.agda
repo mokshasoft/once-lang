@@ -115,7 +115,7 @@ module TravM {sg : Sig n} (ok : SigOK n sg) (κ : Kit n sg) (vok : VarsAt sg (Ki
                                    (IMu (SI n) (SD sg) (pair (fst ι₄) (var (vs vz)))))
       BODY = ⊢lam (ty-El ⊢⌜Nat⌝)
                (⊢lam (ty-Env (⊢depth (⊢wk (⊢wk (⊢wk dix)))) (⊢var here))
-                 (⊢conv (⊢-cast (cong (λ z → IMu (SI n) (SD sg) (pair z e₄)) (sym (tagr4 s))) NODEv)
+                 (⊢conv (⊢-cast (trans (SK-def {sg = sg} {s = s} {d = e₄}) (cong (λ z → IMu (SI n) (SD sg) (pair z e₄)) (sym (tagr4 s)))) NODEv)
                         (csymᵀ (red→≅ᵀ (⟶ᵀ*-IMu (⟶*-pairˡ (step (βfst _ _) done)))))))
 
   ------------------------------------------------------------------------
@@ -175,7 +175,7 @@ module TravM {sg : Sig n} (ok : SigOK n sg) (κ : Kit n sg) (vok : VarsAt sg (Ki
   ⊢trav : {Γ : Ctx} {s : ℕ} {d t e f : RTm ⌊ Γ ⌋} → Lt s n →
           Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ t ∷ SK sg s d → Γ ⊢ e ∷ El ⌜Nat⌝ → Γ ⊢ f ∷ Env d e →
           Γ ⊢ trav s d t e f ∷ SK sg s e
-  ⊢trav {s = s} {d = d} lt dd dt de df =
-    ⊢conv (⊢TM· (⊢ielim ⊢SI (⊢SD ok) ⊢TM ⊢TRAVM (⊢ix lt dd) dt) de
+  ⊢trav {s = s} {d = d} lt dd dt de df = ⊢IMu→SK {sg = sg} {s = s}
+    (⊢conv (⊢TM· (⊢ielim ⊢SI (⊢SD ok) ⊢TM ⊢TRAVM (⊢ix lt dd) (⊢SK→IMu {sg = sg} {s = s} {d = d} dt)) de
                 (⊢conv df (csymᵀ (red→≅ᵀ (⟶ᵀ*-Πˡ (⟶ᵀ*-IMu (step (βsnd _ _) done)))))))
-          (red→≅ᵀ (⟶ᵀ*-IMu (⟶*-pairˡ (step (βfst _ _) done))))
+          (red→≅ᵀ (⟶ᵀ*-IMu (⟶*-pairˡ (step (βfst _ _) done)))))

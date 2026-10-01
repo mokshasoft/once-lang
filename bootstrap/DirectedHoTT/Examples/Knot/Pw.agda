@@ -20,7 +20,7 @@ open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Metatheory.TySub using ( ⊢wk )
 open import DirectedHoTT.Metatheory.SubjectReductionBase using () renaming ( wk-sub to wkS )
 open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_; tag; Lt; lt-z; lt-s; []ᵈ; _∷ᵈ_; AllD )
-open import DirectedHoTT.Lib.SynView using ( PayV; ⊢recFst; ⊢recSnd; ⊢atDepth; ⊢natFst; ⊢natSnd )
+open import DirectedHoTT.Lib.SynView using ( PayV; ⊢recFst; ⊢recSnd; ⊢atDepthSK; ⊢natFst; ⊢natSnd )
 open import DirectedHoTT.Lib.FinFam using ( ⊢isuc; toI; ffz; ⊢ffz; ffs; ⊢ffs )
 open import DirectedHoTT.Lib.Tel
 open import DirectedHoTT.Lib.Syn
@@ -80,7 +80,7 @@ TPwcPi-law : TelLaw TPwcPi
 TPwcPi-law σ j p c = TPwcPi⁽0⁾-sub σ j c (fst (snd p))
 
 okTPwcPi : {Ξ : Ctx} {j p c : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ p ∷ PayV sh-kcPi (pair (tag 1) j) (SI 2) (SD KSig) → Ξ ⊢ c ∷ El (Pwₘ.Cat (pair (tag 1) j)) → TelOK Ξ Pwₘ.J (TPwcPi j p c)
-okTPwcPi {Ξ} {j} {p} {c} dj dp dc = (okTPwcPiI {_} {j} {c} {(fst (snd p))} dj (⊢pwTgt dc) (⊢atDepth {a = tag 1} {j = j} {s = 1} {k = 1} (⊢recFst {s = 1} {k = 1} {sh = ([]ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 1 ∷ʰ []ʰ)} dp))))
+okTPwcPi {Ξ} {j} {p} {c} dj dp dc = (okTPwcPiI {_} {j} {c} {(fst (snd p))} dj (⊢pwTgt dc) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 1} (⊢recFst {s = 1} {k = 1} {sh = ([]ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 1 ∷ʰ []ʰ)} dp))))
 
 rPwcPi : Row
 rPwcPi = record { R = λ j p c → rows (⌜ TPwcPi j p c ⌝ᵗ ∷ []) ; R-sub = λ σ j p c → trans (rows-sub' σ (⌜ TPwcPi j p c ⌝ᵗ ∷ [])) (cong (λ X → rows (X ∷ [])) {x = subTm σ (⌜ TPwcPi j p c ⌝ᵗ)} {y = ⌜ TPwcPi (subTm σ j) (subTm σ p) (subTm σ c) ⌝ᵗ} (TPwcPi-law σ j p c)) }
@@ -152,7 +152,7 @@ TPwcHom-law : TelLaw TPwcHom
 TPwcHom-law σ j p c = TPwcHom⁽0⁾-sub σ j c (fst p) (fst (snd p)) (fst (snd (snd p)))
 
 okTPwcHom : {Ξ : Ctx} {j p c : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ p ∷ PayV sh-kcHom (pair (tag 1) j) (SI 2) (SD KSig) → Ξ ⊢ c ∷ El (Pwₘ.Cat (pair (tag 1) j)) → TelOK Ξ Pwₘ.J (TPwcHom j p c)
-okTPwcHom {Ξ} {j} {p} {c} dj dp dc = (Pwₘ.okσ (okCPwcHom_0I {_} {j} dj) (okTPwcHomI {_} {(w1 j)} {(w1 c)} {(w1 (fst p))} {(w1 (fst (snd p)))} {(w1 (fst (snd (snd p))))} {(var vz)} (wkN {t = j} dj) (wkK {s = 1} {d = (nsuc j)} {t = c} (⊢pwTgt dc)) (wkK {s = 1} {d = j} {t = (fst p)} (⊢atDepth {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp))) (wkK {s = 1} {d = j} {t = (fst (snd p))} (⊢atDepth {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp)))) (wkK {s = 1} {d = j} {t = (fst (snd (snd p)))} (⊢atDepth {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = ([]ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp))))) (hereTm {m = (nsuc j)})))
+okTPwcHom {Ξ} {j} {p} {c} dj dp dc = (Pwₘ.okσ (okCPwcHom_0I {_} {j} dj) (okTPwcHomI {_} {(w1 j)} {(w1 c)} {(w1 (fst p))} {(w1 (fst (snd p)))} {(w1 (fst (snd (snd p))))} {(var vz)} (wkN {t = j} dj) (wkK {s = 1} {d = (nsuc j)} {t = c} (⊢pwTgt dc)) (wkK {s = 1} {d = j} {t = (fst p)} (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp))) (wkK {s = 1} {d = j} {t = (fst (snd p))} (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp)))) (wkK {s = 1} {d = j} {t = (fst (snd (snd p)))} (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = ([]ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp))))) (hereTm {m = (nsuc j)})))
 
 rPwcHom : Row
 rPwcHom = record { R = λ j p c → rows (⌜ TPwcHom j p c ⌝ᵗ ∷ []) ; R-sub = λ σ j p c → trans (rows-sub' σ (⌜ TPwcHom j p c ⌝ᵗ ∷ [])) (cong (λ X → rows (X ∷ [])) {x = subTm σ (⌜ TPwcHom j p c ⌝ᵗ)} {y = ⌜ TPwcHom (subTm σ j) (subTm σ p) (subTm σ c) ⌝ᵗ} (TPwcHom-law σ j p c)) }

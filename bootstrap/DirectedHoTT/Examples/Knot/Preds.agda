@@ -17,7 +17,7 @@ open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax hiding ( Fin )
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_; tag; lt-z; lt-s; []ᵈ; _∷ᵈ_ )
-open import DirectedHoTT.Lib.SynView using ( PayV; ⊢recFst; ⊢recSnd; ⊢atDepth )
+open import DirectedHoTT.Lib.SynView using ( PayV; ⊢recFst; ⊢recSnd; ⊢atDepthSK )
 open import DirectedHoTT.Lib.FinFam using ( ⊢isuc )
 open import DirectedHoTT.Lib.Tel
 open import DirectedHoTT.Lib.Syn
@@ -41,7 +41,7 @@ ixNNC : RTm Δ → RTm Δ → RTm Δ
 ixNNC d c = NNCₘ.ixJ (pair (tag 1) d) c unit
 
 ⊢ixNNC : {Ξ : Ctx} {d c : RTm ⌊ Ξ ⌋} → Ξ ⊢ d ∷ El ⌜Nat⌝ → Ξ ⊢ c ∷ K 1 d → Ξ ⊢ ixNNC d c ∷ El NNCₘ.J
-⊢ixNNC dd dc = NNCₘ.⊢ixJ (⊢ix (lt-s lt-z) dd) dc (⊢conv ⊢unit (csymᵀ (credᵀ El-⌜Unit⌝)))
+⊢ixNNC dd dc = NNCₘ.⊢ixJ (⊢ix (lt-s lt-z) dd) (⊢SK→IMu {sg = KSig} dc) (⊢conv ⊢unit (csymᵀ (credᵀ El-⌜Unit⌝)))
 
 TNNC⊢cbase : RTm Δ → RTm Δ → RTm Δ → Tel Δ
 TNNC⊢cbase j p c = tι
@@ -111,7 +111,7 @@ rNNC⊢cPi = defRow TNNC⊢cPi (λ σ j p c → refl)
 
 okNNC⊢cPi : NNCₘ.RowOK 1 sh-kcPi rNNC⊢cPi
 tokNNC⊢cPi : {Ξ : Ctx} {j p c : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ p ∷ PayV sh-kcPi (pair (tag 1) j) (SI 2) (SD KSig) → TelOK Ξ NNCₘ.J (TNNC⊢cPi j p c)
-tokNNC⊢cPi {Ξ} {j} {p} {c} dj dp = ok-ρ (⊢ixNNC (⊢isuc dj) (⊢atDepth {a = tag 1} {j = j} {s = 1} {k = 1} (⊢recFst {s = 1} {k = 1} {sh = ([]ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 1 ∷ʰ []ʰ)} dp)))) (ok-ι)
+tokNNC⊢cPi {Ξ} {j} {p} {c} dj dp = ok-ρ (⊢ixNNC (⊢isuc dj) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 1} (⊢recFst {s = 1} {k = 1} {sh = ([]ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 1 ∷ʰ []ʰ)} dp)))) (ok-ι)
 
 okNNC⊢cPi {Ξ} {j} {p} {c} dj dp dc = ⊢rows {Ξ} {NNCₘ.J} {1} {⌜ TNNC⊢cPi j p c ⌝ᵗ ∷ []} NNCₘ.⊢J (⊢tel {Ξ} {NNCₘ.J} {TNNC⊢cPi j p c} NNCₘ.⊢J (tokNNC⊢cPi {c = c} dj dp) ∷ᵈ []ᵈ)
 
@@ -123,7 +123,7 @@ rNNC⊢cHom = defRow TNNC⊢cHom (λ σ j p c → refl)
 
 okNNC⊢cHom : NNCₘ.RowOK 1 sh-kcHom rNNC⊢cHom
 tokNNC⊢cHom : {Ξ : Ctx} {j p c : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ p ∷ PayV sh-kcHom (pair (tag 1) j) (SI 2) (SD KSig) → TelOK Ξ NNCₘ.J (TNNC⊢cHom j p c)
-tokNNC⊢cHom {Ξ} {j} {p} {c} dj dp = ok-ρ (⊢ixNNC dj (⊢atDepth {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp))) (ok-ι)
+tokNNC⊢cHom {Ξ} {j} {p} {c} dj dp = ok-ρ (⊢ixNNC dj (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp))) (ok-ι)
 
 okNNC⊢cHom {Ξ} {j} {p} {c} dj dp dc = ⊢rows {Ξ} {NNCₘ.J} {1} {⌜ TNNC⊢cHom j p c ⌝ᵗ ∷ []} NNCₘ.⊢J (⊢tel {Ξ} {NNCₘ.J} {TNNC⊢cHom j p c} NNCₘ.⊢J (tokNNC⊢cHom {c = c} dj dp) ∷ᵈ []ᵈ)
 
@@ -214,7 +214,7 @@ ixStkA : RTm Δ → RTm Δ → RTm Δ
 ixStkA d c = StkAₘ.ixJ (pair (tag 1) d) c unit
 
 ⊢ixStkA : {Ξ : Ctx} {d c : RTm ⌊ Ξ ⌋} → Ξ ⊢ d ∷ El ⌜Nat⌝ → Ξ ⊢ c ∷ K 1 d → Ξ ⊢ ixStkA d c ∷ El StkAₘ.J
-⊢ixStkA dd dc = StkAₘ.⊢ixJ (⊢ix (lt-s lt-z) dd) dc (⊢conv ⊢unit (csymᵀ (credᵀ El-⌜Unit⌝)))
+⊢ixStkA dd dc = StkAₘ.⊢ixJ (⊢ix (lt-s lt-z) dd) (⊢SK→IMu {sg = KSig} dc) (⊢conv ⊢unit (csymᵀ (credᵀ El-⌜Unit⌝)))
 
 TStkA⊢cbase : RTm Δ → RTm Δ → RTm Δ → Tel Δ
 TStkA⊢cbase j p c = tι
@@ -308,7 +308,7 @@ rStkA⊢cHom = defRow TStkA⊢cHom (λ σ j p c → refl)
 
 okStkA⊢cHom : StkAₘ.RowOK 1 sh-kcHom rStkA⊢cHom
 tokStkA⊢cHom : {Ξ : Ctx} {j p c : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ p ∷ PayV sh-kcHom (pair (tag 1) j) (SI 2) (SD KSig) → TelOK Ξ StkAₘ.J (TStkA⊢cHom j p c)
-tokStkA⊢cHom {Ξ} {j} {p} {c} dj dp = ok-ρ (⊢ixStkA dj (⊢atDepth {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp))) (ok-ι)
+tokStkA⊢cHom {Ξ} {j} {p} {c} dj dp = ok-ρ (⊢ixStkA dj (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp))) (ok-ι)
 
 okStkA⊢cHom {Ξ} {j} {p} {c} dj dp dc = ⊢rows {Ξ} {StkAₘ.J} {1} {⌜ TStkA⊢cHom j p c ⌝ᵗ ∷ []} StkAₘ.⊢J (⊢tel {Ξ} {StkAₘ.J} {TStkA⊢cHom j p c} StkAₘ.⊢J (tokStkA⊢cHom {c = c} dj dp) ∷ᵈ []ᵈ)
 
@@ -400,7 +400,7 @@ ixStkC : RTm Δ → RTm Δ → RTm Δ
 ixStkC d c = StkCₘ.ixJ (pair (tag 1) d) c unit
 
 ⊢ixStkC : {Ξ : Ctx} {d c : RTm ⌊ Ξ ⌋} → Ξ ⊢ d ∷ El ⌜Nat⌝ → Ξ ⊢ c ∷ K 1 d → Ξ ⊢ ixStkC d c ∷ El StkCₘ.J
-⊢ixStkC dd dc = StkCₘ.⊢ixJ (⊢ix (lt-s lt-z) dd) dc (⊢conv ⊢unit (csymᵀ (credᵀ El-⌜Unit⌝)))
+⊢ixStkC dd dc = StkCₘ.⊢ixJ (⊢ix (lt-s lt-z) dd) (⊢SK→IMu {sg = KSig} dc) (⊢conv ⊢unit (csymᵀ (credᵀ El-⌜Unit⌝)))
 
 TStkC⊢cbase : RTm Δ → RTm Δ → RTm Δ → Tel Δ
 TStkC⊢cbase j p c = tι
@@ -482,7 +482,7 @@ rStkC⊢cHom = defRow TStkC⊢cHom (λ σ j p c → cong (λ Z → dσ Z (lam d�
 
 okStkC⊢cHom : StkCₘ.RowOK 1 sh-kcHom rStkC⊢cHom
 tokStkC⊢cHom : {Ξ : Ctx} {j p c : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ p ∷ PayV sh-kcHom (pair (tag 1) j) (SI 2) (SD KSig) → TelOK Ξ StkCₘ.J (TStkC⊢cHom j p c)
-tokStkC⊢cHom {Ξ} {j} {p} {c} dj dp = ok-σ (⊢⌜StkA⌝ dj (⊢atDepth {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp))) ok-ι
+tokStkC⊢cHom {Ξ} {j} {p} {c} dj dp = ok-σ (⊢⌜StkA⌝ dj (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp))) ok-ι
 
 okStkC⊢cHom {Ξ} {j} {p} {c} dj dp dc = ⊢rows {Ξ} {StkCₘ.J} {1} {⌜ TStkC⊢cHom j p c ⌝ᵗ ∷ []} StkCₘ.⊢J (⊢tel {Ξ} {StkCₘ.J} {TStkC⊢cHom j p c} StkCₘ.⊢J (tokStkC⊢cHom {c = c} dj dp) ∷ᵈ []ᵈ)
 
@@ -573,7 +573,7 @@ ixFlat : RTm Δ → RTm Δ → RTm Δ
 ixFlat d c = Flatₘ.ixJ (pair (tag 1) d) c unit
 
 ⊢ixFlat : {Ξ : Ctx} {d c : RTm ⌊ Ξ ⌋} → Ξ ⊢ d ∷ El ⌜Nat⌝ → Ξ ⊢ c ∷ K 1 d → Ξ ⊢ ixFlat d c ∷ El Flatₘ.J
-⊢ixFlat dd dc = Flatₘ.⊢ixJ (⊢ix (lt-s lt-z) dd) dc (⊢conv ⊢unit (csymᵀ (credᵀ El-⌜Unit⌝)))
+⊢ixFlat dd dc = Flatₘ.⊢ixJ (⊢ix (lt-s lt-z) dd) (⊢SK→IMu {sg = KSig} dc) (⊢conv ⊢unit (csymᵀ (credᵀ El-⌜Unit⌝)))
 
 TFlat⊢cbase : RTm Δ → RTm Δ → RTm Δ → Tel Δ
 TFlat⊢cbase j p c = tι
@@ -595,7 +595,7 @@ rFlat⊢cHom = defRow TFlat⊢cHom (λ σ j p c → cong (λ Z → dσ Z (lam d�
 
 okFlat⊢cHom : Flatₘ.RowOK 1 sh-kcHom rFlat⊢cHom
 tokFlat⊢cHom : {Ξ : Ctx} {j p c : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ p ∷ PayV sh-kcHom (pair (tag 1) j) (SI 2) (SD KSig) → TelOK Ξ Flatₘ.J (TFlat⊢cHom j p c)
-tokFlat⊢cHom {Ξ} {j} {p} {c} dj dp = ok-σ (⊢⌜StkC⌝ dj (⊢atDepth {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp))) ok-ι
+tokFlat⊢cHom {Ξ} {j} {p} {c} dj dp = ok-σ (⊢⌜StkC⌝ dj (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp))) ok-ι
 
 okFlat⊢cHom {Ξ} {j} {p} {c} dj dp dc = ⊢rows {Ξ} {Flatₘ.J} {1} {⌜ TFlat⊢cHom j p c ⌝ᵗ ∷ []} Flatₘ.⊢J (⊢tel {Ξ} {Flatₘ.J} {TFlat⊢cHom j p c} Flatₘ.⊢J (tokFlat⊢cHom {c = c} dj dp) ∷ᵈ []ᵈ)
 

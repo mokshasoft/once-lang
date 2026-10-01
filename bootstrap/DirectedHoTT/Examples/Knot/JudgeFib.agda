@@ -21,7 +21,7 @@ open import DirectedHoTT.Metatheory.SubjectReductionBase using () renaming ( wk-
 open import DirectedHoTT.Metatheory.Fundamental.Syntactic using ( ⟨_⟩ᵣ; subTm-var )
 open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; _⟶ᵀ*_; stepᵀ; doneᵀ; ⟶*-trans; ⟶*-appˡ; ⟶*-appʳ; ⟶*-ielimⁱ; ⟶*-ielimᵗ; ⟶*-fst; ⟶*-snd; ⟶*-pairˡ; ⟶*-pairʳ; ⟶*-con; ⟶ᵀ*-IMu )
 open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_; conₗ; tag; Lt; lt-z; lt-s; subC; selF-sub; []ᵈ; _∷ᵈ_ )
-open import DirectedHoTT.Lib.SynView using ( PayV; payV-red; ⊢recFst; ⊢recSnd; ⊢atDepth )
+open import DirectedHoTT.Lib.SynView using ( PayV; payV-red; ⊢recFst; ⊢recSnd; ⊢atDepthSK )
 open import DirectedHoTT.Lib.FinFam using ( FinI; ffz; ⊢ffz; ⊢isuc )
 open import DirectedHoTT.Examples.Knot.Ctors
 open import DirectedHoTT.Examples.Knot.Ren using ( wk; wk-sub; ⊢wkS )
@@ -45,7 +45,7 @@ open Fib₀ KOK JT JT-sub ⊢JT CT CT-sub ⊢CT public
 -- a payload's fields at sort 0, the shape EXPLICIT (`PayV` computes on it)
 f0 : {Ξ : Ctx} {j p : RTm ⌊ Ξ ⌋} (s k : ℕ) (sh : Shape) →
      Ξ ⊢ p ∷ PayV (rec s k ∷ʰ sh) (pair (tag 0) j) (SI 2) (SD KSig) → Ξ ⊢ fst p ∷ K s (nsucs k j)
-f0 {j = j} s k sh dp = ⊢atDepth {a = tag 0} {j = j} {s = s} {k = k} (⊢recFst {s = s} {k = k} {sh = sh} dp)
+f0 {j = j} s k sh dp = ⊢atDepthSK {sg = KSig} {a = tag 0} {j = j} {s = s} {k = k} (⊢recFst {s = s} {k = k} {sh = sh} dp)
 
 r1 : {Ξ : Ctx} {j p : RTm ⌊ Ξ ⌋} (s k : ℕ) (sh : Shape) →
      Ξ ⊢ p ∷ PayV (rec s k ∷ʰ sh) (pair (tag 0) j) (SI 2) (SD KSig) → Ξ ⊢ snd p ∷ PayV sh (pair (tag 0) j) (SI 2) (SD KSig)
