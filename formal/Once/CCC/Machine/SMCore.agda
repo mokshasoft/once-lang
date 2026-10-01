@@ -1744,6 +1744,12 @@ module AbstractExec {FS : FrameSemantics} where
   -- `instr-load-code-addr n` writes `SV-Code n`. Two trusted-base
   -- axioms removed.
 
+  -- The fuel `instr-loop` runs its body with. A NAME, not the literal at the
+  -- call site: the termination checker reads a literal argument as a
+  -- million `suc`s when it compares the call against the clause's patterns.
+  loop-fuel : ℕ
+  loop-fuel = 1000000
+
   ------------------------------------------------------------------------
   -- Main exec-abstract definition
   ------------------------------------------------------------------------
@@ -2042,7 +2048,7 @@ module AbstractExec {FS : FrameSemantics} where
   -- Plan 0.29: generic loop — run `body` while `Scratch` is a nonzero
   -- counter, fuel-bounded (1e6 ≥ any real iteration count; out-of-fuel
   -- halts, matching the x86 `Semantics.exec` out-of-fuel `just s`).
-  exec-abstract (instr-loop body) s alloc = exec-loop 1000000 body s alloc
+  exec-abstract (instr-loop body) s alloc = exec-loop loop-fuel body s alloc
 
   -- Plan 0.29 (M5): register pokes (no heap, no slot, frame-preserving).
   -- alloc is returned unchanged (uniform proj₂).
