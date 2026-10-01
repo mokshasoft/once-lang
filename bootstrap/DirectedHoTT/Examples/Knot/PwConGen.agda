@@ -44,7 +44,7 @@ conPwcPi : {Ξ : Ctx} {j f0 f1 : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El ⌜Nat⌝ �
   Ξ ⊢ conₗ 0 (pair (idrefl (⌜Tm⌝ (nsuc j)) f1) unit) ∷ IMu Pwₘ.J PwF.DF (ixPw j (kcPi f0 f1) (f1))
 conPwcPi {Ξ} {j} {f0} {f1} dj df0 df1 =
   ⊢conRowₖ {Ξ} {1} {0} {Pwₘ.J} {PwF.DF} {ixPw j (kcPi f0 f1) (f1)} {⌜ TPwcPi j p c ⌝ᵗ} {(pair (idrefl (⌜Tm⌝ (nsuc j)) f1) unit)} {⌜ TPwcPi j p c ⌝ᵗ ∷ []} nth-z Pwₘ.⊢J PwF.⊢DF (⊢ixPw dj (⊢kcPi dj df0 df1) df1)
-    (PwF.fibF {s = 1} {k = 9} {j = j} {p = p} {c = c} (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))) (allrPwcPi dj dp dc)
+    (PwF.fibF {s = 1} {k = 9} {j = j} {p = p} {c = c} (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))) (allrPwcPi {j = j} {p = p} {c = c} dj dp dc)
     (⊢conv dPv (csymᵀ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))))
   where
     p c : RTm ⌊ Ξ ⌋
@@ -65,7 +65,7 @@ conPwcHom : {Ξ : Ctx} {j f0 f1 f2 e0 r0 : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El �
   Ξ ⊢ conₗ 0 (pair e0 (pair r0 (pair (idrefl (⌜Tm⌝ (nsuc j)) (kcHom e0 (kapp (wk 1 j f1) (kvar ffz)) (kapp (wk 1 j f2) (kvar ffz)))) unit))) ∷ IMu Pwₘ.J PwF.DF (ixPw j (kcHom f0 f1 f2) ((kcHom e0 (kapp (wk 1 j f1) (kvar ffz)) (kapp (wk 1 j f2) (kvar ffz)))))
 conPwcHom {Ξ} {j} {f0} {f1} {f2} {e0} {r0} dj df0 df1 df2 de0 dr0 =
   ⊢conRowₖ {Ξ} {1} {0} {Pwₘ.J} {PwF.DF} {ixPw j (kcHom f0 f1 f2) ((kcHom e0 (kapp (wk 1 j f1) (kvar ffz)) (kapp (wk 1 j f2) (kvar ffz))))} {⌜ TPwcHom j p c ⌝ᵗ} {(pair e0 (pair r0 (pair (idrefl (⌜Tm⌝ (nsuc j)) (kcHom e0 (kapp (wk 1 j f1) (kvar ffz)) (kapp (wk 1 j f2) (kvar ffz)))) unit)))} {⌜ TPwcHom j p c ⌝ᵗ ∷ []} nth-z Pwₘ.⊢J PwF.⊢DF (⊢ixPw dj (⊢kcHom dj df0 df1 df2) (⊢kcHom (⊢isuc dj) de0 (⊢kapp (⊢isuc dj) (⊢wkS (lt-s lt-z) dj df1) (⊢kvar (⊢isuc dj) (⊢ffz dj))) (⊢kapp (⊢isuc dj) (⊢wkS (lt-s lt-z) dj df2) (⊢kvar (⊢isuc dj) (⊢ffz dj)))))
-    (PwF.fibF {s = 1} {k = 11} {j = j} {p = p} {c = c} (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))) (allrPwcHom dj dp dc)
+    (PwF.fibF {s = 1} {k = 11} {j = j} {p = p} {c = c} (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))) (allrPwcHom {j = j} {p = p} {c = c} dj dp dc)
     (⊢conv dPv (csymᵀ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))))
   where
     p c : RTm ⌊ Ξ ⌋
