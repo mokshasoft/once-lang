@@ -18,6 +18,7 @@ typeCheckTests = testGroup "Type Checker (Agda)"
   [ interFunctionCallTests
   , recursionTests
   , builtinShadowingTests
+  , exFalsoTests
   ]
 
 ------------------------------------------------------------------------
@@ -273,6 +274,61 @@ builtinShadowingTests = testGroup "Generator names (D136)"
             ]
       result <- typeCheckSource source
       assertBool "bare snd must be the generator" (isLeft result)
+  ]
+
+------------------------------------------------------------------------
+-- Ex falso is explicit (D251)
+------------------------------------------------------------------------
+
+-- D251: the one ex falso is the initial morphism `initial` (`initial v`
+-- checks at any type). No other former is Void-sensitive, so a `Void`
+-- operand does not make `+`, `fst` or a `case` synthesize `Void`; usage is
+-- syntactic, and typing is closed under instantiating a parameter at `Void`.
+exFalsoTests :: TestTree
+exFalsoTests = testGroup "Ex falso is explicit (D251)"
+  [ testCase "initial v checks at any type" $ do
+      let source = T.unlines
+            [ "absurdInt : Void -> Int"
+            , "absurdInt v = initial v"
+            , ""
+            , "main : IO Unit"
+            , "main = id"
+            ]
+      result <- typeCheckSource source
+      result @?= Right ()
+
+  , testCase "a Void left operand does not type an ill-typed binop" $ do
+      let source = T.unlines
+            [ "bad : Void -> Unit -> Void"
+            , "bad v u = v + u"
+            , ""
+            , "main : IO Unit"
+            , "main = id"
+            ]
+      result <- typeCheckSource source
+      assertBool "v + u with u : Unit is ill-typed" (isLeft result)
+
+  , testCase "a Void right operand does not make a binop synthesize Void" $ do
+      let source = T.unlines
+            [ "bad : Int -> Void -> Void"
+            , "bad x v = x + v"
+            , ""
+            , "main : IO Unit"
+            , "main = id"
+            ]
+      result <- typeCheckSource source
+      assertBool "x + v is an Int (Void <: Int), not a Void" (isLeft result)
+
+  , testCase "fst of a Void does not synthesize" $ do
+      let source = T.unlines
+            [ "bad : Void -> Int"
+            , "bad v = fst v"
+            , ""
+            , "main : IO Unit"
+            , "main = id"
+            ]
+      result <- typeCheckSource source
+      assertBool "fst needs a product; ex falso is initial v" (isLeft result)
   ]
 
 ------------------------------------------------------------------------

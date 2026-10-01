@@ -92,64 +92,32 @@ sumTarget (A + B) = sum-at A B
 sumTarget _ = sum-other
 
 ------------------------------------------------------------------------
--- Operand view: is an operand's type `Void`? (D229: ex falso in an operator.)
--- The other case carries its evidence, which `t-binop-void-r` needs.
-------------------------------------------------------------------------
-
-open import Relation.Binary.PropositionalEquality using (_≡_)
-open import Relation.Nullary using (¬_)
-
-data VoidView : Type → Set where
-  is-void  : VoidView Void
-  non-void : ∀ {T} → ¬ (T ≡ Void) → VoidView T
-
-voidView : (T : Type) → VoidView T
-voidView Void          = is-void
-voidView Unit          = non-void (λ ())
-voidView Int           = non-void (λ ())
-voidView Float         = non-void (λ ())
-voidView Str           = non-void (λ ())
-voidView Buffer        = non-void (λ ())
-voidView (rigid _ _)   = non-void (λ ())
-voidView (_ * _)       = non-void (λ ())
-voidView (_ + _)       = non-void (λ ())
-voidView (_ ⇒[ _ ] _)  = non-void (λ ())
-voidView (μ-type _)    = non-void (λ ())
-voidView (ν-type _ _)  = non-void (λ ())
-
-------------------------------------------------------------------------
 -- Argument views of the infer-mode builtins whose argument's type decides
--- the rule: `Out` (a stream, or `Void`) and `apply` (a closure paired with its
--- argument, or `Void`).
+-- the rule: `Out` (a stream) and `apply` (a closure paired with its argument).
+-- D251: no view has a `Void` case; ex falso is `initial`.
 ------------------------------------------------------------------------
 
 data NuView : Type → Set where
   nu-at    : ∀ F π → NuView (ν-type F π)
-  nu-void  : NuView Void
   nu-other : ∀ {T} → NuView T
 
 nuView : (T : Type) → NuView T
 nuView (ν-type F π) = nu-at F π
-nuView Void         = nu-void
 nuView _            = nu-other
 
 data ApplyView : Type → Set where
   apply-at    : ∀ A π B A' → ApplyView ((A ⇒[ mk-kind Many π ] B) * A')
-  apply-void  : ApplyView Void
   apply-other : ∀ {T} → ApplyView T
 
 applyView : (T : Type) → ApplyView T
 applyView ((A ⇒[ mk-kind Many π ] B) * A') = apply-at A π B A'
-applyView Void = apply-void
 applyView _ = apply-other
 
--- `fst` / `snd` : a pair, or `Void`.
+-- `fst` / `snd` : a pair.
 data ProdView : Type → Set where
   prod-at    : ∀ A B → ProdView (A * B)
-  prod-void  : ProdView Void
   prod-other : ∀ {T} → ProdView T
 
 prodView : (T : Type) → ProdView T
 prodView (A * B) = prod-at A B
-prodView Void    = prod-void
 prodView _       = prod-other

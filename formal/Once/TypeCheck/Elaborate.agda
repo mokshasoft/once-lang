@@ -326,16 +326,6 @@ given-cata ctx alg F π wfF (success (X Once.Type.⇒[ k ] A) Surface.[] algE d 
     ((X Once.Type.⇒[ k ] A) ≟T (⟦ F ⟧T A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] A))
 given-cata ctx alg F π wfF (success _ _ _ _ _ , _) = failure (BuiltinTypeMismatch "cata") , tt
 
--- D229 / plan 0.94 §13: given `Void`, the algebra is built (it must still
--- synthesize) and the arrow is `¡`.
-given-cata-void : ∀ (ctx : NamedCtx) (alg : RawExpr) (π : Once.Type.Purity)
-                → VerifiedInferResult (ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx)) alg
-                → VerifiedGivenResult ctx (Raw.RApp (Raw.RResolved (gen "cata")) alg) Void π
-given-cata-void ctx alg π (failure err , _) = failure err , tt
-given-cata-void ctx alg π (success S Surface.[] algE d fr , w) =
-  success Void _ (seq0 (embedClosed algE) (Surface.lift-morphism IR.initial)) (suc d) (NamedCtx.freshCounter ctx)
-  , d-cata-void w
-
 
 -- The universal "infer-then-check" combinator — THE MODE SWITCH (D226 / plan
 -- 0.99). Given the expected check type `T` and the result of inferring `e`, it
@@ -676,8 +666,7 @@ notNumeric (failure err)                                 = just err
 notNumeric (success Int _ _ _ _)                         = nothing
 notNumeric (success Once.Type.Float _ _ _ _)             = nothing
 notNumeric (success Unit _ _ _ _)                        = just (TypeMismatch Int Unit)
--- D229 / plan 0.94 §13: a `Void` operand is a good one — ex falso.
-notNumeric (success Void _ _ _ _)                        = nothing
+notNumeric (success Void _ _ _ _)                        = just (TypeMismatch Int Void)
 notNumeric (success Str _ _ _ _)                         = just (TypeMismatch Int Str)
 notNumeric (success Buffer _ _ _ _)                      = just (TypeMismatch Int Buffer)
 notNumeric (success (rigid kᵣ iᵣ) _ _ _ _)                      = just (TypeMismatch Int (rigid kᵣ iᵣ))
@@ -953,13 +942,9 @@ elabGivenLeaf ctx .(gen "id") A π ahv-id _ =
   success A _ (Surface.lift-morphism IR.id) 0 (NamedCtx.freshCounter ctx) , d-id
 elabGivenLeaf ctx .(gen "fst") (A Once.Type.* B) π ahv-fst _ =
   success A _ (Surface.lift-morphism IR.fst) 0 (NamedCtx.freshCounter ctx) , d-fst
-elabGivenLeaf ctx .(gen "fst") Void π ahv-fst _ =
-  success Void _ (Surface.lift-morphism IR.initial) 0 (NamedCtx.freshCounter ctx) , d-fst-void
 elabGivenLeaf ctx .(gen "fst") _ π ahv-fst _ = failure (BuiltinTypeMismatch "fst") , tt
 elabGivenLeaf ctx .(gen "snd") (A Once.Type.* B) π ahv-snd _ =
   success B _ (Surface.lift-morphism IR.snd) 0 (NamedCtx.freshCounter ctx) , d-snd
-elabGivenLeaf ctx .(gen "snd") Void π ahv-snd _ =
-  success Void _ (Surface.lift-morphism IR.initial) 0 (NamedCtx.freshCounter ctx) , d-snd-void
 elabGivenLeaf ctx .(gen "snd") _ π ahv-snd _ = failure (BuiltinTypeMismatch "snd") , tt
 elabGivenLeaf ctx .(gen "terminal") A π ahv-terminal _ =
   success Unit _ (Surface.lift-morphism IR.terminal) 0 (NamedCtx.freshCounter ctx) , d-terminal
@@ -968,6 +953,12 @@ elabGivenLeaf ctx .(gen "initial") Void π ahv-initial _ =
 elabGivenLeaf ctx .(gen "initial") _ π ahv-initial _ = failure (BuiltinTypeMismatch "initial") , tt
 elabGivenLeaf ctx cn A π _ r = given-infer ctx (Raw.RResolved cn) A π r
 
+-- Recursion-scheme generators (Plan 0.28 Commit 2). The `…Go`/`…A/B/C`
+-- helpers take each decidable result as an explicit argument with its
+-- `refl` witness (no `with … in`), so the completeness fallbacks
+-- reduce them with plain nested `with | eq` — like `checkPair`.
+-- D194: `Out v` — the ν eliminator, INFER-mode (a check rule would have to
+-- invert `⟦ F ⟧T (ν-type F) ≡ T` to recover `F`).
 -- The IR `Out` at a stream of grade `π`, retyped to the layer's surface type.
 outIR : (F : Once.Type.Functor) (π : Once.Type.Purity) → Once.Functor.Translate.WellFormedF F
       → IR ⌊ Once.Type.ν-type F π ⌋ ⌊ ⟦ F ⟧T (Once.Type.ν-type F π) ⌋
@@ -989,6 +980,7 @@ inferOutGo ctx arg F Once.Type.pure Ψ argE d fr w (just wfF) eqW =
     (Surface.morph-app (outIR F Once.Type.pure wfF) argE)
     (suc d) fr
   , t-Out-app-infer wfF refl w
+-- D233: an EFFECTFUL stream — the stream is evaluated now, the force is
 -- suspended (`curry (Out ∘ fst)`), as `t-apply-eff-app-infer` suspends `apply`.
 inferOutGo ctx arg F Once.Type.eff Ψ argE d fr w (just wfF) eqW =
   success (Once.Type.Unit Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ]
@@ -1001,8 +993,6 @@ inferOutAt : (ctx : NamedCtx) (arg : RawExpr) {T : Type} (Ψ : Surface.Usage (Na
              (argE : SExpr (NamedCtx.debruijn ctx) Ψ T) (d fr : ℕ) → ctx ⊢ᵢ arg ∶ T ⨾ Ψ → NuView T
            → VerifiedInferResult ctx (Raw.RApp (Raw.RResolved (gen "Out")) arg)
 inferOutAt ctx arg Ψ argE d fr w (nu-at F π) = inferOutGo ctx arg F π Ψ argE d fr w (wellFormedF? F) refl
-inferOutAt ctx arg Ψ argE d fr w nu-void =
-  success Void _ (Surface.morph-app IR.initial argE) (suc d) fr , t-Out-app-void w
 inferOutAt ctx arg Ψ argE d fr w nu-other = failure (BuiltinTypeMismatch "Out") , tt
 
 -- `Out` / `apply` at the argument's result, then at its type's view.
@@ -1016,8 +1006,6 @@ inferFstAt : (ctx : NamedCtx) (arg : RawExpr) {T : Type} (Ψ : Surface.Usage (Na
            → VerifiedInferResult ctx (Raw.RApp (Raw.RResolved (gen "fst")) arg)
 inferFstAt ctx arg Ψ argE d fr w (prod-at A B) =
   success A _ (Surface.morph-app (IR.fst) argE) (suc d) fr , t-fst-app w
-inferFstAt ctx arg Ψ argE d fr w prod-void =
-  success Void _ (Surface.morph-app IR.initial argE) (suc d) fr , t-fst-app-void w
 inferFstAt ctx arg Ψ argE d fr w prod-other = failure FstNeedsPair , tt
 
 inferFstOn : (ctx : NamedCtx) (arg : RawExpr) → VerifiedInferResult ctx arg
@@ -1030,8 +1018,6 @@ inferSndAt : (ctx : NamedCtx) (arg : RawExpr) {T : Type} (Ψ : Surface.Usage (Na
            → VerifiedInferResult ctx (Raw.RApp (Raw.RResolved (gen "snd")) arg)
 inferSndAt ctx arg Ψ argE d fr w (prod-at A B) =
   success B _ (Surface.morph-app (IR.snd) argE) (suc d) fr , t-snd-app w
-inferSndAt ctx arg Ψ argE d fr w prod-void =
-  success Void _ (Surface.morph-app IR.initial argE) (suc d) fr , t-snd-app-void w
 inferSndAt ctx arg Ψ argE d fr w prod-other = failure SndNeedsPair , tt
 
 inferSndOn : (ctx : NamedCtx) (arg : RawExpr) → VerifiedInferResult ctx arg
@@ -1045,6 +1031,9 @@ inferApplyAt : (ctx : NamedCtx) (arg : RawExpr) {T : Type} (Ψ : Surface.Usage (
 inferApplyAt ctx arg Ψ argE d fr w (apply-at A Once.Type.pure B A') with A ≟T A'
 ... | yes refl = success B _ (Surface.morph-app IR.apply argE) (suc d) fr , t-apply-app-infer w
 ... | no _     = failure (BuiltinTypeMismatch "apply") , tt
+-- D222 / plan 0.95 A′: an EFFECTFUL closure. The result is a SUSPENSION
+-- `Unit ⇒[eff] B`, so the morphism is the thunk-builder `curry (apply ∘ fst)`
+-- rather than `apply` — the same shape `elaborate` gives `effApp`. The IR
 -- arrow is UNGRADED, so no new Surface former is needed.
 inferApplyAt ctx arg Ψ argE d fr w (apply-at A Once.Type.eff B A') with A ≟T A'
 ... | yes refl =
@@ -1052,8 +1041,6 @@ inferApplyAt ctx arg Ψ argE d fr w (apply-at A Once.Type.eff B A') with A ≟T 
           (Surface.morph-app (IR.curry (IR.apply IR.∘ IR.fst)) argE) (suc d) fr
   , t-apply-eff-app-infer w
 ... | no _ = failure (BuiltinTypeMismatch "apply") , tt
-inferApplyAt ctx arg Ψ argE d fr w apply-void =
-  success Void _ (Surface.morph-app IR.initial argE) (suc d) fr , t-apply-app-void w
 inferApplyAt ctx arg Ψ argE d fr w apply-other = failure (BuiltinTypeMismatch "apply") , tt
 
 inferApplyOn : (ctx : NamedCtx) (arg : RawExpr) → VerifiedInferResult ctx arg
@@ -1061,10 +1048,13 @@ inferApplyOn : (ctx : NamedCtx) (arg : RawExpr) → VerifiedInferResult ctx arg
 inferApplyOn ctx arg (failure err , _) = failure err , tt
 inferApplyOn ctx arg (success T Ψ argE d fr , w) = inferApplyAt ctx arg Ψ argE d fr w (applyView T)
 
+-- RPair dispatch as a top-level aux taking the two sub-results explicitly
+-- (no inline `with` → no opaque `with`-helper → downstream proofs recurse
 -- directly; [[feedback_with_clauses_painful]]).
 inferElabV-RPair-aux : (ctx : NamedCtx) (a b : RawExpr)
   → VerifiedInferResult ctx a → VerifiedInferResult ctx b
   → VerifiedInferResult ctx (Raw.RPair a b)
+-- RPair: pair the two sub-results (a-failure short-circuits without forcing
 -- b's result, matching the old left-to-right `with`).
 inferElabV-RPair-aux ctx a b (success A Ψ₁ aE da fa , wA) (success B Ψ₂ bE db fb , wB) =
   success (A Once.Type.* B) _ (Surface.pair aE bE) (da ⊔ db) fb , t-pair wA wB
@@ -1080,7 +1070,7 @@ inferElabV-RUnaryOp-aux : (ctx : NamedCtx) (e : RawExpr)
   → VerifiedInferResult ctx e → VerifiedInferResult ctx (Raw.RUnaryOp Raw.OpNeg e)
 inferElabV-RUnaryOp-aux ctx e (failure err , _)                = failure err , tt
 inferElabV-RUnaryOp-aux ctx e (success Unit   _ _ _ _ , _)     = failure (TypeMismatch Int Unit) , tt
-inferElabV-RUnaryOp-aux ctx e (success Void   Ψ eE d fr , w)   = success Void Ψ eE d fr , t-neg-void w
+inferElabV-RUnaryOp-aux ctx e (success Void   _ _ _ _ , _)     = failure (TypeMismatch Int Void) , tt
 inferElabV-RUnaryOp-aux ctx e (success Int    Ψ eE d fr , w)   = success Int _ (Surface.neg eE) (suc d) fr , t-neg w
 inferElabV-RUnaryOp-aux ctx e (success Float  _ _ _ _ , _)     = failure (TypeMismatch Int Float) , tt
 inferElabV-RUnaryOp-aux ctx e (success Str    _ _ _ _ , _)     = failure (TypeMismatch Int Str) , tt
@@ -1094,6 +1084,8 @@ inferElabV-RUnaryOp-aux ctx e (success (Once.Type.ν-type F π)   _ _ _ _ , _) =
 
 checkElabV-neg-int-aux : (ctx : NamedCtx) (n : ℤ) (T : Type)
   → VerifiedCheckResult ctx (Raw.RUnaryOp Raw.OpNeg (Raw.RInt n)) T
+-- Written out so the FOLDED literal is what gets embedded — routing through
+-- `inferElabV ctx (RUnaryOp OpNeg (RInt n))` would be the same term but
 -- would stop reducing wherever the view has been abstracted.
 checkElabV-neg-int-aux ctx n T with Int <:? T
 ... | yes p = success Surface.zeroUsage (Surface.coerce p (Surface.int (- n))) 1 (NamedCtx.freshCounter ctx)
@@ -1149,6 +1141,19 @@ inferElabV-RBinOp-aux ctx Raw.OpGe e₁ e₂ (success Int Ψ₁ e₁E d₁ f₁ 
 inferElabV-RBinOp-aux ctx Raw.OpEq e₁ e₂ (success Int Ψ₁ e₁E d₁ f₁ , w₁) (success Int Ψ₂ e₂E d₂ f₂ , w₂) = success (Unit Once.Type.+ Unit) _ (Surface.eq e₁E e₂E) (d₁ ⊔ d₂) f₂ , t-binop-cmp refl w₁ w₂
 inferElabV-RBinOp-aux ctx Raw.OpNe e₁ e₂ (success Int Ψ₁ e₁E d₁ f₁ , w₁) (success Int Ψ₂ e₂E d₂ f₂ , w₂) = success (Unit Once.Type.+ Unit) _ (Surface.ne e₁E e₂E) (d₁ ⊔ d₂) f₂ , t-binop-cmp refl w₁ w₂
 ----------------------------------------------------------------------
+-- PLAN 0.75 F4: `Float` ON THE LEFT SELECTS THE FLOAT FAMILY.
+--
+-- It used to be `BinOpLeftError (TypeMismatch Int Float)` with a catch-all
+-- for the right operand — "arithmetic means Int" — which is what made
+-- `1.5 - 2.1` report `expected Int but got Float`. The OPERAND TYPES decide
+-- which arithmetic runs; `+` is the same operator either way.
+--
+-- A MIXED PAIR IS STILL AN ERROR, and that is the decision, not a gap:
+-- there is no implicit widening, so `1 + 1.5` reports rather than silently
+-- promoting. A coercion the programmer did not write is a value
+-- substitution, which is D115's objection to a wrapped literal one type
+-- over.
+----------------------------------------------------------------------
 inferElabV-RBinOp-aux ctx op e₁ e₂ (success Float _ _ _ _ , _) (failure err , _) = failure (BinOpRightError err) , tt
 inferElabV-RBinOp-aux ctx op e₁ e₂ (success Float _ _ _ _ , _) (success Unit _ _ _ _ , _) = failure (BinOpRightError (TypeMismatch Float Unit)) , tt
 inferElabV-RBinOp-aux ctx op e₁ e₂ (success Float _ _ _ _ , _) (success Void _ _ _ _ , _) = failure (BinOpRightError (TypeMismatch Float Void)) , tt
@@ -1160,11 +1165,15 @@ inferElabV-RBinOp-aux ctx op e₁ e₂ (success Float _ _ _ _ , _) (success (A O
 inferElabV-RBinOp-aux ctx op e₁ e₂ (success Float _ _ _ _ , _) (success (A Once.Type.⇒[ k ] B) _ _ _ _ , _) = failure (BinOpRightError (TypeMismatch Float (A Once.Type.⇒[ k ] B))) , tt
 inferElabV-RBinOp-aux ctx op e₁ e₂ (success Float _ _ _ _ , _) (success (Once.Type.μ-type F) _ _ _ _ , _) = failure (BinOpRightError (TypeMismatch Float (Once.Type.μ-type F))) , tt
 inferElabV-RBinOp-aux ctx op e₁ e₂ (success Float _ _ _ _ , _) (success (Once.Type.ν-type F π) _ _ _ _ , _) = failure (BinOpRightError (TypeMismatch Float (Once.Type.ν-type F π))) , tt
+-- both Float → op dispatch. Only `+`, `−` and `×` exist here
 -- (`isFloatArithmeticOp`), and `Once.Float.Arith` records why.
 inferElabV-RBinOp-aux ctx Raw.OpAdd e₁ e₂ (success Float Ψ₁ e₁E d₁ f₁ , w₁) (success Float Ψ₂ e₂E d₂ f₂ , w₂) = success Float _ (Surface.fadd e₁E e₂E) (d₁ ⊔ d₂) f₂ , t-binop-arith-float refl w₁ w₂
 inferElabV-RBinOp-aux ctx Raw.OpSub e₁ e₂ (success Float Ψ₁ e₁E d₁ f₁ , w₁) (success Float Ψ₂ e₂E d₂ f₂ , w₂) = success Float _ (Surface.fsub e₁E e₂E) (d₁ ⊔ d₂) f₂ , t-binop-arith-float refl w₁ w₂
 inferElabV-RBinOp-aux ctx Raw.OpMul e₁ e₂ (success Float Ψ₁ e₁E d₁ f₁ , w₁) (success Float Ψ₂ e₂E d₂ f₂ , w₂) = success Float _ (Surface.fmul e₁E e₂E) (d₁ ⊔ d₂) f₂ , t-binop-arith-float refl w₁ w₂
 inferElabV-RBinOp-aux ctx Raw.OpDiv e₁ e₂ (success Float Ψ₁ e₁E d₁ f₁ , w₁) (success Float Ψ₂ e₂E d₂ f₂ , w₂) = success Float _ (Surface.fdiv e₁E e₂E) (d₁ ⊔ d₂) f₂ , t-binop-arith-float refl w₁ w₂
+-- `%` still has no float lowering — IEEE's `fmod` is a different function and
+-- needs its own decision — and a float comparison needs the Bool encoding
+-- `Int`'s own comparisons are STILL postulated over. Those six keep exactly
 -- the error they gave before this clause family existed.
 inferElabV-RBinOp-aux ctx Raw.OpMod e₁ e₂ (success Float _ _ _ _ , _) (success Float _ _ _ _ , _) = failure (BinOpLeftError (TypeMismatch Int Float)) , tt
 inferElabV-RBinOp-aux ctx Raw.OpLt e₁ e₂ (success Float _ _ _ _ , _) (success Float _ _ _ _ , _) = failure (BinOpLeftError (TypeMismatch Int Float)) , tt
@@ -1173,6 +1182,19 @@ inferElabV-RBinOp-aux ctx Raw.OpGt e₁ e₂ (success Float _ _ _ _ , _) (succes
 inferElabV-RBinOp-aux ctx Raw.OpGe e₁ e₂ (success Float _ _ _ _ , _) (success Float _ _ _ _ , _) = failure (BinOpLeftError (TypeMismatch Int Float)) , tt
 inferElabV-RBinOp-aux ctx Raw.OpEq e₁ e₂ (success Float _ _ _ _ , _) (success Float _ _ _ _ , _) = failure (BinOpLeftError (TypeMismatch Int Float)) , tt
 inferElabV-RBinOp-aux ctx Raw.OpNe e₁ e₂ (success Float _ _ _ _ , _) (success Float _ _ _ _ , _) = failure (BinOpLeftError (TypeMismatch Int Float)) , tt
+----------------------------------------------------------------------
+-- MIXED OPERANDS — the `Int` side WIDENS (D125).
+--
+-- `1 + 1.5` compiles, and the conversion is an explicit `Surface.i2f` node
+-- so it lowers to a real instruction rather than being a silent retyping.
+-- The widening is CORRECTLY ROUNDED (IEEE lists `convertFromInt` beside
+-- `+`), the error is bounded by half an ulp like every other rounding, and
+-- both targets already agree bit-for-bit — measured, so no D055-style
+-- decision and no backend guard.
+--
+-- Only `Int → Float`. `Float → Int` stays explicit: the hardware DIVERGES
+-- (x86 "integer indefinite", RISC-V saturates) and it is a narrowing where
+-- truncate-versus-round is the programmer's call.
 ----------------------------------------------------------------------
 inferElabV-RBinOp-aux ctx Raw.OpAdd e₁ e₂ (success Int Ψ₁ e₁E d₁ f₁ , w₁) (success Float Ψ₂ e₂E d₂ f₂ , w₂) = success Float _ (Surface.fadd (Surface.i2f e₁E) e₂E) (d₁ ⊔ d₂) f₂ , t-binop-arith-float-il refl w₁ w₂
 inferElabV-RBinOp-aux ctx Raw.OpSub e₁ e₂ (success Int Ψ₁ e₁E d₁ f₁ , w₁) (success Float Ψ₂ e₂E d₂ f₂ , w₂) = success Float _ (Surface.fsub (Surface.i2f e₁E) e₂E) (d₁ ⊔ d₂) f₂ , t-binop-arith-float-il refl w₁ w₂
@@ -1200,38 +1222,6 @@ inferElabV-RBinOp-aux ctx Raw.OpGe e₁ e₂ (success Float _ _ _ _ , _) (succes
 inferElabV-RBinOp-aux ctx Raw.OpEq e₁ e₂ (success Float _ _ _ _ , _) (success Int _ _ _ _ , _) = failure (BinOpRightError (TypeMismatch Float Int)) , tt
 inferElabV-RBinOp-aux ctx Raw.OpNe e₁ e₂ (success Float _ _ _ _ , _) (success Int _ _ _ _ , _) = failure (BinOpRightError (TypeMismatch Float Int)) , tt
 
-inferElabV-RBinOp-void-r : (ctx : NamedCtx) (op : Raw.BinOp) (e₁ e₂ : RawExpr)
-  {A : Type} (Ψ₁ : Surface.Usage (NamedCtx.size ctx)) (e₁E : SExpr (NamedCtx.debruijn ctx) Ψ₁ A) (d₁ f₁ : ℕ)
-  → ctx ⊢ᵢ e₁ ∶ A ⨾ Ψ₁ → ¬ (A ≡ Once.Type.Void)
-  → {B : Type} (Ψ₂ : Surface.Usage (NamedCtx.size ctx)) (e₂E : SExpr (NamedCtx.debruijn ctx) Ψ₂ B) (d₂ f₂ : ℕ)
-  → ctx ⊢ᵢ e₂ ∶ B ⨾ Ψ₂ → VoidView B
-  → VerifiedInferResult ctx (Raw.RBinOp op e₁ e₂)
-inferElabV-RBinOp-void-r ctx op e₁ e₂ Ψ₁ e₁E d₁ f₁ w₁ ne Ψ₂ e₂E d₂ f₂ w₂ is-void =
-  success Void _ (seq e₁E e₂E) (d₁ ⊔ d₂) f₂ , t-binop-void-r w₁ ne w₂
-inferElabV-RBinOp-void-r ctx op e₁ e₂ Ψ₁ e₁E d₁ f₁ w₁ ne Ψ₂ e₂E d₂ f₂ w₂ (non-void _) =
-  inferElabV-RBinOp-aux ctx op e₁ e₂ (success _ Ψ₁ e₁E d₁ f₁ , w₁) (success _ Ψ₂ e₂E d₂ f₂ , w₂)
-
--- The `Void` cases at the operands' `VoidView`s (left, then right).
-inferElabV-RBinOp-void-l : (ctx : NamedCtx) (op : Raw.BinOp) (e₁ e₂ : RawExpr)
-  {A : Type} (Ψ₁ : Surface.Usage (NamedCtx.size ctx)) (e₁E : SExpr (NamedCtx.debruijn ctx) Ψ₁ A) (d₁ f₁ : ℕ)
-  → ctx ⊢ᵢ e₁ ∶ A ⨾ Ψ₁ → VoidView A → VerifiedInferResult ctx e₂
-  → VerifiedInferResult ctx (Raw.RBinOp op e₁ e₂)
-inferElabV-RBinOp-void-l ctx op e₁ e₂ Ψ₁ e₁E d₁ f₁ w₁ is-void (failure err , _) = failure (BinOpRightError err) , tt
-inferElabV-RBinOp-void-l ctx op e₁ e₂ Ψ₁ e₁E d₁ f₁ w₁ is-void (success B Ψ₂ e₂E d₂ f₂ , w₂) =
-  success Void Ψ₁ e₁E d₁ f₁ , t-binop-void-l w₁ w₂
-inferElabV-RBinOp-void-l ctx op e₁ e₂ Ψ₁ e₁E d₁ f₁ w₁ (non-void _) r₂@(failure _ , _) =
-  inferElabV-RBinOp-aux ctx op e₁ e₂ (success _ Ψ₁ e₁E d₁ f₁ , w₁) r₂
-inferElabV-RBinOp-void-l ctx op e₁ e₂ Ψ₁ e₁E d₁ f₁ w₁ (non-void ne) (success B Ψ₂ e₂E d₂ f₂ , w₂) =
-  inferElabV-RBinOp-void-r ctx op e₁ e₂ Ψ₁ e₁E d₁ f₁ w₁ ne Ψ₂ e₂E d₂ f₂ w₂ (voidView B)
-
-inferElabV-RBinOp-void : (ctx : NamedCtx) (op : Raw.BinOp) (e₁ e₂ : RawExpr)
-  → VerifiedInferResult ctx e₁ → VerifiedInferResult ctx e₂
-  → VerifiedInferResult ctx (Raw.RBinOp op e₁ e₂)
--- after the left one ran. Everything else is the arithmetic dispatch.
-inferElabV-RBinOp-void ctx op e₁ e₂ r₁@(failure _ , _) r₂ = inferElabV-RBinOp-aux ctx op e₁ e₂ r₁ r₂
-inferElabV-RBinOp-void ctx op e₁ e₂ (success A Ψ₁ e₁E d₁ f₁ , w₁) r₂ =
-  inferElabV-RBinOp-void-l ctx op e₁ e₂ Ψ₁ e₁E d₁ f₁ w₁ (voidView A) r₂
-
 inferElabV-RLet-aux2 : (ctx : NamedCtx) (x : String) (e₁ e₂ : RawExpr)
   {A : Type} {Ψ₁ : Surface.Usage (NamedCtx.size ctx)}
   (e₁E : SExpr (NamedCtx.debruijn ctx) Ψ₁ A) (d₁ f₁ : ℕ)
@@ -1241,15 +1231,6 @@ inferElabV-RLet-aux2 : (ctx : NamedCtx) (x : String) (e₁ e₂ : RawExpr)
 inferElabV-RLet-aux2 ctx x e₁ e₂ e₁E d₁ f₁ w₁ (failure err , _) = failure err , tt
 inferElabV-RLet-aux2 ctx x e₁ e₂ e₁E d₁ f₁ w₁ (success B (q ∷ᵘ Ψ₂) e₂E d₂ f₂ , w₂) =
   success B _ (Surface.let' e₁E e₂E) (d₁ ⊔ suc d₂) f₂ , t-let w₁ w₂
-
-inferElabV-RDestruct-voidR : (ctx : NamedCtx) (scrut : RawExpr) (xL : String) (eL : RawExpr) (xR : String) (eR : RawExpr)
-  → ∀ {Ψs} → SExpr (NamedCtx.debruijn ctx) Ψs Void → (ds fs : ℕ) → ctx ⊢ᵢ scrut ∶ Void ⨾ Ψs
-  → ∀ {C₁ qℓ Ψₗ} → (extendNamedCtx ctx xL Void) ⊢ᵢ eL ∶ C₁ ⨾ (qℓ ∷ᵘ Ψₗ)
-  → VerifiedInferResult (extendNamedCtx ctx xR Void) eR
-  → VerifiedInferResult ctx (Raw.RDestruct scrut xL eL xR eR)
-inferElabV-RDestruct-voidR ctx scrut xL eL xR eR scrutE ds fs wS wL (failure err , _) = failure err , tt
-inferElabV-RDestruct-voidR ctx scrut xL eL xR eR scrutE ds fs wS wL (success C₂ (qr ∷ᵘ Ψᵣ) eRE dR fR , wR) =
-  success Void _ scrutE ds fs , t-case-void wS wL wR
 
 inferElabV-RDestruct-auxR : (ctx : NamedCtx) (scrut : RawExpr) (xL : String) (eL : RawExpr) (xR : String) (eR : RawExpr)
   (A B : Type) {Ψs : Surface.Usage (NamedCtx.size ctx)}
@@ -1266,10 +1247,26 @@ inferElabV-RDestruct-auxR ctx scrut xL eL xR eR A B scrutE ds fs wS {C₁ = C₁
 ... | yes refl = success C₁ _ (Surface.case' scrutE eLE eRE) (ds ⊔ suc dL ⊔ suc dR) fR , t-case wS wL wR
 ... | no _     = failure CaseBranchMismatch , tt
 
+-- | Build an external arrow op's `SigOpInfo` from its DECLARED effect
+-- (Plan 0.38 M0.2). The compiler is interpretation-BLIND: the effect
+-- comes from the `! <shape>` annotation in the imported signature
+-- (looked up in `NamedCtx.sigEffects` by the same qualified key as the
+-- type), NEVER from a hardcoded name (the retired effect-from-name guess is
+-- gone). An effectful, `Unit`-codomain op carries a CONTRACT
+-- (`haltsV`/`emitsV`), no value. A pure arrow, or an `eff` op whose
+-- codomain is not `Unit` (the deferred data-returning-syscall
+-- boundary), falls back to a `pureV` value (the `closure`/`poly`-style
 -- function-linking opacity, a separate axis from the syscall contract).
 ext-arrow-info : ∀ {A B} → NamedCtx → (alias name : String) → Purity
                → IsBaseType A → IsConcrete B → SigOpInfo A B
 ext-arrow-info ctx alias name pure bA cB = mk-info' (bare (alias ++ "." ++ name)) (pureV (generic-semM (alias ++ "." ++ name))) bA cB
+-- plan 0.98 stage E: THE CODOMAIN DECIDES. 0.97 asked a name-keyed side
+-- table (`lookupSigEffect (NamedCtx.sigEffects ctx)`) whether an op halts,
+-- because `Emits` and `Halts` carried the SAME index (`B ≡ Unit`) and the
+-- type could not tell them apart — §1's finding, and the root cause of
+-- `masq`'s `true != false`. `Halts` carries `B ≡ Void` now, so the
+-- distinction is in the type and the table has nothing left to say. An
+-- external op that returns nothing HALTS; one that returns `Unit` EMITS;
 -- anything else is a value contract.
 ext-arrow-info {A} {B} ctx alias name eff bA cB with B ≟T Void
 ... | yes refl = mk-info' (bare (alias ++ "." ++ name)) (haltsV refl) bA cB
@@ -1277,6 +1274,9 @@ ext-arrow-info {A} {B} ctx alias name eff bA cB with B ≟T Void
 ...   | yes refl = mk-info' (bare (alias ++ "." ++ name)) (emitsV refl) bA cB
 ...   | no _     = mk-info' (bare (alias ++ "." ++ name)) (pureV (generic-semM (alias ++ "." ++ name))) bA cB
 
+-- Plan 0.58: the arrow-value case DE-WITHES the concreteness decision
+-- (`isBaseType? A`/`isConcrete? B`) into explicit Maybe args + equations, so
+-- the Completeness proof can drive it to the `success` branch (mirroring the
 -- lookup de-with above). Without this the `with` is opaque to external proofs.
 inferElabV-RQualified-arrow-aux :
   ∀ (ctx : NamedCtx) (name alias : String) {A B : Type} {π : Once.Type.Purity}
@@ -1310,11 +1310,23 @@ inferElabV-RQualified-value-aux ctx name alias ty eq (just conc) _ =
 inferElabV-RQualified-value-aux ctx name alias ty eq nothing _ =
   failure (NonConcreteSigOpType (alias ++ "." ++ name) ty) , tt
 
+-- Aux helpers that take the lookup result + equation as explicit args,
+-- so external proofs can pattern-match on the Maybe and supply the eq
 -- without `with...in` opacity.
 inferElabV-RQualified-aux :
   ∀ (ctx : NamedCtx) (name alias : String) (lhs : Maybe Type)
   → lookupImport (NamedCtx.imports ctx) (alias ++ "." ++ name) ≡ lhs
   → VerifiedInferResult ctx (Raw.RQualified name alias)
+-- Aux helper bodies (placed after all main mutual members so that the
+-- `... | pat` continuations of inferElabV/checkElabV clauses don't
+-- conflict with the aux's own clauses).
+-- A qualified ref `name@alias` is ALWAYS genuinely external (from an
+-- import, never a local userFn). Used as a value at a `Many`-arrow type it
+-- IS the external `SigOp (generic-info name)`; emit it as `lift-morphism`
+-- so `extract-morph`/`extract-morph-eff` recover it BY CONSTRUCTION and the
+-- eff `case`/`compose` fuse the algebra to a DIRECT morphism (no apply, no
+-- effApp suspension). The distinguisher the laundering bug lacked: internal
+-- `seven` is unqualified → stays `sigOp` → resolver → closure; only genuine
 -- externals become `lift-morphism (SigOp …)`.
 inferElabV-RQualified-aux ctx name alias
   (just (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B)) eq =
@@ -1324,6 +1336,17 @@ inferElabV-RQualified-aux ctx name alias (just ty) eq =
 inferElabV-RQualified-aux ctx name alias nothing _ =
   failure (UnboundQualified name alias) , tt
 
+-- Plan 0.50: resolved external ref. The canonical name `cn` is carried
+-- straight into the `SigOpInfo` (NO `bare`, NO String render) — so the
+-- realize/elaborator/trace/codegen names agree by construction. Mirrors
+-- `ext-arrow-info`/`inferElabV-RQualified-aux` but keyed by `cn`.
+-- De-withed (so the realize-agrees masquerade can fold it): the two
+-- codomain decisions are explicit args.
+--
+-- plan 0.98 stage E: the second argument was `Maybe SigEffect` — the
+-- name-keyed side table. It is `Dec (B ≡ Unit)` now, because the codomain
+-- is what decides: `Void` HALTS, `Unit` EMITS, anything else is a value
+-- contract. Nothing is keyed by name any more, which is what lets `masq`
 -- fold: the elaborator and `⟦_⟧ˢ` read the SAME thing.
 ext-resolved-info-aux : ∀ {A B} → CanonicalName → Purity
                       → Dec (B ≡ Void) → Dec (B ≡ Unit)
@@ -1340,6 +1363,9 @@ ext-resolved-info {A} {B} ctx cn π bA cB =
   -- the realize-agrees masquerade folds both with one case-split.
   ext-resolved-info-aux cn π (Once.Type.isVoid? B) (Once.Type.isUnit? B) bA cB
 
+-- D248: a resolved reference to the OWN module (`canonical [x]`, the resolver's
+-- `rv-own`/`name@this`) names a module entry, so it is a CALL of that entry
+-- (D246), exactly as a bare reference is. Only a reference into ANOTHER module
 -- (a path of two or more parts, an inlined FFI signature) is a SigOp.
 resolvedArrowTerm : ∀ {A B} (ctx : NamedCtx) → CanonicalName → (π : Purity)
                   → IsBaseType A → IsConcrete B
@@ -1396,6 +1422,10 @@ inferElabV-RResolved-aux ctx cn ng (just ty) eq =
 inferElabV-RResolved-aux ctx cn ng nothing _ =
   failure (UnboundVariable (showCanonical cn)) , tt
 
+-- Plan 0.58: DE-WITH the import-value concreteness decision.
+-- D136: the reserved-word decision is DE-WITHED like the concreteness one,
+-- because it is what discharges `t-var-import`'s `¬ GenWord x`. A reserved
+-- word in the import table is unreachable bare (write `x@this`), so it
 -- reports the same `UnboundVariable` a missing name would.
 inferElabV-RVar-import-value-aux :
   ∀ (ctx : NamedCtx) (x : String)
@@ -1424,24 +1454,22 @@ inferElabV-RVar-lookup-aux ctx x (just (A , Ψ , eV)) eq-loc _ _ =
   success A Ψ (Surface.svar→expr eV) 0 (NamedCtx.freshCounter ctx) , t-var-local eq-loc
 inferElabV-RVar-lookup-aux ctx x nothing eq-loc (just ty) eq-imp =
   inferElabV-RVar-import-value-aux ctx x eq-loc ty eq-imp (genWord? x) refl (isConcrete? ty) refl
+-- Plan 0.58 / D071: both lookups failed — try the telescope (poly) fallback:
 -- a GROUND own-module def infers at its declared type; otherwise fail.
 inferElabV-RVar-lookup-aux ctx x nothing eq-loc nothing eq-imp =
   inferElabV-RVar-poly-aux ctx x eq-loc eq-imp
 
--- D229 / plan 0.94 §13: the head halts; the argument is typed, never reached.
-inferElabV-RApp-void :
-  ∀ (ctx : NamedCtx) (f x : RawExpr) → classifyAppHead f ≡ nothing
-  → ∀ {Ψ₁} → SExpr (NamedCtx.debruijn ctx) Ψ₁ Void → (df ff : ℕ) → ctx ⊢ᵢ f ∶ Void ⨾ Ψ₁
-  → VerifiedInferResult ctx x
-  → VerifiedInferResult ctx (Raw.RApp f x)
-inferElabV-RApp-void ctx f x eqAH fE df ff wF (failure err , _) = failure err , tt
-inferElabV-RApp-void ctx f x eqAH fE df ff wF (success X Ψ₂ xE dx fx , wX) =
-  success Void _ fE df ff , t-app-void eqAH wF wX
-
+-- Plan 0.4 T2: bbc-X failure-branch aux helpers. Each is hardcoded
+-- to its builtin name (forced by the `bbc-X` constructor at the call
+-- site). Takes lookupLocal/lookupImport results + equations as
+-- explicit args (eliminating `with...in eq-loc/eq-imp` opacity).
+-- Returns success at the canonical builtin type if all conditions
 -- match, failure otherwise.
 checkElabV-RVar-bbc-id-failure-aux :
   ∀ (ctx : NamedCtx) (T : Type) (err : TypeError)
   → VerifiedCheckResult ctx (Raw.RResolved (gen "id")) T
+-- bbc-X failure-branch aux bodies. Each pattern-matches on T to the
+-- canonical builtin shape and on the lookup results. Success iff
 -- T = canonical & both lookups nothing & inner type-checks pass.
 checkElabV-RVar-bbc-id-failure-aux ctx (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] Y) err with X ≟T Y
 ... | yes refl =
@@ -1654,11 +1682,15 @@ checkElabV-RVar-bbc-inr-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once
 checkElabV-RVar-bbc-inr-failure-aux ctx (Once.Type.μ-type _) err = failure err , tt
 checkElabV-RVar-bbc-inr-failure-aux ctx (Once.Type.ν-type _ _) err = failure err , tt
 
+-- Per-bbc-X aux taking the inferElab result explicitly. Eliminates
+-- the inner with-helper opacity. Each bbc-X's success-via-infer path
 -- uses t-embed; the failure path delegates to bbc-X-failure-aux.
 checkElabV-RVar-bbc-id-aux :
   ∀ (ctx : NamedCtx) (T : Type)
   → VerifiedInferResult ctx (Raw.RResolved (gen "id"))
   → VerifiedCheckResult ctx (Raw.RResolved (gen "id")) T
+-- Per-bbc-X auxes: pattern-match on the verified inferElabV result
+-- (Σ-pair). The success path uses t-embed of the witness; the
 -- failure path delegates to bbc-X-failure-aux.
 checkElabV-RVar-bbc-id-aux ctx T r@(success _ _ _ _ _ , _) = embedOrSubsume ctx (Raw.RResolved (gen "id")) T r
 checkElabV-RVar-bbc-id-aux ctx T (failure err , _) =
@@ -1712,13 +1744,22 @@ checkElabV-RVar-bbc-inr-aux ctx T r@(success _ _ _ _ _ , _) = embedOrSubsume ctx
 checkElabV-RVar-bbc-inr-aux ctx T (failure err , _) =
   checkElabV-RVar-bbc-inr-failure-aux ctx T err
 
+-- D136 dispatchers. View + its defining equation, so a caller can recover
 -- `classifyGen cn ≡ gv` after a `with`-match (the `viewBundle` idiom).
 inferElabV-RResolved-dispatch :
   ∀ (ctx : NamedCtx) (cn : CanonicalName) → GenView cn
   → VerifiedInferResult ctx (Raw.RResolved cn)
+-- `unit` is the one generator that INFERS; the rest are polymorphic and only
+-- check, so they fall to the ordinary resolved path (which reports the right
 -- error for a bare use).
 inferElabV-RResolved-dispatch ctx _ gv-unit =
   success Unit _ Surface.unit 0 (NamedCtx.freshCounter ctx) , t-unit-var
+-- D136: a generator's canonical name is COMPILER-OWNED, so looking it up in
+-- the user's import table is meaningless — these fail directly rather than
+-- routing through `inferElabV-RResolved-aux`. The seven point-free
+-- generators are polymorphic and do not infer; they must appear applied or
+-- in check mode, which is what `UnboundVariable` has always reported here.
+-- Failing directly is also what lets the `checkElab-fallback-RVar-*` lemmas
 -- reduce without a "Generators.* is not imported" premise nobody could supply.
 inferElabV-RResolved-dispatch ctx cn gv-id       = failure (UnboundVariable "id") , tt
 inferElabV-RResolved-dispatch ctx cn gv-fst      = failure (UnboundVariable "fst") , tt
@@ -1754,8 +1795,11 @@ checkElabV-RVar-bbc-other-aux :
   ∀ (ctx : NamedCtx) (x : String) (T : Type)
   → VerifiedInferResult ctx (Raw.RVar x)
   → VerifiedCheckResult ctx (Raw.RVar x) T
+-- bbc-other: success-via-infer mirrors the others; failure goes
 -- through lookupPoly fallback (still postulate-witnessed).
 checkElabV-RVar-bbc-other-aux ctx x T r@(success _ _ _ _ _ , _) = embedOrSubsume ctx (Raw.RVar x) T r
+-- Plan 0.103 phase 2a: the rule's premises are DECIDED — not a local or an
+-- import, a non-ground telescope entry, at an instance of its schema; only
 -- the body's typing at the instance is the phase-6 residual.
 checkElabV-RVar-bbc-other-aux ctx x T (failure err , _) =
   checkElabV-RVar-poly-check-aux ctx x T err
@@ -1765,16 +1809,32 @@ checkElabV-RVar-bbc-other-aux ctx x T (failure err , _) =
 checkElabV-RFloat-aux :
   ∀ (ctx : NamedCtx) (i f l p : ℕ) (T : Type)
   → VerifiedCheckResult ctx (Raw.RFloat i f l p) T
+-- RInt: value-lift on a pure-arrow-to-Int target, else generic infer+match.
+-- `refl` refines `T` to the arrow so `t-value-lift (g-int n)` types; the
+-- `nothing` branch reproduces the old generic clause for RInt verbatim.
+-- RFloat: value-lift on a pure-arrow-to-Float target; otherwise embed at
+-- `Float` or report a genuine type mismatch. The only failure left is a type
 -- mismatch — representability is no longer a way to fail.
 checkElabV-RFloat-aux ctx i f l p T with Once.Type.Float <:? T
 ... | yes s = success Surface.zeroUsage (Surface.coerce s (Surface.float (decimalOf i f l))) 0 (NamedCtx.freshCounter ctx)
             , t-sub (t-float i f l p) s
 ... | no _  = failure (TypeMismatch T Once.Type.Float) , tt
 
+-- RFloat infer-mode. No dispatch _ left at all — it is the `RInt` clause with
 -- `decimalOf` in place of the digit.
 inferElabV-RFloat-aux :
   ∀ (ctx : NamedCtx) (i f l p : ℕ)
   → VerifiedInferResult ctx (Raw.RFloat i f l p)
+-- RFloat: F4's decision, made once and passed in.
+--
+-- The accepted branch hands the witness straight to BOTH the Surface node
+-- and `t-float` — the same evidence, so the elaborated term and its typing
+-- derivation cannot disagree about which literals are legal.
+--
+-- The rejected branch is a REAL ERROR carrying the digits the user wrote,
+-- not a rounded value. That is the whole point of plan 0.71: `0.1` does not
+-- become the nearest double, it fails to compile.
+-- TOTAL. `FloatNotRepresentable` is unreachable from here now; the literal
 -- always elaborates and the target rounds it.
 inferElabV-RFloat-aux ctx i f l p =
   success Float _ (Surface.float (decimalOf i f l)) 0 (NamedCtx.freshCounter ctx)
@@ -1836,12 +1896,6 @@ mutual
              → VerifiedCheckResult ctx (Raw.RApp (Raw.RResolved (gen "curry")) arg) T
   checkCurryOn : (ctx : NamedCtx) (arg : RawExpr) (T : Type) → CurryTarget T
                → VerifiedCheckResult ctx (Raw.RApp (Raw.RResolved (gen "curry")) arg) T
-  -- Recursion-scheme generators (Plan 0.28 Commit 2). The `…Go`/`…A/B/C`
-  -- helpers take each decidable result as an explicit argument with its
-  -- `refl` witness (no `with … in`), so the completeness fallbacks
-  -- reduce them with plain nested `with | eq` — like `checkPair`.
-  -- D194: `Out v` — the ν eliminator, INFER-mode (a check rule would have to
-  -- invert `⟦ F ⟧T (ν-type F) ≡ T` to recover `F`).
   inferOut : (ctx : NamedCtx) → (arg : RawExpr)
            → VerifiedInferResult ctx (Raw.RApp (Raw.RResolved (gen "Out")) arg)
 
@@ -1878,13 +1932,6 @@ mutual
              → VerifiedCheckResult ctx (Raw.RApp (Raw.RResolved (gen "ana")) coalg)
                                        (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π₀ ] Once.Type.ν-type F π)
 
-  -- Plan 0.4 T0 Option A: hoist the `ahv-other` (generic application)
-  -- branch of `inferElab RApp` into its own top-level mutual member.
-  -- The body is structurally identical to the previous in-place
-  -- clause; the win is that `inferElab ctx (RApp f x) | ahv-other`
-  -- now reduces to a *named* function call rather than to the
-  -- `inferElab` case tree's anonymous with-helper. Soundness for the
-  -- `ahv-other` view branch (`spec-gap-RApp-ahv-other`) can pattern-
 
   -- Plan 0.4 T0 Option B — verified elaborator declarations.
   inferElabV : (ctx : NamedCtx) (e : RawExpr) → VerifiedInferResult ctx e
@@ -1903,8 +1950,6 @@ mutual
   -- premises into the dispatch chain without navigating opaque
   -- `with`-helpers.
   inferElabV-RApp-other : (ctx : NamedCtx) (f x : RawExpr) → VerifiedInferResult ctx (Raw.RApp f x)
-  -- RPair dispatch as a top-level aux taking the two sub-results explicitly
-  -- (no inline `with` → no opaque `with`-helper → downstream proofs recurse
   -- PLAN 0.74 J6 step 3: a minus directly on a NUMERAL is one literal, not a
   -- runtime negation of another one. Split out as a named dispatch (the
   -- file's `inferElabV-RApp-dispatch` convention) so the definitional
@@ -1946,25 +1991,12 @@ mutual
   inferElabV-RDestruct-aux : (ctx : NamedCtx) (scrut : RawExpr) (xL : String) (eL : RawExpr) (xR : String) (eR : RawExpr)
     → VerifiedInferResult ctx scrut
     → VerifiedInferResult ctx (Raw.RDestruct scrut xL eL xR eR)
-  inferElabV-RDestruct-voidL : (ctx : NamedCtx) (scrut : RawExpr) (xL : String) (eL : RawExpr) (xR : String) (eR : RawExpr)
-    → ∀ {Ψs} → SExpr (NamedCtx.debruijn ctx) Ψs Void → (ds fs : ℕ) → ctx ⊢ᵢ scrut ∶ Void ⨾ Ψs
-    → VerifiedInferResult (extendNamedCtx ctx xL Void) eL
-    → VerifiedInferResult ctx (Raw.RDestruct scrut xL eL xR eR)
   inferElabV-RDestruct-auxL : (ctx : NamedCtx) (scrut : RawExpr) (xL : String) (eL : RawExpr) (xR : String) (eR : RawExpr)
     (A B : Type) {Ψs : Surface.Usage (NamedCtx.size ctx)}
     (scrutE : SExpr (NamedCtx.debruijn ctx) Ψs (A Once.Type.+ B)) (ds fs : ℕ)
     (wS : ctx ⊢ᵢ scrut ∶ (A Once.Type.+ B) ⨾ Ψs)
     → VerifiedInferResult (extendNamedCtx ctx xL A) eL
     → VerifiedInferResult ctx (Raw.RDestruct scrut xL eL xR eR)
-  -- Aux helpers that take the lookup result + equation as explicit args,
-  -- so external proofs can pattern-match on the Maybe and supply the eq
-  -- Plan 0.58: the arrow-value case DE-WITHES the concreteness decision
-  -- (`isBaseType? A`/`isConcrete? B`) into explicit Maybe args + equations, so
-  -- the Completeness proof can drive it to the `success` branch (mirroring the
-  -- Plan 0.58: DE-WITH the import-value concreteness decision.
-  -- D136: the reserved-word decision is DE-WITHED like the concreteness one,
-  -- because it is what discharges `t-var-import`'s `¬ GenWord x`. A reserved
-  -- word in the import table is unreachable bare (write `x@this`), so it
   inferElabV-RApp-other-aux :
     ∀ (ctx : NamedCtx) (f x : RawExpr) (lhs : Maybe PolyBuiltinApp)
     → classifyAppHead f ≡ lhs
@@ -1982,14 +2014,6 @@ mutual
     ∀ (ctx : NamedCtx) (f x : RawExpr) → classifyAppHead f ≡ nothing
     → VerifiedInferResult ctx x
     → VerifiedInferResult ctx (Raw.RApp f x)
-  -- Plan 0.4 T2: bbc-X failure-branch aux helpers. Each is hardcoded
-  -- to its builtin name (forced by the `bbc-X` constructor at the call
-  -- site). Takes lookupLocal/lookupImport results + equations as
-  -- explicit args (eliminating `with...in eq-loc/eq-imp` opacity).
-  -- Returns success at the canonical builtin type if all conditions
-  -- Per-bbc-X aux taking the inferElab result explicitly. Eliminates
-  -- the inner with-helper opacity. Each bbc-X's success-via-infer path
-  -- D136 dispatchers. View + its defining equation, so a caller can recover
 
   -- D127: NO value-lift dispatch. A literal has ONE meaning at ONE type, so
   -- check mode is infer-and-match and nothing about the literal is decided by
@@ -1999,7 +2023,6 @@ mutual
     ∀ (ctx : NamedCtx) (n : ℤ) (T : Type)
     → VerifiedCheckResult ctx (Raw.RInt n) T
 
-  -- RFloat infer-mode. No dispatch _ left at all — it is the `RInt` clause with
 
   -- RPair check-mode dispatch, taking the target classification explicitly
   -- (product / pure-arrow-to-product / other). One scrutinee, no overlap.
@@ -2010,17 +2033,9 @@ mutual
 
   -- ===== inferElab =====
 
-  -- Literals
 
   -- ===== checkElab =====
 
-  -- Lambda in check mode: destruct expected function type
-  --
-  -- The body's first-position usage `q'` must satisfy `q' ≤q q`; we
-  -- need the Bool decision *with its proof* to construct `Surface.lam`.
-  -- Returning the decision via a `Maybe`-wrapping helper (`decideLeq`,
-  -- defined above) avoids the stdlib `inspect` idiom, whose internal
-  -- `with`-helper name is opaque to external proofs.
 
   -- D136: `checkElab-RVar` DELETED. It dispatched a bare `RVar` on
   -- `classifyBareBuiltin`, i.e. it decided "is this name a generator?" from the
@@ -2158,15 +2173,6 @@ mutual
   ...     | no _ = failure (TypeMismatch C C′) , tt
   ...     | yes refl =
               success C _ (Surface.copair' fE gE) (suc (df Data.Nat.⊔ dg)) frg , d-case wF wG
-  -- D229 / plan 0.94 §13: given `Void`, the arms are built and never applied.
-  elabGivenApp ctx .(Raw.RApp (Raw.RResolved (gen "case")) f) g Void π (ahv-case-applied {f}) _
-        with elabGivenV ctx f Void π
-  ... | failure err , _ = failure err , tt
-  ... | success C₁ Ψf fE df frf , wF with elabGivenV ctx g Void π
-  ...   | failure err , _ = failure err , tt
-  ...   | success C₂ Ψg gE dg frg , wG =
-            success Void _ (seq fE (seq0 gE (Surface.lift-morphism IR.initial))) (suc (df Data.Nat.⊔ dg)) frg
-            , d-case-void wF wG
   elabGivenApp ctx .(Raw.RApp (Raw.RResolved (gen "case")) f) g _ π (ahv-case-applied {f}) _ =
     failure (BuiltinTypeMismatch "case") , tt
   elabGivenApp ctx .(Raw.RApp (Raw.RResolved (gen "pair")) f) g A π (ahv-pair-applied {f}) _
@@ -2181,9 +2187,6 @@ mutual
   ... | just wfF =
           given-cata ctx alg F π wfF
             (inferElabV (ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx)) alg)
-  elabGivenApp ctx .(Raw.RResolved (gen "cata")) alg Void π ahv-cata _ =
-    given-cata-void ctx alg π
-      (inferElabV (ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx)) alg)
   elabGivenApp ctx .(Raw.RResolved (gen "cata")) alg _ π ahv-cata _ = failure (BuiltinTypeMismatch "cata") , tt
   elabGivenApp ctx f g A π _ r = given-infer ctx (Raw.RApp f g) A π r
 
@@ -2206,8 +2209,6 @@ mutual
           success _ (Surface.curry' argE) (suc d) fr , t-curry-check w
   checkCurryOn _ _ _ curry-other = failure (BuiltinTypeMismatch "curry") , tt
 
-  -- Plan 0.6 Phase C.7 POC-3: `apply p` check-mode.
-  -- Check mode falls through to infer (apply's infer mode succeeds
 
   -- Plan 0.28 Commit 2: `In arg` (μ-introduction) check-mode at `μ-type F`.
   -- Read F from the expected μ-type, gate on `wellFormedF? F` (threaded
@@ -2226,13 +2227,6 @@ mutual
   -- nested `with | eq`.
   inferOut ctx arg = inferOutOn ctx arg (inferElabV ctx arg)
 
-
-  -- D222 / plan 0.95 A′: an EFFECTFUL closure. The result is a SUSPENSION
-  -- `Unit ⇒[eff] B`, so the morphism is the thunk-builder `curry (apply ∘ fst)`
-  -- rather than `apply` — the same shape `elaborate` gives `effApp`. The IR
-
-
-  -- D233: an EFFECTFUL stream — the stream is evaluated now, the force is
 
   checkInGo ctx arg F nothing _ = failure (BuiltinTypeMismatch "In") , tt
   checkInGo ctx arg F (just wfF) eqW with checkElabV ctx arg (⟦ F ⟧T (Once.Type.μ-type F))
@@ -2402,7 +2396,7 @@ mutual
   ----------------------------------------------------------------------
 
   inferElabV ctx (Raw.RBinOp op e₁ e₂) =
-    inferElabV-RBinOp-void ctx op e₁ e₂ (inferElabV ctx e₁) (inferElabV ctx e₂)
+    inferElabV-RBinOp-aux ctx op e₁ e₂ (inferElabV ctx e₁) (inferElabV ctx e₂)
 
   ----------------------------------------------------------------------
   -- Phase D — `checkElab` clauses.
@@ -2497,15 +2491,6 @@ mutual
   -- to an explicit-arg aux breaks termination. NOT every `with` is removable.
   checkElabV-wf ctx ac e T = embedOrSubsume ctx e T (inferElabV ctx e)
 
-  -- `unit` is the one generator that INFERS; the rest are polymorphic and only
-  -- check, so they fall to the ordinary resolved path (which reports the right
-  -- D136: a generator's canonical name is COMPILER-OWNED, so looking it up in
-  -- the user's import table is meaningless — these fail directly rather than
-  -- routing through `inferElabV-RResolved-aux`. The seven point-free
-  -- generators are polymorphic and do not infer; they must appear applied or
-  -- in check mode, which is what `UnboundVariable` has always reported here.
-  -- Failing directly is also what lets the `checkElab-fallback-RVar-*` lemmas
-
 
   -- Acc-free wrapper (Plan 0.58 E1-full): re-derive a fresh well-founded Acc.
   -- Sound per POC-B — the poly-resolution recursion uses the RECEIVED Acc's `rec`;
@@ -2524,55 +2509,6 @@ mutual
   ----------------------------------------------------------------------
   inferElabV-RApp-other ctx f x =
     inferElabV-RApp-other-aux ctx f x _ refl
-
-  -- | Build an external arrow op's `SigOpInfo` from its DECLARED effect
-  -- (Plan 0.38 M0.2). The compiler is interpretation-BLIND: the effect
-  -- comes from the `! <shape>` annotation in the imported signature
-  -- (looked up in `NamedCtx.sigEffects` by the same qualified key as the
-  -- type), NEVER from a hardcoded name (the retired effect-from-name guess is
-  -- gone). An effectful, `Unit`-codomain op carries a CONTRACT
-  -- (`haltsV`/`emitsV`), no value. A pure arrow, or an `eff` op whose
-  -- codomain is not `Unit` (the deferred data-returning-syscall
-  -- boundary), falls back to a `pureV` value (the `closure`/`poly`-style
-  -- plan 0.98 stage E: THE CODOMAIN DECIDES. 0.97 asked a name-keyed side
-  -- table (`lookupSigEffect (NamedCtx.sigEffects ctx)`) whether an op halts,
-  -- because `Emits` and `Halts` carried the SAME index (`B ≡ Unit`) and the
-  -- type could not tell them apart — §1's finding, and the root cause of
-  -- `masq`'s `true != false`. `Halts` carries `B ≡ Void` now, so the
-  -- distinction is in the type and the table has nothing left to say. An
-  -- external op that returns nothing HALTS; one that returns `Unit` EMITS;
-
-  -- Aux helper bodies (placed after all main mutual members so that the
-  -- `... | pat` continuations of inferElabV/checkElabV clauses don't
-  -- conflict with the aux's own clauses).
-  -- A qualified ref `name@alias` is ALWAYS genuinely external (from an
-  -- import, never a local userFn). Used as a value at a `Many`-arrow type it
-  -- IS the external `SigOp (generic-info name)`; emit it as `lift-morphism`
-  -- so `extract-morph`/`extract-morph-eff` recover it BY CONSTRUCTION and the
-  -- eff `case`/`compose` fuse the algebra to a DIRECT morphism (no apply, no
-  -- effApp suspension). The distinguisher the laundering bug lacked: internal
-  -- `seven` is unqualified → stays `sigOp` → resolver → closure; only genuine
-
-
-  -- Plan 0.50: resolved external ref. The canonical name `cn` is carried
-  -- straight into the `SigOpInfo` (NO `bare`, NO String render) — so the
-  -- realize/elaborator/trace/codegen names agree by construction. Mirrors
-  -- `ext-arrow-info`/`inferElabV-RQualified-aux` but keyed by `cn`.
-  -- De-withed (so the realize-agrees masquerade can fold it): the two
-  -- codomain decisions are explicit args.
-  --
-  -- plan 0.98 stage E: the second argument was `Maybe SigEffect` — the
-  -- name-keyed side table. It is `Dec (B ≡ Unit)` now, because the codomain
-  -- is what decides: `Void` HALTS, `Unit` EMITS, anything else is a value
-  -- contract. Nothing is keyed by name any more, which is what lets `masq`
-
-
-  -- D248: a resolved reference to the OWN module (`canonical [x]`, the resolver's
-  -- `rv-own`/`name@this`) names a module entry, so it is a CALL of that entry
-  -- (D246), exactly as a bare reference is. Only a reference into ANOTHER module
-
-
-  -- RPair: pair the two sub-results (a-failure short-circuits without forcing
 
 
   -- `-5` IS A LITERAL. Emitting `neg (int 5)` would compile to "load 5; call
@@ -2620,45 +2556,6 @@ mutual
     embedOrSubsume ctx (Raw.RUnaryOp Raw.OpNeg e) T
                    (inferElabV-RUnaryOp-aux ctx e (inferElabV ctx e))
 
-  -- Written out so the FOLDED literal is what gets embedded — routing through
-  -- `inferElabV ctx (RUnaryOp OpNeg (RInt n))` would be the same term but
-
-
-  -- D229 / plan 0.94 §13: ex falso in an operator. A `Void` left operand halts
-  -- first (the right one is typed, never reached); a `Void` right operand halts
-
-
-  ----------------------------------------------------------------------
-  -- PLAN 0.75 F4: `Float` ON THE LEFT SELECTS THE FLOAT FAMILY.
-  --
-  -- It used to be `BinOpLeftError (TypeMismatch Int Float)` with a catch-all
-  -- for the right operand — "arithmetic means Int" — which is what made
-  -- `1.5 - 2.1` report `expected Int but got Float`. The OPERAND TYPES decide
-  -- which arithmetic runs; `+` is the same operator either way.
-  --
-  -- A MIXED PAIR IS STILL AN ERROR, and that is the decision, not a gap:
-  -- there is no implicit widening, so `1 + 1.5` reports rather than silently
-  -- promoting. A coercion the programmer did not write is a value
-  -- substitution, which is D115's objection to a wrapped literal one type
-  -- over.
-  -- both Float → op dispatch. Only `+`, `−` and `×` exist here
-  -- `%` still has no float lowering — IEEE's `fmod` is a different function and
-  -- needs its own decision — and a float comparison needs the Bool encoding
-  -- `Int`'s own comparisons are STILL postulated over. Those six keep exactly
-
-  ----------------------------------------------------------------------
-  -- MIXED OPERANDS — the `Int` side WIDENS (D125).
-  --
-  -- `1 + 1.5` compiles, and the conversion is an explicit `Surface.i2f` node
-  -- so it lowers to a real instruction rather than being a silent retyping.
-  -- The widening is CORRECTLY ROUNDED (IEEE lists `convertFromInt` beside
-  -- `+`), the error is bounded by half an ulp like every other rounding, and
-  -- both targets already agree bit-for-bit — measured, so no D055-style
-  -- decision and no backend guard.
-  --
-  -- Only `Int → Float`. `Float → Int` stays explicit: the hardware DIVERGES
-  -- (x86 "integer indefinite", RISC-V saturates) and it is a narrowing where
-  -- truncate-versus-round is the programmer's call.
 
   inferElabV-RLet-aux ctx x e₁ e₂ (failure err , _) = failure err , tt
   inferElabV-RLet-aux ctx x e₁ e₂ (success A Ψ₁ e₁E d₁ f₁ , w₁) =
@@ -2670,8 +2567,7 @@ mutual
   -- `ctx,xR:B`. `-auxR` matches branch types (`C₁ ≟T C₂`) and emits `t-case`.
   inferElabV-RDestruct-aux ctx scrut xL eL xR eR (failure err , _)            = failure err , tt
   inferElabV-RDestruct-aux ctx scrut xL eL xR eR (success Unit   _ _ _ _ , _) = failure CaseScrutineeNotSum , tt
-  inferElabV-RDestruct-aux ctx scrut xL eL xR eR (success Void   Ψs scrutE ds fs , wS) =
-    inferElabV-RDestruct-voidL ctx scrut xL eL xR eR scrutE ds fs wS (inferElabV (extendNamedCtx ctx xL Void) eL)
+  inferElabV-RDestruct-aux ctx scrut xL eL xR eR (success Void   _ _ _ _ , _) = failure CaseScrutineeNotSum , tt
   inferElabV-RDestruct-aux ctx scrut xL eL xR eR (success Int    _ _ _ _ , _) = failure CaseScrutineeNotSum , tt
   inferElabV-RDestruct-aux ctx scrut xL eL xR eR (success Float  _ _ _ _ , _) = failure CaseScrutineeNotSum , tt
   inferElabV-RDestruct-aux ctx scrut xL eL xR eR (success Str    _ _ _ _ , _) = failure CaseScrutineeNotSum , tt
@@ -2683,16 +2579,9 @@ mutual
   inferElabV-RDestruct-aux ctx scrut xL eL xR eR (success (Once.Type.ν-type _ _) _ _ _ _ , _) = failure CaseScrutineeNotSum , tt
   inferElabV-RDestruct-aux ctx scrut xL eL xR eR (success (A Once.Type.+ B) Ψs scrutE ds fs , wS) =
     inferElabV-RDestruct-auxL ctx scrut xL eL xR eR A B scrutE ds fs wS (inferElabV (extendNamedCtx ctx xL A) eL)
-  -- D229 / plan 0.94 §13: a `Void` scrutinee — the branches are typed with
-  -- their binders at `Void` and never run; the term is the scrutinee's.
-  inferElabV-RDestruct-voidL ctx scrut xL eL xR eR scrutE ds fs wS (failure err , _) = failure err , tt
-  inferElabV-RDestruct-voidL ctx scrut xL eL xR eR scrutE ds fs wS (success C₁ (qℓ ∷ᵘ Ψₗ) eLE dL fL , wL) =
-    inferElabV-RDestruct-voidR ctx scrut xL eL xR eR scrutE ds fs wS wL (inferElabV (extendNamedCtx ctx xR Void) eR)
   inferElabV-RDestruct-auxL ctx scrut xL eL xR eR A B scrutE ds fs wS (failure err , _) = failure err , tt
   inferElabV-RDestruct-auxL ctx scrut xL eL xR eR A B scrutE ds fs wS (success C₁ (qℓ ∷ᵘ Ψₗ) eLE dL fL , wL) =
     inferElabV-RDestruct-auxR ctx scrut xL eL xR eR A B scrutE ds fs wS eLE dL fL wL (inferElabV (extendNamedCtx ctx xR B) eR)
-
-  -- Plan 0.58 / D071: both lookups failed — try the telescope (poly) fallback:
 
 
   inferElabV-RApp-other-aux ctx f x (just _) _ =
@@ -2702,7 +2591,7 @@ mutual
   -- and the head, GIVEN that input, determines the result.
   ... | failure err , _ = inferSpine ctx f x eqAH (inferElabV ctx x)
   ... | success Unit       _ _ _ _ , _ = failure (NotFunction Unit) , tt
-  ... | success Void Ψ₁ fE df ff , wF = inferElabV-RApp-void ctx f x eqAH fE df ff wF (inferElabV ctx x)
+  ... | success Void       _ _ _ _ , _ = failure (NotFunction Void) , tt
   ... | success Int        _ _ _ _ , _ = failure (NotFunction Int) , tt
   ... | success Float      _ _ _ _ , _ = failure (NotFunction Float) , tt
   ... | success Str        _ _ _ _ , _ = failure (NotFunction Str) , tt
@@ -2846,26 +2735,6 @@ mutual
   ... | success T Ψf fE df frf , wF =
           success T _ (Surface.app fE xE) (suc (df ⊔ dx)) frf , t-app-spine eqAH wX wF
 
-  -- bbc-X failure-branch aux bodies. Each pattern-matches on T to the
-  -- canonical builtin shape and on the lookup results. Success iff
-
-
-  -- RFloat: F4's decision, made once and passed in.
-  --
-  -- The accepted branch hands the witness straight to BOTH the Surface node
-  -- and `t-float` — the same evidence, so the elaborated term and its typing
-  -- derivation cannot disagree about which literals are legal.
-  --
-  -- The rejected branch is a REAL ERROR carrying the digits the user wrote,
-  -- not a rounded value. That is the whole point of plan 0.71: `0.1` does not
-  -- become the nearest double, it fails to compile.
-  -- TOTAL. `FloatNotRepresentable` is unreachable from here now; the literal
-
-  -- RInt: value-lift on a pure-arrow-to-Int target, else generic infer+match.
-  -- `refl` refines `T` to the arrow so `t-value-lift (g-int n)` types; the
-  -- `nothing` branch reproduces the old generic clause for RInt verbatim.
-  -- RFloat: value-lift on a pure-arrow-to-Float target; otherwise embed at
-  -- `Float` or report a genuine type mismatch. The only failure left is a type
 
   checkElabV-RInt-aux ctx n T with inferElabV ctx (Raw.RInt n)
   ... | r = embedOrSubsume ctx (Raw.RInt n) T r
@@ -2881,28 +2750,30 @@ mutual
   checkElabV-RPair-aux ctx a b _ (rpt-other T) with inferElabV ctx (Raw.RPair a b)
   ... | r = embedOrSubsume ctx (Raw.RPair a b) T r
 
-  -- Per-bbc-X auxes: pattern-match on the verified inferElabV result
-  -- (Σ-pair). The success path uses t-embed of the witness; the
-
-
-  -- bbc-other: success-via-infer mirrors the others; failure goes
-  -- Plan 0.103 phase 2a: the rule's premises are DECIDED — not a local or an
-  -- import, a non-ground telescope entry, at an instance of its schema; only
-
 
 
 inferElab : (ctx : NamedCtx) → RawExpr → InferElabResult (NamedCtx.debruijn ctx)
+-- Literals
 -- inferElab as projection of the verified version.
 inferElab ctx e = proj₁ (inferElabV ctx e)
   where open import Data.Product using (proj₁)
 
 checkElab : (ctx : NamedCtx) → RawExpr → (A : Type) → CheckElabResult (NamedCtx.debruijn ctx) A
+-- Lambda in check mode: destruct expected function type
+--
+-- The body's first-position usage `q'` must satisfy `q' ≤q q`; we
+-- need the Bool decision *with its proof* to construct `Surface.lam`.
+-- Returning the decision via a `Maybe`-wrapping helper (`decideLeq`,
+-- defined above) avoids the stdlib `inspect` idiom, whose internal
+-- `with`-helper name is opaque to external proofs.
 -- checkElab as projection of the verified version.
 checkElab ctx e T = proj₁ (checkElabV ctx e T)
   where open import Data.Product using (proj₁)
 
 checkApply : (ctx : NamedCtx) → (arg : RawExpr) → (T : Type)
            → VerifiedCheckResult ctx (Raw.RApp (Raw.RResolved (gen "apply")) arg) T
+-- Plan 0.6 Phase C.7 POC-3: `apply p` check-mode.
+-- Check mode falls through to infer (apply's infer mode succeeds
 -- when p has pair-of-function type). Matches result against T.
 checkApply ctx arg T with inferElabV ctx arg
 ... | failure err , _ = failure err , tt
@@ -2938,6 +2809,13 @@ checkApply ctx arg T | success ((Once.Type.ν-type _ _) Once.Type.* _) _ _ _ _ ,
 checkApply ctx arg T | success (Once.Type.μ-type _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
 checkApply ctx arg T | success (Once.Type.ν-type _ _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
 
+-- Plan 0.4 T0 Option A: hoist the `ahv-other` (generic application)
+-- branch of `inferElab RApp` into its own top-level mutual member.
+-- The body is structurally identical to the previous in-place
+-- clause; the win is that `inferElab ctx (RApp f x) | ahv-other`
+-- now reduces to a *named* function call rather than to the
+-- `inferElab` case tree's anonymous with-helper. Soundness for the
+-- `ahv-other` view branch (`spec-gap-RApp-ahv-other`) can pattern-
 -- match through this helper transparently.
 inferElab-RApp-other : (ctx : NamedCtx) (f x : RawExpr) → InferElabResult (NamedCtx.debruijn ctx)
 -- Body for the hoisted `ahv-other` (generic application) branch.

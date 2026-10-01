@@ -126,61 +126,51 @@ noinf-curry-app : ∀ {ctx : NamedCtx} {a : RawExpr} {S : Type} {Ψ : Surface.Us
 noinf-curry-app (t-app () _ _)
 noinf-curry-app (t-effApp () _ _)
 noinf-curry-app (t-app-spine () _ _)
-noinf-curry-app (t-app-void () _ _)
 noinf-cata-app : ∀ {ctx : NamedCtx} {a : RawExpr} {S : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
   → ctx ⊢ᵢ RApp (RResolved (gen "cata")) a ∶ S ⨾ Ψ → ⊥
 noinf-cata-app (t-app () _ _)
 noinf-cata-app (t-effApp () _ _)
 noinf-cata-app (t-app-spine () _ _)
-noinf-cata-app (t-app-void () _ _)
 noinf-ana-app : ∀ {ctx : NamedCtx} {a : RawExpr} {S : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
   → ctx ⊢ᵢ RApp (RResolved (gen "ana")) a ∶ S ⨾ Ψ → ⊥
 noinf-ana-app (t-app () _ _)
 noinf-ana-app (t-effApp () _ _)
 noinf-ana-app (t-app-spine () _ _)
-noinf-ana-app (t-app-void () _ _)
 noinf-In-app : ∀ {ctx : NamedCtx} {a : RawExpr} {S : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
   → ctx ⊢ᵢ RApp (RResolved (gen "In")) a ∶ S ⨾ Ψ → ⊥
 noinf-In-app (t-app () _ _)
 noinf-In-app (t-effApp () _ _)
 noinf-In-app (t-app-spine () _ _)
-noinf-In-app (t-app-void () _ _)
 noinf-inl-app : ∀ {ctx : NamedCtx} {a : RawExpr} {S : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
   → ctx ⊢ᵢ RApp (RResolved (gen "inl")) a ∶ S ⨾ Ψ → ⊥
 noinf-inl-app (t-app () _ _)
 noinf-inl-app (t-effApp () _ _)
 noinf-inl-app (t-app-spine () _ _)
-noinf-inl-app (t-app-void () _ _)
 noinf-inr-app : ∀ {ctx : NamedCtx} {a : RawExpr} {S : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
   → ctx ⊢ᵢ RApp (RResolved (gen "inr")) a ∶ S ⨾ Ψ → ⊥
 noinf-inr-app (t-app () _ _)
 noinf-inr-app (t-effApp () _ _)
 noinf-inr-app (t-app-spine () _ _)
-noinf-inr-app (t-app-void () _ _)
 noinf-initial-app : ∀ {ctx : NamedCtx} {a : RawExpr} {S : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
   → ctx ⊢ᵢ RApp (RResolved (gen "initial")) a ∶ S ⨾ Ψ → ⊥
 noinf-initial-app (t-app () _ _)
 noinf-initial-app (t-effApp () _ _)
 noinf-initial-app (t-app-spine () _ _)
-noinf-initial-app (t-app-void () _ _)
 noinf-compose : ∀ {ctx : NamedCtx} {f g : RawExpr} {S : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
   → ctx ⊢ᵢ RApp (RApp (RResolved (gen "compose")) f) g ∶ S ⨾ Ψ → ⊥
 noinf-compose (t-app () _ _)
 noinf-compose (t-effApp () _ _)
 noinf-compose (t-app-spine () _ _)
-noinf-compose (t-app-void () _ _)
 noinf-case : ∀ {ctx : NamedCtx} {f g : RawExpr} {S : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
   → ctx ⊢ᵢ RApp (RApp (RResolved (gen "case")) f) g ∶ S ⨾ Ψ → ⊥
 noinf-case (t-app () _ _)
 noinf-case (t-effApp () _ _)
 noinf-case (t-app-spine () _ _)
-noinf-case (t-app-void () _ _)
 noinf-pair : ∀ {ctx : NamedCtx} {f g : RawExpr} {S : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
   → ctx ⊢ᵢ RApp (RApp (RResolved (gen "pair")) f) g ∶ S ⨾ Ψ → ⊥
 noinf-pair (t-app () _ _)
 noinf-pair (t-effApp () _ _)
 noinf-pair (t-app-spine () _ _)
-noinf-pair (t-app-void () _ _)
 
 ------------------------------------------------------------------------
 -- The agreement, one mutual induction over pairs of derivations.
@@ -346,18 +336,12 @@ mutual
   ... | () , _
   agree-ii (t-Out-app-infer _ _ d) (t-Out-eff-app-infer _ _ d′) with agree-ii d d′
   ... | () , _
-  agree-ii (t-Out-eff-app-infer _ _ d) (t-Out-app-void d′) with agree-ii d d′
-  ... | () , _
-  agree-ii (t-Out-app-void d) (t-Out-eff-app-infer _ _ d′) with agree-ii d d′
-  ... | () , _
   agree-ii (t-Out-eff-app-infer _ _ _) (t-app () _ _)
   agree-ii (t-app () _ _) (t-Out-eff-app-infer _ _ _)
   agree-ii (t-Out-eff-app-infer _ _ _) (t-effApp () _ _)
   agree-ii (t-effApp () _ _) (t-Out-eff-app-infer _ _ _)
   agree-ii (t-Out-eff-app-infer _ _ _) (t-app-spine () _ _)
   agree-ii (t-app-spine () _ _) (t-Out-eff-app-infer _ _ _)
-  agree-ii (t-Out-eff-app-infer _ _ _) (t-app-void () _ _)
-  agree-ii (t-app-void () _ _) (t-Out-eff-app-infer _ _ _)
   agree-ii (t-id-app _) (t-app () _ _)
   agree-ii (t-app () _ _) (t-id-app _)
   agree-ii (t-id-app _) (t-effApp () _ _)
@@ -424,149 +408,6 @@ mutual
   ... | refl , refl with agree-dd dF dF′
   ...   | refl , refl = refl , refl
 
-  -- D229 / plan 0.94 §13: the `Void` rules.
-  agree-ii (t-neg-void d) (t-neg-void d′) = refl , proj₂ (agree-ii d d′)
-  agree-ii (t-neg-void d) (t-neg d′) with agree-ii d d′
-  ... | () , _
-  agree-ii (t-neg d) (t-neg-void d′) with agree-ii d d′
-  ... | () , _
-  agree-ii (t-neg-void ()) (t-neg-float _ _ _ _)
-  agree-ii (t-neg-float _ _ _ _) (t-neg-void ())
-  agree-ii (t-case-void dS _ _) (t-case-void dS′ _ _) = refl , proj₂ (agree-ii dS dS′)
-  agree-ii (t-case-void dS _ _) (t-case dS′ _ _) with agree-ii dS dS′
-  ... | () , _
-  agree-ii (t-case dS _ _) (t-case-void dS′ _ _) with agree-ii dS dS′
-  ... | () , _
-  agree-ii (t-binop-void-l d₁ _) (t-binop-arith _ d₁′ _) with agree-ii d₁ d₁′
-  ... | () , _
-  agree-ii (t-binop-arith _ d₁ _) (t-binop-void-l d₁′ _) with agree-ii d₁ d₁′
-  ... | () , _
-  agree-ii (t-binop-void-r _ _ d₂) (t-binop-arith _ _ d₂′) with agree-ii d₂ d₂′
-  ... | () , _
-  agree-ii (t-binop-arith _ _ d₂) (t-binop-void-r _ _ d₂′) with agree-ii d₂ d₂′
-  ... | () , _
-  agree-ii (t-binop-void-l d₁ _) (t-binop-arith-float _ d₁′ _) with agree-ii d₁ d₁′
-  ... | () , _
-  agree-ii (t-binop-arith-float _ d₁ _) (t-binop-void-l d₁′ _) with agree-ii d₁ d₁′
-  ... | () , _
-  agree-ii (t-binop-void-r _ _ d₂) (t-binop-arith-float _ _ d₂′) with agree-ii d₂ d₂′
-  ... | () , _
-  agree-ii (t-binop-arith-float _ _ d₂) (t-binop-void-r _ _ d₂′) with agree-ii d₂ d₂′
-  ... | () , _
-  agree-ii (t-binop-void-l d₁ _) (t-binop-arith-float-il _ d₁′ _) with agree-ii d₁ d₁′
-  ... | () , _
-  agree-ii (t-binop-arith-float-il _ d₁ _) (t-binop-void-l d₁′ _) with agree-ii d₁ d₁′
-  ... | () , _
-  agree-ii (t-binop-void-r _ _ d₂) (t-binop-arith-float-il _ _ d₂′) with agree-ii d₂ d₂′
-  ... | () , _
-  agree-ii (t-binop-arith-float-il _ _ d₂) (t-binop-void-r _ _ d₂′) with agree-ii d₂ d₂′
-  ... | () , _
-  agree-ii (t-binop-void-l d₁ _) (t-binop-arith-float-ir _ d₁′ _) with agree-ii d₁ d₁′
-  ... | () , _
-  agree-ii (t-binop-arith-float-ir _ d₁ _) (t-binop-void-l d₁′ _) with agree-ii d₁ d₁′
-  ... | () , _
-  agree-ii (t-binop-void-r _ _ d₂) (t-binop-arith-float-ir _ _ d₂′) with agree-ii d₂ d₂′
-  ... | () , _
-  agree-ii (t-binop-arith-float-ir _ _ d₂) (t-binop-void-r _ _ d₂′) with agree-ii d₂ d₂′
-  ... | () , _
-  agree-ii (t-binop-void-l d₁ _) (t-binop-cmp _ d₁′ _) with agree-ii d₁ d₁′
-  ... | () , _
-  agree-ii (t-binop-cmp _ d₁ _) (t-binop-void-l d₁′ _) with agree-ii d₁ d₁′
-  ... | () , _
-  agree-ii (t-binop-void-r _ _ d₂) (t-binop-cmp _ _ d₂′) with agree-ii d₂ d₂′
-  ... | () , _
-  agree-ii (t-binop-cmp _ _ d₂) (t-binop-void-r _ _ d₂′) with agree-ii d₂ d₂′
-  ... | () , _
-  agree-ii (t-binop-void-l d₁ _) (t-binop-void-l d₁′ _) = refl , proj₂ (agree-ii d₁ d₁′)
-  agree-ii (t-binop-void-l d₁ _) (t-binop-void-r d₁′ ¬v _) with agree-ii d₁ d₁′
-  ... | eqT , _ = ⊥-elim (¬v (sym eqT))
-  agree-ii (t-binop-void-r d₁ ¬v _) (t-binop-void-l d₁′ _) with agree-ii d₁ d₁′
-  ... | eqT , _ = ⊥-elim (¬v eqT)
-  agree-ii (t-binop-void-r d₁ _ d₂) (t-binop-void-r d₁′ _ d₂′) =
-        refl , cong₂ _+ᵘ_ (proj₂ (agree-ii d₁ d₁′)) (proj₂ (agree-ii d₂ d₂′))
-  agree-ii (t-fst-app-void d) (t-fst-app-void d′) = refl , cong (λ Ψ → zeroUsage +ᵘ (T.Many *ᵘ Ψ)) (proj₂ (agree-ii d d′))
-  agree-ii (t-fst-app-void d) (t-fst-app d′) with agree-ii d d′
-  ... | () , _
-  agree-ii (t-fst-app d) (t-fst-app-void d′) with agree-ii d d′
-  ... | () , _
-  agree-ii (t-fst-app-void _) (t-app () _ _)
-  agree-ii (t-app () _ _) (t-fst-app-void _)
-  agree-ii (t-fst-app-void _) (t-effApp () _ _)
-  agree-ii (t-effApp () _ _) (t-fst-app-void _)
-  agree-ii (t-fst-app-void _) (t-app-spine () _ _)
-  agree-ii (t-app-spine () _ _) (t-fst-app-void _)
-  agree-ii (t-fst-app-void _) (t-app-void () _ _)
-  agree-ii (t-app-void () _ _) (t-fst-app-void _)
-  agree-ii (t-snd-app-void d) (t-snd-app-void d′) = refl , cong (λ Ψ → zeroUsage +ᵘ (T.Many *ᵘ Ψ)) (proj₂ (agree-ii d d′))
-  agree-ii (t-snd-app-void d) (t-snd-app d′) with agree-ii d d′
-  ... | () , _
-  agree-ii (t-snd-app d) (t-snd-app-void d′) with agree-ii d d′
-  ... | () , _
-  agree-ii (t-snd-app-void _) (t-app () _ _)
-  agree-ii (t-app () _ _) (t-snd-app-void _)
-  agree-ii (t-snd-app-void _) (t-effApp () _ _)
-  agree-ii (t-effApp () _ _) (t-snd-app-void _)
-  agree-ii (t-snd-app-void _) (t-app-spine () _ _)
-  agree-ii (t-app-spine () _ _) (t-snd-app-void _)
-  agree-ii (t-snd-app-void _) (t-app-void () _ _)
-  agree-ii (t-app-void () _ _) (t-snd-app-void _)
-  agree-ii (t-apply-app-void d) (t-apply-app-void d′) = refl , cong (λ Ψ → zeroUsage +ᵘ (T.Many *ᵘ Ψ)) (proj₂ (agree-ii d d′))
-  agree-ii (t-apply-app-void d) (t-apply-app-infer d′) with agree-ii d d′
-  ... | () , _
-  agree-ii (t-apply-app-infer d) (t-apply-app-void d′) with agree-ii d d′
-  ... | () , _
-  agree-ii (t-apply-app-void d) (t-apply-eff-app-infer d′) with agree-ii d d′
-  ... | () , _
-  agree-ii (t-apply-eff-app-infer d) (t-apply-app-void d′) with agree-ii d d′
-  ... | () , _
-  agree-ii (t-apply-app-void _) (t-app () _ _)
-  agree-ii (t-app () _ _) (t-apply-app-void _)
-  agree-ii (t-apply-app-void _) (t-effApp () _ _)
-  agree-ii (t-effApp () _ _) (t-apply-app-void _)
-  agree-ii (t-apply-app-void _) (t-app-spine () _ _)
-  agree-ii (t-app-spine () _ _) (t-apply-app-void _)
-  agree-ii (t-apply-app-void _) (t-app-void () _ _)
-  agree-ii (t-app-void () _ _) (t-apply-app-void _)
-  agree-ii (t-Out-app-void d) (t-Out-app-void d′) = refl , cong (λ Ψ → zeroUsage +ᵘ (T.Many *ᵘ Ψ)) (proj₂ (agree-ii d d′))
-  agree-ii (t-Out-app-void d) (t-Out-app-infer _ _ d′) with agree-ii d d′
-  ... | () , _
-  agree-ii (t-Out-app-infer _ _ d) (t-Out-app-void d′) with agree-ii d d′
-  ... | () , _
-  agree-ii (t-Out-app-void _) (t-app () _ _)
-  agree-ii (t-app () _ _) (t-Out-app-void _)
-  agree-ii (t-Out-app-void _) (t-effApp () _ _)
-  agree-ii (t-effApp () _ _) (t-Out-app-void _)
-  agree-ii (t-Out-app-void _) (t-app-spine () _ _)
-  agree-ii (t-app-spine () _ _) (t-Out-app-void _)
-  agree-ii (t-Out-app-void _) (t-app-void () _ _)
-  agree-ii (t-app-void () _ _) (t-Out-app-void _)
-  agree-ii (t-app-void _ dF _) (t-app-void _ dF′ _) = refl , proj₂ (agree-ii dF dF′)
-  agree-ii (t-app-void _ dF _) (t-app _ dF′ _) with agree-ii dF dF′
-  ... | () , _
-  agree-ii (t-app _ dF _) (t-app-void _ dF′ _) with agree-ii dF dF′
-  ... | () , _
-  agree-ii (t-app-void _ dF _) (t-effApp _ dF′ _) with agree-ii dF dF′
-  ... | () , _
-  agree-ii (t-effApp _ dF _) (t-app-void _ dF′ _) with agree-ii dF dF′
-  ... | () , _
-  agree-ii (t-app-void _ dF _) (t-app-spine _ _ dF′) with agree-di dF′ dF
-  ... | _ , _ , () , _ , _
-  agree-ii (t-app-spine _ _ dF) (t-app-void _ dF′ _) with agree-di dF dF′
-  ... | _ , _ , () , _ , _
-  agree-ii (t-id-app _) (t-app-void () _ _)
-  agree-ii (t-app-void () _ _) (t-id-app _)
-  agree-ii (t-fst-app _) (t-app-void () _ _)
-  agree-ii (t-app-void () _ _) (t-fst-app _)
-  agree-ii (t-snd-app _) (t-app-void () _ _)
-  agree-ii (t-app-void () _ _) (t-snd-app _)
-  agree-ii (t-terminal-app _) (t-app-void () _ _)
-  agree-ii (t-app-void () _ _) (t-terminal-app _)
-  agree-ii (t-apply-app-infer _) (t-app-void () _ _)
-  agree-ii (t-app-void () _ _) (t-apply-app-infer _)
-  agree-ii (t-apply-eff-app-infer _) (t-app-void () _ _)
-  agree-ii (t-app-void () _ _) (t-apply-eff-app-infer _)
-  agree-ii (t-Out-app-infer _ _ _) (t-app-void () _ _)
-  agree-ii (t-app-void () _ _) (t-Out-app-infer _ _ _)
 
   ----------------------------------------------------------------------
   -- agree-cc
@@ -609,9 +450,6 @@ mutual
   agree-ic (t-apply-app-infer d) (t-apply-check d′) = cong (λ Ψ → zeroUsage +ᵘ (T.Many *ᵘ Ψ)) (proj₂ (agree-ii d d′))
   agree-ic (t-apply-eff-app-infer d) (t-apply-check d′) = cong (λ Ψ → zeroUsage +ᵘ (T.Many *ᵘ Ψ)) (proj₂ (agree-ii d d′))
   agree-ic (t-app () _ _) (t-apply-check _)
-  agree-ic (t-app-void () _ _) (t-apply-check _)
-  agree-ic (t-apply-app-void d) (t-apply-check d′) with agree-ii d d′
-  ... | () , _
   agree-ic (t-effApp () _ _) (t-apply-check _)
   agree-ic (t-app-spine () _ _) (t-apply-check _)
   agree-ic (t-var-local l) (t-var-poly-instantiate ln _ _ _ _) = ⊥-elim (just≢nothing (trans (sym l) ln))
@@ -672,10 +510,6 @@ mutual
   agree-di (d-case _ _) d = ⊥-elim (noinf-case d)
   agree-di (d-pair _ _) d = ⊥-elim (noinf-pair d)
   agree-di (d-cata _ _) d = ⊥-elim (noinf-cata-app d)
-  agree-di d-fst-void d = ⊥-elim (noinf-fst d)
-  agree-di d-snd-void d = ⊥-elim (noinf-snd d)
-  agree-di (d-case-void _ _) d = ⊥-elim (noinf-case d)
-  agree-di (d-cata-void _) d = ⊥-elim (noinf-cata-app d)
   -- Plan 0.103 phase 2b: a non-ground telescope entry does not infer.
   agree-di (d-poly ln _ _ _ _ _ _ _) (t-var-local l) = ⊥-elim (just≢nothing (trans (sym l) ln))
   agree-di (d-poly _ inn _ _ _ _ _ _) (t-var-import _ _ i _) = ⊥-elim (just≢nothing (trans (sym i) inn))
@@ -704,11 +538,6 @@ mutual
   ... | refl , refl | refl , refl = refl , refl
   agree-dd (d-cata _ a) (d-cata _ a′) with cod-≡ (proj₁ (agree-ii a a′))
   ... | refl = refl , refl
-  agree-dd d-fst-void d-fst-void = refl , refl
-  agree-dd d-snd-void d-snd-void = refl , refl
-  agree-dd (d-case-void df dg) (d-case-void df′ dg′) with agree-dd df df′ | agree-dd dg dg′
-  ... | refl , refl | refl , refl = refl , refl
-  agree-dd (d-cata-void _) (d-cata-void _) = refl , refl
   -- Plan 0.103 phase 2b: the domain's instance determines the codomain.
   agree-dd (d-poly _ _ p _ as inc (θ , e , _) _) (d-poly _ _ p′ _ as′ _ (θ′ , e′ , _) _) with trans (sym p) p′
   ... | refl = dpoly-det as as′ inc θ θ′ e e′ , refl

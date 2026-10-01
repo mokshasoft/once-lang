@@ -16074,8 +16074,9 @@ on whether a subterm's type can return, which instantiation changes.
 
 **Decided.** Typing is closed under substitution exactly, in type and in usage, so:
 
-* the surface has ONE ex falso, the builtin `absurd e`, checked at any type, with `e ∶ Void`.
-  It is the core's `⊢absurd` and means `¡`;
+* the surface has ONE ex falso, and it already exists: the CCC's initial morphism `initial`
+  (`¡`). Applied, `initial e` checks at any type with `e ∶ Void` (`t-initial-app-check`), and
+  `d-initial` types it as a morphism. It is the core's `⊢absurd`;
 * no other rule mentions `Void`: the Void-synthesizing eliminator rules (`t-binop-void-l/r`,
   `t-neg-void`, `t-case-void`, `t-fst/snd/apply/Out-app-void`, `t-apply-app-void`, the
   domain-given Void-input rules) are deleted;
@@ -16086,5 +16087,5 @@ on whether a subterm's type can return, which instantiation changes.
 it relates a rigid parameter only to itself. So it is stable under substitution.
 
 **Consequence.** Writing `x + v` with `v ∶ Void` no longer types by itself; it is written
-`absurd v`, or it types through `Void <: Int` when the other operand is an `Int`. The
+`initial v`, or it types through `Void <: Int` when the other operand is an `Int`. The
 substitution lemma is a structural map, and its semantic twin is parametricity.

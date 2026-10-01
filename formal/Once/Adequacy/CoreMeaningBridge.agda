@@ -495,15 +495,6 @@ module _ {δ : GM.DefSem} where
     trans (cong returnT (extensionality λ _ → bindC (bridge-i V ag df _) (λ vf → bindC (bridge-c V ag dx _) (λ vx → refl))))
           (sym (Comb.effApp-sem {δ = δ} (proj₂ (elabᵢ V df)) (proj₂ (elabᶜ V dx)) dγ))
   bridge-i V ag (t-app-spine _ dx df) dγ = bindC (bridge-d V ag df _) (λ vf → bindC (bridge-i V ag dx _) (λ vx → refl))
-  bridge-i V ag (t-neg-void d) dγ = bridge-i V ag d dγ
-  bridge-i V ag (t-case-void dS _ _) dγ = bridge-i V ag dS dγ
-  bridge-i V ag (t-binop-void-l d₁ _) dγ = bridge-i V ag d₁ dγ
-  bridge-i V ag (t-binop-void-r d₁ _ d₂) dγ = cong₂ seqᴰ (bridge-i V ag d₁ _) (bridge-i V ag d₂ _)
-  bridge-i V ag (t-fst-app-void d) dγ = bindC (bridge-i V ag d _) (λ ())
-  bridge-i V ag (t-snd-app-void d) dγ = bindC (bridge-i V ag d _) (λ ())
-  bridge-i V ag (t-apply-app-void d) dγ = bindC (bridge-i V ag d _) (λ ())
-  bridge-i V ag (t-Out-app-void d) dγ = bindC (bridge-i V ag d _) (λ ())
-  bridge-i V ag (t-app-void _ dF _) dγ = bridge-i V ag dF dγ
 
   bridge-d V ag (d-infer w a g) dγ = cong (fmapT _) (bridge-i V ag w dγ)
   bridge-d V ag (d-poly _ _ lp ng _ _ ki g) dγ =
@@ -529,28 +520,4 @@ module _ {δ : GM.DefSem} where
     trans (bindC (trans (bridge-i {ctx = ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx)} V ag dalg tt)
                         (sym (RS.close-sem {Γ = NamedCtx.debruijn ctx} (proj₂ (elabᵢ V dalg)) fmt δ dγ))) (λ valg → refl))
           (sym (Comb.cata-sem′ {δ = δ} wf (⊢close {Γ = NamedCtx.debruijn ctx} (proj₂ (elabᵢ V dalg))) dγ))
-  bridge-d V ag d-fst-void dγ = refl
-  bridge-d V ag d-snd-void dγ = refl
-  bridge-d {ctx = ctx} V ag (d-case-void {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} df dg) dγ =
-    trans (cong₂ seqᴰ
-            (trans (bridge-d V ag df _)
-                   (cong (GM.⟦ proj₂ (elabᵈ V df) ⟧ fmt δ)
-                         (sym (env-subst {Γ = NamedCtx.debruijn ctx} E (⊑ᵘ-+ˡ Ψ₁ (Ψ₂ +ᵘ zeroUsage)) (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ))))
-            (cong₂ seqᴰ
-              (trans (bridge-d V ag dg _)
-                     (cong (GM.⟦ proj₂ (elabᵈ V dg) ⟧ fmt δ)
-                           (sym (env-subst₂ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ Ψ₂ zeroUsage) (⊑ᵘ-+ʳ Ψ₁ (Ψ₂ +ᵘ zeroUsage)) E
-                                            (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ))))
-              (cong returnT (extensionality λ ()))))
-          (sym (subE-sem {δ = δ} E _ dγ))
-    where E = cong (Ψ₁ +ᵘ_) (+ᵘ-identityʳ Ψ₂)
-  bridge-d {ctx = ctx} V ag (d-cata-void dalg) dγ =
-    trans (cong₂ seqᴰ
-            (trans (bridge-i {ctx = ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx)} V ag dalg tt)
-                   (sym (RS.close-sem {Γ = NamedCtx.debruijn ctx} (proj₂ (elabᵢ V dalg)) fmt δ
-                          (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ zeroUsage zeroUsage)
-                            (subst (RS.Env (NamedCtx.debruijn ctx)) (sym (+ᵘ-identityʳ zeroUsage)) dγ)))))
-            (cong returnT (extensionality λ ())))
-          (sym (subE-sem {δ = δ} (+ᵘ-identityʳ zeroUsage)
-                  (lift1 (λ a → seqᶜ a initialᶜ) (λ d → ⊢seqᶜ d ⊢initialᶜ) (closeE (elabᵢ V dalg))) dγ))
 

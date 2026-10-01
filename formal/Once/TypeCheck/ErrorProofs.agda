@@ -405,7 +405,7 @@ binop-left-err-wraps ctx op e₁ e₂ eqNN eqOuter
     | success Unit _ _ _ _ , _ with eqNN
 ...   | refl with inferElabV ctx e₂ | eqOuter
 ...     | failure _ , _ | refl = refl
-...     | success Void _ _ _ _ , _ | ()
+...     | success Void _ _ _ _ , _ | refl = refl
 ...     | success Unit _ _ _ _ , _ | refl = refl
 ...     | success Int _ _ _ _ , _ | refl = refl
 ...     | success T.Float _ _ _ _ , _ | refl = refl
@@ -421,7 +421,7 @@ binop-left-err-wraps ctx op e₁ e₂ eqNN eqOuter
     | success Str _ _ _ _ , _ with eqNN
 ...   | refl with inferElabV ctx e₂ | eqOuter
 ...     | failure _ , _ | refl = refl
-...     | success Void _ _ _ _ , _ | ()
+...     | success Void _ _ _ _ , _ | refl = refl
 ...     | success Unit _ _ _ _ , _ | refl = refl
 ...     | success Int _ _ _ _ , _ | refl = refl
 ...     | success T.Float _ _ _ _ , _ | refl = refl
@@ -437,7 +437,7 @@ binop-left-err-wraps ctx op e₁ e₂ eqNN eqOuter
     | success T.Buffer _ _ _ _ , _ with eqNN
 ...   | refl with inferElabV ctx e₂ | eqOuter
 ...     | failure _ , _ | refl = refl
-...     | success Void _ _ _ _ , _ | ()
+...     | success Void _ _ _ _ , _ | refl = refl
 ...     | success Unit _ _ _ _ , _ | refl = refl
 ...     | success Int _ _ _ _ , _ | refl = refl
 ...     | success T.Float _ _ _ _ , _ | refl = refl
@@ -453,7 +453,7 @@ binop-left-err-wraps ctx op e₁ e₂ eqNN eqOuter
     | success (T.rigid _ _) _ _ _ _ , _ with eqNN
 ...   | refl with inferElabV ctx e₂ | eqOuter
 ...     | failure _ , _ | refl = refl
-...     | success Void _ _ _ _ , _ | ()
+...     | success Void _ _ _ _ , _ | refl = refl
 ...     | success Unit _ _ _ _ , _ | refl = refl
 ...     | success Int _ _ _ _ , _ | refl = refl
 ...     | success T.Float _ _ _ _ , _ | refl = refl
@@ -470,7 +470,7 @@ binop-left-err-wraps ctx op e₁ e₂ eqNN eqOuter
     | success (_ T.* _) _ _ _ _ , _ with eqNN
 ...   | refl with inferElabV ctx e₂ | eqOuter
 ...     | failure _ , _ | refl = refl
-...     | success Void _ _ _ _ , _ | ()
+...     | success Void _ _ _ _ , _ | refl = refl
 ...     | success Unit _ _ _ _ , _ | refl = refl
 ...     | success Int _ _ _ _ , _ | refl = refl
 ...     | success T.Float _ _ _ _ , _ | refl = refl
@@ -486,7 +486,7 @@ binop-left-err-wraps ctx op e₁ e₂ eqNN eqOuter
     | success (_ T.+ _) _ _ _ _ , _ with eqNN
 ...   | refl with inferElabV ctx e₂ | eqOuter
 ...     | failure _ , _ | refl = refl
-...     | success Void _ _ _ _ , _ | ()
+...     | success Void _ _ _ _ , _ | refl = refl
 ...     | success Unit _ _ _ _ , _ | refl = refl
 ...     | success Int _ _ _ _ , _ | refl = refl
 ...     | success T.Float _ _ _ _ , _ | refl = refl
@@ -502,7 +502,7 @@ binop-left-err-wraps ctx op e₁ e₂ eqNN eqOuter
     | success (_ T.⇒[ _ ] _) _ _ _ _ , _ with eqNN
 ...   | refl with inferElabV ctx e₂ | eqOuter
 ...     | failure _ , _ | refl = refl
-...     | success Void _ _ _ _ , _ | ()
+...     | success Void _ _ _ _ , _ | refl = refl
 ...     | success Unit _ _ _ _ , _ | refl = refl
 ...     | success Int _ _ _ _ , _ | refl = refl
 ...     | success T.Float _ _ _ _ , _ | refl = refl
@@ -518,7 +518,7 @@ binop-left-err-wraps ctx op e₁ e₂ eqNN eqOuter
     | success (T.μ-type _) _ _ _ _ , _ with eqNN
 ...   | refl with inferElabV ctx e₂ | eqOuter
 ...     | failure _ , _ | refl = refl
-...     | success Void _ _ _ _ , _ | ()
+...     | success Void _ _ _ _ , _ | refl = refl
 ...     | success Unit _ _ _ _ , _ | refl = refl
 ...     | success Int _ _ _ _ , _ | refl = refl
 ...     | success T.Float _ _ _ _ , _ | refl = refl
@@ -534,7 +534,7 @@ binop-left-err-wraps ctx op e₁ e₂ eqNN eqOuter
     | success (T.ν-type _ _) _ _ _ _ , _ with eqNN
 ...   | refl with inferElabV ctx e₂ | eqOuter
 ...     | failure _ , _ | refl = refl
-...     | success Void _ _ _ _ , _ | ()
+...     | success Void _ _ _ _ , _ | refl = refl
 ...     | success Unit _ _ _ _ , _ | refl = refl
 ...     | success Int _ _ _ _ , _ | refl = refl
 ...     | success T.Float _ _ _ _ , _ | refl = refl
@@ -546,17 +546,19 @@ binop-left-err-wraps ctx op e₁ e₂ eqNN eqOuter
 ...     | success (_ T.⇒[ _ ] _) _ _ _ _ , _ | refl = refl
 ...     | success (T.μ-type _) _ _ _ _ , _ | refl = refl
 ...     | success (T.ν-type _ _) _ _ _ _ , _ | refl = refl
--- NUMERIC left types, and (D229 / plan 0.94 §13) a `Void` one, are absurd
--- here: `notNumeric` answers `nothing` for each.
+-- NUMERIC left types are absurd here: `notNumeric` answers `nothing` for each.
 binop-left-err-wraps ctx op e₁ e₂ eqNN eqOuter
     | success Int _ _ _ _ , _             with eqNN
 ...   | ()
 binop-left-err-wraps ctx op e₁ e₂ eqNN eqOuter
     | success T.Float _ _ _ _ , _         with eqNN
 ...   | ()
+-- D251: a `Void` left operand is not numeric, and the dispatch rejects it
+-- whatever the right one is.
 binop-left-err-wraps ctx op e₁ e₂ eqNN eqOuter
     | success Void _ _ _ _ , _            with eqNN
-...   | ()
+...   | refl with eqOuter
+...     | refl = refl
 
 binop-right-err-wraps :
   ∀ (ctx : NamedCtx) (op : Raw.BinOp) (e₁ e₂ : Raw.RawExpr)
@@ -616,10 +618,8 @@ binop-right-err-wraps ctx op e₁ e₂ eqAsInt₁ eqAsInt₂ eqOuter
 ...   | refl = refl
 binop-right-err-wraps ctx op e₁ e₂ eqAsInt₁ eqAsInt₂ eqOuter
     | success Int _ _ _ _ , _ | success Void _ _ _ _ , _ with eqAsInt₂
--- D229 / plan 0.94 §13: a `Void` right operand makes the operator ex falso,
--- which succeeds — the failure premise is absurd.
 ... | refl with eqOuter
-...   | ()
+...   | refl = refl
 binop-right-err-wraps ctx op e₁ e₂ eqAsInt₁ eqAsInt₂ eqOuter
     | success Int _ _ _ _ , _ | success Int _ _ _ _ , _ with eqAsInt₂
 ... | ()

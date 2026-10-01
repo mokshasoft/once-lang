@@ -260,15 +260,6 @@ elabᵢ V (t-Out-eff-app-infer wf refl d) = appC (⊢outEffᶜ wf) (elabᵢ V d)
 elabᵢ V (t-app _ df dx)    = lift2 app ⊢app (elabᵢ V df) (elabᶜ V dx)
 elabᵢ V (t-effApp _ df dx) = lift2 effAppᶜ ⊢effAppᶜ (elabᵢ V df) (elabᶜ V dx)
 elabᵢ V (t-app-spine _ dx df) = lift2 app ⊢app (elabᵈ V df) (elabᵢ V dx)
-elabᵢ V (t-neg-void d)           = elabᵢ V d
-elabᵢ V (t-case-void dS _ _)     = elabᵢ V dS
-elabᵢ V (t-binop-void-l d₁ _)    = elabᵢ V d₁
-elabᵢ V (t-binop-void-r d₁ _ d₂) = lift2 seqᶜ ⊢seqᶜ (elabᵢ V d₁) (elabᵢ V d₂)
-elabᵢ V (t-fst-app-void d)       = appC ⊢initialᶜ (elabᵢ V d)
-elabᵢ V (t-snd-app-void d)       = appC ⊢initialᶜ (elabᵢ V d)
-elabᵢ V (t-apply-app-void d)     = appC ⊢initialᶜ (elabᵢ V d)
-elabᵢ V (t-Out-app-void d)       = appC ⊢initialᶜ (elabᵢ V d)
-elabᵢ V (t-app-void _ dF _)      = elabᵢ V dF
 
 elabᵈ V (d-infer {B = B} w a g) = coerceE (sub-arr a (<:-refl B) g) (elabᵢ V w)
 elabᵈ V (d-poly {A = A} {B = B} _ _ lp ng _ _ ins g) =
@@ -283,10 +274,3 @@ elabᵈ V d-initial  = initialᶜ , ⊢initialᶜ
 elabᵈ V (d-case df dg) = lift2 caseᶜ ⊢caseᶜ (elabᵈ V df) (elabᵈ V dg)
 elabᵈ V (d-pair df dg) = lift2 pairᶜ ⊢pairᶜ (elabᵈ V df) (elabᵈ V dg)
 elabᵈ V (d-cata wf dalg) = lift1 cataᶜ (⊢cataᶜ wf) (closeE (elabᵢ V dalg))
-elabᵈ V d-fst-void = initialᶜ , ⊢initialᶜ
-elabᵈ V d-snd-void = initialᶜ , ⊢initialᶜ
-elabᵈ V (d-case-void {Ψ₂ = Ψ₂} df dg) =
-  subE (cong (_ +ᵘ_) (+ᵘ-identityʳ Ψ₂))
-    (lift2 seqᶜ ⊢seqᶜ (elabᵈ V df) (lift1 (λ g → seqᶜ g initialᶜ) (λ d → ⊢seqᶜ d ⊢initialᶜ) (elabᵈ V dg)))
-elabᵈ V (d-cata-void dalg) =
-  subE (+ᵘ-identityʳ zeroUsage) (lift1 (λ a → seqᶜ a initialᶜ) (λ d → ⊢seqᶜ d ⊢initialᶜ) (closeE (elabᵢ V dalg)))

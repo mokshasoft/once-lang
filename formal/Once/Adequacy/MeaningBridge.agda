@@ -82,9 +82,7 @@ open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_;
   t-initial-morph-check; t-inl-morph-check; t-inr-morph-check;
   t-compose-check-g; t-compose-check-f; d-infer; d-lam; d-compose; d-id; d-fst; d-snd;
   d-terminal; d-initial; d-case; d-pair; d-cata; _⊢ᵈ_∶_⇒[_]↦_⨾_;
-  d-fst-void; d-snd-void; d-case-void; d-cata-void;
-  t-neg-void; t-case-void; t-binop-void-l; t-binop-void-r; t-fst-app-void; t-snd-app-void;
-  t-apply-app-void; t-Out-app-void; t-app-void; t-case-copair-check; t-pair-morph-check;
+  t-case-copair-check; t-pair-morph-check;
   t-curry-check; t-cata-check; t-ana-check;
   t-int; t-float; t-str; t-unit; t-unit-var; t-var-local; t-var-qualified;
   t-var-resolved; t-var-import; t-annot; t-pair; t-neg; t-neg-float; t-binop-arith-float; t-binop-arith-float-il; t-binop-arith-float-ir; t-let; t-case;
@@ -1098,22 +1096,6 @@ bridge-i (t-app-spine {X = X} {T = T} _ darg df) re er =
   RelT-bind {A = X ⇒[ mk-kind Many pure ] T} {B = T}
             (bridge-d df (reˡ re) er)
             (λ rf → RelT-bind {A = X} {B = T} (bridge-i darg (reᵐ re) er) (λ rx → rf rx))
--- D229 / plan 0.94 §13: ex falso — the principal's computation, preceded by
--- what evaluation reaches first.
-bridge-i (t-neg-void d) re er = bridge-i d re er
-bridge-i (t-case-void dS _ _) re er = bridge-i dS re er
-bridge-i (t-binop-void-l d₁ _) re er = bridge-i d₁ re er
-bridge-i (t-app-void _ dF _) re er = bridge-i dF re er
-bridge-i (t-binop-void-r {A = A} d₁ _ d₂) re er =
-  RelT-seqᴰ {A = A} {B = Once.Type.Void} (bridge-i d₁ (reˡ re) er) (bridge-i d₂ (reʳ re) er)
-bridge-i (t-fst-app-void d) re er =
-  RelT-bind {A = Once.Type.Void} {B = Once.Type.Void} (bridge-i d (reᵐ re) er) (λ {a} _ → ⊥-elim a)
-bridge-i (t-snd-app-void d) re er =
-  RelT-bind {A = Once.Type.Void} {B = Once.Type.Void} (bridge-i d (reᵐ re) er) (λ {a} _ → ⊥-elim a)
-bridge-i (t-apply-app-void d) re er =
-  RelT-bind {A = Once.Type.Void} {B = Once.Type.Void} (bridge-i d (reᵐ re) er) (λ {a} _ → ⊥-elim a)
-bridge-i (t-Out-app-void d) re er =
-  RelT-bind {A = Once.Type.Void} {B = Once.Type.Void} (bridge-i d (reᵐ re) er) (λ {a} _ → ⊥-elim a)
 
 -- D127: the POINT-FREE LEAVES. `realize` sends each to `lift-morphism` of the
 -- plain categorical generator, so these are the OLD `bridge-m` bodies verbatim,
@@ -1325,21 +1307,3 @@ bridge-d (d-cata {F = F} {A = A} {π = π} wfF dalg) re er =
               {x = cata-sem wfF c₁}
               {y = λ x → sem-cata wfF (SD.cata-ev-algˢ {F} {A} (returnT c₂)) x}
               (λ {a} {b} rv → cata-bridge {A' = A} {wfF = wfF} c₁ c₂ ralg rv))
-bridge-d d-fst-void re er k = refl , rel-returns (λ { {a = ()} })
-bridge-d d-snd-void re er k = refl , rel-returns (λ { {a = ()} })
-bridge-d {ctx = ctx} (d-case-void {C₁ = C₁} {C₂ = C₂} {π = π} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} df dg) {dγ₁ = dγ₁} {dγ₂ = dγ₂} re er =
-  subst (RelT (Once.Type.Void ⇒[ mk-kind Many π ] Once.Type.Void) ((⟦ d-case-void df dg ⟧ᵈ fmt _) dγ₁))
-    (sym (cong (seqᴰ ((SD.⟦ realize-d df ⟧ˢ fmt σ) E₁))
-               (SD-seq0 {Γ = NamedCtx.debruijn ctx} (realize-d dg) (Surface.lift-morphism IR.initial) E₂)))
-    (RelT-seqᴰ {A = Once.Type.Void ⇒[ mk-kind Many π ] C₁} {B = Once.Type.Void ⇒[ mk-kind Many π ] Once.Type.Void}
-      (bridge-d df (reˡ re) er)
-      (RelT-seqᴰ {A = Once.Type.Void ⇒[ mk-kind Many π ] C₂} {B = Once.Type.Void ⇒[ mk-kind Many π ] Once.Type.Void} (bridge-d dg (reʳ re) er)
-        (RelT-init {π = π})))
-  where E₁ = restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ₂
-        E₂ = restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ₂
-bridge-d {ctx = ctx} (d-cata-void {S = S} {π = π} dalg) {dγ₁ = dγ₁} {dγ₂ = dγ₂} re er =
-  subst (RelT (Once.Type.Void ⇒[ mk-kind Many π ] Once.Type.Void) ((⟦ d-cata-void {ctx = ctx} {π = π} dalg ⟧ᵈ fmt _) dγ₁))
-    (sym (trans (SD-seq0 {Γ = NamedCtx.debruijn ctx} (embedClosed (realize-infer dalg)) (Surface.lift-morphism IR.initial) dγ₂)
-                (cong (λ m → seqᴰ m ((SD.⟦ Surface.lift-morphism {Γ = NamedCtx.debruijn ctx} {A = Once.Type.Void} {B = Once.Type.Void} {π = π} IR.initial ⟧ˢ fmt σ) dγ₂))
-                      (SD-embedClosed {Γ = NamedCtx.debruijn ctx} (realize-infer dalg) dγ₂))))
-    (RelT-seqᴰ {A = S} {B = Once.Type.Void ⇒[ mk-kind Many π ] Once.Type.Void} (bridge-i dalg (mk↾ tt) er) (RelT-init {π = π}))
