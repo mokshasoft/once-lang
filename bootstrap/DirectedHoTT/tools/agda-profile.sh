@@ -52,6 +52,28 @@
 
 set -uo pipefail
 
+# OOM protection — the same cgroup re-exec as check.sh (read its rationale).
+# 2026-10-01: without it, the dependency stage (a cold closure of ~40 modules
+# under the profiling flags, -M5G on a 7.5 GiB box) reached 3.7 GB RSS plus
+# swap; the global OOM killed agda, and systemd then stopped the terminal's
+# whole scope, killing the claude session with it.  -M never fired: it sits
+# above what the box had free.
+if [ -z "${AGDA_SAFE_ACTIVE:-}" ] && [ -z "${AGDA_SAFE_DISABLE:-}" ] \
+   && command -v systemd-run >/dev/null 2>&1 \
+   && [ -e /sys/fs/cgroup/cgroup.controllers ] \
+   && systemctl --user show-environment >/dev/null 2>&1; then
+  export AGDA_SAFE_ACTIVE=1
+  exec systemd-run --user --scope --quiet \
+    -p MemoryMax="${AGDA_SAFE_MEM_MAX:-5500M}" \
+    -p MemorySwapMax="${AGDA_SAFE_SWAP_MAX:-2G}" \
+    -- bash -c '
+      if [ -w /proc/self/oom_score_adj ]; then
+        echo 1000 > /proc/self/oom_score_adj 2>/dev/null || true
+      fi
+      exec bash "$@"
+    ' bash "$(readlink -f "$0")" "$@"
+fi
+
 TARGET="${1:?usage: $0 <module path relative to bootstrap/, e.g. DirectedHoTT/Examples/Knot/Lookup.agda> | --survey}"
 SURVEY=0; [ "$TARGET" = --survey ] && SURVEY=1
 
