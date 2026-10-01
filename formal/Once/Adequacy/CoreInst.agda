@@ -38,6 +38,9 @@ open GT using (_⊢[_]_∷_!_)
 import Once.Spec.Core.PolyTyping S as PT
 import Once.Spec.Core.Rename S as RN
 import Once.Surface.Thinning as TH
+import Once.Spec.Core.DerivedTyping S as DT
+import Once.Type.Sub
+open import Once.Functor.Translate using (WellFormedF)
 open PT using (_⟪_⟫ᶜ; _⟪_⟫ₜ)
 open import Once.Spec.Core.Abstract S using (SigGround; absCtx; absTm; abs-⊢; primDom-abs; primCod-abs; absCtx-lookup)
 import Once.TypeCheck.RigidSubst Δ τ r as RS
@@ -272,6 +275,12 @@ module _ (sg : SigGround) where
                {D : Γ ⊢[ Ψ ] t ∷ f y₁ ! π}
            → RN.ren-⊢ θ (subst (λ X → Γ ⊢[ Ψ ] t ∷ f X ! π) e D) ≅ RN.ren-⊢ θ D
     ren-sA θ f refl = H.refl
+    ρ̂ᶜ-sUf : ∀ {k} (f : C.Usage k → C.Usage n) {Ψ₁ Ψ₂ t A} (e : Ψ₁ ≡ Ψ₂) {D : Γ ⊢[ f Ψ₁ ] t ∷ A ! π}
+           → ρ̂ᶜ (subst (λ U → Γ ⊢[ f U ] t ∷ A ! π) e D) ≅ ρ̂ᶜ D
+    ρ̂ᶜ-sUf f refl = H.refl
+    rmUf : ∀ {k} (f : C.Usage k → C.Usage n) {Ψ₁ Ψ₂ t A} (e : Ψ₁ ≡ Ψ₂) {D : Γ ⊢[ f Ψ₁ ] t ∷ A ! π}
+         → subst (λ U → Γ ⊢[ f U ] t ∷ A ! π) e D ≅ D
+    rmUf f refl = H.refl
     rmU : ∀ {Ψ₁ Ψ₂ t A} (e : Ψ₁ ≡ Ψ₂) {D : Γ ⊢[ Ψ₁ ] t ∷ A ! π} → subst (λ U → Γ ⊢[ U ] t ∷ A ! π) e D ≅ D
     rmU refl = H.refl
     rmt : ∀ {Ψ t₁ t₂ A} (e : t₁ ≡ t₂) {D : Γ ⊢[ Ψ ] t₁ ∷ A ! π} → subst (λ u → Γ ⊢[ Ψ ] u ∷ A ! π) e D ≅ D
@@ -422,3 +431,167 @@ module _ (sg : SigGround) where
     H.trans (ρ̂ᶜ-sU (sym (TH.thin-usage-zeroUsage θ)))
       (H.trans (rmA (λ X → X) (sym (ρ̂-ref d τ′)))
         (H.sym (H.trans (ren-sA (ρ̂θ θ) (λ X → X) (sym (ρ̂-ref d τ′))) (rmU (sym (TH.thin-usage-zeroUsage (ρ̂θ θ)))))))
+
+  ----------------------------------------------------------------------
+  -- Weakening and closing, and the combinators that use them.
+  ----------------------------------------------------------------------
+
+  ren-θ≡ : ∀ {n k} {Γ : C.Ctx n} {D′ : C.Ctx k} {θ₁ θ₂ : Γ ⊆ D′} → θ₁ ≡ θ₂ → ∀ {Ψ t A π} (X : Γ ⊢[ Ψ ] t ∷ A ! π)
+         → RN.ren-⊢ θ₁ X ≅ RN.ren-⊢ θ₂ X
+  ren-θ≡ refl X = H.refl
+
+  wk≅ : ∀ {n} {Γ : C.Ctx n} {Ψ t A π} (B : Type) (d : Γ ⊢[ Ψ ] t ∷ A ! π)
+      → ρ̂ᶜ (DT.wk-⊢′ B d) ≅ DT.wk-⊢′ (ρ̂ B) (ρ̂ᶜ d)
+  wk≅ {Γ = Γ} {Ψ = Ψ} {t = t} B d =
+    H.trans (ρ̂ᶜ-sUf (T.Zero C.∷_) (TH.thin-usage-refl {Γ = Γ} Ψ))
+      (H.trans (ρ̂ᶜ-st (RN.ren-cong (λ i → cong suc (RN.thin-var-refl {Γ = Γ} i)) t))
+        (H.trans (ρ̂ᶜ-ren (⊆-wk {Γ = Γ} {A = B} {q = Many}) d)
+          (H.trans (ren-θ≡ (cong skip (ρ̂θ-refl Γ)) (ρ̂ᶜ d))
+            (H.sym (H.trans (rmUf (T.Zero C.∷_) (TH.thin-usage-refl {Γ = ρ̂S Γ} Ψ))
+                            (rmt (RN.ren-cong (λ i → cong suc (RN.thin-var-refl {Γ = ρ̂S Γ} i)) (ρ̂ₜ t))))))))
+
+  ρ̂θ-∅ : ∀ {n} (Γ : C.Ctx n) → ρ̂θ (RN.∅⊆ {Γ = Γ}) ≡ RN.∅⊆ {Γ = ρ̂S Γ}
+  ρ̂θ-∅ C.∅           = refl
+  ρ̂θ-∅ (Γ C., A ^ q) = cong skip (ρ̂θ-∅ Γ)
+
+  close≅ : ∀ {n} {Γ : C.Ctx n} {t A π} (d : C.∅ ⊢[ C.zeroUsage ] t ∷ A ! π)
+         → ρ̂ᶜ (RN.⊢close {Γ = Γ} d) ≅ RN.⊢close {Γ = ρ̂S Γ} (ρ̂ᶜ d)
+  close≅ {Γ = Γ} {t = t} d =
+    H.trans (ρ̂ᶜ-st (RN.ren-cong {ρ = thin-var (RN.∅⊆ {Γ = Γ})} {ρ′ = λ ()} (λ ()) t))
+      (H.trans (ρ̂ᶜ-sU (TH.thin-usage-zeroUsage (RN.∅⊆ {Γ = Γ})))
+        (H.trans (ρ̂ᶜ-ren (RN.∅⊆ {Γ = Γ}) d)
+          (H.trans (ren-θ≡ (ρ̂θ-∅ Γ) (ρ̂ᶜ d))
+            (H.sym (H.trans (rmt (RN.ren-cong {ρ = thin-var (RN.∅⊆ {Γ = ρ̂S Γ})} {ρ′ = λ ()} (λ ()) (ρ̂ₜ t)))
+                            (rmU (TH.thin-usage-zeroUsage (RN.∅⊆ {Γ = ρ̂S Γ}))))))))
+
+  -- The combinators with arms.
+  module _ {n} {Γ : C.Ctx n} where
+    open import Once.Surface.Properties using (+ᵘ-identityˡ; *ᵘ-identityˡ; +ᵘ-identityʳ)
+
+    c-compose : ∀ {Ψ₁ Ψ₂ A B C′ π f g}
+                  (a : Γ ⊢[ Ψ₁ ] f ∷ B T.⇒[ mk-kind Many π ] C′ ! pure) (b : Γ ⊢[ Ψ₂ ] g ∷ A T.⇒[ mk-kind Many π ] B ! pure)
+              → ρ̂ᶜ (DT.⊢composeᶜ a b) ≅ DT.⊢composeᶜ (ρ̂ᶜ a) (ρ̂ᶜ b)
+    c-compose {Ψ₁} {Ψ₂} {B = B} {C′} {π} {g = g} a b =
+      H.trans (ρ̂ᶜ-sU (DT.arms Many Ψ₁ Ψ₂ (trans (cong (C.zeroUsage C.+ᵘ_) (cong (Many C.*ᵘ_) (DT.z+qz Many))) (DT.z+qz Many))))
+        (H.trans (≅let refl refl H.refl refl (cong (λ u → G.let′ u _) (ρ̂ₜ-ren suc g))
+                       (≅let refl (ρ̂ₜ-ren suc g) (wk≅ (B T.⇒[ mk-kind Many π ] C′) b) refl refl H.refl))
+          (H.sym (rmU (DT.arms Many Ψ₁ Ψ₂ (trans (cong (C.zeroUsage C.+ᵘ_) (cong (Many C.*ᵘ_) (DT.z+qz Many))) (DT.z+qz Many))))))
+
+    c-pair : ∀ {Ψ₁ Ψ₂ A B C′ π f g}
+               (a : Γ ⊢[ Ψ₁ ] f ∷ A T.⇒[ mk-kind Many π ] B ! pure) (b : Γ ⊢[ Ψ₂ ] g ∷ A T.⇒[ mk-kind Many π ] C′ ! pure)
+           → ρ̂ᶜ (DT.⊢pairᶜ a b) ≅ DT.⊢pairᶜ (ρ̂ᶜ a) (ρ̂ᶜ b)
+    c-pair {Ψ₁} {Ψ₂} {A} {B} {π = π} {g = g} a b =
+      H.trans (ρ̂ᶜ-sU E)
+        (H.trans (≅let refl refl H.refl refl (cong (λ u → G.let′ u _) (ρ̂ₜ-ren suc g))
+                       (≅let refl (ρ̂ₜ-ren suc g) (wk≅ (A T.⇒[ mk-kind Many π ] B) b) refl refl H.refl))
+          (H.sym (rmU E)))
+      where E = trans (DT.arms T.One Ψ₁ Ψ₂ (trans (cong₂ C._+ᵘ_ (DT.z+qz Many) (DT.z+qz Many)) (+ᵘ-identityˡ C.zeroUsage)))
+                      (cong (Ψ₁ C.+ᵘ_) (*ᵘ-identityˡ Ψ₂))
+
+    c-case : ∀ {Ψ₁ Ψ₂ A B C′ π f g}
+               (a : Γ ⊢[ Ψ₁ ] f ∷ A T.⇒[ mk-kind Many π ] C′ ! pure) (b : Γ ⊢[ Ψ₂ ] g ∷ B T.⇒[ mk-kind Many π ] C′ ! pure)
+           → ρ̂ᶜ (DT.⊢caseᶜ a b) ≅ DT.⊢caseᶜ (ρ̂ᶜ a) (ρ̂ᶜ b)
+    c-case {Ψ₁} {Ψ₂} {A} {B} {C′} {π} {g = g} a b =
+      H.trans (ρ̂ᶜ-sU E)
+        (H.trans (≅let refl refl H.refl refl (cong (λ u → G.let′ u _) (ρ̂ₜ-ren suc g))
+                       (≅let refl (ρ̂ₜ-ren suc g) (wk≅ (A T.⇒[ mk-kind Many π ] C′) b) refl refl H.refl))
+          (H.sym (rmU E)))
+      where E = trans (DT.arms T.One Ψ₁ Ψ₂ (trans (cong (C.zeroUsage C.+ᵘ_) (trans (cong₂ C._⊔ᵘ_ (DT.z+qz Many) (DT.z+qz Many)) DT.z⊔z))
+                                               (+ᵘ-identityˡ C.zeroUsage)))
+                      (cong (Ψ₁ C.+ᵘ_) (*ᵘ-identityˡ Ψ₂))
+
+    c-curry : ∀ {Ψ A B C′ π₀ π f} (a : Γ ⊢[ Ψ ] f ∷ (A T.* B) T.⇒[ mk-kind Many π ] C′ ! pure)
+            → ρ̂ᶜ (DT.⊢curryᶜ {π₀ = π₀} a) ≅ DT.⊢curryᶜ {π₀ = π₀} (ρ̂ᶜ a)
+    c-curry {Ψ} a = H.trans (ρ̂ᶜ-sU E) (H.sym (rmU E))
+      where E = trans (cong₂ C._+ᵘ_ (trans (cong (C.zeroUsage C.+ᵘ_) (cong (Many C.*ᵘ_) (+ᵘ-identityˡ C.zeroUsage))) (DT.z+qz Many))
+                                    (*ᵘ-identityˡ Ψ))
+                      (+ᵘ-identityˡ Ψ)
+
+    c-apply : ∀ {A B} → ρ̂ᶜ (DT.⊢applyᶜ {Γ = Γ} {A = A} {B = B}) ≅ DT.⊢applyᶜ {Γ = ρ̂S Γ} {A = ρ̂ A} {B = ρ̂ B}
+    c-apply = H.trans (ρ̂ᶜ-sU (DT.z+qz Many)) (H.sym (rmU (DT.z+qz Many)))
+
+    c-applyEff : ∀ {A B} → ρ̂ᶜ (DT.⊢applyEffᶜ {Γ = Γ} {A = A} {B = B}) ≅ DT.⊢applyEffᶜ {Γ = ρ̂S Γ} {A = ρ̂ A} {B = ρ̂ B}
+    c-applyEff = H.trans (ρ̂ᶜ-sU (DT.z+qz Many)) (H.sym (rmU (DT.z+qz Many)))
+
+    c-effApp : ∀ {Ψ₁ Ψ₂ A B f x} (a : Γ ⊢[ Ψ₁ ] f ∷ A T.⇒[ mk-kind Many T.eff ] B ! pure) (b : Γ ⊢[ Ψ₂ ] x ∷ A ! pure)
+             → ρ̂ᶜ (DT.⊢effAppᶜ a b) ≅ DT.⊢effAppᶜ (ρ̂ᶜ a) (ρ̂ᶜ b)
+    c-effApp {f = f} {x} a b =
+      ≅lam refl (cong₂ G.app (ρ̂ₜ-ren suc f) (ρ̂ₜ-ren suc x))
+        (≅2 _ _ GT.⊢app refl (ρ̂ₜ-ren suc f) (≅1 _ _ (GT.⊢sub-eff Once.Type.Sub.⊑-pe) refl (ρ̂ₜ-ren suc f) (wk≅ T.Unit a))
+                        refl (ρ̂ₜ-ren suc x) (≅1 _ _ (GT.⊢sub-eff Once.Type.Sub.⊑-pe) refl (ρ̂ₜ-ren suc x) (wk≅ T.Unit b)))
+
+  -- The functor combinators: the substituted combinator sits at `⟦ ρ̂F F ⟧T`,
+  -- the image of the original at `ρ̂ (⟦ F ⟧T _)`; one J on that equation.
+  module _ {n} {Γ : C.Ctx n} where
+    private
+      in-gen : ∀ {m₀} {Δ₀ : C.Ctx m₀} {G : T.Functor} (w : WellFormedF G) {X} (e : X ≡ ⟦ G ⟧T (μ-type G))
+             → GT.⊢lam {Γ = Δ₀} {q = Many} refl (GT.⊢roll w (subst (λ Y → (Δ₀ C., X) ⊢[ C.singleUse zero T.One ] G.var zero ∷ Y ! pure) e (GT.⊢var zero)))
+               ≅ DT.⊢inᶜ {Γ = Δ₀} w
+      in-gen w refl = H.refl
+
+      out-gen : ∀ {m₀} {Δ₀ : C.Ctx m₀} {G : T.Functor} (w : WellFormedF G) {X} (e : ⟦ G ⟧T (ν-type G pure) ≡ X)
+              → GT.⊢lam {Γ = Δ₀} {q = Many} refl (subst (λ Y → (Δ₀ C., ν-type G pure) ⊢[ C.singleUse zero T.One ] G.out (G.var zero) ∷ Y ! pure) e
+                                              (GT.⊢out w (GT.⊢var zero)))
+                ≅ DT.⊢outᶜ {Γ = Δ₀} w
+      out-gen w refl = H.refl
+
+      outEff-gen : ∀ {m₀} {Δ₀ : C.Ctx m₀} {G : T.Functor} (w : WellFormedF G) {X} (e : ⟦ G ⟧T (ν-type G T.eff) ≡ X)
+                 → GT.⊢lam {Γ = Δ₀} {q = Many} refl (GT.⊢lam {q = Many} refl
+                     (subst (λ Y → ((Δ₀ C., ν-type G T.eff) C., T.Unit) ⊢[ T.Zero C.∷ C.singleUse zero T.One ] G.out (G.var (suc zero)) ∷ Y ! T.eff) e
+                            (GT.⊢out w (DT.⊢var′ (suc zero) T.eff))))
+                   ≅ DT.⊢outEffᶜ {Γ = Δ₀} w
+      outEff-gen w refl = H.refl
+
+    c-in : ∀ {F} (wf : WellFormedF F) → ρ̂ᶜ (DT.⊢inᶜ {Γ = Γ} wf) ≅ DT.⊢inᶜ {Γ = ρ̂S Γ} (ρ̂-wf wf)
+    c-in {F} wf = in-gen (ρ̂-wf wf) (ρ̂-⟦⟧ F (μ-type F))
+
+    c-out : ∀ {F} (wf : WellFormedF F) → ρ̂ᶜ (DT.⊢outᶜ {Γ = Γ} wf) ≅ DT.⊢outᶜ {Γ = ρ̂S Γ} (ρ̂-wf wf)
+    c-out {F} wf = out-gen (ρ̂-wf wf) (sym (ρ̂-⟦⟧ F (ν-type F pure)))
+
+    c-outEff : ∀ {F} (wf : WellFormedF F) → ρ̂ᶜ (DT.⊢outEffᶜ {Γ = Γ} wf) ≅ DT.⊢outEffᶜ {Γ = ρ̂S Γ} (ρ̂-wf wf)
+    c-outEff {F} wf = outEff-gen (ρ̂-wf wf) (sym (ρ̂-⟦⟧ F (ν-type F T.eff)))
+
+    private
+      cata-gen : ∀ {m₀} {Δ₀ : C.Ctx m₀} {G : T.Functor} {R : Type} {Ψ t π} (w : WellFormedF G) {X} (e : X ≡ ⟦ G ⟧T R)
+                   (D : Δ₀ ⊢[ Ψ ] t ∷ X T.⇒[ mk-kind Many π ] R ! pure)
+               → GT.⊢let D (GT.⊢lam {q = Many} refl (GT.⊢fold w
+                     (subst (λ Y → ((Δ₀ C., X T.⇒[ mk-kind Many π ] R) C., μ-type G) ⊢[ C.singleUse (suc zero) T.One ]
+                                     G.var (suc zero) ∷ Y T.⇒[ mk-kind Many π ] R ! π) e (DT.⊢var′ (suc zero) π))
+                     (DT.⊢var′ zero π)))
+                 ≅ GT.⊢let (subst (λ Y → Δ₀ ⊢[ Ψ ] t ∷ Y T.⇒[ mk-kind Many π ] R ! pure) e D)
+                           (GT.⊢lam {q = Many} refl (GT.⊢fold w (DT.⊢var′ (suc zero) π) (DT.⊢var′ zero π)))
+      cata-gen w refl D = H.refl
+
+      ana-gen : ∀ {m₀} {Δ₀ : C.Ctx m₀} {G : T.Functor} {R : Type} {Ψ c π π₀} (w : WellFormedF G) {X} (e : X ≡ ⟦ G ⟧T R)
+                  (Y : Δ₀ ⊢[ Ψ ] c ∷ R T.⇒[ mk-kind Many π ] X ! pure)
+              → GT.⊢unfold w (subst (λ Z → (Δ₀ C., R) ⊢[ T.Zero C.∷ Ψ ] G.wk c ∷ R T.⇒[ mk-kind Many π ] Z ! π₀) e
+                                     (GT.⊢sub-eff (Once.Type.Sub.pure⊑ π₀) (DT.wk-⊢′ R Y)))
+                             (DT.⊢var′ zero π₀)
+                ≅ GT.⊢unfold w (GT.⊢sub-eff (Once.Type.Sub.pure⊑ π₀)
+                                  (DT.wk-⊢′ R (subst (λ Z → Δ₀ ⊢[ Ψ ] c ∷ R T.⇒[ mk-kind Many π ] Z ! pure) e Y)))
+                               (DT.⊢var′ zero π₀)
+      ana-gen w refl Y = H.refl
+
+    c-cata : ∀ {Ψ F A π alg} (wf : WellFormedF F) (da : Γ ⊢[ Ψ ] alg ∷ ⟦ F ⟧T A T.⇒[ mk-kind Many π ] A ! pure)
+           → ρ̂ᶜ (DT.⊢cataᶜ wf da)
+             ≅ DT.⊢cataᶜ (ρ̂-wf wf) (subst (λ X → ρ̂S Γ ⊢[ Ψ ] ρ̂ₜ alg ∷ X T.⇒[ mk-kind Many π ] ρ̂ A ! pure) (ρ̂-⟦⟧ F A) (ρ̂ᶜ da))
+    c-cata {Ψ} {F} {A} wf da =
+      H.trans (ρ̂ᶜ-sU E) (H.trans (cata-gen (ρ̂-wf wf) (ρ̂-⟦⟧ F A) (ρ̂ᶜ da)) (H.sym (rmU E)))
+      where
+        open import Once.Surface.Properties using (+ᵘ-identityˡ; *ᵘ-identityˡ)
+        E = trans (cong₂ C._+ᵘ_ (+ᵘ-identityˡ C.zeroUsage) (*ᵘ-identityˡ Ψ)) (+ᵘ-identityˡ Ψ)
+
+    c-ana : ∀ {Ψ F A π₀ π c} (wf : WellFormedF F) (dc : Γ ⊢[ Ψ ] c ∷ A T.⇒[ mk-kind Many π ] ⟦ F ⟧T A ! pure)
+          → ρ̂ᶜ (DT.⊢anaᶜ {π₀ = π₀} wf dc)
+            ≅ DT.⊢anaᶜ {π₀ = π₀} (ρ̂-wf wf) (subst (λ X → ρ̂S Γ ⊢[ Ψ ] ρ̂ₜ c ∷ ρ̂ A T.⇒[ mk-kind Many π ] X ! pure) (ρ̂-⟦⟧ F A) (ρ̂ᶜ dc))
+    c-ana {Ψ} {F} {A} {π₀} {π} {c} wf dc =
+      ≅lam refl (cong (λ u → G.unfold u (G.var zero)) (ρ̂ₜ-ren suc c))
+        (H.trans (ρ̂ᶜ-sUf (T.One C.∷_) (+ᵘ-identityʳ Ψ))
+          (H.trans (≅2 _ _ (GT.⊢unfold (ρ̂-wf wf)) refl (ρ̂ₜ-ren suc c)
+                       (H.trans (rmA (λ Z → ρ̂ A T.⇒[ mk-kind Many π ] Z) (ρ̂-⟦⟧ F A))
+                         (H.trans (≅1 _ _ (GT.⊢sub-eff (Once.Type.Sub.pure⊑ π₀)) refl (ρ̂ₜ-ren suc c) (wk≅ A dc))
+                                  (H.sym (rmA (λ Z → ρ̂ A T.⇒[ mk-kind Many π ] Z) (ρ̂-⟦⟧ F A)))))
+                       refl refl H.refl)
+            (H.trans (ana-gen (ρ̂-wf wf) (ρ̂-⟦⟧ F A) (ρ̂ᶜ dc))
+                     (H.sym (rmUf (T.One C.∷_) (+ᵘ-identityʳ Ψ))))))
+      where open import Once.Surface.Properties using (+ᵘ-identityʳ)
