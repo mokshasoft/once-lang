@@ -38,7 +38,9 @@ open import Relation.Nullary using (Dec; yes; no)
 
 open import Once.Type using (Type; Unit; Int)
 open import Once.IR
-open import Once.SigOp.Info using (SigOpInfo; name)
+open import Once.SigOp.Info using (SigOpInfo; name; sem; SigOpSem; primV)
+open import Once.Arith.Prim using (p-add; p-sub; p-mul; p-div; p-mod; p-neg; p-fadd; p-fsub; p-fmul; p-fdiv; p-i2f)
+open import Once.IRTy using (⌊_⌋)
 open import Once.CanonicalName using (bare; _≟ᶜ_)
 
 open import Once.Arith.Machine.AbsState
@@ -81,6 +83,15 @@ open import Once.Arith.Machine.IR
 -- the morphism being applied, which is what lets it choose a component: a pair
 -- consumes one step and recurses into that side. Its indices are free, the
 -- `recognise-binop` trick (a pinned product index is unification-stuck).
+-- the two shapes of an operator's operands
+binop : ∀ {X Y : Set} → (X → X → Y) → Maybe (X × X) → Maybe Y
+binop k (just (a , b)) = just (k a b)
+binop k nothing        = nothing
+
+unop : ∀ {X Y : Set} → (X → Y) → Maybe X → Maybe Y
+unop k (just a) = just (k a)
+unop k nothing  = nothing
+
 recognise-path         : ∀ {A B} → IR A B → Maybe InputPath
 recognise-path-through : ∀ {A B} → IR A B → InputPath → Maybe InputPath
 
@@ -126,6 +137,10 @@ recognise-body : (sh : InputShape) → ∀ {A B} → IR A B → Maybe (MArithIR 
 -- is the SigOp's ERASED domain `⌊Dom⌋` and `⌊Dom⌋ ≟ B * C` is unification-stuck
 -- (`⌊_⌋` non-invertible). Plan 0.52 M2.
 recognise-binop : (sh : InputShape) → ∀ {X Y} → IR X Y → Maybe (MArithIR sh NInt × MArithIR sh NInt)
+-- D255: `SigOp si ∘ e` is an arithmetic op when its semantics IS one — the
+-- compiler's primitive (`primV`), whose meaning is fixed by it — not when its
+-- name looks like one.
+recognise-prim : (sh : InputShape) → ∀ {X Y A} → SigOpSem X Y → IR A ⌊ X ⌋ → Maybe (MArithIR sh NInt)
 recognise-binop sh (⟨ a , b ⟩) with recognise-body sh a | recognise-body sh b
 ... | just ra | just rb = just (ra , rb)
 ... | _       | _       = nothing
@@ -136,6 +151,15 @@ recognise-binop sh (⟨ a , b ⟩ ∘ h) with recognise-body sh (a ∘ h) | reco
 ... | just ra | just rb = just (ra , rb)
 ... | _       | _       = nothing
 recognise-binop sh _ = nothing
+
+recognise-prim sh (primV p-add) e = binop aadd (recognise-binop sh e)
+recognise-prim sh (primV p-sub) e = binop asub (recognise-binop sh e)
+recognise-prim sh (primV p-mul) e = binop amul (recognise-binop sh e)
+recognise-prim sh (primV p-div) e = binop adiv (recognise-binop sh e)
+recognise-prim sh (primV p-mod) e = binop amod (recognise-binop sh e)
+recognise-prim sh (primV p-neg) e = unop aneg (recognise-body sh e)
+{-# CATCHALL #-}
+recognise-prim sh _             e = nothing
 
 -- Binary/unary-op `SigOp si ∘ e` — dispatch on `name si`; `e` stays GENERIC so
 -- the pair operand is recognised by `recognise-binop` (no stuck product index).
@@ -148,31 +172,7 @@ recognise-binop sh _ = nothing
 -- normalises all of it; it strictly reduces left-nesting, so it terminates.
 recognise-body sh ((f ∘ g) ∘ h) = recognise-body sh (f ∘ (g ∘ h))
 
-recognise-body sh (SigOp si ∘ e) with name si ≟ᶜ bare "arith.add.int"
-... | yes _ with recognise-binop sh e
-...   | just (ra , rb) = just (aadd ra rb)
-...   | nothing        = nothing
-recognise-body sh (SigOp si ∘ e) | no _ with name si ≟ᶜ bare "arith.sub.int"
-...   | yes _ with recognise-binop sh e
-...     | just (ra , rb) = just (asub ra rb)
-...     | nothing        = nothing
-recognise-body sh (SigOp si ∘ e) | no _ | no _ with name si ≟ᶜ bare "arith.mul.int"
-...     | yes _ with recognise-binop sh e
-...       | just (ra , rb) = just (amul ra rb)
-...       | nothing        = nothing
-recognise-body sh (SigOp si ∘ e) | no _ | no _ | no _ with name si ≟ᶜ bare "arith.div.int"
-...       | yes _ with recognise-binop sh e
-...         | just (ra , rb) = just (adiv ra rb)
-...         | nothing        = nothing
-recognise-body sh (SigOp si ∘ e) | no _ | no _ | no _ | no _ with name si ≟ᶜ bare "arith.mod.int"
-...         | yes _ with recognise-binop sh e
-...           | just (ra , rb) = just (amod ra rb)
-...           | nothing        = nothing
-recognise-body sh (SigOp si ∘ e) | no _ | no _ | no _ | no _ | no _ with name si ≟ᶜ bare "arith.neg.int"
-...           | yes _ with recognise-body sh e
-...             | just r  = just (aneg r)
-...             | nothing = nothing
-recognise-body sh (SigOp si ∘ e) | no _ | no _ | no _ | no _ | no _ | no _ = nothing
+recognise-body sh (SigOp si ∘ e) = recognise-prim sh (sem si) e
 
 
 -- Literal: `const fits-int z _ ∘ rhs` where `rhs` is `terminal`
@@ -229,6 +229,7 @@ recognise-body-float : (sh : InputShape) → ∀ {A B} → IR A B → Maybe (MAr
 
 recognise-binop-float : (sh : InputShape) → ∀ {X Y} → IR X Y
                       → Maybe (MArithIR sh NFloat × MArithIR sh NFloat)
+recognise-prim-float : (sh : InputShape) → ∀ {X Y A} → SigOpSem X Y → IR A ⌊ X ⌋ → Maybe (MArithIR sh NFloat)
 recognise-binop-float sh (⟨ a , b ⟩) with recognise-body-float sh a | recognise-body-float sh b
 ... | just ra | just rb = just (ra , rb)
 ... | _       | _       = nothing
@@ -238,32 +239,18 @@ recognise-binop-float sh (⟨ a , b ⟩ ∘ h) with recognise-body-float sh (a �
 ... | _       | _       = nothing
 recognise-binop-float sh _ = nothing
 
+recognise-prim-float sh (primV p-fadd) e = binop aadd (recognise-binop-float sh e)
+recognise-prim-float sh (primV p-fsub) e = binop asub (recognise-binop-float sh e)
+recognise-prim-float sh (primV p-fmul) e = binop amul (recognise-binop-float sh e)
+recognise-prim-float sh (primV p-fdiv) e = binop adiv (recognise-binop-float sh e)
+recognise-prim-float sh (primV p-i2f)  e = unop ai2f (recognise-body sh e)
+{-# CATCHALL #-}
+recognise-prim-float sh _              e = nothing
+
 -- D163: re-associate first — the float twin. See the int version.
 recognise-body-float sh ((f ∘ g) ∘ h) = recognise-body-float sh (f ∘ (g ∘ h))
 
-recognise-body-float sh (SigOp si ∘ e) with name si ≟ᶜ bare "arith.add.float"
-... | yes _ with recognise-binop-float sh e
-...   | just (ra , rb) = just (aadd ra rb)
-...   | nothing        = nothing
-recognise-body-float sh (SigOp si ∘ e) | no _ with name si ≟ᶜ bare "arith.sub.float"
-...   | yes _ with recognise-binop-float sh e
-...     | just (ra , rb) = just (asub ra rb)
-...     | nothing        = nothing
-recognise-body-float sh (SigOp si ∘ e) | no _ | no _ with name si ≟ᶜ bare "arith.mul.float"
-...     | yes _ with recognise-binop-float sh e
-...       | just (ra , rb) = just (amul ra rb)
-...       | nothing        = nothing
-recognise-body-float sh (SigOp si ∘ e) | no _ | no _ | no _ with name si ≟ᶜ bare "arith.div.float"
-...       | yes _ with recognise-binop-float sh e
-...         | just (ra , rb) = just (adiv ra rb)
-...         | nothing        = nothing
--- D125's widening: the operand is an INTEGER tree, so this is the one place
--- the two recognisers meet.
-recognise-body-float sh (SigOp si ∘ e) | no _ | no _ | no _ | no _ with name si ≟ᶜ bare "arith.i2f"
-...         | yes _ with recognise-body sh e
-...           | just r  = just (ai2f r)
-...           | nothing = nothing
-recognise-body-float sh (SigOp si ∘ e) | no _ | no _ | no _ | no _ | no _ = nothing
+recognise-body-float sh (SigOp si ∘ e) = recognise-prim-float sh (sem si) e
 
 
 -- A float LITERAL. The payload stays a `Decimal` — the one rounding happens at

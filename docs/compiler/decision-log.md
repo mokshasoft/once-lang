@@ -16165,3 +16165,26 @@ compiled.
 * `RealizeAgrees`/`RealizeBridge` are deleted. They held no postulates, and nothing on the
   apex path reads `se` any more. The meaning is unchanged: the compiled term was always
   proved equal in meaning to `realize`'s, and now it simply is `realize`'s.
+
+## D255 — THE COMPILER'S ARITHMETIC PRIMITIVES ARE IDENTIFIED BY THEIR MEANING, NOT THEIR NAME (2026-10-01)
+
+**Relates**: D061/D071 (a SigOp is a closed contract), D165 (the arith rewrite), D250
+(`pureV` is graded), the canonical-name rule.
+
+**Context.** The arith recogniser (`Recognise.recognise-body`) decided that `SigOp si` is
+addition by comparing `name si` with `bare "arith.add.int"`. The SigOp's meaning was a
+`pureV f` for an arbitrary `f`, and pure FFI contracts are `pureV` too. Owned primitives
+are named `owner ++ "." ++ name`. So "this SigOp is addition" rested on a pipeline-wide
+convention that nothing else ever carries that name. `rewrite-program-preserves` (the
+pass keeps a program's meaning) would have had to assume that convention.
+
+**Decision.** `SigOpSem` gains `primV : ArithPrim A B → SigOpSem A B`.
+* `ArithPrim` (`Once.Arith.Prim`) enumerates the compiler's arithmetic primitives
+  (`p-add` … `p-i2f`).
+* Their meanings, `primSem`, are fixed there.
+* The builders mint `primV p`.
+* The recogniser matches the constructor (`recognise-prim`), and the meaning follows
+  definitionally.
+
+**Consequence.** Behaviour is unchanged: names, emitted symbols and `semM` values are all
+the same. A pure FFI contract can no longer be mistaken for arithmetic.

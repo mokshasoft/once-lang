@@ -57,6 +57,7 @@ open import Once.Word using (Carrier)
 open import Once.Target.Arch using (TargetNum)
 open import Once.Float.Dyadic using (Dyadic)
 import Once.Semantics.Value Carrier Carrier as M
+open import Once.Arith.Prim using (ArithPrim; primSem)
 
 ------------------------------------------------------------------------
 -- EffectShape — the SigOp's effect *shape*, indexed by codomain
@@ -142,6 +143,9 @@ data SigOpSem (A B : Type) : Set where
   -- the call does not return (`B ≡ Void`), which is why `semM` lands in
   -- `Res` rather than producing one.
   haltsV : B ≡ Void → SigOpSem A B
+  -- | D255: a compiler-minted arithmetic primitive. Its meaning is FIXED by the
+  -- primitive (`primSem`), so "this SigOp is addition" is a constructor match.
+  primV : ArithPrim A B → SigOpSem A B
 
 ------------------------------------------------------------------------
 -- SigOpInfo
@@ -204,11 +208,13 @@ semM-of : ∀ {A B} → SigOpSem A B → TargetNum → M.⟦ A ⟧ → Res M.⟦
 semM-of (pureV f)     = λ tn x → returns (M.eraseᵍ (f tn x))
 semM-of (emitsV refl) = λ _ _ → returns tt
 semM-of (haltsV refl) = λ _ _ → stopped
+semM-of (primV p)     = λ tn x → returns (M.eraseᵍ (primSem p tn x))
 
 effect-of : ∀ {A B} → SigOpSem A B → EffectShape B
 effect-of (pureV _)  = Pure
 effect-of (emitsV e) = Emits e
 effect-of (haltsV e) = Halts e
+effect-of (primV _)  = Pure
 
 semM : ∀ {A B} → SigOpInfo A B → TargetNum → M.⟦ A ⟧ → Res M.⟦ B ⟧
 semM si = semM-of (sem si)
@@ -219,6 +225,7 @@ semMᵍ-of : ∀ {A B} → SigOpSem A B → TargetNum → M.⟦ A ⟧ → Res M.
 semMᵍ-of (pureV f)     = λ tn x → returns (f tn x)
 semMᵍ-of (emitsV refl) = λ _ _ → returns tt
 semMᵍ-of (haltsV refl) = λ _ _ → stopped
+semMᵍ-of (primV p)     = λ tn x → returns (primSem p tn x)
 
 semMᵍ : ∀ {A B} → SigOpInfo A B → TargetNum → M.⟦ A ⟧ → Res M.⟦ B ⟧ᵍ
 semMᵍ si = semMᵍ-of (sem si)
@@ -229,6 +236,7 @@ semM-erase-of : ∀ {A B} (s : SigOpSem A B) (tn : TargetNum) (x : M.⟦ A ⟧)
 semM-erase-of (pureV f)     tn x = refl
 semM-erase-of (emitsV refl) tn x = refl
 semM-erase-of (haltsV refl) tn x = refl
+semM-erase-of (primV p)     tn x = refl
 
 semM-erase : ∀ {A B} (si : SigOpInfo A B) (tn : TargetNum) (x : M.⟦ A ⟧)
            → semM si tn x ≡ mapRes M.eraseᵍ (semMᵍ si tn x)
@@ -247,6 +255,7 @@ semP si = semP-of (sem si)
     semP-of (pureV f)  _  = f
     semP-of (emitsV _) ()
     semP-of (haltsV _) ()
+    semP-of (primV p)  _  = primSem p
 
 -- | WHICH CONTRACT SHAPES END THE PROGRAM. 0.97 called this `stops-D-of` and
 --   kept it in the denotation; it belongs beside the contract it reads.
@@ -263,6 +272,7 @@ semM-stops-of : ∀ {A B} (sm : SigOpSem A B) (tn : TargetNum) (a : M.⟦ A ⟧)
 semM-stops-of (pureV f)     tn a = refl
 semM-stops-of (emitsV refl) tn a = refl
 semM-stops-of (haltsV refl) tn a = refl
+semM-stops-of (primV p)     tn a = refl
 
 semM-stops : ∀ {A B} (si : SigOpInfo A B) (tn : TargetNum) (a : M.⟦ A ⟧)
            → is-stopped (semM si tn a) ≡ stops-shape (effect si)

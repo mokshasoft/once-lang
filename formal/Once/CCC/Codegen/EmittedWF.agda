@@ -42,7 +42,7 @@ open import Relation.Binary.PropositionalEquality using (_≢_)
 
 open import Once.CCC.Label using (Label; once; thunk; LabelId; e-fn)
 open import Once.CanonicalName using (CanonicalName)
-open import Once.SigOp.Info using (SigOpInfo; name; sem; SigOpSem; pureV; emitsV; haltsV)
+open import Once.SigOp.Info using (SigOpInfo; name; sem; SigOpSem; pureV; primV; emitsV; haltsV)
 open import Once.CCC.Machine.SMCore using
   ( AbstractInstr; AbstractTrace
   ; instr-ctrl; instr-load-code-addr
@@ -271,6 +271,7 @@ sigop-owed {A} {B} si = go (sem si)
   where
     go : SigOpSem A B → List CanonicalName
     go (pureV _)  = name si ∷ []
+    go (primV _)  = name si ∷ []
     go (emitsV _) = []
     go (haltsV _) = []
 

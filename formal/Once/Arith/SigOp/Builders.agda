@@ -33,7 +33,8 @@ open import Data.Unit using (⊤)
 open import Once.Type using (Type; Unit; Void; Int; Str; _*_; _+_;
                               ArrowKind; mk-kind; Purity; pure; eff; isUnit?; isVoid?)
 open import Relation.Nullary using (Dec; yes; no)
-open import Once.SigOp.Info using (SigOpInfo; mk-info; mk-info'; pureV; emitsV; haltsV; EffectShape; Pure; Halts)
+open import Once.SigOp.Info using (SigOpInfo; mk-info; mk-info'; pureV; primV; emitsV; haltsV; EffectShape; Pure; Halts)
+open import Once.Arith.Prim using (ArithPrim; p-add; p-sub; p-mul; p-div; p-mod; p-neg; p-fadd; p-fsub; p-fmul; p-fdiv; p-i2f)
 open import Once.Functor.Translate using (IsBaseType; IsConcrete; con-base;
   base-Unit; base-Int; base-Float; base-Str; base-Prod; base-Sum)
 open import Once.CanonicalName using (CanonicalName; bare; showCanonical)
@@ -93,59 +94,6 @@ import Once.Semantics.Value Carrier Carrier as M
 -- `TargetNum`, and `W tn` is the only place it is read.
 ------------------------------------------------------------------------
 
--- Binary arithmetic — Int * Int → Int
-add-semM : TargetNum → M.⟦ Int * Int ⟧ → M.⟦ Int ⟧
-add-semM tn (a , b) = W._⊕_ tn a b
-
-sub-semM : TargetNum → M.⟦ Int * Int ⟧ → M.⟦ Int ⟧
-sub-semM tn (a , b) = W._⊖_ tn a b
-
-mul-semM : TargetNum → M.⟦ Int * Int ⟧ → M.⟦ Int ⟧
-mul-semM tn (a , b) = W._⊗_ tn a b
-
--- Unary: Int → Int
-neg-semM : TargetNum → M.⟦ Int ⟧ → M.⟦ Int ⟧
-neg-semM tn x = W.⊝_ tn x
-
-------------------------------------------------------------------------
--- FLOAT arithmetic (plan 0.75 F4)
---
--- The same shape as the integer family above and for the same reason. `⊕` is
--- `norm tn (x + y)` — the exact operation in a scaffolding domain, then the
--- target's normalisation — and `Once.Float.Arith.fadd` is that sentence with
--- "rounding at the format" in place of "reduction mod 2^w". Neither is a
--- postulate; both read the target out of the `TargetNum` they are handed.
---
--- ONE fact comes off `tn`: the format. An invalid operation gives THE
--- canonical NaN at every target, by D055's rule — the targets genuinely
--- disagree in hardware (x86 sets the sign and propagates payloads, RISC-V
--- canonicalises), and D055 says the answer is to pick one and make the
--- backends conform, not to let the meaning vary by backend.
-------------------------------------------------------------------------
-
-fadd-semM : TargetNum → M.⟦ Once.Type.Float * Once.Type.Float ⟧ → M.⟦ Once.Type.Float ⟧
-fadd-semM tn (a , b) = FA.fadd (float-format tn) a b
-
-fsub-semM : TargetNum → M.⟦ Once.Type.Float * Once.Type.Float ⟧ → M.⟦ Once.Type.Float ⟧
-fsub-semM tn (a , b) = FA.fsub (float-format tn) a b
-
-fmul-semM : TargetNum → M.⟦ Once.Type.Float * Once.Type.Float ⟧ → M.⟦ Once.Type.Float ⟧
-fmul-semM tn (a , b) = FA.fmul (float-format tn) a b
-
--- | Division. TOTAL like its integer sibling (D055) — `x/0` is a signed
--- infinity and `0/0` the canonical NaN — so there is no guard and no second
--- shape; `FA.fdiv` carries the sticky bit that makes the quotient correctly
--- rounded, and nothing above this line has to know about it.
-fdiv-semM : TargetNum → M.⟦ Once.Type.Float * Once.Type.Float ⟧ → M.⟦ Once.Type.Float ⟧
-fdiv-semM tn (a , b) = FA.fdiv (float-format tn) a b
-
--- | `Int` → `Float` (D125). The word is read at its SIGNED value — `W.toℤ`,
--- the target's width — and then rounded by the same `roundB` every float
--- result goes through. Reading it unsigned would make `-1` convert to
--- `2^64 - 1`, which is the `absℤ` bug this branch already found once.
-i2f-semM : TargetNum → M.⟦ Int ⟧ → M.⟦ Once.Type.Float ⟧
-i2f-semM tn w = FA.i2f (float-format tn) (W.toℤ tn w)
-
 ------------------------------------------------------------------------
 -- Postulated semantics (still placeholders — div/mod need a div-by-
 -- zero policy, comparisons need a Bool encoding decision, generic-sem
@@ -153,8 +101,6 @@ i2f-semM tn w = FA.i2f (float-format tn) (W.toℤ tn w)
 ------------------------------------------------------------------------
 
 postulate
-  -- Binary arithmetic with division-by-zero edge case still pending
-  div-semM mod-semM : TargetNum → M.⟦ Int * Int ⟧ → M.⟦ Int ⟧
 
   -- Comparisons: Int * Int → (Unit + Unit) ≡ Bool
   lt-semM le-semM gt-semM ge-semM eq-semM ne-semM : TargetNum → M.⟦ Int * Int ⟧ → M.⟦ Unit + Unit ⟧
@@ -184,23 +130,23 @@ con-U+U = con-base (base-Sum base-Unit base-Unit)
 
 -- Binary arithmetic
 add-info : SigOpInfo (Int * Int) Int
-add-info = mk-info (bare "arith.add.int") add-semM Pure base-I×I con-Int
+add-info = mk-info' (bare "arith.add.int") (primV p-add) base-I×I con-Int
 
 sub-info : SigOpInfo (Int * Int) Int
-sub-info = mk-info (bare "arith.sub.int") sub-semM Pure base-I×I con-Int
+sub-info = mk-info' (bare "arith.sub.int") (primV p-sub) base-I×I con-Int
 
 mul-info : SigOpInfo (Int * Int) Int
-mul-info = mk-info (bare "arith.mul.int") mul-semM Pure base-I×I con-Int
+mul-info = mk-info' (bare "arith.mul.int") (primV p-mul) base-I×I con-Int
 
 div-info : SigOpInfo (Int * Int) Int
-div-info = mk-info (bare "arith.div.int") div-semM Pure base-I×I con-Int
+div-info = mk-info' (bare "arith.div.int") (primV p-div) base-I×I con-Int
 
 mod-info : SigOpInfo (Int * Int) Int
-mod-info = mk-info (bare "arith.mod.int") mod-semM Pure base-I×I con-Int
+mod-info = mk-info' (bare "arith.mod.int") (primV p-mod) base-I×I con-Int
 
 -- Unary arithmetic
 neg-info : SigOpInfo Int Int
-neg-info = mk-info (bare "arith.neg.int") neg-semM Pure base-Int con-Int
+neg-info = mk-info' (bare "arith.neg.int") (primV p-neg) base-Int con-Int
 
 -- Float arithmetic (plan 0.75 F4). Distinct NAMES, not overloads: the SigOp
 -- name is the identity the backend dispatches on, and `arith.add.int` and
@@ -211,19 +157,19 @@ con-Float : IsConcrete Once.Type.Float
 con-Float = con-base base-Float
 
 fadd-info : SigOpInfo (Once.Type.Float * Once.Type.Float) Once.Type.Float
-fadd-info = mk-info (bare "arith.add.float") fadd-semM Pure base-F×F con-Float
+fadd-info = mk-info' (bare "arith.add.float") (primV p-fadd) base-F×F con-Float
 
 fsub-info : SigOpInfo (Once.Type.Float * Once.Type.Float) Once.Type.Float
-fsub-info = mk-info (bare "arith.sub.float") fsub-semM Pure base-F×F con-Float
+fsub-info = mk-info' (bare "arith.sub.float") (primV p-fsub) base-F×F con-Float
 
 fmul-info : SigOpInfo (Once.Type.Float * Once.Type.Float) Once.Type.Float
-fmul-info = mk-info (bare "arith.mul.float") fmul-semM Pure base-F×F con-Float
+fmul-info = mk-info' (bare "arith.mul.float") (primV p-fmul) base-F×F con-Float
 
 fdiv-info : SigOpInfo (Once.Type.Float * Once.Type.Float) Once.Type.Float
-fdiv-info = mk-info (bare "arith.div.float") fdiv-semM Pure base-F×F con-Float
+fdiv-info = mk-info' (bare "arith.div.float") (primV p-fdiv) base-F×F con-Float
 
 i2f-info : SigOpInfo Int Once.Type.Float
-i2f-info = mk-info (bare "arith.i2f") i2f-semM Pure base-Int con-Float
+i2f-info = mk-info' (bare "arith.i2f") (primV p-i2f) base-Int con-Float
 
 -- Comparisons
 lt-info : SigOpInfo (Int * Int) (Unit + Unit)
