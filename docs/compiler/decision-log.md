@@ -16089,3 +16089,24 @@ it relates a rigid parameter only to itself. So it is stable under substitution.
 **Consequence.** Writing `x + v` with `v ∶ Void` no longer types by itself; it is written
 `initial v`, or it types through `Void <: Int` when the other operand is an `Int`. The
 substitution lemma is a structural map, and its semantic twin is parametricity.
+
+## D252 — AN ANNOTATION IS A SURFACE TYPE: IT MENTIONS NO PARAMETER (PLAN 0.104 E) (2026-10-01)
+
+**Relates**: D243, D251.
+
+**Decision.** `t-annot` requires `RigidFree T`. A rigid constant `rigid k i` is the
+once-typed schema's internal name for its `i`-th parameter (D243). It is not surface syntax:
+the grammar's annotation types are `Concrete` types (`toType`), which have no parameters.
+The judgment now says so, instead of leaving it a parser fact.
+
+**Why.** Rank-1 polymorphism is sound because a body typed at the rigid schema types at
+every kinded instance, with the same raw body: the resolver re-checks that body at the
+instance. The raw term carries types only in annotations. If an annotation could mention a
+rigid, the instance would have to change the raw term, and the re-check of the unchanged
+body would be wrong. With the premise, the substitution lemma (`poly-typed-at`) fixes every
+annotation and is a structural map.
+
+**Implementation.** The elaborator rejects a rigid annotation with
+`AnnotationMentionsParameter`. The parser cannot produce one, so no program changes.
+Annotating with a parameter (`(x : a)`) is a possible future feature; it would substitute the
+annotation at the instance and is a separate decision.

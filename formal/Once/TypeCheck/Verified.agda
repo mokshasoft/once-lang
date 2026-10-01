@@ -69,6 +69,7 @@ open import Once.TypeCheck.Error using (TypeError; renderError;
   ApplicationTypeMismatch; TypeMismatch; UsageViolation;
   BinOpLeftError; BinOpRightError)
 open import Relation.Nullary using (¬_)
+open import Once.Type.Rigid using (RigidFree)
 open import Once.TypeCheck.Raw as Raw using (RawExpr; RInt; RStringLit; RUnit; RVar; RResolved; RQualified; RAnnot; RPair; RLet; RDestruct; RUnaryOp; RBinOp; OpNeg; RLam; RApp; BinOp)
 open import Once.CanonicalName using (gen; GenWord)
 open import Data.String using (String)
@@ -669,6 +670,7 @@ record VerifiedTypeChecker : Set₁ where
         {Ψ : Surface.Usage (NamedCtx.size ctx)}
         {eE' : SExpr (NamedCtx.debruijn ctx) Ψ T}
         {d' f' : _}
+      → RigidFree T   -- D252: an annotation is a surface type
       → tcCheck ctx e T ≡ success Ψ eE' d' f'
       → ∃[ eE ] ∃[ d ] ∃[ f ]
           tcInfer ctx (RAnnot e T) ≡ success T Ψ eE d f

@@ -58,6 +58,7 @@ open import Once.Functor.Translate using (WellFormedF; IsConcrete; con-base; con
 -- decider's answer from the property here rather than reading it off a premise.
 open import Once.TypeCheck.DeciderComplete
   using (isGround-complete-at; ¬Ground-isGround-inj₂; wellFormedF?-complete-at)
+open import Once.Type.Rigid using (RigidFree; rigidFree?; rigidFree?-complete)
 open import Once.Functor.Decide using (wellFormedF?; isConcrete?; isBaseType?;
   isConcrete?-complete; isBaseType?-complete)
 open import Once.TypeCheck.Classify using (ctxWithImportsAndPolys;
@@ -394,12 +395,13 @@ infer-complete-RAnnot :
     {Ψ : Surface.Usage (NamedCtx.size ctx)}
     {eE' : SExpr (NamedCtx.debruijn ctx) Ψ T}
     {d' f' : ℕ}
+  → RigidFree T
   → checkElab ctx e T ≡ success Ψ eE' d' f'
   → ∃[ eE ] ∃[ d ] ∃[ f ]
       inferElab ctx (RAnnot e T) ≡ success T Ψ eE d f
-infer-complete-RAnnot {ctx} e T eqC
-  with checkElabV ctx e T | eqC
-... | success _ _ _ _ , _ | refl = _ , _ , _ , refl
+infer-complete-RAnnot {ctx} e T rf eqC
+  with rigidFree? T | rigidFree?-complete rf | checkElabV ctx e T | eqC
+... | just _ | refl | success _ _ _ _ , _ | refl = _ , _ , _ , refl
 
 ------------------------------------------------------------------------
 -- Completeness notes
@@ -1101,7 +1103,7 @@ given-infer-route {ctx} (t-var-resolved {cn = cn} ng _ _) A π _ =
   leaf-route ctx cn A π (inferElabV ctx (RResolved cn)) ng (classifyAppHeadView (RResolved cn))
 given-infer-route {ctx} (t-var-import {x = x} _ _ _ _) A π (_ , _ , _ , ok) = var-route ctx x A π (inferElabV ctx (RVar x)) ok
 given-infer-route {ctx} (t-var-poly-instantiate-infer {x = x} _ _ _ _ _) A π (_ , _ , _ , ok) = var-route ctx x A π (inferElabV ctx (RVar x)) ok
-given-infer-route (t-annot _) A π _ = refl
+given-infer-route (t-annot _ _) A π _ = refl
 given-infer-route (t-pair _ _) A π _ = refl
 given-infer-route (t-neg _) A π _ = refl
 given-infer-route (t-neg-float _ _ _ _) A π _ = refl
@@ -1493,8 +1495,8 @@ mutual
   iFromInferSub {ctx} dd@(t-var-poly-instantiate-infer {x = x} {T = T} _ _ _ _ _) sb =
     let (_ , _ , _ , eqI) = infer-complete dd
     in checkElab-fallback-RVar {ctx} x T eqI sb
-  iFromInferSub (t-annot {e = e} {T = T} d) sb =
-    let (_ , _ , _ , eqI) = infer-complete (t-annot d)
+  iFromInferSub (t-annot {e = e} {T = T} rf d) sb =
+    let (_ , _ , _ , eqI) = infer-complete (t-annot rf d)
     in checkElab-fallback-RAnnot e T eqI sb
   -- INTRO form: pair components were synthesized (d₁/d₂ : ⊢ᵢ) but `checkPairLit`
   -- re-CHECKS them — recurse the SWITCH on the genuine sub-derivations.
@@ -1599,9 +1601,9 @@ mutual
     checkElab-fallback-RVar-poly-infer {ctx} x eqLoc eqImp
       (lookupPolyPrefix⇒lookupPoly (NamedCtx.polys ctx) x polyE)
       (isGround-complete-at schema g)
-  infer-complete (t-annot {e = e} {T = T} d) =
+  infer-complete (t-annot {e = e} {T = T} rf d) =
     let (_ , _ , _ , eqC) = check-complete d
-    in infer-complete-RAnnot e T eqC
+    in infer-complete-RAnnot e T rf eqC
   infer-complete (t-pair {a = a} {b = b} d₁ d₂) =
     let (_ , _ , _ , eq₁) = infer-complete d₁
         (_ , _ , _ , eq₂) = infer-complete d₂

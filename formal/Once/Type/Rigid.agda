@@ -342,3 +342,27 @@ mutual
   rigidFreeF?-complete rf-Id = refl
   rigidFreeF?-complete (rf-⊕ f g) rewrite rigidFreeF?-complete f | rigidFreeF?-complete g = refl
   rigidFreeF?-complete (rf-⊗ f g) rewrite rigidFreeF?-complete f | rigidFreeF?-complete g = refl
+
+-- A ground schema's type mentions no parameter, so it is rigid-free (D252: a
+-- ground instance may annotate).
+mutual
+  extractGround-rf : ∀ (A : PolyType) (g : Ground A) → RigidFree (extractGround A g)
+  extractGround-rf (PTVar _)     ()
+  extractGround-rf PUnit         _         = rf-Unit
+  extractGround-rf PVoid         _         = rf-Void
+  extractGround-rf PInt          _         = rf-Int
+  extractGround-rf PFloat        _         = rf-Float
+  extractGround-rf PStr          _         = rf-Str
+  extractGround-rf PBuffer       _         = rf-Buffer
+  extractGround-rf (A P* B)      (gA , gB) = rf-* (extractGround-rf A gA) (extractGround-rf B gB)
+  extractGround-rf (A P+ B)      (gA , gB) = rf-+ (extractGround-rf A gA) (extractGround-rf B gB)
+  extractGround-rf (A P⇒[ q ] B) (gA , gB) = rf-⇒ (extractGround-rf A gA) (extractGround-rf B gB)
+  extractGround-rf (PEff A B)    (gA , gB) = rf-⇒ (extractGround-rf A gA) (extractGround-rf B gB)
+  extractGround-rf (Pμ-type F)   g         = rf-μ (extractGroundF-rf F g)
+  extractGround-rf (Pν-type F π) g         = rf-ν (extractGroundF-rf F g)
+
+  extractGroundF-rf : ∀ (F : PolyFunctor) (g : GroundF F) → RigidFreeF (extractGroundF F g)
+  extractGroundF-rf (PK A)   g         = rf-K (extractGround-rf A g)
+  extractGroundF-rf PId      _         = rf-Id
+  extractGroundF-rf (F P⊕ G) (gF , gG) = rf-⊕ (extractGroundF-rf F gF) (extractGroundF-rf G gG)
+  extractGroundF-rf (F P⊗ G) (gF , gG) = rf-⊗ (extractGroundF-rf F gF) (extractGroundF-rf G gG)

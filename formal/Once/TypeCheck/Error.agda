@@ -119,6 +119,8 @@ data TypeError : Set where
   -- Catch-all for strings we don't yet classify. Using this variant
   -- is an admission of incomplete coverage — flagged in reviews so
   -- each use gets promoted to a structured variant over time.
+  -- D252: an annotation mentions a definition's type parameter.
+  AnnotationMentionsParameter : (T : Type) → TypeError
   UnclassifiedError : String → TypeError
 
 ------------------------------------------------------------------------
@@ -194,4 +196,6 @@ renderError (BinOpLeftError sub) =
   "binop left: " ++ renderError sub
 renderError (BinOpRightError sub) =
   "binop right: " ++ renderError sub
+renderError (AnnotationMentionsParameter T) =
+  "An annotation may not mention a type parameter: " ++ showType T
 renderError (UnclassifiedError s) = s

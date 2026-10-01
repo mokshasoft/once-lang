@@ -186,7 +186,7 @@ elabᵢ V (t-var-qualified {name = name} {alias = alias} lk k) = importE (bare (
 elabᵢ V (t-var-resolved {cn = cn} _ lk k) = importE cn k (imported V lk)
 elabᵢ V (t-var-import {x = x} _ _ lk k)    = importE (bare x) k (imported V lk)
 elabᵢ V (t-var-poly-instantiate-infer {g = g} _ _ lp _ refl) = refE (entry V lp) (ground V lp g)
-elabᵢ V (t-annot d)       = elabᶜ V d
+elabᵢ V (t-annot _ d)     = elabᶜ V d
 elabᵢ V (t-pair da db)    = lift2 pair ⊢pair (elabᵢ V da) (elabᵢ V db)
 elabᵢ V (t-neg d)         = lift1 (prim p-neg) (⊢prim p-neg) (elabᵢ V d)
 elabᵢ V (t-neg-float i f l p) = lit (lit-float (negate (decimalOf i f l))) , ⊢lit-float

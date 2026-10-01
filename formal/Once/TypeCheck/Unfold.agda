@@ -31,7 +31,7 @@
 module Once.TypeCheck.Unfold where
 
 open import Once.Type.Sub using (_⊑π_)
-open import Once.Type.Rigid using (KindedInstance)
+open import Once.Type.Rigid using (KindedInstance; RigidFree; extractGround-rf)
 open import Data.Bool using (Bool; true; false)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.List using (List; []; _∷_)
@@ -346,7 +346,7 @@ module Weaken (imps : Imports) (P : PolyCtx) where
     W-i wk fr (t-var-import {x = z} ¬gw ln li c) = cᵢ (sym (up-zero wk)) (t-var-import ¬gw (wnone (wloc wk z fr) ln) li c)
     W-i wk fr (t-var-poly-instantiate-infer {x = z} ln li lp gr eT) =
         cᵢ (sym (up-zero wk)) (t-var-poly-instantiate-infer (wnone (wloc wk z fr) ln) li lp gr eT)
-    W-i wk fr (t-annot c) = t-annot (W-c wk fr c)
+    W-i wk fr (t-annot rf c) = t-annot rf (W-c wk fr c)
     W-i wk (f₁ , f₂) (t-pair d₁ d₂) = cᵢ (sym (up-+ wk _ _)) (t-pair (W-i wk f₁ d₁) (W-i wk f₂ d₂))
     W-i wk fr (t-neg d) = t-neg (W-i wk fr d)
     W-i wk _ (t-neg-float i f l p) = cᵢ (sym (up-zero wk)) (t-neg-float i f l p)
@@ -567,7 +567,7 @@ module Unfolding
     with trans (sym lpp-head) (subst (λ z → lookupPolyPrefix P′ z ≡ _) y≡x lp)
   ... | refl =
     subst (λ T → _ ⊢ᵢ RAnnot e A ∶ T ⨾ zeroUsage) (sym (trans eT (trans (extractGround-irr s g′ g) eqA)))
-      (t-annot (W-c wk-base (SR.clr r) eD))
+      (t-annot (subst RigidFree eqA (extractGround-rf s g)) (W-c wk-base (SR.clr r) eD))
   s-poly-infer r y (no y≢x) ln li lp gr eT =
     t-var-poly-instantiate-infer ln li (lpp-skip y≢x lp) gr eT
 
@@ -625,7 +625,7 @@ module Unfolding
     S-i r _ (t-var-import {x = y} ¬gw ln li c) = s-import r y (y StrProp.≟ x) ¬gw ln li c
     S-i r _ (t-var-poly-instantiate-infer {x = y} ln li lp gr eT) =
         s-poly-infer r y (y StrProp.≟ x) ln li lp gr eT
-    S-i r nc (t-annot c) = t-annot (S-c r nc c)
+    S-i r nc (t-annot rf c) = t-annot rf (S-c r nc c)
     S-i r (n₁ , n₂) (t-pair d₁ d₂) = t-pair (S-i r n₁ d₁) (S-i r n₂ d₂)
     S-i r nc (t-neg d) = t-neg (S-i r nc d)
     S-i r _ (t-neg-float i f l p) = t-neg-float i f l p
@@ -1082,8 +1082,8 @@ module Unfolding
     ... | refl , _ = t-var-import ¬gw ln li c
     F-i {sh = sh} r {b = b} nc (t-var-poly-instantiate-infer {x = z} ln li lp gr eT) eq with inv-RVar {sh = sh} {b = b} eq
     ... | refl , alt = t-var-poly-instantiate-infer ln li (lpp-add r z alt ln lp) gr eT
-    F-i {sh = sh} r {b = b} nc (t-annot c) eq with inv-RAnnot {sh = sh} {b = b} eq
-    ... | inj₁ (b₀ , refl , eb) = t-annot (F-c r nc c eb)
+    F-i {sh = sh} r {b = b} nc (t-annot rf c) eq with inv-RAnnot {sh = sh} {b = b} eq
+    ... | inj₁ (b₀ , refl , eb) = t-annot rf (F-c r nc c eb)
     ... | inj₂ (refl , refl , refl , refl) = unfolded r c
     F-i {sh = sh} r {b = b} nc (t-pair d₁ d₂) eq with inv-RPair {sh = sh} {b = b} eq
     ... | a₀ , u₀ , refl , e₁ , e₂ = t-pair (F-i r (proj₁ nc) d₁ e₁) (F-i r (proj₂ nc) d₂ e₂)

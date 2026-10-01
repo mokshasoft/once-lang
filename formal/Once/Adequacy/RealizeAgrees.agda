@@ -59,7 +59,7 @@ open import Once.TypeCheck.Elaborate using (success; failure; VerifiedInferResul
 open import Once.TypeCheck.TargetView
 import Once.TypeCheck.Elaborate as E
 -- D243: the polymorphic-reference agreement proofs.
-open import Once.Type.Rigid using (KindedInstance; kindedInstance?)
+open import Once.Type.Rigid using (KindedInstance; kindedInstance?; RigidFree; rigidFree?)
 open import Once.Type.Match using (Subst; instantiate)
 open import Once.Type.Instance using (instantiate-sound)
 open import Once.Type.Determined using (ArrowView; arrowSchema?; codVarsInDom?)
@@ -1458,13 +1458,14 @@ agree-RApp ctx f arg E.ahv-other veq eq argIH fInferIH argCheckIH fGivenIH dγ =
 -- supplied `check-agreeV ctx e T₀` IH. A check failure makes the eq absurd.
 agree-RAnnot : ∀ {ctx : NamedCtx} {e : RawExpr} {T₀ : Type} {A Ψ}
   {se : Expr (NamedCtx.debruijn ctx) Ψ A} {d f} {w : ctx ⊢ᵢ Raw.RAnnot e T₀ ∶ A ⨾ Ψ}
-  (r : VerifiedCheckResult ctx e T₀)
-  → E.inferElabV-RAnnot-aux ctx e T₀ r ≡ (success A Ψ se d f , w)
+  (mrf : Maybe (RigidFree T₀)) (r : VerifiedCheckResult ctx e T₀)
+  → E.inferElabV-RAnnot-aux ctx e T₀ mrf r ≡ (success A Ψ se d f , w)
   → (∀ {Ψ' eE' d' fr' w'} → r ≡ (success Ψ' eE' d' fr' , w')
        → ∀ dγ → SD.⟦ eE' ⟧ˢ fmt σ dγ ≡ SD.⟦ realize w' ⟧ˢ fmt σ dγ)
   → ∀ dγ → SD.⟦ se ⟧ˢ fmt σ dγ ≡ SD.⟦ realize-infer w ⟧ˢ fmt σ dγ
-agree-RAnnot (success Ψ' eE' d' fr' , witness) refl IH dγ = IH refl dγ
-agree-RAnnot (failure _ , _) () IH
+agree-RAnnot nothing   _                               () IH
+agree-RAnnot (just _) (success Ψ' eE' d' fr' , witness) refl IH dγ = IH refl dγ
+agree-RAnnot (just _) (failure _ , _) () IH
 
 ------------------------------------------------------------------------
 -- D127: `morph-realize` (`extract-morph-eff E ≡ realize-morph (extractMorphWitness
@@ -2427,7 +2428,7 @@ mutual
   -- RAnnot: infers by CHECKING the body against the annotation; delegate to
   -- `check-agreeV` (phase drops to check, which is strictly < this infer node).
   infer-agreeV ctx (Raw.RAnnot e T₀) (acc rec) eq dγ =
-    agree-RAnnot (E.checkElabV ctx e T₀) eq
+    agree-RAnnot (rigidFree? T₀) (E.checkElabV ctx e T₀) eq
       (λ p → check-agreeV ctx e T₀ (rec (check<infer-annot e T₀)) p) dγ
   -- RDestruct (case): mirror the de-withed elaborator auxes (scrutinee type;
   -- left branch in ctx,xL:A; right branch in ctx,xR:B; branch-type match). The

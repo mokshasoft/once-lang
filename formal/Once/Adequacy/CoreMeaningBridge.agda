@@ -448,7 +448,7 @@ module _ {δ : GM.DefSem} where
   ... | def d′ i′ | eq = trans eq (refSem-⊢ i′ dγ)
   bridge-i V ag (t-var-poly-instantiate-infer {g = g} _ _ lp _ refl) dγ =
     trans (Agree.agree-ground ag lp g) (refSem-⊢ (ground V lp g) dγ)
-  bridge-i V ag (t-annot d) dγ = bridge-c V ag d dγ
+  bridge-i V ag (t-annot _ d) dγ = bridge-c V ag d dγ
   bridge-i V ag (t-pair da db) dγ = bindC (bridge-i V ag da _) (λ a → bindC (bridge-i V ag db _) (λ b → refl))
   bridge-i V ag (t-neg d) dγ = bindC (bridge-i V ag d dγ) (λ v → refl)
   bridge-i V ag (t-neg-float i f l p) dγ = refl

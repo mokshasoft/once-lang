@@ -226,7 +226,7 @@ module Transfer
     tr-i ld (t-var-import {x = y} ¬gw ln li c) = cᵢ (sym (drop-zero ld)) (t-var-import ¬gw (none-tr (loc-tr ld y) ln) li c)
     tr-i ld (t-var-poly-instantiate-infer {x = y} ln li lp gr eT) =
         cᵢ (sym (drop-zero ld)) (t-var-poly-instantiate-infer (none-tr (loc-tr ld y) ln) li (lpp-tr y lp) gr eT)
-    tr-i ld (t-annot c) = t-annot (tr-c ld c)
+    tr-i ld (t-annot rf c) = t-annot rf (tr-c ld c)
     tr-i ld (t-pair d₁ d₂) = cᵢ (sym (drop-+ ld _ _)) (t-pair (tr-i ld d₁) (tr-i ld d₂))
     tr-i ld (t-neg d) = t-neg (tr-i ld d)
     tr-i ld (t-neg-float i f l p) = cᵢ (sym (drop-zero ld)) (t-neg-float i f l p)

@@ -249,7 +249,7 @@ mutual
   agree-ii (t-var-poly-instantiate-infer {schema = s} {g = g} _ _ p _ refl)
            (t-var-poly-instantiate-infer {g = g′} _ _ p′ _ refl) with trans (sym p) p′
   ... | refl = extractGround-irr s g g′ , refl
-  agree-ii (t-annot c) (t-annot c′) = refl , agree-cc c c′
+  agree-ii (t-annot _ c) (t-annot _ c′) = refl , agree-cc c c′
   agree-ii (t-pair a b) (t-pair a′ b′) with agree-ii a a′ | agree-ii b b′
   ... | refl , refl | refl , refl = refl , refl
   agree-ii (t-neg d) (t-neg d′) = refl , proj₂ (agree-ii d d′)
