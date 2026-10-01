@@ -35,6 +35,7 @@ open import Once.IR using (IR)
 open import Once.IRTy using (⌊_⌋)
 open import Once.Type using (Unit)
 import Once.Compile as C
+import Once.CanonicalName
 open import Once.Adequacy.SourceTrace using (moduleToIR; moduleToIR-aux)
 import Once.Surface.Syntax as Srf
 open import Once.TypeCheck.Elaborate as TE using (CheckElabResult)
@@ -153,7 +154,7 @@ ce-mono-doOpt doOpt sc fi es (inj₂ ty) eq = grd (rigidFree? ty) eq
             let (ir-d , cfd) = cfun-doOpt doOpt (C.CScope.cimps sc) (C.cpolys sc) (C.declImps (C.CScope.ctele sc))
                                  (C.FunInfo.funName fi) ty (C.FunInfo.funBody fi) cf-eq
                 (_ , recd)   = ce-doOpt doOpt (C.extendScope sc (C.FunInfo.funName fi) ty) es rec
-            in _ , trans (cong (C.ce-mono-ir C.Heap doOpt sc fi es ty) cfd) (cong (C.caf-go-wrap fi ty ir-d) recd)
+            in _ , trans (cong (C.ce-mono-ir C.Heap doOpt sc fi es ty) cfd) (cong (C.consCF (C.mkCompiledFun (Once.CanonicalName.bare (C.FunInfo.funName fi)) ty ir-d (C.FunInfo.funIsPrimitive fi))) recd)
 
 ce-poly-doOpt doOpt sc pfi es (inj₁ _) ()
 ce-poly-doOpt doOpt sc pfi es (inj₂ _) eq = ce-doOpt doOpt (C.addEntry sc pfi) es eq

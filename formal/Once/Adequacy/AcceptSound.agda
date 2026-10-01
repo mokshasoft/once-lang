@@ -146,11 +146,6 @@ consCF-inj : ∀ {cf} (r : String ⊎ List C.CompiledFun) {cfs} → C.consCF cf 
 consCF-inj (inj₁ _) ()
 consCF-inj (inj₂ rest) _ = rest , refl
 
-wrap-inj : ∀ fi ty ir (r : String ⊎ List C.CompiledFun) {cfs} → C.caf-go-wrap fi ty ir r ≡ inj₂ cfs
-  → Σ-syntax (List C.CompiledFun) (λ rest → r ≡ inj₂ rest)
-wrap-inj fi ty ir (inj₁ _) ()
-wrap-inj fi ty ir (inj₂ rest) _ = rest , refl
-
 checkOK-sound : ∀ {ctx e T} (r : TE.VerifiedCheckResult ctx e T) → C.checkOK r ≡ inj₂ tt
   → Σ-syntax (Srf.Usage (NamedCtx.size ctx)) (λ Ψ → ctx ⊢ᶜ e ∶ T ⨾ Ψ)
 checkOK-sound (TE.failure _ , _) ()
@@ -216,7 +211,7 @@ ce-mono-sound doOpt sc fi es ep (inj₂ ty) er eq = grd (rigidFree? ty) eq
           let (Ψ , jud) = compileFun-sound doOpt (C.CScope.cimps sc) (C.cpolys sc) (C.declImps (C.CScope.ctele sc))
                             (C.FunInfo.funName fi) ty (C.FunInfo.funBody fi) cf
           in mono ep er g jud
-               (ce-sound doOpt (C.extendScope sc (C.FunInfo.funName fi) ty) es (proj₂ (wrap-inj fi ty ir _ eq′)))
+               (ce-sound doOpt (C.extendScope sc (C.FunInfo.funName fi) ty) es (proj₂ (consCF-inj _ eq′)))
 
 ce-poly-sound doOpt sc pfi es eq = step _ refl eq
   where

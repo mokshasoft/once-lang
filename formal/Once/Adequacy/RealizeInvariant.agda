@@ -2,11 +2,9 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.Adequacy.RealizeInvariant — the `realize-invariant` postulate (A4),
--- factored into its own base module (Plan 0.55) so both `MainRealizeAgrees`
--- (which composes it) and `MtIndep` (`mt-den-indep`, which uses it) can import
--- it WITHOUT an import cycle. The postulate itself is UNCHANGED (moved verbatim
--- from `MainRealizeAgrees`).
+-- Once.Adequacy.RealizeInvariant — the `realize-invariant` postulate (A4), in
+-- its own base module (Plan 0.55). The telescope walk (`TeleWalk`) uses it at
+-- every entry, to join the compiler's derivation to the typed module's.
 --
 -- (B) realize denotational-invariance — ANY two `⊢ᶜ` derivations of the SAME
 --     judgment realize to denotationally-equal terms.

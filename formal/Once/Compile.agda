@@ -137,42 +137,10 @@ validateMain : Type → String ⊎ ⊤
 validateMain (Unit ⇒[ mk-kind Many eff ] Unit) = inj₂ tt
 validateMain ty = inj₁ ("main must have type IO Unit (= Eff Unit Unit), but got: " ++ showType ty)
 
--- | Plan 0.2.4.5 D1: target-independent entry-point IR construction.
--- main : IR Unit (Eff Unit Unit) produces a closure value. To run it,
--- we need to apply that closure to (). Express this in CCC IR:
---
---   wrapMainAsEntry main = apply ∘ ⟨ main , terminal ⟩ : IR Unit Unit
---
--- This shifts the responsibility for the closure-call ABI from a
--- hand-written `_start` template (which previously drifted out of sync
--- with the verified apply-setup-trace) onto the verified `apply` IR
--- itself. `_start` then only needs to do kernel-runtime setup
--- (heap-pool init, stack reservation) and call the wrapped entry.
-wrapMainAsEntry : IR ⌊ Unit ⌋ ⌊ Unit ⇒[ mk-kind Many eff ] Unit ⌋ → IR ⌊ Unit ⌋ ⌊ Unit ⌋
--- Plan 0.53: the entry/call apply-pairs must be `Heap`, not `Stack`.
--- These wrappers can produce ESCAPING closures (a curried direct-call
--- function `g 4` returns a closure capturing `4`); with a `Stack` pair the
--- capture would point into a transient stack cell that is reused after the
--- frame is popped (the x86-32 `arith-lambda-2` dangling read — x86-64/riscv64
--- only survived it by luck). AllocMode is semantically transparent, so this
--- does not affect the evaluation proof; it only moves the allocation to the
--- heap, where an escaping closure's environment must live. We are heap-only.
-wrapMainAsEntry mainIR = apply ∘ ⟨ mainIR , terminal ⟩
-
--- | Apply the entry wrap conditionally for the function named "main".
--- Returns the (possibly-rewritten) type and IR. Non-main functions and
--- main with a non-validated type pass through unchanged.
--- Plan 0.103 C: the two decisions are ARGUMENTS (not literal patterns), so a
--- proof about an abstract name reduces it once it knows the answer.
-maybeWrapMain-at : ∀ {ty : Type} → Dec (ty ≡ Unit ⇒[ mk-kind Many eff ] Unit) → Bool → IR ⌊ Unit ⌋ ⌊ ty ⌋
-                 → ∃[ ty' ] IR ⌊ Unit ⌋ ⌊ ty' ⌋
-maybeWrapMain-at {.(Unit ⇒[ mk-kind Many eff ] Unit)} (yes refl) true  ir = Unit , wrapMainAsEntry ir
-maybeWrapMain-at {.(Unit ⇒[ mk-kind Many eff ] Unit)} (yes refl) false ir = Unit ⇒[ mk-kind Many eff ] Unit , ir
-maybeWrapMain-at {ty} (no _) _    ir = ty , ir
-
-maybeWrapMain : (name : String) (ty : Type) → IR ⌊ Unit ⌋ ⌊ ty ⌋
-              → ∃[ ty' ] IR ⌊ Unit ⌋ ⌊ ty' ⌋
-maybeWrapMain name ty ir = maybeWrapMain-at (ty ≟T (Unit ⇒[ mk-kind Many eff ] Unit)) (name == "main") ir
+-- D253: `main` is an entry like any other. It is not rewritten: its entry
+-- form is the direct-call morphism (`directCallIR`), which at `IO Unit` is
+-- `apply ∘ ⟨ ir ∘ terminal , id ⟩` — it RUNS the action on the Unit input,
+-- and `_start` calls `once_main` like any caller calls an entry.
 
 -- | Plan 0.50 Stage 2 (D064): emit a top-level definition as a DIRECT-CALL
 -- MORPHISM. References now elaborate to `lift-morphism (SigOp once_f)` and
@@ -180,11 +148,10 @@ maybeWrapMain name ty ir = maybeWrapMain-at (ty ≟T (Unit ⇒[ mk-kind Many eff
 -- arrow `f : A → B` (`once_f(a) : B`), NOT a closure-returner `once_f() : Bᴬ`.
 -- An arrow function's `cfIR : IR Unit (A ⇒ B)` (the curried closure) is
 -- uncurried to `apply ∘ ⟨ cfIR ∘ terminal , id ⟩ : IR A B` — the verified
--- `apply` consumes the closure with the incoming argument `id`, mirroring
--- `wrapMainAsEntry`. `main` is already `cfType ≡ Unit` (entry-wrapped by
--- `maybeWrapMain`), so it is non-arrow and passes through untouched.
+-- `apply` consumes the closure with the incoming argument `id`. `main` is no
+-- exception (D253): at `IO Unit = Unit ⇒[eff] Unit` this is its entry.
 directCallIR : (ty : Type) → IR ⌊ Unit ⌋ ⌊ ty ⌋ → ∃[ D ] ∃[ C ] IR ⌊ D ⌋ ⌊ C ⌋
--- Plan 0.53: `Heap`, not `Stack` — see wrapMainAsEntry. A curried direct-call
+-- Plan 0.53: `Heap`, not `Stack`. A curried direct-call
 -- function's first application returns a closure that captures the first arg
 -- and escapes, so its apply-pair must be heap-allocated.
 -- D143: at an ERASED arrow the function takes no argument, so the uncurried
@@ -328,21 +295,6 @@ resolveFunType : FunCtx → PolyCtx → Maybe Type → RawExpr → String ⊎ Ty
 resolveFunType ctx polys (just ty) body = inj₂ ty
 resolveFunType ctx polys nothing   body = inferType ctx polys body
 
-caf-go-wrap : (fi : FunInfo) (ty : Type) → IR ⌊ Unit ⌋ ⌊ ty ⌋ → String ⊎ List CompiledFun → String ⊎ List CompiledFun
-
-caf-go-wrap fi ty ir (inj₁ err)       = inj₁ err
-caf-go-wrap fi ty ir (inj₂ compiled)  =
-  -- Plan 0.2.4.5 D1: for main, wrap as `apply ∘ ⟨ main , terminal ⟩`
-  -- so codegen produces a Unit→Unit entry point that does the
-  -- closure invocation via the verified apply IR. _start no longer
-  -- needs hand-written closure-call ABI (which drifted at Stage C).
-  let wrapped = maybeWrapMain (funName fi) ty ir
-      ty'     = proj₁ wrapped
-      ir'     = proj₂ wrapped
-  in inj₂ (mkCompiledFun (bare (funName fi)) ty' ir' (funIsPrimitive fi) ∷ compiled)
-
-
-
 -- | Parse source text to a Module AST. Haskell uses this to read
 -- both the user's file and each transitive import before calling
 -- `resolveImports` with the populated ModuleMap.
@@ -470,7 +422,8 @@ ce-mono-g m doOpt sc fi es ty (just _) =
     (compileFun m doOpt (CScope.cimps sc) (cpolys sc) (declImps (CScope.ctele sc)) (funName fi) ty (funBody fi))
 ce-mono-ir m doOpt sc fi es ty (inj₁ err) = inj₁ err
 ce-mono-ir m doOpt sc fi es ty (inj₂ ir)  =
-  caf-go-wrap fi ty ir (compileEntries m doOpt (extendScope sc (funName fi) ty) es)
+  consCF (mkCompiledFun (bare (funName fi)) ty ir (funIsPrimitive fi))
+         (compileEntries m doOpt (extendScope sc (funName fi) ty) es)
 
 -- D243: a telescope definition is checked ONCE, at its schema with rigid
 -- parameters; its uses are instances of it.

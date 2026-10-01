@@ -28,15 +28,17 @@
 --   * PLAN 0.103 6a — THE PROGRAM MEANING IS THE CORE'S. A typed module IS a
 --     core program (`Once.Spec.Core.Translate.toProgram`: the module telescope,
 --     every definition typed once, a reference meaning its entry — D239, D243,
---     D246), and its meaning is `Once.Spec.Core.Telescope.runProgram`: `main`
---     run in the telescope's environment. (The surface direct meaning
+--     D246), and its meaning is `Once.Spec.Core.Telescope.runProgram`: its
+--     `main` entry — an entry like any other (D253) — run in the telescope's
+--     environment. (The surface direct meaning
 --     `MainMeaning.meaningᵈ` is retired: it could not give a polymorphic
 --     entry, typed once at rigid parameters, a meaning at an instance.)
 --
 -- NOT spec (implementation, checked against this): `realize` (the
 -- derivation→IR-morphism bridge), `evalᴰ` (`Once.Denotation.DenotTrace`,
 -- the IR-expression trace evaluator), `SD.⟦_⟧ˢ` (`SourceDenote`, related
--- to `⟦_⟧ᵈ` by the proven `bridgeᵈ`), and the elaborator.
+-- to the core meaning entry by entry by the proven telescope walk), and the
+-- elaborator.
 --
 -- `Once.IR` stays OUTSIDE the spec (OCP option a): it is a pure syntax
 -- vocabulary tier (no machine behaviour), shared by spec and implementation

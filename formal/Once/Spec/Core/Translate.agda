@@ -12,7 +12,8 @@
 --   * a polymorphic definition becomes a `∀` entry: its body, typed once at its
 --     rigid schema, elaborated and ABSTRACTED (D243);
 --   * `main` — the first `main : IO Unit`, exactly as the compiler finds it —
---     is the program's body, in the scope of the definitions before it.
+--     is an entry like any other (D253); the program runs a REFERENCE to it,
+--     and its telescope is the whole module.
 -- The correspondence between the surface scope and the core signature
 -- (`ImpSig`/`TeleSig`) is what the elaboration's `View` is built from.
 ------------------------------------------------------------------------
@@ -48,7 +49,7 @@ open import Once.Spec.Module using (Scope; scope; ModTele; []; ffi; mono; poly; 
 open import Once.Spec.Core.PolyTy
 open import Once.Spec.Core.AbsTy
 open import Once.Spec.Core.Schema using (schemaOf; schemaOf-cf; kindsOf; kinded-instance)
-open import Once.Spec.Core.Telescope using (Tele; def; Program; program; noKinds; IOUnit)
+open import Once.Spec.Core.Telescope using (Tele; def; Program; program; noKinds)
 import Once.Spec.Core.PolyTyping as PT
 import Once.Spec.Core.Abstract as A
 import Once.Spec.Elaboration as E
@@ -171,8 +172,8 @@ private
   u0 {Ψ = Usage.[]} d = d
 
 -- The walk's `main` selection is TOP-LEVEL (not `where`-bound), so a proof can
--- follow it: the first `main : IO Unit`, exactly as `mainRealized-go` (and the
--- compiler's `findMain`) pick it.
+-- follow it: the first `main : IO Unit`, exactly as the compiler's `findMain`
+-- picks it.
 module _ {s} {S : Sig s} {sc : Scope} {fi : C.FunInfo} {ty : T.Type} {Ψ : Usage 0} where
 
 
@@ -187,12 +188,6 @@ module _ {s} {S : Sig s} {sc : Scope} {fi : C.FunInfo} {ty : T.Type} {Ψ : Usage
   monoBody is ts sg g D =
     subst (λ X → PT._⊩_⊢[_]_∷_!_ S noKinds PT.∅ Usage.[] (A.absTm S noKinds (proj₁ (monoElab is ts D))) X T.pure)
           (absTy-ground noKinds g) (u0 (A.abs-⊢ S noKinds sg (proj₂ (monoElab is ts D))))
-
-  -- `main`: the body in the scope of the definitions before it.
-  monoHere : Tele S → (is : ImpSig S (Scope.imps sc)) (ts : TeleSig S (Scope.tele sc)) → SigCF S
-           → (D : ctxOf sc ⊢ᶜ funBody fi ∶ ty ⨾ Ψ) → ty ≡ EffUU → Program
-  monoHere tl is ts sg D refl =
-    program tl (A.absTm S noKinds (proj₁ (monoElab is ts D))) (u0 (A.abs-⊢ S noKinds sg (proj₂ (monoElab is ts D))))
 
 -- The signature extended by a definition's entry stays constant-free.
 monoSg : ∀ {s} {S : Sig s} {ty : T.Type} → SigCF S → RigidFree ty → SigCF (S ▷ monoSchema ty)
@@ -217,15 +212,31 @@ module _ {s} {S : Sig s} {sc : Scope} {pfi : C.PolyFunInfo} {Ψ : Usage 0} where
                (absTy (kindsOf (pfunType pfi)) (rigidOf (pfunType pfi))) T.pure
   polyBody is ts sg D = u0 (A.abs-⊢ S (kindsOf (pfunType pfi)) sg (proj₂ (polyElab is ts D)))
 
+-- A definition's telescope entry.
+monoDef : ∀ {s} {S : Sig s} {sc fi ty Ψ} → Tele S → (is : ImpSig S (Scope.imps sc)) (ts : TeleSig S (Scope.tele sc))
+        → SigCF S → RigidFree ty → ctxOf sc ⊢ᶜ funBody fi ∶ ty ⨾ Ψ → Tele (S ▷ monoSchema ty)
+monoDef {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl is ts sg g D =
+  def tl (monoSchema ty) (A.absTm S noKinds (proj₁ (monoElab {S = S} {sc = sc} {fi = fi} is ts D)))
+                         (monoBody {S = S} {sc = sc} {fi = fi} is ts sg g D)
+
+polyDef : ∀ {s} {S : Sig s} {sc pfi Ψ} → Tele S → (is : ImpSig S (Scope.imps sc)) (ts : TeleSig S (Scope.tele sc))
+        → SigCF S → ctxOf sc ⊢ᶜ pfunBody pfi ∶ rigidOf (pfunType pfi) ⨾ Ψ → Tele (S ▷ schemaOf (pfunType pfi))
+polyDef {S = S} {sc = sc} {pfi = pfi} {Ψ = Ψ} tl is ts sg D =
+  def tl (schemaOf (pfunType pfi))
+         (A.absTm S (kindsOf (pfunType pfi)) (proj₁ (polyElab {S = S} {sc = sc} {pfi = pfi} {Ψ = Ψ} is ts D)))
+         (polyBody {S = S} {sc = sc} {pfi = pfi} {Ψ = Ψ} is ts sg D)
+
+-- D253: the program names the entry `main : IO Unit`.
+programAt : ∀ {s} {S : Sig s} → Tele S → (d : Fin s) → S !! d ≡ monoSchema EffUU → Program
+programAt tl d e = program tl d e
+
 mutual
   toProgram : ∀ {s} {S : Sig s} {sc es} → Tele S → ImpSig S (Scope.imps sc) → TeleSig S (Scope.tele sc) → SigCF S
             → (mt : ModTele sc es) → MainIn mt → Program
   toProgram tl is ts sg [] ()
   toProgram tl is ts sg (ffi _ _ c h g rest) mi = toProgram tl (i-ffi c h g is) ts sg rest mi
   toProgram {S = S} {sc = sc} tl is ts sg (poly {pfi = pfi} {Ψ = Ψ} D rest) mi =
-    toProgram (def tl (schemaOf (pfunType pfi))
-                      (A.absTm S (kindsOf (pfunType pfi)) (proj₁ (polyElab {S = S} {sc = sc} {pfi = pfi} {Ψ = Ψ} is ts D)))
-                      (polyBody {S = S} {sc = sc} {pfi = pfi} {Ψ = Ψ} is ts sg D))
+    toProgram (polyDef {S = S} {sc = sc} {pfi = pfi} {Ψ = Ψ} tl is ts sg D)
               (wkI is) (t-def zero refl (wkT ts)) (polySg sg pfi) rest mi
   toProgram {S = S} {sc = sc} tl is ts sg (mono {fi = fi} {ty = ty} {Ψ = Ψ} ep er g D rest) mi =
     monoPick {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl is ts sg g D rest mi
@@ -235,7 +246,7 @@ mutual
            → (rest : ModTele (addImp sc (funName fi) ty) es) → ((funName fi ≡ "main") × (ty ≡ EffUU)) ⊎ MainIn rest
            → Program
   monoPick {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl is ts sg g D rest (inj₁ (_ , e)) =
-    monoHere {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl is ts sg D e
+    monoHere {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl is ts sg g D rest e
   monoPick {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl is ts sg g D rest (inj₂ mi′) =
     monoDispatch {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl is ts sg g D rest mi′ (funName fi ≟str "main") (ty ≟T EffUU)
 
@@ -244,7 +255,7 @@ mutual
                → (rest : ModTele (addImp sc (funName fi) ty) es) → MainIn rest
                → Dec (funName fi ≡ "main") → Dec (ty ≡ EffUU) → Program
   monoDispatch {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl is ts sg g D rest mi′ (yes _) (yes e) =
-    monoHere {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl is ts sg D e
+    monoHere {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl is ts sg g D rest e
   monoDispatch {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl is ts sg g D rest mi′ (yes _) (no _) =
     monoNext {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl is ts sg g D rest mi′
   monoDispatch {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl is ts sg g D rest mi′ (no _) _ =
@@ -254,6 +265,25 @@ mutual
            → SigCF S → RigidFree ty → (D : ctxOf sc ⊢ᶜ funBody fi ∶ ty ⨾ Ψ)
            → (rest : ModTele (addImp sc (funName fi) ty) es) → MainIn rest → Program
   monoNext {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl is ts sg g D rest mi′ =
-    toProgram (def tl (monoSchema ty) (A.absTm S noKinds (proj₁ (monoElab {S = S} {sc = sc} {fi = fi} is ts D)))
-                                      (monoBody {S = S} {sc = sc} {fi = fi} is ts sg g D))
+    toProgram (monoDef {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl is ts sg g D)
               (i-def zero refl (wkI is)) (wkT ts) (monoSg sg g) rest mi′
+
+  -- `main`: an entry like any other (D253); the program refers to it.
+  monoHere : ∀ {s} {S : Sig s} {sc fi ty es Ψ} → Tele S → (is : ImpSig S (Scope.imps sc)) → TeleSig S (Scope.tele sc)
+           → SigCF S → RigidFree ty → (D : ctxOf sc ⊢ᶜ funBody fi ∶ ty ⨾ Ψ)
+           → (rest : ModTele (addImp sc (funName fi) ty) es) → ty ≡ EffUU → Program
+  monoHere {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl is ts sg g D rest e =
+    toProgramFrom (monoDef {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl is ts sg g D)
+                  (i-def zero refl (wkI is)) (wkT ts) (monoSg sg g) zero (cong monoSchema e) rest
+
+  -- The entries after `main`: the telescope goes on, `main`'s entry is weakened.
+  toProgramFrom : ∀ {s} {S : Sig s} {sc es} → Tele S → ImpSig S (Scope.imps sc) → TeleSig S (Scope.tele sc) → SigCF S
+                → (d : Fin s) → S !! d ≡ monoSchema EffUU → ModTele sc es → Program
+  toProgramFrom tl is ts sg d e [] = programAt tl d e
+  toProgramFrom tl is ts sg d e (ffi _ _ c h g rest) = toProgramFrom tl (i-ffi c h g is) ts sg d e rest
+  toProgramFrom {S = S} {sc = sc} tl is ts sg d e (poly {pfi = pfi} {Ψ = Ψ} D rest) =
+    toProgramFrom (polyDef {S = S} {sc = sc} {pfi = pfi} {Ψ = Ψ} tl is ts sg D)
+                  (wkI is) (t-def zero refl (wkT ts)) (polySg sg pfi) (suc d) e rest
+  toProgramFrom {S = S} {sc = sc} tl is ts sg d e (mono {fi = fi} {ty = ty} {Ψ = Ψ} ep er g D rest) =
+    toProgramFrom (monoDef {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl is ts sg g D)
+                  (i-def zero refl (wkI is)) (wkT ts) (monoSg sg g) (suc d) e rest

@@ -64,9 +64,6 @@ open import Once.Denotation.TraceMonad using (T; _>>=T_; projTrace)
 open import Once.Surface.Syntax as Srf2 using (Expr; ∅; Usage)
 open import Once.TypeCheck.Completeness using (check-complete)
 open import Data.Unit using (tt)
--- Plan 0.49 Phase 1: the SD meaning of `main` + the IR↔SD bridge, assembled
--- (`source-meaningᴰ` = `wrap-trace` ∘ `faithful` ∘ the `main-ir-form` plumbing).
-import Once.Adequacy.MainExtract as ME
 -- Plan 0.49 Phase 1 (row-1b): the declarative valid-main predicate + BOTH
 -- lifts. `moduleToIR-complete` (forces `check-complete`) discharges
 -- completeness; `moduleToIR-sound` produces the predicate for soundness.
@@ -289,10 +286,6 @@ open import Once.Adequacy.MainBuilds using (main⇒built)
 -- (not true-by-construction). `ModuleTyped m` is the INDEPENDENT predicate
 -- "every function of `m` has a `_⊢ᶜ_∶_⨾_` derivation".
 open import Once.Adequacy.AcceptSound as AS using (moduleToIR-typed; moduleToIR-polys)
--- Plan 0.50 (row-3 apex connection): the COMPOSITION discharging
--- `main-realize-agrees` from `RealizeBridge.realize-agrees`. Importing it here
--- puts `realize-agrees` on the apex path (no longer an island).
-import Once.Adequacy.MainRealizeAgrees as MRA
 -- Plan 0.51: the NAMED resolver-correctness obligations bridging the
 -- un-resolved independent meaning to the resolved compilation. The resolver is
 -- now in the verified loop (`srcToModule`); these are the explicit gaps.
@@ -686,9 +679,8 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   -- Discharge backlog:
   --   • mainTermOf  — extract main's `Expr` from `ModuleTyped m` (walk
   --                   `AllFunsTyped` to "main"; `proj₁ (check-complete D)`).
-  --   • sd-bridge   — `⟦ moduleToIR m ⟧IR ≋ ⟦ tp ⟧ˢ`; the row-2 forcing,
-  --                   via the `wrapMainAsEntry` evalᴰ lemma ∘ `faithful`
-  --                   (∘ `resolveExpr`-faithfulness).
+  --   • sd-bridge   — GONE (D253): the compiled program means the core run
+  --                   directly (`program-core`, the telescope walk at `main`).
   --   • HasValidMain — currently the COMPILER fact `moduleToIR m ≡ just _`
   --                   (so completeness does NOT yet force the typechecker-
   --                   complete half); make it the declarative `main : EffUU`
@@ -710,66 +702,30 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   open Once.Spec.Program public using (Typed; _⊢R_)
 
 
-  -- The INDEPENDENT surface meaning of `tp`'s `main`: `SD.⟦ main ⟧ˢ` run to a
-  -- trace (via `Once.Adequacy.MainExtract`). The compiled-main IR `(ir, mi)` is
-  -- DERIVED from the declarative `tp` by `MC.moduleToIR-complete`; `⟦_⟧ˢ` and
-  -- `sd-bridge` share that same derivation, so they stay consistent.
-  -- Plan 0.49 / D063 C4 (row-3 forcing): the meaning is `runMainˢ` of the
-  -- CANONICAL `realize` term — read off main's `⊢ᶜ` derivation INDEPENDENTLY of
-  -- `checkElab` (so a wrong-but-well-typed elaboration is now visible).
-  -- `main-realize-agrees` is the NAMED row-3 obligation: the `checkElab`-resolved
-  -- term `seR` (from `source-meaningᴰ`) and the `realize` term denote the same
-  -- trace. TRUE — by `RealizeBridge.realize-agrees` (SD.⟦se⟧≡SD.⟦realize(check-
-  -- sound cc)⟧) + `resolveExpr`-faithfulness (seR=resolveExpr se). Discharge =
-  -- Plan 0.49 piece 3. This REPLACES the row-3 cancellation of Phase 1.
-  -- DISCHARGED (Plan 0.50): no longer a postulate. Composed in
-  -- `Once.Adequacy.MainRealizeAgrees` from `RealizeBridge.realize-agrees` (now
-  -- genuinely on the apex path) + the `main-checkElab-coherence` hook. The
-  -- residual apex-path postulates are `realize-agrees`'s `{infer,check}-agreeV-todo`
-  -- and the `main-checkElab-coherence` hook (strengthened extraction + resolveExpr
-  -- faithfulness), NOT this opaque whole-statement axiom.
-  main-realize-agrees : ∀ (arch : Arch) (m : P.Module) (mt : ModuleTyped m)
-    (hvm : HasValidMain m mt) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) (mi : moduleToIR m ≡ just ir)
-    → ∀ n → ME.runMainˢ (arch-numerics arch) (ME.σ₀ (arch-numerics arch) m) (proj₁ (proj₂ (ME.source-meaningᴰ (arch-numerics arch) m ir mi))) n
-            ≡ ME.runMainˢ (arch-numerics arch) (MRA.σTp (arch-numerics arch) m ir mi) (proj₂ (MC.mainRealized m mt hvm)) n
-  main-realize-agrees arch = MRA.main-realize-agrees-proof (arch-numerics arch)
+  -- D253: THE APEX MEANS THE CORE, and `main` is an entry like any other. A
+  -- typed module IS a core program (`Spec.Core.Translate.toProgram`): every
+  -- definition typed once, a reference meaning its entry, and the program
+  -- running its `main` entry (`runProgram`). The compiled program's `main` is
+  -- the call of that entry, so the telescope walk's per-entry invariant at
+  -- `main` is the equation of the two runs (`CoreBridge.program-core`).
+  -- The trace family IS the core run; the three laws are BORROWED from the
+  -- compiled program it is proved equal to (`behavior-by`, D179 — the laws are
+  -- about `at` alone, so they transport along the equality; nothing about the
+  -- core is assumed).
+  program-core : ∀ (arch : Arch) (tp : Typed) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) → moduleToIR (proj₁ tp) ≡ just ir
+               → ∀ n → at (⟦ just (irProgram (moduleTable (proj₁ tp)) ir) ⟧IR (arch-numerics arch)) n
+                       ≡ runProgram (arch-numerics arch) (CB.typedProgram (arch-numerics arch) tp) n
+  program-core arch (m , mt , hvm) ir mi n = CB.program-core (arch-numerics arch) m mt hvm ir mi n
 
-  -- Plan 0.103 phase 1c / D244: the definitions environment the surface meaning
-  -- of `tp` runs in — its compiled program's calls and linked references.
-  σˢ : Arch → Typed → SD.DefsSem
-  σˢ arch (m , mt , hvm) =
-    MRA.σTp (arch-numerics arch) m (proj₁ (MC.moduleToIR-complete m mt hvm)) (proj₂ (MC.moduleToIR-complete m mt hvm))
-
-  -- D113: the INDEPENDENT meaning takes the arch, mirroring `exec`. The
-  -- format is the only thing it uses the arch for.
-  -- D179: the surface meaning is a `Behavior` BY ITS AGREEMENT with the IR
-  -- meaning — `sd-eq` below, which is exactly the content `sd-bridge` used to
-  -- state. So `⟦_⟧ˢ` carries the three laws without a prefix-family induction
-  -- over the SURFACE semantics: the compiler's own theorem supplies them.
-  -- D244: the IR meaning is the module's PROGRAM (main in its function table).
-  sd-eq : ∀ (arch : Arch) (tp : Typed) (n : ℕ)
-        → at (⟦ moduleToProgram (proj₁ tp) ⟧IR (arch-numerics arch)) n
-          ≡ ME.runMainˢ (arch-numerics arch) (σˢ arch tp) (proj₂ (MC.mainRealized (proj₁ tp) (proj₁ (proj₂ tp)) (proj₂ (proj₂ tp)))) n
-  sd-eq arch (m , mt , hvm) n =
-    trans (trans (cong (λ x → at (⟦ programAt (moduleTable m) x ⟧IR (arch-numerics arch)) n) (proj₂ (MC.moduleToIR-complete m mt hvm)))
-                 (proj₂ (proj₂ (ME.source-meaningᴰ (arch-numerics arch) m
-                   (proj₁ (MC.moduleToIR-complete m mt hvm)) (proj₂ (MC.moduleToIR-complete m mt hvm)))) n))
-          (main-realize-agrees arch m mt hvm
-            (proj₁ (MC.moduleToIR-complete m mt hvm)) (proj₂ (MC.moduleToIR-complete m mt hvm)) n)
-
-  ⟦_⟧ˢ : Arch → Typed → Behavior
-  ⟦ arch ⟧ˢ tp =
+  ⟦_⟧ᵈ : Arch → Typed → Behavior
+  ⟦ arch ⟧ᵈ tp =
     behavior-by (⟦ moduleToProgram (proj₁ tp) ⟧IR (arch-numerics arch))
-                (ME.runMainˢ (arch-numerics arch) (σˢ arch tp)
-                  (proj₂ (MC.mainRealized (proj₁ tp) (proj₁ (proj₂ tp)) (proj₂ (proj₂ tp)))))
-                (sd-eq arch tp)
-
-  -- The SD bridge — a PROOF: the compiled PROGRAM's denotational trace equals
-  -- `main`'s surface meaning in that program's environment. Reuses
-  -- `ME.source-meaningᴰ` (= `wrap-trace` ∘ `faithful` ∘ `main-ir-form`).
-  sd-bridge : ∀ (arch : Arch) (tp : Typed)
-            → ⟦ moduleToProgram (proj₁ tp) ⟧IR (arch-numerics arch) ≋ ⟦ arch ⟧ˢ tp
-  sd-bridge arch tp n = sd-eq arch tp n
+                (runProgram (arch-numerics arch) (CB.typedProgram (arch-numerics arch) tp))
+                (λ n → trans (cong (λ x → at (⟦ programAt (moduleTable (proj₁ tp)) x ⟧IR (arch-numerics arch)) n) mi)
+                             (program-core arch tp ir mi n))
+    where
+      ir = proj₁ (MC.moduleToIR-complete (proj₁ tp) (proj₁ (proj₂ tp)) (proj₂ (proj₂ tp)))
+      mi = proj₂ (MC.moduleToIR-complete (proj₁ tp) (proj₁ (proj₂ tp)) (proj₂ (proj₂ tp)))
 
   pw-just-rel : ∀ {x y : Behavior} → Pointwise _≋_ (just x) (just y) → x ≋ y
   pw-just-rel (PW.just r) = r
@@ -819,12 +775,12 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   -- since plan 0.81 that IS `tp`'s typing — no reverse transport. `⊢R` is
   -- assembled instead: the grammar parse of `mU`, plus `ResolvesModule`
   -- obtained from the executable resolution fact. The trace chain loses a
-  -- link: bytes ≋ `⟦ moduleToIR mR ⟧IR` (codegen `correct`) ≋ `⟦ tp ⟧ˢ`
-  -- (`sd-bridge`), with no `mU`/`mR` trace step in between.
+  -- link: bytes ≋ `⟦ moduleToIR mR ⟧IR` (codegen `correct`) ≋ the core run
+  -- (`program-core`, D253), with no `mU`/`mR` trace step in between.
   correctR-sound : ∀ (arch : Arch) (doOpt : Bool) (src : Source) (bytes : List Byte) →
     compile arch doOpt src ≡ just bytes →
     Σ-syntax Typed (λ tp → (src ⊢R tp) × AdmissibleM arch (proj₁ tp)
-                           × (exec arch bytes ≋ ⟦ arch ⟧ˢ tp))
+                           × (exec arch bytes ≋ ⟦ arch ⟧ᵈ tp))
   correctR-sound arch doOpt src bytes pf with accept-sound arch doOpt src bytes pf
   ... | (mR , stm-eq , MT) with compile-just-ir arch doOpt src mR bytes stm-eq pf
   ...   | (ir , mi) with srcToModule-inv src mR stm-eq
@@ -853,7 +809,10 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
               -- The trace chain is one step SHORTER: admissibility and the
               -- meaning are both over `mR` now, so `admissible-unresolve` and
               -- `resolver-preserves-trace` are no longer in it.
-              in tp , ⊢R , admR , (λ n → trans (e≋ n) (sd-bridge arch tp n))
+              in tp , ⊢R , admR
+                 , (λ n → trans (e≋ n)
+                         (trans (cong (λ x → at (⟦ programAt (moduleTable mR) x ⟧IR (arch-numerics arch)) n) mi)
+                                (program-core arch tp ir mi n)))
 
   -- COMPLETENESS conjunct — `src ⊢R tp` is `FB.ParsesText text mU` (independent
   -- parse); `FB.parseStrict-complete` turns it into the executable
@@ -892,43 +851,13 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   correctR : ∀ (arch : Arch) (doOpt : Bool) (src : Source) →
     ( ∀ bytes → compile arch doOpt src ≡ just bytes →
         Σ-syntax Typed (λ tp → (src ⊢R tp) × AdmissibleM arch (proj₁ tp)
-                               × (exec arch bytes ≋ ⟦ arch ⟧ˢ tp)) )
+                               × (exec arch bytes ≋ ⟦ arch ⟧ᵈ tp)) )
     × ( ∀ tp → src ⊢R tp → AdmissibleM arch (proj₁ tp) →
         Σ-syntax (List Byte) (λ bytes → compile arch doOpt src ≡ just bytes) )
   correctR arch doOpt src =
       (λ bytes pf → correctR-sound arch doOpt src bytes pf)
     , (λ tp h adm → correctR-complete arch doOpt src tp h adm)
 
-  ------------------------------------------------------------------------
-  -- Plan 0.58 (OCP-0006) — TOP-DOWN WIRE. The reference meaning becomes the
-  -- DIRECT, IR-free derivation denotation `⟦_⟧ᵈ`. These two are TEMP scaffolds
-  -- that PIN the downstream shapes (discharged later: `⟦_⟧ᵈ` built from
-  -- `Once.Denotation.Meaning`'s per-realm denotations; `bridgeᵈ` the
-  -- observational `⟦_⟧ᵈ ≈ SD∘realize`, funext-free by `∀ n`). `correctᵈ`
-  -- RE-COMPOSES the existing `correctR` (`exec ≋ ⟦_⟧ˢ`) with the bridge — the
-  -- adequacy chain is reused, not re-derived.
-  ------------------------------------------------------------------------
-  -- D113: arch-indexed, exactly as `⟦_⟧ˢ` is. This is THE reference meaning
-  -- the apex `CorrectCompiler` field is filled with.
-  ⟦_⟧ᵈ : Arch → Typed → Behavior
-  -- PLAN 0.103 6a: THE APEX MEANS THE CORE. A typed module IS a core program
-  -- (`Spec.Core.Translate.toProgram`), every definition typed once and a
-  -- reference meaning its entry; its meaning is `runProgram`
-  -- (`CoreBridge.coreBehavior`). The surface direct meaning of `main` alone
-  -- (plan 0.58's `MainMeaning`, deleted) is retired from the apex: it could not give a polymorphic entry, typed
-  -- once at rigid parameters (D243), a meaning at an instance.
-  -- Its trace family IS the core run; the three laws are BORROWED from the
-  -- compiled chain it is proved equal to (`behavior-by`, D179 — the laws are
-  -- about `at` alone, so they transport along the equality; nothing about the
-  -- core is assumed).
-  ⟦ arch ⟧ᵈ (m , mt , hvm) =
-    behavior-by (⟦ arch ⟧ˢ (m , mt , hvm))
-                (runProgram (arch-numerics arch) (CB.typedProgram (arch-numerics arch) (m , mt , hvm)))
-                (CB.realize-core (arch-numerics arch) m mt hvm)
-  -- The bridge from the compiled chain's surface meaning to the core,
-  -- `CoreBridge.realize-core` (the telescope walk, `TeleWalk`).
-  bridgeᵈ : ∀ (arch : Arch) (tp : Typed) (n : ℕ) → at (⟦ arch ⟧ˢ tp) n ≡ at (⟦ arch ⟧ᵈ tp) n
-  bridgeᵈ arch (m , mt , hvm) n = CB.realize-core (arch-numerics arch) m mt hvm n
   Admissible : Arch → Typed → Set
   Admissible arch (m , _ , _) = AdmissibleM arch m
 
@@ -938,14 +867,7 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
                                × (exec arch bytes ≋ ⟦ arch ⟧ᵈ tp)) )
     × ( ∀ tp → src ⊢R tp → Admissible arch tp →
         Σ-syntax (List Byte) (λ bytes → compile arch doOpt src ≡ just bytes) )
-  correctᵈ arch doOpt src =
-      (λ bytes pf → let (tp , ⊢R , adm , e≋) = correctR-sound arch doOpt src bytes pf
-                     in tp , ⊢R , adm
-                      , (λ n → trans (e≋ n) (bridgeᵈ arch tp n)))
-      -- completeness GAINS a premise, so it can only get easier. It is unused
-      -- until J3 makes the backend able to refuse, at which point it is what
-      -- shows the refusal cannot fire.
-    , (λ tp h adm → correctR-complete arch doOpt src tp h adm)
+  correctᵈ arch doOpt src = correctR arch doOpt src
 
   -- ════════════════════════════════════════════════════════════════════
   -- The GRAND THEOREM (D060): `correct` above IS the whole statement.

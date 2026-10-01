@@ -4,10 +4,8 @@
 ------------------------------------------------------------------------
 -- Once.Adequacy.MainIRForm — compile-inversion helpers for the `main` entry.
 --
--- Plan 0.55: the `main-ir-form`/`Form`/`Payload`/`caf-go-find-form` extraction
--- was SUPERSEDED by the bundle-based `Once.Adequacy.MainForm` (which reads the
--- selected main node off a `FunBundle`). What remains here is the small set of
--- compile-inversion lemmas still consumed by `ModuleComplete`/`FunBundle`:
+-- The small set of compile-inversion lemmas consumed by
+-- `ModuleComplete`/`FunBundle`/`TeleWalk`:
 --   * `validateMain-EffUU`   — a compiled `main` has type `EffUU`.
 --   * `compileFun-main-EffUU`— its impsOf `compileFun`-level corollary.
 --   * `findMain-here-no` / `findMain-skip` — a non-`main` head is skipped.
@@ -27,7 +25,7 @@ open import Relation.Nullary using (yes; no; ¬_)
 open import Function using (case_of_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
-open import Once.Adequacy.SourceTrace using (findMain; findMain-here; isUnit?)
+open import Once.Adequacy.SourceTrace using (findMain; findMain-here; isEffUU?)
 
 open import Once.Type
   using (Type; Unit; Void; Int; Float; Str; Buffer; _*_; _+_; _⇒[_]_;
@@ -107,7 +105,7 @@ compileFun-main-EffUU ctx polys impsOf ty body irFun eq with C.validateMain ty i
 ------------------------------------------------------------------------
 
 findMain-here-no : ∀ (cf : C.CompiledFun) (b : Bool)
-  (mu : Maybe (C.CompiledFun.cfType cf ≡ Unit)) (cont : Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋))
+  (mu : Maybe (C.CompiledFun.cfType cf ≡ EffUU)) (cont : Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋))
   (¬p : ¬ (C.CompiledFun.cfName cf ≡ bare "main")) →
   findMain-here cf b (no ¬p) mu cont ≡ cont
 findMain-here-no cf false mu cont ¬p = refl
@@ -125,4 +123,4 @@ findMain-skip : ∀ (cf : C.CompiledFun) (rest : List C.CompiledFun) →
   ¬ (cfName cf ≡ bare "main") → findMain (cf ∷ rest) ≡ findMain rest
 findMain-skip cf rest ¬p with cfName cf ≟cn bare "main"
 ... | yes p  = ⊥-elim (¬p p)
-... | no ¬q  = findMain-here-no cf (cfIsPrimitive cf) (isUnit? (cfType cf)) (findMain rest) ¬q
+... | no ¬q  = findMain-here-no cf (cfIsPrimitive cf) (isEffUU? (cfType cf)) (findMain rest) ¬q

@@ -7,7 +7,7 @@
 -- SPEC. A module is a telescope of definitions `d : ∀ Δ. T = e`; each body is
 -- typed ONCE, over its kinds `Δ`, in its PREFIX's signature (a reference
 -- reaches only earlier definitions, so acyclicity is manifest). A program is a
--- telescope whose last definition is `main : IO Unit`.
+-- telescope and its `main : IO Unit`, a term over it (D253: a reference to an entry).
 --
 -- THE MEANING OF `∀` is the family of its instances, Π(σ). ⟦T[σ]⟧: an entry
 -- means, at every kind-respecting ground instantiation `τ`, the ground
@@ -21,8 +21,8 @@ module Once.Spec.Core.Telescope where
 open import Data.Nat using (ℕ; zero; suc)
 open import Data.Fin using (Fin; zero; suc)
 open import Data.List using ([])
-open import Data.Unit using (tt)
-open import Relation.Binary.PropositionalEquality using (_≡_)
+open import Data.Unit using (⊤; tt)
+open import Relation.Binary.PropositionalEquality using (_≡_; subst)
 
 import Once.Type as T
 open import Once.Target.Arch using (TargetNum)
@@ -32,6 +32,7 @@ open import Once.Surface.Context using (Usage)
 open import Once.Spec.Core.PolyTy
 import Once.Spec.Core.PolyTyping as PT
 import Once.Spec.Core.Meaning as GM
+open import Once.Denotation.GradedDomain using (⟦_⟧ᵛ)
 
 ------------------------------------------------------------------------
 -- Telescopes
@@ -54,7 +55,7 @@ teleSem fmt (def tl sc body D) zero τ r =
 teleSem fmt (def tl sc body D) (suc d) τ r = teleSem fmt tl d τ r
 
 ------------------------------------------------------------------------
--- Programs: a telescope ending in `main : IO Unit`
+-- Programs: a telescope and a `main : IO Unit` over it
 ------------------------------------------------------------------------
 
 IOUnit : Ty 0
@@ -66,18 +67,28 @@ noVars ()
 noKinds : KCtx 0
 noKinds ()
 
+-- D253: `main` is an entry like any other; a program names it.
 record Program : Set where
   constructor program
   field
     {size} : ℕ
     {sig}  : Sig size
     defs   : Tele sig
-    main   : PT.PTm sig 0 0
-    mainTy : PT._⊩_⊢[_]_∷_!_ sig noKinds PT.∅ Usage.[] main IOUnit T.pure
+    main   : Fin size
+    mainTy : sig !! main ≡ schema 0 noKinds IOUnit
 
--- THE CORE MEANING OF A PROGRAM: `main` is pure (D250: it denotes a VALUE, the
--- suspension `Unit ⇒[eff] Unit`); run it in the telescope's environment and
--- read the depth-`n` event-trace prefix.
+-- Run an entry at `IO Unit`: its only instance, applied to the unit input.
+EntrySem : Schema → Set
+EntrySem sc = (τ : GSub (arity sc)) → Respects (kinds sc) τ → ⟦ type sc ⟪ τ ⟫ ⟧ᵛ
+
+noResp : Respects noKinds noVars
+noResp ()
+
+runEntry : (sc : Schema) → sc ≡ schema 0 noKinds IOUnit → EntrySem sc → T ⊤
+runEntry sc e f = subst EntrySem e f noVars noResp tt
+
+-- THE CORE MEANING OF A PROGRAM: run its `main` entry (D250: an entry denotes a
+-- VALUE, here the suspension `Unit ⇒[eff] Unit`) in the telescope's
+-- environment, and read the depth-`n` event-trace prefix.
 runProgram : TargetNum → Program → ℕ → Data.List.List SigOpEvent
-runProgram fmt (program defs main mainTy) n =
-  projTrace (GM.⟦_⟧ _ (PT.instantiate _ noVars (λ ()) mainTy) fmt (teleSem fmt defs) tt tt) n
+runProgram fmt (program {sig = S} defs d e) n = projTrace (runEntry (S !! d) e (teleSem fmt defs d)) n

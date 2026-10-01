@@ -46,6 +46,8 @@ open import Relation.Nullary using (yes; no; Dec)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
 
 open import Once.Type using (Type; Unit)
+open import Once.Spec.Module using (EffUU)
+open import Once.Type.DecEq using (_≟T_)
 open import Once.IR using (IR)
 open import Once.IRTy using (⌊_⌋)
 import Once.Compile as C
@@ -79,53 +81,44 @@ open import Once.IRTy using (IRTy; _≟IRTy_)
 -- Source → IR of `main` (option (a): reuse the compiler's elaborator).
 ------------------------------------------------------------------------
 
--- | Recognise the `Unit` codomain so `main`'s entry IR (wrapped to
--- `IR ⌊ Unit ⌋ ⌊ Unit ⌋` by `maybeWrapMain`) can be coerced.
-isUnit? : (T : Type) → Maybe (T ≡ Unit)
-isUnit? Unit = just refl
-isUnit? _    = nothing
+-- | Recognise `main`'s type, `IO Unit`.
+isEffUU? : (T : Type) → Maybe (T ≡ EffUU)
+isEffUU? T with T ≟T EffUU
+... | yes e = just e
+... | no _  = nothing
 
 open C.CompiledFun using (cfName; cfType; cfIR; cfIsPrimitive)
 
--- Explicit dispatch on the three decisions (no `with`-opacity, no dependent
--- `just refl` buried in a `with`), so `findMain`'s "is this the entry?" choice
--- is analyzable. `just refl` refines `cfType cf` to `Unit`, coercing
--- `cfIR cf : IR Unit (cfType cf)` to `IR ⌊ Unit ⌋ ⌊ Unit ⌋`.
---
--- The FIRST argument is `cfIsPrimitive cf`: a PRIMITIVE is never the entry —
--- its body is not emitted at codegen (`CompiledFun.cfIsPrimitive`), so it has
--- no real `_start` to run. Skipping primitives aligns this spec with the
--- backend and makes the entry provably trace back to a `DFunDef`.
+-- D253: `main` is an entry like any other; the program's own `main` is the CALL
+-- of it, `once_main`, which is exactly what `_start` runs.
+mainCall : IR ⌊ Unit ⌋ ⌊ Unit ⌋
+mainCall = I.Call (bare "main")
+
+-- Explicit dispatch on the three decisions (no `with`-opacity), so `findMain`'s
+-- "is this the entry?" choice is analyzable. The FIRST argument is
+-- `cfIsPrimitive cf`: a PRIMITIVE is never the entry — its body is not emitted
+-- at codegen, so it has no `once_main` to call.
 findMain-here :
-  (cf : C.CompiledFun) → Bool → Dec (cfName cf ≡ bare "main") → Maybe (cfType cf ≡ Unit)
+  (cf : C.CompiledFun) → Bool → Dec (cfName cf ≡ bare "main") → Maybe (cfType cf ≡ EffUU)
   → Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋) → Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋)
-findMain-here cf false (yes _) (just refl) cont = just (cfIR cf)
-findMain-here cf false (yes _) nothing     cont = cont
-findMain-here cf false (no  _) _           cont = cont
-findMain-here cf true  _       _           cont = cont   -- primitive: never the entry
+findMain-here cf false (yes _) (just _) cont = just mainCall
+findMain-here cf false (yes _) nothing  cont = cont
+findMain-here cf false (no  _) _        cont = cont
+findMain-here cf true  _       _        cont = cont   -- primitive: never the entry
 
--- | The Boolean predicate `findMain` selects on: a non-primitive `main`-named
--- function whose (entry-wrapped) codomain is `Unit`. `findMain` returns the IR
--- of the FIRST such function. Factored out (Plan 0.55) so the SAME notion of
--- "which function is the entry" is nameable for the deterministic `mainRealized`
--- selector's alignment. Behaviour-preserving: `findMain`/`findMain-here` are
--- unchanged — `isMain cf ≡ true` exactly when `findMain-here cf … ≡ just (cfIR cf)`.
-isMain : C.CompiledFun → Bool
-isMain cf with cfIsPrimitive cf | cfName cf ≟cn bare "main" | isUnit? (cfType cf)
-... | false | yes _ | just _ = true
-... | _     | _     | _      = false
-
+-- | A module is a PROGRAM when it has an entry `main : IO Unit`.
 findMain : List C.CompiledFun → Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋)
 findMain []         = nothing
 findMain (cf ∷ rest) =
-  findMain-here cf (cfIsPrimitive cf) (cfName cf ≟cn bare "main") (isUnit? (cfType cf)) (findMain rest)
+  findMain-here cf (cfIsPrimitive cf) (cfName cf ≟cn bare "main") (isEffUU? (cfType cf)) (findMain rest)
 
 -- Explicit dispatch on the compile result (no `with`-opacity).
 moduleToIR-aux : String ⊎ List C.CompiledFun → Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋)
 moduleToIR-aux (inj₁ _)    = nothing
 moduleToIR-aux (inj₂ funs) = findMain funs
 
--- Non-resolving: the IR of `main` in an ALREADY-RESOLVED module. The
+-- Non-resolving: the IR of the program's `main` (the call of the entry,
+-- D253) in an ALREADY-RESOLVED module. The
 -- module-level proofs (`AcceptSound`/`MainBuilds`/`ModuleComplete`) reason
 -- about THIS over a module `mod` (interpreted as the RESOLVED module);
 -- resolution is confined to `srcToModule` below, so those proofs are untouched.
@@ -133,11 +126,11 @@ moduleToIR : P.Module → Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋)
 moduleToIR mod = moduleToIR-aux (C.compileResolvedModule C.Heap false mod)
 
 ------------------------------------------------------------------------
--- D244: THE COMPILED PROGRAM — the function table and `main`. The table is the
--- program's own definitions (not FFI declarations, whose code is an
--- interpretation's, and not `main`, the image's entry), LATEST-FIRST, so each
--- entry is evaluated in the ones declared before it (`tableEnv`). The compiler
--- emits in declaration order, so the table is that list reversed.
+-- D244: THE COMPILED PROGRAM — the function table and `main`. The table is
+-- every entry of the module (D246: an FFI declaration's is its SigOp wrapper;
+-- D253: `main`'s is its direct-call form), LATEST-FIRST, so each entry is
+-- evaluated in the ones declared before it (`tableEnv`). The compiler emits in
+-- declaration order, so the table is that list reversed.
 ------------------------------------------------------------------------
 -- Each entry is the DIRECT-CALL morphism the emitter compiles (D064,
 -- `directCallIR`), which is what `once_<name>` implements in the image.
@@ -145,16 +138,10 @@ irFunOf : C.CompiledFun → IRFun
 irFunOf cf = irFun (cfName cf) ⌊ proj₁ dc ⌋ ⌊ proj₁ (proj₂ dc) ⌋ (proj₂ (proj₂ dc))
   where dc = C.directCallIR (cfType cf) (cfIR cf)
 
--- keep every entry but the entry point `main`. D246: an FFI declaration is an
--- entry too — its compiled form is its SigOp wrapper, and a reference to it is
--- a call of it like any other.
-tbl-keep : Bool → C.CompiledFun → List IRFun → List IRFun
-tbl-keep false cf acc = irFunOf cf ∷ acc
-tbl-keep true  cf acc = acc
-
+-- D253: every entry, `main` included — it is the callee of the program's `main`.
 tableOf-go : List C.CompiledFun → List IRFun → List IRFun
 tableOf-go []         acc = acc
-tableOf-go (cf ∷ cfs) acc = tableOf-go cfs (tbl-keep (isMain cf) cf acc)
+tableOf-go (cf ∷ cfs) acc = tableOf-go cfs (irFunOf cf ∷ acc)
 
 tableOf : List C.CompiledFun → List IRFun
 tableOf funs = tableOf-go funs []

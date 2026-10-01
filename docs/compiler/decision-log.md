@@ -16110,3 +16110,33 @@ annotation and is a structural map.
 `AnnotationMentionsParameter`. The parser cannot produce one, so no program changes.
 Annotating with a parameter (`(x : a)`) is a possible future feature; it would substitute the
 annotation at the instance and is a separate decision.
+
+## D253 — `main` IS AN ORDINARY ENTRY; THE PROGRAM RUNS A REFERENCE TO IT (PLAN 0.103 6a‴) (2026-10-01)
+
+**Relates**: D241 (the module is a telescope), D245 (direct-call ABI), D246/D248 (a module
+reference is a call), D249 (distinct entry names).
+
+**Context.** `main` was treated unlike every other definition, in three places:
+* the Spec's `toProgram` made `main`'s body the program's body and dropped every entry
+  after it;
+* the compiler rewrote `main`'s body (`maybeWrapMain`: `apply ∘ ⟨ main , terminal ⟩` at
+  type `Unit`);
+* the IR program left `main` out of its function table (`tbl-keep`/`isMain`), because
+  the image emitted `main` as its entry.
+
+A definition after `main` may refer to `main` (that is the telescope, not recursion). Its
+body then compiles to `Call main` against a table without `main`: a dangling call. The
+residual `moduleToProgram-linked` claimed the program was linked and hid it.
+
+**Decision.** `main` is an entry like any other.
+* **Spec.** The core program is the WHOLE module telescope, and its `main` term is the
+  reference `ref d` to the entry `main : IO Unit` (selected by `MainIn`, as before).
+  Running the program runs that reference.
+* **Compiler.** No entry is rewritten: `maybeWrapMain` is deleted. Every entry is in the
+  table, at its direct-call form (D245); at `IO Unit` that form IS the old wrap,
+  `apply ∘ ⟨ ir ∘ terminal , id ⟩`.
+* **IR program.** Its `main` is the call `Call main`, so the image's entry is a call of
+  the entry `once_main`, exactly what `_start` already does.
+
+**Consequence.** Linkedness is uniform: every reference names an earlier entry, and every
+entry is in the table.

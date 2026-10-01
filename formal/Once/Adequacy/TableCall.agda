@@ -87,13 +87,17 @@ private
           (cong (mkT t₂) (cong proj₂ (h 0)))
 
   -- The uncurried body, applied: run the curried body's computation, apply.
-  uncurry-app : ∀ {D E : IRTy} (ρ : CallEnv) (ir : IR Once.IRTy.Unit (D Once.IRTy.⇛ E)) (a : ⟦ D ⟧ᴰᴵ)
-              → evalᴰ fmt ρ (IR.apply IR.∘ IR.⟨ ir IR.∘ IR.terminal , IR.id ⟩) a
-                ≡ (evalᴰ fmt ρ ir tt >>=T λ c → c a)
-  uncurry-app ρ ir a = T-at (>>=T-assoc (evalᴰ fmt ρ ir tt) (λ c → returnT (c , a)) (λ p → proj₁ p (proj₂ p)))
+
 
 -- THE ABI ROUND TRIP: a reference to the head entry, compiled from `ir`, means
 -- `ir`'s computation in the rest of the table, read through `abiT`.
+-- The direct-call form (`directCallIR`) of an arrow entry, run on an argument:
+-- the closure its body computes, applied to it.
+uncurry-app : ∀ {D E : IRTy} (ρ : CallEnv) (ir : IR Once.IRTy.Unit (D Once.IRTy.⇛ E)) (a : ⟦ D ⟧ᴰᴵ)
+            → evalᴰ fmt ρ (IR.apply IR.∘ IR.⟨ ir IR.∘ IR.terminal , IR.id ⟩) a
+              ≡ (evalᴰ fmt ρ ir tt >>=T λ c → c a)
+uncurry-app ρ ir a = T-at (>>=T-assoc (evalᴰ fmt ρ ir tt) (λ c → returnT (c , a)) (λ p → proj₁ p (proj₂ p)))
+
 abi : ∀ (U : Type) (x : _) (es : List IRFun) (ir : IR ⌊ Unit ⌋ ⌊ U ⌋)
     → evalᴰ fmt (tableEnv fmt (irFunOf (C.mkCompiledFun (bare x) U ir false) ∷ es)) (refIR U (bare x)) tt
       ≡ abiT U (evalᴰ fmt (tableEnv fmt es) ir tt)

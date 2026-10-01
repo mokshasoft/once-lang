@@ -65,10 +65,9 @@ x86-64-asmHeader =
   ".section .text\n\n" ++
   -- Plan 0.2.4.5 D1: program entry stub (frameless, %rsp-relative).
   --
-  -- Main is wrapped at the IR level via `wrapMainAsEntry` in
-  -- Once.Compile to `apply ∘ ⟨ main , terminal ⟩ : IR Unit Unit`.
-  -- The compiled `once_main` performs the full closure invocation
-  -- via the verified `apply` IR.
+  -- D253: `once_main` is `main`'s direct-call entry (`directCallIR` at
+  -- `IO Unit`: `apply ∘ ⟨ main ∘ terminal , id ⟩ : IR Unit Unit`), so it
+  -- performs the full closure invocation via the verified `apply` IR.
   --
   -- Each compiled IR function (once_main, thunks) manages its own
   -- frame via `subq $stack-budget*8, %rsp` at entry and `addq` at
