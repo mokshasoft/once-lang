@@ -908,17 +908,14 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   -- RE-COMPOSES the existing `correctR` (`exec ≋ ⟦_⟧ˢ`) with the bridge — the
   -- adequacy chain is reused, not re-derived.
   ------------------------------------------------------------------------
-  -- Plan 0.58 step 4: `⟦_⟧ᵈ` DISCHARGED — the direct, IR-free denotation of
-  -- `main`'s `⊢ᶜ` derivation (`Once.Denotation.MainMeaning.meaningᵈ`, which
-  -- mirrors `mainRealized` with `⟦_⟧ᶜ` instead of `realize`).
   -- D113: arch-indexed, exactly as `⟦_⟧ˢ` is. This is THE reference meaning
   -- the apex `CorrectCompiler` field is filled with.
   ⟦_⟧ᵈ : Arch → Typed → Behavior
   -- PLAN 0.103 6a: THE APEX MEANS THE CORE. A typed module IS a core program
   -- (`Spec.Core.Translate.toProgram`), every definition typed once and a
   -- reference meaning its entry; its meaning is `runProgram`
-  -- (`CoreBridge.coreBehavior`). The surface direct meaning (`MainMeaning`)
-  -- is retired from the apex: it could not give a polymorphic entry, typed
+  -- (`CoreBridge.coreBehavior`). The surface direct meaning of `main` alone
+  -- (plan 0.58's `MainMeaning`, deleted) is retired from the apex: it could not give a polymorphic entry, typed
   -- once at rigid parameters (D243), a meaning at an instance.
   -- Its trace family IS the core run; the three laws are BORROWED from the
   -- compiled chain it is proved equal to (`behavior-by`, D179 — the laws are
@@ -928,8 +925,8 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
     behavior-by (⟦ arch ⟧ˢ (m , mt , hvm))
                 (runProgram (arch-numerics arch) (CB.typedProgram (arch-numerics arch) (m , mt , hvm)))
                 (CB.realize-core (arch-numerics arch) m mt hvm)
-  -- The bridge from the compiled chain's surface meaning to the core — the one
-  -- open link, `CoreBridge.realize-core` (6b + TelescopeEnv + 6e).
+  -- The bridge from the compiled chain's surface meaning to the core,
+  -- `CoreBridge.realize-core` (the telescope walk, `TeleWalk`).
   bridgeᵈ : ∀ (arch : Arch) (tp : Typed) (n : ℕ) → at (⟦ arch ⟧ˢ tp) n ≡ at (⟦ arch ⟧ᵈ tp) n
   bridgeᵈ arch (m , mt , hvm) n = CB.realize-core (arch-numerics arch) m mt hvm n
   Admissible : Arch → Typed → Set

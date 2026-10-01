@@ -15,8 +15,8 @@
 --        ≋ SD of `realize main`, linked env           — proved (MainRealizeAgrees)
 --        ≋ core `runProgram (typedProgram tp)`         — `realize-core` (below)
 --
--- `realize-core` is the 6b meaning bridge (clause by clause over `RelT`) at
--- the telescope's environments (`TelescopeEnv` over `ModTele`): each compiled
+-- `realize-core` is the 6b meaning bridge (clause by clause, `MeaningBridge`) at
+-- the telescope's environments (`TeleWalk` over `ModTele`): each compiled
 -- table entry means its core entry, by induction on the telescope; each
 -- linked (spliced) telescope reference means the entry's instance (6e).
 ------------------------------------------------------------------------

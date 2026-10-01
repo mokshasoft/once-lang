@@ -231,7 +231,7 @@ sigOpRefᴰ fmt cn (con-fun {A = Dom} {B = Cod} {k = mk-kind Many π} bDom cCod)
 --
 -- Plan 0.103 phase 1c: the meaning of the telescope — one computation per
 -- ground entry (vacuous for a polymorphic one), built from the entries'
--- declaration-time derivations (`Denotation.MainMeaning`).
+-- declaration-time derivations.
 -- D239/D243: a definition MEANS THE FAMILY OF ITS INSTANCES — at every kinded
 -- instance `T` of its schema, a computation of `T`. A ground definition's only
 -- instance is its declared type (`ground-kinded`).
