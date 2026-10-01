@@ -143,7 +143,7 @@ module _ {Ξ : Ctx} {j : RTm ⌊ Ξ ⌋} (S s₀ : ℕ) (st : Stk) where
     eB x = trans (cong El (PS-sub (single x) st (snd (renTm vs ix))))
                  (cong (λ z → El (PS st (snd z))) (wk-cancel-tm x ix))
     tgtR : El (⌜IMu⌝ (SI 2) KD (pair (tag S) (snd ix))) ⟶ᵀ* K S j
-    tgtR = stepᵀ El-⌜IMu⌝ (⟶ᵀ*-IMu (⟶*-pairʳ (step (βsnd (tag s₀) j) done)))
+    tgtR = stepᵀ El-⌜SK⌝ (⟶ᵀ*-SK (step (βsnd (tag s₀) j) done))
     stkR : El (PS st (snd ix)) ⟶ᵀ* PSV st j
     stkR = ⟶ᵀ*-trans (PS-red st (snd ix)) (PSV-ix st (tag s₀) j)
     dΣ : {c : RTm ⌊ Ξ ⌋} → Ξ ⊢ c ∷ El (NCat S st ix) → Ξ ⊢ c ∷ Σ' (El (⌜IMu⌝ (SI 2) KD (pair (tag S) (snd ix)))) (El B)

@@ -147,7 +147,7 @@ module Pat {sg : Sig n} (ok : SigOK n sg)
         i : RTm ⌊ Ξ ⌋
         i = pair (tag s₀) j
         dI : Ξ ⊢ ielim (SD sg) i FIBM a ∷ iinst i a FM
-        dI = ⊢ielim {Ξ} {SI n} {SD sg} {FM} {FIBM} {i} {a} ⊢SI (⊢SD ok) ⊢FM (⊢PATM rok) (⊢ix lt dj) da
+        dI = ⊢ielim {Ξ} {SI n} {SD sg} {FM} {FIBM} {i} {a} ⊢SI (⊢SD ok) ⊢FM (⊢PATM rok) (⊢ix lt dj) (⊢SK→IMu {sg = sg} {s = s₀} {d = j} da)
         eI : iinst i a FM ≡ Π (El (Cat i)) (Desc J)
         eI = trans {x = iinst i a FM} {y = subTy (single a ∘ₛ extS (single i)) FM} {z = Π (El (Cat i)) (Desc J)}
                    (subTy-subTy {τ = single a} {σ = extS (single i)} FM)

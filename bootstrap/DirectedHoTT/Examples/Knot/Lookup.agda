@@ -204,7 +204,7 @@ module _ {Θ : Ctx} {m g y a : RTm ⌊ Θ ⌋} where
 ------------------------------------------------------------------------
 
 tyK : {Θ : Ctx} {d : RTm ⌊ Θ ⌋} → Θ ⊢ d ∷ El ⌜Nat⌝ → Θ ⊢ty K 0 d
-tyK dd = ty-IMu ⊢SI ⊢KD (⊢ix lt-z dd)
+tyK dd = ty-SK KOK lt-z dd
 
 tyCtx : {Θ : Ctx} {d : RTm ⌊ Θ ⌋} → Θ ⊢ d ∷ El ⌜Nat⌝ → Θ ⊢ty KCtx d
 tyCtx dd = ty-IMu ⊢⌜Nat⌝ ⊢CtxD dd
@@ -215,7 +215,7 @@ pdK {Θ} {m} {t} dt =
   ⊢-cast {Θ} {t} {K 0 (subTm (single (pd m)) (renTm vs m))} {K 0 m}
          (cong (K 0) {x = subTm (single (pd m)) (renTm vs m)} {y = m} (wk-cancel-tm (pd m) m))
          (⊢conv {Θ} {t} {K 0 (pd (nsuc m))} {K 0 (subTm (single (pd m)) (renTm vs m))} dt
-                (credᵀ (ξ-IMuⁱ (ξ-pairʳ (natrec-suc nzero (var (vs vz)) m)))))
+                (credᵀ (ξ-SK (natrec-suc nzero (var (vs vz)) m))))
 
 pdCtx : {Θ : Ctx} {m t : RTm ⌊ Θ ⌋} → Θ ⊢ t ∷ KCtx (pd (nsuc m)) → Θ ⊢ t ∷ KCtx m
 pdCtx {Θ} {m} {t} dt =
@@ -367,7 +367,7 @@ unpdK {Θ} {m} {t} dt =
   ⊢conv {Θ} {t} {K 0 (subTm (single (pd m)) (renTm vs m))} {K 0 (pd (nsuc m))}
         (⊢-cast {Θ} {t} {K 0 m} {K 0 (subTm (single (pd m)) (renTm vs m))}
                 (cong (K 0) {x = m} {y = subTm (single (pd m)) (renTm vs m)} (sym (wk-cancel-tm (pd m) m))) dt)
-        (csymᵀ (credᵀ (ξ-IMuⁱ (ξ-pairʳ (natrec-suc nzero (var (vs vz)) m)))))
+        (csymᵀ (credᵀ (ξ-SK (natrec-suc nzero (var (vs vz)) m))))
 
 unpdCtx : {Θ : Ctx} {m t : RTm ⌊ Θ ⌋} → Θ ⊢ t ∷ KCtx m → Θ ⊢ t ∷ KCtx (pd (nsuc m))
 unpdCtx {Θ} {m} {t} dt =

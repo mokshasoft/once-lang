@@ -40,7 +40,7 @@ sz : ℕ → RTm Γ → RTm Γ → RTm Γ
 sz s d t = ielim KD (pair (tag s) d) szM t
 
 ⊢sz : {Γ : Ctx} {s : ℕ} {d t : RTm ⌊ Γ ⌋} → Lt s 2 → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ t ∷ K s d → Γ ⊢ sz s d t ∷ Nat
-⊢sz lt dd dt = ⊢ielim ⊢SI ⊢KD ty-Nat ⊢szM (⊢ix lt dd) dt
+⊢sz lt dd dt = ⊢ielim ⊢SI ⊢KD ty-Nat ⊢szM (⊢ix lt dd) (⊢SK→IMu {sg = KSig} dt)
 
 -- ★ …and it computes, one node at a time: `1 + Σ (sizes of the recursive fields)`
 sz-con : {s c k : ℕ} {Ts : Tels (Γ ∙) c} {T : Tel (Γ ∙)} {d p : RTm Γ} →

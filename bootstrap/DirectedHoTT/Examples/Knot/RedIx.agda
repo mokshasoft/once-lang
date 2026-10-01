@@ -49,12 +49,12 @@ module _ {Ξ : Ctx} {s : ℕ} {j c : RTm ⌊ Ξ ⌋} where
   ⊢tgt : Ξ ⊢ c ∷ El (subTm (single (pair (tag s) j)) CR) → Ξ ⊢ c ∷ K s j
   ⊢tgt dc = ⊢conv (⊢-cast {Ξ} {c} {El (subTm (single (pair (tag s) j)) CR)} {El (⌜IMu⌝ (SI 2) KD (pair (tag s) j))}
                           (cong El (eCR (pair (tag s) j))) dc)
-                  (credᵀ El-⌜IMu⌝)
+                  (credᵀ El-⌜SK⌝)
 
   -- …and put into one
   ⊢toCR : Ξ ⊢ c ∷ K s j → Ξ ⊢ c ∷ El (subTm (single (pair (tag s) j)) CR)
   ⊢toCR dc = ⊢-cast {Ξ} {c} {El (⌜IMu⌝ (SI 2) KD (pair (tag s) j))} {El (subTm (single (pair (tag s) j)) CR)}
-                    (cong El (sym (eCR (pair (tag s) j)))) (⊢conv dc (csymᵀ (credᵀ El-⌜IMu⌝)))
+                    (cong El (sym (eCR (pair (tag s) j)))) (⊢conv dc (csymᵀ (credᵀ El-⌜SK⌝)))
 
 -- the two judgements' indices
 ix⟶ ix⟶ᵀ : RTm Δ → RTm Δ → RTm Δ → RTm Δ
@@ -62,10 +62,10 @@ ix⟶ d t u = Redₘ.ixJ (pair (tag 1) d) t u
 ix⟶ᵀ d A B = RedTₘ.ixJ (pair (tag 0) d) A B
 
 ⊢ix⟶ : {Ξ : Ctx} {d t u : RTm ⌊ Ξ ⌋} → Ξ ⊢ d ∷ El ⌜Nat⌝ → Ξ ⊢ t ∷ K 1 d → Ξ ⊢ u ∷ K 1 d → Ξ ⊢ ix⟶ d t u ∷ El Redₘ.J
-⊢ix⟶ dd dt du = Redₘ.⊢ixJ (⊢ix (lt-s lt-z) dd) dt (⊢toCR du)
+⊢ix⟶ dd dt du = Redₘ.⊢ixJ (⊢ix (lt-s lt-z) dd) (⊢SK→IMu {sg = KSig} dt) (⊢toCR du)
 
 ⊢ix⟶ᵀ : {Ξ : Ctx} {d A B : RTm ⌊ Ξ ⌋} → Ξ ⊢ d ∷ El ⌜Nat⌝ → Ξ ⊢ A ∷ K 0 d → Ξ ⊢ B ∷ K 0 d → Ξ ⊢ ix⟶ᵀ d A B ∷ El RedTₘ.J
-⊢ix⟶ᵀ dd dA dB = RedTₘ.⊢ixJ (⊢ix lt-z dd) dA (⊢toCR dB)
+⊢ix⟶ᵀ dd dA dB = RedTₘ.⊢ixJ (⊢ix lt-z dd) (⊢SK→IMu {sg = KSig} dA) (⊢toCR dB)
 
 -- ★ the CONVERSIONS `t ≅ u` / `A ≅ᵀ B`: the same index; their rules
 --   (red, refl, sym, trans) have a bare-variable subject, so they sit in
@@ -78,10 +78,10 @@ ix≅ d t u = Convₘ.ixJ (pair (tag 1) d) t u
 ix≅ᵀ d A B = ConvTₘ.ixJ (pair (tag 0) d) A B
 
 ⊢ix≅ : {Ξ : Ctx} {d t u : RTm ⌊ Ξ ⌋} → Ξ ⊢ d ∷ El ⌜Nat⌝ → Ξ ⊢ t ∷ K 1 d → Ξ ⊢ u ∷ K 1 d → Ξ ⊢ ix≅ d t u ∷ El Convₘ.J
-⊢ix≅ dd dt du = Convₘ.⊢ixJ (⊢ix (lt-s lt-z) dd) dt (⊢toCR du)
+⊢ix≅ dd dt du = Convₘ.⊢ixJ (⊢ix (lt-s lt-z) dd) (⊢SK→IMu {sg = KSig} dt) (⊢toCR du)
 
 ⊢ix≅ᵀ : {Ξ : Ctx} {d A B : RTm ⌊ Ξ ⌋} → Ξ ⊢ d ∷ El ⌜Nat⌝ → Ξ ⊢ A ∷ K 0 d → Ξ ⊢ B ∷ K 0 d → Ξ ⊢ ix≅ᵀ d A B ∷ El ConvTₘ.J
-⊢ix≅ᵀ dd dA dB = ConvTₘ.⊢ixJ (⊢ix lt-z dd) dA (⊢toCR dB)
+⊢ix≅ᵀ dd dA dB = ConvTₘ.⊢ixJ (⊢ix lt-z dd) (⊢SK→IMu {sg = KSig} dA) (⊢toCR dB)
 
 -- ★ `pwBody`'s GRAPH on the codes `pw?` accepts (`Spec/Variance`): fibred
 --   by the code, the convoy is the BODY — a Knot term ONE BINDER deeper
@@ -103,7 +103,7 @@ eCP {Δ} j = cong₂ (λ D t → ⌜IMu⌝ (SI 2) D (pair t (nsuc (snd (pair (ta
 module _ {Ξ : Ctx} {j c : RTm ⌊ Ξ ⌋} where
   private
     bR : El (⌜IMu⌝ (SI 2) KD (pair (tag 1) (nsuc (snd (pair (tag 1) j))))) ⟶ᵀ* K 1 (nsuc j)
-    bR = stepᵀ El-⌜IMu⌝ (⟶ᵀ*-IMu (⟶*-pairʳ (⟶*-nsuc (step (βsnd (tag 1) j) done))))
+    bR = stepᵀ El-⌜SK⌝ (⟶ᵀ*-SK (⟶*-nsuc (step (βsnd (tag 1) j) done)))
 
   -- the body, read off the convoy
   ⊢pwTgt : Ξ ⊢ c ∷ El (subTm (single (pair (tag 1) j)) CP) → Ξ ⊢ c ∷ K 1 (nsuc j)
@@ -120,4 +120,4 @@ ixPw : RTm Δ → RTm Δ → RTm Δ → RTm Δ
 ixPw d c b = Pwₘ.ixJ (pair (tag 1) d) c b
 
 ⊢ixPw : {Ξ : Ctx} {d c b : RTm ⌊ Ξ ⌋} → Ξ ⊢ d ∷ El ⌜Nat⌝ → Ξ ⊢ c ∷ K 1 d → Ξ ⊢ b ∷ K 1 (nsuc d) → Ξ ⊢ ixPw d c b ∷ El Pwₘ.J
-⊢ixPw dd dc db = Pwₘ.⊢ixJ (⊢ix (lt-s lt-z) dd) dc (⊢toCP db)
+⊢ixPw dd dc db = Pwₘ.⊢ixJ (⊢ix (lt-s lt-z) dd) (⊢SK→IMu {sg = KSig} dc) (⊢toCP db)

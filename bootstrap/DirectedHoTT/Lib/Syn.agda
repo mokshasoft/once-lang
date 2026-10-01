@@ -36,7 +36,7 @@ open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong�
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax hiding ( Fin )
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
-open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-trans; ⟶*-pairʳ; ⟶*-nsuc; red→≅ᵀ; ⟶ᵀ*-IMu )
+open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-trans; ⟶*-pairʳ; ⟶*-nsuc; red→≅ᵀ; ⟶ᵀ*-IMu; _⟶ᵀ*_ )
 open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast; wk-cancel-tm )
 open import DirectedHoTT.Metatheory.SubjectReductionBase using ( wk-sub )
 open import DirectedHoTT.Lib.Sugar using ( tag; conₗ; Lt; lt-z; lt-s; Cons; []; _∷_; subC; sel; selF; sel-sub; selF-sub )
@@ -168,9 +168,40 @@ SI n = SortI ⌜Nat⌝ n
 SD : Sig n → RTm Δ
 SD sg = Dₛₜ (stels sg)
 
--- the syntax of sort `s` at depth `d`
-SK : Sig n → ℕ → RTm Δ → RTy Δ
-SK {n = n} sg s d = IMu (SI n) (SD sg) (pair (tag s) d)
+-- the syntax of sort `s` at depth `d` — OPAQUE: it carries the whole
+--   description, and two syntactic forms of one context (a telescope's
+--   `⌊ Ξ ⌋ ∙`, a typing's `⌊ Ξ ▹ A ⌋`) would otherwise compare it by
+--   normalising every constructor (`context-form-mismatch-opaque`; the
+--   Knot's tr row: 104.8 s → 43.3 s).  Its interface: `SK-def`, `SK-sub`,
+--   and the constructor typings `⊢conSyn`/`⊢conV`.
+opaque
+  SK : Sig n → ℕ → RTm Δ → RTy Δ
+  SK {n = n} sg s d = IMu (SI n) (SD sg) (pair (tag s) d)
+
+  SK-def : {sg : Sig n} {s : ℕ} {d : RTm Δ} → SK sg s d ≡ IMu (SI n) (SD sg) (pair (tag s) d)
+  SK-def = refl
+
+-- the escape hatch at the typing level: an eliminator sees the `IMu`
+⊢SK→IMu : {Γ : Ctx} {sg : Sig n} {s : ℕ} {d t : RTm ⌊ Γ ⌋} →
+          Γ ⊢ t ∷ SK sg s d → Γ ⊢ t ∷ IMu (SI n) (SD sg) (pair (tag s) d)
+⊢SK→IMu {sg = sg} {s} {d} = ⊢-cast (SK-def {sg = sg} {s = s} {d = d})
+
+⊢IMu→SK : {Γ : Ctx} {sg : Sig n} {s : ℕ} {d t : RTm ⌊ Γ ⌋} →
+          Γ ⊢ t ∷ IMu (SI n) (SD sg) (pair (tag s) d) → Γ ⊢ t ∷ SK sg s d
+⊢IMu→SK {sg = sg} {s} {d} = ⊢-cast (sym (SK-def {sg = sg} {s = s} {d = d}))
+
+-- the depth reduces under the sort
+opaque
+  unfolding SK
+  ξ-SK : {sg : Sig n} {s : ℕ} {d d' : RTm Δ} → d ⟶ d' → SK sg s d ⟶ᵀ SK sg s d'
+  ξ-SK r = ξ-IMuⁱ (ξ-pairʳ r)
+
+  ⟶ᵀ*-SK : {sg : Sig n} {s : ℕ} {d d' : RTm Δ} → d ⟶* d' → SK sg s d ⟶ᵀ* SK sg s d'
+  ⟶ᵀ*-SK r = ⟶ᵀ*-IMu (⟶*-pairʳ r)
+
+  -- the quoted sort decodes to the sort
+  El-⌜SK⌝ : {sg : Sig n} {s : ℕ} {d : RTm Δ} → El (⌜IMu⌝ (SI n) (SD sg) (pair (tag s) d)) ⟶ᵀ SK sg s d
+  El-⌜SK⌝ = El-⌜IMu⌝
 
 -- the depth of an index
 ⊢depth : {Γ : Ctx} {i : RTm ⌊ Γ ⌋} → Γ ⊢ i ∷ El (SI n) → Γ ⊢ snd i ∷ El ⌜Nat⌝
@@ -201,6 +232,11 @@ sigOK (ok ∷ᵒᵍ oks) = telsOK ok ∷ˢᵒ sigOK oks
 ⊢SD : {Γ : Ctx} {sg : Sig n} → SigOK n sg → Γ ⊢ SD sg ∷ DescF (SI n)
 ⊢SD ok = ⊢Dₛₜ ⊢⌜Nat⌝ (sigOK ok)
 
+-- a sort of the signature is a type
+ty-SK : {Γ : Ctx} {sg : Sig n} {d : RTm ⌊ Γ ⌋} → SigOK n sg → Lt s n → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ty SK sg s d
+ty-SK {Γ = Γ} {sg = sg} {d = d} ok lt dd =
+  subst (Γ ⊢ty_) (sym (SK-def {sg = sg} {s = _} {d = d})) (ty-IMu ⊢SI (⊢SD ok) (⊢ix lt dd))
+
 ------------------------------------------------------------------------
 -- 4. ★ CONSTRUCTORS, generically: a payload is its fields, each typed.
 ------------------------------------------------------------------------
@@ -225,15 +261,16 @@ nthSh-ok : {shs : Shapes c} {sh : Shape} → ShsOK n shs → NthSh shs k sh → 
 nthSh-ok (ok ∷ᵒˢ _)  nthʰ-z     = ok
 nthSh-ok (_ ∷ᵒˢ oks) (nthʰ-s n) = nthSh-ok oks n
 
--- the fields of a payload, at depth `d`, each typed
-data Args (Γ : Ctx) (n : ℕ) (D d : RTm ⌊ Γ ⌋) : Shape → RTm ⌊ Γ ⌋ → Set where
-  a[]   : Args Γ n D d []ʰ unit
+-- the fields of a payload of signature `sg`, at depth `d`, each typed — a
+--   recursive field is a term of the signature's sort (`SK`, opaque)
+data Args (Γ : Ctx) (n : ℕ) (sg : Sig n) (d : RTm ⌊ Γ ⌋) : Shape → RTm ⌊ Γ ⌋ → Set where
+  a[]   : Args Γ n sg d []ʰ unit
   a-rec : {a p : RTm ⌊ Γ ⌋} {sh : Shape} →
-          Γ ⊢ a ∷ IMu (SI n) D (pair (tag s) (nsucs k d)) → Args Γ n D d sh p →
-          Args Γ n D d (rec s k ∷ʰ sh) (pair a p)
+          Γ ⊢ a ∷ SK sg s (nsucs k d) → Args Γ n sg d sh p →
+          Args Γ n sg d (rec s k ∷ʰ sh) (pair a p)
   a-nat : {a p : RTm ⌊ Γ ⌋} {sh : Shape} →
-          Γ ⊢ a ∷ El ⌜Nat⌝ → Args Γ n D d sh p → Args Γ n D d (nat ∷ʰ sh) (pair a p)
-  a-v   : {a : RTm ⌊ Γ ⌋} → Γ ⊢ a ∷ FinI d → Args Γ n D d vʰ (pair a unit)
+          Γ ⊢ a ∷ El ⌜Nat⌝ → Args Γ n sg d sh p → Args Γ n sg d (nat ∷ʰ sh) (pair a p)
+  a-v   : {a : RTm ⌊ Γ ⌋} → Γ ⊢ a ∷ FinI d → Args Γ n sg d vʰ (pair a unit)
 
 private
   ixConv : {Γ : Ctx} {I D t i i' : RTm ⌊ Γ ⌋} → i ⟶* i' → Γ ⊢ t ∷ IMu I D i' → Γ ⊢ t ∷ IMu I D i
@@ -245,44 +282,46 @@ private
   sub-rest a sh i = trans (sub-tel (single a) sh (renTm vs i)) (cong (λ z → ⌜ tel sh z ⌝ᵗ) (wk-cancel-tm a i))
 
 -- ★ the payload, field by field, at ANY index whose depth reduces to `d`
-⊢payArgsF : {Γ : Ctx} {D i d p : RTm ⌊ Γ ⌋} {sh : Shape} →
-            Γ ⊢ D ∷ DescF (SI n) → FOK n sh → Γ ⊢ i ∷ El (SI n) → snd i ⟶* d →
-            Args Γ n D d sh p → Γ ⊢ p ∷ El (dpay (SI n) D ⌜ tel sh i ⌝ᵗ)
+⊢payArgsF : {Γ : Ctx} {sg : Sig n} {i d p : RTm ⌊ Γ ⌋} {sh : Shape} →
+            Γ ⊢ SD sg ∷ DescF (SI n) → FOK n sh → Γ ⊢ i ∷ El (SI n) → snd i ⟶* d →
+            Args Γ n sg d sh p → Γ ⊢ p ∷ El (dpay (SI n) (SD sg) ⌜ tel sh i ⌝ᵗ)
 ⊢payArgsF dD []ᶠ di r a[] = ⊢payι ⊢SI dD ⊢unit
-⊢payArgsF {sh = rec s k ∷ʰ sh} dD (ok-rec lt ∷ᶠ ok) di r (a-rec da as) =
+⊢payArgsF {sg = sg} {d = d} {sh = rec s k ∷ʰ sh} dD (ok-rec lt ∷ᶠ ok) di r (a-rec da as) =
   ⊢payρ ⊢SI dD (ok-ρ (⊢ix lt (⊢nsucs k (⊢depth di))) (telOKf ok di))
-        (ixConv (⟶*-pairʳ (⟶*-nsucs k r)) da) (⊢payArgsF dD ok di r as)
-⊢payArgsF {D = D} {i = i} {sh = nat ∷ʰ sh} dD (ok-nat ∷ᶠ ok) di r (a-nat {a = a} {p = p} da as) =
+        (ixConv (⟶*-pairʳ (⟶*-nsucs k r)) (⊢SK→IMu {sg = sg} {s = s} {d = nsucs k d} da)) (⊢payArgsF dD ok di r as)
+⊢payArgsF {sg = sg} {i = i} {sh = nat ∷ʰ sh} dD (ok-nat ∷ᶠ ok) di r (a-nat {a = a} {p = p} da as) =
   ⊢payσ ⊢SI dD (ok-σ ⊢⌜Nat⌝ (telOKf ok (⊢wk di))) da
-    (subst (λ X → _ ⊢ p ∷ El (dpay (SI _) D X)) (sym (sub-rest a sh i)) (⊢payArgsF dD ok di r as))
+    (subst (λ X → _ ⊢ p ∷ El (dpay (SI _) (SD sg) X)) (sym (sub-rest a sh i)) (⊢payArgsF dD ok di r as))
 
-⊢payArgs : {Γ : Ctx} {D i d p : RTm ⌊ Γ ⌋} {sh : Shape} →
-           Γ ⊢ D ∷ DescF (SI n) → ShOK n sh → Γ ⊢ i ∷ El (SI n) → snd i ⟶* d →
-           Args Γ n D d sh p → Γ ⊢ p ∷ El (dpay (SI n) D ⌜ tel sh i ⌝ᵗ)
+⊢payArgs : {Γ : Ctx} {sg : Sig n} {i d p : RTm ⌊ Γ ⌋} {sh : Shape} →
+           Γ ⊢ SD sg ∷ DescF (SI n) → ShOK n sh → Γ ⊢ i ∷ El (SI n) → snd i ⟶* d →
+           Args Γ n sg d sh p → Γ ⊢ p ∷ El (dpay (SI n) (SD sg) ⌜ tel sh i ⌝ᵗ)
 ⊢payArgs dD (fᵒʰ ok) di r as = ⊢payArgsF dD ok di r as
-⊢payArgs {Γ = Γ} {D = D} {i = i} {sh = vʰ} dD vᵒʰ di r (a-v {a = a} da) =
+⊢payArgs {Γ = Γ} {i = i} {sh = vʰ} dD vᵒʰ di r (a-v {a = a} da) =
   ⊢payσ ⊢SI dD (ok-σ (⊢⌜IMu⌝ ⊢⌜Nat⌝ ⊢FinD (⊢depth di)) ok-ι)
     (⊢conv da (csymᵀ (ctrnᵀ (credᵀ El-⌜IMu⌝) (red→≅ᵀ (⟶ᵀ*-IMu r)))))
     (⊢payι ⊢SI dD ⊢unit)
 
 -- ★★ CONSTRUCTOR `k` OF SORT `s`, at depth `d`
-⊢conSyn : {Γ : Ctx} {sg : Sig n} {shs : Shapes c} {sh : Shape} {d p : RTm ⌊ Γ ⌋} →
-          SigOK n sg → NthG sg s shs → NthSh shs k sh → Γ ⊢ d ∷ El ⌜Nat⌝ →
-          Args Γ n (SD sg) d sh p → Γ ⊢ conₗ k p ∷ SK sg s d
-⊢conSyn {n = n} {s = s} {Γ = Γ} {sg = sg} {shs = shs} {sh = sh} {d = d} {p = p} ok ng nh dd as =
-  ⊢conₛₜ {Tss = stels sg} {Ts = tels shs} {T = tel sh (var vz)} ⊢⌜Nat⌝ (sigOK ok)
-         (nth-stels ng) (nth-tels nh) dd
-    (subst (λ X → Γ ⊢ p ∷ El (dpay (SI n) (SD sg) X)) (sym (sub-tel (single (pair (tag s) d)) sh (var vz)))
-           (⊢payArgs (⊢SD ok) (nthSh-ok (nthG-ok ok ng) nh) (⊢ix (nthG-lt ng) dd) (step (βsnd _ _) done) as))
+opaque
+  unfolding SK
+  ⊢conSyn : {Γ : Ctx} {sg : Sig n} {shs : Shapes c} {sh : Shape} {d p : RTm ⌊ Γ ⌋} →
+            SigOK n sg → NthG sg s shs → NthSh shs k sh → Γ ⊢ d ∷ El ⌜Nat⌝ →
+            Args Γ n sg d sh p → Γ ⊢ conₗ k p ∷ SK sg s d
+  ⊢conSyn {n = n} {s = s} {Γ = Γ} {sg = sg} {shs = shs} {sh = sh} {d = d} {p = p} ok ng nh dd as =
+    ⊢conₛₜ {Tss = stels sg} {Ts = tels shs} {T = tel sh (var vz)} ⊢⌜Nat⌝ (sigOK ok)
+           (nth-stels ng) (nth-tels nh) dd
+      (subst (λ X → Γ ⊢ p ∷ El (dpay (SI n) (SD sg) X)) (sym (sub-tel (single (pair (tag s) d)) sh (var vz)))
+             (⊢payArgs (⊢SD ok) (nthSh-ok (nthG-ok ok ng) nh) (⊢ix (nthG-lt ng) dd) (step (βsnd _ _) done) as))
 
--- …from the payload at its normal form (the telescope instantiated at the index)
-⊢conV : {Γ : Ctx} {sg : Sig n} {shs : Shapes c} {sh : Shape} {d p : RTm ⌊ Γ ⌋} →
-        SigOK n sg → NthG sg s shs → NthSh shs k sh → Γ ⊢ d ∷ El ⌜Nat⌝ →
-        Γ ⊢ p ∷ El (dpay (SI n) (SD sg) ⌜ tel sh (pair (tag s) d) ⌝ᵗ) → Γ ⊢ conₗ k p ∷ SK sg s d
-⊢conV {n = n} {s = s} {Γ = Γ} {sg = sg} {shs = shs} {sh = sh} {d = d} {p = p} ok ng nh dd dp =
-  ⊢conₛₜ {Tss = stels sg} {Ts = tels shs} {T = tel sh (var vz)} ⊢⌜Nat⌝ (sigOK ok)
-         (nth-stels ng) (nth-tels nh) dd
-    (subst (λ X → Γ ⊢ p ∷ El (dpay (SI n) (SD sg) X)) (sym (sub-tel (single (pair (tag s) d)) sh (var vz))) dp)
+  -- …from the payload at its normal form (the telescope instantiated at the index)
+  ⊢conV : {Γ : Ctx} {sg : Sig n} {shs : Shapes c} {sh : Shape} {d p : RTm ⌊ Γ ⌋} →
+          SigOK n sg → NthG sg s shs → NthSh shs k sh → Γ ⊢ d ∷ El ⌜Nat⌝ →
+          Γ ⊢ p ∷ El (dpay (SI n) (SD sg) ⌜ tel sh (pair (tag s) d) ⌝ᵗ) → Γ ⊢ conₗ k p ∷ SK sg s d
+  ⊢conV {n = n} {s = s} {Γ = Γ} {sg = sg} {shs = shs} {sh = sh} {d = d} {p = p} ok ng nh dd dp =
+    ⊢conₛₜ {Tss = stels sg} {Ts = tels shs} {T = tel sh (var vz)} ⊢⌜Nat⌝ (sigOK ok)
+           (nth-stels ng) (nth-tels nh) dd
+      (subst (λ X → Γ ⊢ p ∷ El (dpay (SI n) (SD sg) X)) (sym (sub-tel (single (pair (tag s) d)) sh (var vz))) dp)
 
 ------------------------------------------------------------------------
 -- 5. THE FAMILY IS CLOSED: substitution fixes it.
@@ -304,8 +343,10 @@ SD-sub σ sg =
   cong lam (trans (sel-sub (extS σ) (SDs ⌜ stels sg ⌝ₛₛ) (fst (var vz)))
                   (cong (λ X → sel X (fst (var vz))) (sds-sub σ sg)))
 
-SK-sub : (σ : Sub Δ Θ) (sg : Sig n) (s : ℕ) (d : RTm Δ) → subTy σ (SK sg s d) ≡ SK sg s (subTm σ d)
-SK-sub {n = n} σ sg s d = cong₂ (λ D j → IMu (SI n) D j) (SD-sub σ sg) (cong₂ pair (tag-sub σ s) refl)
+opaque
+  unfolding SK
+  SK-sub : (σ : Sub Δ Θ) (sg : Sig n) (s : ℕ) (d : RTm Δ) → subTy σ (SK sg s d) ≡ SK sg s (subTm σ d)
+  SK-sub {n = n} σ sg s d = cong₂ (λ D j → IMu (SI n) D j) (SD-sub σ sg) (cong₂ pair (tag-sub σ s) refl)
 
 -- …and renaming, whose cast is what keeps the checker from normalising
 --   the whole description under `renTm` (measured: 20 s per occurrence)

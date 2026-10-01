@@ -777,7 +777,7 @@ def gen_alt(al):
             return "(⊢natFst {i = pair (tag %d) j} {I = SI 2} {D = SD KSig} {sh = %s} %s)" % (S_, shape_expr(fs[i + 1:]), d)
         f = fs[i]
         assert f[0] == "rec", (al.n, fs, i)
-        return "(⊢atDepth {a = tag %d} {j = j} {s = %d} {k = %d} (⊢recFst {s = %d} {k = %d} {sh = %s} %s))" % (
+        return "(⊢atDepthSK {sg = KSig} {a = tag %d} {j = j} {s = %d} {k = %d} (⊢recFst {s = %d} {k = %d} {sh = %s} %s))" % (
             S_, f[1], f[2], f[1], f[2], shape_expr(fs[i + 1:]), d)
     def styp(p):
         if L_:
@@ -1191,7 +1191,7 @@ def fieldtyp_g(fs, base, S_, i):
     f = fs[i]
     if f[0] == "nat":
         return "(⊢natFst {i = pair (tag %d) j} {I = SI 2} {D = SD KSig} {sh = %s} %s)" % (S_, shape_expr(fs[i + 1:]), d)
-    return "(⊢atDepth {a = tag %d} {j = j} {s = %d} {k = %d} (⊢recFst {s = %d} {k = %d} {sh = %s} %s))" % (
+    return "(⊢atDepthSK {sg = KSig} {a = tag %d} {j = j} {s = %d} {k = %d} (⊢recFst {s = %d} {k = %d} {sh = %s} %s))" % (
         S_, f[1], f[2], f[1], f[2], shape_expr(fs[i + 1:]), d)
 
 def gen_nest(al):
@@ -1584,7 +1584,7 @@ def gen_preds():
         L.append("ix%s d c = %sₘ.ixJ (pair (tag 1) d) c unit" % (P, P))
         L.append("")
         L.append("⊢ix%s : {Ξ : Ctx} {d c : RTm ⌊ Ξ ⌋} → Ξ ⊢ d ∷ El ⌜Nat⌝ → Ξ ⊢ c ∷ K 1 d → Ξ ⊢ ix%s d c ∷ El %sₘ.J" % (P, P, P))
-        L.append("⊢ix%s dd dc = %sₘ.⊢ixJ (⊢ix (lt-s lt-z) dd) dc (⊢conv ⊢unit (csymᵀ (credᵀ El-⌜Unit⌝)))" % (P, P))
+        L.append("⊢ix%s dd dc = %sₘ.⊢ixJ (⊢ix (lt-s lt-z) dd) (⊢SK→IMu {sg = KSig} dc) (⊢conv ⊢unit (csymᵀ (credᵀ El-⌜Unit⌝)))" % (P, P))
         L.append("")
         for h, prems in spec["rows"].items():
             sh = shape_name(h)
@@ -1622,7 +1622,7 @@ def gen_preds():
                 d = "dp"
                 for m in range(f):
                     d = "(⊢recSnd {s = %d} {k = %d} {sh = %s} %s)" % (fs[m][1], fs[m][2], shape_expr(fs[m + 1:]), d)
-                return "(⊢atDepth {a = tag 1} {j = j} {s = %d} {k = %d} (⊢recFst {s = %d} {k = %d} {sh = %s} %s))" % (
+                return "(⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = %d} {k = %d} (⊢recFst {s = %d} {k = %d} {sh = %s} %s))" % (
                     fs[f][1], fs[f][2], fs[f][1], fs[f][2], shape_expr(fs[f + 1:]), d)
             for pr in reversed(prems):
                 if pr[0] == "σ":
@@ -1634,7 +1634,7 @@ def gen_preds():
                 d = "dp"
                 for m in range(f):
                     d = "(⊢recSnd {s = %d} {k = %d} {sh = %s} %s)" % (fs[m][1], fs[m][2], shape_expr(fs[m + 1:]), d)
-                ftyp = "(⊢atDepth {a = tag 1} {j = j} {s = %d} {k = %d} (⊢recFst {s = %d} {k = %d} {sh = %s} %s))" % (
+                ftyp = "(⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = %d} {k = %d} (⊢recFst {s = %d} {k = %d} {sh = %s} %s))" % (
                     fs[f][1], fs[f][2], fs[f][1], fs[f][2], shape_expr(fs[f + 1:]), d)
                 ddep = "dj"
                 for _ in range(k): ddep = "(⊢isuc %s)" % ddep
@@ -1705,7 +1705,7 @@ open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax hiding ( Fin )
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_; tag; lt-z; lt-s; []ᵈ; _∷ᵈ_ )
-open import DirectedHoTT.Lib.SynView using ( PayV; ⊢recFst; ⊢recSnd; ⊢atDepth )
+open import DirectedHoTT.Lib.SynView using ( PayV; ⊢recFst; ⊢recSnd; ⊢atDepthSK )
 open import DirectedHoTT.Lib.FinFam using ( ⊢isuc )
 open import DirectedHoTT.Lib.Tel
 open import DirectedHoTT.Lib.Syn
@@ -1916,7 +1916,7 @@ open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Metatheory.TySub using ( ⊢wk )
 open import DirectedHoTT.Metatheory.SubjectReductionBase using () renaming ( wk-sub to wkS )
 open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_; tag; Lt; lt-z; lt-s; []ᵈ; _∷ᵈ_; AllD )
-open import DirectedHoTT.Lib.SynView using ( PayV; ⊢recFst; ⊢recSnd; ⊢atDepth; ⊢natFst; ⊢natSnd )
+open import DirectedHoTT.Lib.SynView using ( PayV; ⊢recFst; ⊢recSnd; ⊢atDepthSK; ⊢natFst; ⊢natSnd )
 open import DirectedHoTT.Lib.FinFam using ( ⊢isuc; toI; ffz; ⊢ffz; ffs; ⊢ffs )
 open import DirectedHoTT.Lib.Tel
 open import DirectedHoTT.Lib.Syn
@@ -2057,7 +2057,7 @@ open import DirectedHoTT.Spec.Syntax hiding ( Fin )
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Metatheory.TySub using ( ⊢wk )
 open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_; tag; Lt; lt-z; lt-s; []ᵈ; _∷ᵈ_; AllD )
-open import DirectedHoTT.Lib.SynView using ( PayV; ⊢recFst; ⊢recSnd; ⊢atDepth )
+open import DirectedHoTT.Lib.SynView using ( PayV; ⊢recFst; ⊢recSnd; ⊢atDepthSK )
 open import DirectedHoTT.Lib.FinFam using ( ⊢isuc; toI; ffz; ⊢ffz; ffs; ⊢ffs )
 open import DirectedHoTT.Lib.Tel
 open import DirectedHoTT.Lib.Syn

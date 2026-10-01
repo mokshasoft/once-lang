@@ -18,7 +18,7 @@ open import DirectedHoTT.Metatheory.SubjectReductionBase using () renaming ( wk-
 open import DirectedHoTT.Metatheory.Fundamental.Syntactic using ( ⟨_⟩ᵣ; subTm-var )
 open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; _⟶ᵀ*_; stepᵀ; doneᵀ; ⟶*-trans; ⟶*-appˡ; ⟶*-appʳ; ⟶*-ielimⁱ; ⟶*-ielimᵗ; ⟶*-fst; ⟶*-snd; ⟶*-pairˡ; ⟶*-pairʳ; ⟶*-con; ⟶ᵀ*-IMu )
 open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_; conₗ; tag; Lt; lt-z; lt-s; subC; selF-sub; []ᵈ; _∷ᵈ_ )
-open import DirectedHoTT.Lib.SynView using ( PayV; payV-red; ⊢recFst; ⊢recSnd; ⊢atDepth )
+open import DirectedHoTT.Lib.SynView using ( PayV; payV-red; ⊢recFst; ⊢recSnd; ⊢atDepthSK )
 open import DirectedHoTT.Lib.FinFam using ( FinI; ffz; ⊢ffz; ⊢isuc )
 open import DirectedHoTT.Examples.Knot.Ctors
 open import DirectedHoTT.Examples.Knot.Ren using ( wk; wk-sub; ⊢wkS )
@@ -157,7 +157,7 @@ red1 j = red→≅ᵀ (stepᵀ (ξ-El (ξ-fcaseᵗ (βfst (tag 1) j)))
                  (stepᵀ (ξ-El (fcase-s fzero ⌜Unit⌝ (⌜Ty⌝ (snd (renTm vs (pair (tag 1) j)))))) doneᵀ))
 
 tyK≅ : (j : RTm Δ) → El (⌜Ty⌝ (snd (pair (tag 1) j))) ≅ᵀ K 0 j
-tyK≅ j = ctrnᵀ (credᵀ El-⌜Ty⌝) (credᵀ (ξ-IMuⁱ (ξ-pairʳ (βsnd (tag 1) j))))
+tyK≅ j = ctrnᵀ (credᵀ El-⌜Ty⌝) (credᵀ (ξ-SK (βsnd (tag 1) j)))
 
 red0 : (j : RTm Δ) → El (fcase (fst (pair (tag 0) j)) ⌜Unit⌝ (⌜Ty⌝ (snd (renTm vs (pair (tag 0) j))))) ≅ᵀ Unit
 red0 j = red→≅ᵀ (stepᵀ (ξ-El (ξ-fcaseᵗ (βfst (tag 0) j)))
@@ -240,11 +240,11 @@ tmIx : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ
 tmIx j g t A = ixJ (pair (tag 1) j) t (pair g A)
 
 ⊢tyIx : {Ξ : Ctx} {j g A : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ g ∷ KCtx j → Ξ ⊢ A ∷ K 0 j → Ξ ⊢ tyIx j g A ∷ El JT
-⊢tyIx dj dg dA = ⊢ixJ (⊢ix lt-z dj) dA (⊢cTy dj dg)
+⊢tyIx dj dg dA = ⊢ixJ (⊢ix lt-z dj) (⊢SK→IMu {sg = KSig} dA) (⊢cTy dj dg)
 
 ⊢tmIx : {Ξ : Ctx} {j g t A : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ g ∷ KCtx j → Ξ ⊢ t ∷ K 1 j → Ξ ⊢ A ∷ K 0 j →
         Ξ ⊢ tmIx j g t A ∷ El JT
-⊢tmIx dj dg dt dA = ⊢ixJ (⊢ix (lt-s lt-z) dj) dt (⊢cTm dj dg dA)
+⊢tmIx dj dg dt dA = ⊢ixJ (⊢ix (lt-s lt-z) dj) (⊢SK→IMu {sg = KSig} dt) (⊢cTm dj dg dA)
 
 
 ------------------------------------------------------------------------
@@ -296,7 +296,7 @@ opaque
   ⌜Tm⌝-sub σ d = cong (λ D → ⌜IMu⌝ (SI 2) D (pair (tag 1) (subTm σ d))) (SD-sub σ KSig)
 
   El-⌜Tm⌝ : {d : RTm Δ} → El (⌜Tm⌝ d) ⟶ᵀ K 1 d
-  El-⌜Tm⌝ = El-⌜IMu⌝
+  El-⌜Tm⌝ = El-⌜SK⌝
 
   ⊢⌜Tm⌝ : {Ξ : Ctx} {d : RTm ⌊ Ξ ⌋} → Ξ ⊢ d ∷ El ⌜Nat⌝ → Ξ ⊢ ⌜Tm⌝ d ∷ U
   ⊢⌜Tm⌝ dd = ⊢⌜IMu⌝ ⊢SI ⊢KD (⊢ix (lt-s lt-z) dd)
@@ -322,6 +322,6 @@ rNone = record { R = λ j p c → rows [] ; R-sub = λ σ j p c → refl }
 
 -- a payload of the Knot, at its normal form
 ⊢payK : {Ξ : Ctx} {s : ℕ} {j p : RTm ⌊ Ξ ⌋} {sh : Shape} → Lt s 2 → ShOK 2 sh → Ξ ⊢ j ∷ El ⌜Nat⌝ →
-        Args Ξ 2 KD j sh p → Ξ ⊢ p ∷ PayV sh (pair (tag s) j) (SI 2) (SD KSig)
+        Args Ξ 2 KSig j sh p → Ξ ⊢ p ∷ PayV sh (pair (tag s) j) (SI 2) (SD KSig)
 ⊢payK {s = s} {j = j} {sh = sh} lt ok dj as =
   ⊢conv (⊢payArgs ⊢KD ok (⊢ix lt dj) (step (βsnd (tag s) j) done) as) (red→≅ᵀ (payV-red sh (pair (tag s) j) (SI 2) (SD KSig)))
