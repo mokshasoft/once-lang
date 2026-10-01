@@ -1053,7 +1053,11 @@ def gen_con(al, ci, nc, R, csf):
     ng = "nthᵍ-z" if S == 0 else "(nthᵍ-s nthᵍ-z)"
     L.append("  ⊢conRowₖ {Ξ} {%d} {%d} {%s} {%s} {%s} {%s} {%s} {%s} %s %s %s %s" % (nc, ci, Jn, Dn, concl, comp, P, cs,
              nth_expr(ci), dJn, dDn, dconcl))
-    L.append("    (%s {s = %d} {k = %d} {j = j} {p = p} {c = c} %s %s) (all%s dj dp dc)" % (FAM["fib"], S, SIG[h][2], ng, nth_expr(SIG[h][2], "nthʰ-z", "nthʰ-s"), R))
+    # ⚠ `all…`'s implicits are PINNED to the where-bound `p`/`c`: inferred, they
+    #   are the raw terms, so the row list `⊢conRowₖ` is given (written with the
+    #   names) misses syntactically and Agda reduces every row telescope of the
+    #   head to compare them — measured 3.4 s per constructor (2026-10-01).
+    L.append("    (%s {s = %d} {k = %d} {j = j} {p = p} {c = c} %s %s) (all%s {j = j} {p = p} {c = c} dj dp dc)" % (FAM["fib"], S, SIG[h][2], ng, nth_expr(SIG[h][2], "nthʰ-z", "nthʰ-s"), R))
     L.append("    (⊢conv dPv (csymᵀ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))))")
     L.append("  where")
     L.append("    p c : RTm ⌊ Ξ ⌋")
@@ -1379,7 +1383,7 @@ def gen_conv_con(h, nc, R, csf):
     L.append("%s {Ξ} {%s} %s =" % (cn, "} {".join(x for x, _ in hyps), " ".join("d" + x for x, _ in hyps)))
     L.append("  ⊢conRowₖ {Ξ} {%d} {%d} {JT} {D⊢} {tmIx j g %s B} {%s} {%s} {%s} %s ⊢JT ⊢D⊢ (⊢tmIx dj dg %s dB)" % (
         nc, nc - 1, subj, csf[nc - 1][0]("j", "p", "c"), P, cs, nth_expr(nc - 1), dsubj))
-    L.append("    (fibK {s = 1} {k = %d} {j = j} {p = p} {c = c} (nthᵍ-s nthᵍ-z) %s) (all%s dj dp dc)" % (
+    L.append("    (fibK {s = 1} {k = %d} {j = j} {p = p} {c = c} (nthᵍ-s nthᵍ-z) %s) (all%s {j = j} {p = p} {c = c} dj dp dc)" % (
         SIG[h][2], nth_expr(SIG[h][2], "nthʰ-z", "nthʰ-s"), R))
     L.append("    (⊢payTCVat ⊢D⊢ {k = %d} dj dg %s dA dB dr de)" % (SIG[h][2], dsubj))
     L.append("  where")

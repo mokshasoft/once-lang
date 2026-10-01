@@ -45,7 +45,7 @@ con⟶ᵀPi₁ : {Ξ : Ctx} {j f0 f1 e0 r0 : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El
   Ξ ⊢ conₗ 0 (pair e0 (pair r0 (pair (idrefl (⌜Ty⌝ j) (kPi e0 f1)) unit))) ∷ IMu RedTₘ.J ⟶ᵀF.DF (ix⟶ᵀ j (kPi f0 f1) ((kPi e0 f1)))
 con⟶ᵀPi₁ {Ξ} {j} {f0} {f1} {e0} {r0} dj df0 df1 de0 dr0 =
   ⊢conRowₖ {Ξ} {2} {0} {RedTₘ.J} {⟶ᵀF.DF} {ix⟶ᵀ j (kPi f0 f1) ((kPi e0 f1))} {⌜ T⟶ᵀPi₁ j p c ⌝ᵗ} {(pair e0 (pair r0 (pair (idrefl (⌜Ty⌝ j) (kPi e0 f1)) unit)))} {⌜ T⟶ᵀPi₁ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀPi₂ j p c ⌝ᵗ ∷ []} nth-z RedTₘ.⊢J ⟶ᵀF.⊢DF (⊢ix⟶ᵀ dj (⊢kPi dj df0 df1) (⊢kPi dj de0 df1))
-    (⟶ᵀF.fibF {s = 0} {k = 2} {j = j} {p = p} {c = c} nthᵍ-z (nthʰ-s (nthʰ-s nthʰ-z))) (allr⟶ᵀPi dj dp dc)
+    (⟶ᵀF.fibF {s = 0} {k = 2} {j = j} {p = p} {c = c} nthᵍ-z (nthʰ-s (nthʰ-s nthʰ-z))) (allr⟶ᵀPi {j = j} {p = p} {c = c} dj dp dc)
     (⊢conv dPv (csymᵀ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))))
   where
     p c : RTm ⌊ Ξ ⌋
@@ -68,7 +68,7 @@ con⟶ᵀPi₂ : {Ξ : Ctx} {j f0 f1 e0 r0 : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El
   Ξ ⊢ conₗ 1 (pair e0 (pair r0 (pair (idrefl (⌜Ty⌝ j) (kPi f0 e0)) unit))) ∷ IMu RedTₘ.J ⟶ᵀF.DF (ix⟶ᵀ j (kPi f0 f1) ((kPi f0 e0)))
 con⟶ᵀPi₂ {Ξ} {j} {f0} {f1} {e0} {r0} dj df0 df1 de0 dr0 =
   ⊢conRowₖ {Ξ} {2} {1} {RedTₘ.J} {⟶ᵀF.DF} {ix⟶ᵀ j (kPi f0 f1) ((kPi f0 e0))} {⌜ T⟶ᵀPi₂ j p c ⌝ᵗ} {(pair e0 (pair r0 (pair (idrefl (⌜Ty⌝ j) (kPi f0 e0)) unit)))} {⌜ T⟶ᵀPi₁ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀPi₂ j p c ⌝ᵗ ∷ []} (nth-s nth-z) RedTₘ.⊢J ⟶ᵀF.⊢DF (⊢ix⟶ᵀ dj (⊢kPi dj df0 df1) (⊢kPi dj df0 de0))
-    (⟶ᵀF.fibF {s = 0} {k = 2} {j = j} {p = p} {c = c} nthᵍ-z (nthʰ-s (nthʰ-s nthʰ-z))) (allr⟶ᵀPi dj dp dc)
+    (⟶ᵀF.fibF {s = 0} {k = 2} {j = j} {p = p} {c = c} nthᵍ-z (nthʰ-s (nthʰ-s nthʰ-z))) (allr⟶ᵀPi {j = j} {p = p} {c = c} dj dp dc)
     (⊢conv dPv (csymᵀ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))))
   where
     p c : RTm ⌊ Ξ ⌋
@@ -91,7 +91,7 @@ con⟶ᵀSg₁ : {Ξ : Ctx} {j f0 f1 e0 r0 : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El
   Ξ ⊢ conₗ 0 (pair e0 (pair r0 (pair (idrefl (⌜Ty⌝ j) (kSg e0 f1)) unit))) ∷ IMu RedTₘ.J ⟶ᵀF.DF (ix⟶ᵀ j (kSg f0 f1) ((kSg e0 f1)))
 con⟶ᵀSg₁ {Ξ} {j} {f0} {f1} {e0} {r0} dj df0 df1 de0 dr0 =
   ⊢conRowₖ {Ξ} {2} {0} {RedTₘ.J} {⟶ᵀF.DF} {ix⟶ᵀ j (kSg f0 f1) ((kSg e0 f1))} {⌜ T⟶ᵀSg₁ j p c ⌝ᵗ} {(pair e0 (pair r0 (pair (idrefl (⌜Ty⌝ j) (kSg e0 f1)) unit)))} {⌜ T⟶ᵀSg₁ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀSg₂ j p c ⌝ᵗ ∷ []} nth-z RedTₘ.⊢J ⟶ᵀF.⊢DF (⊢ix⟶ᵀ dj (⊢kSg dj df0 df1) (⊢kSg dj de0 df1))
-    (⟶ᵀF.fibF {s = 0} {k = 3} {j = j} {p = p} {c = c} nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))) (allr⟶ᵀSg dj dp dc)
+    (⟶ᵀF.fibF {s = 0} {k = 3} {j = j} {p = p} {c = c} nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))) (allr⟶ᵀSg {j = j} {p = p} {c = c} dj dp dc)
     (⊢conv dPv (csymᵀ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))))
   where
     p c : RTm ⌊ Ξ ⌋
@@ -114,7 +114,7 @@ con⟶ᵀSg₂ : {Ξ : Ctx} {j f0 f1 e0 r0 : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El
   Ξ ⊢ conₗ 1 (pair e0 (pair r0 (pair (idrefl (⌜Ty⌝ j) (kSg f0 e0)) unit))) ∷ IMu RedTₘ.J ⟶ᵀF.DF (ix⟶ᵀ j (kSg f0 f1) ((kSg f0 e0)))
 con⟶ᵀSg₂ {Ξ} {j} {f0} {f1} {e0} {r0} dj df0 df1 de0 dr0 =
   ⊢conRowₖ {Ξ} {2} {1} {RedTₘ.J} {⟶ᵀF.DF} {ix⟶ᵀ j (kSg f0 f1) ((kSg f0 e0))} {⌜ T⟶ᵀSg₂ j p c ⌝ᵗ} {(pair e0 (pair r0 (pair (idrefl (⌜Ty⌝ j) (kSg f0 e0)) unit)))} {⌜ T⟶ᵀSg₁ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀSg₂ j p c ⌝ᵗ ∷ []} (nth-s nth-z) RedTₘ.⊢J ⟶ᵀF.⊢DF (⊢ix⟶ᵀ dj (⊢kSg dj df0 df1) (⊢kSg dj df0 de0))
-    (⟶ᵀF.fibF {s = 0} {k = 3} {j = j} {p = p} {c = c} nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))) (allr⟶ᵀSg dj dp dc)
+    (⟶ᵀF.fibF {s = 0} {k = 3} {j = j} {p = p} {c = c} nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))) (allr⟶ᵀSg {j = j} {p = p} {c = c} dj dp dc)
     (⊢conv dPv (csymᵀ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))))
   where
     p c : RTm ⌊ Ξ ⌋
@@ -137,7 +137,7 @@ con⟶ᵀEl₁ : {Ξ : Ctx} {j f0 e0 e1 : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El �
   Ξ ⊢ conₗ 0 (pair e0 (pair e1 (pair (idrefl (⌜Ty⌝ j) (kEl e0)) unit))) ∷ IMu RedTₘ.J ⟶ᵀF.DF (ix⟶ᵀ j (kEl f0) ((kEl e0)))
 con⟶ᵀEl₁ {Ξ} {j} {f0} {e0} {e1} dj df0 de0 de1 =
   ⊢conRowₖ {Ξ} {10} {0} {RedTₘ.J} {⟶ᵀF.DF} {ix⟶ᵀ j (kEl f0) ((kEl e0))} {⌜ T⟶ᵀEl₁ j p c ⌝ᵗ} {(pair e0 (pair e1 (pair (idrefl (⌜Ty⌝ j) (kEl e0)) unit)))} {⌜ T⟶ᵀEl₁ j p c ⌝ᵗ ∷ (PT⟶ᵀEl₂ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀEl₃ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀEl₄ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀEl₅ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀEl₆ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀEl₇ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀEl₈ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀEl₉ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀEl₁₀ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ []} nth-z RedTₘ.⊢J ⟶ᵀF.⊢DF (⊢ix⟶ᵀ dj (⊢kEl dj df0) (⊢kEl dj de0))
-    (⟶ᵀF.fibF {s = 0} {k = 4} {j = j} {p = p} {c = c} nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))) (allr⟶ᵀEl dj dp dc)
+    (⟶ᵀF.fibF {s = 0} {k = 4} {j = j} {p = p} {c = c} nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))) (allr⟶ᵀEl {j = j} {p = p} {c = c} dj dp dc)
     (⊢conv dPv (csymᵀ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))))
   where
     p c : RTm ⌊ Ξ ⌋
@@ -162,7 +162,7 @@ con⟶ᵀEl₂ : {Ξ : Ctx} {j : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El ⌜Nat⌝ �
   Ξ ⊢ conₗ 1 (pair (idrefl (⌜Ty⌝ j) (kbase)) unit) ∷ IMu RedTₘ.J ⟶ᵀF.DF (ix⟶ᵀ j (kEl (kcbase)) ((kbase)))
 con⟶ᵀEl₂ {Ξ} {j} dj =
   ⊢conRowₖ {Ξ} {10} {1} {RedTₘ.J} {⟶ᵀF.DF} {ix⟶ᵀ j (kEl (kcbase)) ((kbase))} {(PT⟶ᵀEl₂ᶜ0.CASE j (fst p) (pair c (pair p unit)))} {(pair (idrefl (⌜Ty⌝ j) (kbase)) unit)} {⌜ T⟶ᵀEl₁ j p c ⌝ᵗ ∷ (PT⟶ᵀEl₂ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀEl₃ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀEl₄ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀEl₅ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀEl₆ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀEl₇ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀEl₈ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀEl₉ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀEl₁₀ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ []} (nth-s nth-z) RedTₘ.⊢J ⟶ᵀF.⊢DF (⊢ix⟶ᵀ dj (⊢kEl dj (⊢kcbase dj)) (⊢kbase dj))
-    (⟶ᵀF.fibF {s = 0} {k = 4} {j = j} {p = p} {c = c} nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))) (allr⟶ᵀEl dj dp dc)
+    (⟶ᵀF.fibF {s = 0} {k = 4} {j = j} {p = p} {c = c} nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))) (allr⟶ᵀEl {j = j} {p = p} {c = c} dj dp dc)
     (⊢conv dPv (csymᵀ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))))
   where
     p c : RTm ⌊ Ξ ⌋
@@ -188,7 +188,7 @@ con⟶ᵀEl₃ : {Ξ : Ctx} {j a0ᵢ0 a0ᵢ1 : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ 
   Ξ ⊢ conₗ 2 (pair (idrefl (⌜Ty⌝ j) (kPi (kEl a0ᵢ0) (kEl a0ᵢ1))) unit) ∷ IMu RedTₘ.J ⟶ᵀF.DF (ix⟶ᵀ j (kEl (kcPi a0ᵢ0 a0ᵢ1)) ((kPi (kEl a0ᵢ0) (kEl a0ᵢ1))))
 con⟶ᵀEl₃ {Ξ} {j} {a0ᵢ0} {a0ᵢ1} dj da0ᵢ0 da0ᵢ1 =
   ⊢conRowₖ {Ξ} {10} {2} {RedTₘ.J} {⟶ᵀF.DF} {ix⟶ᵀ j (kEl (kcPi a0ᵢ0 a0ᵢ1)) ((kPi (kEl a0ᵢ0) (kEl a0ᵢ1)))} {(PT⟶ᵀEl₃ᶜ0.CASE j (fst p) (pair c (pair p unit)))} {(pair (idrefl (⌜Ty⌝ j) (kPi (kEl a0ᵢ0) (kEl a0ᵢ1))) unit)} {⌜ T⟶ᵀEl₁ j p c ⌝ᵗ ∷ (PT⟶ᵀEl₂ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀEl₃ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀEl₄ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀEl₅ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀEl₆ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀEl₇ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀEl₈ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀEl₉ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀEl₁₀ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ []} (nth-s (nth-s nth-z)) RedTₘ.⊢J ⟶ᵀF.⊢DF (⊢ix⟶ᵀ dj (⊢kEl dj (⊢kcPi dj da0ᵢ0 da0ᵢ1)) (⊢kPi dj (⊢kEl dj da0ᵢ0) (⊢kEl (⊢isuc dj) da0ᵢ1)))
-    (⟶ᵀF.fibF {s = 0} {k = 4} {j = j} {p = p} {c = c} nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))) (allr⟶ᵀEl dj dp dc)
+    (⟶ᵀF.fibF {s = 0} {k = 4} {j = j} {p = p} {c = c} nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))) (allr⟶ᵀEl {j = j} {p = p} {c = c} dj dp dc)
     (⊢conv dPv (csymᵀ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))))
   where
     p c : RTm ⌊ Ξ ⌋
@@ -214,7 +214,7 @@ con⟶ᵀEl₄ : {Ξ : Ctx} {j a0ᵢ0 a0ᵢ1 : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ 
   Ξ ⊢ conₗ 3 (pair (idrefl (⌜Ty⌝ j) (kSg (kEl a0ᵢ0) (kEl a0ᵢ1))) unit) ∷ IMu RedTₘ.J ⟶ᵀF.DF (ix⟶ᵀ j (kEl (kcSg a0ᵢ0 a0ᵢ1)) ((kSg (kEl a0ᵢ0) (kEl a0ᵢ1))))
 con⟶ᵀEl₄ {Ξ} {j} {a0ᵢ0} {a0ᵢ1} dj da0ᵢ0 da0ᵢ1 =
   ⊢conRowₖ {Ξ} {10} {3} {RedTₘ.J} {⟶ᵀF.DF} {ix⟶ᵀ j (kEl (kcSg a0ᵢ0 a0ᵢ1)) ((kSg (kEl a0ᵢ0) (kEl a0ᵢ1)))} {(PT⟶ᵀEl₄ᶜ0.CASE j (fst p) (pair c (pair p unit)))} {(pair (idrefl (⌜Ty⌝ j) (kSg (kEl a0ᵢ0) (kEl a0ᵢ1))) unit)} {⌜ T⟶ᵀEl₁ j p c ⌝ᵗ ∷ (PT⟶ᵀEl₂ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀEl₃ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀEl₄ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀEl₅ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀEl₆ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀEl₇ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀEl₈ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀEl₉ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀEl₁₀ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ []} (nth-s (nth-s (nth-s nth-z))) RedTₘ.⊢J ⟶ᵀF.⊢DF (⊢ix⟶ᵀ dj (⊢kEl dj (⊢kcSg dj da0ᵢ0 da0ᵢ1)) (⊢kSg dj (⊢kEl dj da0ᵢ0) (⊢kEl (⊢isuc dj) da0ᵢ1)))
-    (⟶ᵀF.fibF {s = 0} {k = 4} {j = j} {p = p} {c = c} nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))) (allr⟶ᵀEl dj dp dc)
+    (⟶ᵀF.fibF {s = 0} {k = 4} {j = j} {p = p} {c = c} nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))) (allr⟶ᵀEl {j = j} {p = p} {c = c} dj dp dc)
     (⊢conv dPv (csymᵀ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))))
   where
     p c : RTm ⌊ Ξ ⌋
@@ -240,7 +240,7 @@ con⟶ᵀEl₅ : {Ξ : Ctx} {j a0ᵢ0 a0ᵢ1 a0ᵢ2 : RTm ⌊ Ξ ⌋} → Ξ ⊢
   Ξ ⊢ conₗ 4 (pair (idrefl (⌜Ty⌝ j) (kHom (kEl a0ᵢ0) a0ᵢ1 a0ᵢ2)) unit) ∷ IMu RedTₘ.J ⟶ᵀF.DF (ix⟶ᵀ j (kEl (kcHom a0ᵢ0 a0ᵢ1 a0ᵢ2)) ((kHom (kEl a0ᵢ0) a0ᵢ1 a0ᵢ2)))
 con⟶ᵀEl₅ {Ξ} {j} {a0ᵢ0} {a0ᵢ1} {a0ᵢ2} dj da0ᵢ0 da0ᵢ1 da0ᵢ2 =
   ⊢conRowₖ {Ξ} {10} {4} {RedTₘ.J} {⟶ᵀF.DF} {ix⟶ᵀ j (kEl (kcHom a0ᵢ0 a0ᵢ1 a0ᵢ2)) ((kHom (kEl a0ᵢ0) a0ᵢ1 a0ᵢ2))} {(PT⟶ᵀEl₅ᶜ0.CASE j (fst p) (pair c (pair p unit)))} {(pair (idrefl (⌜Ty⌝ j) (kHom (kEl a0ᵢ0) a0ᵢ1 a0ᵢ2)) unit)} {⌜ T⟶ᵀEl₁ j p c ⌝ᵗ ∷ (PT⟶ᵀEl₂ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀEl₃ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀEl₄ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀEl₅ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀEl₆ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀEl₇ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀEl₈ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀEl₉ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀEl₁₀ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ []} (nth-s (nth-s (nth-s (nth-s nth-z)))) RedTₘ.⊢J ⟶ᵀF.⊢DF (⊢ix⟶ᵀ dj (⊢kEl dj (⊢kcHom dj da0ᵢ0 da0ᵢ1 da0ᵢ2)) (⊢kHom dj (⊢kEl dj da0ᵢ0) da0ᵢ1 da0ᵢ2))
-    (⟶ᵀF.fibF {s = 0} {k = 4} {j = j} {p = p} {c = c} nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))) (allr⟶ᵀEl dj dp dc)
+    (⟶ᵀF.fibF {s = 0} {k = 4} {j = j} {p = p} {c = c} nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))) (allr⟶ᵀEl {j = j} {p = p} {c = c} dj dp dc)
     (⊢conv dPv (csymᵀ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))))
   where
     p c : RTm ⌊ Ξ ⌋
@@ -266,7 +266,7 @@ con⟶ᵀEl₆ : {Ξ : Ctx} {j a0ᵢ0 a0ᵢ1 a0ᵢ2 : RTm ⌊ Ξ ⌋} → Ξ ⊢
   Ξ ⊢ conₗ 5 (pair (idrefl (⌜Ty⌝ j) (kId (kEl a0ᵢ0) a0ᵢ1 a0ᵢ2)) unit) ∷ IMu RedTₘ.J ⟶ᵀF.DF (ix⟶ᵀ j (kEl (kcId a0ᵢ0 a0ᵢ1 a0ᵢ2)) ((kId (kEl a0ᵢ0) a0ᵢ1 a0ᵢ2)))
 con⟶ᵀEl₆ {Ξ} {j} {a0ᵢ0} {a0ᵢ1} {a0ᵢ2} dj da0ᵢ0 da0ᵢ1 da0ᵢ2 =
   ⊢conRowₖ {Ξ} {10} {5} {RedTₘ.J} {⟶ᵀF.DF} {ix⟶ᵀ j (kEl (kcId a0ᵢ0 a0ᵢ1 a0ᵢ2)) ((kId (kEl a0ᵢ0) a0ᵢ1 a0ᵢ2))} {(PT⟶ᵀEl₆ᶜ0.CASE j (fst p) (pair c (pair p unit)))} {(pair (idrefl (⌜Ty⌝ j) (kId (kEl a0ᵢ0) a0ᵢ1 a0ᵢ2)) unit)} {⌜ T⟶ᵀEl₁ j p c ⌝ᵗ ∷ (PT⟶ᵀEl₂ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀEl₃ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀEl₄ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀEl₅ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀEl₆ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀEl₇ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀEl₈ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀEl₉ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀEl₁₀ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ []} (nth-s (nth-s (nth-s (nth-s (nth-s nth-z))))) RedTₘ.⊢J ⟶ᵀF.⊢DF (⊢ix⟶ᵀ dj (⊢kEl dj (⊢kcId dj da0ᵢ0 da0ᵢ1 da0ᵢ2)) (⊢kId dj (⊢kEl dj da0ᵢ0) da0ᵢ1 da0ᵢ2))
-    (⟶ᵀF.fibF {s = 0} {k = 4} {j = j} {p = p} {c = c} nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))) (allr⟶ᵀEl dj dp dc)
+    (⟶ᵀF.fibF {s = 0} {k = 4} {j = j} {p = p} {c = c} nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))) (allr⟶ᵀEl {j = j} {p = p} {c = c} dj dp dc)
     (⊢conv dPv (csymᵀ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))))
   where
     p c : RTm ⌊ Ξ ⌋
@@ -292,7 +292,7 @@ con⟶ᵀEl₇ : {Ξ : Ctx} {j : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El ⌜Nat⌝ �
   Ξ ⊢ conₗ 6 (pair (idrefl (⌜Ty⌝ j) (kNat)) unit) ∷ IMu RedTₘ.J ⟶ᵀF.DF (ix⟶ᵀ j (kEl (kcNat)) ((kNat)))
 con⟶ᵀEl₇ {Ξ} {j} dj =
   ⊢conRowₖ {Ξ} {10} {6} {RedTₘ.J} {⟶ᵀF.DF} {ix⟶ᵀ j (kEl (kcNat)) ((kNat))} {(PT⟶ᵀEl₇ᶜ0.CASE j (fst p) (pair c (pair p unit)))} {(pair (idrefl (⌜Ty⌝ j) (kNat)) unit)} {⌜ T⟶ᵀEl₁ j p c ⌝ᵗ ∷ (PT⟶ᵀEl₂ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀEl₃ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀEl₄ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀEl₅ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀEl₆ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀEl₇ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀEl₈ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀEl₉ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀEl₁₀ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ []} (nth-s (nth-s (nth-s (nth-s (nth-s (nth-s nth-z)))))) RedTₘ.⊢J ⟶ᵀF.⊢DF (⊢ix⟶ᵀ dj (⊢kEl dj (⊢kcNat dj)) (⊢kNat dj))
-    (⟶ᵀF.fibF {s = 0} {k = 4} {j = j} {p = p} {c = c} nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))) (allr⟶ᵀEl dj dp dc)
+    (⟶ᵀF.fibF {s = 0} {k = 4} {j = j} {p = p} {c = c} nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))) (allr⟶ᵀEl {j = j} {p = p} {c = c} dj dp dc)
     (⊢conv dPv (csymᵀ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))))
   where
     p c : RTm ⌊ Ξ ⌋
@@ -318,7 +318,7 @@ con⟶ᵀEl₈ : {Ξ : Ctx} {j a0ᵢ0 a0ᵢ1 a0ᵢ2 : RTm ⌊ Ξ ⌋} → Ξ ⊢
   Ξ ⊢ conₗ 7 (pair (idrefl (⌜Ty⌝ j) (kIMu a0ᵢ0 a0ᵢ1 a0ᵢ2)) unit) ∷ IMu RedTₘ.J ⟶ᵀF.DF (ix⟶ᵀ j (kEl (kcIMu a0ᵢ0 a0ᵢ1 a0ᵢ2)) ((kIMu a0ᵢ0 a0ᵢ1 a0ᵢ2)))
 con⟶ᵀEl₈ {Ξ} {j} {a0ᵢ0} {a0ᵢ1} {a0ᵢ2} dj da0ᵢ0 da0ᵢ1 da0ᵢ2 =
   ⊢conRowₖ {Ξ} {10} {7} {RedTₘ.J} {⟶ᵀF.DF} {ix⟶ᵀ j (kEl (kcIMu a0ᵢ0 a0ᵢ1 a0ᵢ2)) ((kIMu a0ᵢ0 a0ᵢ1 a0ᵢ2))} {(PT⟶ᵀEl₈ᶜ0.CASE j (fst p) (pair c (pair p unit)))} {(pair (idrefl (⌜Ty⌝ j) (kIMu a0ᵢ0 a0ᵢ1 a0ᵢ2)) unit)} {⌜ T⟶ᵀEl₁ j p c ⌝ᵗ ∷ (PT⟶ᵀEl₂ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀEl₃ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀEl₄ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀEl₅ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀEl₆ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀEl₇ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀEl₈ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀEl₉ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀEl₁₀ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ []} (nth-s (nth-s (nth-s (nth-s (nth-s (nth-s (nth-s nth-z))))))) RedTₘ.⊢J ⟶ᵀF.⊢DF (⊢ix⟶ᵀ dj (⊢kEl dj (⊢kcIMu dj da0ᵢ0 da0ᵢ1 da0ᵢ2)) (⊢kIMu dj da0ᵢ0 da0ᵢ1 da0ᵢ2))
-    (⟶ᵀF.fibF {s = 0} {k = 4} {j = j} {p = p} {c = c} nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))) (allr⟶ᵀEl dj dp dc)
+    (⟶ᵀF.fibF {s = 0} {k = 4} {j = j} {p = p} {c = c} nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))) (allr⟶ᵀEl {j = j} {p = p} {c = c} dj dp dc)
     (⊢conv dPv (csymᵀ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))))
   where
     p c : RTm ⌊ Ξ ⌋
@@ -344,7 +344,7 @@ con⟶ᵀEl₉ : {Ξ : Ctx} {j a0ᵢ0 : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El ⌜N
   Ξ ⊢ conₗ 8 (pair (idrefl (⌜Ty⌝ j) (kFin a0ᵢ0)) unit) ∷ IMu RedTₘ.J ⟶ᵀF.DF (ix⟶ᵀ j (kEl (kcFin a0ᵢ0)) ((kFin a0ᵢ0)))
 con⟶ᵀEl₉ {Ξ} {j} {a0ᵢ0} dj da0ᵢ0 =
   ⊢conRowₖ {Ξ} {10} {8} {RedTₘ.J} {⟶ᵀF.DF} {ix⟶ᵀ j (kEl (kcFin a0ᵢ0)) ((kFin a0ᵢ0))} {(PT⟶ᵀEl₉ᶜ0.CASE j (fst p) (pair c (pair p unit)))} {(pair (idrefl (⌜Ty⌝ j) (kFin a0ᵢ0)) unit)} {⌜ T⟶ᵀEl₁ j p c ⌝ᵗ ∷ (PT⟶ᵀEl₂ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀEl₃ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀEl₄ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀEl₅ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀEl₆ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀEl₇ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀEl₈ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀEl₉ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀEl₁₀ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ []} (nth-s (nth-s (nth-s (nth-s (nth-s (nth-s (nth-s (nth-s nth-z)))))))) RedTₘ.⊢J ⟶ᵀF.⊢DF (⊢ix⟶ᵀ dj (⊢kEl dj (⊢kcFin dj da0ᵢ0)) (⊢kFin dj da0ᵢ0))
-    (⟶ᵀF.fibF {s = 0} {k = 4} {j = j} {p = p} {c = c} nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))) (allr⟶ᵀEl dj dp dc)
+    (⟶ᵀF.fibF {s = 0} {k = 4} {j = j} {p = p} {c = c} nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))) (allr⟶ᵀEl {j = j} {p = p} {c = c} dj dp dc)
     (⊢conv dPv (csymᵀ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))))
   where
     p c : RTm ⌊ Ξ ⌋
@@ -370,7 +370,7 @@ con⟶ᵀEl₁₀ : {Ξ : Ctx} {j : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El ⌜Nat�
   Ξ ⊢ conₗ 9 (pair (idrefl (⌜Ty⌝ j) (kUnit)) unit) ∷ IMu RedTₘ.J ⟶ᵀF.DF (ix⟶ᵀ j (kEl (kcUnit)) ((kUnit)))
 con⟶ᵀEl₁₀ {Ξ} {j} dj =
   ⊢conRowₖ {Ξ} {10} {9} {RedTₘ.J} {⟶ᵀF.DF} {ix⟶ᵀ j (kEl (kcUnit)) ((kUnit))} {(PT⟶ᵀEl₁₀ᶜ0.CASE j (fst p) (pair c (pair p unit)))} {(pair (idrefl (⌜Ty⌝ j) (kUnit)) unit)} {⌜ T⟶ᵀEl₁ j p c ⌝ᵗ ∷ (PT⟶ᵀEl₂ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀEl₃ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀEl₄ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀEl₅ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀEl₆ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀEl₇ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀEl₈ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀEl₉ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀEl₁₀ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ []} (nth-s (nth-s (nth-s (nth-s (nth-s (nth-s (nth-s (nth-s (nth-s nth-z))))))))) RedTₘ.⊢J ⟶ᵀF.⊢DF (⊢ix⟶ᵀ dj (⊢kEl dj (⊢kcUnit dj)) (⊢kUnit dj))
-    (⟶ᵀF.fibF {s = 0} {k = 4} {j = j} {p = p} {c = c} nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))) (allr⟶ᵀEl dj dp dc)
+    (⟶ᵀF.fibF {s = 0} {k = 4} {j = j} {p = p} {c = c} nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))) (allr⟶ᵀEl {j = j} {p = p} {c = c} dj dp dc)
     (⊢conv dPv (csymᵀ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))))
   where
     p c : RTm ⌊ Ξ ⌋
@@ -396,7 +396,7 @@ con⟶ᵀHom₁ : {Ξ : Ctx} {j f0 f1 f2 e0 r0 : RTm ⌊ Ξ ⌋} → Ξ ⊢ j �
   Ξ ⊢ conₗ 0 (pair e0 (pair r0 (pair (idrefl (⌜Ty⌝ j) (kHom e0 f1 f2)) unit))) ∷ IMu RedTₘ.J ⟶ᵀF.DF (ix⟶ᵀ j (kHom f0 f1 f2) ((kHom e0 f1 f2)))
 con⟶ᵀHom₁ {Ξ} {j} {f0} {f1} {f2} {e0} {r0} dj df0 df1 df2 de0 dr0 =
   ⊢conRowₖ {Ξ} {8} {0} {RedTₘ.J} {⟶ᵀF.DF} {ix⟶ᵀ j (kHom f0 f1 f2) ((kHom e0 f1 f2))} {⌜ T⟶ᵀHom₁ j p c ⌝ᵗ} {(pair e0 (pair r0 (pair (idrefl (⌜Ty⌝ j) (kHom e0 f1 f2)) unit)))} {⌜ T⟶ᵀHom₁ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀHom₂ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀHom₃ j p c ⌝ᵗ ∷ (PT⟶ᵀHom₄ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀHom₅ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀHom₆ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀHom₇ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀHom₈ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ []} nth-z RedTₘ.⊢J ⟶ᵀF.⊢DF (⊢ix⟶ᵀ dj (⊢kHom dj df0 df1 df2) (⊢kHom dj de0 df1 df2))
-    (⟶ᵀF.fibF {s = 0} {k = 5} {j = j} {p = p} {c = c} nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))) (allr⟶ᵀHom dj dp dc)
+    (⟶ᵀF.fibF {s = 0} {k = 5} {j = j} {p = p} {c = c} nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))) (allr⟶ᵀHom {j = j} {p = p} {c = c} dj dp dc)
     (⊢conv dPv (csymᵀ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))))
   where
     p c : RTm ⌊ Ξ ⌋
@@ -419,7 +419,7 @@ con⟶ᵀHom₂ : {Ξ : Ctx} {j f0 f1 f2 e0 e1 : RTm ⌊ Ξ ⌋} → Ξ ⊢ j �
   Ξ ⊢ conₗ 1 (pair e0 (pair e1 (pair (idrefl (⌜Ty⌝ j) (kHom f0 e0 f2)) unit))) ∷ IMu RedTₘ.J ⟶ᵀF.DF (ix⟶ᵀ j (kHom f0 f1 f2) ((kHom f0 e0 f2)))
 con⟶ᵀHom₂ {Ξ} {j} {f0} {f1} {f2} {e0} {e1} dj df0 df1 df2 de0 de1 =
   ⊢conRowₖ {Ξ} {8} {1} {RedTₘ.J} {⟶ᵀF.DF} {ix⟶ᵀ j (kHom f0 f1 f2) ((kHom f0 e0 f2))} {⌜ T⟶ᵀHom₂ j p c ⌝ᵗ} {(pair e0 (pair e1 (pair (idrefl (⌜Ty⌝ j) (kHom f0 e0 f2)) unit)))} {⌜ T⟶ᵀHom₁ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀHom₂ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀHom₃ j p c ⌝ᵗ ∷ (PT⟶ᵀHom₄ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀHom₅ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀHom₆ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀHom₇ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀHom₈ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ []} (nth-s nth-z) RedTₘ.⊢J ⟶ᵀF.⊢DF (⊢ix⟶ᵀ dj (⊢kHom dj df0 df1 df2) (⊢kHom dj df0 de0 df2))
-    (⟶ᵀF.fibF {s = 0} {k = 5} {j = j} {p = p} {c = c} nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))) (allr⟶ᵀHom dj dp dc)
+    (⟶ᵀF.fibF {s = 0} {k = 5} {j = j} {p = p} {c = c} nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))) (allr⟶ᵀHom {j = j} {p = p} {c = c} dj dp dc)
     (⊢conv dPv (csymᵀ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))))
   where
     p c : RTm ⌊ Ξ ⌋
@@ -444,7 +444,7 @@ con⟶ᵀHom₃ : {Ξ : Ctx} {j f0 f1 f2 e0 e1 : RTm ⌊ Ξ ⌋} → Ξ ⊢ j �
   Ξ ⊢ conₗ 2 (pair e0 (pair e1 (pair (idrefl (⌜Ty⌝ j) (kHom f0 f1 e0)) unit))) ∷ IMu RedTₘ.J ⟶ᵀF.DF (ix⟶ᵀ j (kHom f0 f1 f2) ((kHom f0 f1 e0)))
 con⟶ᵀHom₃ {Ξ} {j} {f0} {f1} {f2} {e0} {e1} dj df0 df1 df2 de0 de1 =
   ⊢conRowₖ {Ξ} {8} {2} {RedTₘ.J} {⟶ᵀF.DF} {ix⟶ᵀ j (kHom f0 f1 f2) ((kHom f0 f1 e0))} {⌜ T⟶ᵀHom₃ j p c ⌝ᵗ} {(pair e0 (pair e1 (pair (idrefl (⌜Ty⌝ j) (kHom f0 f1 e0)) unit)))} {⌜ T⟶ᵀHom₁ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀHom₂ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀHom₃ j p c ⌝ᵗ ∷ (PT⟶ᵀHom₄ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀHom₅ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀHom₆ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀHom₇ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀHom₈ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ []} (nth-s (nth-s nth-z)) RedTₘ.⊢J ⟶ᵀF.⊢DF (⊢ix⟶ᵀ dj (⊢kHom dj df0 df1 df2) (⊢kHom dj df0 df1 de0))
-    (⟶ᵀF.fibF {s = 0} {k = 5} {j = j} {p = p} {c = c} nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))) (allr⟶ᵀHom dj dp dc)
+    (⟶ᵀF.fibF {s = 0} {k = 5} {j = j} {p = p} {c = c} nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))) (allr⟶ᵀHom {j = j} {p = p} {c = c} dj dp dc)
     (⊢conv dPv (csymᵀ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))))
   where
     p c : RTm ⌊ Ξ ⌋
@@ -469,7 +469,7 @@ con⟶ᵀHom₄ : {Ξ : Ctx} {j f2 : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El ⌜Nat�
   Ξ ⊢ conₗ 3 (pair (idrefl (⌜Ty⌝ j) (kUnit)) unit) ∷ IMu RedTₘ.J ⟶ᵀF.DF (ix⟶ᵀ j (kHom (kNat) (knzero) f2) ((kUnit)))
 con⟶ᵀHom₄ {Ξ} {j} {f2} dj df2 =
   ⊢conRowₖ {Ξ} {8} {3} {RedTₘ.J} {⟶ᵀF.DF} {ix⟶ᵀ j (kHom (kNat) (knzero) f2) ((kUnit))} {(PT⟶ᵀHom₄ᶜ0.CASE j (fst p) (pair c (pair p unit)))} {(pair (idrefl (⌜Ty⌝ j) (kUnit)) unit)} {⌜ T⟶ᵀHom₁ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀHom₂ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀHom₃ j p c ⌝ᵗ ∷ (PT⟶ᵀHom₄ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀHom₅ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀHom₆ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀHom₇ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀHom₈ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ []} (nth-s (nth-s (nth-s nth-z))) RedTₘ.⊢J ⟶ᵀF.⊢DF (⊢ix⟶ᵀ dj (⊢kHom dj (⊢kNat dj) (⊢knzero dj) df2) (⊢kUnit dj))
-    (⟶ᵀF.fibF {s = 0} {k = 5} {j = j} {p = p} {c = c} nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))) (allr⟶ᵀHom dj dp dc)
+    (⟶ᵀF.fibF {s = 0} {k = 5} {j = j} {p = p} {c = c} nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))) (allr⟶ᵀHom {j = j} {p = p} {c = c} dj dp dc)
     (⊢conv dPv (csymᵀ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))))
   where
     p c : RTm ⌊ Ξ ⌋
@@ -497,7 +497,7 @@ con⟶ᵀHom₅ : {Ξ : Ctx} {j a1ᵢ0 : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El ⌜
   Ξ ⊢ conₗ 4 (pair (idrefl (⌜Ty⌝ j) (kbase)) unit) ∷ IMu RedTₘ.J ⟶ᵀF.DF (ix⟶ᵀ j (kHom (kNat) (knsuc a1ᵢ0) (knzero)) ((kbase)))
 con⟶ᵀHom₅ {Ξ} {j} {a1ᵢ0} dj da1ᵢ0 =
   ⊢conRowₖ {Ξ} {8} {4} {RedTₘ.J} {⟶ᵀF.DF} {ix⟶ᵀ j (kHom (kNat) (knsuc a1ᵢ0) (knzero)) ((kbase))} {(PT⟶ᵀHom₅ᶜ0.CASE j (fst p) (pair c (pair p unit)))} {(pair (idrefl (⌜Ty⌝ j) (kbase)) unit)} {⌜ T⟶ᵀHom₁ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀHom₂ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀHom₃ j p c ⌝ᵗ ∷ (PT⟶ᵀHom₄ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀHom₅ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀHom₆ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀHom₇ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀHom₈ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ []} (nth-s (nth-s (nth-s (nth-s nth-z)))) RedTₘ.⊢J ⟶ᵀF.⊢DF (⊢ix⟶ᵀ dj (⊢kHom dj (⊢kNat dj) (⊢knsuc dj da1ᵢ0) (⊢knzero dj)) (⊢kbase dj))
-    (⟶ᵀF.fibF {s = 0} {k = 5} {j = j} {p = p} {c = c} nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))) (allr⟶ᵀHom dj dp dc)
+    (⟶ᵀF.fibF {s = 0} {k = 5} {j = j} {p = p} {c = c} nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))) (allr⟶ᵀHom {j = j} {p = p} {c = c} dj dp dc)
     (⊢conv dPv (csymᵀ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))))
   where
     p c : RTm ⌊ Ξ ⌋
@@ -527,7 +527,7 @@ con⟶ᵀHom₆ : {Ξ : Ctx} {j a1ᵢ0 a2ᵢ0 : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷
   Ξ ⊢ conₗ 5 (pair (idrefl (⌜Ty⌝ j) (kHom (kNat) a1ᵢ0 a2ᵢ0)) unit) ∷ IMu RedTₘ.J ⟶ᵀF.DF (ix⟶ᵀ j (kHom (kNat) (knsuc a1ᵢ0) (knsuc a2ᵢ0)) ((kHom (kNat) a1ᵢ0 a2ᵢ0)))
 con⟶ᵀHom₆ {Ξ} {j} {a1ᵢ0} {a2ᵢ0} dj da1ᵢ0 da2ᵢ0 =
   ⊢conRowₖ {Ξ} {8} {5} {RedTₘ.J} {⟶ᵀF.DF} {ix⟶ᵀ j (kHom (kNat) (knsuc a1ᵢ0) (knsuc a2ᵢ0)) ((kHom (kNat) a1ᵢ0 a2ᵢ0))} {(PT⟶ᵀHom₆ᶜ0.CASE j (fst p) (pair c (pair p unit)))} {(pair (idrefl (⌜Ty⌝ j) (kHom (kNat) a1ᵢ0 a2ᵢ0)) unit)} {⌜ T⟶ᵀHom₁ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀHom₂ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀHom₃ j p c ⌝ᵗ ∷ (PT⟶ᵀHom₄ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀHom₅ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀHom₆ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀHom₇ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀHom₈ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ []} (nth-s (nth-s (nth-s (nth-s (nth-s nth-z))))) RedTₘ.⊢J ⟶ᵀF.⊢DF (⊢ix⟶ᵀ dj (⊢kHom dj (⊢kNat dj) (⊢knsuc dj da1ᵢ0) (⊢knsuc dj da2ᵢ0)) (⊢kHom dj (⊢kNat dj) da1ᵢ0 da2ᵢ0))
-    (⟶ᵀF.fibF {s = 0} {k = 5} {j = j} {p = p} {c = c} nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))) (allr⟶ᵀHom dj dp dc)
+    (⟶ᵀF.fibF {s = 0} {k = 5} {j = j} {p = p} {c = c} nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))) (allr⟶ᵀHom {j = j} {p = p} {c = c} dj dp dc)
     (⊢conv dPv (csymᵀ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))))
   where
     p c : RTm ⌊ Ξ ⌋
@@ -557,7 +557,7 @@ con⟶ᵀHom₇ : {Ξ : Ctx} {j f1 f2 : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El ⌜N
   Ξ ⊢ conₗ 6 (pair (idrefl (⌜Ty⌝ j) (kPi (kEl f1) (kEl (wk 1 j f2)))) unit) ∷ IMu RedTₘ.J ⟶ᵀF.DF (ix⟶ᵀ j (kHom (kU) f1 f2) ((kPi (kEl f1) (kEl (wk 1 j f2)))))
 con⟶ᵀHom₇ {Ξ} {j} {f1} {f2} dj df1 df2 =
   ⊢conRowₖ {Ξ} {8} {6} {RedTₘ.J} {⟶ᵀF.DF} {ix⟶ᵀ j (kHom (kU) f1 f2) ((kPi (kEl f1) (kEl (wk 1 j f2))))} {(PT⟶ᵀHom₇ᶜ0.CASE j (fst p) (pair c (pair p unit)))} {(pair (idrefl (⌜Ty⌝ j) (kPi (kEl f1) (kEl (wk 1 j f2)))) unit)} {⌜ T⟶ᵀHom₁ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀHom₂ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀHom₃ j p c ⌝ᵗ ∷ (PT⟶ᵀHom₄ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀHom₅ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀHom₆ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀHom₇ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀHom₈ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ []} (nth-s (nth-s (nth-s (nth-s (nth-s (nth-s nth-z)))))) RedTₘ.⊢J ⟶ᵀF.⊢DF (⊢ix⟶ᵀ dj (⊢kHom dj (⊢kU dj) df1 df2) (⊢kPi dj (⊢kEl dj df1) (⊢kEl (⊢isuc dj) (⊢wkS (lt-s lt-z) dj df2))))
-    (⟶ᵀF.fibF {s = 0} {k = 5} {j = j} {p = p} {c = c} nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))) (allr⟶ᵀHom dj dp dc)
+    (⟶ᵀF.fibF {s = 0} {k = 5} {j = j} {p = p} {c = c} nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))) (allr⟶ᵀHom {j = j} {p = p} {c = c} dj dp dc)
     (⊢conv dPv (csymᵀ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))))
   where
     p c : RTm ⌊ Ξ ⌋
@@ -583,7 +583,7 @@ con⟶ᵀHom₈ : {Ξ : Ctx} {j f1 f2 a0ᵢ0 a0ᵢ1 : RTm ⌊ Ξ ⌋} → Ξ ⊢
   Ξ ⊢ conₗ 7 (pair (idrefl (⌜Ty⌝ j) (kPi a0ᵢ0 (kHom a0ᵢ1 (kapp (wk 1 j f1) (kvar ffz)) (kapp (wk 1 j f2) (kvar ffz))))) unit) ∷ IMu RedTₘ.J ⟶ᵀF.DF (ix⟶ᵀ j (kHom (kPi a0ᵢ0 a0ᵢ1) f1 f2) ((kPi a0ᵢ0 (kHom a0ᵢ1 (kapp (wk 1 j f1) (kvar ffz)) (kapp (wk 1 j f2) (kvar ffz))))))
 con⟶ᵀHom₈ {Ξ} {j} {f1} {f2} {a0ᵢ0} {a0ᵢ1} dj df1 df2 da0ᵢ0 da0ᵢ1 =
   ⊢conRowₖ {Ξ} {8} {7} {RedTₘ.J} {⟶ᵀF.DF} {ix⟶ᵀ j (kHom (kPi a0ᵢ0 a0ᵢ1) f1 f2) ((kPi a0ᵢ0 (kHom a0ᵢ1 (kapp (wk 1 j f1) (kvar ffz)) (kapp (wk 1 j f2) (kvar ffz)))))} {(PT⟶ᵀHom₈ᶜ0.CASE j (fst p) (pair c (pair p unit)))} {(pair (idrefl (⌜Ty⌝ j) (kPi a0ᵢ0 (kHom a0ᵢ1 (kapp (wk 1 j f1) (kvar ffz)) (kapp (wk 1 j f2) (kvar ffz))))) unit)} {⌜ T⟶ᵀHom₁ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀHom₂ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀHom₃ j p c ⌝ᵗ ∷ (PT⟶ᵀHom₄ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀHom₅ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀHom₆ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀHom₇ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ (PT⟶ᵀHom₈ᶜ0.CASE j (fst p) (pair c (pair p unit))) ∷ []} (nth-s (nth-s (nth-s (nth-s (nth-s (nth-s (nth-s nth-z))))))) RedTₘ.⊢J ⟶ᵀF.⊢DF (⊢ix⟶ᵀ dj (⊢kHom dj (⊢kPi dj da0ᵢ0 da0ᵢ1) df1 df2) (⊢kPi dj da0ᵢ0 (⊢kHom (⊢isuc dj) da0ᵢ1 (⊢kapp (⊢isuc dj) (⊢wkS (lt-s lt-z) dj df1) (⊢kvar (⊢isuc dj) (⊢ffz dj))) (⊢kapp (⊢isuc dj) (⊢wkS (lt-s lt-z) dj df2) (⊢kvar (⊢isuc dj) (⊢ffz dj))))))
-    (⟶ᵀF.fibF {s = 0} {k = 5} {j = j} {p = p} {c = c} nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))) (allr⟶ᵀHom dj dp dc)
+    (⟶ᵀF.fibF {s = 0} {k = 5} {j = j} {p = p} {c = c} nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))) (allr⟶ᵀHom {j = j} {p = p} {c = c} dj dp dc)
     (⊢conv dPv (csymᵀ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))))
   where
     p c : RTm ⌊ Ξ ⌋
@@ -609,7 +609,7 @@ con⟶ᵀId₁ : {Ξ : Ctx} {j f0 f1 f2 e0 r0 : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷
   Ξ ⊢ conₗ 0 (pair e0 (pair r0 (pair (idrefl (⌜Ty⌝ j) (kId e0 f1 f2)) unit))) ∷ IMu RedTₘ.J ⟶ᵀF.DF (ix⟶ᵀ j (kId f0 f1 f2) ((kId e0 f1 f2)))
 con⟶ᵀId₁ {Ξ} {j} {f0} {f1} {f2} {e0} {r0} dj df0 df1 df2 de0 dr0 =
   ⊢conRowₖ {Ξ} {3} {0} {RedTₘ.J} {⟶ᵀF.DF} {ix⟶ᵀ j (kId f0 f1 f2) ((kId e0 f1 f2))} {⌜ T⟶ᵀId₁ j p c ⌝ᵗ} {(pair e0 (pair r0 (pair (idrefl (⌜Ty⌝ j) (kId e0 f1 f2)) unit)))} {⌜ T⟶ᵀId₁ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀId₂ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀId₃ j p c ⌝ᵗ ∷ []} nth-z RedTₘ.⊢J ⟶ᵀF.⊢DF (⊢ix⟶ᵀ dj (⊢kId dj df0 df1 df2) (⊢kId dj de0 df1 df2))
-    (⟶ᵀF.fibF {s = 0} {k = 8} {j = j} {p = p} {c = c} nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))) (allr⟶ᵀId dj dp dc)
+    (⟶ᵀF.fibF {s = 0} {k = 8} {j = j} {p = p} {c = c} nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))) (allr⟶ᵀId {j = j} {p = p} {c = c} dj dp dc)
     (⊢conv dPv (csymᵀ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))))
   where
     p c : RTm ⌊ Ξ ⌋
@@ -632,7 +632,7 @@ con⟶ᵀId₂ : {Ξ : Ctx} {j f0 f1 f2 e0 e1 : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷
   Ξ ⊢ conₗ 1 (pair e0 (pair e1 (pair (idrefl (⌜Ty⌝ j) (kId f0 e0 f2)) unit))) ∷ IMu RedTₘ.J ⟶ᵀF.DF (ix⟶ᵀ j (kId f0 f1 f2) ((kId f0 e0 f2)))
 con⟶ᵀId₂ {Ξ} {j} {f0} {f1} {f2} {e0} {e1} dj df0 df1 df2 de0 de1 =
   ⊢conRowₖ {Ξ} {3} {1} {RedTₘ.J} {⟶ᵀF.DF} {ix⟶ᵀ j (kId f0 f1 f2) ((kId f0 e0 f2))} {⌜ T⟶ᵀId₂ j p c ⌝ᵗ} {(pair e0 (pair e1 (pair (idrefl (⌜Ty⌝ j) (kId f0 e0 f2)) unit)))} {⌜ T⟶ᵀId₁ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀId₂ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀId₃ j p c ⌝ᵗ ∷ []} (nth-s nth-z) RedTₘ.⊢J ⟶ᵀF.⊢DF (⊢ix⟶ᵀ dj (⊢kId dj df0 df1 df2) (⊢kId dj df0 de0 df2))
-    (⟶ᵀF.fibF {s = 0} {k = 8} {j = j} {p = p} {c = c} nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))) (allr⟶ᵀId dj dp dc)
+    (⟶ᵀF.fibF {s = 0} {k = 8} {j = j} {p = p} {c = c} nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))) (allr⟶ᵀId {j = j} {p = p} {c = c} dj dp dc)
     (⊢conv dPv (csymᵀ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))))
   where
     p c : RTm ⌊ Ξ ⌋
@@ -657,7 +657,7 @@ con⟶ᵀId₃ : {Ξ : Ctx} {j f0 f1 f2 e0 e1 : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷
   Ξ ⊢ conₗ 2 (pair e0 (pair e1 (pair (idrefl (⌜Ty⌝ j) (kId f0 f1 e0)) unit))) ∷ IMu RedTₘ.J ⟶ᵀF.DF (ix⟶ᵀ j (kId f0 f1 f2) ((kId f0 f1 e0)))
 con⟶ᵀId₃ {Ξ} {j} {f0} {f1} {f2} {e0} {e1} dj df0 df1 df2 de0 de1 =
   ⊢conRowₖ {Ξ} {3} {2} {RedTₘ.J} {⟶ᵀF.DF} {ix⟶ᵀ j (kId f0 f1 f2) ((kId f0 f1 e0))} {⌜ T⟶ᵀId₃ j p c ⌝ᵗ} {(pair e0 (pair e1 (pair (idrefl (⌜Ty⌝ j) (kId f0 f1 e0)) unit)))} {⌜ T⟶ᵀId₁ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀId₂ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀId₃ j p c ⌝ᵗ ∷ []} (nth-s (nth-s nth-z)) RedTₘ.⊢J ⟶ᵀF.⊢DF (⊢ix⟶ᵀ dj (⊢kId dj df0 df1 df2) (⊢kId dj df0 df1 de0))
-    (⟶ᵀF.fibF {s = 0} {k = 8} {j = j} {p = p} {c = c} nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))) (allr⟶ᵀId dj dp dc)
+    (⟶ᵀF.fibF {s = 0} {k = 8} {j = j} {p = p} {c = c} nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))) (allr⟶ᵀId {j = j} {p = p} {c = c} dj dp dc)
     (⊢conv dPv (csymᵀ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))))
   where
     p c : RTm ⌊ Ξ ⌋
@@ -682,7 +682,7 @@ con⟶ᵀIMu₁ : {Ξ : Ctx} {j f0 f1 f2 e0 e1 : RTm ⌊ Ξ ⌋} → Ξ ⊢ j �
   Ξ ⊢ conₗ 0 (pair e0 (pair e1 (pair (idrefl (⌜Ty⌝ j) (kIMu e0 f1 f2)) unit))) ∷ IMu RedTₘ.J ⟶ᵀF.DF (ix⟶ᵀ j (kIMu f0 f1 f2) ((kIMu e0 f1 f2)))
 con⟶ᵀIMu₁ {Ξ} {j} {f0} {f1} {f2} {e0} {e1} dj df0 df1 df2 de0 de1 =
   ⊢conRowₖ {Ξ} {3} {0} {RedTₘ.J} {⟶ᵀF.DF} {ix⟶ᵀ j (kIMu f0 f1 f2) ((kIMu e0 f1 f2))} {⌜ T⟶ᵀIMu₁ j p c ⌝ᵗ} {(pair e0 (pair e1 (pair (idrefl (⌜Ty⌝ j) (kIMu e0 f1 f2)) unit)))} {⌜ T⟶ᵀIMu₁ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀIMu₂ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀIMu₃ j p c ⌝ᵗ ∷ []} nth-z RedTₘ.⊢J ⟶ᵀF.⊢DF (⊢ix⟶ᵀ dj (⊢kIMu dj df0 df1 df2) (⊢kIMu dj de0 df1 df2))
-    (⟶ᵀF.fibF {s = 0} {k = 9} {j = j} {p = p} {c = c} nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))) (allr⟶ᵀIMu dj dp dc)
+    (⟶ᵀF.fibF {s = 0} {k = 9} {j = j} {p = p} {c = c} nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))) (allr⟶ᵀIMu {j = j} {p = p} {c = c} dj dp dc)
     (⊢conv dPv (csymᵀ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))))
   where
     p c : RTm ⌊ Ξ ⌋
@@ -707,7 +707,7 @@ con⟶ᵀIMu₂ : {Ξ : Ctx} {j f0 f1 f2 e0 e1 : RTm ⌊ Ξ ⌋} → Ξ ⊢ j �
   Ξ ⊢ conₗ 1 (pair e0 (pair e1 (pair (idrefl (⌜Ty⌝ j) (kIMu f0 e0 f2)) unit))) ∷ IMu RedTₘ.J ⟶ᵀF.DF (ix⟶ᵀ j (kIMu f0 f1 f2) ((kIMu f0 e0 f2)))
 con⟶ᵀIMu₂ {Ξ} {j} {f0} {f1} {f2} {e0} {e1} dj df0 df1 df2 de0 de1 =
   ⊢conRowₖ {Ξ} {3} {1} {RedTₘ.J} {⟶ᵀF.DF} {ix⟶ᵀ j (kIMu f0 f1 f2) ((kIMu f0 e0 f2))} {⌜ T⟶ᵀIMu₂ j p c ⌝ᵗ} {(pair e0 (pair e1 (pair (idrefl (⌜Ty⌝ j) (kIMu f0 e0 f2)) unit)))} {⌜ T⟶ᵀIMu₁ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀIMu₂ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀIMu₃ j p c ⌝ᵗ ∷ []} (nth-s nth-z) RedTₘ.⊢J ⟶ᵀF.⊢DF (⊢ix⟶ᵀ dj (⊢kIMu dj df0 df1 df2) (⊢kIMu dj df0 de0 df2))
-    (⟶ᵀF.fibF {s = 0} {k = 9} {j = j} {p = p} {c = c} nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))) (allr⟶ᵀIMu dj dp dc)
+    (⟶ᵀF.fibF {s = 0} {k = 9} {j = j} {p = p} {c = c} nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))) (allr⟶ᵀIMu {j = j} {p = p} {c = c} dj dp dc)
     (⊢conv dPv (csymᵀ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))))
   where
     p c : RTm ⌊ Ξ ⌋
@@ -732,7 +732,7 @@ con⟶ᵀIMu₃ : {Ξ : Ctx} {j f0 f1 f2 e0 e1 : RTm ⌊ Ξ ⌋} → Ξ ⊢ j �
   Ξ ⊢ conₗ 2 (pair e0 (pair e1 (pair (idrefl (⌜Ty⌝ j) (kIMu f0 f1 e0)) unit))) ∷ IMu RedTₘ.J ⟶ᵀF.DF (ix⟶ᵀ j (kIMu f0 f1 f2) ((kIMu f0 f1 e0)))
 con⟶ᵀIMu₃ {Ξ} {j} {f0} {f1} {f2} {e0} {e1} dj df0 df1 df2 de0 de1 =
   ⊢conRowₖ {Ξ} {3} {2} {RedTₘ.J} {⟶ᵀF.DF} {ix⟶ᵀ j (kIMu f0 f1 f2) ((kIMu f0 f1 e0))} {⌜ T⟶ᵀIMu₃ j p c ⌝ᵗ} {(pair e0 (pair e1 (pair (idrefl (⌜Ty⌝ j) (kIMu f0 f1 e0)) unit)))} {⌜ T⟶ᵀIMu₁ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀIMu₂ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀIMu₃ j p c ⌝ᵗ ∷ []} (nth-s (nth-s nth-z)) RedTₘ.⊢J ⟶ᵀF.⊢DF (⊢ix⟶ᵀ dj (⊢kIMu dj df0 df1 df2) (⊢kIMu dj df0 df1 de0))
-    (⟶ᵀF.fibF {s = 0} {k = 9} {j = j} {p = p} {c = c} nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))) (allr⟶ᵀIMu dj dp dc)
+    (⟶ᵀF.fibF {s = 0} {k = 9} {j = j} {p = p} {c = c} nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))) (allr⟶ᵀIMu {j = j} {p = p} {c = c} dj dp dc)
     (⊢conv dPv (csymᵀ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))))
   where
     p c : RTm ⌊ Ξ ⌋
@@ -757,7 +757,7 @@ con⟶ᵀDesc : {Ξ : Ctx} {j f0 e0 e1 : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El ⌜
   Ξ ⊢ conₗ 0 (pair e0 (pair e1 (pair (idrefl (⌜Ty⌝ j) (kDesc e0)) unit))) ∷ IMu RedTₘ.J ⟶ᵀF.DF (ix⟶ᵀ j (kDesc f0) ((kDesc e0)))
 con⟶ᵀDesc {Ξ} {j} {f0} {e0} {e1} dj df0 de0 de1 =
   ⊢conRowₖ {Ξ} {1} {0} {RedTₘ.J} {⟶ᵀF.DF} {ix⟶ᵀ j (kDesc f0) ((kDesc e0))} {⌜ T⟶ᵀDesc j p c ⌝ᵗ} {(pair e0 (pair e1 (pair (idrefl (⌜Ty⌝ j) (kDesc e0)) unit)))} {⌜ T⟶ᵀDesc j p c ⌝ᵗ ∷ []} nth-z RedTₘ.⊢J ⟶ᵀF.⊢DF (⊢ix⟶ᵀ dj (⊢kDesc dj df0) (⊢kDesc dj de0))
-    (⟶ᵀF.fibF {s = 0} {k = 10} {j = j} {p = p} {c = c} nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))))) (allr⟶ᵀDesc dj dp dc)
+    (⟶ᵀF.fibF {s = 0} {k = 10} {j = j} {p = p} {c = c} nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))))) (allr⟶ᵀDesc {j = j} {p = p} {c = c} dj dp dc)
     (⊢conv dPv (csymᵀ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))))
   where
     p c : RTm ⌊ Ξ ⌋
@@ -782,7 +782,7 @@ con⟶ᵀDIh₁ : {Ξ : Ctx} {j f0 f1 f2 f3 e0 e1 : RTm ⌊ Ξ ⌋} → Ξ ⊢ j
   Ξ ⊢ conₗ 0 (pair e0 (pair e1 (pair (idrefl (⌜Ty⌝ j) (kDIh e0 f1 f2 f3)) unit))) ∷ IMu RedTₘ.J ⟶ᵀF.DF (ix⟶ᵀ j (kDIh f0 f1 f2 f3) ((kDIh e0 f1 f2 f3)))
 con⟶ᵀDIh₁ {Ξ} {j} {f0} {f1} {f2} {f3} {e0} {e1} dj df0 df1 df2 df3 de0 de1 =
   ⊢conRowₖ {Ξ} {7} {0} {RedTₘ.J} {⟶ᵀF.DF} {ix⟶ᵀ j (kDIh f0 f1 f2 f3) ((kDIh e0 f1 f2 f3))} {⌜ T⟶ᵀDIh₁ j p c ⌝ᵗ} {(pair e0 (pair e1 (pair (idrefl (⌜Ty⌝ j) (kDIh e0 f1 f2 f3)) unit)))} {⌜ T⟶ᵀDIh₁ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀDIh₂ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀDIh₃ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀDIh₄ j p c ⌝ᵗ ∷ (PT⟶ᵀDIh₅ᶜ0.CASE j (fst (snd (snd p))) (pair c (pair p unit))) ∷ (PT⟶ᵀDIh₆ᶜ0.CASE j (fst (snd (snd p))) (pair c (pair p unit))) ∷ (PT⟶ᵀDIh₇ᶜ0.CASE j (fst (snd (snd p))) (pair c (pair p unit))) ∷ []} nth-z RedTₘ.⊢J ⟶ᵀF.⊢DF (⊢ix⟶ᵀ dj (⊢kDIh dj df0 df1 df2 df3) (⊢kDIh dj de0 df1 df2 df3))
-    (⟶ᵀF.fibF {s = 0} {k = 11} {j = j} {p = p} {c = c} nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))) (allr⟶ᵀDIh dj dp dc)
+    (⟶ᵀF.fibF {s = 0} {k = 11} {j = j} {p = p} {c = c} nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))) (allr⟶ᵀDIh {j = j} {p = p} {c = c} dj dp dc)
     (⊢conv dPv (csymᵀ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))))
   where
     p c : RTm ⌊ Ξ ⌋
@@ -807,7 +807,7 @@ con⟶ᵀDIh₂ : {Ξ : Ctx} {j f0 f1 f2 f3 e0 r0 : RTm ⌊ Ξ ⌋} → Ξ ⊢ j
   Ξ ⊢ conₗ 1 (pair e0 (pair r0 (pair (idrefl (⌜Ty⌝ j) (kDIh f0 e0 f2 f3)) unit))) ∷ IMu RedTₘ.J ⟶ᵀF.DF (ix⟶ᵀ j (kDIh f0 f1 f2 f3) ((kDIh f0 e0 f2 f3)))
 con⟶ᵀDIh₂ {Ξ} {j} {f0} {f1} {f2} {f3} {e0} {r0} dj df0 df1 df2 df3 de0 dr0 =
   ⊢conRowₖ {Ξ} {7} {1} {RedTₘ.J} {⟶ᵀF.DF} {ix⟶ᵀ j (kDIh f0 f1 f2 f3) ((kDIh f0 e0 f2 f3))} {⌜ T⟶ᵀDIh₂ j p c ⌝ᵗ} {(pair e0 (pair r0 (pair (idrefl (⌜Ty⌝ j) (kDIh f0 e0 f2 f3)) unit)))} {⌜ T⟶ᵀDIh₁ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀDIh₂ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀDIh₃ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀDIh₄ j p c ⌝ᵗ ∷ (PT⟶ᵀDIh₅ᶜ0.CASE j (fst (snd (snd p))) (pair c (pair p unit))) ∷ (PT⟶ᵀDIh₆ᶜ0.CASE j (fst (snd (snd p))) (pair c (pair p unit))) ∷ (PT⟶ᵀDIh₇ᶜ0.CASE j (fst (snd (snd p))) (pair c (pair p unit))) ∷ []} (nth-s nth-z) RedTₘ.⊢J ⟶ᵀF.⊢DF (⊢ix⟶ᵀ dj (⊢kDIh dj df0 df1 df2 df3) (⊢kDIh dj df0 de0 df2 df3))
-    (⟶ᵀF.fibF {s = 0} {k = 11} {j = j} {p = p} {c = c} nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))) (allr⟶ᵀDIh dj dp dc)
+    (⟶ᵀF.fibF {s = 0} {k = 11} {j = j} {p = p} {c = c} nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))) (allr⟶ᵀDIh {j = j} {p = p} {c = c} dj dp dc)
     (⊢conv dPv (csymᵀ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))))
   where
     p c : RTm ⌊ Ξ ⌋
@@ -830,7 +830,7 @@ con⟶ᵀDIh₃ : {Ξ : Ctx} {j f0 f1 f2 f3 e0 e1 : RTm ⌊ Ξ ⌋} → Ξ ⊢ j
   Ξ ⊢ conₗ 2 (pair e0 (pair e1 (pair (idrefl (⌜Ty⌝ j) (kDIh f0 f1 e0 f3)) unit))) ∷ IMu RedTₘ.J ⟶ᵀF.DF (ix⟶ᵀ j (kDIh f0 f1 f2 f3) ((kDIh f0 f1 e0 f3)))
 con⟶ᵀDIh₃ {Ξ} {j} {f0} {f1} {f2} {f3} {e0} {e1} dj df0 df1 df2 df3 de0 de1 =
   ⊢conRowₖ {Ξ} {7} {2} {RedTₘ.J} {⟶ᵀF.DF} {ix⟶ᵀ j (kDIh f0 f1 f2 f3) ((kDIh f0 f1 e0 f3))} {⌜ T⟶ᵀDIh₃ j p c ⌝ᵗ} {(pair e0 (pair e1 (pair (idrefl (⌜Ty⌝ j) (kDIh f0 f1 e0 f3)) unit)))} {⌜ T⟶ᵀDIh₁ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀDIh₂ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀDIh₃ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀDIh₄ j p c ⌝ᵗ ∷ (PT⟶ᵀDIh₅ᶜ0.CASE j (fst (snd (snd p))) (pair c (pair p unit))) ∷ (PT⟶ᵀDIh₆ᶜ0.CASE j (fst (snd (snd p))) (pair c (pair p unit))) ∷ (PT⟶ᵀDIh₇ᶜ0.CASE j (fst (snd (snd p))) (pair c (pair p unit))) ∷ []} (nth-s (nth-s nth-z)) RedTₘ.⊢J ⟶ᵀF.⊢DF (⊢ix⟶ᵀ dj (⊢kDIh dj df0 df1 df2 df3) (⊢kDIh dj df0 df1 de0 df3))
-    (⟶ᵀF.fibF {s = 0} {k = 11} {j = j} {p = p} {c = c} nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))) (allr⟶ᵀDIh dj dp dc)
+    (⟶ᵀF.fibF {s = 0} {k = 11} {j = j} {p = p} {c = c} nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))) (allr⟶ᵀDIh {j = j} {p = p} {c = c} dj dp dc)
     (⊢conv dPv (csymᵀ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))))
   where
     p c : RTm ⌊ Ξ ⌋
@@ -855,7 +855,7 @@ con⟶ᵀDIh₄ : {Ξ : Ctx} {j f0 f1 f2 f3 e0 e1 : RTm ⌊ Ξ ⌋} → Ξ ⊢ j
   Ξ ⊢ conₗ 3 (pair e0 (pair e1 (pair (idrefl (⌜Ty⌝ j) (kDIh f0 f1 f2 e0)) unit))) ∷ IMu RedTₘ.J ⟶ᵀF.DF (ix⟶ᵀ j (kDIh f0 f1 f2 f3) ((kDIh f0 f1 f2 e0)))
 con⟶ᵀDIh₄ {Ξ} {j} {f0} {f1} {f2} {f3} {e0} {e1} dj df0 df1 df2 df3 de0 de1 =
   ⊢conRowₖ {Ξ} {7} {3} {RedTₘ.J} {⟶ᵀF.DF} {ix⟶ᵀ j (kDIh f0 f1 f2 f3) ((kDIh f0 f1 f2 e0))} {⌜ T⟶ᵀDIh₄ j p c ⌝ᵗ} {(pair e0 (pair e1 (pair (idrefl (⌜Ty⌝ j) (kDIh f0 f1 f2 e0)) unit)))} {⌜ T⟶ᵀDIh₁ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀDIh₂ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀDIh₃ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀDIh₄ j p c ⌝ᵗ ∷ (PT⟶ᵀDIh₅ᶜ0.CASE j (fst (snd (snd p))) (pair c (pair p unit))) ∷ (PT⟶ᵀDIh₆ᶜ0.CASE j (fst (snd (snd p))) (pair c (pair p unit))) ∷ (PT⟶ᵀDIh₇ᶜ0.CASE j (fst (snd (snd p))) (pair c (pair p unit))) ∷ []} (nth-s (nth-s (nth-s nth-z))) RedTₘ.⊢J ⟶ᵀF.⊢DF (⊢ix⟶ᵀ dj (⊢kDIh dj df0 df1 df2 df3) (⊢kDIh dj df0 df1 df2 de0))
-    (⟶ᵀF.fibF {s = 0} {k = 11} {j = j} {p = p} {c = c} nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))) (allr⟶ᵀDIh dj dp dc)
+    (⟶ᵀF.fibF {s = 0} {k = 11} {j = j} {p = p} {c = c} nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))) (allr⟶ᵀDIh {j = j} {p = p} {c = c} dj dp dc)
     (⊢conv dPv (csymᵀ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))))
   where
     p c : RTm ⌊ Ξ ⌋
@@ -880,7 +880,7 @@ con⟶ᵀDIh₅ : {Ξ : Ctx} {j f0 f1 f3 : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El �
   Ξ ⊢ conₗ 4 (pair (idrefl (⌜Ty⌝ j) (kUnit)) unit) ∷ IMu RedTₘ.J ⟶ᵀF.DF (ix⟶ᵀ j (kDIh f0 f1 (kdI) f3) ((kUnit)))
 con⟶ᵀDIh₅ {Ξ} {j} {f0} {f1} {f3} dj df0 df1 df3 =
   ⊢conRowₖ {Ξ} {7} {4} {RedTₘ.J} {⟶ᵀF.DF} {ix⟶ᵀ j (kDIh f0 f1 (kdI) f3) ((kUnit))} {(PT⟶ᵀDIh₅ᶜ0.CASE j (fst (snd (snd p))) (pair c (pair p unit)))} {(pair (idrefl (⌜Ty⌝ j) (kUnit)) unit)} {⌜ T⟶ᵀDIh₁ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀDIh₂ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀDIh₃ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀDIh₄ j p c ⌝ᵗ ∷ (PT⟶ᵀDIh₅ᶜ0.CASE j (fst (snd (snd p))) (pair c (pair p unit))) ∷ (PT⟶ᵀDIh₆ᶜ0.CASE j (fst (snd (snd p))) (pair c (pair p unit))) ∷ (PT⟶ᵀDIh₇ᶜ0.CASE j (fst (snd (snd p))) (pair c (pair p unit))) ∷ []} (nth-s (nth-s (nth-s (nth-s nth-z)))) RedTₘ.⊢J ⟶ᵀF.⊢DF (⊢ix⟶ᵀ dj (⊢kDIh dj df0 df1 (⊢kdI dj) df3) (⊢kUnit dj))
-    (⟶ᵀF.fibF {s = 0} {k = 11} {j = j} {p = p} {c = c} nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))) (allr⟶ᵀDIh dj dp dc)
+    (⟶ᵀF.fibF {s = 0} {k = 11} {j = j} {p = p} {c = c} nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))) (allr⟶ᵀDIh {j = j} {p = p} {c = c} dj dp dc)
     (⊢conv dPv (csymᵀ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))))
   where
     p c : RTm ⌊ Ξ ⌋
@@ -906,7 +906,7 @@ con⟶ᵀDIh₆ : {Ξ : Ctx} {j f0 f1 f3 a0ᵢ0 a0ᵢ1 : RTm ⌊ Ξ ⌋} → Ξ 
   Ξ ⊢ conₗ 5 (pair (idrefl (⌜Ty⌝ j) (kDIh f0 f1 (kapp a0ᵢ1 (kfst f3)) (ksnd f3))) unit) ∷ IMu RedTₘ.J ⟶ᵀF.DF (ix⟶ᵀ j (kDIh f0 f1 (kdS a0ᵢ0 a0ᵢ1) f3) ((kDIh f0 f1 (kapp a0ᵢ1 (kfst f3)) (ksnd f3))))
 con⟶ᵀDIh₆ {Ξ} {j} {f0} {f1} {f3} {a0ᵢ0} {a0ᵢ1} dj df0 df1 df3 da0ᵢ0 da0ᵢ1 =
   ⊢conRowₖ {Ξ} {7} {5} {RedTₘ.J} {⟶ᵀF.DF} {ix⟶ᵀ j (kDIh f0 f1 (kdS a0ᵢ0 a0ᵢ1) f3) ((kDIh f0 f1 (kapp a0ᵢ1 (kfst f3)) (ksnd f3)))} {(PT⟶ᵀDIh₆ᶜ0.CASE j (fst (snd (snd p))) (pair c (pair p unit)))} {(pair (idrefl (⌜Ty⌝ j) (kDIh f0 f1 (kapp a0ᵢ1 (kfst f3)) (ksnd f3))) unit)} {⌜ T⟶ᵀDIh₁ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀDIh₂ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀDIh₃ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀDIh₄ j p c ⌝ᵗ ∷ (PT⟶ᵀDIh₅ᶜ0.CASE j (fst (snd (snd p))) (pair c (pair p unit))) ∷ (PT⟶ᵀDIh₆ᶜ0.CASE j (fst (snd (snd p))) (pair c (pair p unit))) ∷ (PT⟶ᵀDIh₇ᶜ0.CASE j (fst (snd (snd p))) (pair c (pair p unit))) ∷ []} (nth-s (nth-s (nth-s (nth-s (nth-s nth-z))))) RedTₘ.⊢J ⟶ᵀF.⊢DF (⊢ix⟶ᵀ dj (⊢kDIh dj df0 df1 (⊢kdS dj da0ᵢ0 da0ᵢ1) df3) (⊢kDIh dj df0 df1 (⊢kapp dj da0ᵢ1 (⊢kfst dj df3)) (⊢ksnd dj df3)))
-    (⟶ᵀF.fibF {s = 0} {k = 11} {j = j} {p = p} {c = c} nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))) (allr⟶ᵀDIh dj dp dc)
+    (⟶ᵀF.fibF {s = 0} {k = 11} {j = j} {p = p} {c = c} nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))) (allr⟶ᵀDIh {j = j} {p = p} {c = c} dj dp dc)
     (⊢conv dPv (csymᵀ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))))
   where
     p c : RTm ⌊ Ξ ⌋
@@ -932,7 +932,7 @@ con⟶ᵀDIh₇ : {Ξ : Ctx} {j f0 f1 f3 a0ᵢ0 a0ᵢ1 : RTm ⌊ Ξ ⌋} → Ξ 
   Ξ ⊢ conₗ 6 (pair (idrefl (⌜Ty⌝ j) (kSg (iinstK j a0ᵢ0 (kfst f3) f1) (kDIh (wk 1 j f0) (wk2uK j f1) (wk 1 j a0ᵢ1) (ksnd (wk 1 j f3))))) unit) ∷ IMu RedTₘ.J ⟶ᵀF.DF (ix⟶ᵀ j (kDIh f0 f1 (kdR a0ᵢ0 a0ᵢ1) f3) ((kSg (iinstK j a0ᵢ0 (kfst f3) f1) (kDIh (wk 1 j f0) (wk2uK j f1) (wk 1 j a0ᵢ1) (ksnd (wk 1 j f3))))))
 con⟶ᵀDIh₇ {Ξ} {j} {f0} {f1} {f3} {a0ᵢ0} {a0ᵢ1} dj df0 df1 df3 da0ᵢ0 da0ᵢ1 =
   ⊢conRowₖ {Ξ} {7} {6} {RedTₘ.J} {⟶ᵀF.DF} {ix⟶ᵀ j (kDIh f0 f1 (kdR a0ᵢ0 a0ᵢ1) f3) ((kSg (iinstK j a0ᵢ0 (kfst f3) f1) (kDIh (wk 1 j f0) (wk2uK j f1) (wk 1 j a0ᵢ1) (ksnd (wk 1 j f3)))))} {(PT⟶ᵀDIh₇ᶜ0.CASE j (fst (snd (snd p))) (pair c (pair p unit)))} {(pair (idrefl (⌜Ty⌝ j) (kSg (iinstK j a0ᵢ0 (kfst f3) f1) (kDIh (wk 1 j f0) (wk2uK j f1) (wk 1 j a0ᵢ1) (ksnd (wk 1 j f3))))) unit)} {⌜ T⟶ᵀDIh₁ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀDIh₂ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀDIh₃ j p c ⌝ᵗ ∷ ⌜ T⟶ᵀDIh₄ j p c ⌝ᵗ ∷ (PT⟶ᵀDIh₅ᶜ0.CASE j (fst (snd (snd p))) (pair c (pair p unit))) ∷ (PT⟶ᵀDIh₆ᶜ0.CASE j (fst (snd (snd p))) (pair c (pair p unit))) ∷ (PT⟶ᵀDIh₇ᶜ0.CASE j (fst (snd (snd p))) (pair c (pair p unit))) ∷ []} (nth-s (nth-s (nth-s (nth-s (nth-s (nth-s nth-z)))))) RedTₘ.⊢J ⟶ᵀF.⊢DF (⊢ix⟶ᵀ dj (⊢kDIh dj df0 df1 (⊢kdR dj da0ᵢ0 da0ᵢ1) df3) (⊢kSg dj (⊢iinstK dj da0ᵢ0 (⊢kfst dj df3) df1) (⊢kDIh (⊢isuc dj) (⊢wkS (lt-s lt-z) dj df0) (⊢wk2uK dj df1) (⊢wkS (lt-s lt-z) dj da0ᵢ1) (⊢ksnd (⊢isuc dj) (⊢wkS (lt-s lt-z) dj df3)))))
-    (⟶ᵀF.fibF {s = 0} {k = 11} {j = j} {p = p} {c = c} nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))) (allr⟶ᵀDIh dj dp dc)
+    (⟶ᵀF.fibF {s = 0} {k = 11} {j = j} {p = p} {c = c} nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))) (allr⟶ᵀDIh {j = j} {p = p} {c = c} dj dp dc)
     (⊢conv dPv (csymᵀ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))))
   where
     p c : RTm ⌊ Ξ ⌋
