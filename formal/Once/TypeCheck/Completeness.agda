@@ -48,9 +48,9 @@ open import Once.TypeCheck.ElaborateProofs
          _≟T_; embedOrSubsume; VerifiedInferResult; isRIntVliftTarget?;
          classifyAppHead; classifyAppHeadView; ahv-other;
          classifyAppHead-nothing⇒view-other; AppHeadView; inspectWellFormedF;
-         wfv-yes; wfv-no; classifyRPairTarget; rpt-vlift; rpt-other)
+         wfv-yes; wfv-no; classifyRPairTarget; rpt-vlift; rpt-other;
+         via; apply-pure; apply-eff)
 open import Once.TypeCheck.Judgment
-open import Once.TypeCheck.TargetView using (apply-at)
 import Once.TypeCheck.Elaborate as E
 import Data.Unit
 open import Once.Functor.Translate using (WellFormedF; IsConcrete; con-base; con-fun; IsBaseType)
@@ -505,37 +505,6 @@ infer-complete-RApp-Out-eff {ctx} arg {F} wfF eqArg
       rewrite inferOutGo-J ctx arg F T.eff Ψ' argE' d' fr' w'
                 (just wfF) (wellFormedF?-complete-at wfF)
       = _ , _ , _ , refl
-
--- A rule at the operand's RESULT: once that result is a known success, the
--- rule lands wherever `k` says it does at that success. Proving the lemmas
--- below through this, rather than `with`-abstracting `inferElabV ctx arg` out
--- of the elaborated goal, is what keeps each of them cheap.
-private
-  via : ∀ {ctx ctx' : NamedCtx} {x y : RawExpr} (rule : VerifiedInferResult ctx x → VerifiedInferResult ctx' y)
-        (r : VerifiedInferResult ctx x) {T Ψ e d f} {T' : Type} {Ψ' : Surface.Usage (NamedCtx.size ctx')}
-      → proj₁ r ≡ success T Ψ e d f
-      → (∀ w → ∃[ eE ] ∃[ d' ] ∃[ f' ] proj₁ (rule (success T Ψ e d f , w)) ≡ success T' Ψ' eE d' f')
-      → ∃[ eE ] ∃[ d' ] ∃[ f' ] proj₁ (rule r) ≡ success T' Ψ' eE d' f'
-  via rule (success _ _ _ _ _ , w) refl k = k w
-
-  -- `apply` at a pure / effectful closure whose domain is the argument's type.
-  apply-pure : ∀ {ctx : NamedCtx} {arg : RawExpr} (A B : Type) (Ψ : Surface.Usage (NamedCtx.size ctx))
-                 (argE : SExpr (NamedCtx.debruijn ctx) Ψ ((A T.⇒[ T.mk-kind T.Many T.pure ] B) T.* A)) (d fr : ℕ) w
-             → ∃[ eE ] ∃[ d' ] ∃[ f' ]
-                 proj₁ (E.inferApplyAt ctx arg Ψ argE d fr w (apply-at A T.pure B A))
-                   ≡ success B (zeroUsage +ᵘ (T.Many *ᵘ Ψ)) eE d' f'
-  apply-pure A _ _ _ _ _ _ with A ≟T A
-  ... | yes refl = _ , _ , _ , refl
-  ... | no ¬eq = ⊥-elim (¬eq refl)
-
-  apply-eff : ∀ {ctx : NamedCtx} {arg : RawExpr} (A B : Type) (Ψ : Surface.Usage (NamedCtx.size ctx))
-                (argE : SExpr (NamedCtx.debruijn ctx) Ψ ((A T.⇒[ T.mk-kind T.Many T.eff ] B) T.* A)) (d fr : ℕ) w
-            → ∃[ eE ] ∃[ d' ] ∃[ f' ]
-                proj₁ (E.inferApplyAt ctx arg Ψ argE d fr w (apply-at A T.eff B A))
-                  ≡ success (T.Unit T.⇒[ T.mk-kind T.Many T.eff ] B) (zeroUsage +ᵘ (T.Many *ᵘ Ψ)) eE d' f'
-  apply-eff A _ _ _ _ _ _ with A ≟T A
-  ... | yes refl = _ , _ , _ , refl
-  ... | no ¬eq = ⊥-elim (¬eq refl)
 
 infer-complete-RApp-fst :
   ∀ {ctx : NamedCtx} (arg : RawExpr) {A B : Type}

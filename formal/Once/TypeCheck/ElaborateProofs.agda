@@ -14,6 +14,7 @@ module Once.TypeCheck.ElaborateProofs where
 
 open import Once.TypeCheck.Elaborate public
 open import Once.TypeCheck.Classify using (emptyCtx)
+open import Once.TypeCheck.TargetView using (apply-at)
 open import Once.Type.DecEq using (_≟T_; _≟F_)
 open import Once.Type.Sub using (_<:_; _<:?_; <:-refl; sub-int; sub-float)
 open import Data.Integer using (+_)
@@ -32,7 +33,7 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Data.List using (List; []; _∷_; length)
 open import Relation.Nullary using (Dec; yes; no; ¬_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Data.Product using (_×_; _,_; ∃-syntax; Σ-syntax; proj₂)
+open import Data.Product using (_×_; _,_; ∃-syntax; Σ-syntax; proj₁; proj₂)
 open import Once.Type.Instance using (instantiate-complete)
 open import Once.Type.Rigid using (KindedInstance; kindedInstance?)
 open import Once.Type.Match using (instantiate)
@@ -627,6 +628,36 @@ checkElab-fallback-RApp-In {ctx} arg F {wfF} eqWF eqArg =
 -- requires composeArgB-resolved B; the proof composes the two
 -- checkElab-successes through the simplified dispatch chain.
 
+-- A rule at the operand's RESULT: once that result is a known success, the
+-- rule lands wherever `k` says it does at that success. Proving the lemmas
+-- below through this, rather than `with`-abstracting `inferElabV ctx arg` out
+-- of the elaborated goal, is what keeps each of them cheap.
+via : ∀ {ctx ctx' : NamedCtx} {x y : RawExpr} (rule : VerifiedInferResult ctx x → VerifiedInferResult ctx' y)
+      (r : VerifiedInferResult ctx x) {T Ψ e d f} {T' : Type} {Ψ' : Surface.Usage (NamedCtx.size ctx')}
+    → proj₁ r ≡ success T Ψ e d f
+    → (∀ w → ∃[ eE ] ∃[ d' ] ∃[ f' ] proj₁ (rule (success T Ψ e d f , w)) ≡ success T' Ψ' eE d' f')
+    → ∃[ eE ] ∃[ d' ] ∃[ f' ] proj₁ (rule r) ≡ success T' Ψ' eE d' f'
+via rule (success _ _ _ _ _ , w) refl k = k w
+
+-- `apply` at a pure / effectful closure whose domain is the argument's type.
+apply-pure : ∀ {ctx : NamedCtx} {arg : RawExpr} (A B : Type) (Ψ : Surface.Usage (NamedCtx.size ctx))
+               (argE : SExpr (NamedCtx.debruijn ctx) Ψ ((A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) Once.Type.* A)) (d fr : ℕ) w
+           → ∃[ eE ] ∃[ d' ] ∃[ f' ]
+               proj₁ (inferApplyAt ctx arg Ψ argE d fr w (apply-at A Once.Type.pure B A))
+                 ≡ success B (Surface.zeroUsage +ᵘ (Once.Type.Many Surface.*ᵘ Ψ)) eE d' f'
+apply-pure A _ _ _ _ _ _ with A ≟T A
+... | yes refl = _ , _ , _ , refl
+... | no ¬eq = ⊥-elim (¬eq refl)
+
+apply-eff : ∀ {ctx : NamedCtx} {arg : RawExpr} (A B : Type) (Ψ : Surface.Usage (NamedCtx.size ctx))
+              (argE : SExpr (NamedCtx.debruijn ctx) Ψ ((A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B) Once.Type.* A)) (d fr : ℕ) w
+          → ∃[ eE ] ∃[ d' ] ∃[ f' ]
+              proj₁ (inferApplyAt ctx arg Ψ argE d fr w (apply-at A Once.Type.eff B A))
+                ≡ success (Once.Type.Unit Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B) (Surface.zeroUsage +ᵘ (Once.Type.Many Surface.*ᵘ Ψ)) eE d' f'
+apply-eff A _ _ _ _ _ _ with A ≟T A
+... | yes refl = _ , _ , _ , refl
+... | no ¬eq = ⊥-elim (¬eq refl)
+
 checkElab-fallback-RApp-apply :
   ∀ {ctx : NamedCtx} {τ : Type} (p : RawExpr) (A B : Type)
     {Ψ : Surface.Usage (NamedCtx.size ctx)}
@@ -637,14 +668,9 @@ checkElab-fallback-RApp-apply :
   → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f' →
       checkElab ctx (Raw.RApp (Raw.RResolved (gen "apply")) p) τ
         ≡ success (Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ)) eE' d' f')))
-checkElab-fallback-RApp-apply {ctx} {τ} p A B eqInf sb
-  with inferElabV ctx p | eqInf
-... | success ((_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] _) Once.Type.* _) _ _ _ _ , _ | refl
-    with A ≟T A
-...   | no  ¬eq  = ⊥-elim (¬eq refl)
-...   | yes refl with B <:? τ
-...     | yes _    = _ , _ , _ , refl
-...     | no  ¬eq  = ⊥-elim (¬eq sb)
+checkElab-fallback-RApp-apply {ctx} {τ} p A B {Ψ} {eE} {d} {fr} eqInf sb
+  with via (inferApplyOn ctx p) (inferElabV ctx p) eqInf (apply-pure A B Ψ eE d fr)
+... | _ , _ , _ , eqApp = checkElab-fallback-RApp-apply-infer p B eqApp sb
 
 -- D222 / plan 0.95 A′: the EFF-closure twin. `apply` at an effectful closure
 -- infers the SUSPENSION `Unit ⇒[eff] B`, so that is the type it is re-checked
@@ -660,14 +686,9 @@ checkElab-fallback-RApp-apply-effclosure :
       checkElab ctx (Raw.RApp (Raw.RResolved (gen "apply")) p)
                 τ
         ≡ success (Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ)) eE' d' f')))
-checkElab-fallback-RApp-apply-effclosure {ctx} {τ} p A B eqInf sb
-  with inferElabV ctx p | eqInf
-... | success ((_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] _) Once.Type.* _) _ _ _ _ , _ | refl
-    with A ≟T A
-...   | no  ¬eq  = ⊥-elim (¬eq refl)
-...   | yes refl with (Once.Type.Unit Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B) <:? τ
-...     | yes _    = _ , _ , _ , refl
-...     | no  ¬eq  = ⊥-elim (¬eq sb)
+checkElab-fallback-RApp-apply-effclosure {ctx} {τ} p A B {Ψ} {eE} {d} {fr} eqInf sb
+  with via (inferApplyOn ctx p) (inferElabV ctx p) eqInf (apply-eff A B Ψ eE d fr)
+... | _ , _ , _ , eqApp = checkElab-fallback-RApp-apply-infer p _ eqApp sb
 
 -- Plan 0.103 phase 1c: LINKING. A definition reference `poly x A` is replaced
 -- by the definition's body elaborated in ITS DECLARATION CONTEXT — its
