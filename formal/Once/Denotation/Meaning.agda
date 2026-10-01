@@ -291,7 +291,7 @@ EnvRun ctx Ψ = ⟦ ⟦ NamedCtx.debruijn ctx ↾ Ψ ⟧ᶜᵗ ⟧ᵛ
 -- Plan 0.94 §13: evaluate both, keep the second — what `seq` emits. A subterm
 -- evaluation REACHES is run even where its value is not used.
 seqᴰ : ∀ {X Y : Set} → T X → T Y → T Y
-seqᴰ m₁ m₂ = (m₁ >>=ᵖ λ x → m₂ >>=ᵖ λ y → returnᵖ (x , y)) >>=ᵖ λ v → returnᵖ (proj₂ v)
+seqᴰ m₁ m₂ = (m₁ >>=T λ x → m₂ >>=T λ y → returnT (x , y)) >>=T λ v → returnT (proj₂ v)
 
 ⟦_⟧ᵈ : ∀ {ctx e A π B Ψ} → ctx ⊢ᵈ e ∶ A ⇒[ π ]↦ B ⨾ Ψ → TargetNum → MeaningsOf ctx → EnvRun ctx Ψ
      → ⟦ A ⇒[ mk-kind Many π ] B ⟧ᵛ

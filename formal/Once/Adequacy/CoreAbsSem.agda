@@ -35,8 +35,7 @@ import Once.Type as T
 open import Once.Type.Sub using (<:-unique)
 open import Once.Functor.Translate using (IsBaseType-irrelevant; WellFormedF-irrelevant)
 open import Once.Target.Arch using (TargetNum)
-open import Once.Denotation.TraceMonad using (T)
-open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ)
+open import Once.Denotation.GradedDomain using (⟦_⟧ᵛ; M)
 import Once.Surface.Context as C
 open import Once.Surface.Context using (Usage; []; _∷_)
 open import Once.Spec.Core.PolyTy using (Ty; KCtx; ⟦⟧F-⟪⟫; ⌈⌉-⟪⟫; ⟨⟩-⟪⟫; GSub; Respects; _⟪_⟫; _⟪_⟫F; _!!_; arity; kinds; type)
@@ -378,14 +377,14 @@ tr-sem : ∀ {n} {Γ' Γ : C.Ctx n} {Ψ} {t' t : G.Tm n} {A' A : T.Type} {π}
            (eΓ : Γ' ≡ Γ) (et : t' ≡ t) (eA : A' ≡ A) (D : Γ' ⊢[ Ψ ] t' ∷ A' ! π)
            (fmt : TargetNum) (δ : GM.DefSem) (γ : GM.Env Γ Ψ)
        → GM.⟦ tr eΓ et eA D ⟧ fmt δ γ
-         ≡ subst (λ X → T ⟦ X ⟧ᴰ) eA (GM.⟦ D ⟧ fmt δ (subst (λ G → GM.Env G Ψ) (sym eΓ) γ))
+         ≡ subst (λ X → M π ⟦ X ⟧ᵛ) eA (GM.⟦ D ⟧ fmt δ (subst (λ G → GM.Env G Ψ) (sym eΓ) γ))
 tr-sem refl refl refl D fmt δ γ = refl
 
 -- A CLOSED entry (a telescope body) means, read back from the telescope at
 -- arity 0, what it meant before abstraction.
 rt-sem : ∀ (Δ : KCtx 0) (σ : GSub 0) (r : Respects Δ σ) (sg : SigGround)
            {t A π} (D : C.∅ ⊢[ [] ] t ∷ A ! π) (fmt : TargetNum) (δ : GM.DefSem)
-       → GM.⟦ D ⟧ fmt δ tt ≡ subst (λ X → T ⟦ X ⟧ᴰ) (RoundTrip.rt-id Δ σ r sg A) (GM.⟦ RoundTrip.RT Δ σ r sg D ⟧ fmt δ tt)
+       → GM.⟦ D ⟧ fmt δ tt ≡ subst (λ X → M π ⟦ X ⟧ᵛ) (RoundTrip.rt-id Δ σ r sg A) (GM.⟦ RoundTrip.RT Δ σ r sg D ⟧ fmt δ tt)
 rt-sem Δ σ r sg {t} {A} D fmt δ =
   trans (cong (λ E → GM.⟦ E ⟧ fmt δ tt) (sym (RoundTrip.RT-id Δ σ r sg D)))
         (tr-sem refl (RoundTrip.rtT-id Δ σ r sg t) (RoundTrip.rt-id Δ σ r sg A) (RoundTrip.RT Δ σ r sg D) fmt δ tt)
@@ -398,7 +397,7 @@ open import Once.Type.Rigid using (RigidFree)
 
 mono-entry-sem : ∀ (Δ : KCtx 0) (σ : GSub 0) (r : Respects Δ σ) (sg : SigGround)
                    {t A} (g : RigidFree A) (D : C.∅ ⊢[ [] ] t ∷ A ! T.pure) (fmt : TargetNum) (δ : GM.DefSem)
-               → subst (λ X → T ⟦ X ⟧ᴰ) (⌈⌉-⟪⟫ A σ)
+               → subst (λ X → ⟦ X ⟧ᵛ) (⌈⌉-⟪⟫ A σ)
                    (GM.⟦ PT.instantiate σ r
                            (subst (λ X → Δ PT.⊩ PT.∅ ⊢[ [] ] absTm Δ t ∷ X ! T.pure) (absTy-ground Δ g) (abs-⊢ Δ sg D)) ⟧ fmt δ tt)
                  ≡ GM.⟦ D ⟧ fmt δ tt
