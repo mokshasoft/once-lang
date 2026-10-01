@@ -302,17 +302,7 @@ rewrite-program-linked p (lm , les) =
 ⟦ nothing ⟧IR _   = silent
 
 -- D165, RESTATED AT THE MEANING (plan 0.103 6a″): the arith lifting preserves
--- a program's denotation. `rewrite-ir` replaces a recognised closed arith
--- subtree by one `arith.block.<digest>` SigOp, so the block's VALUE must equal
--- the subtree's (an arith result reaches an observable SigOp's argument); the
--- events agree because arith SigOps are pure (plans 0.25/0.26). It used to be a
--- per-target flat-machine field (`ArchCorrect.rewrite-preserves`), but it is a
--- fact about the IR alone — the three flat machines agree with the meaning by
--- `ir-flat-correct`, so one statement here serves every target.
--- A NAMED RESIDUAL, class **deferred proof / codegen**.
-postulate
-  rewrite-program-preserves : ∀ (fmt : TargetNum) (p : IRProgram) (n : ℕ)
-                            → at (⟦ just (rewrite-program p) ⟧IR fmt) n ≡ at (⟦ just p ⟧IR fmt) n
+-- a program's denotation — `Adequacy.RewritePreserves.rewrite-program-preserves`.
 
 ------------------------------------------------------------------------
 -- The verified front-end (Plan 0.51): parse the user's grammar module,

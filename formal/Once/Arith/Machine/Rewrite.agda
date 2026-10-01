@@ -153,46 +153,51 @@ try-lift {_} {_} _ = nothing
 -- succeeds, the entire subtree becomes one block SigOp and recursion
 -- stops there. Otherwise the walk recurses into the IR's children
 -- per-constructor.
-{-# TERMINATING #-}
+-- With-free (explicit-aux form): the lift decision is a bound argument, so a
+-- proof follows the pass by casing on it, and the walk is TOP-LEVEL. The
+-- recursion is structural through the walk, so no pragma is needed.
 rewrite-ir : ∀ {A B} → IR A B → IR A B × List ArithBlock
-rewrite-ir ir with try-lift ir
-... | just (ir' , blk) = ir' , (blk ∷ [])
-... | nothing          = walk ir
-  where
-    walk : ∀ {A B} → IR A B → IR A B × List ArithBlock
-    walk id                = id , []
-    walk (g ∘ f)           =
-      let (g' , bg) = rewrite-ir g
-          (f' , bf) = rewrite-ir f
-      in (g' ∘ f') , (bg ++ bf)
-    walk fst               = fst , []
-    walk snd               = snd , []
-    walk (⟨ f , g ⟩)     =
-      let (f' , bf) = rewrite-ir f
-          (g' , bg) = rewrite-ir g
-      in ⟨ f' , g' ⟩ , (bf ++ bg)
-    walk inl                = inl , []
-    walk inr                = inr , []
-    walk (case f g)        =
-      let (f' , bf) = rewrite-ir f
-          (g' , bg) = rewrite-ir g
-      in case f' g' , (bf ++ bg)
-    walk terminal          = terminal , []
-    walk initial           = initial , []
-    walk (curry f)       =
-      let (f' , bf) = rewrite-ir f
-      in (curry f') , bf
-    walk apply             = apply , []
-    walk (In w)          = In w , []
-    walk (out-μ w)         = out-μ w , []
-    walk (Cata w f)        =
-      let (f' , bf) = rewrite-ir f
-      in Cata w f' , bf
-    walk (Out w)           = Out w , []
-    walk (in-ν w)        = in-ν w , []
-    walk (Ana w f)         =
-      let (f' , bf) = rewrite-ir f
-      in Ana w f' , bf
-    walk (const p v)   = const p v , []
-    walk (SigOp si)        = SigOp si , []
-    walk (Call f)          = Call f , []
+rw-at      : ∀ {A B} → IR A B → Maybe (IR A B × ArithBlock) → IR A B × List ArithBlock
+walk       : ∀ {A B} → IR A B → IR A B × List ArithBlock
+
+rewrite-ir ir = rw-at ir (try-lift ir)
+
+rw-at ir (just (ir' , blk)) = ir' , (blk ∷ [])
+rw-at ir nothing           = walk ir
+
+walk id                = id , []
+walk (g ∘ f)           =
+  let (g' , bg) = rewrite-ir g
+      (f' , bf) = rewrite-ir f
+  in (g' ∘ f') , (bg ++ bf)
+walk fst               = fst , []
+walk snd               = snd , []
+walk (⟨ f , g ⟩)     =
+  let (f' , bf) = rewrite-ir f
+      (g' , bg) = rewrite-ir g
+  in ⟨ f' , g' ⟩ , (bf ++ bg)
+walk inl                = inl , []
+walk inr                = inr , []
+walk (case f g)        =
+  let (f' , bf) = rewrite-ir f
+      (g' , bg) = rewrite-ir g
+  in case f' g' , (bf ++ bg)
+walk terminal          = terminal , []
+walk initial           = initial , []
+walk (curry f)       =
+  let (f' , bf) = rewrite-ir f
+  in (curry f') , bf
+walk apply             = apply , []
+walk (In w)          = In w , []
+walk (out-μ w)         = out-μ w , []
+walk (Cata w f)        =
+  let (f' , bf) = rewrite-ir f
+  in Cata w f' , bf
+walk (Out w)           = Out w , []
+walk (in-ν w)        = in-ν w , []
+walk (Ana w f)         =
+  let (f' , bf) = rewrite-ir f
+  in Ana w f' , bf
+walk (const p v)   = const p v , []
+walk (SigOp si)        = SigOp si , []
+walk (Call f)          = Call f , []
