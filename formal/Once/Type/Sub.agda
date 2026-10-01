@@ -47,6 +47,12 @@ data _⊑π_ : Purity → Purity → Set where
   ⊑-eff  : eff  ⊑π eff
   ⊑-pe   : pure ⊑π eff
 
+-- Every grade is above `pure` (D068; D250: the unit of every grade's monad is
+-- this subeffecting applied to a pure value).
+pure⊑ : ∀ π → pure ⊑π π
+pure⊑ pure = ⊑-pure
+pure⊑ eff  = ⊑-pe
+
 _⊑π?_ : (π π′ : Purity) → Dec (π ⊑π π′)
 pure ⊑π? pure = yes ⊑-pure
 pure ⊑π? eff  = yes ⊑-pe

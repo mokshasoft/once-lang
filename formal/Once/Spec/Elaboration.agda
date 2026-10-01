@@ -41,7 +41,7 @@ open import Relation.Nullary using (¬_)
 open import Once.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; mk-kind; Many; Purity; pure; eff;
   μ-type; ν-type; ⟦_⟧T; PolyType; Ground; extractGround)
 open import Once.Type.Rigid using (KindedInstance; RigidFree)
-open import Once.Type.Sub using (_<:_; sub-arr; <:-refl)
+open import Once.Type.Sub using (pure⊑; _<:_; sub-arr; <:-refl)
 open import Once.Type.Honest using (HonestFFI)
 open import Once.CanonicalName using (bare; showCanonical)
 open import Once.Float.Decimal using (decimalOf; negate)

@@ -45,7 +45,7 @@ open import Once.Denotation.TraceMonad using (T; mkT; returnT; _>>=T_; valueT; p
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; emit-D; emit-Dᵇ; inject; forget; coerce-functor⁻¹-D; coerce-functor-D; anaFᵈ; forceᵈ; seqF; in-νᵈ)
 open import Once.Denotation.Phase using (restrictᴰ; bindᴰ; bindᴰ0; lookupᴰUsed)
 open import Once.Denotation.PhaseV using (restrictᵛ; bindᵛ; bindᵛ0; lookupᵛUsed)
-open import Once.Denotation.GradedDomain using (⟦_⟧ᵛ; M; returnM; bindM)
+open import Once.Denotation.GradedDomain using (⟦_⟧ᵛ; M; returnM; bindM; _>>=ᵖ_)
 open import Once.Denotation.GradedOps
   using (fmapM; cata-semᵛ; ana-semᵛ; out-semᵛ; in-valueᵛ; sigOpRefᵛ; ⟦_⟧<:ᵛ)
 open import Once.Semantics.Machine using (sem-In; coerce-functor; sem-cata; sem-fmap; coerce-functor⁻¹; coerce-ν-out; coerce-ν-in; ⟦_⟧F)
@@ -237,13 +237,9 @@ sigOpRefᴰ fmt cn (con-fun {A = Dom} {B = Cod} {k = mk-kind Many π} bDom cCod)
 -- instance is its declared type (`ground-kinded`).
 -- D250: a surface term elaborates to a PURE core term (effects are suspensions,
 -- D018), so it denotes a VALUE. The direct meaning below is written with the
--- pure monad's bind and unit, which reduce away: each clause keeps the shape of
--- the effectful reading it replaced, and only the arrows' bodies and the
--- suspensions run in `M π` / `T`.
-infixl 1 _>>=ᵖ_
-_>>=ᵖ_ : ∀ {X Y : Set} → X → (X → Y) → Y
-m >>=ᵖ k = k m
-
+-- pure monad's bind (`GradedDomain._>>=ᵖ_`, the core meaning's at `pure`) and
+-- unit: each clause keeps the shape of the effectful reading it replaced, and
+-- only the arrows' bodies and the suspensions run in `M π` / `T`.
 returnᵖ : ∀ {X : Set} → X → X
 returnᵖ x = x
 
