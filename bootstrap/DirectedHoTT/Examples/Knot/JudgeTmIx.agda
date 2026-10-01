@@ -91,11 +91,11 @@ module _ {Ξ : Ctx} {j : RTm ⌊ Ξ ⌋} (sh : Shape) where
                       (credᵀ (El-⌜Σ⌝ (⌜Ctx⌝ (snd ix)) B))
 
   -- the context
-  ⊢gI : {c : RTm ⌊ Ξ ⌋} → Ξ ⊢ c ∷ El (CIat sh ix) → Ξ ⊢ fst c ∷ KCtx j
+  ⊢gI : {c : RTm ⌊ Ξ ⌋} → Ξ ⊢ c ∷ El (CIat sh (pair (tag 0) j)) → Ξ ⊢ fst c ∷ KCtx j
   ⊢gI dc = ⊢conv (⊢fst (dΣ dc)) (ctxK≅ {s = 0} j)
 
   -- the term's payload
-  ⊢pI : {c : RTm ⌊ Ξ ⌋} → Ξ ⊢ c ∷ El (CIat sh ix) → Ξ ⊢ snd c ∷ PayV sh (pair (tag 1) j) (SI 2) (SD KSig)
+  ⊢pI : {c : RTm ⌊ Ξ ⌋} → Ξ ⊢ c ∷ El (CIat sh (pair (tag 0) j)) → Ξ ⊢ snd c ∷ PayV sh (pair (tag 1) j) (SI 2) (SD KSig)
   ⊢pI {c} dc = ⊢conv (⊢-cast {Ξ} {snd c} {subTy (single (fst c)) (El B)} (eB (fst c)) (⊢snd (dΣ dc))) payR
 
   -- the convoy from its halves

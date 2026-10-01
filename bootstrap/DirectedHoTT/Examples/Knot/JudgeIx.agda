@@ -175,11 +175,11 @@ module _ {Ξ : Ctx} {s : ℕ} {j c : RTm ⌊ Ξ ⌋} where
                   (credᵀ (El-⌜Σ⌝ (⌜Ctx⌝ (snd ix)) (FT ix)))
 
   -- the context, at any sort
-  ⊢ctxOf : Ξ ⊢ c ∷ El (CTat ix) → Ξ ⊢ fst c ∷ KCtx j
+  ⊢ctxOf : Ξ ⊢ c ∷ El (CTat (pair (tag s) j)) → Ξ ⊢ fst c ∷ KCtx j
   ⊢ctxOf dc = ⊢conv (⊢fst (dΣ dc)) (ctrnᵀ (credᵀ El-⌜IMu⌝) (credᵀ (ξ-IMuⁱ (βsnd (tag s) j))))
 
   -- the type half, read at the instance of its sort
-  eFT : subTy (single (fst c)) (El (FT ix)) ≡ El (fcase (fst ix) ⌜Unit⌝ (⌜Ty⌝ (snd (renTm vs ix))))
+  eFT : subTy (single (fst c)) (El (FT (pair (tag s) j))) ≡ El (fcase (fst (pair (tag s) j)) ⌜Unit⌝ (⌜Ty⌝ (snd (renTm vs (pair (tag s) j)))))
   eFT = cong₂ (λ a X → El (fcase (fst a) ⌜Unit⌝ X))
               {x = subTm (single (fst c)) (renTm vs ix)} {x' = ix}
               {y = subTm (extS (single (fst c))) (⌜Ty⌝ (snd (renTm vs (renTm vs ix))))} {y' = ⌜Ty⌝ (snd (renTm vs ix))}
@@ -188,7 +188,7 @@ module _ {Ξ : Ctx} {s : ℕ} {j c : RTm ⌊ Ξ ⌋} where
                      (cong (λ z → ⌜Ty⌝ (snd z)) {x = subTm (extS (single (fst c))) (renTm vs (renTm vs ix))} {y = renTm vs ix}
                            (k1 (fst c) ix)))
 
-  ⊢sndFT : Ξ ⊢ c ∷ El (CTat ix) → Ξ ⊢ snd c ∷ El (fcase (fst ix) ⌜Unit⌝ (⌜Ty⌝ (snd (renTm vs ix))))
+  ⊢sndFT : Ξ ⊢ c ∷ El (CTat (pair (tag s) j)) → Ξ ⊢ snd c ∷ El (fcase (fst (pair (tag s) j)) ⌜Unit⌝ (⌜Ty⌝ (snd (renTm vs (pair (tag s) j)))))
   ⊢sndFT dc = ⊢-cast {Ξ} {snd c} {subTy (single (fst c)) (El (FT ix))} eFT (⊢snd (dΣ dc))
 
 -- a term's type (sort 1)
@@ -212,8 +212,8 @@ module _ {Ξ : Ctx} {s : ℕ} {j g u : RTm ⌊ Ξ ⌋} (lt : Lt s 2) (dj : Ξ �
     tyF : (Ξ ▹ El (⌜Ctx⌝ (snd ix))) ⊢ty El (FT ix)
     tyF = ty-El (⊢fcase ty-U (⊢sortOf (⊢wk dix)) ⊢⌜Unit⌝ (⊢⌜Ty⌝ (⊢depth (⊢wk (⊢wk dix)))))
   -- a convoy from its two halves
-  ⊢conv₂ : Ξ ⊢ g ∷ KCtx j → Ξ ⊢ u ∷ El (fcase (fst ix) ⌜Unit⌝ (⌜Ty⌝ (snd (renTm vs ix)))) →
-           Ξ ⊢ pair g u ∷ El (CTat ix)
+  ⊢conv₂ : Ξ ⊢ g ∷ KCtx j → Ξ ⊢ u ∷ El (fcase (fst (pair (tag s) j)) ⌜Unit⌝ (⌜Ty⌝ (snd (renTm vs (pair (tag s) j))))) →
+           Ξ ⊢ pair g u ∷ El (CTat (pair (tag s) j))
   ⊢conv₂ dg du =
     ⊢-cast {Ξ} {pair g u} {El (⌜Σ⌝ (⌜Ctx⌝ (snd ix)) (FT ix))} {El (CTat ix)} (cong El (sym (eCT ix)))
       (⊢conv (⊢pair tyF (⊢conv dg (csymᵀ (ctxK≅ j)))

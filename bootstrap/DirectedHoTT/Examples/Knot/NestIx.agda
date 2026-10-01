@@ -150,17 +150,23 @@ module _ {Ξ : Ctx} {j : RTm ⌊ Ξ ⌋} (S s₀ : ℕ) (st : Stk) where
     dΣ {c} dc = ⊢conv (⊢-cast {Ξ} {c} {El (NCat S st ix)} {El (⌜Σ⌝ (⌜IMu⌝ (SI 2) KD (pair (tag S) (snd ix))) B)} (cong El eNC) dc)
                       (credᵀ (El-⌜Σ⌝ _ _))
 
+  -- ⚠ the EXPORTED types spell the index `pair (tag s₀) j` out, never the
+  --   private `ix`: `NCat` is reducible, so a caller's `NCat S st (pair …)`
+  --   against `NCat S st ix` is not a syntactic match, and at a CONCRETE
+  --   stack Agda substitutes through the whole closed `NC S st` code on
+  --   both sides — measured 1.4 s per call, ~390 s of `Knot/Red` (2026-09-30).
+
   -- the target
-  ⊢ncTgt : {c : RTm ⌊ Ξ ⌋} → Ξ ⊢ c ∷ El (NCat S st ix) → Ξ ⊢ fst c ∷ K S j
+  ⊢ncTgt : {c : RTm ⌊ Ξ ⌋} → Ξ ⊢ c ∷ El (NCat S st (pair (tag s₀) j)) → Ξ ⊢ fst c ∷ K S j
   ⊢ncTgt dc = ⊢conv (⊢fst (dΣ dc)) (red→≅ᵀ tgtR)
 
   -- the stack
-  ⊢ncStk : {c : RTm ⌊ Ξ ⌋} → Ξ ⊢ c ∷ El (NCat S st ix) → Ξ ⊢ snd c ∷ PSV st j
+  ⊢ncStk : {c : RTm ⌊ Ξ ⌋} → Ξ ⊢ c ∷ El (NCat S st (pair (tag s₀) j)) → Ξ ⊢ snd c ∷ PSV st j
   ⊢ncStk {c} dc = ⊢conv (⊢-cast {Ξ} {snd c} {subTy (single (fst c)) (El B)} (eB (fst c)) (⊢snd (dΣ dc))) (red→≅ᵀ stkR)
 
   -- …and a convoy from them
   ⊢ncMk : {X v : RTm ⌊ Ξ ⌋} → Lt s₀ 2 → StkOK st → Ξ ⊢ j ∷ El ⌜Nat⌝ →
-          Ξ ⊢ X ∷ K S j → Ξ ⊢ v ∷ PSV st j → Ξ ⊢ pair X v ∷ El (NCat S st ix)
+          Ξ ⊢ X ∷ K S j → Ξ ⊢ v ∷ PSV st j → Ξ ⊢ pair X v ∷ El (NCat S st (pair (tag s₀) j))
   ⊢ncMk {X} {v} lt okst dj dX dv =
     ⊢-cast {Ξ} {pair X v} {El (⌜Σ⌝ (⌜IMu⌝ (SI 2) KD (pair (tag S) (snd ix))) B)} {El (NCat S st ix)} (cong El (sym eNC))
       (⊢conv (⊢pair tyB (⊢conv dX (csymᵀ (red→≅ᵀ tgtR)))
