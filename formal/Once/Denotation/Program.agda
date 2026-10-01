@@ -156,10 +156,9 @@ Linked tbl (const _ _)      = ⊤
 
 ------------------------------------------------------------------------
 -- THE IR PROGRAM (D244): the function table and `main`, the shape codegen
--- emits. `main` runs in the environment of the whole table. The table holds the
--- program's own compiled definitions only: an FFI declaration is an
--- interpretation's code, not an entry of the image, and `main` is the image's
--- entry, not a callable one.
+-- emits. `main` runs in the environment of the whole table. The table holds
+-- every entry of the module (D246: an FFI declaration's is its SigOp wrapper;
+-- D253: `main` too), and the program's `main` is the call of the entry `main`.
 ------------------------------------------------------------------------
 
 record IRProgram : Set where

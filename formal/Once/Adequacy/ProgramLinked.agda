@@ -35,6 +35,8 @@ open import Data.Unit using (⊤; tt)
 open import Data.Bool using (true; false)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.String using (String) renaming (_≟_ to _≟str_)
+import Data.String.Properties as StrProp
+import Data.List
 open import Induction.WellFounded using (Acc; acc)
 open import Data.Nat.Induction using (<-wellFounded)
 open import Relation.Nullary using (Dec; yes; no)
@@ -55,12 +57,18 @@ open import Once.Surface.Syntax hiding (_,_; _,_^_)
 open import Once.Surface.Elaborate using (elaborateFull)
 open import Once.TypeCheck.Raw using (RawExpr)
 open import Once.TypeCheck.Classify using (NamedCtx; Imports; PolyCtx; lookupImport; lookupPolyPrefix; ctxWithImportsAndPolys)
-open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_)
 open import Once.TypeCheck.Elaborate using (VerifiedCheckResult; checkElabV; success; failure)
 open import Once.TypeCheck.ElaborateProofs using (resolveExpr; resolveExprWF)
 open import Once.TypeCheck.Instance using (inst-at)
 open import Once.TypeCheck.Completeness using (check-complete)
-open import Once.Denotation.Realize using (realize)
+open import Once.Denotation.Realize using (realize; realize-infer; realize-d)
+open import Once.TypeCheck.Judgment
+open import Once.TypeCheck.Raw using (BinOp; OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
+open import Once.Type.Rigid using (ground-kinded)
+open import Once.IRTy using (⌊⟧T-commute)
+open import Once.IRTy.WF using (wf-⌊⌋)
+open import Once.Type using (μ-type; ν-type)
+open import Once.CanonicalName using (canonical; own)
 open import Once.Denotation.Program using (IRFun; fname; fdom; fcod; fbody; irProgram; table; main;
   LinkedAt; LinkedAt-at; Linked; LinkedProgram)
 open import Once.Spec.Module using (ModTele; []; ffi; mono; poly; ModuleTyped; ModuleTyped-ef; EffUU)
@@ -69,119 +77,7 @@ open import Once.Adequacy.SourceTrace using (moduleToIR; moduleToIR-aux; moduleT
 import Once.Adequacy.AcceptSound as AS
 import Once.Adequacy.FunBundle as FB
 open import Once.Adequacy.TelePosition
-
-------------------------------------------------------------------------
--- (A) Linkedness grows with the table: a new entry is consed on, and the
--- lookup finds the first entry at the name and objects.
-------------------------------------------------------------------------
-
-linkedAt-cons : ∀ (e : IRFun) (tbl : List IRFun) {f A B} → LinkedAt tbl f A B → LinkedAt (e ∷ tbl) f A B
-linkedAt-cons e tbl {f} {A} {B} lk = go (fname e ≟ᶜ f) (fdom e ≟IRTy A) (fcod e ≟IRTy B)
-  where
-    go : ∀ d₁ d₂ d₃ → LinkedAt-at e tbl f A B d₁ d₂ d₃
-    go (yes _) (yes _) (yes _) = tt
-    go (yes _) (yes _) (no _)  = lk
-    go (yes _) (no _)  _       = lk
-    go (no _)  _       _       = lk
-
-linkedAt-here : ∀ (e : IRFun) (es : List IRFun) → LinkedAt (e ∷ es) (fname e) (fdom e) (fcod e)
-linkedAt-here e es = go (fname e ≟ᶜ fname e) (fdom e ≟IRTy fdom e) (fcod e ≟IRTy fcod e)
-  where
-    go : ∀ d₁ d₂ d₃ → LinkedAt-at e es (fname e) (fdom e) (fcod e) d₁ d₂ d₃
-    go (yes _) (yes _) (yes _) = tt
-    go (yes _) (yes _) (no ¬p) = ⊥-elim (¬p refl)
-    go (yes _) (no ¬p) _       = ⊥-elim (¬p refl)
-    go (no ¬p) _       _       = ⊥-elim (¬p refl)
-
-linked-mono : ∀ {tbl tbl′ : List IRFun} → (∀ {f A B} → LinkedAt tbl f A B → LinkedAt tbl′ f A B)
-            → ∀ {A B} (ir : IR A B) → Linked tbl ir → Linked tbl′ ir
-linked-mono h (g IR.∘ f)       (lg , lf) = linked-mono h g lg , linked-mono h f lf
-linked-mono h IR.⟨ f , g ⟩     (lf , lg) = linked-mono h f lf , linked-mono h g lg
-linked-mono h (IR.case f g)    (lf , lg) = linked-mono h f lf , linked-mono h g lg
-linked-mono h (IR.curry f)     lf = linked-mono h f lf
-linked-mono h (IR.Cata _ alg)  la = linked-mono h alg la
-linked-mono h (IR.Ana _ coalg) lc = linked-mono h coalg lc
-linked-mono h (IR.Call f)      lk = h lk
-linked-mono h IR.id            _ = tt
-linked-mono h IR.fst           _ = tt
-linked-mono h IR.snd           _ = tt
-linked-mono h IR.inl           _ = tt
-linked-mono h IR.inr           _ = tt
-linked-mono h IR.terminal      _ = tt
-linked-mono h IR.initial       _ = tt
-linked-mono h IR.apply         _ = tt
-linked-mono h (IR.In _)        _ = tt
-linked-mono h (IR.out-μ _)     _ = tt
-linked-mono h (IR.Out _)       _ = tt
-linked-mono h (IR.in-ν _)      _ = tt
-linked-mono h (IR.SigOp _)     _ = tt
-linked-mono h (IR.const _ _)   _ = tt
-
-linkedAt-++ : ∀ (later tbl : List IRFun) {f A B} → LinkedAt tbl f A B → LinkedAt (later ++ tbl) f A B
-linkedAt-++ []          tbl lk = lk
-linkedAt-++ (e ∷ later) tbl lk = linkedAt-cons e (later ++ tbl) (linkedAt-++ later tbl lk)
-
--- A call-free IR (linked in the empty table) is linked in every table.
-linkedAt-[] : ∀ {tbl : List IRFun} {f A B} → LinkedAt [] f A B → LinkedAt tbl f A B
-linkedAt-[] ()
-
-------------------------------------------------------------------------
--- (B) The references of a surface term.
-------------------------------------------------------------------------
-
--- `Refs Pc Pp e`: every `closure x : A` in `e` satisfies `Pc x A`, every
--- `poly x A` satisfies `Pp x A`, and every embedded IR morphism is call-free.
-Refs : (Pc Pp : String → Type → Set) → ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A} → Expr Γ Ψ A → Set
-Refs Pc Pp (var _)             = ⊤
-Refs Pc Pp (lam _ _ b)         = Refs Pc Pp b
-Refs Pc Pp (app f x)           = Refs Pc Pp f × Refs Pc Pp x
-Refs Pc Pp (effApp f x)        = Refs Pc Pp f × Refs Pc Pp x
-Refs Pc Pp (pair a b)          = Refs Pc Pp a × Refs Pc Pp b
-Refs Pc Pp (fst' p)            = Refs Pc Pp p
-Refs Pc Pp (snd' p)            = Refs Pc Pp p
-Refs Pc Pp (inl' a)            = Refs Pc Pp a
-Refs Pc Pp (inr' a)            = Refs Pc Pp a
-Refs Pc Pp (case' s l r)       = Refs Pc Pp s × Refs Pc Pp l × Refs Pc Pp r
-Refs Pc Pp unit                = ⊤
-Refs Pc Pp (absurd e)          = Refs Pc Pp e
-Refs Pc Pp (let' e₁ e₂)        = Refs Pc Pp e₁ × Refs Pc Pp e₂
-Refs Pc Pp (int _)             = ⊤
-Refs Pc Pp (str _)             = ⊤
-Refs Pc Pp (float _)           = ⊤
-Refs Pc Pp (add a b)           = Refs Pc Pp a × Refs Pc Pp b
-Refs Pc Pp (sub a b)           = Refs Pc Pp a × Refs Pc Pp b
-Refs Pc Pp (mul a b)           = Refs Pc Pp a × Refs Pc Pp b
-Refs Pc Pp (fadd a b)          = Refs Pc Pp a × Refs Pc Pp b
-Refs Pc Pp (fsub a b)          = Refs Pc Pp a × Refs Pc Pp b
-Refs Pc Pp (fmul a b)          = Refs Pc Pp a × Refs Pc Pp b
-Refs Pc Pp (fdiv a b)          = Refs Pc Pp a × Refs Pc Pp b
-Refs Pc Pp (i2f a)             = Refs Pc Pp a
-Refs Pc Pp (div a b)           = Refs Pc Pp a × Refs Pc Pp b
-Refs Pc Pp (mod' a b)          = Refs Pc Pp a × Refs Pc Pp b
-Refs Pc Pp (neg a)             = Refs Pc Pp a
-Refs Pc Pp (lt a b)            = Refs Pc Pp a × Refs Pc Pp b
-Refs Pc Pp (le a b)            = Refs Pc Pp a × Refs Pc Pp b
-Refs Pc Pp (gt a b)            = Refs Pc Pp a × Refs Pc Pp b
-Refs Pc Pp (ge a b)            = Refs Pc Pp a × Refs Pc Pp b
-Refs Pc Pp (eq a b)            = Refs Pc Pp a × Refs Pc Pp b
-Refs Pc Pp (ne a b)            = Refs Pc Pp a × Refs Pc Pp b
-Refs Pc Pp (coerce _ e)        = Refs Pc Pp e
-Refs Pc Pp (sigOp _ _)         = ⊤
-Refs Pc Pp {A = A} (closure x) = Pc x A
-Refs Pc Pp (poly x T)          = Pp x T
-Refs Pc Pp (closed e)          = Refs Pc Pp e
-Refs Pc Pp (lift-morphism m)   = Linked [] m
-Refs Pc Pp (morph-app m a)     = Linked [] m × Refs Pc Pp a
-Refs Pc Pp (comp' f g)         = Refs Pc Pp f × Refs Pc Pp g
-Refs Pc Pp (copair' f g)       = Refs Pc Pp f × Refs Pc Pp g
-Refs Pc Pp (fork' f g)         = Refs Pc Pp f × Refs Pc Pp g
-Refs Pc Pp (curry' f)          = Refs Pc Pp f
-Refs Pc Pp (cata _ alg)        = Refs Pc Pp alg
-Refs Pc Pp (ana _ coalg)       = Refs Pc Pp coalg
-
--- A reference elaborates to a call (`refIR`); it is linked when the call is.
-RefLinked : List IRFun → String → Type → Set
-RefLinked tbl x A = Linked tbl (refIR A (bare x))
+open import Once.Adequacy.ElaborateLinked
 
 -- What a typing rule finds in scope at a reference.
 ImpRef : Imports → String → Type → Set
@@ -207,73 +103,247 @@ SpliceOK tbl polys I x A =
   → Refs (RefLinked tbl) (RefLinked tbl) (spliceWith {Γ = Γ} pre ac I uf fresh x A (checkElabV (ctxWithImportsAndPolys (I x) pre) b A))
 
 ------------------------------------------------------------------------
--- (C) The three structural facts. SCAFFOLD (plan 0.103 6a‴): stated, wired,
--- discharged next.
+-- (C) In `realize`, a reference is one its rule found in scope: an import
+-- at its type (`t-var-import`, an own-module `t-var-resolved`), or a telescope
+-- entry at a kinded instance of its schema (the `poly` rules).
 ------------------------------------------------------------------------
 
-postulate
-  -- a term whose references are linked elaborates to linked IR
-  elaborate-linked : ∀ (tbl : List IRFun) (m : C.AllocMode) {n} {Γ : Ctx n} {Ψ : Usage n} {A} (e : Expr Γ Ψ A)
-                   → Refs (RefLinked tbl) (RefLinked tbl) e → Linked tbl (elaborateFull m e)
-  -- in `realize`, a reference is one its rule found in scope
-  realize-refs : ∀ {ctx : NamedCtx} {e A} {Ψ : Usage (NamedCtx.size ctx)} (D : ctx ⊢ᶜ e ∶ A ⨾ Ψ)
-               → Refs (ImpRef (NamedCtx.imports ctx)) (PolyRef (NamedCtx.polys ctx)) (realize D)
-  -- the resolver turns telescope references into their splices
-  resolve-refs : ∀ (tbl : List IRFun) (polys : PolyCtx) (pAcc : Acc _<_ (length polys)) (I : String → Imports)
-                   (uf : Imports) (fresh : ℕ) {n} {Γ : Ctx n} {Ψ : Usage n} {A} (e : Expr Γ Ψ A)
-               → (∀ {x A} → PolyRef polys x A → SpliceOK tbl polys I x A)
-               → Refs (RefLinked tbl) (PolyRef polys) e
-               → Refs (RefLinked tbl) (RefLinked tbl) (resolveExprWF polys pAcc I uf fresh e)
+private
+  Refs-substA : ∀ {Pc Pp : String → Type → Set} {n} {Γ : Ctx n} {Ψ : Usage n} {A B} (eq : A ≡ B) (e : Expr Γ Ψ A)
+              → Refs Pc Pp e → Refs Pc Pp (subst (Expr Γ Ψ) eq e)
+  Refs-substA refl e r = r
 
-Refs-map : ∀ {Pc Pp Pc′ Pp′ : String → Type → Set}
-         → (∀ {x A} → Pc x A → Pc′ x A) → (∀ {x A} → Pp x A → Pp′ x A)
-         → ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A} (e : Expr Γ Ψ A) → Refs Pc Pp e → Refs Pc′ Pp′ e
-Refs-map hc hp (var _)             r = tt
-Refs-map hc hp (lam _ _ b)         r = Refs-map hc hp b r
-Refs-map hc hp (app f x)           (a , b) = Refs-map hc hp f a , Refs-map hc hp x b
-Refs-map hc hp (effApp f x)        (a , b) = Refs-map hc hp f a , Refs-map hc hp x b
-Refs-map hc hp (pair x y)          (a , b) = Refs-map hc hp x a , Refs-map hc hp y b
-Refs-map hc hp (fst' p)            r = Refs-map hc hp p r
-Refs-map hc hp (snd' p)            r = Refs-map hc hp p r
-Refs-map hc hp (inl' x)            r = Refs-map hc hp x r
-Refs-map hc hp (inr' x)            r = Refs-map hc hp x r
-Refs-map hc hp (case' s l r′)      (a , b , c) = Refs-map hc hp s a , Refs-map hc hp l b , Refs-map hc hp r′ c
-Refs-map hc hp unit                r = tt
-Refs-map hc hp (absurd e)          r = Refs-map hc hp e r
-Refs-map hc hp (let' e₁ e₂)        (a , b) = Refs-map hc hp e₁ a , Refs-map hc hp e₂ b
-Refs-map hc hp (int _)             r = tt
-Refs-map hc hp (str _)             r = tt
-Refs-map hc hp (float _)           r = tt
-Refs-map hc hp (add x y)           (a , b) = Refs-map hc hp x a , Refs-map hc hp y b
-Refs-map hc hp (sub x y)           (a , b) = Refs-map hc hp x a , Refs-map hc hp y b
-Refs-map hc hp (mul x y)           (a , b) = Refs-map hc hp x a , Refs-map hc hp y b
-Refs-map hc hp (fadd x y)          (a , b) = Refs-map hc hp x a , Refs-map hc hp y b
-Refs-map hc hp (fsub x y)          (a , b) = Refs-map hc hp x a , Refs-map hc hp y b
-Refs-map hc hp (fmul x y)          (a , b) = Refs-map hc hp x a , Refs-map hc hp y b
-Refs-map hc hp (fdiv x y)          (a , b) = Refs-map hc hp x a , Refs-map hc hp y b
-Refs-map hc hp (i2f x)             r = Refs-map hc hp x r
-Refs-map hc hp (div x y)           (a , b) = Refs-map hc hp x a , Refs-map hc hp y b
-Refs-map hc hp (mod' x y)          (a , b) = Refs-map hc hp x a , Refs-map hc hp y b
-Refs-map hc hp (neg x)             r = Refs-map hc hp x r
-Refs-map hc hp (lt x y)            (a , b) = Refs-map hc hp x a , Refs-map hc hp y b
-Refs-map hc hp (le x y)            (a , b) = Refs-map hc hp x a , Refs-map hc hp y b
-Refs-map hc hp (gt x y)            (a , b) = Refs-map hc hp x a , Refs-map hc hp y b
-Refs-map hc hp (ge x y)            (a , b) = Refs-map hc hp x a , Refs-map hc hp y b
-Refs-map hc hp (eq x y)            (a , b) = Refs-map hc hp x a , Refs-map hc hp y b
-Refs-map hc hp (ne x y)            (a , b) = Refs-map hc hp x a , Refs-map hc hp y b
-Refs-map hc hp (coerce _ e)        r = Refs-map hc hp e r
-Refs-map hc hp (sigOp _ _)         r = tt
-Refs-map hc hp (closure x)         r = hc r
-Refs-map hc hp (poly x T)          r = hp r
-Refs-map hc hp (closed e)          r = Refs-map hc hp e r
-Refs-map hc hp (lift-morphism m)   r = r
-Refs-map hc hp (morph-app m x)     (a , b) = a , Refs-map hc hp x b
-Refs-map hc hp (comp' f g)         (a , b) = Refs-map hc hp f a , Refs-map hc hp g b
-Refs-map hc hp (copair' f g)       (a , b) = Refs-map hc hp f a , Refs-map hc hp g b
-Refs-map hc hp (fork' f g)         (a , b) = Refs-map hc hp f a , Refs-map hc hp g b
-Refs-map hc hp (curry' f)          r = Refs-map hc hp f r
-Refs-map hc hp (cata _ alg)        r = Refs-map hc hp alg r
-Refs-map hc hp (ana _ coalg)       r = Refs-map hc hp coalg r
+  Refs-substF : ∀ {Pc Pp : String → Type → Set} {n} {Γ : Ctx n} {Ψ : Usage n} (G : Type → Type) {A B} (eq : A ≡ B)
+                (e : Expr Γ Ψ (G A)) → Refs Pc Pp e → Refs Pc Pp (subst (λ Z → Expr Γ Ψ (G Z)) eq e)
+  Refs-substF G refl e r = r
+
+  Linked-substˡ : ∀ {tbl : List IRFun} {X Y Z : IRTy} (eq : X ≡ Y) (ir : IR X Z)
+                → Linked tbl ir → Linked tbl (subst (λ o → IR o Z) eq ir)
+  Linked-substˡ refl ir l = l
+
+  Linked-substʳ : ∀ {tbl : List IRFun} {X Y Z : IRTy} (eq : Y ≡ Z) (ir : IR X Y)
+                → Linked tbl ir → Linked tbl (subst (λ o → IR X o) eq ir)
+  Linked-substʳ refl ir l = l
+
+RR : (ctx : NamedCtx) → ∀ {Ψ : Usage (NamedCtx.size ctx)} {A} → Expr (NamedCtx.debruijn ctx) Ψ A → Set
+RR ctx = Refs (ImpRef (NamedCtx.imports ctx)) (PolyRef (NamedCtx.polys ctx))
+
+realize-refs   : ∀ {ctx e A} {Ψ : Usage (NamedCtx.size ctx)} (D : ctx ⊢ᶜ e ∶ A ⨾ Ψ) → RR ctx (realize D)
+realize-refs-i : ∀ {ctx e A} {Ψ : Usage (NamedCtx.size ctx)} (D : Once.TypeCheck.Judgment._⊢ᵢ_∶_⨾_ ctx e A Ψ) → RR ctx (realize-infer D)
+realize-refs-d : ∀ {ctx e A B π} {Ψ : Usage (NamedCtx.size ctx)} (D : Once.TypeCheck.Judgment._⊢ᵈ_∶_⇒[_]↦_⨾_ ctx e A π B Ψ)
+               → RR ctx (realize-d D)
+
+realize-refs t-id-check             = tt
+realize-refs t-fst-check            = tt
+realize-refs t-snd-check            = tt
+realize-refs t-terminal-morph-check = tt
+realize-refs t-initial-morph-check  = tt
+realize-refs t-inl-morph-check      = tt
+realize-refs t-inr-morph-check      = tt
+realize-refs (t-compose-check-g dg df)   = realize-refs df , realize-refs-d dg
+realize-refs (t-compose-check-f wf p dg) = realize-refs-i wf , realize-refs dg
+realize-refs (t-case-copair-check df dg) = realize-refs df , realize-refs dg
+realize-refs (t-pair-morph-check df dg)  = realize-refs df , realize-refs dg
+realize-refs (t-curry-check df)          = realize-refs df
+realize-refs (t-cata-check wfF dalg)     = realize-refs dalg
+realize-refs (t-ana-check wfF dcoalg)    = realize-refs dcoalg
+realize-refs (t-sub d p)                 = realize-refs-i d
+realize-refs (t-lam ≤p d)                = realize-refs d
+realize-refs (t-pair-lit-check da db)    = realize-refs da , realize-refs db
+realize-refs (t-In-app-check {F = F} wfF d) =
+  Linked-substˡ (sym (⌊⟧T-commute F (μ-type F))) (IR.In (wf-⌊⌋ wfF)) tt , realize-refs d
+realize-refs (t-apply-check dp)      = tt , realize-refs-i dp
+realize-refs (t-inl-app-check d)     = tt , realize-refs d
+realize-refs (t-inr-app-check d)     = tt , realize-refs d
+realize-refs (t-initial-app-check d) = tt , realize-refs d
+realize-refs (t-var-poly-instantiate eL eI eP ¬g ki) = _ , eP , ki
+
+realize-refs-i (t-int n)         = tt
+realize-refs-i (t-float i f l p) = tt
+realize-refs-i (t-str s)         = tt
+realize-refs-i t-unit            = tt
+realize-refs-i t-unit-var        = tt
+realize-refs-i (t-var-local {eV = svar i} _) = tt
+realize-refs-i (t-var-qualified _ conc) = tt
+realize-refs-i (t-var-resolved {cn = own x} _ lk conc) = lk
+realize-refs-i (t-var-resolved {cn = canonical []} _ _ conc) = tt
+realize-refs-i (t-var-resolved {cn = canonical (_ ∷ _ ∷ _)} _ _ conc) = tt
+realize-refs-i (t-var-import _ _ lk conc) = lk
+realize-refs-i (t-var-poly-instantiate-infer {schema = schema} {g = g} eL eI eP gr T≡) =
+  _ , eP , subst (KindedInstance schema) (sym T≡) (ground-kinded schema g)
+realize-refs-i (t-annot _ d)     = realize-refs d
+realize-refs-i (t-pair da db)    = realize-refs-i da , realize-refs-i db
+realize-refs-i (t-neg d)         = realize-refs-i d
+realize-refs-i (t-neg-float i f l p) = tt
+realize-refs-i (t-let d₁ d₂)     = realize-refs-i d₁ , realize-refs-i d₂
+realize-refs-i (t-case ds dl dr) = realize-refs-i ds , realize-refs-i dl , realize-refs-i dr
+realize-refs-i (t-binop-arith {op = OpAdd} _ d₁ d₂) = realize-refs-i d₁ , realize-refs-i d₂
+realize-refs-i (t-binop-arith {op = OpSub} _ d₁ d₂) = realize-refs-i d₁ , realize-refs-i d₂
+realize-refs-i (t-binop-arith {op = OpMul} _ d₁ d₂) = realize-refs-i d₁ , realize-refs-i d₂
+realize-refs-i (t-binop-arith {op = OpDiv} _ d₁ d₂) = realize-refs-i d₁ , realize-refs-i d₂
+realize-refs-i (t-binop-arith {op = OpMod} _ d₁ d₂) = realize-refs-i d₁ , realize-refs-i d₂
+realize-refs-i (t-binop-arith {op = OpLt} () _ _)
+realize-refs-i (t-binop-arith {op = OpLe} () _ _)
+realize-refs-i (t-binop-arith {op = OpGt} () _ _)
+realize-refs-i (t-binop-arith {op = OpGe} () _ _)
+realize-refs-i (t-binop-arith {op = OpEq} () _ _)
+realize-refs-i (t-binop-arith {op = OpNe} () _ _)
+realize-refs-i (t-binop-arith-float {op = OpAdd} _ d₁ d₂) = realize-refs-i d₁ , realize-refs-i d₂
+realize-refs-i (t-binop-arith-float {op = OpSub} _ d₁ d₂) = realize-refs-i d₁ , realize-refs-i d₂
+realize-refs-i (t-binop-arith-float {op = OpMul} _ d₁ d₂) = realize-refs-i d₁ , realize-refs-i d₂
+realize-refs-i (t-binop-arith-float {op = OpDiv} _ d₁ d₂) = realize-refs-i d₁ , realize-refs-i d₂
+realize-refs-i (t-binop-arith-float {op = OpMod} () _ _)
+realize-refs-i (t-binop-arith-float {op = OpLt} () _ _)
+realize-refs-i (t-binop-arith-float {op = OpLe} () _ _)
+realize-refs-i (t-binop-arith-float {op = OpGt} () _ _)
+realize-refs-i (t-binop-arith-float {op = OpGe} () _ _)
+realize-refs-i (t-binop-arith-float {op = OpEq} () _ _)
+realize-refs-i (t-binop-arith-float {op = OpNe} () _ _)
+realize-refs-i (t-binop-arith-float-il {op = OpAdd} _ d₁ d₂) = realize-refs-i d₁ , realize-refs-i d₂
+realize-refs-i (t-binop-arith-float-il {op = OpSub} _ d₁ d₂) = realize-refs-i d₁ , realize-refs-i d₂
+realize-refs-i (t-binop-arith-float-il {op = OpMul} _ d₁ d₂) = realize-refs-i d₁ , realize-refs-i d₂
+realize-refs-i (t-binop-arith-float-il {op = OpDiv} _ d₁ d₂) = realize-refs-i d₁ , realize-refs-i d₂
+realize-refs-i (t-binop-arith-float-il {op = OpMod} () _ _)
+realize-refs-i (t-binop-arith-float-il {op = OpLt} () _ _)
+realize-refs-i (t-binop-arith-float-il {op = OpLe} () _ _)
+realize-refs-i (t-binop-arith-float-il {op = OpGt} () _ _)
+realize-refs-i (t-binop-arith-float-il {op = OpGe} () _ _)
+realize-refs-i (t-binop-arith-float-il {op = OpEq} () _ _)
+realize-refs-i (t-binop-arith-float-il {op = OpNe} () _ _)
+realize-refs-i (t-binop-arith-float-ir {op = OpAdd} _ d₁ d₂) = realize-refs-i d₁ , realize-refs-i d₂
+realize-refs-i (t-binop-arith-float-ir {op = OpSub} _ d₁ d₂) = realize-refs-i d₁ , realize-refs-i d₂
+realize-refs-i (t-binop-arith-float-ir {op = OpMul} _ d₁ d₂) = realize-refs-i d₁ , realize-refs-i d₂
+realize-refs-i (t-binop-arith-float-ir {op = OpDiv} _ d₁ d₂) = realize-refs-i d₁ , realize-refs-i d₂
+realize-refs-i (t-binop-arith-float-ir {op = OpMod} () _ _)
+realize-refs-i (t-binop-arith-float-ir {op = OpLt} () _ _)
+realize-refs-i (t-binop-arith-float-ir {op = OpLe} () _ _)
+realize-refs-i (t-binop-arith-float-ir {op = OpGt} () _ _)
+realize-refs-i (t-binop-arith-float-ir {op = OpGe} () _ _)
+realize-refs-i (t-binop-arith-float-ir {op = OpEq} () _ _)
+realize-refs-i (t-binop-arith-float-ir {op = OpNe} () _ _)
+realize-refs-i (t-binop-cmp {op = OpLt} _ d₁ d₂) = realize-refs-i d₁ , realize-refs-i d₂
+realize-refs-i (t-binop-cmp {op = OpLe} _ d₁ d₂) = realize-refs-i d₁ , realize-refs-i d₂
+realize-refs-i (t-binop-cmp {op = OpGt} _ d₁ d₂) = realize-refs-i d₁ , realize-refs-i d₂
+realize-refs-i (t-binop-cmp {op = OpGe} _ d₁ d₂) = realize-refs-i d₁ , realize-refs-i d₂
+realize-refs-i (t-binop-cmp {op = OpEq} _ d₁ d₂) = realize-refs-i d₁ , realize-refs-i d₂
+realize-refs-i (t-binop-cmp {op = OpNe} _ d₁ d₂) = realize-refs-i d₁ , realize-refs-i d₂
+realize-refs-i (t-binop-cmp {op = OpAdd} () _ _)
+realize-refs-i (t-binop-cmp {op = OpSub} () _ _)
+realize-refs-i (t-binop-cmp {op = OpMul} () _ _)
+realize-refs-i (t-binop-cmp {op = OpDiv} () _ _)
+realize-refs-i (t-binop-cmp {op = OpMod} () _ _)
+realize-refs-i (t-id-app d)       = tt , realize-refs-i d
+realize-refs-i (t-fst-app d)      = tt , realize-refs-i d
+realize-refs-i (t-snd-app d)      = tt , realize-refs-i d
+realize-refs-i (t-Out-app-infer {F = F} wfF ceq d) =
+  Refs-substA ceq _
+    ( Linked-substʳ (sym (⌊⟧T-commute F (ν-type F Once.Type.pure))) (IR.Out (wf-⌊⌋ wfF)) tt
+    , realize-refs-i d)
+realize-refs-i (t-Out-eff-app-infer {F = F} wfF ceq d) =
+  Refs-substF (λ Z → Once.Type.Unit Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] Z) ceq _
+    ( (Linked-substʳ (sym (⌊⟧T-commute F (ν-type F Once.Type.eff))) (IR.Out (wf-⌊⌋ wfF)) tt , tt)
+    , realize-refs-i d)
+realize-refs-i (t-terminal-app d) = tt , realize-refs-i d
+realize-refs-i (t-apply-app-infer d) = tt , realize-refs-i d
+realize-refs-i (t-apply-eff-app-infer d) = (tt , tt) , realize-refs-i d
+realize-refs-i (t-app _ df dx)    = realize-refs-i df , realize-refs dx
+realize-refs-i (t-effApp _ df dx) = realize-refs-i df , realize-refs dx
+realize-refs-i (t-app-spine _ dx df) = realize-refs-d df , realize-refs-i dx
+
+realize-refs-d (d-infer w a g) = realize-refs-i w
+realize-refs-d (d-poly eL eI eP ¬g as inc ki g) = _ , eP , ki
+realize-refs-d (d-lam ≤p d)      = realize-refs-i d
+realize-refs-d (d-compose dg df) = realize-refs-d df , realize-refs-d dg
+realize-refs-d d-id       = tt
+realize-refs-d d-fst      = tt
+realize-refs-d d-snd      = tt
+realize-refs-d d-terminal = tt
+realize-refs-d d-initial  = tt
+realize-refs-d (d-case df dg) = realize-refs-d df , realize-refs-d dg
+realize-refs-d (d-pair df dg) = realize-refs-d df , realize-refs-d dg
+realize-refs-d (d-cata wfF dalg) = realize-refs-i dalg
+
+------------------------------------------------------------------------
+-- (C′) The resolver turns each telescope reference into its splice.
+------------------------------------------------------------------------
+
+module _ (tbl : List IRFun) (polys : PolyCtx) (I : String → Imports)
+         (sp : ∀ {x A} → PolyRef polys x A → SpliceOK tbl polys I x A) where
+  private
+    L = RefLinked tbl
+
+    -- `applySplice` is `spliceWith` at the prefix's accessibility.
+    as-case : ∀ (pAcc : Acc _<_ (length polys)) (uf : Imports) (fresh : ℕ) (x : String) (A : Type) {n} {Γ : Ctx n}
+                {s b pre} (polyEq : lookupPolyPrefix polys x ≡ just (s , b , pre))
+                (cr : VerifiedCheckResult (ctxWithImportsAndPolys (I x) pre) b A)
+            → (∀ ac → Refs L L (spliceWith {Γ = Γ} pre ac I uf fresh x A cr))
+            → Refs L L (Once.TypeCheck.ElaborateProofs.applySplice {Γ = Γ} polys pAcc I uf fresh x A polyEq cr)
+    as-case pAcc       uf fresh x A polyEq (failure e , w) h = h (<-wellFounded _)
+    as-case (acc rec) uf fresh x A polyEq (success Usage.[] _ _ _ , w) h =
+      h (rec (Once.TypeCheck.Classify.lookupPolyPrefix-decreases x polys polyEq))
+
+    rp-case : ∀ (pAcc : Acc _<_ (length polys)) (uf : Imports) (fresh : ℕ) (x : String) (A : Type) {n} {Γ : Ctx n}
+                (look : Maybe (PolyType × RawExpr × PolyCtx)) (lq : lookupPolyPrefix polys x ≡ look)
+            → PolyRef polys x A
+            → Refs L L (Once.TypeCheck.ElaborateProofs.resolvePolyCase {Γ = Γ} polys pAcc I uf fresh x A look lq)
+    rp-case pAcc uf fresh x A nothing lq ((_ , eP , _)) = ⊥-elim (nothing≢just (trans (sym lq) eP))
+      where nothing≢just : ∀ {X : Set} {v : X} → nothing ≢ just v
+            nothing≢just ()
+    rp-case pAcc uf fresh x A {Γ = Γ} (just (s , b , pre)) lq pr =
+      as-case pAcc uf fresh x A lq (checkElabV (ctxWithImportsAndPolys (I x) pre) b A)
+              (λ ac → sp pr lq ac uf fresh {Γ = Γ})
+
+  resolve-refs : ∀ (pAcc : Acc _<_ (length polys)) (uf : Imports) (fresh : ℕ) {n} {Γ : Ctx n} {Ψ : Usage n} {A}
+                   (e : Expr Γ Ψ A)
+               → Refs L (PolyRef polys) e → Refs L L (resolveExprWF polys pAcc I uf fresh e)
+  resolve-refs pAcc uf fresh (var _)           r = tt
+  resolve-refs pAcc uf fresh (lam _ _ b)       r = resolve-refs pAcc uf fresh b r
+  resolve-refs pAcc uf fresh (app f x)         (a , b) = resolve-refs pAcc uf fresh f a , resolve-refs pAcc uf fresh x b
+  resolve-refs pAcc uf fresh (effApp f x)      (a , b) = resolve-refs pAcc uf fresh f a , resolve-refs pAcc uf fresh x b
+  resolve-refs pAcc uf fresh (pair x y)        (a , b) = resolve-refs pAcc uf fresh x a , resolve-refs pAcc uf fresh y b
+  resolve-refs pAcc uf fresh (fst' p)          r = resolve-refs pAcc uf fresh p r
+  resolve-refs pAcc uf fresh (snd' p)          r = resolve-refs pAcc uf fresh p r
+  resolve-refs pAcc uf fresh (inl' x)          r = resolve-refs pAcc uf fresh x r
+  resolve-refs pAcc uf fresh (inr' x)          r = resolve-refs pAcc uf fresh x r
+  resolve-refs pAcc uf fresh (case' s l r′)    (a , b , c) =
+    resolve-refs pAcc uf fresh s a , resolve-refs pAcc uf fresh l b , resolve-refs pAcc uf fresh r′ c
+  resolve-refs pAcc uf fresh unit              r = tt
+  resolve-refs pAcc uf fresh (absurd e)        r = resolve-refs pAcc uf fresh e r
+  resolve-refs pAcc uf fresh (let' e₁ e₂)      (a , b) = resolve-refs pAcc uf fresh e₁ a , resolve-refs pAcc uf fresh e₂ b
+  resolve-refs pAcc uf fresh (int _)           r = tt
+  resolve-refs pAcc uf fresh (str _)           r = tt
+  resolve-refs pAcc uf fresh (float _)         r = tt
+  resolve-refs pAcc uf fresh (add x y)         (a , b) = resolve-refs pAcc uf fresh x a , resolve-refs pAcc uf fresh y b
+  resolve-refs pAcc uf fresh (sub x y)         (a , b) = resolve-refs pAcc uf fresh x a , resolve-refs pAcc uf fresh y b
+  resolve-refs pAcc uf fresh (mul x y)         (a , b) = resolve-refs pAcc uf fresh x a , resolve-refs pAcc uf fresh y b
+  resolve-refs pAcc uf fresh (fadd x y)        (a , b) = resolve-refs pAcc uf fresh x a , resolve-refs pAcc uf fresh y b
+  resolve-refs pAcc uf fresh (fsub x y)        (a , b) = resolve-refs pAcc uf fresh x a , resolve-refs pAcc uf fresh y b
+  resolve-refs pAcc uf fresh (fmul x y)        (a , b) = resolve-refs pAcc uf fresh x a , resolve-refs pAcc uf fresh y b
+  resolve-refs pAcc uf fresh (fdiv x y)        (a , b) = resolve-refs pAcc uf fresh x a , resolve-refs pAcc uf fresh y b
+  resolve-refs pAcc uf fresh (i2f x)           r = resolve-refs pAcc uf fresh x r
+  resolve-refs pAcc uf fresh (div x y)         (a , b) = resolve-refs pAcc uf fresh x a , resolve-refs pAcc uf fresh y b
+  resolve-refs pAcc uf fresh (mod' x y)        (a , b) = resolve-refs pAcc uf fresh x a , resolve-refs pAcc uf fresh y b
+  resolve-refs pAcc uf fresh (neg x)           r = resolve-refs pAcc uf fresh x r
+  resolve-refs pAcc uf fresh (lt x y)          (a , b) = resolve-refs pAcc uf fresh x a , resolve-refs pAcc uf fresh y b
+  resolve-refs pAcc uf fresh (le x y)          (a , b) = resolve-refs pAcc uf fresh x a , resolve-refs pAcc uf fresh y b
+  resolve-refs pAcc uf fresh (gt x y)          (a , b) = resolve-refs pAcc uf fresh x a , resolve-refs pAcc uf fresh y b
+  resolve-refs pAcc uf fresh (ge x y)          (a , b) = resolve-refs pAcc uf fresh x a , resolve-refs pAcc uf fresh y b
+  resolve-refs pAcc uf fresh (eq x y)          (a , b) = resolve-refs pAcc uf fresh x a , resolve-refs pAcc uf fresh y b
+  resolve-refs pAcc uf fresh (ne x y)          (a , b) = resolve-refs pAcc uf fresh x a , resolve-refs pAcc uf fresh y b
+  resolve-refs pAcc uf fresh (coerce _ e)      r = resolve-refs pAcc uf fresh e r
+  resolve-refs pAcc uf fresh (sigOp _ _)       r = tt
+  resolve-refs pAcc uf fresh (closure x)       r = r
+  resolve-refs pAcc uf fresh {A = A} (poly x T) r =
+    rp-case pAcc uf fresh x A (lookupPolyPrefix polys x) refl r
+  resolve-refs pAcc uf fresh (closed e)        r = resolve-refs pAcc uf fresh e r
+  resolve-refs pAcc uf fresh (lift-morphism m) r = r
+  resolve-refs pAcc uf fresh (morph-app m x)   (a , b) = a , resolve-refs pAcc uf fresh x b
+  resolve-refs pAcc uf fresh (comp' f g)       (a , b) = resolve-refs pAcc uf fresh f a , resolve-refs pAcc uf fresh g b
+  resolve-refs pAcc uf fresh (copair' f g)     (a , b) = resolve-refs pAcc uf fresh f a , resolve-refs pAcc uf fresh g b
+  resolve-refs pAcc uf fresh (fork' f g)       (a , b) = resolve-refs pAcc uf fresh f a , resolve-refs pAcc uf fresh g b
+  resolve-refs pAcc uf fresh (curry' f)        r = resolve-refs pAcc uf fresh f r
+  resolve-refs pAcc uf fresh (cata _ alg)      r = resolve-refs pAcc uf fresh alg r
+  resolve-refs pAcc uf fresh (ana _ coalg)     r = resolve-refs pAcc uf fresh coalg r
 
 ------------------------------------------------------------------------
 -- (D) An entry's call and body.
@@ -377,8 +447,9 @@ body-linked : ∀ {csc pre} → LInv csc pre → (x : String) (ty : Type) {body 
 body-linked {csc} {pre} inv x ty {body} cf ce =
   subst (Linked pre) (sym (irFun-form (C.CScope.cimps csc) (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) x ty body cf ce))
     (elaborate-linked pre C.Heap (resolveExpr (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) uf 0 (realize D′))
-      (resolve-refs pre (C.cpolys csc) (<-wellFounded (length (C.cpolys csc))) (C.declImps (C.CScope.ctele csc)) uf 0 (realize D′)
+      (resolve-refs pre (C.cpolys csc) (C.declImps (C.CScope.ctele csc))
          (LInv.tel-ok inv (C.declImps (C.CScope.ctele csc)) (LInv.iself inv))
+         (<-wellFounded (length (C.cpolys csc))) uf 0 (realize D′)
          (Refs-map {Pc = ImpRef (C.CScope.cimps csc)} {Pp = PolyRef (C.cpolys csc)} {Pc′ = RefLinked pre} {Pp′ = PolyRef (C.cpolys csc)}
                    (λ {x} {A} → LInv.imp-ok inv {x} {A}) (λ r → r) (realize D′) (realize-refs D′))))
   where D′ = sound-of (checkElabV (ctxWithImportsAndPolys (C.CScope.cimps csc) (C.cpolys csc)) body ty) ce
@@ -391,14 +462,67 @@ prim-linked : ∀ (pre : List IRFun) (fi : C.FunInfo) (ty : Type) (c : _)
 prim-linked pre fi ty c =
   dc-linked pre ty _ (elaborate-linked pre C.Heap (sigOp {Γ = ∅} (bare (funName fi)) c) tt)
 
-postulate
-  -- SCAFFOLD (plan 0.103 6a‴): a telescope entry joins the scope; its splice
-  -- at every instance is linked (its body checks there, D243, and the
-  -- realization's references are the scope's). Discharged next.
-  linv-poly : ∀ {csc pre} {pfi : C.PolyFunInfo} {Ψ : Usage 0}
-            → ctxWithImportsAndPolys (C.CScope.cimps csc) (C.cpolys csc) ⊢ᶜ pfunBody pfi ∶ rigidOf (pfunType pfi) ⨾ Ψ
-            → All (pfunName pfi ≢_) (scopeNames csc)
-            → LInv csc pre → LInv (C.addEntry csc pfi) pre
+-- A telescope entry joins the scope. Its splice at a kinded instance is
+-- linked: its body, typed once at the rigid schema, types at the instance
+-- (`inst-at`, D243/D252), so the checker succeeds there (completeness); the
+-- splice is the realization of that derivation, whose references are the
+-- scope's (`realize-refs`), resolved (`resolve-refs`).
+private
+  splice-at : ∀ (tbl : List IRFun) (pre : PolyCtx) (ac : Acc _<_ (length pre)) (I : String → Imports) (uf : Imports)
+                (fresh : ℕ) (x : String) (A : Type) {n} {Γ : Ctx n} {Xs : Imports} {b : RawExpr} {se : _} {d f : ℕ}
+                (cr : VerifiedCheckResult (ctxWithImportsAndPolys Xs pre) b A)
+                (ce : proj₁ cr ≡ success Usage.[] se d f)
+            → Refs (RefLinked tbl) (RefLinked tbl) (resolveExprWF pre ac I uf fresh (realize (sound-of cr ce)))
+            → Refs (RefLinked tbl) (RefLinked tbl) (spliceWith {Γ = Γ} pre ac I uf fresh x A cr)
+  splice-at tbl pre ac I uf fresh x A (success Usage.[] _ _ _ , w) refl r = r
+
+linv-poly : ∀ {csc pre} {pfi : C.PolyFunInfo} {Ψ : Usage 0}
+          → ctxWithImportsAndPolys (C.CScope.cimps csc) (C.cpolys csc) ⊢ᶜ pfunBody pfi ∶ rigidOf (pfunType pfi) ⨾ Ψ
+          → All (pfunName pfi ≢_) (scopeNames csc)
+          → LInv csc pre → LInv (C.addEntry csc pfi) pre
+linv-poly {csc} {pre} {pfi} {Usage.[]} D fr inv = record
+  { irf    = LInv.irf inv
+  ; iself  = declImps-head (pfi , C.CScope.cimps csc) (C.CScope.ctele csc) (pfunName pfi ≟str pfunName pfi)
+             ∷ iself-step (pfi , C.CScope.cimps csc) (C.CScope.ctele csc) (C.CScope.ctele csc)
+                          (++⁻ʳ (Data.List.map proj₁ (C.CScope.cimps csc)) fr) (LInv.iself inv)
+  ; imp-ok = LInv.imp-ok inv
+  ; tel-ok = tel′
+  ; ent-ok = LInv.ent-ok inv
+  }
+  where
+    y     = pfunName pfi
+    scT   = pfunType pfi
+    bd    = pfunBody pfi
+    polys = C.cpolys csc
+    imps  = C.CScope.cimps csc
+
+    -- the head: its body at the instance, in its declaration scope
+    head-ok : ∀ (I : String → Imports) → I y ≡ imps → IAgree I (C.CScope.ctele csc) → ∀ {A} → KindedInstance scT A
+            → ∀ (ac : Acc _<_ (length polys)) (uf : Imports) (fresh : ℕ) {n} {Γ : Ctx n}
+            → Refs (RefLinked pre) (RefLinked pre)
+                   (spliceWith {Γ = Γ} polys ac I uf fresh y A (checkElabV (ctxWithImportsAndPolys (I y) polys) bd A))
+    head-ok I iy ia {A} ki ac uf fresh {Γ = Γ} =
+      subst (λ Xs → Refs (RefLinked pre) (RefLinked pre)
+                         (spliceWith {Γ = Γ} polys ac I uf fresh y A (checkElabV (ctxWithImportsAndPolys Xs polys) bd A)))
+            (sym iy)
+            (splice-at pre polys ac I uf fresh y A cr ce
+              (resolve-refs pre polys I (LInv.tel-ok inv I ia) ac uf fresh (realize w)
+                 (Refs-map {Pc = ImpRef imps} {Pp = PolyRef polys} {Pc′ = RefLinked pre} {Pp′ = PolyRef polys}
+                           (λ {x} {B} → LInv.imp-ok inv {x} {B}) (λ r → r) (realize w) (realize-refs w))))
+      where
+        D-A = inst-at scT (LInv.irf inv) D ki
+        cr  = checkElabV (ctxWithImportsAndPolys imps polys) bd A
+        ce  = proj₂ (proj₂ (proj₂ (check-complete D-A)))
+        w   = sound-of cr ce
+
+    tel′ : ∀ (I : String → Imports) → IAgree I ((pfi , imps) ∷ C.CScope.ctele csc)
+         → ∀ {x A} → PolyRef (C.cpolys (C.addEntry csc pfi)) x A → SpliceOK pre (C.cpolys (C.addEntry csc pfi)) I x A
+    tel′ I (iy ∷ ia) {x} {A} pr {s} {b} {pre′} lk ac uf fresh {Γ = Γ} with StrProp._≟_ y x
+    tel′ I (iy ∷ ia) {x} {A} (r , eP , ki) {s} {b} {pre′} lk ac uf fresh {Γ = Γ} | yes refl
+      with just-injective lk | just-injective eP
+    ... | refl | refl = head-ok I iy ia ki ac uf fresh {Γ = Γ}
+    tel′ I (iy ∷ ia) {x} {A} pr {s} {b} {pre′} lk ac uf fresh {Γ = Γ} | no _ =
+      LInv.tel-ok inv I ia pr lk ac uf fresh {Γ = Γ}
 
 link-walk : ∀ {csc es} (mt : ModTele (AS.scopeOf csc) es) (b : FB.FunBundle csc es) (pre : List IRFun)
           → LInv csc pre → Fresh csc es
