@@ -89,7 +89,8 @@ open import Once.Denotation.TraceMonad using (T; projTrace)
 open import Once.Adequacy.TeleEnvLemmas fmt using (σW; callSD-later; refs-skip; refs-head; spliceClosed; RefsAgree; envrel-transport;
   imprel-transport; calls-same)
 import Once.Adequacy.TeleEntry fmt as TE
-import Once.TypeCheck.RigidSubst as RS
+
+import Once.Adequacy.ElabInst as EI
 open import Once.Type.Rigid using (RigidFree)
 import Once.Adequacy.SourceFaithful as SF
 import Once.Adequacy.FaithfulLemmas as FLm
@@ -397,30 +398,16 @@ inv-mono {S = S} {csc} {tl} {is} {ts} {pre} sg {fi} {ty} {g} {Ctx.Usage.[]} D {i
 -- the resolver's splice of its body at the instance (6e).
 ------------------------------------------------------------------------
 
--- The substitution instance, over a context without locals (its usage is `[]`):
--- the surface substitution lemma (`RigidSubst`, plan 0.104 E) at the kinded
--- instance, whose `ρ̂` sends the rigid schema type to the instance on the nose.
-inst-at : ∀ {csc : C.CScope} {body : _} (sc : Once.Type.PolyType)
-        → ImportsRF (C.CScope.cimps csc)
-        → ctxOf (AS.scopeOf csc) ⊢ᶜ body ∶ rigidOf sc ⨾ Ctx.Usage.[] → ∀ {U} → KindedInstance sc U
-        → ctxOf (AS.scopeOf csc) ⊢ᶜ body ∶ U ⨾ Ctx.Usage.[]
-inst-at sc irf D ki with kinded-instance sc ki
-... | τ , rk , e = subst (λ X → _ ⊢ᶜ _ ∶ X ⨾ Ctx.Usage.[]) e (RS.subst-c (kindsOf sc) τ rk irf D)
-
+-- Plan 0.104 E: the body at a kinded instance is the surface substitution
+-- instance of its rigid derivation (`ElabInst.inst-at`, proved), and it means
+-- the entry's abstraction instantiated there (`ElabInst.poly-instance-sem`).
 postulate
-  -- RESIDUAL, class DEFERRED PROOF (plan 0.103 D, 6e): the entry's body at the
-  -- instance — the SUBSTITUTION INSTANCE of its rigid derivation — elaborates to
-  -- what the entry's abstraction, instantiated there, means: the core's
-  -- semantic substitution lemma, in one environment.
-  poly-instance-sem : ∀ {s} {S : Sig s} {csc : C.CScope} (is : ImpSig S (C.CScope.cimps csc))
-                        (ts : TeleSig S (C.telePolys (C.CScope.ctele csc))) (sg : SigCF S) (δ : GM.DefSem S)
-                        {body : _} (sc : Once.Type.PolyType)
-                        (irf : ImportsRF (C.CScope.cimps csc))
-                        (D : ctxOf (AS.scopeOf csc) ⊢ᶜ body ∶ rigidOf sc ⨾ Ctx.Usage.[]) {U : Type} (ki : KindedInstance sc U)
-                    → GM.⟦_⟧ S (proj₂ (ElabM.elabᶜ S (viewOf {S = S} is ts) (inst-at sc irf D ki))) fmt δ tt
-                      ≡ subst (λ X → ⟦ X ⟧ᵛ) (proj₂ (proj₂ (kinded-instance sc ki)))
-                          (GM.⟦_⟧ S (PT.instantiate S (proj₁ (kinded-instance sc ki)) (proj₁ (proj₂ (kinded-instance sc ki)))
-                                       (A.abs-⊢ S (kindsOf sc) sg (proj₂ (ElabM.elabᶜ S (viewOf {S = S} is ts) D)))) fmt δ tt)
+  -- RESIDUAL (plan 0.104 E.2, deferred proof, discharged next): the module's
+  -- view finds, at a substituted instance, the substituted instance.
+  viewOf-natural : ∀ {s} {S : Sig s} {imps ps} (is : ImpSig S imps) (ts : TeleSig S ps)
+                     {m} (Δ : Once.Spec.Core.PolyTy.KCtx m) (τ : Once.Spec.Core.PolyTy.GSub m)
+                     (r : Once.Spec.Core.PolyTy.Respects Δ τ)
+                 → EI.Natural S Δ τ r (viewOf {S = S} is ts)
 
 private
   declImps-head : ∀ (e : C.PolyFunInfo × C.FunCtx) (es : List (C.PolyFunInfo × C.FunCtx))
@@ -510,11 +497,12 @@ inv-poly {S = S} {csc} {tl} {is} {ts} {pre} sg {pfi} {Ctx.Usage.[]} D inv fr = r
         head U ki =
           subst (λ m → RelGM Once.Type.pure U m (SD.refs σ y U))
                 (trans (CMB.bridge-c fmt S {δ = δ} V (CE.agree fmt S δ is ts (Inv.valid inv)) D-U tt)
-                       (poly-instance-sem is ts sg δ scT (Inv.irf inv) D ki))
+                       (EI.poly-instance-sem S (viewOf {S = S} is ts) sg fmt δ scT
+                         (λ ki′ → viewOf-natural is ts (kindsOf scT) _ _) (Inv.irf inv) D ki))
                 (subst (RelGM Once.Type.pure U (MeaningM.⟦_⟧ᶜ D-U fmt ρ tt)) (sym eqSD)
                        (MB.bridge-c fmt σo D-U {dγ₁ = tt} {dγ₂ = tt} (MB.mk↾ tt) old))
           where
-            D-U = inst-at {csc = csc} scT (Inv.irf inv) D ki
+            D-U = EI.inst-at S scT (Inv.irf inv) D ki
             ccU = Once.TypeCheck.Completeness.check-complete D-U
             eE  = proj₁ ccU
             ce  = proj₂ (proj₂ (proj₂ ccU))
