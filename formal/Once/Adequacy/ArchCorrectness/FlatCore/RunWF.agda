@@ -101,8 +101,15 @@ open import Once.CCC.Codegen.SlotSeg
 import Once.CCC.Codegen.SlotBudget as SB
 import Once.CCC.Codegen.FrameFreeTrace as FFT
 import Once.CCC.Codegen.AllocMin as AM
-open import Once.CCC.Codegen.ProgramImage using (program-image; fns-image)
-open import Once.Denotation.Program using (IRFun; irProgram; fname; fbody)
+open import Once.CCC.Codegen.ProgramImage using (program-image; fns-image; fn-image; fn-next)
+import Once.CCC.Codegen.CallsLinked as CLk
+open import Once.CCC.Codegen.CallOK using (CallOKI)
+open import Data.List.Relation.Unary.Any using (Any; here; there)
+open import Data.List.Relation.Unary.Any.Properties using () renaming (++⁺ˡ to Any++⁺ˡ; ++⁺ʳ to Any++⁺ʳ)
+open import Once.CCC.Label using (EntryId; e-fn; _≡ᵇᴱ_; _≟ᴱ_)
+open import Once.CanonicalName using (_≟ᶜ_)
+open import Once.IRTy using (_≟IRTy_)
+open import Once.Denotation.Program using (IRFun; irProgram; fname; fdom; fcod; fbody; Linked; LinkedAt; LinkedAt-at; LinkedProgram)
 open import Data.List.Relation.Unary.All.Properties using (++⁺)
 open import Once.CCC.Codegen.ProgramImageFacts o using (image-frame-free; image-alloc-min; image-slots; image-jump-in-segment)
 open import Once.IR using (IR; Unit)
@@ -142,6 +149,75 @@ open import Once.Adequacy.ArchCorrectness.FlatCore.RunContext o FS slot-size wor
 -- The two that stayed behind are `arith-sigop-contract` and
 -- `external-sigop-contract`: both quantify over `HeapView` and the x86-64
 -- arith runtime, so they are genuinely x86-64's.
+------------------------------------------------------------------------
+-- D245: A DIRECT CALL IN A LINKED IMAGE FINDS ITS CALLEE — PROVED (plan 0.103
+-- 6a‴). The emitter writes `c-call-fn f` for a `Call f` and nowhere else, so in
+-- a linked image every direct call names an entry of the table
+-- (`CallsLinked`); the image holds every entry under its `e-fn` marker
+-- (`fn-image`); and the entry scan finds any marker that is there.
+------------------------------------------------------------------------
+
+private
+  fns-calls : ∀ (tbl : List IRFun) (l : ℕ) (es : List IRFun) → AllL (λ e → Linked tbl (fbody e)) es
+            → AllL (CallOKI tbl) (fns-image l es)
+  fns-calls tbl l []       allL-[]          = allL-[]
+  fns-calls tbl l (e ∷ es) (le allL∷ les) =
+    ++⁺ (tt allL∷ CLk.ir-to-trace-lab-calls (fname e) tbl (fbody e) l le) (fns-calls tbl (fn-next l e) es les)
+
+  image-calls : ∀ (tbl : List IRFun) (ir : IR Unit Unit) → LinkedProgram (irProgram tbl ir)
+              → AllL (CallOKI tbl) (program-image o (irProgram tbl ir))
+  image-calls tbl ir (lm , les) = ++⁺ (CLk.ir-to-trace-calls o tbl ir lm) (fns-calls tbl _ tbl les)
+
+  -- a linked call names an entry
+  linked-any : ∀ (tbl : List IRFun) {f A B} → LinkedAt tbl f A B → Any (λ e → fname e ≡ f) tbl
+  linked-any []       ()
+  linked-any (e ∷ es) {f} {A} {B} lk = go (fname e ≟ᶜ f) (fdom e ≟IRTy A) (fcod e ≟IRTy B) lk
+    where
+      go : ∀ d₁ d₂ d₃ → LinkedAt-at e es f A B d₁ d₂ d₃ → Any (λ e′ → fname e′ ≡ f) (e ∷ es)
+      go (yes p) (yes _) (yes _) _  = here p
+      go (yes _) (yes _) (no _)  lk = there (linked-any es lk)
+      go (yes _) (no _)  _       lk = there (linked-any es lk)
+      go (no _)  _       _       lk = there (linked-any es lk)
+
+  -- every entry of the table has its marker in the image
+  entries-in : ∀ (l : ℕ) (es : List IRFun) (f : CanonicalName) → Any (λ e → fname e ≡ f) es
+             → Any (λ x → entry-of? x ≡ just (e-fn f)) (fns-image l es)
+  entries-in l (e ∷ es) f (here p)  = Any++⁺ˡ {xs = fn-image l e} {ys = fns-image (fn-next l e) es} (here (cong (λ g → just (e-fn g)) p))
+  entries-in l (e ∷ es) f (there a) = Any++⁺ʳ (fn-image l e) (entries-in (fn-next l e) es f a)
+
+  ≡ᵇᴱ-refl : ∀ (a : EntryId) → (a ≡ᵇᴱ a) ≡ true
+  ≡ᵇᴱ-refl a with a ≟ᴱ a
+  ... | yes _ = refl
+  ... | no ¬p = ⊥-elim (¬p refl)
+
+  -- the scan finds a marker that is there
+  ft-at-complete : ∀ (m : Maybe EntryId) (is : AbstractTrace) (tg : EntryId) (i : ℕ)
+                 → (∀ i′ → Σ ℕ (λ j → ft-go is tg i′ ≡ just j)) → Σ ℕ (λ j → ft-at m is tg i ≡ just j)
+  ft-at-complete nothing  is tg i ih = ih (suc i)
+  ft-at-complete (just m) is tg i ih = match (m ≡ᵇᴱ tg)
+    where
+      match : ∀ (b : Bool) → Σ ℕ (λ j → ft-match b is tg i ≡ just j)
+      match true  = i , refl
+      match false = ih (suc i)
+
+  ft-go-complete : ∀ (prog : AbstractTrace) (tg : EntryId) (i : ℕ)
+                 → Any (λ x → entry-of? x ≡ just tg) prog → Σ ℕ (λ j → ft-go prog tg i ≡ just j)
+  ft-go-complete (x ∷ is) tg i (here e) =
+    i , subst (λ m → ft-at m is tg i ≡ just i) (sym e) (subst (λ b → ft-match b is tg i ≡ just i) (sym (≡ᵇᴱ-refl tg)) refl)
+  ft-go-complete (x ∷ is) tg i (there a) =
+    ft-at-complete (entry-of? x) is tg i (λ i′ → ft-go-complete is tg i′ a)
+
+emitted-call-fn-resolves : ∀ prog (fs : FlatState) (f : CanonicalName) → RunAt prog fs
+                         → fetch prog (fpc fs) ≡ just (instr-ctrl (c-call-fn f))
+                         → Σ ℕ (λ j → find-fn prog f ≡ just j)
+emitted-call-fn-resolves prog fs f r ftq =
+  ft-go-complete prog (e-fn f) 0
+    (subst (Any (λ x → entry-of? x ≡ just (e-fn f))) (sym (run-emit r))
+           (Any++⁺ʳ (ir-to-trace (run-ir r)) (entries-in _ (run-tbl r) f (linked-any (run-tbl r) (proj₂ (proj₂ ok))))))
+  where
+    ok : CallOKI (run-tbl r) (instr-ctrl (c-call-fn f))
+    ok = fetch-All (subst (AllL (CallOKI (run-tbl r))) (sym (run-emit r)) (image-calls (run-tbl r) (run-ir r) (run-linked r))) ftq
+
 ------------------------------------------------------------------------
 postulate
   call-site-shape : ∀ prog (fs : FlatState) → RunAt prog fs
@@ -195,13 +271,6 @@ postulate
   -- it belongs in the same induction as the two above.
   -- D245: over the program image. A closure's label is owned by the definition
   -- that minted it (D089), so the scan finds its body in that definition's unit.
-  -- D245: …and a DIRECT CALL in a linked image finds its callee. The image
-  -- holds every table entry under its `c-fn` marker, and a linked call names an
-  -- entry of the table. CODEGEN-class, the same induction.
-  emitted-call-fn-resolves : ∀ prog (fs : FlatState) (f : CanonicalName) → RunAt prog fs
-                           → fetch prog (fpc fs) ≡ just (instr-ctrl (c-call-fn f))
-                           → Σ ℕ (λ j → find-fn prog f ≡ just j)
-
   emitted-code-addr-has-body : ∀ (tbl : List IRFun) (ir : IR Unit Unit) (p : ℕ) (ℓ : LabelId)
                              → fetch (program-image o (irProgram tbl ir)) p ≡ just (instr-load-code-addr ℓ)
                              → Σ ℕ (λ j → find-thunk (program-image o (irProgram tbl ir)) ℓ ≡ just j)
