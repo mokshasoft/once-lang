@@ -264,8 +264,10 @@ str-lit-info s = mk-info (bare ("lit.str." ++ s)) (str-lit-semM s) Pure base-Uni
 -- not a value (`SigOpSem.emitsV`/`haltsV`), so this can no longer launder a
 -- syscall's value. (Eliminating it too — sourcing closure/poly values from
 -- the module environment — is a separate axis, the deferred follow-on.)
+--
+-- D250: its value is GRADED — a pure contract's function pointer is total.
 postulate
-  generic-semM : ∀ {A B} → String → TargetNum → M.⟦ A ⟧ → M.⟦ B ⟧
+  generic-semM : ∀ {A B} → String → TargetNum → M.⟦ A ⟧ → M.⟦ B ⟧ᵍ
 
 -- | A SigOp referenced as a VALUE — at non-arrow type, or as a `closure` /
 -- `poly` reference. Its effect is `Pure`: an effect lives on an *arrow*
@@ -275,8 +277,13 @@ postulate
 -- exit-syscall → Halts string match) is RETIRED; an external arrow's effect
 -- now comes from its DECLARED `! <shape>`, built at the elaborate site
 -- (`ext-arrow-info` in `TypeCheck.Elaborate`).
+-- `generic-semM` at the result type a concreteness witness names (`⟦_⟧ᵍ` is not
+-- injective, so the type cannot be read back from the value's).
+generic-semM-at : ∀ {A B} → IsConcrete B → String → TargetNum → M.⟦ A ⟧ → M.⟦ B ⟧ᵍ
+generic-semM-at {A} {B} _ = generic-semM {A} {B}
+
 value-info : ∀ {A B} → CanonicalName → IsBaseType A → IsConcrete B → SigOpInfo A B
-value-info name bA cB = mk-info name (generic-semM (showCanonical name)) Pure bA cB
+value-info {A} {B} name bA cB = mk-info name (generic-semM {A} {B} (showCanonical name)) Pure bA cB
 
 
 -- | Compat shims for the surface/meaning sites (`Surface.Desugar`,

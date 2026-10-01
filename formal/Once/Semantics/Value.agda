@@ -155,6 +155,57 @@ open import Once.Semantics.Functor
 -- TVar removed from Type; now in PolyType (see Once.Type)
 
 ------------------------------------------------------------------------
+-- D250 (plan 0.104 A.2): the GRADED contract domain.
+--
+-- A contract is a value of its declared type, and `pure` is referential
+-- transparency, so a pure contract's function pointer is TOTAL. `⟦_⟧ᵍ` is
+-- `⟦_⟧` with that said at the arrow: a pure arrow returns a value, an effectful
+-- one may stop (`Res`). Arrow domains stay machine values (a contract's
+-- argument is a base type). `⟦_⟧` itself stays purity-blind: it is the
+-- machine's value domain, and `eraseᵍ` is how a graded value reaches it.
+------------------------------------------------------------------------
+
+⟦_⟧ᵍ : Type → Set
+⟦ A ⇒[ mk-kind Zero pure ] B ⟧ᵍ = ⟦ Unit ⟧ → ⟦ B ⟧ᵍ
+⟦ A ⇒[ mk-kind One  pure ] B ⟧ᵍ = ⟦ A ⟧ → ⟦ B ⟧ᵍ
+⟦ A ⇒[ mk-kind Many pure ] B ⟧ᵍ = ⟦ A ⟧ → ⟦ B ⟧ᵍ
+⟦ A ⇒[ mk-kind Zero eff ] B ⟧ᵍ  = ⟦ Unit ⟧ → Res ⟦ B ⟧ᵍ
+⟦ A ⇒[ mk-kind One  eff ] B ⟧ᵍ  = ⟦ A ⟧ → Res ⟦ B ⟧ᵍ
+⟦ A ⇒[ mk-kind Many eff ] B ⟧ᵍ  = ⟦ A ⟧ → Res ⟦ B ⟧ᵍ
+⟦ A * B ⟧ᵍ = ⟦ A ⟧ᵍ × ⟦ B ⟧ᵍ
+⟦ A + B ⟧ᵍ = ⟦ A ⟧ᵍ ⊎ ⟦ B ⟧ᵍ
+-- First-order: no arrow inside, so the machine value.
+⟦ Unit ⟧ᵍ        = ⟦ Unit ⟧
+⟦ Void ⟧ᵍ        = ⟦ Void ⟧
+⟦ μ-type F ⟧ᵍ    = ⟦ μ-type F ⟧
+⟦ ν-type F π ⟧ᵍ  = ⟦ ν-type F π ⟧
+⟦ Int ⟧ᵍ         = ⟦ Int ⟧
+⟦ Float ⟧ᵍ       = ⟦ Float ⟧
+⟦ Str ⟧ᵍ         = ⟦ Str ⟧
+⟦ Buffer ⟧ᵍ      = ⟦ Buffer ⟧
+⟦ rigid k i ⟧ᵍ   = ⟦ rigid k i ⟧
+
+eraseᵍ : ∀ {B} → ⟦ B ⟧ᵍ → ⟦ B ⟧
+eraseᵍ {A ⇒[ mk-kind Zero pure ] B} f = λ u → returns (eraseᵍ (f u))
+eraseᵍ {A ⇒[ mk-kind One  pure ] B} f = λ x → returns (eraseᵍ (f x))
+eraseᵍ {A ⇒[ mk-kind Many pure ] B} f = λ x → returns (eraseᵍ (f x))
+eraseᵍ {A ⇒[ mk-kind Zero eff ] B}  f = λ u → mapRes eraseᵍ (f u)
+eraseᵍ {A ⇒[ mk-kind One  eff ] B}  f = λ x → mapRes eraseᵍ (f x)
+eraseᵍ {A ⇒[ mk-kind Many eff ] B}  f = λ x → mapRes eraseᵍ (f x)
+eraseᵍ {A * B} (a , b) = eraseᵍ a , eraseᵍ b
+eraseᵍ {A + B} (inj₁ a) = inj₁ (eraseᵍ a)
+eraseᵍ {A + B} (inj₂ b) = inj₂ (eraseᵍ b)
+eraseᵍ {Unit} x = x
+eraseᵍ {Void} x = x
+eraseᵍ {μ-type F} x = x
+eraseᵍ {ν-type F π} x = x
+eraseᵍ {Int} x = x
+eraseᵍ {Float} x = x
+eraseᵍ {Str} x = x
+eraseᵍ {Buffer} x = x
+eraseᵍ {rigid k i} x = x
+
+------------------------------------------------------------------------
 -- Functor Interpretation (Set level)
 --
 -- Interprets Functor codes as Set → Set functions.

@@ -48,7 +48,7 @@ open import Once.IRTy.WF using (wf-⌊⌋)
 -- hardcoded name. `generic-semM` supplies the (laundered) value ONLY for
 -- the pure/value `pureV` positions — an effectful op carries a CONTRACT,
 -- not a value, so `Emits`/`Halts` drop it entirely.
-open import Once.Arith.SigOp.Builders using (generic-semM)
+open import Once.Arith.SigOp.Builders using (generic-semM; generic-semM-at)
 open import Once.SigOp.Info using (SigOpInfo; mk-info'; pureV; emitsV; haltsV)
 open import Once.CanonicalName using (CanonicalName; own; bare; showCanonical; gen; NotGenerator; bare-NotGenerator; GenWord; genWord?)
 open import Once.TypeCheck.Raw using (RawExpr)
@@ -1259,7 +1259,7 @@ inferElabV-RDestruct-auxR ctx scrut xL eL xR eR A B scrutE ds fs wS {C₁ = C₁
 -- function-linking opacity, a separate axis from the syscall contract).
 ext-arrow-info : ∀ {A B} → NamedCtx → (alias name : String) → Purity
                → IsBaseType A → IsConcrete B → SigOpInfo A B
-ext-arrow-info ctx alias name pure bA cB = mk-info' (bare (alias ++ "." ++ name)) (pureV (generic-semM (alias ++ "." ++ name))) bA cB
+ext-arrow-info ctx alias name pure bA cB = mk-info' (bare (alias ++ "." ++ name)) (pureV (generic-semM-at cB (alias ++ "." ++ name))) bA cB
 -- plan 0.98 stage E: THE CODOMAIN DECIDES. 0.97 asked a name-keyed side
 -- table (`lookupSigEffect (NamedCtx.sigEffects ctx)`) whether an op halts,
 -- because `Emits` and `Halts` carried the SAME index (`B ≡ Unit`) and the
@@ -1272,7 +1272,7 @@ ext-arrow-info {A} {B} ctx alias name eff bA cB with B ≟T Void
 ... | yes refl = mk-info' (bare (alias ++ "." ++ name)) (haltsV refl) bA cB
 ... | no _ with B ≟T Unit
 ...   | yes refl = mk-info' (bare (alias ++ "." ++ name)) (emitsV refl) bA cB
-...   | no _     = mk-info' (bare (alias ++ "." ++ name)) (pureV (generic-semM (alias ++ "." ++ name))) bA cB
+...   | no _     = mk-info' (bare (alias ++ "." ++ name)) (pureV (generic-semM-at cB (alias ++ "." ++ name))) bA cB
 
 -- Plan 0.58: the arrow-value case DE-WITHES the concreteness decision
 -- (`isBaseType? A`/`isConcrete? B`) into explicit Maybe args + equations, so
@@ -1351,10 +1351,10 @@ inferElabV-RQualified-aux ctx name alias nothing _ =
 ext-resolved-info-aux : ∀ {A B} → CanonicalName → Purity
                       → Dec (B ≡ Void) → Dec (B ≡ Unit)
                       → IsBaseType A → IsConcrete B → SigOpInfo A B
-ext-resolved-info-aux cn pure _ _ bA cB = mk-info' cn (pureV (generic-semM (showCanonical cn))) bA cB
+ext-resolved-info-aux cn pure _ _ bA cB = mk-info' cn (pureV (generic-semM-at cB (showCanonical cn))) bA cB
 ext-resolved-info-aux cn eff (yes refl) _ bA cB = mk-info' cn (haltsV refl) bA cB
 ext-resolved-info-aux cn eff (no _) (yes refl) bA cB = mk-info' cn (emitsV refl) bA cB
-ext-resolved-info-aux cn eff (no _) (no _)     bA cB = mk-info' cn (pureV (generic-semM (showCanonical cn))) bA cB
+ext-resolved-info-aux cn eff (no _) (no _)     bA cB = mk-info' cn (pureV (generic-semM-at cB (showCanonical cn))) bA cB
 
 ext-resolved-info : ∀ {A B} → NamedCtx → CanonicalName → Purity
                   → IsBaseType A → IsConcrete B → SigOpInfo A B

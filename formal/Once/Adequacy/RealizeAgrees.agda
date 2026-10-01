@@ -88,7 +88,7 @@ open Surface.Usage using () renaming (_∷_ to _∷ᵘ_)
 open import Once.Denotation.DenotTrace using (⟦_⟧ᴰ; evalᴰ; liftFn; anaFᵈ; coerce-functor-D)
 open import Once.Adequacy.CataErased fmt (calls σ) using (liftFn-SigOp)
 open import Once.SigOp.Info using (mk-info'; haltsV; emitsV; pureV; semM)
-open import Once.Arith.SigOp.Builders using (generic-semM; arrow-info-eff; i2f-info; add-info; sub-info; mul-info; div-info; mod-info; fadd-info; fsub-info; fmul-info; fdiv-info; lt-info; le-info; gt-info; ge-info; eq-info; ne-info)
+open import Once.Arith.SigOp.Builders using (generic-semM; generic-semM-at; arrow-info-eff; i2f-info; add-info; sub-info; mul-info; div-info; mod-info; fadd-info; fsub-info; fmul-info; fdiv-info; lt-info; le-info; gt-info; ge-info; eq-info; ne-info)
 import Once.Denotation.SourceDenote as SD
 open import Once.Surface.Seq using (seq; seq0; embedClosed; closed-usage-eq)
 open import Once.Surface.Properties using (+ᵘ-identityʳ)
@@ -1048,7 +1048,7 @@ masq-arrow {ctx} {Dom} {Cod} alias name eff bDom cCod dγ with Cod ≟T Void
 ...   | no ¬u with isVoid? Cod | isUnit? Cod
 ...     | yes refl | _        = ⊥-elim (¬v refl)
 ...     | no _     | yes refl = ⊥-elim (¬u refl)
-...     | no _     | no _     = cong returnT (liftFn-SigOp {Dom} {Cod} (mk-info' (bare (alias ++ "." ++ name)) (pureV (generic-semM (alias ++ "." ++ name))) bDom cCod) bDom)
+...     | no _     | no _     = cong returnT (liftFn-SigOp {Dom} {Cod} (mk-info' (bare (alias ++ "." ++ name)) (pureV (generic-semM-at cCod (alias ++ "." ++ name))) bDom cCod) bDom)
 
 -- RResolved agreement, dispatched on the import-lookup result exactly as the
 -- elaborator's `inferElabV-RResolved-aux` does. A `Many`-arrow type resolves to

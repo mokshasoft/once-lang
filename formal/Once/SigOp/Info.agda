@@ -131,7 +131,11 @@ data SigOpSem (A B : Type) : Set where
   -- already width-correct. Nothing was red because `block-semM` and
   -- `ArithSimX86-32` baked 64 as well — two sides wrong together, the same
   -- shape as D114's `isInt?` and the `absℤ` bug.
-  pureV : (TargetNum → M.⟦ A ⟧ → M.⟦ B ⟧) → SigOpSem A B
+  --
+  -- D250: the result is GRADED (`M.⟦_⟧ᵍ`): a contract is a value of its declared
+  -- type, so a pure one's function pointer is total. The machine reads its
+  -- erasure (`semM`).
+  pureV : (TargetNum → M.⟦ A ⟧ → M.⟦ B ⟧ᵍ) → SigOpSem A B
   -- | External op, observable, continues. Value is `tt` (B ≡ Unit).
   emitsV : B ≡ Unit → SigOpSem A B
   -- | External op, observable, TERMINATES the machine. There is no value:
@@ -197,7 +201,7 @@ open SigOpInfo public
 -- carry one: neither reduces on `sem si` for a variable `si`, so there is
 -- nothing to case-split. As top-level functions of `SigOpSem` there is.
 semM-of : ∀ {A B} → SigOpSem A B → TargetNum → M.⟦ A ⟧ → Res M.⟦ B ⟧
-semM-of (pureV f)     = λ tn x → returns (f tn x)
+semM-of (pureV f)     = λ tn x → returns (M.eraseᵍ (f tn x))
 semM-of (emitsV refl) = λ _ _ → returns tt
 semM-of (haltsV refl) = λ _ _ → stopped
 
@@ -209,8 +213,19 @@ effect-of (haltsV e) = Halts e
 semM : ∀ {A B} → SigOpInfo A B → TargetNum → M.⟦ A ⟧ → Res M.⟦ B ⟧
 semM si = semM-of (sem si)
 
+
 effect : ∀ {A B} → SigOpInfo A B → EffectShape B
 effect si = effect-of (sem si)
+
+-- D250: a PURE contract's graded value — what the Spec means by it. The other
+-- shapes are not pure (`effect-of` says so), so the premise is absurd there.
+semP : ∀ {A B} (si : SigOpInfo A B) → effect si ≡ Pure → TargetNum → M.⟦ A ⟧ → M.⟦ B ⟧ᵍ
+semP si = semP-of (sem si)
+  where
+    semP-of : ∀ {A B} (s : SigOpSem A B) → effect-of s ≡ Pure → TargetNum → M.⟦ A ⟧ → M.⟦ B ⟧ᵍ
+    semP-of (pureV f)  _  = f
+    semP-of (emitsV _) ()
+    semP-of (haltsV _) ()
 
 -- | WHICH CONTRACT SHAPES END THE PROGRAM. 0.97 called this `stops-D-of` and
 --   kept it in the denotation; it belongs beside the contract it reads.
@@ -240,7 +255,7 @@ semM-stops si = semM-stops-of (sem si)
 -- laundering unrepresentable. `Pure` keeps its value as `pureV`.
 ------------------------------------------------------------------------
 
-mk-info : ∀ {A B} → CanonicalName → (TargetNum → M.⟦ A ⟧ → M.⟦ B ⟧) → EffectShape B
+mk-info : ∀ {A B} → CanonicalName → (TargetNum → M.⟦ A ⟧ → M.⟦ B ⟧ᵍ) → EffectShape B
         → IsBaseType A → IsConcrete B → SigOpInfo A B
 mk-info nm f Pure      bA cB = mk-info' nm (pureV f)     bA cB
 mk-info nm f (Emits e) bA cB = mk-info' nm (emitsV e)    bA cB
