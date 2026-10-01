@@ -41,7 +41,7 @@ open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
 
 open import Once.Type using (Type; Unit; Void)
-open import Once.Res using (Res; stopped; returns; is-stopped)
+open import Once.Res using (Res; stopped; returns; is-stopped; mapRes)
 open import Data.Bool using (Bool; true; false)
 -- Plan 0.58 (OCP-0006): a SigOp is an FFI/register-ABI boundary, so its argument
 -- and result types must be CONCRETE (`IsBaseType` — no arrows, no `μ`/`ν`). This is
@@ -222,6 +222,17 @@ semMᵍ-of (haltsV refl) = λ _ _ → stopped
 
 semMᵍ : ∀ {A B} → SigOpInfo A B → TargetNum → M.⟦ A ⟧ → Res M.⟦ B ⟧ᵍ
 semMᵍ si = semMᵍ-of (sem si)
+
+-- …and the machine reading IS the graded one, erased.
+semM-erase-of : ∀ {A B} (s : SigOpSem A B) (tn : TargetNum) (x : M.⟦ A ⟧)
+              → semM-of s tn x ≡ mapRes M.eraseᵍ (semMᵍ-of s tn x)
+semM-erase-of (pureV f)     tn x = refl
+semM-erase-of (emitsV refl) tn x = refl
+semM-erase-of (haltsV refl) tn x = refl
+
+semM-erase : ∀ {A B} (si : SigOpInfo A B) (tn : TargetNum) (x : M.⟦ A ⟧)
+           → semM si tn x ≡ mapRes M.eraseᵍ (semMᵍ si tn x)
+semM-erase si = semM-erase-of (sem si)
 
 
 effect : ∀ {A B} → SigOpInfo A B → EffectShape B

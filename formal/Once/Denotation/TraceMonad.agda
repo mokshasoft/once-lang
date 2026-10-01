@@ -615,9 +615,14 @@ bindRes-mapʳ tr (returns x) h k = cong (_, returns (h x)) (++-identityʳ (tr k)
 -- case is `tt` with no continuation to mention, because neither side built
 -- one; only the returning case carries the budget transport, and the budgets
 -- agree because the head traces do.
-bindRes-rel : ∀ {X Y : Set} (R : X → X → Set) (S : Y → Y → Set)
-                (tr₁ tr₂ : ℕ → List SigOpEvent) (r₁ r₂ : Res X)
-                (f g : X → T Y) (n : ℕ)
+--
+-- D250: HETEROGENEOUS in both the value and the result type — the graded Spec
+-- meaning is related to the Kleisli implementation meaning, whose value
+-- domains differ at arrows and at pure ν. The homogeneous use is the instance
+-- `X₁ = X₂`.
+bindRes-rel : ∀ {X₁ X₂ Y₁ Y₂ : Set} (R : X₁ → X₂ → Set) (S : Y₁ → Y₂ → Set)
+                (tr₁ tr₂ : ℕ → List SigOpEvent) (r₁ : Res X₁) (r₂ : Res X₂)
+                (f : X₁ → T Y₁) (g : X₂ → T Y₂) (n : ℕ)
             → tr₁ n ≡ tr₂ n
             → Res-rel R r₁ r₂
             → (∀ {a b} → R a b → ∀ j → (projTrace (f a) j ≡ projTrace (g b) j)
