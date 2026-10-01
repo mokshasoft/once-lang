@@ -38,6 +38,7 @@ open import Once.TypeCheck.Classify using (Imports; PolyCtx; NamedCtx; ctxWithIm
 open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_)
 open import Once.Denotation.GradedDomain using (⟦_⟧ᵛ)
 import Once.TypeCheck.RigidSubst as RS
+import Once.Adequacy.CoreInst as CI
 import Once.Spec.Core.PolyTyping S as PT
 open import Once.Spec.Core.Abstract S using (SigGround; abs-⊢)
 import Once.Spec.Core.Meaning S as GM
@@ -64,17 +65,28 @@ module _ {m} (Δ : KCtx m) (τ : GSub m) (r : Respects Δ τ) where
                  → (λ i → RS.ρ̂ Δ τ r (proj₁ (View.ground V lp g) i)) ≡ proj₁ (View.ground V lp g)
       nat-imp : ∀ {x T} (lk : Once.TypeCheck.Classify.lookupImport imps x ≡ Data.Maybe.just T) → NatImp (View.imported V lk)
 
--- RESIDUAL (plan 0.104 E.2, deferred proof, to be discharged next): the
--- elaboration of the substituted derivation means what the instantiated
--- abstraction of the elaboration means.
-postulate
-  elab-inst-sem : ∀ {imps : Imports} {polys : PolyCtx} (V : View imps polys)
-                    {m} (Δ : KCtx m) (τ : GSub m) (r : Respects Δ τ) (nat : Natural Δ τ r V) (sg : SigGround)
-                    (ir : RS.ImportsRF Δ τ r imps)
-                    {body : _} {A : Type} (D : ctxWithImportsAndPolys imps polys ⊢ᶜ body ∶ A ⨾ C.Usage.[])
-                    (fmt : TargetNum) (δ : GM.DefSem)
-                → GM.⟦ proj₂ (elabᶜ V (RS.subst-c Δ τ r ir D)) ⟧ fmt δ tt
-                  ≡ GM.⟦ PT.instantiate τ r (abs-⊢ Δ sg (proj₂ (elabᶜ V D))) ⟧ fmt δ tt
+-- RESIDUAL (plan 0.104 E.2 (ii), deferred proof, discharged next): elaborating
+-- the substituted derivation is substituting the elaboration.
+module _ {m} (Δ : KCtx m) (τ : GSub m) (r : Respects Δ τ) where
+  open CI S Δ τ r using (ρ̂ₜ; ρ̂ᶜ)
+  postulate
+    elab-ρ̂ᶜ : ∀ {imps : Imports} {polys : PolyCtx} (V : View imps polys) (nat : Natural Δ τ r V) (sg : SigGround)
+                (ir : RS.ImportsRF Δ τ r imps) {n Γ D fr e A Ψ}
+                (d : Once.TypeCheck.Classify.mkCtx n Γ D fr imps polys ⊢ᶜ e ∶ A ⨾ Ψ)
+            → elabᶜ V (RS.subst-c′ Δ τ r ir d) ≡ (ρ̂ₜ (proj₁ (elabᶜ V d)) , ρ̂ᶜ sg (proj₂ (elabᶜ V d)))
+
+-- The elaboration of the substituted derivation means what the instantiated
+-- abstraction of the elaboration means: (ii), then (i) at the empty context.
+elab-inst-sem : ∀ {imps : Imports} {polys : PolyCtx} (V : View imps polys)
+                  {m} (Δ : KCtx m) (τ : GSub m) (r : Respects Δ τ) (nat : Natural Δ τ r V) (sg : SigGround)
+                  (ir : RS.ImportsRF Δ τ r imps)
+                  {body : _} {A : Type} (D : ctxWithImportsAndPolys imps polys ⊢ᶜ body ∶ A ⨾ C.Usage.[])
+                  (fmt : TargetNum) (δ : GM.DefSem)
+              → GM.⟦ proj₂ (elabᶜ V (RS.subst-c Δ τ r ir D)) ⟧ fmt δ tt
+                ≡ GM.⟦ PT.instantiate τ r (abs-⊢ Δ sg (proj₂ (elabᶜ V D))) ⟧ fmt δ tt
+elab-inst-sem V Δ τ r nat sg ir D fmt δ =
+  trans (cong (λ X → GM.⟦ proj₂ X ⟧ fmt δ tt) (elab-ρ̂ᶜ Δ τ r V nat sg ir D))
+        (cong (λ E → GM.⟦ E ⟧ fmt δ tt) (sym (CI.inst-abs S Δ τ r sg (proj₂ (elabᶜ V D)))))
 
 -- A transport of the checked type moves the elaboration's meaning with it.
 elab-subst-sem : ∀ {ctx body A B Ψ} (V : Views ctx) (e : A ≡ B) (D : ctx ⊢ᶜ body ∶ A ⨾ Ψ)
