@@ -55,6 +55,7 @@ open import Once.Denotation.DenotTrace using (evalᴰ)
 open import Once.Denotation.TraceMonad using (projTrace)
 open import Data.Maybe using (just)
 import Once.Adequacy.TeleWalk fmt as TW
+import Once.Adequacy.TelePosition as TP
 import Once.Spec.Core.Translate as TR
 open import Once.Adequacy.SourceTrace using (tableOfResult)
 open import Once.Denotation.Program using (tableEnv)
@@ -82,17 +83,7 @@ typedProgram-ef m (inj₂ es) mt (_ , mi) = toProgram Tele.[] TR.[] TR.[] (λ ()
 typedProgram : Typed → Program
 typedProgram (m , mt , hvm) = typedProgram-ef m (C.extractFunctions (C.extractAliases m) m) mt hvm
 
--- The walk's premises at the start: the empty scope, and the entries' names
--- (D249: the extractor's guard).
-entries-distinct : ∀ (m : P.Module) {es : List C.Entry}
-  → C.extractFunctions (C.extractAliases m) m ≡ inj₂ es → AllPairs _≢_ (map TW.entryName es)
-entries-distinct (P.mkModule ds) eq = NC.guard-entries (C.extractFunctions-go (C.extractAliases (P.mkModule ds)) ds C.nothing) eq
-
 private
-  none-in-empty : ∀ (xs : List String) → All (λ x → All (x ≢_) (TW.scopeNames C.emptyCScope)) xs
-  none-in-empty []       = []
-  none-in-empty (x ∷ xs) = [] ∷ none-in-empty xs
-
   inv₀ : TW.Inv C.emptyCScope Tele.[] TR.[] TR.[] []
   inv₀ = record { valid = tt ; irf = λ () ; iself = [] ; rel = λ _ _ _ _ _ → tt , tt }
 
@@ -109,42 +100,11 @@ private
   valid-mod (P.mkModule ds) {es} eq = valid-of es (NC.∧-elimʳ (NC.guard-true (C.extractFunctions-go (C.extractAliases (P.mkModule ds)) ds C.nothing) eq))
 
   core-ef : ∀ (m : P.Module) (ef : String ⊎ List C.Entry) (mt : ModuleTyped-ef m ef) (hvm : HasValidMain-ef m ef mt)
-              {es} → ef ≡ inj₂ es → AllPairs _≢_ (map TW.entryName es) → All TW.MonoValid es
+              {es} → ef ≡ inj₂ es → AllPairs _≢_ (map TP.entryName es) → All TW.MonoValid es
             → (b : FB.FunBundle C.emptyCScope es) (n : ℕ)
             → TW.RunAt (tableOf-go (FB.bundle→compiled b) []) n ≡ runProgram fmt (typedProgram-ef m ef mt hvm) n
   core-ef m .(inj₂ _) mt (_ , mi) refl dist vd b n =
-    TW.walk mt b mi Tele.[] TR.[] TR.[] _ [] inv₀ (dist , none-in-empty _) vd n
-
-------------------------------------------------------------------------
--- The compiled program, from `moduleToIR m ≡ just ir`: the entries, their
--- compile bundle, and the compile result it is.
-------------------------------------------------------------------------
-
-ProgramNode : P.Module → Set
-ProgramNode m =
-  Σ-syntax (List C.Entry) (λ es →
-  Σ-syntax (C.extractFunctions (C.extractAliases m) m ≡ inj₂ es) (λ _ →
-  Σ-syntax (FB.FunBundle C.emptyCScope es) (λ b →
-    C.compileResolvedModule C.Heap false m ≡ inj₂ (FB.bundle→compiled b))))
-
-private
-  node-ce : ∀ (m : P.Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) (es : List C.Entry) (cv : String ⊎ List C.CompiledFun)
-          → C.compileEntries C.Heap false C.emptyCScope es ≡ cv → moduleToIR-aux cv ≡ just ir
-          → C.extractFunctions (C.extractAliases m) m ≡ inj₂ es → ProgramNode m
-  node-ce m ir es (inj₁ _) ce mi ef = case mi of λ ()
-  node-ce m ir es (inj₂ compiled) ce mi ef =
-    es , ef , FB.ce-bundle C.emptyCScope es ce
-       , trans (cong (C.compileResolvedModule-aux C.Heap false m) ef)
-               (trans ce (cong inj₂ (sym (FB.bundle→compiled≡compiled C.emptyCScope es compiled ce))))
-
-  node-ef : ∀ (m : P.Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) (efv : String ⊎ List C.Entry)
-          → C.extractFunctions (C.extractAliases m) m ≡ efv
-          → moduleToIR-aux (C.compileResolvedModule-aux C.Heap false m efv) ≡ just ir → ProgramNode m
-  node-ef m ir (inj₁ _)  ef mi = case mi of λ ()
-  node-ef m ir (inj₂ es) ef mi = node-ce m ir es (C.compileEntries C.Heap false C.emptyCScope es) refl mi ef
-
-program-node : ∀ (m : P.Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) → moduleToIR m ≡ just ir → ProgramNode m
-program-node m ir mi = node-ef m ir (C.extractFunctions (C.extractAliases m) m) refl mi
+    TW.walk mt b mi Tele.[] TR.[] TR.[] _ [] inv₀ (dist , TP.none-in-empty _) vd n
 
 ------------------------------------------------------------------------
 -- THE LINK: the compiled program means the core program.
@@ -153,10 +113,10 @@ program-node m ir mi = node-ef m ir (C.extractFunctions (C.extractAliases m) m) 
 program-core :
   ∀ (m : P.Module) (mt : ModuleTyped m) (hvm : HasValidMain m mt) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) (mi : moduleToIR m ≡ just ir) (n : ℕ)
   → at (⟦ just (irProgram (moduleTable m) ir) ⟧IR fmt) n ≡ runProgram fmt (typedProgram (m , mt , hvm)) n
-program-core m mt hvm ir mi n with program-node m ir mi
+program-core m mt hvm ir mi n with FB.program-node m ir mi
 ... | es , ef , b , ceq =
   trans (cong₂ (λ tbl x → projTrace (evalᴰ fmt (tableEnv fmt tbl) x tt) n) (cong tableOfResult ceq) ir≡)
-        (core-ef m (C.extractFunctions (C.extractAliases m) m) mt hvm ef (entries-distinct m ef) (valid-mod m ef) b n)
+        (core-ef m (C.extractFunctions (C.extractAliases m) m) mt hvm ef (TP.entries-distinct m ef) (valid-mod m ef) b n)
   where
     ir≡ : ir ≡ mainCall
     ir≡ = FB.bundle-find-call b (trans (sym (FB.find-agree b)) (trans (sym (cong moduleToIR-aux ceq)) mi))

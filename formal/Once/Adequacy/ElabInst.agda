@@ -38,6 +38,7 @@ open import Once.TypeCheck.Classify using (Imports; PolyCtx; NamedCtx; ctxWithIm
 open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_)
 open import Once.Denotation.GradedDomain using (⟦_⟧ᵛ)
 import Once.TypeCheck.RigidSubst as RS
+import Once.TypeCheck.Instance as Inst
 import Once.Adequacy.CoreInst as CI
 import Once.Spec.Core.PolyTyping S as PT
 open import Once.Spec.Core.Abstract S using (SigGround; abs-⊢)
@@ -87,13 +88,8 @@ elab-subst-sem V refl D fmt δ γ = refl
 -- entry's abstraction instantiated there.
 ------------------------------------------------------------------------
 
-inst-at : ∀ {imps : Imports} {polys : PolyCtx} {body : _} (sc : PolyType)
-        → (∀ {x T} → Once.TypeCheck.Classify.lookupImport imps x ≡ Data.Maybe.just T → Once.Type.Rigid.RigidFree T)
-        → ctxWithImportsAndPolys imps polys ⊢ᶜ body ∶ rigidOf sc ⨾ C.Usage.[] → ∀ {U} → KindedInstance sc U
-        → ctxWithImportsAndPolys imps polys ⊢ᶜ body ∶ U ⨾ C.Usage.[]
-inst-at sc irf D ki =
-  subst (λ X → _ ⊢ᶜ _ ∶ X ⨾ C.Usage.[]) (proj₂ (proj₂ (kinded-instance sc ki)))
-        (RS.subst-c (kindsOf sc) (proj₁ (kinded-instance sc ki)) (proj₁ (proj₂ (kinded-instance sc ki))) irf D)
+-- the instance derivation itself is `TypeCheck.Instance.inst-at` (no core).
+inst-at = Inst.inst-at
 
 poly-instance-sem : ∀ {imps : Imports} {polys : PolyCtx} (V : View imps polys) (sg : SigGround)
                       (fmt : TargetNum) (δ : GM.DefSem) {body : _} (sc : PolyType)

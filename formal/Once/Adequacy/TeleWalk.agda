@@ -120,6 +120,7 @@ open import Once.Denotation.GradedOps using (sigOpRefᵛ)
 open import Once.Denotation.GradedDomain using (⟦_⟧ᵛ)
 open import Once.Functor.Translate using (IsConcrete-irrelevant)
 open import Data.List.Properties using (++-assoc)
+open import Once.Adequacy.TelePosition
 
 ------------------------------------------------------------------------
 -- Position predicates
@@ -128,19 +129,6 @@ open import Data.List.Properties using (++-assoc)
 -- Later table entries do not shadow a name in scope.
 NoShadow : List IRFun → C.FunCtx → Set
 NoShadow later imps = All (λ e → All (λ p → fname e ≢ bare (proj₁ p)) imps) later
-
--- A declaration-import map that agrees with the scope's telescope entries.
-IAgree : (String → Imports) → List (C.PolyFunInfo × C.FunCtx) → Set
-IAgree I tele = All (λ q → I (pfunName (proj₁ q)) ≡ proj₂ q) tele
-
--- The scope's imports are rigid-free.
-ImportsRF : Imports → Set
-ImportsRF imps = ∀ {x T} → Once.TypeCheck.Classify.lookupImport imps x ≡ just T → RigidFree T
-
-irf-cons : ∀ {imps : Imports} {y : String} {ty : Type} → RigidFree ty → ImportsRF imps → ImportsRF ((y , ty) ∷ imps)
-irf-cons {y = y} g old {x} lk with y ≟str x
-... | yes _ = subst RigidFree (just-injective lk) g
-... | no _  = old lk
 
 -- THE INVARIANT at a position of the walk.
 record Inv {s} {S : Sig s} (csc : C.CScope) (tl : Tele S) (is : ImpSig S (C.CScope.cimps csc))
@@ -155,16 +143,6 @@ record Inv {s} {S : Sig s} (csc : C.CScope) (tl : Tele S) (is : ImpSig S (C.CSco
           → ∀ (I : String → Imports) → IAgree I (C.CScope.ctele csc) → ∀ (uf : Imports)
           → MB.MRel fmt (σW (later ++ pre) (C.cpolys csc) I uf) (ctxOf (AS.scopeOf csc))
                     (CE.envOf fmt S (teleSem fmt tl) is ts)
-
--- The remaining entries' names: distinct, and new to the scope.
-entryName : C.Entry → String
-entryName = Once.Parser.entryNameOf
-
-scopeNames : C.CScope → List String
-scopeNames csc = map proj₁ (C.CScope.cimps csc) ++ map (λ q → pfunName (proj₁ q)) (C.CScope.ctele csc)
-
-Fresh : C.CScope → List C.Entry → Set
-Fresh csc es = AllPairs _≢_ (map entryName es) × All (λ x → All (x ≢_) (scopeNames csc)) (map entryName es)
 
 ------------------------------------------------------------------------
 -- An FFI entry: its call is its contract (TeleEntry.ffi-entry).
@@ -237,48 +215,6 @@ private
   does-no : ∀ {A : Set} (d : Dec A) → ¬ A → Relation.Nullary.isYes d ≡ false
   does-no (yes a) ¬a = ⊥-elim (¬a a)
   does-no (no _)  _  = refl
-
-  -- A definition compiles to its resolved body's elaboration (D253: `main`
-  -- too — its type check passes, and it is not rewritten).
-  irFun-main : ∀ (ctx : C.FunCtx) (polys : Once.TypeCheck.Classify.PolyCtx) (impsOf : String → C.FunCtx)
-                 (x : String) (ty : Type) (body : _) {irFun : IR ⌊ Once.Type.Unit ⌋ ⌊ ty ⌋} {r : _}
-                 (v : _) → C.compileFun-main-aux C.Heap false ctx polys impsOf x ty body v ≡ inj₂ irFun
-             → C.compileFunBody C.Heap false ctx polys impsOf x ty body ≡ r → r ≡ inj₂ irFun
-  irFun-main ctx polys impsOf x ty body (inj₁ _) () _
-  irFun-main ctx polys impsOf x ty body (inj₂ _) cf eq = trans (sym eq) cf
-
-  irFun-body : ∀ (ctx : C.FunCtx) (polys : Once.TypeCheck.Classify.PolyCtx) (impsOf : String → C.FunCtx)
-                 (x : String) (ty : Type) (body : _) {irFun : IR ⌊ Once.Type.Unit ⌋ ⌊ ty ⌋} (b : Bool)
-             → C.compileFun-aux C.Heap false ctx polys impsOf x ty body b ≡ inj₂ irFun
-             → C.compileFunBody C.Heap false ctx polys impsOf x ty body ≡ inj₂ irFun
-  irFun-body ctx polys impsOf x ty body true  cf = irFun-main ctx polys impsOf x ty body (C.validateMain ty) cf refl
-  irFun-body ctx polys impsOf x ty body false cf = cf
-
-  -- The checker's derivation, read off its verified result.
-  sound-of : ∀ {ctx : Once.TypeCheck.Classify.NamedCtx} {e : _} {T : Type} {Ψ se d f}
-               (cr : Once.TypeCheck.Elaborate.VerifiedCheckResult ctx e T)
-           → proj₁ cr ≡ Once.TypeCheck.Elaborate.success Ψ se d f → ctx ⊢ᶜ e ∶ T ⨾ Ψ
-  sound-of (Once.TypeCheck.Elaborate.success _ _ _ _ , w) refl = w
-
-  aux-form : ∀ (ctx : C.FunCtx) (polys : Once.TypeCheck.Classify.PolyCtx) (impsOf : String → C.FunCtx)
-               (x : String) (ty : Type) {body : _} {se : _} {d f : ℕ}
-               (cr : Once.TypeCheck.Elaborate.VerifiedCheckResult (Once.TypeCheck.Classify.ctxWithImportsAndPolys ctx polys) body ty)
-               (ce : proj₁ cr ≡ Once.TypeCheck.Elaborate.success Ctx.Usage.[] se d f)
-           → C.compileFunBody-aux C.Heap false ctx polys impsOf x ty refl cr
-             ≡ inj₂ (elaborateFull C.Heap (resolveExpr polys impsOf ((x , ty) ∷ ctx) 0 (realize (sound-of cr ce))))
-  aux-form ctx polys impsOf x ty (Once.TypeCheck.Elaborate.success _ _ _ _ , w) refl = refl
-
-  irFun-form : ∀ (ctx : C.FunCtx) (polys : Once.TypeCheck.Classify.PolyCtx) (impsOf : String → C.FunCtx)
-                 (x : String) (ty : Type) (body : _) {irFun : IR ⌊ Once.Type.Unit ⌋ ⌊ ty ⌋}
-                 {se : _} {d f : ℕ}
-             → C.compileFun C.Heap false ctx polys impsOf x ty body ≡ inj₂ irFun
-             → (ce : Once.TypeCheck.Elaborate.checkElab (Once.TypeCheck.Classify.ctxWithImportsAndPolys ctx polys) body ty
-                       ≡ Once.TypeCheck.Elaborate.success Ctx.Usage.[] se d f)
-             → irFun ≡ elaborateFull C.Heap (resolveExpr polys impsOf ((x , ty) ∷ ctx) 0
-                         (realize (sound-of (Once.TypeCheck.Elaborate.checkElabV (Once.TypeCheck.Classify.ctxWithImportsAndPolys ctx polys) body ty) ce)))
-  irFun-form ctx polys impsOf x ty body cf ce =
-    inj₂-injective (trans (sym (irFun-body ctx polys impsOf x ty body (Relation.Nullary.isYes (x ≟str "main")) cf))
-                          (aux-form ctx polys impsOf x ty (Once.TypeCheck.Elaborate.checkElabV (Once.TypeCheck.Classify.ctxWithImportsAndPolys ctx polys) body ty) ce))
 
   -- The splice of a telescope body is its derivation's realization, resolved.
   splice-form : ∀ (I : String → Imports) (uf : Imports) (pre : Once.TypeCheck.Classify.PolyCtx) (y : String)
@@ -411,30 +347,6 @@ inv-mono {S = S} {csc} {tl} {is} {ts} {pre} sg {fi} {ty} {g} {Ctx.Usage.[]} D {i
 -- Plan 0.104 E: the body at a kinded instance is the surface substitution
 -- instance of its rigid derivation (`ElabInst.inst-at`, proved), and it means
 -- the entry's abstraction instantiated there (`ElabInst.poly-instance-sem`).
-private
-  declImps-head : ∀ (e : C.PolyFunInfo × C.FunCtx) (es : List (C.PolyFunInfo × C.FunCtx))
-                    (d : Dec (pfunName (proj₁ e) ≡ pfunName (proj₁ e)))
-                → C.declImps-aux e es (pfunName (proj₁ e)) d ≡ proj₂ e
-  declImps-head e es (yes _) = refl
-  declImps-head e es (no ¬p) = ⊥-elim (¬p refl)
-
-  declImps-skip : ∀ (e : C.PolyFunInfo × C.FunCtx) (es : List (C.PolyFunInfo × C.FunCtx)) (x : String)
-                    (d : Dec (pfunName (proj₁ e) ≡ x)) → pfunName (proj₁ e) ≢ x
-                → C.declImps-aux e es x d ≡ C.declImps es x
-  declImps-skip e es x (yes p) ne = ⊥-elim (ne p)
-  declImps-skip e es x (no _)  ne = refl
-
-  iself-step : ∀ (e : C.PolyFunInfo × C.FunCtx) (tele : List (C.PolyFunInfo × C.FunCtx)) (qs : List (C.PolyFunInfo × C.FunCtx))
-             → All (pfunName (proj₁ e) ≢_) (map (λ q → pfunName (proj₁ q)) qs)
-             → IAgree (C.declImps tele) qs → IAgree (C.declImps (e ∷ tele)) qs
-  iself-step e tele []       []       []       = []
-  iself-step e tele (q ∷ qs) (h ∷ hs) (a ∷ as) =
-    trans (declImps-skip e tele (pfunName (proj₁ q)) (pfunName (proj₁ e) ≟str pfunName (proj₁ q)) h) a ∷ iself-step e tele qs hs as
-
-  ++⁻ʳ : ∀ {x : String} (as : List String) {bs : List String} → All (x ≢_) (as ++ bs) → All (x ≢_) bs
-  ++⁻ʳ []       a        = a
-  ++⁻ʳ (_ ∷ as) (_ ∷ a) = ++⁻ʳ as a
-
 inv-poly : ∀ {s} {S : Sig s} {csc tl is ts pre} (sg : SigCF S) {pfi : C.PolyFunInfo} {Ψ : Ctx.Usage 0}
              (D : ctxOf (AS.scopeOf csc) ⊢ᶜ pfunBody pfi ∶ rigidOf (pfunType pfi) ⨾ Ψ)
          → Inv {S = S} csc tl is ts pre → All (pfunName pfi ≢_) (scopeNames csc)
@@ -521,29 +433,8 @@ inv-poly {S = S} {csc} {tl} {is} {ts} {pre} sg {pfi} {Ctx.Usage.[]} D inv fr = r
                            (realize-invariant D′ D-U σo tt))))
 
 ------------------------------------------------------------------------
--- Freshness along the walk
+-- The entry point among the remaining names
 ------------------------------------------------------------------------
-
-private
-  insert-ne : ∀ (as bs : List String) {y x : String} → y ≢ x → All (y ≢_) (as ++ bs) → All (y ≢_) (as ++ x ∷ bs)
-  insert-ne []       bs ne hs       = ne ∷ hs
-  insert-ne (a ∷ as) bs ne (h ∷ hs) = h ∷ insert-ne as bs ne hs
-
-  insert-all : ∀ (as bs : List String) {x : String} (ys : List String) → All (x ≢_) ys
-             → All (λ y → All (y ≢_) (as ++ bs)) ys → All (λ y → All (y ≢_) (as ++ x ∷ bs)) ys
-  insert-all as bs []       []         []         = []
-  insert-all as bs (y ∷ ys) (ne ∷ nes) (h ∷ hs) = insert-ne as bs (λ e → ne (sym e)) h ∷ insert-all as bs ys nes hs
-
-fresh-head : ∀ {csc e es} → Fresh csc (e ∷ es) → All (entryName e ≢_) (scopeNames csc)
-fresh-head (_ , (h ∷ _)) = h
-
-fresh-fun : ∀ {csc fi ty es} → Fresh csc (C.e-fun fi ∷ es) → Fresh (C.extendScope csc (funName fi) ty) es
-fresh-fun {csc} {es = es} ((hd ∷ tl) , (_ ∷ hs)) = tl , insert-all [] (scopeNames csc) (map entryName es) hd hs
-
-fresh-poly : ∀ {csc pfi es} → Fresh csc (C.e-poly pfi ∷ es) → Fresh (C.addEntry csc pfi) es
-fresh-poly {csc} {es = es} ((hd ∷ tl) , (_ ∷ hs)) =
-  tl , insert-all (map proj₁ (C.CScope.cimps csc)) (map (λ q → pfunName (proj₁ q)) (C.CScope.ctele csc))
-                  (map entryName es) hd hs
 
 -- A `main` later in the telescope has a name there.
 mainIn-name : ∀ {sc es} (mt : ModTele sc es) → MainIn mt → Any ("main" ≡_) (map entryName es)
@@ -561,10 +452,6 @@ private
 ------------------------------------------------------------------------
 -- The table past an entry: entries of the later names, which are new
 ------------------------------------------------------------------------
-
-tableOf-go-++ : ∀ (cfs : List C.CompiledFun) (xs pre : List IRFun) → tableOf-go cfs (xs ++ pre) ≡ tableOf-go cfs xs ++ pre
-tableOf-go-++ []         xs pre = refl
-tableOf-go-++ (cf ∷ cfs) xs pre = tableOf-go-++ cfs (irFunOf cf ∷ xs) pre
 
 private
   NS : C.FunCtx → IRFun → Set

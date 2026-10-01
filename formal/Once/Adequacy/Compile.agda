@@ -50,8 +50,9 @@ open import Once.Denotation.Behavior using (Source; Behavior; at; behavior-by)
 open import Once.Spec.Core.Telescope using (runProgram)
 open import Once.Adequacy.SourceTrace
   using (⟦_⟧; ⟦⟧-via-module; moduleToIR; moduleToIR-emitted; map-rewrite; ⟦_⟧IR; srcToModule; srcToModule-just; srcToModule-inv;
-         moduleToProgram; moduleTable; programAt; rewrite-program; rewrite-program-linked; moduleToProgram-linked;
+         moduleToProgram; moduleTable; programAt; rewrite-program; rewrite-program-linked;
          rewrite-program-preserves)
+open import Once.Adequacy.ProgramLinked using (moduleToProgram-linked)
 open import Once.Denotation.Program using (IRProgram; irProgram; table; main; Linked; LinkedProgram)
 
 -- Plan 0.49 (route 3): the INDEPENDENT surface denotation `SD.⟦_⟧ˢ` (over the

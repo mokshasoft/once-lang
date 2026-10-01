@@ -61,7 +61,7 @@ open import Once.TypeCheck.Soundness using (check-sound)
 open import Once.Parser using (FunInfo)
 open FunInfo
 import Once.Adequacy.AcceptSound as AS
-open import Once.Adequacy.SourceTrace using (findMain; findMain-here; isEffUU?; mainCall)
+open import Once.Adequacy.SourceTrace using (findMain; findMain-here; isEffUU?; mainCall; moduleToIR; moduleToIR-aux)
 open import Once.Adequacy.MainIRForm using (findMain-skip; bare-injective; compileFun-main-EffUU)
 import Once.Adequacy.ModuleComplete as MC
 
@@ -308,3 +308,35 @@ bundle-find-exists (bpoly _ rest) eq = bundle-find-exists rest eq
 bundle-find-exists (bcons {fi = fi} {ty = ty} {irFun = irFun} ep rf eg ce cf rest) eq =
   here-exists fi {irFun = irFun} rest (funIsPrimitive fi) refl (bare (funName fi) ≟cn bare "main") (isEffUU? ty)
     (bundle-find-exists rest) eq
+
+------------------------------------------------------------------------
+-- The compiled program, from `moduleToIR m ≡ just ir`: the entries, their
+-- compile bundle, and the compile result it is.
+------------------------------------------------------------------------
+
+ProgramNode : C.Module → Set
+ProgramNode m =
+  Σ-syntax (List C.Entry) (λ es →
+  Σ-syntax (C.extractFunctions (C.extractAliases m) m ≡ inj₂ es) (λ _ →
+  Σ-syntax (FunBundle C.emptyCScope es) (λ b →
+    C.compileResolvedModule C.Heap false m ≡ inj₂ (bundle→compiled b))))
+
+private
+  node-ce : ∀ (m : C.Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) (es : List C.Entry) (cv : String ⊎ List C.CompiledFun)
+          → C.compileEntries C.Heap false C.emptyCScope es ≡ cv → moduleToIR-aux cv ≡ just ir
+          → C.extractFunctions (C.extractAliases m) m ≡ inj₂ es → ProgramNode m
+  node-ce m ir es (inj₁ _) ce mi ef = case mi of λ ()
+  node-ce m ir es (inj₂ compiled) ce mi ef =
+    es , ef , ce-bundle C.emptyCScope es ce
+       , trans (cong (C.compileResolvedModule-aux C.Heap false m) ef)
+               (trans ce (cong inj₂ (sym (bundle→compiled≡compiled C.emptyCScope es compiled ce))))
+
+  node-ef : ∀ (m : C.Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) (efv : String ⊎ List C.Entry)
+          → C.extractFunctions (C.extractAliases m) m ≡ efv
+          → moduleToIR-aux (C.compileResolvedModule-aux C.Heap false m efv) ≡ just ir → ProgramNode m
+  node-ef m ir (inj₁ _)  ef mi = case mi of λ ()
+  node-ef m ir (inj₂ es) ef mi = node-ce m ir es (C.compileEntries C.Heap false C.emptyCScope es) refl mi ef
+
+program-node : ∀ (m : C.Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) → moduleToIR m ≡ just ir → ProgramNode m
+program-node m ir mi = node-ef m ir (C.extractFunctions (C.extractAliases m) m) refl mi
+

@@ -53,6 +53,7 @@ open import Once.Denotation.Program using (IRFun; fname; tableEnv)
 open import Once.Denotation.Meaning using (DefMeanings; ImpMeanings)
 open import Once.TypeCheck.Raw using (RawExpr)
 open import Once.TypeCheck.Classify using (PolyCtx; lookupPolyPrefix; Imports; ctxWithImportsAndPolys)
+open import Once.Adequacy.TelePosition using (lookup-skip; lookup-head)
 open import Once.TypeCheck.Elaborate using (CheckElabResult; success; failure; checkElab; checkElabV; VerifiedCheckResult)
 open import Once.Denotation.Realize using (realize)
 open import Once.TypeCheck.ElaborateProofs using (resolveExpr; resolveExprWF; resolvePolyCase; applySplice)
@@ -109,18 +110,6 @@ module _ (I : String → Imports) (uf : Imports) where
     → SD.refs (RF.σR fmt ρ L I uf 0) x A ≡ SD.⟦ polyVal x A (lookupPolyPrefix L x) ⟧ˢ fmt (RF.σ₀ fmt ρ) tt
   refs-lookup ρ L x A = cong (λ e → SD.⟦ e ⟧ˢ fmt (RF.σ₀ fmt ρ) tt)
                              (case-val L (<-wellFounded (length L)) x A (lookupPolyPrefix L x) refl)
-
-lookup-skip : ∀ (n : String) {s b} (L : PolyCtx) (y : String) → n ≢ y
-  → lookupPolyPrefix ((n , s , b) ∷ L) y ≡ lookupPolyPrefix L y
-lookup-skip n L y n≢y with StrProp._≟_ n y
-... | yes p = ⊥-elim (n≢y p)
-... | no _  = refl
-
-lookup-head : ∀ (n : String) {s b} (L : PolyCtx)
-  → lookupPolyPrefix ((n , s , b) ∷ L) n ≡ just (s , b , L)
-lookup-head n L with StrProp._≟_ n n
-... | yes _ = refl
-... | no ¬p = ⊥-elim (¬p refl)
 
 module _ (I : String → Imports) (uf : Imports) (ρ : CallEnv) where
 

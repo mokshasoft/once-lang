@@ -254,17 +254,9 @@ linked-retable tbl (I.in-ν _)      _ = tt
 linked-retable tbl (I.SigOp _)     _ = tt
 linked-retable tbl (I.const _ _)   _ = tt
 
--- RESIDUAL, class DEFERRED PROOF (plan 0.103 6a″), a claim about the compiler's
--- own output, true of a correct compiler:
---   * the compiled program is linked. References elaborate to `refIR` of an
---     EARLIER entry (the telescope, D241) at `directCallIR`'s objects, and
---     resolution leaves no `poly` placeholder behind. A false instance is a
---     compiler bug (a dangling `call once_f`), which is why it is stated, not
---     decided inside the meaning.
---   (the arith lifting keeps a body linked: PROVED, `RewriteLinked`.)
-postulate
-  moduleToProgram-linked : ∀ (m : P.Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋)
-                         → moduleToIR m ≡ just ir → LinkedProgram (irProgram (moduleTable m) ir)
+-- The compiled program is linked: `Adequacy.ProgramLinked.moduleToProgram-linked`
+-- (D253: `main` is an entry; D254: a body is its derivation's realization).
+-- (the arith lifting keeps a body linked: PROVED, `RewriteLinked`.)
 
 -- …every entry of a table, rewritten, against the rewritten table.
 all-rewrite-linked : ∀ (tbl es : List IRFun)
