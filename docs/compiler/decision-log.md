@@ -16013,3 +16013,78 @@ required of the emitted names only. Imported signatures carry dotted, owner-tagg
 **Consequence.** A module that imports the same module twice now gets its signatures twice
 and is rejected. No program in `tests/`, `test/` or `examples/` does this. If it is ever
 wanted, the resolver should import a path once, rather than the guard admitting duplicates.
+
+## D250 — `pure` IS REFERENTIAL TRANSPARENCY: THE MEANING IS GRADED (PLAN 0.104; CLOSES 0.103 G) (2026-10-01)
+
+**Relates**: D231 (the grade is a semantic claim), D068 (subeffecting), D143 (the quantity is
+grade-aware in the meaning), D064 (definitions are morphisms), D241 (no general recursion),
+D245; OCP-0009 (conversion is observational equality on the pure fragment).
+**Reverses**: plan 0.52 M2's purity-blind arrows, in the Spec's value domain `⟦_⟧ᴰ` and in the
+contract value domain `Once.Semantics.Value`.
+
+**Found** by plan 0.103 G. `core-pure` ("a pure core computation returns and emits nothing")
+could not be proved, because nothing in the Spec said it. The meaning was purity-blind: a pure
+and an effectful arrow over `A`, `B` denoted the same `⟦A⟧ → T ⟦B⟧`, and the contract domain
+gave a pure FFI pointer the type `⟦A⟧ → Res ⟦B⟧`. A pure-typed value could stop, so `pure`
+was a promise the semantics did not make. That is D143's argument again, for the other grade.
+
+**Decided (the mathematical definition of pureness).** `pure` means referentially transparent:
+a pure term denotes a value, and replacing it by that value never changes a meaning. The
+meaning of the core judgment is GRADED:
+
+* a derivation `Γ ⊢[ Ψ ] t ∷ A ! π` denotes `⟦ Γ ↾ Ψ ⟧ → M π ⟦ A ⟧`, where `M pure X = X` and
+  `M eff X = T X`, the trace monad;
+* `⟦ A ⇒[ q , π ] B ⟧ᴰ = ⟦A⟧ᴰ → M π ⟦B⟧ᴰ` (at `q = Zero`, no argument, per D143), so a pure
+  `Int ⇒ Int` is a total function `ℤ → ℤ`;
+* `⟦ ν-type F π ⟧ᴰ` is the final coalgebra of `M π ∘ ⟦F⟧`, and a pure ν is plain codata;
+* subeffecting `pure ⊑ eff` is the monad's unit `returnT`. It is not the identity, because the
+  objects differ.
+
+This is a model, not a hope, because the pure fragment is total: there is no general recursion
+(D241), only `fold`/`unfold`, and every pure primitive's contract (`pureV`) returns.
+
+**The FFI.** A contract is a value of its declared type, so a pure FFI arrow's contract is a
+total function, including any function pointer it returns. `Once.Semantics.Value` is graded the
+same way (`⟦ A ⇒[ pure ] B ⟧ = ⟦A⟧ → ⟦B⟧`; `eff` arrows keep `Res`). This is the meaning of the
+type, not an extra rule. An interpretation that declares a pointer pure must deliver a total one.
+
+**What stays.** The IR objects stay ungraded (plan 0.52 M2's `IRTy`). Erasing the grade at
+compilation embeds the pure meaning into the effectful one along `returnT`, and the backend
+correspondences are unchanged. D064's direct-call ABI is still what codegen emits. Its
+agreement with the reference meaning is now a consequence for pure bodies, not a premise.
+
+**Consequence.** `core-pure` stops being a postulate. Whether an arrow-typed definition's body
+runs at the reference or at the application cannot be observed for a pure body.
+
+## D251 — EX FALSO IS AN EXPLICIT ELIMINATOR; USAGE IS SYNTACTIC (PLAN 0.104; CLOSES 0.103 6e) (2026-10-01)
+
+**Relates**: D226 (subtyping is a coercion; `Void <: B` is `¡`), D243 (rigid parameters),
+OCP-0009's kernel (`⊢absurd` is the only ex falso).
+**Withdraws**: D229's `Void` bullet (Void-principal eliminations synthesize `Void`), its
+Amendment 2 (usage by reachability: what a `Void` principal discards counts zero), and its
+Amendment 3 (the `Void`-input rules of the domain-given mode). D229's main principle,
+eliminations consume their principal argument up to subtyping, stays.
+
+**Found** by plan 0.103 6e. The surface substitution lemma (`poly-typed-at`) was not
+structural. A base-kinded parameter may be instantiated at `Void` (the base kind is
+first-order data, and `Void` is its initial object). The surface judgment then chose a
+DIFFERENT rule at the instance, with a different usage: `t-binop-void-r` requires
+`¬ (A ≡ Void)`, and `t-binop-void-l` drops the right operand's usage. A term's usage depended
+on whether a subterm's type can return, which instantiation changes.
+
+**Decided.** Typing is closed under substitution exactly, in type and in usage, so:
+
+* the surface has ONE ex falso, the builtin `absurd e`, checked at any type, with `e ∶ Void`.
+  It is the core's `⊢absurd` and means `¡`;
+* no other rule mentions `Void`: the Void-synthesizing eliminator rules (`t-binop-void-l/r`,
+  `t-neg-void`, `t-case-void`, `t-fst/snd/apply/Out-app-void`, `t-apply-app-void`, the
+  domain-given Void-input rules) are deleted;
+* usage is syntactic (QTT as Atkey/McBride): every subterm counts, whether or not evaluation
+  reaches it, and the arms of `case` join.
+
+`Void <: B` (D226) stays. It is the unique morphism, it is a coercion with syntactic usage, and
+it relates a rigid parameter only to itself. So it is stable under substitution.
+
+**Consequence.** Writing `x + v` with `v ∶ Void` no longer types by itself; it is written
+`absurd v`, or it types through `Void <: Int` when the other operand is an `Int`. The
+substitution lemma is a structural map, and its semantic twin is parametricity.
