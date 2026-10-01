@@ -57,7 +57,8 @@ open import Once.TypeCheck.Elaborate using (CheckElabResult; success; failure; c
 open import Once.TypeCheck.ElaborateProofs using (resolveExpr; resolveExprWF; resolvePolyCase; applySplice)
 import Once.Adequacy.ResolveFaithful as RF
 import Once.Adequacy.MeaningBridge as MB
-open import Once.Adequacy.MeaningRelation fmt using (RelT)
+open import Once.Adequacy.GradedRelation fmt using (RelGM)
+open import Once.Type using (pure)
 open import Once.Adequacy.TableCall fmt using (tableEnv-skip)
 
 ------------------------------------------------------------------------
@@ -146,7 +147,7 @@ envrel-transport : ∀ (σ₁ σ₂ : SD.DefsSem) (polys : PolyCtx) {ρ : DefMea
   → RefsAgree σ₁ σ₂ polys → MB.EnvRel fmt σ₁ polys ρ → MB.EnvRel fmt σ₂ polys ρ
 envrel-transport σ₁ σ₂ []                   _        _        = tt
 envrel-transport σ₁ σ₂ ((n , s , _) ∷ rest) {e , ρ} (h , hs) (r , rs) =
-  (λ U ki → subst (RelT U (e U ki)) (h U) (r U ki)) , envrel-transport σ₁ σ₂ rest hs rs
+  (λ U ki → subst (RelGM pure U (e U ki)) (h U) (r U ki)) , envrel-transport σ₁ σ₂ rest hs rs
 
 CallsAgree : SD.DefsSem → SD.DefsSem → Imports → Set
 CallsAgree σ₁ σ₂ []               = ⊤
@@ -156,7 +157,7 @@ imprel-transport : ∀ (σ₁ σ₂ : SD.DefsSem) (imps : Imports) {ι : ImpMean
   → CallsAgree σ₁ σ₂ imps → MB.ImpRel fmt σ₁ imps ι → MB.ImpRel fmt σ₂ imps ι
 imprel-transport σ₁ σ₂ []               _        _        = tt
 imprel-transport σ₁ σ₂ ((n , U) ∷ rest) {e , ι} (h , hs) (r , rs) =
-  subst (RelT U e) h r , imprel-transport σ₁ σ₂ rest hs rs
+  subst (RelGM pure U e) h r , imprel-transport σ₁ σ₂ rest hs rs
 
 ------------------------------------------------------------------------
 -- Calls

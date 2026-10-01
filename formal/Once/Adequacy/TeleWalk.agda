@@ -84,7 +84,7 @@ import Once.Spec.Elaboration as ElabM
 import Once.Spec.Core.Meaning as GM
 import Once.Spec.Core.PolyTyping as PT
 import Once.Denotation.Meaning as MeaningM
-open import Once.Adequacy.MeaningRelation fmt using (RelT; RelT-bind)
+open import Once.Adequacy.GradedRelation fmt using (RelGT; RelGM; RelGT-bind)
 open import Once.Denotation.TraceMonad using (T; projTrace)
 open import Once.Adequacy.TeleEnvLemmas fmt using (σW; callSD-later; refs-skip; refs-head; spliceClosed; RefsAgree; envrel-transport;
   imprel-transport; calls-same)
@@ -110,7 +110,9 @@ import Data.Maybe
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ)
 import Relation.Nullary
 open import Once.Functor.Decide using (isConcrete?)
-open import Once.Denotation.Meaning using (sigOpRefᴰ)
+open import Once.Denotation.GradedOps using (sigOpRefᵛ)
+open import Once.Denotation.GradedDomain using (⟦_⟧ᵛ)
+open import Once.Functor.Translate using (IsConcrete-irrelevant)
 open import Data.List.Properties using (++-assoc)
 
 ------------------------------------------------------------------------
@@ -172,19 +174,19 @@ main-step : ∀ {s} {S : Sig s} {csc tl is ts pre} (sg : SigCF S) {fi : C.FunInf
                                    (("main" , EffUU) ∷ C.CScope.cimps csc)) (realize D) n
                 ≡ runProgram fmt (monoHere {S = S} {sc = AS.scopeOf csc} {fi = fi} {Ψ = Ψ} tl is ts sg D refl) n
 main-step {S = S} {csc} {tl} {is} {ts} {pre} sg {fi} {Ctx.Usage.[]} D inv later ns n =
-  sym (proj₁ (RelT-bind {EffUU} {Once.Type.Unit} relAF (λ rv → rv {tt} {tt} tt) n))
+  sym (proj₁ (RelGT-bind {EffUU} {Once.Type.Unit} relAF (λ rv → rv {tt} {tt} tt) n))
   where
     σ  = σW (later ++ pre) (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) (("main" , EffUU) ∷ C.CScope.cimps csc)
     δ  = teleSem fmt tl
     V  = viewOf {S = S} is ts
     Dc = proj₂ (ElabM.elabᶜ S V D)
-    relA : RelT EffUU (MeaningM.⟦_⟧ᶜ D fmt (CE.envOf fmt S δ is ts) tt) (SD.⟦ realize D ⟧ˢ fmt σ tt)
+    relA : RelGM Once.Type.pure EffUU (MeaningM.⟦_⟧ᶜ D fmt (CE.envOf fmt S δ is ts) tt) (SD.⟦ realize D ⟧ˢ fmt σ tt)
     relA = MB.bridge-c fmt σ D {dγ₁ = tt} {dγ₂ = tt} (MB.mk↾ tt)
              (Inv.rel inv later ns (C.declImps (C.CScope.ctele csc)) (Inv.iself inv) (("main" , EffUU) ∷ C.CScope.cimps csc))
     eqB : MeaningM.⟦_⟧ᶜ D fmt (CE.envOf fmt S δ is ts) tt ≡ GM.⟦_⟧ S Dc fmt δ tt
     eqB = CMB.bridge-c fmt S {δ = δ} V (CE.agree fmt S δ is ts (Inv.valid inv)) D tt
-    relAF : RelT EffUU (GM.⟦_⟧ S (PT.instantiate S noVars _ (A.abs-⊢ S noKinds sg Dc)) fmt δ tt) (SD.⟦ realize D ⟧ˢ fmt σ tt)
-    relAF = subst (λ m → RelT EffUU m (SD.⟦ realize D ⟧ˢ fmt σ tt))
+    relAF : RelGM Once.Type.pure EffUU (GM.⟦_⟧ S (PT.instantiate S noVars _ (A.abs-⊢ S noKinds sg Dc)) fmt δ tt) (SD.⟦ realize D ⟧ˢ fmt σ tt)
+    relAF = subst (λ m → RelGM Once.Type.pure EffUU m (SD.⟦ realize D ⟧ˢ fmt σ tt))
                   (trans eqB (CAS.rt-sem S noKinds noVars _ sg Dc fmt δ)) relA
 
 ------------------------------------------------------------------------
@@ -209,11 +211,11 @@ private
   ns-head []           imps []             = []
   ns-head (e ∷ later) imps ((h ∷ _) ∷ ns) = h ∷ ns-head later imps ns
 
-inv-ffi : ∀ {s} {S : Sig s} {csc tl is ts pre} {fi : C.FunInfo} {ty : Type} {c : IsConcrete ty}
+inv-ffi : ∀ {s} {S : Sig s} {csc tl is ts pre} {fi : C.FunInfo} {ty : Type} {k c : IsConcrete ty}
             {h : HonestFFI ty} {g : RigidFree ty}
         → Inv {S = S} csc tl is ts pre → All (funName fi ≢_) (scopeNames csc)
-        → Inv (C.extendScope csc (funName fi) ty) tl (i-ffi h g is) ts (irFunOf (FB.primCF fi ty c) ∷ pre)
-inv-ffi {S = S} {csc} {tl} {is} {ts} {pre} {fi} {ty} {c} {h} {g} inv fr = record
+        → Inv (C.extendScope csc (funName fi) ty) tl (i-ffi k h g is) ts (irFunOf (FB.primCF fi ty c) ∷ pre)
+inv-ffi {S = S} {csc} {tl} {is} {ts} {pre} {fi} {ty} {k} {c} {h} {g} inv fr = record
   { valid = Inv.valid inv
   ; iself = Inv.iself inv
   ; rel   = rel′
@@ -225,7 +227,7 @@ inv-ffi {S = S} {csc} {tl} {is} {ts} {pre} {fi} {ty} {c} {h} {g} inv fr = record
     rel′ : ∀ (later : List IRFun) → NoShadow later ((x , ty) ∷ C.CScope.cimps csc)
          → ∀ (I : String → Imports) → IAgree I (C.CScope.ctele csc) → ∀ (uf : Imports)
          → MB.MRel fmt (σW (later ++ e ∷ pre) (C.cpolys csc) I uf) (ctxOf (AS.scopeOf (C.extendScope csc x ty)))
-                   (CE.envOf fmt S δ (i-ffi h g is) ts)
+                   (CE.envOf fmt S δ (i-ffi k h g is) ts)
     rel′ later ns I ia uf = proj₁ old , (new , proj₂ old)
       where
         old : MB.MRel fmt (σW (later ++ e ∷ pre) (C.cpolys csc) I uf) (ctxOf (AS.scopeOf csc)) (CE.envOf fmt S δ is ts)
@@ -235,10 +237,10 @@ inv-ffi {S = S} {csc} {tl} {is} {ts} {pre} {fi} {ty} {c} {h} {g} inv fr = record
                        (ns-step later (C.CScope.cimps csc) e refl
                           (bare-ne (C.CScope.cimps csc) (map (λ q → pfunName (proj₁ q)) (C.CScope.ctele csc)) fr) ns)
                        I ia uf)
-        new : RelT ty (CE.ffiSem fmt S δ x ty (isConcrete? ty)) (MB.callSD fmt (σW (later ++ e ∷ pre) (C.cpolys csc) I uf) x ty)
-        new = subst (λ m → RelT ty m (MB.callSD fmt (σW (later ++ e ∷ pre) (C.cpolys csc) I uf) x ty))
-                    (sym (CE.ffiSem-conc fmt S δ x ty c))
-                    (subst (RelT ty (sigOpRefᴰ fmt (bare x) c))
+        new : RelGM Once.Type.pure ty (sigOpRefᵛ fmt (bare x) k) (MB.callSD fmt (σW (later ++ e ∷ pre) (C.cpolys csc) I uf) x ty)
+        new = subst (λ k′ → RelGM Once.Type.pure ty (sigOpRefᵛ fmt (bare x) k′) (MB.callSD fmt (σW (later ++ e ∷ pre) (C.cpolys csc) I uf) x ty))
+                    (IsConcrete-irrelevant c k)
+                    (subst (RelGM Once.Type.pure ty (sigOpRefᵛ fmt (bare x) c))
                            (sym (callSD-later later (e ∷ pre) (C.cpolys csc) I uf x ty (ns-head later (C.CScope.cimps csc) ns)))
                            (TE.ffi-entry pre x ty c))
 
@@ -252,23 +254,6 @@ inv-ffi {S = S} {csc} {tl} {is} {ts} {pre} {fi} {ty} {c} {h} {g} inv fr = record
 MonoValid : C.Entry → Set
 MonoValid (C.e-fun fi)   = funIsPrimitive fi ≡ false → validIdentB (funName fi) ≡ true
 MonoValid (C.e-poly pfi) = ⊤
-
-postulate
-  -- RESIDUAL, class OPEN DECISION (plan 0.103 G): a PURE core computation
-  -- returns a value and emits nothing. D245's direct-call ABI runs an
-  -- arrow-typed definition's body at each APPLICATION; the core runs it at the
-  -- REFERENCE. The two agree exactly when the body's computation returns
-  -- silently. Emitting is excluded by the grade, and a fundamental lemma over
-  -- pure derivations proves the rest — EXCEPT one case the model leaves open: a
-  -- pure FFI contract may return a PARTIAL function pointer
-  -- (`Val.⟦A ⇒ B⟧ = ⟦A⟧ → Res ⟦B⟧`), and applying it may stop. D231's honesty
-  -- (`pure` = no effects; halting is `Halts`, an effect) says it may not; the
-  -- model does not say so. Closing this is a decision: make pure pointers total
-  -- in the contract, OR make every arrow-typed definition mean its uncurried
-  -- morphism (per-application, D064) in the core and at the resolver's splice.
-  core-pure : ∀ {s} {S : Sig s} (tl : Tele S) {t : Once.Spec.Core.Syntax.Tm S 0} {A : Type}
-              (D : GTM._⊢[_]_∷_!_ S Ctx.∅ Ctx.Usage.[] t A Once.Type.pure)
-            → TE.PureAt A (GM.⟦_⟧ S D fmt (teleSem fmt tl) tt)
 
 private
   does-no : ∀ {A : Set} (d : Dec A) → ¬ A → Relation.Nullary.isYes d ≡ false
@@ -288,19 +273,11 @@ private
       (trans (cong (C.compileFun-aux C.Heap false ctx polys impsOf x ty body) (does-no (x ≟str "main") ne))
              (cong (C.compileFunBody-aux C.Heap false ctx polys impsOf x ty refl) ce)))
 
-  -- Extending the telescope leaves the scope's earlier meanings as they were.
-  ffiSem-indep : ∀ {s₁ s₂} {S₁ : Sig s₁} {S₂ : Sig s₂} {δ₁ δ₂} (x : String) (U : Type) (m : Data.Maybe.Maybe (IsConcrete U))
-               → CE.ffiSem fmt S₁ δ₁ x U m ≡ CE.ffiSem fmt S₂ δ₂ x U m
-  ffiSem-indep x U (just k) = refl
-  ffiSem-indep x U nothing  = refl
 
 impEnv-wk : ∀ {s} {S : Sig s} {sc} {tl : Tele S} {body : _} {D : _} {imps} (is : ImpSig S imps)
           → CE.impEnv fmt (S Once.Spec.Core.PolyTy.▷ sc) (teleSem fmt (def tl sc body D)) (wkI is) ≡ CE.impEnv fmt S (teleSem fmt tl) is
 impEnv-wk TR.[]              = refl
-impEnv-wk {S = S} {sc} {tl} {body} {D} (TR.i-ffi {x = x} {T = U} h g is) =
-  cong₂ _,_ (ffiSem-indep {S₁ = S Once.Spec.Core.PolyTy.▷ sc} {S₂ = S} {δ₁ = teleSem fmt (def tl sc body D)} {δ₂ = teleSem fmt tl}
-                          x U (isConcrete? U))
-            (impEnv-wk {sc = sc} {tl = tl} {body = body} {D = D} is)
+impEnv-wk {sc = sc} {tl} {body} {D} (TR.i-ffi c h g is) = cong₂ _,_ refl (impEnv-wk {sc = sc} {tl = tl} {body = body} {D = D} is)
 impEnv-wk {sc = sc} {tl} {body} {D} (TR.i-def d e is) = cong₂ _,_ refl (impEnv-wk {sc = sc} {tl = tl} {body = body} {D = D} is)
 
 defEnv-wk : ∀ {s} {S : Sig s} {sc} {tl : Tele S} {body : _} {D : _} {ps} (ts : TeleSig S ps)
@@ -311,7 +288,7 @@ defEnv-wk {sc = sc} {tl} {body} {D} (TR.t-def d e ts) = cong₂ _,_ refl (defEnv
 valid-wk : ∀ {s} {S : Sig s} {sc} {tl : Tele S} {body : _} {D : _} {imps} (is : ImpSig S imps)
          → CE.DefsValid fmt S (teleSem fmt tl) is → CE.DefsValid fmt (S Once.Spec.Core.PolyTy.▷ sc) (teleSem fmt (def tl sc body D)) (wkI is)
 valid-wk TR.[]             v        = tt
-valid-wk {sc = sc} {tl} {body} {D} (TR.i-ffi h g is) v        = valid-wk {sc = sc} {tl = tl} {body = body} {D = D} is v
+valid-wk {sc = sc} {tl} {body} {D} (TR.i-ffi c h g is) v        = valid-wk {sc = sc} {tl = tl} {body = body} {D = D} is v
 valid-wk {sc = sc} {tl} {body} {D} (TR.i-def d e is) (h , v)  = h , valid-wk {sc = sc} {tl = tl} {body = body} {D = D} is v
 
 inv-mono : ∀ {s} {S : Sig s} {csc tl is ts pre} (sg : SigCF S) {fi : C.FunInfo} {ty : Type} {g : RigidFree ty}
@@ -362,17 +339,17 @@ inv-mono {S = S} {csc} {tl} {is} {ts} {pre} sg {fi} {ty} {g} {Ctx.Usage.[]} D {i
             (trans (RB.realize-agrees fmt σx ctx (funBody fi) ty ce tt)
                    (realize-invariant (Once.TypeCheck.Soundness.check-sound ctx (funBody fi) ty ce) D σx tt))))
 
-    relA : RelT ty (MeaningM.⟦_⟧ᶜ D fmt ρ tt) (SD.⟦ realize D ⟧ˢ fmt σx tt)
+    relA : RelGM Once.Type.pure ty (MeaningM.⟦_⟧ᶜ D fmt ρ tt) (SD.⟦ realize D ⟧ˢ fmt σx tt)
     relA = MB.bridge-c fmt σx D {dγ₁ = tt} {dγ₂ = tt} (MB.mk↾ tt)
              (Inv.rel inv [] [] (C.declImps (C.CScope.ctele csc)) (Inv.iself inv) uf)
 
     entry≡ : GM.⟦_⟧ S Dc fmt δ tt ≡ CMB.refSem fmt S′ δ′ {d = zero} {U = ty} (TR.mono-inst {S = S′} {d = zero} {T′ = ty} refl)
     entry≡ = sym (CAS.mono-entry-sem S noKinds _ _ sg g Dc fmt δ)
 
-    relM : RelT ty (GM.⟦_⟧ S Dc fmt δ tt) (subst T (cohᴰ ty) (abiT ty M))
-    relM = TE.abi-rel ty (GM.⟦_⟧ S Dc fmt δ tt) M (core-pure tl Dc)
-             (subst (RelT ty (GM.⟦_⟧ S Dc fmt δ tt)) (sym chain)
-                    (subst (λ m → RelT ty m (SD.⟦ realize D ⟧ˢ fmt σx tt))
+    relM : RelGM Once.Type.pure ty (GM.⟦_⟧ S Dc fmt δ tt) (subst T (cohᴰ ty) (abiT ty M))
+    relM = TE.abi-rel ty (GM.⟦_⟧ S Dc fmt δ tt) M
+             (subst (RelGM Once.Type.pure ty (GM.⟦_⟧ S Dc fmt δ tt)) (sym chain)
+                    (subst (λ m → RelGM Once.Type.pure ty m (SD.⟦ realize D ⟧ˢ fmt σx tt))
                            (CMB.bridge-c fmt S {δ = δ} V (CE.agree fmt S δ is ts (Inv.valid inv)) D tt) relA))
 
     rel′ : ∀ (later : List IRFun) → NoShadow later ((x , ty) ∷ C.CScope.cimps csc)
@@ -395,9 +372,9 @@ inv-mono {S = S} {csc} {tl} {is} {ts} {pre} sg {fi} {ty} {g} {Ctx.Usage.[]} D {i
         callEq : MB.callSD fmt σ x ty ≡ subst T (cohᴰ ty) (abiT ty M)
         callEq = trans (callSD-later later (e ∷ pre) (C.cpolys csc) I uf′ x ty (ns-head later (C.CScope.cimps csc) ns))
                        (cong (subst T (cohᴰ ty)) (abi ty x pre irFun))
-        new : RelT ty (CMB.refSem fmt S′ δ′ {d = zero} {U = ty} (TR.mono-inst {S = S′} {d = zero} {T′ = ty} refl)) (MB.callSD fmt σ x ty)
-        new = subst (λ m → RelT ty m (MB.callSD fmt σ x ty)) entry≡
-                    (subst (RelT ty (GM.⟦_⟧ S Dc fmt δ tt)) (sym callEq) relM)
+        new : RelGM Once.Type.pure ty (CMB.refSem fmt S′ δ′ {d = zero} {U = ty} (TR.mono-inst {S = S′} {d = zero} {T′ = ty} refl)) (MB.callSD fmt σ x ty)
+        new = subst (λ m → RelGM Once.Type.pure ty m (MB.callSD fmt σ x ty)) entry≡
+                    (subst (RelGM Once.Type.pure ty (GM.⟦_⟧ S Dc fmt δ tt)) (sym callEq) relM)
 
 ------------------------------------------------------------------------
 -- A telescope entry: typed once at its rigid schema; each reference to it is
@@ -430,7 +407,7 @@ postulate
                         {body : _} (sc : Once.Type.PolyType)
                         (D : ctxOf (AS.scopeOf csc) ⊢ᶜ body ∶ rigidOf sc ⨾ Ctx.Usage.[]) {U : Type} (ki : KindedInstance sc U)
                     → GM.⟦_⟧ S (proj₂ (ElabM.elabᶜ S (viewOf {S = S} is ts) (inst-at sc D ki))) fmt δ tt
-                      ≡ subst (λ X → T ⟦ X ⟧ᴰ) (proj₂ (proj₂ (kinded-instance sc ki)))
+                      ≡ subst (λ X → ⟦ X ⟧ᵛ) (proj₂ (proj₂ (kinded-instance sc ki)))
                           (GM.⟦_⟧ S (PT.instantiate S (proj₁ (kinded-instance sc ki)) (proj₁ (proj₂ (kinded-instance sc ki)))
                                        (A.abs-⊢ S (kindsOf sc) sg (proj₂ (ElabM.elabᶜ S (viewOf {S = S} is ts) D)))) fmt δ tt)
 
@@ -516,13 +493,13 @@ inv-poly {S = S} {csc} {tl} {is} {ts} {pre} sg {pfi} {Ctx.Usage.[]} D inv fr = r
 
         -- the new entry: its splice at an instance is its core instance (6e)
         head : ∀ (U : Type) (ki : KindedInstance scT U)
-             → RelT U (CMB.refSem fmt S′ δ′ {d = zero} {U = U} (TR.poly-inst {S = S′} {d = zero} {sc = scT} refl ki))
+             → RelGM Once.Type.pure U (CMB.refSem fmt S′ δ′ {d = zero} {U = U} (TR.poly-inst {S = S′} {d = zero} {sc = scT} refl ki))
                       (SD.refs σ y U)
         head U ki =
-          subst (λ m → RelT U m (SD.refs σ y U))
+          subst (λ m → RelGM Once.Type.pure U m (SD.refs σ y U))
                 (trans (CMB.bridge-c fmt S {δ = δ} V (CE.agree fmt S δ is ts (Inv.valid inv)) D-U tt)
                        (poly-instance-sem is ts sg δ scT D ki))
-                (subst (RelT U (MeaningM.⟦_⟧ᶜ D-U fmt ρ tt)) (sym eqSD)
+                (subst (RelGM Once.Type.pure U (MeaningM.⟦_⟧ᶜ D-U fmt ρ tt)) (sym eqSD)
                        (MB.bridge-c fmt σo D-U {dγ₁ = tt} {dγ₂ = tt} (MB.mk↾ tt) old))
           where
             D-U = inst-at {csc = csc} scT D ki
@@ -734,8 +711,8 @@ mutual
   walk [] FB.bnil () bme tl is ts sg pre inv fr vd n
   walk {csc} {C.e-fun fi ∷ es} (ffi {fi = fi} {ty = ty} ep et c h g rest) (FB.bffi {ty = ty′} {c = c′} ep′ et′ ec eh eg rest-b) mi bme tl is ts sg pre inv fr (_ ∷ vd) n
     with just-injective (trans (sym et) et′)
-  ... | refl = walk rest rest-b mi bme tl (i-ffi h g is) ts sg (irFunOf (FB.primCF fi ty c′) ∷ pre)
-                 (inv-ffi {fi = fi} {ty = ty} {c = c′} {h = h} {g = g} inv (fresh-head {csc = csc} {e = C.e-fun fi} {es = es} fr))
+  ... | refl = walk rest rest-b mi bme tl (i-ffi c h g is) ts sg (irFunOf (FB.primCF fi ty c′) ∷ pre)
+                 (inv-ffi {fi = fi} {ty = ty} {k = c} {c = c′} {h = h} {g = g} inv (fresh-head {csc = csc} {e = C.e-fun fi} {es = es} fr))
                  (fresh-fun {csc = csc} {fi = fi} {ty = ty} {es = es} fr) vd n
   walk (ffi {fi = C.mkFunInfo x ft bd prim} refl et c h g rest) (FB.bcons () rf eg ce cf rest-b) mi bme tl is ts sg pre inv fr vd n
   walk {csc} {C.e-poly pfi ∷ es} (poly {pfi = pfi} {Ψ = Ctx.Usage.[]} D rest) (FB.bpoly ce rest-b) mi bme tl is ts sg pre inv fr (_ ∷ vd) n =

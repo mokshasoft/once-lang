@@ -35,6 +35,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 import Once.Type as T
 open import Once.Type.DecEq using (_≟T_)
 open import Once.Type.Honest using (HonestFFI)
+open import Once.Functor.Translate using (IsConcrete)
 open import Once.Type.Rigid using (RigidFree; RigidFreeF; KindedInstance; ground-kinded; rigidOf;
   rf-Unit; rf-Void; rf-Int; rf-Float; rf-Str; rf-Buffer; rf-*; rf-+; rf-⇒; rf-μ; rf-ν; rf-K; rf-Id; rf-⊕; rf-⊗)
 import Once.Compile as C
@@ -90,7 +91,9 @@ SigCF {s} S = ∀ (d : Fin s) → ConstFree (type (S !! d))
 -- What each imported name is in the core signature.
 data ImpSig {s} (S : Sig s) : C.FunCtx → Set where
   []    : ImpSig S []
-  i-ffi : ∀ {x T imps} → HonestFFI T → RigidFree T → ImpSig S imps → ImpSig S ((x , T) ∷ imps)
+  -- An FFI entry keeps its concreteness: its meaning is its contract, which
+  -- exists only at a concrete type.
+  i-ffi : ∀ {x T imps} → IsConcrete T → HonestFFI T → RigidFree T → ImpSig S imps → ImpSig S ((x , T) ∷ imps)
   i-def : ∀ {x T imps} (d : Fin s) → S !! d ≡ monoSchema T → ImpSig S imps → ImpSig S ((x , T) ∷ imps)
 
 -- Each telescope definition's core entry.
@@ -100,7 +103,7 @@ data TeleSig {s} (S : Sig s) : List C.PolyFunInfo → Set where
 
 wkI : ∀ {s} {S : Sig s} {sc : Schema} {imps} → ImpSig S imps → ImpSig (S ▷ sc) imps
 wkI []              = []
-wkI (i-ffi h g is)  = i-ffi h g (wkI is)
+wkI (i-ffi c h g is)  = i-ffi c h g (wkI is)
 wkI (i-def d e is)  = i-def (suc d) e (wkI is)
 
 wkT : ∀ {s} {S : Sig s} {sc : Schema} {ps} → TeleSig S ps → TeleSig (S ▷ sc) ps
@@ -130,10 +133,10 @@ module _ {s} {S : Sig s} where
 
   impAt : ∀ {imps} → ImpSig S imps → ∀ {x T′} → lookupImport imps x ≡ just T′ → ES.ImportAt T′
   impAt [] ()
-  impAt {(n , T₀) ∷ rest} (i-ffi h g is) {x} eq with StrProp._≟_ n x
+  impAt {(n , T₀) ∷ rest} (i-ffi c h g is) {x} eq with StrProp._≟_ n x
   ... | yes _ with just-injective eq
   ...   | refl = ES.ffi h g
-  impAt {(n , T₀) ∷ rest} (i-ffi h g is) {x} eq | no _ = impAt is eq
+  impAt {(n , T₀) ∷ rest} (i-ffi c h g is) {x} eq | no _ = impAt is eq
   impAt {(n , T₀) ∷ rest} (i-def d e is) {x} eq with StrProp._≟_ n x
   ... | yes _ with just-injective eq
   ...   | refl = ES.def d (mono-inst e)
@@ -218,7 +221,7 @@ mutual
   toProgram : ∀ {s} {S : Sig s} {sc es} → Tele S → ImpSig S (Scope.imps sc) → TeleSig S (Scope.tele sc) → SigCF S
             → (mt : ModTele sc es) → MainIn mt → Program
   toProgram tl is ts sg [] ()
-  toProgram tl is ts sg (ffi _ _ _ h g rest) mi = toProgram tl (i-ffi h g is) ts sg rest mi
+  toProgram tl is ts sg (ffi _ _ c h g rest) mi = toProgram tl (i-ffi c h g is) ts sg rest mi
   toProgram {S = S} {sc = sc} tl is ts sg (poly {pfi = pfi} {Ψ = Ψ} D rest) mi =
     toProgram (def tl (schemaOf (pfunType pfi))
                       (A.absTm S (kindsOf (pfunType pfi)) (proj₁ (polyElab {S = S} {sc = sc} {pfi = pfi} {Ψ = Ψ} is ts D)))

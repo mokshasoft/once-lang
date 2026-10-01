@@ -10,7 +10,7 @@
 -- entry by entry along the scope's signature (`ImpSig`/`TeleSig`, the View's
 -- data), so the agreement holds by construction:
 --   * a definition means its core entry at the instance (`refSem`);
---   * an FFI declaration means its contract (`sigOpRefᴰ`).
+--   * an FFI declaration means its contract (`sigOpRefᵛ`).
 -- The one fact not about `δ` is that a qualified or resolved (not own) name
 -- never finds a definition: a definition's name is a valid identifier (the
 -- extractor's guard), and such a name is not (it has a dot, or is empty).
@@ -41,15 +41,14 @@ open C.PolyFunInfo using (pfunName; pfunType)
 open import Once.Type using (Type)
 open import Once.Type.Rigid using (KindedInstance; ground-kinded)
 open import Once.Functor.Translate using (IsConcrete; IsConcrete-irrelevant)
-open import Once.Functor.Decide using (isConcrete?; isConcrete?-complete)
 open import Once.CanonicalName using (CanonicalName; canonical; own; bare; showCanonical)
 open import Once.TypeCheck.Classify using (lookupImport; lookupPolyPrefix)
 open import Once.Parser using (validIdentB; validCharsB; allIdentContinue)
 open import Once.Denotation.DefEnv using (defAt; impAt)
-open import Once.Denotation.Meaning using (DefMeanings; ImpMeanings; Meanings; meanings; sigOpRefᴰ)
+open import Once.Denotation.Meaning using (DefMeanings; ImpMeanings; Meanings; meanings)
+open import Once.Denotation.GradedOps using (sigOpRefᵛ)
 open import Once.Denotation.TraceMonad using (T)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ)
-open import Once.Denotation.Program using (unlinkedT)
 import Once.Spec.Core.Meaning S as GM
 import Once.Spec.Core.Translate as TR
 open TR using (ImpSig; TeleSig; mono-inst; poly-inst; telFind; viewOf) renaming (impAt to sigAt)
@@ -86,13 +85,9 @@ notOwn-invalid (canonical (a ∷ b ∷ rest)) _ = dot-invalid a (showCanonical (
 
 module _ (δ : GM.DefSem) where
 
-  ffiSem : String → (U : Type) → Maybe (IsConcrete U) → T ⟦ U ⟧ᴰ
-  ffiSem x U (just k) = sigOpRefᴰ fmt (bare x) k
-  ffiSem x U nothing  = unlinkedT
-
   impEnv : ∀ {imps} → ImpSig S imps → ImpMeanings imps
   impEnv TR.[]                                = tt
-  impEnv (TR.i-ffi {x = x} {T = U} _ _ is)    = ffiSem x U (isConcrete? U) , impEnv is
+  impEnv (TR.i-ffi {x = x} {T = U} c _ _ is)  = sigOpRefᵛ fmt (bare x) c , impEnv is
   impEnv (TR.i-def d e is)                    = refSem δ (mono-inst {S = S} e) , impEnv is
 
   defEnv : ∀ {ps} → TeleSig S ps → DefMeanings (C.buildPolyCtx ps)
@@ -106,25 +101,13 @@ module _ (δ : GM.DefSem) where
   -- Agreement
   ----------------------------------------------------------------------
 
-  private
-    ffiSem-k : ∀ x U (m : Maybe (IsConcrete U)) → isConcrete? U ≡ m → (k : IsConcrete U)
-             → ffiSem x U m ≡ sigOpRefᴰ fmt (bare x) k
-    ffiSem-k x U (just k′) _ k = cong (sigOpRefᴰ fmt (bare x)) (IsConcrete-irrelevant k′ k)
-    ffiSem-k x U nothing eq k with isConcrete?-complete k
-    ... | c , e with trans (sym e) eq
-    ...   | ()
-
-  -- An FFI entry means its contract.
-  ffiSem-conc : ∀ x U (k : IsConcrete U) → ffiSem x U (isConcrete? U) ≡ sigOpRefᴰ fmt (bare x) k
-  ffiSem-conc x U k = ffiSem-k x U (isConcrete? U) refl k
-
   agree-imp : ∀ {imps} (is : ImpSig S imps) {x U} (lk : lookupImport imps x ≡ just U) (k : IsConcrete U)
             → impAt imps x (impEnv is) lk ≡ impSem δ (bare x) k (sigAt {S = S} is lk)
   agree-imp TR.[] () k
-  agree-imp {(n , T₀) ∷ rest} (TR.i-ffi h g is) {x} lk k with StrProp._≟_ n x
+  agree-imp {(n , T₀) ∷ rest} (TR.i-ffi c h g is) {x} lk k with StrProp._≟_ n x
   ... | yes refl with lk
-  ...   | refl = ffiSem-k x T₀ (isConcrete? T₀) refl k
-  agree-imp {(n , T₀) ∷ rest} (TR.i-ffi h g is) {x} lk k | no _ = agree-imp is lk k
+  ...   | refl = cong (sigOpRefᵛ fmt (bare x)) (IsConcrete-irrelevant c k)
+  agree-imp {(n , T₀) ∷ rest} (TR.i-ffi c h g is) {x} lk k | no _ = agree-imp is lk k
   agree-imp {(n , T₀) ∷ rest} (TR.i-def d e is) {x} lk k with StrProp._≟_ n x
   ... | yes refl with lk
   ...   | refl = refl
@@ -142,7 +125,7 @@ module _ (δ : GM.DefSem) where
   -- Every definition of the scope has an identifier for a name.
   DefsValid : ∀ {imps} → ImpSig S imps → Set
   DefsValid TR.[]                        = ⊤
-  DefsValid (TR.i-ffi _ _ is)            = DefsValid is
+  DefsValid (TR.i-ffi _ _ _ is)          = DefsValid is
   DefsValid (TR.i-def {x = x} _ _ is)    = (validIdentB x ≡ true) × DefsValid is
 
   IsFFI : ∀ {U} → ImportAt U → Set
@@ -152,10 +135,10 @@ module _ (δ : GM.DefSem) where
   lookup-ffi : ∀ {imps} (is : ImpSig S imps) → DefsValid is → ∀ {q U} → validIdentB q ≡ false
              → (lk : lookupImport imps q ≡ just U) → IsFFI (sigAt {S = S} is lk)
   lookup-ffi TR.[] _ _ ()
-  lookup-ffi {(n , T₀) ∷ rest} (TR.i-ffi h g is) dv {q} nv lk with StrProp._≟_ n q
+  lookup-ffi {(n , T₀) ∷ rest} (TR.i-ffi c h g is) dv {q} nv lk with StrProp._≟_ n q
   ... | yes refl with lk
   ...   | refl = tt
-  lookup-ffi {(n , T₀) ∷ rest} (TR.i-ffi h g is) dv {q} nv lk | no _ = lookup-ffi is dv nv lk
+  lookup-ffi {(n , T₀) ∷ rest} (TR.i-ffi c h g is) dv {q} nv lk | no _ = lookup-ffi is dv nv lk
   lookup-ffi {(n , T₀) ∷ rest} (TR.i-def d e is) (v , dv) {q} nv lk with StrProp._≟_ n q
   ... | yes refl with trans (sym v) nv
   ...   | ()
@@ -163,7 +146,7 @@ module _ (δ : GM.DefSem) where
 
   -- THE AGREEMENT, by construction.
   private
-    ffi-sem : ∀ {U} (c : CanonicalName) (k : IsConcrete U) (i : ImportAt U) → IsFFI i → impSem δ c k i ≡ sigOpRefᴰ fmt c k
+    ffi-sem : ∀ {U} (c : CanonicalName) (k : IsConcrete U) (i : ImportAt U) → IsFFI i → impSem δ c k i ≡ sigOpRefᵛ fmt c k
     ffi-sem c k (ffi _ _) _ = refl
 
   -- THE AGREEMENT, by construction.
