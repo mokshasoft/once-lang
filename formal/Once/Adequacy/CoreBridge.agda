@@ -95,7 +95,7 @@ private
   none-in-empty (x ∷ xs) = [] ∷ none-in-empty xs
 
   inv₀ : TW.Inv C.emptyCScope Tele.[] TR.[] TR.[] []
-  inv₀ = record { valid = tt ; iself = [] ; rel = λ _ _ _ _ _ → tt , tt }
+  inv₀ = record { valid = tt ; irf = λ () ; iself = [] ; rel = λ _ _ _ _ _ → tt , tt }
 
   run-at : ∀ {σ σ′} {Ψ} (se : _) (n : ℕ) → σ ≡ σ′ → ME.runMainˢ {Ψ} σ se n ≡ ME.runMainˢ σ′ se n
   run-at se n refl = refl

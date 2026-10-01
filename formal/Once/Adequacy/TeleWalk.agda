@@ -89,6 +89,8 @@ open import Once.Denotation.TraceMonad using (T; projTrace)
 open import Once.Adequacy.TeleEnvLemmas fmt using (σW; callSD-later; refs-skip; refs-head; spliceClosed; RefsAgree; envrel-transport;
   imprel-transport; calls-same)
 import Once.Adequacy.TeleEntry fmt as TE
+import Once.TypeCheck.RigidSubst as RS
+open import Once.Type.Rigid using (RigidFree)
 import Once.Adequacy.SourceFaithful as SF
 import Once.Adequacy.FaithfulLemmas as FLm
 import Once.Adequacy.ResolveFaithful as RF
@@ -127,11 +129,23 @@ NoShadow later imps = All (λ e → All (λ p → fname e ≢ bare (proj₁ p)) 
 IAgree : (String → Imports) → List (C.PolyFunInfo × C.FunCtx) → Set
 IAgree I tele = All (λ q → I (pfunName (proj₁ q)) ≡ proj₂ q) tele
 
+-- The scope's imports are rigid-free.
+ImportsRF : Imports → Set
+ImportsRF imps = ∀ {x T} → Once.TypeCheck.Classify.lookupImport imps x ≡ just T → RigidFree T
+
+irf-cons : ∀ {imps : Imports} {y : String} {ty : Type} → RigidFree ty → ImportsRF imps → ImportsRF ((y , ty) ∷ imps)
+irf-cons {y = y} g old {x} lk with y ≟str x
+... | yes _ = subst RigidFree (just-injective lk) g
+... | no _  = old lk
+
 -- THE INVARIANT at a position of the walk.
 record Inv {s} {S : Sig s} (csc : C.CScope) (tl : Tele S) (is : ImpSig S (C.CScope.cimps csc))
            (ts : TeleSig S (C.telePolys (C.CScope.ctele csc))) (pre : List IRFun) : Set where
   field
     valid : CE.DefsValid fmt S (teleSem fmt tl) is
+    -- D243/D252: the scope's imports are ground (FFI and monomorphic types are),
+    -- so instantiating a polymorphic body fixes them.
+    irf   : ImportsRF (C.CScope.cimps csc)
     iself : IAgree (C.declImps (C.CScope.ctele csc)) (C.CScope.ctele csc)
     rel   : ∀ (later : List IRFun) → NoShadow later (C.CScope.cimps csc)
           → ∀ (I : String → Imports) → IAgree I (C.CScope.ctele csc) → ∀ (uf : Imports)
@@ -217,6 +231,7 @@ inv-ffi : ∀ {s} {S : Sig s} {csc tl is ts pre} {fi : C.FunInfo} {ty : Type} {k
         → Inv (C.extendScope csc (funName fi) ty) tl (i-ffi k h g is) ts (irFunOf (FB.primCF fi ty c) ∷ pre)
 inv-ffi {S = S} {csc} {tl} {is} {ts} {pre} {fi} {ty} {k} {c} {h} {g} inv fr = record
   { valid = Inv.valid inv
+  ; irf   = irf-cons {imps = C.CScope.cimps csc} {y = funName fi} {ty = ty} g (Inv.irf inv)
   ; iself = Inv.iself inv
   ; rel   = rel′
   }
@@ -305,6 +320,7 @@ inv-mono : ∀ {s} {S : Sig s} {csc tl is ts pre} (sg : SigCF S) {fi : C.FunInfo
                (irFunOf (C.mkCompiledFun (bare (funName fi)) ty irFun false) ∷ pre)
 inv-mono {S = S} {csc} {tl} {is} {ts} {pre} sg {fi} {ty} {g} {Ctx.Usage.[]} D {irFun} cf ne vx inv fr = record
   { valid = vx , valid-wk {sc = monoSchema ty} {tl = tl} {body = bodyT} {D = bodyD} is (Inv.valid inv)
+  ; irf   = irf-cons {imps = C.CScope.cimps csc} {y = funName fi} {ty = ty} g (Inv.irf inv)
   ; iself = Inv.iself inv
   ; rel   = rel′
   }
@@ -381,21 +397,15 @@ inv-mono {S = S} {csc} {tl} {is} {ts} {pre} sg {fi} {ty} {g} {Ctx.Usage.[]} D {i
 -- the resolver's splice of its body at the instance (6e).
 ------------------------------------------------------------------------
 
--- The substitution instance, over a context without locals (its usage is `[]`).
-postulate
-  -- RESIDUAL, class DEFERRED PROOF (plan 0.103 D, 6e): a body typed at its
-  -- rigid schema checks at every kinded instance — the surface judgment's
-  -- substitution lemma (a rigid parameter is related only to itself, so its
-  -- instance is typed by the same rules).
-  poly-typed-at : ∀ {ctx : Once.TypeCheck.Classify.NamedCtx} {body : _} (sc : Once.Type.PolyType) {Ψ}
-                → ctx ⊢ᶜ body ∶ rigidOf sc ⨾ Ψ → ∀ {U} → KindedInstance sc U
-                → Σ-syntax (Ctx.Usage (Once.TypeCheck.Classify.NamedCtx.size ctx)) (λ Ψ′ → ctx ⊢ᶜ body ∶ U ⨾ Ψ′)
-
+-- The substitution instance, over a context without locals (its usage is `[]`):
+-- the surface substitution lemma (`RigidSubst`, plan 0.104 E) at the kinded
+-- instance, whose `ρ̂` sends the rigid schema type to the instance on the nose.
 inst-at : ∀ {csc : C.CScope} {body : _} (sc : Once.Type.PolyType)
+        → ImportsRF (C.CScope.cimps csc)
         → ctxOf (AS.scopeOf csc) ⊢ᶜ body ∶ rigidOf sc ⨾ Ctx.Usage.[] → ∀ {U} → KindedInstance sc U
         → ctxOf (AS.scopeOf csc) ⊢ᶜ body ∶ U ⨾ Ctx.Usage.[]
-inst-at sc D ki with poly-typed-at sc D ki
-... | Ctx.Usage.[] , d = d
+inst-at sc irf D ki with kinded-instance sc ki
+... | τ , rk , e = subst (λ X → _ ⊢ᶜ _ ∶ X ⨾ Ctx.Usage.[]) e (RS.subst-c (kindsOf sc) τ rk irf D)
 
 postulate
   -- RESIDUAL, class DEFERRED PROOF (plan 0.103 D, 6e): the entry's body at the
@@ -405,8 +415,9 @@ postulate
   poly-instance-sem : ∀ {s} {S : Sig s} {csc : C.CScope} (is : ImpSig S (C.CScope.cimps csc))
                         (ts : TeleSig S (C.telePolys (C.CScope.ctele csc))) (sg : SigCF S) (δ : GM.DefSem S)
                         {body : _} (sc : Once.Type.PolyType)
+                        (irf : ImportsRF (C.CScope.cimps csc))
                         (D : ctxOf (AS.scopeOf csc) ⊢ᶜ body ∶ rigidOf sc ⨾ Ctx.Usage.[]) {U : Type} (ki : KindedInstance sc U)
-                    → GM.⟦_⟧ S (proj₂ (ElabM.elabᶜ S (viewOf {S = S} is ts) (inst-at sc D ki))) fmt δ tt
+                    → GM.⟦_⟧ S (proj₂ (ElabM.elabᶜ S (viewOf {S = S} is ts) (inst-at sc irf D ki))) fmt δ tt
                       ≡ subst (λ X → ⟦ X ⟧ᵛ) (proj₂ (proj₂ (kinded-instance sc ki)))
                           (GM.⟦_⟧ S (PT.instantiate S (proj₁ (kinded-instance sc ki)) (proj₁ (proj₂ (kinded-instance sc ki)))
                                        (A.abs-⊢ S (kindsOf sc) sg (proj₂ (ElabM.elabᶜ S (viewOf {S = S} is ts) D)))) fmt δ tt)
@@ -445,6 +456,7 @@ inv-poly : ∀ {s} {S : Sig s} {csc tl is ts pre} (sg : SigCF S) {pfi : C.PolyFu
                (wkI is) (t-def zero refl (wkT ts)) pre
 inv-poly {S = S} {csc} {tl} {is} {ts} {pre} sg {pfi} {Ctx.Usage.[]} D inv fr = record
   { valid = valid-wk {sc = schemaOf scT} {tl = tl} {body = bodyT} {D = bodyD} is (Inv.valid inv)
+  ; irf   = Inv.irf inv
   ; iself = declImps-head (pfi , C.CScope.cimps csc) (C.CScope.ctele csc) (y ≟str y)
             ∷ iself-step (pfi , C.CScope.cimps csc) (C.CScope.ctele csc) (C.CScope.ctele csc) frT (Inv.iself inv)
   ; rel   = rel′
@@ -498,11 +510,11 @@ inv-poly {S = S} {csc} {tl} {is} {ts} {pre} sg {pfi} {Ctx.Usage.[]} D inv fr = r
         head U ki =
           subst (λ m → RelGM Once.Type.pure U m (SD.refs σ y U))
                 (trans (CMB.bridge-c fmt S {δ = δ} V (CE.agree fmt S δ is ts (Inv.valid inv)) D-U tt)
-                       (poly-instance-sem is ts sg δ scT D ki))
+                       (poly-instance-sem is ts sg δ scT (Inv.irf inv) D ki))
                 (subst (RelGM Once.Type.pure U (MeaningM.⟦_⟧ᶜ D-U fmt ρ tt)) (sym eqSD)
                        (MB.bridge-c fmt σo D-U {dγ₁ = tt} {dγ₂ = tt} (MB.mk↾ tt) old))
           where
-            D-U = inst-at {csc = csc} scT D ki
+            D-U = inst-at {csc = csc} scT (Inv.irf inv) D ki
             ccU = Once.TypeCheck.Completeness.check-complete D-U
             eE  = proj₁ ccU
             ce  = proj₂ (proj₂ (proj₂ ccU))
