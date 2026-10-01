@@ -148,6 +148,18 @@ homheaded? : RTm Γ → 𝔹
 homheaded? (⌜Hom⌝ _ _ _) = true
 homheaded? _             = false
 
+-- ★ `tr`'s motive matters only as "is it a variable?" (`trstk?`'s hrefl
+--   row).  Asked through `var?` and `pick`, `trstk?` splits on the PATH
+--   alone, so a proof about it never enumerates the motive's head
+--   (`redex-views-kill-head-enumeration`: trstk?-red-p was 208 clauses).
+var? : RTm Γ → 𝔹
+var? (var _) = true
+var? _       = false
+
+pick : 𝔹 → 𝔹 → 𝔹 → 𝔹
+pick true  x y = x
+pick false x y = y
+
 spine? stablecd? stableA? pathstk? nopw? deadmot? apstk? idstk? natstk? : RTm Γ → 𝔹
 -- ★★ LEVITATION: the telescope key (`dpay`/`dih` fire on a `dι`/`dσ`/`dρ`
 --   telescope and nothing else) and the tag key (`fcase` fires on
@@ -433,8 +445,8 @@ apstk? (psplit b q)     = spine? q
 trstk? d (lam f)                        = trlam? d
 -- J is ⌜Hom⌝-MOTIVE-KEYED (stage 3): at a `var` motive an `hrefl` path
 -- is stuck unless its CODE can become pw (then hrefl-pw → lam → taut).
-trstk? (var x) (hrefl c s) = nopw? c
-trstk? d p                 = pathstk? p
+trstk? d (hrefl c s) = pick (var? d) (nopw? c) (stablecd? c)
+trstk? d p           = pathstk? p
 
 -- W2b: codes that can NEVER become pw-able (closed under reduction —
 -- constructor heads are stable, spines stay spines, and the hrefl-pw
@@ -890,6 +902,64 @@ stk⊥dead (⌜Fin⌝ n) h = refl
 -- a head-reducible term is never a pw code (SNRed's subjects are
 -- app/fst/snd/hrefl/tr-headed, never ⌜Π⌝/⌜Hom⌝-constructor-headed) —
 -- proven after SNRed below (snr-nonpw).
+
+-- `pick`'s laws, once — each `trstk?` lemma asks `var? d` only through them
+pickᶜ : (b : 𝔹) {x x' y y' : 𝔹} → (x ≡ true → x' ≡ true) → (y ≡ true → y' ≡ true) →
+        pick b x y ≡ true → pick b x' y' ≡ true
+pickᶜ true  f g h = f h
+pickᶜ false f g h = g h
+
+pick⊥ : {A : Set} (b : 𝔹) {x y : 𝔹} → (x ≡ true → ⊥) → (y ≡ true → ⊥) → pick b x y ≡ true → A
+pick⊥ true  f g h = ⊥-elim (f h)
+pick⊥ false f g h = ⊥-elim (g h)
+
+pick-both : (b : 𝔹) {x y : 𝔹} → x ≡ true → y ≡ true → pick b x y ≡ true
+pick-both true  hx hy = hx
+pick-both false hx hy = hy
+
+pick-false : {b x y : 𝔹} → b ≡ false → pick b x y ≡ true → y ≡ true
+pick-false refl h = h
+
+-- a variable never reduces
+red-nonvar : {t t' : RTm Γ} → t ⟶ t' → var? t ≡ false
+red-nonvar {t = var _} ()
+red-nonvar {t = (lam t)} _ = refl
+red-nonvar {t = (app t u)} _ = refl
+red-nonvar {t = (pair a b)} _ = refl
+red-nonvar {t = (absurd c e)} _ = refl
+red-nonvar {t = (ordtr a t u p q)} _ = refl
+red-nonvar {t = (fst t)} _ = refl
+red-nonvar {t = (snd t)} _ = refl
+red-nonvar {t = ⌜base⌝} _ = refl
+red-nonvar {t = ⌜Nat⌝} _ = refl
+red-nonvar {t = ⌜Unit⌝} _ = refl
+red-nonvar {t = (⌜Π⌝ c₂ d₂)} _ = refl
+red-nonvar {t = (⌜Σ⌝ c₂ d₂)} _ = refl
+red-nonvar {t = (⌜Hom⌝ c₂ a₂ b₂)} _ = refl
+red-nonvar {t = (hrefl c₂ t₂)} _ = refl
+red-nonvar {t = (tr d₂ p₂ e₂)} _ = refl
+red-nonvar {t = (ap c b p)} _ = refl
+red-nonvar {t = (⌜Id⌝ c a b)} _ = refl
+red-nonvar {t = (idrefl c t)} _ = refl
+red-nonvar {t = (jsub d p e)} _ = refl
+red-nonvar {t = unit} _ = refl
+red-nonvar {t = nzero} _ = refl
+red-nonvar {t = (nsuc n)} _ = refl
+red-nonvar {t = (natrec z s n)} _ = refl
+red-nonvar {t = (⌜IMu⌝ I D i)} _ = refl
+red-nonvar {t = (⌜Fin⌝ n)} _ = refl
+red-nonvar {t = (con p)} _ = refl
+red-nonvar {t = (ielim D i e t)} _ = refl
+red-nonvar {t = dι} _ = refl
+red-nonvar {t = (dσ S f)} _ = refl
+red-nonvar {t = (dρ j C)} _ = refl
+red-nonvar {t = (dpay I D C)} _ = refl
+red-nonvar {t = (dih D e C p)} _ = refl
+red-nonvar {t = fzero} _ = refl
+red-nonvar {t = (fsuc t)} _ = refl
+red-nonvar {t = (fcase t a b)} _ = refl
+red-nonvar {t = (fcase0 t)} _ = refl
+red-nonvar {t = (psplit b q)} _ = refl
 
 -- ★ Each lemma below opens with `{t = var _} () _` (a variable never
 --   reduces).  It is not there for the proof: Agda splits on the leftmost
@@ -2440,44 +2510,7 @@ dead→nopw (psplit b q) h = h
 -- an hrefl path at a DEAD code is tr-stuck under EVERY motive shape.
 trstk-hrefl-any : (d : RTm (Γ ∙)) {c s : RTm Γ} →
                   stablecd? c ≡ true → trstk? d (hrefl c s) ≡ true
-trstk-hrefl-any (var x) {c = c} h = dead→nopw c h
-trstk-hrefl-any (lam t) h = h
-trstk-hrefl-any (app t u) h = h
-trstk-hrefl-any (pair a b) h = h
-trstk-hrefl-any (absurd c e) h = h
-trstk-hrefl-any (ordtr a t u p q) h = h
-trstk-hrefl-any (fst t) h = h
-trstk-hrefl-any (snd t) h = h
-trstk-hrefl-any ⌜base⌝ h = h
-trstk-hrefl-any ⌜Nat⌝ h = h
-trstk-hrefl-any ⌜Unit⌝ h = h
-trstk-hrefl-any (⌜Π⌝ c₂ d₂) h = h
-trstk-hrefl-any (⌜Σ⌝ c₂ d₂) h = h
-trstk-hrefl-any (⌜Hom⌝ c₂ a₂ b₂) h = h
-trstk-hrefl-any (hrefl c₂ t₂) h = h
-trstk-hrefl-any (tr d₂ p₂ e₂) h = h
-trstk-hrefl-any (ap c b p) h = h
-trstk-hrefl-any (⌜Id⌝ c a b) h = h
-trstk-hrefl-any (idrefl c t) h = h
-trstk-hrefl-any (jsub d p e) h = h
-trstk-hrefl-any unit h = h
-trstk-hrefl-any nzero h = h
-trstk-hrefl-any (nsuc n) h = h
-trstk-hrefl-any (natrec z s n) h = h
-trstk-hrefl-any (⌜IMu⌝ I D i) h = h
-trstk-hrefl-any (⌜Fin⌝ n) h = h
-trstk-hrefl-any (con p) h = h
-trstk-hrefl-any (ielim D i e t) h = h
-trstk-hrefl-any dι h = h
-trstk-hrefl-any (dσ S f) h = h
-trstk-hrefl-any (dρ j C) h = h
-trstk-hrefl-any (dpay I D C) h = h
-trstk-hrefl-any (dih D e C p) h = h
-trstk-hrefl-any fzero h = h
-trstk-hrefl-any (fsuc t) h = h
-trstk-hrefl-any (fcase t a b) h = h
-trstk-hrefl-any (fcase0 t) h = h
-trstk-hrefl-any (psplit b q) h = h
+trstk-hrefl-any d {c = c} h = pick-both (var? d) (dead→nopw c h) h
 
 -- motive steps.  Only lam- and hrefl-paths inspect the motive; the
 -- rest are motive-independent (the catchall clause on both sides).
@@ -2487,29 +2520,16 @@ trstk-hrefl-any (psplit b q) h = h
 -- ★ INDUCTIVE TYPES: a `con`/`elim` MOTIVE is not a `var`, so `trstk?`
 -- falls to `pathstk?` on both sides — `trstk-hrefl-any` at the reduct.
 trstk?-red-d {d = var _} () _   -- forces the source-head split first (see RedCong's `stkA?-red`)
-trstk?-red-d {d = ielim dD di dm dt} {d' = d'} {p = hrefl c s} r h = trstk-hrefl-any d' h
-trstk?-red-d {d = ⌜IMu⌝ dD dI di} {d' = d'} {p = hrefl c s} r h = trstk-hrefl-any d' h
+trstk?-red-d {d' = d'} {p = hrefl c s} r h = trstk-hrefl-any d' {c = c} {s = s} (pick-false (red-nonvar r) h)
 trstk?-red-d {p = absurd p₂ e₂} r h = refl
 -- an `ordtr` PATH is neither `lam` nor `hrefl`, so `trstk?` falls to
 -- `pathstk?` and a reduction of the MOTIVE cannot touch it.
 trstk?-red-d {p = ordtr a₂ t₂ u₂ p₂ q₂} r h = h
 -- …and an `ordtr` MOTIVE is not a `var`, so the same catch-all applies
 -- however the motive steps.
-trstk?-red-d {p = hrefl c₂ s₂} (ordtr-z t₂ u₂ p₂ q₂) h = h
 -- ⚠ these two reduce the MOTIVE to an arbitrary subterm, which may
 -- well be a `var` — so the catch-all no longer applies and the row
 -- needs `trstk-hrefl-any`, which covers every motive at once.
-trstk?-red-d {p = hrefl c₂ s₂} (ordtr-szz a₂ p₂ q₂) h = trstk-hrefl-any p₂ h
-trstk?-red-d {p = hrefl c₂ s₂} (ordtr-ssz a₂ t₂ p₂ q₂) h = trstk-hrefl-any q₂ h
-trstk?-red-d {p = hrefl c₂ s₂} (ordtr-szs a₂ u₂ p₂ q₂) h = h
-trstk?-red-d {p = hrefl c₂ s₂} (ordtr-sss a₂ t₂ u₂ p₂ q₂) h = h
-trstk?-red-d {p = hrefl c₂ s₂} (ξ-ordtrᵃ r) h = h
-trstk?-red-d {p = hrefl c₂ s₂} (ξ-ordtrᵗ r) h = h
-trstk?-red-d {p = hrefl c₂ s₂} (ξ-ordtrᵘ r) h = h
-trstk?-red-d {p = hrefl c₂ s₂} (ξ-ordtrᵖ r) h = h
-trstk?-red-d {p = hrefl c₂ s₂} (ξ-ordtrq r) h = h
-trstk?-red-d {d = absurd d₂ f₂} {p = hrefl p₂ s₂} (ξ-absurdᶜ _) h = h
-trstk?-red-d {d = absurd d₂ f₂} {p = hrefl p₂ s₂} (ξ-absurdᵉ _) h = h
 trstk?-red-d {p = lam f} (ξ-⌜Hom⌝ᶜ {b = var vz} rc) h = deadmot?-red rc h
 trstk?-red-d {p = lam f} (ξ-⌜Hom⌝ᶜ {b = var (vs x)} rc) h = h
 trstk?-red-d {p = lam f} (ξ-⌜Hom⌝ᶜ {b = (lam w)} rc) ()
@@ -2574,26 +2594,6 @@ trstk?-red-d {p = lam f} (tr-pw _ _ _ _ _) ()
 trstk?-red-d {p = lam f} (ξ-trᵈ _) ()
 trstk?-red-d {p = lam f} (ξ-trᵖ _) ()
 trstk?-red-d {p = lam f} (ξ-trᵉ _) ()
-trstk?-red-d {d = var x} {p = hrefl c s} () h
-trstk?-red-d {d = (lam t)} {d' = d'} {p = hrefl c s} r h = trstk-hrefl-any d' h
-trstk?-red-d {d = (app t u)} {d' = d'} {p = hrefl c s} r h = trstk-hrefl-any d' h
-trstk?-red-d {d = (pair a b)} {d' = d'} {p = hrefl c s} r h = trstk-hrefl-any d' h
-trstk?-red-d {d = (fst t)} {d' = d'} {p = hrefl c s} r h = trstk-hrefl-any d' h
-trstk?-red-d {d = (snd t)} {d' = d'} {p = hrefl c s} r h = trstk-hrefl-any d' h
-trstk?-red-d {d = ⌜base⌝} {d' = d'} {p = hrefl c s} r h = trstk-hrefl-any d' h
-trstk?-red-d {d = (⌜Π⌝ c₂ d₂)} {d' = d'} {p = hrefl c s} r h = trstk-hrefl-any d' h
-trstk?-red-d {d = (⌜Σ⌝ c₂ d₂)} {d' = d'} {p = hrefl c s} r h = trstk-hrefl-any d' h
-trstk?-red-d {d = (⌜Hom⌝ c₂ a₂ b₂)} {d' = d'} {p = hrefl c s} r h = trstk-hrefl-any d' h
-trstk?-red-d {d = (hrefl c₂ t₂)} {d' = d'} {p = hrefl c s} r h = trstk-hrefl-any d' h
-trstk?-red-d {d = (tr d₂ p₂ e₂)} {d' = d'} {p = hrefl c s} r h = trstk-hrefl-any d' h
-trstk?-red-d {d = (ap dz₁ dz₂ dz₃)} {d' = d'} {p = hrefl c s} r h = trstk-hrefl-any d' h
-trstk?-red-d {d = (⌜Id⌝ dz₁ dz₂ dz₃)} {d' = d'} {p = hrefl c s} r h = trstk-hrefl-any d' h
-trstk?-red-d {d = (idrefl dz₁ dz₂)} {d' = d'} {p = hrefl c s} r h = trstk-hrefl-any d' h
-trstk?-red-d {d = (jsub dz₁ dz₂ dz₃)} {d' = d'} {p = hrefl c s} r h = trstk-hrefl-any d' h
-trstk?-red-d {d = unit} {d' = d'} {p = hrefl c s} r h = trstk-hrefl-any d' h
-trstk?-red-d {d = nzero} {d' = d'} {p = hrefl c s} r h = trstk-hrefl-any d' h
-trstk?-red-d {d = (nsuc dz)} {d' = d'} {p = hrefl c s} r h = trstk-hrefl-any d' h
-trstk?-red-d {d = (natrec dz₁ dz₂ dz₃)} {d' = d'} {p = hrefl c s} r h = trstk-hrefl-any d' h
 trstk?-red-d {p = (var y)} r h = h
 trstk?-red-d {p = (app t₁ u₁)} r h = h
 trstk?-red-d {p = (pair a₁ b₁)} r h = h
@@ -2623,20 +2623,6 @@ trstk?-red-d {p = natrec _ _ _} r h = h
 --   would have produced 72 clauses for the same content.
 trstk?-red-d {p = ielim _ _ _ _} r h = h
 trstk?-red-d {p = ⌜IMu⌝ _ _ _} r h = h
-trstk?-red-d {d = (con _)} {d' = d'} {p = hrefl c s} r h = trstk-hrefl-any d' h
-trstk?-red-d {d = (ielim _ _ _ _)} {d' = d'} {p = hrefl c s} r h = trstk-hrefl-any d' h
-trstk?-red-d {d = (⌜IMu⌝ _ _ _)} {d' = d'} {p = hrefl c s} r h = trstk-hrefl-any d' h
-trstk?-red-d {d = (⌜Fin⌝ _)} {d' = d'} {p = hrefl c s} r h = trstk-hrefl-any d' h
-trstk?-red-d {d = dι} {d' = d'} {p = hrefl c s} r h = trstk-hrefl-any d' h
-trstk?-red-d {d = (dσ _ _)} {d' = d'} {p = hrefl c s} r h = trstk-hrefl-any d' h
-trstk?-red-d {d = (dρ _ _)} {d' = d'} {p = hrefl c s} r h = trstk-hrefl-any d' h
-trstk?-red-d {d = (dpay _ _ _)} {d' = d'} {p = hrefl c s} r h = trstk-hrefl-any d' h
-trstk?-red-d {d = (dih _ _ _ _)} {d' = d'} {p = hrefl c s} r h = trstk-hrefl-any d' h
-trstk?-red-d {d = fzero} {d' = d'} {p = hrefl c s} r h = trstk-hrefl-any d' h
-trstk?-red-d {d = (fsuc _)} {d' = d'} {p = hrefl c s} r h = trstk-hrefl-any d' h
-trstk?-red-d {d = (fcase _ _ _)} {d' = d'} {p = hrefl c s} r h = trstk-hrefl-any d' h
-trstk?-red-d {d = (fcase0 _)} {d' = d'} {p = hrefl c s} r h = trstk-hrefl-any d' h
-trstk?-red-d {d = (psplit _ _)} {d' = d'} {p = hrefl c s} r h = trstk-hrefl-any d' h
 trstk?-red-d {p = con _} r h = h
 trstk?-red-d {p = ielim _ _ _ _} r h = h
 trstk?-red-d {p = ⌜IMu⌝ _ _ _} r h = h
@@ -2651,92 +2637,17 @@ trstk?-red-d {p = fsuc _} r h = h
 trstk?-red-d {p = fcase _ _ _} r h = h
 trstk?-red-d {p = fcase0 _} r h = h
 trstk?-red-d {p = psplit _ _} r h = h
-trstk?-red-p {d = (var x)} (ξ-hreflᶜ rc) h = nopw?-red rc h
-trstk?-red-p {d = (lam t)} (ξ-hreflᶜ rc) h = stablecd?-red rc h
-trstk?-red-p {d = (app t u)} (ξ-hreflᶜ rc) h = stablecd?-red rc h
-trstk?-red-p {d = (pair a b)} (ξ-hreflᶜ rc) h = stablecd?-red rc h
-trstk?-red-p {d = (fst t)} (ξ-hreflᶜ rc) h = stablecd?-red rc h
-trstk?-red-p {d = (snd t)} (ξ-hreflᶜ rc) h = stablecd?-red rc h
+trstk?-red-p {d = d} (ξ-hreflᶜ rc) h = pickᶜ (var? d) (nopw?-red rc) (stablecd?-red rc) h
+trstk?-red-p (ξ-hreflᵃ ra) h = h
+trstk?-red-p {d = d} (hrefl-pw C₀ s₀ kp) h =
+  pick⊥ (var? d) (λ h' → f≢t (trans (sym (nopw⊥pw C₀ h')) kp)) (λ h' → f≢t (trans (sym (pw⊥dead C₀ kp)) h')) h
 -- ★ stage D: an `absurd` MOTIVE is not `var vz`, so `trstk?` falls to
 -- `pathstk?` on the path — the same as every other non-var motive.
-trstk?-red-p {d = (absurd d₂ e₂)} (ξ-hreflᶜ rc) h = stablecd?-red rc h
 -- an `hrefl` path can only become a `lam` by `hrefl-pw`, which needs a
 -- pw-able code — and `pathstk?` already said the code is DEAD.  The two
 -- keys are disjoint, so the case is absurd.
-trstk?-red-p {d = (absurd d₂ e₂)} {hrefl _ _} {lam _} (hrefl-pw C₀ s₀ kp) h =
-  ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
-trstk?-red-p {d = (absurd d₂ e₂)} {hrefl _ _} {hrefl _ _} (ξ-hreflᵃ _) h = h
 -- an `ordtr` MOTIVE behaves exactly like an `absurd` one: it is not
 -- `var vz`, so `trstk?` falls through to `pathstk?` on the path.
-trstk?-red-p {d = (ordtr dz₁ dz₂ dz₃ dz₄ dz₅)} (ξ-hreflᶜ rc) h = stablecd?-red rc h
-trstk?-red-p {d = (ordtr dz₁ dz₂ dz₃ dz₄ dz₅)} {hrefl _ _} {hrefl _ _} (ξ-hreflᵃ _) h = h
-trstk?-red-p {d = ⌜base⌝} (ξ-hreflᶜ rc) h = stablecd?-red rc h
-trstk?-red-p {d = ⌜Nat⌝} (ξ-hreflᶜ rc) h = stablecd?-red rc h
-trstk?-red-p {d = ⌜Unit⌝} (ξ-hreflᶜ rc) h = stablecd?-red rc h
-trstk?-red-p {d = (⌜IMu⌝ Dˣ Iˣ iˣ)} (ξ-hreflᶜ rc) h = stablecd?-red rc h
-trstk?-red-p {d = (⌜Π⌝ c₂ d₂)} (ξ-hreflᶜ rc) h = stablecd?-red rc h
-trstk?-red-p {d = (⌜Σ⌝ c₂ d₂)} (ξ-hreflᶜ rc) h = stablecd?-red rc h
-trstk?-red-p {d = (⌜Hom⌝ c₂ a₂ b₂)} (ξ-hreflᶜ rc) h = stablecd?-red rc h
-trstk?-red-p {d = (hrefl c₂ t₂)} (ξ-hreflᶜ rc) h = stablecd?-red rc h
-trstk?-red-p {d = (tr d₂ p₂ e₂)} (ξ-hreflᶜ rc) h = stablecd?-red rc h
-trstk?-red-p {d = (ap dz₁ dz₂ dz₃)} (ξ-hreflᶜ rc) h = stablecd?-red rc h
-trstk?-red-p {d = (⌜Id⌝ dz₁ dz₂ dz₃)} (ξ-hreflᶜ rc) h = stablecd?-red rc h
-trstk?-red-p {d = (idrefl dz₁ dz₂)} (ξ-hreflᶜ rc) h = stablecd?-red rc h
-trstk?-red-p {d = (jsub dz₁ dz₂ dz₃)} (ξ-hreflᶜ rc) h = stablecd?-red rc h
-trstk?-red-p {d = unit} (ξ-hreflᶜ rc) h = stablecd?-red rc h
-trstk?-red-p {d = nzero} (ξ-hreflᶜ rc) h = stablecd?-red rc h
-trstk?-red-p {d = (nsuc dz)} (ξ-hreflᶜ rc) h = stablecd?-red rc h
-trstk?-red-p {d = (ielim dD iˣ dm dt)} (ξ-hreflᶜ rc) h = stablecd?-red rc h
-trstk?-red-p {d = (natrec dz₁ dz₂ dz₃)} (ξ-hreflᶜ rc) h = stablecd?-red rc h
-trstk?-red-p {d = (var x)} (ξ-hreflᵃ ra) h = h
-trstk?-red-p {d = (lam t)} (ξ-hreflᵃ ra) h = h
-trstk?-red-p {d = (app t u)} (ξ-hreflᵃ ra) h = h
-trstk?-red-p {d = (pair a b)} (ξ-hreflᵃ ra) h = h
-trstk?-red-p {d = (fst t)} (ξ-hreflᵃ ra) h = h
-trstk?-red-p {d = (snd t)} (ξ-hreflᵃ ra) h = h
-trstk?-red-p {d = ⌜base⌝} (ξ-hreflᵃ ra) h = h
-trstk?-red-p {d = ⌜Nat⌝} (ξ-hreflᵃ ra) h = h
-trstk?-red-p {d = ⌜Unit⌝} (ξ-hreflᵃ ra) h = h
-trstk?-red-p {d = (⌜IMu⌝ Dˣ Iˣ iˣ)} (ξ-hreflᵃ ra) h = h
-trstk?-red-p {d = (⌜Π⌝ c₂ d₂)} (ξ-hreflᵃ ra) h = h
-trstk?-red-p {d = (⌜Σ⌝ c₂ d₂)} (ξ-hreflᵃ ra) h = h
-trstk?-red-p {d = (⌜Hom⌝ c₂ a₂ b₂)} (ξ-hreflᵃ ra) h = h
-trstk?-red-p {d = (hrefl c₂ t₂)} (ξ-hreflᵃ ra) h = h
-trstk?-red-p {d = (tr d₂ p₂ e₂)} (ξ-hreflᵃ ra) h = h
-trstk?-red-p {d = (ap dz₁ dz₂ dz₃)} (ξ-hreflᵃ ra) h = h
-trstk?-red-p {d = (⌜Id⌝ dz₁ dz₂ dz₃)} (ξ-hreflᵃ ra) h = h
-trstk?-red-p {d = (idrefl dz₁ dz₂)} (ξ-hreflᵃ ra) h = h
-trstk?-red-p {d = (jsub dz₁ dz₂ dz₃)} (ξ-hreflᵃ ra) h = h
-trstk?-red-p {d = unit} (ξ-hreflᵃ ra) h = h
-trstk?-red-p {d = nzero} (ξ-hreflᵃ ra) h = h
-trstk?-red-p {d = (nsuc dz)} (ξ-hreflᵃ ra) h = h
-trstk?-red-p {d = (ielim dD iˣ dm dt)} (ξ-hreflᵃ ra) h = h
-trstk?-red-p {d = (natrec dz₁ dz₂ dz₃)} (ξ-hreflᵃ ra) h = h
-trstk?-red-p {d = var x} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (nopw⊥pw C₀ h)) kp))
-trstk?-red-p {d = (lam t)} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
-trstk?-red-p {d = (app t u)} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
-trstk?-red-p {d = (pair a b)} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
-trstk?-red-p {d = (fst t)} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
-trstk?-red-p {d = (snd t)} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
-trstk?-red-p {d = ⌜base⌝} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
-trstk?-red-p {d = ⌜Nat⌝} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
-trstk?-red-p {d = ⌜Unit⌝} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
-trstk?-red-p {d = (⌜IMu⌝ Dˣ Iˣ iˣ)} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
-trstk?-red-p {d = (⌜Π⌝ c₂ d₂)} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
-trstk?-red-p {d = (⌜Σ⌝ c₂ d₂)} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
-trstk?-red-p {d = (⌜Hom⌝ c₂ a₂ b₂)} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
-trstk?-red-p {d = (hrefl c₂ t₂)} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
-trstk?-red-p {d = (tr d₂ p₂ e₂)} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
-trstk?-red-p {d = (ap dz₁ dz₂ dz₃)} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
-trstk?-red-p {d = (⌜Id⌝ dz₁ dz₂ dz₃)} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
-trstk?-red-p {d = (idrefl dz₁ dz₂)} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
-trstk?-red-p {d = (jsub dz₁ dz₂ dz₃)} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
-trstk?-red-p {d = unit} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
-trstk?-red-p {d = nzero} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
-trstk?-red-p {d = (nsuc dz)} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
-trstk?-red-p {d = (ielim dD iˣ dm dt)} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
-trstk?-red-p {d = (natrec dz₁ dz₂ dz₃)} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
-trstk?-red-p {d = (ordtr dz₁ dz₂ dz₃ dz₄ dz₅)} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
 trstk?-red-p (β _ _) ()
 trstk?-red-p (βfst _ _) ()
 trstk?-red-p (βsnd _ _) ()
@@ -2835,42 +2746,6 @@ trstk?-red-p (ξ-fcaseᵇ r) h = h
 trstk?-red-p (ξ-fcase0 r) h = h
 trstk?-red-p (ξ-psplitᵇ r) h = h
 trstk?-red-p (ξ-psplitᵍ r) h = spine?-red r h
-trstk?-red-p {d = (con _)} (ξ-hreflᶜ rc) h = stablecd?-red rc h
-trstk?-red-p {d = (con _)} (ξ-hreflᵃ ra) h = h
-trstk?-red-p {d = (con _)} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
-trstk?-red-p {d = (⌜Fin⌝ _)} (ξ-hreflᶜ rc) h = stablecd?-red rc h
-trstk?-red-p {d = (⌜Fin⌝ _)} (ξ-hreflᵃ ra) h = h
-trstk?-red-p {d = (⌜Fin⌝ _)} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
-trstk?-red-p {d = dι} (ξ-hreflᶜ rc) h = stablecd?-red rc h
-trstk?-red-p {d = dι} (ξ-hreflᵃ ra) h = h
-trstk?-red-p {d = dι} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
-trstk?-red-p {d = (dσ _ _)} (ξ-hreflᶜ rc) h = stablecd?-red rc h
-trstk?-red-p {d = (dσ _ _)} (ξ-hreflᵃ ra) h = h
-trstk?-red-p {d = (dσ _ _)} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
-trstk?-red-p {d = (dρ _ _)} (ξ-hreflᶜ rc) h = stablecd?-red rc h
-trstk?-red-p {d = (dρ _ _)} (ξ-hreflᵃ ra) h = h
-trstk?-red-p {d = (dρ _ _)} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
-trstk?-red-p {d = (dpay _ _ _)} (ξ-hreflᶜ rc) h = stablecd?-red rc h
-trstk?-red-p {d = (dpay _ _ _)} (ξ-hreflᵃ ra) h = h
-trstk?-red-p {d = (dpay _ _ _)} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
-trstk?-red-p {d = (dih _ _ _ _)} (ξ-hreflᶜ rc) h = stablecd?-red rc h
-trstk?-red-p {d = (dih _ _ _ _)} (ξ-hreflᵃ ra) h = h
-trstk?-red-p {d = (dih _ _ _ _)} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
-trstk?-red-p {d = fzero} (ξ-hreflᶜ rc) h = stablecd?-red rc h
-trstk?-red-p {d = fzero} (ξ-hreflᵃ ra) h = h
-trstk?-red-p {d = fzero} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
-trstk?-red-p {d = (fsuc _)} (ξ-hreflᶜ rc) h = stablecd?-red rc h
-trstk?-red-p {d = (fsuc _)} (ξ-hreflᵃ ra) h = h
-trstk?-red-p {d = (fsuc _)} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
-trstk?-red-p {d = (fcase _ _ _)} (ξ-hreflᶜ rc) h = stablecd?-red rc h
-trstk?-red-p {d = (fcase _ _ _)} (ξ-hreflᵃ ra) h = h
-trstk?-red-p {d = (fcase _ _ _)} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
-trstk?-red-p {d = (fcase0 _)} (ξ-hreflᶜ rc) h = stablecd?-red rc h
-trstk?-red-p {d = (fcase0 _)} (ξ-hreflᵃ ra) h = h
-trstk?-red-p {d = (fcase0 _)} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
-trstk?-red-p {d = (psplit _ _)} (ξ-hreflᶜ rc) h = stablecd?-red rc h
-trstk?-red-p {d = (psplit _ _)} (ξ-hreflᵃ ra) h = h
-trstk?-red-p {d = (psplit _ _)} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
 
 apstk?-red* : {t t' : RTm Γ} → t ⟶* t' → apstk? t ≡ true → apstk? t' ≡ true
 apstk?-red* done h       = h
