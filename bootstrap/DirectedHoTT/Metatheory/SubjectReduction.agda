@@ -41,7 +41,8 @@ open import DirectedHoTT.Spec.Syntax
         ; renTm-subTm; ⌜Hom⌝-cong₃; Hom-cong₃; ordtr-cong₅; Desc; con; dι; dρ
         ; IMu; ielim; ⌜IMu⌝; εwkTy; εwk-ren; εwk-sub; εwkTm; εwkTm-ren
         ; εwkTm-sub; subTm-subTm
-        ; DIh; Fin; ⌜Fin⌝; dσ; dpay; dih; fzero; fsuc; fcase; fcase0; psplit; cong₄; cong₃ )
+        ; DIh; Fin; ⌜Fin⌝; dσ; dpay; dih; fzero; fsuc; fcase; fcase0; psplit; cong₄; cong₃
+        ; ref )
 open import DirectedHoTT.Spec.Variance
   using ( 𝔹; true; false; _∨_; occTm; ∨-false; ∨-false₁; ∨-false₂; occ-ren-eq
         ; occ-sub; eqv; Avoids; occ-ren-tm; avoids-wk; PosC; posc-var
@@ -75,7 +76,8 @@ open import DirectedHoTT.Spec.Typing
         ; ty-Unit; ty-Nat; ⊢ctx_; c-◇; c-▹; ξ-con; ξ-ielimⁱ; ξ-ielimᵗ; ⊢con
         ; wk-single; iinst; ty-IMu; ⊢ielim; ⊢⌜IMu⌝; _≅_; csym; ctrn; cred
         ; crfl
-        ; El-⌜Fin⌝; DIh-ι; DIh-σ; DIh-ρ; ξ-IMuᴵ; ξ-IMuᴰ; ξ-IMuⁱ; ξ-Desc; ξ-DIhᴰ; ξ-DIhᴹ; ξ-DIhᶜ; ξ-DIhᵖ; ι; dpay-ι; dpay-σ; dpay-ρ; dih-ι; dih-σ; dih-ρ; fcase-z; fcase-s; psplit-β; ξ-⌜IMu⌝ᴵ; ξ-⌜IMu⌝ᴰ; ξ-⌜IMu⌝ⁱ; ξ-ielimᴰ; ξ-ielimᵉ; ξ-dσˢ; ξ-dσᶠ; ξ-dρʲ; ξ-dρᶜ; ξ-dpayᴵ; ξ-dpayᴰ; ξ-dpayᶜ; ξ-dihᴰ; ξ-dihᵉ; ξ-dihᶜ; ξ-dihᵖ; ξ-fsuc; ξ-fcaseᵗ; ξ-fcaseᵃ; ξ-fcaseᵇ; ξ-fcase0; ξ-psplitᵇ; ξ-psplitᵍ; tr-J-Fin; ⊢⌜Fin⌝; ⊢dι; ⊢dσ; ⊢dρ; ⊢dpay; ⊢dih; ⊢fzero; ⊢fsuc; ⊢fcase; ⊢fcase0; ⊢psplit; ty-Desc; ty-DIh; ty-Fin; MethTy; motCtx; methS; wk2M; single2; pairS; fsucS; DescF )
+        ; El-⌜Fin⌝; DIh-ι; DIh-σ; DIh-ρ; ξ-IMuᴵ; ξ-IMuᴰ; ξ-IMuⁱ; ξ-Desc; ξ-DIhᴰ; ξ-DIhᴹ; ξ-DIhᶜ; ξ-DIhᵖ; ι; dpay-ι; dpay-σ; dpay-ρ; dih-ι; dih-σ; dih-ρ; fcase-z; fcase-s; psplit-β; ξ-⌜IMu⌝ᴵ; ξ-⌜IMu⌝ᴰ; ξ-⌜IMu⌝ⁱ; ξ-ielimᴰ; ξ-ielimᵉ; ξ-dσˢ; ξ-dσᶠ; ξ-dρʲ; ξ-dρᶜ; ξ-dpayᴵ; ξ-dpayᴰ; ξ-dpayᶜ; ξ-dihᴰ; ξ-dihᵉ; ξ-dihᶜ; ξ-dihᵖ; ξ-fsuc; ξ-fcaseᵗ; ξ-fcaseᵃ; ξ-fcaseᵇ; ξ-fcase0; ξ-psplitᵇ; ξ-psplitᵍ; tr-J-Fin; ⊢⌜Fin⌝; ⊢dι; ⊢dσ; ⊢dρ; ⊢dpay; ⊢dih; ⊢fzero; ⊢fsuc; ⊢fcase; ⊢fcase0; ⊢psplit; ty-Desc; ty-DIh; ty-Fin; MethTy; motCtx; methS; wk2M; single2; pairS; fsucS; DescF
+        ; δref; ⊢ref )
 open import DirectedHoTT.Metatheory.SubjectReductionBase using ( ≅ᵀ-sub; ⟶-sub )
 open import DirectedHoTT.Metatheory.Confluence
   using ( ⟶-ren; ⟶*-ren; ⟶*-appʳ; ren-comm; subTm-monoˢ; extS-mono; single-mono
@@ -1115,6 +1117,14 @@ gen-psplit (⊢psplit dA dB dP dq db) = _ , (_ , (_ , (dA , (dB , (dP , (dq , (d
 gen-psplit (⊢conv d c) with gen-psplit d
 ... | A , (B , (P , (dA , (dB , (dP , (dq , (db , c'))))))) = A , (B , (P , (dA , (dB , (dP , (dq , (db , ctrnᵀ (csymᵀ c) c')))))))
 
+-- ★ a definition: its body's typing (in the empty context) and the
+--   conversion to the use's type
+gen-ref : {Γ : Ctx} {n : ℕ} {b : RTm ε} {C : RTy ⌊ Γ ⌋} → Γ ⊢ ref n b ∷ C →
+          Σ (RTy ε) (λ A → (◇ ⊢ b ∷ A) × (C ≅ᵀ εwkTy A))
+gen-ref (⊢ref db) = _ , (db , crflᵀ)
+gen-ref (⊢conv d c) with gen-ref d
+... | A , (db , c') = A , (db , ctrnᵀ (csymᵀ c) c')
+
 -- ★★ THE PAYLOAD'S σ AND ρ STEPS: a payload of a `dσ`/`dρ` telescope is a
 --   pair; its halves are typed at the chosen branch / the recursive field
 --   and the rest.  Used by `sr` at `dih-σ`/`dih-ρ` and by `srᵀ` at
@@ -1213,6 +1223,9 @@ sr d (fcase-s t a b) with gen-fcase d
 ... | n , (P , (dP , (dt , (da , (db , cC))))) with gen-fsuc dt
 ...   | n' , (dt' , c') with Fin-inj c'
 ...     | refl = ⊢conv (⊢-cast (fsucS-inst t P) (⊢[] db dt')) (csymᵀ cC)
+-- ★ δ: the body, weakened from the empty context
+sr d (δref n b) with gen-ref d
+... | A , (db , c) = ⊢conv (sub-lemma db (λ ())) (csymᵀ c)
 sr d (psplit-β b x y) with gen-psplit d
 ... | A , (B , (P , (dA , (dB , (dP , (dq , (db , cC))))))) with gen-pair dq
 ...   | A' , (B' , (cΣ , (dB' , (dx , dy)))) with Σ-inj (csymᵀ cΣ)

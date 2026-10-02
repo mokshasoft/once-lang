@@ -12,8 +12,8 @@
 --   · each entry is typed over its PREFIX (`wf`), so the signature is
 --     well-formed and every kernel theorem holds over it (`consistent`);
 --   · a reference is typed by its DECLARATION alone (`⊢ᴬref`);
---   · δ works INSIDE TYPES: `El (ref 1)` and `Nat` are convertible because
---     conversion is on erasures and erasure unfolds `ref 1` (`one∷Nat`,
+--   · δ works INSIDE TYPES: `El (ref 1)` and `Nat` are convertible — the
+--     erasure is the kernel's `ref 1 ⌜Nat⌝`, which δ-steps (`one∷Nat`,
 --     `zero∷N`);
 --   · the checker decides it, `ref` included (`checks`).
 --
@@ -24,8 +24,8 @@
 module DirectedHoTT.Examples.Signature where
 open import normalizer.Syntax.Types using ( _≡_; refl; _,_; ⊤; ⊥ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
-open import DirectedHoTT.Spec.Syntax using ( Cx; ε; vz; RTm; lam; app; nsuc; nzero; var; ⌜Nat⌝; Nat; El )
-open import DirectedHoTT.Spec.Typing using ( _≅ᵀ_; credᵀ; csymᵀ; El-⌜Nat⌝; c-◇; ty-Nat )
+open import DirectedHoTT.Spec.Syntax using ( Cx; ε; vz; RTm; lam; app; nsuc; nzero; var; ⌜Nat⌝; Nat; El; ref )
+open import DirectedHoTT.Spec.Typing using ( _≅ᵀ_; credᵀ; csymᵀ; ctrnᵀ; El-⌜Nat⌝; ξ-El; δref; c-◇; ty-Nat )
 open import DirectedHoTT.Spec.Annotated
 open import DirectedHoTT.Spec.Signature
 open import DirectedHoTT.Metatheory.Signature
@@ -48,7 +48,7 @@ ty _ = Unit
 bd : ℕ → RTm ε
 bd 0 = lam (nsuc v₀)
 bd 1 = ⌜Nat⌝
-bd 2 = app (lam (nsuc v₀)) nzero
+bd 2 = app (ref 0 (lam (nsuc v₀))) nzero
 bd _ = nzero
 
 Σ₃ : Sig
@@ -64,8 +64,12 @@ private
   suc′ = lam Nat (nsuc (var vz))
   one  = app (ref 0) nzero
 
-  Nat≅N : {Γ : Cx} → _≅ᵀ_ {Γ} Nat (El ⌜Nat⌝)
-  Nat≅N = csymᵀ (credᵀ El-⌜Nat⌝)
+  -- `El (ref 1)` erases to `El (ref 1 ⌜Nat⌝)`: one δ step, then decode
+  N≅Nat : {Γ : Cx} → _≅ᵀ_ {Γ} (El (ref 1 ⌜Nat⌝)) Nat
+  N≅Nat = ctrnᵀ (credᵀ (ξ-El (δref 1 ⌜Nat⌝))) (credᵀ El-⌜Nat⌝)
+
+  Nat≅N : {Γ : Cx} → _≅ᵀ_ {Γ} Nat (El (ref 1 ⌜Nat⌝))
+  Nat≅N = csymᵀ N≅Nat
 
 wf : WfSig Σ₃
 wf = ((((_ ,
@@ -83,7 +87,7 @@ consistent = consistencyˢ Σ₃ wf
 
 -- a reference used at the type its BODY has, not its declaration
 one∷Nat : TA._⊢ᴬ_∷_ Σ₃ TA.◇ᴬ (ref 2) Nat
-one∷Nat = TA.⊢ᴬconv (TA.⊢ᴬref <-here) (credᵀ El-⌜Nat⌝)
+one∷Nat = TA.⊢ᴬconv (TA.⊢ᴬref <-here) N≅Nat
 
 -- a definition unfolding inside a TYPE
 zero∷N : TA._⊢ᴬ_∷_ Σ₃ TA.◇ᴬ nzero (El (ref 1))

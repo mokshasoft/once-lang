@@ -27,14 +27,12 @@
 --   `Spec/Syntax`'s `RTm` constructor list): a former missing here is a
 --   generator failure, not a silent row.
 --
--- ★ S5 — THE SIGNATURE (PLAN-BIDI §2-bis, route B).  `ref d` names the
---   d-th entry of a global signature of CLOSED definitions.  It is not an
---   `RTm` former: the kernel is unchanged, and erasure UNFOLDS `ref d` to
---   the entry's closed body (δ).  So erasure is parameterised by the
---   bodies, `module Era (δ : ℕ → RTm ε)`; syntax, renaming and
---   substitution are not (a reference is closed, so they leave it alone).
---   `Metatheory/Erasure` is then δ-ELIMINATION: every annotated derivation
---   over a well-formed signature means a signature-free kernel derivation.
+-- ★ THE SIGNATURE (PLAN-BIDI §2-bis/§2-ter).  `ref d` names the d-th
+--   entry of a global signature of CLOSED definitions.  The kernel's
+--   `ref d b` carries its body; the annotated `ref d` only its name, and
+--   erasure supplies the signature's body: `module Era (δ : ℕ → RTm ε)`,
+--   `⌈ ref d ⌉ = ref d (δ d)`.  Syntax, renaming and substitution are not
+--   parameterised (a reference is closed, so they leave it alone).
 --
 -- ★ LEVITATION: descriptions are TERMS, so they need no separate annotated
 --   syntax — they are `ATm`s like any other.
@@ -299,7 +297,7 @@ module Era (δ : ℕ → RTm ε) where
   ⌈ (fcase x0 x1 x2 x3 x4) ⌉ = fcase (⌈ x2 ⌉) (⌈ x3 ⌉) (⌈ x4 ⌉)
   ⌈ (fcase0 x0 x1) ⌉ = fcase0 (⌈ x1 ⌉)
   ⌈ (psplit x0 x1 x2 x3 x4) ⌉ = psplit (⌈ x3 ⌉) (⌈ x4 ⌉)
-  ⌈ (ref x0) ⌉ = εwkTm (δ x0)
+  ⌈ (ref x0) ⌉ = ref x0 (δ x0)
 
   -- ★ erasure commutes with renaming
   era-renTy : {Γ Δ : Cx} (ρ : Ren Γ Δ) (A : ATy Γ) → ⌈ renTyᴬ ρ A ⌉ᵀ ≡ renTy ρ ⌈ A ⌉ᵀ
@@ -355,7 +353,7 @@ module Era (δ : ℕ → RTm ε) where
   era-renTm ρ (fcase x0 x1 x2 x3 x4) = cong3 (λ a0 a1 a2 → fcase a0 a1 a2) (era-renTm ρ x2) (era-renTm ρ x3) (era-renTm (extR ρ) x4)
   era-renTm ρ (fcase0 x0 x1) = cong1 (λ a0 → fcase0 a0) (era-renTm ρ x1)
   era-renTm ρ (psplit x0 x1 x2 x3 x4) = cong2 (λ a0 a1 → psplit a0 a1) (era-renTm (extR (extR ρ)) x3) (era-renTm ρ x4)
-  era-renTm ρ (ref x0) = sym (εwkTm-ren ρ (δ x0))
+  era-renTm ρ (ref x0) = refl
 
   -- extending a substitution commutes with erasure
   era-ext : {Γ Δ : Cx} {σ : Subᴬ Γ Δ} {τ : Sub Γ Δ} → (∀ x → ⌈ σ x ⌉ ≡ τ x) →
@@ -419,4 +417,4 @@ module Era (δ : ℕ → RTm ε) where
   era-subTm σ τ h (fcase x0 x1 x2 x3 x4) = cong3 (λ a0 a1 a2 → fcase a0 a1 a2) (era-subTm σ τ h x2) (era-subTm σ τ h x3) (era-subTm (extSᴬ σ) (extS τ) (era-ext h) x4)
   era-subTm σ τ h (fcase0 x0 x1) = cong1 (λ a0 → fcase0 a0) (era-subTm σ τ h x1)
   era-subTm σ τ h (psplit x0 x1 x2 x3 x4) = cong2 (λ a0 a1 → psplit a0 a1) (era-subTm (extSᴬ (extSᴬ σ)) (extS (extS τ)) (era-ext (era-ext h)) x3) (era-subTm σ τ h x4)
-  era-subTm σ τ h (ref x0) = sym (εwkTm-sub τ (δ x0))
+  era-subTm σ τ h (ref x0) = refl

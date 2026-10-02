@@ -46,7 +46,8 @@ open import DirectedHoTT.Spec.Syntax
         ; renTm; renTm-renTm; renTm-cong; Sub; extS; subTm; renTm-subTm
         ; subTm-renTm; subTm-cong; _ᵣ∘ₛ_; _ₛ∘ᵣ_; _∘ᵣ_; Desc; dι; dρ; con; IMu
         ; ielim; ⌜IMu⌝; εwkTm; RTy; El; Π; Σ'; Hom; Id; DIh; ⌜Fin⌝; dσ; dpay
-        ; dih; fzero; fsuc; fcase; fcase0; psplit; cong₄; cong₃ )
+        ; dih; fzero; fsuc; fcase; fcase0; psplit; cong₄; cong₃
+        ; ref; εwkTm-ren )
 open import DirectedHoTT.Spec.Variance
   using ( 𝔹; true; false; pw?; stkC?; stkA?; pwBody; pwShift; pw?-ren
         ; stkC?-ren; stkA?-ren; pwBody-ren; pw?-sub; stkC?-sub; stkA?-sub
@@ -69,7 +70,8 @@ open import DirectedHoTT.Spec.Typing
         ; ξ-⌜IMu⌝ⁱ; ξ-ielimᴰ; ξ-ielimᵉ; ξ-dσˢ; ξ-dσᶠ; ξ-dρʲ; ξ-dρᶜ; ξ-dpayᴵ
         ; ξ-dpayᴰ; ξ-dpayᶜ; ξ-dihᴰ; ξ-dihᵉ; ξ-dihᶜ; ξ-dihᵖ; ξ-fsuc; ξ-fcaseᵗ
         ; ξ-fcaseᵃ; ξ-fcaseᵇ; ξ-fcase0; ξ-psplitᵇ; ξ-psplitᵍ; ξ-IMuᴵ; ξ-IMuᴰ
-        ; ξ-IMuⁱ; ξ-Desc; ξ-DIhᴰ; ξ-DIhᴹ; ξ-DIhᶜ; ξ-DIhᵖ )
+        ; ξ-IMuⁱ; ξ-Desc; ξ-DIhᴰ; ξ-DIhᴹ; ξ-DIhᶜ; ξ-DIhᵖ
+        ; δref )
 open import DirectedHoTT.Metatheory.SubjectReductionBase
   using ( sub-comm; sub-comm-ext; ⟶-sub; wk-sub; wk₁-sub; swp-sub; pwShift-sub )
 
@@ -507,6 +509,7 @@ ren-comm2 {Γ} ρ b x y =
   subst (λ z → fcase (fsuc (renTm ρ t)) (renTm ρ a) (renTm (extR ρ) b) ⟶ z)
         (sym (ren-comm ρ b t))
         (fcase-s _ _ _)
+⟶-ren ρ (δref d b) = subst (λ z → ref d b ⟶ z) (sym (εwkTm-ren ρ b)) (δref d b)
 ⟶-ren ρ (psplit-β b x y) =
   subst (λ z → psplit (renTm (extR (extR ρ)) b) (pair (renTm ρ x) (renTm ρ y)) ⟶ z)
         (sym (ren-comm2 ρ b x y))
@@ -916,6 +919,7 @@ subTm-monoˢ h (fcase t a b) =
   ⟶*-trans (⟶*-fcaseᵗ (subTm-monoˢ h t)) (⟶*-trans (⟶*-fcaseᵃ (subTm-monoˢ h a)) (⟶*-fcaseᵇ (subTm-monoˢ (extS-mono h) b)))
 subTm-monoˢ h (fcase0 t) =
   ⟶*-fcase0 (subTm-monoˢ h t)
+subTm-monoˢ h (ref d b) = done
 subTm-monoˢ h (psplit b q) =
   ⟶*-trans (⟶*-psplitᵇ (subTm-monoˢ (extS-mono (extS-mono h)) b)) (⟶*-psplitᵍ (subTm-monoˢ h q))
 subTm-monoˢ h (natrec z s n) =

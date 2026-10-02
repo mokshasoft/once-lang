@@ -78,7 +78,8 @@ open import DirectedHoTT.Spec.Syntax
         ; ordtr-cong₅; Desc; con; dι; dρ; IMu; ielim; ⌜IMu⌝; εwkTy; εwk-ren
         ; εwk-sub; εwkTm; εwkTm-ren; εwkTm-sub; subTm-subTm; DIh; Fin; ⌜Fin⌝
         ; dσ; dpay; dih; fzero; fsuc; fcase; fcase0; psplit; cong₃; cong₄
-        ; renTm-cong )
+        ; renTm-cong
+        ; ref )
 open import DirectedHoTT.Spec.Variance
   using ( 𝔹; true; false; _∨_; occTm; ∨-false; ∨-false₁; ∨-false₂; occ-ren-eq
         ; occ-sub; eqv; Avoids; occ-ren-tm; avoids-wk; PosC; posc-var
@@ -118,7 +119,8 @@ open import DirectedHoTT.Spec.Typing
         ; ξ-⌜IMu⌝ᴵ; ξ-⌜IMu⌝ᴰ; ξ-⌜IMu⌝ⁱ; ξ-ielimᴰ; ξ-ielimᵉ; ξ-dσˢ; ξ-dσᶠ
         ; ξ-dρʲ; ξ-dρᶜ; ξ-dpayᴵ; ξ-dpayᴰ; ξ-dpayᶜ; ξ-dihᴰ; ξ-dihᵉ; ξ-dihᶜ
         ; ξ-dihᵖ; ξ-fsuc; ξ-fcaseᵗ; ξ-fcaseᵃ; ξ-fcaseᵇ; ξ-fcase0; ξ-psplitᵇ
-        ; ξ-psplitᵍ; DescF )
+        ; ξ-psplitᵍ; DescF
+        ; δref; ⊢ref )
 open import DirectedHoTT.Metatheory.SubjectReductionBase
   using ( ≅ᵀ-sub; ⟶-sub )
 open import DirectedHoTT.Metatheory.RedCong
@@ -489,6 +491,7 @@ occ-red {x = x} (fcase-s t a b) e = occ-sub h b (∨-false₂ (occTm x a) (∨-f
   h : ∀ y → eqv (vs x) y ≡ false → occTm x (single t y) ≡ false
   h vz     _ = ∨-false₁ (occTm x t) e
   h (vs z) q = q
+occ-red (δref d b) e = occ-εwkTm b
 occ-red {x = x} (psplit-β b u v) e = occ-sub h b (∨-false₁ (occTm (vs (vs x)) b) e)
   where
   eu = ∨-false₁ (occTm x u) (∨-false₂ (occTm (vs (vs x)) b) e)
@@ -1016,6 +1019,7 @@ ren-lemma {ρ = ρ} (⊢ap {cA = cA} {cB = cB} {b = b} {t = t} {u = u}
          (ren-lemma dt h) (ren-lemma du h) (ren-lemma dp h))
 ren-lemma (⊢trU dt du dp de) h =
   ⊢trU (ren-lemma dt h) (ren-lemma du h) (ren-lemma dp h) (ren-lemma de h)
+ren-lemma {ρ = ρ} (⊢ref {A = A} db) h = ⊢-cast (sym (εwk-ren ρ A)) (⊢ref db)
 ren-lemma {ρ = ρ} (⊢conv d c) h = ⊢conv (ren-lemma d h) (≅ᵀ-ren ρ c)
 
 ⊢wk : {Γ : Ctx} {B : RTy ⌊ Γ ⌋} {t : RTm ⌊ Γ ⌋} {A : RTy ⌊ Γ ⌋} →
@@ -1167,6 +1171,7 @@ sub-lemma {σ = σ} (⊢ap {cA = cA} {cB = cB} {b = b} {t = t} {u = u}
          (sub-lemma dt h) (sub-lemma du h) (sub-lemma dp h))
 sub-lemma (⊢trU dt du dp de) h =
   ⊢trU (sub-lemma dt h) (sub-lemma du h) (sub-lemma dp h) (sub-lemma de h)
+sub-lemma {σ = σ} (⊢ref {A = A} db) h = ⊢-cast (sym (εwk-sub σ A)) (⊢ref db)
 sub-lemma {σ = σ} (⊢conv d c) h = ⊢conv (sub-lemma d h) (≅ᵀ-sub σ c)
 
 -- the single substitution AS a typed substitution — `⊢[]` is its

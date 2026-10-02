@@ -35,7 +35,8 @@ open import DirectedHoTT.Spec.Syntax
         ; fst; snd; absurd; ordtr; vz; vs; renTm; Unit; Nat; unit; nzero; nsuc
         ; natrec; ⌜Nat⌝; ⌜Unit⌝; Desc; con; IMu; ielim; ⌜IMu⌝; εwkTm; Fin
         ; ⌜Fin⌝; DIh; dι; dσ; dρ; renTy; extR; extS; Ren; cong₄; Sub; subTy
-        ; subTm; dpay; dih; fzero; fsuc; fcase; fcase0; psplit )
+        ; subTm; dpay; dih; fzero; fsuc; fcase; fcase0; psplit
+        ; ref )
 open import DirectedHoTT.Spec.Typing
   using ( _⟶ᵀ_; El-⌜base⌝; El-⌜Π⌝; El-⌜Σ⌝; El-⌜Hom⌝; ξ-El; ξ-Πˡ; ξ-Πʳ; ξ-Σˡ
         ; ξ-Σʳ; Hom-U; Hom-Π; ξ-Homᵀ; ξ-Homˡ; ξ-Homʳ; El-⌜Id⌝; ξ-Idᵀ; ξ-Idˡ
@@ -60,7 +61,8 @@ open import DirectedHoTT.Metatheory.Confluence
         ; ⟹-refl; ⟹-⁺; ⟶→⟹; ⟹→⟶*; ⟹-ren; pcon; pι; p⌜IMu⌝; pielim; ⟹-sub
         ; ⟹-exts; pdι; pdσ; pdρ; pdpay; pdpay-ι; pdpay-σ; pdpay-ρ; pdih
         ; pdih-ι; pdih-σ; pdih-ρ; pfzero; pfsuc; pfcase; pfcase-z; pfcase-s
-        ; pfcase0; ppsplit; ppsplit-β; ptr-J-Fin; p⌜Fin⌝; single2-⟹; single-⟹ )
+        ; pfcase0; ppsplit; ppsplit-β; ptr-J-Fin; p⌜Fin⌝; single2-⟹; single-⟹
+        ; pref; pdelta )
 
 private
   variable
@@ -465,6 +467,7 @@ El (fsuc t) ⁺ᵀ      = El (fsuc t ⁺)
 El (fcase t a b) ⁺ᵀ = El (fcase t a b ⁺)
 El (fcase0 t) ⁺ᵀ    = El (fcase0 t ⁺)
 El (psplit b q) ⁺ᵀ  = El (psplit b q ⁺)
+El (ref d b) ⁺ᵀ     = El (ref d b ⁺)
 Π A B ⁺ᵀ        = Π (A ⁺ᵀ) (B ⁺ᵀ)
 Σ' A B ⁺ᵀ       = Σ' (A ⁺ᵀ) (B ⁺ᵀ)
 -- W2: `Hom` develops by the head of its TYPE argument.  Where the head is
@@ -505,6 +508,12 @@ Id A t u ⁺ᵀ = Id (A ⁺ᵀ) (t ⁺) (u ⁺)
 ⟹ᵀ-⁺ pUnit          = pUnit
 ⟹ᵀ-⁺ pNat           = pNat
 ⟹ᵀ-⁺ (pEl w@(pcon _))    = pEl (⟹-⁺ w)
+⟹ᵀ-⁺ (pEl w@pref)        = pEl (⟹-⁺ w)
+⟹ᵀ-⁺ (pEl w@(pdelta _))  = pEl (⟹-⁺ w)
+⟹ᵀ-⁺ (pHom pNat pt@pref pu)       = pHom pNat (⟹-⁺ pt) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom pNat pt@(pdelta _) pu) = pHom pNat (⟹-⁺ pt) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom pNat (pnsuc pm) pu@pref)       = pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom pNat (pnsuc pm) pu@(pdelta _)) = pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ pu)
 ⟹ᵀ-⁺ (pHom pNat (pnsuc pm) w@(pcon _)) =
   pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ w)
 ⟹ᵀ-⁺ (pHom pNat w@(pcon _) pu)    = pHom pNat (⟹-⁺ w) (⟹-⁺ pu)
@@ -791,6 +800,8 @@ Id A t u ⁺ᵀ = Id (A ⁺ᵀ) (t ⁺) (u ⁺)
 ⟹ᵀ-⁺ (pDIh pD pM pdι pp) = pDIh-ι
 ⟹ᵀ-⁺ (pDIh pD pM (pdσ pS pf) pp) = pDIh-σ (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ pf) (⟹-⁺ pp)
 ⟹ᵀ-⁺ (pDIh pD pM (pdρ pj pC) pp) = pDIh-ρ (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ pj) (⟹-⁺ pC) (⟹-⁺ pp)
+⟹ᵀ-⁺ (pDIh pD pM w@pref pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
+⟹ᵀ-⁺ (pDIh pD pM w@(pdelta _) pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
 ⟹ᵀ-⁺ (pDIh pD pM w@(pvar _) pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
 ⟹ᵀ-⁺ (pDIh pD pM w@(plam _) pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
 ⟹ᵀ-⁺ (pDIh pD pM w@(papp _ _) pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)

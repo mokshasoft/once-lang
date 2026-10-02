@@ -46,7 +46,8 @@ open import normalizer.Syntax.Types
   using ( _≡_; refl; sym; trans; subst; cong; cong₂; ¬_; ⊥; ⊥-elim; Σ; _,_; _×_; ⊤; tt )
 
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
-open import DirectedHoTT.Spec.Typing using ( wk-single ) public
+open import DirectedHoTT.Spec.Typing using ( wk-single
+        ; δref ) public
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; Var; vz; vs; RTy; base; U; Π; Σ'; El; Hom; RTm; var; lam
         ; app; pair; fst; snd; absurd; ordtr; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝; ⌜Hom⌝; hrefl
@@ -54,7 +55,8 @@ open import DirectedHoTT.Spec.Syntax
         ; natrec-cong₃; ⌜Nat⌝; ⌜Unit⌝; Ren; extR; Sub; subTy; subTm; extS
         ; renTm; subTm-renTm; subTm-id; Hom-cong₃; ⌜Hom⌝-cong₃; Desc; con; dι
         ; dρ; εwkTy; IMu; ielim; ⌜IMu⌝; εwkTm
-        ; DIh; Fin; ⌜Fin⌝; dσ; dpay; dih; fzero; fsuc; fcase; fcase0; psplit; cong₄; cong₃ )
+        ; DIh; Fin; ⌜Fin⌝; dσ; dpay; dih; fzero; fsuc; fcase; fcase0; psplit; cong₄; cong₃
+        ; ref )
 open import DirectedHoTT.Spec.Typing
   using ( single; nrs; _⟶_; β; βfst; βsnd; ξ-lam; ξ-appˡ; ξ-appʳ; ξ-pairˡ
         ; ξ-pairʳ; ξ-absurdᶜ; ξ-absurdᵉ; ordtr-z; ordtr-szz; ordtr-ssz
@@ -208,6 +210,8 @@ spine? (dih D e C p)    = dstk? C
 spine? (fcase t a b)    = finstk? t
 spine? (fcase0 t)       = true
 spine? (psplit b q)     = spine? q
+-- a definition is a REDEX (δ), never a stuck spine
+spine? (ref n b)        = false
 spine? _              = false
 
 -- W2b: `stablecd?` is now DEAD-CODE-ness — the code can never fire a
@@ -269,6 +273,7 @@ stablecd? (fsuc t)         = true
 stablecd? (fcase t a b)    = finstk? t
 stablecd? (fcase0 t)       = true
 stablecd? (psplit b q)     = spine? q
+stablecd? (ref n b)        = false
 stablecd? _             = false
 
 -- ★ INDUCTIVE TYPES: `elim` fires on a `con` scrutinee and nothing
@@ -312,6 +317,7 @@ mustk? (fsuc t)         = true
 mustk? (fcase t a b)    = finstk? t
 mustk? (fcase0 t)       = true
 mustk? (psplit b q)     = spine? q
+mustk? (ref d b)         = false
 
 pathstk? (var x)        = true
 pathstk? (lam t)        = false
@@ -351,6 +357,7 @@ pathstk? (fsuc t)         = true
 pathstk? (fcase t a b)    = finstk? t
 pathstk? (fcase0 t)       = true
 pathstk? (psplit b q)     = spine? q
+pathstk? (ref d b)         = false
 
 -- ★ the two-former kernel: `jsub` is stuck forever iff its PATH never
 -- becomes an `idrefl`: everything except idrefl itself is junk-stuck
@@ -394,6 +401,7 @@ idstk? (fsuc t)         = true
 idstk? (fcase t a b)    = finstk? t
 idstk? (fcase0 t)       = true
 idstk? (psplit b q)     = spine? q
+idstk? (ref d b)         = false
 
 -- ★ directed `ap` (SpikeAp): `ap` is stuck forever iff its PATH never
 -- becomes a canonical hrefl the J rule fires on: lam paths have NO ap
@@ -437,6 +445,7 @@ apstk? (fsuc t)         = true
 apstk? (fcase t a b)    = finstk? t
 apstk? (fcase0 t)       = true
 apstk? (psplit b q)     = spine? q
+apstk? (ref d b)         = false
 
 -- W2b: a lam path fires tr-pw at a pw-able-⌜Hom⌝ motive with the
 -- LITERAL `var vz` endpoint — stuck only when the code can never
@@ -499,6 +508,7 @@ deadmot? (fsuc t)         = true
 deadmot? (fcase t a b)    = finstk? t
 deadmot? (fcase0 t)       = true
 deadmot? (psplit b q)     = spine? q
+deadmot? (ref d b)         = false
 
 nopw? (var x)        = true
 nopw? (lam t)        = true
@@ -538,6 +548,7 @@ nopw? (fsuc t)         = true
 nopw? (fcase t a b)    = finstk? t
 nopw? (fcase0 t)       = true
 nopw? (psplit b q)     = spine? q
+nopw? (ref d b)         = false
 
 -- ★ WF stage A: `natrec` fires only on a NUMERAL scrutinee, so it is
 -- stuck forever exactly when the scrutinee can never become one —
@@ -581,6 +592,7 @@ natstk? (fsuc t)         = true
 natstk? (fcase t a b)    = finstk? t
 natstk? (fcase0 t)       = true
 natstk? (psplit b q)     = spine? q
+natstk? (ref d b)         = false
 
 dstk? (var x)          = true
 dstk? (lam t)          = true
@@ -620,6 +632,7 @@ dstk? (fsuc t)         = true
 dstk? (fcase t a b)    = finstk? t
 dstk? (fcase0 t)       = true
 dstk? (psplit b q)     = spine? q
+dstk? (ref d b)         = false
 
 finstk? (var x)          = true
 finstk? (lam t)          = true
@@ -659,6 +672,7 @@ finstk? (fsuc t)         = false
 finstk? (fcase t a b)    = finstk? t
 finstk? (fcase0 t)       = true
 finstk? (psplit b q)     = spine? q
+finstk? (ref d b)         = false
 
 -- ★ THE ORDER'S STUCKNESS, and it must mirror `_⁺`'s dispatch EXACTLY:
 -- `a`, then `u`, then `t`.  `ordtr` is NOT like `absurd` — `absurd` has
@@ -778,6 +792,7 @@ nopw⊥pw (fsuc t) h = refl
 nopw⊥pw (fcase t a b) h = refl
 nopw⊥pw (fcase0 t) h = refl
 nopw⊥pw (psplit b q) h = refl
+nopw⊥pw (ref d b) ()
 
 deadmot→nopw : (C : RTm Γ) → deadmot? C ≡ true → nopw? C ≡ true
 deadmot→nopw (var x) h = refl
@@ -960,6 +975,7 @@ red-nonvar {t = (fsuc t)} _ = refl
 red-nonvar {t = (fcase t a b)} _ = refl
 red-nonvar {t = (fcase0 t)} _ = refl
 red-nonvar {t = (psplit b q)} _ = refl
+red-nonvar {t = (ref d b)} _ = refl
 
 -- ★ Each lemma below opens with `{t = var _} () _` (a variable never
 --   reduces).  It is not there for the proof: Agda splits on the leftmost
@@ -3196,6 +3212,8 @@ data SNRed {Γ} where
                  SNRed (psplit b (pair x y)) (subTm (single2 x y) b)
   snr-psplitᵍ : {b : RTm ((Γ ∙) ∙)} {q q' : RTm Γ} → SNRed q q' →
                 SNRed (psplit b q) (psplit b q')
+  -- ★ a definition unfolds to its body (closed: nothing discarded)
+  snr-δ : {n : ℕ} {b : RTm ε} → SNRed (ref n b) (εwkTm b)
   -- ★★ WF stage E: the order's five root rules, each discarding the
   -- material it drops as `SN` (the `snr-β` pattern), plus one ξ per
   -- BOUND.  Three scrutinees, so three ξ's — `p`/`q` are payload and
@@ -3310,6 +3328,7 @@ snr→⟶ (snr-fcase-s _ _) = fcase-s _ _ _
 snr→⟶ (snr-fcaseᵗ r) = ξ-fcaseᵗ (snr→⟶ r)
 snr→⟶ (snr-psplit-β _ _) = psplit-β _ _ _
 snr→⟶ (snr-psplitᵍ r) = ξ-psplitᵍ (snr→⟶ r)
+snr→⟶ (snr-δ {n = n} {b}) = δref n b
 snr→⟶ (snr-ordtr-z _ _ _ _)    = ordtr-z _ _ _ _
 snr→⟶ (snr-ordtr-szz _ _)      = ordtr-szz _ _ _
 snr→⟶ (snr-ordtr-ssz _ _ _)    = ordtr-ssz _ _ _ _
@@ -3324,6 +3343,7 @@ snr→⟶ (snr-ordtrᵘˢ r)          = ξ-ordtrᵘ (snr→⟶ r)
 -- are app/fst/snd/hrefl/tr-headed).
 snr-nonpw : {t t' : RTm Γ} → SNRed t t' → pw? t ≡ false
 snr-nonpw (snr-β _)      = refl
+snr-nonpw snr-δ          = refl
 snr-nonpw (snr-βfst _)   = refl
 snr-nonpw (snr-βsnd _)   = refl
 snr-nonpw (snr-app _)    = refl
@@ -3428,6 +3448,7 @@ noSnrIdrefl ()
 snr-det : {t u u' : RTm Γ} → SNRed t u → SNRed t u' → u ≡ u'
 csr-det : {t u u' : RTm Γ} → CSR t u → CSR t u' → u ≡ u'
 snr-det (snr-β _)    (snr-β _)     = refl
+snr-det snr-δ snr-δ = refl
 snr-det (snr-β _)    (snr-app ())
 snr-det (snr-app ()) (snr-β _)
 snr-det (snr-app {u = u} r) (snr-app r') =
@@ -4159,6 +4180,7 @@ homheaded?-ren ρ (fsuc t) = refl
 homheaded?-ren ρ (fcase t a b) = refl
 homheaded?-ren ρ (fcase0 t) = refl
 homheaded?-ren ρ (psplit b q) = refl
+homheaded?-ren ρ (ref d b) = refl
 
 spine?-ren    : (ρ : Ren Γ Δ) (t : RTm Γ) → spine? (renTm ρ t) ≡ spine? t
 -- the order's renaming stability, shared by all nine classifiers.
@@ -4226,6 +4248,7 @@ spine?-ren ρ (fsuc t) = refl
 spine?-ren ρ (fcase t a b) = finstk?-ren ρ t
 spine?-ren ρ (fcase0 t) = refl
 spine?-ren ρ (psplit b q) = spine?-ren ρ q
+spine?-ren ρ (ref d b) = refl
 
 ordS?-ren true  ρ u = refl
 ordS?-ren false ρ u = natstk?-ren ρ u
@@ -4276,6 +4299,7 @@ ordstk?-ren ρ (fsuc t₀) t u = refl
 ordstk?-ren ρ (fcase t₀ a b) t u = finstk?-ren ρ t₀
 ordstk?-ren ρ (fcase0 t₀) t u = refl
 ordstk?-ren ρ (psplit b q) t u = spine?-ren ρ q
+ordstk?-ren ρ (ref d b) t u = refl
 
 -- ★ the `stableA?` peer of `stablecd?-ren`.
 stableA?-ren ρ (var x)       = refl
@@ -4316,6 +4340,7 @@ stableA?-ren ρ (fsuc t) = refl
 stableA?-ren ρ (fcase t a b) = finstk?-ren ρ t
 stableA?-ren ρ (fcase0 t) = refl
 stableA?-ren ρ (psplit b q) = spine?-ren ρ q
+stableA?-ren ρ (ref d b) = refl
 
 stablecd?-ren ρ (var x)       = refl
 stablecd?-ren ρ (lam t)       = refl
@@ -4355,6 +4380,7 @@ stablecd?-ren ρ (fsuc t) = refl
 stablecd?-ren ρ (fcase t a b) = finstk?-ren ρ t
 stablecd?-ren ρ (fcase0 t) = refl
 stablecd?-ren ρ (psplit b q) = spine?-ren ρ q
+stablecd?-ren ρ (ref d b) = refl
 
 pathstk?-ren ρ (var x)       = refl
 pathstk?-ren ρ (lam t)       = refl
@@ -4394,6 +4420,7 @@ pathstk?-ren ρ (fsuc t) = refl
 pathstk?-ren ρ (fcase t a b) = finstk?-ren ρ t
 pathstk?-ren ρ (fcase0 t) = refl
 pathstk?-ren ρ (psplit b q) = spine?-ren ρ q
+pathstk?-ren ρ (ref d b) = refl
 
 apstk?-ren ρ (var x)       = refl
 apstk?-ren ρ (lam t)       = refl
@@ -4433,6 +4460,7 @@ apstk?-ren ρ (fsuc t) = refl
 apstk?-ren ρ (fcase t a b) = finstk?-ren ρ t
 apstk?-ren ρ (fcase0 t) = refl
 apstk?-ren ρ (psplit b q) = spine?-ren ρ q
+apstk?-ren ρ (ref d b) = refl
 
 idstk?-ren ρ (var x)       = refl
 idstk?-ren ρ (lam t)       = refl
@@ -4472,6 +4500,7 @@ idstk?-ren ρ (fsuc t) = refl
 idstk?-ren ρ (fcase t a b) = finstk?-ren ρ t
 idstk?-ren ρ (fcase0 t) = refl
 idstk?-ren ρ (psplit b q) = spine?-ren ρ q
+idstk?-ren ρ (ref d b) = refl
 
 natstk?-ren ρ (var x)       = refl
 natstk?-ren ρ (lam t)       = refl
@@ -4511,6 +4540,7 @@ natstk?-ren ρ (fsuc t) = refl
 natstk?-ren ρ (fcase t a b) = finstk?-ren ρ t
 natstk?-ren ρ (fcase0 t) = refl
 natstk?-ren ρ (psplit b q) = spine?-ren ρ q
+natstk?-ren ρ (ref d b) = refl
 
 dstk?-ren ρ (var x)       = refl
 dstk?-ren ρ (lam t)       = refl
@@ -4550,6 +4580,7 @@ dstk?-ren ρ (fsuc t) = refl
 dstk?-ren ρ (fcase t a b) = finstk?-ren ρ t
 dstk?-ren ρ (fcase0 t) = refl
 dstk?-ren ρ (psplit b q) = spine?-ren ρ q
+dstk?-ren ρ (ref d b) = refl
 
 finstk?-ren ρ (var x)       = refl
 finstk?-ren ρ (lam t)       = refl
@@ -4589,6 +4620,7 @@ finstk?-ren ρ (fsuc t) = refl
 finstk?-ren ρ (fcase t a b) = finstk?-ren ρ t
 finstk?-ren ρ (fcase0 t) = refl
 finstk?-ren ρ (psplit b q) = spine?-ren ρ q
+finstk?-ren ρ (ref d b) = refl
 
 -- ★ INDUCTIVE TYPES: `mustk?`'s naturality — `natstk?-ren`'s clone, since
 --   the two keys agree on every head that renaming can see.
@@ -4630,6 +4662,7 @@ mustk?-ren ρ (fsuc t) = refl
 mustk?-ren ρ (fcase t a b) = finstk?-ren ρ t
 mustk?-ren ρ (fcase0 t) = refl
 mustk?-ren ρ (psplit b q) = spine?-ren ρ q
+mustk?-ren ρ (ref d b) = refl
 
 trstk?-ren ρ d (var x)       = refl
 trstk?-ren ρ d (lam f)       = trlam?-ren ρ d
@@ -4694,6 +4727,7 @@ trstk?-ren ρ d (fsuc t) = refl
 trstk?-ren ρ d (fcase t a b) = finstk?-ren ρ t
 trstk?-ren ρ d (fcase0 t) = refl
 trstk?-ren ρ d (psplit b q) = spine?-ren ρ q
+trstk?-ren ρ d (ref n b) = refl
 trstk?-ren ρ (⌜Fin⌝ n) (hrefl c t) = stablecd?-ren ρ c
 trstk?-ren ρ (con p) (hrefl c t) = stablecd?-ren ρ c
 trstk?-ren ρ dι (hrefl c t) = stablecd?-ren ρ c
@@ -4706,6 +4740,7 @@ trstk?-ren ρ (fsuc t₀) (hrefl c t) = stablecd?-ren ρ c
 trstk?-ren ρ (fcase t₀ a b) (hrefl c t) = stablecd?-ren ρ c
 trstk?-ren ρ (fcase0 t₀) (hrefl c t) = stablecd?-ren ρ c
 trstk?-ren ρ (psplit b q) (hrefl c t) = stablecd?-ren ρ c
+trstk?-ren ρ (ref n b) (hrefl c t) = stablecd?-ren ρ c
 
 nopw?-ren ρ (var x)       = refl
 nopw?-ren ρ (lam t)       = refl
@@ -4745,6 +4780,7 @@ nopw?-ren ρ (fsuc t) = refl
 nopw?-ren ρ (fcase t a b) = finstk?-ren ρ t
 nopw?-ren ρ (fcase0 t) = refl
 nopw?-ren ρ (psplit b q) = spine?-ren ρ q
+nopw?-ren ρ (ref d b) = refl
 
 deadmot?-ren ρ (var x)       = refl
 deadmot?-ren ρ (lam t)       = refl
@@ -4784,6 +4820,7 @@ deadmot?-ren ρ (fsuc t) = refl
 deadmot?-ren ρ (fcase t a b) = finstk?-ren ρ t
 deadmot?-ren ρ (fcase0 t) = refl
 deadmot?-ren ρ (psplit b q) = spine?-ren ρ q
+deadmot?-ren ρ (ref d b) = refl
 
 trlam?-ren ρ (var vz)     = refl
 trlam?-ren ρ (var (vs x)) = refl
@@ -4837,6 +4874,7 @@ trlam?-ren ρ (⌜Hom⌝ c a (fsuc m₁)) = refl
 trlam?-ren ρ (⌜Hom⌝ c a (fcase m₁ m₂ m₃)) = refl
 trlam?-ren ρ (⌜Hom⌝ c a (fcase0 m₁)) = refl
 trlam?-ren ρ (⌜Hom⌝ c a (psplit m₁ m₂)) = refl
+trlam?-ren ρ (⌜Hom⌝ c a (ref n m)) = refl
 trlam?-ren ρ (⌜Hom⌝ c a (⌜Fin⌝ n₀)) = refl
 trlam?-ren ρ (⌜Hom⌝ c a (natrec m₁ m₂ m₃)) = refl
 trlam?-ren ρ (hrefl c t)  = refl
@@ -4865,6 +4903,7 @@ trlam?-ren ρ (fsuc t) = refl
 trlam?-ren ρ (fcase t a b) = refl
 trlam?-ren ρ (fcase0 t) = refl
 trlam?-ren ρ (psplit b q) = refl
+trlam?-ren ρ (ref d b) = refl
 
 
 record ElNe {Γ} (A : RTy Γ) : Set where

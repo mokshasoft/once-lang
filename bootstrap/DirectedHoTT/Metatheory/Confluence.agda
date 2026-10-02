@@ -47,7 +47,9 @@ open import DirectedHoTT.Spec.Syntax
         ; renTm; renTm-renTm; renTm-cong; Sub; extS; subTm; renTm-subTm
         ; subTm-renTm; subTm-cong; _ᵣ∘ₛ_; _ₛ∘ᵣ_; _∘ᵣ_; dι; dρ; con; IMu; ielim
         ; ⌜IMu⌝; εwkTm; RTy; ⌜Fin⌝; dσ; dpay; dih; fzero; fsuc; fcase; fcase0
-        ; psplit; cong₄; cong₃ )
+        ; psplit; cong₄; cong₃
+        ; ref; εwkTm-ren; εwkTm-sub
+        ; εsub )
 open import DirectedHoTT.Spec.Variance
   using ( 𝔹; true; false; pw?; stkC?; stkA?; pwBody; pwShift; pw?-ren
         ; stkC?-ren; stkA?-ren; pwBody-ren; pw?-sub; stkC?-sub; stkA?-sub
@@ -68,7 +70,8 @@ open import DirectedHoTT.Spec.Typing
         ; ξ-⌜IMu⌝ᴵ; ξ-⌜IMu⌝ᴰ; ξ-⌜IMu⌝ⁱ; ξ-ielimᴰ; ξ-ielimᵉ; ξ-dσˢ; ξ-dσᶠ
         ; ξ-dρʲ; ξ-dρᶜ; ξ-dpayᴵ; ξ-dpayᴰ; ξ-dpayᶜ; ξ-dihᴰ; ξ-dihᵉ; ξ-dihᶜ
         ; ξ-dihᵖ; ξ-fsuc; ξ-fcaseᵗ; ξ-fcaseᵃ; ξ-fcaseᵇ; ξ-fcase0; ξ-psplitᵇ
-        ; ξ-psplitᵍ )
+        ; ξ-psplitᵍ
+        ; δref )
 open import DirectedHoTT.Metatheory.SubjectReductionBase
   using ( sub-comm; sub-comm-ext; ⟶-sub; wk-sub; wk₁-sub; swp-sub; pwShift-sub
         ; sub-comm2 )
@@ -253,6 +256,9 @@ data _⟹_ : {Γ : Cx} → RTm Γ → RTm Γ → Set where
   ppsplit-β : {b b' : RTm ((Γ ∙) ∙)} {x x' y y' : RTm Γ} →
               b ⟹ b' → x ⟹ x' → y ⟹ y' →
               psplit b (pair x y) ⟹ subTm (single2 x' y') b'
+  -- ★ definitions: inert, or δ with the body developed
+  pref : {d : ℕ} {b : RTm ε} → ref {Γ} d b ⟹ ref d b
+  pdelta : {d : ℕ} {b b' : RTm ε} → b ⟹ b' → ref {Γ} d b ⟹ εwkTm b'
 
 ⟹-refl : (t : RTm Γ) → t ⟹ t
 ⟹-refl ⌜Nat⌝      = p⌜Nat⌝
@@ -274,6 +280,7 @@ data _⟹_ : {Γ : Cx} → RTm Γ → RTm Γ → Set where
 ⟹-refl (fcase t a b) = pfcase (⟹-refl t) (⟹-refl a) (⟹-refl b)
 ⟹-refl (fcase0 t) = pfcase0 (⟹-refl t)
 ⟹-refl (psplit b q) = ppsplit (⟹-refl b) (⟹-refl q)
+⟹-refl (ref d b) = pref
 ⟹-refl (natrec z s n) = pnatrec (⟹-refl z) (⟹-refl s) (⟹-refl n)
 ⟹-refl (var x)    = pvar x
 ⟹-refl (lam t)    = plam (⟹-refl t)
@@ -442,6 +449,7 @@ stkC?-⟹ {C = ⌜Unit⌝} p⌜Unit⌝ h = refl
 ⟶→⟹ (fcase-z a b) = pfcase-z (⟹-refl a)
 ⟶→⟹ (fcase-s t a b) = pfcase-s (⟹-refl t) (⟹-refl b)
 ⟶→⟹ (psplit-β b x y) = ppsplit-β (⟹-refl b) (⟹-refl x) (⟹-refl y)
+⟶→⟹ (δref d b) = pdelta (⟹-refl b)
 ⟶→⟹ (ξ-⌜IMu⌝ᴵ r) = p⌜IMu⌝ (⟶→⟹ r) (⟹-refl _) (⟹-refl _)
 ⟶→⟹ (ξ-⌜IMu⌝ᴰ r) = p⌜IMu⌝ (⟹-refl _) (⟶→⟹ r) (⟹-refl _)
 ⟶→⟹ (ξ-⌜IMu⌝ⁱ r) = p⌜IMu⌝ (⟹-refl _) (⟹-refl _) (⟶→⟹ r)
@@ -597,6 +605,8 @@ stkC?-⟹ {C = ⌜Unit⌝} p⌜Unit⌝ h = refl
        (⟶*-trans (⟶*-sub (single t) (⟹→⟶* pb))
                  (subTm-monoˢ (single-mono (⟹→⟶* pt)) b'))
 ⟹→⟶* (pfcase0 p) = ⟶*-fcase0 (⟹→⟶* p)
+⟹→⟶* pref = done
+⟹→⟶* (pdelta {d = d} {b} pb) = step (δref d b) (⟶*-sub εsub (⟹→⟶* pb))
 ⟹→⟶* (ppsplit pb pq) = ⟶*-trans (⟶*-psplitᵇ (⟹→⟶* pb)) (⟶*-psplitᵍ (⟹→⟶* pq))
 ⟹→⟶* (ppsplit-β {b = b} {b'} {x = x} {x'} {y = y} {y'} pb px py) =
   step (psplit-β b x y)
@@ -764,6 +774,8 @@ stkC?-⟹ {C = ⌜Unit⌝} p⌜Unit⌝ h = refl
         (sym (ren-comm ρ b' t'))
         (pfcase-s (⟹-ren ρ pt) (⟹-ren (extR ρ) pb))
 ⟹-ren ρ (pfcase0 a) = pfcase0 (⟹-ren ρ a)
+⟹-ren ρ pref = pref
+⟹-ren ρ (pdelta {d = d} {b} {b'} pb) = subst (λ z → ref d b ⟹ z) (sym (εwkTm-ren ρ b')) (pdelta pb)
 ⟹-ren ρ (ppsplit a b) = ppsplit (⟹-ren (extR (extR ρ)) a) (⟹-ren ρ b)
 ⟹-ren ρ (ppsplit-β {b = b} {b'} {x = x} {x'} {y = y} {y'} pb px py) =
   subst (λ z → renTm ρ (psplit b (pair x y)) ⟹ z)
@@ -943,6 +955,8 @@ pwBody-⟹ {C = ⌜Unit⌝} _ ()
         (sym (sub-comm σ' b' t'))
         (pfcase-s (⟹-sub h pt) (⟹-sub (⟹-exts h) pb))
 ⟹-sub h (pfcase0 a) = pfcase0 (⟹-sub h a)
+⟹-sub h pref = pref
+⟹-sub {σ' = σ'} h (pdelta {d = d} {b} {b'} pb) = subst (λ z → ref d b ⟹ z) (sym (εwkTm-sub σ' b')) (pdelta pb)
 ⟹-sub h (ppsplit a b) = ppsplit (⟹-sub (⟹-exts (⟹-exts h)) a) (⟹-sub h b)
 ⟹-sub {σ = σ} {σ'} h (ppsplit-β {b = b} {b'} {x = x} {x'} {y = y} {y'} pb px py) =
   subst (λ z → subTm σ (psplit b (pair x y)) ⟹ z)
@@ -1274,6 +1288,7 @@ var x ⁺            = var x
 lam t ⁺            = lam (t ⁺)
 pair a b ⁺         = pair (a ⁺) (b ⁺)
 app t u ⁺          = appK (lamV t) (t ⁺) (u ⁺)
+ref d b ⁺          = εwkTm (b ⁺)
 fst p ⁺            = fstK (pairV p) (p ⁺)
 snd p ⁺            = sndK (pairV p) (p ⁺)
 ⌜Nat⌝ ⁺            = ⌜Nat⌝
@@ -1449,6 +1464,8 @@ rootAp refl refl r = r
 ⟹-⁺ : {t u : RTm Γ} → t ⟹ u → u ⟹ t ⁺
 ⟹-⁺ (pvar x)               = pvar x
 ⟹-⁺ (plam p)               = plam (⟹-⁺ p)
+⟹-⁺ (pref {b = b})         = pdelta (⟹-⁺ (⟹-refl b))
+⟹-⁺ (pdelta p)             = ⟹-sub (λ ()) (⟹-⁺ p)
 ⟹-⁺ (ppair p q)            = ppair (⟹-⁺ p) (⟹-⁺ q)
 ⟹-⁺ (papp {t = t} p q)     = tri-app (lamV t) p (⟹-⁺ p) (⟹-⁺ q)
 ⟹-⁺ (pβ p q)               = ⟹-sub (single-⟹ (⟹-⁺ q)) (⟹-⁺ p)

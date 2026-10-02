@@ -30,7 +30,8 @@ open import DirectedHoTT.Spec.Syntax
         ; subTy-subTy; subTm-subTm; subTy-id; subTm-id; renTm-renTm
         ; renTm-cong; Desc; con; IMu; ielim; ⌜IMu⌝; εwkTm; cong₃; DIh; Fin
         ; ⌜Fin⌝; dι; dσ; dρ; dpay; dih; fzero; fsuc; fcase; fcase0; psplit
-        ; cong₄ )
+        ; cong₄
+        ; ref; εwkTm-ren )
 open import DirectedHoTT.Spec.Typing
   using ( single; nrs; _⟶_; _⟶*_; done; step; β; βfst; βsnd; ξ-lam; ξ-appˡ
         ; ξ-appʳ; ξ-pairˡ; ξ-pairʳ; ξ-absurdᶜ; ξ-absurdᵉ; ordtr-z; ordtr-szz
@@ -102,7 +103,8 @@ open import DirectedHoTT.Metatheory.LogicalRelation
         ; snr-dpay-σ; snr-fcase-s; sne-dih; finstk?-ren; sne-dpay; sn-cFin
         ; sn-dι; sn-dρ; sn-dσ; sn-fsuc; sn-fzero; sne-fcase0; sne-psplit
         ; snr-J-Fin; snr-dih-ι; snr-dih-ρ; snr-dih-σ; snr-dihᶜ; snr-dpay-ι
-        ; snr-dpayᶜ; snr-fcase-z; snr-fcaseᵗ; snr-psplitᵍ )
+        ; snr-dpayᶜ; snr-fcase-z; snr-fcaseᵗ; snr-psplitᵍ
+        ; snr-δ )
 
 
 private
@@ -398,6 +400,8 @@ sn-anti {t = fcase t₀ a b} (sn-exp r h) with snr-anti r
 ... | t' , (r' , refl) = sn-exp r' (sn-anti h)
 sn-anti {t = fcase0 t₀} (sn-ne nt) = sn-ne (sne-anti nt)
 sn-anti {t = fcase0 t₀} (sn-exp () h)
+sn-anti {Ξ = Ξ} {ρ = ρ} {t = ref n b} (sn-exp snr-δ h) with εwkTm {Γ = Ξ} b | εwkTm-ren ρ b | h
+... | _ | refl | h' = sn-exp snr-δ (sn-anti {ρ = ρ} {t = εwkTm b} h')
 sn-anti {t = psplit b q} (sn-ne nt) = sn-ne (sne-anti nt)
 sn-anti {t = psplit b q} (sn-exp r h) with snr-anti r
 ... | t' , (r' , refl) = sn-exp r' (sn-anti h)
@@ -567,6 +571,7 @@ snr-anti {t = fcase t₀ a b} (snr-fcaseᵗ r) = lift↑ (λ t' → fcase t' a b
 snr-anti {ρ = ρ} {t = psplit b (pair x y)} (snr-psplit-β hx hy) =
   subTm (single2 x y) b
   , (snr-psplit-β (sn-anti hx) (sn-anti hy) , sym (ren-comm2 ρ b x y))
+snr-anti {ρ = ρ} {t = ref n b} snr-δ = εwkTm b , (snr-δ , sym (εwkTm-ren ρ b))
 snr-anti {t = psplit b q} (snr-psplitᵍ r) = lift↑ (λ q' → psplit b q') snr-psplitᵍ (λ _ → refl) (snr-anti r)
 snr-anti {t = tr (⌜Hom⌝ c a m) (hrefl (⌜Fin⌝ n) s) e} (snr-J-Fin hd hs) =
   e , (snr-J-Fin (sn-anti hd) (sn-anti hs) , refl)
@@ -592,6 +597,7 @@ csr-anti {t = dih _ _ _ _} (csr-here r) with snr-anti r
 ... | t' , (r' , refl) = t' , (csr-here r' , refl)
 csr-anti {t = fcase _ _ _} (csr-here r) with snr-anti r
 ... | t' , (r' , refl) = t' , (csr-here r' , refl)
+csr-anti {ρ = ρ} {t = ref n b} (csr-here snr-δ) = εwkTm b , (csr-here snr-δ , sym (εwkTm-ren ρ b))
 csr-anti {t = psplit _ _} (csr-here r) with snr-anti r
 ... | t' , (r' , refl) = t' , (csr-here r' , refl)
 csr-anti {t = ielim D i ms t₀} (csr-here r) with snr-anti r
@@ -807,6 +813,7 @@ snr-ren {ρ = ρ} (snr-psplit-β {b = b} {x = x} {y = y} hx hy) =
         (sym (ren-comm2 ρ b x y))
         (snr-psplit-β (sn-ren hx) (sn-ren hy))
 snr-ren (snr-psplitᵍ r) = snr-psplitᵍ (snr-ren r)
+snr-ren {ρ = ρ} (snr-δ {n = n} {b}) = subst (SNRed (ref n b)) (sym (εwkTm-ren ρ b)) snr-δ
 snr-ren (snr-J-Fin hd hs) = snr-J-Fin (sn-ren hd) (sn-ren hs)
 
 csr-ren (csr-here r) = csr-here (snr-ren r)
