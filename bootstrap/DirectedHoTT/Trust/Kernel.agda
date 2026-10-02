@@ -50,6 +50,7 @@ import DirectedHoTT.Metatheory.RedCong
 import DirectedHoTT.Metatheory.SubjectReduction
 import DirectedHoTT.Metatheory.SubjectReductionBase
 import DirectedHoTT.Metatheory.TySub
+import DirectedHoTT.Metatheory.UniquenessA
 import DirectedHoTT.Metatheory.Validity
 import DirectedHoTT.Spec.Annotated
 import DirectedHoTT.Spec.AnnotatedDesc
