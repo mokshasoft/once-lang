@@ -33,7 +33,7 @@ open import Data.Unit using (⊤)
 open import Once.Type using (Type; Unit; Void; Int; Str; _*_; _+_;
                               ArrowKind; mk-kind; Purity; pure; eff; isUnit?; isVoid?)
 open import Relation.Nullary using (Dec; yes; no)
-open import Once.SigOp.Info using (SigOpInfo; mk-info; mk-info'; pureV; primV; emitsV; haltsV; ffiV; callsV; EffectShape; Pure; Halts)
+open import Once.SigOp.Info using (SigOpInfo; SigOpSem; mk-info; mk-info'; pureV; primV; emitsV; haltsV; ffiV; callsV; EffectShape; Pure; Halts)
 open import Once.Arith.Prim using (ArithPrim; p-add; p-sub; p-mul; p-div; p-mod; p-neg; p-fadd; p-fsub; p-fmul; p-fdiv; p-i2f)
 open import Once.Functor.Translate using (IsBaseType;
   base-Unit; base-Int; base-Float; base-Str; base-Prod; base-Sum)
@@ -238,12 +238,17 @@ generic-info = value-info
 -- on the two `Dec`s, NOT a pattern-match on `B`) — the SAME pair, in the same
 -- order, that the elaborator's `ext-resolved-info` hands `ext-resolved-info-aux`,
 -- so the masquerade proof folds both with one split.
-arrow-info-eff : ∀ {A B} → CanonicalName → Dec (B ≡ Void) → Dec (B ≡ Unit)
-               → IsBaseType A → IsBaseType B → SigOpInfo A B
-arrow-info-eff name (yes refl) _          bA bB = mk-info' name (haltsV refl) bA bB
-arrow-info-eff name (no _)     (yes refl) bA bB = mk-info' name (emitsV refl) bA bB
-arrow-info-eff name (no _)     (no _)     bA bB = mk-info' name callsV bA bB
+-- Only the CONTRACT is dispatched; the info is built once from its name and
+-- witnesses, so `name`/`baseA`/`conB` of an arrow's info are definitionally its
+-- arguments whatever the codomain (plan 0.105: the meanings read them).
+arrow-sem-eff : ∀ {A B} → Dec (B ≡ Void) → Dec (B ≡ Unit) → SigOpSem A B
+arrow-sem-eff (yes refl) _          = haltsV refl
+arrow-sem-eff (no _)     (yes refl) = emitsV refl
+arrow-sem-eff (no _)     (no _)     = callsV
+
+arrow-sem : ∀ {A B} → ArrowKind → SigOpSem A B
+arrow-sem     (mk-kind _ pure) = ffiV
+arrow-sem {B = B} (mk-kind _ eff) = arrow-sem-eff (isVoid? B) (isUnit? B)
 
 arrow-info : ∀ {A B} → ArrowKind → CanonicalName → IsBaseType A → IsBaseType B → SigOpInfo A B
-arrow-info (mk-kind _ pure) name bA bB = value-info name bA bB
-arrow-info {A} {B} (mk-kind _ eff) name bA bB = arrow-info-eff name (isVoid? B) (isUnit? B) bA bB
+arrow-info k name bA bB = mk-info' name (arrow-sem k) bA bB

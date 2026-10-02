@@ -44,7 +44,7 @@ open import Once.IRTy.WF using (wf-⌊⌋)
 -- codomain), never from a hardcoded name; each is a CONTRACT whose meaning is
 -- the interpretation's (plan 0.105: `ffiV`/`callsV`; `generic-semM` is gone).
 open import Once.Arith.SigOp.Builders using (arrow-info)
-open import Once.SigOp.Info using (SigOpInfo; mk-info'; pureV; emitsV; haltsV; ffiV; callsV)
+open import Once.SigOp.Info using (SigOpInfo; SigOpSem; mk-info'; pureV; emitsV; haltsV; ffiV; callsV)
 open import Once.CanonicalName using (CanonicalName; own; bare; showCanonical; gen; NotGenerator; bare-NotGenerator; GenWord; genWord?)
 open import Once.TypeCheck.Raw using (RawExpr)
 open import Once.TypeCheck.Raw as Raw
@@ -1327,13 +1327,18 @@ inferElabV-RQualified-aux ctx name alias nothing _ =
 -- is what decides: `Void` HALTS, `Unit` EMITS, anything else is a value
 -- contract. Nothing is keyed by name any more, which is what lets `masq`
 -- fold: the elaborator and `⟦_⟧ˢ` read the SAME thing.
+-- Only the contract is dispatched (as in `Builders.arrow-info`), so the info's
+-- name and witnesses are its arguments definitionally.
+ext-resolved-sem : ∀ {A B} → Purity → Dec (B ≡ Void) → Dec (B ≡ Unit) → SigOpSem A B
+ext-resolved-sem pure _          _          = ffiV
+ext-resolved-sem eff  (yes refl) _          = haltsV refl
+ext-resolved-sem eff  (no _)     (yes refl) = emitsV refl
+ext-resolved-sem eff  (no _)     (no _)     = callsV
+
 ext-resolved-info-aux : ∀ {A B} → CanonicalName → Purity
                       → Dec (B ≡ Void) → Dec (B ≡ Unit)
                       → IsBaseType A → IsBaseType B → SigOpInfo A B
-ext-resolved-info-aux cn pure _ _ bA bB = mk-info' cn ffiV bA bB
-ext-resolved-info-aux cn eff (yes refl) _ bA bB = mk-info' cn (haltsV refl) bA bB
-ext-resolved-info-aux cn eff (no _) (yes refl) bA bB = mk-info' cn (emitsV refl) bA bB
-ext-resolved-info-aux cn eff (no _) (no _)     bA bB = mk-info' cn callsV bA bB
+ext-resolved-info-aux cn π dv du bA bB = mk-info' cn (ext-resolved-sem π dv du) bA bB
 
 ext-resolved-info : ∀ {A B} → NamedCtx → CanonicalName → Purity
                   → IsBaseType A → IsBaseType B → SigOpInfo A B
