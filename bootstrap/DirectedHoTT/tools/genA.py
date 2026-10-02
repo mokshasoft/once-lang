@@ -199,7 +199,8 @@ SURF_HEADER = '''-- SPDX-License-Identifier: AGPL-3.0-or-later
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Algorithm.Surface where
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
-open import DirectedHoTT.Spec.Syntax using ( Cx; _∙; Var )
+open import DirectedHoTT.Spec.Syntax using ( Cx; _∙; Var; vz; vs; Ren; extR )
+import DirectedHoTT.Spec.Syntax as R
 '''
 
 def surface():
@@ -209,6 +210,42 @@ def surface():
     o += [sty(c, fs, 'STy') for c, fs in TYS] + ['  □ᵀ : ∀ {Γ} → STy Γ']
     o += ['', 'data STm where'] + [sty(c, fs, 'STm') for c, fs in TMS]
     o += ['  □ : ∀ {Γ} → STm Γ', '  the : ∀ {Γ} → STy Γ → STm Γ → STm Γ']
+    o += ['', '-- ★ a kernel term as a surface term: every ANNOTATION a hole (a ℕ bound,',
+          '--   which has none, is 0 — the elaborator takes the expected bound), for the',
+          '--   elaborator to fill (how an existing `RTm` is re-derived by the checker)',
+          'holesTy : {Γ : Cx} → R.RTy Γ → STy Γ', 'holesTm : {Γ : Cx} → R.RTm Γ → STm Γ']
+    def hole(c, fs, ty):
+        me = 'holesTy' if ty else 'holesTm'
+        if fs and fs[0][0] == V: return f'{me} (R.var x) = var x'
+        real = [(i, k) for i, (k, b, ann) in enumerate(fs) if not ann]
+        lhs_ = f'R.{c}' if not real else '(R.' + c + ' ' + ' '.join(f'x{i}' for i, _ in real) + ')'
+        rhs = [c]
+        for i, (k, b, ann) in enumerate(fs):
+            if ann: rhs.append('□ᵀ' if k == T else ('□' if k == M else '0'))
+            elif k == N: rhs.append(f'x{i}')
+            else: rhs.append(f'({"holesTy" if k == T else "holesTm"} x{i})')
+        return f'{me} {lhs_} = ' + ' '.join(rhs)
+    o += [hole(c, fs, True) for c, fs in TYS] + [hole(c, fs, False) for c, fs in TMS if c not in SIGONLY]
+    # ★ renaming and substitution, so a surface schema can be instantiated
+    #   (e.g. a variable standing for a signature entry ↦ `ref d`)
+    def sact(which, c, fs, ty):
+        r = act(which, c, fs, ty)
+        for a, b in (('renTyᴬ', 'renTyˢ'), ('renTmᴬ', 'renTmˢ'), ('subTyᴬ', 'subTyˢ'),
+                     ('subTmᴬ', 'subTmˢ'), ('extSᴬ', 'extSˢ')):
+            r = r.replace(a, b)
+        return r
+    o += ['', '-- ★ renaming and substitution (holes and ascriptions are inert)',
+          'renTyˢ : {Γ Δ : Cx} → Ren Γ Δ → STy Γ → STy Δ',
+          'renTmˢ : {Γ Δ : Cx} → Ren Γ Δ → STm Γ → STm Δ']
+    o += [sact('ren', c, fs, True) for c, fs in TYS] + ['renTyˢ ρ □ᵀ = □ᵀ']
+    o += [sact('ren', c, fs, False) for c, fs in TMS] + ['renTmˢ ρ □ = □', 'renTmˢ ρ (the A t) = the (renTyˢ ρ A) (renTmˢ ρ t)']
+    o += ['', 'Subˢ : Cx → Cx → Set', 'Subˢ Γ Δ = Var Γ → STm Δ', '',
+          'extSˢ : {Γ Δ : Cx} → Subˢ Γ Δ → Subˢ (Γ ∙) (Δ ∙)',
+          'extSˢ σ vz     = var vz', 'extSˢ σ (vs x) = renTmˢ vs (σ x)', '',
+          'subTyˢ : {Γ Δ : Cx} → Subˢ Γ Δ → STy Γ → STy Δ',
+          'subTmˢ : {Γ Δ : Cx} → Subˢ Γ Δ → STm Γ → STm Δ']
+    o += [sact('sub', c, fs, True) for c, fs in TYS] + ['subTyˢ σ □ᵀ = □ᵀ']
+    o += [sact('sub', c, fs, False) for c, fs in TMS] + ['subTmˢ σ □ = □', 'subTmˢ σ (the A t) = the (subTyˢ σ A) (subTmˢ σ t)']
     return '\n'.join(o) + '\n'
 
 def check():

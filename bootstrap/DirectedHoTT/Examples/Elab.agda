@@ -26,6 +26,7 @@ open import DirectedHoTT.Metatheory.Signature using ( wf→ok )
 open import DirectedHoTT.Examples.Signature using ( Σ₃; wf )
 import DirectedHoTT.Spec.TypingA as TA
 import DirectedHoTT.Algorithm.Elab as E
+open import DirectedHoTT.Algorithm.Result using ( R; ok; err )
 -- a pattern synonym resolves its constructor where it is DEFINED, so the
 -- Lib/Sugar `v₀` (an `RTm`) cannot be reused for `STm`
 pattern v₀ = var vz
@@ -45,9 +46,9 @@ open E Σ₃ hints 100
 open Checked (wf→ok Σ₃ wf)
 
 private
-  isJust : {X : Set} → Maybe X → Set
-  isJust (just _) = ⊤
-  isJust nothing  = ⊥
+  isJust : {X : Set} → R X → Set
+  isJust (ok _)  = ⊤
+  isJust (err _) = ⊥
 
 -- `lam`'s domain from the expected `Π`
 ok-lam : isJust (elaborate TA.◇ᴬ c-◇ (lam □ᵀ (nsuc v₀)) (Π Nat Nat) (ty-Π ty-Nat ty-Nat))
@@ -72,9 +73,9 @@ ok-ref = _
 
 -- …and a wrong one is REJECTED (CheckA's certified "no")
 private
-  isNothing : {X : Set} → Maybe X → Set
-  isNothing (just _) = ⊥
-  isNothing nothing  = ⊤
+  isNothing : {X : Set} → R X → Set
+  isNothing (ok _)  = ⊥
+  isNothing (err _) = ⊤
 
 no-ill : isNothing (elaborate TA.◇ᴬ c-◇ (app (ref 0) unit) Nat ty-Nat)
 no-ill = _
