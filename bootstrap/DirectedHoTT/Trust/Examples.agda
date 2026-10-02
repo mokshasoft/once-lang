@@ -46,6 +46,7 @@ import DirectedHoTT.Examples.DivC
 import DirectedHoTT.Examples.DivLib
 import DirectedHoTT.Examples.Dogfood
 import DirectedHoTT.Examples.DvdArith
+import DirectedHoTT.Examples.Elab
 import DirectedHoTT.Examples.Gcd.Cert
 import DirectedHoTT.Examples.Gcd.Dvd
 import DirectedHoTT.Examples.Gcd.DvdL
