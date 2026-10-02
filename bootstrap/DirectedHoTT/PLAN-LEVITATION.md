@@ -183,8 +183,10 @@ CongMacro → Vec, Scoped, ScopedDepth → continue stage 4.
     (`RowsOK`/`FamilyT`);
   - positions are given by number (`atʰ`/`atᵍ`/`atᶜ`);
   - object terms are written in notation (`v₃`, `,ₚ`; pattern synonyms).
-- ⬜ Stage 6's cold sweep, MEASURED CLEANLY: an idle box, one run. After it
-  comes the fast-forward of `ocp-0009-stepext-once` (user, 2026-10-02).
+- ✅ (2026-10-02) Stage 6's cold sweep, MEASURED CLEANLY (an idle box, one
+  run): **ALL GREEN, 211 modules, 2 262 s wall (37.7 min)**, 5.4 GB peak.
+  It was ≈ 81 min over two runs on 2026-09-29. `ocp-0009-stepext-once` is
+  fast-forwarded to this branch. **PLAN-LEVITATION is DONE.**
 - ⬜ (optional) `Knot/Sz`'s adequacy on the quotation. ⬜ (deferred)
   infinitary `dπ`.
 
