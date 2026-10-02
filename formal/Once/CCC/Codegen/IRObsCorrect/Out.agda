@@ -21,6 +21,8 @@ import Once.CCC.FrameSemantics
 import Once.CCC.Machine.SMPrimitives
 import Once.IRTy
 import Once.IR
+open import Data.List.Properties using (++-identityʳ)
+open import Once.Res using (is-stopped)
 import Once.Semantics.Machine as EvV
 import Once.CCC.Machine.ReadTypedAdequate as RTA
 import Once.Denotation.DenotTrace as DT
@@ -145,7 +147,7 @@ module OutC {FS : FrameSemantics} where
           input-of (cell-inline (rep-unit ueq sv) q) = in-unit ueq
 
           ν-val : ⟦ ν-type F ⟧
-          ν-val = TM.valueT (evalᴰ (Ana wf coalg) seed) 0
+          ν-val = retVal (evalᴰ (Ana wf coalg) seed)
 
           cinfo = BlockRuns.coalgs cr wf coalg seed lbl
                     (valid-ν-susp-wf wf {coalg = coalg} {seed = seed}
@@ -179,9 +181,12 @@ module OutC {FS : FrameSemantics} where
             { value-realized =
                 realized (4 + CalleeRun.steps crun) (CalleeRun.settle crun)
                          (CalleeRun.out-mode crun) (CalleeRun.cont-alloc crun)
-                         run (CalleeRun.live crun) (CalleeRun.returned crun)
-                         (CalleeRun.stops crun)
-                         (CalleeRun.no-ret crun) (CalleeRun.no-link crun) place
+                         run (λ p → CalleeRun.live crun (trans st-eq p))
+                         (λ p → CalleeRun.returned crun (trans st-eq p))
+                         (λ p → CalleeRun.stops crun (trans st-eq p))
+                         (CalleeRun.no-ret crun) (CalleeRun.no-link crun)
+                         (trans (CalleeRun.log crun) (cong₂ DL._++_ h-eq (cong proj₁ RE)))
+                         place
                          (λ fr j bf → mem-pres-out (AtStack fr j) bf)
                          (λ hl bf → mem-pres-out (AtDynamic hl) bf)
                          (CalleeRun.frame-pres crun alloc (cong falloc call-eq))
@@ -246,16 +251,27 @@ module OutC {FS : FrameSemantics} where
               -- plan 0.97: the callee's computation IS `evalᴰ (Out wf) ν-val`
               -- here (no closure equation to spend, unlike `apply`), so the
               -- conditioned fields transfer verbatim.
-              place : ∀ {v} → TM.T.resT (evalᴰ (Out wf) ν-val) ≡ returns v
+              -- plan 0.105: …from the caller's log, since the three setup
+              -- rows and the call make no call of their own.
+              callFs = flat-exec-instr instr-call-closure prog OSP.b3
+              h-eq : LocState.ev-log (floc callFs) ≡ LocState.ev-log s
+              h-eq = trans (log-of run4 _ refl) (++-identityʳ _)
+
+              RE : runAt (floc callFs) (evalᴰ (Out wf) ν-val) ≡ runAt s (evalᴰ (Out wf) ν-val)
+              RE = runAt-≡ {st = floc callFs} {st′ = s} h-eq refl
+
+              st-eq : stopsAt (floc callFs) (evalᴰ (Out wf) ν-val) ≡ stopsAt s (evalᴰ (Out wf) ν-val)
+              st-eq = cong (λ r → is-stopped (proj₂ r)) RE
+
+              place : ∀ {v} → resultAt s (evalᴰ (Out wf) ν-val) ≡ returns v
                     → ResultPlace (⟦ F ⟧TI (ν-type F)) (CalleeRun.out-mode crun)
                         (falloc (CalleeRun.settle crun)) (CalleeRun.cont-alloc crun)
                         v (floc (CalleeRun.settle crun))
-              place = CalleeRun.place crun
+              place p = CalleeRun.place crun (trans (cong proj₂ RE) p)
 
-              trc : take k (chain-events run)
-                  ≡ take k (projTrace (evalᴰ (Out wf) ν-val) k)
-              trc = trans (cong (take k) (chain-events-++ run4 (CalleeRun.run crun)))
-                          (CalleeRun.events crun)
+              trc : chain-events run ≡ eventsAt s (evalᴰ (Out wf) ν-val)
+              trc = trans (chain-events-++ run4 (CalleeRun.run crun))
+                          (trans (CalleeRun.events crun) (cong proj₁ RE))
 
 
 
