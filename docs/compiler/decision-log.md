@@ -16188,3 +16188,38 @@ pass keeps a program's meaning) would have had to assume that convention.
 
 **Consequence.** Behaviour is unchanged: names, emitted symbols and `semM` values are all
 the same. A pure FFI contract can no longer be mistaken for arithmetic.
+
+## D256 — THE BIDIRECTIONAL JUDGMENT IS COHERENT, PROVED BY ROUTES (2026-10-02)
+
+**Relates**: plan 0.55 A4 (the postulate `realize-invariant`), plan 0.103 6a‴, D226 (one subtyping
+judgment, `<:-unique`), D228/D230 (domain-given mode, the spine), plan 0.94 §10 (compose's middle
+type), `ModeAgreement` (plan 0.94 C3).
+
+**Context.** The telescope walk joins the checker's derivation (which the compiler compiles,
+D254) to the typed module's. Their meanings agreed only by the postulate `realize-invariant`:
+any two derivations of one judgment realize to terms with the same meaning. The judgment overlaps
+(`t-sub` against the direct check rules, `t-app` against the spine, `d-infer` against the
+domain-given rules, the two compose-check routes), so this is a theorem about the judgment.
+
+**Decision.** Coherence is proved, in three layers.
+* A **route** (`TypeCheck.Route`) between two derivations records, rule by rule, which overlap
+  they took. It is heterogeneous in their types and usages: that those agree is a consequence,
+  not a premise. A constructor shares an index only where a premise's context or check type
+  depends on it.
+* Every pair has a route (`TypeCheck.RouteBuild`): `ModeAgreement`'s case split. It has no
+  `with`: the few alignments are top-level helpers taking `ModeAgreement`'s equation as an
+  argument, and impossible pairs are refuted by an absurd pattern on its result.
+* Coherence (`Adequacy.Coherence`) is the induction on routes, one clause per constructor, each a
+  lemma of `Adequacy.CoherenceHet`: match the carried index equations, then apply a homogeneous
+  law of `Adequacy.CoherenceLaws`. Where the routes differ by where a conversion sits, they
+  agree because a conversion commutes with the formers and is unique (`<:-unique`); `cata`
+  needs fusion with a carrier conversion, proved by the relational fold (`CataRel`). That the
+  routes' types are related at all is `TypeCheck.ModeSub`.
+
+**Why routes, not one pairwise induction.** A single pairwise induction stating the meanings
+directly could not be checked within the 30 s per-module budget: its `with`-functions generalize
+goals that mention the realized meaning (measured, 2026-10-02). Splitting syntax (routes) from
+meaning (induction on routes) makes each layer cheap and keeps every step `with`-free.
+
+**Consequence.** `realize-invariant` is a theorem; the postulate module `RealizeInvariant` is
+deleted. Plan 0.103 has no open residual on the apex path.
