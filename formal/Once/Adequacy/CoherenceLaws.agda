@@ -24,6 +24,7 @@ open import Once.Target.Arch using (TargetNum)
 module Once.Adequacy.CoherenceLaws (fmt : TargetNum) where
 
 open import Data.Bool using (true)
+open import Data.Unit using (tt)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Sum using (inj₁; inj₂; [_,_]′)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂)
@@ -38,10 +39,11 @@ open import Once.Surface.Syntax using (Expr; Ctx; Usage; ∅; _∷_; _,_^_; zero
   ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many;
   lam; app; effApp; pair; let'; case'; neg; i2f; add; sub; mul; div; mod'; fadd; fsub; fmul; fdiv;
   lt; le; gt; ge; eq; ne; coerce; morph-app; comp'; copair'; fork'; curry'; cata; ana; lift-morphism)
-open import Once.Denotation.TraceMonad using (T; mkT; returnT; _>>=T_; fmapT; resT-lift)
+open import Once.Denotation.TraceMonad using (T; ret; returnT; _>>=T_; >>=T-assoc; fmapT)
 open import Once.Denotation.Phase using (restrictᴰ; bindᴰ; bindᴰ0)
 open import Once.Denotation.DenotTrace using (⟦_⟧ᴰ; evalᴰ; cohᴰ; anaFᵈ; coerce-functor-D)
-open import Once.Denotation.Sub using (⟦_⟧<:; <:-refl-id; <:-trans-∘; fmapT-id; fmapT-cong; fmapT-∘)
+open import Once.Denotation.Sub using (⟦_⟧<:; <:-refl-id; <:-trans-∘)
+open import Once.Denotation.TraceMonad using (fmapT-id; fmapT-cong; fmapT-∘)
 open import Once.Denotation.DenotTrace using (liftFn)
 open import Once.Semantics.Machine using (sem-cata; sem-fmap; coerce-μ-out; ⟦_⟧F; ⟦μ⟧)
 open import Once.Word using (Carrier)
@@ -84,19 +86,17 @@ open _≈_ public
 ≈-trans (≈-intro e) (≈-intro f) = ≈-intro (trans e f)
 
 ------------------------------------------------------------------------
--- The monad facts the coercion laws rest on (equalities, not budget views:
--- `fmapT` leaves the trace untouched, so both hold by cases on the result).
+-- The monad facts the coercion laws rest on: equalities of trees, each one
+-- associativity law (plan 0.105).
 ------------------------------------------------------------------------
 
 fmap-bind : ∀ {X Y Z : Set} (f : Y → Z) (m : T X) (k : X → T Y)
           → fmapT f (m >>=T k) ≡ (m >>=T λ x → fmapT f (k x))
-fmap-bind f (mkT tr stopped)     k = refl
-fmap-bind f (mkT tr (returns x)) k = refl
+fmap-bind f m k = >>=T-assoc m k (λ y → ret (f y))
 
 bind-fmap : ∀ {X Y Z : Set} (f : X → Y) (m : T X) (k : Y → T Z)
           → (fmapT f m >>=T k) ≡ (m >>=T λ x → k (f x))
-bind-fmap f (mkT tr stopped)     k = refl
-bind-fmap f (mkT tr (returns x)) k = refl
+bind-fmap f m k = >>=T-assoc m (λ x → ret (f x)) k
 
 ret-bind : ∀ {X Y : Set} (h : X) (f : X → T Y) → (returnT h >>=T f) ≡ f h
 ret-bind h f = refl
@@ -120,69 +120,69 @@ module _ {n} {Γ : Ctx n} where
   add-congˢ : ∀ {Ψ₁ Ψ₂} {a a′ : Expr Γ Ψ₁ Int} {b b′ : Expr Γ Ψ₂ Int} → a ≈ˢ a′ → b ≈ˢ b′ → add a b ≈ˢ add a′ b′
   add-congˢ {Ψ₁} {Ψ₂} = cong₂ (λ X Y σ dγ →
     X σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=T λ va →
-    Y σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vb → resT-lift (semM add-info fmt (va , vb)))
+    Y σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vb → SD.sigOpˢ fmt σ add-info (va , vb))
   sub-congˢ : ∀ {Ψ₁ Ψ₂} {a a′ : Expr Γ Ψ₁ Int} {b b′ : Expr Γ Ψ₂ Int} → a ≈ˢ a′ → b ≈ˢ b′ → sub a b ≈ˢ sub a′ b′
   sub-congˢ {Ψ₁} {Ψ₂} = cong₂ (λ X Y σ dγ →
     X σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=T λ va →
-    Y σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vb → resT-lift (semM sub-info fmt (va , vb)))
+    Y σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vb → SD.sigOpˢ fmt σ sub-info (va , vb))
   mul-congˢ : ∀ {Ψ₁ Ψ₂} {a a′ : Expr Γ Ψ₁ Int} {b b′ : Expr Γ Ψ₂ Int} → a ≈ˢ a′ → b ≈ˢ b′ → mul a b ≈ˢ mul a′ b′
   mul-congˢ {Ψ₁} {Ψ₂} = cong₂ (λ X Y σ dγ →
     X σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=T λ va →
-    Y σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vb → resT-lift (semM mul-info fmt (va , vb)))
+    Y σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vb → SD.sigOpˢ fmt σ mul-info (va , vb))
   div-congˢ : ∀ {Ψ₁ Ψ₂} {a a′ : Expr Γ Ψ₁ Int} {b b′ : Expr Γ Ψ₂ Int} → a ≈ˢ a′ → b ≈ˢ b′ → div a b ≈ˢ div a′ b′
   div-congˢ {Ψ₁} {Ψ₂} = cong₂ (λ X Y σ dγ →
     X σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=T λ va →
-    Y σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vb → resT-lift (semM div-info fmt (va , vb)))
+    Y σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vb → SD.sigOpˢ fmt σ div-info (va , vb))
   mod-congˢ : ∀ {Ψ₁ Ψ₂} {a a′ : Expr Γ Ψ₁ Int} {b b′ : Expr Γ Ψ₂ Int} → a ≈ˢ a′ → b ≈ˢ b′ → mod' a b ≈ˢ mod' a′ b′
   mod-congˢ {Ψ₁} {Ψ₂} = cong₂ (λ X Y σ dγ →
     X σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=T λ va →
-    Y σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vb → resT-lift (semM mod-info fmt (va , vb)))
+    Y σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vb → SD.sigOpˢ fmt σ mod-info (va , vb))
   fadd-congˢ : ∀ {Ψ₁ Ψ₂} {a a′ : Expr Γ Ψ₁ Float} {b b′ : Expr Γ Ψ₂ Float} → a ≈ˢ a′ → b ≈ˢ b′ → fadd a b ≈ˢ fadd a′ b′
   fadd-congˢ {Ψ₁} {Ψ₂} = cong₂ (λ X Y σ dγ →
     X σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=T λ va →
-    Y σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vb → resT-lift (semM fadd-info fmt (va , vb)))
+    Y σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vb → SD.sigOpˢ fmt σ fadd-info (va , vb))
   fsub-congˢ : ∀ {Ψ₁ Ψ₂} {a a′ : Expr Γ Ψ₁ Float} {b b′ : Expr Γ Ψ₂ Float} → a ≈ˢ a′ → b ≈ˢ b′ → fsub a b ≈ˢ fsub a′ b′
   fsub-congˢ {Ψ₁} {Ψ₂} = cong₂ (λ X Y σ dγ →
     X σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=T λ va →
-    Y σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vb → resT-lift (semM fsub-info fmt (va , vb)))
+    Y σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vb → SD.sigOpˢ fmt σ fsub-info (va , vb))
   fmul-congˢ : ∀ {Ψ₁ Ψ₂} {a a′ : Expr Γ Ψ₁ Float} {b b′ : Expr Γ Ψ₂ Float} → a ≈ˢ a′ → b ≈ˢ b′ → fmul a b ≈ˢ fmul a′ b′
   fmul-congˢ {Ψ₁} {Ψ₂} = cong₂ (λ X Y σ dγ →
     X σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=T λ va →
-    Y σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vb → resT-lift (semM fmul-info fmt (va , vb)))
+    Y σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vb → SD.sigOpˢ fmt σ fmul-info (va , vb))
   fdiv-congˢ : ∀ {Ψ₁ Ψ₂} {a a′ : Expr Γ Ψ₁ Float} {b b′ : Expr Γ Ψ₂ Float} → a ≈ˢ a′ → b ≈ˢ b′ → fdiv a b ≈ˢ fdiv a′ b′
   fdiv-congˢ {Ψ₁} {Ψ₂} = cong₂ (λ X Y σ dγ →
     X σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=T λ va →
-    Y σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vb → resT-lift (semM fdiv-info fmt (va , vb)))
+    Y σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vb → SD.sigOpˢ fmt σ fdiv-info (va , vb))
   lt-congˢ : ∀ {Ψ₁ Ψ₂} {a a′ : Expr Γ Ψ₁ Int} {b b′ : Expr Γ Ψ₂ Int} → a ≈ˢ a′ → b ≈ˢ b′ → lt a b ≈ˢ lt a′ b′
   lt-congˢ {Ψ₁} {Ψ₂} = cong₂ (λ X Y σ dγ →
     X σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=T λ va →
-    Y σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vb → resT-lift (semM lt-info fmt (va , vb)))
+    Y σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vb → SD.sigOpˢ fmt σ lt-info (va , vb))
   le-congˢ : ∀ {Ψ₁ Ψ₂} {a a′ : Expr Γ Ψ₁ Int} {b b′ : Expr Γ Ψ₂ Int} → a ≈ˢ a′ → b ≈ˢ b′ → le a b ≈ˢ le a′ b′
   le-congˢ {Ψ₁} {Ψ₂} = cong₂ (λ X Y σ dγ →
     X σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=T λ va →
-    Y σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vb → resT-lift (semM le-info fmt (va , vb)))
+    Y σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vb → SD.sigOpˢ fmt σ le-info (va , vb))
   gt-congˢ : ∀ {Ψ₁ Ψ₂} {a a′ : Expr Γ Ψ₁ Int} {b b′ : Expr Γ Ψ₂ Int} → a ≈ˢ a′ → b ≈ˢ b′ → gt a b ≈ˢ gt a′ b′
   gt-congˢ {Ψ₁} {Ψ₂} = cong₂ (λ X Y σ dγ →
     X σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=T λ va →
-    Y σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vb → resT-lift (semM gt-info fmt (va , vb)))
+    Y σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vb → SD.sigOpˢ fmt σ gt-info (va , vb))
   ge-congˢ : ∀ {Ψ₁ Ψ₂} {a a′ : Expr Γ Ψ₁ Int} {b b′ : Expr Γ Ψ₂ Int} → a ≈ˢ a′ → b ≈ˢ b′ → ge a b ≈ˢ ge a′ b′
   ge-congˢ {Ψ₁} {Ψ₂} = cong₂ (λ X Y σ dγ →
     X σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=T λ va →
-    Y σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vb → resT-lift (semM ge-info fmt (va , vb)))
+    Y σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vb → SD.sigOpˢ fmt σ ge-info (va , vb))
   eq-congˢ : ∀ {Ψ₁ Ψ₂} {a a′ : Expr Γ Ψ₁ Int} {b b′ : Expr Γ Ψ₂ Int} → a ≈ˢ a′ → b ≈ˢ b′ → eq a b ≈ˢ eq a′ b′
   eq-congˢ {Ψ₁} {Ψ₂} = cong₂ (λ X Y σ dγ →
     X σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=T λ va →
-    Y σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vb → resT-lift (semM eq-info fmt (va , vb)))
+    Y σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vb → SD.sigOpˢ fmt σ eq-info (va , vb))
   ne-congˢ : ∀ {Ψ₁ Ψ₂} {a a′ : Expr Γ Ψ₁ Int} {b b′ : Expr Γ Ψ₂ Int} → a ≈ˢ a′ → b ≈ˢ b′ → ne a b ≈ˢ ne a′ b′
   ne-congˢ {Ψ₁} {Ψ₂} = cong₂ (λ X Y σ dγ →
     X σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=T λ va →
-    Y σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vb → resT-lift (semM ne-info fmt (va , vb)))
+    Y σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vb → SD.sigOpˢ fmt σ ne-info (va , vb))
 
   neg-congˢ : ∀ {Ψ} {a a′ : Expr Γ Ψ Int} → a ≈ˢ a′ → neg a ≈ˢ neg a′
-  neg-congˢ = cong (λ X σ dγ → X σ dγ >>=T λ v → resT-lift (semM neg-info fmt v))
+  neg-congˢ = cong (λ X σ dγ → X σ dγ >>=T λ v → SD.sigOpˢ fmt σ neg-info v)
 
   i2f-congˢ : ∀ {Ψ} {a a′ : Expr Γ Ψ Int} → a ≈ˢ a′ → i2f a ≈ˢ i2f a′
-  i2f-congˢ = cong (λ X σ dγ → X σ dγ >>=T λ va → resT-lift (semM i2f-info fmt va))
+  i2f-congˢ = cong (λ X σ dγ → X σ dγ >>=T λ va → SD.sigOpˢ fmt σ i2f-info va)
 
   coerce-congˢ : ∀ {Ψ A B} (p : A <: B) {a a′ : Expr Γ Ψ A} → a ≈ˢ a′ → coerce p a ≈ˢ coerce p a′
   coerce-congˢ p = cong (λ X σ dγ → fmapT ⟦ p ⟧<: (X σ dγ))
@@ -237,12 +237,12 @@ module _ {n} {Γ : Ctx n} where
   cata-congˢ : ∀ {F A π} (wf : WellFormedF F) {g g′ : Expr ∅ zeroUsage (⟦ F ⟧T A ⇒[ mk-kind Many π ] A)}
             → g ≈ˢ g′ → cata {Γ = Γ} wf g ≈ˢ cata wf g′
   cata-congˢ {F} {A} wf = cong (λ X σ dγ → X σ _ >>=T λ valg →
-    returnT (λ x → sem-cata wf (cata-ev-algˢ {F} {A} (returnT valg)) x))
+    returnT (λ x → sem-cata wf (cata-ev-algˢ {F} {A} wf (returnT valg)) x))
 
   ana-congˢ : ∀ {F A π₀ π} (wf : WellFormedF F) {g g′ : Expr ∅ zeroUsage (A ⇒[ mk-kind Many π ] ⟦ F ⟧T A)}
            → g ≈ˢ g′ → ana {Γ = Γ} {π₀ = π₀} wf g ≈ˢ ana wf g′
   ana-congˢ {F} {A} wf = cong (λ X σ dγ → returnT (λ a → returnT (anaFᵈ F
-            (λ a' → fmapT (coerce-functor-D F A) (X σ _ >>=T λ clo → clo a')) a)))
+            (λ a' → fmapT (coerce-functor-D wf A) (X σ _ >>=T λ clo → clo a')) a)))
 
   let-congˢ : ∀ {Ψ₁ Ψ₂ A B q} {e₁ e₁′ : Expr Γ Ψ₁ A} {e₂ e₂′ : Expr (_,_^_ Γ A Many) (q ∷ Ψ₂) B}
            → e₁ ≈ˢ e₁′ → e₂ ≈ˢ e₂′ → let' e₁ e₂ ≈ˢ let' e₁′ e₂′
@@ -296,7 +296,7 @@ module _ {n} {Γ : Ctx n} where
   coerce-transˢ : ∀ {Ψ A B C} (p : A <: B) (q : B <: C) (e : Expr Γ Ψ A)
                → coerce q (coerce p e) ≈ˢ coerce (<:-trans p q) e
   coerce-transˢ p q e = extensionality λ σ → extensionality λ dγ →
-    trans (fmapT-∘ ⟦ q ⟧<: ⟦ p ⟧<: _) (fmapT-cong (λ x → sym (<:-trans-∘ p q x)) _)
+    trans (fmapT-∘ ⟦ q ⟧<: ⟦ p ⟧<: (⟦ e ⟧ˢ fmt σ dγ)) (fmapT-cong (λ x → sym (<:-trans-∘ p q x)) (⟦ e ⟧ˢ fmt σ dγ))
 
   coerce-uniqˢ : ∀ {Ψ A B} (p q : A <: B) (e : Expr Γ Ψ A) → coerce p e ≈ˢ coerce q e
   coerce-uniqˢ p q e = cong (λ r → ⟦ coerce r e ⟧ˢ fmt) (<:-unique p q)
@@ -304,25 +304,25 @@ module _ {n} {Γ : Ctx n} where
   pair-coerceˢ : ∀ {Ψ₁ Ψ₂ A A′ B B′} (pa : A <: A′) (pb : B <: B′) (a : Expr Γ Ψ₁ A) (b : Expr Γ Ψ₂ B)
               → pair (coerce pa a) (coerce pb b) ≈ˢ coerce (sub-prod pa pb) (pair a b)
   pair-coerceˢ pa pb a b = extensionality λ σ → extensionality λ dγ →
-    trans (bind-fmap ⟦ pa ⟧<: _ _)
-     (trans (bind-congʳ _ (λ va → bind-fmap ⟦ pb ⟧<: _ _))
-      (sym (trans (fmap-bind _ _ _) (bind-congʳ _ (λ va → fmap-bind _ _ _)))))
+    trans (bind-fmap ⟦ pa ⟧<: (⟦ a ⟧ˢ fmt σ _) _)
+     (trans (bind-congʳ (⟦ a ⟧ˢ fmt σ _) (λ va → bind-fmap ⟦ pb ⟧<: (⟦ b ⟧ˢ fmt σ _) _))
+      (sym (trans (fmap-bind _ (⟦ a ⟧ˢ fmt σ _) _) (bind-congʳ (⟦ a ⟧ˢ fmt σ _) (λ va → fmap-bind _ (⟦ b ⟧ˢ fmt σ _) _)))))
 
   -- Converting the head's domain is converting the argument.
   app-coerceˢ : ∀ {Ψ₁ Ψ₂ X A′ B} (a : X <: A′) (g : Once.Type.pure ⊑π Once.Type.pure)
                  (f : Expr Γ Ψ₁ (A′ ⇒[ mk-kind Many Once.Type.pure ] B)) (x : Expr Γ Ψ₂ X)
              → app (coerce (sub-arr a (<:-refl B) g) f) x ≈ˢ app f (coerce a x)
   app-coerceˢ {B = B} a g f x = extensionality λ σ → extensionality λ dγ →
-    trans (bind-fmap _ _ _)
-     (bind-congʳ _ λ vf → trans (bind-congʳ _ (λ vx → fmap-refl B _)) (sym (bind-fmap ⟦ a ⟧<: _ _)))
+    trans (bind-fmap _ (⟦ f ⟧ˢ fmt σ _) _)
+     (bind-congʳ (⟦ f ⟧ˢ fmt σ _) λ vf → trans (bind-congʳ (⟦ x ⟧ˢ fmt σ _) (λ vx → fmap-refl B _)) (sym (bind-fmap ⟦ a ⟧<: (⟦ x ⟧ˢ fmt σ _) _)))
 
   -- Converting the outer arm's codomain is converting the composite's.
   comp-postˢ : ∀ {Ψ₁ Ψ₂ A M B B′ π} (p : B <: B′) (r r′ : π ⊑π π)
                 (f : Expr Γ Ψ₁ (M ⇒[ mk-kind Many π ] B)) (g : Expr Γ Ψ₂ (A ⇒[ mk-kind Many π ] M))
             → comp' (coerce (sub-arr (<:-refl M) p r) f) g ≈ˢ coerce (sub-arr (<:-refl A) p r′) (comp' f g)
   comp-postˢ {A = A} {M} p r r′ f g = extensionality λ σ → extensionality λ dγ →
-    trans (bind-fmap _ _ _)
-     (sym (trans (fmap-bind _ _ _) (bind-congʳ _ λ vf → trans (fmap-bind _ _ _) (bind-congʳ _ λ vg →
+    trans (bind-fmap _ (⟦ f ⟧ˢ fmt σ _) _)
+     (sym (trans (fmap-bind _ (⟦ f ⟧ˢ fmt σ _) _) (bind-congʳ (⟦ f ⟧ˢ fmt σ _) λ vf → trans (fmap-bind _ (⟦ g ⟧ˢ fmt σ _) _) (bind-congʳ (⟦ g ⟧ˢ fmt σ _) λ vg →
        cong returnT (extensionality λ x →
          trans (cong (λ y → fmapT ⟦ p ⟧<: (vg y >>=T vf)) (<:-refl-id A x))
           (trans (fmap-bind _ (vg x) vf)
@@ -334,10 +334,10 @@ module _ {n} {Γ : Ctx n} where
            → comp' (coerce (sub-arr q c g) f) h
              ≈ˢ comp' (coerce (sub-arr (<:-refl B′) c g) f) (coerce (sub-arr (<:-refl A) q (⊑π-refl π)) h)
   comp-preˢ {A = A} {B′ = B′} q c g f h = extensionality λ σ → extensionality λ dγ →
-    trans (bind-fmap _ _ _)
-     (sym (trans (bind-fmap _ _ _) (bind-congʳ _ λ vf → trans (bind-fmap _ _ _) (bind-congʳ _ λ vh →
+    trans (bind-fmap _ (⟦ f ⟧ˢ fmt σ _) _)
+     (sym (trans (bind-fmap _ (⟦ f ⟧ˢ fmt σ _) _) (bind-congʳ (⟦ f ⟧ˢ fmt σ _) λ vf → trans (bind-fmap _ (⟦ h ⟧ˢ fmt σ _) _) (bind-congʳ (⟦ h ⟧ˢ fmt σ _) λ vh →
        cong returnT (extensionality λ x →
-         trans (bind-fmap ⟦ q ⟧<: _ _)
+         trans (bind-fmap ⟦ q ⟧<: (vh _) _)
           (trans (cong (λ y → vh y >>=T λ z → fmapT ⟦ c ⟧<: (vf (⟦ <:-refl B′ ⟧<: (⟦ q ⟧<: z)))) (<:-refl-id A x))
                  (bind-congʳ (vh x) λ z → cong (λ w → fmapT ⟦ c ⟧<: (vf w)) (<:-refl-id B′ (⟦ q ⟧<: z)))))))))
 
@@ -357,8 +357,8 @@ module _ {n} {Γ : Ctx n} where
                 → copair' (coerce (sub-arr (<:-refl A) p r) f) (coerce (sub-arr (<:-refl B) p r) g)
                   ≈ˢ coerce (sub-arr (<:-refl (A + B)) p r) (copair' f g)
   copair-coerceˢ p r f g = extensionality λ σ → extensionality λ dγ →
-    trans (bind-fmap _ _ _) (trans (bind-congʳ _ (λ vf → bind-fmap _ _ _))
-      (sym (trans (fmap-bind _ _ _) (bind-congʳ _ λ vf → trans (fmap-bind _ _ _) (bind-congʳ _ λ vg →
+    trans (bind-fmap _ (⟦ f ⟧ˢ fmt σ _) _) (trans (bind-congʳ (⟦ f ⟧ˢ fmt σ _) (λ vf → bind-fmap _ (⟦ g ⟧ˢ fmt σ _) _))
+      (sym (trans (fmap-bind _ (⟦ f ⟧ˢ fmt σ _) _) (bind-congʳ (⟦ f ⟧ˢ fmt σ _) λ vf → trans (fmap-bind _ (⟦ g ⟧ˢ fmt σ _) _) (bind-congʳ (⟦ g ⟧ˢ fmt σ _) λ vg →
         cong returnT (extensionality λ { (inj₁ a) → refl ; (inj₂ b) → refl }))))))
 
   fork-coerceˢ : ∀ {Ψ₁ Ψ₂ A B B′ C C′ π} (pb : B <: B′) (pc : C <: C′) (r : π ⊑π π)
@@ -366,11 +366,11 @@ module _ {n} {Γ : Ctx n} where
               → fork' (coerce (sub-arr (<:-refl A) pb r) f) (coerce (sub-arr (<:-refl A) pc r) g)
                 ≈ˢ coerce (sub-arr (<:-refl A) (sub-prod pb pc) r) (fork' f g)
   fork-coerceˢ pb pc r f g = extensionality λ σ → extensionality λ dγ →
-    trans (bind-fmap _ _ _) (trans (bind-congʳ _ (λ vf → bind-fmap _ _ _))
-      (sym (trans (fmap-bind _ _ _) (bind-congʳ _ λ vf → trans (fmap-bind _ _ _) (bind-congʳ _ λ vg →
+    trans (bind-fmap _ (⟦ f ⟧ˢ fmt σ _) _) (trans (bind-congʳ (⟦ f ⟧ˢ fmt σ _) (λ vf → bind-fmap _ (⟦ g ⟧ˢ fmt σ _) _))
+      (sym (trans (fmap-bind _ (⟦ f ⟧ˢ fmt σ _) _) (bind-congʳ (⟦ f ⟧ˢ fmt σ _) λ vf → trans (fmap-bind _ (⟦ g ⟧ˢ fmt σ _) _) (bind-congʳ (⟦ g ⟧ˢ fmt σ _) λ vg →
         cong returnT (extensionality λ x →
-          trans (fmap-bind _ _ _) (sym (trans (bind-fmap ⟦ pb ⟧<: _ _) (bind-congʳ _ λ b →
-            trans (bind-fmap ⟦ pc ⟧<: _ _) (sym (trans (fmap-bind _ _ _) (bind-congʳ _ λ c → refl))))))))))))
+          trans (fmap-bind _ (vf _) _) (sym (trans (bind-fmap ⟦ pb ⟧<: (vf _) _) (bind-congʳ (vf _) λ b →
+            trans (bind-fmap ⟦ pc ⟧<: (vg _) _) (sym (trans (fmap-bind _ (vg _) _) (bind-congʳ (vg _) λ c → refl))))))))))))
 
   -- `initial` at any codomain: a function out of `Void` is unique.
   initial-coerceˢ : ∀ {A π} (r : π ⊑π π)
@@ -416,44 +416,44 @@ seq-rel : ∀ F {A A′ : Type} (p : A <: A′) {fc₁ : ⟦ F ⟧F (T ⟦ A′ 
 seq-rel (K B) p refl = refl
 seq-rel Id p r = r
 seq-rel (F ⊕ G) p {inj₁ _} {inj₁ x₂} r =
-  trans (cong (fmapT inj₁) (seq-rel F p r)) (trans (fmapT-∘ inj₁ _ _) (sym (fmapT-∘ _ inj₁ (seqF F x₂))))
+  trans (cong (fmapT inj₁) (seq-rel F p r)) (trans (fmapT-∘ inj₁ (sem-fmap F ⟦ p ⟧<:) (seqF F x₂)) (sym (fmapT-∘ (sem-fmap (F ⊕ G) ⟦ p ⟧<:) inj₁ (seqF F x₂))))
 seq-rel (F ⊕ G) p {inj₂ _} {inj₂ y₂} r =
-  trans (cong (fmapT inj₂) (seq-rel G p r)) (trans (fmapT-∘ inj₂ _ _) (sym (fmapT-∘ _ inj₂ (seqF G y₂))))
+  trans (cong (fmapT inj₂) (seq-rel G p r)) (trans (fmapT-∘ inj₂ (sem-fmap G ⟦ p ⟧<:) (seqF G y₂)) (sym (fmapT-∘ (sem-fmap (F ⊕ G) ⟦ p ⟧<:) inj₂ (seqF G y₂))))
 seq-rel (F ⊕ G) p {inj₁ _} {inj₂ _} ()
 seq-rel (F ⊕ G) p {inj₂ _} {inj₁ _} ()
 seq-rel (F ⊗ G) p {_ , _} {x₂ , y₂} (r₁ , r₂) rewrite seq-rel F p r₁ | seq-rel G p r₂ =
   trans (bind-fmap _ (seqF F x₂) _) (trans (bind-congʳ (seqF F x₂) (λ u → bind-fmap _ (seqF G y₂) _))
     (sym (trans (fmap-bind _ (seqF F x₂) _) (bind-congʳ (seqF F x₂) λ u → fmap-bind _ (seqF G y₂) _))))
 
-layer-id : ∀ F {A A′ : Type} (d : ⟦ F ⟧T A′ <: ⟦ F ⟧T A) (p : A <: A′) (l : ⟦ F ⟧F ⟦ A ⟧ᴰ)
-         → ⟦ d ⟧<: (coerce-functor⁻¹-D F A′ (sem-fmap F ⟦ p ⟧<: l)) ≡ coerce-functor⁻¹-D F A l
-layer-id (K B) d p l = trans (cong (λ r → ⟦ r ⟧<: _) (<:-unique d (<:-refl B))) (<:-refl-id B _)
-layer-id Id {A} d p l =
+layer-id : ∀ {F} (wf : WellFormedF F) {A A′ : Type} (d : ⟦ F ⟧T A′ <: ⟦ F ⟧T A) (p : A <: A′) (l : ⟦ F ⟧F ⟦ A ⟧ᴰ)
+         → ⟦ d ⟧<: (coerce-functor⁻¹-D wf A′ (sem-fmap F ⟦ p ⟧<: l)) ≡ coerce-functor⁻¹-D wf A l
+layer-id {K B} (wf-K b) d p l = trans (cong (λ r → ⟦ r ⟧<: _) (<:-unique d (<:-refl B))) (<:-refl-id B _)
+layer-id wf-Id {A} d p l =
   trans (sym (<:-trans-∘ p d l)) (trans (cong (λ r → ⟦ r ⟧<: l) (<:-unique (<:-trans p d) (<:-refl A))) (<:-refl-id A l))
-layer-id (F ⊕ G) (Once.Type.Sub.sub-sum d₁ d₂) p (inj₁ x) = cong inj₁ (layer-id F d₁ p x)
-layer-id (F ⊕ G) (Once.Type.Sub.sub-sum d₁ d₂) p (inj₂ y) = cong inj₂ (layer-id G d₂ p y)
-layer-id (F ⊗ G) (sub-prod d₁ d₂) p (x , y) = cong₂ _,_ (layer-id F d₁ p x) (layer-id G d₂ p y)
+layer-id (wf-Sum w₁ w₂) (Once.Type.Sub.sub-sum d₁ d₂) p (inj₁ x) = cong inj₁ (layer-id w₁ d₁ p x)
+layer-id (wf-Sum w₁ w₂) (Once.Type.Sub.sub-sum d₁ d₂) p (inj₂ y) = cong inj₂ (layer-id w₂ d₂ p y)
+layer-id (wf-Prod w₁ w₂) (sub-prod d₁ d₂) p (x , y) = cong₂ _,_ (layer-id w₁ d₁ p x) (layer-id w₂ d₂ p y)
 
 cata-core : ∀ {F} (wf : WellFormedF F) {A A′ : Type} {π π′ : Purity}
               (d : ⟦ F ⟧T A′ <: ⟦ F ⟧T A) (p : A <: A′) (g : π ⊑π π′)
               (valg : ⟦ ⟦ F ⟧T A ⇒[ mk-kind Many π ] A ⟧ᴰ) (x : ⟦μ⟧ F)
-          → sem-cata wf (cata-ev-algˢ {F} {A′} (returnT (⟦ sub-arr {q = Many} d p g ⟧<: valg))) x
-            ≡ fmapT ⟦ p ⟧<: (sem-cata wf (cata-ev-algˢ {F} {A} (returnT valg)) x)
+          → sem-cata wf (cata-ev-algˢ {F} {A′} wf (returnT (⟦ sub-arr {q = Many} d p g ⟧<: valg))) x
+            ≡ fmapT ⟦ p ⟧<: (sem-cata wf (cata-ev-algˢ {F} {A} wf (returnT valg)) x)
 cata-core {F} wf {A} {A′} d p g valg x =
   cataS-rel {translateF Carrier Carrier F} (λ t₁ t₂ → t₁ ≡ fmapT ⟦ p ⟧<: t₂) algR x
   where
     algR : ∀ {y₁ y₂} → RelSF (translateF Carrier Carrier F) (λ t₁ t₂ → t₁ ≡ fmapT ⟦ p ⟧<: t₂) y₁ y₂
-         → cata-ev-algˢ {F} {A′} (returnT (⟦ sub-arr {q = Many} d p g ⟧<: valg)) (coerce-μ-out wf _ y₁)
-           ≡ fmapT ⟦ p ⟧<: (cata-ev-algˢ {F} {A} (returnT valg) (coerce-μ-out wf _ y₂))
+         → cata-ev-algˢ {F} {A′} wf (returnT (⟦ sub-arr {q = Many} d p g ⟧<: valg)) (coerce-μ-out wf _ y₁)
+           ≡ fmapT ⟦ p ⟧<: (cata-ev-algˢ {F} {A} wf (returnT valg) (coerce-μ-out wf _ y₂))
     S₂ : ∀ y₂ → T (⟦ F ⟧F ⟦ A ⟧ᴰ)
     S₂ y₂ = seqF F (coerce-μ-out wf _ y₂)
     algR {y₁} {y₂} r =
-      trans (bind-congʳ (seqF F (coerce-μ-out wf _ y₁)) (λ l → ret-bind (⟦ sub-arr {q = Many} d p g ⟧<: valg) (λ c → c (coerce-functor⁻¹-D F A′ l))))
-      (trans (cong (λ m → m >>=T λ l → ⟦ sub-arr {q = Many} d p g ⟧<: valg (coerce-functor⁻¹-D F A′ l)) (seq-rel F p (out-rel wf _ r)))
-      (trans (bind-fmap (sem-fmap F ⟦ p ⟧<:) (S₂ y₂) (λ l → ⟦ sub-arr {q = Many} d p g ⟧<: valg (coerce-functor⁻¹-D F A′ l)))
-      (trans (bind-congʳ (S₂ y₂) (λ l → cong (λ z → fmapT ⟦ p ⟧<: (valg z)) (layer-id F d p l)))
-      (trans (sym (fmap-bind ⟦ p ⟧<: (S₂ y₂) (λ l → valg (coerce-functor⁻¹-D F A l))))
-             (cong (fmapT ⟦ p ⟧<:) (sym (bind-congʳ (S₂ y₂) (λ l → ret-bind valg (λ c → c (coerce-functor⁻¹-D F A l))))))))))
+      trans (bind-congʳ (seqF F (coerce-μ-out wf _ y₁)) (λ l → ret-bind (⟦ sub-arr {q = Many} d p g ⟧<: valg) (λ c → c (coerce-functor⁻¹-D wf A′ l))))
+      (trans (cong (λ m → m >>=T λ l → ⟦ sub-arr {q = Many} d p g ⟧<: valg (coerce-functor⁻¹-D wf A′ l)) (seq-rel F p (out-rel wf _ r)))
+      (trans (bind-fmap (sem-fmap F ⟦ p ⟧<:) (S₂ y₂) (λ l → ⟦ sub-arr {q = Many} d p g ⟧<: valg (coerce-functor⁻¹-D wf A′ l)))
+      (trans (bind-congʳ (S₂ y₂) (λ l → cong (λ z → fmapT ⟦ p ⟧<: (valg z)) (layer-id wf d p l)))
+      (trans (sym (fmap-bind ⟦ p ⟧<: (S₂ y₂) (λ l → valg (coerce-functor⁻¹-D wf A l))))
+             (cong (fmapT ⟦ p ⟧<:) (sym (bind-congʳ (S₂ y₂) (λ l → ret-bind valg (λ c → c (coerce-functor⁻¹-D wf A l))))))))))
 
 module _ {n} {Γ : Ctx n} where
 
@@ -462,182 +462,9 @@ module _ {n} {Γ : Ctx n} where
               → cata {Γ = Γ} wf (coerce (sub-arr {q = Many} d p g) alg)
                 ≈ˢ coerce (sub-arr (<:-refl (μ-type F)) p (⊑π-refl π)) (cata {Γ = Γ} wf alg)
   cata-coerceˢ wf d p g alg = extensionality λ σ → extensionality λ dγ →
-    trans (bind-fmap _ _ _)
-     (trans (bind-congʳ _ λ valg → cong returnT (extensionality λ x → cata-core wf d p g valg x))
-            (sym (fmap-bind _ _ _)))
+    trans (bind-fmap _ (⟦ alg ⟧ˢ fmt σ tt) _)
+     (trans (bind-congʳ (⟦ alg ⟧ˢ fmt σ tt) λ valg → cong returnT (extensionality λ x → cata-core wf d p g valg x))
+            (sym (fmap-bind _ (⟦ alg ⟧ˢ fmt σ tt) _)))
 
-------------------------------------------------------------------------
--- The laws at `_≈_` (implicits passed through explicitly).
-------------------------------------------------------------------------
-
-module _ {n} {Γ : Ctx n} where
-  pair-cong : ∀ {Ψ₁ Ψ₂ A B} {a a′ : Expr Γ Ψ₁ A} {b b′ : Expr Γ Ψ₂ B} → a ≈ a′ → b ≈ b′ → pair a b ≈ pair a′ b′
-  pair-cong {Ψ₁} {Ψ₂} {A} {B} {a} {a′} {b} {b′} (≈-intro h1) (≈-intro h2) = ≈-intro (pair-congˢ {Γ = Γ} {Ψ₁} {Ψ₂} {A} {B} {a} {a′} {b} {b′} h1 h2)
-
-module _ {n} {Γ : Ctx n} where
-  add-cong : ∀ {Ψ₁ Ψ₂} {a a′ : Expr Γ Ψ₁ Int} {b b′ : Expr Γ Ψ₂ Int} → a ≈ a′ → b ≈ b′ → add a b ≈ add a′ b′
-  add-cong {Ψ₁} {Ψ₂} {a} {a′} {b} {b′} (≈-intro h1) (≈-intro h2) = ≈-intro (add-congˢ {Γ = Γ} {Ψ₁} {Ψ₂} {a} {a′} {b} {b′} h1 h2)
-
-module _ {n} {Γ : Ctx n} where
-  sub-cong : ∀ {Ψ₁ Ψ₂} {a a′ : Expr Γ Ψ₁ Int} {b b′ : Expr Γ Ψ₂ Int} → a ≈ a′ → b ≈ b′ → sub a b ≈ sub a′ b′
-  sub-cong {Ψ₁} {Ψ₂} {a} {a′} {b} {b′} (≈-intro h1) (≈-intro h2) = ≈-intro (sub-congˢ {Γ = Γ} {Ψ₁} {Ψ₂} {a} {a′} {b} {b′} h1 h2)
-
-module _ {n} {Γ : Ctx n} where
-  mul-cong : ∀ {Ψ₁ Ψ₂} {a a′ : Expr Γ Ψ₁ Int} {b b′ : Expr Γ Ψ₂ Int} → a ≈ a′ → b ≈ b′ → mul a b ≈ mul a′ b′
-  mul-cong {Ψ₁} {Ψ₂} {a} {a′} {b} {b′} (≈-intro h1) (≈-intro h2) = ≈-intro (mul-congˢ {Γ = Γ} {Ψ₁} {Ψ₂} {a} {a′} {b} {b′} h1 h2)
-
-module _ {n} {Γ : Ctx n} where
-  div-cong : ∀ {Ψ₁ Ψ₂} {a a′ : Expr Γ Ψ₁ Int} {b b′ : Expr Γ Ψ₂ Int} → a ≈ a′ → b ≈ b′ → div a b ≈ div a′ b′
-  div-cong {Ψ₁} {Ψ₂} {a} {a′} {b} {b′} (≈-intro h1) (≈-intro h2) = ≈-intro (div-congˢ {Γ = Γ} {Ψ₁} {Ψ₂} {a} {a′} {b} {b′} h1 h2)
-
-module _ {n} {Γ : Ctx n} where
-  mod-cong : ∀ {Ψ₁ Ψ₂} {a a′ : Expr Γ Ψ₁ Int} {b b′ : Expr Γ Ψ₂ Int} → a ≈ a′ → b ≈ b′ → mod' a b ≈ mod' a′ b′
-  mod-cong {Ψ₁} {Ψ₂} {a} {a′} {b} {b′} (≈-intro h1) (≈-intro h2) = ≈-intro (mod-congˢ {Γ = Γ} {Ψ₁} {Ψ₂} {a} {a′} {b} {b′} h1 h2)
-
-module _ {n} {Γ : Ctx n} where
-  fadd-cong : ∀ {Ψ₁ Ψ₂} {a a′ : Expr Γ Ψ₁ Float} {b b′ : Expr Γ Ψ₂ Float} → a ≈ a′ → b ≈ b′ → fadd a b ≈ fadd a′ b′
-  fadd-cong {Ψ₁} {Ψ₂} {a} {a′} {b} {b′} (≈-intro h1) (≈-intro h2) = ≈-intro (fadd-congˢ {Γ = Γ} {Ψ₁} {Ψ₂} {a} {a′} {b} {b′} h1 h2)
-
-module _ {n} {Γ : Ctx n} where
-  fsub-cong : ∀ {Ψ₁ Ψ₂} {a a′ : Expr Γ Ψ₁ Float} {b b′ : Expr Γ Ψ₂ Float} → a ≈ a′ → b ≈ b′ → fsub a b ≈ fsub a′ b′
-  fsub-cong {Ψ₁} {Ψ₂} {a} {a′} {b} {b′} (≈-intro h1) (≈-intro h2) = ≈-intro (fsub-congˢ {Γ = Γ} {Ψ₁} {Ψ₂} {a} {a′} {b} {b′} h1 h2)
-
-module _ {n} {Γ : Ctx n} where
-  fmul-cong : ∀ {Ψ₁ Ψ₂} {a a′ : Expr Γ Ψ₁ Float} {b b′ : Expr Γ Ψ₂ Float} → a ≈ a′ → b ≈ b′ → fmul a b ≈ fmul a′ b′
-  fmul-cong {Ψ₁} {Ψ₂} {a} {a′} {b} {b′} (≈-intro h1) (≈-intro h2) = ≈-intro (fmul-congˢ {Γ = Γ} {Ψ₁} {Ψ₂} {a} {a′} {b} {b′} h1 h2)
-
-module _ {n} {Γ : Ctx n} where
-  fdiv-cong : ∀ {Ψ₁ Ψ₂} {a a′ : Expr Γ Ψ₁ Float} {b b′ : Expr Γ Ψ₂ Float} → a ≈ a′ → b ≈ b′ → fdiv a b ≈ fdiv a′ b′
-  fdiv-cong {Ψ₁} {Ψ₂} {a} {a′} {b} {b′} (≈-intro h1) (≈-intro h2) = ≈-intro (fdiv-congˢ {Γ = Γ} {Ψ₁} {Ψ₂} {a} {a′} {b} {b′} h1 h2)
-
-module _ {n} {Γ : Ctx n} where
-  lt-cong : ∀ {Ψ₁ Ψ₂} {a a′ : Expr Γ Ψ₁ Int} {b b′ : Expr Γ Ψ₂ Int} → a ≈ a′ → b ≈ b′ → lt a b ≈ lt a′ b′
-  lt-cong {Ψ₁} {Ψ₂} {a} {a′} {b} {b′} (≈-intro h1) (≈-intro h2) = ≈-intro (lt-congˢ {Γ = Γ} {Ψ₁} {Ψ₂} {a} {a′} {b} {b′} h1 h2)
-
-module _ {n} {Γ : Ctx n} where
-  le-cong : ∀ {Ψ₁ Ψ₂} {a a′ : Expr Γ Ψ₁ Int} {b b′ : Expr Γ Ψ₂ Int} → a ≈ a′ → b ≈ b′ → le a b ≈ le a′ b′
-  le-cong {Ψ₁} {Ψ₂} {a} {a′} {b} {b′} (≈-intro h1) (≈-intro h2) = ≈-intro (le-congˢ {Γ = Γ} {Ψ₁} {Ψ₂} {a} {a′} {b} {b′} h1 h2)
-
-module _ {n} {Γ : Ctx n} where
-  gt-cong : ∀ {Ψ₁ Ψ₂} {a a′ : Expr Γ Ψ₁ Int} {b b′ : Expr Γ Ψ₂ Int} → a ≈ a′ → b ≈ b′ → gt a b ≈ gt a′ b′
-  gt-cong {Ψ₁} {Ψ₂} {a} {a′} {b} {b′} (≈-intro h1) (≈-intro h2) = ≈-intro (gt-congˢ {Γ = Γ} {Ψ₁} {Ψ₂} {a} {a′} {b} {b′} h1 h2)
-
-module _ {n} {Γ : Ctx n} where
-  ge-cong : ∀ {Ψ₁ Ψ₂} {a a′ : Expr Γ Ψ₁ Int} {b b′ : Expr Γ Ψ₂ Int} → a ≈ a′ → b ≈ b′ → ge a b ≈ ge a′ b′
-  ge-cong {Ψ₁} {Ψ₂} {a} {a′} {b} {b′} (≈-intro h1) (≈-intro h2) = ≈-intro (ge-congˢ {Γ = Γ} {Ψ₁} {Ψ₂} {a} {a′} {b} {b′} h1 h2)
-
-module _ {n} {Γ : Ctx n} where
-  eq-cong : ∀ {Ψ₁ Ψ₂} {a a′ : Expr Γ Ψ₁ Int} {b b′ : Expr Γ Ψ₂ Int} → a ≈ a′ → b ≈ b′ → eq a b ≈ eq a′ b′
-  eq-cong {Ψ₁} {Ψ₂} {a} {a′} {b} {b′} (≈-intro h1) (≈-intro h2) = ≈-intro (eq-congˢ {Γ = Γ} {Ψ₁} {Ψ₂} {a} {a′} {b} {b′} h1 h2)
-
-module _ {n} {Γ : Ctx n} where
-  ne-cong : ∀ {Ψ₁ Ψ₂} {a a′ : Expr Γ Ψ₁ Int} {b b′ : Expr Γ Ψ₂ Int} → a ≈ a′ → b ≈ b′ → ne a b ≈ ne a′ b′
-  ne-cong {Ψ₁} {Ψ₂} {a} {a′} {b} {b′} (≈-intro h1) (≈-intro h2) = ≈-intro (ne-congˢ {Γ = Γ} {Ψ₁} {Ψ₂} {a} {a′} {b} {b′} h1 h2)
-
-module _ {n} {Γ : Ctx n} where
-  neg-cong : ∀ {Ψ} {a a′ : Expr Γ Ψ Int} → a ≈ a′ → neg a ≈ neg a′
-  neg-cong {Ψ} {a} {a′} (≈-intro h1) = ≈-intro (neg-congˢ {Γ = Γ} {Ψ} {a} {a′} h1)
-
-module _ {n} {Γ : Ctx n} where
-  i2f-cong : ∀ {Ψ} {a a′ : Expr Γ Ψ Int} → a ≈ a′ → i2f a ≈ i2f a′
-  i2f-cong {Ψ} {a} {a′} (≈-intro h1) = ≈-intro (i2f-congˢ {Γ = Γ} {Ψ} {a} {a′} h1)
-
-module _ {n} {Γ : Ctx n} where
-  coerce-cong : ∀ {Ψ A B} (p : A <: B) {a a′ : Expr Γ Ψ A} → a ≈ a′ → coerce p a ≈ coerce p a′
-  coerce-cong {Ψ} {A} {B} p {a} {a′} (≈-intro h1) = ≈-intro (coerce-congˢ {Γ = Γ} {Ψ} {A} {B} p {a} {a′} h1)
-
-module _ {n} {Γ : Ctx n} where
-  morph-app-cong : ∀ {Ψ A B} (ir : IR ⌊ A ⌋ ⌊ B ⌋) {a a′ : Expr Γ Ψ A} → a ≈ a′ → morph-app {A = A} {B = B} ir a ≈ morph-app {A = A} {B = B} ir a′
-  morph-app-cong {Ψ} {A} {B} ir {a} {a′} (≈-intro h1) = ≈-intro (morph-app-congˢ {Γ = Γ} {Ψ} {A} {B} ir {a} {a′} h1)
-
-module _ {n} {Γ : Ctx n} where
-  app-cong : ∀ {Ψ₁ Ψ₂ A B q} {f f′ : Expr Γ Ψ₁ (A ⇒[ mk-kind q Once.Type.pure ] B)} {x x′ : Expr Γ Ψ₂ A} → f ≈ f′ → x ≈ x′ → app f x ≈ app f′ x′
-  app-cong {Ψ₁} {Ψ₂} {A} {B} {q} {f} {f′} {x} {x′} (≈-intro h1) (≈-intro h2) = ≈-intro (app-congˢ {Γ = Γ} {Ψ₁} {Ψ₂} {A} {B} {q} {f} {f′} {x} {x′} h1 h2)
-
-module _ {n} {Γ : Ctx n} where
-  effApp-cong : ∀ {Ψ₁ Ψ₂ A B} {f f′ : Expr Γ Ψ₁ (A ⇒[ mk-kind Many Once.Type.eff ] B)} {x x′ : Expr Γ Ψ₂ A} → f ≈ f′ → x ≈ x′ → effApp f x ≈ effApp f′ x′
-  effApp-cong {Ψ₁} {Ψ₂} {A} {B} {f} {f′} {x} {x′} (≈-intro h1) (≈-intro h2) = ≈-intro (effApp-congˢ {Γ = Γ} {Ψ₁} {Ψ₂} {A} {B} {f} {f′} {x} {x′} h1 h2)
-
-module _ {n} {Γ : Ctx n} where
-  comp-cong : ∀ {Ψ₁ Ψ₂ A B C π} {f f′ : Expr Γ Ψ₁ (B ⇒[ mk-kind Many π ] C)} {g g′ : Expr Γ Ψ₂ (A ⇒[ mk-kind Many π ] B)} → f ≈ f′ → g ≈ g′ → comp' f g ≈ comp' f′ g′
-  comp-cong {Ψ₁} {Ψ₂} {A} {B} {C} {π} {f} {f′} {g} {g′} (≈-intro h1) (≈-intro h2) = ≈-intro (comp-congˢ {Γ = Γ} {Ψ₁} {Ψ₂} {A} {B} {C} {π} {f} {f′} {g} {g′} h1 h2)
-
-module _ {n} {Γ : Ctx n} where
-  copair-cong : ∀ {Ψ₁ Ψ₂ A B C π} {f f′ : Expr Γ Ψ₁ (A ⇒[ mk-kind Many π ] C)} {g g′ : Expr Γ Ψ₂ (B ⇒[ mk-kind Many π ] C)} → f ≈ f′ → g ≈ g′ → copair' f g ≈ copair' f′ g′
-  copair-cong {Ψ₁} {Ψ₂} {A} {B} {C} {π} {f} {f′} {g} {g′} (≈-intro h1) (≈-intro h2) = ≈-intro (copair-congˢ {Γ = Γ} {Ψ₁} {Ψ₂} {A} {B} {C} {π} {f} {f′} {g} {g′} h1 h2)
-
-module _ {n} {Γ : Ctx n} where
-  fork-cong : ∀ {Ψ₁ Ψ₂ A B C π} {f f′ : Expr Γ Ψ₁ (A ⇒[ mk-kind Many π ] B)} {g g′ : Expr Γ Ψ₂ (A ⇒[ mk-kind Many π ] C)} → f ≈ f′ → g ≈ g′ → fork' f g ≈ fork' f′ g′
-  fork-cong {Ψ₁} {Ψ₂} {A} {B} {C} {π} {f} {f′} {g} {g′} (≈-intro h1) (≈-intro h2) = ≈-intro (fork-congˢ {Γ = Γ} {Ψ₁} {Ψ₂} {A} {B} {C} {π} {f} {f′} {g} {g′} h1 h2)
-
-module _ {n} {Γ : Ctx n} where
-  curry-cong : ∀ {Ψ A B C π₀ π} {f f′ : Expr Γ Ψ ((A * B) ⇒[ mk-kind Many π ] C)} → f ≈ f′ → curry' {π₀ = π₀} f ≈ curry' f′
-  curry-cong {Ψ} {A} {B} {C} {π₀} {π} {f} {f′} (≈-intro h1) = ≈-intro (curry-congˢ {Γ = Γ} {Ψ} {A} {B} {C} {π₀} {π} {f} {f′} h1)
-
-module _ {n} {Γ : Ctx n} where
-  cata-cong : ∀ {F A π} (wf : WellFormedF F) {g g′ : Expr ∅ zeroUsage (⟦ F ⟧T A ⇒[ mk-kind Many π ] A)} → g ≈ g′ → cata {Γ = Γ} wf g ≈ cata wf g′
-  cata-cong {F} {A} {π} wf {g} {g′} (≈-intro h1) = ≈-intro (cata-congˢ {Γ = Γ} {F} {A} {π} wf {g} {g′} h1)
-
-module _ {n} {Γ : Ctx n} where
-  ana-cong : ∀ {F A π₀ π} (wf : WellFormedF F) {g g′ : Expr ∅ zeroUsage (A ⇒[ mk-kind Many π ] ⟦ F ⟧T A)} → g ≈ g′ → ana {Γ = Γ} {π₀ = π₀} wf g ≈ ana wf g′
-  ana-cong {F} {A} {π₀} {π} wf {g} {g′} (≈-intro h1) = ≈-intro (ana-congˢ {Γ = Γ} {F} {A} {π₀} {π} wf {g} {g′} h1)
-
-module _ {n} {Γ : Ctx n} where
-  let-cong : ∀ {Ψ₁ Ψ₂ A B q} {e₁ e₁′ : Expr Γ Ψ₁ A} {e₂ e₂′ : Expr (_,_^_ Γ A Many) (q ∷ Ψ₂) B} → e₁ ≈ e₁′ → e₂ ≈ e₂′ → let' e₁ e₂ ≈ let' e₁′ e₂′
-  let-cong {Ψ₁} {Ψ₂} {A} {B} {q} {e₁} {e₁′} {e₂} {e₂′} (≈-intro h1) (≈-intro h2) = ≈-intro (let-congˢ {Γ = Γ} {Ψ₁} {Ψ₂} {A} {B} {q} {e₁} {e₁′} {e₂} {e₂′} h1 h2)
-
-module _ {n} {Γ : Ctx n} where
-  case-cong : ∀ {Ψs Ψₗ Ψᵣ qℓ qr A B C} {s s′ : Expr Γ Ψs (A + B)} {l l′ : Expr (_,_^_ Γ A Many) (qℓ ∷ Ψₗ) C} {r r′ : Expr (_,_^_ Γ B Many) (qr ∷ Ψᵣ) C} → s ≈ s′ → l ≈ l′ → r ≈ r′ → case' s l r ≈ case' s′ l′ r′
-  case-cong {Ψs} {Ψₗ} {Ψᵣ} {qℓ} {qr} {A} {B} {C} {s} {s′} {l} {l′} {r} {r′} (≈-intro h1) (≈-intro h2) (≈-intro h3) = ≈-intro (case-congˢ {Γ = Γ} {Ψs} {Ψₗ} {Ψᵣ} {qℓ} {qr} {A} {B} {C} {s} {s′} {l} {l′} {r} {r′} h1 h2 h3)
-
-module _ {n} {Γ : Ctx n} where
-  lam-cong : ∀ {Ψ q' π A B} (q : Quantity) (≤p : (q' ≤q q) ≡ true) {b b′ : Expr (_,_^_ Γ A Many) (q' ∷ Ψ) B} → b ≈ b′ → lam {π = π} q ≤p b ≈ lam q ≤p b′
-  lam-cong {Ψ} {q'} {π} {A} {B} q ≤p {b} {b′} (≈-intro h1) = ≈-intro (lam-congˢ {Γ = Γ} {Ψ} {q'} {π} {A} {B} q ≤p {b} {b′} h1)
-
-module _ {n} {Γ : Ctx n} where
-  coerce-refl : ∀ {Ψ A} (e : Expr Γ Ψ A) → coerce (<:-refl A) e ≈ e
-  coerce-refl {Ψ} {A} e = ≈-intro (coerce-reflˢ {Γ = Γ} {Ψ} {A} e)
-
-module _ {n} {Γ : Ctx n} where
-  coerce-trans : ∀ {Ψ A B C} (p : A <: B) (q : B <: C) (e : Expr Γ Ψ A) → coerce q (coerce p e) ≈ coerce (<:-trans p q) e
-  coerce-trans {Ψ} {A} {B} {C} p q e = ≈-intro (coerce-transˢ {Γ = Γ} {Ψ} {A} {B} {C} p q e)
-
-module _ {n} {Γ : Ctx n} where
-  coerce-uniq : ∀ {Ψ A B} (p q : A <: B) (e : Expr Γ Ψ A) → coerce p e ≈ coerce q e
-  coerce-uniq {Ψ} {A} {B} p q e = ≈-intro (coerce-uniqˢ {Γ = Γ} {Ψ} {A} {B} p q e)
-
-module _ {n} {Γ : Ctx n} where
-  pair-coerce : ∀ {Ψ₁ Ψ₂ A A′ B B′} (pa : A <: A′) (pb : B <: B′) (a : Expr Γ Ψ₁ A) (b : Expr Γ Ψ₂ B) → pair (coerce pa a) (coerce pb b) ≈ coerce (sub-prod pa pb) (pair a b)
-  pair-coerce {Ψ₁} {Ψ₂} {A} {A′} {B} {B′} pa pb a b = ≈-intro (pair-coerceˢ {Γ = Γ} {Ψ₁} {Ψ₂} {A} {A′} {B} {B′} pa pb a b)
-
-module _ {n} {Γ : Ctx n} where
-  app-coerce : ∀ {Ψ₁ Ψ₂ X A′ B} (a : X <: A′) (g : Once.Type.pure ⊑π Once.Type.pure) (f : Expr Γ Ψ₁ (A′ ⇒[ mk-kind Many Once.Type.pure ] B)) (x : Expr Γ Ψ₂ X) → app (coerce (sub-arr a (<:-refl B) g) f) x ≈ app f (coerce a x)
-  app-coerce {Ψ₁} {Ψ₂} {X} {A′} {B} a g f x = ≈-intro (app-coerceˢ {Γ = Γ} {Ψ₁} {Ψ₂} {X} {A′} {B} a g f x)
-
-module _ {n} {Γ : Ctx n} where
-  comp-post : ∀ {Ψ₁ Ψ₂ A M B B′ π} (p : B <: B′) (r r′ : π ⊑π π) (f : Expr Γ Ψ₁ (M ⇒[ mk-kind Many π ] B)) (g : Expr Γ Ψ₂ (A ⇒[ mk-kind Many π ] M)) → comp' (coerce (sub-arr (<:-refl M) p r) f) g ≈ coerce (sub-arr (<:-refl A) p r′) (comp' f g)
-  comp-post {Ψ₁} {Ψ₂} {A} {M} {B} {B′} {π} p r r′ f g = ≈-intro (comp-postˢ {Γ = Γ} {Ψ₁} {Ψ₂} {A} {M} {B} {B′} {π} p r r′ f g)
-
-module _ {n} {Γ : Ctx n} where
-  comp-pre : ∀ {Ψ₁ Ψ₂ A B B′ C C′ π π′} (q : B <: B′) (c : C′ <: C) (g : π′ ⊑π π) (f : Expr Γ Ψ₁ (B′ ⇒[ mk-kind Many π′ ] C′)) (h : Expr Γ Ψ₂ (A ⇒[ mk-kind Many π ] B)) → comp' (coerce (sub-arr q c g) f) h ≈ comp' (coerce (sub-arr (<:-refl B′) c g) f) (coerce (sub-arr (<:-refl A) q (⊑π-refl π)) h)
-  comp-pre {Ψ₁} {Ψ₂} {A} {B} {B′} {C} {C′} {π} {π′} q c g f h = ≈-intro (comp-preˢ {Γ = Γ} {Ψ₁} {Ψ₂} {A} {B} {B′} {C} {C′} {π} {π′} q c g f h)
-
-module _ {n} {Γ : Ctx n} where
-  lam-coerce : ∀ {Ψ q' π A B B′} (≤p : (q' ≤q Many) ≡ true) (p : B <: B′) (b : Expr (_,_^_ Γ A Many) (q' ∷ Ψ) B) → lam {π = π} Many ≤p (coerce p b) ≈ coerce (sub-arr (<:-refl A) p (⊑π-refl π)) (lam Many ≤p b)
-  lam-coerce {Ψ} {q'} {π} {A} {B} {B′} ≤p p b = ≈-intro (lam-coerceˢ {Γ = Γ} {Ψ} {q'} {π} {A} {B} {B′} ≤p p b)
-
-module _ {n} {Γ : Ctx n} where
-  copair-coerce : ∀ {Ψ₁ Ψ₂ A B C C′ π} (p : C <: C′) (r : π ⊑π π) (f : Expr Γ Ψ₁ (A ⇒[ mk-kind Many π ] C)) (g : Expr Γ Ψ₂ (B ⇒[ mk-kind Many π ] C)) → copair' (coerce (sub-arr (<:-refl A) p r) f) (coerce (sub-arr (<:-refl B) p r) g) ≈ coerce (sub-arr (<:-refl (A + B)) p r) (copair' f g)
-  copair-coerce {Ψ₁} {Ψ₂} {A} {B} {C} {C′} {π} p r f g = ≈-intro (copair-coerceˢ {Γ = Γ} {Ψ₁} {Ψ₂} {A} {B} {C} {C′} {π} p r f g)
-
-module _ {n} {Γ : Ctx n} where
-  fork-coerce : ∀ {Ψ₁ Ψ₂ A B B′ C C′ π} (pb : B <: B′) (pc : C <: C′) (r : π ⊑π π) (f : Expr Γ Ψ₁ (A ⇒[ mk-kind Many π ] B)) (g : Expr Γ Ψ₂ (A ⇒[ mk-kind Many π ] C)) → fork' (coerce (sub-arr (<:-refl A) pb r) f) (coerce (sub-arr (<:-refl A) pc r) g) ≈ coerce (sub-arr (<:-refl A) (sub-prod pb pc) r) (fork' f g)
-  fork-coerce {Ψ₁} {Ψ₂} {A} {B} {B′} {C} {C′} {π} pb pc r f g = ≈-intro (fork-coerceˢ {Γ = Γ} {Ψ₁} {Ψ₂} {A} {B} {B′} {C} {C′} {π} pb pc r f g)
-
-module _ {n} {Γ : Ctx n} where
-  initial-coerce : ∀ {A π} (r : π ⊑π π) → coerce (sub-arr sub-void sub-void r) (lift-morphism {Γ = Γ} {A = Void} {B = Void} {π = π} IR.initial) ≈ lift-morphism {Γ = Γ} {A = Void} {B = A} {π = π} IR.initial
-  initial-coerce {A} {π} r = ≈-intro (initial-coerceˢ {Γ = Γ} {A} {π} r)
-
-module _ {n} {Γ : Ctx n} where
-  cata-coerce : ∀ {F A A′ π} (wf : WellFormedF F) (d : ⟦ F ⟧T A′ <: ⟦ F ⟧T A) (p : A <: A′) (g : π ⊑π π) (alg : Expr ∅ zeroUsage (⟦ F ⟧T A ⇒[ mk-kind Many π ] A)) → cata {Γ = Γ} wf (coerce (sub-arr {q = Many} d p g) alg) ≈ coerce (sub-arr (<:-refl (μ-type F)) p (⊑π-refl π)) (cata {Γ = Γ} wf alg)
-  cata-coerce {F} {A} {A′} {π} wf d p g alg = ≈-intro (cata-coerceˢ {Γ = Γ} {F} {A} {A′} {π} wf d p g alg)
+-- The same laws at `_≈_` live in `CoherenceLawsWrap` (split for the 30 s
+-- per-module check budget).

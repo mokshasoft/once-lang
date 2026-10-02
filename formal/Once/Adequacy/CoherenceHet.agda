@@ -47,6 +47,7 @@ open import Once.Denotation.Realize using (realize; realize-infer; realize-d)
 import Once.Denotation.SourceDenote as SD
 open SD using (⟦_⟧ˢ)
 open import Once.Adequacy.CoherenceLaws fmt
+open import Once.Adequacy.CoherenceLawsWrap fmt
 
 private
   RI = realize-infer

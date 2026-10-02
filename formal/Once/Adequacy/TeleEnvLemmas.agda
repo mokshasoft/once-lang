@@ -22,7 +22,10 @@
 
 open import Once.Target.Arch using (TargetNum)
 
-module Once.Adequacy.TeleEnvLemmas (fmt : TargetNum) where
+open import Once.SigOp.Info using (FFIAnswers)
+
+-- Plan 0.105: over the interpretation's FFI half `φ`.
+module Once.Adequacy.TeleEnvLemmas (fmt : TargetNum) (φ : FFIAnswers) where
 
 open import Data.Nat using (ℕ; _<_)
 open import Data.Nat.Induction using (<-wellFounded)
@@ -48,8 +51,8 @@ open import Once.IR.Ref using (refIR)
 import Once.Surface.Syntax as Srf
 import Once.Denotation.SourceDenote as SD
 open import Once.Denotation.TraceMonad using (T)
-open import Once.Denotation.DenotTrace using (evalᴰ; CallEnv; ⟦_⟧ᴰᴵ; cohᴰ)
-open import Once.Denotation.Program using (IRFun; fname; tableEnv)
+open import Once.Denotation.DenotTrace using (evalᴰ; CallEnv; callsE; ⟦_⟧ᴰᴵ; cohᴰ)
+open import Once.Denotation.Program using (IRFun; fname; tableEnv; tableCalls)
 open import Once.Denotation.Meaning using (DefMeanings; ImpMeanings)
 open import Once.TypeCheck.Raw using (RawExpr)
 open import Once.TypeCheck.Classify using (PolyCtx; lookupPolyPrefix; Imports; ctxWithImportsAndPolys)
@@ -61,7 +64,7 @@ import Once.Adequacy.ResolveFaithful as RF
 import Once.Adequacy.MeaningBridge as MB
 open import Once.Adequacy.GradedRelation fmt using (RelGM)
 open import Once.Type using (pure)
-open import Once.Adequacy.TableCall fmt using (tableEnv-skip)
+open import Once.Adequacy.TableCall fmt φ using (tableEnv-skip)
 
 ------------------------------------------------------------------------
 -- The walk's environment
@@ -69,7 +72,7 @@ open import Once.Adequacy.TableCall fmt using (tableEnv-skip)
 
 -- Calls of a table, references spliced in `P` with declaration imports `I`.
 σW : List IRFun → PolyCtx → (String → Imports) → Imports → SD.DefsSem
-σW tbl P I uf = RF.σR fmt (tableEnv fmt tbl) P I uf 0
+σW tbl P I uf = RF.σR fmt (tableEnv fmt φ tbl) P I uf 0
 
 ------------------------------------------------------------------------
 -- A reference, as a function of the lookup's answer
@@ -157,7 +160,7 @@ imprel-transport σ₁ σ₂ ((n , U) ∷ rest) {e , ι} (h , hs) (r , rs) =
 
 -- A call reads the environment at its one name.
 refIR-cong : ∀ (U : Type) (f : CanonicalName) (ρ₁ ρ₂ : CallEnv)
-  → (∀ (A B : IRTy) (a : ⟦ A ⟧ᴰᴵ) → ρ₁ f A B a ≡ ρ₂ f A B a)
+  → (∀ (A B : IRTy) (a : ⟦ A ⟧ᴰᴵ) → callsE ρ₁ f A B a ≡ callsE ρ₂ f A B a)
   → evalᴰ fmt ρ₁ (refIR U f) tt ≡ evalᴰ fmt ρ₂ (refIR U f) tt
 refIR-cong (A ⇒[ mk-kind Zero π ] B) f ρ₁ ρ₂ h = cong (λ g → Once.Denotation.TraceMonad.returnT g) (extensionality λ b → h _ _ b)
 refIR-cong (A ⇒[ mk-kind One  π ] B) f ρ₁ ρ₂ h = cong (λ g → Once.Denotation.TraceMonad.returnT g) (extensionality λ b → h _ _ b)
@@ -176,7 +179,7 @@ refIR-cong (rigid k i)  f ρ₁ ρ₂ h = h _ _ tt
 
 -- Entries declared later, of other names, do not change a call.
 tableEnv-later : ∀ (later pre : List IRFun) (f : CanonicalName) → All (λ e → fname e ≢ f) later
-  → ∀ (A B : IRTy) (a : ⟦ A ⟧ᴰᴵ) → tableEnv fmt (later ++ pre) f A B a ≡ tableEnv fmt pre f A B a
+  → ∀ (A B : IRTy) (a : ⟦ A ⟧ᴰᴵ) → tableCalls fmt φ (later ++ pre) f A B a ≡ tableCalls fmt φ pre f A B a
 tableEnv-later []          pre f []         A B a = refl
 tableEnv-later (e ∷ later) pre f (ne ∷ nes) A B a =
   trans (tableEnv-skip e (later ++ pre) ne a) (tableEnv-later later pre f nes A B a)

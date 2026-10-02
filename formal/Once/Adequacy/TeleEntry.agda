@@ -16,7 +16,10 @@
 
 open import Once.Target.Arch using (TargetNum)
 
-module Once.Adequacy.TeleEntry (fmt : TargetNum) where
+open import Once.SigOp.Info using (FFIAnswers)
+
+-- Plan 0.105: over the interpretation's FFI half `φ`.
+module Once.Adequacy.TeleEntry (fmt : TargetNum) (φ : FFIAnswers) where
 
 open import Data.List using (List; []; _∷_)
 open import Data.Product using (Σ-syntax; _×_; _,_; proj₁; proj₂)
@@ -35,14 +38,14 @@ import Once.Surface.Syntax as Srf
 open import Once.Surface.Elaborate using (elaborateFull)
 import Once.Compile as C
 import Once.Denotation.SourceDenote as SD
-open import Once.Denotation.TraceMonad using (T; mkT; returnT; _>>=T_; projTrace)
+open import Once.Denotation.TraceMonad using (T; ret; returnT; _>>=T_; rel-ret)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ)
 open import Once.Denotation.DenotTrace using (evalᴰ; CallEnv; ⟦_⟧ᴰᴵ; cohᴰ)
 open import Once.Denotation.GradedDomain using (⟦_⟧ᵛ)
 open import Once.Denotation.GradedOps using (sigOpRefᵛ)
 open import Once.Denotation.Program using (IRFun; tableEnv)
 open import Once.Adequacy.GradedRelation fmt using (RelGT; RelGV; RelGM; RelGT-return)
-open import Once.Adequacy.TableCall fmt using (abiT; abi)
+open import Once.Adequacy.TableCall fmt φ using (abiT; abi)
 open import Once.Adequacy.SourceTrace using (irFunOf)
 open import Once.IR.Ref using (refIR)
 import Once.Adequacy.MeaningBridge as MB
@@ -53,11 +56,8 @@ private
   -- A computation related to a value returns silently, a related value.
   returns-of : ∀ (U : Type) {v : ⟦ U ⟧ᵛ} (M : T ⟦ U ⟧ᴰ) → RelGT U (returnT v) M
              → Σ-syntax ⟦ U ⟧ᴰ (λ v′ → (M ≡ returnT v′) × RelGV U v v′)
-  returns-of U (mkT tr (returns v′)) rel with proj₂ (rel 0)
-  ... | rel-returns rv =
-    v′ , cong (λ t → mkT t (returns v′)) (extensionality (λ n → sym (proj₁ (rel n)))) , rv
-  returns-of U (mkT tr Once.Res.stopped) rel with proj₂ (rel 0)
-  ... | ()
+  -- Plan 0.105: a tree related to a `ret` IS a `ret`.
+  returns-of U .(ret _) (rel-ret rv) = _ , refl , rv
 
   abi-many : ∀ {X X′ Y Y′ : Set} (e₁ : X ≡ X′) (e₂ : Y ≡ Y′) (M : T (X → T Y))
            → subst T (cong₂ (λ x y → x → T y) e₁ e₂) (returnT (λ a → M >>=T λ c → c a))
@@ -105,15 +105,15 @@ abi-rel (rigid k i)  v M rel = rel
 
 -- The call of an FFI entry (its compiled SigOp wrapper) means its contract.
 ffi-entry : ∀ (pre : List IRFun) (x : _) (U : Type) (c : IsConcrete U)
-  → RelGM pure U (sigOpRefᵛ fmt (bare x) c)
-           (subst T (cohᴰ U) (evalᴰ fmt (tableEnv fmt (irFunOf (C.mkCompiledFun (bare x) U
+  → RelGM pure U (sigOpRefᵛ fmt φ (bare x) c)
+           (subst T (cohᴰ U) (evalᴰ fmt (tableEnv fmt φ (irFunOf (C.mkCompiledFun (bare x) U
                                   (elaborateFull C.Heap (Srf.sigOp {Γ = Srf.∅} (bare x) c)) true) ∷ pre))
                                 (refIR U (bare x)) tt))
 ffi-entry pre x U c =
-  subst (RelGM pure U (sigOpRefᵛ fmt (bare x) c)) (cong (subst T (cohᴰ U)) (sym (abi U x pre ir)))
-    (abi-rel U (sigOpRefᵛ fmt (bare x) c) (evalᴰ fmt ρ ir tt)
-      (subst (RelGM pure U (sigOpRefᵛ fmt (bare x) c)) (sym (FLm.T-ext-at fmt ρ (SF.faithful∅ fmt ρ (Srf.sigOp {Γ = Srf.∅} (bare x) c))))
-             (MB.sigop-ref-bridge fmt (SD.internalDefs fmt ρ) {Γ = Srf.∅} {A = U} (bare x) c tt)))
+  subst (RelGM pure U (sigOpRefᵛ fmt φ (bare x) c)) (cong (subst T (cohᴰ U)) (sym (abi U x pre ir)))
+    (abi-rel U (sigOpRefᵛ fmt φ (bare x) c) (evalᴰ fmt ρ ir tt)
+      (subst (RelGM pure U (sigOpRefᵛ fmt φ (bare x) c)) (sym (SF.faithful∅ fmt ρ (Srf.sigOp {Γ = Srf.∅} (bare x) c)))
+             (MB.sigop-ref-bridge fmt (SD.internalDefs fmt ρ) {Γ = Srf.∅} {A = U} φ (bare x) c tt refl)))
   where
-    ρ  = tableEnv fmt pre
+    ρ  = tableEnv fmt φ pre
     ir = elaborateFull C.Heap (Srf.sigOp {Γ = Srf.∅} (bare x) c)
