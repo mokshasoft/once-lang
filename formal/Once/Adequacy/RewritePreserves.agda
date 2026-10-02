@@ -23,6 +23,7 @@ open import Data.Sum using (inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
 
 open import Once.Postulates using (extensionality)
+import Once.Adequacy.LiftSound
 open import Once.Target.Arch using (TargetNum)
 open import Once.IR
 open import Once.IRTy using (IRTy)
@@ -43,14 +44,11 @@ open import Once.Denotation.TraceMonad using (fmapT)
 open import Once.Denotation.Behavior using (at)
 open import Once.Adequacy.SourceTrace using (rewrite-program; rewrite-table; rewrite-fun; ⟦_⟧IR)
 
-------------------------------------------------------------------------
--- SCAFFOLD (plan 0.103 6a‴): stated, wired, discharged next.
-------------------------------------------------------------------------
-
-postulate
-  -- a lifted arith block means the subtree it replaced
-  lift-sound : ∀ (fmt : TargetNum) (ρ : CallEnv) {A B} (ir ir′ : IR A B) (blk : ArithBlock)
-             → try-lift ir ≡ just (ir′ , blk) → evalᴰ fmt ρ ir′ ≡ evalᴰ fmt ρ ir
+-- A lifted arith block means the subtree it replaced (`LiftSound`).
+lift-sound : ∀ (fmt : TargetNum) (ρ : CallEnv) {A B} (ir ir′ : IR A B) (blk : ArithBlock)
+           → try-lift ir ≡ just (ir′ , blk) → evalᴰ fmt ρ ir′ ≡ evalᴰ fmt ρ ir
+lift-sound fmt ρ = LS.lift-sound
+  where module LS = Once.Adequacy.LiftSound fmt ρ
 
 ------------------------------------------------------------------------
 -- The walk preserves meaning
