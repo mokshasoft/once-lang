@@ -2,7 +2,7 @@
 
 > Opened 2026-09-29, after PLAN-LEVITATION Stage 6. Branch
 > `ocp-0009-levitation` (no rebase for now).
-> ✅ **DONE 2026-09-30** (F1–F5, commit `4e6e46904`). Next: PLAN-BIDI, after
+> ✅ **F1–F5 DONE 2026-09-30** (commit `4e6e46904`). ⬜ **F6 (decoding, the converse) opened 2026-10-02**, scheduled after PLAN-BIDI S7b. Next: PLAN-BIDI, after
 > PLAN-LEVITATION's clean measurement (`HANDOFF-2026-10-02.md` §4).
 
 ## Goal
@@ -43,6 +43,41 @@ ships REDUCTION lemmas for its methods. `Lib/SynTrav` ships typings only.
 | F3 | op agreement | `sub0`, `wk`, the SubEnv ops (`nrsK`, `pairSK`, `fsucSK`, `methSK`, `lift2K`, `iinstK`, `MethTyK`, `iinstTmK`, `pwShK`, `wk2uK`): Represents for CONS/LIFT/WK environments |
 | F4 | side conditions | the `Preds` families and `Pw` are COMPLETE for Spec's `NoNatC`, `stkA?`, `stkC?`, `flat?`, `pw?`/`pwBody` |
 | F5 | `enJudge` | mutual maps from Spec derivations through the constructors; F2/F3 bridge indices by `⊢conv` |
+| F6 | ⬜ **decoding** (adequacy, the converse) | every CLOSED Knot inhabitant at a quoted judgement comes from a Spec derivation — see below; after PLAN-BIDI S7b |
+
+## ⬜ F6 — the OTHER half: decoding (opened 2026-10-02)
+
+F1–F5 prove the quoted Spec sits INSIDE the Knot: a Knot rule too weak, or
+of the wrong shape, to express a Spec rule fails `enTm`. Nothing yet
+rules out a rule that is TOO PERMISSIVE: an extra row, or a missing side
+condition, typechecks and passes F5. The full invariant, the standard
+adequacy of an encoding, is both directions:
+
+    (Γ ⊢ t ∷ A)  ↔  inhabited (K⊢ (tmIx (dep Γ) ⌜Γ⌝ ⌜t⌝ ⌜A⌝))      at CLOSED Knot terms
+    (likewise ⊢ty, ∋, ⟶, ⟶ᵀ, ≅, ≅ᵀ, the side-condition families)
+
+- **Why (user, 2026-10-02):** "the Knot/Dogfooding is the same as the
+  original Agda Spec". With both directions each row is pinned EXACTLY
+  (too weak breaks F5, too strong breaks F6), so the invariant guides
+  the proofs. It also makes "Once-in-Once is the Spec" a theorem, which
+  the dogfooding exhibit (PLAN-JUDGEMENT step 4) needs. And it is how
+  hand-written Knot rows (PLAN-BIDI S7b onwards) are justified without
+  trusting a generator.
+- **Route:**
+  - CANONICITY (`Metatheory/Canonicity`) turns a closed inhabitant of
+    `IMu JT D⊢ i` into a `con`-tree.
+  - Induction on that tree, row by row, back to a Spec constructor.
+    Subject reduction keeps the tree's typing.
+  - The agreements are used BACKWARDS: from `op ⌜x⌝ ⟶* ⌜y⌝` recover
+    `y` as the Spec operation, via unique normal forms (`Algorithm/Eval`,
+    `nf-irr` plus Church–Rosser) and injectivity of quotation.
+- **Scope:** closed Knot terms only. Open ones (free variables in `Θ`)
+  are not adequate in general, as usual for such theorems.
+- **Expected cost:** inversion on closed `IMu` inhabitants per row, plus
+  the backward agreements. Real, but no kernel change.
+- **When:** after PLAN-BIDI S7b, once the Knot's rows are hand-written
+  core definitions and stable. Decoding generated rows that are about
+  to be replaced is waste.
 
 ## Log
 
