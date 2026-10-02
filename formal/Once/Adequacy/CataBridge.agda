@@ -51,8 +51,8 @@ open import Once.Functor.Translate using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-P
 open import Once.Semantics.Machine using (sem-cata; sem-fmap; coerce-μ-out; ⟦_⟧F)
 open import Once.Semantics.Functor using (μS; cataS; ⟦_⟧SF)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; seqF)
-open import Once.Denotation.TraceMonad using (T; projTrace; valueT; RelT′; RelT′-bind; RelRes-value)
-open import Once.Denotation.DenotTrace using (evalᴰ; forget; inject; coerce-functor⁻¹-D; cata-ev-algᴰ; liftFn)
+open import Once.Denotation.TraceMonad using (T; RelT′; RelT′-bind)
+open import Once.Denotation.DenotTrace using (evalᴰ; coerce-functor⁻¹-D; cata-ev-algᴰ; liftFn)
 open import Once.Denotation.TraceDenote using (events-F)
 open import Once.Denotation.Trace using (SigOpEvent)
 open import Once.Denotation.Meaning using (cata-sem; cata-ev-algᴰ-D)
@@ -97,8 +97,8 @@ cata-bridge : ∀ {F} {A'} {wfF : WellFormedF F}
               (algR : ∀ {x y} → RelV (⟦ F ⟧T A') x y → RelT A' (dalg₁ x) (dalg₂ y))
               {a b : ⟦ μ-type F ⟧ᴰ} → RelV (μ-type F) a b
             → RelT A' (cata-sem wfF dalg₁ a) (cata-sem wfF dalg₂ b)
-cata-bridge {F} {A'} {wfF} dalg₁ dalg₂ algR {a} {.a} refl n =
-  cataS-rel RelC algR-full (forget a) n
+cata-bridge {F} {A'} {wfF} dalg₁ dalg₂ algR {a} {.a} refl =
+  cataS-rel RelC algR-full a
   where
     -- D179: the fold's carrier is a computation, and `RelT A'` already IS
     -- "equal traces + related values at every budget" — so the relation the
@@ -126,7 +126,7 @@ cata-bridge {F} {A'} {wfF} dalg₁ dalg₂ algR {a} {.a} refl n =
     -- `RelV`-related fold argument.
     z-rel : ∀ {G} (wf : WellFormedF G) {l r : ⟦ G ⟧F ⟦ A' ⟧ᴰ}
           → RelF G (RelV A') l r
-          → RelV (⟦ G ⟧T A') (coerce-functor⁻¹-D G A' l) (coerce-functor⁻¹-D G A' r)
+          → RelV (⟦ G ⟧T A') (coerce-functor⁻¹-D wf A' l) (coerce-functor⁻¹-D wf A' r)
     z-rel (wf-K ib) {l} {r} eq rewrite eq = base-refl ib _
     z-rel wf-Id     rel = rel
     z-rel (wf-Sum wfF' wfG') {inj₁ _} {inj₁ _} rel = z-rel wfF' rel
@@ -139,19 +139,12 @@ cata-bridge {F} {A'} {wfF} dalg₁ dalg₂ algR {a} {.a} refl n =
     -- Algebra preservation: one `RelT′-bind`. The head is `seqF` of the two
     -- layers (`seqF-rel`), the continuation is the bridged algebra step.
     algR-full : ∀ {y₁ y₂} → RelSF (translateF Carrier Carrier F) RelC y₁ y₂
-              → RelC (cata-ev-algᴰ-D {F} {A'} dalg₁ (coerce-μ-out wfF _ y₁))
-                     (cata-ev-algᴰ-D {F} {A'} dalg₂ (coerce-μ-out wfF _ y₂))
+              → RelC (cata-ev-algᴰ-D {F} {A'} wfF dalg₁ (coerce-μ-out wfF _ y₁))
+                     (cata-ev-algᴰ-D {F} {A'} wfF dalg₂ (coerce-μ-out wfF _ y₂))
     algR-full {y₁} {y₂} rsf =
       RelT′-bind (RelF F (RelV A')) (RelV A')
-        (seqF F (coerce-μ-out wfF _ y₁)) (seqF F (coerce-μ-out wfF _ y₂))
-        (λ layer → dalg₁ (coerce-functor⁻¹-D F A' layer))
-        (λ layer → dalg₂ (coerce-functor⁻¹-D F A' layer))
-        sq
-        -- plan 0.98: the continuation is owed only where BOTH sequenced layers
-        -- returned, and the premises NAME them — the old `proj₂ (proj₂ (sq k))`
-        -- read a value out of a triple that asserted one existed at every
-        -- budget. `RelRes-value` reads the same relation at the two values the
-        -- premises supply, and the budget index is gone with the triple.
-        (λ l₁ l₂ eq₁ eq₂ → algR (z-rel wfF (RelRes-value (proj₂ (sq 0)) eq₁ eq₂)))
-      where
-        sq = seqF-rel F (RelV A') (out-rel wfF rsf)
+        {m = seqF F (coerce-μ-out wfF _ y₁)} {m′ = seqF F (coerce-μ-out wfF _ y₂)}
+        {f = λ layer → dalg₁ (coerce-functor⁻¹-D wfF A' layer)}
+        {f′ = λ layer → dalg₂ (coerce-functor⁻¹-D wfF A' layer)}
+        (seqF-rel F (RelV A') (out-rel wfF rsf))
+        (λ l₁ l₂ r → algR (z-rel wfF r))

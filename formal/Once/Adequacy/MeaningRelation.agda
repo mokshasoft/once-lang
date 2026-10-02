@@ -39,7 +39,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong
 open import Once.Type using (Type; Unit; Void; Int; Float; Str; Buffer;
                              _*_; _+_; _⇒[_]_; μ-type; ν-type;
                              mk-kind; Zero; One; Many)
-open import Once.Denotation.TraceMonad using (T; projTrace; valueT; stoppedT; returnT; _>>=T_; bindRes-rel)
+open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_; RelT′; rel-ret; RelT′-bind)
 open import Once.Res using (Res; stopped; returns; Res-rel; rel-stopped; rel-returns)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ)
 open import Once.Denotation.ValueDomainLaws using (_∼ᵈ_)
@@ -52,18 +52,12 @@ open import Once.Denotation.ValueDomainLaws using (_∼ᵈ_)
 RelV : ∀ (A : Type) → ⟦ A ⟧ᴰ → ⟦ A ⟧ᴰ → Set
 RelT : ∀ (A : Type) → T ⟦ A ⟧ᴰ → T ⟦ A ⟧ᴰ → Set
 
--- A computation relation: equal event traces at EVERY budget, and related
--- RESULTS.
---
--- plan 0.97 made this a TRIPLE — trace, stop flag, value — because `_>>=T_`'s
--- trace was a `join-es` of the two and `RelT-bind` could not conclude the
--- composite traces agreed without the flag. plan 0.98: the flag and the value
--- were always ONE fact, "did this return, and with what", and `Res-rel` is
--- that fact. Two related computations stop together or return related values;
--- there is no state in which one has a value and the other does not, which is
--- exactly what the triple could express and should not have been able to.
-RelT A t₁ t₂ = ∀ n → (projTrace t₁ n ≡ projTrace t₂ n)
-                   × Res-rel (RelV A) (T.resT t₁) (T.resT t₂)
+-- A computation relation (plan 0.105): related TREES — the same calls with
+-- the same arguments, continuing relatedly at every answer, halting alike, and
+-- returning related values (`RelT′`). The old budget-indexed form (equal trace
+-- prefixes at every budget, related results) is its observational
+-- consequence (`RelT′-events`, `RelT′-result`).
+RelT A t₁ t₂ = RelT′ (RelV A) t₁ t₂
 
 -- First-order (pure `Val`) payloads: observational = propositional equality.
 RelV Unit        _ _ = ⊤
@@ -101,27 +95,12 @@ RelV (A ⇒[ mk-kind Many π ] B) f g = ∀ {a b} → RelV A a b → RelT B (f a
 -- `returnT` has empty trace and carries its value, so related values give
 -- related pure computations.
 RelT-return : ∀ {A} {x y : ⟦ A ⟧ᴰ} → RelV A x y → RelT A (returnT x) (returnT y)
-RelT-return rv n = refl , rel-returns rv
+RelT-return rv = rel-ret rv
 
 -- Bind preserves the relation: related computations sequenced with related
--- continuations stay related. `_>>=T_` concatenates the two traces, so the
--- trace equality is `cong₂ _++_` of the two halves.
---
--- The two sides run their continuations at their OWN remaining budgets
--- (`_>>=T_` threads). Those budgets are computed from the two head traces,
--- which the relation already equates — so `keq` transports the right half
--- from the left's budget to its own. Nothing new is assumed: the budget
--- agreement IS the trace agreement.
+-- continuations stay related — the tree relation's own bind law.
 RelT-bind : ∀ {A B} {t₁ t₂ : T ⟦ A ⟧ᴰ} {f g : ⟦ A ⟧ᴰ → T ⟦ B ⟧ᴰ}
           → RelT A t₁ t₂
           → (∀ {a b} → RelV A a b → RelT B (f a) (g b))
           → RelT B (t₁ >>=T f) (t₂ >>=T g)
--- plan 0.98: the whole body is `bindRes-rel`. 0.97 had to thread the value
--- out of the head (`valueT t₁ n`) in order to APPLY the continuation, and then
--- transport the result along the budget equation — three components moved by
--- hand. Splitting on the head's RESULT instead means the value is bound by the
--- constructor: the stopped case has no continuation to mention at all, and the
--- returning case is the one that carries the budget transport.
-RelT-bind {A} {B} {t₁} {t₂} {f} {g} rt rk n =
-  bindRes-rel (RelV A) (RelV B) (T.trT t₁) (T.trT t₂) (T.resT t₁) (T.resT t₂)
-              f g n (proj₁ (rt n)) (proj₂ (rt n)) (λ r j → rk r j)
+RelT-bind {A} {B} rt rk = RelT′-bind (RelV A) (RelV B) rt (λ a b r → rk r)
