@@ -16,7 +16,7 @@ open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong�
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax hiding ( Fin )
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
-open import DirectedHoTT.Lib.Sugar using ( tag; conₗ; tag-sub )
+open import DirectedHoTT.Lib.Sugar using ( tag; conₗ; tag-sub; v₀; v₁; v₂; v₃; _,ₚ_ )
 open import DirectedHoTT.Lib.SynView using ( PayV; ⊢conP )
 open import DirectedHoTT.Lib.FinFam using ( FinI )
 open import DirectedHoTT.Lib.Tel
@@ -42,19 +42,19 @@ private
 ------------------------------------------------------------------------
 
 TCV : RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
-TCV J G T X = tσ (⌜Ty⌝ J) (tρ (tmIx (w1 J) (w1 G) (w1 T) (var vz)) (tσ (⌜≅ᵀ⌝ (w1 J) (var vz) (w1 X)) tι))
+TCV J G T X = tσ (⌜Ty⌝ J) (tρ (tmIx (w1 J) (w1 G) (w1 T) v₀) (tσ (⌜≅ᵀ⌝ (w1 J) v₀ (w1 X)) tι))
 
 private
   cv-cong : (a a' : RTm Δ) (J J' G G' T T' X X' : RTm (Δ ∙)) → a ≡ a' → J ≡ J' → G ≡ G' → T ≡ T' → X ≡ X' →
             (b b' : RTm (Δ ∙)) → b ≡ b' →
-            dσ a (lam (dρ (tmIx J G T (var vz)) (dσ b (lam dι)))) ≡ dσ a' (lam (dρ (tmIx J' G' T' (var vz)) (dσ b' (lam dι))))
+            dσ a (lam (dρ (tmIx J G T v₀) (dσ b (lam dι)))) ≡ dσ a' (lam (dρ (tmIx J' G' T' v₀) (dσ b' (lam dι))))
   cv-cong a a' J J' G G' T T' X X' refl refl refl refl refl b b' refl = refl
 
 TCV-sub : (σ : Sub Δ Θ) (J G T X : RTm Δ) → subTm σ ⌜ TCV J G T X ⌝ᵗ ≡ ⌜ TCV (subTm σ J) (subTm σ G) (subTm σ T) (subTm σ X) ⌝ᵗ
 TCV-sub σ J G T X =
   cv-cong _ _ _ _ _ _ _ _ _ _ (⌜Ty⌝-sub σ J) (w1-sub σ J) (w1-sub σ G) (w1-sub σ T) (w1-sub σ X) _ _
-          (trans (⌜≅ᵀ⌝-sub (extS σ) (w1 J) (var vz) (w1 X))
-                 (cong₂ (λ a b → ⌜≅ᵀ⌝ a (var vz) b) (w1-sub σ J) (w1-sub σ X)))
+          (trans (⌜≅ᵀ⌝-sub (extS σ) (w1 J) v₀ (w1 X))
+                 (cong₂ (λ a b → ⌜≅ᵀ⌝ a v₀ b) (w1-sub σ J) (w1-sub σ X)))
 
 okTCV : {Ξ : Ctx} {J G T X : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ G ∷ KCtx J → Ξ ⊢ T ∷ K 1 J → Ξ ⊢ X ∷ K 0 J →
         TelOK Ξ JT (TCV J G T X)
@@ -72,11 +72,11 @@ TCVat-law k σ j p c =
   trans (TCV-sub σ j (fst c) (conₗ k p) (snd c))
         (cong (λ z → ⌜ TCV (subTm σ j) (fst (subTm σ c)) z (snd (subTm σ c)) ⌝ᵗ)
               {x = subTm σ (conₗ k p)} {y = conₗ k (subTm σ p)}
-              (cong (λ t → con (pair t (subTm σ p))) (tag-sub σ k)))
+              (cong (λ t → con (t ,ₚ (subTm σ p))) (tag-sub σ k)))
 
 okTCVat : {c₀ k : ℕ} {shs : Shapes c₀} {sh : Shape} → NthG KSig 1 shs → NthSh shs k sh →
           {Ξ : Ctx} {j p c : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El ⌜Nat⌝ →
-          Ξ ⊢ p ∷ PayV sh (pair (tag 1) j) (SI 2) (SD KSig) → Ξ ⊢ c ∷ El (CTat (pair (tag 1) j)) →
+          Ξ ⊢ p ∷ PayV sh ((tag 1) ,ₚ j) (SI 2) (SD KSig) → Ξ ⊢ c ∷ El (CTat ((tag 1) ,ₚ j)) →
           TelOK Ξ JT (TCVat k j p c)
 okTCVat ng nh dj dp dc = okTCV dj (⊢ctxOf dc) (⊢conP KOK ng nh dj dp) (⊢tyOf dc)
 
@@ -90,35 +90,35 @@ private
 module _ {Ξ : Ctx} {D : RTm ⌊ Ξ ⌋} (dD : Ξ ⊢ D ∷ DescF JT) where
   ⊢payTCV : {j g T A B r e : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ g ∷ KCtx j → Ξ ⊢ T ∷ K 1 j →
             Ξ ⊢ A ∷ K 0 j → Ξ ⊢ B ∷ K 0 j → Ξ ⊢ r ∷ IMu JT D (tmIx j g T A) → Ξ ⊢ e ∷ El (⌜≅ᵀ⌝ j A B) →
-            Ξ ⊢ pair A (pair r (pair e unit)) ∷ El (dpay JT D ⌜ TCV j g T B ⌝ᵗ)
+            Ξ ⊢ pair A (r ,ₚ e ,ₚ unit) ∷ El (dpay JT D ⌜ TCV j g T B ⌝ᵗ)
   ⊢payTCV {j} {g} {T} {A} {B} {r} {e} dj dg dT dA dB dr de =
-    ⊢payσ ⊢JT dD {a = A} {p = pair r (pair e unit)} (okTCV dj dg dT dB) (toTy dA)
-      (⊢-cast {Ξ} {pair r (pair e unit)} {El (dpay JT D ⌜ tρ (tmIx j g T A) (tσ (⌜≅ᵀ⌝ j A B) tι) ⌝ᵗ)}
-              {El (dpay JT D (subTm (single A) ⌜ tρ (tmIx (w1 j) (w1 g) (w1 T) (var vz)) (tσ (⌜≅ᵀ⌝ (w1 j) (var vz) (w1 B)) tι) ⌝ᵗ))}
+    ⊢payσ ⊢JT dD {a = A} {p = pair r (e ,ₚ unit)} (okTCV dj dg dT dB) (toTy dA)
+      (⊢-cast {Ξ} {pair r (e ,ₚ unit)} {El (dpay JT D ⌜ tρ (tmIx j g T A) (tσ (⌜≅ᵀ⌝ j A B) tι) ⌝ᵗ)}
+              {El (dpay JT D (subTm (single A) ⌜ tρ (tmIx (w1 j) (w1 g) (w1 T) v₀) (tσ (⌜≅ᵀ⌝ (w1 j) v₀ (w1 B)) tι) ⌝ᵗ))}
               (cong (λ Z → El (dpay JT D Z)) (sym eq))
         (⊢payρ ⊢JT dD {r = r} {p = pair e unit} (ok-ρ (⊢tmIx dj dg dT dA) okC) dr
           (⊢payσ ⊢JT dD {a = e} {p = unit} okC de (⊢payι ⊢JT dD ⊢unit))))
     where
       okC : TelOK Ξ JT (tσ (⌜≅ᵀ⌝ j A B) tι)
       okC = okσJ (⊢⌜≅ᵀ⌝ dj dA dB) ok-ι
-      eq : subTm (single A) ⌜ tρ (tmIx (w1 j) (w1 g) (w1 T) (var vz)) (tσ (⌜≅ᵀ⌝ (w1 j) (var vz) (w1 B)) tι) ⌝ᵗ
+      eq : subTm (single A) ⌜ tρ (tmIx (w1 j) (w1 g) (w1 T) v₀) (tσ (⌜≅ᵀ⌝ (w1 j) v₀ (w1 B)) tι) ⌝ᵗ
            ≡ ⌜ tρ (tmIx j g T A) (tσ (⌜≅ᵀ⌝ j A B) tι) ⌝ᵗ
       eq = cv2-cong _ _ _ _ _ _ A _ _ (wk-cancel-tm A j) (wk-cancel-tm A g) (wk-cancel-tm A T)
-             (trans (⌜≅ᵀ⌝-sub (single A) (w1 j) (var vz) (w1 B)) (cong₂ (λ a b → ⌜≅ᵀ⌝ a A b) (wk-cancel-tm A j) (wk-cancel-tm A B)))
+             (trans (⌜≅ᵀ⌝-sub (single A) (w1 j) v₀ (w1 B)) (cong₂ (λ a b → ⌜≅ᵀ⌝ a A b) (wk-cancel-tm A j) (wk-cancel-tm A B)))
 
   -- …at the fibre's sources `(j , conₗ k p , (g , B))`
   ⊢payTCVat : {k : ℕ} {j g p A B r e : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ g ∷ KCtx j → Ξ ⊢ conₗ k p ∷ K 1 j →
               Ξ ⊢ A ∷ K 0 j → Ξ ⊢ B ∷ K 0 j → Ξ ⊢ r ∷ IMu JT D (tmIx j g (conₗ k p) A) → Ξ ⊢ e ∷ El (⌜≅ᵀ⌝ j A B) →
-              Ξ ⊢ pair A (pair r (pair e unit)) ∷ El (dpay JT D ⌜ TCVat k j p (pair g B) ⌝ᵗ)
+              Ξ ⊢ pair A (r ,ₚ e ,ₚ unit) ∷ El (dpay JT D ⌜ TCVat k j p (g ,ₚ B) ⌝ᵗ)
   ⊢payTCVat {k} {j} {g} {p} {A} {B} dj dg dT dA dB dr de =
     ⊢conv (⊢payTCV dj dg dT dA dB dr de) (csymᵀ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R))))
     where
       c = pair g B
       R : ⌜ TCV j (fst c) (conₗ k p) (snd c) ⌝ᵗ ⟶* ⌜ TCV j g (conₗ k p) B ⌝ᵗ
       R = mono-by {Δ = ⌊ Ξ ⌋} {n = 4} {as = j ∷ fst c ∷ conₗ k p ∷ snd c ∷ []} {as' = j ∷ g ∷ conₗ k p ∷ B ∷ []}
-            ⌜ TCV (var vz) (var (vs vz)) (var (vs (vs vz))) (var (vs (vs (vs vz)))) ⌝ᵗ
-            (TCV-sub (σₗ (j ∷ fst c ∷ conₗ k p ∷ snd c ∷ [])) (var vz) (var (vs vz)) (var (vs (vs vz))) (var (vs (vs (vs vz)))))
-            (TCV-sub (σₗ (j ∷ g ∷ conₗ k p ∷ B ∷ [])) (var vz) (var (vs vz)) (var (vs (vs vz))) (var (vs (vs (vs vz)))))
+            ⌜ TCV v₀ v₁ v₂ v₃ ⌝ᵗ
+            (TCV-sub (σₗ (j ∷ fst c ∷ conₗ k p ∷ snd c ∷ [])) v₀ v₁ v₂ v₃)
+            (TCV-sub (σₗ (j ∷ g ∷ conₗ k p ∷ B ∷ [])) v₀ v₁ v₂ v₃)
             (done ∷ʳ step (βfst g B) done ∷ʳ done ∷ʳ step (βsnd g B) done ∷ʳ []ʳ)
 
 ------------------------------------------------------------------------

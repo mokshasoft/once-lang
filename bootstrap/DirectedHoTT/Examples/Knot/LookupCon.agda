@@ -28,7 +28,7 @@ open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast; wk-cancel-tm )
 open import DirectedHoTT.Metatheory.SubjectReductionBase using () renaming ( wk-sub to wkS )
 open import DirectedHoTT.Metatheory.RedCong
-open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_; conₗ; tag; selF; selF-sub; ⊢selF; selF-β; subC; nth-z; nth-s; lt-z; ⊢tag; ⊢pay-σ; ⊢con-fib; []ᵈ; _∷ᵈ_ )
+open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_; conₗ; tag; selF; selF-sub; ⊢selF; selF-β; subC; nth-z; nth-s; lt-z; ⊢tag; ⊢pay-σ; ⊢con-fib; []ᵈ; _∷ᵈ_; v₀; v₁; v₂; v₃; v₄; v₅; _,ₚ_ )
 open import DirectedHoTT.Lib.Tel
 open import DirectedHoTT.Lib.MethAt
 open import DirectedHoTT.Lib.NatFib
@@ -60,13 +60,13 @@ thereT-sub : (σ : Sub Δ Θ) (m g y a : RTm Δ) →
              subTm σ ⌜ thereT m g y a ⌝ᵗ ≡ ⌜ thereT (subTm σ m) (subTm σ g) (subTm σ y) (subTm σ a) ⌝ᵗ
 thereT-sub σ m g y a =
   cong₂ (λ X Y → dσ X (lam Y)) (⌜Ty⌝-sub σ m)
-    (cong₂ dρ (cong₃ (λ u w z → ix∋ u w z (var vz)) (wkS σ m) (wkS σ g) (wkS σ y))
+    (cong₂ dρ (cong₃ (λ u w z → ix∋ u w z v₀) (wkS σ m) (wkS σ g) (wkS σ y))
               (cong (λ Z → dσ Z (lam dι))
                     (cong₃ ⌜Id⌝ (trans (⌜Ty⌝-sub σ' (nsuc (renTm vs m)))
                                        (cong (λ z → ⌜Ty⌝ (nsuc z)) {x = subTm σ' (renTm vs m)} {y = renTm vs (subTm σ m)} (wkS σ m)))
                                 (wkS σ a)
-                                (trans (wk-sub σ' 0 (renTm vs m) (var vz))
-                                       (cong (λ z → wk 0 z (var vz)) {x = subTm σ' (renTm vs m)} {y = renTm vs (subTm σ m)} (wkS σ m))))))
+                                (trans (wk-sub σ' 0 (renTm vs m) v₀)
+                                       (cong (λ z → wk 0 z v₀) {x = subTm σ' (renTm vs m)} {y = renTm vs (subTm σ m)} (wkS σ m))))))
   where σ' = extS σ
 
 private
@@ -82,12 +82,12 @@ xz-sub {Δ} {Θ} σ =
   cong lam5 {x = subTm (e6 σ) (rows (HB ∷ []))} {y = rows (HB ∷ [])}
     (trans {x = subTm (e6 σ) (rows (HB ∷ []))} {y = rows (subTm (e6 σ) HB ∷ [])} {z = rows (HB ∷ [])}
            (rows-sub (e6 σ) (HB ∷ []))
-           (cong (λ C → rows (C ∷ [])) {x = subTm (e6 σ) HB} {y = HB} (hereT-sub (e6 σ) V5 (var (vs (vs vz))) (var vz))))
+           (cong (λ C → rows (C ∷ [])) {x = subTm (e6 σ) HB} {y = HB} (hereT-sub (e6 σ) V5 v₂ v₀)))
   where
     V5 : {Ξ : Cx} → RTm ((((((Ξ ∙) ∙) ∙) ∙) ∙) ∙)
-    V5 = (var (vs (vs (vs (vs (vs vz))))))
+    V5 = v₅
     HB : {Ξ : Cx} → RTm ((((((Ξ ∙) ∙) ∙) ∙) ∙) ∙)
-    HB = ⌜ hereT V5 (var (vs (vs vz))) (var vz) ⌝ᵗ
+    HB = ⌜ hereT V5 v₂ v₀ ⌝ᵗ
 
 xs-sub : (σ : Sub Δ Θ) → subTm (extS σ) (xs {Δ}) ≡ xs {Θ}
 xs-sub {Δ} {Θ} σ =
@@ -95,12 +95,12 @@ xs-sub {Δ} {Θ} σ =
     (trans {x = subTm (e6 σ) (rows (TB ∷ []))} {y = rows (subTm (e6 σ) TB ∷ [])} {z = rows (TB ∷ [])}
            (rows-sub (e6 σ) (TB ∷ []))
            (cong (λ C → rows (C ∷ [])) {x = subTm (e6 σ) TB} {y = TB}
-                 (thereT-sub (e6 σ) V5 (var (vs vz)) (fst (var (vs (vs (vs (vs vz)))))) (var vz))))
+                 (thereT-sub (e6 σ) V5 v₁ (fst v₄) v₀)))
   where
     V5 : {Ξ : Cx} → RTm ((((((Ξ ∙) ∙) ∙) ∙) ∙) ∙)
-    V5 = (var (vs (vs (vs (vs (vs vz))))))
+    V5 = v₅
     TB : {Ξ : Cx} → RTm ((((((Ξ ∙) ∙) ∙) ∙) ∙) ∙)
-    TB = ⌜ thereT V5 (var (vs vz)) (fst (var (vs (vs (vs (vs vz)))))) (var vz) ⌝ᵗ
+    TB = ⌜ thereT V5 v₁ (fst v₄) v₀ ⌝ᵗ
 
 xM-sub : (σ : Sub Δ Θ) → subTm σ (xM {Δ}) ≡ xM {Θ}
 xM-sub {Δ} {Θ} σ =
@@ -120,10 +120,10 @@ private
   lam4 b = lam (lam (lam (lam b)))
 
   gsBody : RTm (((((Θ ∙) ∙) ∙) ∙) ∙) → RTm (((((Θ ∙) ∙) ∙) ∙) ∙)
-  gsBody X = app (app (app (ielim FinD (nsuc (var (vs (vs (vs (vs vz)))))) X (var (vs vz)))
-                           (fst (snd (var (vs (vs (vs vz)))))))
-                      (fst (var (vs (vs (vs vz))))))
-                 (var vz)
+  gsBody X = app (app (app (ielim FinD (nsuc v₄) X v₁)
+                           (fst (snd v₃)))
+                      (fst v₃))
+                 v₀
 
 gs-sub : (σ : Sub Δ Θ) → subTm (extS σ) (gs {Δ}) ≡ gs {Θ}
 gs-sub {Δ} {Θ} σ = cong (λ X → lam4 (gsBody X)) {x = subTm σ5 (xM {Δ ∙ ∙ ∙ ∙ ∙})} {y = xM {Θ ∙ ∙ ∙ ∙ ∙}} (xM-sub σ5)
@@ -145,8 +145,8 @@ gM-sub {Δ} {Θ} σ =
 
 D∋-sub : (σ : Sub Δ Θ) → subTm σ (D∋ {Δ}) ≡ D∋ {Θ}
 D∋-sub {Δ} {Θ} σ =
-  cong lam (cong₂ (λ D G → app (app (ielim D (fst (var vz)) G (fst (snd (var vz)))) (fst (snd (snd (var vz)))))
-                              (snd (snd (snd (var vz)))))
+  cong lam (cong₂ (λ D G → app (app (ielim D (fst v₀) G (fst (snd v₀))) (fst (snd (snd v₀))))
+                              (snd (snd (snd v₀))))
                   {x = subTm (extS σ) (CtxD {Δ ∙})} {x' = CtxD} {y = subTm (extS σ) (gM {Δ ∙})} {y' = gM}
                   (CtxD-sub (extS σ)) (gM-sub (extS σ)))
 
@@ -239,18 +239,18 @@ module HereV (Θ₀ : Cx) where
   Γv : Cx
   Γv = (((Θ₀ ∙) ∙) ∙) ∙
   m g a' a : RTm Γv
-  m  = var (vs (vs (vs vz)))
-  g  = var (vs (vs vz))
-  a' = var (vs vz)
-  a  = var vz
+  m  = v₃
+  g  = v₂
+  a' = v₁
+  a  = v₀
   p q : RTm Γv
-  p = pair g (pair a' unit)
+  p = pair g (a' ,ₚ unit)
   q = pair (tag 0) p
   i : RTm Γv
   i = ix∋ (nsuc m) (cext g a') ffz a
 
   B : RTm (Γv ∙)
-  B = app (app (ielim CtxD (fst (var vz)) gM (fst (snd (var vz)))) (fst (snd (snd (var vz))))) (snd (snd (snd (var vz))))
+  B = app (app (ielim CtxD (fst v₀) gM (fst (snd v₀))) (fst (snd (snd v₀)))) (snd (snd (snd v₀)))
 
   T1 T2 : RTm Γv
   T1 = app (app (ielim CtxD (fst i) gM (fst (snd i))) (fst (snd (snd i)))) (snd (snd (snd i)))
@@ -285,21 +285,21 @@ module HereV (Θ₀ : Cx) where
   T5 : RTm Γv
   T5 = GBx xM m p ffz a
   t0 t1 t2 t3 : RTm _
-  t0 = lam3 (GBx xM (W4 m) (var (vs (vs (vs (vz))))) (var (vs (vz))) (var vz))
-  t1 = lam2 (GBx xM (W3 m) (W3 p) (var (vs (vz))) (var vz))
-  t2 = lam (GBx xM (W2 m) (W2 p) (var (vs (vz))) (var vz))
-  t3 = GBx xM (W1 m) (W1 p) (W1 ffz) (var vz)
+  t0 = lam3 (GBx xM (W4 m) (var (vs (vs (vs (vz))))) (var (vs (vz))) v₀)
+  t1 = lam2 (GBx xM (W3 m) (W3 p) (var (vs (vz))) v₀)
+  t2 = lam (GBx xM (W2 m) (W2 p) (var (vs (vz))) v₀)
+  t3 = GBx xM (W1 m) (W1 p) (W1 ffz) v₀
   e0 : gs' ≡ lam t0
-  e0 = cong (λ Z → lam (lam3 (GBx Z (W4 m) (var (vs (vs (vs (vz))))) (var (vs (vz))) (var vz))))
+  e0 = cong (λ Z → lam (lam3 (GBx Z (W4 m) (var (vs (vs (vs (vz))))) (var (vs (vz))) v₀)))
             {x = subTm (extS (extS (extS (extS (single m))))) xM} {y = xM} (xM-sub (extS (extS (extS (extS (single m))))))
   e1 : subTm (single p) t0 ≡ lam t1
-  e1 = cong (λ Z → lam (lam2 (GBx Z (W3 m) (W3 p) (var (vs (vz))) (var vz))))
+  e1 = cong (λ Z → lam (lam2 (GBx Z (W3 m) (W3 p) (var (vs (vz))) v₀)))
             {x = subTm (extS (extS (extS (single p)))) xM} {y = xM} (xM-sub (extS (extS (extS (single p)))))
   e2 : subTm (single h) t1 ≡ lam t2
-  e2 = cong (λ Z → lam (lam (GBx Z (W2 m) (W2 p) (var (vs (vz))) (var vz))))
+  e2 = cong (λ Z → lam (lam (GBx Z (W2 m) (W2 p) (var (vs (vz))) v₀)))
             {x = subTm (extS (extS (single h))) xM} {y = xM} (xM-sub (extS (extS (single h))))
   e3 : subTm (single ffz) t2 ≡ lam t3
-  e3 = cong (λ Z → lam (GBx Z (W1 m) (W1 p) (W1 ffz) (var vz)))
+  e3 = cong (λ Z → lam (GBx Z (W1 m) (W1 p) (W1 ffz) v₀))
             {x = subTm (extS (single ffz)) xM} {y = xM} (xM-sub (extS (single ffz)))
   e4 : subTm (single a) t3 ≡ T5
   e4 = cong (λ Z → GBx Z m p ffz a) {x = subTm (single a) xM} {y = xM} (xM-sub (single a))
@@ -319,18 +319,18 @@ module HereV (Θ₀ : Cx) where
                 (⟶*-appˡ (⟶*-appʳ (step (βfst _ _) done)))
 
   h2 : RTm Γv
-  h2 = dih FinD xM (app FinD (nsuc m)) (pair (tag 0) unit)
+  h2 = dih FinD xM (app FinD (nsuc m)) ((tag 0) ,ₚ unit)
   xz' : RTm Γv
   xz' = subTm (single m) xz
   T7 T8 : RTm Γv
-  T7 = app (app (app (app (app (subTm (single m) (methAt (xz ∷ xs ∷ []))) (pair (tag 0) unit)) h2) a') g) a
+  T7 = app (app (app (app (app (subTm (single m) (methAt (xz ∷ xs ∷ []))) ((tag 0) ,ₚ unit)) h2) a') g) a
   T8 = app (app (app (app (app xz' unit) h2) a') g) a
 
   c7 : T6 ⟶* T7
   c7 = ⟶*-appˡ (⟶*-appˡ (⟶*-appˡ (ιN-s {D = FinD} {E0 = methAt []} {m = m} {q = pair (tag 0) unit} {ES = methAt (xz ∷ xs ∷ [])})))
 
   c8 : T7 ⟶* T8
-  c8 = subst (λ z → app (app (app (app (app z (pair (tag 0) unit)) h2) a') g) a ⟶* T8)
+  c8 = subst (λ z → app (app (app (app (app z ((tag 0) ,ₚ unit)) h2) a') g) a ⟶* T8)
              (sym (methAt-sub (single m) (xz ∷ xs ∷ [])))
              (⟶*-appˡ (⟶*-appˡ (⟶*-appˡ (methAt-β {k = 0} {m = xz'} {p = unit} {h = h2}
                                                      {ms = xz' ∷ subTm (single m) xs ∷ []} nth-z))))
@@ -339,32 +339,32 @@ module HereV (Θ₀ : Cx) where
   R : RTm Γv
   R = HR m a' a
   u0 u1 u2 u3 u4 : RTm _
-  u0 = lam3 (lam (HR (W5 m) (var (vs (vs (vz)))) (var vz)))
-  u1 = lam3 (HR (W4 m) (var (vs (vs (vz)))) (var vz))
-  u2 = lam2 (HR (W3 m) (var (vs (vs (vz)))) (var vz))
-  u3 = lam (HR (W2 m) (W2 a') (var vz))
-  u4 = HR (W1 m) (W1 a') (var vz)
+  u0 = lam3 (lam (HR (W5 m) (var (vs (vs (vz)))) v₀))
+  u1 = lam3 (HR (W4 m) (var (vs (vs (vz)))) v₀)
+  u2 = lam2 (HR (W3 m) (var (vs (vs (vz)))) v₀)
+  u3 = lam (HR (W2 m) (W2 a') v₀)
+  u4 = HR (W1 m) (W1 a') v₀
   f0 : xz' ≡ lam u0
-  f0 = cong (λ Z → lam (lam3 (lam Z))) {x = subTm (extS (extS (extS (extS (extS (single m)))))) (HR (var (vs (vs (vs (vs (vs (vz))))))) (var (vs (vs (vz)))) (var vz))}
-            {y = HR (W5 m) (var (vs (vs (vz)))) (var vz)}
-            (hr-sub (extS (extS (extS (extS (extS (single m)))))) (var (vs (vs (vs (vs (vs (vz))))))) (var (vs (vs (vz)))) (var vz))
+  f0 = cong (λ Z → lam (lam3 (lam Z))) {x = subTm (extS (extS (extS (extS (extS (single m)))))) (HR (var (vs (vs (vs (vs (vs (vz))))))) (var (vs (vs (vz)))) v₀)}
+            {y = HR (W5 m) (var (vs (vs (vz)))) v₀}
+            (hr-sub (extS (extS (extS (extS (extS (single m)))))) (var (vs (vs (vs (vs (vs (vz))))))) (var (vs (vs (vz)))) v₀)
   f1 : subTm (single unit) u0 ≡ lam u1
-  f1 = cong (λ Z → lam (lam3 Z)) {x = subTm (extS (extS (extS (extS (single unit))))) (HR (W5 m) (var (vs (vs (vz)))) (var vz))}
-            {y = HR (W4 m) (var (vs (vs (vz)))) (var vz)}
-            (hr-sub (extS (extS (extS (extS (single unit))))) (W5 m) (var (vs (vs (vz)))) (var vz))
+  f1 = cong (λ Z → lam (lam3 Z)) {x = subTm (extS (extS (extS (extS (single unit))))) (HR (W5 m) (var (vs (vs (vz)))) v₀)}
+            {y = HR (W4 m) (var (vs (vs (vz)))) v₀}
+            (hr-sub (extS (extS (extS (extS (single unit))))) (W5 m) (var (vs (vs (vz)))) v₀)
   f2 : subTm (single h2) u1 ≡ lam u2
-  f2 = cong (λ Z → lam (lam2 Z)) {x = subTm (extS (extS (extS (single h2)))) (HR (W4 m) (var (vs (vs (vz)))) (var vz))}
-            {y = HR (W3 m) (var (vs (vs (vz)))) (var vz)}
-            (hr-sub (extS (extS (extS (single h2)))) (W4 m) (var (vs (vs (vz)))) (var vz))
+  f2 = cong (λ Z → lam (lam2 Z)) {x = subTm (extS (extS (extS (single h2)))) (HR (W4 m) (var (vs (vs (vz)))) v₀)}
+            {y = HR (W3 m) (var (vs (vs (vz)))) v₀}
+            (hr-sub (extS (extS (extS (single h2)))) (W4 m) (var (vs (vs (vz)))) v₀)
   f3 : subTm (single a') u2 ≡ lam u3
-  f3 = cong (λ Z → lam (lam Z)) {x = subTm (extS (extS (single a'))) (HR (W3 m) (var (vs (vs (vz)))) (var vz))}
-            {y = HR (W2 m) (W2 a') (var vz)}
-            (hr-sub (extS (extS (single a'))) (W3 m) (var (vs (vs (vz)))) (var vz))
+  f3 = cong (λ Z → lam (lam Z)) {x = subTm (extS (extS (single a'))) (HR (W3 m) (var (vs (vs (vz)))) v₀)}
+            {y = HR (W2 m) (W2 a') v₀}
+            (hr-sub (extS (extS (single a'))) (W3 m) (var (vs (vs (vz)))) v₀)
   f4 : subTm (single g) u3 ≡ lam u4
-  f4 = cong lam {x = subTm (extS (single g)) (HR (W2 m) (W2 a') (var vz))} {y = HR (W1 m) (W1 a') (var vz)}
-            (hr-sub (extS (single g)) (W2 m) (W2 a') (var vz))
+  f4 = cong lam {x = subTm (extS (single g)) (HR (W2 m) (W2 a') v₀)} {y = HR (W1 m) (W1 a') v₀}
+            (hr-sub (extS (single g)) (W2 m) (W2 a') v₀)
   f5 : subTm (single a) u4 ≡ R
-  f5 = hr-sub (single a) (W1 m) (W1 a') (var vz)
+  f5 = hr-sub (single a) (W1 m) (W1 a') v₀
 
   c9 : T8 ⟶* R
   c9 = subst (λ z → app (app (app (app (app z unit) h2) a') g) a ⟶* R) (sym f0)
@@ -387,19 +387,19 @@ module ThereV (Θ₀ : Cx) where
   Γv : Cx
   Γv = ((((Θ₀ ∙) ∙) ∙) ∙) ∙
   m g a' y a : RTm Γv
-  m  = var (vs (vs (vs (vs vz))))
-  g  = var (vs (vs (vs vz)))
-  a' = var (vs (vs vz))
-  y  = var (vs vz)
-  a  = var vz
+  m  = v₄
+  g  = v₃
+  a' = v₂
+  y  = v₁
+  a  = v₀
   p q : RTm Γv
-  p = pair g (pair a' unit)
+  p = pair g (a' ,ₚ unit)
   q = pair (tag 0) p
   i : RTm Γv
   i = ix∋ (nsuc m) (cext g a') (ffs y) a
 
   B : RTm (Γv ∙)
-  B = app (app (ielim CtxD (fst (var vz)) gM (fst (snd (var vz)))) (fst (snd (snd (var vz))))) (snd (snd (snd (var vz))))
+  B = app (app (ielim CtxD (fst v₀) gM (fst (snd v₀))) (fst (snd (snd v₀)))) (snd (snd (snd v₀)))
 
   T1 T2 : RTm Γv
   T1 = app (app (ielim CtxD (fst i) gM (fst (snd i))) (fst (snd (snd i)))) (snd (snd (snd i)))
@@ -434,21 +434,21 @@ module ThereV (Θ₀ : Cx) where
   T5 : RTm Γv
   T5 = GBx xM m p (ffs y) a
   t0 t1 t2 t3 : RTm _
-  t0 = lam3 (GBx xM (W4 m) (var (vs (vs (vs (vz))))) (var (vs (vz))) (var vz))
-  t1 = lam2 (GBx xM (W3 m) (W3 p) (var (vs (vz))) (var vz))
-  t2 = lam (GBx xM (W2 m) (W2 p) (var (vs (vz))) (var vz))
-  t3 = GBx xM (W1 m) (W1 p) (W1 (ffs y)) (var vz)
+  t0 = lam3 (GBx xM (W4 m) (var (vs (vs (vs (vz))))) (var (vs (vz))) v₀)
+  t1 = lam2 (GBx xM (W3 m) (W3 p) (var (vs (vz))) v₀)
+  t2 = lam (GBx xM (W2 m) (W2 p) (var (vs (vz))) v₀)
+  t3 = GBx xM (W1 m) (W1 p) (W1 (ffs y)) v₀
   e0 : gs' ≡ lam t0
-  e0 = cong (λ Z → lam (lam3 (GBx Z (W4 m) (var (vs (vs (vs (vz))))) (var (vs (vz))) (var vz))))
+  e0 = cong (λ Z → lam (lam3 (GBx Z (W4 m) (var (vs (vs (vs (vz))))) (var (vs (vz))) v₀)))
             {x = subTm (extS (extS (extS (extS (single m))))) xM} {y = xM} (xM-sub (extS (extS (extS (extS (single m))))))
   e1 : subTm (single p) t0 ≡ lam t1
-  e1 = cong (λ Z → lam (lam2 (GBx Z (W3 m) (W3 p) (var (vs (vz))) (var vz))))
+  e1 = cong (λ Z → lam (lam2 (GBx Z (W3 m) (W3 p) (var (vs (vz))) v₀)))
             {x = subTm (extS (extS (extS (single p)))) xM} {y = xM} (xM-sub (extS (extS (extS (single p)))))
   e2 : subTm (single h) t1 ≡ lam t2
-  e2 = cong (λ Z → lam (lam (GBx Z (W2 m) (W2 p) (var (vs (vz))) (var vz))))
+  e2 = cong (λ Z → lam (lam (GBx Z (W2 m) (W2 p) (var (vs (vz))) v₀)))
             {x = subTm (extS (extS (single h))) xM} {y = xM} (xM-sub (extS (extS (single h))))
   e3 : subTm (single (ffs y)) t2 ≡ lam t3
-  e3 = cong (λ Z → lam (GBx Z (W1 m) (W1 p) (W1 (ffs y)) (var vz)))
+  e3 = cong (λ Z → lam (GBx Z (W1 m) (W1 p) (W1 (ffs y)) v₀))
             {x = subTm (extS (single (ffs y))) xM} {y = xM} (xM-sub (extS (single (ffs y))))
   e4 : subTm (single a) t3 ≡ T5
   e4 = cong (λ Z → GBx Z m p (ffs y) a) {x = subTm (single a) xM} {y = xM} (xM-sub (single a))
@@ -470,18 +470,18 @@ module ThereV (Θ₀ : Cx) where
   py : RTm Γv
   py = pair y unit
   h2 : RTm Γv
-  h2 = dih FinD xM (app FinD (nsuc m)) (pair (tag 1) py)
+  h2 = dih FinD xM (app FinD (nsuc m)) ((tag 1) ,ₚ py)
   xs' : RTm Γv
   xs' = subTm (single m) xs
   T7 T8 : RTm Γv
-  T7 = app (app (app (app (app (subTm (single m) (methAt (xz ∷ xs ∷ []))) (pair (tag 1) py)) h2) a') g) a
+  T7 = app (app (app (app (app (subTm (single m) (methAt (xz ∷ xs ∷ []))) ((tag 1) ,ₚ py)) h2) a') g) a
   T8 = app (app (app (app (app xs' py) h2) a') g) a
 
   c7 : T6 ⟶* T7
   c7 = ⟶*-appˡ (⟶*-appˡ (⟶*-appˡ (ιN-s {D = FinD} {E0 = methAt []} {m = m} {q = pair (tag 1) py} {ES = methAt (xz ∷ xs ∷ [])})))
 
   c8 : T7 ⟶* T8
-  c8 = subst (λ z → app (app (app (app (app z (pair (tag 1) py)) h2) a') g) a ⟶* T8)
+  c8 = subst (λ z → app (app (app (app (app z ((tag 1) ,ₚ py)) h2) a') g) a ⟶* T8)
              (sym (methAt-sub (single m) (xz ∷ xs ∷ [])))
              (⟶*-appˡ (⟶*-appˡ (⟶*-appˡ (methAt-β {k = 1} {m = xs'} {p = py} {h = h2}
                                                      {ms = subTm (single m) xz ∷ xs' ∷ []} (nth-s nth-z)))))
@@ -490,34 +490,34 @@ module ThereV (Θ₀ : Cx) where
   R : RTm Γv
   R = TR m g (fst py) a
   k0 k1 k2 k3 k4 : RTm _
-  k0 = lam3 (lam (TR (W5 m) (var (vs (vz))) (fst (var (vs (vs (vs (vs (vz))))))) (var vz)))
-  k1 = lam3 (TR (W4 m) (var (vs (vz))) (fst (W4 py)) (var vz))
-  k2 = lam2 (TR (W3 m) (var (vs (vz))) (fst (W3 py)) (var vz))
-  k3 = lam (TR (W2 m) (var (vs (vz))) (fst (W2 py)) (var vz))
-  k4 = TR (W1 m) (W1 g) (fst (W1 py)) (var vz)
+  k0 = lam3 (lam (TR (W5 m) (var (vs (vz))) (fst (var (vs (vs (vs (vs (vz))))))) v₀))
+  k1 = lam3 (TR (W4 m) (var (vs (vz))) (fst (W4 py)) v₀)
+  k2 = lam2 (TR (W3 m) (var (vs (vz))) (fst (W3 py)) v₀)
+  k3 = lam (TR (W2 m) (var (vs (vz))) (fst (W2 py)) v₀)
+  k4 = TR (W1 m) (W1 g) (fst (W1 py)) v₀
   f0 : xs' ≡ lam k0
   f0 = cong (λ Z → lam (lam3 (lam Z)))
-            {x = subTm (extS (extS (extS (extS (extS (single m)))))) (TR (var (vs (vs (vs (vs (vs (vz))))))) (var (vs (vz))) (fst (var (vs (vs (vs (vs (vz))))))) (var vz))}
-            {y = TR (W5 m) (var (vs (vz))) (fst (var (vs (vs (vs (vs (vz))))))) (var vz)}
-            (tr-sub (extS (extS (extS (extS (extS (single m)))))) (var (vs (vs (vs (vs (vs (vz))))))) (var (vs (vz))) (fst (var (vs (vs (vs (vs (vz))))))) (var vz))
+            {x = subTm (extS (extS (extS (extS (extS (single m)))))) (TR (var (vs (vs (vs (vs (vs (vz))))))) (var (vs (vz))) (fst (var (vs (vs (vs (vs (vz))))))) v₀)}
+            {y = TR (W5 m) (var (vs (vz))) (fst (var (vs (vs (vs (vs (vz))))))) v₀}
+            (tr-sub (extS (extS (extS (extS (extS (single m)))))) (var (vs (vs (vs (vs (vs (vz))))))) (var (vs (vz))) (fst (var (vs (vs (vs (vs (vz))))))) v₀)
   f1 : subTm (single py) k0 ≡ lam k1
-  f1 = cong (λ Z → lam (lam3 Z)) {x = subTm (extS (extS (extS (extS (single py))))) (TR (W5 m) (var (vs (vz))) (fst (var (vs (vs (vs (vs (vz))))))) (var vz))}
-            {y = TR (W4 m) (var (vs (vz))) (fst (W4 py)) (var vz)}
-            (tr-sub (extS (extS (extS (extS (single py))))) (W5 m) (var (vs (vz))) (fst (var (vs (vs (vs (vs (vz))))))) (var vz))
+  f1 = cong (λ Z → lam (lam3 Z)) {x = subTm (extS (extS (extS (extS (single py))))) (TR (W5 m) (var (vs (vz))) (fst (var (vs (vs (vs (vs (vz))))))) v₀)}
+            {y = TR (W4 m) (var (vs (vz))) (fst (W4 py)) v₀}
+            (tr-sub (extS (extS (extS (extS (single py))))) (W5 m) (var (vs (vz))) (fst (var (vs (vs (vs (vs (vz))))))) v₀)
   f2 : subTm (single h2) k1 ≡ lam k2
-  f2 = cong (λ Z → lam (lam2 Z)) {x = subTm (extS (extS (extS (single h2)))) (TR (W4 m) (var (vs (vz))) (fst (W4 py)) (var vz))}
-            {y = TR (W3 m) (var (vs (vz))) (fst (W3 py)) (var vz)}
-            (tr-sub (extS (extS (extS (single h2)))) (W4 m) (var (vs (vz))) (fst (W4 py)) (var vz))
+  f2 = cong (λ Z → lam (lam2 Z)) {x = subTm (extS (extS (extS (single h2)))) (TR (W4 m) (var (vs (vz))) (fst (W4 py)) v₀)}
+            {y = TR (W3 m) (var (vs (vz))) (fst (W3 py)) v₀}
+            (tr-sub (extS (extS (extS (single h2)))) (W4 m) (var (vs (vz))) (fst (W4 py)) v₀)
   f3 : subTm (single a') k2 ≡ lam k3
-  f3 = cong (λ Z → lam (lam Z)) {x = subTm (extS (extS (single a'))) (TR (W3 m) (var (vs (vz))) (fst (W3 py)) (var vz))}
-            {y = TR (W2 m) (var (vs (vz))) (fst (W2 py)) (var vz)}
-            (tr-sub (extS (extS (single a'))) (W3 m) (var (vs (vz))) (fst (W3 py)) (var vz))
+  f3 = cong (λ Z → lam (lam Z)) {x = subTm (extS (extS (single a'))) (TR (W3 m) (var (vs (vz))) (fst (W3 py)) v₀)}
+            {y = TR (W2 m) (var (vs (vz))) (fst (W2 py)) v₀}
+            (tr-sub (extS (extS (single a'))) (W3 m) (var (vs (vz))) (fst (W3 py)) v₀)
   f4 : subTm (single g) k3 ≡ lam k4
-  f4 = cong lam {x = subTm (extS (single g)) (TR (W2 m) (var (vs (vz))) (fst (W2 py)) (var vz))}
-            {y = TR (W1 m) (W1 g) (fst (W1 py)) (var vz)}
-            (tr-sub (extS (single g)) (W2 m) (var (vs (vz))) (fst (W2 py)) (var vz))
+  f4 = cong lam {x = subTm (extS (single g)) (TR (W2 m) (var (vs (vz))) (fst (W2 py)) v₀)}
+            {y = TR (W1 m) (W1 g) (fst (W1 py)) v₀}
+            (tr-sub (extS (single g)) (W2 m) (var (vs (vz))) (fst (W2 py)) v₀)
   f5 : subTm (single a) k4 ≡ R
-  f5 = tr-sub (single a) (W1 m) (W1 g) (fst (W1 py)) (var vz)
+  f5 = tr-sub (single a) (W1 m) (W1 g) (fst (W1 py)) v₀
 
   c9 : T8 ⟶* R
   c9 = subst (λ z → app (app (app (app (app z py) h2) a') g) a ⟶* R) (sym f0)
@@ -555,16 +555,16 @@ module _ {Γ : Cx} where
              app D∋ (ix∋ (nsuc m) (cext g a') ffz a) ⟶* rows (⌜ hereT m a' a ⌝ᵗ ∷ [])
   fib-here m g a' a =
     subst (λ z → app D∋ (ix∋ (nsuc m) (cext g a') ffz a) ⟶* z)
-          (hr-sub σ (var (vs (vs (vs vz)))) (var (vs vz)) (var vz))
+          (hr-sub σ v₃ v₁ v₀)
       (subst (λ z → app z (ix∋ (nsuc m) (cext g a') ffz a) ⟶* subTm σ (HereV.R Γ)) (D∋-sub σ)
              (⟶*-sub σ (HereV.fibV Γ)))
     where σ = σH m g a' a
 
   fib-there : (m g a' y a : RTm Γ) →
-              app D∋ (ix∋ (nsuc m) (cext g a') (ffs y) a) ⟶* rows (⌜ thereT m g (fst (pair y unit)) a ⌝ᵗ ∷ [])
+              app D∋ (ix∋ (nsuc m) (cext g a') (ffs y) a) ⟶* rows (⌜ thereT m g (fst (y ,ₚ unit)) a ⌝ᵗ ∷ [])
   fib-there m g a' y a =
     subst (λ z → app D∋ (ix∋ (nsuc m) (cext g a') (ffs y) a) ⟶* z)
-          (tr-sub σ (var (vs (vs (vs (vs vz))))) (var (vs (vs (vs vz)))) (fst (pair (var (vs vz)) unit)) (var vz))
+          (tr-sub σ v₄ v₃ (fst (v₁ ,ₚ unit)) v₀)
       (subst (λ z → app z (ix∋ (nsuc m) (cext g a') (ffs y) a) ⟶* subTm σ (ThereV.R Γ)) (D∋-sub σ)
              (⟶*-sub σ (ThereV.fibV Γ)))
     where σ = σT m g a' y a
@@ -574,10 +574,10 @@ module _ {Γ : Cx} where
 ------------------------------------------------------------------------
 
 here∋ : {Γ : Cx} → RTm Γ → RTm Γ
-here∋ e = conₗ 0 (pair e unit)
+here∋ e = conₗ 0 (e ,ₚ unit)
 
 there∋ : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ → RTm Γ
-there∋ b r e = conₗ 0 (pair b (pair r (pair e unit)))
+there∋ b r e = conₗ 0 (b ,ₚ r ,ₚ e ,ₚ unit)
 
 module _ {Θ : Ctx} {m g a' a : RTm ⌊ Θ ⌋} where
   -- here : (Γ ▹ A') ∋ vz ∷ wk A'
@@ -598,7 +598,7 @@ module _ {Θ : Ctx} {m g a' a : RTm ⌊ Θ ⌋} where
 module _ {Θ : Ctx} {m g a' y a : RTm ⌊ Θ ⌋} where
   private
     y' : RTm ⌊ Θ ⌋
-    y' = fst (pair y unit)
+    y' = fst (y ,ₚ unit)
 
   -- there : Γ' ∋ y ∷ B → (Γ' ▹ A') ∋ vs y ∷ wk B
   ⊢there∋ : {b r e : RTm ⌊ Θ ⌋} → Θ ⊢ m ∷ El ⌜Nat⌝ → Θ ⊢ g ∷ KCtx m → Θ ⊢ a' ∷ K 0 m → Θ ⊢ y ∷ FinI m →
@@ -606,12 +606,12 @@ module _ {Θ : Ctx} {m g a' y a : RTm ⌊ Θ ⌋} where
             Θ ⊢ e ∷ El (⌜Id⌝ (⌜Ty⌝ (nsuc m)) a (wk 0 m b)) →
             Θ ⊢ there∋ b r e ∷ K∋ (ix∋ (nsuc m) (cext g a') (ffs y) a)
   ⊢there∋ {b} {r} {e} dm dg da' dy da db dr de =
-    ⊢conRow {Θ} {I∋} {D∋} {ix∋ (nsuc m) (cext g a') (ffs y) a} {⌜ thereT m g y' a ⌝ᵗ} {pair b (pair r (pair e unit))}
+    ⊢conRow {Θ} {I∋} {D∋} {ix∋ (nsuc m) (cext g a') (ffs y) a} {⌜ thereT m g y' a ⌝ᵗ} {pair b (r ,ₚ e ,ₚ unit)}
             ⊢I∋ ⊢D∋ (⊢ix∋ (⊢isuc dm) (⊢cext dm dg da') (⊢ffs dm dy) da)
             (fib-there m g a' y a)
             (⊢tel {Θ} {I∋} {thereT m g y' a} ⊢I∋ okT)
-            (⊢payσ {Θ} {I∋} {D∋} ⊢I∋ ⊢D∋ {⌜Ty⌝ m} {b} {pair r (pair e unit)} {Tρ} okT (toTy db)
-                   (⊢-cast {Θ} {pair r (pair e unit)} {El (dpay I∋ D∋ ⌜ Tρ' ⌝ᵗ)} {El (dpay I∋ D∋ (subTm (single b) ⌜ Tρ ⌝ᵗ))}
+            (⊢payσ {Θ} {I∋} {D∋} ⊢I∋ ⊢D∋ {⌜Ty⌝ m} {b} {pair r (e ,ₚ unit)} {Tρ} okT (toTy db)
+                   (⊢-cast {Θ} {pair r (e ,ₚ unit)} {El (dpay I∋ D∋ ⌜ Tρ' ⌝ᵗ)} {El (dpay I∋ D∋ (subTm (single b) ⌜ Tρ ⌝ᵗ))}
                            (cong (λ C → El (dpay I∋ D∋ C)) (sym instT)) dp1))
     where
       dy' : Θ ⊢ y' ∷ FinI m
@@ -619,8 +619,8 @@ module _ {Θ : Ctx} {m g a' y a : RTm ⌊ Θ ⌋} where
       okT : TelOK Θ I∋ (thereT m g y' a)
       okT = thereOK {Θ} {m} {g} {y'} {a} dm dg dy' da
       Tρ : Tel (⌊ Θ ⌋ ∙)
-      Tρ = tρ (ix∋ (renTm vs m) (renTm vs g) (renTm vs y') (var vz))
-              (tσ (⌜Id⌝ (⌜Ty⌝ (nsuc (renTm vs m))) (renTm vs a) (wk 0 (renTm vs m) (var vz))) tι)
+      Tρ = tρ (ix∋ (renTm vs m) (renTm vs g) (renTm vs y') v₀)
+              (tσ (⌜Id⌝ (⌜Ty⌝ (nsuc (renTm vs m))) (renTm vs a) (wk 0 (renTm vs m) v₀)) tι)
       Tρ' : Tel ⌊ Θ ⌋
       Tρ' = tρ (ix∋ m g y' b) (tσ (⌜Id⌝ (⌜Ty⌝ (nsuc m)) a (wk 0 m b)) tι)
       wkc : (t : RTm ⌊ Θ ⌋) → subTm (single b) (renTm vs t) ≡ t
@@ -631,14 +631,14 @@ module _ {Θ : Ctx} {m g a' y a : RTm ⌊ Θ ⌋} where
                 (cong₃ ⌜Id⌝ (trans (⌜Ty⌝-sub (single b) (nsuc (renTm vs m)))
                                    (cong (λ z → ⌜Ty⌝ (nsuc z)) {x = subTm (single b) (renTm vs m)} {y = m} (wkc m)))
                             (wkc a)
-                            (trans (wk-sub (single b) 0 (renTm vs m) (var vz))
+                            (trans (wk-sub (single b) 0 (renTm vs m) v₀)
                                    (cong (λ z → wk 0 z b) {x = subTm (single b) (renTm vs m)} {y = m} (wkc m))))
       dId : Θ ⊢ ⌜Id⌝ (⌜Ty⌝ (nsuc m)) a (wk 0 m b) ∷ U
       dId = ⊢⌜Id⌝ {Θ} {⌜Ty⌝ (nsuc m)} {a} {wk 0 m b} (⊢⌜Ty⌝ (⊢isuc dm)) (toTy da) (toTy (⊢wkS {Θ} {0} {m} {b} lt-z dm db))
       dr' : Θ ⊢ r ∷ IMu I∋ D∋ (ix∋ m g y' b)
       dr' = ⊢conv {Θ} {r} {K∋ (ix∋ m g y b)} {IMu I∋ D∋ (ix∋ m g y' b)} dr
                   (csymᵀ (credᵀ (ξ-IMuⁱ (ξ-pairʳ (ξ-pairʳ (ξ-pairˡ (βfst y unit)))))))
-      dp1 : Θ ⊢ pair r (pair e unit) ∷ El (dpay I∋ D∋ ⌜ Tρ' ⌝ᵗ)
+      dp1 : Θ ⊢ pair r (e ,ₚ unit) ∷ El (dpay I∋ D∋ ⌜ Tρ' ⌝ᵗ)
       dp1 = ⊢payρ {Θ} {I∋} {D∋} ⊢I∋ ⊢D∋ {ix∋ m g y' b} {r} {pair e unit} {tσ (⌜Id⌝ (⌜Ty⌝ (nsuc m)) a (wk 0 m b)) tι}
               (ok-ρ (⊢ix∋ dm dg dy' db) (ok-σ dId ok-ι)) dr'
               (⊢payσ {Θ} {I∋} {D∋} ⊢I∋ ⊢D∋ {⌜Id⌝ (⌜Ty⌝ (nsuc m)) a (wk 0 m b)} {e} {unit} {tι} (ok-σ dId ok-ι) de

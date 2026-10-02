@@ -27,6 +27,7 @@ open import DirectedHoTT.Examples.Knot.Terms
 open import DirectedHoTT.Examples.Knot.Sub
 import DirectedHoTT.Examples.Knot.Ren as KR
 open import DirectedHoTT.Examples.Knot.RenAgree using ( RepR; ren-agree-tm; dep-∙ⁿ )
+open import DirectedHoTT.Lib.Sugar using ( _,ₚ_ )
 
 private
   variable
@@ -113,7 +114,7 @@ sub-agree-tm {Γ} {Δ} (lam a0) {f = f} r =
   ⟶*-trans (TS.trav-con (atᵍ 1) (atʰ 1) TS.f-cons) (⟶*-con (⟶*-pairʳ (TS.fld-rec {s = 1} {k = 1} {sh = []ʰ} {e = dep Δ} {f = f} {d = dep Γ} (sub-agree-tm a0 (liftsS 1 r)) done)))
 sub-agree-tm {Γ} {Δ} (app a0 a1) {f = f} r =
   ⟶*-trans (TS.trav-con (atᵍ 1) (atʰ 2) TS.f-cons) (⟶*-con (⟶*-pairʳ (TS.fld-rec {s = 1} {k = 0} {sh = rec 1 0 ∷ʰ []ʰ} {e = dep Δ} {f = f} {d = dep Γ} (sub-agree-tm a0 (liftsS 0 r)) (TS.fld-rec {s = 1} {k = 0} {sh = []ʰ} {e = dep Δ} {f = f} {d = dep Γ} (sub-agree-tm a1 (liftsS 0 r)) done))))
-sub-agree-tm {Γ} {Δ} (pair a0 a1) {f = f} r =
+sub-agree-tm {Γ} {Δ} (a0 ,ₚ a1) {f = f} r =
   ⟶*-trans (TS.trav-con (atᵍ 1) (atʰ 3) TS.f-cons) (⟶*-con (⟶*-pairʳ (TS.fld-rec {s = 1} {k = 0} {sh = rec 1 0 ∷ʰ []ʰ} {e = dep Δ} {f = f} {d = dep Γ} (sub-agree-tm a0 (liftsS 0 r)) (TS.fld-rec {s = 1} {k = 0} {sh = []ʰ} {e = dep Δ} {f = f} {d = dep Γ} (sub-agree-tm a1 (liftsS 0 r)) done))))
 sub-agree-tm {Γ} {Δ} (absurd a0 a1) {f = f} r =
   ⟶*-trans (TS.trav-con (atᵍ 1) (atʰ 4) TS.f-cons) (⟶*-con (⟶*-pairʳ (TS.fld-rec {s = 1} {k = 0} {sh = rec 1 0 ∷ʰ []ʰ} {e = dep Δ} {f = f} {d = dep Γ} (sub-agree-tm a0 (liftsS 0 r)) (TS.fld-rec {s = 1} {k = 0} {sh = []ʰ} {e = dep Δ} {f = f} {d = dep Γ} (sub-agree-tm a1 (liftsS 0 r)) done))))

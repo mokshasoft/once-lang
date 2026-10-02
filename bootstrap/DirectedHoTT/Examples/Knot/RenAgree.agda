@@ -25,6 +25,7 @@ open import DirectedHoTT.Lib.SynTravRed
 open import DirectedHoTT.Examples.Knot.Sig
 open import DirectedHoTT.Examples.Knot.Terms
 open import DirectedHoTT.Examples.Knot.Ren
+open import DirectedHoTT.Lib.Sugar using ( _,ₚ_ )
 
 private
   variable
@@ -105,7 +106,7 @@ ren-agree-tm {Γ} {Δ} (lam a0) {f = f} r =
   ⟶*-trans (TR.trav-con (atᵍ 1) (atʰ 1) TR.f-cons) (⟶*-con (⟶*-pairʳ (TR.fld-rec {s = 1} {k = 1} {sh = []ʰ} {e = dep Δ} {f = f} {d = dep Γ} (ren-agree-tm a0 (liftsR 1 r)) done)))
 ren-agree-tm {Γ} {Δ} (app a0 a1) {f = f} r =
   ⟶*-trans (TR.trav-con (atᵍ 1) (atʰ 2) TR.f-cons) (⟶*-con (⟶*-pairʳ (TR.fld-rec {s = 1} {k = 0} {sh = rec 1 0 ∷ʰ []ʰ} {e = dep Δ} {f = f} {d = dep Γ} (ren-agree-tm a0 (liftsR 0 r)) (TR.fld-rec {s = 1} {k = 0} {sh = []ʰ} {e = dep Δ} {f = f} {d = dep Γ} (ren-agree-tm a1 (liftsR 0 r)) done))))
-ren-agree-tm {Γ} {Δ} (pair a0 a1) {f = f} r =
+ren-agree-tm {Γ} {Δ} (a0 ,ₚ a1) {f = f} r =
   ⟶*-trans (TR.trav-con (atᵍ 1) (atʰ 3) TR.f-cons) (⟶*-con (⟶*-pairʳ (TR.fld-rec {s = 1} {k = 0} {sh = rec 1 0 ∷ʰ []ʰ} {e = dep Δ} {f = f} {d = dep Γ} (ren-agree-tm a0 (liftsR 0 r)) (TR.fld-rec {s = 1} {k = 0} {sh = []ʰ} {e = dep Δ} {f = f} {d = dep Γ} (ren-agree-tm a1 (liftsR 0 r)) done))))
 ren-agree-tm {Γ} {Δ} (absurd a0 a1) {f = f} r =
   ⟶*-trans (TR.trav-con (atᵍ 1) (atʰ 4) TR.f-cons) (⟶*-con (⟶*-pairʳ (TR.fld-rec {s = 1} {k = 0} {sh = rec 1 0 ∷ʰ []ʰ} {e = dep Δ} {f = f} {d = dep Γ} (ren-agree-tm a0 (liftsR 0 r)) (TR.fld-rec {s = 1} {k = 0} {sh = []ʰ} {e = dep Δ} {f = f} {d = dep Γ} (ren-agree-tm a1 (liftsR 0 r)) done))))

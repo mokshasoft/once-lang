@@ -18,7 +18,7 @@ open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; ⟶ᵀ*-El; ⟶*-dpayᶜ; ⟶*-trans; ⟶*-pairˡ; ⟶*-pairʳ; ⟶*-natrecⁿ; ⟶*-dρʲ )
 open import DirectedHoTT.Metatheory.TySub using ( wk-cancel-tm )
 open import DirectedHoTT.Metatheory.SubjectReductionBase using () renaming ( wk-sub to wkS )
-open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_; tag; conₗ; lt-z; lt-s; nth-z; nth-s )
+open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_; tag; conₗ; lt-z; lt-s; nth-z; nth-s; _,ₚ_ )
 open import DirectedHoTT.Lib.SynFib using ( ⊢conRowₖ )
 open import DirectedHoTT.Lib.SynRed using ( prj-tup )
 open import DirectedHoTT.Lib.FinFam using ( ⊢isuc )
@@ -61,8 +61,8 @@ con⊢fzero {Ξ} {j} {g} {n} dj dg dn =
     dp = ⊢payK (lt-s lt-z) ok-kfzero dj a[]
     dc = ⊢cTm dj dg dX
     R : PFz.CX j p c ⟶* dι
-    R = ⟶*-trans {t = PFz.CX j p c} {u = PFz.CASE j X (pair (fst c) p)} {v = dι} (PFz.CASE-⟶ᵃ (step (βsnd g X) done))
-          (⟶*-trans {t = PFz.CASE j X (pair (fst c) p)} {u = PFz.CASE j X c'} {v = dι} (PFz.CASE-⟶ᶜ (⟶*-pairˡ (step (βfst g X) done)))
+    R = ⟶*-trans {t = PFz.CX j p c} {u = PFz.CASE j X ((fst c) ,ₚ p)} {v = dι} (PFz.CASE-⟶ᵃ (step (βsnd g X) done))
+          (⟶*-trans {t = PFz.CASE j X ((fst c) ,ₚ p)} {u = PFz.CASE j X c'} {v = dι} (PFz.CASE-⟶ᶜ (⟶*-pairˡ (step (βfst g X) done)))
           (⟶*-trans {t = PFz.CASE j X c'} {u = natrec (rows []) dι (fst q)} {v = dι} (PFz.case-β {j = j} {q = q} {c = c'} (atᵍ 0) nh12)
           (⟶*-trans {t = natrec (rows []) dι (fst q)} {u = natrec (rows []) dι (nsuc n)} {v = dι}
                     (⟶*-natrecⁿ (step (βfst (nsuc n) unit) done)) (step (natrec-suc (rows []) dι n) done))))
@@ -79,7 +79,7 @@ private
 
 con⊢fsuc : {Ξ : Ctx} {j g n t r : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ g ∷ KCtx j → Ξ ⊢ n ∷ El ⌜Nat⌝ → Ξ ⊢ t ∷ K 1 j →
            Ξ ⊢ r ∷ IMu JT D⊢ (tmIx j g t (kFin n)) →
-           Ξ ⊢ conₗ 0 (pair r unit) ∷ IMu JT D⊢ (tmIx j g (kfsuc t) (kFin (nsuc n)))
+           Ξ ⊢ conₗ 0 (r ,ₚ unit) ∷ IMu JT D⊢ (tmIx j g (kfsuc t) (kFin (nsuc n)))
 con⊢fsuc {Ξ} {j} {g} {n} {t} {r} dj dg dn dt dr =
   ⊢conRowₖ {Ξ} {2} {0} {JT} {D⊢} {tmIx j g (kfsuc t) X} {PFs.CX j p c} {pair r unit} {PFs.CX j p c ∷ ⌜ TCVat 30 j p c ⌝ᵗ ∷ []}
            nth-z ⊢JT ⊢D⊢ (⊢tmIx dj dg (⊢kfsuc dj dt) dX)
@@ -104,14 +104,14 @@ con⊢fsuc {Ξ} {j} {g} {n} {t} {r} dj dg dn dt dr =
     eY : subTm (single N) (subTm (extS (single n)) (TFs j c')) ≡ Y
     eY = e1-cong _ _ _ _ _ _ _ _ (w2c N n j) (w2c N n (fst c')) (w2c N n (fst (snd c'))) (wk-cancel-tm N n)
     rix : Y ⟶* dρ (tmIx j g t (kFin n)) dι
-    rix = ⟶*-dρʲ (⟶*-pairʳ (⟶*-trans {t = pair (fst (snd c')) (pair (fst c') (kFin n))} {u = pair t (pair (fst c') (kFin n))}
-                                       {v = pair t (pair g (kFin n))}
+    rix = ⟶*-dρʲ (⟶*-pairʳ (⟶*-trans {t = pair (fst (snd c')) ((fst c') ,ₚ (kFin n))} {u = pair t ((fst c') ,ₚ (kFin n))}
+                                       {v = pair t (g ,ₚ (kFin n))}
                     (⟶*-pairˡ (prj-tup {ws = g ∷ t ∷ []} unit (nth-s nth-z)))
                     (⟶*-pairʳ (⟶*-pairˡ (prj-tup {ws = g ∷ t ∷ []} unit nth-z)))))
     tgt = dρ (tmIx j g t (kFin n)) dι
     R : PFs.CX j p c ⟶* tgt
-    R = ⟶*-trans {t = PFs.CX j p c} {u = PFs.CASE j X (pair (fst c) p)} {v = tgt} (PFs.CASE-⟶ᵃ (step (βsnd g X) done))
-          (⟶*-trans {t = PFs.CASE j X (pair (fst c) p)} {u = PFs.CASE j X c'} {v = tgt} (PFs.CASE-⟶ᶜ (⟶*-pairˡ (step (βfst g X) done)))
+    R = ⟶*-trans {t = PFs.CX j p c} {u = PFs.CASE j X ((fst c) ,ₚ p)} {v = tgt} (PFs.CASE-⟶ᵃ (step (βsnd g X) done))
+          (⟶*-trans {t = PFs.CASE j X ((fst c) ,ₚ p)} {u = PFs.CASE j X c'} {v = tgt} (PFs.CASE-⟶ᶜ (⟶*-pairˡ (step (βfst g X) done)))
           (⟶*-trans {t = PFs.CASE j X c'} {u = natrec (rows []) (TFs j c') (fst q)} {v = tgt} (PFs.case-β {j = j} {q = q} {c = c'} (atᵍ 0) nh12)
           (⟶*-trans {t = natrec (rows []) (TFs j c') (fst q)} {u = natrec (rows []) (TFs j c') (nsuc n)} {v = tgt}
                     (⟶*-natrecⁿ (step (βfst (nsuc n) unit) done))

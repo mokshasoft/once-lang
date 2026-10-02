@@ -17,7 +17,7 @@ open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast; wk-cancel-tm 
 open import DirectedHoTT.Metatheory.SubjectReductionBase using () renaming ( wk-sub to wkS )
 open import DirectedHoTT.Metatheory.Fundamental.Syntactic using ( ⟨_⟩ᵣ; subTm-var )
 open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; _⟶ᵀ*_; stepᵀ; doneᵀ; ⟶*-trans; ⟶*-appˡ; ⟶*-appʳ; ⟶*-ielimⁱ; ⟶*-ielimᵗ; ⟶*-fst; ⟶*-snd; ⟶*-pairˡ; ⟶*-pairʳ; ⟶*-con; ⟶ᵀ*-IMu )
-open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_; conₗ; tag; Lt; lt-z; lt-s; subC; selF-sub; []ᵈ; _∷ᵈ_ )
+open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_; conₗ; tag; Lt; lt-z; lt-s; subC; selF-sub; []ᵈ; _∷ᵈ_; v₀; v₁; v₂; _,ₚ_ )
 open import DirectedHoTT.Lib.SynView using ( PayV; payV-red; ⊢recFst; ⊢recSnd; ⊢atDepthSK )
 open import DirectedHoTT.Lib.FinFam using ( FinI; ffz; ⊢ffz; ⊢isuc )
 open import DirectedHoTT.Examples.Knot.Ctors
@@ -41,14 +41,14 @@ private
 
 -- over a Knot index `i`: a context at its depth, and — for a term — a type
 CT : RTm (Δ ∙)
-CT = ⌜Σ⌝ (⌜Ctx⌝ (snd (var vz))) (fcase (fst (var (vs vz))) ⌜Unit⌝ (⌜Ty⌝ (snd (var (vs (vs vz))))))
+CT = ⌜Σ⌝ (⌜Ctx⌝ (snd v₀)) (fcase (fst v₁) ⌜Unit⌝ (⌜Ty⌝ (snd v₂)))
 
 CT-sub : (σ : Sub Δ Θ) → subTm (extS σ) (CT {Δ}) ≡ CT
 CT-sub {Δ} σ =
-  cong₂ (λ D X → ⌜Σ⌝ (⌜IMu⌝ ⌜Nat⌝ D (snd (var vz))) (fcase (fst (var (vs vz))) ⌜Unit⌝ X))
+  cong₂ (λ D X → ⌜Σ⌝ (⌜IMu⌝ ⌜Nat⌝ D (snd v₀)) (fcase (fst v₁) ⌜Unit⌝ X))
         {x = subTm (extS σ) (CtxD {Δ ∙})} {x' = CtxD}
-        {y = subTm (extS (extS (extS σ))) (⌜Ty⌝ (snd (var (vs (vs vz)))))} {y' = ⌜Ty⌝ (snd (var (vs (vs vz))))}
-        (CtxD-sub (extS σ)) (⌜Ty⌝-sub (extS (extS (extS σ))) (snd (var (vs (vs vz)))))
+        {y = subTm (extS (extS (extS σ))) (⌜Ty⌝ (snd v₂))} {y' = ⌜Ty⌝ (snd v₂)}
+        (CtxD-sub (extS σ)) (⌜Ty⌝-sub (extS (extS (extS σ))) (snd v₂))
 
 ⊢CT : {Γ : Ctx} → (Γ ▹ El (SI 2)) ⊢ CT ∷ U
 ⊢CT = ⊢⌜Σ⌝ (⊢⌜IMu⌝ ⊢⌜Nat⌝ ⊢CtxD (⊢depth (⊢var here)))
@@ -56,11 +56,11 @@ CT-sub {Δ} σ =
 
 -- (i , t , c)
 JT : RTm Δ
-JT = ⌜Σ⌝ (SI 2) (⌜Σ⌝ (⌜IMu⌝ (SI 2) KD (var vz)) (renTm vs CT))
+JT = ⌜Σ⌝ (SI 2) (⌜Σ⌝ (⌜IMu⌝ (SI 2) KD v₀) (renTm vs CT))
 
 JT-sub : (σ : Sub Δ Θ) → subTm σ (JT {Δ}) ≡ JT
 JT-sub {Δ} σ =
-  cong₂ (λ D X → ⌜Σ⌝ (SI 2) (⌜Σ⌝ (⌜IMu⌝ (SI 2) D (var vz)) X))
+  cong₂ (λ D X → ⌜Σ⌝ (SI 2) (⌜Σ⌝ (⌜IMu⌝ (SI 2) D v₀) X))
         {x = subTm (extS σ) (KD {Δ ∙})} {x' = KD}
         {y = subTm (extS (extS σ)) (renTm vs (CT {Δ}))} {y' = renTm vs CT}
         (SD-sub (extS σ) KSig)
@@ -71,8 +71,8 @@ JT-ren ρ = trans (sym (subTm-var ρ JT)) (JT-sub ⟨ ρ ⟩ᵣ)
 
 -- ⚠ `⊢wk ⊢CT` PINNED: an unsolved `renTm vs ?t` against `renTm vs CT`
 --   normalises the whole description (`knot-description-normalisation-trap`)
-⊢wkCT : {Γ : Ctx} → ((Γ ▹ El (SI 2)) ▹ El (⌜IMu⌝ (SI 2) KD (var vz))) ⊢ renTm vs CT ∷ U
-⊢wkCT {Γ} = ⊢wk {Γ ▹ El (SI 2)} {El (⌜IMu⌝ (SI 2) KD (var vz))} {CT} {U} ⊢CT
+⊢wkCT : {Γ : Ctx} → ((Γ ▹ El (SI 2)) ▹ El (⌜IMu⌝ (SI 2) KD v₀)) ⊢ renTm vs CT ∷ U
+⊢wkCT {Γ} = ⊢wk {Γ ▹ El (SI 2)} {El (⌜IMu⌝ (SI 2) KD v₀)} {CT} {U} ⊢CT
 
 ⊢JT : {Γ : Ctx} → Γ ⊢ JT ∷ U
 ⊢JT = ⊢⌜Σ⌝ ⊢SI (⊢⌜Σ⌝ (⊢⌜IMu⌝ ⊢SI ⊢KD (⊢var here)) ⊢wkCT)
@@ -82,18 +82,18 @@ CTat : RTm Δ → RTm Δ
 CTat i = subTm (single i) CT
 
 ixJ : RTm Δ → RTm Δ → RTm Δ → RTm Δ
-ixJ i t c = pair i (pair t c)
+ixJ i t c = pair i (t ,ₚ c)
 
 ⊢ixJ : {Ξ : Ctx} {i t c : RTm ⌊ Ξ ⌋} → Ξ ⊢ i ∷ El (SI 2) → Ξ ⊢ t ∷ IMu (SI 2) KD i → Ξ ⊢ c ∷ El (CTat i) →
        Ξ ⊢ ixJ i t c ∷ El JT
 ⊢ixJ {Ξ} {i} {t} {c} di dt dc = ⊢conv p1 (csymᵀ (credᵀ (El-⌜Σ⌝ (SI 2) B1)))
   where
     B1 : RTm (⌊ Ξ ⌋ ∙)
-    B1 = ⌜Σ⌝ (⌜IMu⌝ (SI 2) KD (var vz)) (renTm vs CT)
+    B1 = ⌜Σ⌝ (⌜IMu⌝ (SI 2) KD v₀) (renTm vs CT)
     B2 : RTm (⌊ Ξ ⌋ ∙)
     B2 = renTm vs (CTat i)
     e1 : subTy (single i) (El B1) ≡ El (⌜Σ⌝ (⌜IMu⌝ (SI 2) KD i) B2)
-    e1 = cong El (cong₂ ⌜Σ⌝ {x = subTm (single i) (⌜IMu⌝ (SI 2) KD (var vz))} {x' = ⌜IMu⌝ (SI 2) KD i}
+    e1 = cong El (cong₂ ⌜Σ⌝ {x = subTm (single i) (⌜IMu⌝ (SI 2) KD v₀)} {x' = ⌜IMu⌝ (SI 2) KD i}
                             {y = subTm (extS (single i)) (renTm vs CT)} {y' = B2}
                     (cong (λ D → ⌜IMu⌝ (SI 2) D i) (SD-sub (single i) KSig))
                     (wkS (single i) CT))
@@ -128,8 +128,8 @@ eCT : (ix : RTm Δ) → CTat ix ≡ ⌜Σ⌝ (⌜Ctx⌝ (snd ix)) (fcase (fst (r
 eCT {Δ} ix =
   cong₂ (λ D X → ⌜Σ⌝ (⌜IMu⌝ ⌜Nat⌝ D (snd ix)) (fcase (fst (renTm vs ix)) ⌜Unit⌝ X))
         {x = subTm (single ix) (CtxD {Δ ∙})} {x' = CtxD}
-        {y = subTm (extS (extS (single ix))) (⌜Ty⌝ (snd (var (vs (vs vz)))))} {y' = ⌜Ty⌝ (snd (renTm vs (renTm vs ix)))}
-        (CtxD-sub (single ix)) (⌜Ty⌝-sub (extS (extS (single ix))) (snd (var (vs (vs vz)))))
+        {y = subTm (extS (extS (single ix))) (⌜Ty⌝ (snd v₂))} {y' = ⌜Ty⌝ (snd (renTm vs (renTm vs ix)))}
+        (CtxD-sub (single ix)) (⌜Ty⌝-sub (extS (extS (single ix))) (snd v₂))
 
 -- the sort-dependent half, at its two sorts
 FT : RTm Δ → RTm (Δ ∙)
@@ -146,24 +146,24 @@ eFTat ix u = cong₂ (λ a X → El (fcase (fst a) ⌜Unit⌝ X))
                                 (k1 u ix)))
 
 -- the type half at sort 1 converts to the Knot's types
-eTy1 : (j : RTm Δ) → El (subTm (single fzero) (⌜Ty⌝ (snd (renTm vs (pair (tag 1) j))))) ≡ El (⌜Ty⌝ (snd (pair (tag 1) j)))
-eTy1 j = cong El (trans (⌜Ty⌝-sub (single fzero) (snd (renTm vs (pair (tag 1) j))))
-                        (cong (λ z → ⌜Ty⌝ (snd z)) {x = subTm (single fzero) (renTm vs (pair (tag 1) j))} {y = pair (tag 1) j}
-                              (wk-cancel-tm fzero (pair (tag 1) j))))
+eTy1 : (j : RTm Δ) → El (subTm (single fzero) (⌜Ty⌝ (snd (renTm vs ((tag 1) ,ₚ j))))) ≡ El (⌜Ty⌝ (snd ((tag 1) ,ₚ j)))
+eTy1 j = cong El (trans (⌜Ty⌝-sub (single fzero) (snd (renTm vs ((tag 1) ,ₚ j))))
+                        (cong (λ z → ⌜Ty⌝ (snd z)) {x = subTm (single fzero) (renTm vs ((tag 1) ,ₚ j))} {y = pair (tag 1) j}
+                              (wk-cancel-tm fzero ((tag 1) ,ₚ j))))
 
-red1 : (j : RTm Δ) → El (fcase (fst (pair (tag 1) j)) ⌜Unit⌝ (⌜Ty⌝ (snd (renTm vs (pair (tag 1) j)))))
-                     ≅ᵀ El (subTm (single fzero) (⌜Ty⌝ (snd (renTm vs (pair (tag 1) j)))))
+red1 : (j : RTm Δ) → El (fcase (fst ((tag 1) ,ₚ j)) ⌜Unit⌝ (⌜Ty⌝ (snd (renTm vs ((tag 1) ,ₚ j)))))
+                     ≅ᵀ El (subTm (single fzero) (⌜Ty⌝ (snd (renTm vs ((tag 1) ,ₚ j)))))
 red1 j = red→≅ᵀ (stepᵀ (ξ-El (ξ-fcaseᵗ (βfst (tag 1) j)))
-                 (stepᵀ (ξ-El (fcase-s fzero ⌜Unit⌝ (⌜Ty⌝ (snd (renTm vs (pair (tag 1) j)))))) doneᵀ))
+                 (stepᵀ (ξ-El (fcase-s fzero ⌜Unit⌝ (⌜Ty⌝ (snd (renTm vs ((tag 1) ,ₚ j)))))) doneᵀ))
 
-tyK≅ : (j : RTm Δ) → El (⌜Ty⌝ (snd (pair (tag 1) j))) ≅ᵀ K 0 j
+tyK≅ : (j : RTm Δ) → El (⌜Ty⌝ (snd ((tag 1) ,ₚ j))) ≅ᵀ K 0 j
 tyK≅ j = ctrnᵀ (credᵀ El-⌜Ty⌝) (credᵀ (ξ-SK (βsnd (tag 1) j)))
 
-red0 : (j : RTm Δ) → El (fcase (fst (pair (tag 0) j)) ⌜Unit⌝ (⌜Ty⌝ (snd (renTm vs (pair (tag 0) j))))) ≅ᵀ Unit
+red0 : (j : RTm Δ) → El (fcase (fst ((tag 0) ,ₚ j)) ⌜Unit⌝ (⌜Ty⌝ (snd (renTm vs ((tag 0) ,ₚ j))))) ≅ᵀ Unit
 red0 j = red→≅ᵀ (stepᵀ (ξ-El (ξ-fcaseᵗ (βfst (tag 0) j)))
-                 (stepᵀ (ξ-El (fcase-z ⌜Unit⌝ (⌜Ty⌝ (snd (renTm vs (pair (tag 0) j)))))) (stepᵀ El-⌜Unit⌝ doneᵀ)))
+                 (stepᵀ (ξ-El (fcase-z ⌜Unit⌝ (⌜Ty⌝ (snd (renTm vs ((tag 0) ,ₚ j)))))) (stepᵀ El-⌜Unit⌝ doneᵀ)))
 
-ctxK≅ : {s : ℕ} (j : RTm Δ) → El (⌜Ctx⌝ (snd (pair (tag s) j))) ≅ᵀ KCtx j
+ctxK≅ : {s : ℕ} (j : RTm Δ) → El (⌜Ctx⌝ (snd ((tag s) ,ₚ j))) ≅ᵀ KCtx j
 ctxK≅ {s = s} j = ctrnᵀ (credᵀ El-⌜IMu⌝) (credᵀ (ξ-IMuⁱ (βsnd (tag s) j)))
 
 module _ {Ξ : Ctx} {s : ℕ} {j c : RTm ⌊ Ξ ⌋} where
@@ -175,11 +175,11 @@ module _ {Ξ : Ctx} {s : ℕ} {j c : RTm ⌊ Ξ ⌋} where
                   (credᵀ (El-⌜Σ⌝ (⌜Ctx⌝ (snd ix)) (FT ix)))
 
   -- the context, at any sort
-  ⊢ctxOf : Ξ ⊢ c ∷ El (CTat (pair (tag s) j)) → Ξ ⊢ fst c ∷ KCtx j
+  ⊢ctxOf : Ξ ⊢ c ∷ El (CTat ((tag s) ,ₚ j)) → Ξ ⊢ fst c ∷ KCtx j
   ⊢ctxOf dc = ⊢conv (⊢fst (dΣ dc)) (ctrnᵀ (credᵀ El-⌜IMu⌝) (credᵀ (ξ-IMuⁱ (βsnd (tag s) j))))
 
   -- the type half, read at the instance of its sort
-  eFT : subTy (single (fst c)) (El (FT (pair (tag s) j))) ≡ El (fcase (fst (pair (tag s) j)) ⌜Unit⌝ (⌜Ty⌝ (snd (renTm vs (pair (tag s) j)))))
+  eFT : subTy (single (fst c)) (El (FT ((tag s) ,ₚ j))) ≡ El (fcase (fst ((tag s) ,ₚ j)) ⌜Unit⌝ (⌜Ty⌝ (snd (renTm vs ((tag s) ,ₚ j)))))
   eFT = cong₂ (λ a X → El (fcase (fst a) ⌜Unit⌝ X))
               {x = subTm (single (fst c)) (renTm vs ix)} {x' = ix}
               {y = subTm (extS (single (fst c))) (⌜Ty⌝ (snd (renTm vs (renTm vs ix))))} {y' = ⌜Ty⌝ (snd (renTm vs ix))}
@@ -188,14 +188,14 @@ module _ {Ξ : Ctx} {s : ℕ} {j c : RTm ⌊ Ξ ⌋} where
                      (cong (λ z → ⌜Ty⌝ (snd z)) {x = subTm (extS (single (fst c))) (renTm vs (renTm vs ix))} {y = renTm vs ix}
                            (k1 (fst c) ix)))
 
-  ⊢sndFT : Ξ ⊢ c ∷ El (CTat (pair (tag s) j)) → Ξ ⊢ snd c ∷ El (fcase (fst (pair (tag s) j)) ⌜Unit⌝ (⌜Ty⌝ (snd (renTm vs (pair (tag s) j)))))
+  ⊢sndFT : Ξ ⊢ c ∷ El (CTat ((tag s) ,ₚ j)) → Ξ ⊢ snd c ∷ El (fcase (fst ((tag s) ,ₚ j)) ⌜Unit⌝ (⌜Ty⌝ (snd (renTm vs ((tag s) ,ₚ j)))))
   ⊢sndFT dc = ⊢-cast {Ξ} {snd c} {subTy (single (fst c)) (El (FT ix))} eFT (⊢snd (dΣ dc))
 
 -- a term's type (sort 1)
-⊢tyOf : {Ξ : Ctx} {j c : RTm ⌊ Ξ ⌋} → Ξ ⊢ c ∷ El (CTat (pair (tag 1) j)) → Ξ ⊢ snd c ∷ K 0 j
+⊢tyOf : {Ξ : Ctx} {j c : RTm ⌊ Ξ ⌋} → Ξ ⊢ c ∷ El (CTat ((tag 1) ,ₚ j)) → Ξ ⊢ snd c ∷ K 0 j
 ⊢tyOf {Ξ} {j} {c} dc =
-  ⊢conv (⊢-cast {Ξ} {snd c} {El (subTm (single fzero) (⌜Ty⌝ (snd (renTm vs (pair (tag 1) j)))))}
-                {El (⌜Ty⌝ (snd (pair (tag 1) j)))} (eTy1 j)
+  ⊢conv (⊢-cast {Ξ} {snd c} {El (subTm (single fzero) (⌜Ty⌝ (snd (renTm vs ((tag 1) ,ₚ j)))))}
+                {El (⌜Ty⌝ (snd ((tag 1) ,ₚ j)))} (eTy1 j)
                 (⊢conv (⊢sndFT {s = 1} dc) (red1 j)))
         (tyK≅ j)
 
@@ -212,8 +212,8 @@ module _ {Ξ : Ctx} {s : ℕ} {j g u : RTm ⌊ Ξ ⌋} (lt : Lt s 2) (dj : Ξ �
     tyF : (Ξ ▹ El (⌜Ctx⌝ (snd ix))) ⊢ty El (FT ix)
     tyF = ty-El (⊢fcase ty-U (⊢sortOf (⊢wk dix)) ⊢⌜Unit⌝ (⊢⌜Ty⌝ (⊢depth (⊢wk (⊢wk dix)))))
   -- a convoy from its two halves
-  ⊢conv₂ : Ξ ⊢ g ∷ KCtx j → Ξ ⊢ u ∷ El (fcase (fst (pair (tag s) j)) ⌜Unit⌝ (⌜Ty⌝ (snd (renTm vs (pair (tag s) j))))) →
-           Ξ ⊢ pair g u ∷ El (CTat (pair (tag s) j))
+  ⊢conv₂ : Ξ ⊢ g ∷ KCtx j → Ξ ⊢ u ∷ El (fcase (fst ((tag s) ,ₚ j)) ⌜Unit⌝ (⌜Ty⌝ (snd (renTm vs ((tag s) ,ₚ j))))) →
+           Ξ ⊢ pair g u ∷ El (CTat ((tag s) ,ₚ j))
   ⊢conv₂ dg du =
     ⊢-cast {Ξ} {pair g u} {El (⌜Σ⌝ (⌜Ctx⌝ (snd ix)) (FT ix))} {El (CTat ix)} (cong El (sym (eCT ix)))
       (⊢conv (⊢pair tyF (⊢conv dg (csymᵀ (ctxK≅ j)))
@@ -221,23 +221,23 @@ module _ {Ξ : Ctx} {s : ℕ} {j g u : RTm ⌊ Ξ ⌋} (lt : Lt s 2) (dj : Ξ �
                                 (sym (eFTat ix g)) du))
              (csymᵀ (credᵀ (El-⌜Σ⌝ (⌜Ctx⌝ (snd ix)) (FT ix)))))
 
-⊢cTy : {Ξ : Ctx} {j g : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ g ∷ KCtx j → Ξ ⊢ pair g unit ∷ El (CTat (pair (tag 0) j))
+⊢cTy : {Ξ : Ctx} {j g : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ g ∷ KCtx j → Ξ ⊢ pair g unit ∷ El (CTat ((tag 0) ,ₚ j))
 ⊢cTy {j = j} dj dg = ⊢conv₂ lt-z dj dg (⊢conv ⊢unit (csymᵀ (red0 j)))
 
 ⊢cTm : {Ξ : Ctx} {j g a : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ g ∷ KCtx j → Ξ ⊢ a ∷ K 0 j →
-       Ξ ⊢ pair g a ∷ El (CTat (pair (tag 1) j))
+       Ξ ⊢ pair g a ∷ El (CTat ((tag 1) ,ₚ j))
 ⊢cTm {Ξ} {j} {g} {a} dj dg da =
   ⊢conv₂ (lt-s lt-z) dj dg
-    (⊢conv (⊢-cast {Ξ} {a} {El (⌜Ty⌝ (snd (pair (tag 1) j)))} {El (subTm (single fzero) (⌜Ty⌝ (snd (renTm vs (pair (tag 1) j)))))}
+    (⊢conv (⊢-cast {Ξ} {a} {El (⌜Ty⌝ (snd ((tag 1) ,ₚ j)))} {El (subTm (single fzero) (⌜Ty⌝ (snd (renTm vs ((tag 1) ,ₚ j)))))}
                    (sym (eTy1 j)) (⊢conv da (csymᵀ (tyK≅ j))))
            (csymᵀ (red1 j)))
 
 -- ★ the two judgement forms' indices
 tyIx : RTm Δ → RTm Δ → RTm Δ → RTm Δ
-tyIx j g A = ixJ (pair (tag 0) j) A (pair g unit)
+tyIx j g A = ixJ ((tag 0) ,ₚ j) A (g ,ₚ unit)
 
 tmIx : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ
-tmIx j g t A = ixJ (pair (tag 1) j) t (pair g A)
+tmIx j g t A = ixJ ((tag 1) ,ₚ j) t (g ,ₚ A)
 
 ⊢tyIx : {Ξ : Ctx} {j g A : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ g ∷ KCtx j → Ξ ⊢ A ∷ K 0 j → Ξ ⊢ tyIx j g A ∷ El JT
 ⊢tyIx dj dg dA = ⊢ixJ (⊢ix lt-z dj) (⊢SK→IMu {sg = KSig} dA) (⊢cTy dj dg)
@@ -290,10 +290,10 @@ defRow T law = record
 --   object-level (`mc`)
 opaque
   ⌜Tm⌝ : RTm Δ → RTm Δ
-  ⌜Tm⌝ d = ⌜IMu⌝ (SI 2) KD (pair (tag 1) d)
+  ⌜Tm⌝ d = ⌜IMu⌝ (SI 2) KD ((tag 1) ,ₚ d)
 
   ⌜Tm⌝-sub : (σ : Sub Δ Θ) (d : RTm Δ) → subTm σ (⌜Tm⌝ d) ≡ ⌜Tm⌝ (subTm σ d)
-  ⌜Tm⌝-sub σ d = cong (λ D → ⌜IMu⌝ (SI 2) D (pair (tag 1) (subTm σ d))) (SD-sub σ KSig)
+  ⌜Tm⌝-sub σ d = cong (λ D → ⌜IMu⌝ (SI 2) D ((tag 1) ,ₚ (subTm σ d))) (SD-sub σ KSig)
 
   El-⌜Tm⌝ : {d : RTm Δ} → El (⌜Tm⌝ d) ⟶ᵀ K 1 d
   El-⌜Tm⌝ = El-⌜SK⌝
@@ -322,6 +322,6 @@ rNone = record { R = λ j p c → rows [] ; R-sub = λ σ j p c → refl }
 
 -- a payload of the Knot, at its normal form
 ⊢payK : {Ξ : Ctx} {s : ℕ} {j p : RTm ⌊ Ξ ⌋} {sh : Shape} → Lt s 2 → ShOK 2 sh → Ξ ⊢ j ∷ El ⌜Nat⌝ →
-        Args Ξ 2 KSig j sh p → Ξ ⊢ p ∷ PayV sh (pair (tag s) j) (SI 2) (SD KSig)
+        Args Ξ 2 KSig j sh p → Ξ ⊢ p ∷ PayV sh ((tag s) ,ₚ j) (SI 2) (SD KSig)
 ⊢payK {s = s} {j = j} {sh = sh} lt ok dj as =
-  ⊢conv (⊢payArgs ⊢KD ok (⊢ix lt dj) (step (βsnd (tag s) j) done) as) (red→≅ᵀ (payV-red sh (pair (tag s) j) (SI 2) (SD KSig)))
+  ⊢conv (⊢payArgs ⊢KD ok (⊢ix lt dj) (step (βsnd (tag s) j) done) as) (red→≅ᵀ (payV-red sh ((tag s) ,ₚ j) (SI 2) (SD KSig)))

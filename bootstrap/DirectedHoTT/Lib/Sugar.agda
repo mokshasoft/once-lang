@@ -130,6 +130,22 @@ atᶜ {Cs = []}     k {()}
 atᶜ {Cs = C ∷ Cs} zero    = nth-z
 atᶜ {Cs = C ∷ Cs} (suc k) {i} = nth-s (atᶜ k {i})
 
+-- ★ NOTATION for object terms (pattern synonyms: they expand at parse time,
+--   so `v₃` IS `var (vs (vs (vs vz)))` — no definition stands between the
+--   reader and the term, and the checker compares exactly the old terms)
+pattern v₀ = var vz
+pattern v₁ = var (vs vz)
+pattern v₂ = var (vs (vs vz))
+pattern v₃ = var (vs (vs (vs vz)))
+pattern v₄ = var (vs (vs (vs (vs vz))))
+pattern v₅ = var (vs (vs (vs (vs (vs vz)))))
+pattern v₆ = var (vs (vs (vs (vs (vs (vs vz))))))
+pattern v₇ = var (vs (vs (vs (vs (vs (vs (vs vz)))))))
+
+-- a payload, right-nested: `e0 ,ₚ e1 ,ₚ unit` IS `pair e0 (pair e1 unit)`
+infixr 4 _,ₚ_
+pattern _,ₚ_ a b = pair a b
+
 ------------------------------------------------------------------------
 -- 1. ★ (c) THE LOOKUP IS A REDUCTION.
 ------------------------------------------------------------------------

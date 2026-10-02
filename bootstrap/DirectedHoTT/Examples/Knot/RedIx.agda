@@ -18,7 +18,7 @@ open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Metatheory.TySub using ( ⊢-cast )
 open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; _⟶ᵀ*_; stepᵀ; ⟶ᵀ*-IMu; ⟶*-pairʳ; ⟶*-nsuc )
 open import DirectedHoTT.Lib.FinFam using ( ⊢isuc )
-open import DirectedHoTT.Lib.Sugar using ( tag; Lt; lt-z; lt-s )
+open import DirectedHoTT.Lib.Sugar using ( tag; Lt; lt-z; lt-s; v₀; _,ₚ_ )
 open import DirectedHoTT.Lib.Syn
 open import DirectedHoTT.Lib.SynFam using ( module SynFam )
 open import DirectedHoTT.Examples.Knot.Sig
@@ -35,10 +35,10 @@ private
 --   ⊢CR, eCR.
 opaque
   CR : RTm (Δ ∙)
-  CR = ⌜IMu⌝ (SI 2) KD (var vz)
+  CR = ⌜IMu⌝ (SI 2) KD v₀
 
   CR-sub : (σ : Sub Δ Θ) → subTm (extS σ) (CR {Δ}) ≡ CR
-  CR-sub {Δ} σ = cong (λ D → ⌜IMu⌝ (SI 2) D (var vz)) (SD-sub (extS σ) KSig)
+  CR-sub {Δ} σ = cong (λ D → ⌜IMu⌝ (SI 2) D v₀) (SD-sub (extS σ) KSig)
 
   ⊢CR : {Γ : Ctx} → (Γ ▹ El (SI 2)) ⊢ CR ∷ U
   ⊢CR = ⊢⌜IMu⌝ ⊢SI ⊢KD (⊢var here)
@@ -53,20 +53,20 @@ module RedTₘ = SynFam KOK CR CR-sub ⊢CR    -- A ⟶ᵀ B
 
 module _ {Ξ : Ctx} {s : ℕ} {j c : RTm ⌊ Ξ ⌋} where
   -- the target, read off the convoy
-  ⊢tgt : Ξ ⊢ c ∷ El (subTm (single (pair (tag s) j)) CR) → Ξ ⊢ c ∷ K s j
-  ⊢tgt dc = ⊢conv (⊢-cast {Ξ} {c} {El (subTm (single (pair (tag s) j)) CR)} {El (⌜IMu⌝ (SI 2) KD (pair (tag s) j))}
-                          (cong El (eCR (pair (tag s) j))) dc)
+  ⊢tgt : Ξ ⊢ c ∷ El (subTm (single ((tag s) ,ₚ j)) CR) → Ξ ⊢ c ∷ K s j
+  ⊢tgt dc = ⊢conv (⊢-cast {Ξ} {c} {El (subTm (single ((tag s) ,ₚ j)) CR)} {El (⌜IMu⌝ (SI 2) KD ((tag s) ,ₚ j))}
+                          (cong El (eCR ((tag s) ,ₚ j))) dc)
                   (credᵀ El-⌜SK⌝)
 
   -- …and put into one
-  ⊢toCR : Ξ ⊢ c ∷ K s j → Ξ ⊢ c ∷ El (subTm (single (pair (tag s) j)) CR)
-  ⊢toCR dc = ⊢-cast {Ξ} {c} {El (⌜IMu⌝ (SI 2) KD (pair (tag s) j))} {El (subTm (single (pair (tag s) j)) CR)}
-                    (cong El (sym (eCR (pair (tag s) j)))) (⊢conv dc (csymᵀ (credᵀ El-⌜SK⌝)))
+  ⊢toCR : Ξ ⊢ c ∷ K s j → Ξ ⊢ c ∷ El (subTm (single ((tag s) ,ₚ j)) CR)
+  ⊢toCR dc = ⊢-cast {Ξ} {c} {El (⌜IMu⌝ (SI 2) KD ((tag s) ,ₚ j))} {El (subTm (single ((tag s) ,ₚ j)) CR)}
+                    (cong El (sym (eCR ((tag s) ,ₚ j)))) (⊢conv dc (csymᵀ (credᵀ El-⌜SK⌝)))
 
 -- the two judgements' indices
 ix⟶ ix⟶ᵀ : RTm Δ → RTm Δ → RTm Δ → RTm Δ
-ix⟶ d t u = Redₘ.ixJ (pair (tag 1) d) t u
-ix⟶ᵀ d A B = RedTₘ.ixJ (pair (tag 0) d) A B
+ix⟶ d t u = Redₘ.ixJ ((tag 1) ,ₚ d) t u
+ix⟶ᵀ d A B = RedTₘ.ixJ ((tag 0) ,ₚ d) A B
 
 ⊢ix⟶ : {Ξ : Ctx} {d t u : RTm ⌊ Ξ ⌋} → Ξ ⊢ d ∷ El ⌜Nat⌝ → Ξ ⊢ t ∷ K 1 d → Ξ ⊢ u ∷ K 1 d → Ξ ⊢ ix⟶ d t u ∷ El Redₘ.J
 ⊢ix⟶ dd dt du = Redₘ.⊢ixJ (⊢ix (lt-s lt-z) dd) (⊢SK→IMu {sg = KSig} dt) (⊢toCR du)
@@ -81,8 +81,8 @@ module Convₘ = SynFam KOK CR CR-sub ⊢CR     -- t ≅ u
 module ConvTₘ = SynFam KOK CR CR-sub ⊢CR    -- A ≅ᵀ B
 
 ix≅ ix≅ᵀ : RTm Δ → RTm Δ → RTm Δ → RTm Δ
-ix≅ d t u = Convₘ.ixJ (pair (tag 1) d) t u
-ix≅ᵀ d A B = ConvTₘ.ixJ (pair (tag 0) d) A B
+ix≅ d t u = Convₘ.ixJ ((tag 1) ,ₚ d) t u
+ix≅ᵀ d A B = ConvTₘ.ixJ ((tag 0) ,ₚ d) A B
 
 ⊢ix≅ : {Ξ : Ctx} {d t u : RTm ⌊ Ξ ⌋} → Ξ ⊢ d ∷ El ⌜Nat⌝ → Ξ ⊢ t ∷ K 1 d → Ξ ⊢ u ∷ K 1 d → Ξ ⊢ ix≅ d t u ∷ El Convₘ.J
 ⊢ix≅ dd dt du = Convₘ.⊢ixJ (⊢ix (lt-s lt-z) dd) (⊢SK→IMu {sg = KSig} dt) (⊢toCR du)
@@ -94,38 +94,38 @@ ix≅ᵀ d A B = ConvTₘ.ixJ (pair (tag 0) d) A B
 --   by the code, the convoy is the BODY — a Knot term ONE BINDER deeper
 opaque
   CP : RTm (Δ ∙)
-  CP = ⌜IMu⌝ (SI 2) KD (pair (tag 1) (nsuc (snd (var vz))))
+  CP = ⌜IMu⌝ (SI 2) KD ((tag 1) ,ₚ (nsuc (snd v₀)))
 
   CP-sub : (σ : Sub Δ Θ) → subTm (extS σ) (CP {Δ}) ≡ CP
-  CP-sub {Δ} σ = cong₂ (λ D t → ⌜IMu⌝ (SI 2) D (pair t (nsuc (snd (var vz))))) (SD-sub (extS σ) KSig) (tag-sub (extS σ) 1)
+  CP-sub {Δ} σ = cong₂ (λ D t → ⌜IMu⌝ (SI 2) D (t ,ₚ (nsuc (snd v₀)))) (SD-sub (extS σ) KSig) (tag-sub (extS σ) 1)
 
   ⊢CP : {Γ : Ctx} → (Γ ▹ El (SI 2)) ⊢ CP ∷ U
   ⊢CP = ⊢⌜IMu⌝ ⊢SI ⊢KD (⊢ix (lt-s lt-z) (⊢isuc (⊢depth (⊢var here))))
 
-  eCP : (j : RTm Δ) → subTm (single (pair (tag 1) j)) (CP {Δ}) ≡ ⌜IMu⌝ (SI 2) KD (pair (tag 1) (nsuc (snd (pair (tag 1) j))))
-  eCP {Δ} j = cong₂ (λ D t → ⌜IMu⌝ (SI 2) D (pair t (nsuc (snd (pair (tag 1) j))))) (SD-sub (single (pair (tag 1) j)) KSig) (tag-sub (single (pair (tag 1) j)) 1)
+  eCP : (j : RTm Δ) → subTm (single ((tag 1) ,ₚ j)) (CP {Δ}) ≡ ⌜IMu⌝ (SI 2) KD ((tag 1) ,ₚ (nsuc (snd ((tag 1) ,ₚ j))))
+  eCP {Δ} j = cong₂ (λ D t → ⌜IMu⌝ (SI 2) D (t ,ₚ (nsuc (snd ((tag 1) ,ₚ j))))) (SD-sub (single ((tag 1) ,ₚ j)) KSig) (tag-sub (single ((tag 1) ,ₚ j)) 1)
 
 module Pwₘ = SynFam KOK CP CP-sub ⊢CP
 
 
 module _ {Ξ : Ctx} {j c : RTm ⌊ Ξ ⌋} where
   private
-    bR : El (⌜IMu⌝ (SI 2) KD (pair (tag 1) (nsuc (snd (pair (tag 1) j))))) ⟶ᵀ* K 1 (nsuc j)
+    bR : El (⌜IMu⌝ (SI 2) KD ((tag 1) ,ₚ (nsuc (snd ((tag 1) ,ₚ j))))) ⟶ᵀ* K 1 (nsuc j)
     bR = stepᵀ El-⌜SK⌝ (⟶ᵀ*-SK (⟶*-nsuc (step (βsnd (tag 1) j) done)))
 
   -- the body, read off the convoy
-  ⊢pwTgt : Ξ ⊢ c ∷ El (subTm (single (pair (tag 1) j)) CP) → Ξ ⊢ c ∷ K 1 (nsuc j)
-  ⊢pwTgt dc = ⊢conv (⊢-cast {Ξ} {c} {El (subTm (single (pair (tag 1) j)) CP)} {El (⌜IMu⌝ (SI 2) KD (pair (tag 1) (nsuc (snd (pair (tag 1) j)))))}
+  ⊢pwTgt : Ξ ⊢ c ∷ El (subTm (single ((tag 1) ,ₚ j)) CP) → Ξ ⊢ c ∷ K 1 (nsuc j)
+  ⊢pwTgt dc = ⊢conv (⊢-cast {Ξ} {c} {El (subTm (single ((tag 1) ,ₚ j)) CP)} {El (⌜IMu⌝ (SI 2) KD ((tag 1) ,ₚ (nsuc (snd ((tag 1) ,ₚ j)))))}
                             (cong El (eCP j)) dc)
                     (red→≅ᵀ bR)
 
   -- …and put into one
-  ⊢toCP : Ξ ⊢ c ∷ K 1 (nsuc j) → Ξ ⊢ c ∷ El (subTm (single (pair (tag 1) j)) CP)
-  ⊢toCP dc = ⊢-cast {Ξ} {c} {El (⌜IMu⌝ (SI 2) KD (pair (tag 1) (nsuc (snd (pair (tag 1) j)))))} {El (subTm (single (pair (tag 1) j)) CP)}
+  ⊢toCP : Ξ ⊢ c ∷ K 1 (nsuc j) → Ξ ⊢ c ∷ El (subTm (single ((tag 1) ,ₚ j)) CP)
+  ⊢toCP dc = ⊢-cast {Ξ} {c} {El (⌜IMu⌝ (SI 2) KD ((tag 1) ,ₚ (nsuc (snd ((tag 1) ,ₚ j)))))} {El (subTm (single ((tag 1) ,ₚ j)) CP)}
                     (cong El (sym (eCP j))) (⊢conv dc (csymᵀ (red→≅ᵀ bR)))
 
 ixPw : RTm Δ → RTm Δ → RTm Δ → RTm Δ
-ixPw d c b = Pwₘ.ixJ (pair (tag 1) d) c b
+ixPw d c b = Pwₘ.ixJ ((tag 1) ,ₚ d) c b
 
 ⊢ixPw : {Ξ : Ctx} {d c b : RTm ⌊ Ξ ⌋} → Ξ ⊢ d ∷ El ⌜Nat⌝ → Ξ ⊢ c ∷ K 1 d → Ξ ⊢ b ∷ K 1 (nsuc d) → Ξ ⊢ ixPw d c b ∷ El Pwₘ.J
 ⊢ixPw dd dc db = Pwₘ.⊢ixJ (⊢ix (lt-s lt-z) dd) (⊢SK→IMu {sg = KSig} dc) (⊢toCP db)

@@ -17,6 +17,7 @@ open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Lib.FinFam using ( FinI; ffz; ffs; ⊢ffz; ⊢ffs; toI; ⊢isuc )
 open import DirectedHoTT.Lib.Syn
 open import DirectedHoTT.Examples.Knot.Sig
+open import DirectedHoTT.Lib.Sugar using ( _,ₚ_ )
 
 ------------------------------------------------------------------------
 -- The QUOTATION of the kernel's syntax into the Knot: a term of depth
@@ -70,7 +71,7 @@ quoteTy (Fin a0) = kFin (quoteℕ a0)
 quoteTm (var a0) = kvar (quoteVar a0)
 quoteTm (lam a0) = klam (quoteTm a0)
 quoteTm (app a0 a1) = kapp (quoteTm a0) (quoteTm a1)
-quoteTm (pair a0 a1) = kpair (quoteTm a0) (quoteTm a1)
+quoteTm (a0 ,ₚ a1) = kpair (quoteTm a0) (quoteTm a1)
 quoteTm (absurd a0 a1) = kabsurd (quoteTm a0) (quoteTm a1)
 quoteTm (ordtr a0 a1 a2 a3 a4) = kordtr (quoteTm a0) (quoteTm a1) (quoteTm a2) (quoteTm a3) (quoteTm a4)
 quoteTm (fst a0) = kfst (quoteTm a0)
@@ -141,7 +142,7 @@ quoteTm ⌜Unit⌝ = kcUnit
   ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-klam} KOK (atᵍ 1) (atʰ 1) (⊢dep' Γ) (a-rec (⊢quoteTm a0) a[])
 ⊢quoteTm {Γ} (app a0 a1) =
   ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kapp} KOK (atᵍ 1) (atʰ 2) (⊢dep' Γ) (a-rec (⊢quoteTm a0) (a-rec (⊢quoteTm a1) a[]))
-⊢quoteTm {Γ} (pair a0 a1) =
+⊢quoteTm {Γ} (a0 ,ₚ a1) =
   ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kpair} KOK (atᵍ 1) (atʰ 3) (⊢dep' Γ) (a-rec (⊢quoteTm a0) (a-rec (⊢quoteTm a1) a[]))
 ⊢quoteTm {Γ} (absurd a0 a1) =
   ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kabsurd} KOK (atᵍ 1) (atʰ 4) (⊢dep' Γ) (a-rec (⊢quoteTm a0) (a-rec (⊢quoteTm a1) a[]))

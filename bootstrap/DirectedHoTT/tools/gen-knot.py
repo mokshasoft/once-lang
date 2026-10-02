@@ -653,6 +653,10 @@ def main():
     os.makedirs(OUTDIR, exist_ok=True)
     stale = []
     outs = {fn: COPYRIGHT + txt for fn, txt in outs.items()}
+    # the object-term notation (v₃, e ,ₚ …) — pattern synonyms, see tools/notation.py
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import notation
+    outs = {fn: notation.notate(txt) for fn, txt in outs.items()}
     for fn, txt in outs.items():
         p = os.path.join(OUTDIR, fn)
         if check:

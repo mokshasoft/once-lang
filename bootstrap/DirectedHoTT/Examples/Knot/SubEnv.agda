@@ -20,7 +20,7 @@ open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong�
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax hiding ( Fin )
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
-open import DirectedHoTT.Lib.Sugar using ( Lt; lt-z; lt-s )
+open import DirectedHoTT.Lib.Sugar using ( Lt; lt-z; lt-s; v₀; _,ₚ_ )
 open import DirectedHoTT.Lib.FinFam using ( FinI; FinD; ⊢FinD; ffz; ffs; ⊢ffz; ⊢ffs; ⊢isuc )
 open import DirectedHoTT.Lib.Syn
 open import DirectedHoTT.Metatheory.TySub using ( ⊢wk )
@@ -47,9 +47,9 @@ private
 
 -- `vs^k` : Env d (d + k)
 WK1 WK2 WK3 : RTm Γ
-WK1 = lam (vnode (ffs (var vz)))
-WK2 = lam (vnode (ffs (ffs (var vz))))
-WK3 = lam (vnode (ffs (ffs (ffs (var vz)))))
+WK1 = lam (vnode (ffs v₀))
+WK2 = lam (vnode (ffs (ffs v₀)))
+WK3 = lam (vnode (ffs (ffs (ffs v₀))))
 
 module _ {Ξ : Ctx} {d : RTm ⌊ Ξ ⌋} (dd : Ξ ⊢ d ∷ El ⌜Nat⌝) where
   private
@@ -129,8 +129,8 @@ trav-sub : (σ : Sub Δ Θ) (s : ℕ) (d t e f : RTm Δ) → subTm σ (trav s d 
 trav-sub σ s d t e f = c3 (SD-sub σ KSig) (tag-sub σ s) (TRAVMs-sub σ)
   where
     c3 : {D D' T T' M M' : RTm _} → D ≡ D' → T ≡ T' → M ≡ M' →
-         app (app (ielim D (pair T (subTm σ d)) M (subTm σ t)) (subTm σ e)) (subTm σ f)
-         ≡ app (app (ielim D' (pair T' (subTm σ d)) M' (subTm σ t)) (subTm σ e)) (subTm σ f)
+         app (app (ielim D (T ,ₚ (subTm σ d)) M (subTm σ t)) (subTm σ e)) (subTm σ f)
+         ≡ app (app (ielim D' (T' ,ₚ (subTm σ d)) M' (subTm σ t)) (subTm σ e)) (subTm σ f)
     c3 refl refl refl = refl
 
 ENRS-sub : (σ : Sub Δ Θ) (j : RTm Δ) → subTm σ (ENRS j) ≡ ENRS (subTm σ j)
