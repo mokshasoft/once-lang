@@ -29,13 +29,14 @@ open import Once.IRTy using (IRTy; ⌈_⌉; ⌊_⌋)
 import Once.Semantics.Machine as Val
 open import Once.SigOp.Info
 open import Once.Denotation.Trace using (SigOpEvent; mkEvent)
-open import Once.Denotation.TraceMonad using (T; mkT; returnT; resT-lift; valueT; stoppedT; projTrace; fmapT; _>>=T_)
+open import Once.Denotation.TraceMonad using (T; ret; call; halt; returnT; fmapT; _>>=T_)
 open import Once.Res using (Res; stopped; returns; mapRes)
 open import Data.Bool using (true; false)
 open import Once.Semantics.Machine using (⟦_⟧F; coh; tF-coh)
 open import Once.Word using (Carrier)
 open import Once.Semantics.Functor using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF; νS; unfoldS)
-open import Once.Functor.Translate using (translateF)
+open import Once.Functor.Translate using (translateF; IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Str; base-Buffer; base-Prod; base-Sum;
+  WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod)
 open import Once.Semantics.Machine using (coerce-ν-in)
 
 ------------------------------------------------------------------------
@@ -59,31 +60,6 @@ record νᵈ (F : SFunctor) : Set where
 
 open νᵈ public
 
--- `forget` at an arrow runs the closure at depth `0` and drops its trace.
--- This is the same thing, one layer at a time.
-mutual
-  -- plan 0.98: TOTAL at last. The old clause read `valueT (forceᵈ v) zero`,
-  -- claiming a layer for a ν whose coalgebra may never produce one — the same
-  -- unstatable premise `forget`'s arrow clause carried. With `νS` a
-  -- possibly-finite stream the erasure drops exactly the TRACE and nothing
-  -- else, and stopping carries straight across.
-  forgetν : ∀ {F} → νᵈ F → νS F
-  unfoldS (forgetν {F} v) = forgetLayer F F (T.resT (forceᵈ v))
-
-  -- Named and applied directly rather than via `mapRes`: a partial
-  -- application to a higher-order function hides the corecursive call from
-  -- the guardedness checker.
-  forgetLayer : ∀ (F H : SFunctor) → Res (⟦ H ⟧SF (νᵈ F)) → Res (⟦ H ⟧SF (νS F))
-  forgetLayer F H stopped     = stopped
-  forgetLayer F H (returns l) = returns (mapForgetν F H l)
-
-  mapForgetν : ∀ (F H : SFunctor) → ⟦ H ⟧SF (νᵈ F) → ⟦ H ⟧SF (νS F)
-  mapForgetν F (SK B)   x        = x
-  mapForgetν F SId      x        = forgetν x
-  mapForgetν F (H S⊕ J) (inj₁ x) = inj₁ (mapForgetν F H x)
-  mapForgetν F (H S⊕ J) (inj₂ y) = inj₂ (mapForgetν F J y)
-  mapForgetν F (H S⊗ J) (x , y)  = (mapForgetν F H x , mapForgetν F J y)
-
 -- `in-νᵈ` — THE MISSING INTRODUCTION FORM (plan 0.93).
 --
 -- A `νᵈ` IS what forcing gives (the record has one field), so wrapping an
@@ -105,38 +81,7 @@ mutual
 -- `forceᵈ (in-νᵈ l) ≡ ([] , l)` is the Lambek round trip `Out ∘ in-ν ≡ id`,
 -- definitionally.
 in-νᵈ : ∀ {F} → ⟦ F ⟧SF (νᵈ F) → νᵈ F
-forceᵈ (in-νᵈ layer) = mkT (λ _ → []) (returns layer)
-
--- `inject` at an arrow lifts a pure function to a trace-free closure. This is
--- the same thing: every layer emits nothing.
-mutual
-  injectν : ∀ {F} → νS F → νᵈ F
-  forceᵈ (injectν {F} x) = mkT (λ _ → []) (injectLayer F F (unfoldS x))
-
-  injectLayer : ∀ (F H : SFunctor) → Res (⟦ H ⟧SF (νS F)) → Res (⟦ H ⟧SF (νᵈ F))
-  injectLayer F H stopped     = stopped
-  injectLayer F H (returns l) = returns (mapInjectν F H l)
-
-  mapInjectν : ∀ (F H : SFunctor) → ⟦ H ⟧SF (νS F) → ⟦ H ⟧SF (νᵈ F)
-  mapInjectν F (SK B)   x        = x
-  mapInjectν F SId      x        = injectν x
-  mapInjectν F (H S⊕ J) (inj₁ x) = inj₁ (mapInjectν F H x)
-  mapInjectν F (H S⊕ J) (inj₂ y) = inj₂ (mapInjectν F J y)
-  mapInjectν F (H S⊗ J) (x , y)  = (mapInjectν F H x , mapInjectν F J y)
-
--- `injectν` commutes with a transport along the functor index. While `inject`
--- at ν was the identity and `cohᴰ` borrowed `coh`, the corresponding naturality
--- square was `refl`; now that both sides name their own constructor it has to
--- be proved, which is one `refl` after generalising the equation.
-forgetν-coh : ∀ {F G : SFunctor} (eq : F ≡ G) (v : νᵈ G)
-            → subst (λ z → z) (cong νS eq) (forgetν (subst (λ z → z) (sym (cong νᵈ eq)) v))
-              ≡ forgetν v
-forgetν-coh refl v = refl
-
-injectν-coh : ∀ {F G : SFunctor} (eq : F ≡ G) (v : νS G)
-            → injectν (subst (λ z → z) (sym (cong νS eq)) v)
-              ≡ subst (λ z → z) (sym (cong νᵈ eq)) (injectν v)
-injectν-coh refl v = refl
+forceᵈ (in-νᵈ layer) = ret layer
 
 -- Sequence a functor layer of COMPUTATIONS into a computation of a layer.
 --
@@ -168,13 +113,17 @@ mutual
   -- partial application: `mapAnaᵈ H H coalg` passed to a higher-order function
   -- is opaque to the termination checker, which then cannot see that the
   -- corecursive call sits under a constructor.
-  forceᵈ (anaᵈ H coalg a) =
-    mkT (λ k → projTrace (coalg a) k) (anaLayer H coalg (T.resT (coalg a)))
+  -- plan 0.105: forcing a layer RUNS the coalgebra's computation — its calls,
+  -- in order — and its result's children become suspensions. The map over the
+  -- tree is written by hand (structural on the inductive tree), never as
+  -- `fmapT`, so the corecursive call stays visibly guarded (D062).
+  forceᵈ (anaᵈ H coalg a) = anaTree H coalg (coalg a)
 
-  anaLayer : ∀ (H : SFunctor) {A : Set}
-           → (A → T (⟦ H ⟧SF A)) → Res (⟦ H ⟧SF A) → Res (⟦ H ⟧SF (νᵈ H))
-  anaLayer H coalg stopped     = stopped
-  anaLayer H coalg (returns l) = returns (mapAnaᵈ H H coalg l)
+  anaTree : ∀ (H : SFunctor) {A : Set}
+          → (A → T (⟦ H ⟧SF A)) → T (⟦ H ⟧SF A) → T (⟦ H ⟧SF (νᵈ H))
+  anaTree H coalg (ret l)      = ret (mapAnaᵈ H H coalg l)
+  anaTree H coalg (call o a k) = call o a (λ b → anaTree H coalg (k b))
+  anaTree H coalg (halt o a)   = halt o a
 
   mapAnaᵈ : ∀ (H G : SFunctor) {A : Set}
           → (A → T (⟦ H ⟧SF A)) → ⟦ G ⟧SF A → ⟦ G ⟧SF (νᵈ H)
@@ -301,93 +250,37 @@ cohᴰ Buffer       = refl
 cohᴰ (rigid _ _)  = refl
 
 ------------------------------------------------------------------------
--- Forgetful coercions between the monadic and the pure value domains.
--- They are the identity on every type EXCEPT the arrow: `forget` runs a
--- closure and drops its trace; `inject` lifts a pure function to a
--- trace-less (pure) closure. Closure runs use observation depth `zero` —
--- a closure is a TOTAL function, so its value is depth-independent.
--- Needed to interface with the pure `semM`/`eval` for base operations.
+-- The monadic and the pure value domains agree on FIRST-ORDER values, and
+-- only there (plan 0.105). At a base type they are the same set; the coercions
+-- below are identities that a SigOp's argument and result, a constant, and a
+-- functor's `K` position pass through.
+--
+-- There is no coercion at an arrow or a ν. Erasing an effectful closure to a
+-- pure function would have to RUN it, and a run needs an interpretation to
+-- answer its calls: there is no meaning-free erasure, so none is defined.
 ------------------------------------------------------------------------
 
-mutual
-  forget : ∀ {A} → ⟦ A ⟧ᴰ → Val.⟦ A ⟧
-  forget {Unit}       x        = x
-  forget {Void}       ()
-  forget {A * B}      (a , b)  = (forget a , forget b)
-  forget {A + B}      (inj₁ a) = inj₁ (forget a)
-  forget {A + B}      (inj₂ b) = inj₂ (forget b)
-  -- D143: split on the quantity. At `Zero` BOTH domains take `⟦Unit⟧`, so the
-  -- argument is passed through untouched rather than injected — there is no
-  -- argument of type `A` on either side to convert.
-  -- plan 0.98: the erasure of a Kleisli arrow is a PARTIAL function, and now
-  -- the pure domain can say so. Reading the result through `T.resT` rather
-  -- than `valueT` is what removes the old clause's unstatable premise — it
-  -- claimed a value for a closure that may never return one.
-  forget {A ⇒[ mk-kind Zero π ] B} clo = λ u  → mapRes forget (T.resT (clo u))
-  forget {A ⇒[ mk-kind One  π ] B} clo = λ va → mapRes forget (T.resT (clo (inject va)))
-  forget {A ⇒[ mk-kind Many π ] B} clo = λ va → mapRes forget (T.resT (clo (inject va)))
-  forget {μ-type F}   x        = x
-  forget {ν-type F _} v        = forgetν v
-  forget {Int}        x        = x
-  forget {Float}      x        = x
-  forget {Str}        x        = x
-  forget {Buffer}     x        = x
-  forget {rigid _ _}  ()
+forgetᵇ : ∀ {A} → IsBaseType A → ⟦ A ⟧ᴰ → Val.⟦ A ⟧
+forgetᵇ base-Unit   x = x
+forgetᵇ base-Void   ()
+forgetᵇ base-Int    x = x
+forgetᵇ base-Float  x = x
+forgetᵇ base-Str    x = x
+forgetᵇ base-Buffer x = x
+forgetᵇ (base-Prod a b) (x , y) = forgetᵇ a x , forgetᵇ b y
+forgetᵇ (base-Sum a b) (inj₁ x) = inj₁ (forgetᵇ a x)
+forgetᵇ (base-Sum a b) (inj₂ y) = inj₂ (forgetᵇ b y)
 
-  inject : ∀ {A} → Val.⟦ A ⟧ → ⟦ A ⟧ᴰ
-  inject {Unit}       x        = x
-  inject {Void}       ()
-  inject {A * B}      (a , b)  = (inject a , inject b)
-  inject {A + B}      (inj₁ a) = inj₁ (inject a)
-  inject {A + B}      (inj₂ b) = inj₂ (inject b)
-  -- The dual: a pure partial function lifts to a Kleisli arrow that emits
-  -- nothing and stops exactly where the pure one had no value.
-  inject {A ⇒[ mk-kind Zero π ] B} pf = λ u  → resT-lift (mapRes inject (pf u))
-  inject {A ⇒[ mk-kind One  π ] B} pf = λ da → resT-lift (mapRes inject (pf (forget da)))
-  inject {A ⇒[ mk-kind Many π ] B} pf = λ da → resT-lift (mapRes inject (pf (forget da)))
-  inject {μ-type F}   x        = x
-  inject {ν-type F _} x        = injectν x
-  inject {Int}        x        = x
-  inject {Float}      x        = x
-  inject {Str}        x        = x
-  inject {Buffer}     x        = x
-  inject {rigid _ _}  ()
-
-------------------------------------------------------------------------
--- The effectful-SigOp emission (unconditional: the budget is consumed by
--- `Ana`, not by individual SigOps; the first-`n` prefix is taken at the
--- top). Pure SigOps emit nothing, in lockstep with the machine.
-------------------------------------------------------------------------
-
-emit-D : ∀ {A B} → SigOpInfo A B → Val.⟦ A ⟧ → List SigOpEvent
-emit-D si x with effect si
-... | Pure    = []
-... | Emits _ = mkEvent si x ∷ []
-... | Halts _ = mkEvent si x ∷ []
-
--- The BUDGET-AWARE emitter. `take n (emit-D si x)` is the wrong cap: `take`
--- matches its BUDGET first, so `take n []` is stuck while `n` is abstract —
--- which breaks every proof that knows only `emit-D si x ≡ []` (the whole
--- Pure/arith family). `capN` matches the LIST first, so an empty emission is
--- silent at every budget definitionally.
-sig1ᴰ : ℕ → SigOpEvent → List SigOpEvent
-sig1ᴰ zero    _ = []
-sig1ᴰ (suc _) e = e ∷ []
-
-capN : ℕ → List SigOpEvent → List SigOpEvent
-capN n []       = []
-capN n (e ∷ es) = sig1ᴰ n e
-
--- Budget LAST, mirroring the `take n (emit-D si x)` it replaces.
-emit-Dᵇ : ∀ {A B} → SigOpInfo A B → Val.⟦ A ⟧ → ℕ → List SigOpEvent
-emit-Dᵇ si x n = capN n (emit-D si x)
-
--- A Pure SigOp stays silent at every budget — one `cong`, because `capN n []`
--- reduces without knowing `n`.
-emit-Dᵇ-[] : ∀ {A B} (si : SigOpInfo A B) (x : Val.⟦ A ⟧) (n : ℕ)
-           → emit-D si x ≡ [] → emit-Dᵇ si x n ≡ []
-emit-Dᵇ-[] si x n eq = cong (capN n) eq
-
+injectᵇ : ∀ {A} → IsBaseType A → Val.⟦ A ⟧ → ⟦ A ⟧ᴰ
+injectᵇ base-Unit   x = x
+injectᵇ base-Void   ()
+injectᵇ base-Int    x = x
+injectᵇ base-Float  x = x
+injectᵇ base-Str    x = x
+injectᵇ base-Buffer x = x
+injectᵇ (base-Prod a b) (x , y) = injectᵇ a x , injectᵇ b y
+injectᵇ (base-Sum a b) (inj₁ x) = inj₁ (injectᵇ a x)
+injectᵇ (base-Sum a b) (inj₂ y) = inj₂ (injectᵇ b y)
 
 ------------------------------------------------------------------------
 -- Plan 0.58: the `⟦_⟧ᴰ`-level functor coercion — the trace-preserving mirror
@@ -401,16 +294,16 @@ emit-Dᵇ-[] si x n eq = cong (capN n) eq
 -- `Ana` needs it to hand its coalgebra to `anaᵈ`. At `K` it forgets, exactly
 -- as the inverse injects — and `WellFormedF` puts `K` only at base types,
 -- where `forget` is the identity.
-coerce-functor-D : ∀ F C → ⟦ ⟦ F ⟧T C ⟧ᴰ → ⟦ F ⟧F ⟦ C ⟧ᴰ
-coerce-functor-D (K A)    C x        = forget x
-coerce-functor-D Id       C x        = x
-coerce-functor-D (F ⊕ G)  C (inj₁ x) = inj₁ (coerce-functor-D F C x)
-coerce-functor-D (F ⊕ G)  C (inj₂ y) = inj₂ (coerce-functor-D G C y)
-coerce-functor-D (F ⊗ G)  C (x , y)  = (coerce-functor-D F C x , coerce-functor-D G C y)
+coerce-functor-D : ∀ {F} → WellFormedF F → ∀ C → ⟦ ⟦ F ⟧T C ⟧ᴰ → ⟦ F ⟧F ⟦ C ⟧ᴰ
+coerce-functor-D (wf-K b)          C x        = forgetᵇ b x
+coerce-functor-D wf-Id             C x        = x
+coerce-functor-D (wf-Sum wf wg)    C (inj₁ x) = inj₁ (coerce-functor-D wf C x)
+coerce-functor-D (wf-Sum wf wg)    C (inj₂ y) = inj₂ (coerce-functor-D wg C y)
+coerce-functor-D (wf-Prod wf wg)   C (x , y)  = (coerce-functor-D wf C x , coerce-functor-D wg C y)
 
-coerce-functor⁻¹-D : ∀ F C → ⟦ F ⟧F ⟦ C ⟧ᴰ → ⟦ ⟦ F ⟧T C ⟧ᴰ
-coerce-functor⁻¹-D (K A)    C x        = inject x
-coerce-functor⁻¹-D Id       C x        = x
-coerce-functor⁻¹-D (F ⊕ G)  C (inj₁ x) = inj₁ (coerce-functor⁻¹-D F C x)
-coerce-functor⁻¹-D (F ⊕ G)  C (inj₂ y) = inj₂ (coerce-functor⁻¹-D G C y)
-coerce-functor⁻¹-D (F ⊗ G)  C (x , y)  = (coerce-functor⁻¹-D F C x , coerce-functor⁻¹-D G C y)
+coerce-functor⁻¹-D : ∀ {F} → WellFormedF F → ∀ C → ⟦ F ⟧F ⟦ C ⟧ᴰ → ⟦ ⟦ F ⟧T C ⟧ᴰ
+coerce-functor⁻¹-D (wf-K b)        C x        = injectᵇ b x
+coerce-functor⁻¹-D wf-Id           C x        = x
+coerce-functor⁻¹-D (wf-Sum wf wg)  C (inj₁ x) = inj₁ (coerce-functor⁻¹-D wf C x)
+coerce-functor⁻¹-D (wf-Sum wf wg)  C (inj₂ y) = inj₂ (coerce-functor⁻¹-D wg C y)
+coerce-functor⁻¹-D (wf-Prod wf wg) C (x , y)  = (coerce-functor⁻¹-D wf C x , coerce-functor⁻¹-D wg C y)

@@ -162,7 +162,9 @@ data IsBaseType : Type → Set where
 -- register ABI cannot pass and the observational bridge cannot relate funext-free.
 data IsConcrete : Type → Set where
   con-base : ∀ {A} → IsBaseType A → IsConcrete A
-  con-fun  : ∀ {A B k} → IsBaseType A → IsConcrete B → IsConcrete (A ⇒[ k ] B)
+  -- plan 0.105: FIRST-ORDER. An FFI contract takes and returns base values —
+  -- a library returns a register value, never a Once closure (the ABI).
+  con-fun  : ∀ {A B k} → IsBaseType A → IsBaseType B → IsConcrete (A ⇒[ k ] B)
 
 -- | Well-formed functor predicate
 --
@@ -205,7 +207,7 @@ IsConcrete-irrelevant : ∀ {A} (c₁ c₂ : IsConcrete A) → c₁ ≡ c₂
 IsConcrete-irrelevant (con-base ib₁) (con-base ib₂) =
   cong con-base (IsBaseType-irrelevant ib₁ ib₂)
 IsConcrete-irrelevant (con-fun bA₁ cB₁) (con-fun bA₂ cB₂) =
-  cong₂ (λ b c → con-fun b c) (IsBaseType-irrelevant bA₁ bA₂) (IsConcrete-irrelevant cB₁ cB₂)
+  cong₂ (λ b c → con-fun b c) (IsBaseType-irrelevant bA₁ bA₂) (IsBaseType-irrelevant cB₁ cB₂)
 IsConcrete-irrelevant (con-base ()) (con-fun bA cB)
 IsConcrete-irrelevant (con-fun bA cB) (con-base ())
 

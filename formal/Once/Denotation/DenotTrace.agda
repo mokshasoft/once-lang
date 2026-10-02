@@ -61,7 +61,9 @@ import Once.Semantics.Machine as Val
 -- a parameterised module stops reducing downstream at a variable instance.
 open import Once.Target.Arch using (TargetNum; int-bits; float-format)   -- pure value domain `Val.⟦_⟧` + `eval`
 open import Once.SigOp.Info
-  using (SigOpInfo; semM; effect; EffectShape; Pure; Emits; Halts)
+  using (SigOpInfo; SigOpSem; sem; name; baseA; conB; pureV; primV; emitsV; haltsV; ffiV; callsV; FFIAnswers)
+open import Once.Arith.Prim using (primSem)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Once.Functor.Translate using (WellFormedF)
 open import Once.Semantics.Machine
   using (sem-cata; sem-ana; sem-In; sem-Out;
@@ -71,9 +73,8 @@ open import Once.IRTy.WF using (wf-⌈⌉)
 open import Relation.Binary.PropositionalEquality using (subst; sym)
 open import Once.Denotation.Trace using (SigOpEvent; mkEvent)
 open import Once.Res using (Res; returns; stopped; mapRes)
-open import Once.Denotation.TraceMonad using (T; mkT; returnT; _>>=T_; valueT; stoppedT; projTrace; fmapT)
+open import Once.Denotation.TraceMonad using (T; ret; call; halt; callOp; haltOp; returnT; _>>=T_; fmapT)
 open import Data.Bool using (false)
-open import Once.Denotation.TraceDenote using (events-F)
 
 -- Plan 0.58 (OCP-0006): the IR-FREE value domain `⟦_⟧ᴰ` + `forget`/`inject` +
 -- `emit-D` moved to `Once.Denotation.ValueDomain` and re-exported here
@@ -138,43 +139,34 @@ open import Once.Denotation.ValueDomain public
 -- The compiler never emits one, and linkedness is what the apex carries.
 ------------------------------------------------------------------------
 
-CallEnv : Set
-CallEnv = CanonicalName → (A B : IRTy) → ⟦ A ⟧ᴰᴵ → T ⟦ B ⟧ᴰᴵ
+-- The call environment: the program's own definitions (D244), and the
+-- interpretation's PURE FFI contracts (plan 0.105, D061). A pure FFI value is
+-- a fixed function of its argument — it sees no history — so referencing it
+-- is referentially transparent by its type.
+record CallEnv : Set where
+  constructor callEnv
+  field
+    callsE : CanonicalName → (A B : IRTy) → ⟦ A ⟧ᴰᴵ → T ⟦ B ⟧ᴰᴵ
+    ffiE   : FFIAnswers
+open CallEnv public
+
+-- A SigOp's meaning, read off its contract. An internal or pure FFI operation
+-- returns a value; an emitting one is a call answered by `⊤`; an answering one
+-- is a call the interpretation answers; a halting one ends the program.
+sigOpSemT : (fmt : TargetNum) → FFIAnswers → ∀ {A B} → SigOpInfo A B → SigOpSem A B → Val.⟦ A ⟧ → T Val.⟦ B ⟧
+sigOpSemT fmt ans si (pureV f)     x = ret (Val.eraseᵍ (f fmt x))
+sigOpSemT fmt ans si (primV p)     x = ret (Val.eraseᵍ (primSem p fmt x))
+sigOpSemT fmt ans {A} si (emitsV refl) x = call (callOp (name si) A (baseA si) Unit) x (λ _ → ret tt)
+sigOpSemT fmt ans {A} si (haltsV refl) x = halt (haltOp (name si) A (baseA si)) x
+sigOpSemT fmt ans {A} {B} si ffiV  x = ret (ans (name si) A B x)
+sigOpSemT fmt ans {A} {B} si callsV x = call (callOp (name si) A (baseA si) B) x ret
+
+sigOpT : (fmt : TargetNum) → FFIAnswers → ∀ {A B} → SigOpInfo A B → Val.⟦ A ⟧ → T Val.⟦ B ⟧
+sigOpT fmt ans si = sigOpSemT fmt ans si (sem si)
 
 evalᴰ        : (fmt : TargetNum) → CallEnv → ∀ {A B} → IR A B → ⟦ A ⟧ᴰᴵ → T ⟦ B ⟧ᴰᴵ
--- The two PURE leaves, named once. `In` and `out-μ` have no sub-IR, so their
--- whole meaning is a Lambek coercion over `sem-In` / `sem-Out`; naming them
--- here is what stops `DenotPrefix`'s `evalᴰ-good` restating the expression and
--- drifting from it (it used to say `eval fmt (In wf) …`, and `eval` is gone).
-in-val    : ∀ (F : IRFunctor) → Val.⟦ ⌈ ⟦ F ⟧TI (μ-type F) ⌉ ⟧ → Val.⟦ ⌈ μ-type F ⌉ ⟧
-out-μ-val : ∀ (F : IRFunctor) → WellFormedFI F
-          → Val.⟦ ⌈ μ-type F ⌉ ⟧ → Val.⟦ ⌈ ⟦ F ⟧TI (μ-type F) ⌉ ⟧
--- A literal's machine value, materialised at the TARGET's width/format (D115):
--- the payload is source syntax, and this is the single point at which it
--- becomes bits.
-const-val : (fmt : TargetNum) → ∀ {A} → FitsInRegI A
-          → ⟦ ℤ , Decimal ⟧-baseI A → Val.⟦ ⌈ A ⌉ ⟧
--- The events algebra for the `Cata` fold: children's events (`events-F`)
--- followed by this layer's algebra events (`evalᴰ fmt ρ alg` on the rebuilt functor
--- layer). Plan 0.58: value carried in the MONADIC domain `⟦C⟧ᴰ` (NOT forgotten
--- to `Val.⟦C⟧`) so an effectful-arrow carrier keeps its apply-time effects.
--- D131: the algebra reads a fixed environment, so the trace algebra takes the
--- environment VALUE — obtained once by the caller, outside the fold.
--- D179: the fold's carrier is a COMPUTATION, and the layer is sequenced
--- (`seqF`) before the algebra runs. The `ℕ` is gone: the budget now lives in
--- `T` and is threaded by `_>>=T_`, so the children share one budget instead of
--- each receiving the full `n` and having their traces concatenated. That
--- concatenation is what made `length (at n) ≤ n` false for a `k`-layer fold.
-cata-ev-algᴰ : (fmt : TargetNum) → CallEnv → ∀ {F E C} → IR (E * ⟦ F ⟧TI C) C → ⟦ E ⟧ᴰᴵ
+cata-ev-algᴰ : (fmt : TargetNum) → CallEnv → ∀ {F E C} → WellFormedFI F → IR (E * ⟦ F ⟧TI C) C → ⟦ E ⟧ᴰᴵ
              → ⟦ ⌈ F ⌉F ⟧F (T ⟦ C ⟧ᴰᴵ) → T ⟦ C ⟧ᴰᴵ
-
-const-val fmt fits-int   v = OnceWord.Width.fromℤ (int-bits fmt) v
-const-val fmt fits-float v = round (float-format fmt) v
-
-in-val F x = sem-In ⌈ F ⌉F (coerce-functor ⌈ F ⌉F ⌈ μ-type F ⌉
-               (subst (λ T → Val.⟦ T ⟧) (⌈⟧TI-commute F (μ-type F)) x))
-out-μ-val F wf x = subst (λ T → Val.⟦ T ⟧) (sym (⌈⟧TI-commute F (μ-type F)))
-                     (coerce-functor⁻¹ ⌈ F ⌉F ⌈ μ-type F ⌉ (sem-Out (wf-⌈⌉ wf) x))
 
 evalᴰ fmt ρ id            a        = returnT a
 evalᴰ fmt ρ (g ∘ f)       a        = evalᴰ fmt ρ f a >>=T evalᴰ fmt ρ g
@@ -189,96 +181,45 @@ evalᴰ fmt ρ terminal      _        = returnT tt
 evalᴰ fmt ρ initial       ()
 evalᴰ fmt ρ (curry f)   a        = returnT (λ b → evalᴰ fmt ρ f (a , b))
 evalᴰ fmt ρ apply         p        = proj₁ p (proj₂ p)
--- plan 0.97: THE ONE CLAUSE WHERE A PROGRAM STOPS. `Halts` and `Emits` used
--- to be indistinguishable here — one event each, value `tt`, computation
--- continues — so the Spec said a program carries on after `exit`. `stops-D`
--- is the difference.
+-- A SigOp's argument and result are first-order (`baseA`, `conB`), so they
+-- cross between the two value domains unchanged.
 evalᴰ fmt ρ (SigOp {A} {B} si) a   =
-  mkT (λ n → emit-Dᵇ si (subst (λ z → z) (coh A) (forget a)) n)
-      (mapRes (λ v → subst (λ z → z) (sym (cohᴰ B)) (inject v))
-              (semM si fmt (subst (λ z → z) (coh A) (forget a))))
--- D245: a call means the program's entry, read from the environment.
-evalᴰ fmt ρ (Call {A} {B} f) a = ρ f A B a
--- Recursion schemes: VALUE comes from this denotation's OWN trace-fold, NOT a
--- parallel pure `eval` — `⟦_⟧ᴰ` has ONE model (the trace semantics), exactly
--- like `⟦_⟧ˢ`. (The old catch-all routed `Cata`/`Ana` values through the pure
--- `eval`, a second value model that diverged from the trace for EFFECTFUL
--- algebras — the same category-error as the retired ℤ proof-model.) `Cata`'s
--- value is `proj₂` of its post-order fold; `Ana`'s is `sem-ana` over the
--- coalgebra's OWN (forgotten) trace-value. Structurally identical to `⟦_⟧ˢ`.
--- D131: `a` is the pair `(env , μ-value)`. The environment is projected ONCE,
--- here, and closed over by the per-layer algebra — the fold never rebuilds it.
+  fmapT (λ v → subst (λ z → z) (sym (cohᴰ B)) (injectᵇ (conB si) v))
+        (sigOpT fmt (ffiE ρ) si (forgetᵇ (baseA si) (subst (λ z → z) (cohᴰ A) a)))
+evalᴰ fmt ρ (Call {A} {B} f) a = callsE ρ f A B a
 evalᴰ fmt ρ (Cata {F} wf {E} {C} alg)  a =
-  sem-cata (wf-⌈⌉ wf) (cata-ev-algᴰ fmt ρ {F} {E} {C} alg (proj₁ a)) (forget (proj₂ a))
--- D179: `Ana` BUILDS the suspension and emits NOTHING — exactly as `curry`
--- builds a closure and emits nothing, with `apply` firing the effects. The
--- coalgebra runs when a layer is FORCED, at `Out`.
---
--- What this replaces: the value used to be `sem-ana` over the coalgebra read
--- at budget `0` (i.e. with its effects DISCARDED, because a pure `ν` could not
--- carry them), and the discarded effects were then re-invented by `ana-events`
--- as an eager left-to-right unfold to depth `n`. Those two traversals disagree
--- whenever the functor has more than one recursive position, because the
--- left child's newly-discovered events DISPLACE the right child's. No order
--- is invented here, so nothing can disagree.
+  sem-cata (wf-⌈⌉ wf) (cata-ev-algᴰ fmt ρ {F} {E} {C} wf alg (proj₁ a)) (proj₂ a)
 evalᴰ fmt ρ (Ana {F} wf {A} coalg) a =
   returnT (anaFᵈ ⌈ F ⌉F
-            (λ a' → fmapT (λ x → coerce-functor-D ⌈ F ⌉F ⌈ A ⌉
+            (λ a' → fmapT (λ x → coerce-functor-D (wf-⌈⌉ wf) ⌈ A ⌉
                                    (subst (λ Ty → ⟦ Ty ⟧ᴰ) (⌈⟧TI-commute F A) x))
                           (evalᴰ fmt ρ coalg a'))
             a)
--- D179: `Out` is the EMITTER. Forcing one layer runs the coalgebra once, and
--- its events are that layer's. The trace order is therefore the order the
--- program forces layers — which is the order the machine runs them.
 evalᴰ fmt ρ (Out {F} wf) v =
   fmapT (λ layer → subst (λ Ty → ⟦ Ty ⟧ᴰ) (sym (⌈⟧TI-commute F (ν-type F)))
-                     (coerce-functor⁻¹-D ⌈ F ⌉F ⌈ ν-type F ⌉
+                     (coerce-functor⁻¹-D (wf-⌈⌉ wf) ⌈ ν-type F ⌉
                        (coerce-ν-out (wf-⌈⌉ wf) _ layer)))
         (forceᵈ v)
--- plan 0.93: `in-ν` gets a NATIVE clause. It used to fall to the catch-all
--- below, and the catch-all FORGETS its input — `inject (eval fmt ir (forget a))`.
--- At `ν-type F` that round trip is lossy: `forgetν` reads each child at budget
--- ZERO and drops its events (ValueDomain.agda:63-64), so a child built by an
--- EMITTING `Ana` was specified as silent. The machine does no such thing — it
--- leaves the child's suspension pointer untouched — so the SPEC was wrong, not
--- the compiler.
---
--- The fix is the introduction form the value domain was missing, `in-νᵈ`: force
--- yields the layer AS GIVEN, children included, emitting nothing. Symmetric with
--- `Ana` (D179): both BUILD a suspension and emit NOTHING; the events come at
--- `Out`, when a layer is forced. The coercion chain is `anaFᵈ`'s
--- (ValueDomain.agda:198) with the recursion removed — `in-ν` has a layer
--- already, so there is no coalgebra to run.
 evalᴰ fmt ρ (in-ν {F} wf) a =
   returnT (in-νᵈ (coerce-ν-in ⌈ F ⌉F ⟦ ⌈ ν-type F ⌉ ⟧ᴰ
-                    (coerce-functor-D ⌈ F ⌉F ⌈ ν-type F ⌉
+                    (coerce-functor-D (wf-⌈⌉ wf) ⌈ ν-type F ⌉
                       (subst (λ Ty → ⟦ Ty ⟧ᴰ) (⌈⟧TI-commute F (ν-type F)) a))))
--- plan 0.98: the six clauses that USED TO BE A CATCH-ALL, split by what they
--- actually are. `In`, `out-μ` and `const` have no sub-IR at all, so they can
--- emit nothing and cannot halt — the pure `eval` is their whole meaning, and
--- these are the ONLY three places it is applied.
--- plan 0.98: these are the bodies of `eval`'s own `In`/`out-μ`/`const`
--- clauses, INLINED. Each is a leaf — `sem-In`, `sem-Out`, and the literal's
--- materialisation at the target's width/format — so there is nothing to
--- delegate, and `evalᴰ` stops routing any part of the Spec's meaning through
--- the pure model. (`eval` cannot be a total `IR A B → ⟦A⟧ → ⟦B⟧` once
--- `Halts : B ≡ Void`, because `⟦ Void ⟧ = ⊥`.)
-evalᴰ fmt ρ (In {F} _) a = mkT (λ _ → []) (returns (inject (in-val F (forget a))))
-evalᴰ fmt ρ (out-μ {F} wf) a = mkT (λ _ → []) (returns (inject (out-μ-val F wf (forget a))))
-evalᴰ fmt ρ (const {A} fits v) a = mkT (λ _ → []) (returns (inject (const-val fmt {A} fits v)))
+-- μ values are first-order: the layer crosses by the functor coercion.
+evalᴰ fmt ρ (In {F} wf) a =
+  returnT (sem-In ⌈ F ⌉F (coerce-functor-D (wf-⌈⌉ wf) ⌈ μ-type F ⌉
+                            (subst (λ Ty → ⟦ Ty ⟧ᴰ) (⌈⟧TI-commute F (μ-type F)) a)))
+evalᴰ fmt ρ (out-μ {F} wf) a =
+  returnT (subst (λ Ty → ⟦ Ty ⟧ᴰ) (sym (⌈⟧TI-commute F (μ-type F)))
+             (coerce-functor⁻¹-D (wf-⌈⌉ wf) ⌈ μ-type F ⌉ (sem-Out (wf-⌈⌉ wf) a)))
+evalᴰ fmt ρ (const fits-int v)   a = returnT (OnceWord.Width.fromℤ (int-bits fmt) v)
+evalᴰ fmt ρ (const fits-float v) a = returnT (round (float-format fmt) v)
 
-cata-ev-algᴰ fmt ρ {F} {E} {C} alg env fc =
+-- The fold's per-layer step: sequence the layer's children, then run the
+-- algebra on the layer.
+cata-ev-algᴰ fmt ρ {F} {E} {C} wf alg env fc =
   seqF ⌈ F ⌉F fc >>=T λ layer →
     evalᴰ fmt ρ alg (env , subst (λ Ty → ⟦ Ty ⟧ᴰ) (sym (⌈⟧TI-commute F C))
-                             (coerce-functor⁻¹-D ⌈ F ⌉F ⌈ C ⌉ layer))
-
-------------------------------------------------------------------------
--- `liftFn` — the erasure-transported IR morphism denotation as a surface
--- Kleisli arrow. `evalᴰ fmt ρ ir : ⟦⌊A⌋⟧ᴰᴵ → T ⟦⌊B⌋⟧ᴰᴵ`; `cohᴰ` transports it to
--- `⟦A⟧ᴰ → T ⟦B⟧ᴰ` (grade-blind erasure). The shared building block for the
--- adequacy bridges: `SD.liftD = returnT ∘ liftFn fmt`, and `RelV (A⇒B)`/`cata-bridge`
--- compare against `liftFn fmt (realize… )` (Plan 0.52 M2).
-------------------------------------------------------------------------
+                             (coerce-functor⁻¹-D (wf-⌈⌉ wf) ⌈ C ⌉ layer))
 
 liftFn : (fmt : TargetNum) → CallEnv → ∀ {A B : Type} → IR ⌊ A ⌋ ⌊ B ⌋ → ⟦ A ⟧ᴰ → T ⟦ B ⟧ᴰ
 liftFn fmt ρ {A} {B} ir v = subst T (cohᴰ B) (evalᴰ fmt ρ ir (subst (λ z → z) (sym (cohᴰ A)) v))

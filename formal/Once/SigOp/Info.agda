@@ -38,7 +38,9 @@ open import Data.Unit using (⊤; tt)
 open import Data.String using (String; _≟_)
 open import Once.CanonicalName using (CanonicalName; _≟ᶜ_)
 open import Relation.Nullary using (Dec; yes; no)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; sym)
+open import Data.Product using (_,_)
+open import Data.Sum using (inj₁; inj₂)
 
 open import Once.Type using (Type; Unit; Void)
 open import Once.Res using (Res; stopped; returns; is-stopped; mapRes)
@@ -46,7 +48,7 @@ open import Data.Bool using (Bool; true; false)
 -- Plan 0.58 (OCP-0006): a SigOp is an FFI/register-ABI boundary, so its argument
 -- and result types must be CONCRETE (`IsBaseType` — no arrows, no `μ`/`ν`). This is
 -- enforced BY CONSTRUCTION here: a `SigOpInfo` cannot be built at a non-base type.
-open import Once.Functor.Translate using (IsBaseType; IsConcrete)
+open import Once.Functor.Translate using (IsBaseType; IsConcrete; base-Unit; base-Void; base-Int; base-Float; base-Str; base-Buffer; base-Prod; base-Sum)
 
 -- | Frontend / proof-level interpretation (Int ≡ ℤ).
 -- (Core ℤ `as I` removed: semI deleted — the machine `semM` is the meaning.)
@@ -100,6 +102,10 @@ data EffectShape (B : Type) : Set where
   -- had to be stashed in a name-keyed side table. `Void` puts it back in the
   -- type, where both presentations of the meaning read it.
   Halts : B ≡ Void → EffectShape B
+  -- | plan 0.105: observable event, continues WITH AN ANSWER the
+  -- interpretation supplies (an input: `getpid`, `fd_read`). The codomain is
+  -- data.
+  Answers : EffectShape B
 
 ------------------------------------------------------------------------
 -- SigOpSem — the SigOp's semantics, UNIFYING value and effect (Plan
@@ -137,6 +143,12 @@ data SigOpSem (A B : Type) : Set where
   -- type, so a pure one's function pointer is total. The machine reads its
   -- erasure (`semM`).
   pureV : (TargetNum → M.⟦ A ⟧ → M.⟦ B ⟧ᵍ) → SigOpSem A B
+  -- | plan 0.105: a PURE FFI contract. Its value is the interpretation's
+  -- (D061): the compiler knows only its name and declared types.
+  ffiV : SigOpSem A B
+  -- | plan 0.105: an EFFECTFUL FFI contract answering data. A call: the
+  -- interpretation answers it, given the calls before it.
+  callsV : SigOpSem A B
   -- | External op, observable, continues. Value is `tt` (B ≡ Unit).
   emitsV : B ≡ Unit → SigOpSem A B
   -- | External op, observable, TERMINATES the machine. There is no value:
@@ -170,12 +182,11 @@ record SigOpInfo (A B : Type) : Set where
     -- Plan 0.58: the ARGUMENT is a base type (a register/ABI scalar — a
     -- higher-order callback arg is out of scope). Proof-irrelevant.
     baseA : IsBaseType A
-    -- Plan 0.58: the RESULT is concrete, whoever produced the SigOp (an
-    -- interpretation or the compiler, D061). D071 relaxed this to a `Linkage`
-    -- tag so that definition references could ride SigOp. D245 gave them their
-    -- own IR node (`Call`), and the witness is unconditional again.
-    -- Proof-irrelevant carry-along (never read).
-    conB  : IsConcrete B
+    -- plan 0.105: the RESULT is a base type too — a register/ABI value, never
+    -- a closure. (Plan 0.58 had `IsConcrete B`; D245 moved definition
+    -- references to `Call`, and FFI contracts are first-order, so no SigOp
+    -- returns a function.)
+    conB  : IsBaseType B
 
 open SigOpInfo public
 
@@ -204,58 +215,95 @@ open SigOpInfo public
 -- LEMMA relating them (`semM-stops` below). A `where`-bound dispatch cannot
 -- carry one: neither reduces on `sem si` for a variable `si`, so there is
 -- nothing to case-split. As top-level functions of `SigOpSem` there is.
-semM-of : ∀ {A B} → SigOpSem A B → TargetNum → M.⟦ A ⟧ → Res M.⟦ B ⟧
-semM-of (pureV f)     = λ tn x → returns (M.eraseᵍ (f tn x))
-semM-of (emitsV refl) = λ _ _ → returns tt
-semM-of (haltsV refl) = λ _ _ → stopped
-semM-of (primV p)     = λ tn x → returns (M.eraseᵍ (primSem p tn x))
+-- plan 0.105: what an FFI contract returns is not the compiler's to compute.
+-- `FFIAnswers` is that value, supplied by whoever has the interpretation (the
+-- machine builds it from the interpretation and its event log); internal
+-- operations ignore it.
+FFIAnswers : Set
+FFIAnswers = CanonicalName → (A B : Type) → M.⟦ A ⟧ → M.⟦ B ⟧
+
+-- A base value in the graded domain (they coincide at first-order types).
+liftᵇ : ∀ {B} → IsBaseType B → M.⟦ B ⟧ → M.⟦ B ⟧ᵍ
+liftᵇ base-Unit        x       = x
+liftᵇ base-Void        x       = x
+liftᵇ base-Int         x       = x
+liftᵇ base-Float       x       = x
+liftᵇ base-Str         x       = x
+liftᵇ base-Buffer      x       = x
+liftᵇ (base-Prod a b)  (x , y) = liftᵇ a x , liftᵇ b y
+liftᵇ (base-Sum a b)   (inj₁ x) = inj₁ (liftᵇ a x)
+liftᵇ (base-Sum a b)   (inj₂ y) = inj₂ (liftᵇ b y)
+
+eraseᵇ-liftᵇ : ∀ {B} (b : IsBaseType B) (x : M.⟦ B ⟧) → M.eraseᵍ (liftᵇ b x) ≡ x
+eraseᵇ-liftᵇ base-Unit        x        = refl
+eraseᵇ-liftᵇ base-Void        x        = refl
+eraseᵇ-liftᵇ base-Int         x        = refl
+eraseᵇ-liftᵇ base-Float       x        = refl
+eraseᵇ-liftᵇ base-Str         x        = refl
+eraseᵇ-liftᵇ base-Buffer      x        = refl
+eraseᵇ-liftᵇ (base-Prod a b)  (x , y)  = cong₂ _,_ (eraseᵇ-liftᵇ a x) (eraseᵇ-liftᵇ b y)
+eraseᵇ-liftᵇ (base-Sum a b)   (inj₁ x) = cong inj₁ (eraseᵇ-liftᵇ a x)
+eraseᵇ-liftᵇ (base-Sum a b)   (inj₂ y) = cong inj₂ (eraseᵇ-liftᵇ b y)
+
+semM-of : ∀ {A B} → FFIAnswers → CanonicalName → SigOpSem A B → TargetNum → M.⟦ A ⟧ → Res M.⟦ B ⟧
+semM-of ans n (pureV f)     = λ tn x → returns (M.eraseᵍ (f tn x))
+semM-of ans n (emitsV refl) = λ _ _ → returns tt
+semM-of ans n (haltsV refl) = λ _ _ → stopped
+semM-of ans n (primV p)     = λ tn x → returns (M.eraseᵍ (primSem p tn x))
+semM-of {A} {B} ans n ffiV   = λ _ x → returns (ans n A B x)
+semM-of {A} {B} ans n callsV = λ _ x → returns (ans n A B x)
 
 effect-of : ∀ {A B} → SigOpSem A B → EffectShape B
 effect-of (pureV _)  = Pure
 effect-of (emitsV e) = Emits e
 effect-of (haltsV e) = Halts e
 effect-of (primV _)  = Pure
+effect-of ffiV       = Pure
+effect-of callsV     = Answers
 
-semM : ∀ {A B} → SigOpInfo A B → TargetNum → M.⟦ A ⟧ → Res M.⟦ B ⟧
-semM si = semM-of (sem si)
+semM : ∀ {A B} → FFIAnswers → SigOpInfo A B → TargetNum → M.⟦ A ⟧ → Res M.⟦ B ⟧
+semM ans si = semM-of ans (name si) (sem si)
 
--- D250: the same reading in the GRADED contract domain — what the Spec's
--- effectful references mean (an effectful op's value is `tt`; a halt has none).
-semMᵍ-of : ∀ {A B} → SigOpSem A B → TargetNum → M.⟦ A ⟧ → Res M.⟦ B ⟧ᵍ
-semMᵍ-of (pureV f)     = λ tn x → returns (f tn x)
-semMᵍ-of (emitsV refl) = λ _ _ → returns tt
-semMᵍ-of (haltsV refl) = λ _ _ → stopped
-semMᵍ-of (primV p)     = λ tn x → returns (primSem p tn x)
-
-semMᵍ : ∀ {A B} → SigOpInfo A B → TargetNum → M.⟦ A ⟧ → Res M.⟦ B ⟧ᵍ
-semMᵍ si = semMᵍ-of (sem si)
+-- D250: the same reading in the GRADED contract domain.
+semMᵍ : ∀ {A B} → FFIAnswers → SigOpInfo A B → TargetNum → M.⟦ A ⟧ → Res M.⟦ B ⟧ᵍ
+semMᵍ {A} {B} ans si = go (sem si)
+  where
+    go : SigOpSem A B → TargetNum → M.⟦ A ⟧ → Res M.⟦ B ⟧ᵍ
+    go (pureV f)     = λ tn x → returns (f tn x)
+    go (emitsV refl) = λ _ _ → returns tt
+    go (haltsV refl) = λ _ _ → stopped
+    go (primV p)     = λ tn x → returns (primSem p tn x)
+    go ffiV          = λ _ x → returns (liftᵇ (conB si) (ans (name si) A B x))
+    go callsV        = λ _ x → returns (liftᵇ (conB si) (ans (name si) A B x))
 
 -- …and the machine reading IS the graded one, erased.
-semM-erase-of : ∀ {A B} (s : SigOpSem A B) (tn : TargetNum) (x : M.⟦ A ⟧)
-              → semM-of s tn x ≡ mapRes M.eraseᵍ (semMᵍ-of s tn x)
-semM-erase-of (pureV f)     tn x = refl
-semM-erase-of (emitsV refl) tn x = refl
-semM-erase-of (haltsV refl) tn x = refl
-semM-erase-of (primV p)     tn x = refl
-
-semM-erase : ∀ {A B} (si : SigOpInfo A B) (tn : TargetNum) (x : M.⟦ A ⟧)
-           → semM si tn x ≡ mapRes M.eraseᵍ (semMᵍ si tn x)
-semM-erase si = semM-erase-of (sem si)
-
+semM-erase : ∀ {A B} (ans : FFIAnswers) (si : SigOpInfo A B) (tn : TargetNum) (x : M.⟦ A ⟧)
+           → semM ans si tn x ≡ mapRes M.eraseᵍ (semMᵍ ans si tn x)
+semM-erase {A} {B} ans si tn x = go (sem si) refl
+  where
+    go : (s : SigOpSem A B) → sem si ≡ s → semM ans si tn x ≡ mapRes M.eraseᵍ (semMᵍ ans si tn x)
+    go (pureV f)     refl = refl
+    go (emitsV refl) refl = refl
+    go (haltsV refl) refl = refl
+    go (primV p)     refl = refl
+    go ffiV          refl = cong returns (sym (eraseᵇ-liftᵇ (conB si) (ans (name si) A B x)))
+    go callsV        refl = cong returns (sym (eraseᵇ-liftᵇ (conB si) (ans (name si) A B x)))
 
 effect : ∀ {A B} → SigOpInfo A B → EffectShape B
 effect si = effect-of (sem si)
 
 -- D250: a PURE contract's graded value — what the Spec means by it. The other
 -- shapes are not pure (`effect-of` says so), so the premise is absurd there.
-semP : ∀ {A B} (si : SigOpInfo A B) → effect si ≡ Pure → TargetNum → M.⟦ A ⟧ → M.⟦ B ⟧ᵍ
-semP si = semP-of (sem si)
+semP : ∀ {A B} (ans : FFIAnswers) (si : SigOpInfo A B) → effect si ≡ Pure → TargetNum → M.⟦ A ⟧ → M.⟦ B ⟧ᵍ
+semP {A} {B} ans si = semP-of (sem si)
   where
-    semP-of : ∀ {A B} (s : SigOpSem A B) → effect-of s ≡ Pure → TargetNum → M.⟦ A ⟧ → M.⟦ B ⟧ᵍ
+    semP-of : (s : SigOpSem A B) → effect-of s ≡ Pure → TargetNum → M.⟦ A ⟧ → M.⟦ B ⟧ᵍ
     semP-of (pureV f)  _  = f
     semP-of (emitsV _) ()
     semP-of (haltsV _) ()
     semP-of (primV p)  _  = primSem p
+    semP-of ffiV       _  = λ _ x → liftᵇ (conB si) (ans (name si) A B x)
+    semP-of callsV     ()
 
 -- | WHICH CONTRACT SHAPES END THE PROGRAM. 0.97 called this `stops-D-of` and
 --   kept it in the denotation; it belongs beside the contract it reads.
@@ -263,20 +311,23 @@ stops-shape : ∀ {B} → EffectShape B → Bool
 stops-shape Pure      = false
 stops-shape (Emits _) = false
 stops-shape (Halts _) = true
+stops-shape Answers   = false
 
 -- | …and THE TWO READINGS AGREE. This is the bridge a consumer who matched on
 --   `effect si` needs in order to say anything about `semM si` — a proof now,
 --   where 0.97 had a definitional coincidence.
-semM-stops-of : ∀ {A B} (sm : SigOpSem A B) (tn : TargetNum) (a : M.⟦ A ⟧)
-              → is-stopped (semM-of sm tn a) ≡ stops-shape (effect-of sm)
-semM-stops-of (pureV f)     tn a = refl
-semM-stops-of (emitsV refl) tn a = refl
-semM-stops-of (haltsV refl) tn a = refl
-semM-stops-of (primV p)     tn a = refl
+semM-stops-of : ∀ {A B} (ans : FFIAnswers) (n : CanonicalName) (sm : SigOpSem A B) (tn : TargetNum) (a : M.⟦ A ⟧)
+              → is-stopped (semM-of ans n sm tn a) ≡ stops-shape (effect-of sm)
+semM-stops-of ans n (pureV f)     tn a = refl
+semM-stops-of ans n (emitsV refl) tn a = refl
+semM-stops-of ans n (haltsV refl) tn a = refl
+semM-stops-of ans n (primV p)     tn a = refl
+semM-stops-of ans n ffiV          tn a = refl
+semM-stops-of ans n callsV        tn a = refl
 
-semM-stops : ∀ {A B} (si : SigOpInfo A B) (tn : TargetNum) (a : M.⟦ A ⟧)
-           → is-stopped (semM si tn a) ≡ stops-shape (effect si)
-semM-stops si = semM-stops-of (sem si)
+semM-stops : ∀ {A B} (ans : FFIAnswers) (si : SigOpInfo A B) (tn : TargetNum) (a : M.⟦ A ⟧)
+           → is-stopped (semM ans si tn a) ≡ stops-shape (effect si)
+semM-stops ans si = semM-stops-of ans (name si) (sem si)
 
 ------------------------------------------------------------------------
 -- Compatibility constructor — maps the old `(value, effect)` pair into
@@ -287,10 +338,11 @@ semM-stops si = semM-stops-of (sem si)
 ------------------------------------------------------------------------
 
 mk-info : ∀ {A B} → CanonicalName → (TargetNum → M.⟦ A ⟧ → M.⟦ B ⟧ᵍ) → EffectShape B
-        → IsBaseType A → IsConcrete B → SigOpInfo A B
+        → IsBaseType A → IsBaseType B → SigOpInfo A B
 mk-info nm f Pure      bA cB = mk-info' nm (pureV f)     bA cB
 mk-info nm f (Emits e) bA cB = mk-info' nm (emitsV e)    bA cB
 mk-info nm f (Halts e) bA cB = mk-info' nm (haltsV e)    bA cB
+mk-info nm f Answers   bA cB = mk-info' nm callsV        bA cB
 
 ------------------------------------------------------------------------
 -- Name-only equality
