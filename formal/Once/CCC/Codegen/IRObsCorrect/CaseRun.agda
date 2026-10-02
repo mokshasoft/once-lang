@@ -234,6 +234,13 @@ module RunC {FS : FrameSemantics} where
                         (mem-untouched load-indirect-suc s alloc lc
                            nhw-load-indirect-suc refl)
 
+      -- plan 0.105: …and the log is the caller's (no row calls).
+      log-r3 : LocState.ev-log (floc r3) ≡ LocState.ev-log s
+      log-r3 = log-abstract load-indirect-suc tt s alloc
+
+      log-i4 : LocState.ev-log (floc i4) ≡ LocState.ev-log s
+      log-i4 = log-abstract load-indirect-suc tt s alloc
+
       -- NONE of the five rows is a SigOp, so a prologue emits nothing. The
       -- `subst` inside `flat-step1` is what stops that from being `refl`.
       ev-run-r : ∀ (cond : tag-zf (flat-read-tag (floc fs0)) ≡ false)

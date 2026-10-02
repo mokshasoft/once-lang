@@ -89,6 +89,11 @@ module Core {FS : FrameSemantics} where
   log-pure : ∀ {s : LocState FS} → LocState.ev-log s ≡ LocState.ev-log s DL.++ DL.[]
   log-pure = sym (Data.List.Properties.++-identityʳ _)
 
+  -- One call-free step of the structured machine leaves the log alone.
+  log-abstract : ∀ (i : AbstractInstr) → LogFree i → ∀ (s : LocState FS) alloc
+               → LocState.ev-log (proj₁ (AbstractExec.exec-abstract {FS} i s alloc)) ≡ LocState.ev-log s
+  log-abstract = LP.exec-abstract-log
+
   -- The value of a computation that RETURNS AT ONCE (`ret v`: a constructor,
   -- a destructor, a suspension). It makes no call, so no history is read.
   retVal : ∀ {X} (m : TM.T X) {p : TM.Returns? (TM.resultAt ιᶠ DL.[] m)} → X

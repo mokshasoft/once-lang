@@ -58,6 +58,7 @@ import Once.CCC.Machine.ReadTypedAdequate as RTA
 import Once.Denotation.DenotTrace as DT
 import Once.Denotation.TraceMonad as TM
 open import Once.Res using (Res; stopped; returns; is-stopped; res-returns; res-stopped)
+open import Data.Bool using (Bool)
 
 open import Once.CCC.Codegen.IRObsCorrect.CaseShape o tbl
 open import Once.CCC.Codegen.IRObsCorrect.CaseRun o tbl
@@ -143,20 +144,20 @@ module ArmRC {FS : FrameSemantics} where
       -- plan 0.97: the two trailing control rows happen only when the arm
       -- REACHED ITS END. `evalᴰ (case f g) (inj₂ Bv)` IS `evalᴰ g Bv`, so the
       -- arm's stoppedness is the clause's, and a stopped arm never jumps.
-      pc-at-jmp : TM.stoppedT (evalᴰ g Bv) k ≡ false
+      pc-at-jmp : stopsAt (floc P.r3) (evalᴰ g Bv) ≡ false
                 → fpc (VR.settle vg) ≡ (3 + length gt) + base
       pc-at-jmp q = trans (VR.at-end vg q) (shuffle-jmp (length gt) base)
 
-      jmpStep : (q : TM.stoppedT (evalᴰ g Bv) k ≡ false) → FlatSteps prog 1 (VR.settle vg) t1
+      jmpStep : (q : stopsAt (floc P.r3) (evalᴰ g Bv) ≡ false) → FlatSteps prog 1 (VR.settle vg) t1
       jmpStep q = flat-step1 {prog} {VR.settle vg} (VR.live vg q)
                   (trans (cong (fetch prog) (pc-at-jmp q)) at-jmp)
                   (trans (flat-jmp prog (VR.settle vg) (ℓ o (suc l)))
                          (cong (λ mj → do-jump mj (VR.settle vg)) (join-target prog base la)))
 
-      labelStep : (q : TM.stoppedT (evalᴰ g Bv) k ≡ false) → FlatSteps prog 1 t1 t2
+      labelStep : (q : stopsAt (floc P.r3) (evalᴰ g Bv) ≡ false) → FlatSteps prog 1 t1 t2
       labelStep q = flat-step1 {prog} {t1} (VR.live vg q) at-join-label refl
 
-      chain : (q : TM.stoppedT (evalᴰ g Bv) k ≡ false)
+      chain : (q : stopsAt (floc P.r3) (evalᴰ g Bv) ≡ false)
             → FlatSteps prog (3 + (VR.steps vg + (1 + 1))) P.fs0 t2
       chain q = FlatSteps-++ (P.run-r cond)
                 (FlatSteps-++ chainG (FlatSteps-++ (jmpStep q) (labelStep q)))
@@ -198,7 +199,7 @@ module ArmRC {FS : FrameSemantics} where
       -- THE EVENTS. Five control/straight rows surround `g`'s run and none
       -- of them is a SigOp, so the composite emits exactly what `g` does.
       ------------------------------------------------------------
-      ev-chain : (q : TM.stoppedT (evalᴰ g Bv) k ≡ false)
+      ev-chain : (q : stopsAt (floc P.r3) (evalᴰ g Bv) ≡ false)
                → chain-events (chain q) ≡ chain-events (VR.run vg)
       ev-chain q =
         trans (chain-events-++ (P.run-r cond) (FlatSteps-++ chainG (FlatSteps-++ (jmpStep q) (labelStep q))))
@@ -223,45 +224,62 @@ module ArmRC {FS : FrameSemantics} where
           (trans (cong (_++ chain-events chainG) (P.ev-run-r cond))
                  (chain-events-subst-start (sym handG) (VR.run vg)))
 
-      arm-not-stopped : ∀ {X : Set} → TM.stoppedT (evalᴰ g Bv) k ≡ false
-                      → TM.stoppedT (evalᴰ g Bv) k ≡ true → X
+      arm-not-stopped : ∀ {X : Set} → stopsAt (floc P.r3) (evalᴰ g Bv) ≡ false
+                      → stopsAt (floc P.r3) (evalᴰ g Bv) ≡ true → X
       arm-not-stopped q₀ q₁ with trans (sym q₀) q₁
       ... | ()
 
+      -- plan 0.105: the arm runs from the caller's log — the three prologue
+      -- rows make no call — so its run IS the clause's.
+      h-eq : LocState.ev-log (floc P.r3) ≡ LocState.ev-log s
+      h-eq = P.log-r3
+
+      RE : runAt (floc P.r3) (evalᴰ g Bv) ≡ runAt s (evalᴰ (case f g) (inj₂ Bv))
+      RE = runAt-≡ {st = floc P.r3} {st′ = s} h-eq refl
+
+      st-eq : stopsAt s (evalᴰ (case f g) (inj₂ Bv)) ≡ stopsAt (floc P.r3) (evalᴰ g Bv)
+      st-eq = sym (cong (λ r → is-stopped (proj₂ r)) RE)
+
+      log-c : LocState.ev-log (floc (VR.settle vg)) ≡ LocState.ev-log s ++ eventsAt s (evalᴰ (case f g) (inj₂ Bv))
+      log-c = trans (VR.log vg) (cong₂ _++_ h-eq (cong proj₁ RE))
+
       witness : MachineRefinesObsF prog base n l (case f g) (inj₂ Bv) s alloc cl k
-      witness = wit (TM.stoppedT (evalᴰ g Bv) k) refl
+      witness = wit (stopsAt (floc P.r3) (evalᴰ g Bv)) refl
         where
-          wit : (sg : TM.Stopped) → TM.stoppedT (evalᴰ g Bv) k ≡ sg
+          wit : (sg : Bool) → stopsAt (floc P.r3) (evalᴰ g Bv) ≡ sg
               → MachineRefinesObsF prog base n l (case f g) (inj₂ Bv) s alloc cl k
           wit false q = record
             { value-realized =
                 realized (3 + (VR.steps vg + (1 + 1))) t2 (VR.out-mode vg) (VR.cont-alloc vg)
                          (chain q) (λ _ → VR.live vg q) (λ _ → at-end-t2)
-                         (λ p → arm-not-stopped q p)
+                         (λ p → arm-not-stopped q (trans (sym st-eq) p))
                          (VR.no-ret vg) (VR.no-link vg)
-                         (VR.place vg)
+                         log-c
+                         (λ p → VR.place vg (trans (cong proj₂ RE) p))
                          (λ fr j bf → mem-pres (AtStack fr j) bf)
                          (λ hl bf → mem-pres (AtDynamic hl) bf)
                          (VR.frame-pres vg)
                          bf-mono-c
             ; traces-agree =
-                trans (cong (take k) (ev-chain q)) (MachineRefinesObsF.traces-agree mrg)
+                trans (ev-chain q) (trans (MachineRefinesObsF.traces-agree mrg) (cong proj₁ RE))
             }
           wit true q = record
             { value-realized =
                 realized (3 + VR.steps vg) (VR.settle vg) (VR.out-mode vg) (VR.cont-alloc vg)
-                         chain-stopped (λ p → arm-not-stopped p q) (λ p → arm-not-stopped p q)
+                         chain-stopped (λ p → arm-not-stopped (trans (sym st-eq) p) q)
+                         (λ p → arm-not-stopped (trans (sym st-eq) p) q)
                          (λ _ → VR.stops vg q)
                          (VR.no-ret vg) (VR.no-link vg)
+                         log-c
                          -- plan 0.98: the arm stopped, so it has NO result —
                          -- `place`'s premise says otherwise and refutes itself.
-                         (λ p → arm-not-stopped (cong is-stopped p) q)
+                         (λ p → arm-not-stopped (cong is-stopped (trans (cong proj₂ RE) p)) q)
                          (λ fr j bf → mem-pres (AtStack fr j) bf)
                          (λ hl bf → mem-pres (AtDynamic hl) bf)
                          (VR.frame-pres vg)
                          bf-mono-c
             ; traces-agree =
-                trans (cong (take k) ev-chain-stopped) (MachineRefinesObsF.traces-agree mrg)
+                trans ev-chain-stopped (trans (MachineRefinesObsF.traces-agree mrg) (cong proj₁ RE))
             }
 
     ------------------------------------------------------------------
