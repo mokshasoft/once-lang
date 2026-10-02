@@ -172,6 +172,18 @@ meaning (§0, §3d).
     for the substitution.
   - `tr` dispatches on `genᴬ-tr-shape`, now in GenerationA: a `tr` is typed
     at exactly two motive shapes.
+- ✅ **C4 proof of concept** (2026-10-02) `Algorithm/DecideA`:
+  - `decTo`/`checkᴰ`: a target check whose "no" refutes by `uniqᴬ`.
+  - `viewΠᴰ`: a Π view, or a refutation of every Π-typing by `nf-Π`; the
+    shape test `isΠ?` needs one clause per `RTy` former.
+  - The steps `decVar`, `decLam`, `decApp`, each taking its recursive
+    calls' results as arguments.
+  - The non-vacuity runs EVALUATE: `(λx.x) 0` YES, `0 0` NO (normal shape),
+    `(λx.x) tt` NO (uniqueness).
+  - It checks in 5 s, first time.
+  - ⬜ Next: the full checker. Every former becomes a step and the
+    recursion is tied, and `Dec` supersedes `CheckA`'s `Maybe` checker,
+    which is then deleted.
 ## 3b. ★ DECISION 3 — S4 by ROUTE C: normalise types BECAUSE they are well-typed
 
 Found on the `natrecᴹ` spike (`SPIKE-NATRECM.md` §3, 2026-09-25). Type
