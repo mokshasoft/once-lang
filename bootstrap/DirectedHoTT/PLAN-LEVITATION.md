@@ -119,11 +119,11 @@ CongMacro → Vec, Scoped, ScopedDepth → continue stage 4.
   fibre method, its typing, its computation rule (`fib-β`) and its
   closedness are each proven ONCE (8.5 s).
 - ✅ `gen-knot` emits `Knot/Ctors`: the 51 formers typed at any depth.
-- 🟡 `Knot/Judge`: `⊢ty`/`⊢` as ONE family over both sorts, with a
+- ✅ `Knot/Judge`: `⊢ty`/`⊢` as ONE family over both sorts, with a
   sort-dependent convoy (`Γ`, plus `A` for terms, by `fcase`). The
   family is well formed (`⊢D⊢`) and the fibre computes (`fibK`).
-  Constructors `⊢ty-base` and `⊢ty-Π` are typed. 12 of 13 `⊢ty` rows are
-  done (⬜ `DIh`: its index code is a σ-field).
+  All 13 `⊢ty` rows, `DIh` included, are now generated
+  (`JudgeRowsGen`), and `TypingAgree` covers them.
 - ★ Lessons (memory `knot-description-normalisation-trap`,
   `beta-chains-cast-each-step`, `agda-profile-script`). Every unpinned
   implicit, and every renamed type that mentions `KD`, normalises the
@@ -173,6 +173,20 @@ CongMacro → Vec, Scoped, ScopedDepth → continue stage 4.
   modules / 74 494 lines / 12 474 signatures to 33 / 24 095 (20 350
   generated) / 5 080. The generators went from 7 303 lines to 2 426. Cold
   sweep ≈ 81 min over two runs, not a clean number.
+- ✅ (2026-09-29/30) The Knot is FAITHFUL: PLAN-FAITHFUL F1–F5 (`enJudge`).
+- ✅ (2026-09-30 … 10-02) Build performance and Knot legibility
+  (`HANDOFF-2026-10-02.md` §2–§3):
+  - `SK`, `CR`/`CP` are opaque;
+  - `trstk?` goes through `var?`/`pick`;
+  - `snr-anti` uses catch-all congruences;
+  - every rule-per-constructor family is written as its TABLE
+    (`RowsOK`/`FamilyT`);
+  - positions are given by number (`atʰ`/`atᵍ`/`atᶜ`);
+  - object terms are written in notation (`v₃`, `,ₚ`; pattern synonyms).
+- ⬜ Stage 6's cold sweep, MEASURED CLEANLY: an idle box, one run. After it
+  comes the fast-forward of `ocp-0009-stepext-once` (user, 2026-10-02).
+- ⬜ (optional) `Knot/Sz`'s adequacy on the quotation. ⬜ (deferred)
+  infinitary `dπ`.
 
 ## Stages (each ends GREEN on its own branch; straight-line history)
 
