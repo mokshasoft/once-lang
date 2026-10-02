@@ -62,7 +62,11 @@ TMS = [
  ('fcase', [f(N,0,A), f(T,1,A), f(M), f(M), f(M,1)]),  # fcase [n P] t a b
  ('fcase0', [f(T,1,A), f(M)]),                      # fcase0 [P] t
  ('psplit', [f(T,0,A), f(T,1,A), f(T,1,A), f(M,2), f(M)]),  # psplit [A B P] b q
+ # ★ S5: a reference to the d-th entry of the global signature (PLAN-BIDI
+ #   §2-bis).  NOT an `RTm` former: erasure UNFOLDS it (δ) to the closed body.
+ ('ref', [f(N)]),                                   # ref d
 ]
+SIGONLY = {'ref'}
 
 def ext(fn, k, base):
     x = base
@@ -102,6 +106,7 @@ def erase(c, fs, ty):
     me = '⌈ {} ⌉ᵀ' if ty else '⌈ {} ⌉'
     L = lhs(c, fs)
     if fs and fs[0][0] == V: return '⌈ (var x) ⌉ = var x'
+    if c == 'ref': return '⌈ (ref x0) ⌉ = εwkTm (δ x0)'
     rhs = [c]
     for i, (kind, b, ann) in enumerate(fs):
         if ann: continue
@@ -113,6 +118,7 @@ def era(which, c, fs, ty):
     pre = f'{me} ρ' if which == 'ren' else f'{me} σ τ h'
     L = lhs(c, fs)
     if fs and fs[0][0] == V: return f'{pre} {L} = ' + ('refl' if which == 'ren' else 'h x')
+    if c == 'ref': return f'{pre} {L} = ' + ('sym (εwkTm-ren ρ (δ x0))' if which == 'ren' else 'sym (εwkTm-sub τ (δ x0))')
     body, proofs, n = [c], [], 0
     for i, (kind, b, ann) in enumerate(fs):
         if ann: continue
@@ -143,14 +149,15 @@ def generate():
           'subTyᴬ : {Γ Δ : Cx} → Subᴬ Γ Δ → ATy Γ → ATy Δ',
           'subTmᴬ : {Γ Δ : Cx} → Subᴬ Γ Δ → ATm Γ → ATm Δ']
     o += [act('sub', c, fs, True) for c, fs in TYS] + [act('sub', c, fs, False) for c, fs in TMS]
-    o += ['', '-- ★ ERASURE — drops exactly the annotation fields.',
-          '⌈_⌉ᵀ : {Γ : Cx} → ATy Γ → RTy Γ', '⌈_⌉ : {Γ : Cx} → ATm Γ → RTm Γ']
-    o += [erase(c, fs, True) for c, fs in TYS] + [erase(c, fs, False) for c, fs in TMS]
-    o += ['', '-- ★ erasure commutes with renaming',
+    e = ['-- ★ ERASURE — drops exactly the annotation fields, and UNFOLDS a',
+         '--   signature reference to its closed body (δ, PLAN-BIDI §2-bis).',
+         '⌈_⌉ᵀ : {Γ : Cx} → ATy Γ → RTy Γ', '⌈_⌉ : {Γ : Cx} → ATm Γ → RTm Γ']
+    e += [erase(c, fs, True) for c, fs in TYS] + [erase(c, fs, False) for c, fs in TMS]
+    e += ['', '-- ★ erasure commutes with renaming',
           'era-renTy : {Γ Δ : Cx} (ρ : Ren Γ Δ) (A : ATy Γ) → ⌈ renTyᴬ ρ A ⌉ᵀ ≡ renTy ρ ⌈ A ⌉ᵀ',
           'era-renTm : {Γ Δ : Cx} (ρ : Ren Γ Δ) (t : ATm Γ) → ⌈ renTmᴬ ρ t ⌉ ≡ renTm ρ ⌈ t ⌉']
-    o += [era('ren', c, fs, True) for c, fs in TYS] + [era('ren', c, fs, False) for c, fs in TMS]
-    o += ['', '-- extending a substitution commutes with erasure',
+    e += [era('ren', c, fs, True) for c, fs in TYS] + [era('ren', c, fs, False) for c, fs in TMS]
+    e += ['', '-- extending a substitution commutes with erasure',
           'era-ext : {Γ Δ : Cx} {σ : Subᴬ Γ Δ} {τ : Sub Γ Δ} → (∀ x → ⌈ σ x ⌉ ≡ τ x) →',
           '          ∀ x → ⌈ extSᴬ σ x ⌉ ≡ extS τ x',
           'era-ext h vz     = refl',
@@ -160,7 +167,10 @@ def generate():
           '            (A : ATy Γ) → ⌈ subTyᴬ σ A ⌉ᵀ ≡ subTy τ ⌈ A ⌉ᵀ',
           'era-subTm : {Γ Δ : Cx} (σ : Subᴬ Γ Δ) (τ : Sub Γ Δ) → (∀ x → ⌈ σ x ⌉ ≡ τ x) →',
           '            (t : ATm Γ) → ⌈ subTmᴬ σ t ⌉ ≡ subTm τ ⌈ t ⌉']
-    o += [era('sub', c, fs, True) for c, fs in TYS] + [era('sub', c, fs, False) for c, fs in TMS]
+    e += [era('sub', c, fs, True) for c, fs in TYS] + [era('sub', c, fs, False) for c, fs in TMS]
+    o += ['', '-- ★ the erased BODIES of the signature: `δ d` is entry d, erased.',
+          'module Era (δ : ℕ → RTm ε) where', '']
+    o += ['  ' + l if l else l for l in e]
     return '\n'.join(o) + '\n'
 
 def check():
@@ -171,7 +181,7 @@ def check():
                 if re.match(r'^  [^\s-]', l) and ':' in l]
     ok = True
     for name, table in (('RTy', TYS), ('RTm', TMS)):
-        want, have = set(ctors(name)), {c for c, _ in table}
+        want, have = set(ctors(name)), {c for c, _ in table} - SIGONLY
         if want != have:
             ok = False
             print(f'{name}: missing {sorted(want - have)}, extra {sorted(have - want)}')

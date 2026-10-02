@@ -7,6 +7,12 @@
 --
 --       erase : Γ ⊢ᴬ t ∷ A → ⌈ Γ ⌉ᶜ ⊢ ⌈ t ⌉ ∷ ⌈ A ⌉ᵀ
 --
+-- ★ S5: over a signature it is δ-ELIMINATION.  Erasure unfolds every
+--   `ref d` to its body, so an annotated derivation that USES definitions
+--   becomes a kernel derivation with none — extension by definitions is
+--   conservative.  Its hypothesis `SigOK` (each erased body has its erased
+--   declared type) comes from `Metatheory/Signature`'s `WfSig`.
+--
 -- ★ THIS IS THE WHOLE BRIDGE.  Every metatheorem of `RTm` now applies to
 --   the annotated kernel through it — consistency is below, one line.
 --   Conversion needs no bridge at all: `⊢ᴬconv` IS `⊢conv` on erasures.
@@ -20,39 +26,24 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Metatheory.Erasure where
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; subst; ⊥ )
 open import Agda.Builtin.Nat using ( zero )
 open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing hiding ( _×_ )
 open import DirectedHoTT.Spec.Annotated
-open import DirectedHoTT.Spec.AnnotatedDesc
-open import DirectedHoTT.Spec.TypingA
+open import DirectedHoTT.Spec.Signature using ( Sig; SigOK )
+open import DirectedHoTT.Metatheory.TySub using ( sub-lemma )
 open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢-cast )
 open import DirectedHoTT.Metatheory.Canonicity using ( consistency )
+module DirectedHoTT.Metatheory.Erasure (S : Sig) (ok : SigOK S) where
+open Sig S
+open Era body
+open import DirectedHoTT.Spec.AnnotatedDesc body
+open import DirectedHoTT.Spec.TypingA S
 
 private
   variable
     Γ : ACtx
-
--- the erasures of the two annotated substitutions the rules use
--- (public: the checker states its targets through them)
-module _ where
-  single-era : {Δ : Cx} (u : ATm Δ) → ∀ x → ⌈ singleᴬ u x ⌉ ≡ single ⌈ u ⌉ x
-  single-era u vz     = refl
-  single-era u (vs x) = refl
-
-  nrs-era : {Δ : Cx} → ∀ (x : Var (Δ ∙)) → ⌈ nrsᴬ x ⌉ ≡ nrs x
-  nrs-era vz     = refl
-  nrs-era (vs x) = refl
-
-  sub1 : {Δ : Cx} (u : ATm Δ) (B : ATy (Δ ∙)) →
-         ⌈ subTyᴬ (singleᴬ u) B ⌉ᵀ ≡ subTy (single ⌈ u ⌉) ⌈ B ⌉ᵀ
-  sub1 u B = era-subTy (singleᴬ u) (single ⌈ u ⌉) (single-era u) B
-
-  sub1ᵗ : {Δ : Cx} (u : ATm Δ) (d : ATm (Δ ∙)) →
-          ⌈ subTmᴬ (singleᴬ u) d ⌉ ≡ subTm (single ⌈ u ⌉) ⌈ d ⌉
-  sub1ᵗ u d = era-subTm (singleᴬ u) (single ⌈ u ⌉) (single-era u) d
 
 erase-∋ : {x : Var ⌊ Γ ⌋ᴬ} {A : ATy ⌊ Γ ⌋ᴬ} → Γ ∋ᴬ x ∷ A → ⌈ Γ ⌉ᶜ ∋ x ∷ ⌈ A ⌉ᵀ
 erase-∋ {Γ = Γ ▹ᴬ A} (hereᴬ {A = A}) =
@@ -114,11 +105,11 @@ erase (⊢ᴬdρ dI dj dC) = ⊢dρ (erase dI) (erase dj) (erase dC)
 erase (⊢ᴬdpay {I = I} dI dD dC) = ⊢dpay (erase dI) (⊢-cast (era-DescF I) (erase dD)) (erase dC)
 erase (⊢ᴬcon {I = I} dI dD di dp) = ⊢con (erase dI) (⊢-cast (era-DescF I) (erase dD)) (erase di) (erase dp)
 erase (⊢ᴬdih {I = I} {D = D} {M = M} dI dD dM de dC dp) =
-  ⊢dih (erase dI) (⊢-cast (era-DescF I) (erase dD)) (motCtx-era (erase-ty dM)) (⊢-cast (era-MethTy I D M) (erase de))
+  ⊢dih (erase dI) (⊢-cast (era-DescF I) (erase dD)) (motCtx-era {I = I} {D = D} (erase-ty dM)) (⊢-cast (era-MethTy I D M) (erase de))
        (erase dC) (erase dp)
 erase (⊢ᴬielim {I = I} {D = D} {M = M} {i = i} {t = t} dI dD dM de di dt) =
   ⊢-cast (sym (era-iinst i t M))
-    (⊢ielim (erase dI) (⊢-cast (era-DescF I) (erase dD)) (motCtx-era (erase-ty dM)) (⊢-cast (era-MethTy I D M) (erase de))
+    (⊢ielim (erase dI) (⊢-cast (era-DescF I) (erase dD)) (motCtx-era {I = I} {D = D} (erase-ty dM)) (⊢-cast (era-MethTy I D M) (erase de))
             (erase di) (erase dt))
 erase ⊢ᴬfzero = ⊢fzero
 erase (⊢ᴬfsuc d) = ⊢fsuc (erase d)
@@ -147,6 +138,10 @@ erase (⊢ᴬnatrec {M = M} {n = n} dM dz ds dn) =
              (⊢-cast (sub1 nzero M) (erase dz))
              (⊢-cast (era-subTy nrsᴬ nrs nrs-era M) (erase ds))
              (erase dn))
+-- ★ δ-ELIMINATION's one case: the reference erases to its body, weakened
+--   from the empty context
+erase (⊢ᴬref {d = d} p) =
+  ⊢-cast (sym (era-εwkTy (type d))) (sub-lemma (ok p) (λ ()))
 erase (⊢ᴬconv d c) = ⊢conv (erase d) c
 
 erase-ty tyᴬ-base = ty-base
@@ -159,8 +154,8 @@ erase-ty tyᴬ-Unit = ty-Unit
 erase-ty tyᴬ-Nat  = ty-Nat
 erase-ty (tyᴬ-IMu {I = I} dI dD di) = ty-IMu (erase dI) (⊢-cast (era-DescF I) (erase dD)) (erase di)
 erase-ty (tyᴬ-Desc dI) = ty-Desc (erase dI)
-erase-ty (tyᴬ-DIh {I = I} dI dD dM dC dp) =
-  ty-DIh (erase dI) (⊢-cast (era-DescF I) (erase dD)) (motCtx-era (erase-ty dM)) (erase dC) (erase dp)
+erase-ty (tyᴬ-DIh {I = I} {D = D} dI dD dM dC dp) =
+  ty-DIh (erase dI) (⊢-cast (era-DescF I) (erase dD)) (motCtx-era {I = I} {D = D} (erase-ty dM)) (erase dC) (erase dp)
 erase-ty tyᴬ-Fin = ty-Fin
 erase-ty (tyᴬ-Hom dA dt du) = ty-Hom (erase-ty dA) (erase dt) (erase du)
 

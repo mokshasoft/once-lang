@@ -27,6 +27,15 @@
 --   `Spec/Syntax`'s `RTm` constructor list): a former missing here is a
 --   generator failure, not a silent row.
 --
+-- ★ S5 — THE SIGNATURE (PLAN-BIDI §2-bis, route B).  `ref d` names the
+--   d-th entry of a global signature of CLOSED definitions.  It is not an
+--   `RTm` former: the kernel is unchanged, and erasure UNFOLDS `ref d` to
+--   the entry's closed body (δ).  So erasure is parameterised by the
+--   bodies, `module Era (δ : ℕ → RTm ε)`; syntax, renaming and
+--   substitution are not (a reference is closed, so they leave it alone).
+--   `Metatheory/Erasure` is then δ-ELIMINATION: every annotated derivation
+--   over a well-formed signature means a signature-free kernel derivation.
+--
 -- ★ LEVITATION: descriptions are TERMS, so they need no separate annotated
 --   syntax — they are `ATm`s like any other.
 --
