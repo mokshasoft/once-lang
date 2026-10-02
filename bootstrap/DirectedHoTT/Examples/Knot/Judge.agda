@@ -45,17 +45,19 @@ open import DirectedHoTT.Examples.Knot.Lookup using ( ⌜Ctx⌝; rows; ⊢rows )
 
 open import DirectedHoTT.Examples.Knot.JudgeIx
 open import DirectedHoTT.Examples.Knot.JudgeFib
-open import DirectedHoTT.Examples.Knot.JudgeRowsGen using ( rowTmGen; okTmGen; rowTyGen; okTyGen )
+open import DirectedHoTT.Examples.Knot.JudgeRowsGen using ( rows⊢ty; rows⊢ )
 
 private
   variable
     Δ Θ : Cx
 
--- ★ the rows, by (sort, constructor)
+-- ★ THE JUDGEMENT, as its table: the `⊢ty` rows (sort 0) and the `⊢` rows
+--   (sort 1), each constructor's row with its typing (`JudgeRowsGen`)
+rowsT : RowsOKG zero KSig
+rowsT = rows⊢ty ∷ᴳ rows⊢ ∷ᴳ []ᴳ
+
 rowT : ℕ → ℕ → Row
-rowT 1 k  = rowTmGen k   -- the `⊢` rows (`JudgeRowsGen`)
-rowT 0 k  = rowTyGen k   -- the `⊢ty` rows (`JudgeRowsGen`)
-rowT _ _  = rNone
+rowT = rowIn rowsT
 
 
 ------------------------------------------------------------------------
@@ -63,12 +65,12 @@ rowT _ _  = rNone
 --   every row's typing.
 ------------------------------------------------------------------------
 
-open Fib KOK JT JT-sub ⊢JT CT CT-sub ⊢CT rowT public hiding ( RowOK; Cat; C-inst; ⊢Cat; FM; FM-sub; ⊢FM )
+open Fib KOK JT JT-sub ⊢JT CT CT-sub ⊢CT rowT public hiding ( RowOK; Cat; C-inst; ⊢Cat; FM; FM-sub; ⊢FM
+                                                       ; RowsOK; RowsOKG; pastRow; rowInSh; rowIn; okInSh; okIn; okOf )
 
 -- ★ every row typed, by its position in the signature
 rowOK : {s c k : ℕ} {shs : Shapes c} {sh : Shape} → NthG KSig s shs → NthSh shs k sh → RowOK s sh (rowT s k)
-rowOK nthᵍ-z nh = okTyGen nh
-rowOK (nthᵍ-s nthᵍ-z) nh = okTmGen nh
+rowOK = okOf rowsT
 
 ⊢FIBMT : {Γ : Ctx} → Γ ⊢ FIBM ∷ MethTy (SI 2) (SD KSig) FM
 ⊢FIBMT = ⊢FIBM rowOK

@@ -127,6 +127,56 @@ module Fib₀ {sg : Sig n} (ok : SigOK n sg)
                  Ξ ⊢ p ∷ PayV sh (pair (tag s) j) (SI n) (SD sg) → Ξ ⊢ c ∷ El (Cat (pair (tag s) j)) →
                  Ξ ⊢ R r j p c ∷ Desc J
 
+  -- ★ a family's rows WITH their typings, one entry per constructor, in
+  --   the signature's order — what a family is, read off as a table.  The
+  --   dispatch by position (`NthG`/`NthSh`) is `rowIn`/`okIn`, once, here;
+  --   the sort index is the table's, so an entry is checked against
+  --   `RowOK s sh r` at the sort the table was written at.
+  infixr 5 ⟨_∣_⟩∷_ ⟨_∣∀_⟩∷_ _∷ᴳ_
+  data RowsOK (s : ℕ) : {c : ℕ} → Shapes c → Set₁ where
+    []ᴿ    : RowsOK s []ˢʰ
+    ⟨_∣_⟩∷_ : {c : ℕ} {sh : Shape} {shs : Shapes c} (r : Row) → RowOK s sh r → RowsOK s shs → RowsOK s (sh ∷ˢʰ shs)
+    -- a row typed at EVERY sort and shape (a family's "no rule here"):
+    --   the table supplies the shape, so nothing is left to infer
+    ⟨_∣∀_⟩∷_ : {c : ℕ} {sh : Shape} {shs : Shapes c} (r : Row) → ((s' : ℕ) (sh' : Shape) → RowOK s' sh' r) →
+               RowsOK s shs → RowsOK s (sh ∷ˢʰ shs)
+
+  data RowsOKG (s₀ : ℕ) : {m : ℕ} → Sig m → Set₁ where
+    []ᴳ  : RowsOKG s₀ []ᵍ
+    _∷ᴳ_ : {c m : ℕ} {shs : Shapes c} {sg' : Sig m} → RowsOK s₀ shs → RowsOKG (suc s₀) sg' → RowsOKG s₀ (shs ∷ᵍ sg')
+
+  -- past the end of a table (never typed, never reached)
+  pastRow : Row
+  pastRow = record { R = λ j p c → j ; R-sub = λ σ j p c → refl }
+
+  rowInSh : {s c : ℕ} {shs : Shapes c} → RowsOK s shs → ℕ → Row
+  rowInSh []ᴿ               k       = pastRow
+  rowInSh (⟨ r ∣ _ ⟩∷ rs)  zero    = r
+  rowInSh (⟨ r ∣ _ ⟩∷ rs)  (suc k) = rowInSh rs k
+  rowInSh (⟨ r ∣∀ _ ⟩∷ rs) zero    = r
+  rowInSh (⟨ r ∣∀ _ ⟩∷ rs) (suc k) = rowInSh rs k
+
+  rowIn : {s₀ m : ℕ} {sg' : Sig m} → RowsOKG s₀ sg' → ℕ → ℕ → Row
+  rowIn []ᴳ         s       k = pastRow
+  rowIn (t ∷ᴳ ts)  zero    k = rowInSh t k
+  rowIn (t ∷ᴳ ts)  (suc s) k = rowIn ts s k
+
+  okInSh : {s c k : ℕ} {shs : Shapes c} {sh : Shape} (t : RowsOK s shs) → NthSh shs k sh → RowOK s sh (rowInSh t k)
+  okInSh (⟨ r ∣ o ⟩∷ rs) nthʰ-z      = o
+  okInSh (⟨ r ∣ o ⟩∷ rs) (nthʰ-s nh) = okInSh rs nh
+  okInSh {s = s} {sh = sh} (⟨ r ∣∀ o ⟩∷ rs) nthʰ-z = o s sh
+  okInSh (⟨ r ∣∀ o ⟩∷ rs) (nthʰ-s nh) = okInSh rs nh
+
+  okIn : {s₀ m s c k : ℕ} {sg' : Sig m} {shs : Shapes c} {sh : Shape} (t : RowsOKG s₀ sg') →
+         NthG sg' s shs → NthSh shs k sh → RowOK (s +' s₀) sh (rowIn t s k)
+  okIn (t ∷ᴳ ts) nthᵍ-z      nh = okInSh t nh
+  okIn (t ∷ᴳ ts) (nthᵍ-s ng) nh = okIn ts ng nh
+
+  -- …the form `Fib` takes: a whole signature's table, every row typed
+  okOf : {s c k : ℕ} {shs : Shapes c} {sh : Shape} (t : RowsOKG zero sg) →
+         NthG sg s shs → NthSh shs k sh → RowOK s sh (rowIn t s k)
+  okOf {s = s} {k = k} {sh = sh} t ng nh = subst (λ m → RowOK m sh (rowIn t s k)) (+'-zero s) (okIn t ng nh)
+
 module Fib {sg : Sig n} (ok : SigOK n sg)
            (J : {Δ : Cx} → RTm Δ) (J-sub : {Δ Θ : Cx} (σ : Sub Δ Θ) → subTm σ (J {Δ}) ≡ J)
            (⊢J : {Γ : Ctx} → Γ ⊢ J ∷ U)
