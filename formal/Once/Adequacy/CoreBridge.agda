@@ -22,7 +22,10 @@
 
 open import Once.Target.Arch using (TargetNum)
 
-module Once.Adequacy.CoreBridge (fmt : TargetNum) where
+open import Once.Denotation.TraceMonad using (Interp)
+
+-- Plan 0.105: at an interpretation `ι`.
+module Once.Adequacy.CoreBridge (fmt : TargetNum) (ι : Interp) where
 
 open import Data.Nat using (ℕ)
 open import Data.Fin using (Fin)
@@ -54,7 +57,8 @@ open import Once.Denotation.Program using (irProgram)
 open import Once.Denotation.DenotTrace using (evalᴰ)
 open import Once.Denotation.TraceMonad using (projTrace)
 open import Data.Maybe using (just)
-import Once.Adequacy.TeleWalk fmt as TW
+import Once.Adequacy.TeleWalk fmt ι as TW
+import Once.Adequacy.TeleWalk.Invariant fmt ι as TWI
 import Once.Adequacy.TelePosition as TP
 import Once.Spec.Core.Translate as TR
 open import Once.Adequacy.SourceTrace using (tableOfResult)
@@ -84,25 +88,25 @@ typedProgram : Typed → Program
 typedProgram (m , mt , hvm) = typedProgram-ef m (C.extractFunctions (C.extractAliases m) m) mt hvm
 
 private
-  inv₀ : TW.Inv C.emptyCScope Tele.[] TR.[] TR.[] []
-  inv₀ = record { valid = tt ; irf = λ () ; iself = [] ; rel = λ _ _ _ _ _ → tt , tt }
+  inv₀ : TWI.Inv C.emptyCScope Tele.[] TR.[] TR.[] []
+  inv₀ = record { valid = tt ; irf = λ () ; iself = [] ; rel = λ _ _ _ _ _ → tt , tt , refl }
 
   -- Every definition's name is an identifier: the extractor's guard.
   valid-of : ∀ (es : List C.Entry) → Once.Parser.allValidIdentB (Once.Parser.emittedNames (Once.Parser.funsOf es)) ≡ true
-           → All TW.MonoValid es
+           → All TWI.MonoValid es
   valid-of []                   eq = []
   valid-of (C.e-poly pfi ∷ es) eq = tt ∷ valid-of es eq
   valid-of (C.e-fun fi ∷ es)   eq with C.FunInfo.funIsPrimitive fi in ep
   ... | true  = (λ p → case trans (sym ep) p of λ ()) ∷ valid-of es eq
   ... | false = (λ _ → NC.∧-elimˡ eq) ∷ valid-of es (NC.∧-elimʳ eq)
 
-  valid-mod : ∀ (m : P.Module) {es} → C.extractFunctions (C.extractAliases m) m ≡ inj₂ es → All TW.MonoValid es
+  valid-mod : ∀ (m : P.Module) {es} → C.extractFunctions (C.extractAliases m) m ≡ inj₂ es → All TWI.MonoValid es
   valid-mod (P.mkModule ds) {es} eq = valid-of es (NC.∧-elimʳ (NC.guard-true (C.extractFunctions-go (C.extractAliases (P.mkModule ds)) ds C.nothing) eq))
 
   core-ef : ∀ (m : P.Module) (ef : String ⊎ List C.Entry) (mt : ModuleTyped-ef m ef) (hvm : HasValidMain-ef m ef mt)
-              {es} → ef ≡ inj₂ es → AllPairs _≢_ (map TP.entryName es) → All TW.MonoValid es
+              {es} → ef ≡ inj₂ es → AllPairs _≢_ (map TP.entryName es) → All TWI.MonoValid es
             → (b : FB.FunBundle C.emptyCScope es) (n : ℕ)
-            → TW.RunAt (tableOf-go (FB.bundle→compiled b) []) n ≡ runProgram fmt (typedProgram-ef m ef mt hvm) n
+            → TW.RunAt (tableOf-go (FB.bundle→compiled b) []) n ≡ runProgram fmt ι (typedProgram-ef m ef mt hvm) n
   core-ef m .(inj₂ _) mt (_ , mi) refl dist vd b n =
     TW.walk mt b mi Tele.[] TR.[] TR.[] _ [] inv₀ (dist , TP.none-in-empty _) vd n
 
@@ -112,10 +116,10 @@ private
 
 program-core :
   ∀ (m : P.Module) (mt : ModuleTyped m) (hvm : HasValidMain m mt) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) (mi : moduleToIR m ≡ just ir) (n : ℕ)
-  → at (⟦ just (irProgram (moduleTable m) ir) ⟧IR fmt) n ≡ runProgram fmt (typedProgram (m , mt , hvm)) n
+  → at (⟦ just (irProgram (moduleTable m) ir) ⟧IR fmt ι) n ≡ runProgram fmt ι (typedProgram (m , mt , hvm)) n
 program-core m mt hvm ir mi n with FB.program-node m ir mi
 ... | es , ef , b , ceq =
-  trans (cong₂ (λ tbl x → projTrace (evalᴰ fmt (tableEnv fmt tbl) x tt) n) (cong tableOfResult ceq) ir≡)
+  trans (cong₂ (λ tbl x → projTrace ι (evalᴰ fmt (tableEnv fmt (Interp.pure ι) tbl) x tt) n) (cong tableOfResult ceq) ir≡)
         (core-ef m (C.extractFunctions (C.extractAliases m) m) mt hvm ef (TP.entries-distinct m ef) (valid-mod m ef) b n)
   where
     ir≡ : ir ≡ mainCall

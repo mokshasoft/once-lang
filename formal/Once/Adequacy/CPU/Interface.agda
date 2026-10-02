@@ -16,6 +16,7 @@ open import Data.Maybe using (Maybe)
 open import Data.String using (String)
 
 open import Once.Denotation.Behavior using (Behavior; silent)
+open import Once.Denotation.TraceMonad using (Interp)
 
 -- Bytes
 Byte : Set
@@ -40,14 +41,16 @@ record ArchSemantics : Set₁ where
     -- records SigOp invocations and continues (the emit-and-continue
     -- machine); per-arch instances postulate it until then — a named gap
     -- alongside `decode`/`assemble`.
-    run-trace    : Program → State → Behavior
+    -- Plan 0.105: at an interpretation — the world the binary runs in answers
+    -- its external calls (an input read differs between two worlds).
+    run-trace    : Interp → Program → State → Behavior
     decode       : List Byte → Maybe Program
     -- Assembler: asm text → bytes. The per-arch GNU `as` trust point
     -- (D054 wired-not-imported), confined to this injected bundle.
     -- Removed when the in-Agda assembler (B1) lands.
     assemble     : String → List Byte
 
-  exec-bytes : List Byte → Behavior
-  exec-bytes bytes with decode bytes
+  exec-bytes : Interp → List Byte → Behavior
+  exec-bytes ι bytes with decode bytes
   ... | Maybe.nothing  = silent
-  ... | Maybe.just prog = run-trace prog initialState
+  ... | Maybe.just prog = run-trace ι prog initialState
