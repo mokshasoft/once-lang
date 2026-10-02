@@ -22,8 +22,8 @@ open import DirectedHoTT.Examples.Knot.Sig
 open import DirectedHoTT.Examples.Knot.Terms
 open import DirectedHoTT.Examples.Knot.Ren using ( KVars )
 
-open Sub KOK {v = 1} {kv = 0} (nthᵍ-s nthᵍ-z) nthʰ-z KVars public hiding ( sub0; ⊢sub0 )
-open Sub KOK {v = 1} {kv = 0} (nthᵍ-s nthᵍ-z) nthʰ-z KVars using () renaming ( sub0 to sub0ᵗ; ⊢sub0 to ⊢sub0ᵗ )
+open Sub KOK {v = 1} {kv = 0} (atᵍ 1) (atʰ 0) KVars public hiding ( sub0; ⊢sub0 )
+open Sub KOK {v = 1} {kv = 0} (atᵍ 1) (atʰ 0) KVars using () renaming ( sub0 to sub0ᵗ; ⊢sub0 to ⊢sub0ᵗ )
 
 ------------------------------------------------------------------------
 -- ★★ `sub0` is OPAQUE: an abstraction boundary, not an optimisation

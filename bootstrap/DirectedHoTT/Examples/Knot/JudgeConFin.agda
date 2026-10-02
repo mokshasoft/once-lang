@@ -38,7 +38,7 @@ open import DirectedHoTT.Examples.Knot.JudgeIx using ( ⊢payK )
 
 private
   nh12 : NthSh TyShs 12 sh-kFin
-  nh12 = nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))
+  nh12 = atʰ 12
 
 -- ★ `⊢fzero : Γ ⊢ fzero ∷ Fin (suc n)`
 con⊢fzero : {Ξ : Ctx} {j g n : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ g ∷ KCtx j → Ξ ⊢ n ∷ El ⌜Nat⌝ →
@@ -46,12 +46,11 @@ con⊢fzero : {Ξ : Ctx} {j g n : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El ⌜Nat⌝ 
 con⊢fzero {Ξ} {j} {g} {n} dj dg dn =
   ⊢conRowₖ {Ξ} {2} {0} {JT} {D⊢} {tmIx j g kfzero X} {PFz.CX j p c} {unit} {PFz.CX j p c ∷ ⌜ TCVat 29 j p c ⌝ᵗ ∷ []}
            nth-z ⊢JT ⊢D⊢ (⊢tmIx dj dg (⊢kfzero dj) dX)
-    (fibK {s = 1} {k = 29} {j = j} {p = p} {c = c} (nthᵍ-s nthᵍ-z) nh29) (allr⊢fzero dj dp dc)
+    (fibK {s = 1} {k = 29} {j = j} {p = p} {c = c} (atᵍ 1) nh29) (allr⊢fzero dj dp dc)
     (⊢conv (⊢payι ⊢JT ⊢D⊢ ⊢unit) (csymᵀ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R)))))
   where
     nh29 : NthSh TmShs 29 sh-kfzero
-    nh29 = nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s
-           (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))))))))))))))))))))))
+    nh29 = atʰ 29
     X p c q c' : RTm ⌊ Ξ ⌋
     X = kFin (nsuc n)
     p = unit
@@ -64,7 +63,7 @@ con⊢fzero {Ξ} {j} {g} {n} dj dg dn =
     R : PFz.CX j p c ⟶* dι
     R = ⟶*-trans {t = PFz.CX j p c} {u = PFz.CASE j X (pair (fst c) p)} {v = dι} (PFz.CASE-⟶ᵃ (step (βsnd g X) done))
           (⟶*-trans {t = PFz.CASE j X (pair (fst c) p)} {u = PFz.CASE j X c'} {v = dι} (PFz.CASE-⟶ᶜ (⟶*-pairˡ (step (βfst g X) done)))
-          (⟶*-trans {t = PFz.CASE j X c'} {u = natrec (rows []) dι (fst q)} {v = dι} (PFz.case-β {j = j} {q = q} {c = c'} nthᵍ-z nh12)
+          (⟶*-trans {t = PFz.CASE j X c'} {u = natrec (rows []) dι (fst q)} {v = dι} (PFz.case-β {j = j} {q = q} {c = c'} (atᵍ 0) nh12)
           (⟶*-trans {t = natrec (rows []) dι (fst q)} {u = natrec (rows []) dι (nsuc n)} {v = dι}
                     (⟶*-natrecⁿ (step (βfst (nsuc n) unit) done)) (step (natrec-suc (rows []) dι n) done))))
 
@@ -84,13 +83,12 @@ con⊢fsuc : {Ξ : Ctx} {j g n t r : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El ⌜Nat�
 con⊢fsuc {Ξ} {j} {g} {n} {t} {r} dj dg dn dt dr =
   ⊢conRowₖ {Ξ} {2} {0} {JT} {D⊢} {tmIx j g (kfsuc t) X} {PFs.CX j p c} {pair r unit} {PFs.CX j p c ∷ ⌜ TCVat 30 j p c ⌝ᵗ ∷ []}
            nth-z ⊢JT ⊢D⊢ (⊢tmIx dj dg (⊢kfsuc dj dt) dX)
-    (fibK {s = 1} {k = 30} {j = j} {p = p} {c = c} (nthᵍ-s nthᵍ-z) nh30) (allr⊢fsuc dj dp dc)
+    (fibK {s = 1} {k = 30} {j = j} {p = p} {c = c} (atᵍ 1) nh30) (allr⊢fsuc dj dp dc)
     (⊢conv (⊢payρ ⊢JT ⊢D⊢ {r = r} {p = unit} (ok-ρ (⊢tmIx dj dg dt (⊢kFin dj dn)) ok-ι) dr (⊢payι ⊢JT ⊢D⊢ ⊢unit))
            (csymᵀ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R)))))
   where
     nh30 : NthSh TmShs 30 sh-kfsuc
-    nh30 = nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s
-           (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))))))))))))))))))))
+    nh30 = atʰ 30
     X p c q c' N : RTm ⌊ Ξ ⌋
     X = kFin (nsuc n)
     p = pair t unit
@@ -114,7 +112,7 @@ con⊢fsuc {Ξ} {j} {g} {n} {t} {r} dj dg dn dt dr =
     R : PFs.CX j p c ⟶* tgt
     R = ⟶*-trans {t = PFs.CX j p c} {u = PFs.CASE j X (pair (fst c) p)} {v = tgt} (PFs.CASE-⟶ᵃ (step (βsnd g X) done))
           (⟶*-trans {t = PFs.CASE j X (pair (fst c) p)} {u = PFs.CASE j X c'} {v = tgt} (PFs.CASE-⟶ᶜ (⟶*-pairˡ (step (βfst g X) done)))
-          (⟶*-trans {t = PFs.CASE j X c'} {u = natrec (rows []) (TFs j c') (fst q)} {v = tgt} (PFs.case-β {j = j} {q = q} {c = c'} nthᵍ-z nh12)
+          (⟶*-trans {t = PFs.CASE j X c'} {u = natrec (rows []) (TFs j c') (fst q)} {v = tgt} (PFs.case-β {j = j} {q = q} {c = c'} (atᵍ 0) nh12)
           (⟶*-trans {t = natrec (rows []) (TFs j c') (fst q)} {u = natrec (rows []) (TFs j c') (nsuc n)} {v = tgt}
                     (⟶*-natrecⁿ (step (βfst (nsuc n) unit) done))
                     (step (natrec-suc (rows []) (TFs j c') n) (subst (λ Z → Z ⟶* tgt) (sym eY) rix)))))

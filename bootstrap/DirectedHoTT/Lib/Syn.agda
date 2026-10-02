@@ -34,6 +34,7 @@ module DirectedHoTT.Lib.Syn where
 
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂; subst; _,_ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
+open import Agda.Builtin.Unit using ( ⊤ )
 open import DirectedHoTT.Spec.Syntax hiding ( Fin )
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-trans; ⟶*-pairʳ; ⟶*-nsuc; red→≅ᵀ; ⟶ᵀ*-IMu; _⟶ᵀ*_ )
@@ -105,6 +106,48 @@ data NthG : Sig n → ℕ → Shapes c → Set where
   nthᵍ-z : {shs : Shapes c} {sg : Sig n} → NthG (shs ∷ᵍ sg) zero shs
   nthᵍ-s : {shs : Shapes c} {shs' : Shapes k} {sg : Sig n} →
            NthG sg s shs → NthG (shs' ∷ᵍ sg) (suc s) shs
+
+-- ★ a POSITION BY ITS NUMBER: `atʰ 13`, `atᵍ 1` — the proof is computed and
+--   the range checked (`InSh`/`InG` compute to ⊤, which Agda fills in by
+--   eta, or to the empty type).  A use site says which constructor, not how
+--   to reach it.
+private
+  data Out : Set where
+
+shAt : Shapes c → ℕ → Shape
+shAt []ˢʰ         k       = []ʰ
+shAt (sh ∷ˢʰ shs) zero    = sh
+shAt (sh ∷ˢʰ shs) (suc k) = shAt shs k
+
+InSh : Shapes c → ℕ → Set
+InSh []ˢʰ         k       = Out
+InSh (sh ∷ˢʰ shs) zero    = ⊤
+InSh (sh ∷ˢʰ shs) (suc k) = InSh shs k
+
+atʰ : {shs : Shapes c} (k : ℕ) {_ : InSh shs k} → NthSh shs k (shAt shs k)
+atʰ {shs = []ˢʰ}         k {()}
+atʰ {shs = sh ∷ˢʰ shs} zero    = nthʰ-z
+atʰ {shs = sh ∷ˢʰ shs} (suc k) {i} = nthʰ-s (atʰ k {i})
+
+cAt : Sig n → ℕ → ℕ
+cAt []ᵍ                     s       = zero
+cAt (_∷ᵍ_ {c = c} shs sg)  zero    = c
+cAt (shs ∷ᵍ sg)             (suc s) = cAt sg s
+
+sigAt : (sg : Sig n) (s : ℕ) → Shapes (cAt sg s)
+sigAt []ᵍ          s       = []ˢʰ
+sigAt (shs ∷ᵍ sg)  zero    = shs
+sigAt (shs ∷ᵍ sg)  (suc s) = sigAt sg s
+
+InG : Sig n → ℕ → Set
+InG []ᵍ          s       = Out
+InG (shs ∷ᵍ sg)  zero    = ⊤
+InG (shs ∷ᵍ sg)  (suc s) = InG sg s
+
+atᵍ : {sg : Sig n} (s : ℕ) {_ : InG sg s} → NthG sg s (sigAt sg s)
+atᵍ {sg = []ᵍ}        s {()}
+atᵍ {sg = shs ∷ᵍ sg} zero    = nthᵍ-z
+atᵍ {sg = shs ∷ᵍ sg} (suc s) {i} = nthᵍ-s (atᵍ s {i})
 
 ------------------------------------------------------------------------
 -- 2. THE TELESCOPES — a shape read at an index TERM `i` (a field under

@@ -1050,14 +1050,14 @@ def gen_con(al, ci, nc, R, csf):
     L.append("%s {Ξ} {%s} %s =" % (cn, "} {".join(x for x, _ in hyps), " ".join("d" + x for x, _ in hyps)))
     comp = csf[ci][0]("j", "p", "c")
     cs = " ∷ ".join(d("j", "p", "c") for d, _, _ in csf) + " ∷ []"
-    ng = "nthᵍ-z" if S == 0 else "(nthᵍ-s nthᵍ-z)"
+    ng = "(atᵍ %d)" % S
     L.append("  ⊢conRowₖ {Ξ} {%d} {%d} {%s} {%s} {%s} {%s} {%s} {%s} %s %s %s %s" % (nc, ci, Jn, Dn, concl, comp, P, cs,
              nth_expr(ci), dJn, dDn, dconcl))
     # ⚠ `all…`'s implicits are PINNED to the where-bound `p`/`c`: inferred, they
     #   are the raw terms, so the row list `⊢conRowₖ` is given (written with the
     #   names) misses syntactically and Agda reduces every row telescope of the
     #   head to compare them — measured 3.4 s per constructor (2026-10-01).
-    L.append("    (%s {s = %d} {k = %d} {j = j} {p = p} {c = c} %s %s) (all%s {j = j} {p = p} {c = c} dj dp dc)" % (FAM["fib"], S, SIG[h][2], ng, nth_expr(SIG[h][2], "nthʰ-z", "nthʰ-s"), R))
+    L.append("    (%s {s = %d} {k = %d} {j = j} {p = p} {c = c} %s %s) (all%s {j = j} {p = p} {c = c} dj dp dc)" % (FAM["fib"], S, SIG[h][2], ng, "(atʰ %d)" % (SIG[h][2]), R))
     L.append("    (⊢conv dPv (csymᵀ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))))")
     L.append("  where")
     L.append("    p c : RTm ⌊ Ξ ⌋")
@@ -1124,8 +1124,8 @@ def gen_con(al, ci, nc, R, csf):
         " ∷ʳ ".join(hs + ["[]ʳ"])))
     if Ln:
         nc = al.nctx
-        ngf = lambda m: "nthᵍ-z" if nest_sort(rc, m) == 0 else "(nthᵍ-s nthᵍ-z)"
-        nhf = lambda m: nth_expr(SIG[nest[m][1]][2], "nthʰ-z", "nthʰ-s")
+        ngf = lambda m: "(atᵍ %d)" % nest_sort(rc, m)
+        nhf = lambda m: "(atʰ %d)" % (SIG[nest[m][1]][2])
         skey = lambda m: ("f", nest[m][0][1]) if nest[m][0][0] == "f" else ("r", nest[m][0][1], nest[m][0][2])
         tgt = "⌜ %s ⌝ᵗ" % " ".join([tn(0)] + xs)
         steps = []
@@ -1162,8 +1162,8 @@ def gen_con(al, ci, nc, R, csf):
         L.append("    R₀ : %s.CX j p c ⟶* %s" % (PN, tgt))
         L.append("    R₀ = ⟶*-trans {t = %s.CX j p c} {u = %s} {v = %s} (%s.CASE-⟶ᵃ (step (βsnd g %s) done))" % (PN, u1, tgt, PN, Xv))
         L.append("           (⟶*-trans {t = %s} {u = %s} {v = %s} (%s.CASE-⟶ᶜ (⟶*-pairˡ (step (βfst g %s) done)))" % (u1, u2, tgt, PN, Xv))
-        L.append("           (⟶*-trans {t = %s} {u = %s} {v = %s} (%s.case-β {j = j} {q = q} {c = c'} nthᵍ-z %s) R₁))" % (
-            u2, u3, tgt, PN, nth_expr(SIG[case][2], "nthʰ-z", "nthʰ-s")))
+        L.append("           (⟶*-trans {t = %s} {u = %s} {v = %s} (%s.case-β {j = j} {q = q} {c = c'} (atᵍ 0) %s) R₁))" % (
+            u2, u3, tgt, PN, "(atʰ %d)" % (SIG[case][2])))
 
     L.append("    okRest : {J' : RTm ⌊ Ξ ⌋} {T : Tel ⌊ Ξ ⌋} → TelOK Ξ %s (tρ J' T) → TelOK Ξ %s T" % (Jn, Jn))
     L.append("    okRest (ok-ρ _ o) = o")
@@ -1280,10 +1280,9 @@ def gen_nest(al):
 
 def conv_comp(name):
     ki = SIG[name][2]
-    nh = "nthʰ-z"
-    for _ in range(ki): nh = "(nthʰ-s %s)" % nh
+    nh = "(atʰ %d)" % ki
     return (lambda j, p, c: "⌜ TCVat %d %s %s %s ⌝ᵗ" % (ki, j, p, c), "(TCVat-law %d σ j p c)" % ki,
-            "⊢tel {Ξ} {JT} {TCVat %d j p c} ⊢JT (okTCVat (nthᵍ-s nthᵍ-z) %s dj dp dc)" % (ki, nh))
+            "⊢tel {Ξ} {JT} {TCVat %d j p c} ⊢JT (okTCVat (atᵍ 1) %s dj dp dc)" % (ki, nh))
 
 def gen_head(name, spec):
     L = ["-- %s%s" % (FAMKEY, name)]
@@ -1383,8 +1382,8 @@ def gen_conv_con(h, nc, R, csf):
     L.append("%s {Ξ} {%s} %s =" % (cn, "} {".join(x for x, _ in hyps), " ".join("d" + x for x, _ in hyps)))
     L.append("  ⊢conRowₖ {Ξ} {%d} {%d} {JT} {D⊢} {tmIx j g %s B} {%s} {%s} {%s} %s ⊢JT ⊢D⊢ (⊢tmIx dj dg %s dB)" % (
         nc, nc - 1, subj, csf[nc - 1][0]("j", "p", "c"), P, cs, nth_expr(nc - 1), dsubj))
-    L.append("    (fibK {s = 1} {k = %d} {j = j} {p = p} {c = c} (nthᵍ-s nthᵍ-z) %s) (all%s {j = j} {p = p} {c = c} dj dp dc)" % (
-        SIG[h][2], nth_expr(SIG[h][2], "nthʰ-z", "nthʰ-s"), R))
+    L.append("    (fibK {s = 1} {k = %d} {j = j} {p = p} {c = c} (atᵍ 1) %s) (all%s {j = j} {p = p} {c = c} dj dp dc)" % (
+        SIG[h][2], "(atʰ %d)" % (SIG[h][2]), R))
     L.append("    (⊢payTCVat ⊢D⊢ {k = %d} dj dg %s dA dB dr de)" % (SIG[h][2], dsubj))
     L.append("  where")
     L.append("    p c : RTm ⌊ Ξ ⌋")
@@ -1535,7 +1534,7 @@ def gen_pred_con(P, h, prems):
     L.append("%s {Ξ} {%s} %s =" % (cn, "} {".join(x for x, _ in hyps), " ".join("d" + x for x, _ in hyps)))
     L.append("  ⊢conRowₖ {Ξ} {1} {0} {%sₘ.J} {%sF.DF} {ix%s j %s} {⌜ T%s j p unit ⌝ᵗ} {%s} {⌜ T%s j p unit ⌝ᵗ ∷ []} nth-z %sₘ.⊢J %sF.⊢DF (⊢ix%s dj %s)" % (
         P, P, P, subj, nm, Pay, nm, P, P, P, dsubj))
-    L.append("    (%sF.fibF {s = 1} {k = %d} {j = j} {p = p} {c = unit} (nthᵍ-s nthᵍ-z) %s)" % (P, SIG[h][2], nth_expr(SIG[h][2], "nthʰ-z", "nthʰ-s")))
+    L.append("    (%sF.fibF {s = 1} {k = %d} {j = j} {p = p} {c = unit} (atᵍ 1) %s)" % (P, SIG[h][2], "(atʰ %d)" % (SIG[h][2])))
     L.append("    (⊢tel %sₘ.⊢J (tok%s {c = unit} dj dp) ∷ᵈ []ᵈ) (⊢conv dPv (csymᵀ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R)))))" % (P, nm))
     L.append("  where")
     L.append("    p : RTm ⌊ Ξ ⌋")

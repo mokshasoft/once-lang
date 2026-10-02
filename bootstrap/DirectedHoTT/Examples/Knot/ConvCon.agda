@@ -52,12 +52,12 @@ module _ {Ξ : Ctx} {k : ℕ} {sh : Shape} {j p u : RTm ⌊ Ξ ⌋} (nh : NthSh 
     t : RTm ⌊ Ξ ⌋
     t = conₗ k p
     dt : Ξ ⊢ t ∷ K 1 j
-    dt = ⊢conP KOK (nthᵍ-s nthᵍ-z) nh dj dp
+    dt = ⊢conP KOK (atᵍ 1) nh dj dp
     Cs : Cons ⌊ Ξ ⌋ 4
     Cs = dσ (⌜⟶⌝ j t u) (lam dι) ∷ dσ (⌜Id⌝ (⌜Tm⌝ j) t u) (lam dι) ∷ dρ (ix≅ j u t) dι
          ∷ dσ (⌜Tm⌝ j) (lam (dρ (ix≅ (w1 j) (w1 t) (var vz)) (dρ (ix≅ (w1 j) (var vz) (w1 u)) dι))) ∷ []
     fib : app ≅F.DF (ix≅ j t u) ⟶* rows Cs
-    fib = ≅F.fibF {s = 1} {k = k} {j = j} {p = p} {c = u} (nthᵍ-s nthᵍ-z) nh
+    fib = ≅F.fibF {s = 1} {k = k} {j = j} {p = p} {c = u} (atᵍ 1) nh
 
   -- ★ `cred : t ⟶ u → t ≅ u`
   cred≅ : {e : RTm ⌊ Ξ ⌋} → Ξ ⊢ e ∷ El (⌜⟶⌝ j t u) → Ξ ⊢ conₗ 0 (pair e unit) ∷ K≅ j t u
@@ -95,13 +95,13 @@ crfl≅ {Ξ} {k} {sh} {j} {p} nh dj dp =
            {dσ (⌜⟶⌝ j t t) (lam dι) ∷ dσ (⌜Id⌝ (⌜Tm⌝ j) t t) (lam dι) ∷ dρ (ix≅ j t t) dι
             ∷ dσ (⌜Tm⌝ j) (lam (dρ (ix≅ (w1 j) (w1 t) (var vz)) (dρ (ix≅ (w1 j) (var vz) (w1 t)) dι))) ∷ []}
            (nth-s nth-z) Convₘ.⊢J ≅F.⊢DF (⊢ix≅ dj dt dt)
-    (≅F.fibF {s = 1} {k = k} {j = j} {p = p} {c = t} (nthᵍ-s nthᵍ-z) nh) (allC≅ dj dt dt)
+    (≅F.fibF {s = 1} {k = k} {j = j} {p = p} {c = t} (atᵍ 1) nh) (allC≅ dj dt dt)
     (⊢payσ Convₘ.⊢J ≅F.⊢DF {a = idrefl (⌜Tm⌝ j) t} {p = unit} (ok-σ (⊢⌜Id⌝ (⊢⌜Tm⌝ dj) (toTm dt) (toTm dt)) ok-ι)
        (⊢conv (⊢idrefl (⊢⌜Tm⌝ dj) (toTm dt)) (csymᵀ (credᵀ (El-⌜Id⌝ (⌜Tm⌝ j) t t))))
        (⊢payι Convₘ.⊢J ≅F.⊢DF ⊢unit))
   where
     t = conₗ k p
-    dt = ⊢conP KOK (nthᵍ-s nthᵍ-z) nh dj dp
+    dt = ⊢conP KOK (atᵍ 1) nh dj dp
 
 ------------------------------------------------------------------------
 -- 2. A ≅ᵀ B, at a subject `conₗ k p` of ANY type head
@@ -113,12 +113,12 @@ module _ {Ξ : Ctx} {k : ℕ} {sh : Shape} {j p u : RTm ⌊ Ξ ⌋} (nh : NthSh 
     t : RTm ⌊ Ξ ⌋
     t = conₗ k p
     dt : Ξ ⊢ t ∷ K 0 j
-    dt = ⊢conP KOK nthᵍ-z nh dj dp
+    dt = ⊢conP KOK (atᵍ 0) nh dj dp
     Cs : Cons ⌊ Ξ ⌋ 4
     Cs = dσ (⌜⟶ᵀ⌝ j t u) (lam dι) ∷ dσ (⌜Id⌝ (⌜Ty⌝ j) t u) (lam dι) ∷ dρ (ix≅ᵀ j u t) dι
          ∷ dσ (⌜Ty⌝ j) (lam (dρ (ix≅ᵀ (w1 j) (w1 t) (var vz)) (dρ (ix≅ᵀ (w1 j) (var vz) (w1 u)) dι))) ∷ []
     fib : app ≅ᵀF.DF (ix≅ᵀ j t u) ⟶* rows Cs
-    fib = ≅ᵀF.fibF {s = 0} {k = k} {j = j} {p = p} {c = u} nthᵍ-z nh
+    fib = ≅ᵀF.fibF {s = 0} {k = k} {j = j} {p = p} {c = u} (atᵍ 0) nh
 
   -- ★ `cred : t ⟶ u → t ≅ u`
   cred≅ᵀ : {e : RTm ⌊ Ξ ⌋} → Ξ ⊢ e ∷ El (⌜⟶ᵀ⌝ j t u) → Ξ ⊢ conₗ 0 (pair e unit) ∷ K≅ᵀ j t u
@@ -156,10 +156,10 @@ crfl≅ᵀ {Ξ} {k} {sh} {j} {p} nh dj dp =
            {dσ (⌜⟶ᵀ⌝ j t t) (lam dι) ∷ dσ (⌜Id⌝ (⌜Ty⌝ j) t t) (lam dι) ∷ dρ (ix≅ᵀ j t t) dι
             ∷ dσ (⌜Ty⌝ j) (lam (dρ (ix≅ᵀ (w1 j) (w1 t) (var vz)) (dρ (ix≅ᵀ (w1 j) (var vz) (w1 t)) dι))) ∷ []}
            (nth-s nth-z) ConvTₘ.⊢J ≅ᵀF.⊢DF (⊢ix≅ᵀ dj dt dt)
-    (≅ᵀF.fibF {s = 0} {k = k} {j = j} {p = p} {c = t} nthᵍ-z nh) (allC≅ᵀ dj dt dt)
+    (≅ᵀF.fibF {s = 0} {k = k} {j = j} {p = p} {c = t} (atᵍ 0) nh) (allC≅ᵀ dj dt dt)
     (⊢payσ ConvTₘ.⊢J ≅ᵀF.⊢DF {a = idrefl (⌜Ty⌝ j) t} {p = unit} (ok-σ (⊢⌜Id⌝ (⊢⌜Ty⌝ dj) (toTy dt) (toTy dt)) ok-ι)
        (⊢conv (⊢idrefl (⊢⌜Ty⌝ dj) (toTy dt)) (csymᵀ (credᵀ (El-⌜Id⌝ (⌜Ty⌝ j) t t))))
        (⊢payι ConvTₘ.⊢J ≅ᵀF.⊢DF ⊢unit))
   where
     t = conₗ k p
-    dt = ⊢conP KOK nthᵍ-z nh dj dp
+    dt = ⊢conP KOK (atᵍ 0) nh dj dp
