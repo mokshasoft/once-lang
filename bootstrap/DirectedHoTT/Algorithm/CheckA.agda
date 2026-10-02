@@ -55,7 +55,7 @@ open import DirectedHoTT.Metatheory.SubjectReduction
 open import DirectedHoTT.Metatheory.Validity
   using ( validity; WfUpTo; wf; srᵀ* )
 open import DirectedHoTT.Metatheory.NormTy
-  using ( normTy; mkWNᵀ; decConvᵀ )
+  using ( normTy; mkWNᵀ; decConvᵀ; IsNormalᵀ )
 open import DirectedHoTT.Metatheory.RedCong
   using ( red→≅ᵀ )
 open import DirectedHoTT.Algorithm.DecEq
@@ -216,17 +216,19 @@ nrs⊢ {M = M} (there {A = A₀} v) = ⊢-cast (sym eq) (⊢var (there (there v)
                      (trans (subTy-renTy (renTy vs A₀)) (subTy-renTy A₀))))
 
 -- a derived type, converted to its NORMAL FORM, with that form well-formed
+-- and NORMAL (what lets a missing Π/Σ/Id refute: `Metatheory/NormalShape`)
 record NF (Δ : Ctx) (A : RTy ⌊ Δ ⌋) : Set where
   constructor nfv
   field
     N   : RTy ⌊ Δ ⌋
     cnv : A ≅ᵀ N
     dN  : Δ ⊢ty N
+    nrm : IsNormalᵀ N
 
 nfOf : {t : ATm ⌊ Γ ⌋ᴬ} {A : ATy ⌊ Γ ⌋ᴬ} → ⊢ctx ⌈ Γ ⌉ᶜ → Γ ⊢ᴬ t ∷ A → NF ⌈ Γ ⌉ᶜ ⌈ A ⌉ᵀ
 nfOf wΓ d with validity wΓ (erase d)
 ... | wf A' c dA' with normTy wΓ dA'
-...   | mkWNᵀ N r _ = nfv N (ctrnᵀ c (red→≅ᵀ r)) (srᵀ* dA' r)
+...   | mkWNᵀ N r n = nfv N (ctrnᵀ c (red→≅ᵀ r)) (srᵀ* dA' r) n
 
 -- retype a derivation at a target whose ERASURE is well-formed
 convTo : {t : ATm ⌊ Γ ⌋ᴬ} {A : ATy ⌊ Γ ⌋ᴬ} → ⊢ctx ⌈ Γ ⌉ᶜ → Γ ⊢ᴬ t ∷ A →
@@ -250,7 +252,7 @@ record ΠV (Γ : ACtx) (t : ATm ⌊ Γ ⌋ᴬ) : Set where
 
 viewΠ : {t : ATm ⌊ Γ ⌋ᴬ} {T : ATy ⌊ Γ ⌋ᴬ} → ⊢ctx ⌈ Γ ⌉ᶜ → Γ ⊢ᴬ t ∷ T → Maybe (ΠV Γ t)
 viewΠ {Γ} {T = T} wΓ d with nfOf wΓ d
-... | nfv (Π F G) c (ty-Π dF dG) =
+... | nfv (Π F G) c (ty-Π dF dG) _ =
       just (πv (liftTy F) (liftTy G)
                (⊢ᴬconv d (subst (λ Z → ⌈ T ⌉ᵀ ≅ᵀ Z)
                                 (sym (cong₂ Π (era-liftTy F) (era-liftTy G))) c))
@@ -266,7 +268,7 @@ record ΣV (Γ : ACtx) (t : ATm ⌊ Γ ⌋ᴬ) : Set where
 
 viewΣ : {t : ATm ⌊ Γ ⌋ᴬ} {T : ATy ⌊ Γ ⌋ᴬ} → ⊢ctx ⌈ Γ ⌉ᶜ → Γ ⊢ᴬ t ∷ T → Maybe (ΣV Γ t)
 viewΣ {T = T} wΓ d with nfOf wΓ d
-... | nfv (Σ' F G) c _ =
+... | nfv (Σ' F G) c _ _ =
       just (σv (liftTy F) (liftTy G)
                (⊢ᴬconv d (subst (λ Z → ⌈ T ⌉ᵀ ≅ᵀ Z)
                                 (sym (cong₂ Σ' (era-liftTy F) (era-liftTy G))) c)))
@@ -284,7 +286,7 @@ record IdV (Γ : ACtx) (t : ATm ⌊ Γ ⌋ᴬ) : Set where
 
 viewId : {t : ATm ⌊ Γ ⌋ᴬ} {T : ATy ⌊ Γ ⌋ᴬ} → ⊢ctx ⌈ Γ ⌉ᶜ → Γ ⊢ᴬ t ∷ T → Maybe (IdV Γ t)
 viewId {Γ} {T = T} wΓ d with nfOf wΓ d
-... | nfv (Id F a b) c (ty-Id dF da db) =
+... | nfv (Id F a b) c (ty-Id dF da db) _ =
       just (idv (liftTy F) (liftTm a) (liftTm b)
                 (⊢ᴬconv d (subst (λ Z → ⌈ T ⌉ᵀ ≅ᵀ Z)
                                  (sym (cong3 Id (era-liftTy F) (era-liftTm a) (era-liftTm b))) c))
@@ -411,7 +413,7 @@ inferᴬ Γ wΓ (app t u) =
 inferᴬ Γ wΓ (pair B a b) =
   inferᴬ Γ wΓ a >>= λ { (A₀ , da₀) →
   -- retype `a` at a well-formed (lifted) type, so `B` has a well-formed context
-  let nfv N c dN = nfOf wΓ da₀
+  let nfv N c dN _ = nfOf wΓ da₀
       A  = liftTy N
       dA = subst (λ Z → ⌈ Γ ⌉ᶜ ⊢ty Z) (sym (era-liftTy N)) dN
       da = ⊢ᴬconv da₀ (subst (λ Z → ⌈ A₀ ⌉ᵀ ≅ᵀ Z) (sym (era-liftTy N)) c)
