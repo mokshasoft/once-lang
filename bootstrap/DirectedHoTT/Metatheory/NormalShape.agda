@@ -8,7 +8,7 @@
 -- ★ WHAT IT IS FOR.  The checker reads a function's type off its NORMAL
 --   form (`CheckA.viewΠ`); when that form is not a `Π`, the "no" must
 --   refute every typing at a `Π`.  It does: a normal type convertible to
---   `Π A B` IS literally a `Π` (likewise `Σ'`, `Id`).
+--   `Π A B` IS literally a `Π` (likewise `Σ'`).
 --
 -- ★ HOW.  Church–Rosser gives a common reduct; a normal type reduces only
 --   to itself (`nf-stuck`); a reduct of a `Π` is a `Π` (`Π-reduct`).
@@ -24,7 +24,7 @@ open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Metatheory.RedCong using ( _⟶ᵀ*_; doneᵀ; stepᵀ )
 open import DirectedHoTT.Metatheory.Injectivity
-  using ( church-rosserᵀ; Π-reduct; mkΠRed; Σ-reduct; mkΣRed; Id-reduct )
+  using ( church-rosserᵀ; Π-reduct; mkΠRed; Σ-reduct; mkΣRed )
 open import DirectedHoTT.Metatheory.NormTy using ( IsNormalᵀ )
 
 private
@@ -49,10 +49,3 @@ nf-Σ : {N A : RTy Γ} {B : RTy (Γ ∙)} → IsNormalᵀ N → N ≅ᵀ Σ' A B
 nf-Σ n c with church-rosserᵀ c
 ... | C , (r₁ , r₂) with Σ-reduct r₂
 ...   | mkΣRed F G eqC _ _ = F , (G , trans (nf-stuck n r₁) eqC)
-
--- …an `Id`
-nf-Id : {N A : RTy Γ} {t u : RTm Γ} → IsNormalᵀ N → N ≅ᵀ Id A t u →
-        Σ (RTy Γ) (λ F → Σ (RTm Γ) (λ a → Σ (RTm Γ) (λ b → N ≡ Id F a b)))
-nf-Id n c with church-rosserᵀ c
-... | C , (r₁ , r₂) with Id-reduct r₂
-...   | F , (a , (b , (eqC , _))) = F , (a , (b , trans (nf-stuck n r₁) eqC))
