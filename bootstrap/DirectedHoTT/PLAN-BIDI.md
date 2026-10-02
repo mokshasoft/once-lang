@@ -163,6 +163,15 @@ meaning (§0, §3d).
   convertible to a Π/Σ/Id is one, by `church-rosserᵀ` and `Π-/Σ-/Id-reduct`.
   `CheckA`'s `NF` now keeps `normTy`'s `IsNormalᵀ` witness instead of
   discarding it.
+- ✅ **C3** (2026-10-02) `Metatheory/UniquenessA`:
+  `uniqᴬ : Γ ⊢ᴬ t ∷ A → Γ ⊢ᴬ t ∷ B → ⌈ A ⌉ᵀ ≅ᵀ ⌈ B ⌉ᵀ`, one clause per
+  former (38). It checks in 5 s.
+  - 31 formers are one composition (`via`): their type is in the term.
+  - Six recurse: `var` by `∋ᴬ-uniq`; `lam`/`pair` by `≅ᵀ-Πʳ`/`≅ᵀ-Σˡ`;
+    `app`/`fst`/`snd` by `Π-inj`/`Σ-inj`, with `sub1≅` (`≅ᵀ-sub` + `sub1`)
+    for the substitution.
+  - `tr` dispatches on `genᴬ-tr-shape`, now in GenerationA: a `tr` is typed
+    at exactly two motive shapes.
 ## 3b. ★ DECISION 3 — S4 by ROUTE C: normalise types BECAUSE they are well-typed
 
 Found on the `natrecᴹ` spike (`SPIKE-NATRECM.md` §3, 2026-09-25). Type

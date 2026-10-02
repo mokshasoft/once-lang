@@ -24,7 +24,7 @@
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Metatheory.GenerationA where
 
-open import normalizer.Syntax.Types using ( _≡_; Σ; _,_; _×_ )
+open import normalizer.Syntax.Types using ( _≡_; refl; Σ; _,_; _×_; _⊎_; inj₁; inj₂ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Variance using ( true; false; occTm; flat?; NoNatC )
 open import DirectedHoTT.Spec.Syntax
@@ -228,3 +228,12 @@ genᴬ-psplit : {Γ : ACtx} {A : ATy ⌊ Γ ⌋ᴬ} {B : ATy (⌊ Γ ⌋ᴬ ∙)
 genᴬ-psplit (⊢ᴬpsplit dA dB dP dq db) = (dA , (dB , (dP , (dq , (db , crflᵀ)))))
 genᴬ-psplit (⊢ᴬconv d c) = let (dA , (dB , (dP , (dq , (db , c'))))) = genᴬ-psplit d in (dA , (dB , (dP , (dq , (db , ctrnᵀ c' c)))))
 
+-- ★ a `tr` is typed at exactly two motive shapes (`⊢ᴬtrU`, `⊢ᴬtr`).  Stated
+--   as a disjunction because a catch-all clause after the two shapes could
+--   not know its motive is neither.
+genᴬ-tr-shape : {Γ : ACtx} {A : ATy ⌊ Γ ⌋ᴬ} {t u p e : ATm ⌊ Γ ⌋ᴬ} {d : ATm (⌊ Γ ⌋ᴬ ∙)} {Z : ATy ⌊ Γ ⌋ᴬ} →
+                Γ ⊢ᴬ tr A t u d p e ∷ Z →
+                ((A ≡ U) × (d ≡ var vz)) ⊎ Σ (ATm (⌊ Γ ⌋ᴬ ∙)) (λ c → Σ (ATm (⌊ Γ ⌋ᴬ ∙)) (λ a → d ≡ ⌜Hom⌝ c a (var vz)))
+genᴬ-tr-shape (⊢ᴬtrU _ _ _ _)              = inj₁ (refl , refl)
+genᴬ-tr-shape (⊢ᴬtr _ _ _ _ _ _ _ _ _ _ _) = inj₂ (_ , (_ , refl))
+genᴬ-tr-shape (⊢ᴬconv d c)                 = genᴬ-tr-shape d
