@@ -40,6 +40,7 @@ import DirectedHoTT.Metatheory.Fundamental
 import DirectedHoTT.Metatheory.Fundamental.Indexed
 import DirectedHoTT.Metatheory.Fundamental.Semantic
 import DirectedHoTT.Metatheory.Fundamental.Syntactic
+import DirectedHoTT.Metatheory.GenerationA
 import DirectedHoTT.Metatheory.Injectivity
 import DirectedHoTT.Metatheory.LogicalRelation
 import DirectedHoTT.Metatheory.NormTy

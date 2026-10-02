@@ -95,6 +95,69 @@ the follow-on question.
 | S6 | The bidirectional SURFACE → annotated core elaborator. `Algorithm/Check`'s slice 1 is its seed; the Once compiler's `formal/Once/TypeCheck` is the shape template | ⬜ |
 | S7 | The Knot WRITTEN in the annotated core with signature references; its wf derivations come from `inferᴬ`, not from a generator. User, 2026-10-02: "if we have to write code to generate the Knot something is wrong". Measure against `HANDOFF-2026-09-24` §4's split | ⬜ |
 
+## 3a. ★ S3 — COMPLETENESS: `⊢ᴬ` is DECIDABLE (plan, 2026-10-02)
+
+The criterion (§0) is that a kernel term determines its type. `CheckA` is
+CERTIFYING: a success returns the derivation, so soundness holds by
+construction. Completeness is made certifying the same way, by changing
+the result types:
+
+    inferᴬ   : … → Dec (Σ A. Γ ⊢ᴬ t ∷ A)
+    checkᴬ   : … → Dec (Γ ⊢ᴬ t ∷ A)
+    checkTyᴬ : … → Dec (Γ ⊢tyᴬ A)
+
+A separate theorem about the `Maybe`-returning `inferᴬ` is rejected: it
+would mean reasoning about `with`-abstractions over `validity`/`normTy` on
+abstract terms.
+
+Where a "no" comes from today, and what refutes it:
+
+| failing branch | refutation |
+| --- | --- |
+| a sub-check fails | GENERATION: a typing of the whole gives a typing of the part |
+| `convTo`: `decConvᵀ` says no | UNIQUENESS of types up to conversion |
+| `viewΠ`/`viewΣ`/`viewId` find no Π/Σ/Id | a NORMAL form convertible to Π IS a Π |
+| `isFalse`/`isTrue`/`noNatC?` | already exact; `noNatC?` returns `Dec` |
+| `tr` at another motive | generation: `⊢ᴬ` has exactly two `tr` rules (`⊢ᴬtrU`, `⊢ᴬtr`) |
+
+Steps:
+
+- **C1 — generation for `⊢ᴬ`** (`Metatheory/GenerationA`). There is one
+  lemma per former, with two clauses: the rule, and `⊢ᴬconv`, which
+  recurses and composes the conversion. ⊢ᴬconv is the only rule that is
+  not syntax-directed, and `⊢tyᴬ` has none, so `⊢tyᴬ` needs no lemma.
+  - A single `strip` lemma was considered and rejected: after a catch-all
+    clause Agda cannot know that the remaining derivation is not a
+    conversion, so each former would still owe that case.
+- **C2 — normal forms keep their shape.** `nfOf` keeps `normTy`'s
+  `IsNormalᵀ`. A normal `N ≅ᵀ Π A B` is literally a `Π` (by
+  `church-rosserᵀ`: a normal form reduces only to itself), and likewise
+  for Σ and Id.
+- **C3 — uniqueness**, `uniqᴬ : Γ ⊢ᴬ t ∷ A → Γ ⊢ᴬ t ∷ B → ⌈A⌉ ≅ᵀ ⌈B⌉`, by
+  induction on `t` through C1.
+  - Most formers: the type is computed from the annotations.
+  - `var`: lookup is deterministic.
+  - `app`: `Π-inj` + `≅ᵀ-sub`. `fst`/`snd`: `Σ-inj`. All exist.
+  - `Hom` never needs injectivity, which it lacks, because `jsub`/`tr`/`ap`
+    carry their endpoints (the §1 audit).
+- **C4 — the checker returns `Dec`.**
+  - One combinator, `bindᴰ : Dec A → (B → A) → (A → Dec B) → Dec B`; its
+    middle argument is C1's projection.
+  - `convTo` uses C3, and the views use C2.
+  - The non-vacuity tests' rejections become `no` proofs.
+  - By former group: Π/Σ/Nat/Unit, then paths, then the levitated
+    formers. Watch `CheckA`'s compile time (≈ 6 s cold).
+
+Scope: this decides `⊢ᴬ`, the trusted judgement, not plain `⊢`; `⊢` is its
+meaning (§0, §3d).
+
+### 3a — log
+
+- ✅ **C1** (2026-10-02) `Metatheory/GenerationA`: 40 generation lemmas
+  `genᴬ-*`, one per former and two clauses each; `tr`'s two rules
+  (`genᴬ-trU`, `genᴬ-tr`) are covered. Each takes any typing of the former,
+  at any `Z`, to its rule's premises and `⌈ rule-type ⌉ᵀ ≅ᵀ ⌈ Z ⌉ᵀ`. It
+  checks in 3 s and is in `Trust/Kernel`.
 ## 3b. ★ DECISION 3 — S4 by ROUTE C: normalise types BECAUSE they are well-typed
 
 Found on the `natrecᴹ` spike (`SPIKE-NATRECM.md` §3, 2026-09-25). Type
