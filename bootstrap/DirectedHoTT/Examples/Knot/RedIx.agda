@@ -27,22 +27,29 @@ private
   variable
     Δ Θ : Cx
 
--- the target: a Knot term at the subject's index
-CR : RTm (Δ ∙)
-CR = ⌜IMu⌝ (SI 2) KD (var vz)
+-- the target: a Knot term at the subject's index — OPAQUE: it carries the
+--   description, and a row's `Cat (pair (tag s) j)` reached through the
+--   dispatch (`s` as `suc zero`) against an `ok…` lemma's (`s` as `1`)
+--   failed the syntactic check and pushed `subTm` through all of KD
+--   (`rowOK⟶` 24 s; `context-form-mismatch-opaque`).  Interface: CR-sub,
+--   ⊢CR, eCR.
+opaque
+  CR : RTm (Δ ∙)
+  CR = ⌜IMu⌝ (SI 2) KD (var vz)
 
-CR-sub : (σ : Sub Δ Θ) → subTm (extS σ) (CR {Δ}) ≡ CR
-CR-sub {Δ} σ = cong (λ D → ⌜IMu⌝ (SI 2) D (var vz)) (SD-sub (extS σ) KSig)
+  CR-sub : (σ : Sub Δ Θ) → subTm (extS σ) (CR {Δ}) ≡ CR
+  CR-sub {Δ} σ = cong (λ D → ⌜IMu⌝ (SI 2) D (var vz)) (SD-sub (extS σ) KSig)
 
-⊢CR : {Γ : Ctx} → (Γ ▹ El (SI 2)) ⊢ CR ∷ U
-⊢CR = ⊢⌜IMu⌝ ⊢SI ⊢KD (⊢var here)
+  ⊢CR : {Γ : Ctx} → (Γ ▹ El (SI 2)) ⊢ CR ∷ U
+  ⊢CR = ⊢⌜IMu⌝ ⊢SI ⊢KD (⊢var here)
+
+  -- the convoy at an index IS a Knot term there
+  eCR : (i : RTm Δ) → subTm (single i) (CR {Δ}) ≡ ⌜IMu⌝ (SI 2) KD i
+  eCR {Δ} i = cong (λ D → ⌜IMu⌝ (SI 2) D i) (SD-sub (single i) KSig)
 
 module Redₘ = SynFam KOK CR CR-sub ⊢CR     -- t ⟶ u
 module RedTₘ = SynFam KOK CR CR-sub ⊢CR    -- A ⟶ᵀ B
 
--- the convoy at an index IS a Knot term there
-eCR : (i : RTm Δ) → subTm (single i) (CR {Δ}) ≡ ⌜IMu⌝ (SI 2) KD i
-eCR {Δ} i = cong (λ D → ⌜IMu⌝ (SI 2) D i) (SD-sub (single i) KSig)
 
 module _ {Ξ : Ctx} {s : ℕ} {j c : RTm ⌊ Ξ ⌋} where
   -- the target, read off the convoy
@@ -85,7 +92,7 @@ ix≅ᵀ d A B = ConvTₘ.ixJ (pair (tag 0) d) A B
 
 -- ★ `pwBody`'s GRAPH on the codes `pw?` accepts (`Spec/Variance`): fibred
 --   by the code, the convoy is the BODY — a Knot term ONE BINDER deeper
-module _ where
+opaque
   CP : RTm (Δ ∙)
   CP = ⌜IMu⌝ (SI 2) KD (pair (tag 1) (nsuc (snd (var vz))))
 
@@ -95,10 +102,11 @@ module _ where
   ⊢CP : {Γ : Ctx} → (Γ ▹ El (SI 2)) ⊢ CP ∷ U
   ⊢CP = ⊢⌜IMu⌝ ⊢SI ⊢KD (⊢ix (lt-s lt-z) (⊢isuc (⊢depth (⊢var here))))
 
+  eCP : (j : RTm Δ) → subTm (single (pair (tag 1) j)) (CP {Δ}) ≡ ⌜IMu⌝ (SI 2) KD (pair (tag 1) (nsuc (snd (pair (tag 1) j))))
+  eCP {Δ} j = cong₂ (λ D t → ⌜IMu⌝ (SI 2) D (pair t (nsuc (snd (pair (tag 1) j))))) (SD-sub (single (pair (tag 1) j)) KSig) (tag-sub (single (pair (tag 1) j)) 1)
+
 module Pwₘ = SynFam KOK CP CP-sub ⊢CP
 
-eCP : (j : RTm Δ) → subTm (single (pair (tag 1) j)) (CP {Δ}) ≡ ⌜IMu⌝ (SI 2) KD (pair (tag 1) (nsuc (snd (pair (tag 1) j))))
-eCP {Δ} j = cong₂ (λ D t → ⌜IMu⌝ (SI 2) D (pair t (nsuc (snd (pair (tag 1) j))))) (SD-sub (single (pair (tag 1) j)) KSig) (tag-sub (single (pair (tag 1) j)) 1)
 
 module _ {Ξ : Ctx} {j c : RTm ⌊ Ξ ⌋} where
   private
