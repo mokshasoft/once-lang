@@ -158,6 +158,11 @@ meaning (§0, §3d).
   (`genᴬ-trU`, `genᴬ-tr`) are covered. Each takes any typing of the former,
   at any `Z`, to its rule's premises and `⌈ rule-type ⌉ᵀ ≅ᵀ ⌈ Z ⌉ᵀ`. It
   checks in 3 s and is in `Trust/Kernel`.
+- ✅ **C2** (2026-10-02) `Metatheory/NormalShape`. `nf-stuck`: a normal
+  type reduces only to itself. `nf-Π`/`nf-Σ`/`nf-Id`: a normal type
+  convertible to a Π/Σ/Id is one, by `church-rosserᵀ` and `Π-/Σ-/Id-reduct`.
+  `CheckA`'s `NF` now keeps `normTy`'s `IsNormalᵀ` witness instead of
+  discarding it.
 ## 3b. ★ DECISION 3 — S4 by ROUTE C: normalise types BECAUSE they are well-typed
 
 Found on the `natrecᴹ` spike (`SPIKE-NATRECM.md` §3, 2026-09-25). Type
