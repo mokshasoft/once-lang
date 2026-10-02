@@ -28,7 +28,7 @@ open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-trans; ⟶*-con; ⟶*-p
 open import DirectedHoTT.Metatheory.TySub using ( wk-cancel-tm )
 open import DirectedHoTT.Metatheory.Fundamental.Syntactic using ( ⟨_⟩ᵣ; subTm-var; subTy-var )
 open import DirectedHoTT.Lib.FinFam using ( ffz; ffs )
-open import DirectedHoTT.Lib.Sugar using ( conₗ )
+open import DirectedHoTT.Lib.Sugar using ( conₗ; v₀; v₁; _,ₚ_ )
 open import DirectedHoTT.Lib.Syn
 open import DirectedHoTT.Examples.Knot.Sig
 open import DirectedHoTT.Examples.Knot.Terms
@@ -182,16 +182,16 @@ opaque
 ------------------------------------------------------------------------
 
 -- reduction in a node's i-th field
-node-1 : {k : ℕ} {a a' r : RTm Θ} → a ⟶* a' → conₗ k (pair a r) ⟶* conₗ k (pair a' r)
+node-1 : {k : ℕ} {a a' r : RTm Θ} → a ⟶* a' → conₗ k (a ,ₚ r) ⟶* conₗ k (a' ,ₚ r)
 node-1 r = ⟶*-con (⟶*-pairʳ (⟶*-pairˡ r))
 
-node-2 : {k : ℕ} {a b b' r : RTm Θ} → b ⟶* b' → conₗ k (pair a (pair b r)) ⟶* conₗ k (pair a (pair b' r))
+node-2 : {k : ℕ} {a b b' r : RTm Θ} → b ⟶* b' → conₗ k (a ,ₚ b ,ₚ r) ⟶* conₗ k (a ,ₚ b' ,ₚ r)
 node-2 r = ⟶*-con (⟶*-pairʳ (⟶*-pairʳ (⟶*-pairˡ r)))
 
-node-3 : {k : ℕ} {a b c c' r : RTm Θ} → c ⟶* c' → conₗ k (pair a (pair b (pair c r))) ⟶* conₗ k (pair a (pair b (pair c' r)))
+node-3 : {k : ℕ} {a b c c' r : RTm Θ} → c ⟶* c' → conₗ k (a ,ₚ b ,ₚ c ,ₚ r) ⟶* conₗ k (a ,ₚ b ,ₚ c' ,ₚ r)
 node-3 r = ⟶*-con (⟶*-pairʳ (⟶*-pairʳ (⟶*-pairʳ (⟶*-pairˡ r))))
 
-node-4 : {k : ℕ} {a b c d d' r : RTm Θ} → d ⟶* d' → conₗ k (pair a (pair b (pair c (pair d r)))) ⟶* conₗ k (pair a (pair b (pair c (pair d' r))))
+node-4 : {k : ℕ} {a b c d d' r : RTm Θ} → d ⟶* d' → conₗ k (a ,ₚ b ,ₚ c ,ₚ d ,ₚ r) ⟶* conₗ k (a ,ₚ b ,ₚ c ,ₚ d' ,ₚ r)
 node-4 r = ⟶*-con (⟶*-pairʳ (⟶*-pairʳ (⟶*-pairʳ (⟶*-pairʳ (⟶*-pairˡ r)))))
 
 opaque
@@ -220,8 +220,8 @@ opaque
       wwD : wwD' ⟶* quoteTm (renTm vs (renTm vs D))
       wwD = ⟶*-trans (TRR.trav-t-mono (wk-agree-tm D)) (wk-agree-tm (renTm vs D))
       A2r : kEl (kdpay (KR.wk 1 j (quoteTm I)) wD (kapp wD v0))
-            ⟶* quoteTy (El (dpay (renTm vs I) (renTm vs D) (app (renTm vs D) (var vz))))
+            ⟶* quoteTy (El (dpay (renTm vs I) (renTm vs D) (app (renTm vs D) v₀)))
       A2r = node-1 (⟶*-trans (node-1 (wk-agree-tm I)) (⟶*-trans (node-2 (wk-agree-tm D)) (node-3 (node-1 (wk-agree-tm D)))))
       A3r : kDIh wwD' (lift2K j (quoteTy M)) (kapp wwD' v1) v0
-            ⟶* quoteTy (DIh (renTm vs (renTm vs D)) (wk2M M) (app (renTm vs (renTm vs D)) (var (vs vz))) (var vz))
+            ⟶* quoteTy (DIh (renTm vs (renTm vs D)) (wk2M M) (app (renTm vs (renTm vs D)) v₁) v₀)
       A3r = ⟶*-trans (node-1 wwD) (⟶*-trans (node-2 (lift2-agree M)) (node-3 (node-1 wwD)))

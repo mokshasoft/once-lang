@@ -30,7 +30,7 @@ open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast; wk-cancel-tm 
 open import DirectedHoTT.Metatheory.SubjectReductionBase using () renaming ( wk-sub to wkS )
 open import DirectedHoTT.Metatheory.Fundamental.Syntactic using ( ⟨_⟩ᵣ; subTm-var )
 open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; _⟶ᵀ*_; stepᵀ; doneᵀ; ⟶*-trans; ⟶*-appˡ; ⟶*-appʳ; ⟶*-ielimⁱ; ⟶*-ielimᵗ; ⟶*-fst; ⟶*-snd; ⟶*-pairˡ; ⟶*-pairʳ; ⟶*-con; ⟶ᵀ*-IMu )
-open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_; conₗ; tag; Lt; lt-z; lt-s; subC; selF-sub; []ᵈ; _∷ᵈ_ )
+open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_; conₗ; tag; Lt; lt-z; lt-s; subC; selF-sub; []ᵈ; _∷ᵈ_; v₀; _,ₚ_ )
 open import DirectedHoTT.Lib.SynView using ( PayV; payV-red; ⊢recFst; ⊢recSnd; ⊢atDepthSK )
 open import DirectedHoTT.Lib.FinFam using ( FinI; ffz; ⊢ffz; ⊢isuc )
 open import DirectedHoTT.Examples.Knot.Ctors
@@ -89,7 +89,7 @@ opaque
   FIBMₒ-sub σ = FIBM-sub σ
 
   fib-βₒ : {s c₀ k : ℕ} {shs : Shapes c₀} {sh : Shape} {D j p c : RTm Δ} → NthG KSig s shs → NthSh shs k sh →
-           app (ielim D (pair (tag s) j) FIBMₒ (conₗ k p)) c ⟶* Row.R (rowT s k) j p c
+           app (ielim D ((tag s) ,ₚ j) FIBMₒ (conₗ k p)) c ⟶* Row.R (rowT s k) j p c
   fib-βₒ {D = D} {j = j} {p = p} {c = c} ng nh = fib-β {D = D} {j = j} {p = p} {c₀ = c} ng nh
 
 ------------------------------------------------------------------------
@@ -97,7 +97,7 @@ opaque
 ------------------------------------------------------------------------
 
 D⊢ : RTm Δ
-D⊢ = lam (app (ielim KD (fst (var vz)) FIBMₒ (fst (snd (var vz)))) (snd (snd (var vz))))
+D⊢ = lam (app (ielim KD (fst v₀) FIBMₒ (fst (snd v₀))) (snd (snd v₀)))
 
 K⊢ : RTm Δ → RTy Δ
 K⊢ x = IMu JT D⊢ x
@@ -111,11 +111,11 @@ module UnJ {Ξ : Ctx} {x : RTm ⌊ Ξ ⌋} (dx : Ξ ⊢ x ∷ El JT) where
   c0 = snd (snd x)
   private
     B1 : RTm (⌊ Ξ ⌋ ∙)
-    B1 = ⌜Σ⌝ (⌜IMu⌝ (SI 2) KD (var vz)) (renTm vs CT)
+    B1 = ⌜Σ⌝ (⌜IMu⌝ (SI 2) KD v₀) (renTm vs CT)
     B2 : RTm (⌊ Ξ ⌋ ∙)
     B2 = renTm vs (CTat i0)
     e1 : subTy (single i0) (El B1) ≡ El (⌜Σ⌝ (⌜IMu⌝ (SI 2) KD i0) B2)
-    e1 = cong El (cong₂ ⌜Σ⌝ {x = subTm (single i0) (⌜IMu⌝ (SI 2) KD (var vz))} {x' = ⌜IMu⌝ (SI 2) KD i0}
+    e1 = cong El (cong₂ ⌜Σ⌝ {x = subTm (single i0) (⌜IMu⌝ (SI 2) KD v₀)} {x' = ⌜IMu⌝ (SI 2) KD i0}
                             {y = subTm (extS (single i0)) (renTm vs CT)} {y' = B2}
                     (cong (λ D → ⌜IMu⌝ (SI 2) D i0) (SD-sub (single i0) KSig))
                     (wkS (single i0) CT))
@@ -135,8 +135,8 @@ module _ {Γ : Ctx} where
   private
     Ξ : Ctx
     Ξ = Γ ▹ El JT
-    dv : Ξ ⊢ var vz ∷ El JT
-    dv = ⊢-cast {Ξ} {var vz} {renTy vs (El JT)} {El JT} (cong El (JT-ren vs)) (⊢var here)
+    dv : Ξ ⊢ v₀ ∷ El JT
+    dv = ⊢-cast {Ξ} {v₀} {renTy vs (El JT)} {El JT} (cong El (JT-ren vs)) (⊢var here)
     open UnJ dv
     dI : Ξ ⊢ ielim KD i0 FIBMₒ t0 ∷ iinst i0 t0 FM
     dI = ⊢ielim {Ξ} {SI 2} {KD} {FM} {FIBMₒ} {i0} {t0} ⊢SI ⊢KD ⊢FM ⊢FIBMₒ di0 dt0
@@ -172,15 +172,15 @@ D⊢-β {Δ} i t c =
                 {u = app (ielim KD i FIBMₒ t) (snd (snd x))} {v = app (ielim KD i FIBMₒ t) c}
         (⟶*-appˡ (⟶*-trans {t = ielim KD (fst x) FIBMₒ (fst (snd x))} {u = ielim KD i FIBMₒ (fst (snd x))}
                             {v = ielim KD i FIBMₒ t}
-                    (⟶*-ielimⁱ (step (βfst i (pair t c)) done))
-                    (⟶*-ielimᵗ (⟶*-trans {t = fst (snd x)} {u = fst (pair t c)} {v = t}
-                                  (⟶*-fst (step (βsnd i (pair t c)) done)) (step (βfst t c) done)))))
-        (⟶*-appʳ (⟶*-trans {t = snd (snd x)} {u = snd (pair t c)} {v = c}
-                   (⟶*-snd (step (βsnd i (pair t c)) done)) (step (βsnd t c) done)))))
+                    (⟶*-ielimⁱ (step (βfst i (t ,ₚ c)) done))
+                    (⟶*-ielimᵗ (⟶*-trans {t = fst (snd x)} {u = fst (t ,ₚ c)} {v = t}
+                                  (⟶*-fst (step (βsnd i (t ,ₚ c)) done)) (step (βfst t c) done)))))
+        (⟶*-appʳ (⟶*-trans {t = snd (snd x)} {u = snd (t ,ₚ c)} {v = c}
+                   (⟶*-snd (step (βsnd i (t ,ₚ c)) done)) (step (βsnd t c) done)))))
   where
     x = ixJ i t c
     B : RTm (Δ ∙)
-    B = app (ielim KD (fst (var vz)) FIBMₒ (fst (snd (var vz)))) (snd (snd (var vz)))
+    B = app (ielim KD (fst v₀) FIBMₒ (fst (snd v₀))) (snd (snd v₀))
     e : subTm (single x) B ≡ app (ielim KD (fst x) FIBMₒ (fst (snd x))) (snd (snd x))
     e = cong₂ (λ D M → app (ielim D (fst x) M (fst (snd x))) (snd (snd x)))
               {x = subTm (single x) (KD {Δ ∙})} {x' = KD} {y = subTm (single x) (FIBMₒ {Δ ∙})} {y' = FIBMₒ}
@@ -188,7 +188,7 @@ D⊢-β {Δ} i t c =
 
 -- ★ at a canonical subject, the fibre IS the row
 fibK : {s c₀ k : ℕ} {shs : Shapes c₀} {sh : Shape} {j p c : RTm Δ} → NthG KSig s shs → NthSh shs k sh →
-       app D⊢ (ixJ (pair (tag s) j) (conₗ k p) c) ⟶* Row.R (rowT s k) j p c
+       app D⊢ (ixJ ((tag s) ,ₚ j) (conₗ k p) c) ⟶* Row.R (rowT s k) j p c
 fibK {s = s} {k = k} {j = j} {p} {c} ng nh =
-  ⟶*-trans (D⊢-β (pair (tag s) j) (conₗ k p) c) (fib-βₒ {D = KD} {j = j} {p = p} {c = c} ng nh)
+  ⟶*-trans (D⊢-β ((tag s) ,ₚ j) (conₗ k p) c) (fib-βₒ {D = KD} {j = j} {p = p} {c = c} ng nh)
 

@@ -17,6 +17,7 @@ open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Lib.FinFam using ( FinI )
 open import DirectedHoTT.Lib.Syn
 open import DirectedHoTT.Examples.Knot.Sig
+open import DirectedHoTT.Lib.Sugar using ( _,ₚ_ )
 
 ------------------------------------------------------------------------
 -- The Knot's term formers, TYPED at any depth `d` — each one `⊢conSyn`
@@ -34,11 +35,11 @@ open import DirectedHoTT.Examples.Knot.Sig
 
 ⊢kPi : {Γ : Ctx} {d a0 a1 : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ a0 ∷ K 0 d → Γ ⊢ a1 ∷ K 0 (nsuc d) → Γ ⊢ kPi a0 a1 ∷ K 0 d
 ⊢kPi {Γ} {d} {a0} {a1} dd da0 da1 =
-  ⊢conSyn {sg = KSig} {shs = TyShs} {sh = sh-kPi} {d = d} {p = pair a0 (pair a1 (unit))} KOK (atᵍ 0) (atʰ 2) dd (a-rec da0 (a-rec da1 a[]))
+  ⊢conSyn {sg = KSig} {shs = TyShs} {sh = sh-kPi} {d = d} {p = pair a0 (a1 ,ₚ (unit))} KOK (atᵍ 0) (atʰ 2) dd (a-rec da0 (a-rec da1 a[]))
 
 ⊢kSg : {Γ : Ctx} {d a0 a1 : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ a0 ∷ K 0 d → Γ ⊢ a1 ∷ K 0 (nsuc d) → Γ ⊢ kSg a0 a1 ∷ K 0 d
 ⊢kSg {Γ} {d} {a0} {a1} dd da0 da1 =
-  ⊢conSyn {sg = KSig} {shs = TyShs} {sh = sh-kSg} {d = d} {p = pair a0 (pair a1 (unit))} KOK (atᵍ 0) (atʰ 3) dd (a-rec da0 (a-rec da1 a[]))
+  ⊢conSyn {sg = KSig} {shs = TyShs} {sh = sh-kSg} {d = d} {p = pair a0 (a1 ,ₚ (unit))} KOK (atᵍ 0) (atʰ 3) dd (a-rec da0 (a-rec da1 a[]))
 
 ⊢kEl : {Γ : Ctx} {d a0 : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ a0 ∷ K 1 d → Γ ⊢ kEl a0 ∷ K 0 d
 ⊢kEl {Γ} {d} {a0} dd da0 =
@@ -46,7 +47,7 @@ open import DirectedHoTT.Examples.Knot.Sig
 
 ⊢kHom : {Γ : Ctx} {d a0 a1 a2 : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ a0 ∷ K 0 d → Γ ⊢ a1 ∷ K 1 d → Γ ⊢ a2 ∷ K 1 d → Γ ⊢ kHom a0 a1 a2 ∷ K 0 d
 ⊢kHom {Γ} {d} {a0} {a1} {a2} dd da0 da1 da2 =
-  ⊢conSyn {sg = KSig} {shs = TyShs} {sh = sh-kHom} {d = d} {p = pair a0 (pair a1 (pair a2 (unit)))} KOK (atᵍ 0) (atʰ 5) dd (a-rec da0 (a-rec da1 (a-rec da2 a[])))
+  ⊢conSyn {sg = KSig} {shs = TyShs} {sh = sh-kHom} {d = d} {p = pair a0 (a1 ,ₚ a2 ,ₚ (unit))} KOK (atᵍ 0) (atʰ 5) dd (a-rec da0 (a-rec da1 (a-rec da2 a[])))
 
 ⊢kUnit : {Γ : Ctx} {d : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ kUnit ∷ K 0 d
 ⊢kUnit {Γ} {d} dd =
@@ -58,11 +59,11 @@ open import DirectedHoTT.Examples.Knot.Sig
 
 ⊢kId : {Γ : Ctx} {d a0 a1 a2 : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ a0 ∷ K 0 d → Γ ⊢ a1 ∷ K 1 d → Γ ⊢ a2 ∷ K 1 d → Γ ⊢ kId a0 a1 a2 ∷ K 0 d
 ⊢kId {Γ} {d} {a0} {a1} {a2} dd da0 da1 da2 =
-  ⊢conSyn {sg = KSig} {shs = TyShs} {sh = sh-kId} {d = d} {p = pair a0 (pair a1 (pair a2 (unit)))} KOK (atᵍ 0) (atʰ 8) dd (a-rec da0 (a-rec da1 (a-rec da2 a[])))
+  ⊢conSyn {sg = KSig} {shs = TyShs} {sh = sh-kId} {d = d} {p = pair a0 (a1 ,ₚ a2 ,ₚ (unit))} KOK (atᵍ 0) (atʰ 8) dd (a-rec da0 (a-rec da1 (a-rec da2 a[])))
 
 ⊢kIMu : {Γ : Ctx} {d a0 a1 a2 : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ a0 ∷ K 1 d → Γ ⊢ a1 ∷ K 1 d → Γ ⊢ a2 ∷ K 1 d → Γ ⊢ kIMu a0 a1 a2 ∷ K 0 d
 ⊢kIMu {Γ} {d} {a0} {a1} {a2} dd da0 da1 da2 =
-  ⊢conSyn {sg = KSig} {shs = TyShs} {sh = sh-kIMu} {d = d} {p = pair a0 (pair a1 (pair a2 (unit)))} KOK (atᵍ 0) (atʰ 9) dd (a-rec da0 (a-rec da1 (a-rec da2 a[])))
+  ⊢conSyn {sg = KSig} {shs = TyShs} {sh = sh-kIMu} {d = d} {p = pair a0 (a1 ,ₚ a2 ,ₚ (unit))} KOK (atᵍ 0) (atʰ 9) dd (a-rec da0 (a-rec da1 (a-rec da2 a[])))
 
 ⊢kDesc : {Γ : Ctx} {d a0 : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ a0 ∷ K 1 d → Γ ⊢ kDesc a0 ∷ K 0 d
 ⊢kDesc {Γ} {d} {a0} dd da0 =
@@ -70,7 +71,7 @@ open import DirectedHoTT.Examples.Knot.Sig
 
 ⊢kDIh : {Γ : Ctx} {d a0 a1 a2 a3 : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ a0 ∷ K 1 d → Γ ⊢ a1 ∷ K 0 (nsuc (nsuc d)) → Γ ⊢ a2 ∷ K 1 d → Γ ⊢ a3 ∷ K 1 d → Γ ⊢ kDIh a0 a1 a2 a3 ∷ K 0 d
 ⊢kDIh {Γ} {d} {a0} {a1} {a2} {a3} dd da0 da1 da2 da3 =
-  ⊢conSyn {sg = KSig} {shs = TyShs} {sh = sh-kDIh} {d = d} {p = pair a0 (pair a1 (pair a2 (pair a3 (unit))))} KOK (atᵍ 0) (atʰ 11) dd (a-rec da0 (a-rec da1 (a-rec da2 (a-rec da3 a[]))))
+  ⊢conSyn {sg = KSig} {shs = TyShs} {sh = sh-kDIh} {d = d} {p = pair a0 (a1 ,ₚ a2 ,ₚ a3 ,ₚ (unit))} KOK (atᵍ 0) (atʰ 11) dd (a-rec da0 (a-rec da1 (a-rec da2 (a-rec da3 a[]))))
 
 ⊢kFin : {Γ : Ctx} {d a0 : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ a0 ∷ El ⌜Nat⌝ → Γ ⊢ kFin a0 ∷ K 0 d
 ⊢kFin {Γ} {d} {a0} dd da0 =
@@ -86,19 +87,19 @@ open import DirectedHoTT.Examples.Knot.Sig
 
 ⊢kapp : {Γ : Ctx} {d a0 a1 : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ a0 ∷ K 1 d → Γ ⊢ a1 ∷ K 1 d → Γ ⊢ kapp a0 a1 ∷ K 1 d
 ⊢kapp {Γ} {d} {a0} {a1} dd da0 da1 =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kapp} {d = d} {p = pair a0 (pair a1 (unit))} KOK (atᵍ 1) (atʰ 2) dd (a-rec da0 (a-rec da1 a[]))
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kapp} {d = d} {p = pair a0 (a1 ,ₚ (unit))} KOK (atᵍ 1) (atʰ 2) dd (a-rec da0 (a-rec da1 a[]))
 
 ⊢kpair : {Γ : Ctx} {d a0 a1 : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ a0 ∷ K 1 d → Γ ⊢ a1 ∷ K 1 d → Γ ⊢ kpair a0 a1 ∷ K 1 d
 ⊢kpair {Γ} {d} {a0} {a1} dd da0 da1 =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kpair} {d = d} {p = pair a0 (pair a1 (unit))} KOK (atᵍ 1) (atʰ 3) dd (a-rec da0 (a-rec da1 a[]))
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kpair} {d = d} {p = pair a0 (a1 ,ₚ (unit))} KOK (atᵍ 1) (atʰ 3) dd (a-rec da0 (a-rec da1 a[]))
 
 ⊢kabsurd : {Γ : Ctx} {d a0 a1 : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ a0 ∷ K 1 d → Γ ⊢ a1 ∷ K 1 d → Γ ⊢ kabsurd a0 a1 ∷ K 1 d
 ⊢kabsurd {Γ} {d} {a0} {a1} dd da0 da1 =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kabsurd} {d = d} {p = pair a0 (pair a1 (unit))} KOK (atᵍ 1) (atʰ 4) dd (a-rec da0 (a-rec da1 a[]))
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kabsurd} {d = d} {p = pair a0 (a1 ,ₚ (unit))} KOK (atᵍ 1) (atʰ 4) dd (a-rec da0 (a-rec da1 a[]))
 
 ⊢kordtr : {Γ : Ctx} {d a0 a1 a2 a3 a4 : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ a0 ∷ K 1 d → Γ ⊢ a1 ∷ K 1 d → Γ ⊢ a2 ∷ K 1 d → Γ ⊢ a3 ∷ K 1 d → Γ ⊢ a4 ∷ K 1 d → Γ ⊢ kordtr a0 a1 a2 a3 a4 ∷ K 1 d
 ⊢kordtr {Γ} {d} {a0} {a1} {a2} {a3} {a4} dd da0 da1 da2 da3 da4 =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kordtr} {d = d} {p = pair a0 (pair a1 (pair a2 (pair a3 (pair a4 (unit)))))} KOK (atᵍ 1) (atʰ 5) dd (a-rec da0 (a-rec da1 (a-rec da2 (a-rec da3 (a-rec da4 a[])))))
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kordtr} {d = d} {p = pair a0 (a1 ,ₚ a2 ,ₚ a3 ,ₚ a4 ,ₚ (unit))} KOK (atᵍ 1) (atʰ 5) dd (a-rec da0 (a-rec da1 (a-rec da2 (a-rec da3 (a-rec da4 a[])))))
 
 ⊢kfst : {Γ : Ctx} {d a0 : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ a0 ∷ K 1 d → Γ ⊢ kfst a0 ∷ K 1 d
 ⊢kfst {Γ} {d} {a0} dd da0 =
@@ -114,39 +115,39 @@ open import DirectedHoTT.Examples.Knot.Sig
 
 ⊢kcPi : {Γ : Ctx} {d a0 a1 : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ a0 ∷ K 1 d → Γ ⊢ a1 ∷ K 1 (nsuc d) → Γ ⊢ kcPi a0 a1 ∷ K 1 d
 ⊢kcPi {Γ} {d} {a0} {a1} dd da0 da1 =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kcPi} {d = d} {p = pair a0 (pair a1 (unit))} KOK (atᵍ 1) (atʰ 9) dd (a-rec da0 (a-rec da1 a[]))
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kcPi} {d = d} {p = pair a0 (a1 ,ₚ (unit))} KOK (atᵍ 1) (atʰ 9) dd (a-rec da0 (a-rec da1 a[]))
 
 ⊢kcSg : {Γ : Ctx} {d a0 a1 : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ a0 ∷ K 1 d → Γ ⊢ a1 ∷ K 1 (nsuc d) → Γ ⊢ kcSg a0 a1 ∷ K 1 d
 ⊢kcSg {Γ} {d} {a0} {a1} dd da0 da1 =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kcSg} {d = d} {p = pair a0 (pair a1 (unit))} KOK (atᵍ 1) (atʰ 10) dd (a-rec da0 (a-rec da1 a[]))
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kcSg} {d = d} {p = pair a0 (a1 ,ₚ (unit))} KOK (atᵍ 1) (atʰ 10) dd (a-rec da0 (a-rec da1 a[]))
 
 ⊢kcHom : {Γ : Ctx} {d a0 a1 a2 : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ a0 ∷ K 1 d → Γ ⊢ a1 ∷ K 1 d → Γ ⊢ a2 ∷ K 1 d → Γ ⊢ kcHom a0 a1 a2 ∷ K 1 d
 ⊢kcHom {Γ} {d} {a0} {a1} {a2} dd da0 da1 da2 =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kcHom} {d = d} {p = pair a0 (pair a1 (pair a2 (unit)))} KOK (atᵍ 1) (atʰ 11) dd (a-rec da0 (a-rec da1 (a-rec da2 a[])))
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kcHom} {d = d} {p = pair a0 (a1 ,ₚ a2 ,ₚ (unit))} KOK (atᵍ 1) (atʰ 11) dd (a-rec da0 (a-rec da1 (a-rec da2 a[])))
 
 ⊢khrefl : {Γ : Ctx} {d a0 a1 : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ a0 ∷ K 1 d → Γ ⊢ a1 ∷ K 1 d → Γ ⊢ khrefl a0 a1 ∷ K 1 d
 ⊢khrefl {Γ} {d} {a0} {a1} dd da0 da1 =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-khrefl} {d = d} {p = pair a0 (pair a1 (unit))} KOK (atᵍ 1) (atʰ 12) dd (a-rec da0 (a-rec da1 a[]))
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-khrefl} {d = d} {p = pair a0 (a1 ,ₚ (unit))} KOK (atᵍ 1) (atʰ 12) dd (a-rec da0 (a-rec da1 a[]))
 
 ⊢ktr : {Γ : Ctx} {d a0 a1 a2 : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ a0 ∷ K 1 (nsuc d) → Γ ⊢ a1 ∷ K 1 d → Γ ⊢ a2 ∷ K 1 d → Γ ⊢ ktr a0 a1 a2 ∷ K 1 d
 ⊢ktr {Γ} {d} {a0} {a1} {a2} dd da0 da1 da2 =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-ktr} {d = d} {p = pair a0 (pair a1 (pair a2 (unit)))} KOK (atᵍ 1) (atʰ 13) dd (a-rec da0 (a-rec da1 (a-rec da2 a[])))
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-ktr} {d = d} {p = pair a0 (a1 ,ₚ a2 ,ₚ (unit))} KOK (atᵍ 1) (atʰ 13) dd (a-rec da0 (a-rec da1 (a-rec da2 a[])))
 
 ⊢kap : {Γ : Ctx} {d a0 a1 a2 : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ a0 ∷ K 1 d → Γ ⊢ a1 ∷ K 1 (nsuc d) → Γ ⊢ a2 ∷ K 1 d → Γ ⊢ kap a0 a1 a2 ∷ K 1 d
 ⊢kap {Γ} {d} {a0} {a1} {a2} dd da0 da1 da2 =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kap} {d = d} {p = pair a0 (pair a1 (pair a2 (unit)))} KOK (atᵍ 1) (atʰ 14) dd (a-rec da0 (a-rec da1 (a-rec da2 a[])))
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kap} {d = d} {p = pair a0 (a1 ,ₚ a2 ,ₚ (unit))} KOK (atᵍ 1) (atʰ 14) dd (a-rec da0 (a-rec da1 (a-rec da2 a[])))
 
 ⊢kcId : {Γ : Ctx} {d a0 a1 a2 : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ a0 ∷ K 1 d → Γ ⊢ a1 ∷ K 1 d → Γ ⊢ a2 ∷ K 1 d → Γ ⊢ kcId a0 a1 a2 ∷ K 1 d
 ⊢kcId {Γ} {d} {a0} {a1} {a2} dd da0 da1 da2 =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kcId} {d = d} {p = pair a0 (pair a1 (pair a2 (unit)))} KOK (atᵍ 1) (atʰ 15) dd (a-rec da0 (a-rec da1 (a-rec da2 a[])))
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kcId} {d = d} {p = pair a0 (a1 ,ₚ a2 ,ₚ (unit))} KOK (atᵍ 1) (atʰ 15) dd (a-rec da0 (a-rec da1 (a-rec da2 a[])))
 
 ⊢kidrefl : {Γ : Ctx} {d a0 a1 : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ a0 ∷ K 1 d → Γ ⊢ a1 ∷ K 1 d → Γ ⊢ kidrefl a0 a1 ∷ K 1 d
 ⊢kidrefl {Γ} {d} {a0} {a1} dd da0 da1 =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kidrefl} {d = d} {p = pair a0 (pair a1 (unit))} KOK (atᵍ 1) (atʰ 16) dd (a-rec da0 (a-rec da1 a[]))
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kidrefl} {d = d} {p = pair a0 (a1 ,ₚ (unit))} KOK (atᵍ 1) (atʰ 16) dd (a-rec da0 (a-rec da1 a[]))
 
 ⊢kjsub : {Γ : Ctx} {d a0 a1 a2 : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ a0 ∷ K 1 (nsuc d) → Γ ⊢ a1 ∷ K 1 d → Γ ⊢ a2 ∷ K 1 d → Γ ⊢ kjsub a0 a1 a2 ∷ K 1 d
 ⊢kjsub {Γ} {d} {a0} {a1} {a2} dd da0 da1 da2 =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kjsub} {d = d} {p = pair a0 (pair a1 (pair a2 (unit)))} KOK (atᵍ 1) (atʰ 17) dd (a-rec da0 (a-rec da1 (a-rec da2 a[])))
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kjsub} {d = d} {p = pair a0 (a1 ,ₚ a2 ,ₚ (unit))} KOK (atᵍ 1) (atʰ 17) dd (a-rec da0 (a-rec da1 (a-rec da2 a[])))
 
 ⊢kunit : {Γ : Ctx} {d : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ kunit ∷ K 1 d
 ⊢kunit {Γ} {d} dd =
@@ -162,7 +163,7 @@ open import DirectedHoTT.Examples.Knot.Sig
 
 ⊢knatrec : {Γ : Ctx} {d a0 a1 a2 : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ a0 ∷ K 1 d → Γ ⊢ a1 ∷ K 1 (nsuc (nsuc d)) → Γ ⊢ a2 ∷ K 1 d → Γ ⊢ knatrec a0 a1 a2 ∷ K 1 d
 ⊢knatrec {Γ} {d} {a0} {a1} {a2} dd da0 da1 da2 =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-knatrec} {d = d} {p = pair a0 (pair a1 (pair a2 (unit)))} KOK (atᵍ 1) (atʰ 21) dd (a-rec da0 (a-rec da1 (a-rec da2 a[])))
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-knatrec} {d = d} {p = pair a0 (a1 ,ₚ a2 ,ₚ (unit))} KOK (atᵍ 1) (atʰ 21) dd (a-rec da0 (a-rec da1 (a-rec da2 a[])))
 
 ⊢kcon : {Γ : Ctx} {d a0 : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ a0 ∷ K 1 d → Γ ⊢ kcon a0 ∷ K 1 d
 ⊢kcon {Γ} {d} {a0} dd da0 =
@@ -170,7 +171,7 @@ open import DirectedHoTT.Examples.Knot.Sig
 
 ⊢kielim : {Γ : Ctx} {d a0 a1 a2 a3 : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ a0 ∷ K 1 d → Γ ⊢ a1 ∷ K 1 d → Γ ⊢ a2 ∷ K 1 d → Γ ⊢ a3 ∷ K 1 d → Γ ⊢ kielim a0 a1 a2 a3 ∷ K 1 d
 ⊢kielim {Γ} {d} {a0} {a1} {a2} {a3} dd da0 da1 da2 da3 =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kielim} {d = d} {p = pair a0 (pair a1 (pair a2 (pair a3 (unit))))} KOK (atᵍ 1) (atʰ 23) dd (a-rec da0 (a-rec da1 (a-rec da2 (a-rec da3 a[]))))
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kielim} {d = d} {p = pair a0 (a1 ,ₚ a2 ,ₚ a3 ,ₚ (unit))} KOK (atᵍ 1) (atʰ 23) dd (a-rec da0 (a-rec da1 (a-rec da2 (a-rec da3 a[]))))
 
 ⊢kdI : {Γ : Ctx} {d : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ kdI ∷ K 1 d
 ⊢kdI {Γ} {d} dd =
@@ -178,19 +179,19 @@ open import DirectedHoTT.Examples.Knot.Sig
 
 ⊢kdS : {Γ : Ctx} {d a0 a1 : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ a0 ∷ K 1 d → Γ ⊢ a1 ∷ K 1 d → Γ ⊢ kdS a0 a1 ∷ K 1 d
 ⊢kdS {Γ} {d} {a0} {a1} dd da0 da1 =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kdS} {d = d} {p = pair a0 (pair a1 (unit))} KOK (atᵍ 1) (atʰ 25) dd (a-rec da0 (a-rec da1 a[]))
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kdS} {d = d} {p = pair a0 (a1 ,ₚ (unit))} KOK (atᵍ 1) (atʰ 25) dd (a-rec da0 (a-rec da1 a[]))
 
 ⊢kdR : {Γ : Ctx} {d a0 a1 : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ a0 ∷ K 1 d → Γ ⊢ a1 ∷ K 1 d → Γ ⊢ kdR a0 a1 ∷ K 1 d
 ⊢kdR {Γ} {d} {a0} {a1} dd da0 da1 =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kdR} {d = d} {p = pair a0 (pair a1 (unit))} KOK (atᵍ 1) (atʰ 26) dd (a-rec da0 (a-rec da1 a[]))
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kdR} {d = d} {p = pair a0 (a1 ,ₚ (unit))} KOK (atᵍ 1) (atʰ 26) dd (a-rec da0 (a-rec da1 a[]))
 
 ⊢kdpay : {Γ : Ctx} {d a0 a1 a2 : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ a0 ∷ K 1 d → Γ ⊢ a1 ∷ K 1 d → Γ ⊢ a2 ∷ K 1 d → Γ ⊢ kdpay a0 a1 a2 ∷ K 1 d
 ⊢kdpay {Γ} {d} {a0} {a1} {a2} dd da0 da1 da2 =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kdpay} {d = d} {p = pair a0 (pair a1 (pair a2 (unit)))} KOK (atᵍ 1) (atʰ 27) dd (a-rec da0 (a-rec da1 (a-rec da2 a[])))
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kdpay} {d = d} {p = pair a0 (a1 ,ₚ a2 ,ₚ (unit))} KOK (atᵍ 1) (atʰ 27) dd (a-rec da0 (a-rec da1 (a-rec da2 a[])))
 
 ⊢kdih : {Γ : Ctx} {d a0 a1 a2 a3 : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ a0 ∷ K 1 d → Γ ⊢ a1 ∷ K 1 d → Γ ⊢ a2 ∷ K 1 d → Γ ⊢ a3 ∷ K 1 d → Γ ⊢ kdih a0 a1 a2 a3 ∷ K 1 d
 ⊢kdih {Γ} {d} {a0} {a1} {a2} {a3} dd da0 da1 da2 da3 =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kdih} {d = d} {p = pair a0 (pair a1 (pair a2 (pair a3 (unit))))} KOK (atᵍ 1) (atʰ 28) dd (a-rec da0 (a-rec da1 (a-rec da2 (a-rec da3 a[]))))
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kdih} {d = d} {p = pair a0 (a1 ,ₚ a2 ,ₚ a3 ,ₚ (unit))} KOK (atᵍ 1) (atʰ 28) dd (a-rec da0 (a-rec da1 (a-rec da2 (a-rec da3 a[]))))
 
 ⊢kfzero : {Γ : Ctx} {d : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ kfzero ∷ K 1 d
 ⊢kfzero {Γ} {d} dd =
@@ -202,7 +203,7 @@ open import DirectedHoTT.Examples.Knot.Sig
 
 ⊢kfcase : {Γ : Ctx} {d a0 a1 a2 : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ a0 ∷ K 1 d → Γ ⊢ a1 ∷ K 1 d → Γ ⊢ a2 ∷ K 1 (nsuc d) → Γ ⊢ kfcase a0 a1 a2 ∷ K 1 d
 ⊢kfcase {Γ} {d} {a0} {a1} {a2} dd da0 da1 da2 =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kfcase} {d = d} {p = pair a0 (pair a1 (pair a2 (unit)))} KOK (atᵍ 1) (atʰ 31) dd (a-rec da0 (a-rec da1 (a-rec da2 a[])))
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kfcase} {d = d} {p = pair a0 (a1 ,ₚ a2 ,ₚ (unit))} KOK (atᵍ 1) (atʰ 31) dd (a-rec da0 (a-rec da1 (a-rec da2 a[])))
 
 ⊢kfcase0 : {Γ : Ctx} {d a0 : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ a0 ∷ K 1 d → Γ ⊢ kfcase0 a0 ∷ K 1 d
 ⊢kfcase0 {Γ} {d} {a0} dd da0 =
@@ -210,7 +211,7 @@ open import DirectedHoTT.Examples.Knot.Sig
 
 ⊢kpsplit : {Γ : Ctx} {d a0 a1 : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ a0 ∷ K 1 (nsuc (nsuc d)) → Γ ⊢ a1 ∷ K 1 d → Γ ⊢ kpsplit a0 a1 ∷ K 1 d
 ⊢kpsplit {Γ} {d} {a0} {a1} dd da0 da1 =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kpsplit} {d = d} {p = pair a0 (pair a1 (unit))} KOK (atᵍ 1) (atʰ 33) dd (a-rec da0 (a-rec da1 a[]))
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kpsplit} {d = d} {p = pair a0 (a1 ,ₚ (unit))} KOK (atᵍ 1) (atʰ 33) dd (a-rec da0 (a-rec da1 a[]))
 
 ⊢kcNat : {Γ : Ctx} {d : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ kcNat ∷ K 1 d
 ⊢kcNat {Γ} {d} dd =
@@ -218,7 +219,7 @@ open import DirectedHoTT.Examples.Knot.Sig
 
 ⊢kcIMu : {Γ : Ctx} {d a0 a1 a2 : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ a0 ∷ K 1 d → Γ ⊢ a1 ∷ K 1 d → Γ ⊢ a2 ∷ K 1 d → Γ ⊢ kcIMu a0 a1 a2 ∷ K 1 d
 ⊢kcIMu {Γ} {d} {a0} {a1} {a2} dd da0 da1 da2 =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kcIMu} {d = d} {p = pair a0 (pair a1 (pair a2 (unit)))} KOK (atᵍ 1) (atʰ 35) dd (a-rec da0 (a-rec da1 (a-rec da2 a[])))
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kcIMu} {d = d} {p = pair a0 (a1 ,ₚ a2 ,ₚ (unit))} KOK (atᵍ 1) (atʰ 35) dd (a-rec da0 (a-rec da1 (a-rec da2 a[])))
 
 ⊢kcFin : {Γ : Ctx} {d a0 : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ a0 ∷ El ⌜Nat⌝ → Γ ⊢ kcFin a0 ∷ K 1 d
 ⊢kcFin {Γ} {d} {a0} dd da0 =

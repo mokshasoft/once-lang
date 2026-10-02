@@ -14,7 +14,7 @@ module DirectedHoTT.Examples.Knot.Sz where
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax hiding ( Fin )
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
-open import DirectedHoTT.Lib.Sugar using ( conₗ; tag; Lt )
+open import DirectedHoTT.Lib.Sugar using ( conₗ; tag; Lt; _,ₚ_ )
 open import DirectedHoTT.Lib.Tel using ( Tel; Tels; NthT; dihN )
 open import DirectedHoTT.Lib.TelAt using ( NthST )
 open import DirectedHoTT.Lib.TelFold using ( sizeAlg; foldK )
@@ -37,7 +37,7 @@ szM {Γ} = methAt (sortFolds sizeAlg (stels {Δ = Γ} KSig))
 
 -- ★ `sz s d t`: the size of `t : K s d`
 sz : ℕ → RTm Γ → RTm Γ → RTm Γ
-sz s d t = ielim KD (pair (tag s) d) szM t
+sz s d t = ielim KD ((tag s) ,ₚ d) szM t
 
 ⊢sz : {Γ : Ctx} {s : ℕ} {d t : RTm ⌊ Γ ⌋} → Lt s 2 → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ t ∷ K s d → Γ ⊢ sz s d t ∷ Nat
 ⊢sz lt dd dt = ⊢ielim ⊢SI ⊢KD ty-Nat ⊢szM (⊢ix lt dd) (⊢SK→IMu {sg = KSig} dt)
@@ -45,5 +45,5 @@ sz s d t = ielim KD (pair (tag s) d) szM t
 -- ★ …and it computes, one node at a time: `1 + Σ (sizes of the recursive fields)`
 sz-con : {s c k : ℕ} {Ts : Tels (Γ ∙) c} {T : Tel (Γ ∙)} {d p : RTm Γ} →
          NthST (stels KSig) s Ts → NthT Ts k T →
-         sz s d (conₗ k p) ⟶* nsuc (foldK sizeAlg T (dihN (single (pair (tag s) d)) T KD szM p))
+         sz s d (conₗ k p) ⟶* nsuc (foldK sizeAlg T (dihN (single ((tag s) ,ₚ d)) T KD szM p))
 sz-con ns nt = fold-ιₛ sizeAlg ns nt

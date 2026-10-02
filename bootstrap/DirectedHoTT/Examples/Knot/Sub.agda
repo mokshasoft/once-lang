@@ -14,7 +14,7 @@ open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax hiding ( Fin )
 open import normalizer.Syntax.Types using ( _≡_; refl )
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
-open import DirectedHoTT.Lib.Sugar using ( Lt; lt-z; lt-s )
+open import DirectedHoTT.Lib.Sugar using ( Lt; lt-z; lt-s; _,ₚ_ )
 open import DirectedHoTT.Lib.Syn
 open import DirectedHoTT.Lib.SynSub
 open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-appʳ )
@@ -70,7 +70,7 @@ opaque
  unfolding sub0
  sub0-sub : {Δ Θ : Cx} (σ : Sub Δ Θ) (s : ℕ) (d t u : RTm Δ) → subTm σ (sub0 s d t u) ≡ sub0 s (subTm σ d) (subTm σ t) (subTm σ u)
  sub0-sub σ s d t u =
-  cong₄ (λ D T M S → app (app (ielim D (pair T (nsuc (subTm σ d))) M (subTm σ t)) (subTm σ d)) (app (app S (subTm σ d)) (subTm σ u)))
+  cong₄ (λ D T M S → app (app (ielim D (T ,ₚ (nsuc (subTm σ d))) M (subTm σ t)) (subTm σ d)) (app (app S (subTm σ d)) (subTm σ u)))
         (SD-sub σ KSig) (tag-sub σ s) (TRAVMs-sub σ) (SINGLE-sub σ)
 
 -- a reduction in the argument (the substitution's image)

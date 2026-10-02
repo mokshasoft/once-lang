@@ -14,7 +14,7 @@ module DirectedHoTT.Examples.Knot.Sig where
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax hiding ( Fin )
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
-open import DirectedHoTT.Lib.Sugar using ( conₗ; lt-z; lt-s )
+open import DirectedHoTT.Lib.Sugar using ( conₗ; lt-z; lt-s; _,ₚ_ )
 open import DirectedHoTT.Lib.Syn
 
 ------------------------------------------------------------------------
@@ -362,100 +362,100 @@ kbase = conₗ zero (unit)
 kU : {Γ : Cx} → RTm Γ
 kU = conₗ (suc zero) (unit)
 kPi : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ
-kPi a0 a1 = conₗ (suc (suc zero)) (pair a0 (pair a1 (unit)))
+kPi a0 a1 = conₗ (suc (suc zero)) (a0 ,ₚ a1 ,ₚ (unit))
 kSg : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ
-kSg a0 a1 = conₗ (suc (suc (suc zero))) (pair a0 (pair a1 (unit)))
+kSg a0 a1 = conₗ (suc (suc (suc zero))) (a0 ,ₚ a1 ,ₚ (unit))
 kEl : {Γ : Cx} → RTm Γ → RTm Γ
-kEl a0 = conₗ (suc (suc (suc (suc zero)))) (pair a0 (unit))
+kEl a0 = conₗ (suc (suc (suc (suc zero)))) (a0 ,ₚ (unit))
 kHom : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ → RTm Γ
-kHom a0 a1 a2 = conₗ (suc (suc (suc (suc (suc zero))))) (pair a0 (pair a1 (pair a2 (unit))))
+kHom a0 a1 a2 = conₗ (suc (suc (suc (suc (suc zero))))) (a0 ,ₚ a1 ,ₚ a2 ,ₚ (unit))
 kUnit : {Γ : Cx} → RTm Γ
 kUnit = conₗ (suc (suc (suc (suc (suc (suc zero)))))) (unit)
 kNat : {Γ : Cx} → RTm Γ
 kNat = conₗ (suc (suc (suc (suc (suc (suc (suc zero))))))) (unit)
 kId : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ → RTm Γ
-kId a0 a1 a2 = conₗ (suc (suc (suc (suc (suc (suc (suc (suc zero)))))))) (pair a0 (pair a1 (pair a2 (unit))))
+kId a0 a1 a2 = conₗ (suc (suc (suc (suc (suc (suc (suc (suc zero)))))))) (a0 ,ₚ a1 ,ₚ a2 ,ₚ (unit))
 kIMu : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ → RTm Γ
-kIMu a0 a1 a2 = conₗ (suc (suc (suc (suc (suc (suc (suc (suc (suc zero))))))))) (pair a0 (pair a1 (pair a2 (unit))))
+kIMu a0 a1 a2 = conₗ (suc (suc (suc (suc (suc (suc (suc (suc (suc zero))))))))) (a0 ,ₚ a1 ,ₚ a2 ,ₚ (unit))
 kDesc : {Γ : Cx} → RTm Γ → RTm Γ
-kDesc a0 = conₗ (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc zero)))))))))) (pair a0 (unit))
+kDesc a0 = conₗ (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc zero)))))))))) (a0 ,ₚ (unit))
 kDIh : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ → RTm Γ → RTm Γ
-kDIh a0 a1 a2 a3 = conₗ (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc zero))))))))))) (pair a0 (pair a1 (pair a2 (pair a3 (unit)))))
+kDIh a0 a1 a2 a3 = conₗ (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc zero))))))))))) (a0 ,ₚ a1 ,ₚ a2 ,ₚ a3 ,ₚ (unit))
 kFin : {Γ : Cx} → RTm Γ → RTm Γ
-kFin a0 = conₗ (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc zero)))))))))))) (pair a0 (unit))
+kFin a0 = conₗ (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc zero)))))))))))) (a0 ,ₚ (unit))
 kvar : {Γ : Cx} → RTm Γ → RTm Γ
-kvar a0 = conₗ zero (pair a0 (unit))
+kvar a0 = conₗ zero (a0 ,ₚ (unit))
 klam : {Γ : Cx} → RTm Γ → RTm Γ
-klam a0 = conₗ (suc zero) (pair a0 (unit))
+klam a0 = conₗ (suc zero) (a0 ,ₚ (unit))
 kapp : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ
-kapp a0 a1 = conₗ (suc (suc zero)) (pair a0 (pair a1 (unit)))
+kapp a0 a1 = conₗ (suc (suc zero)) (a0 ,ₚ a1 ,ₚ (unit))
 kpair : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ
-kpair a0 a1 = conₗ (suc (suc (suc zero))) (pair a0 (pair a1 (unit)))
+kpair a0 a1 = conₗ (suc (suc (suc zero))) (a0 ,ₚ a1 ,ₚ (unit))
 kabsurd : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ
-kabsurd a0 a1 = conₗ (suc (suc (suc (suc zero)))) (pair a0 (pair a1 (unit)))
+kabsurd a0 a1 = conₗ (suc (suc (suc (suc zero)))) (a0 ,ₚ a1 ,ₚ (unit))
 kordtr : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ → RTm Γ → RTm Γ → RTm Γ
-kordtr a0 a1 a2 a3 a4 = conₗ (suc (suc (suc (suc (suc zero))))) (pair a0 (pair a1 (pair a2 (pair a3 (pair a4 (unit))))))
+kordtr a0 a1 a2 a3 a4 = conₗ (suc (suc (suc (suc (suc zero))))) (a0 ,ₚ a1 ,ₚ a2 ,ₚ a3 ,ₚ a4 ,ₚ (unit))
 kfst : {Γ : Cx} → RTm Γ → RTm Γ
-kfst a0 = conₗ (suc (suc (suc (suc (suc (suc zero)))))) (pair a0 (unit))
+kfst a0 = conₗ (suc (suc (suc (suc (suc (suc zero)))))) (a0 ,ₚ (unit))
 ksnd : {Γ : Cx} → RTm Γ → RTm Γ
-ksnd a0 = conₗ (suc (suc (suc (suc (suc (suc (suc zero))))))) (pair a0 (unit))
+ksnd a0 = conₗ (suc (suc (suc (suc (suc (suc (suc zero))))))) (a0 ,ₚ (unit))
 kcbase : {Γ : Cx} → RTm Γ
 kcbase = conₗ (suc (suc (suc (suc (suc (suc (suc (suc zero)))))))) (unit)
 kcPi : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ
-kcPi a0 a1 = conₗ (suc (suc (suc (suc (suc (suc (suc (suc (suc zero))))))))) (pair a0 (pair a1 (unit)))
+kcPi a0 a1 = conₗ (suc (suc (suc (suc (suc (suc (suc (suc (suc zero))))))))) (a0 ,ₚ a1 ,ₚ (unit))
 kcSg : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ
-kcSg a0 a1 = conₗ (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc zero)))))))))) (pair a0 (pair a1 (unit)))
+kcSg a0 a1 = conₗ (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc zero)))))))))) (a0 ,ₚ a1 ,ₚ (unit))
 kcHom : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ → RTm Γ
-kcHom a0 a1 a2 = conₗ (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc zero))))))))))) (pair a0 (pair a1 (pair a2 (unit))))
+kcHom a0 a1 a2 = conₗ (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc zero))))))))))) (a0 ,ₚ a1 ,ₚ a2 ,ₚ (unit))
 khrefl : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ
-khrefl a0 a1 = conₗ (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc zero)))))))))))) (pair a0 (pair a1 (unit)))
+khrefl a0 a1 = conₗ (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc zero)))))))))))) (a0 ,ₚ a1 ,ₚ (unit))
 ktr : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ → RTm Γ
-ktr a0 a1 a2 = conₗ (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc zero))))))))))))) (pair a0 (pair a1 (pair a2 (unit))))
+ktr a0 a1 a2 = conₗ (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc zero))))))))))))) (a0 ,ₚ a1 ,ₚ a2 ,ₚ (unit))
 kap : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ → RTm Γ
-kap a0 a1 a2 = conₗ (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc zero)))))))))))))) (pair a0 (pair a1 (pair a2 (unit))))
+kap a0 a1 a2 = conₗ (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc zero)))))))))))))) (a0 ,ₚ a1 ,ₚ a2 ,ₚ (unit))
 kcId : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ → RTm Γ
-kcId a0 a1 a2 = conₗ (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc zero))))))))))))))) (pair a0 (pair a1 (pair a2 (unit))))
+kcId a0 a1 a2 = conₗ (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc zero))))))))))))))) (a0 ,ₚ a1 ,ₚ a2 ,ₚ (unit))
 kidrefl : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ
-kidrefl a0 a1 = conₗ (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc zero)))))))))))))))) (pair a0 (pair a1 (unit)))
+kidrefl a0 a1 = conₗ (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc zero)))))))))))))))) (a0 ,ₚ a1 ,ₚ (unit))
 kjsub : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ → RTm Γ
-kjsub a0 a1 a2 = conₗ (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc zero))))))))))))))))) (pair a0 (pair a1 (pair a2 (unit))))
+kjsub a0 a1 a2 = conₗ (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc zero))))))))))))))))) (a0 ,ₚ a1 ,ₚ a2 ,ₚ (unit))
 kunit : {Γ : Cx} → RTm Γ
 kunit = conₗ (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc zero)))))))))))))))))) (unit)
 knzero : {Γ : Cx} → RTm Γ
 knzero = conₗ (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc zero))))))))))))))))))) (unit)
 knsuc : {Γ : Cx} → RTm Γ → RTm Γ
-knsuc a0 = conₗ (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc zero)))))))))))))))))))) (pair a0 (unit))
+knsuc a0 = conₗ (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc zero)))))))))))))))))))) (a0 ,ₚ (unit))
 knatrec : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ → RTm Γ
-knatrec a0 a1 a2 = conₗ (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc zero))))))))))))))))))))) (pair a0 (pair a1 (pair a2 (unit))))
+knatrec a0 a1 a2 = conₗ (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc zero))))))))))))))))))))) (a0 ,ₚ a1 ,ₚ a2 ,ₚ (unit))
 kcon : {Γ : Cx} → RTm Γ → RTm Γ
-kcon a0 = conₗ (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc zero)))))))))))))))))))))) (pair a0 (unit))
+kcon a0 = conₗ (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc zero)))))))))))))))))))))) (a0 ,ₚ (unit))
 kielim : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ → RTm Γ → RTm Γ
-kielim a0 a1 a2 a3 = conₗ (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc zero))))))))))))))))))))))) (pair a0 (pair a1 (pair a2 (pair a3 (unit)))))
+kielim a0 a1 a2 a3 = conₗ (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc zero))))))))))))))))))))))) (a0 ,ₚ a1 ,ₚ a2 ,ₚ a3 ,ₚ (unit))
 kdI : {Γ : Cx} → RTm Γ
 kdI = conₗ (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc zero)))))))))))))))))))))))) (unit)
 kdS : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ
-kdS a0 a1 = conₗ (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc zero))))))))))))))))))))))))) (pair a0 (pair a1 (unit)))
+kdS a0 a1 = conₗ (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc zero))))))))))))))))))))))))) (a0 ,ₚ a1 ,ₚ (unit))
 kdR : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ
-kdR a0 a1 = conₗ (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc zero)))))))))))))))))))))))))) (pair a0 (pair a1 (unit)))
+kdR a0 a1 = conₗ (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc zero)))))))))))))))))))))))))) (a0 ,ₚ a1 ,ₚ (unit))
 kdpay : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ → RTm Γ
-kdpay a0 a1 a2 = conₗ (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc zero))))))))))))))))))))))))))) (pair a0 (pair a1 (pair a2 (unit))))
+kdpay a0 a1 a2 = conₗ (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc zero))))))))))))))))))))))))))) (a0 ,ₚ a1 ,ₚ a2 ,ₚ (unit))
 kdih : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ → RTm Γ → RTm Γ
-kdih a0 a1 a2 a3 = conₗ (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc zero)))))))))))))))))))))))))))) (pair a0 (pair a1 (pair a2 (pair a3 (unit)))))
+kdih a0 a1 a2 a3 = conₗ (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc zero)))))))))))))))))))))))))))) (a0 ,ₚ a1 ,ₚ a2 ,ₚ a3 ,ₚ (unit))
 kfzero : {Γ : Cx} → RTm Γ
 kfzero = conₗ (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc zero))))))))))))))))))))))))))))) (unit)
 kfsuc : {Γ : Cx} → RTm Γ → RTm Γ
-kfsuc a0 = conₗ (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc zero)))))))))))))))))))))))))))))) (pair a0 (unit))
+kfsuc a0 = conₗ (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc zero)))))))))))))))))))))))))))))) (a0 ,ₚ (unit))
 kfcase : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ → RTm Γ
-kfcase a0 a1 a2 = conₗ (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc zero))))))))))))))))))))))))))))))) (pair a0 (pair a1 (pair a2 (unit))))
+kfcase a0 a1 a2 = conₗ (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc zero))))))))))))))))))))))))))))))) (a0 ,ₚ a1 ,ₚ a2 ,ₚ (unit))
 kfcase0 : {Γ : Cx} → RTm Γ → RTm Γ
-kfcase0 a0 = conₗ (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc zero)))))))))))))))))))))))))))))))) (pair a0 (unit))
+kfcase0 a0 = conₗ (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc zero)))))))))))))))))))))))))))))))) (a0 ,ₚ (unit))
 kpsplit : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ
-kpsplit a0 a1 = conₗ (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc zero))))))))))))))))))))))))))))))))) (pair a0 (pair a1 (unit)))
+kpsplit a0 a1 = conₗ (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc zero))))))))))))))))))))))))))))))))) (a0 ,ₚ a1 ,ₚ (unit))
 kcNat : {Γ : Cx} → RTm Γ
 kcNat = conₗ (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc zero)))))))))))))))))))))))))))))))))) (unit)
 kcIMu : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ → RTm Γ
-kcIMu a0 a1 a2 = conₗ (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc zero))))))))))))))))))))))))))))))))))) (pair a0 (pair a1 (pair a2 (unit))))
+kcIMu a0 a1 a2 = conₗ (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc zero))))))))))))))))))))))))))))))))))) (a0 ,ₚ a1 ,ₚ a2 ,ₚ (unit))
 kcFin : {Γ : Cx} → RTm Γ → RTm Γ
-kcFin a0 = conₗ (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc zero)))))))))))))))))))))))))))))))))))) (pair a0 (unit))
+kcFin a0 = conₗ (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc zero)))))))))))))))))))))))))))))))))))) (a0 ,ₚ (unit))
 kcUnit : {Γ : Cx} → RTm Γ
 kcUnit = conₗ (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc zero))))))))))))))))))))))))))))))))))))) (unit)

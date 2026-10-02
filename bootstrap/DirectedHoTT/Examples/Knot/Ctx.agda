@@ -23,7 +23,7 @@ open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast; wk-cancel-tm )
 open import DirectedHoTT.Metatheory.Fundamental.Syntactic using ( ⟨_⟩ᵣ; subTy-var; subTm-var )
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂ )
-open import DirectedHoTT.Lib.Sugar using ( conₗ; tag; nth-z; lt-z; _∷ᵈ_; []ᵈ; []; _∷_; subC; AllD )
+open import DirectedHoTT.Lib.Sugar using ( conₗ; tag; nth-z; lt-z; _∷ᵈ_; []ᵈ; []; _∷_; subC; AllD; v₀; _,ₚ_ )
 open import DirectedHoTT.Lib.Tel
 open import DirectedHoTT.Lib.NatFib
 open import DirectedHoTT.Lib.FinFam using ( toI; ⊢isuc )
@@ -37,13 +37,13 @@ open import DirectedHoTT.Examples.Knot.Terms
 -- closedness, and the one reduction `El (⌜Ty⌝ d) ⟶ K 0 d`.
 opaque
   ⌜Ty⌝ : {Γ : Cx} → RTm Γ → RTm Γ
-  ⌜Ty⌝ d = ⌜IMu⌝ (SI 2) KD (pair (tag 0) d)
+  ⌜Ty⌝ d = ⌜IMu⌝ (SI 2) KD ((tag 0) ,ₚ d)
 
   ⊢⌜Ty⌝ : {Γ : Ctx} {d : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ ⌜Ty⌝ d ∷ U
   ⊢⌜Ty⌝ dd = ⊢⌜IMu⌝ ⊢SI ⊢KD (⊢ix lt-z dd)
 
   ⌜Ty⌝-sub : {Δ Θ : Cx} (σ : Sub Δ Θ) (d : RTm Δ) → subTm σ (⌜Ty⌝ d) ≡ ⌜Ty⌝ (subTm σ d)
-  ⌜Ty⌝-sub σ d = cong (λ D → ⌜IMu⌝ (SI 2) D (pair (tag 0) (subTm σ d))) (SD-sub σ KSig)
+  ⌜Ty⌝-sub σ d = cong (λ D → ⌜IMu⌝ (SI 2) D ((tag 0) ,ₚ (subTm σ d))) (SD-sub σ KSig)
 
   El-⌜Ty⌝ : {Γ : Cx} {d : RTm Γ} → El (⌜Ty⌝ d) ⟶ᵀ K 0 d
   El-⌜Ty⌝ = El-⌜SK⌝
@@ -56,7 +56,7 @@ emptyT : {Γ : Cx} → Tel (Γ ∙)
 emptyT = tι                                   -- ε : Ctx 0
 
 extT : {Γ : Cx} → Tel (Γ ∙)
-extT = tρ (var vz) (tσ (⌜Ty⌝ (var vz)) tι)    -- Γ ▹ A : Ctx (suc m),  Γ : Ctx m,  A : Ty m
+extT = tρ v₀ (tσ (⌜Ty⌝ v₀) tι)    -- Γ ▹ A : Ctx (suc m),  Γ : Ctx m,  A : Ty m
 
 CtxZ CtxS : {Γ : Cx} → Tels (Γ ∙) 1
 CtxZ = emptyT ∷ᵗ []ᵗ
@@ -89,7 +89,7 @@ module _ {Γ : Ctx} where
 ------------------------------------------------------------------------
 
 CtxS-sub : {Δ Θ : Cx} (σ : Sub Δ Θ) → subC (extS σ) (⌜ CtxS {Δ} ⌝ₛ) ≡ ⌜ CtxS {Θ} ⌝ₛ
-CtxS-sub σ = cong (λ X → dρ (var vz) (dσ X (lam dι)) ∷ []) (⌜Ty⌝-sub (extS σ) (var vz))
+CtxS-sub σ = cong (λ X → dρ v₀ (dσ X (lam dι)) ∷ []) (⌜Ty⌝-sub (extS σ) v₀)
 
 -- ⚠ PIN the endpoints: `DN` is not injective, and an unpinned `cong₂ DN`
 --   normalises the Knot's description on the known side (27 s → 0 s)
@@ -119,8 +119,8 @@ CtxD-ren ρ = trans (sym (subTm-var ρ CtxD)) (CtxD-sub ⟨ ρ ⟩ᵣ)
 ⊢wkCtx : {Γ : Ctx} {B : RTy ⌊ Γ ⌋} {d g : RTm ⌊ Γ ⌋} → Γ ⊢ g ∷ KCtx d → (Γ ▹ B) ⊢ renTm vs g ∷ KCtx (renTm vs d)
 ⊢wkCtx {Γ} {B} {d} {g} dg = ⊢-cast {Γ ▹ B} {renTm vs g} {renTy vs (KCtx d)} {KCtx (renTm vs d)} (KCtx-ren vs d) (⊢wk {Γ} {B} {g} {KCtx d} dg)
 
-hereCtx : {Γ : Ctx} {d : RTm ⌊ Γ ⌋} → (Γ ▹ KCtx d) ⊢ var vz ∷ KCtx (renTm vs d)
-hereCtx {Γ} {d} = ⊢-cast {Γ ▹ KCtx d} {var vz} {renTy vs (KCtx d)} {KCtx (renTm vs d)} (KCtx-ren vs d) (⊢var here)
+hereCtx : {Γ : Ctx} {d : RTm ⌊ Γ ⌋} → (Γ ▹ KCtx d) ⊢ v₀ ∷ KCtx (renTm vs d)
+hereCtx {Γ} {d} = ⊢-cast {Γ ▹ KCtx d} {v₀} {renTy vs (KCtx d)} {KCtx (renTm vs d)} (KCtx-ren vs d) (⊢var here)
 
 ------------------------------------------------------------------------
 -- 2. THE CONSTRUCTORS.
@@ -130,7 +130,7 @@ cε : {Γ : Cx} → RTm Γ
 cε = conₗ zero unit
 
 cext : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ
-cext g a = conₗ zero (pair g (pair a unit))
+cext g a = conₗ zero (g ,ₚ a ,ₚ unit)
 
 module _ {Γ : Ctx} where
   private
@@ -146,17 +146,17 @@ module _ {Γ : Ctx} where
   -- the extension's telescope at `m`, with the type code's substitution CAST
   --   (left to the checker it normalises the Knot's description)
   extAt : (m : RTm ⌊ Γ ⌋) → subTm (single m) ⌜ extT {⌊ Γ ⌋} ⌝ᵗ ≡ ⌜ tρ m (tσ (⌜Ty⌝ m) tι) ⌝ᵗ
-  extAt m = cong (λ X → dρ m (dσ X (lam dι))) (⌜Ty⌝-sub (single m) (var vz))
+  extAt m = cong (λ X → dρ m (dσ X (lam dι))) (⌜Ty⌝-sub (single m) v₀)
 
   ⊢cext : {m g a : RTm ⌊ Γ ⌋} → Γ ⊢ m ∷ El ⌜Nat⌝ →
           Γ ⊢ g ∷ KCtx m → Γ ⊢ a ∷ K 0 m → Γ ⊢ cext g a ∷ KCtx (nsuc m)
   ⊢cext {m} {g} {a} dm dg da =
-    ⊢conN-s {Γ = Γ} {C0 = ⌜ CtxZ ⌝ₛ} {CS = ⌜ CtxS ⌝ₛ} {C = ⌜ extT ⌝ᵗ} {m = m} {p = pair g (pair a unit)} dZ dS nth-z dm
-      (⊢-cast {Γ} {pair g (pair a unit)} {El (dpay ⌜Nat⌝ CtxD ⌜ tρ m (tσ (⌜Ty⌝ m) tι) ⌝ᵗ)}
+    ⊢conN-s {Γ = Γ} {C0 = ⌜ CtxZ ⌝ₛ} {CS = ⌜ CtxS ⌝ₛ} {C = ⌜ extT ⌝ᵗ} {m = m} {p = pair g (a ,ₚ unit)} dZ dS nth-z dm
+      (⊢-cast {Γ} {pair g (a ,ₚ unit)} {El (dpay ⌜Nat⌝ CtxD ⌜ tρ m (tσ (⌜Ty⌝ m) tι) ⌝ᵗ)}
               {El (dpay ⌜Nat⌝ CtxD (subTm (single m) ⌜ extT ⌝ᵗ))}
               (cong (λ C → El (dpay ⌜Nat⌝ CtxD C)) (sym (extAt m))) dp)
     where
-      dp : Γ ⊢ pair g (pair a unit) ∷ El (dpay ⌜Nat⌝ CtxD ⌜ tρ m (tσ (⌜Ty⌝ m) tι) ⌝ᵗ)
+      dp : Γ ⊢ pair g (a ,ₚ unit) ∷ El (dpay ⌜Nat⌝ CtxD ⌜ tρ m (tσ (⌜Ty⌝ m) tι) ⌝ᵗ)
       dp = ⊢payρ {Γ} {⌜Nat⌝} {CtxD} ⊢⌜Nat⌝ ⊢CtxD {m} {g} {pair a unit} {tσ (⌜Ty⌝ m) tι}
              (ok-ρ dm (ok-σ (⊢⌜Ty⌝ dm) ok-ι)) dg
              (⊢payσ {Γ} {⌜Nat⌝} {CtxD} ⊢⌜Nat⌝ ⊢CtxD {⌜Ty⌝ m} {a} {unit} {tι}
@@ -172,11 +172,11 @@ module _ {Θ : Ctx} {Δ : Cx} {σ : Sub (Δ ∙) ⌊ Θ ⌋} {D p : RTm ⌊ Θ �
   private
     fp = fst p
     T2 : RTy ⌊ Θ ⌋
-    T2 = subTy (single fp) (El (subTm (vs ᵣ∘ₛ σ) (⌜Ty⌝ (var vz))))
+    T2 = subTy (single fp) (El (subTm (vs ᵣ∘ₛ σ) (⌜Ty⌝ v₀)))
     eT : T2 ≡ El (⌜Ty⌝ (σ vz))
-    eT = cong El (trans {x = subTm (single fp) (subTm (vs ᵣ∘ₛ σ) (⌜Ty⌝ (var vz)))}
+    eT = cong El (trans {x = subTm (single fp) (subTm (vs ᵣ∘ₛ σ) (⌜Ty⌝ v₀))}
                         {y = subTm (single fp) (⌜Ty⌝ (renTm vs (σ vz)))} {z = ⌜Ty⌝ (σ vz)}
-                        (cong (subTm (single fp)) (⌜Ty⌝-sub (vs ᵣ∘ₛ σ) (var vz)))
+                        (cong (subTm (single fp)) (⌜Ty⌝-sub (vs ᵣ∘ₛ σ) v₀))
                         (trans (⌜Ty⌝-sub (single fp) (renTm vs (σ vz)))
                                (cong ⌜Ty⌝ {x = subTm (single fp) (renTm vs (σ vz))} {y = σ vz} (wk-cancel-tm fp (σ vz)))))
 

@@ -26,7 +26,7 @@ open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast; wk-cancel-tm )
 open import DirectedHoTT.Metatheory.SubjectReductionBase using ( wk-sub )
 open import DirectedHoTT.Metatheory.Fundamental.Syntactic using ( ⟨_⟩ᵣ; subTy-var; subTm-var )
-open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_; conₗ; tag; selF; ⊢selF; AllD; []ᵈ; _∷ᵈ_; subC; lt-z; nth-z; nth-s )
+open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_; conₗ; tag; selF; ⊢selF; AllD; []ᵈ; _∷ᵈ_; subC; lt-z; nth-z; nth-s; v₀; v₁; v₂; v₃; v₄; v₅; _,ₚ_ )
 open import DirectedHoTT.Lib.Tel
 open import DirectedHoTT.Lib.TelAt using ( HypAt; ⊢payAt )
 open import DirectedHoTT.Lib.MethAt
@@ -51,7 +51,7 @@ private
 
 -- (d , Γ , x , A)
 I∋ : RTm Γ
-I∋ = ⌜Σ⌝ ⌜Nat⌝ (⌜Σ⌝ (⌜Ctx⌝ (var vz)) (⌜Σ⌝ (⌜Var⌝ (var (vs vz))) (⌜Ty⌝ (var (vs (vs vz))))))
+I∋ = ⌜Σ⌝ ⌜Nat⌝ (⌜Σ⌝ (⌜Ctx⌝ v₀) (⌜Σ⌝ (⌜Var⌝ v₁) (⌜Ty⌝ v₂)))
 
 ⊢I∋ : {Γ : Ctx} → Γ ⊢ I∋ ∷ U
 ⊢I∋ = ⊢⌜Σ⌝ ⊢⌜Nat⌝ (⊢⌜Σ⌝ (⊢⌜IMu⌝ ⊢⌜Nat⌝ ⊢CtxD (⊢var here))
@@ -60,8 +60,8 @@ I∋ = ⌜Σ⌝ ⌜Nat⌝ (⌜Σ⌝ (⌜Ctx⌝ (var vz)) (⌜Σ⌝ (⌜Var⌝ (v
 -- its closedness, cast once (`knot-description-normalisation-trap`)
 I∋-sub : {Δ Θ : Cx} (σ : Sub Δ Θ) → subTm σ (I∋ {Δ}) ≡ I∋
 I∋-sub σ =
-  cong (⌜Σ⌝ ⌜Nat⌝) (cong₂ ⌜Σ⌝ (cong (λ D → ⌜IMu⌝ ⌜Nat⌝ D (var vz)) (CtxD-sub (extS σ)))
-                             (cong (⌜Σ⌝ (⌜Var⌝ (var (vs vz)))) (⌜Ty⌝-sub (extS (extS (extS σ))) (var (vs (vs vz))))))
+  cong (⌜Σ⌝ ⌜Nat⌝) (cong₂ ⌜Σ⌝ (cong (λ D → ⌜IMu⌝ ⌜Nat⌝ D v₀) (CtxD-sub (extS σ)))
+                             (cong (⌜Σ⌝ (⌜Var⌝ v₁)) (⌜Ty⌝-sub (extS (extS (extS σ))) v₂)))
 
 Desc∋-sub : {Δ Θ : Cx} (σ : Sub Δ Θ) → subTy σ (Desc (I∋ {Δ})) ≡ Desc I∋
 Desc∋-sub σ = cong Desc (I∋-sub σ)
@@ -70,7 +70,7 @@ I∋-ren : {Δ Θ : Cx} (ρ : Ren Δ Θ) → renTm ρ (I∋ {Δ}) ≡ I∋
 I∋-ren ρ = trans (sym (subTm-var ρ I∋)) (I∋-sub ⟨ ρ ⟩ᵣ)
 
 ix∋ : RTm Γ → RTm Γ → RTm Γ → RTm Γ → RTm Γ
-ix∋ d g x a = pair d (pair g (pair x a))
+ix∋ d g x a = pair d (g ,ₚ x ,ₚ a)
 
 -- the Knot's types and contexts, as codes and back
 toTy : {Γ : Ctx} {d a : RTm ⌊ Γ ⌋} → Γ ⊢ a ∷ K 0 d → Γ ⊢ a ∷ El (⌜Ty⌝ d)
@@ -88,14 +88,14 @@ module IxEq {Ξ : Ctx} (d g x : RTm ⌊ Ξ ⌋) where
   wk2 : RTm ⌊ Ξ ⌋ → RTm ((⌊ Ξ ⌋ ∙) ∙)
   wk2 t = renTm vs (renTm vs t)
   B1 : RTm (⌊ Ξ ⌋ ∙)
-  B1 = ⌜Σ⌝ (⌜Ctx⌝ (var vz)) (⌜Σ⌝ (⌜Var⌝ (var (vs vz))) (⌜Ty⌝ (var (vs (vs vz)))))
+  B1 = ⌜Σ⌝ (⌜Ctx⌝ v₀) (⌜Σ⌝ (⌜Var⌝ v₁) (⌜Ty⌝ v₂))
   B2 : RTm (⌊ Ξ ⌋ ∙)
   B2 = ⌜Σ⌝ (⌜Var⌝ (renTm vs d)) (⌜Ty⌝ (wk2 d))
   B3 : RTm (⌊ Ξ ⌋ ∙)
   B3 = ⌜Ty⌝ (renTm vs d)
   eqB1 : subTy (single d) (El B1) ≡ El (⌜Σ⌝ (⌜Ctx⌝ d) B2)
   eqB1 = cong El (cong₂ ⌜Σ⌝ (cong (λ D → ⌜IMu⌝ ⌜Nat⌝ D d) (CtxD-sub (single d)))
-                            (cong (⌜Σ⌝ (⌜Var⌝ (renTm vs d))) (⌜Ty⌝-sub (extS (extS (single d))) (var (vs (vs vz))))))
+                            (cong (⌜Σ⌝ (⌜Var⌝ (renTm vs d))) (⌜Ty⌝-sub (extS (extS (single d))) v₂)))
   eqB2 : subTy (single g) (El B2) ≡ El (⌜Σ⌝ (⌜Var⌝ d) (⌜Ty⌝ (renTm vs d)))
   eqB2 = cong El (cong₂ ⌜Σ⌝ (cong (⌜IMu⌝ ⌜Nat⌝ FinD) (wk-cancel-tm g d))
                             (trans (⌜Ty⌝-sub (extS (single g)) (wk2 d))
@@ -119,18 +119,18 @@ module _ {Ξ : Ctx} {d g x a : RTm ⌊ Ξ ⌋} where
       tyB3 = ty-El (⊢⌜Ty⌝ (⊢wk dd))
       p3 : Ξ ⊢ pair x a ∷ Σ' (El (⌜Var⌝ d)) (El B3)
       p3 = ⊢pair tyB3 (toVar dx) (⊢-cast {Ξ} {a} {El (⌜Ty⌝ d)} {subTy (single x) (El B3)} (sym eqB3) (toTy da))
-      p2 : Ξ ⊢ pair g (pair x a) ∷ Σ' (El (⌜Ctx⌝ d)) (El B2)
+      p2 : Ξ ⊢ pair g (x ,ₚ a) ∷ Σ' (El (⌜Ctx⌝ d)) (El B2)
       p2 = ⊢pair tyB2 (toCtx dg)
              (⊢-cast {Ξ} {pair x a} {El (⌜Σ⌝ (⌜Var⌝ d) B3)} {subTy (single g) (El B2)} (sym eqB2)
                      (⊢conv p3 (csymᵀ (credᵀ (El-⌜Σ⌝ (⌜Var⌝ d) B3)))))
       p1 : Ξ ⊢ ix∋ d g x a ∷ Σ' (El ⌜Nat⌝) (El B1)
       p1 = ⊢pair tyB1 dd
-             (⊢-cast {Ξ} {pair g (pair x a)} {El (⌜Σ⌝ (⌜Ctx⌝ d) B2)} {subTy (single d) (El B1)} (sym eqB1)
+             (⊢-cast {Ξ} {pair g (x ,ₚ a)} {El (⌜Σ⌝ (⌜Ctx⌝ d) B2)} {subTy (single d) (El B1)} (sym eqB1)
                      (⊢conv p2 (csymᵀ (credᵀ (El-⌜Σ⌝ (⌜Ctx⌝ d) B2)))))
 
 -- the predecessor
 pd : RTm Γ → RTm Γ
-pd i = natrec nzero (var (vs vz)) i
+pd i = natrec nzero v₁ i
 
 ⊢pd : {Γ : Ctx} {i : RTm ⌊ Γ ⌋} → Γ ⊢ i ∷ El ⌜Nat⌝ → Γ ⊢ pd i ∷ El ⌜Nat⌝
 ⊢pd di = ⊢natrec (ty-El ⊢⌜Nat⌝) (⊢conv ⊢nzero (csymᵀ elNat))
@@ -155,8 +155,8 @@ hereT m a' a = tσ (⌜Id⌝ (⌜Ty⌝ (nsuc m)) a (wk 0 m a')) tι
 thereT : RTm Γ → RTm Γ → RTm Γ → RTm Γ → Tel Γ
 thereT m g y a =
   tσ (⌜Ty⌝ m)
-    (tρ (ix∋ (renTm vs m) (renTm vs g) (renTm vs y) (var vz))
-      (tσ (⌜Id⌝ (⌜Ty⌝ (nsuc (renTm vs m))) (renTm vs a) (wk 0 (renTm vs m) (var vz))) tι))
+    (tρ (ix∋ (renTm vs m) (renTm vs g) (renTm vs y) v₀)
+      (tσ (⌜Id⌝ (⌜Ty⌝ (nsuc (renTm vs m))) (renTm vs a) (wk 0 (renTm vs m) v₀)) tι))
 
 module _ {Θ : Ctx} {m a' a : RTm ⌊ Θ ⌋} where
   hereOK : Θ ⊢ m ∷ El ⌜Nat⌝ → Θ ⊢ a' ∷ K 0 m → Θ ⊢ a ∷ K 0 (nsuc m) → TelOK Θ I∋ (hereT m a' a)
@@ -167,15 +167,15 @@ module _ {Θ : Ctx} {m a' a : RTm ⌊ Θ ⌋} where
                   (toTy (⊢wkS {Θ} {0} {m} {a'} lt-z dm da'))
 
 -- the newest variable, a type code, read as a Knot type
-hereTy : {Θ : Ctx} {m : RTm ⌊ Θ ⌋} → (Θ ▹ El (⌜Ty⌝ m)) ⊢ var vz ∷ K 0 (renTm vs m)
-hereTy {Θ} {m} = ⊢conv (⊢-cast {Θ ▹ El (⌜Ty⌝ m)} {var vz} {renTy vs (El (⌜Ty⌝ m))} {El (⌜Ty⌝ (renTm vs m))}
+hereTy : {Θ : Ctx} {m : RTm ⌊ Θ ⌋} → (Θ ▹ El (⌜Ty⌝ m)) ⊢ v₀ ∷ K 0 (renTm vs m)
+hereTy {Θ} {m} = ⊢conv (⊢-cast {Θ ▹ El (⌜Ty⌝ m)} {v₀} {renTy vs (El (⌜Ty⌝ m))} {El (⌜Ty⌝ (renTm vs m))}
                               (cong El (⌜Ty⌝-ren vs m)) (⊢var here))
                        (credᵀ El-⌜Ty⌝)
 
 module _ {Θ : Ctx} {m g y a : RTm ⌊ Θ ⌋} where
   thereOK : Θ ⊢ m ∷ El ⌜Nat⌝ → Θ ⊢ g ∷ KCtx m → Θ ⊢ y ∷ FinI m → Θ ⊢ a ∷ K 0 (nsuc m) →
             TelOK Θ I∋ (thereT m g y a)
-  thereOK dm dg dy da = ok-σ (⊢⌜Ty⌝ dm) (subst (λ X → TelOK Θ₁ X (tρ (ix∋ m₁ (renTm vs g) (renTm vs y) (var vz)) (tσ (⌜Id⌝ (⌜Ty⌝ (nsuc m₁)) (renTm vs a) (wk 0 m₁ (var vz))) tι))) (sym (I∋-ren vs)) (ok-ρ dj okI))
+  thereOK dm dg dy da = ok-σ (⊢⌜Ty⌝ dm) (subst (λ X → TelOK Θ₁ X (tρ (ix∋ m₁ (renTm vs g) (renTm vs y) v₀) (tσ (⌜Id⌝ (⌜Ty⌝ (nsuc m₁)) (renTm vs a) (wk 0 m₁ v₀)) tι))) (sym (I∋-ren vs)) (ok-ρ dj okI))
     where
       Θ₁ : Ctx
       Θ₁ = Θ ▹ El (⌜Ty⌝ m)
@@ -183,18 +183,18 @@ module _ {Θ : Ctx} {m g y a : RTm ⌊ Θ ⌋} where
       m₁ = renTm vs m
       dm₁ : Θ₁ ⊢ m₁ ∷ El ⌜Nat⌝
       dm₁ = ⊢wk {Θ} {El (⌜Ty⌝ m)} {m} {El ⌜Nat⌝} dm
-      dB : Θ₁ ⊢ var vz ∷ K 0 m₁
+      dB : Θ₁ ⊢ v₀ ∷ K 0 m₁
       dB = hereTy
-      dj : Θ₁ ⊢ ix∋ m₁ (renTm vs g) (renTm vs y) (var vz) ∷ El I∋
-      dj = ⊢ix∋ {Θ₁} {m₁} {renTm vs g} {renTm vs y} {var vz} dm₁ (⊢wkCtx {Θ} {El (⌜Ty⌝ m)} {m} {g} dg)
+      dj : Θ₁ ⊢ ix∋ m₁ (renTm vs g) (renTm vs y) v₀ ∷ El I∋
+      dj = ⊢ix∋ {Θ₁} {m₁} {renTm vs g} {renTm vs y} {v₀} dm₁ (⊢wkCtx {Θ} {El (⌜Ty⌝ m)} {m} {g} dg)
              (⊢wk {Θ} {El (⌜Ty⌝ m)} {y} {FinI m} dy) dB
-      dwB : Θ₁ ⊢ wk 0 m₁ (var vz) ∷ K 0 (nsuc m₁)
-      dwB = ⊢wkS {Θ₁} {0} {m₁} {var vz} lt-z dm₁ dB
+      dwB : Θ₁ ⊢ wk 0 m₁ v₀ ∷ K 0 (nsuc m₁)
+      dwB = ⊢wkS {Θ₁} {0} {m₁} {v₀} lt-z dm₁ dB
       da₁ : Θ₁ ⊢ renTm vs a ∷ K 0 (nsuc m₁)
       da₁ = ⊢wkSK {Γ = Θ} {B = El (⌜Ty⌝ m)} {sg = KSig} {s = 0} {d = nsuc m} {t = a} da
-      dId : Θ₁ ⊢ ⌜Id⌝ (⌜Ty⌝ (nsuc m₁)) (renTm vs a) (wk 0 m₁ (var vz)) ∷ U
-      dId = ⊢⌜Id⌝ {Θ₁} {⌜Ty⌝ (nsuc m₁)} {renTm vs a} {wk 0 m₁ (var vz)} (⊢⌜Ty⌝ (⊢isuc dm₁)) (toTy da₁) (toTy dwB)
-      okI : TelOK Θ₁ I∋ (tσ (⌜Id⌝ (⌜Ty⌝ (nsuc m₁)) (renTm vs a) (wk 0 m₁ (var vz))) tι)
+      dId : Θ₁ ⊢ ⌜Id⌝ (⌜Ty⌝ (nsuc m₁)) (renTm vs a) (wk 0 m₁ v₀) ∷ U
+      dId = ⊢⌜Id⌝ {Θ₁} {⌜Ty⌝ (nsuc m₁)} {renTm vs a} {wk 0 m₁ v₀} (⊢⌜Ty⌝ (⊢isuc dm₁)) (toTy da₁) (toTy dwB)
+      okI : TelOK Θ₁ I∋ (tσ (⌜Id⌝ (⌜Ty⌝ (nsuc m₁)) (renTm vs a) (wk 0 m₁ v₀)) tι)
       okI = ok-σ dId ok-ι
 
 ------------------------------------------------------------------------
@@ -215,30 +215,30 @@ pdK {Θ} {m} {t} dt =
   ⊢-cast {Θ} {t} {K 0 (subTm (single (pd m)) (renTm vs m))} {K 0 m}
          (cong (K 0) {x = subTm (single (pd m)) (renTm vs m)} {y = m} (wk-cancel-tm (pd m) m))
          (⊢conv {Θ} {t} {K 0 (pd (nsuc m))} {K 0 (subTm (single (pd m)) (renTm vs m))} dt
-                (credᵀ (ξ-SK (natrec-suc nzero (var (vs vz)) m))))
+                (credᵀ (ξ-SK (natrec-suc nzero v₁ m))))
 
 pdCtx : {Θ : Ctx} {m t : RTm ⌊ Θ ⌋} → Θ ⊢ t ∷ KCtx (pd (nsuc m)) → Θ ⊢ t ∷ KCtx m
 pdCtx {Θ} {m} {t} dt =
   ⊢-cast {Θ} {t} {KCtx (subTm (single (pd m)) (renTm vs m))} {KCtx m}
          (cong KCtx {x = subTm (single (pd m)) (renTm vs m)} {y = m} (wk-cancel-tm (pd m) m))
          (⊢conv {Θ} {t} {KCtx (pd (nsuc m))} {KCtx (subTm (single (pd m)) (renTm vs m))} dt
-                (credᵀ (ξ-IMuⁱ (natrec-suc nzero (var (vs vz)) m))))
+                (credᵀ (ξ-IMuⁱ (natrec-suc nzero v₁ m))))
 
 ------------------------------------------------------------------------
 -- 3a. The variable's case.  Motive: X(j, y) = Ty (pred j) → Ctx (pred j) → Ty j → Desc
 ------------------------------------------------------------------------
 
 XM : RTy ((Γ ∙) ∙)
-XM = Π (K 0 (pd (var (vs vz)))) (Π (KCtx (pd (var (vs (vs vz))))) (Π (K 0 (var (vs (vs (vs vz))))) (Desc I∋)))
+XM = Π (K 0 (pd v₁)) (Π (KCtx (pd v₂)) (Π (K 0 v₃) (Desc I∋)))
 
 -- its instances: the motive under any substitution of its two binders
 XB : RTm Γ → RTy Γ
 XB j = Π (K 0 (pd j)) (Π (KCtx (pd (renTm vs j))) (Π (K 0 (renTm vs (renTm vs j))) (Desc I∋)))
 
 XM-sub : {Δ Θ : Cx} (τ : Sub ((Δ ∙) ∙) Θ) → subTy τ (XM {Δ}) ≡ XB (τ (vs vz))
-XM-sub τ = cong₂ Π (SK-sub τ KSig 0 (pd (var (vs vz))))
-             (cong₂ Π (KCtx-sub (extS τ) (pd (var (vs (vs vz)))))
-               (cong₂ Π (SK-sub (extS (extS τ)) KSig 0 (var (vs (vs (vs vz))))) (Desc∋-sub (extS (extS (extS τ))))))
+XM-sub τ = cong₂ Π (SK-sub τ KSig 0 (pd v₁))
+             (cong₂ Π (KCtx-sub (extS τ) (pd v₂))
+               (cong₂ Π (SK-sub (extS (extS τ)) KSig 0 v₃) (Desc∋-sub (extS (extS (extS τ))))))
 
 ⊢XM : {Θ : Ctx} → motCtx Θ ⌜Nat⌝ FinD ⊢ty XM
 ⊢XM = ty-Π (tyK (⊢pd (⊢var (there here))))
@@ -247,9 +247,9 @@ XM-sub τ = cong₂ Π (SK-sub τ KSig 0 (pd (var (vs vz))))
 
 -- the method bodies at `suc m` (binders m | payload, hypotheses, A', Γ', A)
 xz xs : RTm (Γ ∙)
-xz = lam (lam (lam (lam (lam (rows (⌜ hereT (var (vs (vs (vs (vs (vs vz)))))) (var (vs (vs vz))) (var vz) ⌝ᵗ ∷ []))))))
-xs = lam (lam (lam (lam (lam (rows (⌜ thereT (var (vs (vs (vs (vs (vs vz)))))) (var (vs vz))
-                                              (fst (var (vs (vs (vs (vs vz)))))) (var vz) ⌝ᵗ ∷ []))))))
+xz = lam (lam (lam (lam (lam (rows (⌜ hereT v₅ v₂ v₀ ⌝ᵗ ∷ []))))))
+xs = lam (lam (lam (lam (lam (rows (⌜ thereT v₅ v₁
+                                              (fst v₄) v₀ ⌝ᵗ ∷ []))))))
 
 xM : RTm Γ
 xM = methN (methAt []) (methAt (xz ∷ xs ∷ []))
@@ -260,12 +260,12 @@ module _ {Θ : Ctx} where
     H : Tel (⌊ Θ ⌋ ∙) → Ctx
     H T = HypAt (Θ ▹ El ⌜Nat⌝) ⌜Nat⌝ (renTm vs FinD) (wk1M XM) τS T
     BX : RTy (((⌊ Θ ⌋ ∙) ∙) ∙)
-    BX = XB (nsuc (var (vs (vs vz))))
-    XM-at : (k : ℕ) → subTy (atS (nsuc (var vz)) (conₗ k (var (vs vz)))) (wk1M (XM {⌊ Θ ⌋})) ≡ BX
-    XM-at k = trans {x = subTy (atS (nsuc (var vz)) (conₗ k (var (vs vz)))) (wk1M (XM {⌊ Θ ⌋}))}
-                    {y = subTy (atS (nsuc (var vz)) (conₗ k (var (vs vz))) ₛ∘ᵣ extR (extR vs)) XM} {z = BX}
-                    (subTy-renTy {σ = atS (nsuc (var vz)) (conₗ k (var (vs vz)))} {ρ = extR (extR vs)} XM)
-                    (XM-sub (atS (nsuc (var vz)) (conₗ k (var (vs vz))) ₛ∘ᵣ extR (extR vs)))
+    BX = XB (nsuc v₂)
+    XM-at : (k : ℕ) → subTy (atS (nsuc v₀) (conₗ k v₁)) (wk1M (XM {⌊ Θ ⌋})) ≡ BX
+    XM-at k = trans {x = subTy (atS (nsuc v₀) (conₗ k v₁)) (wk1M (XM {⌊ Θ ⌋}))}
+                    {y = subTy (atS (nsuc v₀) (conₗ k v₁) ₛ∘ᵣ extR (extR vs)) XM} {z = BX}
+                    (subTy-renTy {σ = atS (nsuc v₀) (conₗ k v₁)} {ρ = extR (extR vs)} XM)
+                    (XM-sub (atS (nsuc v₀) (conₗ k v₁) ₛ∘ᵣ extR (extR vs)))
 
     -- the three convoy binders over a method context `Hk`
     module Body (Hk : Ctx) (m3 : RTm ⌊ Hk ⌋) (dm : Hk ⊢ m3 ∷ El ⌜Nat⌝) where
@@ -276,45 +276,45 @@ module _ {Θ : Ctx} where
       m5 = renTm vs (renTm vs (renTm vs m3))
       dm5 : H3 ⊢ m5 ∷ El ⌜Nat⌝
       dm5 = ⊢wk (⊢wk (⊢wk dm))
-      dA : H3 ⊢ var vz ∷ K 0 (nsuc m5)
+      dA : H3 ⊢ v₀ ∷ K 0 (nsuc m5)
       dA = hereSK {Γ = H2} {sg = KSig} {s = 0} {d = nsuc (renTm vs (renTm vs m3))}
-      dA' : H3 ⊢ var (vs (vs vz)) ∷ K 0 m5
+      dA' : H3 ⊢ v₂ ∷ K 0 m5
       dA' = pdK {H3} {m5} (⊢wkSK {Γ = H2} {B = K 0 (nsuc (renTm vs (renTm vs m3)))} {sg = KSig} {s = 0}
                               (⊢wkSK {Γ = H1} {B = KCtx (pd (nsuc (renTm vs m3)))} {sg = KSig} {s = 0}
                                  (hereSK {Γ = Hk} {sg = KSig} {s = 0} {d = pd (nsuc m3)})))
-      dG' : H3 ⊢ var (vs vz) ∷ KCtx m5
+      dG' : H3 ⊢ v₁ ∷ KCtx m5
       dG' = pdCtx {H3} {m5} (⊢wkCtx {H2} {K 0 (nsuc (renTm vs (renTm vs m3)))} (hereCtx {H1} {pd (nsuc (renTm vs m3))}))
-      hRow : H3 ⊢ rows (⌜ hereT m5 (var (vs (vs vz))) (var vz) ⌝ᵗ ∷ []) ∷ Desc I∋
-      hT : TelOK H3 I∋ (hereT m5 (var (vs (vs vz))) (var vz))
-      hT = hereOK {H3} {m5} {var (vs (vs vz))} {var vz} dm5 dA' dA
-      hD : H3 ⊢ ⌜ hereT m5 (var (vs (vs vz))) (var vz) ⌝ᵗ ∷ Desc I∋
-      hD = ⊢tel {H3} {I∋} {hereT m5 (var (vs (vs vz))) (var vz)} ⊢I∋ hT
-      hRow = ⊢rows {H3} {I∋} {1} {⌜ hereT m5 (var (vs (vs vz))) (var vz) ⌝ᵗ ∷ []} ⊢I∋ (hD ∷ᵈ []ᵈ)
-      tRow : {y : RTm ⌊ H3 ⌋} → H3 ⊢ y ∷ FinI m5 → H3 ⊢ rows (⌜ thereT m5 (var (vs vz)) y (var vz) ⌝ᵗ ∷ []) ∷ Desc I∋
-      tRow {y} dy = ⊢rows {H3} {I∋} {1} {⌜ thereT m5 (var (vs vz)) y (var vz) ⌝ᵗ ∷ []} ⊢I∋ (tD ∷ᵈ []ᵈ)
+      hRow : H3 ⊢ rows (⌜ hereT m5 v₂ v₀ ⌝ᵗ ∷ []) ∷ Desc I∋
+      hT : TelOK H3 I∋ (hereT m5 v₂ v₀)
+      hT = hereOK {H3} {m5} {v₂} {v₀} dm5 dA' dA
+      hD : H3 ⊢ ⌜ hereT m5 v₂ v₀ ⌝ᵗ ∷ Desc I∋
+      hD = ⊢tel {H3} {I∋} {hereT m5 v₂ v₀} ⊢I∋ hT
+      hRow = ⊢rows {H3} {I∋} {1} {⌜ hereT m5 v₂ v₀ ⌝ᵗ ∷ []} ⊢I∋ (hD ∷ᵈ []ᵈ)
+      tRow : {y : RTm ⌊ H3 ⌋} → H3 ⊢ y ∷ FinI m5 → H3 ⊢ rows (⌜ thereT m5 v₁ y v₀ ⌝ᵗ ∷ []) ∷ Desc I∋
+      tRow {y} dy = ⊢rows {H3} {I∋} {1} {⌜ thereT m5 v₁ y v₀ ⌝ᵗ ∷ []} ⊢I∋ (tD ∷ᵈ []ᵈ)
         where
-          tT : TelOK H3 I∋ (thereT m5 (var (vs vz)) y (var vz))
-          tT = thereOK {H3} {m5} {var (vs vz)} {y} {var vz} dm5 dG' dy dA
-          tD : H3 ⊢ ⌜ thereT m5 (var (vs vz)) y (var vz) ⌝ᵗ ∷ Desc I∋
-          tD = ⊢tel {H3} {I∋} {thereT m5 (var (vs vz)) y (var vz)} ⊢I∋ tT
+          tT : TelOK H3 I∋ (thereT m5 v₁ y v₀)
+          tT = thereOK {H3} {m5} {v₁} {y} {v₀} dm5 dG' dy dA
+          tD : H3 ⊢ ⌜ thereT m5 v₁ y v₀ ⌝ᵗ ∷ Desc I∋
+          tD = ⊢tel {H3} {I∋} {thereT m5 v₁ y v₀} ⊢I∋ tT
       lams : {b : RTm ⌊ H3 ⌋} → H3 ⊢ b ∷ Desc I∋ → Hk ⊢ lam (lam (lam b)) ∷ XB (nsuc m3)
       lams db = ⊢lam (tyK (⊢pd (⊢isuc dm)))
                   (⊢lam (tyCtx (⊢pd (⊢isuc (⊢wk dm))))
                     (⊢lam (tyK (⊢isuc (⊢wk (⊢wk dm)))) db))
 
-    bz : H fzeroT ⊢ lam (lam (lam (rows (⌜ hereT (var (vs (vs (vs (vs (vs vz)))))) (var (vs (vs vz))) (var vz) ⌝ᵗ ∷ []))))
-                 ∷ subTy (atS (nsuc (var vz)) (conₗ 0 (var (vs vz)))) (wk1M XM)
+    bz : H fzeroT ⊢ lam (lam (lam (rows (⌜ hereT v₅ v₂ v₀ ⌝ᵗ ∷ []))))
+                 ∷ subTy (atS (nsuc v₀) (conₗ 0 v₁)) (wk1M XM)
     bz = ⊢-cast (sym (XM-at 0)) (lams hRow)
-      where open Body (H fzeroT) (var (vs (vs vz))) (⊢var (there (there here)))
+      where open Body (H fzeroT) v₂ (⊢var (there (there here)))
 
-    bs : H fsucT ⊢ lam (lam (lam (rows (⌜ thereT (var (vs (vs (vs (vs (vs vz)))))) (var (vs vz))
-                                                  (fst (var (vs (vs (vs (vs vz)))))) (var vz) ⌝ᵗ ∷ []))))
-                 ∷ subTy (atS (nsuc (var vz)) (conₗ 1 (var (vs vz)))) (wk1M XM)
+    bs : H fsucT ⊢ lam (lam (lam (rows (⌜ thereT v₅ v₁
+                                                  (fst v₄) v₀ ⌝ᵗ ∷ []))))
+                 ∷ subTy (atS (nsuc v₀) (conₗ 1 v₁)) (wk1M XM)
     bs = ⊢-cast (sym (XM-at 1))
            (lams (tRow dy))
       where
-        open Body (H fsucT) (var (vs (vs vz))) (⊢var (there (there here)))
-        dy : H3 ⊢ fst (var (vs (vs (vs (vs vz))))) ∷ FinI m5
+        open Body (H fsucT) v₂ (⊢var (there (there here)))
+        dy : H3 ⊢ fst v₄ ∷ FinI m5
         dy = ⊢conv (⊢wk (⊢wk (⊢wk (⊢fst (⊢payAt {I = ⌜Nat⌝} {D = renTm vs FinD} {M = wk1M XM} {σ = τS} {T = fsucT})))))
                    crflᵀ
 
@@ -325,7 +325,7 @@ module _ {Θ : Ctx} where
     where
       dS : AllD (Θ ▹ El ⌜Nat⌝) ⌜Nat⌝ ⌜ FinTs ⌝ₛ
       dS = allD {Γ = Θ ▹ El ⌜Nat⌝} {I = ⌜Nat⌝} {Ts = FinTs} (⊢wk ⊢⌜Nat⌝) (FinOK {Θ})
-      perX : PerKAt (Θ ▹ El ⌜Nat⌝) ⌜Nat⌝ (renTm vs FinD) (wk1M XM) (nsuc (var vz))
+      perX : PerKAt (Θ ▹ El ⌜Nat⌝) ⌜Nat⌝ (renTm vs FinD) (wk1M XM) (nsuc v₀)
                     (selF (subC τS ⌜ FinTs ⌝ₛ)) zero (xz ∷ xs ∷ [])
       perX = entN {Γ = Θ} {C0 = []} {Ts = FinTs} {T = fzeroT} {M = XM} []ᵈ FinOK ⊢XM nthᵗ-z bz
           ∷ₐ entN {Γ = Θ} {C0 = []} {Ts = FinTs} {T = fsucT} {M = XM} []ᵈ FinOK ⊢XM (nthᵗ-s nthᵗ-z) bs
@@ -367,27 +367,27 @@ unpdK {Θ} {m} {t} dt =
   ⊢conv {Θ} {t} {K 0 (subTm (single (pd m)) (renTm vs m))} {K 0 (pd (nsuc m))}
         (⊢-cast {Θ} {t} {K 0 m} {K 0 (subTm (single (pd m)) (renTm vs m))}
                 (cong (K 0) {x = m} {y = subTm (single (pd m)) (renTm vs m)} (sym (wk-cancel-tm (pd m) m))) dt)
-        (csymᵀ (credᵀ (ξ-SK (natrec-suc nzero (var (vs vz)) m))))
+        (csymᵀ (credᵀ (ξ-SK (natrec-suc nzero v₁ m))))
 
 unpdCtx : {Θ : Ctx} {m t : RTm ⌊ Θ ⌋} → Θ ⊢ t ∷ KCtx m → Θ ⊢ t ∷ KCtx (pd (nsuc m))
 unpdCtx {Θ} {m} {t} dt =
   ⊢conv {Θ} {t} {KCtx (subTm (single (pd m)) (renTm vs m))} {KCtx (pd (nsuc m))}
         (⊢-cast {Θ} {t} {KCtx m} {KCtx (subTm (single (pd m)) (renTm vs m))}
                 (cong KCtx {x = m} {y = subTm (single (pd m)) (renTm vs m)} (sym (wk-cancel-tm (pd m) m))) dt)
-        (csymᵀ (credᵀ (ξ-IMuⁱ (natrec-suc nzero (var (vs vz)) m))))
+        (csymᵀ (credᵀ (ξ-IMuⁱ (natrec-suc nzero v₁ m))))
 
 ------------------------------------------------------------------------
 -- 3b. The context's case.  Motive: G(j, g) = Fin j → Ty j → Desc
 ------------------------------------------------------------------------
 
 GM : RTy ((Γ ∙) ∙)
-GM = Π (FinI (var (vs vz))) (Π (K 0 (var (vs (vs vz)))) (Desc I∋))
+GM = Π (FinI v₁) (Π (K 0 v₂) (Desc I∋))
 
 GB : RTm Γ → RTy Γ
 GB j = Π (FinI j) (Π (K 0 (renTm vs j)) (Desc I∋))
 
 GM-sub : {Δ Θ : Cx} (τ : Sub ((Δ ∙) ∙) Θ) → subTy τ (GM {Δ}) ≡ GB (τ (vs vz))
-GM-sub τ = cong₂ Π refl (cong₂ Π (SK-sub (extS τ) KSig 0 (var (vs (vs vz)))) (Desc∋-sub (extS (extS τ))))
+GM-sub τ = cong₂ Π refl (cong₂ Π (SK-sub (extS τ) KSig 0 v₂) (Desc∋-sub (extS (extS τ))))
 
 ⊢GM : {Θ : Ctx} → motCtx Θ ⌜Nat⌝ CtxD ⊢ty GM
 ⊢GM = ty-Π (ty-IMu ⊢⌜Nat⌝ ⊢FinD (⊢var (there here))) (ty-Π (tyK (⊢var (there (there here)))) (ty-Desc ⊢I∋))
@@ -398,18 +398,18 @@ gz = lam (lam (lam (lam (rows []))))
 
 -- at suc m (binders m | payload (Γ', A'), hypotheses, x, A): case on the variable
 gs : RTm (Γ ∙)
-gs = lam (lam (lam (lam (app (app (app (ielim FinD (nsuc (var (vs (vs (vs (vs vz)))))) xM (var (vs vz)))
-                                        (fst (snd (var (vs (vs (vs vz)))))))
-                                   (fst (var (vs (vs (vs vz))))))
-                              (var vz)))))
+gs = lam (lam (lam (lam (app (app (app (ielim FinD (nsuc v₄) xM v₁)
+                                        (fst (snd v₃)))
+                                   (fst v₃))
+                              v₀))))
 
 gM : RTm Γ
 gM = methN (methAt (gz ∷ [])) (methAt (gs ∷ []))
 
 -- ★ THE FIBRE FUNCTION
 D∋ : RTm Γ
-D∋ = lam (app (app (ielim CtxD (fst (var vz)) gM (fst (snd (var vz)))) (fst (snd (snd (var vz)))))
-              (snd (snd (snd (var vz)))))
+D∋ = lam (app (app (ielim CtxD (fst v₀) gM (fst (snd v₀))) (fst (snd (snd v₀))))
+              (snd (snd (snd v₀))))
 
 K∋ : RTm Γ → RTy Γ
 K∋ i = IMu I∋ D∋ i
@@ -421,67 +421,67 @@ module _ {Θ : Ctx} where
     HS : Ctx
     HS = HypAt (Θ ▹ El ⌜Nat⌝) ⌜Nat⌝ (renTm vs CtxD) (wk1M GM) τS extT
 
-    GM-at0 : subTy (atS nzero (conₗ 0 (var (vs vz)))) (GM {⌊ Θ ⌋}) ≡ GB nzero
-    GM-at0 = GM-sub (atS nzero (conₗ 0 (var (vs vz))))
+    GM-at0 : subTy (atS nzero (conₗ 0 v₁)) (GM {⌊ Θ ⌋}) ≡ GB nzero
+    GM-at0 = GM-sub (atS nzero (conₗ 0 v₁))
 
-    GM-atS : subTy (atS (nsuc (var vz)) (conₗ 0 (var (vs vz)))) (wk1M (GM {⌊ Θ ⌋})) ≡ GB (nsuc (var (vs (vs vz))))
-    GM-atS = trans {x = subTy (atS (nsuc (var vz)) (conₗ 0 (var (vs vz)))) (wk1M (GM {⌊ Θ ⌋}))}
-                   {y = subTy (atS (nsuc (var vz)) (conₗ 0 (var (vs vz))) ₛ∘ᵣ extR (extR vs)) GM}
-                   {z = GB (nsuc (var (vs (vs vz))))}
-                   (subTy-renTy {σ = atS (nsuc (var vz)) (conₗ 0 (var (vs vz)))} {ρ = extR (extR vs)} GM)
-                   (GM-sub (atS (nsuc (var vz)) (conₗ 0 (var (vs vz))) ₛ∘ᵣ extR (extR vs)))
+    GM-atS : subTy (atS (nsuc v₀) (conₗ 0 v₁)) (wk1M (GM {⌊ Θ ⌋})) ≡ GB (nsuc v₂)
+    GM-atS = trans {x = subTy (atS (nsuc v₀) (conₗ 0 v₁)) (wk1M (GM {⌊ Θ ⌋}))}
+                   {y = subTy (atS (nsuc v₀) (conₗ 0 v₁) ₛ∘ᵣ extR (extR vs)) GM}
+                   {z = GB (nsuc v₂)}
+                   (subTy-renTy {σ = atS (nsuc v₀) (conₗ 0 v₁)} {ρ = extR (extR vs)} GM)
+                   (GM-sub (atS (nsuc v₀) (conₗ 0 v₁) ₛ∘ᵣ extR (extR vs)))
 
     dnz : {Ξ : Ctx} → Ξ ⊢ nzero ∷ El ⌜Nat⌝
     dnz = ⊢conv ⊢nzero (csymᵀ elNat)
 
-    bz' : HZ ⊢ lam (lam (rows [])) ∷ subTy (atS nzero (conₗ 0 (var (vs vz)))) GM
-    bz' = ⊢-cast {HZ} {lam (lam (rows []))} {GB nzero} {subTy (atS nzero (conₗ 0 (var (vs vz)))) GM} (sym GM-at0)
+    bz' : HZ ⊢ lam (lam (rows [])) ∷ subTy (atS nzero (conₗ 0 v₁)) GM
+    bz' = ⊢-cast {HZ} {lam (lam (rows []))} {GB nzero} {subTy (atS nzero (conₗ 0 v₁)) GM} (sym GM-at0)
             (⊢lam (ty-IMu ⊢⌜Nat⌝ ⊢FinD dnz) (⊢lam (tyK dnz) (⊢rows {I = I∋} {Cs = []} ⊢I∋ []ᵈ)))
 
     -- the successor case's body: the variable's case at `suc m`, with its convoy
     C2 : Ctx
-    C2 = (HS ▹ FinI (nsuc (var (vs (vs vz))))) ▹ K 0 (nsuc (var (vs (vs (vs vz)))))
+    C2 = (HS ▹ FinI (nsuc v₂)) ▹ K 0 (nsuc v₃)
     m4 : RTm ⌊ C2 ⌋
-    m4 = var (vs (vs (vs (vs vz))))
+    m4 = v₄
     dm4 : C2 ⊢ m4 ∷ El ⌜Nat⌝
     dm4 = ⊢var (there (there (there (there here))))
-    dPay : HS ⊢ var (vs vz) ∷ PayN (vs ᵣ∘ₛ (vs ᵣ∘ₛ τS)) extT (renTm vs (renTm vs ⌜Nat⌝)) (renTm vs (renTm vs (renTm vs CtxD)))
+    dPay : HS ⊢ v₁ ∷ PayN (vs ᵣ∘ₛ (vs ᵣ∘ₛ τS)) extT (renTm vs (renTm vs ⌜Nat⌝)) (renTm vs (renTm vs (renTm vs CtxD)))
     dPay = ⊢payAt {Γ = Θ ▹ El ⌜Nat⌝} {I = ⌜Nat⌝} {D = renTm vs CtxD} {M = wk1M GM} {σ = τS} {T = extT}
     eD : renTm vs (renTm vs (renTm vs CtxD)) ≡ CtxD {⌊ HS ⌋}
     eD = trans (cong (renTm vs) {x = renTm vs (renTm vs CtxD)} {y = CtxD}
                      (trans (cong (renTm vs) {x = renTm vs CtxD} {y = CtxD} (CtxD-ren vs)) (CtxD-ren vs)))
                (CtxD-ren vs)
-    dG0 : HS ⊢ fst (var (vs vz)) ∷ KCtx (var (vs (vs vz)))
-    dG0 = extFst {HS} {⌊ Θ ⌋} {vs ᵣ∘ₛ (vs ᵣ∘ₛ τS)} {renTm vs (renTm vs (renTm vs CtxD))} {var (vs vz)} eD dPay
-    dA0 : HS ⊢ fst (snd (var (vs vz))) ∷ K 0 (var (vs (vs vz)))
-    dA0 = extSnd {HS} {⌊ Θ ⌋} {vs ᵣ∘ₛ (vs ᵣ∘ₛ τS)} {renTm vs (renTm vs (renTm vs CtxD))} {var (vs vz)} eD dPay
-    dG' : C2 ⊢ fst (var (vs (vs (vs vz)))) ∷ KCtx (pd (nsuc m4))
-    dG' = unpdCtx {C2} {m4} (⊢wkCtx {HS ▹ FinI (nsuc (var (vs (vs vz))))} {K 0 (nsuc (var (vs (vs (vs vz)))))}
-                               (⊢wkCtx {HS} {FinI (nsuc (var (vs (vs vz))))} dG0))
-    dA' : C2 ⊢ fst (snd (var (vs (vs (vs vz))))) ∷ K 0 (pd (nsuc m4))
-    dA' = unpdK {C2} {m4} (⊢wkSK {Γ = HS ▹ FinI (nsuc (var (vs (vs vz))))} {B = K 0 (nsuc (var (vs (vs (vs vz)))))} {sg = KSig} {s = 0}
-                            (⊢wkSK {Γ = HS} {B = FinI (nsuc (var (vs (vs vz))))} {sg = KSig} {s = 0} dA0))
-    dx : C2 ⊢ var (vs vz) ∷ FinI (nsuc m4)
-    dx = ⊢wk {HS ▹ FinI (nsuc (var (vs (vs vz))))} {K 0 (nsuc (var (vs (vs (vs vz)))))} {var vz} {FinI (nsuc (var (vs (vs (vs vz)))))} (⊢var here)
-    dA : C2 ⊢ var vz ∷ K 0 (nsuc m4)
-    dA = hereSK {Γ = HS ▹ FinI (nsuc (var (vs (vs vz))))} {sg = KSig} {s = 0} {d = nsuc (var (vs (vs (vs vz))))}
-    d1 : C2 ⊢ ielim FinD (nsuc m4) xM (var (vs vz)) ∷ iinst (nsuc m4) (var (vs vz)) XM
-    d1 = ⊢ielim {C2} {⌜Nat⌝} {FinD} {XM} {xM} {nsuc m4} {var (vs vz)} ⊢⌜Nat⌝ ⊢FinD ⊢XM ⊢xM (⊢isuc dm4) dx
-    eX : iinst (nsuc m4) (var (vs vz)) XM ≡ XB (nsuc m4)
-    eX = trans {x = iinst (nsuc m4) (var (vs vz)) XM} {y = subTy (single (var (vs vz)) ∘ₛ extS (single (nsuc m4))) XM}
+    dG0 : HS ⊢ fst v₁ ∷ KCtx v₂
+    dG0 = extFst {HS} {⌊ Θ ⌋} {vs ᵣ∘ₛ (vs ᵣ∘ₛ τS)} {renTm vs (renTm vs (renTm vs CtxD))} {v₁} eD dPay
+    dA0 : HS ⊢ fst (snd v₁) ∷ K 0 v₂
+    dA0 = extSnd {HS} {⌊ Θ ⌋} {vs ᵣ∘ₛ (vs ᵣ∘ₛ τS)} {renTm vs (renTm vs (renTm vs CtxD))} {v₁} eD dPay
+    dG' : C2 ⊢ fst v₃ ∷ KCtx (pd (nsuc m4))
+    dG' = unpdCtx {C2} {m4} (⊢wkCtx {HS ▹ FinI (nsuc v₂)} {K 0 (nsuc v₃)}
+                               (⊢wkCtx {HS} {FinI (nsuc v₂)} dG0))
+    dA' : C2 ⊢ fst (snd v₃) ∷ K 0 (pd (nsuc m4))
+    dA' = unpdK {C2} {m4} (⊢wkSK {Γ = HS ▹ FinI (nsuc v₂)} {B = K 0 (nsuc v₃)} {sg = KSig} {s = 0}
+                            (⊢wkSK {Γ = HS} {B = FinI (nsuc v₂)} {sg = KSig} {s = 0} dA0))
+    dx : C2 ⊢ v₁ ∷ FinI (nsuc m4)
+    dx = ⊢wk {HS ▹ FinI (nsuc v₂)} {K 0 (nsuc v₃)} {v₀} {FinI (nsuc v₃)} (⊢var here)
+    dA : C2 ⊢ v₀ ∷ K 0 (nsuc m4)
+    dA = hereSK {Γ = HS ▹ FinI (nsuc v₂)} {sg = KSig} {s = 0} {d = nsuc v₃}
+    d1 : C2 ⊢ ielim FinD (nsuc m4) xM v₁ ∷ iinst (nsuc m4) v₁ XM
+    d1 = ⊢ielim {C2} {⌜Nat⌝} {FinD} {XM} {xM} {nsuc m4} {v₁} ⊢⌜Nat⌝ ⊢FinD ⊢XM ⊢xM (⊢isuc dm4) dx
+    eX : iinst (nsuc m4) v₁ XM ≡ XB (nsuc m4)
+    eX = trans {x = iinst (nsuc m4) v₁ XM} {y = subTy (single v₁ ∘ₛ extS (single (nsuc m4))) XM}
                {z = XB (nsuc m4)}
-               (subTy-subTy {τ = single (var (vs vz))} {σ = extS (single (nsuc m4))} XM)
-               (XM-sub (single (var (vs vz)) ∘ₛ extS (single (nsuc m4))))
-    d2 : C2 ⊢ ielim FinD (nsuc m4) xM (var (vs vz)) ∷ XB (nsuc m4)
-    d2 = ⊢-cast {C2} {ielim FinD (nsuc m4) xM (var (vs vz))} {iinst (nsuc m4) (var (vs vz)) XM} {XB (nsuc m4)} eX d1
-    body : C2 ⊢ app (app (app (ielim FinD (nsuc m4) xM (var (vs vz))) (fst (snd (var (vs (vs (vs vz)))))))
-                         (fst (var (vs (vs (vs vz)))))) (var vz) ∷ Desc I∋
+               (subTy-subTy {τ = single v₁} {σ = extS (single (nsuc m4))} XM)
+               (XM-sub (single v₁ ∘ₛ extS (single (nsuc m4))))
+    d2 : C2 ⊢ ielim FinD (nsuc m4) xM v₁ ∷ XB (nsuc m4)
+    d2 = ⊢-cast {C2} {ielim FinD (nsuc m4) xM v₁} {iinst (nsuc m4) v₁ XM} {XB (nsuc m4)} eX d1
+    body : C2 ⊢ app (app (app (ielim FinD (nsuc m4) xM v₁) (fst (snd v₃)))
+                         (fst v₃)) v₀ ∷ Desc I∋
     body = ⊢XBapp {C2} {nsuc m4} d2 dA' dG' dA
 
-    bs' : HS ⊢ lam (lam (app (app (app (ielim FinD (nsuc m4) xM (var (vs vz))) (fst (snd (var (vs (vs (vs vz)))))))
-                                   (fst (var (vs (vs (vs vz)))))) (var vz)))
-             ∷ subTy (atS (nsuc (var vz)) (conₗ 0 (var (vs vz)))) (wk1M GM)
-    bs' = ⊢-cast {HS} {_} {GB (nsuc (var (vs (vs vz))))} {subTy (atS (nsuc (var vz)) (conₗ 0 (var (vs vz)))) (wk1M GM)}
+    bs' : HS ⊢ lam (lam (app (app (app (ielim FinD (nsuc m4) xM v₁) (fst (snd v₃)))
+                                   (fst v₃)) v₀))
+             ∷ subTy (atS (nsuc v₀) (conₗ 0 v₁)) (wk1M GM)
+    bs' = ⊢-cast {HS} {_} {GB (nsuc v₂)} {subTy (atS (nsuc v₀) (conₗ 0 v₁)) (wk1M GM)}
             (sym GM-atS)
             (⊢lam (ty-IMu ⊢⌜Nat⌝ ⊢FinD (⊢isuc (⊢var (there (there here)))))
               (⊢lam (tyK (⊢isuc (⊢var (there (there (there here)))))) body))
@@ -497,7 +497,7 @@ module _ {Θ : Ctx} where
       dS = allD {Γ = Θ ▹ El ⌜Nat⌝} {I = ⌜Nat⌝} {Ts = CtxS} (⊢wk ⊢⌜Nat⌝) CtxSOK
       perZ : PerKAt Θ ⌜Nat⌝ CtxD GM nzero (selF (subC (single nzero) ⌜ CtxZ ⌝ₛ)) zero (gz ∷ [])
       perZ = entZ {Γ = Θ} {Ts = CtxZ} {CS = ⌜ CtxS ⌝ₛ} {T = emptyT} {M = GM} CtxZOK dS ⊢GM nthᵗ-z bz' ∷ₐ []ₐ
-      perS : PerKAt (Θ ▹ El ⌜Nat⌝) ⌜Nat⌝ (renTm vs CtxD) (wk1M GM) (nsuc (var vz))
+      perS : PerKAt (Θ ▹ El ⌜Nat⌝) ⌜Nat⌝ (renTm vs CtxD) (wk1M GM) (nsuc v₀)
                     (selF (subC τS ⌜ CtxS ⌝ₛ)) zero (gs ∷ [])
       perS = entN {Γ = Θ} {C0 = ⌜ CtxZ ⌝ₛ} {Ts = CtxS} {T = extT} {M = GM} dZ CtxSOK ⊢GM nthᵗ-z bs' ∷ₐ []ₐ
 
@@ -549,8 +549,8 @@ module _ {Θ : Ctx} where
   private
     Ξ : Ctx
     Ξ = Θ ▹ El I∋
-    dv : Ξ ⊢ var vz ∷ El I∋
-    dv = ⊢-cast {Ξ} {var vz} {renTy vs (El I∋)} {El I∋} (cong El (I∋-ren vs)) (⊢var here)
+    dv : Ξ ⊢ v₀ ∷ El I∋
+    dv = ⊢-cast {Ξ} {v₀} {renTy vs (El I∋)} {El I∋} (cong El (I∋-ren vs)) (⊢var here)
     open Un∋ dv
     dI : Ξ ⊢ ielim CtxD d0 gM g0 ∷ iinst d0 g0 GM
     dI = ⊢ielim {Ξ} {⌜Nat⌝} {CtxD} {GM} {gM} {d0} {g0} ⊢⌜Nat⌝ ⊢CtxD ⊢GM ⊢gM dd0 dg0

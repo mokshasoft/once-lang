@@ -1979,6 +1979,10 @@ def main():
         hdr = hdr.replace("RCIMPORTS", RCIMPORTS[fam])
         outs[K(mod)] = hdr + "\n".join(REDCONL[fam]) + "\n"
     outs = {f: COPYRIGHT + t for f, t in outs.items()}
+    # the object-term notation (v₃, e ,ₚ …) — pattern synonyms, see tools/notation.py
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import notation
+    outs = {f: notation.notate(t) for f, t in outs.items()}
     if "--check" in sys.argv:
         stale = [f for f, t in outs.items() if not os.path.exists(f) or open(f, encoding="utf-8").read() != t]
         # ★ the deletion pass: a module this generator wrote once and no longer writes

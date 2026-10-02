@@ -33,6 +33,7 @@ open import DirectedHoTT.Examples.Knot.PwAgree using ( ⊢pwC )
 open import DirectedHoTT.Examples.Knot.OpAgree
 open import DirectedHoTT.Examples.Knot.RedXiConGen
 open import DirectedHoTT.Examples.Knot.RedCompConGen
+open import DirectedHoTT.Lib.Sugar using ( v₀ )
 
 private
   ⟶≡ : {Θ : Cx} {t u u' : RTm Θ} → u ≡ u' → t ⟶* u → t ⟶* u'
@@ -137,9 +138,9 @@ enRed {Γ} (tr-J-Fin {_} {n} c a m s e) = _ , con⟶tr₉ dj (⊢quoteTm (⌜Hom
   where dj = ⊢dep' Γ
 enRed {Γ} (tr-J-Hom c a m c₁ a₁ b₁ s e st) = _ , con⟶tr₁₀ dj (⊢quoteTm (⌜Hom⌝ c a m)) (⊢quoteTm e) (⊢quoteTm s) (⊢quoteTm c₁) (⊢quoteTm a₁) (⊢quoteTm b₁) (⊢quoteTm c) (⊢quoteTm a) (⊢quoteTm m) (⊢conv (⊢idrefl (⊢⌜Tm⌝ (⊢isuc dj)) (toTm (⊢quoteTm (⌜Hom⌝ c a m)))) (csymᵀ (credᵀ (El-⌜Id⌝ _ _ _)))) (⊢conv (⊢stkAC c₁ st) (csymᵀ El-⌜StkA⌝))
   where dj = ⊢dep' Γ
-enRed {Γ} (tr-taut f e) = _ , con⟶tr₁₁ dj (⊢quoteTm (var vz)) (⊢quoteTm e) (⊢quoteTm f) (⊢conv (⊢idrefl (⊢⌜Tm⌝ (⊢isuc dj)) (toTm (⊢quoteTm (var vz)))) (csymᵀ (credᵀ (El-⌜Id⌝ _ _ _))))
+enRed {Γ} (tr-taut f e) = _ , con⟶tr₁₁ dj (⊢quoteTm v₀) (⊢quoteTm e) (⊢quoteTm f) (⊢conv (⊢idrefl (⊢⌜Tm⌝ (⊢isuc dj)) (toTm (⊢quoteTm v₀))) (csymᵀ (credᵀ (El-⌜Id⌝ _ _ _))))
   where dj = ⊢dep' Γ
-enRed {Γ} (tr-pw c a f e pc) = _ , ⊢conv (con⟶tr₁₂ dj (⊢quoteTm (⌜Hom⌝ c a (var vz))) (⊢quoteTm e) (⊢quoteTm f) (⊢quoteTm c) (⊢quoteTm a) (⊢conv (⊢idrefl (⊢⌜Tm⌝ (⊢isuc dj)) (toTm (⊢quoteTm (⌜Hom⌝ c a (var vz))))) (csymᵀ (credᵀ (El-⌜Id⌝ _ _ _)))) (⊢quoteTm (pwBody c)) (⊢conv (⊢pwC c pc) (csymᵀ El-⌜Pw⌝))) (red→≅ᵀ (⟶ᵀ*-IMu (⟶*-pairʳ (⟶*-pairʳ (node-1 (⟶*-trans (node-1 (⟶*-trans (node-1 (pwSh-agree (pwBody c))) (node-2 (node-1 (wk-agree-tm a))))) (node-3 (node-1 (wk-agree-tm e)))))))))
+enRed {Γ} (tr-pw c a f e pc) = _ , ⊢conv (con⟶tr₁₂ dj (⊢quoteTm (⌜Hom⌝ c a v₀)) (⊢quoteTm e) (⊢quoteTm f) (⊢quoteTm c) (⊢quoteTm a) (⊢conv (⊢idrefl (⊢⌜Tm⌝ (⊢isuc dj)) (toTm (⊢quoteTm (⌜Hom⌝ c a v₀)))) (csymᵀ (credᵀ (El-⌜Id⌝ _ _ _)))) (⊢quoteTm (pwBody c)) (⊢conv (⊢pwC c pc) (csymᵀ El-⌜Pw⌝))) (red→≅ᵀ (⟶ᵀ*-IMu (⟶*-pairʳ (⟶*-pairʳ (node-1 (⟶*-trans (node-1 (⟶*-trans (node-1 (pwSh-agree (pwBody c))) (node-2 (node-1 (wk-agree-tm a))))) (node-3 (node-1 (wk-agree-tm e)))))))))
   where dj = ⊢dep' Γ
 enRed {Γ} (hrefl-pw C s pc) = _ , ⊢conv (con⟶hrefl₃ dj (⊢quoteTm C) (⊢quoteTm s) (⊢quoteTm (pwBody C)) (⊢conv (⊢pwC C pc) (csymᵀ El-⌜Pw⌝))) (red→≅ᵀ (⟶ᵀ*-IMu (⟶*-pairʳ (⟶*-pairʳ (node-1 (node-2 (node-1 (wk-agree-tm s))))))))
   where dj = ⊢dep' Γ

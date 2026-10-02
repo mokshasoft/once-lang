@@ -50,6 +50,7 @@ open import DirectedHoTT.Examples.Knot.LookupAgree using ( enLk )
 open import DirectedHoTT.Examples.Knot.JudgeConv using ( El-⌜∋⌝ )
 open import DirectedHoTT.Examples.Knot.ConvAgree using ( enConvT )
 open import DirectedHoTT.Examples.Knot.ConvHead using ( convAt )
+open import DirectedHoTT.Lib.Sugar using ( v₀ )
 
 ------------------------------------------------------------------------
 -- 1. Index conversions, by position in `tmIx j g t A`/`tyIx j g A`
@@ -84,7 +85,7 @@ private
 
   -- `⊢tr`'s source and target types, at strengthened codes
   homEq : {Γ Θ : Cx} (x c₀ a₀ : RTm Γ) →
-          quoteTy (El (subTm (single x) (⌜Hom⌝ (renTm vs c₀) (renTm vs a₀) (var vz)))) {Θ} ≡ kEl (kcHom (quoteTm c₀) (quoteTm a₀) (quoteTm x))
+          quoteTy (El (subTm (single x) (⌜Hom⌝ (renTm vs c₀) (renTm vs a₀) v₀))) {Θ} ≡ kEl (kcHom (quoteTm c₀) (quoteTm a₀) (quoteTm x))
   homEq x c₀ a₀ = cong₂ (λ C D → kEl (kcHom (quoteTm C) (quoteTm D) (quoteTm x))) (wk-cancel-tm x c₀) (wk-cancel-tm x a₀)
 
 ------------------------------------------------------------------------
@@ -104,16 +105,16 @@ enTm : {Γ : Ctx} {t : RTm ⌊ Γ ⌋} {A : RTy ⌊ Γ ⌋} → Γ ⊢ t ∷ A �
 private
   enTr : {Γ : Ctx} {A : RTy ⌊ Γ ⌋} {c a : RTm (⌊ Γ ⌋ ∙)} {p e t u : RTm ⌊ Γ ⌋} (c₀ a₀ : RTm ⌊ Γ ⌋) →
          renTm vs c₀ ≡ c → renTm vs a₀ ≡ a → NoNatC c₀ → {Θ : Ctx} →
-         KTm (Γ ▹ A) c U Θ → KTm (Γ ▹ A) a (El c) Θ → KTm (Γ ▹ A) (var vz) (El c) Θ →
+         KTm (Γ ▹ A) c U Θ → KTm (Γ ▹ A) a (El c) Θ → KTm (Γ ▹ A) v₀ (El c) Θ →
          KTm Γ t A Θ → KTm Γ u A Θ → KTm Γ p (Hom A t u) Θ →
-         KTm Γ e (El (subTm (single t) (⌜Hom⌝ c a (var vz)))) Θ →
-         KTm Γ (tr (⌜Hom⌝ c a (var vz)) p e) (El (subTm (single u) (⌜Hom⌝ c a (var vz)))) Θ
+         KTm Γ e (El (subTm (single t) (⌜Hom⌝ c a v₀))) Θ →
+         KTm Γ (tr (⌜Hom⌝ c a v₀) p e) (El (subTm (single u) (⌜Hom⌝ c a v₀))) Θ
   enTr {Γ} {A} {p = p} {e} {t} {u} c₀ a₀ refl refl nc {Θ} (_ , rc) (_ , ra) (_ , rv) (_ , rt) (_ , ru) (_ , rp) (ke , re) =
-    subst (λ X → Σ (RTm ⌊ Θ ⌋) (λ k → Θ ⊢ k ∷ IMu JT D⊢ (tmIx dj g (quoteTm (tr (⌜Hom⌝ c a (var vz)) p e)) X))) (sym (homEq u c₀ a₀))
-      (_ , con⊢tr₂ (⊢dep' ⌊ Γ ⌋) (⊢quoteCtx Γ) (⊢quoteTm (⌜Hom⌝ c a (var vz))) (⊢quoteTm p) (⊢quoteTm e)
+    subst (λ X → Σ (RTm ⌊ Θ ⌋) (λ k → Θ ⊢ k ∷ IMu JT D⊢ (tmIx dj g (quoteTm (tr (⌜Hom⌝ c a v₀) p e)) X))) (sym (homEq u c₀ a₀))
+      (_ , con⊢tr₂ (⊢dep' ⌊ Γ ⌋) (⊢quoteCtx Γ) (⊢quoteTm (⌜Hom⌝ c a v₀)) (⊢quoteTm p) (⊢quoteTm e)
                    (⊢quoteTy A) (⊢quoteTm c₀) (⊢quoteTm a₀)
                    (⊢conv (⊢nncC nc) (csymᵀ El-⌜NNC⌝))
-                   (idTm (⊢dep' (⌊ Γ ⌋ ∙)) (⊢quoteTm (⌜Hom⌝ c a (var vz)))
+                   (idTm (⊢dep' (⌊ Γ ⌋ ∙)) (⊢quoteTm (⌜Hom⌝ c a v₀))
                          (⟶*-trans (node-1 (wk-agree-tm c₀)) (node-2 (wk-agree-tm a₀))))
                    (⊢quoteTm t) (⊢quoteTm u)
                    (⊢conv rc (csymᵀ (tmT (wk-agree-tm c₀))))

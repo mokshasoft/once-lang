@@ -17,7 +17,7 @@ open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong�
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax hiding ( Fin )
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
-open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_; tag; Lt; lt-z; lt-s; []ᵈ; _∷ᵈ_ )
+open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_; tag; Lt; lt-z; lt-s; []ᵈ; _∷ᵈ_; v₁; _,ₚ_ )
 open import DirectedHoTT.Lib.SynView using ( PayV; ⊢recFst; ⊢recSnd; ⊢atDepthSK; ⊢natFst )
 open import DirectedHoTT.Lib.FinFam using ( ⊢isuc )
 open import DirectedHoTT.Examples.Knot.Ctors
@@ -45,11 +45,11 @@ private
 
 -- a TERM payload's field (index `(1 , j)`), its depth read off
 g0 : {Ξ : Ctx} {j p : RTm ⌊ Ξ ⌋} (s k : ℕ) (sh : Shape) →
-     Ξ ⊢ p ∷ PayV (rec s k ∷ʰ sh) (pair (tag 1) j) (SI 2) (SD KSig) → Ξ ⊢ fst p ∷ K s (nsucs k j)
+     Ξ ⊢ p ∷ PayV (rec s k ∷ʰ sh) ((tag 1) ,ₚ j) (SI 2) (SD KSig) → Ξ ⊢ fst p ∷ K s (nsucs k j)
 g0 {j = j} s k sh dp = ⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = s} {k = k} (⊢recFst {s = s} {k = k} {sh = sh} dp)
 
 -- a variable payload's field, at the depth
-⊢varOf : {Ξ : Ctx} {j p : RTm ⌊ Ξ ⌋} → Ξ ⊢ p ∷ PayV sh-kvar (pair (tag 1) j) (SI 2) (SD KSig) → Ξ ⊢ fst p ∷ FinI j
+⊢varOf : {Ξ : Ctx} {j p : RTm ⌊ Ξ ⌋} → Ξ ⊢ p ∷ PayV sh-kvar ((tag 1) ,ₚ j) (SI 2) (SD KSig) → Ξ ⊢ fst p ∷ FinI j
 ⊢varOf {j = j} dp = ⊢conv (⊢fst dp) (ctrnᵀ (red→≅ᵀ (⟶ᵀ*-El (⟶*-⌜IMu⌝ⁱ (step (βsnd (tag 1) j) done)))) (credᵀ El-⌜IMu⌝))
 
 ------------------------------------------------------------------------
@@ -86,10 +86,10 @@ okFz = PFz.okX okFzI
 
 -- fsuc t: `t ∷ Fin n`, `n` the case's predecessor (`var 1` under natrec's two binders)
 TFs : RTm Δ → RTm Δ → RTm ((Δ ∙) ∙)
-TFs j c = ⌜ tρ (tmIx (w2 j) (w2 (fst c)) (w2 (fst (snd c))) (kFin (var (vs vz)))) tι ⌝ᵗ
+TFs j c = ⌜ tρ (tmIx (w2 j) (w2 (fst c)) (w2 (fst (snd c))) (kFin v₁)) tι ⌝ᵗ
 
 TFs-cong : {Γ : Cx} (J J' G G' T T' : RTm ((Γ ∙) ∙)) → J ≡ J' → G ≡ G' → T ≡ T' →
-           dρ (tmIx J G T (kFin (var (vs vz)))) dι ≡ dρ (tmIx J' G' T' (kFin (var (vs vz)))) dι
+           dρ (tmIx J G T (kFin v₁)) dι ≡ dρ (tmIx J' G' T' (kFin v₁)) dι
 TFs-cong J J' G G' T T' refl refl refl = refl
 
 rFsI : Row

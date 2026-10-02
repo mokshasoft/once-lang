@@ -14,7 +14,7 @@ open import normalizer.Syntax.Types using ( _≡_; refl; trans; sym; cong )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax hiding ( Fin )
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
-open import DirectedHoTT.Lib.Sugar using ( Lt; lt-z; lt-s; tag )
+open import DirectedHoTT.Lib.Sugar using ( Lt; lt-z; lt-s; tag; _,ₚ_ )
 open import normalizer.Syntax.Types using ( cong₂ )
 open import DirectedHoTT.Lib.Syn
 open import DirectedHoTT.Lib.SynTravM using ( VarsAt )
@@ -67,7 +67,7 @@ opaque
  unfolding wk
  wk-sub : {Δ Θ : Cx} (σ : Sub Δ Θ) (s : ℕ) (d t : RTm Δ) → subTm σ (wk s d t) ≡ wk s (subTm σ d) (subTm σ t)
  wk-sub σ s d t =
-  cong₄ (λ D T M W → app (app (ielim D (pair T (subTm σ d)) M (subTm σ t)) (nsuc (subTm σ d))) W)
+  cong₄ (λ D T M W → app (app (ielim D (T ,ₚ (subTm σ d)) M (subTm σ t)) (nsuc (subTm σ d))) W)
         (SD-sub σ KSig) (tag-sub σ s) (TRAVM-sub σ) (WKρ-sub σ)
 
 wk-ren : {Δ Θ : Cx} (ρ : Ren Δ Θ) (s : ℕ) (d t : RTm Δ) → renTm ρ (wk s d t) ≡ wk s (renTm ρ d) (renTm ρ t)

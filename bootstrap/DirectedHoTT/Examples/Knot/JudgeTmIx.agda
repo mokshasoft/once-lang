@@ -22,7 +22,7 @@ open import DirectedHoTT.Spec.Syntax hiding ( Fin )
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast; wk-cancel-tm )
 open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; ⟶ᵀ*-trans )
-open import DirectedHoTT.Lib.Sugar using ( tag; lt-z; lt-s )
+open import DirectedHoTT.Lib.Sugar using ( tag; lt-z; lt-s; v₀; v₁; _,ₚ_ )
 open import DirectedHoTT.Lib.SynView using ( PayV; payV-red; payV-ix )
 open import DirectedHoTT.Lib.Tel
 open import DirectedHoTT.Lib.Syn
@@ -37,16 +37,16 @@ private
 
 -- the payload's telescope at the term index over the type index `var vz`
 PT : Shape → RTm ((Δ ∙) ∙)
-PT sh = ⌜ tel sh (pair (tag 1) (snd (var (vs vz)))) ⌝ᵗ
+PT sh = ⌜ tel sh ((tag 1) ,ₚ (snd v₁)) ⌝ᵗ
 
 CI : Shape → RTm (Δ ∙)
-CI sh = ⌜Σ⌝ (⌜Ctx⌝ (snd (var vz))) (dpay (SI 2) KD (PT sh))
+CI sh = ⌜Σ⌝ (⌜Ctx⌝ (snd v₀)) (dpay (SI 2) KD (PT sh))
 
 CI-sub : (sh : Shape) (σ : Sub Δ Θ) → subTm (extS σ) (CI {Δ} sh) ≡ CI sh
-CI-sub {Δ} {Θ} sh σ = c3 (CtxD-sub (extS σ)) (SD-sub (extS (extS σ)) KSig) (sub-tel (extS (extS σ)) sh (pair (tag 1) (snd (var (vs vz)))))
+CI-sub {Δ} {Θ} sh σ = c3 (CtxD-sub (extS σ)) (SD-sub (extS (extS σ)) KSig) (sub-tel (extS (extS σ)) sh ((tag 1) ,ₚ (snd v₁)))
   where
     c3 : {D D' : RTm (Θ ∙)} {K K' X X' : RTm ((Θ ∙) ∙)} → D ≡ D' → K ≡ K' → X ≡ X' →
-         ⌜Σ⌝ (⌜IMu⌝ ⌜Nat⌝ D (snd (var vz))) (dpay (SI 2) K X) ≡ ⌜Σ⌝ (⌜IMu⌝ ⌜Nat⌝ D' (snd (var vz))) (dpay (SI 2) K' X')
+         ⌜Σ⌝ (⌜IMu⌝ ⌜Nat⌝ D (snd v₀)) (dpay (SI 2) K X) ≡ ⌜Σ⌝ (⌜IMu⌝ ⌜Nat⌝ D' (snd v₀)) (dpay (SI 2) K' X')
     c3 refl refl refl = refl
 
 ⊢CI : {sh : Shape} → ShOK 2 sh → {Γ : Ctx} → (Γ ▹ El (SI 2)) ⊢ CI sh ∷ U
@@ -65,46 +65,46 @@ module _ {Ξ : Ctx} {j : RTm ⌊ Ξ ⌋} (sh : Shape) where
     ix : RTm ⌊ Ξ ⌋
     ix = pair (tag 0) j
     B : RTm (⌊ Ξ ⌋ ∙)
-    B = dpay (SI 2) KD ⌜ tel sh (pair (tag 1) (snd (renTm vs ix))) ⌝ᵗ
+    B = dpay (SI 2) KD ⌜ tel sh ((tag 1) ,ₚ (snd (renTm vs ix))) ⌝ᵗ
     eCI : CIat sh ix ≡ ⌜Σ⌝ (⌜Ctx⌝ (snd ix)) B
     eCI = c3 (CtxD-sub (single ix)) (SD-sub (extS (single ix)) KSig)
-             (sub-tel (extS (single ix)) sh (pair (tag 1) (snd (var (vs vz)))))
+             (sub-tel (extS (single ix)) sh ((tag 1) ,ₚ (snd v₁)))
       where
         c3 : {D D' : RTm ⌊ Ξ ⌋} {K K' X X' : RTm (⌊ Ξ ⌋ ∙)} → D ≡ D' → K ≡ K' → X ≡ X' →
              ⌜Σ⌝ (⌜IMu⌝ ⌜Nat⌝ D (snd ix)) (dpay (SI 2) K X) ≡ ⌜Σ⌝ (⌜IMu⌝ ⌜Nat⌝ D' (snd ix)) (dpay (SI 2) K' X')
         c3 refl refl refl = refl
     -- the payload half instantiated at the context
-    eB : (g : RTm ⌊ Ξ ⌋) → subTy (single g) (El B) ≡ El (dpay (SI 2) KD ⌜ tel sh (pair (tag 1) (snd ix)) ⌝ᵗ)
+    eB : (g : RTm ⌊ Ξ ⌋) → subTy (single g) (El B) ≡ El (dpay (SI 2) KD ⌜ tel sh ((tag 1) ,ₚ (snd ix)) ⌝ᵗ)
     eB g = c2 (SD-sub (single g) KSig)
-              (trans (sub-tel (single g) sh (pair (tag 1) (snd (renTm vs ix))))
-                     (cong (λ z → ⌜ tel sh (pair (tag 1) (snd z)) ⌝ᵗ) {x = subTm (single g) (renTm vs ix)} {y = ix}
+              (trans (sub-tel (single g) sh ((tag 1) ,ₚ (snd (renTm vs ix))))
+                     (cong (λ z → ⌜ tel sh ((tag 1) ,ₚ (snd z)) ⌝ᵗ) {x = subTm (single g) (renTm vs ix)} {y = ix}
                            (wk-cancel-tm g ix)))
       where
         c2 : {K K' X X' : RTm ⌊ Ξ ⌋} → K ≡ K' → X ≡ X' → El (dpay (SI 2) K X) ≡ El (dpay (SI 2) K' X')
         c2 refl refl = refl
     -- …and read as the payload's normal form at the term index
-    payR : El (dpay (SI 2) KD ⌜ tel sh (pair (tag 1) (snd ix)) ⌝ᵗ) ≅ᵀ PayV sh (pair (tag 1) j) (SI 2) (SD KSig)
-    payR = red→≅ᵀ (⟶ᵀ*-trans (payV-red sh (pair (tag 1) (snd ix)) (SI 2) (SD KSig))
+    payR : El (dpay (SI 2) KD ⌜ tel sh ((tag 1) ,ₚ (snd ix)) ⌝ᵗ) ≅ᵀ PayV sh ((tag 1) ,ₚ j) (SI 2) (SD KSig)
+    payR = red→≅ᵀ (⟶ᵀ*-trans (payV-red sh ((tag 1) ,ₚ (snd ix)) (SI 2) (SD KSig))
                              (payV-ix sh (tag 1) (tag 0) j (SI 2) (SD KSig)))
     dΣ : {c : RTm ⌊ Ξ ⌋} → Ξ ⊢ c ∷ El (CIat sh ix) → Ξ ⊢ c ∷ Σ' (El (⌜Ctx⌝ (snd ix))) (El B)
     dΣ {c} dc = ⊢conv (⊢-cast {Ξ} {c} {El (CIat sh ix)} {El (⌜Σ⌝ (⌜Ctx⌝ (snd ix)) B)} (cong El eCI) dc)
                       (credᵀ (El-⌜Σ⌝ (⌜Ctx⌝ (snd ix)) B))
 
   -- the context
-  ⊢gI : {c : RTm ⌊ Ξ ⌋} → Ξ ⊢ c ∷ El (CIat sh (pair (tag 0) j)) → Ξ ⊢ fst c ∷ KCtx j
+  ⊢gI : {c : RTm ⌊ Ξ ⌋} → Ξ ⊢ c ∷ El (CIat sh ((tag 0) ,ₚ j)) → Ξ ⊢ fst c ∷ KCtx j
   ⊢gI dc = ⊢conv (⊢fst (dΣ dc)) (ctxK≅ {s = 0} j)
 
   -- the term's payload
-  ⊢pI : {c : RTm ⌊ Ξ ⌋} → Ξ ⊢ c ∷ El (CIat sh (pair (tag 0) j)) → Ξ ⊢ snd c ∷ PayV sh (pair (tag 1) j) (SI 2) (SD KSig)
+  ⊢pI : {c : RTm ⌊ Ξ ⌋} → Ξ ⊢ c ∷ El (CIat sh ((tag 0) ,ₚ j)) → Ξ ⊢ snd c ∷ PayV sh ((tag 1) ,ₚ j) (SI 2) (SD KSig)
   ⊢pI {c} dc = ⊢conv (⊢-cast {Ξ} {snd c} {subTy (single (fst c)) (El B)} (eB (fst c)) (⊢snd (dΣ dc))) payR
 
   -- the convoy from its halves
   ⊢cI : {g p : RTm ⌊ Ξ ⌋} → ShOK 2 sh → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ g ∷ KCtx j →
-        Ξ ⊢ p ∷ PayV sh (pair (tag 1) j) (SI 2) (SD KSig) → Ξ ⊢ pair g p ∷ El (CIat sh ix)
+        Ξ ⊢ p ∷ PayV sh ((tag 1) ,ₚ j) (SI 2) (SD KSig) → Ξ ⊢ pair g p ∷ El (CIat sh ix)
   ⊢cI {g} {p} shok dj dg dp =
     ⊢-cast {Ξ} {pair g p} {El (⌜Σ⌝ (⌜Ctx⌝ (snd ix)) B)} {El (CIat sh ix)} (cong El (sym eCI))
       (⊢conv (⊢pair tyB (⊢conv dg (csymᵀ (ctxK≅ {s = 0} j)))
-                        (⊢-cast {Ξ} {p} {El (dpay (SI 2) KD ⌜ tel sh (pair (tag 1) (snd ix)) ⌝ᵗ)} {subTy (single g) (El B)}
+                        (⊢-cast {Ξ} {p} {El (dpay (SI 2) KD ⌜ tel sh ((tag 1) ,ₚ (snd ix)) ⌝ᵗ)} {subTy (single g) (El B)}
                                 (sym (eB g)) (⊢conv dp (csymᵀ payR))))
              (csymᵀ (credᵀ (El-⌜Σ⌝ (⌜Ctx⌝ (snd ix)) B))))
     where

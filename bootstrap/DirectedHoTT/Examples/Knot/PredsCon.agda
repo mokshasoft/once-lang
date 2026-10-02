@@ -17,7 +17,7 @@ open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax hiding ( Fin )
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; ⟶ᵀ*-El; ⟶*-dpayᶜ )
-open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_; tag; conₗ; lt-z; lt-s; nth-z; nth-s; atᶜ; []ᵈ; _∷ᵈ_ )
+open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_; tag; conₗ; lt-z; lt-s; nth-z; nth-s; atᶜ; []ᵈ; _∷ᵈ_; v₀; v₁; v₂; v₃; _,ₚ_ )
 open import DirectedHoTT.Lib.SynFib using ( ⊢conRowₖ )
 open import DirectedHoTT.Lib.SynRed
 open import DirectedHoTT.Lib.FinFam using ( ⊢isuc )
@@ -49,7 +49,7 @@ conNNC⊢cbase {Ξ} {j} dj =
     p = unit
     dp = ⊢payK (lt-s lt-z) ok-kcbase dj a[]
     R : ⌜ TVNNC⊢cbase j ⌝ᵗ ⟶* ⌜ TVNNC⊢cbase j ⌝ᵗ
-    R = mono-by {Δ = ⌊ Ξ ⌋} {n = 1} {as = (j ∷ [])} {as' = (j ∷ [])} ⌜ TVNNC⊢cbase (var vz) ⌝ᵗ (TVNNC⊢cbase-sub (σₗ (j ∷ [])) (var vz)) (TVNNC⊢cbase-sub (σₗ (j ∷ [])) (var vz)) (done ∷ʳ []ʳ)
+    R = mono-by {Δ = ⌊ Ξ ⌋} {n = 1} {as = (j ∷ [])} {as' = (j ∷ [])} ⌜ TVNNC⊢cbase v₀ ⌝ᵗ (TVNNC⊢cbase-sub (σₗ (j ∷ [])) v₀) (TVNNC⊢cbase-sub (σₗ (j ∷ [])) v₀) (done ∷ʳ []ʳ)
     dPv : Ξ ⊢ unit ∷ El (dpay NNCₘ.J NNCF.DF ⌜ TVNNC⊢cbase j ⌝ᵗ)
     dPv = (⊢payι NNCₘ.⊢J NNCF.⊢DF ⊢unit)
 
@@ -70,7 +70,7 @@ conNNC⊢cUnit {Ξ} {j} dj =
     p = unit
     dp = ⊢payK (lt-s lt-z) ok-kcUnit dj a[]
     R : ⌜ TVNNC⊢cUnit j ⌝ᵗ ⟶* ⌜ TVNNC⊢cUnit j ⌝ᵗ
-    R = mono-by {Δ = ⌊ Ξ ⌋} {n = 1} {as = (j ∷ [])} {as' = (j ∷ [])} ⌜ TVNNC⊢cUnit (var vz) ⌝ᵗ (TVNNC⊢cUnit-sub (σₗ (j ∷ [])) (var vz)) (TVNNC⊢cUnit-sub (σₗ (j ∷ [])) (var vz)) (done ∷ʳ []ʳ)
+    R = mono-by {Δ = ⌊ Ξ ⌋} {n = 1} {as = (j ∷ [])} {as' = (j ∷ [])} ⌜ TVNNC⊢cUnit v₀ ⌝ᵗ (TVNNC⊢cUnit-sub (σₗ (j ∷ [])) v₀) (TVNNC⊢cUnit-sub (σₗ (j ∷ [])) v₀) (done ∷ʳ []ʳ)
     dPv : Ξ ⊢ unit ∷ El (dpay NNCₘ.J NNCF.DF ⌜ TVNNC⊢cUnit j ⌝ᵗ)
     dPv = (⊢payι NNCₘ.⊢J NNCF.⊢DF ⊢unit)
 
@@ -88,10 +88,10 @@ conNNC⊢cFin {Ξ} {j} {f0} dj df0 =
     (⊢tel NNCₘ.⊢J (tokNNC⊢cFin {c = unit} dj dp) ∷ᵈ []ᵈ) (⊢conv dPv (csymᵀ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R)))))
   where
     p : RTm ⌊ Ξ ⌋
-    p = (pair f0 unit)
+    p = (f0 ,ₚ unit)
     dp = ⊢payK (lt-s lt-z) ok-kcFin dj (a-nat df0 a[])
     R : ⌜ TVNNC⊢cFin j (fst p) ⌝ᵗ ⟶* ⌜ TVNNC⊢cFin j f0 ⌝ᵗ
-    R = mono-by {Δ = ⌊ Ξ ⌋} {n = 2} {as = (j ∷ (fst p) ∷ [])} {as' = (j ∷ f0 ∷ [])} ⌜ TVNNC⊢cFin (var vz) (var (vs vz)) ⌝ᵗ (TVNNC⊢cFin-sub (σₗ (j ∷ (fst p) ∷ [])) (var vz) (var (vs vz))) (TVNNC⊢cFin-sub (σₗ (j ∷ f0 ∷ [])) (var vz) (var (vs vz))) (done ∷ʳ (prj-tup {ws = f0 ∷ []} unit (atᶜ 0)) ∷ʳ []ʳ)
+    R = mono-by {Δ = ⌊ Ξ ⌋} {n = 2} {as = (j ∷ (fst p) ∷ [])} {as' = (j ∷ f0 ∷ [])} ⌜ TVNNC⊢cFin v₀ v₁ ⌝ᵗ (TVNNC⊢cFin-sub (σₗ (j ∷ (fst p) ∷ [])) v₀ v₁) (TVNNC⊢cFin-sub (σₗ (j ∷ f0 ∷ [])) v₀ v₁) (done ∷ʳ (prj-tup {ws = f0 ∷ []} unit (atᶜ 0)) ∷ʳ []ʳ)
     dPv : Ξ ⊢ unit ∷ El (dpay NNCₘ.J NNCF.DF ⌜ TVNNC⊢cFin j f0 ⌝ᵗ)
     dPv = (⊢payι NNCₘ.⊢J NNCF.⊢DF ⊢unit)
 
@@ -109,10 +109,10 @@ conNNC⊢cSg {Ξ} {j} {f0} {f1} dj df0 df1 =
     (⊢tel NNCₘ.⊢J (tokNNC⊢cSg {c = unit} dj dp) ∷ᵈ []ᵈ) (⊢conv dPv (csymᵀ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R)))))
   where
     p : RTm ⌊ Ξ ⌋
-    p = (pair f0 (pair f1 unit))
+    p = (f0 ,ₚ f1 ,ₚ unit)
     dp = ⊢payK (lt-s lt-z) ok-kcSg dj (a-rec df0 (a-rec df1 a[]))
     R : ⌜ TVNNC⊢cSg j (fst p) (fst (snd p)) ⌝ᵗ ⟶* ⌜ TVNNC⊢cSg j f0 f1 ⌝ᵗ
-    R = mono-by {Δ = ⌊ Ξ ⌋} {n = 3} {as = (j ∷ (fst p) ∷ (fst (snd p)) ∷ [])} {as' = (j ∷ f0 ∷ f1 ∷ [])} ⌜ TVNNC⊢cSg (var vz) (var (vs vz)) (var (vs (vs vz))) ⌝ᵗ (TVNNC⊢cSg-sub (σₗ (j ∷ (fst p) ∷ (fst (snd p)) ∷ [])) (var vz) (var (vs vz)) (var (vs (vs vz)))) (TVNNC⊢cSg-sub (σₗ (j ∷ f0 ∷ f1 ∷ [])) (var vz) (var (vs vz)) (var (vs (vs vz)))) (done ∷ʳ (prj-tup {ws = f0 ∷ f1 ∷ []} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = f0 ∷ f1 ∷ []} unit (atᶜ 1)) ∷ʳ []ʳ)
+    R = mono-by {Δ = ⌊ Ξ ⌋} {n = 3} {as = (j ∷ (fst p) ∷ (fst (snd p)) ∷ [])} {as' = (j ∷ f0 ∷ f1 ∷ [])} ⌜ TVNNC⊢cSg v₀ v₁ v₂ ⌝ᵗ (TVNNC⊢cSg-sub (σₗ (j ∷ (fst p) ∷ (fst (snd p)) ∷ [])) v₀ v₁ v₂) (TVNNC⊢cSg-sub (σₗ (j ∷ f0 ∷ f1 ∷ [])) v₀ v₁ v₂) (done ∷ʳ (prj-tup {ws = f0 ∷ f1 ∷ []} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = f0 ∷ f1 ∷ []} unit (atᶜ 1)) ∷ʳ []ʳ)
     dPv : Ξ ⊢ unit ∷ El (dpay NNCₘ.J NNCF.DF ⌜ TVNNC⊢cSg j f0 f1 ⌝ᵗ)
     dPv = (⊢payι NNCₘ.⊢J NNCF.⊢DF ⊢unit)
 
@@ -130,10 +130,10 @@ conNNC⊢cId {Ξ} {j} {f0} {f1} {f2} dj df0 df1 df2 =
     (⊢tel NNCₘ.⊢J (tokNNC⊢cId {c = unit} dj dp) ∷ᵈ []ᵈ) (⊢conv dPv (csymᵀ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R)))))
   where
     p : RTm ⌊ Ξ ⌋
-    p = (pair f0 (pair f1 (pair f2 unit)))
+    p = (f0 ,ₚ f1 ,ₚ f2 ,ₚ unit)
     dp = ⊢payK (lt-s lt-z) ok-kcId dj (a-rec df0 (a-rec df1 (a-rec df2 a[])))
     R : ⌜ TVNNC⊢cId j (fst p) (fst (snd p)) (fst (snd (snd p))) ⌝ᵗ ⟶* ⌜ TVNNC⊢cId j f0 f1 f2 ⌝ᵗ
-    R = mono-by {Δ = ⌊ Ξ ⌋} {n = 4} {as = (j ∷ (fst p) ∷ (fst (snd p)) ∷ (fst (snd (snd p))) ∷ [])} {as' = (j ∷ f0 ∷ f1 ∷ f2 ∷ [])} ⌜ TVNNC⊢cId (var vz) (var (vs vz)) (var (vs (vs vz))) (var (vs (vs (vs vz)))) ⌝ᵗ (TVNNC⊢cId-sub (σₗ (j ∷ (fst p) ∷ (fst (snd p)) ∷ (fst (snd (snd p))) ∷ [])) (var vz) (var (vs vz)) (var (vs (vs vz))) (var (vs (vs (vs vz))))) (TVNNC⊢cId-sub (σₗ (j ∷ f0 ∷ f1 ∷ f2 ∷ [])) (var vz) (var (vs vz)) (var (vs (vs vz))) (var (vs (vs (vs vz))))) (done ∷ʳ (prj-tup {ws = f0 ∷ f1 ∷ f2 ∷ []} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = f0 ∷ f1 ∷ f2 ∷ []} unit (atᶜ 1)) ∷ʳ (prj-tup {ws = f0 ∷ f1 ∷ f2 ∷ []} unit (atᶜ 2)) ∷ʳ []ʳ)
+    R = mono-by {Δ = ⌊ Ξ ⌋} {n = 4} {as = (j ∷ (fst p) ∷ (fst (snd p)) ∷ (fst (snd (snd p))) ∷ [])} {as' = (j ∷ f0 ∷ f1 ∷ f2 ∷ [])} ⌜ TVNNC⊢cId v₀ v₁ v₂ v₃ ⌝ᵗ (TVNNC⊢cId-sub (σₗ (j ∷ (fst p) ∷ (fst (snd p)) ∷ (fst (snd (snd p))) ∷ [])) v₀ v₁ v₂ v₃) (TVNNC⊢cId-sub (σₗ (j ∷ f0 ∷ f1 ∷ f2 ∷ [])) v₀ v₁ v₂ v₃) (done ∷ʳ (prj-tup {ws = f0 ∷ f1 ∷ f2 ∷ []} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = f0 ∷ f1 ∷ f2 ∷ []} unit (atᶜ 1)) ∷ʳ (prj-tup {ws = f0 ∷ f1 ∷ f2 ∷ []} unit (atᶜ 2)) ∷ʳ []ʳ)
     dPv : Ξ ⊢ unit ∷ El (dpay NNCₘ.J NNCF.DF ⌜ TVNNC⊢cId j f0 f1 f2 ⌝ᵗ)
     dPv = (⊢payι NNCₘ.⊢J NNCF.⊢DF ⊢unit)
 
@@ -144,18 +144,18 @@ TVNNC⊢cPi-sub : (σ : Sub Δ Θ) (J : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) → 
 TVNNC⊢cPi-sub σ J F0 F1 = refl
 
 conNNC⊢cPi : {Ξ : Ctx} {j f0 f1 r0 : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ f0 ∷ K 1 j → Ξ ⊢ f1 ∷ K 1 (nsuc j) → Ξ ⊢ r0 ∷ KNNC (nsuc j) f1 → 
-  Ξ ⊢ conₗ 0 (pair r0 unit) ∷ KNNC j (kcPi f0 f1)
+  Ξ ⊢ conₗ 0 (r0 ,ₚ unit) ∷ KNNC j (kcPi f0 f1)
 conNNC⊢cPi {Ξ} {j} {f0} {f1} {r0} dj df0 df1 dr0 =
-  ⊢conRowₖ {Ξ} {1} {0} {NNCₘ.J} {NNCF.DF} {ixNNC j (kcPi f0 f1)} {⌜ TNNC⊢cPi j p unit ⌝ᵗ} {(pair r0 unit)} {⌜ TNNC⊢cPi j p unit ⌝ᵗ ∷ []} nth-z NNCₘ.⊢J NNCF.⊢DF (⊢ixNNC dj (⊢kcPi dj df0 df1))
+  ⊢conRowₖ {Ξ} {1} {0} {NNCₘ.J} {NNCF.DF} {ixNNC j (kcPi f0 f1)} {⌜ TNNC⊢cPi j p unit ⌝ᵗ} {(r0 ,ₚ unit)} {⌜ TNNC⊢cPi j p unit ⌝ᵗ ∷ []} nth-z NNCₘ.⊢J NNCF.⊢DF (⊢ixNNC dj (⊢kcPi dj df0 df1))
     (NNCF.fibF {s = 1} {k = 9} {j = j} {p = p} {c = unit} (atᵍ 1) (atʰ 9))
     (⊢tel NNCₘ.⊢J (tokNNC⊢cPi {c = unit} dj dp) ∷ᵈ []ᵈ) (⊢conv dPv (csymᵀ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R)))))
   where
     p : RTm ⌊ Ξ ⌋
-    p = (pair f0 (pair f1 unit))
+    p = (f0 ,ₚ f1 ,ₚ unit)
     dp = ⊢payK (lt-s lt-z) ok-kcPi dj (a-rec df0 (a-rec df1 a[]))
     R : ⌜ TVNNC⊢cPi j (fst p) (fst (snd p)) ⌝ᵗ ⟶* ⌜ TVNNC⊢cPi j f0 f1 ⌝ᵗ
-    R = mono-by {Δ = ⌊ Ξ ⌋} {n = 3} {as = (j ∷ (fst p) ∷ (fst (snd p)) ∷ [])} {as' = (j ∷ f0 ∷ f1 ∷ [])} ⌜ TVNNC⊢cPi (var vz) (var (vs vz)) (var (vs (vs vz))) ⌝ᵗ (TVNNC⊢cPi-sub (σₗ (j ∷ (fst p) ∷ (fst (snd p)) ∷ [])) (var vz) (var (vs vz)) (var (vs (vs vz)))) (TVNNC⊢cPi-sub (σₗ (j ∷ f0 ∷ f1 ∷ [])) (var vz) (var (vs vz)) (var (vs (vs vz)))) (done ∷ʳ (prj-tup {ws = f0 ∷ f1 ∷ []} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = f0 ∷ f1 ∷ []} unit (atᶜ 1)) ∷ʳ []ʳ)
-    dPv : Ξ ⊢ (pair r0 unit) ∷ El (dpay NNCₘ.J NNCF.DF ⌜ TVNNC⊢cPi j f0 f1 ⌝ᵗ)
+    R = mono-by {Δ = ⌊ Ξ ⌋} {n = 3} {as = (j ∷ (fst p) ∷ (fst (snd p)) ∷ [])} {as' = (j ∷ f0 ∷ f1 ∷ [])} ⌜ TVNNC⊢cPi v₀ v₁ v₂ ⌝ᵗ (TVNNC⊢cPi-sub (σₗ (j ∷ (fst p) ∷ (fst (snd p)) ∷ [])) v₀ v₁ v₂) (TVNNC⊢cPi-sub (σₗ (j ∷ f0 ∷ f1 ∷ [])) v₀ v₁ v₂) (done ∷ʳ (prj-tup {ws = f0 ∷ f1 ∷ []} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = f0 ∷ f1 ∷ []} unit (atᶜ 1)) ∷ʳ []ʳ)
+    dPv : Ξ ⊢ (r0 ,ₚ unit) ∷ El (dpay NNCₘ.J NNCF.DF ⌜ TVNNC⊢cPi j f0 f1 ⌝ᵗ)
     dPv = (⊢payρ NNCₘ.⊢J NNCF.⊢DF {r = r0} {p = unit} (ok-ρ (⊢ixNNC (⊢isuc dj) df1) (ok-ι)) dr0 (⊢payι NNCₘ.⊢J NNCF.⊢DF ⊢unit))
 
 TVNNC⊢cHom : RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
@@ -165,18 +165,18 @@ TVNNC⊢cHom-sub : (σ : Sub Δ Θ) (J : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (F2
 TVNNC⊢cHom-sub σ J F0 F1 F2 = refl
 
 conNNC⊢cHom : {Ξ : Ctx} {j f0 f1 f2 r0 : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ f0 ∷ K 1 j → Ξ ⊢ f1 ∷ K 1 j → Ξ ⊢ f2 ∷ K 1 j → Ξ ⊢ r0 ∷ KNNC j f0 → 
-  Ξ ⊢ conₗ 0 (pair r0 unit) ∷ KNNC j (kcHom f0 f1 f2)
+  Ξ ⊢ conₗ 0 (r0 ,ₚ unit) ∷ KNNC j (kcHom f0 f1 f2)
 conNNC⊢cHom {Ξ} {j} {f0} {f1} {f2} {r0} dj df0 df1 df2 dr0 =
-  ⊢conRowₖ {Ξ} {1} {0} {NNCₘ.J} {NNCF.DF} {ixNNC j (kcHom f0 f1 f2)} {⌜ TNNC⊢cHom j p unit ⌝ᵗ} {(pair r0 unit)} {⌜ TNNC⊢cHom j p unit ⌝ᵗ ∷ []} nth-z NNCₘ.⊢J NNCF.⊢DF (⊢ixNNC dj (⊢kcHom dj df0 df1 df2))
+  ⊢conRowₖ {Ξ} {1} {0} {NNCₘ.J} {NNCF.DF} {ixNNC j (kcHom f0 f1 f2)} {⌜ TNNC⊢cHom j p unit ⌝ᵗ} {(r0 ,ₚ unit)} {⌜ TNNC⊢cHom j p unit ⌝ᵗ ∷ []} nth-z NNCₘ.⊢J NNCF.⊢DF (⊢ixNNC dj (⊢kcHom dj df0 df1 df2))
     (NNCF.fibF {s = 1} {k = 11} {j = j} {p = p} {c = unit} (atᵍ 1) (atʰ 11))
     (⊢tel NNCₘ.⊢J (tokNNC⊢cHom {c = unit} dj dp) ∷ᵈ []ᵈ) (⊢conv dPv (csymᵀ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R)))))
   where
     p : RTm ⌊ Ξ ⌋
-    p = (pair f0 (pair f1 (pair f2 unit)))
+    p = (f0 ,ₚ f1 ,ₚ f2 ,ₚ unit)
     dp = ⊢payK (lt-s lt-z) ok-kcHom dj (a-rec df0 (a-rec df1 (a-rec df2 a[])))
     R : ⌜ TVNNC⊢cHom j (fst p) (fst (snd p)) (fst (snd (snd p))) ⌝ᵗ ⟶* ⌜ TVNNC⊢cHom j f0 f1 f2 ⌝ᵗ
-    R = mono-by {Δ = ⌊ Ξ ⌋} {n = 4} {as = (j ∷ (fst p) ∷ (fst (snd p)) ∷ (fst (snd (snd p))) ∷ [])} {as' = (j ∷ f0 ∷ f1 ∷ f2 ∷ [])} ⌜ TVNNC⊢cHom (var vz) (var (vs vz)) (var (vs (vs vz))) (var (vs (vs (vs vz)))) ⌝ᵗ (TVNNC⊢cHom-sub (σₗ (j ∷ (fst p) ∷ (fst (snd p)) ∷ (fst (snd (snd p))) ∷ [])) (var vz) (var (vs vz)) (var (vs (vs vz))) (var (vs (vs (vs vz))))) (TVNNC⊢cHom-sub (σₗ (j ∷ f0 ∷ f1 ∷ f2 ∷ [])) (var vz) (var (vs vz)) (var (vs (vs vz))) (var (vs (vs (vs vz))))) (done ∷ʳ (prj-tup {ws = f0 ∷ f1 ∷ f2 ∷ []} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = f0 ∷ f1 ∷ f2 ∷ []} unit (atᶜ 1)) ∷ʳ (prj-tup {ws = f0 ∷ f1 ∷ f2 ∷ []} unit (atᶜ 2)) ∷ʳ []ʳ)
-    dPv : Ξ ⊢ (pair r0 unit) ∷ El (dpay NNCₘ.J NNCF.DF ⌜ TVNNC⊢cHom j f0 f1 f2 ⌝ᵗ)
+    R = mono-by {Δ = ⌊ Ξ ⌋} {n = 4} {as = (j ∷ (fst p) ∷ (fst (snd p)) ∷ (fst (snd (snd p))) ∷ [])} {as' = (j ∷ f0 ∷ f1 ∷ f2 ∷ [])} ⌜ TVNNC⊢cHom v₀ v₁ v₂ v₃ ⌝ᵗ (TVNNC⊢cHom-sub (σₗ (j ∷ (fst p) ∷ (fst (snd p)) ∷ (fst (snd (snd p))) ∷ [])) v₀ v₁ v₂ v₃) (TVNNC⊢cHom-sub (σₗ (j ∷ f0 ∷ f1 ∷ f2 ∷ [])) v₀ v₁ v₂ v₃) (done ∷ʳ (prj-tup {ws = f0 ∷ f1 ∷ f2 ∷ []} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = f0 ∷ f1 ∷ f2 ∷ []} unit (atᶜ 1)) ∷ʳ (prj-tup {ws = f0 ∷ f1 ∷ f2 ∷ []} unit (atᶜ 2)) ∷ʳ []ʳ)
+    dPv : Ξ ⊢ (r0 ,ₚ unit) ∷ El (dpay NNCₘ.J NNCF.DF ⌜ TVNNC⊢cHom j f0 f1 f2 ⌝ᵗ)
     dPv = (⊢payρ NNCₘ.⊢J NNCF.⊢DF {r = r0} {p = unit} (ok-ρ (⊢ixNNC dj df0) (ok-ι)) dr0 (⊢payι NNCₘ.⊢J NNCF.⊢DF ⊢unit))
 
 TVStkA⊢cbase : RTm Δ → Tel Δ
@@ -196,7 +196,7 @@ conStkA⊢cbase {Ξ} {j} dj =
     p = unit
     dp = ⊢payK (lt-s lt-z) ok-kcbase dj a[]
     R : ⌜ TVStkA⊢cbase j ⌝ᵗ ⟶* ⌜ TVStkA⊢cbase j ⌝ᵗ
-    R = mono-by {Δ = ⌊ Ξ ⌋} {n = 1} {as = (j ∷ [])} {as' = (j ∷ [])} ⌜ TVStkA⊢cbase (var vz) ⌝ᵗ (TVStkA⊢cbase-sub (σₗ (j ∷ [])) (var vz)) (TVStkA⊢cbase-sub (σₗ (j ∷ [])) (var vz)) (done ∷ʳ []ʳ)
+    R = mono-by {Δ = ⌊ Ξ ⌋} {n = 1} {as = (j ∷ [])} {as' = (j ∷ [])} ⌜ TVStkA⊢cbase v₀ ⌝ᵗ (TVStkA⊢cbase-sub (σₗ (j ∷ [])) v₀) (TVStkA⊢cbase-sub (σₗ (j ∷ [])) v₀) (done ∷ʳ []ʳ)
     dPv : Ξ ⊢ unit ∷ El (dpay StkAₘ.J StkAF.DF ⌜ TVStkA⊢cbase j ⌝ᵗ)
     dPv = (⊢payι StkAₘ.⊢J StkAF.⊢DF ⊢unit)
 
@@ -214,10 +214,10 @@ conStkA⊢cSg {Ξ} {j} {f0} {f1} dj df0 df1 =
     (⊢tel StkAₘ.⊢J (tokStkA⊢cSg {c = unit} dj dp) ∷ᵈ []ᵈ) (⊢conv dPv (csymᵀ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R)))))
   where
     p : RTm ⌊ Ξ ⌋
-    p = (pair f0 (pair f1 unit))
+    p = (f0 ,ₚ f1 ,ₚ unit)
     dp = ⊢payK (lt-s lt-z) ok-kcSg dj (a-rec df0 (a-rec df1 a[]))
     R : ⌜ TVStkA⊢cSg j (fst p) (fst (snd p)) ⌝ᵗ ⟶* ⌜ TVStkA⊢cSg j f0 f1 ⌝ᵗ
-    R = mono-by {Δ = ⌊ Ξ ⌋} {n = 3} {as = (j ∷ (fst p) ∷ (fst (snd p)) ∷ [])} {as' = (j ∷ f0 ∷ f1 ∷ [])} ⌜ TVStkA⊢cSg (var vz) (var (vs vz)) (var (vs (vs vz))) ⌝ᵗ (TVStkA⊢cSg-sub (σₗ (j ∷ (fst p) ∷ (fst (snd p)) ∷ [])) (var vz) (var (vs vz)) (var (vs (vs vz)))) (TVStkA⊢cSg-sub (σₗ (j ∷ f0 ∷ f1 ∷ [])) (var vz) (var (vs vz)) (var (vs (vs vz)))) (done ∷ʳ (prj-tup {ws = f0 ∷ f1 ∷ []} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = f0 ∷ f1 ∷ []} unit (atᶜ 1)) ∷ʳ []ʳ)
+    R = mono-by {Δ = ⌊ Ξ ⌋} {n = 3} {as = (j ∷ (fst p) ∷ (fst (snd p)) ∷ [])} {as' = (j ∷ f0 ∷ f1 ∷ [])} ⌜ TVStkA⊢cSg v₀ v₁ v₂ ⌝ᵗ (TVStkA⊢cSg-sub (σₗ (j ∷ (fst p) ∷ (fst (snd p)) ∷ [])) v₀ v₁ v₂) (TVStkA⊢cSg-sub (σₗ (j ∷ f0 ∷ f1 ∷ [])) v₀ v₁ v₂) (done ∷ʳ (prj-tup {ws = f0 ∷ f1 ∷ []} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = f0 ∷ f1 ∷ []} unit (atᶜ 1)) ∷ʳ []ʳ)
     dPv : Ξ ⊢ unit ∷ El (dpay StkAₘ.J StkAF.DF ⌜ TVStkA⊢cSg j f0 f1 ⌝ᵗ)
     dPv = (⊢payι StkAₘ.⊢J StkAF.⊢DF ⊢unit)
 
@@ -235,10 +235,10 @@ conStkA⊢cId {Ξ} {j} {f0} {f1} {f2} dj df0 df1 df2 =
     (⊢tel StkAₘ.⊢J (tokStkA⊢cId {c = unit} dj dp) ∷ᵈ []ᵈ) (⊢conv dPv (csymᵀ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R)))))
   where
     p : RTm ⌊ Ξ ⌋
-    p = (pair f0 (pair f1 (pair f2 unit)))
+    p = (f0 ,ₚ f1 ,ₚ f2 ,ₚ unit)
     dp = ⊢payK (lt-s lt-z) ok-kcId dj (a-rec df0 (a-rec df1 (a-rec df2 a[])))
     R : ⌜ TVStkA⊢cId j (fst p) (fst (snd p)) (fst (snd (snd p))) ⌝ᵗ ⟶* ⌜ TVStkA⊢cId j f0 f1 f2 ⌝ᵗ
-    R = mono-by {Δ = ⌊ Ξ ⌋} {n = 4} {as = (j ∷ (fst p) ∷ (fst (snd p)) ∷ (fst (snd (snd p))) ∷ [])} {as' = (j ∷ f0 ∷ f1 ∷ f2 ∷ [])} ⌜ TVStkA⊢cId (var vz) (var (vs vz)) (var (vs (vs vz))) (var (vs (vs (vs vz)))) ⌝ᵗ (TVStkA⊢cId-sub (σₗ (j ∷ (fst p) ∷ (fst (snd p)) ∷ (fst (snd (snd p))) ∷ [])) (var vz) (var (vs vz)) (var (vs (vs vz))) (var (vs (vs (vs vz))))) (TVStkA⊢cId-sub (σₗ (j ∷ f0 ∷ f1 ∷ f2 ∷ [])) (var vz) (var (vs vz)) (var (vs (vs vz))) (var (vs (vs (vs vz))))) (done ∷ʳ (prj-tup {ws = f0 ∷ f1 ∷ f2 ∷ []} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = f0 ∷ f1 ∷ f2 ∷ []} unit (atᶜ 1)) ∷ʳ (prj-tup {ws = f0 ∷ f1 ∷ f2 ∷ []} unit (atᶜ 2)) ∷ʳ []ʳ)
+    R = mono-by {Δ = ⌊ Ξ ⌋} {n = 4} {as = (j ∷ (fst p) ∷ (fst (snd p)) ∷ (fst (snd (snd p))) ∷ [])} {as' = (j ∷ f0 ∷ f1 ∷ f2 ∷ [])} ⌜ TVStkA⊢cId v₀ v₁ v₂ v₃ ⌝ᵗ (TVStkA⊢cId-sub (σₗ (j ∷ (fst p) ∷ (fst (snd p)) ∷ (fst (snd (snd p))) ∷ [])) v₀ v₁ v₂ v₃) (TVStkA⊢cId-sub (σₗ (j ∷ f0 ∷ f1 ∷ f2 ∷ [])) v₀ v₁ v₂ v₃) (done ∷ʳ (prj-tup {ws = f0 ∷ f1 ∷ f2 ∷ []} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = f0 ∷ f1 ∷ f2 ∷ []} unit (atᶜ 1)) ∷ʳ (prj-tup {ws = f0 ∷ f1 ∷ f2 ∷ []} unit (atᶜ 2)) ∷ʳ []ʳ)
     dPv : Ξ ⊢ unit ∷ El (dpay StkAₘ.J StkAF.DF ⌜ TVStkA⊢cId j f0 f1 f2 ⌝ᵗ)
     dPv = (⊢payι StkAₘ.⊢J StkAF.⊢DF ⊢unit)
 
@@ -259,7 +259,7 @@ conStkA⊢cUnit {Ξ} {j} dj =
     p = unit
     dp = ⊢payK (lt-s lt-z) ok-kcUnit dj a[]
     R : ⌜ TVStkA⊢cUnit j ⌝ᵗ ⟶* ⌜ TVStkA⊢cUnit j ⌝ᵗ
-    R = mono-by {Δ = ⌊ Ξ ⌋} {n = 1} {as = (j ∷ [])} {as' = (j ∷ [])} ⌜ TVStkA⊢cUnit (var vz) ⌝ᵗ (TVStkA⊢cUnit-sub (σₗ (j ∷ [])) (var vz)) (TVStkA⊢cUnit-sub (σₗ (j ∷ [])) (var vz)) (done ∷ʳ []ʳ)
+    R = mono-by {Δ = ⌊ Ξ ⌋} {n = 1} {as = (j ∷ [])} {as' = (j ∷ [])} ⌜ TVStkA⊢cUnit v₀ ⌝ᵗ (TVStkA⊢cUnit-sub (σₗ (j ∷ [])) v₀) (TVStkA⊢cUnit-sub (σₗ (j ∷ [])) v₀) (done ∷ʳ []ʳ)
     dPv : Ξ ⊢ unit ∷ El (dpay StkAₘ.J StkAF.DF ⌜ TVStkA⊢cUnit j ⌝ᵗ)
     dPv = (⊢payι StkAₘ.⊢J StkAF.⊢DF ⊢unit)
 
@@ -277,10 +277,10 @@ conStkA⊢cFin {Ξ} {j} {f0} dj df0 =
     (⊢tel StkAₘ.⊢J (tokStkA⊢cFin {c = unit} dj dp) ∷ᵈ []ᵈ) (⊢conv dPv (csymᵀ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R)))))
   where
     p : RTm ⌊ Ξ ⌋
-    p = (pair f0 unit)
+    p = (f0 ,ₚ unit)
     dp = ⊢payK (lt-s lt-z) ok-kcFin dj (a-nat df0 a[])
     R : ⌜ TVStkA⊢cFin j (fst p) ⌝ᵗ ⟶* ⌜ TVStkA⊢cFin j f0 ⌝ᵗ
-    R = mono-by {Δ = ⌊ Ξ ⌋} {n = 2} {as = (j ∷ (fst p) ∷ [])} {as' = (j ∷ f0 ∷ [])} ⌜ TVStkA⊢cFin (var vz) (var (vs vz)) ⌝ᵗ (TVStkA⊢cFin-sub (σₗ (j ∷ (fst p) ∷ [])) (var vz) (var (vs vz))) (TVStkA⊢cFin-sub (σₗ (j ∷ f0 ∷ [])) (var vz) (var (vs vz))) (done ∷ʳ (prj-tup {ws = f0 ∷ []} unit (atᶜ 0)) ∷ʳ []ʳ)
+    R = mono-by {Δ = ⌊ Ξ ⌋} {n = 2} {as = (j ∷ (fst p) ∷ [])} {as' = (j ∷ f0 ∷ [])} ⌜ TVStkA⊢cFin v₀ v₁ ⌝ᵗ (TVStkA⊢cFin-sub (σₗ (j ∷ (fst p) ∷ [])) v₀ v₁) (TVStkA⊢cFin-sub (σₗ (j ∷ f0 ∷ [])) v₀ v₁) (done ∷ʳ (prj-tup {ws = f0 ∷ []} unit (atᶜ 0)) ∷ʳ []ʳ)
     dPv : Ξ ⊢ unit ∷ El (dpay StkAₘ.J StkAF.DF ⌜ TVStkA⊢cFin j f0 ⌝ᵗ)
     dPv = (⊢payι StkAₘ.⊢J StkAF.⊢DF ⊢unit)
 
@@ -301,7 +301,7 @@ conStkA⊢cNat {Ξ} {j} dj =
     p = unit
     dp = ⊢payK (lt-s lt-z) ok-kcNat dj a[]
     R : ⌜ TVStkA⊢cNat j ⌝ᵗ ⟶* ⌜ TVStkA⊢cNat j ⌝ᵗ
-    R = mono-by {Δ = ⌊ Ξ ⌋} {n = 1} {as = (j ∷ [])} {as' = (j ∷ [])} ⌜ TVStkA⊢cNat (var vz) ⌝ᵗ (TVStkA⊢cNat-sub (σₗ (j ∷ [])) (var vz)) (TVStkA⊢cNat-sub (σₗ (j ∷ [])) (var vz)) (done ∷ʳ []ʳ)
+    R = mono-by {Δ = ⌊ Ξ ⌋} {n = 1} {as = (j ∷ [])} {as' = (j ∷ [])} ⌜ TVStkA⊢cNat v₀ ⌝ᵗ (TVStkA⊢cNat-sub (σₗ (j ∷ [])) v₀) (TVStkA⊢cNat-sub (σₗ (j ∷ [])) v₀) (done ∷ʳ []ʳ)
     dPv : Ξ ⊢ unit ∷ El (dpay StkAₘ.J StkAF.DF ⌜ TVStkA⊢cNat j ⌝ᵗ)
     dPv = (⊢payι StkAₘ.⊢J StkAF.⊢DF ⊢unit)
 
@@ -319,10 +319,10 @@ conStkA⊢cIMu {Ξ} {j} {f0} {f1} {f2} dj df0 df1 df2 =
     (⊢tel StkAₘ.⊢J (tokStkA⊢cIMu {c = unit} dj dp) ∷ᵈ []ᵈ) (⊢conv dPv (csymᵀ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R)))))
   where
     p : RTm ⌊ Ξ ⌋
-    p = (pair f0 (pair f1 (pair f2 unit)))
+    p = (f0 ,ₚ f1 ,ₚ f2 ,ₚ unit)
     dp = ⊢payK (lt-s lt-z) ok-kcIMu dj (a-rec df0 (a-rec df1 (a-rec df2 a[])))
     R : ⌜ TVStkA⊢cIMu j (fst p) (fst (snd p)) (fst (snd (snd p))) ⌝ᵗ ⟶* ⌜ TVStkA⊢cIMu j f0 f1 f2 ⌝ᵗ
-    R = mono-by {Δ = ⌊ Ξ ⌋} {n = 4} {as = (j ∷ (fst p) ∷ (fst (snd p)) ∷ (fst (snd (snd p))) ∷ [])} {as' = (j ∷ f0 ∷ f1 ∷ f2 ∷ [])} ⌜ TVStkA⊢cIMu (var vz) (var (vs vz)) (var (vs (vs vz))) (var (vs (vs (vs vz)))) ⌝ᵗ (TVStkA⊢cIMu-sub (σₗ (j ∷ (fst p) ∷ (fst (snd p)) ∷ (fst (snd (snd p))) ∷ [])) (var vz) (var (vs vz)) (var (vs (vs vz))) (var (vs (vs (vs vz))))) (TVStkA⊢cIMu-sub (σₗ (j ∷ f0 ∷ f1 ∷ f2 ∷ [])) (var vz) (var (vs vz)) (var (vs (vs vz))) (var (vs (vs (vs vz))))) (done ∷ʳ (prj-tup {ws = f0 ∷ f1 ∷ f2 ∷ []} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = f0 ∷ f1 ∷ f2 ∷ []} unit (atᶜ 1)) ∷ʳ (prj-tup {ws = f0 ∷ f1 ∷ f2 ∷ []} unit (atᶜ 2)) ∷ʳ []ʳ)
+    R = mono-by {Δ = ⌊ Ξ ⌋} {n = 4} {as = (j ∷ (fst p) ∷ (fst (snd p)) ∷ (fst (snd (snd p))) ∷ [])} {as' = (j ∷ f0 ∷ f1 ∷ f2 ∷ [])} ⌜ TVStkA⊢cIMu v₀ v₁ v₂ v₃ ⌝ᵗ (TVStkA⊢cIMu-sub (σₗ (j ∷ (fst p) ∷ (fst (snd p)) ∷ (fst (snd (snd p))) ∷ [])) v₀ v₁ v₂ v₃) (TVStkA⊢cIMu-sub (σₗ (j ∷ f0 ∷ f1 ∷ f2 ∷ [])) v₀ v₁ v₂ v₃) (done ∷ʳ (prj-tup {ws = f0 ∷ f1 ∷ f2 ∷ []} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = f0 ∷ f1 ∷ f2 ∷ []} unit (atᶜ 1)) ∷ʳ (prj-tup {ws = f0 ∷ f1 ∷ f2 ∷ []} unit (atᶜ 2)) ∷ʳ []ʳ)
     dPv : Ξ ⊢ unit ∷ El (dpay StkAₘ.J StkAF.DF ⌜ TVStkA⊢cIMu j f0 f1 f2 ⌝ᵗ)
     dPv = (⊢payι StkAₘ.⊢J StkAF.⊢DF ⊢unit)
 
@@ -333,18 +333,18 @@ TVStkA⊢cHom-sub : (σ : Sub Δ Θ) (J : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (F
 TVStkA⊢cHom-sub σ J F0 F1 F2 = refl
 
 conStkA⊢cHom : {Ξ : Ctx} {j f0 f1 f2 r0 : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ f0 ∷ K 1 j → Ξ ⊢ f1 ∷ K 1 j → Ξ ⊢ f2 ∷ K 1 j → Ξ ⊢ r0 ∷ KStkA j f0 → 
-  Ξ ⊢ conₗ 0 (pair r0 unit) ∷ KStkA j (kcHom f0 f1 f2)
+  Ξ ⊢ conₗ 0 (r0 ,ₚ unit) ∷ KStkA j (kcHom f0 f1 f2)
 conStkA⊢cHom {Ξ} {j} {f0} {f1} {f2} {r0} dj df0 df1 df2 dr0 =
-  ⊢conRowₖ {Ξ} {1} {0} {StkAₘ.J} {StkAF.DF} {ixStkA j (kcHom f0 f1 f2)} {⌜ TStkA⊢cHom j p unit ⌝ᵗ} {(pair r0 unit)} {⌜ TStkA⊢cHom j p unit ⌝ᵗ ∷ []} nth-z StkAₘ.⊢J StkAF.⊢DF (⊢ixStkA dj (⊢kcHom dj df0 df1 df2))
+  ⊢conRowₖ {Ξ} {1} {0} {StkAₘ.J} {StkAF.DF} {ixStkA j (kcHom f0 f1 f2)} {⌜ TStkA⊢cHom j p unit ⌝ᵗ} {(r0 ,ₚ unit)} {⌜ TStkA⊢cHom j p unit ⌝ᵗ ∷ []} nth-z StkAₘ.⊢J StkAF.⊢DF (⊢ixStkA dj (⊢kcHom dj df0 df1 df2))
     (StkAF.fibF {s = 1} {k = 11} {j = j} {p = p} {c = unit} (atᵍ 1) (atʰ 11))
     (⊢tel StkAₘ.⊢J (tokStkA⊢cHom {c = unit} dj dp) ∷ᵈ []ᵈ) (⊢conv dPv (csymᵀ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R)))))
   where
     p : RTm ⌊ Ξ ⌋
-    p = (pair f0 (pair f1 (pair f2 unit)))
+    p = (f0 ,ₚ f1 ,ₚ f2 ,ₚ unit)
     dp = ⊢payK (lt-s lt-z) ok-kcHom dj (a-rec df0 (a-rec df1 (a-rec df2 a[])))
     R : ⌜ TVStkA⊢cHom j (fst p) (fst (snd p)) (fst (snd (snd p))) ⌝ᵗ ⟶* ⌜ TVStkA⊢cHom j f0 f1 f2 ⌝ᵗ
-    R = mono-by {Δ = ⌊ Ξ ⌋} {n = 4} {as = (j ∷ (fst p) ∷ (fst (snd p)) ∷ (fst (snd (snd p))) ∷ [])} {as' = (j ∷ f0 ∷ f1 ∷ f2 ∷ [])} ⌜ TVStkA⊢cHom (var vz) (var (vs vz)) (var (vs (vs vz))) (var (vs (vs (vs vz)))) ⌝ᵗ (TVStkA⊢cHom-sub (σₗ (j ∷ (fst p) ∷ (fst (snd p)) ∷ (fst (snd (snd p))) ∷ [])) (var vz) (var (vs vz)) (var (vs (vs vz))) (var (vs (vs (vs vz))))) (TVStkA⊢cHom-sub (σₗ (j ∷ f0 ∷ f1 ∷ f2 ∷ [])) (var vz) (var (vs vz)) (var (vs (vs vz))) (var (vs (vs (vs vz))))) (done ∷ʳ (prj-tup {ws = f0 ∷ f1 ∷ f2 ∷ []} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = f0 ∷ f1 ∷ f2 ∷ []} unit (atᶜ 1)) ∷ʳ (prj-tup {ws = f0 ∷ f1 ∷ f2 ∷ []} unit (atᶜ 2)) ∷ʳ []ʳ)
-    dPv : Ξ ⊢ (pair r0 unit) ∷ El (dpay StkAₘ.J StkAF.DF ⌜ TVStkA⊢cHom j f0 f1 f2 ⌝ᵗ)
+    R = mono-by {Δ = ⌊ Ξ ⌋} {n = 4} {as = (j ∷ (fst p) ∷ (fst (snd p)) ∷ (fst (snd (snd p))) ∷ [])} {as' = (j ∷ f0 ∷ f1 ∷ f2 ∷ [])} ⌜ TVStkA⊢cHom v₀ v₁ v₂ v₃ ⌝ᵗ (TVStkA⊢cHom-sub (σₗ (j ∷ (fst p) ∷ (fst (snd p)) ∷ (fst (snd (snd p))) ∷ [])) v₀ v₁ v₂ v₃) (TVStkA⊢cHom-sub (σₗ (j ∷ f0 ∷ f1 ∷ f2 ∷ [])) v₀ v₁ v₂ v₃) (done ∷ʳ (prj-tup {ws = f0 ∷ f1 ∷ f2 ∷ []} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = f0 ∷ f1 ∷ f2 ∷ []} unit (atᶜ 1)) ∷ʳ (prj-tup {ws = f0 ∷ f1 ∷ f2 ∷ []} unit (atᶜ 2)) ∷ʳ []ʳ)
+    dPv : Ξ ⊢ (r0 ,ₚ unit) ∷ El (dpay StkAₘ.J StkAF.DF ⌜ TVStkA⊢cHom j f0 f1 f2 ⌝ᵗ)
     dPv = (⊢payρ StkAₘ.⊢J StkAF.⊢DF {r = r0} {p = unit} (ok-ρ (⊢ixStkA dj df0) (ok-ι)) dr0 (⊢payι StkAₘ.⊢J StkAF.⊢DF ⊢unit))
 
 TVStkC⊢cbase : RTm Δ → Tel Δ
@@ -364,7 +364,7 @@ conStkC⊢cbase {Ξ} {j} dj =
     p = unit
     dp = ⊢payK (lt-s lt-z) ok-kcbase dj a[]
     R : ⌜ TVStkC⊢cbase j ⌝ᵗ ⟶* ⌜ TVStkC⊢cbase j ⌝ᵗ
-    R = mono-by {Δ = ⌊ Ξ ⌋} {n = 1} {as = (j ∷ [])} {as' = (j ∷ [])} ⌜ TVStkC⊢cbase (var vz) ⌝ᵗ (TVStkC⊢cbase-sub (σₗ (j ∷ [])) (var vz)) (TVStkC⊢cbase-sub (σₗ (j ∷ [])) (var vz)) (done ∷ʳ []ʳ)
+    R = mono-by {Δ = ⌊ Ξ ⌋} {n = 1} {as = (j ∷ [])} {as' = (j ∷ [])} ⌜ TVStkC⊢cbase v₀ ⌝ᵗ (TVStkC⊢cbase-sub (σₗ (j ∷ [])) v₀) (TVStkC⊢cbase-sub (σₗ (j ∷ [])) v₀) (done ∷ʳ []ʳ)
     dPv : Ξ ⊢ unit ∷ El (dpay StkCₘ.J StkCF.DF ⌜ TVStkC⊢cbase j ⌝ᵗ)
     dPv = (⊢payι StkCₘ.⊢J StkCF.⊢DF ⊢unit)
 
@@ -382,10 +382,10 @@ conStkC⊢cSg {Ξ} {j} {f0} {f1} dj df0 df1 =
     (⊢tel StkCₘ.⊢J (tokStkC⊢cSg {c = unit} dj dp) ∷ᵈ []ᵈ) (⊢conv dPv (csymᵀ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R)))))
   where
     p : RTm ⌊ Ξ ⌋
-    p = (pair f0 (pair f1 unit))
+    p = (f0 ,ₚ f1 ,ₚ unit)
     dp = ⊢payK (lt-s lt-z) ok-kcSg dj (a-rec df0 (a-rec df1 a[]))
     R : ⌜ TVStkC⊢cSg j (fst p) (fst (snd p)) ⌝ᵗ ⟶* ⌜ TVStkC⊢cSg j f0 f1 ⌝ᵗ
-    R = mono-by {Δ = ⌊ Ξ ⌋} {n = 3} {as = (j ∷ (fst p) ∷ (fst (snd p)) ∷ [])} {as' = (j ∷ f0 ∷ f1 ∷ [])} ⌜ TVStkC⊢cSg (var vz) (var (vs vz)) (var (vs (vs vz))) ⌝ᵗ (TVStkC⊢cSg-sub (σₗ (j ∷ (fst p) ∷ (fst (snd p)) ∷ [])) (var vz) (var (vs vz)) (var (vs (vs vz)))) (TVStkC⊢cSg-sub (σₗ (j ∷ f0 ∷ f1 ∷ [])) (var vz) (var (vs vz)) (var (vs (vs vz)))) (done ∷ʳ (prj-tup {ws = f0 ∷ f1 ∷ []} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = f0 ∷ f1 ∷ []} unit (atᶜ 1)) ∷ʳ []ʳ)
+    R = mono-by {Δ = ⌊ Ξ ⌋} {n = 3} {as = (j ∷ (fst p) ∷ (fst (snd p)) ∷ [])} {as' = (j ∷ f0 ∷ f1 ∷ [])} ⌜ TVStkC⊢cSg v₀ v₁ v₂ ⌝ᵗ (TVStkC⊢cSg-sub (σₗ (j ∷ (fst p) ∷ (fst (snd p)) ∷ [])) v₀ v₁ v₂) (TVStkC⊢cSg-sub (σₗ (j ∷ f0 ∷ f1 ∷ [])) v₀ v₁ v₂) (done ∷ʳ (prj-tup {ws = f0 ∷ f1 ∷ []} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = f0 ∷ f1 ∷ []} unit (atᶜ 1)) ∷ʳ []ʳ)
     dPv : Ξ ⊢ unit ∷ El (dpay StkCₘ.J StkCF.DF ⌜ TVStkC⊢cSg j f0 f1 ⌝ᵗ)
     dPv = (⊢payι StkCₘ.⊢J StkCF.⊢DF ⊢unit)
 
@@ -403,10 +403,10 @@ conStkC⊢cId {Ξ} {j} {f0} {f1} {f2} dj df0 df1 df2 =
     (⊢tel StkCₘ.⊢J (tokStkC⊢cId {c = unit} dj dp) ∷ᵈ []ᵈ) (⊢conv dPv (csymᵀ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R)))))
   where
     p : RTm ⌊ Ξ ⌋
-    p = (pair f0 (pair f1 (pair f2 unit)))
+    p = (f0 ,ₚ f1 ,ₚ f2 ,ₚ unit)
     dp = ⊢payK (lt-s lt-z) ok-kcId dj (a-rec df0 (a-rec df1 (a-rec df2 a[])))
     R : ⌜ TVStkC⊢cId j (fst p) (fst (snd p)) (fst (snd (snd p))) ⌝ᵗ ⟶* ⌜ TVStkC⊢cId j f0 f1 f2 ⌝ᵗ
-    R = mono-by {Δ = ⌊ Ξ ⌋} {n = 4} {as = (j ∷ (fst p) ∷ (fst (snd p)) ∷ (fst (snd (snd p))) ∷ [])} {as' = (j ∷ f0 ∷ f1 ∷ f2 ∷ [])} ⌜ TVStkC⊢cId (var vz) (var (vs vz)) (var (vs (vs vz))) (var (vs (vs (vs vz)))) ⌝ᵗ (TVStkC⊢cId-sub (σₗ (j ∷ (fst p) ∷ (fst (snd p)) ∷ (fst (snd (snd p))) ∷ [])) (var vz) (var (vs vz)) (var (vs (vs vz))) (var (vs (vs (vs vz))))) (TVStkC⊢cId-sub (σₗ (j ∷ f0 ∷ f1 ∷ f2 ∷ [])) (var vz) (var (vs vz)) (var (vs (vs vz))) (var (vs (vs (vs vz))))) (done ∷ʳ (prj-tup {ws = f0 ∷ f1 ∷ f2 ∷ []} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = f0 ∷ f1 ∷ f2 ∷ []} unit (atᶜ 1)) ∷ʳ (prj-tup {ws = f0 ∷ f1 ∷ f2 ∷ []} unit (atᶜ 2)) ∷ʳ []ʳ)
+    R = mono-by {Δ = ⌊ Ξ ⌋} {n = 4} {as = (j ∷ (fst p) ∷ (fst (snd p)) ∷ (fst (snd (snd p))) ∷ [])} {as' = (j ∷ f0 ∷ f1 ∷ f2 ∷ [])} ⌜ TVStkC⊢cId v₀ v₁ v₂ v₃ ⌝ᵗ (TVStkC⊢cId-sub (σₗ (j ∷ (fst p) ∷ (fst (snd p)) ∷ (fst (snd (snd p))) ∷ [])) v₀ v₁ v₂ v₃) (TVStkC⊢cId-sub (σₗ (j ∷ f0 ∷ f1 ∷ f2 ∷ [])) v₀ v₁ v₂ v₃) (done ∷ʳ (prj-tup {ws = f0 ∷ f1 ∷ f2 ∷ []} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = f0 ∷ f1 ∷ f2 ∷ []} unit (atᶜ 1)) ∷ʳ (prj-tup {ws = f0 ∷ f1 ∷ f2 ∷ []} unit (atᶜ 2)) ∷ʳ []ʳ)
     dPv : Ξ ⊢ unit ∷ El (dpay StkCₘ.J StkCF.DF ⌜ TVStkC⊢cId j f0 f1 f2 ⌝ᵗ)
     dPv = (⊢payι StkCₘ.⊢J StkCF.⊢DF ⊢unit)
 
@@ -427,7 +427,7 @@ conStkC⊢cUnit {Ξ} {j} dj =
     p = unit
     dp = ⊢payK (lt-s lt-z) ok-kcUnit dj a[]
     R : ⌜ TVStkC⊢cUnit j ⌝ᵗ ⟶* ⌜ TVStkC⊢cUnit j ⌝ᵗ
-    R = mono-by {Δ = ⌊ Ξ ⌋} {n = 1} {as = (j ∷ [])} {as' = (j ∷ [])} ⌜ TVStkC⊢cUnit (var vz) ⌝ᵗ (TVStkC⊢cUnit-sub (σₗ (j ∷ [])) (var vz)) (TVStkC⊢cUnit-sub (σₗ (j ∷ [])) (var vz)) (done ∷ʳ []ʳ)
+    R = mono-by {Δ = ⌊ Ξ ⌋} {n = 1} {as = (j ∷ [])} {as' = (j ∷ [])} ⌜ TVStkC⊢cUnit v₀ ⌝ᵗ (TVStkC⊢cUnit-sub (σₗ (j ∷ [])) v₀) (TVStkC⊢cUnit-sub (σₗ (j ∷ [])) v₀) (done ∷ʳ []ʳ)
     dPv : Ξ ⊢ unit ∷ El (dpay StkCₘ.J StkCF.DF ⌜ TVStkC⊢cUnit j ⌝ᵗ)
     dPv = (⊢payι StkCₘ.⊢J StkCF.⊢DF ⊢unit)
 
@@ -445,10 +445,10 @@ conStkC⊢cFin {Ξ} {j} {f0} dj df0 =
     (⊢tel StkCₘ.⊢J (tokStkC⊢cFin {c = unit} dj dp) ∷ᵈ []ᵈ) (⊢conv dPv (csymᵀ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R)))))
   where
     p : RTm ⌊ Ξ ⌋
-    p = (pair f0 unit)
+    p = (f0 ,ₚ unit)
     dp = ⊢payK (lt-s lt-z) ok-kcFin dj (a-nat df0 a[])
     R : ⌜ TVStkC⊢cFin j (fst p) ⌝ᵗ ⟶* ⌜ TVStkC⊢cFin j f0 ⌝ᵗ
-    R = mono-by {Δ = ⌊ Ξ ⌋} {n = 2} {as = (j ∷ (fst p) ∷ [])} {as' = (j ∷ f0 ∷ [])} ⌜ TVStkC⊢cFin (var vz) (var (vs vz)) ⌝ᵗ (TVStkC⊢cFin-sub (σₗ (j ∷ (fst p) ∷ [])) (var vz) (var (vs vz))) (TVStkC⊢cFin-sub (σₗ (j ∷ f0 ∷ [])) (var vz) (var (vs vz))) (done ∷ʳ (prj-tup {ws = f0 ∷ []} unit (atᶜ 0)) ∷ʳ []ʳ)
+    R = mono-by {Δ = ⌊ Ξ ⌋} {n = 2} {as = (j ∷ (fst p) ∷ [])} {as' = (j ∷ f0 ∷ [])} ⌜ TVStkC⊢cFin v₀ v₁ ⌝ᵗ (TVStkC⊢cFin-sub (σₗ (j ∷ (fst p) ∷ [])) v₀ v₁) (TVStkC⊢cFin-sub (σₗ (j ∷ f0 ∷ [])) v₀ v₁) (done ∷ʳ (prj-tup {ws = f0 ∷ []} unit (atᶜ 0)) ∷ʳ []ʳ)
     dPv : Ξ ⊢ unit ∷ El (dpay StkCₘ.J StkCF.DF ⌜ TVStkC⊢cFin j f0 ⌝ᵗ)
     dPv = (⊢payι StkCₘ.⊢J StkCF.⊢DF ⊢unit)
 
@@ -466,10 +466,10 @@ conStkC⊢cIMu {Ξ} {j} {f0} {f1} {f2} dj df0 df1 df2 =
     (⊢tel StkCₘ.⊢J (tokStkC⊢cIMu {c = unit} dj dp) ∷ᵈ []ᵈ) (⊢conv dPv (csymᵀ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R)))))
   where
     p : RTm ⌊ Ξ ⌋
-    p = (pair f0 (pair f1 (pair f2 unit)))
+    p = (f0 ,ₚ f1 ,ₚ f2 ,ₚ unit)
     dp = ⊢payK (lt-s lt-z) ok-kcIMu dj (a-rec df0 (a-rec df1 (a-rec df2 a[])))
     R : ⌜ TVStkC⊢cIMu j (fst p) (fst (snd p)) (fst (snd (snd p))) ⌝ᵗ ⟶* ⌜ TVStkC⊢cIMu j f0 f1 f2 ⌝ᵗ
-    R = mono-by {Δ = ⌊ Ξ ⌋} {n = 4} {as = (j ∷ (fst p) ∷ (fst (snd p)) ∷ (fst (snd (snd p))) ∷ [])} {as' = (j ∷ f0 ∷ f1 ∷ f2 ∷ [])} ⌜ TVStkC⊢cIMu (var vz) (var (vs vz)) (var (vs (vs vz))) (var (vs (vs (vs vz)))) ⌝ᵗ (TVStkC⊢cIMu-sub (σₗ (j ∷ (fst p) ∷ (fst (snd p)) ∷ (fst (snd (snd p))) ∷ [])) (var vz) (var (vs vz)) (var (vs (vs vz))) (var (vs (vs (vs vz))))) (TVStkC⊢cIMu-sub (σₗ (j ∷ f0 ∷ f1 ∷ f2 ∷ [])) (var vz) (var (vs vz)) (var (vs (vs vz))) (var (vs (vs (vs vz))))) (done ∷ʳ (prj-tup {ws = f0 ∷ f1 ∷ f2 ∷ []} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = f0 ∷ f1 ∷ f2 ∷ []} unit (atᶜ 1)) ∷ʳ (prj-tup {ws = f0 ∷ f1 ∷ f2 ∷ []} unit (atᶜ 2)) ∷ʳ []ʳ)
+    R = mono-by {Δ = ⌊ Ξ ⌋} {n = 4} {as = (j ∷ (fst p) ∷ (fst (snd p)) ∷ (fst (snd (snd p))) ∷ [])} {as' = (j ∷ f0 ∷ f1 ∷ f2 ∷ [])} ⌜ TVStkC⊢cIMu v₀ v₁ v₂ v₃ ⌝ᵗ (TVStkC⊢cIMu-sub (σₗ (j ∷ (fst p) ∷ (fst (snd p)) ∷ (fst (snd (snd p))) ∷ [])) v₀ v₁ v₂ v₃) (TVStkC⊢cIMu-sub (σₗ (j ∷ f0 ∷ f1 ∷ f2 ∷ [])) v₀ v₁ v₂ v₃) (done ∷ʳ (prj-tup {ws = f0 ∷ f1 ∷ f2 ∷ []} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = f0 ∷ f1 ∷ f2 ∷ []} unit (atᶜ 1)) ∷ʳ (prj-tup {ws = f0 ∷ f1 ∷ f2 ∷ []} unit (atᶜ 2)) ∷ʳ []ʳ)
     dPv : Ξ ⊢ unit ∷ El (dpay StkCₘ.J StkCF.DF ⌜ TVStkC⊢cIMu j f0 f1 f2 ⌝ᵗ)
     dPv = (⊢payι StkCₘ.⊢J StkCF.⊢DF ⊢unit)
 
@@ -480,18 +480,18 @@ TVStkC⊢cHom-sub : (σ : Sub Δ Θ) (J : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (F
 TVStkC⊢cHom-sub σ J F0 F1 F2 = cong (λ Z → dσ Z (lam dι)) (⌜StkA⌝-sub σ J F0)
 
 conStkC⊢cHom : {Ξ : Ctx} {j f0 f1 f2 e0 : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ f0 ∷ K 1 j → Ξ ⊢ f1 ∷ K 1 j → Ξ ⊢ f2 ∷ K 1 j → Ξ ⊢ e0 ∷ El (⌜StkA⌝ j f0) → 
-  Ξ ⊢ conₗ 0 (pair e0 unit) ∷ KStkC j (kcHom f0 f1 f2)
+  Ξ ⊢ conₗ 0 (e0 ,ₚ unit) ∷ KStkC j (kcHom f0 f1 f2)
 conStkC⊢cHom {Ξ} {j} {f0} {f1} {f2} {e0} dj df0 df1 df2 de0 =
-  ⊢conRowₖ {Ξ} {1} {0} {StkCₘ.J} {StkCF.DF} {ixStkC j (kcHom f0 f1 f2)} {⌜ TStkC⊢cHom j p unit ⌝ᵗ} {(pair e0 unit)} {⌜ TStkC⊢cHom j p unit ⌝ᵗ ∷ []} nth-z StkCₘ.⊢J StkCF.⊢DF (⊢ixStkC dj (⊢kcHom dj df0 df1 df2))
+  ⊢conRowₖ {Ξ} {1} {0} {StkCₘ.J} {StkCF.DF} {ixStkC j (kcHom f0 f1 f2)} {⌜ TStkC⊢cHom j p unit ⌝ᵗ} {(e0 ,ₚ unit)} {⌜ TStkC⊢cHom j p unit ⌝ᵗ ∷ []} nth-z StkCₘ.⊢J StkCF.⊢DF (⊢ixStkC dj (⊢kcHom dj df0 df1 df2))
     (StkCF.fibF {s = 1} {k = 11} {j = j} {p = p} {c = unit} (atᵍ 1) (atʰ 11))
     (⊢tel StkCₘ.⊢J (tokStkC⊢cHom {c = unit} dj dp) ∷ᵈ []ᵈ) (⊢conv dPv (csymᵀ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R)))))
   where
     p : RTm ⌊ Ξ ⌋
-    p = (pair f0 (pair f1 (pair f2 unit)))
+    p = (f0 ,ₚ f1 ,ₚ f2 ,ₚ unit)
     dp = ⊢payK (lt-s lt-z) ok-kcHom dj (a-rec df0 (a-rec df1 (a-rec df2 a[])))
     R : ⌜ TVStkC⊢cHom j (fst p) (fst (snd p)) (fst (snd (snd p))) ⌝ᵗ ⟶* ⌜ TVStkC⊢cHom j f0 f1 f2 ⌝ᵗ
-    R = mono-by {Δ = ⌊ Ξ ⌋} {n = 4} {as = (j ∷ (fst p) ∷ (fst (snd p)) ∷ (fst (snd (snd p))) ∷ [])} {as' = (j ∷ f0 ∷ f1 ∷ f2 ∷ [])} ⌜ TVStkC⊢cHom (var vz) (var (vs vz)) (var (vs (vs vz))) (var (vs (vs (vs vz)))) ⌝ᵗ (TVStkC⊢cHom-sub (σₗ (j ∷ (fst p) ∷ (fst (snd p)) ∷ (fst (snd (snd p))) ∷ [])) (var vz) (var (vs vz)) (var (vs (vs vz))) (var (vs (vs (vs vz))))) (TVStkC⊢cHom-sub (σₗ (j ∷ f0 ∷ f1 ∷ f2 ∷ [])) (var vz) (var (vs vz)) (var (vs (vs vz))) (var (vs (vs (vs vz))))) (done ∷ʳ (prj-tup {ws = f0 ∷ f1 ∷ f2 ∷ []} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = f0 ∷ f1 ∷ f2 ∷ []} unit (atᶜ 1)) ∷ʳ (prj-tup {ws = f0 ∷ f1 ∷ f2 ∷ []} unit (atᶜ 2)) ∷ʳ []ʳ)
-    dPv : Ξ ⊢ (pair e0 unit) ∷ El (dpay StkCₘ.J StkCF.DF ⌜ TVStkC⊢cHom j f0 f1 f2 ⌝ᵗ)
+    R = mono-by {Δ = ⌊ Ξ ⌋} {n = 4} {as = (j ∷ (fst p) ∷ (fst (snd p)) ∷ (fst (snd (snd p))) ∷ [])} {as' = (j ∷ f0 ∷ f1 ∷ f2 ∷ [])} ⌜ TVStkC⊢cHom v₀ v₁ v₂ v₃ ⌝ᵗ (TVStkC⊢cHom-sub (σₗ (j ∷ (fst p) ∷ (fst (snd p)) ∷ (fst (snd (snd p))) ∷ [])) v₀ v₁ v₂ v₃) (TVStkC⊢cHom-sub (σₗ (j ∷ f0 ∷ f1 ∷ f2 ∷ [])) v₀ v₁ v₂ v₃) (done ∷ʳ (prj-tup {ws = f0 ∷ f1 ∷ f2 ∷ []} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = f0 ∷ f1 ∷ f2 ∷ []} unit (atᶜ 1)) ∷ʳ (prj-tup {ws = f0 ∷ f1 ∷ f2 ∷ []} unit (atᶜ 2)) ∷ʳ []ʳ)
+    dPv : Ξ ⊢ (e0 ,ₚ unit) ∷ El (dpay StkCₘ.J StkCF.DF ⌜ TVStkC⊢cHom j f0 f1 f2 ⌝ᵗ)
     dPv = (⊢payσ StkCₘ.⊢J StkCF.⊢DF {a = e0} {p = unit} (ok-σ (⊢⌜StkA⌝ dj df0) ok-ι) de0 (⊢payι StkCₘ.⊢J StkCF.⊢DF ⊢unit))
 
 TVFlat⊢cbase : RTm Δ → Tel Δ
@@ -511,7 +511,7 @@ conFlat⊢cbase {Ξ} {j} dj =
     p = unit
     dp = ⊢payK (lt-s lt-z) ok-kcbase dj a[]
     R : ⌜ TVFlat⊢cbase j ⌝ᵗ ⟶* ⌜ TVFlat⊢cbase j ⌝ᵗ
-    R = mono-by {Δ = ⌊ Ξ ⌋} {n = 1} {as = (j ∷ [])} {as' = (j ∷ [])} ⌜ TVFlat⊢cbase (var vz) ⌝ᵗ (TVFlat⊢cbase-sub (σₗ (j ∷ [])) (var vz)) (TVFlat⊢cbase-sub (σₗ (j ∷ [])) (var vz)) (done ∷ʳ []ʳ)
+    R = mono-by {Δ = ⌊ Ξ ⌋} {n = 1} {as = (j ∷ [])} {as' = (j ∷ [])} ⌜ TVFlat⊢cbase v₀ ⌝ᵗ (TVFlat⊢cbase-sub (σₗ (j ∷ [])) v₀) (TVFlat⊢cbase-sub (σₗ (j ∷ [])) v₀) (done ∷ʳ []ʳ)
     dPv : Ξ ⊢ unit ∷ El (dpay Flatₘ.J FlatF.DF ⌜ TVFlat⊢cbase j ⌝ᵗ)
     dPv = (⊢payι Flatₘ.⊢J FlatF.⊢DF ⊢unit)
 
@@ -522,17 +522,17 @@ TVFlat⊢cHom-sub : (σ : Sub Δ Θ) (J : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (F
 TVFlat⊢cHom-sub σ J F0 F1 F2 = cong (λ Z → dσ Z (lam dι)) (⌜StkC⌝-sub σ J F0)
 
 conFlat⊢cHom : {Ξ : Ctx} {j f0 f1 f2 e0 : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ f0 ∷ K 1 j → Ξ ⊢ f1 ∷ K 1 j → Ξ ⊢ f2 ∷ K 1 j → Ξ ⊢ e0 ∷ El (⌜StkC⌝ j f0) → 
-  Ξ ⊢ conₗ 0 (pair e0 unit) ∷ KFlat j (kcHom f0 f1 f2)
+  Ξ ⊢ conₗ 0 (e0 ,ₚ unit) ∷ KFlat j (kcHom f0 f1 f2)
 conFlat⊢cHom {Ξ} {j} {f0} {f1} {f2} {e0} dj df0 df1 df2 de0 =
-  ⊢conRowₖ {Ξ} {1} {0} {Flatₘ.J} {FlatF.DF} {ixFlat j (kcHom f0 f1 f2)} {⌜ TFlat⊢cHom j p unit ⌝ᵗ} {(pair e0 unit)} {⌜ TFlat⊢cHom j p unit ⌝ᵗ ∷ []} nth-z Flatₘ.⊢J FlatF.⊢DF (⊢ixFlat dj (⊢kcHom dj df0 df1 df2))
+  ⊢conRowₖ {Ξ} {1} {0} {Flatₘ.J} {FlatF.DF} {ixFlat j (kcHom f0 f1 f2)} {⌜ TFlat⊢cHom j p unit ⌝ᵗ} {(e0 ,ₚ unit)} {⌜ TFlat⊢cHom j p unit ⌝ᵗ ∷ []} nth-z Flatₘ.⊢J FlatF.⊢DF (⊢ixFlat dj (⊢kcHom dj df0 df1 df2))
     (FlatF.fibF {s = 1} {k = 11} {j = j} {p = p} {c = unit} (atᵍ 1) (atʰ 11))
     (⊢tel Flatₘ.⊢J (tokFlat⊢cHom {c = unit} dj dp) ∷ᵈ []ᵈ) (⊢conv dPv (csymᵀ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R)))))
   where
     p : RTm ⌊ Ξ ⌋
-    p = (pair f0 (pair f1 (pair f2 unit)))
+    p = (f0 ,ₚ f1 ,ₚ f2 ,ₚ unit)
     dp = ⊢payK (lt-s lt-z) ok-kcHom dj (a-rec df0 (a-rec df1 (a-rec df2 a[])))
     R : ⌜ TVFlat⊢cHom j (fst p) (fst (snd p)) (fst (snd (snd p))) ⌝ᵗ ⟶* ⌜ TVFlat⊢cHom j f0 f1 f2 ⌝ᵗ
-    R = mono-by {Δ = ⌊ Ξ ⌋} {n = 4} {as = (j ∷ (fst p) ∷ (fst (snd p)) ∷ (fst (snd (snd p))) ∷ [])} {as' = (j ∷ f0 ∷ f1 ∷ f2 ∷ [])} ⌜ TVFlat⊢cHom (var vz) (var (vs vz)) (var (vs (vs vz))) (var (vs (vs (vs vz)))) ⌝ᵗ (TVFlat⊢cHom-sub (σₗ (j ∷ (fst p) ∷ (fst (snd p)) ∷ (fst (snd (snd p))) ∷ [])) (var vz) (var (vs vz)) (var (vs (vs vz))) (var (vs (vs (vs vz))))) (TVFlat⊢cHom-sub (σₗ (j ∷ f0 ∷ f1 ∷ f2 ∷ [])) (var vz) (var (vs vz)) (var (vs (vs vz))) (var (vs (vs (vs vz))))) (done ∷ʳ (prj-tup {ws = f0 ∷ f1 ∷ f2 ∷ []} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = f0 ∷ f1 ∷ f2 ∷ []} unit (atᶜ 1)) ∷ʳ (prj-tup {ws = f0 ∷ f1 ∷ f2 ∷ []} unit (atᶜ 2)) ∷ʳ []ʳ)
-    dPv : Ξ ⊢ (pair e0 unit) ∷ El (dpay Flatₘ.J FlatF.DF ⌜ TVFlat⊢cHom j f0 f1 f2 ⌝ᵗ)
+    R = mono-by {Δ = ⌊ Ξ ⌋} {n = 4} {as = (j ∷ (fst p) ∷ (fst (snd p)) ∷ (fst (snd (snd p))) ∷ [])} {as' = (j ∷ f0 ∷ f1 ∷ f2 ∷ [])} ⌜ TVFlat⊢cHom v₀ v₁ v₂ v₃ ⌝ᵗ (TVFlat⊢cHom-sub (σₗ (j ∷ (fst p) ∷ (fst (snd p)) ∷ (fst (snd (snd p))) ∷ [])) v₀ v₁ v₂ v₃) (TVFlat⊢cHom-sub (σₗ (j ∷ f0 ∷ f1 ∷ f2 ∷ [])) v₀ v₁ v₂ v₃) (done ∷ʳ (prj-tup {ws = f0 ∷ f1 ∷ f2 ∷ []} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = f0 ∷ f1 ∷ f2 ∷ []} unit (atᶜ 1)) ∷ʳ (prj-tup {ws = f0 ∷ f1 ∷ f2 ∷ []} unit (atᶜ 2)) ∷ʳ []ʳ)
+    dPv : Ξ ⊢ (e0 ,ₚ unit) ∷ El (dpay Flatₘ.J FlatF.DF ⌜ TVFlat⊢cHom j f0 f1 f2 ⌝ᵗ)
     dPv = (⊢payσ Flatₘ.⊢J FlatF.⊢DF {a = e0} {p = unit} (ok-σ (⊢⌜StkC⌝ dj df0) ok-ι) de0 (⊢payι Flatₘ.⊢J FlatF.⊢DF ⊢unit))
 

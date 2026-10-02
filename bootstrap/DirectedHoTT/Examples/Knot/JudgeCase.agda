@@ -19,7 +19,7 @@ open import DirectedHoTT.Spec.Syntax hiding ( Fin )
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast )
 open import DirectedHoTT.Metatheory.SubjectReductionBase using () renaming ( wk-sub to wkS )
-open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_; tag; lt-z; lt-s; []ᵈ; _∷ᵈ_ )
+open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_; tag; lt-z; lt-s; []ᵈ; _∷ᵈ_; v₀; _,ₚ_ )
 open import DirectedHoTT.Lib.SynView using ( PayV )
 open import DirectedHoTT.Lib.Tel
 open import DirectedHoTT.Lib.Syn
@@ -74,8 +74,8 @@ dσ³-cong X X' Y Y' W W' Z Z' refl refl refl refl = refl
 -- 2. A σ-bound type or term, typed; a term as its code's element.
 ------------------------------------------------------------------------
 
-hereTm : {Θ : Ctx} {m : RTm ⌊ Θ ⌋} → (Θ ▹ El (⌜Tm⌝ m)) ⊢ var vz ∷ K 1 (renTm vs m)
-hereTm {Θ} {m} = ⊢conv (⊢-cast {Θ ▹ El (⌜Tm⌝ m)} {var vz} {renTy vs (El (⌜Tm⌝ m))} {El (⌜Tm⌝ (renTm vs m))}
+hereTm : {Θ : Ctx} {m : RTm ⌊ Θ ⌋} → (Θ ▹ El (⌜Tm⌝ m)) ⊢ v₀ ∷ K 1 (renTm vs m)
+hereTm {Θ} {m} = ⊢conv (⊢-cast {Θ ▹ El (⌜Tm⌝ m)} {v₀} {renTy vs (El (⌜Tm⌝ m))} {El (⌜Tm⌝ (renTm vs m))}
                                (cong El (⌜Tm⌝-ren vs m)) (⊢var here))
                        (credᵀ El-⌜Tm⌝)
 
@@ -101,7 +101,7 @@ module CaseRow (sh : Shape) (shok : ShOK 2 sh) (h : ℕ) (r : Row) where
   open Pat KOK JT JT-sub ⊢JT (CI sh) (CI-sub sh) (⊢CI shok) 0 h r public
 
   CX : RTm Δ → RTm Δ → RTm Δ → RTm Δ
-  CX j p c = CASE j (snd c) (pair (fst c) p)
+  CX j p c = CASE j (snd c) ((fst c) ,ₚ p)
 
   rX : Row
   rX = record
@@ -109,10 +109,10 @@ module CaseRow (sh : Shape) (shok : ShOK 2 sh) (h : ℕ) (r : Row) where
     ; R-sub = λ σ j p c →
         trans (rows-sub' σ (CX j p c ∷ []))
               (cong (λ X → rows (X ∷ [])) {x = subTm σ (CX j p c)} {y = CX (subTm σ j) (subTm σ p) (subTm σ c)}
-                    (CASE-sub σ j (snd c) (pair (fst c) p))) }
+                    (CASE-sub σ j (snd c) ((fst c) ,ₚ p))) }
 
   ⊢CX : RowOK 0 (lookSh KSig 0 h) r → {Ξ : Ctx} {j p c : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El ⌜Nat⌝ →
-        Ξ ⊢ p ∷ PayV sh (pair (tag 1) j) (SI 2) (SD KSig) → Ξ ⊢ c ∷ El (CTat (pair (tag 1) j)) →
+        Ξ ⊢ p ∷ PayV sh ((tag 1) ,ₚ j) (SI 2) (SD KSig) → Ξ ⊢ c ∷ El (CTat ((tag 1) ,ₚ j)) →
         Ξ ⊢ CX j p c ∷ Desc JT
   ⊢CX rok {Ξ} {j} {p} {c} dj dp dc =
     ⊢CASE {Ξ} {j} {snd c} {pair (fst c) p} rok lt-z dj (⊢tyOf dc) (⊢cI sh shok dj (⊢ctxOf dc) dp)

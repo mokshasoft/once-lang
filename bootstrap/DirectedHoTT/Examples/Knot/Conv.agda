@@ -20,7 +20,7 @@ open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong�
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax hiding ( Fin )
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
-open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_; tag; conₗ; tag-sub; []ᵈ; _∷ᵈ_; AllD )
+open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_; tag; conₗ; tag-sub; []ᵈ; _∷ᵈ_; AllD; v₀; _,ₚ_ )
 open import DirectedHoTT.Lib.SynView using ( PayV; ⊢conP )
 open import DirectedHoTT.Lib.Tel
 open import DirectedHoTT.Lib.Syn
@@ -40,12 +40,12 @@ private
     Δ Θ : Cx
 
   conₗ-sub : (σ : Sub Δ Θ) (k : ℕ) (p : RTm Δ) → subTm σ (conₗ k p) ≡ conₗ k (subTm σ p)
-  conₗ-sub σ k p = cong (λ t → con (pair t (subTm σ p))) (tag-sub σ k)
+  conₗ-sub σ k p = cong (λ t → con (t ,ₚ (subTm σ p))) (tag-sub σ k)
 
   -- ctrn's two premises, the middle a σ-bound variable
   tr-cong : {Δ : Cx} (ix : RTm (Δ ∙) → RTm (Δ ∙) → RTm (Δ ∙) → RTm (Δ ∙)) (J J' T T' X X' : RTm (Δ ∙)) →
             J ≡ J' → T ≡ T' → X ≡ X' →
-            dρ (ix J T (var vz)) (dρ (ix J (var vz) X) dι) ≡ dρ (ix J' T' (var vz)) (dρ (ix J' (var vz) X') dι)
+            dρ (ix J T v₀) (dρ (ix J v₀ X) dι) ≡ dρ (ix J' T' v₀) (dρ (ix J' v₀ X') dι)
   tr-cong ix J J' T T' X X' refl refl refl = refl
 
 ------------------------------------------------------------------------
@@ -56,7 +56,7 @@ C≅ : RTm Δ → RTm Δ → RTm Δ → RTm Δ
 C≅ J T X = rows (dσ (⌜⟶⌝ J T X) (lam dι)
                ∷ dσ (⌜Id⌝ (⌜Tm⌝ J) T X) (lam dι)
                ∷ dρ (ix≅ J X T) dι
-               ∷ dσ (⌜Tm⌝ J) (lam (dρ (ix≅ (w1 J) (w1 T) (var vz)) (dρ (ix≅ (w1 J) (var vz) (w1 X)) dι)))
+               ∷ dσ (⌜Tm⌝ J) (lam (dρ (ix≅ (w1 J) (w1 T) v₀) (dρ (ix≅ (w1 J) v₀ (w1 X)) dι)))
                ∷ [])
 
 C≅-sub : (σ : Sub Δ Θ) (J T X : RTm Δ) → subTm σ (C≅ J T X) ≡ C≅ (subTm σ J) (subTm σ T) (subTm σ X)
@@ -64,7 +64,7 @@ C≅-sub σ J T X =
   trans (rows-sub' σ (dσ (⌜⟶⌝ J T X) (lam dι)
                ∷ dσ (⌜Id⌝ (⌜Tm⌝ J) T X) (lam dι)
                ∷ dρ (ix≅ J X T) dι
-               ∷ dσ (⌜Tm⌝ J) (lam (dρ (ix≅ (w1 J) (w1 T) (var vz)) (dρ (ix≅ (w1 J) (var vz) (w1 X)) dι)))
+               ∷ dσ (⌜Tm⌝ J) (lam (dρ (ix≅ (w1 J) (w1 T) v₀) (dρ (ix≅ (w1 J) v₀ (w1 X)) dι)))
                ∷ []))
         (cong rows (∷-cong4 _ _ (cong (λ Z → dσ Z (lam dι)) (⌜⟶⌝-sub σ J T X))
                             _ _ (cong (λ Z → dσ (⌜Id⌝ Z (subTm σ T) (subTm σ X)) (lam dι)) (⌜Tm⌝-sub σ J))
@@ -74,7 +74,7 @@ C≅-sub σ J T X =
 
 -- the four rows' typings (what a constructor cites)
 allC≅ : {Ξ : Ctx} {J T X : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ T ∷ K 1 J → Ξ ⊢ X ∷ K 1 J →
-        AllD Ξ Convₘ.J (dσ (⌜⟶⌝ J T X) (lam dι) ∷ dσ (⌜Id⌝ (⌜Tm⌝ J) T X) (lam dι) ∷ dρ (ix≅ J X T) dι ∷ dσ (⌜Tm⌝ J) (lam (dρ (ix≅ (w1 J) (w1 T) (var vz)) (dρ (ix≅ (w1 J) (var vz) (w1 X)) dι))) ∷ [])
+        AllD Ξ Convₘ.J (dσ (⌜⟶⌝ J T X) (lam dι) ∷ dσ (⌜Id⌝ (⌜Tm⌝ J) T X) (lam dι) ∷ dρ (ix≅ J X T) dι ∷ dσ (⌜Tm⌝ J) (lam (dρ (ix≅ (w1 J) (w1 T) v₀) (dρ (ix≅ (w1 J) v₀ (w1 X)) dι))) ∷ [])
 allC≅ {Ξ} {J} {T} {X} dJ dT dX =
     ⊢tel Convₘ.⊢J (ok-σ (⊢⌜⟶⌝ dJ dT dX) ok-ι)
      ∷ᵈ ⊢tel Convₘ.⊢J (ok-σ (⊢⌜Id⌝ (⊢⌜Tm⌝ dJ) (toTm dT) (toTm dX)) ok-ι)
@@ -114,7 +114,7 @@ C≅ᵀ : RTm Δ → RTm Δ → RTm Δ → RTm Δ
 C≅ᵀ J T X = rows (dσ (⌜⟶ᵀ⌝ J T X) (lam dι)
                 ∷ dσ (⌜Id⌝ (⌜Ty⌝ J) T X) (lam dι)
                 ∷ dρ (ix≅ᵀ J X T) dι
-                ∷ dσ (⌜Ty⌝ J) (lam (dρ (ix≅ᵀ (w1 J) (w1 T) (var vz)) (dρ (ix≅ᵀ (w1 J) (var vz) (w1 X)) dι)))
+                ∷ dσ (⌜Ty⌝ J) (lam (dρ (ix≅ᵀ (w1 J) (w1 T) v₀) (dρ (ix≅ᵀ (w1 J) v₀ (w1 X)) dι)))
                 ∷ [])
 
 C≅ᵀ-sub : (σ : Sub Δ Θ) (J T X : RTm Δ) → subTm σ (C≅ᵀ J T X) ≡ C≅ᵀ (subTm σ J) (subTm σ T) (subTm σ X)
@@ -122,7 +122,7 @@ C≅ᵀ-sub σ J T X =
   trans (rows-sub' σ (dσ (⌜⟶ᵀ⌝ J T X) (lam dι)
                 ∷ dσ (⌜Id⌝ (⌜Ty⌝ J) T X) (lam dι)
                 ∷ dρ (ix≅ᵀ J X T) dι
-                ∷ dσ (⌜Ty⌝ J) (lam (dρ (ix≅ᵀ (w1 J) (w1 T) (var vz)) (dρ (ix≅ᵀ (w1 J) (var vz) (w1 X)) dι)))
+                ∷ dσ (⌜Ty⌝ J) (lam (dρ (ix≅ᵀ (w1 J) (w1 T) v₀) (dρ (ix≅ᵀ (w1 J) v₀ (w1 X)) dι)))
                 ∷ []))
         (cong rows (∷-cong4 _ _ (cong (λ Z → dσ Z (lam dι)) (⌜⟶ᵀ⌝-sub σ J T X))
                             _ _ (cong (λ Z → dσ (⌜Id⌝ Z (subTm σ T) (subTm σ X)) (lam dι)) (⌜Ty⌝-sub σ J))
@@ -132,7 +132,7 @@ C≅ᵀ-sub σ J T X =
 
 -- the four rows' typings (what a constructor cites)
 allC≅ᵀ : {Ξ : Ctx} {J T X : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ T ∷ K 0 J → Ξ ⊢ X ∷ K 0 J →
-        AllD Ξ ConvTₘ.J (dσ (⌜⟶ᵀ⌝ J T X) (lam dι) ∷ dσ (⌜Id⌝ (⌜Ty⌝ J) T X) (lam dι) ∷ dρ (ix≅ᵀ J X T) dι ∷ dσ (⌜Ty⌝ J) (lam (dρ (ix≅ᵀ (w1 J) (w1 T) (var vz)) (dρ (ix≅ᵀ (w1 J) (var vz) (w1 X)) dι))) ∷ [])
+        AllD Ξ ConvTₘ.J (dσ (⌜⟶ᵀ⌝ J T X) (lam dι) ∷ dσ (⌜Id⌝ (⌜Ty⌝ J) T X) (lam dι) ∷ dρ (ix≅ᵀ J X T) dι ∷ dσ (⌜Ty⌝ J) (lam (dρ (ix≅ᵀ (w1 J) (w1 T) v₀) (dρ (ix≅ᵀ (w1 J) v₀ (w1 X)) dι))) ∷ [])
 allC≅ᵀ {Ξ} {J} {T} {X} dJ dT dX =
     ⊢tel ConvTₘ.⊢J (ok-σ (⊢⌜⟶ᵀ⌝ dJ dT dX) ok-ι)
      ∷ᵈ ⊢tel ConvTₘ.⊢J (ok-σ (⊢⌜Id⌝ (⊢⌜Ty⌝ dJ) (toTy dT) (toTy dX)) ok-ι)

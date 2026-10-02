@@ -21,6 +21,7 @@ open import DirectedHoTT.Examples.Knot.JudgeIx using ( JT; tmIx )
 open import DirectedHoTT.Examples.Knot.Judge using ( D⊢ )
 open import DirectedHoTT.Examples.Knot.Conv using ( ⌜≅ᵀ⌝ )
 open import DirectedHoTT.Examples.Knot.JudgeConGen
+open import DirectedHoTT.Lib.Sugar using ( _,ₚ_ )
 
 ------------------------------------------------------------------------
 -- ★ The Knot's `⊢conv` rows are ONE PER SUBJECT HEAD (`conv⊢…`), so the
@@ -36,7 +37,7 @@ convAt : (Γ : Ctx) (t : RTm ⌊ Γ ⌋) {Θ : Ctx} {A B r e : RTm ⌊ Θ ⌋} �
 convAt Γ (var a0) dA dB dr de = _ , conv⊢var (⊢dep' ⌊ Γ ⌋) (⊢quoteCtx Γ) (⊢quoteVar a0) dA dB dr de
 convAt Γ (lam a0) dA dB dr de = _ , conv⊢lam (⊢dep' ⌊ Γ ⌋) (⊢quoteCtx Γ) (⊢quoteTm a0) dA dB dr de
 convAt Γ (app a0 a1) dA dB dr de = _ , conv⊢app (⊢dep' ⌊ Γ ⌋) (⊢quoteCtx Γ) (⊢quoteTm a0) (⊢quoteTm a1) dA dB dr de
-convAt Γ (pair a0 a1) dA dB dr de = _ , conv⊢pair (⊢dep' ⌊ Γ ⌋) (⊢quoteCtx Γ) (⊢quoteTm a0) (⊢quoteTm a1) dA dB dr de
+convAt Γ (a0 ,ₚ a1) dA dB dr de = _ , conv⊢pair (⊢dep' ⌊ Γ ⌋) (⊢quoteCtx Γ) (⊢quoteTm a0) (⊢quoteTm a1) dA dB dr de
 convAt Γ (absurd a0 a1) dA dB dr de = _ , conv⊢absurd (⊢dep' ⌊ Γ ⌋) (⊢quoteCtx Γ) (⊢quoteTm a0) (⊢quoteTm a1) dA dB dr de
 convAt Γ (ordtr a0 a1 a2 a3 a4) dA dB dr de = _ , conv⊢ordtr (⊢dep' ⌊ Γ ⌋) (⊢quoteCtx Γ) (⊢quoteTm a0) (⊢quoteTm a1) (⊢quoteTm a2) (⊢quoteTm a3) (⊢quoteTm a4) dA dB dr de
 convAt Γ (fst a0) dA dB dr de = _ , conv⊢fst (⊢dep' ⌊ Γ ⌋) (⊢quoteCtx Γ) (⊢quoteTm a0) dA dB dr de
