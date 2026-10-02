@@ -89,7 +89,7 @@ the follow-on question.
 | S0 | `Algorithm/DecEq` (`Dec` equality, all sorts); `Algorithm/DecideConversionTyped` (term conversion, no parameters); `Algorithm/Check` slice 1 (certifying bidirectional checker, Π/Σ/U/El/Nat/Unit/Hom/Id) | ✅ `e4135b26` |
 | S1 | SPIKE `natrecᴹ` inside `RTm` (branch `ocp-0009-spike-natrecM`) | ✅ done — superseded by §3c/§3d; it showed (a) needs a mutual SN theorem to be decided |
 | S2 | The annotated layer (§3d): `Spec/Annotated` (`ATm`/`ATy`, ren/sub, erasure + commutation), `⊢ᴬ`, erasure-soundness | ✅ `70a8c1b2e`. Ported to the levitated kernel in PLAN-LEVITATION Stage F: `Spec/AnnotatedDesc`, and `Spec/TypingA` via `tools/genA.py` |
-| S3 | The checker for `⊢ᴬ` (`Algorithm/CheckA`): certifying, STRUCTURAL (every former infers — no fuel); the term's own annotations checked with `⊢ᴬ`, all type reasoning on ERASURES (`validity`, `normTy`, `decConvᵀ`), annotated views of inferred types LIFTED from erased normal forms. Then COMPLETENESS (uniqueness of types up to conversion) | 🟡 **next**. SOUNDNESS covers EVERY former, the levitated inductive ones included (`con`, `ielim`, `dih`, `dpay`, `⌜IMu⌝`, `dι`/`dσ`/`dρ`). `tr` is accepted only at `⌜Hom⌝` motives. ⬜ COMPLETENESS (audited 2026-10-02) |
+| S3 | The checker for `⊢ᴬ` (`Algorithm/CheckA`): certifying, STRUCTURAL (every former infers — no fuel); the term's own annotations checked with `⊢ᴬ`, all type reasoning on ERASURES (`validity`, `normTy`, `decConvᵀ`), annotated views of inferred types LIFTED from erased normal forms. Then COMPLETENESS (uniqueness of types up to conversion) | ✅ **2026-10-02: `⊢ᴬ` is DECIDABLE** (§3a). `inferᴬ`/`checkᴬ`/`checkTyᴬ` return `Dec`, certifying both the YES and the NO, for every former. |
 | S4 | Decide TYPE conversion `≅ᵀ` completely — ROUTE C (§3b): ① validity + `srᵀ` (`Metatheory/Validity`) ✅; ② inversion — the existing `gen-*` sufficed ✅; ③ `normTy`/`decConvᵀ` (`Metatheory/NormTy`) ✅ — **structural, NO measure needed**: `homNF` recurses on the NORMAL ambient (`G` ⊂ `Π F G`), the created `app f↑ vz` go through the typed `wnorm`, and a `NoU` witness breaks the harmless `elNF ↔ homNF` cycle | ✅ |
 | S5 | The signature: constants, δ, and the conservativity theorem | ⬜ |
 | S6 | The bidirectional SURFACE → annotated core elaborator. `Algorithm/Check`'s slice 1 is its seed; the Once compiler's `formal/Once/TypeCheck` is the shape template | ⬜ |
@@ -181,9 +181,7 @@ meaning (§0, §3d).
   - The non-vacuity runs EVALUATE: `(λx.x) 0` YES, `0 0` NO (normal shape),
     `(λx.x) tt` NO (uniqueness).
   - It checks in 5 s, first time.
-  - ⬜ Next: the full checker. Every former becomes a step and the
-    recursion is tied, and `Dec` supersedes `CheckA`'s `Maybe` checker,
-    which is then deleted.
+  - (superseded by C4, below; `DecideA` is deleted)
 - ★ **DECISION (2026-10-02): `pair` carries its first type, `pair A B a b`.**
   - Found while writing the full checker: `pair` was the ONE former whose
     premise CONTEXT was not in the term. `B`'s premise lives in `Γ ▹ A`,
@@ -196,6 +194,25 @@ meaning (§0, §3d).
   - Changes: `genA.py`'s field table, `⊢ᴬpair` (+ `Γ ⊢tyᴬ A`), `pairSᴬ A B`
     for `psplit`'s branch. `uniqᴬ`'s `pair` clause became a plain `via`.
     The old `Maybe` checker's `pair` no longer lifts `a`'s normal form.
+- ✅ **C4** (2026-10-02) `Algorithm/CheckA` IS the decision procedure:
+  `inferᴬ`/`checkᴬ`/`checkTyᴬ : … → Dec …`.
+  - `bind` takes, with each sub-decision, the generation projection that
+    turns a typing of the whole into one of the part.
+  - Of the 38 `inferᴬ` clauses, 32 regular ones were derived one to one
+    from the `Maybe` clauses. `var`, `lam`, `app` (`appStep`, uniqueness +
+    `Π-inj` for the argument), `fst`/`snd` (`viewΣ`) and `tr` are written
+    by hand.
+  - `tr` dispatches on the three-way view `trShape`, whose `none` case
+    carries the refutation. It is built with an inspect-style helper:
+    `with … in` needs Agda's builtin equality, and this project uses its
+    own `_≡_`. A catch-all clause could not refute.
+  - `decNoNatC` is complete by induction on the witness (`noNatC?-complete`).
+  - `checkTyᴬ`'s "no" inverts the one `⊢tyᴬ` rule.
+  - The runs evaluate YES and NO. The new rejections: `fst 0` (no Σ view)
+    and a `tr` at an untypable motive.
+  - `CheckA` checks in 11 s (7 s before). `viewId`/`IdV` and `nf-Id` were
+    dead (`jsub` carries its endpoints) and are deleted, as is the POC
+    module `DecideA`.
 ## 3b. ★ DECISION 3 — S4 by ROUTE C: normalise types BECAUSE they are well-typed
 
 Found on the `natrecᴹ` spike (`SPIKE-NATRECM.md` §3, 2026-09-25). Type
