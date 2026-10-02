@@ -26,204 +26,204 @@ open import DirectedHoTT.Examples.Knot.Sig
 
 ⊢kbase : {Γ : Ctx} {d : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ kbase ∷ K 0 d
 ⊢kbase {Γ} {d} dd =
-  ⊢conSyn {sg = KSig} {shs = TyShs} {sh = sh-kbase} {d = d} {p = unit} KOK nthᵍ-z nthʰ-z dd a[]
+  ⊢conSyn {sg = KSig} {shs = TyShs} {sh = sh-kbase} {d = d} {p = unit} KOK (atᵍ 0) (atʰ 0) dd a[]
 
 ⊢kU : {Γ : Ctx} {d : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ kU ∷ K 0 d
 ⊢kU {Γ} {d} dd =
-  ⊢conSyn {sg = KSig} {shs = TyShs} {sh = sh-kU} {d = d} {p = unit} KOK nthᵍ-z (nthʰ-s nthʰ-z) dd a[]
+  ⊢conSyn {sg = KSig} {shs = TyShs} {sh = sh-kU} {d = d} {p = unit} KOK (atᵍ 0) (atʰ 1) dd a[]
 
 ⊢kPi : {Γ : Ctx} {d a0 a1 : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ a0 ∷ K 0 d → Γ ⊢ a1 ∷ K 0 (nsuc d) → Γ ⊢ kPi a0 a1 ∷ K 0 d
 ⊢kPi {Γ} {d} {a0} {a1} dd da0 da1 =
-  ⊢conSyn {sg = KSig} {shs = TyShs} {sh = sh-kPi} {d = d} {p = pair a0 (pair a1 (unit))} KOK nthᵍ-z (nthʰ-s (nthʰ-s nthʰ-z)) dd (a-rec da0 (a-rec da1 a[]))
+  ⊢conSyn {sg = KSig} {shs = TyShs} {sh = sh-kPi} {d = d} {p = pair a0 (pair a1 (unit))} KOK (atᵍ 0) (atʰ 2) dd (a-rec da0 (a-rec da1 a[]))
 
 ⊢kSg : {Γ : Ctx} {d a0 a1 : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ a0 ∷ K 0 d → Γ ⊢ a1 ∷ K 0 (nsuc d) → Γ ⊢ kSg a0 a1 ∷ K 0 d
 ⊢kSg {Γ} {d} {a0} {a1} dd da0 da1 =
-  ⊢conSyn {sg = KSig} {shs = TyShs} {sh = sh-kSg} {d = d} {p = pair a0 (pair a1 (unit))} KOK nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))) dd (a-rec da0 (a-rec da1 a[]))
+  ⊢conSyn {sg = KSig} {shs = TyShs} {sh = sh-kSg} {d = d} {p = pair a0 (pair a1 (unit))} KOK (atᵍ 0) (atʰ 3) dd (a-rec da0 (a-rec da1 a[]))
 
 ⊢kEl : {Γ : Ctx} {d a0 : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ a0 ∷ K 1 d → Γ ⊢ kEl a0 ∷ K 0 d
 ⊢kEl {Γ} {d} {a0} dd da0 =
-  ⊢conSyn {sg = KSig} {shs = TyShs} {sh = sh-kEl} {d = d} {p = pair a0 (unit)} KOK nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))) dd (a-rec da0 a[])
+  ⊢conSyn {sg = KSig} {shs = TyShs} {sh = sh-kEl} {d = d} {p = pair a0 (unit)} KOK (atᵍ 0) (atʰ 4) dd (a-rec da0 a[])
 
 ⊢kHom : {Γ : Ctx} {d a0 a1 a2 : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ a0 ∷ K 0 d → Γ ⊢ a1 ∷ K 1 d → Γ ⊢ a2 ∷ K 1 d → Γ ⊢ kHom a0 a1 a2 ∷ K 0 d
 ⊢kHom {Γ} {d} {a0} {a1} {a2} dd da0 da1 da2 =
-  ⊢conSyn {sg = KSig} {shs = TyShs} {sh = sh-kHom} {d = d} {p = pair a0 (pair a1 (pair a2 (unit)))} KOK nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))) dd (a-rec da0 (a-rec da1 (a-rec da2 a[])))
+  ⊢conSyn {sg = KSig} {shs = TyShs} {sh = sh-kHom} {d = d} {p = pair a0 (pair a1 (pair a2 (unit)))} KOK (atᵍ 0) (atʰ 5) dd (a-rec da0 (a-rec da1 (a-rec da2 a[])))
 
 ⊢kUnit : {Γ : Ctx} {d : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ kUnit ∷ K 0 d
 ⊢kUnit {Γ} {d} dd =
-  ⊢conSyn {sg = KSig} {shs = TyShs} {sh = sh-kUnit} {d = d} {p = unit} KOK nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))) dd a[]
+  ⊢conSyn {sg = KSig} {shs = TyShs} {sh = sh-kUnit} {d = d} {p = unit} KOK (atᵍ 0) (atʰ 6) dd a[]
 
 ⊢kNat : {Γ : Ctx} {d : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ kNat ∷ K 0 d
 ⊢kNat {Γ} {d} dd =
-  ⊢conSyn {sg = KSig} {shs = TyShs} {sh = sh-kNat} {d = d} {p = unit} KOK nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))) dd a[]
+  ⊢conSyn {sg = KSig} {shs = TyShs} {sh = sh-kNat} {d = d} {p = unit} KOK (atᵍ 0) (atʰ 7) dd a[]
 
 ⊢kId : {Γ : Ctx} {d a0 a1 a2 : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ a0 ∷ K 0 d → Γ ⊢ a1 ∷ K 1 d → Γ ⊢ a2 ∷ K 1 d → Γ ⊢ kId a0 a1 a2 ∷ K 0 d
 ⊢kId {Γ} {d} {a0} {a1} {a2} dd da0 da1 da2 =
-  ⊢conSyn {sg = KSig} {shs = TyShs} {sh = sh-kId} {d = d} {p = pair a0 (pair a1 (pair a2 (unit)))} KOK nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))) dd (a-rec da0 (a-rec da1 (a-rec da2 a[])))
+  ⊢conSyn {sg = KSig} {shs = TyShs} {sh = sh-kId} {d = d} {p = pair a0 (pair a1 (pair a2 (unit)))} KOK (atᵍ 0) (atʰ 8) dd (a-rec da0 (a-rec da1 (a-rec da2 a[])))
 
 ⊢kIMu : {Γ : Ctx} {d a0 a1 a2 : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ a0 ∷ K 1 d → Γ ⊢ a1 ∷ K 1 d → Γ ⊢ a2 ∷ K 1 d → Γ ⊢ kIMu a0 a1 a2 ∷ K 0 d
 ⊢kIMu {Γ} {d} {a0} {a1} {a2} dd da0 da1 da2 =
-  ⊢conSyn {sg = KSig} {shs = TyShs} {sh = sh-kIMu} {d = d} {p = pair a0 (pair a1 (pair a2 (unit)))} KOK nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))) dd (a-rec da0 (a-rec da1 (a-rec da2 a[])))
+  ⊢conSyn {sg = KSig} {shs = TyShs} {sh = sh-kIMu} {d = d} {p = pair a0 (pair a1 (pair a2 (unit)))} KOK (atᵍ 0) (atʰ 9) dd (a-rec da0 (a-rec da1 (a-rec da2 a[])))
 
 ⊢kDesc : {Γ : Ctx} {d a0 : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ a0 ∷ K 1 d → Γ ⊢ kDesc a0 ∷ K 0 d
 ⊢kDesc {Γ} {d} {a0} dd da0 =
-  ⊢conSyn {sg = KSig} {shs = TyShs} {sh = sh-kDesc} {d = d} {p = pair a0 (unit)} KOK nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))) dd (a-rec da0 a[])
+  ⊢conSyn {sg = KSig} {shs = TyShs} {sh = sh-kDesc} {d = d} {p = pair a0 (unit)} KOK (atᵍ 0) (atʰ 10) dd (a-rec da0 a[])
 
 ⊢kDIh : {Γ : Ctx} {d a0 a1 a2 a3 : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ a0 ∷ K 1 d → Γ ⊢ a1 ∷ K 0 (nsuc (nsuc d)) → Γ ⊢ a2 ∷ K 1 d → Γ ⊢ a3 ∷ K 1 d → Γ ⊢ kDIh a0 a1 a2 a3 ∷ K 0 d
 ⊢kDIh {Γ} {d} {a0} {a1} {a2} {a3} dd da0 da1 da2 da3 =
-  ⊢conSyn {sg = KSig} {shs = TyShs} {sh = sh-kDIh} {d = d} {p = pair a0 (pair a1 (pair a2 (pair a3 (unit))))} KOK nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))))) dd (a-rec da0 (a-rec da1 (a-rec da2 (a-rec da3 a[]))))
+  ⊢conSyn {sg = KSig} {shs = TyShs} {sh = sh-kDIh} {d = d} {p = pair a0 (pair a1 (pair a2 (pair a3 (unit))))} KOK (atᵍ 0) (atʰ 11) dd (a-rec da0 (a-rec da1 (a-rec da2 (a-rec da3 a[]))))
 
 ⊢kFin : {Γ : Ctx} {d a0 : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ a0 ∷ El ⌜Nat⌝ → Γ ⊢ kFin a0 ∷ K 0 d
 ⊢kFin {Γ} {d} {a0} dd da0 =
-  ⊢conSyn {sg = KSig} {shs = TyShs} {sh = sh-kFin} {d = d} {p = pair a0 (unit)} KOK nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))) dd (a-nat da0 a[])
+  ⊢conSyn {sg = KSig} {shs = TyShs} {sh = sh-kFin} {d = d} {p = pair a0 (unit)} KOK (atᵍ 0) (atʰ 12) dd (a-nat da0 a[])
 
 ⊢kvar : {Γ : Ctx} {d a0 : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ a0 ∷ FinI d → Γ ⊢ kvar a0 ∷ K 1 d
 ⊢kvar {Γ} {d} {a0} dd da0 =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kvar} {d = d} {p = pair a0 (unit)} KOK (nthᵍ-s nthᵍ-z) nthʰ-z dd (a-v da0)
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kvar} {d = d} {p = pair a0 (unit)} KOK (atᵍ 1) (atʰ 0) dd (a-v da0)
 
 ⊢klam : {Γ : Ctx} {d a0 : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ a0 ∷ K 1 (nsuc d) → Γ ⊢ klam a0 ∷ K 1 d
 ⊢klam {Γ} {d} {a0} dd da0 =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-klam} {d = d} {p = pair a0 (unit)} KOK (nthᵍ-s nthᵍ-z) (nthʰ-s nthʰ-z) dd (a-rec da0 a[])
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-klam} {d = d} {p = pair a0 (unit)} KOK (atᵍ 1) (atʰ 1) dd (a-rec da0 a[])
 
 ⊢kapp : {Γ : Ctx} {d a0 a1 : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ a0 ∷ K 1 d → Γ ⊢ a1 ∷ K 1 d → Γ ⊢ kapp a0 a1 ∷ K 1 d
 ⊢kapp {Γ} {d} {a0} {a1} dd da0 da1 =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kapp} {d = d} {p = pair a0 (pair a1 (unit))} KOK (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s nthʰ-z)) dd (a-rec da0 (a-rec da1 a[]))
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kapp} {d = d} {p = pair a0 (pair a1 (unit))} KOK (atᵍ 1) (atʰ 2) dd (a-rec da0 (a-rec da1 a[]))
 
 ⊢kpair : {Γ : Ctx} {d a0 a1 : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ a0 ∷ K 1 d → Γ ⊢ a1 ∷ K 1 d → Γ ⊢ kpair a0 a1 ∷ K 1 d
 ⊢kpair {Γ} {d} {a0} {a1} dd da0 da1 =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kpair} {d = d} {p = pair a0 (pair a1 (unit))} KOK (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))) dd (a-rec da0 (a-rec da1 a[]))
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kpair} {d = d} {p = pair a0 (pair a1 (unit))} KOK (atᵍ 1) (atʰ 3) dd (a-rec da0 (a-rec da1 a[]))
 
 ⊢kabsurd : {Γ : Ctx} {d a0 a1 : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ a0 ∷ K 1 d → Γ ⊢ a1 ∷ K 1 d → Γ ⊢ kabsurd a0 a1 ∷ K 1 d
 ⊢kabsurd {Γ} {d} {a0} {a1} dd da0 da1 =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kabsurd} {d = d} {p = pair a0 (pair a1 (unit))} KOK (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))) dd (a-rec da0 (a-rec da1 a[]))
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kabsurd} {d = d} {p = pair a0 (pair a1 (unit))} KOK (atᵍ 1) (atʰ 4) dd (a-rec da0 (a-rec da1 a[]))
 
 ⊢kordtr : {Γ : Ctx} {d a0 a1 a2 a3 a4 : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ a0 ∷ K 1 d → Γ ⊢ a1 ∷ K 1 d → Γ ⊢ a2 ∷ K 1 d → Γ ⊢ a3 ∷ K 1 d → Γ ⊢ a4 ∷ K 1 d → Γ ⊢ kordtr a0 a1 a2 a3 a4 ∷ K 1 d
 ⊢kordtr {Γ} {d} {a0} {a1} {a2} {a3} {a4} dd da0 da1 da2 da3 da4 =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kordtr} {d = d} {p = pair a0 (pair a1 (pair a2 (pair a3 (pair a4 (unit)))))} KOK (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))) dd (a-rec da0 (a-rec da1 (a-rec da2 (a-rec da3 (a-rec da4 a[])))))
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kordtr} {d = d} {p = pair a0 (pair a1 (pair a2 (pair a3 (pair a4 (unit)))))} KOK (atᵍ 1) (atʰ 5) dd (a-rec da0 (a-rec da1 (a-rec da2 (a-rec da3 (a-rec da4 a[])))))
 
 ⊢kfst : {Γ : Ctx} {d a0 : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ a0 ∷ K 1 d → Γ ⊢ kfst a0 ∷ K 1 d
 ⊢kfst {Γ} {d} {a0} dd da0 =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kfst} {d = d} {p = pair a0 (unit)} KOK (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))) dd (a-rec da0 a[])
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kfst} {d = d} {p = pair a0 (unit)} KOK (atᵍ 1) (atʰ 6) dd (a-rec da0 a[])
 
 ⊢ksnd : {Γ : Ctx} {d a0 : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ a0 ∷ K 1 d → Γ ⊢ ksnd a0 ∷ K 1 d
 ⊢ksnd {Γ} {d} {a0} dd da0 =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-ksnd} {d = d} {p = pair a0 (unit)} KOK (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))) dd (a-rec da0 a[])
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-ksnd} {d = d} {p = pair a0 (unit)} KOK (atᵍ 1) (atʰ 7) dd (a-rec da0 a[])
 
 ⊢kcbase : {Γ : Ctx} {d : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ kcbase ∷ K 1 d
 ⊢kcbase {Γ} {d} dd =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kcbase} {d = d} {p = unit} KOK (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))) dd a[]
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kcbase} {d = d} {p = unit} KOK (atᵍ 1) (atʰ 8) dd a[]
 
 ⊢kcPi : {Γ : Ctx} {d a0 a1 : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ a0 ∷ K 1 d → Γ ⊢ a1 ∷ K 1 (nsuc d) → Γ ⊢ kcPi a0 a1 ∷ K 1 d
 ⊢kcPi {Γ} {d} {a0} {a1} dd da0 da1 =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kcPi} {d = d} {p = pair a0 (pair a1 (unit))} KOK (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))) dd (a-rec da0 (a-rec da1 a[]))
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kcPi} {d = d} {p = pair a0 (pair a1 (unit))} KOK (atᵍ 1) (atʰ 9) dd (a-rec da0 (a-rec da1 a[]))
 
 ⊢kcSg : {Γ : Ctx} {d a0 a1 : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ a0 ∷ K 1 d → Γ ⊢ a1 ∷ K 1 (nsuc d) → Γ ⊢ kcSg a0 a1 ∷ K 1 d
 ⊢kcSg {Γ} {d} {a0} {a1} dd da0 da1 =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kcSg} {d = d} {p = pair a0 (pair a1 (unit))} KOK (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))) dd (a-rec da0 (a-rec da1 a[]))
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kcSg} {d = d} {p = pair a0 (pair a1 (unit))} KOK (atᵍ 1) (atʰ 10) dd (a-rec da0 (a-rec da1 a[]))
 
 ⊢kcHom : {Γ : Ctx} {d a0 a1 a2 : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ a0 ∷ K 1 d → Γ ⊢ a1 ∷ K 1 d → Γ ⊢ a2 ∷ K 1 d → Γ ⊢ kcHom a0 a1 a2 ∷ K 1 d
 ⊢kcHom {Γ} {d} {a0} {a1} {a2} dd da0 da1 da2 =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kcHom} {d = d} {p = pair a0 (pair a1 (pair a2 (unit)))} KOK (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))))) dd (a-rec da0 (a-rec da1 (a-rec da2 a[])))
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kcHom} {d = d} {p = pair a0 (pair a1 (pair a2 (unit)))} KOK (atᵍ 1) (atʰ 11) dd (a-rec da0 (a-rec da1 (a-rec da2 a[])))
 
 ⊢khrefl : {Γ : Ctx} {d a0 a1 : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ a0 ∷ K 1 d → Γ ⊢ a1 ∷ K 1 d → Γ ⊢ khrefl a0 a1 ∷ K 1 d
 ⊢khrefl {Γ} {d} {a0} {a1} dd da0 da1 =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-khrefl} {d = d} {p = pair a0 (pair a1 (unit))} KOK (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))) dd (a-rec da0 (a-rec da1 a[]))
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-khrefl} {d = d} {p = pair a0 (pair a1 (unit))} KOK (atᵍ 1) (atʰ 12) dd (a-rec da0 (a-rec da1 a[]))
 
 ⊢ktr : {Γ : Ctx} {d a0 a1 a2 : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ a0 ∷ K 1 (nsuc d) → Γ ⊢ a1 ∷ K 1 d → Γ ⊢ a2 ∷ K 1 d → Γ ⊢ ktr a0 a1 a2 ∷ K 1 d
 ⊢ktr {Γ} {d} {a0} {a1} {a2} dd da0 da1 da2 =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-ktr} {d = d} {p = pair a0 (pair a1 (pair a2 (unit)))} KOK (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))))))) dd (a-rec da0 (a-rec da1 (a-rec da2 a[])))
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-ktr} {d = d} {p = pair a0 (pair a1 (pair a2 (unit)))} KOK (atᵍ 1) (atʰ 13) dd (a-rec da0 (a-rec da1 (a-rec da2 a[])))
 
 ⊢kap : {Γ : Ctx} {d a0 a1 a2 : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ a0 ∷ K 1 d → Γ ⊢ a1 ∷ K 1 (nsuc d) → Γ ⊢ a2 ∷ K 1 d → Γ ⊢ kap a0 a1 a2 ∷ K 1 d
 ⊢kap {Γ} {d} {a0} {a1} {a2} dd da0 da1 da2 =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kap} {d = d} {p = pair a0 (pair a1 (pair a2 (unit)))} KOK (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))))) dd (a-rec da0 (a-rec da1 (a-rec da2 a[])))
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kap} {d = d} {p = pair a0 (pair a1 (pair a2 (unit)))} KOK (atᵍ 1) (atʰ 14) dd (a-rec da0 (a-rec da1 (a-rec da2 a[])))
 
 ⊢kcId : {Γ : Ctx} {d a0 a1 a2 : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ a0 ∷ K 1 d → Γ ⊢ a1 ∷ K 1 d → Γ ⊢ a2 ∷ K 1 d → Γ ⊢ kcId a0 a1 a2 ∷ K 1 d
 ⊢kcId {Γ} {d} {a0} {a1} {a2} dd da0 da1 da2 =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kcId} {d = d} {p = pair a0 (pair a1 (pair a2 (unit)))} KOK (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))))))))) dd (a-rec da0 (a-rec da1 (a-rec da2 a[])))
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kcId} {d = d} {p = pair a0 (pair a1 (pair a2 (unit)))} KOK (atᵍ 1) (atʰ 15) dd (a-rec da0 (a-rec da1 (a-rec da2 a[])))
 
 ⊢kidrefl : {Γ : Ctx} {d a0 a1 : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ a0 ∷ K 1 d → Γ ⊢ a1 ∷ K 1 d → Γ ⊢ kidrefl a0 a1 ∷ K 1 d
 ⊢kidrefl {Γ} {d} {a0} {a1} dd da0 da1 =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kidrefl} {d = d} {p = pair a0 (pair a1 (unit))} KOK (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))))))) dd (a-rec da0 (a-rec da1 a[]))
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kidrefl} {d = d} {p = pair a0 (pair a1 (unit))} KOK (atᵍ 1) (atʰ 16) dd (a-rec da0 (a-rec da1 a[]))
 
 ⊢kjsub : {Γ : Ctx} {d a0 a1 a2 : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ a0 ∷ K 1 (nsuc d) → Γ ⊢ a1 ∷ K 1 d → Γ ⊢ a2 ∷ K 1 d → Γ ⊢ kjsub a0 a1 a2 ∷ K 1 d
 ⊢kjsub {Γ} {d} {a0} {a1} {a2} dd da0 da1 da2 =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kjsub} {d = d} {p = pair a0 (pair a1 (pair a2 (unit)))} KOK (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))))))))))) dd (a-rec da0 (a-rec da1 (a-rec da2 a[])))
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kjsub} {d = d} {p = pair a0 (pair a1 (pair a2 (unit)))} KOK (atᵍ 1) (atʰ 17) dd (a-rec da0 (a-rec da1 (a-rec da2 a[])))
 
 ⊢kunit : {Γ : Ctx} {d : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ kunit ∷ K 1 d
 ⊢kunit {Γ} {d} dd =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kunit} {d = d} {p = unit} KOK (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))))))))) dd a[]
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kunit} {d = d} {p = unit} KOK (atᵍ 1) (atʰ 18) dd a[]
 
 ⊢knzero : {Γ : Ctx} {d : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ knzero ∷ K 1 d
 ⊢knzero {Γ} {d} dd =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-knzero} {d = d} {p = unit} KOK (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))))))))))))) dd a[]
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-knzero} {d = d} {p = unit} KOK (atᵍ 1) (atʰ 19) dd a[]
 
 ⊢knsuc : {Γ : Ctx} {d a0 : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ a0 ∷ K 1 d → Γ ⊢ knsuc a0 ∷ K 1 d
 ⊢knsuc {Γ} {d} {a0} dd da0 =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-knsuc} {d = d} {p = pair a0 (unit)} KOK (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))))))))))) dd (a-rec da0 a[])
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-knsuc} {d = d} {p = pair a0 (unit)} KOK (atᵍ 1) (atʰ 20) dd (a-rec da0 a[])
 
 ⊢knatrec : {Γ : Ctx} {d a0 a1 a2 : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ a0 ∷ K 1 d → Γ ⊢ a1 ∷ K 1 (nsuc (nsuc d)) → Γ ⊢ a2 ∷ K 1 d → Γ ⊢ knatrec a0 a1 a2 ∷ K 1 d
 ⊢knatrec {Γ} {d} {a0} {a1} {a2} dd da0 da1 da2 =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-knatrec} {d = d} {p = pair a0 (pair a1 (pair a2 (unit)))} KOK (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))))))))))))))) dd (a-rec da0 (a-rec da1 (a-rec da2 a[])))
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-knatrec} {d = d} {p = pair a0 (pair a1 (pair a2 (unit)))} KOK (atᵍ 1) (atʰ 21) dd (a-rec da0 (a-rec da1 (a-rec da2 a[])))
 
 ⊢kcon : {Γ : Ctx} {d a0 : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ a0 ∷ K 1 d → Γ ⊢ kcon a0 ∷ K 1 d
 ⊢kcon {Γ} {d} {a0} dd da0 =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kcon} {d = d} {p = pair a0 (unit)} KOK (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))))))))))))) dd (a-rec da0 a[])
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kcon} {d = d} {p = pair a0 (unit)} KOK (atᵍ 1) (atʰ 22) dd (a-rec da0 a[])
 
 ⊢kielim : {Γ : Ctx} {d a0 a1 a2 a3 : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ a0 ∷ K 1 d → Γ ⊢ a1 ∷ K 1 d → Γ ⊢ a2 ∷ K 1 d → Γ ⊢ a3 ∷ K 1 d → Γ ⊢ kielim a0 a1 a2 a3 ∷ K 1 d
 ⊢kielim {Γ} {d} {a0} {a1} {a2} {a3} dd da0 da1 da2 da3 =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kielim} {d = d} {p = pair a0 (pair a1 (pair a2 (pair a3 (unit))))} KOK (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))))))))))))))))) dd (a-rec da0 (a-rec da1 (a-rec da2 (a-rec da3 a[]))))
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kielim} {d = d} {p = pair a0 (pair a1 (pair a2 (pair a3 (unit))))} KOK (atᵍ 1) (atʰ 23) dd (a-rec da0 (a-rec da1 (a-rec da2 (a-rec da3 a[]))))
 
 ⊢kdI : {Γ : Ctx} {d : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ kdI ∷ K 1 d
 ⊢kdI {Γ} {d} dd =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kdI} {d = d} {p = unit} KOK (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))))))))))))))) dd a[]
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kdI} {d = d} {p = unit} KOK (atᵍ 1) (atʰ 24) dd a[]
 
 ⊢kdS : {Γ : Ctx} {d a0 a1 : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ a0 ∷ K 1 d → Γ ⊢ a1 ∷ K 1 d → Γ ⊢ kdS a0 a1 ∷ K 1 d
 ⊢kdS {Γ} {d} {a0} {a1} dd da0 da1 =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kdS} {d = d} {p = pair a0 (pair a1 (unit))} KOK (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))))))))))))))))))) dd (a-rec da0 (a-rec da1 a[]))
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kdS} {d = d} {p = pair a0 (pair a1 (unit))} KOK (atᵍ 1) (atʰ 25) dd (a-rec da0 (a-rec da1 a[]))
 
 ⊢kdR : {Γ : Ctx} {d a0 a1 : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ a0 ∷ K 1 d → Γ ⊢ a1 ∷ K 1 d → Γ ⊢ kdR a0 a1 ∷ K 1 d
 ⊢kdR {Γ} {d} {a0} {a1} dd da0 da1 =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kdR} {d = d} {p = pair a0 (pair a1 (unit))} KOK (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))))))))))))))))) dd (a-rec da0 (a-rec da1 a[]))
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kdR} {d = d} {p = pair a0 (pair a1 (unit))} KOK (atᵍ 1) (atʰ 26) dd (a-rec da0 (a-rec da1 a[]))
 
 ⊢kdpay : {Γ : Ctx} {d a0 a1 a2 : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ a0 ∷ K 1 d → Γ ⊢ a1 ∷ K 1 d → Γ ⊢ a2 ∷ K 1 d → Γ ⊢ kdpay a0 a1 a2 ∷ K 1 d
 ⊢kdpay {Γ} {d} {a0} {a1} {a2} dd da0 da1 da2 =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kdpay} {d = d} {p = pair a0 (pair a1 (pair a2 (unit)))} KOK (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))))))))))))))))))))) dd (a-rec da0 (a-rec da1 (a-rec da2 a[])))
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kdpay} {d = d} {p = pair a0 (pair a1 (pair a2 (unit)))} KOK (atᵍ 1) (atʰ 27) dd (a-rec da0 (a-rec da1 (a-rec da2 a[])))
 
 ⊢kdih : {Γ : Ctx} {d a0 a1 a2 a3 : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ a0 ∷ K 1 d → Γ ⊢ a1 ∷ K 1 d → Γ ⊢ a2 ∷ K 1 d → Γ ⊢ a3 ∷ K 1 d → Γ ⊢ kdih a0 a1 a2 a3 ∷ K 1 d
 ⊢kdih {Γ} {d} {a0} {a1} {a2} {a3} dd da0 da1 da2 da3 =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kdih} {d = d} {p = pair a0 (pair a1 (pair a2 (pair a3 (unit))))} KOK (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))))))))))))))))))) dd (a-rec da0 (a-rec da1 (a-rec da2 (a-rec da3 a[]))))
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kdih} {d = d} {p = pair a0 (pair a1 (pair a2 (pair a3 (unit))))} KOK (atᵍ 1) (atʰ 28) dd (a-rec da0 (a-rec da1 (a-rec da2 (a-rec da3 a[]))))
 
 ⊢kfzero : {Γ : Ctx} {d : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ kfzero ∷ K 1 d
 ⊢kfzero {Γ} {d} dd =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kfzero} {d = d} {p = unit} KOK (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))))))))))))))))))))))) dd a[]
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kfzero} {d = d} {p = unit} KOK (atᵍ 1) (atʰ 29) dd a[]
 
 ⊢kfsuc : {Γ : Ctx} {d a0 : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ a0 ∷ K 1 d → Γ ⊢ kfsuc a0 ∷ K 1 d
 ⊢kfsuc {Γ} {d} {a0} dd da0 =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kfsuc} {d = d} {p = pair a0 (unit)} KOK (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))))))))))))))))))))) dd (a-rec da0 a[])
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kfsuc} {d = d} {p = pair a0 (unit)} KOK (atᵍ 1) (atʰ 30) dd (a-rec da0 a[])
 
 ⊢kfcase : {Γ : Ctx} {d a0 a1 a2 : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ a0 ∷ K 1 d → Γ ⊢ a1 ∷ K 1 d → Γ ⊢ a2 ∷ K 1 (nsuc d) → Γ ⊢ kfcase a0 a1 a2 ∷ K 1 d
 ⊢kfcase {Γ} {d} {a0} {a1} {a2} dd da0 da1 da2 =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kfcase} {d = d} {p = pair a0 (pair a1 (pair a2 (unit)))} KOK (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))))))))))))))))))))))))) dd (a-rec da0 (a-rec da1 (a-rec da2 a[])))
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kfcase} {d = d} {p = pair a0 (pair a1 (pair a2 (unit)))} KOK (atᵍ 1) (atʰ 31) dd (a-rec da0 (a-rec da1 (a-rec da2 a[])))
 
 ⊢kfcase0 : {Γ : Ctx} {d a0 : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ a0 ∷ K 1 d → Γ ⊢ kfcase0 a0 ∷ K 1 d
 ⊢kfcase0 {Γ} {d} {a0} dd da0 =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kfcase0} {d = d} {p = pair a0 (unit)} KOK (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))))))))))))))))))))))) dd (a-rec da0 a[])
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kfcase0} {d = d} {p = pair a0 (unit)} KOK (atᵍ 1) (atʰ 32) dd (a-rec da0 a[])
 
 ⊢kpsplit : {Γ : Ctx} {d a0 a1 : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ a0 ∷ K 1 (nsuc (nsuc d)) → Γ ⊢ a1 ∷ K 1 d → Γ ⊢ kpsplit a0 a1 ∷ K 1 d
 ⊢kpsplit {Γ} {d} {a0} {a1} dd da0 da1 =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kpsplit} {d = d} {p = pair a0 (pair a1 (unit))} KOK (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))))))))))))))))))))))))))) dd (a-rec da0 (a-rec da1 a[]))
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kpsplit} {d = d} {p = pair a0 (pair a1 (unit))} KOK (atᵍ 1) (atʰ 33) dd (a-rec da0 (a-rec da1 a[]))
 
 ⊢kcNat : {Γ : Ctx} {d : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ kcNat ∷ K 1 d
 ⊢kcNat {Γ} {d} dd =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kcNat} {d = d} {p = unit} KOK (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))))))))))))))))))))))))) dd a[]
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kcNat} {d = d} {p = unit} KOK (atᵍ 1) (atʰ 34) dd a[]
 
 ⊢kcIMu : {Γ : Ctx} {d a0 a1 a2 : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ a0 ∷ K 1 d → Γ ⊢ a1 ∷ K 1 d → Γ ⊢ a2 ∷ K 1 d → Γ ⊢ kcIMu a0 a1 a2 ∷ K 1 d
 ⊢kcIMu {Γ} {d} {a0} {a1} {a2} dd da0 da1 da2 =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kcIMu} {d = d} {p = pair a0 (pair a1 (pair a2 (unit)))} KOK (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))))))))))))))))))))))))))))) dd (a-rec da0 (a-rec da1 (a-rec da2 a[])))
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kcIMu} {d = d} {p = pair a0 (pair a1 (pair a2 (unit)))} KOK (atᵍ 1) (atʰ 35) dd (a-rec da0 (a-rec da1 (a-rec da2 a[])))
 
 ⊢kcFin : {Γ : Ctx} {d a0 : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ a0 ∷ El ⌜Nat⌝ → Γ ⊢ kcFin a0 ∷ K 1 d
 ⊢kcFin {Γ} {d} {a0} dd da0 =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kcFin} {d = d} {p = pair a0 (unit)} KOK (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))))))))))))))))))))))))))) dd (a-nat da0 a[])
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kcFin} {d = d} {p = pair a0 (unit)} KOK (atᵍ 1) (atʰ 36) dd (a-nat da0 a[])
 
 ⊢kcUnit : {Γ : Ctx} {d : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ kcUnit ∷ K 1 d
 ⊢kcUnit {Γ} {d} dd =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kcUnit} {d = d} {p = unit} KOK (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))))))))))))))))))))))))))))))) dd a[]
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kcUnit} {d = d} {p = unit} KOK (atᵍ 1) (atʰ 37) dd a[]

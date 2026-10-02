@@ -251,9 +251,7 @@ quoteTm : {Γ : Cx} → RTm Γ → {Θ : Cx} → RTm Θ
         for f, a in reversed(list(zip(fs, args))): t = "(%s %s)" % (df(f, a), t)
         return t
     def nthsh(k):
-        t = "nthʰ-z"
-        for _ in range(k): t = "(nthʰ-s %s)" % t
-        return t
+        return "(atʰ %d)" % k   # a position by its number (Lib/Syn.atʰ)
     for data in ("RTy", "RTm"):
         for d, name, fs in rows:
             if d != data: continue
@@ -273,7 +271,7 @@ quoteTm : {Γ : Cx} → RTm Γ → {Θ : Cx} → RTm Θ
             L.append("⊢%s {Γ} %s =" % (Q[data], pat))
             L.append("  ⊢conSyn {sg = KSig} {shs = %sShs} {sh = sh-%s} KOK %s %s (⊢dep' Γ) %s"
                      % (["Ty", "Tm"][SORTS[data]], kname(name),
-                        "nthᵍ-z" if SORTS[data] == 0 else "(nthᵍ-s nthᵍ-z)", nthsh(k), args_proof(fs, args)))
+                        "(atᵍ %d)" % SORTS[data], nthsh(k), args_proof(fs, args)))
             k += 1
         L.append("")
     return "\n".join(L)
@@ -308,9 +306,7 @@ open import DirectedHoTT.Examples.Knot.Sig
         if f[0] == "nat": return "a-nat d" + a
         if f[0] == "var": return "a-v d" + a
     def nthsh(k):
-        t = "nthʰ-z"
-        for _ in range(k): t = "(nthʰ-s %s)" % t
-        return t
+        return "(atʰ %d)" % k   # a position by its number (Lib/Syn.atʰ)
     for data in ("RTy", "RTm"):
         k = 0
         for d, name, fs in rows:
@@ -330,7 +326,7 @@ open import DirectedHoTT.Examples.Knot.Sig
             L.append("⊢%s {Γ} {d}%s dd%s =" % (kn, "".join(" {%s}" % a for a in args), "".join(" d" + a for a in args)))
             L.append("  ⊢conSyn {sg = KSig} {shs = %sShs} {sh = sh-%s} {d = d} {p = %s} KOK %s %s dd %s"
                      % (["Ty", "Tm"][SORTS[data]], kn, pay,
-                        "nthᵍ-z" if SORTS[data] == 0 else "(nthᵍ-s nthᵍ-z)", nthsh(k), ap))
+                        "(atᵍ %d)" % SORTS[data], nthsh(k), ap))
             L.append("")
             k += 1
     return "\n".join(L)
@@ -343,12 +339,10 @@ def agree_cases(rows, fn, TR, lifts, var_case):
     L = []
     FN = {"RTy": fn + "-ty", "RTm": fn + "-tm"}
     def nthsh(k):
-        t = "nthʰ-z"
-        for _ in range(k): t = "(nthʰ-s %s)" % t
-        return t
+        return "(atʰ %d)" % k   # a position by its number (Lib/Syn.atʰ)
     for data in ("RTy", "RTm"):
         srt = SORTS[data]
-        ng = "nthᵍ-z" if srt == 0 else "(nthᵍ-s nthᵍ-z)"
+        ng = "(atᵍ %d)" % srt
         k = 0
         for d, name, fs in rows:
             if d != data: continue
@@ -578,9 +572,7 @@ def gen_qview(rows):
                      "THE HEAD VIEW of the quotation (PLAN-FAITHFUL F5): a quoted term is a\n-- node, with its head, payload and payload typing, one clause per former."),
          QVIEW_HDR]
     def nthsh(k):
-        t = "nthʰ-z"
-        for _ in range(k): t = "(nthʰ-s %s)" % t
-        return t
+        return "(atʰ %d)" % k   # a position by its number (Lib/Syn.atʰ)
     for data in ("RTy", "RTm"):
         srt = SORTS[data]
         k = 0

@@ -109,105 +109,105 @@ quoteTm ⌜Unit⌝ = kcUnit
 ⊢quoteTy : {Γ : Cx} (A : RTy Γ) {Θ : Ctx} → Θ ⊢ quoteTy A ∷ K 0 (dep Γ)
 ⊢quoteTm : {Γ : Cx} (t : RTm Γ) {Θ : Ctx} → Θ ⊢ quoteTm t ∷ K 1 (dep Γ)
 ⊢quoteTy {Γ} base =
-  ⊢conSyn {sg = KSig} {shs = TyShs} {sh = sh-kbase} KOK nthᵍ-z nthʰ-z (⊢dep' Γ) a[]
+  ⊢conSyn {sg = KSig} {shs = TyShs} {sh = sh-kbase} KOK (atᵍ 0) (atʰ 0) (⊢dep' Γ) a[]
 ⊢quoteTy {Γ} U =
-  ⊢conSyn {sg = KSig} {shs = TyShs} {sh = sh-kU} KOK nthᵍ-z (nthʰ-s nthʰ-z) (⊢dep' Γ) a[]
+  ⊢conSyn {sg = KSig} {shs = TyShs} {sh = sh-kU} KOK (atᵍ 0) (atʰ 1) (⊢dep' Γ) a[]
 ⊢quoteTy {Γ} (Π a0 a1) =
-  ⊢conSyn {sg = KSig} {shs = TyShs} {sh = sh-kPi} KOK nthᵍ-z (nthʰ-s (nthʰ-s nthʰ-z)) (⊢dep' Γ) (a-rec (⊢quoteTy a0) (a-rec (⊢quoteTy a1) a[]))
+  ⊢conSyn {sg = KSig} {shs = TyShs} {sh = sh-kPi} KOK (atᵍ 0) (atʰ 2) (⊢dep' Γ) (a-rec (⊢quoteTy a0) (a-rec (⊢quoteTy a1) a[]))
 ⊢quoteTy {Γ} (Σ' a0 a1) =
-  ⊢conSyn {sg = KSig} {shs = TyShs} {sh = sh-kSg} KOK nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))) (⊢dep' Γ) (a-rec (⊢quoteTy a0) (a-rec (⊢quoteTy a1) a[]))
+  ⊢conSyn {sg = KSig} {shs = TyShs} {sh = sh-kSg} KOK (atᵍ 0) (atʰ 3) (⊢dep' Γ) (a-rec (⊢quoteTy a0) (a-rec (⊢quoteTy a1) a[]))
 ⊢quoteTy {Γ} (El a0) =
-  ⊢conSyn {sg = KSig} {shs = TyShs} {sh = sh-kEl} KOK nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))) (⊢dep' Γ) (a-rec (⊢quoteTm a0) a[])
+  ⊢conSyn {sg = KSig} {shs = TyShs} {sh = sh-kEl} KOK (atᵍ 0) (atʰ 4) (⊢dep' Γ) (a-rec (⊢quoteTm a0) a[])
 ⊢quoteTy {Γ} (Hom a0 a1 a2) =
-  ⊢conSyn {sg = KSig} {shs = TyShs} {sh = sh-kHom} KOK nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))) (⊢dep' Γ) (a-rec (⊢quoteTy a0) (a-rec (⊢quoteTm a1) (a-rec (⊢quoteTm a2) a[])))
+  ⊢conSyn {sg = KSig} {shs = TyShs} {sh = sh-kHom} KOK (atᵍ 0) (atʰ 5) (⊢dep' Γ) (a-rec (⊢quoteTy a0) (a-rec (⊢quoteTm a1) (a-rec (⊢quoteTm a2) a[])))
 ⊢quoteTy {Γ} Unit =
-  ⊢conSyn {sg = KSig} {shs = TyShs} {sh = sh-kUnit} KOK nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))) (⊢dep' Γ) a[]
+  ⊢conSyn {sg = KSig} {shs = TyShs} {sh = sh-kUnit} KOK (atᵍ 0) (atʰ 6) (⊢dep' Γ) a[]
 ⊢quoteTy {Γ} Nat =
-  ⊢conSyn {sg = KSig} {shs = TyShs} {sh = sh-kNat} KOK nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))) (⊢dep' Γ) a[]
+  ⊢conSyn {sg = KSig} {shs = TyShs} {sh = sh-kNat} KOK (atᵍ 0) (atʰ 7) (⊢dep' Γ) a[]
 ⊢quoteTy {Γ} (Id a0 a1 a2) =
-  ⊢conSyn {sg = KSig} {shs = TyShs} {sh = sh-kId} KOK nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))) (⊢dep' Γ) (a-rec (⊢quoteTy a0) (a-rec (⊢quoteTm a1) (a-rec (⊢quoteTm a2) a[])))
+  ⊢conSyn {sg = KSig} {shs = TyShs} {sh = sh-kId} KOK (atᵍ 0) (atʰ 8) (⊢dep' Γ) (a-rec (⊢quoteTy a0) (a-rec (⊢quoteTm a1) (a-rec (⊢quoteTm a2) a[])))
 ⊢quoteTy {Γ} (IMu a0 a1 a2) =
-  ⊢conSyn {sg = KSig} {shs = TyShs} {sh = sh-kIMu} KOK nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))) (⊢dep' Γ) (a-rec (⊢quoteTm a0) (a-rec (⊢quoteTm a1) (a-rec (⊢quoteTm a2) a[])))
+  ⊢conSyn {sg = KSig} {shs = TyShs} {sh = sh-kIMu} KOK (atᵍ 0) (atʰ 9) (⊢dep' Γ) (a-rec (⊢quoteTm a0) (a-rec (⊢quoteTm a1) (a-rec (⊢quoteTm a2) a[])))
 ⊢quoteTy {Γ} (Desc a0) =
-  ⊢conSyn {sg = KSig} {shs = TyShs} {sh = sh-kDesc} KOK nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))) (⊢dep' Γ) (a-rec (⊢quoteTm a0) a[])
+  ⊢conSyn {sg = KSig} {shs = TyShs} {sh = sh-kDesc} KOK (atᵍ 0) (atʰ 10) (⊢dep' Γ) (a-rec (⊢quoteTm a0) a[])
 ⊢quoteTy {Γ} (DIh a0 a1 a2 a3) =
-  ⊢conSyn {sg = KSig} {shs = TyShs} {sh = sh-kDIh} KOK nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))))) (⊢dep' Γ) (a-rec (⊢quoteTm a0) (a-rec (⊢quoteTy a1) (a-rec (⊢quoteTm a2) (a-rec (⊢quoteTm a3) a[]))))
+  ⊢conSyn {sg = KSig} {shs = TyShs} {sh = sh-kDIh} KOK (atᵍ 0) (atʰ 11) (⊢dep' Γ) (a-rec (⊢quoteTm a0) (a-rec (⊢quoteTy a1) (a-rec (⊢quoteTm a2) (a-rec (⊢quoteTm a3) a[]))))
 ⊢quoteTy {Γ} (Fin a0) =
-  ⊢conSyn {sg = KSig} {shs = TyShs} {sh = sh-kFin} KOK nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))) (⊢dep' Γ) (a-nat (⊢quoteℕ a0) a[])
+  ⊢conSyn {sg = KSig} {shs = TyShs} {sh = sh-kFin} KOK (atᵍ 0) (atʰ 12) (⊢dep' Γ) (a-nat (⊢quoteℕ a0) a[])
 
 ⊢quoteTm {Γ} (var a0) =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kvar} KOK (nthᵍ-s nthᵍ-z) nthʰ-z (⊢dep' Γ) (a-v (⊢quoteVar a0))
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kvar} KOK (atᵍ 1) (atʰ 0) (⊢dep' Γ) (a-v (⊢quoteVar a0))
 ⊢quoteTm {Γ} (lam a0) =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-klam} KOK (nthᵍ-s nthᵍ-z) (nthʰ-s nthʰ-z) (⊢dep' Γ) (a-rec (⊢quoteTm a0) a[])
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-klam} KOK (atᵍ 1) (atʰ 1) (⊢dep' Γ) (a-rec (⊢quoteTm a0) a[])
 ⊢quoteTm {Γ} (app a0 a1) =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kapp} KOK (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s nthʰ-z)) (⊢dep' Γ) (a-rec (⊢quoteTm a0) (a-rec (⊢quoteTm a1) a[]))
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kapp} KOK (atᵍ 1) (atʰ 2) (⊢dep' Γ) (a-rec (⊢quoteTm a0) (a-rec (⊢quoteTm a1) a[]))
 ⊢quoteTm {Γ} (pair a0 a1) =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kpair} KOK (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))) (⊢dep' Γ) (a-rec (⊢quoteTm a0) (a-rec (⊢quoteTm a1) a[]))
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kpair} KOK (atᵍ 1) (atʰ 3) (⊢dep' Γ) (a-rec (⊢quoteTm a0) (a-rec (⊢quoteTm a1) a[]))
 ⊢quoteTm {Γ} (absurd a0 a1) =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kabsurd} KOK (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))) (⊢dep' Γ) (a-rec (⊢quoteTm a0) (a-rec (⊢quoteTm a1) a[]))
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kabsurd} KOK (atᵍ 1) (atʰ 4) (⊢dep' Γ) (a-rec (⊢quoteTm a0) (a-rec (⊢quoteTm a1) a[]))
 ⊢quoteTm {Γ} (ordtr a0 a1 a2 a3 a4) =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kordtr} KOK (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))) (⊢dep' Γ) (a-rec (⊢quoteTm a0) (a-rec (⊢quoteTm a1) (a-rec (⊢quoteTm a2) (a-rec (⊢quoteTm a3) (a-rec (⊢quoteTm a4) a[])))))
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kordtr} KOK (atᵍ 1) (atʰ 5) (⊢dep' Γ) (a-rec (⊢quoteTm a0) (a-rec (⊢quoteTm a1) (a-rec (⊢quoteTm a2) (a-rec (⊢quoteTm a3) (a-rec (⊢quoteTm a4) a[])))))
 ⊢quoteTm {Γ} (fst a0) =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kfst} KOK (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))) (⊢dep' Γ) (a-rec (⊢quoteTm a0) a[])
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kfst} KOK (atᵍ 1) (atʰ 6) (⊢dep' Γ) (a-rec (⊢quoteTm a0) a[])
 ⊢quoteTm {Γ} (snd a0) =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-ksnd} KOK (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))) (⊢dep' Γ) (a-rec (⊢quoteTm a0) a[])
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-ksnd} KOK (atᵍ 1) (atʰ 7) (⊢dep' Γ) (a-rec (⊢quoteTm a0) a[])
 ⊢quoteTm {Γ} ⌜base⌝ =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kcbase} KOK (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))) (⊢dep' Γ) a[]
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kcbase} KOK (atᵍ 1) (atʰ 8) (⊢dep' Γ) a[]
 ⊢quoteTm {Γ} (⌜Π⌝ a0 a1) =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kcPi} KOK (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))) (⊢dep' Γ) (a-rec (⊢quoteTm a0) (a-rec (⊢quoteTm a1) a[]))
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kcPi} KOK (atᵍ 1) (atʰ 9) (⊢dep' Γ) (a-rec (⊢quoteTm a0) (a-rec (⊢quoteTm a1) a[]))
 ⊢quoteTm {Γ} (⌜Σ⌝ a0 a1) =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kcSg} KOK (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))) (⊢dep' Γ) (a-rec (⊢quoteTm a0) (a-rec (⊢quoteTm a1) a[]))
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kcSg} KOK (atᵍ 1) (atʰ 10) (⊢dep' Γ) (a-rec (⊢quoteTm a0) (a-rec (⊢quoteTm a1) a[]))
 ⊢quoteTm {Γ} (⌜Hom⌝ a0 a1 a2) =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kcHom} KOK (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))))) (⊢dep' Γ) (a-rec (⊢quoteTm a0) (a-rec (⊢quoteTm a1) (a-rec (⊢quoteTm a2) a[])))
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kcHom} KOK (atᵍ 1) (atʰ 11) (⊢dep' Γ) (a-rec (⊢quoteTm a0) (a-rec (⊢quoteTm a1) (a-rec (⊢quoteTm a2) a[])))
 ⊢quoteTm {Γ} (hrefl a0 a1) =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-khrefl} KOK (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))) (⊢dep' Γ) (a-rec (⊢quoteTm a0) (a-rec (⊢quoteTm a1) a[]))
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-khrefl} KOK (atᵍ 1) (atʰ 12) (⊢dep' Γ) (a-rec (⊢quoteTm a0) (a-rec (⊢quoteTm a1) a[]))
 ⊢quoteTm {Γ} (tr a0 a1 a2) =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-ktr} KOK (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))))))) (⊢dep' Γ) (a-rec (⊢quoteTm a0) (a-rec (⊢quoteTm a1) (a-rec (⊢quoteTm a2) a[])))
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-ktr} KOK (atᵍ 1) (atʰ 13) (⊢dep' Γ) (a-rec (⊢quoteTm a0) (a-rec (⊢quoteTm a1) (a-rec (⊢quoteTm a2) a[])))
 ⊢quoteTm {Γ} (ap a0 a1 a2) =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kap} KOK (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))))) (⊢dep' Γ) (a-rec (⊢quoteTm a0) (a-rec (⊢quoteTm a1) (a-rec (⊢quoteTm a2) a[])))
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kap} KOK (atᵍ 1) (atʰ 14) (⊢dep' Γ) (a-rec (⊢quoteTm a0) (a-rec (⊢quoteTm a1) (a-rec (⊢quoteTm a2) a[])))
 ⊢quoteTm {Γ} (⌜Id⌝ a0 a1 a2) =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kcId} KOK (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))))))))) (⊢dep' Γ) (a-rec (⊢quoteTm a0) (a-rec (⊢quoteTm a1) (a-rec (⊢quoteTm a2) a[])))
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kcId} KOK (atᵍ 1) (atʰ 15) (⊢dep' Γ) (a-rec (⊢quoteTm a0) (a-rec (⊢quoteTm a1) (a-rec (⊢quoteTm a2) a[])))
 ⊢quoteTm {Γ} (idrefl a0 a1) =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kidrefl} KOK (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))))))) (⊢dep' Γ) (a-rec (⊢quoteTm a0) (a-rec (⊢quoteTm a1) a[]))
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kidrefl} KOK (atᵍ 1) (atʰ 16) (⊢dep' Γ) (a-rec (⊢quoteTm a0) (a-rec (⊢quoteTm a1) a[]))
 ⊢quoteTm {Γ} (jsub a0 a1 a2) =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kjsub} KOK (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))))))))))) (⊢dep' Γ) (a-rec (⊢quoteTm a0) (a-rec (⊢quoteTm a1) (a-rec (⊢quoteTm a2) a[])))
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kjsub} KOK (atᵍ 1) (atʰ 17) (⊢dep' Γ) (a-rec (⊢quoteTm a0) (a-rec (⊢quoteTm a1) (a-rec (⊢quoteTm a2) a[])))
 ⊢quoteTm {Γ} unit =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kunit} KOK (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))))))))) (⊢dep' Γ) a[]
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kunit} KOK (atᵍ 1) (atʰ 18) (⊢dep' Γ) a[]
 ⊢quoteTm {Γ} nzero =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-knzero} KOK (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))))))))))))) (⊢dep' Γ) a[]
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-knzero} KOK (atᵍ 1) (atʰ 19) (⊢dep' Γ) a[]
 ⊢quoteTm {Γ} (nsuc a0) =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-knsuc} KOK (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))))))))))) (⊢dep' Γ) (a-rec (⊢quoteTm a0) a[])
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-knsuc} KOK (atᵍ 1) (atʰ 20) (⊢dep' Γ) (a-rec (⊢quoteTm a0) a[])
 ⊢quoteTm {Γ} (natrec a0 a1 a2) =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-knatrec} KOK (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))))))))))))))) (⊢dep' Γ) (a-rec (⊢quoteTm a0) (a-rec (⊢quoteTm a1) (a-rec (⊢quoteTm a2) a[])))
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-knatrec} KOK (atᵍ 1) (atʰ 21) (⊢dep' Γ) (a-rec (⊢quoteTm a0) (a-rec (⊢quoteTm a1) (a-rec (⊢quoteTm a2) a[])))
 ⊢quoteTm {Γ} (con a0) =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kcon} KOK (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))))))))))))) (⊢dep' Γ) (a-rec (⊢quoteTm a0) a[])
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kcon} KOK (atᵍ 1) (atʰ 22) (⊢dep' Γ) (a-rec (⊢quoteTm a0) a[])
 ⊢quoteTm {Γ} (ielim a0 a1 a2 a3) =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kielim} KOK (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))))))))))))))))) (⊢dep' Γ) (a-rec (⊢quoteTm a0) (a-rec (⊢quoteTm a1) (a-rec (⊢quoteTm a2) (a-rec (⊢quoteTm a3) a[]))))
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kielim} KOK (atᵍ 1) (atʰ 23) (⊢dep' Γ) (a-rec (⊢quoteTm a0) (a-rec (⊢quoteTm a1) (a-rec (⊢quoteTm a2) (a-rec (⊢quoteTm a3) a[]))))
 ⊢quoteTm {Γ} dι =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kdI} KOK (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))))))))))))))) (⊢dep' Γ) a[]
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kdI} KOK (atᵍ 1) (atʰ 24) (⊢dep' Γ) a[]
 ⊢quoteTm {Γ} (dσ a0 a1) =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kdS} KOK (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))))))))))))))))))) (⊢dep' Γ) (a-rec (⊢quoteTm a0) (a-rec (⊢quoteTm a1) a[]))
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kdS} KOK (atᵍ 1) (atʰ 25) (⊢dep' Γ) (a-rec (⊢quoteTm a0) (a-rec (⊢quoteTm a1) a[]))
 ⊢quoteTm {Γ} (dρ a0 a1) =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kdR} KOK (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))))))))))))))))) (⊢dep' Γ) (a-rec (⊢quoteTm a0) (a-rec (⊢quoteTm a1) a[]))
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kdR} KOK (atᵍ 1) (atʰ 26) (⊢dep' Γ) (a-rec (⊢quoteTm a0) (a-rec (⊢quoteTm a1) a[]))
 ⊢quoteTm {Γ} (dpay a0 a1 a2) =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kdpay} KOK (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))))))))))))))))))))) (⊢dep' Γ) (a-rec (⊢quoteTm a0) (a-rec (⊢quoteTm a1) (a-rec (⊢quoteTm a2) a[])))
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kdpay} KOK (atᵍ 1) (atʰ 27) (⊢dep' Γ) (a-rec (⊢quoteTm a0) (a-rec (⊢quoteTm a1) (a-rec (⊢quoteTm a2) a[])))
 ⊢quoteTm {Γ} (dih a0 a1 a2 a3) =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kdih} KOK (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))))))))))))))))))) (⊢dep' Γ) (a-rec (⊢quoteTm a0) (a-rec (⊢quoteTm a1) (a-rec (⊢quoteTm a2) (a-rec (⊢quoteTm a3) a[]))))
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kdih} KOK (atᵍ 1) (atʰ 28) (⊢dep' Γ) (a-rec (⊢quoteTm a0) (a-rec (⊢quoteTm a1) (a-rec (⊢quoteTm a2) (a-rec (⊢quoteTm a3) a[]))))
 ⊢quoteTm {Γ} fzero =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kfzero} KOK (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))))))))))))))))))))))) (⊢dep' Γ) a[]
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kfzero} KOK (atᵍ 1) (atʰ 29) (⊢dep' Γ) a[]
 ⊢quoteTm {Γ} (fsuc a0) =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kfsuc} KOK (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))))))))))))))))))))) (⊢dep' Γ) (a-rec (⊢quoteTm a0) a[])
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kfsuc} KOK (atᵍ 1) (atʰ 30) (⊢dep' Γ) (a-rec (⊢quoteTm a0) a[])
 ⊢quoteTm {Γ} (fcase a0 a1 a2) =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kfcase} KOK (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))))))))))))))))))))))))) (⊢dep' Γ) (a-rec (⊢quoteTm a0) (a-rec (⊢quoteTm a1) (a-rec (⊢quoteTm a2) a[])))
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kfcase} KOK (atᵍ 1) (atʰ 31) (⊢dep' Γ) (a-rec (⊢quoteTm a0) (a-rec (⊢quoteTm a1) (a-rec (⊢quoteTm a2) a[])))
 ⊢quoteTm {Γ} (fcase0 a0) =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kfcase0} KOK (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))))))))))))))))))))))) (⊢dep' Γ) (a-rec (⊢quoteTm a0) a[])
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kfcase0} KOK (atᵍ 1) (atʰ 32) (⊢dep' Γ) (a-rec (⊢quoteTm a0) a[])
 ⊢quoteTm {Γ} (psplit a0 a1) =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kpsplit} KOK (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))))))))))))))))))))))))))) (⊢dep' Γ) (a-rec (⊢quoteTm a0) (a-rec (⊢quoteTm a1) a[]))
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kpsplit} KOK (atᵍ 1) (atʰ 33) (⊢dep' Γ) (a-rec (⊢quoteTm a0) (a-rec (⊢quoteTm a1) a[]))
 ⊢quoteTm {Γ} ⌜Nat⌝ =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kcNat} KOK (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))))))))))))))))))))))))) (⊢dep' Γ) a[]
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kcNat} KOK (atᵍ 1) (atʰ 34) (⊢dep' Γ) a[]
 ⊢quoteTm {Γ} (⌜IMu⌝ a0 a1 a2) =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kcIMu} KOK (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))))))))))))))))))))))))))))) (⊢dep' Γ) (a-rec (⊢quoteTm a0) (a-rec (⊢quoteTm a1) (a-rec (⊢quoteTm a2) a[])))
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kcIMu} KOK (atᵍ 1) (atʰ 35) (⊢dep' Γ) (a-rec (⊢quoteTm a0) (a-rec (⊢quoteTm a1) (a-rec (⊢quoteTm a2) a[])))
 ⊢quoteTm {Γ} (⌜Fin⌝ a0) =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kcFin} KOK (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))))))))))))))))))))))))))) (⊢dep' Γ) (a-nat (⊢quoteℕ a0) a[])
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kcFin} KOK (atᵍ 1) (atʰ 36) (⊢dep' Γ) (a-nat (⊢quoteℕ a0) a[])
 ⊢quoteTm {Γ} ⌜Unit⌝ =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kcUnit} KOK (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))))))))))))))))))))))))))))))) (⊢dep' Γ) a[]
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kcUnit} KOK (atᵍ 1) (atʰ 37) (⊢dep' Γ) a[]

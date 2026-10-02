@@ -26,8 +26,8 @@ open import DirectedHoTT.Examples.Knot.Terms
 KVars : VarsAt KSig 1
 KVars = varsAt KSig 1 refl
 
-open Ren KOK {v = 1} {kv = 0} (nthᵍ-s nthᵍ-z) nthʰ-z KVars public hiding ( wk; ⊢wkS )
-open Ren KOK {v = 1} {kv = 0} (nthᵍ-s nthᵍ-z) nthʰ-z KVars using () renaming ( wk to wkᵗ; ⊢wkS to ⊢wkSᵗ )
+open Ren KOK {v = 1} {kv = 0} (atᵍ 1) (atʰ 0) KVars public hiding ( wk; ⊢wkS )
+open Ren KOK {v = 1} {kv = 0} (atᵍ 1) (atʰ 0) KVars using () renaming ( wk to wkᵗ; ⊢wkS to ⊢wkSᵗ )
 
 ------------------------------------------------------------------------
 -- ★★ `wk` is OPAQUE (as `Knot/Sub.sub0`): its body carries the traversal
