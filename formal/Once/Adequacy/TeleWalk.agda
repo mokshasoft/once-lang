@@ -97,7 +97,7 @@ open import Once.Type.Rigid using (RigidFree)
 import Once.Adequacy.SourceFaithful as SF
 import Once.Adequacy.FaithfulLemmas as FLm
 import Once.Adequacy.ResolveFaithful as RF
-open import Once.Adequacy.RealizeInvariant fmt using (realize-invariant)
+open import Once.Adequacy.Coherence fmt using (realize-invariant)
 import Once.TypeCheck.Completeness
 import Once.TypeCheck.Soundness
 import Once.TypeCheck.Elaborate
