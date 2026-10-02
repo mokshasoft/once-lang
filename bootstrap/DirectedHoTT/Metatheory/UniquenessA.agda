@@ -25,19 +25,20 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Metatheory.UniquenessA where
-
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; cong; subst; Σ; _,_; _×_; inj₁; inj₂ )
 open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Spec.Annotated
-open import DirectedHoTT.Spec.AnnotatedDesc
-open import DirectedHoTT.Spec.TypingA
+open import DirectedHoTT.Spec.Signature using ( Sig )
 open import DirectedHoTT.Metatheory.SubjectReductionBase using ( ≅ᵀ-sub )
 open import DirectedHoTT.Metatheory.Injectivity using ( Π-inj; Σ-inj )
 open import DirectedHoTT.Metatheory.Validity using ( ≅ᵀ-Πʳ )
-open import DirectedHoTT.Metatheory.Erasure using ( sub1 )
-open import DirectedHoTT.Metatheory.GenerationA
+module DirectedHoTT.Metatheory.UniquenessA (S : Sig) where
+open Sig S
+open Era body
+open import DirectedHoTT.Spec.AnnotatedDesc body
+open import DirectedHoTT.Spec.TypingA S
+open import DirectedHoTT.Metatheory.GenerationA S
 
 -- two conversions from one rule's type
 via : {Δ : Cx} {T A B : RTy Δ} → T ≅ᵀ A → T ≅ᵀ B → A ≅ᵀ B
@@ -112,6 +113,9 @@ uniqᴬ {t = idrefl c t} d₁ d₂ =
 uniqᴬ {t = jsub A t u d p e} d₁ d₂ =
   let (_ , (_ , (_ , (_ , (_ , (_ , c₁)))))) = genᴬ-jsub d₁ in let (_ , (_ , (_ , (_ , (_ , (_ , c₂)))))) = genᴬ-jsub d₂ in via c₁ c₂
 uniqᴬ {t = unit} d₁ d₂ = via (genᴬ-unit d₁) (genᴬ-unit d₂)
+-- ★ S5: a reference's type is its declaration
+uniqᴬ {t = ref d} d₁ d₂ =
+  let (_ , c₁) = genᴬ-ref d₁ in let (_ , c₂) = genᴬ-ref d₂ in via c₁ c₂
 uniqᴬ {t = nzero} d₁ d₂ = via (genᴬ-nzero d₁) (genᴬ-nzero d₂)
 uniqᴬ {t = nsuc n} d₁ d₂ =
   let (_ , c₁) = genᴬ-nsuc d₁ in let (_ , c₂) = genᴬ-nsuc d₂ in via c₁ c₂

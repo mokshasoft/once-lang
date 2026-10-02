@@ -20,6 +20,10 @@
 --   so the de Bruijn depth of an annotated context IS that of its erasure,
 --   definitionally — no transport between the layers, ever.
 --
+-- ★ THE SIGNATURE (S5, PLAN-BIDI §2-bis) is the module parameter: `ref d`
+--   is typed by its declared `type d` alone, and erasure — so conversion —
+--   unfolds it to `body d` (δ).  One judgment, for every signature.
+--
 -- ★ THE INDUCTIVE FORMERS (levitated): descriptions are annotated TERMS
 --   of `Desc I`, so their well-formedness is `⊢ᴬ` itself; the method type
 --   comes from `Spec/AnnotatedDesc` (`MethTyᴬ`, `iinstᴬ`).
@@ -28,15 +32,18 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Spec.TypingA where
-open import normalizer.Syntax.Types using ( _≡_ )
+open import normalizer.Syntax.Types using ( _≡_; refl )
 open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Variance using ( 𝔹; true; false; occTm; NoNatC; flat? )
 open import DirectedHoTT.Spec.Typing
-  using ( Ctx; ◇; _▹_; ⌊_⌋; _≅ᵀ_; _×_; _,,_ )
+  using ( Ctx; ◇; _▹_; ⌊_⌋; _≅ᵀ_; _×_; _,,_; single; nrs )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Annotated
-open import DirectedHoTT.Spec.AnnotatedDesc
+open import DirectedHoTT.Spec.Signature using ( Sig; _<ˢ_ )
+module DirectedHoTT.Spec.TypingA (S : Sig) where
+open Sig S
+open Era body
+open import DirectedHoTT.Spec.AnnotatedDesc body
 
 ------------------------------------------------------------------------
 -- Annotated contexts, and their erasure — MUTUALLY.
@@ -68,6 +75,20 @@ private
 nrsᴬ : {Δ : Cx} → Subᴬ (Δ ∙) ((Δ ∙) ∙)
 nrsᴬ vz     = nsuc (var (vs vz))
 nrsᴬ (vs x) = var (vs (vs x))
+
+-- the erasures of the annotated substitutions the rules use (the checker
+-- states its targets through them)
+nrs-era : {Δ : Cx} → ∀ (x : Var (Δ ∙)) → ⌈ nrsᴬ x ⌉ ≡ nrs x
+nrs-era vz     = refl
+nrs-era (vs x) = refl
+
+sub1 : {Δ : Cx} (u : ATm Δ) (B : ATy (Δ ∙)) →
+       ⌈ subTyᴬ (singleᴬ u) B ⌉ᵀ ≡ subTy (single ⌈ u ⌉) ⌈ B ⌉ᵀ
+sub1 u B = era-subTy (singleᴬ u) (single ⌈ u ⌉) (era-single u) B
+
+sub1ᵗ : {Δ : Cx} (u : ATm Δ) (d : ATm (Δ ∙)) →
+        ⌈ subTmᴬ (singleᴬ u) d ⌉ ≡ subTm (single ⌈ u ⌉) ⌈ d ⌉
+sub1ᵗ u d = era-subTm (singleᴬ u) (single ⌈ u ⌉) (era-single u) d
 
 ------------------------------------------------------------------------
 -- Variables.
@@ -199,7 +220,10 @@ data _⊢ᴬ_∷_ where
              Γ ⊢tyᴬ A → (Γ ▹ᴬ A) ⊢tyᴬ B → (Γ ▹ᴬ Σ' A B) ⊢tyᴬ P → Γ ⊢ᴬ q ∷ Σ' A B →
              ((Γ ▹ᴬ A) ▹ᴬ B) ⊢ᴬ b ∷ subTyᴬ (pairSᴬ A B) P →
              Γ ⊢ᴬ psplit A B P b q ∷ subTyᴬ (singleᴬ q) P
-  -- ★ (c): conversion of ERASURES
+  -- ★ S5: a SIGNATURE REFERENCE is typed by its declared type alone — the
+  --   body was checked once, in its prefix (`Metatheory/Signature`)
+  ⊢ᴬref : ∀ {Γ d} → d <ˢ size → Γ ⊢ᴬ ref d ∷ εwkTyᴬ (type d)
+  -- ★ (c): conversion of ERASURES — δ included: erasure unfolds `ref`
   ⊢ᴬconv : ∀ {Γ t A B} → Γ ⊢ᴬ t ∷ A → ⌈ A ⌉ᵀ ≅ᵀ ⌈ B ⌉ᵀ → Γ ⊢ᴬ t ∷ B
 
 data _⊢tyᴬ_ where

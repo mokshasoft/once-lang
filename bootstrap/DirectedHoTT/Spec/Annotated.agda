@@ -27,6 +27,15 @@
 --   `Spec/Syntax`'s `RTm` constructor list): a former missing here is a
 --   generator failure, not a silent row.
 --
+-- ★ S5 — THE SIGNATURE (PLAN-BIDI §2-bis, route B).  `ref d` names the
+--   d-th entry of a global signature of CLOSED definitions.  It is not an
+--   `RTm` former: the kernel is unchanged, and erasure UNFOLDS `ref d` to
+--   the entry's closed body (δ).  So erasure is parameterised by the
+--   bodies, `module Era (δ : ℕ → RTm ε)`; syntax, renaming and
+--   substitution are not (a reference is closed, so they leave it alone).
+--   `Metatheory/Erasure` is then δ-ELIMINATION: every annotated derivation
+--   over a well-formed signature means a signature-free kernel derivation.
+--
 -- ★ LEVITATION: descriptions are TERMS, so they need no separate annotated
 --   syntax — they are `ATm`s like any other.
 --
@@ -113,6 +122,7 @@ data ATm where
   fcase : ∀ {Γ} → ℕ → ATy (Γ ∙) → ATm Γ → ATm Γ → ATm (Γ ∙) → ATm Γ
   fcase0 : ∀ {Γ} → ATy (Γ ∙) → ATm Γ → ATm Γ
   psplit : ∀ {Γ} → ATy Γ → ATy (Γ ∙) → ATy (Γ ∙) → ATm ((Γ ∙) ∙) → ATm Γ → ATm Γ
+  ref : ∀ {Γ} → ℕ → ATm Γ
 
 renTyᴬ : {Γ Δ : Cx} → Ren Γ Δ → ATy Γ → ATy Δ
 renTmᴬ : {Γ Δ : Cx} → Ren Γ Δ → ATm Γ → ATm Δ
@@ -167,6 +177,7 @@ renTmᴬ ρ (fsuc x0 x1) = fsuc x0 (renTmᴬ ρ x1)
 renTmᴬ ρ (fcase x0 x1 x2 x3 x4) = fcase x0 (renTyᴬ (extR ρ) x1) (renTmᴬ ρ x2) (renTmᴬ ρ x3) (renTmᴬ (extR ρ) x4)
 renTmᴬ ρ (fcase0 x0 x1) = fcase0 (renTyᴬ (extR ρ) x0) (renTmᴬ ρ x1)
 renTmᴬ ρ (psplit x0 x1 x2 x3 x4) = psplit (renTyᴬ ρ x0) (renTyᴬ (extR ρ) x1) (renTyᴬ (extR ρ) x2) (renTmᴬ (extR (extR ρ)) x3) (renTmᴬ ρ x4)
+renTmᴬ ρ (ref x0) = ref x0
 
 Subᴬ : Cx → Cx → Set
 Subᴬ Γ Δ = Var Γ → ATm Δ
@@ -228,176 +239,184 @@ subTmᴬ σ (fsuc x0 x1) = fsuc x0 (subTmᴬ σ x1)
 subTmᴬ σ (fcase x0 x1 x2 x3 x4) = fcase x0 (subTyᴬ (extSᴬ σ) x1) (subTmᴬ σ x2) (subTmᴬ σ x3) (subTmᴬ (extSᴬ σ) x4)
 subTmᴬ σ (fcase0 x0 x1) = fcase0 (subTyᴬ (extSᴬ σ) x0) (subTmᴬ σ x1)
 subTmᴬ σ (psplit x0 x1 x2 x3 x4) = psplit (subTyᴬ σ x0) (subTyᴬ (extSᴬ σ) x1) (subTyᴬ (extSᴬ σ) x2) (subTmᴬ (extSᴬ (extSᴬ σ)) x3) (subTmᴬ σ x4)
+subTmᴬ σ (ref x0) = ref x0
 
--- ★ ERASURE — drops exactly the annotation fields.
-⌈_⌉ᵀ : {Γ : Cx} → ATy Γ → RTy Γ
-⌈_⌉ : {Γ : Cx} → ATm Γ → RTm Γ
-⌈ base ⌉ᵀ = base
-⌈ U ⌉ᵀ = U
-⌈ (Π x0 x1) ⌉ᵀ = Π (⌈ x0 ⌉ᵀ) (⌈ x1 ⌉ᵀ)
-⌈ (Σ' x0 x1) ⌉ᵀ = Σ' (⌈ x0 ⌉ᵀ) (⌈ x1 ⌉ᵀ)
-⌈ (El x0) ⌉ᵀ = El (⌈ x0 ⌉)
-⌈ (Hom x0 x1 x2) ⌉ᵀ = Hom (⌈ x0 ⌉ᵀ) (⌈ x1 ⌉) (⌈ x2 ⌉)
-⌈ Unit ⌉ᵀ = Unit
-⌈ Nat ⌉ᵀ = Nat
-⌈ (Id x0 x1 x2) ⌉ᵀ = Id (⌈ x0 ⌉ᵀ) (⌈ x1 ⌉) (⌈ x2 ⌉)
-⌈ (IMu x0 x1 x2) ⌉ᵀ = IMu (⌈ x0 ⌉) (⌈ x1 ⌉) (⌈ x2 ⌉)
-⌈ (Desc x0) ⌉ᵀ = Desc (⌈ x0 ⌉)
-⌈ (DIh x0 x1 x2 x3 x4) ⌉ᵀ = DIh (⌈ x1 ⌉) (⌈ x2 ⌉ᵀ) (⌈ x3 ⌉) (⌈ x4 ⌉)
-⌈ (Fin x0) ⌉ᵀ = Fin x0
-⌈ (var x) ⌉ = var x
-⌈ (lam x0 x1) ⌉ = lam (⌈ x1 ⌉)
-⌈ (app x0 x1) ⌉ = app (⌈ x0 ⌉) (⌈ x1 ⌉)
-⌈ (pair x0 x1 x2 x3) ⌉ = pair (⌈ x2 ⌉) (⌈ x3 ⌉)
-⌈ (absurd x0 x1) ⌉ = absurd (⌈ x0 ⌉) (⌈ x1 ⌉)
-⌈ (ordtr x0 x1 x2 x3 x4) ⌉ = ordtr (⌈ x0 ⌉) (⌈ x1 ⌉) (⌈ x2 ⌉) (⌈ x3 ⌉) (⌈ x4 ⌉)
-⌈ (fst x0) ⌉ = fst (⌈ x0 ⌉)
-⌈ (snd x0) ⌉ = snd (⌈ x0 ⌉)
-⌈ ⌜base⌝ ⌉ = ⌜base⌝
-⌈ (⌜Π⌝ x0 x1) ⌉ = ⌜Π⌝ (⌈ x0 ⌉) (⌈ x1 ⌉)
-⌈ (⌜Σ⌝ x0 x1) ⌉ = ⌜Σ⌝ (⌈ x0 ⌉) (⌈ x1 ⌉)
-⌈ (⌜Hom⌝ x0 x1 x2) ⌉ = ⌜Hom⌝ (⌈ x0 ⌉) (⌈ x1 ⌉) (⌈ x2 ⌉)
-⌈ (hrefl x0 x1) ⌉ = hrefl (⌈ x0 ⌉) (⌈ x1 ⌉)
-⌈ (tr x0 x1 x2 x3 x4 x5) ⌉ = tr (⌈ x3 ⌉) (⌈ x4 ⌉) (⌈ x5 ⌉)
-⌈ (ap x0 x1 x2 x3 x4 x5) ⌉ = ap (⌈ x3 ⌉) (⌈ x4 ⌉) (⌈ x5 ⌉)
-⌈ (⌜Id⌝ x0 x1 x2) ⌉ = ⌜Id⌝ (⌈ x0 ⌉) (⌈ x1 ⌉) (⌈ x2 ⌉)
-⌈ (idrefl x0 x1) ⌉ = idrefl (⌈ x0 ⌉) (⌈ x1 ⌉)
-⌈ (jsub x0 x1 x2 x3 x4 x5) ⌉ = jsub (⌈ x3 ⌉) (⌈ x4 ⌉) (⌈ x5 ⌉)
-⌈ unit ⌉ = unit
-⌈ nzero ⌉ = nzero
-⌈ (nsuc x0) ⌉ = nsuc (⌈ x0 ⌉)
-⌈ (natrec x0 x1 x2 x3) ⌉ = natrec (⌈ x1 ⌉) (⌈ x2 ⌉) (⌈ x3 ⌉)
-⌈ ⌜Nat⌝ ⌉ = ⌜Nat⌝
-⌈ ⌜Unit⌝ ⌉ = ⌜Unit⌝
-⌈ (⌜IMu⌝ x0 x1 x2) ⌉ = ⌜IMu⌝ (⌈ x0 ⌉) (⌈ x1 ⌉) (⌈ x2 ⌉)
-⌈ (⌜Fin⌝ x0) ⌉ = ⌜Fin⌝ x0
-⌈ (con x0 x1 x2 x3) ⌉ = con (⌈ x3 ⌉)
-⌈ (ielim x0 x1 x2 x3 x4 x5) ⌉ = ielim (⌈ x1 ⌉) (⌈ x3 ⌉) (⌈ x4 ⌉) (⌈ x5 ⌉)
-⌈ (dι x0) ⌉ = dι
-⌈ (dσ x0 x1 x2) ⌉ = dσ (⌈ x1 ⌉) (⌈ x2 ⌉)
-⌈ (dρ x0 x1 x2) ⌉ = dρ (⌈ x1 ⌉) (⌈ x2 ⌉)
-⌈ (dpay x0 x1 x2) ⌉ = dpay (⌈ x0 ⌉) (⌈ x1 ⌉) (⌈ x2 ⌉)
-⌈ (dih x0 x1 x2 x3 x4 x5) ⌉ = dih (⌈ x1 ⌉) (⌈ x3 ⌉) (⌈ x4 ⌉) (⌈ x5 ⌉)
-⌈ (fzero x0) ⌉ = fzero
-⌈ (fsuc x0 x1) ⌉ = fsuc (⌈ x1 ⌉)
-⌈ (fcase x0 x1 x2 x3 x4) ⌉ = fcase (⌈ x2 ⌉) (⌈ x3 ⌉) (⌈ x4 ⌉)
-⌈ (fcase0 x0 x1) ⌉ = fcase0 (⌈ x1 ⌉)
-⌈ (psplit x0 x1 x2 x3 x4) ⌉ = psplit (⌈ x3 ⌉) (⌈ x4 ⌉)
+-- ★ the erased BODIES of the signature: `δ d` is entry d, erased.
+module Era (δ : ℕ → RTm ε) where
 
--- ★ erasure commutes with renaming
-era-renTy : {Γ Δ : Cx} (ρ : Ren Γ Δ) (A : ATy Γ) → ⌈ renTyᴬ ρ A ⌉ᵀ ≡ renTy ρ ⌈ A ⌉ᵀ
-era-renTm : {Γ Δ : Cx} (ρ : Ren Γ Δ) (t : ATm Γ) → ⌈ renTmᴬ ρ t ⌉ ≡ renTm ρ ⌈ t ⌉
-era-renTy ρ base = refl
-era-renTy ρ U = refl
-era-renTy ρ (Π x0 x1) = cong2 (λ a0 a1 → Π a0 a1) (era-renTy ρ x0) (era-renTy (extR ρ) x1)
-era-renTy ρ (Σ' x0 x1) = cong2 (λ a0 a1 → Σ' a0 a1) (era-renTy ρ x0) (era-renTy (extR ρ) x1)
-era-renTy ρ (El x0) = cong1 (λ a0 → El a0) (era-renTm ρ x0)
-era-renTy ρ (Hom x0 x1 x2) = cong3 (λ a0 a1 a2 → Hom a0 a1 a2) (era-renTy ρ x0) (era-renTm ρ x1) (era-renTm ρ x2)
-era-renTy ρ Unit = refl
-era-renTy ρ Nat = refl
-era-renTy ρ (Id x0 x1 x2) = cong3 (λ a0 a1 a2 → Id a0 a1 a2) (era-renTy ρ x0) (era-renTm ρ x1) (era-renTm ρ x2)
-era-renTy ρ (IMu x0 x1 x2) = cong3 (λ a0 a1 a2 → IMu a0 a1 a2) (era-renTm ρ x0) (era-renTm ρ x1) (era-renTm ρ x2)
-era-renTy ρ (Desc x0) = cong1 (λ a0 → Desc a0) (era-renTm ρ x0)
-era-renTy ρ (DIh x0 x1 x2 x3 x4) = cong4 (λ a0 a1 a2 a3 → DIh a0 a1 a2 a3) (era-renTm ρ x1) (era-renTy (extR (extR ρ)) x2) (era-renTm ρ x3) (era-renTm ρ x4)
-era-renTy ρ (Fin x0) = refl
-era-renTm ρ (var x) = refl
-era-renTm ρ (lam x0 x1) = cong1 (λ a0 → lam a0) (era-renTm (extR ρ) x1)
-era-renTm ρ (app x0 x1) = cong2 (λ a0 a1 → app a0 a1) (era-renTm ρ x0) (era-renTm ρ x1)
-era-renTm ρ (pair x0 x1 x2 x3) = cong2 (λ a0 a1 → pair a0 a1) (era-renTm ρ x2) (era-renTm ρ x3)
-era-renTm ρ (absurd x0 x1) = cong2 (λ a0 a1 → absurd a0 a1) (era-renTm ρ x0) (era-renTm ρ x1)
-era-renTm ρ (ordtr x0 x1 x2 x3 x4) = cong5 (λ a0 a1 a2 a3 a4 → ordtr a0 a1 a2 a3 a4) (era-renTm ρ x0) (era-renTm ρ x1) (era-renTm ρ x2) (era-renTm ρ x3) (era-renTm ρ x4)
-era-renTm ρ (fst x0) = cong1 (λ a0 → fst a0) (era-renTm ρ x0)
-era-renTm ρ (snd x0) = cong1 (λ a0 → snd a0) (era-renTm ρ x0)
-era-renTm ρ ⌜base⌝ = refl
-era-renTm ρ (⌜Π⌝ x0 x1) = cong2 (λ a0 a1 → ⌜Π⌝ a0 a1) (era-renTm ρ x0) (era-renTm (extR ρ) x1)
-era-renTm ρ (⌜Σ⌝ x0 x1) = cong2 (λ a0 a1 → ⌜Σ⌝ a0 a1) (era-renTm ρ x0) (era-renTm (extR ρ) x1)
-era-renTm ρ (⌜Hom⌝ x0 x1 x2) = cong3 (λ a0 a1 a2 → ⌜Hom⌝ a0 a1 a2) (era-renTm ρ x0) (era-renTm ρ x1) (era-renTm ρ x2)
-era-renTm ρ (hrefl x0 x1) = cong2 (λ a0 a1 → hrefl a0 a1) (era-renTm ρ x0) (era-renTm ρ x1)
-era-renTm ρ (tr x0 x1 x2 x3 x4 x5) = cong3 (λ a0 a1 a2 → tr a0 a1 a2) (era-renTm (extR ρ) x3) (era-renTm ρ x4) (era-renTm ρ x5)
-era-renTm ρ (ap x0 x1 x2 x3 x4 x5) = cong3 (λ a0 a1 a2 → ap a0 a1 a2) (era-renTm ρ x3) (era-renTm (extR ρ) x4) (era-renTm ρ x5)
-era-renTm ρ (⌜Id⌝ x0 x1 x2) = cong3 (λ a0 a1 a2 → ⌜Id⌝ a0 a1 a2) (era-renTm ρ x0) (era-renTm ρ x1) (era-renTm ρ x2)
-era-renTm ρ (idrefl x0 x1) = cong2 (λ a0 a1 → idrefl a0 a1) (era-renTm ρ x0) (era-renTm ρ x1)
-era-renTm ρ (jsub x0 x1 x2 x3 x4 x5) = cong3 (λ a0 a1 a2 → jsub a0 a1 a2) (era-renTm (extR ρ) x3) (era-renTm ρ x4) (era-renTm ρ x5)
-era-renTm ρ unit = refl
-era-renTm ρ nzero = refl
-era-renTm ρ (nsuc x0) = cong1 (λ a0 → nsuc a0) (era-renTm ρ x0)
-era-renTm ρ (natrec x0 x1 x2 x3) = cong3 (λ a0 a1 a2 → natrec a0 a1 a2) (era-renTm ρ x1) (era-renTm (extR (extR ρ)) x2) (era-renTm ρ x3)
-era-renTm ρ ⌜Nat⌝ = refl
-era-renTm ρ ⌜Unit⌝ = refl
-era-renTm ρ (⌜IMu⌝ x0 x1 x2) = cong3 (λ a0 a1 a2 → ⌜IMu⌝ a0 a1 a2) (era-renTm ρ x0) (era-renTm ρ x1) (era-renTm ρ x2)
-era-renTm ρ (⌜Fin⌝ x0) = refl
-era-renTm ρ (con x0 x1 x2 x3) = cong1 (λ a0 → con a0) (era-renTm ρ x3)
-era-renTm ρ (ielim x0 x1 x2 x3 x4 x5) = cong4 (λ a0 a1 a2 a3 → ielim a0 a1 a2 a3) (era-renTm ρ x1) (era-renTm ρ x3) (era-renTm ρ x4) (era-renTm ρ x5)
-era-renTm ρ (dι x0) = refl
-era-renTm ρ (dσ x0 x1 x2) = cong2 (λ a0 a1 → dσ a0 a1) (era-renTm ρ x1) (era-renTm ρ x2)
-era-renTm ρ (dρ x0 x1 x2) = cong2 (λ a0 a1 → dρ a0 a1) (era-renTm ρ x1) (era-renTm ρ x2)
-era-renTm ρ (dpay x0 x1 x2) = cong3 (λ a0 a1 a2 → dpay a0 a1 a2) (era-renTm ρ x0) (era-renTm ρ x1) (era-renTm ρ x2)
-era-renTm ρ (dih x0 x1 x2 x3 x4 x5) = cong4 (λ a0 a1 a2 a3 → dih a0 a1 a2 a3) (era-renTm ρ x1) (era-renTm ρ x3) (era-renTm ρ x4) (era-renTm ρ x5)
-era-renTm ρ (fzero x0) = refl
-era-renTm ρ (fsuc x0 x1) = cong1 (λ a0 → fsuc a0) (era-renTm ρ x1)
-era-renTm ρ (fcase x0 x1 x2 x3 x4) = cong3 (λ a0 a1 a2 → fcase a0 a1 a2) (era-renTm ρ x2) (era-renTm ρ x3) (era-renTm (extR ρ) x4)
-era-renTm ρ (fcase0 x0 x1) = cong1 (λ a0 → fcase0 a0) (era-renTm ρ x1)
-era-renTm ρ (psplit x0 x1 x2 x3 x4) = cong2 (λ a0 a1 → psplit a0 a1) (era-renTm (extR (extR ρ)) x3) (era-renTm ρ x4)
+  -- ★ ERASURE — drops exactly the annotation fields, and UNFOLDS a
+  --   signature reference to its closed body (δ, PLAN-BIDI §2-bis).
+  ⌈_⌉ᵀ : {Γ : Cx} → ATy Γ → RTy Γ
+  ⌈_⌉ : {Γ : Cx} → ATm Γ → RTm Γ
+  ⌈ base ⌉ᵀ = base
+  ⌈ U ⌉ᵀ = U
+  ⌈ (Π x0 x1) ⌉ᵀ = Π (⌈ x0 ⌉ᵀ) (⌈ x1 ⌉ᵀ)
+  ⌈ (Σ' x0 x1) ⌉ᵀ = Σ' (⌈ x0 ⌉ᵀ) (⌈ x1 ⌉ᵀ)
+  ⌈ (El x0) ⌉ᵀ = El (⌈ x0 ⌉)
+  ⌈ (Hom x0 x1 x2) ⌉ᵀ = Hom (⌈ x0 ⌉ᵀ) (⌈ x1 ⌉) (⌈ x2 ⌉)
+  ⌈ Unit ⌉ᵀ = Unit
+  ⌈ Nat ⌉ᵀ = Nat
+  ⌈ (Id x0 x1 x2) ⌉ᵀ = Id (⌈ x0 ⌉ᵀ) (⌈ x1 ⌉) (⌈ x2 ⌉)
+  ⌈ (IMu x0 x1 x2) ⌉ᵀ = IMu (⌈ x0 ⌉) (⌈ x1 ⌉) (⌈ x2 ⌉)
+  ⌈ (Desc x0) ⌉ᵀ = Desc (⌈ x0 ⌉)
+  ⌈ (DIh x0 x1 x2 x3 x4) ⌉ᵀ = DIh (⌈ x1 ⌉) (⌈ x2 ⌉ᵀ) (⌈ x3 ⌉) (⌈ x4 ⌉)
+  ⌈ (Fin x0) ⌉ᵀ = Fin x0
+  ⌈ (var x) ⌉ = var x
+  ⌈ (lam x0 x1) ⌉ = lam (⌈ x1 ⌉)
+  ⌈ (app x0 x1) ⌉ = app (⌈ x0 ⌉) (⌈ x1 ⌉)
+  ⌈ (pair x0 x1 x2 x3) ⌉ = pair (⌈ x2 ⌉) (⌈ x3 ⌉)
+  ⌈ (absurd x0 x1) ⌉ = absurd (⌈ x0 ⌉) (⌈ x1 ⌉)
+  ⌈ (ordtr x0 x1 x2 x3 x4) ⌉ = ordtr (⌈ x0 ⌉) (⌈ x1 ⌉) (⌈ x2 ⌉) (⌈ x3 ⌉) (⌈ x4 ⌉)
+  ⌈ (fst x0) ⌉ = fst (⌈ x0 ⌉)
+  ⌈ (snd x0) ⌉ = snd (⌈ x0 ⌉)
+  ⌈ ⌜base⌝ ⌉ = ⌜base⌝
+  ⌈ (⌜Π⌝ x0 x1) ⌉ = ⌜Π⌝ (⌈ x0 ⌉) (⌈ x1 ⌉)
+  ⌈ (⌜Σ⌝ x0 x1) ⌉ = ⌜Σ⌝ (⌈ x0 ⌉) (⌈ x1 ⌉)
+  ⌈ (⌜Hom⌝ x0 x1 x2) ⌉ = ⌜Hom⌝ (⌈ x0 ⌉) (⌈ x1 ⌉) (⌈ x2 ⌉)
+  ⌈ (hrefl x0 x1) ⌉ = hrefl (⌈ x0 ⌉) (⌈ x1 ⌉)
+  ⌈ (tr x0 x1 x2 x3 x4 x5) ⌉ = tr (⌈ x3 ⌉) (⌈ x4 ⌉) (⌈ x5 ⌉)
+  ⌈ (ap x0 x1 x2 x3 x4 x5) ⌉ = ap (⌈ x3 ⌉) (⌈ x4 ⌉) (⌈ x5 ⌉)
+  ⌈ (⌜Id⌝ x0 x1 x2) ⌉ = ⌜Id⌝ (⌈ x0 ⌉) (⌈ x1 ⌉) (⌈ x2 ⌉)
+  ⌈ (idrefl x0 x1) ⌉ = idrefl (⌈ x0 ⌉) (⌈ x1 ⌉)
+  ⌈ (jsub x0 x1 x2 x3 x4 x5) ⌉ = jsub (⌈ x3 ⌉) (⌈ x4 ⌉) (⌈ x5 ⌉)
+  ⌈ unit ⌉ = unit
+  ⌈ nzero ⌉ = nzero
+  ⌈ (nsuc x0) ⌉ = nsuc (⌈ x0 ⌉)
+  ⌈ (natrec x0 x1 x2 x3) ⌉ = natrec (⌈ x1 ⌉) (⌈ x2 ⌉) (⌈ x3 ⌉)
+  ⌈ ⌜Nat⌝ ⌉ = ⌜Nat⌝
+  ⌈ ⌜Unit⌝ ⌉ = ⌜Unit⌝
+  ⌈ (⌜IMu⌝ x0 x1 x2) ⌉ = ⌜IMu⌝ (⌈ x0 ⌉) (⌈ x1 ⌉) (⌈ x2 ⌉)
+  ⌈ (⌜Fin⌝ x0) ⌉ = ⌜Fin⌝ x0
+  ⌈ (con x0 x1 x2 x3) ⌉ = con (⌈ x3 ⌉)
+  ⌈ (ielim x0 x1 x2 x3 x4 x5) ⌉ = ielim (⌈ x1 ⌉) (⌈ x3 ⌉) (⌈ x4 ⌉) (⌈ x5 ⌉)
+  ⌈ (dι x0) ⌉ = dι
+  ⌈ (dσ x0 x1 x2) ⌉ = dσ (⌈ x1 ⌉) (⌈ x2 ⌉)
+  ⌈ (dρ x0 x1 x2) ⌉ = dρ (⌈ x1 ⌉) (⌈ x2 ⌉)
+  ⌈ (dpay x0 x1 x2) ⌉ = dpay (⌈ x0 ⌉) (⌈ x1 ⌉) (⌈ x2 ⌉)
+  ⌈ (dih x0 x1 x2 x3 x4 x5) ⌉ = dih (⌈ x1 ⌉) (⌈ x3 ⌉) (⌈ x4 ⌉) (⌈ x5 ⌉)
+  ⌈ (fzero x0) ⌉ = fzero
+  ⌈ (fsuc x0 x1) ⌉ = fsuc (⌈ x1 ⌉)
+  ⌈ (fcase x0 x1 x2 x3 x4) ⌉ = fcase (⌈ x2 ⌉) (⌈ x3 ⌉) (⌈ x4 ⌉)
+  ⌈ (fcase0 x0 x1) ⌉ = fcase0 (⌈ x1 ⌉)
+  ⌈ (psplit x0 x1 x2 x3 x4) ⌉ = psplit (⌈ x3 ⌉) (⌈ x4 ⌉)
+  ⌈ (ref x0) ⌉ = εwkTm (δ x0)
 
--- extending a substitution commutes with erasure
-era-ext : {Γ Δ : Cx} {σ : Subᴬ Γ Δ} {τ : Sub Γ Δ} → (∀ x → ⌈ σ x ⌉ ≡ τ x) →
-          ∀ x → ⌈ extSᴬ σ x ⌉ ≡ extS τ x
-era-ext h vz     = refl
-era-ext {σ = σ} h (vs x) = trans (era-renTm vs (σ x)) (cong (renTm vs) (h x))
+  -- ★ erasure commutes with renaming
+  era-renTy : {Γ Δ : Cx} (ρ : Ren Γ Δ) (A : ATy Γ) → ⌈ renTyᴬ ρ A ⌉ᵀ ≡ renTy ρ ⌈ A ⌉ᵀ
+  era-renTm : {Γ Δ : Cx} (ρ : Ren Γ Δ) (t : ATm Γ) → ⌈ renTmᴬ ρ t ⌉ ≡ renTm ρ ⌈ t ⌉
+  era-renTy ρ base = refl
+  era-renTy ρ U = refl
+  era-renTy ρ (Π x0 x1) = cong2 (λ a0 a1 → Π a0 a1) (era-renTy ρ x0) (era-renTy (extR ρ) x1)
+  era-renTy ρ (Σ' x0 x1) = cong2 (λ a0 a1 → Σ' a0 a1) (era-renTy ρ x0) (era-renTy (extR ρ) x1)
+  era-renTy ρ (El x0) = cong1 (λ a0 → El a0) (era-renTm ρ x0)
+  era-renTy ρ (Hom x0 x1 x2) = cong3 (λ a0 a1 a2 → Hom a0 a1 a2) (era-renTy ρ x0) (era-renTm ρ x1) (era-renTm ρ x2)
+  era-renTy ρ Unit = refl
+  era-renTy ρ Nat = refl
+  era-renTy ρ (Id x0 x1 x2) = cong3 (λ a0 a1 a2 → Id a0 a1 a2) (era-renTy ρ x0) (era-renTm ρ x1) (era-renTm ρ x2)
+  era-renTy ρ (IMu x0 x1 x2) = cong3 (λ a0 a1 a2 → IMu a0 a1 a2) (era-renTm ρ x0) (era-renTm ρ x1) (era-renTm ρ x2)
+  era-renTy ρ (Desc x0) = cong1 (λ a0 → Desc a0) (era-renTm ρ x0)
+  era-renTy ρ (DIh x0 x1 x2 x3 x4) = cong4 (λ a0 a1 a2 a3 → DIh a0 a1 a2 a3) (era-renTm ρ x1) (era-renTy (extR (extR ρ)) x2) (era-renTm ρ x3) (era-renTm ρ x4)
+  era-renTy ρ (Fin x0) = refl
+  era-renTm ρ (var x) = refl
+  era-renTm ρ (lam x0 x1) = cong1 (λ a0 → lam a0) (era-renTm (extR ρ) x1)
+  era-renTm ρ (app x0 x1) = cong2 (λ a0 a1 → app a0 a1) (era-renTm ρ x0) (era-renTm ρ x1)
+  era-renTm ρ (pair x0 x1 x2 x3) = cong2 (λ a0 a1 → pair a0 a1) (era-renTm ρ x2) (era-renTm ρ x3)
+  era-renTm ρ (absurd x0 x1) = cong2 (λ a0 a1 → absurd a0 a1) (era-renTm ρ x0) (era-renTm ρ x1)
+  era-renTm ρ (ordtr x0 x1 x2 x3 x4) = cong5 (λ a0 a1 a2 a3 a4 → ordtr a0 a1 a2 a3 a4) (era-renTm ρ x0) (era-renTm ρ x1) (era-renTm ρ x2) (era-renTm ρ x3) (era-renTm ρ x4)
+  era-renTm ρ (fst x0) = cong1 (λ a0 → fst a0) (era-renTm ρ x0)
+  era-renTm ρ (snd x0) = cong1 (λ a0 → snd a0) (era-renTm ρ x0)
+  era-renTm ρ ⌜base⌝ = refl
+  era-renTm ρ (⌜Π⌝ x0 x1) = cong2 (λ a0 a1 → ⌜Π⌝ a0 a1) (era-renTm ρ x0) (era-renTm (extR ρ) x1)
+  era-renTm ρ (⌜Σ⌝ x0 x1) = cong2 (λ a0 a1 → ⌜Σ⌝ a0 a1) (era-renTm ρ x0) (era-renTm (extR ρ) x1)
+  era-renTm ρ (⌜Hom⌝ x0 x1 x2) = cong3 (λ a0 a1 a2 → ⌜Hom⌝ a0 a1 a2) (era-renTm ρ x0) (era-renTm ρ x1) (era-renTm ρ x2)
+  era-renTm ρ (hrefl x0 x1) = cong2 (λ a0 a1 → hrefl a0 a1) (era-renTm ρ x0) (era-renTm ρ x1)
+  era-renTm ρ (tr x0 x1 x2 x3 x4 x5) = cong3 (λ a0 a1 a2 → tr a0 a1 a2) (era-renTm (extR ρ) x3) (era-renTm ρ x4) (era-renTm ρ x5)
+  era-renTm ρ (ap x0 x1 x2 x3 x4 x5) = cong3 (λ a0 a1 a2 → ap a0 a1 a2) (era-renTm ρ x3) (era-renTm (extR ρ) x4) (era-renTm ρ x5)
+  era-renTm ρ (⌜Id⌝ x0 x1 x2) = cong3 (λ a0 a1 a2 → ⌜Id⌝ a0 a1 a2) (era-renTm ρ x0) (era-renTm ρ x1) (era-renTm ρ x2)
+  era-renTm ρ (idrefl x0 x1) = cong2 (λ a0 a1 → idrefl a0 a1) (era-renTm ρ x0) (era-renTm ρ x1)
+  era-renTm ρ (jsub x0 x1 x2 x3 x4 x5) = cong3 (λ a0 a1 a2 → jsub a0 a1 a2) (era-renTm (extR ρ) x3) (era-renTm ρ x4) (era-renTm ρ x5)
+  era-renTm ρ unit = refl
+  era-renTm ρ nzero = refl
+  era-renTm ρ (nsuc x0) = cong1 (λ a0 → nsuc a0) (era-renTm ρ x0)
+  era-renTm ρ (natrec x0 x1 x2 x3) = cong3 (λ a0 a1 a2 → natrec a0 a1 a2) (era-renTm ρ x1) (era-renTm (extR (extR ρ)) x2) (era-renTm ρ x3)
+  era-renTm ρ ⌜Nat⌝ = refl
+  era-renTm ρ ⌜Unit⌝ = refl
+  era-renTm ρ (⌜IMu⌝ x0 x1 x2) = cong3 (λ a0 a1 a2 → ⌜IMu⌝ a0 a1 a2) (era-renTm ρ x0) (era-renTm ρ x1) (era-renTm ρ x2)
+  era-renTm ρ (⌜Fin⌝ x0) = refl
+  era-renTm ρ (con x0 x1 x2 x3) = cong1 (λ a0 → con a0) (era-renTm ρ x3)
+  era-renTm ρ (ielim x0 x1 x2 x3 x4 x5) = cong4 (λ a0 a1 a2 a3 → ielim a0 a1 a2 a3) (era-renTm ρ x1) (era-renTm ρ x3) (era-renTm ρ x4) (era-renTm ρ x5)
+  era-renTm ρ (dι x0) = refl
+  era-renTm ρ (dσ x0 x1 x2) = cong2 (λ a0 a1 → dσ a0 a1) (era-renTm ρ x1) (era-renTm ρ x2)
+  era-renTm ρ (dρ x0 x1 x2) = cong2 (λ a0 a1 → dρ a0 a1) (era-renTm ρ x1) (era-renTm ρ x2)
+  era-renTm ρ (dpay x0 x1 x2) = cong3 (λ a0 a1 a2 → dpay a0 a1 a2) (era-renTm ρ x0) (era-renTm ρ x1) (era-renTm ρ x2)
+  era-renTm ρ (dih x0 x1 x2 x3 x4 x5) = cong4 (λ a0 a1 a2 a3 → dih a0 a1 a2 a3) (era-renTm ρ x1) (era-renTm ρ x3) (era-renTm ρ x4) (era-renTm ρ x5)
+  era-renTm ρ (fzero x0) = refl
+  era-renTm ρ (fsuc x0 x1) = cong1 (λ a0 → fsuc a0) (era-renTm ρ x1)
+  era-renTm ρ (fcase x0 x1 x2 x3 x4) = cong3 (λ a0 a1 a2 → fcase a0 a1 a2) (era-renTm ρ x2) (era-renTm ρ x3) (era-renTm (extR ρ) x4)
+  era-renTm ρ (fcase0 x0 x1) = cong1 (λ a0 → fcase0 a0) (era-renTm ρ x1)
+  era-renTm ρ (psplit x0 x1 x2 x3 x4) = cong2 (λ a0 a1 → psplit a0 a1) (era-renTm (extR (extR ρ)) x3) (era-renTm ρ x4)
+  era-renTm ρ (ref x0) = sym (εwkTm-ren ρ (δ x0))
 
--- ★ erasure commutes with substitution, against ANY pointwise-equal τ
-era-subTy : {Γ Δ : Cx} (σ : Subᴬ Γ Δ) (τ : Sub Γ Δ) → (∀ x → ⌈ σ x ⌉ ≡ τ x) →
-            (A : ATy Γ) → ⌈ subTyᴬ σ A ⌉ᵀ ≡ subTy τ ⌈ A ⌉ᵀ
-era-subTm : {Γ Δ : Cx} (σ : Subᴬ Γ Δ) (τ : Sub Γ Δ) → (∀ x → ⌈ σ x ⌉ ≡ τ x) →
-            (t : ATm Γ) → ⌈ subTmᴬ σ t ⌉ ≡ subTm τ ⌈ t ⌉
-era-subTy σ τ h base = refl
-era-subTy σ τ h U = refl
-era-subTy σ τ h (Π x0 x1) = cong2 (λ a0 a1 → Π a0 a1) (era-subTy σ τ h x0) (era-subTy (extSᴬ σ) (extS τ) (era-ext h) x1)
-era-subTy σ τ h (Σ' x0 x1) = cong2 (λ a0 a1 → Σ' a0 a1) (era-subTy σ τ h x0) (era-subTy (extSᴬ σ) (extS τ) (era-ext h) x1)
-era-subTy σ τ h (El x0) = cong1 (λ a0 → El a0) (era-subTm σ τ h x0)
-era-subTy σ τ h (Hom x0 x1 x2) = cong3 (λ a0 a1 a2 → Hom a0 a1 a2) (era-subTy σ τ h x0) (era-subTm σ τ h x1) (era-subTm σ τ h x2)
-era-subTy σ τ h Unit = refl
-era-subTy σ τ h Nat = refl
-era-subTy σ τ h (Id x0 x1 x2) = cong3 (λ a0 a1 a2 → Id a0 a1 a2) (era-subTy σ τ h x0) (era-subTm σ τ h x1) (era-subTm σ τ h x2)
-era-subTy σ τ h (IMu x0 x1 x2) = cong3 (λ a0 a1 a2 → IMu a0 a1 a2) (era-subTm σ τ h x0) (era-subTm σ τ h x1) (era-subTm σ τ h x2)
-era-subTy σ τ h (Desc x0) = cong1 (λ a0 → Desc a0) (era-subTm σ τ h x0)
-era-subTy σ τ h (DIh x0 x1 x2 x3 x4) = cong4 (λ a0 a1 a2 a3 → DIh a0 a1 a2 a3) (era-subTm σ τ h x1) (era-subTy (extSᴬ (extSᴬ σ)) (extS (extS τ)) (era-ext (era-ext h)) x2) (era-subTm σ τ h x3) (era-subTm σ τ h x4)
-era-subTy σ τ h (Fin x0) = refl
-era-subTm σ τ h (var x) = h x
-era-subTm σ τ h (lam x0 x1) = cong1 (λ a0 → lam a0) (era-subTm (extSᴬ σ) (extS τ) (era-ext h) x1)
-era-subTm σ τ h (app x0 x1) = cong2 (λ a0 a1 → app a0 a1) (era-subTm σ τ h x0) (era-subTm σ τ h x1)
-era-subTm σ τ h (pair x0 x1 x2 x3) = cong2 (λ a0 a1 → pair a0 a1) (era-subTm σ τ h x2) (era-subTm σ τ h x3)
-era-subTm σ τ h (absurd x0 x1) = cong2 (λ a0 a1 → absurd a0 a1) (era-subTm σ τ h x0) (era-subTm σ τ h x1)
-era-subTm σ τ h (ordtr x0 x1 x2 x3 x4) = cong5 (λ a0 a1 a2 a3 a4 → ordtr a0 a1 a2 a3 a4) (era-subTm σ τ h x0) (era-subTm σ τ h x1) (era-subTm σ τ h x2) (era-subTm σ τ h x3) (era-subTm σ τ h x4)
-era-subTm σ τ h (fst x0) = cong1 (λ a0 → fst a0) (era-subTm σ τ h x0)
-era-subTm σ τ h (snd x0) = cong1 (λ a0 → snd a0) (era-subTm σ τ h x0)
-era-subTm σ τ h ⌜base⌝ = refl
-era-subTm σ τ h (⌜Π⌝ x0 x1) = cong2 (λ a0 a1 → ⌜Π⌝ a0 a1) (era-subTm σ τ h x0) (era-subTm (extSᴬ σ) (extS τ) (era-ext h) x1)
-era-subTm σ τ h (⌜Σ⌝ x0 x1) = cong2 (λ a0 a1 → ⌜Σ⌝ a0 a1) (era-subTm σ τ h x0) (era-subTm (extSᴬ σ) (extS τ) (era-ext h) x1)
-era-subTm σ τ h (⌜Hom⌝ x0 x1 x2) = cong3 (λ a0 a1 a2 → ⌜Hom⌝ a0 a1 a2) (era-subTm σ τ h x0) (era-subTm σ τ h x1) (era-subTm σ τ h x2)
-era-subTm σ τ h (hrefl x0 x1) = cong2 (λ a0 a1 → hrefl a0 a1) (era-subTm σ τ h x0) (era-subTm σ τ h x1)
-era-subTm σ τ h (tr x0 x1 x2 x3 x4 x5) = cong3 (λ a0 a1 a2 → tr a0 a1 a2) (era-subTm (extSᴬ σ) (extS τ) (era-ext h) x3) (era-subTm σ τ h x4) (era-subTm σ τ h x5)
-era-subTm σ τ h (ap x0 x1 x2 x3 x4 x5) = cong3 (λ a0 a1 a2 → ap a0 a1 a2) (era-subTm σ τ h x3) (era-subTm (extSᴬ σ) (extS τ) (era-ext h) x4) (era-subTm σ τ h x5)
-era-subTm σ τ h (⌜Id⌝ x0 x1 x2) = cong3 (λ a0 a1 a2 → ⌜Id⌝ a0 a1 a2) (era-subTm σ τ h x0) (era-subTm σ τ h x1) (era-subTm σ τ h x2)
-era-subTm σ τ h (idrefl x0 x1) = cong2 (λ a0 a1 → idrefl a0 a1) (era-subTm σ τ h x0) (era-subTm σ τ h x1)
-era-subTm σ τ h (jsub x0 x1 x2 x3 x4 x5) = cong3 (λ a0 a1 a2 → jsub a0 a1 a2) (era-subTm (extSᴬ σ) (extS τ) (era-ext h) x3) (era-subTm σ τ h x4) (era-subTm σ τ h x5)
-era-subTm σ τ h unit = refl
-era-subTm σ τ h nzero = refl
-era-subTm σ τ h (nsuc x0) = cong1 (λ a0 → nsuc a0) (era-subTm σ τ h x0)
-era-subTm σ τ h (natrec x0 x1 x2 x3) = cong3 (λ a0 a1 a2 → natrec a0 a1 a2) (era-subTm σ τ h x1) (era-subTm (extSᴬ (extSᴬ σ)) (extS (extS τ)) (era-ext (era-ext h)) x2) (era-subTm σ τ h x3)
-era-subTm σ τ h ⌜Nat⌝ = refl
-era-subTm σ τ h ⌜Unit⌝ = refl
-era-subTm σ τ h (⌜IMu⌝ x0 x1 x2) = cong3 (λ a0 a1 a2 → ⌜IMu⌝ a0 a1 a2) (era-subTm σ τ h x0) (era-subTm σ τ h x1) (era-subTm σ τ h x2)
-era-subTm σ τ h (⌜Fin⌝ x0) = refl
-era-subTm σ τ h (con x0 x1 x2 x3) = cong1 (λ a0 → con a0) (era-subTm σ τ h x3)
-era-subTm σ τ h (ielim x0 x1 x2 x3 x4 x5) = cong4 (λ a0 a1 a2 a3 → ielim a0 a1 a2 a3) (era-subTm σ τ h x1) (era-subTm σ τ h x3) (era-subTm σ τ h x4) (era-subTm σ τ h x5)
-era-subTm σ τ h (dι x0) = refl
-era-subTm σ τ h (dσ x0 x1 x2) = cong2 (λ a0 a1 → dσ a0 a1) (era-subTm σ τ h x1) (era-subTm σ τ h x2)
-era-subTm σ τ h (dρ x0 x1 x2) = cong2 (λ a0 a1 → dρ a0 a1) (era-subTm σ τ h x1) (era-subTm σ τ h x2)
-era-subTm σ τ h (dpay x0 x1 x2) = cong3 (λ a0 a1 a2 → dpay a0 a1 a2) (era-subTm σ τ h x0) (era-subTm σ τ h x1) (era-subTm σ τ h x2)
-era-subTm σ τ h (dih x0 x1 x2 x3 x4 x5) = cong4 (λ a0 a1 a2 a3 → dih a0 a1 a2 a3) (era-subTm σ τ h x1) (era-subTm σ τ h x3) (era-subTm σ τ h x4) (era-subTm σ τ h x5)
-era-subTm σ τ h (fzero x0) = refl
-era-subTm σ τ h (fsuc x0 x1) = cong1 (λ a0 → fsuc a0) (era-subTm σ τ h x1)
-era-subTm σ τ h (fcase x0 x1 x2 x3 x4) = cong3 (λ a0 a1 a2 → fcase a0 a1 a2) (era-subTm σ τ h x2) (era-subTm σ τ h x3) (era-subTm (extSᴬ σ) (extS τ) (era-ext h) x4)
-era-subTm σ τ h (fcase0 x0 x1) = cong1 (λ a0 → fcase0 a0) (era-subTm σ τ h x1)
-era-subTm σ τ h (psplit x0 x1 x2 x3 x4) = cong2 (λ a0 a1 → psplit a0 a1) (era-subTm (extSᴬ (extSᴬ σ)) (extS (extS τ)) (era-ext (era-ext h)) x3) (era-subTm σ τ h x4)
+  -- extending a substitution commutes with erasure
+  era-ext : {Γ Δ : Cx} {σ : Subᴬ Γ Δ} {τ : Sub Γ Δ} → (∀ x → ⌈ σ x ⌉ ≡ τ x) →
+            ∀ x → ⌈ extSᴬ σ x ⌉ ≡ extS τ x
+  era-ext h vz     = refl
+  era-ext {σ = σ} h (vs x) = trans (era-renTm vs (σ x)) (cong (renTm vs) (h x))
+
+  -- ★ erasure commutes with substitution, against ANY pointwise-equal τ
+  era-subTy : {Γ Δ : Cx} (σ : Subᴬ Γ Δ) (τ : Sub Γ Δ) → (∀ x → ⌈ σ x ⌉ ≡ τ x) →
+              (A : ATy Γ) → ⌈ subTyᴬ σ A ⌉ᵀ ≡ subTy τ ⌈ A ⌉ᵀ
+  era-subTm : {Γ Δ : Cx} (σ : Subᴬ Γ Δ) (τ : Sub Γ Δ) → (∀ x → ⌈ σ x ⌉ ≡ τ x) →
+              (t : ATm Γ) → ⌈ subTmᴬ σ t ⌉ ≡ subTm τ ⌈ t ⌉
+  era-subTy σ τ h base = refl
+  era-subTy σ τ h U = refl
+  era-subTy σ τ h (Π x0 x1) = cong2 (λ a0 a1 → Π a0 a1) (era-subTy σ τ h x0) (era-subTy (extSᴬ σ) (extS τ) (era-ext h) x1)
+  era-subTy σ τ h (Σ' x0 x1) = cong2 (λ a0 a1 → Σ' a0 a1) (era-subTy σ τ h x0) (era-subTy (extSᴬ σ) (extS τ) (era-ext h) x1)
+  era-subTy σ τ h (El x0) = cong1 (λ a0 → El a0) (era-subTm σ τ h x0)
+  era-subTy σ τ h (Hom x0 x1 x2) = cong3 (λ a0 a1 a2 → Hom a0 a1 a2) (era-subTy σ τ h x0) (era-subTm σ τ h x1) (era-subTm σ τ h x2)
+  era-subTy σ τ h Unit = refl
+  era-subTy σ τ h Nat = refl
+  era-subTy σ τ h (Id x0 x1 x2) = cong3 (λ a0 a1 a2 → Id a0 a1 a2) (era-subTy σ τ h x0) (era-subTm σ τ h x1) (era-subTm σ τ h x2)
+  era-subTy σ τ h (IMu x0 x1 x2) = cong3 (λ a0 a1 a2 → IMu a0 a1 a2) (era-subTm σ τ h x0) (era-subTm σ τ h x1) (era-subTm σ τ h x2)
+  era-subTy σ τ h (Desc x0) = cong1 (λ a0 → Desc a0) (era-subTm σ τ h x0)
+  era-subTy σ τ h (DIh x0 x1 x2 x3 x4) = cong4 (λ a0 a1 a2 a3 → DIh a0 a1 a2 a3) (era-subTm σ τ h x1) (era-subTy (extSᴬ (extSᴬ σ)) (extS (extS τ)) (era-ext (era-ext h)) x2) (era-subTm σ τ h x3) (era-subTm σ τ h x4)
+  era-subTy σ τ h (Fin x0) = refl
+  era-subTm σ τ h (var x) = h x
+  era-subTm σ τ h (lam x0 x1) = cong1 (λ a0 → lam a0) (era-subTm (extSᴬ σ) (extS τ) (era-ext h) x1)
+  era-subTm σ τ h (app x0 x1) = cong2 (λ a0 a1 → app a0 a1) (era-subTm σ τ h x0) (era-subTm σ τ h x1)
+  era-subTm σ τ h (pair x0 x1 x2 x3) = cong2 (λ a0 a1 → pair a0 a1) (era-subTm σ τ h x2) (era-subTm σ τ h x3)
+  era-subTm σ τ h (absurd x0 x1) = cong2 (λ a0 a1 → absurd a0 a1) (era-subTm σ τ h x0) (era-subTm σ τ h x1)
+  era-subTm σ τ h (ordtr x0 x1 x2 x3 x4) = cong5 (λ a0 a1 a2 a3 a4 → ordtr a0 a1 a2 a3 a4) (era-subTm σ τ h x0) (era-subTm σ τ h x1) (era-subTm σ τ h x2) (era-subTm σ τ h x3) (era-subTm σ τ h x4)
+  era-subTm σ τ h (fst x0) = cong1 (λ a0 → fst a0) (era-subTm σ τ h x0)
+  era-subTm σ τ h (snd x0) = cong1 (λ a0 → snd a0) (era-subTm σ τ h x0)
+  era-subTm σ τ h ⌜base⌝ = refl
+  era-subTm σ τ h (⌜Π⌝ x0 x1) = cong2 (λ a0 a1 → ⌜Π⌝ a0 a1) (era-subTm σ τ h x0) (era-subTm (extSᴬ σ) (extS τ) (era-ext h) x1)
+  era-subTm σ τ h (⌜Σ⌝ x0 x1) = cong2 (λ a0 a1 → ⌜Σ⌝ a0 a1) (era-subTm σ τ h x0) (era-subTm (extSᴬ σ) (extS τ) (era-ext h) x1)
+  era-subTm σ τ h (⌜Hom⌝ x0 x1 x2) = cong3 (λ a0 a1 a2 → ⌜Hom⌝ a0 a1 a2) (era-subTm σ τ h x0) (era-subTm σ τ h x1) (era-subTm σ τ h x2)
+  era-subTm σ τ h (hrefl x0 x1) = cong2 (λ a0 a1 → hrefl a0 a1) (era-subTm σ τ h x0) (era-subTm σ τ h x1)
+  era-subTm σ τ h (tr x0 x1 x2 x3 x4 x5) = cong3 (λ a0 a1 a2 → tr a0 a1 a2) (era-subTm (extSᴬ σ) (extS τ) (era-ext h) x3) (era-subTm σ τ h x4) (era-subTm σ τ h x5)
+  era-subTm σ τ h (ap x0 x1 x2 x3 x4 x5) = cong3 (λ a0 a1 a2 → ap a0 a1 a2) (era-subTm σ τ h x3) (era-subTm (extSᴬ σ) (extS τ) (era-ext h) x4) (era-subTm σ τ h x5)
+  era-subTm σ τ h (⌜Id⌝ x0 x1 x2) = cong3 (λ a0 a1 a2 → ⌜Id⌝ a0 a1 a2) (era-subTm σ τ h x0) (era-subTm σ τ h x1) (era-subTm σ τ h x2)
+  era-subTm σ τ h (idrefl x0 x1) = cong2 (λ a0 a1 → idrefl a0 a1) (era-subTm σ τ h x0) (era-subTm σ τ h x1)
+  era-subTm σ τ h (jsub x0 x1 x2 x3 x4 x5) = cong3 (λ a0 a1 a2 → jsub a0 a1 a2) (era-subTm (extSᴬ σ) (extS τ) (era-ext h) x3) (era-subTm σ τ h x4) (era-subTm σ τ h x5)
+  era-subTm σ τ h unit = refl
+  era-subTm σ τ h nzero = refl
+  era-subTm σ τ h (nsuc x0) = cong1 (λ a0 → nsuc a0) (era-subTm σ τ h x0)
+  era-subTm σ τ h (natrec x0 x1 x2 x3) = cong3 (λ a0 a1 a2 → natrec a0 a1 a2) (era-subTm σ τ h x1) (era-subTm (extSᴬ (extSᴬ σ)) (extS (extS τ)) (era-ext (era-ext h)) x2) (era-subTm σ τ h x3)
+  era-subTm σ τ h ⌜Nat⌝ = refl
+  era-subTm σ τ h ⌜Unit⌝ = refl
+  era-subTm σ τ h (⌜IMu⌝ x0 x1 x2) = cong3 (λ a0 a1 a2 → ⌜IMu⌝ a0 a1 a2) (era-subTm σ τ h x0) (era-subTm σ τ h x1) (era-subTm σ τ h x2)
+  era-subTm σ τ h (⌜Fin⌝ x0) = refl
+  era-subTm σ τ h (con x0 x1 x2 x3) = cong1 (λ a0 → con a0) (era-subTm σ τ h x3)
+  era-subTm σ τ h (ielim x0 x1 x2 x3 x4 x5) = cong4 (λ a0 a1 a2 a3 → ielim a0 a1 a2 a3) (era-subTm σ τ h x1) (era-subTm σ τ h x3) (era-subTm σ τ h x4) (era-subTm σ τ h x5)
+  era-subTm σ τ h (dι x0) = refl
+  era-subTm σ τ h (dσ x0 x1 x2) = cong2 (λ a0 a1 → dσ a0 a1) (era-subTm σ τ h x1) (era-subTm σ τ h x2)
+  era-subTm σ τ h (dρ x0 x1 x2) = cong2 (λ a0 a1 → dρ a0 a1) (era-subTm σ τ h x1) (era-subTm σ τ h x2)
+  era-subTm σ τ h (dpay x0 x1 x2) = cong3 (λ a0 a1 a2 → dpay a0 a1 a2) (era-subTm σ τ h x0) (era-subTm σ τ h x1) (era-subTm σ τ h x2)
+  era-subTm σ τ h (dih x0 x1 x2 x3 x4 x5) = cong4 (λ a0 a1 a2 a3 → dih a0 a1 a2 a3) (era-subTm σ τ h x1) (era-subTm σ τ h x3) (era-subTm σ τ h x4) (era-subTm σ τ h x5)
+  era-subTm σ τ h (fzero x0) = refl
+  era-subTm σ τ h (fsuc x0 x1) = cong1 (λ a0 → fsuc a0) (era-subTm σ τ h x1)
+  era-subTm σ τ h (fcase x0 x1 x2 x3 x4) = cong3 (λ a0 a1 a2 → fcase a0 a1 a2) (era-subTm σ τ h x2) (era-subTm σ τ h x3) (era-subTm (extSᴬ σ) (extS τ) (era-ext h) x4)
+  era-subTm σ τ h (fcase0 x0 x1) = cong1 (λ a0 → fcase0 a0) (era-subTm σ τ h x1)
+  era-subTm σ τ h (psplit x0 x1 x2 x3 x4) = cong2 (λ a0 a1 → psplit a0 a1) (era-subTm (extSᴬ (extSᴬ σ)) (extS (extS τ)) (era-ext (era-ext h)) x3) (era-subTm σ τ h x4)
+  era-subTm σ τ h (ref x0) = sym (εwkTm-sub τ (δ x0))

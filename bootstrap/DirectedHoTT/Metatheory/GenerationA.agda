@@ -22,16 +22,18 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Metatheory.GenerationA where
-
 open import normalizer.Syntax.Types using ( _≡_; refl; Σ; _,_; _×_; _⊎_; inj₁; inj₂ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Variance using ( true; false; occTm; flat?; NoNatC )
 open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Spec.Annotated
-open import DirectedHoTT.Spec.AnnotatedDesc
-open import DirectedHoTT.Spec.TypingA
+open import DirectedHoTT.Spec.Signature using ( Sig; _<ˢ_ )
+module DirectedHoTT.Metatheory.GenerationA (S : Sig) where
+open Sig S
+open Era body
+open import DirectedHoTT.Spec.AnnotatedDesc body
+open import DirectedHoTT.Spec.TypingA S
 
 genᴬ-var : {Γ : ACtx} {x : Var ⌊ Γ ⌋ᴬ} {Z : ATy ⌊ Γ ⌋ᴬ} →
           Γ ⊢ᴬ var x ∷ Z → Σ (ATy ⌊ Γ ⌋ᴬ) (λ A → (Γ ∋ᴬ x ∷ A) × (⌈ A ⌉ᵀ ≅ᵀ ⌈ Z ⌉ᵀ))
@@ -152,6 +154,12 @@ genᴬ-unit : {Γ : ACtx}  {Z : ATy ⌊ Γ ⌋ᴬ} →
           Γ ⊢ᴬ unit ∷ Z → ⌈ Unit ⌉ᵀ ≅ᵀ ⌈ Z ⌉ᵀ
 genᴬ-unit (⊢ᴬunit) = crflᵀ
 genᴬ-unit (⊢ᴬconv d c) = let c' = genᴬ-unit d in ctrnᵀ c' c
+
+-- ★ S5: a reference, typed by its declared type
+genᴬ-ref : {Γ : ACtx} {d : ℕ} {Z : ATy ⌊ Γ ⌋ᴬ} →
+          Γ ⊢ᴬ ref d ∷ Z → (d <ˢ size) × (⌈ εwkTyᴬ (type d) ⌉ᵀ ≅ᵀ ⌈ Z ⌉ᵀ)
+genᴬ-ref (⊢ᴬref p) = (p , crflᵀ)
+genᴬ-ref (⊢ᴬconv d c) = let (p , c') = genᴬ-ref d in (p , ctrnᵀ c' c)
 
 genᴬ-nzero : {Γ : ACtx}  {Z : ATy ⌊ Γ ⌋ᴬ} →
           Γ ⊢ᴬ nzero ∷ Z → ⌈ Nat ⌉ᵀ ≅ᵀ ⌈ Z ⌉ᵀ

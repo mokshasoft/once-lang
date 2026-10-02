@@ -127,6 +127,32 @@ as the answer: neither line is the truth.
 - Prefix-typed, acyclic telescopes: both, for the same reason
   (well-foundedness of δ).
 
+**How the metatheory is obtained: ROUTE B (user, 2026-10-02).** This is a
+second axis, independent of (ii)/(iii):
+
+| | definitions PRIMITIVE (the metatheory re-proved with them) | definitions ELIMINATED (justified by unfolding) |
+|---|---|---|
+| (ii) global, closed | route A | ✅ **route B** — unfolding needs only weakening |
+| (iii) in the context | heaviest | via substitution |
+
+- Route B's main theorem IS the meaning of (ii). Extension by definitions
+  means "eliminable": δ-expansion maps every derivation to a
+  signature-free one. The kernel's metatheory (SN, LR, confluence,
+  canonicity) is reused, not reopened.
+- **B2: `ref` lives only in the ANNOTATED layer.** The kernel `RTm` is
+  unchanged. Erasure unfolds `ref d` to its closed body, and conversion in
+  `⊢ᴬ` is already on erasures (decision (c)), so δ is in conversion for
+  free.
+  - This is not (i): `ref d` is typed by its DECLARATION alone and each
+    body is checked once, in its prefix. Only conversion sees bodies.
+  - The relation is the same as lazy-δ conversion, by the conservativity
+    theorem. Lazy δ inside the checker is an S7-efficiency increment,
+    not a correctness one.
+- ⚠ Route A is what OPAQUE definitions (no δ) would need, since there
+  unfolding changes conversion. That would be an increment on top of B.
+- User: *"if we find that the Knot can be heavily simplified by adding
+  more increments, then we do that."*
+
 ## 3. Stages
 
 | # | stage | state |
@@ -136,9 +162,45 @@ as the answer: neither line is the truth.
 | S2 | The annotated layer (§3d): `Spec/Annotated` (`ATm`/`ATy`, ren/sub, erasure + commutation), `⊢ᴬ`, erasure-soundness | ✅ `70a8c1b2e`. Ported to the levitated kernel in PLAN-LEVITATION Stage F: `Spec/AnnotatedDesc`, and `Spec/TypingA` via `tools/genA.py` |
 | S3 | The checker for `⊢ᴬ` (`Algorithm/CheckA`): certifying, STRUCTURAL (every former infers — no fuel); the term's own annotations checked with `⊢ᴬ`, all type reasoning on ERASURES (`validity`, `normTy`, `decConvᵀ`), annotated views of inferred types LIFTED from erased normal forms. Then COMPLETENESS (uniqueness of types up to conversion) | ✅ **2026-10-02: `⊢ᴬ` is DECIDABLE** (§3a). `inferᴬ`/`checkᴬ`/`checkTyᴬ` return `Dec`, certifying both the YES and the NO, for every former. |
 | S4 | Decide TYPE conversion `≅ᵀ` completely — ROUTE C (§3b): ① validity + `srᵀ` (`Metatheory/Validity`) ✅; ② inversion — the existing `gen-*` sufficed ✅; ③ `normTy`/`decConvᵀ` (`Metatheory/NormTy`) ✅ — **structural, NO measure needed**: `homNF` recurses on the NORMAL ambient (`G` ⊂ `Π F G`), the created `app f↑ vz` go through the typed `wnorm`, and a `NoU` witness breaks the harmless `elNF ↔ homNF` cycle | ✅ |
-| S5 | The signature: constants, δ, and the conservativity theorem — design (ii), §2-bis | 🟡 **next** |
+| S5 | The signature: constants, δ, and the conservativity theorem — design (ii), §2-bis, route B | ✅ **2026-10-02** (§3e): `ref d` in the annotated layer, `⊢ᴬref`, δ by erasure; δ-elimination + conservativity (`Metatheory/Signature`); `CheckA` decides `ref` |
 | S6 | The bidirectional SURFACE → annotated core elaborator. `Algorithm/Check`'s slice 1 is its seed; the Once compiler's `formal/Once/TypeCheck` is the shape template | ⬜ |
 | S7 | The Knot WRITTEN in the annotated core with signature references; its wf derivations come from `inferᴬ`, not from a generator. User, 2026-10-02: "if we have to write code to generate the Knot something is wrong". Measure against `HANDOFF-2026-09-24` §4's split | ⬜ |
+
+## 3e. ★ S5 — THE SIGNATURE (done 2026-10-02)
+
+- **`Spec/Signature`**: `record Sig` with fields `size`, `type : ℕ → ATy ε`
+  (the declarations), and `body : ℕ → RTm ε` (the bodies, ERASED). Also
+  `d <ˢ n` (an entry), `prefix S d`, and `SigOK S` (each erased body has
+  its erased type in `◇`).
+- **`Spec/Annotated`** (`genA.py`):
+  - `ref : ℕ → ATm Γ`; renaming and substitution leave it alone.
+  - Erasure is parameterised by the bodies, `module Era (δ : ℕ → RTm ε)`,
+    with `⌈ ref d ⌉ = εwkTm (δ d)`. The commutation lemmas get one clause
+    each (`εwkTm-ren`/`εwkTm-sub`).
+- **`Spec/TypingA (S : Sig)`**: one judgment for every signature.
+  `⊢ᴬref : d <ˢ size → Γ ⊢ᴬ ref d ∷ εwkTyᴬ (type d)`. `⊢ᴬconv` on
+  erasures now includes δ.
+- **`Metatheory/Erasure (S) (ok : SigOK S)`** is δ-ELIMINATION. Its new
+  case is the body, weakened by `sub-lemma` from `◇`.
+- **`Metatheory/Signature`**:
+  - `WfSig`: each entry has an annotated body typed over its PREFIX that
+    erases to `body d`.
+  - `wf→ok` by induction on the entries: each one is erased by `Erasure`
+    over its prefix.
+  - `consistencyˢ`: CONSERVATIVITY. Every kernel theorem holds over every
+    well-formed signature.
+- **`GenerationA`, `UniquenessA`, `CheckA`** are parameterised by `S` and
+  each gains one `ref` clause. `CheckA` decides `d <ˢ size`, and its "no"
+  is certified by `genᴬ-ref`.
+- **`Examples/Signature`**:
+  - A 3-entry signature: `suc′`, `N := ⌜Nat⌝`, `one : El (ref 1)`.
+  - δ works inside TYPES (`zero∷N`).
+  - The checker decides `app (ref 0) (ref 2) ∷ Nat` and rejects `ref 3`,
+    both by evaluation in 4 s.
+- ⚠ **Side effect:** erasure is no longer constructor-headed (`ref`
+  erases to a body), so Agda stops inverting `⌈ _I ⌉ = ⌈ I ⌉`. Five
+  helper calls (`motCtx-era`, `motCtx-wf`, `wfDF`, `wfFib`) now pin
+  `I`/`D`/`i` explicitly (memory `unsolved-meta-means-missing-pin`).
 
 ## 3a. ★ S3 — COMPLETENESS: `⊢ᴬ` is DECIDABLE (plan, 2026-10-02)
 

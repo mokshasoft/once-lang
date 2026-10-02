@@ -20,13 +20,14 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Spec.AnnotatedDesc where
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing
   using ( single; single2; pairS; fsucS; iinst; methS; wk2M; MethTy; DescF )
 open import DirectedHoTT.Spec.Annotated
+module DirectedHoTT.Spec.AnnotatedDesc (δ : ℕ → RTm ε) where
+open Era δ
 
 private
   variable

@@ -49,7 +49,6 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Algorithm.CheckA where
 open import normalizer.Syntax.Types
   using ( _≡_; refl; sym; trans; cong; cong₂; subst; Σ; _,_; _×_; _⊎_; inj₁; inj₂; ¬_; ⊥ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
@@ -60,10 +59,7 @@ open import DirectedHoTT.Spec.Variance
 open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Spec.Annotated
-open import DirectedHoTT.Spec.AnnotatedDesc
-open import DirectedHoTT.Spec.TypingA
-open import DirectedHoTT.Metatheory.Erasure
-  using ( erase; erase-ty; sub1; sub1ᵗ; nrs-era; motCtx-era )
+open import DirectedHoTT.Spec.Signature using ( Sig; SigOK; _<ˢ_; <-here; <-there; <ˢ-zero )
 open import DirectedHoTT.Metatheory.SubjectReduction
   using ( ⊢-cast; ⊢single; sub-ty; Sub⊢; ⊢[]; ⊢wk; wk-cancel-tm )
 open import DirectedHoTT.Metatheory.Validity
@@ -77,9 +73,18 @@ open import DirectedHoTT.Algorithm.DecEq
 open import DirectedHoTT.Metatheory.Premises
   using ( MethTy-wf; pairS⊢; fsucS⊢; ⊢wkD )
 open import DirectedHoTT.Metatheory.Injectivity using ( Π-inj )
-open import DirectedHoTT.Metatheory.GenerationA
-open import DirectedHoTT.Metatheory.UniquenessA using ( uniqᴬ )
 open import DirectedHoTT.Metatheory.NormalShape using ( nf-Π; nf-Σ )
+-- ★ S5: one checker per signature; `ok` (from `WfSig`, Metatheory/Signature)
+--   is what erasure — the bridge to the kernel's validity — needs
+module DirectedHoTT.Algorithm.CheckA (S : Sig) (ok : SigOK S) where
+open Sig S
+open Era body
+open import DirectedHoTT.Spec.AnnotatedDesc body
+open import DirectedHoTT.Spec.TypingA S
+open import DirectedHoTT.Metatheory.Erasure S ok
+  using ( erase; erase-ty; motCtx-era )
+open import DirectedHoTT.Metatheory.GenerationA S
+open import DirectedHoTT.Metatheory.UniquenessA S using ( uniqᴬ )
 
 private
   cong1 = cong
@@ -491,6 +496,24 @@ sndStep {p = p} wΓ dp with viewΣ wΓ dp
 ... | inj₂ ¬Σ = no (λ { (_ , w) → let (A , (B , (dp' , _))) = genᴬ-snd w in ¬Σ (A , (B , dp')) })
 ... | inj₁ (σv A B dp') = yes (subTyᴬ (singleᴬ (fst p)) B , ⊢ᴬsnd dp')
 
+-- ★ S5: is `d` an entry of the signature?
+eqℕ : (a b : ℕ) → Dec (a ≡ b)
+eqℕ zero    zero    = yes refl
+eqℕ zero    (suc b) = no λ ()
+eqℕ (suc a) zero    = no λ ()
+eqℕ (suc a) (suc b) with eqℕ a b
+... | yes refl = yes refl
+... | no ne    = no λ { refl → ne refl }
+
+_<ˢ?_ : (d n : ℕ) → Dec (d <ˢ n)
+d <ˢ? zero = no <ˢ-zero
+d <ˢ? suc n with eqℕ d n
+... | yes refl = yes <-here
+... | no d≢n with d <ˢ? n
+...   | yes p = yes (<-there p)
+...   | no ¬p = no λ { <-here → d≢n refl ; (<-there p) → ¬p p }
+
+
 inferᴬ   : (Γ : ACtx) → ⊢ctx ⌈ Γ ⌉ᶜ → (t : ATm ⌊ Γ ⌋ᴬ) → Dec (Inf Γ t)
 checkᴬ   : (Γ : ACtx) → ⊢ctx ⌈ Γ ⌉ᶜ → (t : ATm ⌊ Γ ⌋ᴬ) (A : ATy ⌊ Γ ⌋ᴬ) →
            ⌈ Γ ⌉ᶜ ⊢ty ⌈ A ⌉ᵀ → Dec (Γ ⊢ᴬ t ∷ A)
@@ -526,20 +549,25 @@ checkTyᴬ Γ wΓ (Id A t u) =
   yes (tyᴬ-Id dA dt du)
 checkTyᴬ Γ wΓ (IMu I D i) =
   bind (checkᴬ Γ wΓ I U ty-U) (λ { (tyᴬ-IMu dI _ _) → dI }) λ dI →
-  bind (checkᴬ Γ wΓ D (DescFᴬ I) (wfDF (erase dI))) (λ { (tyᴬ-IMu _ dD _) → dD }) λ dD →
+  bind (checkᴬ Γ wΓ D (DescFᴬ I) (wfDF {I = I} (erase dI))) (λ { (tyᴬ-IMu _ dD _) → dD }) λ dD →
   bind (checkᴬ Γ wΓ i (El I) (ty-El (erase dI))) (λ { (tyᴬ-IMu _ _ di) → di }) λ di →
   yes (tyᴬ-IMu dI dD di)
 checkTyᴬ Γ wΓ (Desc I) =
   bind (checkᴬ Γ wΓ I U ty-U) (λ { (tyᴬ-Desc dI) → dI }) λ dI → yes (tyᴬ-Desc dI)
 checkTyᴬ Γ wΓ (DIh I D M C p) =
   bind (checkᴬ Γ wΓ I U ty-U) (λ { (tyᴬ-DIh dI _ _ _ _) → dI }) λ dI →
-  bind (checkᴬ Γ wΓ D (DescFᴬ I) (wfDF (erase dI))) (λ { (tyᴬ-DIh _ dD _ _ _) → dD }) λ dD →
-  bind (checkTyᴬ (motCtxᴬ Γ I D) (motCtx-wf wΓ (erase dI) (eD I dD)) M) (λ { (tyᴬ-DIh _ _ dM _ _) → dM }) λ dM →
+  bind (checkᴬ Γ wΓ D (DescFᴬ I) (wfDF {I = I} (erase dI))) (λ { (tyᴬ-DIh _ dD _ _ _) → dD }) λ dD →
+  bind (checkTyᴬ (motCtxᴬ Γ I D) (motCtx-wf {I = I} {D = D} wΓ (erase dI) (eD I dD)) M) (λ { (tyᴬ-DIh _ _ dM _ _) → dM }) λ dM →
   bind (checkᴬ Γ wΓ C (Desc I) (ty-Desc (erase dI))) (λ { (tyᴬ-DIh _ _ _ dC _) → dC }) λ dC →
   bind (checkᴬ Γ wΓ p (El (dpay I D C)) (ty-El (⊢dpay (erase dI) (eD I dD) (erase dC))))
        (λ { (tyᴬ-DIh _ _ _ _ dp) → dp }) λ dp →
   yes (tyᴬ-DIh dI dD dM dC dp)
 
+-- ★ S5: a reference infers its declared type; `no` exactly when it names
+--   no entry
+inferᴬ Γ wΓ (ref d) with d <ˢ? size
+... | yes p = yes (εwkTyᴬ (type d) , ⊢ᴬref p)
+... | no ¬p = no (λ { (_ , w) → let (p , _) = genᴬ-ref w in ¬p p })
 -- the formers that look INTO a type: `var`, `lam`, `app`, `fst`, `snd`, `tr`
 inferᴬ Γ wΓ (var x) = let (A , v) = lookupᴬ Γ x in yes (A , ⊢ᴬvar v)
 inferᴬ Γ wΓ (lam A t) =
@@ -728,7 +756,7 @@ inferᴬ Γ wΓ (⌜Fin⌝ n) =
 inferᴬ Γ wΓ (⌜IMu⌝ I D i) =
   bind (checkᴬ Γ wΓ I U ty-U)
        (λ { (_ , w) → let (dI , (_ , (_ , _))) = genᴬ-⌜IMu⌝ w in dI }) λ dI →
-  bind (checkᴬ Γ wΓ D (DescFᴬ I) (wfDF (erase dI)))
+  bind (checkᴬ Γ wΓ D (DescFᴬ I) (wfDF {I = I} (erase dI)))
        (λ { (_ , w) → let (_ , (dD , (_ , _))) = genᴬ-⌜IMu⌝ w in dD }) λ dD →
   bind (checkᴬ Γ wΓ i (El I) (ty-El (erase dI)))
        (λ { (_ , w) → let (_ , (_ , (di , _))) = genᴬ-⌜IMu⌝ w in di }) λ di →
@@ -756,7 +784,7 @@ inferᴬ Γ wΓ (dρ I j C) =
 inferᴬ Γ wΓ (dpay I D C) =
   bind (checkᴬ Γ wΓ I U ty-U)
        (λ { (_ , w) → let (dI , (_ , (_ , _))) = genᴬ-dpay w in dI }) λ dI →
-  bind (checkᴬ Γ wΓ D (DescFᴬ I) (wfDF (erase dI)))
+  bind (checkᴬ Γ wΓ D (DescFᴬ I) (wfDF {I = I} (erase dI)))
        (λ { (_ , w) → let (_ , (dD , (_ , _))) = genᴬ-dpay w in dD }) λ dD →
   bind (checkᴬ Γ wΓ C (Desc I) (ty-Desc (erase dI)))
        (λ { (_ , w) → let (_ , (_ , (dC , _))) = genᴬ-dpay w in dC }) λ dC →
@@ -764,21 +792,21 @@ inferᴬ Γ wΓ (dpay I D C) =
 inferᴬ Γ wΓ (con I D i p) =
   bind (checkᴬ Γ wΓ I U ty-U)
        (λ { (_ , w) → let (dI , (_ , (_ , (_ , _)))) = genᴬ-con w in dI }) λ dI →
-  bind (checkᴬ Γ wΓ D (DescFᴬ I) (wfDF (erase dI)))
+  bind (checkᴬ Γ wΓ D (DescFᴬ I) (wfDF {I = I} (erase dI)))
        (λ { (_ , w) → let (_ , (dD , (_ , (_ , _)))) = genᴬ-con w in dD }) λ dD →
   bind (checkᴬ Γ wΓ i (El I) (ty-El (erase dI)))
        (λ { (_ , w) → let (_ , (_ , (di , (_ , _)))) = genᴬ-con w in di }) λ di →
-  bind (checkᴬ Γ wΓ p (El (dpay I D (app D i))) (ty-El (⊢dpay (erase dI) (eD I dD) (wfFib (erase dI) (eD I dD) (erase di)))))
+  bind (checkᴬ Γ wΓ p (El (dpay I D (app D i))) (ty-El (⊢dpay (erase dI) (eD I dD) (wfFib {I = I} {D = D} {i = i} (erase dI) (eD I dD) (erase di)))))
        (λ { (_ , w) → let (_ , (_ , (_ , (dp , _)))) = genᴬ-con w in dp }) λ dp →
   yes (IMu I D i , ⊢ᴬcon dI dD di dp)
 inferᴬ Γ wΓ (ielim I D M i e t) =
   bind (checkᴬ Γ wΓ I U ty-U)
        (λ { (_ , w) → let (dI , (_ , (_ , (_ , (_ , (_ , _)))))) = genᴬ-ielim w in dI }) λ dI →
-  bind (checkᴬ Γ wΓ D (DescFᴬ I) (wfDF (erase dI)))
+  bind (checkᴬ Γ wΓ D (DescFᴬ I) (wfDF {I = I} (erase dI)))
        (λ { (_ , w) → let (_ , (dD , (_ , (_ , (_ , (_ , _)))))) = genᴬ-ielim w in dD }) λ dD →
-  bind (checkTyᴬ (motCtxᴬ Γ I D) (motCtx-wf wΓ (erase dI) (eD I dD)) M)
+  bind (checkTyᴬ (motCtxᴬ Γ I D) (motCtx-wf {I = I} {D = D} wΓ (erase dI) (eD I dD)) M)
        (λ { (_ , w) → let (_ , (_ , (dM , (_ , (_ , (_ , _)))))) = genᴬ-ielim w in dM }) λ dM →
-  bind (checkᴬ Γ wΓ e (MethTyᴬ I D M) (subst (λ Z → ⌈ Γ ⌉ᶜ ⊢ty Z) (sym (era-MethTy I D M)) (MethTy-wf (erase dI) (eD I dD) (motCtx-era (erase-ty dM)))))
+  bind (checkᴬ Γ wΓ e (MethTyᴬ I D M) (subst (λ Z → ⌈ Γ ⌉ᶜ ⊢ty Z) (sym (era-MethTy I D M)) (MethTy-wf (erase dI) (eD I dD) (motCtx-era {I = I} {D = D} (erase-ty dM)))))
        (λ { (_ , w) → let (_ , (_ , (_ , (de , (_ , (_ , _)))))) = genᴬ-ielim w in de }) λ de →
   bind (checkᴬ Γ wΓ i (El I) (ty-El (erase dI)))
        (λ { (_ , w) → let (_ , (_ , (_ , (_ , (di , (_ , _)))))) = genᴬ-ielim w in di }) λ di →
@@ -788,11 +816,11 @@ inferᴬ Γ wΓ (ielim I D M i e t) =
 inferᴬ Γ wΓ (dih I D M e C p) =
   bind (checkᴬ Γ wΓ I U ty-U)
        (λ { (_ , w) → let (dI , (_ , (_ , (_ , (_ , (_ , _)))))) = genᴬ-dih w in dI }) λ dI →
-  bind (checkᴬ Γ wΓ D (DescFᴬ I) (wfDF (erase dI)))
+  bind (checkᴬ Γ wΓ D (DescFᴬ I) (wfDF {I = I} (erase dI)))
        (λ { (_ , w) → let (_ , (dD , (_ , (_ , (_ , (_ , _)))))) = genᴬ-dih w in dD }) λ dD →
-  bind (checkTyᴬ (motCtxᴬ Γ I D) (motCtx-wf wΓ (erase dI) (eD I dD)) M)
+  bind (checkTyᴬ (motCtxᴬ Γ I D) (motCtx-wf {I = I} {D = D} wΓ (erase dI) (eD I dD)) M)
        (λ { (_ , w) → let (_ , (_ , (dM , (_ , (_ , (_ , _)))))) = genᴬ-dih w in dM }) λ dM →
-  bind (checkᴬ Γ wΓ e (MethTyᴬ I D M) (subst (λ Z → ⌈ Γ ⌉ᶜ ⊢ty Z) (sym (era-MethTy I D M)) (MethTy-wf (erase dI) (eD I dD) (motCtx-era (erase-ty dM)))))
+  bind (checkᴬ Γ wΓ e (MethTyᴬ I D M) (subst (λ Z → ⌈ Γ ⌉ᶜ ⊢ty Z) (sym (era-MethTy I D M)) (MethTy-wf (erase dI) (eD I dD) (motCtx-era {I = I} {D = D} (erase-ty dM)))))
        (λ { (_ , w) → let (_ , (_ , (_ , (de , (_ , (_ , _)))))) = genᴬ-dih w in de }) λ de →
   bind (checkᴬ Γ wΓ C (Desc I) (ty-Desc (erase dI)))
        (λ { (_ , w) → let (_ , (_ , (_ , (_ , (dC , (_ , _)))))) = genᴬ-dih w in dC }) λ dC →
