@@ -184,7 +184,9 @@ open import Once.Adequacy.ArchCorrectness.RiscV64.RegRoles using (riscv64-roles)
 open import Once.Adequacy.ArchCorrectness.RiscV64.FlatComposition FS using
   (is-label?; skip-law; label-hit; label-miss; headView)
 open import Once.Adequacy.ArchCorrectness.RiscV64.StepLemmas using (execInstr-ld)
-open import Once.Adequacy.CPU.RiscV64 using (ev-riscv64; arith-env-riscv64)
+open import Once.Adequacy.CPU.RiscV64 using (ev-riscv64; arith-env-riscv64; call-at-riscv64)
+open import Once.Arith.Backend.CallAnswer using (answer-at)
+open import Once.CCC.Machine.SMCore using (LocState)
 open import Once.Adequacy.ArchCorrectness.ArithSimRiscV64 using (val-riscv64)
 open import Once.Arith.Backend.XInstr.Syntax using (XInstr)
 open import Once.Arith.Backend.RiscV64.Dispatch using (dispatch-arith)
@@ -296,7 +298,10 @@ riscv64-machine = record
 riscv64-traceloop : EI.TraceLoop FS Reg riscv64-emitter riscv64-machine
 riscv64-traceloop = record
   { Payload = List XInstr × ℕ
-  ; matchCall = RTr.matchCall ; ret-past = RTr.ret-past
+  ; matchCall = RTr.matchCall
+  -- plan 0.105: an external call returns with the world's answer in `a0`, the
+  -- world being the frame semantics' interpretation.
+  ; ret-call = RTr.ret-call (answer-at (Once.CCC.FrameSemantics.fs-interp FS) call-at-riscv64)
   ; dispatchArith = uncurry (dispatch-arith val-riscv64)
   ; ev-arch = ev-riscv64 ; arith-env = arith-env-riscv64
   ; sigop-call = call-sym ; sigop-lowering = λ _ → refl ; sigop-matchCall = λ _ → refl
@@ -424,8 +429,8 @@ stuck-load-indirect : ∀ {hv : HeapView} ev env prog fs s hl → CompiledCorr h
   → EE.CFC.HDom hv hl
   → heapMem (floc fs) hl ≡ nothing
   → StuckAt ev env (compile-trace prog) s
-stuck-load-indirect ev env prog fs s hl cc h ftq i-eq dom h-eq =
-  1 , EE.RT.run-events-stuck ev env 0 (compile-trace prog) s (ld a0 t0 0)
+stuck-load-indirect ev env prog fs s hl cc h ftq i-eq dom h-eq = λ lg →
+  1 , EE.RT.run-events-stuck ev env lg 0 (compile-trace prog) s (ld a0 t0 0)
         (trans (EE.CFC.halt-eq (dataCorr cc)) h)
         (proj₁ stuckp) refl (proj₂ stuckp)
   where stuckp = load-indirect-heap-empty-stuck prog fs s hl cc ftq i-eq dom h-eq
@@ -437,8 +442,8 @@ stuck-load-indirect-suc : ∀ {hv : HeapView} ev env prog fs s hl → CompiledCo
   → EE.CFC.HDom hv (sucHL hl)
   → heapMem (floc fs) (sucHL hl) ≡ nothing
   → StuckAt ev env (compile-trace prog) s
-stuck-load-indirect-suc ev env prog fs s hl cc h ftq i-eq dom h-eq =
-  1 , EE.RT.run-events-stuck ev env 0 (compile-trace prog) s (ld a0 t0 slot-size)
+stuck-load-indirect-suc ev env prog fs s hl cc h ftq i-eq dom h-eq = λ lg →
+  1 , EE.RT.run-events-stuck ev env lg 0 (compile-trace prog) s (ld a0 t0 slot-size)
         (trans (EE.CFC.halt-eq (dataCorr cc)) h)
         (proj₁ stuckp) refl (proj₂ stuckp)
   where stuckp = load-indirect-suc-heap-empty-stuck prog fs s hl cc ftq i-eq dom h-eq
@@ -450,10 +455,10 @@ stuck-c-jmp : ∀ {hv : HeapView} ev env prog fs s m → CompiledCorr hv prog fs
   → fetch prog (fpc fs) ≡ just (instr-ctrl (c-jmp m))
   → find-label prog m ≡ nothing
   → StuckAt ev env (compile-trace prog) s
-stuck-c-jmp ev env prog fs s m cc h ftq fl-eq =
-  2 , trans (EE.RT.run-events-noncall ev env 1 (compile-trace prog) s
+stuck-c-jmp ev env prog fs s m cc h ftq fl-eq = λ lg →
+  2 , trans (EE.RT.run-events-noncall ev env lg 1 (compile-trace prog) s
                (j (once m)) halt-s fetch-rv refl step-eq)
-            (EE.RT.run-events-halted ev env 0 (compile-trace prog) s' refl)
+            (EE.RT.run-events-halted ev env lg 0 (compile-trace prog) s' refl)
   where
     halt-s : R.State.halted s ≡ false
     halt-s = trans (EE.CFC.halt-eq (dataCorr cc)) h
@@ -474,10 +479,10 @@ stuck-c-branch-scratch-zero : ∀ {hv : HeapView} ev env prog fs s m → Compile
   → readReg (regs (floc fs)) Scratch ≡ SV-Tag 0
   → find-label prog m ≡ nothing
   → StuckAt ev env (compile-trace prog) s
-stuck-c-branch-scratch-zero {hv} ev env prog fs s m cc h ftq sc-eq fl-eq =
-  2 , trans (EE.RT.run-events-noncall ev env 1 (compile-trace prog) s
+stuck-c-branch-scratch-zero {hv} ev env prog fs s m cc h ftq sc-eq fl-eq = λ lg →
+  2 , trans (EE.RT.run-events-noncall ev env lg 1 (compile-trace prog) s
                (beq s3 rzero (once m)) halt-s fetch-rv refl step-eq)
-            (EE.RT.run-events-halted ev env 0 (compile-trace prog) s' refl)
+            (EE.RT.run-events-halted ev env lg 0 (compile-trace prog) s' refl)
   where
     dc = dataCorr cc
     halt-s : R.State.halted s ≡ false
@@ -501,12 +506,12 @@ stuck-c-branch-tag-zero : ∀ {hv : HeapView} ev env prog fs s m loc → Compile
   → R.State.memory s (R.readReg (R.State.regs s) t0 + 0) ≡ just 0
   → find-label prog m ≡ nothing
   → StuckAt ev env (compile-trace prog) s
-stuck-c-branch-tag-zero ev env prog fs s m loc cc h ftq i-eq r-eq rd fl-eq =
-  3 , trans (EE.RT.run-events-noncall ev env 2 (compile-trace prog) s
+stuck-c-branch-tag-zero ev env prog fs s m loc cc h ftq i-eq r-eq rd fl-eq = λ lg →
+  3 , trans (EE.RT.run-events-noncall ev env lg 2 (compile-trace prog) s
                (ld t1 t0 0) halt-s fetch-ld refl step-ld')
-      (trans (EE.RT.run-events-noncall ev env 1 (compile-trace prog) post-ld
+      (trans (EE.RT.run-events-noncall ev env lg 1 (compile-trace prog) post-ld
                (beq t1 rzero (once m)) halt-s fetch-beq refl step-beq)
-             (EE.RT.run-events-halted ev env 0 (compile-trace prog) post-beq refl))
+             (EE.RT.run-events-halted ev env lg 0 (compile-trace prog) post-beq refl))
   where
     dc = dataCorr cc
     halt-s : R.State.halted s ≡ false
@@ -628,7 +633,8 @@ postulate
                                 ≡ event-of (instr-sigop si) fs)
                             × CompiledCorr hv prog
                                 (flat-exec-instr (instr-sigop si) prog fs)
-                                (RTr.ret-past s)
+                                (RTr.ret-call (answer-at (Once.CCC.FrameSemantics.fs-interp FS) call-at-riscv64)
+                                   (LocState.ev-log (FlatMachine.floc {FS} fs)) (once-symbol-path (SigOpInfo.name si)) s)
 
 ------------------------------------------------------------------------
 -- …AND THE WHOLE SUPPLY, which is what opens the dispatch.

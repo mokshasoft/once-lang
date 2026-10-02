@@ -54,7 +54,11 @@ module RunTrace
   (fetch         : Program → ℕ → Maybe Instr)
   (execInstr     : Program → State → Instr → Maybe State)
   (matchCall     : Instr → Maybe String)      -- `just lbl` iff `i` is `call-sym lbl`
-  (ret-past      : State → State)             -- return past a `call` (pc ← suc pc)
+  -- Plan 0.105: the state after an EXTERNAL call to `lbl` returns, given the
+  -- binary's log `h` of the calls before it. This is the ABI's half of a
+  -- call: the callee (the world) leaves its answer where the calling
+  -- convention says, and control returns past the `call`.
+  (ret-call      : List SigOpEvent → String → State → State)
   (dispatchArith : Payload → State → State)   -- arith-block dispatch (val baked in)
   where
 
@@ -72,33 +76,36 @@ module RunTrace
   -- The emit-and-continue trace loop (fuel = step budget), mutually with its
   -- fetch / call / exec dispatch.
   ----------------------------------------------------------------------
-  run-events       : EvExtractor → ArithEnv → ℕ → Program → State → List SigOpEvent
-  run-events-fetch : EvExtractor → ArithEnv → ℕ → Program → State → Maybe Instr → List SigOpEvent
-  run-events-instr : EvExtractor → ArithEnv → ℕ → Program → State → Instr → Maybe String → List SigOpEvent
-  run-events-call  : EvExtractor → ArithEnv → ℕ → Program → State → String → Maybe Payload → List SigOpEvent
-  run-events-exec  : EvExtractor → ArithEnv → ℕ → Program → State → Maybe State → List SigOpEvent
+  -- Plan 0.105: each takes the binary's LOG `h` (the calls made so far), which
+  -- an external call's answer depends on; the log grows by exactly the events.
+  run-events       : EvExtractor → ArithEnv → List SigOpEvent → ℕ → Program → State → List SigOpEvent
+  run-events-fetch : EvExtractor → ArithEnv → List SigOpEvent → ℕ → Program → State → Maybe Instr → List SigOpEvent
+  run-events-instr : EvExtractor → ArithEnv → List SigOpEvent → ℕ → Program → State → Instr → Maybe String → List SigOpEvent
+  run-events-call  : EvExtractor → ArithEnv → List SigOpEvent → ℕ → Program → State → String → Maybe Payload → List SigOpEvent
+  run-events-exec  : EvExtractor → ArithEnv → List SigOpEvent → ℕ → Program → State → Maybe State → List SigOpEvent
 
-  run-events ev env zero    prog s = []
-  run-events ev env (suc n) prog s =
-    if halted s then [] else run-events-fetch ev env n prog s (fetch prog (pc s))
+  run-events ev env h zero    prog s = []
+  run-events ev env h (suc n) prog s =
+    if halted s then [] else run-events-fetch ev env h n prog s (fetch prog (pc s))
 
-  run-events-fetch ev env n prog s nothing  = []
-  run-events-fetch ev env n prog s (just i) = run-events-instr ev env n prog s i (matchCall i)
+  run-events-fetch ev env h n prog s nothing  = []
+  run-events-fetch ev env h n prog s (just i) = run-events-instr ev env h n prog s i (matchCall i)
 
   -- arith/SigOp call: consult the arith-block table.
-  run-events-instr ev env n prog s i (just lbl) = run-events-call ev env n prog s lbl (env lbl)
+  run-events-instr ev env h n prog s i (just lbl) = run-events-call ev env h n prog s lbl (env lbl)
   -- ordinary instruction: execute, emit nothing.
-  run-events-instr ev env n prog s i nothing    = run-events-exec ev env n prog s (execInstr prog s i)
+  run-events-instr ev env h n prog s i nothing    = run-events-exec ev env h n prog s (execInstr prog s i)
 
   -- arith block: dispatch, NO event, continue.
-  run-events-call ev env n prog s lbl (just pl) =
-    run-events ev env n prog (dispatchArith pl s)
-  -- external SigOp: emit its event, continue past the call.
-  run-events-call ev env n prog s lbl nothing =
-    ev lbl s ++ run-events ev env n prog (ret-past s)
+  run-events-call ev env h n prog s lbl (just pl) =
+    run-events ev env h n prog (dispatchArith pl s)
+  -- external SigOp: emit its event, and continue from where the call returns
+  -- — with the world's answer in place, at the log before the call.
+  run-events-call ev env h n prog s lbl nothing =
+    ev lbl s ++ run-events ev env (h ++ ev lbl s) n prog (ret-call h lbl s)
 
-  run-events-exec ev env n prog s nothing   = []
-  run-events-exec ev env n prog s (just s') = run-events ev env n prog s'
+  run-events-exec ev env h n prog s nothing   = []
+  run-events-exec ev env h n prog s (just s') = run-events ev env h n prog s'
 
   ----------------------------------------------------------------------
   -- The `Behavior` adapter. `Behavior n` = the first `n` effectful SigOp
@@ -108,7 +115,7 @@ module RunTrace
   ----------------------------------------------------------------------
   run-trace-fam : (stepBudget : ℕ → ℕ) → EvExtractor → ArithEnv → Program → State
                 → ℕ → List SigOpEvent
-  run-trace-fam stepBudget ev env prog s n = take n (run-events ev env (stepBudget n) prog s)
+  run-trace-fam stepBudget ev env prog s n = take n (run-events ev env [] (stepBudget n) prog s)
 
   -- D179: `Behavior` carries three laws, and on the CONCRETE machine two of
   -- them are exactly the content of "`stepBudget` is adequate":
@@ -148,8 +155,8 @@ module RunTrace
                (run-trace-saturates stepBudget ev env prog s)
     where
       bnd : ∀ n → length (run-trace-fam stepBudget ev env prog s n) ≤ n
-      bnd n = subst (_≤ n) (sym (length-take n (run-events ev env (stepBudget n) prog s)))
-                    (m⊓n≤m n (length (run-events ev env (stepBudget n) prog s)))
+      bnd n = subst (_≤ n) (sym (length-take n (run-events ev env [] (stepBudget n) prog s)))
+                    (m⊓n≤m n (length (run-events ev env [] (stepBudget n) prog s)))
 
   ----------------------------------------------------------------------
   -- "No reachable external SigOp ⇒ empty trace" — the concrete analogue of the
@@ -169,18 +176,18 @@ module RunTrace
       ∀ (ev : EvExtractor) (env : ArithEnv) (prog : Program)
     → (∀ pc i lbl → fetch prog pc ≡ just i → matchCall i ≡ just lbl
          → Σ Payload (λ pl → env lbl ≡ just pl))
-    → ∀ (fuel : ℕ) (s : State) → run-events ev env fuel prog s ≡ []
-  run-events-[] ev env prog H zero    s = refl
-  run-events-[] ev env prog H (suc n) s with halted s
+    → ∀ (h : List SigOpEvent) (fuel : ℕ) (s : State) → run-events ev env h fuel prog s ≡ []
+  run-events-[] ev env prog H h zero    s = refl
+  run-events-[] ev env prog H h (suc n) s with halted s
   ... | true  = refl
   ... | false with fetch prog (pc s) in eqf
   ...   | nothing = refl
   ...   | just i  with matchCall i in eqm
   ...     | just lbl with H (pc s) i lbl eqf eqm
-  ...       | (pl , eqv) rewrite eqv = run-events-[] ev env prog H n (dispatchArith pl s)
-  run-events-[] ev env prog H (suc n) s | false | just i | nothing with execInstr prog s i
+  ...       | (pl , eqv) rewrite eqv = run-events-[] ev env prog H h n (dispatchArith pl s)
+  run-events-[] ev env prog H h (suc n) s | false | just i | nothing with execInstr prog s i
   ...       | nothing  = refl
-  ...       | just s'  = run-events-[] ev env prog H n s'
+  ...       | just s'  = run-events-[] ev env prog H h n s'
 
   ----------------------------------------------------------------------
   -- Per-step bridge for a NON-call instruction: one `run-events` step over an
@@ -191,22 +198,22 @@ module RunTrace
   -- CCC-structural blocks) be reused inside the `run-events` induction:
   -- `run-events` IS the machine, `X.exec` is its call-free sub-engine.
   ----------------------------------------------------------------------
-  run-events-noncall : ∀ ev env n prog s i {s'}
+  run-events-noncall : ∀ ev env h n prog s i {s'}
                      → halted s ≡ false → fetch prog (pc s) ≡ just i
                      → matchCall i ≡ nothing → execInstr prog s i ≡ just s'
-                     → run-events ev env (suc n) prog s ≡ run-events ev env n prog s'
-  run-events-noncall ev env n prog s i hs ft mc ex
+                     → run-events ev env h (suc n) prog s ≡ run-events ev env h n prog s'
+  run-events-noncall ev env h n prog s i hs ft mc ex
     rewrite hs | ft | mc | ex = refl
 
   -- STUCK: an ordinary instruction whose `execInstr` fails (an unmapped memory
   -- operand, a bad address) ends the trace — `run-events-exec … nothing ≡ []`.
   -- The concrete counterpart of the abstract machine HALTING, so it is what the
   -- "both machines stop here" correspondence cases ride on.
-  run-events-stuck : ∀ ev env n prog s i
+  run-events-stuck : ∀ ev env h n prog s i
                    → halted s ≡ false → fetch prog (pc s) ≡ just i
                    → matchCall i ≡ nothing → execInstr prog s i ≡ nothing
-                   → run-events ev env (suc n) prog s ≡ []
-  run-events-stuck ev env n prog s i hs ft mc ex
+                   → run-events ev env h (suc n) prog s ≡ []
+  run-events-stuck ev env h n prog s i hs ft mc ex
     rewrite hs | ft | mc | ex = refl
 
   ----------------------------------------------------------------------
@@ -218,36 +225,36 @@ module RunTrace
   -- HALTED: a halted state emits no further events (one fuel step suffices; the
   -- `if halted s` guard fires `[]`). The concrete analogue of `flat-events-step
   -- true = []`; `events-agree`'s base/halted case pairs the two.
-  run-events-halted : ∀ ev env n prog s → halted s ≡ true
-                    → run-events ev env (suc n) prog s ≡ []
-  run-events-halted ev env n prog s h rewrite h = refl
+  run-events-halted : ∀ ev env h n prog s → halted s ≡ true
+                    → run-events ev env h (suc n) prog s ≡ []
+  run-events-halted ev env h n prog s hd rewrite hd = refl
 
   -- FETCH-NONE: when the pc fetches nothing (past the program end), run-events
   -- emits [] (the `run-events-fetch … nothing` branch — or [] directly if halted).
   -- The concrete analogue of `flat-events-fetch nothing = []`; closes the program-
   -- end (wp-end) case of events-agree. With-free (J-bridge on halted s).
-  run-events-fetch-none : ∀ ev env n prog s → fetch prog (pc s) ≡ nothing
-                        → run-events ev env (suc n) prog s ≡ []
-  run-events-fetch-none ev env n prog s ft = go (halted s) refl
+  run-events-fetch-none : ∀ ev env h n prog s → fetch prog (pc s) ≡ nothing
+                        → run-events ev env h (suc n) prog s ≡ []
+  run-events-fetch-none ev env h n prog s ft = go (halted s) refl
     where go : ∀ (b : Bool) → halted s ≡ b
-             → (if b then [] else run-events-fetch ev env n prog s (fetch prog (pc s))) ≡ []
+             → (if b then [] else run-events-fetch ev env h n prog s (fetch prog (pc s))) ≡ []
           go true  _ = refl
-          go false _ = cong (run-events-fetch ev env n prog s) ft
+          go false _ = cong (run-events-fetch ev env h n prog s) ft
 
   -- ARITH block (`env lbl ≡ just pl`): dispatch the block, emit NO event, and
   -- advance to the dispatched post-state. (Pure ⇒ matches `flat-events`' `[]`.)
-  run-events-arith : ∀ ev env n prog s i lbl pl
+  run-events-arith : ∀ ev env h n prog s i lbl pl
                    → halted s ≡ false → fetch prog (pc s) ≡ just i
                    → matchCall i ≡ just lbl → env lbl ≡ just pl
-                   → run-events ev env (suc n) prog s ≡ run-events ev env n prog (dispatchArith pl s)
-  run-events-arith ev env n prog s i lbl pl hs ft mc el
+                   → run-events ev env h (suc n) prog s ≡ run-events ev env h n prog (dispatchArith pl s)
+  run-events-arith ev env h n prog s i lbl pl hs ft mc el
     rewrite hs | ft | mc | el = refl
 
   -- EXTERNAL SigOp (`env lbl ≡ nothing`): emit its event `ev lbl s` and continue
   -- past the call. (Matches `flat-events`' `machine-event si` via the contract.)
-  run-events-external : ∀ ev env n prog s i lbl
+  run-events-external : ∀ ev env h n prog s i lbl
                       → halted s ≡ false → fetch prog (pc s) ≡ just i
                       → matchCall i ≡ just lbl → env lbl ≡ nothing
-                      → run-events ev env (suc n) prog s ≡ ev lbl s ++ run-events ev env n prog (ret-past s)
-  run-events-external ev env n prog s i lbl hs ft mc el
+                      → run-events ev env h (suc n) prog s ≡ ev lbl s ++ run-events ev env (h ++ ev lbl s) n prog (ret-call h lbl s)
+  run-events-external ev env h n prog s i lbl hs ft mc el
     rewrite hs | ft | mc | el = refl

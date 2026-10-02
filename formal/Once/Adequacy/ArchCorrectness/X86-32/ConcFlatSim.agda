@@ -255,7 +255,9 @@ open import Once.CCC.Target.X86-32.Syntax using (slots; esi)
 ------------------------------------------------------------------------
 -- Imports for the run-events event-trace correspondence (block-run-exec + the
 -- events-agree induction below).
-open import Once.Adequacy.CPU.X86-32 using (ev-x86-32; arith-env-x86-32)
+open import Once.Adequacy.CPU.X86-32 using (ev-x86-32; arith-env-x86-32; call-at-x86-32)
+open import Once.Arith.Backend.CallAnswer using (answer-at)
+open import Once.CCC.Machine.SMCore using (LocState)
 -- `val-x86-32` is the concrete XInstr arith interpreter and lives with the arith
 -- simulation, not with the CPU instance (x86-64 re-exports its own from the CPU
 -- module; this arch does not).
@@ -444,7 +446,10 @@ x86-32-traceloop : EI.TraceLoop FS Reg x86-32-emitter x86-32-machine
 -- shape it inherits.
 x86-32-traceloop = record
   { Payload = List XInstr
-  ; matchCall = RTx.matchCall ; ret-past = RTx.ret-past
+  ; matchCall = RTx.matchCall
+  -- plan 0.105: an external call returns with the world's answer in `eax`, the
+  -- world being the frame semantics' interpretation.
+  ; ret-call = RTx.ret-call (answer-at (Once.CCC.FrameSemantics.fs-interp FS) call-at-x86-32)
   ; dispatchArith = dispatch-arith val-x86-32
   ; ev-arch = ev-x86-32 ; arith-env = arith-env-x86-32
   ; sigop-call = call-sym ; sigop-lowering = λ _ → refl ; sigop-matchCall = λ _ → refl
@@ -572,8 +577,8 @@ stuck-load-indirect : ∀ {hv : HeapView} ev env prog fs s hl → CompiledCorr h
   → C.HDom hv hl
   → heapMem (floc fs) hl ≡ nothing
   → EE.StuckAt ev env (compile-trace prog) s
-stuck-load-indirect ev env prog fs s hl cc h ftq i-eq dom h-eq =
-  1 , RTx.run-events-stuck val-x86-32 ev env 0 (compile-trace prog) s
+stuck-load-indirect ev env prog fs s hl cc h ftq i-eq dom h-eq = λ lg →
+  1 , RTx.run-events-stuck val-x86-32 (answer-at (Once.CCC.FrameSemantics.fs-interp FS) call-at-x86-32) ev env lg 0 (compile-trace prog) s
         (mov (reg eax) (mem (base ecx)))
         (trans (C.halt-eq (dataCorr cc)) h) (proj₁ stuckp) refl (proj₂ stuckp)
   where stuckp = load-indirect-heap-empty-stuck prog fs s hl cc ftq i-eq dom h-eq
@@ -585,8 +590,8 @@ stuck-load-indirect-suc : ∀ {hv : HeapView} ev env prog fs s hl → CompiledCo
   → C.HDom hv (sucHL hl)
   → heapMem (floc fs) (sucHL hl) ≡ nothing
   → EE.StuckAt ev env (compile-trace prog) s
-stuck-load-indirect-suc ev env prog fs s hl cc h ftq i-eq dom h-eq =
-  1 , RTx.run-events-stuck val-x86-32 ev env 0 (compile-trace prog) s
+stuck-load-indirect-suc ev env prog fs s hl cc h ftq i-eq dom h-eq = λ lg →
+  1 , RTx.run-events-stuck val-x86-32 (answer-at (Once.CCC.FrameSemantics.fs-interp FS) call-at-x86-32) ev env lg 0 (compile-trace prog) s
         (mov (reg eax) (mem (base+disp ecx slot-size)))
         (trans (C.halt-eq (dataCorr cc)) h) (proj₁ stuckp) refl (proj₂ stuckp)
   where stuckp = load-indirect-suc-heap-empty-stuck prog fs s hl cc ftq i-eq dom h-eq
@@ -598,10 +603,10 @@ stuck-c-jmp : ∀ {hv : HeapView} ev env prog fs s m → CompiledCorr hv prog fs
   → fetch prog (fpc fs) ≡ just (instr-ctrl (c-jmp m))
   → find-label prog m ≡ nothing
   → EE.StuckAt ev env (compile-trace prog) s
-stuck-c-jmp ev env prog fs s m cc h ftq fl-eq =
-  2 , trans (RTx.run-events-noncall val-x86-32 ev env 1 (compile-trace prog) s
+stuck-c-jmp ev env prog fs s m cc h ftq fl-eq = λ lg →
+  2 , trans (RTx.run-events-noncall val-x86-32 (answer-at (Once.CCC.FrameSemantics.fs-interp FS) call-at-x86-32) ev env lg 1 (compile-trace prog) s
                (jmp-l (once m)) halt-s fetch-x86 refl step-eq)
-            (RTx.run-events-halted val-x86-32 ev env 0 (compile-trace prog) s' refl)
+            (RTx.run-events-halted val-x86-32 (answer-at (Once.CCC.FrameSemantics.fs-interp FS) call-at-x86-32) ev env lg 0 (compile-trace prog) s' refl)
   where
     halt-s : X.State.halted s ≡ false
     halt-s = trans (C.halt-eq (dataCorr cc)) h
@@ -620,12 +625,12 @@ stuck-c-branch-scratch-zero : ∀ {hv : HeapView} ev env prog fs s m → Compile
   → readReg (regs (floc fs)) Scratch ≡ SV-Tag 0
   → find-label prog m ≡ nothing
   → EE.StuckAt ev env (compile-trace prog) s
-stuck-c-branch-scratch-zero {hv} ev env prog fs s m cc h ftq sc-eq fl-eq =
-  3 , trans (RTx.run-events-noncall val-x86-32 ev env 2 (compile-trace prog) s
+stuck-c-branch-scratch-zero {hv} ev env prog fs s m cc h ftq sc-eq fl-eq = λ lg →
+  3 , trans (RTx.run-events-noncall val-x86-32 (answer-at (Once.CCC.FrameSemantics.fs-interp FS) call-at-x86-32) ev env lg 2 (compile-trace prog) s
                (cmp (reg edx) (imm 0)) halt-s fetch-cmp refl step-cmp)
-      (trans (RTx.run-events-noncall val-x86-32 ev env 1 (compile-trace prog) post-cmp
+      (trans (RTx.run-events-noncall val-x86-32 (answer-at (Once.CCC.FrameSemantics.fs-interp FS) call-at-x86-32) ev env lg 1 (compile-trace prog) post-cmp
                (je (once m)) halt-s fetch-je refl step-je)
-             (RTx.run-events-halted val-x86-32 ev env 0 (compile-trace prog) post-je refl))
+             (RTx.run-events-halted val-x86-32 (answer-at (Once.CCC.FrameSemantics.fs-interp FS) call-at-x86-32) ev env lg 0 (compile-trace prog) post-je refl))
   where
     dc = dataCorr cc
     halt-s : X.State.halted s ≡ false
@@ -657,12 +662,12 @@ stuck-c-branch-tag-zero : ∀ {hv : HeapView} ev env prog fs s m loc → Compile
   → X.readMem (X.State.memory s) (X.readReg (X.State.regs s) ecx + 0) ≡ just 0
   → find-label prog m ≡ nothing
   → EE.StuckAt ev env (compile-trace prog) s
-stuck-c-branch-tag-zero ev env prog fs s m loc cc h ftq i-eq r-eq rd fl-eq =
-  3 , trans (RTx.run-events-noncall val-x86-32 ev env 2 (compile-trace prog) s
+stuck-c-branch-tag-zero ev env prog fs s m loc cc h ftq i-eq r-eq rd fl-eq = λ lg →
+  3 , trans (RTx.run-events-noncall val-x86-32 (answer-at (Once.CCC.FrameSemantics.fs-interp FS) call-at-x86-32) ev env lg 2 (compile-trace prog) s
                (cmp (mem (base ecx)) (imm 0)) halt-s fetch-cmp refl step-cmp)
-      (trans (RTx.run-events-noncall val-x86-32 ev env 1 (compile-trace prog) post-cmp
+      (trans (RTx.run-events-noncall val-x86-32 (answer-at (Once.CCC.FrameSemantics.fs-interp FS) call-at-x86-32) ev env lg 1 (compile-trace prog) post-cmp
                (je (once m)) halt-s fetch-je refl step-je)
-             (RTx.run-events-halted val-x86-32 ev env 0 (compile-trace prog) post-je refl))
+             (RTx.run-events-halted val-x86-32 (answer-at (Once.CCC.FrameSemantics.fs-interp FS) call-at-x86-32) ev env lg 0 (compile-trace prog) post-je refl))
   where
     dc = dataCorr cc
     halt-s : X.State.halted s ≡ false
@@ -726,7 +731,7 @@ postulate
   -- about the ABSTRACT machine, and its discharge is the typed shape checker
   -- (the same route the other dataflow disciplines take) plus the
   -- `emitted-thunk-guarded` induction for the body's existence.
-  arith-sigop-contract : ∀ {hv : HeapView} (env : RTx.ArithEnv val-x86-32) prog fs s {A B} (si : SigOpInfo A B)
+  arith-sigop-contract : ∀ {hv : HeapView} (env : RTx.ArithEnv val-x86-32 (answer-at (Once.CCC.FrameSemantics.fs-interp FS) call-at-x86-32)) prog fs s {A B} (si : SigOpInfo A B)
                        → RunAt prog fs
                        -- THE REAL ENV (2026-07-30): over an arbitrary `env` the
                        -- conclusion `env sym ≡ just pl` is refuted by `λ _ → nothing`.
@@ -745,7 +750,7 @@ postulate
   -- abstract `event-of` (`ev ≡ machine-event` — matching the observable value); and the
   -- concrete post-call state (ret-past) is the CompiledCorr of the flat post-state.
   -- `sigop-external` proves the run-events emission mechanics AROUND this.
-  external-sigop-contract : ∀ {hv : HeapView} (ev : RTx.EvExtractor val-x86-32) (env : RTx.ArithEnv val-x86-32)
+  external-sigop-contract : ∀ {hv : HeapView} (ev : RTx.EvExtractor val-x86-32 (answer-at (Once.CCC.FrameSemantics.fs-interp FS) call-at-x86-32)) (env : RTx.ArithEnv val-x86-32 (answer-at (Once.CCC.FrameSemantics.fs-interp FS) call-at-x86-32))
                               prog fs s {A B} (si : SigOpInfo A B)
                           → RunAt prog fs
                           -- THE REAL EXTRACTOR AND ENV (2026-07-30): over arbitrary
@@ -755,7 +760,9 @@ postulate
                           → fetch prog (fpc fs) ≡ just (instr-sigop si)
                           → (env (once-symbol-path (SigOpInfo.name si)) ≡ nothing)
                             × (ev (once-symbol-path (SigOpInfo.name si)) s ≡ event-of (instr-sigop si) fs)
-                            × CompiledCorr hv prog (flat-exec-instr (instr-sigop si) prog fs) (RTx.ret-past s)
+                            × CompiledCorr hv prog (flat-exec-instr (instr-sigop si) prog fs)
+                                (RTx.ret-call (answer-at (Once.CCC.FrameSemantics.fs-interp FS) call-at-x86-32)
+                                   (LocState.ev-log (FlatMachine.floc {FS} fs)) (once-symbol-path (SigOpInfo.name si)) s)
 
 ------------------------------------------------------------------------
 -- THE FLAT MACHINE'S WELL-FORMEDNESS LAYER IS ARCH-GENERIC (Plan 0.65 G1d).

@@ -145,7 +145,10 @@ record TraceLoop (E : Emitter) (M : Machine E) : Set₁ where
   field
     Payload : Set
     matchCall : Instr → Maybe String
-    ret-past : State → State
+    -- plan 0.105: the state after an EXTERNAL call to a label returns, at the
+    -- binary's log before it — the world's answer in the return register
+    -- (`RunTraceCore.ret-call`, each arch's `RunTrace.ret-call`).
+    ret-call : List SigOpEvent → String → State → State
     dispatchArith : Payload → State → State
     -- pinned, not quantified: the SigOp contracts are false over an arbitrary
     -- `ev`/`env` (2026-07-30)

@@ -27,8 +27,12 @@ open import Data.List using (List)
 open import Data.Maybe using (Maybe)
 open import Data.String using (String)
 open import Data.Nat using (ℕ)
+open import Data.Product using (_×_)
 
 open import Once.Denotation.Behavior      using (Behavior)
+open import Once.Denotation.Trace using (SigOpEvent)
+open import Once.Denotation.TraceMonad using (Interp)
+open import Once.Arith.Backend.CallAnswer using (CallResolver; answer-at)
 open import Once.Adequacy.CPU.Interface using (Byte; ArchSemantics)
 
 import Once.CCC.Target.RiscV64.Semantics as RV
@@ -40,6 +44,7 @@ import Once.CCC.Target.RiscV64.Syntax    as RVS
 -- DERIVES `run-trace` from `RV.run`'s step semantics, replacing the old opaque
 -- observable postulate with the real machine + three small named sub-gaps.
 import Once.Arith.Backend.RiscV64.RunTrace as RT
+open import Once.Arith.Backend.XInstr.Syntax using (XInstr)
 open import Once.Adequacy.ArchCorrectness.ArithSimRiscV64 using (val-riscv64)
 
 ------------------------------------------------------------------------
@@ -55,12 +60,19 @@ open import Once.Adequacy.ArchCorrectness.ArithSimRiscV64 using (val-riscv64)
 
 postulate
   step-budget-riscv64 : ℕ → ℕ
-  ev-riscv64          : RT.EvExtractor val-riscv64
-  arith-env-riscv64   : RVS.Program → RT.ArithEnv val-riscv64
+  ev-riscv64        : String → RV.State → List SigOpEvent
+  arith-env-riscv64 : RVS.Program → String → Maybe (List XInstr × ℕ)
+  -- plan 0.105: WHICH answering call a label is, and its argument — the same
+  -- label→SigOp resolution boundary as `ev-riscv64` (the loaded binary's
+  -- symbol table and argument decoding). The answer itself is DEFINED
+  -- (`CallAnswer.answer-at`): the world's, at the binary's log.
+  call-at-riscv64   : CallResolver RV.State
 
-run-trace-riscv64 : RVS.Program → RV.State → Behavior
-run-trace-riscv64 prog s =
-  RT.run-trace val-riscv64 step-budget-riscv64 ev-riscv64 (arith-env-riscv64 prog) prog s
+-- Plan 0.105: at the world `ι` the binary runs in — its external calls are
+-- answered by `ι`, and the answer lands in the return register.
+run-trace-riscv64 : Interp → RVS.Program → RV.State → Behavior
+run-trace-riscv64 ι prog s =
+  RT.run-trace val-riscv64 (answer-at ι call-at-riscv64) step-budget-riscv64 ev-riscv64 (arith-env-riscv64 prog) prog s
 
 postulate
   -- decode-riscv64 — POSTULATED. The RISC-V instruction encoding (32

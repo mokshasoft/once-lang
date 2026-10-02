@@ -24,10 +24,11 @@ open import Data.Nat using (ℕ; suc)
 open import Data.List using (List)
 
 open import Once.Arith.Backend.XInstr.Syntax using (XInstr)
-open import Once.Target.X86-32.PhysReg using (Reg)
+open import Once.Target.X86-32.PhysReg using (Reg; eax)
 open import Once.CCC.Target.X86-32.Syntax using (Program; Instr; call-sym)
-open import Once.CCC.Target.X86-32.Semantics using (State; fetch; execInstr; Word)
-open State using (halted; pc)
+open import Once.CCC.Target.X86-32.Semantics using (State; fetch; execInstr; Word; writeReg)
+open import Once.Denotation.Trace using (SigOpEvent)
+open State using (halted; pc; regs)
 open import Once.Arith.Backend.X86-32.Dispatch using (dispatch-arith)
 import Once.Arith.Backend.RunTraceCore as Core
 
@@ -41,6 +42,13 @@ matchCall _              = nothing
 ret-past : State → State
 ret-past s = record s { pc = suc (pc s) }
 
-module _ (val : XInstr → State → Reg → Word) where
+-- Plan 0.105: the ABI's half of an EXTERNAL call. The callee leaves its
+-- answer in the return register (`eax`, the `Output` role) and control
+-- returns past the `call`. `answer` is what the world answered, as a word
+-- (`CallAnswer.answer-at`), at the binary's log `h` before the call.
+ret-call : (List SigOpEvent → String → State → Word) → List SigOpEvent → String → State → State
+ret-call answer h lbl s = record (ret-past s) { regs = writeReg (regs s) eax (answer h lbl s) }
+
+module _ (val : XInstr → State → Reg → Word) (answer : List SigOpEvent → String → State → Word) where
   open Core.RunTrace State Program Instr (List XInstr)
-    halted pc fetch execInstr matchCall ret-past (dispatch-arith val) public
+    halted pc fetch execInstr matchCall (ret-call answer) (dispatch-arith val) public

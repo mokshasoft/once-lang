@@ -30,8 +30,12 @@ open import Data.List using (List; []; _∷_)
 open import Data.Maybe using (Maybe)
 open import Data.String using (String)
 open import Data.Nat using (ℕ)
+open import Data.Product using (_×_)
 
 open import Once.Denotation.Behavior      using (Behavior)
+open import Once.Denotation.Trace using (SigOpEvent)
+open import Once.Denotation.TraceMonad using (Interp)
+open import Once.Arith.Backend.CallAnswer using (CallResolver; answer-at)
 open import Once.Adequacy.CPU.Interface using (Byte; ArchSemantics)
 
 import Once.CCC.Target.X86-64.Semantics as X64
@@ -146,12 +150,19 @@ val-x86-64 (XI.Xmov-out src)          s _ = rd s src
 
 postulate
   step-budget-x86-64 : ℕ → ℕ
-  ev-x86-64          : RT.EvExtractor val-x86-64
-  arith-env-x86-64   : X64S.Program → RT.ArithEnv val-x86-64
+  ev-x86-64        : String → X64.State → List SigOpEvent
+  arith-env-x86-64 : X64S.Program → String → Maybe (List XI.XInstr × ℕ)
+  -- plan 0.105: WHICH answering call a label is, and its argument — the same
+  -- label→SigOp resolution boundary as `ev-x86-64` (the loaded binary's
+  -- symbol table and argument decoding). The answer itself is DEFINED
+  -- (`CallAnswer.answer-at`): the world's, at the binary's log.
+  call-at-x86-64   : CallResolver X64.State
 
-run-trace-x86-64 : X64S.Program → X64.State → Behavior
-run-trace-x86-64 prog s =
-  RT.run-trace val-x86-64 step-budget-x86-64 ev-x86-64 (arith-env-x86-64 prog) prog s
+-- Plan 0.105: at the world `ι` the binary runs in — its external calls are
+-- answered by `ι`, and the answer lands in the return register.
+run-trace-x86-64 : Interp → X64S.Program → X64.State → Behavior
+run-trace-x86-64 ι prog s =
+  RT.run-trace val-x86-64 (answer-at ι call-at-x86-64) step-budget-x86-64 ev-x86-64 (arith-env-x86-64 prog) prog s
 
 postulate
   -- decode-x86-64 — POSTULATED. Concrete byte-encoder/decoder per the

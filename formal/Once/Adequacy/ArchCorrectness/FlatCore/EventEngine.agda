@@ -122,7 +122,7 @@ open CFC using (HeapView; HDom; slots)
 open RegRoles roles using (in1-reg; sp-reg; scratch-reg; count-reg)
 import Once.Arith.Backend.RunTraceCore as Core
 module RT = Core.RunTrace State (List Instr) Instr Payload
-                          xhalted xpc mfetch mexecInstr matchCall ret-past dispatchArith
+                          xhalted xpc mfetch mexecInstr matchCall ret-call dispatchArith
 
 -- unqualified, as `CompiledCorrespondence` imports it: `halted`/`regs`/… are
 -- `LocState` fields that `Machine.Flat` itself picks up this way.
@@ -197,18 +197,18 @@ private
   n≢j : ∀ {A : Set} {x : A} → nothing ≡ just x → ⊥
   n≢j ()
 
-block-run-exec : ∀ (ev : RT.EvExtractor) (env : RT.ArithEnv)
+block-run-exec : ∀ (ev : RT.EvExtractor) (env : RT.ArithEnv) (h : List SigOpEvent)
                    L rest cprog s {s'} → exec L cprog s ≡ just s' → xhalted s' ≡ false
-               → RT.run-events ev env (L + rest) cprog s
-                   ≡ RT.run-events ev env rest cprog s'
-block-run-exec ev env zero rest cprog s eq hs' =
-  cong (RT.run-events ev env rest cprog)
+               → RT.run-events ev env h (L + rest) cprog s
+                   ≡ RT.run-events ev env h rest cprog s'
+block-run-exec ev env h zero rest cprog s eq hs' =
+  cong (RT.run-events ev env h rest cprog)
        (just-injective (trans (sym (exec-zero cprog s)) eq))
-block-run-exec ev env (suc L) rest cprog s {s'} eq hs' = go-h (xhalted s) refl
+block-run-exec ev env h (suc L) rest cprog s {s'} eq hs' = go-h (xhalted s) refl
   where
     go-h : ∀ (b : Bool) → xhalted s ≡ b
-         → RT.run-events ev env (suc L + rest) cprog s
-             ≡ RT.run-events ev env rest cprog s'
+         → RT.run-events ev env h (suc L + rest) cprog s
+             ≡ RT.run-events ev env h rest cprog s'
     -- HALTED ALREADY: `exec` returns `s` itself, so `s ≡ s'` and `s'` is halted
     -- too — which `hs'` denies.
     go-h true  hs = ⊥-elim (t≢f (trans (sym hs)
@@ -217,23 +217,23 @@ block-run-exec ev env (suc L) rest cprog s {s'} eq hs' = go-h (xhalted s) refl
     go-h false hs = go-f (mfetch cprog (xpc s)) refl
       where
         go-f : ∀ (mi : Maybe Instr) → mfetch cprog (xpc s) ≡ mi
-             → RT.run-events ev env (suc L + rest) cprog s
-                 ≡ RT.run-events ev env rest cprog s'
+             → RT.run-events ev env h (suc L + rest) cprog s
+                 ≡ RT.run-events ev env h rest cprog s'
         -- PAST THE END: `exec` halts, `s'` is halted, same clash.
         go-f nothing  ftn = ⊥-elim (t≢f (trans (sym (exec-end L cprog s hs ftn eq)) hs'))
         go-f (just j) ftq = go-e (mexecInstr cprog s j) refl
           where
             go-e : ∀ (ms : Maybe State) → mexecInstr cprog s j ≡ ms
-                 → RT.run-events ev env (suc L + rest) cprog s
-                     ≡ RT.run-events ev env rest cprog s'
+                 → RT.run-events ev env h (suc L + rest) cprog s
+                     ≡ RT.run-events ev env h rest cprog s'
             -- STUCK: `exec` returns nothing, but it reached `just s'`.
             go-e nothing   exn =
               ⊥-elim (n≢j (trans (sym (exec-stuck L cprog s j hs ftq exn)) eq))
             go-e (just s₁) exq = go-h1 (xhalted s₁) refl
               where
                 go-h1 : ∀ (b : Bool) → xhalted s₁ ≡ b
-                      → RT.run-events ev env (suc L + rest) cprog s
-                          ≡ RT.run-events ev env rest cprog s'
+                      → RT.run-events ev env h (suc L + rest) cprog s
+                          ≡ RT.run-events ev env h rest cprog s'
                 -- the step HALTS: `exec` stops at `s₁ ≡ s'`, halted — clash again.
                 go-h1 true  h1 = ⊥-elim (t≢f (trans (sym h1)
                                    (trans (cong xhalted (just-injective
@@ -242,9 +242,9 @@ block-run-exec ev env (suc L) rest cprog s {s'} eq hs' = go-h (xhalted s) refl
                 -- THE ONE REAL STEP: still running, hence not a `call-sym`, so
                 -- `run-events` mirrors it with no event and we recurse.
                 go-h1 false h1 =
-                  trans (RT.run-events-noncall ev env (L + rest) cprog s j hs ftq
+                  trans (RT.run-events-noncall ev env h (L + rest) cprog s j hs ftq
                            (nonhalt-noncall cprog s j exq h1) exq)
-                        (block-run-exec ev env L rest cprog s₁
+                        (block-run-exec ev env h L rest cprog s₁
                            (trans (sym (exec-step-run L cprog s j s₁ hs ftq exq h1)) eq) hs')
 
 ------------------------------------------------------------------------
@@ -257,13 +257,13 @@ open FlatEventTrace {FS} using (flat-events; flat-events-step; flat-events-fetch
 -- PROGRAM END: the abstract fetch runs out, so the concrete pc — which `pc-off`
 -- pins to `blk-off prog (fpc fs)` — sits past the compiled program, where the
 -- fetch is `nothing` and `run-events` emits [].
-events-running-end : ∀ {hv : HeapView} (n : ℕ) (ev : RT.EvExtractor) (env : RT.ArithEnv)
+events-running-end : ∀ {hv : HeapView} (n : ℕ) (ev : RT.EvExtractor) (env : RT.ArithEnv) (lg : List SigOpEvent)
                        prog fs s → CompiledCorr hv prog fs s → FlatInv ev env prog fs
                    → halted (floc fs) ≡ false
                    → fetch prog (fpc fs) ≡ nothing
-                   → Σ ℕ (λ M → RT.run-events ev env M (compile-trace prog) s ≡ [])
-events-running-end {hv} n ev env prog fs s cc wf h ftq =
-  1 , RT.run-events-fetch-none ev env 0 (compile-trace prog) s cfetch-nothing
+                   → Σ ℕ (λ M → RT.run-events ev env lg M (compile-trace prog) s ≡ [])
+events-running-end {hv} n ev env lg prog fs s cc wf h ftq =
+  1 , RT.run-events-fetch-none ev env lg 0 (compile-trace prog) s cfetch-nothing
   where cfetch-nothing : mfetch (compile-trace prog) (xpc s) ≡ nothing
         cfetch-nothing =
           trans (cong (mfetch (compile-trace prog)) (pc-off cc))
@@ -294,14 +294,14 @@ sigop-concrete-fetch prog fs s si cc ftq =
 
 -- ARITH (Pure) SigOp: the emitted call is fetched, matched, and dispatched to
 -- the arith block with NO event — mirroring `flat-events`' [] for a Pure SigOp.
-sigop-run-arith : ∀ {hv : HeapView} ev env n prog fs s {A B} (si : SigOpInfo A B) (pl : Payload)
+sigop-run-arith : ∀ {hv : HeapView} ev env lg n prog fs s {A B} (si : SigOpInfo A B) (pl : Payload)
                 → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
                 → fetch prog (fpc fs) ≡ just (instr-sigop si)
                 → env (once-symbol-path (SigOpInfo.name si)) ≡ just pl
-                → RT.run-events ev env (suc n) (compile-trace prog) s
-                    ≡ RT.run-events ev env n (compile-trace prog) (dispatchArith pl s)
-sigop-run-arith ev env n prog fs s si pl cc h ftq env-eq =
-  RT.run-events-arith ev env n (compile-trace prog) s
+                → RT.run-events ev env lg (suc n) (compile-trace prog) s
+                    ≡ RT.run-events ev env lg n (compile-trace prog) (dispatchArith pl s)
+sigop-run-arith ev env lg n prog fs s si pl cc h ftq env-eq =
+  RT.run-events-arith ev env lg n (compile-trace prog) s
     (sigop-call (once-symbol-path (SigOpInfo.name si)))
     (once-symbol-path (SigOpInfo.name si)) pl
     (trans (CFC.halt-eq (dataCorr cc)) h)
@@ -309,18 +309,19 @@ sigop-run-arith ev env n prog fs s si pl cc h ftq env-eq =
     (sigop-matchCall (once-symbol-path (SigOpInfo.name si)))
     env-eq
 
--- EXTERNAL (Emits/Halts) SigOp: the same fetch and match, but the env has no
--- block for the symbol, so the loop EMITS `ev lbl s` and continues past the
--- call. This is the value-carrying observable emission.
-sigop-run-external : ∀ {hv : HeapView} ev env n prog fs s {A B} (si : SigOpInfo A B)
+-- EXTERNAL SigOp: the same fetch and match, but the env has no block for the
+-- symbol, so the loop EMITS `ev lbl s` and continues from where the call
+-- returns — the world's answer in place (plan 0.105), the log grown by it.
+sigop-run-external : ∀ {hv : HeapView} ev env lg n prog fs s {A B} (si : SigOpInfo A B)
                    → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
                    → fetch prog (fpc fs) ≡ just (instr-sigop si)
                    → env (once-symbol-path (SigOpInfo.name si)) ≡ nothing
-                   → RT.run-events ev env (suc n) (compile-trace prog) s
+                   → RT.run-events ev env lg (suc n) (compile-trace prog) s
                        ≡ ev (once-symbol-path (SigOpInfo.name si)) s
-                         ++ RT.run-events ev env n (compile-trace prog) (ret-past s)
-sigop-run-external ev env n prog fs s si cc h ftq env-eq =
-  RT.run-events-external ev env n (compile-trace prog) s
+                         ++ RT.run-events ev env (lg ++ ev (once-symbol-path (SigOpInfo.name si)) s) n
+                              (compile-trace prog) (ret-call lg (once-symbol-path (SigOpInfo.name si)) s)
+sigop-run-external ev env lg n prog fs s si cc h ftq env-eq =
+  RT.run-events-external ev env lg n (compile-trace prog) s
     (sigop-call (once-symbol-path (SigOpInfo.name si)))
     (once-symbol-path (SigOpInfo.name si))
     (trans (CFC.halt-eq (dataCorr cc)) h)
@@ -357,8 +358,9 @@ event-of-pure si fs eqe rewrite eqe = refl
 ------------------------------------------------------------------------
 
 -- what an arch owes: the concrete machine emits nothing from here on.
+-- (at any log: a stuck machine makes no call, so what it has called is moot)
 StuckAt : RT.EvExtractor → RT.ArithEnv → List Instr → State → Set
-StuckAt ev env cprog s = Σ ℕ (λ M → RT.run-events ev env M cprog s ≡ [])
+StuckAt ev env cprog s = ∀ (lg : List SigOpEvent) → Σ ℕ (λ M → RT.run-events ev env lg M cprog s ≡ [])
 
 record StuckSteps : Set₁ where
   field
@@ -409,14 +411,14 @@ open StuckSteps public
 -- THE GENERIC HALF, discharged once: if the flat machine has halted at the
 -- post-state and the instruction emits no event, then the arch's "nothing more
 -- comes out of the concrete machine" IS the correspondence at this branch.
-stuck-result : ∀ ev env n prog fs s (i : AbstractInstr)
+stuck-result : ∀ ev env lg n prog fs s (i : AbstractInstr)
              → halted (floc (flat-exec-instr i prog fs)) ≡ true
              → event-of i fs ≡ []
              → StuckAt ev env (compile-trace prog) s
-             → Σ ℕ (λ M → RT.run-events ev env M (compile-trace prog) s
+             → Σ ℕ (λ M → RT.run-events ev env lg M (compile-trace prog) s
                    ≡ event-of i fs ++ flat-events n prog (flat-exec-instr i prog fs))
-stuck-result ev env n prog fs s i hpost ev-eq (M , eq) =
-  M , trans eq (sym (trans (cong (_++ flat-events n prog (flat-exec-instr i prog fs)) ev-eq)
+stuck-result ev env lg n prog fs s i hpost ev-eq st =
+  proj₁ (st lg) , trans (proj₂ (st lg)) (sym (trans (cong (_++ flat-events n prog (flat-exec-instr i prog fs)) ev-eq)
                            (flat-events-halted n prog (flat-exec-instr i prog fs) hpost)))
 
 ------------------------------------------------------------------------
@@ -508,8 +510,11 @@ record Supply : Set₁ where
                            → (env (once-symbol-path (SigOpInfo.name si)) ≡ nothing)
                              × (ev (once-symbol-path (SigOpInfo.name si)) s
                                  ≡ event-of (instr-sigop si) fs)
+                             -- plan 0.105: at the call's return, with the world's
+                             -- answer in place — answered at the FLAT log, which the
+                             -- binary's log equals (`events-agree` runs from it).
                              × CompiledCorr hv prog (flat-exec-instr (instr-sigop si) prog fs)
-                                 (ret-past s)
+                                 (ret-call (LocState.ev-log (floc fs)) (once-symbol-path (SigOpInfo.name si)) s)
 -- NOT opened here: the dispatch opens it at its own `sup`, and a top-level
 -- `open Supply public` would put the PROJECTIONS in scope under the same
 -- names, making every use ambiguous.
