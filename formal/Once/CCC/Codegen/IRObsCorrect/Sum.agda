@@ -34,9 +34,9 @@ module SumC {FS : FrameSemantics} where
   obs-correct-inl : ∀ {A B} → IRObsCorrectF (inl {A} {B})
   obs-correct-inl {A} {B} n l prog base _ cr span _ _ mIn x s alloc cl n≤ nh inp k =
     record
-      { traces-agree   = cong (take k) (sym (denot-[] k))
+      { traces-agree   = sym (denot-[] k)
       ; value-realized =
-          realized 10 fs10 Heap (falloc fs10) run (λ _ → nh10) (λ _ → refl) (λ ()) refl refl (λ { refl → place })
+          realized 10 fs10 Heap (falloc fs10) run (λ _ → nh10) (λ _ → refl) (λ ()) refl refl (log-of run _ (sym (denot-[] k))) (λ { refl → place })
                    -- D204: the ten-instruction build's own preservation, which
                    -- `TenStepPres` already proves and `valid-transport` already
                    -- spends — the obligation just names it now.
@@ -75,7 +75,7 @@ module SumC {FS : FrameSemantics} where
       fs9  = flat-exec-instr store-indirect-suc         prog fs8
       fs10 = flat-exec-instr (load-from-slot sum-stash) prog fs9
 
-      denot-[] : ∀ k → projTrace (evalᴰ (inl {A} {B}) x) k ≡ []
+      denot-[] : ∀ k → eventsAt s (evalᴰ (inl {A} {B}) x) ≡ []
       denot-[] k = refl
 
       -- The sum block's address, as `alloc-impl` hands it out at fs2.
@@ -349,7 +349,7 @@ module SumC {FS : FrameSemantics} where
       -- a top-level helper over a with-block.
       place-of : InputAt mIn alloc x s
                → ResultPlace (A IRTy.+ B) Heap (falloc fs10) (falloc fs10)
-                             (TM.valueT (evalᴰ (inl {A} {B}) x) k) (floc fs10)
+                             (retVal (evalᴰ (inl {A} {B}) x)) (floc fs10)
       -- A register-resident payload needs NO payload location and NO payload
       -- validity — stage F's whole point. Fully proved.
       place-of (in-reg fit eq) =
@@ -392,21 +392,21 @@ module SumC {FS : FrameSemantics} where
                  valid)
 
           mk-valid : ∀ (e : readReg (regs s) Input1 ≡ SV-Ptr loc)
-                   → ValidAtWF Heap (falloc fs10) (TM.valueT (evalᴰ (inl {A} {B}) x) 0) sum-loc (floc fs10)
+                   → ValidAtWF Heap (falloc fs10) (retVal (evalᴰ (inl {A} {B}) x)) sum-loc (floc fs10)
           mk-valid e =
             valid-inl-wf tt tag-fs10 (trans pay-fs10 (cong just (pv≡ptr e)))
               (bf-advance bf) before-suc valid'
 
       place : ResultPlace (A IRTy.+ B) Heap (falloc fs10) (falloc fs10)
-                          (TM.valueT (evalᴰ (inl {A} {B}) x) k) (floc fs10)
+                          (retVal (evalᴰ (inl {A} {B}) x)) (floc fs10)
       place = place-of inp
 
   obs-correct-inr : ∀ {A B} → IRObsCorrectF (inr {A} {B})
   obs-correct-inr {A} {B} n l prog base _ cr span _ _ mIn x s alloc cl n≤ nh inp k =
     record
-      { traces-agree   = cong (take k) (sym (denot-[] k))
+      { traces-agree   = sym (denot-[] k)
       ; value-realized =
-          realized 10 fs10 Heap (falloc fs10) run (λ _ → nh10) (λ _ → refl) (λ ()) refl refl (λ { refl → place })
+          realized 10 fs10 Heap (falloc fs10) run (λ _ → nh10) (λ _ → refl) (λ ()) refl refl (log-of run _ (sym (denot-[] k))) (λ { refl → place })
                    -- D204: the ten-instruction build's own preservation, which
                    -- `TenStepPres` already proves and `valid-transport` already
                    -- spends — the obligation just names it now.
@@ -445,7 +445,7 @@ module SumC {FS : FrameSemantics} where
       fs9  = flat-exec-instr store-indirect-suc         prog fs8
       fs10 = flat-exec-instr (load-from-slot sum-stash) prog fs9
 
-      denot-[] : ∀ k → projTrace (evalᴰ (inr {A} {B}) x) k ≡ []
+      denot-[] : ∀ k → eventsAt s (evalᴰ (inr {A} {B}) x) ≡ []
       denot-[] k = refl
 
       -- The sum block's address, as `alloc-impl` hands it out at fs2.
@@ -719,7 +719,7 @@ module SumC {FS : FrameSemantics} where
       -- a top-level helper over a with-block.
       place-of : InputAt mIn alloc x s
                → ResultPlace (A IRTy.+ B) Heap (falloc fs10) (falloc fs10)
-                             (TM.valueT (evalᴰ (inr {A} {B}) x) k) (floc fs10)
+                             (retVal (evalᴰ (inr {A} {B}) x)) (floc fs10)
       -- A register-resident payload needs NO payload location and NO payload
       -- validity — stage F's whole point. Fully proved.
       place-of (in-reg fit eq) =
@@ -762,13 +762,13 @@ module SumC {FS : FrameSemantics} where
                  valid)
 
           mk-valid : ∀ (e : readReg (regs s) Input1 ≡ SV-Ptr loc)
-                   → ValidAtWF Heap (falloc fs10) (TM.valueT (evalᴰ (inr {A} {B}) x) 0) sum-loc (floc fs10)
+                   → ValidAtWF Heap (falloc fs10) (retVal (evalᴰ (inr {A} {B}) x)) sum-loc (floc fs10)
           mk-valid e =
             valid-inr-wf tt tag-fs10 (trans pay-fs10 (cong just (pv≡ptr e)))
               (bf-advance bf) before-suc valid'
 
       place : ResultPlace (A IRTy.+ B) Heap (falloc fs10) (falloc fs10)
-                          (TM.valueT (evalᴰ (inr {A} {B}) x) k) (floc fs10)
+                          (retVal (evalᴰ (inr {A} {B}) x)) (floc fs10)
       place = place-of inp
 
   ------------------------------------------------------------------------

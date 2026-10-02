@@ -48,12 +48,18 @@ open import Once.Functor.Translate using (IsBaseType; base-Int; base-Float)
 -- The observable's value domain — the same `⟦_⟧` the event carries.
 open import Once.Semantics.Machine using (⟦_⟧)
 open import Once.CCC.Machine.SMCore
-  using (LocState; halted; regs; readReg; Input1; module AbstractExec;
+  using (LocState; module LocState; halted; regs; readReg; Input1; module AbstractExec;
          StoredValue; SV-Lit;
          AbstractTrace; AbstractInstr; instr-sigop)
 open import Once.CCC.Machine.Flat
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
 open import Once.Denotation.Trace using (SigOpEvent; mk-event)
+open import Once.CCC.Machine.FlatLog using (LogFree)
+import Once.CCC.Machine.FlatLog
+import Once.CCC.Machine.SMCore as SMC
+open import Data.Unit using (⊤; tt)
+open import Data.Empty using (⊥)
+open import Data.Product using (_×_)
 
 module FlatEventTrace {FS : FrameSemantics} where
   open FlatMachine {FS}
@@ -63,6 +69,7 @@ module FlatEventTrace {FS : FrameSemantics} where
   -- `AbstractExec` (plan 0.105: the machine logs its events, so it decodes
   -- them itself).
   open AbstractExec {FS} using (sigop-events)
+  private module LP = Once.CCC.Machine.FlatLog.LogPres {FS}
 
   ev-of-loc : AbstractInstr → LocState FS → List SigOpEvent
   -- The step's own events: what `exec-abstract` appends to the log.
@@ -197,6 +204,74 @@ module FlatEventTrace {FS : FrameSemantics} where
   chain-events-subst-start : ∀ {prog k fs₁ fs₂ fs'} (eq : fs₁ ≡ fs₂) (stp : FlatSteps prog k fs₁ fs')
                            → chain-events (subst (λ s → FlatSteps prog k s fs') eq stp) ≡ chain-events stp
   chain-events-subst-start refl stp = refl
+
+  ------------------------------------------------------------------------
+  -- Plan 0.105: THE LOG GROWS BY EXACTLY THE EVENTS. A step appends its own
+  -- `event-of` to the machine's log (the SigOp step by definition, every other
+  -- step leaves it alone — `FlatLog`), so a chain grows the log by its
+  -- `chain-events`. `NotNested` excludes the two retired nested instructions,
+  -- which run a trace inside one step; nothing emits them.
+  ------------------------------------------------------------------------
+  NotNested : AbstractInstr → Set
+  NotNested (SMC.instr-case-on-tag _ _) = ⊥
+  NotNested (SMC.instr-loop _)          = ⊥
+  NotNested _                       = ⊤
+
+  private
+    flog : FlatState → List SigOpEvent
+    flog fs = LocState.ev-log (floc fs)
+
+    silent : ∀ (i : AbstractInstr) → LogFree i → ∀ prog fs → event-of i fs ≡ []
+           → flog (flat-exec-instr i prog fs) ≡ flog fs ++ event-of i fs
+    silent i lf prog fs ev = trans (LP.flat-exec-instr-log i lf prog fs)
+                                   (trans (sym (++-identityʳ _)) (cong (flog fs ++_) (sym ev)))
+
+  step-log : ∀ (i : AbstractInstr) → NotNested i → ∀ prog fs
+           → flog (flat-exec-instr i prog fs) ≡ flog fs ++ event-of i fs
+  step-log SMC.mov-to-output nn prog fs = silent SMC.mov-to-output tt prog fs refl
+  step-log SMC.mov-to-input nn prog fs = silent SMC.mov-to-input tt prog fs refl
+  step-log SMC.load-indirect nn prog fs = silent SMC.load-indirect tt prog fs refl
+  step-log SMC.load-indirect-suc nn prog fs = silent SMC.load-indirect-suc tt prog fs refl
+  step-log (SMC.load-from-slot slot) nn prog fs = silent (SMC.load-from-slot slot) tt prog fs refl
+  step-log (SMC.store-at-slot slot) nn prog fs = silent (SMC.store-at-slot slot) tt prog fs refl
+  step-log SMC.store-indirect nn prog fs = silent SMC.store-indirect tt prog fs refl
+  step-log SMC.store-indirect-suc nn prog fs = silent SMC.store-indirect-suc tt prog fs refl
+  step-log (SMC.lea-slot slot) nn prog fs = silent (SMC.lea-slot slot) tt prog fs refl
+  step-log (SMC.restore-input slot) nn prog fs = silent (SMC.restore-input slot) tt prog fs refl
+  step-log (SMC.lea-indexed slot) nn prog fs = silent (SMC.lea-indexed slot) tt prog fs refl
+  step-log (SMC.instr-alloc-stack n) nn prog fs = silent (SMC.instr-alloc-stack n) tt prog fs refl
+  step-log (SMC.instr-dealloc-stack n) nn prog fs = silent (SMC.instr-dealloc-stack n) tt prog fs refl
+  step-log (SMC.instr-reclaim-to n) nn prog fs = silent (SMC.instr-reclaim-to n) tt prog fs refl
+  step-log (SMC.instr-push-frame cap) nn prog fs = silent (SMC.instr-push-frame cap) tt prog fs refl
+  step-log SMC.instr-pop-frame nn prog fs = silent SMC.instr-pop-frame tt prog fs refl
+  step-log SMC.instr-call-closure nn prog fs = silent SMC.instr-call-closure tt prog fs refl
+  step-log (SMC.worklist-init slot) nn prog fs = silent (SMC.worklist-init slot) tt prog fs refl
+  step-log (SMC.worklist-push slot) nn prog fs = silent (SMC.worklist-push slot) tt prog fs refl
+  step-log (SMC.worklist-pop slot) nn prog fs = silent (SMC.worklist-pop slot) tt prog fs refl
+  step-log (SMC.worklist-check slot) nn prog fs = silent (SMC.worklist-check slot) tt prog fs refl
+  step-log (instr-sigop si)        _  prog fs = refl
+  step-log (SMC.instr-load-const p v) nn prog fs = silent (SMC.instr-load-const p v) tt prog fs refl
+  step-log (SMC.instr-load-code-addr n) nn prog fs = silent (SMC.instr-load-code-addr n) tt prog fs refl
+  step-log SMC.instr-save-closure-reg nn prog fs = silent SMC.instr-save-closure-reg tt prog fs refl
+  step-log (SMC.instr-load-tag-lit n) nn prog fs = silent (SMC.instr-load-tag-lit n) tt prog fs refl
+  step-log (SMC.instr-case-on-tag f g) () prog fs
+  step-log (SMC.instr-alloc-heap n) nn prog fs = silent (SMC.instr-alloc-heap n) tt prog fs refl
+  step-log (SMC.instr-loop body) () prog fs
+  step-log (SMC.instr-reg-op op) nn prog fs = silent (SMC.instr-reg-op op) tt prog fs refl
+  step-log (SMC.instr-ctrl c) nn prog fs = silent (SMC.instr-ctrl c) tt prog fs refl
+
+  -- Every instruction a chain fetches is not nested.
+  ChainNotNested : ∀ {prog k fs fs'} → FlatSteps prog k fs fs' → Set
+  ChainNotNested []                      = ⊤
+  ChainNotNested (_∷_ {i = i} _ rest)    = NotNested i × ChainNotNested rest
+
+  chain-log : ∀ {prog k fs fs'} (r : FlatSteps prog k fs fs') → ChainNotNested r
+            → flog fs' ≡ flog fs ++ chain-events r
+  chain-log []                                  _          = sym (++-identityʳ _)
+  chain-log {prog} (_∷_ {fs = fs} {i = i} _ rest) (nn , nns) =
+    trans (chain-log rest nns)
+          (trans (cong (_++ chain-events rest) (step-log i nn prog fs))
+                 (++-assoc (flog fs) (event-of i fs) (chain-events rest)))
 
   -- A SETTLED state (halted, or nothing to fetch) emits no events for any
   -- fuel — the run is over. (`flat-events`'s first dispatch returns `[]`.)

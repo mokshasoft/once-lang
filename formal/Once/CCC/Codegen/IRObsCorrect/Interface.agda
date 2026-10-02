@@ -138,6 +138,14 @@ module Core {FS : FrameSemantics} where
   open MemOps {FS} using (readLoc) public
   open ReadLocEq {FS} using (readLoc-stack-heap-eq) public
   open FlatEventTrace {FS} using (flat-events; event-of; flat-events-[]; chain-events; chain-events-nil; chain-events-++; chain-events-subst-start) public
+  private open FlatEventTrace {FS} using (ChainNotNested; chain-log)
+
+  -- …and in general: a chain of emitted (non-nested) instructions grows the
+  -- log by its events, so a clause's `log` follows from its `traces-agree`.
+  log-of : ∀ {prog k fs fs′} (r : FlatSteps prog k fs fs′) → ChainNotNested r
+         → ∀ {es} → chain-events r ≡ es
+         → LocState.ev-log (floc fs′) ≡ LocState.ev-log (floc fs) DL.++ es
+  log-of {fs = fs} r nn eq = trans (chain-log r nn) (cong (LocState.ev-log (floc fs) DL.++_) eq)
   open RTA o tbl {FS} using (Readable; r-unit; r-int; r-pair; readable?; readTyped-adequate) public
   open CataNextSlot {FS} using (exec-flat-keeps-next-slot; AllSlotStable) public
   open CataIRSlotStable {FS} using (ir-to-trace-slot-stable; ir-stable) public
