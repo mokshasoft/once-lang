@@ -31,12 +31,12 @@ open import Once.Res using (Res; stopped; returns; mapRes; Res-rel; rel-stopped;
 open import Once.Functor.Translate using (IsBaseType; base-Unit; base-Void; base-Int; base-Float;
   base-Str; base-Buffer; base-Prod; base-Sum; base-rigid; IsConcrete; con-base; con-fun)
 import Once.Semantics.Machine as Val
-open import Once.Denotation.GradedOps using (prjB; injB; injBᵍ; injC; embν; mapEmbν)
+open import Once.Denotation.GradedOps using (prjB; injB; injBᵍ; embν; mapEmbν)
 open import Once.Semantics.Functor using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF)
 open import Once.Semantics.Functor.Laws using (⟦_⟧SF-rel)
-open import Once.Denotation.TraceMonad using (T; projTrace; returnT; _>>=T_; bindRes-rel)
-open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; νᵈ; forceᵈ; forget; inject)
-open import Once.Denotation.ValueDomainLaws using (_∼ᵈ_; traceᵈ-∼; layerᵈ-∼)
+open import Once.Denotation.TraceMonad using (T; ret; returnT; _>>=T_; RelT′; rel-ret; RelT′-bind)
+open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; νᵈ; forceᵈ; forgetᵇ; injectᵇ)
+open import Once.Denotation.ValueDomainLaws using (_∼ᵈ_; force-∼)
 open import Once.Denotation.GradedDomain using (M; ⟦_⟧ᵛ; νᵖ; forceᵖ; toT; bindM; returnM;
                                                 _>>=ᵖ_; >>=ᵖ-β)
 
@@ -46,11 +46,12 @@ open import Once.Denotation.GradedDomain using (M; ⟦_⟧ᵛ; νᵖ; forceᵖ; 
 -- side's force must emit nothing and return a related layer.
 ------------------------------------------------------------------------
 
+-- Plan 0.105: the Kleisli force is a TREE related to the pure layer's `ret` —
+-- so it makes no call and returns a related layer.
 record _∼ᵖᵈ_ {F : SFunctor} (x : νᵖ F) (y : νᵈ F) : Set where
   coinductive
   field
-    traceᵖᵈ-∼ : ∀ k → projTrace (returnT (forceᵖ x)) k ≡ projTrace (forceᵈ y) k
-    layerᵖᵈ-∼ : Res-rel (⟦ F ⟧SF-rel (_∼ᵖᵈ_ {F})) (returns (forceᵖ x)) (T.resT (forceᵈ y))
+    force-∼ᵖᵈ : RelT′ (⟦ F ⟧SF-rel (_∼ᵖᵈ_ {F})) (ret (forceᵖ x)) (forceᵈ y)
 
 open _∼ᵖᵈ_ public
 
@@ -66,8 +67,8 @@ RelGT : ∀ (A : Type) → T ⟦ A ⟧ᵛ → T ⟦ A ⟧ᴰ → Set
 RelGM : ∀ (π : Purity) (A : Type) → M π ⟦ A ⟧ᵛ → T ⟦ A ⟧ᴰ → Set
 RelGM π A m t = RelGT A (toT π m) t
 
-RelGT A t₁ t₂ = ∀ n → (projTrace t₁ n ≡ projTrace t₂ n)
-                    × Res-rel (RelGV A) (T.resT t₁) (T.resT t₂)
+-- Plan 0.105: related computations are related TREES (`RelT′`).
+RelGT A t₁ t₂ = RelT′ (RelGV A) t₁ t₂
 
 RelGV Unit        _ _ = ⊤
 RelGV Void        () _
@@ -95,15 +96,14 @@ RelGV (A ⇒[ mk-kind Many π ] B) f g = ∀ {a b} → RelGV A a b → RelGM π 
 ------------------------------------------------------------------------
 
 RelGT-return : ∀ {A} {x y} → RelGV A x y → RelGT A (returnT x) (returnT y)
-RelGT-return rv n = refl , rel-returns rv
+RelGT-return rv = rel-ret rv
 
 RelGT-bind : ∀ {A B} {t₁ : T ⟦ A ⟧ᵛ} {t₂ : T ⟦ A ⟧ᴰ} {f : ⟦ A ⟧ᵛ → T ⟦ B ⟧ᵛ} {g : ⟦ A ⟧ᴰ → T ⟦ B ⟧ᴰ}
            → RelGT A t₁ t₂
            → (∀ {a b} → RelGV A a b → RelGT B (f a) (g b))
            → RelGT B (t₁ >>=T f) (t₂ >>=T g)
-RelGT-bind {A} {B} {t₁} {t₂} {f} {g} rt rk n =
-  bindRes-rel (RelGV A) (RelGV B) (T.trT t₁) (T.trT t₂) (T.resT t₁) (T.resT t₂)
-              f g n (proj₁ (rt n)) (proj₂ (rt n)) (λ r j → rk r j)
+RelGT-bind {A} {B} {t₁} {t₂} {f} {g} rt rk =
+  RelT′-bind (RelGV A) (RelGV B) rt (λ a b r → rk r)
 
 -- The PURE bind against a Kleisli one: the pure side's value is its
 -- continuation's (`>>=ᵖ-β`), and `returnT v >>=T k` is `k v` definitionally.
@@ -138,14 +138,12 @@ RelGM-return pure {A} rv = RelGT-return {A} rv
 RelGM-return eff  {A} rv = RelGT-return {A} rv
 
 ------------------------------------------------------------------------
--- The FFI boundary. At a base type both domains are the machine value, so
--- related values project to the same one; a contract's graded value, read into
--- the Spec domain (`injC`), is related to its erasure injected into the Kleisli
--- domain — at a pure pointer by a silent return, at an effectful one by the
--- same result.
+-- The FFI boundary. Contracts are first-order (plan 0.105), so at a base type
+-- both domains are the machine value: related values project to the same one,
+-- and a machine value read into either domain is related to itself.
 ------------------------------------------------------------------------
 
-prjB-rel : ∀ {A} (ib : IsBaseType A) {a : ⟦ A ⟧ᵛ} {b : ⟦ A ⟧ᴰ} → RelGV A a b → prjB ib a ≡ forget b
+prjB-rel : ∀ {A} (ib : IsBaseType A) {a : ⟦ A ⟧ᵛ} {b : ⟦ A ⟧ᴰ} → RelGV A a b → prjB ib a ≡ forgetᵇ ib b
 prjB-rel base-Unit   _ = refl
 prjB-rel base-Void   {()}
 prjB-rel base-Int    r = r
@@ -159,19 +157,7 @@ prjB-rel (base-Sum ia ib) {inj₁ _} {inj₂ _} ()
 prjB-rel (base-Sum ia ib) {inj₂ _} {inj₁ _} ()
 prjB-rel base-rigid  {()}
 
-injBᵍ-rel : ∀ {A} (ib : IsBaseType A) (x : Val.⟦ A ⟧ᵍ) → RelGV A (injBᵍ ib x) (inject {A} (Val.eraseᵍ {A} x))
-injBᵍ-rel base-Unit   x = tt
-injBᵍ-rel base-Void   ()
-injBᵍ-rel base-Int    x = refl
-injBᵍ-rel base-Float  x = refl
-injBᵍ-rel base-Str    x = refl
-injBᵍ-rel base-Buffer x = refl
-injBᵍ-rel (base-Prod ia ib) (x , y) = injBᵍ-rel ia x , injBᵍ-rel ib y
-injBᵍ-rel (base-Sum ia ib) (inj₁ x) = injBᵍ-rel ia x
-injBᵍ-rel (base-Sum ia ib) (inj₂ y) = injBᵍ-rel ib y
-injBᵍ-rel base-rigid  ()
-
-injB-rel : ∀ {A} (ib : IsBaseType A) (x : Val.⟦ A ⟧) → RelGV A (injB ib x) (inject {A} x)
+injB-rel : ∀ {A} (ib : IsBaseType A) (x : Val.⟦ A ⟧) → RelGV A (injB ib x) (injectᵇ ib x)
 injB-rel base-Unit   x = tt
 injB-rel base-Void   ()
 injB-rel base-Int    x = refl
@@ -183,24 +169,17 @@ injB-rel (base-Sum ia ib) (inj₁ x) = injB-rel ia x
 injB-rel (base-Sum ia ib) (inj₂ y) = injB-rel ib y
 injB-rel base-rigid  ()
 
-mutual
-  injC-rel : ∀ {C} (c : IsConcrete C) (x : Val.⟦ C ⟧ᵍ) → RelGV C (injC c x) (inject {C} (Val.eraseᵍ {C} x))
-  injC-rel (con-base ib) x = injBᵍ-rel ib x
-  injC-rel (con-fun {k = mk-kind Zero pure} bA cB) f n = refl , rel-returns (injC-rel cB (f tt))
-  injC-rel (con-fun {k = mk-kind One  pure} bA cB) f {a} {b} r n
-    rewrite prjB-rel bA r = refl , rel-returns (injC-rel cB (f (forget b)))
-  injC-rel (con-fun {k = mk-kind Many pure} bA cB) f {a} {b} r n
-    rewrite prjB-rel bA r = refl , rel-returns (injC-rel cB (f (forget b)))
-  injC-rel (con-fun {k = mk-kind Zero eff} bA cB) f n = refl , res-injC cB (f tt)
-  injC-rel (con-fun {k = mk-kind One  eff} bA cB) f {a} {b} r n
-    rewrite prjB-rel bA r = refl , res-injC cB (f (forget b))
-  injC-rel (con-fun {k = mk-kind Many eff} bA cB) f {a} {b} r n
-    rewrite prjB-rel bA r = refl , res-injC cB (f (forget b))
-
-  res-injC : ∀ {C} (c : IsConcrete C) (r : Res (Val.⟦ C ⟧ᵍ))
-           → Res-rel (RelGV C) (mapRes (injC c) r) (mapRes (inject {C}) (mapRes (Val.eraseᵍ {C}) r))
-  res-injC c stopped     = rel-stopped
-  res-injC c (returns x) = rel-returns (injC-rel c x)
+injBᵍ-rel : ∀ {A} (ib : IsBaseType A) (x : Val.⟦ A ⟧ᵍ) → RelGV A (injBᵍ ib x) (injectᵇ ib (Val.eraseᵍ {A} x))
+injBᵍ-rel base-Unit   x = tt
+injBᵍ-rel base-Void   ()
+injBᵍ-rel base-Int    x = refl
+injBᵍ-rel base-Float  x = refl
+injBᵍ-rel base-Str    x = refl
+injBᵍ-rel base-Buffer x = refl
+injBᵍ-rel (base-Prod ia ib) (x , y) = injBᵍ-rel ia x , injBᵍ-rel ib y
+injBᵍ-rel (base-Sum ia ib) (inj₁ x) = injBᵍ-rel ia x
+injBᵍ-rel (base-Sum ia ib) (inj₂ y) = injBᵍ-rel ib y
+injBᵍ-rel base-rigid  ()
 
 ------------------------------------------------------------------------
 -- `pure ⊑ eff` at ν: embedding a pure stream keeps it related. Its layers are
@@ -210,13 +189,12 @@ mutual
 
 mutual
   embν-∼ : ∀ {H : SFunctor} {x : νᵖ H} {y : νᵈ H} → x ∼ᵖᵈ y → embν x ∼ᵈ y
-  traceᵈ-∼ (embν-∼ r) k = traceᵖᵈ-∼ r k
-  layerᵈ-∼ (embν-∼ {H} r) = embLayer H (layerᵖᵈ-∼ r)
+  force-∼ (embν-∼ {H} r) = embLayer H (force-∼ᵖᵈ r)
 
-  embLayer : ∀ (H : SFunctor) {l : ⟦ H ⟧SF (νᵖ H)} {r : Res (⟦ H ⟧SF (νᵈ H))}
-           → Res-rel (⟦ H ⟧SF-rel (_∼ᵖᵈ_ {H})) (returns l) r
-           → Res-rel (⟦ H ⟧SF-rel (_∼ᵈ_ {H})) (returns (mapEmbν H H l)) r
-  embLayer H (rel-returns rr) = rel-returns (mapEmbν-∼ H H rr)
+  embLayer : ∀ (H : SFunctor) {l : ⟦ H ⟧SF (νᵖ H)} {m : T (⟦ H ⟧SF (νᵈ H))}
+           → RelT′ (⟦ H ⟧SF-rel (_∼ᵖᵈ_ {H})) (ret l) m
+           → RelT′ (⟦ H ⟧SF-rel (_∼ᵈ_ {H})) (ret (mapEmbν H H l)) m
+  embLayer H (rel-ret rr) = rel-ret (mapEmbν-∼ H H rr)
 
   mapEmbν-∼ : ∀ (H G : SFunctor) {l : ⟦ G ⟧SF (νᵖ H)} {l′ : ⟦ G ⟧SF (νᵈ H)}
             → ⟦ G ⟧SF-rel (_∼ᵖᵈ_ {H}) l l′ → ⟦ G ⟧SF-rel (_∼ᵈ_ {H}) (mapEmbν H G l) l′

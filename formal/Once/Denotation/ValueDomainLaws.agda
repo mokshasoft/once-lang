@@ -21,23 +21,19 @@
 -- So this module gives `νᵈ` the three things `νS` has had since plan 0.47:
 -- a bisimulation, the unfold-respects-bisimulation lemma, and the
 -- extensionality axiom. `_∼ᵈ_` differs from `_∼S_` in exactly the way `νᵈ`
--- differs from `νS` — the layer is a COMPUTATION, so bisimilarity asks for
--- equal traces as well as related layers, at every budget.
+-- differs from `νS` — the layer is a COMPUTATION (plan 0.105: a tree), so
+-- bisimilarity asks for the same calls, answered alike, ending in related
+-- layers: the tree relation `RelT′` at the layer relation.
 ------------------------------------------------------------------------
 
 module Once.Denotation.ValueDomainLaws where
 
-open import Data.Nat using (ℕ)
-open import Data.List using (List)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Sum using (inj₁; inj₂)
-open import Data.Unit using (⊤; tt)
-open import Once.Res using (Res; stopped; returns; Res-rel; rel-stopped; rel-returns)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
-open import Once.Denotation.Trace using (SigOpEvent)
-open import Once.Denotation.TraceMonad using (T; valueT; projTrace)
-open import Once.Denotation.ValueDomain using (νᵈ; forceᵈ; anaᵈ; mapAnaᵈ; anaLayer)
+open import Once.Denotation.TraceMonad using (T; ret; call; halt; RelT′; rel-ret; rel-call; rel-halt)
+open import Once.Denotation.ValueDomain using (νᵈ; forceᵈ; anaᵈ; mapAnaᵈ; anaTree)
 open import Once.Semantics.Functor using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF)
 open import Once.Semantics.Functor.Laws using (⟦_⟧SF-rel)
 
@@ -45,65 +41,36 @@ open import Once.Semantics.Functor.Laws using (⟦_⟧SF-rel)
 -- The bisimulation
 ------------------------------------------------------------------------
 
--- Two effectful ν values are bisimilar when forcing them agrees on BOTH
--- observables, at every budget: the events emitted, and the layer produced
--- (with bisimilarity again at the recursive positions).
---
--- The trace field is what `_∼S_` has no analogue of. Without it this would
--- relate values that emit different events, and `RelT`'s first component —
--- equal traces at every budget — could not be recovered from it.
+-- Two effectful ν values are bisimilar when forcing them gives RELATED TREES:
+-- the same calls, continuing relatedly at every answer, halting alike, and
+-- ending in layers related with bisimilarity again at the recursive positions.
+-- (Plan 0.105: before the tree, this was two fields — equal traces at every
+-- budget, and `Res`-related layers; `RelT′` is both at once.)
 record _∼ᵈ_ {F : SFunctor} (x y : νᵈ F) : Set where
   coinductive
   field
-    traceᵈ-∼ : ∀ k → projTrace (forceᵈ x) k ≡ projTrace (forceᵈ y) k
-    -- plan 0.98: the LAYER field is `Res`-relational and budget-free. Forcing
-    -- a ν need not produce a layer at all — a halting coalgebra stops — so
-    -- "the layers are related" is the wrong statement; "they stop together,
-    -- or produce related layers" is the right one, and that is `Res-rel`.
-    -- The budget drops out with it: the result does not depend on it, only
-    -- the trace does.
-    layerᵈ-∼ : Res-rel (⟦ F ⟧SF-rel (_∼ᵈ_ {F}))
-                       (T.resT (forceᵈ x)) (T.resT (forceᵈ y))
+    force-∼ : RelT′ (⟦ F ⟧SF-rel (_∼ᵈ_ {F})) (forceᵈ x) (forceᵈ y)
 
 open _∼ᵈ_ public
 
 -- D201: `bisimᵈ-to-eq` — coalgebraic extensionality at the effectful ν — is
--- GONE, and this module is now AXIOM-FREE.
---
--- It existed for exactly one reason: `RelV (ν-type F)` was propositional
--- equality, so the `ana` case of the meaning bridge had to convert the
--- bisimulation `anaᵈ-∼` proves into an `≡`. Bisimulation-implies-equality is
--- independent of MLTT, so that conversion could never have been discharged —
--- only assumed. Making the observational relation at a coinductive type BE
--- bisimilarity removes the need for it instead, which is the fourth and last
--- member of the ν defect class (`valid-ν-wf`, `obs-correct-Out`, `as-sum`,
--- `RelV (ν-type F)` — a ν modelled as if its layers were already available).
---
--- The PURE side's `bisimS-to-eq` (plan 0.47) stays: its six uses produce real
--- equalities that are substituted into other proofs, which is a different and
--- honest need.
+-- GONE, and this module is AXIOM-FREE: the observational relation at a
+-- coinductive type IS bisimilarity.
 
 ------------------------------------------------------------------------
 -- Bisimilarity is reflexive — coinductively, with no axiom
 ------------------------------------------------------------------------
 
--- D201: what the observational relation at a ν needs of it. `RelV (ν-type F)`
--- is bisimilarity (not propositional equality), so every site that used to
--- close a ν-shaped goal with `refl` closes it with this instead — and unlike
--- `refl`, it costs nothing beyond the coinduction the relation already is.
---
--- Mutual for `anaᵈ-∼`'s reason: the corecursive call sits under a map that is
--- structural in the SHAPE functor, so guardedness sees it.
 mutual
   ∼ᵈ-refl : ∀ {H : SFunctor} (x : νᵈ H) → x ∼ᵈ x
-  traceᵈ-∼ (∼ᵈ-refl x)   k = refl
-  layerᵈ-∼ (∼ᵈ-refl {H} x) = Res-rel-refl H H (T.resT (forceᵈ x))
+  force-∼ (∼ᵈ-refl {H} x) = tree-refl H H (forceᵈ x)
 
-  -- A stopped force is related to itself with nothing to say.
-  Res-rel-refl : ∀ (H G : SFunctor) (r : Res (⟦ G ⟧SF (νᵈ H)))
-               → Res-rel (⟦ G ⟧SF-rel (_∼ᵈ_ {H})) r r
-  Res-rel-refl H G stopped     = rel-stopped
-  Res-rel-refl H G (returns x) = rel-returns (SF-rel-refl H G x)
+  -- Structural on the forced tree.
+  tree-refl : ∀ (H G : SFunctor) (m : T (⟦ G ⟧SF (νᵈ H)))
+            → RelT′ (⟦ G ⟧SF-rel (_∼ᵈ_ {H})) m m
+  tree-refl H G (ret x)      = rel-ret (SF-rel-refl H G x)
+  tree-refl H G (call o a k) = rel-call λ b → tree-refl H G (k b)
+  tree-refl H G (halt o a)   = rel-halt
 
   SF-rel-refl : ∀ (H G : SFunctor) (x : ⟦ G ⟧SF (νᵈ H))
               → ⟦ G ⟧SF-rel (_∼ᵈ_ {H}) x x
@@ -118,43 +85,33 @@ mutual
 ------------------------------------------------------------------------
 
 -- What a coalgebra must satisfy to unfold related seeds to bisimilar values:
--- on related seeds it emits the same events and produces `R`-related layers,
--- at every budget. This is `RelT` at the layer type, stated over an arbitrary
--- seed relation so `MeaningBridge` can instantiate `R := RelV A`.
+-- on related seeds its computations are related trees with `R`-related layers.
+-- Stated over an arbitrary seed relation so `MeaningBridge` can instantiate
+-- `R := RelV A`.
 CoalgRel : ∀ (H : SFunctor) {A B : Set} (R : A → B → Set)
          → (A → T (⟦ H ⟧SF A)) → (B → T (⟦ H ⟧SF B)) → Set
-CoalgRel H R c₁ c₂ =
-  ∀ {a b} → R a b
-  → (∀ k → projTrace (c₁ a) k ≡ projTrace (c₂ b) k)
-  × Res-rel (⟦ H ⟧SF-rel R) (T.resT (c₁ a)) (T.resT (c₂ b))
+CoalgRel H R c₁ c₂ = ∀ {a b} → R a b → RelT′ (⟦ H ⟧SF-rel R) (c₁ a) (c₂ b)
 
--- Related seeds unfold to bisimilar values. The coinductive core, and the
--- one place the guardedness checker is doing real work: `anaᵈ-∼`'s corecursive
--- call sits under `mapAnaᵈ-∼`, which is structural in `G`, so the two are
--- mutual exactly as `anaᵈ`/`mapAnaᵈ` are.
+-- Related seeds unfold to bisimilar values. The coinductive core: `anaᵈ-∼`'s
+-- corecursive call sits under `mapAnaᵈ-∼`, which is structural in `G`, and the
+-- tree step `anaTree-∼` is structural in the tree, so the three are mutual
+-- exactly as `anaᵈ`/`anaTree`/`mapAnaᵈ` are.
 mutual
   anaᵈ-∼ : ∀ (H : SFunctor) {A B : Set} {R : A → B → Set}
            {c₁ : A → T (⟦ H ⟧SF A)} {c₂ : B → T (⟦ H ⟧SF B)}
          → CoalgRel H R c₁ c₂
          → ∀ {a b} → R a b → anaᵈ H c₁ a ∼ᵈ anaᵈ H c₂ b
-  traceᵈ-∼ (anaᵈ-∼ H cr r) k = proj₁ (cr r) k
-  layerᵈ-∼ (anaᵈ-∼ H {R = R} {c₁ = c₁} {c₂ = c₂} cr {a} {b} r) =
-    anaLayer-∼ H cr (T.resT (c₁ a)) (T.resT (c₂ b)) (proj₂ (cr r))
+  force-∼ (anaᵈ-∼ H cr r) = anaTree-∼ H cr (cr r)
 
-  -- The layer STEP preserves the relation. Split on both results: a stopped
-  -- unfold builds no layer, so there is nothing to map and nothing to relate —
-  -- and a mixed pair is refuted by `Res-rel` itself, which is what makes
-  -- "they stop together" part of the statement rather than an afterthought.
-  anaLayer-∼ : ∀ (H : SFunctor) {A B : Set} {R : A → B → Set}
-               {c₁ : A → T (⟦ H ⟧SF A)} {c₂ : B → T (⟦ H ⟧SF B)}
-             → CoalgRel H R c₁ c₂
-             → ∀ (r₁ : Res (⟦ H ⟧SF A)) (r₂ : Res (⟦ H ⟧SF B))
-             → Res-rel (⟦ H ⟧SF-rel R) r₁ r₂
-             → Res-rel (⟦ H ⟧SF-rel (_∼ᵈ_ {H}))
-                       (anaLayer H c₁ r₁) (anaLayer H c₂ r₂)
-  anaLayer-∼ H cr stopped     stopped     rr = rel-stopped
-  anaLayer-∼ H cr (returns x) (returns y) (rel-returns rr) =
-    rel-returns (mapAnaᵈ-∼ H H cr rr)
+  anaTree-∼ : ∀ (H : SFunctor) {A B : Set} {R : A → B → Set}
+              {c₁ : A → T (⟦ H ⟧SF A)} {c₂ : B → T (⟦ H ⟧SF B)}
+            → CoalgRel H R c₁ c₂
+            → ∀ {m₁ : T (⟦ H ⟧SF A)} {m₂ : T (⟦ H ⟧SF B)}
+            → RelT′ (⟦ H ⟧SF-rel R) m₁ m₂
+            → RelT′ (⟦ H ⟧SF-rel (_∼ᵈ_ {H})) (anaTree H c₁ m₁) (anaTree H c₂ m₂)
+  anaTree-∼ H cr (rel-ret rr) = rel-ret (mapAnaᵈ-∼ H H cr rr)
+  anaTree-∼ H cr (rel-call h) = rel-call λ b → anaTree-∼ H cr (h b)
+  anaTree-∼ H cr rel-halt     = rel-halt
 
   -- The layer map preserves the relation, structurally in the SHAPE functor
   -- `G` while the coalgebra stays at `H`. Mirrors `mapAnaᵈ`'s own recursion.

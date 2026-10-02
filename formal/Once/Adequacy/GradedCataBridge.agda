@@ -25,14 +25,13 @@ open import Once.Word using (Carrier)
 open import Once.Type using (Type; Functor; ⟦_⟧T; μ-type; K; Id; _⊕_; _⊗_; Purity; pure; eff)
 open import Once.Functor.Translate using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod; translateF)
 open import Once.Semantics.Machine using (coerce-μ-out; ⟦_⟧F)
-open import Once.Res using (rel-returns)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; seqF; coerce-functor⁻¹-D)
-open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_; RelT′; RelT′-bind; RelRes-value)
+open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_; RelT′; rel-ret; RelT′-bind; RelT′-fmap)
 open import Once.Denotation.Meaning using (cata-sem; cata-ev-algᴰ-D)
 open import Once.Denotation.GradedDomain using (M; ⟦_⟧ᵛ; bindM; _>>=ᵖ_; >>=ᵖ-β)
 open import Once.Denotation.GradedOps using (cf⁻¹ᵛ; seqM; cata-semᵛ)
 open import Once.Adequacy.CataRel using (RelSF; cataS-rel)
-open import Once.Adequacy.SeqRel using (RelF; seqF-rel; RelT′-fmap)
+open import Once.Adequacy.SeqRel using (RelF; seqF-rel)
 open import Once.Adequacy.GradedRelation fmt using (RelGV; RelGT; RelGM; injB-rel)
 
 -- The out coercion moves a layer relation from the S-functor to the functor,
@@ -52,7 +51,7 @@ out-relR (wf-Prod wfF wfG) R {_ , _} {_ , _} (rf , rg) = out-relR wfF R rf , out
 -- A related functor layer reads back to related values of the layer type.
 z-relᵍ : ∀ {G} (wf : WellFormedF G) {A : Type} {l : ⟦ G ⟧F ⟦ A ⟧ᵛ} {r : ⟦ G ⟧F ⟦ A ⟧ᴰ}
        → RelF G (RelGV A) l r
-       → RelGV (⟦ G ⟧T A) (cf⁻¹ᵛ A wf l) (coerce-functor⁻¹-D G A r)
+       → RelGV (⟦ G ⟧T A) (cf⁻¹ᵛ A wf l) (coerce-functor⁻¹-D wf A r)
 z-relᵍ (wf-K ib) {r = r} refl = injB-rel ib r
 z-relᵍ wf-Id     rel = rel
 z-relᵍ (wf-Sum wfF wfG) {l = inj₁ _} {inj₁ _} rel = z-relᵍ wfF rel
@@ -67,33 +66,19 @@ seqF-relᵖ : ∀ (G : Functor) {X Y : Set} (R : X → Y → Set)
               {l : ⟦ G ⟧F X} {r : ⟦ G ⟧F (T Y)}
           → RelF G (λ v t → RelT′ R (returnT v) t) l r
           → RelT′ (RelF G R) (returnT l) (seqF G r)
-seqF-relᵖ (K A)   R eq k = refl , rel-returns eq
+seqF-relᵖ (K A)   R eq = rel-ret eq
 seqF-relᵖ Id      R rel  = rel
 seqF-relᵖ (G ⊕ H) R {inj₁ x} {inj₁ y} rel =
-  RelT′-fmap (RelF G R) (RelF (G ⊕ H) R) inj₁ inj₁ {returnT x} {seqF G y}
-    (λ _ _ z → z) (seqF-relᵖ G R rel)
+  RelT′-fmap (RelF G R) (RelF (G ⊕ H) R) {g = inj₁} {g′ = inj₁} (λ _ _ z → z) (seqF-relᵖ G R rel)
 seqF-relᵖ (G ⊕ H) R {inj₂ x} {inj₂ y} rel =
-  RelT′-fmap (RelF H R) (RelF (G ⊕ H) R) inj₂ inj₂ {returnT x} {seqF H y}
-    (λ _ _ z → z) (seqF-relᵖ H R rel)
+  RelT′-fmap (RelF H R) (RelF (G ⊕ H) R) {g = inj₂} {g′ = inj₂} (λ _ _ z → z) (seqF-relᵖ H R rel)
 seqF-relᵖ (G ⊕ H) R {inj₁ _} {inj₂ _} ()
 seqF-relᵖ (G ⊕ H) R {inj₂ _} {inj₁ _} ()
 seqF-relᵖ (G ⊗ H) R {x₁ , y₁} {x₂ , y₂} (rG , rH) =
-  RelT′-bind (RelF G R) (RelF (G ⊗ H) R)
-    (returnT x₁) (seqF G x₂)
-    (λ u → returnT y₁ >>=T λ v → returnT (u , v))
-    (λ u → seqF H y₂ >>=T λ v → returnT (u , v))
-    (seqF-relᵖ G R rG)
-    (λ u u′ eu eu′ →
-      RelT′-bind (RelF H R) (RelF (G ⊗ H) R)
-        (returnT y₁) (seqF H y₂)
-        (λ v → returnT (u , v))
-        (λ v → returnT (u′ , v))
-        (seqF-relᵖ H R rH)
-        (λ v v′ ev ev′ j →
-          ( refl
-          , rel-returns
-              ( RelRes-value (proj₂ (seqF-relᵖ G R rG 0)) eu eu′
-              , RelRes-value (proj₂ (seqF-relᵖ H R rH 0)) ev ev′ ))))
+  RelT′-bind (RelF G R) (RelF (G ⊗ H) R) (seqF-relᵖ G R rG)
+    (λ u u′ ru →
+      RelT′-bind (RelF H R) (RelF (G ⊗ H) R) (seqF-relᵖ H R rH)
+        (λ v v′ rv → rel-ret (ru , rv)))
 
 -- The algebra step at each grade.
 alg-step : ∀ (π : Purity) {F} {A : Type} (wfF : WellFormedF F)
@@ -101,27 +86,23 @@ alg-step : ∀ (π : Purity) {F} {A : Type} (wfF : WellFormedF F)
          → (∀ {x y} → RelGV (⟦ F ⟧T A) x y → RelGM π A (alg₁ x) (alg₂ y))
          → ∀ {y₁ y₂} → RelSF (translateF Carrier Carrier F) (RelGM π A) y₁ y₂
          → RelGM π A (bindM π (seqM π F (coerce-μ-out wfF (M π ⟦ A ⟧ᵛ) y₁)) λ l → alg₁ (cf⁻¹ᵛ A wfF l))
-                     (cata-ev-algᴰ-D {F} {A} alg₂ (coerce-μ-out wfF (T ⟦ A ⟧ᴰ) y₂))
+                     (cata-ev-algᴰ-D {F} {A} wfF alg₂ (coerce-μ-out wfF (T ⟦ A ⟧ᴰ) y₂))
 alg-step pure {F} {A} wfF alg₁ alg₂ algR {y₁} {y₂} rsf =
-  subst (λ v → RelGT A (returnT v) (cata-ev-algᴰ-D {F} {A} alg₂ (coerce-μ-out wfF (T ⟦ A ⟧ᴰ) y₂)))
+  subst (λ v → RelGT A (returnT v) (cata-ev-algᴰ-D {F} {A} wfF alg₂ (coerce-μ-out wfF (T ⟦ A ⟧ᴰ) y₂)))
         (sym (>>=ᵖ-β (coerce-μ-out wfF ⟦ A ⟧ᵛ y₁) (λ l → alg₁ (cf⁻¹ᵛ A wfF l))))
         (RelT′-bind (RelF F (RelGV A)) (RelGV A)
-          (returnT (coerce-μ-out wfF ⟦ A ⟧ᵛ y₁)) (seqF F (coerce-μ-out wfF (T ⟦ A ⟧ᴰ) y₂))
-          (λ l → returnT (alg₁ (cf⁻¹ᵛ A wfF l)))
-          (λ l → alg₂ (coerce-functor⁻¹-D F A l))
-          sq
-          (λ l₁ l₂ e₁ e₂ → algR (z-relᵍ wfF (RelRes-value (proj₂ (sq 0)) e₁ e₂))))
-  where
-    sq = seqF-relᵖ F (RelGV A) (out-relR wfF (RelGM pure A) rsf)
+          {m = returnT (coerce-μ-out wfF ⟦ A ⟧ᵛ y₁)} {m′ = seqF F (coerce-μ-out wfF (T ⟦ A ⟧ᴰ) y₂)}
+          {f = λ l → returnT (alg₁ (cf⁻¹ᵛ A wfF l))}
+          {f′ = λ l → alg₂ (coerce-functor⁻¹-D wfF A l)}
+          (seqF-relᵖ F (RelGV A) (out-relR wfF (RelGM pure A) rsf))
+          (λ l₁ l₂ r → algR (z-relᵍ wfF r)))
 alg-step eff {F} {A} wfF alg₁ alg₂ algR {y₁} {y₂} rsf =
   RelT′-bind (RelF F (RelGV A)) (RelGV A)
-    (seqF F (coerce-μ-out wfF (T ⟦ A ⟧ᵛ) y₁)) (seqF F (coerce-μ-out wfF (T ⟦ A ⟧ᴰ) y₂))
-    (λ l → alg₁ (cf⁻¹ᵛ A wfF l))
-    (λ l → alg₂ (coerce-functor⁻¹-D F A l))
-    sq
-    (λ l₁ l₂ e₁ e₂ → algR (z-relᵍ wfF (RelRes-value (proj₂ (sq 0)) e₁ e₂)))
-  where
-    sq = seqF-rel F (RelGV A) (out-relR wfF (RelGM eff A) rsf)
+    {m = seqF F (coerce-μ-out wfF (T ⟦ A ⟧ᵛ) y₁)} {m′ = seqF F (coerce-μ-out wfF (T ⟦ A ⟧ᴰ) y₂)}
+    {f = λ l → alg₁ (cf⁻¹ᵛ A wfF l)}
+    {f′ = λ l → alg₂ (coerce-functor⁻¹-D wfF A l)}
+    (seqF-rel F (RelGV A) (out-relR wfF (RelGM eff A) rsf))
+    (λ l₁ l₂ r → algR (z-relᵍ wfF r))
 
 cata-bridgeᵍ : ∀ (π : Purity) {F} {A : Type} {wfF : WellFormedF F}
                  (alg₁ : ⟦ ⟦ F ⟧T A ⟧ᵛ → M π ⟦ A ⟧ᵛ) (alg₂ : ⟦ ⟦ F ⟧T A ⟧ᴰ → T ⟦ A ⟧ᴰ)
