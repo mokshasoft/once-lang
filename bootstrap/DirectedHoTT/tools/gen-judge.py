@@ -202,6 +202,9 @@ RULES.update({
 })
 # hand-written case components (a case on the type, then a Desc-valued natrec)
 HANDC = {"fzero": ("PFz", "okFzI"), "fsuc": ("PFs", "okFsI")}
+# ★ rows written BY HAND (`Knot/Ref`: definitions, PLAN-BIDI §2-ter) — the
+#   table only references them
+HANDROWS = {("⟶", "ref"): ("rδ", "okδ"), ("⊢", "ref"): ("r⊢ref", "ok⊢ref")}
 HAND = {}
 
 # ------------------------------------------------------------ the family being generated
@@ -1436,7 +1439,8 @@ def gen_table():
         L.append("  ⟨ r⊢ty%s ∣ ok⊢ty%s ⟩∷  -- %s" % (h, h, shape_name(h)))
     L += ["  []ᴿ", "", "rows⊢ : RowsOK 1 TmShs", "rows⊢ ="]
     for h in TMHEADS:
-        if h in RULES or h in HANDC: L.append("  ⟨ r⊢%s ∣ ok⊢%s ⟩∷  -- %s" % (h, h, shape_name(h)))
+        if ("⊢", h) in HANDROWS:     L.append("  ⟨ %s ∣ %s ⟩∷  -- %s" % (HANDROWS[("⊢", h)] + (shape_name(h),)))
+        elif h in RULES or h in HANDC: L.append("  ⟨ r⊢%s ∣ ok⊢%s ⟩∷  -- %s" % (h, h, shape_name(h)))
         else:                        L.append("  ⟨ rNone ∣∀ okNone ⟩∷  -- %s" % shape_name(h))
     L.append("  []ᴿ")
     return L
@@ -1811,7 +1815,8 @@ PWRULES = {
                       ("id", ("Tm", "J+1"), "X", k("cHom", E(0), k("app", W1(F(1)), V0), k("app", W1(F(2)), V0)))])],
 }
 REDMOD = {"⟶": ("Red", "Redₘ"), "⟶ᵀ": ("RedT", "RedTₘ"), "Pw": ("Pw", "Pwₘ")}
-REDEXTRA = {"⟶": "open import DirectedHoTT.Examples.Knot.Pw using ( ⌜Pw⌝; ⊢⌜Pw⌝; ⌜Pw⌝-sub )\n",
+REDEXTRA = {"⟶": "open import DirectedHoTT.Examples.Knot.Pw using ( ⌜Pw⌝; ⊢⌜Pw⌝; ⌜Pw⌝-sub )\n"
+                  "open import DirectedHoTT.Examples.Knot.Ref using ( rδ; okδ )\n",
             "⟶ᵀ": "open import DirectedHoTT.Examples.Knot.Red using ( ⌜⟶⌝; ⊢⌜⟶⌝; ⌜⟶⌝-sub )\n", "Pw": ""}
 
 def gen_red(fam, only=None):
@@ -1838,7 +1843,7 @@ def gen_red(fam, only=None):
     L.append("%s : Row" % none)
     L.append("%s = record { R = λ j p c → rows [] ; R-sub = λ σ j p c → refl }" % none)
     L.append("")
-    emit_table(L, m, fam, none, S, lambda h: ("r%s%s" % (fam, h), "ok%s%s" % (fam, h)) if h in rules else None)
+    emit_table(L, m, fam, none, S, lambda h: HANDROWS.get((fam, h)) or (("r%s%s" % (fam, h), "ok%s%s" % (fam, h)) if h in rules else None))
     L.append("")
     ix = FAMS[fam]["ix"]
     L.append("K%s : RTm Δ → RTm Δ → RTm Δ → RTy Δ" % fam)
@@ -2059,6 +2064,7 @@ open import DirectedHoTT.Examples.Knot.Preds using ( ⌜Flat⌝; ⊢⌜Flat⌝; 
 open import DirectedHoTT.Metatheory.SubjectReductionBase using () renaming ( wk-sub to wkS )
 open import DirectedHoTT.Examples.Knot.JudgeRowsTm using ( module PFz; module PFs; okFzI; okFsI; ⊢varOf )
 open import DirectedHoTT.Examples.Knot.JudgeConv using ( TCVat; TCVat-law; okTCVat; ⌜∋⌝; ⊢⌜∋⌝; ⌜∋⌝-sub )
+open import DirectedHoTT.Examples.Knot.RefJudge using ( r⊢ref; ok⊢ref )
 open import DirectedHoTT.Lib.FinFam using ( FinI )
 
 private
@@ -2400,6 +2406,10 @@ def gen_enred():
         L.append("enRed {Γ} (%s) = _ , %s" % (hidΓ(spat), body))
         L.append("  where dj = ⊢dep' Γ")
         seen.add(spat.split()[0])
+    # δ: the hand-written row of `Knot/Ref` (PLAN-BIDI §2-ter, option 3)
+    L.append("enRed {Γ} (δref n b) = _ , ⊢conv (con⟶δ (⊢dep' Γ) (⊢quoteℕ n) (⊢quoteTm b)) "
+             "(red→≅ᵀ (⟶ᵀ*-IMu (⟶*-pairʳ (⟶*-pairʳ (εwk-agree Γ b)))))")
+    seen.add("δref")
     return L
 
 ENRED_HDR = """------------------------------------------------------------------------
@@ -2434,6 +2444,7 @@ open import DirectedHoTT.Examples.Knot.PwAgree using ( ⊢pwC )
 open import DirectedHoTT.Examples.Knot.OpAgree
 open import DirectedHoTT.Examples.Knot.RedXiConGen
 open import DirectedHoTT.Examples.Knot.RedCompConGen
+open import DirectedHoTT.Examples.Knot.RefCon using ( con⟶δ )
 
 private
   ⟶≡ : {Θ : Cx} {t u u' : RTm Θ} → u ≡ u' → t ⟶* u → t ⟶* u'

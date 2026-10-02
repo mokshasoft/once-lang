@@ -195,6 +195,7 @@ module _ where
     ⟨ NNCNone ∣∀ okNNCNone ⟩∷  -- sh-kcIMu
     ⟨ rNNC⊢cFin ∣ okNNC⊢cFin ⟩∷  -- sh-kcFin
     ⟨ rNNC⊢cUnit ∣ okNNC⊢cUnit ⟩∷  -- sh-kcUnit
+    ⟨ NNCNone ∣∀ okNNCNone ⟩∷  -- sh-kref
     []ᴿ
 
   rowsNNC : NNCₘ.RowsOKG zero KSig
@@ -396,6 +397,7 @@ module _ where
     ⟨ rStkA⊢cIMu ∣ okStkA⊢cIMu ⟩∷  -- sh-kcIMu
     ⟨ rStkA⊢cFin ∣ okStkA⊢cFin ⟩∷  -- sh-kcFin
     ⟨ rStkA⊢cUnit ∣ okStkA⊢cUnit ⟩∷  -- sh-kcUnit
+    ⟨ StkANone ∣∀ okStkANone ⟩∷  -- sh-kref
     []ᴿ
 
   rowsStkA : StkAₘ.RowsOKG zero KSig
@@ -585,6 +587,7 @@ module _ where
     ⟨ rStkC⊢cIMu ∣ okStkC⊢cIMu ⟩∷  -- sh-kcIMu
     ⟨ rStkC⊢cFin ∣ okStkC⊢cFin ⟩∷  -- sh-kcFin
     ⟨ rStkC⊢cUnit ∣ okStkC⊢cUnit ⟩∷  -- sh-kcUnit
+    ⟨ StkCNone ∣∀ okStkCNone ⟩∷  -- sh-kref
     []ᴿ
 
   rowsStkC : StkCₘ.RowsOKG zero KSig
@@ -714,6 +717,7 @@ module _ where
     ⟨ FlatNone ∣∀ okFlatNone ⟩∷  -- sh-kcIMu
     ⟨ FlatNone ∣∀ okFlatNone ⟩∷  -- sh-kcFin
     ⟨ FlatNone ∣∀ okFlatNone ⟩∷  -- sh-kcUnit
+    ⟨ FlatNone ∣∀ okFlatNone ⟩∷  -- sh-kref
     []ᴿ
 
   rowsFlat : Flatₘ.RowsOKG zero KSig

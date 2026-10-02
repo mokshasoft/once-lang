@@ -62,12 +62,20 @@ private
 PayV : Shape → RTm Δ → RTm Δ → RTm Δ → RTy Δ
 PayV []ʰ             i I D = Unit
 PayV (rec s k ∷ʰ sh) i I D = Σ' (IMu I D (pair (tag s) (nsucs k (snd i)))) (PayV sh (renTm vs i) (renTm vs I) (renTm vs D))
+PayV (cls s ∷ʰ sh) i I D = Σ' (IMu I D (pair (tag s) nzero)) (PayV sh (renTm vs i) (renTm vs I) (renTm vs D))
 PayV (nat ∷ʰ sh)     i I D = Σ' (El ⌜Nat⌝) (PayV sh (renTm vs i) (renTm vs I) (renTm vs D))
 PayV vʰ              i I D = Σ' (El (⌜IMu⌝ ⌜Nat⌝ FinD (snd i))) Unit
 
 payV-red : (sh : Shape) (i I D : RTm Δ) → El (dpay I D ⌜ tel sh i ⌝ᵗ) ⟶ᵀ* PayV sh i I D
 payV-red []ʰ i I D = stepᵀ (ξ-El (dpay-ι I D)) (stepᵀ El-⌜Unit⌝ doneᵀ)
 payV-red (rec s k ∷ʰ sh) i I D =
+  stepᵀ (ξ-El (dpay-ρ I D _ _))
+  (stepᵀ (El-⌜Σ⌝ _ _)
+  (⟶ᵀ*-trans (⟶ᵀ*-Σˡ (stepᵀ El-⌜IMu⌝ doneᵀ))
+    (⟶ᵀ*-Σʳ (subst (λ C → El (dpay (renTm vs I) (renTm vs D) C) ⟶ᵀ* PayV sh (renTm vs i) (renTm vs I) (renTm vs D))
+                   (sym (ren-tel vs sh i))
+                   (payV-red sh (renTm vs i) (renTm vs I) (renTm vs D))))))
+payV-red (cls s ∷ʰ sh) i I D =
   stepᵀ (ξ-El (dpay-ρ I D _ _))
   (stepᵀ (El-⌜Σ⌝ _ _)
   (⟶ᵀ*-trans (⟶ᵀ*-Σˡ (stepᵀ El-⌜IMu⌝ doneᵀ))
@@ -95,6 +103,9 @@ IhV []ʰ             i D M p = Unit
 IhV (rec s k ∷ʰ sh) i D M p =
   Σ' (iinst (pair (tag s) (nsucs k (snd i))) (fst p) M)
      (IhV sh (renTm vs i) (renTm vs D) (renTy (extR (extR vs)) M) (snd (renTm vs p)))
+IhV (cls s ∷ʰ sh) i D M p =
+  Σ' (iinst (pair (tag s) nzero) (fst p) M)
+     (IhV sh (renTm vs i) (renTm vs D) (renTy (extR (extR vs)) M) (snd (renTm vs p)))
 IhV (nat ∷ʰ sh)     i D M p = IhV sh i D M (snd p)
 IhV vʰ              i D M p = Unit
 
@@ -102,6 +113,14 @@ ihV-red : (sh : Shape) (i D : RTm Δ) (M : RTy ((Δ ∙) ∙)) (p : RTm Δ) →
           DIh D M ⌜ tel sh i ⌝ᵗ p ⟶ᵀ* IhV sh i D M p
 ihV-red []ʰ i D M p = stepᵀ (DIh-ι D M p) doneᵀ
 ihV-red (rec s k ∷ʰ sh) i D M p =
+  stepᵀ (DIh-ρ D M _ _ p)
+    (⟶ᵀ*-Σʳ (subst (λ C → DIh (renTm vs D) M' C p' ⟶ᵀ* IhV sh (renTm vs i) (renTm vs D) M' p')
+                   (sym (ren-tel vs sh i))
+                   (ihV-red sh (renTm vs i) (renTm vs D) M' p')))
+  where
+    M' = renTy (extR (extR vs)) M
+    p' = snd (renTm vs p)
+ihV-red (cls s ∷ʰ sh) i D M p =
   stepᵀ (DIh-ρ D M _ _ p)
     (⟶ᵀ*-Σʳ (subst (λ C → DIh (renTm vs D) M' C p' ⟶ᵀ* IhV sh (renTm vs i) (renTm vs D) M' p')
                    (sym (ren-tel vs sh i))
@@ -124,12 +143,14 @@ ihV-red vʰ i D M p =
 DihV : Shape → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ
 DihV []ʰ             i D e p = unit
 DihV (rec s k ∷ʰ sh) i D e p = pair (ielim D (pair (tag s) (nsucs k (snd i))) e (fst p)) (DihV sh i D e (snd p))
+DihV (cls s ∷ʰ sh) i D e p = pair (ielim D (pair (tag s) nzero) e (fst p)) (DihV sh i D e (snd p))
 DihV (nat ∷ʰ sh)     i D e p = DihV sh i D e (snd p)
 DihV vʰ              i D e p = unit
 
 dihV-red : (sh : Shape) (i D e p : RTm Δ) → dih D e ⌜ tel sh i ⌝ᵗ p ⟶* DihV sh i D e p
 dihV-red []ʰ i D e p = step (dih-ι D e p) done
 dihV-red (rec s k ∷ʰ sh) i D e p = step (dih-ρ D e _ _ p) (⟶*-pairʳ (dihV-red sh i D e (snd p)))
+dihV-red (cls s ∷ʰ sh) i D e p = step (dih-ρ D e _ _ p) (⟶*-pairʳ (dihV-red sh i D e (snd p)))
 dihV-red (nat ∷ʰ sh) i D e p =
   step (dih-σ D e ⌜Nat⌝ _ p)
   (step (ξ-dihᶜ (β _ (fst p)))
@@ -153,6 +174,10 @@ PayV-sub σ (rec s k ∷ʰ sh) i I D =
   cong₂ Σ' (cong (IMu (subTm σ I) (subTm σ D)) (ix-sub σ s k i))
     (trans (PayV-sub (extS σ) sh (renTm vs i) (renTm vs I) (renTm vs D))
            (cong₃ (PayV sh) (wk-sub σ i) (wk-sub σ I) (wk-sub σ D)))
+PayV-sub σ (cls s ∷ʰ sh) i I D =
+  cong₂ Σ' (cong (λ t → IMu (subTm σ I) (subTm σ D) (pair t nzero)) (tag-sub σ s))
+    (trans (PayV-sub (extS σ) sh (renTm vs i) (renTm vs I) (renTm vs D))
+           (cong₃ (PayV sh) (wk-sub σ i) (wk-sub σ I) (wk-sub σ D)))
 PayV-sub σ (nat ∷ʰ sh) i I D =
   cong (Σ' (El ⌜Nat⌝))
     (trans (PayV-sub (extS σ) sh (renTm vs i) (renTm vs I) (renTm vs D))
@@ -164,6 +189,10 @@ IhV-sub : (σ : Sub Δ Θ) (sh : Shape) (i D : RTm Δ) (M : RTy ((Δ ∙) ∙)) 
 IhV-sub σ []ʰ i D M p = refl
 IhV-sub σ (rec s k ∷ʰ sh) i D M p =
   cong₂ Σ' (trans (iinst-sub σ M _ (fst p)) (cong (λ j → iinst j (fst (subTm σ p)) (subTy (extS (extS σ)) M)) (ix-sub σ s k i)))
+    (trans (IhV-sub (extS σ) sh (renTm vs i) (renTm vs D) (renTy (extR (extR vs)) M) (snd (renTm vs p)))
+           (cong₄ (IhV sh) (wk-sub σ i) (wk-sub σ D) (wk2-subTy σ M) (cong snd (wk-sub σ p))))
+IhV-sub σ (cls s ∷ʰ sh) i D M p =
+  cong₂ Σ' (trans (iinst-sub σ M _ (fst p)) (cong (λ t → iinst (pair t nzero) (fst (subTm σ p)) (subTy (extS (extS σ)) M)) (tag-sub σ s)))
     (trans (IhV-sub (extS σ) sh (renTm vs i) (renTm vs D) (renTy (extR (extR vs)) M) (snd (renTm vs p)))
            (cong₄ (IhV sh) (wk-sub σ i) (wk-sub σ D) (wk2-subTy σ M) (cong snd (wk-sub σ p))))
 IhV-sub σ (nat ∷ʰ sh) i D M p = IhV-sub σ sh i D M (snd p)
@@ -198,6 +227,14 @@ module _ {Ξ : Ctx} {i I D p : RTm ⌊ Ξ ⌋} where
   ⊢natSnd : {sh : Shape} → Ξ ⊢ p ∷ PayV (nat ∷ʰ sh) i I D → Ξ ⊢ snd p ∷ PayV sh i I D
   ⊢natSnd {sh = sh} dp = ⊢-cast (wkc3 (fst p) sh i I D) (⊢snd dp)
 
+  -- a closed field: the node at depth 0, and the rest
+  ⊢clsFst : {s : ℕ} {sh : Shape} → Ξ ⊢ p ∷ PayV (cls s ∷ʰ sh) i I D →
+            Ξ ⊢ fst p ∷ IMu I D (pair (tag s) nzero)
+  ⊢clsFst dp = ⊢fst dp
+
+  ⊢clsSnd : {s : ℕ} {sh : Shape} → Ξ ⊢ p ∷ PayV (cls s ∷ʰ sh) i I D → Ξ ⊢ snd p ∷ PayV sh i I D
+  ⊢clsSnd {sh = sh} dp = ⊢-cast (wkc3 (fst p) sh i I D) (⊢snd dp)
+
 -- a field's index at a sorted index `(a , j)`, its depth read off
 ⊢atDepth : {Ξ : Ctx} {I D t a j : RTm ⌊ Ξ ⌋} {s k : ℕ} →
            Ξ ⊢ t ∷ IMu I D (pair (tag s) (nsucs k (snd (pair a j)))) → Ξ ⊢ t ∷ IMu I D (pair (tag s) (nsucs k j))
@@ -217,6 +254,8 @@ payV-ix []ʰ             a b j I D = doneᵀ
 payV-ix (rec s k ∷ʰ sh) a b j I D =
   ⟶ᵀ*-trans (⟶ᵀ*-Σˡ (⟶ᵀ*-IMu (⟶*-pairʳ (⟶*-nsucs k (⟶*-snd (⟶*-pairʳ (step (βsnd b j) done)))))))
             (⟶ᵀ*-Σʳ (payV-ix sh (renTm vs a) (renTm vs b) (renTm vs j) (renTm vs I) (renTm vs D)))
+payV-ix (cls s ∷ʰ sh) a b j I D =
+  ⟶ᵀ*-Σʳ (payV-ix sh (renTm vs a) (renTm vs b) (renTm vs j) (renTm vs I) (renTm vs D))
 payV-ix (nat ∷ʰ sh)     a b j I D = ⟶ᵀ*-Σʳ (payV-ix sh (renTm vs a) (renTm vs b) (renTm vs j) (renTm vs I) (renTm vs D))
 payV-ix vʰ              a b j I D = ⟶ᵀ*-Σˡ (⟶ᵀ*-El (⟶*-⌜IMu⌝ⁱ (⟶*-snd (⟶*-pairʳ (step (βsnd b j) done)))))
 

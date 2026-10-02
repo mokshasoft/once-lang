@@ -120,6 +120,7 @@ module TravRed {sg : Sig n} (ok : SigOK n sg) (κ : Kit n sg) (vok : VarsAt sg (
     cong₃ (λ a b c → pair (app (app (fst (subTm σ h)) a) b) c)
           (nsucs-sub σ k e) (LIFTS-sub σ k e d f) (tpay-sub σ sh (snd p) (snd h) e f d)
   tpay-sub σ (nat ∷ʰ sh)     p h e f d = cong (pair (fst (subTm σ p))) (tpay-sub σ sh (snd p) h e f d)
+  tpay-sub σ (cls s ∷ʰ sh)   p h e f d = cong (pair (fst (subTm σ p))) (tpay-sub σ sh (snd p) (snd h) e f d)
   tpay-sub σ vʰ              p h e f d = refl
 
   conₗ-sub : (σ : Sub Δ Θ) (k : ℕ) (q : RTm Δ) → subTm σ (conₗ k q) ≡ conₗ k (subTm σ q)
@@ -227,6 +228,7 @@ module TravRed {sg : Sig n} (ok : SigOK n sg) (κ : Kit n sg) (vok : VarsAt sg (
   tpayT []ʰ             p e f d = unit
   tpayT (rec s k ∷ʰ sh) p e f d = pair (trav s (nsucs k d) (fst p) (nsucs k e) (LIFTS k e d f)) (tpayT sh (snd p) e f d)
   tpayT (nat ∷ʰ sh)     p e f d = pair (fst p) (tpayT sh (snd p) e f d)
+  tpayT (cls s ∷ʰ sh)   p e f d = pair (fst p) (tpayT sh (snd p) e f d)   -- copied
   tpayT vʰ              p e f d = unit
 
   tpay-red : (sh : Shape) {s : ℕ} {p h e f d : RTm Γ} → h ⟶* DihV sh (pair (tag s) d) (SD sg) TRAVM p →
@@ -241,6 +243,10 @@ module TravRed {sg : Sig n} (ok : SigOK n sg) (κ : Kit n sg) (vok : VarsAt sg (
                  (step (βsnd (ielim (SD sg) (pair (tag s') (nsucs k (snd ix))) TRAVM (fst p)) (DihV sh ix (SD sg) TRAVM (snd p))) done))))
     where ix = pair (tag s) d
   tpay-red (nat ∷ʰ sh)     r = ⟶*-pairʳ (tpay-red sh r)
+  tpay-red (cls s' ∷ʰ sh) {s} {p} {h} {e} {f} {d} r =
+    ⟶*-pairʳ (tpay-red sh {s} (⟶*-trans (⟶*-snd r)
+                 (step (βsnd (ielim (SD sg) (pair (tag s') nzero) TRAVM (fst p)) (DihV sh ix (SD sg) TRAVM (snd p))) done)))
+    where ix = pair (tag s) d
   tpay-red vʰ              r = done
 
   ----------------------------------------------------------------------
@@ -272,6 +278,7 @@ module TravRed {sg : Sig n} (ok : SigOK n sg) (κ : Kit n sg) (vok : VarsAt sg (
   tpayT-mono []ʰ             r = done
   tpayT-mono (rec s k ∷ʰ sh) r = ⟶*-trans (⟶*-pairˡ (trav-t-mono (⟶*-fst r))) (⟶*-pairʳ (tpayT-mono sh (⟶*-snd r)))
   tpayT-mono (nat ∷ʰ sh)     r = ⟶*-trans (⟶*-pairˡ (⟶*-fst r)) (⟶*-pairʳ (tpayT-mono sh (⟶*-snd r)))
+  tpayT-mono (cls s ∷ʰ sh)   r = ⟶*-trans (⟶*-pairˡ (⟶*-fst r)) (⟶*-pairʳ (tpayT-mono sh (⟶*-snd r)))
   tpayT-mono vʰ              r = done
 
   fld-rec : {s k : ℕ} {sh : Shape} {a a' r r' e f d : RTm Γ} →
@@ -283,6 +290,11 @@ module TravRed {sg : Sig n} (ok : SigOK n sg) (κ : Kit n sg) (vok : VarsAt sg (
 
   fld-nat : {sh : Shape} {a r r' e f d : RTm Γ} → tpayT sh r e f d ⟶* r' → tpayT (nat ∷ʰ sh) (pair a r) e f d ⟶* pair a r'
   fld-nat {sh = sh} {a = a} {r = r} tl =
+    ⟶*-trans (⟶*-pairˡ (step (βfst a r) done)) (⟶*-pairʳ (⟶*-trans (tpayT-mono sh (step (βsnd a r) done)) tl))
+
+  -- a closed field is copied, like a natural
+  fld-cls : {s : ℕ} {sh : Shape} {a r r' e f d : RTm Γ} → tpayT sh r e f d ⟶* r' → tpayT (cls s ∷ʰ sh) (pair a r) e f d ⟶* pair a r'
+  fld-cls {sh = sh} {a = a} {r = r} tl =
     ⟶*-trans (⟶*-pairˡ (step (βfst a r) done)) (⟶*-pairʳ (⟶*-trans (tpayT-mono sh (step (βsnd a r) done)) tl))
 
 ------------------------------------------------------------------------

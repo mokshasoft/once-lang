@@ -191,11 +191,6 @@ data RTm where
   fcase0 : ∀ {Γ} → RTm Γ → RTm Γ
   -- ★ Σ-INDUCTION (D071): `psplit b q`, `b` binds both halves.
   psplit : ∀ {Γ} → RTm ((Γ ∙) ∙) → RTm Γ → RTm Γ
-  -- ★ A DEFINITION (PLAN-BIDI §2-ter): a name with its CLOSED body.  It
-  --   unfolds by δ (`ref d b ⟶ εwkTm b`); renaming and substitution stop
-  --   at it — the body is closed.  This is what the Knot's `opaque` blocks
-  --   simulated: a big closed code, named, compared without unfolding.
-  ref    : ∀ {Γ} → ℕ → RTm ε → RTm Γ
   -- ★ WF-axis stage C (N-in): `Nat` becomes SMALL — it gets a code, so
   -- it can appear in `U`-families.  That is what unlocks Id-rewriting
   -- AT `Nat` (`jsub` needs a code family), cong-at-ℕ, and ≤ as a
@@ -206,6 +201,11 @@ data RTm where
   ⌜IMu⌝  : ∀ {Γ} → RTm Γ → RTm Γ → RTm Γ → RTm Γ
   ⌜Fin⌝  : ∀ {Γ} → ℕ → RTm Γ
   ⌜Unit⌝ : ∀ {Γ} → RTm Γ
+  -- ★ A DEFINITION (PLAN-BIDI §2-ter): a name with its CLOSED body.  It
+  --   unfolds by δ (`ref d b ⟶ εwkTm b`); renaming and substitution stop
+  --   at it — the body is closed.  This is what the Knot's `opaque` blocks
+  --   simulated: a big closed code, named, compared without unfolding.
+  ref    : ∀ {Γ} → ℕ → RTm ε → RTm Γ
 
 private
   variable

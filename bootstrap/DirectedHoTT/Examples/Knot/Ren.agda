@@ -14,7 +14,9 @@ open import normalizer.Syntax.Types using ( _≡_; refl; trans; sym; cong )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax hiding ( Fin )
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
-open import DirectedHoTT.Lib.Sugar using ( Lt; lt-z; lt-s; tag; _,ₚ_ )
+open import DirectedHoTT.Lib.Sugar using ( Lt; lt-z; lt-s; tag; _,ₚ_; v₀; v₁ )
+open import DirectedHoTT.Lib.FinFam using ( toI; fromI )
+open import DirectedHoTT.Metatheory.TySub using ( ⊢-cast )
 open import normalizer.Syntax.Types using ( cong₂ )
 open import DirectedHoTT.Lib.Syn
 open import DirectedHoTT.Lib.SynTravM using ( VarsAt )
@@ -76,3 +78,25 @@ wk-ren ρ s d t = trans (sym (subTm-var ρ (wk s d t)))
                               (cong₂ (wk s) {x = subTm ⟨ ρ ⟩ᵣ d} {x' = renTm ρ d} {y = subTm ⟨ ρ ⟩ᵣ t} {y' = renTm ρ t}
                                      (subTm-var ρ d) (subTm-var ρ t)))
   where open import DirectedHoTT.Metatheory.Fundamental.Syntactic using ( ⟨_⟩ᵣ; subTm-var )
+
+------------------------------------------------------------------------
+-- ★ WEAKENING A CLOSED TERM to any depth: one `wk` per level, by `natrec`
+--   on the depth.  What a definition's body (`kref`'s `cls` field, at
+--   depth 0) becomes at a use: the kernel's `εwkTm`, object-level.
+------------------------------------------------------------------------
+
+εwkK : {Γ : Cx} → ℕ → RTm Γ → RTm Γ → RTm Γ
+εwkK s J t = natrec t (wk s v₁ v₀) J
+
+⊢εwkK : {Γ : Ctx} {s : ℕ} {J t : RTm ⌊ Γ ⌋} → Lt s 2 →
+        Γ ⊢ J ∷ El ⌜Nat⌝ → Γ ⊢ t ∷ K s nzero → Γ ⊢ εwkK s J t ∷ K s J
+⊢εwkK {Γ} {s} {J} {t} lt dJ dt =
+  ⊢-cast (SK-sub (single J) KSig s v₀)
+    (⊢natrec (ty-SK KOK lt (toI (⊢var here)))
+             (⊢-cast (sym (SK-sub (single nzero) KSig s v₀)) dt)
+             (⊢-cast (sym (SK-sub nrs KSig s v₀))
+                     (⊢wkS lt (toI (⊢var (there here))) (⊢-cast (SK-ren vs KSig s v₀) (⊢var here))))
+             (fromI dJ))
+
+εwkK-sub : {Δ Θ : Cx} (σ : Sub Δ Θ) (s : ℕ) (J t : RTm Δ) → subTm σ (εwkK s J t) ≡ εwkK s (subTm σ J) (subTm σ t)
+εwkK-sub σ s J t = cong (λ W → natrec (subTm σ t) W (subTm σ J)) (wk-sub (extS (extS σ)) s v₁ v₀)

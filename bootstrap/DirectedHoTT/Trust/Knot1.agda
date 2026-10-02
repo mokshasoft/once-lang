@@ -33,3 +33,4 @@ import DirectedHoTT.Examples.Knot.ConvCon
 import DirectedHoTT.Examples.Knot.ConvHead
 import DirectedHoTT.Examples.Knot.Core
 import DirectedHoTT.Examples.Knot.Ctors
+import DirectedHoTT.Examples.Knot.Ctx

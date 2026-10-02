@@ -15,6 +15,9 @@
 -- type, and F3's agreement `op ⌜…⌝ ⟶* ⌜op …⌝` bridges them by `⊢conv` on
 -- the index — premises backwards, the conclusion forwards.
 --
+-- `⊢ref` converts its conclusion by `εwk-agree-ty` (the body's type, weakened
+-- to the depth); its row is hand-written (`Knot/RefJudge`, PLAN-BIDI §2-ter).
+--
 -- Two rules need more than a conversion:
 --   * `⊢tr` — the Knot row takes the motive's code and base point
 --     STRENGTHENED (`e1`/`e2` at `Γ`), the Spec keeps them under the binder
@@ -50,6 +53,7 @@ open import DirectedHoTT.Examples.Knot.LookupAgree using ( enLk )
 open import DirectedHoTT.Examples.Knot.JudgeConv using ( El-⌜∋⌝ )
 open import DirectedHoTT.Examples.Knot.ConvAgree using ( enConvT )
 open import DirectedHoTT.Examples.Knot.ConvHead using ( convAt )
+open import DirectedHoTT.Examples.Knot.RefCon using ( con⊢ref )
 open import DirectedHoTT.Lib.Sugar using ( v₀ )
 
 ------------------------------------------------------------------------
@@ -267,5 +271,8 @@ enTm {Γ} (⊢psplit {A = A} {B} {P} {q} {b} dA dB dP dq db) =
                         (Σ.snd (enTy dA)) (Σ.snd (enTy dB)) (Σ.snd (enTy dP)) (Σ.snd (enTm dq))
                         (⊢conv (Σ.snd (enTm db)) (csymᵀ (tmA (pairS-agree P)))))
             (tmA (sub0-agree-ty P q))
+enTm {Γ} (⊢ref {d = n} {b = b} {A = A} db) =
+  _ , ⊢conv (con⊢ref (⊢dep' ⌊ Γ ⌋) (⊢quoteCtx Γ) (⊢quoteℕ n) (⊢quoteTm b) (⊢quoteTy A) (Σ.snd (enTm db)))
+            (tmA (εwk-agree-ty ⌊ Γ ⌋ A))
 enTm {Γ} (⊢conv {t = t} {A} {B} d c) =
   convAt Γ t (⊢quoteTy A) (⊢quoteTy B) (Σ.snd (enTm d)) (⊢conv (Σ.snd (enConvT c)) (csymᵀ El-⌜≅ᵀ⌝))

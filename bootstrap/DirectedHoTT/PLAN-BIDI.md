@@ -183,8 +183,18 @@ not?"
 - **Conversion needs LAZY δ.** References are compared as atoms first
   and unfolded only on a mismatch, or when a redex needs the body. A full
   normal form would re-inline `KD`.
-- **The quoted kernel stays reference-free at first.** The Knot quotes a
-  reference by its body. That is legitimate: definitions are conservative.
+- **The quoted kernel ENCODES definitions (option 3, ✅ 2026-10-02).** The
+  Knot quotes `ref d b` as `kref ⌜d⌝ ⌜b⌝`, the 39th term constructor.
+  - Its body is a new Lib field kind, `cls s`: a CLOSED subterm at
+    depth 0, which traversals copy instead of entering.
+  - δ and ⊢ref are HAND-WRITTEN rows (`Knot/Ref`, `Knot/RefJudge`); the
+    generated tables cite them (`gen-judge.py`'s `HANDROWS`).
+  - Their constructors at values are `Knot/RefCon` (`con⟶δ`, `con⊢ref`,
+    `conv⊢ref`).
+  - The weakening of a closed body to depth `j` is `εwkK s j t =
+    natrec t (wk s v₁ v₀) j`. It meets the kernel's `εwkTm`/`εwkTy` by
+    `OpAgree.εwk-agree`/`εwk-agree-ty`, by induction on the context.
+  - So faithfulness covers δ (`RedAgree`) and ⊢ref (`TypingAgree`).
 - **What it buys:** the Knot's `opaque` blocks become references, and its
   generic machinery can become hand-written core definitions. User: the
   end state is a Knot a human would write; "generators are only ok in the

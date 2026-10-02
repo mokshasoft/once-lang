@@ -229,6 +229,7 @@ module _ where
     ⟨ PwNone ∣∀ okPwNone ⟩∷  -- sh-kcIMu
     ⟨ PwNone ∣∀ okPwNone ⟩∷  -- sh-kcFin
     ⟨ PwNone ∣∀ okPwNone ⟩∷  -- sh-kcUnit
+    ⟨ PwNone ∣∀ okPwNone ⟩∷  -- sh-kref
     []ᴿ
 
   rowsPw : Pwₘ.RowsOKG zero KSig

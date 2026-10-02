@@ -177,3 +177,5 @@ sub-agree-tm {Γ} {Δ} (⌜IMu⌝ a0 a1 a2) {f = f} r =
 sub-agree-tm {Γ} {Δ} (⌜Fin⌝ a0) {f = f} r =
   ⟶*-trans (TS.trav-con (atᵍ 1) (atʰ 36) TS.f-cons) (⟶*-con (⟶*-pairʳ (TS.fld-nat {sh = []ʰ} {e = dep Δ} {f = f} {d = dep Γ} done)))
 sub-agree-tm ⌜Unit⌝ r = TS.trav-con (atᵍ 1) (atʰ 37) TS.f-nil
+sub-agree-tm {Γ} {Δ} (ref a0 a1) {f = f} r =
+  ⟶*-trans (TS.trav-con (atᵍ 1) (atʰ 38) TS.f-cons) (⟶*-con (⟶*-pairʳ (TS.fld-nat {sh = cls 1 ∷ʰ []ʰ} {e = dep Δ} {f = f} {d = dep Γ} (TS.fld-cls {s = 1} {sh = []ʰ} {e = dep Δ} {f = f} {d = dep Γ} done))))

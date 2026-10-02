@@ -228,3 +228,7 @@ open import DirectedHoTT.Lib.Sugar using ( _,ₚ_ )
 ⊢kcUnit : {Γ : Ctx} {d : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ kcUnit ∷ K 1 d
 ⊢kcUnit {Γ} {d} dd =
   ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kcUnit} {d = d} {p = unit} KOK (atᵍ 1) (atʰ 37) dd a[]
+
+⊢kref : {Γ : Ctx} {d a0 a1 : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ a0 ∷ El ⌜Nat⌝ → Γ ⊢ a1 ∷ K 1 nzero → Γ ⊢ kref a0 a1 ∷ K 1 d
+⊢kref {Γ} {d} {a0} {a1} dd da0 da1 =
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kref} {d = d} {p = pair a0 (a1 ,ₚ (unit))} KOK (atᵍ 1) (atʰ 38) dd (a-nat da0 (a-cls da1 a[]))

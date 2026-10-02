@@ -33,6 +33,7 @@ open import DirectedHoTT.Examples.Knot.PwAgree using ( ⊢pwC )
 open import DirectedHoTT.Examples.Knot.OpAgree
 open import DirectedHoTT.Examples.Knot.RedXiConGen
 open import DirectedHoTT.Examples.Knot.RedCompConGen
+open import DirectedHoTT.Examples.Knot.RefCon using ( con⟶δ )
 open import DirectedHoTT.Lib.Sugar using ( v₀ )
 
 private
@@ -172,3 +173,4 @@ enRed {Γ} (fcase-s t a b) = _ , ⊢conv (con⟶fcase₅ dj (⊢quoteTm a) (⊢q
   where dj = ⊢dep' Γ
 enRed {Γ} (psplit-β b x y) = _ , ⊢conv (con⟶psplit₃ dj (⊢quoteTm b) (⊢quoteTm x) (⊢quoteTm y)) (red→≅ᵀ (⟶ᵀ*-IMu (⟶*-pairʳ (⟶*-pairʳ (⟶≡ (cong (λ X → quoteTm X) (inst-single2 x y b)) (inst-agree x y b))))))
   where dj = ⊢dep' Γ
+enRed {Γ} (δref n b) = _ , ⊢conv (con⟶δ (⊢dep' Γ) (⊢quoteℕ n) (⊢quoteTm b)) (red→≅ᵀ (⟶ᵀ*-IMu (⟶*-pairʳ (⟶*-pairʳ (εwk-agree Γ b)))))

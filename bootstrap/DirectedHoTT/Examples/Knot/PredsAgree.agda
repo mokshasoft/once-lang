@@ -82,6 +82,7 @@ stkAC ⌜Nat⌝ e = conₗ 0 unit
 stkAC (⌜IMu⌝ a0 a1 a2) e = conₗ 0 unit
 stkAC (⌜Fin⌝ a0) e = conₗ 0 unit
 stkAC ⌜Unit⌝ e = conₗ 0 unit
+stkAC (ref a0 a1) ()
 ⊢stkAC (var a0) ()
 ⊢stkAC (lam a0) ()
 ⊢stkAC (app a0 a1) ()
@@ -120,6 +121,7 @@ stkAC ⌜Unit⌝ e = conₗ 0 unit
 ⊢stkAC {Γ} (⌜IMu⌝ a0 a1 a2) e = conStkA⊢cIMu (⊢dep' Γ) (⊢quoteTm a0) (⊢quoteTm a1) (⊢quoteTm a2)
 ⊢stkAC {Γ} (⌜Fin⌝ a0) e = conStkA⊢cFin (⊢dep' Γ) (⊢quoteℕ a0)
 ⊢stkAC {Γ} ⌜Unit⌝ e = conStkA⊢cUnit (⊢dep' Γ)
+⊢stkAC (ref a0 a1) ()
 
 stkCC : {Γ : Cx} (c : RTm Γ) → stkC? c ≡ true → {Θ : Cx} → RTm Θ
 ⊢stkCC : {Γ : Cx} (c : RTm Γ) (e : stkC? c ≡ true) {Θ : Ctx} → Θ ⊢ stkCC c e ∷ KStkC (dep Γ) (quoteTm c)
@@ -161,6 +163,7 @@ stkCC ⌜Nat⌝ ()
 stkCC (⌜IMu⌝ a0 a1 a2) e = conₗ 0 unit
 stkCC (⌜Fin⌝ a0) e = conₗ 0 unit
 stkCC ⌜Unit⌝ e = conₗ 0 unit
+stkCC (ref a0 a1) ()
 ⊢stkCC (var a0) ()
 ⊢stkCC (lam a0) ()
 ⊢stkCC (app a0 a1) ()
@@ -199,6 +202,7 @@ stkCC ⌜Unit⌝ e = conₗ 0 unit
 ⊢stkCC {Γ} (⌜IMu⌝ a0 a1 a2) e = conStkC⊢cIMu (⊢dep' Γ) (⊢quoteTm a0) (⊢quoteTm a1) (⊢quoteTm a2)
 ⊢stkCC {Γ} (⌜Fin⌝ a0) e = conStkC⊢cFin (⊢dep' Γ) (⊢quoteℕ a0)
 ⊢stkCC {Γ} ⌜Unit⌝ e = conStkC⊢cUnit (⊢dep' Γ)
+⊢stkCC (ref a0 a1) ()
 
 flatC : {Γ : Cx} (c : RTm Γ) → flat? c ≡ true → {Θ : Cx} → RTm Θ
 ⊢flatC : {Γ : Cx} (c : RTm Γ) (e : flat? c ≡ true) {Θ : Ctx} → Θ ⊢ flatC c e ∷ KFlat (dep Γ) (quoteTm c)
@@ -240,6 +244,7 @@ flatC ⌜Nat⌝ ()
 flatC (⌜IMu⌝ a0 a1 a2) ()
 flatC (⌜Fin⌝ a0) ()
 flatC ⌜Unit⌝ ()
+flatC (ref a0 a1) ()
 ⊢flatC (var a0) ()
 ⊢flatC (lam a0) ()
 ⊢flatC (app a0 a1) ()
@@ -278,4 +283,5 @@ flatC ⌜Unit⌝ ()
 ⊢flatC (⌜IMu⌝ a0 a1 a2) ()
 ⊢flatC (⌜Fin⌝ a0) ()
 ⊢flatC ⌜Unit⌝ ()
+⊢flatC (ref a0 a1) ()
 

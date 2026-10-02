@@ -41,6 +41,7 @@ open import DirectedHoTT.Examples.Knot.Preds using ( ⌜Flat⌝; ⊢⌜Flat⌝; 
 open import DirectedHoTT.Metatheory.SubjectReductionBase using () renaming ( wk-sub to wkS )
 open import DirectedHoTT.Examples.Knot.JudgeRowsTm using ( module PFz; module PFs; okFzI; okFsI; ⊢varOf )
 open import DirectedHoTT.Examples.Knot.JudgeConv using ( TCVat; TCVat-law; okTCVat; ⌜∋⌝; ⊢⌜∋⌝; ⌜∋⌝-sub )
+open import DirectedHoTT.Examples.Knot.RefJudge using ( r⊢ref; ok⊢ref )
 open import DirectedHoTT.Lib.FinFam using ( FinI )
 
 private
@@ -3431,4 +3432,5 @@ rows⊢ =
   ⟨ r⊢cIMu ∣ ok⊢cIMu ⟩∷  -- sh-kcIMu
   ⟨ r⊢cFin ∣ ok⊢cFin ⟩∷  -- sh-kcFin
   ⟨ r⊢cUnit ∣ ok⊢cUnit ⟩∷  -- sh-kcUnit
+  ⟨ r⊢ref ∣ ok⊢ref ⟩∷  -- sh-kref
   []ᴿ
