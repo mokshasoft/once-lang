@@ -33,6 +33,7 @@ import DirectedHoTT.Algorithm.DecEq
 import DirectedHoTT.Algorithm.DecideConversion
 import DirectedHoTT.Algorithm.DecideConversionTyped
 import DirectedHoTT.Algorithm.Elab
+import DirectedHoTT.Algorithm.Eval
 import DirectedHoTT.Algorithm.Result
 import DirectedHoTT.Algorithm.SigBuild
 import DirectedHoTT.Algorithm.Surface

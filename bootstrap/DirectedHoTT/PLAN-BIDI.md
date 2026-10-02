@@ -164,7 +164,7 @@ second axis, independent of (ii)/(iii):
 | S4 | Decide TYPE conversion `≅ᵀ` completely — ROUTE C (§3b): ① validity + `srᵀ` (`Metatheory/Validity`) ✅; ② inversion — the existing `gen-*` sufficed ✅; ③ `normTy`/`decConvᵀ` (`Metatheory/NormTy`) ✅ — **structural, NO measure needed**: `homNF` recurses on the NORMAL ambient (`G` ⊂ `Π F G`), the created `app f↑ vz` go through the typed `wnorm`, and a `NoU` witness breaks the harmless `elNF ↔ homNF` cycle | ✅ |
 | S5 | The signature: constants, δ, and the conservativity theorem — design (ii), §2-bis, route B | ✅ **2026-10-02** (§3e): `ref d` in the annotated layer, `⊢ᴬref`, δ by erasure; δ-elimination + conservativity (`Metatheory/Signature`); `CheckA` decides `ref` |
 | S6 | The bidirectional SURFACE → annotated core elaborator | ✅ **2026-10-02** (§3f): `Algorithm/Surface` (generated: the annotated syntax + holes) and `Algorithm/Elab` (UNTRUSTED; re-checked by `CheckA`) |
-| S7 | The Knot WRITTEN in the annotated core with signature references; its wf derivations come from `inferᴬ`, not from a generator. User, 2026-10-02: "if we have to write code to generate the Knot something is wrong". Measure against `HANDOFF-2026-09-24` §4's split | 🟡 **in progress** (§3g): machinery ✅, slice 1 (the closed core) ✅; next is the certified fast evaluator (S7a) |
+| S7 | The Knot WRITTEN in the annotated core with signature references; its wf derivations come from `inferᴬ`, not from a generator. User, 2026-10-02: "if we have to write code to generate the Knot something is wrong". Measure against `HANDOFF-2026-09-24` §4's split | 🟡 **in progress** (§3g): machinery ✅, slice 1 (the closed core) ✅, S7a the certified evaluator ✅ (Core 56 → 7.4 s) |
 
 ## 3g. ★ S7 — THE KNOT IN THE CORE (in progress, 2026-10-02)
 
@@ -232,6 +232,33 @@ second axis, independent of (ii)/(iii):
     completeness is unchanged.
 - That is the increment the Knot needs before its ~1000 schema entries
   (user, 2026-10-02: add increments when they simplify the Knot).
+
+**S7a — ✅ DONE (2026-10-02): `Algorithm/Eval`, the certified evaluator.**
+- **`head`/`headᵀ`**: the computation rules as a FUNCTION. A head redex
+  gives `just` its `_⟶_` step, anything else `nothing`. Guarded rules
+  pass the Boolean together with its equation (`hreflG`, `trHomG`,
+  `trPwG`, `apG`).
+- **`Nf`/`Nfᵀ`**: every congruence position is normal and the head gives
+  `nothing`.
+- **`nf-irr`/`nf-irrᵀ`: a normal form does not step.** It is proved by
+  case on the STEP, so it covers all 98 + 39 rules.
+  - ⇒ The evaluator stays IN SYNC with the kernel by compilation.
+    Control: deleting the `hrefl-pw` clause is a `CoverageIssue`.
+- **`eval`/`evalᵀ`**: innermost; the fields first (`fld`), then the head
+  (`fin`/`contract`, one fuel unit per contraction). The result is a
+  normal form with its chain and `Nf`, or `out` with the chain when the
+  fuel runs out.
+- **`decConvFast`**: conversion DECIDED by normal forms.
+  - yes = the two chains;
+  - no = `nf-uniqueᵀ` (Church–Rosser + `nf-stuckᵀ`).
+- **`CheckA`** tries it first. `decTo` uses `decConvFast`. `viewΠ`/`viewΣ`
+  use `evalᵀ`, and their "no" is `nf-Π`/`nf-Σ` at `nf-irrᵀ`.
+  - The domain's well-formedness (`domΠ`) is a function call, so it is
+    computed only on demand.
+  - The derivation-driven procedure (`…slow`) runs only when the fuel
+    runs out (`evalFuel = 100000`).
+- **Measured: `Knot/Core` 56 s / 1.3 GB → 7.4 s / 0.58 GB.** `Eval`
+  checks in 7 s and `CheckA` in 12.5 s.
 
 **Then, the migration recipe** (each step is one family):
 - a schema becomes a CLOSED λ-entry; an instance becomes

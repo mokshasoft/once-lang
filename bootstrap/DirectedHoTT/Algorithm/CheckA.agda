@@ -67,13 +67,15 @@ open import DirectedHoTT.Metatheory.Validity
 open import DirectedHoTT.Metatheory.NormTy
   using ( normTy; mkWNᵀ; decConvᵀ; IsNormalᵀ )
 open import DirectedHoTT.Metatheory.RedCong
-  using ( red→≅ᵀ )
+  using ( red→≅ᵀ; _⟶ᵀ*_ )
 open import DirectedHoTT.Algorithm.DecEq
   using ( Dec; yes; no )
 open import DirectedHoTT.Metatheory.Premises
   using ( MethTy-wf; pairS⊢; fsucS⊢; ⊢wkD )
-open import DirectedHoTT.Metatheory.Injectivity using ( Π-inj )
 open import DirectedHoTT.Metatheory.NormalShape using ( nf-Π; nf-Σ )
+open import DirectedHoTT.Metatheory.Injectivity using ( Π-inj; church-rosserᵀ )
+open import DirectedHoTT.Algorithm.Eval
+  using ( Nfᵀ; nfdᵀ; outᵀ; evalᵀ; decConvFast; nf-irrᵀ; nf-stuckᵀ )
 -- ★ S5: one checker per signature; `ok` (from `WfSig`, Metatheory/Signature)
 --   is what erasure — the bridge to the kernel's validity — needs
 module DirectedHoTT.Algorithm.CheckA (S : Sig) (ok : SigOK S) where
@@ -224,6 +226,10 @@ private
   variable
     Γ : ACtx
 
+-- ★ S7a: contractions the evaluator may spend per normalisation
+evalFuel : ℕ
+evalFuel = 100000
+
 Inf : (Γ : ACtx) → ATm ⌊ Γ ⌋ᴬ → Set
 Inf Γ t = Σ (ATy ⌊ Γ ⌋ᴬ) (λ A → Γ ⊢ᴬ t ∷ A)
 
@@ -256,12 +262,23 @@ nfOf wΓ d with validity wΓ (erase d)
 -- retype a derivation at a target whose ERASURE is well-formed — or
 -- REFUTE every typing at it: any such typing is convertible to this one
 -- (UNIQUENESS, `Metatheory/UniquenessA`)
-decTo : {t : ATm ⌊ Γ ⌋ᴬ} {A : ATy ⌊ Γ ⌋ᴬ} → ⊢ctx ⌈ Γ ⌉ᶜ → Γ ⊢ᴬ t ∷ A →
-        (B : ATy ⌊ Γ ⌋ᴬ) → ⌈ Γ ⌉ᶜ ⊢ty ⌈ B ⌉ᵀ → Dec (Γ ⊢ᴬ t ∷ B)
-decTo wΓ d B dB with validity wΓ (erase d)
+decToSlow : {t : ATm ⌊ Γ ⌋ᴬ} {A : ATy ⌊ Γ ⌋ᴬ} → ⊢ctx ⌈ Γ ⌉ᶜ → Γ ⊢ᴬ t ∷ A →
+            (B : ATy ⌊ Γ ⌋ᴬ) → ⌈ Γ ⌉ᶜ ⊢ty ⌈ B ⌉ᵀ → Dec (Γ ⊢ᴬ t ∷ B)
+decToSlow wΓ d B dB with validity wΓ (erase d)
 ... | wf A' c dA' with decConvᵀ wΓ dA' dB
 ...   | yes c' = yes (⊢ᴬconv d (ctrnᵀ c c'))
 ...   | no ¬c' = no (λ d' → ¬c' (ctrnᵀ (csymᵀ c) (uniqᴬ d d')))
+
+-- ★ S7a: FIRST by evaluation (`Algorithm/Eval`) — both erased types
+--   normalised, their normal forms compared; a "no" is uniqueness of
+--   normal forms.  No derivation is touched.  The derivation-driven
+--   procedure runs only if the fuel runs out.
+decTo : {t : ATm ⌊ Γ ⌋ᴬ} {A : ATy ⌊ Γ ⌋ᴬ} → ⊢ctx ⌈ Γ ⌉ᶜ → Γ ⊢ᴬ t ∷ A →
+        (B : ATy ⌊ Γ ⌋ᴬ) → ⌈ Γ ⌉ᶜ ⊢ty ⌈ B ⌉ᵀ → Dec (Γ ⊢ᴬ t ∷ B)
+decTo {A = A} wΓ d B dB with decConvFast evalFuel ⌈ A ⌉ᵀ ⌈ B ⌉ᵀ
+... | just (yes c) = yes (⊢ᴬconv d c)
+... | just (no ¬c) = no (λ d' → ¬c (uniqᴬ d d'))
+... | nothing      = decToSlow wΓ d B dB
 
 -- a check from an inference: a "no" there refutes every typing
 fromInf : {t : ATm ⌊ Γ ⌋ᴬ} → ⊢ctx ⌈ Γ ⌉ᶜ → Dec (Inf Γ t) →
@@ -326,8 +343,8 @@ record ΠV (Γ : ACtx) (t : ATm ⌊ Γ ⌋ᴬ) : Set where
 ΠTyped Γ t = Σ (ATy ⌊ Γ ⌋ᴬ) (λ A → Σ (ATy (⌊ Γ ⌋ᴬ ∙)) (λ B → Γ ⊢ᴬ t ∷ Π A B))
 ΣTyped Γ t = Σ (ATy ⌊ Γ ⌋ᴬ) (λ A → Σ (ATy (⌊ Γ ⌋ᴬ ∙)) (λ B → Γ ⊢ᴬ t ∷ Σ' A B))
 
-viewΠ : {t : ATm ⌊ Γ ⌋ᴬ} {T : ATy ⌊ Γ ⌋ᴬ} → ⊢ctx ⌈ Γ ⌉ᶜ → Γ ⊢ᴬ t ∷ T → ΠV Γ t ⊎ (¬ ΠTyped Γ t)
-viewΠ {Γ} {T = T} wΓ d with nfOf wΓ d
+viewΠslow : {t : ATm ⌊ Γ ⌋ᴬ} {T : ATy ⌊ Γ ⌋ᴬ} → ⊢ctx ⌈ Γ ⌉ᶜ → Γ ⊢ᴬ t ∷ T → ΠV Γ t ⊎ (¬ ΠTyped Γ t)
+viewΠslow {Γ} {T = T} wΓ d with nfOf wΓ d
 ... | nfv N c dN n with isΠ? N
 ...   | no ¬Π = inj₂ (λ { (_ , (_ , d')) → ¬Π (nf-Π n (ctrnᵀ (csymᵀ c) (uniqᴬ d d'))) })
 ...   | yes (F , (G , refl)) with dN
@@ -343,14 +360,45 @@ record ΣV (Γ : ACtx) (t : ATm ⌊ Γ ⌋ᴬ) : Set where
     B  : ATy (⌊ Γ ⌋ᴬ ∙)
     d  : Γ ⊢ᴬ t ∷ Σ' A B
 
-viewΣ : {t : ATm ⌊ Γ ⌋ᴬ} {T : ATy ⌊ Γ ⌋ᴬ} → ⊢ctx ⌈ Γ ⌉ᶜ → Γ ⊢ᴬ t ∷ T → ΣV Γ t ⊎ (¬ ΣTyped Γ t)
-viewΣ {T = T} wΓ d with nfOf wΓ d
+viewΣslow : {t : ATm ⌊ Γ ⌋ᴬ} {T : ATy ⌊ Γ ⌋ᴬ} → ⊢ctx ⌈ Γ ⌉ᶜ → Γ ⊢ᴬ t ∷ T → ΣV Γ t ⊎ (¬ ΣTyped Γ t)
+viewΣslow {T = T} wΓ d with nfOf wΓ d
 ... | nfv N c _ n with isΣ? N
 ...   | no ¬Σ = inj₂ (λ { (_ , (_ , d')) → ¬Σ (nf-Σ n (ctrnᵀ (csymᵀ c) (uniqᴬ d d'))) })
 ...   | yes (F , (G , refl)) =
         inj₁ (σv (liftTy F) (liftTy G)
                  (⊢ᴬconv d (subst (λ Z → ⌈ T ⌉ᵀ ≅ᵀ Z) (sym (cong₂Σ (era-liftTy F) (era-liftTy G))) c)))
 
+
+-- ★ S7a: the views, FIRST by evaluation.  The domain's well-formedness is
+--   a function call (`domΠ`), so it is computed only if something asks.
+domΠ : {t : ATm ⌊ Γ ⌋ᴬ} {T : ATy ⌊ Γ ⌋ᴬ} {F : RTy ⌊ Γ ⌋ᴬ} {G : RTy (⌊ Γ ⌋ᴬ ∙)} →
+       ⊢ctx ⌈ Γ ⌉ᶜ → Γ ⊢ᴬ t ∷ T → ⌈ T ⌉ᵀ ⟶ᵀ* Π F G → Nfᵀ (Π F G) → ⌈ Γ ⌉ᶜ ⊢ty F
+domΠ wΓ d r n with validity wΓ (erase d)
+... | wf A' c dA' with church-rosserᵀ (ctrnᵀ (csymᵀ c) (red→≅ᵀ r))
+...   | C , (r₁ , r₂) with nf-stuckᵀ n r₂
+...     | refl with srᵀ* dA' r₁
+...       | ty-Π dF dG = dF
+
+viewΠ : {t : ATm ⌊ Γ ⌋ᴬ} {T : ATy ⌊ Γ ⌋ᴬ} → ⊢ctx ⌈ Γ ⌉ᶜ → Γ ⊢ᴬ t ∷ T → ΠV Γ t ⊎ (¬ ΠTyped Γ t)
+viewΠ {Γ} {T = T} wΓ d with evalᵀ evalFuel ⌈ T ⌉ᵀ
+... | outᵀ _ _ = viewΠslow wΓ d
+... | nfdᵀ N r n with isΠ? N
+...   | no ¬Π = inj₂ (λ { (_ , (_ , d')) →
+                  ¬Π (nf-Π (nf-irrᵀ n) (ctrnᵀ (csymᵀ (red→≅ᵀ r)) (uniqᴬ d d'))) })
+...   | yes (F , (G , refl)) =
+        inj₁ (πv (liftTy F) (liftTy G)
+                 (⊢ᴬconv d (subst (λ Z → ⌈ T ⌉ᵀ ≅ᵀ Z) (sym (cong₂Π (era-liftTy F) (era-liftTy G))) (red→≅ᵀ r)))
+                 (subst (λ Z → ⌈ Γ ⌉ᶜ ⊢ty Z) (sym (era-liftTy F)) (domΠ wΓ d r n)))
+
+viewΣ : {t : ATm ⌊ Γ ⌋ᴬ} {T : ATy ⌊ Γ ⌋ᴬ} → ⊢ctx ⌈ Γ ⌉ᶜ → Γ ⊢ᴬ t ∷ T → ΣV Γ t ⊎ (¬ ΣTyped Γ t)
+viewΣ {T = T} wΓ d with evalᵀ evalFuel ⌈ T ⌉ᵀ
+... | outᵀ _ _ = viewΣslow wΓ d
+... | nfdᵀ N r n with isΣ? N
+...   | no ¬Σ = inj₂ (λ { (_ , (_ , d')) →
+                  ¬Σ (nf-Σ (nf-irrᵀ n) (ctrnᵀ (csymᵀ (red→≅ᵀ r)) (uniqᴬ d d'))) })
+...   | yes (F , (G , refl)) =
+        inj₁ (σv (liftTy F) (liftTy G)
+                 (⊢ᴬconv d (subst (λ Z → ⌈ T ⌉ᵀ ≅ᵀ Z) (sym (cong₂Σ (era-liftTy F) (era-liftTy G))) (red→≅ᵀ r))))
 
 ------------------------------------------------------------------------
 -- 1b. The motive's context, erased, is well-formed (the premise types
