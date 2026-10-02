@@ -245,7 +245,7 @@ module CompC {FS : FrameSemantics} where
     → IRObsCorrectF g → MachineRefinesObsF prog base n l f x s alloc cl k
     → MachineRefinesObsF prog base n l (g ∘ f) x s alloc cl k
   comp-value-realized-of {B = B} {C} {g = g} {f} {x} {s} {alloc} {cl} prog base n l k ns ss cr span bl la ihg mf =
-    go (TM.T.resT (evalᴰ f x)) refl
+    go (resultAt s (evalᴰ f x)) refl
        (MachineRefinesObsF.value-realized mf) (MachineRefinesObsF.traces-agree mf)
     where
       module VR = ValueRealized
@@ -269,49 +269,35 @@ module CompC {FS : FrameSemantics} where
                           (sym (+-identityʳ (length ft))))
                     (fetch-++-right ft (mov-to-input ∷ gt) 0))
 
-      -- D180: the budget `g` observes is what `f` LEFT of the composite's — the
-      -- same arithmetic `_>>=T_` does (`n ∸ length (proj₁ (m n))`), so the
-      -- composite's value and `g`'s coincide DEFINITIONALLY and no transport
-      -- is needed at the seam.
-      kg : ℕ
-      kg = k ∸ length (projTrace (evalᴰ f x) k)
+      -- plan 0.105: `g ∘ f` means `evalᴰ f x >>=T evalᴰ g`, and the RUN of a
+      -- bind is the runs of its parts with the history threaded (`run-bind`):
+      -- `g` runs from the composite's entry log followed by `f`'s calls. `f`'s
+      -- `log` field says the machine is at exactly that log when `g` starts,
+      -- so `g`'s obligation is about the right run. (The depth arithmetic of
+      -- the budgeted monad — `minus-take`, `take-++-threaded` — is gone: the
+      -- events are exact.)
+      h : DL.List SigOpEvent
+      h = LocState.ev-log s
 
-      -- D203: `go` builds BOTH halves. It used to build only the value half,
-      -- and the trace half was a separate postulate — which it had to be,
-      -- because the chain it must talk about (`chainF`, `chainG`) only exists
-      -- inside this pattern match. Stating it outside meant either a `with`
-      -- abstraction over a projection or an axiom; the honest fix is to widen
-      -- what the match produces. `f`'s own trace agreement comes in as an
-      -- argument for the same reason: it mentions the matched chain.
-      -- plan 0.97: …AND ON WHETHER `f` STOPPED. `evalᴰ (g ∘ f) x` is
-      -- `evalᴰ f x >>=T evalᴰ g`, and `>>=T` does not run `g` when `f` has
-      -- stopped. So there are two composites, not one: the ordinary one, and
-      -- the one whose machine run IS `f`'s run, ending at `f`'s halting
-      -- instruction.
-      --
-      -- plan 0.98: THE SPLIT IS ON `f`'s RESULT, not on a boolean beside it.
-      -- 0.97 matched `TM.Stopped` and then, in the running branch, went and
-      -- fetched `TM.valueT (evalᴰ f x) k` — two reads of the same fact, which
-      -- is why every field had to carry the boolean as a premise. `Res` makes
-      -- it one read: `returns vf` BINDS the value `g` consumes, so `vf` is in
-      -- scope for the whole `where` block and `>>=T` reduces on the very
-      -- constructor being matched. `join-es`/`join-st` are gone because there
-      -- is nothing left for them to join — the sequel is never built.
-      --
-      -- Taken as an ARGUMENT with its own equation rather than
-      -- `with`-abstracted: the running branch's entire `where` block is stated
-      -- against `rfeq`, and a `with` cannot abstract a projection of a matched
-      -- field out of a block that large.
-      comp-of : Res DT.⟦ B ⟧ᴰᴵ → TM.T DT.⟦ C ⟧ᴰᴵ
-      comp-of r = TM.bindRes (TM.T.trT (evalᴰ f x)) r (evalᴰ g)
+      esF : DL.List SigOpEvent
+      esF = eventsAt s (evalᴰ f x)
 
-      go : (r : Res DT.⟦ B ⟧ᴰᴵ) → TM.T.resT (evalᴰ f x) ≡ r
+      comp-run : ∀ (r : Res DT.⟦ B ⟧ᴰᴵ) → resultAt s (evalᴰ f x) ≡ r
+               → runAt s (evalᴰ (g ∘ f) x) ≡ TM.thenRes ιᶠ h esF r (evalᴰ g)
+      comp-run r rfeq = trans (TM.run-bind ιᶠ h (evalᴰ f x) (evalᴰ g))
+                              (cong (λ r′ → TM.thenRes ιᶠ h esF r′ (evalᴰ g)) rfeq)
+
+      -- D203: `go` builds BOTH halves, split on `f`'s RESULT (plan 0.98):
+      -- `returns vf` binds the value `g` consumes; `stopped` means `g` never
+      -- runs and the composite's machine run IS `f`'s. Taken as an ARGUMENT
+      -- with its own equation rather than `with`-abstracted.
+      go : (r : Res DT.⟦ B ⟧ᴰᴵ) → resultAt s (evalᴰ f x) ≡ r
          → (vr : ValueRealized prog base n l f x s alloc cl k)
-         → take k (chain-events (VR.run vr)) ≡ take k (projTrace (evalᴰ f x) k)
+         → chain-events (VR.run vr) ≡ eventsAt s (evalᴰ f x)
          → MachineRefinesObsF prog base n l (g ∘ f) x s alloc cl k
       -- ── `f` RAN TO ITS END ────────────────────────────────────────────
       go (returns vf) rfeq
-         (realized kf fsF mOutf caf chainF liveF endF stopsF retF linkF placeF spF hpF cfF bfF) tf =
+         (realized kf fsF mOutf caf chainF liveF endF stopsF retF linkF logF placeF spF hpF cfF bfF) tf =
         record
           { value-realized =
               realized (kf + suc (VR.steps vg)) (VR.settle vg)
@@ -319,6 +305,7 @@ module CompC {FS : FrameSemantics} where
                        chain (λ p → VR.live vg (to-g p)) (λ p → atEnd (to-g p))
                        (λ p → VR.stops vg (to-g p))
                        (VR.no-ret vg) (VR.no-link vg)
+                       log-comp
                        (λ p → VR.place vg (to-g-res p))
                        (λ fr j bf → mem-pres-comp (AtStack fr j) bf) (λ hl bf → mem-pres-comp (AtDynamic hl) bf)
                        (trans (VR.frame-pres vg) cfF)
@@ -341,9 +328,8 @@ module CompC {FS : FrameSemantics} where
           nsG : next-slot (falloc fsM) ≤ n1
           nsG = ≤-trans (≤-reflexive nsF) (≤-trans ns (frontier-mono f n l))
 
-          -- `f` returned, so `f` did not stop: the boolean the 0.97-shaped
-          -- fields still take is READ OFF the result rather than assumed.
-          sfeq : TM.stoppedT (evalᴰ f x) k ≡ false
+          -- `f` returned, so `f` did not stop.
+          sfeq : stopsAt s (evalᴰ f x) ≡ false
           sfeq = cong is-stopped rfeq
 
           liveM : halted (floc fsM) ≡ false
@@ -359,14 +345,14 @@ module CompC {FS : FrameSemantics} where
           inputM = result→input (placeF rfeq) movEq memEq
 
           mg : MachineRefinesObsF prog base' n1 l1 g vf
-                                  (floc fsM) (falloc fsM) (fclosure fsM) kg
+                                  (floc fsM) (falloc fsM) (fclosure fsM) k
           mg = ihg n1 l1 prog base' ss cr span-g
                    (comp-blocks-g g f prog n l bl)
                    (comp-labels-g g f prog base n l la) mOutf vf
-                   (floc fsM) (falloc fsM) (fclosure fsM) nsG liveM inputM kg
+                   (floc fsM) (falloc fsM) (fclosure fsM) nsG liveM inputM k
 
           vg : ValueRealized prog base' n1 l1 g vf
-                             (floc fsM) (falloc fsM) (fclosure fsM) kg
+                             (floc fsM) (falloc fsM) (fclosure fsM) k
           vg = MachineRefinesObsF.value-realized mg
 
           movStep : FlatSteps prog 1 fsF fsM
@@ -383,17 +369,11 @@ module CompC {FS : FrameSemantics} where
                             (entry-flat base s alloc cl) (VR.settle vg)
           chain = FlatSteps-++ chainF (FlatSteps-++ movStep chainG)
 
-          -- D204: `g ∘ f` preserves what BOTH preserve. `g` runs from `fsM`,
-          -- whose frontier is `falloc fsM` — equal to `alloc`'s at the slot
-          -- `mov-to-input` does not touch the allocator, so `falloc fsM` IS
-          -- `falloc fsF` and `f`'s own `bf-mono` is the whole lift.
+          -- D204: `g ∘ f` preserves what BOTH preserve.
           mem-pres-comp : ∀ (loc : ValueLocation FS)
                         → BeforeFrontier (record alloc { next-slot = n }) loc
                         → MemOps.readLoc (floc (VR.settle vg)) loc
                           ≡ MemOps.readLoc s loc
-          -- `g` is emitted at `n1 ≥ n`, so its preservation covers everything
-          -- below `n` too; the witness is carried across `f`'s run by `f`'s own
-          -- `bf-mono` at the composite's bound, then widened to `g`'s.
           mem-pres-comp loc bf =
             trans (vr-mem-pres vg loc
                     (frontier-monotone (record (falloc fsM) { next-slot = n })
@@ -413,118 +393,95 @@ module CompC {FS : FrameSemantics} where
                        → BeforeFrontier (record (falloc (VR.settle vg)) { next-slot = m }) loc
           bf-mono-comp m loc bf = VR.bf-mono vg m loc (bfF m loc bf)
 
-          -- ── THE TRACE HALF (D203) ──────────────────────────────────────
-          -- The composite's chain is `chainF ++ mov ++ chainG` and the
-          -- composite's meaning is `evalᴰ f x >>=T evalᴰ g`, whose trace is
-          -- DEFINITIONALLY `dEvF ++ dEvG` with `g`'s budget THREADED as
-          -- `k ∸ length dEvF`. So both sides are a concatenation observed at
-          -- `k`, and `take-++-threaded` splits each the same way.
-          --
-          -- The step that makes it go through without a boundedness
-          -- hypothesis is `minus-take`: the residual budget cannot tell
-          -- whether the prefix was truncated, so the machine's
-          -- `k ∸ length (take k mEvF)` and the denotation's `k ∸ length dEvF`
-          -- are the same number — which is `kg`, the budget `mg` was already
-          -- instantiated at.
-          mEvF = chain-events chainF
-          mEvG = chain-events chainG
-          dEvF = projTrace (evalᴰ f x) k
-          dEvG = projTrace (evalᴰ g vf) kg
+          -- ── THE RUN OF `g` IS THE COMPOSITE'S TAIL ─────────────────────
+          -- `mov-to-input` leaves the log alone, so `g` starts at `f`'s settle
+          -- log, which is `h ++ esF` (`f`'s `log`).
+          RG : runAt (floc fsM) (evalᴰ g vf) ≡ TM.run ιᶠ (h DL.++ esF) (evalᴰ g vf)
+          RG = cong (λ hh → TM.run ιᶠ hh (evalᴰ g vf)) logF
 
-          events-split : chain-events chain ≡ mEvF ++ mEvG
+          CR : runAt s (evalᴰ (g ∘ f) x) ≡ TM.appE esF (runAt (floc fsM) (evalᴰ g vf))
+          CR = trans (comp-run (returns vf) rfeq) (cong (TM.appE esF) (sym RG))
+
+          evG : DL.List SigOpEvent
+          evG = eventsAt (floc fsM) (evalᴰ g vf)
+
+          ev-comp : eventsAt s (evalᴰ (g ∘ f) x) ≡ esF DL.++ evG
+          ev-comp = cong proj₁ CR
+
+          -- THE TRACE HALF (D203): the chain is `chainF ++ mov ++ chainG`.
+          events-split : chain-events chain ≡ chain-events chainF DL.++ chain-events chainG
           events-split =
             trans (chain-events-++ chainF (FlatSteps-++ movStep chainG))
-                  (cong (mEvF ++_) (chain-events-++ movStep chainG))
+                  (cong (chain-events chainF DL.++_) (chain-events-++ movStep chainG))
 
-          evG-eq : mEvG ≡ chain-events (VR.run vg)
+          evG-eq : chain-events chainG ≡ chain-events (VR.run vg)
           evG-eq = chain-events-subst-start (sym handover) (VR.run vg)
 
-          budget-eq : k ∸ length (take k dEvF) ≡ kg
-          budget-eq = TM.minus-take k dEvF
-
-          tail-eq : take (k ∸ length (take k mEvF)) mEvG
-                  ≡ take (k ∸ length (take k dEvF)) dEvG
-          tail-eq =
-            trans (cong (λ m → take (k ∸ length m) mEvG) tf)
-            (trans (cong (λ j → take j mEvG) budget-eq)
-            (trans (cong (take kg) evG-eq)
-            (trans (MachineRefinesObsF.traces-agree mg)
-                   (sym (cong (λ j → take j dEvG) budget-eq)))))
-
-          traces : take k (chain-events chain)
-                 ≡ take k (projTrace (evalᴰ (g ∘ f) x) k)
+          traces : chain-events chain ≡ eventsAt s (evalᴰ (g ∘ f) x)
           traces =
-            trans (cong (take k) events-split)
-            (trans (TM.take-++-threaded k mEvF mEvG)
-            (trans (cong₂ _++_ tf tail-eq)
-            (trans (sym (TM.take-++-threaded k dEvF dEvG))
-                   (sym (cong (λ r → take k (projTrace (comp-of r) k)) rfeq)))))
+            trans events-split
+            (trans (cong₂ DL._++_ tf (trans evG-eq (MachineRefinesObsF.traces-agree mg)))
+                   (sym ev-comp))
 
-          -- plan 0.98: `f` RETURNED, so the composite IS `g` at `vf` — one
-          -- `cong` on `f`'s result, and every field of the composite is `g`'s
-          -- field read through it. `join-st` used to be this `cong`'s
-          -- function; the constructor does the work now.
-          sg : TM.Stopped
-          sg = TM.stoppedT (evalᴰ g vf) kg
+          -- …and the log grows by both.
+          log-comp : LocState.ev-log (floc (VR.settle vg)) ≡ h DL.++ eventsAt s (evalᴰ (g ∘ f) x)
+          log-comp =
+            trans (VR.log vg)
+            (trans (cong (DL._++ evG) logF)
+            (trans (++-assoc h esF evG)
+                   (cong (h DL.++_) (sym ev-comp))))
 
-          st-comp : TM.stoppedT (evalᴰ (g ∘ f) x) k ≡ sg
-          st-comp = cong (λ r → TM.stoppedT (comp-of r) k) rfeq
+          -- `f` RETURNED, so the composite's result is `g`'s.
+          res-comp : resultAt s (evalᴰ (g ∘ f) x) ≡ resultAt (floc fsM) (evalᴰ g vf)
+          res-comp = cong proj₂ CR
 
-          to-g : ∀ {b} → TM.stoppedT (evalᴰ (g ∘ f) x) k ≡ b → sg ≡ b
-          to-g p = trans (sym st-comp) p
+          to-g : ∀ {b} → stopsAt s (evalᴰ (g ∘ f) x) ≡ b → stopsAt (floc fsM) (evalᴰ g vf) ≡ b
+          to-g p = trans (sym (cong is-stopped res-comp)) p
 
-          -- …and the VALUE half of the same transfer: the composite returns
-          -- exactly what `g` returns.
-          res-comp : TM.T.resT (evalᴰ (g ∘ f) x) ≡ TM.T.resT (evalᴰ g vf)
-          res-comp = cong (λ r → TM.T.resT (comp-of r)) rfeq
-
-          to-g-res : ∀ {v} → TM.T.resT (evalᴰ (g ∘ f) x) ≡ returns v
-                   → TM.T.resT (evalᴰ g vf) ≡ returns v
+          to-g-res : ∀ {v} → resultAt s (evalᴰ (g ∘ f) x) ≡ returns v
+                   → resultAt (floc fsM) (evalᴰ g vf) ≡ returns v
           to-g-res p = trans (sym res-comp) p
 
-          atEnd : sg ≡ false → fpc (VR.settle vg) ≡ length (emitted n l (g ∘ f)) + base
+          atEnd : stopsAt (floc fsM) (evalᴰ g vf) ≡ false → fpc (VR.settle vg) ≡ length (emitted n l (g ∘ f)) + base
           atEnd q = trans (VR.at-end vg q)
                         (sym (trans (cong (_+ base) (length-++ ft {mov-to-input ∷ gt}))
                                     (shuffle (length ft) (length gt) base)))
 
       -- ── `f` STOPPED THE PROGRAM ───────────────────────────────────────
-      -- `g` NEVER RUNS — and after 0.98 that is not a discarded branch but an
-      -- unbuilt one: `bindRes tr stopped f = mkT tr stopped` never mentions
-      -- `f`. So the composite's machine run IS `f`'s run: the same steps, the
-      -- same settle state, the same events. Everything `f` proved about that
-      -- state transfers verbatim, and the three fields describing a fragment
-      -- which REACHED ITS END are vacuous — the composite's result is `f`'s,
-      -- i.e. `stopped`, so their premise refutes itself.
+      -- `g` NEVER RUNS: `thenRes … stopped` never mentions it. So the
+      -- composite's machine run IS `f`'s run, and the three fields describing
+      -- a fragment which REACHED ITS END are vacuous.
       go stopped rfeq
-         (realized kf fsF mOutf caf chainF liveF endF stopsF retF linkF placeF spF hpF cfF bfF) tf =
+         (realized kf fsF mOutf caf chainF liveF endF stopsF retF linkF logF placeF spF hpF cfF bfF) tf =
         record
           { value-realized =
               realized kf fsF mOutf caf chainF
-                       absurd absurd (λ _ → stopsF sfeq) retF linkF absurd-res
+                       absurd absurd (λ _ → stopsF sfeq) retF linkF
+                       (trans logF (cong (h DL.++_) (sym ev-comp)))
+                       absurd-res
                        spF hpF cfF bfF
-          ; traces-agree =
-              trans tf (sym (cong (λ r → take k (projTrace (comp-of r) k)) rfeq))
+          ; traces-agree = trans tf (sym ev-comp)
           }
         where
-          sfeq : TM.stoppedT (evalᴰ f x) k ≡ true
+          sfeq : stopsAt s (evalᴰ f x) ≡ true
           sfeq = cong is-stopped rfeq
 
-          st-comp : TM.stoppedT (evalᴰ (g ∘ f) x) k ≡ true
-          st-comp = cong (λ r → TM.stoppedT (comp-of r) k) rfeq
+          CR : runAt s (evalᴰ (g ∘ f) x) ≡ (esF , stopped)
+          CR = comp-run stopped rfeq
 
-          res-comp : TM.T.resT (evalᴰ (g ∘ f) x) ≡ stopped
-          res-comp = cong (λ r → TM.T.resT (comp-of r)) rfeq
+          ev-comp : eventsAt s (evalᴰ (g ∘ f) x) ≡ esF
+          ev-comp = cong proj₁ CR
 
-          absurd : ∀ {X : Set} → TM.stoppedT (evalᴰ (g ∘ f) x) k ≡ false → X
-          absurd p with trans (sym st-comp) p
-          ... | ()
+          res-comp : resultAt s (evalᴰ (g ∘ f) x) ≡ stopped
+          res-comp = cong proj₂ CR
 
-          -- The composite has NO result, so `place`'s premise is refutable
-          -- outright — the field costs nothing to fill and cannot be misused.
-          absurd-res : ∀ {v} → TM.T.resT (evalᴰ (g ∘ f) x) ≡ returns v
+          absurd : ∀ {X : Set} → stopsAt s (evalᴰ (g ∘ f) x) ≡ false → X
+          absurd p = case trans (sym (cong is-stopped res-comp)) p of λ ()
+
+          -- The composite has NO result, so `place`'s premise is refutable.
+          absurd-res : ∀ {v} → resultAt s (evalᴰ (g ∘ f) x) ≡ returns v
                      → ResultPlace _ mOutf (falloc fsF) caf v (floc fsF)
-          absurd-res p with trans (sym res-comp) p
-          ... | ()
+          absurd-res p = case trans (sym res-comp) p of λ ()
 
 
   -- (moved below `comp-value-realized-of`: it names that proof's chain, so it
