@@ -80,6 +80,11 @@ module Core {FS : FrameSemantics} where
   stopsAt : ∀ {X} → LocState FS → TM.T X → Bool
   stopsAt s m = is-stopped (resultAt s m)
 
+  -- A run depends on the state only through its log.
+  runAt-≡ : ∀ {X} {st st′ : LocState FS} {m m′ : TM.T X}
+          → LocState.ev-log st ≡ LocState.ev-log st′ → m ≡ m′ → runAt st m ≡ runAt st′ m′
+  runAt-≡ h e = cong₂ (TM.run ιᶠ) h e
+
   -- A fragment that makes no call leaves the log as it found it.
   log-pure : ∀ {s : LocState FS} → LocState.ev-log s ≡ LocState.ev-log s DL.++ DL.[]
   log-pure = sym (Data.List.Properties.++-identityʳ _)

@@ -20,6 +20,8 @@ import Once.CCC.FrameSemantics
 import Once.CCC.Machine.SMPrimitives
 import Once.IRTy
 import Once.IR
+open import Data.List.Properties using (++-identityʳ)
+open import Once.Res using (is-stopped)
 import Once.Semantics.Machine as EvV
 import Once.CCC.Machine.ReadTypedAdequate as RTA
 import Once.Denotation.DenotTrace as DT
@@ -116,7 +118,9 @@ module ApplyC {FS : FrameSemantics} where
                          (λ p → CalleeRun.returned crun (trans st-eq p))
                          (λ p → CalleeRun.stops crun (trans st-eq p))
                          (CalleeRun.no-ret crun)
-                         (CalleeRun.no-link crun) place (λ fr j bf → mem-pres-apply (AtStack fr j) bf) (λ hl bf → mem-pres-apply (AtDynamic hl) bf)
+                         (CalleeRun.no-link crun)
+                         (trans (CalleeRun.log crun) (cong₂ DL._++_ h-eq (cong proj₁ RE)))
+                         place (λ fr j bf → mem-pres-apply (AtStack fr j) bf) (λ hl bf → mem-pres-apply (AtDynamic hl) bf)
                          (trans (CalleeRun.frame-pres crun (falloc ASP.a16)
                                    (cong falloc call-eq))
                                 OB.cf-a16)
@@ -238,18 +242,27 @@ module ApplyC {FS : FrameSemantics} where
               -- whose body ends in a halting SigOp never returns, so `apply`
               -- can only pass the callee's `live`/`returned`/`place` along
               -- under the premise the callee itself is given.
-              st-eq : TM.stoppedT (evalᴰ body (env , proj₂ x)) k
-                    ≡ TM.stoppedT (evalᴰ (apply {A} {B}) x) k
-              st-eq = cong (λ d → TM.stoppedT d k) denot-eq
+              -- plan 0.105: …and the callee runs from the caller's log — the
+              -- seventeen setup rows make no call — so the two RUNS agree.
+              callFs = flat-exec-instr instr-call-closure prog ASP.a16
+              h-eq : LocState.ev-log (floc callFs) ≡ LocState.ev-log s
+              h-eq = trans (log-of run17 _ refl) (++-identityʳ _)
+
+              RE : runAt (floc callFs) (evalᴰ body (env , proj₂ x)) ≡ runAt s (evalᴰ (apply {A} {B}) x)
+              RE = runAt-≡ {st = floc callFs} {st′ = s} h-eq denot-eq
+
+              st-eq : stopsAt (floc callFs) (evalᴰ body (env , proj₂ x))
+                    ≡ stopsAt s (evalᴰ (apply {A} {B}) x)
+              st-eq = cong (λ r → is-stopped (proj₂ r)) RE
 
               -- plan 0.98: the `subst` is GONE. It existed to move
               -- `TM.valueT d k` along `denot-eq`; now the premise BINDS the
               -- value, so the two sides name the same `v` and only the
               -- equation being transported has to move.
-              res-eq : TM.T.resT (evalᴰ body (env , proj₂ x)) ≡ TM.T.resT (evalᴰ (apply {A} {B}) x)
-              res-eq = cong TM.T.resT denot-eq
+              res-eq : resultAt (floc callFs) (evalᴰ body (env , proj₂ x)) ≡ resultAt s (evalᴰ (apply {A} {B}) x)
+              res-eq = cong proj₂ RE
 
-              place : ∀ {v} → TM.T.resT (evalᴰ (apply {A} {B}) x) ≡ returns v
+              place : ∀ {v} → resultAt s (evalᴰ (apply {A} {B}) x) ≡ returns v
                     → ResultPlace B (CalleeRun.out-mode crun)
                         (falloc (CalleeRun.settle crun)) (CalleeRun.cont-alloc crun)
                         v (floc (CalleeRun.settle crun))
@@ -290,10 +303,9 @@ module ApplyC {FS : FrameSemantics} where
                       (trans (cong (λ st → MemOps.readLoc (floc st) loc) call-eq)
                              (ASP.setup-mem-pres n≤ OB.rdi12' OB.rdi14' loc bf))
 
-              trc : take k (chain-events run) ≡ take k (projTrace (evalᴰ (apply {A} {B}) x) k)
-              trc = trans (cong (take k) (chain-events-++ run17 (CalleeRun.run crun)))
-                          (trans (CalleeRun.events crun)
-                                 (cong (λ d → take k (projTrace d k)) denot-eq))
+              trc : chain-events run ≡ eventsAt s (evalᴰ (apply {A} {B}) x)
+              trc = trans (chain-events-++ run17 (CalleeRun.run crun))
+                          (trans (CalleeRun.events crun) (cong proj₁ RE))
 
   ------------------------------------------------------------------------
   -- D199: `obs-correct-Out` — FORCING, DISCHARGED.
