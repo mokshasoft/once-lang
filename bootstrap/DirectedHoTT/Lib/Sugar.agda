@@ -33,6 +33,7 @@ module DirectedHoTT.Lib.Sugar where
 
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂; subst; _×_; _,_ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
+open import Agda.Builtin.Unit using ( ⊤ )
 open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Metatheory.RedCong
@@ -108,6 +109,26 @@ conₗ k p = con (pair (tag k) p)
 data Nth : Cons Δ c → ℕ → RTm Δ → Set where
   nth-z : {C : RTm Δ} {Cs : Cons Δ c} → Nth (C ∷ Cs) zero C
   nth-s : {C C' : RTm Δ} {Cs : Cons Δ c} → Nth Cs k C → Nth (C' ∷ Cs) (suc k) C
+
+-- ★ an entry BY ITS NUMBER: `atᶜ 3` — the proof computed, the range checked
+--   (`InC` is ⊤, filled by eta, or empty), as `Lib/Syn`'s `atʰ`/`atᵍ`
+private
+  data Out : Set where
+
+elAt : Cons Δ c → ℕ → RTm Δ
+elAt []       k       = unit
+elAt (C ∷ Cs) zero    = C
+elAt (C ∷ Cs) (suc k) = elAt Cs k
+
+InC : Cons Δ c → ℕ → Set
+InC []       k       = Out
+InC (C ∷ Cs) zero    = ⊤
+InC (C ∷ Cs) (suc k) = InC Cs k
+
+atᶜ : {Cs : Cons Δ c} (k : ℕ) {_ : InC Cs k} → Nth Cs k (elAt Cs k)
+atᶜ {Cs = []}     k {()}
+atᶜ {Cs = C ∷ Cs} zero    = nth-z
+atᶜ {Cs = C ∷ Cs} (suc k) {i} = nth-s (atᶜ k {i})
 
 ------------------------------------------------------------------------
 -- 1. ★ (c) THE LOOKUP IS A REDUCTION.

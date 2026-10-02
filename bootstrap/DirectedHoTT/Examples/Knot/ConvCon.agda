@@ -18,7 +18,7 @@ open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax hiding ( Fin )
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Metatheory.TySub using ( ⊢-cast; wk-cancel-tm )
-open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_; tag; conₗ; nth-z; nth-s )
+open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_; tag; conₗ; nth-z; atᶜ )
 open import DirectedHoTT.Lib.SynView using ( PayV; ⊢conP )
 open import DirectedHoTT.Lib.SynFib using ( ⊢conRowₖ )
 open import DirectedHoTT.Lib.Tel
@@ -68,14 +68,14 @@ module _ {Ξ : Ctx} {k : ℕ} {sh : Shape} {j p u : RTm ⌊ Ξ ⌋} (nh : NthSh 
   -- ★ `csym : u ≅ t → t ≅ u`
   csym≅ : {r : RTm ⌊ Ξ ⌋} → Ξ ⊢ r ∷ K≅ j u t → Ξ ⊢ conₗ 2 (pair r unit) ∷ K≅ j t u
   csym≅ {r} dr =
-    ⊢conRowₖ {Ξ} {4} {2} {Convₘ.J} {≅F.DF} {ix≅ j t u} {_} {pair r unit} {Cs} (nth-s (nth-s nth-z)) Convₘ.⊢J ≅F.⊢DF (⊢ix≅ dj dt du) fib
+    ⊢conRowₖ {Ξ} {4} {2} {Convₘ.J} {≅F.DF} {ix≅ j t u} {_} {pair r unit} {Cs} (atᶜ 2) Convₘ.⊢J ≅F.⊢DF (⊢ix≅ dj dt du) fib
       (allC≅ dj dt du) (⊢payρ Convₘ.⊢J ≅F.⊢DF {r = r} {p = unit} (ok-ρ (⊢ix≅ dj du dt) ok-ι) dr (⊢payι Convₘ.⊢J ≅F.⊢DF ⊢unit))
 
   -- ★ `ctrn : t ≅ v → v ≅ u → t ≅ u`
   ctrn≅ : {v r₁ r₂ : RTm ⌊ Ξ ⌋} → Ξ ⊢ v ∷ K 1 j → Ξ ⊢ r₁ ∷ K≅ j t v → Ξ ⊢ r₂ ∷ K≅ j v u →
           Ξ ⊢ conₗ 3 (pair v (pair r₁ (pair r₂ unit))) ∷ K≅ j t u
   ctrn≅ {v} {r₁} {r₂} dv dr₁ dr₂ =
-    ⊢conRowₖ {Ξ} {4} {3} {Convₘ.J} {≅F.DF} {ix≅ j t u} {_} {pair v (pair r₁ (pair r₂ unit))} {Cs} (nth-s (nth-s (nth-s nth-z)))
+    ⊢conRowₖ {Ξ} {4} {3} {Convₘ.J} {≅F.DF} {ix≅ j t u} {_} {pair v (pair r₁ (pair r₂ unit))} {Cs} (atᶜ 3)
       Convₘ.⊢J ≅F.⊢DF (⊢ix≅ dj dt du) fib (allC≅ dj dt du)
       (⊢payσ Convₘ.⊢J ≅F.⊢DF {a = v} {p = pair r₁ (pair r₂ unit)}
          (Convₘ.okσ (⊢⌜Tm⌝ dj) (ok-ρ (⊢ix≅ (wkN dj) (wkK dt) (hereTm {m = j})) (ok-ρ (⊢ix≅ (wkN dj) (hereTm {m = j}) (wkK du)) ok-ι)))
@@ -94,7 +94,7 @@ crfl≅ {Ξ} {k} {sh} {j} {p} nh dj dp =
   ⊢conRowₖ {Ξ} {4} {1} {Convₘ.J} {≅F.DF} {ix≅ j t t} {_} {pair (idrefl (⌜Tm⌝ j) t) unit}
            {dσ (⌜⟶⌝ j t t) (lam dι) ∷ dσ (⌜Id⌝ (⌜Tm⌝ j) t t) (lam dι) ∷ dρ (ix≅ j t t) dι
             ∷ dσ (⌜Tm⌝ j) (lam (dρ (ix≅ (w1 j) (w1 t) (var vz)) (dρ (ix≅ (w1 j) (var vz) (w1 t)) dι))) ∷ []}
-           (nth-s nth-z) Convₘ.⊢J ≅F.⊢DF (⊢ix≅ dj dt dt)
+           (atᶜ 1) Convₘ.⊢J ≅F.⊢DF (⊢ix≅ dj dt dt)
     (≅F.fibF {s = 1} {k = k} {j = j} {p = p} {c = t} (atᵍ 1) nh) (allC≅ dj dt dt)
     (⊢payσ Convₘ.⊢J ≅F.⊢DF {a = idrefl (⌜Tm⌝ j) t} {p = unit} (ok-σ (⊢⌜Id⌝ (⊢⌜Tm⌝ dj) (toTm dt) (toTm dt)) ok-ι)
        (⊢conv (⊢idrefl (⊢⌜Tm⌝ dj) (toTm dt)) (csymᵀ (credᵀ (El-⌜Id⌝ (⌜Tm⌝ j) t t))))
@@ -129,14 +129,14 @@ module _ {Ξ : Ctx} {k : ℕ} {sh : Shape} {j p u : RTm ⌊ Ξ ⌋} (nh : NthSh 
   -- ★ `csym : u ≅ t → t ≅ u`
   csym≅ᵀ : {r : RTm ⌊ Ξ ⌋} → Ξ ⊢ r ∷ K≅ᵀ j u t → Ξ ⊢ conₗ 2 (pair r unit) ∷ K≅ᵀ j t u
   csym≅ᵀ {r} dr =
-    ⊢conRowₖ {Ξ} {4} {2} {ConvTₘ.J} {≅ᵀF.DF} {ix≅ᵀ j t u} {_} {pair r unit} {Cs} (nth-s (nth-s nth-z)) ConvTₘ.⊢J ≅ᵀF.⊢DF (⊢ix≅ᵀ dj dt du) fib
+    ⊢conRowₖ {Ξ} {4} {2} {ConvTₘ.J} {≅ᵀF.DF} {ix≅ᵀ j t u} {_} {pair r unit} {Cs} (atᶜ 2) ConvTₘ.⊢J ≅ᵀF.⊢DF (⊢ix≅ᵀ dj dt du) fib
       (allC≅ᵀ dj dt du) (⊢payρ ConvTₘ.⊢J ≅ᵀF.⊢DF {r = r} {p = unit} (ok-ρ (⊢ix≅ᵀ dj du dt) ok-ι) dr (⊢payι ConvTₘ.⊢J ≅ᵀF.⊢DF ⊢unit))
 
   -- ★ `ctrn : t ≅ v → v ≅ u → t ≅ u`
   ctrn≅ᵀ : {v r₁ r₂ : RTm ⌊ Ξ ⌋} → Ξ ⊢ v ∷ K 0 j → Ξ ⊢ r₁ ∷ K≅ᵀ j t v → Ξ ⊢ r₂ ∷ K≅ᵀ j v u →
           Ξ ⊢ conₗ 3 (pair v (pair r₁ (pair r₂ unit))) ∷ K≅ᵀ j t u
   ctrn≅ᵀ {v} {r₁} {r₂} dv dr₁ dr₂ =
-    ⊢conRowₖ {Ξ} {4} {3} {ConvTₘ.J} {≅ᵀF.DF} {ix≅ᵀ j t u} {_} {pair v (pair r₁ (pair r₂ unit))} {Cs} (nth-s (nth-s (nth-s nth-z)))
+    ⊢conRowₖ {Ξ} {4} {3} {ConvTₘ.J} {≅ᵀF.DF} {ix≅ᵀ j t u} {_} {pair v (pair r₁ (pair r₂ unit))} {Cs} (atᶜ 3)
       ConvTₘ.⊢J ≅ᵀF.⊢DF (⊢ix≅ᵀ dj dt du) fib (allC≅ᵀ dj dt du)
       (⊢payσ ConvTₘ.⊢J ≅ᵀF.⊢DF {a = v} {p = pair r₁ (pair r₂ unit)}
          (ConvTₘ.okσ (⊢⌜Ty⌝ dj) (ok-ρ (⊢ix≅ᵀ (wkN dj) (wkK dt) (hereTy {m = j})) (ok-ρ (⊢ix≅ᵀ (wkN dj) (hereTy {m = j}) (wkK du)) ok-ι)))
@@ -155,7 +155,7 @@ crfl≅ᵀ {Ξ} {k} {sh} {j} {p} nh dj dp =
   ⊢conRowₖ {Ξ} {4} {1} {ConvTₘ.J} {≅ᵀF.DF} {ix≅ᵀ j t t} {_} {pair (idrefl (⌜Ty⌝ j) t) unit}
            {dσ (⌜⟶ᵀ⌝ j t t) (lam dι) ∷ dσ (⌜Id⌝ (⌜Ty⌝ j) t t) (lam dι) ∷ dρ (ix≅ᵀ j t t) dι
             ∷ dσ (⌜Ty⌝ j) (lam (dρ (ix≅ᵀ (w1 j) (w1 t) (var vz)) (dρ (ix≅ᵀ (w1 j) (var vz) (w1 t)) dι))) ∷ []}
-           (nth-s nth-z) ConvTₘ.⊢J ≅ᵀF.⊢DF (⊢ix≅ᵀ dj dt dt)
+           (atᶜ 1) ConvTₘ.⊢J ≅ᵀF.⊢DF (⊢ix≅ᵀ dj dt dt)
     (≅ᵀF.fibF {s = 0} {k = k} {j = j} {p = p} {c = t} (atᵍ 0) nh) (allC≅ᵀ dj dt dt)
     (⊢payσ ConvTₘ.⊢J ≅ᵀF.⊢DF {a = idrefl (⌜Ty⌝ j) t} {p = unit} (ok-σ (⊢⌜Id⌝ (⊢⌜Ty⌝ dj) (toTy dt) (toTy dt)) ok-ι)
        (⊢conv (⊢idrefl (⊢⌜Ty⌝ dj) (toTy dt)) (csymᵀ (credᵀ (El-⌜Id⌝ (⌜Ty⌝ j) t t))))
