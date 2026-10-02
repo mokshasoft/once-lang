@@ -2417,37 +2417,77 @@ ok⟶ᵀDIh {Ξ} {j} {p} {c} dj dp dc = ⊢rows {Ξ} {RedTₘ.J} {7} {⌜ T⟶�
 ⟶ᵀNone : Row
 ⟶ᵀNone = record { R = λ j p c → rows [] ; R-sub = λ σ j p c → refl }
 
-ok⟶ᵀNone : {s : ℕ} {sh : Shape} → RedTₘ.RowOK s sh ⟶ᵀNone
-ok⟶ᵀNone dj dp dc = ⊢rows {I = RedTₘ.J} {Cs = []} RedTₘ.⊢J []ᵈ
+ok⟶ᵀNone : (s : ℕ) (sh : Shape) → RedTₘ.RowOK s sh ⟶ᵀNone
+ok⟶ᵀNone s sh dj dp dc = ⊢rows {I = RedTₘ.J} {Cs = []} RedTₘ.⊢J []ᵈ
 
-row⟶ᵀ : ℕ → ℕ → Row
-row⟶ᵀ zero (suc (suc zero)) = r⟶ᵀPi
-row⟶ᵀ zero (suc (suc (suc zero))) = r⟶ᵀSg
-row⟶ᵀ zero (suc (suc (suc (suc zero)))) = r⟶ᵀEl
-row⟶ᵀ zero (suc (suc (suc (suc (suc zero))))) = r⟶ᵀHom
-row⟶ᵀ zero (suc (suc (suc (suc (suc (suc (suc (suc zero)))))))) = r⟶ᵀId
-row⟶ᵀ zero (suc (suc (suc (suc (suc (suc (suc (suc (suc zero))))))))) = r⟶ᵀIMu
-row⟶ᵀ zero (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc zero)))))))))) = r⟶ᵀDesc
-row⟶ᵀ zero (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc zero))))))))))) = r⟶ᵀDIh
-row⟶ᵀ _ _ = ⟶ᵀNone
+-- ★ THE FAMILY, as its table: each Knot constructor's row and its typing,
+--   in KSig's order (sort 0: types; sort 1: terms).
+module _ where
+  open RedTₘ using ( ⟨_∣_⟩∷_; ⟨_∣∀_⟩∷_; []ᴿ; _∷ᴳ_; []ᴳ )
 
-rowOK⟶ᵀ : {s c k : ℕ} {shs : Shapes c} {sh : Shape} → NthG KSig s shs → NthSh shs k sh → RedTₘ.RowOK s sh (row⟶ᵀ s k)
-rowOK⟶ᵀ {sh = sh} (nthᵍ-s nthᵍ-z) nh = ok⟶ᵀNone {1} {sh}
-rowOK⟶ᵀ nthᵍ-z nthʰ-z = ok⟶ᵀNone {0} {sh-kbase}
-rowOK⟶ᵀ nthᵍ-z (nthʰ-s nthʰ-z) = ok⟶ᵀNone {0} {sh-kU}
-rowOK⟶ᵀ nthᵍ-z (nthʰ-s (nthʰ-s nthʰ-z)) = ok⟶ᵀPi
-rowOK⟶ᵀ nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))) = ok⟶ᵀSg
-rowOK⟶ᵀ nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))) = ok⟶ᵀEl
-rowOK⟶ᵀ nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))) = ok⟶ᵀHom
-rowOK⟶ᵀ nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))) = ok⟶ᵀNone {0} {sh-kUnit}
-rowOK⟶ᵀ nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))) = ok⟶ᵀNone {0} {sh-kNat}
-rowOK⟶ᵀ nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))) = ok⟶ᵀId
-rowOK⟶ᵀ nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))) = ok⟶ᵀIMu
-rowOK⟶ᵀ nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))) = ok⟶ᵀDesc
-rowOK⟶ᵀ nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))))) = ok⟶ᵀDIh
-rowOK⟶ᵀ nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))) = ok⟶ᵀNone {0} {sh-kFin}
+  rows⟶ᵀTy : RedTₘ.RowsOK 0 TyShs
+  rows⟶ᵀTy =
+    ⟨ ⟶ᵀNone ∣∀ ok⟶ᵀNone ⟩∷  -- sh-kbase
+    ⟨ ⟶ᵀNone ∣∀ ok⟶ᵀNone ⟩∷  -- sh-kU
+    ⟨ r⟶ᵀPi ∣ ok⟶ᵀPi ⟩∷  -- sh-kPi
+    ⟨ r⟶ᵀSg ∣ ok⟶ᵀSg ⟩∷  -- sh-kSg
+    ⟨ r⟶ᵀEl ∣ ok⟶ᵀEl ⟩∷  -- sh-kEl
+    ⟨ r⟶ᵀHom ∣ ok⟶ᵀHom ⟩∷  -- sh-kHom
+    ⟨ ⟶ᵀNone ∣∀ ok⟶ᵀNone ⟩∷  -- sh-kUnit
+    ⟨ ⟶ᵀNone ∣∀ ok⟶ᵀNone ⟩∷  -- sh-kNat
+    ⟨ r⟶ᵀId ∣ ok⟶ᵀId ⟩∷  -- sh-kId
+    ⟨ r⟶ᵀIMu ∣ ok⟶ᵀIMu ⟩∷  -- sh-kIMu
+    ⟨ r⟶ᵀDesc ∣ ok⟶ᵀDesc ⟩∷  -- sh-kDesc
+    ⟨ r⟶ᵀDIh ∣ ok⟶ᵀDIh ⟩∷  -- sh-kDIh
+    ⟨ ⟶ᵀNone ∣∀ ok⟶ᵀNone ⟩∷  -- sh-kFin
+    []ᴿ
 
-module ⟶ᵀF = RedTₘ.Family row⟶ᵀ rowOK⟶ᵀ
+  rows⟶ᵀTm : RedTₘ.RowsOK 1 TmShs
+  rows⟶ᵀTm =
+    ⟨ ⟶ᵀNone ∣∀ ok⟶ᵀNone ⟩∷  -- sh-kvar
+    ⟨ ⟶ᵀNone ∣∀ ok⟶ᵀNone ⟩∷  -- sh-klam
+    ⟨ ⟶ᵀNone ∣∀ ok⟶ᵀNone ⟩∷  -- sh-kapp
+    ⟨ ⟶ᵀNone ∣∀ ok⟶ᵀNone ⟩∷  -- sh-kpair
+    ⟨ ⟶ᵀNone ∣∀ ok⟶ᵀNone ⟩∷  -- sh-kabsurd
+    ⟨ ⟶ᵀNone ∣∀ ok⟶ᵀNone ⟩∷  -- sh-kordtr
+    ⟨ ⟶ᵀNone ∣∀ ok⟶ᵀNone ⟩∷  -- sh-kfst
+    ⟨ ⟶ᵀNone ∣∀ ok⟶ᵀNone ⟩∷  -- sh-ksnd
+    ⟨ ⟶ᵀNone ∣∀ ok⟶ᵀNone ⟩∷  -- sh-kcbase
+    ⟨ ⟶ᵀNone ∣∀ ok⟶ᵀNone ⟩∷  -- sh-kcPi
+    ⟨ ⟶ᵀNone ∣∀ ok⟶ᵀNone ⟩∷  -- sh-kcSg
+    ⟨ ⟶ᵀNone ∣∀ ok⟶ᵀNone ⟩∷  -- sh-kcHom
+    ⟨ ⟶ᵀNone ∣∀ ok⟶ᵀNone ⟩∷  -- sh-khrefl
+    ⟨ ⟶ᵀNone ∣∀ ok⟶ᵀNone ⟩∷  -- sh-ktr
+    ⟨ ⟶ᵀNone ∣∀ ok⟶ᵀNone ⟩∷  -- sh-kap
+    ⟨ ⟶ᵀNone ∣∀ ok⟶ᵀNone ⟩∷  -- sh-kcId
+    ⟨ ⟶ᵀNone ∣∀ ok⟶ᵀNone ⟩∷  -- sh-kidrefl
+    ⟨ ⟶ᵀNone ∣∀ ok⟶ᵀNone ⟩∷  -- sh-kjsub
+    ⟨ ⟶ᵀNone ∣∀ ok⟶ᵀNone ⟩∷  -- sh-kunit
+    ⟨ ⟶ᵀNone ∣∀ ok⟶ᵀNone ⟩∷  -- sh-knzero
+    ⟨ ⟶ᵀNone ∣∀ ok⟶ᵀNone ⟩∷  -- sh-knsuc
+    ⟨ ⟶ᵀNone ∣∀ ok⟶ᵀNone ⟩∷  -- sh-knatrec
+    ⟨ ⟶ᵀNone ∣∀ ok⟶ᵀNone ⟩∷  -- sh-kcon
+    ⟨ ⟶ᵀNone ∣∀ ok⟶ᵀNone ⟩∷  -- sh-kielim
+    ⟨ ⟶ᵀNone ∣∀ ok⟶ᵀNone ⟩∷  -- sh-kdI
+    ⟨ ⟶ᵀNone ∣∀ ok⟶ᵀNone ⟩∷  -- sh-kdS
+    ⟨ ⟶ᵀNone ∣∀ ok⟶ᵀNone ⟩∷  -- sh-kdR
+    ⟨ ⟶ᵀNone ∣∀ ok⟶ᵀNone ⟩∷  -- sh-kdpay
+    ⟨ ⟶ᵀNone ∣∀ ok⟶ᵀNone ⟩∷  -- sh-kdih
+    ⟨ ⟶ᵀNone ∣∀ ok⟶ᵀNone ⟩∷  -- sh-kfzero
+    ⟨ ⟶ᵀNone ∣∀ ok⟶ᵀNone ⟩∷  -- sh-kfsuc
+    ⟨ ⟶ᵀNone ∣∀ ok⟶ᵀNone ⟩∷  -- sh-kfcase
+    ⟨ ⟶ᵀNone ∣∀ ok⟶ᵀNone ⟩∷  -- sh-kfcase0
+    ⟨ ⟶ᵀNone ∣∀ ok⟶ᵀNone ⟩∷  -- sh-kpsplit
+    ⟨ ⟶ᵀNone ∣∀ ok⟶ᵀNone ⟩∷  -- sh-kcNat
+    ⟨ ⟶ᵀNone ∣∀ ok⟶ᵀNone ⟩∷  -- sh-kcIMu
+    ⟨ ⟶ᵀNone ∣∀ ok⟶ᵀNone ⟩∷  -- sh-kcFin
+    ⟨ ⟶ᵀNone ∣∀ ok⟶ᵀNone ⟩∷  -- sh-kcUnit
+    []ᴿ
+
+  rows⟶ᵀ : RedTₘ.RowsOKG zero KSig
+  rows⟶ᵀ = rows⟶ᵀTy ∷ᴳ rows⟶ᵀTm ∷ᴳ []ᴳ
+
+module ⟶ᵀF = RedTₘ.FamilyT rows⟶ᵀ
 
 K⟶ᵀ : RTm Δ → RTm Δ → RTm Δ → RTy Δ
 K⟶ᵀ d t u = ⟶ᵀF.KF (ix⟶ᵀ d t u)

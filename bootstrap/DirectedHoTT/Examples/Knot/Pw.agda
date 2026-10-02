@@ -164,56 +164,77 @@ okPwcHom {Ξ} {j} {p} {c} dj dp dc = ⊢rows {Ξ} {Pwₘ.J} {1} {⌜ TPwcHom j p
 PwNone : Row
 PwNone = record { R = λ j p c → rows [] ; R-sub = λ σ j p c → refl }
 
-okPwNone : {s : ℕ} {sh : Shape} → Pwₘ.RowOK s sh PwNone
-okPwNone dj dp dc = ⊢rows {I = Pwₘ.J} {Cs = []} Pwₘ.⊢J []ᵈ
+okPwNone : (s : ℕ) (sh : Shape) → Pwₘ.RowOK s sh PwNone
+okPwNone s sh dj dp dc = ⊢rows {I = Pwₘ.J} {Cs = []} Pwₘ.⊢J []ᵈ
 
-rowPw : ℕ → ℕ → Row
-rowPw (suc zero) (suc (suc (suc (suc (suc (suc (suc (suc (suc zero))))))))) = rPwcPi
-rowPw (suc zero) (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc zero))))))))))) = rPwcHom
-rowPw _ _ = PwNone
+-- ★ THE FAMILY, as its table: each Knot constructor's row and its typing,
+--   in KSig's order (sort 0: types; sort 1: terms).
+module _ where
+  open Pwₘ using ( ⟨_∣_⟩∷_; ⟨_∣∀_⟩∷_; []ᴿ; _∷ᴳ_; []ᴳ )
 
-rowOKPw : {s c k : ℕ} {shs : Shapes c} {sh : Shape} → NthG KSig s shs → NthSh shs k sh → Pwₘ.RowOK s sh (rowPw s k)
-rowOKPw {sh = sh} nthᵍ-z nh = okPwNone {0} {sh}
-rowOKPw (nthᵍ-s nthᵍ-z) nthʰ-z = okPwNone {1} {sh-kvar}
-rowOKPw (nthᵍ-s nthᵍ-z) (nthʰ-s nthʰ-z) = okPwNone {1} {sh-klam}
-rowOKPw (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s nthʰ-z)) = okPwNone {1} {sh-kapp}
-rowOKPw (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))) = okPwNone {1} {sh-kpair}
-rowOKPw (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))) = okPwNone {1} {sh-kabsurd}
-rowOKPw (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))) = okPwNone {1} {sh-kordtr}
-rowOKPw (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))) = okPwNone {1} {sh-kfst}
-rowOKPw (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))) = okPwNone {1} {sh-ksnd}
-rowOKPw (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))) = okPwNone {1} {sh-kcbase}
-rowOKPw (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))) = okPwcPi
-rowOKPw (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))) = okPwNone {1} {sh-kcSg}
-rowOKPw (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))))) = okPwcHom
-rowOKPw (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))) = okPwNone {1} {sh-khrefl}
-rowOKPw (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))))))) = okPwNone {1} {sh-ktr}
-rowOKPw (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))))) = okPwNone {1} {sh-kap}
-rowOKPw (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))))))))) = okPwNone {1} {sh-kcId}
-rowOKPw (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))))))) = okPwNone {1} {sh-kidrefl}
-rowOKPw (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))))))))))) = okPwNone {1} {sh-kjsub}
-rowOKPw (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))))))))) = okPwNone {1} {sh-kunit}
-rowOKPw (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))))))))))))) = okPwNone {1} {sh-knzero}
-rowOKPw (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))))))))))) = okPwNone {1} {sh-knsuc}
-rowOKPw (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))))))))))))))) = okPwNone {1} {sh-knatrec}
-rowOKPw (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))))))))))))) = okPwNone {1} {sh-kcon}
-rowOKPw (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))))))))))))))))) = okPwNone {1} {sh-kielim}
-rowOKPw (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))))))))))))))) = okPwNone {1} {sh-kdI}
-rowOKPw (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))))))))))))))))))) = okPwNone {1} {sh-kdS}
-rowOKPw (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))))))))))))))))) = okPwNone {1} {sh-kdR}
-rowOKPw (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))))))))))))))))))))) = okPwNone {1} {sh-kdpay}
-rowOKPw (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))))))))))))))))))) = okPwNone {1} {sh-kdih}
-rowOKPw (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))))))))))))))))))))))) = okPwNone {1} {sh-kfzero}
-rowOKPw (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))))))))))))))))))))) = okPwNone {1} {sh-kfsuc}
-rowOKPw (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))))))))))))))))))))))))) = okPwNone {1} {sh-kfcase}
-rowOKPw (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))))))))))))))))))))))) = okPwNone {1} {sh-kfcase0}
-rowOKPw (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))))))))))))))))))))))))))) = okPwNone {1} {sh-kpsplit}
-rowOKPw (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))))))))))))))))))))))))) = okPwNone {1} {sh-kcNat}
-rowOKPw (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))))))))))))))))))))))))))))) = okPwNone {1} {sh-kcIMu}
-rowOKPw (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))))))))))))))))))))))))))) = okPwNone {1} {sh-kcFin}
-rowOKPw (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))))))))))))))))))))))))))))))) = okPwNone {1} {sh-kcUnit}
+  rowsPwTy : Pwₘ.RowsOK 0 TyShs
+  rowsPwTy =
+    ⟨ PwNone ∣∀ okPwNone ⟩∷  -- sh-kbase
+    ⟨ PwNone ∣∀ okPwNone ⟩∷  -- sh-kU
+    ⟨ PwNone ∣∀ okPwNone ⟩∷  -- sh-kPi
+    ⟨ PwNone ∣∀ okPwNone ⟩∷  -- sh-kSg
+    ⟨ PwNone ∣∀ okPwNone ⟩∷  -- sh-kEl
+    ⟨ PwNone ∣∀ okPwNone ⟩∷  -- sh-kHom
+    ⟨ PwNone ∣∀ okPwNone ⟩∷  -- sh-kUnit
+    ⟨ PwNone ∣∀ okPwNone ⟩∷  -- sh-kNat
+    ⟨ PwNone ∣∀ okPwNone ⟩∷  -- sh-kId
+    ⟨ PwNone ∣∀ okPwNone ⟩∷  -- sh-kIMu
+    ⟨ PwNone ∣∀ okPwNone ⟩∷  -- sh-kDesc
+    ⟨ PwNone ∣∀ okPwNone ⟩∷  -- sh-kDIh
+    ⟨ PwNone ∣∀ okPwNone ⟩∷  -- sh-kFin
+    []ᴿ
 
-module PwF = Pwₘ.Family rowPw rowOKPw
+  rowsPwTm : Pwₘ.RowsOK 1 TmShs
+  rowsPwTm =
+    ⟨ PwNone ∣∀ okPwNone ⟩∷  -- sh-kvar
+    ⟨ PwNone ∣∀ okPwNone ⟩∷  -- sh-klam
+    ⟨ PwNone ∣∀ okPwNone ⟩∷  -- sh-kapp
+    ⟨ PwNone ∣∀ okPwNone ⟩∷  -- sh-kpair
+    ⟨ PwNone ∣∀ okPwNone ⟩∷  -- sh-kabsurd
+    ⟨ PwNone ∣∀ okPwNone ⟩∷  -- sh-kordtr
+    ⟨ PwNone ∣∀ okPwNone ⟩∷  -- sh-kfst
+    ⟨ PwNone ∣∀ okPwNone ⟩∷  -- sh-ksnd
+    ⟨ PwNone ∣∀ okPwNone ⟩∷  -- sh-kcbase
+    ⟨ rPwcPi ∣ okPwcPi ⟩∷  -- sh-kcPi
+    ⟨ PwNone ∣∀ okPwNone ⟩∷  -- sh-kcSg
+    ⟨ rPwcHom ∣ okPwcHom ⟩∷  -- sh-kcHom
+    ⟨ PwNone ∣∀ okPwNone ⟩∷  -- sh-khrefl
+    ⟨ PwNone ∣∀ okPwNone ⟩∷  -- sh-ktr
+    ⟨ PwNone ∣∀ okPwNone ⟩∷  -- sh-kap
+    ⟨ PwNone ∣∀ okPwNone ⟩∷  -- sh-kcId
+    ⟨ PwNone ∣∀ okPwNone ⟩∷  -- sh-kidrefl
+    ⟨ PwNone ∣∀ okPwNone ⟩∷  -- sh-kjsub
+    ⟨ PwNone ∣∀ okPwNone ⟩∷  -- sh-kunit
+    ⟨ PwNone ∣∀ okPwNone ⟩∷  -- sh-knzero
+    ⟨ PwNone ∣∀ okPwNone ⟩∷  -- sh-knsuc
+    ⟨ PwNone ∣∀ okPwNone ⟩∷  -- sh-knatrec
+    ⟨ PwNone ∣∀ okPwNone ⟩∷  -- sh-kcon
+    ⟨ PwNone ∣∀ okPwNone ⟩∷  -- sh-kielim
+    ⟨ PwNone ∣∀ okPwNone ⟩∷  -- sh-kdI
+    ⟨ PwNone ∣∀ okPwNone ⟩∷  -- sh-kdS
+    ⟨ PwNone ∣∀ okPwNone ⟩∷  -- sh-kdR
+    ⟨ PwNone ∣∀ okPwNone ⟩∷  -- sh-kdpay
+    ⟨ PwNone ∣∀ okPwNone ⟩∷  -- sh-kdih
+    ⟨ PwNone ∣∀ okPwNone ⟩∷  -- sh-kfzero
+    ⟨ PwNone ∣∀ okPwNone ⟩∷  -- sh-kfsuc
+    ⟨ PwNone ∣∀ okPwNone ⟩∷  -- sh-kfcase
+    ⟨ PwNone ∣∀ okPwNone ⟩∷  -- sh-kfcase0
+    ⟨ PwNone ∣∀ okPwNone ⟩∷  -- sh-kpsplit
+    ⟨ PwNone ∣∀ okPwNone ⟩∷  -- sh-kcNat
+    ⟨ PwNone ∣∀ okPwNone ⟩∷  -- sh-kcIMu
+    ⟨ PwNone ∣∀ okPwNone ⟩∷  -- sh-kcFin
+    ⟨ PwNone ∣∀ okPwNone ⟩∷  -- sh-kcUnit
+    []ᴿ
+
+  rowsPw : Pwₘ.RowsOKG zero KSig
+  rowsPw = rowsPwTy ∷ᴳ rowsPwTm ∷ᴳ []ᴳ
+
+module PwF = Pwₘ.FamilyT rowsPw
 
 KPw : RTm Δ → RTm Δ → RTm Δ → RTy Δ
 KPw d t u = PwF.KF (ixPw d t u)

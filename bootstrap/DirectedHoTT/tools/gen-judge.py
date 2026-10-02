@@ -1427,34 +1427,18 @@ def gen_helpers(maxn):
 
 def gen_table():
     L = ["------------------------------------------------------------------------",
-         "-- ★ THE `⊢ty` ROW TABLE, by type head (all 13)",
+         "-- ★ THE JUDGEMENT'S TABLE: each Knot constructor's row and its typing, in",
+         "--   KSig's order — `⊢ty` by type head (sort 0), `⊢` by term head (sort 1;",
+         "--   `rNone` = not yet a row)",
          "------------------------------------------------------------------------", "",
-         "rowTyGen : ℕ → Row"]
-    for i, h in enumerate(TYHEADS):
-        L.append("rowTyGen %s = r⊢ty%s   -- %s" % (gk.nat(i), h, h))
-    L.append("rowTyGen _ = rNone")
-    L.append("")
-    L.append("okTyGen : {k : ℕ} {sh : Shape} → NthSh TyShs k sh → RowOK 0 sh (rowTyGen k)")
-    for i, h in enumerate(TYHEADS):
-        L.append("okTyGen %s = ok⊢ty%s" % (nth_expr(i, "nthʰ-z", "nthʰ-s"), h))
-    L.append("")
-    L += ["------------------------------------------------------------------------",
-         "-- ★ THE `⊢` ROW TABLE, by term head (all 38; `rNone` = not yet a row)",
-         "------------------------------------------------------------------------", "",
-         "rowTmGen : ℕ → Row"]
-    for i, h in enumerate(TMHEADS):
-        if h in RULES or h in HANDC: r = "r⊢" + h
-        else: r = "rNone"
-        L.append("rowTmGen %s = %s   -- %s" % (gk.nat(i), r, h))
-    L.append("rowTmGen _ = rNone")
-    L.append("")
-    L.append("okTmGen : {k : ℕ} {sh : Shape} → NthSh TmShs k sh → RowOK 1 sh (rowTmGen k)")
-    for i, h in enumerate(TMHEADS):
-        nth = "nthʰ-z"
-        for _ in range(i): nth = "(nthʰ-s %s)" % nth
-        if h in RULES or h in HANDC: o = "ok⊢" + h
-        else: o = "okNone {1} {%s}" % shape_name(h)
-        L.append("okTmGen %s = %s" % (nth, o))
+         "rows⊢ty : RowsOK 0 TyShs", "rows⊢ty ="]
+    for h in TYHEADS:
+        L.append("  ⟨ r⊢ty%s ∣ ok⊢ty%s ⟩∷  -- %s" % (h, h, shape_name(h)))
+    L += ["  []ᴿ", "", "rows⊢ : RowsOK 1 TmShs", "rows⊢ ="]
+    for h in TMHEADS:
+        if h in RULES or h in HANDC: L.append("  ⟨ r⊢%s ∣ ok⊢%s ⟩∷  -- %s" % (h, h, shape_name(h)))
+        else:                        L.append("  ⟨ rNone ∣∀ okNone ⟩∷  -- %s" % shape_name(h))
+    L.append("  []ᴿ")
     return L
 
 # ------------------------------------------------------------ the side-condition families
@@ -1570,6 +1554,36 @@ def gen_pred_con(P, h, prems):
     L.append("")
     return L
 
+
+def emit_table(L, M, fam, none, S, entry):
+    """★ a family AS ITS TABLE (Lib/SynFib.RowsOK): each constructor's row and
+    its typing, in KSig's order; `entry(h)` gives (row, ok) for a head with a
+    rule, None for the family's "no rule here" row (typed at every shape)."""
+    L.append("ok%s : (s : ℕ) (sh : Shape) → %s.RowOK s sh %s" % (none, M, none))
+    L.append("ok%s s sh dj dp dc = ⊢rows {I = %s.J} {Cs = []} %s.⊢J []ᵈ" % (none, M, M))
+    L.append("")
+    L.append("-- ★ THE FAMILY, as its table: each Knot constructor's row and its typing,")
+    L.append("--   in KSig's order (sort 0: types; sort 1: terms).")
+    # the table syntax is opened LOCALLY: several families share one module
+    # application (Preds), and their constructors would be ambiguous
+    L.append("module _ where")
+    L.append("  open %s using ( ⟨_∣_⟩∷_; ⟨_∣∀_⟩∷_; []ᴿ; _∷ᴳ_; []ᴳ )" % M)
+    L.append("")
+    for srt, heads, tag in ((0, TYHEADS, "Ty"), (1, TMHEADS, "Tm")):
+        L.append("  rows%s%s : %s.RowsOK %d %s" % (fam, tag, M, srt, "TyShs" if srt == 0 else "TmShs"))
+        L.append("  rows%s%s =" % (fam, tag))
+        for h in heads:
+            e = entry(h) if srt == S else None
+            if e is None: L.append("    ⟨ %s ∣∀ ok%s ⟩∷  -- %s" % (none, none, shape_name(h)))
+            else:         L.append("    ⟨ %s ∣ %s ⟩∷  -- %s" % (e[0], e[1], shape_name(h)))
+        L.append("    []ᴿ")
+        L.append("")
+    L.append("  rows%s : %s.RowsOKG zero KSig" % (fam, M))
+    L.append("  rows%s = rows%sTy ∷ᴳ rows%sTm ∷ᴳ []ᴳ" % (fam, fam, fam))
+    L.append("")
+    L.append("module %sF = %s.FamilyT rows%s" % (fam, M, fam))
+
+
 def gen_preds():
     L = [PHDR]
     for P, spec in PREDS.items():
@@ -1650,24 +1664,7 @@ def gen_preds():
         L.append("%sNone : Row" % P)
         L.append("%sNone = record { R = λ j p c → rows [] ; R-sub = λ σ j p c → refl }" % P)
         L.append("")
-        L.append("row%s : ℕ → ℕ → Row" % P)
-        for i, h in enumerate(TMHEADS):
-            if h in spec["rows"]:
-                L.append("row%s (suc zero) %s = r%s⊢%s" % (P, gk.nat(i), P, h))
-        L.append("row%s _ _ = %sNone" % (P, P))
-        L.append("")
-        L.append("ok%sNone : {s : ℕ} {sh : Shape} → %sₘ.RowOK s sh %sNone" % (P, P, P))
-        L.append("ok%sNone dj dp dc = ⊢rows {I = %sₘ.J} {Cs = []} %sₘ.⊢J []ᵈ" % (P, P, P))
-        L.append("")
-        L.append("rowOK%s : {s c k : ℕ} {shs : Shapes c} {sh : Shape} → NthG KSig s shs → NthSh shs k sh → %sₘ.RowOK s sh (row%s s k)" % (P, P, P))
-        L.append("rowOK%s {sh = sh} nthᵍ-z nh = ok%sNone {0} {sh}" % (P, P))
-        for i, h in enumerate(TMHEADS):
-            nth = "nthʰ-z"
-            for _ in range(i): nth = "(nthʰ-s %s)" % nth
-            o = ("ok%s⊢%s" % (P, h)) if h in spec["rows"] else ("ok%sNone {1} {%s}" % (P, shape_name(h)))
-            L.append("rowOK%s (nthᵍ-s nthᵍ-z) %s = %s" % (P, nth, o))
-        L.append("")
-        L.append("module %sF = %sₘ.Family row%s rowOK%s" % (P, P, P, P))
+        emit_table(L, "%sₘ" % P, P, "%sNone" % P, 1, lambda h: ("r%s⊢%s" % (P, h), "ok%s⊢%s" % (P, h)) if h in spec["rows"] else None)
         L.append("")
         L.append("-- the predicate at a code `c : K 1 d`")
         L.append("K%s : RTm Δ → RTm Δ → RTy Δ" % P)
@@ -1841,27 +1838,7 @@ def gen_red(fam, only=None):
     L.append("%s : Row" % none)
     L.append("%s = record { R = λ j p c → rows [] ; R-sub = λ σ j p c → refl }" % none)
     L.append("")
-    L.append("ok%s : {s : ℕ} {sh : Shape} → %s.RowOK s sh %s" % (none, m, none))
-    L.append("ok%s dj dp dc = ⊢rows {I = %s.J} {Cs = []} %s.⊢J []ᵈ" % (none, m, m))
-    L.append("")
-    srt_pat = "(suc zero)" if S == 1 else "zero"
-    L.append("row%s : ℕ → ℕ → Row" % fam)
-    for i, h in enumerate(heads):
-        if h in rules:
-            L.append("row%s %s %s = r%s%s" % (fam, srt_pat, gk.nat(i), fam, h))
-    L.append("row%s _ _ = %s" % (fam, none))
-    L.append("")
-    L.append("rowOK%s : {s c k : ℕ} {shs : Shapes c} {sh : Shape} → NthG KSig s shs → NthSh shs k sh → %s.RowOK s sh (row%s s k)" % (fam, m, fam))
-    other = "(nthᵍ-s nthᵍ-z)" if S == 0 else "nthᵍ-z"
-    mine = "nthᵍ-z" if S == 0 else "(nthᵍ-s nthᵍ-z)"
-    L.append("rowOK%s {sh = sh} %s nh = ok%s {%d} {sh}" % (fam, other, none, 1 - S))
-    for i, h in enumerate(heads):
-        nth = "nthʰ-z"
-        for _ in range(i): nth = "(nthʰ-s %s)" % nth
-        o = ("ok%s%s" % (fam, h)) if h in rules else ("ok%s {%d} {%s}" % (none, S, shape_name(h)))
-        L.append("rowOK%s %s %s = %s" % (fam, mine, nth, o))
-    L.append("")
-    L.append("module %sF = %s.Family row%s rowOK%s" % (fam, m, fam, fam))
+    emit_table(L, m, fam, none, S, lambda h: ("r%s%s" % (fam, h), "ok%s%s" % (fam, h)) if h in rules else None)
     L.append("")
     ix = FAMS[fam]["ix"]
     L.append("K%s : RTm Δ → RTm Δ → RTm Δ → RTy Δ" % fam)
@@ -2073,7 +2050,7 @@ open import DirectedHoTT.Examples.Knot.JudgeIx
 open import DirectedHoTT.Examples.Knot.JudgeTmIx
 open import DirectedHoTT.Examples.Knot.JudgeCase
 open import DirectedHoTT.Examples.Knot.GenHelpers
-open import DirectedHoTT.Examples.Knot.JudgeFib using ( RowOK; okNone )
+open import DirectedHoTT.Examples.Knot.JudgeFib using ( RowOK; okNone; RowsOK; ⟨_∣_⟩∷_; ⟨_∣∀_⟩∷_; []ᴿ )
 open import DirectedHoTT.Examples.Knot.Preds using ( ⌜Flat⌝; ⊢⌜Flat⌝; ⌜Flat⌝-sub; ⌜NNC⌝; ⊢⌜NNC⌝; ⌜NNC⌝-sub )
 open import DirectedHoTT.Metatheory.SubjectReductionBase using () renaming ( wk-sub to wkS )
 open import DirectedHoTT.Examples.Knot.JudgeRowsTm using ( module PFz; module PFs; okFzI; okFsI; ⊢varOf )

@@ -51,5 +51,5 @@ r1 : {Ξ : Ctx} {j p : RTm ⌊ Ξ ⌋} (s k : ℕ) (sh : Shape) →
      Ξ ⊢ p ∷ PayV (rec s k ∷ʰ sh) (pair (tag 0) j) (SI 2) (SD KSig) → Ξ ⊢ snd p ∷ PayV sh (pair (tag 0) j) (SI 2) (SD KSig)
 r1 s k sh dp = ⊢recSnd {s = s} {k = k} {sh = sh} dp
 
-okNone : {s : ℕ} {sh : Shape} → RowOK s sh rNone
-okNone dj dp dc = ⊢rows {I = JT} {Cs = []} ⊢JT []ᵈ
+okNone : (s : ℕ) (sh : Shape) → RowOK s sh rNone
+okNone s sh dj dp dc = ⊢rows {I = JT} {Cs = []} ⊢JT []ᵈ

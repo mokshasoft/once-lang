@@ -36,6 +36,7 @@ open import DirectedHoTT.Lib.Sugar using ( tag; conₗ )
 open import DirectedHoTT.Lib.Syn
 open import DirectedHoTT.Lib.Tel
 open import DirectedHoTT.Lib.SynFib
+open import DirectedHoTT.Lib.SynTravM using ( +'-zero )
 
 private
   variable
@@ -219,3 +220,9 @@ module SynFam {sg : Sig n} (ok : SigOK n sg)
            app DF (ixJ (pair (tag s) j) (conₗ k p) c) ⟶* Row.R (row s k) j p c
     fibF {s = s} {k = k} {j = j} {p} {c} ng nh =
       ⟶*-trans (DF-β (pair (tag s) j) (conₗ k p) c) (fib-βₒ {D = SD sg} {j = j} {p = p} {c = c} ng nh)
+
+  -- ★ THE FAMILY, from its table: the rows and their typings, in the
+  --   signature's order (`RowsOKG`).  This is the form a family should be
+  --   written in; `Family` is what it compiles to.
+  module FamilyT (t : RowsOKG zero sg) =
+    Family (rowIn t) (okOf t)
