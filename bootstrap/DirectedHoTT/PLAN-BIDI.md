@@ -82,6 +82,51 @@ once. That is a theorem to state and prove (δ-elimination), not an
 assumption. Opacity (`abstract`-style constants that do not δ-unfold) is
 the follow-on question.
 
+### 2-bis. ★ DECISION 2 REFINED (2026-10-02): definitions extend the THEORY — a global signature Σ
+
+Three candidates were weighed by the mathematics. The compiler's core (branch
+`plan-0.91-program-facts`, `formal/Once/Spec/Core`) was read as evidence, not
+as the answer: neither line is the truth.
+
+- **What a definition is.** Extending a theory by `c := e : A` is an
+  EXTENSION BY DEFINITIONS. It is conservative and eliminable: a model of
+  `T + (c := e)` is a model of `T` with `c` forced to `⟦e⟧`, so every model
+  extends uniquely. Locally, in a CwF, the context `Γ, x := e` is isomorphic
+  to `Γ` via the substitution `x ↦ e`, and δ is that isomorphism acting on
+  syntax.
+- **(i) Constants only in the annotated layer, erased by inlining.** ⛔ Not a
+  theory of definitions: they never exist in the theory, so the checker
+  reasons about expanded terms. It is 2c with names on top; "check once" is
+  lost exactly in conversion.
+- **(iii) Definitions as context entries `Γ, x : A := e`.** A different, more
+  general feature: LOCAL definitions (`let`, ζ). Reduction becomes
+  context-dependent (`Γ ⊢ x ⟶ e`), so confluence, SR, the logical relation
+  and SN must carry contexts through reduction. The kernel's reduction is
+  context-free today. Not needed for S5; it can be added later on top of
+  (ii).
+- **(ii) A global signature Σ of CLOSED definitions.** ✅ CHOSEN. This is
+  extension by definitions exactly, not an approximation of (iii).
+  - Each entry `d : A = e` is typed in its PREFIX (acyclic).
+  - `ref d` is typed from the declared type alone; `ref d ⟶ body d` (δ).
+  - The bodies are closed, so δ is CONTEXT-FREE: Σ is a fixed parameter of
+    the metatheory, and the existing proofs extend by one more reduction
+    rule rather than a re-architecture.
+  - Conservativity (δ-elimination) is substitution of closed terms, by
+    induction on the telescope.
+
+**Where dHoTT and the compiler differ, and which side should move:**
+
+- The compiler's `ref d τ` carries a `GSub` instantiating prenex type
+  variables, because its non-dependent core has no type abstraction in terms.
+  In a dependent kernel polymorphism is `Π` over `U`, so a CLOSED `ref d`
+  applied to codes is the principled form. When the compiler's core gains
+  dependent formers, its `∀`-schemas become `Π`-types: the compiler moves.
+- The compiler gives `ref` meaning through an environment, with no δ. That is
+  right for a non-dependent core, where types never compute. A dependent
+  kernel needs δ in conversion. Not a disagreement.
+- Prefix-typed, acyclic telescopes: both, for the same reason
+  (well-foundedness of δ).
+
 ## 3. Stages
 
 | # | stage | state |
@@ -91,7 +136,7 @@ the follow-on question.
 | S2 | The annotated layer (§3d): `Spec/Annotated` (`ATm`/`ATy`, ren/sub, erasure + commutation), `⊢ᴬ`, erasure-soundness | ✅ `70a8c1b2e`. Ported to the levitated kernel in PLAN-LEVITATION Stage F: `Spec/AnnotatedDesc`, and `Spec/TypingA` via `tools/genA.py` |
 | S3 | The checker for `⊢ᴬ` (`Algorithm/CheckA`): certifying, STRUCTURAL (every former infers — no fuel); the term's own annotations checked with `⊢ᴬ`, all type reasoning on ERASURES (`validity`, `normTy`, `decConvᵀ`), annotated views of inferred types LIFTED from erased normal forms. Then COMPLETENESS (uniqueness of types up to conversion) | ✅ **2026-10-02: `⊢ᴬ` is DECIDABLE** (§3a). `inferᴬ`/`checkᴬ`/`checkTyᴬ` return `Dec`, certifying both the YES and the NO, for every former. |
 | S4 | Decide TYPE conversion `≅ᵀ` completely — ROUTE C (§3b): ① validity + `srᵀ` (`Metatheory/Validity`) ✅; ② inversion — the existing `gen-*` sufficed ✅; ③ `normTy`/`decConvᵀ` (`Metatheory/NormTy`) ✅ — **structural, NO measure needed**: `homNF` recurses on the NORMAL ambient (`G` ⊂ `Π F G`), the created `app f↑ vz` go through the typed `wnorm`, and a `NoU` witness breaks the harmless `elNF ↔ homNF` cycle | ✅ |
-| S5 | The signature: constants, δ, and the conservativity theorem | ⬜ |
+| S5 | The signature: constants, δ, and the conservativity theorem — design (ii), §2-bis | 🟡 **next** |
 | S6 | The bidirectional SURFACE → annotated core elaborator. `Algorithm/Check`'s slice 1 is its seed; the Once compiler's `formal/Once/TypeCheck` is the shape template | ⬜ |
 | S7 | The Knot WRITTEN in the annotated core with signature references; its wf derivations come from `inferᴬ`, not from a generator. User, 2026-10-02: "if we have to write code to generate the Knot something is wrong". Measure against `HANDOFF-2026-09-24` §4's split | ⬜ |
 
