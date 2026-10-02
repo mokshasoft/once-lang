@@ -32,6 +32,8 @@ import DirectedHoTT.Algorithm.CheckA
 import DirectedHoTT.Algorithm.DecEq
 import DirectedHoTT.Algorithm.DecideConversion
 import DirectedHoTT.Algorithm.DecideConversionTyped
+import DirectedHoTT.Algorithm.Elab
+import DirectedHoTT.Algorithm.Surface
 import DirectedHoTT.Metatheory.Canonicity
 import DirectedHoTT.Metatheory.Confluence
 import DirectedHoTT.Metatheory.Erasure
