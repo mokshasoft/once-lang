@@ -31,15 +31,16 @@ module Once.CCC.Machine.ReadTypedAdequate (o : CanonicalName) (tbl : List IRFun)
 
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Unit using (⊤; tt)
-open import Data.Product using (_×_; _,_)
+open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; sym; trans; subst)
 open import Function using (id)
 
 open import Once.Type using (Type; Unit; Int; _*_)
 import Once.Type
 open import Once.IRTy using (⌊_⌋; fits-int)
+open import Once.Functor.Translate using (IsBaseType; base-Unit; base-Int; base-Prod)
 open import Once.Semantics.Machine using (⟦_⟧; coh)
-open import Once.Denotation.ValueDomain using (forget) renaming (⟦_⟧ᴰᴵ to ⟦_⟧ᴵ)
+open import Once.Denotation.ValueDomain using (forgetᵇ; cohᴰ) renaming (⟦_⟧ᴰᴵ to ⟦_⟧ᴵ)
 open import Once.CCC.Machine.SMCore
 open AbstractExec {FS}
 open MemOps {FS}
@@ -78,28 +79,29 @@ subst-×-cong₂ refl refl a b = refl
 -- the transport splits (`subst-×-cong₂`) to match the two recursive reads.
 -- D180: the value is DENOTATIONAL, so it is `forget`ten before it crosses the
 -- seam — which is exactly what `evalᴰ (SigOp si)` does with its own input
--- (`subst id (coh A) (forget a)`, DenotTrace:145). Stating adequacy in that
+-- (plan 0.105: `forgetᵇ (baseA si)`, at the base-type witness the SigOp
+-- carries; the lemma takes the witness, so the consumer passes its own). Stating adequacy in that
 -- same form is what lets the consumer's `rewrite` close by `refl`; a
 -- separately-invented coherence would have needed a bridge lemma to `coh`.
-readTyped-cell-adequate : ∀ {A} (r : Readable A) → ∀ {cl s alloc} {c : ⟦ ⌊ A ⌋ ⟧ᴵ}
+readTyped-cell-adequate : ∀ {A} (r : Readable A) (ib : IsBaseType A) → ∀ {cl s alloc} {c : ⟦ ⌊ A ⌋ ⟧ᴵ}
                         → CellAt alloc ⌊ A ⌋ c cl s
                         → readTyped-cell (λ l → readTyped A l s) (readReg-typed A)
                             (readLoc s cl)
-                          ≡ just (subst id (coh A) (forget c))
-readTyped-adequate : ∀ {A} (r : Readable A) → ∀ {loc s m alloc} {v : ⟦ ⌊ A ⌋ ⟧ᴵ}
+                          ≡ just (forgetᵇ ib (subst id (cohᴰ A) c))
+readTyped-adequate : ∀ {A} (r : Readable A) (ib : IsBaseType A) → ∀ {loc s m alloc} {v : ⟦ ⌊ A ⌋ ⟧ᴵ}
                    → ValidAtWF m alloc {⌊ A ⌋} v loc s
-                   → readTyped A loc s ≡ just (subst id (coh A) (forget v))
-readTyped-adequate r-unit valid-unit-wf = refl
-readTyped-adequate r-int (valid-int-wf bf rl) rewrite rl = refl
-readTyped-adequate (r-pair rA rB) (valid-pair-wf lmm slb fc sc)
-  rewrite readTyped-cell-adequate rA fc | readTyped-cell-adequate rB sc =
-  cong just (sym (subst-×-cong₂ (coh _) (coh _) _ _))
+                   → readTyped A loc s ≡ just (forgetᵇ ib (subst id (cohᴰ A) v))
+readTyped-adequate r-unit base-Unit valid-unit-wf = refl
+readTyped-adequate r-int base-Int (valid-int-wf bf rl) rewrite rl = refl
+readTyped-adequate (r-pair {A} {B} rA rB) (base-Prod iA iB) {v = v} (valid-pair-wf lmm slb fc sc)
+  rewrite readTyped-cell-adequate rA iA fc | readTyped-cell-adequate rB iB sc =
+  cong just (cong (forgetᵇ (base-Prod iA iB)) (sym (subst-×-cong₂ (cohᴰ A) (cohᴰ B) (proj₁ v) (proj₂ v))))
 
 -- D187: the CELL-level half. A pair cell is a pointer or the component
 -- itself, and `readTyped-cell` dispatches on exactly that — so this lemma has
 -- one clause per residence and neither invents anything.
-readTyped-cell-adequate r-unit (cell-ptr r bf v)    rewrite r = refl
-readTyped-cell-adequate r-unit {s = s} (cell-inline rep r)  rewrite r = unit-cell rep
+readTyped-cell-adequate r-unit base-Unit (cell-ptr r bf v)    rewrite r = refl
+readTyped-cell-adequate r-unit base-Unit {s = s} (cell-inline rep r)  rewrite r = unit-cell rep
   where
     unit-cell : ∀ {c} (rep : InlineRep ⌊ Unit ⌋)
               → readTyped-cell (λ l → readTyped Unit l s) (readReg-typed Unit)
@@ -110,11 +112,11 @@ readTyped-cell-adequate r-unit {s = s} (cell-inline rep r)  rewrite r = unit-cel
     unit-cell (rep-unit _ (SV-Tag _))   = refl
     unit-cell (rep-unit _ (SV-Lit _ _)) = refl
     unit-cell (rep-unit _ (SV-Code _))  = refl
-readTyped-cell-adequate r-int  (cell-ptr r bf v)
-  rewrite r = readTyped-adequate r-int v
-readTyped-cell-adequate r-int  (cell-inline (rep-prim fits-int) r) rewrite r = refl
-readTyped-cell-adequate r-int  (cell-inline (rep-unit () _) r)
-readTyped-cell-adequate (r-pair rA rB) (cell-ptr r bf v)
-  rewrite r = readTyped-adequate (r-pair rA rB) v
-readTyped-cell-adequate (r-pair rA rB) (cell-inline (rep-prim ()) r)
-readTyped-cell-adequate (r-pair rA rB) (cell-inline (rep-unit () _) r)
+readTyped-cell-adequate r-int base-Int (cell-ptr r bf v)
+  rewrite r = readTyped-adequate r-int base-Int v
+readTyped-cell-adequate r-int base-Int (cell-inline (rep-prim fits-int) r) rewrite r = refl
+readTyped-cell-adequate r-int base-Int (cell-inline (rep-unit () _) r)
+readTyped-cell-adequate (r-pair rA rB) ib (cell-ptr r bf v)
+  rewrite r = readTyped-adequate (r-pair rA rB) ib v
+readTyped-cell-adequate (r-pair rA rB) _ (cell-inline (rep-prim ()) r)
+readTyped-cell-adequate (r-pair rA rB) _ (cell-inline (rep-unit () _) r)

@@ -24,7 +24,7 @@
 open import Once.CanonicalName using (CanonicalName)
 
 import Data.List as DL
-open import Once.Denotation.Program using (IRFun; tableEnv; LinkedAt)
+open import Once.Denotation.Program using (IRFun; tableEnv; tableCalls; LinkedAt)
 module Once.CCC.Codegen.IRObsCorrect.Interface (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Prelude o tbl public
@@ -41,15 +41,53 @@ import Once.Semantics.Machine as EvV
 import Once.CCC.Machine.ReadTypedAdequate as RTA
 import Once.Denotation.DenotTrace as DT
 import Once.Denotation.TraceMonad as TM
-open import Once.Res using (Res; stopped; returns)
+open import Once.Res using (Res; stopped; returns; is-stopped)
+open import Data.Bool using (Bool)
+import Data.List.Properties
+open import Once.CCC.Machine.FlatLog using (LogFree)
+import Once.CCC.Machine.FlatLog
 
 module Core {FS : FrameSemantics} where
+  private module LP = Once.CCC.Machine.FlatLog.LogPres {FS}
   -- …and the reference DENOTATION at the same format. That the machine and the
   -- denotation read the format from ONE place is what makes this module's
   -- obligations discharge: `float-format FS` is what `exec-abstract` encodes a
   -- float literal at, so it is what `evalᴰ` must mean by one.
+
+  -- Plan 0.105: the machine runs in the world `ιᶠ` (its frame semantics'
+  -- interpretation), and a fragment starts mid-program: what the denotation
+  -- means there is its run against `ιᶠ` FROM THE MACHINE'S LOG at the
+  -- fragment's entry state. An answering call's answer depends on that log,
+  -- which is why the obligations below take it from the state rather than
+  -- from the empty history.
+  ιᶠ : TM.Interp
+  ιᶠ = Once.CCC.FrameSemantics.fs-interp FS
+
   evalᴰ : ∀ {A B} → IR A B → DT.⟦ A ⟧ᴰᴵ → TM.T DT.⟦ B ⟧ᴰᴵ
-  evalᴰ = DT.evalᴰ (Once.CCC.FrameSemantics.fs-numerics FS) (tableEnv (Once.CCC.FrameSemantics.fs-numerics FS) tbl)
+  evalᴰ = DT.evalᴰ (Once.CCC.FrameSemantics.fs-numerics FS)
+                   (tableEnv (Once.CCC.FrameSemantics.fs-numerics FS) (TM.Interp.pure ιᶠ) tbl)
+
+  runAt : ∀ {X} → LocState FS → TM.T X → TM.Run X
+  runAt s m = TM.run ιᶠ (LocState.ev-log s) m
+
+  -- …its calls, how it ends, and whether it stopped.
+  eventsAt : ∀ {X} → LocState FS → TM.T X → DL.List SigOpEvent
+  eventsAt s m = proj₁ (runAt s m)
+
+  resultAt : ∀ {X} → LocState FS → TM.T X → Res X
+  resultAt s m = proj₂ (runAt s m)
+
+  stopsAt : ∀ {X} → LocState FS → TM.T X → Bool
+  stopsAt s m = is-stopped (resultAt s m)
+
+  -- A fragment that makes no call leaves the log as it found it.
+  log-pure : ∀ {s : LocState FS} → LocState.ev-log s ≡ LocState.ev-log s DL.++ DL.[]
+  log-pure = sym (Data.List.Properties.++-identityʳ _)
+
+  -- The value of a computation that RETURNS AT ONCE (`ret v`: a constructor,
+  -- a destructor, a suspension). It makes no call, so no history is read.
+  retVal : ∀ {X} (m : TM.T X) {p : TM.Returns? (TM.resultAt ιᶠ DL.[] m)} → X
+  retVal m {p} = TM.valueT ιᶠ DL.[] m {p}
 
   -- D174: the STEP vocabulary for a run that allocates and dereferences.
   -- `flat-step-straight` threads `exec-abstract` definitionally, so the
@@ -63,6 +101,11 @@ module Core {FS : FrameSemantics} where
   open RecSchemeSemantics {FS} using (exec-abstract-preserves-heap-ref) public
 
   open FlatMachine {FS} public
+
+  -- …and one call-free flat step is such a fragment (`FlatLog`).
+  log-step : ∀ (i : AbstractInstr) → LogFree i → ∀ prog (fs : FlatState)
+           → LocState.ev-log (floc (flat-exec-instr i prog fs)) ≡ LocState.ev-log (floc fs) DL.++ DL.[]
+  log-step i lf prog fs = trans (LP.flat-exec-instr-log i lf prog fs) (log-pure {floc fs})
   open FlatStepsAPI {FS} using (FlatSteps; []; _∷_; step-at; exec-flat-steps; FlatSteps-++; FlatSteps-prefix; FlatSteps-reloc) public
   open AbstractExec {FS} using (exec-abstract; exec-sigop-halts; exec-sigop-halts-of; exec-sigop-output-of; pure-sigop-output; pure-sigop-out-aux; pure-sigop-out-val; readTyped; readReg-typed) public
   open FrontierInvariant {FS} using (BeforeFrontier; frontier-monotone) public
@@ -110,7 +153,7 @@ module Core {FS : FrameSemantics} where
                 {alloc : AllocState {FS}} {loc : ValueLocation FS} {s : LocState FS}
               → ValidAtWF m alloc {μ-type F} x loc s
               → ValidAtWF m alloc {⟦ F ⟧TI (μ-type F)}
-                  (TM.valueT (evalᴰ (out-μ wf) x) 0) loc s
+                  (retVal (evalᴰ (out-μ wf) x)) loc s
   μ-layer-iso wf x (valid-μ-wf wf′ .x layer-v)
     rewrite WellFormedFI-irrelevant wf wf′ = layer-v
 
@@ -289,12 +332,21 @@ module Core {FS : FrameSemantics} where
       -- fragment's text; once the Spec has stopped, so has the machine — and
       -- the pc is wherever the halting instruction left it, INSIDE the text,
       -- which is why `at-end` is conditioned too.
-      live       : TM.stoppedT (evalᴰ ir x) k ≡ false → halted (floc settle) ≡ false
-      at-end     : TM.stoppedT (evalᴰ ir x) k ≡ false
+      live       : stopsAt s (evalᴰ ir x) ≡ false → halted (floc settle) ≡ false
+      at-end     : stopsAt s (evalᴰ ir x) ≡ false
                  → fpc settle ≡ length (emitted n l ir) + base
-      stops      : TM.stoppedT (evalᴰ ir x) k ≡ true  → halted (floc settle) ≡ true
+      stops      : stopsAt s (evalᴰ ir x) ≡ true  → halted (floc settle) ≡ true
       no-ret     : fret settle ≡ []
       no-link    : flink settle ≡ nothing
+      -- Plan 0.105: THE LOG GROWS BY EXACTLY THE FRAGMENT'S CALLS. A sequel
+      -- runs from `settle`, and its answers are the interpretation's at the
+      -- log there — so `g ∘ f` can only hand `g` the run the denotation means
+      -- (`run ι (h ++ es) (g v)`, `run-bind`) if `f`'s settle log IS the entry
+      -- log followed by `f`'s calls. A field rather than a lemma over
+      -- `FlatSteps`: the retired nested instructions (`instr-case-on-tag`,
+      -- `instr-loop`) grow the log without an `event-of`, and a chain does not
+      -- know it was emitted.
+      log        : LocState.ev-log (floc settle) ≡ LocState.ev-log s DL.++ eventsAt s (evalᴰ ir x)
       -- D179: the value comes from `evalᴰ`, not the pure `eval`. While it was
       -- `eval ir x` the value half refined a DIFFERENT semantics from the
       -- trace half — the same two-models category error this codebase retired
@@ -326,7 +378,7 @@ module Core {FS : FrameSemantics} where
       -- one fact, and it carries the value: `resT ≡ returns v` is BOTH the
       -- condition and the witness, and `v` is bound by it rather than
       -- computed beside it. The obligation can no longer be mis-stated.
-      place      : ∀ {v} → TM.T.resT (evalᴰ ir x) ≡ returns v
+      place      : ∀ {v} → resultAt s (evalᴰ ir x) ≡ returns v
                  → ResultPlace B out-mode (falloc settle) cont-alloc
                      v (floc settle)
       -- D204: WHAT THE RUN LEAVES ALONE.
@@ -452,9 +504,11 @@ module Core {FS : FrameSemantics} where
       -- emitted at all and the ∃ was vacuous. It becomes real again when `Ana`
       -- gets an emitter, which CLASS G already records as codegen work rather
       -- than proof work.
+      -- Plan 0.105: EXACT. The tree is finite, so a run's calls are one
+      -- finite list and the chain to `settle` makes all of them; the depth-`k`
+      -- prefix is the consumer's to take.
       traces-agree :
-        take k (chain-events (ValueRealized.run value-realized))
-          ≡ take k (projTrace (evalᴰ ir x) k)
+        chain-events (ValueRealized.run value-realized) ≡ eventsAt s (evalᴰ ir x)
       -- The value device: "the value the next effectful SigOp reads is right".
       -- Plan 0.54 rung A: a `ResultPlace` (register `at-reg` OR memory `at-loc`),
       -- NOT bare `ValidAtWF` at a memory loc — a Pure primitive result is
@@ -539,19 +593,21 @@ module Core {FS : FrameSemantics} where
       -- closure may invoke a halting SigOp; then it never reaches its `c-ret`
       -- and never returns. `live`/`returned`/`place` are what a RETURNING
       -- callee leaves, and `stops` is the other half.
-      live       : TM.stoppedT comp k ≡ false → halted (floc settle) ≡ false
+      live       : stopsAt (floc fs) comp ≡ false → halted (floc settle) ≡ false
       -- …and it RETURNED: the block ends in `c-ret`, which pops the address
       -- the call pushed and leaves the caller's own (empty) stack behind.
-      returned   : TM.stoppedT comp k ≡ false → fpc settle ≡ ret-pc
-      stops      : TM.stoppedT comp k ≡ true  → halted (floc settle) ≡ true
+      returned   : stopsAt (floc fs) comp ≡ false → fpc settle ≡ ret-pc
+      stops      : stopsAt (floc fs) comp ≡ true  → halted (floc settle) ≡ true
       no-ret     : fret settle ≡ []
       no-link    : flink settle ≡ nothing
       -- plan 0.98: the premise supplies the value — see `ValueRealized.place`.
-      place      : ∀ {v} → TM.T.resT comp ≡ returns v
+      place      : ∀ {v} → resultAt (floc fs) comp ≡ returns v
                  → ResultPlace B out-mode (falloc settle) cont-alloc
                      v (floc settle)
-      events     : take k (chain-events run)
-                   ≡ take k (projTrace comp k)
+      -- Plan 0.105: exact, and the log grows by them — see
+      -- `ValueRealized.log`/`traces-agree`.
+      events     : chain-events run ≡ eventsAt (floc fs) comp
+      log        : LocState.ev-log (floc settle) ≡ LocState.ev-log (floc fs) DL.++ eventsAt (floc fs) comp
       -- D204: WHAT THE CALL LEAVES ALONE — the call half of the same fact
       -- `ValueRealized.mem-pres` states for a straight-line fragment.
       --
@@ -632,7 +688,7 @@ module Core {FS : FrameSemantics} where
       {m : AllocMode} {alloc' : AllocState {FS}}
       {vloc : ValueLocation FS} {st : LocState FS}
     → ValidAtWF m alloc' {ν-type F}
-        (TM.valueT (evalᴰ (Ana wf coalg) seed) 0) vloc st
+        (retVal (evalᴰ (Ana wf coalg) seed)) vloc st
     → MemOps.readLoc st (sucLoc vloc) ≡ just (SV-Code ℓ)
     → ∃[ j ]
         ( (find-thunk prog ℓ ≡ just j)
@@ -647,7 +703,7 @@ module Core {FS : FrameSemantics} where
            -- named this label. That is `mapAnaᵈ H H coalg (valueT (coalg a))`,
            -- which is precisely the half of `forceᵈ` the emitter used to skip.
            → CalleeRun prog fs ret-pc (⟦ F ⟧TI (ν-type F))
-               (evalᴰ (Out wf) (TM.valueT (evalᴰ (Ana wf coalg) seed) 0)) k))
+               (evalᴰ (Out wf) (retVal (evalᴰ (Ana wf coalg) seed))) k))
 
   -- D245: the third block kind, the program's own FUNCTIONS. A direct call
   -- (`Call f`, lowered to `c-call-fn f`) names its callee statically, so the
@@ -668,7 +724,7 @@ module Core {FS : FrameSemantics} where
            → fpc fs ≡ j → halted (floc fs) ≡ false → fret fs ≡ ret-pc ∷ []
            → falloc fs ≡ enter-call pre-alloc
            → InputAt {A} mIn' pre-alloc x (floc fs)
-           → CalleeRun prog fs ret-pc B (tableEnv (Once.CCC.FrameSemantics.fs-numerics FS) tbl f A B x) k))
+           → CalleeRun prog fs ret-pc B (tableCalls (Once.CCC.FrameSemantics.fs-numerics FS) (TM.Interp.pure ιᶠ) tbl f A B x) k))
 
   -- All block-table premises in ONE slot, so adding one does not re-thread the
   -- fourteen discharge clauses that only pass it along.
