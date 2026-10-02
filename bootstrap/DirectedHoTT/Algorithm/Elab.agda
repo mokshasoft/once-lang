@@ -240,6 +240,13 @@ annM w e t p nothing    = inf e t >>= λ r → ok (tm r)
 annMot : {Δ : Cx} → String → Env Δ → STy Δ → Maybe (ATy Δ) → R (ATy Δ)
 annMot = annT
 
+-- a case's motive with no expected type: the CONSTANT one at the type
+-- its first branch infers (the result is re-checked by CheckA anyway)
+constMot : {Δ : Cx} → Env Δ → STy (Δ ∙) → STm Δ → Maybe (ATy Δ) → R (Maybe (ATy (Δ ∙)))
+constMot e P     a (just T) = ok (just (wk1 T))
+constMot e S.□ᵀ a nothing  = inf e a >>= λ ra → ok (just (wk1 (ty ra)))
+constMot e P     a nothing  = ok nothing
+
 fstM : {A B : Set} → Maybe (Pair A B) → Maybe A
 fstM m = m >>=ᵐ λ { (a , _) → just a }
 
@@ -430,7 +437,8 @@ el e (S.fsuc n t) mT with mT ⟫ finSV
   ok (fsuc k (tm r) ∶ Fin (suc k)))
 el e (S.fcase n P t a b) mT = at "fcase" (
   inf e t >>= λ rt → need "the scrutinee is not a Fin (suc n)" (finSV (ty rt)) >>= λ k →
-  annMot "the motive (the constant one needs an expected type)" (e ▸ Fin (suc k)) P (mapᵐ wk1 mT) >>= λ P' →
+  constMot e P a mT >>= λ mP →
+  annMot "the motive (the constant one needs an expected type)" (e ▸ Fin (suc k)) P mP >>= λ P' →
   chk e a (subTyᴬ (singleᴬ (fzero k)) P') >>= λ a' →
   chk (e ▸ Fin k) b (subTyᴬ (fsucSᴬ k) P') >>= λ b' →
   ok (fcase k P' (tm rt) a' b' ∶ subTyᴬ (singleᴬ (tm rt)) P'))
