@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.CCC.Codegen.IRObsCorrect.TwoCellBuild
+-- Once.CCC.Codegen.IRObsCorrect.TwoCell.Build
 --
 -- The FACTS about the two-cell build's states (`TwoCellRun`): what it
 -- reads back, its frontier and what it leaves alone.
@@ -12,7 +12,7 @@ open import Once.CanonicalName using (CanonicalName)
 
 import Data.List as DL
 open import Once.Denotation.Program using (IRFun; tableEnv)
-module Once.CCC.Codegen.IRObsCorrect.TwoCellBuild (o : CanonicalName) (tbl : DL.List IRFun) where
+module Once.CCC.Codegen.IRObsCorrect.TwoCell.Build (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
 
@@ -25,7 +25,7 @@ import Once.CCC.Machine.ReadTypedAdequate as RTA
 import Once.Denotation.DenotTrace as DT
 import Once.Denotation.TraceMonad as TM
 
-open import Once.CCC.Codegen.IRObsCorrect.TwoCellRun o tbl
+open import Once.CCC.Codegen.IRObsCorrect.TwoCell.Run o tbl
 
 module TwoCellBuildC {FS : FrameSemantics} where
 

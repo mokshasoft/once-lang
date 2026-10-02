@@ -62,7 +62,7 @@ open import Once.CCC.Codegen.IRObsCorrect.Case    o tbl
 open import Once.CCC.Codegen.IRObsCorrect.Call    o tbl
 -- `PairAssemble` imports `Pair` (the four clusters) itself, WITHOUT `public`
 -- — same D200 rule: only this façade re-exports.
-open import Once.CCC.Codegen.IRObsCorrect.PairAssemble o tbl
+open import Once.CCC.Codegen.IRObsCorrect.Pair o tbl
 
 -- The name every importer uses. Each part re-exports `Core`/`Mach`, so the
 -- surface here is what the single file's `IRObsCorrectFlatness` had.

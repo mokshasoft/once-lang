@@ -27,8 +27,8 @@ import Once.CCC.Machine.ReadTypedAdequate as RTA
 import Once.Denotation.DenotTrace as DT
 import Once.Denotation.TraceMonad as TM
 
-open import Once.CCC.Codegen.IRObsCorrect.TwoCellRun o tbl
-open import Once.CCC.Codegen.IRObsCorrect.TwoCellBuild o tbl
+open import Once.CCC.Codegen.IRObsCorrect.TwoCell.Run o tbl
+open import Once.CCC.Codegen.IRObsCorrect.TwoCell.Build o tbl
 
 module TwoCellC {FS : FrameSemantics} where
 

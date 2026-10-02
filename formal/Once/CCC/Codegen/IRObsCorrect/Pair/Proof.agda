@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.CCC.Codegen.IRObsCorrect.PairProof
+-- Once.CCC.Codegen.IRObsCorrect.Pair.Proof
 --
 -- D211: `⟨ f , g ⟩` — THE ASSEMBLY.
 --
@@ -41,12 +41,12 @@ open import Once.CanonicalName using (CanonicalName)
 
 import Data.List as DL
 open import Once.Denotation.Program using (IRFun; tableEnv)
-module Once.CCC.Codegen.IRObsCorrect.PairProof (o : CanonicalName) (tbl : DL.List IRFun) where
+module Once.CCC.Codegen.IRObsCorrect.Pair.Proof (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
-open import Once.CCC.Codegen.IRObsCorrect.Pair    o tbl
-open import Once.CCC.Codegen.IRObsCorrect.PairPlace o tbl
-open import Once.CCC.Codegen.IRObsCorrect.PairPres o tbl
+open import Once.CCC.Codegen.IRObsCorrect.Pair.Chain    o tbl
+open import Once.CCC.Codegen.IRObsCorrect.Pair.Place o tbl
+open import Once.CCC.Codegen.IRObsCorrect.Pair.Pres o tbl
 open import Data.Nat using (z≤n)
 open import Data.List.Properties using (++-identityʳ)
 

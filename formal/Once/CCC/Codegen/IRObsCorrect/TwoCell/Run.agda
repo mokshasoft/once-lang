@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.CCC.Codegen.IRObsCorrect.TwoCellRun
+-- Once.CCC.Codegen.IRObsCorrect.TwoCell.Run
 --
 -- The TEN-STEP RUN of the two-cell build (`curry`, `Ana` — D190): the trace,
 -- its states and the chain. Split from `TwoCellBuild` for the per-module
@@ -13,7 +13,7 @@ open import Once.CanonicalName using (CanonicalName)
 
 import Data.List as DL
 open import Once.Denotation.Program using (IRFun; tableEnv)
-module Once.CCC.Codegen.IRObsCorrect.TwoCellRun (o : CanonicalName) (tbl : DL.List IRFun) where
+module Once.CCC.Codegen.IRObsCorrect.TwoCell.Run (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
 

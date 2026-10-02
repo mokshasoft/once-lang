@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.CCC.Codegen.IRObsCorrect.PairPres
+-- Once.CCC.Codegen.IRObsCorrect.Pair.Pres
 --
 -- D207: what the pair's run LEAVES ALONE, and the five-segment event splice.
 -- Split from `Pair` for the per-module check cap.
@@ -13,7 +13,7 @@ open import Once.CanonicalName using (CanonicalName)
 
 import Data.List as DL
 open import Once.Denotation.Program using (IRFun; tableEnv)
-module Once.CCC.Codegen.IRObsCorrect.PairPres (o : CanonicalName) (tbl : DL.List IRFun) where
+module Once.CCC.Codegen.IRObsCorrect.Pair.Pres (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
 open import Once.CCC.Codegen.LabelResolve o using (module Resolve)
