@@ -5,7 +5,7 @@
 -- ★ WHAT THIS IS.  `ATm`/`ATy` are the kernel terms the checker checks:
 --   `RTm`/`RTy` plus exactly the annotations the typing judgment would
 --   otherwise take from the DERIVATION —
---       lam A · pair B · natrec M · jsub A t u · tr A t u · ap cA t u
+--       lam A · pair A B · natrec M · jsub A t u · tr A t u · ap cA t u
 --       con I D i · ielim I M · dih I M i · dι/dσ/dρ I · DIh I i
 --       fzero n · fsuc n · fcase n P · fcase0 P · psplit A B P
 --   so that a kernel term determines its type (PLAN-BIDI §0).

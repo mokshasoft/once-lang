@@ -48,10 +48,10 @@ genᴬ-app : {Γ : ACtx} {t : ATm ⌊ Γ ⌋ᴬ} {u : ATm ⌊ Γ ⌋ᴬ} {Z : AT
 genᴬ-app (⊢ᴬapp dt du) = (_ , (_ , (dt , (du , crflᵀ))))
 genᴬ-app (⊢ᴬconv d c) = let (x0 , (x1 , (dt , (du , c')))) = genᴬ-app d in (x0 , (x1 , (dt , (du , ctrnᵀ c' c))))
 
-genᴬ-pair : {Γ : ACtx} {B : ATy (⌊ Γ ⌋ᴬ ∙)} {a : ATm ⌊ Γ ⌋ᴬ} {b : ATm ⌊ Γ ⌋ᴬ} {Z : ATy ⌊ Γ ⌋ᴬ} →
-          Γ ⊢ᴬ pair B a b ∷ Z → Σ (ATy ⌊ Γ ⌋ᴬ) (λ A → ((Γ ▹ᴬ A) ⊢tyᴬ B) × ((Γ ⊢ᴬ a ∷ A) × ((Γ ⊢ᴬ b ∷ subTyᴬ (singleᴬ a) B) × (⌈ Σ' A B ⌉ᵀ ≅ᵀ ⌈ Z ⌉ᵀ))))
-genᴬ-pair (⊢ᴬpair dB da db) = (_ , (dB , (da , (db , crflᵀ))))
-genᴬ-pair (⊢ᴬconv d c) = let (x0 , (dB , (da , (db , c')))) = genᴬ-pair d in (x0 , (dB , (da , (db , ctrnᵀ c' c))))
+genᴬ-pair : {Γ : ACtx} {A : ATy ⌊ Γ ⌋ᴬ} {B : ATy (⌊ Γ ⌋ᴬ ∙)} {a : ATm ⌊ Γ ⌋ᴬ} {b : ATm ⌊ Γ ⌋ᴬ} {Z : ATy ⌊ Γ ⌋ᴬ} →
+          Γ ⊢ᴬ pair A B a b ∷ Z → (Γ ⊢tyᴬ A) × (((Γ ▹ᴬ A) ⊢tyᴬ B) × ((Γ ⊢ᴬ a ∷ A) × ((Γ ⊢ᴬ b ∷ subTyᴬ (singleᴬ a) B) × (⌈ Σ' A B ⌉ᵀ ≅ᵀ ⌈ Z ⌉ᵀ))))
+genᴬ-pair (⊢ᴬpair dA dB da db) = (dA , (dB , (da , (db , crflᵀ))))
+genᴬ-pair (⊢ᴬconv d c) = let (dA , (dB , (da , (db , c')))) = genᴬ-pair d in (dA , (dB , (da , (db , ctrnᵀ c' c))))
 
 genᴬ-absurd : {Γ : ACtx} {c : ATm ⌊ Γ ⌋ᴬ} {e : ATm ⌊ Γ ⌋ᴬ} {Z : ATy ⌊ Γ ⌋ᴬ} →
           Γ ⊢ᴬ absurd c e ∷ Z → (Γ ⊢ᴬ c ∷ U) × ((Γ ⊢ᴬ e ∷ base) × (⌈ El c ⌉ᵀ ≅ᵀ ⌈ Z ⌉ᵀ))
@@ -224,7 +224,7 @@ genᴬ-fcase0 (⊢ᴬfcase0 dP dt) = (dP , (dt , crflᵀ))
 genᴬ-fcase0 (⊢ᴬconv d c) = let (dP , (dt , c')) = genᴬ-fcase0 d in (dP , (dt , ctrnᵀ c' c))
 
 genᴬ-psplit : {Γ : ACtx} {A : ATy ⌊ Γ ⌋ᴬ} {B : ATy (⌊ Γ ⌋ᴬ ∙)} {P : ATy (⌊ Γ ⌋ᴬ ∙)} {b : ATm ((⌊ Γ ⌋ᴬ ∙) ∙)} {q : ATm ⌊ Γ ⌋ᴬ} {Z : ATy ⌊ Γ ⌋ᴬ} →
-          Γ ⊢ᴬ psplit A B P b q ∷ Z → (Γ ⊢tyᴬ A) × (((Γ ▹ᴬ A) ⊢tyᴬ B) × (((Γ ▹ᴬ Σ' A B) ⊢tyᴬ P) × ((Γ ⊢ᴬ q ∷ Σ' A B) × ((((Γ ▹ᴬ A) ▹ᴬ B) ⊢ᴬ b ∷ subTyᴬ (pairSᴬ B) P) × (⌈ subTyᴬ (singleᴬ q) P ⌉ᵀ ≅ᵀ ⌈ Z ⌉ᵀ)))))
+          Γ ⊢ᴬ psplit A B P b q ∷ Z → (Γ ⊢tyᴬ A) × (((Γ ▹ᴬ A) ⊢tyᴬ B) × (((Γ ▹ᴬ Σ' A B) ⊢tyᴬ P) × ((Γ ⊢ᴬ q ∷ Σ' A B) × ((((Γ ▹ᴬ A) ▹ᴬ B) ⊢ᴬ b ∷ subTyᴬ (pairSᴬ A B) P) × (⌈ subTyᴬ (singleᴬ q) P ⌉ᵀ ≅ᵀ ⌈ Z ⌉ᵀ)))))
 genᴬ-psplit (⊢ᴬpsplit dA dB dP dq db) = (dA , (dB , (dP , (dq , (db , crflᵀ)))))
 genᴬ-psplit (⊢ᴬconv d c) = let (dA , (dB , (dP , (dq , (db , c'))))) = genᴬ-psplit d in (dA , (dB , (dP , (dq , (db , ctrnᵀ c' c)))))
 

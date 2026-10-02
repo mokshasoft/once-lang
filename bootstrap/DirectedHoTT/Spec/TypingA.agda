@@ -99,10 +99,12 @@ data _⊢ᴬ_∷_ where
   ⊢ᴬlam  : ∀ {Γ A B t} → Γ ⊢tyᴬ A → (Γ ▹ᴬ A) ⊢ᴬ t ∷ B → Γ ⊢ᴬ lam A t ∷ Π A B
   ⊢ᴬapp  : ∀ {Γ A B t u} → Γ ⊢ᴬ t ∷ Π A B → Γ ⊢ᴬ u ∷ A →
                            Γ ⊢ᴬ app t u ∷ subTyᴬ (singleᴬ u) B
-  -- the FAMILY is in the term
-  ⊢ᴬpair : ∀ {Γ A B a b} → (Γ ▹ᴬ A) ⊢tyᴬ B →
+  -- the FIRST TYPE and the FAMILY are in the term: `B`'s premise context is
+  -- `Γ ▹ A`, so `A` is derivation data (PLAN-BIDI §3a — a checker that
+  -- inferred `a`'s type could only refute `B` through context conversion)
+  ⊢ᴬpair : ∀ {Γ A B a b} → Γ ⊢tyᴬ A → (Γ ▹ᴬ A) ⊢tyᴬ B →
                            Γ ⊢ᴬ a ∷ A → Γ ⊢ᴬ b ∷ subTyᴬ (singleᴬ a) B →
-                           Γ ⊢ᴬ pair B a b ∷ Σ' A B
+                           Γ ⊢ᴬ pair A B a b ∷ Σ' A B
   ⊢ᴬabsurd : ∀ {Γ c e} → Γ ⊢ᴬ c ∷ U → Γ ⊢ᴬ e ∷ base → Γ ⊢ᴬ absurd c e ∷ El c
   ⊢ᴬordtr : ∀ {Γ a t u p q} →
             Γ ⊢ᴬ a ∷ Nat → Γ ⊢ᴬ t ∷ Nat → Γ ⊢ᴬ u ∷ Nat →
@@ -195,7 +197,7 @@ data _⊢ᴬ_∷_ where
              Γ ⊢ᴬ fcase0 P t ∷ subTyᴬ (singleᴬ t) P
   ⊢ᴬpsplit : ∀ {Γ A B P q b} →
              Γ ⊢tyᴬ A → (Γ ▹ᴬ A) ⊢tyᴬ B → (Γ ▹ᴬ Σ' A B) ⊢tyᴬ P → Γ ⊢ᴬ q ∷ Σ' A B →
-             ((Γ ▹ᴬ A) ▹ᴬ B) ⊢ᴬ b ∷ subTyᴬ (pairSᴬ B) P →
+             ((Γ ▹ᴬ A) ▹ᴬ B) ⊢ᴬ b ∷ subTyᴬ (pairSᴬ A B) P →
              Γ ⊢ᴬ psplit A B P b q ∷ subTyᴬ (singleᴬ q) P
   -- ★ (c): conversion of ERASURES
   ⊢ᴬconv : ∀ {Γ t A B} → Γ ⊢ᴬ t ∷ A → ⌈ A ⌉ᵀ ≅ᵀ ⌈ B ⌉ᵀ → Γ ⊢ᴬ t ∷ B

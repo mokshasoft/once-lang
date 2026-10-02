@@ -77,7 +77,7 @@ erase (⊢ᴬvar v) = ⊢var (erase-∋ v)
 erase (⊢ᴬlam dA d) = ⊢lam (erase-ty dA) (erase d)
 erase (⊢ᴬapp {B = B} {u = u} d₁ d₂) =
   ⊢-cast (sym (sub1 u B)) (⊢app (erase d₁) (erase d₂))
-erase (⊢ᴬpair {B = B} {a = a} dB da db) =
+erase (⊢ᴬpair {B = B} {a = a} _ dB da db) =
   ⊢pair (erase-ty dB) (erase da) (⊢-cast (sub1 a B) (erase db))
 erase (⊢ᴬabsurd dc de) = ⊢absurd (erase dc) (erase de)
 erase (⊢ᴬordtr da dt du dp dq) =
@@ -128,10 +128,10 @@ erase (⊢ᴬfcase {n = n} {P = P} {t = t} dP dt da db) =
             (⊢-cast (era-subTy (fsucSᴬ n) fsucS (era-fsucS n) P) (erase db)))
 erase (⊢ᴬfcase0 {P = P} {t = t} dP dt) =
   ⊢-cast (sym (sub1 t P)) (⊢fcase0 (erase-ty dP) (erase dt))
-erase (⊢ᴬpsplit {B = B} {P = P} {q = q} dA dB dP dq db) =
+erase (⊢ᴬpsplit {A = A} {B = B} {P = P} {q = q} dA dB dP dq db) =
   ⊢-cast (sym (sub1 q P))
     (⊢psplit (erase-ty dA) (erase-ty dB) (erase-ty dP) (erase dq)
-             (⊢-cast (era-subTy (pairSᴬ B) pairS (era-pairS B) P) (erase db)))
+             (⊢-cast (era-subTy (pairSᴬ A B) pairS (era-pairS A B) P) (erase db)))
 erase ⊢ᴬ⌜Unit⌝ = ⊢⌜Unit⌝
 erase (⊢ᴬidrefl dc dt) = ⊢idrefl (erase dc) (erase dt)
 erase (⊢ᴬjsub {d = d} {t = t} {u = u} dA dd dt du dp de) =

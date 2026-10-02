@@ -1,6 +1,3 @@
--- SPDX-License-Identifier: AGPL-3.0-or-later
--- Copyright (C) 2025-2026 Jonas Claesson
-
 ------------------------------------------------------------------------
 -- OCP-0009 · dHoTT — ★ THE ANNOTATED KERNEL SYNTAX, and its ERASURE.
 --                      (PLAN-BIDI §3d — decision (c), implemented as a layer)
@@ -8,7 +5,7 @@
 -- ★ WHAT THIS IS.  `ATm`/`ATy` are the kernel terms the checker checks:
 --   `RTm`/`RTy` plus exactly the annotations the typing judgment would
 --   otherwise take from the DERIVATION —
---       lam A · pair B · natrec M · jsub A t u · tr A t u · ap cA t u
+--       lam A · pair A B · natrec M · jsub A t u · tr A t u · ap cA t u
 --       con I D i · ielim I M · dih I M i · dι/dσ/dρ I · DIh I i
 --       fzero n · fsuc n · fcase n P · fcase0 P · psplit A B P
 --   so that a kernel term determines its type (PLAN-BIDI §0).
@@ -81,7 +78,7 @@ data ATm where
   var : ∀ {Γ} → Var Γ → ATm Γ
   lam : ∀ {Γ} → ATy Γ → ATm (Γ ∙) → ATm Γ
   app : ∀ {Γ} → ATm Γ → ATm Γ → ATm Γ
-  pair : ∀ {Γ} → ATy (Γ ∙) → ATm Γ → ATm Γ → ATm Γ
+  pair : ∀ {Γ} → ATy Γ → ATy (Γ ∙) → ATm Γ → ATm Γ → ATm Γ
   absurd : ∀ {Γ} → ATm Γ → ATm Γ → ATm Γ
   ordtr : ∀ {Γ} → ATm Γ → ATm Γ → ATm Γ → ATm Γ → ATm Γ → ATm Γ
   fst : ∀ {Γ} → ATm Γ → ATm Γ
@@ -135,7 +132,7 @@ renTyᴬ ρ (Fin x0) = Fin x0
 renTmᴬ ρ (var x) = var (ρ x)
 renTmᴬ ρ (lam x0 x1) = lam (renTyᴬ ρ x0) (renTmᴬ (extR ρ) x1)
 renTmᴬ ρ (app x0 x1) = app (renTmᴬ ρ x0) (renTmᴬ ρ x1)
-renTmᴬ ρ (pair x0 x1 x2) = pair (renTyᴬ (extR ρ) x0) (renTmᴬ ρ x1) (renTmᴬ ρ x2)
+renTmᴬ ρ (pair x0 x1 x2 x3) = pair (renTyᴬ ρ x0) (renTyᴬ (extR ρ) x1) (renTmᴬ ρ x2) (renTmᴬ ρ x3)
 renTmᴬ ρ (absurd x0 x1) = absurd (renTmᴬ ρ x0) (renTmᴬ ρ x1)
 renTmᴬ ρ (ordtr x0 x1 x2 x3 x4) = ordtr (renTmᴬ ρ x0) (renTmᴬ ρ x1) (renTmᴬ ρ x2) (renTmᴬ ρ x3) (renTmᴬ ρ x4)
 renTmᴬ ρ (fst x0) = fst (renTmᴬ ρ x0)
@@ -196,7 +193,7 @@ subTyᴬ σ (Fin x0) = Fin x0
 subTmᴬ σ (var x) = σ x
 subTmᴬ σ (lam x0 x1) = lam (subTyᴬ σ x0) (subTmᴬ (extSᴬ σ) x1)
 subTmᴬ σ (app x0 x1) = app (subTmᴬ σ x0) (subTmᴬ σ x1)
-subTmᴬ σ (pair x0 x1 x2) = pair (subTyᴬ (extSᴬ σ) x0) (subTmᴬ σ x1) (subTmᴬ σ x2)
+subTmᴬ σ (pair x0 x1 x2 x3) = pair (subTyᴬ σ x0) (subTyᴬ (extSᴬ σ) x1) (subTmᴬ σ x2) (subTmᴬ σ x3)
 subTmᴬ σ (absurd x0 x1) = absurd (subTmᴬ σ x0) (subTmᴬ σ x1)
 subTmᴬ σ (ordtr x0 x1 x2 x3 x4) = ordtr (subTmᴬ σ x0) (subTmᴬ σ x1) (subTmᴬ σ x2) (subTmᴬ σ x3) (subTmᴬ σ x4)
 subTmᴬ σ (fst x0) = fst (subTmᴬ σ x0)
@@ -251,7 +248,7 @@ subTmᴬ σ (psplit x0 x1 x2 x3 x4) = psplit (subTyᴬ σ x0) (subTyᴬ (extSᴬ
 ⌈ (var x) ⌉ = var x
 ⌈ (lam x0 x1) ⌉ = lam (⌈ x1 ⌉)
 ⌈ (app x0 x1) ⌉ = app (⌈ x0 ⌉) (⌈ x1 ⌉)
-⌈ (pair x0 x1 x2) ⌉ = pair (⌈ x1 ⌉) (⌈ x2 ⌉)
+⌈ (pair x0 x1 x2 x3) ⌉ = pair (⌈ x2 ⌉) (⌈ x3 ⌉)
 ⌈ (absurd x0 x1) ⌉ = absurd (⌈ x0 ⌉) (⌈ x1 ⌉)
 ⌈ (ordtr x0 x1 x2 x3 x4) ⌉ = ordtr (⌈ x0 ⌉) (⌈ x1 ⌉) (⌈ x2 ⌉) (⌈ x3 ⌉) (⌈ x4 ⌉)
 ⌈ (fst x0) ⌉ = fst (⌈ x0 ⌉)
@@ -306,7 +303,7 @@ era-renTy ρ (Fin x0) = refl
 era-renTm ρ (var x) = refl
 era-renTm ρ (lam x0 x1) = cong1 (λ a0 → lam a0) (era-renTm (extR ρ) x1)
 era-renTm ρ (app x0 x1) = cong2 (λ a0 a1 → app a0 a1) (era-renTm ρ x0) (era-renTm ρ x1)
-era-renTm ρ (pair x0 x1 x2) = cong2 (λ a0 a1 → pair a0 a1) (era-renTm ρ x1) (era-renTm ρ x2)
+era-renTm ρ (pair x0 x1 x2 x3) = cong2 (λ a0 a1 → pair a0 a1) (era-renTm ρ x2) (era-renTm ρ x3)
 era-renTm ρ (absurd x0 x1) = cong2 (λ a0 a1 → absurd a0 a1) (era-renTm ρ x0) (era-renTm ρ x1)
 era-renTm ρ (ordtr x0 x1 x2 x3 x4) = cong5 (λ a0 a1 a2 a3 a4 → ordtr a0 a1 a2 a3 a4) (era-renTm ρ x0) (era-renTm ρ x1) (era-renTm ρ x2) (era-renTm ρ x3) (era-renTm ρ x4)
 era-renTm ρ (fst x0) = cong1 (λ a0 → fst a0) (era-renTm ρ x0)
@@ -369,7 +366,7 @@ era-subTy σ τ h (Fin x0) = refl
 era-subTm σ τ h (var x) = h x
 era-subTm σ τ h (lam x0 x1) = cong1 (λ a0 → lam a0) (era-subTm (extSᴬ σ) (extS τ) (era-ext h) x1)
 era-subTm σ τ h (app x0 x1) = cong2 (λ a0 a1 → app a0 a1) (era-subTm σ τ h x0) (era-subTm σ τ h x1)
-era-subTm σ τ h (pair x0 x1 x2) = cong2 (λ a0 a1 → pair a0 a1) (era-subTm σ τ h x1) (era-subTm σ τ h x2)
+era-subTm σ τ h (pair x0 x1 x2 x3) = cong2 (λ a0 a1 → pair a0 a1) (era-subTm σ τ h x2) (era-subTm σ τ h x3)
 era-subTm σ τ h (absurd x0 x1) = cong2 (λ a0 a1 → absurd a0 a1) (era-subTm σ τ h x0) (era-subTm σ τ h x1)
 era-subTm σ τ h (ordtr x0 x1 x2 x3 x4) = cong5 (λ a0 a1 a2 a3 a4 → ordtr a0 a1 a2 a3 a4) (era-subTm σ τ h x0) (era-subTm σ τ h x1) (era-subTm σ τ h x2) (era-subTm σ τ h x3) (era-subTm σ τ h x4)
 era-subTm σ τ h (fst x0) = cong1 (λ a0 → fst a0) (era-subTm σ τ h x0)
