@@ -34,23 +34,22 @@ open import Once.Type as Ty using (Type; Zero; One; Many; mk-kind; _⇒[_]_; _*_
 open import Once.Type.Sub
 open import Once.IR as IR using (IR; IRTy; _∘_; ⟨_,_⟩; fst; snd; case; curry; apply; inl; inr; initial; ⌊_⌋)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; ⟦_⟧ᴰᴵ; cohᴰ)
-open import Once.Denotation.TraceMonad using (T; mkT; returnT; _>>=T_; fmapT; >>=T-map)
+open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_; fmapT; fmapT-id; fmapT-cong)
 open import Once.Denotation.DenotTrace using (evalᴰ; liftFn)
-open import Once.Denotation.Sub using (⟦_⟧<:; fmapT-id; fmapT-cong)
+open import Once.Denotation.Sub using (⟦_⟧<:)
 open import Once.Surface.CoerceIR
 open import Once.Adequacy.LiftFnReduce fmt ρ
   using (liftFn-id; liftFn-fst; liftFn-snd; liftFn-inl; liftFn-inr; liftFn-∘; liftFn-pair;
          liftFn-apply; liftFn-curry; liftFn-case-inj₁; liftFn-case-inj₂; curry-red; apply-red)
-open import Once.Adequacy.FaithfulLemmas fmt ρ using (T-ext-at)
 open import Once.Postulates using (extensionality)
 
 ------------------------------------------------------------------------
 -- Small facts.
 ------------------------------------------------------------------------
 
--- Binding a pure continuation is a map (the budget-indexed `>>=T-map`, closed).
+-- Binding a pure continuation is a map — by definition of `fmapT`.
 bind-ret : ∀ {X Y : Set} (m : T X) (g : X → Y) → (m >>=T (λ x → returnT (g x))) ≡ fmapT g m
-bind-ret m g = T-ext-at (>>=T-map m g)
+bind-ret m g = refl
 
 fmapT-subst : ∀ {X Y : Set} (E : X ≡ Y) (m : T X) → fmapT (subst id E) m ≡ subst T E m
 fmapT-subst refl m = fmapT-id m
