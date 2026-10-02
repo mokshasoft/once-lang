@@ -23,7 +23,8 @@
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Algorithm.Surface where
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
-open import DirectedHoTT.Spec.Syntax using ( Cx; _∙; Var )
+open import DirectedHoTT.Spec.Syntax using ( Cx; _∙; Var; vz; vs; Ren; extR )
+import DirectedHoTT.Spec.Syntax as R
 
 data STy : Cx → Set
 data STm : Cx → Set
@@ -86,3 +87,184 @@ data STm where
   ref : ∀ {Γ} → ℕ → STm Γ
   □ : ∀ {Γ} → STm Γ
   the : ∀ {Γ} → STy Γ → STm Γ → STm Γ
+
+-- ★ a kernel term as a surface term: every ANNOTATION a hole (a ℕ bound,
+--   which has none, is 0 — the elaborator takes the expected bound), for the
+--   elaborator to fill (how an existing `RTm` is re-derived by the checker)
+holesTy : {Γ : Cx} → R.RTy Γ → STy Γ
+holesTm : {Γ : Cx} → R.RTm Γ → STm Γ
+holesTy R.base = base
+holesTy R.U = U
+holesTy (R.Π x0 x1) = Π (holesTy x0) (holesTy x1)
+holesTy (R.Σ' x0 x1) = Σ' (holesTy x0) (holesTy x1)
+holesTy (R.El x0) = El (holesTm x0)
+holesTy (R.Hom x0 x1 x2) = Hom (holesTy x0) (holesTm x1) (holesTm x2)
+holesTy R.Unit = Unit
+holesTy R.Nat = Nat
+holesTy (R.Id x0 x1 x2) = Id (holesTy x0) (holesTm x1) (holesTm x2)
+holesTy (R.IMu x0 x1 x2) = IMu (holesTm x0) (holesTm x1) (holesTm x2)
+holesTy (R.Desc x0) = Desc (holesTm x0)
+holesTy (R.DIh x1 x2 x3 x4) = DIh □ (holesTm x1) (holesTy x2) (holesTm x3) (holesTm x4)
+holesTy (R.Fin x0) = Fin x0
+holesTm (R.var x) = var x
+holesTm (R.lam x1) = lam □ᵀ (holesTm x1)
+holesTm (R.app x0 x1) = app (holesTm x0) (holesTm x1)
+holesTm (R.pair x2 x3) = pair □ᵀ □ᵀ (holesTm x2) (holesTm x3)
+holesTm (R.absurd x0 x1) = absurd (holesTm x0) (holesTm x1)
+holesTm (R.ordtr x0 x1 x2 x3 x4) = ordtr (holesTm x0) (holesTm x1) (holesTm x2) (holesTm x3) (holesTm x4)
+holesTm (R.fst x0) = fst (holesTm x0)
+holesTm (R.snd x0) = snd (holesTm x0)
+holesTm R.⌜base⌝ = ⌜base⌝
+holesTm (R.⌜Π⌝ x0 x1) = ⌜Π⌝ (holesTm x0) (holesTm x1)
+holesTm (R.⌜Σ⌝ x0 x1) = ⌜Σ⌝ (holesTm x0) (holesTm x1)
+holesTm (R.⌜Hom⌝ x0 x1 x2) = ⌜Hom⌝ (holesTm x0) (holesTm x1) (holesTm x2)
+holesTm (R.hrefl x0 x1) = hrefl (holesTm x0) (holesTm x1)
+holesTm (R.tr x3 x4 x5) = tr □ᵀ □ □ (holesTm x3) (holesTm x4) (holesTm x5)
+holesTm (R.ap x3 x4 x5) = ap □ □ □ (holesTm x3) (holesTm x4) (holesTm x5)
+holesTm (R.⌜Id⌝ x0 x1 x2) = ⌜Id⌝ (holesTm x0) (holesTm x1) (holesTm x2)
+holesTm (R.idrefl x0 x1) = idrefl (holesTm x0) (holesTm x1)
+holesTm (R.jsub x3 x4 x5) = jsub □ᵀ □ □ (holesTm x3) (holesTm x4) (holesTm x5)
+holesTm R.unit = unit
+holesTm R.nzero = nzero
+holesTm (R.nsuc x0) = nsuc (holesTm x0)
+holesTm (R.natrec x1 x2 x3) = natrec □ᵀ (holesTm x1) (holesTm x2) (holesTm x3)
+holesTm R.⌜Nat⌝ = ⌜Nat⌝
+holesTm R.⌜Unit⌝ = ⌜Unit⌝
+holesTm (R.⌜IMu⌝ x0 x1 x2) = ⌜IMu⌝ (holesTm x0) (holesTm x1) (holesTm x2)
+holesTm (R.⌜Fin⌝ x0) = ⌜Fin⌝ x0
+holesTm (R.con x3) = con □ □ □ (holesTm x3)
+holesTm (R.ielim x1 x3 x4 x5) = ielim □ (holesTm x1) □ᵀ (holesTm x3) (holesTm x4) (holesTm x5)
+holesTm R.dι = dι □
+holesTm (R.dσ x1 x2) = dσ □ (holesTm x1) (holesTm x2)
+holesTm (R.dρ x1 x2) = dρ □ (holesTm x1) (holesTm x2)
+holesTm (R.dpay x0 x1 x2) = dpay (holesTm x0) (holesTm x1) (holesTm x2)
+holesTm (R.dih x1 x3 x4 x5) = dih □ (holesTm x1) □ᵀ (holesTm x3) (holesTm x4) (holesTm x5)
+holesTm R.fzero = fzero 0
+holesTm (R.fsuc x1) = fsuc 0 (holesTm x1)
+holesTm (R.fcase x2 x3 x4) = fcase 0 □ᵀ (holesTm x2) (holesTm x3) (holesTm x4)
+holesTm (R.fcase0 x1) = fcase0 □ᵀ (holesTm x1)
+holesTm (R.psplit x3 x4) = psplit □ᵀ □ᵀ □ᵀ (holesTm x3) (holesTm x4)
+
+-- ★ renaming and substitution (holes and ascriptions are inert)
+renTyˢ : {Γ Δ : Cx} → Ren Γ Δ → STy Γ → STy Δ
+renTmˢ : {Γ Δ : Cx} → Ren Γ Δ → STm Γ → STm Δ
+renTyˢ ρ base = base
+renTyˢ ρ U = U
+renTyˢ ρ (Π x0 x1) = Π (renTyˢ ρ x0) (renTyˢ (extR ρ) x1)
+renTyˢ ρ (Σ' x0 x1) = Σ' (renTyˢ ρ x0) (renTyˢ (extR ρ) x1)
+renTyˢ ρ (El x0) = El (renTmˢ ρ x0)
+renTyˢ ρ (Hom x0 x1 x2) = Hom (renTyˢ ρ x0) (renTmˢ ρ x1) (renTmˢ ρ x2)
+renTyˢ ρ Unit = Unit
+renTyˢ ρ Nat = Nat
+renTyˢ ρ (Id x0 x1 x2) = Id (renTyˢ ρ x0) (renTmˢ ρ x1) (renTmˢ ρ x2)
+renTyˢ ρ (IMu x0 x1 x2) = IMu (renTmˢ ρ x0) (renTmˢ ρ x1) (renTmˢ ρ x2)
+renTyˢ ρ (Desc x0) = Desc (renTmˢ ρ x0)
+renTyˢ ρ (DIh x0 x1 x2 x3 x4) = DIh (renTmˢ ρ x0) (renTmˢ ρ x1) (renTyˢ (extR (extR ρ)) x2) (renTmˢ ρ x3) (renTmˢ ρ x4)
+renTyˢ ρ (Fin x0) = Fin x0
+renTyˢ ρ □ᵀ = □ᵀ
+renTmˢ ρ (var x) = var (ρ x)
+renTmˢ ρ (lam x0 x1) = lam (renTyˢ ρ x0) (renTmˢ (extR ρ) x1)
+renTmˢ ρ (app x0 x1) = app (renTmˢ ρ x0) (renTmˢ ρ x1)
+renTmˢ ρ (pair x0 x1 x2 x3) = pair (renTyˢ ρ x0) (renTyˢ (extR ρ) x1) (renTmˢ ρ x2) (renTmˢ ρ x3)
+renTmˢ ρ (absurd x0 x1) = absurd (renTmˢ ρ x0) (renTmˢ ρ x1)
+renTmˢ ρ (ordtr x0 x1 x2 x3 x4) = ordtr (renTmˢ ρ x0) (renTmˢ ρ x1) (renTmˢ ρ x2) (renTmˢ ρ x3) (renTmˢ ρ x4)
+renTmˢ ρ (fst x0) = fst (renTmˢ ρ x0)
+renTmˢ ρ (snd x0) = snd (renTmˢ ρ x0)
+renTmˢ ρ ⌜base⌝ = ⌜base⌝
+renTmˢ ρ (⌜Π⌝ x0 x1) = ⌜Π⌝ (renTmˢ ρ x0) (renTmˢ (extR ρ) x1)
+renTmˢ ρ (⌜Σ⌝ x0 x1) = ⌜Σ⌝ (renTmˢ ρ x0) (renTmˢ (extR ρ) x1)
+renTmˢ ρ (⌜Hom⌝ x0 x1 x2) = ⌜Hom⌝ (renTmˢ ρ x0) (renTmˢ ρ x1) (renTmˢ ρ x2)
+renTmˢ ρ (hrefl x0 x1) = hrefl (renTmˢ ρ x0) (renTmˢ ρ x1)
+renTmˢ ρ (tr x0 x1 x2 x3 x4 x5) = tr (renTyˢ ρ x0) (renTmˢ ρ x1) (renTmˢ ρ x2) (renTmˢ (extR ρ) x3) (renTmˢ ρ x4) (renTmˢ ρ x5)
+renTmˢ ρ (ap x0 x1 x2 x3 x4 x5) = ap (renTmˢ ρ x0) (renTmˢ ρ x1) (renTmˢ ρ x2) (renTmˢ ρ x3) (renTmˢ (extR ρ) x4) (renTmˢ ρ x5)
+renTmˢ ρ (⌜Id⌝ x0 x1 x2) = ⌜Id⌝ (renTmˢ ρ x0) (renTmˢ ρ x1) (renTmˢ ρ x2)
+renTmˢ ρ (idrefl x0 x1) = idrefl (renTmˢ ρ x0) (renTmˢ ρ x1)
+renTmˢ ρ (jsub x0 x1 x2 x3 x4 x5) = jsub (renTyˢ ρ x0) (renTmˢ ρ x1) (renTmˢ ρ x2) (renTmˢ (extR ρ) x3) (renTmˢ ρ x4) (renTmˢ ρ x5)
+renTmˢ ρ unit = unit
+renTmˢ ρ nzero = nzero
+renTmˢ ρ (nsuc x0) = nsuc (renTmˢ ρ x0)
+renTmˢ ρ (natrec x0 x1 x2 x3) = natrec (renTyˢ (extR ρ) x0) (renTmˢ ρ x1) (renTmˢ (extR (extR ρ)) x2) (renTmˢ ρ x3)
+renTmˢ ρ ⌜Nat⌝ = ⌜Nat⌝
+renTmˢ ρ ⌜Unit⌝ = ⌜Unit⌝
+renTmˢ ρ (⌜IMu⌝ x0 x1 x2) = ⌜IMu⌝ (renTmˢ ρ x0) (renTmˢ ρ x1) (renTmˢ ρ x2)
+renTmˢ ρ (⌜Fin⌝ x0) = ⌜Fin⌝ x0
+renTmˢ ρ (con x0 x1 x2 x3) = con (renTmˢ ρ x0) (renTmˢ ρ x1) (renTmˢ ρ x2) (renTmˢ ρ x3)
+renTmˢ ρ (ielim x0 x1 x2 x3 x4 x5) = ielim (renTmˢ ρ x0) (renTmˢ ρ x1) (renTyˢ (extR (extR ρ)) x2) (renTmˢ ρ x3) (renTmˢ ρ x4) (renTmˢ ρ x5)
+renTmˢ ρ (dι x0) = dι (renTmˢ ρ x0)
+renTmˢ ρ (dσ x0 x1 x2) = dσ (renTmˢ ρ x0) (renTmˢ ρ x1) (renTmˢ ρ x2)
+renTmˢ ρ (dρ x0 x1 x2) = dρ (renTmˢ ρ x0) (renTmˢ ρ x1) (renTmˢ ρ x2)
+renTmˢ ρ (dpay x0 x1 x2) = dpay (renTmˢ ρ x0) (renTmˢ ρ x1) (renTmˢ ρ x2)
+renTmˢ ρ (dih x0 x1 x2 x3 x4 x5) = dih (renTmˢ ρ x0) (renTmˢ ρ x1) (renTyˢ (extR (extR ρ)) x2) (renTmˢ ρ x3) (renTmˢ ρ x4) (renTmˢ ρ x5)
+renTmˢ ρ (fzero x0) = fzero x0
+renTmˢ ρ (fsuc x0 x1) = fsuc x0 (renTmˢ ρ x1)
+renTmˢ ρ (fcase x0 x1 x2 x3 x4) = fcase x0 (renTyˢ (extR ρ) x1) (renTmˢ ρ x2) (renTmˢ ρ x3) (renTmˢ (extR ρ) x4)
+renTmˢ ρ (fcase0 x0 x1) = fcase0 (renTyˢ (extR ρ) x0) (renTmˢ ρ x1)
+renTmˢ ρ (psplit x0 x1 x2 x3 x4) = psplit (renTyˢ ρ x0) (renTyˢ (extR ρ) x1) (renTyˢ (extR ρ) x2) (renTmˢ (extR (extR ρ)) x3) (renTmˢ ρ x4)
+renTmˢ ρ (ref x0) = ref x0
+renTmˢ ρ □ = □
+renTmˢ ρ (the A t) = the (renTyˢ ρ A) (renTmˢ ρ t)
+
+Subˢ : Cx → Cx → Set
+Subˢ Γ Δ = Var Γ → STm Δ
+
+extSˢ : {Γ Δ : Cx} → Subˢ Γ Δ → Subˢ (Γ ∙) (Δ ∙)
+extSˢ σ vz     = var vz
+extSˢ σ (vs x) = renTmˢ vs (σ x)
+
+subTyˢ : {Γ Δ : Cx} → Subˢ Γ Δ → STy Γ → STy Δ
+subTmˢ : {Γ Δ : Cx} → Subˢ Γ Δ → STm Γ → STm Δ
+subTyˢ σ base = base
+subTyˢ σ U = U
+subTyˢ σ (Π x0 x1) = Π (subTyˢ σ x0) (subTyˢ (extSˢ σ) x1)
+subTyˢ σ (Σ' x0 x1) = Σ' (subTyˢ σ x0) (subTyˢ (extSˢ σ) x1)
+subTyˢ σ (El x0) = El (subTmˢ σ x0)
+subTyˢ σ (Hom x0 x1 x2) = Hom (subTyˢ σ x0) (subTmˢ σ x1) (subTmˢ σ x2)
+subTyˢ σ Unit = Unit
+subTyˢ σ Nat = Nat
+subTyˢ σ (Id x0 x1 x2) = Id (subTyˢ σ x0) (subTmˢ σ x1) (subTmˢ σ x2)
+subTyˢ σ (IMu x0 x1 x2) = IMu (subTmˢ σ x0) (subTmˢ σ x1) (subTmˢ σ x2)
+subTyˢ σ (Desc x0) = Desc (subTmˢ σ x0)
+subTyˢ σ (DIh x0 x1 x2 x3 x4) = DIh (subTmˢ σ x0) (subTmˢ σ x1) (subTyˢ (extSˢ (extSˢ σ)) x2) (subTmˢ σ x3) (subTmˢ σ x4)
+subTyˢ σ (Fin x0) = Fin x0
+subTyˢ σ □ᵀ = □ᵀ
+subTmˢ σ (var x) = σ x
+subTmˢ σ (lam x0 x1) = lam (subTyˢ σ x0) (subTmˢ (extSˢ σ) x1)
+subTmˢ σ (app x0 x1) = app (subTmˢ σ x0) (subTmˢ σ x1)
+subTmˢ σ (pair x0 x1 x2 x3) = pair (subTyˢ σ x0) (subTyˢ (extSˢ σ) x1) (subTmˢ σ x2) (subTmˢ σ x3)
+subTmˢ σ (absurd x0 x1) = absurd (subTmˢ σ x0) (subTmˢ σ x1)
+subTmˢ σ (ordtr x0 x1 x2 x3 x4) = ordtr (subTmˢ σ x0) (subTmˢ σ x1) (subTmˢ σ x2) (subTmˢ σ x3) (subTmˢ σ x4)
+subTmˢ σ (fst x0) = fst (subTmˢ σ x0)
+subTmˢ σ (snd x0) = snd (subTmˢ σ x0)
+subTmˢ σ ⌜base⌝ = ⌜base⌝
+subTmˢ σ (⌜Π⌝ x0 x1) = ⌜Π⌝ (subTmˢ σ x0) (subTmˢ (extSˢ σ) x1)
+subTmˢ σ (⌜Σ⌝ x0 x1) = ⌜Σ⌝ (subTmˢ σ x0) (subTmˢ (extSˢ σ) x1)
+subTmˢ σ (⌜Hom⌝ x0 x1 x2) = ⌜Hom⌝ (subTmˢ σ x0) (subTmˢ σ x1) (subTmˢ σ x2)
+subTmˢ σ (hrefl x0 x1) = hrefl (subTmˢ σ x0) (subTmˢ σ x1)
+subTmˢ σ (tr x0 x1 x2 x3 x4 x5) = tr (subTyˢ σ x0) (subTmˢ σ x1) (subTmˢ σ x2) (subTmˢ (extSˢ σ) x3) (subTmˢ σ x4) (subTmˢ σ x5)
+subTmˢ σ (ap x0 x1 x2 x3 x4 x5) = ap (subTmˢ σ x0) (subTmˢ σ x1) (subTmˢ σ x2) (subTmˢ σ x3) (subTmˢ (extSˢ σ) x4) (subTmˢ σ x5)
+subTmˢ σ (⌜Id⌝ x0 x1 x2) = ⌜Id⌝ (subTmˢ σ x0) (subTmˢ σ x1) (subTmˢ σ x2)
+subTmˢ σ (idrefl x0 x1) = idrefl (subTmˢ σ x0) (subTmˢ σ x1)
+subTmˢ σ (jsub x0 x1 x2 x3 x4 x5) = jsub (subTyˢ σ x0) (subTmˢ σ x1) (subTmˢ σ x2) (subTmˢ (extSˢ σ) x3) (subTmˢ σ x4) (subTmˢ σ x5)
+subTmˢ σ unit = unit
+subTmˢ σ nzero = nzero
+subTmˢ σ (nsuc x0) = nsuc (subTmˢ σ x0)
+subTmˢ σ (natrec x0 x1 x2 x3) = natrec (subTyˢ (extSˢ σ) x0) (subTmˢ σ x1) (subTmˢ (extSˢ (extSˢ σ)) x2) (subTmˢ σ x3)
+subTmˢ σ ⌜Nat⌝ = ⌜Nat⌝
+subTmˢ σ ⌜Unit⌝ = ⌜Unit⌝
+subTmˢ σ (⌜IMu⌝ x0 x1 x2) = ⌜IMu⌝ (subTmˢ σ x0) (subTmˢ σ x1) (subTmˢ σ x2)
+subTmˢ σ (⌜Fin⌝ x0) = ⌜Fin⌝ x0
+subTmˢ σ (con x0 x1 x2 x3) = con (subTmˢ σ x0) (subTmˢ σ x1) (subTmˢ σ x2) (subTmˢ σ x3)
+subTmˢ σ (ielim x0 x1 x2 x3 x4 x5) = ielim (subTmˢ σ x0) (subTmˢ σ x1) (subTyˢ (extSˢ (extSˢ σ)) x2) (subTmˢ σ x3) (subTmˢ σ x4) (subTmˢ σ x5)
+subTmˢ σ (dι x0) = dι (subTmˢ σ x0)
+subTmˢ σ (dσ x0 x1 x2) = dσ (subTmˢ σ x0) (subTmˢ σ x1) (subTmˢ σ x2)
+subTmˢ σ (dρ x0 x1 x2) = dρ (subTmˢ σ x0) (subTmˢ σ x1) (subTmˢ σ x2)
+subTmˢ σ (dpay x0 x1 x2) = dpay (subTmˢ σ x0) (subTmˢ σ x1) (subTmˢ σ x2)
+subTmˢ σ (dih x0 x1 x2 x3 x4 x5) = dih (subTmˢ σ x0) (subTmˢ σ x1) (subTyˢ (extSˢ (extSˢ σ)) x2) (subTmˢ σ x3) (subTmˢ σ x4) (subTmˢ σ x5)
+subTmˢ σ (fzero x0) = fzero x0
+subTmˢ σ (fsuc x0 x1) = fsuc x0 (subTmˢ σ x1)
+subTmˢ σ (fcase x0 x1 x2 x3 x4) = fcase x0 (subTyˢ (extSˢ σ) x1) (subTmˢ σ x2) (subTmˢ σ x3) (subTmˢ (extSˢ σ) x4)
+subTmˢ σ (fcase0 x0 x1) = fcase0 (subTyˢ (extSˢ σ) x0) (subTmˢ σ x1)
+subTmˢ σ (psplit x0 x1 x2 x3 x4) = psplit (subTyˢ σ x0) (subTyˢ (extSˢ σ) x1) (subTyˢ (extSˢ σ) x2) (subTmˢ (extSˢ (extSˢ σ)) x3) (subTmˢ σ x4)
+subTmˢ σ (ref x0) = ref x0
+subTmˢ σ □ = □
+subTmˢ σ (the A t) = the (subTyˢ σ A) (subTmˢ σ t)

@@ -164,7 +164,82 @@ second axis, independent of (ii)/(iii):
 | S4 | Decide TYPE conversion `≅ᵀ` completely — ROUTE C (§3b): ① validity + `srᵀ` (`Metatheory/Validity`) ✅; ② inversion — the existing `gen-*` sufficed ✅; ③ `normTy`/`decConvᵀ` (`Metatheory/NormTy`) ✅ — **structural, NO measure needed**: `homNF` recurses on the NORMAL ambient (`G` ⊂ `Π F G`), the created `app f↑ vz` go through the typed `wnorm`, and a `NoU` witness breaks the harmless `elNF ↔ homNF` cycle | ✅ |
 | S5 | The signature: constants, δ, and the conservativity theorem — design (ii), §2-bis, route B | ✅ **2026-10-02** (§3e): `ref d` in the annotated layer, `⊢ᴬref`, δ by erasure; δ-elimination + conservativity (`Metatheory/Signature`); `CheckA` decides `ref` |
 | S6 | The bidirectional SURFACE → annotated core elaborator | ✅ **2026-10-02** (§3f): `Algorithm/Surface` (generated: the annotated syntax + holes) and `Algorithm/Elab` (UNTRUSTED; re-checked by `CheckA`) |
-| S7 | The Knot WRITTEN in the annotated core with signature references; its wf derivations come from `inferᴬ`, not from a generator. User, 2026-10-02: "if we have to write code to generate the Knot something is wrong". Measure against `HANDOFF-2026-09-24` §4's split | ⬜ |
+| S7 | The Knot WRITTEN in the annotated core with signature references; its wf derivations come from `inferᴬ`, not from a generator. User, 2026-10-02: "if we have to write code to generate the Knot something is wrong". Measure against `HANDOFF-2026-09-24` §4's split | 🟡 **in progress** (§3g): machinery ✅, slice 1 (the closed core) ✅; next is the certified fast evaluator (S7a) |
+
+## 3g. ★ S7 — THE KNOT IN THE CORE (in progress, 2026-10-02)
+
+**Machinery (done):**
+- `Algorithm/SigBuild` (n surface entries) gives `S` and `wfSig : R (WfSig S)`
+  in two passes.
+  - ELABORATE (untrusted) entry n over `sigAt n`, built by structural
+    recursion.
+  - CHECK (trusted) the result with `CheckA` over `prefix S n`, plus an
+    erasure comparison (`_≟Tm_`).
+  - No lemma relates the two passes. On concrete entries
+    `wf = fromJust wfSig _`: nobody writes a derivation.
+- `Algorithm/Surface` adds:
+  - `holesTy`/`holesTm`: a kernel term with every annotation a hole, for
+    terms the Lib computes;
+  - `renTmˢ`/`subTmˢ`, generated.
+- `Algorithm/Result`: the elaborator's failures carry a path and a reason.
+  Read one off a type error with `why … ≡ "ok"`.
+- Elaborator rules added for β-redexes `app (lam □ t) u`: the domain comes
+  from the argument, and in checking mode the body is checked at the
+  constant family. A `DIh`'s index code comes from its payload's `dpay`.
+
+**Probes (measured):**
+- `KD` (51 constructors, as computed by `SD KSig`) is re-derived by
+  elaboration + `CheckA` from holes in about 10 s. This is the whole of
+  `⊢KD`.
+- ⛔ Big terms with their sub-definitions INLINED do not scale. `FIBM`,
+  and even `MethTy (SI 2) KD FM`, run out of memory (5.5 GB cap, 215 s):
+  `KD` is re-elaborated at every occurrence, and Agda's evaluation does
+  not share the work.
+- ⇒ **Every Knot definition is its own ENTRY, and a use is `ref d`.** This
+  is "abstract the substituted terms" and "a variable is the cheapest
+  position" again. Where the Lib computes a body, it computes it with
+  VARIABLES for the earlier entries, and `subTmˢ` turns them into `ref`s.
+  `Knot/Core`'s `CtxDᵛ` is the template.
+- `⌜Ty⌝` is OPAQUE in today's Knot precisely so that two syntactic forms
+  never compare it by normalisation. **A `ref` is exactly that discipline,
+  built into the kernel:** a name, unfolded only on demand.
+
+**Slice 1 (done), `Examples/Knot/Core`**, written by hand: `KD`, `Ty`,
+`CtxD`, `Ctx`, `CT`, `JT`.
+- `wf = fromJust wfSig _` checks in **56 s, 1.3 GB**.
+- It replaces `⊢KD`, `⊢⌜Ty⌝`, `⊢CtxD`, `⊢CT`, `⊢JT` and every
+  `-sub`/`-ren` lemma of these entries (`subTmᴬ σ (ref d) = ref d` by
+  definition).
+
+**S7a — next: the certified FAST evaluator.**
+- `agda-profile.sh` on `Knot/Core` counts 25.2 M unfoldings, almost all
+  of it the checker evaluating PROOFS:
+  - `renTm` 3.9 M, `extS` 3.7 M, `cong` 3.4 M, `extS-cong` 3.0 M,
+    `subTm-cong` 2.5 M;
+  - the logical relation (`relTy`, `⊩ˢ-ext`, `_,ₛ_` 1.5 M);
+  - `church-rosserᵀ`.
+- **Causes:**
+  - `nfOf`/`decTo` with-match on `validity (erase d)`, forcing the
+    derivation and every cast's equality proof;
+  - `normTy`/`decConvᵀ` normalise THROUGH the SN proof.
+- **The fix** is a certified fast path, PLAN-NF Phase 1:
+  - a fuel-bounded evaluator over ALL of `_⟶_`/`_⟶ᵀ_` that returns the
+    normal form WITH its chain (`Lib/Eval`'s design, which today covers
+    only β/fst/snd);
+  - `decTo`/`viewΠ`/`viewΣ` try it first. A "yes" is certified by the
+    chains, with no derivation and no validity.
+  - The complete procedure runs only when the fast path fails, so
+    completeness is unchanged.
+- That is the increment the Knot needs before its ~1000 schema entries
+  (user, 2026-10-02: add increments when they simplify the Knot).
+
+**Then, the migration recipe** (each step is one family):
+- a schema becomes a CLOSED λ-entry; an instance becomes
+  `app (ref d) args`;
+- the kernel-level derivations still consumed downstream come from
+  δ-elimination plus subject reduction: one generic `⊢inst` replaces each
+  `okT…`/`⊢k…`;
+- the *Agree modules stay at kernel level, on erasures.
 
 ## 3f. ★ S6 — THE ELABORATOR (done 2026-10-02)
 
