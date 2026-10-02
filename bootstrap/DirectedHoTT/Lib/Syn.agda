@@ -9,6 +9,8 @@
 --
 --     rec s k   a subterm of sort `s`, under `k` new binders
 --     nat       a meta-level natural (an object `⌜Nat⌝`)
+--     cls s     a CLOSED subterm of sort `s` — at depth 0 in any scope (a
+--               definition's body); renaming and substitution copy it
 --
 -- and one distinguished shape `vʰ`, THE VARIABLE: a `Fin d` of the
 -- ambient scope (`Lib/FinFam`).  Variables are a shape, not a field kind,
@@ -58,6 +60,8 @@ private
 data Fld : Set where
   rec : ℕ → ℕ → Fld      -- a subterm: its sort, and the binders it is under
   nat : Fld              -- a meta natural
+  cls : ℕ → Fld          -- ★ a CLOSED subterm of a sort: at depth 0, whatever
+                         --   the scope (a definition's body); traversals copy it
 
 infixr 5 _∷ʰ_ _∷ˢʰ_ _∷ᵍ_ _∷ᶠ_ _∷ᵒˢ_ _∷ᵒᵍ_
 data Shape : Set where
@@ -77,6 +81,7 @@ data Sig : ℕ → Set where
 data FldOK (n : ℕ) : Fld → Set where
   ok-rec : Lt s n → FldOK n (rec s k)
   ok-nat : FldOK n nat
+  ok-cls : Lt s n → FldOK n (cls s)
 
 -- a FIELDS shape, well-formed
 data FOK (n : ℕ) : Shape → Set where
@@ -175,6 +180,7 @@ tel : Shape → RTm Δ → Tel Δ
 tel []ʰ            i = tι
 tel (rec s k ∷ʰ sh) i = tρ (pair (tag s) (nsucs k (snd i))) (tel sh i)
 tel (nat ∷ʰ sh)     i = tσ ⌜Nat⌝ (tel sh (renTm vs i))
+tel (cls s ∷ʰ sh)   i = tρ (pair (tag s) nzero) (tel sh i)
 tel vʰ              i = tσ (⌜IMu⌝ ⌜Nat⌝ FinD (snd i)) tι
 
 tels : Shapes c → Tels (Δ ∙) c
@@ -196,6 +202,7 @@ sub-tel σ (rec s k ∷ʰ sh) i =
   cong₂ dρ (cong₂ pair (tag-sub σ s) (nsucs-sub σ k (snd i))) (sub-tel σ sh i)
 sub-tel σ (nat ∷ʰ sh)     i =
   cong (λ X → dσ ⌜Nat⌝ (lam X)) (trans (sub-tel (extS σ) sh (renTm vs i)) (cong (λ z → ⌜ tel sh z ⌝ᵗ) (wk-sub σ i)))
+sub-tel σ (cls s ∷ʰ sh)   i = cong₂ dρ (cong₂ pair (tag-sub σ s) refl) (sub-tel σ sh i)
 sub-tel σ vʰ              i = refl
 
 ------------------------------------------------------------------------
@@ -258,6 +265,7 @@ telOKf : {Γ : Ctx} {sh : Shape} {i : RTm ⌊ Γ ⌋} →
 telOKf []ᶠ                        di = ok-ι
 telOKf {sh = rec s k ∷ʰ _} (ok-rec lt ∷ᶠ ok) di = ok-ρ (⊢ix lt (⊢nsucs k (⊢depth di))) (telOKf ok di)
 telOKf (ok-nat ∷ᶠ ok)             di = ok-σ ⊢⌜Nat⌝ (telOKf ok (⊢wk di))
+telOKf (ok-cls lt ∷ᶠ ok)          di = ok-ρ (⊢ix lt (toI ⊢nzero)) (telOKf ok di)
 
 telOK : {Γ : Ctx} {sh : Shape} {i : RTm ⌊ Γ ⌋} →
         ShOK n sh → Γ ⊢ i ∷ El (SI n) → TelOK Γ (SI n) (tel sh i)
@@ -313,6 +321,9 @@ data Args (Γ : Ctx) (n : ℕ) (sg : Sig n) (d : RTm ⌊ Γ ⌋) : Shape → RTm
           Args Γ n sg d (rec s k ∷ʰ sh) (pair a p)
   a-nat : {a p : RTm ⌊ Γ ⌋} {sh : Shape} →
           Γ ⊢ a ∷ El ⌜Nat⌝ → Args Γ n sg d sh p → Args Γ n sg d (nat ∷ʰ sh) (pair a p)
+  a-cls : {a p : RTm ⌊ Γ ⌋} {sh : Shape} →
+          Γ ⊢ a ∷ SK sg s nzero → Args Γ n sg d sh p →
+          Args Γ n sg d (cls s ∷ʰ sh) (pair a p)
   a-v   : {a : RTm ⌊ Γ ⌋} → Γ ⊢ a ∷ FinI d → Args Γ n sg d vʰ (pair a unit)
 
 private
@@ -332,6 +343,9 @@ private
 ⊢payArgsF {sg = sg} {d = d} {sh = rec s k ∷ʰ sh} dD (ok-rec lt ∷ᶠ ok) di r (a-rec da as) =
   ⊢payρ ⊢SI dD (ok-ρ (⊢ix lt (⊢nsucs k (⊢depth di))) (telOKf ok di))
         (ixConv (⟶*-pairʳ (⟶*-nsucs k r)) (⊢SK→IMu {sg = sg} {s = s} {d = nsucs k d} da)) (⊢payArgsF dD ok di r as)
+⊢payArgsF {sg = sg} {sh = cls s ∷ʰ sh} dD (ok-cls lt ∷ᶠ ok) di r (a-cls da as) =
+  ⊢payρ ⊢SI dD (ok-ρ (⊢ix lt (toI ⊢nzero)) (telOKf ok di))
+        (⊢SK→IMu {sg = sg} {s = s} {d = nzero} da) (⊢payArgsF dD ok di r as)
 ⊢payArgsF {sg = sg} {i = i} {sh = nat ∷ʰ sh} dD (ok-nat ∷ᶠ ok) di r (a-nat {a = a} {p = p} da as) =
   ⊢payσ ⊢SI dD (ok-σ ⊢⌜Nat⌝ (telOKf ok (⊢wk di))) da
     (subst (λ X → _ ⊢ p ∷ El (dpay (SI _) (SD sg) X)) (sym (sub-rest a sh i)) (⊢payArgsF dD ok di r as))

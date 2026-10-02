@@ -83,8 +83,10 @@ def split_arrows(ty):
     return out
 
 def field(p, name):
-    """('rec', sort, n) | ('var',) | ('nat',)"""
+    """('rec', sort, n) | ('var',) | ('nat',) | ('cls', sort)"""
     if p == "ℕ": return ("nat",)
+    # ★ a CLOSED subterm (a definition's body, `RTm ε`): `Lib/Syn.cls`
+    if p in ("RTy ε", "RTm ε"): return ("cls", SORTS[p.split()[0]])
     if p == "Var Γ": return ("var",)
     m = re.match(r"^(RTy|RTm) (.*)$", p)
     assert m, (name, p)
@@ -104,10 +106,12 @@ def lt(s):
 
 def fld(f):
     if f[0] == "rec": return "rec %d %d" % (f[1], f[2])
+    if f[0] == "cls": return "cls %d" % f[1]
     return f[0]
 
 def fldok(f):
     if f[0] == "rec": return "ok-rec %s" % lt(f[1])
+    if f[0] == "cls": return "ok-cls %s" % lt(f[1])
     return "ok-" + f[0]
 
 def shape(fs):
@@ -238,11 +242,12 @@ quoteTm : {Γ : Cx} → RTm Γ → {Θ : Cx} → RTm Θ
 """]
     Q = {"RTy": "quoteTy", "RTm": "quoteTm"}
     def qf(f, a):
-        if f[0] == "rec": return "(%s %s)" % (["quoteTy", "quoteTm"][f[1]], a)
+        if f[0] in ("rec", "cls"): return "(%s %s)" % (["quoteTy", "quoteTm"][f[1]], a)
         if f[0] == "nat": return "(quoteℕ %s)" % a
         if f[0] == "var": return "(quoteVar %s)" % a
     def df(f, a):
         if f[0] == "rec": return "a-rec (⊢%s %s)" % (["quoteTy", "quoteTm"][f[1]], a)
+        if f[0] == "cls": return "a-cls (⊢%s %s)" % (["quoteTy", "quoteTm"][f[1]], a)
         if f[0] == "nat": return "a-nat (⊢quoteℕ %s)" % a
         if f[0] == "var": return "a-v (⊢quoteVar %s)" % a
     def args_proof(fs, args):
@@ -299,10 +304,12 @@ open import DirectedHoTT.Examples.Knot.Sig
         return t
     def fty(f, a):
         if f[0] == "rec": return "Γ ⊢ %s ∷ K %d %s" % (a, f[1], depth(f[2]))
+        if f[0] == "cls": return "Γ ⊢ %s ∷ K %d nzero" % (a, f[1])
         if f[0] == "nat": return "Γ ⊢ %s ∷ El ⌜Nat⌝" % a
         if f[0] == "var": return "Γ ⊢ %s ∷ FinI d" % a
     def darg(f, a):
         if f[0] == "rec": return "a-rec d" + a
+        if f[0] == "cls": return "a-cls d" + a
         if f[0] == "nat": return "a-nat d" + a
         if f[0] == "var": return "a-v d" + a
     def nthsh(k):
@@ -360,6 +367,8 @@ def agree_cases(rows, fn, TR, lifts, var_case):
                     pins = "{sh = %s} {e = dep Δ} {f = f} {d = dep Γ}" % rest
                     if f[0] == "nat":
                         chain = "(%s.fld-nat %s %s)" % (TR, pins, chain)
+                    elif f[0] == "cls":   # a closed field is copied
+                        chain = "(%s.fld-cls {s = %d} %s %s)" % (TR, f[1], pins, chain)
                     else:
                         ih = "(%s %s (%s %d r))" % (FN["RTy" if f[1] == 0 else "RTm"], args[j], lifts, f[2])
                         chain = "(%s.fld-rec {s = %d} {k = %d} %s %s %s)" % (TR, f[1], f[2], pins, ih, chain)
@@ -581,11 +590,12 @@ def gen_qview(rows):
             args = ["a%d" % j for j in range(len(fs))]
             pat = "(%s)" % " ".join([name] + args) if args else name
             def qf(f, a):
-                if f[0] == "rec": return "(%s %s)" % (["quoteTy", "quoteTm"][f[1]], a)
+                if f[0] in ("rec", "cls"): return "(%s %s)" % (["quoteTy", "quoteTm"][f[1]], a)
                 if f[0] == "nat": return "(quoteℕ %s)" % a
                 return "(quoteVar %s)" % a
             def df(f, a):
                 if f[0] == "rec": return "a-rec (⊢%s %s)" % (["quoteTy", "quoteTm"][f[1]], a)
+                if f[0] == "cls": return "a-cls (⊢%s %s)" % (["quoteTy", "quoteTm"][f[1]], a)
                 if f[0] == "nat": return "a-nat (⊢quoteℕ %s)" % a
                 return "a-v (⊢quoteVar %s)" % a
             if fs == [("var",)]:
@@ -613,6 +623,7 @@ open import DirectedHoTT.Examples.Knot.JudgeIx using ( JT; tmIx )
 open import DirectedHoTT.Examples.Knot.Judge using ( D⊢ )
 open import DirectedHoTT.Examples.Knot.Conv using ( ⌜≅ᵀ⌝ )
 open import DirectedHoTT.Examples.Knot.JudgeConGen
+open import DirectedHoTT.Examples.Knot.RefCon using ( conv⊢ref )
 
 ------------------------------------------------------------------------
 -- ★ The Knot's `⊢conv` rows are ONE PER SUBJECT HEAD (`conv⊢…`), so the
@@ -635,7 +646,7 @@ def gen_convhead(rows):
         args = ["a%d" % j for j in range(len(fs))]
         pat = "(%s)" % " ".join([name] + args) if args else name
         def df(f, a):
-            if f[0] == "rec": return "(⊢%s %s)" % (["quoteTy", "quoteTm"][f[1]], a)
+            if f[0] in ("rec", "cls"): return "(⊢%s %s)" % (["quoteTy", "quoteTm"][f[1]], a)
             if f[0] == "nat": return "(⊢quoteℕ %s)" % a
             return "(⊢quoteVar %s)" % a
         ds = " ".join(df(f, a) for f, a in zip(fs, args))

@@ -2482,6 +2482,7 @@ module _ where
     ⟨ ⟶ᵀNone ∣∀ ok⟶ᵀNone ⟩∷  -- sh-kcIMu
     ⟨ ⟶ᵀNone ∣∀ ok⟶ᵀNone ⟩∷  -- sh-kcFin
     ⟨ ⟶ᵀNone ∣∀ ok⟶ᵀNone ⟩∷  -- sh-kcUnit
+    ⟨ ⟶ᵀNone ∣∀ ok⟶ᵀNone ⟩∷  -- sh-kref
     []ᴿ
 
   rows⟶ᵀ : RedTₘ.RowsOKG zero KSig

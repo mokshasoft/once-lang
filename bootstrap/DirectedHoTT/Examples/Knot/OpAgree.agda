@@ -24,7 +24,7 @@ open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Spec.Variance using ( pwShift )
-open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-trans; ⟶*-con; ⟶*-pairˡ; ⟶*-pairʳ )
+open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-trans; ⟶*-con; ⟶*-pairˡ; ⟶*-pairʳ; ⟶*-appˡ; ⟶*-ielimᵗ )
 open import DirectedHoTT.Metatheory.TySub using ( wk-cancel-tm )
 open import DirectedHoTT.Metatheory.Fundamental.Syntactic using ( ⟨_⟩ᵣ; subTm-var; subTy-var )
 open import DirectedHoTT.Lib.FinFam using ( ffz; ffs )
@@ -143,6 +143,50 @@ opaque
 
   wk-agree-tm : (t : RTm Γ) → KR.wk 1 (dep Γ) (quoteTm t {Θ}) ⟶* quoteTm (renTm vs t)
   wk-agree-tm t = ren-agree-tm t repR-wk
+
+  -- ★ a closed body, weakened to the depth (a definition's δ, `kref`)
+  εwk-agree : (Γ : Cx) (b : RTm ε) → KR.εwkK 1 (dep Γ) (quoteTm b {Θ}) ⟶* quoteTm (εwkTm {Γ} b)
+  εwk-agree ε b =
+    step (natrec-zero _ _) (subst (λ z → quoteTm b ⟶* quoteTm z) (sym εwk-id) done)
+    where εwk-id : εwkTm {ε} b ≡ b
+          εwk-id = trans (subTm-cong {σ = εsub} {σ' = idₛ} (λ ()) b) (subTm-id b)
+  εwk-agree {Θ = Θ} (Γ ∙) b =
+    step (natrec-suc (quoteTm b) (KR.wk 1 v₁ v₀) d)
+      (subst (_⟶* quoteTm (εwkTm {Γ ∙} b) {Θ}) (sym unfold)
+        (⟶*-trans (⟶*-appˡ (⟶*-appˡ (⟶*-ielimᵗ (εwk-agree Γ b))))
+          (subst (KR.wk 1 d (quoteTm (εwkTm {Γ} b)) ⟶*_) (cong (λ z → quoteTm z {Θ}) (εwkTm-ren vs b))
+                 (wk-agree-tm (εwkTm {Γ} b)))))
+    where
+      d : RTm Θ
+      d = dep Γ
+      N : RTm Θ
+      N = KR.εwkK 1 d (quoteTm b)
+      unfold : subTm (single N) (subTm (extS (single d)) (KR.wk 1 v₁ v₀)) ≡ KR.wk 1 d N
+      unfold = trans (cong (subTm (single N)) (KR.wk-sub (extS (single d)) 1 v₁ v₀))
+                     (trans (KR.wk-sub (single N) 1 (renTm vs d) v₀)
+                            (cong (λ e → KR.wk 1 e N) (wk-cancel-tm N d)))
+
+  -- … and its type, the same tower at sort 0
+  εwk-agree-ty : (Γ : Cx) (A : RTy ε) → KR.εwkK 0 (dep Γ) (quoteTy A {Θ}) ⟶* quoteTy (εwkTy {Γ} A)
+  εwk-agree-ty ε A =
+    step (natrec-zero _ _) (subst (λ z → quoteTy A ⟶* quoteTy z) (sym εwk-id) done)
+    where εwk-id : εwkTy {ε} A ≡ A
+          εwk-id = trans (subTy-cong {σ = εsub} {σ' = idₛ} (λ ()) A) (subTy-id A)
+  εwk-agree-ty {Θ = Θ} (Γ ∙) A =
+    step (natrec-suc (quoteTy A) (KR.wk 0 v₁ v₀) d)
+      (subst (_⟶* quoteTy (εwkTy {Γ ∙} A) {Θ}) (sym unfold)
+        (⟶*-trans (⟶*-appˡ (⟶*-appˡ (⟶*-ielimᵗ (εwk-agree-ty Γ A))))
+          (subst (KR.wk 0 d (quoteTy (εwkTy {Γ} A)) ⟶*_) (cong (λ z → quoteTy z {Θ}) (εwk-ren vs A))
+                 (wk-agree-ty (εwkTy {Γ} A)))))
+    where
+      d : RTm Θ
+      d = dep Γ
+      N : RTm Θ
+      N = KR.εwkK 0 d (quoteTy A)
+      unfold : subTm (single N) (subTm (extS (single d)) (KR.wk 0 v₁ v₀)) ≡ KR.wk 0 d N
+      unfold = trans (cong (subTm (single N)) (KR.wk-sub (extS (single d)) 0 v₁ v₀))
+                     (trans (KR.wk-sub (single N) 0 (renTm vs d) v₀)
+                            (cong (λ e → KR.wk 0 e N) (wk-cancel-tm N d)))
 
   -- the eliminators' motive re-basings
   nrs-agree : (A : RTy (Γ ∙)) → nrsK (dep Γ) (quoteTy A {Θ}) ⟶* quoteTy (subTy nrs A)

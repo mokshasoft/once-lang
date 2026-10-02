@@ -169,3 +169,5 @@ ren-agree-tm {Γ} {Δ} (⌜IMu⌝ a0 a1 a2) {f = f} r =
 ren-agree-tm {Γ} {Δ} (⌜Fin⌝ a0) {f = f} r =
   ⟶*-trans (TR.trav-con (atᵍ 1) (atʰ 36) TR.f-cons) (⟶*-con (⟶*-pairʳ (TR.fld-nat {sh = []ʰ} {e = dep Δ} {f = f} {d = dep Γ} done)))
 ren-agree-tm ⌜Unit⌝ r = TR.trav-con (atᵍ 1) (atʰ 37) TR.f-nil
+ren-agree-tm {Γ} {Δ} (ref a0 a1) {f = f} r =
+  ⟶*-trans (TR.trav-con (atᵍ 1) (atʰ 38) TR.f-cons) (⟶*-con (⟶*-pairʳ (TR.fld-nat {sh = cls 1 ∷ʰ []ʰ} {e = dep Δ} {f = f} {d = dep Γ} (TR.fld-cls {s = 1} {sh = []ʰ} {e = dep Δ} {f = f} {d = dep Γ} done))))

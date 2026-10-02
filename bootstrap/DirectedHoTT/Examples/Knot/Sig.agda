@@ -225,11 +225,15 @@ sh-kcFin = nat ∷ʰ []ʰ
 sh-kcUnit : Shape
 sh-kcUnit = []ʰ
 
+-- ref
+sh-kref : Shape
+sh-kref = nat ∷ʰ cls 1 ∷ʰ []ʰ
+
 TyShs : Shapes 13
 TyShs = sh-kbase ∷ˢʰ sh-kU ∷ˢʰ sh-kPi ∷ˢʰ sh-kSg ∷ˢʰ sh-kEl ∷ˢʰ sh-kHom ∷ˢʰ sh-kUnit ∷ˢʰ sh-kNat ∷ˢʰ sh-kId ∷ˢʰ sh-kIMu ∷ˢʰ sh-kDesc ∷ˢʰ sh-kDIh ∷ˢʰ sh-kFin ∷ˢʰ []ˢʰ
 
-TmShs : Shapes 38
-TmShs = sh-kvar ∷ˢʰ sh-klam ∷ˢʰ sh-kapp ∷ˢʰ sh-kpair ∷ˢʰ sh-kabsurd ∷ˢʰ sh-kordtr ∷ˢʰ sh-kfst ∷ˢʰ sh-ksnd ∷ˢʰ sh-kcbase ∷ˢʰ sh-kcPi ∷ˢʰ sh-kcSg ∷ˢʰ sh-kcHom ∷ˢʰ sh-khrefl ∷ˢʰ sh-ktr ∷ˢʰ sh-kap ∷ˢʰ sh-kcId ∷ˢʰ sh-kidrefl ∷ˢʰ sh-kjsub ∷ˢʰ sh-kunit ∷ˢʰ sh-knzero ∷ˢʰ sh-knsuc ∷ˢʰ sh-knatrec ∷ˢʰ sh-kcon ∷ˢʰ sh-kielim ∷ˢʰ sh-kdI ∷ˢʰ sh-kdS ∷ˢʰ sh-kdR ∷ˢʰ sh-kdpay ∷ˢʰ sh-kdih ∷ˢʰ sh-kfzero ∷ˢʰ sh-kfsuc ∷ˢʰ sh-kfcase ∷ˢʰ sh-kfcase0 ∷ˢʰ sh-kpsplit ∷ˢʰ sh-kcNat ∷ˢʰ sh-kcIMu ∷ˢʰ sh-kcFin ∷ˢʰ sh-kcUnit ∷ˢʰ []ˢʰ
+TmShs : Shapes 39
+TmShs = sh-kvar ∷ˢʰ sh-klam ∷ˢʰ sh-kapp ∷ˢʰ sh-kpair ∷ˢʰ sh-kabsurd ∷ˢʰ sh-kordtr ∷ˢʰ sh-kfst ∷ˢʰ sh-ksnd ∷ˢʰ sh-kcbase ∷ˢʰ sh-kcPi ∷ˢʰ sh-kcSg ∷ˢʰ sh-kcHom ∷ˢʰ sh-khrefl ∷ˢʰ sh-ktr ∷ˢʰ sh-kap ∷ˢʰ sh-kcId ∷ˢʰ sh-kidrefl ∷ˢʰ sh-kjsub ∷ˢʰ sh-kunit ∷ˢʰ sh-knzero ∷ˢʰ sh-knsuc ∷ˢʰ sh-knatrec ∷ˢʰ sh-kcon ∷ˢʰ sh-kielim ∷ˢʰ sh-kdI ∷ˢʰ sh-kdS ∷ˢʰ sh-kdR ∷ˢʰ sh-kdpay ∷ˢʰ sh-kdih ∷ˢʰ sh-kfzero ∷ˢʰ sh-kfsuc ∷ˢʰ sh-kfcase ∷ˢʰ sh-kfcase0 ∷ˢʰ sh-kpsplit ∷ˢʰ sh-kcNat ∷ˢʰ sh-kcIMu ∷ˢʰ sh-kcFin ∷ˢʰ sh-kcUnit ∷ˢʰ sh-kref ∷ˢʰ []ˢʰ
 
 -- ★ THE SIGNATURE — the Knot
 KSig : Sig 2
@@ -337,10 +341,12 @@ ok-kcFin : ShOK 2 sh-kcFin
 ok-kcFin = fᵒʰ ((ok-nat) ∷ᶠ []ᶠ)
 ok-kcUnit : ShOK 2 sh-kcUnit
 ok-kcUnit = fᵒʰ ([]ᶠ)
+ok-kref : ShOK 2 sh-kref
+ok-kref = fᵒʰ ((ok-nat) ∷ᶠ (ok-cls (lt-s lt-z)) ∷ᶠ []ᶠ)
 
 KOK : SigOK 2 KSig
 KOK = (ok-kbase ∷ᵒˢ ok-kU ∷ᵒˢ ok-kPi ∷ᵒˢ ok-kSg ∷ᵒˢ ok-kEl ∷ᵒˢ ok-kHom ∷ᵒˢ ok-kUnit ∷ᵒˢ ok-kNat ∷ᵒˢ ok-kId ∷ᵒˢ ok-kIMu ∷ᵒˢ ok-kDesc ∷ᵒˢ ok-kDIh ∷ᵒˢ ok-kFin ∷ᵒˢ []ᵒˢ)
-   ∷ᵒᵍ (ok-kvar ∷ᵒˢ ok-klam ∷ᵒˢ ok-kapp ∷ᵒˢ ok-kpair ∷ᵒˢ ok-kabsurd ∷ᵒˢ ok-kordtr ∷ᵒˢ ok-kfst ∷ᵒˢ ok-ksnd ∷ᵒˢ ok-kcbase ∷ᵒˢ ok-kcPi ∷ᵒˢ ok-kcSg ∷ᵒˢ ok-kcHom ∷ᵒˢ ok-khrefl ∷ᵒˢ ok-ktr ∷ᵒˢ ok-kap ∷ᵒˢ ok-kcId ∷ᵒˢ ok-kidrefl ∷ᵒˢ ok-kjsub ∷ᵒˢ ok-kunit ∷ᵒˢ ok-knzero ∷ᵒˢ ok-knsuc ∷ᵒˢ ok-knatrec ∷ᵒˢ ok-kcon ∷ᵒˢ ok-kielim ∷ᵒˢ ok-kdI ∷ᵒˢ ok-kdS ∷ᵒˢ ok-kdR ∷ᵒˢ ok-kdpay ∷ᵒˢ ok-kdih ∷ᵒˢ ok-kfzero ∷ᵒˢ ok-kfsuc ∷ᵒˢ ok-kfcase ∷ᵒˢ ok-kfcase0 ∷ᵒˢ ok-kpsplit ∷ᵒˢ ok-kcNat ∷ᵒˢ ok-kcIMu ∷ᵒˢ ok-kcFin ∷ᵒˢ ok-kcUnit ∷ᵒˢ []ᵒˢ)
+   ∷ᵒᵍ (ok-kvar ∷ᵒˢ ok-klam ∷ᵒˢ ok-kapp ∷ᵒˢ ok-kpair ∷ᵒˢ ok-kabsurd ∷ᵒˢ ok-kordtr ∷ᵒˢ ok-kfst ∷ᵒˢ ok-ksnd ∷ᵒˢ ok-kcbase ∷ᵒˢ ok-kcPi ∷ᵒˢ ok-kcSg ∷ᵒˢ ok-kcHom ∷ᵒˢ ok-khrefl ∷ᵒˢ ok-ktr ∷ᵒˢ ok-kap ∷ᵒˢ ok-kcId ∷ᵒˢ ok-kidrefl ∷ᵒˢ ok-kjsub ∷ᵒˢ ok-kunit ∷ᵒˢ ok-knzero ∷ᵒˢ ok-knsuc ∷ᵒˢ ok-knatrec ∷ᵒˢ ok-kcon ∷ᵒˢ ok-kielim ∷ᵒˢ ok-kdI ∷ᵒˢ ok-kdS ∷ᵒˢ ok-kdR ∷ᵒˢ ok-kdpay ∷ᵒˢ ok-kdih ∷ᵒˢ ok-kfzero ∷ᵒˢ ok-kfsuc ∷ᵒˢ ok-kfcase ∷ᵒˢ ok-kfcase0 ∷ᵒˢ ok-kpsplit ∷ᵒˢ ok-kcNat ∷ᵒˢ ok-kcIMu ∷ᵒˢ ok-kcFin ∷ᵒˢ ok-kcUnit ∷ᵒˢ ok-kref ∷ᵒˢ []ᵒˢ)
    ∷ᵒᵍ []ᵒᵍ
 
 -- the family, and the syntax at a sort and depth
@@ -459,3 +465,5 @@ kcFin : {Γ : Cx} → RTm Γ → RTm Γ
 kcFin a0 = conₗ (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc zero)))))))))))))))))))))))))))))))))))) (a0 ,ₚ (unit))
 kcUnit : {Γ : Cx} → RTm Γ
 kcUnit = conₗ (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc zero))))))))))))))))))))))))))))))))))))) (unit)
+kref : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ
+kref a0 a1 = conₗ (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc zero)))))))))))))))))))))))))))))))))))))) (a0 ,ₚ a1 ,ₚ (unit))

@@ -42,6 +42,7 @@ open import DirectedHoTT.Examples.Knot.NestIx
 open import DirectedHoTT.Lib.SynPat using ( module Pat )
 open import DirectedHoTT.Examples.Knot.JudgeCase using ( defRow₀ )
 open import DirectedHoTT.Examples.Knot.Pw using ( ⌜Pw⌝; ⊢⌜Pw⌝; ⌜Pw⌝-sub )
+open import DirectedHoTT.Examples.Knot.Ref using ( rδ; okδ )
 
 private
   variable
@@ -7151,6 +7152,7 @@ module _ where
     ⟨ r⟶cIMu ∣ ok⟶cIMu ⟩∷  -- sh-kcIMu
     ⟨ ⟶None ∣∀ ok⟶None ⟩∷  -- sh-kcFin
     ⟨ ⟶None ∣∀ ok⟶None ⟩∷  -- sh-kcUnit
+    ⟨ rδ ∣ okδ ⟩∷  -- sh-kref
     []ᴿ
 
   rows⟶ : Redₘ.RowsOKG zero KSig

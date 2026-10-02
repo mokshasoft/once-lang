@@ -487,6 +487,9 @@ module Trav {sg : Sig n} (ok : SigOK n sg) (κ : Kit n sg) where
   tpay []ʰ             p h e f d = unit
   tpay (rec s k ∷ʰ sh) p h e f d = pair (app (app (fst h) (nsucs k e)) (LIFTS k e d f)) (tpay sh (snd p) (snd h) e f d)
   tpay (nat ∷ʰ sh)     p h e f d = pair (fst p) (tpay sh (snd p) h e f d)
+  -- ★ a closed field is COPIED (its hypothesis is skipped): a definition's
+  --   body is the same at every depth
+  tpay (cls s ∷ʰ sh)   p h e f d = pair (fst p) (tpay sh (snd p) (snd h) e f d)
   tpay vʰ              p h e f d = unit
 
   private
@@ -509,6 +512,19 @@ module Trav {sg : Sig n} (ok : SigOK n sg) (κ : Kit n sg) where
                               (csymᵀ (red→≅ᵀ (⟶ᵀ*-Πˡ (⟶ᵀ*-IMu (step (βsnd _ _) (⟶*-nsucs k r))))))))
                  (red→≅ᵀ (⟶ᵀ*-IMu (⟶*-pairˡ (step (βfst _ _) done))))))
           (⊢tpay ok dp' dh' de dd r df)
+    where
+      dp' : Γ ⊢ snd p ∷ PayV sh i (SI n) (SD sg)
+      dp' = ⊢-cast (trans (PayV-sub (single (fst p)) sh (renTm vs i) (renTm vs (SI n)) (renTm vs (SD sg)))
+                          (cong₂ (λ a b → PayV sh a (SI n) b) (wkc (fst p) i) (wkc (fst p) (SD sg))))
+                   (⊢snd dp)
+      dh' : Γ ⊢ snd h ∷ IhV sh i (SD sg) TM (snd p)
+      dh' = ⊢-cast (trans (IhV-sub (single (fst h)) sh (renTm vs i) (renTm vs (SD sg)) (renTy (extR (extR vs)) TM)
+                                   (snd (renTm vs p)))
+                          (cong₄ (IhV sh) (wkc (fst h) i) (wkc (fst h) (SD sg)) (M-cancel (fst h) TM)
+                                 (cong snd (wkc (fst h) p))))
+                   (⊢snd dh)
+  ⊢tpay {Γ = Γ} {sh = cls s ∷ʰ sh} {i} {p} {h} {e} {f} {d} (ok-cls lt ∷ᶠ ok) dp dh de dd r df =
+    a-cls (⊢IMu→SK {sg = sg} {s = s} {d = nzero} (⊢fst dp)) (⊢tpay ok dp' dh' de dd r df)
     where
       dp' : Γ ⊢ snd p ∷ PayV sh i (SI n) (SD sg)
       dp' = ⊢-cast (trans (PayV-sub (single (fst p)) sh (renTm vs i) (renTm vs (SI n)) (renTm vs (SD sg)))

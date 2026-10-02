@@ -21,6 +21,7 @@ open import DirectedHoTT.Examples.Knot.JudgeIx using ( JT; tmIx )
 open import DirectedHoTT.Examples.Knot.Judge using ( D⊢ )
 open import DirectedHoTT.Examples.Knot.Conv using ( ⌜≅ᵀ⌝ )
 open import DirectedHoTT.Examples.Knot.JudgeConGen
+open import DirectedHoTT.Examples.Knot.RefCon using ( conv⊢ref )
 open import DirectedHoTT.Lib.Sugar using ( _,ₚ_ )
 
 ------------------------------------------------------------------------
@@ -72,3 +73,4 @@ convAt Γ ⌜Nat⌝ dA dB dr de = _ , conv⊢cNat (⊢dep' ⌊ Γ ⌋) (⊢quote
 convAt Γ (⌜IMu⌝ a0 a1 a2) dA dB dr de = _ , conv⊢cIMu (⊢dep' ⌊ Γ ⌋) (⊢quoteCtx Γ) (⊢quoteTm a0) (⊢quoteTm a1) (⊢quoteTm a2) dA dB dr de
 convAt Γ (⌜Fin⌝ a0) dA dB dr de = _ , conv⊢cFin (⊢dep' ⌊ Γ ⌋) (⊢quoteCtx Γ) (⊢quoteℕ a0) dA dB dr de
 convAt Γ ⌜Unit⌝ dA dB dr de = _ , conv⊢cUnit (⊢dep' ⌊ Γ ⌋) (⊢quoteCtx Γ) dA dB dr de
+convAt Γ (ref a0 a1) dA dB dr de = _ , conv⊢ref (⊢dep' ⌊ Γ ⌋) (⊢quoteCtx Γ) (⊢quoteℕ a0) (⊢quoteTm a1) dA dB dr de
