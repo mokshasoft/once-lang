@@ -2,6 +2,8 @@
 
 > Opened 2026-09-29, after PLAN-LEVITATION Stage 6. Branch
 > `ocp-0009-levitation` (no rebase for now).
+> ✅ **DONE 2026-09-30** (F1–F5, commit `4e6e46904`). Next: PLAN-BIDI, after
+> PLAN-LEVITATION's clean measurement (`HANDOFF-2026-10-02.md` §4).
 
 ## Goal
 
