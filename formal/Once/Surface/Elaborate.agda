@@ -540,7 +540,7 @@ elaborate {Γ = Γ} m (sigOp {A = (Dom ⇒[ mk-kind One π ] Cod)} name (con-fun
   curry (SigOp (arrow-info (mk-kind One π) name bDom cCod) ∘ snd)
 elaborate {Γ = Γ} m (sigOp {A = (Dom ⇒[ mk-kind Many π ] Cod)} name (con-fun bDom cCod)) =
   curry (SigOp (arrow-info (mk-kind Many π) name bDom cCod) ∘ snd)
-elaborate {Γ = Γ} m (sigOp name conc) = SigOp (value-info name base-Unit conc) ∘ terminal
+elaborate {Γ = Γ} m (sigOp name (con-base ib)) = SigOp (value-info name base-Unit ib) ∘ terminal
 -- Plan 0.19 / D245: a reference to one of the program's own definitions CALLS
 -- its table entry, `once_<name>`, at the direct-call ABI codegen emits (D064):
 -- `refIR` (Once.IR.Ref). It is not a SigOp: a SigOp means the contract it

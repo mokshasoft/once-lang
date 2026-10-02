@@ -40,16 +40,11 @@ open Once.Type using (showQuantity; showType) public
 -- names resolve unambiguously to `Once.Type`.
 open import Once.IR as IR hiding (Unit; Void; _*_; _+_; μ-type; ν-type; Int; Float; Str; Buffer; K; Id; _⊕_; _⊗_)
 open import Once.IRTy.WF using (wf-⌊⌋)
--- Plan 0.36 Phase 1: `generic-info` reconstructs a SigOp's `SigOpInfo` from its
--- name, so `extract-morph-eff` can recover the direct `IR.SigOp` morphism of an
--- effectful sigOp used point-free (it elaborates as a closure otherwise).
--- Plan 0.38 M0.2: external arrow SigOps are built from their DECLARED
--- `! <shape>` effect (looked up in `NamedCtx.sigEffects`), never from a
--- hardcoded name. `generic-semM` supplies the (laundered) value ONLY for
--- the pure/value `pureV` positions — an effectful op carries a CONTRACT,
--- not a value, so `Emits`/`Halts` drop it entirely.
-open import Once.Arith.SigOp.Builders using (generic-semM; generic-semM-at)
-open import Once.SigOp.Info using (SigOpInfo; mk-info'; pureV; emitsV; haltsV)
+-- External arrow SigOps are built from their DECLARED arrow (purity and
+-- codomain), never from a hardcoded name; each is a CONTRACT whose meaning is
+-- the interpretation's (plan 0.105: `ffiV`/`callsV`; `generic-semM` is gone).
+open import Once.Arith.SigOp.Builders using (arrow-info)
+open import Once.SigOp.Info using (SigOpInfo; mk-info'; pureV; emitsV; haltsV; ffiV; callsV)
 open import Once.CanonicalName using (CanonicalName; own; bare; showCanonical; gen; NotGenerator; bare-NotGenerator; GenWord; genWord?)
 open import Once.TypeCheck.Raw using (RawExpr)
 open import Once.TypeCheck.Raw as Raw
@@ -1249,32 +1244,14 @@ inferElabV-RDestruct-auxR ctx scrut xL eL xR eR A B scrutE ds fs wS {C₁ = C₁
 ... | yes refl = success C₁ _ (Surface.case' scrutE eLE eRE) (ds ⊔ suc dL ⊔ suc dR) fR , t-case wS wL wR
 ... | no _     = failure CaseBranchMismatch , tt
 
--- | Build an external arrow op's `SigOpInfo` from its DECLARED effect
--- (Plan 0.38 M0.2). The compiler is interpretation-BLIND: the effect
--- comes from the `! <shape>` annotation in the imported signature
--- (looked up in `NamedCtx.sigEffects` by the same qualified key as the
--- type), NEVER from a hardcoded name (the retired effect-from-name guess is
--- gone). An effectful, `Unit`-codomain op carries a CONTRACT
--- (`haltsV`/`emitsV`), no value. A pure arrow, or an `eff` op whose
--- codomain is not `Unit` (the deferred data-returning-syscall
--- boundary), falls back to a `pureV` value (the `closure`/`poly`-style
--- function-linking opacity, a separate axis from the syscall contract).
+-- An EXTERNAL arrow's contract (plan 0.105): the SAME builder the meaning
+-- reads (`arrow-info`). A `pure` arrow is a pure FFI contract (`ffiV`, the
+-- interpretation's value); an `eff` one HALTS into `Void`, EMITS into `Unit`,
+-- and otherwise ANSWERS (`callsV`, a call the interpretation answers) — the
+-- codomain decides (D225), no name-keyed table. First-order: both sides base.
 ext-arrow-info : ∀ {A B} → NamedCtx → (alias name : String) → Purity
-               → IsBaseType A → IsConcrete B → SigOpInfo A B
-ext-arrow-info ctx alias name pure bA cB = mk-info' (bare (alias ++ "." ++ name)) (pureV (generic-semM-at cB (alias ++ "." ++ name))) bA cB
--- plan 0.98 stage E: THE CODOMAIN DECIDES. 0.97 asked a name-keyed side
--- table (`lookupSigEffect (NamedCtx.sigEffects ctx)`) whether an op halts,
--- because `Emits` and `Halts` carried the SAME index (`B ≡ Unit`) and the
--- type could not tell them apart — §1's finding, and the root cause of
--- `masq`'s `true != false`. `Halts` carries `B ≡ Void` now, so the
--- distinction is in the type and the table has nothing left to say. An
--- external op that returns nothing HALTS; one that returns `Unit` EMITS;
--- anything else is a value contract.
-ext-arrow-info {A} {B} ctx alias name eff bA cB with B ≟T Void
-... | yes refl = mk-info' (bare (alias ++ "." ++ name)) (haltsV refl) bA cB
-... | no _ with B ≟T Unit
-...   | yes refl = mk-info' (bare (alias ++ "." ++ name)) (emitsV refl) bA cB
-...   | no _     = mk-info' (bare (alias ++ "." ++ name)) (pureV (generic-semM-at cB (alias ++ "." ++ name))) bA cB
+               → IsBaseType A → IsBaseType B → SigOpInfo A B
+ext-arrow-info ctx alias name π bA bB = arrow-info (Once.Type.mk-kind Once.Type.Many π) (bare (alias ++ "." ++ name)) bA bB
 
 -- Plan 0.58: the arrow-value case DE-WITHES the concreteness decision
 -- (`isBaseType? A`/`isConcrete? B`) into explicit Maybe args + equations, so
@@ -1285,7 +1262,7 @@ inferElabV-RQualified-arrow-aux :
   → lookupImport (NamedCtx.imports ctx) (alias ++ "." ++ name)
       ≡ just (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B)
   → (mbA : Maybe (IsBaseType A)) → isBaseType? A ≡ mbA
-  → (mcB : Maybe (IsConcrete B)) → isConcrete? B ≡ mcB
+  → (mcB : Maybe (IsBaseType B)) → isBaseType? B ≡ mcB
   → VerifiedInferResult ctx (Raw.RQualified name alias)
 -- Concreteness-driven arrow value emission (de-withed for Completeness).
 inferElabV-RQualified-arrow-aux ctx name alias {A} {B} {π} eq (just bA) _ (just cB) _ =
@@ -1332,7 +1309,7 @@ inferElabV-RQualified-aux :
 -- externals become `lift-morphism (SigOp …)`.
 inferElabV-RQualified-aux ctx name alias
   (just (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B)) eq =
-  inferElabV-RQualified-arrow-aux ctx name alias eq (isBaseType? A) refl (isConcrete? B) refl
+  inferElabV-RQualified-arrow-aux ctx name alias eq (isBaseType? A) refl (isBaseType? B) refl
 inferElabV-RQualified-aux ctx name alias (just ty) eq =
   inferElabV-RQualified-value-aux ctx name alias ty eq (isConcrete? ty) refl
 inferElabV-RQualified-aux ctx name alias nothing _ =
@@ -1352,14 +1329,14 @@ inferElabV-RQualified-aux ctx name alias nothing _ =
 -- fold: the elaborator and `⟦_⟧ˢ` read the SAME thing.
 ext-resolved-info-aux : ∀ {A B} → CanonicalName → Purity
                       → Dec (B ≡ Void) → Dec (B ≡ Unit)
-                      → IsBaseType A → IsConcrete B → SigOpInfo A B
-ext-resolved-info-aux cn pure _ _ bA cB = mk-info' cn (pureV (generic-semM-at cB (showCanonical cn))) bA cB
-ext-resolved-info-aux cn eff (yes refl) _ bA cB = mk-info' cn (haltsV refl) bA cB
-ext-resolved-info-aux cn eff (no _) (yes refl) bA cB = mk-info' cn (emitsV refl) bA cB
-ext-resolved-info-aux cn eff (no _) (no _)     bA cB = mk-info' cn (pureV (generic-semM-at cB (showCanonical cn))) bA cB
+                      → IsBaseType A → IsBaseType B → SigOpInfo A B
+ext-resolved-info-aux cn pure _ _ bA bB = mk-info' cn ffiV bA bB
+ext-resolved-info-aux cn eff (yes refl) _ bA bB = mk-info' cn (haltsV refl) bA bB
+ext-resolved-info-aux cn eff (no _) (yes refl) bA bB = mk-info' cn (emitsV refl) bA bB
+ext-resolved-info-aux cn eff (no _) (no _)     bA bB = mk-info' cn callsV bA bB
 
 ext-resolved-info : ∀ {A B} → NamedCtx → CanonicalName → Purity
-                  → IsBaseType A → IsConcrete B → SigOpInfo A B
+                  → IsBaseType A → IsBaseType B → SigOpInfo A B
 ext-resolved-info {A} {B} ctx cn π bA cB =
   -- Use the SHARED low `isUnit?` (same decision SD's `arrow-info` uses), so
   -- the realize-agrees masquerade folds both with one case-split.
@@ -1370,7 +1347,7 @@ ext-resolved-info {A} {B} ctx cn π bA cB =
 -- (D246), exactly as a bare reference is. Only a reference into ANOTHER module
 -- (a path of two or more parts, an inlined FFI signature) is a SigOp.
 resolvedArrowTerm : ∀ {A B} (ctx : NamedCtx) → CanonicalName → (π : Purity)
-                  → IsBaseType A → IsConcrete B
+                  → IsBaseType A → IsBaseType B
                   → Surface.Expr (NamedCtx.debruijn ctx) Surface.zeroUsage
                                  (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B)
 resolvedArrowTerm ctx (own x) π bA cB = Surface.closure x
@@ -1382,7 +1359,7 @@ inferElabV-RResolved-arrow-aux :
   → lookupImport (NamedCtx.imports ctx) (showCanonical cn)
       ≡ just (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B)
   → (mbA : Maybe (IsBaseType A)) → isBaseType? A ≡ mbA
-  → (mcB : Maybe (IsConcrete B)) → isConcrete? B ≡ mcB
+  → (mcB : Maybe (IsBaseType B)) → isBaseType? B ≡ mcB
   → VerifiedInferResult ctx (Raw.RResolved cn)
 -- Concreteness-driven arrow value emission (de-withed for Completeness).
 inferElabV-RResolved-arrow-aux ctx cn ng {A} {B} {π} eq (just bA) _ (just cB) _ =
@@ -1418,7 +1395,7 @@ inferElabV-RResolved-aux :
   → VerifiedInferResult ctx (Raw.RResolved cn)
 inferElabV-RResolved-aux ctx cn ng
   (just (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B)) eq =
-  inferElabV-RResolved-arrow-aux ctx cn ng eq (isBaseType? A) refl (isConcrete? B) refl
+  inferElabV-RResolved-arrow-aux ctx cn ng eq (isBaseType? A) refl (isBaseType? B) refl
 inferElabV-RResolved-aux ctx cn ng (just ty) eq =
   inferElabV-RResolved-value-aux ctx cn ng ty eq (isConcrete? ty) refl
 inferElabV-RResolved-aux ctx cn ng nothing _ =

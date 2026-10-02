@@ -41,7 +41,7 @@ open import Relation.Binary.PropositionalEquality
   using (_≡_; refl; cong; cong₂; sym; trans; subst; subst-subst-sym; subst-sym-subst)
 
 open import Once.Semantics.Functor using (SFunctor; SK; SId; _S⊕_; _S⊗_; μS; cataS; ⟦_⟧SF)
-open import Once.Denotation.TraceMonad using (T; mkT; projTrace; valueT; stoppedT; returnT; _>>=T_; fmapT; RelT′; RelT′-bind; RelRes; RelRes-value; Returns?)
+open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_; fmapT; fmapT-id; RelT′; RelT′-bind; RelT′-≡; ≡-RelT′)
 open import Once.IRTy using (IRTy; IRFunctor; ⌊_⌋; ⌈_⌉; ⌈_⌉F; ⟦_⟧TI; ⌈⟧TI-commute)
 open import Once.Denotation.DenotTrace
   using (⟦_⟧ᴰᴵ; ⟦_⟧ᴰ; evalᴰ; cata-ev-algᴰ; coerce-functor⁻¹-D)
@@ -54,8 +54,9 @@ open import Once.Float.Dyadic using (Dyadic)
 open import Once.Type using (Type; Functor; ⟦_⟧T; μ-type)
 open import Once.Functor.Translate using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod; translateF;
   IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Str; base-Buffer; base-Prod; base-Sum)
-open import Once.Denotation.DenotTrace using (forget; liftFn; cohᴰ; inject; emit-D; emit-Dᵇ; seqF)
-open import Once.SigOp.Info using (SigOpInfo; semM)
+open import Once.Denotation.DenotTrace using (liftFn; cohᴰ; seqF; sigOpT; ffiE)
+open import Once.Denotation.ValueDomain using (injectᵇ; forgetᵇ)
+open import Once.SigOp.Info using (SigOpInfo; baseA; conB)
 open import Once.Semantics.Machine using (coerce-base-to-full)
 open import Once.Functor.Translate using (⟦_,_⟧-base)
 open import Once.IRTy.WF using (base-⌈⌉; base-⌊⌋)
@@ -73,61 +74,15 @@ import Once.IR as IR
 -- Generic transport helpers (both by matching the equation to `refl`).
 ------------------------------------------------------------------------
 
--- plan 0.97: `T` is a RECORD now, so a computation is no longer a function of
--- the budget and `subst-T-apply` (which applied one) has no statement. Its
--- plan 0.98: `RelRes (λ x y → f x ≡ y)` and `mapRes f r₁ ≡ r₂` say the same
--- thing — the first pointwise, the second as one equation. Both directions are
--- one clause each; the stopped case carries no value to relate.
-RelRes-of-mapRes : ∀ {X Y : Set} (f : X → Y) (r₁ : Res X) (r₂ : Res Y)
-                 → mapRes f r₁ ≡ r₂ → RelRes (λ x y → f x ≡ y) r₁ r₂
-RelRes-of-mapRes f stopped     .stopped            refl = rel-stopped
-RelRes-of-mapRes f (returns x) .(returns (f x))    refl = rel-returns refl
+-- Plan 0.105: `T` is the interaction tree, so two computations are equal when
+-- their trees are, and a transport of the result type is a map of the leaves.
+subst-T-fmap : ∀ {X Y : Set} (eq : X ≡ Y) (h : T X) → subst T eq h ≡ fmapT (subst (λ z → z) eq) h
+subst-T-fmap refl h = sym (fmapT-id h)
 
-mapRes-of-RelRes : ∀ {X Y : Set} (f : X → Y) (r₁ : Res X) (r₂ : Res Y)
-                 → RelRes (λ x y → f x ≡ y) r₁ r₂ → mapRes f r₁ ≡ r₂
-mapRes-of-RelRes f stopped     stopped     _                = refl
-mapRes-of-RelRes f (returns x) (returns y) (rel-returns eq) = cong returns eq
-
--- role is taken by record eta: two computations are equal when their TWO
--- fields are — the trace family pointwise, and the result.
---
--- plan 0.98: the stop flag and the value were separate premises, and a caller
--- had to supply both while `valueT` quietly assumed a value existed. `Res` is
--- the one fact, so this takes one premise where it took two.
-T-ext : ∀ {X : Set} {l r : T X}
-      → (∀ n → projTrace l n ≡ projTrace r n)
-      → T.resT l ≡ T.resT r
-      → l ≡ r
-T-ext {l = mkT t₁ r₁} {r = mkT t₂ .r₁} tr refl =
-  cong (λ t → mkT t r₁) (extensionality tr)
-
-subst-T-stoppedT : ∀ {X Y : Set} (eq : X ≡ Y) (h : T X) (n : ℕ)
-  → stoppedT (subst T eq h) n ≡ stoppedT h n
-subst-T-stoppedT refl h n = refl
-
--- plan 0.98: transport moves the RESULT by `mapRes` and the trace not at all.
-subst-T-resT : ∀ {X Y : Set} (eq : X ≡ Y) (h : T X)
-  → T.resT (subst T eq h) ≡ mapRes (subst (λ z → z) eq) (T.resT h)
-subst-T-resT refl h = sym (mapRes-id (T.resT h))
-
-subst-T-projTrace : ∀ {X Y : Set} (eq : X ≡ Y) (h : T X) (n : ℕ)
-  → projTrace (subst T eq h) n ≡ projTrace h n
-subst-T-projTrace refl h n = refl
-
--- plan 0.98: `valueT` needs a witness that there IS a value, and the two
--- sides need DIFFERENT ones — `Returns? (T.resT (subst T eq h))` on the left,
--- `Returns? (T.resT h)` on the right. `subst-Returns` transports one to the
--- other so the statement can mention a single assumption, which is what makes
--- it writable at all for an abstract `h`.
-subst-Returns : ∀ {X Y : Set} (eq : X ≡ Y) (h : T X)
-              → Returns? (T.resT h) → Returns? (T.resT (subst T eq h))
-subst-Returns refl h q = q
-
-subst-T-valueT : ∀ {X Y : Set} (eq : X ≡ Y) (h : T X) (n : ℕ)
-                 (q : Returns? (T.resT h))
-               → valueT (subst T eq h) n {subst-Returns eq h q}
-                 ≡ subst (λ z → z) eq (valueT h n {q})
-subst-T-valueT refl h n q = refl
+-- A transport that undoes the one inside a map cancels it.
+subst-T-fmap-cancel : ∀ {X Y Z : Set} (eq : X ≡ Y) (f : Z → Y) (m : T Z)
+  → subst T eq (fmapT (λ v → subst (λ z → z) (sym eq) (f v)) m) ≡ fmapT f m
+subst-T-fmap-cancel refl f m = refl
 
 subst-cong-μS : ∀ {G₁ G₂ : SFunctor} (eq : G₁ ≡ G₂) (x : μS G₁)
   → subst (λ z → z) (cong μS eq) x ≡ subst μS eq x
@@ -171,13 +126,13 @@ pairᴰ-subst⁻ refl refl a b = refl
 -- because the per-layer algebra is `evalᴰ alg` PARTIALLY APPLIED to it.
 -- D179: the carrier is now `T ⟦C⟧ᴰ` and the budget rides in it, so the `ℕ`
 -- parameter is gone from both sides. The collapse is still `refl`.
-cata-ev-algᴰ-is-D : ∀ {F : IRFunctor} {E C : IRTy}
+cata-ev-algᴰ-is-D : ∀ {F : IRFunctor} {E C : IRTy} (wf : II.WellFormedFI F)
     (alg : IR.IR (E IR.* ⟦ F ⟧TI C) C) (env : ⟦ E ⟧ᴰᴵ)
     (fc : ⟦ ⌈ F ⌉F ⟧F (T ⟦ C ⟧ᴰᴵ))
-  → cata-ev-algᴰ fmt ρ {F} {E} {C} alg env fc
-    ≡ cata-ev-algᴰ-D {⌈ F ⌉F} {⌈ C ⌉}
+  → cata-ev-algᴰ fmt ρ {F} {E} {C} wf alg env fc
+    ≡ cata-ev-algᴰ-D {⌈ F ⌉F} {⌈ C ⌉} (wf-⌈⌉ wf)
         (λ z → evalᴰ fmt ρ alg (env , subst ⟦_⟧ᴰ (sym (⌈⟧TI-commute F C)) z)) fc
-cata-ev-algᴰ-is-D alg env fc = refl
+cata-ev-algᴰ-is-D wf alg env fc = refl
 
 ------------------------------------------------------------------------
 -- `subst`-push helpers: a functor transport `sym (cong₂ _S⊕_/_S⊗_ …)` over a
@@ -256,35 +211,6 @@ subst-SK : ∀ {S₁ S₂ X : Set} (e : S₁ ≡ S₂) (a : S₂)
   → subst (λ H → ⟦ H ⟧SF X) (sym (cong SK e)) a ≡ subst (λ z → z) (sym e) a
 subst-SK refl a = refl
 
-base-z : ∀ {A} (ib : IsBaseType A) (y : ⟦ Carrier , Carrier ⟧-base A)
-  → inject (coerce-base-to-full (base-⌈⌉ (base-⌊⌋ ib)) (subst (λ z → z) (sym (base-coh A)) y))
-    ≡ subst (λ z → z) (sym (cohᴰ A)) (inject (coerce-base-to-full ib y))
-base-z base-Unit   y = refl
-base-z base-Void   ()
-base-z base-Int    y = refl
-base-z base-Float  y = refl
-base-z base-Str    y = refl
-base-z base-Buffer y = refl
-base-z (base-Prod {A} {B} pA pB) (a , b)
-  rewrite push-× (base-coh A) (base-coh B) a b
-        | push-× (cohᴰ A) (cohᴰ B) (inject (coerce-base-to-full pA a)) (inject (coerce-base-to-full pB b))
-  = cong₂ _,_ (base-z pA a) (base-z pB b)
-base-z (base-Sum {A} {B} pA pB) (inj₁ a)
-  rewrite push-⊎₁ (base-coh A) (base-coh B) a
-        | push-⊎₁ (cohᴰ A) (cohᴰ B) (inject (coerce-base-to-full pA a))
-  = cong inj₁ (base-z pA a)
-base-z (base-Sum {A} {B} pA pB) (inj₂ b)
-  rewrite push-⊎₂ (base-coh A) (base-coh B) b
-        | push-⊎₂ (cohᴰ A) (cohᴰ B) (inject (coerce-base-to-full pB b))
-  = cong inj₂ (base-z pB b)
-
-------------------------------------------------------------------------
--- The functor-structural layer lemma, fixed at result type `A'`. Two facts:
---   (A) `layer-events`: the per-layer CHILD TRACES coincide across the erasure
---       functor round-trip (given `RelSF`-related layers).
---   (B) `layer-z`: the assembled recursive ARGUMENT coincides after transport.
-------------------------------------------------------------------------
-
 module _ {A' : Type} where
 
   -- D179: the fold's carrier is a COMPUTATION, so this relates two of them:
@@ -298,20 +224,20 @@ module _ {A' : Type} where
   -- D179: ONE lemma where there were two (`layer-events` for the trace half,
   -- `layer-z` for the value half). With a computation carrier they cannot be
   -- separated — see `RelC`. Stated and assumed here, discharged below.
-  LayerRel : ∀ (G : Functor) → ⟦ ⌈ eraseF G ⌉F ⟧F ⟦ ⌊ A' ⌋ ⟧ᴰᴵ → ⟦ G ⟧F ⟦ A' ⟧ᴰ → Set
-  LayerRel G l r =
+  LayerRel : ∀ {G : Functor} → WellFormedF G → ⟦ ⌈ eraseF G ⌉F ⟧F ⟦ ⌊ A' ⌋ ⟧ᴰᴵ → ⟦ G ⟧F ⟦ A' ⟧ᴰ → Set
+  LayerRel {G} wfG l r =
       subst ⟦_⟧ᴰᴵ (sym (⌊⟧T-commute G A'))
         (subst ⟦_⟧ᴰ (sym (⌈⟧TI-commute (eraseF G) ⌊ A' ⌋))
-          (coerce-functor⁻¹-D ⌈ eraseF G ⌉F ⌈ ⌊ A' ⌋ ⌉ l))
+          (coerce-functor⁻¹-D (wf-⌈⌉ (wf-⌊⌋ wfG)) ⌈ ⌊ A' ⌋ ⌉ l))
     ≡ subst (λ z → z) (sym (cohᴰ (⟦ G ⟧T A')))
-        (coerce-functor⁻¹-D G A' r)
+        (coerce-functor⁻¹-D wfG A' r)
 
   postulate
     layer-rel : ∀ {G} (wfG : WellFormedF G)
         {y₁ : ⟦ translateF Carrier Carrier G ⟧SF (T ⟦ ⌊ A' ⌋ ⟧ᴰᴵ)}
         {y₂ : ⟦ translateF Carrier Carrier G ⟧SF (T ⟦ A' ⟧ᴰ)}
       → RelSF (translateF Carrier Carrier G) RelC y₁ y₂
-      → RelT′ (LayerRel G)
+      → RelT′ (LayerRel wfG)
           (seqF ⌈ eraseF G ⌉F
             (coerce-μ-out (wf-⌈⌉ (wf-⌊⌋ wfG)) _
               (subst (λ H → ⟦ H ⟧SF _) (sym (tF-coh G)) y₁)))
@@ -331,7 +257,7 @@ module _ {A' : Type} where
       w' : ⟦ ⌊ μ-type F ⌋ ⟧ᴰᴵ
       w' = subst (λ z → z) (sym (cohᴰ (μ-type F))) w
 
-      seed-eq : subst μS (tF-coh F) (forget w') ≡ forget w
+      seed-eq : subst μS (tF-coh F) w' ≡ w
       seed-eq = trans (sym (subst-cong-μS (tF-coh F) w'))
                       (subst-subst-sym {P = λ z → z} (cong μS (tF-coh F)))
 
@@ -352,19 +278,19 @@ module _ {A' : Type} where
                                      , subst ⟦_⟧ᴰ (sym (⌈⟧TI-commute (eraseF F) ⌊ A' ⌋)) z )
 
           algL : ⟦ translateF Carrier Carrier (⌈ eraseF F ⌉F) ⟧SF (T ⟦ ⌊ A' ⌋ ⟧ᴰᴵ) → T ⟦ ⌊ A' ⌋ ⟧ᴰᴵ
-          algL y = cata-ev-algᴰ-D {⌈ eraseF F ⌉F} {⌈ ⌊ A' ⌋ ⌉} dalg_L (coerce-μ-out (wf-⌈⌉ (wf-⌊⌋ wfF)) _ y)
+          algL y = cata-ev-algᴰ-D {⌈ eraseF F ⌉F} {⌈ ⌊ A' ⌋ ⌉} (wf-⌈⌉ (wf-⌊⌋ wfF)) dalg_L (coerce-μ-out (wf-⌈⌉ (wf-⌊⌋ wfF)) _ y)
 
           algL' : ⟦ translateF Carrier Carrier F ⟧SF (T ⟦ ⌊ A' ⌋ ⟧ᴰᴵ) → T ⟦ ⌊ A' ⌋ ⟧ᴰᴵ
           algL' y = algL (subst (λ H → ⟦ H ⟧SF _) (sym (tF-coh F)) y)
 
           algM : ⟦ translateF Carrier Carrier F ⟧SF (T ⟦ A' ⟧ᴰ) → T ⟦ A' ⟧ᴰ
-          algM y = cata-ev-algᴰ-D {F} {A'} (λ z → liftFn fmt ρ {Eˢ TT.* ⟦ F ⟧T A'} {A'} mir (env , z)) (coerce-μ-out wfF _ y)
+          algM y = cata-ev-algᴰ-D {F} {A'} wfF (λ z → liftFn fmt ρ {Eˢ TT.* ⟦ F ⟧T A'} {A'} mir (env , z)) (coerce-μ-out wfF _ y)
 
           -- D179: an equality of COMPUTATIONS now — the fold produces a `T`
           -- directly, so there is no budget to apply here.
           Lr≡ : evalᴰ fmt ρ (IR.Cata (wf-⌊⌋ wfF) mir')
-                      (subst (λ t → t) (sym (cohᴰ Eˢ)) env , w') ≡ cataS {translateF Carrier Carrier F} algL' (forget w)
-          Lr≡ = trans (cataS-subst-functor (tF-coh F) algL (forget w'))
+                      (subst (λ t → t) (sym (cohᴰ Eˢ)) env , w') ≡ cataS {translateF Carrier Carrier F} algL' w
+          Lr≡ = trans (cataS-subst-functor (tF-coh F) algL w')
                       (cong (cataS {translateF Carrier Carrier F} algL') seed-eq)
 
           -- D179: one `RelT′-bind`. The head is `seqF` of the two layers
@@ -373,29 +299,18 @@ module _ {A' : Type} where
           -- `layer-z` replaced by `layer-rel`'s value half at budget `k`.
           from-subst-eq : ∀ {l : T ⟦ ⌊ A' ⌋ ⟧ᴰᴵ} {r : T ⟦ A' ⟧ᴰ}
                         → subst T (cohᴰ A') l ≡ r → RelC l r
-          -- plan 0.98: a PAIR — the flag and the value were one fact.
-          from-subst-eq {l} eq j =
-            ( trans (sym (subst-T-projTrace (cohᴰ A') l j)) (cong (λ t → projTrace t j) eq)
-            , RelRes-of-mapRes (subst (λ z → z) (cohᴰ A')) (T.resT l) _
-                (trans (sym (subst-T-resT (cohᴰ A') l)) (cong T.resT eq)) )
+          from-subst-eq {l} eq = ≡-RelT′ (subst (λ z → z) (cohᴰ A')) l (trans (sym (subst-T-fmap (cohᴰ A') l)) eq)
 
-          -- …and its converse, which is what the clause's own conclusion is:
-          -- an EQUATION of computations, assembled from the relation by eta.
           to-subst-eq : ∀ {l : T ⟦ ⌊ A' ⌋ ⟧ᴰᴵ} {r : T ⟦ A' ⟧ᴰ}
                       → RelC l r → subst T (cohᴰ A') l ≡ r
-          to-subst-eq {l} rel =
-            T-ext (λ n → trans (subst-T-projTrace (cohᴰ A') l n) (proj₁ (rel n)))
-                  (trans (subst-T-resT (cohᴰ A') l)
-                         (mapRes-of-RelRes (subst (λ z → z) (cohᴰ A')) (T.resT l) _
-                            (proj₂ (rel 0))))
+          to-subst-eq {l} rel = trans (subst-T-fmap (cohᴰ A') l) (RelT′-≡ (subst (λ z → z) (cohᴰ A')) rel)
 
           algR-full : ∀ {y₁ y₂} → RelSF (translateF Carrier Carrier F) RelC y₁ y₂ → RelC (algL' y₁) (algM y₂)
           algR-full {y₁} {y₂} rsf =
-            RelT′-bind (LayerRel F) (λ l r → subst (λ z → z) (cohᴰ A') l ≡ r) mL mM contL contM
+            RelT′-bind (LayerRel wfF) (λ l r → subst (λ z → z) (cohᴰ A') l ≡ r)
+              {m = mL} {m′ = mM} {f = contL} {f′ = contM}
               (layer-rel wfF rsf)
-              (λ x y eqL eqM →
-                 from-subst-eq (step-eq x y
-                   (RelRes-value (proj₂ (layer-rel wfF rsf 0)) eqL eqM)))
+              (λ x y lr → from-subst-eq (step-eq x y lr))
             where
               mL : T (⟦ ⌈ eraseF F ⌉F ⟧F ⟦ ⌊ A' ⌋ ⟧ᴰᴵ)
               mL = seqF ⌈ eraseF F ⌉F
@@ -404,91 +319,38 @@ module _ {A' : Type} where
               mM : T (⟦ F ⟧F ⟦ A' ⟧ᴰ)
               mM = seqF F (coerce-μ-out wfF _ y₂)
 
-              contL = λ layer → dalg_L (coerce-functor⁻¹-D ⌈ eraseF F ⌉F ⌈ ⌊ A' ⌋ ⌉ layer)
+              contL = λ layer → dalg_L (coerce-functor⁻¹-D (wf-⌈⌉ (wf-⌊⌋ wfF)) ⌈ ⌊ A' ⌋ ⌉ layer)
               contM = λ layer → liftFn fmt ρ {Eˢ TT.* ⟦ F ⟧T A'} {A'} mir
-                                  (env , coerce-functor⁻¹-D F A' layer)
+                                  (env , coerce-functor⁻¹-D wfF A' layer)
 
               -- plan 0.98: stated at the VALUES. The budget was only ever a way to
               -- NAME them, and `valueT` cannot name a value that may not
               -- exist — the caller now supplies the two the head returned.
-              step-eq : ∀ x y → LayerRel F x y
+              step-eq : ∀ x y → LayerRel wfF x y
                       → subst T (cohᴰ A') (contL (x)) ≡ contM (y)
               step-eq x y lr =
                 trans (cong (subst T (cohᴰ A'))
                         (evalᴰ-subst-dom-pair (⌊⟧T-commute F A') mir
                            (subst (λ t → t) (sym (cohᴰ Eˢ)) env)
                            (subst ⟦_⟧ᴰ (sym (⌈⟧TI-commute (eraseF F) ⌊ A' ⌋))
-                                  (coerce-functor⁻¹-D ⌈ eraseF F ⌉F ⌈ ⌊ A' ⌋ ⌉ (x)))))
+                                  (coerce-functor⁻¹-D (wf-⌈⌉ (wf-⌊⌋ wfF)) ⌈ ⌊ A' ⌋ ⌉ (x)))))
                   (trans (cong (λ Z → subst T (cohᴰ A')
                                   (evalᴰ fmt ρ mir (subst (λ t → t) (sym (cohᴰ Eˢ)) env , Z))) lr)
                          (cong (λ W → subst T (cohᴰ A') (evalᴰ fmt ρ mir W))
                                (sym (pairᴰ-subst⁻ (cohᴰ Eˢ) (cohᴰ (⟦ F ⟧T A')) env _))))
 
-          rc : RelC (cataS {translateF Carrier Carrier F} algL' (forget w)) (cataS {translateF Carrier Carrier F} algM (forget w))
-          rc = cataS-rel RelC algR-full (forget w)
+          rc : RelC (cataS {translateF Carrier Carrier F} algL' w) (cataS {translateF Carrier Carrier F} algM w)
+          rc = cataS-rel RelC algR-full w
 
-------------------------------------------------------------------------
--- `forget-coh`: the base-type coherence between `forget` and the `coh`/`cohᴰ`
--- transports — `subst (coh A) (forget (subst (sym cohᴰ A) arg)) ≡ forget arg`.
--- Discharges the SigOp-masquerade `refl`s that `liftFn`'s transports break
--- (RealizeAgrees `masq*`, MeaningBridge `bridge-m` SigOp leaves). Plan 0.52 M2.
-------------------------------------------------------------------------
-
-push-⊎₁' : ∀ {A B A' B' : Set} (p : A ≡ A') (q : B ≡ B') (a : A)
-  → subst (λ z → z) (cong₂ _⊎_ p q) (inj₁ a) ≡ inj₁ (subst (λ z → z) p a)
-push-⊎₁' refl refl a = refl
-
-push-⊎₂' : ∀ {A B A' B' : Set} (p : A ≡ A') (q : B ≡ B') (b : B)
-  → subst (λ z → z) (cong₂ _⊎_ p q) (inj₂ b) ≡ inj₂ (subst (λ z → z) q b)
-push-⊎₂' refl refl b = refl
-
-push-×' : ∀ {A B A' B' : Set} (p : A ≡ A') (q : B ≡ B') (a : A) (b : B)
-  → subst (λ z → z) (cong₂ _×_ p q) (a , b) ≡ (subst (λ z → z) p a , subst (λ z → z) q b)
-push-×' refl refl a b = refl
-
-forget-coh : ∀ {A} (ib : IsBaseType A) (arg : ⟦ A ⟧ᴰ)
-  → subst (λ z → z) (coh A) (forget (subst (λ z → z) (sym (cohᴰ A)) arg)) ≡ forget arg
-forget-coh base-Unit   arg = refl
-forget-coh base-Void   ()
-forget-coh base-Int    arg = refl
-forget-coh base-Float  arg = refl
-forget-coh base-Str    arg = refl
-forget-coh base-Buffer arg = refl
-forget-coh (base-Prod {A} {B} ibA ibB) (a , b)
-  rewrite push-× (cohᴰ A) (cohᴰ B) a b
-        | push-×' (coh A) (coh B) (forget (subst (λ z → z) (sym (cohᴰ A)) a)) (forget (subst (λ z → z) (sym (cohᴰ B)) b))
-  = cong₂ _,_ (forget-coh ibA a) (forget-coh ibB b)
-forget-coh (base-Sum {A} {B} ibA ibB) (inj₁ a)
-  rewrite push-⊎₁ (cohᴰ A) (cohᴰ B) a
-        | push-⊎₁' (coh A) (coh B) (forget (subst (λ z → z) (sym (cohᴰ A)) a))
-  = cong inj₁ (forget-coh ibA a)
-forget-coh (base-Sum {A} {B} ibA ibB) (inj₂ b)
-  rewrite push-⊎₂ (cohᴰ A) (cohᴰ B) b
-        | push-⊎₂' (coh A) (coh B) (forget (subst (λ z → z) (sym (cohᴰ B)) b))
-  = cong inj₂ (forget-coh ibB b)
-
-------------------------------------------------------------------------
--- `liftFn-SigOp`: the `liftFn` of a base-domain `SigOp` IS the direct
--- emit-D/semM Kleisli arrow (the `cohᴰ B` result-transport cancels via
--- `subst-subst-sym`; the arg-transport collapses via `forget-coh`). Discharges
--- every SigOp-masquerade `refl` (RealizeAgrees `masq*`). Plan 0.52 M2.
-------------------------------------------------------------------------
-
-liftFn-SigOp : ∀ {A B : Type} (info : SigOpInfo A B) (bA : IsBaseType A)
+-- A SigOp's lifted meaning is its contract's computation at the first-order
+-- argument, read into the value domain (plan 0.105: no emission rule, no
+-- `semM` — the tree node IS the event).
+liftFn-SigOp : ∀ {A B : Type} (info : SigOpInfo A B)
   → liftFn fmt ρ {A} {B} (IR.SigOp info)
-    ≡ (λ arg → mkT (λ n → emit-Dᵇ info (forget arg) n)
-                   (mapRes inject (semM info fmt (forget arg))))
-liftFn-SigOp {A} {B} info bA = extensionality λ arg →
-  T-ext (λ n → trans (subst-T-projTrace (cohᴰ B)
-                        (evalᴰ fmt ρ (IR.SigOp info) (subst (λ z → z) (sym (cohᴰ A)) arg)) n)
-                     (cong (λ w → emit-Dᵇ info w n) (forget-coh bA arg)))
-        -- plan 0.98: ONE premise. The SigOp's result is already a `mapRes`
-        -- (`semM` decides whether there is a value; the denotation only
-        -- re-types it), so the transport fuses with it and the subst pair
-        -- cancels under the map.
-        (trans (subst-T-resT (cohᴰ B)
-                  (evalᴰ fmt ρ (IR.SigOp info) (subst (λ z → z) (sym (cohᴰ A)) arg)))
-        (trans (mapRes-∘ _ _ (semM info fmt _))
-        (trans (mapRes-cong (λ v → subst-subst-sym {P = λ z → z} (cohᴰ B))
-                            (semM info fmt _))
-               (cong (λ w → mapRes inject (semM info fmt w)) (forget-coh bA arg)))))
+    ≡ (λ arg → fmapT (injectᵇ (conB info)) (sigOpT fmt (ffiE ρ) info (forgetᵇ (baseA info) arg)))
+liftFn-SigOp {A} {B} info = extensionality λ arg →
+  trans (subst-T-fmap-cancel (cohᴰ B) (injectᵇ (conB info))
+           (sigOpT fmt (ffiE ρ) info (forgetᵇ (baseA info)
+              (subst (λ z → z) (cohᴰ A) (subst (λ z → z) (sym (cohᴰ A)) arg)))))
+        (cong (λ w → fmapT (injectᵇ (conB info)) (sigOpT fmt (ffiE ρ) info (forgetᵇ (baseA info) w)))
+              (subst-subst-sym {P = λ z → z} (cohᴰ A)))

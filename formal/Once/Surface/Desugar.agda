@@ -37,8 +37,8 @@ open import Data.String using (String)
 --   3. optimize cases in Once.Optimize (pass through unchanged)
 --   4. proof cases in Once.Optimize.Correct (all trivial refl)
 --
-sigOp-desugar : ∀ {A B} → IsBaseType A → IsConcrete B → String → C.IR C.⌊ A ⌋ C.⌊ B ⌋
-sigOp-desugar bA cB name = C.SigOp (generic-info (bare name) bA cB)
+sigOp-desugar : ∀ {A B} → IsBaseType A → IsBaseType B → String → C.IR C.⌊ A ⌋ C.⌊ B ⌋
+sigOp-desugar bA bB name = C.SigOp (generic-info (bare name) bA bB)
 
 ------------------------------------------------------------------------
 -- Desugar transformation

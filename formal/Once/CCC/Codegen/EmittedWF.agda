@@ -42,7 +42,7 @@ open import Relation.Binary.PropositionalEquality using (_≢_)
 
 open import Once.CCC.Label using (Label; once; thunk; LabelId; e-fn)
 open import Once.CanonicalName using (CanonicalName)
-open import Once.SigOp.Info using (SigOpInfo; name; sem; SigOpSem; pureV; primV; emitsV; haltsV)
+open import Once.SigOp.Info using (SigOpInfo; name; sem; SigOpSem; pureV; primV; emitsV; haltsV; ffiV; callsV)
 open import Once.CCC.Machine.SMCore using
   ( AbstractInstr; AbstractTrace
   ; instr-ctrl; instr-load-code-addr
@@ -260,12 +260,10 @@ open EmittedWF public
 -- and the `sem` split is how we tell (an interpretation's contract is an
 -- effect contract; a compiler-minted one is a proven value).
 --
--- SCOPE, honestly: this reads the split as "pureV ⇒ ours". That holds today
--- because an interpretation's contract is always `emitsV`/`haltsV` — the core
--- cannot hold an external's proven value function. A PURE EXTERNAL would
--- break it, and if one ever becomes expressible the discharge-owner must be
--- carried explicitly (the `Linkage` field D071 already added, currently
--- "never read") rather than inferred from `sem`.
+-- The split is EXACT (plan 0.105): every interpretation contract has its own
+-- constructor — `ffiV` (a pure external), `callsV` (an answering one),
+-- `emitsV`/`haltsV` — and `pureV`/`primV` are only ever compiler-defined, so
+-- "pureV ⇒ ours" is read off the type, not inferred.
 sigop-owed : ∀ {A B} → SigOpInfo A B → List CanonicalName
 sigop-owed {A} {B} si = go (sem si)
   where
@@ -274,6 +272,8 @@ sigop-owed {A} {B} si = go (sem si)
     go (primV _)  = name si ∷ []
     go (emitsV _) = []
     go (haltsV _) = []
+    go ffiV       = []
+    go callsV     = []
 
 syms-ref   : AbstractTrace → List CanonicalName
 syms-ref-i : AbstractInstr → List CanonicalName

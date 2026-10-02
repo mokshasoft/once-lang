@@ -301,6 +301,72 @@ RelRes : ∀ {X Y : Set} (R : X → Y → Set) → Res X → Res Y → Set
 RelRes = Res-rel
 
 ------------------------------------------------------------------------
+-- Related computations: the SAME tree, related leaves.
+--
+-- Two computations are related when they make the same calls with the same
+-- arguments, continue relatedly at EVERY answer, halt alike, and return
+-- related values. This is the relational lifting of the tree; the old
+-- budget-indexed relation (same trace prefix at every budget, related results)
+-- is its observational consequence (`RelT′-run`), not its definition.
+------------------------------------------------------------------------
+
+data RelT′ {X Y : Set} (R : X → Y → Set) : T X → T Y → Set where
+  rel-ret  : ∀ {x y} → R x y → RelT′ R (ret x) (ret y)
+  rel-call : ∀ {o a} {k : M.⟦ ccod o ⟧ → T X} {k′ : M.⟦ ccod o ⟧ → T Y}
+           → (∀ b → RelT′ R (k b) (k′ b)) → RelT′ R (call o a k) (call o a k′)
+  rel-halt : ∀ {o a} → RelT′ R (halt o a) (halt o a)
+
+RelT′-bind : ∀ {X Y X′ Y′ : Set} (R : X → X′ → Set) (S : Y → Y′ → Set)
+             {m : T X} {m′ : T X′} {f : X → T Y} {f′ : X′ → T Y′}
+           → RelT′ R m m′ → (∀ x x′ → R x x′ → RelT′ S (f x) (f′ x′))
+           → RelT′ S (m >>=T f) (m′ >>=T f′)
+RelT′-bind R S (rel-ret r)  hf = hf _ _ r
+RelT′-bind R S (rel-call h) hf = rel-call λ b → RelT′-bind R S (h b) hf
+RelT′-bind R S rel-halt     hf = rel-halt
+
+RelT′-fmap : ∀ {X Y X′ Y′ : Set} (R : X → X′ → Set) (S : Y → Y′ → Set)
+             {g : X → Y} {g′ : X′ → Y′} {m : T X} {m′ : T X′}
+           → (∀ x x′ → R x x′ → S (g x) (g′ x′))
+           → RelT′ R m m′ → RelT′ S (fmapT g m) (fmapT g′ m′)
+RelT′-fmap R S hg rm = RelT′-bind R S rm λ x x′ r → rel-ret (hg x x′ r)
+
+RelT′-refl : ∀ {X : Set} {R : X → X → Set} → (∀ x → R x x) → (m : T X) → RelT′ R m m
+RelT′-refl hr (ret x)      = rel-ret (hr x)
+RelT′-refl hr (call o a k) = rel-call λ b → RelT′-refl hr (k b)
+RelT′-refl hr (halt o a)   = rel-halt
+
+-- At a functional relation, relatedness IS an equation.
+RelT′-≡ : ∀ {X Y : Set} (g : X → Y) {m : T X} {m′ : T Y}
+        → RelT′ (λ x y → g x ≡ y) m m′ → fmapT g m ≡ m′
+RelT′-≡ g (rel-ret refl) = refl
+RelT′-≡ g (rel-call h)   = cong (call _ _) (extensionality λ b → RelT′-≡ g (h b))
+RelT′-≡ g rel-halt       = refl
+
+≡-RelT′ : ∀ {X Y : Set} (g : X → Y) (m : T X) {m′ : T Y}
+        → fmapT g m ≡ m′ → RelT′ (λ x y → g x ≡ y) m m′
+≡-RelT′ g m refl = to-fmap m
+  where
+    to-fmap : (m : T _) → RelT′ (λ x y → g x ≡ y) m (fmapT g m)
+    to-fmap (ret x)      = rel-ret refl
+    to-fmap (call o a k) = rel-call λ b → to-fmap (k b)
+    to-fmap (halt o a)   = rel-halt
+
+-- Related computations RUN alike: against any interpretation, from any
+-- history, they make the same calls and end relatedly.
+RelT′-events : ∀ {X Y : Set} {R : X → Y → Set} (ι : Interp) (h : List SigOpEvent) {m : T X} {m′ : T Y}
+             → RelT′ R m m′ → proj₁ (run ι h m) ≡ proj₁ (run ι h m′)
+RelT′-events ι h (rel-ret _)  = refl
+RelT′-events ι h (rel-call {o} {a} hk) =
+  cong (callEvent o a ∷_) (RelT′-events ι (h ++ [ callEvent o a ]) (hk (answer ι h o a)))
+RelT′-events ι h rel-halt     = refl
+
+RelT′-result : ∀ {X Y : Set} {R : X → Y → Set} (ι : Interp) (h : List SigOpEvent) {m : T X} {m′ : T Y}
+             → RelT′ R m m′ → RelRes R (resultAt ι h m) (resultAt ι h m′)
+RelT′-result ι h (rel-ret r)  = rel-returns r
+RelT′-result ι h (rel-call {o} {a} hk) = RelT′-result ι (h ++ [ callEvent o a ]) (hk (answer ι h o a))
+RelT′-result ι h rel-halt     = rel-stopped
+
+------------------------------------------------------------------------
 -- List arithmetic the observable proofs use
 ------------------------------------------------------------------------
 

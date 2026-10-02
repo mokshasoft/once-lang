@@ -71,8 +71,8 @@ open import Once.Denotation.DenotTrace using (evalᴰ)
 -- recursive and a parameterised module stops reducing at a variable instance.
 open import Once.Target.Arch using (TargetNum; int-bits; float-format)
 open import Once.Denotation.TraceMonad
-  using (projTrace; PrefixFamily; bnd; sat; coh)
-open import Once.Denotation.Program using (IRFun; irFun; fname; fdom; fcod; fbody; IRProgram; irProgram; table; main; runIR; runIR-good; LinkedAt; LinkedAt-at; Linked; LinkedProgram)
+  using (projTrace; PrefixFamily; bnd; sat; coh; projTrace-pf; Interp)
+open import Once.Denotation.Program using (IRFun; irFun; fname; fdom; fcod; fbody; IRProgram; irProgram; table; main; runIR; LinkedAt; LinkedAt-at; Linked; LinkedProgram)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
 import Once.IR as I
 open import Once.IRTy using (IRTy; _≟IRTy_)
@@ -281,25 +281,21 @@ rewrite-program-linked p (lm , les) =
 -- `⟦_⟧ᴰ` is THE source observable; the operational `otrace` is retired).
 -- D179: `Behavior` is a RECORD — the three laws travel with the family, so a
 -- producer must supply them. They are not new obligations invented here: they
--- are exactly `PrefixFamily`, which `evalᴰ-good` proves for every IR. (`take n`
--- has gone from `at`: `bounded` says the prefix is already short enough, so the
--- cap was doing nothing but obscuring which family this is.)
-⟦_⟧IR : Maybe IRProgram → TargetNum → Behavior
+-- are exactly `PrefixFamily`, which every RUN satisfies (plan 0.105: the
+-- observable is a `take` of one run's events, `projTrace-pf`).
+⟦_⟧IR : Maybe IRProgram → TargetNum → Interp → Behavior
 -- D244: the meaning of a compiled program is `main` run in the environment of
--- its function table (`runIR`); an internal call means its callee.
-⟦ just p ⟧IR fmt = mkBehavior (projTrace m) (coh pf) (bnd pf) sat'
+-- its function table (`runIR`); an internal call means its callee. Plan 0.105:
+-- run AGAINST the interpretation — its pure half is the FFI values, its
+-- answers what the calls return.
+⟦ just p ⟧IR fmt ι = mkBehavior (projTrace ι m) (coh pf) (bnd pf) (sat pf)
   where
-    m  = runIR fmt p
-    pf : PrefixFamily m
-    pf = proj₁ (runIR-good fmt p)
-
-    -- plan 0.97: `Saturating` is stated on the TRACE alone now (the value and
-    -- the stop flag are budget-free, so there is nothing to project out of).
-    sat' : ∀ n → length (projTrace m n) < n → projTrace m (suc n) ≡ projTrace m n
-    sat' = sat pf
+    m  = runIR fmt (Interp.pure ι) p
+    pf : PrefixFamily (projTrace ι m)
+    pf = projTrace-pf ι m
 -- A module with no `main` observes nothing, at every depth — the empty family,
 -- whose three laws are immediate.
-⟦ nothing ⟧IR _   = silent
+⟦ nothing ⟧IR _ _ = silent
 
 -- D165, RESTATED AT THE MEANING (plan 0.103 6a″): the arith lifting preserves
 -- a program's denotation — `Adequacy.RewritePreserves.rewrite-program-preserves`.
@@ -374,11 +370,11 @@ srcToModule-inv src mR eq =
 -- conjunct of the compiler theorem).
 -- J-style dispatch on the parse result (explicit `Maybe`, no `with`), so
 -- `⟦⟧-via-module` below can `rewrite` the parse equation through it.
-sourceTrace-aux : Maybe P.Module → TargetNum → Behavior
+sourceTrace-aux : Maybe P.Module → TargetNum → Interp → Behavior
 sourceTrace-aux (just m) fmt = ⟦ moduleToProgram m ⟧IR fmt
-sourceTrace-aux nothing  _   = silent
+sourceTrace-aux nothing  _ _ = silent
 
-sourceTrace : Source → TargetNum → Behavior
+sourceTrace : Source → TargetNum → Interp → Behavior
 sourceTrace src fmt = sourceTrace-aux (srcToModule src) fmt
 
 -- `abstract`: keep `⟦_⟧` opaque downstream. Otherwise `⟦ src ⟧` unfolds
@@ -387,7 +383,9 @@ sourceTrace src fmt = sourceTrace-aux (srcToModule src) fmt
 -- reduces the goal's `⟦ src ⟧` while the per-stage postulate's stays
 -- unreduced → `UnequalTerms`. Opacity makes both sides the same term.
 abstract
-  ⟦_⟧ : Source → TargetNum → Behavior
+  -- Plan 0.105: a source's behaviour is relative to an interpretation of its
+  -- FFI calls; correctness quantifies over it.
+  ⟦_⟧ : Source → TargetNum → Interp → Behavior
   ⟦ src ⟧ = sourceTrace src
 
   -- Reduction lemma (exported): when `src` parses AND RESOLVES to module `m`

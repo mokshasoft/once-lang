@@ -82,7 +82,7 @@ data SurfaceIR : Type → Type → Set where
   --
   -- Examples: syscalls, arithmetic, string operations
   --
-  SigOp    : ∀ {A B} → String → IsBaseType A → IsConcrete B → SurfaceIR A B
+  SigOp    : ∀ {A B} → String → IsBaseType A → IsBaseType B → SurfaceIR A B
 
 infixr 9 _∘_
 infixr 4 ⟨_,_⟩
