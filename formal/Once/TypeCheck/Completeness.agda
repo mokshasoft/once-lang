@@ -168,8 +168,8 @@ infer-complete-RQualified {ctx} {name} {alias} {T} eq conc = go T conc eq
               → (eq' : lookupImport (NamedCtx.imports ctx) (alias ++ "." ++ name)
                         ≡ just (A T.⇒[ T.mk-kind T.Many π ] B))
               → (mbA : Maybe (IsBaseType A)) (eqb : isBaseType? A ≡ mbA)
-                (mcB : Maybe (IsConcrete B)) (eqc : isConcrete? B ≡ mcB)
-              → inferElabV-RQualified-arrow-aux ctx name alias eq' (isBaseType? A) refl (isConcrete? B) refl
+                (mcB : Maybe (IsBaseType B)) (eqc : isBaseType? B ≡ mcB)
+              → inferElabV-RQualified-arrow-aux ctx name alias eq' (isBaseType? A) refl (isBaseType? B) refl
                 ≡ inferElabV-RQualified-arrow-aux ctx name alias eq' mbA eqb mcB eqc
     helperArr _ _ refl _ refl = refl
     helperVal : ∀ {ty}
@@ -185,7 +185,7 @@ infer-complete-RQualified {ctx} {name} {alias} {T} eq conc = go T conc eq
     go (A ⇒[ T.mk-kind Many π ] B) (con-fun bA cB) eq' = _ , _ , _ ,
       trans (cong proj₁ (helper _ eq'))
             (cong proj₁ (helperArr eq' _ (proj₂ (isBaseType?-complete bA))
-                                      _ (proj₂ (isConcrete?-complete cB))))
+                                      _ (proj₂ (isBaseType?-complete cB))))
     go (A ⇒[ T.mk-kind One  π ] B) conc' eq' = _ , _ , _ ,
       trans (cong proj₁ (helper _ eq'))
             (cong proj₁ (helperVal eq' _ (proj₂ (isConcrete?-complete conc'))))
@@ -277,8 +277,8 @@ infer-complete-RResolved-view {ctx} {cn} {T} (gv-other ng') eqv _ eq conc =
               → (eq' : lookupImport (NamedCtx.imports ctx) (showCanonical cn)
                         ≡ just (A T.⇒[ T.mk-kind T.Many π ] B))
               → (mbA : Maybe (IsBaseType A)) (eqb : isBaseType? A ≡ mbA)
-                (mcB : Maybe (IsConcrete B)) (eqc : isConcrete? B ≡ mcB)
-              → inferElabV-RResolved-arrow-aux ctx cn ng' eq' (isBaseType? A) refl (isConcrete? B) refl
+                (mcB : Maybe (IsBaseType B)) (eqc : isBaseType? B ≡ mcB)
+              → inferElabV-RResolved-arrow-aux ctx cn ng' eq' (isBaseType? A) refl (isBaseType? B) refl
                 ≡ inferElabV-RResolved-arrow-aux ctx cn ng' eq' mbA eqb mcB eqc
     helperArr _ _ refl _ refl = refl
     helperVal : ∀ {ty}
@@ -295,7 +295,7 @@ infer-complete-RResolved-view {ctx} {cn} {T} (gv-other ng') eqv _ eq conc =
       trans (inferElabV-RResolved-J ctx cn _ eqv)
       (trans (cong proj₁ (helper _ eq'))
             (cong proj₁ (helperArr eq' _ (proj₂ (isBaseType?-complete bA))
-                                      _ (proj₂ (isConcrete?-complete cB)))))
+                                      _ (proj₂ (isBaseType?-complete cB)))))
     go (A ⇒[ T.mk-kind One  π ] B) conc' eq' = _ , _ , _ ,
       trans (inferElabV-RResolved-J ctx cn _ eqv)
       (trans (cong proj₁ (helper _ eq'))

@@ -35,10 +35,12 @@ open import Once.IRTy using (⌊_⌋)
 open import Once.Word using (Carrier)
 import Once.Semantics.Value Carrier Carrier as M
 open import Once.Semantics.ValueIR Carrier Carrier using (coh)
-open import Once.Denotation.ValueDomain using (forget)
+open import Once.Denotation.ValueDomain using (forgetᵇ; cohᴰ)
+-- The surface base witnesses (the IR's own `base-*` are in scope from `Once.IR`).
+open import Once.Functor.Translate using () renaming (base-Prod to b-Prod; base-Int to b-Int; base-Float to b-Float)
 open import Once.Arith.Machine.IR using (MArithIR; shape-as-type; alit; aflit; ainput; aadd; asub; amul; adiv; amod; aneg; ai2f)
 open import Once.Arith.Type using (NumType; NInt; NFloat)
-open import Once.Arith.SigOp.Block using (block-semM; readLeafM; block-info)
+open import Once.Arith.SigOp.Block using (block-semM; readLeafM; block-info; shape-as-type-base)
 open import Once.Arith.Machine.IR using (ArithBlock)
 open import Once.Arith.Machine.Rewrite using (try-lift; shape-of; has-op; block-as-ir)
 open import Once.Postulates using (extensionality)
@@ -59,7 +61,6 @@ open import Once.Target.Arch using (int-bits; float-format)
 import Once.Word as OnceWord
 import Once.Float.Arith
 module W (tn : TargetNum) = OnceWord.Width (int-bits tn)
-open import Once.Adequacy.FaithfulLemmas fmt ρ using (T-ext-at)
 open import Once.Denotation.TraceMonad using (>>=T-assoc; >>=T-identityˡ)
 
 ------------------------------------------------------------------------
@@ -147,9 +148,10 @@ path-ok m (pv-other m) p₀ p () a
 -- (c) The input, read at a typed path, is the block's leaf.
 ------------------------------------------------------------------------
 
--- The input as the block reads it — exactly the argument `evalᴰ` hands a SigOp.
+-- The input as the block reads it — exactly the argument `evalᴰ` hands a SigOp
+-- (transported to the surface type, then read as the first-order value).
 toM : ∀ (sh : InputShape) → ⟦ ⌊ shape-as-type sh ⌋ ⟧ᴰᴵ → M.⟦ shape-as-type sh ⟧
-toM sh a = subst (λ z → z) (coh (shape-as-type sh)) (forget a)
+toM sh a = forgetᵇ (shape-as-type-base sh) (subst (λ z → z) (cohᴰ (shape-as-type sh)) a)
 
 private
   subst-× : ∀ {X X′ Y Y′ : Set} (p : X ≡ X′) (q : Y ≡ Y′) (u : X) (v : Y)
@@ -158,7 +160,8 @@ private
 
 toM-pair : ∀ (l r : InputShape) (x : ⟦ ⌊ shape-as-type l ⌋ ⟧ᴰᴵ) (y : ⟦ ⌊ shape-as-type r ⌋ ⟧ᴰᴵ)
          → toM (shape-pair l r) (x , y) ≡ (toM l x , toM r y)
-toM-pair l r x y = subst-× (coh (shape-as-type l)) (coh (shape-as-type r)) (forget x) (forget y)
+toM-pair l r x y =
+  cong (forgetᵇ (shape-as-type-base (shape-pair l r))) (subst-× (cohᴰ (shape-as-type l)) (cohᴰ (shape-as-type r)) x y)
 
 leaf-sound : ∀ (sh : InputShape) (n : NumType) (p : InputPath) (tp : Path sh n) → typePath? sh n p ≡ just tp
            → ∀ (a : ⟦ ⌊ shape-as-type sh ⌋ ⟧ᴰᴵ) → rd p ⌊ shape-as-type sh ⌋ a ≡ just (readLeafM tp (toM sh a))
@@ -218,7 +221,7 @@ private
   -- re-association is the monad's associativity
   assoc : ∀ {X Y Z : Set} (m : T X) (f : X → T Y) (g : Y → T Z)
         → (m >>=T λ x → f x >>=T g) ≡ ((m >>=T f) >>=T g)
-  assoc m f g = T-ext-at (λ n → sym (>>=T-assoc m f g n))
+  assoc m f g = sym (>>=T-assoc m f g)
 
   <-≤ : ∀ {a b c : ℕ} → a < b → b ≤ c → a < c
   <-≤ p q = Data.Nat.Properties.<-≤-trans p q
@@ -258,7 +261,7 @@ private
   term-at .terminal       tv-term     _ a = refl
   term-at .(terminal ∘ g) (tv-comp {Z = Z} g) e a with plumbing-val g e a
   ... | c , ec = trans (cong (λ (m : T ⟦ Z ⟧ᴰᴵ) → m >>=T evalᴰ fmt ρ (terminal {Z})) ec)
-                       (T-ext-at (>>=T-identityˡ c (evalᴰ fmt ρ (terminal {Z}))))
+                       (>>=T-identityˡ c (evalᴰ fmt ρ (terminal {Z})))
   term-at rhs (tv-other rhs) () a
 
   term-val : ∀ {X} (rhs : IR X II.Unit) → is-terminal? rhs ≡ true → ∀ a → evalᴰ fmt ρ rhs a ≡ returnT tt
@@ -269,7 +272,7 @@ private
   through : ∀ {W X Z} {h : IR W X} {a : ⟦ W ⟧ᴰᴵ} {c : ⟦ X ⟧ᴰᴵ} → evalᴰ fmt ρ h a ≡ returnT c
           → (f : IR X Z) {b : ⟦ Z ⟧ᴰᴵ} → evalᴰ fmt ρ (f ∘ h) a ≡ returnT b → evalᴰ fmt ρ f c ≡ returnT b
   through {h = h} {a} {c} ec f e =
-    trans (sym (T-ext-at (>>=T-identityˡ c (evalᴰ fmt ρ f))))
+    trans (sym (>>=T-identityˡ c (evalᴰ fmt ρ f)))
           (trans (sym (cong (λ m → m >>=T evalᴰ fmt ρ f) ec)) e)
 
   pair-val : ∀ {X Y Z} (x : IR X Y) (y : IR X Z) (a : ⟦ X ⟧ᴰᴵ) {bx by}
@@ -300,12 +303,12 @@ body-at    : ∀ (k : ℕ) (sh : InputShape) {B} (ir : IR ⌊ shape-as-type sh �
            → ∀ {body} → rb-at sh ir v ≡ just body → ∀ a → BodyAt sh ir body a
 sig-at     : ∀ (k : ℕ) (sh : InputShape) {X Y} nm (s : SigOpSem X Y) bA cB (e : IR ⌊ shape-as-type sh ⌋ ⌊ X ⌋) → sz e < k
            → ∀ {body} → recognise-prim sh s e ≡ just body → ∀ a → BodyAt sh (SigOp (mk-info' nm s bA cB) ∘ e) body a
-bin-case   : ∀ (k : ℕ) (sh : InputShape) nm (p : ArithPrim (Ty.Int Ty.* Ty.Int) Ty.Int) bA cB
+bin-case   : ∀ (k : ℕ) (sh : InputShape) nm (p : ArithPrim (Ty.Int Ty.* Ty.Int) Ty.Int)
                (c : MArithIR sh NInt → MArithIR sh NInt → MArithIR sh NInt)
            → (∀ ra rb inp → block-semM (c ra rb) fmt inp ≡ primSem p fmt (block-semM ra fmt inp , block-semM rb fmt inp))
            → (e : IR ⌊ shape-as-type sh ⌋ (II.Int II.* II.Int)) → sz e < k
            → ∀ {body} → (r : Maybe _) → recognise-binop sh e ≡ r → binop c r ≡ just body
-           → ∀ a → BodyAt sh (SigOp (mk-info' nm (primV p) bA cB) ∘ e) body a
+           → ∀ a → BodyAt sh (SigOp (mk-info' nm (primV p) (b-Prod b-Int b-Int) b-Int) ∘ e) body a
 bin-sound  : ∀ (k : ℕ) (sh : InputShape) {Y} (e : IR ⌊ shape-as-type sh ⌋ Y) → sz e < k
            → ∀ {ra rb} → recognise-binop sh e ≡ just (ra , rb) → ∀ a → BinAt sh e ra rb a
 bin-at     : ∀ (k : ℕ) (sh : InputShape) {Y} (e : IR ⌊ shape-as-type sh ⌋ Y) (v : BView e) → sz e < k
@@ -332,12 +335,12 @@ body-at k sh ir (v-other ir) lt eq a = path (recognise-path ir) refl eq
         typed (just tp) et refl with path-sound ir [] p ep a
         ... | b , eb , rb = b , eb , trans rb (leaf-sound sh NInt p tp et a)
 
-sig-at k sh nm (primV p-add) bA cB e lt eq a = bin-case k sh nm p-add bA cB aadd (λ _ _ _ → refl) e lt _ refl eq a
-sig-at k sh nm (primV p-sub) bA cB e lt eq a = bin-case k sh nm p-sub bA cB asub (λ _ _ _ → refl) e lt _ refl eq a
-sig-at k sh nm (primV p-mul) bA cB e lt eq a = bin-case k sh nm p-mul bA cB amul (λ _ _ _ → refl) e lt _ refl eq a
-sig-at k sh nm (primV p-div) bA cB e lt eq a = bin-case k sh nm p-div bA cB adiv (λ _ _ _ → refl) e lt _ refl eq a
-sig-at k sh nm (primV p-mod) bA cB e lt eq a = bin-case k sh nm p-mod bA cB amod (λ _ _ _ → refl) e lt _ refl eq a
-sig-at k sh nm (primV p-neg) bA cB e lt eq a = neg (recognise-body sh e) refl eq
+sig-at k sh nm (primV p-add) (b-Prod b-Int b-Int) b-Int e lt eq a = bin-case k sh nm p-add aadd (λ _ _ _ → refl) e lt _ refl eq a
+sig-at k sh nm (primV p-sub) (b-Prod b-Int b-Int) b-Int e lt eq a = bin-case k sh nm p-sub asub (λ _ _ _ → refl) e lt _ refl eq a
+sig-at k sh nm (primV p-mul) (b-Prod b-Int b-Int) b-Int e lt eq a = bin-case k sh nm p-mul amul (λ _ _ _ → refl) e lt _ refl eq a
+sig-at k sh nm (primV p-div) (b-Prod b-Int b-Int) b-Int e lt eq a = bin-case k sh nm p-div adiv (λ _ _ _ → refl) e lt _ refl eq a
+sig-at k sh nm (primV p-mod) (b-Prod b-Int b-Int) b-Int e lt eq a = bin-case k sh nm p-mod amod (λ _ _ _ → refl) e lt _ refl eq a
+sig-at k sh nm (primV p-neg) bA@b-Int cB@b-Int e lt eq a = neg (recognise-body sh e) refl eq
   where
     neg : ∀ (r : Maybe _) → recognise-body sh e ≡ r → ∀ {body} → unop aneg r ≡ just body
         → BodyAt sh (SigOp (mk-info' nm (primV p-neg) bA cB) ∘ e) body a
@@ -345,9 +348,9 @@ sig-at k sh nm (primV p-neg) bA cB e lt eq a = neg (recognise-body sh e) refl eq
     ... | b , eb , rb = _ , cong (λ m → m >>=T evalᴰ fmt ρ (SigOp (mk-info' nm (primV p-neg) bA cB))) eb
                           , cong (λ x → just (W.⊝_ fmt x)) (just-injective rb)
 
-bin-case k sh nm p bA cB c op e lt (just (ra , rb)) er refl a with bin-sound k sh e lt er a
+bin-case k sh nm p c op e lt (just (ra , rb)) er refl a with bin-sound k sh e lt er a
 ... | (b₁ , b₂) , eb , r₁ , r₂ =
-  _ , cong (λ m → m >>=T evalᴰ fmt ρ (SigOp (mk-info' nm (primV p) bA cB))) eb
+  _ , cong (λ m → m >>=T evalᴰ fmt ρ (SigOp (mk-info' nm (primV p) (b-Prod b-Int b-Int) b-Int))) eb
     , trans (cong₂ (λ x y → just (primSem p fmt (x , y))) (just-injective r₁) (just-injective r₂))
             (cong just (sym (op ra rb (toM sh a))))
 
@@ -375,7 +378,7 @@ bin-at k sh .(⟨ x , y ⟩ ∘ h) (bv-dist x y h) lt eq a = dist (plumbing? h) 
         ... | c , ec | bx , ebx , rbx | by , eby , rby =
           (bx , by)
           , trans (cong (λ m → m >>=T evalᴰ fmt ρ ⟨ x , y ⟩) ec)
-                  (trans (T-ext-at (>>=T-identityˡ c (evalᴰ fmt ρ ⟨ x , y ⟩)))
+                  (trans (>>=T-identityˡ c (evalᴰ fmt ρ ⟨ x , y ⟩))
                          (pair-val x y c (through {h = h} {a = a} ec x ebx) (through {h = h} {a = a} ec y eby)))
           , rbx , rby
 bin-at k sh e (bv-other e) lt () a
@@ -390,12 +393,12 @@ fbody-at    : ∀ (k : ℕ) (sh : InputShape) {B} (ir : IR ⌊ shape-as-type sh 
            → ∀ {body} → rbf-at sh ir v ≡ just body → ∀ a → BodyAt sh ir body a
 fsig-at     : ∀ (k : ℕ) (sh : InputShape) {X Y} nm (s : SigOpSem X Y) bA cB (e : IR ⌊ shape-as-type sh ⌋ ⌊ X ⌋) → sz e < k
            → ∀ {body} → recognise-prim-float sh s e ≡ just body → ∀ a → BodyAt sh (SigOp (mk-info' nm s bA cB) ∘ e) body a
-fbin-case   : ∀ (k : ℕ) (sh : InputShape) nm (p : ArithPrim (Ty.Float Ty.* Ty.Float) Ty.Float) bA cB
+fbin-case   : ∀ (k : ℕ) (sh : InputShape) nm (p : ArithPrim (Ty.Float Ty.* Ty.Float) Ty.Float)
                (c : MArithIR sh NFloat → MArithIR sh NFloat → MArithIR sh NFloat)
            → (∀ ra rb inp → block-semM (c ra rb) fmt inp ≡ primSem p fmt (block-semM ra fmt inp , block-semM rb fmt inp))
            → (e : IR ⌊ shape-as-type sh ⌋ (II.Float II.* II.Float)) → sz e < k
            → ∀ {body} → (r : Maybe _) → recognise-binop-float sh e ≡ r → binop c r ≡ just body
-           → ∀ a → BodyAt sh (SigOp (mk-info' nm (primV p) bA cB) ∘ e) body a
+           → ∀ a → BodyAt sh (SigOp (mk-info' nm (primV p) (b-Prod b-Float b-Float) b-Float) ∘ e) body a
 fbin-sound  : ∀ (k : ℕ) (sh : InputShape) {Y} (e : IR ⌊ shape-as-type sh ⌋ Y) → sz e < k
            → ∀ {ra rb} → recognise-binop-float sh e ≡ just (ra , rb) → ∀ a → BinAt sh e ra rb a
 fbin-at     : ∀ (k : ℕ) (sh : InputShape) {Y} (e : IR ⌊ shape-as-type sh ⌋ Y) (v : BView e) → sz e < k
@@ -422,11 +425,11 @@ fbody-at k sh ir (v-other ir) lt eq a = path (recognise-path ir) refl eq
         typed (just tp) et refl with path-sound ir [] p ep a
         ... | b , eb , rb = b , eb , trans rb (leaf-sound sh NFloat p tp et a)
 
-fsig-at k sh nm (primV p-fadd) bA cB e lt eq a = fbin-case k sh nm p-fadd bA cB aadd (λ _ _ _ → refl) e lt _ refl eq a
-fsig-at k sh nm (primV p-fsub) bA cB e lt eq a = fbin-case k sh nm p-fsub bA cB asub (λ _ _ _ → refl) e lt _ refl eq a
-fsig-at k sh nm (primV p-fmul) bA cB e lt eq a = fbin-case k sh nm p-fmul bA cB amul (λ _ _ _ → refl) e lt _ refl eq a
-fsig-at k sh nm (primV p-fdiv) bA cB e lt eq a = fbin-case k sh nm p-fdiv bA cB adiv (λ _ _ _ → refl) e lt _ refl eq a
-fsig-at k sh nm (primV p-i2f) bA cB e lt eq a = conv (recognise-body sh e) refl eq
+fsig-at k sh nm (primV p-fadd) (b-Prod b-Float b-Float) b-Float e lt eq a = fbin-case k sh nm p-fadd aadd (λ _ _ _ → refl) e lt _ refl eq a
+fsig-at k sh nm (primV p-fsub) (b-Prod b-Float b-Float) b-Float e lt eq a = fbin-case k sh nm p-fsub asub (λ _ _ _ → refl) e lt _ refl eq a
+fsig-at k sh nm (primV p-fmul) (b-Prod b-Float b-Float) b-Float e lt eq a = fbin-case k sh nm p-fmul amul (λ _ _ _ → refl) e lt _ refl eq a
+fsig-at k sh nm (primV p-fdiv) (b-Prod b-Float b-Float) b-Float e lt eq a = fbin-case k sh nm p-fdiv adiv (λ _ _ _ → refl) e lt _ refl eq a
+fsig-at k sh nm (primV p-i2f) bA@b-Int cB@b-Float e lt eq a = conv (recognise-body sh e) refl eq
   where
     conv : ∀ (r : Maybe _) → recognise-body sh e ≡ r → ∀ {body} → unop ai2f r ≡ just body
          → BodyAt sh (SigOp (mk-info' nm (primV p-i2f) bA cB) ∘ e) body a
@@ -434,9 +437,9 @@ fsig-at k sh nm (primV p-i2f) bA cB e lt eq a = conv (recognise-body sh e) refl 
     ... | b , eb , rb = _ , cong (λ m → m >>=T evalᴰ fmt ρ (SigOp (mk-info' nm (primV p-i2f) bA cB))) eb
                           , cong (λ x → just (Once.Float.Arith.i2f (float-format fmt) (W.toℤ fmt x))) (just-injective rb)
 
-fbin-case k sh nm p bA cB c op e lt (just (ra , rb)) er refl a with fbin-sound k sh e lt er a
+fbin-case k sh nm p c op e lt (just (ra , rb)) er refl a with fbin-sound k sh e lt er a
 ... | (b₁ , b₂) , eb , r₁ , r₂ =
-  _ , cong (λ m → m >>=T evalᴰ fmt ρ (SigOp (mk-info' nm (primV p) bA cB))) eb
+  _ , cong (λ m → m >>=T evalᴰ fmt ρ (SigOp (mk-info' nm (primV p) (b-Prod b-Float b-Float) b-Float))) eb
     , trans (cong₂ (λ x y → just (primSem p fmt (x , y))) (just-injective r₁) (just-injective r₂))
             (cong just (sym (op ra rb (toM sh a))))
 
@@ -464,7 +467,7 @@ fbin-at k sh .(⟨ x , y ⟩ ∘ h) (bv-dist x y h) lt eq a = dist (plumbing? h)
         ... | c , ec | bx , ebx , rbx | by , eby , rby =
           (bx , by)
           , trans (cong (λ m → m >>=T evalᴰ fmt ρ ⟨ x , y ⟩) ec)
-                  (trans (T-ext-at (>>=T-identityˡ c (evalᴰ fmt ρ ⟨ x , y ⟩)))
+                  (trans (>>=T-identityˡ c (evalᴰ fmt ρ ⟨ x , y ⟩))
                          (pair-val x y c (through {h = h} {a = a} ec x ebx) (through {h = h} {a = a} ec y eby)))
           , rbx , rby
 fbin-at k sh e (bv-other e) lt () a

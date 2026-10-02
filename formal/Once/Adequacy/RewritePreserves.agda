@@ -32,9 +32,10 @@ open import Once.IRTy using (_≟IRTy_)
 open import Relation.Nullary using (yes; no)
 open import Once.Arith.Machine.IR using (ArithBlock)
 open import Once.Arith.Machine.Rewrite using (rewrite-ir; rw-at; walk; try-lift)
-open import Once.Denotation.TraceMonad using (T; _>>=T_; returnT; projTrace)
-open import Once.Denotation.DenotTrace using (evalᴰ; CallEnv; cata-ev-algᴰ)
-open import Once.Denotation.Program using (IRFun; irFun; fname; fdom; fcod; fbody; irProgram; table; main; tableEnv;
+open import Once.Denotation.TraceMonad using (T; _>>=T_; returnT; projTrace; Interp)
+open import Once.SigOp.Info using (FFIAnswers)
+open import Once.Denotation.DenotTrace using (evalᴰ; CallEnv; callEnv; cata-ev-algᴰ)
+open import Once.Denotation.Program using (IRFun; irFun; fname; fdom; fcod; fbody; irProgram; table; main; tableEnv; tableCalls;
   tableEnv-at; runIR)
 open import Once.Semantics.Machine
 open import Once.Denotation.ValueDomain
@@ -89,18 +90,18 @@ module _ (fmt : TargetNum) (ρ : CallEnv) where
   walk-sound (In w)   = refl
   walk-sound (out-μ w) = refl
   walk-sound (Cata {F} w {E′} {C} alg) = extensionality λ a →
-    cong (λ X → sem-cata (wf-⌈⌉ w) X (forget (proj₂ a))) (alg≡ (proj₁ a))
+    cong (λ X → sem-cata (wf-⌈⌉ w) X (proj₂ a)) (alg≡ (proj₁ a))
     where
-      alg≡ : ∀ env → cata-ev-algᴰ fmt ρ {F} {E′} {C} (proj₁ (rewrite-ir alg)) env ≡ cata-ev-algᴰ fmt ρ {F} {E′} {C} alg env
+      alg≡ : ∀ env → cata-ev-algᴰ fmt ρ {F} {E′} {C} w (proj₁ (rewrite-ir alg)) env ≡ cata-ev-algᴰ fmt ρ {F} {E′} {C} w alg env
       alg≡ env = extensionality λ fc →
         cong (λ X → seqF ⌈ F ⌉F fc >>=T λ layer →
-                      X (env , subst (λ Ty → ⟦ Ty ⟧ᴰ) (sym (⌈⟧TI-commute F C)) (coerce-functor⁻¹-D ⌈ F ⌉F ⌈ C ⌉ layer)))
+                      X (env , subst (λ Ty → ⟦ Ty ⟧ᴰ) (sym (⌈⟧TI-commute F C)) (coerce-functor⁻¹-D (wf-⌈⌉ w) ⌈ C ⌉ layer)))
              (rewrite-sound alg)
   walk-sound (Out w)  = refl
   walk-sound (in-ν w) = refl
   walk-sound (Ana {F} w {A′} c) = extensionality λ a →
     cong (λ X → returnT (anaFᵈ ⌈ F ⌉F
-                           (λ a′ → fmapT (λ x → coerce-functor-D ⌈ F ⌉F ⌈ A′ ⌉
+                           (λ a′ → fmapT (λ x → coerce-functor-D (wf-⌈⌉ w) ⌈ A′ ⌉
                                                   (subst (λ Ty → ⟦ Ty ⟧ᴰ) (⌈⟧TI-commute F A′) x))
                                          (X a′))
                            a))
@@ -113,30 +114,36 @@ module _ (fmt : TargetNum) (ρ : CallEnv) where
 -- The rewritten table is the same call environment
 ------------------------------------------------------------------------
 
-table-sound : ∀ (fmt : TargetNum) (tbl : List IRFun) → tableEnv fmt (rewrite-table tbl) ≡ tableEnv fmt tbl
-table-sound fmt []       = refl
-table-sound fmt (e ∷ es) =
+calls-sound : ∀ (fmt : TargetNum) (φ : FFIAnswers) (tbl : List IRFun)
+            → tableCalls fmt φ (rewrite-table tbl) ≡ tableCalls fmt φ tbl
+calls-sound fmt φ []       = refl
+calls-sound fmt φ (e ∷ es) =
   extensionality λ f → extensionality λ A → extensionality λ B → extensionality λ a →
     at-sound f A B (fname e ≟ᶜ f) (fdom e ≟IRTy A) (fcod e ≟IRTy B) a
   where
-    ih = table-sound fmt es
+    ih  = calls-sound fmt φ es
+    ihE : tableEnv fmt φ (rewrite-table es) ≡ tableEnv fmt φ es
+    ihE = cong (λ c → callEnv c φ) ih
     at-sound : ∀ f A B d₁ d₂ d₃ a
-             → tableEnv-at fmt (rewrite-fun e) (rewrite-table es) f A B d₁ d₂ d₃ a ≡ tableEnv-at fmt e es f A B d₁ d₂ d₃ a
+             → tableEnv-at fmt φ (rewrite-fun e) (rewrite-table es) f A B d₁ d₂ d₃ a ≡ tableEnv-at fmt φ e es f A B d₁ d₂ d₃ a
     at-sound f A B (yes _) (yes p) (yes q) a =
       cong (subst (λ Y → T (Once.Denotation.DenotTrace.⟦_⟧ᴰᴵ Y)) q)
-        (trans (cong (λ ρ → evalᴰ fmt ρ (proj₁ (rewrite-ir (fbody e))) _) ih)
-               (cong (λ X → X _) (rewrite-sound fmt (tableEnv fmt es) (fbody e))))
-    at-sound f A B (yes _) (yes _) (no _)  a = cong (λ ρ → ρ f A B a) ih
-    at-sound f A B (yes _) (no _)  _       a = cong (λ ρ → ρ f A B a) ih
-    at-sound f A B (no _)  _       _       a = cong (λ ρ → ρ f A B a) ih
+        (trans (cong (λ ρ → evalᴰ fmt ρ (proj₁ (rewrite-ir (fbody e))) _) ihE)
+               (cong (λ X → X _) (rewrite-sound fmt (tableEnv fmt φ es) (fbody e))))
+    at-sound f A B (yes _) (yes _) (no _)  a = cong (λ c → c f A B a) ih
+    at-sound f A B (yes _) (no _)  _       a = cong (λ c → c f A B a) ih
+    at-sound f A B (no _)  _       _       a = cong (λ c → c f A B a) ih
+
+table-sound : ∀ (fmt : TargetNum) (φ : FFIAnswers) (tbl : List IRFun) → tableEnv fmt φ (rewrite-table tbl) ≡ tableEnv fmt φ tbl
+table-sound fmt φ tbl = cong (λ c → callEnv c φ) (calls-sound fmt φ tbl)
 
 ------------------------------------------------------------------------
 -- THE THEOREM
 ------------------------------------------------------------------------
 
-rewrite-program-preserves : ∀ (fmt : TargetNum) (p : Once.Denotation.Program.IRProgram) (n : ℕ)
-                          → at (⟦ just (rewrite-program p) ⟧IR fmt) n ≡ at (⟦ just p ⟧IR fmt) n
-rewrite-program-preserves fmt p n =
-  cong (λ t → projTrace t n)
-    (trans (cong (λ ρ → evalᴰ fmt ρ (proj₁ (rewrite-ir (main p))) _) (table-sound fmt (table p)))
-           (cong (λ X → X _) (rewrite-sound fmt (tableEnv fmt (table p)) (main p))))
+rewrite-program-preserves : ∀ (fmt : TargetNum) (ι : Interp) (p : Once.Denotation.Program.IRProgram) (n : ℕ)
+                          → at (⟦ just (rewrite-program p) ⟧IR fmt ι) n ≡ at (⟦ just p ⟧IR fmt ι) n
+rewrite-program-preserves fmt ι p n =
+  cong (λ t → projTrace ι t n)
+    (trans (cong (λ ρ → evalᴰ fmt ρ (proj₁ (rewrite-ir (main p))) _) (table-sound fmt (Interp.pure ι) (table p)))
+           (cong (λ X → X _) (rewrite-sound fmt (tableEnv fmt (Interp.pure ι) (table p)) (main p))))

@@ -38,9 +38,10 @@ open import Once.Res using (mapRes)
 open import Once.Type
   using (Type; Unit; Void; Int; Str; _*_; _+_; _⇒[_]_; Functor; ⟦_⟧T; μ-type; Quantity; Zero; One; Many; mk-kind)
 open import Once.Surface.Syntax using (Expr; Ctx; Usage; lookup; _,_^_; ∅; ⟦_⟧ᶜ; _↾_; _⊑ᵘ_; ⊑[]; _⊑∷_; z≤z; z≤o; z≤m; o≤o; o≤m; m≤m; singleUse; _∷_; _+ᵘ_; _*ᵘ_; _⊔ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many; zeroUsage)
-open import Once.Denotation.TraceMonad using (T; mkT; returnT; _>>=T_; projTrace; valueT; fmapT; resT-lift)
+open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_; fmapT)
 open import Once.Denotation.Phase using (lookupᴰUsed; restrictᴰ; bindᴰ; bindᴰ0)
-open import Once.Denotation.DenotTrace using (⟦_⟧ᴰ; evalᴰ; forget; inject; emit-D; emit-Dᵇ; coerce-functor⁻¹-D; coerce-functor-D; cohᴰ; liftFn; CallEnv; anaFᵈ; seqF)
+open import Once.Denotation.DenotTrace using (⟦_⟧ᴰ; evalᴰ; coerce-functor⁻¹-D; coerce-functor-D; cohᴰ; liftFn; CallEnv; ffiE; sigOpT; anaFᵈ; seqF)
+open import Once.Denotation.ValueDomain using (injectᵇ; forgetᵇ)
 open import Once.Float.Dyadic using (encode)
 open import Once.Float.Decimal using (Decimal; decimalOf; round)
 open import Once.Target.Arch using (TargetNum; int-bits; float-format)
@@ -48,10 +49,10 @@ open import Once.Denotation.TraceDenote using (events-F)
 open import Once.Denotation.Trace using (SigOpEvent)
 open import Once.IR using (IR; ⌊_⌋)
 open import Once.IR.Ref using (refIR)
-open import Once.Functor.Translate using (WellFormedF; con-fun; base-Unit)
+open import Once.Functor.Translate using (WellFormedF; con-base; con-fun; base-Unit)
 open import Once.Semantics.Machine
   using (sem-cata; sem-ana; sem-fmap; coerce-functor; coerce-functor⁻¹; ⟦_⟧F)
-open import Once.SigOp.Info using (semM)
+open import Once.SigOp.Info using (SigOpInfo; conB; baseA)
 open import Once.Denotation.Sub using (⟦_⟧<:)
 open import Once.Arith.SigOp.Builders
 open import Once.CanonicalName using (bare)
@@ -93,11 +94,11 @@ lookupᴰ (Γ , A ^ q) (fsuc i) dγ = lookupᴰ Γ i (proj₁ dγ)
 -- the algebra runs, mirroring `DenotTrace.cata-ev-algᴰ`. The `ℕ` is gone —
 -- the budget lives in `T`, so the children share it instead of each getting
 -- the full `n` and having their traces concatenated.
-cata-ev-algˢ : ∀ {F C} → T (⟦ ⟦ F ⟧T C ⟧ᴰ → T ⟦ C ⟧ᴰ)
+cata-ev-algˢ : ∀ {F C} → WellFormedF F → T (⟦ ⟦ F ⟧T C ⟧ᴰ → T ⟦ C ⟧ᴰ)
              → ⟦ F ⟧F (T ⟦ C ⟧ᴰ) → T ⟦ C ⟧ᴰ
-cata-ev-algˢ {F} {C} algComp fc =
+cata-ev-algˢ {F} {C} wf algComp fc =
   seqF F fc >>=T λ layer →
-    algComp >>=T λ algClo → algClo (coerce-functor⁻¹-D F C layer)
+    algComp >>=T λ algClo → algClo (coerce-functor⁻¹-D wf C layer)
 
 ------------------------------------------------------------------------
 -- `liftD` — the surface denotation of a PRE-BUILT CCC morphism `ir : IR ⌊A⌋ ⌊B⌋`
@@ -138,6 +139,13 @@ open DefsSem public
 
 internalDefs : TargetNum → CallEnv → DefsSem
 internalDefs fmt ρ = defsSem ρ (λ x A → subst T (cohᴰ A) (evalᴰ fmt ρ (refIR A (bare x)) tt))
+
+-- A SigOp applied at the source: its contract's computation at the
+-- first-order argument (plan 0.105), read into the value domain — the IR's
+-- `evalᴰ (SigOp si)` without the IRTy transports (`CataErased.liftFn-SigOp`).
+-- A pure FFI contract reads the call environment's pure half.
+sigOpˢ : ∀ {A B} → TargetNum → DefsSem → SigOpInfo A B → ⟦ A ⟧ᴰ → T ⟦ B ⟧ᴰ
+sigOpˢ fmt σ si a = fmapT (injectᵇ (conB si)) (sigOpT fmt (ffiE (calls σ)) si (forgetᵇ (baseA si) a))
 
 ------------------------------------------------------------------------
 -- THE SOURCE SEMANTICS. Structural on `Expr`; arrows are Kleisli arrows
@@ -237,60 +245,60 @@ internalDefs fmt ρ = defsSem ρ (λ x A → subst T (cohᴰ A) (evalᴰ fmt ρ 
 -- one that does.
 ⟦ float d ⟧ˢ fmt σ      dγ = returnT (round (float-format fmt) d)
 -- str: `str-lit-semM` is ABSTRACT (postulated, unlike the computing lit-int-semM),
--- so the literal's value can't be the clean `s`; denote via its own SigOp `semM`
+-- so the literal's value can't be the clean `s`; denote via its own SigOp
 -- (= `strLit`'s evalᴰ), matching the IR by construction (like arith).
-⟦ str s ⟧ˢ fmt σ        dγ = resT-lift (semM (str-lit-info s) fmt tt)
+⟦ str s ⟧ˢ fmt σ        dγ = sigOpˢ fmt σ (str-lit-info s) tt
 -- Arith / comparison / div-mod: all elaborate to `SigOp <op>-info` (Pure), so
--- denote them through the SAME `semM` — `⟦ op a b ⟧ˢ` is then DEFINITIONALLY the
+-- denote them through the SAME contract (`sigOpˢ`) — `⟦ op a b ⟧ˢ` is then DEFINITIONALLY the
 -- IR side `⟦ <op>IR ∘ ⟨a,b⟩ ⟧ᴰ`, making M3's elaborate-correctness trivial here.
 ⟦ add {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b ⟧ˢ fmt σ dγ =
   ⟦ a ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=T λ va →
-  ⟦ b ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vb → resT-lift (semM add-info fmt (va , vb))
+  ⟦ b ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vb → sigOpˢ fmt σ add-info (va , vb)
 ⟦ sub {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b ⟧ˢ fmt σ dγ =
   ⟦ a ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=T λ va →
-  ⟦ b ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vb → resT-lift (semM sub-info fmt (va , vb))
+  ⟦ b ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vb → sigOpˢ fmt σ sub-info (va , vb)
 ⟦ mul {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b ⟧ˢ fmt σ dγ =
   ⟦ a ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=T λ va →
-  ⟦ b ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vb → resT-lift (semM mul-info fmt (va , vb))
+  ⟦ b ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vb → sigOpˢ fmt σ mul-info (va , vb)
 -- PLAN 0.75 F4: the float family, structurally identical to the integer one.
 ⟦ fadd {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b ⟧ˢ fmt σ dγ =
   ⟦ a ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=T λ va →
-  ⟦ b ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vb → resT-lift (semM fadd-info fmt (va , vb))
+  ⟦ b ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vb → sigOpˢ fmt σ fadd-info (va , vb)
 ⟦ fsub {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b ⟧ˢ fmt σ dγ =
   ⟦ a ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=T λ va →
-  ⟦ b ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vb → resT-lift (semM fsub-info fmt (va , vb))
+  ⟦ b ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vb → sigOpˢ fmt σ fsub-info (va , vb)
 ⟦ fmul {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b ⟧ˢ fmt σ dγ =
   ⟦ a ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=T λ va →
-  ⟦ b ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vb → resT-lift (semM fmul-info fmt (va , vb))
+  ⟦ b ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vb → sigOpˢ fmt σ fmul-info (va , vb)
 ⟦ fdiv {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b ⟧ˢ fmt σ dγ =
   ⟦ a ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=T λ va →
-  ⟦ b ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vb → resT-lift (semM fdiv-info fmt (va , vb))
-⟦ i2f a ⟧ˢ fmt σ       dγ = ⟦ a ⟧ˢ fmt σ dγ >>=T λ va → resT-lift (semM i2f-info fmt va)
+  ⟦ b ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vb → sigOpˢ fmt σ fdiv-info (va , vb)
+⟦ i2f a ⟧ˢ fmt σ       dγ = ⟦ a ⟧ˢ fmt σ dγ >>=T λ va → sigOpˢ fmt σ i2f-info va
 ⟦ div {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b ⟧ˢ fmt σ dγ =
   ⟦ a ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=T λ va →
-  ⟦ b ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vb → resT-lift (semM div-info fmt (va , vb))
+  ⟦ b ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vb → sigOpˢ fmt σ div-info (va , vb)
 ⟦ mod' {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b ⟧ˢ fmt σ dγ =
   ⟦ a ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=T λ va →
-  ⟦ b ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vb → resT-lift (semM mod-info fmt (va , vb))
-⟦ neg e ⟧ˢ fmt σ        dγ = ⟦ e ⟧ˢ fmt σ dγ >>=T λ v → resT-lift (semM neg-info fmt v)
+  ⟦ b ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vb → sigOpˢ fmt σ mod-info (va , vb)
+⟦ neg e ⟧ˢ fmt σ        dγ = ⟦ e ⟧ˢ fmt σ dγ >>=T λ v → sigOpˢ fmt σ neg-info v
 ⟦ lt {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b ⟧ˢ fmt σ dγ =
   ⟦ a ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=T λ va →
-  ⟦ b ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vb → resT-lift (semM lt-info fmt (va , vb))
+  ⟦ b ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vb → sigOpˢ fmt σ lt-info (va , vb)
 ⟦ le {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b ⟧ˢ fmt σ dγ =
   ⟦ a ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=T λ va →
-  ⟦ b ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vb → resT-lift (semM le-info fmt (va , vb))
+  ⟦ b ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vb → sigOpˢ fmt σ le-info (va , vb)
 ⟦ gt {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b ⟧ˢ fmt σ dγ =
   ⟦ a ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=T λ va →
-  ⟦ b ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vb → resT-lift (semM gt-info fmt (va , vb))
+  ⟦ b ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vb → sigOpˢ fmt σ gt-info (va , vb)
 ⟦ ge {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b ⟧ˢ fmt σ dγ =
   ⟦ a ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=T λ va →
-  ⟦ b ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vb → resT-lift (semM ge-info fmt (va , vb))
+  ⟦ b ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vb → sigOpˢ fmt σ ge-info (va , vb)
 ⟦ eq {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b ⟧ˢ fmt σ dγ =
   ⟦ a ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=T λ va →
-  ⟦ b ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vb → resT-lift (semM eq-info fmt (va , vb))
+  ⟦ b ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vb → sigOpˢ fmt σ eq-info (va , vb)
 ⟦ ne {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b ⟧ˢ fmt σ dγ =
   ⟦ a ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=T λ va →
-  ⟦ b ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vb → resT-lift (semM ne-info fmt (va , vb))
+  ⟦ b ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vb → sigOpˢ fmt σ ne-info (va , vb)
 -- effApp: a SUSPENDED effect (`Unit ⇒[eff] B`) — the Eff design (D018). The
 -- effectful application is deferred into the Unit-thunk; its trace fires when the
 -- thunk is applied (at the top-level main run), threaded by `T`. No fork: the old
@@ -321,7 +329,7 @@ internalDefs fmt ρ = defsSem ρ (λ x A → subst T (cohᴰ A) (evalᴰ fmt ρ 
 -- follows (D130) and matches both `⟦_⟧ᶜ` and the elaboration (`cataM ∘ ealg`).
 ⟦ cata {Γ = Γ} {F = F} {A = A} wf alg ⟧ˢ fmt σ dγ =
   ⟦ alg ⟧ˢ fmt σ tt >>=T λ valg →
-  returnT (λ x → sem-cata wf (cata-ev-algˢ {F} {A} (returnT valg)) x)
+  returnT (λ x → sem-cata wf (cata-ev-algˢ {F} {A} wf (returnT valg)) x)
 -- Ana: the productive unfold. Coalgebra CLOSED (∅) → `⟦coalg⟧ˢ tt` is the
 -- closure. TRACE via `ana-eventsˢ` (depth-bounded prefix, the SOLE T-ℕ consumer);
 -- VALUE via `sem-ana` (the codata), mirroring `eval (Ana …)` but elaborate-free.
@@ -333,36 +341,29 @@ internalDefs fmt ρ = defsSem ρ (λ x A → subst T (cohᴰ A) (evalᴰ fmt ρ 
 -- recursive position.
 ⟦ ana {Γ = Γ} {F = F} {A = A} wf coalg ⟧ˢ fmt σ dγ =
   returnT (λ a → returnT (anaFᵈ F
-            (λ a' → fmapT (coerce-functor-D F A)
+            (λ a' → fmapT (coerce-functor-D wf A)
                           (⟦ coalg ⟧ˢ fmt σ tt >>=T λ clo → clo a'))
             a))
 -- Effect primitives (sigOp/closure/poly): named external ops resolved to
--- `generic-info name`, emitting + valued via the SAME emit-D/semM the IR uses
--- (definitionally = elaborate's `SigOp (generic-info name) ∘ terminal`). sigOp
+-- their contract infos, meant through the SAME `sigOpˢ` the IR's SigOp means
+-- (definitionally = elaborate's `SigOp (value-info name) ∘ terminal`). sigOp
 -- DISPATCHES ON RESULT-TYPE SHAPE (matching elaborate): at an arrow it is a
 -- CLOSURE applying the SigOp to its arg (so the effect fires at apply, not at
 -- pair-build); at non-arrow it runs on terminal `tt`. closure/poly never wrap.
 -- D143: split on the arrow's quantity. At an ERASED arrow the symbol never
 -- receives its argument, so the closure's parameter is the unit — the same
 -- degeneration the elaborator makes (`arrow-info` -> `value-info` there).
-⟦ sigOp {Γ = Γ} {A = (Dom ⇒[ mk-kind Zero π ] Cod)} name (con-fun bDom cCod) ⟧ˢ fmt σ dγ =
-  -- plan 0.97: …and WHETHER IT STOPS. `T` carries a stop flag now, and this
-  -- clause must set it exactly as `evalᴰ (SigOp si)` does, or the elaboration
-  -- bridge relates a Spec that continues after `exit` to an IR that does not.
-  returnT (λ _ → mkT (λ n → emit-Dᵇ (value-info name base-Unit cCod) tt n)
-                     (mapRes inject (semM (value-info name base-Unit cCod) fmt tt)))
-⟦ sigOp {Γ = Γ} {A = (Dom ⇒[ mk-kind One π ] Cod)} name (con-fun bDom cCod) ⟧ˢ fmt σ dγ =
-  returnT (λ arg → mkT (λ n → emit-Dᵇ (arrow-info {Dom} {Cod} (mk-kind One π) name bDom cCod) (forget arg) n)
-                       (mapRes inject (semM (arrow-info {Dom} {Cod} (mk-kind One π) name bDom cCod) fmt (forget arg))))
-⟦ sigOp {Γ = Γ} {A = (Dom ⇒[ mk-kind Many π ] Cod)} name (con-fun bDom cCod) ⟧ˢ fmt σ dγ =
-  returnT (λ arg → mkT (λ n → emit-Dᵇ (arrow-info {Dom} {Cod} (mk-kind Many π) name bDom cCod) (forget arg) n)
-                       (mapRes inject (semM (arrow-info {Dom} {Cod} (mk-kind Many π) name bDom cCod) fmt (forget arg))))
--- VALUE-position references (non-arrow sigOp, closure, poly): `Pure` via
--- `value-info` (effects live on arrows, fire on application — D018), so they
--- emit `[]` at build. This is what makes `build-pure` hold for these leaves;
--- interpretation-agnostic (no `classify-name`). Matches elaborate's
--- `SigOp (value-info name) ∘ terminal` ⇒ `faithful` stays `refl`.
-⟦ sigOp {Γ = Γ} {A = A} name conc ⟧ˢ fmt σ   dγ = mkT (λ n → emit-Dᵇ (value-info {Unit} {A} name base-Unit conc) tt n) (mapRes inject (semM (value-info {Unit} {A} name base-Unit conc) fmt tt))
+⟦ sigOp {Γ = Γ} {A = (Dom ⇒[ mk-kind Zero π ] Cod)} name (con-fun bDom bCod) ⟧ˢ fmt σ dγ =
+  returnT (λ _ → sigOpˢ fmt σ (value-info name base-Unit bCod) tt)
+⟦ sigOp {Γ = Γ} {A = (Dom ⇒[ mk-kind One π ] Cod)} name (con-fun bDom bCod) ⟧ˢ fmt σ dγ =
+  returnT (λ arg → sigOpˢ fmt σ (arrow-info {Dom} {Cod} (mk-kind One π) name bDom bCod) arg)
+⟦ sigOp {Γ = Γ} {A = (Dom ⇒[ mk-kind Many π ] Cod)} name (con-fun bDom bCod) ⟧ˢ fmt σ dγ =
+  returnT (λ arg → sigOpˢ fmt σ (arrow-info {Dom} {Cod} (mk-kind Many π) name bDom bCod) arg)
+-- VALUE-position references (non-arrow sigOp): a pure FFI contract
+-- (`value-info` is `ffiV`), so the reference is the interpretation's value.
+-- Matches elaborate's `SigOp (value-info name) ∘ terminal` ⇒ `faithful` stays
+-- `refl`.
+⟦ sigOp {Γ = Γ} {A = A} name (con-base ib) ⟧ˢ fmt σ dγ = sigOpˢ fmt σ (value-info {Unit} {A} name base-Unit ib) tt
 -- D246: a reference to a module ENTRY is a CALL of it (the IR's `Call`), so it
 -- reads the CALL environment; a spliced telescope reference (`poly`) reads the
 -- reference environment.
