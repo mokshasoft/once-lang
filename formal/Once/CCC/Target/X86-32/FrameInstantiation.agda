@@ -33,6 +33,7 @@ open import Relation.Binary.Definitions using (tri<; tri≈; tri>)
 
 -- Import the architecture-independent interface
 open import Once.CCC.FrameSemantics using (FrameSemantics)
+open import Once.Denotation.TraceMonad using (Interp)
 open import Once.Float.Dyadic using (binary32)
 open import Once.Memory.MemoryLayoutSemantics using (Addr)
 
@@ -204,9 +205,12 @@ x86-32-shift-frame f n =
 -- x86-32 FrameSemantics Instance
 ------------------------------------------------------------------------
 
-x86-32-frame-semantics : FrameSemantics
-x86-32-frame-semantics = record
-  { Frame = X86-32Frame
+-- Plan 0.105: the machine is a function of the program's interpretation (what
+-- an FFI SigOp gives back), as the meaning is.
+x86-32-frame-semantics : Interp → FrameSemantics
+x86-32-frame-semantics ι = record
+  { fs-interp = ι
+  ; Frame = X86-32Frame
   ; _≟F_ = _x86-32-≟F_
   ; frame-base = x86-32-frame-base
   ; slot-addr = x86-32-slot-addr
@@ -228,14 +232,3 @@ x86-32-frame-semantics = record
   ; ≺-compare = x86-32-≺-compare
   ; frame-disjoint-bounded = x86-32-frame-disjoint-bounded
   }
-
-------------------------------------------------------------------------
--- Convenience Re-exports
-------------------------------------------------------------------------
-
-open FrameSemantics x86-32-frame-semantics public
-  renaming ( Frame to X86-32-Frame
-           ; frame-base to X86-32-frame-base
-           ; slot-addr to X86-32-slot-addr
-           ; _≺_ to _X86-32-≺_
-           )

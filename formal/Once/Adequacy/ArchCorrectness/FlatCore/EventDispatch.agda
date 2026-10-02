@@ -145,7 +145,7 @@ open import Once.CCC.Machine.FlatRegTagWF FS using
 open import Once.CCC.Machine.FlatStackPtr FS using
   (stack-ptr-live; stack-ptr-suc-live)
 open import Once.Memory.HeapAddress using (HeapLocation; sucHL; heap-offset; heap-ref; ref-id)
-open import Once.SigOp.Info using (EffectShape; Emits; Halts)
+open import Once.SigOp.Info using (EffectShape; Emits; Halts; Answers)
 open import Once.CCC.Codegen.IRToTrace o using (ir-to-trace; ir-stack-budget)
 open import Once.CCC.Label using (once; thunk)
 open import Once.CCC.FrameSemantics using (slot-addr; slot-addr-linear)
@@ -990,6 +990,9 @@ module Dispatch (sup : Supply) where
                           (proj₂ rec)
           go-eff (Emits _) eqe = sigop-external n IH ev env prog fs s si cc wf h ftq
           go-eff (Halts _) eqe = sigop-external n IH ev env prog fs s si cc wf h ftq
+          -- plan 0.105: an ANSWERING SigOp is an external call too — it emits its
+          -- event, and what it returns is the interpretation's (the contract's).
+          go-eff Answers   eqe = sigop-external n IH ev env prog fs s si cc wf h ftq
 
 
   mutual

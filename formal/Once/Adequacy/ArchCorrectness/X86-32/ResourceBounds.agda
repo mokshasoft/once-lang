@@ -30,7 +30,12 @@
 
 open import Once.CanonicalName using (CanonicalName)
 
-module Once.Adequacy.ArchCorrectness.X86-32.ResourceBounds (o : CanonicalName) where
+open import Once.Denotation.TraceMonad using (Interp)
+open import Once.CCC.FrameSemantics using (FrameSemantics)
+
+-- Plan 0.105: the machine runs against an interpretation, so these facts about
+-- its states are stated at one.
+module Once.Adequacy.ArchCorrectness.X86-32.ResourceBounds (o : CanonicalName) (ι : Interp) where
 
 open import Data.Nat using (ℕ; suc; _+_; _≤_; _<_)
 open import Data.Maybe using (just)
@@ -56,7 +61,10 @@ open import Data.Nat.Properties using (<-≤-trans; ^-monoʳ-≤; n≤1+n)
 open import Data.Float using () renaming (Float to AgdaFloat)
 open import Once.CCC.Target.X86-32.Syntax using (slots; slot-size; reg; esp; edx; edi; Reg)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
-open import Once.CCC.Target.X86-32.FrameInstantiation using (x86-32-frame-semantics)
+open import Once.CCC.Target.X86-32.FrameInstantiation using () renaming (x86-32-frame-semantics to x86-32-frame-semantics-at)
+
+x86-32-frame-semantics : FrameSemantics
+x86-32-frame-semantics = x86-32-frame-semantics-at ι
 
 ------------------------------------------------------------------------
 -- HEAP EXHAUSTION: at an emitted `instr-alloc-heap n` the bump does not run

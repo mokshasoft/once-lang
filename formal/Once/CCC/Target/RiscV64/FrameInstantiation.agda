@@ -33,6 +33,7 @@ open import Relation.Binary.Definitions using (tri<; tri≈; tri>)
 
 -- Import the architecture-independent interface
 open import Once.CCC.FrameSemantics using (FrameSemantics)
+open import Once.Denotation.TraceMonad using (Interp)
 open import Once.Float.Dyadic using (binary64)
 open import Once.Memory.MemoryLayoutSemantics using (Addr)
 
@@ -224,9 +225,12 @@ rv64-shift-frame f n =
 -- RISC-V 64 FrameSemantics Instance
 ------------------------------------------------------------------------
 
-rv64-frame-semantics : FrameSemantics
-rv64-frame-semantics = record
-  { Frame = RV64Frame
+-- Plan 0.105: the machine is a function of the program's interpretation (what
+-- an FFI SigOp gives back), as the meaning is.
+rv64-frame-semantics : Interp → FrameSemantics
+rv64-frame-semantics ι = record
+  { fs-interp = ι
+  ; Frame = RV64Frame
   ; _≟F_ = _rv64-≟F_
   ; frame-base = rv64-frame-base
   ; slot-addr = rv64-slot-addr
@@ -247,14 +251,3 @@ rv64-frame-semantics = record
   ; ≺-compare = rv64-≺-compare
   ; frame-disjoint-bounded = rv64-frame-disjoint-bounded
   }
-
-------------------------------------------------------------------------
--- Convenience Re-exports
-------------------------------------------------------------------------
-
-open FrameSemantics rv64-frame-semantics public
-  renaming ( Frame to RiscV64-Frame
-           ; frame-base to RiscV64-frame-base
-           ; slot-addr to RiscV64-slot-addr
-           ; _≺_ to _RiscV64-≺_
-           )

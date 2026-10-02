@@ -22,7 +22,7 @@
 -- decreases). Lifted to the flat machine's `flat-exec-instr` at the end.
 ------------------------------------------------------------------------
 
-open import Once.CCC.FrameSemantics using (FrameSemantics; fs-numerics)
+open import Once.CCC.FrameSemantics using (FrameSemantics; fs-numerics; fs-ffi)
 
 module Once.CCC.Machine.FlatStoreWF (FS : FrameSemantics) where
 
@@ -32,14 +32,15 @@ open import Data.Bool using (Bool; true; false)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
-open import Data.List using (List; []; _∷_)
+open import Data.List using (List; []; _∷_; _++_)
 open import Data.Unit using (⊤; tt)
 open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 
 open import Once.CCC.Label using (LabelId)
 open import Once.Memory.HeapAddress using (HeapLocation; heap-loc; mkHeapRef; heap-ref; ref-id; sucHL)
-open import Once.SigOp.Info using (SigOpInfo; effect; EffectShape; Pure; Emits; Halts; semM)
+open import Once.SigOp.Info using (SigOpInfo; effect; EffectShape; Pure; Emits; Halts; Answers; semM)
+open import Once.Denotation.Trace using (SigOpEvent)
 open import Once.Res using (Res; stopped; returns)
 open import Once.Type using (Type; FitsInReg; fits-in-reg?)
 open import Once.Semantics.Machine using (⟦_⟧)
@@ -180,10 +181,11 @@ wf-halt wf = record { wf-regs = wf-regs wf ; wf-heap = wf-heap wf
                     ; wf-stack = wf-stack wf ; wf-fresh = wf-fresh wf }
 
 -- the SigOp shape: one register write AND a halt-flag update.
-wf-write-reg-halt : ∀ {n ls} (x : AbstractReg) (v : StoredValue FS) (b : Bool)
+-- (The SigOp step also extends the event log, which holds no pointer.)
+wf-write-reg-halt : ∀ {n ls} (x : AbstractReg) (v : StoredValue FS) (b : Bool) (es : List SigOpEvent)
                   → StoreWF n ls → sv-below (n) v
-                  → StoreWF n (record ls { regs = writeReg (regs ls) x v ; halted = b })
-wf-write-reg-halt {n} {ls} x v b wf bv = record
+                  → StoreWF n (record ls { regs = writeReg (regs ls) x v ; halted = b ; ev-log = es })
+wf-write-reg-halt {n} {ls} x v b es wf bv = record
   { wf-regs  = λ y → rw-below (n) (regs ls) x y v bv (wf-regs wf y)
   ; wf-heap  = wf-heap wf ; wf-stack = wf-stack wf ; wf-fresh = wf-fresh wf }
 
@@ -325,7 +327,7 @@ res-sv-below n fitB stopped     = tt
 pure-out-val-below : ∀ (n : ℕ) {A B} (si : SigOpInfo A B) (fitB : FitsInReg B) (ma : Maybe ⟦ A ⟧)
                    → sv-below n (pure-sigop-out-val si fitB ma)
 pure-out-val-below n si fitB (just a) =
-  res-sv-below n fitB (semM si (fs-numerics FS) a)
+  res-sv-below n fitB (semM (fs-ffi FS) si (fs-numerics FS) a)
 pure-out-val-below n si fitB nothing  = tt
 
 sigop-output-below : ∀ (n : ℕ) {A B} (si : SigOpInfo A B) (ls : LocState FS)
@@ -341,6 +343,11 @@ sigop-output-below n {A} {B} si ls = go (effect si)
     go Pure      = aux (fits-in-reg? B) (sv-as-loc (readReg (regs ls) Input1))
     go (Emits _) = tt
     go (Halts _) = tt
+    go Answers   = call-below (fits-in-reg? B)
+      where
+        call-below : ∀ (mf : Maybe (FitsInReg B)) → sv-below n (call-sigop-val si ls mf)
+        call-below (just _) = tt
+        call-below nothing  = tt
 
 ------------------------------------------------------------------------
 -- Slot loads (they thread `alloc` through, so they need their own shape).
@@ -473,7 +480,7 @@ mutual
       (readLoc-below (AtStack (current-frame alloc) slot) wf)
   wf-abstract (worklist-check slot) ls alloc wf = wf , ≤-refl
   wf-abstract (instr-sigop si) ls alloc wf =
-    wf-write-reg-halt Output (exec-sigop-output si ls) (exec-sigop-halts si ls) wf
+    wf-write-reg-halt Output (exec-sigop-output si ls) (exec-sigop-halts si ls) (ev-log ls ++ sigop-events si ls) wf
       (sigop-output-below (next-heap-ref alloc) si ls) , ≤-refl
   -- D113: `exec-abstract` MATERIALISES the literal (`lit-value`), so the cell
   -- holds the target's representation, not the payload. Mirrors the machine.

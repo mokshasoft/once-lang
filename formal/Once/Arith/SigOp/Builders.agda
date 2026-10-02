@@ -33,9 +33,9 @@ open import Data.Unit using (⊤)
 open import Once.Type using (Type; Unit; Void; Int; Str; _*_; _+_;
                               ArrowKind; mk-kind; Purity; pure; eff; isUnit?; isVoid?)
 open import Relation.Nullary using (Dec; yes; no)
-open import Once.SigOp.Info using (SigOpInfo; mk-info; mk-info'; pureV; primV; emitsV; haltsV; EffectShape; Pure; Halts)
+open import Once.SigOp.Info using (SigOpInfo; mk-info; mk-info'; pureV; primV; emitsV; haltsV; ffiV; callsV; EffectShape; Pure; Halts)
 open import Once.Arith.Prim using (ArithPrim; p-add; p-sub; p-mul; p-div; p-mod; p-neg; p-fadd; p-fsub; p-fmul; p-fdiv; p-i2f)
-open import Once.Functor.Translate using (IsBaseType; IsConcrete; con-base;
+open import Once.Functor.Translate using (IsBaseType;
   base-Unit; base-Int; base-Float; base-Str; base-Prod; base-Sum)
 open import Once.CanonicalName using (CanonicalName; bare; showCanonical)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
@@ -119,80 +119,76 @@ str-lit-semM s _ _ = s
 -- SigOpInfo builders
 ------------------------------------------------------------------------
 
--- Concreteness witnesses for the internal arith SigOp types (all base). The
--- domain is `IsBaseType`; the codomain is `IsConcrete` (here always `con-base`).
+-- Base-type witnesses for the internal arith SigOp types (both sides are base:
+-- plan 0.105 makes every SigOp first-order).
 base-I×I : IsBaseType (Int * Int)
 base-I×I = base-Prod base-Int base-Int
-con-Int : IsConcrete Int
-con-Int = con-base base-Int
-con-U+U : IsConcrete (Unit + Unit)
-con-U+U = con-base (base-Sum base-Unit base-Unit)
+base-U+U : IsBaseType (Unit + Unit)
+base-U+U = base-Sum base-Unit base-Unit
 
 -- Binary arithmetic
 add-info : SigOpInfo (Int * Int) Int
-add-info = mk-info' (bare "arith.add.int") (primV p-add) base-I×I con-Int
+add-info = mk-info' (bare "arith.add.int") (primV p-add) base-I×I base-Int
 
 sub-info : SigOpInfo (Int * Int) Int
-sub-info = mk-info' (bare "arith.sub.int") (primV p-sub) base-I×I con-Int
+sub-info = mk-info' (bare "arith.sub.int") (primV p-sub) base-I×I base-Int
 
 mul-info : SigOpInfo (Int * Int) Int
-mul-info = mk-info' (bare "arith.mul.int") (primV p-mul) base-I×I con-Int
+mul-info = mk-info' (bare "arith.mul.int") (primV p-mul) base-I×I base-Int
 
 div-info : SigOpInfo (Int * Int) Int
-div-info = mk-info' (bare "arith.div.int") (primV p-div) base-I×I con-Int
+div-info = mk-info' (bare "arith.div.int") (primV p-div) base-I×I base-Int
 
 mod-info : SigOpInfo (Int * Int) Int
-mod-info = mk-info' (bare "arith.mod.int") (primV p-mod) base-I×I con-Int
+mod-info = mk-info' (bare "arith.mod.int") (primV p-mod) base-I×I base-Int
 
 -- Unary arithmetic
 neg-info : SigOpInfo Int Int
-neg-info = mk-info' (bare "arith.neg.int") (primV p-neg) base-Int con-Int
+neg-info = mk-info' (bare "arith.neg.int") (primV p-neg) base-Int base-Int
 
 -- Float arithmetic (plan 0.75 F4). Distinct NAMES, not overloads: the SigOp
 -- name is the identity the backend dispatches on, and `arith.add.int` and
 -- `arith.add.float` are different instructions on every target.
 base-F×F : IsBaseType (Once.Type.Float * Once.Type.Float)
 base-F×F = base-Prod base-Float base-Float
-con-Float : IsConcrete Once.Type.Float
-con-Float = con-base base-Float
 
 fadd-info : SigOpInfo (Once.Type.Float * Once.Type.Float) Once.Type.Float
-fadd-info = mk-info' (bare "arith.add.float") (primV p-fadd) base-F×F con-Float
+fadd-info = mk-info' (bare "arith.add.float") (primV p-fadd) base-F×F base-Float
 
 fsub-info : SigOpInfo (Once.Type.Float * Once.Type.Float) Once.Type.Float
-fsub-info = mk-info' (bare "arith.sub.float") (primV p-fsub) base-F×F con-Float
+fsub-info = mk-info' (bare "arith.sub.float") (primV p-fsub) base-F×F base-Float
 
 fmul-info : SigOpInfo (Once.Type.Float * Once.Type.Float) Once.Type.Float
-fmul-info = mk-info' (bare "arith.mul.float") (primV p-fmul) base-F×F con-Float
+fmul-info = mk-info' (bare "arith.mul.float") (primV p-fmul) base-F×F base-Float
 
 fdiv-info : SigOpInfo (Once.Type.Float * Once.Type.Float) Once.Type.Float
-fdiv-info = mk-info' (bare "arith.div.float") (primV p-fdiv) base-F×F con-Float
+fdiv-info = mk-info' (bare "arith.div.float") (primV p-fdiv) base-F×F base-Float
 
 i2f-info : SigOpInfo Int Once.Type.Float
-i2f-info = mk-info' (bare "arith.i2f") (primV p-i2f) base-Int con-Float
+i2f-info = mk-info' (bare "arith.i2f") (primV p-i2f) base-Int base-Float
 
 -- Comparisons
 lt-info : SigOpInfo (Int * Int) (Unit + Unit)
-lt-info = mk-info (bare "arith.lt.int") lt-semM Pure base-I×I con-U+U
+lt-info = mk-info (bare "arith.lt.int") lt-semM Pure base-I×I base-U+U
 
 le-info : SigOpInfo (Int * Int) (Unit + Unit)
-le-info = mk-info (bare "arith.le.int") le-semM Pure base-I×I con-U+U
+le-info = mk-info (bare "arith.le.int") le-semM Pure base-I×I base-U+U
 
 gt-info : SigOpInfo (Int * Int) (Unit + Unit)
-gt-info = mk-info (bare "arith.gt.int") gt-semM Pure base-I×I con-U+U
+gt-info = mk-info (bare "arith.gt.int") gt-semM Pure base-I×I base-U+U
 
 ge-info : SigOpInfo (Int * Int) (Unit + Unit)
-ge-info = mk-info (bare "arith.ge.int") ge-semM Pure base-I×I con-U+U
+ge-info = mk-info (bare "arith.ge.int") ge-semM Pure base-I×I base-U+U
 
 eq-info : SigOpInfo (Int * Int) (Unit + Unit)
-eq-info = mk-info (bare "arith.eq.int") eq-semM Pure base-I×I con-U+U
+eq-info = mk-info (bare "arith.eq.int") eq-semM Pure base-I×I base-U+U
 
 ne-info : SigOpInfo (Int * Int) (Unit + Unit)
-ne-info = mk-info (bare "arith.ne.int") ne-semM Pure base-I×I con-U+U
+ne-info = mk-info (bare "arith.ne.int") ne-semM Pure base-I×I base-U+U
 
 -- String literal family
 str-lit-info : String → SigOpInfo Unit Str
-str-lit-info s = mk-info (bare ("lit.str." ++ s)) (str-lit-semM s) Pure base-Unit (con-base base-Str)
+str-lit-info s = mk-info (bare ("lit.str." ++ s)) (str-lit-semM s) Pure base-Unit base-Str
 
 ------------------------------------------------------------------------
 -- Generic placeholder for unresolved / user-imported SigOps
@@ -203,33 +199,17 @@ str-lit-info s = mk-info (bare ("lit.str." ++ s)) (str-lit-semM s) Pure base-Uni
 -- replace these placeholders with concrete SigOpInfos.
 ------------------------------------------------------------------------
 
--- | The opaque value of a SigOp referenced as a NAMED PURE VALUE — a
--- `closure`/`poly`/non-arrow `sigOp`, a separately-linked function whose
--- value Once does not inline (function-linking opacity). This is the ONLY
--- surviving `generic-semM` position: an EFFECTFUL op carries a contract,
--- not a value (`SigOpSem.emitsV`/`haltsV`), so this can no longer launder a
--- syscall's value. (Eliminating it too — sourcing closure/poly values from
--- the module environment — is a separate axis, the deferred follow-on.)
---
--- D250: its value is GRADED — a pure contract's function pointer is total.
-postulate
-  generic-semM : ∀ {A B} → String → TargetNum → M.⟦ A ⟧ → M.⟦ B ⟧ᵍ
-
--- | A SigOp referenced as a VALUE — at non-arrow type, or as a `closure` /
--- `poly` reference. Its effect is `Pure`: an effect lives on an *arrow*
--- (realized only on application, D018 suspended-Eff), so a bare value
--- reference emits nothing at build. INTERPRETATION-AGNOSTIC — no
--- effect-from-name guess. Plan 0.38 M0.2: `classify-name` (the
--- exit-syscall → Halts string match) is RETIRED; an external arrow's effect
--- now comes from its DECLARED `! <shape>`, built at the elaborate site
--- (`ext-arrow-info` in `TypeCheck.Elaborate`).
--- `generic-semM` at the result type a concreteness witness names (`⟦_⟧ᵍ` is not
--- injective, so the type cannot be read back from the value's).
-generic-semM-at : ∀ {A B} → IsConcrete B → String → TargetNum → M.⟦ A ⟧ → M.⟦ B ⟧ᵍ
-generic-semM-at {A} {B} _ = generic-semM {A} {B}
-
-value-info : ∀ {A B} → CanonicalName → IsBaseType A → IsConcrete B → SigOpInfo A B
-value-info {A} {B} name bA cB = mk-info name (generic-semM {A} {B} (showCanonical name)) Pure bA cB
+-- | A SigOp referenced as a VALUE — at non-arrow type, or through an erased
+-- arrow — or applied at a `pure` arrow: a PURE FFI CONTRACT (`ffiV`, plan
+-- 0.105). Its value is the interpretation's, not a postulate's: the meaning
+-- reads it from the call environment's pure half, the machine from its
+-- interpretation, and correctness quantifies over it. (This retired
+-- `generic-semM`, the postulated value every such reference used to denote.)
+-- Its effect is `Pure`: an effect lives on an *arrow* (realized only on
+-- application, D018 suspended-Eff), and an effectful arrow's effect comes from
+-- its DECLARED `! <shape>` (`arrow-info`, `ext-arrow-info`).
+value-info : ∀ {A B} → CanonicalName → IsBaseType A → IsBaseType B → SigOpInfo A B
+value-info name bA bB = mk-info' name ffiV bA bB
 
 
 -- | Compat shims for the surface/meaning sites (`Surface.Desugar`,
@@ -241,15 +221,16 @@ value-info {A} {B} name bA cB = mk-info name (generic-semM {A} {B} (showCanonica
 -- Keeping the names (vs. inlining) avoids churning those three modules and
 -- keeps `faithful` definitionally `refl` (both presentations use the same
 -- shim).
-generic-info : ∀ {A B} → CanonicalName → IsBaseType A → IsConcrete B → SigOpInfo A B
+generic-info : ∀ {A B} → CanonicalName → IsBaseType A → IsBaseType B → SigOpInfo A B
 generic-info = value-info
 
 -- The effect is a LEAF annotation read off the arrow's `Purity`; WHICH effect
 -- is read off the CODOMAIN (D225). A `pure` arrow is a pure value. An `eff`
 -- arrow into `Void` HALTS: `⟦ Void ⟧ = ⊥`, so `Res ⟦ Void ⟧` has exactly one
 -- inhabitant, `stopped` — the type leaves no other meaning to choose. An `eff`
--- arrow into `Unit` emits (an effect contract); any other `eff` arrow is the
--- deferred-data case (a pure value). Before D225 this split only on `Unit`, so
+-- arrow into `Unit` emits (an effect contract); any other `eff` arrow ANSWERS
+-- (`callsV`, plan 0.105): a call whose result is the interpretation's answer,
+-- so two reads may differ. Before D225 this split only on `Unit`, so
 -- an effectful op into `Void` denoted as a VALUE of `⊥` — a value only the
 -- `generic-semM` postulate could supply — while the elaborator emitted
 -- `haltsV`: plan 0.98 §2's "inhabited by fiat", one layer below stage E.
@@ -258,11 +239,11 @@ generic-info = value-info
 -- order, that the elaborator's `ext-resolved-info` hands `ext-resolved-info-aux`,
 -- so the masquerade proof folds both with one split.
 arrow-info-eff : ∀ {A B} → CanonicalName → Dec (B ≡ Void) → Dec (B ≡ Unit)
-               → IsBaseType A → IsConcrete B → SigOpInfo A B
-arrow-info-eff name (yes refl) _          bA cB = mk-info' name (haltsV refl) bA cB
-arrow-info-eff name (no _)     (yes refl) bA cB = mk-info' name (emitsV refl) bA cB
-arrow-info-eff name (no _)     (no _)     bA cB = value-info name bA cB
+               → IsBaseType A → IsBaseType B → SigOpInfo A B
+arrow-info-eff name (yes refl) _          bA bB = mk-info' name (haltsV refl) bA bB
+arrow-info-eff name (no _)     (yes refl) bA bB = mk-info' name (emitsV refl) bA bB
+arrow-info-eff name (no _)     (no _)     bA bB = mk-info' name callsV bA bB
 
-arrow-info : ∀ {A B} → ArrowKind → CanonicalName → IsBaseType A → IsConcrete B → SigOpInfo A B
-arrow-info (mk-kind _ pure) name bA cB = value-info name bA cB
-arrow-info {A} {B} (mk-kind _ eff) name bA cB = arrow-info-eff name (isVoid? B) (isUnit? B) bA cB
+arrow-info : ∀ {A B} → ArrowKind → CanonicalName → IsBaseType A → IsBaseType B → SigOpInfo A B
+arrow-info (mk-kind _ pure) name bA bB = value-info name bA bB
+arrow-info {A} {B} (mk-kind _ eff) name bA bB = arrow-info-eff name (isVoid? B) (isUnit? B) bA bB

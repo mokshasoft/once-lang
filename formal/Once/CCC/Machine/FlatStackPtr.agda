@@ -41,7 +41,7 @@
 -- set, taking the `lea-indexed-wf` residual with it.)
 ------------------------------------------------------------------------
 
-open import Once.CCC.FrameSemantics using (FrameSemantics; fs-numerics)
+open import Once.CCC.FrameSemantics using (FrameSemantics; fs-numerics; fs-ffi)
 
 module Once.CCC.Machine.FlatStackPtr (FS : FrameSemantics) where
 
@@ -52,7 +52,8 @@ open import Data.Nat.Properties using (≤-trans; n≤1+n)
 open import Data.Bool using (Bool; true; false)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.List using (List; []; _∷_)
+open import Data.List using (List; []; _∷_; _++_)
+open import Once.Denotation.Trace using (SigOpEvent)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
@@ -61,7 +62,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 
 open import Once.Memory.HeapAddress using (HeapLocation; _≟HL_)
 import Once.Allocator.AbstractInstance as AI
-open import Once.SigOp.Info using (SigOpInfo; effect; EffectShape; Pure; Emits; Halts; semM)
+open import Once.SigOp.Info using (SigOpInfo; effect; EffectShape; Pure; Emits; Halts; Answers; semM)
 open import Once.Res using (Res; stopped; returns)
 open import Once.Type using (Type; FitsInReg; fits-in-reg?)
 open import Once.Semantics.Machine using (⟦_⟧)
@@ -217,13 +218,14 @@ sp-write-reg cf ls x v ok wf = record
 -- …and the SigOp shape: the same write with the halt flag set in the same
 -- record update.
 sp-write-reg-halt : ∀ (cf : Frame) (ls : LocState FS) (x : AbstractReg)
-                      (v : StoredValue FS) (b : Bool)
+                      (v : StoredValue FS) (b : Bool) (es : List SigOpEvent)
                   → StackPtrOK v
                   → SPInv ls
-                  → SPInv (record ls { regs = writeReg (regs ls) x v ; halted = b })
-sp-write-reg-halt cf ls x v b ok wf =
-  sp-halt cf (record ls { regs = writeReg (regs ls) x v }) b
-          (sp-write-reg cf ls x v ok wf)
+                  → SPInv (record ls { regs = writeReg (regs ls) x v ; halted = b ; ev-log = es })
+-- The invariant reads no flag and no log, so its fields carry over as they are.
+sp-write-reg-halt cf ls x v b es ok wf =
+  let w = sp-write-reg cf ls x v ok wf in
+  record { sp-regs = sp-regs w ; sp-heap = sp-heap w ; sp-stack = sp-stack w }
 
 ------------------------------------------------------------------------
 -- MEMORY WRITES. `writeStackMem` / `writeHeapMem` are aux-style on the
@@ -415,7 +417,7 @@ sigop-output-ok {A} {B} si ls = go (effect si)
   where
     pov : ∀ (fitB : FitsInReg B) (ma : Maybe ⟦ A ⟧)
         → StackPtrOK (pure-sigop-out-val si fitB ma)
-    pov fitB (just a) = res-sv-stack-ok fitB (semM si (fs-numerics FS) a)
+    pov fitB (just a) = res-sv-stack-ok fitB (semM (fs-ffi FS) si (fs-numerics FS) a)
     pov fitB nothing  = tt
     aux : ∀ (mf : Maybe (FitsInReg B)) (ml : Maybe (ValueLocation FS))
         → StackPtrOK (pure-sigop-out-aux si ls mf ml)
@@ -426,6 +428,11 @@ sigop-output-ok {A} {B} si ls = go (effect si)
     go Pure      = aux (fits-in-reg? B) (sv-as-loc (readReg (regs ls) Input1))
     go (Emits _) = tt
     go (Halts _) = tt
+    go Answers   = cv (fits-in-reg? B)
+      where
+        cv : ∀ (mf : Maybe (FitsInReg B)) → StackPtrOK (call-sigop-val si ls mf)
+        cv (just _) = tt
+        cv nothing  = tt
 
 ------------------------------------------------------------------------
 -- THE PER-INSTRUCTION PRESERVATION over the structured semantics. No mutual
@@ -488,7 +495,7 @@ sp-abstract (worklist-pop slot)   ls alloc ff wf =
                (sp-read-loc (current-frame alloc) ls wf (AtStack (current-frame alloc) slot)) wf
 sp-abstract (worklist-check slot) ls alloc ff wf = wf
 sp-abstract (instr-sigop si) ls alloc ff wf =
-  sp-write-reg-halt (current-frame alloc) ls Output (exec-sigop-output si ls) (exec-sigop-halts si ls)
+  sp-write-reg-halt (current-frame alloc) ls Output (exec-sigop-output si ls) (exec-sigop-halts si ls) (ev-log ls ++ sigop-events si ls)
                     (sigop-output-ok si ls) wf
 sp-abstract (instr-load-const p v)   ls alloc ff wf =
   sp-write-reg (current-frame alloc) ls Output (SV-Lit p (lit-value p v)) tt wf

@@ -29,7 +29,12 @@
 
 open import Once.CanonicalName using (CanonicalName)
 
-module Once.Adequacy.ArchCorrectness.RiscV64.ResourceBounds (o : CanonicalName) where
+open import Once.Denotation.TraceMonad using (Interp)
+open import Once.CCC.FrameSemantics using (FrameSemantics)
+
+-- Plan 0.105: the machine runs against an interpretation, so these facts about
+-- its states are stated at one.
+module Once.Adequacy.ArchCorrectness.RiscV64.ResourceBounds (o : CanonicalName) (ι : Interp) where
 
 open import Data.Nat using (ℕ; suc; _+_; _≤_)
 open import Data.Maybe using (just)
@@ -48,7 +53,10 @@ open import Once.CCC.Target.RiscV64.Syntax using (slots; slot-size; sp; s3; s4; 
 open import Once.CCC.Target.RiscV64.AbstractToRiscV using (slot-to-disp)
 open import Data.Nat using (_<_)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
-open import Once.CCC.Target.RiscV64.FrameInstantiation using (rv64-frame-semantics)
+open import Once.CCC.Target.RiscV64.FrameInstantiation using () renaming (rv64-frame-semantics to rv64-frame-semantics-at)
+
+rv64-frame-semantics : FrameSemantics
+rv64-frame-semantics = rv64-frame-semantics-at ι
 open import Once.Word using (Carrier)
 open import Once.Type using (fits-int; fits-float)
 open import Once.Float.Dyadic using (binary32; binary64)

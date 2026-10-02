@@ -286,6 +286,16 @@ resVal stopped     ()
 resVal-returns : ∀ {X} (r : Res X) (p : Returns? r) → r ≡ returns (resVal r p)
 resVal-returns (returns x) _ = refl
 
+-- A computation's result run MID-PROGRAM: against the interpretation, after
+-- the calls `h` already made. An answering call's answer depends on `h`, so a
+-- sub-computation's value is only defined at a history (the machine's log).
+resultAt : ∀ {X} → Interp → List SigOpEvent → T X → Res X
+resultAt ι h m = proj₂ (run ι h m)
+
+-- The value it returns there, given that it does.
+valueT : ∀ {X} (ι : Interp) (h : List SigOpEvent) (m : T X) {p : Returns? (resultAt ι h m)} → X
+valueT ι h m {p} = resVal (resultAt ι h m) p
+
 -- A relation on results, lifted (`stopped` relates only to `stopped`).
 RelRes : ∀ {X Y : Set} (R : X → Y → Set) → Res X → Res Y → Set
 RelRes = Res-rel

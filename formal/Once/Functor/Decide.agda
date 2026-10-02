@@ -50,10 +50,11 @@ isBaseType? (rigid k-base _) = just base-rigid
 isBaseType? (rigid k-any _)  = nothing
 
 -- | Decide whether a type is CONCRETE / FFI-representable (Plan 0.58): a base
--- type, or a first-order function pointer (base argument, concrete result).
+-- type, or a first-order function pointer (base argument, base result: the
+-- ABI returns a register value, never a closure — plan 0.105).
 isConcrete? : (A : Type) → Maybe (IsConcrete A)
-isConcrete? (A ⇒[ _ ] B) with isBaseType? A | isConcrete? B
-... | just bA | just cB = just (con-fun bA cB)
+isConcrete? (A ⇒[ _ ] B) with isBaseType? A | isBaseType? B
+... | just bA | just bB = just (con-fun bA bB)
 ... | _       | _       = nothing
 isConcrete? A with isBaseType? A
 ... | just bA = just (con-base bA)
@@ -91,8 +92,8 @@ isConcrete?-complete (con-base (base-Prod bA bB))
 isConcrete?-complete (con-base (base-Sum bA bB))
   with isBaseType?-complete (base-Sum bA bB)
 ... | (b , eq) rewrite eq = con-base b , refl
-isConcrete?-complete (con-fun bA cB)
-  with isBaseType?-complete bA | isConcrete?-complete cB
+isConcrete?-complete (con-fun bA bB)
+  with isBaseType?-complete bA | isBaseType?-complete bB
 ... | (b , eqB) | (c , eqC) rewrite eqB | eqC = con-fun b c , refl
 
 -- | Decide whether a functor is well-formed (K positions are base types).

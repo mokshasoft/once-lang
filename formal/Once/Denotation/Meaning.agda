@@ -39,10 +39,11 @@ open import Once.Type
   using (Type; Unit; Void; Int; _*_; _+_; _⇒[_]_; μ-type; Functor; ⟦_⟧T; Purity; mk-kind; Quantity; Zero; One; Many; Ground; extractGround)
 open import Once.CanonicalName using (CanonicalName; own; showCanonical; bare)
 open import Relation.Binary.PropositionalEquality using (subst; sym)
-open import Once.Denotation.TraceMonad using (T; mkT; returnT; _>>=T_; valueT; projTrace; fmapT; resT-lift)
+open import Once.Denotation.TraceMonad using (T; ret; returnT; _>>=T_; fmapT)
 -- P5: the value-domain vocabulary comes from the IR-free `ValueDomain`
 -- (NOT `DenotTrace`, whose `evalᴰ` is implementation).
-open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; emit-D; emit-Dᵇ; inject; forget; coerce-functor⁻¹-D; coerce-functor-D; anaFᵈ; forceᵈ; seqF; in-νᵈ)
+open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; injectᵇ; forgetᵇ; coerce-functor⁻¹-D; coerce-functor-D; anaFᵈ; forceᵈ; seqF; in-νᵈ)
+open import Once.Denotation.DenotTrace using (sigOpT)
 open import Once.Denotation.Phase using (restrictᴰ; bindᴰ; bindᴰ0; lookupᴰUsed)
 open import Once.Denotation.PhaseV using (restrictᵛ; bindᵛ; bindᵛ0; lookupᵛUsed)
 open import Once.Denotation.GradedDomain using (⟦_⟧ᵛ; M; returnM; bindM; _>>=ᵖ_)
@@ -63,7 +64,7 @@ open import Once.Denotation.Sub using (⟦_⟧<:)
 open import Once.SigOp.Info using (semP)
 open import Relation.Binary.PropositionalEquality using (refl)
 open import Once.Type.Sub using (sub-arr; <:-refl)
-open import Once.SigOp.Info using (SigOpInfo; semM)
+open import Once.SigOp.Info using (SigOpInfo; conB; FFIAnswers)
 open import Once.Arith.SigOp.Builders
   using (value-info; arrow-info; str-lit-info;
          add-info; sub-info; mul-info; div-info; mod-info; neg-info;
@@ -97,14 +98,18 @@ open import Once.TypeCheck.Judgment
 -- D179: carrier is a COMPUTATION and the layer is sequenced (`seqF`) before
 -- the algebra runs, so the children share ONE budget. The `ℕ` is gone — it
 -- lives in `T` now. Mirrors `DenotTrace.cata-ev-algᴰ` exactly.
-cata-ev-algᴰ-D : ∀ {F : Functor} {A : Type} → (⟦ ⟦ F ⟧T A ⟧ᴰ → T ⟦ A ⟧ᴰ)
+-- Plan 0.105: the layer crosses by the FIRST-ORDER coercion, so it takes the
+-- functor's well-formedness (as `DenotTrace.cata-ev-algᴰ` does).
+cata-ev-algᴰ-D : ∀ {F : Functor} {A : Type} → WellFormedF F → (⟦ ⟦ F ⟧T A ⟧ᴰ → T ⟦ A ⟧ᴰ)
                → ⟦ F ⟧F (T ⟦ A ⟧ᴰ) → T ⟦ A ⟧ᴰ
-cata-ev-algᴰ-D {F} {A} dalg fc =
-  seqF F fc >>=T λ layer → dalg (coerce-functor⁻¹-D F A layer)
+cata-ev-algᴰ-D {F} {A} wf dalg fc =
+  seqF F fc >>=T λ layer → dalg (coerce-functor⁻¹-D wf A layer)
 
+-- `⟦ μ-type F ⟧ᴰ` IS the machine's μ (first-order data), so the fold reads it
+-- as it is.
 cata-sem : ∀ {F : Functor} {A : Type} → WellFormedF F
          → (⟦ ⟦ F ⟧T A ⟧ᴰ → T ⟦ A ⟧ᴰ) → ⟦ μ-type F ⟧ᴰ → T ⟦ A ⟧ᴰ
-cata-sem {F} {A} wf dalg v = sem-cata wf (cata-ev-algᴰ-D {F} {A} dalg) (forget v)
+cata-sem {F} {A} wf dalg v = sem-cata wf (cata-ev-algᴰ-D {F} {A} wf dalg) v
 
 -- D192: the DUAL of `cata-sem`. A ν is a suspension in the meaning too — the
 -- coalgebra is stored, not run, so this emits nothing and `out` is where the
@@ -120,7 +125,7 @@ cata-sem {F} {A} wf dalg v = sem-cata wf (cata-ev-algᴰ-D {F} {A} dalg) (forget
 ana-sem : ∀ {F : Functor} {A : Type} {π : Purity} → WellFormedF F
         → T (⟦ A ⟧ᴰ → T ⟦ ⟦ F ⟧T A ⟧ᴰ) → ⟦ A ⟧ᴰ → T ⟦ Once.Type.ν-type F π ⟧ᴰ
 ana-sem {F} {A} wf cT a =
-  returnT (anaFᵈ F (λ a' → fmapT (coerce-functor-D F A)
+  returnT (anaFᵈ F (λ a' → fmapT (coerce-functor-D wf A)
                              (cT >>=T λ clo → clo a')) a)
 
 -- D194: FORCING a layer — the ν's eliminator, and the one place a ν emits.
@@ -130,46 +135,22 @@ ana-sem {F} {A} wf cT a =
 out-sem : ∀ {F : Functor} {π : Purity} → WellFormedF F
         → ⟦ Once.Type.ν-type F π ⟧ᴰ → T ⟦ ⟦ F ⟧T (Once.Type.ν-type F π) ⟧ᴰ
 out-sem {F} {π} wf v =
-  fmapT (λ layer → coerce-functor⁻¹-D F (Once.Type.ν-type F π)
+  fmapT (λ layer → coerce-functor⁻¹-D wf (Once.Type.ν-type F π)
                      (coerce-ν-out wf _ layer))
         (forceᵈ v)
 
--- g-In: the initial-algebra constructor `⟦F⟧T (μF) → μF` at the value level.
--- DEFINITIONALLY `eval (In wf Heap) ∘ forget` (first-order data is pure), so the
--- `bridgeᵈ` case for `g-In` is a `forget`-coercion step.
-in-value : ∀ {F : Functor} → ⟦ ⟦ F ⟧T (μ-type F) ⟧ᴰ → ⟦ μ-type F ⟧ᴰ
-in-value {F} x = sem-In F (coerce-functor F (μ-type F) (forget x))
+-- g-In: the initial-algebra constructor `⟦F⟧T (μF) → μF` at the value level,
+-- through the first-order layer coercion (plan 0.105: `forget` is gone; a μ
+-- layer holds base values and children only).
+in-value : ∀ {F : Functor} → WellFormedF F → ⟦ ⟦ F ⟧T (μ-type F) ⟧ᴰ → ⟦ μ-type F ⟧ᴰ
+in-value {F} wf x = sem-In F (coerce-functor-D wf (μ-type F) x)
 
--- in-ν: the ν's INTRODUCTION form, `⟦F⟧T (νF) → νF`. The exact mirror of
--- `out-sem` above, and DEFINITIONALLY `evalᴰ (in-ν wf)` minus the IRTy
--- transports (DenotTrace.agda:198-201).
---
--- IT IS NOT `in-value`'s ν twin. `in-value` may go through `forget` because a
--- well-formed μ layer holds no suspension: `wf-K` demands `IsBaseType`, which
--- is Unit/Void/Int/Float/Str/Buffer, so no ν can hide in a `K`. At a ν the
--- `wf-Id` positions ARE νᵈ suspensions, and `forgetν` reads each child at
--- budget zero, DROPPING its events. That is precisely the defect the SPEC FIX
--- removed from `evalᴰ`; re-introducing `forget` here would re-introduce it in
--- the specification. `in-νᵈ` stores the layer as given.
---
--- No `WellFormedF` argument: `coerce-ν-in` is `coerce-μ-in` (Value.agda:574-575)
--- and needs none. `out-sem` needs one only because `coerce-ν-out` inverts.
-in-ν-value : ∀ {F : Functor} {π : Purity} → ⟦ ⟦ F ⟧T (Once.Type.ν-type F π) ⟧ᴰ → ⟦ Once.Type.ν-type F π ⟧ᴰ
-in-ν-value {F} {π} x =
-  in-νᵈ (coerce-ν-in F ⟦ Once.Type.ν-type F π ⟧ᴰ
-          (coerce-functor-D F (Once.Type.ν-type F π) x))
-
--- m-named / m-named-resolved: the named arrow's meaning, IR-free. This is
--- DEFINITIONALLY `evalᴰ (SigOp (value-info cn))` (same RHS), so the `bridgeᵈ`
--- case for a named morphism is `refl`.
--- Plan 0.74 J5: takes the target's numerics, because `semM` does now.
-named-sem : ∀ {A B : Type} → TargetNum → CanonicalName → IsBaseType A → IsConcrete B → ⟦ A ⟧ᴰ → T ⟦ B ⟧ᴰ
-named-sem {A} {B} fmt cn bA cB a =
-  -- plan 0.97: `T` carries a stop flag, and this clause is DEFINITIONALLY
-  -- `evalᴰ (SigOp (value-info cn))`, so it must set it the same way — the
-  -- `bridgeᵈ` case for a named morphism is `refl` and would stop being one.
-  mkT (λ n → emit-Dᵇ (value-info {A} {B} cn bA cB) (forget a) n)
-      (mapRes inject (semM (value-info {A} {B} cn bA cB) fmt (forget a)))
+-- m-named / m-named-resolved: the named arrow's meaning, IR-free — a pure
+-- FFI contract (`value-info` is `ffiV`, plan 0.105), so its value is the
+-- interpretation's pure half at the argument.
+named-sem : ∀ {A B : Type} → TargetNum → FFIAnswers → CanonicalName → IsBaseType A → IsBaseType B → ⟦ A ⟧ᴰ → T ⟦ B ⟧ᴰ
+named-sem {A} {B} fmt φ cn bA bB a =
+  fmapT (injectᵇ bB) (sigOpT fmt φ (value-info {A} {B} cn bA bB) (forgetᵇ bA a))
 
 
 ------------------------------------------------------------------------
@@ -190,56 +171,26 @@ svarᴰ {Γ = Γ} (svar i) dγ = lookupᴰ Γ i dγ
 svarᴰRun : ∀ {n} {Γ : Ctx n} {Ψ A} (v : SVar Γ Ψ A) → ⟦ ⟦ Γ ↾ Ψ ⟧ᶜᵗ ⟧ᴰ → ⟦ A ⟧ᴰ
 svarᴰRun {Γ = Γ} (svar i) dγ = lookupᴰUsed Γ i dγ
 
--- A closed named/sigop value reference (matches SD's `poly`/`closure`), IR-free.
-sigOpValᴰ : ∀ {B} → TargetNum → SigOpInfo Unit B → T ⟦ B ⟧ᴰ
-sigOpValᴰ fmt si = mkT (λ n → emit-Dᵇ si tt n) (mapRes inject (semM si fmt tt))
+-- A closed named/sigop value reference, IR-free: the contract's computation
+-- (`sigOpT`, the IR's own dispatch), read into the value domain.
+sigOpValᴰ : ∀ {B} → TargetNum → FFIAnswers → SigOpInfo Unit B → T ⟦ B ⟧ᴰ
+sigOpValᴰ fmt φ si = fmapT (injectᵇ (conB si)) (sigOpT fmt φ si tt)
 
--- An EXTERNAL sigop reference (`t-var-qualified/resolved/import`, realized to
--- SD's `sigOp`). DISPATCHES ON RESULT-TYPE SHAPE exactly like SD's `sigOp`: at
--- an ARROW type the reference is a first-order function POINTER whose effect
--- fires on APPLICATION (`arrow-info` respects the arrow's `Purity`), NOT a pure
--- `value-info` value. This is the migration's headline case (a SigOp result may
--- be a first-order fn pointer); dispatching here keeps the direct meaning FAITHFUL
--- to SD (⇒ `sigop-ref-bridge`'s arrow case is `refl`), where an un-dispatched
--- `value-info` would wrongly drop the pointee's effect.
--- Split on the WITNESS (not `A`'s shape) so `con-base` reduces at an abstract
--- base `A` — `con-fun` forces the arrow shape for the closure form.
-sigOpRefᴰ : ∀ {A} → TargetNum → CanonicalName → IsConcrete A → T ⟦ A ⟧ᴰ
-sigOpRefᴰ {A = A} fmt cn (con-base ib) = sigOpValᴰ fmt (value-info {Unit} {A} cn base-Unit (con-base ib))
--- D143: split on the arrow's QUANTITY. At an ERASED arrow the symbol never
--- receives its argument — the meaning takes none — so the reference degenerates
--- to the value form, exactly as it does in `Elaborate` and `SourceDenote`.
-sigOpRefᴰ fmt cn (con-fun {A = Dom} {B = Cod} {k = mk-kind Zero π} bDom cCod) =
-  returnT (λ _ → mkT (λ n → emit-Dᵇ (value-info cn base-Unit cCod) tt n)
-                     (mapRes inject (semM (value-info cn base-Unit cCod) fmt tt)))
-sigOpRefᴰ fmt cn (con-fun {A = Dom} {B = Cod} {k = mk-kind One π} bDom cCod) =
-  returnT (λ arg → mkT (λ n → emit-Dᵇ (arrow-info {Dom} {Cod} (mk-kind One π) cn bDom cCod) (forget arg) n)
-                       (mapRes inject (semM (arrow-info {Dom} {Cod} (mk-kind One π) cn bDom cCod) fmt (forget arg))))
-sigOpRefᴰ fmt cn (con-fun {A = Dom} {B = Cod} {k = mk-kind Many π} bDom cCod) =
-  returnT (λ arg → mkT (λ n → emit-Dᵇ (arrow-info {Dom} {Cod} (mk-kind Many π) cn bDom cCod) (forget arg) n)
-                       (mapRes inject (semM (arrow-info {Dom} {Cod} (mk-kind Many π) cn bDom cCod) fmt (forget arg))))
+-- An EXTERNAL sigop reference (`t-var-qualified/resolved/import`). At an ARROW
+-- type the reference is a first-order function POINTER whose effect fires on
+-- APPLICATION (`arrow-info` respects the arrow's `Purity`). Split on the
+-- WITNESS (not `A`'s shape) so `con-base` reduces at an abstract base `A`.
+sigOpRefᴰ : ∀ {A} → TargetNum → FFIAnswers → CanonicalName → IsConcrete A → T ⟦ A ⟧ᴰ
+sigOpRefᴰ {A = A} fmt φ cn (con-base ib) = sigOpValᴰ fmt φ (value-info {Unit} {A} cn base-Unit ib)
+-- D143: at an ERASED arrow the symbol never receives its argument, so the
+-- reference degenerates to the value form, as in `Elaborate` and `SourceDenote`.
+sigOpRefᴰ fmt φ cn (con-fun {A = Dom} {B = Cod} {k = mk-kind Zero π} bDom bCod) =
+  returnT (λ _ → sigOpValᴰ fmt φ (value-info cn base-Unit bCod))
+sigOpRefᴰ fmt φ cn (con-fun {A = Dom} {B = Cod} {k = mk-kind One π} bDom bCod) =
+  returnT (λ arg → fmapT (injectᵇ bCod) (sigOpT fmt φ (arrow-info {Dom} {Cod} (mk-kind One π) cn bDom bCod) (forgetᵇ bDom arg)))
+sigOpRefᴰ fmt φ cn (con-fun {A = Dom} {B = Cod} {k = mk-kind Many π} bDom bCod) =
+  returnT (λ arg → fmapT (injectᵇ bCod) (sigOpT fmt φ (arrow-info {Dom} {Cod} (mk-kind Many π) cn bDom bCod) (forgetᵇ bDom arg)))
 
--- D142/D143: the RUNTIME environment of a derivation.
---
--- `⊢ᶜ` has carried a `Surface.Usage` index all along (`⨾ Ψ`), and `t-lam`
--- already moves the bound variable's usage into the arrow — that IS QTT's rule,
--- with the binding RETAINED in the context and the usage recording zero uses.
--- What was missing is that the MEANING ignored the index and ran over the full
--- environment. With a grade-aware `⟦_⟧ᴰ` that is not merely wasteful but
--- unstatable: at an erased arrow the meaning receives no argument, so there is
--- nothing to extend the environment with.
---
--- Plan 0.103 phase 1c: the meaning of the telescope — one computation per
--- ground entry (vacuous for a polymorphic one), built from the entries'
--- declaration-time derivations.
--- D239/D243: a definition MEANS THE FAMILY OF ITS INSTANCES — at every kinded
--- instance `T` of its schema, a computation of `T`. A ground definition's only
--- instance is its declared type (`ground-kinded`).
--- D250: a surface term elaborates to a PURE core term (effects are suspensions,
--- D018), so it denotes a VALUE. The direct meaning below is written with the
--- pure monad's bind (`GradedDomain._>>=ᵖ_`, the core meaning's at `pure`) and
--- unit: each clause keeps the shape of the effectful reading it replaced, and
--- only the arrows' bodies and the suspensions run in `M π` / `T`.
 returnᵖ : ∀ {X : Set} → X → X
 returnᵖ x = x
 
@@ -266,6 +217,9 @@ record Meanings (polys : PolyCtx) (imps : Imports) : Set where
   field
     defs    : DefMeanings polys
     entries : ImpMeanings imps
+    -- Plan 0.105: the interpretation's PURE FFI contracts — what a pure FFI
+    -- reference means (the IR's `CallEnv.ffiE`).
+    ffi     : FFIAnswers
 open Meanings public
 
 MeaningsOf : NamedCtx → Set
@@ -368,14 +322,14 @@ seqᴰ m₁ m₂ = (m₁ >>=T λ x → m₂ >>=T λ y → returnT (x , y)) >>=T 
 -- rather than wrapping a value. `str-lit-info` is a `Pure` contract, so this
 -- is `returnᵖ` in every reachable case — but the type no longer lets the
 -- clause assume that, which is the point.
-⟦_⟧ᵢ {ctx = ctx} (t-str s) fmt ρ dγ = semP (str-lit-info s) refl fmt tt
+⟦_⟧ᵢ {ctx = ctx} (t-str s) fmt ρ dγ = semP (ffi ρ) (str-lit-info s) refl fmt tt
 ⟦_⟧ᵢ {ctx = ctx} (t-unit) fmt ρ dγ = returnᵖ tt
 ⟦_⟧ᵢ {ctx = ctx} (t-unit-var) fmt ρ dγ = returnᵖ tt
 ⟦_⟧ᵢ {ctx = ctx} (t-var-local {eV = eV} _) fmt ρ dγ = returnᵖ (svarᵛRun eV dγ)
-⟦_⟧ᵢ {A = A} (t-var-qualified {name = name} {alias = alias} _ conc) fmt ρ dγ = sigOpRefᵛ {A = A} fmt (bare (alias ++ "." ++ name)) conc
+⟦_⟧ᵢ {A = A} (t-var-qualified {name = name} {alias = alias} _ conc) fmt ρ dγ = sigOpRefᵛ {A = A} fmt (ffi ρ) (bare (alias ++ "." ++ name)) conc
 -- D248: an own-module resolved reference names a module entry (a call of it).
 ⟦_⟧ᵢ {ctx = ctx} (t-var-resolved {cn = own x} _ lk _) fmt ρ dγ = impAt (NamedCtx.imports ctx) x (entries ρ) lk
-⟦_⟧ᵢ {A = A} (t-var-resolved {cn = cn} _ _ conc) fmt ρ dγ = sigOpRefᵛ {A = A} fmt cn conc
+⟦_⟧ᵢ {A = A} (t-var-resolved {cn = cn} _ _ conc) fmt ρ dγ = sigOpRefᵛ {A = A} fmt (ffi ρ) cn conc
 -- D246: a reference to a module ENTRY is a call of it, and means the entry —
 -- read from the scope's import environment (an FFI entry's is its contract).
 ⟦_⟧ᵢ {ctx = ctx} (t-var-import {x = x} _ _ lk _) fmt ρ dγ = impAt (NamedCtx.imports ctx) x (entries ρ) lk
@@ -387,7 +341,7 @@ seqᴰ m₁ m₂ = (m₁ >>=T λ x → m₂ >>=T λ y → returnT (x , y)) >>=T 
   subst (λ X → ⟦ X ⟧ᵛ) (sym eT) (defAt (NamedCtx.polys ctx) x (defs ρ) lp (extractGround s g) (ground-kinded s g))
 ⟦_⟧ᵢ {ctx = ctx} (t-annot _ d) fmt ρ dγ = (⟦ d ⟧ᶜ fmt ρ) dγ
 ⟦_⟧ᵢ {ctx = ctx} (t-pair da db) fmt ρ dγ = (⟦ da ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=ᵖ λ a → (⟦ db ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=ᵖ λ b → returnᵖ (a , b)
-⟦_⟧ᵢ {ctx = ctx} (t-neg d) fmt ρ dγ = (⟦ d ⟧ᵢ fmt ρ) dγ >>=ᵖ λ v → semP neg-info refl fmt v
+⟦_⟧ᵢ {ctx = ctx} (t-neg d) fmt ρ dγ = (⟦ d ⟧ᵢ fmt ρ) dγ >>=ᵖ λ v → semP (ffi ρ) neg-info refl fmt v
 -- PLAN 0.73 F3. `-3.14` MEANS the target's representation of the decimal
 -- −3.14 — `round` applied to the NEGATED payload, not the word-level negation
 -- of `round 3.14`. That reading is the honest one: the literal names a
@@ -413,18 +367,18 @@ seqᴰ m₁ m₂ = (m₁ >>=T λ x → m₂ >>=T λ y → returnT (x , y)) >>=T 
   (⟦ ds ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ Ψs (Ψₗ ⊔ᵘ Ψᵣ)) dγ) >>=ᵖ λ v →
   [ (λ a → (⟦ dl ⟧ᵢ fmt ρ) (bindᵛ {Γ = NamedCtx.debruijn ctx} {A = A} qL (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-⊔ˡ Ψₗ Ψᵣ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ Ψs (Ψₗ ⊔ᵘ Ψᵣ)) dγ)) a))
   , (λ b → (⟦ dr ⟧ᵢ fmt ρ) (bindᵛ {Γ = NamedCtx.debruijn ctx} {A = B} qR (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-⊔ʳ Ψₗ Ψᵣ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ Ψs (Ψₗ ⊔ᵘ Ψᵣ)) dγ)) b)) ]′ v
-⟦_⟧ᵢ {ctx = ctx} (t-binop-arith {op = OpAdd} _ d₁ d₂) fmt ρ dγ = (⟦ d₁ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=ᵖ λ a → (⟦ d₂ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=ᵖ λ b → semP add-info refl fmt (a , b)
-⟦_⟧ᵢ {ctx = ctx} (t-binop-arith {op = OpSub} _ d₁ d₂) fmt ρ dγ = (⟦ d₁ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=ᵖ λ a → (⟦ d₂ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=ᵖ λ b → semP sub-info refl fmt (a , b)
-⟦_⟧ᵢ {ctx = ctx} (t-binop-arith {op = OpMul} _ d₁ d₂) fmt ρ dγ = (⟦ d₁ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=ᵖ λ a → (⟦ d₂ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=ᵖ λ b → semP mul-info refl fmt (a , b)
+⟦_⟧ᵢ {ctx = ctx} (t-binop-arith {op = OpAdd} _ d₁ d₂) fmt ρ dγ = (⟦ d₁ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=ᵖ λ a → (⟦ d₂ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=ᵖ λ b → semP (ffi ρ) add-info refl fmt (a , b)
+⟦_⟧ᵢ {ctx = ctx} (t-binop-arith {op = OpSub} _ d₁ d₂) fmt ρ dγ = (⟦ d₁ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=ᵖ λ a → (⟦ d₂ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=ᵖ λ b → semP (ffi ρ) sub-info refl fmt (a , b)
+⟦_⟧ᵢ {ctx = ctx} (t-binop-arith {op = OpMul} _ d₁ d₂) fmt ρ dγ = (⟦ d₁ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=ᵖ λ a → (⟦ d₂ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=ᵖ λ b → semP (ffi ρ) mul-info refl fmt (a , b)
 -- PLAN 0.75 F4: the same three at `Float`, reading the same `semM` accessor —
 -- so the float family is not a second story about what arithmetic means, it is
 -- the same story with `Once.Float.Arith`'s operations behind it.
-⟦_⟧ᵢ {ctx = ctx} (t-binop-arith-float {op = OpAdd} _ d₁ d₂) fmt ρ dγ = (⟦ d₁ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=ᵖ λ a → (⟦ d₂ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=ᵖ λ b → semP fadd-info refl fmt (a , b)
-⟦_⟧ᵢ {ctx = ctx} (t-binop-arith-float {op = OpSub} _ d₁ d₂) fmt ρ dγ = (⟦ d₁ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=ᵖ λ a → (⟦ d₂ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=ᵖ λ b → semP fsub-info refl fmt (a , b)
-⟦_⟧ᵢ {ctx = ctx} (t-binop-arith-float {op = OpMul} _ d₁ d₂) fmt ρ dγ = (⟦ d₁ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=ᵖ λ a → (⟦ d₂ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=ᵖ λ b → semP fmul-info refl fmt (a , b)
+⟦_⟧ᵢ {ctx = ctx} (t-binop-arith-float {op = OpAdd} _ d₁ d₂) fmt ρ dγ = (⟦ d₁ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=ᵖ λ a → (⟦ d₂ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=ᵖ λ b → semP (ffi ρ) fadd-info refl fmt (a , b)
+⟦_⟧ᵢ {ctx = ctx} (t-binop-arith-float {op = OpSub} _ d₁ d₂) fmt ρ dγ = (⟦ d₁ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=ᵖ λ a → (⟦ d₂ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=ᵖ λ b → semP (ffi ρ) fsub-info refl fmt (a , b)
+⟦_⟧ᵢ {ctx = ctx} (t-binop-arith-float {op = OpMul} _ d₁ d₂) fmt ρ dγ = (⟦ d₁ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=ᵖ λ a → (⟦ d₂ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=ᵖ λ b → semP (ffi ρ) fmul-info refl fmt (a , b)
 -- `/` joins them: the quotient is correctly rounded (the sticky bit lives in
 -- `FA.fdiv`) and total, so it denotes like the other three.
-⟦_⟧ᵢ {ctx = ctx} (t-binop-arith-float {op = OpDiv} _ d₁ d₂) fmt ρ dγ = (⟦ d₁ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=ᵖ λ a → (⟦ d₂ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=ᵖ λ b → semP fdiv-info refl fmt (a , b)
+⟦_⟧ᵢ {ctx = ctx} (t-binop-arith-float {op = OpDiv} _ d₁ d₂) fmt ρ dγ = (⟦ d₁ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=ᵖ λ a → (⟦ d₂ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=ᵖ λ b → semP (ffi ρ) fdiv-info refl fmt (a , b)
 -- `%` is NOT a float arithmetic op (see `isFloatArithmeticOp`): IEEE's `fmod`
 -- is a different function and needs its own decision. The witness refutes it
 -- here exactly as it refutes the comparisons.
@@ -442,10 +396,10 @@ seqᴰ m₁ m₂ = (m₁ >>=T λ x → m₂ >>=T λ y → returnT (x , y)) >>=T 
 -- different TRACE SHAPE from `realize-infer`'s, and `MeaningBridge` then has to
 -- neutralise an `++ []` that need never have appeared. Matching the shape is
 -- what keeps that bridge `refl`.
-⟦_⟧ᵢ {ctx = ctx} (t-binop-arith-float-il {op = OpAdd} _ d₁ d₂) fmt ρ dγ = ((⟦ d₁ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=ᵖ λ a → semP i2f-info refl fmt a) >>=ᵖ λ a′ → (⟦ d₂ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=ᵖ λ b → semP fadd-info refl fmt (a′ , b)
-⟦_⟧ᵢ {ctx = ctx} (t-binop-arith-float-il {op = OpSub} _ d₁ d₂) fmt ρ dγ = ((⟦ d₁ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=ᵖ λ a → semP i2f-info refl fmt a) >>=ᵖ λ a′ → (⟦ d₂ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=ᵖ λ b → semP fsub-info refl fmt (a′ , b)
-⟦_⟧ᵢ {ctx = ctx} (t-binop-arith-float-il {op = OpMul} _ d₁ d₂) fmt ρ dγ = ((⟦ d₁ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=ᵖ λ a → semP i2f-info refl fmt a) >>=ᵖ λ a′ → (⟦ d₂ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=ᵖ λ b → semP fmul-info refl fmt (a′ , b)
-⟦_⟧ᵢ {ctx = ctx} (t-binop-arith-float-il {op = OpDiv} _ d₁ d₂) fmt ρ dγ = ((⟦ d₁ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=ᵖ λ a → semP i2f-info refl fmt a) >>=ᵖ λ a′ → (⟦ d₂ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=ᵖ λ b → semP fdiv-info refl fmt (a′ , b)
+⟦_⟧ᵢ {ctx = ctx} (t-binop-arith-float-il {op = OpAdd} _ d₁ d₂) fmt ρ dγ = ((⟦ d₁ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=ᵖ λ a → semP (ffi ρ) i2f-info refl fmt a) >>=ᵖ λ a′ → (⟦ d₂ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=ᵖ λ b → semP (ffi ρ) fadd-info refl fmt (a′ , b)
+⟦_⟧ᵢ {ctx = ctx} (t-binop-arith-float-il {op = OpSub} _ d₁ d₂) fmt ρ dγ = ((⟦ d₁ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=ᵖ λ a → semP (ffi ρ) i2f-info refl fmt a) >>=ᵖ λ a′ → (⟦ d₂ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=ᵖ λ b → semP (ffi ρ) fsub-info refl fmt (a′ , b)
+⟦_⟧ᵢ {ctx = ctx} (t-binop-arith-float-il {op = OpMul} _ d₁ d₂) fmt ρ dγ = ((⟦ d₁ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=ᵖ λ a → semP (ffi ρ) i2f-info refl fmt a) >>=ᵖ λ a′ → (⟦ d₂ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=ᵖ λ b → semP (ffi ρ) fmul-info refl fmt (a′ , b)
+⟦_⟧ᵢ {ctx = ctx} (t-binop-arith-float-il {op = OpDiv} _ d₁ d₂) fmt ρ dγ = ((⟦ d₁ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=ᵖ λ a → semP (ffi ρ) i2f-info refl fmt a) >>=ᵖ λ a′ → (⟦ d₂ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=ᵖ λ b → semP (ffi ρ) fdiv-info refl fmt (a′ , b)
 ⟦ t-binop-arith-float-il {op = OpMod} () _ _ ⟧ᵢ
 ⟦ t-binop-arith-float-il {op = OpLt} () _ _ ⟧ᵢ
 ⟦ t-binop-arith-float-il {op = OpLe} () _ _ ⟧ᵢ
@@ -453,10 +407,10 @@ seqᴰ m₁ m₂ = (m₁ >>=T λ x → m₂ >>=T λ y → returnT (x , y)) >>=T 
 ⟦ t-binop-arith-float-il {op = OpGe} () _ _ ⟧ᵢ
 ⟦ t-binop-arith-float-il {op = OpEq} () _ _ ⟧ᵢ
 ⟦ t-binop-arith-float-il {op = OpNe} () _ _ ⟧ᵢ
-⟦_⟧ᵢ {ctx = ctx} (t-binop-arith-float-ir {op = OpAdd} _ d₁ d₂) fmt ρ dγ = (⟦ d₁ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=ᵖ λ a → ((⟦ d₂ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=ᵖ λ b → semP i2f-info refl fmt b) >>=ᵖ λ b′ → semP fadd-info refl fmt (a , b′)
-⟦_⟧ᵢ {ctx = ctx} (t-binop-arith-float-ir {op = OpSub} _ d₁ d₂) fmt ρ dγ = (⟦ d₁ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=ᵖ λ a → ((⟦ d₂ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=ᵖ λ b → semP i2f-info refl fmt b) >>=ᵖ λ b′ → semP fsub-info refl fmt (a , b′)
-⟦_⟧ᵢ {ctx = ctx} (t-binop-arith-float-ir {op = OpMul} _ d₁ d₂) fmt ρ dγ = (⟦ d₁ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=ᵖ λ a → ((⟦ d₂ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=ᵖ λ b → semP i2f-info refl fmt b) >>=ᵖ λ b′ → semP fmul-info refl fmt (a , b′)
-⟦_⟧ᵢ {ctx = ctx} (t-binop-arith-float-ir {op = OpDiv} _ d₁ d₂) fmt ρ dγ = (⟦ d₁ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=ᵖ λ a → ((⟦ d₂ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=ᵖ λ b → semP i2f-info refl fmt b) >>=ᵖ λ b′ → semP fdiv-info refl fmt (a , b′)
+⟦_⟧ᵢ {ctx = ctx} (t-binop-arith-float-ir {op = OpAdd} _ d₁ d₂) fmt ρ dγ = (⟦ d₁ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=ᵖ λ a → ((⟦ d₂ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=ᵖ λ b → semP (ffi ρ) i2f-info refl fmt b) >>=ᵖ λ b′ → semP (ffi ρ) fadd-info refl fmt (a , b′)
+⟦_⟧ᵢ {ctx = ctx} (t-binop-arith-float-ir {op = OpSub} _ d₁ d₂) fmt ρ dγ = (⟦ d₁ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=ᵖ λ a → ((⟦ d₂ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=ᵖ λ b → semP (ffi ρ) i2f-info refl fmt b) >>=ᵖ λ b′ → semP (ffi ρ) fsub-info refl fmt (a , b′)
+⟦_⟧ᵢ {ctx = ctx} (t-binop-arith-float-ir {op = OpMul} _ d₁ d₂) fmt ρ dγ = (⟦ d₁ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=ᵖ λ a → ((⟦ d₂ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=ᵖ λ b → semP (ffi ρ) i2f-info refl fmt b) >>=ᵖ λ b′ → semP (ffi ρ) fmul-info refl fmt (a , b′)
+⟦_⟧ᵢ {ctx = ctx} (t-binop-arith-float-ir {op = OpDiv} _ d₁ d₂) fmt ρ dγ = (⟦ d₁ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=ᵖ λ a → ((⟦ d₂ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=ᵖ λ b → semP (ffi ρ) i2f-info refl fmt b) >>=ᵖ λ b′ → semP (ffi ρ) fdiv-info refl fmt (a , b′)
 ⟦ t-binop-arith-float-ir {op = OpMod} () _ _ ⟧ᵢ
 ⟦ t-binop-arith-float-ir {op = OpLt} () _ _ ⟧ᵢ
 ⟦ t-binop-arith-float-ir {op = OpLe} () _ _ ⟧ᵢ
@@ -464,20 +418,20 @@ seqᴰ m₁ m₂ = (m₁ >>=T λ x → m₂ >>=T λ y → returnT (x , y)) >>=T 
 ⟦ t-binop-arith-float-ir {op = OpGe} () _ _ ⟧ᵢ
 ⟦ t-binop-arith-float-ir {op = OpEq} () _ _ ⟧ᵢ
 ⟦ t-binop-arith-float-ir {op = OpNe} () _ _ ⟧ᵢ
-⟦_⟧ᵢ {ctx = ctx} (t-binop-arith {op = OpDiv} _ d₁ d₂) fmt ρ dγ = (⟦ d₁ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=ᵖ λ a → (⟦ d₂ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=ᵖ λ b → semP div-info refl fmt (a , b)
-⟦_⟧ᵢ {ctx = ctx} (t-binop-arith {op = OpMod} _ d₁ d₂) fmt ρ dγ = (⟦ d₁ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=ᵖ λ a → (⟦ d₂ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=ᵖ λ b → semP mod-info refl fmt (a , b)
+⟦_⟧ᵢ {ctx = ctx} (t-binop-arith {op = OpDiv} _ d₁ d₂) fmt ρ dγ = (⟦ d₁ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=ᵖ λ a → (⟦ d₂ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=ᵖ λ b → semP (ffi ρ) div-info refl fmt (a , b)
+⟦_⟧ᵢ {ctx = ctx} (t-binop-arith {op = OpMod} _ d₁ d₂) fmt ρ dγ = (⟦ d₁ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=ᵖ λ a → (⟦ d₂ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=ᵖ λ b → semP (ffi ρ) mod-info refl fmt (a , b)
 ⟦_⟧ᵢ (t-binop-arith {op = OpLt} () _ _) fmt
 ⟦_⟧ᵢ (t-binop-arith {op = OpLe} () _ _) fmt
 ⟦_⟧ᵢ (t-binop-arith {op = OpGt} () _ _) fmt
 ⟦_⟧ᵢ (t-binop-arith {op = OpGe} () _ _) fmt
 ⟦_⟧ᵢ (t-binop-arith {op = OpEq} () _ _) fmt
 ⟦_⟧ᵢ (t-binop-arith {op = OpNe} () _ _) fmt
-⟦_⟧ᵢ {ctx = ctx} (t-binop-cmp {op = OpLt} _ d₁ d₂) fmt ρ dγ = (⟦ d₁ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=ᵖ λ a → (⟦ d₂ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=ᵖ λ b → semP lt-info refl fmt (a , b)
-⟦_⟧ᵢ {ctx = ctx} (t-binop-cmp {op = OpLe} _ d₁ d₂) fmt ρ dγ = (⟦ d₁ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=ᵖ λ a → (⟦ d₂ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=ᵖ λ b → semP le-info refl fmt (a , b)
-⟦_⟧ᵢ {ctx = ctx} (t-binop-cmp {op = OpGt} _ d₁ d₂) fmt ρ dγ = (⟦ d₁ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=ᵖ λ a → (⟦ d₂ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=ᵖ λ b → semP gt-info refl fmt (a , b)
-⟦_⟧ᵢ {ctx = ctx} (t-binop-cmp {op = OpGe} _ d₁ d₂) fmt ρ dγ = (⟦ d₁ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=ᵖ λ a → (⟦ d₂ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=ᵖ λ b → semP ge-info refl fmt (a , b)
-⟦_⟧ᵢ {ctx = ctx} (t-binop-cmp {op = OpEq} _ d₁ d₂) fmt ρ dγ = (⟦ d₁ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=ᵖ λ a → (⟦ d₂ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=ᵖ λ b → semP eq-info refl fmt (a , b)
-⟦_⟧ᵢ {ctx = ctx} (t-binop-cmp {op = OpNe} _ d₁ d₂) fmt ρ dγ = (⟦ d₁ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=ᵖ λ a → (⟦ d₂ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=ᵖ λ b → semP ne-info refl fmt (a , b)
+⟦_⟧ᵢ {ctx = ctx} (t-binop-cmp {op = OpLt} _ d₁ d₂) fmt ρ dγ = (⟦ d₁ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=ᵖ λ a → (⟦ d₂ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=ᵖ λ b → semP (ffi ρ) lt-info refl fmt (a , b)
+⟦_⟧ᵢ {ctx = ctx} (t-binop-cmp {op = OpLe} _ d₁ d₂) fmt ρ dγ = (⟦ d₁ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=ᵖ λ a → (⟦ d₂ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=ᵖ λ b → semP (ffi ρ) le-info refl fmt (a , b)
+⟦_⟧ᵢ {ctx = ctx} (t-binop-cmp {op = OpGt} _ d₁ d₂) fmt ρ dγ = (⟦ d₁ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=ᵖ λ a → (⟦ d₂ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=ᵖ λ b → semP (ffi ρ) gt-info refl fmt (a , b)
+⟦_⟧ᵢ {ctx = ctx} (t-binop-cmp {op = OpGe} _ d₁ d₂) fmt ρ dγ = (⟦ d₁ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=ᵖ λ a → (⟦ d₂ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=ᵖ λ b → semP (ffi ρ) ge-info refl fmt (a , b)
+⟦_⟧ᵢ {ctx = ctx} (t-binop-cmp {op = OpEq} _ d₁ d₂) fmt ρ dγ = (⟦ d₁ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=ᵖ λ a → (⟦ d₂ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=ᵖ λ b → semP (ffi ρ) eq-info refl fmt (a , b)
+⟦_⟧ᵢ {ctx = ctx} (t-binop-cmp {op = OpNe} _ d₁ d₂) fmt ρ dγ = (⟦ d₁ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=ᵖ λ a → (⟦ d₂ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=ᵖ λ b → semP (ffi ρ) ne-info refl fmt (a , b)
 ⟦_⟧ᵢ (t-binop-cmp {op = OpAdd} () _ _) fmt
 ⟦_⟧ᵢ (t-binop-cmp {op = OpSub} () _ _) fmt
 ⟦_⟧ᵢ (t-binop-cmp {op = OpMul} () _ _) fmt

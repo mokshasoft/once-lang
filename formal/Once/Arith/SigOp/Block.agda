@@ -35,7 +35,7 @@ open import Data.Maybe using (Maybe; just; nothing)
 
 open import Once.Type using (Type; Int)
 open import Once.SigOp.Info using (SigOpInfo; mk-info; name; Pure)
-open import Once.Functor.Translate using (IsBaseType; base-Unit; base-Int; base-Float; base-Prod; con-base)
+open import Once.Functor.Translate using (IsBaseType; base-Unit; base-Int; base-Float; base-Prod)
 open import Once.CanonicalName using (bare)
 
 open import Once.Arith.Machine.AbsState
@@ -245,9 +245,9 @@ block-info {sh} {NInt} e = mk-info
   (bare (block-name e))
   (block-semM e)
   Pure  -- arith blocks are observably pure (no event, no halt)
-  (shape-as-type-base sh) (con-base (numtype-as-type-base NInt))
+  (shape-as-type-base sh) (numtype-as-type-base NInt)
 block-info {sh} {NFloat} e = mk-info
   (bare (block-name e))
   (block-semM e)
   Pure
-  (shape-as-type-base sh) (con-base (numtype-as-type-base NFloat))
+  (shape-as-type-base sh) (numtype-as-type-base NFloat)

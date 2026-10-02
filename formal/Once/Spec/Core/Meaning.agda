@@ -42,7 +42,7 @@ open import Once.Denotation.GradedDomain using (⟦_⟧ᵛ; M; returnM; bindM; s
 open import Once.Denotation.PhaseV using (restrictᵛ; bindᵛ; bindᵛ0; lookupᵛUsed)
 open import Once.Denotation.GradedOps
   using (fmapM; cata-semᵛ; ana-semᵛ; out-semᵛ; in-valueᵛ; sigOpRefᵛ; ⟦_⟧<:ᵛ)
-open import Once.SigOp.Info using (semP)
+open import Once.SigOp.Info using (semP; FFIAnswers)
 open import Once.Arith.SigOp.Builders
   using ( str-lit-info
         ; add-info; sub-info; mul-info; div-info; mod-info; neg-info
@@ -55,33 +55,44 @@ import Data.Fin
 -- Plan 0.103 phase 4: the meaning of the signature — each definition's VALUE at
 -- every kind-respecting ground instance (`∀` as a family). A definition is
 -- pure (`⊢ref`), so it denotes a value, not a computation (D250).
-DefSem : Set
-DefSem = (d : Data.Fin.Fin s) (τ : GSub (arity (S !! d))) → Respects (kinds (S !! d)) τ
-       → ⟦ type (S !! d) ⟪ τ ⟫ ⟧ᵛ
+--
+-- Plan 0.105: and the meaning of what the program does NOT define — its pure
+-- FFI contracts, whose values are the interpretation's (`FFIAnswers`). The two
+-- together are everything a term can name. (An effectful contract needs no
+-- entry here: its application is a call, answered when the program runs.)
+record DefSem : Set where
+  constructor defSem
+  field
+    defs : (d : Data.Fin.Fin s) (τ : GSub (arity (S !! d))) → Respects (kinds (S !! d)) τ
+         → ⟦ type (S !! d) ⟪ τ ⟫ ⟧ᵛ
+    ffi  : FFIAnswers
+open DefSem public
 
 -- The runtime environment of a derivation at usage `Ψ`.
 Env : ∀ {n} → Ctx n → Usage n → Set
 Env Γ Ψ = ⟦ ⟦ Γ ↾ Ψ ⟧ᶜᵗ ⟧ᵛ
 
 -- The arithmetic: each primitive IS its Pure SigOp's contract, a total function.
-primSem : (p : Prim) → TargetNum → ⟦ primDom p ⟧ᵛ → ⟦ primCod p ⟧ᵛ
-primSem p-add  fmt v = semP add-info  refl fmt v
-primSem p-sub  fmt v = semP sub-info  refl fmt v
-primSem p-mul  fmt v = semP mul-info  refl fmt v
-primSem p-div  fmt v = semP div-info  refl fmt v
-primSem p-mod  fmt v = semP mod-info  refl fmt v
-primSem p-neg  fmt v = semP neg-info  refl fmt v
-primSem p-lt   fmt v = semP lt-info   refl fmt v
-primSem p-le   fmt v = semP le-info   refl fmt v
-primSem p-gt   fmt v = semP gt-info   refl fmt v
-primSem p-ge   fmt v = semP ge-info   refl fmt v
-primSem p-eq   fmt v = semP eq-info   refl fmt v
-primSem p-ne   fmt v = semP ne-info   refl fmt v
-primSem p-fadd fmt v = semP fadd-info refl fmt v
-primSem p-fsub fmt v = semP fsub-info refl fmt v
-primSem p-fmul fmt v = semP fmul-info refl fmt v
-primSem p-fdiv fmt v = semP fdiv-info refl fmt v
-primSem p-i2f  fmt v = semP i2f-info  refl fmt v
+-- (An internal contract ignores the interpretation; `semP` takes it because a
+-- pure FFI contract does not.)
+primSem : (p : Prim) → TargetNum → FFIAnswers → ⟦ primDom p ⟧ᵛ → ⟦ primCod p ⟧ᵛ
+primSem p-add fmt φ v = semP φ add-info refl fmt v
+primSem p-sub fmt φ v = semP φ sub-info refl fmt v
+primSem p-mul fmt φ v = semP φ mul-info refl fmt v
+primSem p-div fmt φ v = semP φ div-info refl fmt v
+primSem p-mod fmt φ v = semP φ mod-info refl fmt v
+primSem p-neg fmt φ v = semP φ neg-info refl fmt v
+primSem p-lt fmt φ v = semP φ lt-info refl fmt v
+primSem p-le fmt φ v = semP φ le-info refl fmt v
+primSem p-gt fmt φ v = semP φ gt-info refl fmt v
+primSem p-ge fmt φ v = semP φ ge-info refl fmt v
+primSem p-eq fmt φ v = semP φ eq-info refl fmt v
+primSem p-ne fmt φ v = semP φ ne-info refl fmt v
+primSem p-fadd fmt φ v = semP φ fadd-info refl fmt v
+primSem p-fsub fmt φ v = semP φ fsub-info refl fmt v
+primSem p-fmul fmt φ v = semP φ fmul-info refl fmt v
+primSem p-fdiv fmt φ v = semP φ fdiv-info refl fmt v
+primSem p-i2f fmt φ v = semP φ i2f-info refl fmt v
 
 ⟦_⟧ : ∀ {n} {Γ : Ctx n} {Ψ t A π} → Γ ⊢[ Ψ ] t ∷ A ! π → TargetNum → DefSem → Env Γ Ψ → M π ⟦ A ⟧ᵛ
 
@@ -157,12 +168,12 @@ primSem p-i2f  fmt v = semP i2f-info  refl fmt v
 
 ⟦ ⊢lit-int {i = i} ⟧   fmt ρ dγ = OnceWord.Width.fromℤ (int-bits fmt) i
 ⟦ ⊢lit-float {d = d} ⟧ fmt ρ dγ = round (float-format fmt) d
-⟦ ⊢lit-str {s = str} ⟧ fmt ρ dγ = semP (str-lit-info str) refl fmt tt
+⟦ ⊢lit-str {s = str} ⟧ fmt ρ dγ = semP (ffi ρ) (str-lit-info str) refl fmt tt
 
-⟦ ⊢prim {π = π} p d ⟧ fmt ρ dγ = bindM π (⟦ d ⟧ fmt ρ dγ) λ v → returnM π (primSem p fmt v)
+⟦ ⊢prim {π = π} p d ⟧ fmt ρ dγ = bindM π (⟦ d ⟧ fmt ρ dγ) λ v → returnM π (primSem p fmt (ffi ρ) v)
 
-⟦ ⊢sigop {A = A} c k _ _ ⟧ fmt ρ dγ = sigOpRefᵛ {A = A} fmt c k
+⟦ ⊢sigop {A = A} c k _ _ ⟧ fmt ρ dγ = sigOpRefᵛ {A = A} fmt (ffi ρ) c k
 
 ⟦ ⊢sub-eff g d ⟧ fmt ρ dγ = subM g (⟦ d ⟧ fmt ρ dγ)
 
-⟦ ⊢ref d τ r ⟧ fmt ρ dγ = ρ d τ r
+⟦ ⊢ref d τ r ⟧ fmt ρ dγ = defs ρ d τ r

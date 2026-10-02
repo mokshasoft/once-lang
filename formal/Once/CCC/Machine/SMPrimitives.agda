@@ -700,8 +700,9 @@ module InstrPrimitives {FS : FrameSemantics} where
     stackMem s₁ ≡ stackMem s₂ →
     heapMem s₁ ≡ heapMem s₂ →
     halted s₁ ≡ halted s₂ →
+    ev-log s₁ ≡ ev-log s₂ →
     s₁ ≡ s₂
-  LocState-eq (mkLocState r₁ sm₁ hm₁ h₁) (mkLocState r₂ sm₂ hm₂ h₂) refl refl refl refl = refl
+  LocState-eq (mkLocState r₁ sm₁ hm₁ h₁ l₁) (mkLocState r₂ sm₂ hm₂ h₂ l₂) refl refl refl refl refl = refl
 
   exec-abstract-deterministic : ∀ (i : AbstractInstr) (s₁ s₂ : LocState FS)
     (alloc : AllocState {FS}) →
@@ -716,10 +717,12 @@ module InstrPrimitives {FS : FrameSemantics} where
     stackMem s₁ ≡ stackMem s₂ →
     -- Heap memory agrees (for store-indirect which reads heapMem structure)
     heapMem s₁ ≡ heapMem s₂ →
+    -- The event logs agree (an answering SigOp reads it)
+    ev-log s₁ ≡ ev-log s₂ →
     -- Then results are equal
     proj₁ (exec-abstract i s₁ alloc) ≡ proj₁ (exec-abstract i s₂ alloc)
-  exec-abstract-deterministic i s₁ s₂ alloc regs-eq halted-eq mem-eq stack-eq heap-eq =
-    cong (λ s → proj₁ (exec-abstract i s alloc)) (LocState-eq s₁ s₂ regs-eq stack-eq heap-eq halted-eq)
+  exec-abstract-deterministic i s₁ s₂ alloc regs-eq halted-eq mem-eq stack-eq heap-eq log-eq =
+    cong (λ s → proj₁ (exec-abstract i s alloc)) (LocState-eq s₁ s₂ regs-eq stack-eq heap-eq halted-eq log-eq)
 
   -- (D) FRAME PRESERVATION
   -- Instructions preserve current-frame (all instructions, no predicate needed!)

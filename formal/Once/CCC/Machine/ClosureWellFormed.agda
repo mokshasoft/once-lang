@@ -26,7 +26,8 @@
 -- reads as it always did.
 open import Once.CanonicalName using (CanonicalName)
 
-open import Data.List using (List)
+open import Data.List using (List; [])
+open import Once.Denotation.Trace using (SigOpEvent)
 open import Once.Denotation.Program using (IRFun; tableEnv)
 module Once.CCC.Machine.ClosureWellFormed (o : CanonicalName) (tbl : List IRFun) where
 
@@ -84,7 +85,14 @@ module ClosureWellFormedDef {FS : FrameSemantics} where
   -- `ValidAtWF` indexes on `⟦_⟧ᴰᴵ`, so a closure's meaning is a Kleisli arrow
   -- and must come from `evalᴰ`, not the pure `eval`.
   evalᴰ : ∀ {A B} → IR A B → ⟦ A ⟧ → TM.T ⟦ B ⟧
-  evalᴰ = DT.evalᴰ (Once.CCC.FrameSemantics.fs-numerics FS) (tableEnv (Once.CCC.FrameSemantics.fs-numerics FS) tbl)
+  evalᴰ = DT.evalᴰ (Once.CCC.FrameSemantics.fs-numerics FS) (tableEnv (Once.CCC.FrameSemantics.fs-numerics FS) (Once.CCC.FrameSemantics.fs-ffi FS) tbl)
+
+  -- Plan 0.105: a meaning is a tree, and its value is the value of its RUN —
+  -- against the machine's interpretation, after the calls already made (the
+  -- state's log). A pure IR (`out-μ`, `Ana`) returns the same value at every
+  -- history; those sites read it at the empty one.
+  ιᶠ : TM.Interp
+  ιᶠ = Once.CCC.FrameSemantics.fs-interp FS
 
   open import Once.CCC.Machine.Validity
   open ReadLocEq {FS}
@@ -382,7 +390,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} where
         readLoc s (sucLoc ν-loc) ≡ just (SV-Code coalg-label) →
         BeforeFrontier alloc (sucLoc ν-loc) →
         ValidAtWF Heap alloc {ν-type F}
-          (TM.valueT (evalᴰ (Ana wf coalg) seed) 0) ν-loc s
+          (TM.valueT ιᶠ [] (evalᴰ (Ana wf coalg) seed)) ν-loc s
 
       valid-inl-wf : ∀ {m A B} {a : ⟦ A ⟧}
         {alloc : AllocState {FS}}
@@ -467,7 +475,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} where
         (x : ⟦ μ-type F ⟧) →
         -- D179: `out-μ` is PURE (μ is finite data), so the layer does not
         -- depend on the budget and `0` is as good as any.
-        ValidAtWF m alloc {⟦ F ⟧TI (μ-type F)} (TM.valueT (evalᴰ (out-μ wf) x) 0) loc s →
+        ValidAtWF m alloc {⟦ F ⟧TI (μ-type F)} (TM.valueT ιᶠ [] (evalᴰ (out-μ wf) x)) loc s →
         ValidAtWF m alloc {μ-type F} x loc s
 
       -- D179: `valid-ν-wf` DELETED. The machine never builds a ν — codegen
@@ -787,12 +795,12 @@ module ClosureWellFormedDef {FS : FrameSemantics} where
         -- stop, and obs-correctness is precisely the claim that the two
         -- agree. Stating it on the semantic side is what makes
         -- `result-place`'s type well-formed without a hidden meta.
-        ir-returns : TM.Returns? (TM.T.resT (evalᴰ ir x))
+        ir-returns : TM.Returns? (TM.resultAt ιᶠ (ev-log s) (evalᴰ ir x))
         result-place : ResultPlace B m (apply-bump bump alloc)
           (record alloc
             { next-slot     = next-slot     (apply-bump bump alloc)
             ; next-heap-ref = next-heap-ref (apply-bump bump alloc) })
-          (TM.valueT (evalᴰ ir x) obs-budget {ir-returns}) final-state
+          (TM.valueT ιᶠ (ev-log s) (evalᴰ ir x) {ir-returns}) final-state
         not-halted : halted final-state ≡ false
         -- Plan 0.14: consequence-form memory preservation. Locations
         -- valid in the caller's view (BeforeFrontier alloc) read the
@@ -936,12 +944,12 @@ module ClosureWellFormedDef {FS : FrameSemantics} where
         -- D179: the value half now refines `evalᴰ`; the producer names the
         -- budget it realizes the value at.
         (obs-budget : ℕ)
-        (ir-returns : TM.Returns? (TM.T.resT (evalᴰ ir x)))
+        (ir-returns : TM.Returns? (TM.resultAt ιᶠ (ev-log s) (evalᴰ ir x)))
         (result-place-local :
            ResultPlace B m final-alloc-local
              (record alloc { next-slot     = next-slot     final-alloc-local
                            ; next-heap-ref = next-heap-ref final-alloc-local })
-             (TM.valueT (evalᴰ ir x) obs-budget {ir-returns}) final-state)
+             (TM.valueT ιᶠ (ev-log s) (evalᴰ ir x) {ir-returns}) final-state)
         (not-halted : halted final-state ≡ false)
         (mem-preserved-before :
            (loc : ValueLocation FS) → BeforeFrontier alloc loc →
@@ -976,7 +984,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} where
                 subst (λ a → ResultPlace _ m a
                               (record alloc { next-slot     = next-slot a
                                             ; next-heap-ref = next-heap-ref a })
-                              (TM.valueT (evalᴰ ir x) obs-budget {ir-returns}) final-state)
+                              (TM.valueT ιᶠ (ev-log s) (evalᴰ ir x) {ir-returns}) final-state)
                       final-alloc-eq result-place-local
             ; not-halted = not-halted
             ; mem-preserved-before = mem-preserved-before
@@ -1494,7 +1502,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} where
   -- Option 3: μ/ν validity recurses on the stored layer ValidAtWF
   -- (structurally smaller → terminating); the μValid-* lemmas are gone.
   validityWF-mem-only {m = m} {alloc = alloc} _ loc s₁ s₂ stack-eq heap-eq (valid-μ-wf wf x lv) =
-    valid-μ-wf wf x (validityWF-mem-only (TM.valueT (evalᴰ (out-μ wf) x) 0) loc s₁ s₂ stack-eq heap-eq lv)
+    valid-μ-wf wf x (validityWF-mem-only (TM.valueT ιᶠ [] (evalᴰ (out-μ wf) x)) loc s₁ s₂ stack-eq heap-eq lv)
 
 
   -- Primitives: memory-independent (BeforeFrontier doesn't depend on state)
@@ -1595,7 +1603,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} where
   -- OCP-0003: μ-type and ν-type cases - using μValid-mem-preserved
   -- Writing at frontier preserves memory at all BeforeFrontier locations
   validityWF-write-at-frontier {m = m} {alloc = alloc} _ loc s val loc-before (valid-μ-wf wf x lv) =
-    valid-μ-wf wf x (validityWF-write-at-frontier (TM.valueT (evalᴰ (out-μ wf) x) 0) loc s val loc-before lv)
+    valid-μ-wf wf x (validityWF-write-at-frontier (TM.valueT ιᶠ [] (evalᴰ (out-μ wf) x)) loc s val loc-before lv)
 
 
   -- Primitives: BeforeFrontier unchanged
@@ -1688,7 +1696,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} where
   -- OCP-0003: μ-type and ν-type cases - using μValid-mem-preserved
   -- Writing at suc-frontier preserves memory at all BeforeFrontier locations
   validityWF-write-at-suc-frontier {m = m} {alloc = alloc} _ loc s val loc-before (valid-μ-wf wf x lv) =
-    valid-μ-wf wf x (validityWF-write-at-suc-frontier (TM.valueT (evalᴰ (out-μ wf) x) 0) loc s val loc-before lv)
+    valid-μ-wf wf x (validityWF-write-at-suc-frontier (TM.valueT ιᶠ [] (evalᴰ (out-μ wf) x)) loc s val loc-before lv)
 
 
   -- Primitives: BeforeFrontier unchanged
@@ -1794,7 +1802,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} where
   -- OCP-0003: μ-type and ν-type cases - using μValid-mem-preserved
   -- Writing at suc-frontier preserves memory at all BeforeFrontier locations
   validityWF-write-sv-at-frontier {m = m} {alloc = alloc} _ loc s stored loc-before (valid-μ-wf wf x lv) =
-    valid-μ-wf wf x (validityWF-write-sv-at-frontier (TM.valueT (evalᴰ (out-μ wf) x) 0) loc s stored loc-before lv)
+    valid-μ-wf wf x (validityWF-write-sv-at-frontier (TM.valueT ιᶠ [] (evalᴰ (out-μ wf) x)) loc s stored loc-before lv)
 
 
   -- Primitives: BeforeFrontier unchanged
@@ -1894,7 +1902,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} where
   -- OCP-0003: μ-type and ν-type cases - using μValid-mem-preserved
   -- Writing at suc-frontier preserves memory at all BeforeFrontier locations
   validityWF-write-sv-at-suc-frontier {m = m} {alloc = alloc} _ loc s stored loc-before (valid-μ-wf wf x lv) =
-    valid-μ-wf wf x (validityWF-write-sv-at-suc-frontier (TM.valueT (evalᴰ (out-μ wf) x) 0) loc s stored loc-before lv)
+    valid-μ-wf wf x (validityWF-write-sv-at-suc-frontier (TM.valueT ιᶠ [] (evalᴰ (out-μ wf) x)) loc s stored loc-before lv)
 
 
   -- Primitives: BeforeFrontier unchanged
@@ -1995,7 +2003,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} where
 
   -- OCP-0003: μ-type and ν-type cases - using μValid-frontier-advance
   validityWF-alloc-advance {m = m} {alloc = alloc} _ loc s n (valid-μ-wf wf x lv) =
-    valid-μ-wf wf x (validityWF-alloc-advance (TM.valueT (evalᴰ (out-μ wf) x) 0) loc s n lv)
+    valid-μ-wf wf x (validityWF-alloc-advance (TM.valueT ιᶠ [] (evalᴰ (out-μ wf) x)) loc s n lv)
 
 
   -- Primitives: advance BeforeFrontier
@@ -2095,7 +2103,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} where
 
   -- OCP-0003: μ-type and ν-type cases - using proven lemmas from MuValidity
   validityWF-frontier-advance {m = m} {alloc = alloc} {alloc' = alloc'} _ loc s cf-eq slot-≤ heap-≤ (valid-μ-wf wf x lv) =
-    valid-μ-wf wf x (validityWF-frontier-advance (TM.valueT (evalᴰ (out-μ wf) x) 0) loc s cf-eq slot-≤ heap-≤ lv)
+    valid-μ-wf wf x (validityWF-frontier-advance (TM.valueT ιᶠ [] (evalᴰ (out-μ wf) x)) loc s cf-eq slot-≤ heap-≤ lv)
 
 
   -- Primitives: advance BeforeFrontier
@@ -2182,7 +2190,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} where
 
   -- OCP-0003: μ-type and ν-type cases - using proven lemmas from MuValidity
   validityWF-with-bf-transfer {m = m} _ loc s a₁ a₂ bf (valid-μ-wf wf x lv) =
-    valid-μ-wf wf x (validityWF-with-bf-transfer (TM.valueT (evalᴰ (out-μ wf) x) 0) loc s a₁ a₂ bf lv)
+    valid-μ-wf wf x (validityWF-with-bf-transfer (TM.valueT ιᶠ [] (evalᴰ (out-μ wf) x)) loc s a₁ a₂ bf lv)
 
 
   -- Primitives: transfer BeforeFrontier
@@ -2281,7 +2289,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} where
 
   -- OCP-0003: μ-type and ν-type cases - using proven lemmas from MuValidity
   validityWF-mem-preserved {m = m} {alloc = alloc} _ loc s₁ s₂ loc-before mem-eq (valid-μ-wf wf x lv) =
-    valid-μ-wf wf x (validityWF-mem-preserved (TM.valueT (evalᴰ (out-μ wf) x) 0) loc s₁ s₂ loc-before mem-eq lv)
+    valid-μ-wf wf x (validityWF-mem-preserved (TM.valueT ιᶠ [] (evalᴰ (out-μ wf) x)) loc s₁ s₂ loc-before mem-eq lv)
 
 
   -- Primitives: BeforeFrontier unchanged
@@ -2524,16 +2532,16 @@ module ClosureWellFormedDef {FS : FrameSemantics} where
   postulate
     μ-validity-in-regions-stub : ∀ {m alloc F} {wf : WellFormedFI F} {x loc s₁ s₂}
                                    {input-bound fresh-start : ℕ} →
-      ValidAtWF m alloc {⟦ F ⟧TI (μ-type F)} (TM.valueT (evalᴰ (out-μ wf) x) 0) loc s₁ →
-      ValidAtWF m alloc {⟦ F ⟧TI (μ-type F)} (TM.valueT (evalᴰ (out-μ wf) x) 0) loc s₂
+      ValidAtWF m alloc {⟦ F ⟧TI (μ-type F)} (TM.valueT ιᶠ [] (evalᴰ (out-μ wf) x)) loc s₁ →
+      ValidAtWF m alloc {⟦ F ⟧TI (μ-type F)} (TM.valueT ιᶠ [] (evalᴰ (out-μ wf) x)) loc s₂
 
     -- plan 0.98: `Out` may STOP — `⟦ν⟧`'s layers are `Res`-valued — so the
     -- witness that this one did is an explicit premise rather than a meta.
     ν-validity-in-regions-stub : ∀ {m alloc F} {wf : WellFormedFI F} {x loc s₁ s₂}
-                                   {input-bound fresh-start : ℕ} {k : ℕ}
-                                   {p : TM.Returns? (TM.T.resT (evalᴰ (Out wf) x))} →
-      ValidAtWF m alloc {⟦ F ⟧TI (ν-type F)} (TM.valueT (evalᴰ (Out wf) x) k {p}) loc s₁ →
-      ValidAtWF m alloc {⟦ F ⟧TI (ν-type F)} (TM.valueT (evalᴰ (Out wf) x) k {p}) loc s₂
+                                   {input-bound fresh-start : ℕ}
+                                   {h : List SigOpEvent} {p : TM.Returns? (TM.resultAt ιᶠ h (evalᴰ (Out wf) x))} →
+      ValidAtWF m alloc {⟦ F ⟧TI (ν-type F)} (TM.valueT ιᶠ h (evalᴰ (Out wf) x) {p}) loc s₁ →
+      ValidAtWF m alloc {⟦ F ⟧TI (ν-type F)} (TM.valueT ιᶠ h (evalᴰ (Out wf) x) {p}) loc s₂
 
   -- STRONG version: requires an additional LocsInRegions hypothesis that
   -- witnesses the value's sub-locations all land in input/fresh/heap/anc

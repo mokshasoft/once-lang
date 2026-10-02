@@ -17,7 +17,7 @@
 -- `void-middle` is plan 0.94 §4's case: `compose f g` with `g` ending in `Void`
 -- is typeable at EVERY middle type, and every choice means the same thing —
 -- indeed it does not depend on `f` at all, because a computation into `Void`
--- can only have STOPPED.
+-- can only have HALTED (a tree into `Void` has no `ret` leaf).
 ------------------------------------------------------------------------
 
 module Once.Denotation.Sub where
@@ -31,23 +31,9 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 open import Once.Type using (Type; Zero; One; Many; mk-kind; _⇒[_]_; Void)
 open import Once.Type.Sub
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ)
-open import Once.Denotation.TraceMonad using (T; mkT; fmapT; _>>=T_)
-open import Once.Res using (stopped; returns; mapRes-id; mapRes-∘; mapRes-cong)
+-- `fmapT` is a functor and congruent: the tree's laws (plan 0.105).
+open import Once.Denotation.TraceMonad using (T; ret; call; halt; fmapT; _>>=T_; fmapT-id; fmapT-∘; fmapT-cong)
 open import Once.Postulates using (extensionality)
-
-------------------------------------------------------------------------
--- `fmapT` is a functor, and congruent. Each is one `Res` law under `mkT`.
-------------------------------------------------------------------------
-
-fmapT-id : ∀ {X} (m : T X) → fmapT (λ x → x) m ≡ m
-fmapT-id (mkT tr r) = cong (mkT tr) (mapRes-id r)
-
-fmapT-∘ : ∀ {X Y Z} (g : Y → Z) (f : X → Y) (m : T X)
-        → fmapT g (fmapT f m) ≡ fmapT (λ x → g (f x)) m
-fmapT-∘ g f (mkT tr r) = cong (mkT tr) (mapRes-∘ g f r)
-
-fmapT-cong : ∀ {X Y} {f g : X → Y} → (∀ x → f x ≡ g x) → (m : T X) → fmapT f m ≡ fmapT g m
-fmapT-cong h (mkT tr r) = cong (mkT tr) (mapRes-cong h r)
 
 ------------------------------------------------------------------------
 -- The conversion a derivation denotes.
@@ -134,5 +120,6 @@ fmapT-cong h (mkT tr r) = cong (mkT tr) (mapRes-cong h r)
 
 void-middle : ∀ {B C : Type} (f : ⟦ B ⟧ᴰ → T ⟦ C ⟧ᴰ) (m : T ⟦ Void ⟧ᴰ)
             → (fmapT ⟦ sub-void {B} ⟧<: m >>=T f) ≡ fmapT ⟦ sub-void {C} ⟧<: m
-void-middle f (mkT tr stopped)      = refl
-void-middle f (mkT tr (returns ()))
+void-middle f (ret ())
+void-middle f (call o a k) = cong (call o a) (extensionality λ b → void-middle f (k b))
+void-middle f (halt o a)   = refl

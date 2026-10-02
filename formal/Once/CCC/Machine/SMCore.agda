@@ -38,7 +38,10 @@ open import Data.List.Properties using (++-assoc)
 open import Relation.Nullary using (Dec; yes; no)
 
 -- Import FrameSemantics for Frame type
-open import Once.CCC.FrameSemantics using (FrameSemantics; fs-numerics)
+open import Once.CCC.FrameSemantics using (FrameSemantics; fs-numerics; fs-ffi; fs-interp)
+open import Once.Denotation.Trace using (SigOpEvent; mk-event)
+open import Once.Denotation.TraceMonad using (callOp; answer)
+open import Once.Functor.Translate using (IsBaseType; base-Int; base-Float)
 -- Plan 0.63 (D089): the structured label identity. Re-exported, so every
 -- importer of the abstract instruction set sees `LabelId` without a second
 -- import — the same courtesy `Locations`/`HeapAddress` already get below.
@@ -51,7 +54,7 @@ open import Once.CanonicalName using (CanonicalName)
 -- discharge of `sigop-codegen-faithful`.
 open import Once.Type using (Type; Unit; Int; Float; _*_; FitsInReg; fits-int; fits-float; fits-in-reg?)
 open import Once.Semantics.Machine using (⟦_⟧; LitPayload)
-open import Once.SigOp.Info using (SigOpInfo; semM; effect; EffectShape; Pure; Emits; Halts)
+open import Once.SigOp.Info using (SigOpInfo; semM; effect; EffectShape; Pure; Emits; Halts; Answers; name; baseA)
 open import Once.Res using (Res; stopped; returns)
 
 private
@@ -435,6 +438,10 @@ record LocState (FS : FrameSemantics) : Set where
     stackMem : StackMem FS
     heapMem : HeapMem FS
     halted : Bool
+    -- The SigOp events so far (plan 0.105). An answering call's result is the
+    -- interpretation's answer GIVEN THE CALLS BEFORE IT, so the machine has to
+    -- remember them, as the tree's `run` threads its history.
+    ev-log : List SigOpEvent
 
 open LocState public
 
@@ -1664,6 +1671,37 @@ module AbstractExec {FS : FrameSemantics} where
     structured-pure-sigop-output : ∀ {A B} → SigOpInfo A B → LocState FS →
                                    StoredValue FS
 
+  -- RESIDUAL (D114, plan 0.73 G3) — THE ARGUMENT THIS LAYER CANNOT YET READ.
+  -- A scalar argument sits in `Input1` itself; a compound one is a pointer,
+  -- and recovering its value is a heap walk not yet related to the memory
+  -- correspondence. (Moved here from `FlatEvents` by plan 0.105: the machine
+  -- now LOGS its events, so it decodes them itself.)
+  postulate
+    decode-unread : ∀ {A} → IsBaseType A → StoredValue FS → ⟦ A ⟧
+
+  decode-arg : ∀ {A} → IsBaseType A → StoredValue FS → ⟦ A ⟧
+  decode-arg base-Int   (SV-Lit fits-int   v) = v
+  decode-arg base-Float (SV-Lit fits-float v) = v
+  decode-arg b          sv                    = decode-unread b sv
+
+  -- The event a SigOp invocation is, read off the argument register.
+  machine-event : ∀ {A B} → SigOpInfo A B → StoredValue FS → SigOpEvent
+  machine-event {A} si sv = mk-event (name si) A (baseA si) (decode-arg (baseA si) sv)
+
+  -- An ANSWERING SigOp's result (plan 0.105): the interpretation's answer to
+  -- this call, given the calls before it (the log), at the argument the event
+  -- records. A register value when the codomain fits one; a compound answer
+  -- would be written to memory, which this layer does not model yet, so it
+  -- takes the sentinel (as an unreadable pure input does).
+  call-sigop-val : ∀ {A B} → SigOpInfo A B → LocState FS → Maybe (FitsInReg B) → StoredValue FS
+  call-sigop-val {A} {B} si s (just fitB) =
+    SV-Lit fitB (answer (fs-interp FS) (ev-log s) (callOp (name si) A (baseA si) B)
+                  (decode-arg (baseA si) (readReg (regs s) Input1)))
+  call-sigop-val si s nothing = unit-storedvalue
+
+  call-sigop-output : ∀ {A B} → SigOpInfo A B → LocState FS → StoredValue FS
+  call-sigop-output {B = B} si s = call-sigop-val si s (fits-in-reg? B)
+
   pure-sigop-output : ∀ {A B} → SigOpInfo A B → LocState FS →
                       StoredValue FS
   -- Plan 0.54 rung A (A4): compute the REAL output. For a fits-in-reg codomain,
@@ -1691,7 +1729,7 @@ module AbstractExec {FS : FrameSemantics} where
   res-sv fitB (returns v) = SV-Lit fitB v
   res-sv _     stopped    = unit-storedvalue
 
-  pure-sigop-out-val si fitB (just a) = res-sv fitB (semM si (fs-numerics FS) a)
+  pure-sigop-out-val si fitB (just a) = res-sv fitB (semM (fs-ffi FS) si (fs-numerics FS) a)
   pure-sigop-out-val si fitB nothing  = unit-storedvalue
 
   pure-sigop-out-aux : ∀ {A B} → SigOpInfo A B → LocState FS
@@ -1721,6 +1759,18 @@ module AbstractExec {FS : FrameSemantics} where
   exec-sigop-output-of Pure      si s = pure-sigop-output si s
   exec-sigop-output-of (Emits _) _  _ = unit-storedvalue
   exec-sigop-output-of (Halts _) _  _ = unit-storedvalue
+  exec-sigop-output-of Answers   si s = call-sigop-output si s
+
+  -- | The SigOp events a step makes: none for a pure SigOp, its invocation
+  -- otherwise. Shape-direct, as the output dispatch is.
+  sigop-events-of : ∀ {A B} → EffectShape B → SigOpInfo A B → LocState FS → List SigOpEvent
+  sigop-events-of Pure      _  _ = []
+  sigop-events-of (Emits _) si s = machine-event si (readReg (regs s) Input1) ∷ []
+  sigop-events-of (Halts _) si s = machine-event si (readReg (regs s) Input1) ∷ []
+  sigop-events-of Answers   si s = machine-event si (readReg (regs s) Input1) ∷ []
+
+  sigop-events : ∀ {A B} → SigOpInfo A B → LocState FS → List SigOpEvent
+  sigop-events si s = sigop-events-of (effect si) si s
 
   -- | Dispatch-derived output (wrapper that unfolds to the
   -- shape-direct helper).
@@ -1996,7 +2046,8 @@ module AbstractExec {FS : FrameSemantics} where
   -- postulates.
   exec-abstract (instr-sigop si) s alloc =
     record s { regs   = writeReg (regs s) Output (exec-sigop-output si s)
-             ; halted = exec-sigop-halts si s }
+             ; halted = exec-sigop-halts si s
+             ; ev-log = ev-log s ++ sigop-events si s }
     , alloc
 
   -- Plan 0.13.2: load a primitive constant into Output as `SV-Lit`.

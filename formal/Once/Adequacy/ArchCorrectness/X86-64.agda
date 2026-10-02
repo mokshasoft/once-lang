@@ -23,8 +23,11 @@ import Once.Adequacy.ArchCorrectness.X86-64.ResourceBounds as RB
 
 open import Data.List using (List)
 open import Once.Denotation.Program using (IRFun; tableEnv)
+open import Once.Denotation.TraceMonad using (Interp)
 module Once.Adequacy.ArchCorrectness.X86-64
   (o : CanonicalName) (tbl : List IRFun)
+  -- Plan 0.105: the interpretation the program runs against.
+  (ι : Interp)
   (x86-64-heap-room : RB.HeapRoom o) (x86-64-stack-room : RB.StackRoom o)
   (x86-64-call-room : RB.CallRoom o)
   -- PLAN 0.70 PHASE C: the machine is finite. Same class and same threading as
@@ -75,7 +78,11 @@ open import Once.CCC.Codegen.ProgramImageFacts o using (image-frame-free)
 open import Once.Target.Arch using (arch-numerics)
 open import Once.CCC.Target.X86-64.Layout using (InStack; stack-addr)
 open import Once.CCC.Target.X86-64.FrameInstantiation using (X86Frame)
-open import Once.CCC.Target.X86-64.FrameInstantiation using (x86-64-frame-semantics)
+open import Once.CCC.Target.X86-64.FrameInstantiation using () renaming (x86-64-frame-semantics to x86-64-frame-semantics-at)
+open import Once.CCC.FrameSemantics using (FrameSemantics)
+
+x86-64-frame-semantics : FrameSemantics
+x86-64-frame-semantics = x86-64-frame-semantics-at ι
 open import Once.CCC.Codegen.IRObsCorrectFlat o tbl using (module IRObsCorrectFlatness)
 open import Once.CCC.Codegen.IRToTrace o using (ir-to-trace; ir-stack-budget)
 open import Once.CCC.Target.X86-64.AbstractToX86
@@ -207,7 +214,7 @@ open import Once.Adequacy.ArchCorrectness.X86-64.ConcFlatSim o
   x86-64-frame-semantics refl refl x86-64-heap-room x86-64-stack-room x86-64-call-room
   x86-64-reg-range x86-64-scratch-dec-guarded
   (RB.ret-no-wrap x86-64-addr-no-wrap) (RB.count-no-wrap x86-64-addr-no-wrap)
-  (RB.tag-fits x86-64-lit-fits) (RB.lit-fits x86-64-lit-fits) (RB.float-fits o)
+  (RB.tag-fits x86-64-lit-fits) (RB.lit-fits x86-64-lit-fits) (RB.float-fits o ι)
   (RB.lo-fits x86-64-addr-no-wrap)
   using (events-agree; CompiledCorr; HeapView
         ; FlatInv; EntryLike; Reachable; reach-start

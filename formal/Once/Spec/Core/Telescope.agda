@@ -26,7 +26,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_; subst)
 
 import Once.Type as T
 open import Once.Target.Arch using (TargetNum)
-open import Once.Denotation.TraceMonad using (T; _>>=T_; projTrace)
+open import Once.Denotation.TraceMonad using (T; _>>=T_; projTrace; Interp)
+open import Once.SigOp.Info using (FFIAnswers)
 open import Once.Denotation.Trace using (SigOpEvent)
 open import Once.Surface.Context using (Usage)
 open import Once.Spec.Core.PolyTy
@@ -49,10 +50,16 @@ data Tele : ∀ {s} → Sig s → Set where
 -- The meaning of a telescope: the environment of its definitions' families
 ------------------------------------------------------------------------
 
-teleSem : ∀ {s} {S : Sig s} → TargetNum → Tele S → GM.DefSem S
-teleSem fmt (def tl sc body D) zero τ r =
-  GM.⟦_⟧ _ (PT.instantiate _ τ r D) fmt (teleSem fmt tl) tt
-teleSem fmt (def tl sc body D) (suc d) τ r = teleSem fmt tl d τ r
+-- Plan 0.105: over the interpretation's pure FFI contracts `φ`, which every
+-- prefix shares (a definition may reference an FFI value).
+teleSem  : ∀ {s} {S : Sig s} → TargetNum → FFIAnswers → Tele S → GM.DefSem S
+teleDefs : ∀ {s} {S : Sig s} → TargetNum → FFIAnswers → (tl : Tele S) → (d : Fin s) (τ : GSub (arity (S !! d)))
+         → Respects (kinds (S !! d)) τ → ⟦ type (S !! d) ⟪ τ ⟫ ⟧ᵛ
+teleDefs fmt φ (def tl sc body D) zero τ r =
+  GM.⟦_⟧ _ (PT.instantiate _ τ r D) fmt (teleSem fmt φ tl) tt
+teleDefs fmt φ (def tl sc body D) (suc d) τ r = teleDefs fmt φ tl d τ r
+
+teleSem fmt φ tl = GM.defSem (teleDefs fmt φ tl) φ
 
 ------------------------------------------------------------------------
 -- Programs: a telescope and a `main : IO Unit` over it
@@ -89,6 +96,8 @@ runEntry sc e f = subst EntrySem e f noVars noResp tt
 
 -- THE CORE MEANING OF A PROGRAM: run its `main` entry (D250: an entry denotes a
 -- VALUE, here the suspension `Unit ⇒[eff] Unit`) in the telescope's
--- environment, and read the depth-`n` event-trace prefix.
-runProgram : TargetNum → Program → ℕ → Data.List.List SigOpEvent
-runProgram fmt (program {sig = S} defs d e) n = projTrace (runEntry (S !! d) e (teleSem fmt defs d)) n
+-- environment, AGAINST AN INTERPRETATION `ι` (plan 0.105: what the program's
+-- FFI calls answer), and read the first `n` events of that run.
+runProgram : TargetNum → Interp → Program → ℕ → Data.List.List SigOpEvent
+runProgram fmt ι (program {sig = S} defs d e) n =
+  projTrace ι (runEntry (S !! d) e (GM.defs (teleSem fmt (Interp.pure ι) defs) d)) n

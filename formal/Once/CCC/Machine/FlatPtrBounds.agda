@@ -39,7 +39,7 @@
 -- (2026-08-01, `FrameFreeI`), so its route is `⊥`-elim.
 ------------------------------------------------------------------------
 
-open import Once.CCC.FrameSemantics using (FrameSemantics; fs-numerics)
+open import Once.CCC.FrameSemantics using (FrameSemantics; fs-numerics; fs-ffi)
 
 module Once.CCC.Machine.FlatPtrBounds (FS : FrameSemantics) where
 
@@ -50,7 +50,8 @@ open import Data.Nat.Properties using (≤-trans; n≤1+n; <⇒≢)
 open import Data.Bool using (Bool; true; false)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.List using (List; []; _∷_)
+open import Data.List using (List; []; _∷_; _++_)
+open import Once.Denotation.Trace using (SigOpEvent)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
@@ -59,7 +60,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 
 open import Once.Memory.HeapAddress
   using (HeapLocation; heap-loc; mkHeapRef; heap-ref; heap-offset; ref-id; _≟HL_)
-open import Once.SigOp.Info using (SigOpInfo; effect; EffectShape; Pure; Emits; Halts; semM)
+open import Once.SigOp.Info using (SigOpInfo; effect; EffectShape; Pure; Emits; Halts; Answers; semM)
 open import Once.Res using (Res; stopped; returns)
 open import Once.Type using (Type; FitsInReg; fits-in-reg?)
 open import Once.Semantics.Machine using (⟦_⟧)
@@ -180,12 +181,13 @@ pb-write-reg bs ls x v ok wf = record
     go r (inj₂ eq) rewrite eq = pb-regs wf r
 
 pb-write-reg-halt : ∀ (bs : ℕ → ℕ) (ls : LocState FS) (x : AbstractReg)
-                      (v : StoredValue FS) (b : Bool)
+                      (v : StoredValue FS) (b : Bool) (es : List SigOpEvent)
                   → PtrB bs v → PBInv bs ls
-                  → PBInv bs (record ls { regs = writeReg (regs ls) x v ; halted = b })
-pb-write-reg-halt bs ls x v b ok wf =
-  pb-halt bs (record ls { regs = writeReg (regs ls) x v }) b
-          (pb-write-reg bs ls x v ok wf)
+                  → PBInv bs (record ls { regs = writeReg (regs ls) x v ; halted = b ; ev-log = es })
+-- The invariant reads no flag and no log, so its fields carry over as they are.
+pb-write-reg-halt bs ls x v b es ok wf =
+  let w = pb-write-reg bs ls x v ok wf in
+  record { pb-regs = pb-regs w ; pb-heap = pb-heap w ; pb-stack = pb-stack w }
 
 pb-wsm-aux : ∀ {bs : ℕ → ℕ} {f f' : Frame} {k k' : Slot}
              (df : Dec (f ≡ f')) (dk : Dec (k ≡ k'))
@@ -345,7 +347,7 @@ sigop-output-pb bs {A} {B} si ls = go (effect si)
   where
     pov : ∀ (fitB : FitsInReg B) (ma : Maybe ⟦ A ⟧)
         → PtrB bs (pure-sigop-out-val si fitB ma)
-    pov fitB (just a) = res-sv-pb bs fitB (semM si (fs-numerics FS) a)
+    pov fitB (just a) = res-sv-pb bs fitB (semM (fs-ffi FS) si (fs-numerics FS) a)
     pov fitB nothing  = tt
     aux : ∀ (mf : Maybe (FitsInReg B)) (ml : Maybe (ValueLocation FS))
         → PtrB bs (pure-sigop-out-aux si ls mf ml)
@@ -356,6 +358,11 @@ sigop-output-pb bs {A} {B} si ls = go (effect si)
     go Pure      = aux (fits-in-reg? B) (sv-as-loc (readReg (regs ls) Input1))
     go (Emits _) = tt
     go (Halts _) = tt
+    go Answers   = cv (fits-in-reg? B)
+      where
+        cv : ∀ (mf : Maybe (FitsInReg B)) → PtrB bs (call-sigop-val si ls mf)
+        cv (just _) = tt
+        cv nothing  = tt
 
 ------------------------------------------------------------------------
 -- THE PER-INSTRUCTION PRESERVATION over the structured semantics. The one
@@ -418,7 +425,7 @@ pb-abstract (worklist-pop slot)   ls alloc ff am wfS wf =
                (pb-read-loc _ ls wf (AtStack (current-frame alloc) slot)) wf
 pb-abstract (worklist-check slot) ls alloc ff am wfS wf = wf
 pb-abstract (instr-sigop si) ls alloc ff am wfS wf =
-  pb-write-reg-halt _ ls Output (exec-sigop-output si ls) (exec-sigop-halts si ls)
+  pb-write-reg-halt _ ls Output (exec-sigop-output si ls) (exec-sigop-halts si ls) (ev-log ls ++ sigop-events si ls)
                     (sigop-output-pb _ si ls) wf
 pb-abstract (instr-load-const p v)   ls alloc ff am wfS wf =
   pb-write-reg _ ls Output (SV-Lit p (lit-value p v)) tt wf

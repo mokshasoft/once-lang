@@ -32,7 +32,7 @@ open import Data.Unit using (⊤; tt)
 
 open import Once.Type using (Type; Unit; Int)
 open import Once.SigOp.Info using (SigOpInfo; mk-info; Pure)
-open import Once.Functor.Translate using (base-Unit; base-Int; con-base)
+open import Once.Functor.Translate using (base-Unit; base-Int)
 open import Once.CanonicalName using (bare)
 import Once.Word as OnceWord
 open import Once.Target.Arch using (TargetNum; int-bits)
@@ -63,4 +63,4 @@ lit-int-info n = mk-info
   (bare (lit-int-name n))
   (λ tn _ → OnceWord.Width.fromℤ (int-bits tn) n)
   Pure           -- effect: constants are observably pure
-  base-Unit (con-base base-Int)
+  base-Unit base-Int

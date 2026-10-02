@@ -36,11 +36,12 @@ open import Once.Semantics.Functor using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦
 open import Once.Res using (Res; stopped; returns; mapRes)
 open import Once.Target.Arch using (TargetNum)
 open import Once.CanonicalName using (CanonicalName)
-open import Once.Denotation.TraceMonad using (T; mkT; returnT; _>>=T_; fmapT; resT-lift)
-open import Once.Denotation.ValueDomain using (νᵈ; forceᵈ; anaᵈ; seqF; emit-Dᵇ)
+open import Once.Denotation.TraceMonad using (T; ret; returnT; _>>=T_; fmapT)
+open import Once.Denotation.ValueDomain using (νᵈ; forceᵈ; anaᵈ; seqF)
+open import Once.Denotation.DenotTrace using (sigOpT)
 open import Once.Denotation.GradedDomain
-open import Once.SigOp.Info using (SigOpInfo; semP; semMᵍ)
-open import Once.Arith.SigOp.Builders using (value-info; arrow-info)
+open import Once.SigOp.Info using (FFIAnswers)
+open import Once.Arith.SigOp.Builders using (arrow-info)
 
 ------------------------------------------------------------------------
 -- The grade's functor action.
@@ -87,18 +88,6 @@ injBᵍ base-Buffer x = x
 injBᵍ (base-Prod a b) (x , y) = injBᵍ a x , injBᵍ b y
 injBᵍ (base-Sum a b) (inj₁ x) = inj₁ (injBᵍ a x)
 injBᵍ (base-Sum a b) (inj₂ y) = inj₂ (injBᵍ b y)
-
--- A contract's graded value at a concrete type, read into the Spec domain. A
--- returned pointer keeps its grade: a pure one is total, an effectful one may
--- stop (and, like every machine pointer, carries no trace of its own).
-injC : ∀ {A} → IsConcrete A → Val.⟦ A ⟧ᵍ → ⟦ A ⟧ᵛ
-injC (con-base ib) x = injBᵍ ib x
-injC (con-fun {k = mk-kind Zero pure} bA cB) f = λ _ → injC cB (f tt)
-injC (con-fun {k = mk-kind One  pure} bA cB) f = λ a → injC cB (f (prjB bA a))
-injC (con-fun {k = mk-kind Many pure} bA cB) f = λ a → injC cB (f (prjB bA a))
-injC (con-fun {k = mk-kind Zero eff}  bA cB) f = λ _ → resT-lift (mapRes (injC cB) (f tt))
-injC (con-fun {k = mk-kind One  eff}  bA cB) f = λ a → resT-lift (mapRes (injC cB) (f (prjB bA a)))
-injC (con-fun {k = mk-kind Many eff}  bA cB) f = λ a → resT-lift (mapRes (injC cB) (f (prjB bA a)))
 
 ------------------------------------------------------------------------
 -- Functor layers (first-order payloads only, per `WellFormedF`).
@@ -156,7 +145,7 @@ mutual
 -- nothing and always arrive.
 mutual
   embν : ∀ {H} → νᵖ H → νᵈ H
-  forceᵈ (embν {H} v) = mkT (λ _ → []) (returns (mapEmbν H H (forceᵖ v)))
+  forceᵈ (embν {H} v) = ret (mapEmbν H H (forceᵖ v))
 
   mapEmbν : ∀ (H G : SFunctor) → ⟦ G ⟧SF (νᵖ H) → ⟦ G ⟧SF (νᵈ H)
   mapEmbν H (SK B)     x        = x
@@ -206,25 +195,25 @@ out-semᵛ eff  {F} wf v = fmapT (λ layer → cf⁻¹ᵛ (ν-type F eff) wf (co
 ⟦ sub-rigid ⟧<:ᵛ x = x
 
 ------------------------------------------------------------------------
--- An FFI reference (`⊢sigop`): the contract's value at its declared type. A
--- pure arrow's application is the contract's graded value; an effectful one's
--- emits the contract's event and may stop, as in the Kleisli `sigOpRefᴰ`.
+-- An FFI reference (`⊢sigop`), plan 0.105. A PURE contract is the
+-- interpretation's pure half at its argument — a value, so a pure reference is
+-- referentially transparent by its type. An effectful arrow's application is
+-- the contract's computation (`sigOpT`, the IR's own dispatch): a call the
+-- interpretation answers, an emitted event, or a halt. Contracts are
+-- first-order (`IsConcrete`), so both sides cross by the base conversions.
 ------------------------------------------------------------------------
 
-sigOpRefᵛ : ∀ {A} → TargetNum → CanonicalName → IsConcrete A → ⟦ A ⟧ᵛ
-sigOpRefᵛ {A} fmt cn (con-base ib) =
-  injBᵍ ib (semP (value-info {Unit} {A} cn base-Unit (con-base ib)) refl fmt tt)
-sigOpRefᵛ fmt cn (con-fun {B = Cod} {k = mk-kind Zero pure} bDom cCod) =
-  λ _ → injC cCod (semP (value-info {Unit} {Cod} cn base-Unit cCod) refl fmt tt)
-sigOpRefᵛ fmt cn (con-fun {B = Cod} {k = mk-kind Zero eff} bDom cCod) =
-  λ _ → returnT (injC cCod (semP (value-info {Unit} {Cod} cn base-Unit cCod) refl fmt tt))
-sigOpRefᵛ fmt cn (con-fun {A = Dom} {B = Cod} {k = mk-kind One pure} bDom cCod) =
-  λ a → injC cCod (semP (arrow-info {Dom} {Cod} (mk-kind One pure) cn bDom cCod) refl fmt (prjB bDom a))
-sigOpRefᵛ fmt cn (con-fun {A = Dom} {B = Cod} {k = mk-kind Many pure} bDom cCod) =
-  λ a → injC cCod (semP (arrow-info {Dom} {Cod} (mk-kind Many pure) cn bDom cCod) refl fmt (prjB bDom a))
-sigOpRefᵛ fmt cn (con-fun {A = Dom} {B = Cod} {k = mk-kind One eff} bDom cCod) =
-  λ a → mkT (λ n → emit-Dᵇ (arrow-info {Dom} {Cod} (mk-kind One eff) cn bDom cCod) (prjB bDom a) n)
-            (mapRes (injC cCod) (semMᵍ (arrow-info {Dom} {Cod} (mk-kind One eff) cn bDom cCod) fmt (prjB bDom a)))
-sigOpRefᵛ fmt cn (con-fun {A = Dom} {B = Cod} {k = mk-kind Many eff} bDom cCod) =
-  λ a → mkT (λ n → emit-Dᵇ (arrow-info {Dom} {Cod} (mk-kind Many eff) cn bDom cCod) (prjB bDom a) n)
-            (mapRes (injC cCod) (semMᵍ (arrow-info {Dom} {Cod} (mk-kind Many eff) cn bDom cCod) fmt (prjB bDom a)))
+sigOpRefᵛ : ∀ {A} → TargetNum → FFIAnswers → CanonicalName → IsConcrete A → ⟦ A ⟧ᵛ
+sigOpRefᵛ {A} fmt φ cn (con-base ib) = injB ib (φ cn Unit A tt)
+sigOpRefᵛ fmt φ cn (con-fun {B = Cod} {k = mk-kind Zero pure} bDom bCod) =
+  λ _ → injB bCod (φ cn Unit Cod tt)
+sigOpRefᵛ fmt φ cn (con-fun {B = Cod} {k = mk-kind Zero eff} bDom bCod) =
+  λ _ → returnT (injB bCod (φ cn Unit Cod tt))
+sigOpRefᵛ fmt φ cn (con-fun {A = Dom} {B = Cod} {k = mk-kind One pure} bDom bCod) =
+  λ a → injB bCod (φ cn Dom Cod (prjB bDom a))
+sigOpRefᵛ fmt φ cn (con-fun {A = Dom} {B = Cod} {k = mk-kind Many pure} bDom bCod) =
+  λ a → injB bCod (φ cn Dom Cod (prjB bDom a))
+sigOpRefᵛ fmt φ cn (con-fun {A = Dom} {B = Cod} {k = mk-kind One eff} bDom bCod) =
+  λ a → fmapT (injB bCod) (sigOpT fmt φ (arrow-info {Dom} {Cod} (mk-kind One eff) cn bDom bCod) (prjB bDom a))
+sigOpRefᵛ fmt φ cn (con-fun {A = Dom} {B = Cod} {k = mk-kind Many eff} bDom bCod) =
+  λ a → fmapT (injB bCod) (sigOpT fmt φ (arrow-info {Dom} {Cod} (mk-kind Many eff) cn bDom bCod) (prjB bDom a))

@@ -33,7 +33,10 @@ import Once.Adequacy.ArchCorrectness.RiscV64.FlatCorrespondence as FCr
 
 open import Data.List using (List)
 open import Once.Denotation.Program using (IRFun; tableEnv)
+open import Once.Denotation.TraceMonad using (Interp)
 module Once.Adequacy.ArchCorrectness.RiscV64 (o : CanonicalName) (tbl : List IRFun)
+  -- Plan 0.105: the interpretation the program runs against.
+  (ι : Interp)
   -- Plan 0.65: the resource bounds, as PARAMETERS threaded from the apex (D087),
   -- symmetric with x86-64. G3 (2026-08-17) is where they finally get CONSUMED:
   -- until the simulation was whole-cloth nothing below had asked for them, and
@@ -66,7 +69,11 @@ open import Once.Adequacy.SourceTrace using (moduleToIR; moduleTable; rewrite-pr
 open import Once.Denotation.Program using (irProgram; table; main; LinkedProgram)
 open import Once.CCC.Codegen.ProgramImageFacts o using (image-frame-free)
 open import Once.Target.Arch using (arch-numerics)
-open import Once.CCC.Target.RiscV64.FrameInstantiation using (rv64-frame-semantics)
+open import Once.CCC.Target.RiscV64.FrameInstantiation using () renaming (rv64-frame-semantics to rv64-frame-semantics-at)
+open import Once.CCC.FrameSemantics using (FrameSemantics)
+
+rv64-frame-semantics : FrameSemantics
+rv64-frame-semantics = rv64-frame-semantics-at ι
 open import Once.CCC.Codegen.IRObsCorrectFlat o tbl using (module IRObsCorrectFlatness)
 open import Once.CCC.Codegen.IRToTrace o using (ir-to-trace)
 open import Once.CCC.Target.RiscV64.AbstractToRiscV using (compile-trace-cnt; compile-trace-cnt-agrees; compile-trace; slot-to-disp)
@@ -167,7 +174,7 @@ open import Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim o
   (RBr.ret-no-wrap riscv64-addr-no-wrap) (RBr.count-no-wrap riscv64-addr-no-wrap)
   (RBr.lo-fits riscv64-addr-no-wrap)
   (RBr.tag-fits riscv64-lit-fits) (RBr.lit-fits riscv64-lit-fits)
-  (RBr.float-fits o)
+  (RBr.float-fits o ι)
   using (events-agree; CompiledCorr
         ; FlatInv; EntryLike; Reachable; reach-start
         ; inv-wf; inv-regtag; inv-ev; inv-env; inv-run; mkRunAt)

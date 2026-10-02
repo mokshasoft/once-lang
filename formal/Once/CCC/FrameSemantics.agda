@@ -47,6 +47,8 @@ open import Once.Memory.MemoryLayoutSemantics using (Addr)
 -- kind this record already collects (`frame-word` is the machine word), so it
 -- joins them rather than getting a second mechanism of its own.
 open import Once.Float.Dyadic using (FloatFormat)
+open import Once.SigOp.Info using (FFIAnswers)
+open import Once.Denotation.TraceMonad using (Interp)
 
 ------------------------------------------------------------------------
 -- FrameSemantics Interface (Adjacency-Based)
@@ -156,6 +158,19 @@ record FrameSemantics : Set₁ where
     -- | How this target lays out a float: `binary32`, `binary64`, …
     float-format : FloatFormat
 
+    --------------------------------------------------------------------
+    -- The program's INTERPRETATION (plan 0.105)
+    --
+    -- What an FFI SigOp gives back is the interpretation's business: a pure
+    -- one (`ffiV`) its pure half at the argument, an answering one
+    -- (`callsV`) its answer given the calls made so far. The machine reads
+    -- the same interpretation the meaning does, so it is a function of it
+    -- as the meaning is: an instantiation takes the interpretation as its
+    -- argument, and correctness quantifies over it.
+    --------------------------------------------------------------------
+
+    fs-interp : Interp
+
 
     --------------------------------------------------------------------
     -- Frame Ordering
@@ -256,6 +271,10 @@ open FrameSemantics public
 -- Derived rather than a field, so it cannot disagree with the two facts it is
 -- built from.
 ------------------------------------------------------------------------
+
+-- The interpretation's pure half: what a pure FFI SigOp means.
+fs-ffi : FrameSemantics → FFIAnswers
+fs-ffi FS = Interp.pure (fs-interp FS)
 
 open import Once.Target.Arch using (TargetNum; mkTargetNum)
 

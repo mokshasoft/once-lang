@@ -27,15 +27,16 @@ open import Data.Unit using (⊤)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst; sym)
 open import Relation.Nullary using (Dec; yes; no)
 
-open import Once.CanonicalName using (CanonicalName; _≟ᶜ_)
+open import Once.CanonicalName using (CanonicalName; _≟ᶜ_; gen)
 open import Once.IR using (IR; IRTy; Unit)
 open Once.IR.IR
 open import Once.IRTy using (_≟IRTy_; ⌈_⌉)
-open import Once.Denotation.DenotPrefix using (Good; GoodT; EnvGood; evalᴰ-good; const-empty-pf)
 open import Once.Target.Arch using (TargetNum)
-open import Once.Res using (stopped)
-open import Once.Denotation.TraceMonad using (T; mkT)
-open import Once.Denotation.DenotTrace using (evalᴰ; CallEnv; ⟦_⟧ᴰᴵ)
+open import Once.Denotation.TraceMonad using (T; halt; haltOp)
+open import Once.SigOp.Info using (FFIAnswers)
+open import Once.Functor.Translate using (base-Unit)
+open import Once.Type using () renaming (Unit to UnitT)
+open import Once.Denotation.DenotTrace using (evalᴰ; CallEnv; callEnv; ⟦_⟧ᴰᴵ)
 
 ------------------------------------------------------------------------
 -- A table entry: a definition's name and its compiled body as the DIRECT-CALL
@@ -62,61 +63,39 @@ open IRFun public
 -- a call the apex never runs.
 ------------------------------------------------------------------------
 
+-- A call of a name the table does not hold. A linked program never makes one
+-- (`LinkedProgram`), but the environment must be total: the call HALTS, on a
+-- reserved operation, so the domain needs no silent stop (plan 0.105).
 unlinkedT : ∀ {X} → T X
-unlinkedT = mkT (λ _ → []) stopped
+unlinkedT = halt (haltOp (gen "unlinked") UnitT base-Unit) tt
 
-tableEnv : TargetNum → List IRFun → CallEnv
+-- The program's call environment: its table, then the interpretation's pure
+-- FFI contracts (plan 0.105).
+tableEnv   : TargetNum → FFIAnswers → List IRFun → CallEnv
+tableCalls : TargetNum → FFIAnswers → List IRFun → CanonicalName → (A B : IRTy) → ⟦ A ⟧ᴰᴵ → T ⟦ B ⟧ᴰᴵ
 
 -- The entry `e`, asked for as `f : A → B`, answers when the name and both
 -- objects match; otherwise the lookup falls to the earlier entries. (A
 -- top-level helper taking the decisions, not a `with`.)
-tableEnv-at : TargetNum → (e : IRFun) → List IRFun → (f : CanonicalName) → (A B : IRTy)
+tableEnv-at : TargetNum → FFIAnswers → (e : IRFun) → List IRFun → (f : CanonicalName) → (A B : IRTy)
             → Dec (fname e ≡ f) → Dec (fdom e ≡ A) → Dec (fcod e ≡ B) → ⟦ A ⟧ᴰᴵ → T ⟦ B ⟧ᴰᴵ
 -- The two object equations are TRANSPORTED along, not matched on: matching
 -- `refl` would make the lookup reduce only at a literal `refl`, never at the
 -- proof a decision procedure returns.
-tableEnv-at fmt e es f A B (yes _) (yes p) (yes q) a =
+tableEnv-at fmt φ e es f A B (yes _) (yes p) (yes q) a =
   subst (λ Y → T ⟦ Y ⟧ᴰᴵ) q
-    (evalᴰ fmt (tableEnv fmt es) (fbody e) (subst ⟦_⟧ᴰᴵ (sym p) a))
-tableEnv-at fmt e es f A B (yes _) (yes _) (no _)  a = tableEnv fmt es f A B a
-tableEnv-at fmt e es f A B (yes _) (no _)  _       a = tableEnv fmt es f A B a
-tableEnv-at fmt e es f A B (no _)  _       _       a = tableEnv fmt es f A B a
+    (evalᴰ fmt (tableEnv fmt φ es) (fbody e) (subst ⟦_⟧ᴰᴵ (sym p) a))
+tableEnv-at fmt φ e es f A B (yes _) (yes _) (no _)  a = tableCalls fmt φ es f A B a
+tableEnv-at fmt φ e es f A B (yes _) (no _)  _       a = tableCalls fmt φ es f A B a
+tableEnv-at fmt φ e es f A B (no _)  _       _       a = tableCalls fmt φ es f A B a
 
-tableEnv fmt []       f A B a = unlinkedT
-tableEnv fmt (e ∷ es) f A B a = tableEnv-at fmt e es f A B (fname e ≟ᶜ f) (fdom e ≟IRTy A) (fcod e ≟IRTy B) a
+tableCalls fmt φ []       f A B a = unlinkedT
+tableCalls fmt φ (e ∷ es) f A B a = tableEnv-at fmt φ e es f A B (fname e ≟ᶜ f) (fdom e ≟IRTy A) (fcod e ≟IRTy B) a
 
-------------------------------------------------------------------------
--- A table's environment is GOOD (`EnvGood`, the hypothesis `evalᴰ-good` takes
--- at a call). Each entry's body is good in the environment of the earlier
--- entries, by induction on the table, and an unlinked call stops silently.
-------------------------------------------------------------------------
-
-unlinkedT-good : ∀ (B : IRTy) → GoodT ⌈ B ⌉ (unlinkedT {⟦ B ⟧ᴰᴵ})
-unlinkedT-good B = (const-empty-pf stopped , tt)
-
-tableEnv-good : ∀ (fmt : TargetNum) (es : List IRFun) → EnvGood (tableEnv fmt es)
-
-tableEnv-at-good : ∀ (fmt : TargetNum) (e : IRFun) (es : List IRFun) (f : CanonicalName) (A B : IRTy)
-                   (d₁ : Dec (fname e ≡ f)) (d₂ : Dec (fdom e ≡ A)) (d₃ : Dec (fcod e ≡ B))
-                   (a : ⟦ A ⟧ᴰᴵ) → Good ⌈ A ⌉ a
-                 → GoodT ⌈ B ⌉ (tableEnv-at fmt e es f A B d₁ d₂ d₃ a)
-tableEnv-at-good fmt e es f .(fdom e) .(fcod e) (yes _) (yes refl) (yes refl) a ga =
-  evalᴰ-good fmt (tableEnv fmt es) (tableEnv-good fmt es) (fbody e) a ga
-tableEnv-at-good fmt e es f A B (yes _) (yes _) (no _) a ga = tableEnv-good fmt es f A B a ga
-tableEnv-at-good fmt e es f A B (yes _) (no _)  _      a ga = tableEnv-good fmt es f A B a ga
-tableEnv-at-good fmt e es f A B (no _)  _       _      a ga = tableEnv-good fmt es f A B a ga
-
-tableEnv-good fmt []       f A B a ga = unlinkedT-good B
-tableEnv-good fmt (e ∷ es) f A B a ga =
-  tableEnv-at-good fmt e es f A B (fname e ≟ᶜ f) (fdom e ≟IRTy A) (fcod e ≟IRTy B) a ga
+tableEnv fmt φ es = callEnv (tableCalls fmt φ es) φ
 
 ------------------------------------------------------------------------
--- LINKEDNESS. `LinkedAt tbl f A B`: the table answers a call of `f : A → B`,
--- i.e. the lookup `tableEnv` performs SUCCEEDS (it is that lookup's success,
--- clause for clause). A compiled program's calls are all linked (the
--- telescope, D241/TeleSig). An unlinked call has no machine counterpart: the
--- image may hold `f` at another type, so the backend's correctness is stated
--- for linked IR (`Linked tbl ir`: every `Call` in it is linked).
+-- Linkedness
 ------------------------------------------------------------------------
 
 LinkedAt : List IRFun → CanonicalName → IRTy → IRTy → Set
@@ -169,11 +148,8 @@ record IRProgram : Set where
 
 open IRProgram public
 
-runIR : TargetNum → IRProgram → T ⟦ Unit ⟧ᴰᴵ
-runIR fmt p = evalᴰ fmt (tableEnv fmt (table p)) (main p) tt
-
-runIR-good : ∀ (fmt : TargetNum) (p : IRProgram) → GoodT ⌈ Unit ⌉ (runIR fmt p)
-runIR-good fmt p = evalᴰ-good fmt (tableEnv fmt (table p)) (tableEnv-good fmt (table p)) (main p) tt tt
+runIR : TargetNum → FFIAnswers → IRProgram → T ⟦ Unit ⟧ᴰᴵ
+runIR fmt φ p = evalᴰ fmt (tableEnv fmt φ (table p)) (main p) tt
 
 -- A LINKED PROGRAM: every call, in `main` and in every entry of the table, names
 -- an entry of the table at its objects. The compiler's output is linked (the

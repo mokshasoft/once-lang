@@ -45,7 +45,8 @@ open import Data.Bool using (Bool; true; false)
 open import Data.Empty using (⊥)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; Σ)
-open import Data.List using (List; []; _∷_)
+open import Data.List using (List; []; _∷_; _++_)
+open import Once.Denotation.Trace using (SigOpEvent)
 open import Data.Unit using (⊤; tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
 
@@ -159,11 +160,11 @@ regtag-write-nc {ls} Output _ v wf = regtag-transport ls refl refl wf
 
 -- the SigOp shape: one non-counter register write AND a halt-flag update.
 regtag-write-nc-halt : ∀ {ls} (x : AbstractReg) → NonCounter x
-                     → (v : StoredValue FS) (b : Bool)
+                     → (v : StoredValue FS) (b : Bool) (es : List SigOpEvent)
                      → RegTagWF ls
-                     → RegTagWF (record ls { regs = writeReg (regs ls) x v ; halted = b })
-regtag-write-nc-halt {ls} Input1 _ v b wf = regtag-transport ls refl refl wf
-regtag-write-nc-halt {ls} Output _ v b wf = regtag-transport ls refl refl wf
+                     → RegTagWF (record ls { regs = writeReg (regs ls) x v ; halted = b ; ev-log = es })
+regtag-write-nc-halt {ls} Input1 _ v b es wf = regtag-transport ls refl refl wf
+regtag-write-nc-halt {ls} Output _ v b es wf = regtag-transport ls refl refl wf
 
 ------------------------------------------------------------------------
 -- The two writes that DO hit a counter. Both are unconditional tag producers
@@ -326,7 +327,7 @@ mutual
   -- so no SigOp-side axiom is needed here (contrast `FlatStoreWF`, whose value
   -- claim needs `structured-pure-sigop-below`).
   regtag-abstract (instr-sigop si) ls alloc wf =
-    regtag-write-nc-halt Output tt (exec-sigop-output si ls) (exec-sigop-halts si ls) wf
+    regtag-write-nc-halt Output tt (exec-sigop-output si ls) (exec-sigop-halts si ls) (ev-log ls ++ sigop-events si ls) wf
   -- D113: the machine MATERIALISES the literal, so mirror `lit-value`.
   regtag-abstract (instr-load-const p v) ls alloc wf =
     regtag-write-nc Output tt (SV-Lit p (lit-value p v)) wf
