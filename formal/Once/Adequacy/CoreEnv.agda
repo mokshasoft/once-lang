@@ -87,7 +87,7 @@ module _ (δ : GM.DefSem) where
 
   impEnv : ∀ {imps} → ImpSig S imps → ImpMeanings imps
   impEnv TR.[]                                = tt
-  impEnv (TR.i-ffi {x = x} {T = U} c _ _ is)  = sigOpRefᵛ fmt (bare x) c , impEnv is
+  impEnv (TR.i-ffi {x = x} {T = U} c _ _ is)  = sigOpRefᵛ fmt (GM.ffi δ) (bare x) c , impEnv is
   impEnv (TR.i-def d e is)                    = refSem δ (mono-inst {S = S} e) , impEnv is
 
   defEnv : ∀ {ps} → TeleSig S ps → DefMeanings (C.buildPolyCtx ps)
@@ -95,7 +95,8 @@ module _ (δ : GM.DefSem) where
   defEnv (TR.t-def {p = p} d e ts)    = (λ U ki → refSem δ (poly-inst {S = S} {sc = pfunType p} e ki)) , defEnv ts
 
   envOf : ∀ {imps ps} → ImpSig S imps → TeleSig S ps → Meanings (C.buildPolyCtx ps) imps
-  envOf is ts = meanings (defEnv ts) (impEnv is)
+  -- Plan 0.105: the scope's FFI half is the core environment's.
+  envOf is ts = meanings (defEnv ts) (impEnv is) (GM.ffi δ)
 
   ----------------------------------------------------------------------
   -- Agreement
@@ -106,7 +107,7 @@ module _ (δ : GM.DefSem) where
   agree-imp TR.[] () k
   agree-imp {(n , T₀) ∷ rest} (TR.i-ffi c h g is) {x} lk k with StrProp._≟_ n x
   ... | yes refl with lk
-  ...   | refl = cong (sigOpRefᵛ fmt (bare x)) (IsConcrete-irrelevant c k)
+  ...   | refl = cong (sigOpRefᵛ fmt (GM.ffi δ) (bare x)) (IsConcrete-irrelevant c k)
   agree-imp {(n , T₀) ∷ rest} (TR.i-ffi c h g is) {x} lk k | no _ = agree-imp is lk k
   agree-imp {(n , T₀) ∷ rest} (TR.i-def d e is) {x} lk k with StrProp._≟_ n x
   ... | yes refl with lk
@@ -146,7 +147,7 @@ module _ (δ : GM.DefSem) where
 
   -- THE AGREEMENT, by construction.
   private
-    ffi-sem : ∀ {U} (c : CanonicalName) (k : IsConcrete U) (i : ImportAt U) → IsFFI i → impSem δ c k i ≡ sigOpRefᵛ fmt c k
+    ffi-sem : ∀ {U} (c : CanonicalName) (k : IsConcrete U) (i : ImportAt U) → IsFFI i → impSem δ c k i ≡ sigOpRefᵛ fmt (GM.ffi δ) c k
     ffi-sem c k (ffi _ _) _ = refl
 
   -- THE AGREEMENT, by construction.
@@ -160,4 +161,5 @@ module _ (δ : GM.DefSem) where
         ffi-sem _ k (sigAt {S = S} is lk) (lookup-ffi is dv (dot-invalid alias name) lk)
     ; agree-resolved  = λ {cn} no lk k →
         ffi-sem cn k (sigAt {S = S} is lk) (lookup-ffi is dv (notOwn-invalid cn no) lk)
+    ; agree-ffi       = refl
     }

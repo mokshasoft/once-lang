@@ -44,7 +44,7 @@ open import Once.Denotation.TraceMonad using (T; returnᵖ; _>>=ᵖ_)
 open import Once.TypeCheck.Classify using (NamedCtx; lookupImport; lookupPolyPrefix; ctxWithImportsAndPolys; Imports; PolyCtx)
 open import Once.TypeCheck.Judgment
 open import Once.Denotation.DefEnv using (defAt; impAt)
-open import Once.Denotation.Meaning using (⟦_⟧ᶜ; ⟦_⟧ᵢ; ⟦_⟧ᵈ; MeaningsOf; Meanings; defs; entries; returnᵖ)
+open import Once.Denotation.Meaning using (⟦_⟧ᶜ; ⟦_⟧ᵢ; ⟦_⟧ᵈ; MeaningsOf; Meanings; defs; entries; returnᵖ) renaming (ffi to ffiᴹ)
 open import Once.Denotation.GradedOps using (sigOpRefᵛ; cata-semᵛ; ana-semᵛ; ⟦_⟧<:ᵛ)
 import Once.Spec.Core.Meaning S as GM
 open import Once.Spec.Elaboration S using (Views; View; ImportAt; ffi; def; InstanceOf; elabᶜ; elabᵢ; elabᵈ; Elab; subE; lift1; closeE)
@@ -56,11 +56,11 @@ open View
 
 -- The core meaning of a reference to entry `d` at an instance.
 refSem : ∀ (δ : GM.DefSem) {d : Fin s} {U : Type} → InstanceOf d U → ⟦ U ⟧ᵛ
-refSem δ {d} (τ , r , eq) = subst (λ X → ⟦ X ⟧ᵛ) eq (δ d τ r)
+refSem δ {d} (τ , r , eq) = subst (λ X → ⟦ X ⟧ᵛ) eq (GM.defs δ d τ r)
 
 -- …and of an import (an FFI declaration is its contract).
 impSem : ∀ (δ : GM.DefSem) {U : Type} → CanonicalName → IsConcrete U → ImportAt U → ⟦ U ⟧ᵛ
-impSem δ c k (ffi _ _) = sigOpRefᵛ fmt c k
+impSem δ c k (ffi _ _) = sigOpRefᵛ fmt (GM.ffi δ) c k
 impSem δ c k (def d i) = refSem δ i
 
 -- D248: a canonical name that is not an own-module entry's (`own x`).
@@ -83,11 +83,13 @@ record Agree {imps : Imports} {polys : PolyCtx} (V : View imps polys) (ρ : Mean
     -- a qualified or resolved reference names another module's FFI entry: the
     -- View classifies it as FFI, so it means the contract.
     agree-qualified : ∀ {name alias U} (lk : lookupImport imps (alias ++ "." ++ name) ≡ just U) (k : IsConcrete U)
-                    → impSem δ (bare (alias ++ "." ++ name)) k (imported V lk) ≡ sigOpRefᵛ fmt (bare (alias ++ "." ++ name)) k
+                    → impSem δ (bare (alias ++ "." ++ name)) k (imported V lk) ≡ sigOpRefᵛ fmt (GM.ffi δ) (bare (alias ++ "." ++ name)) k
     -- D248: only a path of two or more parts (another module's inlined FFI
     -- signature); an own-module name is a call (`agree-import`).
     agree-resolved : ∀ {cn U} → NotOwn cn → (lk : lookupImport imps (showCanonical cn) ≡ just U) (k : IsConcrete U)
-                   → impSem δ cn k (imported V lk) ≡ sigOpRefᵛ fmt cn k
+                   → impSem δ cn k (imported V lk) ≡ sigOpRefᵛ fmt (GM.ffi δ) cn k
+    -- Plan 0.105: both meanings read the same interpretation's FFI half.
+    agree-ffi : ffiᴹ ρ ≡ GM.ffi δ
 
 ------------------------------------------------------------------------
 -- The derived combinators' meanings (one lemma per combinator)
@@ -311,19 +313,14 @@ open import Once.TypeCheck.Raw using (OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; O
 open import Once.Denotation.TraceMonad using (fmapT)
 open import Once.Surface.Context using (zeroUsage)
 
--- The monad laws as equalities (T is a record: its two fields agree).
-open import Once.Denotation.TraceMonad using (mkT; projTrace; atT; returnT; _>>=T_; >>=T-assoc; >>=T-identityʳ)
-T-ext : ∀ {X : Set} {l r : T X} → (∀ n → projTrace l n ≡ projTrace r n) → T.resT l ≡ T.resT r → l ≡ r
-T-ext {l = mkT t₁ r₁} {r = mkT t₂ .r₁} tr refl = cong (λ t → mkT t r₁) (extensionality tr)
-
-T-at : ∀ {X : Set} {l r : T X} → (∀ n → atT l n ≡ atT r n) → l ≡ r
-T-at h = T-ext (λ n → cong proj₁ (h n)) (cong proj₂ (h 0))
+-- The monad laws are equalities of trees (plan 0.105).
+open import Once.Denotation.TraceMonad using (returnT; _>>=T_; >>=T-assoc; >>=T-identityʳ)
 
 assocT : ∀ {X Y Z : Set} (m : T X) (f : X → T Y) (g : Y → T Z) → ((m >>=T f) >>=T g) ≡ (m >>=T (λ x → f x >>=T g))
-assocT m f g = T-at (>>=T-assoc m f g)
+assocT m f g = >>=T-assoc m f g
 
 idʳT : ∀ {X : Set} (m : T X) → (m >>=T returnT) ≡ m
-idʳT m = T-at (>>=T-identityʳ m)
+idʳT m = >>=T-identityʳ m
 
 -- `subE`'s usage transport moves onto the environment.
 subE-sem : ∀ {δ : GM.DefSem} {n} {Γ : Ctx n} {Ψ Ψ′ : Usage n} {A : Type} (eq : Ψ ≡ Ψ′) (e : Elab Γ Ψ A) (x : RS.Env Γ Ψ′)
@@ -430,19 +427,22 @@ module _ {δ : GM.DefSem} where
   bridge-i V ag t-unit-var dγ = refl
   bridge-i V ag (t-var-local {eV = Once.Surface.Context.svar i} _) dγ = refl
   bridge-i V ag (t-var-qualified {name = name} {alias = alias} lk k) dγ with imported V lk | Agree.agree-qualified ag {name = name} {alias = alias} lk k
-  ... | ffi h g   | eq = refl
-  ... | def d′ i′ | eq = trans (sym eq) (refSem-⊢ i′ dγ)
+  ... | ffi h g   | eq = cong (λ φ → sigOpRefᵛ fmt φ (bare (alias ++ "." ++ name)) k) (Agree.agree-ffi ag)
+  ... | def d′ i′ | eq = trans (cong (λ φ → sigOpRefᵛ fmt φ (bare (alias ++ "." ++ name)) k) (Agree.agree-ffi ag))
+                             (trans (sym eq) (refSem-⊢ i′ dγ))
   bridge-i V ag (t-var-resolved {cn = own x} _ lk k) dγ with imported V lk | Agree.agree-import ag {x = x} lk k
   ... | ffi h g   | eq = eq
   ... | def d′ i′ | eq = trans eq (refSem-⊢ i′ dγ)
   bridge-i V ag (t-var-resolved {cn = canonical []} _ lk k) dγ
     with imported V lk | Agree.agree-resolved ag {cn = canonical []} tt lk k
-  ... | ffi h g   | eq = refl
-  ... | def d′ i′ | eq = trans (sym eq) (refSem-⊢ i′ dγ)
+  ... | ffi h g   | eq = cong (λ φ → sigOpRefᵛ fmt φ (canonical []) k) (Agree.agree-ffi ag)
+  ... | def d′ i′ | eq = trans (cong (λ φ → sigOpRefᵛ fmt φ (canonical []) k) (Agree.agree-ffi ag))
+                             (trans (sym eq) (refSem-⊢ i′ dγ))
   bridge-i V ag (t-var-resolved {cn = canonical (a ∷ b ∷ rest)} _ lk k) dγ
     with imported V lk | Agree.agree-resolved ag {cn = canonical (a ∷ b ∷ rest)} tt lk k
-  ... | ffi h g   | eq = refl
-  ... | def d′ i′ | eq = trans (sym eq) (refSem-⊢ i′ dγ)
+  ... | ffi h g   | eq = cong (λ φ → sigOpRefᵛ fmt φ (canonical (a ∷ b ∷ rest)) k) (Agree.agree-ffi ag)
+  ... | def d′ i′ | eq = trans (cong (λ φ → sigOpRefᵛ fmt φ (canonical (a ∷ b ∷ rest)) k) (Agree.agree-ffi ag))
+                             (trans (sym eq) (refSem-⊢ i′ dγ))
   bridge-i V ag (t-var-import {x = x} _ _ lk k) dγ with imported V lk | Agree.agree-import ag {x = x} lk k
   ... | ffi h g   | eq = eq
   ... | def d′ i′ | eq = trans eq (refSem-⊢ i′ dγ)
