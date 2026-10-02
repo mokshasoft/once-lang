@@ -7,6 +7,12 @@
 > The goal is KNOT SIMPLICITY. Kernel/MT churn is cheap: A-math went through
 > all the metatheory in hours.
 
+> ⚠ **Reopened 2026-10-02 (PLAN-BIDI §3g, S7b):** `Desc` stayed a
+> primitive large type with no eliminator. Generic programming in the core
+> (the Lib's traversals as core definitions) needs either a dependent
+> `Desc` eliminator or `Desc` itself levitated. Decided direction; the
+> sketch comparing the two is PLAN-BIDI S7b step 1.
+
 ## Target kernel (from S3/S4)
 
 - `Desc I` is a LARGE type: no code, level 1 (S0). The index is a code

@@ -211,7 +211,7 @@ not?"
 | S4 | Decide TYPE conversion `≅ᵀ` completely — ROUTE C (§3b): ① validity + `srᵀ` (`Metatheory/Validity`) ✅; ② inversion — the existing `gen-*` sufficed ✅; ③ `normTy`/`decConvᵀ` (`Metatheory/NormTy`) ✅ — **structural, NO measure needed**: `homNF` recurses on the NORMAL ambient (`G` ⊂ `Π F G`), the created `app f↑ vz` go through the typed `wnorm`, and a `NoU` witness breaks the harmless `elNF ↔ homNF` cycle | ✅ |
 | S5 | The signature: constants, δ, and the conservativity theorem — design (ii), §2-bis, route B | ✅ **2026-10-02** (§3e): `ref d` in the annotated layer, `⊢ᴬref`, δ by erasure; δ-elimination + conservativity (`Metatheory/Signature`); `CheckA` decides `ref` |
 | S6 | The bidirectional SURFACE → annotated core elaborator | ✅ **2026-10-02** (§3f): `Algorithm/Surface` (generated: the annotated syntax + holes) and `Algorithm/Elab` (UNTRUSTED; re-checked by `CheckA`) |
-| S7 | The Knot WRITTEN in the annotated core with signature references; its wf derivations come from `inferᴬ`, not from a generator. User, 2026-10-02: "if we have to write code to generate the Knot something is wrong". Measure against `HANDOFF-2026-09-24` §4's split | 🟡 **in progress** (§3g): machinery ✅, slice 1 (the closed core) ✅, S7a the certified evaluator ✅ (Core 56 → 7.4 s) |
+| S7 | The Knot WRITTEN in the annotated core with signature references; its wf derivations come from `inferᴬ`, not from a generator. User, 2026-10-02: "if we have to write code to generate the Knot something is wrong". Measure against `HANDOFF-2026-09-24` §4's split | 🟡 **in progress** (§3g): machinery ✅, slice 1 (the closed core) ✅, S7a the certified evaluator ✅ (Core 56 → 7.4 s), B1′ `ref` in the kernel + the Knot encodes it ✅; the Pw POC is blocked on `#wk` ⇒ **S7b: a `Desc` eliminator (or levitated `Desc`), then generic traversal as core definitions** |
 
 ## 3g. ★ S7 — THE KNOT IN THE CORE (in progress, 2026-10-02)
 
@@ -306,6 +306,88 @@ not?"
     runs out (`evalFuel = 100000`).
 - **Measured: `Knot/Core` 56 s / 1.3 GB → 7.4 s / 0.58 GB.** `Eval`
   checks in 7 s and `CheckA` in 12.5 s.
+
+**Lazy δ — DEFERRED until measured (2026-10-02).** Full normal forms
+unfold every `ref`, but nothing measures slow yet (`Knot/Core` 7.4 s),
+so lazy δ waits for a profile (profile, then fix). When it lands, the
+real constraint is the VIEWS, not `decConvFast`:
+- `viewΠ`/`viewΣ` lift the erased Π back to annotated syntax (`liftTy`).
+  `era-liftTy` is proved only for terms with no reducible subterm,
+  because lifting `ref d b` is sound only if `b` is entry `d`'s body.
+- A lazy view therefore needs the invariant "every `ref` in an erased
+  type is a signature reference" (`b ≡ body S d`). Reduction preserves
+  it: δ unfolds a body whose own refs are signature refs. It would
+  replace the normality premise.
+- `decConvFast` can go lazy alone: compare with refs as atoms first,
+  fall back to full normal forms, which still decide every "no".
+
+**The Pw POC (in progress)** — the recipe on the smallest family. Pw is
+only ever CONSTRUCTED (`pwC`), never eliminated, so its hand-written
+form is an indexed family, Ford-style, with two constructors:
+
+    pwPi  : (A : Tm j) (B : Tm (suc j))                    → Pw j (kcPi A B) B
+    pwHom : (c a b : Tm j) (c' : Tm (suc j)) → Pw j c c'
+          → Pw j (kcHom c a b) (kcHom c' (wk a · 0) (wk b · 0))
+
+1. **Entries** in `Knot/Core`: `#Tm`, `#wk` (the Lib's traversal with
+   `KD` abstracted, the `CtxDᵛ` pattern), `#PwI` (the index
+   `(j , t , u)`), `#PwD` (the description), `#Pw`, `#pwPi`, `#pwHom`.
+   The checker certifies all of them; nothing is written about them.
+2. **`⊢inst`**: the kernel typing of `app ⋯ (app (ref d b) a₁) ⋯ aₙ` from
+   `WfSig` (`wf→ok`, `⊢ref`, `⊢app`). Its conversions are computed by
+   `eval` at OBJECT VARIABLES and instantiated by substitution, because
+   `eval` blocks on an Agda variable.
+3. **Knot/Pw by hand**, same interface: `⌜Pw⌝ d t u` is the instance,
+   `⌜Pw⌝-sub` is `refl` (a ref is closed), and `⊢⌜Pw⌝`, `El-⌜Pw⌝` and
+   `⊢pwC` come from `⊢inst`. `PwConGen` is deleted and gen-judge stops
+   emitting Pw.
+4. **Measure** against today: Pw 256 + PwConGen 86 + PwAgree 121
+   generated lines.
+
+**⛔ Step 1 BLOCKED at `#wk` (2026-10-02) — and the decision.**
+- `#wk` was written as an `ielim` over `ref #KD`: the motive written out
+  with `ref #KD`, the Lib's method tuple `TRAVM` and environment `WKρ`
+  lifted with holes (`↑`). `KD` occurs only in the `ielim`'s description
+  and the motive, because the kernel's `con`/`lam` carry no annotations.
+- **The elaborator cannot fill it.** First the `fcase` motive had no
+  expected type. That is fixed: `constMot` in `Algorithm/Elab` takes the
+  constant motive at the first branch's inferred type. Then "cannot fill
+  hole: the domain" on an unannotated `lam` in synthesis position.
+  ⇒ **Lifting with holes works for first-order DATA (`KD`, `CtxD`), never
+  for Lib CODE.** A bidirectional elaborator cannot infer an
+  unannotated λ, and the Lib's methods are full of them (β-redexes,
+  λs in function position). This is not a missing elaborator rule.
+- Rejected:
+  - annotating from the Lib's kernel derivations (`⊢TRAVM`): the
+    annotations inline `KD` (the OOM pattern), and Lib output stays in
+    the core, so it fails "code a human would write";
+  - patching the elaborator per idiom: a dead end in principle.
+- ★ **DECIDED (user, 2026-10-02): option 1, the Lib's generic machinery
+  as CORE definitions.** The traversal is written once, over ANY
+  description; `wk` is its instance at `ref #KD`. User: "Kernel and MT
+  proofs are still pretty simple compared to the Knot."
+- **It needs one KERNEL increment.** `Desc I` is a large type with no
+  eliminator: only the built-in folds `dpay`/`dih`/`ielim` consume a
+  description (PLAN-LEVITATION kept `Desc` primitive). Two candidates:
+  - (a) a dependent eliminator for `Desc` (motive over the description;
+    rules for `dι`/`dσ`/`dρ`) and its metatheory;
+  - (b) LEVITATE `Desc` itself: a description is data described by a
+    description. `ielim` then does generic programming, and `dpay`/`dih`
+    may become definitions — less kernel in the end, a bigger change.
+
+**Next, in order (S7b):**
+1. **Paper sketch (a) against (b):** the rules, the metatheory impact
+   (LR/Fundamental/SR/Confluence/Canonicity/Eval/CheckA/genA), what each
+   lets us DELETE, and the Knot's side (a new former means new rows,
+   unless (b) removes formers). Decide on principledness, not edit cost.
+2. **The kernel increment**, through the metatheory, the annotated layer,
+   the evaluator and the Knot (`gen-knot` rows plus faithfulness).
+3. **Spike: the generic traversal as core entries.** First over a small
+   description (`CtxD`), then `#wk` over `ref #KD`. Measure the checking
+   time; this is where lazy δ may become necessary.
+4. **Resume the Pw POC at step 1.** The Pw entries (`#Tm`, `#PwI`,
+   `#PwD`, `#Pw`, `#pwPi`, `#pwHom`) are sketched above. Then
+   `⊢inst`, the hand-written Knot/Pw, and the measurement.
 
 **Then, the migration recipe** (each step is one family):
 - a schema becomes a CLOSED λ-entry; an instance becomes
