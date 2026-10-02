@@ -31,7 +31,8 @@ open import DirectedHoTT.Spec.Syntax
         ; renTm-subTm; subTy-subTy; subTm-subTm; subTy-id; subTm-id
         ; renTm-renTm; renTm-cong; Desc; con; εsub; εwkTy; dι; dρ; IMu; ielim
         ; ⌜IMu⌝; εwkTm; εwk-sub; εwkTm-sub; DIh; Fin; ⌜Fin⌝; dσ; dpay; dih
-        ; fzero; fsuc; fcase; fcase0; psplit; cong₃ )
+        ; fzero; fsuc; fcase; fcase0; psplit; cong₃
+        ; ref )
 open import Agda.Builtin.Nat using ( zero; suc; _+_ ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Typing
   using ( single; nrs; pairS; fsucS; _⟶_; _⟶*_; done; step; β; βfst; βsnd; ξ-lam; ξ-appˡ
@@ -51,7 +52,8 @@ open import DirectedHoTT.Spec.Typing
         ; El-⌜IMu⌝; _,,_; iinst; ⊢unit; ⊢nzero; ⊢nsuc; ⊢natrec; ⊢ordtr; ⊢ctx_
         ; c-◇; c-▹; ⊢id; ⊢appex; ⊢dih; ⊢psplit; ty-DIh; ⊢fcase0; csym; single2
         ; ⊢fsuc; motCtx; ⊢fcase; El-⌜Fin⌝; ⊢⌜Fin⌝; ⊢dpay; ⊢dρ; ⊢dι; ⊢dσ; crfl
-        ; ty-Desc; ty-Fin; ⊢fzero; wk-single; DescF )
+        ; ty-Desc; ty-Fin; ⊢fzero; wk-single; DescF
+        ; ⊢ref )
 open import DirectedHoTT.Spec.Variance
   using ( 𝔹; true; false; occTm; subTm-occ; pw?; stkC?; stkA?; pwBody; pwDom
         ; pwShift; pw?-ren; stkC?-ren; stkA?-ren; pwBody-ren; wk-ren-tm
@@ -107,7 +109,8 @@ open import DirectedHoTT.Metatheory.LogicalRelation
         ; snr-psplit-β; sn-dι; FinMem; ⊩₁Desc; snr-psplitᵍ; ikinterp-sn
         ; snr-fcase-s; sn-fsuc; ⊩₁Fin; sn-dρ; iki-σ; fm-zero; snr-fcase-z
         ; sn-fzero; sne-fcase0; fm-exp; fm-ne; fm-suc; sne-dih; sne-dpay
-        ; snr-J-Fin; ⊩₁DIhNe )
+        ; snr-J-Fin; ⊩₁DIhNe
+        ; snr-δ )
 
 open import DirectedHoTT.Metatheory.Fundamental.Syntactic
 open import DirectedHoTT.Metatheory.Fundamental.Semantic
@@ -1873,6 +1876,13 @@ fund (⊢tr dc' da' dv nc hc ha dt du dp de) x₀ ρ =
 
 -- ★ `⊢conv` — no validity premise, no `⊢ty` closed under conversion.  The
 -- relation is already closed under conversion; this is the whole of §4.0.
+-- ★ a DEFINITION: its body is related at the empty context (the premise,
+--   a structurally smaller derivation), and the relation is closed under
+--   the head expansion `ref n b ↦ εwkTm b`
+fund {σ = σ} (⊢ref {d = n} {b = b} {A = A} db) x₀ ρ =
+  subst (λ T → Rel T (ref n b)) (sym (εwk-sub σ A))
+        ( dfst (fund db x₀ ⊩ˢ-ε)
+        , exp₁ (dfst (fund db x₀ ⊩ˢ-ε)) snr-δ (dsnd (fund db x₀ ⊩ˢ-ε)) )
 fund {σ = σ} (⊢conv d c) x₀ ρ =
   ( conv₁ (≅ᵀ-sub σ c) (dfst (fund d x₀ ρ))
   , sem-conv (≅ᵀ-sub σ c) (dfst (fund d x₀ ρ))

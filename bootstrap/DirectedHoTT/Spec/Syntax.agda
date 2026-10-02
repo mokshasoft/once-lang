@@ -191,6 +191,11 @@ data RTm where
   fcase0 : ∀ {Γ} → RTm Γ → RTm Γ
   -- ★ Σ-INDUCTION (D071): `psplit b q`, `b` binds both halves.
   psplit : ∀ {Γ} → RTm ((Γ ∙) ∙) → RTm Γ → RTm Γ
+  -- ★ A DEFINITION (PLAN-BIDI §2-ter): a name with its CLOSED body.  It
+  --   unfolds by δ (`ref d b ⟶ εwkTm b`); renaming and substitution stop
+  --   at it — the body is closed.  This is what the Knot's `opaque` blocks
+  --   simulated: a big closed code, named, compared without unfolding.
+  ref    : ∀ {Γ} → ℕ → RTm ε → RTm Γ
   -- ★ WF-axis stage C (N-in): `Nat` becomes SMALL — it gets a code, so
   -- it can appear in `U`-families.  That is what unlocks Id-rewriting
   -- AT `Nat` (`jsub` needs a code family), cong-at-ℕ, and ≤ as a
@@ -285,6 +290,7 @@ renTm ρ (fsuc t) = fsuc (renTm ρ t)
 renTm ρ (fcase t a b) = fcase (renTm ρ t) (renTm ρ a) (renTm (extR ρ) b)
 renTm ρ (fcase0 t) = fcase0 (renTm ρ t)
 renTm ρ (psplit b q) = psplit (renTm (extR (extR ρ)) b) (renTm ρ q)
+renTm ρ (ref d b) = ref d b
 renTm ρ ⌜Unit⌝        = ⌜Unit⌝
 renTm ρ unit          = unit
 renTm ρ nzero         = nzero
@@ -352,6 +358,7 @@ subTm σ (fsuc t) = fsuc (subTm σ t)
 subTm σ (fcase t a b) = fcase (subTm σ t) (subTm σ a) (subTm (extS σ) b)
 subTm σ (fcase0 t) = fcase0 (subTm σ t)
 subTm σ (psplit b q) = psplit (subTm (extS (extS σ)) b) (subTm σ q)
+subTm σ (ref d b) = ref d b
 subTm σ ⌜Unit⌝        = ⌜Unit⌝
 subTm σ unit          = unit
 subTm σ nzero         = nzero
@@ -520,6 +527,7 @@ renTm-cong h (fcase0 t) =
   cong fcase0 (renTm-cong h t)
 renTm-cong h (psplit b q) =
   cong₂ psplit (renTm-cong (extR-cong (extR-cong h)) b) (renTm-cong h q)
+renTm-cong h (ref d b) = refl
 renTm-cong h ⌜Unit⌝     = refl
 renTm-cong h unit      = refl
 renTm-cong h nzero     = refl
@@ -607,6 +615,7 @@ subTm-cong h (fcase0 t) =
   cong fcase0 (subTm-cong h t)
 subTm-cong h (psplit b q) =
   cong₂ psplit (subTm-cong (extS-cong (extS-cong h)) b) (subTm-cong h q)
+subTm-cong h (ref d b) = refl
 subTm-cong h ⌜Unit⌝     = refl
 subTm-cong h unit      = refl
 subTm-cong h nzero     = refl
@@ -703,6 +712,7 @@ renTm-renTm {ρ' = ρ'} {ρ} (fcase0 t) =
   cong fcase0 (renTm-renTm t)
 renTm-renTm {ρ' = ρ'} {ρ} (psplit b q) =
   cong₂ psplit (trans (renTm-renTm b) (renTm-cong (λ x → trans (extr-extr (extR ρ') (extR ρ) x) (extR-cong (extr-extr ρ' ρ) x)) b)) (renTm-renTm q)
+renTm-renTm (ref d b) = refl
 renTm-renTm ⌜Unit⌝     = refl
 renTm-renTm unit       = refl
 renTm-renTm nzero      = refl
@@ -803,6 +813,7 @@ subTm-renTm {σ = σ} {ρ} (fcase0 t) =
   cong fcase0 (subTm-renTm t)
 subTm-renTm {σ = σ} {ρ} (psplit b q) =
   cong₂ psplit (trans (subTm-renTm b) (subTm-cong (λ x → trans (exts-extr (extS σ) (extR ρ) x) (extS-cong (exts-extr σ ρ) x)) b)) (subTm-renTm q)
+subTm-renTm (ref d b) = refl
 subTm-renTm ⌜Unit⌝     = refl
 subTm-renTm unit       = refl
 subTm-renTm nzero      = refl
@@ -903,6 +914,7 @@ renTm-subTm {ρ = ρ} {σ} (fcase0 t) =
   cong fcase0 (renTm-subTm t)
 renTm-subTm {ρ = ρ} {σ} (psplit b q) =
   cong₂ psplit (trans (renTm-subTm b) (subTm-cong (λ x → trans (extr-exts (extR ρ) (extS σ) x) (extS-cong (extr-exts ρ σ) x)) b)) (renTm-subTm q)
+renTm-subTm (ref d b) = refl
 renTm-subTm ⌜Unit⌝     = refl
 renTm-subTm unit       = refl
 renTm-subTm nzero      = refl
@@ -1003,6 +1015,7 @@ subTm-subTm {τ = τ} {σ} (fcase0 t) =
   cong fcase0 (subTm-subTm t)
 subTm-subTm {τ = τ} {σ} (psplit b q) =
   cong₂ psplit (trans (subTm-subTm b) (subTm-cong (λ x → trans (exts-exts (extS τ) (extS σ) x) (extS-cong (exts-exts τ σ) x)) b)) (subTm-subTm q)
+subTm-subTm (ref d b) = refl
 subTm-subTm ⌜Unit⌝     = refl
 subTm-subTm unit       = refl
 subTm-subTm nzero      = refl
@@ -1095,6 +1108,7 @@ subTm-id (fcase0 t) =
   cong fcase0 (subTm-id t)
 subTm-id (psplit b q) =
   cong₂ psplit (trans (subTm-cong (λ x → trans (extS-cong exts-id x) (exts-id x)) b) (subTm-id b)) (subTm-id q)
+subTm-id (ref d b) = refl
 subTm-id ⌜Unit⌝     = refl
 subTm-id unit       = refl
 subTm-id nzero      = refl

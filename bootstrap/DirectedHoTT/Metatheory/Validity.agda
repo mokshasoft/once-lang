@@ -261,5 +261,8 @@ validity wΓ (⊢fsuc dt) = exact ty-Fin
 validity wΓ (⊢fcase dP dt da db) = exact (sub-ty dP (⊢single dt))
 validity wΓ (⊢fcase0 dP dt) = exact (sub-ty dP (⊢single dt))
 validity wΓ (⊢psplit dA dB dP dq db) = exact (sub-ty dP (⊢single dq))
+-- a definition's type is its body's, valid in the empty context, weakened
+validity wΓ (⊢ref db) with validity c-◇ db
+... | wf A' c dA' = wf (εwkTy A') (≅ᵀ-sub εsub c) (sub-ty dA' (λ ()))
 validity wΓ (⊢conv d c) with validity wΓ d
 ... | wf A' c' dA' = wf A' (ctrnᵀ (csymᵀ c) c') dA'

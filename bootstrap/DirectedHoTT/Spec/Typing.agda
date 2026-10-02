@@ -47,7 +47,7 @@ open import DirectedHoTT.Spec.Syntax
         ; subTy-subTy; subTy-cong; renTy-subTy; subTm-renTm; subTm-id
         ; εwkTy; εwk-ren; εwk-sub; εwkTm
         ; IMu; Desc; DIh; Fin; ⌜IMu⌝; ⌜Fin⌝; con; ielim; dι; dσ; dρ; dpay; dih
-        ; fzero; fsuc; fcase; fcase0; psplit )
+        ; fzero; fsuc; fcase; fcase0; psplit; ref )
 open import DirectedHoTT.Spec.Variance
   using ( 𝔹; true; false; occTm; pw?; stkC?; stkA?; flat?; pwBody; pwShift
         ; NoNatC; nnc-base; nnc-Unit; nnc-Π; nnc-Σ; nnc-Hom; nnc-Id )
@@ -369,6 +369,9 @@ data _⟶_ : {Γ : Cx} → RTm Γ → RTm Γ → Set where
   fcase-z   : (a : RTm Γ) (b : RTm (Γ ∙)) → fcase fzero a b ⟶ a
   fcase-s   : (t a : RTm Γ) (b : RTm (Γ ∙)) → fcase (fsuc t) a b ⟶ subTm (single t) b
   psplit-β  : (b : RTm ((Γ ∙) ∙)) (x y : RTm Γ) → psplit b (pair x y) ⟶ subTm (single2 x y) b
+  -- ★ δ: a definition unfolds to its body (PLAN-BIDI §2-ter) — the body is
+  --   closed, so the rule is context-free and needs no signature
+  δref      : {Δ : Cx} (d : ℕ) (b : RTm ε) → ref {Δ} d b ⟶ εwkTm {Δ} b
   -- congruences
   ξ-⌜IMu⌝ᴵ  : {I I' D i : RTm Γ} → I ⟶ I' → ⌜IMu⌝ I D i ⟶ ⌜IMu⌝ I' D i
   ξ-⌜IMu⌝ᴰ  : {I D D' i : RTm Γ} → D ⟶ D' → ⌜IMu⌝ I D i ⟶ ⌜IMu⌝ I D' i
@@ -733,6 +736,9 @@ data _⊢_∷_ where
             Γ ⊢ty A → (Γ ▹ A) ⊢ty B → (Γ ▹ Σ' A B) ⊢ty P → Γ ⊢ q ∷ Σ' A B →
             ((Γ ▹ A) ▹ B) ⊢ b ∷ subTy pairS P →
             Γ ⊢ psplit b q ∷ subTy (single q) P
+  -- ★ a definition is typed by its body's typing in the EMPTY context —
+  --   one shared proof per definition, weakened to every use
+  ⊢ref : ∀ {Γ d b} {A : RTy ε} → ◇ ⊢ b ∷ A → Γ ⊢ ref d b ∷ εwkTy A
   ⊢conv : ∀ {Γ t A B}   → Γ ⊢ t ∷ A → A ≅ᵀ B → Γ ⊢ t ∷ B
 
 data _⊢ty_ where

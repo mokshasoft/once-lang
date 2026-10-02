@@ -45,7 +45,8 @@ open import DirectedHoTT.Spec.Syntax
         ; renTm-subTm; renTm-renTm; renTm-cong; Desc; con; IMu; ielim; ⌜IMu⌝
         ; εwkTm; ⌜Σ⌝; ⌜Fin⌝; dι; dσ; dρ; dpay; dih; fzero; fsuc; fcase; fcase0
         ; psplit; DIh; Fin; pair; fst; snd; unit; renTy; subTy-subTy
-        ; subTy-cong; subTy-renTy; renTy-subTy; subTy-id; cong₄; cong₃ )
+        ; subTy-cong; subTy-renTy; renTy-subTy; subTy-id; cong₄; cong₃
+        ; ref; εwkTm-sub )
 open import DirectedHoTT.Spec.Variance
   using ( ren-as-sub )
 open import DirectedHoTT.Spec.Variance
@@ -72,7 +73,8 @@ open import DirectedHoTT.Spec.Typing
         ; ξ-dihᵖ; ξ-fsuc; ξ-fcaseᵗ; ξ-fcaseᵃ; ξ-fcaseᵇ; ξ-fcase0; ξ-psplitᵇ
         ; ξ-psplitᵍ; tr-J-Fin; El-⌜Fin⌝; DIh-ι; DIh-σ; DIh-ρ; ξ-IMuᴵ; ξ-IMuᴰ
         ; ξ-IMuⁱ; ξ-Desc; ξ-DIhᴰ; ξ-DIhᴹ; ξ-DIhᶜ; ξ-DIhᵖ; single2; iinst
-        ; wk-single )
+        ; wk-single
+        ; δref )
 
 private
   variable
@@ -377,6 +379,7 @@ sub-comm2 {Γ} σ b x y =
   subst (λ z → fcase (fsuc (subTm σ t)) (subTm σ a) (subTm (extS σ) b) ⟶ z)
         (sym (sub-comm σ b t))
         (fcase-s _ _ _)
+⟶-sub σ (δref d b) = subst (λ z → ref d b ⟶ z) (sym (εwkTm-sub σ b)) (δref d b)
 ⟶-sub σ (psplit-β b x y) =
   subst (λ z → psplit (subTm (extS (extS σ)) b) (pair (subTm σ x) (subTm σ y)) ⟶ z)
         (sym (sub-comm2 σ b x y))

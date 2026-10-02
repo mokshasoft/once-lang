@@ -7,11 +7,10 @@
 --
 --       erase : Γ ⊢ᴬ t ∷ A → ⌈ Γ ⌉ᶜ ⊢ ⌈ t ⌉ ∷ ⌈ A ⌉ᵀ
 --
--- ★ S5: over a signature it is δ-ELIMINATION.  Erasure unfolds every
---   `ref d` to its body, so an annotated derivation that USES definitions
---   becomes a kernel derivation with none — extension by definitions is
---   conservative.  Its hypothesis `SigOK` (each erased body has its erased
---   declared type) comes from `Metatheory/Signature`'s `WfSig`.
+-- ★ Over a signature: an annotated `ref d` erases to the kernel's
+--   `ref d (body d)`, typed by `⊢ref` from the body's derivation.  The
+--   hypothesis `SigOK` (each erased body has its erased declared type)
+--   comes from `Metatheory/Signature`'s `WfSig`.
 --
 -- ★ THIS IS THE WHOLE BRIDGE.  Every metatheorem of `RTm` now applies to
 --   the annotated kernel through it — consistency is below, one line.
@@ -138,10 +137,9 @@ erase (⊢ᴬnatrec {M = M} {n = n} dM dz ds dn) =
              (⊢-cast (sub1 nzero M) (erase dz))
              (⊢-cast (era-subTy nrsᴬ nrs nrs-era M) (erase ds))
              (erase dn))
--- ★ δ-ELIMINATION's one case: the reference erases to its body, weakened
---   from the empty context
-erase (⊢ᴬref {d = d} p) =
-  ⊢-cast (sym (era-εwkTy (type d))) (sub-lemma (ok p) (λ ()))
+-- ★ a reference erases to the kernel's reference WITH the signature's
+--   body, typed by that body's derivation (`SigOK`)
+erase (⊢ᴬref {d = d} p) = ⊢-cast (sym (era-εwkTy (type d))) (⊢ref (ok p))
 erase (⊢ᴬconv d c) = ⊢conv (erase d) c
 
 erase-ty tyᴬ-base = ty-base

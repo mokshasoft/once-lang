@@ -63,11 +63,12 @@ TMS = [
  ('fcase', [f(N,0,A), f(T,1,A), f(M), f(M), f(M,1)]),  # fcase [n P] t a b
  ('fcase0', [f(T,1,A), f(M)]),                      # fcase0 [P] t
  ('psplit', [f(T,0,A), f(T,1,A), f(T,1,A), f(M,2), f(M)]),  # psplit [A B P] b q
- # ★ S5: a reference to the d-th entry of the global signature (PLAN-BIDI
- #   §2-bis).  NOT an `RTm` former: erasure UNFOLDS it (δ) to the closed body.
+ # ★ a reference to the d-th entry of the global signature (PLAN-BIDI
+ #   §2-ter).  In `RTm` it carries its body (`ref d b`); here only the
+ #   NAME — erasure supplies the signature's body.
  ('ref', [f(N)]),                                   # ref d
 ]
-SIGONLY = {'ref'}
+SIGONLY = set()
 
 def ext(fn, k, base):
     x = base
@@ -107,7 +108,7 @@ def erase(c, fs, ty):
     me = '⌈ {} ⌉ᵀ' if ty else '⌈ {} ⌉'
     L = lhs(c, fs)
     if fs and fs[0][0] == V: return '⌈ (var x) ⌉ = var x'
-    if c == 'ref': return '⌈ (ref x0) ⌉ = εwkTm (δ x0)'
+    if c == 'ref': return '⌈ (ref x0) ⌉ = ref x0 (δ x0)'
     rhs = [c]
     for i, (kind, b, ann) in enumerate(fs):
         if ann: continue
@@ -119,7 +120,7 @@ def era(which, c, fs, ty):
     pre = f'{me} ρ' if which == 'ren' else f'{me} σ τ h'
     L = lhs(c, fs)
     if fs and fs[0][0] == V: return f'{pre} {L} = ' + ('refl' if which == 'ren' else 'h x')
-    if c == 'ref': return f'{pre} {L} = ' + ('sym (εwkTm-ren ρ (δ x0))' if which == 'ren' else 'sym (εwkTm-sub τ (δ x0))')
+    if c == 'ref': return f'{pre} {L} = refl'
     body, proofs, n = [c], [], 0
     for i, (kind, b, ann) in enumerate(fs):
         if ann: continue
@@ -217,6 +218,7 @@ def surface():
     def hole(c, fs, ty):
         me = 'holesTy' if ty else 'holesTm'
         if fs and fs[0][0] == V: return f'{me} (R.var x) = var x'
+        if c == 'ref': return f'{me} (R.ref x0 b) = ref x0'
         real = [(i, k) for i, (k, b, ann) in enumerate(fs) if not ann]
         lhs_ = f'R.{c}' if not real else '(R.' + c + ' ' + ' '.join(f'x{i}' for i, _ in real) + ')'
         rhs = [c]

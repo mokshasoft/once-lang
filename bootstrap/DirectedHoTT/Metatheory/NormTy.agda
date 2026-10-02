@@ -31,7 +31,8 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Metatheory.NormTy where
-open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂; subst; Σ; _,_; ¬_; ⊥ )
+open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂; subst; Σ; _,_; ¬_; ⊥
+        ; ⊥-elim )
 open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
 open import Agda.Builtin.Bool using ( Bool; true; false )
 open import DirectedHoTT.Spec.Variance using () renaming ( true to trueᵇ )
@@ -181,6 +182,7 @@ numV ⌜Nat⌝ = numNe (λ ()) (λ _ ())
 numV (⌜IMu⌝ _ _ _) = numNe (λ ()) (λ _ ())
 numV (⌜Fin⌝ _) = numNe (λ ()) (λ _ ())
 numV ⌜Unit⌝ = numNe (λ ()) (λ _ ())
+numV (ref _ _) = numNe (λ ()) (λ _ ())
 
 -- `Hom Nat t u` at a stuck `t`, and at `nsuc m` with a stuck `u`, is normal.
 nf-t : {Γ : Cx} {t u : RTm Γ} → (t ≡ nzero → ⊥) → ((k : RTm Γ) → t ≡ nsuc k → ⊥) →
@@ -201,6 +203,8 @@ homNF : {Γ : Ctx} → ⊢ctx Γ → (A : RTy ⌊ Γ ⌋) → Γ ⊢ty A → IsN
         (t u : RTm ⌊ Γ ⌋) → Γ ⊢ t ∷ A → Γ ⊢ u ∷ A → IsNormal t → IsNormal u →
         WNᵀ (Hom A t u)
 
+-- a definition always δ-steps, so it is never normal
+elNF wΓ (ref n b) dc nc = ⊥-elim (nc (δref n b))
 elNF wΓ ⌜base⌝ dc nc = mkWNᵁ base (stepᵀ El-⌜base⌝ doneᵀ) (λ ()) nu-base
 elNF wΓ (⌜Π⌝ c d) dc nc =
   let (dc₁ , (dd₁ , _)) = gen-⌜Π⌝ dc

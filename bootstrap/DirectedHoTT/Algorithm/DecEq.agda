@@ -169,6 +169,7 @@ mutual
   encTm (fcase0 t) = n1 3 5 (encTm t)
   encTm (psplit b q) = n2 3 6 (encTm b) (encTm q)
   encTm (⌜Fin⌝ n) = n1 3 7 (nat n)
+  encTm (ref d b) = n2 3 8 (nat d) (encTm b)
 
 
 ------------------------------------------------------------------------
@@ -251,6 +252,7 @@ mutual
   decTm Γ (node 3 5 (a ∷ [])) = decTm Γ a >>= λ t₀ → just (fcase0 t₀)
   decTm Γ (node 3 6 (a ∷ b ∷ [])) = decTm ((Γ ∙) ∙) a >>= λ b₀ → decTm Γ b >>= λ q₀ → just (psplit b₀ q₀)
   decTm Γ (node 3 7 (nat n ∷ [])) = just (⌜Fin⌝ n)
+  decTm Γ (node 3 8 (nat d ∷ b ∷ [])) = decTm ε b >>= λ b' → just (ref d b')
   decTm Γ _ = nothing
 
 
@@ -317,6 +319,7 @@ mutual
   dec-encTm (fcase0 t) = dec-encTm t ⟫ refl
   dec-encTm (psplit b q) = dec-encTm b ⟫ dec-encTm q ⟫ refl
   dec-encTm (⌜Fin⌝ n) = refl
+  dec-encTm (ref d b) = dec-encTm b ⟫ refl
 
 
 ------------------------------------------------------------------------

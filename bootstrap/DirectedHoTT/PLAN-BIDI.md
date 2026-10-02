@@ -153,6 +153,43 @@ second axis, independent of (ii)/(iii):
 - User: *"if we find that the Knot can be heavily simplified by adding
   more increments, then we do that."*
 
+### 2-ter. ★ DECISION 2 REVISED (2026-10-02): `ref` IN THE KERNEL, carrying its body (B1′)
+
+S7 found what B2 (`ref` only in `ATm`) cannot do. The Knot's terms are BUILT
+by Lib functions as kernel `RTm`, and they must NAME their pieces: ~20
+Knot codes (`⌜Ty⌝`, `⌜Tm⌝`, `wk`, `SK`, `CR`/`CP`, every family's `⌜X⌝`)
+are Agda `opaque` today, exactly to keep big codes from being compared by
+normalisation. Under B2 nothing in `RTm` can refer to an entry. User: "if
+this is principled and all the opaque blocks disappear automatically, why
+not?"
+
+- **The former:** `ref : ℕ → RTm ε → RTm Γ`, a name with its CLOSED
+  body.
+  - **δ:** `ref d b ⟶ εwkTm b`. Context-free and SIGNATURE-FREE: `Spec`
+    gets no parameter.
+  - **Typing:** `⊢ref : ◇ ⊢ b ∷ A → Γ ⊢ ref d b ∷ εwkTy A`. In Agda the
+    premise is a shared, named proof.
+- **The metatheory is local:**
+  - renaming and substitution stop at `ref` (the body is closed);
+  - δ has no congruence and overlaps nothing (confluence);
+  - SR is the premise, weakened;
+  - the LR case is the fundamental lemma on the premise (a strictly
+    smaller derivation) at `◇`, then closure under one expansion step.
+  - No induction on names.
+- **The S5 layer stays as the checker's CACHE.** `⊢ᴬref` is typed from
+  the declared type, bodies are checked once, and `SigOK` supplies the
+  body's derivation. Erasure maps `ref d` to `ref d (body d)` instead of
+  unfolding.
+- **Conversion needs LAZY δ.** References are compared as atoms first
+  and unfolded only on a mismatch, or when a redex needs the body. A full
+  normal form would re-inline `KD`.
+- **The quoted kernel stays reference-free at first.** The Knot quotes a
+  reference by its body. That is legitimate: definitions are conservative.
+- **What it buys:** the Knot's `opaque` blocks become references, and its
+  generic machinery can become hand-written core definitions. User: the
+  end state is a Knot a human would write; "generators are only ok in the
+  end if it generates code that humans would have written".
+
 ## 3. Stages
 
 | # | stage | state |

@@ -52,7 +52,8 @@ open import DirectedHoTT.Spec.Syntax
         ; con; ielim; ⌜IMu⌝; ⌜Fin⌝; dι; dσ; dρ; dpay; dih; fzero; fsuc; fcase; fcase0; psplit
         ; Ren; renTm; renTy; Sub; subTm; subTy
         ; renTm-subTm; subTm-id
-        ; subTy-renTy; subTy-cong; subTy-id )
+        ; subTy-renTy; subTy-cong; subTy-id
+        ; ref )
 open import DirectedHoTT.Spec.Variance
   using ( 𝔹; true; false; pw?; stkC?; stkA?; flat→stk; pw?-ren; occTm; subTm-occ
         ; NoNatC; NoNatHd; nonatc→hd; nonatc-sub; stkC?→stkA?; stkC?→hd )
@@ -511,6 +512,7 @@ szb (fsuc t)       = sz t
 szb (fcase t a b)  = sz t + sz a + sz b
 szb (fcase0 t)     = sz t
 szb (psplit b q)   = sz b + sz q
+szb (ref n b)      = zero
 
 szb-ren : {Γ Δ : Cx} (ρ : Ren Γ Δ) (t : RTm Γ) → szb (renTm ρ t) ≡ szb t
 sz-ren  : {Γ Δ : Cx} (ρ : Ren Γ Δ) (t : RTm Γ) → sz (renTm ρ t) ≡ sz t
@@ -561,6 +563,7 @@ szb-ren ρ (fsuc t)      = sz-ren ρ t
 szb-ren ρ (fcase t a b) = cong₂ _+_ (cong₂ _+_ (sz-ren ρ t) (sz-ren ρ a)) (sz-ren _ b)
 szb-ren ρ (fcase0 t)    = sz-ren ρ t
 szb-ren ρ (psplit b q)  = cong₂ _+_ (sz-ren _ b) (sz-ren ρ q)
+szb-ren ρ (ref n b)     = refl
 szb-ren ρ (ordtr a t u p q) =
   cong₂ _+_ (cong₂ _+_ (cong₂ _+_ (cong₂ _+_ (sz-ren ρ a) (sz-ren ρ t))
                                   (sz-ren ρ u))
@@ -953,6 +956,7 @@ mutual
   ... | dc , (de , _) with prog m de (≤-trans (≤+ʳ (sz c) (sz e)) (un≤ le))
   ...   | prog-step r = prog-step (ξ-absurdᵉ r)
   ...   | prog-can cn = ⊥-elim (canBase⊥ de cn)
+  prog (suc m) {t = ref n b}     d le = prog-step (δref n b)
   prog (suc m) {t = app f a}     d le with appS m d (un≤ le)
   ... | _ , r = prog-step r
   prog (suc m) {t = fst p}       d le with fstS m d (un≤ le)
@@ -1023,6 +1027,7 @@ mutual
   ...   | prog-step r = u-step (ξ-absurdᵉ r)
   ...   | prog-can cn = ⊥-elim (canBase⊥ de cn)
   -- every eliminator steps (the `prog` rows' workers).
+  usplit (suc m) {c = ref n b} d le = u-step (δref n b)
   usplit (suc m) {c = app f a} d le with appS m d (un≤ le)
   ... | _ , r = u-step r
   usplit (suc m) {c = fst p} d le with fstS m d (un≤ le)

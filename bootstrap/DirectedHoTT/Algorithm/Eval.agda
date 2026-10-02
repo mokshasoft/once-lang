@@ -118,6 +118,7 @@ head (dih D e (dρ j C) p)                  = just (_ , dih-ρ D e j C p)
 head (fcase fzero a b)                     = just (_ , fcase-z a b)
 head (fcase (fsuc t) a b)                  = just (_ , fcase-s t a b)
 head (psplit b (pair x y))                 = just (_ , psplit-β b x y)
+head (ref n b)                             = just (_ , δref n b)
 head _                                     = nothing
 
 headᵀ : (A : RTy Γ) → Maybe (Stepᵀ A)
@@ -561,6 +562,8 @@ eval k (dih D e C p) =
   fld (dih D' e' C') ξ-dihᵖ c3 (eval k p) λ {p'} np c4 →
   fin k (dih D' e' C' p') c4 (nf-dih nD ne nC np)
 eval k fzero = nfd _ done nf-fzero
+-- a definition always unfolds: its head is never stuck
+eval k (ref n b) = fin k (ref n b) done (λ ())
 eval k (fsuc t) = fld fsuc ξ-fsuc done (eval k t) λ nt ch → nfd _ ch (nf-fsuc nt)
 eval k (fcase t a b) =
   fld (λ x → fcase x a b) ξ-fcaseᵗ done (eval k t) λ {t'} nt c1 →
