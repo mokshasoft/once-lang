@@ -156,6 +156,12 @@ module Core {FS : FrameSemantics} where
          → ∀ {es} → chain-events r ≡ es
          → LocState.ev-log (floc fs′) ≡ LocState.ev-log (floc fs) DL.++ es
   log-of {fs = fs} r nn eq = trans (chain-log r nn) (cong (LocState.ev-log (floc fs) DL.++_) eq)
+
+  -- …in particular a SILENT chain (the emitter's own rows) leaves it alone.
+  log-silent : ∀ {prog k fs fs′} (r : FlatSteps prog k fs fs′) → ChainNotNested r
+             → chain-events r ≡ DL.[]
+             → LocState.ev-log (floc fs′) ≡ LocState.ev-log (floc fs)
+  log-silent {fs = fs} r nn eq = trans (log-of r nn eq) (Data.List.Properties.++-identityʳ (LocState.ev-log (floc fs)))
   open RTA o tbl {FS} using (Readable; r-unit; r-int; r-pair; readable?; readTyped-adequate) public
   open CataNextSlot {FS} using (exec-flat-keeps-next-slot; AllSlotStable) public
   open CataIRSlotStable {FS} using (ir-to-trace-slot-stable; ir-stable) public
