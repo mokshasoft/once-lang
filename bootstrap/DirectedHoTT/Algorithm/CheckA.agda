@@ -103,7 +103,7 @@ liftTy (Fin x0) = Fin x0
 liftTm (var x0) = var x0
 liftTm (lam x0) = lam base (liftTm x0)
 liftTm (app x0 x1) = app (liftTm x0) (liftTm x1)
-liftTm (pair x0 x1) = pair base (liftTm x0) (liftTm x1)
+liftTm (pair x0 x1) = pair base base (liftTm x0) (liftTm x1)
 liftTm (absurd x0 x1) = absurd (liftTm x0) (liftTm x1)
 liftTm (ordtr x0 x1 x2 x3 x4) = ordtr (liftTm x0) (liftTm x1) (liftTm x2) (liftTm x3) (liftTm x4)
 liftTm (fst x0) = fst (liftTm x0)
@@ -410,18 +410,14 @@ inferᴬ Γ wΓ (app t u) =
   viewΠ wΓ dt >>= λ { (πv A B dt' dA) →
   checkᴬ Γ wΓ u A dA >>= λ du →
   just (subTyᴬ (singleᴬ u) B , ⊢ᴬapp dt' du) } }
-inferᴬ Γ wΓ (pair B a b) =
-  inferᴬ Γ wΓ a >>= λ { (A₀ , da₀) →
-  -- retype `a` at a well-formed (lifted) type, so `B` has a well-formed context
-  let nfv N c dN _ = nfOf wΓ da₀
-      A  = liftTy N
-      dA = subst (λ Z → ⌈ Γ ⌉ᶜ ⊢ty Z) (sym (era-liftTy N)) dN
-      da = ⊢ᴬconv da₀ (subst (λ Z → ⌈ A₀ ⌉ᵀ ≅ᵀ Z) (sym (era-liftTy N)) c)
-  in  checkTyᴬ (Γ ▹ᴬ A) (c-▹ wΓ dA) B >>= λ dB →
-      checkᴬ Γ wΓ b (subTyᴬ (singleᴬ a) B)
-             (subst (λ Z → ⌈ Γ ⌉ᶜ ⊢ty Z) (sym (sub1 a B))
-                    (sub-ty (erase-ty dB) (⊢single (erase da)))) >>= λ db →
-      just (Σ' A B , ⊢ᴬpair dB da db) }
+inferᴬ Γ wΓ (pair A B a b) =
+  checkTyᴬ Γ wΓ A >>= λ dA →
+  checkTyᴬ (Γ ▹ᴬ A) (c-▹ wΓ (erase-ty dA)) B >>= λ dB →
+  checkᴬ Γ wΓ a A (erase-ty dA) >>= λ da →
+  checkᴬ Γ wΓ b (subTyᴬ (singleᴬ a) B)
+         (subst (λ Z → ⌈ Γ ⌉ᶜ ⊢ty Z) (sym (sub1 a B))
+                (sub-ty (erase-ty dB) (⊢single (erase da)))) >>= λ db →
+  just (Σ' A B , ⊢ᴬpair dA dB da db)
 inferᴬ Γ wΓ (absurd c e) =
   checkᴬ Γ wΓ c U ty-U >>= λ dc → checkᴬ Γ wΓ e base ty-base >>= λ de →
   just (El c , ⊢ᴬabsurd dc de)
@@ -599,8 +595,8 @@ inferᴬ Γ wΓ (psplit A B P b q) =
   checkTyᴬ (Γ ▹ᴬ A) (c-▹ wΓ (erase-ty dA)) B >>= λ dB →
   checkTyᴬ (Γ ▹ᴬ Σ' A B) (c-▹ wΓ (ty-Σ (erase-ty dA) (erase-ty dB))) P >>= λ dP →
   checkᴬ Γ wΓ q (Σ' A B) (ty-Σ (erase-ty dA) (erase-ty dB)) >>= λ dq →
-  checkᴬ ((Γ ▹ᴬ A) ▹ᴬ B) (c-▹ (c-▹ wΓ (erase-ty dA)) (erase-ty dB)) b (subTyᴬ (pairSᴬ B) P)
-         (subst (λ Z → ⌈ (Γ ▹ᴬ A) ▹ᴬ B ⌉ᶜ ⊢ty Z) (sym (era-subTy (pairSᴬ B) pairS (era-pairS B) P))
+  checkᴬ ((Γ ▹ᴬ A) ▹ᴬ B) (c-▹ (c-▹ wΓ (erase-ty dA)) (erase-ty dB)) b (subTyᴬ (pairSᴬ A B) P)
+         (subst (λ Z → ⌈ (Γ ▹ᴬ A) ▹ᴬ B ⌉ᶜ ⊢ty Z) (sym (era-subTy (pairSᴬ A B) pairS (era-pairS A B) P))
                 (sub-ty (erase-ty dP) (pairS⊢ (erase-ty dB)))) >>= λ db →
   just (subTyᴬ (singleᴬ q) P , ⊢ᴬpsplit dA dB dP dq db)
 

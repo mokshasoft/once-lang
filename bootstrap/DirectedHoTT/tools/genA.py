@@ -31,7 +31,7 @@ TMS = [
  ('var', [f(V)]),
  ('lam', [f(T,0,A), f(M,1)]),                       # lam [A] t
  ('app', [f(M), f(M)]),
- ('pair', [f(T,1,A), f(M), f(M)]),                  # pair [B] a b
+ ('pair', [f(T,0,A), f(T,1,A), f(M), f(M)]),        # pair [A] [B] a b — A too: B's premise context (PLAN-BIDI §3a)
  ('absurd', [f(M), f(M)]),
  ('ordtr', [f(M)]*5),
  ('fst', [f(M)]), ('snd', [f(M)]),

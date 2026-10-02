@@ -13,9 +13,9 @@
 --
 -- ★ WHY IT IS SHORT.  The annotations put every rule's type IN THE TERM,
 --   so almost every former's two types are syntactically the rule's own:
---   compose the two conversions (`via`).  Only six formers recurse:
+--   compose the two conversions (`via`).  Only five formers recurse:
 --   · `var` — lookup is deterministic (`∋ᴬ-uniq`);
---   · `lam`, `pair` — the subterm's type, under `Π`/`Σ` (`≅ᵀ-Πʳ`, `≅ᵀ-Σˡ`);
+--   · `lam` — the body's type, under `Π` (`≅ᵀ-Πʳ`);
 --   · `app`, `fst`, `snd` — the head's type, through `Π-inj`/`Σ-inj`, and
 --     for `app`/`snd` through the substitution (`≅ᵀ-sub`, `sub1`).
 --   `Hom` needs no injectivity (it has none: it computes away at
@@ -35,7 +35,7 @@ open import DirectedHoTT.Spec.AnnotatedDesc
 open import DirectedHoTT.Spec.TypingA
 open import DirectedHoTT.Metatheory.SubjectReductionBase using ( ≅ᵀ-sub )
 open import DirectedHoTT.Metatheory.Injectivity using ( Π-inj; Σ-inj )
-open import DirectedHoTT.Metatheory.Validity using ( ≅ᵀ-Πʳ; ≅ᵀ-Σˡ )
+open import DirectedHoTT.Metatheory.Validity using ( ≅ᵀ-Πʳ )
 open import DirectedHoTT.Metatheory.Erasure using ( sub1 )
 open import DirectedHoTT.Metatheory.GenerationA
 
@@ -56,7 +56,7 @@ sub1≅ u {B} {B'} c =
     (subst (λ Y → subTy (single ⌈ u ⌉) ⌈ B ⌉ᵀ ≅ᵀ Y) (sym (sub1 u B')) (≅ᵀ-sub (single ⌈ u ⌉) c))
 
 uniqᴬ : {Γ : ACtx} {t : ATm ⌊ Γ ⌋ᴬ} {A B : ATy ⌊ Γ ⌋ᴬ} → Γ ⊢ᴬ t ∷ A → Γ ⊢ᴬ t ∷ B → ⌈ A ⌉ᵀ ≅ᵀ ⌈ B ⌉ᵀ
--- the six that recurse
+-- the five that recurse (and `pair`, whose type is in the term)
 uniqᴬ {t = var x} d₁ d₂ =
   let (A₁ , (v₁ , c₁)) = genᴬ-var d₁ in let (A₂ , (v₂ , c₂)) = genᴬ-var d₂ in
   via c₁ (subst (λ X → ⌈ X ⌉ᵀ ≅ᵀ _) (sym (∋ᴬ-uniq v₁ v₂)) c₂)
@@ -67,9 +67,8 @@ uniqᴬ {t = app t u} d₁ d₂ =
   let (A₁ , (B₁ , (dt₁ , (_ , c₁)))) = genᴬ-app d₁ in let (A₂ , (B₂ , (dt₂ , (_ , c₂)))) = genᴬ-app d₂ in
   let (_ , cB) = Π-inj (uniqᴬ dt₁ dt₂) in
   ctrnᵀ (csymᵀ c₁) (ctrnᵀ (sub1≅ u cB) c₂)
-uniqᴬ {Γ} {t = pair B a b} d₁ d₂ =
-  let (A₁ , (_ , (da₁ , (_ , c₁)))) = genᴬ-pair d₁ in let (A₂ , (_ , (da₂ , (_ , c₂)))) = genᴬ-pair d₂ in
-  ctrnᵀ (csymᵀ c₁) (ctrnᵀ (≅ᵀ-Σˡ {Γ = ⌈ Γ ⌉ᶜ} (uniqᴬ da₁ da₂)) c₂)
+uniqᴬ {t = pair A B a b} d₁ d₂ =
+  let (_ , (_ , (_ , (_ , c₁)))) = genᴬ-pair d₁ in let (_ , (_ , (_ , (_ , c₂)))) = genᴬ-pair d₂ in via c₁ c₂
 uniqᴬ {t = fst p} d₁ d₂ =
   let (A₁ , (B₁ , (dp₁ , c₁))) = genᴬ-fst d₁ in let (A₂ , (B₂ , (dp₂ , c₂))) = genᴬ-fst d₂ in
   let (cA , _) = Σ-inj (uniqᴬ dp₁ dp₂) in

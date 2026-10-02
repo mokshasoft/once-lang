@@ -85,15 +85,14 @@ era-single2 x y vz          = refl
 era-single2 x y (vs vz)     = refl
 era-single2 x y (vs (vs z)) = refl
 
--- the rebuilt pair carries the second component's family, weakened past
---   the two halves
-pairSᴬ : ATy (Γ ∙) → Subᴬ (Γ ∙) ((Γ ∙) ∙)
-pairSᴬ B vz     = pair (renTyᴬ (extR (λ x → vs (vs x))) B) (var (vs vz)) (var vz)
-pairSᴬ B (vs x) = var (vs (vs x))
+-- the rebuilt pair carries both types, weakened past the two halves
+pairSᴬ : ATy Γ → ATy (Γ ∙) → Subᴬ (Γ ∙) ((Γ ∙) ∙)
+pairSᴬ A B vz     = pair (renTyᴬ (λ x → vs (vs x)) A) (renTyᴬ (extR (λ x → vs (vs x))) B) (var (vs vz)) (var vz)
+pairSᴬ A B (vs x) = var (vs (vs x))
 
-era-pairS : (B : ATy (Γ ∙)) → ∀ z → ⌈ pairSᴬ B z ⌉ ≡ pairS z
-era-pairS B vz     = refl
-era-pairS B (vs z) = refl
+era-pairS : (A : ATy Γ) (B : ATy (Γ ∙)) → ∀ z → ⌈ pairSᴬ A B z ⌉ ≡ pairS z
+era-pairS A B vz     = refl
+era-pairS A B (vs z) = refl
 
 fsucSᴬ : ℕ → Subᴬ (Γ ∙) (Γ ∙)
 fsucSᴬ n vz     = fsuc n (var vz)

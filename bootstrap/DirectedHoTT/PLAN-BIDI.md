@@ -184,6 +184,18 @@ meaning (§0, §3d).
   - ⬜ Next: the full checker. Every former becomes a step and the
     recursion is tied, and `Dec` supersedes `CheckA`'s `Maybe` checker,
     which is then deleted.
+- ★ **DECISION (2026-10-02): `pair` carries its first type, `pair A B a b`.**
+  - Found while writing the full checker: `pair` was the ONE former whose
+    premise CONTEXT was not in the term. `B`'s premise lives in `Γ ▹ A`,
+    and `A` is `a`'s type, known only up to conversion.
+  - Without the annotation, a "no" on `B` would need context conversion
+    for `⊢ᴬ`, and no `⊢ᴬ` renaming, substitution or conversion lemma
+    exists. With it, every premise context is determined by the term.
+  - This is §3d's own rule (annotate what the typing takes from the
+    derivation), and it is Lean's `Sigma.mk`.
+  - Changes: `genA.py`'s field table, `⊢ᴬpair` (+ `Γ ⊢tyᴬ A`), `pairSᴬ A B`
+    for `psplit`'s branch. `uniqᴬ`'s `pair` clause became a plain `via`.
+    The old `Maybe` checker's `pair` no longer lifts `a`'s normal form.
 ## 3b. ★ DECISION 3 — S4 by ROUTE C: normalise types BECAUSE they are well-typed
 
 Found on the `natrecᴹ` spike (`SPIKE-NATRECM.md` §3, 2026-09-25). Type
@@ -283,7 +295,7 @@ annotations live with WHICH judgment is trusted: here the trusted judgment
 is the annotated, decidable `⊢ᴬ`, and plain `⊢` is its semantics — §0 holds.
 
 Annotations `ATm` carries (each is what `⊢` takes from the derivation):
-`lam A`, `pair B`, `natrec M`, `con D`, `elim M`, `icon D I i`, `ielim I M`,
+`lam A`, `pair A B` (A added 2026-10-02, §3a), `natrec M`, `con D`, `elim M`, `icon D I i`, `ielim I M`,
 and — the §1 AUDIT's finding, made while writing the checker — `jsub A t u`,
 `tr A t u`, `ap cA t u`: these took their ambient and ENDPOINTS from the
 derivation, and a checker cannot recover them (`Hom` computes away at
