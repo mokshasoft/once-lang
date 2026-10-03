@@ -17,8 +17,8 @@
 --     reads the interpretation at its log (`call-sigop-val`), the denotation
 --     runs the call node from the same log.
 --
--- What does not fit a register (a non-register codomain, an unreadable input)
--- routes to `obs-correct-sigop-rest`.
+-- What does not fit a register (a non-register codomain; D258: every input is
+-- readable) routes to `obs-correct-sigop-rest`.
 ------------------------------------------------------------------------
 
 open import Once.CanonicalName using (CanonicalName)
@@ -390,18 +390,18 @@ module SigOpC {FS : FrameSemantics} where
 
   -- The routing, by explicit-argument helpers (no `with`).
   pure-route : ∀ {A B} (si : SigOpInfo A B) (c : SigOpSem A B) → sem si ≡ c → effect-of c ≡ Pure → Declared-at σᶠ si c
-             → Maybe (FitsInReg B) → Maybe (Readable A) → IRObsCorrectF (SigOp si)
-  pure-route si c e eff d (just fit) (just rA) = pure-obs si c e eff d fit rA
-  pure-route si c e eff d _          _         = obs-correct-sigop-rest si
+             → Maybe (FitsInReg B) → Readable A → IRObsCorrectF (SigOp si)
+  pure-route si c e eff d (just fit) rA = pure-obs si c e eff d fit rA
+  pure-route si c e eff d nothing    _  = obs-correct-sigop-rest si
 
   calls-route : ∀ {A B} (si : SigOpInfo A B) → sem si ≡ callsV → Declared-at σᶠ si callsV → Maybe (FitsInReg B) → IRObsCorrectF (SigOp si)
   calls-route si e d (just fit) = calls-obs si e d fit
   calls-route si e d nothing    = obs-correct-sigop-rest si
 
   by-sem : ∀ {A B} (si : SigOpInfo A B) (c : SigOpSem A B) → sem si ≡ c → Declared-at σᶠ si c → IRObsCorrectF (SigOp si)
-  by-sem {A} {B} si (pureV f)     e d = pure-route si (pureV f) e refl d (fits-in-reg? B) (just (readable-base (baseA si)))
-  by-sem {A} {B} si (primV p)     e d = pure-route si (primV p) e refl d (fits-in-reg? B) (just (readable-base (baseA si)))
-  by-sem {A} {B} si ffiV          e d = pure-route si ffiV e refl d (fits-in-reg? B) (just (readable-base (baseA si)))
+  by-sem {A} {B} si (pureV f)     e d = pure-route si (pureV f) e refl d (fits-in-reg? B) (readable-base (baseA si))
+  by-sem {A} {B} si (primV p)     e d = pure-route si (primV p) e refl d (fits-in-reg? B) (readable-base (baseA si))
+  by-sem {A} {B} si ffiV          e d = pure-route si ffiV e refl d (fits-in-reg? B) (readable-base (baseA si))
   by-sem         si (emitsV refl) e d = emits-obs si e
   by-sem         si (haltsV refl) e d = halts-obs si e
   by-sem {B = B} si callsV        e d = calls-route si e d (fits-in-reg? B)
