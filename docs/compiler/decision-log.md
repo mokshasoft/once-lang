@@ -16290,3 +16290,15 @@ test with two differing reads).
   signature" of the Phase 2 design: decision 2 and §3 of the plan meant an interpretation of
   THE PROGRAM's contracts ("a program importing an uninhabited contract has no interpretation"),
   not of every conceivable one. OPEN: the fix is a design decision (see plan 0.105).
+
+**Amendment 2 (2026-10-03, with the user): the fix is D061's three times.** Not "one
+interpretation answers every contract" (empty), and not "a world provides contracts and the run
+checks" (the compiler reasoning about the world). D061: building the compiler proves the apex
+over an abstract interpretation; compiling a user program sees only the DECLARED signatures and
+trusts them; each interpretation's author discharges its contracts off-line. The FORM of a
+contract is the compiler's (D225); interpretations follow it. So the core is parameterized over
+an interpretation's declared signatures `Σ` (programs are typed against them: `⊢sigop` needs
+membership) and an implementation `Impl Σ` in the compiler's contract form, total on `Σ`. An
+unimplementable declaration fails its author's off-line discharge and makes no compiler claim
+false. Decision 5's statement becomes: for programs typed against `Σ` and every `Impl Σ`. Plan
+0.105 "RESOLVED" holds the phases.
