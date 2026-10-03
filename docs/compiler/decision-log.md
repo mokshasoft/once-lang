@@ -16223,3 +16223,56 @@ meaning (induction on routes) makes each layer cheap and keeps every step `with`
 
 **Consequence.** `realize-invariant` is a theorem; the postulate module `RealizeInvariant` is
 deleted. Plan 0.103 has no open residual on the apex path.
+
+## D257 — THE SPEC MEANS A PROGRAM RELATIVE TO ITS INTERPRETATION; `Eff` IS AN INTERACTION TREE (PLAN 0.105) (2026-10-03)
+
+**Relates**: D061 (a SigOp's contract comes from its interpretation; M0.2 never landed), D058
+(the observable is the SigOp event), D225 (the Spec reads the codomain; "fixing the type is its
+own plan"), D231 (`HonestFFI`), D244/D246 (the call environment), D250 (graded meaning), plan
+0.98 (`Res`, halting at `Void`), D161/D165 (no compiler logic inside a toolchain axiom).
+
+**Context.** Two defects, one cause. (1) The apex was INCONSISTENT: `generic-semM : ∀ {A B} →
+String → TargetNum → M.⟦ A ⟧ → M.⟦ B ⟧ᵍ` was in `Once.Certified`'s cone, so
+`generic-semM {Unit} {Void} "x" fmt _ : ⊥` typechecked, and the Spec's `⊢sigop` meant FFI
+contracts through it. No restriction of the type helps: an honest type can be empty (`μ X. X`).
+(2) The trace monad was a WRITER: it could record what a computation emits, and nothing could
+flow back in, so `read : Eff Unit Int` was specified as a fixed function of its argument (two
+reads were equal).
+
+**Decision.**
+1. **A computation of grade π means an interaction tree** over the operations π permits: done
+   with a value, an answering call `op(arg)` with a continuation awaiting the answer, or a halting
+   call (an operation answering `Void`) with none. `pure` permits no operations, so its tree is a
+   value (D250 unchanged). `T` is that tree; it is INDUCTIVE (Once is total; coinduction stays in
+   `νᵈ`'s layers). The observable is derived: run the tree against an interpretation and take the
+   first `n` calls (D058's prefix family, `projTrace-pf`).
+2. **FFI contracts are the program's parameter.** An `Interp` has an effectful half (`answer`,
+   given the calls so far) and a pure half (a fixed function per pure contract, so referential
+   transparency holds by type). Internal operations (`pureV`/`primV`/`emitsV`/`haltsV`) are
+   computed; `ffiV` reads the pure half and `callsV` is a call node. `generic-semM` is deleted;
+   a program importing an uninhabited contract has no interpretation, and the theorem says
+   nothing about it rather than proving ⊥.
+3. **The world answers; it does not stop.** An answering call always gets an answer; stopping
+   happens exactly at a `Void` codomain. An input that can fail is a sum the program sees.
+4. **The concrete machine writes the answer** (Phase 4 option (a)). `RunTraceCore` threads the
+   binary's own log; its external-call step writes `answer-at ι` into the return register and
+   returns past the call: the ABI contract, stated once in the trusted machine model. The
+   rejected alternative, an apex hypothesis "after an external call the states still
+   correspond", would put the compiler's own invariant (`CompiledCorr`) inside an axiom
+   (D161/D165).
+5. **The Spec (`Once.Spec.Correct` = `Once.Adequacy`).** `CorrectCompiler` gains an abstract
+   field `Interpretation`; `⟦_⟧ˢ` and `exec` take it; the trace conjunct of `correct` is
+   `∀ ι → exec arch ι bytes ≈ ⟦ arch ⟧ˢ ι tp`. The quantifier sits INSIDE the existential:
+   the typed program is chosen once, world-free, because acceptance runs nothing
+   (`Compile.accept-typed`). Soundness, admissibility and completeness do not mention the world.
+   The instance fills `Interpretation` with `Interp`. This is the hunk's MERGE.md justification:
+   a language-level decision, recorded here.
+
+**Consequence.** `Once.Certified` is green with every `ArchCorrect` built at every `ι` (the
+per-arch resource bounds and block-table hypotheses are taken `∀ ι`, since the frame semantics
+carries the interpretation). `generic-semM` has no references. Still postulated, and now about
+a DEFINED step: each arch's `external-sigop-contract`. Open: the arith/FFI split of
+`arith-sigop-contract` (Phase 0 found both SigOp contracts false as stated; the dispatch must
+split by `SigOpSem` constructor), `SigOp.decode-boxed` (decodes a boxed argument from the pointer
+alone, memory-independent; looks inconsistent), and the extraction gate (an input-reading exit
+test with two differing reads).
