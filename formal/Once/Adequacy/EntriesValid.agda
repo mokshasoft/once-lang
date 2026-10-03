@@ -23,7 +23,14 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 import Once.Compile as C
 open C.FunInfo using (funName; funIsPrimitive)
 import Once.Parser
-open import Once.Parser using (validIdentB)
+open import Once.Parser using (validIdentB; validCharsB; allIdentContinue)
+open import Data.Bool using (_∧_)
+open import Data.Bool.Properties using (∧-zeroʳ)
+open import Data.Char using (Char)
+open import Data.String using (toList) renaming (_++_ to _++ˢ_)
+open import Data.String.Unsafe using (toList-++)
+open import Data.List using (_++_)
+open import Relation.Binary.PropositionalEquality using (cong)
 import Once.Parser.Module.Core as P
 import Once.Adequacy.NameClash as NC
 
@@ -41,3 +48,18 @@ valid-of (C.e-fun fi ∷ es)   eq with funIsPrimitive fi in ep
 
 valid-mod : ∀ (m : P.Module) {es} → C.extractFunctions (C.extractAliases m) m ≡ inj₂ es → All MonoValid es
 valid-mod (P.mkModule ds) {es} eq = valid-of es (NC.∧-elimʳ (NC.guard-true (C.extractFunctions-go (C.extractAliases (P.mkModule ds)) ds C.nothing) eq))
+
+private
+  cont-dot : ∀ (cs ds : List Char) → allIdentContinue (cs ++ '.' ∷ ds) ≡ false
+  cont-dot []       ds = refl
+  cont-dot (c ∷ cs) ds = trans (cong (_ ∧_) (cont-dot cs ds)) (∧-zeroʳ _)
+
+  chars-dot : ∀ (cs ds : List Char) → validCharsB (cs ++ '.' ∷ ds) ≡ false
+  chars-dot []       ds = refl
+  chars-dot (c ∷ cs) ds = trans (cong (_ ∧_) (cont-dot cs ds)) (∧-zeroʳ _)
+
+-- A dotted name is not an identifier.
+dot-invalid : ∀ (a b : String) → validIdentB (a ++ˢ "." ++ˢ b) ≡ false
+dot-invalid a b =
+  trans (cong validCharsB (trans (toList-++ a ("." ++ˢ b)) (cong (toList a ++_) (toList-++ "." b))))
+        (chars-dot (toList a) (toList b))

@@ -25,7 +25,11 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst)
 
 open import Once.IR
 import Once.IRTy as II
-open import Once.Denotation.Program using (IRFun; Linked)
+open import Once.Denotation.Program using (IRFun; Linked; Declared)
+open import Once.Spec.Contract using (ISig)
+open import Once.Arith.Type using (NumType; NInt; NFloat)
+
+private variable σ : ISig
 open import Once.Arith.Machine.Rewrite using (rewrite-ir; try-lift; shape-of; block-as-ir; has-op)
 open import Once.Arith.Machine.Recognise using (recognise-body; recognise-body-float)
 open import Once.Arith.Machine.IR using (ArithBlock; MArithIR; shape-as-type; numtype-as-type)
@@ -33,25 +37,29 @@ open import Once.Arith.SigOp.Block using (block-info)
 
 private
   block-linked : ∀ (tbl : List IRFun) {A sh n} (eq : A ≡ II.⌊ shape-as-type sh ⌋) (body : MArithIR sh n)
-               → Linked tbl (block-as-ir eq body)
-  block-linked tbl eq body =
-    subst′ eq (block-info body)
+               → Linked σ tbl (block-as-ir eq body)
+  block-linked {σ = σ} tbl eq body =
+    subst′ eq (block-info body) (block-decl body)
     where
       subst′ : ∀ {A : II.IRTy} {T B : Once.Type.Type} (e : A ≡ II.⌊ T ⌋) (si : Once.SigOp.Info.SigOpInfo T B)
-             → Linked tbl (subst (λ U → IR U II.⌊ B ⌋) (Relation.Binary.PropositionalEquality.sym e) (SigOp si))
-      subst′ refl si = tt
+             → Declared σ si → Linked σ tbl (subst (λ U → IR U II.⌊ B ⌋) (Relation.Binary.PropositionalEquality.sym e) (SigOp si))
+      subst′ refl si d = d
+      -- an arith block is the compiler's: it owes no declaration
+      block-decl : ∀ {sh n} (b : MArithIR sh n) → Declared σ (block-info b)
+      block-decl {n = NInt}   b = tt
+      block-decl {n = NFloat} b = tt
 
 private
   linked-subst : ∀ (tbl : List IRFun) {T T′ B : II.IRTy} (eq : T ≡ T′) (x : IR T B)
-               → Linked tbl x → Linked tbl (subst (λ U → IR U B) eq x)
+               → Linked σ tbl x → Linked σ tbl (subst (λ U → IR U B) eq x)
   linked-subst tbl refl x l = l
 
-  JustLinked : ∀ (tbl : List IRFun) {A B} → Maybe (IR A B × ArithBlock) → Set
-  JustLinked tbl nothing          = ⊤
-  JustLinked tbl (just (ir′ , _)) = Linked tbl ir′
+  JustLinked : ISig → ∀ (tbl : List IRFun) {A B} → Maybe (IR A B × ArithBlock) → Set
+  JustLinked σ tbl nothing          = ⊤
+  JustLinked σ tbl (just (ir′ , _)) = Linked σ tbl ir′
 
 -- A lifted subtree is a block SigOp: it calls nothing.
-try-lift-linked : ∀ (tbl : List IRFun) {A B} (ir : IR A B) → JustLinked tbl (try-lift ir)
+try-lift-linked : ∀ (tbl : List IRFun) {A B} (ir : IR A B) → JustLinked σ tbl (try-lift ir)
 try-lift-linked tbl {A} {II.Int} ir with shape-of A
 ... | nothing = tt
 ... | just (sh , eq) with recognise-body sh ir
@@ -77,7 +85,7 @@ try-lift-linked tbl {A} {II.Str}        ir = tt
 try-lift-linked tbl {A} {II.Buffer}     ir = tt
 
 -- THE PASS KEEPS A PROGRAM LINKED.
-rewrite-ir-linked : ∀ (tbl : List IRFun) {A B} (ir : IR A B) → Linked tbl ir → Linked tbl (proj₁ (rewrite-ir ir))
+rewrite-ir-linked : ∀ (tbl : List IRFun) {A B} (ir : IR A B) → Linked σ tbl ir → Linked σ tbl (proj₁ (rewrite-ir ir))
 rewrite-ir-linked tbl ir l with try-lift ir | try-lift-linked tbl ir
 ... | just (ir′ , blk) | lk = lk
 rewrite-ir-linked tbl id           l        | nothing | _ = tt
@@ -99,5 +107,5 @@ rewrite-ir-linked tbl (Out w)      l        | nothing | _ = tt
 rewrite-ir-linked tbl (in-ν w)     l        | nothing | _ = tt
 rewrite-ir-linked tbl (Ana w f)    l        | nothing | _ = rewrite-ir-linked tbl f l
 rewrite-ir-linked tbl (const p v)  l        | nothing | _ = tt
-rewrite-ir-linked tbl (SigOp si)   l        | nothing | _ = tt
+rewrite-ir-linked tbl (SigOp si)   l        | nothing | _ = l
 rewrite-ir-linked tbl (Call f)     l        | nothing | _ = l

@@ -71,9 +71,10 @@ open import Once.Denotation.DenotTrace using (evalᴰ)
 -- recursive and a parameterised module stops reducing at a variable instance.
 open import Once.Target.Arch using (TargetNum; int-bits; float-format)
 open import Once.Denotation.TraceMonad
-  using (projTrace; PrefixFamily; bnd; sat; coh; projTrace-pf; Interp)
+  using (projTrace; PrefixFamily; bnd; sat; coh; projTrace-pf; Interp; pureHalf)
 open import Once.Denotation.Program using (IRFun; irFun; fname; fdom; fcod; fbody; IRProgram; irProgram; table; main; runIR; LinkedAt; LinkedAt-at; Linked; LinkedProgram)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
+open import Once.Spec.Contract using (ISig)
 import Once.IR as I
 open import Once.IRTy using (IRTy; _≟IRTy_)
 
@@ -231,7 +232,7 @@ linkedAt-rewrite []       f A B ()
 linkedAt-rewrite (e ∷ es) f A B lk =
   linkedAt-rewrite-at e es f A B (fname e ≟cn f) (fdom e ≟IRTy A) (fcod e ≟IRTy B) lk
 
-linked-retable : ∀ (tbl : List IRFun) {A B} (ir : IR A B) → Linked tbl ir → Linked (rewrite-table tbl) ir
+linked-retable : ∀ {σ : ISig} (tbl : List IRFun) {A B} (ir : IR A B) → Linked σ tbl ir → Linked σ (rewrite-table tbl) ir
 linked-retable tbl (g I.∘ f)       (lg , lf) = linked-retable tbl g lg , linked-retable tbl f lf
 linked-retable tbl I.⟨ f , g ⟩     (lf , lg) = linked-retable tbl f lf , linked-retable tbl g lg
 linked-retable tbl (I.case f g)    (lf , lg) = linked-retable tbl f lf , linked-retable tbl g lg
@@ -251,7 +252,7 @@ linked-retable tbl (I.In _)        _ = tt
 linked-retable tbl (I.out-μ _)     _ = tt
 linked-retable tbl (I.Out _)       _ = tt
 linked-retable tbl (I.in-ν _)      _ = tt
-linked-retable tbl (I.SigOp _)     _ = tt
+linked-retable tbl (I.SigOp _)     d = d
 linked-retable tbl (I.const _ _)   _ = tt
 
 -- The compiled program is linked: `Adequacy.ProgramLinked.moduleToProgram-linked`
@@ -259,15 +260,15 @@ linked-retable tbl (I.const _ _)   _ = tt
 -- (the arith lifting keeps a body linked: PROVED, `RewriteLinked`.)
 
 -- …every entry of a table, rewritten, against the rewritten table.
-all-rewrite-linked : ∀ (tbl es : List IRFun)
-                   → All (λ e → Linked tbl (fbody e)) es
-                   → All (λ e → Linked (rewrite-table tbl) (fbody e)) (rewrite-table es)
+all-rewrite-linked : ∀ {σ : ISig} (tbl es : List IRFun)
+                   → All (λ e → Linked σ tbl (fbody e)) es
+                   → All (λ e → Linked σ (rewrite-table tbl) (fbody e)) (rewrite-table es)
 all-rewrite-linked tbl []       []         = []
 all-rewrite-linked tbl (e ∷ es) (le ∷ les) =
   rewrite-ir-linked (rewrite-table tbl) (fbody e) (linked-retable tbl (fbody e) le)
   ∷ all-rewrite-linked tbl es les
 
-rewrite-program-linked : ∀ (p : IRProgram) → LinkedProgram p → LinkedProgram (rewrite-program p)
+rewrite-program-linked : ∀ {σ : ISig} (p : IRProgram) → LinkedProgram σ p → LinkedProgram σ (rewrite-program p)
 rewrite-program-linked p (lm , les) =
   rewrite-ir-linked (rewrite-table (table p)) (main p) (linked-retable (table p) (main p) lm)
   , all-rewrite-linked (table p) (table p) les

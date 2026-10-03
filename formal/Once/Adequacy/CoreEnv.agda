@@ -44,6 +44,7 @@ open import Once.Functor.Translate using (IsConcrete; IsConcrete-irrelevant)
 open import Once.CanonicalName using (CanonicalName; canonical; own; bare; showCanonical)
 open import Once.TypeCheck.Classify using (lookupImport; lookupPolyPrefix)
 open import Once.Parser using (validIdentB; validCharsB; allIdentContinue)
+open import Once.Adequacy.EntriesValid using (dot-invalid)
 open import Once.Denotation.DefEnv using (defAt; impAt)
 open import Once.Denotation.Meaning using (DefMeanings; ImpMeanings; Meanings; meanings)
 open import Once.Denotation.GradedOps using (sigOpRefᵛ)
@@ -58,21 +59,6 @@ open import Once.Adequacy.CoreMeaningBridge fmt S using (refSem; impSem; Agree; 
 ------------------------------------------------------------------------
 -- Names that are not identifiers
 ------------------------------------------------------------------------
-
-private
-  cont-dot : ∀ (cs ds : List Char) → allIdentContinue (cs ++ '.' ∷ ds) ≡ false
-  cont-dot []       ds = refl
-  cont-dot (c ∷ cs) ds = trans (cong (_ ∧_) (cont-dot cs ds)) (∧-zeroʳ _)
-
-  chars-dot : ∀ (cs ds : List Char) → validCharsB (cs ++ '.' ∷ ds) ≡ false
-  chars-dot []       ds = refl
-  chars-dot (c ∷ cs) ds = trans (cong (_ ∧_) (cont-dot cs ds)) (∧-zeroʳ _)
-
--- A dotted name is not an identifier.
-dot-invalid : ∀ (a b : String) → validIdentB (a ++ˢ "." ++ˢ b) ≡ false
-dot-invalid a b =
-  trans (cong validCharsB (trans (toList-++ a ("." ++ˢ b)) (cong (toList a ++_) (toList-++ "." b))))
-        (chars-dot (toList a) (toList b))
 
 -- Nor is a canonical name that is not an own-module entry's.
 notOwn-invalid : ∀ (cn : CanonicalName) → NotOwn cn → validIdentB (showCanonical cn) ≡ false
