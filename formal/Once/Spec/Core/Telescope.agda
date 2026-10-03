@@ -39,9 +39,9 @@ open import Once.Denotation.GradedDomain using (⟦_⟧ᵛ)
 -- Telescopes
 ------------------------------------------------------------------------
 
-data Tele : ∀ {s} → Sig s → Set where
-  []  : ∀ {Σ} → Tele ([] Σ)
-  def : ∀ {s} {S : Sig s} → Tele S
+data Tele : ∀ {Fs s} → Sig Fs s → Set where
+  []  : ∀ {Fs} → Tele ([] {Fs})
+  def : ∀ {Fs s} {S : Sig Fs s} → Tele S
       → (sc : Schema) (body : PT.PTm S (arity sc) 0)
       → PT._⊩_⊢[_]_∷_!_ S (kinds sc) PT.∅ Usage.[] body (type sc) T.pure
       → Tele (S ▷ sc)
@@ -53,8 +53,8 @@ data Tele : ∀ {s} → Sig s → Set where
 -- Plan 0.105 (D257 amendment 2): over an implementation `I` of the
 -- interpretation signatures the program is compiled against, which every
 -- prefix shares (a definition may reference a declared value).
-teleSem  : ∀ {s} {S : Sig s} → TargetNum → Impl (sigOf S) → Tele S → GM.DefSem S
-teleDefs : ∀ {s} {S : Sig s} → TargetNum → Impl (sigOf S) → (tl : Tele S) → (d : Fin s) (τ : GSub (arity (S !! d)))
+teleSem  : ∀ {Fs s} {S : Sig Fs s} → TargetNum → Impl (sigOf S) → Tele S → GM.DefSem S
+teleDefs : ∀ {Fs s} {S : Sig Fs s} → TargetNum → Impl (sigOf S) → (tl : Tele S) → (d : Fin s) (τ : GSub (arity (S !! d)))
          → Respects (kinds (S !! d)) τ → ⟦ type (S !! d) ⟪ τ ⟫ ⟧ᵛ
 teleDefs fmt φ (def tl sc body D) zero τ r =
   GM.⟦_⟧ _ (PT.instantiate _ τ r D) fmt (teleSem fmt φ tl) tt
@@ -75,12 +75,13 @@ noVars ()
 noKinds : KCtx 0
 noKinds ()
 
--- D253: `main` is an entry like any other; a program names it.
-record Program : Set where
+-- D253: `main` is an entry like any other; a program names it. Plan 0.105:
+-- over the interpretation signatures it is compiled against (`Fs`).
+record Program (Fs : ISig) : Set where
   constructor program
   field
     {size} : ℕ
-    {sig}  : Sig size
+    {sig}  : Sig Fs size
     defs   : Tele sig
     main   : Fin size
     mainTy : sig !! main ≡ schema 0 noKinds IOUnit
@@ -95,15 +96,11 @@ noResp ()
 runEntry : (sc : Schema) → sc ≡ schema 0 noKinds IOUnit → EntrySem sc → T ⊤
 runEntry sc e f = subst EntrySem e f noVars noResp tt
 
--- The interpretation signatures a program is compiled against.
-progSig : Program → ISig
-progSig p = sigOf (Program.sig p)
-
 -- THE CORE MEANING OF A PROGRAM: run its `main` entry (D250: an entry denotes a
 -- VALUE, here the suspension `Unit ⇒[eff] Unit`) in the telescope's
 -- environment, RELATIVE TO AN IMPLEMENTATION `I` of the signatures it is
 -- compiled against (plan 0.105, D061's three times: its author discharges `I`
 -- off-line), and read the first `n` events of that run.
-runProgram : TargetNum → (p : Program) → Impl (progSig p) → ℕ → Data.List.List SigOpEvent
-runProgram fmt (program {sig = S} defs d e) I n =
-  projTrace (interp (sigOf S) I) (runEntry (S !! d) e (GM.defs (teleSem fmt I defs) d)) n
+runProgram : ∀ {Fs} → TargetNum → Program Fs → Impl Fs → ℕ → Data.List.List SigOpEvent
+runProgram {Fs} fmt (program {sig = S} defs d e) I n =
+  projTrace (interp Fs I) (runEntry (S !! d) e (GM.defs (teleSem fmt I defs) d)) n

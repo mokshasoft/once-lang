@@ -20,7 +20,8 @@
 open import Data.Nat using (ℕ)
 open import Once.Spec.Core.PolyTy using (Sig)
 
-module Once.Spec.Core.Abstract {s : ℕ} (S : Sig s) where
+open import Once.Spec.Contract using (ISig)
+module Once.Spec.Core.Abstract {Fs : ISig} {s : ℕ} (S : Sig Fs s) where
 
 open import Data.Nat using (zero; suc; _<?_)
 open import Data.Fin using (Fin; zero; suc; fromℕ<)

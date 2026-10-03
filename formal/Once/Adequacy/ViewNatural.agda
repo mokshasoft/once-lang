@@ -10,7 +10,8 @@
 open import Data.Nat using (ℕ)
 open import Once.Spec.Core.PolyTy using (Sig)
 
-module Once.Adequacy.ViewNatural {s : ℕ} (S : Sig s) where
+open import Once.Spec.Contract using (ISig)
+module Once.Adequacy.ViewNatural {Fs : ISig} {s : ℕ} (S : Sig Fs s) where
 
 open import Data.Product using (_,_; proj₁; proj₂)
 open import Data.Unit using (⊤)
@@ -26,8 +27,8 @@ open import Once.Spec.Elaboration S using (View; ImportAt; ffi; def)
 
 module _ {m} (Δ : KCtx m) (τ : GSub m) (r : Respects Δ τ) where
   -- An imported definition is used at a ground instance, so it is fixed.
-  NatImp : ∀ {T} → ImportAt T → Set
-  NatImp (ffi _ _) = ⊤
+  NatImp : ∀ {x T} → ImportAt x T → Set
+  NatImp (ffi _ _ _) = ⊤
   NatImp (def d i) = (λ j → RS.ρ̂ Δ τ r (proj₁ i j)) ≡ proj₁ i
 
   record Natural {imps : Imports} {polys : PolyCtx} (V : View imps polys) : Set where

@@ -35,7 +35,8 @@ open import Once.Spec.Core.PolyTy using (Sig; _!!_; arity; GSub)
 
 -- Plan 0.103 phase 4: the core is relative to a DEFINITIONS SIGNATURE `S` —
 -- the schemas of the telescope's earlier definitions.
-module Once.Spec.Core.Syntax {s : ℕ} (S : Sig s) where
+open import Once.Spec.Contract using (ISig)
+module Once.Spec.Core.Syntax {Fs : ISig} {s : ℕ} (S : Sig Fs s) where
 
 open import Data.Nat using (ℕ; suc)
 open import Data.Fin using (Fin; zero; suc)

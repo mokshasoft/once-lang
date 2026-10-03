@@ -17,7 +17,8 @@
 open import Data.Nat using (ℕ)
 open import Once.Spec.Core.PolyTy using (Sig)
 
-module Once.Adequacy.ElabInst {s : ℕ} (S : Sig s) where
+open import Once.Spec.Contract using (ISig)
+module Once.Adequacy.ElabInst {Fs : ISig} {s : ℕ} (S : Sig Fs s) where
 
 open import Data.Product using (Σ-syntax; _×_; _,_; proj₁; proj₂)
 open import Data.List using (_∷_)
@@ -143,10 +144,10 @@ module _ {m} (Δ : KCtx m) (τ : GSub m) (r : Respects Δ τ) where
     nat-imp′ : ∀ {imps} (is : ImpSig S imps) {x T} (lk : Once.TypeCheck.Classify.lookupImport imps x ≡ Data.Maybe.just T)
              → NatImp Δ τ r (TR.impAt is lk)
     nat-imp′ TR.[] ()
-    nat-imp′ {(n , T₀) ∷ rest} (i-ffi c h g is) {x} lk with StrProp._≟_ n x
-    ... | yes _ with just-injective lk
+    nat-imp′ {(n , T₀) ∷ rest} (i-ffi c h g m is) {x} lk with StrProp._≟_ n x
+    ... | yes refl with just-injective lk
     ...   | refl = tt
-    nat-imp′ {(n , T₀) ∷ rest} (i-ffi c h g is) {x} lk | no _ = nat-imp′ is lk
+    nat-imp′ {(n , T₀) ∷ rest} (i-ffi c h g m is) {x} lk | no _ = nat-imp′ is lk
     nat-imp′ {(n , T₀) ∷ rest} (i-def d e is) {x} lk with StrProp._≟_ n x
     ... | yes _ with just-injective lk
     ...   | refl = subst-fix e _ (extensionality (λ ()))

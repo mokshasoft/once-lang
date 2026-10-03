@@ -22,7 +22,8 @@ open import Once.Spec.Core.PolyTy using (Sig; sigOf)
 open import Once.Denotation.TraceMonad using (interp)
 open import Data.List.Membership.Propositional using (_∈_)
 
-module Once.Adequacy.CoreEnv (fmt : TargetNum) {s : ℕ} (S : Sig s) where
+open import Once.Spec.Contract using (ISig)
+module Once.Adequacy.CoreEnv (fmt : TargetNum) {Fs : ISig} {s : ℕ} (S : Sig Fs s) where
 
 open import Data.Bool using (Bool; true; false; _∧_)
 open import Data.Bool.Properties using (∧-zeroʳ)

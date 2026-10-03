@@ -15,7 +15,8 @@
 open import Data.Nat using (ℕ)
 open import Once.Spec.Core.PolyTy using (Sig; KCtx; GSub; Respects)
 
-module Once.Adequacy.CoreInst {s : ℕ} (S : Sig s) {m : ℕ} (Δ : KCtx m) (τ : GSub m) (r : Respects Δ τ) where
+open import Once.Spec.Contract using (ISig)
+module Once.Adequacy.CoreInst {Fs : ISig} {s : ℕ} (S : Sig Fs s) {m : ℕ} (Δ : KCtx m) (τ : GSub m) (r : Respects Δ τ) where
 
 open import Data.Product using (_,_; proj₁; proj₂)
 open import Relation.Binary.HeterogeneousEquality as H using (_≅_; ≡-subst-removable)

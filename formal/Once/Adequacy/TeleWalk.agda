@@ -25,11 +25,16 @@
 
 open import Once.Target.Arch using (TargetNum)
 
-open import Once.Denotation.TraceMonad using (Interp; pureHalf)
+open import Once.Denotation.TraceMonad using (Interp; pureHalf; interp)
+open import Once.Spec.Contract using (ISig; Impl)
 
 -- Plan 0.105: at an interpretation `ι` — the meaning and the compiled program
 -- run against the same one.
-module Once.Adequacy.TeleWalk (fmt : TargetNum) (ι : Interp) where
+module Once.Adequacy.TeleWalk (fmt : TargetNum) (Fs : ISig) (Ip : Impl Fs) where
+
+-- The world: the program's signatures with the implementation `Ip`.
+ι : Interp
+ι = interp Fs Ip
 
 open import Data.Nat using (ℕ)
 open import Data.Fin using (zero; suc)
@@ -100,7 +105,7 @@ open import Once.Adequacy.GradedRelation fmt using (RelGT; RelGM; RelGT-bind)
 open import Once.Denotation.TraceMonad using (T; projTrace)
 open import Once.Adequacy.TeleEnvLemmas fmt φ using (σW; callSD-later; refs-skip; refs-head; spliceClosed; RefsAgree; envrel-transport;
   imprel-transport; calls-same)
-import Once.Adequacy.TeleEntry fmt φ as TE
+import Once.Adequacy.TeleEntry fmt ι as TE
 
 import Once.Adequacy.ElabInst as EI
 open import Once.Type.Rigid using (RigidFree)
@@ -127,7 +132,7 @@ open import Once.Denotation.TraceMonad using (RelT′-events)
 open import Once.Denotation.Program using (tableCalls)
 open import Data.List using (take)
 
-open import Once.Adequacy.TeleWalk.Invariant fmt ι hiding (φ)
+open import Once.Adequacy.TeleWalk.Invariant fmt Fs Ip hiding (φ; ι)
 
 ------------------------------------------------------------------------
 -- `main` (D253): an entry like any other. The compiled program runs the CALL
@@ -163,10 +168,10 @@ private
       un (_ ∷ es) ((h ∷ []) ∷ hs) = h ∷ un es hs
 
 -- The entries after `main` extend the telescope; the program still names `main`.
-from-sem : ∀ {s} {S : Sig s} {sc es} (tl : Tele S) (is : ImpSig S (Once.Spec.Module.Scope.imps sc))
+from-sem : ∀ {s} {S : Sig Fs s} {sc es} (tl : Tele S) (is : ImpSig S (Once.Spec.Module.Scope.imps sc))
              (ts : TeleSig S (Once.Spec.Module.Scope.tele sc)) (sg : SigCF S)
              (d : Data.Fin.Fin s) (e : S Once.Spec.Core.PolyTy.!! d ≡ monoSchema EffUU) (rest : ModTele sc es) (n : ℕ)
-         → runProgram fmt ι (TR.toProgramFrom tl is ts sg d e rest) n ≡ runProgram fmt ι (program tl d e) n
+         → runProgram fmt (TR.toProgramFrom tl is ts sg d e rest) Ip n ≡ runProgram fmt (program tl d e) Ip n
 from-sem tl is ts sg d e [] n = refl
 from-sem tl is ts sg d e (ffi _ _ c h g rest) n = from-sem tl (i-ffi c h g is) ts sg d e rest n
 from-sem {S = S} {sc} tl is ts sg d e (poly {pfi = pfi} {Ψ = Ψ} D rest) n =
@@ -174,7 +179,7 @@ from-sem {S = S} {sc} tl is ts sg d e (poly {pfi = pfi} {Ψ = Ψ} D rest) n =
 from-sem {S = S} {sc} tl is ts sg d e (mono {fi = fi} {ty = ty} {Ψ = Ψ} ep er g D rest) n =
   from-sem (TR.monoDef {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl is ts sg g D) (i-def zero refl (wkI is)) (wkT ts) (monoSg sg g) (suc d) e rest n
 
-here-main : ∀ {s} {S : Sig s} {csc tl is ts pre} (sg : SigCF S) {ft bd} (g : RigidFree EffUU)
+here-main : ∀ {s} {S : Sig Fs s} {csc tl is ts pre} (sg : SigCF S) {ft bd} (g : RigidFree EffUU)
               (D : ctxOf (AS.scopeOf csc) ⊢ᶜ bd ∶ EffUU ⨾ Ctx.Usage.[]) {irFun : IR ⌊ Once.Type.Unit ⌋ ⌊ EffUU ⌋}
               (cf : C.compileFun C.Heap false (C.CScope.cimps csc) (C.cpolys csc) (C.declImps (C.CScope.ctele csc))
                       "main" EffUU bd ≡ Data.Sum.inj₂ irFun)
@@ -182,8 +187,8 @@ here-main : ∀ {s} {S : Sig s} {csc tl is ts pre} (sg : SigCF S) {ft bd} (g : R
               (rest-b : FB.FunBundle (C.extendScope csc "main" EffUU) es)
           → Inv {S = S} csc tl is ts pre → All ("main" ≢_) (map entryName es)
           → ∀ n → RunAt (tableOf-go (FB.bundle→compiled rest-b) (irFunOf (C.mkCompiledFun (bare "main") EffUU irFun false) ∷ pre)) n
-                ≡ runProgram fmt ι (monoHere {S = S} {sc = AS.scopeOf csc} {fi = C.mkFunInfo "main" ft bd false} {ty = EffUU}
-                                    {Ψ = Ctx.Usage.[]} tl is ts sg g D rest refl) n
+                ≡ runProgram fmt (monoHere {S = S} {sc = AS.scopeOf csc} {fi = C.mkFunInfo "main" ft bd false} {ty = EffUU}
+                                    {Ψ = Ctx.Usage.[]} tl is ts sg g D rest refl) Ip n
 here-main {S = S} {csc} {tl} {is} {ts} {pre} sg {ft} {bd} g D {irFun} cf {es} rest rest-b inv hs n =
   -- Plan 0.105: related computations make the same calls under any
   -- interpretation (`RelT′-events`), so their first `n` events agree.
@@ -209,9 +214,9 @@ here-main {S = S} {csc} {tl} {is} {ts} {pre} sg {ft} {bd} g D {irFun} cf {es} re
 
 mutual
   walk : ∀ {csc es} (mt : ModTele (AS.scopeOf csc) es) (b : FB.FunBundle csc es) (mi : MainIn mt)
-           {s} {S : Sig s} (tl : Tele S) (is : ImpSig S (C.CScope.cimps csc)) (ts : TeleSig S (C.telePolys (C.CScope.ctele csc)))
+           {s} {S : Sig Fs s} (tl : Tele S) (is : ImpSig S (C.CScope.cimps csc)) (ts : TeleSig S (C.telePolys (C.CScope.ctele csc)))
            (sg : SigCF S) (pre : List IRFun) → Inv csc tl is ts pre → Fresh csc es → All MonoValid es
-       → ∀ n → RunAt (tableOf-go (FB.bundle→compiled b) pre) n ≡ runProgram fmt ι (toProgram tl is ts sg mt mi) n
+       → ∀ n → RunAt (tableOf-go (FB.bundle→compiled b) pre) n ≡ runProgram fmt (toProgram tl is ts sg mt mi) Ip n
   walk [] FB.bnil () tl is ts sg pre inv fr vd n
   walk {csc} {C.e-fun fi ∷ es} (ffi {fi = fi} {ty = ty} ep et c h g rest) (FB.bffi {ty = ty′} {c = c′} ep′ et′ ec eh eg rest-b) mi tl is ts sg pre inv fr (_ ∷ vd) n
     with just-injective (trans (sym et) et′)
@@ -235,11 +240,11 @@ mutual
                                 x ty bd ≡ Data.Sum.inj₂ irFun)
                 (rest-b : FB.FunBundle (C.extendScope csc x ty) es)
                 (mi : ((x ≡ "main") × (ty ≡ EffUU)) ⊎ MainIn rest)
-                {s} {S : Sig s} (tl : Tele S) (is : ImpSig S (C.CScope.cimps csc)) (ts : TeleSig S (C.telePolys (C.CScope.ctele csc)))
+                {s} {S : Sig Fs s} (tl : Tele S) (is : ImpSig S (C.CScope.cimps csc)) (ts : TeleSig S (C.telePolys (C.CScope.ctele csc)))
                 (sg : SigCF S) (pre : List IRFun) → Inv csc tl is ts pre → Fresh csc (C.e-fun (C.mkFunInfo x ft bd false) ∷ es)
             → validIdentB x ≡ true → All MonoValid es
             → ∀ n → RunAt (tableOf-go (FB.bundle→compiled rest-b) (irFunOf (C.mkCompiledFun (bare x) ty irFun false) ∷ pre)) n
-                  ≡ runProgram fmt ι (toProgram tl is ts sg (mono {fi = C.mkFunInfo x ft bd false} {Ψ = Ctx.Usage.[]} refl er g D rest) mi) n
+                  ≡ runProgram fmt (toProgram tl is ts sg (mono {fi = C.mkFunInfo x ft bd false} {Ψ = Ctx.Usage.[]} refl er g D rest) mi) Ip n
   walk-mono {csc} {es} {ft = ft} {bd} er g D rest cf rest-b (inj₁ (refl , refl)) {S = S} tl is ts sg pre inv ((hd ∷ _) , _) vx vd n =
     here-main {S = S} {csc} {tl} {is} {ts} {pre} sg {ft} {bd} g D cf {es} rest rest-b inv hd n
   walk-mono {x = x} {ty = ty} er g D rest cf rest-b (inj₂ mi′) tl is ts sg pre inv fr vx vd n =
@@ -252,13 +257,13 @@ mutual
                                 x ty bd ≡ Data.Sum.inj₂ irFun)
                 (rest-b : FB.FunBundle (C.extendScope csc x ty) es)
                 (mi′ : MainIn rest)
-                {s} {S : Sig s} (tl : Tele S) (is : ImpSig S (C.CScope.cimps csc)) (ts : TeleSig S (C.telePolys (C.CScope.ctele csc)))
+                {s} {S : Sig Fs s} (tl : Tele S) (is : ImpSig S (C.CScope.cimps csc)) (ts : TeleSig S (C.telePolys (C.CScope.ctele csc)))
                 (sg : SigCF S) (pre : List IRFun) → Inv csc tl is ts pre → Fresh csc (C.e-fun (C.mkFunInfo x ft bd false) ∷ es)
               → validIdentB x ≡ true → All MonoValid es
               → (nd : Dec (x ≡ "main")) (td : Dec (ty ≡ EffUU))
               → ∀ n → RunAt (tableOf-go (FB.bundle→compiled rest-b) (irFunOf (C.mkCompiledFun (bare x) ty irFun false) ∷ pre)) n
-                    ≡ runProgram fmt ι (Once.Spec.Core.Translate.monoDispatch {S = S} {sc = AS.scopeOf csc} {fi = C.mkFunInfo x ft bd false}
-                                        {ty = ty} {Ψ = Ctx.Usage.[]} tl is ts sg g D rest mi′ nd td) n
+                    ≡ runProgram fmt (Once.Spec.Core.Translate.monoDispatch {S = S} {sc = AS.scopeOf csc} {fi = C.mkFunInfo x ft bd false}
+                                        {ty = ty} {Ψ = Ctx.Usage.[]} tl is ts sg g D rest mi′ nd td) Ip n
   -- `main`, found by the dispatch
   walk-mono-d {csc} {es} {ft = ft} {bd} er g D rest cf rest-b mi′ {S = S} tl is ts sg pre inv ((hd ∷ _) , _) vx vd (yes refl) (yes refl) n =
     here-main {S = S} {csc} {tl} {is} {ts} {pre} sg {ft} {bd} g D cf {es} rest rest-b inv hd n

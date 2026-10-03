@@ -21,7 +21,8 @@
 open import Data.Nat using (ℕ)
 open import Once.Spec.Core.PolyTy using (Sig; sigOf; _!!_; arity; kinds; type; Respects; _⟪_⟫; GSub)
 
-module Once.Spec.Core.Meaning {s : ℕ} (S : Sig s) where
+open import Once.Spec.Contract using (ISig)
+module Once.Spec.Core.Meaning {Fs : ISig} {s : ℕ} (S : Sig Fs s) where
 
 open import Data.Fin using (Fin)
 open import Data.Product using (_,_; proj₁; proj₂)

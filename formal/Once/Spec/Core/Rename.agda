@@ -12,7 +12,8 @@
 open import Data.Nat using (ℕ)
 open import Once.Spec.Core.PolyTy using (Sig)
 
-module Once.Spec.Core.Rename {s : ℕ} (S : Sig s) where
+open import Once.Spec.Contract using (ISig)
+module Once.Spec.Core.Rename {Fs : ISig} {s : ℕ} (S : Sig Fs s) where
 
 open import Data.Nat using (suc)
 open import Data.Fin using (Fin; zero; suc)

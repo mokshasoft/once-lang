@@ -21,9 +21,12 @@ import Once.TypeCheck.RigidSubst as RSm
 import Once.Adequacy.ViewNatural as VN
 open import Once.TypeCheck.Classify using (Imports; PolyCtx)
 
-module Once.Adequacy.ElabCommute {s : ℕ} (S : Sig s) {m : ℕ} (Δ : KCtx m) (τ : GSub m) (r : Respects Δ τ)
+open import Once.Spec.Contract using (ISig)
+module Once.Adequacy.ElabCommute {Fs : ISig} {s : ℕ} (S : Sig Fs s) {m : ℕ} (Δ : KCtx m) (τ : GSub m) (r : Respects Δ τ)
   (sg : Abs.SigGround S) {imps : Imports} {polys : PolyCtx} (V : El.View S imps polys)
   (nat : VN.Natural S Δ τ r V) (ir : RSm.ImportsRF Δ τ r imps) where
+
+import Once.CanonicalName
 
 open import Data.Nat using (suc)
 open import Data.Fin using (Fin; zero; suc)
@@ -91,14 +94,14 @@ private
 
   -- An import's reference: an FFI contract is ground; a definition at its
   -- ground instance is fixed.
-  imp-tm : ∀ {n} {Γ : C.Ctx n} {T} cn k (ia : ImportAt T) → VN.NatImp S Δ τ r ia
+  imp-tm : ∀ {n} {Γ : C.Ctx n} {T} (cn : Once.CanonicalName.CanonicalName) k (ia : ImportAt (Once.CanonicalName.showCanonical cn) T) → VN.NatImp S Δ τ r ia
          → proj₁ (importE {Γ = ρ̂S Γ} cn k ia) ≡ ρ̂ₜ (proj₁ (importE {Γ = Γ} cn k ia))
-  imp-tm cn k (ffi h g) _  = refl
+  imp-tm cn k (ffi h g m) _  = refl
   imp-tm cn k (def d i) ni = cong (G.ref d) (sym ni)
 
-  imp-dr : ∀ {n} {Γ : C.Ctx n} {T} cn k (ia : ImportAt T) → VN.NatImp S Δ τ r ia
+  imp-dr : ∀ {n} {Γ : C.Ctx n} {T} (cn : Once.CanonicalName.CanonicalName) k (ia : ImportAt (Once.CanonicalName.showCanonical cn) T) → VN.NatImp S Δ τ r ia
          → proj₂ (importE {Γ = ρ̂S Γ} cn k ia) ≅ ρ̂ᶜ (proj₂ (importE {Γ = Γ} cn k ia))
-  imp-dr cn k (ffi h g) _  = H.sym (rmA (λ X → X) (sym (ρ̂-rf g)))
+  imp-dr cn k (ffi h g m) _  = H.sym (rmA (λ X → X) (sym (ρ̂-rf g)))
   imp-dr {Γ = Γ} cn k (def d (τ′ , r′ , e′)) ni =
     H.trans (rmA (λ X → X) e′)
       (H.trans (≅ref (sym ni)) (H.sym (H.trans (ρ̂ᶜ-sA (λ X → X) e′) (rmA (λ X → X) (sym (ρ̂-ref d τ′))))))

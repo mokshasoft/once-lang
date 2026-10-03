@@ -41,11 +41,11 @@ open import Once.IRTy using (⌊_⌋)
 open import Once.Type using (Unit)
 import Once.Compile as C
 import Once.Parser.Module.Core as P
-open import Once.Spec.Module using (ModuleTyped; ModuleTyped-ef; HasValidMain; HasValidMain-ef; moduleSig; moduleSig-ef; teleSig≡entrySig)
-open import Once.Spec.Contract using (Impl)
+open import Once.Spec.Module using (ModuleTyped; ModuleTyped-ef; HasValidMain; HasValidMain-ef; moduleSig; moduleSig-ef; teleSig; teleSig≡entrySig)
+open import Once.Spec.Contract using (ISig; Impl)
 open import Once.Denotation.TraceMonad using (interp)
 open import Once.Spec.Program using (Typed)
-open import Once.Spec.Core.Telescope using (Program; program; runProgram; progSig; IOUnit; noVars)
+open import Once.Spec.Core.Telescope using (Program; program; runProgram; IOUnit; noVars)
 open import Once.Spec.Core.Translate using (toProgram)
 import Once.Spec.Core.Translate as TR
 import Once.Spec.Core.Telescope as Tele
@@ -86,24 +86,32 @@ open import Relation.Binary.PropositionalEquality using (_≢_; refl; sym; trans
 -- The typed module as a core program (6c).
 ------------------------------------------------------------------------
 
-typedProgram-ef : ∀ (m : P.Module) ef (mt : ModuleTyped-ef m ef) → HasValidMain-ef m ef mt → Program
+-- The interpretation signatures the core program is compiled against: the
+-- module's FFI declarations, as its typing fixes them.
+typedSig-ef : ∀ (m : P.Module) ef (mt : ModuleTyped-ef m ef) → ISig
+typedSig-ef m (inj₁ _)  ()
+typedSig-ef m (inj₂ es) mt = teleSig mt
+
+typedSig : Typed → ISig
+typedSig (m , mt , hvm) = typedSig-ef m (C.extractFunctions (C.extractAliases m) m) mt
+
+typedProgram-ef : ∀ (m : P.Module) ef (mt : ModuleTyped-ef m ef) → HasValidMain-ef m ef mt → Program (typedSig-ef m ef mt)
 typedProgram-ef m (inj₁ _)  () _
 typedProgram-ef m (inj₂ es) mt (_ , mi) = TR.toProgram₀ mt mi
 
-typedProgram : Typed → Program
+typedProgram : (tp : Typed) → Program (typedSig tp)
 typedProgram (m , mt , hvm) = typedProgram-ef m (C.extractFunctions (C.extractAliases m) m) mt hvm
 
--- The core program is compiled against the module's signatures.
-typed-sig-ef : ∀ (m : P.Module) ef (mt : ModuleTyped-ef m ef) (hvm : HasValidMain-ef m ef mt)
-             → progSig (typedProgram-ef m ef mt hvm) ≡ moduleSig-ef ef
-typed-sig-ef m (inj₁ _)  () _
-typed-sig-ef m (inj₂ es) mt (_ , mi) = trans (TR.toProgram₀-sig mt mi) (teleSig≡entrySig mt)
+-- …which are the module's signatures, read off its entries.
+typed-sig-ef : ∀ (m : P.Module) ef (mt : ModuleTyped-ef m ef) → typedSig-ef m ef mt ≡ moduleSig-ef ef
+typed-sig-ef m (inj₁ _)  ()
+typed-sig-ef m (inj₂ es) mt = teleSig≡entrySig mt
 
-typed-sig : ∀ (tp : Typed) → progSig (typedProgram tp) ≡ moduleSig (proj₁ tp)
-typed-sig (m , mt , hvm) = typed-sig-ef m (C.extractFunctions (C.extractAliases m) m) mt hvm
+typed-sig : ∀ (tp : Typed) → typedSig tp ≡ moduleSig (proj₁ tp)
+typed-sig (m , mt , hvm) = typed-sig-ef m (C.extractFunctions (C.extractAliases m) m) mt
 
 -- An implementation of the module's signatures implements the core program's.
-implFor : ∀ (tp : Typed) → Impl (moduleSig (proj₁ tp)) → Impl (progSig (typedProgram tp))
+implFor : ∀ (tp : Typed) → Impl (moduleSig (proj₁ tp)) → Impl (typedSig tp)
 implFor tp I = subst Impl (sym (typed-sig tp)) I
 
 private

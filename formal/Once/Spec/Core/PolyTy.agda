@@ -300,20 +300,21 @@ record Schema : Set where
     type  : Ty arity
 open Schema public
 
--- Plan 0.105 (D257 amendment 2): its BASE is the interpretation signatures the
--- program is compiled against (`ISig`): an FFI reference is a constant of
--- them, typed like a variable (`⊢sigop`). They are fixed for the whole module
--- — a body may name any of them — so they sit under every definition.
-data Sig : ℕ → Set where
-  []  : ISig → Sig 0
-  _▷_ : ∀ {s} → Sig s → Schema → Sig (suc s)
+-- Plan 0.105 (D257 amendment 2): it is indexed by the interpretation signatures
+-- the program is compiled against (`Fs`): an FFI reference is a constant of
+-- them, typed like a variable (`⊢sigop`). They are the CONTEXT of the
+-- definitions — fixed for the whole module, a body may name any of them — so
+-- they are the datatype's parameter, and every signature of one module's walk
+-- shares them by type.
+data Sig (Fs : ISig) : ℕ → Set where
+  []  : Sig Fs 0
+  _▷_ : ∀ {s} → Sig Fs s → Schema → Sig Fs (suc s)
 
 infixl 5 _▷_
 
-sigOf : ∀ {s} → Sig s → ISig
-sigOf ([] Σ)  = Σ
-sigOf (S ▷ _) = sigOf S
+sigOf : ∀ {Fs s} → Sig Fs s → ISig
+sigOf {Fs} _ = Fs
 
-_!!_ : ∀ {s} → Sig s → Fin s → Schema
+_!!_ : ∀ {Fs s} → Sig Fs s → Fin s → Schema
 (S ▷ sc) !! zero  = sc
 (S ▷ sc) !! suc d = S !! d

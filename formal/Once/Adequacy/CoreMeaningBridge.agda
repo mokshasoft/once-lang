@@ -20,7 +20,8 @@ open import Once.Target.Arch using (TargetNum)
 open import Data.Nat using (ℕ)
 open import Once.Spec.Core.PolyTy using (Sig; sigOf; _!!_; arity; kinds; type; Respects; _⟪_⟫; GSub)
 
-module Once.Adequacy.CoreMeaningBridge (fmt : TargetNum) {s : ℕ} (S : Sig s) where
+open import Once.Spec.Contract using (ISig)
+module Once.Adequacy.CoreMeaningBridge (fmt : TargetNum) {Fs : ISig} {s : ℕ} (S : Sig Fs s) where
 
 open import Data.Fin using (Fin)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; Σ-syntax)

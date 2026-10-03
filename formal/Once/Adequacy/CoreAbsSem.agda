@@ -21,7 +21,8 @@
 open import Data.Nat using (ℕ)
 open import Once.Spec.Core.PolyTy using (Sig)
 
-module Once.Adequacy.CoreAbsSem {s : ℕ} (S : Sig s) where
+open import Once.Spec.Contract using (ISig)
+module Once.Adequacy.CoreAbsSem {Fs : ISig} {s : ℕ} (S : Sig Fs s) where
 
 open import Data.Nat using (zero; suc; _<?_)
 import Data.Nat
@@ -218,7 +219,7 @@ module _ {n : ℕ} {Γ' Γ : C.Ctx n} where
           → tr eΓ et eA (GT.⊢prim p d) ≡ GT.⊢prim p (tr eΓ ed refl d)
   tr-prim {eΓ = refl} {refl} {refl} refl d = refl
 
-  tr-sigop : ∀ {A c k h g} {eΓ : Γ' ≡ Γ} {et : G.sigop c A ≡ G.sigop c A} {eA : A ≡ A}
+  tr-sigop : ∀ {A c k h g m} {eΓ : Γ' ≡ Γ} {et : G.sigop c A ≡ G.sigop c A} {eA : A ≡ A}
            → tr eΓ et eA (GT.⊢sigop c k h g m) ≡ GT.⊢sigop c k h g m
   tr-sigop {eΓ = refl} {refl} {refl} = refl
 
