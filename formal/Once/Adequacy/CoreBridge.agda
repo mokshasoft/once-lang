@@ -25,7 +25,9 @@ open import Once.Target.Arch using (TargetNum)
 open import Once.Denotation.TraceMonad using (Interp; pureHalf)
 
 -- Plan 0.105: at an interpretation `ι`.
-module Once.Adequacy.CoreBridge (fmt : TargetNum) (ι : Interp) where
+-- Plan 0.105 (D257, D061): no fixed world — a typed module's meaning is
+-- relative to an implementation of the signatures it is compiled against.
+module Once.Adequacy.CoreBridge (fmt : TargetNum) where
 
 open import Data.Nat using (ℕ)
 open import Data.Fin using (Fin)
@@ -39,9 +41,11 @@ open import Once.IRTy using (⌊_⌋)
 open import Once.Type using (Unit)
 import Once.Compile as C
 import Once.Parser.Module.Core as P
-open import Once.Spec.Module using (ModuleTyped; ModuleTyped-ef; HasValidMain; HasValidMain-ef)
+open import Once.Spec.Module using (ModuleTyped; ModuleTyped-ef; HasValidMain; HasValidMain-ef; moduleSig; moduleSig-ef; teleSig≡entrySig)
+open import Once.Spec.Contract using (Impl)
+open import Once.Denotation.TraceMonad using (interp)
 open import Once.Spec.Program using (Typed)
-open import Once.Spec.Core.Telescope using (Program; program; runProgram; IOUnit; noVars)
+open import Once.Spec.Core.Telescope using (Program; program; runProgram; progSig; IOUnit; noVars)
 open import Once.Spec.Core.Translate using (toProgram)
 import Once.Spec.Core.Translate as TR
 import Once.Spec.Core.Telescope as Tele
@@ -76,7 +80,7 @@ open import Data.Bool using (true; false)
 import Once.Parser
 open import Function using (case_of_)
 import Once.Adequacy.NameClash as NC
-open import Relation.Binary.PropositionalEquality using (_≢_; refl; sym; trans; cong; cong₂)
+open import Relation.Binary.PropositionalEquality using (_≢_; refl; sym; trans; cong; cong₂; subst)
 
 ------------------------------------------------------------------------
 -- The typed module as a core program (6c).
@@ -84,10 +88,23 @@ open import Relation.Binary.PropositionalEquality using (_≢_; refl; sym; trans
 
 typedProgram-ef : ∀ (m : P.Module) ef (mt : ModuleTyped-ef m ef) → HasValidMain-ef m ef mt → Program
 typedProgram-ef m (inj₁ _)  () _
-typedProgram-ef m (inj₂ es) mt (_ , mi) = toProgram Tele.[] TR.[] TR.[] (λ ()) mt mi
+typedProgram-ef m (inj₂ es) mt (_ , mi) = TR.toProgram₀ mt mi
 
 typedProgram : Typed → Program
 typedProgram (m , mt , hvm) = typedProgram-ef m (C.extractFunctions (C.extractAliases m) m) mt hvm
+
+-- The core program is compiled against the module's signatures.
+typed-sig-ef : ∀ (m : P.Module) ef (mt : ModuleTyped-ef m ef) (hvm : HasValidMain-ef m ef mt)
+             → progSig (typedProgram-ef m ef mt hvm) ≡ moduleSig-ef ef
+typed-sig-ef m (inj₁ _)  () _
+typed-sig-ef m (inj₂ es) mt (_ , mi) = trans (TR.toProgram₀-sig mt mi) (teleSig≡entrySig mt)
+
+typed-sig : ∀ (tp : Typed) → progSig (typedProgram tp) ≡ moduleSig (proj₁ tp)
+typed-sig (m , mt , hvm) = typed-sig-ef m (C.extractFunctions (C.extractAliases m) m) mt hvm
+
+-- An implementation of the module's signatures implements the core program's.
+implFor : ∀ (tp : Typed) → Impl (moduleSig (proj₁ tp)) → Impl (progSig (typedProgram tp))
+implFor tp I = subst Impl (sym (typed-sig tp)) I
 
 private
   inv₀ : TWI.Inv C.emptyCScope Tele.[] TR.[] TR.[] []
@@ -104,9 +121,13 @@ private
 -- THE LINK: the compiled program means the core program.
 ------------------------------------------------------------------------
 
+-- Plan 0.105: for EVERY implementation `I` of the module's signatures: the
+-- compiled program run in the world they make, and the core program run with `I`.
 program-core :
-  ∀ (m : P.Module) (mt : ModuleTyped m) (hvm : HasValidMain m mt) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) (mi : moduleToIR m ≡ just ir) (n : ℕ)
-  → at (⟦ just (irProgram (moduleTable m) ir) ⟧IR fmt ι) n ≡ runProgram fmt ι (typedProgram (m , mt , hvm)) n
+  ∀ (m : P.Module) (mt : ModuleTyped m) (hvm : HasValidMain m mt) (I : Impl (moduleSig m))
+    (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) (mi : moduleToIR m ≡ just ir) (n : ℕ)
+  → at (⟦ just (irProgram (moduleTable m) ir) ⟧IR fmt (interp (moduleSig m) I)) n
+    ≡ runProgram fmt (typedProgram (m , mt , hvm)) (implFor (m , mt , hvm) I) n
 program-core m mt hvm ir mi n with FB.program-node m ir mi
 ... | es , ef , b , ceq =
   trans (cong₂ (λ tbl x → projTrace ι (evalᴰ fmt (tableEnv fmt (pureHalf ι) tbl) x tt) n) (cong tableOfResult ceq) ir≡)

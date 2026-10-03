@@ -32,7 +32,7 @@
 module Once.Adequacy.Compile where
 
 
-open import Once.Spec.Module using (HasValidMain; ModuleTyped)
+open import Once.Spec.Module using (HasValidMain; ModuleTyped; moduleSig)
 open import Data.Bool using (Bool; false; true)
 open import Data.Nat using (ℕ)
 open import Data.List using (List)
@@ -61,7 +61,9 @@ open import Once.Denotation.Program using (IRProgram; irProgram; table; main; Li
 -- proven `faithful`. The main `Expr` is recovered from a `⊢ᶜ` derivation by
 -- `check-complete` (the proven typechecker-completeness witness).
 import Once.Denotation.SourceDenote as SD
-open import Once.Denotation.TraceMonad using (T; _>>=T_; projTrace; Interp)
+open import Once.Denotation.TraceMonad using (T; _>>=T_; projTrace; Interp; sig; interp)
+open import Once.Spec.Contract using (ISig; Impl)
+open import Once.Denotation.Trace using (SigOpEvent)
 open import Once.Surface.Syntax as Srf2 using (Expr; ∅; Usage)
 open import Once.TypeCheck.Completeness using (check-complete)
 open import Data.Unit using (tt)
@@ -196,7 +198,8 @@ record ArchCorrect (arch : Arch) (as : ArchSemantics) (ι : Interp) : Set where
     -- ir-to-trace` from the loader entry (rides the per-target flat-sim).
     -- D244/D245: …of the compiled PROGRAM (main and its function table), for a
     -- LINKED one — every internal call names an entry of the table.
-    flat-trace : (p : IRProgram) → LinkedProgram p → Behavior
+    -- plan 0.105: …linked against the signatures this world declares.
+    flat-trace : (p : IRProgram) → LinkedProgram (sig ι) p → Behavior
     -- assemble-then-execute reproduces the asm-text meaning. HONEST
     -- precondition (Plan 0.50): `as` is trusted only for asm produced by
     -- compiling a module whose emitted symbols are distinct — the apex
@@ -240,10 +243,14 @@ record ArchCorrect (arch : Arch) (as : ArchSemantics) (ι : Interp) : Set where
       LabelsResolvable arch m →
       SymbolsResolvable arch m →
       ∀ (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) (mi : moduleToIR m ≡ just ir) →
+      -- plan 0.105: in a world that declares the signatures `m` is compiled
+      -- against (the binary links against them).
+      (ls : moduleSig m ≡ sig ι) →
       ∀ (n : ℕ) → at (asm-sem asm) n
                 ≡ at (flat-trace (rewrite-program (irProgram (moduleTable m) ir))
-                                 (rewrite-program-linked (irProgram (moduleTable m) ir)
-                                    (moduleToProgram-linked m ir mi))) n
+                                 (subst (λ σ → LinkedProgram σ (rewrite-program (irProgram (moduleTable m) ir))) ls
+                                   (rewrite-program-linked (irProgram (moduleTable m) ir)
+                                      (moduleToProgram-linked m ir mi)))) n
     -- (D165's `rewrite-preserves` field is GONE from this record: at D244 the
     -- arith pass is stated at the MEANING, `SourceTrace.rewrite-program-
     -- preserves`, once for every target, and the flat side follows from
@@ -253,7 +260,7 @@ record ArchCorrect (arch : Arch) (as : ArchSemantics) (ι : Interp) : Set where
     -- `arch`, so the obligation sharpens without changing shape — the flat
     -- machine's trace must match the denotation the SAME target means.
     ir-flat-correct :
-      ∀ (p : IRProgram) (lk : LinkedProgram p) (n : ℕ)
+      ∀ (p : IRProgram) (lk : LinkedProgram (sig ι) p) (n : ℕ)
       → at (flat-trace p lk) n ≡ at (⟦ just p ⟧IR (arch-numerics arch) ι) n
 
 -- (The former `no-main-empty` library-case postulate is gone: with
@@ -498,6 +505,40 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   Admissible : Arch → Typed → Set
   Admissible arch (m , _ , _) = AdmissibleM arch m
 
+  -- Plan 0.105: the interpretation signatures a typed module is compiled
+  -- against — its FFI declarations.
+  sigOfT : Typed → ISig
+  sigOfT tp = moduleSig (proj₁ tp)
+
+  -- D253: THE APEX MEANS THE CORE, and `main` is an entry like any other. A
+  -- typed module IS a core program (`Spec.Core.Translate.toProgram`): every
+  -- definition typed once, a reference meaning its entry, and the program
+  -- running its `main` entry (`runProgram`). Plan 0.105 (D257, D061): it runs
+  -- with an implementation `I` of the signatures the module is compiled
+  -- against. The compiled program's `main` is the call of that entry, so the
+  -- telescope walk's per-entry invariant at `main` is the equation of the two
+  -- runs (`CoreBridge.program-core`), in the world those signatures and `I`
+  -- make. The trace family IS the core run; the three laws are BORROWED from
+  -- the compiled program it is proved equal to (`behavior-by`, D179 — the laws
+  -- are about `at` alone, so they transport along the equality; nothing about
+  -- the core is assumed).
+  core-run : ∀ (arch : Arch) (tp : Typed) (I : Impl (sigOfT tp)) → ℕ → List SigOpEvent
+  core-run arch tp I = runProgram (arch-numerics arch) (CB.typedProgram (arch-numerics arch) tp) (CB.implFor (arch-numerics arch) tp I)
+
+  ir-core : ∀ (arch : Arch) (tp : Typed) (I : Impl (sigOfT tp)) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) → moduleToIR (proj₁ tp) ≡ just ir
+          → ∀ n → at (⟦ moduleToProgram (proj₁ tp) ⟧IR (arch-numerics arch) (interp (sigOfT tp) I)) n ≡ core-run arch tp I n
+  ir-core arch (m , mt , hvm) I ir mi n =
+    trans (cong (λ x → at (⟦ programAt (moduleTable m) x ⟧IR (arch-numerics arch) (interp (moduleSig m) I)) n) mi)
+          (CB.program-core (arch-numerics arch) m mt hvm I ir mi n)
+
+  ⟦_⟧ᵈᴵ : Arch → (tp : Typed) → Impl (sigOfT tp) → Behavior
+  ⟦ arch ⟧ᵈᴵ tp I =
+    behavior-by (⟦ moduleToProgram (proj₁ tp) ⟧IR (arch-numerics arch) (interp (sigOfT tp) I)) (core-run arch tp I)
+                (ir-core arch tp I ir mi)
+    where
+      ir = proj₁ (MC.moduleToIR-complete (proj₁ tp) (proj₁ (proj₂ tp)) (proj₂ (proj₂ tp)))
+      mi = proj₂ (MC.moduleToIR-complete (proj₁ tp) (proj₁ (proj₂ tp)) (proj₂ (proj₂ tp)))
+
   ----------------------------------------------------------------------
   -- Plan 0.105: the semantic half, at an interpretation `ι` — the world the
   -- binary runs in and the meaning is read in. `compile` above does not see
@@ -531,16 +572,19 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
       ∀ (arch : Arch) (m : P.Module) (asm : String) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) →
       C.compileFromModule C.Heap C.Build false arch m ≡ C.Built asm →
       moduleToIR m ≡ just ir →
+      -- plan 0.105: in a world that declares the module's signatures
+      moduleSig m ≡ sig ι →
       ∀ (n : ℕ) → at (⟦ arch ⟧A asm) n ≡ at (⟦ just (irProgram (moduleTable m) ir) ⟧IR (arch-numerics arch) ι) n
     -- D165: three steps now, not two — the middle one is the arith pass, which
     -- used to be folded into the first. D244: all three are about the PROGRAM.
-    codegen-asm-correct arch m asm ir eq mi n =
+    codegen-asm-correct arch m asm ir eq mi ls n =
       trans (ArchCorrect.asm-trace-correct (arch-correct ι arch) m asm eq
                (program-labels-distinct arch m)
                (program-labels-resolvable arch m)
-               (program-symbols-resolvable arch m) ir mi n)
+               (program-symbols-resolvable arch m) ir mi ls n)
       (trans (ArchCorrect.ir-flat-correct (arch-correct ι arch) (rewrite-program P)
-                (rewrite-program-linked P (moduleToProgram-linked m ir mi)) n)
+                (subst (λ σ → LinkedProgram σ (rewrite-program P)) ls
+                  (rewrite-program-linked P (moduleToProgram-linked m ir mi))) n)
              (rewrite-program-preserves (arch-numerics arch) ι P n))
       where P = irProgram (moduleTable m) ir
 
@@ -553,9 +597,9 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
     module-to-asm-correct :
       ∀ (arch : Arch) (m : P.Module) (asm : String) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) →
       C.compileFromModule C.Heap C.Build false arch m ≡ C.Built asm →
-      moduleToIR m ≡ just ir →
+      moduleToIR m ≡ just ir → moduleSig m ≡ sig ι →
       ∀ (n : ℕ) → at (⟦ arch ⟧A asm) n ≡ at (⟦ just (irProgram (moduleTable m) ir) ⟧IR (arch-numerics arch) ι) n
-    module-to-asm-correct arch m asm ir eq mi n = codegen-asm-correct arch m asm ir eq mi n
+    module-to-asm-correct arch m asm ir eq mi ls n = codegen-asm-correct arch m asm ir eq mi ls n
 
     --------------------------------------------------------------------
     -- The grand theorem — by composition of the per-stage postulates.
@@ -649,6 +693,8 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
       opt-trace : ∀ (arch : Arch) (m : P.Module) (asm : String) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) →
         C.compileFromModule C.Heap C.Build true arch m ≡ C.Built asm →
         moduleToIR m ≡ just ir →
+        -- plan 0.105: in a world that declares the module's signatures
+        moduleSig m ≡ sig ι →
         ∀ (n : ℕ) → at (exec arch (string-to-bytes arch asm)) n ≡ at (⟦ just (irProgram (moduleTable m) ir) ⟧IR (arch-numerics arch) ι) n
 
 
@@ -719,13 +765,16 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
     -- walk `gmoduleToModule → moduleToIR → compileFromModule` on explicit
     -- arguments (no `with`); only the Built-case trace differs by `doOpt`:
     -- `false` is the PROVEN codegen chain, `true` is the `opt-trace` lift.
+    -- plan 0.105: in a world that declares the signatures of the module `src`
+    -- resolves to.
     correct : ∀ (arch : Arch) (doOpt : Bool) (src : Source) →
+              (∀ m → srcToModule src ≡ just m → moduleSig m ≡ sig ι) →
               Pointwise _≋_ (map (exec arch) (compile arch doOpt src)) (⟦ src ⟧⊥ arch)
-    correct arch false src = correct-gm arch false (srcToModule src)
-      (λ m _ ir mi asm cf n → trans (string-to-bytes-correct arch m asm cf n)
-                                     (module-to-asm-correct arch m asm ir cf mi n))
-    correct arch true src = correct-gm arch true (srcToModule src)
-      (λ m _ ir mi asm cf n → opt-trace arch m asm ir cf mi n)
+    correct arch false src ls = correct-gm arch false (srcToModule src)
+      (λ m sm ir mi asm cf n → trans (string-to-bytes-correct arch m asm cf n)
+                                      (module-to-asm-correct arch m asm ir cf mi (ls m sm) n))
+    correct arch true src ls = correct-gm arch true (srcToModule src)
+      (λ m sm ir mi asm cf n → opt-trace arch m asm ir cf mi (ls m sm) n)
 
     -- ════════════════════════════════════════════════════════════════════
     -- SOUNDNESS, as a COROLLARY OF `correct` (Plan 0.48): not a sibling
@@ -739,15 +788,6 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
       Pointwise _≋_ (just x) my → Σ-syntax Behavior (λ y → my ≡ just y)
     pw-just-inv (just y) _ = y , refl
     pw-just-inv nothing ()
-
-    accept-sound : ∀ (arch : Arch) (doOpt : Bool) (src : Source) (bytes : List Byte) →
-      compile arch doOpt src ≡ just bytes →
-      Σ-syntax P.Module (λ m → (srcToModule src ≡ just m) × ModuleTyped m)
-    accept-sound arch doOpt src bytes pf =
-      let p           = subst (λ c → Pointwise _≋_ (map (exec arch) c) (⟦ src ⟧⊥ arch)) pf
-                              (correct arch doOpt src)
-          (beh , dom) = pw-just-inv (⟦ src ⟧⊥ arch) p
-      in ⟦⟧⊥-sound src arch beh dom
 
     -- ════════════════════════════════════════════════════════════════════
     -- Plan 0.49 (route 3) — RELATIONAL correctness against the INDEPENDENT
@@ -786,31 +826,6 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
     -- Neither mentions the architecture, so neither belonged in `WithCPU`
     -- either — re-exported here so the instance still reaches them as `VC.Typed`.
 
-
-    -- D253: THE APEX MEANS THE CORE, and `main` is an entry like any other. A
-    -- typed module IS a core program (`Spec.Core.Translate.toProgram`): every
-    -- definition typed once, a reference meaning its entry, and the program
-    -- running its `main` entry (`runProgram`). The compiled program's `main` is
-    -- the call of that entry, so the telescope walk's per-entry invariant at
-    -- `main` is the equation of the two runs (`CoreBridge.program-core`).
-    -- The trace family IS the core run; the three laws are BORROWED from the
-    -- compiled program it is proved equal to (`behavior-by`, D179 — the laws are
-    -- about `at` alone, so they transport along the equality; nothing about the
-    -- core is assumed).
-    program-core : ∀ (arch : Arch) (tp : Typed) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) → moduleToIR (proj₁ tp) ≡ just ir
-                 → ∀ n → at (⟦ just (irProgram (moduleTable (proj₁ tp)) ir) ⟧IR (arch-numerics arch) ι) n
-                         ≡ runProgram (arch-numerics arch) ι (CB.typedProgram (arch-numerics arch) ι tp) n
-    program-core arch (m , mt , hvm) ir mi n = CB.program-core (arch-numerics arch) ι m mt hvm ir mi n
-
-    ⟦_⟧ᵈ : Arch → Typed → Behavior
-    ⟦ arch ⟧ᵈ tp =
-      behavior-by (⟦ moduleToProgram (proj₁ tp) ⟧IR (arch-numerics arch) ι)
-                  (runProgram (arch-numerics arch) ι (CB.typedProgram (arch-numerics arch) ι tp))
-                  (λ n → trans (cong (λ x → at (⟦ programAt (moduleTable (proj₁ tp)) x ⟧IR (arch-numerics arch) ι) n) mi)
-                               (program-core arch tp ir mi n))
-      where
-        ir = proj₁ (MC.moduleToIR-complete (proj₁ tp) (proj₁ (proj₂ tp)) (proj₂ (proj₂ tp)))
-        mi = proj₂ (MC.moduleToIR-complete (proj₁ tp) (proj₁ (proj₂ tp)) (proj₂ (proj₂ tp)))
 
     pw-just-rel : ∀ {x y : Behavior} → Pointwise _≋_ (just x) (just y) → x ≋ y
     pw-just-rel (PW.just r) = r
@@ -852,16 +867,17 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
     -- (`program-core`, D253), with no `mU`/`mR` trace step in between.
     sound-trace : ∀ (arch : Arch) (doOpt : Bool) (src : Source) (bytes : List Byte) →
       compile arch doOpt src ≡ just bytes →
-      ∀ (mR : P.Module) (stm-eq : srcToModule src ≡ just mR) (MT : ModuleTyped mR)
+      ∀ (mR : P.Module) (stm-eq : srcToModule src ≡ just mR)
         (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) (mi : moduleToIR mR ≡ just ir) →
-      exec arch bytes ≋ ⟦ arch ⟧ᵈ (mR , MT , MC.moduleToIR-sound mR MT mi)
-    sound-trace arch doOpt src bytes pf mR stm-eq MT ir mi n =
-      trans (e≋ n)
-            (trans (cong (λ x → at (⟦ programAt (moduleTable mR) x ⟧IR (arch-numerics arch) ι) n) mi)
-                   (program-core arch (mR , MT , MC.moduleToIR-sound mR MT mi) ir mi n))
+      moduleSig mR ≡ sig ι →
+      exec arch bytes ≋ ⟦ moduleToProgram mR ⟧IR (arch-numerics arch) ι
+    sound-trace arch doOpt src bytes pf mR stm-eq ir mi ls n = e≋ n
       where
+        -- the module `src` resolves to is `mR`
+        ls′ : ∀ m → srcToModule src ≡ just m → moduleSig m ≡ sig ι
+        ls′ m sm = trans (cong moduleSig (just-injective (trans (sym sm) stm-eq))) ls
         p   = subst (λ c → Pointwise _≋_ (map (exec arch) c) (⟦ src ⟧⊥ arch)) pf
-                    (correct arch doOpt src)
+                    (correct arch doOpt src ls′)
         -- J4, THE LOOP-CLOSING STEP. `pf` says bytes came out; the ONLY route to
         -- bytes runs through `cfm-build-gated`, so the gate must have said `yes`.
         admR = accept-gm arch doOpt mR
@@ -890,17 +906,21 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   -- equation is quantified over the interpretation — the binary and the meaning
   -- agree in every world the program can run in.
   ----------------------------------------------------------------------
+  -- Plan 0.105 (D257, D061): THE STATEMENT the Spec's `correct` is filled with.
+  -- A typed module is compiled against its FFI declarations (`sigOfT`); its
+  -- meaning is relative to an implementation `I` of them (`⟦_⟧ᵈᴵ`), and its
+  -- bytes run in the world those declarations and `I` make.
   correctᵈ : ∀ (arch : Arch) (doOpt : Bool) (src : Source) →
     ( ∀ bytes → compile arch doOpt src ≡ just bytes →
         Σ-syntax Typed (λ tp → (src ⊢R tp) × Admissible arch tp
-                               × (∀ (ι : Interp) → _≋_ (exec ι arch bytes) (⟦_⟧ᵈ ι arch tp))) )
+                               × (∀ (I : Impl (sigOfT tp)) → _≋_ (exec (interp (sigOfT tp) I) arch bytes) (⟦ arch ⟧ᵈᴵ tp I))) )
     × ( ∀ tp → src ⊢R tp → Admissible arch tp →
         Σ-syntax (List Byte) (λ bytes → compile arch doOpt src ≡ just bytes) )
   correctᵈ arch doOpt src = sound , (λ tp h adm → correctR-complete arch doOpt src tp h adm)
     where
       sound : ∀ bytes → compile arch doOpt src ≡ just bytes →
         Σ-syntax Typed (λ tp → (src ⊢R tp) × Admissible arch tp
-                               × (∀ (ι : Interp) → _≋_ (exec ι arch bytes) (⟦_⟧ᵈ ι arch tp)))
+                               × (∀ (I : Impl (sigOfT tp)) → _≋_ (exec (interp (sigOfT tp) I) arch bytes) (⟦ arch ⟧ᵈᴵ tp I)))
       sound bytes pf with accept-typed arch doOpt src bytes pf
       ... | (mR , stm-eq , MT) with compile-just-ir arch doOpt src mR bytes stm-eq pf
       ...   | (ir , mi) with srcToModule-inv src mR stm-eq
@@ -910,4 +930,5 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
                   , FB.parseStrict-sound (Source.srcText src) mU p-eq
                   , RBR.resolvesModule-complete (Source.srcImports src) (P.Module.decls mU) mR res-eq )
                 , accept-gm arch doOpt mR (trans (sym (cong (compile-gm arch doOpt) stm-eq)) pf)
-                , (λ ι → sound-trace ι arch doOpt src bytes pf mR stm-eq MT ir mi)
+                , (λ I n → trans (sound-trace (interp (moduleSig mR) I) arch doOpt src bytes pf mR stm-eq ir mi refl n)
+                                 (ir-core arch (mR , MT , MC.moduleToIR-sound mR MT mi) I ir mi n))

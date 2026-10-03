@@ -53,7 +53,7 @@ import Once.Spec.Core.Telescope as TL
 open import Once.Spec.Core.PolyTy
 open import Once.Spec.Core.AbsTy
 open import Once.Spec.Core.Schema using (schemaOf; schemaOf-cf; kindsOf; kinded-instance)
-open import Once.Spec.Core.Telescope using (Tele; def; Program; program; noKinds)
+open import Once.Spec.Core.Telescope using (Tele; def; Program; program; noKinds; progSig)
 import Once.Spec.Core.PolyTyping as PT
 import Once.Spec.Core.Abstract as A
 import Once.Spec.Elaboration as E
@@ -300,3 +300,71 @@ mutual
 -- A typed module's core program, over the signatures it is compiled against.
 toProgram₀ : ∀ {es} (mt : ModTele emptyScope es) → MainIn mt → Program
 toProgram₀ mt mi = toProgram {S = [] (teleSig mt)} TL.[] [] [] (λ ()) mt mi (λ m → m)
+
+-- Plan 0.105: the walk grows the definitions, never the signatures — the core
+-- program is compiled against the signatures it started from.
+mutual
+  toProgram-sig : ∀ {s} {S : Sig s} {sc es} (tl : Tele S) (is : ImpSig S (Scope.imps sc)) (ts : TeleSig S (Scope.tele sc))
+                  (sg : SigCF S) (mt : ModTele sc es) (mi : MainIn mt) (u : SigIn mt S)
+                → progSig (toProgram tl is ts sg mt mi u) ≡ sigOf S
+  toProgram-sig tl is ts sg [] () u
+  toProgram-sig tl is ts sg (ffi _ _ c h g rest) mi u = toProgram-sig tl (i-ffi c h g (u (here refl)) is) ts sg rest mi (λ m → u (there m))
+  toProgram-sig {S = S} {sc = sc} tl is ts sg (poly {pfi = pfi} {Ψ = Ψ} D rest) mi u =
+    toProgram-sig (polyDef {S = S} {sc = sc} {pfi = pfi} {Ψ = Ψ} tl is ts sg D)
+                  (wkI is) (t-def zero refl (wkT ts)) (polySg sg pfi) rest mi u
+  toProgram-sig {S = S} {sc = sc} tl is ts sg (mono {fi = fi} {ty = ty} {Ψ = Ψ} ep er g D rest) mi u =
+    monoPick-sig {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl is ts sg g D rest mi u
+
+  monoPick-sig : ∀ {s} {S : Sig s} {sc fi ty es Ψ} (tl : Tele S) (is : ImpSig S (Scope.imps sc)) (ts : TeleSig S (Scope.tele sc))
+               (sg : SigCF S) (g : RigidFree ty) (D : ctxOf sc ⊢ᶜ funBody fi ∶ ty ⨾ Ψ)
+               (rest : ModTele (addImp sc (funName fi) ty) es) (w : ((funName fi ≡ "main") × (ty ≡ EffUU)) ⊎ MainIn rest)
+               (u : SigIn rest S)
+             → progSig (monoPick {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl is ts sg g D rest w u) ≡ sigOf S
+  monoPick-sig {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl is ts sg g D rest (inj₁ (_ , e)) u =
+    monoHere-sig {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl is ts sg g D rest e u
+  monoPick-sig {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl is ts sg g D rest (inj₂ mi′) u =
+    monoDispatch-sig {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl is ts sg g D rest mi′ (funName fi ≟str "main") (ty ≟T EffUU) u
+
+  monoDispatch-sig : ∀ {s} {S : Sig s} {sc fi ty es Ψ} (tl : Tele S) (is : ImpSig S (Scope.imps sc)) (ts : TeleSig S (Scope.tele sc))
+                   (sg : SigCF S) (g : RigidFree ty) (D : ctxOf sc ⊢ᶜ funBody fi ∶ ty ⨾ Ψ)
+                   (rest : ModTele (addImp sc (funName fi) ty) es) (mi′ : MainIn rest)
+                   (d₁ : Dec (funName fi ≡ "main")) (d₂ : Dec (ty ≡ EffUU)) (u : SigIn rest S)
+                 → progSig (monoDispatch {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl is ts sg g D rest mi′ d₁ d₂ u) ≡ sigOf S
+  monoDispatch-sig {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl is ts sg g D rest mi′ (yes _) (yes e) u =
+    monoHere-sig {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl is ts sg g D rest e u
+  monoDispatch-sig {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl is ts sg g D rest mi′ (yes _) (no _) u =
+    monoNext-sig {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl is ts sg g D rest mi′ u
+  monoDispatch-sig {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl is ts sg g D rest mi′ (no _) _ u =
+    monoNext-sig {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl is ts sg g D rest mi′ u
+
+  monoNext-sig : ∀ {s} {S : Sig s} {sc fi ty es Ψ} (tl : Tele S) (is : ImpSig S (Scope.imps sc)) (ts : TeleSig S (Scope.tele sc))
+               (sg : SigCF S) (g : RigidFree ty) (D : ctxOf sc ⊢ᶜ funBody fi ∶ ty ⨾ Ψ)
+               (rest : ModTele (addImp sc (funName fi) ty) es) (mi′ : MainIn rest) (u : SigIn rest S)
+             → progSig (monoNext {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl is ts sg g D rest mi′ u) ≡ sigOf S
+  monoNext-sig {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl is ts sg g D rest mi′ u =
+    toProgram-sig (monoDef {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl is ts sg g D)
+                  (i-def zero refl (wkI is)) (wkT ts) (monoSg sg g) rest mi′ u
+
+  monoHere-sig : ∀ {s} {S : Sig s} {sc fi ty es Ψ} (tl : Tele S) (is : ImpSig S (Scope.imps sc)) (ts : TeleSig S (Scope.tele sc))
+               (sg : SigCF S) (g : RigidFree ty) (D : ctxOf sc ⊢ᶜ funBody fi ∶ ty ⨾ Ψ)
+               (rest : ModTele (addImp sc (funName fi) ty) es) (e : ty ≡ EffUU) (u : SigIn rest S)
+             → progSig (monoHere {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl is ts sg g D rest e u) ≡ sigOf S
+  monoHere-sig {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl is ts sg g D rest e u =
+    toProgramFrom-sig (monoDef {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl is ts sg g D)
+                      (i-def zero refl (wkI is)) (wkT ts) (monoSg sg g) zero (cong monoSchema e) rest u
+
+  toProgramFrom-sig : ∀ {s} {S : Sig s} {sc es} (tl : Tele S) (is : ImpSig S (Scope.imps sc)) (ts : TeleSig S (Scope.tele sc))
+                      (sg : SigCF S) (d : Fin s) (e : S !! d ≡ monoSchema EffUU) (mt : ModTele sc es) (u : SigIn mt S)
+                    → progSig (toProgramFrom tl is ts sg d e mt u) ≡ sigOf S
+  toProgramFrom-sig tl is ts sg d e [] u = refl
+  toProgramFrom-sig tl is ts sg d e (ffi _ _ c h g rest) u =
+    toProgramFrom-sig tl (i-ffi c h g (u (here refl)) is) ts sg d e rest (λ m → u (there m))
+  toProgramFrom-sig {S = S} {sc = sc} tl is ts sg d e (poly {pfi = pfi} {Ψ = Ψ} D rest) u =
+    toProgramFrom-sig (polyDef {S = S} {sc = sc} {pfi = pfi} {Ψ = Ψ} tl is ts sg D)
+                      (wkI is) (t-def zero refl (wkT ts)) (polySg sg pfi) (suc d) e rest u
+  toProgramFrom-sig {S = S} {sc = sc} tl is ts sg d e (mono {fi = fi} {ty = ty} {Ψ = Ψ} ep er g D rest) u =
+    toProgramFrom-sig (monoDef {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl is ts sg g D)
+                      (i-def zero refl (wkI is)) (wkT ts) (monoSg sg g) (suc d) e rest u
+
+toProgram₀-sig : ∀ {es} (mt : ModTele emptyScope es) (mi : MainIn mt) → progSig (toProgram₀ mt mi) ≡ teleSig mt
+toProgram₀-sig mt mi = toProgram-sig {S = [] (teleSig mt)} TL.[] [] [] (λ ()) mt mi (λ m → m)

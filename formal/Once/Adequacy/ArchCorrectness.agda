@@ -79,7 +79,8 @@ open import Once.IR using (IR)
 open import Once.IRTy using (⌊_⌋)
 open import Once.Type using (Unit)
 open import Data.Maybe using (just)
-open import Relation.Binary.PropositionalEquality using (_≡_)
+open import Relation.Binary.PropositionalEquality using (_≡_; subst)
+open import Once.Spec.Module using (moduleSig)
 import Once.Parser.Module.Core as P
 
 import Once.Adequacy.ArchCorrectness.X86-64 as A64
@@ -103,7 +104,7 @@ TP : P.Module → IR ⌊ Unit ⌋ ⌊ Unit ⌋ → List IRFun
 TP m ir = table (rewrite-program (irProgram (moduleTable m) ir))
 
 LK : ∀ (m : P.Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) → moduleToIR m ≡ just ir
-   → LinkedProgram (rewrite-program (irProgram (moduleTable m) ir))
+   → LinkedProgram (moduleSig m) (rewrite-program (irProgram (moduleTable m) ir))
 LK m ir mi = rewrite-program-linked (irProgram (moduleTable m) ir) (moduleToProgram-linked m ir mi)
 
 -- The block-table coherence hypotheses (plan 0.91; D188), one per target and
@@ -122,8 +123,9 @@ x86-64-correct brs ι = record
   { asm-sem           = X64.asm-sem-x86-64 ι []
   ; flat-trace        = λ p lk → X64.flat-x86-64 ι (table p) (brs ι (table p)) (main p) lk
   ; assemble-correct  = λ _ _ _ _ _ → refl
-  ; asm-trace-correct = λ m asm eq dl lr sr ir mi n →
-      X64.asm-flat-x86-64 ι (TP m ir) (brs ι (TP m ir)) m asm eq dl lr sr ir mi refl (LK m ir mi) n
+  ; asm-trace-correct = λ m asm eq dl lr sr ir mi ls n →
+      X64.asm-flat-x86-64 ι (TP m ir) (brs ι (TP m ir)) m asm eq dl lr sr ir mi refl
+        (subst (λ σ → LinkedProgram σ (rewrite-program (irProgram (moduleTable m) ir))) ls (LK m ir mi)) n
   ; ir-flat-correct   = λ p lk → X64.ir-flat-correct-x86-64 ι (table p) (brs ι (table p)) (main p) lk
   }
 
@@ -132,8 +134,9 @@ x86-32-correct brs ι = record
   { asm-sem           = X32.asm-sem-x86-32 ι []
   ; flat-trace        = λ p lk → X32.flat-x86-32 ι (table p) (brs ι (table p)) (main p) lk
   ; assemble-correct  = λ _ _ _ _ _ → refl
-  ; asm-trace-correct = λ m asm eq dl lr sr ir mi n →
-      X32.asm-flat-x86-32 ι (TP m ir) (brs ι (TP m ir)) m asm eq dl lr sr ir mi refl (LK m ir mi) n
+  ; asm-trace-correct = λ m asm eq dl lr sr ir mi ls n →
+      X32.asm-flat-x86-32 ι (TP m ir) (brs ι (TP m ir)) m asm eq dl lr sr ir mi refl
+        (subst (λ σ → LinkedProgram σ (rewrite-program (irProgram (moduleTable m) ir))) ls (LK m ir mi)) n
   ; ir-flat-correct   = λ p lk → X32.ir-flat-correct-x86-32 ι (table p) (brs ι (table p)) (main p) lk
   }
 
@@ -142,8 +145,9 @@ riscv64-correct brs ι = record
   { asm-sem           = RV.asm-sem-riscv64 ι []
   ; flat-trace        = λ p lk → RV.flat-riscv64 ι (table p) (brs ι (table p)) (main p) lk
   ; assemble-correct  = λ _ _ _ _ _ → refl
-  ; asm-trace-correct = λ m asm eq dl lr sr ir mi n →
-      RV.asm-flat-riscv64 ι (TP m ir) (brs ι (TP m ir)) m asm eq dl lr sr ir mi refl (LK m ir mi) n
+  ; asm-trace-correct = λ m asm eq dl lr sr ir mi ls n →
+      RV.asm-flat-riscv64 ι (TP m ir) (brs ι (TP m ir)) m asm eq dl lr sr ir mi refl
+        (subst (λ σ → LinkedProgram σ (rewrite-program (irProgram (moduleTable m) ir))) ls (LK m ir mi)) n
   ; ir-flat-correct   = λ p lk → RV.ir-flat-correct-riscv64 ι (table p) (brs ι (table p)) (main p) lk
   }
 

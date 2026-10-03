@@ -23,7 +23,7 @@ import Once.Adequacy.ArchCorrectness.X86-64.ResourceBounds as RB
 
 open import Data.List using (List)
 open import Once.Denotation.Program using (IRFun; tableEnv)
-open import Once.Denotation.TraceMonad using (Interp)
+open import Once.Denotation.TraceMonad using (Interp; sig)
 module Once.Adequacy.ArchCorrectness.X86-64
   (o : CanonicalName) (tbl : List IRFun)
   -- Plan 0.105: the interpretation the program runs against.
@@ -384,7 +384,7 @@ entry-like B = refl , refl , refl , refl , refl
         no-ptr Scratch loc ()
         no-ptr Count   loc ()
 
-entry-inv : ∀ (ir : IR Unit Unit) → LinkedProgram (irProgram tbl ir)
+entry-inv : ∀ (ir : IR Unit Unit) → LinkedProgram (sig ι) (irProgram tbl ir)
           → FlatInv ev-x86-64 (arith-env-x86-64 (compile-trace (FFOx.image ir)))
                     (FFOx.image ir) (mkFlat FFOx.entry-s (FFOx.entry-alloc (ir-stack-budget ir)) 0)
 entry-inv ir lk = record
@@ -411,7 +411,7 @@ entry-inv ir lk = record
 -- per-`n` existential left to project. The fuel is the witness's own
 -- `steps`, which is exactly what `flat-trace-of` runs at, so the two sides
 -- match definitionally instead of through a chosen `N`.
-Nof : FFOx.BlockRunsT → (ir : IR Unit Unit) → LinkedProgram (irProgram tbl ir) → ℕ → ℕ
+Nof : FFOx.BlockRunsT → (ir : IR Unit Unit) → LinkedProgram (sig ι) (irProgram tbl ir) → ℕ → ℕ
 Nof brs ir lk n =
   ValueRealized.steps
     (MachineRefinesObsF.value-realized (FFOx.entry-witness ir (ir-obs-correct ir (proj₁ lk)) brs n)) + 0
@@ -432,7 +432,7 @@ postulate
   -- `step-budget-x86-64 n` itself reaches ≥ n events — the abstract adequacy of the
   -- postulated `ℕ→ℕ` fuel map. Provable core: `run-events` fuel-prefix monotonicity;
   -- residual leaf: `step-budget-x86-64` adequacy (needs `step-budget` pinned, D5).
-  conc-fuel : ∀ (brs : FFOx.BlockRunsT) (ir : IR Unit Unit) (lk : LinkedProgram (irProgram tbl ir)) (n M : ℕ) →
+  conc-fuel : ∀ (brs : FFOx.BlockRunsT) (ir : IR Unit Unit) (lk : LinkedProgram (sig ι) (irProgram tbl ir)) (n M : ℕ) →
       RTx.run-events val-x86-64 (answer-at ι call-at-x86-64) ev-x86-64 (arith-env-x86-64 (compile-trace (FFOx.image ir)))
         [] M (compile-trace (FFOx.image ir)) (ArchSemantics.initialState as64)
       ≡ flat-events (Nof brs ir lk n) (FFOx.image ir) (mkFlat FFOx.entry-s (FFOx.entry-alloc (ir-stack-budget ir)) 0) →
@@ -446,7 +446,7 @@ postulate
 -- (`no-nested-of-all` on the frame-free walk), so the two lowerings coincide
 -- unconditionally (`compile-trace-cnt-agrees`) and the apex needs no split.
 conc-flat-sim-just :
-  ∀ (brs : FFOx.BlockRunsT) (ir : IR Unit Unit) (lk : LinkedProgram (irProgram tbl ir)) (n : ℕ) →
+  ∀ (brs : FFOx.BlockRunsT) (ir : IR Unit Unit) (lk : LinkedProgram (sig ι) (irProgram tbl ir)) (n : ℕ) →
   at (conc-trace ir) n ≡ at (FFOx.flat-main ir-obs-correct brs ir lk) n
 conc-flat-sim-just brs ir lk n
   rewrite compile-trace-cnt-agrees o 0 (FFOx.image ir)
@@ -467,10 +467,10 @@ conc-flat-sim-just brs ir lk n
 BlockRunsHyp-x86-64 : Set
 BlockRunsHyp-x86-64 = FFOx.BlockRunsT
 
-flat-x86-64 : BlockRunsHyp-x86-64 → (ir : IR Unit Unit) → LinkedProgram (irProgram tbl ir) → Behavior
+flat-x86-64 : BlockRunsHyp-x86-64 → (ir : IR Unit Unit) → LinkedProgram (sig ι) (irProgram tbl ir) → Behavior
 flat-x86-64 brs = FFOx.flat-main ir-obs-correct brs
 
-ir-flat-correct-x86-64 : ∀ (brs : BlockRunsHyp-x86-64) (ir : IR Unit Unit) (lk : LinkedProgram (irProgram tbl ir)) (n : ℕ)
+ir-flat-correct-x86-64 : ∀ (brs : BlockRunsHyp-x86-64) (ir : IR Unit Unit) (lk : LinkedProgram (sig ι) (irProgram tbl ir)) (n : ℕ)
                      → at (flat-x86-64 brs ir lk) n ≡ at (⟦ just (irProgram tbl ir) ⟧IR (arch-numerics x86-64) ι) n
 ir-flat-correct-x86-64 brs = FFOx.ir-flat-correct-main ir-obs-correct brs
 
@@ -483,7 +483,7 @@ asm-flat-x86-64 : ∀ (brs : BlockRunsHyp-x86-64) (m : P.Module) (asm : String) 
     DistinctLabels x86-64 m → LabelsResolvable x86-64 m → SymbolsResolvable x86-64 m →
     ∀ (ir : IR Unit Unit) (mi : moduleToIR m ≡ just ir)
     → (teq : tbl ≡ table (rewrite-program (irProgram (moduleTable m) ir)))
-    → (lk : LinkedProgram (irProgram tbl (main (rewrite-program (irProgram (moduleTable m) ir))))) →
+    → (lk : LinkedProgram (sig ι) (irProgram tbl (main (rewrite-program (irProgram (moduleTable m) ir))))) →
     ∀ (n : ℕ) → at (FFOx.asm-sem asm) n
               ≡ at (flat-x86-64 brs (main (rewrite-program (irProgram (moduleTable m) ir))) lk) n
 asm-flat-x86-64 brs m asm eq dl lr sr ir mi teq lk n =

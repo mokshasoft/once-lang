@@ -24,7 +24,8 @@ open import Once.CanonicalName using (CanonicalName)
 
 open import Data.Nat using (ℕ)
 
-open import Once.Denotation.TraceMonad using (Interp)
+open import Once.Denotation.TraceMonad using (Interp; interp)
+open import Once.Spec.Contract using (ISig; Impl)
 import Once.Adequacy.ArchCorrectness.X86-64.ResourceBounds as RB
 import Once.Adequacy.ArchCorrectness.RiscV64.ResourceBounds as RBr
 import Once.Adequacy.ArchCorrectness.X86-32.ResourceBounds as RB32
@@ -112,20 +113,25 @@ once-compiler b64 b32 brv = record
   ; Source   = Source
   ; Bytes    = List Byte
   ; Behavior = Behavior
-  -- Plan 0.105 (D257): the world is an interpretation of the FFI contracts —
-  -- its pure half supplies values, its effectful half answers calls.
-  ; Interpretation = Interp
+  -- Plan 0.105 (D257, D061): an interpretation's declared signatures and an
+  -- implementation of them in the compiler's contract form (`Once.Spec.Contract`).
+  ; Signature      = ISig
+  ; Implementation = Impl
   -- Plan 0.49: the INDEPENDENT meaning is RELATIONAL. `Typed` = an executable
   -- declaratively-well-typed module; `_⊢_` links a source to it by PARSE (not
   -- the elaborator); `⟦_⟧ˢ` is the surface denotation `SD.⟦_⟧ˢ` of `main` (so
   -- `faithful` is load-bearing — typecheck + elaborate + codegen are forced).
   ; Typed    = VC.Typed
   ; _⊢_      = VC._⊢R_
+  -- the signatures a typed module is compiled against: its FFI declarations
+  ; sigOf    = VC.sigOfT
   -- Plan 0.58 (OCP-0006): the reference meaning is now the DIRECT, IR-free
   -- derivation denotation `VC.⟦_⟧ᵈ` (was `VC.⟦_⟧ˢ` = SD∘realize); `correctᵈ`
   -- re-composes the grand theorem with the observational bridge.
-  ; ⟦_⟧ˢ     = λ arch ι → VC.⟦_⟧ᵈ ι arch
-  ; exec     = λ arch ι → VC.exec ι arch
+  -- …relative to an implementation of the program's signatures; the bytes run
+  -- in the world those signatures and that implementation make.
+  ; ⟦_⟧ˢ     = VC.⟦_⟧ᵈᴵ
+  ; exec     = λ arch S I → VC.exec (interp S I) arch
   -- Behavioural equivalence = pointwise / up-to-`n` SigOp-trace prefix
   -- equality (Plan 0.44).
   ; _≈_      = λ b₁ b₂ → ∀ (n : ℕ) → at b₁ n ≡ at b₂ n

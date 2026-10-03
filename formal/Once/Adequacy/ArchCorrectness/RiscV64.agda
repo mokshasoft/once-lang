@@ -33,7 +33,7 @@ import Once.Adequacy.ArchCorrectness.RiscV64.FlatCorrespondence as FCr
 
 open import Data.List using (List)
 open import Once.Denotation.Program using (IRFun; tableEnv)
-open import Once.Denotation.TraceMonad using (Interp)
+open import Once.Denotation.TraceMonad using (Interp; sig)
 module Once.Adequacy.ArchCorrectness.RiscV64 (o : CanonicalName) (tbl : List IRFun)
   -- Plan 0.105: the interpretation the program runs against.
   (ι : Interp)
@@ -296,7 +296,7 @@ entry-like B = refl , refl , refl , refl , refl
     no-ptr Scratch loc ()
     no-ptr Count   loc ()
 
-entry-inv : ∀ (ir : IR Unit Unit) → LinkedProgram (irProgram tbl ir)
+entry-inv : ∀ (ir : IR Unit Unit) → LinkedProgram (sig ι) (irProgram tbl ir)
           → FlatInv ev-riscv64 (arith-env-riscv64 (compile-trace (FFOr.image ir)))
                     (FFOr.image ir) (mkFlat FFOr.entry-s (FFOr.entry-alloc (ir-stack-budget ir)) 0)
 entry-inv ir lk = record
@@ -316,7 +316,7 @@ entry-inv ir lk = record
 -- per-`n` existential left to project. The fuel is the witness's own
 -- `steps`, which is exactly what `flat-trace-of` runs at, so the two sides
 -- match definitionally instead of through a chosen `N`.
-Nof : FFOr.BlockRunsT → (ir : IR Unit Unit) → LinkedProgram (irProgram tbl ir) → ℕ → ℕ
+Nof : FFOr.BlockRunsT → (ir : IR Unit Unit) → LinkedProgram (sig ι) (irProgram tbl ir) → ℕ → ℕ
 Nof brs ir lk n =
   ValueRealized.steps
     (MachineRefinesObsF.value-realized (FFOr.entry-witness ir (ir-obs-correct ir (proj₁ lk)) brs n)) + 0
@@ -329,7 +329,7 @@ postulate
   -- argument); `conc-trace` runs at the DESIGNED budget. Because `M` already
   -- reproduces the first-`n`-event prefix, the only remaining content is that
   -- `step-budget-riscv64 n` itself reaches ≥ n events.
-  conc-fuel : ∀ (brs : FFOr.BlockRunsT) (ir : IR Unit Unit) (lk : LinkedProgram (irProgram tbl ir)) (n M : ℕ) →
+  conc-fuel : ∀ (brs : FFOr.BlockRunsT) (ir : IR Unit Unit) (lk : LinkedProgram (sig ι) (irProgram tbl ir)) (n M : ℕ) →
       RTr.run-events val-riscv64 (answer-at ι call-at-riscv64) ev-riscv64
         (arith-env-riscv64 (compile-trace (FFOr.image ir)))
         [] M (compile-trace (FFOr.image ir)) (ArchSemantics.initialState asR)
@@ -344,7 +344,7 @@ postulate
                 [] M (compile-trace (FFOr.image ir)) (ArchSemantics.initialState asR))
 
 conc-flat-sim-just :
-  ∀ (brs : FFOr.BlockRunsT) (ir : IR Unit Unit) (lk : LinkedProgram (irProgram tbl ir)) (n : ℕ) →
+  ∀ (brs : FFOr.BlockRunsT) (ir : IR Unit Unit) (lk : LinkedProgram (sig ι) (irProgram tbl ir)) (n : ℕ) →
   at (conc-trace ir) n ≡ at (FFOr.flat-main ir-obs-correct brs ir lk) n
 conc-flat-sim-just brs ir lk n
   rewrite compile-trace-cnt-agrees o 0 (FFOr.image ir)
@@ -367,10 +367,10 @@ conc-flat-sim-just brs ir lk n
 BlockRunsHyp-riscv64 : Set
 BlockRunsHyp-riscv64 = FFOr.BlockRunsT
 
-flat-riscv64 : BlockRunsHyp-riscv64 → (ir : IR Unit Unit) → LinkedProgram (irProgram tbl ir) → Behavior
+flat-riscv64 : BlockRunsHyp-riscv64 → (ir : IR Unit Unit) → LinkedProgram (sig ι) (irProgram tbl ir) → Behavior
 flat-riscv64 brs = FFOr.flat-main ir-obs-correct brs
 
-ir-flat-correct-riscv64 : ∀ (brs : BlockRunsHyp-riscv64) (ir : IR Unit Unit) (lk : LinkedProgram (irProgram tbl ir)) (n : ℕ)
+ir-flat-correct-riscv64 : ∀ (brs : BlockRunsHyp-riscv64) (ir : IR Unit Unit) (lk : LinkedProgram (sig ι) (irProgram tbl ir)) (n : ℕ)
                      → at (flat-riscv64 brs ir lk) n ≡ at (⟦ just (irProgram tbl ir) ⟧IR (arch-numerics riscv64) ι) n
 ir-flat-correct-riscv64 brs = FFOr.ir-flat-correct-main ir-obs-correct brs
 
@@ -383,7 +383,7 @@ asm-flat-riscv64 : ∀ (brs : BlockRunsHyp-riscv64) (m : P.Module) (asm : String
     DistinctLabels riscv64 m → LabelsResolvable riscv64 m → SymbolsResolvable riscv64 m →
     ∀ (ir : IR Unit Unit) (mi : moduleToIR m ≡ just ir)
     → (teq : tbl ≡ table (rewrite-program (irProgram (moduleTable m) ir)))
-    → (lk : LinkedProgram (irProgram tbl (main (rewrite-program (irProgram (moduleTable m) ir))))) →
+    → (lk : LinkedProgram (sig ι) (irProgram tbl (main (rewrite-program (irProgram (moduleTable m) ir))))) →
     ∀ (n : ℕ) → at (FFOr.asm-sem asm) n
               ≡ at (flat-riscv64 brs (main (rewrite-program (irProgram (moduleTable m) ir))) lk) n
 asm-flat-riscv64 brs m asm eq dl lr sr ir mi teq lk n =

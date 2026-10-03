@@ -78,13 +78,18 @@ record CorrectCompiler : Set₁ where
     Source   : Set
     Bytes    : Set
     Behavior : Set
-    -- Plan 0.105 (D257): the WORLD a program runs in — what answers its FFI
-    -- contracts. The compiler knows only each import's name and declared type;
-    -- what `getLine` returns is the interpretation's business, never the
-    -- Spec's (D061). A program's meaning and its binary's execution are both
-    -- RELATIVE to it, and the claim below holds at EVERY interpretation, so the
-    -- Spec never invents a value for a contract.
-    Interpretation : Set
+    -- Plan 0.105 (D257, D061's three times): INTERPRETATIONS. Compiling a user
+    -- program sees only an interpretation's DECLARED signatures (`Signature`)
+    -- and trusts them; each interpretation's author discharges an
+    -- `Implementation` of them off-line, in the compiler's contract form
+    -- (`Once.Spec.Contract`). What `getLine` returns is the implementation's
+    -- business, never the Spec's: the claim below holds for EVERY
+    -- implementation of the signatures a program is compiled against, so the
+    -- Spec never invents a value for a contract. (An implementation of a
+    -- declaration nobody can implement does not exist — its author's failure,
+    -- and no claim becomes false.)
+    Signature      : Set
+    Implementation : Signature → Set
 
     -- The INDEPENDENT source meaning, as a SPEC RELATION (Plan 0.49) — NOT a
     -- `Source → Maybe Behavior` function the compiler could define and then
@@ -102,16 +107,20 @@ record CorrectCompiler : Set₁ where
     -- trace the instance picks up-to-`n` prefix equality, Plan 0.44).
     Typed : Set
     _⊢_   : Source → Typed → Set
+    -- the signatures a typed program is compiled against (its FFI declarations)
+    sigOf : Typed → Signature
     -- D114/D113: the meaning takes the ARCH, exactly as `exec` always has. A
     -- machine-level denotation is target-relative at `Float` — `1.5` is
     -- `0x3FC00000` at 32 bits and `0x3FF8000000000000` at 64 — so one meaning
     -- for every target was a claim that could not be true at both. This is one
     -- claim PER TARGET, not a weaker claim: `correct` still quantifies over
     -- every arch, and now says what each of them means.
-    -- D257: both at an interpretation — two reads of an input differ between
-    -- two worlds, and so do the binary's.
-    ⟦_⟧ˢ  : Arch → Interpretation → Typed → Behavior
-    exec  : Arch → Interpretation → Bytes → Behavior
+    -- D257: the meaning is relative to an implementation of the program's
+    -- signatures, and the bytes run in the world those signatures and that
+    -- implementation make — two reads of an input differ between two
+    -- implementations, and so do the binary's.
+    ⟦_⟧ˢ  : Arch → (tp : Typed) → Implementation (sigOf tp) → Behavior
+    exec  : Arch → (S : Signature) → Implementation S → Bytes → Behavior
     _≈_   : Behavior → Behavior → Set
 
     -- TARGET-RELATIVE ADMISSIBILITY (plan 0.74, D115/D116).
@@ -151,8 +160,9 @@ record CorrectCompiler : Set₁ where
     --   • soundness + trace — if the compiler ACCEPTS `src` (emits bytes),
     --     then `src` HAS a meaning (`src ⊢ tp`), that meaning is EXPRESSIBLE
     --     at this target (`Admissible arch tp`), and the bytes' execution
-    --     equals it in EVERY world (`∀ ι → exec arch ι bytes ≈ ⟦ arch ⟧ˢ ι tp`);
-    --     the typed program is the world's no more than typing is (D257);
+    --     equals it for EVERY implementation of the signatures it is compiled
+    --     against (`∀ I → exec arch (sigOf tp) I bytes ≈ ⟦ arch ⟧ˢ tp I`); the
+    --     typed program is the implementation's no more than typing is (D257);
     --   • completeness — if `src` has a meaning the target can express, the
     --     compiler accepts it. The `Admissible` premise is what makes
     --     rejecting an out-of-range literal legal WITHOUT making
@@ -162,6 +172,6 @@ record CorrectCompiler : Set₁ where
     correct : ∀ arch doOpt src →
         ( ∀ bytes → compile arch doOpt src ≡ just bytes →
             Σ[ tp ∈ Typed ] ((src ⊢ tp) × Admissible arch tp
-                             × (∀ ι → exec arch ι bytes ≈ ⟦ arch ⟧ˢ ι tp)) )
+                             × (∀ I → exec arch (sigOf tp) I bytes ≈ ⟦ arch ⟧ˢ tp I)) )
       × ( ∀ tp → src ⊢ tp → Admissible arch tp →
             Σ[ bytes ∈ Bytes ] (compile arch doOpt src ≡ just bytes) )
