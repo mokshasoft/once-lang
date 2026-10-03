@@ -32,13 +32,15 @@ module Once.CCC.Machine.ReadTypedAdequate (o : CanonicalName) (tbl : List IRFun)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Unit using (⊤; tt)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
+open import Data.Sum using (_⊎_; inj₁; inj₂)
+import Once.IR
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; sym; trans; subst)
 open import Function using (id)
 
-open import Once.Type using (Type; Unit; Int; _*_)
+open import Once.Type using (Type; Unit; Int; Float; _*_; _+_)
 import Once.Type
-open import Once.IRTy using (⌊_⌋; fits-int)
-open import Once.Functor.Translate using (IsBaseType; base-Unit; base-Int; base-Prod)
+open import Once.IRTy using (⌊_⌋; fits-int; fits-float)
+open import Once.Functor.Translate using (IsBaseType; base-Unit; base-Int; base-Float; base-Prod; base-Sum)
 open import Once.Semantics.Machine using (⟦_⟧; coh)
 open import Once.Denotation.ValueDomain using (forgetᵇ; cohᴰ) renaming (⟦_⟧ᴰᴵ to ⟦_⟧ᴵ)
 open import Once.CCC.Machine.SMCore
@@ -46,7 +48,8 @@ open AbstractExec {FS}
 open MemOps {FS}
 open import Once.CCC.Machine.ClosureWellFormed o tbl
 open ClosureWellFormedDef {FS}
-  using (ValidAtWF; valid-unit-wf; valid-int-wf; valid-pair-wf; prim-sv;
+  using (ValidAtWF; valid-unit-wf; valid-int-wf; valid-float-wf; valid-pair-wf;
+         valid-inl-wf; valid-inr-wf; valid-inl-reg-wf; valid-inr-reg-wf; SumTag; prim-sv;
          CellAt; cell-ptr; cell-inline; InlineRep; rep-prim; rep-unit; inline-sv)
 
 -- Readable types: Unit, Int, and products thereof — the arith input shapes.
@@ -54,6 +57,10 @@ data Readable : Type → Set where
   r-unit : Readable Unit
   r-int  : Readable Int
   r-pair : ∀ {A B} → Readable A → Readable B → Readable (A * B)
+  -- plan 0.105 §g: a SigOp's argument is read from memory at every base type
+  -- the machine represents with its content — Float and sums too.
+  r-float : Readable Float
+  r-sum  : ∀ {A B} → Readable A → Readable B → Readable (A + B)
 
 -- Decision procedure, so the SigOp dispatch can ROUTE on readability: a Pure
 -- SigOp over a readable input gets the real computed value; anything else falls
@@ -66,12 +73,29 @@ readable? Int     = just r-int
 readable? (A * B) with readable? A | readable? B
 ... | just ra | just rb = just (r-pair ra rb)
 ... | _       | _       = nothing
+readable? Float   = just r-float
+readable? (A + B) with readable? A | readable? B
+... | just ra | just rb = just (r-sum ra rb)
+... | _       | _       = nothing
 readable? _       = nothing
 
 -- Transport of a product decomposes componentwise (standard J-style).
 subst-×-cong₂ : ∀ {A B A' B' : Set} (p : A ≡ A') (q : B ≡ B') (a : A) (b : B)
               → subst id (cong₂ _×_ p q) (a , b) ≡ (subst id p a , subst id q b)
 subst-×-cong₂ refl refl a b = refl
+
+subst-⊎₁ : ∀ {A B A' B' : Set} (p : A ≡ A') (q : B ≡ B') (a : A)
+         → subst id (cong₂ _⊎_ p q) (inj₁ a) ≡ inj₁ (subst id p a)
+subst-⊎₁ refl refl a = refl
+
+subst-⊎₂ : ∀ {A B A' B' : Set} (p : A ≡ A') (q : B ≡ B') (b : B)
+         → subst id (cong₂ _⊎_ p q) (inj₂ b) ≡ inj₂ (subst id q b)
+subst-⊎₂ refl refl b = refl
+
+-- A sum's tag cell, whatever the mode.
+sumtag-eq : ∀ {m t s loc} → SumTag m t s loc → readLoc s loc ≡ just (SV-Tag t)
+sumtag-eq {Once.IR.Heap}  e = e
+sumtag-eq {Once.IR.Stack} e = e
 
 -- ADEQUACY: a validly-represented value of a readable type is read back exactly
 -- (`v` is the IRTy value; `subst id (coh A)` carries it to the `Type` domain).
@@ -93,6 +117,24 @@ readTyped-adequate : ∀ {A} (r : Readable A) (ib : IsBaseType A) → ∀ {loc s
                    → readTyped A loc s ≡ just (forgetᵇ ib (subst id (cohᴰ A) v))
 readTyped-adequate r-unit base-Unit valid-unit-wf = refl
 readTyped-adequate r-int base-Int (valid-int-wf bf rl) rewrite rl = refl
+readTyped-adequate r-float base-Float (valid-float-wf bf rl) rewrite rl = refl
+-- A sum: the tag selects the injection, the payload cell is a pair-style cell.
+readTyped-adequate (r-sum {A} {B} rA rB) (base-Sum iA iB) {loc} {s} (valid-inl-wf {a = a} _ tg pl bfp _ va)
+  rewrite sumtag-eq tg =
+  trans (cong (Data.Maybe.map inj₁) (readTyped-cell-adequate rA iA (cell-ptr {cell-loc = sucLoc loc} {s = s} pl bfp va)))
+        (cong just (cong (forgetᵇ (base-Sum iA iB)) (sym (subst-⊎₁ (cohᴰ A) (cohᴰ B) a))))
+readTyped-adequate (r-sum {A} {B} rA rB) (base-Sum iA iB) {loc} {s} (valid-inr-wf {b = b} _ tg pl bfp _ vb)
+  rewrite sumtag-eq tg =
+  trans (cong (Data.Maybe.map inj₂) (readTyped-cell-adequate rB iB (cell-ptr {cell-loc = sucLoc loc} {s = s} pl bfp vb)))
+        (cong just (cong (forgetᵇ (base-Sum iA iB)) (sym (subst-⊎₂ (cohᴰ A) (cohᴰ B) b))))
+readTyped-adequate (r-sum {A} {B} rA rB) (base-Sum iA iB) {loc} {s} {_} {alloc} (valid-inl-reg-wf {a = a} _ tg rep rl _)
+  rewrite sumtag-eq tg =
+  trans (cong (Data.Maybe.map inj₁) (readTyped-cell-adequate rA iA {alloc = alloc} (cell-inline {cell-loc = sucLoc loc} {s = s} rep rl)))
+        (cong just (cong (forgetᵇ (base-Sum iA iB)) (sym (subst-⊎₁ (cohᴰ A) (cohᴰ B) a))))
+readTyped-adequate (r-sum {A} {B} rA rB) (base-Sum iA iB) {loc} {s} {_} {alloc} (valid-inr-reg-wf {b = b} _ tg rep rl _)
+  rewrite sumtag-eq tg =
+  trans (cong (Data.Maybe.map inj₂) (readTyped-cell-adequate rB iB {alloc = alloc} (cell-inline {cell-loc = sucLoc loc} {s = s} rep rl)))
+        (cong just (cong (forgetᵇ (base-Sum iA iB)) (sym (subst-⊎₂ (cohᴰ A) (cohᴰ B) b))))
 readTyped-adequate (r-pair {A} {B} rA rB) (base-Prod iA iB) {v = v} (valid-pair-wf lmm slb fc sc)
   rewrite readTyped-cell-adequate rA iA fc | readTyped-cell-adequate rB iB sc =
   cong just (cong (forgetᵇ (base-Prod iA iB)) (sym (subst-×-cong₂ (cohᴰ A) (cohᴰ B) (proj₁ v) (proj₂ v))))
@@ -120,3 +162,11 @@ readTyped-cell-adequate (r-pair rA rB) ib (cell-ptr r bf v)
   rewrite r = readTyped-adequate (r-pair rA rB) ib v
 readTyped-cell-adequate (r-pair rA rB) _ (cell-inline (rep-prim ()) r)
 readTyped-cell-adequate (r-pair rA rB) _ (cell-inline (rep-unit () _) r)
+readTyped-cell-adequate r-float base-Float (cell-ptr r bf v)
+  rewrite r = readTyped-adequate r-float base-Float v
+readTyped-cell-adequate r-float base-Float (cell-inline (rep-prim fits-float) r) rewrite r = refl
+readTyped-cell-adequate r-float base-Float (cell-inline (rep-unit () _) r)
+readTyped-cell-adequate (r-sum rA rB) ib (cell-ptr r bf v)
+  rewrite r = readTyped-adequate (r-sum rA rB) ib v
+readTyped-cell-adequate (r-sum rA rB) _ (cell-inline (rep-prim ()) r)
+readTyped-cell-adequate (r-sum rA rB) _ (cell-inline (rep-unit () _) r)

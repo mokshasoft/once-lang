@@ -43,7 +43,7 @@ open import Once.Denotation.Trace using (SigOpEvent; mk-event)
 open import Once.Denotation.TraceMonad using (callOp; answer; callKey; calls)
 open import Once.Spec.Contract using (_∈K?_)
 open import Data.List.Membership.Propositional using (_∈_)
-open import Once.Functor.Translate using (IsBaseType; base-Int; base-Float)
+open import Once.Functor.Translate using (IsBaseType; base-Unit; base-Int; base-Float)
 -- Plan 0.63 (D089): the structured label identity. Re-exported, so every
 -- importer of the abstract instruction set sees `LabelId` without a second
 -- import — the same courtesy `Locations`/`HeapAddress` already get below.
@@ -55,6 +55,7 @@ open import Once.CanonicalName using (CanonicalName)
 -- discharge of `ir-to-trace-correct-sigop` and per-(arch, name)
 -- discharge of `sigop-codegen-faithful`.
 open import Once.Type using (Type; Unit; Int; Float; _*_; FitsInReg; fits-int; fits-float; fits-in-reg?)
+import Once.Type as Ty
 open import Once.Semantics.Machine using (⟦_⟧; LitPayload)
 open import Once.SigOp.Info using (SigOpInfo; semM; effect; EffectShape; Pure; Emits; Halts; Answers; name; baseA)
 open import Once.Res using (Res; stopped; returns)
@@ -1608,6 +1609,10 @@ module AbstractExec {FS : FrameSemantics} where
   readTyped-int (just (SV-Lit fits-int v)) = just v
   readTyped-int _                          = nothing
 
+  readTyped-float : Maybe (StoredValue FS) → Maybe ⟦ Float ⟧
+  readTyped-float (just (SV-Lit fits-float v)) = just v
+  readTyped-float _                            = nothing
+
   -- D187: A PAIR CELL IS A POINTER **OR** THE COMPONENT ITSELF. The emitter
   -- does not box: every compound build copies whatever the source cell held,
   -- so a component that arrived as a register literal lands in the cell as
@@ -1645,7 +1650,22 @@ module AbstractExec {FS : FrameSemantics} where
   -- no residence discipline on `Input1`.
   readReg-typed Unit _                  = just tt
   readReg-typed Int (SV-Lit fits-int v) = just v
+  readReg-typed Float (SV-Lit fits-float v) = just v
   readReg-typed _   _                   = nothing
+
+  -- Plan 0.105 §g: A SUM is its tag cell (`SV-Tag 0`/`SV-Tag 1`) and its
+  -- payload cell, which — like a pair's — is a pointer or the payload itself
+  -- (`valid-inl-wf` / `valid-inl-reg-wf`). Read the tag, then the cell.
+  readTyped-sum : ∀ {A B : Type}
+                → (Maybe (StoredValue FS) → Maybe ⟦ A ⟧) → (Maybe (StoredValue FS) → Maybe ⟦ B ⟧)
+                → Maybe (StoredValue FS) → Maybe (StoredValue FS) → Maybe ⟦ A Ty.+ B ⟧
+  readTyped-sum cA cB (just (SV-Tag zero))          mp = Data.Maybe.map inj₁ (cA mp)
+  readTyped-sum cA cB (just (SV-Tag (suc zero)))    mp = Data.Maybe.map inj₂ (cB mp)
+  readTyped-sum cA cB (just (SV-Tag (suc (suc _)))) mp = nothing
+  readTyped-sum cA cB (just (SV-Ptr _))             mp = nothing
+  readTyped-sum cA cB (just (SV-Lit _ _))           mp = nothing
+  readTyped-sum cA cB (just (SV-Code _))            mp = nothing
+  readTyped-sum cA cB nothing                       mp = nothing
 
   readTyped : (A : Type) → ValueLocation FS → LocState FS → Maybe ⟦ A ⟧
   readTyped Unit    loc s = just tt
@@ -1653,6 +1673,11 @@ module AbstractExec {FS : FrameSemantics} where
   readTyped (A * B) loc s =
     readTyped-pair (λ l → readTyped A l s) (λ l → readTyped B l s)
       (readReg-typed A) (readReg-typed B)
+      (readLoc s loc) (readLoc s (sucLoc loc))
+  readTyped Float   loc s = readTyped-float (readLoc s loc)
+  readTyped (A Ty.+ B) loc s =
+    readTyped-sum (readTyped-cell (λ l → readTyped A l s) (readReg-typed A))
+                  (readTyped-cell (λ l → readTyped B l s) (readReg-typed B))
       (readLoc s loc) (readLoc s (sucLoc loc))
   readTyped _       loc s = nothing
 
@@ -1673,36 +1698,49 @@ module AbstractExec {FS : FrameSemantics} where
     structured-pure-sigop-output : ∀ {A B} → SigOpInfo A B → LocState FS →
                                    StoredValue FS
 
-  -- RESIDUAL (D114, plan 0.73 G3) — THE ARGUMENT THIS LAYER CANNOT YET READ.
-  -- A scalar argument sits in `Input1` itself; a compound one is a pointer,
-  -- and recovering its value is a heap walk not yet related to the memory
-  -- correspondence. (Moved here from `FlatEvents` by plan 0.105: the machine
-  -- now LOGS its events, so it decodes them itself.)
-  postulate
-    decode-unread : ∀ {A} → IsBaseType A → StoredValue FS → ⟦ A ⟧
+  -- THE ARGUMENT, READ FROM MEMORY (plan 0.105 §g). A scalar argument sits in
+  -- `Input1` itself; a compound one is a pointer, read back through `readTyped`
+  -- (whose adequacy is `ReadTypedAdequate`). What cannot be read decodes to
+  -- `nothing`. (Replaces D114's `decode-unread : IsBaseType A → StoredValue →
+  -- ⟦ A ⟧`, which gave `⊥` at `base-Void` once an interpretation was
+  -- inhabited, and decoded a boxed value from the pointer alone.)
+  decode-at : ∀ {A} → IsBaseType A → StoredValue FS → LocState FS → Maybe ⟦ A ⟧
+  decode-at base-Unit  _                      _ = just tt
+  decode-at base-Int   (SV-Lit fits-int   v)  _ = just v
+  decode-at base-Float (SV-Lit fits-float v)  _ = just v
+  decode-at {A} _      (SV-Ptr loc)           s = readTyped A loc s
+  decode-at _          _                      _ = nothing
 
-  decode-arg : ∀ {A} → IsBaseType A → StoredValue FS → ⟦ A ⟧
-  decode-arg base-Int   (SV-Lit fits-int   v) = v
-  decode-arg base-Float (SV-Lit fits-float v) = v
-  decode-arg b          sv                    = decode-unread b sv
+  -- The events a SigOp invocation is: its call, at the argument decoded from
+  -- `Input1`. An argument the machine cannot read logs nothing.
+  -- (Aux-style, not `with`: the decoded argument stays a real argument, so a
+  -- consumer's `rewrite` of it reduces the events.)
+  events-at-arg : ∀ {A B} → SigOpInfo A B → Maybe ⟦ A ⟧ → List SigOpEvent
+  events-at-arg {A} si (just a) = mk-event (name si) A (baseA si) a ∷ []
+  events-at-arg     si nothing  = []
 
-  -- The event a SigOp invocation is, read off the argument register.
-  machine-event : ∀ {A B} → SigOpInfo A B → StoredValue FS → SigOpEvent
-  machine-event {A} si sv = mk-event (name si) A (baseA si) (decode-arg (baseA si) sv)
+  machine-events : ∀ {A B} → SigOpInfo A B → LocState FS → List SigOpEvent
+  machine-events si s = events-at-arg si (decode-at (baseA si) (readReg (regs s) Input1) s)
 
   -- An ANSWERING SigOp's result (plan 0.105): the interpretation's answer to
   -- this call, given the calls before it (the log), at the argument the event
   -- records. A register value when the codomain fits one; a compound answer
   -- would be written to memory, which this layer does not model yet, so it
-  -- takes the sentinel (as an unreadable pure input does).
+  -- takes the sentinel (as an unreadable argument does).
   -- Plan 0.105 (D257 amendment 2): read through the membership DECISION, as
   -- `run` does; a call outside the interpretation's signatures takes the
   -- sentinel (unreachable for a program linked against them).
+  call-sigop-ans-at : ∀ {A B} (si : SigOpInfo A B) → LocState FS → FitsInReg B
+                    → callKey (callOp (name si) A (baseA si) B) ∈ calls (fs-interp FS)
+                    → Maybe ⟦ A ⟧ → StoredValue FS
+  call-sigop-ans-at {A} {B} si s fitB p (just a) =
+    SV-Lit fitB (answer (fs-interp FS) (ev-log s) (callOp (name si) A (baseA si) B) p a)
+  call-sigop-ans-at si s fitB p nothing = unit-storedvalue
+
   call-sigop-ans : ∀ {A B} (si : SigOpInfo A B) → LocState FS → FitsInReg B
                  → Dec (callKey (callOp (name si) A (baseA si) B) ∈ calls (fs-interp FS)) → StoredValue FS
-  call-sigop-ans {A} {B} si s fitB (yes p) =
-    SV-Lit fitB (answer (fs-interp FS) (ev-log s) (callOp (name si) A (baseA si) B) p
-                  (decode-arg (baseA si) (readReg (regs s) Input1)))
+  call-sigop-ans si s fitB (yes p) =
+    call-sigop-ans-at si s fitB p (decode-at (baseA si) (readReg (regs s) Input1) s)
   call-sigop-ans si s fitB (no _) = unit-storedvalue
 
   -- Is the call one of the interpretation's declared answering SigOps?
@@ -1779,9 +1817,9 @@ module AbstractExec {FS : FrameSemantics} where
   -- otherwise. Shape-direct, as the output dispatch is.
   sigop-events-of : ∀ {A B} → EffectShape B → SigOpInfo A B → LocState FS → List SigOpEvent
   sigop-events-of Pure      _  _ = []
-  sigop-events-of (Emits _) si s = machine-event si (readReg (regs s) Input1) ∷ []
-  sigop-events-of (Halts _) si s = machine-event si (readReg (regs s) Input1) ∷ []
-  sigop-events-of Answers   si s = machine-event si (readReg (regs s) Input1) ∷ []
+  sigop-events-of (Emits _) si s = machine-events si s
+  sigop-events-of (Halts _) si s = machine-events si s
+  sigop-events-of Answers   si s = machine-events si s
 
   sigop-events : ∀ {A B} → SigOpInfo A B → LocState FS → List SigOpEvent
   sigop-events si s = sigop-events-of (effect si) si s

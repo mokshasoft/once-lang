@@ -433,7 +433,10 @@ sigop-output-ok {A} {B} si ls = go (effect si)
         cv : ∀ (mf : Maybe (FitsInReg B)) → StackPtrOK (call-sigop-val si ls mf)
         cv (just f) = ans (call-sigop-dec si)
           where ans : ∀ d → StackPtrOK (call-sigop-ans si ls f d)
-                ans (yes _) = tt
+                ans (yes p) = at (decode-at (SigOpInfo.baseA si) (readReg (regs ls) Input1) ls)
+                  where at : ∀ ma → StackPtrOK (call-sigop-ans-at si ls f p ma)
+                        at (just _) = tt
+                        at nothing  = tt
                 ans (no _)  = tt
         cv nothing  = tt
 

@@ -28,8 +28,8 @@ open import Once.Denotation.Program using (IRFun; tableEnv)
 module Once.CCC.Codegen.IRObsCorrect.SigOp (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
-open import Once.Type using () renaming (Unit to Unitᵀ; Void to Voidᵀ)
-open import Once.Functor.Translate using (IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Str; base-Buffer; base-Prod; base-Sum)
+open import Once.Type using () renaming (Unit to Unitᵀ; Void to Voidᵀ; Float to Floatˢ)
+open import Once.Functor.Translate using (IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Str; base-Buffer; base-Prod; base-Sum; base-rigid)
 open import Function using () renaming (id to idᶠ)
 open import Data.List.Properties using (++-identityʳ)
 open import Once.Denotation.Trace using (mk-event)
@@ -58,7 +58,7 @@ module SigOpC {FS : FrameSemantics} where
   open Core {FS}
   open FlatEventTrace {FS} using (ev-of-loc)
   open Mach {FS}
-  open AbstractExec {FS} using (decode-arg; machine-event; sigop-events; sigop-events-of; exec-sigop-output; res-sv; call-sigop-val; call-sigop-output; call-sigop-ans)
+  open AbstractExec {FS} using (decode-at; machine-events; events-at-arg; sigop-events; sigop-events-of; exec-sigop-output; res-sv; call-sigop-val; call-sigop-output; call-sigop-ans; call-sigop-ans-at)
 
   private
     fmt = Once.CCC.FrameSemantics.fs-numerics FS
@@ -96,33 +96,82 @@ module SigOpC {FS : FrameSemantics} where
 
   ------------------------------------------------------------------------
   -- THE ARGUMENT CORRESPONDENCE: the argument the machine decodes is the one
-  -- the denotation passes. It splits on the DOMAIN's base type:
+  -- the denotation passes (plan 0.105 §g: decoded from MEMORY). It splits on
+  -- where the argument lives:
   --   * `Unit` — `⟦ Unit ⟧` is `⊤`, so the two agree by η (D074);
-  --   * `Int`/`Float` REGISTER-RESIDENT — `decode-arg`'s two real clauses.
-  -- What is left is a BOXED base argument: D114's `decode-unread` hole,
-  -- restated where it is consumed.
+  --   * `Void` / a rigid parameter — there is no argument;
+  --   * REGISTER-RESIDENT `Int`/`Float` — `decode-at`'s two literal clauses;
+  --   * BEHIND A POINTER — `readTyped`, adequate at every `Readable` type.
+  -- What is left is a pointer to a value `readTyped` cannot read: one holding
+  -- a `Str`/`Buffer`, whose residence (`valid-str-wf`/`valid-buffer-wf`)
+  -- carries no content.
   ------------------------------------------------------------------------
   postulate
     decode-boxed : ∀ {A : Type} (bt : IsBaseType A) {mIn alloc}
-                     (x : ⟦ ⌊ A ⌋ ⟧) (s : LocState FS)
-                 → InputAt {⌊ A ⌋} mIn alloc x s
-                 → decode-arg bt (readReg (regs s) Input1) ≡ forgetᵇ bt (subst idᶠ (cohᴰ A) x)
+                     (x : ⟦ ⌊ A ⌋ ⟧) (s : LocState FS) (loc : ValueLocation FS)
+                 → readable? A ≡ nothing
+                 → ValidAtWF mIn alloc {⌊ A ⌋} x loc s
+                 → readTyped A loc s ≡ just (forgetᵇ bt (subst idᶠ (cohᴰ A) x))
+
+  -- Behind a pointer, every base type is read by `readTyped` (`Unit` reads `tt`
+  -- either way).
+  decode-ptr : ∀ {A : Type} (bt : IsBaseType A) (loc : ValueLocation FS) (s : LocState FS)
+             → decode-at bt (SV-Ptr loc) s ≡ readTyped A loc s
+  decode-ptr base-Unit       _ _ = refl
+  decode-ptr base-Void       _ _ = refl
+  decode-ptr base-Int        _ _ = refl
+  decode-ptr base-Float      _ _ = refl
+  decode-ptr base-Str        _ _ = refl
+  decode-ptr base-Buffer     _ _ = refl
+  decode-ptr (base-Prod _ _) _ _ = refl
+  decode-ptr (base-Sum _ _)  _ _ = refl
+  decode-ptr base-rigid      _ _ = refl
+
+  arg-loc : ∀ {A : Type} (bt : IsBaseType A) {mIn alloc}
+              (x : ⟦ ⌊ A ⌋ ⟧) (s : LocState FS) (loc : ValueLocation FS)
+              (mr : Maybe (Readable A)) → readable? A ≡ mr
+          → ValidAtWF mIn alloc {⌊ A ⌋} x loc s
+          → readTyped A loc s ≡ just (forgetᵇ bt (subst idᶠ (cohᴰ A) x))
+  arg-loc bt x s loc (just r) _ v = readTyped-adequate r bt v
+  arg-loc bt x s loc nothing  e v = decode-boxed bt x s loc e v
+
+  -- A register holds an `Int` or a `Float`, nothing else.
+  arg-reg : ∀ {A : Type} (bt : IsBaseType A) (fit : FitsInRegI ⌊ A ⌋)
+              (x : ⟦ ⌊ A ⌋ ⟧) (s : LocState FS)
+          → readReg (regs s) Input1 ≡ prim-sv fit x
+          → decode-at bt (readReg (regs s) Input1) s ≡ just (forgetᵇ bt (subst idᶠ (cohᴰ A) x))
+  arg-reg base-Int   fits-int   x s eq rewrite eq = refl
+  arg-reg base-Float fits-float x s eq rewrite eq = refl
+  arg-reg base-Unit       () x s eq
+  arg-reg base-Void       () x s eq
+  arg-reg base-Str        () x s eq
+  arg-reg base-Buffer     () x s eq
+  arg-reg (base-Prod _ _) () x s eq
+  arg-reg (base-Sum _ _)  () x s eq
+  arg-reg base-rigid      () x s eq
 
   arg-agree : ∀ {A : Type} (bt : IsBaseType A) {mIn alloc}
                 (x : ⟦ ⌊ A ⌋ ⟧) (s : LocState FS)
             → InputAt {⌊ A ⌋} mIn alloc x s
-            → decode-arg bt (readReg (regs s) Input1) ≡ forgetᵇ bt (subst idᶠ (cohᴰ A) x)
-  arg-agree base-Unit  x s inp = refl
-  arg-agree base-Int   x s (in-reg fits-int   eq) rewrite eq = refl
-  arg-agree base-Float x s (in-reg fits-float eq) rewrite eq = refl
-  arg-agree bt         x s inp = decode-boxed bt x s inp
+            → decode-at bt (readReg (regs s) Input1) s ≡ just (forgetᵇ bt (subst idᶠ (cohᴰ A) x))
+  arg-agree base-Unit  x  s inp = refl
+  arg-agree base-Void  () s inp
+  arg-agree base-rigid () s inp
+  arg-agree {A} bt x s (in-loc loc v _ eq) rewrite eq =
+    trans (decode-ptr bt loc s) (arg-loc bt x s loc (readable? A) refl v)
+  arg-agree bt x s (in-reg fit eq) = arg-reg bt fit x s eq
+  arg-agree base-Int        x s (in-unit ())
+  arg-agree base-Float      x s (in-unit ())
+  arg-agree base-Str        x s (in-unit ())
+  arg-agree base-Buffer     x s (in-unit ())
+  arg-agree (base-Prod _ _) x s (in-unit ())
+  arg-agree (base-Sum _ _)  x s (in-unit ())
 
-  -- The event a calling SigOp's step logs IS the call the denotation makes.
+  -- The events a calling SigOp's step logs ARE the call the denotation makes.
   event-agree : ∀ {A B} (si : SigOpInfo A B) {mIn alloc} (x : ⟦ ⌊ A ⌋ ⟧) (s : LocState FS)
               → InputAt {⌊ A ⌋} mIn alloc x s
-              → machine-event si (readReg (regs s) Input1)
-                ≡ mk-event (name si) A (baseA si) (argOf si x)
-  event-agree {A} si x s inp = cong (mk-event (name si) A (baseA si)) (arg-agree (baseA si) x s inp)
+              → machine-events si s ≡ mk-event (name si) A (baseA si) (argOf si x) DL.∷ DL.[]
+  event-agree {A} si x s inp = cong (events-at-arg si) (arg-agree (baseA si) x s inp)
 
   ------------------------------------------------------------------------
   -- ONE SigOp STEP, as an obligation witness. Every contract runs the same
@@ -176,6 +225,9 @@ module SigOpC {FS : FrameSemantics} where
   forget-reg : ∀ (bt : IsBaseType Intˢ) (x : EvV.⟦ Intˢ ⟧) → x ≡ forgetᵇ bt x
   forget-reg base-Int x = refl
 
+  forget-reg-float : ∀ (bt : IsBaseType Floatˢ) (x : EvV.⟦ Floatˢ ⟧) → x ≡ forgetᵇ bt x
+  forget-reg-float base-Float x = refl
+
   -- THE INPUT A CALL-FREE CONTRACT READS is the denotation's argument, in
   -- every residence: through the pointer (`readTyped-adequate`, at the info's
   -- own witness), from the register, or — for a unit input — by η.
@@ -197,7 +249,14 @@ module SigOpC {FS : FrameSemantics} where
       pure-sigop-out-unit-any : ∀ ml → pure-sigop-out-aux si s (just fit) ml ≡ pure-sigop-out-val si fit (just tt)
       pure-sigop-out-unit-any (just _) = refl
       pure-sigop-out-unit-any nothing  = refl
+  pure-input-aux si fit r-float x s (in-reg fits-float eq) =
+    trans (cong (λ sv → pure-sigop-out-aux si s (just fit) (sv-as-loc sv)) eq)
+          (trans (cong (λ sv → pure-sigop-out-val si fit (readReg-typed Floatˢ sv)) eq)
+                 (cong (λ a → pure-sigop-out-val si fit (just a)) (forget-reg-float (baseA si) x)))
   pure-input-aux si fit r-unit       x s (in-reg () _)
+  pure-input-aux si fit (r-sum _ _)  x s (in-reg () _)
+  pure-input-aux si fit r-float      x s (in-unit ())
+  pure-input-aux si fit (r-sum _ _)  x s (in-unit ())
   pure-input-aux si fit (r-pair _ _) x s (in-reg () _)
   pure-input-aux si fit r-int        x s (in-unit ())
   pure-input-aux si fit (r-pair _ _) x s (in-unit ())
@@ -273,7 +332,7 @@ module SigOpC {FS : FrameSemantics} where
       E≡ = evalᴰ-at si (emitsV refl) e x
       ev-eq : sigop-events si s ≡ eventsAt s (evalᴰ (SigOp si) x)
       ev-eq = trans (events-at si (emitsV refl) e s)
-                (trans (cong (DL._∷ DL.[]) (event-agree si x s inp)) (sym (cong (eventsAt s) E≡)))
+                (trans (event-agree si x s inp) (sym (cong (eventsAt s) E≡)))
 
   halts-obs : ∀ {A} (si : SigOpInfo A Voidᵀ) → sem si ≡ haltsV refl → IRObsCorrectF (SigOp si)
   halts-obs {A} si e n l prog base _ _ span _ _ mIn x s alloc cl _ nh inp =
@@ -285,7 +344,7 @@ module SigOpC {FS : FrameSemantics} where
       E≡ = evalᴰ-at si (haltsV refl) e x
       ev-eq : sigop-events si s ≡ eventsAt s (evalᴰ (SigOp si) x)
       ev-eq = trans (events-at si (haltsV refl) e s)
-                (trans (cong (DL._∷ DL.[]) (event-agree si x s inp)) (sym (cong (eventsAt s) E≡)))
+                (trans (event-agree si x s inp) (sym (cong (eventsAt s) E≡)))
 
   -- THE WORLD ANSWERS. The machine writes the interpretation's answer at its
   -- log (`call-sigop-val`); the denotation's call node, run from the same
@@ -325,11 +384,11 @@ module SigOpC {FS : FrameSemantics} where
       res-call = cong proj₂ run-call
       ev-eq : sigop-events si s ≡ eventsAt s (evalᴰ (SigOp si) x)
       ev-eq = trans (events-at si callsV e s)
-                (trans (cong (DL._∷ DL.[]) (event-agree si x s inp))
+                (trans (event-agree si x s inp)
                   (trans (sym (cong proj₁ run-call)) (sym (cong (eventsAt s) E≡))))
       out≡ : ∀ (f : FitsInReg B) → call-sigop-val si s (just f) ≡ prim-sv (fits-erase f) (resOf si ans)
       out≡ f = trans (cong (λ dd → call-sigop-ans si s f dd) (proj₂ y))
-                (trans (cong (λ a → SV-Lit f (TM.answer ιᶠ (LocState.ev-log s) op p₀ a))
+                (trans (cong (call-sigop-ans-at si s f p₀)
                            (arg-agree (baseA si) x s inp))
                      (res-reg f (conB si) ans))
       out-fit : ∀ (f : FitsInReg B) → call-sigop-output si s ≡ prim-sv (fits-erase f) (resOf si ans)

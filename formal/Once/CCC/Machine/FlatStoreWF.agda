@@ -348,7 +348,10 @@ sigop-output-below n {A} {B} si ls = go (effect si)
         call-below : ∀ (mf : Maybe (FitsInReg B)) → sv-below n (call-sigop-val si ls mf)
         call-below (just f) = ans (call-sigop-dec si)
           where ans : ∀ d → sv-below n (call-sigop-ans si ls f d)
-                ans (yes _) = tt
+                ans (yes p) = at (decode-at (SigOpInfo.baseA si) (readReg (regs ls) Input1) ls)
+                  where at : ∀ ma → sv-below n (call-sigop-ans-at si ls f p ma)
+                        at (just _) = tt
+                        at nothing  = tt
                 ans (no _)  = tt
         call-below nothing  = tt
 
