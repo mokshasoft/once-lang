@@ -59,6 +59,8 @@ open import Once.Denotation.TraceMonad using (projTrace)
 open import Data.Maybe using (just)
 import Once.Adequacy.TeleWalk fmt ι as TW
 import Once.Adequacy.TeleWalk.Invariant fmt ι as TWI
+import Once.Adequacy.EntriesValid as EV
+open EV using (valid-mod)
 import Once.Adequacy.TelePosition as TP
 import Once.Spec.Core.Translate as TR
 open import Once.Adequacy.SourceTrace using (tableOfResult)
@@ -91,20 +93,8 @@ private
   inv₀ : TWI.Inv C.emptyCScope Tele.[] TR.[] TR.[] []
   inv₀ = record { valid = tt ; irf = λ () ; iself = [] ; rel = λ _ _ _ _ _ → tt , tt , refl }
 
-  -- Every definition's name is an identifier: the extractor's guard.
-  valid-of : ∀ (es : List C.Entry) → Once.Parser.allValidIdentB (Once.Parser.emittedNames (Once.Parser.funsOf es)) ≡ true
-           → All TWI.MonoValid es
-  valid-of []                   eq = []
-  valid-of (C.e-poly pfi ∷ es) eq = tt ∷ valid-of es eq
-  valid-of (C.e-fun fi ∷ es)   eq with C.FunInfo.funIsPrimitive fi in ep
-  ... | true  = (λ p → case trans (sym ep) p of λ ()) ∷ valid-of es eq
-  ... | false = (λ _ → NC.∧-elimˡ eq) ∷ valid-of es (NC.∧-elimʳ eq)
-
-  valid-mod : ∀ (m : P.Module) {es} → C.extractFunctions (C.extractAliases m) m ≡ inj₂ es → All TWI.MonoValid es
-  valid-mod (P.mkModule ds) {es} eq = valid-of es (NC.∧-elimʳ (NC.guard-true (C.extractFunctions-go (C.extractAliases (P.mkModule ds)) ds C.nothing) eq))
-
   core-ef : ∀ (m : P.Module) (ef : String ⊎ List C.Entry) (mt : ModuleTyped-ef m ef) (hvm : HasValidMain-ef m ef mt)
-              {es} → ef ≡ inj₂ es → AllPairs _≢_ (map TP.entryName es) → All TWI.MonoValid es
+              {es} → ef ≡ inj₂ es → AllPairs _≢_ (map TP.entryName es) → All EV.MonoValid es
             → (b : FB.FunBundle C.emptyCScope es) (n : ℕ)
             → TW.RunAt (tableOf-go (FB.bundle→compiled b) []) n ≡ runProgram fmt ι (typedProgram-ef m ef mt hvm) n
   core-ef m .(inj₂ _) mt (_ , mi) refl dist vd b n =

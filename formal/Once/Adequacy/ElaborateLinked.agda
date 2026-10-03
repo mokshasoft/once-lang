@@ -40,7 +40,7 @@ import Once.IRTy
 open import Once.Type using (⟦_⟧T)
 open import Once.Denotation.Program using (IRFun; fname; fdom; fcod; LinkedAt; LinkedAt-at; Linked; Declared-at)
 open import Once.Spec.Contract using (ISig; contractOf; contract-eff; value-∈; answer-∈)
-open import Once.SigOp.Info using (SigOpInfo)
+open import Once.SigOp.Info using (SigOpInfo; SigOpSem; pureV; primV; emitsV; haltsV; ffiV; callsV)
 open import Once.Arith.SigOp.Builders using (arrow-info; arrow-sem-eff)
 import Once.Type as Ty
 open import Once.Type using (Void; isVoid?; isUnit?) renaming (Unit to UnitT)
@@ -95,6 +95,40 @@ linked-mono h (IR.in-ν _)      _ = tt
 linked-mono h (IR.SigOp _)     d = d
 linked-mono h (IR.const _ _)   _ = tt
 
+-- Nothing is declared in the empty signatures, so an IR linked against them
+-- has no FFI SigOp, and is linked against any.
+private
+  decl-[] : ∀ {A B} (si : SigOpInfo A B) (s : SigOpSem A B) → Declared-at [] si s → Declared-at σ si s
+  decl-[] si (pureV _)  _ = tt
+  decl-[] si (primV _)  _ = tt
+  decl-[] si (emitsV _) _ = tt
+  decl-[] si (haltsV _) _ = tt
+  decl-[] si ffiV       ()
+  decl-[] si callsV     ()
+
+linked-σ : ∀ {tbl : List IRFun} {A B} (ir : IR A B) → Linked [] tbl ir → Linked σ tbl ir
+linked-σ (g IR.∘ f)       (lg , lf) = linked-σ g lg , linked-σ f lf
+linked-σ IR.⟨ f , g ⟩     (lf , lg) = linked-σ f lf , linked-σ g lg
+linked-σ (IR.case f g)    (lf , lg) = linked-σ f lf , linked-σ g lg
+linked-σ (IR.curry f)     lf = linked-σ f lf
+linked-σ (IR.Cata _ alg)  la = linked-σ alg la
+linked-σ (IR.Ana _ coalg) lc = linked-σ coalg lc
+linked-σ (IR.Call f)      lk = lk
+linked-σ IR.id            _ = tt
+linked-σ IR.fst           _ = tt
+linked-σ IR.snd           _ = tt
+linked-σ IR.inl           _ = tt
+linked-σ IR.inr           _ = tt
+linked-σ IR.terminal      _ = tt
+linked-σ IR.initial       _ = tt
+linked-σ IR.apply         _ = tt
+linked-σ (IR.In _)        _ = tt
+linked-σ (IR.out-μ _)     _ = tt
+linked-σ (IR.Out _)       _ = tt
+linked-σ (IR.in-ν _)      _ = tt
+linked-σ (IR.SigOp si)    d = decl-[] si (SigOpInfo.sem si) d
+linked-σ (IR.const _ _)   _ = tt
+
 linkedAt-++ : ∀ (later tbl : List IRFun) {f A B} → LinkedAt tbl f A B → LinkedAt (later ++ tbl) f A B
 linkedAt-++ []          tbl lk = lk
 linkedAt-++ (e ∷ later) tbl lk = linkedAt-cons e (later ++ tbl) (linkedAt-++ later tbl lk)
@@ -107,110 +141,115 @@ linkedAt-[] ()
 -- (B) The references of a surface term.
 ------------------------------------------------------------------------
 
--- `Refs σ Pc Pp e`: every `closure x : A` in `e` satisfies `Pc x A`, every
+-- `Refs Ps Pc Pp e`: every `closure x : A` in `e` satisfies `Pc x A`, every
 -- `poly x A` satisfies `Pp x A`, and every embedded IR morphism is call-free.
-Refs : ISig → (Pc Pp : String → Type → Set) → ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A} → Expr Γ Ψ A → Set
-Refs σ Pc Pp (var _)             = ⊤
-Refs σ Pc Pp (lam _ _ b)         = Refs σ Pc Pp b
-Refs σ Pc Pp (app f x)           = Refs σ Pc Pp f × Refs σ Pc Pp x
-Refs σ Pc Pp (effApp f x)        = Refs σ Pc Pp f × Refs σ Pc Pp x
-Refs σ Pc Pp (pair a b)          = Refs σ Pc Pp a × Refs σ Pc Pp b
-Refs σ Pc Pp (fst' p)            = Refs σ Pc Pp p
-Refs σ Pc Pp (snd' p)            = Refs σ Pc Pp p
-Refs σ Pc Pp (inl' a)            = Refs σ Pc Pp a
-Refs σ Pc Pp (inr' a)            = Refs σ Pc Pp a
-Refs σ Pc Pp (case' s l r)       = Refs σ Pc Pp s × Refs σ Pc Pp l × Refs σ Pc Pp r
-Refs σ Pc Pp unit                = ⊤
-Refs σ Pc Pp (absurd e)          = Refs σ Pc Pp e
-Refs σ Pc Pp (let' e₁ e₂)        = Refs σ Pc Pp e₁ × Refs σ Pc Pp e₂
-Refs σ Pc Pp (int _)             = ⊤
-Refs σ Pc Pp (str _)             = ⊤
-Refs σ Pc Pp (float _)           = ⊤
-Refs σ Pc Pp (add a b)           = Refs σ Pc Pp a × Refs σ Pc Pp b
-Refs σ Pc Pp (sub a b)           = Refs σ Pc Pp a × Refs σ Pc Pp b
-Refs σ Pc Pp (mul a b)           = Refs σ Pc Pp a × Refs σ Pc Pp b
-Refs σ Pc Pp (fadd a b)          = Refs σ Pc Pp a × Refs σ Pc Pp b
-Refs σ Pc Pp (fsub a b)          = Refs σ Pc Pp a × Refs σ Pc Pp b
-Refs σ Pc Pp (fmul a b)          = Refs σ Pc Pp a × Refs σ Pc Pp b
-Refs σ Pc Pp (fdiv a b)          = Refs σ Pc Pp a × Refs σ Pc Pp b
-Refs σ Pc Pp (i2f a)             = Refs σ Pc Pp a
-Refs σ Pc Pp (div a b)           = Refs σ Pc Pp a × Refs σ Pc Pp b
-Refs σ Pc Pp (mod' a b)          = Refs σ Pc Pp a × Refs σ Pc Pp b
-Refs σ Pc Pp (neg a)             = Refs σ Pc Pp a
-Refs σ Pc Pp (lt a b)            = Refs σ Pc Pp a × Refs σ Pc Pp b
-Refs σ Pc Pp (le a b)            = Refs σ Pc Pp a × Refs σ Pc Pp b
-Refs σ Pc Pp (gt a b)            = Refs σ Pc Pp a × Refs σ Pc Pp b
-Refs σ Pc Pp (ge a b)            = Refs σ Pc Pp a × Refs σ Pc Pp b
-Refs σ Pc Pp (eq a b)            = Refs σ Pc Pp a × Refs σ Pc Pp b
-Refs σ Pc Pp (ne a b)            = Refs σ Pc Pp a × Refs σ Pc Pp b
-Refs σ Pc Pp (coerce _ e)        = Refs σ Pc Pp e
--- plan 0.105: an FFI reference is declared in the signatures (D257 amendment 2).
-Refs σ Pc Pp {A = A} (sigOp name _) = (showCanonical name , A) ∈ σ
-Refs σ Pc Pp {A = A} (closure x) = Pc x A
-Refs σ Pc Pp (poly x T)          = Pp x T
-Refs σ Pc Pp (closed e)          = Refs σ Pc Pp e
-Refs σ Pc Pp (lift-morphism m)   = Linked σ [] m
-Refs σ Pc Pp (morph-app m a)     = Linked σ [] m × Refs σ Pc Pp a
-Refs σ Pc Pp (comp' f g)         = Refs σ Pc Pp f × Refs σ Pc Pp g
-Refs σ Pc Pp (copair' f g)       = Refs σ Pc Pp f × Refs σ Pc Pp g
-Refs σ Pc Pp (fork' f g)         = Refs σ Pc Pp f × Refs σ Pc Pp g
-Refs σ Pc Pp (curry' f)          = Refs σ Pc Pp f
-Refs σ Pc Pp (cata _ alg)        = Refs σ Pc Pp alg
-Refs σ Pc Pp (ana _ coalg)       = Refs σ Pc Pp coalg
+Refs : (Ps : CanonicalName → Type → Set) (Pc Pp : String → Type → Set) → ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A} → Expr Γ Ψ A → Set
+Refs Ps Pc Pp (var _)             = ⊤
+Refs Ps Pc Pp (lam _ _ b)         = Refs Ps Pc Pp b
+Refs Ps Pc Pp (app f x)           = Refs Ps Pc Pp f × Refs Ps Pc Pp x
+Refs Ps Pc Pp (effApp f x)        = Refs Ps Pc Pp f × Refs Ps Pc Pp x
+Refs Ps Pc Pp (pair a b)          = Refs Ps Pc Pp a × Refs Ps Pc Pp b
+Refs Ps Pc Pp (fst' p)            = Refs Ps Pc Pp p
+Refs Ps Pc Pp (snd' p)            = Refs Ps Pc Pp p
+Refs Ps Pc Pp (inl' a)            = Refs Ps Pc Pp a
+Refs Ps Pc Pp (inr' a)            = Refs Ps Pc Pp a
+Refs Ps Pc Pp (case' s l r)       = Refs Ps Pc Pp s × Refs Ps Pc Pp l × Refs Ps Pc Pp r
+Refs Ps Pc Pp unit                = ⊤
+Refs Ps Pc Pp (absurd e)          = Refs Ps Pc Pp e
+Refs Ps Pc Pp (let' e₁ e₂)        = Refs Ps Pc Pp e₁ × Refs Ps Pc Pp e₂
+Refs Ps Pc Pp (int _)             = ⊤
+Refs Ps Pc Pp (str _)             = ⊤
+Refs Ps Pc Pp (float _)           = ⊤
+Refs Ps Pc Pp (add a b)           = Refs Ps Pc Pp a × Refs Ps Pc Pp b
+Refs Ps Pc Pp (sub a b)           = Refs Ps Pc Pp a × Refs Ps Pc Pp b
+Refs Ps Pc Pp (mul a b)           = Refs Ps Pc Pp a × Refs Ps Pc Pp b
+Refs Ps Pc Pp (fadd a b)          = Refs Ps Pc Pp a × Refs Ps Pc Pp b
+Refs Ps Pc Pp (fsub a b)          = Refs Ps Pc Pp a × Refs Ps Pc Pp b
+Refs Ps Pc Pp (fmul a b)          = Refs Ps Pc Pp a × Refs Ps Pc Pp b
+Refs Ps Pc Pp (fdiv a b)          = Refs Ps Pc Pp a × Refs Ps Pc Pp b
+Refs Ps Pc Pp (i2f a)             = Refs Ps Pc Pp a
+Refs Ps Pc Pp (div a b)           = Refs Ps Pc Pp a × Refs Ps Pc Pp b
+Refs Ps Pc Pp (mod' a b)          = Refs Ps Pc Pp a × Refs Ps Pc Pp b
+Refs Ps Pc Pp (neg a)             = Refs Ps Pc Pp a
+Refs Ps Pc Pp (lt a b)            = Refs Ps Pc Pp a × Refs Ps Pc Pp b
+Refs Ps Pc Pp (le a b)            = Refs Ps Pc Pp a × Refs Ps Pc Pp b
+Refs Ps Pc Pp (gt a b)            = Refs Ps Pc Pp a × Refs Ps Pc Pp b
+Refs Ps Pc Pp (ge a b)            = Refs Ps Pc Pp a × Refs Ps Pc Pp b
+Refs Ps Pc Pp (eq a b)            = Refs Ps Pc Pp a × Refs Ps Pc Pp b
+Refs Ps Pc Pp (ne a b)            = Refs Ps Pc Pp a × Refs Ps Pc Pp b
+Refs Ps Pc Pp (coerce _ e)        = Refs Ps Pc Pp e
+-- plan 0.105: every FFI reference satisfies `Ps` (in the end: it is declared in
+-- the signatures the program is compiled against, D257 amendment 2).
+Refs Ps Pc Pp {A = A} (sigOp name _) = Ps name A
+Refs Ps Pc Pp {A = A} (closure x) = Pc x A
+Refs Ps Pc Pp (poly x T)          = Pp x T
+Refs Ps Pc Pp (closed e)          = Refs Ps Pc Pp e
+Refs Ps Pc Pp (lift-morphism m)   = Linked [] [] m
+Refs Ps Pc Pp (morph-app m a)     = Linked [] [] m × Refs Ps Pc Pp a
+Refs Ps Pc Pp (comp' f g)         = Refs Ps Pc Pp f × Refs Ps Pc Pp g
+Refs Ps Pc Pp (copair' f g)       = Refs Ps Pc Pp f × Refs Ps Pc Pp g
+Refs Ps Pc Pp (fork' f g)         = Refs Ps Pc Pp f × Refs Ps Pc Pp g
+Refs Ps Pc Pp (curry' f)          = Refs Ps Pc Pp f
+Refs Ps Pc Pp (cata _ alg)        = Refs Ps Pc Pp alg
+Refs Ps Pc Pp (ana _ coalg)       = Refs Ps Pc Pp coalg
 
 -- A reference elaborates to a call (`refIR`); it is linked when the call is.
+-- An FFI reference declared in the signatures.
+DeclIn : ISig → CanonicalName → Type → Set
+DeclIn σ c A = (showCanonical c , A) ∈ σ
+
 RefLinked : ISig → List IRFun → String → Type → Set
 RefLinked σ tbl x A = Linked σ tbl (refIR A (bare x))
 
-Refs-map : ∀ {Pc Pp Pc′ Pp′ : String → Type → Set}
-         → (∀ {x A} → Pc x A → Pc′ x A) → (∀ {x A} → Pp x A → Pp′ x A)
-         → ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A} (e : Expr Γ Ψ A) → Refs σ Pc Pp e → Refs σ Pc′ Pp′ e
-Refs-map hc hp (var _)             r = tt
-Refs-map hc hp (lam _ _ b)         r = Refs-map hc hp b r
-Refs-map hc hp (app f x)           (a , b) = Refs-map hc hp f a , Refs-map hc hp x b
-Refs-map hc hp (effApp f x)        (a , b) = Refs-map hc hp f a , Refs-map hc hp x b
-Refs-map hc hp (pair x y)          (a , b) = Refs-map hc hp x a , Refs-map hc hp y b
-Refs-map hc hp (fst' p)            r = Refs-map hc hp p r
-Refs-map hc hp (snd' p)            r = Refs-map hc hp p r
-Refs-map hc hp (inl' x)            r = Refs-map hc hp x r
-Refs-map hc hp (inr' x)            r = Refs-map hc hp x r
-Refs-map hc hp (case' s l r′)      (a , b , c) = Refs-map hc hp s a , Refs-map hc hp l b , Refs-map hc hp r′ c
-Refs-map hc hp unit                r = tt
-Refs-map hc hp (absurd e)          r = Refs-map hc hp e r
-Refs-map hc hp (let' e₁ e₂)        (a , b) = Refs-map hc hp e₁ a , Refs-map hc hp e₂ b
-Refs-map hc hp (int _)             r = tt
-Refs-map hc hp (str _)             r = tt
-Refs-map hc hp (float _)           r = tt
-Refs-map hc hp (add x y)           (a , b) = Refs-map hc hp x a , Refs-map hc hp y b
-Refs-map hc hp (sub x y)           (a , b) = Refs-map hc hp x a , Refs-map hc hp y b
-Refs-map hc hp (mul x y)           (a , b) = Refs-map hc hp x a , Refs-map hc hp y b
-Refs-map hc hp (fadd x y)          (a , b) = Refs-map hc hp x a , Refs-map hc hp y b
-Refs-map hc hp (fsub x y)          (a , b) = Refs-map hc hp x a , Refs-map hc hp y b
-Refs-map hc hp (fmul x y)          (a , b) = Refs-map hc hp x a , Refs-map hc hp y b
-Refs-map hc hp (fdiv x y)          (a , b) = Refs-map hc hp x a , Refs-map hc hp y b
-Refs-map hc hp (i2f x)             r = Refs-map hc hp x r
-Refs-map hc hp (div x y)           (a , b) = Refs-map hc hp x a , Refs-map hc hp y b
-Refs-map hc hp (mod' x y)          (a , b) = Refs-map hc hp x a , Refs-map hc hp y b
-Refs-map hc hp (neg x)             r = Refs-map hc hp x r
-Refs-map hc hp (lt x y)            (a , b) = Refs-map hc hp x a , Refs-map hc hp y b
-Refs-map hc hp (le x y)            (a , b) = Refs-map hc hp x a , Refs-map hc hp y b
-Refs-map hc hp (gt x y)            (a , b) = Refs-map hc hp x a , Refs-map hc hp y b
-Refs-map hc hp (ge x y)            (a , b) = Refs-map hc hp x a , Refs-map hc hp y b
-Refs-map hc hp (eq x y)            (a , b) = Refs-map hc hp x a , Refs-map hc hp y b
-Refs-map hc hp (ne x y)            (a , b) = Refs-map hc hp x a , Refs-map hc hp y b
-Refs-map hc hp (coerce _ e)        r = Refs-map hc hp e r
-Refs-map hc hp (sigOp _ _)         r = r
-Refs-map hc hp (closure x)         r = hc r
-Refs-map hc hp (poly x T)          r = hp r
-Refs-map hc hp (closed e)          r = Refs-map hc hp e r
-Refs-map hc hp (lift-morphism m)   r = r
-Refs-map hc hp (morph-app m x)     (a , b) = a , Refs-map hc hp x b
-Refs-map hc hp (comp' f g)         (a , b) = Refs-map hc hp f a , Refs-map hc hp g b
-Refs-map hc hp (copair' f g)       (a , b) = Refs-map hc hp f a , Refs-map hc hp g b
-Refs-map hc hp (fork' f g)         (a , b) = Refs-map hc hp f a , Refs-map hc hp g b
-Refs-map hc hp (curry' f)          r = Refs-map hc hp f r
-Refs-map hc hp (cata _ alg)        r = Refs-map hc hp alg r
-Refs-map hc hp (ana _ coalg)       r = Refs-map hc hp coalg r
+Refs-map : ∀ {Ps Ps′ : CanonicalName → Type → Set} {Pc Pp Pc′ Pp′ : String → Type → Set}
+         → (∀ {c A} → Ps c A → Ps′ c A) → (∀ {x A} → Pc x A → Pc′ x A) → (∀ {x A} → Pp x A → Pp′ x A)
+         → ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A} (e : Expr Γ Ψ A) → Refs Ps Pc Pp e → Refs Ps′ Pc′ Pp′ e
+Refs-map hs hc hp (var _)             r = tt
+Refs-map hs hc hp (lam _ _ b)         r = Refs-map hs hc hp b r
+Refs-map hs hc hp (app f x)           (a , b) = Refs-map hs hc hp f a , Refs-map hs hc hp x b
+Refs-map hs hc hp (effApp f x)        (a , b) = Refs-map hs hc hp f a , Refs-map hs hc hp x b
+Refs-map hs hc hp (pair x y)          (a , b) = Refs-map hs hc hp x a , Refs-map hs hc hp y b
+Refs-map hs hc hp (fst' p)            r = Refs-map hs hc hp p r
+Refs-map hs hc hp (snd' p)            r = Refs-map hs hc hp p r
+Refs-map hs hc hp (inl' x)            r = Refs-map hs hc hp x r
+Refs-map hs hc hp (inr' x)            r = Refs-map hs hc hp x r
+Refs-map hs hc hp (case' s l r′)      (a , b , c) = Refs-map hs hc hp s a , Refs-map hs hc hp l b , Refs-map hs hc hp r′ c
+Refs-map hs hc hp unit                r = tt
+Refs-map hs hc hp (absurd e)          r = Refs-map hs hc hp e r
+Refs-map hs hc hp (let' e₁ e₂)        (a , b) = Refs-map hs hc hp e₁ a , Refs-map hs hc hp e₂ b
+Refs-map hs hc hp (int _)             r = tt
+Refs-map hs hc hp (str _)             r = tt
+Refs-map hs hc hp (float _)           r = tt
+Refs-map hs hc hp (add x y)           (a , b) = Refs-map hs hc hp x a , Refs-map hs hc hp y b
+Refs-map hs hc hp (sub x y)           (a , b) = Refs-map hs hc hp x a , Refs-map hs hc hp y b
+Refs-map hs hc hp (mul x y)           (a , b) = Refs-map hs hc hp x a , Refs-map hs hc hp y b
+Refs-map hs hc hp (fadd x y)          (a , b) = Refs-map hs hc hp x a , Refs-map hs hc hp y b
+Refs-map hs hc hp (fsub x y)          (a , b) = Refs-map hs hc hp x a , Refs-map hs hc hp y b
+Refs-map hs hc hp (fmul x y)          (a , b) = Refs-map hs hc hp x a , Refs-map hs hc hp y b
+Refs-map hs hc hp (fdiv x y)          (a , b) = Refs-map hs hc hp x a , Refs-map hs hc hp y b
+Refs-map hs hc hp (i2f x)             r = Refs-map hs hc hp x r
+Refs-map hs hc hp (div x y)           (a , b) = Refs-map hs hc hp x a , Refs-map hs hc hp y b
+Refs-map hs hc hp (mod' x y)          (a , b) = Refs-map hs hc hp x a , Refs-map hs hc hp y b
+Refs-map hs hc hp (neg x)             r = Refs-map hs hc hp x r
+Refs-map hs hc hp (lt x y)            (a , b) = Refs-map hs hc hp x a , Refs-map hs hc hp y b
+Refs-map hs hc hp (le x y)            (a , b) = Refs-map hs hc hp x a , Refs-map hs hc hp y b
+Refs-map hs hc hp (gt x y)            (a , b) = Refs-map hs hc hp x a , Refs-map hs hc hp y b
+Refs-map hs hc hp (ge x y)            (a , b) = Refs-map hs hc hp x a , Refs-map hs hc hp y b
+Refs-map hs hc hp (eq x y)            (a , b) = Refs-map hs hc hp x a , Refs-map hs hc hp y b
+Refs-map hs hc hp (ne x y)            (a , b) = Refs-map hs hc hp x a , Refs-map hs hc hp y b
+Refs-map hs hc hp (coerce _ e)        r = Refs-map hs hc hp e r
+Refs-map hs hc hp (sigOp _ _)         r = hs r
+Refs-map hs hc hp (closure x)         r = hc r
+Refs-map hs hc hp (poly x T)          r = hp r
+Refs-map hs hc hp (closed e)          r = Refs-map hs hc hp e r
+Refs-map hs hc hp (lift-morphism m)   r = r
+Refs-map hs hc hp (morph-app m x)     (a , b) = a , Refs-map hs hc hp x b
+Refs-map hs hc hp (comp' f g)         (a , b) = Refs-map hs hc hp f a , Refs-map hs hc hp g b
+Refs-map hs hc hp (copair' f g)       (a , b) = Refs-map hs hc hp f a , Refs-map hs hc hp g b
+Refs-map hs hc hp (fork' f g)         (a , b) = Refs-map hs hc hp f a , Refs-map hs hc hp g b
+Refs-map hs hc hp (curry' f)          r = Refs-map hs hc hp f r
+Refs-map hs hc hp (cata _ alg)        r = Refs-map hs hc hp alg r
+Refs-map hs hc hp (ana _ coalg)       r = Refs-map hs hc hp coalg r
 
 
 ------------------------------------------------------------------------
@@ -321,11 +360,11 @@ module _ {σ : ISig} (tbl : List IRFun) where
     bE : ∀ {n} {Γ : Ctx n} {Ψ′ : Usage n} {A} (m : _) (q : _) → Linked σ tbl (bindEnv {Γ = Γ} {Ψ' = Ψ′} {A = A} m q)
     bE {Γ = Γ} {Ψ′} {A} m q = cf (bindEnv {Γ = Γ} {Ψ' = Ψ′} {A = A} m q) (bindEnv-cf {Γ = Γ} {Ψ′ = Ψ′} {A = A} m q)
 
-  elaborate-linked′ : ∀ (m : _) {n} {Γ : Ctx n} {Ψ : Usage n} {A} (e : Expr Γ Ψ A) → Refs σ L L e
+  elaborate-linked′ : ∀ (m : _) {n} {Γ : Ctx n} {Ψ : Usage n} {A} (e : Expr Γ Ψ A) → Refs (DeclIn σ) L L e
                     → Linked σ tbl (elaborate m e)
 
   -- the binary operators' shared shape
-  bin : ∀ (m : _) {n} {Γ : Ctx n} (Ψ₁ Ψ₂ : Usage n) {X Y} (a : Expr Γ Ψ₁ X) (b : Expr Γ Ψ₂ Y) → Refs σ L L a → Refs σ L L b
+  bin : ∀ (m : _) {n} {Γ : Ctx n} (Ψ₁ Ψ₂ : Usage n) {X Y} (a : Expr Γ Ψ₁ X) (b : Expr Γ Ψ₂ Y) → Refs (DeclIn σ) L L a → Refs (DeclIn σ) L L b
       → Linked σ tbl (IR.⟨ elaborate m a IR.∘ envˡ {Γ = Γ} m Ψ₁ Ψ₂ , elaborate m b IR.∘ envʳ {Γ = Γ} m Ψ₁ Ψ₂ ⟩)
   bin m {Γ = Γ} Ψ₁ Ψ₂ a b ra rb =
     (elaborate-linked′ m a ra , cf (envˡ {Γ = Γ} m Ψ₁ Ψ₂) (restrictEnv-cf {Γ = Γ} m _))
@@ -407,9 +446,9 @@ module _ {σ : ISig} (tbl : List IRFun) where
   elaborate-linked′ m (closure name) r = r , tt
   elaborate-linked′ m (poly name _) r = r , tt
   elaborate-linked′ m (closed e) r = elaborate-linked′ m e r , tt
-  elaborate-linked′ m (lift-morphism morph) r = cf morph r , tt
+  elaborate-linked′ m (lift-morphism morph) r = cf morph (linked-σ morph r) , tt
   elaborate-linked′ m {Γ = Γ} (morph-app {Ψ = Ψ} morph x) (rm , rx) =
-    cf morph rm , (elaborate-linked′ m x rx , rE {Γ = Γ} m (⊑ᵘ-trans (⊑ᵘ-*Many Ψ) (⊑ᵘ-+ʳ zeroUsage (Many *ᵘ Ψ))))
+    cf morph (linked-σ morph rm) , (elaborate-linked′ m x rx , rE {Γ = Γ} m (⊑ᵘ-trans (⊑ᵘ-*Many Ψ) (⊑ᵘ-+ʳ zeroUsage (Many *ᵘ Ψ))))
   elaborate-linked′ m (cata {F = F} {A = A} wfF alg) r =
     Linked-subst (λ o → (⌊ ⟦ F ⟧T A ⌋ Once.IRTy.⇛ ⌊ A ⌋) Once.IRTy.* o) (λ _ → ⌊ A ⌋)
                  (Once.IRTy.⌊⟧T-commute F A) (IR.apply IR.∘ IR.⟨ IR.fst , IR.snd ⟩) (tt , (tt , tt))
@@ -419,6 +458,6 @@ module _ {σ : ISig} (tbl : List IRFun) where
                  (IR.apply IR.∘ IR.⟨ elaborate m coalg IR.∘ IR.terminal , IR.id ⟩) (tt , ((elaborate-linked′ m coalg r , tt) , tt))
     , tt
 
-  elaborate-linked : ∀ (m : _) {n} {Γ : Ctx n} {Ψ : Usage n} {A} (e : Expr Γ Ψ A) → Refs σ L L e
+  elaborate-linked : ∀ (m : _) {n} {Γ : Ctx n} {Ψ : Usage n} {A} (e : Expr Γ Ψ A) → Refs (DeclIn σ) L L e
                    → Linked σ tbl (elaborateFull m e)
   elaborate-linked m {Γ = Γ} {Ψ = Ψ} e r = elaborate-linked′ m e r , cf (eraseCtx {Γ = Γ} m Ψ) (eraseCtx-cf {Γ = Γ} m Ψ)

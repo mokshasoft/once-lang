@@ -96,6 +96,7 @@ import Once.TypeCheck.Completeness
 import Once.TypeCheck.Elaborate
 open import Once.TypeCheck.ElaborateProofs using (resolveExpr)
 open import Once.Parser using (validIdentB)
+open import Once.Adequacy.EntriesValid using (MonoValid)
 open import Once.Denotation.DenotTrace using (evalᴰ; cohᴰ)
 open import Once.Denotation.Program using (tableEnv)
 open import Once.Adequacy.TableCall fmt φ using (abiT; abi; tableEnv-skip; tableEnv-hit; uncurry-app)
@@ -196,10 +197,7 @@ inv-ffi {S = S} {csc} {tl} {is} {ts} {pre} {fi} {ty} {k} {c} {h} {g} inv fr = re
 -- leg A in the scope's environment, leg B, and F for the read-back.
 ------------------------------------------------------------------------
 
--- Every name the telescope may define is an identifier (the extractor's guard).
-MonoValid : C.Entry → Set
-MonoValid (C.e-fun fi)   = funIsPrimitive fi ≡ false → validIdentB (funName fi) ≡ true
-MonoValid (C.e-poly pfi) = ⊤
+-- Every name the telescope may define is an identifier (`EntriesValid`).
 
 private
   does-no : ∀ {A : Set} (d : Dec A) → ¬ A → Relation.Nullary.isYes d ≡ false

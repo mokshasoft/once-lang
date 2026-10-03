@@ -45,7 +45,7 @@ open C.PolyFunInfo using (pfunName; pfunType; pfunBody)
 open import Once.TypeCheck.Classify using (lookupImport; lookupPolyPrefix)
 open import Once.Surface.Context as Ctx using (Usage)
 open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_)
-open import Once.Spec.Module using (Scope; scope; emptyScope; ModTele; []; ffi; mono; poly; MainIn; EffUU; ctxOf; addImp; addPoly)
+open import Once.Spec.Module using (Scope; scope; emptyScope; ModTele; teleSig; []; ffi; mono; poly; MainIn; EffUU; ctxOf; addImp; addPoly)
 open import Once.Spec.Contract using (ISig)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.List.Relation.Unary.Any using (here; there)
@@ -234,14 +234,6 @@ polyDef {S = S} {sc = sc} {pfi = pfi} {Ψ = Ψ} tl is ts sg D =
 -- D253: the program names the entry `main : IO Unit`.
 programAt : ∀ {s} {S : Sig s} → Tele S → (d : Fin s) → S !! d ≡ monoSchema EffUU → Program
 programAt tl d e = program tl d e
-
--- Plan 0.105 (D257 amendment 2): the interpretation signatures a typed module
--- is compiled against — its FFI declarations, as its typing fixes them.
-teleSig : ∀ {sc es} → ModTele sc es → ISig
-teleSig []                                    = []
-teleSig (ffi {fi = fi} {ty = ty} _ _ _ _ _ rest) = (funName fi , ty) ∷ teleSig rest
-teleSig (mono _ _ _ _ rest)                   = teleSig rest
-teleSig (poly _ rest)                         = teleSig rest
 
 -- The walk's invariant: the declarations still ahead are in the signatures.
 SigIn : ∀ {sc es} → ModTele sc es → ∀ {s} → Sig s → Set

@@ -76,4 +76,4 @@ open import Once.Denotation.Meaning public
 open import Once.Spec.Core.Telescope public
   using ( Program ; program ; runProgram ; progSig ; Tele ; teleSem )
 open import Once.Spec.Core.Translate public
-  using ( toProgram ; toProgram₀ ; teleSig )
+  using ( toProgram ; toProgram₀ )

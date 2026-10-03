@@ -30,12 +30,13 @@ module Once.Spec.Module where
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Product using (_×_; _,_)
 open import Data.List using (List; []; _∷_)
-open import Data.Maybe using (just)
+open import Data.Maybe using (Maybe; just; nothing)
 open import Data.String using (String)
-open import Data.Bool using (true; false)
+open import Data.Bool using (Bool; true; false)
 open import Data.Empty using (⊥)
 open import Data.Unit using (⊤)
-open import Relation.Binary.PropositionalEquality using (_≡_)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
+open import Once.Spec.Contract using (ISig)
 
 open import Once.Type using (Type; Unit; _⇒[_]_; mk-kind; Many; eff)
 open import Once.Type.Rigid using (rigidOf; RigidFree)
@@ -101,6 +102,44 @@ data ModTele : Scope → List C.Entry → Set where
        → ctxOf sc ⊢ᶜ pfunBody pfi ∶ rigidOf (pfunType pfi) ⨾ Ψ
        → ModTele (addPoly sc pfi) es
        → ModTele sc (C.e-poly pfi ∷ es)
+
+------------------------------------------------------------------------
+-- Plan 0.105 (D257 amendment 2): THE INTERPRETATION SIGNATURES A MODULE IS
+-- COMPILED AGAINST — its FFI declarations. Read off the entries (what
+-- compiling a user program sees: each primitive's name and declared type),
+-- and off a typing of them, which agree (`teleSig≡entrySig`): the signatures
+-- do not depend on which derivation types the module.
+------------------------------------------------------------------------
+
+entrySig-fun : C.FunInfo → Bool → Maybe Type → ISig → ISig
+entrySig-fun fi true  (just ty) rest = (funName fi , ty) ∷ rest
+entrySig-fun fi true  nothing   rest = rest
+entrySig-fun fi false _         rest = rest
+
+entrySig : List C.Entry → ISig
+entrySig []                = []
+entrySig (C.e-fun fi ∷ es)  = entrySig-fun fi (funIsPrimitive fi) (funType fi) (entrySig es)
+entrySig (C.e-poly _ ∷ es) = entrySig es
+
+teleSig : ∀ {sc es} → ModTele sc es → ISig
+teleSig []                                    = []
+teleSig (ffi {fi = fi} {ty = ty} _ _ _ _ _ rest) = (funName fi , ty) ∷ teleSig rest
+teleSig (mono _ _ _ _ rest)                   = teleSig rest
+teleSig (poly _ rest)                         = teleSig rest
+
+teleSig≡entrySig : ∀ {sc es} (mt : ModTele sc es) → teleSig mt ≡ entrySig es
+teleSig≡entrySig []                                       = refl
+teleSig≡entrySig (ffi {fi = fi} {ty = ty} ep et _ _ _ rest) rewrite ep | et = cong ((funName fi , ty) ∷_) (teleSig≡entrySig rest)
+teleSig≡entrySig (mono {fi = fi} ep _ _ _ rest)            rewrite ep = teleSig≡entrySig rest
+teleSig≡entrySig (poly _ rest)                            = teleSig≡entrySig rest
+
+-- A module's signatures, when it extracts.
+moduleSig-ef : (String ⊎ List C.Entry) → ISig
+moduleSig-ef (inj₁ _)  = []
+moduleSig-ef (inj₂ es) = entrySig es
+
+moduleSig : P.Module → ISig
+moduleSig m = moduleSig-ef (C.extractFunctions (C.extractAliases m) m)
 
 ModuleTyped-ef : P.Module → (String ⊎ List C.Entry) → Set
 ModuleTyped-ef m (inj₁ _)  = ⊥
