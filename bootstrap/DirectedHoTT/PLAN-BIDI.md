@@ -472,6 +472,8 @@ gives `#wk`. The traversal recurses on the SIGNATURE, not on `Desc`.**
   signature (one sort, `var`/`lam`/`app`), then `#wk` at `⌜KSig⌝`.
 - ⬜ **Awaiting the user's decision** (it revises the 2026-10-02 framing
   "(a) or (b)").
+- ⏸ **S7b PAUSED (user, 2026-10-03): PLAN-FAITHFUL F6 (decoding) goes
+  first**, as the oracle the migration runs against.
 
 **Then, the migration recipe** (each step is one family):
 - a schema becomes a CLOSED λ-entry; an instance becomes
