@@ -40,7 +40,9 @@ open import Relation.Nullary using (Dec; yes; no)
 -- Import FrameSemantics for Frame type
 open import Once.CCC.FrameSemantics using (FrameSemantics; fs-numerics; fs-ffi; fs-interp)
 open import Once.Denotation.Trace using (SigOpEvent; mk-event)
-open import Once.Denotation.TraceMonad using (callOp; answer)
+open import Once.Denotation.TraceMonad using (callOp; answer; callKey; calls)
+open import Once.Spec.Contract using (_∈K?_)
+open import Data.List.Membership.Propositional using (_∈_)
 open import Once.Functor.Translate using (IsBaseType; base-Int; base-Float)
 -- Plan 0.63 (D089): the structured label identity. Re-exported, so every
 -- importer of the abstract instruction set sees `LabelId` without a second
@@ -1693,10 +1695,19 @@ module AbstractExec {FS : FrameSemantics} where
   -- records. A register value when the codomain fits one; a compound answer
   -- would be written to memory, which this layer does not model yet, so it
   -- takes the sentinel (as an unreadable pure input does).
+  -- Plan 0.105 (D257 amendment 2): read through the membership DECISION, as
+  -- `run` does; a call outside the interpretation's signatures takes the
+  -- sentinel (unreachable for a program linked against them).
+  call-sigop-ans : ∀ {A B} (si : SigOpInfo A B) → LocState FS → FitsInReg B
+                 → Dec (callKey (callOp (name si) A (baseA si) B) ∈ calls (fs-interp FS)) → StoredValue FS
+  call-sigop-ans {A} {B} si s fitB (yes p) =
+    SV-Lit fitB (answer (fs-interp FS) (ev-log s) (callOp (name si) A (baseA si) B) p
+                  (decode-arg (baseA si) (readReg (regs s) Input1)))
+  call-sigop-ans si s fitB (no _) = unit-storedvalue
+
   call-sigop-val : ∀ {A B} → SigOpInfo A B → LocState FS → Maybe (FitsInReg B) → StoredValue FS
   call-sigop-val {A} {B} si s (just fitB) =
-    SV-Lit fitB (answer (fs-interp FS) (ev-log s) (callOp (name si) A (baseA si) B)
-                  (decode-arg (baseA si) (readReg (regs s) Input1)))
+    call-sigop-ans si s fitB (callKey (callOp (name si) A (baseA si) B) ∈K? calls (fs-interp FS))
   call-sigop-val si s nothing = unit-storedvalue
 
   call-sigop-output : ∀ {A B} → SigOpInfo A B → LocState FS → StoredValue FS

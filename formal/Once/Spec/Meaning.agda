@@ -74,6 +74,6 @@ open import Once.Denotation.Meaning public
   using ( ⟦_⟧ᵢ ; ⟦_⟧ᶜ ; Env ; lookupᴰ ; svarᴰ ; sigOpValᴰ ; sigOpRefᴰ
         ; in-value ; named-sem ; cata-sem ; cata-ev-algᴰ-D )
 open import Once.Spec.Core.Telescope public
-  using ( Program ; program ; runProgram ; Tele ; teleSem )
+  using ( Program ; program ; runProgram ; progSig ; Tele ; teleSem )
 open import Once.Spec.Core.Translate public
-  using ( toProgram )
+  using ( toProgram ; toProgram₀ ; teleSig )
