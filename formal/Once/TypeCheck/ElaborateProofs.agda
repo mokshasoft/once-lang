@@ -45,7 +45,6 @@ open import Once.Type
 open Once.Type using (showQuantity; showType) public
 open import Once.IR as IR hiding (Unit; Void; _*_; _+_; μ-type; ν-type; Int; Float; Str; Buffer; K; Id; _⊕_; _⊗_)
 open import Once.IRTy.WF using (wf-⌊⌋)
-open import Once.Arith.SigOp.Builders using (generic-semM)
 open import Once.SigOp.Info using (SigOpInfo; mk-info'; pureV; emitsV; haltsV)
 open import Once.CanonicalName using (CanonicalName; bare; showCanonical; gen)
 open import Once.TypeCheck.Raw using (RawExpr)
