@@ -57,7 +57,7 @@ open import DirectedHoTT.Spec.Typing
         ; ξ-pairʳ; ξ-absurdᶜ; ξ-absurdᵉ; ordtr-z; ordtr-szz; ordtr-ssz
         ; ordtr-szs; ordtr-sss; ξ-ordtrᵃ; ξ-ordtrᵗ; ξ-ordtrᵘ; ξ-ordtrᵖ
         ; ξ-ordtrq; ξ-fst; ξ-snd; ξ-⌜Π⌝ˡ; ξ-⌜Π⌝ʳ; ξ-⌜Σ⌝ˡ; ξ-⌜Σ⌝ʳ; tr-J-base
-        ; tr-J-Σ; tr-J-Id; tr-taut; hrefl-pw; tr-J-Hom; tr-pw; ξ-⌜Hom⌝ᶜ
+        ; tr-J-Σ; tr-J-Id; tr-taut; hrefl-pw; hrefl-Nat-z; hrefl-Nat-s; tr-J-Hom; tr-pw; ξ-⌜Hom⌝ᶜ
         ; ξ-⌜Hom⌝ˡ; ξ-⌜Hom⌝ʳ; ξ-hreflᶜ; ξ-hreflᵃ; ξ-trᵈ; ξ-trᵖ; ξ-trᵉ; ap-J
         ; ξ-apᶜ; ξ-apᵇ; ξ-apᵖ; jsub-refl; ξ-⌜Id⌝ᶜ; ξ-⌜Id⌝ˡ; ξ-⌜Id⌝ʳ; ξ-idreflᶜ
         ; ξ-idreflᵃ; ξ-jsubᵈ; ξ-jsubᵖ; ξ-jsubᵉ; El-⌜Id⌝; ξ-Idᵀ; ξ-Idˡ; ξ-Idʳ
@@ -297,6 +297,8 @@ sub-comm2 {Γ} σ b x y =
         (cong₂ (λ x y → lam (hrefl x (app y (var vz))))
                (pwBody-sub σ C key) (sym (wk-sub σ t)))
         (hrefl-pw (subTm σ C) (subTm σ t) (pw?-sub σ C key))
+⟶-sub σ hrefl-Nat-z = hrefl-Nat-z
+⟶-sub σ (hrefl-Nat-s m) = hrefl-Nat-s (subTm σ m)
 ⟶-sub σ (tr-J-Hom c a m c₁ a₁ b₁ t e key) =
   tr-J-Hom (subTm (extS σ) c) (subTm (extS σ) a) (subTm (extS σ) m)
            (subTm σ c₁) (subTm σ a₁) (subTm σ b₁)

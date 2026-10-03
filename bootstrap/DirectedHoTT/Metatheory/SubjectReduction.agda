@@ -62,7 +62,7 @@ open import DirectedHoTT.Spec.Typing
         ; ordtr-z; ordtr-szz; ordtr-ssz; ordtr-szs; ordtr-sss; ξ-ordtrᵃ
         ; ξ-ordtrᵗ; ξ-ordtrᵘ; ξ-ordtrᵖ; ξ-ordtrq; ξ-fst; ξ-snd; ξ-⌜Π⌝ˡ; ξ-⌜Π⌝ʳ
         ; ξ-⌜Σ⌝ˡ; ξ-⌜Σ⌝ʳ; tr-J-base; tr-J-Σ; tr-J-Id; tr-J-Unit; tr-J-IMu
-        ; tr-taut; hrefl-pw; tr-J-Hom; tr-pw; El-⌜Nat⌝; El-⌜Unit⌝; El-⌜IMu⌝
+        ; tr-taut; hrefl-pw; hrefl-Nat-z; hrefl-Nat-s; tr-J-Hom; tr-pw; El-⌜Nat⌝; El-⌜Unit⌝; El-⌜IMu⌝
         ; ξ-⌜Hom⌝ᶜ; ξ-⌜Hom⌝ˡ; ξ-⌜Hom⌝ʳ; ξ-hreflᶜ; ξ-hreflᵃ; ξ-trᵈ; ξ-trᵖ
         ; ξ-trᵉ; ap-J; ξ-apᶜ; ξ-apᵇ; ξ-apᵖ; jsub-refl; ξ-⌜Id⌝ᶜ; ξ-⌜Id⌝ˡ
         ; ξ-⌜Id⌝ʳ; ξ-idreflᶜ; ξ-idreflᵃ; ξ-jsubᵈ; ξ-jsubᵖ; ξ-jsubᵉ; El-⌜Id⌝
@@ -1506,6 +1506,17 @@ sr d (hrefl-pw C s key) with gen-hrefl d
       ⊢conv (⊢lam (ty-El dDom) (⊢hrefl dBody (pw-app ds key)))
             (ctrnᵀ (red→≅ᵀ (⟶ᵀ*-Πʳ ch₂))
                    (csymᵀ (ctrnᵀ cH (red→≅ᵀ ch₁))))
+-- ★ F6: the order's reflexivity, in lockstep with its type
+sr d hrefl-Nat-z with gen-hrefl d
+... | (_ , (_ , cH)) =
+      ⊢conv ⊢unit (csymᵀ (ctrnᵀ cH (ctrnᵀ (credᵀ (ξ-Homᵀ El-⌜Nat⌝)) (credᵀ (Hom-Nat-z nzero)))))
+sr d (hrefl-Nat-s m) with gen-hrefl d
+... | (_ , (ds , cH)) with gen-nsuc ds
+...   | (dm , _) =
+      ⊢conv (⊢hrefl ⊢⌜Nat⌝ (⊢conv dm (csymᵀ (credᵀ El-⌜Nat⌝))))
+            (ctrnᵀ (credᵀ (ξ-Homᵀ El-⌜Nat⌝))
+            (ctrnᵀ (csymᵀ (credᵀ (Hom-Nat-ss m m)))
+            (ctrnᵀ (csymᵀ (credᵀ (ξ-Homᵀ El-⌜Nat⌝))) (csymᵀ cH))))
 -- ★ W2b: J at stable ⌜Hom⌝ codes — the endpoint conversion extracted
 -- via confluence against the `StkAmb` analysis (stable-code decodings
 -- never unfold to Π/U, so reducts decompose componentwise).

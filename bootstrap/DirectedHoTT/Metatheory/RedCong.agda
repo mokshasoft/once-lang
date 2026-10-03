@@ -57,7 +57,7 @@ open import DirectedHoTT.Spec.Typing
         ; ξ-pairʳ; ξ-absurdᶜ; ξ-absurdᵉ; ordtr-z; ordtr-szz; ordtr-ssz
         ; ordtr-szs; ordtr-sss; ξ-ordtrᵃ; ξ-ordtrᵗ; ξ-ordtrᵘ; ξ-ordtrᵖ
         ; ξ-ordtrq; ξ-fst; ξ-snd; ξ-⌜Π⌝ˡ; ξ-⌜Π⌝ʳ; ξ-⌜Σ⌝ˡ; ξ-⌜Σ⌝ʳ; tr-J-base
-        ; tr-J-Σ; tr-J-Id; tr-taut; hrefl-pw; tr-J-Hom; tr-pw; ξ-⌜Hom⌝ᶜ
+        ; tr-J-Σ; tr-J-Id; tr-taut; hrefl-pw; hrefl-Nat-z; hrefl-Nat-s; tr-J-Hom; tr-pw; ξ-⌜Hom⌝ᶜ
         ; ξ-⌜Hom⌝ˡ; ξ-⌜Hom⌝ʳ; ξ-hreflᶜ; ξ-hreflᵃ; ξ-trᵈ; ξ-trᵖ; ξ-trᵉ; ap-J
         ; ξ-apᶜ; ξ-apᵇ; ξ-apᵖ; jsub-refl; ξ-⌜Id⌝ᶜ; ξ-⌜Id⌝ˡ; ξ-⌜Id⌝ʳ; ξ-idreflᶜ
         ; ξ-idreflᵃ; ξ-jsubᵈ; ξ-jsubᵖ; ξ-jsubᵉ; natrec-zero; natrec-suc
@@ -570,6 +570,8 @@ ren-comm2 {Γ} ρ b x y =
                (pwBody-ren ρ C key) (sym (wk-ren ρ t)))
         (hrefl-pw (renTm ρ C) (renTm ρ t)
                   (trans (pw?-ren ρ C) key))
+⟶-ren ρ hrefl-Nat-z = hrefl-Nat-z
+⟶-ren ρ (hrefl-Nat-s m) = hrefl-Nat-s (renTm ρ m)
 ⟶-ren ρ (tr-J-Hom c a m c₁ a₁ b₁ t e key) =
   tr-J-Hom (renTm (extR ρ) c) (renTm (extR ρ) a) (renTm (extR ρ) m)
            (renTm ρ c₁) (renTm ρ a₁) (renTm ρ b₁)

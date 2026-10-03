@@ -272,6 +272,14 @@ data _⟶_ : {Γ : Cx} → RTm Γ → RTm Γ → Set where
   hrefl-pw : (C s : RTm Γ) → pw? C ≡ true →
              hrefl C s ⟶
              lam (hrefl (pwBody C) (app (renTm vs s) (var vz)))
+  -- ★ PLAN-FAITHFUL F6 (2026-10-03): the ORDER's reflexivity computes in
+  --   lockstep with its type (`Hom-Nat-z`, `Hom-Nat-ss`).  Without these,
+  --   `hrefl ⌜Nat⌝ nzero` is a closed NORMAL inhabitant of `Unit` other
+  --   than `unit` — `Unit` was not canonical.  Keyed on the endpoint's
+  --   head, like the order rules; `⌜Nat⌝` is neither `pw?` nor `stkC?`,
+  --   so nothing overlaps (`hrefl-pw`, `tr-J-*`, `ap-J`).
+  hrefl-Nat-z : hrefl ⌜Nat⌝ (nzero {Γ}) ⟶ unit
+  hrefl-Nat-s : (m : RTm Γ) → hrefl ⌜Nat⌝ (nsuc m) ⟶ hrefl ⌜Nat⌝ m
   -- J at Hom-codes over PERMANENTLY-STABLE spines (excludes ⌜Π⌝-able
   -- codes — those paths unfold to lambdas — and neutrals, which
   -- substitution could make ⌜Π⌝-able).

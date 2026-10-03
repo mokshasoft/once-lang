@@ -268,7 +268,7 @@ con⟶snd₂ {Ξ} {j} {a0ᵢ0} {a0ᵢ1} dj da0ᵢ0 da0ᵢ1 =
 con⟶hrefl₃ : {Ξ : Ctx} {j f0 f1 e0 e1 : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ f0 ∷ K 1 j → Ξ ⊢ f1 ∷ K 1 j → Ξ ⊢ e0 ∷ K 1 (nsuc j) → Ξ ⊢ e1 ∷ El (⌜Pw⌝ j f0 e0) → 
   Ξ ⊢ conₗ 2 (e0 ,ₚ e1 ,ₚ (idrefl (⌜Tm⌝ j) (klam (khrefl e0 (kapp (wk 1 j f1) (kvar ffz))))) ,ₚ unit) ∷ IMu Redₘ.J ⟶F.DF (ix⟶ j (khrefl f0 f1) ((klam (khrefl e0 (kapp (wk 1 j f1) (kvar ffz))))))
 con⟶hrefl₃ {Ξ} {j} {f0} {f1} {e0} {e1} dj df0 df1 de0 de1 =
-  ⊢conRowₖ {Ξ} {3} {2} {Redₘ.J} {⟶F.DF} {ix⟶ j (khrefl f0 f1) ((klam (khrefl e0 (kapp (wk 1 j f1) (kvar ffz)))))} {⌜ T⟶hrefl₃ j p c ⌝ᵗ} {(e0 ,ₚ e1 ,ₚ (idrefl (⌜Tm⌝ j) (klam (khrefl e0 (kapp (wk 1 j f1) (kvar ffz))))) ,ₚ unit)} {⌜ T⟶hrefl₁ j p c ⌝ᵗ ∷ ⌜ T⟶hrefl₂ j p c ⌝ᵗ ∷ ⌜ T⟶hrefl₃ j p c ⌝ᵗ ∷ []} (atᶜ 2) Redₘ.⊢J ⟶F.⊢DF (⊢ix⟶ dj (⊢khrefl dj df0 df1) (⊢klam dj (⊢khrefl (⊢isuc dj) de0 (⊢kapp (⊢isuc dj) (⊢wkS (lt-s lt-z) dj df1) (⊢kvar (⊢isuc dj) (⊢ffz dj))))))
+  ⊢conRowₖ {Ξ} {5} {2} {Redₘ.J} {⟶F.DF} {ix⟶ j (khrefl f0 f1) ((klam (khrefl e0 (kapp (wk 1 j f1) (kvar ffz)))))} {⌜ T⟶hrefl₃ j p c ⌝ᵗ} {(e0 ,ₚ e1 ,ₚ (idrefl (⌜Tm⌝ j) (klam (khrefl e0 (kapp (wk 1 j f1) (kvar ffz))))) ,ₚ unit)} {⌜ T⟶hrefl₁ j p c ⌝ᵗ ∷ ⌜ T⟶hrefl₂ j p c ⌝ᵗ ∷ ⌜ T⟶hrefl₃ j p c ⌝ᵗ ∷ (PT⟶hrefl₄ᶜ0.CASE j (fst p) (c ,ₚ p ,ₚ unit)) ∷ (PT⟶hrefl₅ᶜ0.CASE j (fst p) (c ,ₚ p ,ₚ unit)) ∷ []} (atᶜ 2) Redₘ.⊢J ⟶F.⊢DF (⊢ix⟶ dj (⊢khrefl dj df0 df1) (⊢klam dj (⊢khrefl (⊢isuc dj) de0 (⊢kapp (⊢isuc dj) (⊢wkS (lt-s lt-z) dj df1) (⊢kvar (⊢isuc dj) (⊢ffz dj))))))
     (⟶F.fibF {s = 1} {k = 12} {j = j} {p = p} {c = c} (atᵍ 1) (atʰ 12)) (allr⟶hrefl {j = j} {p = p} {c = c} dj dp dc)
     (⊢conv dPv (csymᵀ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))))
   where
@@ -289,6 +289,62 @@ con⟶hrefl₃ {Ξ} {j} {f0} {f1} {e0} {e1} dj df0 df1 de0 de1 =
     okB = (okT⟶hrefl₃I {_} {j} {((klam (khrefl e0 (kapp (wk 1 j f1) (kvar ffz)))))} {f1} {e0} dj (⊢klam dj (⊢khrefl (⊢isuc dj) de0 (⊢kapp (⊢isuc dj) (⊢wkS (lt-s lt-z) dj df1) (⊢kvar (⊢isuc dj) (⊢ffz dj))))) df1 de0)
     dPv : Ξ ⊢ (e0 ,ₚ e1 ,ₚ (idrefl (⌜Tm⌝ j) (klam (khrefl e0 (kapp (wk 1 j f1) (kvar ffz))))) ,ₚ unit) ∷ El (dpay Redₘ.J ⟶F.DF ⌜ T⟶hrefl₃⁽0⁾ j ((klam (khrefl e0 (kapp (wk 1 j f1) (kvar ffz))))) f0 f1 ⌝ᵗ)
     dPv = (⊢payσ {Ξ} {Redₘ.J} {⟶F.DF} Redₘ.⊢J ⟶F.⊢DF {a = e0} {p = (e1 ,ₚ (idrefl (⌜Tm⌝ j) (klam (khrefl e0 (kapp (wk 1 j f1) (kvar ffz))))) ,ₚ unit)} (okT0) (toTm de0) (⊢-cast {Ξ} {(e1 ,ₚ (idrefl (⌜Tm⌝ j) (klam (khrefl e0 (kapp (wk 1 j f1) (kvar ffz))))) ,ₚ unit)} {El (dpay Redₘ.J ⟶F.DF ⌜ T⟶hrefl₃⁽1⁾ j ((klam (khrefl e0 (kapp (wk 1 j f1) (kvar ffz))))) f0 f1 e0 ⌝ᵗ)} {El (dpay Redₘ.J ⟶F.DF (subTm (single e0) ⌜ T⟶hrefl₃⁽1⁾ (w1 j) (w1 ((klam (khrefl e0 (kapp (wk 1 j f1) (kvar ffz)))))) (w1 f0) (w1 f1) v₀ ⌝ᵗ))} (cong (λ Z → El (dpay Redₘ.J ⟶F.DF Z)) (sym (trans (T⟶hrefl₃⁽1⁾-sub (single e0) (w1 j) (w1 ((klam (khrefl e0 (kapp (wk 1 j f1) (kvar ffz)))))) (w1 f0) (w1 f1) v₀) (T⟶hrefl₃⁽1⁾-cong (subTm (single e0) (w1 j)) j (subTm (single e0) (w1 ((klam (khrefl e0 (kapp (wk 1 j f1) (kvar ffz))))))) ((klam (khrefl e0 (kapp (wk 1 j f1) (kvar ffz))))) (subTm (single e0) (w1 f0)) f0 (subTm (single e0) (w1 f1)) f1 (subTm (single e0) v₀) e0 (wk-cancel-tm e0 j) (wk-cancel-tm e0 ((klam (khrefl e0 (kapp (wk 1 j f1) (kvar ffz)))))) (wk-cancel-tm e0 f0) (wk-cancel-tm e0 f1) refl)))) (⊢payσ {Ξ} {Redₘ.J} {⟶F.DF} Redₘ.⊢J ⟶F.⊢DF {a = e1} {p = ((idrefl (⌜Tm⌝ j) (klam (khrefl e0 (kapp (wk 1 j f1) (kvar ffz))))) ,ₚ unit)} (okT1) de1 (⊢-cast {Ξ} {((idrefl (⌜Tm⌝ j) (klam (khrefl e0 (kapp (wk 1 j f1) (kvar ffz))))) ,ₚ unit)} {El (dpay Redₘ.J ⟶F.DF ⌜ T⟶hrefl₃⁽2⁾ j ((klam (khrefl e0 (kapp (wk 1 j f1) (kvar ffz))))) f0 f1 e0 e1 ⌝ᵗ)} {El (dpay Redₘ.J ⟶F.DF (subTm (single e1) ⌜ T⟶hrefl₃⁽2⁾ (w1 j) (w1 ((klam (khrefl e0 (kapp (wk 1 j f1) (kvar ffz)))))) (w1 f0) (w1 f1) (w1 e0) v₀ ⌝ᵗ))} (cong (λ Z → El (dpay Redₘ.J ⟶F.DF Z)) (sym (trans (T⟶hrefl₃⁽2⁾-sub (single e1) (w1 j) (w1 ((klam (khrefl e0 (kapp (wk 1 j f1) (kvar ffz)))))) (w1 f0) (w1 f1) (w1 e0) v₀) (T⟶hrefl₃⁽2⁾-cong (subTm (single e1) (w1 j)) j (subTm (single e1) (w1 ((klam (khrefl e0 (kapp (wk 1 j f1) (kvar ffz))))))) ((klam (khrefl e0 (kapp (wk 1 j f1) (kvar ffz))))) (subTm (single e1) (w1 f0)) f0 (subTm (single e1) (w1 f1)) f1 (subTm (single e1) (w1 e0)) e0 (subTm (single e1) v₀) e1 (wk-cancel-tm e1 j) (wk-cancel-tm e1 ((klam (khrefl e0 (kapp (wk 1 j f1) (kvar ffz)))))) (wk-cancel-tm e1 f0) (wk-cancel-tm e1 f1) (wk-cancel-tm e1 e0) refl)))) (⊢payσ {Ξ} {Redₘ.J} {⟶F.DF} Redₘ.⊢J ⟶F.⊢DF {a = (idrefl (⌜Tm⌝ j) (klam (khrefl e0 (kapp (wk 1 j f1) (kvar ffz)))))} {p = unit} okB (⊢conv (⊢idrefl (⊢⌜Tm⌝ dj) (toTm (⊢klam dj (⊢khrefl (⊢isuc dj) de0 (⊢kapp (⊢isuc dj) (⊢wkS (lt-s lt-z) dj df1) (⊢kvar (⊢isuc dj) (⊢ffz dj))))))) (csymᵀ (credᵀ (El-⌜Id⌝ (⌜Tm⌝ j) ((klam (khrefl e0 (kapp (wk 1 j f1) (kvar ffz))))) ((klam (khrefl e0 (kapp (wk 1 j f1) (kvar ffz))))))))) (⊢payι {Ξ} {Redₘ.J} {⟶F.DF} Redₘ.⊢J ⟶F.⊢DF {unit} ⊢unit))))))
+
+con⟶hrefl₄ : {Ξ : Ctx} {j : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El ⌜Nat⌝ → 
+  Ξ ⊢ conₗ 3 ((idrefl (⌜Tm⌝ j) (kunit)) ,ₚ unit) ∷ IMu Redₘ.J ⟶F.DF (ix⟶ j (khrefl (kcNat) (knzero)) ((kunit)))
+con⟶hrefl₄ {Ξ} {j} dj =
+  ⊢conRowₖ {Ξ} {5} {3} {Redₘ.J} {⟶F.DF} {ix⟶ j (khrefl (kcNat) (knzero)) ((kunit))} {(PT⟶hrefl₄ᶜ0.CASE j (fst p) (c ,ₚ p ,ₚ unit))} {((idrefl (⌜Tm⌝ j) (kunit)) ,ₚ unit)} {⌜ T⟶hrefl₁ j p c ⌝ᵗ ∷ ⌜ T⟶hrefl₂ j p c ⌝ᵗ ∷ ⌜ T⟶hrefl₃ j p c ⌝ᵗ ∷ (PT⟶hrefl₄ᶜ0.CASE j (fst p) (c ,ₚ p ,ₚ unit)) ∷ (PT⟶hrefl₅ᶜ0.CASE j (fst p) (c ,ₚ p ,ₚ unit)) ∷ []} (atᶜ 3) Redₘ.⊢J ⟶F.⊢DF (⊢ix⟶ dj (⊢khrefl dj (⊢kcNat dj) (⊢knzero dj)) (⊢kunit dj))
+    (⟶F.fibF {s = 1} {k = 12} {j = j} {p = p} {c = c} (atᵍ 1) (atʰ 12)) (allr⟶hrefl {j = j} {p = p} {c = c} dj dp dc)
+    (⊢conv dPv (csymᵀ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))))
+  where
+    p c : RTm ⌊ Ξ ⌋
+    p = ((kcNat) ,ₚ (knzero) ,ₚ unit)
+    c = ((kunit))
+    dp = ⊢payK (lt-s lt-z) ok-khrefl dj (a-rec (⊢kcNat dj) (a-rec (⊢knzero dj) a[]))
+    dc = ⊢toCR (⊢kunit dj)
+    q0 q1 cv0 cv1 : RTm ⌊ Ξ ⌋
+    q0 = unit
+    q1 = unit
+    cv0 = (c ,ₚ p ,ₚ unit)
+    cv1 = (c ,ₚ p ,ₚ q0 ,ₚ unit)
+    R₁ : ⌜ T⟶hrefl₄⁽0⁾ j (fst cv1) ⌝ᵗ ⟶* ⌜ T⟶hrefl₄⁽0⁾ j ((kunit)) ⌝ᵗ
+    R₁ = mono-by {Δ = ⌊ Ξ ⌋} {n = 2} {as = (j ∷ (fst cv1) ∷ [])} {as' = (j ∷ ((kunit)) ∷ [])} ⌜ T⟶hrefl₄⁽0⁾ v₀ v₁ ⌝ᵗ (T⟶hrefl₄⁽0⁾-sub (σₗ (j ∷ (fst cv1) ∷ [])) v₀ v₁) (T⟶hrefl₄⁽0⁾-sub (σₗ (j ∷ ((kunit)) ∷ [])) v₀ v₁) (done ∷ʳ (prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit nth-z) ∷ʳ []ʳ)
+    R₀ : (PT⟶hrefl₄ᶜ0.CASE j (fst p) (c ,ₚ p ,ₚ unit)) ⟶* ⌜ T⟶hrefl₄⁽0⁾ j ((kunit)) ⌝ᵗ
+    R₀ = (⟶*-trans {t = (PT⟶hrefl₄ᶜ0.CASE j (fst p) (c ,ₚ p ,ₚ unit))} {u = PT⟶hrefl₄ᶜ0.CASE j (kcNat) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶hrefl₄⁽0⁾ j ((kunit)) ⌝ᵗ} (PT⟶hrefl₄ᶜ0.CASE-⟶ᵃ (prj-tup {ws = ((kcNat) ∷ (knzero) ∷ [])} unit (atᶜ 0))) (⟶*-trans {t = PT⟶hrefl₄ᶜ0.CASE j (kcNat) (c ,ₚ p ,ₚ unit)} {u = PT⟶hrefl₄ᶜ1.CASE j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = ⌜ T⟶hrefl₄⁽0⁾ j ((kunit)) ⌝ᵗ} (PT⟶hrefl₄ᶜ0.case-β {j = j} {q = q0} {c = cv0} (atᵍ 1) (atʰ 34)) (⟶*-trans {t = PT⟶hrefl₄ᶜ1.CASE j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶hrefl₄ᶜ1.CASE j (knzero) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = ⌜ T⟶hrefl₄⁽0⁾ j ((kunit)) ⌝ᵗ} (PT⟶hrefl₄ᶜ1.CASE-⟶ᵃ (⟶*-trans (prj-mono 1 (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1))) (prj-tup {ws = ((kcNat) ∷ (knzero) ∷ [])} unit (atᶜ 1)))) (⟶*-trans {t = PT⟶hrefl₄ᶜ1.CASE j (knzero) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶hrefl₄ᶜ1.CASE j (knzero) cv1} {v = ⌜ T⟶hrefl₄⁽0⁾ j ((kunit)) ⌝ᵗ} (PT⟶hrefl₄ᶜ1.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1)) ∷ʳ done ∷ʳ []ʳ))) (⟶*-trans {t = PT⟶hrefl₄ᶜ1.CASE j (knzero) cv1} {u = ⌜ T⟶hrefl₄ j q1 cv1 ⌝ᵗ} {v = ⌜ T⟶hrefl₄⁽0⁾ j ((kunit)) ⌝ᵗ} (PT⟶hrefl₄ᶜ1.case-β {j = j} {q = q1} {c = cv1} (atᵍ 1) (atʰ 19)) R₁)))))
+    okRest : {J' : RTm ⌊ Ξ ⌋} {T : Tel ⌊ Ξ ⌋} → TelOK Ξ Redₘ.J (tρ J' T) → TelOK Ξ Redₘ.J T
+    okRest (ok-ρ _ o) = o
+    okB : TelOK Ξ Redₘ.J (T⟶hrefl₄⁽0⁾ j ((kunit)))
+    okB = (okT⟶hrefl₄I {_} {j} {((kunit))} dj (⊢kunit dj))
+    dPv : Ξ ⊢ ((idrefl (⌜Tm⌝ j) (kunit)) ,ₚ unit) ∷ El (dpay Redₘ.J ⟶F.DF ⌜ T⟶hrefl₄⁽0⁾ j ((kunit)) ⌝ᵗ)
+    dPv = (⊢payσ {Ξ} {Redₘ.J} {⟶F.DF} Redₘ.⊢J ⟶F.⊢DF {a = (idrefl (⌜Tm⌝ j) (kunit))} {p = unit} okB (⊢conv (⊢idrefl (⊢⌜Tm⌝ dj) (toTm (⊢kunit dj))) (csymᵀ (credᵀ (El-⌜Id⌝ (⌜Tm⌝ j) ((kunit)) ((kunit)))))) (⊢payι {Ξ} {Redₘ.J} {⟶F.DF} Redₘ.⊢J ⟶F.⊢DF {unit} ⊢unit))
+
+con⟶hrefl₅ : {Ξ : Ctx} {j a1ᵢ0 : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ a1ᵢ0 ∷ K 1 j → 
+  Ξ ⊢ conₗ 4 ((idrefl (⌜Tm⌝ j) (khrefl (kcNat) a1ᵢ0)) ,ₚ unit) ∷ IMu Redₘ.J ⟶F.DF (ix⟶ j (khrefl (kcNat) (knsuc a1ᵢ0)) ((khrefl (kcNat) a1ᵢ0)))
+con⟶hrefl₅ {Ξ} {j} {a1ᵢ0} dj da1ᵢ0 =
+  ⊢conRowₖ {Ξ} {5} {4} {Redₘ.J} {⟶F.DF} {ix⟶ j (khrefl (kcNat) (knsuc a1ᵢ0)) ((khrefl (kcNat) a1ᵢ0))} {(PT⟶hrefl₅ᶜ0.CASE j (fst p) (c ,ₚ p ,ₚ unit))} {((idrefl (⌜Tm⌝ j) (khrefl (kcNat) a1ᵢ0)) ,ₚ unit)} {⌜ T⟶hrefl₁ j p c ⌝ᵗ ∷ ⌜ T⟶hrefl₂ j p c ⌝ᵗ ∷ ⌜ T⟶hrefl₃ j p c ⌝ᵗ ∷ (PT⟶hrefl₄ᶜ0.CASE j (fst p) (c ,ₚ p ,ₚ unit)) ∷ (PT⟶hrefl₅ᶜ0.CASE j (fst p) (c ,ₚ p ,ₚ unit)) ∷ []} (atᶜ 4) Redₘ.⊢J ⟶F.⊢DF (⊢ix⟶ dj (⊢khrefl dj (⊢kcNat dj) (⊢knsuc dj da1ᵢ0)) (⊢khrefl dj (⊢kcNat dj) da1ᵢ0))
+    (⟶F.fibF {s = 1} {k = 12} {j = j} {p = p} {c = c} (atᵍ 1) (atʰ 12)) (allr⟶hrefl {j = j} {p = p} {c = c} dj dp dc)
+    (⊢conv dPv (csymᵀ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))))
+  where
+    p c : RTm ⌊ Ξ ⌋
+    p = ((kcNat) ,ₚ (knsuc a1ᵢ0) ,ₚ unit)
+    c = ((khrefl (kcNat) a1ᵢ0))
+    dp = ⊢payK (lt-s lt-z) ok-khrefl dj (a-rec (⊢kcNat dj) (a-rec (⊢knsuc dj da1ᵢ0) a[]))
+    dc = ⊢toCR (⊢khrefl dj (⊢kcNat dj) da1ᵢ0)
+    q0 q1 cv0 cv1 : RTm ⌊ Ξ ⌋
+    q0 = unit
+    q1 = (a1ᵢ0 ,ₚ unit)
+    cv0 = (c ,ₚ p ,ₚ unit)
+    cv1 = (c ,ₚ p ,ₚ q0 ,ₚ unit)
+    R₁ : ⌜ T⟶hrefl₅⁽0⁾ j (fst cv1) (fst q1) ⌝ᵗ ⟶* ⌜ T⟶hrefl₅⁽0⁾ j ((khrefl (kcNat) a1ᵢ0)) a1ᵢ0 ⌝ᵗ
+    R₁ = mono-by {Δ = ⌊ Ξ ⌋} {n = 3} {as = (j ∷ (fst cv1) ∷ (fst q1) ∷ [])} {as' = (j ∷ ((khrefl (kcNat) a1ᵢ0)) ∷ a1ᵢ0 ∷ [])} ⌜ T⟶hrefl₅⁽0⁾ v₀ v₁ v₂ ⌝ᵗ (T⟶hrefl₅⁽0⁾-sub (σₗ (j ∷ (fst cv1) ∷ (fst q1) ∷ [])) v₀ v₁ v₂) (T⟶hrefl₅⁽0⁾-sub (σₗ (j ∷ ((khrefl (kcNat) a1ᵢ0)) ∷ a1ᵢ0 ∷ [])) v₀ v₁ v₂) (done ∷ʳ (prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit nth-z) ∷ʳ (prj-tup {ws = (a1ᵢ0 ∷ [])} unit (atᶜ 0)) ∷ʳ []ʳ)
+    R₀ : (PT⟶hrefl₅ᶜ0.CASE j (fst p) (c ,ₚ p ,ₚ unit)) ⟶* ⌜ T⟶hrefl₅⁽0⁾ j ((khrefl (kcNat) a1ᵢ0)) a1ᵢ0 ⌝ᵗ
+    R₀ = (⟶*-trans {t = (PT⟶hrefl₅ᶜ0.CASE j (fst p) (c ,ₚ p ,ₚ unit))} {u = PT⟶hrefl₅ᶜ0.CASE j (kcNat) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶hrefl₅⁽0⁾ j ((khrefl (kcNat) a1ᵢ0)) a1ᵢ0 ⌝ᵗ} (PT⟶hrefl₅ᶜ0.CASE-⟶ᵃ (prj-tup {ws = ((kcNat) ∷ (knsuc a1ᵢ0) ∷ [])} unit (atᶜ 0))) (⟶*-trans {t = PT⟶hrefl₅ᶜ0.CASE j (kcNat) (c ,ₚ p ,ₚ unit)} {u = PT⟶hrefl₅ᶜ1.CASE j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = ⌜ T⟶hrefl₅⁽0⁾ j ((khrefl (kcNat) a1ᵢ0)) a1ᵢ0 ⌝ᵗ} (PT⟶hrefl₅ᶜ0.case-β {j = j} {q = q0} {c = cv0} (atᵍ 1) (atʰ 34)) (⟶*-trans {t = PT⟶hrefl₅ᶜ1.CASE j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶hrefl₅ᶜ1.CASE j (knsuc a1ᵢ0) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = ⌜ T⟶hrefl₅⁽0⁾ j ((khrefl (kcNat) a1ᵢ0)) a1ᵢ0 ⌝ᵗ} (PT⟶hrefl₅ᶜ1.CASE-⟶ᵃ (⟶*-trans (prj-mono 1 (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1))) (prj-tup {ws = ((kcNat) ∷ (knsuc a1ᵢ0) ∷ [])} unit (atᶜ 1)))) (⟶*-trans {t = PT⟶hrefl₅ᶜ1.CASE j (knsuc a1ᵢ0) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶hrefl₅ᶜ1.CASE j (knsuc a1ᵢ0) cv1} {v = ⌜ T⟶hrefl₅⁽0⁾ j ((khrefl (kcNat) a1ᵢ0)) a1ᵢ0 ⌝ᵗ} (PT⟶hrefl₅ᶜ1.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1)) ∷ʳ done ∷ʳ []ʳ))) (⟶*-trans {t = PT⟶hrefl₅ᶜ1.CASE j (knsuc a1ᵢ0) cv1} {u = ⌜ T⟶hrefl₅ j q1 cv1 ⌝ᵗ} {v = ⌜ T⟶hrefl₅⁽0⁾ j ((khrefl (kcNat) a1ᵢ0)) a1ᵢ0 ⌝ᵗ} (PT⟶hrefl₅ᶜ1.case-β {j = j} {q = q1} {c = cv1} (atᵍ 1) (atʰ 20)) R₁)))))
+    okRest : {J' : RTm ⌊ Ξ ⌋} {T : Tel ⌊ Ξ ⌋} → TelOK Ξ Redₘ.J (tρ J' T) → TelOK Ξ Redₘ.J T
+    okRest (ok-ρ _ o) = o
+    okB : TelOK Ξ Redₘ.J (T⟶hrefl₅⁽0⁾ j ((khrefl (kcNat) a1ᵢ0)) a1ᵢ0)
+    okB = (okT⟶hrefl₅I {_} {j} {((khrefl (kcNat) a1ᵢ0))} {a1ᵢ0} dj (⊢khrefl dj (⊢kcNat dj) da1ᵢ0) da1ᵢ0)
+    dPv : Ξ ⊢ ((idrefl (⌜Tm⌝ j) (khrefl (kcNat) a1ᵢ0)) ,ₚ unit) ∷ El (dpay Redₘ.J ⟶F.DF ⌜ T⟶hrefl₅⁽0⁾ j ((khrefl (kcNat) a1ᵢ0)) a1ᵢ0 ⌝ᵗ)
+    dPv = (⊢payσ {Ξ} {Redₘ.J} {⟶F.DF} Redₘ.⊢J ⟶F.⊢DF {a = (idrefl (⌜Tm⌝ j) (khrefl (kcNat) a1ᵢ0))} {p = unit} okB (⊢conv (⊢idrefl (⊢⌜Tm⌝ dj) (toTm (⊢khrefl dj (⊢kcNat dj) da1ᵢ0))) (csymᵀ (credᵀ (El-⌜Id⌝ (⌜Tm⌝ j) ((khrefl (kcNat) a1ᵢ0)) ((khrefl (kcNat) a1ᵢ0)))))) (⊢payι {Ξ} {Redₘ.J} {⟶F.DF} Redₘ.⊢J ⟶F.⊢DF {unit} ⊢unit))
 
 con⟶tr₄ : {Ξ : Ctx} {j f0 f2 a0ᵢ1 e0 e1 e2 e3 : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ f0 ∷ K 1 (nsuc j) → Ξ ⊢ f2 ∷ K 1 j → Ξ ⊢ a0ᵢ1 ∷ K 1 j → Ξ ⊢ e0 ∷ K 1 (nsuc j) → Ξ ⊢ e1 ∷ K 1 (nsuc j) → Ξ ⊢ e2 ∷ K 1 (nsuc j) → Ξ ⊢ e3 ∷ El (⌜Id⌝ (⌜Tm⌝ (nsuc j)) f0 (kcHom e0 e1 e2)) → 
   Ξ ⊢ conₗ 3 (e0 ,ₚ e1 ,ₚ e2 ,ₚ e3 ,ₚ (idrefl (⌜Tm⌝ j) f2) ,ₚ unit) ∷ IMu Redₘ.J ⟶F.DF (ix⟶ j (ktr f0 (khrefl (kcbase) a0ᵢ1) f2) (f2))

@@ -54,7 +54,7 @@ open import DirectedHoTT.Spec.Typing
 open import DirectedHoTT.Metatheory.Confluence
   using ( _⟹_; pvar; plam; papp; pβ; ppair; pabsurd; pfst; psnd; pβfst; pβsnd
         ; p⌜base⌝; p⌜Π⌝; p⌜Σ⌝; p⌜Hom⌝; phrefl; ptr; ptr-J-base; ptr-J-Σ
-        ; ptr-taut; phrefl-pw; ptr-J-Hom; ptr-pw; pap; pap-J; p⌜Id⌝; pidrefl
+        ; ptr-taut; phrefl-pw; phrefl-Nat-z; phrefl-Nat-s; ptr-J-Hom; ptr-pw; pap; pap-J; p⌜Id⌝; pidrefl
         ; pjsub; pjsub-refl; ptr-J-Id; punit; pnzero; pnsuc; pnatrec
         ; pnatrec-zero; pnatrec-suc; p⌜Nat⌝; p⌜Unit⌝; ptr-J-Unit; ptr-J-IMu
         ; pordtr; pordtr-z; pordtr-szz; pordtr-ssz; pordtr-szs; pordtr-sss; _⁺
@@ -553,6 +553,8 @@ Id A t u ⁺ᵀ = Id (A ⁺ᵀ) (t ⁺) (u ⁺)
 ⟹ᵀ-⁺ (pEl w@(ptr-J-Σ _))       = pEl (⟹-⁺ w)
 ⟹ᵀ-⁺ (pEl w@(ptr-taut _ _))    = pEl (⟹-⁺ w)
 ⟹ᵀ-⁺ (pEl w@(phrefl-pw _ _ _)) = pEl (⟹-⁺ w)
+⟹ᵀ-⁺ (pEl w@phrefl-Nat-z)     = pEl (⟹-⁺ w)
+⟹ᵀ-⁺ (pEl w@(phrefl-Nat-s _)) = pEl (⟹-⁺ w)
 ⟹ᵀ-⁺ (pEl w@(ptr-J-Hom _ _))   = pEl (⟹-⁺ w)
 ⟹ᵀ-⁺ (pEl w@(ptr-pw _ _ _ _ _)) = pEl (⟹-⁺ w)
 ⟹ᵀ-⁺ (pEl w@(ptr-J-Id _)) = pEl (⟹-⁺ w)
@@ -645,6 +647,8 @@ Id A t u ⁺ᵀ = Id (A ⁺ᵀ) (t ⁺) (u ⁺)
 ⟹ᵀ-⁺ (pHom pNat (pnsuc pm) pu@(ptr-J-Id _)) = pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ pu)
 ⟹ᵀ-⁺ (pHom pNat (pnsuc pm) pu@(ptr-taut _ _)) = pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ pu)
 ⟹ᵀ-⁺ (pHom pNat (pnsuc pm) pu@(phrefl-pw _ _ _)) = pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom pNat (pnsuc pm) pu@phrefl-Nat-z) = pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom pNat (pnsuc pm) pu@(phrefl-Nat-s _)) = pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ pu)
 ⟹ᵀ-⁺ (pHom pNat (pnsuc pm) pu@(ptr-J-Hom _ _)) = pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ pu)
 ⟹ᵀ-⁺ (pHom pNat (pnsuc pm) pu@(ptr-pw _ _ _ _ _)) = pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ pu)
 ⟹ᵀ-⁺ (pHom pNat (pnsuc pm) pu@(pap _ _ _)) = pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ pu)
@@ -706,6 +710,8 @@ Id A t u ⁺ᵀ = Id (A ⁺ᵀ) (t ⁺) (u ⁺)
 ⟹ᵀ-⁺ (pHom pNat pt@(ptr-J-Id _) pu) = pHom pNat (⟹-⁺ pt) (⟹-⁺ pu)
 ⟹ᵀ-⁺ (pHom pNat pt@(ptr-taut _ _) pu) = pHom pNat (⟹-⁺ pt) (⟹-⁺ pu)
 ⟹ᵀ-⁺ (pHom pNat pt@(phrefl-pw _ _ _) pu) = pHom pNat (⟹-⁺ pt) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom pNat pt@phrefl-Nat-z pu) = pHom pNat (⟹-⁺ pt) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom pNat pt@(phrefl-Nat-s _) pu) = pHom pNat (⟹-⁺ pt) (⟹-⁺ pu)
 ⟹ᵀ-⁺ (pHom pNat pt@(ptr-J-Hom _ _) pu) = pHom pNat (⟹-⁺ pt) (⟹-⁺ pu)
 ⟹ᵀ-⁺ (pHom pNat pt@(ptr-pw _ _ _ _ _) pu) = pHom pNat (⟹-⁺ pt) (⟹-⁺ pu)
 ⟹ᵀ-⁺ (pHom pNat pt@(pap _ _ _) pu) = pHom pNat (⟹-⁺ pt) (⟹-⁺ pu)
@@ -834,6 +840,8 @@ Id A t u ⁺ᵀ = Id (A ⁺ᵀ) (t ⁺) (u ⁺)
 ⟹ᵀ-⁺ (pDIh pD pM w@(ptr-J-Id _) pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
 ⟹ᵀ-⁺ (pDIh pD pM w@(ptr-taut _ _) pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
 ⟹ᵀ-⁺ (pDIh pD pM w@(phrefl-pw _ _ _) pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
+⟹ᵀ-⁺ (pDIh pD pM w@phrefl-Nat-z pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
+⟹ᵀ-⁺ (pDIh pD pM w@(phrefl-Nat-s _) pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
 ⟹ᵀ-⁺ (pDIh pD pM w@(ptr-J-Hom _ _) pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
 ⟹ᵀ-⁺ (pDIh pD pM w@(ptr-pw _ _ _ _ _) pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
 ⟹ᵀ-⁺ (pDIh pD pM w@(pap _ _ _) pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)

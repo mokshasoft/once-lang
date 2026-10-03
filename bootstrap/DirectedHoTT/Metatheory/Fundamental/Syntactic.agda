@@ -68,6 +68,7 @@ open import DirectedHoTT.Metatheory.SubjectReduction
         ; via-Π; hom-to-Π; U-reduct; ≅ᵀ-Homᵀ; gen-var )
 open import DirectedHoTT.Metatheory.LogicalRelation
   using ( SNe; sne-var; sne-app; sne-absurd; sne-fst; sne-snd; sne-hrefl
+        ; hstk?-ren; snr-hrefl-Nat-z; snr-hrefl-Nat-s; snr-hreflᵃ
         ; sne-tr; sne-ap; sne-jsub; Ne; ne-var; ne-app; ne-absurd; ne-fst
         ; ne-snd; ne-hrefl; ne-tr; ne-ap; ne-jsub; homSem₁; SN; sn-ne; sn-lam
         ; sn-pair; sn-cb; sn-cΠ; sn-cΣ; sn-cH; sn-cId; sn-idrefl; sn-exp
@@ -298,7 +299,7 @@ sne-anti {ρ = ρ} {t = ordtr a t u p q} (sne-ordtr ha ht hu hp hq key) =
 sne-anti {t = fst p}    (sne-fst n)   = sne-fst (sne-anti n)
 sne-anti {t = snd p}    (sne-snd n)   = sne-snd (sne-anti n)
 sne-anti {ρ = ρ} {t = hrefl c t} (sne-hrefl hc ht kn) =
-  sne-hrefl (sn-anti hc) (sn-anti ht) (trans (sym (nopw?-ren ρ c)) kn)
+  sne-hrefl (sn-anti hc) (sn-anti ht) (trans (sym (hstk?-ren ρ c t)) kn)
 sne-anti {ρ = ρ} {t = tr d p e} (sne-tr hd hp he key) =
   sne-tr (sn-anti hd) (sn-anti hp) (sn-anti he)
          (trans (sym (trstk?-ren ρ d p)) key)
@@ -460,6 +461,10 @@ snr-anti {t = fst p} (snr-fst r) = lift↑ (λ t' → fst t') snr-fst (λ _ → 
 snr-anti {t = snd (pair a b)}   (snr-βsnd h) =
   b , (snr-βsnd (sn-anti h) , refl)
 snr-anti {t = snd p} (snr-snd r) = lift↑ (λ t' → snd t') snr-snd (λ _ → refl) (snr-anti r)
+snr-anti {t = hrefl ⌜Nat⌝ nzero} snr-hrefl-Nat-z = unit , (snr-hrefl-Nat-z , refl)
+snr-anti {t = hrefl ⌜Nat⌝ (nsuc m)} snr-hrefl-Nat-s = hrefl ⌜Nat⌝ m , (snr-hrefl-Nat-s , refl)
+snr-anti {t = hrefl ⌜Nat⌝ s} (snr-hreflᵃ r) with snr-anti {t = s} r
+... | s' , (r' , refl) = hrefl ⌜Nat⌝ s' , (snr-hreflᵃ r' , refl)
 snr-anti {t = hrefl c s} (snr-hreflᶜ σ) with csr-anti σ
 ... | c' , (σ' , refl) = hrefl c' s , (snr-hreflᶜ σ' , refl)
 snr-anti {ρ = ρ} {t = hrefl c s} (snr-hrefl-pw kp) =
@@ -656,8 +661,8 @@ sne-ren (sne-app n s)         = sne-app (sne-ren n) (sn-ren s)
 sne-ren (sne-absurd sc sn₀)   = sne-absurd (sn-ren sc) (sn-ren sn₀)
 sne-ren (sne-fst n)           = sne-fst (sne-ren n)
 sne-ren (sne-snd n)           = sne-snd (sne-ren n)
-sne-ren {ρ = ρ} (sne-hrefl {c = c} hc ht kn) =
-  sne-hrefl (sn-ren hc) (sn-ren ht) (trans (nopw?-ren ρ c) kn)
+sne-ren {ρ = ρ} (sne-hrefl {c = c} {t} hc ht kn) =
+  sne-hrefl (sn-ren hc) (sn-ren ht) (trans (hstk?-ren ρ c t) kn)
 sne-ren {ρ = ρ} (sne-tr {d = d} {p = p} hd hp he key) =
   sne-tr (sn-ren hd) (sn-ren hp) (sn-ren he)
          (trans (trstk?-ren ρ d p) key)
@@ -740,6 +745,9 @@ snr-ren (snr-app r)   = snr-app (snr-ren r)
 snr-ren (snr-fst r)   = snr-fst (snr-ren r)
 snr-ren (snr-snd r)   = snr-snd (snr-ren r)
 snr-ren (snr-hreflᶜ σ) = snr-hreflᶜ (csr-ren σ)
+snr-ren snr-hrefl-Nat-z = snr-hrefl-Nat-z
+snr-ren snr-hrefl-Nat-s = snr-hrefl-Nat-s
+snr-ren (snr-hreflᵃ r) = snr-hreflᵃ (snr-ren r)
 snr-ren {ρ = ρ} (snr-hrefl-pw {C = C} {t = t} kp) =
   subst (λ z → SNRed (hrefl (renTm ρ C) (renTm ρ t)) z)
         (cong₂ (λ x y → lam (hrefl x (app y (var vz))))
