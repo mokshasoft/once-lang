@@ -1481,3 +1481,50 @@ idEndpoints d with wnorm c-◇ d
 ... | mkWN n r nrm _ with progress (sr* d r)
 ...   | prog-step s  = ⊥-elim (nrm s)
 ...   | prog-can cn  = canIdEnds (sr* d r) cn
+
+------------------------------------------------------------------------
+-- 8. ★★ STRONG DATA CANONICITY at `Unit` (PLAN-FAITHFUL F6, 2026-10-03).
+--
+-- `canView` leaves an `hrefl` escape at `Unit` (`HomHd hUnit`): the order
+-- `Hom Nat 0 n` COMPUTES to `Unit`.  With `hrefl-Nat-z/s` the order's
+-- reflexivity computes in lockstep, so the escape is EMPTY at closed
+-- normal terms: `Unit` has exactly one closed normal inhabitant.  This is
+-- the kernel property adequacy (decoding) needs; before the two rules it
+-- was false (`hrefl ⌜Nat⌝ nzero`).
+------------------------------------------------------------------------
+
+-- the order is the only `Hom` that reaches `Unit`
+homUnit→Nat : {A : RTy ε} {t u : RTm ε} → Hom A t u ⟶ᵀ* Unit → A ⟶ᵀ* Nat
+homUnit→Nat (stepᵀ (ξ-Homᵀ r) rest) = stepᵀ r (homUnit→Nat rest)
+homUnit→Nat (stepᵀ (ξ-Homˡ r) rest) = homUnit→Nat rest
+homUnit→Nat (stepᵀ (ξ-Homʳ r) rest) = homUnit→Nat rest
+homUnit→Nat (stepᵀ (Hom-U _ _) rest) with Π-reduct rest
+... | mkΠRed _ _ () _ _
+homUnit→Nat (stepᵀ (Hom-Π _ _ _ _) rest) with Π-reduct rest
+... | mkΠRed _ _ () _ _
+homUnit→Nat (stepᵀ (Hom-Nat-z _) rest) = doneᵀ
+homUnit→Nat (stepᵀ (Hom-Nat-sz _) (stepᵀ () _))
+homUnit→Nat (stepᵀ (Hom-Nat-ss _ _) rest) = doneᵀ
+
+private
+  unit-join : {X : RTy ε} → Unit ⟶ᵀ* X → X ≡ Unit
+  unit-join r with inert-red* in-Unit r
+  ... | in-Unit = refl
+
+canUnit : {t : RTm ε} → ◇ ⊢ t ∷ Unit → IsNormal t → t ≡ unit
+canUnit d nrm with progress d
+... | prog-step s = ⊥-elim (nrm s)
+... | prog-can cn with canView d crflᵀ in-Unit cn
+...   | inj₁ co-unit = refl
+...   | inj₂ (_ , (c , (s , refl))) with gen-hrefl d
+...     | (dc , (ds , cv)) with codeCanon dc (λ r → nrm (ξ-hreflᶜ r))
+...       | inj₁ kp = ⊥-elim (nrm (hrefl-pw c s kp))
+...       | inj₂ (inj₂ refl) with progress (⊢conv ds (credᵀ El-⌜Nat⌝))
+...         | prog-step r = ⊥-elim (nrm (ξ-hreflᵃ r))
+...         | prog-can cs with canNat (⊢conv ds (credᵀ El-⌜Nat⌝)) cs
+...           | ns-zero  = ⊥-elim (nrm hrefl-Nat-z)
+...           | ns-suc m = ⊥-elim (nrm (hrefl-Nat-s m))
+canUnit d nrm | prog-can cn | inj₂ (_ , (c , (s , refl))) | (dc , (ds , cv)) | inj₂ (inj₁ k)
+  with church-rosserᵀ cv
+... | X , (rU , rH) with unit-join rU
+...   | refl = ⊥-elim (elnotNat (stkC?→hd c k) (homUnit→Nat rH))

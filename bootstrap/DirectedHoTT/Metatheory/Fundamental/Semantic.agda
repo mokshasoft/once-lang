@@ -83,6 +83,8 @@ open import DirectedHoTT.Metatheory.LogicalRelation
         ; snr-natrecⁿ; sne-natrec; ne-natrec; sn-unit; sn-nzero; sn-nsuc
         ; sne-ordtr; ne-ordtr; ordstk?; NatMem; nm-ne; nm-zero; nm-suc; nm-exp
         ; natmem-whred; ⊩₁Unit; ⊩₁Nat; natstk?-ren; natstk?-red; sne→natstk
+        ; sne→natcstk; natcstk?; natstk?; hstk?; hstk-mk; hstk-nopw; pick; pick-orR; pick-orL
+        ; snr-hrefl-Nat-z; snr-hrefl-Nat-s; snr-hreflᵃ
         ; sn-whred; homNatSem; homNatSem₀; hns₀-in; bwd₀-mem⁻; StkHd; sh-Hom
         ; sh-NatH; homnat?; trstk?-ren; apstk?-ren; idstk?-ren; nopw?-ren
         ; trlam?-ren; idstk?-red; ⊩₀Id; ⊩₁Id; IdPay; idpay-transfer
@@ -354,6 +356,48 @@ snPlug : (sp : Spine Ξ) {x : RTm Ξ} → SN x → SN (plug sp x)
 snPlug sp-nil h                    = h
 snPlug (sp-cons a b sa sb sp) h    = snPlug sp (sn-cH h sa sb)
 
+-- ★ F6: the `hrefl` key at a code that is neither pw-able nor `⌜Nat⌝`-able
+hk : (c t : RTm Ξ) → nopw? c ≡ true → natcstk? c ≡ true → hstk? c t ≡ true
+hk c t a b = hstk-mk c t a (pick-orR (natstk? t) b)
+
+natcstk-plug : (sp : Spine Ξ) {x : RTm Ξ} → natcstk? x ≡ true →
+               natcstk? (plug sp x) ≡ true
+natcstk-plug sp-nil h               = h
+natcstk-plug (sp-cons a b _ _ sp) h = natcstk-plug sp refl
+
+-- ★ F6: the `hrefl` key at a spine whose leaf is neither pw-able nor
+--   `⌜Nat⌝`-able
+hkey : (sp : Spine Ξ) {x : RTm Ξ} (t : RTm Ξ) → nopw? x ≡ true → natcstk? x ≡ true →
+       hstk? (plug sp x) t ≡ true
+hkey sp {x} t nk nck = hstk-mk (plug sp x) t (nopw-plug sp nk) (pick-orR (natstk? t) (natcstk-plug sp nck))
+
+-- ★ F6: `hrefl` at the ORDER eliminates its argument (`natrec`'s shape):
+--   SN by induction on the argument's SN.
+snHNat : {t : RTm Ξ} → SN t → SN (hrefl ⌜Nat⌝ t)
+snHNat (sn-exp r h)  = sn-exp (snr-hreflᵃ r) (snHNat h)
+snHNat {t = t} (sn-ne n) = sn-ne (sne-hrefl sn-cNat (sn-ne n) (hstk-mk ⌜Nat⌝ t refl (pick-orL false (sne→natstk n))))
+snHNat sn-nzero      = sn-exp snr-hrefl-Nat-z sn-unit
+snHNat (sn-nsuc h)   = sn-exp snr-hrefl-Nat-s (snHNat h)
+snHNat h@(sn-lam _)        = sn-ne (sne-hrefl sn-cNat h refl)
+snHNat h@(sn-pair _ _)     = sn-ne (sne-hrefl sn-cNat h refl)
+snHNat h@sn-cb             = sn-ne (sne-hrefl sn-cNat h refl)
+snHNat h@(sn-cΠ _ _)       = sn-ne (sne-hrefl sn-cNat h refl)
+snHNat h@(sn-cΣ _ _)       = sn-ne (sne-hrefl sn-cNat h refl)
+snHNat h@(sn-cH _ _ _)     = sn-ne (sne-hrefl sn-cNat h refl)
+snHNat h@(sn-cId _ _ _)    = sn-ne (sne-hrefl sn-cNat h refl)
+snHNat h@(sn-idrefl _ _)   = sn-ne (sne-hrefl sn-cNat h refl)
+snHNat h@sn-cNat           = sn-ne (sne-hrefl sn-cNat h refl)
+snHNat h@sn-cUnit          = sn-ne (sne-hrefl sn-cNat h refl)
+snHNat h@(sn-cIMu _ _ _)   = sn-ne (sne-hrefl sn-cNat h refl)
+snHNat h@sn-cFin           = sn-ne (sne-hrefl sn-cNat h refl)
+snHNat h@sn-unit           = sn-ne (sne-hrefl sn-cNat h refl)
+snHNat h@(sn-con _)        = sn-ne (sne-hrefl sn-cNat h refl)
+snHNat h@sn-dι             = sn-ne (sne-hrefl sn-cNat h refl)
+snHNat h@(sn-dσ _ _)       = sn-ne (sne-hrefl sn-cNat h refl)
+snHNat h@(sn-dρ _ _)       = sn-ne (sne-hrefl sn-cNat h refl)
+snHNat h@sn-fzero          = sn-ne (sne-hrefl sn-cNat h refl)
+snHNat h@(sn-fsuc _)       = sn-ne (sne-hrefl sn-cNat h refl)
+
 -- SN of `hrefl` at a code whose decode NEVER reaches Π: descend the
 -- spine; leaves are neutral (`sne→nopw`) or canonical-non-pw; the
 -- ⌜Π⌝-leaf contradicts the ambient interp through `pw-El-decode`.
@@ -364,47 +408,48 @@ snHH sp (sn-exp r h) snt noPiT =
   sn-exp (snr-hreflᶜ (wrapCSR sp (csr-here r)))
          (snHH sp h snt
                (λ ch → noPiT (stepᵀ (ξ-El (csr→⟶ (wrapCSR sp (csr-here r)))) ch)))
-snHH sp (sn-ne n) snt noPiT =
-  sn-ne (sne-hrefl (snPlug sp (sn-ne n)) snt (nopw-plug sp (sne→nopw n)))
-snHH sp (sn-lam h) snt noPiT =
-  sn-ne (sne-hrefl (snPlug sp (sn-lam h)) snt (nopw-plug sp refl))
-snHH sp (sn-pair ha hb) snt noPiT =
-  sn-ne (sne-hrefl (snPlug sp (sn-pair ha hb)) snt (nopw-plug sp refl))
-snHH sp sn-cb snt noPiT =
-  sn-ne (sne-hrefl (snPlug sp sn-cb) snt (nopw-plug sp refl))
-snHH sp sn-cNat snt noPiT =
-  sn-ne (sne-hrefl (snPlug sp sn-cNat) snt (nopw-plug sp refl))
-snHH sp sn-cUnit snt noPiT =
-  sn-ne (sne-hrefl (snPlug sp sn-cUnit) snt (nopw-plug sp refl))
-snHH sp sn-cFin snt noPiT =
-  sn-ne (sne-hrefl (snPlug sp sn-cFin) snt (nopw-plug sp refl))
-snHH sp (sn-cΣ h₁ h₂) snt noPiT =
-  sn-ne (sne-hrefl (snPlug sp (sn-cΣ h₁ h₂)) snt (nopw-plug sp refl))
-snHH sp (sn-cId h₁ h₂ h₃) snt noPiT =
-  sn-ne (sne-hrefl (snPlug sp (sn-cId h₁ h₂ h₃)) snt (nopw-plug sp refl))
-snHH sp (sn-idrefl h₁ h₂) snt noPiT =
-  sn-ne (sne-hrefl (snPlug sp (sn-idrefl h₁ h₂)) snt (nopw-plug sp refl))
-snHH sp sn-unit snt noPiT =
-  sn-ne (sne-hrefl (snPlug sp sn-unit) snt (nopw-plug sp refl))
-snHH sp sn-nzero snt noPiT =
-  sn-ne (sne-hrefl (snPlug sp sn-nzero) snt (nopw-plug sp refl))
-snHH sp (sn-nsuc h) snt noPiT =
-  sn-ne (sne-hrefl (snPlug sp (sn-nsuc h)) snt (nopw-plug sp refl))
+snHH sp (sn-ne n) {t} snt noPiT =
+  sn-ne (sne-hrefl (snPlug sp (sn-ne n)) snt (hkey sp t (sne→nopw n) (sne→natcstk n)))
+snHH sp (sn-lam h) {t} snt noPiT =
+  sn-ne (sne-hrefl (snPlug sp (sn-lam h)) snt (hkey sp t refl refl))
+snHH sp (sn-pair ha hb) {t} snt noPiT =
+  sn-ne (sne-hrefl (snPlug sp (sn-pair ha hb)) snt (hkey sp t refl refl))
+snHH sp sn-cb {t} snt noPiT =
+  sn-ne (sne-hrefl (snPlug sp sn-cb) snt (hkey sp t refl refl))
+snHH sp-nil sn-cNat snt noPiT = snHNat snt
+snHH (sp-cons a b sa sb sp) sn-cNat {t} snt noPiT =
+  sn-ne (sne-hrefl (snPlug (sp-cons a b sa sb sp) sn-cNat) snt (hkey sp t refl refl))
+snHH sp sn-cUnit {t} snt noPiT =
+  sn-ne (sne-hrefl (snPlug sp sn-cUnit) snt (hkey sp t refl refl))
+snHH sp sn-cFin {t} snt noPiT =
+  sn-ne (sne-hrefl (snPlug sp sn-cFin) snt (hkey sp t refl refl))
+snHH sp (sn-cΣ h₁ h₂) {t} snt noPiT =
+  sn-ne (sne-hrefl (snPlug sp (sn-cΣ h₁ h₂)) snt (hkey sp t refl refl))
+snHH sp (sn-cId h₁ h₂ h₃) {t} snt noPiT =
+  sn-ne (sne-hrefl (snPlug sp (sn-cId h₁ h₂ h₃)) snt (hkey sp t refl refl))
+snHH sp (sn-idrefl h₁ h₂) {t} snt noPiT =
+  sn-ne (sne-hrefl (snPlug sp (sn-idrefl h₁ h₂)) snt (hkey sp t refl refl))
+snHH sp sn-unit {t} snt noPiT =
+  sn-ne (sne-hrefl (snPlug sp sn-unit) snt (hkey sp t refl refl))
+snHH sp sn-nzero {t} snt noPiT =
+  sn-ne (sne-hrefl (snPlug sp sn-nzero) snt (hkey sp t refl refl))
+snHH sp (sn-nsuc h) {t} snt noPiT =
+  sn-ne (sne-hrefl (snPlug sp (sn-nsuc h)) snt (hkey sp t refl refl))
 -- ★ INDUCTIVE TYPES: a `con` is an inert canonical head, like `nsuc`.
-snHH sp (sn-con h) snt noPiT =
-  sn-ne (sne-hrefl (snPlug sp (sn-con h)) snt (nopw-plug sp refl))
-snHH sp sn-dι snt noPiT =
-  sn-ne (sne-hrefl (snPlug sp sn-dι) snt (nopw-plug sp refl))
-snHH sp (sn-dσ h h₉) snt noPiT =
-  sn-ne (sne-hrefl (snPlug sp (sn-dσ h h₉)) snt (nopw-plug sp refl))
-snHH sp (sn-dρ h h₉) snt noPiT =
-  sn-ne (sne-hrefl (snPlug sp (sn-dρ h h₉)) snt (nopw-plug sp refl))
-snHH sp sn-fzero snt noPiT =
-  sn-ne (sne-hrefl (snPlug sp sn-fzero) snt (nopw-plug sp refl))
-snHH sp (sn-fsuc h) snt noPiT =
-  sn-ne (sne-hrefl (snPlug sp (sn-fsuc h)) snt (nopw-plug sp refl))
-snHH sp (sn-cIMu h h₈ h₉) snt noPiT =
-  sn-ne (sne-hrefl (snPlug sp (sn-cIMu h h₈ h₉)) snt (nopw-plug sp refl))
+snHH sp (sn-con h) {t} snt noPiT =
+  sn-ne (sne-hrefl (snPlug sp (sn-con h)) snt (hkey sp t refl refl))
+snHH sp sn-dι {t} snt noPiT =
+  sn-ne (sne-hrefl (snPlug sp sn-dι) snt (hkey sp t refl refl))
+snHH sp (sn-dσ h h₉) {t} snt noPiT =
+  sn-ne (sne-hrefl (snPlug sp (sn-dσ h h₉)) snt (hkey sp t refl refl))
+snHH sp (sn-dρ h h₉) {t} snt noPiT =
+  sn-ne (sne-hrefl (snPlug sp (sn-dρ h h₉)) snt (hkey sp t refl refl))
+snHH sp sn-fzero {t} snt noPiT =
+  sn-ne (sne-hrefl (snPlug sp sn-fzero) snt (hkey sp t refl refl))
+snHH sp (sn-fsuc h) {t} snt noPiT =
+  sn-ne (sne-hrefl (snPlug sp (sn-fsuc h)) snt (hkey sp t refl refl))
+snHH sp (sn-cIMu h h₈ h₉) {t} snt noPiT =
+  sn-ne (sne-hrefl (snPlug sp (sn-cIMu h h₈ h₉)) snt (hkey sp t refl refl))
 snHH sp (sn-cΠ {c = γ} {d = δ} h₁ h₂) snt noPiT =
   ⊥-elim (noPiT (Σ.fst (Σ.snd (pw-El-decode (plug sp (⌜Π⌝ γ δ))
                                             (pw-plug sp refl)))))
@@ -921,6 +966,8 @@ snTrGo {Ξ = Ξ} {CT = CT} {aP} {eP} noPiT snCT snA snE = go'
   go' : {p' : RTm Ξ} → SN p' → SN (tr M p' eP)
   goH : {c' s' : RTm Ξ} → SN c' → SN s' → nopw? c' ≡ true →
         SN (tr M (hrefl c' s') eP)
+  -- ★ F6: at the ORDER the path itself computes on its argument
+  goN : {s' : RTm Ξ} → SN s' → SN (tr M (hrefl ⌜Nat⌝ s') eP)
 
   go' (sn-exp r h) = sn-exp (snr-trᵖ r) (go' h)
   go' (sn-ne (sne-var x)) =
@@ -933,7 +980,7 @@ snTrGo {Ξ = Ξ} {CT = CT} {aP} {eP} noPiT snCT snA snE = go'
     sn-ne (sne-tr snM (sn-ne (sne-fst n)) snE (sne→spine n))
   go' (sn-ne (sne-snd n)) =
     sn-ne (sne-tr snM (sn-ne (sne-snd n)) snE (sne→spine n))
-  go' (sn-ne (sne-hrefl snc sns kn)) = goH snc sns kn
+  go' (sn-ne (sne-hrefl {c = c} {t} snc sns kn)) = goH snc sns (hstk-nopw c t kn)
   go' (sn-ne (sne-tr h₁ h₂ h₃ key)) =
     sn-ne (sne-tr snM (sn-ne (sne-tr h₁ h₂ h₃ key)) snE key)
   go' (sn-ne (sne-ap h₁ h₂ h₃ key)) =
@@ -993,44 +1040,43 @@ snTrGo {Ξ = Ξ} {CT = CT} {aP} {eP} noPiT snCT snA snE = go'
   -- ★★ J is OFF at ⌜Nat⌝, so this configuration is permanently stuck —
   -- i.e. NEUTRAL.  `stablecd? ⌜Nat⌝ = true` is exactly the key that
   -- lets `sne-tr` accept it.
-  goH sn-cNat sns kn =
-    sn-ne (sne-tr snM (sn-ne (sne-hrefl sn-cNat sns refl)) snE refl)
+  goH sn-cNat sns kn = goN sns
   goH (sn-cΣ h₁ h₂) sns kn = sn-exp (snr-J-Σ snM h₁ h₂ sns) snE
   goH (sn-cId h₁ h₂ h₃) sns kn = sn-exp (snr-J-Id snM h₁ h₂ h₃ sns) snE
-  goH (sn-idrefl h₁ h₂) sns kn =
-    sn-ne (sne-tr snM (sn-ne (sne-hrefl (sn-idrefl h₁ h₂) sns refl)) snE refl)
+  goH {c' = c'} {s' = s'} (sn-idrefl h₁ h₂) sns kn =
+    sn-ne (sne-tr snM (sn-ne (sne-hrefl (sn-idrefl h₁ h₂) sns (hk c' s' refl refl))) snE refl)
   goH (sn-exp rc snc') sns kn =
     sn-exp (snr-trᵖ (snr-hreflᶜ (csr-here rc)))
            (goH snc' sns (nopw?-red (snr→⟶ rc) kn))
-  goH (sn-ne nc) sns kn =
-    sn-ne (sne-tr snM (sn-ne (sne-hrefl (sn-ne nc) sns (sne→nopw nc)))
+  goH {c' = c'} {s' = s'} (sn-ne nc) sns kn =
+    sn-ne (sne-tr snM (sn-ne (sne-hrefl (sn-ne nc) sns (hk c' s' (sne→nopw nc) (sne→natcstk nc))))
                   snE (sne→stablecd nc))
-  goH (sn-lam h) sns kn =
-    sn-ne (sne-tr snM (sn-ne (sne-hrefl (sn-lam h) sns refl)) snE refl)
-  goH (sn-pair a b) sns kn =
-    sn-ne (sne-tr snM (sn-ne (sne-hrefl (sn-pair a b) sns refl)) snE refl)
-  goH sn-unit sns kn =
-    sn-ne (sne-tr snM (sn-ne (sne-hrefl sn-unit sns refl)) snE refl)
-  goH sn-nzero sns kn =
-    sn-ne (sne-tr snM (sn-ne (sne-hrefl sn-nzero sns refl)) snE refl)
-  goH (sn-nsuc h) sns kn =
-    sn-ne (sne-tr snM (sn-ne (sne-hrefl (sn-nsuc h) sns refl)) snE refl)
-  goH (sn-con h) sns kn =
-    sn-ne (sne-tr snM (sn-ne (sne-hrefl (sn-con h) sns refl)) snE refl)
-  goH sn-dι sns kn =
-    sn-ne (sne-tr snM (sn-ne (sne-hrefl sn-dι sns refl)) snE refl)
-  goH (sn-dσ h h₉) sns kn =
-    sn-ne (sne-tr snM (sn-ne (sne-hrefl (sn-dσ h h₉) sns refl)) snE refl)
-  goH (sn-dρ h h₉) sns kn =
-    sn-ne (sne-tr snM (sn-ne (sne-hrefl (sn-dρ h h₉) sns refl)) snE refl)
-  goH sn-fzero sns kn =
-    sn-ne (sne-tr snM (sn-ne (sne-hrefl sn-fzero sns refl)) snE refl)
-  goH (sn-fsuc h) sns kn =
-    sn-ne (sne-tr snM (sn-ne (sne-hrefl (sn-fsuc h) sns refl)) snE refl)
+  goH {c' = c'} {s' = s'} (sn-lam h) sns kn =
+    sn-ne (sne-tr snM (sn-ne (sne-hrefl (sn-lam h) sns (hk c' s' refl refl))) snE refl)
+  goH {c' = c'} {s' = s'} (sn-pair a b) sns kn =
+    sn-ne (sne-tr snM (sn-ne (sne-hrefl (sn-pair a b) sns (hk c' s' refl refl))) snE refl)
+  goH {c' = c'} {s' = s'} sn-unit sns kn =
+    sn-ne (sne-tr snM (sn-ne (sne-hrefl sn-unit sns (hk c' s' refl refl))) snE refl)
+  goH {c' = c'} {s' = s'} sn-nzero sns kn =
+    sn-ne (sne-tr snM (sn-ne (sne-hrefl sn-nzero sns (hk c' s' refl refl))) snE refl)
+  goH {c' = c'} {s' = s'} (sn-nsuc h) sns kn =
+    sn-ne (sne-tr snM (sn-ne (sne-hrefl (sn-nsuc h) sns (hk c' s' refl refl))) snE refl)
+  goH {c' = c'} {s' = s'} (sn-con h) sns kn =
+    sn-ne (sne-tr snM (sn-ne (sne-hrefl (sn-con h) sns (hk c' s' refl refl))) snE refl)
+  goH {c' = c'} {s' = s'} sn-dι sns kn =
+    sn-ne (sne-tr snM (sn-ne (sne-hrefl sn-dι sns (hk c' s' refl refl))) snE refl)
+  goH {c' = c'} {s' = s'} (sn-dσ h h₉) sns kn =
+    sn-ne (sne-tr snM (sn-ne (sne-hrefl (sn-dσ h h₉) sns (hk c' s' refl refl))) snE refl)
+  goH {c' = c'} {s' = s'} (sn-dρ h h₉) sns kn =
+    sn-ne (sne-tr snM (sn-ne (sne-hrefl (sn-dρ h h₉) sns (hk c' s' refl refl))) snE refl)
+  goH {c' = c'} {s' = s'} sn-fzero sns kn =
+    sn-ne (sne-tr snM (sn-ne (sne-hrefl sn-fzero sns (hk c' s' refl refl))) snE refl)
+  goH {c' = c'} {s' = s'} (sn-fsuc h) sns kn =
+    sn-ne (sne-tr snM (sn-ne (sne-hrefl (sn-fsuc h) sns (hk c' s' refl refl))) snE refl)
   -- ★★ §10.4: J FIRES at ⌜IMu⌝ — `snr-J-IMu`, `snr-J-Fin`'s twin.
   goH (sn-cIMu h h₈ h₉) sns kn = sn-exp (snr-J-IMu snM sns) snE
   goH (sn-cΠ h₁ h₂) sns ()
-  goH (sn-cH hC h₂ h₃) sns kn with codeNormA hC kn
+  goH {s' = s'} (sn-cH {a = a'} {b = b'} hC h₂ h₃) sns kn with codeNormA hC kn
   ... | C*c , (csr , cfa-stk k) =
         snExpStar (tstar (snrs-hreflᶜ (csrs-hom csr)))
           (sn-exp (snr-J-Hom snM (sn-csrs hC csr) h₂ h₃ sns k) snE)
@@ -1038,8 +1084,32 @@ snTrGo {Ξ = Ξ} {CT = CT} {aP} {eP} noPiT snCT snA snE = go'
         snExpStar (tstar (snrs-hreflᶜ (csrs-hom csr)))
           (sn-ne (sne-tr snM
                    (sn-ne (sne-hrefl (sn-cH (sn-csrs hC csr) h₂ h₃) sns
-                                     (nopw?-csrs csr kn)))
+                                     (hk (⌜Hom⌝ C*c a' b') s' (nopw?-csrs csr kn) refl)))
                    snE k))
+  goN (sn-exp r h) = sn-exp (snr-trᵖ (snr-hreflᵃ r)) (goN h)
+  goN sn-nzero     = sn-exp (snr-trᵖ snr-hrefl-Nat-z) (sn-ne (sne-tr snM sn-unit snE refl))
+  goN (sn-nsuc h)  = sn-exp (snr-trᵖ snr-hrefl-Nat-s) (goN h)
+  goN {s' = s'} (sn-ne n) =
+    sn-ne (sne-tr snM (sn-ne (sne-hrefl sn-cNat (sn-ne n) (hstk-mk ⌜Nat⌝ s' refl (pick-orL false (sne→natstk n))))) snE refl)
+  goN h@(sn-lam _) = sn-ne (sne-tr snM (sn-ne (sne-hrefl sn-cNat h refl)) snE refl)
+  goN h@(sn-pair _ _) = sn-ne (sne-tr snM (sn-ne (sne-hrefl sn-cNat h refl)) snE refl)
+  goN h@sn-cb = sn-ne (sne-tr snM (sn-ne (sne-hrefl sn-cNat h refl)) snE refl)
+  goN h@(sn-cΠ _ _) = sn-ne (sne-tr snM (sn-ne (sne-hrefl sn-cNat h refl)) snE refl)
+  goN h@(sn-cΣ _ _) = sn-ne (sne-tr snM (sn-ne (sne-hrefl sn-cNat h refl)) snE refl)
+  goN h@(sn-cH _ _ _) = sn-ne (sne-tr snM (sn-ne (sne-hrefl sn-cNat h refl)) snE refl)
+  goN h@(sn-cId _ _ _) = sn-ne (sne-tr snM (sn-ne (sne-hrefl sn-cNat h refl)) snE refl)
+  goN h@(sn-idrefl _ _) = sn-ne (sne-tr snM (sn-ne (sne-hrefl sn-cNat h refl)) snE refl)
+  goN h@sn-cNat = sn-ne (sne-tr snM (sn-ne (sne-hrefl sn-cNat h refl)) snE refl)
+  goN h@sn-cUnit = sn-ne (sne-tr snM (sn-ne (sne-hrefl sn-cNat h refl)) snE refl)
+  goN h@(sn-cIMu _ _ _) = sn-ne (sne-tr snM (sn-ne (sne-hrefl sn-cNat h refl)) snE refl)
+  goN h@sn-cFin = sn-ne (sne-tr snM (sn-ne (sne-hrefl sn-cNat h refl)) snE refl)
+  goN h@sn-unit = sn-ne (sne-tr snM (sn-ne (sne-hrefl sn-cNat h refl)) snE refl)
+  goN h@(sn-con _) = sn-ne (sne-tr snM (sn-ne (sne-hrefl sn-cNat h refl)) snE refl)
+  goN h@sn-dι = sn-ne (sne-tr snM (sn-ne (sne-hrefl sn-cNat h refl)) snE refl)
+  goN h@(sn-dσ _ _) = sn-ne (sne-tr snM (sn-ne (sne-hrefl sn-cNat h refl)) snE refl)
+  goN h@(sn-dρ _ _) = sn-ne (sne-tr snM (sn-ne (sne-hrefl sn-cNat h refl)) snE refl)
+  goN h@sn-fzero = sn-ne (sne-tr snM (sn-ne (sne-hrefl sn-cNat h refl)) snE refl)
+  goN h@(sn-fsuc _) = sn-ne (sne-tr snM (sn-ne (sne-hrefl sn-cNat h refl)) snE refl)
 
 semTr x₀ (⊩₀base p) lk snCT payR hA hT hU snp hTe hUe hp hE =
   snTrGo noPiT snCT (CR1₀ (⊩₀base p) hA)
@@ -1171,6 +1241,9 @@ semTr x₀ {X = X} (⊩₀Π {F = F} {G = G} q Fc Gc) {CT = CT} lk snCT payR
   pwC  : {f : RTm (_ ∙)} → SN f →
          (homSem₁ (emb RcΠ) hTe hUe) ⊩₁∋ lam f → RH0 ⊩₀∋ tr M (lam f) eP
 
+  -- ★ F6: at the ORDER the path computes on its argument
+  goN₀ : {s' : RTm _} → SN s' → RH0 ⊩₀∋ tr M (hrefl ⌜Nat⌝ s') eP
+
   go₀ (sn-exp r h) hpʹ =
     exp₀ RH0 (snr-trᵖ r) (go₀ h (mem-whred₁ (homSem₁ (emb RcΠ) hTe hUe) r hpʹ))
   go₀ (sn-ne (sne-var x)) hpʹ =
@@ -1183,7 +1256,7 @@ semTr x₀ {X = X} (⊩₀Π {F = F} {G = G} q Fc Gc) {CT = CT} lk snCT payR
     CR3₀ RH0 (sne-tr snM (sn-ne (sne-fst n)) snE' (sne→spine n))
   go₀ (sn-ne (sne-snd n)) hpʹ =
     CR3₀ RH0 (sne-tr snM (sn-ne (sne-snd n)) snE' (sne→spine n))
-  go₀ (sn-ne (sne-hrefl snc sns kn)) hpʹ = goH₀ snc sns kn
+  go₀ (sn-ne (sne-hrefl {c = c} {t} snc sns kn)) hpʹ = goH₀ snc sns (hstk-nopw c t kn)
   go₀ (sn-ne (sne-tr h₁ h₂ h₃ key)) hpʹ =
     CR3₀ RH0 (sne-tr snM (sn-ne (sne-tr h₁ h₂ h₃ key)) snE' key)
   go₀ (sn-ne (sne-ap h₁ h₂ h₃ key)) hpʹ =
@@ -1231,43 +1304,42 @@ semTr x₀ {X = X} (⊩₀Π {F = F} {G = G} q Fc Gc) {CT = CT} lk snCT payR
   goH₀ sn-cb sns kn = exp₀ RH0 (snr-J-base snM sns) heU
   goH₀ sn-cUnit sns kn = exp₀ RH0 (snr-J-Unit snM sns) heU
   goH₀ sn-cFin   sns kn = exp₀ RH0 (snr-J-Fin snM sns) heU
-  goH₀ sn-cNat sns kn =
-    CR3₀ RH0 (sne-tr snM (sn-ne (sne-hrefl sn-cNat sns refl)) snE' refl)
+  goH₀ sn-cNat sns kn = goN₀ sns
   goH₀ (sn-cΣ h₁ h₂) sns kn = exp₀ RH0 (snr-J-Σ snM h₁ h₂ sns) heU
   goH₀ (sn-cId h₁ h₂ h₃) sns kn = exp₀ RH0 (snr-J-Id snM h₁ h₂ h₃ sns) heU
-  goH₀ (sn-idrefl h₁ h₂) sns kn =
-    CR3₀ RH0 (sne-tr snM (sn-ne (sne-hrefl (sn-idrefl h₁ h₂) sns refl)) snE' refl)
+  goH₀ {c' = c'} {s' = s'} (sn-idrefl h₁ h₂) sns kn =
+    CR3₀ RH0 (sne-tr snM (sn-ne (sne-hrefl (sn-idrefl h₁ h₂) sns (hk c' s' refl refl))) snE' refl)
   goH₀ (sn-exp rc snc') sns kn =
     exp₀ RH0 (snr-trᵖ (snr-hreflᶜ (csr-here rc)))
          (goH₀ snc' sns (nopw?-red (snr→⟶ rc) kn))
-  goH₀ (sn-ne nc) sns kn =
-    CR3₀ RH0 (sne-tr snM (sn-ne (sne-hrefl (sn-ne nc) sns (sne→nopw nc)))
+  goH₀ {c' = c'} {s' = s'} (sn-ne nc) sns kn =
+    CR3₀ RH0 (sne-tr snM (sn-ne (sne-hrefl (sn-ne nc) sns (hk c' s' (sne→nopw nc) (sne→natcstk nc))))
                      snE' (sne→stablecd nc))
-  goH₀ (sn-lam h) sns kn =
-    CR3₀ RH0 (sne-tr snM (sn-ne (sne-hrefl (sn-lam h) sns refl)) snE' refl)
-  goH₀ (sn-pair a b) sns kn =
-    CR3₀ RH0 (sne-tr snM (sn-ne (sne-hrefl (sn-pair a b) sns refl)) snE' refl)
-  goH₀ sn-unit sns kn =
-    CR3₀ RH0 (sne-tr snM (sn-ne (sne-hrefl sn-unit sns refl)) snE' refl)
-  goH₀ sn-nzero sns kn =
-    CR3₀ RH0 (sne-tr snM (sn-ne (sne-hrefl sn-nzero sns refl)) snE' refl)
-  goH₀ (sn-nsuc h) sns kn =
-    CR3₀ RH0 (sne-tr snM (sn-ne (sne-hrefl (sn-nsuc h) sns refl)) snE' refl)
-  goH₀ (sn-con h) sns kn =
-    CR3₀ RH0 (sne-tr snM (sn-ne (sne-hrefl (sn-con h) sns refl)) snE' refl)
-  goH₀ sn-dι sns kn =
-    CR3₀ RH0 (sne-tr snM (sn-ne (sne-hrefl sn-dι sns refl)) snE' refl)
-  goH₀ (sn-dσ h h₉) sns kn =
-    CR3₀ RH0 (sne-tr snM (sn-ne (sne-hrefl (sn-dσ h h₉) sns refl)) snE' refl)
-  goH₀ (sn-dρ h h₉) sns kn =
-    CR3₀ RH0 (sne-tr snM (sn-ne (sne-hrefl (sn-dρ h h₉) sns refl)) snE' refl)
-  goH₀ sn-fzero sns kn =
-    CR3₀ RH0 (sne-tr snM (sn-ne (sne-hrefl sn-fzero sns refl)) snE' refl)
-  goH₀ (sn-fsuc h) sns kn =
-    CR3₀ RH0 (sne-tr snM (sn-ne (sne-hrefl (sn-fsuc h) sns refl)) snE' refl)
+  goH₀ {c' = c'} {s' = s'} (sn-lam h) sns kn =
+    CR3₀ RH0 (sne-tr snM (sn-ne (sne-hrefl (sn-lam h) sns (hk c' s' refl refl))) snE' refl)
+  goH₀ {c' = c'} {s' = s'} (sn-pair a b) sns kn =
+    CR3₀ RH0 (sne-tr snM (sn-ne (sne-hrefl (sn-pair a b) sns (hk c' s' refl refl))) snE' refl)
+  goH₀ {c' = c'} {s' = s'} sn-unit sns kn =
+    CR3₀ RH0 (sne-tr snM (sn-ne (sne-hrefl sn-unit sns (hk c' s' refl refl))) snE' refl)
+  goH₀ {c' = c'} {s' = s'} sn-nzero sns kn =
+    CR3₀ RH0 (sne-tr snM (sn-ne (sne-hrefl sn-nzero sns (hk c' s' refl refl))) snE' refl)
+  goH₀ {c' = c'} {s' = s'} (sn-nsuc h) sns kn =
+    CR3₀ RH0 (sne-tr snM (sn-ne (sne-hrefl (sn-nsuc h) sns (hk c' s' refl refl))) snE' refl)
+  goH₀ {c' = c'} {s' = s'} (sn-con h) sns kn =
+    CR3₀ RH0 (sne-tr snM (sn-ne (sne-hrefl (sn-con h) sns (hk c' s' refl refl))) snE' refl)
+  goH₀ {c' = c'} {s' = s'} sn-dι sns kn =
+    CR3₀ RH0 (sne-tr snM (sn-ne (sne-hrefl sn-dι sns (hk c' s' refl refl))) snE' refl)
+  goH₀ {c' = c'} {s' = s'} (sn-dσ h h₉) sns kn =
+    CR3₀ RH0 (sne-tr snM (sn-ne (sne-hrefl (sn-dσ h h₉) sns (hk c' s' refl refl))) snE' refl)
+  goH₀ {c' = c'} {s' = s'} (sn-dρ h h₉) sns kn =
+    CR3₀ RH0 (sne-tr snM (sn-ne (sne-hrefl (sn-dρ h h₉) sns (hk c' s' refl refl))) snE' refl)
+  goH₀ {c' = c'} {s' = s'} sn-fzero sns kn =
+    CR3₀ RH0 (sne-tr snM (sn-ne (sne-hrefl sn-fzero sns (hk c' s' refl refl))) snE' refl)
+  goH₀ {c' = c'} {s' = s'} (sn-fsuc h) sns kn =
+    CR3₀ RH0 (sne-tr snM (sn-ne (sne-hrefl (sn-fsuc h) sns (hk c' s' refl refl))) snE' refl)
   goH₀ (sn-cIMu h h₈ h₉) sns kn = exp₀ RH0 (snr-J-IMu snM sns) heU
   goH₀ (sn-cΠ h₁ h₂) sns ()
-  goH₀ (sn-cH hC h₂ h₃) sns kn with codeNormA hC kn
+  goH₀ {s' = s'} (sn-cH {a = a'} {b = b'} hC h₂ h₃) sns kn with codeNormA hC kn
   ... | C*c , (csr , cfa-stk k) =
         expStar₀ RH0 (tstar (snrs-hreflᶜ (csrs-hom csr)))
           (exp₀ RH0 (snr-J-Hom snM (sn-csrs hC csr) h₂ h₃ sns k) heU)
@@ -1275,8 +1347,32 @@ semTr x₀ {X = X} (⊩₀Π {F = F} {G = G} q Fc Gc) {CT = CT} lk snCT payR
         expStar₀ RH0 (tstar (snrs-hreflᶜ (csrs-hom csr)))
           (CR3₀ RH0 (sne-tr snM
                       (sn-ne (sne-hrefl (sn-cH (sn-csrs hC csr) h₂ h₃) sns
-                                        (nopw?-csrs csr kn)))
+                                        (hk (⌜Hom⌝ C*c a' b') s' (nopw?-csrs csr kn) refl)))
                       snE' k))
+  goN₀ (sn-exp r h) = exp₀ RH0 (snr-trᵖ (snr-hreflᵃ r)) (goN₀ h)
+  goN₀ sn-nzero     = exp₀ RH0 (snr-trᵖ snr-hrefl-Nat-z) (CR3₀ RH0 (sne-tr snM sn-unit snE' refl))
+  goN₀ (sn-nsuc h)  = exp₀ RH0 (snr-trᵖ snr-hrefl-Nat-s) (goN₀ h)
+  goN₀ {s' = s'} (sn-ne n) =
+    CR3₀ RH0 (sne-tr snM (sn-ne (sne-hrefl sn-cNat (sn-ne n) (hstk-mk ⌜Nat⌝ s' refl (pick-orL false (sne→natstk n))))) snE' refl)
+  goN₀ h@(sn-lam _) = CR3₀ RH0 (sne-tr snM (sn-ne (sne-hrefl sn-cNat h refl)) snE' refl)
+  goN₀ h@(sn-pair _ _) = CR3₀ RH0 (sne-tr snM (sn-ne (sne-hrefl sn-cNat h refl)) snE' refl)
+  goN₀ h@sn-cb = CR3₀ RH0 (sne-tr snM (sn-ne (sne-hrefl sn-cNat h refl)) snE' refl)
+  goN₀ h@(sn-cΠ _ _) = CR3₀ RH0 (sne-tr snM (sn-ne (sne-hrefl sn-cNat h refl)) snE' refl)
+  goN₀ h@(sn-cΣ _ _) = CR3₀ RH0 (sne-tr snM (sn-ne (sne-hrefl sn-cNat h refl)) snE' refl)
+  goN₀ h@(sn-cH _ _ _) = CR3₀ RH0 (sne-tr snM (sn-ne (sne-hrefl sn-cNat h refl)) snE' refl)
+  goN₀ h@(sn-cId _ _ _) = CR3₀ RH0 (sne-tr snM (sn-ne (sne-hrefl sn-cNat h refl)) snE' refl)
+  goN₀ h@(sn-idrefl _ _) = CR3₀ RH0 (sne-tr snM (sn-ne (sne-hrefl sn-cNat h refl)) snE' refl)
+  goN₀ h@sn-cNat = CR3₀ RH0 (sne-tr snM (sn-ne (sne-hrefl sn-cNat h refl)) snE' refl)
+  goN₀ h@sn-cUnit = CR3₀ RH0 (sne-tr snM (sn-ne (sne-hrefl sn-cNat h refl)) snE' refl)
+  goN₀ h@(sn-cIMu _ _ _) = CR3₀ RH0 (sne-tr snM (sn-ne (sne-hrefl sn-cNat h refl)) snE' refl)
+  goN₀ h@sn-cFin = CR3₀ RH0 (sne-tr snM (sn-ne (sne-hrefl sn-cNat h refl)) snE' refl)
+  goN₀ h@sn-unit = CR3₀ RH0 (sne-tr snM (sn-ne (sne-hrefl sn-cNat h refl)) snE' refl)
+  goN₀ h@(sn-con _) = CR3₀ RH0 (sne-tr snM (sn-ne (sne-hrefl sn-cNat h refl)) snE' refl)
+  goN₀ h@sn-dι = CR3₀ RH0 (sne-tr snM (sn-ne (sne-hrefl sn-cNat h refl)) snE' refl)
+  goN₀ h@(sn-dσ _ _) = CR3₀ RH0 (sne-tr snM (sn-ne (sne-hrefl sn-cNat h refl)) snE' refl)
+  goN₀ h@(sn-dρ _ _) = CR3₀ RH0 (sne-tr snM (sn-ne (sne-hrefl sn-cNat h refl)) snE' refl)
+  goN₀ h@sn-fzero = CR3₀ RH0 (sne-tr snM (sn-ne (sne-hrefl sn-cNat h refl)) snE' refl)
+  goN₀ h@(sn-fsuc _) = CR3₀ RH0 (sne-tr snM (sn-ne (sne-hrefl sn-cNat h refl)) snE' refl)
 
   -- ★ the pointwise case: the payload node fires the strategy, the
   -- collapse equalities make the β-instances line up definitionally,

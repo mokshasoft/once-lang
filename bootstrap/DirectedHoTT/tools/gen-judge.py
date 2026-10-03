@@ -1768,7 +1768,9 @@ COMP = {"⟶": {
                   ents=[TO(k("lam", k("tr", k("cHom", ("pwShK", "J", E(3)), k("app", ("wk", 1, "J+1", E(1)), V1), V0),
                                           R2(0, 0), k("app", W1(F(2)), V0))))])],
   "hrefl":  [dict(ex=[("Tm", "J+1"), ("PwC", "J", F(0), E(0))],                                              # hrefl-pw
-                  ents=[TO(k("lam", k("hrefl", E(0), k("app", W1(F(1)), V0))))])],
+                  ents=[TO(k("lam", k("hrefl", E(0), k("app", W1(F(1)), V0))))]),
+             dict(nest=[(F(0), "cNat"), (F(1), "nzero")], ents=[TO(k("unit"))]),                             # hrefl-Nat-z
+             dict(nest=[(F(0), "cNat"), (F(1), "nsuc")], ents=[TO(k("hrefl", k("cNat"), R2(1, 0)))])],       # hrefl-Nat-s
   "ap":     [dict(ex=[("Pred", "StkC", "J", R2(0, 0))], nest=[(F(2), "hrefl")],                              # ap-J
                   ents=[TO(k("hrefl", F(0), ("sub0", 1, "J", F(1), R2(0, 1))))])],
   "jsub":   [dict(nest=[(F(1), "idrefl")], ents=[TO(F(2))])],                                                # jsub-refl
@@ -2344,6 +2346,8 @@ RED_COMP = [
   ("tr-pw c a f e pc", "tr", 8, [_q(TRM("c","a","(var vz)")), _q("e"), _q("f"), _q("c"), _q("a"), IDP(TRM("c","a","(var vz)")), _q("(pwBody c)"), PWP("c")],
      "(node-1 (⟶*-trans (node-1 (⟶*-trans (node-1 (pwSh-agree (pwBody c))) (node-2 (node-1 %s)))) (node-3 (node-1 %s))))" % (WK("a"), WK("e"))),
   ("hrefl-pw C s pc", "hrefl", 0, [_q("C"), _q("s"), _q("(pwBody C)"), PWP("C")], "(node-1 (node-2 (node-1 %s)))" % WK("s")),
+  ("hrefl-Nat-z", "hrefl", 1, [], None),
+  ("hrefl-Nat-s m", "hrefl", 2, [_q("m")], None),
   ("ap-J cB b c₁ s st", "ap", 0, [_q("cB"), _q("b"), _q("c₁"), _q("s"), STKC("c₁")], "(node-2 (sub0-agree-tm b s))"),
   ("jsub-refl d c s e", "jsub", 0, [_q("d"), _q("e"), _q("c"), _q("s")], None),
   ("natrec-zero z s", "natrec", 0, [_q("z"), _q("s")], None),

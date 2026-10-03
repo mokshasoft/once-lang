@@ -527,7 +527,7 @@ con⟶cHom₃ {Ξ} {j} {f0} {f1} {f2} {e0} {r0} dj df0 df1 df2 de0 dr0 =
 con⟶hrefl₁ : {Ξ : Ctx} {j f0 f1 e0 r0 : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ f0 ∷ K 1 j → Ξ ⊢ f1 ∷ K 1 j → Ξ ⊢ e0 ∷ K 1 j → Ξ ⊢ r0 ∷ IMu Redₘ.J ⟶F.DF (ix⟶ j f0 e0) → 
   Ξ ⊢ conₗ 0 (e0 ,ₚ r0 ,ₚ (idrefl (⌜Tm⌝ j) (khrefl e0 f1)) ,ₚ unit) ∷ IMu Redₘ.J ⟶F.DF (ix⟶ j (khrefl f0 f1) ((khrefl e0 f1)))
 con⟶hrefl₁ {Ξ} {j} {f0} {f1} {e0} {r0} dj df0 df1 de0 dr0 =
-  ⊢conRowₖ {Ξ} {3} {0} {Redₘ.J} {⟶F.DF} {ix⟶ j (khrefl f0 f1) ((khrefl e0 f1))} {⌜ T⟶hrefl₁ j p c ⌝ᵗ} {(e0 ,ₚ r0 ,ₚ (idrefl (⌜Tm⌝ j) (khrefl e0 f1)) ,ₚ unit)} {⌜ T⟶hrefl₁ j p c ⌝ᵗ ∷ ⌜ T⟶hrefl₂ j p c ⌝ᵗ ∷ ⌜ T⟶hrefl₃ j p c ⌝ᵗ ∷ []} (atᶜ 0) Redₘ.⊢J ⟶F.⊢DF (⊢ix⟶ dj (⊢khrefl dj df0 df1) (⊢khrefl dj de0 df1))
+  ⊢conRowₖ {Ξ} {5} {0} {Redₘ.J} {⟶F.DF} {ix⟶ j (khrefl f0 f1) ((khrefl e0 f1))} {⌜ T⟶hrefl₁ j p c ⌝ᵗ} {(e0 ,ₚ r0 ,ₚ (idrefl (⌜Tm⌝ j) (khrefl e0 f1)) ,ₚ unit)} {⌜ T⟶hrefl₁ j p c ⌝ᵗ ∷ ⌜ T⟶hrefl₂ j p c ⌝ᵗ ∷ ⌜ T⟶hrefl₃ j p c ⌝ᵗ ∷ (PT⟶hrefl₄ᶜ0.CASE j (fst p) (c ,ₚ p ,ₚ unit)) ∷ (PT⟶hrefl₅ᶜ0.CASE j (fst p) (c ,ₚ p ,ₚ unit)) ∷ []} (atᶜ 0) Redₘ.⊢J ⟶F.⊢DF (⊢ix⟶ dj (⊢khrefl dj df0 df1) (⊢khrefl dj de0 df1))
     (⟶F.fibF {s = 1} {k = 12} {j = j} {p = p} {c = c} (atᵍ 1) (atʰ 12)) (allr⟶hrefl {j = j} {p = p} {c = c} dj dp dc)
     (⊢conv dPv (csymᵀ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))))
   where
@@ -550,7 +550,7 @@ con⟶hrefl₁ {Ξ} {j} {f0} {f1} {e0} {r0} dj df0 df1 de0 dr0 =
 con⟶hrefl₂ : {Ξ : Ctx} {j f0 f1 e0 r0 : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ f0 ∷ K 1 j → Ξ ⊢ f1 ∷ K 1 j → Ξ ⊢ e0 ∷ K 1 j → Ξ ⊢ r0 ∷ IMu Redₘ.J ⟶F.DF (ix⟶ j f1 e0) → 
   Ξ ⊢ conₗ 1 (e0 ,ₚ r0 ,ₚ (idrefl (⌜Tm⌝ j) (khrefl f0 e0)) ,ₚ unit) ∷ IMu Redₘ.J ⟶F.DF (ix⟶ j (khrefl f0 f1) ((khrefl f0 e0)))
 con⟶hrefl₂ {Ξ} {j} {f0} {f1} {e0} {r0} dj df0 df1 de0 dr0 =
-  ⊢conRowₖ {Ξ} {3} {1} {Redₘ.J} {⟶F.DF} {ix⟶ j (khrefl f0 f1) ((khrefl f0 e0))} {⌜ T⟶hrefl₂ j p c ⌝ᵗ} {(e0 ,ₚ r0 ,ₚ (idrefl (⌜Tm⌝ j) (khrefl f0 e0)) ,ₚ unit)} {⌜ T⟶hrefl₁ j p c ⌝ᵗ ∷ ⌜ T⟶hrefl₂ j p c ⌝ᵗ ∷ ⌜ T⟶hrefl₃ j p c ⌝ᵗ ∷ []} (atᶜ 1) Redₘ.⊢J ⟶F.⊢DF (⊢ix⟶ dj (⊢khrefl dj df0 df1) (⊢khrefl dj df0 de0))
+  ⊢conRowₖ {Ξ} {5} {1} {Redₘ.J} {⟶F.DF} {ix⟶ j (khrefl f0 f1) ((khrefl f0 e0))} {⌜ T⟶hrefl₂ j p c ⌝ᵗ} {(e0 ,ₚ r0 ,ₚ (idrefl (⌜Tm⌝ j) (khrefl f0 e0)) ,ₚ unit)} {⌜ T⟶hrefl₁ j p c ⌝ᵗ ∷ ⌜ T⟶hrefl₂ j p c ⌝ᵗ ∷ ⌜ T⟶hrefl₃ j p c ⌝ᵗ ∷ (PT⟶hrefl₄ᶜ0.CASE j (fst p) (c ,ₚ p ,ₚ unit)) ∷ (PT⟶hrefl₅ᶜ0.CASE j (fst p) (c ,ₚ p ,ₚ unit)) ∷ []} (atᶜ 1) Redₘ.⊢J ⟶F.⊢DF (⊢ix⟶ dj (⊢khrefl dj df0 df1) (⊢khrefl dj df0 de0))
     (⟶F.fibF {s = 1} {k = 12} {j = j} {p = p} {c = c} (atᵍ 1) (atʰ 12)) (allr⟶hrefl {j = j} {p = p} {c = c} dj dp dc)
     (⊢conv dPv (csymᵀ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))))
   where

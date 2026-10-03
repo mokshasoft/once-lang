@@ -105,6 +105,37 @@ The core is stated on NORMAL closed inhabitants and recurses on `sz`
 **Pilot: `Pw`** (two rows, no dependency on other families, and S7b's
 pilot too). It drives F6.0–F6.3 end to end before any big family.
 
+### F6 — log
+
+- 🟡 (2026-10-03) F6.0 `Lib/Decode` and F6.1 `Lib/SynDecode` written
+  (closed-normal inversion: `con-dec`, `pay-ι/σ/ρ`, `tag-dec`,
+  `idrefl-dec`, the generic `Tel` decoder `tel-dec`; a syntax term is
+  `conₗ k p` with `DArgs`).
+- ★★ (2026-10-03) **F6 found a KERNEL gap on day one: `Unit` was not
+  canonical.** `hrefl ⌜Nat⌝ nzero : Hom Nat 0 0`, which `Hom-Nat-z`
+  computes to `Unit`, but no rule reduced the `hrefl`: a closed NORMAL
+  inhabitant of `Unit` other than `unit`. `Canonicity.canView` had
+  recorded it as an allowed escape (`HomHd hUnit`), so no metatheorem
+  was false — the STRONG statement (data has exactly its constructor
+  forms) was simply never made. Consistency never needs it; adequacy
+  does (decoding cannot read junk back as syntax), and so would every
+  Knot payload tail (`dι` ⇒ `⌜Unit⌝`).
+  - **Fix (kernel, branch `ocp-0009-hrefl-nat`):** `hrefl-Nat-z :
+    hrefl ⌜Nat⌝ nzero ⟶ unit`, `hrefl-Nat-s : hrefl ⌜Nat⌝ (nsuc m) ⟶
+    hrefl ⌜Nat⌝ m` — the order's reflexivity computes in lockstep with
+    its type. Left-linear, type-preserving, no overlap (`⌜Nat⌝` is
+    neither `pw?` nor `stkC?`).
+  - **Through the metatheory:** SR, Confluence (`HrV` view in the
+    development), Injectivity, the LR (new key `hstk?` = `nopw?` ∧
+    (`natstk?` arg ∨ `natcstk?` code); `natcstk?` = "never becomes
+    `⌜Nat⌝`"; three weak-head steps, `natrec`'s shape), Fundamental
+    (`snHNat`, `goN`/`goN₀`/`goNh`), `Eval` (`hreflN`), the Knot's two
+    `⟶` rows + `RedAgree`.
+  - ★ **New kernel theorem `Canonicity.canUnit`**: a closed normal
+    inhabitant of `Unit` IS `unit`. Strong data canonicity is now a
+    stated kernel invariant, not an F6 lemma.
+
+
 ## Log
 
 - ✅ F1 (2026-09-29) `Lib/SynTravRed`: `trav-con` (a fields node reduces to

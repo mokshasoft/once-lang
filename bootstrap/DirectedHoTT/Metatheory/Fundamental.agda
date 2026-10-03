@@ -74,6 +74,7 @@ open import DirectedHoTT.Metatheory.SubjectReduction
         ; via-Π; hom-to-Π; U-reduct; ≅ᵀ-Homᵀ; gen-var )
 open import DirectedHoTT.Metatheory.LogicalRelation
   using ( SNe; sne-var; sne-app; sne-absurd; sne-fst; sne-snd; sne-hrefl
+        ; hstk-nopw; hstk-mk; pick-orL; hstk?; hstk?-red*ᶜ; sne→natcstk; sne→natstk; snr-hrefl-Nat-z; snr-hrefl-Nat-s; snr-hreflᵃ
         ; sne-tr; sne-ap; sne-jsub; Ne; ne-var; ne-app; ne-absurd; ne-fst
         ; ne-snd; ne-hrefl; ne-tr; ne-ap; ne-jsub; homSem₁; SN; sn-ne; sn-lam
         ; sn-pair; sn-cb; sn-cΠ; sn-cΣ; sn-cH; sn-cId; sn-idrefl; sn-exp
@@ -358,6 +359,10 @@ sem-tr {Ξ = Ξ} {σ = σ} {A = A} {c = c₀} {a = a₀} {p = p₀} {e = e₀} {
         R_H ⊩₁∋ hrefl c' s' →
         Σ (⊩₁ (El (subTm (single uI) dI)))
           (λ R → R ⊩₁∋ tr dI (hrefl c' s') eI)
+  -- ★ F6: at the ORDER the path computes on its argument
+  goNh : {s' : RTm Ξ} → SN s' → R_H ⊩₁∋ hrefl ⌜Nat⌝ s' →
+         Σ (⊩₁ (El (subTm (single uI) dI)))
+           (λ R → R ⊩₁∋ tr dI (hrefl ⌜Nat⌝ s') eI)
 
   go (sn-exp r snp') hp' =
     ( dfst z , exp₁ (dfst z) (snr-trᵖ r) (dsnd z) )
@@ -367,7 +372,7 @@ sem-tr {Ξ = Ξ} {σ = σ} {A = A} {c = c₀} {a = a₀} {p = p₀} {e = e₀} {
   go (sn-ne w@(sne-absurd _ _)) hp'  = cr3 (sn-ne w) refl
   go (sn-ne (sne-fst n)) hp'         = cr3 (sn-ne (sne-fst n)) (sne→spine n)
   go (sn-ne (sne-snd n)) hp'         = cr3 (sn-ne (sne-snd n)) (sne→spine n)
-  go (sn-ne (sne-hrefl snc sns kn)) hp' = goh snc sns kn hp'
+  go (sn-ne (sne-hrefl {c = c} {t} snc sns kn)) hp' = goh snc sns (hstk-nopw c t kn) hp'
   go (sn-ne (sne-tr h₁ h₂ h₃ key)) hp' =
     cr3 (sn-ne (sne-tr h₁ h₂ h₃ key)) key
   go (sn-ne (sne-ap h₁ h₂ h₃ key)) hp' =
@@ -426,53 +431,52 @@ sem-tr {Ξ = Ξ} {σ = σ} {A = A} {c = c₀} {a = a₀} {p = p₀} {e = e₀} {
   -- ⌜Mu⌝ is `stkC?` too, so J fires there as well.
   -- ⌜Nat⌝ is not: J is off there (the step-0 retraction), so the whole
   -- `tr` is permanently NEUTRAL and CR3 carries it.
-  goh sn-cNat sns kn hp' =
-    cr3 (sn-ne (sne-hrefl sn-cNat sns refl)) refl
+  goh sn-cNat sns kn hp' = goNh sns hp'
   goh (sn-cΣ h₁ h₂) sns kn hp' =
     ( R_result , exp₁ R_result (snr-J-Σ snD h₁ h₂ sns) heTgt )
   goh (sn-cId h₁ h₂ h₃) sns kn hp' =
     ( R_result , exp₁ R_result (snr-J-Id snD h₁ h₂ h₃ sns) heTgt )
-  goh (sn-idrefl h₁ h₂) sns kn hp' =
-    cr3 (sn-ne (sne-hrefl (sn-idrefl h₁ h₂) sns refl)) refl
+  goh {c' = c'} {s' = s'} (sn-idrefl h₁ h₂) sns kn hp' =
+    cr3 (sn-ne (sne-hrefl (sn-idrefl h₁ h₂) sns (hk c' s' refl refl))) refl
   goh (sn-exp rc snc') sns kn hp' =
     ( dfst z , exp₁ (dfst z) (snr-trᵖ (snr-hreflᶜ (csr-here rc))) (dsnd z) )
     where z = goh snc' sns (nopw?-red (snr→⟶ rc) kn)
                   (mem-whred₁ R_H (snr-hreflᶜ (csr-here rc)) hp')
-  goh (sn-ne nc) sns kn hp' =
-    cr3 (sn-ne (sne-hrefl (sn-ne nc) sns (sne→nopw nc))) (sne→stablecd nc)
-  goh (sn-lam snb) sns kn hp' =
-    cr3 (sn-ne (sne-hrefl (sn-lam snb) sns refl)) refl
-  goh (sn-pair sa sb) sns kn hp' =
-    cr3 (sn-ne (sne-hrefl (sn-pair sa sb) sns refl)) refl
-  goh sn-unit sns kn hp' =
-    cr3 (sn-ne (sne-hrefl sn-unit sns refl)) refl
-  goh sn-nzero sns kn hp' =
-    cr3 (sn-ne (sne-hrefl sn-nzero sns refl)) refl
-  goh (sn-nsuc h) sns kn hp' =
-    cr3 (sn-ne (sne-hrefl (sn-nsuc h) sns refl)) refl
+  goh {c' = c'} {s' = s'} (sn-ne nc) sns kn hp' =
+    cr3 (sn-ne (sne-hrefl (sn-ne nc) sns (hk c' s' (sne→nopw nc) (sne→natcstk nc)))) (sne→stablecd nc)
+  goh {c' = c'} {s' = s'} (sn-lam snb) sns kn hp' =
+    cr3 (sn-ne (sne-hrefl (sn-lam snb) sns (hk c' s' refl refl))) refl
+  goh {c' = c'} {s' = s'} (sn-pair sa sb) sns kn hp' =
+    cr3 (sn-ne (sne-hrefl (sn-pair sa sb) sns (hk c' s' refl refl))) refl
+  goh {c' = c'} {s' = s'} sn-unit sns kn hp' =
+    cr3 (sn-ne (sne-hrefl sn-unit sns (hk c' s' refl refl))) refl
+  goh {c' = c'} {s' = s'} sn-nzero sns kn hp' =
+    cr3 (sn-ne (sne-hrefl sn-nzero sns (hk c' s' refl refl))) refl
+  goh {c' = c'} {s' = s'} (sn-nsuc h) sns kn hp' =
+    cr3 (sn-ne (sne-hrefl (sn-nsuc h) sns (hk c' s' refl refl))) refl
   goh (sn-cIMu h₁ h₂ h₃) sns kn hp' =
     ( R_result , exp₁ R_result (snr-J-IMu snD sns) heTgt )
   goh sn-cFin sns kn hp' =
     ( R_result , exp₁ R_result (snr-J-Fin snD sns) heTgt )
-  goh sn-dι sns kn hp' =
-    cr3 (sn-ne (sne-hrefl sn-dι sns refl)) refl
-  goh (sn-dσ h₁ h₂) sns kn hp' =
-    cr3 (sn-ne (sne-hrefl (sn-dσ h₁ h₂) sns refl)) refl
-  goh (sn-dρ h₁ h₂) sns kn hp' =
-    cr3 (sn-ne (sne-hrefl (sn-dρ h₁ h₂) sns refl)) refl
-  goh sn-fzero sns kn hp' =
-    cr3 (sn-ne (sne-hrefl sn-fzero sns refl)) refl
-  goh (sn-fsuc h) sns kn hp' =
-    cr3 (sn-ne (sne-hrefl (sn-fsuc h) sns refl)) refl
-  goh (sn-con h) sns kn hp' =
-    cr3 (sn-ne (sne-hrefl (sn-con h) sns refl)) refl
+  goh {c' = c'} {s' = s'} sn-dι sns kn hp' =
+    cr3 (sn-ne (sne-hrefl sn-dι sns (hk c' s' refl refl))) refl
+  goh {c' = c'} {s' = s'} (sn-dσ h₁ h₂) sns kn hp' =
+    cr3 (sn-ne (sne-hrefl (sn-dσ h₁ h₂) sns (hk c' s' refl refl))) refl
+  goh {c' = c'} {s' = s'} (sn-dρ h₁ h₂) sns kn hp' =
+    cr3 (sn-ne (sne-hrefl (sn-dρ h₁ h₂) sns (hk c' s' refl refl))) refl
+  goh {c' = c'} {s' = s'} sn-fzero sns kn hp' =
+    cr3 (sn-ne (sne-hrefl sn-fzero sns (hk c' s' refl refl))) refl
+  goh {c' = c'} {s' = s'} (sn-fsuc h) sns kn hp' =
+    cr3 (sn-ne (sne-hrefl (sn-fsuc h) sns (hk c' s' refl refl))) refl
+  goh {c' = c'} {s' = s'} (sn-con h) sns kn hp' =
+    cr3 (sn-ne (sne-hrefl (sn-con h) sns (hk c' s' refl refl))) refl
   -- ★ §10.4: ⌜IMu⌝ goes with ⌜Mu⌝ — `tr-J-IMu` fires.
   goh (sn-cΠ h₁ h₂) sns () hp'
   -- ★ W2b: a ⌜Hom⌝-CODE path — normalize its spine (codeNorm); the
   -- J-able leaf fires tr-J-Hom (endpoint transfer = the SAME heTgt as
   -- J-base), the dead leaf is CR3; both memberships travel back along
   -- the head star.
-  goh (sn-cH {c = C₂} {a = a₂} {b = b₂} h₁ h₂ h₃) sns kn hp'
+  goh {s' = s'} (sn-cH {c = C₂} {a = a₂} {b = b₂} h₁ h₂ h₃) sns kn hp'
     with codeNormA h₁ kn
   ... | C* , (csr , cfa-stk k) =
         ( R_result
@@ -487,8 +491,39 @@ sem-tr {Ξ = Ξ} {σ = σ} {A = A} {c = c₀} {a = a₀} {p = p₀} {e = e₀} {
             (CR3₁ R_result
               (sne-tr snD
                 (sn-ne (sne-hrefl (sn-cH (sn-csrs h₁ csr) h₂ h₃) sns
-                                  (nopw?-csrs csr kn)))
+                                  (hk (⌜Hom⌝ C* a₂ b₂) s' (nopw?-csrs csr kn) refl)))
                 snE k)) )
+
+  goNh (sn-exp r h) hp' =
+    ( dfst z , exp₁ (dfst z) (snr-trᵖ (snr-hreflᵃ r)) (dsnd z) )
+    where z = goNh h (mem-whred₁ R_H (snr-hreflᵃ r) hp')
+  goNh sn-nzero hp' =
+    ( dfst z , exp₁ (dfst z) (snr-trᵖ snr-hrefl-Nat-z) (dsnd z) )
+    where z = cr3 sn-unit refl
+  goNh (sn-nsuc h) hp' =
+    ( dfst z , exp₁ (dfst z) (snr-trᵖ snr-hrefl-Nat-s) (dsnd z) )
+    where z = goNh h (mem-whred₁ R_H snr-hrefl-Nat-s hp')
+  goNh {s' = s'} (sn-ne n) hp' =
+    cr3 (sn-ne (sne-hrefl sn-cNat (sn-ne n) (hstk-mk ⌜Nat⌝ s' refl (pick-orL false (sne→natstk n))))) refl
+  goNh h@(sn-lam _) hp' = cr3 (sn-ne (sne-hrefl sn-cNat h refl)) refl
+  goNh h@(sn-pair _ _) hp' = cr3 (sn-ne (sne-hrefl sn-cNat h refl)) refl
+  goNh h@sn-cb hp' = cr3 (sn-ne (sne-hrefl sn-cNat h refl)) refl
+  goNh h@(sn-cΠ _ _) hp' = cr3 (sn-ne (sne-hrefl sn-cNat h refl)) refl
+  goNh h@(sn-cΣ _ _) hp' = cr3 (sn-ne (sne-hrefl sn-cNat h refl)) refl
+  goNh h@(sn-cH _ _ _) hp' = cr3 (sn-ne (sne-hrefl sn-cNat h refl)) refl
+  goNh h@(sn-cId _ _ _) hp' = cr3 (sn-ne (sne-hrefl sn-cNat h refl)) refl
+  goNh h@(sn-idrefl _ _) hp' = cr3 (sn-ne (sne-hrefl sn-cNat h refl)) refl
+  goNh h@sn-cNat hp' = cr3 (sn-ne (sne-hrefl sn-cNat h refl)) refl
+  goNh h@sn-cUnit hp' = cr3 (sn-ne (sne-hrefl sn-cNat h refl)) refl
+  goNh h@(sn-cIMu _ _ _) hp' = cr3 (sn-ne (sne-hrefl sn-cNat h refl)) refl
+  goNh h@sn-cFin hp' = cr3 (sn-ne (sne-hrefl sn-cNat h refl)) refl
+  goNh h@sn-unit hp' = cr3 (sn-ne (sne-hrefl sn-cNat h refl)) refl
+  goNh h@(sn-con _) hp' = cr3 (sn-ne (sne-hrefl sn-cNat h refl)) refl
+  goNh h@sn-dι hp' = cr3 (sn-ne (sne-hrefl sn-cNat h refl)) refl
+  goNh h@(sn-dσ _ _) hp' = cr3 (sn-ne (sne-hrefl sn-cNat h refl)) refl
+  goNh h@(sn-dρ _ _) hp' = cr3 (sn-ne (sne-hrefl sn-cNat h refl)) refl
+  goNh h@sn-fzero hp' = cr3 (sn-ne (sne-hrefl sn-cNat h refl)) refl
+  goNh h@(sn-fsuc _) hp' = cr3 (sn-ne (sne-hrefl sn-cNat h refl)) refl
 
 -- ★ `⊢ap`'s semantics, OUTSIDE `fund`'s mutual block (see `sem-tr`'s section note).
 sem-ap : {σ : Sub ⌊ Γ ⌋ Ξ} {cA cB : RTm ⌊ Γ ⌋} {b : RTm (⌊ Γ ⌋ ∙)} {p t u : RTm ⌊ Γ ⌋} →
@@ -628,9 +663,9 @@ sem-ap {Ξ = Ξ} {σ = σ} {cA = cA} {cB = cB} {b = b} {p = p₀} {t = t₀} {u 
   apstar (snr-step r q) = snr-step (snr-apᵖ r) (apstar q)
 
   -- ── the path analysis ──
-  goh : {c' s' : RTm Ξ} → SN c' → SN s' → nopw? c' ≡ true →
+  goh : {c' s' : RTm Ξ} → SN c' → SN s' → hstk? c' s' ≡ true →
         R_H ⊩₀∋ ap cBI bI (hrefl c' s')
-  goh snc sns kn with codeNorm snc kn
+  goh {c'} {s'} snc sns kn with codeNorm snc (hstk-nopw c' s' kn)
   ... | c* , (csr , cf-stk k) =
         expStar₀ R_H (apstar (snrs-hreflᶜ csr))
           (exp₀ R_H (snr-ap-J (sn-csrs snc csr) k) (mJ sns))
@@ -638,7 +673,7 @@ sem-ap {Ξ = Ξ} {σ = σ} {cA = cA} {cB = cB} {b = b} {p = p₀} {t = t₀} {u 
         expStar₀ R_H (apstar (snrs-hreflᶜ csr))
           (CR3₀ R_H (sne-ap snCB snBB
                        (sn-ne (sne-hrefl (sn-csrs snc csr) sns
-                                         (nopw?-csrs csr kn)))
+                                         (hstk?-red*ᶜ s' (csrs→⟶* csr) kn)))
                        k))
 
   goP : {p' : RTm Ξ} → SN p' → R_H ⊩₀∋ ap cBI bI p'
@@ -915,7 +950,7 @@ sem-trU {Ξ = Ξ} {σ = σ} {p = p₀} {e = e₀} {t = t₀} {u = u₀} dt du dp
   nkey (sne-absurd _ _)   = refl
   nkey (sne-fst n)        = sne→spine n
   nkey (sne-snd n)        = sne→spine n
-  nkey (sne-hrefl _ _ kn) = kn
+  nkey (sne-hrefl {c = c} {t} _ _ kn) = hstk-nopw c t kn
   nkey (sne-tr _ _ _ key) = key
   nkey (sne-ap _ _ _ key) = key
   nkey (sne-jsub _ _ _ key) = key

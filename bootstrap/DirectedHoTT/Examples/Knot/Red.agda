@@ -2086,13 +2086,109 @@ T⟶hrefl₃-law σ j p c = T⟶hrefl₃⁽0⁾-sub σ j c (fst p) (fst (snd p))
 okT⟶hrefl₃ : {Ξ : Ctx} {j p c : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ p ∷ PayV sh-khrefl ((tag 1) ,ₚ j) (SI 2) (SD KSig) → Ξ ⊢ c ∷ El (Redₘ.Cat ((tag 1) ,ₚ j)) → TelOK Ξ Redₘ.J (T⟶hrefl₃ j p c)
 okT⟶hrefl₃ {Ξ} {j} {p} {c} dj dp dc = (Redₘ.okσ (okC⟶hrefl₃_0I {_} {j} dj) (Redₘ.okσ (okC⟶hrefl₃_1I {_} {(w1 j)} {(w1 (fst p))} {v₀} (wkN {t = j} dj) (wkK {s = 1} {d = j} {t = (fst p)} (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} dp))) (hereTm {m = (nsuc j)})) (okT⟶hrefl₃I {_} {(w2 j)} {(w2 c)} {(w2 (fst (snd p)))} {v₁} (wkN {t = (w1 j)} (wkN {t = j} dj)) (wkK {s = 1} {d = (w1 j)} {t = (w1 c)} (wkK {s = 1} {d = j} {t = c} (⊢tgt {s = 1} dc))) (wkK {s = 1} {d = (w1 j)} {t = (w1 (fst (snd p)))} (wkK {s = 1} {d = j} {t = (fst (snd p))} (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = ([]ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} dp))))) (wkK {s = 1} {d = (renTm vs (nsuc j))} {t = v₀} (hereTm {m = (nsuc j)})))))
 
+T⟶hrefl₄A : RTm Δ → RTm Δ → RTm Δ → Tel Δ
+T⟶hrefl₄A J X A0 = tσ (⌜Id⌝ A0 X (kunit)) tι
+
+T⟶hrefl₄I : RTm Δ → RTm Δ → Tel Δ
+T⟶hrefl₄I J X = T⟶hrefl₄A J X (⌜Tm⌝ J)
+
+T⟶hrefl₄A-cong : {Δ : Cx} → (J : RTm Δ) → (X : RTm Δ) → (A0 A0' : RTm Δ) → A0 ≡ A0' → ⌜ T⟶hrefl₄A {Δ} J X A0 ⌝ᵗ ≡ ⌜ T⟶hrefl₄A J X A0' ⌝ᵗ
+T⟶hrefl₄A-cong J X A0 A0' refl = refl
+
+T⟶hrefl₄I-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) → subTm σ ⌜ T⟶hrefl₄I J X ⌝ᵗ ≡ ⌜ T⟶hrefl₄I (subTm σ J) (subTm σ X) ⌝ᵗ
+T⟶hrefl₄I-sub σ J X = T⟶hrefl₄A-cong (subTm σ J) (subTm σ X) (subTm σ (⌜Tm⌝ J)) (⌜Tm⌝ (subTm σ J)) (⌜Tm⌝-sub σ J)
+
+T⟶hrefl₄I-cong : {Δ : Cx} → (J J' : RTm Δ) → (X X' : RTm Δ) → J ≡ J' → X ≡ X' → ⌜ T⟶hrefl₄I {Δ} J X ⌝ᵗ ≡ ⌜ T⟶hrefl₄I J' X' ⌝ᵗ
+T⟶hrefl₄I-cong J J' X X' refl refl = refl
+
+okT⟶hrefl₄I : {Ξ : Ctx} {J X : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ X ∷ K 1 J → TelOK Ξ Redₘ.J (T⟶hrefl₄I J X)
+okT⟶hrefl₄I dJ dX = ok-σ (⊢⌜Id⌝ (⊢⌜Tm⌝ dJ) (toTm dX) (toTm (⊢kunit dJ))) ok-ι
+
+T⟶hrefl₄⁽0⁾ : RTm Δ → RTm Δ → Tel Δ
+T⟶hrefl₄⁽0⁾ J X = (T⟶hrefl₄I J X)
+
+T⟶hrefl₄⁽0⁾-cong : {Δ : Cx} → (J J' : RTm Δ) → (X X' : RTm Δ) → J ≡ J' → X ≡ X' → ⌜ T⟶hrefl₄⁽0⁾ {Δ} J X ⌝ᵗ ≡ ⌜ T⟶hrefl₄⁽0⁾ J' X' ⌝ᵗ
+T⟶hrefl₄⁽0⁾-cong J J' X X' refl refl = refl
+
+T⟶hrefl₄⁽0⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) → subTm σ ⌜ T⟶hrefl₄⁽0⁾ J X ⌝ᵗ ≡ ⌜ T⟶hrefl₄⁽0⁾ (subTm σ J) (subTm σ X) ⌝ᵗ
+T⟶hrefl₄⁽0⁾-sub σ J X = (T⟶hrefl₄I-sub σ J X)
+
+T⟶hrefl₄ : RTm Δ → RTm Δ → RTm Δ → Tel Δ
+T⟶hrefl₄ j q c = T⟶hrefl₄⁽0⁾ j (fst c)
+
+T⟶hrefl₄-law : TelLaw T⟶hrefl₄
+T⟶hrefl₄-law σ j q c = T⟶hrefl₄⁽0⁾-sub σ j (fst c)
+
+okT⟶hrefl₄ : {Ξ : Ctx} {j q c : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ q ∷ PayV sh-knzero ((tag 1) ,ₚ j) (SI 2) (SD KSig) → Ξ ⊢ c ∷ El (NCat 1 (1 , sh-khrefl ∷ˢ (1 , sh-kcNat ∷ˢ []ˢ)) ((tag 1) ,ₚ j)) → TelOK Ξ Redₘ.J (T⟶hrefl₄ j q c)
+okT⟶hrefl₄ {Ξ} {j} {q} {c} dj dq dc = (okT⟶hrefl₄I {_} {j} {(fst c)} dj (⊢ncTgt 1 1 (1 , sh-khrefl ∷ˢ (1 , sh-kcNat ∷ˢ []ˢ)) dc))
+
+rT⟶hrefl₄L2 : Row
+rT⟶hrefl₄L2 = defRow₀ T⟶hrefl₄ T⟶hrefl₄-law
+module PT⟶hrefl₄ᶜ1 = Pat KOK Redₘ.J Redₘ.J-sub Redₘ.⊢J (NC 1 (1 , sh-khrefl ∷ˢ (1 , sh-kcNat ∷ˢ []ˢ))) (NC-sub 1 (1 , sh-khrefl ∷ˢ (1 , sh-kcNat ∷ˢ []ˢ))) (⊢NC (lt-s lt-z) (ok∷ (lt-s lt-z) ok-khrefl (ok∷ (lt-s lt-z) ok-kcNat []ᵒ))) 1 19 rT⟶hrefl₄L2
+okrT⟶hrefl₄L2 : PT⟶hrefl₄ᶜ1.RowOK 1 sh-knzero rT⟶hrefl₄L2
+okrT⟶hrefl₄L2 {Ξ} {j} {q} {c} dj dq dc = ⊢tel {Ξ} {Redₘ.J} {T⟶hrefl₄ j q c} Redₘ.⊢J (okT⟶hrefl₄ dj dq dc)
+
+rT⟶hrefl₄L1 : Row
+rT⟶hrefl₄L1 = record { R = λ j q c → PT⟶hrefl₄ᶜ1.CASE j (fst (snd (fst (snd c)))) ((fst c) ,ₚ (fst (snd c)) ,ₚ q ,ₚ unit) ; R-sub = λ σ j q c → PT⟶hrefl₄ᶜ1.CASE-sub σ j (fst (snd (fst (snd c)))) ((fst c) ,ₚ (fst (snd c)) ,ₚ q ,ₚ unit) }
+module PT⟶hrefl₄ᶜ0 = Pat KOK Redₘ.J Redₘ.J-sub Redₘ.⊢J (NC 1 (1 , sh-khrefl ∷ˢ []ˢ)) (NC-sub 1 (1 , sh-khrefl ∷ˢ []ˢ)) (⊢NC (lt-s lt-z) (ok∷ (lt-s lt-z) ok-khrefl []ᵒ)) 1 34 rT⟶hrefl₄L1
+okrT⟶hrefl₄L1 : PT⟶hrefl₄ᶜ0.RowOK 1 sh-kcNat rT⟶hrefl₄L1
+okrT⟶hrefl₄L1 {Ξ} {j} {q} {c} dj dq dc = PT⟶hrefl₄ᶜ1.⊢CASE {Ξ} {j} {(fst (snd (fst (snd c))))} {((fst c) ,ₚ (fst (snd c)) ,ₚ q ,ₚ unit)} okrT⟶hrefl₄L2 (lt-s lt-z) dj (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = ([]ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} (⊢psHd {s = 1} {sh = sh-khrefl} {st = []ˢ} {d = j} (⊢ncStk 1 1 (1 , sh-khrefl ∷ˢ []ˢ) dc))))) (⊢ncMkC 1 1 (1 , sh-khrefl ∷ˢ (1 , sh-kcNat ∷ˢ []ˢ)) (lt-s lt-z) (ok∷ (lt-s lt-z) ok-khrefl (ok∷ (lt-s lt-z) ok-kcNat []ᵒ)) dj (⊢ncTgt 1 1 (1 , sh-khrefl ∷ˢ []ˢ) dc) (⊢psCons {s = 1} {sh = sh-khrefl} (ok∷ (lt-s lt-z) ok-kcNat []ᵒ) dj (⊢psHd {s = 1} {sh = sh-khrefl} {st = []ˢ} {d = j} (⊢ncStk 1 1 (1 , sh-khrefl ∷ˢ []ˢ) dc)) (⊢psCons {s = 1} {sh = sh-kcNat} []ᵒ dj dq (⊢psNil {d = j}))))
+
+T⟶hrefl₅A : RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
+T⟶hrefl₅A J X R1ᵢ0 A0 = tσ (⌜Id⌝ A0 X (khrefl (kcNat) R1ᵢ0)) tι
+
+T⟶hrefl₅I : RTm Δ → RTm Δ → RTm Δ → Tel Δ
+T⟶hrefl₅I J X R1ᵢ0 = T⟶hrefl₅A J X R1ᵢ0 (⌜Tm⌝ J)
+
+T⟶hrefl₅A-cong : {Δ : Cx} → (J : RTm Δ) → (X : RTm Δ) → (R1ᵢ0 : RTm Δ) → (A0 A0' : RTm Δ) → A0 ≡ A0' → ⌜ T⟶hrefl₅A {Δ} J X R1ᵢ0 A0 ⌝ᵗ ≡ ⌜ T⟶hrefl₅A J X R1ᵢ0 A0' ⌝ᵗ
+T⟶hrefl₅A-cong J X R1ᵢ0 A0 A0' refl = refl
+
+T⟶hrefl₅I-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (R1ᵢ0 : RTm Δ) → subTm σ ⌜ T⟶hrefl₅I J X R1ᵢ0 ⌝ᵗ ≡ ⌜ T⟶hrefl₅I (subTm σ J) (subTm σ X) (subTm σ R1ᵢ0) ⌝ᵗ
+T⟶hrefl₅I-sub σ J X R1ᵢ0 = T⟶hrefl₅A-cong (subTm σ J) (subTm σ X) (subTm σ R1ᵢ0) (subTm σ (⌜Tm⌝ J)) (⌜Tm⌝ (subTm σ J)) (⌜Tm⌝-sub σ J)
+
+T⟶hrefl₅I-cong : {Δ : Cx} → (J J' : RTm Δ) → (X X' : RTm Δ) → (R1ᵢ0 R1ᵢ0' : RTm Δ) → J ≡ J' → X ≡ X' → R1ᵢ0 ≡ R1ᵢ0' → ⌜ T⟶hrefl₅I {Δ} J X R1ᵢ0 ⌝ᵗ ≡ ⌜ T⟶hrefl₅I J' X' R1ᵢ0' ⌝ᵗ
+T⟶hrefl₅I-cong J J' X X' R1ᵢ0 R1ᵢ0' refl refl refl = refl
+
+okT⟶hrefl₅I : {Ξ : Ctx} {J X R1ᵢ0 : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ X ∷ K 1 J → Ξ ⊢ R1ᵢ0 ∷ K 1 J → TelOK Ξ Redₘ.J (T⟶hrefl₅I J X R1ᵢ0)
+okT⟶hrefl₅I dJ dX dR1ᵢ0 = ok-σ (⊢⌜Id⌝ (⊢⌜Tm⌝ dJ) (toTm dX) (toTm (⊢khrefl dJ (⊢kcNat dJ) dR1ᵢ0))) ok-ι
+
+T⟶hrefl₅⁽0⁾ : RTm Δ → RTm Δ → RTm Δ → Tel Δ
+T⟶hrefl₅⁽0⁾ J X R1ᵢ0 = (T⟶hrefl₅I J X R1ᵢ0)
+
+T⟶hrefl₅⁽0⁾-cong : {Δ : Cx} → (J J' : RTm Δ) → (X X' : RTm Δ) → (R1ᵢ0 R1ᵢ0' : RTm Δ) → J ≡ J' → X ≡ X' → R1ᵢ0 ≡ R1ᵢ0' → ⌜ T⟶hrefl₅⁽0⁾ {Δ} J X R1ᵢ0 ⌝ᵗ ≡ ⌜ T⟶hrefl₅⁽0⁾ J' X' R1ᵢ0' ⌝ᵗ
+T⟶hrefl₅⁽0⁾-cong J J' X X' R1ᵢ0 R1ᵢ0' refl refl refl = refl
+
+T⟶hrefl₅⁽0⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (R1ᵢ0 : RTm Δ) → subTm σ ⌜ T⟶hrefl₅⁽0⁾ J X R1ᵢ0 ⌝ᵗ ≡ ⌜ T⟶hrefl₅⁽0⁾ (subTm σ J) (subTm σ X) (subTm σ R1ᵢ0) ⌝ᵗ
+T⟶hrefl₅⁽0⁾-sub σ J X R1ᵢ0 = (T⟶hrefl₅I-sub σ J X R1ᵢ0)
+
+T⟶hrefl₅ : RTm Δ → RTm Δ → RTm Δ → Tel Δ
+T⟶hrefl₅ j q c = T⟶hrefl₅⁽0⁾ j (fst c) (fst q)
+
+T⟶hrefl₅-law : TelLaw T⟶hrefl₅
+T⟶hrefl₅-law σ j q c = T⟶hrefl₅⁽0⁾-sub σ j (fst c) (fst q)
+
+okT⟶hrefl₅ : {Ξ : Ctx} {j q c : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ q ∷ PayV sh-knsuc ((tag 1) ,ₚ j) (SI 2) (SD KSig) → Ξ ⊢ c ∷ El (NCat 1 (1 , sh-khrefl ∷ˢ (1 , sh-kcNat ∷ˢ []ˢ)) ((tag 1) ,ₚ j)) → TelOK Ξ Redₘ.J (T⟶hrefl₅ j q c)
+okT⟶hrefl₅ {Ξ} {j} {q} {c} dj dq dc = (okT⟶hrefl₅I {_} {j} {(fst c)} {(fst q)} dj (⊢ncTgt 1 1 (1 , sh-khrefl ∷ˢ (1 , sh-kcNat ∷ˢ []ˢ)) dc) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = ([]ʰ)} dq)))
+
+rT⟶hrefl₅L2 : Row
+rT⟶hrefl₅L2 = defRow₀ T⟶hrefl₅ T⟶hrefl₅-law
+module PT⟶hrefl₅ᶜ1 = Pat KOK Redₘ.J Redₘ.J-sub Redₘ.⊢J (NC 1 (1 , sh-khrefl ∷ˢ (1 , sh-kcNat ∷ˢ []ˢ))) (NC-sub 1 (1 , sh-khrefl ∷ˢ (1 , sh-kcNat ∷ˢ []ˢ))) (⊢NC (lt-s lt-z) (ok∷ (lt-s lt-z) ok-khrefl (ok∷ (lt-s lt-z) ok-kcNat []ᵒ))) 1 20 rT⟶hrefl₅L2
+okrT⟶hrefl₅L2 : PT⟶hrefl₅ᶜ1.RowOK 1 sh-knsuc rT⟶hrefl₅L2
+okrT⟶hrefl₅L2 {Ξ} {j} {q} {c} dj dq dc = ⊢tel {Ξ} {Redₘ.J} {T⟶hrefl₅ j q c} Redₘ.⊢J (okT⟶hrefl₅ dj dq dc)
+
+rT⟶hrefl₅L1 : Row
+rT⟶hrefl₅L1 = record { R = λ j q c → PT⟶hrefl₅ᶜ1.CASE j (fst (snd (fst (snd c)))) ((fst c) ,ₚ (fst (snd c)) ,ₚ q ,ₚ unit) ; R-sub = λ σ j q c → PT⟶hrefl₅ᶜ1.CASE-sub σ j (fst (snd (fst (snd c)))) ((fst c) ,ₚ (fst (snd c)) ,ₚ q ,ₚ unit) }
+module PT⟶hrefl₅ᶜ0 = Pat KOK Redₘ.J Redₘ.J-sub Redₘ.⊢J (NC 1 (1 , sh-khrefl ∷ˢ []ˢ)) (NC-sub 1 (1 , sh-khrefl ∷ˢ []ˢ)) (⊢NC (lt-s lt-z) (ok∷ (lt-s lt-z) ok-khrefl []ᵒ)) 1 34 rT⟶hrefl₅L1
+okrT⟶hrefl₅L1 : PT⟶hrefl₅ᶜ0.RowOK 1 sh-kcNat rT⟶hrefl₅L1
+okrT⟶hrefl₅L1 {Ξ} {j} {q} {c} dj dq dc = PT⟶hrefl₅ᶜ1.⊢CASE {Ξ} {j} {(fst (snd (fst (snd c))))} {((fst c) ,ₚ (fst (snd c)) ,ₚ q ,ₚ unit)} okrT⟶hrefl₅L2 (lt-s lt-z) dj (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = ([]ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} (⊢psHd {s = 1} {sh = sh-khrefl} {st = []ˢ} {d = j} (⊢ncStk 1 1 (1 , sh-khrefl ∷ˢ []ˢ) dc))))) (⊢ncMkC 1 1 (1 , sh-khrefl ∷ˢ (1 , sh-kcNat ∷ˢ []ˢ)) (lt-s lt-z) (ok∷ (lt-s lt-z) ok-khrefl (ok∷ (lt-s lt-z) ok-kcNat []ᵒ)) dj (⊢ncTgt 1 1 (1 , sh-khrefl ∷ˢ []ˢ) dc) (⊢psCons {s = 1} {sh = sh-khrefl} (ok∷ (lt-s lt-z) ok-kcNat []ᵒ) dj (⊢psHd {s = 1} {sh = sh-khrefl} {st = []ˢ} {d = j} (⊢ncStk 1 1 (1 , sh-khrefl ∷ˢ []ˢ) dc)) (⊢psCons {s = 1} {sh = sh-kcNat} []ᵒ dj dq (⊢psNil {d = j}))))
+
 r⟶hrefl : Row
-r⟶hrefl = record { R = λ j p c → rows (⌜ T⟶hrefl₁ j p c ⌝ᵗ ∷ ⌜ T⟶hrefl₂ j p c ⌝ᵗ ∷ ⌜ T⟶hrefl₃ j p c ⌝ᵗ ∷ [])
-  ; R-sub = λ σ j p c → trans (rows-sub' σ (⌜ T⟶hrefl₁ j p c ⌝ᵗ ∷ ⌜ T⟶hrefl₂ j p c ⌝ᵗ ∷ ⌜ T⟶hrefl₃ j p c ⌝ᵗ ∷ [])) (cong (λ X → rows X) (∷-cong3 (subTm σ (⌜ T⟶hrefl₁ j p c ⌝ᵗ)) (⌜ T⟶hrefl₁ (subTm σ j) (subTm σ p) (subTm σ c) ⌝ᵗ) (T⟶hrefl₁-law σ j p c) (subTm σ (⌜ T⟶hrefl₂ j p c ⌝ᵗ)) (⌜ T⟶hrefl₂ (subTm σ j) (subTm σ p) (subTm σ c) ⌝ᵗ) (T⟶hrefl₂-law σ j p c) (subTm σ (⌜ T⟶hrefl₃ j p c ⌝ᵗ)) (⌜ T⟶hrefl₃ (subTm σ j) (subTm σ p) (subTm σ c) ⌝ᵗ) (T⟶hrefl₃-law σ j p c))) }
-allr⟶hrefl : {Ξ : Ctx} {j p c : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ p ∷ PayV sh-khrefl ((tag 1) ,ₚ j) (SI 2) (SD KSig) → Ξ ⊢ c ∷ El (Redₘ.Cat ((tag 1) ,ₚ j)) → AllD Ξ Redₘ.J (⌜ T⟶hrefl₁ j p c ⌝ᵗ ∷ ⌜ T⟶hrefl₂ j p c ⌝ᵗ ∷ ⌜ T⟶hrefl₃ j p c ⌝ᵗ ∷ [])
-allr⟶hrefl {Ξ} {j} {p} {c} dj dp dc = (⊢tel {Ξ} {Redₘ.J} {T⟶hrefl₁ j p c} Redₘ.⊢J (okT⟶hrefl₁ dj dp dc)) ∷ᵈ (⊢tel {Ξ} {Redₘ.J} {T⟶hrefl₂ j p c} Redₘ.⊢J (okT⟶hrefl₂ dj dp dc)) ∷ᵈ (⊢tel {Ξ} {Redₘ.J} {T⟶hrefl₃ j p c} Redₘ.⊢J (okT⟶hrefl₃ dj dp dc)) ∷ᵈ []ᵈ
+r⟶hrefl = record { R = λ j p c → rows (⌜ T⟶hrefl₁ j p c ⌝ᵗ ∷ ⌜ T⟶hrefl₂ j p c ⌝ᵗ ∷ ⌜ T⟶hrefl₃ j p c ⌝ᵗ ∷ (PT⟶hrefl₄ᶜ0.CASE j (fst p) (c ,ₚ p ,ₚ unit)) ∷ (PT⟶hrefl₅ᶜ0.CASE j (fst p) (c ,ₚ p ,ₚ unit)) ∷ [])
+  ; R-sub = λ σ j p c → trans (rows-sub' σ (⌜ T⟶hrefl₁ j p c ⌝ᵗ ∷ ⌜ T⟶hrefl₂ j p c ⌝ᵗ ∷ ⌜ T⟶hrefl₃ j p c ⌝ᵗ ∷ (PT⟶hrefl₄ᶜ0.CASE j (fst p) (c ,ₚ p ,ₚ unit)) ∷ (PT⟶hrefl₅ᶜ0.CASE j (fst p) (c ,ₚ p ,ₚ unit)) ∷ [])) (cong (λ X → rows X) (∷-cong5 (subTm σ (⌜ T⟶hrefl₁ j p c ⌝ᵗ)) (⌜ T⟶hrefl₁ (subTm σ j) (subTm σ p) (subTm σ c) ⌝ᵗ) (T⟶hrefl₁-law σ j p c) (subTm σ (⌜ T⟶hrefl₂ j p c ⌝ᵗ)) (⌜ T⟶hrefl₂ (subTm σ j) (subTm σ p) (subTm σ c) ⌝ᵗ) (T⟶hrefl₂-law σ j p c) (subTm σ (⌜ T⟶hrefl₃ j p c ⌝ᵗ)) (⌜ T⟶hrefl₃ (subTm σ j) (subTm σ p) (subTm σ c) ⌝ᵗ) (T⟶hrefl₃-law σ j p c) (subTm σ ((PT⟶hrefl₄ᶜ0.CASE j (fst p) (c ,ₚ p ,ₚ unit)))) ((PT⟶hrefl₄ᶜ0.CASE (subTm σ j) (fst (subTm σ p)) ((subTm σ c) ,ₚ (subTm σ p) ,ₚ unit))) (PT⟶hrefl₄ᶜ0.CASE-sub σ j (fst p) (c ,ₚ p ,ₚ unit)) (subTm σ ((PT⟶hrefl₅ᶜ0.CASE j (fst p) (c ,ₚ p ,ₚ unit)))) ((PT⟶hrefl₅ᶜ0.CASE (subTm σ j) (fst (subTm σ p)) ((subTm σ c) ,ₚ (subTm σ p) ,ₚ unit))) (PT⟶hrefl₅ᶜ0.CASE-sub σ j (fst p) (c ,ₚ p ,ₚ unit)))) }
+allr⟶hrefl : {Ξ : Ctx} {j p c : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ p ∷ PayV sh-khrefl ((tag 1) ,ₚ j) (SI 2) (SD KSig) → Ξ ⊢ c ∷ El (Redₘ.Cat ((tag 1) ,ₚ j)) → AllD Ξ Redₘ.J (⌜ T⟶hrefl₁ j p c ⌝ᵗ ∷ ⌜ T⟶hrefl₂ j p c ⌝ᵗ ∷ ⌜ T⟶hrefl₃ j p c ⌝ᵗ ∷ (PT⟶hrefl₄ᶜ0.CASE j (fst p) (c ,ₚ p ,ₚ unit)) ∷ (PT⟶hrefl₅ᶜ0.CASE j (fst p) (c ,ₚ p ,ₚ unit)) ∷ [])
+allr⟶hrefl {Ξ} {j} {p} {c} dj dp dc = (⊢tel {Ξ} {Redₘ.J} {T⟶hrefl₁ j p c} Redₘ.⊢J (okT⟶hrefl₁ dj dp dc)) ∷ᵈ (⊢tel {Ξ} {Redₘ.J} {T⟶hrefl₂ j p c} Redₘ.⊢J (okT⟶hrefl₂ dj dp dc)) ∷ᵈ (⊢tel {Ξ} {Redₘ.J} {T⟶hrefl₃ j p c} Redₘ.⊢J (okT⟶hrefl₃ dj dp dc)) ∷ᵈ (PT⟶hrefl₄ᶜ0.⊢CASE {Ξ} {j} {(fst p)} {(c ,ₚ p ,ₚ unit)} okrT⟶hrefl₄L1 (lt-s lt-z) dj (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} dp)) (⊢ncMkC 1 1 (1 , sh-khrefl ∷ˢ []ˢ) (lt-s lt-z) (ok∷ (lt-s lt-z) ok-khrefl []ᵒ) dj (⊢tgt {s = 1} dc) (⊢psCons {s = 1} {sh = sh-khrefl} []ᵒ dj dp (⊢psNil {d = j})))) ∷ᵈ (PT⟶hrefl₅ᶜ0.⊢CASE {Ξ} {j} {(fst p)} {(c ,ₚ p ,ₚ unit)} okrT⟶hrefl₅L1 (lt-s lt-z) dj (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} dp)) (⊢ncMkC 1 1 (1 , sh-khrefl ∷ˢ []ˢ) (lt-s lt-z) (ok∷ (lt-s lt-z) ok-khrefl []ᵒ) dj (⊢tgt {s = 1} dc) (⊢psCons {s = 1} {sh = sh-khrefl} []ᵒ dj dp (⊢psNil {d = j})))) ∷ᵈ []ᵈ
 ok⟶hrefl : Redₘ.RowOK 1 sh-khrefl r⟶hrefl
-ok⟶hrefl {Ξ} {j} {p} {c} dj dp dc = ⊢rows {Ξ} {Redₘ.J} {3} {⌜ T⟶hrefl₁ j p c ⌝ᵗ ∷ ⌜ T⟶hrefl₂ j p c ⌝ᵗ ∷ ⌜ T⟶hrefl₃ j p c ⌝ᵗ ∷ []} Redₘ.⊢J (allr⟶hrefl dj dp dc)
+ok⟶hrefl {Ξ} {j} {p} {c} dj dp dc = ⊢rows {Ξ} {Redₘ.J} {5} {⌜ T⟶hrefl₁ j p c ⌝ᵗ ∷ ⌜ T⟶hrefl₂ j p c ⌝ᵗ ∷ ⌜ T⟶hrefl₃ j p c ⌝ᵗ ∷ (PT⟶hrefl₄ᶜ0.CASE j (fst p) (c ,ₚ p ,ₚ unit)) ∷ (PT⟶hrefl₅ᶜ0.CASE j (fst p) (c ,ₚ p ,ₚ unit)) ∷ []} Redₘ.⊢J (allr⟶hrefl dj dp dc)
 
 -- ⟶tr
 C⟶tr₁_0A : RTm Δ → RTm Δ → RTm Δ

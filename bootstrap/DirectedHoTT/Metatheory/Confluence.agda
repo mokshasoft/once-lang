@@ -37,7 +37,7 @@
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Metatheory.Confluence where
 open import normalizer.Syntax.Types
-  using ( _≡_; refl; sym; trans; subst; cong; cong₂; Σ; _,_; _×_ )
+  using ( _≡_; refl; sym; trans; subst; cong; cong₂; Σ; _,_; _×_; ⊥; ⊥-elim )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; Var; vz; vs; RTm; var; lam; app; pair; fst; snd; absurd
@@ -59,7 +59,7 @@ open import DirectedHoTT.Spec.Typing
         ; ξ-pairʳ; ξ-absurdᶜ; ξ-absurdᵉ; ordtr-z; ordtr-szz; ordtr-ssz
         ; ordtr-szs; ordtr-sss; ξ-ordtrᵃ; ξ-ordtrᵗ; ξ-ordtrᵘ; ξ-ordtrᵖ
         ; ξ-ordtrq; ξ-fst; ξ-snd; ξ-⌜Π⌝ˡ; ξ-⌜Π⌝ʳ; ξ-⌜Σ⌝ˡ; ξ-⌜Σ⌝ʳ; tr-J-base
-        ; tr-J-Σ; tr-J-Id; tr-taut; hrefl-pw; tr-J-Hom; tr-pw; ξ-⌜Hom⌝ᶜ
+        ; tr-J-Σ; tr-J-Id; tr-taut; hrefl-pw; hrefl-Nat-z; hrefl-Nat-s; tr-J-Hom; tr-pw; ξ-⌜Hom⌝ᶜ
         ; ξ-⌜Hom⌝ˡ; ξ-⌜Hom⌝ʳ; ξ-hreflᶜ; ξ-hreflᵃ; ξ-trᵈ; ξ-trᵖ; ξ-trᵉ; ap-J
         ; ξ-apᶜ; ξ-apᵇ; ξ-apᵖ; jsub-refl; ξ-⌜Id⌝ᶜ; ξ-⌜Id⌝ˡ; ξ-⌜Id⌝ʳ; ξ-idreflᶜ
         ; ξ-idreflᵃ; ξ-jsubᵈ; ξ-jsubᵖ; ξ-jsubᵉ; natrec-zero; natrec-suc
@@ -166,6 +166,9 @@ data _⟹_ : {Γ : Cx} → RTm Γ → RTm Γ → Set where
   phrefl-pw : {C C' s s' : RTm Γ} → pw? C ≡ true → C ⟹ C' → s ⟹ s' →
               hrefl C s ⟹
               lam (hrefl (pwBody C') (app (renTm vs s') (var vz)))
+  -- ★ F6: the order's reflexivity computes with its type.
+  phrefl-Nat-z : hrefl ⌜Nat⌝ (nzero {Γ}) ⟹ unit
+  phrefl-Nat-s : {m m' : RTm Γ} → m ⟹ m' → hrefl ⌜Nat⌝ (nsuc m) ⟹ hrefl ⌜Nat⌝ m'
   -- ★★ key is `stkA?`, mirroring `tr-J-Hom` (SpikeNatJ split).
   ptr-J-Hom : {c a m : RTm (Γ ∙)} {c₁ a₁ b₁ s e e' : RTm Γ} →
               stkA? c₁ ≡ true → e ⟹ e' →
@@ -515,6 +518,8 @@ stkC?-⟹ {C = ⌜Unit⌝} p⌜Unit⌝ h = refl
 ⟶→⟹ (tr-J-Id c a m c₁ a₁ b₁ s e) = ptr-J-Id (⟹-refl e)
 ⟶→⟹ (tr-taut f e)        = ptr-taut (⟹-refl f) (⟹-refl e)
 ⟶→⟹ (hrefl-pw C t key) = phrefl-pw key (⟹-refl C) (⟹-refl t)
+⟶→⟹ hrefl-Nat-z        = phrefl-Nat-z
+⟶→⟹ (hrefl-Nat-s m)    = phrefl-Nat-s (⟹-refl m)
 ⟶→⟹ (tr-J-Hom c a m c₁ a₁ b₁ t e key) = ptr-J-Hom key (⟹-refl e)
 ⟶→⟹ (tr-pw c a f e key) =
   ptr-pw key (⟹-refl c) (⟹-refl a) (⟹-refl f) (⟹-refl e)
@@ -694,6 +699,8 @@ stkC?-⟹ {C = ⌜Unit⌝} p⌜Unit⌝ h = refl
        (⟶*-lam
          (⟶*-trans (⟶*-hreflᶜ (pwBody-red* key (⟹→⟶* pC)))
                    (⟶*-hreflᵃ (⟶*-appˡ (⟶*-ren vs (⟹→⟶* pt))))))
+⟹→⟶* phrefl-Nat-z = step hrefl-Nat-z done
+⟹→⟶* (phrefl-Nat-s {m = m} p) = step (hrefl-Nat-s m) (⟶*-hreflᵃ (⟹→⟶* p))
 ⟹→⟶* (ptr-J-Hom {c = c} {a} {m} {c₁} {a₁} {b₁} {s = t} {e} key pe) =
   step (tr-J-Hom c a m c₁ a₁ b₁ t e key) (⟹→⟶* pe)
 ⟹→⟶* (ptr-pw {c = c} {c'} {a} {a'} {f} {f'} {e} {e'} key pc pa pf pe) =
@@ -829,6 +836,8 @@ stkC?-⟹ {C = ⌜Unit⌝} p⌜Unit⌝ h = refl
                (pwBody-ren ρ C' (pw?-⟹ pC key)) (sym (wk-ren ρ t')))
         (phrefl-pw (trans (pw?-ren ρ C) key)
                    (⟹-ren ρ pC) (⟹-ren ρ pt))
+⟹-ren ρ phrefl-Nat-z     = phrefl-Nat-z
+⟹-ren ρ (phrefl-Nat-s p) = phrefl-Nat-s (⟹-ren ρ p)
 ⟹-ren ρ (ptr-J-Hom {c₁ = c₁} key pe) =
   ptr-J-Hom (trans (stkA?-ren ρ c₁) key) (⟹-ren ρ pe)
 ⟹-ren ρ (ptr-pw {c = c} {c'} {a} {a'} {f} {f'} {e} {e'} key pc pa pf pe) =
@@ -1009,6 +1018,8 @@ pwBody-⟹ {C = ⌜Unit⌝} _ ()
                (pwBody-sub σ' C' (pw?-⟹ pC key))
                (sym (wk-sub σ' t')))
         (phrefl-pw (pw?-sub σ C key) (⟹-sub h pC) (⟹-sub h pt))
+⟹-sub h phrefl-Nat-z     = phrefl-Nat-z
+⟹-sub h (phrefl-Nat-s p) = phrefl-Nat-s (⟹-sub h p)
 ⟹-sub {σ = σ} {σ'} h (ptr-J-Hom {c₁ = c₁} key pe) =
   ptr-J-Hom (stkA?-sub σ c₁ key) (⟹-sub h pe)
 ⟹-sub {σ = σ} {σ'} h (ptr-pw {c = c} {c'} {a} {a'} {f} {f'} {e} {e'} key pc pa pf pe) =
@@ -1096,6 +1107,17 @@ data PairV {Γ : Cx} : RTm Γ → Set where
 pairV : (t : RTm Γ) → PairV t
 pairV (pair a b) = isPair a b
 pairV _          = notPair
+
+-- ★ F6: an `hrefl` at the order, at a numeral head (`hrefl-Nat-z/s`)
+data HrV {Γ : Cx} : RTm Γ → RTm Γ → Set where
+  hvZ : HrV ⌜Nat⌝ nzero
+  hvS : (m : RTm Γ) → HrV ⌜Nat⌝ (nsuc m)
+  hvO : {c t : RTm Γ} → HrV c t
+
+hrV : (c t : RTm Γ) → HrV c t
+hrV ⌜Nat⌝ nzero    = hvZ
+hrV ⌜Nat⌝ (nsuc m) = hvS m
+hrV _     _        = hvO
 
 data NatV {Γ : Cx} : RTm Γ → Set where
   isZ    : NatV nzero
@@ -1198,6 +1220,67 @@ hr⁺ : 𝔹 → RTm Γ → RTm Γ → RTm Γ
 hr⁺ true  C T = lam (hrefl (pwBody C) (app (renTm vs T) (var vz)))
 hr⁺ false C T = hrefl C T
 
+-- …and at the order (the view decided on the ORIGINAL term)
+hrK : {c t : RTm Γ} → HrV c t → 𝔹 → RTm Γ → RTm Γ → RTm Γ
+hrK hvZ     b C T        = unit
+hrK (hvS _) b C (nsuc M) = hrefl ⌜Nat⌝ M
+hrK (hvS _) b C T        = hrefl C T
+hrK hvO     b C T        = hr⁺ b C T
+
+-- a code that is not `⌜Nat⌝` is no order code (`pw?`/`stkC?` both refute it)
+hrK-not : {c t : RTm Γ} {b : 𝔹} {C T : RTm Γ} → (c ≡ ⌜Nat⌝ → ⊥) → hrK (hrV c t) b C T ≡ hr⁺ b C T
+hrK-not {c = ⌜Nat⌝} n = ⊥-elim (n refl)
+hrK-not {c = var _} _ = refl
+hrK-not {c = lam _} _ = refl
+hrK-not {c = app _ _} _ = refl
+hrK-not {c = pair _ _} _ = refl
+hrK-not {c = absurd _ _} _ = refl
+hrK-not {c = ordtr _ _ _ _ _} _ = refl
+hrK-not {c = fst _} _ = refl
+hrK-not {c = snd _} _ = refl
+hrK-not {c = ⌜base⌝} _ = refl
+hrK-not {c = ⌜Π⌝ _ _} _ = refl
+hrK-not {c = ⌜Σ⌝ _ _} _ = refl
+hrK-not {c = ⌜Hom⌝ _ _ _} _ = refl
+hrK-not {c = hrefl _ _} _ = refl
+hrK-not {c = tr _ _ _} _ = refl
+hrK-not {c = ap _ _ _} _ = refl
+hrK-not {c = ⌜Id⌝ _ _ _} _ = refl
+hrK-not {c = idrefl _ _} _ = refl
+hrK-not {c = jsub _ _ _} _ = refl
+hrK-not {c = unit} _ = refl
+hrK-not {c = nzero} _ = refl
+hrK-not {c = nsuc _} _ = refl
+hrK-not {c = natrec _ _ _} _ = refl
+hrK-not {c = con _} _ = refl
+hrK-not {c = ielim _ _ _ _} _ = refl
+hrK-not {c = dι} _ = refl
+hrK-not {c = dσ _ _} _ = refl
+hrK-not {c = dρ _ _} _ = refl
+hrK-not {c = dpay _ _ _} _ = refl
+hrK-not {c = dih _ _ _ _} _ = refl
+hrK-not {c = fzero} _ = refl
+hrK-not {c = fsuc _} _ = refl
+hrK-not {c = fcase _ _ _} _ = refl
+hrK-not {c = fcase0 _} _ = refl
+hrK-not {c = psplit _ _} _ = refl
+hrK-not {c = ⌜IMu⌝ _ _ _} _ = refl
+hrK-not {c = ⌜Fin⌝ _} _ = refl
+hrK-not {c = ⌜Unit⌝} _ = refl
+hrK-not {c = ref _ _} _ = refl
+
+pw-notNat : {c : RTm Γ} → pw? c ≡ true → c ≡ ⌜Nat⌝ → ⊥
+pw-notNat () refl
+
+stk-notNat : {c : RTm Γ} → stkC? c ≡ true → c ≡ ⌜Nat⌝ → ⊥
+stk-notNat () refl
+
+hrK-pw : {c t : RTm Γ} {b : 𝔹} {C T : RTm Γ} → pw? c ≡ true → hrK (hrV c t) b C T ≡ hr⁺ b C T
+hrK-pw {c = c} {t} k = hrK-not {c = c} {t = t} (pw-notNat k)
+
+hrK-stk : {c t : RTm Γ} {b : 𝔹} {C T : RTm Γ} → stkC? c ≡ true → hrK (hrV c t) b C T ≡ hr⁺ b C T
+hrK-stk {c = c} {t} k = hrK-not {c = c} {t = t} (stk-notNat k)
+
 appK : {t : RTm Γ} → LamV t → RTm Γ → RTm Γ → RTm Γ
 appK (isLam _) (lam b') u' = subTm (single u') b'
 appK _         t'       u' = app t' u'
@@ -1297,7 +1380,7 @@ snd p ⁺            = sndK (pairV p) (p ⁺)
 ⌜Π⌝ c d ⁺          = ⌜Π⌝ (c ⁺) (d ⁺)
 ⌜Σ⌝ c d ⁺          = ⌜Σ⌝ (c ⁺) (d ⁺)
 ⌜Hom⌝ c a b ⁺      = ⌜Hom⌝ (c ⁺) (a ⁺) (b ⁺)
-hrefl c f ⁺        = hr⁺ (pw? c) (c ⁺) (f ⁺)
+hrefl c f ⁺        = hrK (hrV c f) (pw? c) (c ⁺) (f ⁺)
 tr d p e ⁺         = trK (trV d p) (d ⁺) (p ⁺) (e ⁺)
 ap cB b p ⁺        = apK (apV p) (cB ⁺) (b ⁺) (p ⁺)
 ordtr a t u p q ⁺  = ordK (natV a) (natV u) (natV t) (a ⁺) (t ⁺) (u ⁺) (p ⁺) (q ⁺)
@@ -1332,6 +1415,13 @@ hr-tri : {C' X s' Y : RTm Γ} (b : 𝔹) → (b ≡ true → pw? C' ≡ true) �
          C' ⟹ X → s' ⟹ Y → hrefl C' s' ⟹ hr⁺ b X Y
 hr-tri true  kf px py = phrefl-pw (kf refl) px py
 hr-tri false kf px py = phrefl px py
+
+-- ★ F6: the order's reflexivity
+tri-hr : {c c' f f' X Y : RTm Γ} (v : HrV c f) → c ⟹ c' → f ⟹ f' →
+         (pw? c ≡ true → pw? c' ≡ true) → c' ⟹ X → f' ⟹ Y → hrefl c' f' ⟹ hrK v (pw? c) X Y
+tri-hr hvZ     p⌜Nat⌝ pnzero    kf rx ry        = phrefl-Nat-z
+tri-hr (hvS _) p⌜Nat⌝ (pnsuc _) kf rx (pnsuc r) = phrefl-Nat-s r
+tri-hr hvO     _      _         kf rx ry        = hr-tri _ kf rx ry
 
 tri-app : {t t' u' U : RTm Γ} (v : LamV t) → t ⟹ t' → t' ⟹ t ⁺ → u' ⟹ U →
           app t' u' ⟹ appK v (t ⁺) U
@@ -1448,10 +1538,24 @@ tri-apJ false _     _  _  _                  rcB rb rp            = pap rcB rb r
 tri-apJ {C = C} true true ek ew _            _   _  _             = bool-⊥ (trans (sym ew) (stk⊥pw C ek))
 tri-apJ true  false ek ew (phrefl pC _)      rcB rb (phrefl _ rs) = pap-J (stkC?-⟹ pC ek) rcB rb rs
 tri-apJ true  false ek ew (phrefl-pw w _ _)  _   _  _             = bool-⊥ (trans (sym w) ew)
+tri-apJ true  false ek ew (phrefl pC _)      _   _  (phrefl-Nat-s _) with stkC?-⟹ pC ek
+... | ()
+tri-apJ true  false () ew phrefl-Nat-z       _   _  _
+tri-apJ true  false () ew (phrefl-Nat-s _)   _   _  _
+
+-- the key decided first: at a stable code the development is no order step
+tri-apS : {C s p' cB' CB X S : RTm Γ} {b' B : RTm (Γ ∙)} (k : 𝔹) → stkC? C ≡ k →
+          hrefl C s ⟹ p' → cB' ⟹ CB → b' ⟹ B → p' ⟹ hrK (hrV C s) (pw? C) X S →
+          ap cB' b' p' ⟹ apJK k CB B (hrK (hrV C s) (pw? C) X S)
+tri-apS false _  _  rcB rb rp = pap rcB rb rp
+tri-apS {C = C} {s} {p'} {cB'} {CB} {X} {S} {b'} {B} true ek pp rcB rb rp =
+  subst (λ z → ap cB' b' p' ⟹ apJK true CB B z) (sym eq)
+        (tri-apJ true (pw? C) ek refl pp rcB rb (subst (λ z → p' ⟹ z) eq rp))
+  where eq = hrK-stk {c = C} {t = s} {b = pw? C} {C = X} {T = S} ek
 
 tri-ap : {p p' cB' CB : RTm Γ} {b' B : RTm (Γ ∙)} (v : ApV p) → p ⟹ p' →
          cB' ⟹ CB → b' ⟹ B → p' ⟹ p ⁺ → ap cB' b' p' ⟹ apK v CB B (p ⁺)
-tri-ap (apJ C _) pp rcB rb rp = tri-apJ (stkC? C) (pw? C) refl refl pp rcB rb rp
+tri-ap (apJ C s) pp rcB rb rp = tri-apS (stkC? C) refl pp rcB rb rp
 tri-ap apCong    _  rcB rb rp = pap rcB rb rp
 
 -- `ap-J`'s own row: its key fixes both Booleans.
@@ -1486,13 +1590,17 @@ rootAp refl refl r = r
 ⟹-⁺ (p⌜Π⌝ p q)             = p⌜Π⌝ (⟹-⁺ p) (⟹-⁺ q)
 ⟹-⁺ (p⌜Σ⌝ p q)             = p⌜Σ⌝ (⟹-⁺ p) (⟹-⁺ q)
 ⟹-⁺ (p⌜Hom⌝ p q r)         = p⌜Hom⌝ (⟹-⁺ p) (⟹-⁺ q) (⟹-⁺ r)
-⟹-⁺ (phrefl p q)           = hr-tri _ (pw?-⟹ p) (⟹-⁺ p) (⟹-⁺ q)
+⟹-⁺ (phrefl {c = c} {t = f} p q) = tri-hr (hrV c f) p q (pw?-⟹ p) (⟹-⁺ p) (⟹-⁺ q)
+⟹-⁺ phrefl-Nat-z           = punit
+⟹-⁺ (phrefl-Nat-s p)       = phrefl p⌜Nat⌝ (⟹-⁺ p)
 ⟹-⁺ (phrefl-pw {C = C} {C'} {s = t} {t'} key pC pt) =
-  subst (λ b → lam (hrefl (pwBody C') (app (renTm vs t') (var vz)))
+  subst (λ z → lam (hrefl (pwBody C') (app (renTm vs t') (var vz))) ⟹ z)
+        (sym (hrK-pw {c = C} {t = t} {b = pw? C} {C = C ⁺} {T = t ⁺} key))
+  (subst (λ b → lam (hrefl (pwBody C') (app (renTm vs t') (var vz)))
                ⟹ hr⁺ b (C ⁺) (t ⁺))
         (sym key)
         (plam (phrefl (pwBody-⟹ (⟹-⁺ pC) (pw?-⟹ pC key))
-                      (papp (⟹-ren vs (⟹-⁺ pt)) (pvar vz))))
+                      (papp (⟹-ren vs (⟹-⁺ pt)) (pvar vz)))))
 ⟹-⁺ (ptr {d = d} {p = p} pd pp pe) = tri-tr (trV d p) pd pp (⟹-⁺ pd) (⟹-⁺ pp) (⟹-⁺ pe)
 ⟹-⁺ (ptr-J-base p)         = ⟹-⁺ p
 ⟹-⁺ (ptr-J-Unit p)         = ⟹-⁺ p
@@ -1514,8 +1622,10 @@ rootAp refl refl r = r
 ⟹-⁺ p⌜Nat⌝                 = p⌜Nat⌝
 ⟹-⁺ p⌜Unit⌝                = p⌜Unit⌝
 ⟹-⁺ (pap {p = p} pcB pb pp) = tri-ap (apV p) pp (⟹-⁺ pcB) (⟹-⁺ pb) (⟹-⁺ pp)
-⟹-⁺ (pap-J {c₁ = C} key pcB pb ps) =
-  rootAp key (stk⊥pw C key) (phrefl (⟹-⁺ pcB) (⟹-sub (single-⟹ (⟹-⁺ ps)) (⟹-⁺ pb)))
+⟹-⁺ (pap-J {cB' = cB'} {b' = b'} {c₁ = C} {s} {s'} key pcB pb ps) =
+  subst (λ z → hrefl cB' (subTm (single s') b') ⟹ apJK (stkC? C) _ _ z)
+        (sym (hrK-stk {c = C} {t = s} {b = pw? C} {C = C ⁺} {T = s ⁺} key))
+        (rootAp key (stk⊥pw C key) (phrefl (⟹-⁺ pcB) (⟹-sub (single-⟹ (⟹-⁺ ps)) (⟹-⁺ pb))))
 ⟹-⁺ (p⌜Id⌝ p q r)          = p⌜Id⌝ (⟹-⁺ p) (⟹-⁺ q) (⟹-⁺ r)
 ⟹-⁺ (pidrefl p q)          = pidrefl (⟹-⁺ p) (⟹-⁺ q)
 ⟹-⁺ (pjsub {p = p} pd pp pe) = tri-js (idreflV p) pp (⟹-⁺ pd) (⟹-⁺ pe) (⟹-⁺ pp)

@@ -98,7 +98,7 @@ open import DirectedHoTT.Spec.Typing
         ; ordtr-z; ordtr-szz; ordtr-ssz; ordtr-szs; ordtr-sss; ξ-ordtrᵃ
         ; ξ-ordtrᵗ; ξ-ordtrᵘ; ξ-ordtrᵖ; ξ-ordtrq; ξ-fst; ξ-snd; ξ-⌜Π⌝ˡ; ξ-⌜Π⌝ʳ
         ; ξ-⌜Σ⌝ˡ; ξ-⌜Σ⌝ʳ; tr-J-base; tr-J-Σ; tr-J-Id; tr-J-Unit; tr-J-IMu
-        ; tr-taut; hrefl-pw; tr-J-Hom; tr-pw; El-⌜Nat⌝; El-⌜Unit⌝; El-⌜IMu⌝
+        ; tr-taut; hrefl-pw; hrefl-Nat-z; hrefl-Nat-s; tr-J-Hom; tr-pw; El-⌜Nat⌝; El-⌜Unit⌝; El-⌜IMu⌝
         ; ξ-⌜Hom⌝ᶜ; ξ-⌜Hom⌝ˡ; ξ-⌜Hom⌝ʳ; ξ-hreflᶜ; ξ-hreflᵃ; ξ-trᵈ; ξ-trᵖ
         ; ξ-trᵉ; ap-J; ξ-apᶜ; ξ-apᵇ; ξ-apᵖ; jsub-refl; ξ-⌜Id⌝ᶜ; ξ-⌜Id⌝ˡ
         ; ξ-⌜Id⌝ʳ; ξ-idreflᶜ; ξ-idreflᵃ; ξ-jsubᵈ; ξ-jsubᵖ; ξ-jsubᵉ; El-⌜Id⌝
@@ -628,6 +628,8 @@ occ-red {x = x} (hrefl-pw C s key) e =
           (∨-false (trans (occ-ren-eq (λ y → refl) s)
                           (∨-false₂ (occTm x C) e))
                    refl)
+occ-red hrefl-Nat-z e = refl
+occ-red (hrefl-Nat-s m) e = e
 occ-red {x = x} (tr-J-Hom c a m c₁ a₁ b₁ s e₀ key) e =
   ∨-false₂ (occTm x (hrefl (⌜Hom⌝ c₁ a₁ b₁) s))
            (∨-false₂ (occTm (vs x) (⌜Hom⌝ c a m)) e)

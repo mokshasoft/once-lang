@@ -65,9 +65,16 @@ Stepᵀ : RTy Γ → Set
 Stepᵀ {Γ} A = Σ (RTy Γ) (λ B → A ⟶ᵀ B)
 
 -- the guarded rules: the Boolean, with its equation
+-- ★ F6: off the pw-able codes, the ORDER's reflexivity computes on its
+--   argument (`hrefl-Nat-z/s`; `pw? ⌜Nat⌝` is false, so no overlap)
+hreflN : (C s : RTm Γ) → Maybe (Step (hrefl C s))
+hreflN ⌜Nat⌝ nzero    = just (_ , hrefl-Nat-z)
+hreflN ⌜Nat⌝ (nsuc m) = just (_ , hrefl-Nat-s m)
+hreflN _     _        = nothing
+
 hreflG : (C s : RTm Γ) (b : 𝔹) → pw? C ≡ b → Maybe (Step (hrefl C s))
 hreflG C s true  e = just (_ , hrefl-pw C s e)
-hreflG C s false e = nothing
+hreflG C s false e = hreflN C s
 
 trHomG : (c a m : RTm (Γ ∙)) (c₁ a₁ b₁ s e : RTm Γ) (b : 𝔹) → stkA? c₁ ≡ b →
          Maybe (Step (tr (⌜Hom⌝ c a m) (hrefl (⌜Hom⌝ c₁ a₁ b₁) s) e))
@@ -282,6 +289,8 @@ nf-irr (nf-tr _ _ _ q) (tr-pw c _ _ _ h) = trPwG-no (pw? c) refl h q
 nf-irr (nf-⌜Hom⌝ n _ _) (ξ-⌜Hom⌝ᶜ s) = nf-irr n s
 nf-irr (nf-⌜Hom⌝ _ n _) (ξ-⌜Hom⌝ˡ s) = nf-irr n s
 nf-irr (nf-⌜Hom⌝ _ _ n) (ξ-⌜Hom⌝ʳ s) = nf-irr n s
+nf-irr (nf-hrefl _ _ ()) hrefl-Nat-z
+nf-irr (nf-hrefl _ _ ()) (hrefl-Nat-s _)
 nf-irr (nf-hrefl n _ _) (ξ-hreflᶜ s) = nf-irr n s
 nf-irr (nf-hrefl _ n _) (ξ-hreflᵃ s) = nf-irr n s
 nf-irr (nf-tr n _ _ _) (ξ-trᵈ s) = nf-irr n s
