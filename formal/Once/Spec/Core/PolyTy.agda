@@ -26,6 +26,7 @@ open import Data.Fin using (Fin; zero; suc)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂)
 
 import Once.Type as T
+open import Once.Spec.Contract using (ISig)
 open T using (Purity; pure; eff; ArrowKind; mk-kind; Quantity)
 open import Once.Functor.Translate using (IsBaseType; WellFormedF; base-Unit; base-Void; base-Int;
   base-Float; base-Str; base-Buffer; base-Prod; base-Sum; base-rigid; wf-K; wf-Id; wf-Sum; wf-Prod)
@@ -299,11 +300,19 @@ record Schema : Set where
     type  : Ty arity
 open Schema public
 
+-- Plan 0.105 (D257 amendment 2): its BASE is the interpretation signatures the
+-- program is compiled against (`ISig`): an FFI reference is a constant of
+-- them, typed like a variable (`⊢sigop`). They are fixed for the whole module
+-- — a body may name any of them — so they sit under every definition.
 data Sig : ℕ → Set where
-  []  : Sig 0
+  []  : ISig → Sig 0
   _▷_ : ∀ {s} → Sig s → Schema → Sig (suc s)
 
 infixl 5 _▷_
+
+sigOf : ∀ {s} → Sig s → ISig
+sigOf ([] Σ)  = Σ
+sigOf (S ▷ _) = sigOf S
 
 _!!_ : ∀ {s} → Sig s → Fin s → Schema
 (S ▷ sc) !! zero  = sc

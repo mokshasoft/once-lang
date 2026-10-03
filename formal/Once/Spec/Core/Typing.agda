@@ -30,7 +30,7 @@
 ------------------------------------------------------------------------
 
 open import Data.Nat using (ℕ)
-open import Once.Spec.Core.PolyTy using (Sig; _!!_; arity; kinds; type; Respects; _⟪_⟫; GSub)
+open import Once.Spec.Core.PolyTy using (Sig; sigOf; _!!_; arity; kinds; type; Respects; _⟪_⟫; GSub)
 
 module Once.Spec.Core.Typing {s : ℕ} (S : Sig s) where
 
@@ -45,7 +45,9 @@ open import Once.Type.Sub using (_<:_; _⊑π_)
 open import Once.Functor.Translate using (WellFormedF; IsConcrete)
 open import Once.Type.Honest using (HonestFFI)
 open import Once.Type.Rigid using (RigidFree)
-open import Once.CanonicalName using (CanonicalName)
+open import Once.CanonicalName using (CanonicalName; showCanonical)
+open import Data.Product using () renaming (_,_ to _,ᵈ_)
+open import Data.List.Membership.Propositional using (_∈_)
 open import Once.Surface.Context
   using (Ctx; _,_; lookup; Usage; _∷_; zeroUsage; singleUse; _+ᵘ_; _*ᵘ_; _⊔ᵘ_)
 open import Once.Spec.Core.Syntax S
@@ -151,7 +153,11 @@ data _⊢[_]_∷_!_ : ∀ {n} → Ctx n → Usage n → Tm n → Type → Purity
   -- An FFI constant at its declared type (D061/D071: a contract, resolved
   -- by the module layer). Closed: it uses no variable. Honest (D231), so
   -- referencing it is pure.
+  -- Plan 0.105 (D257 amendment 2): an FFI reference names a SigOp the program
+  -- is compiled against — a declaration of the interpretation signatures
+  -- `sigOf S`, identified at that boundary by its rendered path.
   ⊢sigop : ∀ {n} {Γ : Ctx n} {A} (c : CanonicalName) (k : IsConcrete A) → HonestFFI A → RigidFree A
+         → (showCanonical c ,ᵈ A) ∈ sigOf S
          → Γ ⊢[ zeroUsage ] sigop c A ∷ A ! pure
 
   -- Plan 0.103 phase 4: a definition at a kind-respecting ground instance of

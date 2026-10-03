@@ -58,7 +58,7 @@ open import Once.Word using (Carrier)
 import Once.Semantics.Value Carrier Carrier as M
 open import Once.Denotation.Trace using (SigOpEvent; mk-event)
 open import Once.SigOp.Info using (FFIAnswers)
-open import Once.Spec.Contract using (Key; key; kname; kdom; kcod; _∈K?_; ISig; valueKeys; answerKeys)
+open import Once.Spec.Contract using (Key; key; kname; kdom; kcod; _∈K?_; ISig; valueKeys; answerKeys; Impl; answerI; pureI)
 
 ------------------------------------------------------------------------
 -- The operations: one universal signature, keyed by the SigOp's identity
@@ -176,21 +176,6 @@ callKey o = key (showCanonical (cname o)) (cdom o) (ccod o)
 -- interpretations follow the compiler, and the compiler never looks inside one.
 ------------------------------------------------------------------------
 
--- An IMPLEMENTATION of `Σ` in the compiler's contract form — what its author
--- discharges off-line. TOTAL on `Σ`:
---   * `answer`: an answering call's result, given the calls before it — what it
---     answers is its own business (its contract);
---   * `pure`: a value contract's value. It sees no history (D250): a fixed
---     function of its argument.
--- An emitting or halting declaration owes no value. A declaration nobody can
--- implement (an answering call into an empty type) makes `Impl Σ` empty: its
--- author cannot discharge it, and no compiler claim becomes false.
-record Impl (Σ : ISig) : Set where
-  field
-    answerI : List SigOpEvent → (o : CallOp) → callKey o ∈ answerKeys Σ → M.⟦ cdom o ⟧ → M.⟦ ccod o ⟧
-    pureI   : (k : Key) → k ∈ valueKeys Σ → M.⟦ kdom k ⟧ → M.⟦ kcod k ⟧
-open Impl public
-
 -- An INTERPRETATION: declared signatures with an implementation of them.
 record Interp : Set where
   constructor interp
@@ -204,7 +189,7 @@ calls ι = answerKeys (sig ι)
 pures ι = valueKeys (sig ι)
 
 answer : (ι : Interp) → List SigOpEvent → (o : CallOp) → callKey o ∈ calls ι → M.⟦ cdom o ⟧ → M.⟦ ccod o ⟧
-answer ι = answerI (impl ι)
+answer ι h o p = answerI (impl ι) h (callKey o) p
 
 pure : (ι : Interp) (k : Key) → k ∈ pures ι → M.⟦ kdom k ⟧ → M.⟦ kcod k ⟧
 pure ι = pureI (impl ι)

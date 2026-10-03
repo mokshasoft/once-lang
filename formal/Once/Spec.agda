@@ -37,6 +37,12 @@ open import Once.Spec.Resolution public -- what each written reference DENOTES
         ; AliasMap ; UnaliasedMap ; Absent ; FirstAt ; fa-here ; fa-there )
 open import Once.Spec.Meaning public   -- the denotation (source meaning)
 open import Once.Spec.Correct public   -- the CorrectCompiler criterion
+open import Once.Spec.Contract public  -- WHAT AN INTERPRETATION OWES (D061, D257):
+  using ( Key ; key ; ISig             -- the declared signatures a program is
+        ; Contract ; value ; answers   -- compiled against, the contract each
+        ; effect ; contractOf          -- declaration owes (the compiler's
+        ; valueKeys ; answerKeys       -- decision), and the implementation its
+        ; Impl ; answerI ; pureI )     -- author discharges off-line
 open import Once.Spec.Program public   -- WHAT a typed program is, and WHEN a
   using ( Typed ; _⊢R_               -- source denotes one: the criterion's own
         ; ParsesText ; ModuleTyped   -- `Typed`/`_⊢_`, which used to live in a

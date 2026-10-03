@@ -24,6 +24,9 @@ import Data.List.Membership.DecPropositional as DecMem
 open import Once.Type using (Type; _⇒[_]_; mk-kind; Zero; One; Many; Void; isVoid?; isUnit?) renaming (Unit to UnitT)
 import Once.Type as Ty
 open import Once.Type.DecEq using (_≟T_)
+open import Once.Word using (Carrier)
+import Once.Semantics.Value Carrier Carrier as M
+open import Once.Denotation.Trace using (SigOpEvent)
 
 -- A CONTRACT KEY: a SigOp as an interpretation declares it — its RENDERED
 -- canonical path (the import table's key, the symbol the linker matches) with
@@ -92,3 +95,22 @@ answerKeys ((c , T) ∷ Σ) = go (contractOf c T)
         go (answers k) = k ∷ answerKeys Σ
         go _           = answerKeys Σ
 
+------------------------------------------------------------------------
+-- WHAT AN INTERPRETATION'S AUTHOR OWES: an implementation of its declared
+-- signatures `Σ` in the compiler's contract form, discharged OFF-LINE
+-- (proved, or postulated for an unverified target). It is TOTAL on `Σ`:
+--   * `answerI`: an answering declaration's result for an argument, given the
+--     calls the program made before it — what it answers is the author's
+--     business;
+--   * `pureI`: a value declaration's value at an argument. It sees no history:
+--     a pure contract is referentially transparent (D250).
+-- An emitting or halting declaration owes no value. A declaration nobody can
+-- implement (an answering call into an empty type) makes `Impl Σ` empty: its
+-- author cannot discharge it, and no compiler claim becomes false.
+------------------------------------------------------------------------
+
+record Impl (Σ : ISig) : Set where
+  field
+    answerI : List SigOpEvent → (k : Key) → k ∈ answerKeys Σ → M.⟦ kdom k ⟧ → M.⟦ kcod k ⟧
+    pureI   : (k : Key) → k ∈ valueKeys Σ → M.⟦ kdom k ⟧ → M.⟦ kcod k ⟧
+open Impl public
