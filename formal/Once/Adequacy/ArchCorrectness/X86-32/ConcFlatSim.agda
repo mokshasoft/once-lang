@@ -265,7 +265,7 @@ open import Once.Adequacy.ArchCorrectness.ArithSimX86-32 using (val-x86-32)
 import Once.Arith.Backend.X86-32.RunTrace as RTx
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Unit using (⊤; tt)
-open import Once.SigOp.Info using (SigOpInfo; effect; EffectShape; Pure; Emits; Halts)
+open import Once.SigOp.Info using (SigOpInfo; effect; EffectShape; Pure; Emits; Halts; sem; Internal; External)
 open import Once.Type using (fits-int; fits-float)
 open import Once.Word using (Carrier)
 open import Once.Target.Symbol using (once-symbol-path)
@@ -736,7 +736,7 @@ postulate
                        -- THE REAL ENV (2026-07-30): over an arbitrary `env` the
                        -- conclusion `env sym ≡ just pl` is refuted by `λ _ → nothing`.
                        → env ≡ arith-env-x86-32 (compile-trace prog)
-                       → effect si ≡ Pure → CompiledCorr hv prog fs s → fetch prog (fpc fs) ≡ just (instr-sigop si)
+                       → Internal (sem si) → CompiledCorr hv prog fs s → fetch prog (fpc fs) ≡ just (instr-sigop si)
                        -- the payload is the BLOCK alone here — this arch's
                        -- `dispatch-arith` takes no fuel word (see
                        -- `x86-32-traceloop.Payload`).
@@ -756,6 +756,7 @@ postulate
                           -- THE REAL EXTRACTOR AND ENV (2026-07-30): over arbitrary
                           -- `ev`/`env` the emission claim is refuted by `λ _ _ → []`.
                           → ev ≡ ev-x86-32 → env ≡ arith-env-x86-32 (compile-trace prog)
+                          → External (sem si)
                           → CompiledCorr hv prog fs s
                           → fetch prog (fpc fs) ≡ just (instr-sigop si)
                           → (env (once-symbol-path (SigOpInfo.name si)) ≡ nothing)

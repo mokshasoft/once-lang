@@ -40,7 +40,7 @@ open import Once.CanonicalName using (CanonicalName; _≟ᶜ_)
 open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; sym)
 open import Data.Product using (_,_)
-open import Data.Sum using (inj₁; inj₂)
+open import Data.Sum using (_⊎_; inj₁; inj₂)
 
 open import Once.Type using (Type; Unit; Void)
 open import Once.Res using (Res; stopped; returns; is-stopped; mapRes)
@@ -291,6 +291,35 @@ semM-erase {A} {B} ans si tn x = go (sem si) refl
 
 effect : ∀ {A B} → SigOpInfo A B → EffectShape B
 effect si = effect-of (sem si)
+
+-- plan 0.105: WHOSE IMPLEMENTATION A SigOp IS — read off the constructor, the
+-- same split `EmittedWF.sigop-owed` makes. An INTERNAL SigOp is the compiler's:
+-- a proven value function whose body the compiler emits (an arith block). An
+-- EXTERNAL one is an interpretation's contract: the binary calls a symbol it
+-- does not define. The machine dispatches on THIS, never on the effect shape —
+-- a pure FFI contract is `Pure` and still external.
+data Internal {A B : Type} : SigOpSem A B → Set where
+  int-pure : ∀ {f} → Internal (pureV f)
+  int-prim : ∀ {p} → Internal (primV p)
+
+data External {A B : Type} : SigOpSem A B → Set where
+  ext-ffi   : External ffiV
+  ext-calls : External callsV
+  ext-emits : ∀ {e} → External (emitsV e)
+  ext-halts : ∀ {e} → External (haltsV e)
+
+sigop-owner : ∀ {A B} (s : SigOpSem A B) → Internal s ⊎ External s
+sigop-owner (pureV _)  = inj₁ int-pure
+sigop-owner (primV _)  = inj₁ int-prim
+sigop-owner ffiV       = inj₂ ext-ffi
+sigop-owner callsV     = inj₂ ext-calls
+sigop-owner (emitsV _) = inj₂ ext-emits
+sigop-owner (haltsV _) = inj₂ ext-halts
+
+-- An internal SigOp is pure: it neither logs nor halts.
+internal-pure : ∀ {A B} {s : SigOpSem A B} → Internal s → effect-of s ≡ Pure
+internal-pure int-pure = refl
+internal-pure int-prim = refl
 
 -- D250: a PURE contract's graded value — what the Spec means by it. The other
 -- shapes are not pure (`effect-of` says so), so the premise is absurd there.

@@ -340,7 +340,7 @@ open MemOps {FS} using (readLoc)
 open import Once.CCC.Label using (once)
 open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
 open FlatEventTrace {FS} using (event-of)
-open import Once.SigOp.Info using (SigOpInfo; effect; Pure)
+open import Once.SigOp.Info using (SigOpInfo; effect; Pure; sem; Internal; External)
 open import Once.Target.Symbol using (once-symbol-path)
 open import Data.Product using (Σ)
 -- (`zero` is BOTH a riscv64 register and `ℕ`'s constructor; the register is
@@ -613,7 +613,7 @@ postulate
                            prog fs s {A B} (si : SigOpInfo A B)
                        → EE.RunAt prog fs
                        → env ≡ arith-env-riscv64 (compile-trace prog)
-                       → effect si ≡ Pure → CompiledCorr hv prog fs s
+                       → Internal (sem si) → CompiledCorr hv prog fs s
                        → fetch prog (fpc fs) ≡ just (instr-sigop si)
                        → Σ (List XInstr × ℕ)
                            (λ pl → env (once-symbol-path (SigOpInfo.name si)) ≡ just pl
@@ -626,6 +626,7 @@ postulate
                           → EE.RunAt prog fs
                           → ev ≡ ev-riscv64
                           → env ≡ arith-env-riscv64 (compile-trace prog)
+                          → External (sem si)
                           → CompiledCorr hv prog fs s
                           → fetch prog (fpc fs) ≡ just (instr-sigop si)
                           → (env (once-symbol-path (SigOpInfo.name si)) ≡ nothing)

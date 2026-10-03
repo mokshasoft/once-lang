@@ -17,6 +17,10 @@
 -- the identity); any other codomain gets the unit sentinel `0`
 -- (`unit-storedvalue`), as the flat machine writes it.
 --
+-- A pure FFI call is answered from the interpretation's PURE half, which is
+-- what the flat machine computes for it (`semM (fs-ffi FS)`); the two halves
+-- of a world need not agree, so the resolver must say which half a label is.
+--
 -- WHICH call a label is, and its argument, is the per-arch label→SigOp
 -- resolution boundary (`CallResolver`), the same trust class as each arch's
 -- event extractor and arith environment: the symbol table and argument
@@ -28,7 +32,7 @@ module Once.Arith.Backend.CallAnswer where
 open import Data.Nat using (ℕ)
 open import Data.List using (List)
 open import Data.Maybe using (Maybe; maybe′)
-open import Data.Product using (Σ; _,_)
+open import Once.CanonicalName using (CanonicalName)
 open import Data.String using (String)
 
 open import Once.Type using (Type; Int; Float)
@@ -43,13 +47,25 @@ answer-word Int   v = v
 answer-word Float v = v
 answer-word _     _ = 0
 
--- The answering call a label is at a state, and its argument.
+-- What an external call a label is at a state resolves to, with its argument:
+-- an ANSWERING call (the world answers it, given the calls before it), or a
+-- PURE FFI call (plan 0.105: the interpretation's pure half, a fixed function —
+-- no history, no event). An emitting or halting call resolves to `nothing`.
+data ResolvedCall : Set where
+  answering : (o : CallOp) → M.⟦ cdom o ⟧ → ResolvedCall
+  pure-ffi  : (nm : CanonicalName) (A B : Type) → M.⟦ A ⟧ → ResolvedCall
+
 CallResolver : Set → Set
-CallResolver State = String → State → Maybe (Σ CallOp λ o → M.⟦ cdom o ⟧)
+CallResolver State = String → State → Maybe ResolvedCall
+
+-- The word a resolved call leaves in the return register.
+resolved-word : Interp → List SigOpEvent → ResolvedCall → ℕ
+resolved-word ι h (answering o a)    = answer-word (ccod o) (Interp.answer ι h o a)
+resolved-word ι h (pure-ffi nm A B a) = answer-word B (Interp.pure ι nm A B a)
 
 -- What the world answers there, as the word the callee leaves behind; a label
--- that is no answering call (an emitting or halting one) leaves the sentinel.
+-- that resolves to no value-returning call (an emitting or halting one) leaves
+-- the sentinel.
 answer-at : ∀ {State : Set} → Interp → CallResolver State
           → List SigOpEvent → String → State → ℕ
-answer-at ι res h lbl s =
-  maybe′ (λ { (o , a) → answer-word (ccod o) (Interp.answer ι h o a) }) 0 (res lbl s)
+answer-at ι res h lbl s = maybe′ (resolved-word ι h) 0 (res lbl s)

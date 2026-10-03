@@ -16276,3 +16276,17 @@ a DEFINED step: each arch's `external-sigop-contract`. Open: the arith/FFI split
 split by `SigOpSem` constructor), `SigOp.decode-boxed` (decodes a boxed argument from the pointer
 alone, memory-independent; looks inconsistent), and the extraction gate (an input-reading exit
 test with two differing reads).
+
+**Amendment (2026-10-03): the dispatch split landed; the `∀ ι` is VACUOUS as stated.**
+* `sigop-step` routes on `sigop-owner (sem si)` (`Internal`: `pureV`/`primV`, the compiler's
+  arith blocks; `External`: `ffiV`/`callsV`/`emitsV`/`haltsV`). `arith-sigop-contract` takes
+  `Internal`, `external-sigop-contract` takes `External`, so neither is stated where Phase 0
+  found it false. The concrete call resolver can name a PURE FFI call (`pure-ffi`), answered
+  from `ι`'s pure half, which is what the flat machine computes for `ffiV`.
+* FOUND (machine-checked, `Once/Probe/InterpEmpty.agda`): `Interp → ⊥`. `answer` must answer
+  every `CallOp`, and `callOp n Unit base-Unit Void` asks it for an inhabitant of `⟦ Void ⟧`;
+  the pure half `FFIAnswers` has the same hole at `B = Void`. So no interpretation exists and the
+  apex's `∀ ι` (decision 5) quantifies over an empty type. The cause is the "one universal
+  signature" of the Phase 2 design: decision 2 and §3 of the plan meant an interpretation of
+  THE PROGRAM's contracts ("a program importing an uninhabited contract has no interpretation"),
+  not of every conceivable one. OPEN: the fix is a design decision (see plan 0.105).

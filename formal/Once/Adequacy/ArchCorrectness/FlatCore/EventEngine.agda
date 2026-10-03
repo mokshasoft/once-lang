@@ -41,7 +41,7 @@ open import Once.CCC.FrameSemantics using (FrameSemantics; frame-word)
 open import Once.Adequacy.ArchCorrectness.FlatCore.RegRoles using (RegRoles)
 import Once.Adequacy.ArchCorrectness.FlatCore.RegRoles as RR
 open import Once.CCC.Machine.SMCore using (AbstractTrace; AbstractInstr; instr-sigop)
-open import Once.SigOp.Info using (SigOpInfo; effect; Pure)
+open import Once.SigOp.Info using (SigOpInfo; effect; Pure; sem; Internal; External)
 open import Once.Target.Symbol using (once-symbol-path)
 open import Once.CCC.Label using (Label; LabelId; _≡ᵇᴸ_)
 open import Once.CanonicalName using (CanonicalName)
@@ -496,7 +496,10 @@ record Supply : Set₁ where
                             (si : SigOpInfo A B)
                         → RunAt prog fs
                         → env ≡ arith-env (compile-trace prog)
-                        → effect si ≡ Pure → CompiledCorr hv prog fs s
+                        -- plan 0.105: the COMPILER's SigOp (its body is an
+                        -- emitted arith block) — not every `Pure` one: a pure
+                        -- FFI contract is `Pure` and external.
+                        → Internal (sem si) → CompiledCorr hv prog fs s
                         → fetch prog (fpc fs) ≡ just (instr-sigop si)
                         → Σ Payload (λ pl → env (once-symbol-path (SigOpInfo.name si)) ≡ just pl
                             × CompiledCorr hv prog (flat-exec-instr (instr-sigop si) prog fs)
@@ -505,6 +508,10 @@ record Supply : Set₁ where
                                prog fs s {A B} (si : SigOpInfo A B)
                            → RunAt prog fs
                            → ev ≡ ev-arch → env ≡ arith-env (compile-trace prog)
+                           -- plan 0.105: an interpretation's contract (Phase 0:
+                           -- unconditioned, `env sym ≡ nothing` is false for an
+                           -- arith block).
+                           → External (sem si)
                            → CompiledCorr hv prog fs s
                            → fetch prog (fpc fs) ≡ just (instr-sigop si)
                            → (env (once-symbol-path (SigOpInfo.name si)) ≡ nothing)

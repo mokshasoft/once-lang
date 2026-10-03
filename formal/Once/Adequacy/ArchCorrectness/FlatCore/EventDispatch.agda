@@ -51,7 +51,7 @@ open import Once.CCC.FrameSemantics using (FrameSemantics; frame-word)
 open import Once.Adequacy.ArchCorrectness.FlatCore.RegRoles using (RegRoles)
 import Once.Adequacy.ArchCorrectness.FlatCore.RegRoles as RR
 open import Once.CCC.Machine.SMCore using (AbstractTrace; AbstractInstr; instr-sigop)
-open import Once.SigOp.Info using (SigOpInfo; effect; Pure)
+open import Once.SigOp.Info using (SigOpInfo; effect; Pure; sem; sigop-owner; Internal; External; internal-pure)
 open import Once.Target.Symbol using (once-symbol-path)
 open import Once.CCC.Label using (Label; LabelId; _≡ᵇᴸ_)
 open import Once.CanonicalName using (CanonicalName)
@@ -960,11 +960,11 @@ module Dispatch (sup : Supply) where
   -- the flat post-state is halted and both tails run to [] (events-agree's halted case).
   sigop-external : ∀ {hv : HeapView} n → EventsIH n → ∀ (ev : RT.EvExtractor) (env : RT.ArithEnv)
                      prog fs s {A B} (si : SigOpInfo A B) → CompiledCorr hv prog fs s → FlatInv ev env prog fs → halted (floc fs) ≡ false
-                 → fetch prog (fpc fs) ≡ just (instr-sigop si)
+                 → fetch prog (fpc fs) ≡ just (instr-sigop si) → External (sem si)
                  → Σ ℕ (λ M → RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s
                        ≡ event-of (instr-sigop si) fs ++ flat-events n prog (flat-exec-instr (instr-sigop si) prog fs))
-  sigop-external n IH ev env prog fs s si cc wf h ftq = suc (proj₁ rec) , goal
-    where contract = external-sigop-contract ev env prog fs s si (inv-run wf) (inv-ev wf) (inv-env wf) cc ftq
+  sigop-external n IH ev env prog fs s si cc wf h ftq ext = suc (proj₁ rec) , goal
+    where contract = external-sigop-contract ev env prog fs s si (inv-run wf) (inv-ev wf) (inv-env wf) ext cc ftq
           lbl = once-symbol-path (SigOpInfo.name si)
           rec = IH ev env prog (flat-exec-instr (instr-sigop si) prog fs)
                   (ret-call (LocState.ev-log (floc fs)) lbl s) (proj₂ (proj₂ contract))
@@ -980,7 +980,7 @@ module Dispatch (sup : Supply) where
                                (proj₁ (proj₂ contract)) log≡)
                         (cong (event-of (instr-sigop si) fs ++_) (proj₂ rec)))
 
-  -- SIGOP engine. Split on effect si (J-bridge, no with): Pure ⇒ arith — the run-events
+  -- SIGOP engine. Split on WHOSE the SigOp is (`sigop-owner`, plan 0.105): internal ⇒ arith — the run-events
   -- mechanics are PROVEN (sigop-run-arith: pc-align + run-events-arith), event-of is []
   -- (event-of-pure), recurse via events-agree on the flat post-state; the only residual
   -- is `arith-sigop-contract` (the offline arith obligation). Emits/Halts ⇒ external
@@ -990,12 +990,17 @@ module Dispatch (sup : Supply) where
                → fetch prog (fpc fs) ≡ just (instr-sigop si)
                → Σ ℕ (λ M → RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s
                      ≡ event-of (instr-sigop si) fs ++ flat-events n prog (flat-exec-instr (instr-sigop si) prog fs))
-  sigop-step {hv} n IH ev env prog fs s {A} {B} si cc wf h ftq = go-eff (effect si) refl
-    where go-eff : ∀ (e : EffectShape B) → effect si ≡ e
+  sigop-step {hv} n IH ev env prog fs s {A} {B} si cc wf h ftq = route (sigop-owner (sem si))
+    where route : Internal (sem si) ⊎ External (sem si)
                  → Σ ℕ (λ M → RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s
                        ≡ event-of (instr-sigop si) fs ++ flat-events n prog (flat-exec-instr (instr-sigop si) prog fs))
-          go-eff Pure eqe = suc (proj₁ rec) , goal
-            where contract = arith-sigop-contract env prog fs s si (inv-run wf) (inv-env wf) eqe cc ftq
+          -- plan 0.105: an EXTERNAL SigOp — an interpretation's contract, pure
+          -- FFI included (whose event is empty) — is a call of a symbol the
+          -- binary does not define.
+          route (inj₂ ext) = sigop-external n IH ev env prog fs s si cc wf h ftq ext
+          route (inj₁ int) = suc (proj₁ rec) , goal
+            where eqe = internal-pure int
+                  contract = arith-sigop-contract env prog fs s si (inv-run wf) (inv-env wf) int cc ftq
                   pl  = proj₁ contract
                   rec = IH ev env prog (flat-exec-instr (instr-sigop si) prog fs)
                           (dispatchArith pl s) (proj₂ (proj₂ contract))
@@ -1010,11 +1015,6 @@ module Dispatch (sup : Supply) where
                     trans (sigop-run-arith ev env (LocState.ev-log (floc fs)) (proj₁ rec) prog fs s si pl cc h ftq (proj₁ (proj₂ contract)))
                           (trans (cong (λ lg → RT.run-events ev env lg (proj₁ rec) (compile-trace prog) (dispatchArith pl s)) log≡)
                                  (proj₂ rec))
-          go-eff (Emits _) eqe = sigop-external n IH ev env prog fs s si cc wf h ftq
-          go-eff (Halts _) eqe = sigop-external n IH ev env prog fs s si cc wf h ftq
-          -- plan 0.105: an ANSWERING SigOp is an external call too — it emits its
-          -- event, and what it returns is the interpretation's (the contract's).
-          go-eff Answers   eqe = sigop-external n IH ev env prog fs s si cc wf h ftq
 
 
   mutual
