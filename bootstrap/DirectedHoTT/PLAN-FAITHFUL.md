@@ -2,7 +2,7 @@
 
 > Opened 2026-09-29, after PLAN-LEVITATION Stage 6. Branch
 > `ocp-0009-levitation` (no rebase for now).
-> ✅ **F1–F5 DONE 2026-09-30** (commit `4e6e46904`). ⬜ **F6 (decoding, the converse) opened 2026-10-02**, scheduled after PLAN-BIDI S7b. Next: PLAN-BIDI, after
+> ✅ **F1–F5 DONE 2026-09-30** (commit `4e6e46904`). 🟡 **F6 (decoding, the converse) opened 2026-10-02; started 2026-10-03, BEFORE PLAN-BIDI S7b (user).** Next: PLAN-BIDI, after
 > PLAN-LEVITATION's clean measurement (`HANDOFF-2026-10-02.md` §4).
 
 ## Goal
@@ -43,7 +43,7 @@ ships REDUCTION lemmas for its methods. `Lib/SynTrav` ships typings only.
 | F3 | op agreement | `sub0`, `wk`, the SubEnv ops (`nrsK`, `pairSK`, `fsucSK`, `methSK`, `lift2K`, `iinstK`, `MethTyK`, `iinstTmK`, `pwShK`, `wk2uK`): Represents for CONS/LIFT/WK environments |
 | F4 | side conditions | the `Preds` families and `Pw` are COMPLETE for Spec's `NoNatC`, `stkA?`, `stkC?`, `flat?`, `pw?`/`pwBody` |
 | F5 | `enJudge` | mutual maps from Spec derivations through the constructors; F2/F3 bridge indices by `⊢conv` |
-| F6 | ⬜ **decoding** (adequacy, the converse) | every CLOSED Knot inhabitant at a quoted judgement comes from a Spec derivation — see below; after PLAN-BIDI S7b |
+| F6 | 🟡 **decoding** (adequacy, the converse) | every CLOSED Knot inhabitant at a quoted judgement comes from a Spec derivation — see below; NOW, before PLAN-BIDI S7b |
 
 ## ⬜ F6 — the OTHER half: decoding (opened 2026-10-02)
 
@@ -75,9 +75,35 @@ adequacy of an encoding, is both directions:
   are not adequate in general, as usual for such theorems.
 - **Expected cost:** inversion on closed `IMu` inhabitants per row, plus
   the backward agreements. Real, but no kernel change.
-- **When:** after PLAN-BIDI S7b, once the Knot's rows are hand-written
-  core definitions and stable. Decoding generated rows that are about
-  to be replaced is waste.
+- **When:** ★ **NOW (user, 2026-10-03), before S7b:** "adding invariants
+  that shape and limit is always good". F6 is the oracle the S7b
+  migration runs against: a hand-written family is done when F5 AND F6
+  hold for it. Decoding proofs of generated rows will be rewritten when
+  their family migrates; that cost is accepted.
+
+### F6 stages (2026-10-03)
+
+Statement shape, per family (closed Knot terms, `◇`):
+
+    decTm : ◇ ⊢ k ∷ IMu JT D⊢ (tmIx (dep Γ) ⌜Γ⌝ ⌜t⌝ ⌜A⌝) → Γ ⊢ t ∷ A
+    decPw : ◇ ⊢ k ∷ ⌜Pw⌝-family at (⌜c⌝, ⌜b⌝)          → pw? c ≡ true × pwBody c ≡ b
+    (likewise ⊢ty, ∋, ⟶, ⟶ᵀ, ≅, ≅ᵀ, the Preds families)
+
+The core is stated on NORMAL closed inhabitants and recurses on `sz`
+(the `Canonicity.prog` pattern); F6.6 wraps it with `wnorm` + SR.
+
+| | step | what |
+| --- | --- | --- |
+| F6.0 | `Lib/Decode` (generic) | closed-normal inversion: `con-dec` (at `IMu I D i` a closed normal is `con p`, `p` normal at `El (dpay I D (app D i))`); `pay-dec` (at `dpay I D C` with `C ⟶*` `dι`/`dσ S f`/`dρ j C'`: `unit`/`pair a b`, each normal and typed); tags (`⌜Fin⌝ c` ⇒ `tag k`, `k < c`), `FinI d` ⇒ a numeral below `d`, `⌜Nat⌝` ⇒ a numeral, `⌜Id⌝ c a b` ⇒ `idrefl`, `a ≅ b` |
+| F6.1 | `Lib/SynDecode` (generic) | a closed normal `SK sg s ⌜d⌝` is `conₗ k p` with `p`'s fields as normal `Args` — the converse of `⊢payArgsF` |
+| F6.2 | `Knot/Unquote` | closed normal `⌜Ty⌝`/`⌜Tm⌝`/`Ctx` inhabitants ARE quotes (a 51-way dispatch on the tag, generated with the quotation); quotes are normal; `⌜x⌝ ≅ ⌜y⌝ → x ≡ y` (Church–Rosser + normality + injectivity) |
+| F6.3 | `Lib/SynFibDecode` (generic) | a closed normal inhabitant of a `SynFib` family at a subject of head `k` is one of `k`'s rows, with its payload — the converse of `fib-β` + `⊢conRow` |
+| F6.4 | backward agreements | `op ⌜x⌝ ≅ ⌜y⌝ → y ≡ op x` for every F3 operation: forward agreement + F6.2 injectivity |
+| F6.5 | per family, bottom-up | `Pw` and `Preds` (F4⁻¹) → `∋` → `⟶`/`⟶ᵀ` → `≅`/`≅ᵀ` → `⊢ty`/`⊢` (F5⁻¹): each row's payload back to its Spec constructor |
+| F6.6 | the wrapper | an arbitrary closed typed `k`: `wnorm`, SR, then the normal decoder |
+
+**Pilot: `Pw`** (two rows, no dependency on other families, and S7b's
+pilot too). It drives F6.0–F6.3 end to end before any big family.
 
 ## Log
 
