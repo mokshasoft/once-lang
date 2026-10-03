@@ -37,6 +37,7 @@ import DirectedHoTT.Lib.ArithLe
 import DirectedHoTT.Lib.ArithMonus
 import DirectedHoTT.Lib.BoolNum
 import DirectedHoTT.Lib.CongMacro
+import DirectedHoTT.Lib.Decode
 import DirectedHoTT.Lib.Dvd
 import DirectedHoTT.Lib.DvdArith
 import DirectedHoTT.Lib.Eval
@@ -72,6 +73,7 @@ import DirectedHoTT.Lib.Sorted
 import DirectedHoTT.Lib.Strong
 import DirectedHoTT.Lib.Sugar
 import DirectedHoTT.Lib.Syn
+import DirectedHoTT.Lib.SynDecode
 import DirectedHoTT.Lib.SynFam
 import DirectedHoTT.Lib.SynFib
 import DirectedHoTT.Lib.SynPat
