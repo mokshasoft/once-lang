@@ -73,7 +73,7 @@ open import Once.IRTy.WF using (wf-⌈⌉)
 open import Relation.Binary.PropositionalEquality using (subst; sym)
 open import Once.Denotation.Trace using (SigOpEvent; mkEvent)
 open import Once.Res using (Res; returns; stopped; mapRes)
-open import Once.Denotation.TraceMonad using (T; ret; call; halt; callOp; haltOp; returnT; _>>=T_; fmapT)
+open import Once.Denotation.TraceMonad using (T; ret; call; halt; callOp; haltOp; returnT; _>>=T_; fmapT; resT)
 open import Data.Bool using (false)
 
 -- Plan 0.58 (OCP-0006): the IR-FREE value domain `⟦_⟧ᴰ` + `forget`/`inject` +
@@ -158,7 +158,7 @@ sigOpSemT fmt ans si (pureV f)     x = ret (Val.eraseᵍ (f fmt x))
 sigOpSemT fmt ans si (primV p)     x = ret (Val.eraseᵍ (primSem p fmt x))
 sigOpSemT fmt ans {A} si (emitsV refl) x = call (callOp (name si) A (baseA si) Unit) x (λ _ → ret tt)
 sigOpSemT fmt ans {A} si (haltsV refl) x = halt (haltOp (name si) A (baseA si)) x
-sigOpSemT fmt ans {A} {B} si ffiV  x = ret (ans (name si) A B x)
+sigOpSemT fmt ans {A} {B} si ffiV  x = resT (ans (name si) A B x)
 sigOpSemT fmt ans {A} {B} si callsV x = call (callOp (name si) A (baseA si) B) x ret
 
 sigOpT : (fmt : TargetNum) → FFIAnswers → ∀ {A B} → SigOpInfo A B → Val.⟦ A ⟧ → T Val.⟦ B ⟧

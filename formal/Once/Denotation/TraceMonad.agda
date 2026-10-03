@@ -43,9 +43,15 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong
 
 open import Once.Postulates using (extensionality)
 open import Once.Res using (Res; stopped; returns; is-stopped; mapRes; Res-rel; rel-stopped; rel-returns)
-open import Once.Type using (Type)
+open import Once.Type using (Type) renaming (Unit to UnitT)
 open import Once.Functor.Translate using (IsBaseType)
-open import Once.CanonicalName using (CanonicalName)
+open import Once.CanonicalName using (CanonicalName; _≟ᶜ_; gen)
+open import Once.Type.DecEq using (_≟T_)
+open import Relation.Nullary using (Dec; yes; no)
+open import Relation.Binary.Definitions using (DecidableEquality)
+import Data.List.Membership.DecPropositional as DecMem
+open import Data.List.Membership.Propositional using (_∈_)
+open import Once.Functor.Translate using (base-Unit)
 open import Once.Word using (Carrier)
 import Once.Semantics.Value Carrier Carrier as M
 open import Once.Denotation.Trace using (SigOpEvent; mk-event)
@@ -153,19 +159,77 @@ fmapT->>=T g m f = >>=T-assoc m _ f
 -- Running against an interpretation
 ------------------------------------------------------------------------
 
--- An INTERPRETATION has two halves (D061: a SigOp's contract comes from its
+-- A CONTRACT KEY: what a world can provide — an operation's name with its
+-- declared domain and codomain.
+record Key : Set where
+  constructor key
+  field
+    kname : CanonicalName
+    kdom  : Type
+    kcod  : Type
+open Key public
+
+callKey : CallOp → Key
+callKey o = key (cname o) (cdom o) (ccod o)
+
+_≟K_ : DecidableEquality Key
+key n A B ≟K key n′ A′ B′ = go (n ≟ᶜ n′) (A ≟T A′) (B ≟T B′)
+  where
+    go : Dec (n ≡ n′) → Dec (A ≡ A′) → Dec (B ≡ B′) → Dec (key n A B ≡ key n′ A′ B′)
+    go (yes refl) (yes refl) (yes refl) = yes refl
+    go (no ¬p) _ _ = no λ { refl → ¬p refl }
+    go (yes _) (no ¬p) _ = no λ { refl → ¬p refl }
+    go (yes _) (yes _) (no ¬p) = no λ { refl → ¬p refl }
+
+open DecMem _≟K_ public using () renaming (_∈?_ to _∈K?_)
+
+-- An INTERPRETATION is a world that PROVIDES contracts (plan 0.105, D257 (A)):
+-- the answering operations it implements (`calls`) and the pure ones
+-- (`pures`), each with its answer (D061: a SigOp's contract comes from its
 -- interpretation, off-line; the compiler is interpretation-agnostic):
---   * `answer`: an answering call's result, given the calls before it — what
---     it answers is its own business (its contract); it is never asked a
---     halting call;
---   * `pure`: a pure FFI contract's value. It sees no history: a pure
+--   * `answer`: a provided answering call's result, given the calls before
+--     it — what it answers is its own business (its contract);
+--   * `pure`: a provided pure FFI contract's value. It sees no history: a pure
 --     contract is referentially transparent (D250), so this is a fixed
 --     function of its argument.
+-- It answers ONLY what it provides. A world asked to answer every conceivable
+-- contract does not exist (`Once.Probe.InterpEmpty`, before this change): some
+-- codomains are empty. A program is linked against a world that provides its
+-- own contracts; which ones it imports is the program's business.
 record Interp : Set where
   field
-    answer : List SigOpEvent → (o : CallOp) → M.⟦ cdom o ⟧ → M.⟦ ccod o ⟧
-    pure   : FFIAnswers
+    calls  : List Key
+    pures  : List Key
+    answer : List SigOpEvent → (o : CallOp) → callKey o ∈ calls → M.⟦ cdom o ⟧ → M.⟦ ccod o ⟧
+    pure   : (k : Key) → k ∈ pures → M.⟦ kdom k ⟧ → M.⟦ kcod k ⟧
 open Interp public
+
+-- The world that provides nothing: an interpretation exists.
+no-world : Interp
+no-world = record { calls = [] ; pures = [] ; answer = λ _ _ () ; pure = λ _ () }
+
+-- The RESERVED operation an unlinked call halts on: a call the world does not
+-- provide, or an internal call the table does not define (D244).
+unlinkedOp : HaltOp
+unlinkedOp = haltOp (gen "unlinked") UnitT base-Unit
+
+-- Halting on it.
+unlinkedT : ∀ {X} → T X
+unlinkedT = halt unlinkedOp tt
+
+-- A partial answer as a computation: a value, or unlinked.
+resT : ∀ {X} → Res X → T X
+resT (returns x) = ret x
+resT stopped     = unlinkedT
+
+-- A world's pure half, as the IR reads it: a provided contract's value, or
+-- `stopped` for one it does not provide (unreachable for a linked program).
+pureHalf-at : ∀ (ι : Interp) (k : Key) → Dec (k ∈ pures ι) → M.⟦ kdom k ⟧ → Res M.⟦ kcod k ⟧
+pureHalf-at ι k (yes p) x = returns (pure ι k p x)
+pureHalf-at ι k (no _)  x = stopped
+
+pureHalf : Interp → FFIAnswers
+pureHalf ι n A B = pureHalf-at ι (key n A B) (key n A B ∈K? pures ι)
 
 -- The calls a run makes, and how it ended.
 Run : Set → Set
@@ -177,10 +241,16 @@ consE e r = (e ∷ proj₁ r) , proj₂ r
 appE : ∀ {X} → List SigOpEvent → Run X → Run X
 appE es r = (es ++ proj₁ r) , proj₂ r
 
-run : ∀ {X} → Interp → List SigOpEvent → T X → Run X
+-- A call the world provides is answered; one it does not provide halts on the
+-- reserved operation (the run is total; a linked program never reaches it).
+run      : ∀ {X} → Interp → List SigOpEvent → T X → Run X
+run-call : ∀ {X} (ι : Interp) → List SigOpEvent → (o : CallOp) → M.⟦ cdom o ⟧ → (M.⟦ ccod o ⟧ → T X)
+         → Dec (callKey o ∈ calls ι) → Run X
 run ι h (ret x)      = [] , returns x
-run ι h (call o a k) = consE (callEvent o a) (run ι (h ++ [ callEvent o a ]) (k (answer ι h o a)))
+run ι h (call o a k) = run-call ι h o a k (callKey o ∈K? calls ι)
 run ι h (halt o a)   = [ haltEvent o a ] , stopped
+run-call ι h o a k (yes p) = consE (callEvent o a) (run ι (h ++ [ callEvent o a ]) (k (answer ι h o p a)))
+run-call ι h o a k (no _)  = [ haltEvent unlinkedOp tt ] , stopped
 
 -- Sequencing: the second run sees the first's calls.
 thenRes : ∀ {X Y} → Interp → List SigOpEvent → List SigOpEvent → Res X → (X → T Y) → Run Y
@@ -195,11 +265,17 @@ mutual
   run-bind : ∀ {X Y} (ι : Interp) (h : List SigOpEvent) (m : T X) (f : X → T Y)
            → run ι h (m >>=T f) ≡ then ι h (run ι h m) f
   run-bind ι h (ret x)      f = cong (λ hh → run ι hh (f x)) (sym (++-identityʳ h))
-  run-bind ι h (call o a k) f =
-    trans (cong (consE (callEvent o a)) (run-bind ι (h ++ [ callEvent o a ]) (k (answer ι h o a)) f))
-          (cons-then ι h (callEvent o a)
-             (proj₁ (run ι (h ++ [ callEvent o a ]) (k (answer ι h o a)))) (proj₂ (run ι (h ++ [ callEvent o a ]) (k (answer ι h o a)))) f)
+  run-bind ι h (call o a k) f = run-bind-call ι h o a k f (callKey o ∈K? calls ι)
   run-bind ι h (halt o a)   f = refl
+
+  run-bind-call : ∀ {X Y} (ι : Interp) (h : List SigOpEvent) (o : CallOp) (a : M.⟦ cdom o ⟧)
+                    (k : M.⟦ ccod o ⟧ → T X) (f : X → T Y) (d : Dec (callKey o ∈ calls ι))
+                → run-call ι h o a (λ b → k b >>=T f) d ≡ then ι h (run-call ι h o a k d) f
+  run-bind-call ι h o a k f (yes p) =
+    trans (cong (consE (callEvent o a)) (run-bind ι (h ++ [ callEvent o a ]) (k (answer ι h o p a)) f))
+          (cons-then ι h (callEvent o a)
+             (proj₁ (run ι (h ++ [ callEvent o a ]) (k (answer ι h o p a)))) (proj₂ (run ι (h ++ [ callEvent o a ]) (k (answer ι h o p a)))) f)
+  run-bind-call ι h o a k f (no _) = refl
 
   cons-then : ∀ {X Y} ι h e es (r : Res X) (f : X → T Y)
             → consE e (then ι (h ++ [ e ]) (es , r) f) ≡ then ι h (consE e (es , r)) f
@@ -356,14 +432,19 @@ RelT′-≡ g rel-halt       = refl
 RelT′-events : ∀ {X Y : Set} {R : X → Y → Set} (ι : Interp) (h : List SigOpEvent) {m : T X} {m′ : T Y}
              → RelT′ R m m′ → proj₁ (run ι h m) ≡ proj₁ (run ι h m′)
 RelT′-events ι h (rel-ret _)  = refl
-RelT′-events ι h (rel-call {o} {a} hk) =
-  cong (callEvent o a ∷_) (RelT′-events ι (h ++ [ callEvent o a ]) (hk (answer ι h o a)))
+RelT′-events ι h (rel-call {o} {a} hk) = go (callKey o ∈K? calls ι)
+  where go : (d : Dec (callKey o ∈ calls ι)) → proj₁ (run-call ι h o a _ d) ≡ proj₁ (run-call ι h o a _ d)
+        go (yes p) = cong (callEvent o a ∷_) (RelT′-events ι (h ++ [ callEvent o a ]) (hk (answer ι h o p a)))
+        go (no _)  = refl
 RelT′-events ι h rel-halt     = refl
 
 RelT′-result : ∀ {X Y : Set} {R : X → Y → Set} (ι : Interp) (h : List SigOpEvent) {m : T X} {m′ : T Y}
              → RelT′ R m m′ → RelRes R (resultAt ι h m) (resultAt ι h m′)
 RelT′-result ι h (rel-ret r)  = rel-returns r
-RelT′-result ι h (rel-call {o} {a} hk) = RelT′-result ι (h ++ [ callEvent o a ]) (hk (answer ι h o a))
+RelT′-result ι h (rel-call {o} {a} hk) = go (callKey o ∈K? calls ι)
+  where go : (d : Dec (callKey o ∈ calls ι)) → RelRes _ (proj₂ (run-call ι h o a _ d)) (proj₂ (run-call ι h o a _ d))
+        go (yes p) = RelT′-result ι (h ++ [ callEvent o a ]) (hk (answer ι h o p a))
+        go (no _)  = rel-stopped
 RelT′-result ι h rel-halt     = rel-stopped
 
 ------------------------------------------------------------------------

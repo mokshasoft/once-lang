@@ -219,8 +219,11 @@ open SigOpInfo public
 -- `FFIAnswers` is that value, supplied by whoever has the interpretation (the
 -- machine builds it from the interpretation and its event log); internal
 -- operations ignore it.
+-- It is PARTIAL (D257 (A)): a world provides some contracts, not every
+-- conceivable one (some codomains are empty), so an unprovided one is
+-- `stopped` — unreachable for a program linked against that world.
 FFIAnswers : Set
-FFIAnswers = CanonicalName → (A B : Type) → M.⟦ A ⟧ → M.⟦ B ⟧
+FFIAnswers = CanonicalName → (A B : Type) → M.⟦ A ⟧ → Res M.⟦ B ⟧
 
 -- A base value in the graded domain (they coincide at first-order types).
 liftᵇ : ∀ {B} → IsBaseType B → M.⟦ B ⟧ → M.⟦ B ⟧ᵍ
@@ -250,8 +253,8 @@ semM-of ans n (pureV f)     = λ tn x → returns (M.eraseᵍ (f tn x))
 semM-of ans n (emitsV refl) = λ _ _ → returns tt
 semM-of ans n (haltsV refl) = λ _ _ → stopped
 semM-of ans n (primV p)     = λ tn x → returns (M.eraseᵍ (primSem p tn x))
-semM-of {A} {B} ans n ffiV   = λ _ x → returns (ans n A B x)
-semM-of {A} {B} ans n callsV = λ _ x → returns (ans n A B x)
+semM-of {A} {B} ans n ffiV   = λ _ x → ans n A B x
+semM-of {A} {B} ans n callsV = λ _ x → ans n A B x
 
 effect-of : ∀ {A B} → SigOpSem A B → EffectShape B
 effect-of (pureV _)  = Pure
@@ -263,31 +266,6 @@ effect-of callsV     = Answers
 
 semM : ∀ {A B} → FFIAnswers → SigOpInfo A B → TargetNum → M.⟦ A ⟧ → Res M.⟦ B ⟧
 semM ans si = semM-of ans (name si) (sem si)
-
--- D250: the same reading in the GRADED contract domain.
-semMᵍ : ∀ {A B} → FFIAnswers → SigOpInfo A B → TargetNum → M.⟦ A ⟧ → Res M.⟦ B ⟧ᵍ
-semMᵍ {A} {B} ans si = go (sem si)
-  where
-    go : SigOpSem A B → TargetNum → M.⟦ A ⟧ → Res M.⟦ B ⟧ᵍ
-    go (pureV f)     = λ tn x → returns (f tn x)
-    go (emitsV refl) = λ _ _ → returns tt
-    go (haltsV refl) = λ _ _ → stopped
-    go (primV p)     = λ tn x → returns (primSem p tn x)
-    go ffiV          = λ _ x → returns (liftᵇ (conB si) (ans (name si) A B x))
-    go callsV        = λ _ x → returns (liftᵇ (conB si) (ans (name si) A B x))
-
--- …and the machine reading IS the graded one, erased.
-semM-erase : ∀ {A B} (ans : FFIAnswers) (si : SigOpInfo A B) (tn : TargetNum) (x : M.⟦ A ⟧)
-           → semM ans si tn x ≡ mapRes M.eraseᵍ (semMᵍ ans si tn x)
-semM-erase {A} {B} ans si tn x = go (sem si) refl
-  where
-    go : (s : SigOpSem A B) → sem si ≡ s → semM ans si tn x ≡ mapRes M.eraseᵍ (semMᵍ ans si tn x)
-    go (pureV f)     refl = refl
-    go (emitsV refl) refl = refl
-    go (haltsV refl) refl = refl
-    go (primV p)     refl = refl
-    go ffiV          refl = cong returns (sym (eraseᵇ-liftᵇ (conB si) (ans (name si) A B x)))
-    go callsV        refl = cong returns (sym (eraseᵇ-liftᵇ (conB si) (ans (name si) A B x)))
 
 effect : ∀ {A B} → SigOpInfo A B → EffectShape B
 effect si = effect-of (sem si)
@@ -321,18 +299,16 @@ internal-pure : ∀ {A B} {s : SigOpSem A B} → Internal s → effect-of s ≡ 
 internal-pure int-pure = refl
 internal-pure int-prim = refl
 
--- D250: a PURE contract's graded value — what the Spec means by it. The other
--- shapes are not pure (`effect-of` says so), so the premise is absurd there.
-semP : ∀ {A B} (ans : FFIAnswers) (si : SigOpInfo A B) → effect si ≡ Pure → TargetNum → M.⟦ A ⟧ → M.⟦ B ⟧ᵍ
-semP {A} {B} ans si = semP-of (sem si)
+-- D250: an INTERNAL contract's graded value — what the Spec means by the
+-- compiler's own pure SigOps (arithmetic, literals). A pure FFI contract's
+-- value is the program's interpretation's, read from its environment
+-- (D257 (A)), never computed here.
+semP : ∀ {A B} (si : SigOpInfo A B) → Internal (sem si) → TargetNum → M.⟦ A ⟧ → M.⟦ B ⟧ᵍ
+semP {A} {B} si = semP-of (sem si)
   where
-    semP-of : (s : SigOpSem A B) → effect-of s ≡ Pure → TargetNum → M.⟦ A ⟧ → M.⟦ B ⟧ᵍ
-    semP-of (pureV f)  _  = f
-    semP-of (emitsV _) ()
-    semP-of (haltsV _) ()
-    semP-of (primV p)  _  = primSem p
-    semP-of ffiV       _  = λ _ x → liftᵇ (conB si) (ans (name si) A B x)
-    semP-of callsV     ()
+    semP-of : (s : SigOpSem A B) → Internal s → TargetNum → M.⟦ A ⟧ → M.⟦ B ⟧ᵍ
+    semP-of (pureV f) int-pure = f
+    semP-of (primV p) int-prim = primSem p
 
 -- | WHICH CONTRACT SHAPES END THE PROGRAM. 0.97 called this `stops-D-of` and
 --   kept it in the denotation; it belongs beside the contract it reads.
@@ -342,21 +318,6 @@ stops-shape (Emits _) = false
 stops-shape (Halts _) = true
 stops-shape Answers   = false
 
--- | …and THE TWO READINGS AGREE. This is the bridge a consumer who matched on
---   `effect si` needs in order to say anything about `semM si` — a proof now,
---   where 0.97 had a definitional coincidence.
-semM-stops-of : ∀ {A B} (ans : FFIAnswers) (n : CanonicalName) (sm : SigOpSem A B) (tn : TargetNum) (a : M.⟦ A ⟧)
-              → is-stopped (semM-of ans n sm tn a) ≡ stops-shape (effect-of sm)
-semM-stops-of ans n (pureV f)     tn a = refl
-semM-stops-of ans n (emitsV refl) tn a = refl
-semM-stops-of ans n (haltsV refl) tn a = refl
-semM-stops-of ans n (primV p)     tn a = refl
-semM-stops-of ans n ffiV          tn a = refl
-semM-stops-of ans n callsV        tn a = refl
-
-semM-stops : ∀ {A B} (ans : FFIAnswers) (si : SigOpInfo A B) (tn : TargetNum) (a : M.⟦ A ⟧)
-           → is-stopped (semM ans si tn a) ≡ stops-shape (effect si)
-semM-stops ans si = semM-stops-of ans (name si) (sem si)
 
 ------------------------------------------------------------------------
 -- Compatibility constructor — maps the old `(value, effect)` pair into

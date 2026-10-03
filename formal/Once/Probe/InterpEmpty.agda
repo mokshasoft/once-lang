@@ -1,14 +1,14 @@
--- PROBE (plan 0.105): is `Interp` inhabited? `answer` must answer every
--- `CallOp`, including one whose codomain is `Void`.
+-- PROBE (plan 0.105, D257 amendment). It used to prove `Interp → ⊥`:
+--
+--     interp-empty ι = answer ι [] (callOp (bare "x") Unit base-Unit Void) tt
+--
+-- — a world had to answer EVERY conceivable contract, some codomains are
+-- empty, so no world existed and the apex's `∀ ι` was vacuous. A world now
+-- PROVIDES contracts and answers only those (D257 (A)), so worlds exist; the
+-- witness is the world that provides nothing.
 module Once.Probe.InterpEmpty where
 
-open import Data.Empty using (⊥)
-open import Data.List using ([])
-open import Data.Unit using (tt)
-open import Once.Type using (Unit; Void)
-open import Once.Functor.Translate using (base-Unit)
-open import Once.CanonicalName using (bare)
-open import Once.Denotation.TraceMonad using (Interp; callOp; answer)
+open import Once.Denotation.TraceMonad using (Interp; no-world)
 
-interp-empty : Interp → ⊥
-interp-empty ι = answer ι [] (callOp (bare "x") Unit base-Unit Void) tt
+interp-inhabited : Interp
+interp-inhabited = no-world

@@ -48,7 +48,7 @@ open import Once.Memory.MemoryLayoutSemantics using (Addr)
 -- joins them rather than getting a second mechanism of its own.
 open import Once.Float.Dyadic using (FloatFormat)
 open import Once.SigOp.Info using (FFIAnswers)
-open import Once.Denotation.TraceMonad using (Interp)
+open import Once.Denotation.TraceMonad using (Interp; pureHalf)
 
 ------------------------------------------------------------------------
 -- FrameSemantics Interface (Adjacency-Based)
@@ -274,7 +274,7 @@ open FrameSemantics public
 
 -- The interpretation's pure half: what a pure FFI SigOp means.
 fs-ffi : FrameSemantics → FFIAnswers
-fs-ffi FS = Interp.pure (fs-interp FS)
+fs-ffi FS = pureHalf (fs-interp FS)
 
 open import Once.Target.Arch using (TargetNum; mkTargetNum)
 

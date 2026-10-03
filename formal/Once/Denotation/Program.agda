@@ -32,7 +32,7 @@ open import Once.IR using (IR; IRTy; Unit)
 open Once.IR.IR
 open import Once.IRTy using (_≟IRTy_; ⌈_⌉)
 open import Once.Target.Arch using (TargetNum)
-open import Once.Denotation.TraceMonad using (T; halt; haltOp)
+open import Once.Denotation.TraceMonad using (T; halt; haltOp; unlinkedT)
 open import Once.SigOp.Info using (FFIAnswers)
 open import Once.Functor.Translate using (base-Unit)
 open import Once.Type using () renaming (Unit to UnitT)
@@ -66,8 +66,6 @@ open IRFun public
 -- A call of a name the table does not hold. A linked program never makes one
 -- (`LinkedProgram`), but the environment must be total: the call HALTS, on a
 -- reserved operation, so the domain needs no silent stop (plan 0.105).
-unlinkedT : ∀ {X} → T X
-unlinkedT = halt (haltOp (gen "unlinked") UnitT base-Unit) tt
 
 -- The program's call environment: its table, then the interpretation's pure
 -- FFI contracts (plan 0.105).
