@@ -190,8 +190,8 @@ abs-⊢ Δ sg GT.⊢lit-str   = ⊢lit-str
 abs-⊢ Δ sg {Γ = Γ} {Ψ = Ψ} {π = π} (GT.⊢prim {t = t} p d) =
   subst (λ X → Δ ⊩ absCtx Δ Γ ⊢[ Ψ ] prim p (absTm Δ t) ∷ X ! π) (sym (primCod-abs Δ p))
     (⊢prim p (subst (λ X → Δ ⊩ absCtx Δ Γ ⊢[ Ψ ] absTm Δ t ∷ X ! π) (primDom-abs Δ p) (abs-⊢ Δ sg d)))
-abs-⊢ Δ sg {Γ = Γ} (GT.⊢sigop {A = A} c k h g) =
-  subst (λ X → Δ ⊩ absCtx Δ Γ ⊢[ C.zeroUsage ] sigop c A ∷ X ! T.pure) (sym (absTy-ground Δ g)) (⊢sigop c k h g)
+abs-⊢ Δ sg {Γ = Γ} (GT.⊢sigop {A = A} c k h g m) =
+  subst (λ X → Δ ⊩ absCtx Δ Γ ⊢[ C.zeroUsage ] sigop c A ∷ X ! T.pure) (sym (absTy-ground Δ g)) (⊢sigop c k h g m)
 abs-⊢ Δ sg (GT.⊢sub-eff g d) = ⊢sub-eff g (abs-⊢ Δ sg d)
 abs-⊢ Δ sg {Γ = Γ} (GT.⊢ref d τ r) =
   subst (λ X → Δ ⊩ absCtx Δ Γ ⊢[ C.zeroUsage ] ref d (λ i → absTy Δ (τ i)) ∷ X ! T.pure)

@@ -34,6 +34,8 @@ module Once.Spec.Elaboration {s : ℕ} (S : Sig s) where
 open import Data.Fin using (Fin; zero; suc)
 open import Data.Maybe using (just; nothing)
 open import Data.Product using (Σ; Σ-syntax; _×_; _,_; proj₁; proj₂)
+open import Data.Product using () renaming (_,_ to _,ᵈ_)
+open import Data.List.Membership.Propositional using (_∈_)
 open import Data.String using (String; _++_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; subst; cong)
 open import Relation.Nullary using (¬_)
@@ -53,7 +55,7 @@ open import Once.TypeCheck.Raw using (RawExpr;
 open import Once.TypeCheck.Classify using (NamedCtx; Imports; PolyCtx; lookupImport; lookupPolyPrefix;
   ctxWithImportsAndPolys)
 open import Once.TypeCheck.Judgment
-open import Once.Spec.Core.PolyTy using (_!!_; arity; kinds; type; Respects; GSub; _⟪_⟫)
+open import Once.Spec.Core.PolyTy using (sigOf; _!!_; arity; kinds; type; Respects; GSub; _⟪_⟫)
 open import Once.Spec.Core.Syntax S
 open import Once.Spec.Core.Typing S
 open import Once.Spec.Core.Derived S
@@ -71,13 +73,16 @@ InstanceOf d T = Σ[ τ ∈ GSub (arity (S !! d)) ] Respects (kinds (S !! d)) τ
 -- What a name in the imports table denotes: an FFI declaration (a SigOp,
 -- honest by D231) or one of the module's own definitions (D061/D071: an
 -- internal reference is a context projection, never a SigOp).
-data ImportAt (T : Type) : Set where
-  ffi : HonestFFI T → RigidFree T → ImportAt T
-  def : (d : Fin s) → InstanceOf d T → ImportAt T
+-- Plan 0.105 (D257 amendment 2): indexed by the import key `x` (the rendered
+-- path the table is keyed by), so an FFI entry carries its membership in the
+-- interpretation signatures the program is compiled against.
+data ImportAt (x : String) (T : Type) : Set where
+  ffi : HonestFFI T → RigidFree T → (x ,ᵈ T) ∈ sigOf S → ImportAt x T
+  def : (d : Fin s) → InstanceOf d T → ImportAt x T
 
 record View (imps : Imports) (polys : PolyCtx) : Set where
   field
-    imported : ∀ {x T} → lookupImport imps x ≡ just T → ImportAt T
+    imported : ∀ {x T} → lookupImport imps x ≡ just T → ImportAt x T
     entry  : ∀ {x sc body prefix} → lookupPolyPrefix polys x ≡ just (sc , body , prefix) → Fin s
     ground : ∀ {x sc body prefix} (lp : lookupPolyPrefix polys x ≡ just (sc , body , prefix)) (g : Ground sc)
            → InstanceOf (entry lp) (extractGround sc g)
@@ -132,9 +137,11 @@ coerceE {A = A} {B = B} p = lift1 (coerce A B) (⊢coerce p)
 refE : (d : Fin s) → InstanceOf d A → Elab Γ zeroUsage A
 refE {Γ = Γ} d (τ , r , eq) = ref d τ , subst (λ T → Γ ⊢[ zeroUsage ] ref d τ ∷ T ! pure) eq (⊢ref d τ r)
 
-importE : Once.CanonicalName.CanonicalName → IsConcrete A → ImportAt A → Elab Γ zeroUsage A
-importE {A = A} c k (ffi h g) = sigop c A , ⊢sigop c k h g
-importE         c k (def d i) = refE d i
+-- The reference's rendered path IS the key it was looked up under (`own x` =
+-- `bare x`, and a resolved reference is looked up at `showCanonical cn`).
+importE : (c : Once.CanonicalName.CanonicalName) → IsConcrete A → ImportAt (Once.CanonicalName.showCanonical c) A → Elab Γ zeroUsage A
+importE {A = A} c k (ffi h g m) = sigop c A , ⊢sigop c k h g m
+importE         c k (def d i)   = refE d i
 
 closeE : Elab ∅ zeroUsage A → Elab Γ zeroUsage A
 closeE (t , d) = close t , ⊢close d

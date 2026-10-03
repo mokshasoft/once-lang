@@ -219,7 +219,7 @@ module _ {n : ℕ} {Γ' Γ : C.Ctx n} where
   tr-prim {eΓ = refl} {refl} {refl} refl d = refl
 
   tr-sigop : ∀ {A c k h g} {eΓ : Γ' ≡ Γ} {et : G.sigop c A ≡ G.sigop c A} {eA : A ≡ A}
-           → tr eΓ et eA (GT.⊢sigop c k h g) ≡ GT.⊢sigop c k h g
+           → tr eΓ et eA (GT.⊢sigop c k h g m) ≡ GT.⊢sigop c k h g m
   tr-sigop {eΓ = refl} {refl} {refl} = refl
 
   tr-sub-eff : ∀ {Ψ π π′ A' A} {t' t : G.Tm n} {g}
@@ -361,7 +361,7 @@ module RoundTrip (Δ : KCtx 0) (σ : GSub 0) (r : Respects Δ σ) (sg : SigGroun
         (trans (tr-prim (rtT-id _) _)
           (cong (GT.⊢prim p) (trans (tr-subst (⌈⌉-⟪⟫ (G.primDom p) σ) _)
                                     (trans (tr-isubst {r = r} (primDom-abs Δ p) _) (irr (RT d) (RT-id d)))))))
-  RT-id (GT.⊢sigop {A = A} c k h g) =
+  RT-id (GT.⊢sigop {A = A} c k h g m) =
     trans (tr-isubst {r = r} (sym (absTy-ground Δ g)) _) (trans (tr-subst (sym (⌈⌉-⟪⟫ A σ)) _) tr-sigop)
   RT-id (GT.⊢sub-eff g d) = trans (tr-sub-eff (RT d)) (cong (GT.⊢sub-eff g) (RT-id d))
   RT-id (GT.⊢ref d τ k) =

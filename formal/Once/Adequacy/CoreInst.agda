@@ -98,8 +98,8 @@ module WithSG (sg : SigGround) where
   ρ̂ᶜ {Γ = Γ} {Ψ = Ψ} {π = π} (GT.⊢prim {t = t} p d) =
     subst (λ X → ρ̂S Γ ⊢[ Ψ ] G.prim p (ρ̂ₜ t) ∷ X ! π) (sym (ρ̂-cod p))
       (GT.⊢prim p (subst (λ X → ρ̂S Γ ⊢[ Ψ ] ρ̂ₜ t ∷ X ! π) (ρ̂-dom p) (ρ̂ᶜ d)))
-  ρ̂ᶜ {Γ = Γ} (GT.⊢sigop {A = A} c k h g) =
-    subst (λ X → ρ̂S Γ ⊢[ C.zeroUsage ] G.sigop c A ∷ X ! pure) (sym (ρ̂-rf g)) (GT.⊢sigop c k h g)
+  ρ̂ᶜ {Γ = Γ} (GT.⊢sigop {A = A} c k h g m) =
+    subst (λ X → ρ̂S Γ ⊢[ C.zeroUsage ] G.sigop c A ∷ X ! pure) (sym (ρ̂-rf g)) (GT.⊢sigop c k h g m)
   ρ̂ᶜ (GT.⊢sub-eff g d) = GT.⊢sub-eff g (ρ̂ᶜ d)
   ρ̂ᶜ {Γ = Γ} (GT.⊢ref d τ′ k) =
     subst (λ X → ρ̂S Γ ⊢[ C.zeroUsage ] G.ref d (λ i → ρ̂ (τ′ i)) ∷ X ! pure) (sym (ρ̂-ref d τ′))
@@ -202,7 +202,7 @@ module WithSG (sg : SigGround) where
               (trans (tr-subst (⌈⌉-⟪⟫ (G.primDom p) τ) _)
                 (trans (tr-isubst′ (primDom-abs Δ p) _)
                   (close (ρ̂S-abs Γ) _ (ρ̂-dom p) (inst-abs d))))))))
-  inst-abs {Γ = Γ} (GT.⊢sigop {A = A} c k h g) =
+  inst-abs {Γ = Γ} (GT.⊢sigop {A = A} c k h g m) =
     trans (tr-isubst′ (sym (absTy-ground Δ g)) _)
       (trans (tr-subst (sym (⌈⌉-⟪⟫ A τ)) _) (close (ρ̂S-abs Γ) _ (sym (ρ̂-rf g)) tr-sigop))
   inst-abs (GT.⊢sub-eff g d) = trans (tr-sub-eff (IA d)) (cong (GT.⊢sub-eff g) (inst-abs d))
@@ -422,7 +422,7 @@ module WithSG (sg : SigGround) where
       (H.trans (≅1 _ _ (GT.⊢prim p) (U≡ θ Ψ) (T≡ θ t)
                    (H.trans (rmA (λ X → X) (ρ̂-dom p)) (H.trans (ρ̂ᶜ-ren θ d) (H.sym (ren-sA (ρ̂θ θ) (λ X → X) (ρ̂-dom p))))))
                (H.sym (ren-sA (ρ̂θ θ) (λ X → X) (sym (ρ̂-cod p)))))
-  ρ̂ᶜ-ren θ (GT.⊢sigop c k h g) =
+  ρ̂ᶜ-ren θ (GT.⊢sigop c k h g m) =
     H.trans (ρ̂ᶜ-sU (sym (TH.thin-usage-zeroUsage θ)))
       (H.trans (rmA (λ X → X) (sym (ρ̂-rf g)))
         (H.sym (H.trans (ren-sA (ρ̂θ θ) (λ X → X) (sym (ρ̂-rf g))) (rmU (sym (TH.thin-usage-zeroUsage (ρ̂θ θ)))))))

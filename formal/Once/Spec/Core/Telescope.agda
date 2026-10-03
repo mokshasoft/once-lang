@@ -26,8 +26,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_; subst)
 
 import Once.Type as T
 open import Once.Target.Arch using (TargetNum)
-open import Once.Denotation.TraceMonad using (T; _>>=T_; projTrace; Interp)
-open import Once.SigOp.Info using (FFIAnswers)
+open import Once.Denotation.TraceMonad using (T; _>>=T_; projTrace; interp)
+open import Once.Spec.Contract using (ISig; Impl)
 open import Once.Denotation.Trace using (SigOpEvent)
 open import Once.Surface.Context using (Usage)
 open import Once.Spec.Core.PolyTy
@@ -40,7 +40,7 @@ open import Once.Denotation.GradedDomain using (⟦_⟧ᵛ)
 ------------------------------------------------------------------------
 
 data Tele : ∀ {s} → Sig s → Set where
-  []  : Tele []
+  []  : ∀ {Σ} → Tele ([] Σ)
   def : ∀ {s} {S : Sig s} → Tele S
       → (sc : Schema) (body : PT.PTm S (arity sc) 0)
       → PT._⊩_⊢[_]_∷_!_ S (kinds sc) PT.∅ Usage.[] body (type sc) T.pure
@@ -50,10 +50,11 @@ data Tele : ∀ {s} → Sig s → Set where
 -- The meaning of a telescope: the environment of its definitions' families
 ------------------------------------------------------------------------
 
--- Plan 0.105: over the interpretation's pure FFI contracts `φ`, which every
--- prefix shares (a definition may reference an FFI value).
-teleSem  : ∀ {s} {S : Sig s} → TargetNum → FFIAnswers → Tele S → GM.DefSem S
-teleDefs : ∀ {s} {S : Sig s} → TargetNum → FFIAnswers → (tl : Tele S) → (d : Fin s) (τ : GSub (arity (S !! d)))
+-- Plan 0.105 (D257 amendment 2): over an implementation `I` of the
+-- interpretation signatures the program is compiled against, which every
+-- prefix shares (a definition may reference a declared value).
+teleSem  : ∀ {s} {S : Sig s} → TargetNum → Impl (sigOf S) → Tele S → GM.DefSem S
+teleDefs : ∀ {s} {S : Sig s} → TargetNum → Impl (sigOf S) → (tl : Tele S) → (d : Fin s) (τ : GSub (arity (S !! d)))
          → Respects (kinds (S !! d)) τ → ⟦ type (S !! d) ⟪ τ ⟫ ⟧ᵛ
 teleDefs fmt φ (def tl sc body D) zero τ r =
   GM.⟦_⟧ _ (PT.instantiate _ τ r D) fmt (teleSem fmt φ tl) tt
@@ -94,10 +95,15 @@ noResp ()
 runEntry : (sc : Schema) → sc ≡ schema 0 noKinds IOUnit → EntrySem sc → T ⊤
 runEntry sc e f = subst EntrySem e f noVars noResp tt
 
+-- The interpretation signatures a program is compiled against.
+progSig : Program → ISig
+progSig p = sigOf (Program.sig p)
+
 -- THE CORE MEANING OF A PROGRAM: run its `main` entry (D250: an entry denotes a
 -- VALUE, here the suspension `Unit ⇒[eff] Unit`) in the telescope's
--- environment, AGAINST AN INTERPRETATION `ι` (plan 0.105: what the program's
--- FFI calls answer), and read the first `n` events of that run.
-runProgram : TargetNum → Interp → Program → ℕ → Data.List.List SigOpEvent
-runProgram fmt ι (program {sig = S} defs d e) n =
-  projTrace ι (runEntry (S !! d) e (GM.defs (teleSem fmt (Interp.pure ι) defs) d)) n
+-- environment, RELATIVE TO AN IMPLEMENTATION `I` of the signatures it is
+-- compiled against (plan 0.105, D061's three times: its author discharges `I`
+-- off-line), and read the first `n` events of that run.
+runProgram : TargetNum → (p : Program) → Impl (progSig p) → ℕ → Data.List.List SigOpEvent
+runProgram fmt (program {sig = S} defs d e) I n =
+  projTrace (interp (sigOf S) I) (runEntry (S !! d) e (GM.defs (teleSem fmt I defs) d)) n

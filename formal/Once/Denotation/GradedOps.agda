@@ -35,7 +35,9 @@ open import Once.Word using (Carrier)
 open import Once.Semantics.Functor using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF)
 open import Once.Res using (Res; stopped; returns; mapRes)
 open import Once.Target.Arch using (TargetNum)
-open import Once.CanonicalName using (CanonicalName)
+open import Once.CanonicalName using (CanonicalName; showCanonical)
+open import Data.List.Membership.Propositional using (_∈_)
+open import Once.Spec.Contract using (ISig; Impl; key; valueOf; value-∈; base-contract)
 open import Once.Denotation.TraceMonad using (T; ret; returnT; _>>=T_; fmapT)
 open import Once.Denotation.ValueDomain using (νᵈ; forceᵈ; anaᵈ; seqF)
 open import Once.Denotation.DenotTrace using (sigOpT)
@@ -203,17 +205,28 @@ out-semᵛ eff  {F} wf v = fmapT (λ layer → cf⁻¹ᵛ (ν-type F eff) wf (co
 -- first-order (`IsConcrete`), so both sides cross by the base conversions.
 ------------------------------------------------------------------------
 
-sigOpRefᵛ : ∀ {A} → TargetNum → FFIAnswers → CanonicalName → IsConcrete A → ⟦ A ⟧ᵛ
-sigOpRefᵛ {A} fmt φ cn (con-base ib) = injB ib (φ cn Unit A tt)
-sigOpRefᵛ fmt φ cn (con-fun {B = Cod} {k = mk-kind Zero pure} bDom bCod) =
-  λ _ → injB bCod (φ cn Unit Cod tt)
-sigOpRefᵛ fmt φ cn (con-fun {B = Cod} {k = mk-kind Zero eff} bDom bCod) =
-  λ _ → returnT (injB bCod (φ cn Unit Cod tt))
-sigOpRefᵛ fmt φ cn (con-fun {A = Dom} {B = Cod} {k = mk-kind One pure} bDom bCod) =
-  λ a → injB bCod (φ cn Dom Cod (prjB bDom a))
-sigOpRefᵛ fmt φ cn (con-fun {A = Dom} {B = Cod} {k = mk-kind Many pure} bDom bCod) =
-  λ a → injB bCod (φ cn Dom Cod (prjB bDom a))
-sigOpRefᵛ fmt φ cn (con-fun {A = Dom} {B = Cod} {k = mk-kind One eff} bDom bCod) =
-  λ a → fmapT (injB bCod) (sigOpT fmt φ (arrow-info {Dom} {Cod} (mk-kind One eff) cn bDom bCod) (prjB bDom a))
-sigOpRefᵛ fmt φ cn (con-fun {A = Dom} {B = Cod} {k = mk-kind Many eff} bDom bCod) =
-  λ a → fmapT (injB bCod) (sigOpT fmt φ (arrow-info {Dom} {Cod} (mk-kind Many eff) cn bDom bCod) (prjB bDom a))
+-- An effectful arrow's contract is a call, an emitted event or a halt: it never
+-- consults a pure contract, so its dispatch is given none.
+noPure : FFIAnswers
+noPure _ _ _ _ = stopped
+
+-- Plan 0.105 (D257 amendment 2): a reference to a SigOp the program is compiled
+-- against (`m`: its declaration in `Σ`). A VALUE contract reads the
+-- implementation (`valueOf`, the reading every layer shares); an effectful
+-- arrow's application is its call, answered when the program runs.
+sigOpRefᵛ : ∀ {A} → TargetNum → (Σ : ISig) → Impl Σ → (cn : CanonicalName) → IsConcrete A
+          → (showCanonical cn , A) ∈ Σ → ⟦ A ⟧ᵛ
+sigOpRefᵛ {A} fmt Σ I cn (con-base ib) m =
+  injB ib (valueOf I (key (showCanonical cn) Unit A) (value-∈ m (base-contract (showCanonical cn) ib)) tt)
+sigOpRefᵛ fmt Σ I cn (con-fun {B = Cod} {k = mk-kind Zero pure} bDom bCod) m =
+  λ _ → injB bCod (valueOf I (key (showCanonical cn) Unit Cod) (value-∈ m refl) tt)
+sigOpRefᵛ fmt Σ I cn (con-fun {B = Cod} {k = mk-kind Zero eff} bDom bCod) m =
+  λ _ → returnT (injB bCod (valueOf I (key (showCanonical cn) Unit Cod) (value-∈ m refl) tt))
+sigOpRefᵛ fmt Σ I cn (con-fun {A = Dom} {B = Cod} {k = mk-kind One pure} bDom bCod) m =
+  λ a → injB bCod (valueOf I (key (showCanonical cn) Dom Cod) (value-∈ m refl) (prjB bDom a))
+sigOpRefᵛ fmt Σ I cn (con-fun {A = Dom} {B = Cod} {k = mk-kind Many pure} bDom bCod) m =
+  λ a → injB bCod (valueOf I (key (showCanonical cn) Dom Cod) (value-∈ m refl) (prjB bDom a))
+sigOpRefᵛ fmt Σ I cn (con-fun {A = Dom} {B = Cod} {k = mk-kind One eff} bDom bCod) m =
+  λ a → fmapT (injB bCod) (sigOpT fmt noPure (arrow-info {Dom} {Cod} (mk-kind One eff) cn bDom bCod) (prjB bDom a))
+sigOpRefᵛ fmt Σ I cn (con-fun {A = Dom} {B = Cod} {k = mk-kind Many eff} bDom bCod) m =
+  λ a → fmapT (injB bCod) (sigOpT fmt noPure (arrow-info {Dom} {Cod} (mk-kind Many eff) cn bDom bCod) (prjB bDom a))

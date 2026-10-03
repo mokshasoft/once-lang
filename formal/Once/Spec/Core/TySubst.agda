@@ -192,8 +192,8 @@ tsubst σ r ⊢lit-str = ⊢lit-str
 tsubst {Δ′ = Δ′} {Γ = Γ} {Ψ = Ψ} {π = π} σ r (⊢prim {t = t} p d) =
   subst (λ X → Δ′ ⊩ Γ ⟨ σ ⟩ᶜ ⊢[ Ψ ] prim p (t ⟨ σ ⟩ₜ) ∷ X ! π) (sym (⌈⌉-⟨⟩ (primCod p) σ))
     (⊢prim p (subst (λ X → Δ′ ⊩ Γ ⟨ σ ⟩ᶜ ⊢[ Ψ ] t ⟨ σ ⟩ₜ ∷ X ! π) (⌈⌉-⟨⟩ (primDom p) σ) (tsubst σ r d)))
-tsubst {Δ′ = Δ′} {Γ = Γ} σ r (⊢sigop {A = A} c k h g) =
-  subst (λ X → Δ′ ⊩ Γ ⟨ σ ⟩ᶜ ⊢[ zeroUsage ] sigop c A ∷ X ! pure) (sym (⌈⌉-⟨⟩ A σ)) (⊢sigop c k h g)
+tsubst {Δ′ = Δ′} {Γ = Γ} σ r (⊢sigop {A = A} c k h g m) =
+  subst (λ X → Δ′ ⊩ Γ ⟨ σ ⟩ᶜ ⊢[ zeroUsage ] sigop c A ∷ X ! pure) (sym (⌈⌉-⟨⟩ A σ)) (⊢sigop c k h g m)
 tsubst σ r (⊢sub-eff g d) = ⊢sub-eff g (tsubst σ r d)
 tsubst {Δ′ = Δ′} {Γ = Γ} σ r (⊢ref d τ k) =
   subst (λ X → Δ′ ⊩ Γ ⟨ σ ⟩ᶜ ⊢[ zeroUsage ] ref d (λ i → τ i ⟨ σ ⟩) ∷ X ! pure)
