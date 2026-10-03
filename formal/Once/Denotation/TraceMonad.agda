@@ -46,7 +46,8 @@ open import Once.Res using (Res; stopped; returns; is-stopped; mapRes; Res-rel; 
 open import Once.Type using (Type; _⇒[_]_; mk-kind; Zero; One; Many; Void; isVoid?; isUnit?) renaming (Unit to UnitT)
 import Once.Type as Ty
 open import Once.Functor.Translate using (IsBaseType)
-open import Once.CanonicalName using (CanonicalName; _≟ᶜ_; gen)
+open import Once.CanonicalName using (CanonicalName; showCanonical; gen)
+open import Data.String using (String) renaming (_≟_ to _≟ˢ_)
 open import Once.Type.DecEq using (_≟T_)
 open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.Definitions using (DecidableEquality)
@@ -57,6 +58,7 @@ open import Once.Word using (Carrier)
 import Once.Semantics.Value Carrier Carrier as M
 open import Once.Denotation.Trace using (SigOpEvent; mk-event)
 open import Once.SigOp.Info using (FFIAnswers)
+open import Once.Spec.Contract using (Key; key; kname; kdom; kcod; _∈K?_; ISig; valueKeys; answerKeys)
 
 ------------------------------------------------------------------------
 -- The operations: one universal signature, keyed by the SigOp's identity
@@ -160,29 +162,9 @@ fmapT->>=T g m f = >>=T-assoc m _ f
 -- Running against an interpretation
 ------------------------------------------------------------------------
 
--- A CONTRACT KEY: what a world can provide — an operation's name with its
--- declared domain and codomain.
-record Key : Set where
-  constructor key
-  field
-    kname : CanonicalName
-    kdom  : Type
-    kcod  : Type
-open Key public
-
 callKey : CallOp → Key
-callKey o = key (cname o) (cdom o) (ccod o)
+callKey o = key (showCanonical (cname o)) (cdom o) (ccod o)
 
-_≟K_ : DecidableEquality Key
-key n A B ≟K key n′ A′ B′ = go (n ≟ᶜ n′) (A ≟T A′) (B ≟T B′)
-  where
-    go : Dec (n ≡ n′) → Dec (A ≡ A′) → Dec (B ≡ B′) → Dec (key n A B ≡ key n′ A′ B′)
-    go (yes refl) (yes refl) (yes refl) = yes refl
-    go (no ¬p) _ _ = no λ { refl → ¬p refl }
-    go (yes _) (no ¬p) _ = no λ { refl → ¬p refl }
-    go (yes _) (yes _) (no ¬p) = no λ { refl → ¬p refl }
-
-open DecMem _≟K_ public using () renaming (_∈?_ to _∈K?_)
 
 ------------------------------------------------------------------------
 -- INTERPRETATIONS (D061's three times; plan 0.105, D257 amendment 2)
@@ -193,46 +175,6 @@ open DecMem _≟K_ public using () renaming (_∈?_ to _∈K?_)
 -- (`contractOf`, read off the declared type as the elaborator reads it, D225):
 -- interpretations follow the compiler, and the compiler never looks inside one.
 ------------------------------------------------------------------------
-
--- An interpretation's declared signatures: each SigOp's canonical name and
--- declared FFI type.
-ISig : Set
-ISig = List (CanonicalName × Type)
-
--- What a declaration owes, in the compiler's contract form: a VALUE (a pure
--- contract — referentially transparent, D250 — or a zero-multiplicity
--- reference, which the meaning reads as a value), an ANSWER to a call (an
--- effectful arrow into data), or nothing (an effectful arrow into `Unit`
--- emits, into `Void` halts).
-data Contract : Set where
-  value   : Key → Contract
-  answers : Key → Contract
-  effect  : Contract
-
-contract-eff : CanonicalName → (A B : Type) → Dec (B ≡ Void) → Dec (B ≡ UnitT) → Contract
-contract-eff c A B (yes _) _       = effect
-contract-eff c A B (no _)  (yes _) = effect
-contract-eff c A B (no _)  (no _)  = answers (key c A B)
-
-contractOf : CanonicalName → Type → Contract
-contractOf c (A ⇒[ mk-kind Zero π ]    B) = value (key c UnitT B)
-contractOf c (A ⇒[ mk-kind One  Ty.pure ] B) = value (key c A B)
-contractOf c (A ⇒[ mk-kind Many Ty.pure ] B) = value (key c A B)
-contractOf c (A ⇒[ mk-kind One  Ty.eff ]  B) = contract-eff c A B (isVoid? B) (isUnit? B)
-contractOf c (A ⇒[ mk-kind Many Ty.eff ]  B) = contract-eff c A B (isVoid? B) (isUnit? B)
-contractOf c T                            = value (key c UnitT T)
-
-valueKeys answerKeys : ISig → List Key
-valueKeys []            = []
-valueKeys ((c , T) ∷ Σ) = go (contractOf c T)
-  where go : Contract → List Key
-        go (value k) = k ∷ valueKeys Σ
-        go _         = valueKeys Σ
-answerKeys []            = []
-answerKeys ((c , T) ∷ Σ) = go (contractOf c T)
-  where go : Contract → List Key
-        go (answers k) = k ∷ answerKeys Σ
-        go _           = answerKeys Σ
 
 -- An IMPLEMENTATION of `Σ` in the compiler's contract form — what its author
 -- discharges off-line. TOTAL on `Σ`:
@@ -292,7 +234,7 @@ pureHalf-at ι k (yes p) x = returns (pure ι k p x)
 pureHalf-at ι k (no _)  x = stopped
 
 pureHalf : Interp → FFIAnswers
-pureHalf ι n A B = pureHalf-at ι (key n A B) (key n A B ∈K? pures ι)
+pureHalf ι n A B = pureHalf-at ι (key (showCanonical n) A B) (key (showCanonical n) A B ∈K? pures ι)
 
 -- The calls a run makes, and how it ended.
 Run : Set → Set

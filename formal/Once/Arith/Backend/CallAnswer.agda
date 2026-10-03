@@ -32,14 +32,15 @@ module Once.Arith.Backend.CallAnswer where
 open import Data.Nat using (ℕ)
 open import Data.List using (List)
 open import Data.Maybe using (Maybe; maybe′)
-open import Once.CanonicalName using (CanonicalName)
+open import Once.CanonicalName using (CanonicalName; showCanonical)
 open import Data.String using (String)
 
 open import Once.Type using (Type; Int; Float)
 open import Once.Word using (Carrier)
 import Once.Semantics.Value Carrier Carrier as M
 open import Once.Denotation.Trace using (SigOpEvent)
-open import Once.Denotation.TraceMonad using (Interp; CallOp; cdom; ccod; Key; key; kdom; kcod; callKey; calls; pures; answer; pure; _∈K?_)
+open import Once.Denotation.TraceMonad using (Interp; CallOp; cdom; ccod; callKey; calls; pures; answer; pure)
+open import Once.Spec.Contract using (Key; key; kdom; kcod; _∈K?_)
 open import Relation.Nullary using (Dec; yes; no)
 open import Data.List.Membership.Propositional using (_∈_)
 
@@ -74,7 +75,7 @@ value-word ι k a (no _)  = 0
 
 resolved-word : Interp → List SigOpEvent → ResolvedCall → ℕ
 resolved-word ι h (answering o a)     = answering-word ι h o a (callKey o ∈K? calls ι)
-resolved-word ι h (pure-ffi nm A B a) = value-word ι (key nm A B) a (key nm A B ∈K? pures ι)
+resolved-word ι h (pure-ffi nm A B a) = value-word ι (key (showCanonical nm) A B) a (key (showCanonical nm) A B ∈K? pures ι)
 
 -- What the world answers there, as the word the callee leaves behind; a label
 -- that resolves to no value-returning call (an emitting or halting one) leaves
