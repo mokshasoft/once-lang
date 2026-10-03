@@ -16302,3 +16302,12 @@ membership) and an implementation `Impl Σ` in the compiler's contract form, tot
 unimplementable declaration fails its author's off-line discharge and makes no compiler claim
 false. Decision 5's statement becomes: for programs typed against `Σ` and every `Impl Σ`. Plan
 0.105 "RESOLVED" holds the phases.
+
+**Amendment 3 (2026-10-03): landed.** `Once.Certified` is green with the Spec stating, for the
+signatures a typed program is compiled against (`sigOf`) and EVERY `Implementation` of them,
+`exec arch (sigOf tp) I bytes ≈ ⟦ arch ⟧ˢ tp I`. Structural choices made on the way: the core
+signature is `Sig Fs s` (the FFI signatures are the type's parameter, so one module's walk shares
+them by type); `Linked` requires an FFI SigOp to be declared (the twin of table linking); an
+emitting call returns `tt` by the contract form; at the interpretation boundary a SigOp is keyed by
+its rendered canonical path. Open: `decode-unread`/`decode-boxed`, the extraction gate, and one FFI
+contract's several names (a front-end cleanup).
