@@ -36,10 +36,11 @@ open import Data.Nat.Properties using (0∸n≡0)
 open import Data.List using (List; []; _∷_; _++_; length; take; [_])
 open import Data.List.Properties using (++-assoc; ++-identityʳ)
 open import Data.Bool using (Bool; true; false)
+open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Empty using (⊥)
 open import Data.Unit using (⊤; tt)
 open import Data.Product using (Σ; ∃-syntax; _×_; _,_; proj₁; proj₂)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; trans; sym)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; trans; sym; subst)
 
 open import Once.Postulates using (extensionality)
 open import Once.Res using (Res; stopped; returns; is-stopped; mapRes; Res-rel; rel-stopped; rel-returns)
@@ -231,16 +232,28 @@ consE e r = (e ∷ proj₁ r) , proj₂ r
 appE : ∀ {X} → List SigOpEvent → Run X → Run X
 appE es r = (es ++ proj₁ r) , proj₂ r
 
--- A call the world provides is answered; one it does not provide halts on the
--- reserved operation (the run is total; a linked program never reaches it).
+-- WHAT A CALL RETURNS, by the contract form: an emitting call (into `Unit`)
+-- returns `tt` — it owes no answer; a declared answering call returns the
+-- implementation's answer, given the calls before it; anything else has no
+-- answer, and the run halts on the reserved operation (unreachable for a
+-- program linked against the interpretation's signatures).
+callAnswer-at : (ι : Interp) → List SigOpEvent → (o : CallOp) → M.⟦ cdom o ⟧
+              → Dec (ccod o ≡ UnitT) → Dec (callKey o ∈ calls ι) → Maybe M.⟦ ccod o ⟧
+callAnswer-at ι h o a (yes u) _       = just (subst M.⟦_⟧ (sym u) tt)
+callAnswer-at ι h o a (no _)  (yes p) = just (answer ι h o p a)
+callAnswer-at ι h o a (no _)  (no _)  = nothing
+
+callAnswer : (ι : Interp) → List SigOpEvent → (o : CallOp) → M.⟦ cdom o ⟧ → Maybe M.⟦ ccod o ⟧
+callAnswer ι h o a = callAnswer-at ι h o a (isUnit? (ccod o)) (callKey o ∈K? calls ι)
+
 run      : ∀ {X} → Interp → List SigOpEvent → T X → Run X
 run-call : ∀ {X} (ι : Interp) → List SigOpEvent → (o : CallOp) → M.⟦ cdom o ⟧ → (M.⟦ ccod o ⟧ → T X)
-         → Dec (callKey o ∈ calls ι) → Run X
+         → Maybe M.⟦ ccod o ⟧ → Run X
 run ι h (ret x)      = [] , returns x
-run ι h (call o a k) = run-call ι h o a k (callKey o ∈K? calls ι)
+run ι h (call o a k) = run-call ι h o a k (callAnswer ι h o a)
 run ι h (halt o a)   = [ haltEvent o a ] , stopped
-run-call ι h o a k (yes p) = consE (callEvent o a) (run ι (h ++ [ callEvent o a ]) (k (answer ι h o p a)))
-run-call ι h o a k (no _)  = [ haltEvent unlinkedOp tt ] , stopped
+run-call ι h o a k (just b) = consE (callEvent o a) (run ι (h ++ [ callEvent o a ]) (k b))
+run-call ι h o a k nothing  = [ haltEvent unlinkedOp tt ] , stopped
 
 -- Sequencing: the second run sees the first's calls.
 thenRes : ∀ {X Y} → Interp → List SigOpEvent → List SigOpEvent → Res X → (X → T Y) → Run Y
@@ -255,17 +268,17 @@ mutual
   run-bind : ∀ {X Y} (ι : Interp) (h : List SigOpEvent) (m : T X) (f : X → T Y)
            → run ι h (m >>=T f) ≡ then ι h (run ι h m) f
   run-bind ι h (ret x)      f = cong (λ hh → run ι hh (f x)) (sym (++-identityʳ h))
-  run-bind ι h (call o a k) f = run-bind-call ι h o a k f (callKey o ∈K? calls ι)
+  run-bind ι h (call o a k) f = run-bind-call ι h o a k f (callAnswer ι h o a)
   run-bind ι h (halt o a)   f = refl
 
   run-bind-call : ∀ {X Y} (ι : Interp) (h : List SigOpEvent) (o : CallOp) (a : M.⟦ cdom o ⟧)
-                    (k : M.⟦ ccod o ⟧ → T X) (f : X → T Y) (d : Dec (callKey o ∈ calls ι))
-                → run-call ι h o a (λ b → k b >>=T f) d ≡ then ι h (run-call ι h o a k d) f
-  run-bind-call ι h o a k f (yes p) =
-    trans (cong (consE (callEvent o a)) (run-bind ι (h ++ [ callEvent o a ]) (k (answer ι h o p a)) f))
+                    (k : M.⟦ ccod o ⟧ → T X) (f : X → T Y) (mb : Maybe M.⟦ ccod o ⟧)
+                → run-call ι h o a (λ b → k b >>=T f) mb ≡ then ι h (run-call ι h o a k mb) f
+  run-bind-call ι h o a k f (just b) =
+    trans (cong (consE (callEvent o a)) (run-bind ι (h ++ [ callEvent o a ]) (k b) f))
           (cons-then ι h (callEvent o a)
-             (proj₁ (run ι (h ++ [ callEvent o a ]) (k (answer ι h o p a)))) (proj₂ (run ι (h ++ [ callEvent o a ]) (k (answer ι h o p a)))) f)
-  run-bind-call ι h o a k f (no _) = refl
+             (proj₁ (run ι (h ++ [ callEvent o a ]) (k b))) (proj₂ (run ι (h ++ [ callEvent o a ]) (k b))) f)
+  run-bind-call ι h o a k f nothing = refl
 
   cons-then : ∀ {X Y} ι h e es (r : Res X) (f : X → T Y)
             → consE e (then ι (h ++ [ e ]) (es , r) f) ≡ then ι h (consE e (es , r)) f
@@ -422,19 +435,19 @@ RelT′-≡ g rel-halt       = refl
 RelT′-events : ∀ {X Y : Set} {R : X → Y → Set} (ι : Interp) (h : List SigOpEvent) {m : T X} {m′ : T Y}
              → RelT′ R m m′ → proj₁ (run ι h m) ≡ proj₁ (run ι h m′)
 RelT′-events ι h (rel-ret _)  = refl
-RelT′-events ι h (rel-call {o} {a} hk) = go (callKey o ∈K? calls ι)
-  where go : (d : Dec (callKey o ∈ calls ι)) → proj₁ (run-call ι h o a _ d) ≡ proj₁ (run-call ι h o a _ d)
-        go (yes p) = cong (callEvent o a ∷_) (RelT′-events ι (h ++ [ callEvent o a ]) (hk (answer ι h o p a)))
-        go (no _)  = refl
+RelT′-events ι h (rel-call {o} {a} hk) = go (callAnswer ι h o a)
+  where go : (mb : Maybe M.⟦ ccod o ⟧) → proj₁ (run-call ι h o a _ mb) ≡ proj₁ (run-call ι h o a _ mb)
+        go (just b) = cong (callEvent o a ∷_) (RelT′-events ι (h ++ [ callEvent o a ]) (hk b))
+        go nothing  = refl
 RelT′-events ι h rel-halt     = refl
 
 RelT′-result : ∀ {X Y : Set} {R : X → Y → Set} (ι : Interp) (h : List SigOpEvent) {m : T X} {m′ : T Y}
              → RelT′ R m m′ → RelRes R (resultAt ι h m) (resultAt ι h m′)
 RelT′-result ι h (rel-ret r)  = rel-returns r
-RelT′-result ι h (rel-call {o} {a} hk) = go (callKey o ∈K? calls ι)
-  where go : (d : Dec (callKey o ∈ calls ι)) → RelRes _ (proj₂ (run-call ι h o a _ d)) (proj₂ (run-call ι h o a _ d))
-        go (yes p) = RelT′-result ι (h ++ [ callEvent o a ]) (hk (answer ι h o p a))
-        go (no _)  = rel-stopped
+RelT′-result ι h (rel-call {o} {a} hk) = go (callAnswer ι h o a)
+  where go : (mb : Maybe M.⟦ ccod o ⟧) → RelRes _ (proj₂ (run-call ι h o a _ mb)) (proj₂ (run-call ι h o a _ mb))
+        go (just b) = RelT′-result ι (h ++ [ callEvent o a ]) (hk b)
+        go nothing  = rel-stopped
 RelT′-result ι h rel-halt     = rel-stopped
 
 ------------------------------------------------------------------------

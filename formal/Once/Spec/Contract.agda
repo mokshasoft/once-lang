@@ -15,7 +15,7 @@
 module Once.Spec.Contract where
 
 open import Data.List using (List; []; _∷_)
-open import Data.Product using (_×_; _,_)
+open import Data.Product using (Σ; _×_; _,_)
 open import Data.String using (String) renaming (_≟_ to _≟ˢ_)
 open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.Definitions using (DecidableEquality)
@@ -57,6 +57,13 @@ open import Data.List.Relation.Unary.Any using (here; there)
 
 _∈K?_ : (k : Key) (ks : List Key) → Dec (k ∈ ks)
 _∈K?_ = DecMem._∈?_ _≟K_
+
+-- A decision on a membership that holds is `yes` (of the decided proof).
+yes-of : ∀ {k ks} → k ∈ ks → Σ (k ∈ ks) (λ p₀ → (k ∈K? ks) ≡ yes p₀)
+yes-of {k} {ks} p = go (k ∈K? ks)
+  where go : (d : Dec (k ∈ ks)) → Σ (k ∈ ks) (λ p₀ → d ≡ yes p₀)
+        go (yes p₀) = p₀ , refl
+        go (no ¬p)  = ⊥-elim (¬p p)
 
 -- An interpretation's declared signatures: each SigOp's canonical name and
 -- declared FFI type.

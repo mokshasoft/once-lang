@@ -14,8 +14,13 @@
 open import Once.CanonicalName using (CanonicalName)
 open import Data.List using (List)
 open import Once.Denotation.Program using (IRFun; LinkedAt; Linked)
+open import Once.Spec.Contract using (ISig)
 
 module Once.CCC.Codegen.CallsLinked (o : CanonicalName) (tbl : List IRFun) where
+
+-- plan 0.105: only the CALLS matter here; the signatures linkedness also
+-- carries are any.
+private variable σ : ISig
 
 open import Data.Nat using (ℕ; suc; _+_; _≤_; s≤s; z≤n; _*_)
 open import Data.Unit using (⊤; tt)
@@ -217,7 +222,7 @@ cata-dispatch-cl (strat-branching F) bb n1 l1  at ih = cata-branching-cl F bb n1
 -- THE THEOREM, over arbitrary frontier `n` / label counter `l`.
 ------------------------------------------------------------------------
 
-calls-trace' : ∀ {A B} (ir : IR A B) (n l : ℕ) → Linked tbl ir
+calls-trace' : ∀ {A B} (ir : IR A B) (n l : ℕ) → Linked σ tbl ir
              → CLTrace (trace-of (ir-to-trace' n l ir))
 calls-trace' id       n l _ = tt ∷ []
 calls-trace' fst      n l _ = tt ∷ []
@@ -309,7 +314,7 @@ resuspend-cl n l lbl (wf-Sum wfF wfG) =
                                load-from-slot (suc n) ∷ []))
     arm tag ih = tt ∷ tt ∷ ++⁺ ih (tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ [])
 
-calls-blocks : ∀ {A B} (ir : IR A B) (n l : ℕ) → Linked tbl ir
+calls-blocks : ∀ {A B} (ir : IR A B) (n l : ℕ) → Linked σ tbl ir
              → CLTrace (blocks-layout (bodies-of (ir-to-trace' n l ir)))
 calls-blocks id       n l _ = []
 calls-blocks fst      n l _ = []
@@ -359,8 +364,8 @@ calls-blocks (Cata {F} _ alg) n l la = calls-blocks alg 0 l la
 -- Over the public entry points.
 ------------------------------------------------------------------------
 
-ir-to-trace-calls : ∀ {A B} (ir : IR A B) → Linked tbl ir → CLTrace (ir-to-trace ir)
+ir-to-trace-calls : ∀ {A B} (ir : IR A B) → Linked σ tbl ir → CLTrace (ir-to-trace ir)
 ir-to-trace-calls ir lk = ++⁺ (calls-trace' ir 0 0 lk) (tt ∷ calls-blocks ir 0 0 lk)
 
-ir-to-trace-lab-calls : ∀ {A B} (ir : IR A B) (l : ℕ) → Linked tbl ir → CLTrace (ir-to-trace-lab l ir)
+ir-to-trace-lab-calls : ∀ {A B} (ir : IR A B) (l : ℕ) → Linked σ tbl ir → CLTrace (ir-to-trace-lab l ir)
 ir-to-trace-lab-calls ir l lk = ++⁺ (calls-trace' ir 0 l lk) (tt ∷ calls-blocks ir 0 l lk)

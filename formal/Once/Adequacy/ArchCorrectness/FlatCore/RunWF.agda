@@ -110,6 +110,7 @@ open import Once.CCC.Label using (EntryId; e-fn; _≡ᵇᴱ_; _≟ᴱ_)
 open import Once.CanonicalName using (_≟ᶜ_)
 open import Once.IRTy using (_≟IRTy_)
 open import Once.Denotation.Program using (IRFun; irProgram; fname; fdom; fcod; fbody; Linked; LinkedAt; LinkedAt-at; LinkedProgram)
+open import Once.Spec.Contract using (ISig)
 open import Data.List.Relation.Unary.All.Properties using (++⁺)
 open import Once.CCC.Codegen.ProgramImageFacts o using (image-frame-free; image-alloc-min; image-slots; image-jump-in-segment)
 open import Once.IR using (IR; Unit)
@@ -158,13 +159,13 @@ open import Once.Adequacy.ArchCorrectness.FlatCore.RunContext o FS slot-size wor
 ------------------------------------------------------------------------
 
 private
-  fns-calls : ∀ (tbl : List IRFun) (l : ℕ) (es : List IRFun) → AllL (λ e → Linked tbl (fbody e)) es
+  fns-calls : ∀ {σ : ISig} (tbl : List IRFun) (l : ℕ) (es : List IRFun) → AllL (λ e → Linked σ tbl (fbody e)) es
             → AllL (CallOKI tbl) (fns-image l es)
   fns-calls tbl l []       allL-[]          = allL-[]
   fns-calls tbl l (e ∷ es) (le allL∷ les) =
     ++⁺ (tt allL∷ CLk.ir-to-trace-lab-calls (fname e) tbl (fbody e) l le) (fns-calls tbl (fn-next l e) es les)
 
-  image-calls : ∀ (tbl : List IRFun) (ir : IR Unit Unit) → LinkedProgram (irProgram tbl ir)
+  image-calls : ∀ {σ : ISig} (tbl : List IRFun) (ir : IR Unit Unit) → LinkedProgram σ (irProgram tbl ir)
               → AllL (CallOKI tbl) (program-image o (irProgram tbl ir))
   image-calls tbl ir (lm , les) = ++⁺ (CLk.ir-to-trace-calls o tbl ir lm) (fns-calls tbl _ tbl les)
 

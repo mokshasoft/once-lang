@@ -43,6 +43,8 @@ open import Once.CanonicalName using (CanonicalName)
 
 import Data.List as DL
 open import Once.Denotation.Program using (IRFun; tableEnv; Linked)
+import Once.Denotation.TraceMonad as TM
+import Once.CCC.FrameSemantics
 module Once.CCC.Codegen.IRObsCorrectFlat (o : CanonicalName) (tbl : DL.List IRFun) where
 
 -- The shared vocabulary comes in ONCE, publicly: `Machine` re-exports
@@ -85,7 +87,9 @@ module IRObsCorrectFlatness {FS : FrameSemantics} where
   -- its own clause and its own named obligation, in `Once.IR`'s order — so a
   -- constructor that is added, removed or renamed is a TYPE ERROR here rather
   -- than a silent variable pattern absorbing it (the retired-ctor trap).
-  ir-obs-correct : ∀ {A B} (ir : IR A B) → Linked tbl ir → IRObsCorrectF ir
+  -- plan 0.105: linked against the signatures the machine's interpretation
+  -- declares, so every FFI SigOp in `ir` is declared there.
+  ir-obs-correct : ∀ {A B} (ir : IR A B) → Linked (TM.sig (Once.CCC.FrameSemantics.fs-interp FS)) tbl ir → IRObsCorrectF ir
   -- category structure
   ir-obs-correct id                  _ = obs-correct-id
   ir-obs-correct (g ∘ f)             (lg , lf) = comp-obs-correct (ir-obs-correct g lg) (ir-obs-correct f lf)
@@ -112,6 +116,6 @@ module IRObsCorrectFlatness {FS : FrameSemantics} where
   ir-obs-correct (Ana wf f)          _ = obs-correct-Ana wf f
   -- misc
   ir-obs-correct (const fit v)       _ = obs-correct-const fit v
-  ir-obs-correct (SigOp si)          _ = obs-correct-sigop si
+  ir-obs-correct (SigOp si)          d = obs-correct-sigop si d
   -- D245: a direct call of a LINKED table entry.
   ir-obs-correct (Call f)            lk = obs-correct-call f lk

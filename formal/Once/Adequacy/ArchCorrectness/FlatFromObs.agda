@@ -46,6 +46,9 @@ open import Once.CanonicalName using (CanonicalName)
 
 open import Data.List using (List)
 open import Once.Denotation.Program using (IRFun; tableEnv; tableEnv-good; irProgram; runIR-good; Linked; LinkedProgram; fname; fbody)
+open import Once.Spec.Contract using (ISig)
+import Once.Denotation.TraceMonad as TM
+import Once.CCC.FrameSemantics
 module Once.Adequacy.ArchCorrectness.FlatFromObs (o : CanonicalName) (tbl : List IRFun)
   (arch          : Arch)
   (FS            : FrameSemantics)
@@ -467,21 +470,25 @@ entry-witness ir ioc brs k =
 ------------------------------------------------------------------------
 
 IOC : Set
-IOC = ∀ {A B} (ir : IR A B) → Linked tbl ir → IRObsCorrectF ir
+-- plan 0.105: the signatures the world `FS` runs in declares.
+σFS : ISig
+σFS = TM.sig (Once.CCC.FrameSemantics.fs-interp FS)
 
-entry-vr : (ir : IR Unit Unit) → LinkedProgram (irProgram tbl ir) → IOC → (brs : BlockRunsT) → (k : ℕ)
+IOC = ∀ {A B} (ir : IR A B) → Linked σFS tbl ir → IRObsCorrectF ir
+
+entry-vr : (ir : IR Unit Unit) → LinkedProgram σFS (irProgram tbl ir) → IOC → (brs : BlockRunsT) → (k : ℕ)
          → ValueRealized (image ir) 0 0 0 ir tt entry-s
              (entry-alloc (ir-stack-budget ir)) (SV-Tag 0) k
 entry-vr ir lk ioc brs k = MachineRefinesObsF.value-realized (entry-witness ir (ioc ir (proj₁ lk)) brs k)
 
-flat-trace-fam : IOC → BlockRunsT → (ir : IR Unit Unit) → LinkedProgram (irProgram tbl ir) → ℕ → List SigOpEvent
+flat-trace-fam : IOC → BlockRunsT → (ir : IR Unit Unit) → LinkedProgram σFS (irProgram tbl ir) → ℕ → List SigOpEvent
 flat-trace-fam ioc brs ir lk n =
   take n (flat-events (ValueRealized.steps (entry-vr ir lk ioc brs n) + 0)
                       (image ir) (mkFlat entry-s (entry-alloc (ir-stack-budget ir)) 0))
 
 -- D113/D115: at THIS target's NUMERICS, which is where `IRObsCorrectFlat`'s
 -- `evalᴰ` alias reads them from too, so the two sides mean one thing.
-ir-flat-correct-fam : (ioc : IOC) (brs : BlockRunsT) (ir : IR Unit Unit) (lk : LinkedProgram (irProgram tbl ir)) (n : ℕ)
+ir-flat-correct-fam : (ioc : IOC) (brs : BlockRunsT) (ir : IR Unit Unit) (lk : LinkedProgram σFS (irProgram tbl ir)) (n : ℕ)
                     → flat-trace-fam ioc brs ir lk n
                       ≡ at (⟦ just (irProgram tbl ir) ⟧IR (Once.CCC.FrameSemantics.fs-numerics FS)
                               (Once.CCC.FrameSemantics.fs-interp FS)) n
@@ -495,13 +502,13 @@ ir-flat-correct-fam ioc brs ir lk n =
 
 -- …and THAT is what makes the machine's family a `Behavior`: it borrows the
 -- three laws from the denotation it is proved equal to (`behavior-by`).
-flat-main : IOC → BlockRunsT → (ir : IR Unit Unit) → LinkedProgram (irProgram tbl ir) → Behavior
+flat-main : IOC → BlockRunsT → (ir : IR Unit Unit) → LinkedProgram σFS (irProgram tbl ir) → Behavior
 flat-main ioc brs ir lk =
   behavior-by (⟦ just (irProgram tbl ir) ⟧IR (Once.CCC.FrameSemantics.fs-numerics FS) (Once.CCC.FrameSemantics.fs-interp FS))
               (flat-trace-fam ioc brs ir lk)
               (λ n → sym (ir-flat-correct-fam ioc brs ir lk n))
 
-ir-flat-correct-main : (ioc : IOC) (brs : BlockRunsT) (ir : IR Unit Unit) (lk : LinkedProgram (irProgram tbl ir)) (n : ℕ)
+ir-flat-correct-main : (ioc : IOC) (brs : BlockRunsT) (ir : IR Unit Unit) (lk : LinkedProgram σFS (irProgram tbl ir)) (n : ℕ)
                      → at (flat-main ioc brs ir lk) n
                        ≡ at (⟦ just (irProgram tbl ir) ⟧IR (arch-numerics arch) (Once.CCC.FrameSemantics.fs-interp FS)) n
 ir-flat-correct-main ioc brs ir lk n =

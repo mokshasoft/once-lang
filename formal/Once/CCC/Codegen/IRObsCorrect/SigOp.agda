@@ -44,6 +44,12 @@ import Once.Denotation.TraceMonad as TM
 open import Once.Denotation.ValueDomain using (forgetᵇ; injectᵇ; cohᴰ)
 open import Once.Res using (Res; stopped; returns; returns-inj)
 open import Data.Product using (Σ)
+open import Once.Spec.Contract using (key; yes-of; _∈K?_)
+open import Relation.Nullary using (Dec; yes; no)
+open import Once.Type using (isUnit?)
+open import Once.Denotation.Program using (Declared; Declared-at)
+open import Once.CanonicalName using (showCanonical)
+open import Once.Res using (is-stopped)
 open import Once.SigOp.Info using (SigOpSem; sem; effect-of; semM; baseA; conB; name;
                                    pureV; primV; emitsV; haltsV; ffiV; callsV)
 
@@ -52,11 +58,13 @@ module SigOpC {FS : FrameSemantics} where
   open Core {FS}
   open FlatEventTrace {FS} using (ev-of-loc)
   open Mach {FS}
-  open AbstractExec {FS} using (decode-arg; machine-event; sigop-events; sigop-events-of; exec-sigop-output; res-sv; call-sigop-val; call-sigop-output)
+  open AbstractExec {FS} using (decode-arg; machine-event; sigop-events; sigop-events-of; exec-sigop-output; res-sv; call-sigop-val; call-sigop-output; call-sigop-ans)
 
   private
     fmt = Once.CCC.FrameSemantics.fs-numerics FS
     φ   = TM.pureHalf ιᶠ
+    -- plan 0.105: the signatures the machine's interpretation declares.
+    σᶠ  = TM.sig ιᶠ
 
   ------------------------------------------------------------------------
   -- The denotation of a SigOp node, at its contract. A SigOp's argument and
@@ -203,31 +211,38 @@ module SigOpC {FS : FrameSemantics} where
 
   -- A call-free contract's value, read the same way by the machine (`semM`)
   -- and the denotation (`sigOpSemT`).
-  pure-agree : ∀ {A B} (si : SigOpInfo A B) (c : SigOpSem A B) → effect-of c ≡ Pure → ∀ a
+  -- plan 0.105: a pure FFI contract is read at its DECLARATION — the shared
+  -- membership decision is `yes`, so both readers take the implementation.
+  pure-agree : ∀ {A B} (si : SigOpInfo A B) (c : SigOpSem A B) → effect-of c ≡ Pure → Declared-at σᶠ si c → ∀ a
              → Σ (EvV.⟦ B ⟧) λ w → (Once.SigOp.Info.semM-of φ (name si) c fmt a ≡ returns w)
                                   × (DT.sigOpSemT fmt φ si c a ≡ TM.ret w)
-  pure-agree si (pureV f)  _ a = _ , refl , refl
-  pure-agree si (primV p)  _ a = _ , refl , refl
-  pure-agree si ffiV       _ a = _ , refl , refl
-  pure-agree si (emitsV _) () a
-  pure-agree si (haltsV _) () a
-  pure-agree si callsV     () a
+  pure-agree si (pureV f)  _ _ a = _ , refl , refl
+  pure-agree si (primV p)  _ _ a = _ , refl , refl
+  pure-agree {A} {B} si ffiV _ d a =
+    TM.pure ιᶠ k (proj₁ y) a
+    , cong (λ dd → TM.pureHalf-at ιᶠ k dd a) (proj₂ y)
+    , cong (λ dd → TM.resT (TM.pureHalf-at ιᶠ k dd a)) (proj₂ y)
+    where k = key (showCanonical (name si)) A B
+          y = yes-of d
+  pure-agree si (emitsV _) () _ a
+  pure-agree si (haltsV _) () _ a
+  pure-agree si callsV     () _ a
 
   ------------------------------------------------------------------------
   -- The four contract classes.
   ------------------------------------------------------------------------
   pure-obs : ∀ {A B} (si : SigOpInfo A B) (c : SigOpSem A B) → sem si ≡ c → effect-of c ≡ Pure
-           → FitsInReg B → Readable A → IRObsCorrectF (SigOp si)
-  pure-obs {A} {B} si c e eff fit rA n l prog base _ _ span _ _ mIn x s alloc cl _ nh inp =
+           → Declared-at σᶠ si c → FitsInReg B → Readable A → IRObsCorrectF (SigOp si)
+  pure-obs {A} {B} si c e eff d fit rA n l prog base _ _ span _ _ mIn x s alloc cl _ nh inp =
     S.build ev-eq (λ _ → trans (halts-at si c e s) (cong (λ z → exec-sigop-halts-of z si s) eff))
                   (λ st → case trans (sym stops-f) st of λ ())
                   place
     where
       module S = Step si n l prog base span x s alloc cl nh
       a = argOf si x
-      w = proj₁ (pure-agree si c eff a)
+      w = proj₁ (pure-agree si c eff d a)
       E≡ : evalᴰ (SigOp si) x ≡ TM.ret (resOf si w)
-      E≡ = trans (evalᴰ-at si c e x) (cong (TM.fmapT (resOf si)) (proj₂ (proj₂ (pure-agree si c eff a))))
+      E≡ = trans (evalᴰ-at si c e x) (cong (TM.fmapT (resOf si)) (proj₂ (proj₂ (pure-agree si c eff d a))))
       ev-eq : sigop-events si s ≡ eventsAt s (evalᴰ (SigOp si) x)
       ev-eq = trans (events-at si c e s)
                 (trans (cong (λ z → sigop-events-of z si s) eff) (sym (cong (eventsAt s) E≡)))
@@ -239,7 +254,7 @@ module SigOpC {FS : FrameSemantics} where
                (trans (pure-input si fit rA x s inp)
                 (trans (cong (λ r → res-sv fit r)
                          (trans (cong (λ c′ → Once.SigOp.Info.semM-of φ (name si) c′ fmt a) e)
-                                (proj₁ (proj₂ (pure-agree si c eff a)))))
+                                (proj₁ (proj₂ (pure-agree si c eff d a)))))
                        (res-reg fit (conB si) w))))
       place : ∀ {v} → resultAt s (evalᴰ (SigOp si) x) ≡ returns v
             → ResultPlace ⌊ B ⌋ Stack (falloc S.fs₁) (falloc S.fs₁) v (floc S.fs₁)
@@ -275,30 +290,55 @@ module SigOpC {FS : FrameSemantics} where
   -- THE WORLD ANSWERS. The machine writes the interpretation's answer at its
   -- log (`call-sigop-val`); the denotation's call node, run from the same
   -- log, is answered by the same interpretation at the same history.
-  calls-obs : ∀ {A B} (si : SigOpInfo A B) → sem si ≡ callsV → FitsInReg B → IRObsCorrectF (SigOp si)
-  calls-obs {A} {B} si e fit n l prog base _ _ span _ _ mIn x s alloc cl _ nh inp =
+  -- A register-fitting value is never `Unit`.
+  fits-not-unit : ∀ {B} → FitsInReg B → B ≡ Unitᵀ → ⊥
+  fits-not-unit fits-intˢ   ()
+  fits-not-unit fits-floatˢ ()
+
+  -- plan 0.105: at its DECLARATION — the shared membership decision is `yes`.
+  calls-obs : ∀ {A B} (si : SigOpInfo A B) → sem si ≡ callsV → Declared-at σᶠ si callsV → FitsInReg B → IRObsCorrectF (SigOp si)
+  calls-obs {A} {B} si e d fit n l prog base _ _ span _ _ mIn x s alloc cl _ nh inp =
     S.build ev-eq (λ _ → halts-at si callsV e s)
-                  (λ st → case trans (sym (cong (stopsAt s) E≡)) st of λ ())
+                  (λ st → case trans (sym (cong is-stopped res-call)) (trans (sym (cong (stopsAt s) E≡)) st) of λ ())
                   place
     where
       module S = Step si n l prog base span x s alloc cl nh
       E≡ = evalᴰ-at si callsV e x
       op = TM.callOp (name si) A (baseA si) B
-      ans = TM.Interp.answer ιᶠ (LocState.ev-log s) op (argOf si x)
+      y  = yes-of d
+      p₀ = proj₁ y
+      ans = TM.answer ιᶠ (LocState.ev-log s) op p₀ (argOf si x)
+      -- the run of the call node, at the decided `yes`
+      run-call : TM.run ιᶠ (LocState.ev-log s) (TM.fmapT (resOf si) (TM.call op (argOf si x) TM.ret))
+               ≡ (TM.callEvent op (argOf si x) DL.∷ DL.[] , returns (resOf si ans))
+      run-call = cong (TM.run-call ιᶠ (LocState.ev-log s) op (argOf si x) (λ b → TM.ret (resOf si b))) ans-eq
+        where
+          -- an answering call's result fits a register, so it is not `Unit`:
+          -- the implementation answers it, at the decided `yes`
+          ans-eq : TM.callAnswer ιᶠ (LocState.ev-log s) op (argOf si x) ≡ just ans
+          ans-eq = go (isUnit? B)
+            where go : (du : Dec (B ≡ Unitᵀ))
+                     → TM.callAnswer-at ιᶠ (LocState.ev-log s) op (argOf si x) du (TM.callKey op ∈K? TM.calls ιᶠ) ≡ just ans
+                  go (yes u) = ⊥-elim (fits-not-unit fit u)
+                  go (no nu) = cong (TM.callAnswer-at ιᶠ (LocState.ev-log s) op (argOf si x) (no nu)) (proj₂ y)
+      res-call : resultAt s (TM.fmapT (resOf si) (TM.call op (argOf si x) TM.ret)) ≡ returns (resOf si ans)
+      res-call = cong proj₂ run-call
       ev-eq : sigop-events si s ≡ eventsAt s (evalᴰ (SigOp si) x)
       ev-eq = trans (events-at si callsV e s)
-                (trans (cong (DL._∷ DL.[]) (event-agree si x s inp)) (sym (cong (eventsAt s) E≡)))
+                (trans (cong (DL._∷ DL.[]) (event-agree si x s inp))
+                  (trans (sym (cong proj₁ run-call)) (sym (cong (eventsAt s) E≡))))
       out≡ : ∀ (f : FitsInReg B) → call-sigop-val si s (just f) ≡ prim-sv (fits-erase f) (resOf si ans)
-      out≡ f = trans (cong (λ a → SV-Lit f (TM.Interp.answer ιᶠ (LocState.ev-log s) op a))
+      out≡ f = trans (cong (λ dd → call-sigop-ans si s f dd) (proj₂ y))
+                (trans (cong (λ a → SV-Lit f (TM.answer ιᶠ (LocState.ev-log s) op p₀ a))
                            (arg-agree (baseA si) x s inp))
-                     (res-reg f (conB si) ans)
+                     (res-reg f (conB si) ans))
       out-fit : ∀ (f : FitsInReg B) → call-sigop-output si s ≡ prim-sv (fits-erase f) (resOf si ans)
       out-fit fits-intˢ   = out≡ fits-intˢ
       out-fit fits-floatˢ = out≡ fits-floatˢ
       place : ∀ {v} → resultAt s (evalᴰ (SigOp si) x) ≡ returns v
             → ResultPlace ⌊ B ⌋ Stack (falloc S.fs₁) (falloc S.fs₁) v (floc S.fs₁)
       place p = subst (λ v → ResultPlace ⌊ B ⌋ Stack (falloc S.fs₁) (falloc S.fs₁) v (floc S.fs₁))
-                  (returns-inj (trans (sym (cong (resultAt s) E≡)) p))
+                  (returns-inj (trans (sym res-call) (trans (sym (cong (resultAt s) E≡)) p)))
                   (at-reg (fits-erase fit)
                     (trans (writeReg-same (regs s) Output (exec-sigop-output si s))
                            (trans (output-at si callsV e s) (out-fit fit))))
@@ -310,22 +350,23 @@ module SigOpC {FS : FrameSemantics} where
     obs-correct-sigop-rest : ∀ {A B} (si : SigOpInfo A B) → IRObsCorrectF (SigOp si)
 
   -- The routing, by explicit-argument helpers (no `with`).
-  pure-route : ∀ {A B} (si : SigOpInfo A B) (c : SigOpSem A B) → sem si ≡ c → effect-of c ≡ Pure
+  pure-route : ∀ {A B} (si : SigOpInfo A B) (c : SigOpSem A B) → sem si ≡ c → effect-of c ≡ Pure → Declared-at σᶠ si c
              → Maybe (FitsInReg B) → Maybe (Readable A) → IRObsCorrectF (SigOp si)
-  pure-route si c e eff (just fit) (just rA) = pure-obs si c e eff fit rA
-  pure-route si c e eff _          _         = obs-correct-sigop-rest si
+  pure-route si c e eff d (just fit) (just rA) = pure-obs si c e eff d fit rA
+  pure-route si c e eff d _          _         = obs-correct-sigop-rest si
 
-  calls-route : ∀ {A B} (si : SigOpInfo A B) → sem si ≡ callsV → Maybe (FitsInReg B) → IRObsCorrectF (SigOp si)
-  calls-route si e (just fit) = calls-obs si e fit
-  calls-route si e nothing    = obs-correct-sigop-rest si
+  calls-route : ∀ {A B} (si : SigOpInfo A B) → sem si ≡ callsV → Declared-at σᶠ si callsV → Maybe (FitsInReg B) → IRObsCorrectF (SigOp si)
+  calls-route si e d (just fit) = calls-obs si e d fit
+  calls-route si e d nothing    = obs-correct-sigop-rest si
 
-  by-sem : ∀ {A B} (si : SigOpInfo A B) (c : SigOpSem A B) → sem si ≡ c → IRObsCorrectF (SigOp si)
-  by-sem {A} {B} si (pureV f)     e = pure-route si (pureV f) e refl (fits-in-reg? B) (readable? A)
-  by-sem {A} {B} si (primV p)     e = pure-route si (primV p) e refl (fits-in-reg? B) (readable? A)
-  by-sem {A} {B} si ffiV          e = pure-route si ffiV e refl (fits-in-reg? B) (readable? A)
-  by-sem         si (emitsV refl) e = emits-obs si e
-  by-sem         si (haltsV refl) e = halts-obs si e
-  by-sem {B = B} si callsV        e = calls-route si e (fits-in-reg? B)
+  by-sem : ∀ {A B} (si : SigOpInfo A B) (c : SigOpSem A B) → sem si ≡ c → Declared-at σᶠ si c → IRObsCorrectF (SigOp si)
+  by-sem {A} {B} si (pureV f)     e d = pure-route si (pureV f) e refl d (fits-in-reg? B) (readable? A)
+  by-sem {A} {B} si (primV p)     e d = pure-route si (primV p) e refl d (fits-in-reg? B) (readable? A)
+  by-sem {A} {B} si ffiV          e d = pure-route si ffiV e refl d (fits-in-reg? B) (readable? A)
+  by-sem         si (emitsV refl) e d = emits-obs si e
+  by-sem         si (haltsV refl) e d = halts-obs si e
+  by-sem {B = B} si callsV        e d = calls-route si e d (fits-in-reg? B)
 
-  obs-correct-sigop : ∀ {A B} (si : SigOpInfo A B) → IRObsCorrectF (SigOp si)
-  obs-correct-sigop si = by-sem si (sem si) refl
+  -- plan 0.105: at a SigOp the program's interpretation declares (`Linked`).
+  obs-correct-sigop : ∀ {A B} (si : SigOpInfo A B) → Declared σᶠ si → IRObsCorrectF (SigOp si)
+  obs-correct-sigop si d = by-sem si (sem si) refl d

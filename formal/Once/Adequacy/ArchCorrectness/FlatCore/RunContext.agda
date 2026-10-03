@@ -23,7 +23,8 @@
 -- lesson). So `RunAt` has to live one layer down. That is all this module is.
 ------------------------------------------------------------------------
 
-open import Once.CCC.FrameSemantics using (FrameSemantics; frame-word)
+open import Once.CCC.FrameSemantics using (FrameSemantics; frame-word; fs-interp)
+open import Once.Denotation.TraceMonad using (sig)
 open import Data.Nat using (ℕ)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
@@ -136,9 +137,11 @@ call-not-jmp c ci m refl = ci
 call-not-ret : ∀ (c : AbstractInstr) → CallI c → ∀ b → c ≡ instr-ctrl (c-ret b) → ⊥
 call-not-ret c ci b refl = ci
 
--- Every call in the image is linked (`Once.Denotation.Program.Linked`).
+-- Every call in the image is linked (`Once.Denotation.Program.Linked`) — and
+-- (plan 0.105) every FFI SigOp it calls is declared by the interpretation the
+-- machine runs against.
 LinkedImage : List IRFun → IR Unit Unit → Set
-LinkedImage tbl ir = LinkedProgram (irProgram tbl ir)
+LinkedImage tbl ir = LinkedProgram (sig (fs-interp FS)) (irProgram tbl ir)
 
 -- THE RUN CONTEXT every state/program fact below needs, as ONE record: the
 -- program is `ir`'s emitted trace, and the state is reachable in a run that
