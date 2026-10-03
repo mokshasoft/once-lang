@@ -27,13 +27,15 @@ open import Data.Unit using (⊤)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst; sym)
 open import Relation.Nullary using (Dec; yes; no)
 
-open import Once.CanonicalName using (CanonicalName; _≟ᶜ_; gen)
+open import Once.CanonicalName using (CanonicalName; _≟ᶜ_; gen; showCanonical)
 open import Once.IR using (IR; IRTy; Unit)
 open Once.IR.IR
 open import Once.IRTy using (_≟IRTy_; ⌈_⌉)
 open import Once.Target.Arch using (TargetNum)
 open import Once.Denotation.TraceMonad using (T; halt; haltOp; unlinkedT)
-open import Once.SigOp.Info using (FFIAnswers)
+open import Once.SigOp.Info using (FFIAnswers; SigOpInfo; SigOpSem; sem; name; pureV; primV; ffiV; callsV; emitsV; haltsV)
+open import Once.Spec.Contract using (ISig; key; valueKeys; answerKeys)
+open import Data.List.Membership.Propositional using (_∈_)
 open import Once.Functor.Translate using (base-Unit)
 open import Once.Type using () renaming (Unit to UnitT)
 open import Once.Denotation.DenotTrace using (evalᴰ; CallEnv; callEnv; ⟦_⟧ᴰᴵ)
@@ -108,28 +110,42 @@ LinkedAt-at e es f A B (no _)  _       _       = LinkedAt es f A B
 LinkedAt []       f A B = ⊥
 LinkedAt (e ∷ es) f A B = LinkedAt-at e es f A B (fname e ≟ᶜ f) (fdom e ≟IRTy A) (fcod e ≟IRTy B)
 
-Linked : List IRFun → ∀ {A B} → IR A B → Set
-Linked tbl (g ∘ f)          = Linked tbl g × Linked tbl f
-Linked tbl ⟨ f , g ⟩        = Linked tbl f × Linked tbl g
-Linked tbl (case f g)       = Linked tbl f × Linked tbl g
-Linked tbl (curry f)        = Linked tbl f
-Linked tbl (Cata _ alg)     = Linked tbl alg
-Linked tbl (Ana _ coalg)    = Linked tbl coalg
-Linked tbl (Call {A} {B} f) = LinkedAt tbl f A B
-Linked tbl id               = ⊤
-Linked tbl fst              = ⊤
-Linked tbl snd              = ⊤
-Linked tbl inl              = ⊤
-Linked tbl inr              = ⊤
-Linked tbl terminal         = ⊤
-Linked tbl initial          = ⊤
-Linked tbl apply            = ⊤
-Linked tbl (In _)           = ⊤
-Linked tbl (out-μ _)        = ⊤
-Linked tbl (Out _)          = ⊤
-Linked tbl (in-ν _)         = ⊤
-Linked tbl (SigOp _)        = ⊤
-Linked tbl (const _ _)      = ⊤
+-- Plan 0.105 (D257 amendment 2): an FFI SigOp the program calls is DECLARED in
+-- the interpretation signatures it is compiled against — the twin of a call
+-- naming a table entry. Internal, emitting and halting SigOps owe nothing.
+Declared-at : ISig → ∀ {A B} → SigOpInfo A B → SigOpSem A B → Set
+Declared-at Σ {A} {B} si ffiV   = key (showCanonical (name si)) A B ∈ valueKeys Σ
+Declared-at Σ {A} {B} si callsV = key (showCanonical (name si)) A B ∈ answerKeys Σ
+Declared-at Σ si (pureV _)  = ⊤
+Declared-at Σ si (primV _)  = ⊤
+Declared-at Σ si (emitsV _) = ⊤
+Declared-at Σ si (haltsV _) = ⊤
+
+Declared : ISig → ∀ {A B} → SigOpInfo A B → Set
+Declared Σ si = Declared-at Σ si (sem si)
+
+Linked : ISig → List IRFun → ∀ {A B} → IR A B → Set
+Linked Σ tbl (g ∘ f)          = Linked Σ tbl g × Linked Σ tbl f
+Linked Σ tbl ⟨ f , g ⟩        = Linked Σ tbl f × Linked Σ tbl g
+Linked Σ tbl (case f g)       = Linked Σ tbl f × Linked Σ tbl g
+Linked Σ tbl (curry f)        = Linked Σ tbl f
+Linked Σ tbl (Cata _ alg)     = Linked Σ tbl alg
+Linked Σ tbl (Ana _ coalg)    = Linked Σ tbl coalg
+Linked Σ tbl (Call {A} {B} f) = LinkedAt tbl f A B
+Linked Σ tbl id               = ⊤
+Linked Σ tbl fst              = ⊤
+Linked Σ tbl snd              = ⊤
+Linked Σ tbl inl              = ⊤
+Linked Σ tbl inr              = ⊤
+Linked Σ tbl terminal         = ⊤
+Linked Σ tbl initial          = ⊤
+Linked Σ tbl apply            = ⊤
+Linked Σ tbl (In _)           = ⊤
+Linked Σ tbl (out-μ _)        = ⊤
+Linked Σ tbl (Out _)          = ⊤
+Linked Σ tbl (in-ν _)         = ⊤
+Linked Σ tbl (SigOp si)       = Declared Σ si
+Linked Σ tbl (const _ _)      = ⊤
 
 ------------------------------------------------------------------------
 -- THE IR PROGRAM (D244): the function table and `main`, the shape codegen
@@ -152,5 +168,5 @@ runIR fmt φ p = evalᴰ fmt (tableEnv fmt φ (table p)) (main p) tt
 -- A LINKED PROGRAM: every call, in `main` and in every entry of the table, names
 -- an entry of the table at its objects. The compiler's output is linked (the
 -- telescope, D241); the backend's correctness is stated for linked programs.
-LinkedProgram : IRProgram → Set
-LinkedProgram p = Linked (table p) (main p) × All (λ e → Linked (table p) (fbody e)) (table p)
+LinkedProgram : ISig → IRProgram → Set
+LinkedProgram Σ p = Linked Σ (table p) (main p) × All (λ e → Linked Σ (table p) (fbody e)) (table p)
