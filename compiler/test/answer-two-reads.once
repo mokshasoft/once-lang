@@ -1,0 +1,17 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
+-- Plan 0.105 §5 (D257): an ANSWERING call means what the world answers, not a
+-- fixed function of its argument. `fd_dup 1` is called twice with the same
+-- argument; the kernel answers the lowest free descriptor each time (3, then 4),
+-- so the two reads differ. Under the old writer semantics the Spec equated them.
+--
+-- Expected: exit code 1 (the second answer minus the first).
+
+import I.Linux.Syscalls as S
+
+dupOut : IO Int
+dupOut = compose fd_dup@S (\_ -> 1)
+
+main : IO Unit
+main = compose exit@S (compose (\p -> snd p - fst p) (pair dupOut dupOut))
