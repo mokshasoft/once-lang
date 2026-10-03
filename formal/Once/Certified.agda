@@ -37,37 +37,38 @@ open import Once.CanonicalName using (CanonicalName)
 
 open import Data.Nat using (ℕ)
 
+open import Once.Denotation.TraceMonad using (Interp)
 import Once.Adequacy.ArchCorrectness.X86-64.ResourceBounds as RB
 import Once.Adequacy.ArchCorrectness.RiscV64.ResourceBounds as RBr
 import Once.Adequacy.ArchCorrectness.X86-32.ResourceBounds as RB32
 
 module Once.Certified
   (o : CanonicalName)
-  (x86-64-heap-room : RB.HeapRoom o) (x86-64-stack-room : RB.StackRoom o)
-  (x86-64-call-room : RB.CallRoom o)
-  (x86-64-reg-range : RB.RegRange o)
-  (x86-64-scratch-dec-guarded : RB.ScratchDecGuarded o)
-  (x86-64-addr-no-wrap : RB.AddrNoWrap o)
-  (x86-64-lit-fits : RB.LitFits o)
+  (x86-64-heap-room : ∀ ι → RB.HeapRoom o ι) (x86-64-stack-room : ∀ ι → RB.StackRoom o ι)
+  (x86-64-call-room : ∀ ι → RB.CallRoom o ι)
+  (x86-64-reg-range : ∀ ι → RB.RegRange o ι)
+  (x86-64-scratch-dec-guarded : ∀ ι → RB.ScratchDecGuarded o ι)
+  (x86-64-addr-no-wrap : ∀ ι → RB.AddrNoWrap o ι)
+  (x86-64-lit-fits : ∀ ι → RB.LitFits o ι)
   -- Plan 0.65: riscv64's three, threaded the same way (D087). They could not
   -- be stated until riscv64 had a correspondence to condition them on; now
   -- they are, the apex constrains their shape instead of G2 inventing it.
-  (riscv64-heap-room : RBr.HeapRoom o) (riscv64-stack-room : RBr.StackRoom o)
-  (riscv64-call-room : RBr.CallRoom o)
-  (riscv64-reg-range : RBr.RegRange o)
-  (riscv64-scratch-dec-guarded : RBr.ScratchDecGuarded o)
-  (riscv64-slot-addr-no-wrap : RBr.SlotAddrNoWrap o)
-  (riscv64-addr-no-wrap : RBr.AddrNoWrap o)
-  (riscv64-lit-fits : RBr.LitFits o)
+  (riscv64-heap-room : ∀ ι → RBr.HeapRoom o ι) (riscv64-stack-room : ∀ ι → RBr.StackRoom o ι)
+  (riscv64-call-room : ∀ ι → RBr.CallRoom o ι)
+  (riscv64-reg-range : ∀ ι → RBr.RegRange o ι)
+  (riscv64-scratch-dec-guarded : ∀ ι → RBr.ScratchDecGuarded o ι)
+  (riscv64-slot-addr-no-wrap : ∀ ι → RBr.SlotAddrNoWrap o ι)
+  (riscv64-addr-no-wrap : ∀ ι → RBr.AddrNoWrap o ι)
+  (riscv64-lit-fits : ∀ ι → RBr.LitFits o ι)
   -- …and x86-32's seven (plan 0.66 X3): the arch had none while its simulation
   -- was a whole-cloth postulate, which is precisely what a deleted apex
   -- postulate makes visible — the resources a running program needs.
-  (x86-32-heap-room : RB32.HeapRoom o) (x86-32-stack-room : RB32.StackRoom o)
-  (x86-32-call-room : RB32.CallRoom o)
-  (x86-32-reg-range : RB32.RegRange o)
-  (x86-32-scratch-dec-guarded : RB32.ScratchDecGuarded o)
-  (x86-32-addr-no-wrap : RB32.AddrNoWrap o)
-  (x86-32-lit-fits : RB32.LitFits o) where
+  (x86-32-heap-room : ∀ ι → RB32.HeapRoom o ι) (x86-32-stack-room : ∀ ι → RB32.StackRoom o ι)
+  (x86-32-call-room : ∀ ι → RB32.CallRoom o ι)
+  (x86-32-reg-range : ∀ ι → RB32.RegRange o ι)
+  (x86-32-scratch-dec-guarded : ∀ ι → RB32.ScratchDecGuarded o ι)
+  (x86-32-addr-no-wrap : ∀ ι → RB32.AddrNoWrap o ι)
+  (x86-32-lit-fits : ∀ ι → RB32.LitFits o ι) where
 
 -- P5 (OCP-0006): the correctness criterion is consumed THROUGH the spec
 -- door — `Once.Spec` is on the certified path, not an island.

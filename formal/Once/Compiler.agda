@@ -24,34 +24,35 @@ open import Once.CanonicalName using (CanonicalName)
 
 open import Data.Nat using (ℕ)
 
+open import Once.Denotation.TraceMonad using (Interp)
 import Once.Adequacy.ArchCorrectness.X86-64.ResourceBounds as RB
 import Once.Adequacy.ArchCorrectness.RiscV64.ResourceBounds as RBr
 import Once.Adequacy.ArchCorrectness.X86-32.ResourceBounds as RB32
 
 module Once.Compiler
   (o : CanonicalName)
-  (x86-64-heap-room : RB.HeapRoom o) (x86-64-stack-room : RB.StackRoom o)
-  (x86-64-call-room : RB.CallRoom o)
-  (x86-64-reg-range : RB.RegRange o)
-  (x86-64-scratch-dec-guarded : RB.ScratchDecGuarded o)
-  (x86-64-addr-no-wrap : RB.AddrNoWrap o)
-  (x86-64-lit-fits : RB.LitFits o)
-  (riscv64-heap-room : RBr.HeapRoom o) (riscv64-stack-room : RBr.StackRoom o)
-  (riscv64-call-room : RBr.CallRoom o)
-  (riscv64-reg-range : RBr.RegRange o)
-  (riscv64-scratch-dec-guarded : RBr.ScratchDecGuarded o)
-  (riscv64-slot-addr-no-wrap : RBr.SlotAddrNoWrap o)
-  (riscv64-addr-no-wrap : RBr.AddrNoWrap o)
-  (riscv64-lit-fits : RBr.LitFits o)
+  (x86-64-heap-room : ∀ ι → RB.HeapRoom o ι) (x86-64-stack-room : ∀ ι → RB.StackRoom o ι)
+  (x86-64-call-room : ∀ ι → RB.CallRoom o ι)
+  (x86-64-reg-range : ∀ ι → RB.RegRange o ι)
+  (x86-64-scratch-dec-guarded : ∀ ι → RB.ScratchDecGuarded o ι)
+  (x86-64-addr-no-wrap : ∀ ι → RB.AddrNoWrap o ι)
+  (x86-64-lit-fits : ∀ ι → RB.LitFits o ι)
+  (riscv64-heap-room : ∀ ι → RBr.HeapRoom o ι) (riscv64-stack-room : ∀ ι → RBr.StackRoom o ι)
+  (riscv64-call-room : ∀ ι → RBr.CallRoom o ι)
+  (riscv64-reg-range : ∀ ι → RBr.RegRange o ι)
+  (riscv64-scratch-dec-guarded : ∀ ι → RBr.ScratchDecGuarded o ι)
+  (riscv64-slot-addr-no-wrap : ∀ ι → RBr.SlotAddrNoWrap o ι)
+  (riscv64-addr-no-wrap : ∀ ι → RBr.AddrNoWrap o ι)
+  (riscv64-lit-fits : ∀ ι → RBr.LitFits o ι)
   -- …and x86-32's seven (plan 0.66 X3): the arch had none while its simulation
   -- was a whole-cloth postulate, which is precisely what a deleted apex
   -- postulate makes visible — the resources a running program needs.
-  (x86-32-heap-room : RB32.HeapRoom o) (x86-32-stack-room : RB32.StackRoom o)
-  (x86-32-call-room : RB32.CallRoom o)
-  (x86-32-reg-range : RB32.RegRange o)
-  (x86-32-scratch-dec-guarded : RB32.ScratchDecGuarded o)
-  (x86-32-addr-no-wrap : RB32.AddrNoWrap o)
-  (x86-32-lit-fits : RB32.LitFits o) where
+  (x86-32-heap-room : ∀ ι → RB32.HeapRoom o ι) (x86-32-stack-room : ∀ ι → RB32.StackRoom o ι)
+  (x86-32-call-room : ∀ ι → RB32.CallRoom o ι)
+  (x86-32-reg-range : ∀ ι → RB32.RegRange o ι)
+  (x86-32-scratch-dec-guarded : ∀ ι → RB32.ScratchDecGuarded o ι)
+  (x86-32-addr-no-wrap : ∀ ι → RB32.AddrNoWrap o ι)
+  (x86-32-lit-fits : ∀ ι → RB32.LitFits o ι) where
 
 open import Data.List using (List)
 open import Data.Nat using (ℕ)
@@ -59,6 +60,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_)
 
 open import Once.Adequacy
 open import Once.Denotation.Behavior using (Source; Behavior; at)
+open import Once.Denotation.TraceMonad using (Interp)
 open import Once.Adequacy.SourceTrace using (⟦_⟧)
 -- The driver is where the per-arch CPU semantics are INJECTED (D054
 -- wired-not-imported). Importing `Once.Adequacy.CPU` here pulls in the
@@ -110,6 +112,9 @@ once-compiler b64 b32 brv = record
   ; Source   = Source
   ; Bytes    = List Byte
   ; Behavior = Behavior
+  -- Plan 0.105 (D257): the world is an interpretation of the FFI contracts —
+  -- its pure half supplies values, its effectful half answers calls.
+  ; Interpretation = Interp
   -- Plan 0.49: the INDEPENDENT meaning is RELATIONAL. `Typed` = an executable
   -- declaratively-well-typed module; `_⊢_` links a source to it by PARSE (not
   -- the elaborator); `⟦_⟧ˢ` is the surface denotation `SD.⟦_⟧ˢ` of `main` (so
@@ -119,8 +124,8 @@ once-compiler b64 b32 brv = record
   -- Plan 0.58 (OCP-0006): the reference meaning is now the DIRECT, IR-free
   -- derivation denotation `VC.⟦_⟧ᵈ` (was `VC.⟦_⟧ˢ` = SD∘realize); `correctᵈ`
   -- re-composes the grand theorem with the observational bridge.
-  ; ⟦_⟧ˢ     = VC.⟦_⟧ᵈ
-  ; exec     = VC.exec
+  ; ⟦_⟧ˢ     = λ arch ι → VC.⟦_⟧ᵈ ι arch
+  ; exec     = λ arch ι → VC.exec ι arch
   -- Behavioural equivalence = pointwise / up-to-`n` SigOp-trace prefix
   -- equality (Plan 0.44).
   ; _≈_      = λ b₁ b₂ → ∀ (n : ℕ) → at b₁ n ≡ at b₂ n

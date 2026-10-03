@@ -420,6 +420,84 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
             → compile-gm arch doOpt (just m) ≡ just bytes → AdmissibleM arch m
   accept-gm arch doOpt m eq = accept-mir arch doOpt m (moduleToIR m) eq
 
+  -- The typed program and its parse relation are the Spec's (plan 0.81), and
+  -- world-free: typing does not run anything.
+  open Once.Spec.Program public using (Typed; _⊢R_)
+
+  -- Behavioural equivalence (matches the record's `_≈_`); the trace witnesses
+  -- below are exactly proofs at this relation.
+  _≋_ : Behavior → Behavior → Set
+  b₁ ≋ b₂ = ∀ (n : ℕ) → at b₁ n ≡ at b₂ n
+
+  -- accept ⇒ the RESOLVED module has a compilable `main`. (Inverts `compile`'s
+  -- executable gate; reuses nothing new — pure case analysis on `moduleToIR`.)
+  -- `m` is the resolved module (`srcToModule src ≡ just m`), since that is what
+  -- `compile`/`moduleToIR` run on.
+  compile-just-ir : ∀ (arch : Arch) (doOpt : Bool) (src : Source) (m : P.Module) (bytes : List Byte) →
+    srcToModule src ≡ just m → compile arch doOpt src ≡ just bytes →
+    Σ-syntax (IR ⌊ Unit ⌋ ⌊ Unit ⌋) (λ ir → moduleToIR m ≡ just ir)
+  compile-just-ir arch doOpt src m bytes g-eq pf with moduleToIR m in mi
+  ... | just ir = ir , refl
+  ... | nothing = ⊥-elim (case trans (sym c≡n) pf of λ ())
+    where c≡n : compile arch doOpt src ≡ nothing
+          c≡n rewrite g-eq | mi = refl
+
+  -- COMPLETENESS conjunct — `src ⊢R tp` is `FB.ParsesText text mU` (independent
+  -- parse); `FB.parseStrict-complete` turns it into the executable
+  -- `parseStrict text ≡ inj₂ mU`; `resolvesModule-sound` turns `⊢R`s resolution
+  -- to a well-typed `mR` (with valid main), which `moduleToIR-complete` compiles
+  -- and `main⇒built` Builds. `srcToModule-just` ties the resolved module back to
+  -- `compile src` (= `parseStrict` then `resolveImports`).
+  -- D115: completeness GAINED the admissibility premise, and here is where it
+  -- becomes load-bearing — `main⇒built` now needs it, because the Build stage
+  -- can refuse. It is exactly what shows the refusal cannot fire for a program
+  -- the target CAN express.
+  correctR-complete : ∀ (arch : Arch) (doOpt : Bool) (src : Source) (tp : Typed) →
+    src ⊢R tp → AdmissibleM arch (proj₁ tp) →
+    Σ-syntax (List Byte) (λ bytes → compile arch doOpt src ≡ just bytes)
+  -- Plan 0.81: `tp` IS the resolved module, so its typing is in hand and the
+  -- forward transport (`resolver-preserves-typing`) is gone too. `⊢R` now hands
+  -- over the un-resolved `mU`, its grammar parse, and the resolution relation;
+  -- `resolvesModule-sound` turns the last of those into the executable
+  -- `resolveImports` fact that `srcToModule-just` needs.
+  correctR-complete arch doOpt src (mR , mt , hvm) (mU , pt , rmR) adm
+    with MC.moduleToIR-complete mR mt hvm
+  ... | (ir , mi) with main⇒built arch doOpt mR ir adm mi
+  ...   | (asm , built-eq) = string-to-bytes arch asm , c≡j
+    where p-eq : parseStrict (Source.srcText src) ≡ inj₂ mU
+          p-eq = FB.parseStrict-complete (Source.srcText src) mU pt
+          res-eq : C.resolveImports (Source.srcImports src) mU ≡ inj₂ mR
+          res-eq = RBR.resolvesModule-sound (Source.srcImports src)
+                     (P.Module.decls mU) mR rmR
+          stm-eq : srcToModule src ≡ just mR
+          stm-eq = srcToModule-just src mU mR p-eq res-eq
+          c≡j : compile arch doOpt src ≡ just (string-to-bytes arch asm)
+          c≡j rewrite stm-eq | mi | built-eq = refl
+
+  -- Plan 0.105 (D257): ACCEPTANCE IS WORLD-FREE. Bytes came out ⇒ the source
+  -- resolved to a module `m` with a `main` (`compile-just-ir`), and a module
+  -- with a `main` is declaratively typed (`moduleToIR-typed`). Nothing here
+  -- runs anything, so no interpretation is involved — which is what lets ONE
+  -- typed program stand for the source in every world.
+  accept-typed-aux : ∀ (arch : Arch) (doOpt : Bool) (src : Source) (bytes : List Byte)
+                     (mm : Maybe P.Module) → srcToModule src ≡ mm →
+                     compile arch doOpt src ≡ just bytes →
+                     Σ-syntax P.Module (λ m → (srcToModule src ≡ just m) × ModuleTyped m)
+  accept-typed-aux arch doOpt src bytes nothing  g-eq pf =
+    ⊥-elim (case trans (sym c≡n) pf of λ ())
+    where c≡n : compile arch doOpt src ≡ nothing
+          c≡n rewrite g-eq = refl
+  accept-typed-aux arch doOpt src bytes (just m) g-eq pf =
+    m , g-eq , moduleToIR-typed m (proj₂ (compile-just-ir arch doOpt src m bytes g-eq pf))
+
+  accept-typed : ∀ (arch : Arch) (doOpt : Bool) (src : Source) (bytes : List Byte) →
+    compile arch doOpt src ≡ just bytes →
+    Σ-syntax P.Module (λ m → (srcToModule src ≡ just m) × ModuleTyped m)
+  accept-typed arch doOpt src bytes pf = accept-typed-aux arch doOpt src bytes (srcToModule src) refl pf
+
+  Admissible : Arch → Typed → Set
+  Admissible arch (m , _ , _) = AdmissibleM arch m
+
   ----------------------------------------------------------------------
   -- Plan 0.105: the semantic half, at an interpretation `ι` — the world the
   -- binary runs in and the meaning is read in. `compile` above does not see
@@ -573,10 +651,6 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
         moduleToIR m ≡ just ir →
         ∀ (n : ℕ) → at (exec arch (string-to-bytes arch asm)) n ≡ at (⟦ just (irProgram (moduleTable m) ir) ⟧IR (arch-numerics arch) ι) n
 
-    -- Behavioural equivalence (matches the record's `_≈_`); the trace witnesses
-    -- below are exactly proofs at this relation.
-    _≋_ : Behavior → Behavior → Set
-    b₁ ≋ b₂ = ∀ (n : ℕ) → at b₁ n ≡ at b₂ n
 
     -- The Built-case trace obligation, abstracted: GIVEN a `main` (`moduleToIR m
     -- ≡ just ir`) and that the pipeline Builds `asm`, the bytes' trace equals the
@@ -711,7 +785,6 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
     -- the theorem and belong inside the trust boundary, not in a proof module.
     -- Neither mentions the architecture, so neither belonged in `WithCPU`
     -- either — re-exported here so the instance still reaches them as `VC.Typed`.
-    open Once.Spec.Program public using (Typed; _⊢R_)
 
 
     -- D253: THE APEX MEANS THE CORE, and `main` is an entry like any other. A
@@ -742,18 +815,6 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
     pw-just-rel : ∀ {x y : Behavior} → Pointwise _≋_ (just x) (just y) → x ≋ y
     pw-just-rel (PW.just r) = r
 
-    -- accept ⇒ the RESOLVED module has a compilable `main`. (Inverts `compile`'s
-    -- executable gate; reuses nothing new — pure case analysis on `moduleToIR`.)
-    -- `m` is the resolved module (`srcToModule src ≡ just m`), since that is what
-    -- `compile`/`moduleToIR` run on.
-    compile-just-ir : ∀ (arch : Arch) (doOpt : Bool) (src : Source) (m : P.Module) (bytes : List Byte) →
-      srcToModule src ≡ just m → compile arch doOpt src ≡ just bytes →
-      Σ-syntax (IR ⌊ Unit ⌋ ⌊ Unit ⌋) (λ ir → moduleToIR m ≡ just ir)
-    compile-just-ir arch doOpt src m bytes g-eq pf with moduleToIR m in mi
-    ... | just ir = ir , refl
-    ... | nothing = ⊥-elim (case trans (sym c≡n) pf of λ ())
-      where c≡n : compile arch doOpt src ≡ nothing
-            c≡n rewrite g-eq | mi = refl
 
     -- The total meaning at an accepted source: `⟦ src ⟧⊥ ≡ just (⟦ moduleToProgram m ⟧IR)`.
     -- D115: only for an ADMISSIBLE module. Inadmissible ones have no meaning
@@ -789,97 +850,27 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
     -- obtained from the executable resolution fact. The trace chain loses a
     -- link: bytes ≋ `⟦ moduleToIR mR ⟧IR` (codegen `correct`) ≋ the core run
     -- (`program-core`, D253), with no `mU`/`mR` trace step in between.
-    correctR-sound : ∀ (arch : Arch) (doOpt : Bool) (src : Source) (bytes : List Byte) →
+    sound-trace : ∀ (arch : Arch) (doOpt : Bool) (src : Source) (bytes : List Byte) →
       compile arch doOpt src ≡ just bytes →
-      Σ-syntax Typed (λ tp → (src ⊢R tp) × AdmissibleM arch (proj₁ tp)
-                             × (exec arch bytes ≋ ⟦ arch ⟧ᵈ tp))
-    correctR-sound arch doOpt src bytes pf with accept-sound arch doOpt src bytes pf
-    ... | (mR , stm-eq , MT) with compile-just-ir arch doOpt src mR bytes stm-eq pf
-    ...   | (ir , mi) with srcToModule-inv src mR stm-eq
-    ...     | (mU , p-eq , res-eq) =
-                let hvm = MC.moduleToIR-sound mR MT mi
-                    tp  = (mR , MT , hvm)
-                    -- Plan 0.81: `tp` is the RESOLVED module, so `accept-sound`
-                    -- already gives its typing — the reverse transport
-                    -- (`resolver-reflects-typing`) is GONE, and with it the last
-                    -- thing that forced the judgment onto un-resolved syntax.
-                    ⊢R  = mU
-                        , FB.parseStrict-sound (Source.srcText src) mU p-eq
-                        , RBR.resolvesModule-complete (Source.srcImports src)
-                            (P.Module.decls mU) mR res-eq
-                    p   = subst (λ c → Pointwise _≋_ (map (exec arch) c) (⟦ src ⟧⊥ arch)) pf
-                                (correct arch doOpt src)
-                    -- J4, THE LOOP-CLOSING STEP. `pf` says bytes came out; the
-                    -- ONLY route to bytes runs through `cfm-build-gated`, so the
-                    -- gate must have said `yes` — that IS `AdmissibleM arch mR`.
-                    -- No assumption: acceptance is now evidence.
-                    admR = accept-gm arch doOpt mR
-                             (trans (sym (cong (compile-gm arch doOpt) stm-eq)) pf)
-                    p'  = subst (λ b → Pointwise _≋_ (just (exec arch bytes)) b)
-                                (⟦⟧⊥-just src arch mR ir admR stm-eq mi) p
-                    e≋  = pw-just-rel p'                    -- exec bytes ≋ ⟦ moduleToIR mR ⟧IR
-                -- The trace chain is one step SHORTER: admissibility and the
-                -- meaning are both over `mR` now, so `admissible-unresolve` and
-                -- `resolver-preserves-trace` are no longer in it.
-                in tp , ⊢R , admR
-                   , (λ n → trans (e≋ n)
-                           (trans (cong (λ x → at (⟦ programAt (moduleTable mR) x ⟧IR (arch-numerics arch) ι) n) mi)
-                                  (program-core arch tp ir mi n)))
+      ∀ (mR : P.Module) (stm-eq : srcToModule src ≡ just mR) (MT : ModuleTyped mR)
+        (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) (mi : moduleToIR mR ≡ just ir) →
+      exec arch bytes ≋ ⟦ arch ⟧ᵈ (mR , MT , MC.moduleToIR-sound mR MT mi)
+    sound-trace arch doOpt src bytes pf mR stm-eq MT ir mi n =
+      trans (e≋ n)
+            (trans (cong (λ x → at (⟦ programAt (moduleTable mR) x ⟧IR (arch-numerics arch) ι) n) mi)
+                   (program-core arch (mR , MT , MC.moduleToIR-sound mR MT mi) ir mi n))
+      where
+        p   = subst (λ c → Pointwise _≋_ (map (exec arch) c) (⟦ src ⟧⊥ arch)) pf
+                    (correct arch doOpt src)
+        -- J4, THE LOOP-CLOSING STEP. `pf` says bytes came out; the ONLY route to
+        -- bytes runs through `cfm-build-gated`, so the gate must have said `yes`.
+        admR = accept-gm arch doOpt mR
+                 (trans (sym (cong (compile-gm arch doOpt) stm-eq)) pf)
+        p'  = subst (λ b → Pointwise _≋_ (just (exec arch bytes)) b)
+                    (⟦⟧⊥-just src arch mR ir admR stm-eq mi) p
+        e≋  = pw-just-rel p'                    -- exec bytes ≋ ⟦ moduleToIR mR ⟧IR
 
-    -- COMPLETENESS conjunct — `src ⊢R tp` is `FB.ParsesText text mU` (independent
-    -- parse); `FB.parseStrict-complete` turns it into the executable
-    -- `parseStrict text ≡ inj₂ mU`; `resolvesModule-sound` turns `⊢R`s resolution
-    -- to a well-typed `mR` (with valid main), which `moduleToIR-complete` compiles
-    -- and `main⇒built` Builds. `srcToModule-just` ties the resolved module back to
-    -- `compile src` (= `parseStrict` then `resolveImports`).
-    -- D115: completeness GAINED the admissibility premise, and here is where it
-    -- becomes load-bearing — `main⇒built` now needs it, because the Build stage
-    -- can refuse. It is exactly what shows the refusal cannot fire for a program
-    -- the target CAN express.
-    correctR-complete : ∀ (arch : Arch) (doOpt : Bool) (src : Source) (tp : Typed) →
-      src ⊢R tp → AdmissibleM arch (proj₁ tp) →
-      Σ-syntax (List Byte) (λ bytes → compile arch doOpt src ≡ just bytes)
-    -- Plan 0.81: `tp` IS the resolved module, so its typing is in hand and the
-    -- forward transport (`resolver-preserves-typing`) is gone too. `⊢R` now hands
-    -- over the un-resolved `mU`, its grammar parse, and the resolution relation;
-    -- `resolvesModule-sound` turns the last of those into the executable
-    -- `resolveImports` fact that `srcToModule-just` needs.
-    correctR-complete arch doOpt src (mR , mt , hvm) (mU , pt , rmR) adm
-      with MC.moduleToIR-complete mR mt hvm
-    ... | (ir , mi) with main⇒built arch doOpt mR ir adm mi
-    ...   | (asm , built-eq) = string-to-bytes arch asm , c≡j
-      where p-eq : parseStrict (Source.srcText src) ≡ inj₂ mU
-            p-eq = FB.parseStrict-complete (Source.srcText src) mU pt
-            res-eq : C.resolveImports (Source.srcImports src) mU ≡ inj₂ mR
-            res-eq = RBR.resolvesModule-sound (Source.srcImports src)
-                       (P.Module.decls mU) mR rmR
-            stm-eq : srcToModule src ≡ just mR
-            stm-eq = srcToModule-just src mU mR p-eq res-eq
-            c≡j : compile arch doOpt src ≡ just (string-to-bytes arch asm)
-            c≡j rewrite stm-eq | mi | built-eq = refl
 
-    -- THE relational claim — two conjuncts in ONE statement (matches the spec's
-    -- `correct`). Supplied to `Once.Adequacy.CorrectCompiler` in the apex.
-    correctR : ∀ (arch : Arch) (doOpt : Bool) (src : Source) →
-      ( ∀ bytes → compile arch doOpt src ≡ just bytes →
-          Σ-syntax Typed (λ tp → (src ⊢R tp) × AdmissibleM arch (proj₁ tp)
-                                 × (exec arch bytes ≋ ⟦ arch ⟧ᵈ tp)) )
-      × ( ∀ tp → src ⊢R tp → AdmissibleM arch (proj₁ tp) →
-          Σ-syntax (List Byte) (λ bytes → compile arch doOpt src ≡ just bytes) )
-    correctR arch doOpt src =
-        (λ bytes pf → correctR-sound arch doOpt src bytes pf)
-      , (λ tp h adm → correctR-complete arch doOpt src tp h adm)
-
-    Admissible : Arch → Typed → Set
-    Admissible arch (m , _ , _) = AdmissibleM arch m
-
-    correctᵈ : ∀ (arch : Arch) (doOpt : Bool) (src : Source) →
-      ( ∀ bytes → compile arch doOpt src ≡ just bytes →
-          Σ-syntax Typed (λ tp → (src ⊢R tp) × Admissible arch tp
-                                 × (exec arch bytes ≋ ⟦ arch ⟧ᵈ tp)) )
-      × ( ∀ tp → src ⊢R tp → Admissible arch tp →
-          Σ-syntax (List Byte) (λ bytes → compile arch doOpt src ≡ just bytes) )
-    correctᵈ arch doOpt src = correctR arch doOpt src
 
     -- ════════════════════════════════════════════════════════════════════
     -- The GRAND THEOREM (D060): `correct` above IS the whole statement.
@@ -891,3 +882,32 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
     -- a standalone load-bearing fact rather than a conjunct bolted onto the
     -- compiler theorem. So the compiler theorem is exactly trace-correctness.
     -- ════════════════════════════════════════════════════════════════════
+
+  ----------------------------------------------------------------------
+  -- THE RELATIONAL CLAIM (plan 0.49), at every world (plan 0.105, D257). Two
+  -- conjuncts in ONE statement, matching the Spec's `correct`. The typed
+  -- program is chosen ONCE, world-free (`accept-typed`); only the trace
+  -- equation is quantified over the interpretation — the binary and the meaning
+  -- agree in every world the program can run in.
+  ----------------------------------------------------------------------
+  correctᵈ : ∀ (arch : Arch) (doOpt : Bool) (src : Source) →
+    ( ∀ bytes → compile arch doOpt src ≡ just bytes →
+        Σ-syntax Typed (λ tp → (src ⊢R tp) × Admissible arch tp
+                               × (∀ (ι : Interp) → _≋_ (exec ι arch bytes) (⟦_⟧ᵈ ι arch tp))) )
+    × ( ∀ tp → src ⊢R tp → Admissible arch tp →
+        Σ-syntax (List Byte) (λ bytes → compile arch doOpt src ≡ just bytes) )
+  correctᵈ arch doOpt src = sound , (λ tp h adm → correctR-complete arch doOpt src tp h adm)
+    where
+      sound : ∀ bytes → compile arch doOpt src ≡ just bytes →
+        Σ-syntax Typed (λ tp → (src ⊢R tp) × Admissible arch tp
+                               × (∀ (ι : Interp) → _≋_ (exec ι arch bytes) (⟦_⟧ᵈ ι arch tp)))
+      sound bytes pf with accept-typed arch doOpt src bytes pf
+      ... | (mR , stm-eq , MT) with compile-just-ir arch doOpt src mR bytes stm-eq pf
+      ...   | (ir , mi) with srcToModule-inv src mR stm-eq
+      ...     | (mU , p-eq , res-eq) =
+                  (mR , MT , MC.moduleToIR-sound mR MT mi)
+                , ( mU
+                  , FB.parseStrict-sound (Source.srcText src) mU p-eq
+                  , RBR.resolvesModule-complete (Source.srcImports src) (P.Module.decls mU) mR res-eq )
+                , accept-gm arch doOpt mR (trans (sym (cong (compile-gm arch doOpt) stm-eq)) pf)
+                , (λ ι → sound-trace ι arch doOpt src bytes pf mR stm-eq MT ir mi)

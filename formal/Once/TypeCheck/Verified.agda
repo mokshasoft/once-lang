@@ -59,6 +59,7 @@ import Once.TypeCheck.Determinism  as Det
 import Once.TypeCheck.Totality     as Tot
 import Once.TypeCheck.Soundness    as Snd
 import Once.TypeCheck.Completeness as Cmp
+import Once.TypeCheck.Completeness.Rules as CmpR
 import Once.TypeCheck.ErrorProofs  as EP
 import Once.TypeCheck.Identities   as Id
 open import Once.TypeCheck.Judgment using (_⊢_∶_⨾_; _⊢ᵢ_∶_⨾_; _⊢ᶜ_∶_⨾_)
@@ -975,27 +976,27 @@ verifiedTypeChecker = record
   ; tc-err-check-RInt-type-mismatch  = EP.check-RInt-type-mismatch
   ; tc-err-check-RUnit-type-mismatch = EP.check-RUnit-type-mismatch
   ; tc-err-check-RStringLit-type-mismatch = EP.check-RStringLit-type-mismatch
-  ; tcInfer-complete-RInt         = λ ctx n → Cmp.infer-complete-RInt {ctx = ctx} n
-  ; tcInfer-complete-RUnit        = λ ctx → Cmp.infer-complete-RUnit {ctx = ctx}
-  ; tcInfer-complete-RStringLit   = λ ctx s → Cmp.infer-complete-RStringLit {ctx = ctx} s
-  ; tcInfer-complete-RVar-unit    = λ ctx → Cmp.infer-complete-RVar-unit {ctx = ctx}
+  ; tcInfer-complete-RInt         = λ ctx n → CmpR.infer-complete-RInt {ctx = ctx} n
+  ; tcInfer-complete-RUnit        = λ ctx → CmpR.infer-complete-RUnit {ctx = ctx}
+  ; tcInfer-complete-RStringLit   = λ ctx s → CmpR.infer-complete-RStringLit {ctx = ctx} s
+  ; tcInfer-complete-RVar-unit    = λ ctx → CmpR.infer-complete-RVar-unit {ctx = ctx}
   ; tcInfer-complete-RQualified   = λ ctx name alias T eq conc →
-                                     Cmp.infer-complete-RQualified {ctx = ctx} {name = name} {alias = alias} {T = T} eq conc
-  ; tcInfer-complete-RPair        = λ ctx → Cmp.infer-complete-RPair
-  ; tcInfer-complete-RUnaryOp-neg = λ ctx → Cmp.infer-complete-RUnaryOp-neg
-  ; tcInfer-complete-RAnnot       = λ ctx → Cmp.infer-complete-RAnnot
-  ; tcInfer-complete-RLet         = λ ctx → Cmp.infer-complete-RLet
-  ; tcInfer-complete-RApp-id      = λ ctx → Cmp.infer-complete-RApp-id
-  ; tcInfer-complete-RApp-fst     = λ ctx → Cmp.infer-complete-RApp-fst
-  ; tcInfer-complete-RApp-snd     = λ ctx → Cmp.infer-complete-RApp-snd
-  ; tcInfer-complete-RApp-terminal = λ ctx → Cmp.infer-complete-RApp-terminal
-  ; tcInfer-complete-RVar-local   = λ ctx → Cmp.infer-complete-RVar-local {ctx}
-  ; tcInfer-complete-RVar-import  = λ ctx → Cmp.infer-complete-RVar-import {ctx}
-  ; tcInfer-complete-RBinOp-arith = λ ctx → Cmp.infer-complete-RBinOp-arith
-  ; tcInfer-complete-RBinOp-cmp   = λ ctx → Cmp.infer-complete-RBinOp-cmp
-  ; tcInfer-complete-RDestruct    = λ ctx → Cmp.infer-complete-RDestruct
-  ; tcInfer-complete-RApp-generic = λ ctx → Cmp.infer-complete-RApp-generic
-  ; tcCheck-complete-RLam         = Cmp.check-complete-RLam
+                                     CmpR.infer-complete-RQualified {ctx = ctx} {name = name} {alias = alias} {T = T} eq conc
+  ; tcInfer-complete-RPair        = λ ctx → CmpR.infer-complete-RPair
+  ; tcInfer-complete-RUnaryOp-neg = λ ctx → CmpR.infer-complete-RUnaryOp-neg
+  ; tcInfer-complete-RAnnot       = λ ctx → CmpR.infer-complete-RAnnot
+  ; tcInfer-complete-RLet         = λ ctx → CmpR.infer-complete-RLet
+  ; tcInfer-complete-RApp-id      = λ ctx → CmpR.infer-complete-RApp-id
+  ; tcInfer-complete-RApp-fst     = λ ctx → CmpR.infer-complete-RApp-fst
+  ; tcInfer-complete-RApp-snd     = λ ctx → CmpR.infer-complete-RApp-snd
+  ; tcInfer-complete-RApp-terminal = λ ctx → CmpR.infer-complete-RApp-terminal
+  ; tcInfer-complete-RVar-local   = λ ctx → CmpR.infer-complete-RVar-local {ctx}
+  ; tcInfer-complete-RVar-import  = λ ctx → CmpR.infer-complete-RVar-import {ctx}
+  ; tcInfer-complete-RBinOp-arith = λ ctx → CmpR.infer-complete-RBinOp-arith
+  ; tcInfer-complete-RBinOp-cmp   = λ ctx → CmpR.infer-complete-RBinOp-cmp
+  ; tcInfer-complete-RDestruct    = λ ctx → CmpR.infer-complete-RDestruct
+  ; tcInfer-complete-RApp-generic = λ ctx → CmpR.infer-complete-RApp-generic
+  ; tcCheck-complete-RLam         = CmpR.check-complete-RLam
   ; id-decideLeq-iff              = λ q' q → Id.decideLeq-correct-true q' q , Id.decideLeq-correct-just q' q
   ; id-binop-classification-exhaustive = Id.binop-classification-exhaustive
   ; id-binop-classification-exclusive  = Id.binop-classification-exclusive

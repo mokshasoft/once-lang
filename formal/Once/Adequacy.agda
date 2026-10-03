@@ -78,6 +78,13 @@ record CorrectCompiler : Set₁ where
     Source   : Set
     Bytes    : Set
     Behavior : Set
+    -- Plan 0.105 (D257): the WORLD a program runs in — what answers its FFI
+    -- contracts. The compiler knows only each import's name and declared type;
+    -- what `getLine` returns is the interpretation's business, never the
+    -- Spec's (D061). A program's meaning and its binary's execution are both
+    -- RELATIVE to it, and the claim below holds at EVERY interpretation, so the
+    -- Spec never invents a value for a contract.
+    Interpretation : Set
 
     -- The INDEPENDENT source meaning, as a SPEC RELATION (Plan 0.49) — NOT a
     -- `Source → Maybe Behavior` function the compiler could define and then
@@ -101,8 +108,10 @@ record CorrectCompiler : Set₁ where
     -- for every target was a claim that could not be true at both. This is one
     -- claim PER TARGET, not a weaker claim: `correct` still quantifies over
     -- every arch, and now says what each of them means.
-    ⟦_⟧ˢ  : Arch → Typed → Behavior
-    exec  : Arch → Bytes → Behavior
+    -- D257: both at an interpretation — two reads of an input differ between
+    -- two worlds, and so do the binary's.
+    ⟦_⟧ˢ  : Arch → Interpretation → Typed → Behavior
+    exec  : Arch → Interpretation → Bytes → Behavior
     _≈_   : Behavior → Behavior → Set
 
     -- TARGET-RELATIVE ADMISSIBILITY (plan 0.74, D115/D116).
@@ -142,7 +151,8 @@ record CorrectCompiler : Set₁ where
     --   • soundness + trace — if the compiler ACCEPTS `src` (emits bytes),
     --     then `src` HAS a meaning (`src ⊢ tp`), that meaning is EXPRESSIBLE
     --     at this target (`Admissible arch tp`), and the bytes' execution
-    --     equals it (`exec bytes ≈ ⟦ arch ⟧ˢ tp`);
+    --     equals it in EVERY world (`∀ ι → exec arch ι bytes ≈ ⟦ arch ⟧ˢ ι tp`);
+    --     the typed program is the world's no more than typing is (D257);
     --   • completeness — if `src` has a meaning the target can express, the
     --     compiler accepts it. The `Admissible` premise is what makes
     --     rejecting an out-of-range literal legal WITHOUT making
@@ -152,6 +162,6 @@ record CorrectCompiler : Set₁ where
     correct : ∀ arch doOpt src →
         ( ∀ bytes → compile arch doOpt src ≡ just bytes →
             Σ[ tp ∈ Typed ] ((src ⊢ tp) × Admissible arch tp
-                             × (exec arch bytes ≈ ⟦ arch ⟧ˢ tp)) )
+                             × (∀ ι → exec arch ι bytes ≈ ⟦ arch ⟧ˢ ι tp)) )
       × ( ∀ tp → src ⊢ tp → Admissible arch tp →
             Σ[ bytes ∈ Bytes ] (compile arch doOpt src ≡ just bytes) )

@@ -33,38 +33,39 @@ open import Once.CanonicalName using (CanonicalName)
 
 open import Data.Nat using (ℕ)
 
+open import Once.Denotation.TraceMonad using (Interp)
 import Once.Adequacy.ArchCorrectness.X86-64.ResourceBounds as RB
 import Once.Adequacy.ArchCorrectness.RiscV64.ResourceBounds as RBr
 import Once.Adequacy.ArchCorrectness.X86-32.ResourceBounds as RB32
 
 module Once.Adequacy.ArchCorrectness
   (o : CanonicalName)
-  (x86-64-heap-room : RB.HeapRoom o) (x86-64-stack-room : RB.StackRoom o)
-  (x86-64-call-room : RB.CallRoom o)
-  (x86-64-reg-range : RB.RegRange o)
-  (x86-64-scratch-dec-guarded : RB.ScratchDecGuarded o)
-  (x86-64-addr-no-wrap : RB.AddrNoWrap o)
-  (x86-64-lit-fits : RB.LitFits o)
+  (x86-64-heap-room : ∀ ι → RB.HeapRoom o ι) (x86-64-stack-room : ∀ ι → RB.StackRoom o ι)
+  (x86-64-call-room : ∀ ι → RB.CallRoom o ι)
+  (x86-64-reg-range : ∀ ι → RB.RegRange o ι)
+  (x86-64-scratch-dec-guarded : ∀ ι → RB.ScratchDecGuarded o ι)
+  (x86-64-addr-no-wrap : ∀ ι → RB.AddrNoWrap o ι)
+  (x86-64-lit-fits : ∀ ι → RB.LitFits o ι)
   -- riscv64's family, now the SAME EIGHT as x86-64's (plan 0.65 G3): three of
   -- them were all that existed while its simulation was whole-cloth.
-  (riscv64-heap-room : RBr.HeapRoom o) (riscv64-stack-room : RBr.StackRoom o)
-  (riscv64-call-room : RBr.CallRoom o)
-  (riscv64-reg-range : RBr.RegRange o)
-  (riscv64-scratch-dec-guarded : RBr.ScratchDecGuarded o)
-  (riscv64-slot-addr-no-wrap : RBr.SlotAddrNoWrap o)
-  (riscv64-addr-no-wrap : RBr.AddrNoWrap o)
-  (riscv64-lit-fits : RBr.LitFits o)
+  (riscv64-heap-room : ∀ ι → RBr.HeapRoom o ι) (riscv64-stack-room : ∀ ι → RBr.StackRoom o ι)
+  (riscv64-call-room : ∀ ι → RBr.CallRoom o ι)
+  (riscv64-reg-range : ∀ ι → RBr.RegRange o ι)
+  (riscv64-scratch-dec-guarded : ∀ ι → RBr.ScratchDecGuarded o ι)
+  (riscv64-slot-addr-no-wrap : ∀ ι → RBr.SlotAddrNoWrap o ι)
+  (riscv64-addr-no-wrap : ∀ ι → RBr.AddrNoWrap o ι)
+  (riscv64-lit-fits : ∀ ι → RBr.LitFits o ι)
   -- …and x86-32's, the SAME family again (plan 0.66 X3). It had NONE until now,
   -- for the reason D107 names: its simulation was whole-cloth, so nothing above
   -- ever asked what resources the running program needs. Seven, not eight —
   -- `SlotAddrNoWrap` is riscv64's alone (D104: x86-32 computes a slot address
   -- with `lea`, which carries no range obligation, exactly as x86-64 does).
-  (x86-32-heap-room : RB32.HeapRoom o) (x86-32-stack-room : RB32.StackRoom o)
-  (x86-32-call-room : RB32.CallRoom o)
-  (x86-32-reg-range : RB32.RegRange o)
-  (x86-32-scratch-dec-guarded : RB32.ScratchDecGuarded o)
-  (x86-32-addr-no-wrap : RB32.AddrNoWrap o)
-  (x86-32-lit-fits : RB32.LitFits o) where
+  (x86-32-heap-room : ∀ ι → RB32.HeapRoom o ι) (x86-32-stack-room : ∀ ι → RB32.StackRoom o ι)
+  (x86-32-call-room : ∀ ι → RB32.CallRoom o ι)
+  (x86-32-reg-range : ∀ ι → RB32.RegRange o ι)
+  (x86-32-scratch-dec-guarded : ∀ ι → RB32.ScratchDecGuarded o ι)
+  (x86-32-addr-no-wrap : ∀ ι → RB32.AddrNoWrap o ι)
+  (x86-32-lit-fits : ∀ ι → RB32.LitFits o ι) where
 
 open import Once.Adequacy.CPU using (Arch; x86-64; x86-32; riscv64; arch-semantics)
 open import Once.Adequacy.Compile using (ArchCorrect)
@@ -88,14 +89,14 @@ import Once.Adequacy.ArchCorrectness.RiscV64 as ARV
 -- D244/D245: each instance is AT A TABLE — the program image it simulates is
 -- `main` together with that table's functions. The record below is per
 -- PROGRAM, so it instantiates the arch module at the program's own table.
-module X64 (tbl : List IRFun) = A64 o tbl x86-64-heap-room x86-64-stack-room x86-64-call-room
-       x86-64-reg-range x86-64-scratch-dec-guarded x86-64-addr-no-wrap x86-64-lit-fits
-module X32 (tbl : List IRFun) = A32 o tbl x86-32-heap-room x86-32-stack-room x86-32-call-room
-       x86-32-reg-range x86-32-scratch-dec-guarded x86-32-addr-no-wrap x86-32-lit-fits
-module RV (tbl : List IRFun) = ARV o tbl
-       riscv64-heap-room riscv64-stack-room riscv64-call-room
-       riscv64-reg-range riscv64-scratch-dec-guarded riscv64-slot-addr-no-wrap
-       riscv64-addr-no-wrap riscv64-lit-fits
+module X64 (ι : Interp) (tbl : List IRFun) = A64 o tbl ι (x86-64-heap-room ι) (x86-64-stack-room ι) (x86-64-call-room ι)
+       (x86-64-reg-range ι) (x86-64-scratch-dec-guarded ι) (x86-64-addr-no-wrap ι) (x86-64-lit-fits ι)
+module X32 (ι : Interp) (tbl : List IRFun) = A32 o tbl ι (x86-32-heap-room ι) (x86-32-stack-room ι) (x86-32-call-room ι)
+       (x86-32-reg-range ι) (x86-32-scratch-dec-guarded ι) (x86-32-addr-no-wrap ι) (x86-32-lit-fits ι)
+module RV (ι : Interp) (tbl : List IRFun) = ARV o tbl ι
+       (riscv64-heap-room ι) (riscv64-stack-room ι) (riscv64-call-room ι)
+       (riscv64-reg-range ι) (riscv64-scratch-dec-guarded ι) (riscv64-slot-addr-no-wrap ι)
+       (riscv64-addr-no-wrap ι) (riscv64-lit-fits ι)
 
 -- The emitted (arith-rewritten) program's table, and its linkedness.
 TP : P.Module → IR ⌊ Unit ⌋ ⌊ Unit ⌋ → List IRFun
@@ -108,46 +109,46 @@ LK m ir mi = rewrite-program-linked (irProgram (moduleTable m) ir) (moduleToProg
 -- The block-table coherence hypotheses (plan 0.91; D188), one per target and
 -- now one per TABLE: every program brings its own image.
 BlockRunsHyp-x86-64 : Set
-BlockRunsHyp-x86-64 = (tbl : List IRFun) → X64.BlockRunsHyp-x86-64 tbl
+BlockRunsHyp-x86-64 = (ι : Interp) (tbl : List IRFun) → X64.BlockRunsHyp-x86-64 ι tbl
 
 BlockRunsHyp-x86-32 : Set
-BlockRunsHyp-x86-32 = (tbl : List IRFun) → X32.BlockRunsHyp-x86-32 tbl
+BlockRunsHyp-x86-32 = (ι : Interp) (tbl : List IRFun) → X32.BlockRunsHyp-x86-32 ι tbl
 
 BlockRunsHyp-riscv64 : Set
-BlockRunsHyp-riscv64 = (tbl : List IRFun) → RV.BlockRunsHyp-riscv64 tbl
+BlockRunsHyp-riscv64 = (ι : Interp) (tbl : List IRFun) → RV.BlockRunsHyp-riscv64 ι tbl
 
-x86-64-correct : BlockRunsHyp-x86-64 → ArchCorrect x86-64 (arch-semantics x86-64)
-x86-64-correct brs = record
-  { asm-sem           = X64.asm-sem-x86-64 []
-  ; flat-trace        = λ p lk → X64.flat-x86-64 (table p) (brs (table p)) (main p) lk
+x86-64-correct : BlockRunsHyp-x86-64 → ∀ (ι : Interp) → ArchCorrect x86-64 (arch-semantics x86-64) ι
+x86-64-correct brs ι = record
+  { asm-sem           = X64.asm-sem-x86-64 ι []
+  ; flat-trace        = λ p lk → X64.flat-x86-64 ι (table p) (brs ι (table p)) (main p) lk
   ; assemble-correct  = λ _ _ _ _ _ → refl
   ; asm-trace-correct = λ m asm eq dl lr sr ir mi n →
-      X64.asm-flat-x86-64 (TP m ir) (brs (TP m ir)) m asm eq dl lr sr ir mi refl (LK m ir mi) n
-  ; ir-flat-correct   = λ p lk → X64.ir-flat-correct-x86-64 (table p) (brs (table p)) (main p) lk
+      X64.asm-flat-x86-64 ι (TP m ir) (brs ι (TP m ir)) m asm eq dl lr sr ir mi refl (LK m ir mi) n
+  ; ir-flat-correct   = λ p lk → X64.ir-flat-correct-x86-64 ι (table p) (brs ι (table p)) (main p) lk
   }
 
-x86-32-correct : BlockRunsHyp-x86-32 → ArchCorrect x86-32 (arch-semantics x86-32)
-x86-32-correct brs = record
-  { asm-sem           = X32.asm-sem-x86-32 []
-  ; flat-trace        = λ p lk → X32.flat-x86-32 (table p) (brs (table p)) (main p) lk
+x86-32-correct : BlockRunsHyp-x86-32 → ∀ (ι : Interp) → ArchCorrect x86-32 (arch-semantics x86-32) ι
+x86-32-correct brs ι = record
+  { asm-sem           = X32.asm-sem-x86-32 ι []
+  ; flat-trace        = λ p lk → X32.flat-x86-32 ι (table p) (brs ι (table p)) (main p) lk
   ; assemble-correct  = λ _ _ _ _ _ → refl
   ; asm-trace-correct = λ m asm eq dl lr sr ir mi n →
-      X32.asm-flat-x86-32 (TP m ir) (brs (TP m ir)) m asm eq dl lr sr ir mi refl (LK m ir mi) n
-  ; ir-flat-correct   = λ p lk → X32.ir-flat-correct-x86-32 (table p) (brs (table p)) (main p) lk
+      X32.asm-flat-x86-32 ι (TP m ir) (brs ι (TP m ir)) m asm eq dl lr sr ir mi refl (LK m ir mi) n
+  ; ir-flat-correct   = λ p lk → X32.ir-flat-correct-x86-32 ι (table p) (brs ι (table p)) (main p) lk
   }
 
-riscv64-correct : BlockRunsHyp-riscv64 → ArchCorrect riscv64 (arch-semantics riscv64)
-riscv64-correct brs = record
-  { asm-sem           = RV.asm-sem-riscv64 []
-  ; flat-trace        = λ p lk → RV.flat-riscv64 (table p) (brs (table p)) (main p) lk
+riscv64-correct : BlockRunsHyp-riscv64 → ∀ (ι : Interp) → ArchCorrect riscv64 (arch-semantics riscv64) ι
+riscv64-correct brs ι = record
+  { asm-sem           = RV.asm-sem-riscv64 ι []
+  ; flat-trace        = λ p lk → RV.flat-riscv64 ι (table p) (brs ι (table p)) (main p) lk
   ; assemble-correct  = λ _ _ _ _ _ → refl
   ; asm-trace-correct = λ m asm eq dl lr sr ir mi n →
-      RV.asm-flat-riscv64 (TP m ir) (brs (TP m ir)) m asm eq dl lr sr ir mi refl (LK m ir mi) n
-  ; ir-flat-correct   = λ p lk → RV.ir-flat-correct-riscv64 (table p) (brs (table p)) (main p) lk
+      RV.asm-flat-riscv64 ι (TP m ir) (brs ι (TP m ir)) m asm eq dl lr sr ir mi refl (LK m ir mi) n
+  ; ir-flat-correct   = λ p lk → RV.ir-flat-correct-riscv64 ι (table p) (brs ι (table p)) (main p) lk
   }
 
 arch-correctness : BlockRunsHyp-x86-64 → BlockRunsHyp-x86-32 → BlockRunsHyp-riscv64
-                 → ∀ (arch : Arch) → ArchCorrect arch (arch-semantics arch)
-arch-correctness b64 b32 brv x86-64  = x86-64-correct b64
-arch-correctness b64 b32 brv x86-32  = x86-32-correct b32
-arch-correctness b64 b32 brv riscv64 = riscv64-correct brv
+                 → ∀ (ι : Interp) (arch : Arch) → ArchCorrect arch (arch-semantics arch) ι
+arch-correctness b64 b32 brv ι x86-64  = x86-64-correct b64 ι
+arch-correctness b64 b32 brv ι x86-32  = x86-32-correct b32 ι
+arch-correctness b64 b32 brv ι riscv64 = riscv64-correct brv ι

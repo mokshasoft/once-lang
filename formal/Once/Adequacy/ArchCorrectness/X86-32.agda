@@ -34,23 +34,23 @@ module Once.Adequacy.ArchCorrectness.X86-32
   (o : CanonicalName) (tbl : List IRFun)
   -- Plan 0.105: the interpretation the program runs against.
   (ι : Interp)
-  (x86-32-heap-room : RB.HeapRoom o) (x86-32-stack-room : RB.StackRoom o)
-  (x86-32-call-room : RB.CallRoom o)
+  (x86-32-heap-room : RB.HeapRoom o ι) (x86-32-stack-room : RB.StackRoom o ι)
+  (x86-32-call-room : RB.CallRoom o ι)
   -- PLAN 0.70 PHASE C: the machine is finite. Same class and same threading as
   -- the three rooms (D087) — a fact about the running program that a loader or
   -- the emitter establishes, and a parameter is the hole its proof slots into.
-  (x86-32-reg-range : RB.RegRange o)
-  (x86-32-scratch-dec-guarded : RB.ScratchDecGuarded o)
+  (x86-32-reg-range : RB.RegRange o ι)
+  (x86-32-scratch-dec-guarded : RB.ScratchDecGuarded o ι)
   -- …and the four `add` sites' range obligations, bundled: `add` computes
   -- `W.⊕` unconditionally (D054 — wraparound is correct, defined semantics, so
   -- no no-overflow precondition may sit on the instruction), which moves the
   -- range obligation to the consumer. All four are LAYOUT/counter facts, never
   -- claims about user arithmetic.
-  (x86-32-addr-no-wrap : RB.AddrNoWrap o)
+  (x86-32-addr-no-wrap : RB.AddrNoWrap o ι)
   -- …and the LITERAL seam (phase D): an emitted immediate fits in a machine
   -- word. Not a linker fact like the rooms — D054 makes an elaborated literal
   -- in range BY CONSTRUCTION; this is the frontend's range, not yet threaded.
-  (x86-32-lit-fits : RB.LitFits o) where
+  (x86-32-lit-fits : RB.LitFits o ι) where
 
 open import Data.Nat using (ℕ; _+_; s≤s; z≤n)
 open import Data.Unit using (tt)
@@ -69,7 +69,7 @@ open import Once.CCC.Target.X86-32.AbstractToX86-32 using (slot-to-disp)
 open import Data.Empty using (⊥)
 open import Data.Nat using (_*_)
 open import Data.Nat.Properties using (+-comm; ≤-refl; ≤-reflexive)
-open import Once.Adequacy.CPU.X86-32 using (ev-x86-32; arith-env-x86-32; step-budget-x86-32)
+open import Once.Adequacy.CPU.X86-32 using (call-at-x86-32; ev-x86-32; arith-env-x86-32; step-budget-x86-32)
 -- `val-x86-32` lives with the arith simulation on this arch (x86-64 re-exports
 -- its own from `Adequacy.CPU`).
 open import Once.Adequacy.ArchCorrectness.ArithSimX86-32 using (val-x86-32)
@@ -81,6 +81,7 @@ open import Once.IR using (IR; Unit)  -- Plan 0.52 M2: IRTy Unit
 open import Once.Denotation.Behavior using (Behavior; at; silent)
 open import Once.Adequacy.CPU using (x86-32; arch-semantics)
 open import Once.Adequacy.CPU.Interface using (ArchSemantics)
+open import Once.Arith.Backend.CallAnswer using (answer-at)
 open import Once.Adequacy.SourceTrace using (moduleToIR; moduleTable; rewrite-program; ⟦_⟧IR)
 open import Once.Denotation.Program using (irProgram; table; main; LinkedProgram)
 open import Once.CCC.Codegen.ProgramImageFacts o using (image-frame-free)
@@ -167,7 +168,7 @@ conc-trace : IR Unit Unit → Behavior
 conc-trace ir =
   -- THE REAL EMITTER: `Once.Target.X86-32` lowers via `compile-trace-cnt`
   -- (which threads the label counter through case/loop), not the plain fold.
-  ArchSemantics.run-trace as32 (proj₂ (compile-trace-cnt o 0 (FFOx.image ir)))
+  ArchSemantics.run-trace as32 ι (proj₂ (compile-trace-cnt o 0 (FFOx.image ir)))
                           (ArchSemantics.initialState as32)
 
 postulate
@@ -441,13 +442,13 @@ postulate
   -- postulated `ℕ→ℕ` fuel map. Provable core: `run-events` fuel-prefix monotonicity;
   -- residual leaf: `step-budget-x86-32` adequacy (needs `step-budget` pinned, D5).
   conc-fuel : ∀ (brs : FFOx.BlockRunsT) (ir : IR Unit Unit) (lk : LinkedProgram (irProgram tbl ir)) (n M : ℕ) →
-      RTx.run-events val-x86-32 ev-x86-32 (arith-env-x86-32 (compile-trace (FFOx.image ir)))
-        M (compile-trace (FFOx.image ir)) (ArchSemantics.initialState as32)
+      RTx.run-events val-x86-32 (answer-at ι call-at-x86-32) ev-x86-32 (arith-env-x86-32 (compile-trace (FFOx.image ir)))
+        [] M (compile-trace (FFOx.image ir)) (ArchSemantics.initialState as32)
       ≡ flat-events (Nof brs ir lk n) (FFOx.image ir) (mkFlat FFOx.entry-s (FFOx.entry-alloc (ir-stack-budget ir)) 0) →
-      take n (RTx.run-events val-x86-32 ev-x86-32 (arith-env-x86-32 (compile-trace (FFOx.image ir)))
-                (step-budget-x86-32 n) (compile-trace (FFOx.image ir)) (ArchSemantics.initialState as32))
-    ≡ take n (RTx.run-events val-x86-32 ev-x86-32 (arith-env-x86-32 (compile-trace (FFOx.image ir)))
-                M (compile-trace (FFOx.image ir)) (ArchSemantics.initialState as32))
+      take n (RTx.run-events val-x86-32 (answer-at ι call-at-x86-32) ev-x86-32 (arith-env-x86-32 (compile-trace (FFOx.image ir)))
+                [] (step-budget-x86-32 n) (compile-trace (FFOx.image ir)) (ArchSemantics.initialState as32))
+    ≡ take n (RTx.run-events val-x86-32 (answer-at ι call-at-x86-32) ev-x86-32 (arith-env-x86-32 (compile-trace (FFOx.image ir)))
+                [] M (compile-trace (FFOx.image ir)) (ArchSemantics.initialState as32))
 
 -- `conc-flat-sim-nested` RETIRED (Plan 0.54 item 6, 2026-08-01): with `case`
 -- compiled to flat control, EVERY emitted trace is nested-free
@@ -479,7 +480,7 @@ flat-x86-32 : BlockRunsHyp-x86-32 → (ir : IR Unit Unit) → LinkedProgram (irP
 flat-x86-32 brs = FFOx.flat-main ir-obs-correct brs
 
 ir-flat-correct-x86-32 : ∀ (brs : BlockRunsHyp-x86-32) (ir : IR Unit Unit) (lk : LinkedProgram (irProgram tbl ir)) (n : ℕ)
-                     → at (flat-x86-32 brs ir lk) n ≡ at (⟦ just (irProgram tbl ir) ⟧IR (arch-numerics x86-32)) n
+                     → at (flat-x86-32 brs ir lk) n ≡ at (⟦ just (irProgram tbl ir) ⟧IR (arch-numerics x86-32) ι) n
 ir-flat-correct-x86-32 brs = FFOx.ir-flat-correct-main ir-obs-correct brs
 
 asm-sem-x86-32 : String → Behavior

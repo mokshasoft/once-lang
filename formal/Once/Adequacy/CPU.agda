@@ -14,7 +14,7 @@
 --      Downstream proofs work against this record so they're
 --      arch-generic.
 --
---   2. The bytes-level execution — `exec : Arch → List Byte → Behavior`.
+--   2. The bytes-level execution — `exec : Arch → Interp → List Byte → Behavior`.
 --      Computed by dispatching on Arch, decoding bytes, running the
 --      per-arch semantics, and projecting to Behavior.
 --
@@ -30,6 +30,7 @@ module Once.Adequacy.CPU where
 open import Data.List using (List)
 
 open import Once.Denotation.Behavior        using (Behavior)
+open import Once.Denotation.TraceMonad      using (Interp)
 open import Once.Adequacy.CPU.Interface   public  -- re-export
 import Once.Adequacy.CPU.RiscV64 as RiscV64-CPU
 import Once.Adequacy.CPU.X86-64  as X86-64-CPU
@@ -52,5 +53,7 @@ arch-semantics riscv64 = RiscV64-CPU.arch-semantics
 -- Top-level bytes-execution: arch-generic via `ArchSemantics`.
 ------------------------------------------------------------------------
 
-exec : Arch → List Byte → Behavior
-exec arch bytes = ArchSemantics.exec-bytes (arch-semantics arch) bytes
+-- Plan 0.105: at an interpretation — the world that answers the binary's
+-- external calls.
+exec : Arch → Interp → List Byte → Behavior
+exec arch ι bytes = ArchSemantics.exec-bytes (arch-semantics arch) ι bytes

@@ -41,13 +41,13 @@ module Once.Adequacy.ArchCorrectness.RiscV64 (o : CanonicalName) (tbl : List IRF
   -- symmetric with x86-64. G3 (2026-08-17) is where they finally get CONSUMED:
   -- until the simulation was whole-cloth nothing below had asked for them, and
   -- three of the twelve were all that had been written down.
-  (riscv64-heap-room : RBr.HeapRoom o) (riscv64-stack-room : RBr.StackRoom o)
-  (riscv64-call-room : RBr.CallRoom o)
-  (riscv64-reg-range : RBr.RegRange o)
-  (riscv64-scratch-dec-guarded : RBr.ScratchDecGuarded o)
-  (riscv64-slot-addr-no-wrap : RBr.SlotAddrNoWrap o)
-  (riscv64-addr-no-wrap : RBr.AddrNoWrap o)
-  (riscv64-lit-fits : RBr.LitFits o) where
+  (riscv64-heap-room : RBr.HeapRoom o ι) (riscv64-stack-room : RBr.StackRoom o ι)
+  (riscv64-call-room : RBr.CallRoom o ι)
+  (riscv64-reg-range : RBr.RegRange o ι)
+  (riscv64-scratch-dec-guarded : RBr.ScratchDecGuarded o ι)
+  (riscv64-slot-addr-no-wrap : RBr.SlotAddrNoWrap o ι)
+  (riscv64-addr-no-wrap : RBr.AddrNoWrap o ι)
+  (riscv64-lit-fits : RBr.LitFits o ι) where
 
 open import Data.Nat using (ℕ)
 open import Data.Maybe using (Maybe; just; nothing)
@@ -55,7 +55,7 @@ open import Data.List using ([])
 open import Data.Bool using (false)
 open import Data.Product using (proj₁; proj₂; _,_)
 open import Data.List using (take)
-open import Once.Adequacy.CPU.RiscV64 using (ev-riscv64; arith-env-riscv64; step-budget-riscv64)
+open import Once.Adequacy.CPU.RiscV64 using (call-at-riscv64; ev-riscv64; arith-env-riscv64; step-budget-riscv64)
 open import Once.Adequacy.ArchCorrectness.ArithSimRiscV64 using (val-riscv64)
 import Once.Arith.Backend.RiscV64.RunTrace as RTr
 open import Once.CCC.Codegen.IRToTrace o using (ir-stack-budget)
@@ -65,6 +65,7 @@ open import Once.IR using (IR; Unit)  -- Plan 0.52 M2: IRTy Unit
 open import Once.Denotation.Behavior using (Behavior; at; silent)
 open import Once.Adequacy.CPU using (riscv64; arch-semantics)
 open import Once.Adequacy.CPU.Interface using (ArchSemantics)
+open import Once.Arith.Backend.CallAnswer using (answer-at)
 open import Once.Adequacy.SourceTrace using (moduleToIR; moduleTable; rewrite-program; ⟦_⟧IR)
 open import Once.Denotation.Program using (irProgram; table; main; LinkedProgram)
 open import Once.CCC.Codegen.ProgramImageFacts o using (image-frame-free)
@@ -140,7 +141,7 @@ asR = arch-semantics riscv64
 -- table entry, as the emitted file contains them.
 conc-trace : IR Unit Unit → Behavior
 conc-trace ir =
-  ArchSemantics.run-trace asR (proj₂ (compile-trace-cnt o 0 (FFOr.image ir)))
+  ArchSemantics.run-trace asR ι (proj₂ (compile-trace-cnt o 0 (FFOr.image ir)))
                           (ArchSemantics.initialState asR)
 
 postulate
@@ -329,18 +330,18 @@ postulate
   -- reproduces the first-`n`-event prefix, the only remaining content is that
   -- `step-budget-riscv64 n` itself reaches ≥ n events.
   conc-fuel : ∀ (brs : FFOr.BlockRunsT) (ir : IR Unit Unit) (lk : LinkedProgram (irProgram tbl ir)) (n M : ℕ) →
-      RTr.run-events val-riscv64 ev-riscv64
+      RTr.run-events val-riscv64 (answer-at ι call-at-riscv64) ev-riscv64
         (arith-env-riscv64 (compile-trace (FFOr.image ir)))
-        M (compile-trace (FFOr.image ir)) (ArchSemantics.initialState asR)
+        [] M (compile-trace (FFOr.image ir)) (ArchSemantics.initialState asR)
       ≡ flat-events (Nof brs ir lk n) (FFOr.image ir)
           (mkFlat FFOr.entry-s (FFOr.entry-alloc (ir-stack-budget ir)) 0) →
-      take n (RTr.run-events val-riscv64 ev-riscv64
+      take n (RTr.run-events val-riscv64 (answer-at ι call-at-riscv64) ev-riscv64
                 (arith-env-riscv64 (compile-trace (FFOr.image ir)))
-                (step-budget-riscv64 n) (compile-trace (FFOr.image ir))
+                [] (step-budget-riscv64 n) (compile-trace (FFOr.image ir))
                 (ArchSemantics.initialState asR))
-    ≡ take n (RTr.run-events val-riscv64 ev-riscv64
+    ≡ take n (RTr.run-events val-riscv64 (answer-at ι call-at-riscv64) ev-riscv64
                 (arith-env-riscv64 (compile-trace (FFOr.image ir)))
-                M (compile-trace (FFOr.image ir)) (ArchSemantics.initialState asR))
+                [] M (compile-trace (FFOr.image ir)) (ArchSemantics.initialState asR))
 
 conc-flat-sim-just :
   ∀ (brs : FFOr.BlockRunsT) (ir : IR Unit Unit) (lk : LinkedProgram (irProgram tbl ir)) (n : ℕ) →
@@ -370,7 +371,7 @@ flat-riscv64 : BlockRunsHyp-riscv64 → (ir : IR Unit Unit) → LinkedProgram (i
 flat-riscv64 brs = FFOr.flat-main ir-obs-correct brs
 
 ir-flat-correct-riscv64 : ∀ (brs : BlockRunsHyp-riscv64) (ir : IR Unit Unit) (lk : LinkedProgram (irProgram tbl ir)) (n : ℕ)
-                     → at (flat-riscv64 brs ir lk) n ≡ at (⟦ just (irProgram tbl ir) ⟧IR (arch-numerics riscv64)) n
+                     → at (flat-riscv64 brs ir lk) n ≡ at (⟦ just (irProgram tbl ir) ⟧IR (arch-numerics riscv64) ι) n
 ir-flat-correct-riscv64 brs = FFOr.ir-flat-correct-main ir-obs-correct brs
 
 asm-sem-riscv64 : String → Behavior
