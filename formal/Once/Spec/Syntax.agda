@@ -21,7 +21,7 @@ open import Once.TypeCheck.Raw public
   using ( RawExpr ; RVar ; RQualified ; RResolved ; RApp ; RLam ; RLet
         ; RPair ; RDestruct ; RUnit ; RInt ; RFloat ; RStringLit ; RAnnot
         ; RBinOp ; RUnaryOp ; RAna
-        ; RawType ; RTVar ; RTUnit ; RTVoid ; RTInt ; RTFloat ; RTBuffer
+        ; RawType ; RTVar ; RTUnit ; RTVoid ; RTInt ; RTFloat
         ; RTStr ; RTProduct ; RTSum ; RTArrow ; RTEff ; RTFix
         ; BinOp ; OpAdd ; OpSub ; OpMul ; OpDiv ; OpMod
         ; OpLt ; OpLe ; OpGt ; OpGe ; OpEq ; OpNe

@@ -104,8 +104,6 @@ sigOp-σ-irrel {A = T.Unit}       c r r′ s (con-base _) dγ = refl
 sigOp-σ-irrel {A = T.Void}       c r r′ s (con-base _) dγ = refl
 sigOp-σ-irrel {A = T.Int}        c r r′ s (con-base _) dγ = refl
 sigOp-σ-irrel {A = T.Float}      c r r′ s (con-base _) dγ = refl
-sigOp-σ-irrel {A = T.Str}        c r r′ s (con-base _) dγ = refl
-sigOp-σ-irrel {A = T.Buffer}     c r r′ s (con-base _) dγ = refl
 sigOp-σ-irrel {A = T.rigid _ _}  c r r′ s (con-base _) dγ = refl
 sigOp-σ-irrel {A = _ T.* _}      c r r′ s (con-base _) dγ = refl
 sigOp-σ-irrel {A = _ T.+ _}      c r r′ s (con-base _) dγ = refl
@@ -302,7 +300,6 @@ resolveExpr-faithful polys imps userFns fresh (Srf.int z) dγ = refl
 -- A float literal has no names in it, so resolution is the identity and the
 -- denotation is unchanged — `refl`, exactly as for `int`.
 resolveExpr-faithful polys imps userFns fresh (Srf.float d) dγ = refl
-resolveExpr-faithful polys imps userFns fresh (Srf.str s) dγ = refl
 resolveExpr-faithful polys imps userFns fresh (Srf.closure s) dγ = refl
 resolveExpr-faithful polys imps userFns fresh (Srf.lift-morphism m) dγ = refl
 -- Unary / binary (structural ⇒ the IH, under the shared continuation).

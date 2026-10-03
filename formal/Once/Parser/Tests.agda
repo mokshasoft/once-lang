@@ -20,7 +20,7 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (_,_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
-open import Once.Type using (Unit; Void; Int; Float; Buffer; Str;
+open import Once.Type using (Unit; Void; Int; Float;
                              _*_; _+_; _⇒[_]_; mk-kind; pure; eff;
                              Zero; One; Many)
 open import Once.Parser.Token
@@ -49,11 +49,7 @@ parseType-Int    = refl
 parseType-Float  : parseType (TWord "Float" ∷ []) ≡ just (Float  , [])
 parseType-Float  = refl
 
-parseType-Buffer : parseType (TWord "Buffer" ∷ []) ≡ just (Buffer , [])
-parseType-Buffer = refl
 
-parseType-String : parseType (TWord "String" ∷ []) ≡ just (Str    , [])
-parseType-String = refl
 
 ------------------------------------------------------------------------
 -- Leftover-tokens behaviour
@@ -73,10 +69,6 @@ parseType-Unit*Int :
     ≡ just (Unit * Int , [])
 parseType-Unit*Int = refl
 
-parseType-Int+Str :
-  parseType (TWord "Int" ∷ TPlus ∷ TWord "String" ∷ [])
-    ≡ just (Int + Str , [])
-parseType-Int+Str = refl
 
 ------------------------------------------------------------------------
 -- Arrow grades: all three quantity annotations round-trip to the

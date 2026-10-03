@@ -32,7 +32,7 @@ open import Relation.Nullary using (Dec; yes; no; ¬_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; subst; cong; cong₂)
 
 import Once.Type as T
-open T using (PolyType; PolyFunctor; PTVar; PUnit; PVoid; PInt; PFloat; PStr; PBuffer; _P*_; _P+_; _P⇒[_]_; PEff;
+open T using (PolyType; PolyFunctor; PTVar; PUnit; PVoid; PInt; PFloat; _P*_; _P+_; _P⇒[_]_; PEff;
   Pμ-type; Pν-type; PK; PId; _P⊕_; _P⊗_; substPoly; substPolyF; ftv; ftvF; TKind; k-base; k-any; mk-kind; Many; eff; pure)
 open import Once.Type.DecEq using (_≟tk_)
 open import Once.Type.Rigid using (params; nubFrom; arityOf; kindOf; indexOf; memberB; rigidSubst; rigidOf; ftvK;
@@ -164,8 +164,6 @@ mutual
   part-cf sc PVoid   h = cf-Void
   part-cf sc PInt    h = cf-Int
   part-cf sc PFloat  h = cf-Float
-  part-cf sc PStr    h = cf-Str
-  part-cf sc PBuffer h = cf-Buffer
   part-cf sc (A P* B) h = cf-* (part-cf sc A (λ m → h (∈-++⁺ˡ m))) (part-cf sc B (λ m → h (∈-++⁺ʳ (ftv A) m)))
   part-cf sc (A P+ B) h = cf-+ (part-cf sc A (λ m → h (∈-++⁺ˡ m))) (part-cf sc B (λ m → h (∈-++⁺ʳ (ftv A) m)))
   part-cf sc (A P⇒[ q ] B) h = cf-⇒ (part-cf sc A (λ m → h (∈-++⁺ˡ m))) (part-cf sc B (λ m → h (∈-++⁺ʳ (ftv A) m)))
@@ -190,8 +188,6 @@ mutual
   part-inst sc PVoid   θ h = refl
   part-inst sc PInt    θ h = refl
   part-inst sc PFloat  θ h = refl
-  part-inst sc PStr    θ h = refl
-  part-inst sc PBuffer θ h = refl
   part-inst sc (A P* B) θ h =
     cong₂ T._*_ (part-inst sc A θ (λ m → h (∈-++⁺ˡ m))) (part-inst sc B θ (λ m → h (∈-++⁺ʳ (ftv A) m)))
   part-inst sc (A P+ B) θ h =

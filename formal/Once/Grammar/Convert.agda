@@ -60,8 +60,6 @@ mutual
   gtypeToType G.TVoid   = just T.Void
   gtypeToType G.TInt    = just T.Int
   gtypeToType G.TFloat  = just T.Float
-  gtypeToType G.TBuffer = just T.Buffer
-  gtypeToType G.TString = just T.Str
   gtypeToType (A G.⇒[ q ] B) with gtypeToType A | gtypeToType B
   ... | just A' | just B' = just (A' T.⇒[ T.mk-kind q T.pure ] B')
   ... | _       | _       = nothing
@@ -112,8 +110,6 @@ mutual
   typeToGType T.Void   = just G.TVoid
   typeToGType T.Int    = just G.TInt
   typeToGType T.Float  = just G.TFloat
-  typeToGType T.Buffer = just G.TBuffer
-  typeToGType T.Str    = just G.TString
   typeToGType (T.rigid _ _) = nothing   -- D243: source never writes a rigid parameter
   typeToGType (A T.⇒[ T.mk-kind q T.pure ] B) with typeToGType A | typeToGType B
   ... | just A' | just B' = just (A' G.⇒[ q ] B')
@@ -172,8 +168,6 @@ typeToGType-gtypeToType T.Unit   .G.TUnit   refl = refl
 typeToGType-gtypeToType T.Void   .G.TVoid   refl = refl
 typeToGType-gtypeToType T.Int    .G.TInt    refl = refl
 typeToGType-gtypeToType T.Float  .G.TFloat  refl = refl
-typeToGType-gtypeToType T.Buffer .G.TBuffer refl = refl
-typeToGType-gtypeToType T.Str    .G.TString refl = refl
 typeToGType-gtypeToType (T.rigid _ _) _ ()
 typeToGType-gtypeToType (A T.⇒[ T.mk-kind q T.pure ] B) g eq with typeToGType A in eqA | typeToGType B in eqB
 typeToGType-gtypeToType (A T.⇒[ T.mk-kind q T.pure ] B) .(gA G.⇒[ q ] gB) refl | just gA | just gB
@@ -228,8 +222,6 @@ gtypeToType-typeToGType G.TUnit   .T.Unit   refl = refl
 gtypeToType-typeToGType G.TVoid   .T.Void   refl = refl
 gtypeToType-typeToGType G.TInt    .T.Int    refl = refl
 gtypeToType-typeToGType G.TFloat  .T.Float  refl = refl
-gtypeToType-typeToGType G.TBuffer .T.Buffer refl = refl
-gtypeToType-typeToGType G.TString .T.Str    refl = refl
 gtypeToType-typeToGType (A G.⇒[ q ] B) t eq with gtypeToType A in eqA | gtypeToType B in eqB
 gtypeToType-typeToGType (A G.⇒[ q ] B) .(tA T.⇒[ T.mk-kind q T.pure ] tB) refl | just tA | just tB
   rewrite gtypeToType-typeToGType A tA eqA
@@ -319,16 +311,10 @@ parseGType toks with parseType toks
 _ : gtypeToType G.TUnit ≡ just T.Unit
 _ = refl
 
-_ : gtypeToType G.TString ≡ just T.Str
-_ = refl
-
-_ : typeToGType T.Str ≡ just G.TString
-_ = refl
-
 _ : gtypeToType (G.TInt G.⇒[ One ] G.TInt) ≡ just (T.Int T.⇒[ T.mk-kind T.One T.pure ] T.Int)
 _ = refl
 
-_ : typeToGType (T.Int T.* T.Str) ≡ just (G.TInt G.⊗ G.TString)
+_ : typeToGType (T.Int T.* T.Float) ≡ just (G.TInt G.⊗ G.TFloat)
 _ = refl
 
 -- TVar is rejected:
@@ -381,8 +367,6 @@ mutual
     ex-void   : Expressible T.Void
     ex-int    : Expressible T.Int
     ex-float  : Expressible T.Float
-    ex-str    : Expressible T.Str
-    ex-buffer : Expressible T.Buffer
     ex-prod   : ∀ {A B} → Expressible A → Expressible B → Expressible (A T.* B)
     ex-sum    : ∀ {A B} → Expressible A → Expressible B → Expressible (A T.+ B)
     ex-fun    : ∀ {A B q} → Expressible A → Expressible B → Expressible (A T.⇒[ T.mk-kind q T.pure ] B)
@@ -406,8 +390,6 @@ typeToGType-Expressible ex-unit   = G.TUnit   , refl
 typeToGType-Expressible ex-void   = G.TVoid   , refl
 typeToGType-Expressible ex-int    = G.TInt    , refl
 typeToGType-Expressible ex-float  = G.TFloat  , refl
-typeToGType-Expressible ex-str    = G.TString , refl
-typeToGType-Expressible ex-buffer = G.TBuffer , refl
 typeToGType-Expressible (ex-prod nrA nrB)
   with typeToGType-Expressible nrA | typeToGType-Expressible nrB
 ... | gA , eqA | gB , eqB rewrite eqA | eqB = (gA G.⊗ gB) , refl

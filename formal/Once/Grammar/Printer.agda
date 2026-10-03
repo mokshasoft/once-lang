@@ -52,8 +52,6 @@ printGType G.TUnit   = TWord "Unit"   ∷ []
 printGType G.TVoid   = TWord "Void"   ∷ []
 printGType G.TInt    = TWord "Int"    ∷ []
 printGType G.TFloat  = TWord "Float"  ∷ []
-printGType G.TBuffer = TWord "Buffer" ∷ []
-printGType G.TString = TWord "String" ∷ []
 printGType (G.TVar name) = TWord name ∷ []
 printGType (A G.⊗ B) =
   TLParen ∷ printGType A ++ TStar ∷ printGType B ++ TRParen ∷ []
@@ -104,12 +102,6 @@ round-trip-Int = refl
 round-trip-Float : parseGType (printGType G.TFloat) ≡ just (G.TFloat , [])
 round-trip-Float = refl
 
-round-trip-Buffer : parseGType (printGType G.TBuffer) ≡ just (G.TBuffer , [])
-round-trip-Buffer = refl
-
-round-trip-String : parseGType (printGType G.TString) ≡ just (G.TString , [])
-round-trip-String = refl
-
 -- Compound round-trip smoke tests: specific concrete GTypes whose
 -- printed token streams the parser can reduce computationally (refl
 -- suffices). These don't prove the general compound case, but they
@@ -119,9 +111,9 @@ round-trip-Unit⊗Int-smoke :
   parseGType (printGType (G.TUnit G.⊗ G.TInt)) ≡ just (G.TUnit G.⊗ G.TInt , [])
 round-trip-Unit⊗Int-smoke = refl
 
-round-trip-Int⊕Str-smoke :
-  parseGType (printGType (G.TInt G.⊕ G.TString)) ≡ just (G.TInt G.⊕ G.TString , [])
-round-trip-Int⊕Str-smoke = refl
+round-trip-Int⊕Float-smoke :
+  parseGType (printGType (G.TInt G.⊕ G.TFloat)) ≡ just (G.TInt G.⊕ G.TFloat , [])
+round-trip-Int⊕Float-smoke = refl
 
 round-trip-Int⇒Int-smoke :
   parseGType (printGType (G.TInt G.⇒[ Many ] G.TInt))
@@ -140,13 +132,13 @@ round-trip-erased-smoke = refl
 
 -- Nested compounds.
 round-trip-nested-product-smoke :
-  parseGType (printGType ((G.TInt G.⊗ G.TString) G.⊗ G.TUnit))
-    ≡ just ((G.TInt G.⊗ G.TString) G.⊗ G.TUnit , [])
+  parseGType (printGType ((G.TInt G.⊗ G.TFloat) G.⊗ G.TUnit))
+    ≡ just ((G.TInt G.⊗ G.TFloat) G.⊗ G.TUnit , [])
 round-trip-nested-product-smoke = refl
 
 round-trip-arrow-into-product-smoke :
-  parseGType (printGType (G.TInt G.⇒[ Many ] (G.TInt G.⊗ G.TString)))
-    ≡ just (G.TInt G.⇒[ Many ] (G.TInt G.⊗ G.TString) , [])
+  parseGType (printGType (G.TInt G.⇒[ Many ] (G.TInt G.⊗ G.TFloat)))
+    ≡ just (G.TInt G.⇒[ Many ] (G.TInt G.⊗ G.TFloat) , [])
 round-trip-arrow-into-product-smoke = refl
 
 round-trip-curried-linear-smoke :
@@ -156,9 +148,9 @@ round-trip-curried-linear-smoke = refl
 
 round-trip-sum-of-arrows-smoke :
   parseGType (printGType
-    ((G.TInt G.⇒[ Many ] G.TInt) G.⊕ (G.TString G.⇒[ Many ] G.TUnit)))
+    ((G.TInt G.⇒[ Many ] G.TInt) G.⊕ (G.TFloat G.⇒[ Many ] G.TUnit)))
     ≡ just
-    ((G.TInt G.⇒[ Many ] G.TInt) G.⊕ (G.TString G.⇒[ Many ] G.TUnit) , [])
+    ((G.TInt G.⇒[ Many ] G.TInt) G.⊕ (G.TFloat G.⇒[ Many ] G.TUnit) , [])
 round-trip-sum-of-arrows-smoke = refl
 
 ------------------------------------------------------------------------
@@ -178,8 +170,6 @@ data Concrete : GType → Set where
   c-void   : Concrete G.TVoid
   c-int    : Concrete G.TInt
   c-float  : Concrete G.TFloat
-  c-buffer : Concrete G.TBuffer
-  c-string : Concrete G.TString
   c-prod   : ∀ {A B} → Concrete A → Concrete B → Concrete (A G.⊗ B)
   c-sum    : ∀ {A B} → Concrete A → Concrete B → Concrete (A G.⊕ B)
   c-fun    : ∀ {A B q} → Concrete A → Concrete B → Concrete (A G.⇒[ q ] B)

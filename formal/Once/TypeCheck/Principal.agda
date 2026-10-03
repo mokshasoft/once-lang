@@ -169,8 +169,6 @@ mutual
   unify' n s PVoid PVoid = just s
   unify' n s PInt PInt = just s
   unify' n s PFloat PFloat = just s
-  unify' n s PStr PStr = just s
-  unify' n s PBuffer PBuffer = just s
   unify' n s (a P* b) (a' P* b') = unify2 n s a a' b b'
   unify' n s (a P+ b) (a' P+ b') = unify2 n s a a' b b'
   unify' n s (a P⇒[ q ] b) (a' P⇒[ q' ] b') =
@@ -210,8 +208,6 @@ mutual
   typeToPoly Void = just PVoid
   typeToPoly Int = just PInt
   typeToPoly Float = just PFloat
-  typeToPoly Str = just PStr
-  typeToPoly Buffer = just PBuffer
   typeToPoly (rigid _ _) = nothing   -- D243: the oracle never sees a definition's rigid parameters
   typeToPoly (a * b) = map2P _P*_ (typeToPoly a) (typeToPoly b)
   typeToPoly (a + b) = map2P _P+_ (typeToPoly a) (typeToPoly b)
@@ -477,7 +473,7 @@ mutual
     destructFinish imps sch env x e₁ y e₂ te n₁ s₁ }
   pInfer imps sch env Raw.RUnit n s = just (PUnit , n , s)
   pInfer imps sch env (Raw.RInt _) n s = just (PInt , n , s)
-  pInfer imps sch env (Raw.RStringLit _) n s = just (PStr , n , s)
+  pInfer imps sch env (Raw.RStringLit _) n s = nothing
   pInfer imps sch env (Raw.RAnnot e T) n s with typeToPoly T
   ... | nothing = nothing
   ... | just tT =

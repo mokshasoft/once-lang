@@ -47,7 +47,7 @@ open import Once.Word using (Carrier)
 open import Once.Float.Dyadic using (Dyadic)
 open import Once.Type using (Type; Functor; ⟦_⟧T; μ-type)
 open import Once.Functor.Translate using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod; translateF;
-  IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Str; base-Buffer; base-Prod; base-Sum)
+  IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum)
 open import Once.Semantics.Machine using (sem-cata; sem-fmap; coerce-μ-out; ⟦_⟧F)
 open import Once.Semantics.Functor using (μS; cataS; ⟦_⟧SF)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; seqF)
@@ -76,8 +76,6 @@ base-refl base-Unit   v = tt
 base-refl base-Void   ()
 base-refl base-Int    v = refl
 base-refl base-Float  v = refl
-base-refl base-Str    v = refl
-base-refl base-Buffer v = refl
 base-refl (base-Prod ibA ibB) (a , b) = base-refl ibA a , base-refl ibB b
 base-refl (base-Sum ibA ibB) (inj₁ a) = base-refl ibA a
 base-refl (base-Sum ibA ibB) (inj₂ b) = base-refl ibB b

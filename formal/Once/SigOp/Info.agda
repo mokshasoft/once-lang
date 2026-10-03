@@ -48,7 +48,7 @@ open import Data.Bool using (Bool; true; false)
 -- Plan 0.58 (OCP-0006): a SigOp is an FFI/register-ABI boundary, so its argument
 -- and result types must be CONCRETE (`IsBaseType` — no arrows, no `μ`/`ν`). This is
 -- enforced BY CONSTRUCTION here: a `SigOpInfo` cannot be built at a non-base type.
-open import Once.Functor.Translate using (IsBaseType; IsConcrete; base-Unit; base-Void; base-Int; base-Float; base-Str; base-Buffer; base-Prod; base-Sum)
+open import Once.Functor.Translate using (IsBaseType; IsConcrete; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum)
 
 -- | Frontend / proof-level interpretation (Int ≡ ℤ).
 -- (Core ℤ `as I` removed: semI deleted — the machine `semM` is the meaning.)
@@ -231,8 +231,6 @@ liftᵇ base-Unit        x       = x
 liftᵇ base-Void        x       = x
 liftᵇ base-Int         x       = x
 liftᵇ base-Float       x       = x
-liftᵇ base-Str         x       = x
-liftᵇ base-Buffer      x       = x
 liftᵇ (base-Prod a b)  (x , y) = liftᵇ a x , liftᵇ b y
 liftᵇ (base-Sum a b)   (inj₁ x) = inj₁ (liftᵇ a x)
 liftᵇ (base-Sum a b)   (inj₂ y) = inj₂ (liftᵇ b y)
@@ -242,8 +240,6 @@ eraseᵇ-liftᵇ base-Unit        x        = refl
 eraseᵇ-liftᵇ base-Void        x        = refl
 eraseᵇ-liftᵇ base-Int         x        = refl
 eraseᵇ-liftᵇ base-Float       x        = refl
-eraseᵇ-liftᵇ base-Str         x        = refl
-eraseᵇ-liftᵇ base-Buffer      x        = refl
 eraseᵇ-liftᵇ (base-Prod a b)  (x , y)  = cong₂ _,_ (eraseᵇ-liftᵇ a x) (eraseᵇ-liftᵇ b y)
 eraseᵇ-liftᵇ (base-Sum a b)   (inj₁ x) = cong inj₁ (eraseᵇ-liftᵇ a x)
 eraseᵇ-liftᵇ (base-Sum a b)   (inj₂ y) = cong inj₂ (eraseᵇ-liftᵇ b y)

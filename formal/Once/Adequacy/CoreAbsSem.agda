@@ -209,9 +209,6 @@ module _ {n : ℕ} {Γ' Γ : C.Ctx n} where
                → tr eΓ et eA GT.⊢lit-float ≡ GT.⊢lit-float
   tr-lit-float {eΓ = refl} {refl} {refl} = refl
 
-  tr-lit-str : ∀ {x} {eΓ : Γ' ≡ Γ} {et : G.lit (G.lit-str x) ≡ G.lit (G.lit-str x)} {eA : T.Str ≡ T.Str}
-             → tr eΓ et eA GT.⊢lit-str ≡ GT.⊢lit-str
-  tr-lit-str {eΓ = refl} {refl} {refl} = refl
 
   tr-prim : ∀ {Ψ π} {t' t : G.Tm n} {p}
               {eΓ : Γ' ≡ Γ} {et : G.prim p t' ≡ G.prim p t} {eA : G.primCod p ≡ G.primCod p}
@@ -251,8 +248,6 @@ module RoundTrip (Δ : KCtx 0) (σ : GSub 0) (r : Respects Δ σ) (sg : SigGroun
     rt-id T.Void           = refl
     rt-id T.Int            = refl
     rt-id T.Float          = refl
-    rt-id T.Str            = refl
-    rt-id T.Buffer         = refl
     rt-id (A T.* B)        = cong₂ T._*_ (rt-id A) (rt-id B)
     rt-id (A T.+ B)        = cong₂ T._+_ (rt-id A) (rt-id B)
     rt-id (A T.⇒[ k ] B)   = cong₂ (λ x y → x T.⇒[ k ] y) (rt-id A) (rt-id B)
@@ -355,7 +350,6 @@ module RoundTrip (Δ : KCtx 0) (σ : GSub 0) (r : Respects Δ σ) (sg : SigGroun
     trans (tr-coerce (rt-id A) (rt-id B) (rtT-id _) (RT d)) (cong (GT.⊢coerce p) (RT-id d))
   RT-id GT.⊢lit-int   = tr-lit-int
   RT-id GT.⊢lit-float = tr-lit-float
-  RT-id GT.⊢lit-str   = tr-lit-str
   RT-id (GT.⊢prim p d) =
     trans (tr-isubst {r = r} (sym (primCod-abs Δ p)) _)
       (trans (tr-subst (sym (⌈⌉-⟪⟫ (G.primCod p) σ)) _)

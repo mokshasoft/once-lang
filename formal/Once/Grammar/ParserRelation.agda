@@ -15,14 +15,13 @@
 
 module Once.Grammar.ParserRelation where
 
-open import Once.Type using (Type; Unit; Void; Int; Float; Buffer; Str;
+open import Once.Type using (Type; Unit; Void; Int; Float;
                              _*_; _+_; _⇒[_]_; Quantity; Zero; One; Many; mk-kind; pure; eff)
 
 import Once.Grammar as G
 open G using (GType)
 open import Once.Grammar.Printer using (Concrete;
-                                        c-unit; c-void; c-int; c-float;
-                                        c-buffer; c-string; c-prod; c-sum;
+                                        c-unit; c-void; c-int; c-float; c-prod; c-sum;
                                         c-fun; c-eff)
 
 -- Re-export the parser-layer relations, predicates, and shrinks.
@@ -34,8 +33,6 @@ toType c-unit   = Unit
 toType c-void   = Void
 toType c-int    = Int
 toType c-float  = Float
-toType c-buffer = Buffer
-toType c-string = Str
 toType (c-prod cA cB) = toType cA * toType cB
 toType (c-sum  cA cB) = toType cA + toType cB
 toType (c-fun {q = q} cA cB) = toType cA ⇒[ mk-kind q pure ] toType cB

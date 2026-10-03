@@ -35,7 +35,7 @@ open import Relation.Binary.PropositionalEquality
 open import Once.Word using (Carrier)
 open import Once.Type using (Type; Functor; ν-type; ⟦_⟧T; Purity)
 open import Once.Functor.Translate using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod; translateF;
-  IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Str; base-Buffer; base-Prod; base-Sum)
+  IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum)
 open import Once.IRTy using (IRTy; eraseF; ⌈_⌉F; ⌈_⌉; ⌊_⌋; ⌊⟧T-commute; ⌈⟧TI-commute)
 import Once.IRTy as IT
 open import Once.IRTy.WF using (wf-⌊⌋; wf-⌈⌉)
@@ -251,8 +251,6 @@ base-out : ∀ (B : Type) (ib : IsBaseType B) (A : Type)
 base-out _ base-Unit   A ℓ = refl
 base-out _ base-Int    A ℓ = refl
 base-out _ base-Float  A ℓ = refl
-base-out _ base-Str    A ℓ = refl
-base-out _ base-Buffer A ℓ = refl
 base-out (X Once.Type.* Y) (base-Prod ibA ibB) A (a , b) =
   trans (cong (λ z → subst id (cohᴰ (X Once.Type.* Y))
                   (subst ⟦_⟧ᴰᴵ (sym (⌊⟧T-commute (Once.Type.K (X Once.Type.* Y)) A))

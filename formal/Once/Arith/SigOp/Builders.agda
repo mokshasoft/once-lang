@@ -30,13 +30,13 @@ open import Data.String using (String; _++_)
 open import Data.Sum using (_⊎_)
 open import Data.Unit using (⊤)
 
-open import Once.Type using (Type; Unit; Void; Int; Str; _*_; _+_;
+open import Once.Type using (Type; Unit; Void; Int; _*_; _+_;
                               ArrowKind; mk-kind; Purity; pure; eff; isUnit?; isVoid?)
 open import Relation.Nullary using (Dec; yes; no)
 open import Once.SigOp.Info using (SigOpInfo; SigOpSem; mk-info; mk-info'; pureV; primV; emitsV; haltsV; ffiV; callsV; EffectShape; Pure; Halts)
 open import Once.Arith.Prim using (ArithPrim; p-add; p-sub; p-mul; p-div; p-mod; p-neg; p-fadd; p-fsub; p-fmul; p-fdiv; p-i2f)
 open import Once.Functor.Translate using (IsBaseType;
-  base-Unit; base-Int; base-Float; base-Str; base-Prod; base-Sum)
+  base-Unit; base-Int; base-Float; base-Prod; base-Sum)
 open import Once.CanonicalName using (CanonicalName; bare; showCanonical)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
@@ -112,8 +112,6 @@ postulate
 -- A string literal denotes itself at every width, so the `TargetNum` is taken
 -- and ignored. Taken anyway: the uniform shape is what lets `semM` be one
 -- accessor rather than two.
-str-lit-semM : String → TargetNum → M.⟦ Unit ⟧ → M.⟦ Str ⟧
-str-lit-semM s _ _ = s
 
 ------------------------------------------------------------------------
 -- SigOpInfo builders
@@ -187,8 +185,6 @@ ne-info : SigOpInfo (Int * Int) (Unit + Unit)
 ne-info = mk-info (bare "arith.ne.int") ne-semM Pure base-I×I base-U+U
 
 -- String literal family
-str-lit-info : String → SigOpInfo Unit Str
-str-lit-info s = mk-info (bare ("lit.str." ++ s)) (str-lit-semM s) Pure base-Unit base-Str
 
 ------------------------------------------------------------------------
 -- Generic placeholder for unresolved / user-imported SigOps

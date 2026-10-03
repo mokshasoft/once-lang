@@ -336,7 +336,6 @@ module Weaken (imps : Imports) (P : PolyCtx) where
 
     W-i wk _ (t-int n) = cᵢ (sym (up-zero wk)) (t-int n)
     W-i wk _ (t-float i f l p) = cᵢ (sym (up-zero wk)) (t-float i f l p)
-    W-i wk _ (t-str t) = cᵢ (sym (up-zero wk)) (t-str t)
     W-i wk _ t-unit = cᵢ (sym (up-zero wk)) t-unit
     W-i wk _ t-unit-var = cᵢ (sym (up-zero wk)) t-unit-var
     W-i {GL = GL} {ΔL = ΔL} {GD = GD} {ΔD = ΔD} wk fr (t-var-local {x = z} eq) =
@@ -616,7 +615,6 @@ module Unfolding
 
     S-i r _ (t-int n) = t-int n
     S-i r _ (t-float i f l p) = t-float i f l p
-    S-i r _ (t-str t) = t-str t
     S-i r _ t-unit = t-unit
     S-i r _ t-unit-var = t-unit-var
     S-i r _ (t-var-local {x = y} eq) = s-local r y (y StrProp.≟ x) eq
@@ -1066,8 +1064,6 @@ module Unfolding
     ... | refl = t-int n
     F-i {sh = sh} r {b = b} nc (t-float i f l p) eq with inv-RFloat {sh = sh} {b = b} eq
     ... | refl = t-float i f l p
-    F-i {sh = sh} r {b = b} nc (t-str t) eq with inv-RStringLit {sh = sh} {b = b} eq
-    ... | refl = t-str t
     F-i {sh = sh} r {b = b} nc t-unit eq with inv-RUnit {sh = sh} {b = b} eq
     ... | refl = t-unit
     F-i {sh = sh} r {b = b} nc t-unit-var eq with inv-RResolved {sh = sh} {b = b} eq

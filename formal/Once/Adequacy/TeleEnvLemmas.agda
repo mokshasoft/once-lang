@@ -42,7 +42,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; con
 open import Induction.WellFounded using (Acc; acc)
 
 open import Once.Postulates using (extensionality)
-open import Once.Type using (Type; PolyType; Unit; Void; Int; Float; Str; Buffer; _*_; _+_; _⇒[_]_; mk-kind;
+open import Once.Type using (Type; PolyType; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; mk-kind;
   Zero; One; Many; μ-type; ν-type; rigid)
 open import Once.Type.Rigid using (KindedInstance)
 open import Once.IRTy using (IRTy)
@@ -173,8 +173,6 @@ refIR-cong (μ-type F)   f ρ₁ ρ₂ h = h _ _ tt
 refIR-cong (ν-type F π) f ρ₁ ρ₂ h = h _ _ tt
 refIR-cong Int          f ρ₁ ρ₂ h = h _ _ tt
 refIR-cong Float        f ρ₁ ρ₂ h = h _ _ tt
-refIR-cong Str          f ρ₁ ρ₂ h = h _ _ tt
-refIR-cong Buffer       f ρ₁ ρ₂ h = h _ _ tt
 refIR-cong (rigid k i)  f ρ₁ ρ₂ h = h _ _ tt
 
 -- Entries declared later, of other names, do not change a call.

@@ -35,7 +35,7 @@ open import Data.Bool using (true; false)
 open import Once.Semantics.Machine using (⟦_⟧F; coh; tF-coh)
 open import Once.Word using (Carrier)
 open import Once.Semantics.Functor using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF; νS; unfoldS)
-open import Once.Functor.Translate using (translateF; IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Str; base-Buffer; base-Prod; base-Sum;
+open import Once.Functor.Translate using (translateF; IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum;
   WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod)
 open import Once.Semantics.Machine using (coerce-ν-in)
 
@@ -214,8 +214,6 @@ anaFᵈ F {A} coalg = anaᵈ (translateF Carrier Carrier F) (λ a → fmapT (coe
 ⟦ ν-type F _ ⟧ᴰ = νᵈ (translateF Carrier Carrier F)
 ⟦ Int ⟧ᴰ        = Val.⟦ Int ⟧
 ⟦ Float ⟧ᴰ      = Val.⟦ Float ⟧
-⟦ Str ⟧ᴰ        = Val.⟦ Str ⟧
-⟦ Buffer ⟧ᴰ     = Val.⟦ Buffer ⟧
 -- D243: no runtime value of a rigid parameter (used at ground instances only).
 ⟦ rigid _ _ ⟧ᴰ  = ⊥
 
@@ -245,8 +243,6 @@ cohᴰ (μ-type F)   = coh (μ-type F)
 cohᴰ (ν-type F _) = cong νᵈ (tF-coh F)
 cohᴰ Int          = refl
 cohᴰ Float        = refl
-cohᴰ Str          = refl
-cohᴰ Buffer       = refl
 cohᴰ (rigid _ _)  = refl
 
 ------------------------------------------------------------------------
@@ -265,8 +261,6 @@ forgetᵇ base-Unit   x = x
 forgetᵇ base-Void   ()
 forgetᵇ base-Int    x = x
 forgetᵇ base-Float  x = x
-forgetᵇ base-Str    x = x
-forgetᵇ base-Buffer x = x
 forgetᵇ (base-Prod a b) (x , y) = forgetᵇ a x , forgetᵇ b y
 forgetᵇ (base-Sum a b) (inj₁ x) = inj₁ (forgetᵇ a x)
 forgetᵇ (base-Sum a b) (inj₂ y) = inj₂ (forgetᵇ b y)
@@ -276,8 +270,6 @@ injectᵇ base-Unit   x = x
 injectᵇ base-Void   ()
 injectᵇ base-Int    x = x
 injectᵇ base-Float  x = x
-injectᵇ base-Str    x = x
-injectᵇ base-Buffer x = x
 injectᵇ (base-Prod a b) (x , y) = injectᵇ a x , injectᵇ b y
 injectᵇ (base-Sum a b) (inj₁ x) = inj₁ (injectᵇ a x)
 injectᵇ (base-Sum a b) (inj₂ y) = inj₂ (injectᵇ b y)

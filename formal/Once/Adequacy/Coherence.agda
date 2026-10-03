@@ -54,7 +54,6 @@ mutual
   coh-ii : ∀ {ctx e A A′ Ψ Ψ′} {d : ctx ⊢ᵢ e ∶ A ⨾ Ψ} {d′ : ctx ⊢ᵢ e ∶ A′ ⨾ Ψ′} → Rii d d′ → RI d ≅ RI d′
   coh-ii ii-int = ≅-refl
   coh-ii ii-float = ≅-refl
-  coh-ii ii-str = ≅-refl
   coh-ii ii-unit = ≅-refl
   coh-ii ii-unit-var = ≅-refl
   coh-ii {ctx = ctx} (ii-resolved {n = n} {n′ = n′} {l = l} {l′ = l′} {c = c} {c′ = c′}) = resolved-h {ctx = ctx} n l c n′ l′ c′

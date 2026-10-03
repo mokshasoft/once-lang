@@ -36,7 +36,7 @@ open import Data.Sum using (_⊎_; inj₁; inj₂)
 
 open import Once.Type
   using (Type; Unit; Void; _*_; _+_; _⇒[_]_; μ-type; ν-type;
-         Int; Float; Str; Buffer; Functor; K; Id; _⊕_; _⊗_; ⟦_⟧T)
+         Int; Float; Functor; K; Id; _⊕_; _⊗_; ⟦_⟧T)
 open import Once.CanonicalName using (CanonicalName)
 open import Once.IR
   using (IR; IRTy; Call; id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; terminal;

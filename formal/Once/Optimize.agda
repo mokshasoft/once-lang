@@ -504,8 +504,6 @@ is-Void (μ-type _)   = false
 is-Void (ν-type _ _)   = false
 is-Void Int          = false
 is-Void Float        = false
-is-Void Str          = false
-is-Void Buffer       = false
 is-Void (rigid _ _)  = false
 
 ------------------------------------------------------------------------
@@ -534,8 +532,6 @@ isUnitType (μ-type _)   = false
 isUnitType (ν-type _ _)   = false
 isUnitType Int          = false
 isUnitType Float        = false
-isUnitType Str          = false
-isUnitType Buffer       = false
 isUnitType (rigid _ _)  = false
 
 isVoidType : Type → Bool
@@ -548,8 +544,6 @@ isVoidType (μ-type _)   = false
 isVoidType (ν-type _ _)   = false
 isVoidType Int          = false
 isVoidType Float        = false
-isVoidType Str          = false
-isVoidType Buffer       = false
 isVoidType (rigid _ _)  = false
 
 -- IR predicates: use ir-head head-discriminator + decidable IRHead equality

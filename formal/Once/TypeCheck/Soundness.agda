@@ -34,7 +34,7 @@ open import Data.Product using (∃; ∃-syntax; _,_; _×_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality
   using (_≡_; refl; sym; trans; cong; subst; inspect; [_])
 
-open import Once.Type as T using (Type; Unit; Int; Str; Void; Float; Buffer;
+open import Once.Type as T using (Type; Unit; Int; Void; Float;
                                   _*_; _+_; _⇒[_]_; Quantity)
 open import Data.Bool using (Bool; true; false)
 open import Once.CanonicalName using (gen; NotGenerator; bare-NotGenerator)
@@ -77,12 +77,6 @@ sound-RInt : ∀ (ctx : NamedCtx) (n : ℤ)
 sound-RInt ctx n refl = t-int n
 
 -- Soundness for string literals.
-sound-RStringLit : ∀ (ctx : NamedCtx) (s : String)
-                   {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
-                   {eE : SExpr (NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
-                 → inferElab ctx (RStringLit s) ≡ success A Ψ eE d f
-                 → ctx ⊢ RStringLit s ∶ A ⨾ Ψ
-sound-RStringLit ctx s refl = t-str s
 
 -- Soundness for unit literal.
 sound-RUnit : ∀ (ctx : NamedCtx)
@@ -184,8 +178,6 @@ infer-soundV ctx e eq | failure _ , _ with eq
 inferElab-eq-RInt : ∀ ctx n → Once.TypeCheck.ElaborateProofs.inferElabProj ctx (Raw.RInt n) ≡ Once.TypeCheck.Elaborate.inferElab ctx (Raw.RInt n)
 inferElab-eq-RInt ctx n = refl
 
-inferElab-eq-RStringLit : ∀ ctx s → Once.TypeCheck.ElaborateProofs.inferElabProj ctx (Raw.RStringLit s) ≡ Once.TypeCheck.Elaborate.inferElab ctx (Raw.RStringLit s)
-inferElab-eq-RStringLit ctx s = refl
 
 inferElab-eq-RUnit : ∀ ctx → Once.TypeCheck.ElaborateProofs.inferElabProj ctx Raw.RUnit ≡ Once.TypeCheck.Elaborate.inferElab ctx Raw.RUnit
 inferElab-eq-RUnit ctx = refl

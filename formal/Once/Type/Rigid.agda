@@ -44,8 +44,6 @@ mutual
   ftvK PVoid         = []
   ftvK PInt          = []
   ftvK PFloat        = []
-  ftvK PStr          = []
-  ftvK PBuffer       = []
   ftvK (A P* B)      = ftvK A ++ ftvK B
   ftvK (A P+ B)      = ftvK A ++ ftvK B
   ftvK (A P⇒[ _ ] B) = ftvK A ++ ftvK B
@@ -126,8 +124,6 @@ mutual
   subst-ground θ PVoid   _ = refl
   subst-ground θ PInt    _ = refl
   subst-ground θ PFloat  _ = refl
-  subst-ground θ PStr    _ = refl
-  subst-ground θ PBuffer _ = refl
   subst-ground θ (A P* B) (gA , gB) = cong₂ _*_ (subst-ground θ A gA) (subst-ground θ B gB)
   subst-ground θ (A P+ B) (gA , gB) = cong₂ _+_ (subst-ground θ A gA) (subst-ground θ B gB)
   subst-ground θ (A P⇒[ q ] B) (gA , gB) =
@@ -156,8 +152,6 @@ mutual
   ftv-ground PVoid   _ ()
   ftv-ground PInt    _ ()
   ftv-ground PFloat  _ ()
-  ftv-ground PStr    _ ()
-  ftv-ground PBuffer _ ()
   ftv-ground (A P* B) (gA , gB) = ++-⊥ (ftv A) (ftv B) (ftv-ground A gA) (ftv-ground B gB)
   ftv-ground (A P+ B) (gA , gB) = ++-⊥ (ftv A) (ftv B) (ftv-ground A gA) (ftv-ground B gB)
   ftv-ground (A P⇒[ _ ] B) (gA , gB) = ++-⊥ (ftv A) (ftv B) (ftv-ground A gA) (ftv-ground B gB)
@@ -178,8 +172,6 @@ mutual
   ftvK-ground PVoid   _ ()
   ftvK-ground PInt    _ ()
   ftvK-ground PFloat  _ ()
-  ftvK-ground PStr    _ ()
-  ftvK-ground PBuffer _ ()
   ftvK-ground (A P* B) (gA , gB) = ++-⊥ (ftvK A) (ftvK B) (ftvK-ground A gA) (ftvK-ground B gB)
   ftvK-ground (A P+ B) (gA , gB) = ++-⊥ (ftvK A) (ftvK B) (ftvK-ground A gA) (ftvK-ground B gB)
   ftvK-ground (A P⇒[ _ ] B) (gA , gB) = ++-⊥ (ftvK A) (ftvK B) (ftvK-ground A gA) (ftvK-ground B gB)
@@ -218,8 +210,6 @@ mutual
   ftvK⊆ftv PVoid ()
   ftvK⊆ftv PInt ()
   ftvK⊆ftv PFloat ()
-  ftvK⊆ftv PStr ()
-  ftvK⊆ftv PBuffer ()
   ftvK⊆ftv (A P* B) m = ++-mono (ftvK A) (ftv A) (ftvK⊆ftv A) (ftvK⊆ftv B) m
   ftvK⊆ftv (A P+ B) m = ++-mono (ftvK A) (ftv A) (ftvK⊆ftv A) (ftvK⊆ftv B) m
   ftvK⊆ftv (A P⇒[ _ ] B) m = ++-mono (ftvK A) (ftv A) (ftvK⊆ftv A) (ftvK⊆ftv B) m
@@ -279,8 +269,6 @@ mutual
     rf-Void   : RigidFree Void
     rf-Int    : RigidFree Int
     rf-Float  : RigidFree Float
-    rf-Str    : RigidFree Str
-    rf-Buffer : RigidFree Buffer
     rf-*      : ∀ {A B} → RigidFree A → RigidFree B → RigidFree (A * B)
     rf-+      : ∀ {A B} → RigidFree A → RigidFree B → RigidFree (A + B)
     rf-⇒      : ∀ {A B k} → RigidFree A → RigidFree B → RigidFree (A ⇒[ k ] B)
@@ -308,8 +296,6 @@ mutual
   rigidFree? Void         = just rf-Void
   rigidFree? Int          = just rf-Int
   rigidFree? Float        = just rf-Float
-  rigidFree? Str          = just rf-Str
-  rigidFree? Buffer       = just rf-Buffer
   rigidFree? (A * B)      = both rf-* (rigidFree? A) (rigidFree? B)
   rigidFree? (A + B)      = both rf-+ (rigidFree? A) (rigidFree? B)
   rigidFree? (A ⇒[ k ] B) = both rf-⇒ (rigidFree? A) (rigidFree? B)
@@ -329,8 +315,6 @@ mutual
   rigidFree?-complete rf-Void   = refl
   rigidFree?-complete rf-Int    = refl
   rigidFree?-complete rf-Float  = refl
-  rigidFree?-complete rf-Str    = refl
-  rigidFree?-complete rf-Buffer = refl
   rigidFree?-complete (rf-* a b) rewrite rigidFree?-complete a | rigidFree?-complete b = refl
   rigidFree?-complete (rf-+ a b) rewrite rigidFree?-complete a | rigidFree?-complete b = refl
   rigidFree?-complete (rf-⇒ a b) rewrite rigidFree?-complete a | rigidFree?-complete b = refl
@@ -352,8 +336,6 @@ mutual
   extractGround-rf PVoid         _         = rf-Void
   extractGround-rf PInt          _         = rf-Int
   extractGround-rf PFloat        _         = rf-Float
-  extractGround-rf PStr          _         = rf-Str
-  extractGround-rf PBuffer       _         = rf-Buffer
   extractGround-rf (A P* B)      (gA , gB) = rf-* (extractGround-rf A gA) (extractGround-rf B gB)
   extractGround-rf (A P+ B)      (gA , gB) = rf-+ (extractGround-rf A gA) (extractGround-rf B gB)
   extractGround-rf (A P⇒[ q ] B) (gA , gB) = rf-⇒ (extractGround-rf A gA) (extractGround-rf B gB)

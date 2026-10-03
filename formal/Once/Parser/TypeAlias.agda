@@ -18,7 +18,7 @@ open import Data.Nat using (ℕ; zero; suc; _≡ᵇ_)
 open import Data.Bool using (if_then_else_)
 open import Relation.Nullary using (yes; no)
 
-open import Once.Type using (Type; rigid; Unit; Void; Int; Float; Buffer; Str;
+open import Once.Type using (Type; rigid; Unit; Void; Int; Float;
                              _*_; _+_; _⇒[_]_;
                              Functor; K; Id; _⊕_; _⊗_; μ-type; ν-type)
 -- TVar removed: Type variables only exist in PolyType (for type inference).
@@ -76,8 +76,6 @@ mutual
   expandAliases _ Void = Void
   expandAliases _ Int = Int
   expandAliases _ Float = Float
-  expandAliases _ Buffer = Buffer
-  expandAliases _ Str = Str
   expandAliases _ (rigid k i) = rigid k i
   expandAliases env (a * b) = expandAliases env a * expandAliases env b
   expandAliases env (a + b) = expandAliases env a + expandAliases env b

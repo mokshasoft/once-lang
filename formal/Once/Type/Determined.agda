@@ -37,8 +37,6 @@ mutual
   agree-on θ θ′ PVoid   h = refl
   agree-on θ θ′ PInt    h = refl
   agree-on θ θ′ PFloat  h = refl
-  agree-on θ θ′ PStr    h = refl
-  agree-on θ θ′ PBuffer h = refl
   agree-on θ θ′ (A P* B) h =
     cong₂ _*_ (agree-on θ θ′ A (λ m → h (∈-++⁺ˡ m))) (agree-on θ θ′ B (λ m → h (∈-++⁺ʳ (ftv A) m)))
   agree-on θ θ′ (A P+ B) h =
@@ -138,8 +136,6 @@ arrowSchema? PUnit              = nothing
 arrowSchema? PVoid              = nothing
 arrowSchema? PInt               = nothing
 arrowSchema? PFloat             = nothing
-arrowSchema? PStr               = nothing
-arrowSchema? PBuffer            = nothing
 arrowSchema? (_ P* _)           = nothing
 arrowSchema? (_ P+ _)           = nothing
 arrowSchema? (Pμ-type _)        = nothing

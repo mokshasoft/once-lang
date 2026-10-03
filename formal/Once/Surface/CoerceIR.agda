@@ -45,8 +45,6 @@ coeIR sub-void   = initial
 coeIR sub-unit   = id
 coeIR sub-int    = id
 coeIR sub-float  = id
-coeIR sub-str    = id
-coeIR sub-buffer = id
 coeIR (sub-arr {q = Zero} a b _) = wrapArr₀ (coeIR b)
 coeIR (sub-arr {q = One}  a b _) = wrapArr (coeIR a) (coeIR b)
 coeIR (sub-arr {q = Many} a b _) = wrapArr (coeIR a) (coeIR b)
@@ -65,8 +63,6 @@ data VoidFree : ∀ {A B} → A <: B → Set where
   vf-unit   : VoidFree sub-unit
   vf-int    : VoidFree sub-int
   vf-float  : VoidFree sub-float
-  vf-str    : VoidFree sub-str
-  vf-buffer : VoidFree sub-buffer
   vf-arr    : ∀ {A A′ B B′ q π π′} {a : A′ <: A} {b : B <: B′} {g : π ⊑π π′}
             → VoidFree a → VoidFree b → VoidFree (sub-arr {q = q} a b g)
   vf-prod   : ∀ {A A′ B B′} {a : A <: A′} {b : B <: B′}
@@ -103,8 +99,6 @@ voidFree? (sub-void {T.Void})         = yes vf-void
 voidFree? (sub-void {T.Unit})         = no λ ()
 voidFree? (sub-void {T.Int})          = no λ ()
 voidFree? (sub-void {T.Float})        = no λ ()
-voidFree? (sub-void {T.Str})          = no λ ()
-voidFree? (sub-void {T.Buffer})       = no λ ()
 voidFree? (sub-void {_ T.* _})        = no λ ()
 voidFree? (sub-void {_ T.+ _})        = no λ ()
 voidFree? (sub-void {_ T.⇒[ _ ] _})  = no λ ()
@@ -114,8 +108,6 @@ voidFree? (sub-void {T.rigid _ _})      = no λ ()
 voidFree? sub-unit   = yes vf-unit
 voidFree? sub-int    = yes vf-int
 voidFree? sub-float  = yes vf-float
-voidFree? sub-str    = yes vf-str
-voidFree? sub-buffer = yes vf-buffer
 voidFree? (sub-arr a b g) = two vf-arr arr-a arr-b (voidFree? a) (voidFree? b)
 voidFree? (sub-prod a b)  = two vf-prod prod-a prod-b (voidFree? a) (voidFree? b)
 voidFree? (sub-sum a b)   = two vf-sum sum-a sum-b (voidFree? a) (voidFree? b)
@@ -129,8 +121,6 @@ erase-eq _ vf-void   = refl
 erase-eq _ vf-unit   = refl
 erase-eq _ vf-int    = refl
 erase-eq _ vf-float  = refl
-erase-eq _ vf-str    = refl
-erase-eq _ vf-buffer = refl
 erase-eq (sub-arr {q = Zero} a b _) (vf-arr va vb) = cong (Unit ⇛_) (erase-eq b vb)
 erase-eq (sub-arr {q = One}  a b _) (vf-arr va vb) = cong₂ _⇛_ (sym (erase-eq a va)) (erase-eq b vb)
 erase-eq (sub-arr {q = Many} a b _) (vf-arr va vb) = cong₂ _⇛_ (sym (erase-eq a va)) (erase-eq b vb)

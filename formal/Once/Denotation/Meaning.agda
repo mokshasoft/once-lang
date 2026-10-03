@@ -69,7 +69,7 @@ open import Relation.Binary.PropositionalEquality using (refl)
 open import Once.Type.Sub using (sub-arr; <:-refl)
 open import Once.SigOp.Info using (SigOpInfo; conB; FFIAnswers)
 open import Once.Arith.SigOp.Builders
-  using (value-info; arrow-info; str-lit-info;
+  using (value-info; arrow-info;
          add-info; sub-info; mul-info; div-info; mod-info; neg-info;
          fadd-info; fsub-info; fmul-info; fdiv-info; i2f-info;
          lt-info; le-info; gt-info; ge-info; eq-info; ne-info)
@@ -84,7 +84,7 @@ open import Once.TypeCheck.Judgment
          t-initial-app-check; t-app-spine;
          t-var-poly-instantiate;
          t-var-poly-instantiate-infer; d-poly;
-         t-int; t-float; t-str; t-unit; t-unit-var; t-var-local; t-var-qualified;
+         t-int; t-float; t-unit; t-unit-var; t-var-local; t-var-qualified;
          t-var-resolved; t-var-import; t-annot; t-pair; t-neg; t-neg-float; t-binop-arith-float; t-binop-arith-float-il; t-binop-arith-float-ir; t-let; t-case;
          t-binop-arith; t-binop-cmp; t-id-app; t-fst-app; t-snd-app;
          t-terminal-app; t-apply-app-infer; t-apply-eff-app-infer; t-Out-app-infer; t-Out-eff-app-infer; t-app; t-effApp)
@@ -331,7 +331,6 @@ seqᴰ m₁ m₂ = (m₁ >>=T λ x → m₂ >>=T λ y → returnT (x , y)) >>=T 
 -- rather than wrapping a value. `str-lit-info` is a `Pure` contract, so this
 -- is `returnᵖ` in every reachable case — but the type no longer lets the
 -- clause assume that, which is the point.
-⟦_⟧ᵢ {ctx = ctx} (t-str s) fmt ρ dγ = semP (str-lit-info s) int-pure fmt tt
 ⟦_⟧ᵢ {ctx = ctx} (t-unit) fmt ρ dγ = returnᵖ tt
 ⟦_⟧ᵢ {ctx = ctx} (t-unit-var) fmt ρ dγ = returnᵖ tt
 ⟦_⟧ᵢ {ctx = ctx} (t-var-local {eV = eV} _) fmt ρ dγ = returnᵖ (svarᵛRun eV dγ)

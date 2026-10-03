@@ -33,8 +33,7 @@ open import Relation.Nullary using (yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
 
 open import Once.Type
-open import Once.Type.Sub using (_<:_; <:-refl; sub-void; sub-unit; sub-int; sub-float; sub-str;
-  sub-buffer; sub-arr; sub-prod; sub-sum; sub-μ; sub-ν; sub-rigid)
+open import Once.Type.Sub using (_<:_; <:-refl; sub-void; sub-unit; sub-int; sub-float; sub-arr; sub-prod; sub-sum; sub-μ; sub-ν; sub-rigid)
 open import Once.Type.Rigid using (RigidFree; RigidFreeF; KindedInstance; extractGround-rf)
 open import Once.Functor.Translate using (IsBaseType; WellFormedF)
 open import Once.Spec.Core.PolyTy using (_⟪_⟫; _⟪_⟫F; ⟦⟧F-⟪⟫; base-⟪⟫; wf-⟪⟫; ⌈⌉-⟪⟫)
@@ -76,8 +75,6 @@ open import Once.TypeCheck.Judgment
 ρ̂-<: sub-unit         = sub-unit
 ρ̂-<: sub-int          = sub-int
 ρ̂-<: sub-float        = sub-float
-ρ̂-<: sub-str          = sub-str
-ρ̂-<: sub-buffer       = sub-buffer
 ρ̂-<: (sub-arr a b g)  = sub-arr (ρ̂-<: a) (ρ̂-<: b) g
 ρ̂-<: (sub-prod a b)   = sub-prod (ρ̂-<: a) (ρ̂-<: b)
 ρ̂-<: (sub-sum a b)    = sub-sum (ρ̂-<: a) (ρ̂-<: b)
@@ -93,8 +90,6 @@ mutual
   substPoly-ρ̂ θ PVoid         = refl
   substPoly-ρ̂ θ PInt          = refl
   substPoly-ρ̂ θ PFloat        = refl
-  substPoly-ρ̂ θ PStr          = refl
-  substPoly-ρ̂ θ PBuffer       = refl
   substPoly-ρ̂ θ (A P* B)      = cong₂ _*_ (substPoly-ρ̂ θ A) (substPoly-ρ̂ θ B)
   substPoly-ρ̂ θ (A P+ B)      = cong₂ _+_ (substPoly-ρ̂ θ A) (substPoly-ρ̂ θ B)
   substPoly-ρ̂ θ (A P⇒[ q ] B) = cong₂ (λ a b → a ⇒[ mk-kind q pure ] b) (substPoly-ρ̂ θ A) (substPoly-ρ̂ θ B)
@@ -195,7 +190,6 @@ mutual
            → mkCtx n Γ D fr imps polys ⊢ᵢ e ∶ A ⨾ Ψ → mkCtx n (ρ̂N Γ) (ρ̂S D) fr imps polys ⊢ᵢ e ∶ ρ̂ A ⨾ Ψ
   subst-i′ ir (t-int k)            = t-int k
   subst-i′ ir (t-float i f l p)    = t-float i f l p
-  subst-i′ ir (t-str s)            = t-str s
   subst-i′ ir t-unit               = t-unit
   subst-i′ ir t-unit-var           = t-unit-var
   subst-i′ {Γ = Γ} {D = D} ir (t-var-local {x = x} {eV = svar i} eq) =

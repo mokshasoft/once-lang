@@ -63,33 +63,29 @@ module Make (alg : TyAlg) where
     ...     | yes refl with refl ← just-injective h = pa-int rest
     ...     | no _ with name ≟s "Float"
     ...       | yes refl with refl ← just-injective h = pa-float rest
-    ...       | no _ with name ≟s "Buffer"
-    ...         | yes refl with refl ← just-injective h = pa-buffer rest
-    ...         | no _ with name ≟s "String"
-    ...           | yes refl with refl ← just-injective h = pa-string rest
-    ...           | no _ with name ≟s "Eff"
-    ...             | yes refl with atomP rest in eq1
-    ...               | just (A , r1) with sound-atom rest (rec (s≤s ≤-refl)) eq1
-    ...                 | dA with atomP r1 in eq2
-    ...                   | just (B , r2) with sound-atom r1 (rec (<-trans (atomShrink dA) (s≤s ≤-refl))) eq2
-    ...                     | dB with refl ← just-injective h = pa-eff dA dB
+    ...       | no _ with name ≟s "Eff"
+    ...         | yes refl with atomP rest in eq1
+    ...           | just (A , r1) with sound-atom rest (rec (s≤s ≤-refl)) eq1
+    ...             | dA with atomP r1 in eq2
+    ...               | just (B , r2) with sound-atom r1 (rec (<-trans (atomShrink dA) (s≤s ≤-refl))) eq2
+    ...                 | dB with refl ← just-injective h = pa-eff dA dB
     sound-kw (TWord name ∷ rest) (acc rec) h
-      | no _ | no _ | no _ | no _ | no _ | no _ | no _ with name ≟s "IO"
+      | no _ | no _ | no _ | no _ | no _ with name ≟s "IO"
     ... | yes refl with atomP rest in eq1
     ...   | just (A , r1) with sound-atom rest (rec (s≤s ≤-refl)) eq1
     ...     | dA with refl ← just-injective h = pa-io dA
     sound-kw (TWord name ∷ rest) (acc rec) h
-      | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ with name ≟s "Mu"
+      | no _ | no _ | no _ | no _ | no _ | no _ with name ≟s "Mu"
     ... | yes refl with fSumP rest in eq1
     ...   | just (F , r1) with sound-fSum rest (rec (s≤s ≤-refl)) eq1
     ...     | dF with refl ← just-injective h = pa-mu dF
     sound-kw (TWord name ∷ rest) (acc rec) h
-      | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ with name ≟s "Nu"
+      | no _ | no _ | no _ | no _ | no _ | no _ | no _ with name ≟s "Nu"
     ... | yes refl with fSumP rest in eq1
     ...   | just (F , r1) with sound-fSum rest (rec (s≤s ≤-refl)) eq1
     ...     | dF with refl ← just-injective h = pa-nu dF
     sound-kw (TWord name ∷ rest) (acc rec) h
-      | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | yes refl | nothing
+      | no _ | no _ | no _ | no _ | no _ | no _ | no _ | yes refl | nothing
       = sound-nuEff rest (effHead? rest) refl (acc rec) h
     sound-kw (TLParen ∷ rest) (acc rec) h with typeP rest in eq1
     ... | just (T , TRParen ∷ rest2) with sound-type rest (rec (s≤s ≤-refl)) eq1

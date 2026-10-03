@@ -257,8 +257,6 @@ mutual
   complete-atomWFraw (pa-void   rest) _ = _ , refl
   complete-atomWFraw (pa-int    rest) _ = _ , refl
   complete-atomWFraw (pa-float  rest) _ = _ , refl
-  complete-atomWFraw (pa-buffer rest) _ = _ , refl
-  complete-atomWFraw (pa-string rest) _ = _ , refl
 
   -- Eff A B: two recursive atom parses.
   complete-atomWFraw (pa-eff {toks1 = toks1} {toks2 = toks2} {rest}

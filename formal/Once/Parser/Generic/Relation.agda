@@ -77,7 +77,7 @@ drop2-≤ (_ ∷ [])     = ≤-refl
 record TyAlg : Set₁ where
   field
     R RF : Set
-    aUnit aVoid aInt aFloat aBuffer aStr : R
+    aUnit aVoid aInt aFloat : R
     aProd aSum aEff : R → R → R
     aArrow : Quantity → R → R → R
     aMu : RF → R
@@ -99,8 +99,6 @@ record TyAlg : Set₁ where
     extraMiss-Void   : (rest : List Token) → extraP (TWord "Void"   ∷ rest) ≡ nothing
     extraMiss-Int    : (rest : List Token) → extraP (TWord "Int"    ∷ rest) ≡ nothing
     extraMiss-Float  : (rest : List Token) → extraP (TWord "Float"  ∷ rest) ≡ nothing
-    extraMiss-Buffer : (rest : List Token) → extraP (TWord "Buffer" ∷ rest) ≡ nothing
-    extraMiss-String : (rest : List Token) → extraP (TWord "String" ∷ rest) ≡ nothing
     extraMiss-Eff    : (rest : List Token) → extraP (TWord "Eff"    ∷ rest) ≡ nothing
     extraMiss-IO     : (rest : List Token) → extraP (TWord "IO"     ∷ rest) ≡ nothing
     extraMiss-Mu     : (rest : List Token) → extraP (TWord "Mu"     ∷ rest) ≡ nothing
@@ -469,8 +467,6 @@ module Gen (alg : TyAlg) where
       pa-void   : ∀ rest → ParsesAtomG (TWord "Void"   ∷ rest) aVoid   rest
       pa-int    : ∀ rest → ParsesAtomG (TWord "Int"    ∷ rest) aInt    rest
       pa-float  : ∀ rest → ParsesAtomG (TWord "Float"  ∷ rest) aFloat  rest
-      pa-buffer : ∀ rest → ParsesAtomG (TWord "Buffer" ∷ rest) aBuffer rest
-      pa-string : ∀ rest → ParsesAtomG (TWord "String" ∷ rest) aStr    rest
       pa-eff : ∀ {toks1 toks2 rest} {A B : R}
              → ParsesAtomG toks1 A toks2 → ParsesAtomG toks2 B rest
              → ParsesAtomG (TWord "Eff" ∷ toks1) (aEff A B) rest
@@ -557,8 +553,6 @@ module Gen (alg : TyAlg) where
     atomShrink (pa-void rest)   = s≤s ≤-refl
     atomShrink (pa-int rest)    = s≤s ≤-refl
     atomShrink (pa-float rest)  = s≤s ≤-refl
-    atomShrink (pa-buffer rest) = s≤s ≤-refl
-    atomShrink (pa-string rest) = s≤s ≤-refl
     atomShrink (pa-eff dA dB) = <-trans (atomShrink dB) (<-trans (atomShrink dA) (s≤s ≤-refl))
     atomShrink (pa-io dA) = <-trans (atomShrink dA) (s≤s ≤-refl)
     atomShrink (pa-mu dF) = <-trans (funcSumShrink dF) (s≤s ≤-refl)

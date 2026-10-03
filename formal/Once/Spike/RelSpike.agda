@@ -181,10 +181,10 @@ open import Data.List.Properties using (++-identityʳ)
 -- for clashes: `K`, `Id`, `_⊕_`, `_⊗_`, `IsBaseTypeI` and the eight
 -- `base-*` constructors appear in neither file, and `Id` does not collide
 -- with `Once.IR`'s lowercase morphism `id` (Prelude.agda:55).
-open import Once.IRTy using (Void; Int; Float; Str; Buffer; _⇛_;
+open import Once.IRTy using (Void; Int; Float; _⇛_;
                              IRFunctor; K; Id; _⊕_; _⊗_;
                              IsBaseTypeI; base-Unit; base-Void; base-Int;
-                             base-Float; base-Str; base-Buffer;
+                             base-Float;
                              base-Prod; base-Sum; ⌈_⌉F; ⌈_⌉;
                              wf-K; wf-Id; wf-Sum; wf-Prod)
   renaming (_+_ to _+ᴵ_)
@@ -303,8 +303,6 @@ module Spike {FS : FrameSemantics} (prog : AbstractTrace) where
   RelBase base-Void   _ _ _  _ = ⊥
   RelBase base-Int    _ x sv _ = sv ≡ prim-sv fits-int   x
   RelBase base-Float  _ x sv _ = sv ≡ prim-sv fits-float x
-  RelBase base-Str    _ _ _  _ = ⊥
-  RelBase base-Buffer _ _ _  _ = ⊥
   RelBase (base-Prod ia ib) alloc p sv s =
     Σ[ hl  ∈ HeapLocation ]
     Σ[ asv ∈ StoredValue FS ]
@@ -553,8 +551,6 @@ module Spike {FS : FrameSemantics} (prog : AbstractTrace) where
   relbase-transport base-Void   _ _ r = r
   relbase-transport base-Int    _ _ r = r
   relbase-transport base-Float  _ _ r = r
-  relbase-transport base-Str    _ _ r = r
-  relbase-transport base-Buffer _ _ r = r
   relbase-transport (base-Prod ia ib) m ag
       (hl , asv , bsv , e , b0 , b1 , c0 , c1 , ra , rb) =
       hl , asv , bsv , e , bf-lift m b0 , bf-lift m b1
@@ -674,8 +670,6 @@ module Spike {FS : FrameSemantics} (prog : AbstractTrace) where
   RelK base-Void   _ _ _  _ = ⊥
   RelK base-Int    _ x sv _ = sv ≡ prim-sv fits-int   x
   RelK base-Float  _ x sv _ = sv ≡ prim-sv fits-float x
-  RelK base-Str    _ _ _  _ = ⊥
-  RelK base-Buffer _ _ _  _ = ⊥
   RelK (base-Prod ia ib) alloc p sv s =
     Σ[ hl  ∈ HeapLocation ]
     Σ[ asv ∈ StoredValue FS ]
@@ -1013,8 +1007,6 @@ module Spike {FS : FrameSemantics} (prog : AbstractTrace) where
   -- write the clause that PINS it.  Until that decision lands these two
   -- are a MODEL GAP in the residual ledger, not a stub, and `strLit` is
   -- blocked.
-  RelV Str    _ _ _ _ = ⊥
-  RelV Buffer _ _ _ _ = ⊥
 
   -- THE SUM — a TAGGED TWO-CELL HEAP OBJECT: the `_*_` clause (:271) with
   -- the first cell PINNED TO A TAG LITERAL instead of related to a
@@ -1307,8 +1299,6 @@ module Spike {FS : FrameSemantics} (prog : AbstractTrace) where
   rel-transport Int        _ _ r = r
   rel-transport Void       _ _ r = r
   rel-transport Float      _ _ r = r
-  rel-transport Str        _ _ r = r
-  rel-transport Buffer     _ _ r = r
   -- S1: the sum's transport, now that the clause has CONTENT. Two clauses
   -- because the relation splits on the value, and each mirrors the pair's
   -- (:662) — re-base the two frontier premises, re-base the two cell reads
@@ -2747,8 +2737,6 @@ module Spike {FS : FrameSemantics} (prog : AbstractTrace) where
   relv→relbase base-Void   r = r
   relv→relbase base-Int    r = r
   relv→relbase base-Float  r = r
-  relv→relbase base-Str    r = r
-  relv→relbase base-Buffer r = r
   relv→relbase (base-Prod ia ib)
       (hl , asv , bsv , e , b0 , b1 , c0 , c1 , ra , rb) =
       hl , asv , bsv , e , b0 , b1 , c0 , c1
@@ -2768,8 +2756,6 @@ module Spike {FS : FrameSemantics} (prog : AbstractTrace) where
   relbase→relv base-Void   r = r
   relbase→relv base-Int    r = r
   relbase→relv base-Float  r = r
-  relbase→relv base-Str    r = r
-  relbase→relv base-Buffer r = r
   relbase→relv (base-Prod ia ib)
       (hl , asv , bsv , e , b0 , b1 , c0 , c1 , ra , rb) =
       hl , asv , bsv , e , b0 , b1 , c0 , c1

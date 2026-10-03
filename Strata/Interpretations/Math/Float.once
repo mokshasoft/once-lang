@@ -82,12 +82,6 @@ signature intToFloat : Int -> Float
 -- | Convert float to integer (truncates toward zero)
 signature floatToInt : Float -> Int
 
--- | Parse float from string (returns 0.0 on failure)
-signature parseFloat : String -> Float
-
--- | Convert float to string
-signature floatToString : Float -> String
-
 ------------------------------------------------------------------------
 -- Constants
 ------------------------------------------------------------------------

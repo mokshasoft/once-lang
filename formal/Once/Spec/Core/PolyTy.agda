@@ -29,7 +29,7 @@ import Once.Type as T
 open import Once.Spec.Contract using (ISig)
 open T using (Purity; pure; eff; ArrowKind; mk-kind; Quantity)
 open import Once.Functor.Translate using (IsBaseType; WellFormedF; base-Unit; base-Void; base-Int;
-  base-Float; base-Str; base-Buffer; base-Prod; base-Sum; base-rigid; wf-K; wf-Id; wf-Sum; wf-Prod)
+  base-Float; base-Prod; base-Sum; base-rigid; wf-K; wf-Id; wf-Sum; wf-Prod)
 
 ------------------------------------------------------------------------
 -- Kinds
@@ -58,7 +58,7 @@ infixl 60 _⟨_⟩ _⟨_⟩F _⟪_⟫ _⟪_⟫F
 mutual
   data Ty (m : ℕ) : Set where
     var : Fin m → Ty m
-    Unit Void Int Float Str Buffer : Ty m
+    Unit Void Int Float : Ty m
     _*_ _+_ : Ty m → Ty m → Ty m
     _⇒[_]_  : Ty m → ArrowKind → Ty m → Ty m
     μ-type  : Fun m → Ty m
@@ -95,8 +95,6 @@ mutual
   Void        ⟨ σ ⟩ = Void
   Int         ⟨ σ ⟩ = Int
   Float       ⟨ σ ⟩ = Float
-  Str         ⟨ σ ⟩ = Str
-  Buffer      ⟨ σ ⟩ = Buffer
   rigid k i   ⟨ σ ⟩ = rigid k i
   (A * B)     ⟨ σ ⟩ = A ⟨ σ ⟩ * B ⟨ σ ⟩
   (A + B)     ⟨ σ ⟩ = A ⟨ σ ⟩ + B ⟨ σ ⟩
@@ -125,8 +123,6 @@ mutual
   ⟨⟩-∘ Void σ τ = refl
   ⟨⟩-∘ Int σ τ = refl
   ⟨⟩-∘ Float σ τ = refl
-  ⟨⟩-∘ Str σ τ = refl
-  ⟨⟩-∘ Buffer σ τ = refl
   ⟨⟩-∘ (rigid k i) σ τ = refl
   ⟨⟩-∘ (A * B) σ τ = cong₂ _*_ (⟨⟩-∘ A σ τ) (⟨⟩-∘ B σ τ)
   ⟨⟩-∘ (A + B) σ τ = cong₂ _+_ (⟨⟩-∘ A σ τ) (⟨⟩-∘ B σ τ)
@@ -150,8 +146,6 @@ mutual
   ⌈ T.Void ⌉        = Void
   ⌈ T.Int ⌉         = Int
   ⌈ T.Float ⌉       = Float
-  ⌈ T.Str ⌉         = Str
-  ⌈ T.Buffer ⌉      = Buffer
   ⌈ T.rigid k i ⌉   = rigid k i
   ⌈ A T.* B ⌉       = ⌈ A ⌉ * ⌈ B ⌉
   ⌈ A T.+ B ⌉       = ⌈ A ⌉ + ⌈ B ⌉
@@ -176,8 +170,6 @@ mutual
   Void         ⟪ σ ⟫ = T.Void
   Int          ⟪ σ ⟫ = T.Int
   Float        ⟪ σ ⟫ = T.Float
-  Str          ⟪ σ ⟫ = T.Str
-  Buffer       ⟪ σ ⟫ = T.Buffer
   rigid k i    ⟪ σ ⟫ = T.rigid k i
   (A * B)      ⟪ σ ⟫ = A ⟪ σ ⟫ T.* B ⟪ σ ⟫
   (A + B)      ⟪ σ ⟫ = A ⟪ σ ⟫ T.+ B ⟪ σ ⟫
@@ -205,8 +197,6 @@ mutual
   ⌈⌉-⟪⟫ T.Void σ = refl
   ⌈⌉-⟪⟫ T.Int σ = refl
   ⌈⌉-⟪⟫ T.Float σ = refl
-  ⌈⌉-⟪⟫ T.Str σ = refl
-  ⌈⌉-⟪⟫ T.Buffer σ = refl
   ⌈⌉-⟪⟫ (T.rigid k i) σ = refl
   ⌈⌉-⟪⟫ (A T.* B) σ = cong₂ T._*_ (⌈⌉-⟪⟫ A σ) (⌈⌉-⟪⟫ B σ)
   ⌈⌉-⟪⟫ (A T.+ B) σ = cong₂ T._+_ (⌈⌉-⟪⟫ A σ) (⌈⌉-⟪⟫ B σ)
@@ -228,8 +218,6 @@ mutual
   ⟨⟩-⟪⟫ Void σ ρ = refl
   ⟨⟩-⟪⟫ Int σ ρ = refl
   ⟨⟩-⟪⟫ Float σ ρ = refl
-  ⟨⟩-⟪⟫ Str σ ρ = refl
-  ⟨⟩-⟪⟫ Buffer σ ρ = refl
   ⟨⟩-⟪⟫ (rigid k i) σ ρ = refl
   ⟨⟩-⟪⟫ (A * B) σ ρ = cong₂ T._*_ (⟨⟩-⟪⟫ A σ ρ) (⟨⟩-⟪⟫ B σ ρ)
   ⟨⟩-⟪⟫ (A + B) σ ρ = cong₂ T._+_ (⟨⟩-⟪⟫ A σ ρ) (⟨⟩-⟪⟫ B σ ρ)
@@ -253,8 +241,6 @@ data Base {m} (Δ : KCtx m) : Ty m → Set where
   b-Void   : Base Δ Void
   b-Int    : Base Δ Int
   b-Float  : Base Δ Float
-  b-Str    : Base Δ Str
-  b-Buffer : Base Δ Buffer
   b-rigid  : ∀ {i} → Base Δ (rigid T.k-base i)
   b-Prod   : ∀ {A B} → Base Δ A → Base Δ B → Base Δ (A * B)
   b-Sum    : ∀ {A B} → Base Δ A → Base Δ B → Base Δ (A + B)
@@ -275,8 +261,6 @@ base-⟪⟫ r b-Unit   = base-Unit
 base-⟪⟫ r b-Void   = base-Void
 base-⟪⟫ r b-Int    = base-Int
 base-⟪⟫ r b-Float  = base-Float
-base-⟪⟫ r b-Str    = base-Str
-base-⟪⟫ r b-Buffer = base-Buffer
 base-⟪⟫ r b-rigid  = base-rigid
 base-⟪⟫ r (b-Prod a b) = base-Prod (base-⟪⟫ r a) (base-⟪⟫ r b)
 base-⟪⟫ r (b-Sum a b)  = base-Sum (base-⟪⟫ r a) (base-⟪⟫ r b)

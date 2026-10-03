@@ -23,8 +23,6 @@ base-⌈⌉ base-Unit       = Tr.base-Unit
 base-⌈⌉ base-Void       = Tr.base-Void
 base-⌈⌉ base-Int        = Tr.base-Int
 base-⌈⌉ base-Float      = Tr.base-Float
-base-⌈⌉ base-Str        = Tr.base-Str
-base-⌈⌉ base-Buffer     = Tr.base-Buffer
 base-⌈⌉ (base-Prod a b) = Tr.base-Prod (base-⌈⌉ a) (base-⌈⌉ b)
 base-⌈⌉ (base-Sum a b)  = Tr.base-Sum  (base-⌈⌉ a) (base-⌈⌉ b)
 
@@ -43,8 +41,6 @@ base-⌊⌋ Tr.base-Unit       = base-Unit
 base-⌊⌋ Tr.base-Void       = base-Void
 base-⌊⌋ Tr.base-Int        = base-Int
 base-⌊⌋ Tr.base-Float      = base-Float
-base-⌊⌋ Tr.base-Str        = base-Str
-base-⌊⌋ Tr.base-Buffer     = base-Buffer
 base-⌊⌋ (Tr.base-Prod a b) = base-Prod (base-⌊⌋ a) (base-⌊⌋ b)
 base-⌊⌋ (Tr.base-Sum a b)  = base-Sum  (base-⌊⌋ a) (base-⌊⌋ b)
 base-⌊⌋ Tr.base-rigid      = base-Void   -- D243: ⌊ rigid ⌋ = Void

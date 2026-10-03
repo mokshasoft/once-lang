@@ -27,7 +27,7 @@ open import Once.Type
 open import Once.Type.Sub
 open import Once.Functor.Translate
   using ( WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod
-        ; IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Str; base-Buffer; base-Prod; base-Sum
+        ; IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum
         ; IsConcrete; con-base; con-fun; translateF )
 import Once.Semantics.Machine as Val
 open import Once.Semantics.Machine using (⟦_⟧F; sem-cata; sem-In; coerce-ν-in; coerce-ν-out)
@@ -63,8 +63,6 @@ injB base-Unit   x = x
 injB base-Void   x = x
 injB base-Int    x = x
 injB base-Float  x = x
-injB base-Str    x = x
-injB base-Buffer x = x
 injB (base-Prod a b) (x , y) = injB a x , injB b y
 injB (base-Sum a b) (inj₁ x) = inj₁ (injB a x)
 injB (base-Sum a b) (inj₂ y) = inj₂ (injB b y)
@@ -74,8 +72,6 @@ prjB base-Unit   x = x
 prjB base-Void   x = x
 prjB base-Int    x = x
 prjB base-Float  x = x
-prjB base-Str    x = x
-prjB base-Buffer x = x
 prjB (base-Prod a b) (x , y) = prjB a x , prjB b y
 prjB (base-Sum a b) (inj₁ x) = inj₁ (prjB a x)
 prjB (base-Sum a b) (inj₂ y) = inj₂ (prjB b y)
@@ -85,8 +81,6 @@ injBᵍ base-Unit   x = x
 injBᵍ base-Void   x = x
 injBᵍ base-Int    x = x
 injBᵍ base-Float  x = x
-injBᵍ base-Str    x = x
-injBᵍ base-Buffer x = x
 injBᵍ (base-Prod a b) (x , y) = injBᵍ a x , injBᵍ b y
 injBᵍ (base-Sum a b) (inj₁ x) = inj₁ (injBᵍ a x)
 injBᵍ (base-Sum a b) (inj₂ y) = inj₂ (injBᵍ b y)
@@ -182,8 +176,6 @@ out-semᵛ eff  {F} wf v = fmapT (λ layer → cf⁻¹ᵛ (ν-type F eff) wf (co
 ⟦ sub-unit   ⟧<:ᵛ x = x
 ⟦ sub-int    ⟧<:ᵛ x = x
 ⟦ sub-float  ⟧<:ᵛ x = x
-⟦ sub-str    ⟧<:ᵛ x = x
-⟦ sub-buffer ⟧<:ᵛ x = x
 ⟦ sub-arr {q = Zero} {π = π} a b g ⟧<:ᵛ f = λ u → subM g (fmapM π ⟦ b ⟧<:ᵛ (f u))
 ⟦ sub-arr {q = One}  {π = π} a b g ⟧<:ᵛ f = λ x → subM g (fmapM π ⟦ b ⟧<:ᵛ (f (⟦ a ⟧<:ᵛ x)))
 ⟦ sub-arr {q = Many} {π = π} a b g ⟧<:ᵛ f = λ x → subM g (fmapM π ⟦ b ⟧<:ᵛ (f (⟦ a ⟧<:ᵛ x)))

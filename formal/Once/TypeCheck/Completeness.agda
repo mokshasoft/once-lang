@@ -34,7 +34,7 @@ open import Data.Product using (∃; ∃-syntax; Σ-syntax; _×_; _,_; proj₁; 
 open import Relation.Nullary using (yes; no; Dec)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; trans; sym; subst)
 open import Data.String.Properties as StrProp using (_≟_)
-open import Once.Type as T using (Type; Unit; Int; Str; Void; Float; Buffer;
+open import Once.Type as T using (Type; Unit; Int; Void; Float;
                                   _*_; _+_; _⇒[_]_; Quantity; _≤q_;
                                   Zero; One; Many)
 open import Once.TypeCheck.Raw as Raw
@@ -80,7 +80,7 @@ open import Once.IRTy.WF using (wf-⌊⌋)
 open import Once.Denotation.Realize using ()
 open import Once.Surface.Syntax as Srf using (Expr; lift-morphism)
 open import Once.Type using (Functor; μ-type; ⟦_⟧T)
-open import Once.Type.Sub using (_<:_; _<:?_; <:-refl; _⊑π_; _⊑π?_; ⊑-pure; sub-int; sub-float; sub-str; sub-unit; sub-prod; sub-sum)
+open import Once.Type.Sub using (_<:_; _<:?_; <:-refl; _⊑π_; _⊑π?_; ⊑-pure; sub-int; sub-float; sub-unit; sub-prod; sub-sum)
 open import Once.Type.DecEq using (_≟T_; _≟F_)
 open import Once.TypeCheck.Classify using (lookupLocal; lookupImport; lookupPolyPrefix⇒lookupPoly;
   inspectLookupLocal; inspectLookupImport; llv-found; llv-not-found; liv-found; liv-not-found;
@@ -273,7 +273,6 @@ given-infer-route : ∀ {ctx : NamedCtx} {e : RawExpr} {T : Type}
   → elabGivenV ctx e A π ≡ given-infer ctx e A π (inferElabV ctx e)
 given-infer-route (t-int _) A π _ = refl
 given-infer-route (t-float _ _ _ _) A π _ = refl
-given-infer-route (t-str _) A π _ = refl
 given-infer-route t-unit A π _ = refl
 given-infer-route t-unit-var A π _ = refl
 given-infer-route {ctx} (t-var-local {x = x} _) A π (_ , _ , _ , ok) = var-route ctx x A π (inferElabV ctx (RVar x)) ok
@@ -433,7 +432,7 @@ infer-complete-RApp-spine {ctx} f x {X} {B} eqAH eqF eqX eqG
 ------------------------------------------------------------------------
 
 open Once.TypeCheck.ElaborateProofs
-  using (checkElab-fallback-RInt; checkElab-fallback-RFloat; checkElab-fallback-RStringLit;
+  using (checkElab-fallback-RInt; checkElab-fallback-RFloat;
          checkElab-fallback-RUnit; checkElab-fallback-RVar-unit;
          checkElab-fallback-RVar-id; checkElab-fallback-RVar-fst;
          checkElab-fallback-RVar-snd; checkElab-fallback-RVar-terminal; checkElab-fallback-RVar-terminalV;
@@ -654,7 +653,6 @@ mutual
   -- Leaves.
   iFromInferSub {ctx} (t-int n) sub-int = checkElab-fallback-RInt {ctx} n
   iFromInferSub {ctx} (t-float i f l p) sub-float = checkElab-fallback-RFloat {ctx} i f l p
-  iFromInferSub {ctx} (t-str s) sub-str = checkElab-fallback-RStringLit {ctx} s
   iFromInferSub {ctx} t-unit sub-unit = checkElab-fallback-RUnit {ctx}
   iFromInferSub {ctx} t-unit-var sub-unit = checkElab-fallback-RVar-unit {ctx}
   iFromInferSub {ctx} (t-var-local {x = x} {A = T} eqLocal) sb =
@@ -760,7 +758,6 @@ mutual
 
   infer-complete {ctx} (t-int n)   = infer-complete-RInt {ctx} n
   infer-complete {ctx} (t-float i f l p) = _ , _ , _ , refl
-  infer-complete {ctx} (t-str s)   = infer-complete-RStringLit {ctx} s
   infer-complete {ctx} t-unit      = infer-complete-RUnit {ctx}
   infer-complete {ctx} t-unit-var  = infer-complete-RVar-unit {ctx}
   infer-complete {ctx} (t-var-local {x = x} eqLocal) =

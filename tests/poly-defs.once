@@ -23,8 +23,8 @@ diagonal = pair id id
 
 -- Ground uses
 
-swapIntString : Int * String -> String * Int
-swapIntString = swap
+swapIntFloat : Int * Float -> Float * Int
+swapIntFloat = swap
 
 diagInt : Int -> Int * Int
 diagInt = diagonal

@@ -360,7 +360,6 @@ ren-sem θ (⊢out {π = π} wf d) fmt δ x = bindC {π} (ren-sem θ d fmt δ x)
 ren-sem θ (⊢coerce {π = π} p d) fmt δ x = cong (fmapM π _) (ren-sem θ d fmt δ x)
 ren-sem {Δ = Δ} θ ⊢lit-int fmt δ x = ⟦⟧-substΨ {Γ = Δ} (sym (thin-usage-zeroUsage θ)) ⊢lit-int fmt δ x
 ren-sem {Δ = Δ} θ ⊢lit-float fmt δ x = ⟦⟧-substΨ {Γ = Δ} (sym (thin-usage-zeroUsage θ)) ⊢lit-float fmt δ x
-ren-sem {Δ = Δ} θ ⊢lit-str fmt δ x = ⟦⟧-substΨ {Γ = Δ} (sym (thin-usage-zeroUsage θ)) ⊢lit-str fmt δ x
 ren-sem θ (⊢prim {π = π} p d) fmt δ x = bindC {π} (ren-sem θ d fmt δ x) (λ _ → refl)
 ren-sem {Δ = Δ} θ (⊢sigop c k h g m) fmt δ x = ⟦⟧-substΨ {Γ = Δ} (sym (thin-usage-zeroUsage θ)) (⊢sigop c k h g m) fmt δ x
 ren-sem θ (⊢sub-eff g d) fmt δ x = cong (subM g) (ren-sem θ d fmt δ x)

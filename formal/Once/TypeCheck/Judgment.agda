@@ -39,7 +39,7 @@ open import Data.Unit using (tt)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
 import Once.Type
-open Once.Type using (Type; Unit; Int; Str; Void; Float; Buffer;
+open Once.Type using (Type; Unit; Int; Void; Float;
                       _*_; _+_; _⇒_; _⇒[_]_; Quantity;
                       Functor; μ-type; ν-type; ⟦_⟧T)
 open import Once.Float.Dyadic using (Dyadic)
@@ -119,8 +119,6 @@ mutual
     t-float : ∀ {ctx : NamedCtx} (i f l p : ℕ)
             → ctx ⊢ᵢ RFloat i f l p ∶ Float ⨾ zeroUsage
 
-    t-str : ∀ {ctx : NamedCtx} (s : String)
-          → ctx ⊢ᵢ RStringLit s ∶ Str ⨾ zeroUsage
 
     t-unit : ∀ {ctx : NamedCtx}
            → ctx ⊢ᵢ RUnit ∶ Unit ⨾ zeroUsage

@@ -26,7 +26,7 @@ open import Once.TypeCheck.Judgment public
         ; d-infer ; d-lam ; d-compose ; d-id ; d-fst ; d-snd ; d-terminal ; d-initial
         ; d-case ; d-pair ; d-cata
         -- ⊢ᵢ — synthesis
-        ; t-int ; t-float ; t-str ; t-unit ; t-unit-var
+        ; t-int ; t-float ; t-unit ; t-unit-var
         ; t-var-local ; t-var-qualified ; t-var-resolved ; t-var-import
         ; t-var-poly-instantiate-infer
         ; t-annot ; t-pair ; t-neg ; t-neg-float ; t-let ; t-case

@@ -510,17 +510,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} where
         readLoc s loc ≡ just (prim-sv fits-float x) →
         ValidAtWF m alloc {Float} x loc s
 
-      valid-str-wf : ∀ {m} {x : ⟦ Str ⟧}
-        {alloc : AllocState {FS}}
-        {loc : ValueLocation FS} {s : LocState FS} →
-        BeforeFrontier alloc loc →
-        ValidAtWF m alloc {Str} x loc s
 
-      valid-buffer-wf : ∀ {m} {x : ⟦ Buffer ⟧}
-        {alloc : AllocState {FS}}
-        {loc : ValueLocation FS} {s : LocState FS} →
-        BeforeFrontier alloc loc →
-        ValidAtWF m alloc {Buffer} x loc s
 
       -- Plan 0.52 M2: `valid-coerce-kind-wf` (the pure→eff kind coercion) is
       -- retired.  IRTy erases the ArrowKind, so pure and effectful arrows are
@@ -1510,10 +1500,6 @@ module ClosureWellFormedDef {FS : FrameSemantics} where
     valid-int-wf bf (trans (readLoc-stack-heap-eq s₂ s₁ loc stack-eq heap-eq) rl)
   validityWF-mem-only {m = m} {alloc = alloc} _ loc s₁ s₂ stack-eq heap-eq (valid-float-wf bf rl) =
     valid-float-wf bf (trans (readLoc-stack-heap-eq s₂ s₁ loc stack-eq heap-eq) rl)
-  validityWF-mem-only {m = m} {alloc = alloc} _ loc s₁ s₂ stack-eq heap-eq (valid-str-wf bf) =
-    valid-str-wf bf
-  validityWF-mem-only {m = m} {alloc = alloc} _ loc s₁ s₂ stack-eq heap-eq (valid-buffer-wf bf) =
-    valid-buffer-wf bf
 
   ------------------------------------------------------------------------
   -- ValidAtWF preservation under writes to frontier locations
@@ -1611,10 +1597,6 @@ module ClosureWellFormedDef {FS : FrameSemantics} where
     valid-int-wf bf (trans (write-at-frontier-preserves-before s alloc loc val loc-before) rl)
   validityWF-write-at-frontier {m = m} {alloc = alloc} _ loc s val loc-before (valid-float-wf bf rl) =
     valid-float-wf bf (trans (write-at-frontier-preserves-before s alloc loc val loc-before) rl)
-  validityWF-write-at-frontier {m = m} {alloc = alloc} _ loc s val loc-before (valid-str-wf bf) =
-    valid-str-wf bf
-  validityWF-write-at-frontier {m = m} {alloc = alloc} _ loc s val loc-before (valid-buffer-wf bf) =
-    valid-buffer-wf bf
 
   -- ValidAtWF is preserved when writing to suc-frontier location
   validityWF-write-at-suc-frontier : ∀ {m alloc A} (v : ⟦ A ⟧) (loc : ValueLocation FS)
@@ -1704,10 +1686,6 @@ module ClosureWellFormedDef {FS : FrameSemantics} where
     valid-int-wf bf (trans (write-at-suc-frontier-preserves-before s alloc loc val loc-before) rl)
   validityWF-write-at-suc-frontier {m = m} {alloc = alloc} _ loc s val loc-before (valid-float-wf bf rl) =
     valid-float-wf bf (trans (write-at-suc-frontier-preserves-before s alloc loc val loc-before) rl)
-  validityWF-write-at-suc-frontier {m = m} {alloc = alloc} _ loc s val loc-before (valid-str-wf bf) =
-    valid-str-wf bf
-  validityWF-write-at-suc-frontier {m = m} {alloc = alloc} _ loc s val loc-before (valid-buffer-wf bf) =
-    valid-buffer-wf bf
 
   ------------------------------------------------------------------------
   -- D148: the FRONTIER-slot sibling of `validityWF-write-at-suc-frontier`,
@@ -1810,10 +1788,6 @@ module ClosureWellFormedDef {FS : FrameSemantics} where
     valid-int-wf bf (trans (write-sv-at-frontier-preserves-before s alloc loc stored loc-before) rl)
   validityWF-write-sv-at-frontier {m = m} {alloc = alloc} _ loc s stored loc-before (valid-float-wf bf rl) =
     valid-float-wf bf (trans (write-sv-at-frontier-preserves-before s alloc loc stored loc-before) rl)
-  validityWF-write-sv-at-frontier {m = m} {alloc = alloc} _ loc s stored loc-before (valid-str-wf bf) =
-    valid-str-wf bf
-  validityWF-write-sv-at-frontier {m = m} {alloc = alloc} _ loc s stored loc-before (valid-buffer-wf bf) =
-    valid-buffer-wf bf
 
   ------------------------------------------------------------------------
   -- …and the SUC-frontier sibling, for an arbitrary `StoredValue`.
@@ -1910,10 +1884,6 @@ module ClosureWellFormedDef {FS : FrameSemantics} where
     valid-int-wf bf (trans (write-sv-at-suc-frontier-preserves-before s alloc loc stored loc-before) rl)
   validityWF-write-sv-at-suc-frontier {m = m} {alloc = alloc} _ loc s stored loc-before (valid-float-wf bf rl) =
     valid-float-wf bf (trans (write-sv-at-suc-frontier-preserves-before s alloc loc stored loc-before) rl)
-  validityWF-write-sv-at-suc-frontier {m = m} {alloc = alloc} _ loc s stored loc-before (valid-str-wf bf) =
-    valid-str-wf bf
-  validityWF-write-sv-at-suc-frontier {m = m} {alloc = alloc} _ loc s stored loc-before (valid-buffer-wf bf) =
-    valid-buffer-wf bf
 
   ------------------------------------------------------------------------
   -- Validity transport across allocation advancement
@@ -2011,10 +1981,6 @@ module ClosureWellFormedDef {FS : FrameSemantics} where
     valid-int-wf (stack-alloc-advances alloc n loc bf) rl
   validityWF-alloc-advance {m = m} {alloc = alloc} _ loc s n (valid-float-wf bf rl) =
     valid-float-wf (stack-alloc-advances alloc n loc bf) rl
-  validityWF-alloc-advance {m = m} {alloc = alloc} _ loc s n (valid-str-wf bf) =
-    valid-str-wf (stack-alloc-advances alloc n loc bf)
-  validityWF-alloc-advance {m = m} {alloc = alloc} _ loc s n (valid-buffer-wf bf) =
-    valid-buffer-wf (stack-alloc-advances alloc n loc bf)
 
   ------------------------------------------------------------------------
   -- Validity transport across arbitrary frontier advancement
@@ -2111,10 +2077,6 @@ module ClosureWellFormedDef {FS : FrameSemantics} where
     valid-int-wf (frontier-monotone alloc alloc' (sym cf-eq) slot-≤ heap-≤ loc bf) rl
   validityWF-frontier-advance {m = m} {alloc = alloc} {alloc' = alloc'} _ loc s cf-eq slot-≤ heap-≤ (valid-float-wf bf rl) =
     valid-float-wf (frontier-monotone alloc alloc' (sym cf-eq) slot-≤ heap-≤ loc bf) rl
-  validityWF-frontier-advance {m = m} {alloc = alloc} {alloc' = alloc'} _ loc s cf-eq slot-≤ heap-≤ (valid-str-wf bf) =
-    valid-str-wf (frontier-monotone alloc alloc' (sym cf-eq) slot-≤ heap-≤ loc bf)
-  validityWF-frontier-advance {m = m} {alloc = alloc} {alloc' = alloc'} _ loc s cf-eq slot-≤ heap-≤ (valid-buffer-wf bf) =
-    valid-buffer-wf (frontier-monotone alloc alloc' (sym cf-eq) slot-≤ heap-≤ loc bf)
 
   ------------------------------------------------------------------------
   -- ValidAtWF transfer between allocation states with BeforeFrontier transfer
@@ -2198,10 +2160,6 @@ module ClosureWellFormedDef {FS : FrameSemantics} where
     valid-int-wf (bf loc bfr) rl
   validityWF-with-bf-transfer {m = m} _ loc s a₁ a₂ bf (valid-float-wf bfr rl) =
     valid-float-wf (bf loc bfr) rl
-  validityWF-with-bf-transfer {m = m} _ loc s a₁ a₂ bf (valid-str-wf bfr) =
-    valid-str-wf (bf loc bfr)
-  validityWF-with-bf-transfer {m = m} _ loc s a₁ a₂ bf (valid-buffer-wf bfr) =
-    valid-buffer-wf (bf loc bfr)
 
   ------------------------------------------------------------------------
   -- Validity preservation when memory at BeforeFrontier is preserved
@@ -2297,10 +2255,6 @@ module ClosureWellFormedDef {FS : FrameSemantics} where
     valid-int-wf bf (trans (mem-eq loc loc-before) rl)
   validityWF-mem-preserved {m = m} {alloc = alloc} _ loc s₁ s₂ loc-before mem-eq (valid-float-wf bf rl) =
     valid-float-wf bf (trans (mem-eq loc loc-before) rl)
-  validityWF-mem-preserved {m = m} {alloc = alloc} _ loc s₁ s₂ loc-before mem-eq (valid-str-wf bf) =
-    valid-str-wf bf
-  validityWF-mem-preserved {m = m} {alloc = alloc} _ loc s₁ s₂ loc-before mem-eq (valid-buffer-wf bf) =
-    valid-buffer-wf bf
 
   ------------------------------------------------------------------------
   -- Stage F: carry an input's PLACE across a state change that preserves
@@ -2493,8 +2447,6 @@ module ClosureWellFormedDef {FS : FrameSemantics} where
   -- the strong preservation lemma consumes via `loc-mem-eq-from-regions`.
   LocsInRegions {alloc = alloc} ib fs (valid-int-wf {loc = loc} bf rl)    = LocInRegions alloc ib fs loc
   LocsInRegions {alloc = alloc} ib fs (valid-float-wf {loc = loc} bf rl)  = LocInRegions alloc ib fs loc
-  LocsInRegions ib fs (valid-str-wf bf)    = ⊤
-  LocsInRegions ib fs (valid-buffer-wf bf) = ⊤
 
   -- A POINTER cell constrains the component it points at; an INLINE cell has
   -- no cell of its own to place in a region (the pair's own two cells are
@@ -2689,10 +2641,6 @@ module ClosureWellFormedDef {FS : FrameSemantics} where
   validityWF-mem-preserved-in-regions-strong alloc _ loc ib fs s₁ s₂
     loc-before _ _ ir fr hr ar (valid-float-wf bf rl) loc-ir =
     valid-float-wf bf (trans (loc-mem-eq-from-regions ir fr hr ar loc-ir) rl)
-  validityWF-mem-preserved-in-regions-strong alloc _ loc ib fs s₁ s₂
-    loc-before _ _ _ _ _ _ (valid-str-wf bf) _ = valid-str-wf bf
-  validityWF-mem-preserved-in-regions-strong alloc _ loc ib fs s₁ s₂
-    loc-before _ _ _ _ _ _ (valid-buffer-wf bf) _ = valid-buffer-wf bf
 
   -- UNSAFE version (still a proof gap): no LocsInRegions hypothesis.
   -- Existing callers (PairStackWF's 5 sites) use this. Migrate to the strong

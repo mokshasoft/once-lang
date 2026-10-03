@@ -216,7 +216,6 @@ module Transfer
 
     tr-i ld (t-int n) = cᵢ (sym (drop-zero ld)) (t-int n)
     tr-i ld (t-float i f l p) = cᵢ (sym (drop-zero ld)) (t-float i f l p)
-    tr-i ld (t-str t) = cᵢ (sym (drop-zero ld)) (t-str t)
     tr-i ld t-unit = cᵢ (sym (drop-zero ld)) t-unit
     tr-i ld t-unit-var = cᵢ (sym (drop-zero ld)) t-unit-var
     tr-i {GL = GL} {ΔL = ΔL} {GD = GD} {ΔD = ΔD} ld (t-var-local {x = y} eq) =

@@ -43,7 +43,7 @@ open import Relation.Binary.PropositionalEquality
 open import Once.Word using (Carrier)
 open import Once.Float.Dyadic using (Dyadic)
 open import Once.Type as TT
-  using (Functor; Unit; Void; Int; Str; Float; Buffer; _*_; _+_; _⇒[_]_; μ-type; ν-type)
+  using (Functor; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ν-type)
 open import Once.Functor.Translate using (translateF)
 open import Once.IRTy using (eraseF; ⌈_⌉F; ⌈⟧TI-commute; ⌊⟧T-commute)
 import Once.IRTy as II
@@ -62,7 +62,7 @@ open import Once.Denotation.TraceMonad using (T; returnT)
 open import Once.Denotation.ValueDomain
   using (⟦_⟧ᴰ; ⟦_⟧ᴰᴵ; cohᴰ; νᵈ; forgetᵇ; coerce-functor-D)
 open import Once.Functor.Translate using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod;
-  IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Str; base-Buffer; base-Prod; base-Sum; base-rigid)
+  IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; base-rigid)
 open import Once.IRTy.WF using (wf-⌊⌋; wf-⌈⌉; base-⌊⌋; base-⌈⌉)
 open import Once.Postulates using (extensionality)
 
@@ -263,8 +263,6 @@ base-in-D : ∀ {B : TT.Type} (b : IsBaseType B) (v0 : ⟦ ⌊ B ⌋ ⟧ᴰᴵ)
 base-in-D base-Unit   v0 = refl
 base-in-D base-Int    v0 = refl
 base-in-D base-Float  v0 = refl
-base-in-D base-Str    v0 = refl
-base-in-D base-Buffer v0 = refl
 base-in-D base-Void   ()
 base-in-D base-rigid  v0 = refl
 base-in-D (base-Prod {A} {B} ba bb) (a , b) =

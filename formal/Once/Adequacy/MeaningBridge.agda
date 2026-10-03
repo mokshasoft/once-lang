@@ -42,7 +42,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong
 
 open import Once.Type using (Type; Purity; Quantity; mk-kind; Zero; One; Many; pure; eff; _⇒[_]_; _+_; _*_; μ-type; ν-type; ⟦_⟧T; Functor; Int; Float; Unit)
 open import Once.Functor.Translate using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod;
-  IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Str; base-Buffer; base-Prod; base-Sum; base-rigid;
+  IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; base-rigid;
   IsConcrete; con-base; con-fun)
 open import Once.Functor.Decide using (wellFormedF?)
 open import Once.Semantics.Machine using (sem-In; coerce-functor; sem-cata)
@@ -88,7 +88,7 @@ open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_;
   d-terminal; d-initial; d-case; d-pair; d-cata; _⊢ᵈ_∶_⇒[_]↦_⨾_;
   t-case-copair-check; t-pair-morph-check;
   t-curry-check; t-cata-check; t-ana-check;
-  t-int; t-float; t-str; t-unit; t-unit-var; t-var-local; t-var-qualified;
+  t-int; t-float; t-unit; t-unit-var; t-var-local; t-var-qualified;
   t-var-resolved; t-var-import; t-annot; t-pair; t-neg; t-neg-float; t-binop-arith-float; t-binop-arith-float-il; t-binop-arith-float-ir; t-let; t-case;
   t-binop-arith; t-binop-cmp; t-id-app; t-fst-app; t-snd-app;
   t-terminal-app; t-apply-app-infer; t-apply-eff-app-infer; t-Out-app-infer; t-Out-eff-app-infer; t-app; t-effApp;
@@ -385,8 +385,6 @@ sd-sigOp-base≡ cn base-Unit          dγ = refl
 sd-sigOp-base≡ cn base-Void          dγ = refl
 sd-sigOp-base≡ cn base-Int           dγ = refl
 sd-sigOp-base≡ cn base-Float         dγ = refl
-sd-sigOp-base≡ cn base-Str           dγ = refl
-sd-sigOp-base≡ cn base-Buffer        dγ = refl
 sd-sigOp-base≡ cn base-rigid         dγ = refl
 sd-sigOp-base≡ cn (base-Prod ibA ibB) dγ = refl
 sd-sigOp-base≡ cn (base-Sum ibA ibB)  dγ = refl
@@ -576,8 +574,6 @@ mutual
   RelGV-sub sub-unit   r = r
   RelGV-sub sub-int    r = r
   RelGV-sub sub-float  r = r
-  RelGV-sub sub-str    r = r
-  RelGV-sub sub-buffer r = r
   RelGV-sub sub-μ      r = r
   RelGV-sub (sub-ν ⊑-pure) r = r
   RelGV-sub (sub-ν ⊑-eff)  r = r
@@ -691,7 +687,6 @@ bridge-i (t-float _ _ _ _) re er = rel-ret refl
 -- The `Int` fold could keep one and pays `⊝-fromℤ` for it in `RealizeAgrees`;
 -- here there is nothing to reconcile.
 bridge-i (t-neg-float _ _ _ _) re er = rel-ret refl
-bridge-i (t-str _)   re er = rel-ret refl
 bridge-i t-unit      re er = rel-ret tt
 bridge-i t-unit-var  re er = rel-ret tt
 

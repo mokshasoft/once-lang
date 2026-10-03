@@ -75,7 +75,6 @@ eval (FunRef name) _ = Left (UnboundVariable ("funref: " ++ show name))
 eval (Prim name _ _) _ = Left (UnboundVariable ("primitive: " ++ show name))
 
 -- String literals evaluate to string values (ignoring the input)
-eval (StringLit s) _ = Right (VString s)
 
 -- Recursive types
 -- fold and unfold are identity at runtime since Fix F ≅ F (Fix F)

@@ -36,7 +36,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong₂; s
 
 open import Once.Type using (PolyType; PolyFunctor; Ground; GroundF; isGround; isGroundF;
   both-ground;
-  PUnit; PVoid; PInt; PFloat; PStr; PBuffer; PTVar; _P*_; _P+_; _P⇒[_]_; PEff;
+  PUnit; PVoid; PInt; PFloat; PTVar; _P*_; _P+_; _P⇒[_]_; PEff;
   Pμ-type; Pν-type; PK; PId; _P⊕_; _P⊗_)
 open import Once.Functor.Translate using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod;
   WellFormedF-irrelevant)
@@ -90,8 +90,6 @@ mutual
   isGround-complete PVoid   _ = tt , refl
   isGround-complete PInt    _ = tt , refl
   isGround-complete PFloat  _ = tt , refl
-  isGround-complete PStr    _ = tt , refl
-  isGround-complete PBuffer _ = tt , refl
   isGround-complete (A P* B) (gA , gB)
     with isGround-complete A gA | isGround-complete B gB
   ... | (a , eqA) | (b , eqB) rewrite eqA | eqB = (a , b) , refl
@@ -151,8 +149,6 @@ mutual
   Ground-irrelevant PVoid   _ _ = refl
   Ground-irrelevant PInt    _ _ = refl
   Ground-irrelevant PFloat  _ _ = refl
-  Ground-irrelevant PStr    _ _ = refl
-  Ground-irrelevant PBuffer _ _ = refl
   Ground-irrelevant (A P* B) (a₁ , b₁) (a₂ , b₂) =
     cong₂ _,_ (Ground-irrelevant A a₁ a₂) (Ground-irrelevant B b₁ b₂)
   Ground-irrelevant (A P+ B) (a₁ , b₁) (a₂ , b₂) =

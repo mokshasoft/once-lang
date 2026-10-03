@@ -26,11 +26,10 @@ open import Once.Grammar as G
   using ( GExpr; GType
         ; EUnit; EInt; EString; EVar; EQualified; ELam; EApp; EPair
         ; EAnnot; EBinOp; EUnaryOp; ECompose; ELet; EDestruct
-        ; TUnit; TVoid; TInt; TFloat; TBuffer; TString; TEff; TVar; GMu; GNu; GNuEff
+        ; TUnit; TVoid; TInt; TFloat; TEff; TVar; GMu; GNu; GNuEff
         ; _⊗_; _⊕_; _⇒[_]_ )
 open import Once.Grammar.Printer using
-  ( Concrete; c-unit; c-void; c-int; c-float; c-buffer; c-string
-  ; c-prod; c-sum; c-fun; c-eff )
+  ( Concrete; c-unit; c-void; c-int; c-float; c-prod; c-sum; c-fun; c-eff )
 open import Once.Grammar.ExprPrinter using
   ( ConcreteExpr; c-e-unit; c-e-int; c-e-string; c-e-var; c-e-qual
   ; c-e-lam; c-e-app; c-e-pair; c-e-annot; c-e-binop; c-e-unary
@@ -46,8 +45,6 @@ concreteType? TUnit   = just c-unit
 concreteType? TVoid   = just c-void
 concreteType? TInt    = just c-int
 concreteType? TFloat  = just c-float
-concreteType? TBuffer = just c-buffer
-concreteType? TString = just c-string
 concreteType? (a ⊗ b) with concreteType? a | concreteType? b
 ... | just ca | just cb = just (c-prod ca cb)
 ... | _       | _       = nothing

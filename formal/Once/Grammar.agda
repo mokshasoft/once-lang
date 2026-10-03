@@ -53,8 +53,6 @@ mutual
   TVoid   : GType
   TInt    : GType
   TFloat  : GType
-  TBuffer : GType
-  TString : GType
 
   -- Type constructors
   _⇒[_]_  : GType → Quantity → GType → GType  -- Graded function: A -q> B (A^q -> B)

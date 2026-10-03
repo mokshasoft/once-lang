@@ -47,8 +47,6 @@ base-⟨⟩ r b-Unit   = b-Unit
 base-⟨⟩ r b-Void   = b-Void
 base-⟨⟩ r b-Int    = b-Int
 base-⟨⟩ r b-Float  = b-Float
-base-⟨⟩ r b-Str    = b-Str
-base-⟨⟩ r b-Buffer = b-Buffer
 base-⟨⟩ r b-rigid  = b-rigid
 base-⟨⟩ r (b-Prod a b) = b-Prod (base-⟨⟩ r a) (base-⟨⟩ r b)
 base-⟨⟩ r (b-Sum a b)  = b-Sum (base-⟨⟩ r a) (base-⟨⟩ r b)
@@ -66,8 +64,6 @@ mutual
   ⌈⌉-⟨⟩ T.Void σ = refl
   ⌈⌉-⟨⟩ T.Int σ = refl
   ⌈⌉-⟨⟩ T.Float σ = refl
-  ⌈⌉-⟨⟩ T.Str σ = refl
-  ⌈⌉-⟨⟩ T.Buffer σ = refl
   ⌈⌉-⟨⟩ (T.rigid k i) σ = refl
   ⌈⌉-⟨⟩ (A T.* B) σ = cong₂ _*_ (⌈⌉-⟨⟩ A σ) (⌈⌉-⟨⟩ B σ)
   ⌈⌉-⟨⟩ (A T.+ B) σ = cong₂ _+_ (⌈⌉-⟨⟩ A σ) (⌈⌉-⟨⟩ B σ)
@@ -88,8 +84,6 @@ mutual
 <:ₚ-refl Void = sub-void
 <:ₚ-refl Int = sub-int
 <:ₚ-refl Float = sub-float
-<:ₚ-refl Str = sub-str
-<:ₚ-refl Buffer = sub-buffer
 <:ₚ-refl (rigid k i) = sub-rigid
 <:ₚ-refl (A * B) = sub-prod (<:ₚ-refl A) (<:ₚ-refl B)
 <:ₚ-refl (A + B) = sub-sum (<:ₚ-refl A) (<:ₚ-refl B)
@@ -103,8 +97,6 @@ mutual
 <:ₚ-⟨⟩ σ sub-unit   = sub-unit
 <:ₚ-⟨⟩ σ sub-int    = sub-int
 <:ₚ-⟨⟩ σ sub-float  = sub-float
-<:ₚ-⟨⟩ σ sub-str    = sub-str
-<:ₚ-⟨⟩ σ sub-buffer = sub-buffer
 <:ₚ-⟨⟩ σ sub-rigid  = sub-rigid
 <:ₚ-⟨⟩ σ (sub-arr a b g) = sub-arr (<:ₚ-⟨⟩ σ a) (<:ₚ-⟨⟩ σ b) g
 <:ₚ-⟨⟩ σ (sub-prod a b)  = sub-prod (<:ₚ-⟨⟩ σ a) (<:ₚ-⟨⟩ σ b)
@@ -189,7 +181,6 @@ tsubst {Δ′ = Δ′} {Γ = Γ} {Ψ = Ψ} σ r (⊢out {π = π} {F = F} {t = t
 tsubst σ r (⊢coerce p d) = ⊢coerce (<:ₚ-⟨⟩ σ p) (tsubst σ r d)
 tsubst σ r ⊢lit-int = ⊢lit-int
 tsubst σ r ⊢lit-float = ⊢lit-float
-tsubst σ r ⊢lit-str = ⊢lit-str
 tsubst {Δ′ = Δ′} {Γ = Γ} {Ψ = Ψ} {π = π} σ r (⊢prim {t = t} p d) =
   subst (λ X → Δ′ ⊩ Γ ⟨ σ ⟩ᶜ ⊢[ Ψ ] prim p (t ⟨ σ ⟩ₜ) ∷ X ! π) (sym (⌈⌉-⟨⟩ (primCod p) σ))
     (⊢prim p (subst (λ X → Δ′ ⊩ Γ ⟨ σ ⟩ᶜ ⊢[ Ψ ] t ⟨ σ ⟩ₜ ∷ X ! π) (⌈⌉-⟨⟩ (primDom p) σ) (tsubst σ r d)))

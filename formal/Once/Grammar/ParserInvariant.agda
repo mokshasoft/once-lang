@@ -27,7 +27,7 @@ open import Data.Maybe using (Maybe; just)
 open import Data.Product using (_×_; _,_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
-open import Once.Type using (Type; Unit; Void; Int; Float; Buffer; Str;
+open import Once.Type using (Type; Unit; Void; Int; Float;
                              _*_; _+_; _⇒[_]_; Quantity; Zero; One; Many; mk-kind; pure; eff;
                              Functor; K; Id; _⊕_; _⊗_; μ-type; ν-type)
 open import Once.Parser.Token
@@ -35,7 +35,7 @@ open import Once.Parser.Type using (parseType; parseTypeAtom)
 open import Once.Parser.TypeRelation
 open import Once.Grammar.Convert using (Expressible;
                                          ex-unit; ex-void; ex-int;
-                                         ex-float; ex-str; ex-buffer;
+                                         ex-float;
                                          ex-prod; ex-sum; ex-fun; ex-eff;
                                          ex-mu; ex-nu; ex-nu-eff;
                                          ExpressibleF; exf-k; exf-id;
@@ -56,8 +56,6 @@ mutual
   ParsesAtom-Expressible (pa-void   _) = ex-void
   ParsesAtom-Expressible (pa-int    _) = ex-int
   ParsesAtom-Expressible (pa-float  _) = ex-float
-  ParsesAtom-Expressible (pa-buffer _) = ex-buffer
-  ParsesAtom-Expressible (pa-string _) = ex-str
   ParsesAtom-Expressible (pa-eff dA dB) =
     ex-eff (ParsesAtom-Expressible dA) (ParsesAtom-Expressible dB)
   ParsesAtom-Expressible (pa-io dA) =

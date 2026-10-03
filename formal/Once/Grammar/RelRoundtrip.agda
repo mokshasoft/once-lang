@@ -32,8 +32,7 @@ open import Once.Parser.Token
 import Once.Grammar as G
 open G using (GType)
 open import Once.Grammar.Printer using (printGType; quantityToken; Concrete;
-                                        c-unit; c-void; c-int; c-float;
-                                        c-buffer; c-string; c-prod; c-sum;
+                                        c-unit; c-void; c-int; c-float; c-prod; c-sum;
                                         c-fun; c-eff)
 open import Once.Grammar.ParserRelation
 
@@ -193,8 +192,6 @@ mutual
   rt-atom c-void   rest = pa-void   rest
   rt-atom c-int    rest = pa-int    rest
   rt-atom c-float  rest = pa-float  rest
-  rt-atom c-buffer rest = pa-buffer rest
-  rt-atom c-string rest = pa-string rest
 
   -- Product: `(A * B)` prints as `TLParen ∷ printGType A ++ TStar ∷
   -- printGType B ++ TRParen ∷ []`. Inner full-type derivation parses

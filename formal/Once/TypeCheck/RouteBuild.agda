@@ -148,7 +148,6 @@ mutual
 
   route-ii (t-int _) (t-int _) = ii-int
   route-ii (t-float _ _ _ _) (t-float _ _ _ _) = ii-float
-  route-ii (t-str _) (t-str _) = ii-str
   route-ii t-unit t-unit = ii-unit
   route-ii t-unit-var t-unit-var = ii-unit-var
   route-ii t-unit-var (t-var-resolved (_ ∷ _ ∷ _ ∷ _ ∷ _ ∷ _ ∷ _ ∷ ¬u ∷ _) _ _) = ⊥-elim (¬u refl)

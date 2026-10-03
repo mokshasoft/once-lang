@@ -44,8 +44,6 @@ open import Once.Postulates using (extensionality)
 ⟦ sub-unit   ⟧<: x = x
 ⟦ sub-int    ⟧<: x = x
 ⟦ sub-float  ⟧<: x = x
-⟦ sub-str    ⟧<: x = x
-⟦ sub-buffer ⟧<: x = x
 ⟦ sub-arr {q = Zero} a b _ ⟧<: f = λ u → fmapT ⟦ b ⟧<: (f u)
 ⟦ sub-arr {q = One}  a b _ ⟧<: f = λ x → fmapT ⟦ b ⟧<: (f (⟦ a ⟧<: x))
 ⟦ sub-arr {q = Many} a b _ ⟧<: f = λ x → fmapT ⟦ b ⟧<: (f (⟦ a ⟧<: x))
@@ -64,8 +62,6 @@ open import Once.Postulates using (extensionality)
 <:-refl-id Type.Void   ()
 <:-refl-id Type.Int    x = refl
 <:-refl-id Type.Float  x = refl
-<:-refl-id Type.Str    x = refl
-<:-refl-id Type.Buffer x = refl
 <:-refl-id (A ⇒[ mk-kind Zero π ] B) f = extensionality λ u →
   trans (fmapT-cong (<:-refl-id B) (f u)) (fmapT-id (f u))
 <:-refl-id (A ⇒[ mk-kind One π ] B) f = extensionality λ x →
@@ -90,8 +86,6 @@ open import Once.Postulates using (extensionality)
 <:-trans-∘ sub-unit   q x = refl
 <:-trans-∘ sub-int    q x = refl
 <:-trans-∘ sub-float  q x = refl
-<:-trans-∘ sub-str    q x = refl
-<:-trans-∘ sub-buffer q x = refl
 <:-trans-∘ (sub-arr {q = Zero} a b _) (sub-arr a′ b′ _) f = extensionality λ u →
   trans (fmapT-cong (<:-trans-∘ b b′) (f u)) (sym (fmapT-∘ ⟦ b′ ⟧<: ⟦ b ⟧<: (f u)))
 <:-trans-∘ (sub-arr {q = One} a b _) (sub-arr a′ b′ _) f = extensionality λ x →

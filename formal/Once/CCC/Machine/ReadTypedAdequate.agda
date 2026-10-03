@@ -37,10 +37,10 @@ import Once.IR
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; sym; trans; subst)
 open import Function using (id)
 
-open import Once.Type using (Type; Unit; Int; Float; _*_; _+_)
+open import Once.Type using (Type; Unit; Void; Int; Float; _*_; _+_; rigid)
 import Once.Type
 open import Once.IRTy using (⌊_⌋; fits-int; fits-float)
-open import Once.Functor.Translate using (IsBaseType; base-Unit; base-Int; base-Float; base-Prod; base-Sum)
+open import Once.Functor.Translate using (IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; base-rigid)
 open import Once.Semantics.Machine using (⟦_⟧; coh)
 open import Once.Denotation.ValueDomain using (forgetᵇ; cohᴰ) renaming (⟦_⟧ᴰᴵ to ⟦_⟧ᴵ)
 open import Once.CCC.Machine.SMCore
@@ -61,6 +61,20 @@ data Readable : Type → Set where
   -- the machine represents with its content — Float and sums too.
   r-float : Readable Float
   r-sum  : ∀ {A B} → Readable A → Readable B → Readable (A + B)
+  -- D258 (plan 0.106): with `Str`/`Buffer` gone, EVERY base type is readable;
+  -- `Void` and a rigid parameter have no values, so they are read vacuously.
+  r-void  : Readable Void
+  r-rigid : ∀ {k i} → Readable (rigid k i)
+
+-- Every base type is readable (D258).
+readable-base : ∀ {A} → IsBaseType A → Readable A
+readable-base base-Unit       = r-unit
+readable-base base-Void       = r-void
+readable-base base-Int        = r-int
+readable-base base-Float      = r-float
+readable-base (base-Prod a b) = r-pair (readable-base a) (readable-base b)
+readable-base (base-Sum a b)  = r-sum (readable-base a) (readable-base b)
+readable-base base-rigid      = r-rigid
 
 -- Decision procedure, so the SigOp dispatch can ROUTE on readability: a Pure
 -- SigOp over a readable input gets the real computed value; anything else falls
@@ -74,6 +88,8 @@ readable? (A * B) with readable? A | readable? B
 ... | just ra | just rb = just (r-pair ra rb)
 ... | _       | _       = nothing
 readable? Float   = just r-float
+readable? Void    = just r-void
+readable? (rigid _ _) = just r-rigid
 readable? (A + B) with readable? A | readable? B
 ... | just ra | just rb = just (r-sum ra rb)
 ... | _       | _       = nothing
@@ -118,6 +134,8 @@ readTyped-adequate : ∀ {A} (r : Readable A) (ib : IsBaseType A) → ∀ {loc s
 readTyped-adequate r-unit base-Unit valid-unit-wf = refl
 readTyped-adequate r-int base-Int (valid-int-wf bf rl) rewrite rl = refl
 readTyped-adequate r-float base-Float (valid-float-wf bf rl) rewrite rl = refl
+readTyped-adequate r-void  _ {v = ()} _
+readTyped-adequate r-rigid _ {v = ()} _
 -- A sum: the tag selects the injection, the payload cell is a pair-style cell.
 readTyped-adequate (r-sum {A} {B} rA rB) (base-Sum iA iB) {loc} {s} (valid-inl-wf {a = a} _ tg pl bfp _ va)
   rewrite sumtag-eq tg =
@@ -170,3 +188,5 @@ readTyped-cell-adequate (r-sum rA rB) ib (cell-ptr r bf v)
   rewrite r = readTyped-adequate (r-sum rA rB) ib v
 readTyped-cell-adequate (r-sum rA rB) _ (cell-inline (rep-prim ()) r)
 readTyped-cell-adequate (r-sum rA rB) _ (cell-inline (rep-unit () _) r)
+readTyped-cell-adequate r-void  _ {c = ()} _
+readTyped-cell-adequate r-rigid _ {c = ()} _

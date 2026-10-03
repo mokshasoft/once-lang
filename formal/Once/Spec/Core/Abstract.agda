@@ -31,12 +31,11 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 import Once.Type as T
 open T using (TKind; k-base; k-any; Purity; mk-kind; Many)
 open import Once.Type.DecEq using (_≟tk_)
-open import Once.Type.Sub using (_<:_; sub-void; sub-unit; sub-int; sub-float; sub-str; sub-buffer; sub-rigid;
+open import Once.Type.Sub using (_<:_; sub-void; sub-unit; sub-int; sub-float; sub-rigid;
   sub-arr; sub-prod; sub-sum; sub-μ; sub-ν)
-open import Once.Type.Rigid using (RigidFree; RigidFreeF; rf-Unit; rf-Void; rf-Int; rf-Float; rf-Str; rf-Buffer;
+open import Once.Type.Rigid using (RigidFree; RigidFreeF; rf-Unit; rf-Void; rf-Int; rf-Float;
   rf-*; rf-+; rf-⇒; rf-μ; rf-ν; rf-K; rf-Id; rf-⊕; rf-⊗)
-open import Once.Functor.Translate using (IsBaseType; WellFormedF; base-Unit; base-Void; base-Int; base-Float;
-  base-Str; base-Buffer; base-Prod; base-Sum; base-rigid)
+open import Once.Functor.Translate using (IsBaseType; WellFormedF; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; base-rigid)
 import Once.Functor.Translate as Tr
 open import Once.Surface.Context as C using (Ctx; Usage)
 open import Once.Spec.Core.PolyTy
@@ -55,8 +54,6 @@ abs-<: Δ sub-void   = sub-void
 abs-<: Δ sub-unit   = sub-unit
 abs-<: Δ sub-int    = sub-int
 abs-<: Δ sub-float  = sub-float
-abs-<: Δ sub-str    = sub-str
-abs-<: Δ sub-buffer = sub-buffer
 abs-<: Δ (sub-rigid {k} {i}) = <:ₚ-refl (absRigid Δ k i)
 abs-<: Δ (sub-arr a b g) = sub-arr (abs-<: Δ a) (abs-<: Δ b) g
 abs-<: Δ (sub-prod a b)  = sub-prod (abs-<: Δ a) (abs-<: Δ b)
@@ -187,7 +184,6 @@ abs-⊢ Δ sg {Γ = Γ} {Ψ = Ψ} (GT.⊢out {π = π} {F = F} {t = t} wf d) =
 abs-⊢ Δ sg (GT.⊢coerce p d) = ⊢coerce (abs-<: Δ p) (abs-⊢ Δ sg d)
 abs-⊢ Δ sg GT.⊢lit-int   = ⊢lit-int
 abs-⊢ Δ sg GT.⊢lit-float = ⊢lit-float
-abs-⊢ Δ sg GT.⊢lit-str   = ⊢lit-str
 abs-⊢ Δ sg {Γ = Γ} {Ψ = Ψ} {π = π} (GT.⊢prim {t = t} p d) =
   subst (λ X → Δ ⊩ absCtx Δ Γ ⊢[ Ψ ] prim p (absTm Δ t) ∷ X ! π) (sym (primCod-abs Δ p))
     (⊢prim p (subst (λ X → Δ ⊩ absCtx Δ Γ ⊢[ Ψ ] absTm Δ t ∷ X ! π) (primDom-abs Δ p) (abs-⊢ Δ sg d)))

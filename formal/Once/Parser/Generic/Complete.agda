@@ -34,8 +34,6 @@ module Make (alg : TyAlg) where
     complete-atom (pa-void rest)   rewrite extraMiss-Void rest   = refl
     complete-atom (pa-int rest)    rewrite extraMiss-Int rest    = refl
     complete-atom (pa-float rest)  rewrite extraMiss-Float rest  = refl
-    complete-atom (pa-buffer rest) rewrite extraMiss-Buffer rest = refl
-    complete-atom (pa-string rest) rewrite extraMiss-String rest = refl
     complete-atom (pa-eff {toks1} dA dB)
       rewrite extraMiss-Eff toks1 | complete-atom dA | complete-atom dB = refl
     complete-atom (pa-io {toks1} dA)

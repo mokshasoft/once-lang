@@ -84,8 +84,6 @@ mutual
   instantiateAcc PVoid           Void            s = just s
   instantiateAcc PInt            Int             s = just s
   instantiateAcc PFloat          Float           s = just s
-  instantiateAcc PStr            Str             s = just s
-  instantiateAcc PBuffer         Buffer          s = just s
   instantiateAcc (A P* B)        (a * b)         s =
     maybe-bind (instantiateAcc B b) (instantiateAcc A a s)
   instantiateAcc (A P+ B)        (a + b)         s =
@@ -113,8 +111,6 @@ mutual
   instantiateAcc PUnit           (ν-type _ _)      _ = nothing
   instantiateAcc PUnit           Int             _ = nothing
   instantiateAcc PUnit           Float           _ = nothing
-  instantiateAcc PUnit           Str             _ = nothing
-  instantiateAcc PUnit           Buffer          _ = nothing
   instantiateAcc PVoid           Unit            _ = nothing
   instantiateAcc PVoid           (_ * _)         _ = nothing
   instantiateAcc PVoid           (_ + _)         _ = nothing
@@ -123,8 +119,6 @@ mutual
   instantiateAcc PVoid           (ν-type _ _)      _ = nothing
   instantiateAcc PVoid           Int             _ = nothing
   instantiateAcc PVoid           Float           _ = nothing
-  instantiateAcc PVoid           Str             _ = nothing
-  instantiateAcc PVoid           Buffer          _ = nothing
   instantiateAcc (_ P* _)        Unit            _ = nothing
   instantiateAcc (_ P* _)        Void            _ = nothing
   instantiateAcc (_ P* _)        (_ + _)         _ = nothing
@@ -133,8 +127,6 @@ mutual
   instantiateAcc (_ P* _)        (ν-type _ _)      _ = nothing
   instantiateAcc (_ P* _)        Int             _ = nothing
   instantiateAcc (_ P* _)        Float           _ = nothing
-  instantiateAcc (_ P* _)        Str             _ = nothing
-  instantiateAcc (_ P* _)        Buffer          _ = nothing
   instantiateAcc (_ P+ _)        Unit            _ = nothing
   instantiateAcc (_ P+ _)        Void            _ = nothing
   instantiateAcc (_ P+ _)        (_ * _)         _ = nothing
@@ -143,8 +135,6 @@ mutual
   instantiateAcc (_ P+ _)        (ν-type _ _)      _ = nothing
   instantiateAcc (_ P+ _)        Int             _ = nothing
   instantiateAcc (_ P+ _)        Float           _ = nothing
-  instantiateAcc (_ P+ _)        Str             _ = nothing
-  instantiateAcc (_ P+ _)        Buffer          _ = nothing
   instantiateAcc (_ P⇒[ _ ] _)   Unit            _ = nothing
   instantiateAcc (_ P⇒[ _ ] _)   Void            _ = nothing
   instantiateAcc (_ P⇒[ _ ] _)   (_ * _)         _ = nothing
@@ -154,8 +144,6 @@ mutual
   instantiateAcc (_ P⇒[ _ ] _)   (ν-type _ _)      _ = nothing
   instantiateAcc (_ P⇒[ _ ] _)   Int             _ = nothing
   instantiateAcc (_ P⇒[ _ ] _)   Float           _ = nothing
-  instantiateAcc (_ P⇒[ _ ] _)   Str             _ = nothing
-  instantiateAcc (_ P⇒[ _ ] _)   Buffer          _ = nothing
   instantiateAcc (PEff _ _)      Unit            _ = nothing
   instantiateAcc (PEff _ _)      Void            _ = nothing
   instantiateAcc (PEff _ _)      (_ * _)         _ = nothing
@@ -165,8 +153,6 @@ mutual
   instantiateAcc (PEff _ _)      (ν-type _ _)      _ = nothing
   instantiateAcc (PEff _ _)      Int             _ = nothing
   instantiateAcc (PEff _ _)      Float           _ = nothing
-  instantiateAcc (PEff _ _)      Str             _ = nothing
-  instantiateAcc (PEff _ _)      Buffer          _ = nothing
   instantiateAcc (Pμ-type _)     Unit            _ = nothing
   instantiateAcc (Pμ-type _)     Void            _ = nothing
   instantiateAcc (Pμ-type _)     (_ * _)         _ = nothing
@@ -175,8 +161,6 @@ mutual
   instantiateAcc (Pμ-type _)     (ν-type _ _)      _ = nothing
   instantiateAcc (Pμ-type _)     Int             _ = nothing
   instantiateAcc (Pμ-type _)     Float           _ = nothing
-  instantiateAcc (Pμ-type _)     Str             _ = nothing
-  instantiateAcc (Pμ-type _)     Buffer          _ = nothing
   instantiateAcc (Pν-type _ _)     Unit            _ = nothing
   instantiateAcc (Pν-type _ _)     Void            _ = nothing
   instantiateAcc (Pν-type _ _)     (_ * _)         _ = nothing
@@ -185,8 +169,6 @@ mutual
   instantiateAcc (Pν-type _ _)     (μ-type _)      _ = nothing
   instantiateAcc (Pν-type _ _)     Int             _ = nothing
   instantiateAcc (Pν-type _ _)     Float           _ = nothing
-  instantiateAcc (Pν-type _ _)     Str             _ = nothing
-  instantiateAcc (Pν-type _ _)     Buffer          _ = nothing
   instantiateAcc PInt            Unit            _ = nothing
   instantiateAcc PInt            Void            _ = nothing
   instantiateAcc PInt            (_ * _)         _ = nothing
@@ -195,8 +177,6 @@ mutual
   instantiateAcc PInt            (μ-type _)      _ = nothing
   instantiateAcc PInt            (ν-type _ _)      _ = nothing
   instantiateAcc PInt            Float           _ = nothing
-  instantiateAcc PInt            Str             _ = nothing
-  instantiateAcc PInt            Buffer          _ = nothing
   instantiateAcc PFloat          Unit            _ = nothing
   instantiateAcc PFloat          Void            _ = nothing
   instantiateAcc PFloat          (_ * _)         _ = nothing
@@ -205,28 +185,6 @@ mutual
   instantiateAcc PFloat          (μ-type _)      _ = nothing
   instantiateAcc PFloat          (ν-type _ _)      _ = nothing
   instantiateAcc PFloat          Int             _ = nothing
-  instantiateAcc PFloat          Str             _ = nothing
-  instantiateAcc PFloat          Buffer          _ = nothing
-  instantiateAcc PStr            Unit            _ = nothing
-  instantiateAcc PStr            Void            _ = nothing
-  instantiateAcc PStr            (_ * _)         _ = nothing
-  instantiateAcc PStr            (_ + _)         _ = nothing
-  instantiateAcc PStr            (_ ⇒[ _ ] _)    _ = nothing
-  instantiateAcc PStr            (μ-type _)      _ = nothing
-  instantiateAcc PStr            (ν-type _ _)      _ = nothing
-  instantiateAcc PStr            Int             _ = nothing
-  instantiateAcc PStr            Float           _ = nothing
-  instantiateAcc PStr            Buffer          _ = nothing
-  instantiateAcc PBuffer         Unit            _ = nothing
-  instantiateAcc PBuffer         Void            _ = nothing
-  instantiateAcc PBuffer         (_ * _)         _ = nothing
-  instantiateAcc PBuffer         (_ + _)         _ = nothing
-  instantiateAcc PBuffer         (_ ⇒[ _ ] _)    _ = nothing
-  instantiateAcc PBuffer         (μ-type _)      _ = nothing
-  instantiateAcc PBuffer         (ν-type _ _)      _ = nothing
-  instantiateAcc PBuffer         Int             _ = nothing
-  instantiateAcc PBuffer         Float           _ = nothing
-  instantiateAcc PBuffer         Str             _ = nothing
   -- D243: a rigid parameter is matched only by a schema variable.
   instantiateAcc PUnit           (rigid _ _)     _ = nothing
   instantiateAcc PVoid           (rigid _ _)     _ = nothing
@@ -238,8 +196,6 @@ mutual
   instantiateAcc (Pν-type _ _)   (rigid _ _)     _ = nothing
   instantiateAcc PInt            (rigid _ _)     _ = nothing
   instantiateAcc PFloat          (rigid _ _)     _ = nothing
-  instantiateAcc PStr            (rigid _ _)     _ = nothing
-  instantiateAcc PBuffer         (rigid _ _)     _ = nothing
 
   instantiateFunctor : PolyFunctor → Functor → Subst → Maybe Subst
   instantiateFunctor (PK A)    (K a)   s = instantiateAcc A a s
@@ -272,8 +228,6 @@ mutual
   applySubst _ PVoid           = just Void
   applySubst _ PInt            = just Int
   applySubst _ PFloat          = just Float
-  applySubst _ PStr            = just Str
-  applySubst _ PBuffer         = just Buffer
   applySubst s (A P* B)        = maybe-pair _*_ (applySubst s A) (applySubst s B)
   applySubst s (A P+ B)        = maybe-pair _+_ (applySubst s A) (applySubst s B)
   applySubst s (A P⇒[ q ] B)   =
@@ -316,5 +270,3 @@ schemaArrowCodomain (Pμ-type _)  _ = nothing
 schemaArrowCodomain (Pν-type _ _)  _ = nothing
 schemaArrowCodomain PInt         _ = nothing
 schemaArrowCodomain PFloat       _ = nothing
-schemaArrowCodomain PStr         _ = nothing
-schemaArrowCodomain PBuffer      _ = nothing

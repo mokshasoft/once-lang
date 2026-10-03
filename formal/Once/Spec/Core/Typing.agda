@@ -39,7 +39,7 @@ open import Data.Nat using (ℕ)
 open import Data.Bool using (true)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Once.Type
-  using ( Type; Unit; Void; Int; Float; Str; _*_; _+_; _⇒[_]_
+  using ( Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_
         ; μ-type; ν-type; Functor; ⟦_⟧T
         ; Quantity; Zero; One; Many; _≤q_; Purity; pure; eff; mk-kind )
 open import Once.Type.Sub using (_<:_; _⊑π_)
@@ -144,8 +144,6 @@ data _⊢[_]_∷_!_ : ∀ {n} → Ctx n → Usage n → Tm n → Type → Purity
              → Γ ⊢[ zeroUsage ] lit (lit-int i) ∷ Int ! pure
   ⊢lit-float : ∀ {n} {Γ : Ctx n} {d}
              → Γ ⊢[ zeroUsage ] lit (lit-float d) ∷ Float ! pure
-  ⊢lit-str   : ∀ {n} {Γ : Ctx n} {s}
-             → Γ ⊢[ zeroUsage ] lit (lit-str s) ∷ Str ! pure
 
   ⊢prim : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {π : Purity} {t} (p : Prim)
         → Γ ⊢[ Ψ ] t ∷ primDom p ! π

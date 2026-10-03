@@ -69,8 +69,6 @@ open import Once.Functor.Translate using (IsConcrete; con-base; con-fun; base-Un
 intLit : ℤ → ∀ {Γ} → IR Γ Int
 intLit n = const fits-int n ∘ terminal
 
-strLit : String → ∀ {Γ} → IR Γ Str
-strLit s = SigOp (str-lit-info s) ∘ terminal
 
 -- A float literal is an ordinary immediate load, exactly like `intLit` — the
 -- DECIMAL is the payload (0.74 K0) and the TARGET turns it into bits at its
@@ -472,7 +470,6 @@ elaborate {Γ = Γ} m (let' {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = Many} {A = A} e
 elaborate m (int n) = intLit n
 
 -- String literal: constant that ignores environment
-elaborate m (str s) = strLit s
 
 -- Float literal: same shape; the witness is erased at this boundary.
 elaborate m (float d) = floatLit d

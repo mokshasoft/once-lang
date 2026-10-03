@@ -31,7 +31,7 @@ open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; sym; trans)
 open import Relation.Nullary using (¬_)
 
-open import Once.Type using (Type; Unit; Void; Int; Float; Str; Buffer;
+open import Once.Type using (Type; Unit; Void; Int; Float;
                              _*_; _+_; _⇒[_]_; μ-type; ν-type;
                              Quantity; Zero; One; Many; _≤q_)
 open import Once.TypeCheck.Raw using (BinOp; OpAdd; OpSub; OpMul; OpDiv; OpMod;

@@ -14,9 +14,3 @@
 -- This is the fundamental way to convert Int comparisons to sum types
 -- for use with Once's case construct.
 signature ifZero : Int -> Unit + Unit
-
--- | Parse integer from string (returns 0 on failure)
-signature parseInt : String -> Int
-
--- | Convert integer to string
-signature intToString : Int -> String

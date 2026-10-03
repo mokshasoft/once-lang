@@ -54,8 +54,6 @@ open import Once.Semantics.Functor
 ⟦ IntRep , FloatRep ⟧-base (ν-type _ _) = ⊤    -- Corecursive: return ⊤ (not used in K)
 ⟦ IntRep , FloatRep ⟧-base Int = IntRep
 ⟦ IntRep , FloatRep ⟧-base Float = FloatRep
-⟦ IntRep , FloatRep ⟧-base Str = String
-⟦ IntRep , FloatRep ⟧-base Buffer = String
 -- D243: a rigid parameter exists only while a definition's body is typed; a
 -- definition is used at GROUND instances, so no runtime value of a rigid type
 -- exists.
@@ -146,8 +144,6 @@ data IsBaseType : Type → Set where
   base-Void   : IsBaseType Void
   base-Int    : IsBaseType Int
   base-Float  : IsBaseType Float
-  base-Str    : IsBaseType Str
-  base-Buffer : IsBaseType Buffer
   base-Prod   : ∀ {A B} → IsBaseType A → IsBaseType B → IsBaseType (A * B)
   base-Sum    : ∀ {A B} → IsBaseType A → IsBaseType B → IsBaseType (A + B)
   -- D243: a base-kinded parameter is a base type; nothing else is known of it.
@@ -190,8 +186,6 @@ IsBaseType-irrelevant base-Unit base-Unit = refl
 IsBaseType-irrelevant base-Void base-Void = refl
 IsBaseType-irrelevant base-Int base-Int = refl
 IsBaseType-irrelevant base-Float base-Float = refl
-IsBaseType-irrelevant base-Str base-Str = refl
-IsBaseType-irrelevant base-Buffer base-Buffer = refl
 IsBaseType-irrelevant (base-Prod ibA₁ ibB₁) (base-Prod ibA₂ ibB₂) =
   cong₂ base-Prod (IsBaseType-irrelevant ibA₁ ibA₂) (IsBaseType-irrelevant ibB₁ ibB₂)
 IsBaseType-irrelevant (base-Sum ibA₁ ibB₁) (base-Sum ibA₂ ibB₂) =

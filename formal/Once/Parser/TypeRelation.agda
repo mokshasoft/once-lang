@@ -27,7 +27,7 @@ open import Data.Nat.Properties using (≤-refl; <-trans; ≤-<-trans; <⇒≤;
                                         n≤1+n)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
-open import Once.Type using (Type; Unit; Void; Int; Float; Buffer; Str;
+open import Once.Type using (Type; Unit; Void; Int; Float;
                              _*_; _+_; _⇒[_]_; Quantity; Zero; One; Many; mk-kind; pure; eff;
                              Functor; K; Id; _⊕_; _⊗_; μ-type; ν-type)
 open import Once.Parser.Token
@@ -98,8 +98,6 @@ mutual
     pa-void    : ∀ rest → ParsesAtom (TWord "Void"   ∷ rest) Void   rest
     pa-int     : ∀ rest → ParsesAtom (TWord "Int"    ∷ rest) Int    rest
     pa-float   : ∀ rest → ParsesAtom (TWord "Float"  ∷ rest) Float  rest
-    pa-buffer  : ∀ rest → ParsesAtom (TWord "Buffer" ∷ rest) Buffer rest
-    pa-string  : ∀ rest → ParsesAtom (TWord "String" ∷ rest) Str    rest
 
     pa-eff : ∀ {toks1 toks2 rest} {A B : Type}
            → ParsesAtom toks1 A toks2
@@ -242,8 +240,6 @@ mutual
   ParsesAtom-shrinks (pa-void   rest) = s≤s ≤-refl
   ParsesAtom-shrinks (pa-int    rest) = s≤s ≤-refl
   ParsesAtom-shrinks (pa-float  rest) = s≤s ≤-refl
-  ParsesAtom-shrinks (pa-buffer rest) = s≤s ≤-refl
-  ParsesAtom-shrinks (pa-string rest) = s≤s ≤-refl
   ParsesAtom-shrinks (pa-eff dA dB) =
     <-trans (ParsesAtom-shrinks dB)
             (<-trans (ParsesAtom-shrinks dA) (s≤s ≤-refl))

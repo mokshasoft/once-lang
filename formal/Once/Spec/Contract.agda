@@ -25,7 +25,7 @@ open import Once.Type using (Type; _⇒[_]_; mk-kind; Zero; One; Many; Void; isV
 import Once.Type as Ty
 open import Once.Type.DecEq using (_≟T_)
 open import Data.Empty using (⊥-elim)
-open import Once.Functor.Translate using (IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Str; base-Buffer; base-Prod; base-Sum; base-rigid)
+open import Once.Functor.Translate using (IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; base-rigid)
 open import Once.Word using (Carrier)
 import Once.Semantics.Value Carrier Carrier as M
 open import Once.Denotation.Trace using (SigOpEvent)
@@ -164,8 +164,6 @@ base-contract x base-Unit        = refl
 base-contract x base-Void        = refl
 base-contract x base-Int         = refl
 base-contract x base-Float       = refl
-base-contract x base-Str         = refl
-base-contract x base-Buffer      = refl
 base-contract x (base-Prod a b)  = refl
 base-contract x (base-Sum a b)   = refl
 base-contract x base-rigid       = refl

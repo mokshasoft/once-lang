@@ -36,7 +36,7 @@ open import Data.Nat using (ℕ; _∸_)
 open import Data.List using (_++_; length)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; trans; subst)
 
-open import Once.Type using (Type; Unit; Void; Int; Float; Str; Buffer;
+open import Once.Type using (Type; Unit; Void; Int; Float;
                              _*_; _+_; _⇒[_]_; μ-type; ν-type;
                              mk-kind; Zero; One; Many)
 open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_; RelT′; rel-ret; RelT′-bind)
@@ -64,8 +64,6 @@ RelV Unit        _ _ = ⊤
 RelV Void        ()
 RelV Int         x y = x ≡ y
 RelV Float       x y = x ≡ y
-RelV Str         x y = x ≡ y
-RelV Buffer      x y = x ≡ y
 RelV (μ-type F)  x y = x ≡ y
 -- SPIKE (4th ν defect): the observational relation at a COINDUCTIVE type is
 -- BISIMILARITY, not propositional equality. `anaᵈ-∼` proves this one directly

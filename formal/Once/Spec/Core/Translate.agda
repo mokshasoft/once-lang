@@ -38,7 +38,7 @@ open import Once.Type.DecEq using (_≟T_)
 open import Once.Type.Honest using (HonestFFI)
 open import Once.Functor.Translate using (IsConcrete)
 open import Once.Type.Rigid using (RigidFree; RigidFreeF; KindedInstance; ground-kinded; rigidOf;
-  rf-Unit; rf-Void; rf-Int; rf-Float; rf-Str; rf-Buffer; rf-*; rf-+; rf-⇒; rf-μ; rf-ν; rf-K; rf-Id; rf-⊕; rf-⊗)
+  rf-Unit; rf-Void; rf-Int; rf-Float; rf-*; rf-+; rf-⇒; rf-μ; rf-ν; rf-K; rf-Id; rf-⊕; rf-⊗)
 import Once.Compile as C
 open C.FunInfo using (funName; funBody; funType; funIsPrimitive)
 open C.PolyFunInfo using (pfunName; pfunType; pfunBody)
@@ -72,8 +72,6 @@ mutual
   ground-cf rf-Void   = cf-Void
   ground-cf rf-Int    = cf-Int
   ground-cf rf-Float  = cf-Float
-  ground-cf rf-Str    = cf-Str
-  ground-cf rf-Buffer = cf-Buffer
   ground-cf (rf-* a b) = cf-* (ground-cf a) (ground-cf b)
   ground-cf (rf-+ a b) = cf-+ (ground-cf a) (ground-cf b)
   ground-cf (rf-⇒ a b) = cf-⇒ (ground-cf a) (ground-cf b)

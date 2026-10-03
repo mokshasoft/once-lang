@@ -119,7 +119,6 @@ data Expr : ∀ {n} → Ctx n → Usage n → Type → Set where
 
   -- Literals — use no variables.
   int   : ∀ {n} {Γ : Ctx n} → ℤ → Expr Γ zeroUsage Int
-  str   : ∀ {n} {Γ : Ctx n} → String → Expr Γ zeroUsage Str
 
   -- A float literal is JUST THE DECIMAL (plan 0.74 K0/K3, D116).
   --

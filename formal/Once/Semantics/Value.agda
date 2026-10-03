@@ -89,8 +89,7 @@ open import Once.Res using (Res; stopped; returns; mapRes)
 
 open import Once.Functor.Translate using (μ-sem; ν-sem; translateF; ⟦_,_⟧-base; IsBaseType; WellFormedF)
 open import Once.Functor.Translate
-  using ( base-Unit; base-Void; base-Int; base-Float; base-Str; base-Buffer
-        ; base-Prod; base-Sum; base-rigid; wf-K; wf-Id; wf-Sum; wf-Prod)
+  using ( base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; base-rigid; wf-K; wf-Id; wf-Sum; wf-Prod)
 open import Once.Semantics.Functor
   using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF; μS; ⟨_⟩; outS; νS; unfoldS;
          sfmap; cataS; cataS-cong; sfmapCata; sfmapCata-is-sfmap; anaS; sfmapAna; sfmapAna-is-sfmap; fuseNatS; fuseNatW;
@@ -147,8 +146,6 @@ open import Once.Semantics.Functor
 -- GuardedT removed: productivity follows from IR totality
 ⟦ Int ⟧          = IntRep
 ⟦ Float ⟧        = FloatRep
-⟦ Str ⟧          = String
-⟦ Buffer ⟧       = String
 -- D243: no runtime value of a rigid parameter exists (a definition is used at
 -- ground instances).
 ⟦ rigid _ _ ⟧    = ⊥
@@ -181,8 +178,6 @@ open import Once.Semantics.Functor
 ⟦ ν-type F π ⟧ᵍ  = ⟦ ν-type F π ⟧
 ⟦ Int ⟧ᵍ         = ⟦ Int ⟧
 ⟦ Float ⟧ᵍ       = ⟦ Float ⟧
-⟦ Str ⟧ᵍ         = ⟦ Str ⟧
-⟦ Buffer ⟧ᵍ      = ⟦ Buffer ⟧
 ⟦ rigid k i ⟧ᵍ   = ⟦ rigid k i ⟧
 
 eraseᵍ : ∀ {B} → ⟦ B ⟧ᵍ → ⟦ B ⟧
@@ -201,8 +196,6 @@ eraseᵍ {μ-type F} x = x
 eraseᵍ {ν-type F π} x = x
 eraseᵍ {Int} x = x
 eraseᵍ {Float} x = x
-eraseᵍ {Str} x = x
-eraseᵍ {Buffer} x = x
 eraseᵍ {rigid k i} x = x
 
 ------------------------------------------------------------------------
@@ -443,8 +436,6 @@ coerce-full-to-base (ν-type _ _) _ = tt      -- ν → ⊤
 -- GuardedT removed: productivity follows from IR totality
 coerce-full-to-base Int x = x
 coerce-full-to-base Float x = x
-coerce-full-to-base Str x = x
-coerce-full-to-base Buffer x = x
 coerce-full-to-base (rigid _ _) ()
 -- TVar removed from Type; now in PolyType (see Once.Type)
 
@@ -471,8 +462,6 @@ coerce-base-to-full base-Unit x = x
 coerce-base-to-full base-Void ()
 coerce-base-to-full base-Int x = x
 coerce-base-to-full base-Float x = x
-coerce-base-to-full base-Str x = x
-coerce-base-to-full base-Buffer x = x
 coerce-base-to-full (base-Prod pA pB) (a , b) =
   (coerce-base-to-full pA a , coerce-base-to-full pB b)
 coerce-base-to-full (base-Sum pA pB) (inj₁ a) = inj₁ (coerce-base-to-full pA a)
@@ -496,8 +485,6 @@ coerce-base-type-round-trip base-Unit x = refl
 coerce-base-type-round-trip base-Void ()
 coerce-base-type-round-trip base-Int x = refl
 coerce-base-type-round-trip base-Float x = refl
-coerce-base-type-round-trip base-Str x = refl
-coerce-base-type-round-trip base-Buffer x = refl
 coerce-base-type-round-trip (base-Prod pA pB) (a , b) =
   cong₂ _,_ (coerce-base-type-round-trip pA a) (coerce-base-type-round-trip pB b)
 coerce-base-type-round-trip (base-Sum pA pB) (inj₁ a) =
@@ -514,8 +501,6 @@ coerce-base-type⁻¹-round-trip base-Unit x = refl
 coerce-base-type⁻¹-round-trip base-Void ()
 coerce-base-type⁻¹-round-trip base-Int x = refl
 coerce-base-type⁻¹-round-trip base-Float x = refl
-coerce-base-type⁻¹-round-trip base-Str x = refl
-coerce-base-type⁻¹-round-trip base-Buffer x = refl
 coerce-base-type⁻¹-round-trip (base-Prod pA pB) (a , b) =
   cong₂ _,_ (coerce-base-type⁻¹-round-trip pA a) (coerce-base-type⁻¹-round-trip pB b)
 coerce-base-type⁻¹-round-trip (base-Sum pA pB) (inj₁ a) =

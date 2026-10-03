@@ -27,18 +27,6 @@ stderr = 2
 -- Output Operations (D032: All I/O is effectful)
 ------------------------------------------------------------------------
 
--- | Write string to stdout (no newline)
-signature print : Eff (String) Unit
-
--- | Write string to stdout with newline
-signature println : Eff (String) Unit
-
--- | Write string to stderr (no newline)
-signature err : Eff (String) Unit
-
--- | Write string to stderr with newline
-signature errln : Eff (String) Unit
-
 -- | Write a single character to stdout
 signature putc : Eff Int Unit
 
@@ -53,19 +41,6 @@ signature flush : Eff Unit Unit
 -- Returns -1 on EOF
 signature getc : Eff Unit Int
 
--- | Read a line from stdin into buffer
--- Returns number of bytes read, or -1 on EOF
--- Does not include the newline character
-signature getline : Eff (Buffer * Int) Int
-
 ------------------------------------------------------------------------
 -- File Reading Helpers (D032: All I/O is effectful)
 ------------------------------------------------------------------------
-
--- | Read entire file contents into buffer
--- Returns bytes read or -1 on error
-signature readfile : Eff (String * Buffer * Int) Int
-
--- | Get file size
--- Returns size in bytes or -1 on error
-signature filesize : Eff (String) Int

@@ -22,7 +22,7 @@ open import Axiom.UniquenessOfIdentityProofs.WithK using (uip)
 
 open import Once.Type
   using ( PolyType; PUnit; PVoid; _P*_; _P+_; _P⇒[_]_; PEff; Pμ-type; Pν-type
-        ; PInt; PFloat; PStr; PBuffer; PTVar
+        ; PInt; PFloat; PTVar
         ; PolyFunctor; PK; PId; _P⊕_; _P⊗_ )
 open import Once.Parser.Token
 open import Once.Parser.CharClass using (isLowerWord)
@@ -71,7 +71,6 @@ PolyAlg : TyAlg
 PolyAlg = record
   { R = PolyType ; RF = PolyFunctor
   ; aUnit = PUnit ; aVoid = PVoid ; aInt = PInt ; aFloat = PFloat
-  ; aBuffer = PBuffer ; aStr = PStr
   ; aProd = _P*_ ; aSum = _P+_ ; aEff = PEff
   ; aArrow = λ q A B → A P⇒[ q ] B
   ; aMu = Pμ-type
@@ -82,7 +81,6 @@ PolyAlg = record
   ; extraComplete = tvar-complete
   ; extraMiss-Unit   = λ _ → refl ; extraMiss-Void  = λ _ → refl
   ; extraMiss-Int    = λ _ → refl ; extraMiss-Float = λ _ → refl
-  ; extraMiss-Buffer = λ _ → refl ; extraMiss-String = λ _ → refl
   ; extraMiss-Eff    = λ _ → refl ; extraMiss-IO    = λ _ → refl
   ; extraMiss-Mu     = λ _ → refl ; extraMiss-Nu    = λ _ → refl
   ; extraMiss-LParen = λ _ → refl

@@ -27,12 +27,11 @@ open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; sym; trans)
 
 open import Once.Type using (Type; Functor; K; Id; _⊕_; _⊗_;
-                               Unit; Void; Int; Float; Str; Buffer; _*_; _+_)
+                               Unit; Void; Int; Float; _*_; _+_)
 open import Once.Semantics.Machine using (⟦_⟧; ⟦_⟧F; sem-fmap)
 import Once.SPF as SPF
 open import Once.Functor.Translate using (IsBaseType; WellFormedF; ⟦_,_⟧-base; ⟦_,_⟧F-base;
-                                          base-Unit; base-Void; base-Int; base-Float;
-                                          base-Str; base-Buffer; base-Prod; base-Sum;
+                                          base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum;
                                           wf-K; wf-Id; wf-Sum; wf-Prod)
 open import Data.Nat using (ℕ)
 
@@ -52,8 +51,6 @@ base-interp-coherence .Unit base-Unit = refl
 base-interp-coherence .Void base-Void = refl
 base-interp-coherence .Int base-Int = refl
 base-interp-coherence .Float base-Float = refl
-base-interp-coherence .Str base-Str = refl
-base-interp-coherence .Buffer base-Buffer = refl
 base-interp-coherence (A * B) (base-Prod pA pB) =
   cong₂-× (base-interp-coherence A pA) (base-interp-coherence B pB)
   where

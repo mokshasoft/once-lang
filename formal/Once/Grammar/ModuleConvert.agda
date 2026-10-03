@@ -33,8 +33,7 @@ open import Once.Parser.Module.Core as P
   using ( Decl; Module; Import; mkImport; mkModule )
 open import Once.Type
   using ( Type; PolyType; PolyFunctor
-        ; PUnit; PVoid; _P*_; _P+_; _P⇒[_]_; PEff; PInt; PFloat; PStr
-        ; PBuffer; PTVar; Pμ-type; Pν-type; PK; PId; _P⊕_; _P⊗_; pure )
+        ; PUnit; PVoid; _P*_; _P+_; _P⇒[_]_; PEff; PInt; PFloat; PTVar; Pμ-type; Pν-type; PK; PId; _P⊕_; _P⊗_; pure )
 open import Once.Grammar.Convert    using (gtypeToType)
 open import Once.Grammar.ExprConvert using (gexprToRaw)
 open import Once.Grammar.ConcreteDec using (concrete?)
@@ -49,8 +48,6 @@ gtypeToPolyType G.TUnit          = PUnit
 gtypeToPolyType G.TVoid          = PVoid
 gtypeToPolyType G.TInt           = PInt
 gtypeToPolyType G.TFloat         = PFloat
-gtypeToPolyType G.TBuffer        = PBuffer
-gtypeToPolyType G.TString        = PStr
 gtypeToPolyType (G.TVar v)       = PTVar v
 gtypeToPolyType (a G.⊗ b)        = gtypeToPolyType a P* gtypeToPolyType b
 gtypeToPolyType (a G.⊕ b)        = gtypeToPolyType a P+ gtypeToPolyType b

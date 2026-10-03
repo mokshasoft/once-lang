@@ -168,12 +168,6 @@ record VerifiedTypeChecker : Set₁ where
       → tcInfer ctx (RInt n) ≡ success A Ψ eE d f
       → ctx ⊢ RInt n ∶ A ⨾ Ψ
 
-    tcInfer-sound-RStringLit :
-      ∀ (ctx : NamedCtx) (s : _)
-        {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
-        {eE : SExpr (NamedCtx.debruijn ctx) Ψ A} {d f : _}
-      → tcInfer ctx (RStringLit s) ≡ success A Ψ eE d f
-      → ctx ⊢ RStringLit s ∶ A ⨾ Ψ
 
     tcInfer-sound-RUnit :
       ∀ (ctx : NamedCtx)
@@ -303,12 +297,6 @@ record VerifiedTypeChecker : Set₁ where
       → tcInfer ctx (RUnaryOp OpNeg e) ≡ failure err
       → err ≡ TypeMismatch Once.Type.Int Once.Type.Unit
 
-    tc-err-neg-non-Int-Str :
-      ∀ (ctx : NamedCtx) (e : RawExpr)
-        {Ψ' eE' d' f' err}
-      → tcInfer ctx e ≡ success Once.Type.Str Ψ' eE' d' f'
-      → tcInfer ctx (RUnaryOp OpNeg e) ≡ failure err
-      → err ≡ TypeMismatch Once.Type.Int Once.Type.Str
 
     -- D136: a bare name not in local/import scope. No `unit` exception any
     -- more — `unit` is `RResolved (gen "unit")`, so a bare `unit` is an
@@ -365,13 +353,6 @@ record VerifiedTypeChecker : Set₁ where
       → ¬ (T ≡ Once.Type.Unit)
       → tcCheck ctx Raw.RUnit T ≡ failure err
       → err ≡ (TypeMismatch T Once.Type.Unit)
-
-    -- Check-mode RStringLit at non-Str target → TypeMismatch
-    tc-err-check-RStringLit-type-mismatch :
-      ∀ (ctx : NamedCtx) (s : String) (T : Type) {err : TypeError}
-      → ¬ (T ≡ Once.Type.Str)
-      → tcCheck ctx (Raw.RStringLit s) T ≡ failure err
-      → err ≡ (TypeMismatch T Once.Type.Str)
 
     -- RDestruct branches with mismatched types → CaseBranchMismatch.
     tc-err-case-branch-mismatch :
@@ -437,27 +418,8 @@ record VerifiedTypeChecker : Set₁ where
 
     -- G4 exhaustive per-Type coverage. (D229 / plan 0.94 §13: a `Void` operand
     -- is ex falso, not an error, so it has no error shape here.)
-    tc-err-fst-non-pair-Str :
-      ∀ (ctx : NamedCtx) (arg : RawExpr)
-        {Ψ' eE' d' f' err}
-      → tcInfer ctx arg ≡ success Once.Type.Str Ψ' eE' d' f'
-      → tcInfer ctx (RApp (RResolved (gen "fst")) arg) ≡ failure err
-      → err ≡ FstNeedsPair
 
-    tc-err-snd-non-pair-Str :
-      ∀ (ctx : NamedCtx) (arg : RawExpr)
-        {Ψ' eE' d' f' err}
-      → tcInfer ctx arg ≡ success Once.Type.Str Ψ' eE' d' f'
-      → tcInfer ctx (RApp (RResolved (gen "snd")) arg) ≡ failure err
-      → err ≡ SndNeedsPair
 
-    tc-err-case-scrut-Str :
-      ∀ (ctx : NamedCtx) (scrut : RawExpr) (xL : String) (eL : RawExpr)
-        (xR : String) (eR : RawExpr)
-        {Ψ' eE' d' f' err}
-      → tcInfer ctx scrut ≡ success Once.Type.Str Ψ' eE' d' f'
-      → tcInfer ctx (Raw.RDestruct scrut xL eL xR eR) ≡ failure err
-      → err ≡ CaseScrutineeNotSum
 
     -- Exhaustive per-Type G4 wiring (Float, Buffer, Sum, Product, Fun).
     tc-err-fst-non-pair-Float :
@@ -626,10 +588,6 @@ record VerifiedTypeChecker : Set₁ where
       → ∃[ eE ] ∃[ d ] ∃[ f ]
           tcInfer ctx RUnit ≡ success Once.Type.Unit Surface.zeroUsage eE d f
 
-    tcInfer-complete-RStringLit :
-      ∀ (ctx : NamedCtx) (s : String)
-      → ∃[ eE ] ∃[ d ] ∃[ f ]
-          tcInfer ctx (RStringLit s) ≡ success Once.Type.Str Surface.zeroUsage eE d f
 
     tcInfer-complete-RVar-unit :
       ∀ (ctx : NamedCtx)
@@ -931,7 +889,6 @@ verifiedTypeChecker = record
   ; tcInfer-sound                 = Snd.infer-sound
   ; tcCheck-sound                 = Snd.check-sound
   ; tcInfer-sound-RInt            = Snd.sound-RInt
-  ; tcInfer-sound-RStringLit      = Snd.sound-RStringLit
   ; tcInfer-sound-RUnit           = Snd.sound-RUnit
   ; tcInfer-sound-RVar-unit       = Snd.sound-RVar-unit
   ; tcInfer-sound-RVar            = Snd.sound-RVar
@@ -956,7 +913,6 @@ verifiedTypeChecker = record
   ; tc-err-fst-non-pair-Unit      = EP.fst-non-pair-Unit
   ; tc-err-fst-non-pair-Int       = EP.fst-non-pair-Int
   ; tc-err-neg-non-Int-Unit       = EP.neg-non-Int-Unit
-  ; tc-err-neg-non-Int-Str        = EP.neg-non-Int-Str
   ; tc-err-var-unbound            = EP.var-unbound-is-UnboundVariable
   ; tc-err-snd-non-pair-Unit      = EP.snd-non-pair-Unit
   ; tc-err-snd-non-pair-Int       = EP.snd-non-pair-Int
@@ -965,9 +921,6 @@ verifiedTypeChecker = record
   ; tc-err-lam-usage-violation    = EP.lam-usage-violation-is-UsageViolation
   ; tc-err-binop-left-wraps       = EP.binop-left-err-wraps
   ; tc-err-binop-right-wraps      = EP.binop-right-err-wraps
-  ; tc-err-fst-non-pair-Str       = EP.fst-non-pair-Str
-  ; tc-err-snd-non-pair-Str       = EP.snd-non-pair-Str
-  ; tc-err-case-scrut-Str         = EP.case-scrut-Str
   ; tc-err-fst-non-pair-Float     = EP.fst-non-pair-Float
   ; tc-err-snd-non-pair-Float     = EP.snd-non-pair-Float
   ; tc-err-neg-non-Int-Float      = EP.neg-non-Int-Float
@@ -975,10 +928,8 @@ verifiedTypeChecker = record
   ; tc-err-case-branch-mismatch   = EP.case-branch-mismatch-is-CaseBranchMismatch
   ; tc-err-check-RInt-type-mismatch  = EP.check-RInt-type-mismatch
   ; tc-err-check-RUnit-type-mismatch = EP.check-RUnit-type-mismatch
-  ; tc-err-check-RStringLit-type-mismatch = EP.check-RStringLit-type-mismatch
   ; tcInfer-complete-RInt         = λ ctx n → CmpR.infer-complete-RInt {ctx = ctx} n
   ; tcInfer-complete-RUnit        = λ ctx → CmpR.infer-complete-RUnit {ctx = ctx}
-  ; tcInfer-complete-RStringLit   = λ ctx s → CmpR.infer-complete-RStringLit {ctx = ctx} s
   ; tcInfer-complete-RVar-unit    = λ ctx → CmpR.infer-complete-RVar-unit {ctx = ctx}
   ; tcInfer-complete-RQualified   = λ ctx name alias T eq conc →
                                      CmpR.infer-complete-RQualified {ctx = ctx} {name = name} {alias = alias} {T = T} eq conc

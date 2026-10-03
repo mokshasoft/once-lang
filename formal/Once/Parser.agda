@@ -164,7 +164,7 @@ showTokenPrefix (TEOF       ∷ xs) = showTokenPrefix xs
 -- soundness/completeness reduce through its success path.)
 knownTypeWord : String → Bool
 knownTypeWord w = does (w ≟ "Unit") ∨ does (w ≟ "Void") ∨ does (w ≟ "Int")
-            ∨ does (w ≟ "Float") ∨ does (w ≟ "Buffer") ∨ does (w ≟ "String")
+            ∨ does (w ≟ "Float")
 hasUpperTVar : List Token → Bool
 hasUpperTVar []              = false
 hasUpperTVar (TWord w  ∷ ts) = (isUpperWord w ∧ not (knownTypeWord w)) ∨ hasUpperTVar ts

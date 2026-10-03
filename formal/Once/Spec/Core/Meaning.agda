@@ -46,8 +46,7 @@ open import Once.Denotation.GradedOps
 open import Once.SigOp.Info using (semP; int-prim; int-pure)
 open import Once.Spec.Contract using (Impl)
 open import Once.Arith.SigOp.Builders
-  using ( str-lit-info
-        ; add-info; sub-info; mul-info; div-info; mod-info; neg-info
+  using ( add-info; sub-info; mul-info; div-info; mod-info; neg-info
         ; lt-info; le-info; gt-info; ge-info; eq-info; ne-info
         ; fadd-info; fsub-info; fmul-info; fdiv-info; i2f-info )
 open import Once.Spec.Core.Syntax S
@@ -171,7 +170,6 @@ primSem p-i2f fmt v = semP i2f-info int-prim fmt v
 
 ⟦ ⊢lit-int {i = i} ⟧   fmt ρ dγ = OnceWord.Width.fromℤ (int-bits fmt) i
 ⟦ ⊢lit-float {d = d} ⟧ fmt ρ dγ = round (float-format fmt) d
-⟦ ⊢lit-str {s = str} ⟧ fmt ρ dγ = semP (str-lit-info str) int-pure fmt tt
 
 ⟦ ⊢prim {π = π} p d ⟧ fmt ρ dγ = bindM π (⟦ d ⟧ fmt ρ dγ) λ v → returnM π (primSem p fmt v)
 

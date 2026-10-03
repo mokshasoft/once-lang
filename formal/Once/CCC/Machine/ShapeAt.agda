@@ -34,7 +34,7 @@ open import Data.Unit using (⊤; tt)
 open import Data.Maybe using (just)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
-open import Once.IR using (IRTy; Unit; Int; Float; Str; Buffer; _*_; _+_; _⇛_;
+open import Once.IR using (IRTy; Unit; Int; Float; _*_; _+_; _⇛_;
   μ-type; ν-type; ⟦_⟧TI; WellFormedFI; FitsInRegI; fits-int; fits-float)
 open import Once.Type using ()
   renaming (fits-int to fits-intˢ; fits-float to fits-floatˢ;
@@ -238,17 +238,7 @@ data ShapeAt where
     readLoc s loc ≡ just (SV-Lit fits-floatˢ x) →
     ShapeAt m alloc Float loc s
 
-  shape-str : ∀ {m}
-    {alloc : AllocState {FS}}
-    {loc : ValueLocation FS} {s : LocState FS} →
-    BeforeFrontier alloc loc →
-    ShapeAt m alloc Str loc s
 
-  shape-buffer : ∀ {m}
-    {alloc : AllocState {FS}}
-    {loc : ValueLocation FS} {s : LocState FS} →
-    BeforeFrontier alloc loc →
-    ShapeAt m alloc Buffer loc s
 
 ------------------------------------------------------------------------
 -- GATE G1 (D076): the erasure is a PROJECTION of `ValidAtWF` — every
@@ -265,7 +255,7 @@ module Project (o : CanonicalName) (tbl : List IRFun) where
            rep-prim; rep-unit;
            valid-μ-wf; valid-ν-susp-wf;
            valid-closure-reg-wf; CellAt; cell-ptr; cell-inline;
-           valid-int-wf; valid-float-wf; valid-str-wf; valid-buffer-wf;
+           valid-int-wf; valid-float-wf;
            SumTag)
 
   tag-of : ∀ (m : AllocMode) (t : ℕ) (s : LocState FS) (loc : ValueLocation FS)
@@ -324,8 +314,6 @@ module Project (o : CanonicalName) (tbl : List IRFun) where
     shape-ν-susp lm (cell→shape sc) cp slb
   valid→shape (valid-int-wf b r)   = shape-int b r
   valid→shape (valid-float-wf b r) = shape-float b r
-  valid→shape (valid-str-wf b)     = shape-str b
-  valid→shape (valid-buffer-wf b)  = shape-buffer b
 
   -- Split on the rep for the same reason the sum's inline clauses do: with the
   -- rep abstract neither `inline-sv` reduces and the read equation would not

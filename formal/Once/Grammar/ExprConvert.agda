@@ -63,7 +63,7 @@ gUnaryOpToRaw G.OpNeg = OpNeg
 ------------------------------------------------------------------------
 
 open import Once.Grammar.Printer using
-  (c-unit; c-void; c-int; c-float; c-buffer; c-string;
+  (c-unit; c-void; c-int; c-float;
    c-prod; c-sum; c-fun; c-eff)
 open import Once.Grammar.ParserRelation using (toType)
 

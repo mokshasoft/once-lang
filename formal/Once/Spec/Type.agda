@@ -25,12 +25,12 @@ open import Once.Type public
         ; Purity ; pure ; eff ; _⊔p_
         ; ArrowKind ; mk-kind ; quantity ; purity ; pureK ; effK
           -- the type / functor grammar
-        ; Type ; Unit ; Void ; Int ; Float ; Str ; Buffer
+        ; Type ; Unit ; Void ; Int ; Float
         ; _*_ ; _+_ ; _⇒[_]_ ; μ-type ; ν-type
         ; _⊸_ ; _⇒_ ; _⇒₀_
         ; Functor ; K ; Id ; _⊕_ ; _⊗_ ; ⟦_⟧T
           -- schemas, and groundness as a PROPERTY (D134)
-        ; PolyType ; PUnit ; PVoid ; PInt ; PFloat ; PStr ; PBuffer
+        ; PolyType ; PUnit ; PVoid ; PInt ; PFloat
         ; _P*_ ; _P+_ ; _P⇒[_]_ ; PEff ; Pμ-type ; Pν-type ; PTVar
         ; PolyFunctor ; PK ; PId ; _P⊕_ ; _P⊗_
         ; Ground ; GroundF ; extractGround ; extractGroundF
@@ -45,6 +45,5 @@ open import Once.Type public
 -- formers; one derivation per `A <: B`, so every conversion is coherent.
 open import Once.Type.Sub public
   using ( _⊑π_ ; ⊑-pure ; ⊑-eff ; ⊑-pe
-        ; _<:_ ; sub-void ; sub-unit ; sub-int ; sub-float ; sub-str ; sub-buffer
-        ; sub-arr ; sub-prod ; sub-sum ; sub-μ ; sub-ν
+        ; _<:_ ; sub-void ; sub-unit ; sub-int ; sub-float ; sub-arr ; sub-prod ; sub-sum ; sub-μ ; sub-ν
         )

@@ -33,7 +33,7 @@ open import Data.Product using (Σ; Σ-syntax; _×_; _,_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂)
 open import Once.Type as T using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ν-type;
   PolyType; PolyFunctor; Ground; GroundF; extractGround; extractGroundF;
-  PUnit; PVoid; _P*_; _P+_; _P⇒[_]_; PEff; Pμ-type; Pν-type; PInt; PFloat; PStr; PBuffer; PTVar;
+  PUnit; PVoid; _P*_; _P+_; _P⇒[_]_; PEff; Pμ-type; Pν-type; PInt; PFloat; PTVar;
   PK; PId; _P⊕_; _P⊗_)
 open import Once.Type.Sub using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe)
 open import Once.Type.Determined using (cod-determined)
@@ -93,8 +93,6 @@ mutual
   extractGround-irr (Pν-type F π) g g′ = cong (λ G → ν-type G π) (extractGroundF-irr F g g′)
   extractGround-irr PInt _ _ = refl
   extractGround-irr PFloat _ _ = refl
-  extractGround-irr PStr _ _ = refl
-  extractGround-irr PBuffer _ _ = refl
   extractGround-irr (PTVar _) () _
 
 ------------------------------------------------------------------------
@@ -227,7 +225,6 @@ mutual
   -- agree-ii
   agree-ii (t-int _) (t-int _) = refl , refl
   agree-ii (t-float _ _ _ _) (t-float _ _ _ _) = refl , refl
-  agree-ii (t-str _) (t-str _) = refl , refl
   agree-ii t-unit t-unit = refl , refl
   agree-ii t-unit-var t-unit-var = refl , refl
   agree-ii t-unit-var (t-var-resolved (_ ∷ _ ∷ _ ∷ _ ∷ _ ∷ _ ∷ _ ∷ ¬u ∷ _) _ _) = ⊥-elim (¬u refl)

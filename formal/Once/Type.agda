@@ -239,8 +239,6 @@ mk-kind q₁ p₁ ≟k mk-kind q₂ p₂ = ≟k-aux (q₁ ≟q q₂) (p₁ ≟p 
 -- Additional base types for practical programming:
 -- - Int is machine integers
 -- - Float is IEEE 754 double-precision floats
--- - Str is UTF-8 strings
--- - Buffer is raw byte buffers
 --
 -- Note: Type variables (TVar) are now in PolyType, not Type.
 -- This separation enables clean decidable equality on Type and
@@ -280,36 +278,8 @@ mutual
     -- Base types for practical programming
     Int    : Type                    -- Machine integers
     Float  : Type                    -- IEEE 754 double-precision floats
-    -- ── Str / Buffer: DECLARED, NOT YET REPRESENTED ──────────────────
-    -- No `StoredValue` can hold one. `SV-Lit`'s witness is `FitsInReg`,
-    -- whose constructors are `fits-int` and `fits-float` and nothing else
-    -- (Type.agda), while the value domain of both of these is `String`
-    -- (Semantics/Value.agda). `readTyped` returns `nothing` for them
-    -- (CCC/Machine/SMCore.agda).
-    --
-    -- THIS IS LOCAL. Giving them a representation is a REPRESENTATION
-    -- decision — what a machine cell may contain — and it does NOT affect
-    -- the global structure of the compiler proofs. The relation that carries
-    -- correctness (`RelV`/`RelT`, plan 0.93) recurses on the TYPE, so each
-    -- constructor is one independent clause; filling these two in adds
-    -- clauses and changes nothing else. `curry`/`apply`/`cata`/`ana` and the
-    -- whole CCC+SR spine are unaffected.
-    --
-    -- UNTIL THEN, proof gaps reachable ONLY through these two may be
-    -- postulated (project decision, 2026-09-18, plans/0.93 §11). Today no
-    -- PROVED path reaches them: `strLit` elaborates to a `SigOp`
-    -- (Surface/Elaborate.agda) and `fits-in-reg? Str` is `nothing`, so it
-    -- routes to the named residual `obs-correct-sigop-rest`
-    -- (CCC/Codegen/IRObsCorrect/SigOp.agda).
-    --
-    -- CAUTION, and it is not obvious: `RelV Str = RelV Buffer = ⊥` is NOT
-    -- conservative. `RelV` occurs NEGATIVELY in its arrow clause, so a
-    -- discharge at `Str ⇛ B` would be VACUOUSLY TRUE rather than hard, and
-    -- the same leak reaches `μ` through `K Str`. If a future proof succeeds
-    -- at one of these types, IT MEANS NOTHING until they are represented.
-    -- ──────────────────────────────────────────────────────────────────
-    Str    : Type                    -- UTF-8 strings
-    Buffer : Type                    -- Raw byte buffers
+    -- machine holds their content (their residence carried none, so a SigOp
+    -- argument holding one could not be decoded). A later plan brings them back.
     -- D243: a polymorphic definition's `i`-th type PARAMETER, of kind `k`,
     -- held RIGID while its body is typed once at its schema. Nothing is known
     -- about it but its kind (`IsBaseType (rigid k-base i)`), so the body is
@@ -366,8 +336,6 @@ isVoid? (μ-type _)    = no (λ ())
 isVoid? (ν-type _ _)    = no (λ ())
 isVoid? Int           = no (λ ())
 isVoid? Float         = no (λ ())
-isVoid? Str           = no (λ ())
-isVoid? Buffer        = no (λ ())
 isVoid? (rigid _ _)   = no (λ ())
 
 isUnit? : (T : Type) → Dec (T ≡ Unit)
@@ -380,8 +348,6 @@ isUnit? (μ-type _)    = no (λ ())
 isUnit? (ν-type _ _)    = no (λ ())
 isUnit? Int           = no (λ ())
 isUnit? Float         = no (λ ())
-isUnit? Str           = no (λ ())
-isUnit? Buffer        = no (λ ())
 isUnit? (rigid _ _)   = no (λ ())
 
 -- Note: IO sugar removed for clarity in error messages.
@@ -436,8 +402,6 @@ TreeF A = K A ⊕ (Id ⊗ Id)
 -- Excluded from FitsInReg (deliberately):
 --   - Unit: erased entirely; carries no information; not register-
 --           tracked.
---   - Str, Buffer: 16-byte fat (data-ptr + len); structurally
---           compound 2-slot records, not register-fittable.
 --
 -- Used to gate the `InReg : Reg → ValueLocation` constructor (Plan
 -- 0.2.4.5 D4): only `FitsInReg`-typed values may be register-
@@ -478,8 +442,6 @@ mutual
   showType (ν-type F eff)  = "ν (Eff " ++ showFunctor F ++ ")"
   showType Int = "Int"
   showType Float = "Float"
-  showType Str = "String"
-  showType Buffer = "Buffer"
   showType (rigid k-base i) = "'b" ++ Data.Nat.Show.show i
   showType (rigid k-any i)  = "'a" ++ Data.Nat.Show.show i
 
@@ -532,8 +494,6 @@ mutual
     -- Base types
     PInt    : PolyType
     PFloat  : PolyType
-    PStr    : PolyType
-    PBuffer : PolyType
     -- Type variable (the whole reason this type exists)
     PTVar   : String → PolyType
 
@@ -574,8 +534,6 @@ mutual
   Ground (Pν-type F _)   = GroundF F
   Ground PInt            = ⊤
   Ground PFloat          = ⊤
-  Ground PStr            = ⊤
-  Ground PBuffer         = ⊤
   Ground (PTVar _)       = ⊥     -- the only non-Ground case
 
 ------------------------------------------------------------------------
@@ -600,8 +558,6 @@ mutual
   extractGround (Pν-type F π)    g        = ν-type (extractGroundF F g) π
   extractGround PInt             _        = Int
   extractGround PFloat           _        = Float
-  extractGround PStr             _        = Str
-  extractGround PBuffer          _        = Buffer
   -- PTVar case is unreachable (its Ground = ⊥)
 
 
@@ -640,8 +596,6 @@ mutual
   isGround (Pν-type F _)  = isGroundF F     -- Ground (Pν-type F) = GroundF F
   isGround PInt         = inj₁ tt
   isGround PFloat       = inj₁ tt
-  isGround PStr         = inj₁ tt
-  isGround PBuffer      = inj₁ tt
   isGround (PTVar _)    = inj₂ tt
 
 ------------------------------------------------------------------------
@@ -661,8 +615,6 @@ mutual
   showPolyType (Pν-type F eff)  = "ν (Eff " ++ showPolyFunctor F ++ ")"
   showPolyType PInt             = "Int"
   showPolyType PFloat           = "Float"
-  showPolyType PStr             = "String"
-  showPolyType PBuffer          = "Buffer"
   showPolyType (PTVar x)        = x
 
   showPolyFunctor : PolyFunctor → String
@@ -714,8 +666,6 @@ mutual
   typeEqBool Unit (ν-type _ _) = false
   typeEqBool Unit Int = false
   typeEqBool Unit Float = false
-  typeEqBool Unit Str = false
-  typeEqBool Unit Buffer = false
   typeEqBool Void Unit = false
   typeEqBool Void Void = true
   typeEqBool Void (_ * _) = false
@@ -725,8 +675,6 @@ mutual
   typeEqBool Void (ν-type _ _) = false
   typeEqBool Void Int = false
   typeEqBool Void Float = false
-  typeEqBool Void Str = false
-  typeEqBool Void Buffer = false
   typeEqBool (_ * _) Unit = false
   typeEqBool (_ * _) Void = false
   typeEqBool (a * b) (a' * b') = typeEqBool a a' ∧ typeEqBool b b'
@@ -736,8 +684,6 @@ mutual
   typeEqBool (_ * _) (ν-type _ _) = false
   typeEqBool (_ * _) Int = false
   typeEqBool (_ * _) Float = false
-  typeEqBool (_ * _) Str = false
-  typeEqBool (_ * _) Buffer = false
   typeEqBool (_ + _) Unit = false
   typeEqBool (_ + _) Void = false
   typeEqBool (_ + _) (_ * _) = false
@@ -747,8 +693,6 @@ mutual
   typeEqBool (_ + _) (ν-type _ _) = false
   typeEqBool (_ + _) Int = false
   typeEqBool (_ + _) Float = false
-  typeEqBool (_ + _) Str = false
-  typeEqBool (_ + _) Buffer = false
   typeEqBool (_ ⇒[ _ ] _) Unit = false
   typeEqBool (_ ⇒[ _ ] _) Void = false
   typeEqBool (_ ⇒[ _ ] _) (_ * _) = false
@@ -759,8 +703,6 @@ mutual
   typeEqBool (_ ⇒[ _ ] _) (ν-type _ _) = false
   typeEqBool (_ ⇒[ _ ] _) Int = false
   typeEqBool (_ ⇒[ _ ] _) Float = false
-  typeEqBool (_ ⇒[ _ ] _) Str = false
-  typeEqBool (_ ⇒[ _ ] _) Buffer = false
   typeEqBool (μ-type _) Unit = false
   typeEqBool (μ-type _) Void = false
   typeEqBool (μ-type _) (_ * _) = false
@@ -770,8 +712,6 @@ mutual
   typeEqBool (μ-type _) (ν-type _ _) = false
   typeEqBool (μ-type _) Int = false
   typeEqBool (μ-type _) Float = false
-  typeEqBool (μ-type _) Str = false
-  typeEqBool (μ-type _) Buffer = false
   typeEqBool (ν-type _ _) Unit = false
   typeEqBool (ν-type _ _) Void = false
   typeEqBool (ν-type _ _) (_ * _) = false
@@ -781,8 +721,6 @@ mutual
   typeEqBool (ν-type f p) (ν-type f' p') = purityEqBool p p' ∧ functorEqBool f f'
   typeEqBool (ν-type _ _) Int = false
   typeEqBool (ν-type _ _) Float = false
-  typeEqBool (ν-type _ _) Str = false
-  typeEqBool (ν-type _ _) Buffer = false
   typeEqBool Int Unit = false
   typeEqBool Int Void = false
   typeEqBool Int (_ * _) = false
@@ -792,8 +730,6 @@ mutual
   typeEqBool Int (ν-type _ _) = false
   typeEqBool Int Int = true
   typeEqBool Int Float = false
-  typeEqBool Int Str = false
-  typeEqBool Int Buffer = false
   typeEqBool Float Unit = false
   typeEqBool Float Void = false
   typeEqBool Float (_ * _) = false
@@ -803,30 +739,6 @@ mutual
   typeEqBool Float (ν-type _ _) = false
   typeEqBool Float Int = false
   typeEqBool Float Float = true
-  typeEqBool Float Str = false
-  typeEqBool Float Buffer = false
-  typeEqBool Str Unit = false
-  typeEqBool Str Void = false
-  typeEqBool Str (_ * _) = false
-  typeEqBool Str (_ + _) = false
-  typeEqBool Str (_ ⇒[ _ ] _) = false
-  typeEqBool Str (μ-type _) = false
-  typeEqBool Str (ν-type _ _) = false
-  typeEqBool Str Int = false
-  typeEqBool Str Float = false
-  typeEqBool Str Str = true
-  typeEqBool Str Buffer = false
-  typeEqBool Buffer Unit = false
-  typeEqBool Buffer Void = false
-  typeEqBool Buffer (_ * _) = false
-  typeEqBool Buffer (_ + _) = false
-  typeEqBool Buffer (_ ⇒[ _ ] _) = false
-  typeEqBool Buffer (μ-type _) = false
-  typeEqBool Buffer (ν-type _ _) = false
-  typeEqBool Buffer Int = false
-  typeEqBool Buffer Float = false
-  typeEqBool Buffer Str = false
-  typeEqBool Buffer Buffer = true
   typeEqBool (rigid k i) (rigid k′ i′) = tkindEqBool k k′ ∧ (i Data.Nat.≡ᵇ i′)
   typeEqBool (rigid _ _) _ = false
   typeEqBool _ (rigid _ _) = false
@@ -862,8 +774,6 @@ mutual
   substPoly θ PVoid         = Void
   substPoly θ PInt          = Int
   substPoly θ PFloat        = Float
-  substPoly θ PStr          = Str
-  substPoly θ PBuffer       = Buffer
   substPoly θ (A P* B)      = substPoly θ A * substPoly θ B
   substPoly θ (A P+ B)      = substPoly θ A + substPoly θ B
   substPoly θ (A P⇒[ q ] B) = substPoly θ A ⇒[ mk-kind q pure ] substPoly θ B
@@ -887,8 +797,6 @@ mutual
   ftv PVoid         = []ₗ
   ftv PInt          = []ₗ
   ftv PFloat        = []ₗ
-  ftv PStr          = []ₗ
-  ftv PBuffer       = []ₗ
   ftv (A P* B)      = ftv A ++ₗ ftv B
   ftv (A P+ B)      = ftv A ++ₗ ftv B
   ftv (A P⇒[ _ ] B) = ftv A ++ₗ ftv B

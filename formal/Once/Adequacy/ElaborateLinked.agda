@@ -29,8 +29,7 @@ open import Once.IR using (IR)
 import Once.IR as IR
 open import Once.IRTy using (IRTy; ⌊_⌋; _≟IRTy_)
 open import Once.IR.Ref using (refIR)
-open import Once.Functor.Translate using (IsConcrete; con-base; con-fun; base-Unit; base-Void; base-Int; base-Float;
-  base-Str; base-Buffer; base-Prod; base-Sum; base-rigid)
+open import Once.Functor.Translate using (IsConcrete; con-base; con-fun; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; base-rigid)
 open import Once.Surface.Syntax hiding (_,_; _,_^_)
 open import Once.Surface.Context using (_,_^_; ⊑[]; _⊑∷_; z≤z; z≤o; z≤m; o≤o; o≤m; m≤m)
 open import Once.Surface.CoerceIR using (runCoe; runCoe-dec; voidFree?; VoidFree; coeIR; erase-eq)
@@ -158,7 +157,6 @@ Refs Ps Pc Pp unit                = ⊤
 Refs Ps Pc Pp (absurd e)          = Refs Ps Pc Pp e
 Refs Ps Pc Pp (let' e₁ e₂)        = Refs Ps Pc Pp e₁ × Refs Ps Pc Pp e₂
 Refs Ps Pc Pp (int _)             = ⊤
-Refs Ps Pc Pp (str _)             = ⊤
 Refs Ps Pc Pp (float _)           = ⊤
 Refs Ps Pc Pp (add a b)           = Refs Ps Pc Pp a × Refs Ps Pc Pp b
 Refs Ps Pc Pp (sub a b)           = Refs Ps Pc Pp a × Refs Ps Pc Pp b
@@ -218,7 +216,6 @@ Refs-map hs hc hp unit                r = tt
 Refs-map hs hc hp (absurd e)          r = Refs-map hs hc hp e r
 Refs-map hs hc hp (let' e₁ e₂)        (a , b) = Refs-map hs hc hp e₁ a , Refs-map hs hc hp e₂ b
 Refs-map hs hc hp (int _)             r = tt
-Refs-map hs hc hp (str _)             r = tt
 Refs-map hs hc hp (float _)           r = tt
 Refs-map hs hc hp (add x y)           (a , b) = Refs-map hs hc hp x a , Refs-map hs hc hp y b
 Refs-map hs hc hp (sub x y)           (a , b) = Refs-map hs hc hp x a , Refs-map hs hc hp y b
@@ -293,8 +290,6 @@ coeIR-cf sub-void   = tt
 coeIR-cf sub-unit   = tt
 coeIR-cf sub-int    = tt
 coeIR-cf sub-float  = tt
-coeIR-cf sub-str    = tt
-coeIR-cf sub-buffer = tt
 coeIR-cf (sub-arr {q = Zero} a b _) = coeIR-cf b , tt
 coeIR-cf (sub-arr {q = One}  a b _) = coeIR-cf b , (tt , (tt , (coeIR-cf a , tt)))
 coeIR-cf (sub-arr {q = Many} a b _) = coeIR-cf b , (tt , (tt , (coeIR-cf a , tt)))
@@ -338,8 +333,6 @@ sigOp-linked m name (con-base base-Unit) d = value-∈ d refl , tt
 sigOp-linked m name (con-base base-Void) d = value-∈ d refl , tt
 sigOp-linked m name (con-base base-Int) d = value-∈ d refl , tt
 sigOp-linked m name (con-base base-Float) d = value-∈ d refl , tt
-sigOp-linked m name (con-base base-Str) d = value-∈ d refl , tt
-sigOp-linked m name (con-base base-Buffer) d = value-∈ d refl , tt
 sigOp-linked m name (con-base (base-Prod a b)) d = value-∈ d refl , tt
 sigOp-linked m name (con-base (base-Sum a b)) d = value-∈ d refl , tt
 sigOp-linked m name (con-base base-rigid) d = value-∈ d refl , tt
@@ -423,7 +416,6 @@ module _ {σ : ISig} (tbl : List IRFun) where
     elaborate-linked′ m e2 r2 , (bE {Γ = Γ} {Ψ′ = Ψ₂} {A = A} m Many
       , (rE {Γ = Γ} m (⊑ᵘ-+ˡ Ψ₂ (Many *ᵘ Ψ₁)) , (elaborate-linked′ m e1 r1 , rE {Γ = Γ} m (⊑ᵘ-trans (⊑ᵘ-*Many Ψ₁) (⊑ᵘ-+ʳ Ψ₂ (Many *ᵘ Ψ₁))))))
   elaborate-linked′ m (int n) r   = tt , tt
-  elaborate-linked′ m (str s) r   = tt , tt
   elaborate-linked′ m (float d) r = tt , tt
   elaborate-linked′ m {Γ = Γ} (add {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) (ra , rb) = tt , bin m {Γ = Γ} Ψ₁ Ψ₂ a b ra rb
   elaborate-linked′ m {Γ = Γ} (sub {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) (ra , rb) = tt , bin m {Γ = Γ} Ψ₁ Ψ₂ a b ra rb

@@ -48,7 +48,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong
 open import Data.List.Properties using (++-identityʳ; ++-assoc)
 open import Once.Denotation.Trace using (SigOpEvent)
 
-open import Once.Type using (Type; Unit; Void; Int; Str; Float; Buffer; _*_; _+_; _⇒[_]_; μ-type; ν-type; mk-kind; pure; eff; Quantity; Zero; One; Many)
+open import Once.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ν-type; mk-kind; pure; eff; Quantity; Zero; One; Many)
 open import Once.Functor.Translate using (con-base; con-fun; base-Unit)
 open import Once.Surface.Syntax using (Expr; Ctx; Usage; lookup; _,_^_; ⟦_⟧ᶜ; _↾_; zeroUsage; singleUse; ∅;
                                        _⊑ᵘ_; ⊑[]; _⊑∷_; z≤z; z≤o; z≤m; o≤o; o≤m; m≤m;
@@ -1156,7 +1156,6 @@ faithful unit    dγ = refl
 faithful (int n) dγ = refl   -- both sides are `fromℤ (int-bits fmt) n` (the `absℤ` this
                                -- comment used to describe is gone; D054/D115)
 faithful (float d) dγ = refl   -- both sides are `round (float-format fmt) d` (K1)
-faithful (str s) dγ = refl   -- ⟦str s⟧ˢ fmt σ₀ now denotes via str-lit-info's semM = strLit's evalᴰ fmt
 -- Single-subterm projections/injections: `elaborate (op e) = <prim> ∘ elaborate e`
 -- and `⟦ op e ⟧ˢ = ⟦e⟧ˢ >>=T (λv → returnT (<prim> v))`; `_>>=T_` sees the same
 -- depth on both sides, so the trace+value at `n` is a function of the SUBTERM's
@@ -1608,9 +1607,7 @@ faithful (closed e) dγ = faithful e tt
 faithful {Γ = Γ} (sigOp {A = Unit}     name (con-base ib)) dγ = sigop-value {⟦ Γ ↾ zeroUsage ⟧ᶜ} (value-info name base-Unit ib) dγ
 faithful {Γ = Γ} (sigOp {A = Void}     name (con-base ib)) dγ = sigop-value {⟦ Γ ↾ zeroUsage ⟧ᶜ} (value-info name base-Unit ib) dγ
 faithful {Γ = Γ} (sigOp {A = Int}      name (con-base ib)) dγ = sigop-value {⟦ Γ ↾ zeroUsage ⟧ᶜ} (value-info name base-Unit ib) dγ
-faithful {Γ = Γ} (sigOp {A = Str}      name (con-base ib)) dγ = sigop-value {⟦ Γ ↾ zeroUsage ⟧ᶜ} (value-info name base-Unit ib) dγ
 faithful {Γ = Γ} (sigOp {A = Float}    name (con-base ib)) dγ = sigop-value {⟦ Γ ↾ zeroUsage ⟧ᶜ} (value-info name base-Unit ib) dγ
-faithful {Γ = Γ} (sigOp {A = Buffer}   name (con-base ib)) dγ = sigop-value {⟦ Γ ↾ zeroUsage ⟧ᶜ} (value-info name base-Unit ib) dγ
 faithful {Γ = Γ} (sigOp {A = Once.Type.rigid _ _} name (con-base ib)) dγ = sigop-value {⟦ Γ ↾ zeroUsage ⟧ᶜ} (value-info name base-Unit ib) dγ
 faithful {Γ = Γ} (sigOp {A = _ * _}    name (con-base ib)) dγ = sigop-value {⟦ Γ ↾ zeroUsage ⟧ᶜ} (value-info name base-Unit ib) dγ
 faithful {Γ = Γ} (sigOp {A = _ + _}    name (con-base ib)) dγ = sigop-value {⟦ Γ ↾ zeroUsage ⟧ᶜ} (value-info name base-Unit ib) dγ

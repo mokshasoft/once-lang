@@ -28,7 +28,7 @@ import Data.String.Properties as StrProp
 open import Relation.Nullary using (yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
-open import Once.Type using (Type; Unit; Void; Int; Float; Str; Buffer;
+open import Once.Type using (Type; Unit; Void; Int; Float;
                              _*_; _+_; _⇒[_]_; μ-type; ν-type;
                              Functor; K; Id; _⊕_; _⊗_)
 open import Once.IR as IR using (IR; Heap)
@@ -45,8 +45,6 @@ Unit   ≡T? Unit   = just refl
 Void   ≡T? Void   = just refl
 Int    ≡T? Int    = just refl
 Float  ≡T? Float  = just refl
-Str    ≡T? Str    = just refl
-Buffer ≡T? Buffer = just refl
 (A₁ * B₁) ≡T? (A₂ * B₂) with A₁ ≡T? A₂ | B₁ ≡T? B₂
 ... | just refl | just refl = just refl
 ... | _         | _         = nothing

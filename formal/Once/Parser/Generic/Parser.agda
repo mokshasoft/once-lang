@@ -59,31 +59,27 @@ module Make (alg : TyAlg) where
   ...     | yes refl = just (aInt , rest)
   ...     | no _ with name ≟s "Float"
   ...       | yes refl = just (aFloat , rest)
-  ...       | no _ with name ≟s "Buffer"
-  ...         | yes refl = just (aBuffer , rest)
-  ...         | no _ with name ≟s "String"
-  ...           | yes refl = just (aStr , rest)
-  ...           | no _ with name ≟s "Eff"
-  ...             | yes refl with atomP rest
-  ...               | nothing = nothing
-  ...               | just (A , r1) with atomP r1
-  ...                 | nothing = nothing
-  ...                 | just (B , r2) = just (aEff A B , r2)
+  ...       | no _ with name ≟s "Eff"
+  ...         | yes refl with atomP rest
+  ...           | nothing = nothing
+  ...           | just (A , r1) with atomP r1
+  ...             | nothing = nothing
+  ...             | just (B , r2) = just (aEff A B , r2)
   atomKw (TWord name ∷ rest)
-    | no _ | no _ | no _ | no _ | no _ | no _ | no _ with name ≟s "IO"
+    | no _ | no _ | no _ | no _ | no _ with name ≟s "IO"
   ... | yes refl with atomP rest
   ...   | nothing = nothing
   ...   | just (A , r1) = just (aEff aUnit A , r1)
   atomKw (TWord name ∷ rest)
-    | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ with name ≟s "Mu"
+    | no _ | no _ | no _ | no _ | no _ | no _ with name ≟s "Mu"
   ... | yes refl with fSumP rest
   ...   | nothing = nothing
   ...   | just (F , r1) = just (aMu F , r1)
   atomKw (TWord name ∷ rest)
-    | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ with name ≟s "Nu"
+    | no _ | no _ | no _ | no _ | no _ | no _ | no _ with name ≟s "Nu"
   ... | yes refl = nuP rest
   atomKw (TWord name ∷ rest)
-    | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ = nothing
+    | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ = nothing
   atomKw (TLParen ∷ rest) with typeP rest
   ... | just (T , TRParen ∷ rest2) = just (T , rest2)
   ... | just (_ , _) = nothing

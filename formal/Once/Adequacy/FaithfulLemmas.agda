@@ -34,7 +34,7 @@ open import Data.Nat.Properties using (0∸n≡0)
 open import Data.List.Properties using (++-identityʳ)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; trans; sym; subst; subst-sym-subst; subst-subst-sym)
 
-open import Once.Type using (Type; Unit; Void; Int; Str; Float; Buffer;
+open import Once.Type using (Type; Unit; Void; Int; Float;
                               _*_; _+_; _⇒[_]_; μ-type; ν-type; Functor; ⟦_⟧T;
                               Purity; mk-kind; Zero; One; Many)
 import Once.Semantics.Machine as Val

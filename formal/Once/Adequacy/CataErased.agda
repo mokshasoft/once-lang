@@ -53,7 +53,7 @@ open import Once.Word using (Carrier)
 open import Once.Float.Dyadic using (Dyadic)
 open import Once.Type using (Type; Functor; ⟦_⟧T; μ-type)
 open import Once.Functor.Translate using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod; translateF;
-  IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Str; base-Buffer; base-Prod; base-Sum)
+  IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum)
 open import Once.Denotation.DenotTrace using (liftFn; cohᴰ; seqF; sigOpT; ffiE)
 open import Once.Denotation.ValueDomain using (injectᵇ; forgetᵇ)
 open import Once.SigOp.Info using (SigOpInfo; baseA; conB)

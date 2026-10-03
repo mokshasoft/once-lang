@@ -138,7 +138,6 @@ mutual
        → proj₁ (elabᵢ V (subst-i′ ir d)) ≡ ρ̂ₜ (proj₁ (elabᵢ V d))
   tm-i (t-int k)          = refl
   tm-i (t-float i f l p)  = refl
-  tm-i (t-str x)          = refl
   tm-i t-unit             = refl
   tm-i t-unit-var         = refl
   tm-i {D = D} (t-var-local {eV = C.svar i} eq) = ⇝ᵢ-tm (lookup-ρ̂ D i) _
@@ -276,7 +275,6 @@ mutual
        → proj₂ (elabᵢ V (subst-i′ ir d)) ≅ ρ̂ᶜ (proj₂ (elabᵢ V d))
   dr-i (t-int k)          = H.refl
   dr-i (t-float i f l p)  = H.refl
-  dr-i (t-str x)          = H.refl
   dr-i t-unit             = H.refl
   dr-i t-unit-var         = H.refl
   dr-i {D = D} (t-var-local {eV = C.svar i} eq) =

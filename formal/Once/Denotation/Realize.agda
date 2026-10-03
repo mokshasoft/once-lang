@@ -45,7 +45,7 @@ open import Once.TypeCheck.Judgment
   using (_⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_; _⊢ᵈ_∶_⇒[_]↦_⨾_; t-id-check; t-fst-check; t-snd-check;
          t-terminal-morph-check; t-initial-morph-check; t-inl-morph-check;
          t-inr-morph-check; t-compose-check-g; t-compose-check-f; d-infer; d-lam; d-compose; d-id; d-fst; d-snd; d-terminal; d-initial; d-case; d-pair; d-cata; t-case-copair-check;
-         t-pair-morph-check; t-curry-check; t-cata-check; t-ana-check; t-int; t-float; t-str;
+         t-pair-morph-check; t-curry-check; t-cata-check; t-ana-check; t-int; t-float;
          t-unit; t-unit-var; t-var-local; t-var-qualified; t-var-resolved;
          t-var-import; t-annot; t-pair; t-neg; t-neg-float; t-let; t-case;
          t-binop-arith; t-binop-arith-float; t-binop-arith-float-il;
@@ -60,7 +60,7 @@ open import Once.Float.Decimal using (Decimal; decimalOf; negate)
 open import Once.Surface.Thinning using (weaken; weakenFromEmpty)
 open import Once.Surface.Seq using (seq; seq0; embedClosed)
 open import Once.Surface.Syntax using (Expr; Usage; zeroUsage; var; svar; svar→expr;
-  lam; app; effApp; pair; neg; let'; case'; int; float; str; unit;
+  lam; app; effApp; pair; neg; let'; case'; int; float; unit;
   add; sub; mul; div; mod'; fadd; fsub; fmul; fdiv; i2f; lt; le; gt; ge; eq; ne; sigOp; closure; poly; closed;
   lift-morphism; morph-app; coerce; cata; ana; comp'; copair'; fork'; curry')
 open import Once.Surface.Elaborate using (intLit; floatLit; elaborate)
@@ -143,7 +143,6 @@ realize (t-var-poly-instantiate {x = x} {T = T} _ _ _ _ _) = poly x T
 ------------------------------------------------------------------------
 realize-infer (t-int n)         = int n
 realize-infer (t-float i f l p) = float (decimalOf i f l)
-realize-infer (t-str s)         = str s
 realize-infer t-unit            = unit
 realize-infer t-unit-var        = unit
 realize-infer (t-var-local {eV = eV} _) = svar→expr eV

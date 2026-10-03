@@ -173,7 +173,6 @@ realize-refs (t-var-poly-instantiate eL eI eP ¬g ki) = _ , eP , ki
 
 realize-refs-i (t-int n)         = tt
 realize-refs-i (t-float i f l p) = tt
-realize-refs-i (t-str s)         = tt
 realize-refs-i t-unit            = tt
 realize-refs-i t-unit-var        = tt
 realize-refs-i (t-var-local {eV = svar i} _) = tt
@@ -324,7 +323,6 @@ module _ {σ : ISig} (tbl : List IRFun) (polys : PolyCtx) (I : String → Import
   resolve-refs pAcc uf fresh (absurd e)        r = resolve-refs pAcc uf fresh e r
   resolve-refs pAcc uf fresh (let' e₁ e₂)      (a , b) = resolve-refs pAcc uf fresh e₁ a , resolve-refs pAcc uf fresh e₂ b
   resolve-refs pAcc uf fresh (int _)           r = tt
-  resolve-refs pAcc uf fresh (str _)           r = tt
   resolve-refs pAcc uf fresh (float _)         r = tt
   resolve-refs pAcc uf fresh (add x y)         (a , b) = resolve-refs pAcc uf fresh x a , resolve-refs pAcc uf fresh y b
   resolve-refs pAcc uf fresh (sub x y)         (a , b) = resolve-refs pAcc uf fresh x a , resolve-refs pAcc uf fresh y b
@@ -376,8 +374,6 @@ dc-linked tbl (Once.Type.μ-type F)     ir l = l
 dc-linked tbl (Once.Type.ν-type F π)   ir l = l
 dc-linked tbl Once.Type.Int            ir l = l
 dc-linked tbl Once.Type.Float          ir l = l
-dc-linked tbl Once.Type.Str            ir l = l
-dc-linked tbl Once.Type.Buffer         ir l = l
 dc-linked tbl (Once.Type.rigid k i)    ir l = l
 
 -- A reference to an entry is linked once the entry is in the table: the
@@ -395,8 +391,6 @@ ref-entry tbl x ty@(Once.Type.μ-type F)   ir p = linkedAt-here (irFunOf (C.mkCo
 ref-entry tbl x ty@(Once.Type.ν-type F π) ir p = linkedAt-here (irFunOf (C.mkCompiledFun (bare x) ty ir p)) tbl , tt
 ref-entry tbl x ty@Once.Type.Int          ir p = linkedAt-here (irFunOf (C.mkCompiledFun (bare x) ty ir p)) tbl , tt
 ref-entry tbl x ty@Once.Type.Float        ir p = linkedAt-here (irFunOf (C.mkCompiledFun (bare x) ty ir p)) tbl , tt
-ref-entry tbl x ty@Once.Type.Str          ir p = linkedAt-here (irFunOf (C.mkCompiledFun (bare x) ty ir p)) tbl , tt
-ref-entry tbl x ty@Once.Type.Buffer       ir p = linkedAt-here (irFunOf (C.mkCompiledFun (bare x) ty ir p)) tbl , tt
 ref-entry tbl x ty@(Once.Type.rigid k i)  ir p = linkedAt-here (irFunOf (C.mkCompiledFun (bare x) ty ir p)) tbl , tt
 
 RefLinked-mono : ∀ {tbl tbl′ : List IRFun} → (∀ {f A B} → LinkedAt tbl f A B → LinkedAt tbl′ f A B)

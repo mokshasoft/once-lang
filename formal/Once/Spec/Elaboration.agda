@@ -186,7 +186,6 @@ elabᶜ V (t-var-poly-instantiate _ _ lp ng ins) = refE (entry V lp) (inst V lp 
 
 elabᵢ V (t-int n)         = lit (lit-int n) , ⊢lit-int
 elabᵢ V (t-float i f l p) = lit (lit-float (decimalOf i f l)) , ⊢lit-float
-elabᵢ V (t-str s)         = lit (lit-str s) , ⊢lit-str
 elabᵢ V t-unit            = unit , ⊢unit
 elabᵢ V t-unit-var        = unit , ⊢unit
 elabᵢ V (t-var-local {eV = Once.Surface.Context.svar i} _) = var i , ⊢var i

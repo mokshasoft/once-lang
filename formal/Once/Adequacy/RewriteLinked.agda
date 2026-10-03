@@ -81,8 +81,6 @@ try-lift-linked tbl {A} {_ II.+ _}      ir = tt
 try-lift-linked tbl {A} {_ II.⇛ _}      ir = tt
 try-lift-linked tbl {A} {II.μ-type _}   ir = tt
 try-lift-linked tbl {A} {II.ν-type _}   ir = tt
-try-lift-linked tbl {A} {II.Str}        ir = tt
-try-lift-linked tbl {A} {II.Buffer}     ir = tt
 
 -- THE PASS KEEPS A PROGRAM LINKED.
 rewrite-ir-linked : ∀ (tbl : List IRFun) {A B} (ir : IR A B) → Linked σ tbl ir → Linked σ tbl (proj₁ (rewrite-ir ir))

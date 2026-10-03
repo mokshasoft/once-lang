@@ -32,7 +32,7 @@ module Once.Type.Sub where
 open import Relation.Nullary using (Dec; yes; no; ¬_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂)
 open import Once.Type using (Type; rigid; Functor; Quantity; Purity; pure; eff; mk-kind;
-                             Unit; Void; Int; Float; Str; Buffer; _*_; _+_; _⇒[_]_;
+                             Unit; Void; Int; Float; _*_; _+_; _⇒[_]_;
                              μ-type; ν-type; _≟q_)
 open import Once.Type.DecEq using (_≟F_; _≟T_)
 
@@ -83,8 +83,6 @@ data _<:_ : Type → Type → Set where
   sub-unit   : Unit <: Unit
   sub-int    : Int <: Int
   sub-float  : Float <: Float
-  sub-str    : Str <: Str
-  sub-buffer : Buffer <: Buffer
   sub-arr    : ∀ {A A′ B B′ q π π′}
              → A′ <: A → B <: B′ → π ⊑π π′
              → (A ⇒[ mk-kind q π ] B) <: (A′ ⇒[ mk-kind q π′ ] B′)
@@ -105,8 +103,6 @@ data _<:_ : Type → Type → Set where
 <:-unique sub-unit   sub-unit   = refl
 <:-unique sub-int    sub-int    = refl
 <:-unique sub-float  sub-float  = refl
-<:-unique sub-str    sub-str    = refl
-<:-unique sub-buffer sub-buffer = refl
 <:-unique (sub-arr a b g) (sub-arr a′ b′ g′)
   rewrite <:-unique a a′ | <:-unique b b′ | ⊑π-unique g g′ = refl
 <:-unique (sub-prod a b) (sub-prod a′ b′) = cong₂ sub-prod (<:-unique a a′) (<:-unique b b′)
@@ -124,8 +120,6 @@ data _<:_ : Type → Type → Set where
 <:-refl Void   = sub-void
 <:-refl Int    = sub-int
 <:-refl Float  = sub-float
-<:-refl Str    = sub-str
-<:-refl Buffer = sub-buffer
 <:-refl (A ⇒[ mk-kind q π ] B) = sub-arr (<:-refl A) (<:-refl B) (⊑π-refl π)
 <:-refl (A * B) = sub-prod (<:-refl A) (<:-refl B)
 <:-refl (A + B) = sub-sum (<:-refl A) (<:-refl B)
@@ -138,8 +132,6 @@ data _<:_ : Type → Type → Set where
 <:-trans sub-unit   q          = q
 <:-trans sub-int    q          = q
 <:-trans sub-float  q          = q
-<:-trans sub-str    q          = q
-<:-trans sub-buffer q          = q
 <:-trans (sub-arr a b g) (sub-arr a′ b′ g′) = sub-arr (<:-trans a′ a) (<:-trans b b′) (⊑π-trans g g′)
 <:-trans (sub-prod a b)  (sub-prod a′ b′)   = sub-prod (<:-trans a a′) (<:-trans b b′)
 <:-trans (sub-sum a b)   (sub-sum a′ b′)    = sub-sum  (<:-trans a a′) (<:-trans b b′)
@@ -190,8 +182,6 @@ Unit <:? Unit = yes sub-unit
 Unit <:? Void = no λ ()
 Unit <:? Int = no λ ()
 Unit <:? Float = no λ ()
-Unit <:? Str = no λ ()
-Unit <:? Buffer = no λ ()
 Unit <:? (_ * _) = no λ ()
 Unit <:? (_ + _) = no λ ()
 Unit <:? (_ ⇒[ _ ] _) = no λ ()
@@ -201,8 +191,6 @@ Int <:? Int = yes sub-int
 Int <:? Unit = no λ ()
 Int <:? Void = no λ ()
 Int <:? Float = no λ ()
-Int <:? Str = no λ ()
-Int <:? Buffer = no λ ()
 Int <:? (_ * _) = no λ ()
 Int <:? (_ + _) = no λ ()
 Int <:? (_ ⇒[ _ ] _) = no λ ()
@@ -212,42 +200,16 @@ Float <:? Float = yes sub-float
 Float <:? Unit = no λ ()
 Float <:? Void = no λ ()
 Float <:? Int = no λ ()
-Float <:? Str = no λ ()
-Float <:? Buffer = no λ ()
 Float <:? (_ * _) = no λ ()
 Float <:? (_ + _) = no λ ()
 Float <:? (_ ⇒[ _ ] _) = no λ ()
 Float <:? (μ-type _) = no λ ()
 Float <:? (ν-type _ _) = no λ ()
-Str <:? Str = yes sub-str
-Str <:? Unit = no λ ()
-Str <:? Void = no λ ()
-Str <:? Int = no λ ()
-Str <:? Float = no λ ()
-Str <:? Buffer = no λ ()
-Str <:? (_ * _) = no λ ()
-Str <:? (_ + _) = no λ ()
-Str <:? (_ ⇒[ _ ] _) = no λ ()
-Str <:? (μ-type _) = no λ ()
-Str <:? (ν-type _ _) = no λ ()
-Buffer <:? Buffer = yes sub-buffer
-Buffer <:? Unit = no λ ()
-Buffer <:? Void = no λ ()
-Buffer <:? Int = no λ ()
-Buffer <:? Float = no λ ()
-Buffer <:? Str = no λ ()
-Buffer <:? (_ * _) = no λ ()
-Buffer <:? (_ + _) = no λ ()
-Buffer <:? (_ ⇒[ _ ] _) = no λ ()
-Buffer <:? (μ-type _) = no λ ()
-Buffer <:? (ν-type _ _) = no λ ()
 (A ⇒[ mk-kind q π ] B) <:? (A′ ⇒[ mk-kind q′ π′ ] B′) = arr-aux (q ≟q q′) (A′ <:? A) (B <:? B′) (π ⊑π? π′)
 (_ ⇒[ _ ] _) <:? Unit = no λ ()
 (_ ⇒[ _ ] _) <:? Void = no λ ()
 (_ ⇒[ _ ] _) <:? Int = no λ ()
 (_ ⇒[ _ ] _) <:? Float = no λ ()
-(_ ⇒[ _ ] _) <:? Str = no λ ()
-(_ ⇒[ _ ] _) <:? Buffer = no λ ()
 (_ ⇒[ _ ] _) <:? (_ * _) = no λ ()
 (_ ⇒[ _ ] _) <:? (_ + _) = no λ ()
 (_ ⇒[ _ ] _) <:? (μ-type _) = no λ ()
@@ -257,8 +219,6 @@ Buffer <:? (ν-type _ _) = no λ ()
 (_ * _) <:? Void = no λ ()
 (_ * _) <:? Int = no λ ()
 (_ * _) <:? Float = no λ ()
-(_ * _) <:? Str = no λ ()
-(_ * _) <:? Buffer = no λ ()
 (_ * _) <:? (_ + _) = no λ ()
 (_ * _) <:? (_ ⇒[ _ ] _) = no λ ()
 (_ * _) <:? (μ-type _) = no λ ()
@@ -268,8 +228,6 @@ Buffer <:? (ν-type _ _) = no λ ()
 (_ + _) <:? Void = no λ ()
 (_ + _) <:? Int = no λ ()
 (_ + _) <:? Float = no λ ()
-(_ + _) <:? Str = no λ ()
-(_ + _) <:? Buffer = no λ ()
 (_ + _) <:? (_ * _) = no λ ()
 (_ + _) <:? (_ ⇒[ _ ] _) = no λ ()
 (_ + _) <:? (μ-type _) = no λ ()
@@ -279,8 +237,6 @@ Buffer <:? (ν-type _ _) = no λ ()
 μ-type _ <:? Void = no λ ()
 μ-type _ <:? Int = no λ ()
 μ-type _ <:? Float = no λ ()
-μ-type _ <:? Str = no λ ()
-μ-type _ <:? Buffer = no λ ()
 μ-type _ <:? (_ * _) = no λ ()
 μ-type _ <:? (_ + _) = no λ ()
 μ-type _ <:? (_ ⇒[ _ ] _) = no λ ()
@@ -290,8 +246,6 @@ Buffer <:? (ν-type _ _) = no λ ()
 ν-type _ _ <:? Void = no λ ()
 ν-type _ _ <:? Int = no λ ()
 ν-type _ _ <:? Float = no λ ()
-ν-type _ _ <:? Str = no λ ()
-ν-type _ _ <:? Buffer = no λ ()
 ν-type _ _ <:? (_ * _) = no λ ()
 ν-type _ _ <:? (_ + _) = no λ ()
 ν-type _ _ <:? (_ ⇒[ _ ] _) = no λ ()
@@ -315,7 +269,3 @@ rigid _ _ <:? Int = no λ ()
 Int <:? rigid _ _ = no λ ()
 rigid _ _ <:? Float = no λ ()
 Float <:? rigid _ _ = no λ ()
-rigid _ _ <:? Str = no λ ()
-Str <:? rigid _ _ = no λ ()
-rigid _ _ <:? Buffer = no λ ()
-Buffer <:? rigid _ _ = no λ ()

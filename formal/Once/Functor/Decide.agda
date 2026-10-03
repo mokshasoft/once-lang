@@ -20,12 +20,11 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (∃-syntax; _,_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
-open import Once.Type using (Type; Unit; Void; Int; Float; Str; Buffer; rigid; k-base; k-any;
+open import Once.Type using (Type; Unit; Void; Int; Float; rigid; k-base; k-any;
                              _*_; _+_; _⇒[_]_; μ-type; ν-type;
                              Functor; K; Id; _⊕_; _⊗_)
 open import Once.Functor.Translate
-  using (IsBaseType; base-Unit; base-Void; base-Int; base-Float;
-         base-Str; base-Buffer; base-Prod; base-Sum; base-rigid;
+  using (IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; base-rigid;
          IsConcrete; con-base; con-fun;
          WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod)
 
@@ -35,8 +34,6 @@ isBaseType? Unit   = just base-Unit
 isBaseType? Void   = just base-Void
 isBaseType? Int    = just base-Int
 isBaseType? Float  = just base-Float
-isBaseType? Str    = just base-Str
-isBaseType? Buffer = just base-Buffer
 isBaseType? (A * B) with isBaseType? A | isBaseType? B
 ... | just bA | just bB = just (base-Prod bA bB)
 ... | _       | _       = nothing
@@ -68,8 +65,6 @@ isBaseType?-complete base-Unit   = base-Unit , refl
 isBaseType?-complete base-Void   = base-Void , refl
 isBaseType?-complete base-Int    = base-Int , refl
 isBaseType?-complete base-Float  = base-Float , refl
-isBaseType?-complete base-Str    = base-Str , refl
-isBaseType?-complete base-Buffer = base-Buffer , refl
 isBaseType?-complete base-rigid  = base-rigid , refl
 isBaseType?-complete (base-Prod bA bB)
   with isBaseType?-complete bA | isBaseType?-complete bB
@@ -83,8 +78,6 @@ isConcrete?-complete (con-base base-Unit)   = con-base base-Unit , refl
 isConcrete?-complete (con-base base-Void)   = con-base base-Void , refl
 isConcrete?-complete (con-base base-Int)    = con-base base-Int , refl
 isConcrete?-complete (con-base base-Float)  = con-base base-Float , refl
-isConcrete?-complete (con-base base-Str)    = con-base base-Str , refl
-isConcrete?-complete (con-base base-Buffer) = con-base base-Buffer , refl
 isConcrete?-complete (con-base base-rigid)  = con-base base-rigid , refl
 isConcrete?-complete (con-base (base-Prod bA bB))
   with isBaseType?-complete (base-Prod bA bB)

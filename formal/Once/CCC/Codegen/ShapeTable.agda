@@ -39,7 +39,7 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 
-open import Once.IRTy using (IRTy; IRFunctor; Unit; Void; Int; Float; Str; Buffer;
+open import Once.IRTy using (IRTy; IRFunctor; Unit; Void; Int; Float;
   _*_; _⇛_; μ-type; ν-type; K; Id; _⊕_; _⊗_)
   renaming (_+_ to _+ᵗ_)
 open import Once.IR using (⟦_⟧TI; IR; AllocMode; Heap; Stack;
@@ -122,8 +122,6 @@ func-eq _       _       = false
 ty-eq Unit      Unit      = true
 ty-eq Int       Int       = true
 ty-eq Float     Float     = true
-ty-eq Str       Str       = true
-ty-eq Buffer    Buffer    = true
 ty-eq (a * b)   (c * d)   = ty-eq a c ∧ ty-eq b d
 ty-eq (a +ᵗ b)  (c +ᵗ d)  = ty-eq a c ∧ ty-eq b d
 ty-eq (a ⇛ b)   (c ⇛ d)   = ty-eq a c ∧ ty-eq b d
@@ -598,7 +596,7 @@ module Sem (FS : FrameSemantics) where
      shape-unit; shape-pair; shape-closure; shape-inl; shape-inr;
      CellShapeAt; cell-shape-ptr; cell-shape-inline;
      shape-inl-reg; shape-inr-reg;
-     shape-μ; shape-ν-susp; shape-int; shape-float; shape-str; shape-buffer;
+     shape-μ; shape-ν-susp; shape-int; shape-float;
      shape-closure-reg)
   open import Once.CCC.Machine.LocMatchesMode using (LocMatchesMode)
   open import Once.CCC.Machine.Allocation using (module FrontierInvariant)
@@ -748,8 +746,6 @@ module Sem (FS : FrameSemantics) where
   ty-eq-sound Unit Unit ok = refl
   ty-eq-sound Int Int ok = refl
   ty-eq-sound Float Float ok = refl
-  ty-eq-sound Str Str ok = refl
-  ty-eq-sound Buffer Buffer ok = refl
   ty-eq-sound (a * b) (c * d) ok
     rewrite ty-eq-sound a c (proj₁ (∧-split (ty-eq a c) _ ok))
           | ty-eq-sound b d (proj₂ (∧-split (ty-eq a c) _ ok)) = refl
@@ -939,8 +935,6 @@ module Sem (FS : FrameSemantics) where
   site-load-ptr (e-repr Void)   () _
   site-load-ptr (e-repr Int)    () _
   site-load-ptr (e-repr Float)  () _
-  site-load-ptr (e-repr Str)    () _
-  site-load-ptr (e-repr Buffer) () _
 
   -- a sum shape's node carries a written tag (0 for inl, 1 for inr)
   tag-of-shape : ∀ {m alloc A B loc ls} → ShapeAt m alloc (A +ᵗ B) loc ls
@@ -994,8 +988,6 @@ module Sem (FS : FrameSemantics) where
   site-branch-tag (e-repr Void)   () _
   site-branch-tag (e-repr Int)    () _
   site-branch-tag (e-repr Float)  () _
-  site-branch-tag (e-repr Str)    () _
-  site-branch-tag (e-repr Buffer) () _
   site-branch-tag (e-repr (a * b)) () _
   site-branch-tag (e-repr (a ⇛ b)) () _
 
@@ -1074,8 +1066,6 @@ module Sem (FS : FrameSemantics) where
                     (read-uw ls hl' v' (sucLoc nl) uw cp) b
   shape-uw {loc = l} {ls = ls} hl' v' uw (shape-int b r)   = shape-int b (read-uw ls hl' v' l uw r)
   shape-uw {loc = l} {ls = ls} hl' v' uw (shape-float b r) = shape-float b (read-uw ls hl' v' l uw r)
-  shape-uw hl' v' uw (shape-str b)    = shape-str b
-  shape-uw hl' v' uw (shape-buffer b) = shape-buffer b
 
   cell-uw {ls = ls} cl hl' v' uw (cell-shape-ptr r bf sh) =
     cell-shape-ptr (read-uw ls hl' v' cl uw r) bf (shape-uw hl' v' uw sh)

@@ -57,7 +57,6 @@ mutual
   data Rii : ∀ {ctx e A A′ Ψ Ψ′} → ctx ⊢ᵢ e ∶ A ⨾ Ψ → ctx ⊢ᵢ e ∶ A′ ⨾ Ψ′ → Set where
     ii-int   : ∀ {n} → Rii {ctx} (t-int n) (t-int n)
     ii-float : ∀ {i f l p} → Rii {ctx} (t-float i f l p) (t-float i f l p)
-    ii-str   : ∀ {s} → Rii {ctx} (t-str s) (t-str s)
     ii-unit  : Rii {ctx} t-unit t-unit
     ii-unit-var : Rii {ctx} t-unit-var t-unit-var
     ii-resolved : ∀ {cn n n′ l l′ c c′} → Rii {ctx} (t-var-resolved {cn = cn} {T = T} n l c) (t-var-resolved {T = T′} n′ l′ c′)

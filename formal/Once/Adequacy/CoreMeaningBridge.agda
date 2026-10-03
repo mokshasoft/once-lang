@@ -422,7 +422,6 @@ module _ {δ : GM.DefSem} where
 
   bridge-i V ag (t-int n) dγ = refl
   bridge-i V ag (t-float i f l p) dγ = refl
-  bridge-i V ag (t-str s′) dγ = refl
   bridge-i V ag t-unit dγ = refl
   bridge-i V ag t-unit-var dγ = refl
   bridge-i V ag (t-var-local {eV = Once.Surface.Context.svar i} _) dγ = refl

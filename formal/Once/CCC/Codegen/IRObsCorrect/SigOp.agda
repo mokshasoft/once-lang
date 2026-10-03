@@ -29,7 +29,7 @@ module Once.CCC.Codegen.IRObsCorrect.SigOp (o : CanonicalName) (tbl : DL.List IR
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
 open import Once.Type using () renaming (Unit to Unitᵀ; Void to Voidᵀ; Float to Floatˢ)
-open import Once.Functor.Translate using (IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Str; base-Buffer; base-Prod; base-Sum; base-rigid)
+open import Once.Functor.Translate using (IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; base-rigid)
 open import Function using () renaming (id to idᶠ)
 open import Data.List.Properties using (++-identityʳ)
 open import Once.Denotation.Trace using (mk-event)
@@ -102,17 +102,9 @@ module SigOpC {FS : FrameSemantics} where
   --   * `Void` / a rigid parameter — there is no argument;
   --   * REGISTER-RESIDENT `Int`/`Float` — `decode-at`'s two literal clauses;
   --   * BEHIND A POINTER — `readTyped`, adequate at every `Readable` type.
-  -- What is left is a pointer to a value `readTyped` cannot read: one holding
-  -- a `Str`/`Buffer`, whose residence (`valid-str-wf`/`valid-buffer-wf`)
-  -- carries no content.
+  -- Every base type is `Readable` (D258: `Str`/`Buffer` are removed), so no
+  -- argument is left undecoded.
   ------------------------------------------------------------------------
-  postulate
-    decode-boxed : ∀ {A : Type} (bt : IsBaseType A) {mIn alloc}
-                     (x : ⟦ ⌊ A ⌋ ⟧) (s : LocState FS) (loc : ValueLocation FS)
-                 → readable? A ≡ nothing
-                 → ValidAtWF mIn alloc {⌊ A ⌋} x loc s
-                 → readTyped A loc s ≡ just (forgetᵇ bt (subst idᶠ (cohᴰ A) x))
-
   -- Behind a pointer, every base type is read by `readTyped` (`Unit` reads `tt`
   -- either way).
   decode-ptr : ∀ {A : Type} (bt : IsBaseType A) (loc : ValueLocation FS) (s : LocState FS)
@@ -121,19 +113,9 @@ module SigOpC {FS : FrameSemantics} where
   decode-ptr base-Void       _ _ = refl
   decode-ptr base-Int        _ _ = refl
   decode-ptr base-Float      _ _ = refl
-  decode-ptr base-Str        _ _ = refl
-  decode-ptr base-Buffer     _ _ = refl
   decode-ptr (base-Prod _ _) _ _ = refl
   decode-ptr (base-Sum _ _)  _ _ = refl
   decode-ptr base-rigid      _ _ = refl
-
-  arg-loc : ∀ {A : Type} (bt : IsBaseType A) {mIn alloc}
-              (x : ⟦ ⌊ A ⌋ ⟧) (s : LocState FS) (loc : ValueLocation FS)
-              (mr : Maybe (Readable A)) → readable? A ≡ mr
-          → ValidAtWF mIn alloc {⌊ A ⌋} x loc s
-          → readTyped A loc s ≡ just (forgetᵇ bt (subst idᶠ (cohᴰ A) x))
-  arg-loc bt x s loc (just r) _ v = readTyped-adequate r bt v
-  arg-loc bt x s loc nothing  e v = decode-boxed bt x s loc e v
 
   -- A register holds an `Int` or a `Float`, nothing else.
   arg-reg : ∀ {A : Type} (bt : IsBaseType A) (fit : FitsInRegI ⌊ A ⌋)
@@ -144,8 +126,6 @@ module SigOpC {FS : FrameSemantics} where
   arg-reg base-Float fits-float x s eq rewrite eq = refl
   arg-reg base-Unit       () x s eq
   arg-reg base-Void       () x s eq
-  arg-reg base-Str        () x s eq
-  arg-reg base-Buffer     () x s eq
   arg-reg (base-Prod _ _) () x s eq
   arg-reg (base-Sum _ _)  () x s eq
   arg-reg base-rigid      () x s eq
@@ -157,13 +137,11 @@ module SigOpC {FS : FrameSemantics} where
   arg-agree base-Unit  x  s inp = refl
   arg-agree base-Void  () s inp
   arg-agree base-rigid () s inp
-  arg-agree {A} bt x s (in-loc loc v _ eq) rewrite eq =
-    trans (decode-ptr bt loc s) (arg-loc bt x s loc (readable? A) refl v)
+  arg-agree bt x s (in-loc loc v _ eq) rewrite eq =
+    trans (decode-ptr bt loc s) (readTyped-adequate (readable-base bt) bt v)
   arg-agree bt x s (in-reg fit eq) = arg-reg bt fit x s eq
   arg-agree base-Int        x s (in-unit ())
   arg-agree base-Float      x s (in-unit ())
-  arg-agree base-Str        x s (in-unit ())
-  arg-agree base-Buffer     x s (in-unit ())
   arg-agree (base-Prod _ _) x s (in-unit ())
   arg-agree (base-Sum _ _)  x s (in-unit ())
 
@@ -256,6 +234,8 @@ module SigOpC {FS : FrameSemantics} where
   pure-input-aux si fit r-unit       x s (in-reg () _)
   pure-input-aux si fit (r-sum _ _)  x s (in-reg () _)
   pure-input-aux si fit r-float      x s (in-unit ())
+  pure-input-aux si fit r-void       () s _
+  pure-input-aux si fit r-rigid      () s _
   pure-input-aux si fit (r-sum _ _)  x s (in-unit ())
   pure-input-aux si fit (r-pair _ _) x s (in-reg () _)
   pure-input-aux si fit r-int        x s (in-unit ())
@@ -419,9 +399,9 @@ module SigOpC {FS : FrameSemantics} where
   calls-route si e d nothing    = obs-correct-sigop-rest si
 
   by-sem : ∀ {A B} (si : SigOpInfo A B) (c : SigOpSem A B) → sem si ≡ c → Declared-at σᶠ si c → IRObsCorrectF (SigOp si)
-  by-sem {A} {B} si (pureV f)     e d = pure-route si (pureV f) e refl d (fits-in-reg? B) (readable? A)
-  by-sem {A} {B} si (primV p)     e d = pure-route si (primV p) e refl d (fits-in-reg? B) (readable? A)
-  by-sem {A} {B} si ffiV          e d = pure-route si ffiV e refl d (fits-in-reg? B) (readable? A)
+  by-sem {A} {B} si (pureV f)     e d = pure-route si (pureV f) e refl d (fits-in-reg? B) (just (readable-base (baseA si)))
+  by-sem {A} {B} si (primV p)     e d = pure-route si (primV p) e refl d (fits-in-reg? B) (just (readable-base (baseA si)))
+  by-sem {A} {B} si ffiV          e d = pure-route si ffiV e refl d (fits-in-reg? B) (just (readable-base (baseA si)))
   by-sem         si (emitsV refl) e d = emits-obs si e
   by-sem         si (haltsV refl) e d = halts-obs si e
   by-sem {B = B} si callsV        e d = calls-route si e d (fits-in-reg? B)

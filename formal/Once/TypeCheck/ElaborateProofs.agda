@@ -43,7 +43,7 @@ open import Once.Float.Decimal using (decimalOf)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst; cong; cong₂; sym; trans)
 open import Once.Type
 open Once.Type using (showQuantity; showType) public
-open import Once.IR as IR hiding (Unit; Void; _*_; _+_; μ-type; ν-type; Int; Float; Str; Buffer; K; Id; _⊕_; _⊗_)
+open import Once.IR as IR hiding (Unit; Void; _*_; _+_; μ-type; ν-type; Int; Float; K; Id; _⊕_; _⊗_)
 open import Once.IRTy.WF using (wf-⌊⌋)
 open import Once.SigOp.Info using (SigOpInfo; mk-info'; pureV; emitsV; haltsV)
 open import Once.CanonicalName using (CanonicalName; bare; showCanonical; gen)
@@ -65,7 +65,7 @@ open import Once.Surface.Syntax as Surface using (lookupUsage; tailUsage; _+ᵘ_
   renaming (Ctx to SCtx; Expr to SExpr; ∅ to S∅; _,_ to _S,_; _,_^_ to _S,_^_)
 open import Once.Surface.Thinning using (weaken; weakenFromEmpty)
 open import Once.Surface.Properties using (+ᵘ-identityˡ; +ᵘ-identityʳ; *ᵘ-zeroʳ)
-open import Once.Surface.Elaborate as Elab using (elaborate; intLit; strLit)
+open import Once.Surface.Elaborate as Elab using (elaborate; intLit)
 open import Once.TypeCheck.Classify public
 import Once.Functor.Translate
 open import Once.Functor.Translate using (IsConcrete; con-base; con-fun; IsBaseType)
@@ -116,14 +116,6 @@ checkElab-fallback-RFloat {ctx} i f l p with Float <:? Float
 ... | no ¬eq   = ⊥-elim (¬eq (<:-refl Float))
 
 -- RStringLit always infers at type `Str`.
-checkElab-fallback-RStringLit :
-  ∀ {ctx : NamedCtx} (s : String)
-  → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ f →
-      checkElab ctx (Raw.RStringLit s) Str
-        ≡ success Surface.zeroUsage eE d f)))
-checkElab-fallback-RStringLit {ctx} s with Str <:? Str
-... | yes _    = _ , _ , _ , refl
-... | no ¬eq   = ⊥-elim (¬eq (<:-refl Str))
 
 -- RUnit always infers at type `Unit`.
 checkElab-fallback-RUnit :
@@ -748,7 +740,6 @@ resolveExprWF polys _ imps userFns _ (Surface.int z) = Surface.int z
 -- A float literal has no names to resolve, exactly like the other literals;
 -- the witness passes through untouched.
 resolveExprWF polys _ imps userFns _ (Surface.float d) = Surface.float d
-resolveExprWF polys _ imps userFns _ (Surface.str s) = Surface.str s
 resolveExprWF polys pAcc imps userFns fresh (Surface.add a b) =
   Surface.add (resolveExprWF polys pAcc imps userFns fresh a) (resolveExprWF polys pAcc imps userFns fresh b)
 resolveExprWF polys pAcc imps userFns fresh (Surface.sub a b) =
@@ -975,11 +966,6 @@ resolveExpr-int :
   ∀ {n} {Γ : Surface.Ctx n} (polys : PolyCtx) (imps : String → Imports) (userFns : Imports) (fresh : ℕ) (z : Data.Integer.ℤ)
   → resolveExpr {Γ = Γ} polys imps userFns fresh (Surface.int z) ≡ Surface.int z
 resolveExpr-int _ _ _ _ _ = refl
-
-resolveExpr-str :
-  ∀ {n} {Γ : Surface.Ctx n} (polys : PolyCtx) (imps : String → Imports) (userFns : Imports) (fresh : ℕ) (s : String)
-  → resolveExpr {Γ = Γ} polys imps userFns fresh (Surface.str s) ≡ Surface.str s
-resolveExpr-str _ _ _ _ _ = refl
 
 -- Resolution commutes with arithmetic (add / sub / mul / div / mod').
 resolveExpr-add :

@@ -2,7 +2,6 @@ module Once.Value
   ( Value (..)
   ) where
 
-import Data.Text (Text)
 
 import Once.IR (IR)
 
@@ -13,7 +12,7 @@ import Once.IR (IR)
 -- - VPair: product
 -- - VLeft/VRight: coproduct (sum)
 -- - VClosure: exponential (function)
--- - VInt/VFloat/VString: primitive base types
+-- - VInt/VFloat: primitive base types
 data Value
   = VUnit                      -- ^ Unit value (terminal)
   | VPair Value Value          -- ^ Pair value: (a, b)
@@ -22,7 +21,6 @@ data Value
   | VClosure [(IR, Value)] IR  -- ^ Closure: captured environment + body
   | VInt Integer               -- ^ Integer value
   | VFloat Double              -- ^ Float value (OCP-0001)
-  | VString Text               -- ^ String value (Utf8)
 
 -- | Custom Eq instance for Value
 -- Note: Closures always compare unequal (IR has no Eq instance)
@@ -34,7 +32,6 @@ instance Eq Value where
   VClosure _ _ == VClosure _ _ = False  -- Can't compare IR
   VInt n1 == VInt n2 = n1 == n2
   VFloat f1 == VFloat f2 = f1 == f2
-  VString s1 == VString s2 = s1 == s2
   _ == _ = False
 
 -- | Custom Show instance for Value
@@ -47,4 +44,3 @@ instance Show Value where
   show (VClosure _ _) = "VClosure <...>"
   show (VInt n) = "VInt " ++ show n
   show (VFloat f) = "VFloat " ++ show f
-  show (VString s) = "VString " ++ show s

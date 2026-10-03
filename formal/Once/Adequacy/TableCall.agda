@@ -32,7 +32,7 @@ open import Relation.Nullary using (yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; cong; trans)
 
 open import Once.Postulates using (extensionality)
-open import Once.Type using (Type; Unit; Void; Int; Float; Str; Buffer; _*_; _+_; _⇒[_]_; mk-kind; Zero; One; Many;
+open import Once.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; mk-kind; Zero; One; Many;
   μ-type; ν-type; rigid)
 open import Once.IR using (IR)
 open import Once.IRTy using (IRTy; ⌊_⌋; _≟IRTy_)
@@ -80,8 +80,6 @@ abiT (μ-type F)   M = M
 abiT (ν-type F π) M = M
 abiT Int          M = M
 abiT Float        M = M
-abiT Str          M = M
-abiT Buffer       M = M
 abiT (rigid k i)  M = M
 
 -- THE ABI ROUND TRIP: a reference to the head entry, compiled from `ir`, means
@@ -113,6 +111,4 @@ abi (μ-type F)   x es ir = tableEnv-hit (bare x) _ _ ir es tt
 abi (ν-type F π) x es ir = tableEnv-hit (bare x) _ _ ir es tt
 abi Int          x es ir = tableEnv-hit (bare x) _ _ ir es tt
 abi Float        x es ir = tableEnv-hit (bare x) _ _ ir es tt
-abi Str          x es ir = tableEnv-hit (bare x) _ _ ir es tt
-abi Buffer       x es ir = tableEnv-hit (bare x) _ _ ir es tt
 abi (rigid k i)  x es ir = tableEnv-hit (bare x) _ _ ir es tt

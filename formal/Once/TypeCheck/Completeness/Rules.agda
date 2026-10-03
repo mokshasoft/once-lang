@@ -36,7 +36,7 @@ open import Data.Product using (∃; ∃-syntax; Σ-syntax; _×_; _,_; proj₁; 
 open import Relation.Nullary using (yes; no; Dec)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; trans; sym; subst)
 open import Data.String.Properties as StrProp using (_≟_)
-open import Once.Type as T using (Type; Unit; Int; Str; Void; Float; Buffer;
+open import Once.Type as T using (Type; Unit; Int; Void; Float;
                                   _*_; _+_; _⇒[_]_; Quantity; _≤q_;
                                   Zero; One; Many)
 open import Once.TypeCheck.Raw as Raw
@@ -82,7 +82,7 @@ open import Once.IRTy.WF using (wf-⌊⌋)
 open import Once.Denotation.Realize using ()
 open import Once.Surface.Syntax as Srf using (Expr; lift-morphism)
 open import Once.Type using (Functor; μ-type; ⟦_⟧T)
-open import Once.Type.Sub using (_<:_; _<:?_; <:-refl; _⊑π_; _⊑π?_; ⊑-pure; sub-int; sub-float; sub-str; sub-unit; sub-prod; sub-sum)
+open import Once.Type.Sub using (_<:_; _<:?_; <:-refl; _⊑π_; _⊑π?_; ⊑-pure; sub-int; sub-float; sub-unit; sub-prod; sub-sum)
 open import Once.Type.DecEq using (_≟T_; _≟F_)
 open import Once.TypeCheck.Classify using (lookupLocal; lookupImport; lookupPolyPrefix⇒lookupPoly;
   inspectLookupLocal; inspectLookupImport; llv-found; llv-not-found; liv-found; liv-not-found;
@@ -118,11 +118,6 @@ infer-complete-RInt :
       inferElab ctx (RInt n) ≡ success Int zeroUsage eE d f
 infer-complete-RInt n = _ , _ , _ , refl
 
-infer-complete-RStringLit :
-  ∀ {ctx : NamedCtx} (s : String)
-  → ∃[ eE ] ∃[ d ] ∃[ f ]
-      inferElab ctx (RStringLit s) ≡ success Str zeroUsage eE d f
-infer-complete-RStringLit s = _ , _ , _ , refl
 
 infer-complete-RUnit :
   ∀ {ctx : NamedCtx}
@@ -201,10 +196,6 @@ infer-complete-RQualified {ctx} {name} {alias} {T} eq conc = go T conc eq
     go Int           _ eq' = _ , _ , _ ,
       cong proj₁ (helper _ eq')
     go Float         _ eq' = _ , _ , _ ,
-      cong proj₁ (helper _ eq')
-    go Str           _ eq' = _ , _ , _ ,
-      cong proj₁ (helper _ eq')
-    go Buffer        _ eq' = _ , _ , _ ,
       cong proj₁ (helper _ eq')
     go (T.rigid T.k-base _) _ eq' = _ , _ , _ ,
       cong proj₁ (helper _ eq')
@@ -313,10 +304,6 @@ infer-complete-RResolved-view {ctx} {cn} {T} (gv-other ng') eqv _ eq conc =
     go Int           _ eq' = _ , _ , _ ,
       trans (inferElabV-RResolved-J ctx cn _ eqv) (cong proj₁ (helper _ eq'))
     go Float         _ eq' = _ , _ , _ ,
-      trans (inferElabV-RResolved-J ctx cn _ eqv) (cong proj₁ (helper _ eq'))
-    go Str           _ eq' = _ , _ , _ ,
-      trans (inferElabV-RResolved-J ctx cn _ eqv) (cong proj₁ (helper _ eq'))
-    go Buffer        _ eq' = _ , _ , _ ,
       trans (inferElabV-RResolved-J ctx cn _ eqv) (cong proj₁ (helper _ eq'))
     go (T.rigid T.k-base _) _ eq' = _ , _ , _ ,
       trans (inferElabV-RResolved-J ctx cn _ eqv) (cong proj₁ (helper _ eq'))

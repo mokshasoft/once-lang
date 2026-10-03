@@ -24,12 +24,11 @@ open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst; cong; cong₂)
 
-open import Once.Type using (Type; Purity; pure; eff; Unit; Void; Int; Float; Str; Buffer;
+open import Once.Type using (Type; Purity; pure; eff; Unit; Void; Int; Float;
                              _*_; _+_; _⇒[_]_; μ-type; ν-type; rigid;
                              mk-kind; Zero; One; Many)
 open import Once.Res using (Res; stopped; returns; mapRes; Res-rel; rel-stopped; rel-returns)
-open import Once.Functor.Translate using (IsBaseType; base-Unit; base-Void; base-Int; base-Float;
-  base-Str; base-Buffer; base-Prod; base-Sum; base-rigid; IsConcrete; con-base; con-fun)
+open import Once.Functor.Translate using (IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; base-rigid; IsConcrete; con-base; con-fun)
 import Once.Semantics.Machine as Val
 open import Once.Denotation.GradedOps using (prjB; injB; injBᵍ; embν; mapEmbν)
 open import Once.Semantics.Functor using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF)
@@ -74,8 +73,6 @@ RelGV Unit        _ _ = ⊤
 RelGV Void        () _
 RelGV Int         x y = x ≡ y
 RelGV Float       x y = x ≡ y
-RelGV Str         x y = x ≡ y
-RelGV Buffer      x y = x ≡ y
 RelGV (μ-type F)  x y = x ≡ y
 RelGV (ν-type F pure) x y = x ∼ᵖᵈ y
 RelGV (ν-type F eff)  x y = x ∼ᵈ y
@@ -148,8 +145,6 @@ prjB-rel base-Unit   _ = refl
 prjB-rel base-Void   {()}
 prjB-rel base-Int    r = r
 prjB-rel base-Float  r = r
-prjB-rel base-Str    r = r
-prjB-rel base-Buffer r = r
 prjB-rel (base-Prod ia ib) {_ , _} {_ , _} (ra , rb) = cong₂ _,_ (prjB-rel ia ra) (prjB-rel ib rb)
 prjB-rel (base-Sum ia ib) {inj₁ _} {inj₁ _} r = cong inj₁ (prjB-rel ia r)
 prjB-rel (base-Sum ia ib) {inj₂ _} {inj₂ _} r = cong inj₂ (prjB-rel ib r)
@@ -162,8 +157,6 @@ injB-rel base-Unit   x = tt
 injB-rel base-Void   ()
 injB-rel base-Int    x = refl
 injB-rel base-Float  x = refl
-injB-rel base-Str    x = refl
-injB-rel base-Buffer x = refl
 injB-rel (base-Prod ia ib) (x , y) = injB-rel ia x , injB-rel ib y
 injB-rel (base-Sum ia ib) (inj₁ x) = injB-rel ia x
 injB-rel (base-Sum ia ib) (inj₂ y) = injB-rel ib y
@@ -174,8 +167,6 @@ injBᵍ-rel base-Unit   x = tt
 injBᵍ-rel base-Void   ()
 injBᵍ-rel base-Int    x = refl
 injBᵍ-rel base-Float  x = refl
-injBᵍ-rel base-Str    x = refl
-injBᵍ-rel base-Buffer x = refl
 injBᵍ-rel (base-Prod ia ib) (x , y) = injBᵍ-rel ia x , injBᵍ-rel ib y
 injBᵍ-rel (base-Sum ia ib) (inj₁ x) = injBᵍ-rel ia x
 injBᵍ-rel (base-Sum ia ib) (inj₂ y) = injBᵍ-rel ib y

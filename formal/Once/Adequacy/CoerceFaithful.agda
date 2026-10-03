@@ -137,8 +137,6 @@ mutual
   coeIR-lift sub-unit   v = cong (λ h → h v) (liftFn-id {A = Unit})
   coeIR-lift sub-int    v = cong (λ h → h v) (liftFn-id {A = Ty.Int})
   coeIR-lift sub-float  v = cong (λ h → h v) (liftFn-id {A = Ty.Float})
-  coeIR-lift sub-str    v = cong (λ h → h v) (liftFn-id {A = Ty.Str})
-  coeIR-lift sub-buffer v = cong (λ h → h v) (liftFn-id {A = Ty.Buffer})
   coeIR-lift (sub-μ {F}) v = cong (λ h → h v) (liftFn-id {A = Ty.μ-type F})
   coeIR-lift (sub-ν {F} {π} _) v = cong (λ h → h v) (liftFn-id {A = Ty.ν-type F π})
   coeIR-lift sub-rigid ()   -- D243: no value of a rigid parameter
@@ -252,8 +250,6 @@ vf-sem _ vf-void   = record { D = refl ; pt = λ () }
 vf-sem _ vf-unit   = record { D = refl ; pt = λ _ → refl }
 vf-sem _ vf-int    = record { D = refl ; pt = λ _ → refl }
 vf-sem _ vf-float  = record { D = refl ; pt = λ _ → refl }
-vf-sem _ vf-str    = record { D = refl ; pt = λ _ → refl }
-vf-sem _ vf-buffer = record { D = refl ; pt = λ _ → refl }
 vf-sem _ vf-μ      = record { D = refl ; pt = λ _ → refl }
 vf-sem _ vf-ν      = record { D = refl ; pt = λ _ → refl }
 vf-sem _ vf-rigid  = record { D = refl ; pt = λ () }

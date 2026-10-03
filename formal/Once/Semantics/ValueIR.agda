@@ -62,8 +62,6 @@ base-coh (μ-type F)    = refl
 base-coh (ν-type F _)    = refl
 base-coh Int           = refl
 base-coh Float         = refl
-base-coh Str           = refl
-base-coh Buffer        = refl
 base-coh (rigid _ _)   = refl
 
 -- The translated SFunctor is unchanged by re-grading (its only Type-payloads
@@ -92,6 +90,4 @@ coh (μ-type F)    = cong μS (tF-coh F)
 coh (ν-type F _)    = cong νS (tF-coh F)
 coh Int           = refl
 coh Float         = refl
-coh Str           = refl
-coh Buffer        = refl
 coh (rigid _ _)   = refl

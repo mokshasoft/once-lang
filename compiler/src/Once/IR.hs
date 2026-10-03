@@ -2,7 +2,6 @@ module Once.IR
   ( IR (..)
   ) where
 
-import Data.Text (Text)
 
 import Once.Type (Type, Name)
 import qualified MAlonzo.Code.Once.Arith.IR as MA
@@ -49,7 +48,6 @@ data IR
   | Prim Name Type Type        -- ^ Primitive operation: name, input type, output type
 
   -- Literals
-  | StringLit Text             -- ^ String literal (Utf8 encoded)
 
   -- Recursive types (Fixed points)
   -- These are the isomorphism witnesses for Fix F ≅ F (Fix F)

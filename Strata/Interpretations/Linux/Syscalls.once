@@ -44,12 +44,6 @@ signature getegid : Eff Unit Int
 -- | File descriptor type (Int alias for clarity)
 -- fd: 0 = stdin, 1 = stdout, 2 = stderr
 
--- | Read from file descriptor into buffer, returns bytes read
-signature fd_read : Eff (Int * Buffer * Int) Int
-
--- | Write buffer to file descriptor, returns bytes written
-signature fd_write : Eff (Int * Buffer * Int) Int
-
 -- | Close file descriptor
 signature fd_close : Eff Int Int
 
@@ -67,44 +61,8 @@ signature fd_dup2 : Eff (Int * Int) Int
 -- O_RDONLY = 0, O_WRONLY = 1, O_RDWR = 2
 -- O_CREAT = 64, O_TRUNC = 512, O_APPEND = 1024
 
--- | Open file, returns file descriptor
-signature open : Eff (String * Int * Int) Int
-
--- | Create file (shorthand for open with O_CREAT | O_WRONLY | O_TRUNC)
-signature creat : Eff (String * Int) Int
-
--- | Unlink (delete) file
-signature unlink : Eff (String) Int
-
--- | Rename file
-signature rename : Eff (String * String) Int
-
--- | Create symbolic link
-signature symlink : Eff (String * String) Int
-
--- | Read symbolic link target into buffer
-signature readlink : Eff (String * Buffer * Int) Int
-
--- | Get file status (returns encoded stat structure in buffer)
-signature stat : Eff (String * Buffer) Int
-
--- | Get file status (don't follow symlinks)
-signature lstat : Eff (String * Buffer) Int
-
--- | Get file status by file descriptor
-signature fstat : Eff (Int * Buffer) Int
-
--- | Change file permissions
-signature chmod : Eff (String * Int) Int
-
 -- | Change file permissions by file descriptor
 signature fchmod : Eff (Int * Int) Int
-
--- | Change file owner
-signature chown : Eff (String * Int * Int) Int
-
--- | Truncate file to specified length
-signature truncate : Eff (String * Int) Int
 
 -- | Truncate file by file descriptor
 signature ftruncate : Eff (Int * Int) Int
@@ -112,21 +70,6 @@ signature ftruncate : Eff (Int * Int) Int
 ------------------------------------------------------------------------
 -- Directory Operations (D032: All syscalls are effectful)
 ------------------------------------------------------------------------
-
--- | Create directory
-signature mkdir : Eff (String * Int) Int
-
--- | Remove directory
-signature rmdir : Eff (String) Int
-
--- | Change current directory
-signature chdir : Eff (String) Int
-
--- | Get current directory into buffer
-signature getcwd : Eff (Buffer * Int) Int
-
--- | Change root directory
-signature chroot : Eff (String) Int
 
 ------------------------------------------------------------------------
 -- File Seeking (D032: All syscalls are effectful)
@@ -144,45 +87,19 @@ signature lseek : Eff (Int * Int * Int) Int
 -- | Get current time in seconds since epoch
 signature time : Eff Unit Int
 
--- | Get high-resolution time (nanoseconds in buffer)
-signature clock_gettime : Eff (Int * Buffer) Int
-
 -- | Sleep for specified seconds
 signature sleep : Eff Int Int
 
 -- | Sleep for specified microseconds
 signature usleep : Eff Int Int
 
--- | Sleep for specified nanoseconds (timespec in buffer)
-signature nanosleep : Eff (Buffer * Buffer) Int
-
 ------------------------------------------------------------------------
 -- Environment (D032: All syscalls are effectful)
 ------------------------------------------------------------------------
 
--- | Get environment variable value
-signature getenv : Eff (String) (String)
-
--- | Set environment variable
-signature setenv : Eff (String * String * Int) Int
-
--- | Unset environment variable
-signature unsetenv : Eff (String) Int
-
 ------------------------------------------------------------------------
 -- Memory Mapping (D032: All syscalls are effectful)
 ------------------------------------------------------------------------
-
--- | Map memory region
--- prot: PROT_READ=1, PROT_WRITE=2, PROT_EXEC=4
--- flags: MAP_SHARED=1, MAP_PRIVATE=2, MAP_ANONYMOUS=32
-signature mmap : Eff (Int * Int * Int * Int * Int * Int) Buffer
-
--- | Unmap memory region
-signature munmap : Eff (Buffer * Int) Int
-
--- | Change memory protection
-signature mprotect : Eff (Buffer * Int * Int) Int
 
 ------------------------------------------------------------------------
 -- Signals (D032: All syscalls are effectful)
@@ -204,9 +121,6 @@ signature pause : Eff Unit Int
 -- Pipe and IPC (D032: All syscalls are effectful)
 ------------------------------------------------------------------------
 
--- | Create pipe (writes fds to buffer: [read_fd, write_fd])
-signature pipe : Eff Buffer Int
-
 ------------------------------------------------------------------------
 -- Socket Operations (D032: All syscalls are effectful)
 ------------------------------------------------------------------------
@@ -217,46 +131,19 @@ signature pipe : Eff Buffer Int
 -- | Create socket
 signature socket : Eff (Int * Int * Int) Int
 
--- | Bind socket to address (sockaddr in buffer)
-signature bind : Eff (Int * Buffer * Int) Int
-
 -- | Listen for connections
 signature listen : Eff (Int * Int) Int
 
--- | Accept connection, returns new socket fd
-signature accept : Eff (Int * Buffer * Buffer) Int
-
--- | Connect to address
-signature connect : Eff (Int * Buffer * Int) Int
-
--- | Send data on socket
-signature send : Eff (Int * Buffer * Int * Int) Int
-
--- | Receive data from socket
-signature recv : Eff (Int * Buffer * Int * Int) Int
-
 -- | Shutdown socket
 signature shutdown : Eff (Int * Int) Int
-
--- | Set socket option
-signature setsockopt : Eff (Int * Int * Int * Buffer * Int) Int
-
--- | Get socket option
-signature getsockopt : Eff (Int * Int * Int * Buffer * Buffer) Int
 
 ------------------------------------------------------------------------
 -- Polling (D032: All syscalls are effectful)
 ------------------------------------------------------------------------
 
--- | Poll file descriptors (pollfd array in buffer)
-signature poll : Eff (Buffer * Int * Int) Int
-
 ------------------------------------------------------------------------
 -- Random (D032: All syscalls are effectful)
 ------------------------------------------------------------------------
-
--- | Get random bytes into buffer
-signature getrandom : Eff (Buffer * Int * Int) Int
 
 ------------------------------------------------------------------------
 -- Threading (D032: All syscalls are effectful)
@@ -269,18 +156,6 @@ signature getrandom : Eff (Buffer * Int * Int) Int
 -- CLONE_SIGHAND = 0x800     Share signal handlers
 -- CLONE_THREAD = 0x10000    Same thread group
 -- CLONE_PARENT = 0x8000     Share parent
-
--- | Create a new thread
--- clone(flags, stack_ptr) -> thread_id or -1 on error
--- Note: This is a low-level syscall. The stack must be allocated
--- via mmap and prepared with the thread entry point.
-signature clone : Eff (Int * Buffer) Int
-
--- | Futex operations for thread synchronization
--- futex(addr, op, val, timeout, addr2, val3) -> depends on op
--- FUTEX_WAIT = 0    Block if *addr == val
--- FUTEX_WAKE = 1    Wake up to val waiters
-signature futex : Eff (Buffer * Int * Int * Buffer * Buffer * Int) Int
 
 -- | Get thread ID
 signature gettid : Eff Unit Int

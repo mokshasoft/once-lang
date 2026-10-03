@@ -53,7 +53,6 @@ open import Once.Type using (Type; Unit; Int; Float; _*_; _+_)
 data Lit : Set where
   lit-int   : ℤ → Lit
   lit-float : Decimal → Lit          -- a negative literal is a negative decimal (F3)
-  lit-str   : String → Lit
 
 -- The arithmetic, as SATURATED primitive applications: each one is a Pure
 -- SigOp (`Once.Arith.SigOp.Builders`), applied to one argument (a pair for the

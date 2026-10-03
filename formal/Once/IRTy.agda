@@ -86,8 +86,6 @@ mutual
     -- the same leak reaches `μ` through `K Str`. If a future proof succeeds
     -- at one of these types, IT MEANS NOTHING until they are represented.
     -- ──────────────────────────────────────────────────────────────────
-    Str    : IRTy                      -- UTF-8 strings
-    Buffer : IRTy                      -- Raw byte buffers
 
 infixr 40 _⊕_
 infixr 50 _⊗_
@@ -125,8 +123,6 @@ mutual
   ⌊ Type.ν-type F _  ⌋ = ν-type (eraseF F)   -- D233: the grade is erased, as an arrow's
   ⌊ Type.Int         ⌋ = Int
   ⌊ Type.Float       ⌋ = Float
-  ⌊ Type.Str         ⌋ = Str
-  ⌊ Type.Buffer      ⌋ = Buffer
   -- D243: a rigid parameter never reaches a runtime type (a definition is used
   -- at ground instances). It erases to `Void`, matching its value domain `⊥`.
   ⌊ Type.rigid _ _   ⌋ = Void
@@ -157,8 +153,6 @@ data IsBaseTypeI : IRTy → Set where
   base-Void   : IsBaseTypeI Void
   base-Int    : IsBaseTypeI Int
   base-Float  : IsBaseTypeI Float
-  base-Str    : IsBaseTypeI Str
-  base-Buffer : IsBaseTypeI Buffer
   base-Prod   : ∀ {A B} → IsBaseTypeI A → IsBaseTypeI B → IsBaseTypeI (A * B)
   base-Sum    : ∀ {A B} → IsBaseTypeI A → IsBaseTypeI B → IsBaseTypeI (A + B)
 
@@ -176,8 +170,6 @@ IsBaseTypeI-irrelevant base-Unit   base-Unit   = refl
 IsBaseTypeI-irrelevant base-Void   base-Void   = refl
 IsBaseTypeI-irrelevant base-Int    base-Int    = refl
 IsBaseTypeI-irrelevant base-Float  base-Float  = refl
-IsBaseTypeI-irrelevant base-Str    base-Str    = refl
-IsBaseTypeI-irrelevant base-Buffer base-Buffer = refl
 IsBaseTypeI-irrelevant (base-Prod a₁ b₁) (base-Prod a₂ b₂) =
   cong₂ base-Prod (IsBaseTypeI-irrelevant a₁ a₂) (IsBaseTypeI-irrelevant b₁ b₂)
 IsBaseTypeI-irrelevant (base-Sum a₁ b₁) (base-Sum a₂ b₂) =
@@ -204,8 +196,6 @@ irtyTag (μ-type _) = 5
 irtyTag (ν-type _) = 6
 irtyTag Int        = 7
 irtyTag Float      = 8
-irtyTag Str        = 9
-irtyTag Buffer     = 10
 
 mutual
   _≟IRTy_ : (A B : IRTy) → Dec (A ≡ B)
@@ -238,8 +228,6 @@ mutual
   ... | no ne    = no (λ { refl → ne refl })
   ≟IRTy-diag Int    Int    _ = yes refl
   ≟IRTy-diag Float  Float  _ = yes refl
-  ≟IRTy-diag Str    Str    _ = yes refl
-  ≟IRTy-diag Buffer Buffer _ = yes refl
 
   _≟IRFun_ : (F G : IRFunctor) → Dec (F ≡ G)
   K A ≟IRFun K B with A ≟IRTy B
@@ -288,8 +276,6 @@ data FitsInRegI : IRTy → Set where
 ⟦ IntRep , FloatRep ⟧-baseI (ν-type _) = ⊤
 ⟦ IntRep , FloatRep ⟧-baseI Int       = IntRep
 ⟦ IntRep , FloatRep ⟧-baseI Float     = FloatRep
-⟦ IntRep , FloatRep ⟧-baseI Str       = String
-⟦ IntRep , FloatRep ⟧-baseI Buffer    = String
 
 ------------------------------------------------------------------------
 -- The load-bearing definitional fact for Plan 0.52 M2: erasure sends
@@ -339,8 +325,6 @@ mutual
   ⌈ ν-type F ⌉ = T.ν-type ⌈ F ⌉F T.eff   -- canonical grade
   ⌈ Int      ⌉ = T.Int
   ⌈ Float    ⌉ = T.Float
-  ⌈ Str      ⌉ = T.Str
-  ⌈ Buffer   ⌉ = T.Buffer
 
   ⌈_⌉F : IRFunctor → Functor
   ⌈ K A   ⌉F = T.K ⌈ A ⌉
@@ -361,8 +345,6 @@ mutual
   retract-⌈⌉ (ν-type F) = cong ν-type (retract-⌈⌉F F)
   retract-⌈⌉ Int        = refl
   retract-⌈⌉ Float      = refl
-  retract-⌈⌉ Str        = refl
-  retract-⌈⌉ Buffer     = refl
 
   retract-⌈⌉F : ∀ (F : IRFunctor) → eraseF ⌈ F ⌉F ≡ F
   retract-⌈⌉F (K A)   = cong K (retract-⌈⌉ A)

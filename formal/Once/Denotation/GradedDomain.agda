@@ -127,7 +127,5 @@ open νᵖ public
 ⟦ ν-type F eff ⟧ᵛ  = νᵈ (translateF Carrier Carrier F)
 ⟦ Int ⟧ᵛ        = Val.⟦ Int ⟧
 ⟦ Float ⟧ᵛ      = Val.⟦ Float ⟧
-⟦ Str ⟧ᵛ        = Val.⟦ Str ⟧
-⟦ Buffer ⟧ᵛ     = Val.⟦ Buffer ⟧
 -- D243: no runtime value of a rigid parameter (used at ground instances only).
 ⟦ rigid _ _ ⟧ᵛ  = ⊥

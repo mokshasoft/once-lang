@@ -47,8 +47,7 @@ open import Once.Spec.Core.Abstract S using (SigGround; absCtx; absTm; abs-⊢; 
 import Once.TypeCheck.RigidSubst Δ τ r as RS
 open RS using (ρ̂; ρ̂F; ρ̂S; ρ̂-⟦⟧; ρ̂-wf; ρ̂-<:; ρ̂-rf; ρ̂-base; lookup-ρ̂)
 open import Once.Adequacy.CoreAbsSem S using (tr; tr-subst; tr-lam; tr-app; tr-let; tr-unit; tr-pair; tr-fst; tr-snd;
-  tr-inl; tr-inr; tr-case; tr-absurd; tr-roll; tr-fold; tr-unfold; tr-out; tr-coerce; tr-lit-int; tr-lit-float;
-  tr-lit-str; tr-prim; tr-sigop; tr-sub-eff; tr-ref)
+  tr-inl; tr-inr; tr-case; tr-absurd; tr-roll; tr-fold; tr-unfold; tr-out; tr-coerce; tr-lit-int; tr-lit-float; tr-prim; tr-sigop; tr-sub-eff; tr-ref)
 
 ρ̂ₜ : ∀ {n} → G.Tm n → G.Tm n
 ρ̂ₜ t = absTm Δ t ⟪ τ ⟫ₜ
@@ -95,7 +94,6 @@ module WithSG (sg : SigGround) where
   ρ̂ᶜ (GT.⊢coerce p d)  = GT.⊢coerce (ρ̂-<: p) (ρ̂ᶜ d)
   ρ̂ᶜ GT.⊢lit-int       = GT.⊢lit-int
   ρ̂ᶜ GT.⊢lit-float     = GT.⊢lit-float
-  ρ̂ᶜ GT.⊢lit-str       = GT.⊢lit-str
   ρ̂ᶜ {Γ = Γ} {Ψ = Ψ} {π = π} (GT.⊢prim {t = t} p d) =
     subst (λ X → ρ̂S Γ ⊢[ Ψ ] G.prim p (ρ̂ₜ t) ∷ X ! π) (sym (ρ̂-cod p))
       (GT.⊢prim p (subst (λ X → ρ̂S Γ ⊢[ Ψ ] ρ̂ₜ t ∷ X ! π) (ρ̂-dom p) (ρ̂ᶜ d)))
@@ -193,7 +191,6 @@ module WithSG (sg : SigGround) where
   inst-abs (GT.⊢coerce p d) = trans (tr-coerce refl refl refl (IA d)) (cong (GT.⊢coerce (ρ̂-<: p)) (inst-abs d))
   inst-abs GT.⊢lit-int   = tr-lit-int
   inst-abs GT.⊢lit-float = tr-lit-float
-  inst-abs GT.⊢lit-str   = tr-lit-str
   inst-abs {Γ = Γ} (GT.⊢prim p d) =
     trans (tr-isubst′ (sym (primCod-abs Δ p)) _)
       (trans (tr-subst (sym (⌈⌉-⟪⟫ (G.primCod p) τ)) _)
@@ -417,7 +414,6 @@ module WithSG (sg : SigGround) where
   ρ̂ᶜ-ren θ (GT.⊢coerce {Ψ = Ψ} {t = t} p d) = ≅1 _ _ (GT.⊢coerce (ρ̂-<: p)) (U≡ θ Ψ) (T≡ θ t) (ρ̂ᶜ-ren θ d)
   ρ̂ᶜ-ren θ GT.⊢lit-int   = H.trans (ρ̂ᶜ-sU (sym (TH.thin-usage-zeroUsage θ))) (H.sym (rmU (sym (TH.thin-usage-zeroUsage (ρ̂θ θ)))))
   ρ̂ᶜ-ren θ GT.⊢lit-float = H.trans (ρ̂ᶜ-sU (sym (TH.thin-usage-zeroUsage θ))) (H.sym (rmU (sym (TH.thin-usage-zeroUsage (ρ̂θ θ)))))
-  ρ̂ᶜ-ren θ GT.⊢lit-str   = H.trans (ρ̂ᶜ-sU (sym (TH.thin-usage-zeroUsage θ))) (H.sym (rmU (sym (TH.thin-usage-zeroUsage (ρ̂θ θ)))))
   ρ̂ᶜ-ren θ (GT.⊢prim {Ψ = Ψ} {t = t} p d) =
     H.trans (rmA (λ X → X) (sym (ρ̂-cod p)))
       (H.trans (≅1 _ _ (GT.⊢prim p) (U≡ θ Ψ) (T≡ θ t)

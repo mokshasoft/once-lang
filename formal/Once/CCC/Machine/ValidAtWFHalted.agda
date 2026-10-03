@@ -98,5 +98,3 @@ module _ {FS : FrameSemantics} where
       (trans (rl s b (sucLoc nl)) cp) slb
   validAtWF-set-halted {s = s} b (valid-int-wf {loc = loc} bf r) = valid-int-wf bf (trans (rl s b loc) r)
   validAtWF-set-halted {s = s} b (valid-float-wf {loc = loc} bf r) = valid-float-wf bf (trans (rl s b loc) r)
-  validAtWF-set-halted b (valid-str-wf bf) = valid-str-wf bf
-  validAtWF-set-halted b (valid-buffer-wf bf) = valid-buffer-wf bf

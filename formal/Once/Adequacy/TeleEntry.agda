@@ -34,7 +34,7 @@ open import Data.Bool using (true)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
 
 open import Once.Postulates using (extensionality)
-open import Once.Type using (Type; Unit; Void; Int; Float; Str; Buffer; _*_; _+_; _⇒[_]_; mk-kind; Zero; One; Many; pure;
+open import Once.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; mk-kind; Zero; One; Many; pure;
   μ-type; ν-type; rigid)
 open import Once.Functor.Translate using (IsConcrete; con-base; con-fun)
 open import Once.IRTy using (⌊_⌋)
@@ -101,8 +101,6 @@ abi-rel (μ-type F)   v M rel = rel
 abi-rel (ν-type F π) v M rel = rel
 abi-rel Int          v M rel = rel
 abi-rel Float        v M rel = rel
-abi-rel Str          v M rel = rel
-abi-rel Buffer       v M rel = rel
 abi-rel (rigid k i)  v M rel = rel
 
 ------------------------------------------------------------------------

@@ -74,6 +74,11 @@ data TypeError : Set where
   -- feature works and says so, rather than a literal silently meaning nothing.
   FloatLiteralUnsupported  : TypeError
 
+  -- D258 (plan 0.106): `Str` is removed until the abstract machine holds a
+  -- string's content. The lexer and parser still accept a string literal; the
+  -- elaborator rejects it with this error rather than giving it a type.
+  StringLiteralUnsupported : TypeError
+
   -- Mode-specific rejections
   LambdaInInferMode         : TypeError
   LambdaRequiresFunctionType : TypeError
@@ -148,6 +153,9 @@ renderError (NonConcreteSigOpType name T) =
 renderError FloatLiteralUnsupported =
   "Float literals are not supported yet (the lexer and parser accept them; the"
     ++ " elaborator's rule lands with plan 0.71 F3b)"
+renderError StringLiteralUnsupported =
+  "String literals are not supported yet (strings are removed until the machine"
+    ++ " model holds their content, D258)"
 renderError LambdaInInferMode =
   "Lambda without type annotation not supported in inference mode."
 renderError LambdaRequiresFunctionType =

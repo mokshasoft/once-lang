@@ -141,7 +141,6 @@ data RawType : Set where
   RTVoid    : RawType                       -- Void
   RTInt     : RawType                       -- Int
   RTFloat   : RawType                       -- Float
-  RTBuffer  : RawType                       -- Buffer
   RTStr     : RawType                       -- String
   RTProduct : RawType → RawType → RawType   -- A * B
   RTSum     : RawType → RawType → RawType   -- A + B

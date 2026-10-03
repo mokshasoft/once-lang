@@ -36,7 +36,7 @@ open import Relation.Binary.PropositionalEquality using (subst; sym)
 
 open import Once.Res using (mapRes)
 open import Once.Type
-  using (Type; Unit; Void; Int; Str; _*_; _+_; _⇒[_]_; Functor; ⟦_⟧T; μ-type; Quantity; Zero; One; Many; mk-kind)
+  using (Type; Unit; Void; Int; _*_; _+_; _⇒[_]_; Functor; ⟦_⟧T; μ-type; Quantity; Zero; One; Many; mk-kind)
 open import Once.Surface.Syntax using (Expr; Ctx; Usage; lookup; _,_^_; ∅; ⟦_⟧ᶜ; _↾_; _⊑ᵘ_; ⊑[]; _⊑∷_; z≤z; z≤o; z≤m; o≤o; o≤m; m≤m; singleUse; _∷_; _+ᵘ_; _*ᵘ_; _⊔ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many; zeroUsage)
 open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_; fmapT)
 open import Once.Denotation.Phase using (lookupᴰUsed; restrictᴰ; bindᴰ; bindᴰ0)
@@ -247,7 +247,6 @@ sigOpˢ fmt σ si a = fmapT (injectᵇ (conB si)) (sigOpT fmt (ffiE (calls σ)) 
 -- str: `str-lit-semM` is ABSTRACT (postulated, unlike the computing lit-int-semM),
 -- so the literal's value can't be the clean `s`; denote via its own SigOp
 -- (= `strLit`'s evalᴰ), matching the IR by construction (like arith).
-⟦ str s ⟧ˢ fmt σ        dγ = sigOpˢ fmt σ (str-lit-info s) tt
 -- Arith / comparison / div-mod: all elaborate to `SigOp <op>-info` (Pure), so
 -- denote them through the SAME contract (`sigOpˢ`) — `⟦ op a b ⟧ˢ` is then DEFINITIONALLY the
 -- IR side `⟦ <op>IR ∘ ⟨a,b⟩ ⟧ᴰ`, making M3's elaborate-correctness trivial here.

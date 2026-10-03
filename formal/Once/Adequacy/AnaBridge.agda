@@ -41,7 +41,7 @@ open import Once.Res using (Res; stopped; returns; mapRes; Res-rel; rel-stopped;
 open import Once.Word using (Carrier)
 open import Once.Type using (Type; Functor; ⟦_⟧T; ν-type; K; Id; _⊕_; _⊗_)
 open import Once.Functor.Translate using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod; translateF;
-  IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Str; base-Buffer; base-Prod; base-Sum)
+  IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum)
 open import Once.Semantics.Machine using (coerce-ν-in; ⟦_⟧F)
 open import Once.Semantics.Functor using (SFunctor; ⟦_⟧SF)
 open import Once.Semantics.Functor.Laws using (⟦_⟧SF-rel)
@@ -61,8 +61,6 @@ base-eq : ∀ {A} (ib : IsBaseType A) {x y : ⟦ A ⟧ᴰ} → RelV A x y → x 
 base-eq base-Unit   _  = refl
 base-eq base-Int    eq = eq
 base-eq base-Float  eq = eq
-base-eq base-Str    eq = eq
-base-eq base-Buffer eq = eq
 base-eq (base-Prod ibA ibB) {a₁ , b₁} {a₂ , b₂} (rA , rB) =
   cong₂ _,_ (base-eq ibA rA) (base-eq ibB rB)
 base-eq (base-Sum ibA ibB) {inj₁ _} {inj₁ _} r = cong inj₁ (base-eq ibA r)

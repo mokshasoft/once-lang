@@ -34,7 +34,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst
 
 import Once.Type as T
 open T using (Purity; pure; eff; ArrowKind; mk-kind; Quantity; Zero; One; Many; _≤q_)
-open import Once.Type.Sub using (_⊑π_; _<:_; sub-void; sub-unit; sub-int; sub-float; sub-str; sub-buffer; sub-rigid;
+open import Once.Type.Sub using (_⊑π_; _<:_; sub-void; sub-unit; sub-int; sub-float; sub-rigid;
   sub-arr; sub-prod; sub-sum; sub-μ; sub-ν)
 open import Once.Functor.Translate using (IsConcrete)
 open import Once.Type.Honest using (HonestFFI)
@@ -45,7 +45,7 @@ open import Data.List.Membership.Propositional using (_∈_)
 open import Once.Surface.Context as C using (Usage; _∷_; zeroUsage; singleUse; _+ᵘ_; _*ᵘ_; _⊔ᵘ_)
 open import Once.Spec.Core.PolyTy
 import Once.Spec.Core.Syntax S as G
-open G using (Lit; lit-int; lit-float; lit-str; Prim; primDom; primCod)
+open G using (Lit; lit-int; lit-float; Prim; primDom; primCod)
 import Once.Spec.Core.Typing S as GT
 
 ------------------------------------------------------------------------
@@ -139,8 +139,6 @@ data _<:ₚ_ {m} : Ty m → Ty m → Set where
   sub-unit   : Unit <:ₚ Unit
   sub-int    : Int <:ₚ Int
   sub-float  : Float <:ₚ Float
-  sub-str    : Str <:ₚ Str
-  sub-buffer : Buffer <:ₚ Buffer
   sub-rigid  : ∀ {k i} → rigid k i <:ₚ rigid k i
   sub-arr    : ∀ {A A′ B B′ q π π′}
              → A′ <:ₚ A → B <:ₚ B′ → π ⊑π π′
@@ -156,8 +154,6 @@ data _<:ₚ_ {m} : Ty m → Ty m → Set where
 <:ₚ-⟪⟫ σ sub-unit   = sub-unit
 <:ₚ-⟪⟫ σ sub-int    = sub-int
 <:ₚ-⟪⟫ σ sub-float  = sub-float
-<:ₚ-⟪⟫ σ sub-str    = sub-str
-<:ₚ-⟪⟫ σ sub-buffer = sub-buffer
 <:ₚ-⟪⟫ σ sub-rigid  = sub-rigid
 <:ₚ-⟪⟫ σ (sub-arr a b g) = sub-arr (<:ₚ-⟪⟫ σ a) (<:ₚ-⟪⟫ σ b) g
 <:ₚ-⟪⟫ σ (sub-prod a b)  = sub-prod (<:ₚ-⟪⟫ σ a) (<:ₚ-⟪⟫ σ b)
@@ -241,8 +237,6 @@ data _⊩_⊢[_]_∷_!_ {m} (Δ : KCtx m) : ∀ {n} → PCtx m n → Usage n →
              → Δ ⊩ Γ ⊢[ zeroUsage ] lit (lit-int i) ∷ Int ! pure
   ⊢lit-float : ∀ {n} {Γ : PCtx m n} {d}
              → Δ ⊩ Γ ⊢[ zeroUsage ] lit (lit-float d) ∷ Float ! pure
-  ⊢lit-str   : ∀ {n} {Γ : PCtx m n} {s}
-             → Δ ⊩ Γ ⊢[ zeroUsage ] lit (lit-str s) ∷ Str ! pure
 
   ⊢prim : ∀ {n} {Γ : PCtx m n} {Ψ : Usage n} {π : Purity} {t} (p : Prim)
         → Δ ⊩ Γ ⊢[ Ψ ] t ∷ ⌈ primDom p ⌉ ! π
@@ -308,7 +302,6 @@ instantiate {Γ = Γ} {Ψ = Ψ} σ r (⊢out {π = π} {F = F} {t = t} wf d) =
 instantiate σ r (⊢coerce p d) = GT.⊢coerce (<:ₚ-⟪⟫ σ p) (instantiate σ r d)
 instantiate σ r ⊢lit-int = GT.⊢lit-int
 instantiate σ r ⊢lit-float = GT.⊢lit-float
-instantiate σ r ⊢lit-str = GT.⊢lit-str
 instantiate {Γ = Γ} {Ψ = Ψ} {π = π} σ r (⊢prim {t = t} p d) =
   subst (λ X → Γ ⟪ σ ⟫ᶜ GT.⊢[ Ψ ] G.prim p (t ⟪ σ ⟫ₜ) ∷ X ! π) (sym (⌈⌉-⟪⟫ (primCod p) σ))
     (GT.⊢prim p (subst (λ X → Γ ⟪ σ ⟫ᶜ GT.⊢[ Ψ ] t ⟪ σ ⟫ₜ ∷ X ! π) (⌈⌉-⟪⟫ (primDom p) σ) (instantiate σ r d)))

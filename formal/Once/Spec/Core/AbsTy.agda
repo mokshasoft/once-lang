@@ -17,10 +17,9 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 import Once.Type as T
 open T using (TKind; k-base; k-any; Purity; mk-kind; Many)
 open import Once.Type.DecEq using (_≟tk_)
-open import Once.Type.Rigid using (RigidFree; RigidFreeF; rf-Unit; rf-Void; rf-Int; rf-Float; rf-Str; rf-Buffer;
+open import Once.Type.Rigid using (RigidFree; RigidFreeF; rf-Unit; rf-Void; rf-Int; rf-Float;
   rf-*; rf-+; rf-⇒; rf-μ; rf-ν; rf-K; rf-Id; rf-⊕; rf-⊗)
-open import Once.Functor.Translate using (IsBaseType; WellFormedF; base-Unit; base-Void; base-Int; base-Float;
-  base-Str; base-Buffer; base-Prod; base-Sum; base-rigid)
+open import Once.Functor.Translate using (IsBaseType; WellFormedF; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; base-rigid)
 import Once.Functor.Translate as Tr
 open import Once.Spec.Core.PolyTy
 
@@ -46,8 +45,6 @@ mutual
   absTy Δ T.Void          = Void
   absTy Δ T.Int           = Int
   absTy Δ T.Float         = Float
-  absTy Δ T.Str           = Str
-  absTy Δ T.Buffer        = Buffer
   absTy Δ (A T.* B)       = absTy Δ A * absTy Δ B
   absTy Δ (A T.+ B)       = absTy Δ A + absTy Δ B
   absTy Δ (A T.⇒[ k ] B)  = absTy Δ A ⇒[ k ] absTy Δ B
@@ -75,8 +72,6 @@ mutual
   absTy-ground Δ rf-Void   = refl
   absTy-ground Δ rf-Int    = refl
   absTy-ground Δ rf-Float  = refl
-  absTy-ground Δ rf-Str    = refl
-  absTy-ground Δ rf-Buffer = refl
   absTy-ground Δ (rf-* a b) = cong₂ _*_ (absTy-ground Δ a) (absTy-ground Δ b)
   absTy-ground Δ (rf-+ a b) = cong₂ _+_ (absTy-ground Δ a) (absTy-ground Δ b)
   absTy-ground Δ (rf-⇒ {k = k} a b) = cong₂ (λ x y → x ⇒[ k ] y) (absTy-ground Δ a) (absTy-ground Δ b)
@@ -108,8 +103,6 @@ abs-base Δ base-Unit   = b-Unit
 abs-base Δ base-Void   = b-Void
 abs-base Δ base-Int    = b-Int
 abs-base Δ base-Float  = b-Float
-abs-base Δ base-Str    = b-Str
-abs-base Δ base-Buffer = b-Buffer
 abs-base Δ (base-Prod a b) = b-Prod (abs-base Δ a) (abs-base Δ b)
 abs-base Δ (base-Sum a b)  = b-Sum (abs-base Δ a) (abs-base Δ b)
 abs-base {m} Δ (base-rigid {i}) = base-ar-bound Δ i (i <? m)
@@ -127,8 +120,6 @@ mutual
     cf-Void   : ConstFree Void
     cf-Int    : ConstFree Int
     cf-Float  : ConstFree Float
-    cf-Str    : ConstFree Str
-    cf-Buffer : ConstFree Buffer
     cf-*      : ∀ {A B} → ConstFree A → ConstFree B → ConstFree (A * B)
     cf-+      : ∀ {A B} → ConstFree A → ConstFree B → ConstFree (A + B)
     cf-⇒      : ∀ {A B k} → ConstFree A → ConstFree B → ConstFree (A ⇒[ k ] B)
@@ -151,8 +142,6 @@ mutual
   abs-⟪⟫ Δ τ cf-Void   = refl
   abs-⟪⟫ Δ τ cf-Int    = refl
   abs-⟪⟫ Δ τ cf-Float  = refl
-  abs-⟪⟫ Δ τ cf-Str    = refl
-  abs-⟪⟫ Δ τ cf-Buffer = refl
   abs-⟪⟫ Δ τ (cf-* a b) = cong₂ _*_ (abs-⟪⟫ Δ τ a) (abs-⟪⟫ Δ τ b)
   abs-⟪⟫ Δ τ (cf-+ a b) = cong₂ _+_ (abs-⟪⟫ Δ τ a) (abs-⟪⟫ Δ τ b)
   abs-⟪⟫ Δ τ (cf-⇒ {k = k} a b) = cong₂ (λ x y → x ⇒[ k ] y) (abs-⟪⟫ Δ τ a) (abs-⟪⟫ Δ τ b)
