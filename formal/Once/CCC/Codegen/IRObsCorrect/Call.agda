@@ -70,7 +70,7 @@ module CallC {FS : FrameSemantics} where
 
       post = flat-exec-instr (instr-ctrl (c-call-fn f)) prog e0
 
-      crun : CalleeRun prog post (suc base) B (tableCalls (Once.CCC.FrameSemantics.fs-numerics FS) (TM.Interp.pure ιᶠ) tbl f A B x) k
+      crun : CalleeRun prog post (suc base) B (tableCalls (Once.CCC.FrameSemantics.fs-numerics FS) (TM.pureHalf ιᶠ) tbl f A B x) k
       -- the argument stays where the caller left it: the call writes no memory.
       crun = runner post alloc x (suc base) k mIn
                (cong fpc call-eq)
@@ -99,10 +99,12 @@ module CallC {FS : FrameSemantics} where
       h-eq : LocState.ev-log (floc post) ≡ LocState.ev-log s
       h-eq = cong (λ st → LocState.ev-log (floc st)) call-eq
 
-      RE : runAt (floc post) (tableCalls (Once.CCC.FrameSemantics.fs-numerics FS) (TM.Interp.pure ιᶠ) tbl f A B x) ≡ runAt s (evalᴰ (Once.IR.Call {A} {B} f) x)
-      RE = runAt-≡ {st = floc post} {st′ = s} h-eq refl
+      RE : runAt (floc post) (tableCalls (Once.CCC.FrameSemantics.fs-numerics FS) (TM.pureHalf ιᶠ) tbl f A B x) ≡ runAt s (evalᴰ (Once.IR.Call {A} {B} f) x)
+      RE = runAt-≡ {st = floc post} {st′ = s}
+             {m = tableCalls (Once.CCC.FrameSemantics.fs-numerics FS) (TM.pureHalf ιᶠ) tbl f A B x}
+             {m′ = evalᴰ (Once.IR.Call {A} {B} f) x} h-eq refl
 
-      st-eq : stopsAt (floc post) (tableCalls (Once.CCC.FrameSemantics.fs-numerics FS) (TM.Interp.pure ιᶠ) tbl f A B x) ≡ stopsAt s (evalᴰ (Once.IR.Call {A} {B} f) x)
+      st-eq : stopsAt (floc post) (tableCalls (Once.CCC.FrameSemantics.fs-numerics FS) (TM.pureHalf ιᶠ) tbl f A B x) ≡ stopsAt s (evalᴰ (Once.IR.Call {A} {B} f) x)
       st-eq = cong (λ r → is-stopped (proj₂ r)) RE
 
       trc : chain-events run ≡ eventsAt s (evalᴰ (Once.IR.Call {A} {B} f) x)

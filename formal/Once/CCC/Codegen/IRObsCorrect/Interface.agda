@@ -65,7 +65,7 @@ module Core {FS : FrameSemantics} where
 
   evalᴰ : ∀ {A B} → IR A B → DT.⟦ A ⟧ᴰᴵ → TM.T DT.⟦ B ⟧ᴰᴵ
   evalᴰ = DT.evalᴰ (Once.CCC.FrameSemantics.fs-numerics FS)
-                   (tableEnv (Once.CCC.FrameSemantics.fs-numerics FS) (TM.Interp.pure ιᶠ) tbl)
+                   (tableEnv (Once.CCC.FrameSemantics.fs-numerics FS) (TM.pureHalf ιᶠ) tbl)
 
   runAt : ∀ {X} → LocState FS → TM.T X → TM.Run X
   runAt s m = TM.run ιᶠ (LocState.ev-log s) m
@@ -748,7 +748,7 @@ module Core {FS : FrameSemantics} where
            → fpc fs ≡ j → halted (floc fs) ≡ false → fret fs ≡ ret-pc ∷ []
            → falloc fs ≡ enter-call pre-alloc
            → InputAt {A} mIn' pre-alloc x (floc fs)
-           → CalleeRun prog fs ret-pc B (tableCalls (Once.CCC.FrameSemantics.fs-numerics FS) (TM.Interp.pure ιᶠ) tbl f A B x) k))
+           → CalleeRun prog fs ret-pc B (tableCalls (Once.CCC.FrameSemantics.fs-numerics FS) (TM.pureHalf ιᶠ) tbl f A B x) k))
 
   -- All block-table premises in ONE slot, so adding one does not re-thread the
   -- fourteen discharge clauses that only pass it along.

@@ -10,7 +10,7 @@
 
 open import Once.Target.Arch using (TargetNum)
 
-open import Once.Denotation.TraceMonad using (Interp)
+open import Once.Denotation.TraceMonad using (Interp; pureHalf)
 
 -- Plan 0.105: at an interpretation `ι` — the meaning and the compiled program
 -- run against the same one.
@@ -79,7 +79,7 @@ open import Once.SigOp.Info using (FFIAnswers)
 
 -- The interpretation's pure half: what the program's pure FFI values are.
 φ : FFIAnswers
-φ = Interp.pure ι
+φ = pureHalf ι
 
 open import Once.Adequacy.GradedRelation fmt using (RelGT; RelGM; RelGT-bind)
 open import Once.Denotation.TraceMonad using (T; projTrace)

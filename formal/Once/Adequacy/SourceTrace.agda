@@ -290,7 +290,7 @@ rewrite-program-linked p (lm , les) =
 -- answers what the calls return.
 ⟦ just p ⟧IR fmt ι = mkBehavior (projTrace ι m) (coh pf) (bnd pf) (sat pf)
   where
-    m  = runIR fmt (Interp.pure ι) p
+    m  = runIR fmt (pureHalf ι) p
     pf : PrefixFamily (projTrace ι m)
     pf = projTrace-pf ι m
 -- A module with no `main` observes nothing, at every depth — the empty family,

@@ -32,7 +32,7 @@ open import Once.IRTy using (_≟IRTy_)
 open import Relation.Nullary using (yes; no)
 open import Once.Arith.Machine.IR using (ArithBlock)
 open import Once.Arith.Machine.Rewrite using (rewrite-ir; rw-at; walk; try-lift)
-open import Once.Denotation.TraceMonad using (T; _>>=T_; returnT; projTrace; Interp)
+open import Once.Denotation.TraceMonad using (T; _>>=T_; returnT; projTrace; Interp; pureHalf)
 open import Once.SigOp.Info using (FFIAnswers)
 open import Once.Denotation.DenotTrace using (evalᴰ; CallEnv; callEnv; cata-ev-algᴰ)
 open import Once.Denotation.Program using (IRFun; irFun; fname; fdom; fcod; fbody; irProgram; table; main; tableEnv; tableCalls;
@@ -145,5 +145,5 @@ rewrite-program-preserves : ∀ (fmt : TargetNum) (ι : Interp) (p : Once.Denota
                           → at (⟦ just (rewrite-program p) ⟧IR fmt ι) n ≡ at (⟦ just p ⟧IR fmt ι) n
 rewrite-program-preserves fmt ι p n =
   cong (λ t → projTrace ι t n)
-    (trans (cong (λ ρ → evalᴰ fmt ρ (proj₁ (rewrite-ir (main p))) _) (table-sound fmt (Interp.pure ι) (table p)))
-           (cong (λ X → X _) (rewrite-sound fmt (tableEnv fmt (Interp.pure ι) (table p)) (main p))))
+    (trans (cong (λ ρ → evalᴰ fmt ρ (proj₁ (rewrite-ir (main p))) _) (table-sound fmt (pureHalf ι) (table p)))
+           (cong (λ X → X _) (rewrite-sound fmt (tableEnv fmt (pureHalf ι) (table p)) (main p))))

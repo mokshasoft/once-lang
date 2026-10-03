@@ -22,7 +22,7 @@
 
 open import Once.Target.Arch using (TargetNum)
 
-open import Once.Denotation.TraceMonad using (Interp)
+open import Once.Denotation.TraceMonad using (Interp; pureHalf)
 
 -- Plan 0.105: at an interpretation `ι`.
 module Once.Adequacy.CoreBridge (fmt : TargetNum) (ι : Interp) where
@@ -119,7 +119,7 @@ program-core :
   → at (⟦ just (irProgram (moduleTable m) ir) ⟧IR fmt ι) n ≡ runProgram fmt ι (typedProgram (m , mt , hvm)) n
 program-core m mt hvm ir mi n with FB.program-node m ir mi
 ... | es , ef , b , ceq =
-  trans (cong₂ (λ tbl x → projTrace ι (evalᴰ fmt (tableEnv fmt (Interp.pure ι) tbl) x tt) n) (cong tableOfResult ceq) ir≡)
+  trans (cong₂ (λ tbl x → projTrace ι (evalᴰ fmt (tableEnv fmt (pureHalf ι) tbl) x tt) n) (cong tableOfResult ceq) ir≡)
         (core-ef m (C.extractFunctions (C.extractAliases m) m) mt hvm ef (TP.entries-distinct m ef) (valid-mod m ef) b n)
   where
     ir≡ : ir ≡ mainCall

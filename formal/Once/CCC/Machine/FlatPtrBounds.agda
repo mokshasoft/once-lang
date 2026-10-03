@@ -361,7 +361,10 @@ sigop-output-pb bs {A} {B} si ls = go (effect si)
     go Answers   = cv (fits-in-reg? B)
       where
         cv : ∀ (mf : Maybe (FitsInReg B)) → PtrB bs (call-sigop-val si ls mf)
-        cv (just _) = tt
+        cv (just f) = ans (call-sigop-dec si)
+          where ans : ∀ d → PtrB bs (call-sigop-ans si ls f d)
+                ans (yes _) = tt
+                ans (no _)  = tt
         cv nothing  = tt
 
 ------------------------------------------------------------------------

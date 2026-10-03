@@ -346,7 +346,10 @@ sigop-output-below n {A} {B} si ls = go (effect si)
     go Answers   = call-below (fits-in-reg? B)
       where
         call-below : ∀ (mf : Maybe (FitsInReg B)) → sv-below n (call-sigop-val si ls mf)
-        call-below (just _) = tt
+        call-below (just f) = ans (call-sigop-dec si)
+          where ans : ∀ d → sv-below n (call-sigop-ans si ls f d)
+                ans (yes _) = tt
+                ans (no _)  = tt
         call-below nothing  = tt
 
 ------------------------------------------------------------------------

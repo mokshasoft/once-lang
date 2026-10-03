@@ -258,7 +258,7 @@ module OutC {FS : FrameSemantics} where
               h-eq = trans (log-of run4 _ refl) (++-identityʳ _)
 
               RE : runAt (floc callFs) (evalᴰ (Out wf) ν-val) ≡ runAt s (evalᴰ (Out wf) ν-val)
-              RE = runAt-≡ {st = floc callFs} {st′ = s} h-eq refl
+              RE = runAt-≡ {st = floc callFs} {st′ = s} {m = (evalᴰ (Out wf) ν-val)} {m′ = (evalᴰ (Out wf) ν-val)} h-eq refl
 
               st-eq : stopsAt (floc callFs) (evalᴰ (Out wf) ν-val) ≡ stopsAt s (evalᴰ (Out wf) ν-val)
               st-eq = cong (λ r → is-stopped (proj₂ r)) RE

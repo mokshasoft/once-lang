@@ -56,7 +56,7 @@ module SigOpC {FS : FrameSemantics} where
 
   private
     fmt = Once.CCC.FrameSemantics.fs-numerics FS
-    φ   = TM.Interp.pure ιᶠ
+    φ   = TM.pureHalf ιᶠ
 
   ------------------------------------------------------------------------
   -- The denotation of a SigOp node, at its contract. A SigOp's argument and

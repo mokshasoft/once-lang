@@ -206,7 +206,7 @@ module ArmLC {FS : FrameSemantics} where
       h-eq = P.log-i4
 
       RE : runAt (floc P.i4) (evalᴰ f Av) ≡ runAt s (evalᴰ (case f g) (inj₁ Av))
-      RE = runAt-≡ {st = floc P.i4} {st′ = s} h-eq refl
+      RE = runAt-≡ {st = floc P.i4} {st′ = s} {m = (evalᴰ f Av)} {m′ = (evalᴰ (case f g) (inj₁ Av))} h-eq refl
 
       st-eq : stopsAt s (evalᴰ (case f g) (inj₁ Av)) ≡ stopsAt (floc P.i4) (evalᴰ f Av)
       st-eq = sym (cong (λ r → is-stopped (proj₂ r)) RE)

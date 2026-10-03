@@ -1705,9 +1705,12 @@ module AbstractExec {FS : FrameSemantics} where
                   (decode-arg (baseA si) (readReg (regs s) Input1)))
   call-sigop-ans si s fitB (no _) = unit-storedvalue
 
+  -- Is the call one of the interpretation's declared answering SigOps?
+  call-sigop-dec : ∀ {A B} (si : SigOpInfo A B) → Dec (callKey (callOp (name si) A (baseA si) B) ∈ calls (fs-interp FS))
+  call-sigop-dec {A} {B} si = callKey (callOp (name si) A (baseA si) B) ∈K? calls (fs-interp FS)
+
   call-sigop-val : ∀ {A B} → SigOpInfo A B → LocState FS → Maybe (FitsInReg B) → StoredValue FS
-  call-sigop-val {A} {B} si s (just fitB) =
-    call-sigop-ans si s fitB (callKey (callOp (name si) A (baseA si) B) ∈K? calls (fs-interp FS))
+  call-sigop-val si s (just fitB) = call-sigop-ans si s fitB (call-sigop-dec si)
   call-sigop-val si s nothing = unit-storedvalue
 
   call-sigop-output : ∀ {A B} → SigOpInfo A B → LocState FS → StoredValue FS
