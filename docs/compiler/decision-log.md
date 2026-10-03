@@ -16311,3 +16311,24 @@ them by type); `Linked` requires an FFI SigOp to be declared (the twin of table 
 emitting call returns `tt` by the contract form; at the interpretation boundary a SigOp is keyed by
 its rendered canonical path. Open: `decode-unread`/`decode-boxed`, the extraction gate, and one FFI
 contract's several names (a front-end cleanup).
+
+## D258 — `Str` AND `Buffer` ARE REMOVED UNTIL THE MACHINE HOLDS THEIR CONTENT (PLAN 0.106) (2026-10-03)
+
+**Relates**: D257 (plan 0.105; its §g decodes a SigOp's argument from memory), D114
+(`decode-unread`, deleted), D058 (the observable is the SigOp event).
+
+**Context.** After plan 0.105 §g every SigOp argument is decoded from memory and proved equal to
+the denotation's, except a value containing `Str`/`Buffer`. The residual for those
+(`decode-boxed`) is refutable: their residence (`valid-str-wf`/`valid-buffer-wf`) carries no
+content, and a string literal's machine output (`structured-pure-sigop-output`) has none either.
+No rewording is consistent: content-free residence breaks the argument, content-carrying
+residence breaks the literal's result placement. The abstract machine does not hold strings.
+
+**Decision.** Remove `Str` and `Buffer` from the language (types, IR, semantics, machine, type
+parser) and delete the string-literal typing rule; the lexer token and AST node stay. They come
+back in a later plan that models their content in the abstract machine and its concrete
+correspondence. No exit test used them.
+
+**Rejected.** A Spec premise excluding programs that pass strings to SigOps (keeps a type the
+theorem excludes); keeping the refutable residual as a documented gap (the apex stays
+inconsistent).
