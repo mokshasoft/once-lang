@@ -39,7 +39,9 @@ open import Once.Type using (Type; Int; Float)
 open import Once.Word using (Carrier)
 import Once.Semantics.Value Carrier Carrier as M
 open import Once.Denotation.Trace using (SigOpEvent)
-open import Once.Denotation.TraceMonad using (Interp; CallOp; cdom; ccod)
+open import Once.Denotation.TraceMonad using (Interp; CallOp; cdom; ccod; Key; key; kdom; kcod; callKey; calls; pures; answer; pure; _∈K?_)
+open import Relation.Nullary using (Dec; yes; no)
+open import Data.List.Membership.Propositional using (_∈_)
 
 -- The register word of a value of `B`, as the flat machine places it.
 answer-word : (B : Type) → M.⟦ B ⟧ → ℕ
@@ -58,10 +60,21 @@ data ResolvedCall : Set where
 CallResolver : Set → Set
 CallResolver State = String → State → Maybe ResolvedCall
 
--- The word a resolved call leaves in the return register.
+-- The word a resolved call leaves in the return register: the implementation's
+-- answer for a SigOp the interpretation declares; the sentinel for one it does
+-- not (unreachable for a program linked against its signatures).
+answering-word : (ι : Interp) → List SigOpEvent → (o : CallOp) → M.⟦ cdom o ⟧
+               → Dec (callKey o ∈ calls ι) → ℕ
+answering-word ι h o a (yes p) = answer-word (ccod o) (answer ι h o p a)
+answering-word ι h o a (no _)  = 0
+
+value-word : (ι : Interp) (k : Key) → M.⟦ kdom k ⟧ → Dec (k ∈ pures ι) → ℕ
+value-word ι k a (yes p) = answer-word (kcod k) (pure ι k p a)
+value-word ι k a (no _)  = 0
+
 resolved-word : Interp → List SigOpEvent → ResolvedCall → ℕ
-resolved-word ι h (answering o a)    = answer-word (ccod o) (Interp.answer ι h o a)
-resolved-word ι h (pure-ffi nm A B a) = answer-word B (Interp.pure ι nm A B a)
+resolved-word ι h (answering o a)     = answering-word ι h o a (callKey o ∈K? calls ι)
+resolved-word ι h (pure-ffi nm A B a) = value-word ι (key nm A B) a (key nm A B ∈K? pures ι)
 
 -- What the world answers there, as the word the callee leaves behind; a label
 -- that resolves to no value-returning call (an emitting or halting one) leaves

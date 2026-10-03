@@ -43,7 +43,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong
 
 open import Once.Postulates using (extensionality)
 open import Once.Res using (Res; stopped; returns; is-stopped; mapRes; Res-rel; rel-stopped; rel-returns)
-open import Once.Type using (Type) renaming (Unit to UnitT)
+open import Once.Type using (Type; _⇒[_]_; mk-kind; Zero; One; Many; Void; isVoid?; isUnit?) renaming (Unit to UnitT)
+import Once.Type as Ty
 open import Once.Functor.Translate using (IsBaseType)
 open import Once.CanonicalName using (CanonicalName; _≟ᶜ_; gen)
 open import Once.Type.DecEq using (_≟T_)
@@ -183,30 +184,92 @@ key n A B ≟K key n′ A′ B′ = go (n ≟ᶜ n′) (A ≟T A′) (B ≟T B�
 
 open DecMem _≟K_ public using () renaming (_∈?_ to _∈K?_)
 
--- An INTERPRETATION is a world that PROVIDES contracts (plan 0.105, D257 (A)):
--- the answering operations it implements (`calls`) and the pure ones
--- (`pures`), each with its answer (D061: a SigOp's contract comes from its
--- interpretation, off-line; the compiler is interpretation-agnostic):
---   * `answer`: a provided answering call's result, given the calls before
---     it — what it answers is its own business (its contract);
---   * `pure`: a provided pure FFI contract's value. It sees no history: a pure
---     contract is referentially transparent (D250), so this is a fixed
+------------------------------------------------------------------------
+-- INTERPRETATIONS (D061's three times; plan 0.105, D257 amendment 2)
+--
+-- Compiling a user program sees only an interpretation's DECLARED signatures
+-- (`ISig`) and trusts them; the interpretation's author discharges their
+-- contracts OFF-LINE. The FORM of a contract is the compiler's decision
+-- (`contractOf`, read off the declared type as the elaborator reads it, D225):
+-- interpretations follow the compiler, and the compiler never looks inside one.
+------------------------------------------------------------------------
+
+-- An interpretation's declared signatures: each SigOp's canonical name and
+-- declared FFI type.
+ISig : Set
+ISig = List (CanonicalName × Type)
+
+-- What a declaration owes, in the compiler's contract form: a VALUE (a pure
+-- contract — referentially transparent, D250 — or a zero-multiplicity
+-- reference, which the meaning reads as a value), an ANSWER to a call (an
+-- effectful arrow into data), or nothing (an effectful arrow into `Unit`
+-- emits, into `Void` halts).
+data Contract : Set where
+  value   : Key → Contract
+  answers : Key → Contract
+  effect  : Contract
+
+contract-eff : CanonicalName → (A B : Type) → Dec (B ≡ Void) → Dec (B ≡ UnitT) → Contract
+contract-eff c A B (yes _) _       = effect
+contract-eff c A B (no _)  (yes _) = effect
+contract-eff c A B (no _)  (no _)  = answers (key c A B)
+
+contractOf : CanonicalName → Type → Contract
+contractOf c (A ⇒[ mk-kind Zero π ]    B) = value (key c UnitT B)
+contractOf c (A ⇒[ mk-kind One  Ty.pure ] B) = value (key c A B)
+contractOf c (A ⇒[ mk-kind Many Ty.pure ] B) = value (key c A B)
+contractOf c (A ⇒[ mk-kind One  Ty.eff ]  B) = contract-eff c A B (isVoid? B) (isUnit? B)
+contractOf c (A ⇒[ mk-kind Many Ty.eff ]  B) = contract-eff c A B (isVoid? B) (isUnit? B)
+contractOf c T                            = value (key c UnitT T)
+
+valueKeys answerKeys : ISig → List Key
+valueKeys []            = []
+valueKeys ((c , T) ∷ Σ) = go (contractOf c T)
+  where go : Contract → List Key
+        go (value k) = k ∷ valueKeys Σ
+        go _         = valueKeys Σ
+answerKeys []            = []
+answerKeys ((c , T) ∷ Σ) = go (contractOf c T)
+  where go : Contract → List Key
+        go (answers k) = k ∷ answerKeys Σ
+        go _           = answerKeys Σ
+
+-- An IMPLEMENTATION of `Σ` in the compiler's contract form — what its author
+-- discharges off-line. TOTAL on `Σ`:
+--   * `answer`: an answering call's result, given the calls before it — what it
+--     answers is its own business (its contract);
+--   * `pure`: a value contract's value. It sees no history (D250): a fixed
 --     function of its argument.
--- It answers ONLY what it provides. A world asked to answer every conceivable
--- contract does not exist (`Once.Probe.InterpEmpty`, before this change): some
--- codomains are empty. A program is linked against a world that provides its
--- own contracts; which ones it imports is the program's business.
-record Interp : Set where
+-- An emitting or halting declaration owes no value. A declaration nobody can
+-- implement (an answering call into an empty type) makes `Impl Σ` empty: its
+-- author cannot discharge it, and no compiler claim becomes false.
+record Impl (Σ : ISig) : Set where
   field
-    calls  : List Key
-    pures  : List Key
-    answer : List SigOpEvent → (o : CallOp) → callKey o ∈ calls → M.⟦ cdom o ⟧ → M.⟦ ccod o ⟧
-    pure   : (k : Key) → k ∈ pures → M.⟦ kdom k ⟧ → M.⟦ kcod k ⟧
+    answerI : List SigOpEvent → (o : CallOp) → callKey o ∈ answerKeys Σ → M.⟦ cdom o ⟧ → M.⟦ ccod o ⟧
+    pureI   : (k : Key) → k ∈ valueKeys Σ → M.⟦ kdom k ⟧ → M.⟦ kcod k ⟧
+open Impl public
+
+-- An INTERPRETATION: declared signatures with an implementation of them.
+record Interp : Set where
+  constructor interp
+  field
+    sig  : ISig
+    impl : Impl sig
 open Interp public
 
--- The world that provides nothing: an interpretation exists.
+calls pures : Interp → List Key
+calls ι = answerKeys (sig ι)
+pures ι = valueKeys (sig ι)
+
+answer : (ι : Interp) → List SigOpEvent → (o : CallOp) → callKey o ∈ calls ι → M.⟦ cdom o ⟧ → M.⟦ ccod o ⟧
+answer ι = answerI (impl ι)
+
+pure : (ι : Interp) (k : Key) → k ∈ pures ι → M.⟦ kdom k ⟧ → M.⟦ kcod k ⟧
+pure ι = pureI (impl ι)
+
+-- The interpretation that declares nothing: interpretations exist.
 no-world : Interp
-no-world = record { calls = [] ; pures = [] ; answer = λ _ _ () ; pure = λ _ () }
+no-world = interp [] (record { answerI = λ _ _ () ; pureI = λ _ () })
 
 -- The RESERVED operation an unlinked call halts on: a call the world does not
 -- provide, or an internal call the table does not define (D244).

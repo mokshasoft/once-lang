@@ -2,10 +2,11 @@
 --
 --     interp-empty ι = answer ι [] (callOp (bare "x") Unit base-Unit Void) tt
 --
--- — a world had to answer EVERY conceivable contract, some codomains are
--- empty, so no world existed and the apex's `∀ ι` was vacuous. A world now
--- PROVIDES contracts and answers only those (D257 (A)), so worlds exist; the
--- witness is the world that provides nothing.
+-- — one interpretation had to answer EVERY conceivable SigOp, some codomains
+-- are empty, so none existed and the apex's `∀ ι` was vacuous. An
+-- interpretation is now its DECLARED signatures with an implementation of
+-- them (D061's three times, D257 amendment 2); the witness is the one that
+-- declares nothing.
 module Once.Probe.InterpEmpty where
 
 open import Once.Denotation.TraceMonad using (Interp; no-world)
