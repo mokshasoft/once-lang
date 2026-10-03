@@ -33,7 +33,7 @@ open import Relation.Nullary using (¬_)
 open import Once.Type using (Type; PolyType; Ground; extractGround)
 open import Once.Type.Rigid using (KindedInstance; ground-kinded)
 open import Once.Functor.Translate using (IsConcrete)
-open import Once.CanonicalName using (CanonicalName; canonical; own; bare; showCanonical)
+open import Once.CanonicalName using (CanonicalName; canonical; own; bare; showCanonical; NotOwn)
 open import Data.List using ([]; _∷_)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Unit using (⊤)
@@ -64,9 +64,6 @@ impSem δ c k (ffi _ _) = sigOpRefᵛ fmt (GM.ffi δ) c k
 impSem δ c k (def d i) = refSem δ i
 
 -- D248: a canonical name that is not an own-module entry's (`own x`).
-NotOwn : CanonicalName → Set
-NotOwn (own _) = ⊥
-NotOwn _       = ⊤
 
 -- `ρ` agrees with `δ` at every reference the View resolves.
 record Agree {imps : Imports} {polys : PolyCtx} (V : View imps polys) (ρ : Meanings polys imps) (δ : GM.DefSem) : Set where

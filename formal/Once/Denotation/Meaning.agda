@@ -37,9 +37,11 @@ open import Data.String using (String; _++_)
 
 open import Once.Type
   using (Type; Unit; Void; Int; _*_; _+_; _⇒[_]_; μ-type; Functor; ⟦_⟧T; Purity; mk-kind; Quantity; Zero; One; Many; Ground; extractGround)
-open import Once.CanonicalName using (CanonicalName; own; showCanonical; bare)
-open import Relation.Binary.PropositionalEquality using (subst; sym)
-open import Once.Denotation.TraceMonad using (T; ret; returnT; _>>=T_; fmapT)
+open import Once.CanonicalName using (CanonicalName; own; showCanonical; bare; canonical; NotOwn)
+open import Relation.Binary.PropositionalEquality using (_≡_; subst; sym)
+open import Data.Maybe using (just)
+open import Once.Denotation.TraceMonad using (T; ret; returnT; _>>=T_; fmapT; Interp; sig; impl)
+open import Data.List.Membership.Propositional using (_∈_)
 -- P5: the value-domain vocabulary comes from the IR-free `ValueDomain`
 -- (NOT `DenotTrace`, whose `evalᴰ` is implementation).
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; injectᵇ; forgetᵇ; coerce-functor⁻¹-D; coerce-functor-D; anaFᵈ; forceᵈ; seqF; in-νᵈ)
@@ -54,9 +56,10 @@ open import Once.Functor.Translate using (WellFormedF; IsBaseType; IsConcrete; b
 open import Once.Denotation.Trace using (SigOpEvent)
 open import Once.Denotation.TraceDenote using (events-F)
 open import Data.List using (List; take) renaming (_++_ to _++ₗ_)
+import Data.List as L
 open import Data.Nat using (ℕ)
 open import Once.Surface.Context using (Ctx; ∅; _,_^_; svar; SVar; Usage; _↾_; _⊑ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many; _+ᵘ_; _*ᵘ_; _⊔ᵘ_; zeroUsage; _∷_) renaming (⟦_⟧ᶜ to ⟦_⟧ᶜᵗ; lookup to lookupᵗ)
-open import Once.TypeCheck.Classify using (NamedCtx; PolyCtx; Imports)
+open import Once.TypeCheck.Classify using (NamedCtx; PolyCtx; Imports; lookupImport)
 open import Once.Denotation.DefEnv using (DefEnvOf; defAt; tailAt; ImpEnvOf; impAt)
 open import Once.Type.Rigid using (KindedInstance; ground-kinded)
 open import Once.TypeCheck.Raw using (BinOp; OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
@@ -217,9 +220,15 @@ record Meanings (polys : PolyCtx) (imps : Imports) : Set where
   field
     defs    : DefMeanings polys
     entries : ImpMeanings imps
-    -- Plan 0.105: the interpretation's PURE FFI contracts — what a pure FFI
-    -- reference means (the IR's `CallEnv.ffiE`).
-    ffi     : FFIAnswers
+    -- Plan 0.105 (D257 amendment 2): the interpretation the program runs in —
+    -- its declared signatures and their implementation…
+    world   : Interp
+    -- …which declare what a qualified or resolved reference names (another
+    -- module's FFI signature, inlined into the import table).
+    decl-qual : ∀ {name alias T} → lookupImport imps (alias ++ "." ++ name) ≡ just T
+              → (alias ++ "." ++ name , T) ∈ sig world
+    decl-res  : ∀ {cn T} → NotOwn cn → lookupImport imps (showCanonical cn) ≡ just T
+              → (showCanonical cn , T) ∈ sig world
 open Meanings public
 
 MeaningsOf : NamedCtx → Set
@@ -326,14 +335,17 @@ seqᴰ m₁ m₂ = (m₁ >>=T λ x → m₂ >>=T λ y → returnT (x , y)) >>=T 
 ⟦_⟧ᵢ {ctx = ctx} (t-unit) fmt ρ dγ = returnᵖ tt
 ⟦_⟧ᵢ {ctx = ctx} (t-unit-var) fmt ρ dγ = returnᵖ tt
 ⟦_⟧ᵢ {ctx = ctx} (t-var-local {eV = eV} _) fmt ρ dγ = returnᵖ (svarᵛRun eV dγ)
--- Plan 0.105 (D257 amendment 2): EVERY import reference means its import entry
--- (as `t-var-import` does): an FFI entry's is the implementation of the
--- declaration the program is compiled against; a definition's is its value.
--- Never a lookup by name of a SigOp the program may not declare.
-⟦_⟧ᵢ {ctx = ctx} (t-var-qualified {name = name} {alias = alias} lk _) fmt ρ dγ = impAt (NamedCtx.imports ctx) (alias ++ "." ++ name) (entries ρ) lk
+-- Plan 0.105 (D257 amendment 2): a qualified or resolved reference names a
+-- SigOp the program is compiled against — its meaning is that declaration's
+-- implementation (`decl-*`: the world declares it).
+⟦_⟧ᵢ {A = A} (t-var-qualified {name = name} {alias = alias} lk conc) fmt ρ dγ =
+  sigOpRefᵛ {A = A} fmt (sig (world ρ)) (impl (world ρ)) (bare (alias ++ "." ++ name)) conc (decl-qual ρ {name = name} {alias = alias} lk)
 -- D248: an own-module resolved reference names a module entry (a call of it).
 ⟦_⟧ᵢ {ctx = ctx} (t-var-resolved {cn = own x} _ lk _) fmt ρ dγ = impAt (NamedCtx.imports ctx) x (entries ρ) lk
-⟦_⟧ᵢ {ctx = ctx} (t-var-resolved {cn = cn} _ lk _) fmt ρ dγ = impAt (NamedCtx.imports ctx) (showCanonical cn) (entries ρ) lk
+⟦_⟧ᵢ {A = A} (t-var-resolved {cn = canonical L.[]} _ lk conc) fmt ρ dγ =
+  sigOpRefᵛ {A = A} fmt (sig (world ρ)) (impl (world ρ)) (canonical L.[]) conc (decl-res ρ {cn = canonical L.[]} tt lk)
+⟦_⟧ᵢ {A = A} (t-var-resolved {cn = canonical (a L.∷ b L.∷ rest)} _ lk conc) fmt ρ dγ =
+  sigOpRefᵛ {A = A} fmt (sig (world ρ)) (impl (world ρ)) (canonical (a L.∷ b L.∷ rest)) conc (decl-res ρ {cn = canonical (a L.∷ b L.∷ rest)} tt lk)
 -- D246: a reference to a module ENTRY is a call of it, and means the entry —
 -- read from the scope's import environment (an FFI entry's is its contract).
 ⟦_⟧ᵢ {ctx = ctx} (t-var-import {x = x} _ _ lk _) fmt ρ dγ = impAt (NamedCtx.imports ctx) x (entries ρ) lk

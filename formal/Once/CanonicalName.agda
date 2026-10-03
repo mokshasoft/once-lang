@@ -31,7 +31,8 @@ open import Data.List.Relation.Unary.Any using (Any; any?)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; sym)
 open import Relation.Nullary using (yes; no; Dec; ¬_)
 open import Data.Product using (∃-syntax; _,_)
-open import Data.Empty using (⊥-elim)
+open import Data.Empty using (⊥; ⊥-elim)
+open import Data.Unit using (⊤)
 open import Relation.Binary.PropositionalEquality using (_≢_)
 
 record CanonicalName : Set where
@@ -70,6 +71,12 @@ pattern gen g = canonical ("Generators" ∷ g ∷ [])
 -- D248: the canonical name of an OWN-module entry — one part, the entry's name
 -- (the resolver's `rv-own`/`name@this`). `bare x` as a PATTERN.
 pattern own x = canonical (x ∷ [])
+
+-- D248: a name that is not an own-module entry's — a resolved path into another
+-- module (or the empty name).
+NotOwn : CanonicalName → Set
+NotOwn (own _) = ⊥
+NotOwn _       = ⊤
 
 -- A user path can never BE a generator name: `bare x = canonical [x]` has one
 -- component and `gen g` has two, so the two families are disjoint by length —

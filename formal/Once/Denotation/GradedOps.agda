@@ -38,7 +38,7 @@ open import Once.Target.Arch using (TargetNum)
 open import Once.CanonicalName using (CanonicalName; showCanonical)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Once.Spec.Contract using (ISig; Impl; key; valueOf; value-∈; base-contract)
-open import Once.Denotation.TraceMonad using (T; ret; returnT; _>>=T_; fmapT)
+open import Once.Denotation.TraceMonad using (T; ret; returnT; _>>=T_; fmapT; pureHalf; interp)
 open import Once.Denotation.ValueDomain using (νᵈ; forceᵈ; anaᵈ; seqF)
 open import Once.Denotation.DenotTrace using (sigOpT)
 open import Once.Denotation.GradedDomain
@@ -205,11 +205,6 @@ out-semᵛ eff  {F} wf v = fmapT (λ layer → cf⁻¹ᵛ (ν-type F eff) wf (co
 -- first-order (`IsConcrete`), so both sides cross by the base conversions.
 ------------------------------------------------------------------------
 
--- An effectful arrow's contract is a call, an emitted event or a halt: it never
--- consults a pure contract, so its dispatch is given none.
-noPure : FFIAnswers
-noPure _ _ _ _ = stopped
-
 -- Plan 0.105 (D257 amendment 2): a reference to a SigOp the program is compiled
 -- against (`m`: its declaration in `Σ`). A VALUE contract reads the
 -- implementation (`valueOf`, the reading every layer shares); an effectful
@@ -227,6 +222,6 @@ sigOpRefᵛ fmt Σ I cn (con-fun {A = Dom} {B = Cod} {k = mk-kind One pure} bDom
 sigOpRefᵛ fmt Σ I cn (con-fun {A = Dom} {B = Cod} {k = mk-kind Many pure} bDom bCod) m =
   λ a → injB bCod (valueOf I (key (showCanonical cn) Dom Cod) (value-∈ m refl) (prjB bDom a))
 sigOpRefᵛ fmt Σ I cn (con-fun {A = Dom} {B = Cod} {k = mk-kind One eff} bDom bCod) m =
-  λ a → fmapT (injB bCod) (sigOpT fmt noPure (arrow-info {Dom} {Cod} (mk-kind One eff) cn bDom bCod) (prjB bDom a))
+  λ a → fmapT (injB bCod) (sigOpT fmt (pureHalf (interp Σ I)) (arrow-info {Dom} {Cod} (mk-kind One eff) cn bDom bCod) (prjB bDom a))
 sigOpRefᵛ fmt Σ I cn (con-fun {A = Dom} {B = Cod} {k = mk-kind Many eff} bDom bCod) m =
-  λ a → fmapT (injB bCod) (sigOpT fmt noPure (arrow-info {Dom} {Cod} (mk-kind Many eff) cn bDom bCod) (prjB bDom a))
+  λ a → fmapT (injB bCod) (sigOpT fmt (pureHalf (interp Σ I)) (arrow-info {Dom} {Cod} (mk-kind Many eff) cn bDom bCod) (prjB bDom a))
