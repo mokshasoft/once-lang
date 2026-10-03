@@ -389,6 +389,90 @@ form is an indexed family, Ford-style, with two constructors:
    `#PwD`, `#Pw`, `#pwPi`, `#pwHom`) are sketched above. Then
    `⊢inst`, the hand-written Knot/Pw, and the measurement.
 
+**S7b step 1 — the sketch (2026-10-03). ★ Finding: neither (a) nor (b)
+gives `#wk`. The traversal recurses on the SIGNATURE, not on `Desc`.**
+- **What the Lib actually does.** `Lib/Syn`'s traversal (`TRAVM`, and so
+  `wk`/`sub`/`sz`) is defined "ONCE, by recursion on shapes": Agda
+  recursion over `Sig`/`Shapes`/`Shape`/`Fld`. Those carry the BINDING
+  structure: `rec s k` (a subterm under `k` binders), `vʰ` (the
+  variable), `nat`, `cls s`. The description `SD sg` is only the
+  DECODING of a signature. The traversal never inspects `KD`.
+- **Why (a) cannot express `wk`.** A `Desc` eliminator sees `dσ S f` and
+  `dρ j C`. Renaming must:
+  - rename the variable field, a `dσ` whose code is `⌜IMu⌝ ⌜Nat⌝ FinD d`.
+    No eliminator can tell this `dσ` from any other: `U` has no
+    eliminator, so codes cannot be cased on;
+  - shift the depth under `k` binders. `dρ` carries the index
+    `pair (tag s) (k + d)` as an opaque term; the `k` is gone.
+  So (a) gives generic FMAP over recursive positions (and `All`, decidable
+  equality, …), but not renaming or substitution. This is Allais et al.'s
+  point: generic traversals live over a description OF SYNTAXES WITH
+  BINDING, which is `Sig`, not over plain indexed descriptions.
+- **Why (b) is out of scale.** A levitated `Desc` needs:
+  - a field ranging over `U` (`dσ`'s `S : U`), i.e. a code for `U` and a
+    universe hierarchy;
+  - infinitary recursion (`dσ`'s `f : Π (El S) (Desc I)` recurses under a
+    function), i.e. the deferred `dπ`;
+  - the self-description fixpoint (`DescD : Desc ⌜Unit⌝` mentions `Desc`).
+  Each is a kernel increment larger than (a), and none is needed by `#wk`.
+- ★ **(c) LEVITATE THE LIB'S `Sig`, not the kernel's `Desc`.** It is the
+  direct transcription of the Lib, and it matches the `CtxDᵛ` template:
+  - `#Fld`, `#Shape`, `#Sig`: core DATATYPES. They are first-order data,
+    exactly what lifting with holes (`↑`) handles.
+  - `#SD : Π #Sig. DescF (SI n)`: the decoder, by `ielim` with motive
+    `Desc`. LARGE elimination into `Desc` is in the kernel today and used
+    (`Lib/NatFib`, `Knot/Lookup`'s `GM`); `⊢ielim` takes any `⊢ty` motive.
+  - `#trav`: `ielim` on the syntax term; its method recurses on the shape
+    (`ielim` on `#Shape`, motive `Π (El (dpay … (#SDsh sh d))) (…)`). At a
+    constructor shape the motive's payload type reduces by `#SDsh`'s ι, so
+    the method sees a Σ. The IH tuple `DIh` computes on the same head.
+  - `#wk = #trav ⌜KSig⌝ WKkit`, and `#KD` becomes `app #SD ⌜KSig⌝` (a
+    definition, compared by evaluation, lazily once lazy δ lands).
+  - Every λ in it is WRITTEN in the core, with its annotations. Nothing is
+    lifted from Lib code, so the S6 obstruction does not arise.
+- **The one kernel increment (c) needs: tag arities from object
+  numbers.** `Fin`/`⌜Fin⌝` take a META `ℕ`. `SD` builds the constructor
+  tag `dσ (⌜Fin⌝ c) …` and the sort index `SortI = ⌜Σ⌝ (⌜Fin⌝ n) ⌜Nat⌝`
+  from the LENGTHS of the signature's lists. In the core those lengths are
+  object `Nat` terms, so `⌜Fin⌝ c` cannot be written. Three ways:
+  - (c1) ★ **`Fin`/`⌜Fin⌝` indexed by a `Nat` TERM.** `fzero`/`fsuc` at
+    `Fin (nsuc n)`, `fcase0` at `Fin nzero`, `fcase` unchanged otherwise.
+    Then the kernel's `Fin` and `Lib/FinFam`'s `FinD` are the same thing:
+    `FinFam` can be DELETED and the Knot's variable field becomes
+    `⌜Fin⌝ d`. One notion of finite set instead of two.
+  - (c2) tags from `FinFam` in the decoded description. No kernel change,
+    but `KD`'s form changes and two notions of finite set remain.
+  - (c3) right-nested binary tags (`⌜Fin⌝ 2` per constructor). No kernel
+    change, but constructor numbering changes everywhere; a workaround.
+  (c1) is the principled one (memory `grounded-not-standard`): a meta
+  arity is a hidden side condition on which descriptions the core can
+  WRITE. Its metatheory is local (the index is a term like `IMu`'s;
+  `Fin n` is stuck at a neutral `n`; canonicity at `nzero`/`nsuc`).
+- **What each lets us DELETE.**
+  - (a): `dpay` as a definition (`descElim` into `U`); `dih` as a
+    definition (into `DIh`, which stays primitive). But the ι rule and
+    `⊢con` would then cite a derived combinator; not in a first increment.
+  - (b): possibly `dpay`/`dih`/`DIh`, after the three increments above.
+  - (c1): `Lib/FinFam` and the Knot's `FinD`-based variable field; the
+    Lib's `Syn`/`SynTrav`/`SynRen`/`SynSub` in the end, once the core
+    versions carry the Knot; gen-knot's `Sig`/`Ctors`/`Terms` emitters.
+- **The Knot's side.**
+  - (a): a 40th term former, its typing, 3 ι rows, ξ rows, conversion
+    and faithfulness rows. Generated mechanically (gen-knot parses
+    `Spec/Syntax`), but more Knot for no `#wk`.
+  - (c1): no new former. `Fin`/`⌜Fin⌝`'s `nat` field becomes a `rec Tm`
+    field; the `fzero`/`fsuc`/`fcase0` typing rows change their index
+    form. Faithfulness: `OpAgree`/`TypingAgree` at those rows.
+- **(a) is deferred, not rejected.** A `Desc` eliminator is the right
+  tool for generic programs over ARBITRARY descriptions (`All`, decidable
+  equality, generic `map`). Nothing in the Knot needs one yet (memory
+  `s5-signature-route-b`: add increments when the Knot needs them).
+- **Recommendation:** (c) with (c1). Then step 2 is the `Fin`-index
+  increment end to end, and step 3's spike is `#Sig`/`#SD`/`#trav` over a SMALL
+  signature (one sort, `var`/`lam`/`app`), then `#wk` at `⌜KSig⌝`.
+- ⬜ **Awaiting the user's decision** (it revises the 2026-10-02 framing
+  "(a) or (b)").
+
 **Then, the migration recipe** (each step is one family):
 - a schema becomes a CLOSED λ-entry; an instance becomes
   `app (ref d) args`;
