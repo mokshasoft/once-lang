@@ -37,13 +37,14 @@ open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; subst
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax hiding ( Fin )
 open import DirectedHoTT.Spec.Syntax using ( Fin )
+open import DirectedHoTT.Lib.NatNum using ( num )
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Metatheory.RedCong
   using ( _⟶ᵀ*_; doneᵀ; stepᵀ; ⟶ᵀ*-trans; ⟶ᵀ*-El; red→≅ᵀ; ⟶*-trans
         ; ⟶*-appˡ; ⟶*-appʳ; ⟶*-dpayᴵ; ⟶*-dpayᴰ; ⟶*-dpayᶜ )
 open import DirectedHoTT.Metatheory.Confluence using ( church-rosser )
 open import DirectedHoTT.Metatheory.Injectivity
-  using ( church-rosserᵀ; IMu-inj; Σ-inj; Fin-inj; Id-reduct )
+  using ( church-rosserᵀ; IMu-inj; Σ-inj; Fin-inj; Id-reduct; nzero≇nsuc; nsuc-inj≅; Fin-cong≅ )
 open import DirectedHoTT.Metatheory.TySub using ( wk-cancel-tm; ⊢-cast )
 open import DirectedHoTT.Metatheory.SubjectReductionBase using ( ≅ᵀ-sub )
 open import DirectedHoTT.Metatheory.SubjectReduction
@@ -167,20 +168,22 @@ pay-ρ {I = I} {D} {j = j} {C'} d r nrm
 -- 5. Tags and identity proofs.
 ------------------------------------------------------------------------
 
--- ★ a closed normal tag is a numeral below its bound
-tag-dec : {t : RTm ε} {n : ℕ} → ◇ ⊢ t ∷ Fin n → IsNormal t →
+-- ★ a closed normal tag is a numeral below its bound — the bound only up
+--   to conversion (`Fin` is indexed by a Nat TERM)
+tag-dec : {t : RTm ε} {n : ℕ} → ◇ ⊢ t ∷ Fin (num n) → IsNormal t →
           Σ ℕ (λ k → Lt k n × (t ≡ tag k))
 tag-dec d nrm with canAt d crflᵀ in-Fin (λ ()) (canon d nrm)
-tag-dec d nrm | co-fzero with gen-fzero d
-... | m , cv with Fin-inj cv
-...   | refl = zero , (lt-z , refl)
-tag-dec {t = fsuc t'} d nrm | co-fsuc .t' with gen-fsuc d
-... | m , (dt , cv) with Fin-inj cv
-...   | refl with tag-dec dt (nrm-fsuc nrm)
-...     | k , (lt , eq) = suc k , (lt-s lt , cong fsuc eq)
+tag-dec {n = zero} d nrm | co-fzero with gen-fzero d
+... | m , cv = ⊥-elim (nzero≇nsuc (Fin-inj cv))
+tag-dec {n = suc n} d nrm | co-fzero = zero , (lt-z , refl)
+tag-dec {t = fsuc t'} {n = zero} d nrm | co-fsuc .t' with gen-fsuc d
+... | m , (dt , cv) = ⊥-elim (nzero≇nsuc (Fin-inj cv))
+tag-dec {t = fsuc t'} {n = suc n} d nrm | co-fsuc .t' with gen-fsuc d
+... | m , (dt , cv) with tag-dec (⊢conv dt (Fin-cong≅ (csym (nsuc-inj≅ (Fin-inj cv))))) (nrm-fsuc nrm)
+...   | k , (lt , eq) = suc k , (lt-s lt , cong fsuc eq)
 
 -- at a CODE of tags
-tag-decᶜ : {t : RTm ε} {n : ℕ} → ◇ ⊢ t ∷ El (⌜Fin⌝ n) → IsNormal t →
+tag-decᶜ : {t : RTm ε} {n : ℕ} → ◇ ⊢ t ∷ El (⌜Fin⌝ (num n)) → IsNormal t →
            Σ ℕ (λ k → Lt k n × (t ≡ tag k))
 tag-decᶜ d = tag-dec (⊢conv d (credᵀ El-⌜Fin⌝))
 
@@ -260,7 +263,7 @@ RowsDec : (I D : RTm ε) {m : ℕ} → Cons ε m → RTm ε → Set
 RowsDec I D Cs x = Σ ℕ (λ k → Σ (RTm ε) (λ C → Σ (RTm ε) (λ q →
                      Nth Cs k C × ((x ≡ conₗ k q) × ((◇ ⊢ q ∷ El (dpay I D C)) × IsNormal q)))))
 
-rows-dec : {I D i x : RTm ε} {m : ℕ} {Cs : Cons ε m} → app D i ⟶* dσ (⌜Fin⌝ m) (selF Cs) →
+rows-dec : {I D i x : RTm ε} {m : ℕ} {Cs : Cons ε m} → app D i ⟶* dσ (⌜Fin⌝ (num m)) (selF Cs) →
            ◇ ⊢ x ∷ IMu I D i → IsNormal x → RowsDec I D Cs x
 rows-dec {I = I} {D} {Cs = Cs} r dx nrm with con-dec dx nrm
 ... | q₀ , (refl , (dq₀ , nq₀)) with pay-σ dq₀ r nq₀
@@ -270,7 +273,7 @@ rows-dec {I = I} {D} {Cs = Cs} r dx nrm with con-dec dx nrm
                         (⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (selF-β nth)))) , nq)))))
 
 -- a fibre with no rule is empty
-rows-none : {I D i x : RTm ε} → app D i ⟶* dσ (⌜Fin⌝ 0) (selF ([] {ε})) → ◇ ⊢ x ∷ IMu I D i → IsNormal x → ⊥
+rows-none : {I D i x : RTm ε} → app D i ⟶* dσ (⌜Fin⌝ (num 0)) (selF ([] {ε})) → ◇ ⊢ x ∷ IMu I D i → IsNormal x → ⊥
 rows-none r dx nrm with rows-dec r dx nrm
 ... | _ , (_ , (_ , (() , _)))
 
@@ -284,7 +287,7 @@ _▷_ : {A B : Set} → A → (A → B) → B
 x ▷ f = f x
 
 -- a payload at an EMPTY rule list (`dσ (⌜Fin⌝ 0) …`) has no inhabitant
-pay-none : {p I D C f : RTm ε} → ◇ ⊢ p ∷ El (dpay I D C) → C ⟶* dσ (⌜Fin⌝ 0) f → IsNormal p → ⊥
+pay-none : {p I D C f : RTm ε} → ◇ ⊢ p ∷ El (dpay I D C) → C ⟶* dσ (⌜Fin⌝ (num 0)) f → IsNormal p → ⊥
 pay-none dp r np with pay-σ dp r np
 ... | t , (_ , (_ , ((dt , _) , (nt , _)))) with tag-decᶜ dt nt
 ...   | _ , (() , _)
