@@ -340,7 +340,7 @@ con⟶ᵀEl₈ {Ξ} {j} {a0ᵢ0} {a0ᵢ1} {a0ᵢ2} dj da0ᵢ0 da0ᵢ1 da0ᵢ2 =
     dPv : Ξ ⊢ ((idrefl (⌜Ty⌝ j) (kIMu a0ᵢ0 a0ᵢ1 a0ᵢ2)) ,ₚ unit) ∷ El (dpay RedTₘ.J ⟶ᵀF.DF ⌜ T⟶ᵀEl₈⁽0⁾ j ((kIMu a0ᵢ0 a0ᵢ1 a0ᵢ2)) a0ᵢ0 a0ᵢ1 a0ᵢ2 ⌝ᵗ)
     dPv = (⊢payσ {Ξ} {RedTₘ.J} {⟶ᵀF.DF} RedTₘ.⊢J ⟶ᵀF.⊢DF {a = (idrefl (⌜Ty⌝ j) (kIMu a0ᵢ0 a0ᵢ1 a0ᵢ2))} {p = unit} okB (⊢conv (⊢idrefl (⊢⌜Ty⌝ dj) (toTy (⊢kIMu dj da0ᵢ0 da0ᵢ1 da0ᵢ2))) (csymᵀ (credᵀ (El-⌜Id⌝ (⌜Ty⌝ j) ((kIMu a0ᵢ0 a0ᵢ1 a0ᵢ2)) ((kIMu a0ᵢ0 a0ᵢ1 a0ᵢ2)))))) (⊢payι {Ξ} {RedTₘ.J} {⟶ᵀF.DF} RedTₘ.⊢J ⟶ᵀF.⊢DF {unit} ⊢unit))
 
-con⟶ᵀEl₉ : {Ξ : Ctx} {j a0ᵢ0 : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ a0ᵢ0 ∷ El ⌜Nat⌝ → 
+con⟶ᵀEl₉ : {Ξ : Ctx} {j a0ᵢ0 : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ a0ᵢ0 ∷ K 1 j → 
   Ξ ⊢ conₗ 8 ((idrefl (⌜Ty⌝ j) (kFin a0ᵢ0)) ,ₚ unit) ∷ IMu RedTₘ.J ⟶ᵀF.DF (ix⟶ᵀ j (kEl (kcFin a0ᵢ0)) ((kFin a0ᵢ0)))
 con⟶ᵀEl₉ {Ξ} {j} {a0ᵢ0} dj da0ᵢ0 =
   ⊢conRowₖ {Ξ} {10} {8} {RedTₘ.J} {⟶ᵀF.DF} {ix⟶ᵀ j (kEl (kcFin a0ᵢ0)) ((kFin a0ᵢ0))} {(PT⟶ᵀEl₉ᶜ0.CASE j (fst p) (c ,ₚ p ,ₚ unit))} {((idrefl (⌜Ty⌝ j) (kFin a0ᵢ0)) ,ₚ unit)} {⌜ T⟶ᵀEl₁ j p c ⌝ᵗ ∷ (PT⟶ᵀEl₂ᶜ0.CASE j (fst p) (c ,ₚ p ,ₚ unit)) ∷ (PT⟶ᵀEl₃ᶜ0.CASE j (fst p) (c ,ₚ p ,ₚ unit)) ∷ (PT⟶ᵀEl₄ᶜ0.CASE j (fst p) (c ,ₚ p ,ₚ unit)) ∷ (PT⟶ᵀEl₅ᶜ0.CASE j (fst p) (c ,ₚ p ,ₚ unit)) ∷ (PT⟶ᵀEl₆ᶜ0.CASE j (fst p) (c ,ₚ p ,ₚ unit)) ∷ (PT⟶ᵀEl₇ᶜ0.CASE j (fst p) (c ,ₚ p ,ₚ unit)) ∷ (PT⟶ᵀEl₈ᶜ0.CASE j (fst p) (c ,ₚ p ,ₚ unit)) ∷ (PT⟶ᵀEl₉ᶜ0.CASE j (fst p) (c ,ₚ p ,ₚ unit)) ∷ (PT⟶ᵀEl₁₀ᶜ0.CASE j (fst p) (c ,ₚ p ,ₚ unit)) ∷ []} (atᶜ 8) RedTₘ.⊢J ⟶ᵀF.⊢DF (⊢ix⟶ᵀ dj (⊢kEl dj (⊢kcFin dj da0ᵢ0)) (⊢kFin dj da0ᵢ0))
@@ -953,4 +953,29 @@ con⟶ᵀDIh₇ {Ξ} {j} {f0} {f1} {f3} {a0ᵢ0} {a0ᵢ1} dj df0 df1 df3 da0ᵢ0
     okB = (okT⟶ᵀDIh₇I {_} {j} {((kSg (iinstK j a0ᵢ0 (kfst f3) f1) (kDIh (wk 1 j f0) (wk2uK j f1) (wk 1 j a0ᵢ1) (ksnd (wk 1 j f3)))))} {f0} {f1} {f3} {a0ᵢ0} {a0ᵢ1} dj (⊢kSg dj (⊢iinstK dj da0ᵢ0 (⊢kfst dj df3) df1) (⊢kDIh (⊢isuc dj) (⊢wkS (lt-s lt-z) dj df0) (⊢wk2uK dj df1) (⊢wkS (lt-s lt-z) dj da0ᵢ1) (⊢ksnd (⊢isuc dj) (⊢wkS (lt-s lt-z) dj df3)))) df0 df1 df3 da0ᵢ0 da0ᵢ1)
     dPv : Ξ ⊢ ((idrefl (⌜Ty⌝ j) (kSg (iinstK j a0ᵢ0 (kfst f3) f1) (kDIh (wk 1 j f0) (wk2uK j f1) (wk 1 j a0ᵢ1) (ksnd (wk 1 j f3))))) ,ₚ unit) ∷ El (dpay RedTₘ.J ⟶ᵀF.DF ⌜ T⟶ᵀDIh₇⁽0⁾ j ((kSg (iinstK j a0ᵢ0 (kfst f3) f1) (kDIh (wk 1 j f0) (wk2uK j f1) (wk 1 j a0ᵢ1) (ksnd (wk 1 j f3))))) f0 f1 f3 a0ᵢ0 a0ᵢ1 ⌝ᵗ)
     dPv = (⊢payσ {Ξ} {RedTₘ.J} {⟶ᵀF.DF} RedTₘ.⊢J ⟶ᵀF.⊢DF {a = (idrefl (⌜Ty⌝ j) (kSg (iinstK j a0ᵢ0 (kfst f3) f1) (kDIh (wk 1 j f0) (wk2uK j f1) (wk 1 j a0ᵢ1) (ksnd (wk 1 j f3)))))} {p = unit} okB (⊢conv (⊢idrefl (⊢⌜Ty⌝ dj) (toTy (⊢kSg dj (⊢iinstK dj da0ᵢ0 (⊢kfst dj df3) df1) (⊢kDIh (⊢isuc dj) (⊢wkS (lt-s lt-z) dj df0) (⊢wk2uK dj df1) (⊢wkS (lt-s lt-z) dj da0ᵢ1) (⊢ksnd (⊢isuc dj) (⊢wkS (lt-s lt-z) dj df3)))))) (csymᵀ (credᵀ (El-⌜Id⌝ (⌜Ty⌝ j) ((kSg (iinstK j a0ᵢ0 (kfst f3) f1) (kDIh (wk 1 j f0) (wk2uK j f1) (wk 1 j a0ᵢ1) (ksnd (wk 1 j f3))))) ((kSg (iinstK j a0ᵢ0 (kfst f3) f1) (kDIh (wk 1 j f0) (wk2uK j f1) (wk 1 j a0ᵢ1) (ksnd (wk 1 j f3))))))))) (⊢payι {Ξ} {RedTₘ.J} {⟶ᵀF.DF} RedTₘ.⊢J ⟶ᵀF.⊢DF {unit} ⊢unit))
+
+con⟶ᵀFin : {Ξ : Ctx} {j f0 e0 e1 : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ f0 ∷ K 1 j → Ξ ⊢ e0 ∷ K 1 j → Ξ ⊢ e1 ∷ El (⌜⟶⌝ j f0 e0) → 
+  Ξ ⊢ conₗ 0 (e0 ,ₚ e1 ,ₚ (idrefl (⌜Ty⌝ j) (kFin e0)) ,ₚ unit) ∷ IMu RedTₘ.J ⟶ᵀF.DF (ix⟶ᵀ j (kFin f0) ((kFin e0)))
+con⟶ᵀFin {Ξ} {j} {f0} {e0} {e1} dj df0 de0 de1 =
+  ⊢conRowₖ {Ξ} {1} {0} {RedTₘ.J} {⟶ᵀF.DF} {ix⟶ᵀ j (kFin f0) ((kFin e0))} {⌜ T⟶ᵀFin j p c ⌝ᵗ} {(e0 ,ₚ e1 ,ₚ (idrefl (⌜Ty⌝ j) (kFin e0)) ,ₚ unit)} {⌜ T⟶ᵀFin j p c ⌝ᵗ ∷ []} (atᶜ 0) RedTₘ.⊢J ⟶ᵀF.⊢DF (⊢ix⟶ᵀ dj (⊢kFin dj df0) (⊢kFin dj de0))
+    (⟶ᵀF.fibF {s = 0} {k = 12} {j = j} {p = p} {c = c} (atᵍ 0) (atʰ 12)) (allr⟶ᵀFin {j = j} {p = p} {c = c} dj dp dc)
+    (⊢conv dPv (csymᵀ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))))
+  where
+    p c : RTm ⌊ Ξ ⌋
+    p = (f0 ,ₚ unit)
+    c = ((kFin e0))
+    dp = ⊢payK lt-z ok-kFin dj (a-rec df0 a[])
+    dc = ⊢toCR (⊢kFin dj de0)
+    R₀ : ⌜ T⟶ᵀFin⁽0⁾ j c (fst p) ⌝ᵗ ⟶* ⌜ T⟶ᵀFin⁽0⁾ j ((kFin e0)) f0 ⌝ᵗ
+    R₀ = mono-by {Δ = ⌊ Ξ ⌋} {n = 3} {as = (j ∷ c ∷ (fst p) ∷ [])} {as' = (j ∷ ((kFin e0)) ∷ f0 ∷ [])} ⌜ T⟶ᵀFin⁽0⁾ v₀ v₁ v₂ ⌝ᵗ (T⟶ᵀFin⁽0⁾-sub (σₗ (j ∷ c ∷ (fst p) ∷ [])) v₀ v₁ v₂) (T⟶ᵀFin⁽0⁾-sub (σₗ (j ∷ ((kFin e0)) ∷ f0 ∷ [])) v₀ v₁ v₂) (done ∷ʳ done ∷ʳ (prj-tup {ws = f0 ∷ []} unit (atᶜ 0)) ∷ʳ []ʳ)
+    okRest : {J' : RTm ⌊ Ξ ⌋} {T : Tel ⌊ Ξ ⌋} → TelOK Ξ RedTₘ.J (tρ J' T) → TelOK Ξ RedTₘ.J T
+    okRest (ok-ρ _ o) = o
+    okT0 : TelOK Ξ RedTₘ.J (T⟶ᵀFin⁽0⁾ j ((kFin e0)) f0)
+    okT0 = (RedTₘ.okσ (okC⟶ᵀFin_0I {_} {j} dj) (RedTₘ.okσ (okC⟶ᵀFin_1I {_} {(w1 j)} {(w1 f0)} {v₀} (wkN {t = j} dj) (wkK {s = 1} {d = j} {t = f0} df0) (hereTm {m = j})) (okT⟶ᵀFinI {_} {(w2 j)} {(w2 ((kFin e0)))} {v₁} (wkN {t = (w1 j)} (wkN {t = j} dj)) (wkK {s = 0} {d = (w1 j)} {t = (w1 ((kFin e0)))} (wkK {s = 0} {d = j} {t = ((kFin e0))} (⊢kFin dj de0))) (wkK {s = 1} {d = (renTm vs j)} {t = v₀} (hereTm {m = j})))))
+    okT1 : TelOK Ξ RedTₘ.J (T⟶ᵀFin⁽1⁾ j ((kFin e0)) f0 e0)
+    okT1 = (RedTₘ.okσ (okC⟶ᵀFin_1I {_} {j} {f0} {e0} dj df0 de0) (okT⟶ᵀFinI {_} {(w1 j)} {(w1 ((kFin e0)))} {(w1 e0)} (wkN {t = j} dj) (wkK {s = 0} {d = j} {t = ((kFin e0))} (⊢kFin dj de0)) (wkK {s = 1} {d = j} {t = e0} de0)))
+    okB : TelOK Ξ RedTₘ.J (T⟶ᵀFin⁽2⁾ j ((kFin e0)) f0 e0 e1)
+    okB = (okT⟶ᵀFinI {_} {j} {((kFin e0))} {e0} dj (⊢kFin dj de0) de0)
+    dPv : Ξ ⊢ (e0 ,ₚ e1 ,ₚ (idrefl (⌜Ty⌝ j) (kFin e0)) ,ₚ unit) ∷ El (dpay RedTₘ.J ⟶ᵀF.DF ⌜ T⟶ᵀFin⁽0⁾ j ((kFin e0)) f0 ⌝ᵗ)
+    dPv = (⊢payσ {Ξ} {RedTₘ.J} {⟶ᵀF.DF} RedTₘ.⊢J ⟶ᵀF.⊢DF {a = e0} {p = (e1 ,ₚ (idrefl (⌜Ty⌝ j) (kFin e0)) ,ₚ unit)} (okT0) (toTm de0) (⊢-cast {Ξ} {(e1 ,ₚ (idrefl (⌜Ty⌝ j) (kFin e0)) ,ₚ unit)} {El (dpay RedTₘ.J ⟶ᵀF.DF ⌜ T⟶ᵀFin⁽1⁾ j ((kFin e0)) f0 e0 ⌝ᵗ)} {El (dpay RedTₘ.J ⟶ᵀF.DF (subTm (single e0) ⌜ T⟶ᵀFin⁽1⁾ (w1 j) (w1 ((kFin e0))) (w1 f0) v₀ ⌝ᵗ))} (cong (λ Z → El (dpay RedTₘ.J ⟶ᵀF.DF Z)) (sym (trans (T⟶ᵀFin⁽1⁾-sub (single e0) (w1 j) (w1 ((kFin e0))) (w1 f0) v₀) (T⟶ᵀFin⁽1⁾-cong (subTm (single e0) (w1 j)) j (subTm (single e0) (w1 ((kFin e0)))) ((kFin e0)) (subTm (single e0) (w1 f0)) f0 (subTm (single e0) v₀) e0 (wk-cancel-tm e0 j) (wk-cancel-tm e0 ((kFin e0))) (wk-cancel-tm e0 f0) refl)))) (⊢payσ {Ξ} {RedTₘ.J} {⟶ᵀF.DF} RedTₘ.⊢J ⟶ᵀF.⊢DF {a = e1} {p = ((idrefl (⌜Ty⌝ j) (kFin e0)) ,ₚ unit)} (okT1) de1 (⊢-cast {Ξ} {((idrefl (⌜Ty⌝ j) (kFin e0)) ,ₚ unit)} {El (dpay RedTₘ.J ⟶ᵀF.DF ⌜ T⟶ᵀFin⁽2⁾ j ((kFin e0)) f0 e0 e1 ⌝ᵗ)} {El (dpay RedTₘ.J ⟶ᵀF.DF (subTm (single e1) ⌜ T⟶ᵀFin⁽2⁾ (w1 j) (w1 ((kFin e0))) (w1 f0) (w1 e0) v₀ ⌝ᵗ))} (cong (λ Z → El (dpay RedTₘ.J ⟶ᵀF.DF Z)) (sym (trans (T⟶ᵀFin⁽2⁾-sub (single e1) (w1 j) (w1 ((kFin e0))) (w1 f0) (w1 e0) v₀) (T⟶ᵀFin⁽2⁾-cong (subTm (single e1) (w1 j)) j (subTm (single e1) (w1 ((kFin e0)))) ((kFin e0)) (subTm (single e1) (w1 f0)) f0 (subTm (single e1) (w1 e0)) e0 (subTm (single e1) v₀) e1 (wk-cancel-tm e1 j) (wk-cancel-tm e1 ((kFin e0))) (wk-cancel-tm e1 f0) (wk-cancel-tm e1 e0) refl)))) (⊢payσ {Ξ} {RedTₘ.J} {⟶ᵀF.DF} RedTₘ.⊢J ⟶ᵀF.⊢DF {a = (idrefl (⌜Ty⌝ j) (kFin e0))} {p = unit} okB (⊢conv (⊢idrefl (⊢⌜Ty⌝ dj) (toTy (⊢kFin dj de0))) (csymᵀ (credᵀ (El-⌜Id⌝ (⌜Ty⌝ j) ((kFin e0)) ((kFin e0)))))) (⊢payι {Ξ} {RedTₘ.J} {⟶ᵀF.DF} RedTₘ.⊢J ⟶ᵀF.⊢DF {unit} ⊢unit))))))
 

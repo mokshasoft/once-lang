@@ -7180,6 +7180,78 @@ allr⟶cIMu {Ξ} {j} {p} {c} dj dp dc = (⊢tel {Ξ} {Redₘ.J} {T⟶cIMu₁ j p
 ok⟶cIMu : Redₘ.RowOK 1 sh-kcIMu r⟶cIMu
 ok⟶cIMu {Ξ} {j} {p} {c} dj dp dc = ⊢rows {Ξ} {Redₘ.J} {3} {⌜ T⟶cIMu₁ j p c ⌝ᵗ ∷ ⌜ T⟶cIMu₂ j p c ⌝ᵗ ∷ ⌜ T⟶cIMu₃ j p c ⌝ᵗ ∷ []} Redₘ.⊢J (allr⟶cIMu dj dp dc)
 
+-- ⟶cFin
+C⟶cFin_0A : RTm Δ → RTm Δ → RTm Δ
+C⟶cFin_0A J A0 = A0
+
+C⟶cFin_0I : RTm Δ → RTm Δ
+C⟶cFin_0I J = C⟶cFin_0A J (⌜Tm⌝ J)
+
+C⟶cFin_0A-cong : {Δ : Cx} → (J : RTm Δ) → (A0 A0' : RTm Δ) → A0 ≡ A0' → (C⟶cFin_0A {Δ} J A0) ≡ (C⟶cFin_0A J A0')
+C⟶cFin_0A-cong J A0 A0' refl = refl
+
+C⟶cFin_0I-sub : (σ : Sub Δ Θ) (J : RTm Δ) → subTm σ (C⟶cFin_0I J) ≡ (C⟶cFin_0I (subTm σ J))
+C⟶cFin_0I-sub σ J = C⟶cFin_0A-cong (subTm σ J) (subTm σ (⌜Tm⌝ J)) (⌜Tm⌝ (subTm σ J)) (⌜Tm⌝-sub σ J)
+
+C⟶cFin_0I-cong : {Δ : Cx} → (J J' : RTm Δ) → J ≡ J' → (C⟶cFin_0I {Δ} J) ≡ (C⟶cFin_0I J')
+C⟶cFin_0I-cong J J' refl = refl
+
+okC⟶cFin_0I : {Ξ : Ctx} {J : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ C⟶cFin_0I J ∷ U
+okC⟶cFin_0I dJ = (⊢⌜Tm⌝ dJ)
+
+T⟶cFinA : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
+T⟶cFinA J X F0 E0 A0 = tρ (ix⟶ J F0 E0) (tσ (⌜Id⌝ A0 X (kcFin E0)) tι)
+
+T⟶cFinI : RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
+T⟶cFinI J X F0 E0 = T⟶cFinA J X F0 E0 (⌜Tm⌝ J)
+
+T⟶cFinA-cong : {Δ : Cx} → (J : RTm Δ) → (X : RTm Δ) → (F0 : RTm Δ) → (E0 : RTm Δ) → (A0 A0' : RTm Δ) → A0 ≡ A0' → ⌜ T⟶cFinA {Δ} J X F0 E0 A0 ⌝ᵗ ≡ ⌜ T⟶cFinA J X F0 E0 A0' ⌝ᵗ
+T⟶cFinA-cong J X F0 E0 A0 A0' refl = refl
+
+T⟶cFinI-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (E0 : RTm Δ) → subTm σ ⌜ T⟶cFinI J X F0 E0 ⌝ᵗ ≡ ⌜ T⟶cFinI (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ E0) ⌝ᵗ
+T⟶cFinI-sub σ J X F0 E0 = T⟶cFinA-cong (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ E0) (subTm σ (⌜Tm⌝ J)) (⌜Tm⌝ (subTm σ J)) (⌜Tm⌝-sub σ J)
+
+T⟶cFinI-cong : {Δ : Cx} → (J J' : RTm Δ) → (X X' : RTm Δ) → (F0 F0' : RTm Δ) → (E0 E0' : RTm Δ) → J ≡ J' → X ≡ X' → F0 ≡ F0' → E0 ≡ E0' → ⌜ T⟶cFinI {Δ} J X F0 E0 ⌝ᵗ ≡ ⌜ T⟶cFinI J' X' F0' E0' ⌝ᵗ
+T⟶cFinI-cong J J' X X' F0 F0' E0 E0' refl refl refl refl = refl
+
+okT⟶cFinI : {Ξ : Ctx} {J X F0 E0 : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ X ∷ K 1 J → Ξ ⊢ F0 ∷ K 1 J → Ξ ⊢ E0 ∷ K 1 J → TelOK Ξ Redₘ.J (T⟶cFinI J X F0 E0)
+okT⟶cFinI dJ dX dF0 dE0 = ok-ρ (⊢ix⟶ dJ dF0 dE0) (ok-σ (⊢⌜Id⌝ (⊢⌜Tm⌝ dJ) (toTm dX) (toTm (⊢kcFin dJ dE0))) ok-ι)
+
+T⟶cFin⁽1⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
+T⟶cFin⁽1⁾ J X F0 E0 = (T⟶cFinI J X F0 E0)
+
+T⟶cFin⁽1⁾-cong : {Δ : Cx} → (J J' : RTm Δ) → (X X' : RTm Δ) → (F0 F0' : RTm Δ) → (E0 E0' : RTm Δ) → J ≡ J' → X ≡ X' → F0 ≡ F0' → E0 ≡ E0' → ⌜ T⟶cFin⁽1⁾ {Δ} J X F0 E0 ⌝ᵗ ≡ ⌜ T⟶cFin⁽1⁾ J' X' F0' E0' ⌝ᵗ
+T⟶cFin⁽1⁾-cong J J' X X' F0 F0' E0 E0' refl refl refl refl = refl
+
+T⟶cFin⁽1⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (E0 : RTm Δ) → subTm σ ⌜ T⟶cFin⁽1⁾ J X F0 E0 ⌝ᵗ ≡ ⌜ T⟶cFin⁽1⁾ (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ E0) ⌝ᵗ
+T⟶cFin⁽1⁾-sub σ J X F0 E0 = (T⟶cFinI-sub σ J X F0 E0)
+
+T⟶cFin⁽0⁾ : RTm Δ → RTm Δ → RTm Δ → Tel Δ
+T⟶cFin⁽0⁾ J X F0 = tσ (C⟶cFin_0I J) (T⟶cFin⁽1⁾ (w1 J) (w1 X) (w1 F0) v₀)
+
+T⟶cFin⁽0⁾-cong : {Δ : Cx} → (J J' : RTm Δ) → (X X' : RTm Δ) → (F0 F0' : RTm Δ) → J ≡ J' → X ≡ X' → F0 ≡ F0' → ⌜ T⟶cFin⁽0⁾ {Δ} J X F0 ⌝ᵗ ≡ ⌜ T⟶cFin⁽0⁾ J' X' F0' ⌝ᵗ
+T⟶cFin⁽0⁾-cong J J' X X' F0 F0' refl refl refl = refl
+
+T⟶cFin⁽0⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) → subTm σ ⌜ T⟶cFin⁽0⁾ J X F0 ⌝ᵗ ≡ ⌜ T⟶cFin⁽0⁾ (subTm σ J) (subTm σ X) (subTm σ F0) ⌝ᵗ
+T⟶cFin⁽0⁾-sub σ J X F0 =
+  dσ-cong1 (subTm σ (C⟶cFin_0I J)) (C⟶cFin_0I (subTm σ J)) (subTm (extS σ) ⌜ T⟶cFin⁽1⁾ (w1 J) (w1 X) (w1 F0) v₀ ⌝ᵗ) ⌜ T⟶cFin⁽1⁾ (w1 (subTm σ J)) (w1 (subTm σ X)) (w1 (subTm σ F0)) v₀ ⌝ᵗ (C⟶cFin_0I-sub σ J) (trans (T⟶cFin⁽1⁾-sub (extS σ) (w1 J) (w1 X) (w1 F0) v₀) (T⟶cFin⁽1⁾-cong (subTm (extS σ) (w1 J)) (w1 (subTm σ J)) (subTm (extS σ) (w1 X)) (w1 (subTm σ X)) (subTm (extS σ) (w1 F0)) (w1 (subTm σ F0)) (subTm (extS σ) v₀) v₀ (w1-sub σ J) (w1-sub σ X) (w1-sub σ F0) refl))
+
+T⟶cFin : RTm Δ → RTm Δ → RTm Δ → Tel Δ
+T⟶cFin j p c = T⟶cFin⁽0⁾ j c (fst p)
+
+T⟶cFin-law : TelLaw T⟶cFin
+T⟶cFin-law σ j p c = T⟶cFin⁽0⁾-sub σ j c (fst p)
+
+okT⟶cFin : {Ξ : Ctx} {j p c : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ p ∷ PayV sh-kcFin ((tag 1) ,ₚ j) (SI 2) (SD KSig) → Ξ ⊢ c ∷ El (Redₘ.Cat ((tag 1) ,ₚ j)) → TelOK Ξ Redₘ.J (T⟶cFin j p c)
+okT⟶cFin {Ξ} {j} {p} {c} dj dp dc = (Redₘ.okσ (okC⟶cFin_0I {_} {j} dj) (okT⟶cFinI {_} {(w1 j)} {(w1 c)} {(w1 (fst p))} {v₀} (wkN {t = j} dj) (wkK {s = 1} {d = j} {t = c} (⊢tgt {s = 1} dc)) (wkK {s = 1} {d = j} {t = (fst p)} (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = ([]ʰ)} dp))) (hereTm {m = j})))
+
+r⟶cFin : Row
+r⟶cFin = record { R = λ j p c → rows (⌜ T⟶cFin j p c ⌝ᵗ ∷ []) ; R-sub = λ σ j p c → trans (rows-sub' σ (⌜ T⟶cFin j p c ⌝ᵗ ∷ [])) (cong (λ X → rows (X ∷ [])) {x = subTm σ (⌜ T⟶cFin j p c ⌝ᵗ)} {y = ⌜ T⟶cFin (subTm σ j) (subTm σ p) (subTm σ c) ⌝ᵗ} (T⟶cFin-law σ j p c)) }
+allr⟶cFin : {Ξ : Ctx} {j p c : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ p ∷ PayV sh-kcFin ((tag 1) ,ₚ j) (SI 2) (SD KSig) → Ξ ⊢ c ∷ El (Redₘ.Cat ((tag 1) ,ₚ j)) → AllD Ξ Redₘ.J (⌜ T⟶cFin j p c ⌝ᵗ ∷ [])
+allr⟶cFin {Ξ} {j} {p} {c} dj dp dc = (⊢tel {Ξ} {Redₘ.J} {T⟶cFin j p c} Redₘ.⊢J (okT⟶cFin dj dp dc)) ∷ᵈ []ᵈ
+ok⟶cFin : Redₘ.RowOK 1 sh-kcFin r⟶cFin
+ok⟶cFin {Ξ} {j} {p} {c} dj dp dc = ⊢rows {Ξ} {Redₘ.J} {1} {⌜ T⟶cFin j p c ⌝ᵗ ∷ []} Redₘ.⊢J (allr⟶cFin dj dp dc)
+
 ⟶None : Row
 ⟶None = record { R = λ j p c → rows [] ; R-sub = λ σ j p c → refl }
 
@@ -7246,7 +7318,7 @@ module _ where
     ⟨ r⟶psplit ∣ ok⟶psplit ⟩∷  -- sh-kpsplit
     ⟨ ⟶None ∣∀ ok⟶None ⟩∷  -- sh-kcNat
     ⟨ r⟶cIMu ∣ ok⟶cIMu ⟩∷  -- sh-kcIMu
-    ⟨ ⟶None ∣∀ ok⟶None ⟩∷  -- sh-kcFin
+    ⟨ r⟶cFin ∣ ok⟶cFin ⟩∷  -- sh-kcFin
     ⟨ ⟶None ∣∀ ok⟶None ⟩∷  -- sh-kcUnit
     ⟨ rδ ∣ okδ ⟩∷  -- sh-kref
     []ᴿ

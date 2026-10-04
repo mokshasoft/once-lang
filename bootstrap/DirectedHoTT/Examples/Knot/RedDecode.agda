@@ -186,7 +186,10 @@ decRed {Γ} (⌜IMu⌝ a0 a1 a2) {u} dk nrm =
   rows-elim (rows-dec {I = Redₘ.J} {D = ⟶F.DF} {i = ix⟶ (dep Γ) (quoteTm (⌜IMu⌝ a0 a1 a2)) (quoteTm u)} {m = 3} {Cs = ⌜ T⟶cIMu₁ (dep Γ) ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) (quoteTm u) ⌝ᵗ ∷ ⌜ T⟶cIMu₂ (dep Γ) ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) (quoteTm u) ⌝ᵗ ∷ ⌜ T⟶cIMu₃ (dep Γ) ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) (quoteTm u) ⌝ᵗ ∷ []}
     (⟶F.fibF {s = 1} {k = 35} {j = dep Γ} {p = ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit)} {c = quoteTm u} (atᵍ 1) (atʰ 35)) dk nrm)
     (d⟶cIMu₍0₎ a0 a1 a2 (decRed a0) u , (d⟶cIMu₍1₎ a0 a1 a2 (decRed a1) u , (d⟶cIMu₍2₎ a0 a1 a2 (decRed a2) u , tt)))
-decRed {Γ} (⌜Fin⌝ a0) {u} dk nrm = ⊥-elim (rows-none (⟶F.fibF {s = 1} {k = 36} {j = dep Γ} {c = quoteTm u} (atᵍ 1) (atʰ 36)) dk nrm)
+decRed {Γ} (⌜Fin⌝ a0) {u} dk nrm =
+  rows-elim (rows-dec {I = Redₘ.J} {D = ⟶F.DF} {i = ix⟶ (dep Γ) (quoteTm (⌜Fin⌝ a0)) (quoteTm u)} {m = 1} {Cs = ⌜ T⟶cFin (dep Γ) ((quoteTm a0) ,ₚ unit) (quoteTm u) ⌝ᵗ ∷ []}
+    (⟶F.fibF {s = 1} {k = 36} {j = dep Γ} {p = ((quoteTm a0) ,ₚ unit)} {c = quoteTm u} (atᵍ 1) (atʰ 36)) dk nrm)
+    (d⟶cFin₍0₎ a0 (decRed a0) u , tt)
 decRed {Γ} ⌜Unit⌝ {u} dk nrm = ⊥-elim (rows-none (⟶F.fibF {s = 1} {k = 37} {j = dep Γ} {c = quoteTm u} (atᵍ 1) (atʰ 37)) dk nrm)
 decRed {Γ} (ref a0 a1) {u} dk nrm =
   rows-dec {I = Redₘ.J} {D = ⟶F.DF} {i = ix⟶ (dep Γ) (quoteTm (ref {Γ} a0 a1)) (quoteTm u)} {m = 1} {Cs = ⌜ Tδ (dep Γ) ((quoteℕ a0) ,ₚ (quoteTm a1) ,ₚ unit) (quoteTm u) ⌝ᵗ ∷ []}

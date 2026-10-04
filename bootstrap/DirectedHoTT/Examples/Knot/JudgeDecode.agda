@@ -35,7 +35,6 @@ open import DirectedHoTT.Examples.Knot.JudgeIx using ( JT; tyIx; tmIx )
 open import DirectedHoTT.Examples.Knot.Judge using ( D⊢; fibK )
 open import DirectedHoTT.Examples.Knot.JudgeConv using ( TCVat )
 open import DirectedHoTT.Examples.Knot.JudgeRowsGen
-open import DirectedHoTT.Examples.Knot.JudgeRowsTm using ( module PFz; module PFs )
 open import DirectedHoTT.Examples.Knot.RefJudge using ( T⊢ref )
 open import DirectedHoTT.Examples.Knot.JudgeDecodeBase
 open import DirectedHoTT.Examples.Knot.JudgeDecodeTy
@@ -169,8 +168,8 @@ decTyW (acc rs) Γ (DIh a0 a1 a2 a3) {k} hk dk nk =
     ihTm Γ' t' A' {r} lt dr nr = decTmW (rs (sz r) lt) Γ' t' A' ≤-refl dr nr
 
 decTyW (acc rs) Γ (RTy.Fin a0) {k} hk dk nk =
-  rows-elim< (rows-dec {I = JT} {D = D⊢} {i = tyIx (dep ⌊ Γ ⌋) (quoteCtx Γ) (quoteTy (RTy.Fin {⌊ Γ ⌋} a0))} {m = 1} {Cs = ⌜ T⊢tyFin (dep ⌊ Γ ⌋) ((quoteℕ a0) ,ₚ unit) ((quoteCtx Γ) ,ₚ unit) ⌝ᵗ ∷ []}
-    (fibK {s = 0} {k = 12} {j = dep ⌊ Γ ⌋} {p = ((quoteℕ a0) ,ₚ unit)} {c = ((quoteCtx Γ) ,ₚ unit)} (atᵍ 0) (atʰ 12)) dk nk)
+  rows-elim< (rows-dec {I = JT} {D = D⊢} {i = tyIx (dep ⌊ Γ ⌋) (quoteCtx Γ) (quoteTy (RTy.Fin a0))} {m = 1} {Cs = ⌜ T⊢tyFin (dep ⌊ Γ ⌋) ((quoteTm a0) ,ₚ unit) ((quoteCtx Γ) ,ₚ unit) ⌝ᵗ ∷ []}
+    (fibK {s = 0} {k = 12} {j = dep ⌊ Γ ⌋} {p = ((quoteTm a0) ,ₚ unit)} {c = ((quoteCtx Γ) ,ₚ unit)} (atᵍ 0) (atʰ 12)) dk nk)
     hk (jdᵀFin₍0₎ ihTy ihTm Γ a0 , tt)
   where
     ihTy : IHTy _
@@ -469,9 +468,9 @@ decTmW (acc rs) Γ (dih a0 a1 a2 a3) A {k} hk dk nk =
     ihTm Γ' t' A' {r} lt dr nr = decTmW (rs (sz r) lt) Γ' t' A' ≤-refl dr nr
 
 decTmW (acc rs) Γ fzero A {k} hk dk nk =
-  rows-elim< (rows-dec {I = JT} {D = D⊢} {i = tmIx (dep ⌊ Γ ⌋) (quoteCtx Γ) (quoteTm (fzero {⌊ Γ ⌋})) (quoteTy A)} {m = 2} {Cs = (PFz.CX (dep ⌊ Γ ⌋) unit ((quoteCtx Γ) ,ₚ (quoteTy A))) ∷ ⌜ TCVat 29 (dep ⌊ Γ ⌋) unit ((quoteCtx Γ) ,ₚ (quoteTy A)) ⌝ᵗ ∷ []}
+  rows-elim< (rows-dec {I = JT} {D = D⊢} {i = tmIx (dep ⌊ Γ ⌋) (quoteCtx Γ) (quoteTm (fzero {⌊ Γ ⌋})) (quoteTy A)} {m = 2} {Cs = ⌜ T⊢fzero (dep ⌊ Γ ⌋) unit ((quoteCtx Γ) ,ₚ (quoteTy A)) ⌝ᵗ ∷ ⌜ TCVat 29 (dep ⌊ Γ ⌋) unit ((quoteCtx Γ) ,ₚ (quoteTy A)) ⌝ᵗ ∷ []}
     (fibK {s = 1} {k = 29} {j = dep ⌊ Γ ⌋} {p = unit} {c = ((quoteCtx Γ) ,ₚ (quoteTy A))} (atᵍ 1) (atʰ 29)) dk nk)
-    hk (jdfzero ihTy ihTm Γ A , (dconv ihTm Γ (fzero {⌊ Γ ⌋}) A , tt))
+    hk (jdfzero₍0₎ ihTy ihTm Γ A , (dconv ihTm Γ (fzero {⌊ Γ ⌋}) A , tt))
   where
     ihTy : IHTy _
     ihTy Γ' A' {r} lt dr nr = decTyW (rs (sz r) lt) Γ' A' ≤-refl dr nr
@@ -479,9 +478,9 @@ decTmW (acc rs) Γ fzero A {k} hk dk nk =
     ihTm Γ' t' A' {r} lt dr nr = decTmW (rs (sz r) lt) Γ' t' A' ≤-refl dr nr
 
 decTmW (acc rs) Γ (fsuc a0) A {k} hk dk nk =
-  rows-elim< (rows-dec {I = JT} {D = D⊢} {i = tmIx (dep ⌊ Γ ⌋) (quoteCtx Γ) (quoteTm (fsuc a0)) (quoteTy A)} {m = 2} {Cs = (PFs.CX (dep ⌊ Γ ⌋) ((quoteTm a0) ,ₚ unit) ((quoteCtx Γ) ,ₚ (quoteTy A))) ∷ ⌜ TCVat 30 (dep ⌊ Γ ⌋) ((quoteTm a0) ,ₚ unit) ((quoteCtx Γ) ,ₚ (quoteTy A)) ⌝ᵗ ∷ []}
+  rows-elim< (rows-dec {I = JT} {D = D⊢} {i = tmIx (dep ⌊ Γ ⌋) (quoteCtx Γ) (quoteTm (fsuc a0)) (quoteTy A)} {m = 2} {Cs = ⌜ T⊢fsuc (dep ⌊ Γ ⌋) ((quoteTm a0) ,ₚ unit) ((quoteCtx Γ) ,ₚ (quoteTy A)) ⌝ᵗ ∷ ⌜ TCVat 30 (dep ⌊ Γ ⌋) ((quoteTm a0) ,ₚ unit) ((quoteCtx Γ) ,ₚ (quoteTy A)) ⌝ᵗ ∷ []}
     (fibK {s = 1} {k = 30} {j = dep ⌊ Γ ⌋} {p = ((quoteTm a0) ,ₚ unit)} {c = ((quoteCtx Γ) ,ₚ (quoteTy A))} (atᵍ 1) (atʰ 30)) dk nk)
-    hk (jdfsuc ihTy ihTm Γ a0 A , (dconv ihTm Γ (fsuc a0) A , tt))
+    hk (jdfsuc₍0₎ ihTy ihTm Γ a0 A , (dconv ihTm Γ (fsuc a0) A , tt))
   where
     ihTy : IHTy _
     ihTy Γ' A' {r} lt dr nr = decTyW (rs (sz r) lt) Γ' A' ≤-refl dr nr
@@ -539,9 +538,9 @@ decTmW (acc rs) Γ (⌜IMu⌝ a0 a1 a2) A {k} hk dk nk =
     ihTm Γ' t' A' {r} lt dr nr = decTmW (rs (sz r) lt) Γ' t' A' ≤-refl dr nr
 
 decTmW (acc rs) Γ (⌜Fin⌝ a0) A {k} hk dk nk =
-  rows-elim< (rows-dec {I = JT} {D = D⊢} {i = tmIx (dep ⌊ Γ ⌋) (quoteCtx Γ) (quoteTm (⌜Fin⌝ {⌊ Γ ⌋} a0)) (quoteTy A)} {m = 2} {Cs = (PT⊢cFin.CX (dep ⌊ Γ ⌋) ((quoteℕ a0) ,ₚ unit) ((quoteCtx Γ) ,ₚ (quoteTy A))) ∷ ⌜ TCVat 36 (dep ⌊ Γ ⌋) ((quoteℕ a0) ,ₚ unit) ((quoteCtx Γ) ,ₚ (quoteTy A)) ⌝ᵗ ∷ []}
-    (fibK {s = 1} {k = 36} {j = dep ⌊ Γ ⌋} {p = ((quoteℕ a0) ,ₚ unit)} {c = ((quoteCtx Γ) ,ₚ (quoteTy A))} (atᵍ 1) (atʰ 36)) dk nk)
-    hk (jdcFin₍0₎ ihTy ihTm Γ a0 A , (dconv ihTm Γ (⌜Fin⌝ {⌊ Γ ⌋} a0) A , tt))
+  rows-elim< (rows-dec {I = JT} {D = D⊢} {i = tmIx (dep ⌊ Γ ⌋) (quoteCtx Γ) (quoteTm (⌜Fin⌝ a0)) (quoteTy A)} {m = 2} {Cs = (PT⊢cFin.CX (dep ⌊ Γ ⌋) ((quoteTm a0) ,ₚ unit) ((quoteCtx Γ) ,ₚ (quoteTy A))) ∷ ⌜ TCVat 36 (dep ⌊ Γ ⌋) ((quoteTm a0) ,ₚ unit) ((quoteCtx Γ) ,ₚ (quoteTy A)) ⌝ᵗ ∷ []}
+    (fibK {s = 1} {k = 36} {j = dep ⌊ Γ ⌋} {p = ((quoteTm a0) ,ₚ unit)} {c = ((quoteCtx Γ) ,ₚ (quoteTy A))} (atᵍ 1) (atʰ 36)) dk nk)
+    hk (jdcFin₍0₎ ihTy ihTm Γ a0 A , (dconv ihTm Γ (⌜Fin⌝ a0) A , tt))
   where
     ihTy : IHTy _
     ihTy Γ' A' {r} lt dr nr = decTyW (rs (sz r) lt) Γ' A' ≤-refl dr nr

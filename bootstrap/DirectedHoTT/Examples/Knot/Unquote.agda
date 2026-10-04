@@ -111,7 +111,7 @@ fromTy (node nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nth
 fromTy (node nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))) (s-rec a0 (s-rec a1 (s-rec a2 s[])))) = IMu (fromTm a0) (fromTm a1) (fromTm a2)
 fromTy (node nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))) (s-rec a0 s[])) = Desc (fromTm a0)
 fromTy (node nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))))) (s-rec a0 (s-rec a1 (s-rec a2 (s-rec a3 s[]))))) = DIh (fromTm a0) (fromTy a1) (fromTm a2) (fromTm a3)
-fromTy (node nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))) (s-nat a0 s[])) = Fin a0
+fromTy (node nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))) (s-rec a0 s[])) = Fin (fromTm a0)
 
 fromTm (node (nthᵍ-s nthᵍ-z) nthʰ-z (s-v a0 l0)) = var (toVar l0)
 fromTm (node (nthᵍ-s nthᵍ-z) (nthʰ-s nthʰ-z) (s-rec a0 s[])) = lam (fromTm a0)
@@ -149,7 +149,7 @@ fromTm (node (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (n
 fromTm (node (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))))))))))))))))))))))))))) (s-rec a0 (s-rec a1 s[]))) = psplit (fromTm a0) (fromTm a1)
 fromTm (node (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))))))))))))))))))))))))) s[]) = ⌜Nat⌝
 fromTm (node (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))))))))))))))))))))))))))))) (s-rec a0 (s-rec a1 (s-rec a2 s[])))) = ⌜IMu⌝ (fromTm a0) (fromTm a1) (fromTm a2)
-fromTm (node (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))))))))))))))))))))))))))) (s-nat a0 s[])) = ⌜Fin⌝ a0
+fromTm (node (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))))))))))))))))))))))))))) (s-rec a0 s[])) = ⌜Fin⌝ (fromTm a0)
 fromTm (node (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))))))))))))))))))))))))))))))) s[]) = ⌜Unit⌝
 fromTm (node (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))))))))))))))))))))))))))))) (s-nat a0 (s-cls a1 s[]))) = ref a0 (fromTm a1)
 
@@ -165,7 +165,7 @@ toTy (Id a0 a1 a2) = node nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s 
 toTy (IMu a0 a1 a2) = node nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))) (s-rec (toTm a0) (s-rec (toTm a1) (s-rec (toTm a2) s[])))
 toTy (Desc a0) = node nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))) (s-rec (toTm a0) s[])
 toTy (DIh a0 a1 a2 a3) = node nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))))) (s-rec (toTm a0) (s-rec (toTy a1) (s-rec (toTm a2) (s-rec (toTm a3) s[]))))
-toTy (Fin a0) = node nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))) (s-nat a0 s[])
+toTy (Fin a0) = node nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))) (s-rec (toTm a0) s[])
 
 toTm (var a0) = node (nthᵍ-s nthᵍ-z) nthʰ-z (s-v (fromVar a0) (fromVar-lt a0))
 toTm (lam a0) = node (nthᵍ-s nthᵍ-z) (nthʰ-s nthʰ-z) (s-rec (toTm a0) s[])
@@ -203,7 +203,7 @@ toTm (fcase0 a0) = node (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s 
 toTm (psplit a0 a1) = node (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))))))))))))))))))))))))))) (s-rec (toTm a0) (s-rec (toTm a1) s[]))
 toTm ⌜Nat⌝ = node (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))))))))))))))))))))))))) s[]
 toTm (⌜IMu⌝ a0 a1 a2) = node (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))))))))))))))))))))))))))))) (s-rec (toTm a0) (s-rec (toTm a1) (s-rec (toTm a2) s[])))
-toTm (⌜Fin⌝ a0) = node (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))))))))))))))))))))))))))) (s-nat a0 s[])
+toTm (⌜Fin⌝ a0) = node (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))))))))))))))))))))))))))) (s-rec (toTm a0) s[])
 toTm ⌜Unit⌝ = node (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))))))))))))))))))))))))))))))) s[]
 toTm (ref a0 a1) = node (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))))))))))))))))))))))))))))) (s-nat a0 (s-cls (toTm a1) s[]))
 
@@ -222,7 +222,7 @@ quote-fromTy (node nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-
 quote-fromTy (node nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))) (s-rec a0 (s-rec a1 (s-rec a2 s[])))) = c3 kIMu (quote-fromTm a0) (quote-fromTm a1) (quote-fromTm a2)
 quote-fromTy (node nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))) (s-rec a0 s[])) = cong kDesc (quote-fromTm a0)
 quote-fromTy (node nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))))) (s-rec a0 (s-rec a1 (s-rec a2 (s-rec a3 s[]))))) = c4 kDIh (quote-fromTm a0) (quote-fromTy a1) (quote-fromTm a2) (quote-fromTm a3)
-quote-fromTy (node nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))) (s-nat a0 s[])) = cong kFin (quoteℕ-num a0)
+quote-fromTy (node nthᵍ-z (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))) (s-rec a0 s[])) = cong kFin (quote-fromTm a0)
 
 quote-fromTm (node (nthᵍ-s nthᵍ-z) nthʰ-z (s-v a0 l0)) = cong kvar (quoteVar-toVar l0)
 quote-fromTm (node (nthᵍ-s nthᵍ-z) (nthʰ-s nthʰ-z) (s-rec a0 s[])) = cong klam (quote-fromTm a0)
@@ -260,7 +260,7 @@ quote-fromTm (node (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nth�
 quote-fromTm (node (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))))))))))))))))))))))))))) (s-rec a0 (s-rec a1 s[]))) = cong₂ kpsplit (quote-fromTm a0) (quote-fromTm a1)
 quote-fromTm (node (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))))))))))))))))))))))))) s[]) = refl
 quote-fromTm (node (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))))))))))))))))))))))))))))) (s-rec a0 (s-rec a1 (s-rec a2 s[])))) = c3 kcIMu (quote-fromTm a0) (quote-fromTm a1) (quote-fromTm a2)
-quote-fromTm (node (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))))))))))))))))))))))))))) (s-nat a0 s[])) = cong kcFin (quoteℕ-num a0)
+quote-fromTm (node (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))))))))))))))))))))))))))) (s-rec a0 s[])) = cong kcFin (quote-fromTm a0)
 quote-fromTm (node (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z))))))))))))))))))))))))))))))))))))) s[]) = refl
 quote-fromTm (node (nthᵍ-s nthᵍ-z) (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s (nthʰ-s nthʰ-z)))))))))))))))))))))))))))))))))))))) (s-nat a0 (s-cls a1 s[]))) = cong₂ kref (quoteℕ-num a0) (quote-fromTm a1)
 
@@ -278,7 +278,7 @@ quote-toTy (Id a0 a1 a2) = c3 kId (quote-toTy a0) (quote-toTm a1) (quote-toTm a2
 quote-toTy (IMu a0 a1 a2) = c3 kIMu (quote-toTm a0) (quote-toTm a1) (quote-toTm a2)
 quote-toTy (Desc a0) = cong kDesc (quote-toTm a0)
 quote-toTy (DIh a0 a1 a2 a3) = c4 kDIh (quote-toTm a0) (quote-toTy a1) (quote-toTm a2) (quote-toTm a3)
-quote-toTy (Fin a0) = cong kFin (sym (quoteℕ-num a0))
+quote-toTy (Fin a0) = cong kFin (quote-toTm a0)
 
 quote-toTm (var a0) = cong kvar (fnum-fromVar a0)
 quote-toTm (lam a0) = cong klam (quote-toTm a0)
@@ -316,7 +316,7 @@ quote-toTm (fcase0 a0) = cong kfcase0 (quote-toTm a0)
 quote-toTm (psplit a0 a1) = cong₂ kpsplit (quote-toTm a0) (quote-toTm a1)
 quote-toTm ⌜Nat⌝ = refl
 quote-toTm (⌜IMu⌝ a0 a1 a2) = c3 kcIMu (quote-toTm a0) (quote-toTm a1) (quote-toTm a2)
-quote-toTm (⌜Fin⌝ a0) = cong kcFin (sym (quoteℕ-num a0))
+quote-toTm (⌜Fin⌝ a0) = cong kcFin (quote-toTm a0)
 quote-toTm ⌜Unit⌝ = refl
 quote-toTm (ref a0 a1) = cong₂ kref (sym (quoteℕ-num a0)) (quote-toTm a1)
 
@@ -334,7 +334,7 @@ from-toTy (Id a0 a1 a2) = c3 Id (from-toTy a0) (from-toTm a1) (from-toTm a2)
 from-toTy (IMu a0 a1 a2) = c3 IMu (from-toTm a0) (from-toTm a1) (from-toTm a2)
 from-toTy (Desc a0) = cong Desc (from-toTm a0)
 from-toTy (DIh a0 a1 a2 a3) = c4 DIh (from-toTm a0) (from-toTy a1) (from-toTm a2) (from-toTm a3)
-from-toTy (Fin a0) = cong Fin refl
+from-toTy (Fin a0) = cong Fin (from-toTm a0)
 
 from-toTm (var a0) = cong var (toVar-from a0)
 from-toTm (lam a0) = cong lam (from-toTm a0)
@@ -372,7 +372,7 @@ from-toTm (fcase0 a0) = cong fcase0 (from-toTm a0)
 from-toTm (psplit a0 a1) = cong₂ psplit (from-toTm a0) (from-toTm a1)
 from-toTm ⌜Nat⌝ = refl
 from-toTm (⌜IMu⌝ a0 a1 a2) = c3 ⌜IMu⌝ (from-toTm a0) (from-toTm a1) (from-toTm a2)
-from-toTm (⌜Fin⌝ a0) = cong ⌜Fin⌝ refl
+from-toTm (⌜Fin⌝ a0) = cong ⌜Fin⌝ (from-toTm a0)
 from-toTm ⌜Unit⌝ = refl
 from-toTm (ref a0 a1) = cong₂ ref refl (from-toTm a1)
 
@@ -412,7 +412,7 @@ pfTy (Id a0 a1 a2) = ((quoteTy a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit
 pfTy (IMu a0 a1 a2) = ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit)
 pfTy (Desc a0) = ((quoteTm a0) ,ₚ unit)
 pfTy (DIh a0 a1 a2 a3) = ((quoteTm a0) ,ₚ (quoteTy a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ unit)
-pfTy (Fin a0) = ((quoteℕ a0) ,ₚ unit)
+pfTy (Fin a0) = ((quoteTm a0) ,ₚ unit)
 shTy base = sh-kbase
 shTy U = sh-kU
 shTy (Π a0 a1) = sh-kPi
@@ -533,7 +533,7 @@ pfTm (fcase0 a0) = ((quoteTm a0) ,ₚ unit)
 pfTm (psplit a0 a1) = ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ unit)
 pfTm ⌜Nat⌝ = unit
 pfTm (⌜IMu⌝ a0 a1 a2) = ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit)
-pfTm (⌜Fin⌝ a0) = ((quoteℕ a0) ,ₚ unit)
+pfTm (⌜Fin⌝ a0) = ((quoteTm a0) ,ₚ unit)
 pfTm ⌜Unit⌝ = unit
 pfTm (ref a0 a1) = ((quoteℕ a0) ,ₚ (quoteTm a1) ,ₚ unit)
 shTm (var a0) = sh-kvar
@@ -834,7 +834,7 @@ isDIh (Desc a0) ()
 isDIh (DIh a0 a1 a2 a3) refl = (a0 , (a1 , (a2 , (a3 , refl))))
 isDIh (Fin a0) ()
 
-isFin : (t : RTy Γ) → hdTy t ≡ 12 → Σ (ℕ) (λ b0 → t ≡ (Fin {Γ} b0))
+isFin : (t : RTy Γ) → hdTy t ≡ 12 → Σ (RTm (Γ)) (λ b0 → t ≡ (Fin b0))
 isFin base ()
 isFin U ()
 isFin (Π a0 a1) ()
@@ -2284,7 +2284,7 @@ iscIMu (⌜Fin⌝ a0) ()
 iscIMu ⌜Unit⌝ ()
 iscIMu (ref a0 a1) ()
 
-iscFin : (t : RTm Γ) → hdTm t ≡ 36 → Σ (ℕ) (λ b0 → t ≡ (⌜Fin⌝ {Γ} b0))
+iscFin : (t : RTm Γ) → hdTm t ≡ 36 → Σ (RTm (Γ)) (λ b0 → t ≡ (⌜Fin⌝ b0))
 iscFin (var a0) ()
 iscFin (lam a0) ()
 iscFin (app a0 a1) ()

@@ -113,7 +113,7 @@ RULES = {
   "dpay":   dict(case="U", ents=[tm("J", "G", F(0), U), tm("J", "G", F(1), ("DF", "J", F(0))), tm("J", "G", F(2), k("Desc", F(0)))]),
   "cNat":   dict(case="U", ents=[]),
   "cIMu":   dict(case="U", ents=[tm("J", "G", F(0), U), tm("J", "G", F(1), ("DF", "J", F(0))), tm("J", "G", F(2), El(F(0)))]),
-  "cFin":   dict(case="U", ents=[]),
+  "cFin":   dict(case="U", ents=[tm("J", "G", F(0), NAT)]),
   "cUnit":  dict(case="U", ents=[]),
 }
 # the opaque operations (`Knot/SubEnv`): result `K sort (d + out)` (sort 0 unless given), argument sorts and depth offsets
@@ -128,15 +128,16 @@ OPS = {
   "MethTyK": dict(out=0, args=[(1, 0), (1, 0), (0, 2)]),
 }
 def MC(d, g, I, D): return ("mc", d, g, I, D)
-NSUC = lambda e: ("nsuc", e)
-NZERO = ("nzero",)
+# `Fin`'s index is a Nat TERM (S7b step 2): its numerals are Knot terms
+NSUC = lambda e: k("nsuc", e)
+NZERO = k("nzero")
 
 RULES.update({
   "natrec": dict(ex=[("Ty", "J+1")],
                  ents=[ty("J+1", ("cext", "G", NAT), E(0)), tm("J", "G", F(0), ("sub0", 0, "J", E(0), k("nzero"))),
                        tm("J+2", ("cext", ("cext", "G", NAT), E(0)), F(1), ("nrsK", "J", E(0))), tm("J", "G", F(2), NAT),
                        ("id", ("Ty", "J"), "X", ("sub0", 0, "J", E(0), F(2)))]),
-  "fcase":  dict(ex=[("Nat",), ("Ty", "J+1")],
+  "fcase":  dict(ex=[("Tm", "J"), ("Ty", "J+1")],
                  ents=[ty("J+1", ("cext", "G", k("Fin", NSUC(E(0)))), E(1)), tm("J", "G", F(0), k("Fin", NSUC(E(0)))),
                        tm("J", "G", F(1), ("sub0", 0, "J", E(1), k("fzero"))),
                        tm("J+1", ("cext", "G", k("Fin", E(0))), F(2), ("fsucSK", "J", E(1))),
@@ -200,8 +201,11 @@ RULES.update({
               ents=[tm("J", "G", F(0), k("Pi", E(0), E(1))), tm("J", "G", F(1), E(0)),
                     ("id", ("Ty", "J"), "X", ("sub0", 0, "J", E(1), F(1)))]),
 })
-# hand-written case components (a case on the type, then a Desc-valued natrec)
-HANDC = {"fzero": ("PFz", "okFzI"), "fsuc": ("PFs", "okFsI")}
+RULES.update({
+  # the index of `Fin (nsuc n)` is a term: an ordinary Ford, no case on the type
+  "fzero": dict(ex=[("Tm", "J")], ents=[tm("J", "G", E(0), NAT), ("id", ("Ty", "J"), "X", k("Fin", NSUC(E(0))))]),
+  "fsuc":  dict(ex=[("Tm", "J")], ents=[tm("J", "G", F(0), k("Fin", E(0))), ("id", ("Ty", "J"), "X", k("Fin", NSUC(E(0))))]),
+})
 # ★ rows written BY HAND (`Knot/Ref`: definitions, PLAN-BIDI §2-ter) — the
 #   table only references them
 HANDROWS = {("⟶", "ref"): ("rδ", "okδ"), ("⊢", "ref"): ("r⊢ref", "ok⊢ref")}
@@ -228,7 +232,7 @@ for _f, _m in (("⟶", "⟶F"), ("⟶ᵀ", "⟶ᵀF"), ("Pw", "PwF")):
 FAMS["⊢ty"] = dict(FAMS["⊢"], S=0, csig="Ξ ⊢ c ∷ El (CTat (pair (tag 0) j))")
 # ★ the `⊢ty` rules (sort 0): one per type former, the premises at their indices
 TYRULES = {
-  "base": dict(ents=[]), "U": dict(ents=[]), "Unit": dict(ents=[]), "Nat": dict(ents=[]), "Fin": dict(ents=[]),
+  "base": dict(ents=[]), "U": dict(ents=[]), "Unit": dict(ents=[]), "Nat": dict(ents=[]), "Fin": dict(ents=[tm("J", "G", F(0), NAT)]),
   "Pi":   dict(ents=[ty("J", "G", F(0)), ty("J+1", ("cext", "G", F(0)), F(1))]),
   "Sg":   dict(ents=[ty("J", "G", F(0)), ty("J+1", ("cext", "G", F(0)), F(1))]),
   "El":   dict(ents=[tm("J", "G", F(0), U)]),
@@ -1304,41 +1308,36 @@ def gen_head(name, spec):
     R, OK = "r" + FAMKEY + name, "ok" + FAMKEY + name
     comps = []
     plain = []
-    if name in HANDC and FAMKEY == "⊢":
-        PN, okI = HANDC[name]
-        comps.append(((lambda PN: lambda j, p, c: "(%s.CX %s %s %s)" % (PN, j, p, c))(PN), "(%s.CASE-sub σ j (snd c) (pair (fst c) p))" % PN,
-                      "%s.⊢CX %s {Ξ} {j} {p} {c} dj dp dc" % (PN, okI)))
+    case = spec.get("case")
+    alts = spec.get("alts", [spec])
+    tags = [""] if len(alts) == 1 else ["".join("₀₁₂₃₄₅₆₇₈₉"[int(ch)] for ch in str(i + 1)) for i in range(len(alts))]
+    As = [Alt(name, t, case, a) for t, a in zip(tags, alts)]
+    for al in As:
+        if not al.rc.nest: L += gen_alt(al)
+    if case:
+        assert len(As) == 1 and FAMKEY == "⊢"
+        N = As[0].pfx
+        h = SIG[case][2]
+        L.append("r%sI : Row" % N)
+        L.append("r%sI = defRow₀ %s %s-law" % (N, N, N))
+        L.append("module P%s = CaseRow %s %s %d r%sI" % (N, sh, ok_name(name), h, N))
+        L.append("okC%sI : P%s.RowOK 0 %s r%sI" % (N[1:], N, shape_name(case), N))
+        L.append("okC%sI {Ξ} {j} {q} {c} dj dq dc = ⊢tel {Ξ} {JT} {%s j q c} ⊢JT (ok%s dj dq dc)" % (N[1:], N, N))
+        plain.append((len(comps), As[0]))
+        comps.append(((lambda N: lambda j, p, c: "(P%s.CX %s %s %s)" % (N, j, p, c))(N), "(P%s.CASE-sub σ j (snd c) (pair (fst c) p))" % N,
+                      "P%s.⊢CX okC%sI {Ξ} {j} {p} {c} dj dp dc" % (N, N[1:])))
     else:
-        case = spec.get("case")
-        alts = spec.get("alts", [spec])
-        tags = [""] if len(alts) == 1 else ["".join("₀₁₂₃₄₅₆₇₈₉"[int(ch)] for ch in str(i + 1)) for i in range(len(alts))]
-        As = [Alt(name, t, case, a) for t, a in zip(tags, alts)]
         for al in As:
-            if not al.rc.nest: L += gen_alt(al)
-        if case:
-            assert len(As) == 1 and FAMKEY == "⊢"
-            N = As[0].pfx
-            h = SIG[case][2]
-            L.append("r%sI : Row" % N)
-            L.append("r%sI = defRow₀ %s %s-law" % (N, N, N))
-            L.append("module P%s = CaseRow %s %s %d r%sI" % (N, sh, ok_name(name), h, N))
-            L.append("okC%sI : P%s.RowOK 0 %s r%sI" % (N[1:], N, shape_name(case), N))
-            L.append("okC%sI {Ξ} {j} {q} {c} dj dq dc = ⊢tel {Ξ} {JT} {%s j q c} ⊢JT (ok%s dj dq dc)" % (N[1:], N, N))
-            plain.append((len(comps), As[0]))
-            comps.append(((lambda N: lambda j, p, c: "(P%s.CX %s %s %s)" % (N, j, p, c))(N), "(P%s.CASE-sub σ j (snd c) (pair (fst c) p))" % N,
-                          "P%s.⊢CX okC%sI {Ξ} {j} {p} {c} dj dp dc" % (N, N[1:])))
-        else:
-            for al in As:
-                N = al.pfx
-                if al.rc.nest:
-                    ls, comp = gen_nest(al)
-                    L += ls
-                    plain.append((len(comps), al))
-                    comps.append(comp)
-                    continue
+            N = al.pfx
+            if al.rc.nest:
+                ls, comp = gen_nest(al)
+                L += ls
                 plain.append((len(comps), al))
-                comps.append(((lambda N: lambda j, p, c: "⌜ %s %s %s %s ⌝ᵗ" % (N, j, p, c))(N), "(%s-law σ j p c)" % N,
-                              "⊢tel {Ξ} {%s} {%s j p c} %s (ok%s dj dp dc)" % (FAM["J"], N, FAM["dJ"], N)))
+                comps.append(comp)
+                continue
+            plain.append((len(comps), al))
+            comps.append(((lambda N: lambda j, p, c: "⌜ %s %s %s %s ⌝ᵗ" % (N, j, p, c))(N), "(%s-law σ j p c)" % N,
+                          "⊢tel {Ξ} {%s} {%s j p c} %s (ok%s dj dp dc)" % (FAM["J"], N, FAM["dJ"], N)))
     if FAMKEY == "⊢" and SIG[name][0] == 1:
         comps.append(conv_comp(name))
     cs = " ∷ ".join(d("j", "p", "c") for d, _, _ in comps) + " ∷ []"
@@ -1450,7 +1449,7 @@ def gen_table():
     L += ["  []ᴿ", "", "rows⊢ : RowsOK 1 TmShs", "rows⊢ ="]
     for h in TMHEADS:
         if ("⊢", h) in HANDROWS:     L.append("  ⟨ %s ∣ %s ⟩∷  -- %s" % (HANDROWS[("⊢", h)] + (shape_name(h),)))
-        elif h in RULES or h in HANDC: L.append("  ⟨ r⊢%s ∣ ok⊢%s ⟩∷  -- %s" % (h, h, shape_name(h)))
+        elif h in RULES: L.append("  ⟨ r⊢%s ∣ ok⊢%s ⟩∷  -- %s" % (h, h, shape_name(h)))
         else:                        L.append("  ⟨ rNone ∣∀ okNone ⟩∷  -- %s" % shape_name(h))
     L.append("  []ᴿ")
     return L
@@ -1973,7 +1972,7 @@ def main():
         L += gen_head(name, TYRULES[name])
     FAM, FAMKEY = FAMS["⊢"], "⊢"
     for name in TMHEADS:
-        if name in RULES or name in HANDC:
+        if name in RULES:
             L += gen_head(name, RULES.get(name, {}))
     L += gen_table()
     txt = "\n".join(L) + "\n"
@@ -2050,7 +2049,6 @@ HDR = """-----------------------------------------------------------------------
 -- generator's header.  Each telescope is a chain of TAILS `N⁽ᵏ⁾` (its
 -- positions and first k existentials explicit), each with its own law —
 -- what the constructors (`JudgeConGen`) instantiate at values.  Only
--- fzero/fsuc are hand-written (`JudgeRowsTm`).
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
@@ -2081,7 +2079,7 @@ open import DirectedHoTT.Examples.Knot.GenHelpers
 open import DirectedHoTT.Examples.Knot.JudgeFib using ( RowOK; okNone; RowsOK; ⟨_∣_⟩∷_; ⟨_∣∀_⟩∷_; []ᴿ )
 open import DirectedHoTT.Examples.Knot.Preds using ( ⌜Flat⌝; ⊢⌜Flat⌝; ⌜Flat⌝-sub; ⌜NNC⌝; ⊢⌜NNC⌝; ⌜NNC⌝-sub )
 open import DirectedHoTT.Metatheory.SubjectReductionBase using () renaming ( wk-sub to wkS )
-open import DirectedHoTT.Examples.Knot.JudgeRowsTm using ( module PFz; module PFs; okFzI; okFsI; ⊢varOf )
+open import DirectedHoTT.Examples.Knot.JudgeRowsTm using ( ⊢varOf )
 open import DirectedHoTT.Examples.Knot.JudgeConv using ( TCVat; TCVat-law; okTCVat; ⌜∋⌝; ⊢⌜∋⌝; ⌜∋⌝-sub )
 open import DirectedHoTT.Examples.Knot.RefJudge using ( r⊢ref; ok⊢ref )
 open import DirectedHoTT.Lib.FinFam using ( FinI )
@@ -2129,7 +2127,6 @@ open import DirectedHoTT.Examples.Knot.JudgeCase
 open import DirectedHoTT.Examples.Knot.Preds using ( ⌜Flat⌝; ⊢⌜Flat⌝; ⌜NNC⌝; ⊢⌜NNC⌝ )
 open import DirectedHoTT.Examples.Knot.JudgeConv using ( TCVat; ⌜∋⌝; ⊢⌜∋⌝; ⊢payTCVat )
 open import DirectedHoTT.Examples.Knot.Conv using ( ⌜≅ᵀ⌝ )
-open import DirectedHoTT.Examples.Knot.JudgeRowsTm using ( module PFz; module PFs )
 open import DirectedHoTT.Examples.Knot.GenHelpers
 open import DirectedHoTT.Examples.Knot.JudgeRowsGen
 open import DirectedHoTT.Examples.Knot.Judge using ( D⊢; ⊢D⊢; fibK )
@@ -3419,7 +3416,6 @@ open import DirectedHoTT.Examples.Knot.JudgeIx using ( JT; tyIx; tmIx )
 open import DirectedHoTT.Examples.Knot.Judge using ( D⊢; fibK )
 open import DirectedHoTT.Examples.Knot.JudgeConv using ( TCVat )
 open import DirectedHoTT.Examples.Knot.JudgeRowsGen
-open import DirectedHoTT.Examples.Knot.JudgeRowsTm using ( module PFz; module PFs )
 open import DirectedHoTT.Examples.Knot.RefJudge using ( T⊢ref )
 open import DirectedHoTT.Examples.Knot.JudgeDecodeBase
 open import DirectedHoTT.Examples.Knot.JudgeDecodeTy
@@ -3463,12 +3459,6 @@ def gen_judge_dispatch():
             elif (fam, h) == ("⊢", "ref"):
                 nc = 2; ents = ["⌜ T⊢ref %s %s %s ⌝ᵗ" % (j, PP, C), "⌜ TCVat %d %s %s %s ⌝ᵗ" % (K, j, PP, C)]
                 hands = "jdref ihTy ihTm Γ a0 a1 A"
-            elif (fam, h) == ("⊢", "fzero"):
-                nc = 2; ents = ["(PFz.CX %s %s %s)" % (j, PP, C), "⌜ TCVat %d %s %s %s ⌝ᵗ" % (K, j, PP, C)]
-                hands = "jdfzero ihTy ihTm Γ A"
-            elif (fam, h) == ("⊢", "fsuc"):
-                nc = 2; ents = ["(PFs.CX %s %s %s)" % (j, PP, C), "⌜ TCVat %d %s %s %s ⌝ᵗ" % (K, j, PP, C)]
-                hands = "jdfsuc ihTy ihTm Γ a0 A"
             else:
                 raise ValueError(("no rows", fam, h))
             ix = "tyIx (dep ⌊ Γ ⌋) (quoteCtx Γ) (quoteTy %s)" % patE if S == 0 else "tmIx (dep ⌊ Γ ⌋) (quoteCtx Γ) (quoteTm %s) (quoteTy A)" % patE
@@ -3661,7 +3651,7 @@ RED_COMP = [
   ("tr-J-Unit c a m s e", "tr", 2, [_q(TRM("c","a","m")), _q("e"), _q("s"), _q("c"), _q("a"), _q("m"), IDP(TRM("c","a","m"))], None),
   ("tr-J-Id c a m c₁ a₁ b₁ s e", "tr", 3, [_q(TRM("c","a","m")), _q("e"), _q("s"), _q("c₁"), _q("a₁"), _q("b₁"), _q("c"), _q("a"), _q("m"), IDP(TRM("c","a","m"))], None),
   ("tr-J-IMu {I} {D} {iˣ} c a m s e", "tr", 4, [_q(TRM("c","a","m")), _q("e"), _q("s"), _q("I"), _q("D"), _q("iˣ"), _q("c"), _q("a"), _q("m"), IDP(TRM("c","a","m"))], None),
-  ("tr-J-Fin {n} c a m s e", "tr", 5, [_q(TRM("c","a","m")), _q("e"), _q("s"), "(⊢quoteℕ n)", _q("c"), _q("a"), _q("m"), IDP(TRM("c","a","m"))], None),
+  ("tr-J-Fin {n} c a m s e", "tr", 5, [_q(TRM("c","a","m")), _q("e"), _q("s"), _q("n"), _q("c"), _q("a"), _q("m"), IDP(TRM("c","a","m"))], None),
   ("tr-J-Hom c a m c₁ a₁ b₁ s e st", "tr", 6, [_q(TRM("c","a","m")), _q("e"), _q("s"), _q("c₁"), _q("a₁"), _q("b₁"), _q("c"), _q("a"), _q("m"), IDP(TRM("c","a","m")), STKA("c₁")], None),
   ("tr-taut f e", "tr", 7, [_q("(var vz)"), _q("e"), _q("f"), IDP("(var vz)")], None),
   ("tr-pw c a f e pc", "tr", 8, [_q(TRM("c","a","(var vz)")), _q("e"), _q("f"), _q("c"), _q("a"), IDP(TRM("c","a","(var vz)")), _q("(pwBody c)"), PWP("c")],

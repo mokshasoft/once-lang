@@ -323,19 +323,21 @@ jdᵀDIh₍0₎ ihTy ihTm Γ a0 a1 a2 a3 {w} hq dq nq =
     R₁ = mono-by {Δ = ε} {n = 6} {as = (j ∷ (fst c) ∷ (fst p) ∷ (fst (snd p)) ∷ (fst (snd (snd p))) ∷ (fst (snd (snd (snd p)))) ∷ [])} {as' = (j ∷ g ∷ f0 ∷ f1 ∷ f2 ∷ f3 ∷ [])} ⌜ T⊢tyDIh⁽0⁾ v₀ v₁ v₂ v₃ v₄ v₅ ⌝ᵗ (T⊢tyDIh⁽0⁾-sub (σₗ (j ∷ (fst c) ∷ (fst p) ∷ (fst (snd p)) ∷ (fst (snd (snd p))) ∷ (fst (snd (snd (snd p)))) ∷ [])) v₀ v₁ v₂ v₃ v₄ v₅) (T⊢tyDIh⁽0⁾-sub (σₗ (j ∷ g ∷ f0 ∷ f1 ∷ f2 ∷ f3 ∷ [])) v₀ v₁ v₂ v₃ v₄ v₅) (done ∷ʳ (prj-tup {ws = g ∷ []} unit nth-z) ∷ʳ (prj-tup {ws = f0 ∷ f1 ∷ f2 ∷ f3 ∷ []} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = f0 ∷ f1 ∷ f2 ∷ f3 ∷ []} unit (atᶜ 1)) ∷ʳ (prj-tup {ws = f0 ∷ f1 ∷ f2 ∷ f3 ∷ []} unit (atᶜ 2)) ∷ʳ (prj-tup {ws = f0 ∷ f1 ∷ f2 ∷ f3 ∷ []} unit (atᶜ 3)) ∷ʳ []ʳ)
     R₀ = R₁
 
-jdᵀFin₍0₎ : {N : ℕ} → IHTy N → IHTm N → (Γ : Ctx) (a0 : ℕ) {w : RTm ε} → sz w < N →
-  ◇ ⊢ w ∷ El (dpay JT D⊢ ⌜ T⊢tyFin (dep ⌊ Γ ⌋) ((quoteℕ a0) ,ₚ unit) ((quoteCtx Γ) ,ₚ unit) ⌝ᵗ) → IsNormal w → Γ ⊢ty (RTy.Fin {⌊ Γ ⌋} a0)
+jdᵀFin₍0₎ : {N : ℕ} → IHTy N → IHTm N → (Γ : Ctx) (a0 : RTm (⌊ Γ ⌋)) {w : RTm ε} → sz w < N →
+  ◇ ⊢ w ∷ El (dpay JT D⊢ ⌜ T⊢tyFin (dep ⌊ Γ ⌋) ((quoteTm a0) ,ₚ unit) ((quoteCtx Γ) ,ₚ unit) ⌝ᵗ) → IsNormal w → Γ ⊢ty (RTy.Fin a0)
 jdᵀFin₍0₎ ihTy ihTm Γ a0 {w} hq dq nq =
-  pay-ι (⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))) done nq
-  ▷ λ _ →
-  ty-Fin
+  pay-ρ (⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))) done nq
+  ▷ λ { (r0 , (b0 , (eq0 , ((dr0 , dq1) , (nr0 , nq1))))) →
+  ihTm Γ a0 Nat (<ˡ eq0 hq) dr0 nr0
+  ▷ λ D0 →
+  (ty-Fin D0) }
   where
     j g f0 p c : RTm ε
     j = dep ⌊ Γ ⌋
     g = quoteCtx Γ
-    f0 = (quoteℕ a0)
+    f0 = (quoteTm a0)
     p = (f0 ,ₚ unit)
     c = pair g unit
-    R₁ = mono-by {Δ = ε} {n = 0} {as = ([])} {as' = ([])} ⌜ T⊢tyFin⁽0⁾ ⌝ᵗ (T⊢tyFin⁽0⁾-sub (σₗ ([])) ) (T⊢tyFin⁽0⁾-sub (σₗ ([])) ) ([]ʳ)
+    R₁ = mono-by {Δ = ε} {n = 3} {as = (j ∷ (fst c) ∷ (fst p) ∷ [])} {as' = (j ∷ g ∷ f0 ∷ [])} ⌜ T⊢tyFin⁽0⁾ v₀ v₁ v₂ ⌝ᵗ (T⊢tyFin⁽0⁾-sub (σₗ (j ∷ (fst c) ∷ (fst p) ∷ [])) v₀ v₁ v₂) (T⊢tyFin⁽0⁾-sub (σₗ (j ∷ g ∷ f0 ∷ [])) v₀ v₁ v₂) (done ∷ʳ (prj-tup {ws = g ∷ []} unit nth-z) ∷ʳ (prj-tup {ws = f0 ∷ []} unit (atᶜ 0)) ∷ʳ []ʳ)
     R₀ = R₁
 

@@ -1519,6 +1519,26 @@ d⟶cIMu₍2₎ {Γ} a0 a1 a2 ih u dq nq =
     c = quoteTm u
     R = mono-by {Δ = ε} {n = 5} {as = (j ∷ c ∷ (fst p) ∷ (fst (snd p)) ∷ (fst (snd (snd p))) ∷ [])} {as' = (j ∷ c ∷ f0 ∷ f1 ∷ f2 ∷ [])} ⌜ T⟶cIMu₃⁽0⁾ v₀ v₁ v₂ v₃ v₄ ⌝ᵗ (T⟶cIMu₃⁽0⁾-sub (σₗ (j ∷ c ∷ (fst p) ∷ (fst (snd p)) ∷ (fst (snd (snd p))) ∷ [])) v₀ v₁ v₂ v₃ v₄) (T⟶cIMu₃⁽0⁾-sub (σₗ (j ∷ c ∷ f0 ∷ f1 ∷ f2 ∷ [])) v₀ v₁ v₂ v₃ v₄) (done ∷ʳ done ∷ʳ (prj-tup {ws = f0 ∷ f1 ∷ f2 ∷ []} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = f0 ∷ f1 ∷ f2 ∷ []} unit (atᶜ 1)) ∷ʳ (prj-tup {ws = f0 ∷ f1 ∷ f2 ∷ []} unit (atᶜ 2)) ∷ʳ []ʳ)
 
+d⟶cFin₍0₎ : {Γ : Cx} (a0 : RTm (Γ)) (ih : IH⟶ a0) (u : RTm Γ) {q : RTm ε} →
+  ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF ⌜ T⟶cFin (dep Γ) ((quoteTm a0) ,ₚ unit) (quoteTm u) ⌝ᵗ) → IsNormal q → (⌜Fin⌝ a0) ⟶ u
+d⟶cFin₍0₎ {Γ} a0 ih u dq nq =
+  pay-σ (⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R)))) done nq
+  ▷ λ { (e0 , (_ , (_ , ((de0 , dq1) , (ne0 , nq1))))) →
+  pay-ρ (⊢-cast (cong (λ Z → El (dpay Redₘ.J ⟶F.DF Z)) (trans (T⟶cFin⁽1⁾-sub (single e0) (w1 j) (w1 c) (w1 f0) v₀) (T⟶cFin⁽1⁾-cong (subTm (single e0) (w1 j)) j (subTm (single e0) (w1 c)) c (subTm (single e0) (w1 f0)) f0 (subTm (single e0) v₀) e0 (wk-cancel-tm e0 j) (wk-cancel-tm e0 c) (wk-cancel-tm e0 f0) refl))) (⊢conv dq1 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e0) done)))))) done nq1
+  ▷ λ { (r0 , (_ , (_ , ((dr0 , dqb0) , (nr0 , nqb0))))) →
+  pay-σ dqb0 done nqb0
+  ▷ λ { (_ , (_ , (_ , ((did1 , dqb1) , (nid1 , nqb1))))) →
+  unqTm {Γ = Γ} (⊢conv de0 (credᵀ El-⌜Tm⌝)) ne0
+  ▷ λ { (E , eqE) →
+  subst (λ v → (⌜Fin⌝ a0) ⟶ v) (sym (quoteTm-inj u (⌜Fin⌝ E) (nf-≅ (quoteTm-normal u) (quoteTm-normal (⌜Fin⌝ E)) (subst (λ z → c ≅ (kcFin z)) eqE (idrefl-decᶜ did1 nid1))))) (ξ-⌜Fin⌝ (ih {E} (subst (λ z → ◇ ⊢ r0 ∷ IMu Redₘ.J ⟶F.DF (ix⟶ (j) (f0) (z))) eqE dr0) nr0)) } } } }
+  where
+    j f0 p c : RTm ε
+    j = dep Γ
+    f0 = (quoteTm a0)
+    p = (f0 ,ₚ unit)
+    c = quoteTm u
+    R = mono-by {Δ = ε} {n = 3} {as = (j ∷ c ∷ (fst p) ∷ [])} {as' = (j ∷ c ∷ f0 ∷ [])} ⌜ T⟶cFin⁽0⁾ v₀ v₁ v₂ ⌝ᵗ (T⟶cFin⁽0⁾-sub (σₗ (j ∷ c ∷ (fst p) ∷ [])) v₀ v₁ v₂) (T⟶cFin⁽0⁾-sub (σₗ (j ∷ c ∷ f0 ∷ [])) v₀ v₁ v₂) (done ∷ʳ done ∷ʳ (prj-tup {ws = f0 ∷ []} unit (atᶜ 0)) ∷ʳ []ʳ)
+
 dδ : {Γ : Cx} (a0 : ℕ) (a1 : RTm ε) (u : RTm Γ) {q : RTm ε} →
   ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF ⌜ Tδ (dep Γ) ((quoteℕ a0) ,ₚ (quoteTm a1) ,ₚ unit) (quoteTm u) ⌝ᵗ) → IsNormal q → ref a0 a1 ⟶ u
 dδ {Γ} a0 a1 u dq nq =

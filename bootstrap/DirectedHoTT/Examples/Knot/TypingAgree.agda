@@ -46,7 +46,6 @@ open import DirectedHoTT.Examples.Knot.Judge using ( D⊢ )
 open import DirectedHoTT.Examples.Knot.Conv using ( El-⌜≅ᵀ⌝ )
 open import DirectedHoTT.Examples.Knot.Preds using ( El-⌜NNC⌝; El-⌜Flat⌝ )
 open import DirectedHoTT.Examples.Knot.JudgeConGen
-open import DirectedHoTT.Examples.Knot.JudgeConFin using ( con⊢fzero; con⊢fsuc )
 open import DirectedHoTT.Examples.Knot.OpAgree
 open import DirectedHoTT.Examples.Knot.PredsAgree using ( ⊢nncC; ⊢flatC )
 open import DirectedHoTT.Examples.Knot.LookupAgree using ( enLk )
@@ -155,7 +154,7 @@ enTy {Γ} (ty-DIh {I = I} {D} {M} {C} {p} dI dD dM dC dp) =
                 (Σ.snd (enTm dI)) (⊢conv (Σ.snd (enTm dD)) (csymᵀ (tmA (DF-agree I))))
                 (⊢conv (Σ.snd (enTy dM)) (csymᵀ (tyG (mc-agree Γ I D))))
                 (Σ.snd (enTm dC)) (Σ.snd (enTm dp))
-enTy {Γ} (ty-Fin {n = n}) = _ , con⊢tyFin (⊢dep' ⌊ Γ ⌋) (⊢quoteCtx Γ) (⊢quoteℕ n)
+enTy {Γ} (ty-Fin {n = n} dn) = _ , con⊢tyFin (⊢dep' ⌊ Γ ⌋) (⊢quoteCtx Γ) (⊢quoteTm n) (Σ.snd (enTm dn))
 enTy {Γ} (ty-Hom {A = A} {t} {u} dA dt du) =
   _ , con⊢tyHom (⊢dep' ⌊ Γ ⌋) (⊢quoteCtx Γ) (⊢quoteTy A) (⊢quoteTm t) (⊢quoteTm u)
                 (Σ.snd (enTy dA)) (Σ.snd (enTm dt)) (Σ.snd (enTm du))
@@ -212,7 +211,7 @@ enTm {Γ} ⊢⌜Nat⌝ = _ , con⊢cNat (⊢dep' ⌊ Γ ⌋) (⊢quoteCtx Γ)
 enTm {Γ} (⊢⌜IMu⌝ {I = I} {D} {i} dI dD di) =
   _ , con⊢cIMu (⊢dep' ⌊ Γ ⌋) (⊢quoteCtx Γ) (⊢quoteTm I) (⊢quoteTm D) (⊢quoteTm i)
                (Σ.snd (enTm dI)) (⊢conv (Σ.snd (enTm dD)) (csymᵀ (tmA (DF-agree I)))) (Σ.snd (enTm di))
-enTm {Γ} (⊢⌜Fin⌝ {n = n}) = _ , con⊢cFin (⊢dep' ⌊ Γ ⌋) (⊢quoteCtx Γ) (⊢quoteℕ n)
+enTm {Γ} (⊢⌜Fin⌝ {n = n} dn) = _ , con⊢cFin (⊢dep' ⌊ Γ ⌋) (⊢quoteCtx Γ) (⊢quoteTm n) (Σ.snd (enTm dn))
 enTm {Γ} ⊢⌜Unit⌝ = _ , con⊢cUnit (⊢dep' ⌊ Γ ⌋) (⊢quoteCtx Γ)
 enTm {Γ} (⊢idrefl {c = c} {t} dc dt) =
   _ , con⊢idrefl (⊢dep' ⌊ Γ ⌋) (⊢quoteCtx Γ) (⊢quoteTm c) (⊢quoteTm t) (Σ.snd (enTm dc)) (Σ.snd (enTm dt))
@@ -255,10 +254,10 @@ enTm {Γ} (⊢ielim {I = I} {D} {M} {e} {i} {t} dI dD dM de di dt) =
                        (⊢conv (Σ.snd (enTm de)) (csymᵀ (tmA (MethTy-agree I D M))))
                        (Σ.snd (enTm di)) (Σ.snd (enTm dt)))
             (tmA (iinst-agree i t M))
-enTm {Γ} (⊢fzero {n = n}) = _ , con⊢fzero (⊢dep' ⌊ Γ ⌋) (⊢quoteCtx Γ) (⊢quoteℕ n)
-enTm {Γ} (⊢fsuc {n = n} {t} dt) = _ , con⊢fsuc (⊢dep' ⌊ Γ ⌋) (⊢quoteCtx Γ) (⊢quoteℕ n) (⊢quoteTm t) (Σ.snd (enTm dt))
+enTm {Γ} (⊢fzero {n = n} dn) = _ , con⊢fzero (⊢dep' ⌊ Γ ⌋) (⊢quoteCtx Γ) (⊢quoteTm n) (Σ.snd (enTm dn))
+enTm {Γ} (⊢fsuc {n = n} {t} dt) = _ , con⊢fsuc (⊢dep' ⌊ Γ ⌋) (⊢quoteCtx Γ) (⊢quoteTm t) (⊢quoteTm n) (Σ.snd (enTm dt))
 enTm {Γ} (⊢fcase {n = n} {P} {t} {a} {b} dP dt da db) =
-  _ , ⊢conv (con⊢fcase (⊢dep' ⌊ Γ ⌋) (⊢quoteCtx Γ) (⊢quoteTm t) (⊢quoteTm a) (⊢quoteTm b) (⊢quoteℕ n) (⊢quoteTy P)
+  _ , ⊢conv (con⊢fcase (⊢dep' ⌊ Γ ⌋) (⊢quoteCtx Γ) (⊢quoteTm t) (⊢quoteTm a) (⊢quoteTm b) (⊢quoteTm n) (⊢quoteTy P)
                        (Σ.snd (enTy dP)) (Σ.snd (enTm dt))
                        (⊢conv (Σ.snd (enTm da)) (csymᵀ (tmA (sub0-agree-ty P fzero))))
                        (⊢conv (Σ.snd (enTm db)) (csymᵀ (tmA (fsucS-agree P)))))

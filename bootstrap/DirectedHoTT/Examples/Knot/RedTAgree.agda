@@ -42,6 +42,7 @@ enRedT {Γ} (ξ-IMuᴵ {_} {I} {I'} {D} {i} r) = _ , con⟶ᵀIMu₁ (⊢dep' Γ
 enRedT {Γ} (ξ-IMuᴰ {_} {I} {D} {D'} {i} r) = _ , con⟶ᵀIMu₂ (⊢dep' Γ) (⊢quoteTm I) (⊢quoteTm D) (⊢quoteTm i) (⊢quoteTm D') (⊢conv (Σ.snd (enRed r)) (csymᵀ El-⌜⟶⌝))
 enRedT {Γ} (ξ-IMuⁱ {_} {I} {D} {i} {i'} r) = _ , con⟶ᵀIMu₃ (⊢dep' Γ) (⊢quoteTm I) (⊢quoteTm D) (⊢quoteTm i) (⊢quoteTm i') (⊢conv (Σ.snd (enRed r)) (csymᵀ El-⌜⟶⌝))
 enRedT {Γ} (ξ-Desc {_} {I} {I'} r) = _ , con⟶ᵀDesc (⊢dep' Γ) (⊢quoteTm I) (⊢quoteTm I') (⊢conv (Σ.snd (enRed r)) (csymᵀ El-⌜⟶⌝))
+enRedT {Γ} (ξ-Fin {_} {n} {n'} r) = _ , con⟶ᵀFin (⊢dep' Γ) (⊢quoteTm n) (⊢quoteTm n') (⊢conv (Σ.snd (enRed r)) (csymᵀ El-⌜⟶⌝))
 enRedT {Γ} (ξ-DIhᴰ {_} {D} {D'} {C} {p} {M} r) = _ , con⟶ᵀDIh₁ (⊢dep' Γ) (⊢quoteTm D) (⊢quoteTy M) (⊢quoteTm C) (⊢quoteTm p) (⊢quoteTm D') (⊢conv (Σ.snd (enRed r)) (csymᵀ El-⌜⟶⌝))
 enRedT {Γ} (ξ-DIhᴹ {_} {D} {C} {p} {M} {M'} r) = _ , con⟶ᵀDIh₂ (⊢dep' Γ) (⊢quoteTm D) (⊢quoteTy M) (⊢quoteTm C) (⊢quoteTm p) (⊢quoteTy M') (Σ.snd (enRedT r))
 enRedT {Γ} (ξ-DIhᶜ {_} {D} {C} {C'} {p} {M} r) = _ , con⟶ᵀDIh₃ (⊢dep' Γ) (⊢quoteTm D) (⊢quoteTy M) (⊢quoteTm C) (⊢quoteTm p) (⊢quoteTm C') (⊢conv (Σ.snd (enRed r)) (csymᵀ El-⌜⟶⌝))

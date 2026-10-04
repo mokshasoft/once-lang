@@ -73,9 +73,9 @@ open import DirectedHoTT.Lib.Sugar using ( _,ₚ_ )
 ⊢kDIh {Γ} {d} {a0} {a1} {a2} {a3} dd da0 da1 da2 da3 =
   ⊢conSyn {sg = KSig} {shs = TyShs} {sh = sh-kDIh} {d = d} {p = pair a0 (a1 ,ₚ a2 ,ₚ a3 ,ₚ (unit))} KOK (atᵍ 0) (atʰ 11) dd (a-rec da0 (a-rec da1 (a-rec da2 (a-rec da3 a[]))))
 
-⊢kFin : {Γ : Ctx} {d a0 : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ a0 ∷ El ⌜Nat⌝ → Γ ⊢ kFin a0 ∷ K 0 d
+⊢kFin : {Γ : Ctx} {d a0 : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ a0 ∷ K 1 d → Γ ⊢ kFin a0 ∷ K 0 d
 ⊢kFin {Γ} {d} {a0} dd da0 =
-  ⊢conSyn {sg = KSig} {shs = TyShs} {sh = sh-kFin} {d = d} {p = pair a0 (unit)} KOK (atᵍ 0) (atʰ 12) dd (a-nat da0 a[])
+  ⊢conSyn {sg = KSig} {shs = TyShs} {sh = sh-kFin} {d = d} {p = pair a0 (unit)} KOK (atᵍ 0) (atʰ 12) dd (a-rec da0 a[])
 
 ⊢kvar : {Γ : Ctx} {d a0 : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ a0 ∷ FinI d → Γ ⊢ kvar a0 ∷ K 1 d
 ⊢kvar {Γ} {d} {a0} dd da0 =
@@ -221,9 +221,9 @@ open import DirectedHoTT.Lib.Sugar using ( _,ₚ_ )
 ⊢kcIMu {Γ} {d} {a0} {a1} {a2} dd da0 da1 da2 =
   ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kcIMu} {d = d} {p = pair a0 (a1 ,ₚ a2 ,ₚ (unit))} KOK (atᵍ 1) (atʰ 35) dd (a-rec da0 (a-rec da1 (a-rec da2 a[])))
 
-⊢kcFin : {Γ : Ctx} {d a0 : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ a0 ∷ El ⌜Nat⌝ → Γ ⊢ kcFin a0 ∷ K 1 d
+⊢kcFin : {Γ : Ctx} {d a0 : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ a0 ∷ K 1 d → Γ ⊢ kcFin a0 ∷ K 1 d
 ⊢kcFin {Γ} {d} {a0} dd da0 =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kcFin} {d = d} {p = pair a0 (unit)} KOK (atᵍ 1) (atʰ 36) dd (a-nat da0 a[])
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kcFin} {d = d} {p = pair a0 (unit)} KOK (atᵍ 1) (atʰ 36) dd (a-rec da0 a[])
 
 ⊢kcUnit : {Γ : Ctx} {d : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ kcUnit ∷ K 1 d
 ⊢kcUnit {Γ} {d} dd =

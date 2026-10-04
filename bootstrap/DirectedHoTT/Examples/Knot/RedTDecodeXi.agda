@@ -476,3 +476,23 @@ d⟶ᵀDIh₍3₎ {Γ} a0 a1 a2 a3 u dq nq =
     c = quoteTy u
     R = mono-by {Δ = ε} {n = 6} {as = (j ∷ c ∷ (fst p) ∷ (fst (snd p)) ∷ (fst (snd (snd p))) ∷ (fst (snd (snd (snd p)))) ∷ [])} {as' = (j ∷ c ∷ f0 ∷ f1 ∷ f2 ∷ f3 ∷ [])} ⌜ T⟶ᵀDIh₄⁽0⁾ v₀ v₁ v₂ v₃ v₄ v₅ ⌝ᵗ (T⟶ᵀDIh₄⁽0⁾-sub (σₗ (j ∷ c ∷ (fst p) ∷ (fst (snd p)) ∷ (fst (snd (snd p))) ∷ (fst (snd (snd (snd p)))) ∷ [])) v₀ v₁ v₂ v₃ v₄ v₅) (T⟶ᵀDIh₄⁽0⁾-sub (σₗ (j ∷ c ∷ f0 ∷ f1 ∷ f2 ∷ f3 ∷ [])) v₀ v₁ v₂ v₃ v₄ v₅) (done ∷ʳ done ∷ʳ (prj-tup {ws = f0 ∷ f1 ∷ f2 ∷ f3 ∷ []} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = f0 ∷ f1 ∷ f2 ∷ f3 ∷ []} unit (atᶜ 1)) ∷ʳ (prj-tup {ws = f0 ∷ f1 ∷ f2 ∷ f3 ∷ []} unit (atᶜ 2)) ∷ʳ (prj-tup {ws = f0 ∷ f1 ∷ f2 ∷ f3 ∷ []} unit (atᶜ 3)) ∷ʳ []ʳ)
 
+d⟶ᵀFin₍0₎ : {Γ : Cx} (a0 : RTm (Γ)) (u : RTy Γ) {q : RTm ε} →
+  ◇ ⊢ q ∷ El (dpay RedTₘ.J ⟶ᵀF.DF ⌜ T⟶ᵀFin (dep Γ) ((quoteTm a0) ,ₚ unit) (quoteTy u) ⌝ᵗ) → IsNormal q → (RTy.Fin a0) ⟶ᵀ u
+d⟶ᵀFin₍0₎ {Γ} a0 u dq nq =
+  pay-σ (⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R)))) done nq
+  ▷ λ { (e0 , (_ , (_ , ((de0 , dq1) , (ne0 , nq1))))) →
+  pay-σ (⊢-cast (cong (λ Z → El (dpay RedTₘ.J ⟶ᵀF.DF Z)) (trans (T⟶ᵀFin⁽1⁾-sub (single e0) (w1 j) (w1 c) (w1 f0) v₀) (T⟶ᵀFin⁽1⁾-cong (subTm (single e0) (w1 j)) j (subTm (single e0) (w1 c)) c (subTm (single e0) (w1 f0)) f0 (subTm (single e0) v₀) e0 (wk-cancel-tm e0 j) (wk-cancel-tm e0 c) (wk-cancel-tm e0 f0) refl))) (⊢conv dq1 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e0) done)))))) done nq1
+  ▷ λ { (e1 , (_ , (_ , ((de1 , dq2) , (ne1 , nq2))))) →
+  pay-σ (⊢-cast (cong (λ Z → El (dpay RedTₘ.J ⟶ᵀF.DF Z)) (trans (T⟶ᵀFin⁽2⁾-sub (single e1) (w1 j) (w1 c) (w1 f0) (w1 e0) v₀) (T⟶ᵀFin⁽2⁾-cong (subTm (single e1) (w1 j)) j (subTm (single e1) (w1 c)) c (subTm (single e1) (w1 f0)) f0 (subTm (single e1) (w1 e0)) e0 (subTm (single e1) v₀) e1 (wk-cancel-tm e1 j) (wk-cancel-tm e1 c) (wk-cancel-tm e1 f0) (wk-cancel-tm e1 e0) refl))) (⊢conv dq2 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e1) done)))))) done nq2
+  ▷ λ { (_ , (_ , (_ , ((did0 , dqb0) , (nid0 , nqb0))))) →
+  unqTm {Γ = Γ} (⊢conv de0 (credᵀ El-⌜Tm⌝)) ne0
+  ▷ λ { (E , eqE) →
+  subst (λ v → (RTy.Fin a0) ⟶ᵀ v) (sym (quoteTy-inj u (RTy.Fin E) (nf-≅ (quoteTy-normal u) (quoteTy-normal (RTy.Fin E)) (subst (λ z → c ≅ (kFin z)) eqE (idrefl-decᶜ did0 nid0))))) (ξ-Fin (decRed a0 {E} (subst (λ z → ◇ ⊢ e1 ∷ IMu Redₘ.J ⟶F.DF (ix⟶ (j) f0 z)) eqE (⊢conv de1 El-⌜⟶⌝)) ne1)) } } } }
+  where
+    j f0 p c : RTm ε
+    j = dep Γ
+    f0 = (quoteTm a0)
+    p = (f0 ,ₚ unit)
+    c = quoteTy u
+    R = mono-by {Δ = ε} {n = 3} {as = (j ∷ c ∷ (fst p) ∷ [])} {as' = (j ∷ c ∷ f0 ∷ [])} ⌜ T⟶ᵀFin⁽0⁾ v₀ v₁ v₂ ⌝ᵗ (T⟶ᵀFin⁽0⁾-sub (σₗ (j ∷ c ∷ (fst p) ∷ [])) v₀ v₁ v₂) (T⟶ᵀFin⁽0⁾-sub (σₗ (j ∷ c ∷ f0 ∷ [])) v₀ v₁ v₂) (done ∷ʳ done ∷ʳ (prj-tup {ws = f0 ∷ []} unit (atᶜ 0)) ∷ʳ []ʳ)
+
