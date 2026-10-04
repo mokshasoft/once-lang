@@ -59,10 +59,6 @@ private
 DN : Cons (Δ ∙) c₀ → Cons (Δ ∙) cₛ → RTm Δ
 DN C0 CS = lam (natrec (Dσ C0) (renTm ρS (Dσ CS)) (var vz))
 
--- ★ the family commutes with substitution (its lists under the index binder)
-Dσ-sub : {Θ : Cx} (τ : Sub (Δ ∙) (Θ ∙)) (Cs : Cons (Δ ∙) c) → subTm τ (Dσ Cs) ≡ Dσ (subC τ Cs)
-Dσ-sub {c = c} τ Cs = cong₂ (λ N X → dσ (⌜Fin⌝ N) X) (num-sub τ c) (selF-sub τ Cs)
-
 -- the step's predecessor renaming commutes with substitution
 ρS-sub : {Θ : Cx} (σ : Sub Δ Θ) (t : RTm (Δ ∙)) → subTm (extS (extS (extS σ))) (renTm ρS t) ≡ renTm ρS (subTm (extS σ) t)
 ρS-sub σ t = trans (subTm-renTm t) (trans (subTm-cong pt t) (sym (renTm-subTm t)))
