@@ -179,11 +179,11 @@ fin-step : {m a : RTm ε} → ◇ ⊢ a ∷ FinI (nsuc m) → IsNormal a →
 fin-step {m = m} d nrm with con-dec d nrm
 ... | q , (refl , (dq , nq)) with pay-σ dq (fibN-s [] ⌜ FinTs ⌝ₛ m) nq
 ...   | t , (b , (refl , ((dt , db) , (nt , nb)))) with tag-decᶜ dt nt
-...     | zero , (lt-z , refl) with pay-ι (finStep 0 dι (nth-sub (single m) (nth-⌜⌝ nthᵗ-z)) db) done nb
+...     | zero , (lt-z , refl) with pay-ι (finStep 0 dι (nth-sub (single m) (nth-⌜⌝ {Ts = FinTs} nthᵗ-z)) db) done nb
 ...       | refl = inj₁ refl
 fin-step {m = m} d nrm | q , (refl , (dq , nq)) | t , (b , (refl , ((dt , db) , (nt , nb))))
   | suc zero , (lt-s lt-z , refl)
-  with pay-ρ (finStep 1 (dρ (var vz) dι) (nth-sub (single m) (nth-⌜⌝ (nthᵗ-s nthᵗ-z))) db) done nb
+  with pay-ρ (finStep 1 (dρ (var vz) dι) (nth-sub (single m) (nth-⌜⌝ {Ts = FinTs} (nthᵗ-s nthᵗ-z))) db) done nb
 ... | r , (b' , (refl , ((dr , db') , (nr , nb')))) with pay-ι db' done nb'
 ...   | refl = inj₂ (r , (refl , (dr , nr)))
 fin-step d nrm | q , (refl , (dq , nq)) | t , (b , (refl , ((dt , db) , (nt , nb))))
@@ -237,7 +237,7 @@ syn-unq ok (suc f) {d = d} ng h dt nrm with syn-dec {d = num d} ng dt nrm
 
 args-unq ok zero sok () args
 args-unq ok (suc f) sok h d[] = s[] , refl
-args-unq {n = n} {sg = sg} ok (suc f) {d = d} (fᵒʰ (ok-rec {s = s} lt ∷ᶠ fok)) h (d-rec {a = a} {p = r} {k = k} da na rest)
+args-unq {n = n} {sg = sg} ok (suc f) {d = d} {sh = rec s k ∷ʰ _} (fᵒʰ (ok-rec lt ∷ᶠ fok)) h (d-rec {a = a} {p = r} da na rest)
   with nthG-of sg lt
 ... | _ , (_ , ng)
   with syn-unq ok f {d = k + d} ng (szˡ a r h) (⊢-cast (cong (SK sg s) (nsucs-num k d)) da) na
@@ -259,4 +259,4 @@ args-unq ok (suc f) (fᵒʰ ()) h (d-v da na)
 syn-unquote : {sg : Sig n} → SigOK n sg → {s d : ℕ} {shs : Shapes c} {t : RTm ε} →
           NthG sg s shs → ◇ ⊢ t ∷ SK sg s (num d) → IsNormal t →
           Σ (STm sg s d) (λ x → t ≡ ⌜ x ⌝ˢ)
-syn-unquote {d = d} {t = t} ok ng dt nrm = syn-unq ok (sz t) {d = d} ng ≤-refl dt nrm
+syn-unquote ok {d = d} {t = t} ng dt nrm = syn-unq ok (sz t) {d = d} ng ≤-refl dt nrm

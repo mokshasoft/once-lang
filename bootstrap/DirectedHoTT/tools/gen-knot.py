@@ -741,9 +741,9 @@ fnum-fromVar vz     = refl
 fnum-fromVar (vs x) = cong ffs (fnum-fromVar x)
 
 quoteVar-toVar : {i : ℕ} (l : Lt i (len Γ)) → quoteVar (toVar l) {Θ} ≡ fnum i
-quoteVar-toVar {ε}   ()
-quoteVar-toVar {Γ ∙} {zero}  lt-z     = refl
-quoteVar-toVar {Γ ∙} {suc i} (lt-s l) = cong ffs (quoteVar-toVar l)
+quoteVar-toVar {Γ = ε}   ()
+quoteVar-toVar {Γ = Γ ∙} {i = zero}  lt-z     = refl
+quoteVar-toVar {Γ = Γ ∙} {i = suc i} (lt-s l) = cong ffs (quoteVar-toVar l)
 
 ------------------------------------------------------------------------
 -- 2. The Spec's syntax and the generic trees, row by row.
