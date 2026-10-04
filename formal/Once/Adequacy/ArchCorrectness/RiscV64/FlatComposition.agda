@@ -47,7 +47,7 @@ import Once.CCC.Target.RiscV64.Semantics as R
 import Once.CCC.Target.RiscV64.Syntax as RS
 open import Once.CCC.Target.RiscV64.Syntax
   using ( Instr; Program
-        ; ld; sd; add; sub; addi; li; auipc; lla; lla-sym; mv; beq; bne; jal; jalr
+        ; ld; sd; add; sub; sltu; addi; li; auipc; lla; lla-sym; mv; beq; bne; jal; jalr
         ; j; ret; call; call-sym; nop; unimp; label
         ; sp; ra; t1; s3; slots )
 open import Once.CCC.Target.RiscV64.AbstractToRiscV using (compile-abstract; compile-trace)
@@ -63,6 +63,7 @@ is-label? (ld _ _ _) = false
 is-label? (sd _ _ _) = false
 is-label? (add _ _ _) = false
 is-label? (sub _ _ _) = false
+is-label? (sltu _ _ _) = false
 is-label? (addi _ _ _) = false
 is-label? (li _ _) = false
 is-label? (auipc _ _) = false
@@ -88,6 +89,7 @@ skip-law t (ld _ _ _) rest xi _ = refl
 skip-law t (sd _ _ _) rest xi _ = refl
 skip-law t (add _ _ _) rest xi _ = refl
 skip-law t (sub _ _ _) rest xi _ = refl
+skip-law t (sltu _ _ _) rest xi _ = refl
 skip-law t (addi _ _ _) rest xi _ = refl
 skip-law t (li _ _) rest xi _ = refl
 skip-law t (auipc _ _) rest xi _ = refl
@@ -126,6 +128,7 @@ reg-op-no-label scratch-dec = refl
 reg-op-no-label scratch-load-count = refl
 reg-op-no-label count-zero = refl
 reg-op-no-label count-inc = refl
+reg-op-no-label out-nz = refl
 
 const-no-label : ∀ {A} (p : FitsInReg A) (v : _) → has-label (compile-abstract (instr-load-const p v)) ≡ false
 const-no-label fits-int   v = refl

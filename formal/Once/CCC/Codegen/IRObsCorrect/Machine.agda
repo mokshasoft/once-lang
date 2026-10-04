@@ -416,23 +416,26 @@ module Mach {FS : FrameSemantics} where
             (store-slot-preserves-before n (floc u1) (record alloc { next-slot = n })
                (falloc u1) loc cf-u1 ≤-refl bf))))))))
 
-  -- The ENTRY-STATE instance: one `mov-to-output`, then the nine. Every field
-  -- is `NineStepPres`'s, re-exported at the names the four existing clauses
-  -- already use.
-  module TenStepPres
-    (n : ℕ) (i6 i8 : AbstractInstr) (prog : AbstractTrace) (base : ℕ)
+  -- The ENTRY-STATE instance: one REGISTER-ONLY step, then the nine. Plan
+  -- 0.108 made the first step a parameter — `inl`/`inr` copy the payload
+  -- (`mov-to-output`), a comparison computes its tag (`out-nz`); the nine are
+  -- the same build either way. What the first step owes is exactly what the nine
+  -- need of their start: the frontier, the frame, and every memory cell alone.
+  module TenStepPresAt
+    (i0 : AbstractInstr) (n : ℕ) (i6 i8 : AbstractInstr) (prog : AbstractTrace) (base : ℕ)
     (s : LocState FS) (alloc : AllocState {FS}) (cl : StoredValue FS)
+    (heapref-t1 : next-heap-ref (falloc (flat-step-straight i0 (entry-flat base s alloc cl)))
+                  ≡ next-heap-ref alloc)
+    (cf-t1      : current-frame (falloc (flat-step-straight i0 (entry-flat base s alloc cl)))
+                  ≡ current-frame alloc)
+    (mem-t1     : ∀ (loc : ValueLocation FS)
+                → MemOps.readLoc (floc (flat-step-straight i0 (entry-flat base s alloc cl))) loc
+                  ≡ MemOps.readLoc s loc)
     where
 
     t0 t1 : FlatState
     t0  = entry-flat base s alloc cl
-    t1  = flat-step-straight mov-to-output t0
-
-    heapref-t1 : next-heap-ref (falloc t1) ≡ next-heap-ref alloc
-    heapref-t1 = exec-abstract-preserves-heap-ref mov-to-output (floc t0) (falloc t0) tt
-
-    cf-t1 : current-frame (falloc t1) ≡ current-frame alloc
-    cf-t1 = exec-abstract-preserves-frame mov-to-output (floc t0) (falloc t0)
+    t1  = flat-step-straight i0 t0
 
     module NSP = NineStepPres n i6 i8 t1 s alloc heapref-t1 cf-t1
 
@@ -452,8 +455,8 @@ module Mach {FS : FrameSemantics} where
     cf-t3 : current-frame (falloc t3) ≡ current-frame alloc
     cf-t3 = NSP.cf-u3
 
-    -- …and the entry-state form: the nine, then the leading `mov-to-output`,
-    -- which writes a register and so touches no memory.
+    -- …and the entry-state form: the nine, then the leading step, which
+    -- writes a register and so touches no memory.
     mem-pres :
         InstrNoHeapWrite i6 → instr-writes-slot i6 ≡ nothing
       → InstrNoHeapWrite i8 → instr-writes-slot i8 ≡ nothing
@@ -464,9 +467,16 @@ module Mach {FS : FrameSemantics} where
       → BeforeFrontier (record alloc { next-slot = n }) loc
       → MemOps.readLoc (floc t10) loc ≡ MemOps.readLoc s loc
     mem-pres nhw6 nws6 nhw8 nws8 ns≤n rdi6 rdi8 loc bf =
-      trans (NSP.mem-pres-from nhw6 nws6 nhw8 nws8 ns≤n rdi6 rdi8 loc bf)
-            (mem-untouched mov-to-output (floc t0) (falloc t0) loc
-               nhw-mov-to-output refl)
+      trans (NSP.mem-pres-from nhw6 nws6 nhw8 nws8 ns≤n rdi6 rdi8 loc bf) (mem-t1 loc)
+
+  -- …the `inl`/`inr` instance: the leading step copies the payload.
+  module TenStepPres
+    (n : ℕ) (i6 i8 : AbstractInstr) (prog : AbstractTrace) (base : ℕ)
+    (s : LocState FS) (alloc : AllocState {FS}) (cl : StoredValue FS)
+    = TenStepPresAt mov-to-output n i6 i8 prog base s alloc cl
+        (exec-abstract-preserves-heap-ref mov-to-output s alloc tt)
+        (exec-abstract-preserves-frame mov-to-output s alloc)
+        (λ loc → mem-untouched mov-to-output s alloc loc nhw-mov-to-output refl)
 
   module ApplySetupPres
     (n : ℕ) (prog : AbstractTrace) (base : ℕ)

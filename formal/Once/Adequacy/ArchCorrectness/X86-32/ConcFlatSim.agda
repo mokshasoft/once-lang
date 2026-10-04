@@ -27,7 +27,7 @@ open import Once.CCC.Machine.SMCore using (AllocState; AbstractInstr; CallI)
 open import Once.CCC.Label using (once; LabelId; EntryId)
 open import Once.CCC.Target.X86-32.Syntax using
   ( slot-size; slots; Program; Instr; Reg; Operand; reg; imm; mem; base; base+disp; esp; ebp; eax; ecx; edx; edi
-  ; mov; lea; add; sub; cmp; test; jmp; je; jne; call; call-sym
+  ; mov; lea; add; sub; sbb; cmp; test; jmp; je; jne; call; call-sym
   ; ret; push; pop; nop; ud2; label; mov-code; jmp-l; call-l )
 open import Data.Nat using (ℕ; suc; _+_; _*_; _<_; _≤_; _∸_; _≡ᵇ_; _⊓_)
 open import Data.Nat.Properties using (≤-reflexive; ≤-trans; <-transˡ; <-irrefl; m≤m+n; m≤n+m; m∸n≤m
@@ -293,6 +293,7 @@ nonhalt-noncall prog s (mov _ _)  eq hnh = refl
 nonhalt-noncall prog s (lea _ _)  eq hnh = refl
 nonhalt-noncall prog s (add _ _)  eq hnh = refl
 nonhalt-noncall prog s (sub _ _)  eq hnh = refl
+nonhalt-noncall prog s (sbb _ _)  eq hnh = refl
 nonhalt-noncall prog s (cmp _ _)  eq hnh = refl
 nonhalt-noncall prog s (test _ _) eq hnh = refl
 nonhalt-noncall prog s (jmp _)    eq hnh = refl

@@ -33,7 +33,7 @@ open import Once.CCC.Target.X86-64.Syntax
   using (Reg; rax; rbx; rcx; rdx; rdi; rsi; rbp; rsp; r8; r9; r10; r11; r12; r13; r14; r15;
          Mem; base; base+disp; rip+disp; rip+label; rip+sym;
          Operand; reg; mem; imm;
-         Instr; mov; lea; add; sub; cmp; push; pop; call; call-l; ret; jmp; je; jne; label; ud2;
+         Instr; mov; lea; add; sub; sbb; cmp; push; pop; call; call-l; ret; jmp; je; jne; label; ud2;
          Program; slot-size; slots)
 
 -- Import AbstractInstr from SMCore
@@ -251,6 +251,9 @@ compile-abstract (instr-loop _) =
 
 -- Plan 0.29 (M5): register pokes. Scratch=rbx, Count=r14.
 compile-abstract (instr-reg-op scratch-one)        = mov (reg rbx) (imm 1) ∷ []
+-- plan 0.108: `out-nz` (Output := Output ≠ 0), branch-free: CF := (rax <u 1),
+-- rax := −CF, rax := 1 − CF.
+compile-abstract (instr-reg-op out-nz)             = cmp (reg rax) (imm 1) ∷ sbb (reg rax) (reg rax) ∷ add (reg rax) (imm 1) ∷ []
 compile-abstract (instr-reg-op scratch-zero)       = mov (reg rbx) (imm 0) ∷ []
 compile-abstract (instr-reg-op scratch-dec)        = sub (reg rbx) (imm 1) ∷ []
 -- Plan 0.54 D item 4: the tally is `Count` (r14, callee-saved like rbx). It

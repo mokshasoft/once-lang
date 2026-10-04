@@ -130,7 +130,7 @@ private
 
 open CFC using (HeapView; FlatCorr; RetAddrs; frames-of; caddr; HDom; haddr
                ; lo; hfront; descend-view; extend-view; slots; dom-fresh)
-open RegRoles roles using (sp-reg; in1-reg; scratch-reg; count-reg)
+open RegRoles roles using (sp-reg; in1-reg; scratch-reg; count-reg; out-reg)
 
 ------------------------------------------------------------------------
 -- THE COMPILED CORRESPONDENCE.
@@ -577,6 +577,15 @@ record BlockSteps : Set₁ where
       → readReg (regs (floc fs)) Count ≡ SV-Tag k
       → rreg s count-reg + 1 < modulus
       → BlockStep hv prog fs s (instr-reg-op count-inc)
+    -- plan 0.108: a word's truth as a tag, given (from the shape discipline)
+    -- that Output holds an `Int` word.
+    bs-out-nz :
+      ∀ {hv : HeapView} prog fs s w → CompiledCorr hv prog fs s
+      → halted (floc fs) ≡ false
+      → fetch prog (fpc fs) ≡ just (instr-reg-op out-nz)
+      → readReg (regs (floc fs)) Output ≡ SV-Lit fits-int w
+      → rreg s out-reg < modulus
+      → BlockStep hv prog fs s (instr-reg-op out-nz)
     -- …AND THE TWO FRAME MARKERS, the band's top end.
     --
     -- `c-thunk` is the first field whose RESULT is not the diagonal: it

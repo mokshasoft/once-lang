@@ -62,7 +62,7 @@ open import Once.Memory.HeapAddress
   using (HeapLocation; heap-loc; mkHeapRef; heap-ref; heap-offset; ref-id; _≟HL_)
 open import Once.SigOp.Info using (SigOpInfo; effect; EffectShape; Pure; Emits; Halts; Answers; semM)
 open import Once.Res using (Res; stopped; returns)
-open import Once.Type using (Type; FitsInReg; fits-in-reg?)
+open import Once.Type using (Type; FitsInReg; fits-in-reg?; fits-int; fits-float)
 open import Once.Semantics.Machine using (⟦_⟧)
 open import Once.CCC.Machine.SMCore
 open FrameSemantics FS using (Frame; _≟F_)
@@ -307,6 +307,14 @@ pb-succ bs (SV-Ptr l)   = tt
 pb-succ bs (SV-Lit p x) = tt
 pb-succ bs (SV-Code c)  = tt
 
+-- …and so does `sv-nz` (plan 0.108).
+pb-nz : ∀ (bs : ℕ → ℕ) (v : StoredValue FS) → PtrB bs (sv-nz v)
+pb-nz bs (SV-Tag m)            = tt
+pb-nz bs (SV-Ptr l)            = tt
+pb-nz bs (SV-Lit fits-int x)   = tt
+pb-nz bs (SV-Lit fits-float x) = tt
+pb-nz bs (SV-Code c)           = tt
+
 pb-reg-op : ∀ (bs : ℕ → ℕ) (ls : LocState FS) (op : RegOp)
           → PBInv bs ls → PBInv bs (exec-reg-op op ls)
 pb-reg-op bs ls scratch-one        wf = pb-write-reg bs ls Scratch (SV-Tag 1) tt wf
@@ -320,6 +328,10 @@ pb-reg-op bs ls count-zero         wf = pb-write-reg bs ls Count (SV-Tag 0) tt w
 pb-reg-op bs ls count-inc          wf =
   pb-write-reg bs ls Count (sv-succ (readReg (regs ls) Count))
                (pb-succ bs (readReg (regs ls) Count)) wf
+-- plan 0.108: `out-nz` writes a tag to Output.
+pb-reg-op bs ls out-nz             wf =
+  pb-write-reg bs ls Output (sv-nz (readReg (regs ls) Output))
+               (pb-nz bs (readReg (regs ls) Output)) wf
 
 ------------------------------------------------------------------------
 -- THE SIGOP OUTPUT: `Emits`/`Halts` produce `unit-storedvalue`; a `Pure`

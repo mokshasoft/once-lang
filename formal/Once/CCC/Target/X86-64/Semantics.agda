@@ -320,6 +320,17 @@ execInstr prog s (sub dst src) =
                  { pc    = pc s + 1
                  ; flags = updateFlags result d })
 
+execInstr prog s (sbb dst src) =
+  case readOperand s dst of λ where
+    nothing  → nothing
+    (just d) → case readOperand s src of λ where
+      nothing  → nothing
+      (just v) →
+        let result = (d W.⊖ v) W.⊖ (if Flags.cf (flags s) then 1 else 0)
+        in just (record (writeOperand s dst result)
+                 { pc    = pc s + 1
+                 ; flags = updateFlags result d })
+
 execInstr prog s (cmp op1 op2) =
   case readOperand s op1 of λ where
     nothing   → nothing

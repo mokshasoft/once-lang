@@ -178,7 +178,7 @@ open import Relation.Binary.PropositionalEquality using (refl; sym; trans; cong)
 
 open import Once.CCC.Target.RiscV64.Syntax using
   ( Reg; Instr; Program; label
-  ; ld; sd; add; sub; addi; li; auipc; lla; lla-sym; mv; beq; bne; jal; jalr; j; ret
+  ; ld; sd; add; sub; sltu; addi; li; auipc; lla; lla-sym; mv; beq; bne; jal; jalr; j; ret
   ; call; call-sym; nop; unimp )
 import Once.CCC.Target.RiscV64.Semantics as R
 open import Once.CCC.Target.RiscV64.AbstractToRiscV using (compile-abstract; compile-trace)
@@ -255,6 +255,7 @@ r-nonhalt-noncall prog s (ld _ _ _)   eq hnh = refl
 r-nonhalt-noncall prog s (sd _ _ _)   eq hnh = refl
 r-nonhalt-noncall prog s (add _ _ _)  eq hnh = refl
 r-nonhalt-noncall prog s (sub _ _ _)  eq hnh = refl
+r-nonhalt-noncall prog s (sltu _ _ _)  eq hnh = refl
 r-nonhalt-noncall prog s (addi _ _ _) eq hnh = refl
 r-nonhalt-noncall prog s (li _ _)     eq hnh = refl
 r-nonhalt-noncall prog s (auipc _ _)  eq hnh = refl
@@ -399,7 +400,7 @@ open import Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation o FS word-eq fm
   ; block-step-c-jmp; block-step-c-branch-scratch-zero; block-step-c-branch-nz
   ; block-step-c-branch-tag-zero; block-step-c-branch-tag-nz
   ; block-step-scratch-dec; block-step-count-inc
-  ; block-step-c-thunk; block-step-c-start; block-step-c-ret
+  ; block-step-c-thunk; block-step-c-start; block-step-out-nz; block-step-c-ret
   ; block-step-load-const; block-step-load-const-float
   ; block-step-load-code-addr; block-step-call; block-step-call-fn; block-step-alloc-heap
   ; load-indirect-heap-empty-stuck; load-indirect-suc-heap-empty-stuck
@@ -603,6 +604,7 @@ riscv64-block-steps = record
   ; bs-c-branch-tag-zero        = block-step-c-branch-tag-zero
   ; bs-c-branch-tag-nz          = block-step-c-branch-tag-nz
   ; bs-scratch-dec              = block-step-scratch-dec
+  ; bs-out-nz                   = block-step-out-nz
   ; bs-count-inc                = block-step-count-inc
   ; bs-c-thunk                  = block-step-c-thunk
   ; bs-c-start                  = block-step-c-start

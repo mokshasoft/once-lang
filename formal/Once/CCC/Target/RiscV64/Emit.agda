@@ -45,6 +45,7 @@ showInstr (ld   rd rs o)      = "    ld "    ++ showReg rd ++ ", " ++ showNat o 
 showInstr (sd   rs rd o)      = "    sd "    ++ showReg rs ++ ", " ++ showNat o ++ "(" ++ showReg rd ++ ")"
 showInstr (add  rd rs1 rs2)   = "    add "   ++ showReg rd ++ ", " ++ showReg rs1 ++ ", " ++ showReg rs2
 showInstr (sub  rd rs1 rs2)   = "    sub "   ++ showReg rd ++ ", " ++ showReg rs1 ++ ", " ++ showReg rs2
+showInstr (sltu rd rs1 rs2)   = "    sltu "  ++ showReg rd ++ ", " ++ showReg rs1 ++ ", " ++ showReg rs2
 showInstr (addi rd rs i)      = "    addi "  ++ showReg rd ++ ", " ++ showReg rs  ++ ", " ++ showInt i
 showInstr (li   rd i)         = "    li "    ++ showReg rd ++ ", " ++ showInt i
 showInstr (auipc rd i)        = "    auipc " ++ showReg rd ++ ", " ++ showNat i

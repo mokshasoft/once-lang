@@ -63,6 +63,8 @@ showInstr (add dst src) =
   "    addq " ++ showOperand src ++ ", " ++ showOperand dst
 showInstr (sub dst src) =
   "    subq " ++ showOperand src ++ ", " ++ showOperand dst
+showInstr (sbb dst src) =
+  "    sbbq " ++ showOperand src ++ ", " ++ showOperand dst
 showInstr (cmp op1 op2) =
   "    cmpq " ++ showOperand op2 ++ ", " ++ showOperand op1
 showInstr (test op1 op2) =

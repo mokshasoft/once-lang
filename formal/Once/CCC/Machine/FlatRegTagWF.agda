@@ -357,6 +357,9 @@ mutual
   regtag-abstract (instr-reg-op count-inc) ls alloc wf =
     regtag-set-count (sv-succ (readReg (regs ls) Count))
       (sv-succ-tag (readReg (regs ls) Count) (count-tag wf)) wf
+  -- plan 0.108: `out-nz` writes Output only; Scratch and Count keep their tags.
+  regtag-abstract (instr-reg-op out-nz) ls alloc wf =
+    regtag-write-nc Output tt (sv-nz (readReg (regs ls) Output)) wf
   regtag-abstract (instr-ctrl c) ls alloc wf = wf
 
   regtag-trace : ∀ (t : AbstractTrace) (ls : LocState FS) (alloc : AllocState {FS})

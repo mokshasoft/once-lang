@@ -126,7 +126,7 @@ open CFC using (HeapView; HDom; slots; haddr; hfront; lo; caddr)
 -- THE TRACE LOOP. `RT.run-events` here IS the arch's `run-events`: both are
 -- the same application of `RunTraceCore.RunTrace`.
 ------------------------------------------------------------------------
-open RegRoles roles using (in1-reg; sp-reg; scratch-reg; count-reg)
+open RegRoles roles using (in1-reg; sp-reg; scratch-reg; count-reg; out-reg)
 
 -- unqualified, as `CompiledCorrespondence` imports it: `halted`/`regs`/… are
 -- `LocState` fields that `Machine.Flat` itself picks up this way.
@@ -684,6 +684,20 @@ module Dispatch (sup : Supply) where
           go-sv (SV-Lit pr v) i2-eq = ⊥-elim (flat-count-is-tag fs (SV-Lit pr v) (inv-regtag wf) i2-eq)
           go-sv (SV-Code c)   i2-eq = ⊥-elim (flat-count-is-tag fs (SV-Code c) (inv-regtag wf) i2-eq)
 
+  -- plan 0.108: `out-nz` — its block-step, at the word the shape discipline
+  -- guarantees is in Output (`out-nz-output-word`).
+  out-nz-step : ∀ {hv : HeapView} n → EventsIH n → ∀ (ev : RT.EvExtractor) (env : RT.ArithEnv)
+                  prog fs s → CompiledCorr hv prog fs s → FlatInv ev env prog fs → halted (floc fs) ≡ false
+              → fetch prog (fpc fs) ≡ just (instr-reg-op out-nz)
+              → Σ ℕ (λ M → RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s
+                    ≡ event-of (instr-reg-op out-nz) fs
+                      ++ flat-events n prog (flat-exec-instr (instr-reg-op out-nz) prog fs))
+  out-nz-step {hv} n IH ev env prog fs s cc wf h ftq =
+    ccc-step-bs {hv} n IH ev env prog fs s (instr-reg-op out-nz)
+      (bs-out-nz bss prog fs s (proj₁ wd) cc h ftq (proj₂ wd)
+                 (reg-range prog fs s out-reg (inv-run wf) cc)) wf ftq h refl tt h
+    where wd = out-nz-output-word prog fs (inv-run wf) ftq
+
   -- MEMORY load-indirect (D073: every route is a theorem now). The load-site
   -- discipline (`load-indirect-target-wf`) hands the pointer + dynamic
   -- in-bounds witnesses; a WRITTEN cell is the PROVEN block-step, an EMPTY
@@ -1063,6 +1077,7 @@ module Dispatch (sup : Supply) where
     events-running-fetch {hv} n ev env prog fs s (instr-reg-op scratch-load-count) cc wf h ftq = ccc-step-bs n (events-agree n) ev env prog fs s (instr-reg-op scratch-load-count) (bs-scratch-load-count bss prog fs s cc h ftq) wf ftq h refl tt h
     events-running-fetch {hv} n ev env prog fs s (instr-reg-op scratch-dec) cc wf h ftq = scratch-dec-step n (events-agree n) ev env prog fs s cc wf h ftq
     events-running-fetch {hv} n ev env prog fs s (instr-reg-op count-inc) cc wf h ftq = count-inc-step n (events-agree n) ev env prog fs s cc wf h ftq
+    events-running-fetch {hv} n ev env prog fs s (instr-reg-op out-nz) cc wf h ftq = out-nz-step n (events-agree n) ev env prog fs s cc wf h ftq
     events-running-fetch {hv} n ev env prog fs s load-indirect cc wf h ftq = load-indirect-step n (events-agree n) ev env prog fs s cc wf h ftq
     events-running-fetch {hv} n ev env prog fs s load-indirect-suc cc wf h ftq = load-indirect-suc-step n (events-agree n) ev env prog fs s cc wf h ftq
     events-running-fetch {hv} n ev env prog fs s store-indirect cc wf h ftq = store-indirect-step n (events-agree n) ev env prog fs s cc wf h ftq

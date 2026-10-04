@@ -318,6 +318,12 @@ execInstr prog s (sub rd rs1 rs2) =
   in just (record s { regs = writeReg (regs s) rd result
                     ; pc = pc s + 1 })
 
+execInstr prog s (sltu rd rs1 rs2) =
+  let v1 = readReg (regs s) rs1
+      v2 = readReg (regs s) rs2
+  in just (record s { regs = writeReg (regs s) rd (if v1 <ᵇ v2 then 1 else 0)
+                    ; pc = pc s + 1 })
+
 execInstr prog s (addi rd rs imm) =
   let v1 = readReg (regs s) rs
       -- `addi` is `rs + sext(imm)` in two's complement — ONE modular addition

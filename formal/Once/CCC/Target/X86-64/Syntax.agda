@@ -104,6 +104,9 @@ data Instr : Set where
   -- Arithmetic (for pointer arithmetic, tag operations)
   add    : Operand → Operand → Instr    -- add dst, src
   sub    : Operand → Operand → Instr    -- sub dst, src
+  -- plan 0.108: subtract with borrow, dst := dst − src − CF. With `cmp in, 1`
+  -- before it (CF = in <u 1) and `add 1` after, it is the branch-free `in ≠ 0`.
+  sbb    : Operand → Operand → Instr    -- sbb dst, src
 
   -- Comparison
   cmp    : Operand → Operand → Instr    -- cmp op1, op2 (sets flags)
@@ -243,6 +246,7 @@ instr-consumed-slots (sub (imm _) _)  = 0
 instr-consumed-slots (mov _ _)        = 0
 instr-consumed-slots (lea _ _)        = 0
 instr-consumed-slots (add _ _)        = 0
+instr-consumed-slots (sbb _ _)        = 0
 instr-consumed-slots (cmp _ _)        = 0
 instr-consumed-slots (test _ _)       = 0
 instr-consumed-slots (jmp _)          = 0

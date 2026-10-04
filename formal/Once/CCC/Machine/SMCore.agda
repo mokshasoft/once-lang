@@ -25,7 +25,7 @@ module Once.CCC.Machine.SMCore where
 open import Data.Nat using (ℕ; zero; suc; _+_; _≤_; _<_; _>_; _≥_; s≤s)
 open import Data.Nat.Properties using (_≟_; <⇒≢; ≤-trans)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Bool using (Bool; true; false)
+open import Data.Bool using (Bool; true; false; if_then_else_)
 open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥)
 open import Function using (_∘_)
@@ -413,6 +413,21 @@ data RegOp : Set where
   -- `count-inc`; see AbstractReg.Count for why the split was necessary.)
   count-zero         : RegOp  -- Count   := SV-Tag 0    (descend tally init)
   count-inc          : RegOp  -- Count   := succ Count  (descend count++)
+  -- plan 0.108: A WORD, AS A TAG. `Output := SV-Tag (Output ≠ 0)` — a
+  -- comparison's 0/1 (its arith block's result) becomes the tag of its
+  -- `Bool = Unit + Unit` (D263: true = inr = tag 1). On OUTPUT, the register
+  -- the block itself just wrote — so the word is never behind a pointer.
+  -- Lowered as real instructions (x86 `cmp; sbb; add`, riscv `snez`).
+  out-nz             : RegOp
+
+-- plan 0.108: a word's truth as a tag — 0 is false (inl), anything else true
+-- (inr). Defined on the two value shapes a register word can be; `out-nz`
+-- only ever meets an arith block's `Int` result.
+sv-nz : ∀ {FS} → StoredValue FS → StoredValue FS
+sv-nz (SV-Lit fits-int w) = SV-Tag (if w ℕ.≡ᵇ 0 then 0 else 1)
+sv-nz (SV-Tag n)          = SV-Tag (if n ℕ.≡ᵇ 0 then 0 else 1)
+{-# CATCHALL #-}
+sv-nz _                   = SV-Tag 1
 
 -- Plan 0.29 (M5): SV-Tag counter arithmetic for instr-reg-op.
 sv-succ : ∀ {FS} → StoredValue FS → StoredValue FS
@@ -458,6 +473,7 @@ setReg scratch-dec        r = writeReg r Scratch (sv-pred (readReg r Scratch))
 setReg scratch-load-count r = writeReg r Scratch (readReg r Count)
 setReg count-zero         r = writeReg r Count (SV-Tag 0)
 setReg count-inc          r = writeReg r Count (sv-succ (readReg r Count))
+setReg out-nz             r = writeReg r Output (sv-nz (readReg r Output))
 
 -- Uniform record-update on `regs`: heapMem/stackMem/halted preserved
 -- definitionally for ANY op (the op case-split lives inside setReg).

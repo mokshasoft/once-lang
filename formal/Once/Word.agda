@@ -41,6 +41,7 @@ import Data.Nat as ℕ
 open ℕ using (ℕ; zero; suc; _∸_; _^_; _≤_; _<_; s≤s; z≤n)
 open import Data.Nat.DivMod using (_%_; _/_; n%1≡0; n/1≡n; n%n≡0; m<n⇒m%n≡m; m%n<n;
    %-distribˡ-*; %-distribˡ-+; m%n%n≡m%n; [m+n]%n≡m%n)
+import Data.Nat.Properties
 open import Data.Nat.Properties using
   (m^n≢0; m^n>0; +-identityʳ; +-comm;
    +-mono-≤; +-monoʳ-≤; +-monoʳ-<; ^-monoʳ-≤; ∸-monoˡ-≤; m+n∸n≡m; m∸n+n≡m; m∸[m∸n]≡n;
@@ -661,6 +662,24 @@ module Width (bits : ℕ) where
     trans (⊕-normʳ x 0) (trans (cong norm (+-identityʳ x)) (norm-id x<m))
   ⊕-neg x (suc j) k≤x x<m =
     trans (⊕-neg-suc x j (≤-<-trans k≤x x<m)) (⊖≡∸ x (suc j) k≤x x<m)
+
+
+  -- plan 0.108: x86's BRANCH-FREE `x ≠ 0` — `cmp x, 1` (CF := x <u 1), then
+  -- `sbb r, r` (r := 0 − CF), then `add r, 1` (r := 1 − CF). One lemma per
+  -- value of CF; each needs one bit of width (`1 < modulus`).
+  ⊖-self : ∀ (x : Word) → x < modulus → x ⊖ x ≡ 0
+  ⊖-self x x<m = trans (cong norm (Data.Nat.Properties.m+[n∸m]≡n (<⇒≤ x<m))) (n%n≡0 modulus)
+
+  sbb-zero : 1 < modulus → ((0 ⊖ 0) ⊖ 1) ⊕ 1 ≡ 0
+  sbb-zero 1<m =
+    trans (cong (λ z → (z ⊖ 1) ⊕ 1) (⊖-self 0 0<modulus))
+   (trans (cong (_⊕ 1) (norm-id (subst (_≤ modulus) (sym (trans (+-comm 1 (modulus ∸ 1)) (m∸n+n≡m (<⇒≤ 1<m)))) ≤-refl)))
+   (trans (cong norm (m∸n+n≡m (<⇒≤ 1<m))) (n%n≡0 modulus)))
+
+  sbb-pos : ∀ (x : Word) → x < modulus → 1 < modulus → ((x ⊖ x) ⊖ 0) ⊕ 1 ≡ 1
+  sbb-pos x x<m 1<m =
+    trans (cong (λ z → (z ⊖ 0) ⊕ 1) (⊖-self x x<m))
+   (trans (cong (_⊕ 1) (⊖-self 0 0<modulus)) (norm-id 1<m))
 
 
 ------------------------------------------------------------------------

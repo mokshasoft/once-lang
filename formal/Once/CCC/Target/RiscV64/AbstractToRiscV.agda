@@ -48,7 +48,7 @@ module IntW = OnceWord.Width 64
 open import Once.CCC.Target.RiscV64.Syntax
   using (Reg; zero; ra; sp; fp; a0; a1; a2; a3; a4; a5; a6; a7;
          s1; s2; s3; s4; t0; t1; t2; t3; t4;
-         Instr; ld; sd; add; sub; addi; li; auipc; lla; lla-sym; mv;
+         Instr; ld; sd; add; sub; sltu; addi; li; auipc; lla; lla-sym; mv;
          beq; bne; jal; jalr; j; ret; call; call-sym; nop; unimp; label;
          Label; once; thunk; callee; e-fn;
          Program; slot-size; slots)
@@ -71,7 +71,7 @@ open import Once.CCC.Machine.SMCore
          instr-save-closure-reg;
          instr-load-tag-lit; instr-case-on-tag; instr-loop; instr-reg-op; instr-ctrl;
          -- RegOp constructors (Plan 0.53 reg-op lowering)
-         scratch-one; scratch-zero; scratch-dec; scratch-load-count; count-zero; count-inc;
+         scratch-one; scratch-zero; scratch-dec; scratch-load-count; count-zero; count-inc; out-nz;
          -- FlatCtrl constructors (Plan 0.53 flat-control lowering)
          c-label; c-jmp; c-branch-scratch-zero; c-branch-tag-zero; c-thunk; c-ret; c-entry; c-call-fn; c-start)
 open import Once.CCC.Machine.NoNested public
@@ -318,6 +318,8 @@ compile-abstract (instr-loop _) = unimp ∷ []
 -- Plan 0.53 (mirror x86-64 M5): register pokes. Scratch = s3, Count = s4
 -- (callee-saved, otherwise unused by this codegen).
 compile-abstract (instr-reg-op scratch-one)        = li s3 (+ 1) ∷ []
+-- plan 0.108: `out-nz` (Output := Output ≠ 0) is `snez a0, a0`.
+compile-abstract (instr-reg-op out-nz)             = sltu a0 zero a0 ∷ []
 compile-abstract (instr-reg-op scratch-zero)       = li s3 (+ 0) ∷ []
 compile-abstract (instr-reg-op scratch-dec)        = addi s3 s3 (Data.Integer.-_ (+ 1)) ∷ []
   where import Data.Integer

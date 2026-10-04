@@ -64,7 +64,7 @@ open import Once.Memory.HeapAddress using (HeapLocation; _≟HL_)
 import Once.Allocator.AbstractInstance as AI
 open import Once.SigOp.Info using (SigOpInfo; effect; EffectShape; Pure; Emits; Halts; Answers; semM)
 open import Once.Res using (Res; stopped; returns)
-open import Once.Type using (Type; FitsInReg; fits-in-reg?)
+open import Once.Type using (Type; FitsInReg; fits-in-reg?; fits-int; fits-float)
 open import Once.Semantics.Machine using (⟦_⟧)
 open import Once.CCC.Machine.SMCore
 open FrameSemantics FS using (Frame; _≟F_)
@@ -372,6 +372,14 @@ sp-succ (SV-Ptr l)   = tt
 sp-succ (SV-Lit p x) = tt
 sp-succ (SV-Code c)  = tt
 
+-- …and so does `sv-nz` (plan 0.108).
+sp-nz : ∀ (v : StoredValue FS) → StackPtrOK (sv-nz v)
+sp-nz (SV-Tag m)            = tt
+sp-nz (SV-Ptr l)            = tt
+sp-nz (SV-Lit fits-int x)   = tt
+sp-nz (SV-Lit fits-float x) = tt
+sp-nz (SV-Code c)           = tt
+
 sp-reg-op : ∀ (cf : Frame) (ls : LocState FS) (op : RegOp)
           → SPInv ls → SPInv (exec-reg-op op ls)
 sp-reg-op cf ls scratch-one        wf = sp-write-reg cf ls Scratch (SV-Tag 1) tt wf
@@ -385,6 +393,10 @@ sp-reg-op cf ls count-zero         wf = sp-write-reg cf ls Count (SV-Tag 0) tt w
 sp-reg-op cf ls count-inc          wf =
   sp-write-reg cf ls Count (sv-succ (readReg (regs ls) Count))
                (sp-succ (readReg (regs ls) Count)) wf
+-- plan 0.108: `out-nz` writes a tag to Output.
+sp-reg-op cf ls out-nz             wf =
+  sp-write-reg cf ls Output (sv-nz (readReg (regs ls) Output))
+               (sp-nz (readReg (regs ls) Output)) wf
 
 -- (`lea-indexed` needs no cursor case at all: it joined the unemittable set
 -- 2026-08-01 — the cata codegen walks heap-LINKED stacks, never an indexed

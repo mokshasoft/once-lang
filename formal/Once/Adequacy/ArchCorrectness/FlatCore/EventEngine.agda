@@ -122,7 +122,7 @@ open CFC using (HeapView; HDom; slots)
 -- THE TRACE LOOP. `RT.run-events` here IS the arch's `run-events`: both are
 -- the same application of `RunTraceCore.RunTrace`.
 ------------------------------------------------------------------------
-open RegRoles roles using (in1-reg; sp-reg; scratch-reg; count-reg)
+open RegRoles roles using (in1-reg; sp-reg; scratch-reg; count-reg; out-reg)
 import Once.Arith.Backend.RunTraceCore as Core
 module RT = Core.RunTrace State (List Instr) Instr Payload
                           xhalted xpc mfetch mexecInstr matchCall ret-call dispatchArith

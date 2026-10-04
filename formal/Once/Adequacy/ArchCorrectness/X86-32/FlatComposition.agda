@@ -41,7 +41,7 @@ import Once.CCC.Target.X86-32.Semantics as X
 import Once.CCC.Target.X86-32.Syntax as XS
 open import Once.CCC.Target.X86-32.Syntax
   using ( Instr; Program
-        ; mov; lea; add; sub; cmp; test; jmp; je; jne; call; call-sym; call-l
+        ; mov; lea; add; sub; sbb; cmp; test; jmp; je; jne; call; call-sym; call-l
         ; ret; push; pop; nop; ud2; label; mov-code; jmp-l
         ; Operand; reg; imm; esp; slots)
 open import Once.CCC.Target.X86-32.AbstractToX86-32 using (compile-abstract; compile-trace)
@@ -59,6 +59,7 @@ is-label? (mov _ _) = false
 is-label? (lea _ _) = false
 is-label? (add _ _) = false
 is-label? (sub _ _) = false
+is-label? (sbb _ _) = false
 is-label? (cmp _ _) = false
 is-label? (test _ _) = false
 is-label? (jmp _) = false
@@ -85,6 +86,7 @@ skip-law t (mov _ _) rest xi _ = refl
 skip-law t (lea _ _) rest xi _ = refl
 skip-law t (add _ _) rest xi _ = refl
 skip-law t (sub _ _) rest xi _ = refl
+skip-law t (sbb _ _) rest xi _ = refl
 skip-law t (cmp _ _) rest xi _ = refl
 skip-law t (test _ _) rest xi _ = refl
 skip-law t (jmp _) rest xi _ = refl
@@ -127,6 +129,7 @@ reg-op-no-label scratch-dec = refl
 reg-op-no-label scratch-load-count = refl
 reg-op-no-label count-zero = refl
 reg-op-no-label count-inc = refl
+reg-op-no-label out-nz = refl
 
 const-no-label : ∀ {A} (p : FitsInReg A) (v : _) → has-label (compile-abstract (instr-load-const p v)) ≡ false
 const-no-label fits-int   v = refl

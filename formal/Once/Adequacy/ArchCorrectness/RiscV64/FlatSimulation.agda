@@ -57,7 +57,8 @@ open import Data.Nat.Properties using (+-identityʳ; +-assoc; +-comm)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
 open import Data.List using (List; []; _∷_; _++_; drop; length)
-open import Data.Bool using (false; true)
+open import Data.Bool using (false; true; if_then_else_)
+import Data.Nat
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂)
 open import Once.CCC.Machine.SMCore
 open import Data.Unit using (tt)
@@ -76,8 +77,8 @@ open C using (HeapView; haddr; HDom; hfront)
 open import Once.Adequacy.ArchCorrectness.RiscV64.FlatComposition FS
   using (blk-off; blk-len; blk-off-suc; fetch-block-head; fetch-block-2nd; fetch-block-3rd; find-label-corr; find-thunk-corr)
 open import Once.Adequacy.ArchCorrectness.RiscV64.StepLemmas
-  using (exec-1; step-mv; step-li; step-label; step-ld; step-sd; step-addi; step-lla; step-lla-sym; step-j-found; step-beq-taken; step-beq-not; step-ret; step-jalr; step-jal-found)
-open import Once.CCC.Target.RiscV64.Syntax using (Reg; mv; li; label; ld; sd; addi; lla; lla-sym; beq; j; ret; jalr; jal; a0; a1; t0; t1; s1; s2; s3; s4; sp; ra; zero; slots)
+  using (exec-1; step-mv; step-li; step-label; step-ld; step-sd; step-addi; step-sltu; step-lla; step-lla-sym; step-j-found; step-beq-taken; step-beq-not; step-ret; step-jalr; step-jal-found)
+open import Once.CCC.Target.RiscV64.Syntax using (Reg; mv; li; label; ld; sd; addi; sltu; lla; lla-sym; beq; j; ret; jalr; jal; a0; a1; t0; t1; s1; s2; s3; s4; sp; ra; zero; slots)
 import Data.Integer as ℤ
 import Once.Word as OnceWord
 module IntW = OnceWord.Width 64
@@ -614,6 +615,47 @@ block-step-load-code-addr {hv} prog fs s n jix cc h ft fl =
 
 -- count-inc ↔ `addi s4, s4, 1`. The observable counter; same no-wrap bound as
 -- x86-64's `add r14, 1` (plan 0.70 phase C).
+-- plan 0.108: `out-nz` ↔ `sltu a0, zero, a0` (`snez a0, a0`): `0 <u a0` is
+-- exactly `a0 ≠ 0`.
+block-step-out-nz : ∀ {hv : HeapView} prog fs s w → CompiledCorr hv prog fs s
+  → halted (floc fs) ≡ false
+  → fetch prog (fpc fs) ≡ just (instr-reg-op out-nz)
+  → readReg (regs (floc fs)) Output ≡ SV-Lit fits-int w
+  → R.readReg (R.State.regs s) a0 < R.W.modulus
+  → BlockStep hv prog fs s (instr-reg-op out-nz)
+block-step-out-nz {hv} prog fs s w cc h ft o-eq rng =
+  post , exec-eq , record
+    { dataCorr = C.sim-out-nz w fs s _ dc o-eq (C.sets-role-riscv64 s role-out _ _)
+    ; pc-off = pco' ; ret-eq = ret-eq cc ; code-eq = code-eq cc }
+  where
+    dc = dataCorr cc ; po = pc-off cc
+    halt-s : R.State.halted s ≡ false
+    halt-s = trans (C.halt-eq dc) h
+    x≡w : R.readReg (R.State.regs s) a0 ≡ w
+    x≡w = trans (C.out-eq dc) (cong (C.enc-sv hv) o-eq)
+    t : ℕ
+    t = if w Data.Nat.≡ᵇ 0 then 0 else 1
+    fetch-rv : R.fetch (compile-trace prog) (R.State.pc s) ≡ just (sltu a0 zero a0)
+    fetch-rv = trans (cong (R.fetch (compile-trace prog)) po)
+                     (fetch-block-head prog (fpc fs) (instr-reg-op out-nz) ft)
+    nz : ∀ (y : ℕ) → (if 0 Data.Nat.<ᵇ y then 1 else 0) ≡ (if y Data.Nat.≡ᵇ 0 then 0 else 1)
+    nz zero    = refl
+    nz (suc k) = refl
+    val : (if 0 Data.Nat.<ᵇ R.readReg (R.State.regs s) a0 then 1 else 0) ≡ t
+    val = trans (cong (λ y → if 0 Data.Nat.<ᵇ y then 1 else 0) x≡w) (nz w)
+    post : R.State
+    post = record s { regs = R.writeReg (R.State.regs s) a0 t ; pc = R.State.pc s + 1 }
+    snh : R.step-not-halted (compile-trace prog) s ≡ just post
+    snh = subst (λ z → R.step-not-halted (compile-trace prog) s
+                       ≡ just (record s { regs = R.writeReg (R.State.regs s) a0 z
+                                        ; pc = R.State.pc s + 1 }))
+                val
+                (step-sltu {compile-trace prog} {s} {a0} {zero} {a0} fetch-rv)
+    exec-eq : R.exec 1 (compile-trace prog) s ≡ just post
+    exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
+    pco' : R.State.pc post ≡ blk-off prog (fpc (flat-exec-instr (instr-reg-op out-nz) prog fs))
+    pco' = trans (cong (_+ 1) po) (sym (blk-off-suc prog (fpc fs) (instr-reg-op out-nz) ft))
+
 block-step-count-inc : ∀ {hv : HeapView} prog fs s k → CompiledCorr hv prog fs s
   → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just (instr-reg-op count-inc)

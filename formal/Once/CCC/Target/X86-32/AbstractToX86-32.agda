@@ -36,7 +36,7 @@ open import Once.CCC.Target.X86-32.Syntax
   using (Reg; eax; ebx; ecx; edx; esi; edi; ebp; esp;
          Mem; base; base+disp; label-rel; abs-sym;
          Operand; reg; mem; imm;
-         Instr; mov; lea; add; sub; cmp; test; push; pop; call; call-sym; ret; jmp; jne; je; nop; ud2; label; call-l;
+         Instr; mov; lea; add; sub; sbb; cmp; test; push; pop; call; call-sym; ret; jmp; jne; je; nop; ud2; label; call-l;
          mov-code; jmp-l;
          Label; once; thunk; callee; e-fn;
          Program; slot-size; slots)
@@ -63,7 +63,7 @@ open import Once.CCC.Machine.SMCore
          instr-save-closure-reg;
          instr-load-tag-lit; instr-case-on-tag; instr-loop; instr-reg-op; instr-ctrl;
          -- Plan 0.53: RegOp + FlatCtrl constructors for reg-op / flat-control lowering
-         scratch-one; scratch-zero; scratch-dec; scratch-load-count; count-zero; count-inc;
+         scratch-one; scratch-zero; scratch-dec; scratch-load-count; count-zero; count-inc; out-nz;
          c-label; c-jmp; c-branch-scratch-zero; c-branch-tag-zero; c-thunk; c-ret; c-entry; c-call-fn; c-start)
 open import Once.CCC.Machine.NoNested public
 
@@ -260,6 +260,8 @@ compile-abstract (instr-loop _) = ud2 ∷ []
 -- writes `%edi`, and the mislabelling is why review never caught that Input2
 -- and Scratch were the SAME register here. Input2 is now retired.
 compile-abstract (instr-reg-op scratch-one)        = mov (reg edx) (imm 1) ∷ []
+-- plan 0.108: `out-nz`, branch-free (see the x86-64 lowering).
+compile-abstract (instr-reg-op out-nz)             = cmp (reg eax) (imm 1) ∷ sbb (reg eax) (reg eax) ∷ add (reg eax) (imm 1) ∷ []
 compile-abstract (instr-reg-op scratch-zero)       = mov (reg edx) (imm 0) ∷ []
 compile-abstract (instr-reg-op scratch-dec)        = sub (reg edx) (imm 1) ∷ []
 compile-abstract (instr-reg-op scratch-load-count) = mov (reg edx) (reg edi) ∷ []

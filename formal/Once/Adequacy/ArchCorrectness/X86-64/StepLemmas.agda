@@ -27,7 +27,7 @@
 
 module Once.Adequacy.ArchCorrectness.X86-64.StepLemmas where
 
-open import Data.Nat using (ℕ; zero; suc; _+_; _∸_; _≡ᵇ_; _<_)
+open import Data.Nat using (ℕ; zero; suc; _+_; _∸_; _≡ᵇ_; _<_; s≤s; z≤n)
 open import Data.Bool using (Bool; true; false; if_then_else_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (_×_; _,_)
@@ -283,6 +283,36 @@ step-add-ri : ∀ {prog s r n}
                                                      (readReg (regs s) r)
                                ; pc = pc s + 1 })
 step-add-ri ft rewrite ft = refl
+
+-- plan 0.108: sbb reg, reg (the branch-free `≠ 0`: `sbb rax, rax`)
+step-sbb-rr : ∀ {prog s r r'}
+            → fetch prog (pc s) ≡ just (sbb (reg r) (reg r'))
+            → step-not-halted prog s
+              ≡ just (record s { regs = writeReg (regs s) r
+                                          ((readReg (regs s) r W.⊖ readReg (regs s) r')
+                                             W.⊖ (if Flags.cf (flags s) then 1 else 0))
+                               ; flags = updateFlags ((readReg (regs s) r W.⊖ readReg (regs s) r')
+                                                        W.⊖ (if Flags.cf (flags s) then 1 else 0))
+                                                     (readReg (regs s) r)
+                               ; pc = pc s + 1 })
+step-sbb-rr ft rewrite ft = refl
+
+-- plan 0.108: what `cmp x, 1 ; sbb r, r ; add r, 1` leaves — `x ≠ 0`, as 0/1.
+-- Top-level and over plain numbers, so the block-step does not elaborate the
+-- arithmetic against its state records.
+nz-val : ∀ (x : ℕ) → x < W.modulus
+       → ((x W.⊖ x) W.⊖ (if (x <ᵇ W.norm 1) then 1 else 0)) W.⊕ W.norm 1
+         ≡ (if x ≡ᵇ 0 then 0 else 1)
+nz-val x rng =
+  trans (cong (λ m → ((x W.⊖ x) W.⊖ (if (x <ᵇ m) then 1 else 0)) W.⊕ m) n1) (go x rng)
+  where
+    n1 : W.norm 1 ≡ 1
+    n1 = W.norm-id (W.1<modulus (s≤s z≤n))
+    go : ∀ (y : ℕ) → y < W.modulus
+       → ((y W.⊖ y) W.⊖ (if (y <ᵇ 1) then 1 else 0)) W.⊕ 1 ≡ (if y ≡ᵇ 0 then 0 else 1)
+    go zero    _   = W.sbb-zero (W.1<modulus (s≤s z≤n))
+    go (suc zero)    rng = W.sbb-pos 1 rng (W.1<modulus (s≤s z≤n))
+    go (suc (suc k)) rng = W.sbb-pos (suc (suc k)) rng (W.1<modulus (s≤s z≤n))
 
 -- add reg, reg (the lea-indexed doublings: `add rcx, rcx`)
 step-add-rr : ∀ {prog s r r'}

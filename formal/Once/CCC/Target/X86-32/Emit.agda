@@ -63,6 +63,7 @@ showInstr (mov dst src)  = "    movl " ++ showOperand src ++ ", " ++ showOperand
 showInstr (lea r m)      = "    leal " ++ showMem m ++ ", " ++ showReg r
 showInstr (add dst src)  = "    addl " ++ showOperand src ++ ", " ++ showOperand dst
 showInstr (sub dst src)  = "    subl " ++ showOperand src ++ ", " ++ showOperand dst
+showInstr (sbb dst src)  = "    sbbl " ++ showOperand src ++ ", " ++ showOperand dst
 showInstr (cmp op1 op2)  = "    cmpl " ++ showOperand op2 ++ ", " ++ showOperand op1
 showInstr (test op1 op2) = "    testl " ++ showOperand op2 ++ ", " ++ showOperand op1
 showInstr (jmp (reg r))  = "    jmp *" ++ showReg r

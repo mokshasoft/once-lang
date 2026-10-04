@@ -83,6 +83,8 @@ data Instr : Set where
   -- Arithmetic (register-register)
   add    : Reg → Reg → Reg → Instr    -- add rd, rs1, rs2
   sub    : Reg → Reg → Reg → Instr    -- sub rd, rs1, rs2
+  -- plan 0.108: set-less-than-unsigned; `sltu rd, zero, rs` is `snez rd, rs`.
+  sltu   : Reg → Reg → Reg → Instr    -- sltu rd, rs1, rs2
 
   -- Arithmetic (register-immediate)
   addi   : Reg → Reg → ℤ → Instr      -- addi rd, rs, imm
@@ -194,6 +196,7 @@ instr-consumed-slots (ld _ _ _)      = 0
 instr-consumed-slots (sd _ _ _)      = 0
 instr-consumed-slots (add _ _ _)     = 0
 instr-consumed-slots (sub _ _ _)     = 0
+instr-consumed-slots (sltu _ _ _)     = 0
 instr-consumed-slots (addi _ _ _)    = 0   -- sp adjustment handled separately
 instr-consumed-slots (li _ _)        = 0
 instr-consumed-slots (auipc _ _)     = 0

@@ -104,6 +104,8 @@ data Instr : Set where
   -- Arithmetic
   add   : Operand → Operand → Instr   -- add dst, src
   sub   : Operand → Operand → Instr   -- sub dst, src
+  -- plan 0.108: subtract with borrow (see the x86-64 model).
+  sbb   : Operand → Operand → Instr   -- sbb dst, src
 
   -- Comparison
   cmp   : Operand → Operand → Instr   -- cmp dst, src

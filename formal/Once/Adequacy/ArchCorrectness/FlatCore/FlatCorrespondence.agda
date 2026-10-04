@@ -54,7 +54,7 @@ open import Data.Float using () renaming (Float to AgdaFloat)
 open import Once.CCC.Machine.SMCore using (AllocState)
 open import Once.CCC.Label using (LabelId; idx)
 open import Data.Nat using (ℕ; _*_; NonZero; _<_; suc; zero; s≤s; z≤n)
-open import Data.Bool using (Bool)
+open import Data.Bool using (Bool; if_then_else_)
 open import Data.Maybe using (Maybe)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Once.Adequacy.ArchCorrectness.FlatCore.RegRoles
@@ -945,6 +945,19 @@ sim-load-tag-lit : {hv : HeapView} (n : ℕ) (fs : FlatState) (s s' : State) →
   → FlatCorr hv (flat-exec-instr (instr-load-tag-lit n) [] fs) s'
 sim-load-tag-lit {hv} n fs s s' corr st = record
   { in1-eq = keep-in1 corr st (λ ()) ; out-eq = at-role st ; scratch-eq = keep-scratch corr st (λ ()) ; count-eq = keep-count corr st (λ ())
+  ; clos-eq = keep-clos corr st (λ ()) ; halt-eq = keep-halt corr st ; sp-eq = keep-sp corr st (λ ()) ; frontier-eq = keep-heap-reg corr st (λ ()) ; dom-fresh = dom-fresh corr ; dom-written = dom-written corr ; dom-sized = dom-sized corr ; heap-eq = keep-heap corr st ; lo-le = keep-lo-le corr st (λ ()) ; untouched = keep-untouched corr st ; stack-eq = keep-stack corr st }
+
+-- plan 0.108: `instr-reg-op out-nz` (Output := its word's truth, as a tag):
+-- the arch computes `word ≠ 0` into the Output role. The premise is the
+-- dataflow fact the engine supplies (`RunWF.out-nz-output-word`).
+sim-out-nz : {hv : HeapView} (w : _) (fs : FlatState) (s s' : State) → FlatCorr hv fs s
+  → readReg (regs (floc fs)) Output ≡ SV-Lit fits-int w
+  → SetsRole s s' role-out (if w ≡ᵇ 0 then 0 else 1)
+  → FlatCorr hv (flat-exec-instr (instr-reg-op out-nz) [] fs) s'
+sim-out-nz {hv} w fs s s' corr eq st = record
+  { in1-eq = keep-in1 corr st (λ ())
+  ; out-eq = trans (at-role st) (cong (λ v → enc-sv hv (sv-nz v)) (sym eq))
+  ; scratch-eq = keep-scratch corr st (λ ()) ; count-eq = keep-count corr st (λ ())
   ; clos-eq = keep-clos corr st (λ ()) ; halt-eq = keep-halt corr st ; sp-eq = keep-sp corr st (λ ()) ; frontier-eq = keep-heap-reg corr st (λ ()) ; dom-fresh = dom-fresh corr ; dom-written = dom-written corr ; dom-sized = dom-sized corr ; heap-eq = keep-heap corr st ; lo-le = keep-lo-le corr st (λ ()) ; untouched = keep-untouched corr st ; stack-eq = keep-stack corr st }
 
 -- instr-reg-op scratch-one (Scratch := SV-Tag 1) ↔ `mov rbx, 1`.

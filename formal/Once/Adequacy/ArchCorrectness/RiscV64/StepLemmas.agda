@@ -29,7 +29,7 @@
 
 module Once.Adequacy.ArchCorrectness.RiscV64.StepLemmas where
 
-open import Data.Nat using (ℕ; zero; suc; _+_; _∸_; _≡ᵇ_; _*_)
+open import Data.Nat using (ℕ; zero; suc; _+_; _∸_; _≡ᵇ_; _*_; _<ᵇ_)
 open import Data.Bool using (Bool; true; false; if_then_else_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Integer using (ℤ; +_)
@@ -106,6 +106,15 @@ step-addi : ∀ {prog s rd rs} {imm : ℤ}
                                         (readReg (regs s) rs W.⊕ W.fromℤ imm)
                              ; pc = pc s + 1 })
 step-addi ft rewrite ft = refl
+
+-- plan 0.108: sltu rd, rs1, rs2 (with rs1 = zero, the `snez` of `out-nz`)
+step-sltu : ∀ {prog s rd rs1 rs2}
+          → fetch prog (pc s) ≡ just (sltu rd rs1 rs2)
+          → step-not-halted prog s
+            ≡ just (record s { regs = writeReg (regs s) rd
+                                        (if readReg (regs s) rs1 <ᵇ readReg (regs s) rs2 then 1 else 0)
+                             ; pc = pc s + 1 })
+step-sltu ft rewrite ft = refl
 
 -- add rd, rs1, rs2
 step-add : ∀ {prog s rd rs1 rs2}

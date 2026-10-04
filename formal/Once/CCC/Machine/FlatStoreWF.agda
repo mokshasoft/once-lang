@@ -42,7 +42,7 @@ open import Once.Memory.HeapAddress using (HeapLocation; heap-loc; mkHeapRef; he
 open import Once.SigOp.Info using (SigOpInfo; effect; EffectShape; Pure; Emits; Halts; Answers; semM)
 open import Once.Denotation.Trace using (SigOpEvent)
 open import Once.Res using (Res; stopped; returns)
-open import Once.Type using (Type; FitsInReg; fits-in-reg?)
+open import Once.Type using (Type; FitsInReg; fits-in-reg?; fits-int; fits-float)
 open import Once.Semantics.Machine using (⟦_⟧)
 open import Once.CCC.Machine.SMCore
 open FrameSemantics FS using (Frame; _≟F_)
@@ -126,6 +126,14 @@ sv-pred-below n (SV-Tag (suc _)) = tt
 sv-pred-below n (SV-Ptr _)       = tt
 sv-pred-below n (SV-Lit _ _)     = tt
 sv-pred-below n (SV-Code _)      = tt
+
+-- plan 0.108: `out-nz` writes a tag, whatever it read.
+sv-nz-below : ∀ (n : ℕ) (v : StoredValue FS) → sv-below n (sv-nz v)
+sv-nz-below n (SV-Tag _)            = tt
+sv-nz-below n (SV-Ptr _)            = tt
+sv-nz-below n (SV-Lit fits-int _)   = tt
+sv-nz-below n (SV-Lit fits-float _) = tt
+sv-nz-below n (SV-Code _)           = tt
 
 ------------------------------------------------------------------------
 -- The invariant.
@@ -522,6 +530,9 @@ mutual
   wf-abstract (instr-reg-op count-inc) ls alloc wf =
     wf-write-reg Count (sv-succ (readReg (regs ls) Count)) wf
       (sv-succ-below (next-heap-ref alloc) (readReg (regs ls) Count)) , ≤-refl
+  wf-abstract (instr-reg-op out-nz) ls alloc wf =
+    wf-write-reg Output (sv-nz (readReg (regs ls) Output)) wf
+      (sv-nz-below (next-heap-ref alloc) (readReg (regs ls) Output)) , ≤-refl
   wf-abstract (instr-ctrl c) ls alloc wf = wf , ≤-refl
 
   wf-trace : ∀ (t : AbstractTrace) (ls : LocState FS) (alloc : AllocState {FS})

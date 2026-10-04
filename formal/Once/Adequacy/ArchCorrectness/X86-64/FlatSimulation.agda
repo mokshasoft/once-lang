@@ -73,9 +73,10 @@ open X using (mkstate; execInstr; mkflags; _<ᵇ_; writeMem; updateFlags)
   renaming (readReg to xreadReg; writeReg to xwriteReg; readMem to xreadMem)
 open X.State using (memory; flags; pc) renaming (regs to xregs; halted to xhalted)
 open import Once.CCC.Target.X86-64.Syntax
-  using (rax; rbx; rsi; rdi; rsp; rbp; r14; r15; rcx; Reg; Operand; Program; reg; imm; mem; mov; add; sub; cmp; label; jmp; je; push; pop; lea; rip+label; rip+sym; r12; base; base+disp; slots; slot-size; ret; call; call-l)
+  using (rax; rbx; rsi; rdi; rsp; rbp; r14; r15; rcx; Reg; Operand; Program; reg; imm; mem; mov; add; sub; cmp; label; jmp; je; push; pop; lea; rip+label; rip+sym; r12; sbb; base; base+disp; slots; slot-size; ret; call; call-l)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Bool using (true; false)
+open import Data.Bool using (true; false; if_then_else_)
+import Data.Nat
 open import Data.List using (_∷_; []; _++_; drop; length)
 open import Relation.Binary.PropositionalEquality using (refl)
 
@@ -89,7 +90,7 @@ open import Once.Adequacy.ArchCorrectness.FlatCore.RegRoles
   using (role-sp; role-clos; role-heap; role-out; role-in1; role-scratch; role-count)
 open import Once.Adequacy.ArchCorrectness.X86-64.FlatComposition FS
   using (blk-off; blk-len; blk-off-suc; fetch-block-head; find-label-corr; find-thunk-corr; fetch-block-2nd; fetch-block-3rd; fetch-block-4th; fetch-block-5th; fetch-block-6th)
-open import Once.Adequacy.ArchCorrectness.X86-64.StepLemmas using (exec-1; step-mov-rr; step-mov-ri; step-label; step-jmp; step-mov-rm; step-mov-mr; step-add-ri; step-add-rr; step-sub-ri; step-cmp-ri; step-cmp-mi; step-je-taken; step-je-not; step-push; step-pop; step-lea; step-lea-label; step-lea-sym; step-ret; step-call; step-call-l)
+open import Once.Adequacy.ArchCorrectness.X86-64.StepLemmas using (exec-1; step-mov-rr; step-mov-ri; step-label; step-jmp; step-mov-rm; step-mov-mr; step-add-ri; step-add-rr; step-sub-ri; step-sbb-rr; nz-val; step-cmp-ri; step-cmp-mi; step-je-taken; step-je-not; step-push; step-pop; step-lea; step-lea-label; step-lea-sym; step-ret; step-call; step-call-l)
 open import Once.CCC.Target.X86-64.AbstractToX86 using (compile-trace; compile-abstract; slot-to-disp)
 open import Data.Empty using (⊥)
 open import Data.Nat using (zero; suc)
@@ -1853,6 +1854,68 @@ block-step-count-inc {hv} prog fs s k cc h ft c-eq no-wrap =
     pco' : X.State.pc post ≡ blk-off prog (fpc (flat-exec-instr (instr-reg-op count-inc) prog fs))
     pco' = trans (cong (_+ 1) po) (sym (blk-off-suc prog (fpc fs) (instr-reg-op count-inc) ft))
 
+-- plan 0.108: `out-nz` ↔ `cmp rax, 1 ; sbb rax, rax ; add rax, 1`. CF is
+-- `rax <u 1`, i.e. `rax = 0`; `sbb` leaves `−CF`, `add` leaves `1 − CF` — the
+-- word's truth as a tag (`Word.sbb-zero` / `sbb-pos`, per value of CF).
+block-step-out-nz : ∀ {hv : HeapView} prog fs s w → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
+  → fetch prog (fpc fs) ≡ just (instr-reg-op out-nz)
+  → readReg (regs (floc fs)) Output ≡ SV-Lit fits-int w
+  → xreadReg (xregs s) rax < X.W.modulus
+  → BlockStep hv prog fs s (instr-reg-op out-nz)
+block-step-out-nz {hv} prog fs s w cc h ft o-eq rng =
+  post , exec-eq , record
+    { dataCorr = C.sim-out-nz w fs s _ dc o-eq (C.sets-role-x86 s role-out _ _ _)
+    ; pc-off = pco' ; ret-eq = ret-eq cc ; code-eq = code-eq cc }
+  where
+    dc = dataCorr cc ; po = pc-off cc
+    x : ℕ
+    x = xreadReg (xregs s) rax
+    x≡w : x ≡ w
+    x≡w = trans (C.out-eq dc) (cong (C.enc-sv hv) o-eq)
+    halt-s : X.State.halted s ≡ false
+    halt-s = trans (C.halt-eq dc) h
+    t : ℕ
+    t = if w Data.Nat.≡ᵇ 0 then 0 else 1
+    -- the three instructions
+    f1 : X.fetch (compile-trace prog) (X.State.pc s) ≡ just (cmp (reg rax) (imm 1))
+    f1 = trans (cong (X.fetch (compile-trace prog)) po) (fetch-block-head prog (fpc fs) (instr-reg-op out-nz) ft)
+    s1 : X.State
+    s1 = record s { flags = mkflags (x Data.Nat.≡ᵇ X.W.norm 1) (x X.<ᵇ X.W.norm 1) false ; pc = pc s + 1 }
+    st1 : X.step-not-halted (compile-trace prog) s ≡ just s1
+    st1 = step-cmp-ri {compile-trace prog} {s} {rax} {1} f1
+    f2 : X.fetch (compile-trace prog) (X.State.pc s1) ≡ just (sbb (reg rax) (reg rax))
+    f2 = trans (cong (λ q → X.fetch (compile-trace prog) (q + 1)) po) (fetch-block-2nd prog (fpc fs) (instr-reg-op out-nz) ft)
+    c : ℕ
+    c = if (x X.<ᵇ X.W.norm 1) then 1 else 0
+    v2 : ℕ
+    v2 = (x X.W.⊖ x) X.W.⊖ c
+    s2 : X.State
+    s2 = record s1 { regs = xwriteReg (xregs s) rax v2 ; flags = updateFlags v2 x ; pc = pc s + 1 + 1 }
+    st2 : X.step-not-halted (compile-trace prog) s1 ≡ just s2
+    st2 = step-sbb-rr {compile-trace prog} {s1} {rax} {rax} f2
+    f3 : X.fetch (compile-trace prog) (X.State.pc s2) ≡ just (add (reg rax) (imm 1))
+    f3 = trans (cong (X.fetch (compile-trace prog)) (trans (+-assoc (pc s) 1 1) (cong (_+ 2) po)))
+               (fetch-block-3rd prog (fpc fs) (instr-reg-op out-nz) ft)
+    v3 : ℕ
+    v3 = v2 X.W.⊕ X.W.norm 1
+    -- THE ARITHMETIC (`StepLemmas.nz-val`): `1 − CF` is the word's truth
+    val : v3 ≡ t
+    val = trans (nz-val x rng) (cong (λ y → if y Data.Nat.≡ᵇ 0 then 0 else 1) x≡w)
+    post : X.State
+    post = record s { regs = xwriteReg (xregs s) rax t ; flags = updateFlags v3 v2 ; pc = pc s + 1 + 1 + 1 }
+    st3 : X.step-not-halted (compile-trace prog) s2 ≡ just post
+    st3 = subst (λ z → X.step-not-halted (compile-trace prog) s2
+                       ≡ just (record s { regs = xwriteReg (xregs s) rax z ; flags = updateFlags v3 v2 ; pc = pc s + 1 + 1 + 1 }))
+                val
+                (step-add-ri {compile-trace prog} {s2} {rax} {1} f3)
+    exec-eq : X.exec 3 (compile-trace prog) s ≡ just post
+    exec-eq = trans (exec-1 {compile-trace prog} {2} {s} {s1} halt-s st1 halt-s)
+             (trans (exec-1 {compile-trace prog} {1} {s1} {s2} halt-s st2 halt-s)
+                    (exec-1 {compile-trace prog} {0} {s2} {post} halt-s st3 halt-s))
+    pco' : X.State.pc post ≡ blk-off prog (fpc (flat-exec-instr (instr-reg-op out-nz) prog fs))
+    pco' = trans (trans (+-assoc (pc s + 1) 1 1) (trans (+-assoc (pc s) 1 2) (cong (_+ 3) po)))
+                 (sym (blk-off-suc prog (fpc fs) (instr-reg-op out-nz) ft))
+
 -- PLAN 0.70 PHASE C — THE ONE SUBTRACTION THAT HAD NO GUARD.
 --
 -- The other three `sub` sites (`alloc-stack`, `c-thunk`, `call`) carry a
@@ -2591,6 +2654,7 @@ x86-64-block-steps = record
   ; bs-c-branch-tag-zero        = block-step-c-branch-tag-zero
   ; bs-c-branch-tag-nz          = block-step-c-branch-tag-nz
   ; bs-scratch-dec              = block-step-scratch-dec
+  ; bs-out-nz                   = block-step-out-nz
   ; bs-count-inc                = block-step-count-inc
   ; bs-c-thunk                  = block-step-c-thunk
   ; bs-c-start                  = block-step-c-start

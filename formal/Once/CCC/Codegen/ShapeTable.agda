@@ -34,7 +34,7 @@ module Once.CCC.Codegen.ShapeTable where
 open import Data.Nat using (ℕ; suc; zero; _≟_; _+_)
 open import Data.Bool using (Bool; true; false; _∧_; if_then_else_)
 open import Data.List using (List; []; _∷_; _++_; length)
-open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
+open import Data.Product using (Σ; ∃; _×_; _,_; proj₁; proj₂)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
@@ -57,9 +57,12 @@ open import Once.CCC.Machine.SMCore using
    worklist-push; worklist-pop; worklist-check; instr-sigop;
    instr-load-const; instr-load-code-addr; instr-save-closure-reg;
    instr-load-tag-lit; instr-alloc-heap; instr-loop; instr-case-on-tag;
-   instr-reg-op; instr-ctrl; c-label; c-jmp; c-branch-scratch-zero;
+   instr-reg-op; out-nz; instr-ctrl; c-label; c-jmp; c-branch-scratch-zero;
    c-branch-tag-zero; c-thunk; c-entry; c-start; c-call-fn; c-ret)
 open import Once.CCC.Label using (LabelId)
+open import Once.SigOp.Info using (SigOpInfo; EffectShape; Pure; effect)
+open import Once.Type using (FitsInReg; fits-in-reg?)
+import Once.Type as Ty
 
 ------------------------------------------------------------------------
 -- The expectation language.
@@ -72,6 +75,9 @@ data RegExpect : Set where
   e-inr  : IRTy → IRTy → RegExpect
   -- a known tag value (`instr-load-tag-lit`)
   e-tag  : ℕ → RegExpect
+  -- plan 0.108: an `Int` WORD in the register itself (not behind a pointer) —
+  -- what a pure `Int`-codomain SigOp leaves in Output, and what `out-nz` reads.
+  e-word : RegExpect
   -- a pointer to the MOST-RECENTLY-ALLOCATED block, carrying what has been
   -- written into its two cells so far (`nothing` = unwritten). Node
   -- construction lives entirely in this constructor: alloc starts it,
@@ -144,6 +150,7 @@ sub-reg (e-inr a b)  (e-inr c d)  = ty-eq a c ∧ ty-eq b d
 sub-reg (e-inl a b)  (e-repr c)   = ty-eq (a +ᵗ b) c
 sub-reg (e-inr a b)  (e-repr c)   = ty-eq (a +ᵗ b) c
 sub-reg (e-tag m)    (e-tag n)    = nat-eq m n
+sub-reg e-word       e-word       = true
 -- COMPLETED fresh converts to a typed representation at check points: a
 -- sum node needs tag 0/1 + a payload cell claiming the branch type; a pair
 -- needs both cells claiming the component types. Cell claims are PTR-only
@@ -235,6 +242,16 @@ load-snd _ = e-any
 -- something the language does not track.
 ------------------------------------------------------------------------
 
+-- plan 0.108: what a SigOp leaves in Output, as far as the checker tracks it.
+-- A PURE SigOp at an `Int` codomain writes an `Int` word (`pure-sigop-output`:
+-- the result, or the `SV-Lit fits-int 0` sentinel) — the claim `out-nz` needs.
+claim-at : ∀ {B} → EffectShape B → Maybe (FitsInReg B) → RegExpect
+claim-at Pure (just Ty.fits-int) = e-word
+claim-at _    _                  = e-any
+
+sigop-claim : ∀ {A B} → SigOpInfo A B → RegExpect
+sigop-claim {B = B} si = claim-at (effect si) (fits-in-reg? B)
+
 step-expect : LabelEnv → Expect → AbstractInstr → Expect
 step-expect env st mov-to-output =
   record st { e-out = e-in1 st }
@@ -283,7 +300,7 @@ step-expect env st (worklist-pop k) =
   record st { e-out = slot-get (e-slot st) k }
 step-expect env st (worklist-check k) = st
 step-expect env st (instr-sigop si) =
-  record st { e-out = e-any }
+  record st { e-out = sigop-claim si }
 step-expect env st (instr-load-const p v) =
   record st { e-out = e-any }
 step-expect env st (instr-load-code-addr n) =
@@ -307,6 +324,8 @@ step-expect env st (instr-alloc-heap n) =
                               (scrub (e-out e)) (scrub-slots (e-slot e))
 step-expect env st (instr-loop b)          = st    -- unemittable
 step-expect env st (instr-case-on-tag f g) = st    -- unemittable
+-- plan 0.108: `out-nz` writes a tag the checker does not track by value
+step-expect env st (instr-reg-op out-nz) = record st { e-out = e-any }
 step-expect env st (instr-reg-op op) = st
 -- CONTROL. A label ADOPTS its environment entry (the join point's claim —
 -- the fall-in path's obligation to entail it is the checker's job). A jump
@@ -346,6 +365,10 @@ step-expect env st (instr-ctrl (c-branch-tag-zero m)) with e-in1 st
 ------------------------------------------------------------------------
 
 -- what a discipline site REQUIRES of the incoming state
+is-word : RegExpect → Bool
+is-word e-word = true
+is-word _      = false
+
 is-fresh : RegExpect → Bool
 is-fresh (e-fresh _ _) = true
 is-fresh _             = false
@@ -387,6 +410,8 @@ site-ok st (worklist-pop k)   = not-any (slot-get (e-slot st) k)
 site-ok st store-indirect     = is-fresh (e-in1 st)
 site-ok st store-indirect-suc = is-fresh (e-in1 st)
 site-ok st (instr-ctrl (c-branch-tag-zero m)) = tag-site-ok (e-in1 st)
+-- plan 0.108: `out-nz` reads an `Int` word from Output
+site-ok st (instr-reg-op out-nz) = is-word (e-out st)
 site-ok st _ = true
 
 -- control-transfer obligation of one instruction: jumps and taken branches
@@ -656,6 +681,7 @@ module Sem (FS : FrameSemantics) where
   MeetsR (e-inr A B) alloc v ls =
     Σ (ValueLocation FS) λ loc → (v ≡ SV-Ptr loc) × InrAt alloc A B loc ls
   MeetsR (e-tag t)   alloc v ls = v ≡ SV-Tag t
+  MeetsR e-word      alloc v ls = ∃ λ w → v ≡ SV-Lit fits-intˢ w
   MeetsR (e-fresh c₀ c₁) alloc v ls = FreshAt c₀ c₁ alloc v ls
 
   MeetsCell e-any       alloc mc ls = ⊤
@@ -670,6 +696,7 @@ module Sem (FS : FrameSemantics) where
     Σ (ValueLocation FS) λ loc → (mc ≡ just (SV-Ptr loc))
       × BeforeFrontier alloc loc × InrAt alloc A B loc ls
   MeetsCell (e-tag t)   alloc mc ls = mc ≡ just (SV-Tag t)
+  MeetsCell e-word      alloc mc ls = ∃ λ w → mc ≡ just (SV-Lit fits-intˢ w)
   -- a fresh claim stored INTO a heap cell cannot arise (the scrub keeps a
   -- single fresh live, and a block never stores its own construction
   -- pointer); ⊥ keeps the transfer honest — if the scan ever produces it,
@@ -699,11 +726,13 @@ module Sem (FS : FrameSemantics) where
   MeetsSlot (e-inl A B)  alloc (just v) ls = MeetsR (e-inl A B) alloc v ls
   MeetsSlot (e-inr A B)  alloc (just v) ls = MeetsR (e-inr A B) alloc v ls
   MeetsSlot (e-tag t)    alloc (just v) ls = MeetsR (e-tag t) alloc v ls
+  MeetsSlot e-word       alloc (just v) ls = MeetsR e-word alloc v ls
   MeetsSlot (e-fresh c₀ c₁) alloc (just v) ls = MeetsR (e-fresh c₀ c₁) alloc v ls
   MeetsSlot (e-repr A)   alloc nothing  ls = ⊥
   MeetsSlot (e-inl A B)  alloc nothing  ls = ⊥
   MeetsSlot (e-inr A B)  alloc nothing  ls = ⊥
   MeetsSlot (e-tag t)    alloc nothing  ls = ⊥
+  MeetsSlot e-word       alloc nothing  ls = ⊥
   MeetsSlot (e-fresh c₀ c₁) alloc nothing ls = ⊥
 
   Meets : Expect → FlatState → Set
@@ -792,6 +821,7 @@ module Sem (FS : FrameSemantics) where
     rewrite sym (ty-eq-sound (a +ᵗ b) c ok) | v-eq = rs-ptr (inr-shape r)
   sub-reg-sound (e-tag m') (e-tag n) ok mm
     rewrite nat-eq-sound m' n ok = mm
+  sub-reg-sound e-word e-word ok m = m
   -- COMPLETED FRESH → typed representation: build the sum/pair shape from
   -- the carried cell facts. The block start is a heap location whose ref
   -- sits just below the frontier, so `BeforeFrontier` for its cells is the
@@ -826,6 +856,7 @@ module Sem (FS : FrameSemantics) where
   slot-just (e-inl _ _) m = m
   slot-just (e-inr _ _) m = m
   slot-just (e-tag _)   m = m
+  slot-just e-word      m = m
   slot-just (e-fresh _ _) m = m
 
   just-slot : ∀ e {alloc v ls} → MeetsR e alloc v ls → MeetsSlot e alloc (just v) ls
@@ -834,6 +865,7 @@ module Sem (FS : FrameSemantics) where
   just-slot (e-inl _ _) m = m
   just-slot (e-inr _ _) m = m
   just-slot (e-tag _)   m = m
+  just-slot e-word      m = m
   just-slot (e-fresh _ _) m = m
 
   sub-slot-sound : ∀ e e' {alloc mv ls} → sub-reg e e' ≡ true
@@ -845,6 +877,7 @@ module Sem (FS : FrameSemantics) where
   sub-slot-sound e-any (e-inl _ _) {mv = nothing} () m
   sub-slot-sound e-any (e-inr _ _) {mv = nothing} () m
   sub-slot-sound e-any (e-tag _) {mv = nothing} () m
+  sub-slot-sound e-any e-word {mv = nothing} () m
   sub-slot-sound e-any (e-fresh _ _) {mv = nothing} () m
   sub-slot-sound (e-repr _) (e-repr _) {mv = nothing} ok m = ⊥-elim m
   sub-slot-sound (e-repr _) (e-inl _ _) {mv = nothing} ok m = ⊥-elim m
@@ -871,6 +904,17 @@ module Sem (FS : FrameSemantics) where
   sub-slot-sound (e-fresh _ _) (e-inr _ _) {mv = nothing} ok m = ⊥-elim m
   sub-slot-sound (e-fresh _ _) (e-tag _) {mv = nothing} ok m = ⊥-elim m
   sub-slot-sound (e-fresh _ _) (e-fresh _ _) {mv = nothing} ok m = ⊥-elim m
+  sub-slot-sound (e-repr _) e-word {mv = nothing} ok m = ⊥-elim m
+  sub-slot-sound (e-inl _ _) e-word {mv = nothing} ok m = ⊥-elim m
+  sub-slot-sound (e-inr _ _) e-word {mv = nothing} ok m = ⊥-elim m
+  sub-slot-sound (e-tag _) e-word {mv = nothing} ok m = ⊥-elim m
+  sub-slot-sound (e-fresh _ _) e-word {mv = nothing} ok m = ⊥-elim m
+  sub-slot-sound e-word (e-repr _) {mv = nothing} ok m = ⊥-elim m
+  sub-slot-sound e-word (e-inl _ _) {mv = nothing} ok m = ⊥-elim m
+  sub-slot-sound e-word (e-inr _ _) {mv = nothing} ok m = ⊥-elim m
+  sub-slot-sound e-word (e-tag _) {mv = nothing} ok m = ⊥-elim m
+  sub-slot-sound e-word (e-fresh _ _) {mv = nothing} ok m = ⊥-elim m
+  sub-slot-sound e-word e-word {mv = nothing} ok m = ⊥-elim m
 
   sub-slots-sound : ∀ src tgt → sub-slots src tgt ≡ true
                   → ∀ k → sub-reg (slot-get src k) (slot-get tgt k) ≡ true
@@ -881,6 +925,7 @@ module Sem (FS : FrameSemantics) where
           sub-any (e-inl _ _) = refl
           sub-any (e-inr _ _) = refl
           sub-any (e-tag _) = refl
+          sub-any e-word = refl
           sub-any (e-fresh _ _) = refl
   sub-slots-sound src ((j , e) ∷ es) ok k with j ≟ k
   ... | yes refl = proj₁ (∧-split (sub-reg (slot-get src j) e) _ ok)
@@ -917,6 +962,7 @@ module Sem (FS : FrameSemantics) where
   site-slot-written (e-inl A B)     _  ()
   site-slot-written (e-inr A B)     _  ()
   site-slot-written (e-tag t)       _  ()
+  site-slot-written e-word          _  ()
   site-slot-written (e-fresh c₀ c₁) _  ()
 
   site-load-ptr : ∀ (e₁ : RegExpect) {alloc v ls} → is-ptr e₁ ≡ true
@@ -932,6 +978,7 @@ module Sem (FS : FrameSemantics) where
   site-load-ptr (e-fresh c₀ c₁) ok (hl , v-eq , _)  = AtDynamic hl , v-eq
   site-load-ptr e-any           () _
   site-load-ptr (e-tag _)       () _
+  site-load-ptr e-word          () _
   site-load-ptr (e-repr Unit)   () _
   site-load-ptr (e-repr Void)   () _
   site-load-ptr (e-repr Int)    () _
@@ -979,6 +1026,8 @@ module Sem (FS : FrameSemantics) where
   site-branch-tag (e-repr (ν-type f)) () _
   site-branch-tag e-any           () _
   site-branch-tag (e-tag _)       () _
+  site-branch-tag e-word          () _
+  site-branch-tag (e-fresh (just e-word) c₁) () _
   site-branch-tag (e-fresh nothing c₁) () _
   site-branch-tag (e-fresh (just e-any) c₁) () _
   site-branch-tag (e-fresh (just (e-repr _)) c₁) () _
@@ -1107,6 +1156,7 @@ module Sem (FS : FrameSemantics) where
                    ; r-cell = read-uw ls hl' v' (sucLoc loc) uw ic
                    ; r-bf-p = bp ; r-bf-s = bs ; r-pay = shape-uw hl' v' uw ip }
   meets-cell-uw (e-tag t) hl' v' uw m _ = m
+  meets-cell-uw e-word hl' v' uw m _ = m
   meets-cell-uw (e-fresh c₀ c₁) hl' v' uw m mj = ⊥-elim m
 
   -- the flat machine's `fetch` IS `at-pc`
@@ -1123,8 +1173,20 @@ module Sem (FS : FrameSemantics) where
   fresh⇒ptr (e-inl _ _)  ()
   fresh⇒ptr (e-inr _ _)  ()
   fresh⇒ptr (e-tag _)    ()
+  fresh⇒ptr e-word       ()
 
   site-store-ptr : ∀ (e₁ : RegExpect) {alloc v ls} → is-fresh e₁ ≡ true
                  → MeetsR e₁ alloc v ls
                  → Σ (ValueLocation FS) λ loc → v ≡ SV-Ptr loc
   site-store-ptr e₁ ok m = site-load-ptr e₁ (fresh⇒ptr e₁ ok) m
+
+  -- plan 0.108: at an `out-nz` site Output holds an `Int` WORD.
+  site-out-word : ∀ (e : RegExpect) {alloc v ls} → is-word e ≡ true
+                → MeetsR e alloc v ls → ∃ λ w → v ≡ SV-Lit fits-intˢ w
+  site-out-word e-word ok m = m
+  site-out-word e-any () _
+  site-out-word (e-repr _) () _
+  site-out-word (e-inl _ _) () _
+  site-out-word (e-inr _ _) () _
+  site-out-word (e-tag _) () _
+  site-out-word (e-fresh _ _) () _

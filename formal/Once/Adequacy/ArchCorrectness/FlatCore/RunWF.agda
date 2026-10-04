@@ -81,7 +81,7 @@ open import Once.CCC.Machine.Flat
 open FlatMachine {FS}
 open import Once.CCC.Machine.FlatStoreWF FS
 open import Once.CCC.Machine.FlatRegTagWF FS
-open import Data.Product using (Σ; _,_; _×_; proj₁; proj₂)
+open import Data.Product using (Σ; ∃; _,_; _×_; proj₁; proj₂)
 open import Once.CCC.Codegen.IRToTrace o using (ir-to-trace; ir-stack-budget; ir-to-unit)
 open import Once.CCC.Machine.FrameFree
 open import Data.List.Relation.Unary.All using () renaming (All to AllL; [] to allL-[]; _∷_ to _allL∷_)
@@ -92,7 +92,7 @@ open import Once.CCC.Machine.FlatPtrBounds FS
 open import Once.CCC.Codegen.FrameFreeTrace o
 open import Once.CCC.Codegen.AllocMin o
 open import Once.CCC.Codegen.ShapeTable as ST
-open ST.Sem FS using (Meets; site-load-ptr; site-branch-tag; site-store-ptr; fetch-at-pc; site-slot-written)
+open ST.Sem FS using (Meets; site-load-ptr; site-branch-tag; site-store-ptr; fetch-at-pc; site-slot-written; site-out-word)
 open import Once.CCC.Codegen.LabelScope o
 open import Once.CCC.Codegen.LabelSeg
 open import Data.Sum using (_⊎_; inj₁; inj₂)
@@ -1592,6 +1592,23 @@ load-indirect-target-ptr prog fs r ftq =
     chk = proj₂ sc
     st  = state-at env (entry-expect Unit) prog (fpc fs)
     ok : ST.is-ptr (e-in1 st) ≡ true
+    ok = proj₁ (check-at env (entry-expect Unit) prog (fpc fs) chk
+                  (trans (sym (fetch-at-pc prog (fpc fs))) ftq))
+
+-- plan 0.108: AT AN EMITTED `out-nz`, OUTPUT HOLDS AN `Int` WORD — the
+-- comparison's arith block just wrote it (`ShapeTable.sigop-claim`), and the
+-- checker requires the claim there (`site-ok … out-nz = is-word`).
+out-nz-output-word : ∀ prog (fs : FlatState) → RunAt prog fs
+                   → fetch prog (fpc fs) ≡ just (instr-reg-op out-nz)
+                   → ∃ λ w → readReg (regs (floc fs)) Output ≡ SV-Lit fits-int w
+out-nz-output-word prog fs r ftq =
+  site-out-word (e-out st) ok (proj₁ (proj₂ (run-meets prog fs r env chk)))
+  where
+    sc  = run-shape-check prog fs r
+    env = proj₁ sc
+    chk = proj₂ sc
+    st  = state-at env (entry-expect Unit) prog (fpc fs)
+    ok : ST.is-word (e-out st) ≡ true
     ok = proj₁ (check-at env (entry-expect Unit) prog (fpc fs) chk
                   (trans (sym (fetch-at-pc prog (fpc fs))) ftq))
 

@@ -111,7 +111,7 @@ open import Once.CCC.Machine.SMCore
          instr-load-tag-lit; instr-case-on-tag;
          instr-loop; instr-reg-op;
          instr-ctrl; c-label; c-jmp; c-thunk; c-entry; c-call-fn; c-ret; c-branch-scratch-zero; c-branch-tag-zero;
-         scratch-one; scratch-zero; scratch-dec; scratch-load-count;
+         scratch-one; scratch-zero; scratch-dec; scratch-load-count; out-nz;
          count-zero; count-inc)
 
 ------------------------------------------------------------------------
