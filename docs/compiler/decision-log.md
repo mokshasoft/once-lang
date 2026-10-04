@@ -16378,3 +16378,35 @@ names). x86-32's Linux interpretation gained `fd_dup`.
 * Pre-existing islands seen by the island pass (not introduced here): `Adequacy.AnaBridge`
   (`T.resT`, the pre-0.105 trace shape), `Semantics.Coherence` (a parse error),
   `Spike.RelSpike`. Stale `ModuleDoesntExport` warnings remain (hygiene).
+
+## D260 — PLANS 0.97, 0.98, 0.99, 0.103 AND 0.104 CLOSE AT THE D259 GATE (2026-10-04)
+
+**Relates**: D259 (the gate), D227 (0.99 E), D228 (0.94 b′, which closed 0.99 §8), D246/D256
+(0.103), D250/D251 (0.104).
+
+Each of these plans had only the extraction gate left (0.98 F and 0.99 F share it, 0.103's
+header says "the one remaining step", 0.104 "Next: the gate"); D259 ran it. The files are
+deleted; their closure lives here.
+
+### What landed
+
+* **0.97** — the Spec models stopping (C, D; E discharged 0.88's `Halts` row). Its mechanism
+  (`stops-D`, four conditioned fields) was then replaced by 0.98's `Res`.
+* **0.98** — a halting SigOp does not return: `Res`, `haltsV : B ≡ Void`, `semM → Res`, `stops-D`
+  deleted, `place` type-forced; E via 0.99 (D227). Stage D's last red module, `Adequacy.AnaBridge`
+  (`T.resT`, superseded by `GradedAnaBridge`, D250, no importers), is DELETED here; the
+  unimported `Semantics.Coherence` (red since 0.72 P2's two-carrier base interpretation and
+  D243's rigid case) is REPAIRED rather than deleted, because OCP-0003 and the structured-
+  recursion guide cite it.
+* **0.99** — one subtyping judgment (A–E; §8 by 0.94 b′, D228).
+* **0.103** — polymorphism in the core; the core is the Spec (D246); no open apex residual
+  (D256).
+* **0.104** — `pure` is referential transparency (D250); ex falso is `initial` (D251).
+
+### What remains, and where it went
+
+* Termination vs divergence in `Behavior`/`_≋_` — 0.97 §6's FOLLOW-ON row, unowned; D259 lists
+  it too. A new plan when taken up (it changes what `correct` claims).
+* 0.99 §6, deliberately out of scope: variance under `μ`/`ν`; sub-usage (QTT `q ≤ q′`).
+* 0.103's performance follow-on (profile-2026-09-29): `Apply.call-eq`, `Pair.{bf,heapref,cf}-tail`,
+  a backend re-profile. `PairAssemble` is no longer extracted.

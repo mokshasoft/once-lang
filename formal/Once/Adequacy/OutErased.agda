@@ -402,7 +402,7 @@ layer-refl (F Once.Type.⊕ G) (wf-Sum a b) rA (inj₂ y) = layer-refl G b rA y
 layer-refl (F Once.Type.⊗ G) (wf-Prod a b) rA (x , y) =
   layer-refl F a rA x , layer-refl G b rA y
 
--- D201: the DUAL of `AnaBridge.in-rel`, and the relational content that
+-- D201: the DUAL of `GradedAnaBridge.in-relᵍ`, and the relational content that
 -- `RelV (ν-type F π) = _≡_` used to hide.
 --
 -- `out-sem` forces and then coerces, so relating two forces means pushing a

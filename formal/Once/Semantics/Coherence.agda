@@ -27,13 +27,13 @@ open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; sym; trans)
 
 open import Once.Type using (Type; Functor; K; Id; _⊕_; _⊗_;
-                               Unit; Void; Int; Float; _*_; _+_)
+                               Unit; Void; Int; Float; _*_; _+_; rigid)
 open import Once.Semantics.Machine using (⟦_⟧; ⟦_⟧F; sem-fmap)
 import Once.SPF as SPF
-open import Once.Functor.Translate using (IsBaseType; WellFormedF; ⟦_,_⟧-base; ⟦_,_⟧F-base;
+open import Once.Functor.Translate using (IsBaseType; WellFormedF; ⟦_,_⟧-base; ⟦_,_⟧F-base; base-rigid;
                                           base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum;
                                           wf-K; wf-Id; wf-Sum; wf-Prod)
-open import Data.Nat using (ℕ)
+open import Once.Word using (Carrier)
 
 ------------------------------------------------------------------------
 -- Base Type Interpretation Coherence (PROVEN)
@@ -46,11 +46,12 @@ open import Data.Nat using (ℕ)
 --
 -- Proof by induction on the IsBaseType predicate.
 --
-base-interp-coherence : ∀ A → IsBaseType A → ⟦ ℕ ⟧-base A ≡ ⟦ A ⟧
+base-interp-coherence : ∀ A → IsBaseType A → ⟦ Carrier , Carrier ⟧-base A ≡ ⟦ A ⟧
 base-interp-coherence .Unit base-Unit = refl
 base-interp-coherence .Void base-Void = refl
 base-interp-coherence .Int base-Int = refl
 base-interp-coherence .Float base-Float = refl
+base-interp-coherence (rigid _ _) base-rigid = refl
 base-interp-coherence (A * B) (base-Prod pA pB) =
   cong₂-× (base-interp-coherence A pA) (base-interp-coherence B pB)
   where
@@ -66,7 +67,7 @@ base-interp-coherence (A + B) (base-Sum pA pB) =
 --
 -- Proof by induction on the WellFormedF predicate.
 --
-functor-interp-coherence : ∀ F → WellFormedF F → ∀ X → ⟦ ℕ ⟧F-base F X ≡ ⟦ F ⟧F X
+functor-interp-coherence : ∀ F → WellFormedF F → ∀ X → ⟦ Carrier , Carrier ⟧F-base F X ≡ ⟦ F ⟧F X
 functor-interp-coherence (K A) (wf-K pA) X = base-interp-coherence A pA
 functor-interp-coherence Id wf-Id X = refl
 functor-interp-coherence (F ⊕ G) (wf-Sum pF pG) X =
@@ -139,8 +140,8 @@ sem-fmap-comp F f g x =
 -- This module provides fully PROVEN coherence lemmas:
 --
 -- 1. Base Type Interpretation Coherence:
---    - base-interp-coherence: ⟦ ℕ ⟧-base A ≡ ⟦ A ⟧ for IsBaseType A
---    - functor-interp-coherence: ⟦ ℕ ⟧F-base F X ≡ ⟦ F ⟧F X for WellFormedF F
+--    - base-interp-coherence: ⟦ Carrier , Carrier ⟧-base A ≡ ⟦ A ⟧ for IsBaseType A
+--    - functor-interp-coherence: ⟦ Carrier , Carrier ⟧F-base F X ≡ ⟦ F ⟧F X for WellFormedF F
 --
 -- 2. Functor Map Coherence:
 --    - fmap-coherence: sem-fmap F f x ≡ SPF.fmap F f x
