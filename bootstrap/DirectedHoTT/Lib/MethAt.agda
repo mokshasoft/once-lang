@@ -43,6 +43,7 @@ open import DirectedHoTT.Metatheory.TySub
 open import DirectedHoTT.Metatheory.Premises using ( mot-ren; ⊢wkD )
 open import DirectedHoTT.Metatheory.Validity using ( wk-app-vz )
 open import DirectedHoTT.Lib.Sugar
+open import DirectedHoTT.Lib.NatNum using ( num; ⊢num; num-ren; num-sub )
   using ( Cons; []; _∷_; Nth; nth-z; nth-s; tag; tag-ren; sel; selM; selF-β; conₗ; ⊢con-fib; ⊢pay-σ
         ; ⊢tag; nth-lt; Lt; AllQ; []q; _∷q_; castQ; ⊢selG; fsucsS; fsucsS-zero; fsucsS-suc; fsucsS-head
         ; wk-single-tag; ≅ᵀ-ren; ⊢wkF; wkC; subC; selF-sub )
@@ -169,7 +170,7 @@ MethAt-wf {Γ} {I} {D} {i} {F} {M} {s} dI dD dF dM di ds =
 ------------------------------------------------------------------------
 -- 4. ★ PER-CONSTRUCTOR METHODS AT `i`, and the TAG-GENERIC one.
 --
--- At `i` the fibre is `dσ (⌜Fin⌝ c) f` for a selector `f` (a function of
+-- At `i` the fibre is `dσ (⌜Fin⌝ (num c)) f` for a selector `f` (a function of
 -- the tag); constructor `k`'s method sees `f (tag k)`'s payload and
 -- concludes at `con (tag k , p)`.
 ------------------------------------------------------------------------
@@ -235,12 +236,12 @@ private
 --   family's fibre at `i` is the selector's
 MethTAt-wf : {Γ : Ctx} {I D i f : RTm ⌊ Γ ⌋} {M : RTy ((⌊ Γ ⌋ ∙) ∙)} →
              Γ ⊢ I ∷ U → Γ ⊢ D ∷ DescF I → motCtx Γ I D ⊢ty M → Γ ⊢ i ∷ El I →
-             Γ ⊢ f ∷ Π (El (⌜Fin⌝ c)) (Desc (renTm vs I)) → app D i ⟶* dσ (⌜Fin⌝ c) f →
-             (Γ ▹ Fin c) ⊢ty MethTAt I D M i f
+             Γ ⊢ f ∷ Π (El (⌜Fin⌝ (num c))) (Desc (renTm vs I)) → app D i ⟶* dσ (⌜Fin⌝ (num c)) f →
+             (Γ ▹ Fin (num c)) ⊢ty MethTAt I D M i f
 MethTAt-wf {c = c} {Γ = Γ} {I} {D} {i} {f} {M} dI dD dM di df fib =
   MethAt-wf (⊢wk dI) (⊢wkD dD) dF (mot-ren there dM) (⊢wk di) dscr
   where
-    dF : (Γ ▹ Fin c) ⊢ app (renTm vs f) (var vz) ∷ Desc (renTm vs I)
+    dF : (Γ ▹ Fin (num c)) ⊢ app (renTm vs f) (var vz) ∷ Desc (renTm vs I)
     dF = ⊢-cast (cong Desc (wk-cancel-tm (var vz) (renTm vs I)))
                 (⊢app (⊢wkF df) (⊢conv (⊢var here) (csymᵀ (credᵀ El-⌜Fin⌝))))
     I₃ = renTm vs (renTm vs (renTm vs I))
@@ -248,7 +249,7 @@ MethTAt-wf {c = c} {Γ = Γ} {I} {D} {i} {f} {M} dI dD dM di df fib =
     f₃ = renTm vs (renTm vs (renTm vs f))
     dI₃ = ⊢wk (⊢wk (⊢wk dI))
     dD₃ = ⊢wkD (⊢wkD (⊢wkD dD))
-    red : app D₃ (renTm vs (renTm vs (renTm vs i))) ⟶* dσ (⌜Fin⌝ c) f₃
+    red : app D₃ (renTm vs (renTm vs (renTm vs i))) ⟶* dσ (⌜Fin⌝ (renTm vs (renTm vs (renTm vs (num c))))) f₃
     red = ⟶*-ren vs (⟶*-ren vs (⟶*-ren vs fib))
     dscr = ⊢con-fib dI₃ dD₃ (⊢wk (⊢wk (⊢wk di))) red
              (⊢pay-σ dI₃ dD₃ (⊢wkF (⊢wkF (⊢wkF df)))
@@ -277,15 +278,16 @@ mkAllQAt {I = I} {D} {i} {f} {M} {k = k} ((r , dm) ∷ₐ ps) =
 -- ★ the method SELECTOR at `i`
 ⊢selMAt : {Γ : Ctx} {I D i f : RTm ⌊ Γ ⌋} {M : RTy ((⌊ Γ ⌋ ∙) ∙)} {ms : Cons ⌊ Γ ⌋ c} →
           Γ ⊢ I ∷ U → Γ ⊢ D ∷ DescF I → motCtx Γ I D ⊢ty M → Γ ⊢ i ∷ El I →
-          Γ ⊢ f ∷ Π (El (⌜Fin⌝ c)) (Desc (renTm vs I)) → app D i ⟶* dσ (⌜Fin⌝ c) f →
+          Γ ⊢ f ∷ Π (El (⌜Fin⌝ (num c))) (Desc (renTm vs I)) → app D i ⟶* dσ (⌜Fin⌝ (num c)) f →
           PerKAt Γ I D M i f zero ms →
-          Γ ⊢ selM ms ∷ Π (El (⌜Fin⌝ c)) (MethTAt I D M i f)
-⊢selMAt {I = I} {D} {i} {f} {M} dI dD dM di df fib ps =
-  ⊢lam (ty-El ⊢⌜Fin⌝)
+          Γ ⊢ selM ms ∷ Π (El (⌜Fin⌝ (num c))) (MethTAt I D M i f)
+⊢selMAt {c = c} {Γ = Γ} {I = I} {D} {i} {f} {M} dI dD dM di df fib ps =
+  ⊢lam (ty-El (⊢⌜Fin⌝ (⊢num c)))
        (⊢-cast (wk-app-vz MT)
-               (⊢selG (ren-ty (MethTAt-wf dI dD dM di df fib) (Ren⊢-ext there))
+               (⊢selG (subst (λ X → ((Γ ▹ El (⌜Fin⌝ (num c))) ▹ X) ⊢ty renTy (extR vs) MT) (cong Fin (num-ren vs c))
+                        (ren-ty (MethTAt-wf dI dD dM di df fib) (Ren⊢-ext there)))
                       (castQ (fsucsS-zero (renTy (extR vs) MT)) (mkAllQAt ps))
-                      (⊢conv (⊢var here) (credᵀ El-⌜Fin⌝))))
+                      (⊢-cast (cong Fin (num-ren vs c)) (⊢conv (⊢var here) (credᵀ El-⌜Fin⌝)))))
   where
     MT = MethTAt I D M i f
 
@@ -310,15 +312,15 @@ private
 
 ⊢methAt : {Γ : Ctx} {I D i f : RTm ⌊ Γ ⌋} {M : RTy ((⌊ Γ ⌋ ∙) ∙)} {ms : Cons ⌊ Γ ⌋ c} →
           Γ ⊢ I ∷ U → Γ ⊢ D ∷ DescF I → motCtx Γ I D ⊢ty M → Γ ⊢ i ∷ El I →
-          Γ ⊢ f ∷ Π (El (⌜Fin⌝ c)) (Desc (renTm vs I)) → app D i ⟶* dσ (⌜Fin⌝ c) f →
+          Γ ⊢ f ∷ Π (El (⌜Fin⌝ (num c))) (Desc (renTm vs I)) → app D i ⟶* dσ (⌜Fin⌝ (num c)) f →
           PerKAt Γ I D M i f zero ms →
-          Γ ⊢ methAt ms ∷ MethAt I D M i (dσ (⌜Fin⌝ c) f) (con (var (vs vz)))
+          Γ ⊢ methAt ms ∷ MethAt I D M i (dσ (⌜Fin⌝ (num c)) f) (con (var (vs vz)))
 ⊢methAt {c = c} {Γ = Γ} {I = I} {D} {i} {f} {M} {ms} dI dD dM di df fib ps =
   ⊢lam dP₁ (⊢-cast eqP (⊢psplit dA dB dP dq db))
   where
-    F = dσ (⌜Fin⌝ c) f
+    F = dσ (⌜Fin⌝ (num c)) f
     dF : Γ ⊢ F ∷ Desc I
-    dF = ⊢dσ dI ⊢⌜Fin⌝ df
+    dF = ⊢dσ dI (⊢⌜Fin⌝ (⊢num c)) df
     P₁ = El (dpay I D F)
     dP₁ = ty-El (⊢dpay dI dD dF)
     Γ₁ = Γ ▹ P₁
@@ -333,12 +335,13 @@ private
     I₁ = renTm vs I
     D₁ = renTm vs D
     f₁ = renTm vs f
-    A = El (⌜Fin⌝ {⌊ Γ₁ ⌋} c)
+    A : RTy ⌊ Γ₁ ⌋
+    A = El (⌜Fin⌝ (renTm vs (num c)))
     B = El (dpay (renTm vs I₁) (renTm vs D₁) (app (renTm vs f₁) (var vz)))
     cvq : renTy vs P₁ ≅ᵀ Σ' A B
-    cvq = ctrnᵀ (credᵀ (ξ-El (dpay-σ I₁ D₁ (⌜Fin⌝ c) f₁))) (credᵀ (El-⌜Σ⌝ _ _))
+    cvq = ctrnᵀ (credᵀ (ξ-El (dpay-σ I₁ D₁ (⌜Fin⌝ (renTm vs (num c))) f₁))) (credᵀ (El-⌜Σ⌝ _ _))
     dq = ⊢conv (⊢var here) cvq
-    dA = ty-El (⊢⌜Fin⌝ {n = c})
+    dA = ty-El (⊢⌜Fin⌝ (⊢wk (⊢num c)))
     dB : (Γ₁ ▹ A) ⊢ty B
     dB = ty-El (⊢dpay (⊢wk (⊢wk dI)) (⊢wkD (⊢wkD dD))
                       (⊢-cast (cong Desc (wk-cancel-tm (var vz) (renTm vs I₁)))
@@ -366,7 +369,7 @@ private
     MT = MethTAt I D M i f
     h3 : Ren⊢ Γ Γ₃ w3
     h3 {A = A₀} v = ∋-cast (ren3ᵀ A₀) (there (there (there v)))
-    dSel : Γ₃ ⊢ renTm w3 (selM ms) ∷ Π (El (⌜Fin⌝ c)) (renTy (extR w3) MT)
+    dSel : Γ₃ ⊢ renTm w3 (selM ms) ∷ Π (El (⌜Fin⌝ (renTm w3 (num c)))) (renTy (extR w3) MT)
     dSel = ren-lemma (⊢selMAt dI dD dM di df fib ps) h3
     I₃ = renTm w3 I
     D₃ = renTm w3 D
@@ -391,7 +394,11 @@ private
             pt vz          = refl
             pt (vs vz)     = refl
             pt (vs (vs x)) = refl
-    d1 = ⊢-cast E1 (⊢app dSel (⊢var (there here)))
+    eA : El (⌜Fin⌝ (renTm vs (renTm vs (renTm vs (num {⌊ Γ ⌋} c))))) ≡ El (⌜Fin⌝ (renTm w3 (num c)))
+    eA = cong (λ N → El (⌜Fin⌝ N))
+              (trans (cong (λ z → renTm vs (renTm vs z)) (num-ren vs c))
+                     (trans (cong (renTm vs) (num-ren vs c)) (trans (num-ren vs c) (sym (num-ren w3 c)))))
+    d1 = ⊢-cast E1 (⊢app dSel (⊢-cast eA (⊢var (there here))))
     dp' : Γ₃ ⊢ p' ∷ El (dpay I₃ D₃ (app f₃ t))
     dp' = ⊢-cast (cong₃ (λ a b g → El (dpay a b (app g t))) (ren3 I) (ren3 D) (ren3 f)) (⊢var here)
     d2 = ⊢app d1 dp'
@@ -435,7 +442,7 @@ private
         pt (vs (vs x)) = refl
     -- the hypotheses at the whole fibre compute to those at the selection
     red : DIh D₃ M₃ (renTm w3 F) (pair t p') ⟶ᵀ* DIh D₃ M₃ (app f₃ t) p'
-    red = stepᵀ (DIh-σ D₃ M₃ (⌜Fin⌝ c) f₃ (pair t p'))
+    red = stepᵀ (DIh-σ D₃ M₃ (⌜Fin⌝ (renTm w3 (num c))) f₃ (pair t p'))
             (stepᵀ (ξ-DIhᶜ (ξ-appʳ (βfst t p'))) (stepᵀ (ξ-DIhᵖ (βsnd t p')) doneᵀ))
     Y = Π (DIh (renTm vs D₃) (wk1M M₃) (renTm vs (app f₃ t)) (var vz)) (subTy (atS i₃ s₃) M₃)
     cvfinal : subTy (single p') Y ≅ᵀ subTy pairS (renTy ρP T)
