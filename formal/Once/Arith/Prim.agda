@@ -15,7 +15,10 @@
 module Once.Arith.Prim where
 
 open import Data.Product using (_,_)
-open import Once.Type using (Type; Int; Float; _*_)
+open import Once.Type using (Type; Int; Float; Unit; _*_; _+_)
+open import Data.Bool using (Bool; true; false; not)
+open import Data.Sum using (inj₁; inj₂)
+open import Data.Unit using (tt)
 open import Once.Word using (Carrier)
 import Once.Word as OnceWord
 open import Once.Target.Arch using (TargetNum; int-bits; float-format)
@@ -92,6 +95,26 @@ mod-semM : TargetNum → M.⟦ Int * Int ⟧ → M.⟦ Int ⟧
 mod-semM tn (a , b) = W._%ˢ_ tn a b
 
 ------------------------------------------------------------------------
+-- COMPARISONS (plan 0.108) — Int * Int → Bool, where `Bool = Unit + Unit`
+-- and TRUE = inr (tag 1): the sum's tag is the C truth value, so a
+-- comparison's tag IS the `setcc`/`slt` result. On SIGNED words (D054), at
+-- the target's width — `Word.Width._<ˢ_` and bit-equality `_≡ʷ_`. These were
+-- postulated placeholders "pending a Bool encoding decision"; this is it.
+------------------------------------------------------------------------
+
+bool : Bool → M.⟦ Unit + Unit ⟧ᵍ
+bool false = inj₁ tt
+bool true  = inj₂ tt
+
+lt-semM le-semM gt-semM ge-semM eq-semM ne-semM : TargetNum → M.⟦ Int * Int ⟧ → M.⟦ Unit + Unit ⟧ᵍ
+lt-semM tn (a , b) = bool (W._<ˢ_ tn a b)
+le-semM tn (a , b) = bool (not (W._<ˢ_ tn b a))
+gt-semM tn (a , b) = bool (W._<ˢ_ tn b a)
+ge-semM tn (a , b) = bool (not (W._<ˢ_ tn a b))
+eq-semM tn (a , b) = bool (W._≡ʷ_ tn a b)
+ne-semM tn (a , b) = bool (not (W._≡ʷ_ tn a b))
+
+------------------------------------------------------------------------
 -- The primitives
 ------------------------------------------------------------------------
 
@@ -100,6 +123,8 @@ data ArithPrim : Type → Type → Set where
   p-neg                         : ArithPrim Int Int
   p-fadd p-fsub p-fmul p-fdiv   : ArithPrim (Float * Float) Float
   p-i2f                         : ArithPrim Int Float
+  -- plan 0.108: the comparisons, into `Bool = Unit + Unit`
+  p-lt p-le p-gt p-ge p-eq p-ne : ArithPrim (Int * Int) (Unit + Unit)
 
 primSem : ∀ {A B} → ArithPrim A B → TargetNum → M.⟦ A ⟧ → M.⟦ B ⟧ᵍ
 primSem p-add  = add-semM
@@ -113,3 +138,9 @@ primSem p-fsub = fsub-semM
 primSem p-fmul = fmul-semM
 primSem p-fdiv = fdiv-semM
 primSem p-i2f  = i2f-semM
+primSem p-lt   = lt-semM
+primSem p-le   = le-semM
+primSem p-gt   = gt-semM
+primSem p-ge   = ge-semM
+primSem p-eq   = eq-semM
+primSem p-ne   = ne-semM

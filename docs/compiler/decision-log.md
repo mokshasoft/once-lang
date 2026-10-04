@@ -16474,3 +16474,24 @@ comparisons (not lifted into blocks, so their calls do not link) exactly as the 
 0.107 phase d. Known weakness of the environment contract: registers start at 0 in the model, so
 the heap-register `lea` is not yet load-bearing in the proof (the frame reservation is — D261's
 prologue is now a type error).
+
+## D263 — COMPARISONS MEAN SOMETHING: Bool = Unit + Unit, TRUE = inr (2026-10-04)
+
+**Relates**: plan 0.108 (phase A), D255 (compiler primitives by identity), D054 (signed words),
+D262 (`FileWF.file-wf` false for comparisons).
+
+`lt-semM … ne-semM` were POSTULATED ("comparisons need a Bool encoding decision"): the spec did not
+say what `a < b` is. Decided with the user: `Bool = Unit + Unit` and **true = inr** (tag 1) — the
+sum's tag is then the C truth value, so a comparison's tag IS the `setcc`/`slt` result, and `if`
+branches on tag 0 for false exactly as `c-branch-tag-zero` already does. The comparisons are now
+compiler primitives by identity (`ArithPrim.p-lt … p-ne`, `primV`), meaning the signed word
+comparison at the target's width (`Word.Width._<ˢ_`, `_≡ʷ_`).
+
+**Spec change, and why it is not "the proof needed it"**: `Once.Spec.Core.Meaning`'s comparison
+clauses now carry `int-prim` (a primitive's meaning) instead of `int-pure` (a supplied contract). The
+Spec's TEXT changes only in that witness; what changes in substance is that the meaning was
+undefined and is now defined — the user's decision, not a proof convenience.
+
+Still open (plan 0.108 B–E): the correctness proof routes `Unit + Unit` to
+`obs-correct-sigop-rest`, and the emitted call does not link. The design is a TAG then an
+INJECTION — a 0/1 compare in an arith block, then `bool-of : IR Int (Unit + Unit)`.

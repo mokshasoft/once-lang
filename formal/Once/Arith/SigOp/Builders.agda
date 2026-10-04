@@ -34,7 +34,7 @@ open import Once.Type using (Type; Unit; Void; Int; _*_; _+_;
                               ArrowKind; mk-kind; Purity; pure; eff; isUnit?; isVoid?)
 open import Relation.Nullary using (Dec; yes; no)
 open import Once.SigOp.Info using (SigOpInfo; SigOpSem; mk-info; mk-info'; pureV; primV; emitsV; haltsV; ffiV; callsV; EffectShape; Pure; Halts)
-open import Once.Arith.Prim using (ArithPrim; p-add; p-sub; p-mul; p-div; p-mod; p-neg; p-fadd; p-fsub; p-fmul; p-fdiv; p-i2f)
+open import Once.Arith.Prim using (ArithPrim; p-lt; p-le; p-gt; p-ge; p-eq; p-ne; p-add; p-sub; p-mul; p-div; p-mod; p-neg; p-fadd; p-fsub; p-fmul; p-fdiv; p-i2f)
 open import Once.Functor.Translate using (IsBaseType;
   base-Unit; base-Int; base-Float; base-Prod; base-Sum)
 open import Once.CanonicalName using (CanonicalName; bare; showCanonical)
@@ -94,16 +94,9 @@ import Once.Semantics.Value Carrier Carrier as M
 -- `TargetNum`, and `W tn` is the only place it is read.
 ------------------------------------------------------------------------
 
-------------------------------------------------------------------------
--- Postulated semantics (still placeholders — div/mod need a div-by-
--- zero policy, comparisons need a Bool encoding decision, generic-sem
--- is the unresolved-SigOp fallback).
-------------------------------------------------------------------------
-
-postulate
-
-  -- Comparisons: Int * Int → (Unit + Unit) ≡ Bool
-  lt-semM le-semM gt-semM ge-semM eq-semM ne-semM : TargetNum → M.⟦ Int * Int ⟧ → M.⟦ Unit + Unit ⟧
+-- (plan 0.108: the comparisons — the last postulated semantics here — are
+-- DEFINED now: compiler primitives by identity, `Once.Arith.Prim.p-lt …`,
+-- Bool = Unit + Unit with true = inr.)
 
 -- | String literal semantics. `M.⟦ Str ⟧ = String` (Semantics.Core), so a
 -- string literal denotes ITSELF — a concrete definition. (The machine's
@@ -167,22 +160,22 @@ i2f-info = mk-info' (bare "arith.i2f") (primV p-i2f) base-Int base-Float
 
 -- Comparisons
 lt-info : SigOpInfo (Int * Int) (Unit + Unit)
-lt-info = mk-info (bare "arith.lt.int") lt-semM Pure base-I×I base-U+U
+lt-info = mk-info' (bare "arith.lt.int") (primV p-lt) base-I×I base-U+U
 
 le-info : SigOpInfo (Int * Int) (Unit + Unit)
-le-info = mk-info (bare "arith.le.int") le-semM Pure base-I×I base-U+U
+le-info = mk-info' (bare "arith.le.int") (primV p-le) base-I×I base-U+U
 
 gt-info : SigOpInfo (Int * Int) (Unit + Unit)
-gt-info = mk-info (bare "arith.gt.int") gt-semM Pure base-I×I base-U+U
+gt-info = mk-info' (bare "arith.gt.int") (primV p-gt) base-I×I base-U+U
 
 ge-info : SigOpInfo (Int * Int) (Unit + Unit)
-ge-info = mk-info (bare "arith.ge.int") ge-semM Pure base-I×I base-U+U
+ge-info = mk-info' (bare "arith.ge.int") (primV p-ge) base-I×I base-U+U
 
 eq-info : SigOpInfo (Int * Int) (Unit + Unit)
-eq-info = mk-info (bare "arith.eq.int") eq-semM Pure base-I×I base-U+U
+eq-info = mk-info' (bare "arith.eq.int") (primV p-eq) base-I×I base-U+U
 
 ne-info : SigOpInfo (Int * Int) (Unit + Unit)
-ne-info = mk-info (bare "arith.ne.int") ne-semM Pure base-I×I base-U+U
+ne-info = mk-info' (bare "arith.ne.int") (primV p-ne) base-I×I base-U+U
 
 -- String literal family
 

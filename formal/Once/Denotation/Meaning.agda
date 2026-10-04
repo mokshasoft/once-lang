@@ -441,12 +441,12 @@ seqᴰ m₁ m₂ = (m₁ >>=T λ x → m₂ >>=T λ y → returnT (x , y)) >>=T 
 ⟦_⟧ᵢ (t-binop-arith {op = OpGe} () _ _) fmt
 ⟦_⟧ᵢ (t-binop-arith {op = OpEq} () _ _) fmt
 ⟦_⟧ᵢ (t-binop-arith {op = OpNe} () _ _) fmt
-⟦_⟧ᵢ {ctx = ctx} (t-binop-cmp {op = OpLt} _ d₁ d₂) fmt ρ dγ = (⟦ d₁ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=ᵖ λ a → (⟦ d₂ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=ᵖ λ b → semP lt-info int-pure fmt (a , b)
-⟦_⟧ᵢ {ctx = ctx} (t-binop-cmp {op = OpLe} _ d₁ d₂) fmt ρ dγ = (⟦ d₁ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=ᵖ λ a → (⟦ d₂ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=ᵖ λ b → semP le-info int-pure fmt (a , b)
-⟦_⟧ᵢ {ctx = ctx} (t-binop-cmp {op = OpGt} _ d₁ d₂) fmt ρ dγ = (⟦ d₁ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=ᵖ λ a → (⟦ d₂ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=ᵖ λ b → semP gt-info int-pure fmt (a , b)
-⟦_⟧ᵢ {ctx = ctx} (t-binop-cmp {op = OpGe} _ d₁ d₂) fmt ρ dγ = (⟦ d₁ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=ᵖ λ a → (⟦ d₂ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=ᵖ λ b → semP ge-info int-pure fmt (a , b)
-⟦_⟧ᵢ {ctx = ctx} (t-binop-cmp {op = OpEq} _ d₁ d₂) fmt ρ dγ = (⟦ d₁ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=ᵖ λ a → (⟦ d₂ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=ᵖ λ b → semP eq-info int-pure fmt (a , b)
-⟦_⟧ᵢ {ctx = ctx} (t-binop-cmp {op = OpNe} _ d₁ d₂) fmt ρ dγ = (⟦ d₁ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=ᵖ λ a → (⟦ d₂ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=ᵖ λ b → semP ne-info int-pure fmt (a , b)
+⟦_⟧ᵢ {ctx = ctx} (t-binop-cmp {op = OpLt} _ d₁ d₂) fmt ρ dγ = (⟦ d₁ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=ᵖ λ a → (⟦ d₂ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=ᵖ λ b → semP lt-info int-prim fmt (a , b)
+⟦_⟧ᵢ {ctx = ctx} (t-binop-cmp {op = OpLe} _ d₁ d₂) fmt ρ dγ = (⟦ d₁ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=ᵖ λ a → (⟦ d₂ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=ᵖ λ b → semP le-info int-prim fmt (a , b)
+⟦_⟧ᵢ {ctx = ctx} (t-binop-cmp {op = OpGt} _ d₁ d₂) fmt ρ dγ = (⟦ d₁ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=ᵖ λ a → (⟦ d₂ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=ᵖ λ b → semP gt-info int-prim fmt (a , b)
+⟦_⟧ᵢ {ctx = ctx} (t-binop-cmp {op = OpGe} _ d₁ d₂) fmt ρ dγ = (⟦ d₁ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=ᵖ λ a → (⟦ d₂ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=ᵖ λ b → semP ge-info int-prim fmt (a , b)
+⟦_⟧ᵢ {ctx = ctx} (t-binop-cmp {op = OpEq} _ d₁ d₂) fmt ρ dγ = (⟦ d₁ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=ᵖ λ a → (⟦ d₂ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=ᵖ λ b → semP eq-info int-prim fmt (a , b)
+⟦_⟧ᵢ {ctx = ctx} (t-binop-cmp {op = OpNe} _ d₁ d₂) fmt ρ dγ = (⟦ d₁ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=ᵖ λ a → (⟦ d₂ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=ᵖ λ b → semP ne-info int-prim fmt (a , b)
 ⟦_⟧ᵢ (t-binop-cmp {op = OpAdd} () _ _) fmt
 ⟦_⟧ᵢ (t-binop-cmp {op = OpSub} () _ _) fmt
 ⟦_⟧ᵢ (t-binop-cmp {op = OpMul} () _ _) fmt

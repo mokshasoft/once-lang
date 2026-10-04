@@ -919,29 +919,29 @@ bridge-i (t-binop-arith {op = OpNe} () _ _)
 
 -- Comparison binops — bind both, pure `semM <op>-info` (Unit+Unit value).
 bridge-i (t-binop-cmp {op = OpLt} _ d₁ d₂) {ρ = ρ} re er =
-  bind2-rel {A = Int} {B = Int} {C = Unit Once.Type.+ Unit} (λ a b → semP lt-info int-pure fmt (a , b)) (λ a b → SD.sigOpˢ fmt σ lt-info (a , b))
+  bind2-rel {A = Int} {B = Int} {C = Unit Once.Type.+ Unit} (λ a b → semP lt-info int-prim fmt (a , b)) (λ a b → SD.sigOpˢ fmt σ lt-info (a , b))
             (bridge-i d₁ (reˡ re) er) (bridge-i d₂ (reʳ re) er)
-            (λ ra rb → step-≡ {C = Unit Once.Type.+ Unit} (semP lt-info int-pure fmt) (SD.sigOpˢ fmt σ lt-info) (λ _ → ⊎⊤-rel _) (cong₂ _,_ ra rb))
+            (λ ra rb → step-≡ {C = Unit Once.Type.+ Unit} (semP lt-info int-prim fmt) (SD.sigOpˢ fmt σ lt-info) (λ _ → ⊎⊤-rel _) (cong₂ _,_ ra rb))
 bridge-i (t-binop-cmp {op = OpLe} _ d₁ d₂) {ρ = ρ} re er =
-  bind2-rel {A = Int} {B = Int} {C = Unit Once.Type.+ Unit} (λ a b → semP le-info int-pure fmt (a , b)) (λ a b → SD.sigOpˢ fmt σ le-info (a , b))
+  bind2-rel {A = Int} {B = Int} {C = Unit Once.Type.+ Unit} (λ a b → semP le-info int-prim fmt (a , b)) (λ a b → SD.sigOpˢ fmt σ le-info (a , b))
             (bridge-i d₁ (reˡ re) er) (bridge-i d₂ (reʳ re) er)
-            (λ ra rb → step-≡ {C = Unit Once.Type.+ Unit} (semP le-info int-pure fmt) (SD.sigOpˢ fmt σ le-info) (λ _ → ⊎⊤-rel _) (cong₂ _,_ ra rb))
+            (λ ra rb → step-≡ {C = Unit Once.Type.+ Unit} (semP le-info int-prim fmt) (SD.sigOpˢ fmt σ le-info) (λ _ → ⊎⊤-rel _) (cong₂ _,_ ra rb))
 bridge-i (t-binop-cmp {op = OpGt} _ d₁ d₂) {ρ = ρ} re er =
-  bind2-rel {A = Int} {B = Int} {C = Unit Once.Type.+ Unit} (λ a b → semP gt-info int-pure fmt (a , b)) (λ a b → SD.sigOpˢ fmt σ gt-info (a , b))
+  bind2-rel {A = Int} {B = Int} {C = Unit Once.Type.+ Unit} (λ a b → semP gt-info int-prim fmt (a , b)) (λ a b → SD.sigOpˢ fmt σ gt-info (a , b))
             (bridge-i d₁ (reˡ re) er) (bridge-i d₂ (reʳ re) er)
-            (λ ra rb → step-≡ {C = Unit Once.Type.+ Unit} (semP gt-info int-pure fmt) (SD.sigOpˢ fmt σ gt-info) (λ _ → ⊎⊤-rel _) (cong₂ _,_ ra rb))
+            (λ ra rb → step-≡ {C = Unit Once.Type.+ Unit} (semP gt-info int-prim fmt) (SD.sigOpˢ fmt σ gt-info) (λ _ → ⊎⊤-rel _) (cong₂ _,_ ra rb))
 bridge-i (t-binop-cmp {op = OpGe} _ d₁ d₂) {ρ = ρ} re er =
-  bind2-rel {A = Int} {B = Int} {C = Unit Once.Type.+ Unit} (λ a b → semP ge-info int-pure fmt (a , b)) (λ a b → SD.sigOpˢ fmt σ ge-info (a , b))
+  bind2-rel {A = Int} {B = Int} {C = Unit Once.Type.+ Unit} (λ a b → semP ge-info int-prim fmt (a , b)) (λ a b → SD.sigOpˢ fmt σ ge-info (a , b))
             (bridge-i d₁ (reˡ re) er) (bridge-i d₂ (reʳ re) er)
-            (λ ra rb → step-≡ {C = Unit Once.Type.+ Unit} (semP ge-info int-pure fmt) (SD.sigOpˢ fmt σ ge-info) (λ _ → ⊎⊤-rel _) (cong₂ _,_ ra rb))
+            (λ ra rb → step-≡ {C = Unit Once.Type.+ Unit} (semP ge-info int-prim fmt) (SD.sigOpˢ fmt σ ge-info) (λ _ → ⊎⊤-rel _) (cong₂ _,_ ra rb))
 bridge-i (t-binop-cmp {op = OpEq} _ d₁ d₂) {ρ = ρ} re er =
-  bind2-rel {A = Int} {B = Int} {C = Unit Once.Type.+ Unit} (λ a b → semP eq-info int-pure fmt (a , b)) (λ a b → SD.sigOpˢ fmt σ eq-info (a , b))
+  bind2-rel {A = Int} {B = Int} {C = Unit Once.Type.+ Unit} (λ a b → semP eq-info int-prim fmt (a , b)) (λ a b → SD.sigOpˢ fmt σ eq-info (a , b))
             (bridge-i d₁ (reˡ re) er) (bridge-i d₂ (reʳ re) er)
-            (λ ra rb → step-≡ {C = Unit Once.Type.+ Unit} (semP eq-info int-pure fmt) (SD.sigOpˢ fmt σ eq-info) (λ _ → ⊎⊤-rel _) (cong₂ _,_ ra rb))
+            (λ ra rb → step-≡ {C = Unit Once.Type.+ Unit} (semP eq-info int-prim fmt) (SD.sigOpˢ fmt σ eq-info) (λ _ → ⊎⊤-rel _) (cong₂ _,_ ra rb))
 bridge-i (t-binop-cmp {op = OpNe} _ d₁ d₂) {ρ = ρ} re er =
-  bind2-rel {A = Int} {B = Int} {C = Unit Once.Type.+ Unit} (λ a b → semP ne-info int-pure fmt (a , b)) (λ a b → SD.sigOpˢ fmt σ ne-info (a , b))
+  bind2-rel {A = Int} {B = Int} {C = Unit Once.Type.+ Unit} (λ a b → semP ne-info int-prim fmt (a , b)) (λ a b → SD.sigOpˢ fmt σ ne-info (a , b))
             (bridge-i d₁ (reˡ re) er) (bridge-i d₂ (reʳ re) er)
-            (λ ra rb → step-≡ {C = Unit Once.Type.+ Unit} (semP ne-info int-pure fmt) (SD.sigOpˢ fmt σ ne-info) (λ _ → ⊎⊤-rel _) (cong₂ _,_ ra rb))
+            (λ ra rb → step-≡ {C = Unit Once.Type.+ Unit} (semP ne-info int-prim fmt) (SD.sigOpˢ fmt σ ne-info) (λ _ → ⊎⊤-rel _) (cong₂ _,_ ra rb))
 bridge-i (t-binop-cmp {op = OpAdd} () _ _)
 bridge-i (t-binop-cmp {op = OpSub} () _ _)
 bridge-i (t-binop-cmp {op = OpMul} () _ _)
