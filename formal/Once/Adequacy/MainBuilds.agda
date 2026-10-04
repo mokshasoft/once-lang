@@ -36,7 +36,7 @@ open import Once.IRTy using (⌊_⌋)
 open import Once.Type using (Unit)
 import Once.Compile as C
 import Once.CanonicalName
-open import Once.Adequacy.SourceTrace using (moduleToIR; moduleToIR-aux)
+open import Once.Compile using (moduleToIR; moduleToIR-aux)
 import Once.Surface.Syntax as Srf
 open import Once.TypeCheck.Elaborate as TE using (CheckElabResult)
 open import Once.TypeCheck.Raw using (RawExpr)
@@ -187,8 +187,8 @@ cfm-built-gated : ∀ (doOpt : Bool) (arch : Arch) (m : P.Module) (es : List C.E
   (d : Dec (AdmissibleM arch m)) → AdmissibleM arch m →
   {c : List C.CompiledFun} →
   C.compileEntries C.Heap doOpt C.emptyCScope es ≡ inj₂ c →
-  Σ-syntax String (λ asm → C.cfm-build-gated C.Heap doOpt arch m es d ≡ C.Built asm)
-cfm-built-gated doOpt arch m es (yes _)  adm eq = _ , cong (C.cfm-build-emit arch) eq
+  Σ-syntax String (λ asm → C.built-of arch (C.cfm-file-gated C.Heap doOpt arch m es d) ≡ C.Built asm)
+cfm-built-gated doOpt arch m es (yes _)  adm eq = _ , cong (λ r → C.built-of arch (C.emitFromCompiled arch r)) eq
 cfm-built-gated doOpt arch m es (no ¬adm) adm eq = ⊥-elim (¬adm adm)
 
 cfm-built-aux : ∀ (doOpt : Bool) (arch : Arch) (m : P.Module) → AdmissibleM arch m →

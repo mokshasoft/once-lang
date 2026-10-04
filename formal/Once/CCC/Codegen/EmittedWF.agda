@@ -47,7 +47,7 @@ open import Once.CCC.Machine.SMCore using
   ( AbstractInstr; AbstractTrace
   ; instr-ctrl; instr-load-code-addr
   ; instr-case-on-tag; instr-loop
-  ; FlatCtrl; c-label; c-jmp; c-thunk; c-entry; c-call-fn; c-ret
+  ; FlatCtrl; c-label; c-jmp; c-thunk; c-entry; c-call-fn; c-start; c-ret
   ; c-branch-scratch-zero; c-branch-tag-zero
   -- D164: the rest of `AbstractInstr`, so both walks can be ENUMERATED
   -- instead of resting on a catch-all.
@@ -87,6 +87,7 @@ labels-def-i (instr-ctrl (c-thunk m _))              = thunk m ∷ []
 -- and a direct call defines nothing.
 labels-def-i (instr-ctrl (c-entry (e-fn _) _))       = []
 labels-def-i (instr-ctrl (c-call-fn _))              = []
+labels-def-i (instr-ctrl (c-start _))                = []
 labels-def-i (instr-ctrl (c-jmp _))                  = []
 labels-def-i (instr-ctrl (c-branch-scratch-zero _))  = []
 labels-def-i (instr-ctrl (c-branch-tag-zero _))      = []
@@ -148,6 +149,7 @@ labels-ref-i (instr-ctrl (c-thunk _ _))              = []
 labels-ref-i (instr-ctrl (c-entry (e-fn _) _))       = []
 -- D245: `call once_<f>` names a SYMBOL (`syms-ref` has it), not a local label.
 labels-ref-i (instr-ctrl (c-call-fn _))              = []
+labels-ref-i (instr-ctrl (c-start _))                = []
 labels-ref-i (instr-ctrl (c-ret _))                  = []
 labels-ref-i (instr-load-code-addr m)                = thunk m ∷ []
 labels-ref-i (instr-case-on-tag f g)                 = labels-ref f ++ labels-ref g
@@ -292,6 +294,7 @@ syms-ref-i (instr-ctrl (c-entry (e-fn _) _))         = []
 -- D245: a DIRECT CALL names its callee's global symbol, which the module owes:
 -- `ld` resolves `call once_<f>` against `f`'s own emitted section.
 syms-ref-i (instr-ctrl (c-call-fn f))                = f ∷ []
+syms-ref-i (instr-ctrl (c-start _))                  = []
 syms-ref-i (instr-ctrl (c-jmp _))                    = []
 syms-ref-i (instr-ctrl (c-branch-scratch-zero _))    = []
 syms-ref-i (instr-ctrl (c-branch-tag-zero _))        = []

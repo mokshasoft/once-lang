@@ -34,6 +34,8 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 
 -- Plan 0.105: the machine runs against an interpretation, so these facts about
 -- its states are stated at one.
+open import Data.Sum using (_⊎_)
+open import Data.Product using (Σ)
 module Once.Adequacy.ArchCorrectness.RiscV64.ResourceBounds (o : CanonicalName) (ι : Interp) where
 
 open import Data.Nat using (ℕ; suc; _+_; _≤_)
@@ -45,7 +47,7 @@ import Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation as FSimr
 import Once.Adequacy.ArchCorrectness.FlatCore.RunContext as RCr
 import Once.CCC.Target.RiscV64.Semantics as R
 open import Once.CCC.Machine.SMCore
-  using (AbstractTrace; instr-alloc-heap; instr-ctrl; c-thunk; c-entry; c-call-fn; c-ret; instr-call-closure
+  using (AbstractTrace; instr-alloc-heap; instr-ctrl; c-thunk; c-entry; c-start; c-call-fn; c-ret; instr-call-closure
         ; lea-slot; instr-reg-op; scratch-dec; count-inc; instr-load-tag-lit
         ; instr-load-const; AbstractInstr; CallI)
 open import Once.CCC.Label using (LabelId; EntryId)
@@ -96,11 +98,11 @@ StackRoom : Set₁
 StackRoom =
   ∀ {hv : FCr.HeapView rv64-frame-semantics refl}
     (prog : AbstractTrace) (fs : FlatMachine.FlatState {rv64-frame-semantics})
-    (s : R.State) (m : EntryId) (b : ℕ)
+    (s : R.State) (b : ℕ)
   → RCr.RunAt o rv64-frame-semantics slot-size refl prog fs
   → FSimr.CompiledCorr o rv64-frame-semantics refl refl hv prog fs s
-  → FlatMachine.fetch {rv64-frame-semantics} prog
-      (FlatMachine.fpc {rv64-frame-semantics} fs) ≡ just (instr-ctrl (c-entry m b))
+  → Σ EntryId (λ m → FlatMachine.fetch {rv64-frame-semantics} prog (FlatMachine.fpc {rv64-frame-semantics} fs) ≡ just (instr-ctrl (c-entry m b)))
+      ⊎ (FlatMachine.fetch {rv64-frame-semantics} prog (FlatMachine.fpc {rv64-frame-semantics} fs) ≡ just (instr-ctrl (c-start b)))
   → FCr.hfront hv + slots b ≤ R.readReg (R.State.regs s) sp
 
 ------------------------------------------------------------------------

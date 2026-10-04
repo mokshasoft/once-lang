@@ -29,7 +29,6 @@ import qualified MAlonzo.Code.Data.List.Relation.Unary.All
 import qualified MAlonzo.Code.Data.List.Relation.Unary.Any
 import qualified MAlonzo.Code.Data.Sum.Base
 import qualified MAlonzo.Code.Once.Adequacy.FunBundle
-import qualified MAlonzo.Code.Once.Adequacy.SourceTrace
 import qualified MAlonzo.Code.Once.Adequacy.TelePosition
 import qualified MAlonzo.Code.Once.Adequacy.TeleWalk.Invariant
 import qualified MAlonzo.Code.Once.CanonicalName
@@ -352,7 +351,7 @@ d_RunAt_158 v0 v1 v2 v3 v4
          (coe
             MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_48
             (coe MAlonzo.Code.Once.Type.C_Unit_120))
-         (coe MAlonzo.Code.Once.Adequacy.SourceTrace.d_mainCall_22)
+         (coe MAlonzo.Code.Once.Compile.d_mainCall_806)
          (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8))
       (coe v4)
 -- Once.Adequacy.TeleWalk.K-subst
@@ -399,7 +398,7 @@ du_later'45'not'45'main_218 v0 v1 v2
   = coe
       du_un_234
       (coe
-         MAlonzo.Code.Once.Adequacy.SourceTrace.d_tableOf'45'go_68
+         MAlonzo.Code.Once.Compile.d_tableOf'45'go_852
          (coe
             MAlonzo.Code.Once.Adequacy.FunBundle.du_bundle'8594'compiled_344
             (coe v0) (coe v1))
@@ -806,7 +805,7 @@ du_later_512 ::
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6]
 du_later_512 v0 v1
   = coe
-      MAlonzo.Code.Once.Adequacy.SourceTrace.d_tableOf'45'go_68
+      MAlonzo.Code.Once.Compile.d_tableOf'45'go_852
       (coe
          MAlonzo.Code.Once.Adequacy.FunBundle.du_bundle'8594'compiled_344
          (coe v0) (coe v1))

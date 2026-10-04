@@ -19,9 +19,10 @@
 module Once.CCC.Codegen.ProgramImage where
 
 open import Data.List using (List; []; _∷_; _++_)
-open import Data.Nat using (ℕ)
+open import Data.Nat using (ℕ; suc)
 open import Once.CanonicalName using (CanonicalName)
-open import Once.CCC.Machine.SMCore using (AbstractTrace; instr-ctrl; c-entry; e-fn)
+open import Once.CCC.Machine.SMCore using (AbstractTrace; instr-ctrl; c-entry; c-start; e-fn; link-top)
+open import Once.CCC.Label using (LabelId; mkLabelId)
 open import Once.Denotation.Program using (IRFun; fname; fbody; IRProgram; table; main)
 import Once.CCC.Codegen.IRToTrace as IT
 
@@ -41,8 +42,19 @@ fns-image : ℕ → List IRFun → AbstractTrace
 fns-image l []       = []
 fns-image l (e ∷ es) = fn-image l e ++ fns-image (fn-next l e) es
 
--- The whole program: `main` (owned by `o`, at counter 0) first, so its entry
--- is pc 0, then the table's entries from where `main` left the counter.
+-- Plan 0.107: the label the program's silent stop jumps to — `main`'s own NEXT
+-- label (owner `o`, the index its unit leaves free), so it sits inside `main`'s
+-- counter window and the table's entries start one past it.
+top-done : CanonicalName → IRProgram → LabelId
+top-done o p = mkLabelId o [] (IT.ir-next-label o 0 (main p))
+
+-- The whole program: THE START (`c-start`, pc 0: the heap register and the
+-- outermost frame), then `main`'s unit (owned by `o`, at counter 0) ending in
+-- the silent stop, then the table's entries after the stop's label.
+image-body : CanonicalName → IRProgram → AbstractTrace
+image-body o p =
+  link-top (top-done o p) (IT.ir-to-unit o (main p))
+  ++ fns-image (suc (IT.ir-next-label o 0 (main p))) (table p)
+
 program-image : CanonicalName → IRProgram → AbstractTrace
-program-image o p =
-  IT.ir-to-trace o (main p) ++ fns-image (IT.ir-next-label o 0 (main p)) (table p)
+program-image o p = instr-ctrl (c-start (IT.ir-stack-budget o (main p))) ∷ image-body o p

@@ -48,7 +48,7 @@ du_readReg'45'typed_110 ::
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_StoredValue_66 ->
   Maybe AgdaAny
 du_readReg'45'typed_110
-  = coe MAlonzo.Code.Once.CCC.Machine.SMCore.du_readReg'45'typed_2754
+  = coe MAlonzo.Code.Once.CCC.Machine.SMCore.du_readReg'45'typed_2762
 -- Once.CCC.Machine.ReadTypedAdequate._.readTyped
 d_readTyped_112 ::
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
@@ -65,7 +65,7 @@ du_readTyped_112 ::
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_402 ->
   Maybe AgdaAny
 du_readTyped_112
-  = coe MAlonzo.Code.Once.CCC.Machine.SMCore.du_readTyped_2810
+  = coe MAlonzo.Code.Once.CCC.Machine.SMCore.du_readTyped_2818
 -- Once.CCC.Machine.ReadTypedAdequate._.readTyped-cell
 d_readTyped'45'cell_114 ::
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
@@ -89,7 +89,7 @@ du_readTyped'45'cell_114 ::
   Maybe AgdaAny
 du_readTyped'45'cell_114 v0 v1 v2 v3
   = coe
-      MAlonzo.Code.Once.CCC.Machine.SMCore.du_readTyped'45'cell_2702 v1
+      MAlonzo.Code.Once.CCC.Machine.SMCore.du_readTyped'45'cell_2710 v1
       v2 v3
 -- Once.CCC.Machine.ReadTypedAdequate._.readLoc
 d_readLoc_144 ::

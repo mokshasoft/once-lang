@@ -29,7 +29,7 @@ open import Relation.Nullary using (yes; no; Dec)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
 
 open import Function using (case_of_)
-open import Once.Adequacy.SourceTrace using (findMain; moduleToIR; moduleToIR-aux; mainCall)
+open import Once.Compile using (findMain; moduleToIR; moduleToIR-aux; mainCall)
 open import Once.Adequacy.MainIRForm using (findMain-skip; compileFun-main-EffUU; bare-injective)
 
 open import Once.Type using (Type; Unit; _⇒[_]_; mk-kind; Many; eff)

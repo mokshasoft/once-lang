@@ -31,6 +31,7 @@ open import Data.Nat.Show using () renaming (show to showℕ)
 open import Once.Float.Decimal using (round)
 open import Once.Float.Dyadic using (binary32)
 open import Data.List using (List; []; _∷_)
+open import Data.Product using (_×_; _,_)
 open import Data.String using (String; _++_)
 
 open import Once.Arith.Backend.XInstr.Syntax
@@ -273,57 +274,41 @@ program-text (i ∷ is) = instr-text i ++ program-text is
 --       addl $N, %esp
 --       popl %esi ; popl %ebx
 --       ret
+-- Plan 0.107: THE BLOCK'S PAYLOAD — read by both the printer (`emit-payload`)
+-- and the decoded file's block table (`Target.X86-32.File`). DESTRUCTURED, not
+-- `with block-kind blk`: with-abstraction on one projection of a record does not
+-- refine another projection's TYPE.
+block-payload : ArithBlock → XProgram × ℕ
+block-payload (mk-block sh NInt body) =
+  let nbody = normalize body   -- div-guard elision + degenerate folds
+  in emit-program (compile-abs nbody) , required-scratch nbody
+block-payload (mk-block sh NFloat body) =
+  -- no `normalize`: the div-guard / degenerate-divisor pre-pass is Int-only.
+  emit-program (compile-abs body) , required-scratch body
+
+emit-payload : (sym : String) → XProgram × ℕ → String
+emit-payload sym (instr , n) =
+  let pad = showℕ (4 * n)
+  in sym ++ ":\n" ++
+     -- Save ALL four borrowed abstract-reg registers: %ebx (closure) and
+     -- %esi (heap) are global; %edx (Scratch) and %edi (Count) are the
+     -- CCC reg-op registers, live across a cata loop whose algebra calls
+     -- this block. Clobbering %edx would corrupt the loop counter.
+     "    pushl %ebx\n" ++
+     "    pushl %esi\n" ++
+     "    pushl %edx\n" ++
+     "    pushl %edi\n" ++
+     "    subl $" ++ pad ++ ", %esp\n" ++
+     program-text instr ++
+     "    addl $" ++ pad ++ ", %esp\n" ++
+     "    popl %edi\n" ++
+     "    popl %edx\n" ++
+     "    popl %esi\n" ++
+     "    popl %ebx\n" ++
+     "    ret\n\n"
+
 emit-arith-block : (sym : String) → ArithBlock → String
--- DESTRUCTURED, not `with block-kind blk`: with-abstraction on one
--- projection of a record does not refine another projection's TYPE, so
--- `body` would stay at the abstract kind. The pattern refines both.
-emit-arith-block sym (mk-block sh NInt body) =
-    let nbody = normalize body   -- div-guard elision + degenerate folds
-        n     = required-scratch nbody
-        pad   = showℕ (4 * n)
-        instr = emit-program (compile-abs nbody)
-    in sym ++ ":\n" ++
-       -- Save ALL four borrowed abstract-reg registers: %ebx (closure) and
-       -- %esi (heap) are global; %edx (Scratch) and %edi (Count) are the
-       -- CCC reg-op registers, live across a cata loop whose algebra calls
-       -- this block. Clobbering %edx would corrupt the loop counter.
-       "    pushl %ebx\n" ++
-       "    pushl %esi\n" ++
-       "    pushl %edx\n" ++
-       "    pushl %edi\n" ++
-       "    subl $" ++ pad ++ ", %esp\n" ++
-       program-text instr ++
-       "    addl $" ++ pad ++ ", %esp\n" ++
-       "    popl %edi\n" ++
-       "    popl %edx\n" ++
-       "    popl %esi\n" ++
-       "    popl %ebx\n" ++
-       "    ret\n\n"
-emit-arith-block sym (mk-block sh NFloat body) =
-    let nbody = body             -- no `normalize`: it is the div-guard /
-        --                           degenerate-divisor pre-pass, and both are
-        --                           Int-only by type — a float tree has no
-        --                           `adiv`/`amod` to fold.
-        n     = required-scratch nbody
-        pad   = showℕ (4 * n)
-        instr = emit-program (compile-abs nbody)
-    in sym ++ ":\n" ++
-       -- Save ALL four borrowed abstract-reg registers: %ebx (closure) and
-       -- %esi (heap) are global; %edx (Scratch) and %edi (Count) are the
-       -- CCC reg-op registers, live across a cata loop whose algebra calls
-       -- this block. Clobbering %edx would corrupt the loop counter.
-       "    pushl %ebx\n" ++
-       "    pushl %esi\n" ++
-       "    pushl %edx\n" ++
-       "    pushl %edi\n" ++
-       "    subl $" ++ pad ++ ", %esp\n" ++
-       program-text instr ++
-       "    addl $" ++ pad ++ ", %esp\n" ++
-       "    popl %edi\n" ++
-       "    popl %edx\n" ++
-       "    popl %esi\n" ++
-       "    popl %ebx\n" ++
-       "    ret\n\n"
+emit-arith-block sym blk = emit-payload sym (block-payload blk)
 
 ------------------------------------------------------------------------
 -- Block-list emission

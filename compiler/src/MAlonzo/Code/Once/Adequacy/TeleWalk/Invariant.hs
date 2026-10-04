@@ -34,7 +34,6 @@ import qualified MAlonzo.Code.Once.Adequacy.AcceptSound
 import qualified MAlonzo.Code.Once.Adequacy.CoreEnv
 import qualified MAlonzo.Code.Once.Adequacy.FunBundle
 import qualified MAlonzo.Code.Once.Adequacy.MeaningBridge
-import qualified MAlonzo.Code.Once.Adequacy.SourceTrace
 import qualified MAlonzo.Code.Once.Adequacy.TableCall
 import qualified MAlonzo.Code.Once.Adequacy.TeleEntry
 import qualified MAlonzo.Code.Once.Adequacy.TeleEnvLemmas
@@ -494,7 +493,7 @@ du_e_306 ::
   MAlonzo.Code.Once.Denotation.Program.T_IRFun_6
 du_e_306 v0 v1 v2
   = coe
-      MAlonzo.Code.Once.Adequacy.SourceTrace.d_irFunOf_58
+      MAlonzo.Code.Once.Compile.d_irFunOf_842
       (coe
          MAlonzo.Code.Once.Adequacy.FunBundle.d_primCF_332 (coe v0) (coe v1)
          (coe v2))
@@ -1080,7 +1079,7 @@ du_e_572 ::
   MAlonzo.Code.Once.Denotation.Program.T_IRFun_6
 du_e_572 v0 v1 v2
   = coe
-      MAlonzo.Code.Once.Adequacy.SourceTrace.d_irFunOf_58
+      MAlonzo.Code.Once.Compile.d_irFunOf_842
       (coe
          MAlonzo.Code.Once.Compile.C_mkCompiledFun_250
          (coe

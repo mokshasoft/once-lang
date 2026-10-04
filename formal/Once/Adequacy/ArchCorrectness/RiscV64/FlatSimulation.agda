@@ -60,6 +60,7 @@ open import Data.List using (List; []; _∷_; _++_; drop; length)
 open import Data.Bool using (false; true)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂)
 open import Once.CCC.Machine.SMCore
+open import Data.Unit using (tt)
 open MemOps {FS} using (writeLoc; writeLocToHeap; readLoc)
 open import Once.CCC.Machine.Flat
 open FlatMachine {FS} using (FlatState; fpc; fret; flink; falloc; floc; fclosure; flat-exec-instr;
@@ -75,8 +76,8 @@ open C using (HeapView; haddr; HDom; hfront)
 open import Once.Adequacy.ArchCorrectness.RiscV64.FlatComposition FS
   using (blk-off; blk-len; blk-off-suc; fetch-block-head; fetch-block-2nd; fetch-block-3rd; find-label-corr; find-thunk-corr)
 open import Once.Adequacy.ArchCorrectness.RiscV64.StepLemmas
-  using (exec-1; step-mv; step-li; step-label; step-ld; step-sd; step-addi; step-lla; step-j-found; step-beq-taken; step-beq-not; step-ret; step-jalr; step-jal-found)
-open import Once.CCC.Target.RiscV64.Syntax using (Reg; mv; li; label; ld; sd; addi; lla; beq; j; ret; jalr; jal; a0; a1; t0; t1; s1; s2; s3; s4; sp; ra; zero; slots)
+  using (exec-1; step-mv; step-li; step-label; step-ld; step-sd; step-addi; step-lla; step-lla-sym; step-j-found; step-beq-taken; step-beq-not; step-ret; step-jalr; step-jal-found)
+open import Once.CCC.Target.RiscV64.Syntax using (Reg; mv; li; label; ld; sd; addi; lla; lla-sym; beq; j; ret; jalr; jal; a0; a1; t0; t1; s1; s2; s3; s4; sp; ra; zero; slots)
 import Data.Integer as ℤ
 import Once.Word as OnceWord
 module IntW = OnceWord.Width 64
@@ -1737,6 +1738,74 @@ block-step-alloc-heap {hv} prog fs s n cc h ft wf1 wfs wfc wfcl wf-heap wf-stack
     pco' : R.State.pc post-add ≡ blk-off prog (fpc (flat-exec-instr (instr-alloc-heap n) prog fs))
     pco' = trans (trans (cong (λ p → (p + 1) + 1) po) (+-assoc (blk-off prog (fpc fs)) 1 1))
                  (sym (blk-off-suc prog (fpc fs) (instr-alloc-heap n) ft))
+
+------------------------------------------------------------------------
+-- Plan 0.107: THE START ↔ `lla s2, once_heap_base ; addi sp, sp, -8b` — the
+-- heap register at the heap's base (`sim-heap-base`), then the outermost frame
+-- exactly as a body marker reserves its own (`sim-thunk`), WITHOUT the spill:
+-- nothing called the program, so there is no return address to save.
+------------------------------------------------------------------------
+block-step-c-start : ∀ {hv : HeapView} prog fs s b → CompiledCorr hv prog fs s
+  → halted (floc fs) ≡ false
+  → fetch prog (fpc fs) ≡ just (instr-ctrl (c-start b))
+  → (lo' : ℕ) (lo'≤lo : lo' ≤ C.lo hv) (front-lo' : C.hfront hv ≤ lo')
+  → lo' ≤ R.readReg (R.State.regs s) sp ∸ slots b
+  → slots b ≤ R.readReg (R.State.regs s) sp
+  → R.readReg (R.State.regs s) sp < R.W.modulus
+  → C.hfront hv ≡ 0
+  → fret fs ≡ []
+  → BlockStepAt hv (C.descend-view hv lo' lo'≤lo front-lo') prog fs s (instr-ctrl (c-start b))
+block-step-c-start {hv} prog fs s b cc h ft lo' lo'≤lo front-lo' lo'≤sp fits sp<mod h0 nf =
+  post-addi , exec-eq , record { dataCorr = dataPost ; pc-off = pco'
+                               ; ret-eq = retPost ; code-eq = code-eq cc }
+  where
+    dc = dataCorr cc ; po = pc-off cc
+    halt-s : R.State.halted s ≡ false
+    halt-s = trans (C.halt-eq dc) h
+    fetch-lla : R.fetch (compile-trace prog) (R.State.pc s) ≡ just (lla-sym s2 "once_heap_base")
+    fetch-lla = trans (cong (R.fetch (compile-trace prog)) po)
+                      (fetch-block-head prog (fpc fs) (instr-ctrl (c-start b)) ft)
+    post-lla : R.State
+    post-lla = record s { regs = R.writeReg (R.State.regs s) s2 0 ; pc = R.State.pc s + 1 }
+    step-heap : R.step-not-halted (compile-trace prog) s ≡ just post-lla
+    step-heap = step-lla-sym {compile-trace prog} {s} {s2} fetch-lla
+    fetch-addi : R.fetch (compile-trace prog) (R.State.pc post-lla)
+               ≡ just (addi sp sp (ℤ.-_ (ℤ.+ (slots b))))
+    fetch-addi = trans (cong (λ q → R.fetch (compile-trace prog) (q + 1)) po)
+                       (fetch-block-2nd prog (fpc fs) (instr-ctrl (c-start b)) ft)
+    post-addi : R.State
+    post-addi = record post-lla { regs = R.writeReg (R.State.regs post-lla) sp
+                                           (R.readReg (R.State.regs s) sp ∸ slots b)
+                                ; pc = R.State.pc s + 1 + 1 }
+    step-addi' : R.step-not-halted (compile-trace prog) post-lla ≡ just post-addi
+    step-addi' = subst (λ w → R.step-not-halted (compile-trace prog) post-lla
+                              ≡ just (record post-lla { regs = R.writeReg (R.State.regs post-lla) sp w
+                                                      ; pc = R.State.pc s + 1 + 1 }))
+                       (R.W.⊕-neg (R.readReg (R.State.regs s) sp) (slots b) fits sp<mod)
+                       (step-addi {compile-trace prog} {post-lla} {sp} {sp}
+                                  {ℤ.-_ (ℤ.+ (slots b))} fetch-addi)
+    exec-eq : R.exec 2 (compile-trace prog) s ≡ just post-addi
+    exec-eq = trans (exec-1 {compile-trace prog} {1} {s} {post-lla} halt-s step-heap halt-s)
+                    (exec-1 {compile-trace prog} {0} {post-lla} {post-addi} halt-s step-addi' halt-s)
+    lla-corr : C.FlatCorr hv fs post-lla
+    lla-corr = C.sim-heap-base fs s post-lla dc (C.sets-role-riscv64 s role-heap 0 _) h0
+    dataPost : C.FlatCorr (C.descend-view hv lo' lo'≤lo front-lo')
+                          (flat-exec-instr (instr-ctrl (c-start b)) prog fs) post-addi
+    dataPost = C.sim-thunk b fs post-lla _ lla-corr lo' lo'≤lo front-lo' lo'≤sp fits
+                           (C.sets-role-riscv64 post-lla role-sp _ _)
+    pco' : R.State.pc post-addi
+         ≡ blk-off prog (fpc (flat-exec-instr (instr-ctrl (c-start b)) prog fs))
+    pco' = trans (+-assoc (R.State.pc s) 1 1)
+                 (trans (cong (_+ 2) po)
+                        (sym (blk-off-suc prog (fpc fs) (instr-ctrl (c-start b)) ft)))
+    retPost : C.RetAddrs (blk-off prog) (R.State.memory post-addi) (riscv64-link-claim post-addi)
+                         (flink (flat-exec-instr (instr-ctrl (c-start b)) prog fs))
+                         (C.frames-of (falloc (flat-exec-instr (instr-ctrl (c-start b)) prog fs)))
+                         (fret (flat-exec-instr (instr-ctrl (c-start b)) prog fs))
+    retPost = subst (C.RetAddrs (blk-off prog) (R.State.memory post-addi) (riscv64-link-claim post-addi)
+                                (flink (flat-exec-instr (instr-ctrl (c-start b)) prog fs))
+                                (C.frames-of (falloc (flat-exec-instr (instr-ctrl (c-start b)) prog fs))))
+                    (sym nf) tt
 
 ------------------------------------------------------------------------
 -- THE BODY MARKER (plan 0.65 G2) — `label (thunk n) ; addi sp,sp,-8b ;

@@ -1,0 +1,78 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
+------------------------------------------------------------------------
+-- Once.Adequacy.EmitFile — plan 0.107: WHICH FILE A SUCCESSFUL COMPILE IS.
+--
+-- The compiler's result is a `File` (`Once.Compile.compileFileFromModule`), and
+-- for a module with `main` that file is `emitProgram` of the module's program:
+-- the one walk. Read straight off the definitions — no premise about the text.
+------------------------------------------------------------------------
+
+module Once.Adequacy.EmitFile where
+
+open import Data.List using (List; [])
+open import Data.Bool using (false)
+open import Data.Maybe using (Maybe; just; nothing)
+open import Data.Product using (_,_)
+open import Data.String using (String)
+open import Data.Sum using (_⊎_; inj₁; inj₂)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
+open import Relation.Nullary using (Dec; yes; no)
+
+open import Once.IR using (IR)
+open import Once.IRTy using (⌊_⌋)
+open import Once.Type using (Unit)
+open import Once.Denotation.Admissible using (AdmissibleM; admissibleM?)
+open import Once.Denotation.Program using (irProgram)
+open import Once.Target.Arch using (Arch)
+open import Once.Compile
+  using ( Module; Entry; CompiledFun; Heap; compileFileFromModule; cfm-file-ef; cfm-file-gated
+        ; emitFromCompiled; emitProgram; FileOf; compileEntries; emptyCScope
+        ; extractFunctions; extractAliases; compileResolvedModule; compileResolvedModule-aux
+        ; moduleToIR; moduleToIR-aux; moduleTable; tableOfResult; externsOf; findMain )
+
+-- The interpretation symbols a module's compiled functions call.
+externsOfResult : String ⊎ List CompiledFun → List String
+externsOfResult (inj₁ _)    = []
+externsOfResult (inj₂ funs) = externsOf funs
+
+moduleExterns : Module → List String
+moduleExterns m = externsOfResult (compileResolvedModule Heap false m)
+
+private
+  inj₂-inj : ∀ {A B : Set} {x y : B} → inj₂ {A = A} x ≡ inj₂ y → x ≡ y
+  inj₂-inj refl = refl
+
+  at-funs : ∀ (arch : Arch) (r : String ⊎ List CompiledFun) (F : FileOf arch) ir
+          → emitFromCompiled arch r ≡ inj₂ F → moduleToIR-aux r ≡ just ir
+          → F ≡ emitProgram arch (irProgram (tableOfResult r) ir) (externsOfResult r)
+  at-funs arch (inj₁ _)    F ir () _
+  at-funs arch (inj₂ funs) F ir eq mi =
+    trans (sym (inj₂-inj eq)) (cong (λ x → Once.Compile.emit-at arch funs x) mi)
+
+  at-gate : ∀ (arch : Arch) (m : Module) (es : List Entry) (d : Dec (AdmissibleM arch m))
+              (F : FileOf arch) ir
+          → cfm-file-gated Heap false arch m es d ≡ inj₂ F
+          → moduleToIR-aux (compileEntries Heap false emptyCScope es) ≡ just ir
+          → F ≡ emitProgram arch (irProgram (tableOfResult (compileEntries Heap false emptyCScope es)) ir)
+                             (externsOfResult (compileEntries Heap false emptyCScope es))
+  at-gate arch m es (no _)  F ir () _
+  at-gate arch m es (yes _) F ir eq mi = at-funs arch (compileEntries Heap false emptyCScope es) F ir eq mi
+
+  at-ef : ∀ (arch : Arch) (m : Module) (ef : String ⊎ List Entry) (F : FileOf arch) ir
+        → cfm-file-ef Heap false arch m ef ≡ inj₂ F
+        → moduleToIR-aux (compileResolvedModule-aux Heap false m ef) ≡ just ir
+        → F ≡ emitProgram arch (irProgram (tableOfResult (compileResolvedModule-aux Heap false m ef)) ir)
+                           (externsOfResult (compileResolvedModule-aux Heap false m ef))
+  at-ef arch m (inj₁ _)  F ir () _
+  at-ef arch m (inj₂ es) F ir eq mi = at-gate arch m es (admissibleM? arch m) F ir eq mi
+
+-- THE FILE OF A PROGRAM: what `compileFileFromModule` returns for a module
+-- whose `main` is `ir` is the emission of that module's program.
+file-is-emit : ∀ (arch : Arch) (m : Module) (F : FileOf arch) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋)
+             → compileFileFromModule Heap false arch m ≡ inj₂ F
+             → moduleToIR m ≡ just ir
+             → F ≡ emitProgram arch (irProgram (moduleTable m) ir) (moduleExterns m)
+file-is-emit arch m F ir eq mi =
+  at-ef arch m (extractFunctions (extractAliases m) m) F ir eq mi

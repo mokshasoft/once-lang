@@ -47,7 +47,7 @@ open import Once.Float.Dyadic using (binary32; binary64)
 open import Once.Float.Decimal using (Decimal; round)
 open import Data.Integer using (ℤ)
 open import Once.CCC.Machine.SMCore
-  using (AbstractTrace; instr-alloc-heap; instr-ctrl; c-thunk; c-entry; c-call-fn; c-ret; instr-call-closure
+  using (AbstractTrace; instr-alloc-heap; instr-ctrl; c-thunk; c-entry; c-start; c-call-fn; c-ret; instr-call-closure
         ; instr-reg-op; scratch-dec; count-inc; instr-dealloc-stack
         ; instr-load-tag-lit; instr-load-const)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
@@ -62,6 +62,8 @@ import Once.Adequacy.ArchCorrectness.X86-32.RunContext as RC
 -- UNCHANGED: the emitter is imported APPLIED, so each call site reads as before.
 open import Once.CanonicalName using (CanonicalName)
 
+open import Data.Sum using (_⊎_)
+open import Data.Product using (Σ)
 module Once.Adequacy.ArchCorrectness.X86-32.ConcFlatSim (o : CanonicalName)
   (FS : FrameSemantics)
   (word-eq : frame-word FS ≡ slot-size)
@@ -97,11 +99,11 @@ module Once.Adequacy.ArchCorrectness.X86-32.ConcFlatSim (o : CanonicalName)
   -- `…X86-32.ResourceBounds.StackRoom`, which is where the statement lives.
   (stack-room : ∀ {hv : FC.HeapView FS word-eq}
                   (prog : AbstractTrace) (fs : FlatMachine.FlatState {FS})
-                  (s : X.State) (m : EntryId) (b : ℕ)
+                  (s : X.State) (b : ℕ)
               → RC.RunAt o FS word-eq prog fs
               → FSim.CompiledCorr o FS word-eq fmt-eq hv prog fs s
-              → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs)
-                ≡ just (instr-ctrl (c-entry m b))
+              → Σ EntryId (λ m → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs) ≡ just (instr-ctrl (c-entry m b)))
+      ⊎ (FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs) ≡ just (instr-ctrl (c-start b)))
               → FC.hfront hv + slots b ≤ X.readReg (X.State.regs s) esp)
   -- CALL DEPTH (D098), the third of the family and the smallest: room for the
   -- ONE slot a call spends on the return address. See `ResourceBounds.CallRoom`.
@@ -255,7 +257,11 @@ open import Once.CCC.Target.X86-32.Syntax using (slots; esi)
 ------------------------------------------------------------------------
 -- Imports for the run-events event-trace correspondence (block-run-exec + the
 -- events-agree induction below).
-open import Once.Adequacy.CPU.X86-32 using (ev-x86-32; arith-env-x86-32; call-at-x86-32)
+open import Once.Adequacy.CPU.X86-32 using (ev-x86-32; block-env; call-at-x86-32)
+import Once.Compile as Cmp
+open import Data.String using (String)
+open import Data.Product using (Σ; _×_)
+open import Once.Denotation.Program using (IRProgram)
 open import Once.Arith.Backend.CallAnswer using (answer-at)
 open import Once.CCC.Machine.SMCore using (LocState)
 -- `val-x86-32` is the concrete XInstr arith interpreter and lives with the arith
@@ -437,6 +443,14 @@ x86-32-machine = record
   ; exec-step-run = x-exec-step-run
   }
 
+
+-- Plan 0.107: THE ARITH TABLE IS THE FILE'S — the block table `Once.Compile`
+-- emits for the program whose image this is. It was the postulated
+-- `arith-env-x86-32`, "read off the code"; the code does not hold it, the file does.
+x86-32-arith-table : AbstractTrace → (String → Maybe (List XInstr)) → Set
+x86-32-arith-table prog env =
+  Σ IRProgram (λ p → (prog ≡ Cmp.image-of p) × (env ≡ block-env (Cmp.blocks-x86-32 p)))
+
 x86-32-traceloop : EI.TraceLoop FS Reg x86-32-emitter x86-32-machine
 -- THE ARITH PAYLOAD CARRIES NO FUEL HERE. x86-64's `dispatch-arith` takes a
 -- step count `N` (its `exec-arith-block` is fuelled), so its payload is
@@ -451,7 +465,7 @@ x86-32-traceloop = record
   -- world being the frame semantics' interpretation.
   ; ret-call = RTx.ret-call (answer-at (Once.CCC.FrameSemantics.fs-interp FS) call-at-x86-32)
   ; dispatchArith = dispatch-arith val-x86-32
-  ; ev-arch = ev-x86-32 ; arith-env = arith-env-x86-32
+  ; ev-arch = ev-x86-32 ; ArithTable = x86-32-arith-table
   ; sigop-call = call-sym ; sigop-lowering = λ _ → refl ; sigop-matchCall = λ _ → refl
   ; nonhalt-noncall = nonhalt-noncall
   }
@@ -735,7 +749,7 @@ postulate
                        → RunAt prog fs
                        -- THE REAL ENV (2026-07-30): over an arbitrary `env` the
                        -- conclusion `env sym ≡ just pl` is refuted by `λ _ → nothing`.
-                       → env ≡ arith-env-x86-32 (compile-trace prog)
+                       → x86-32-arith-table prog env
                        → Internal (sem si) → CompiledCorr hv prog fs s → fetch prog (fpc fs) ≡ just (instr-sigop si)
                        -- the payload is the BLOCK alone here — this arch's
                        -- `dispatch-arith` takes no fuel word (see
@@ -755,7 +769,7 @@ postulate
                           → RunAt prog fs
                           -- THE REAL EXTRACTOR AND ENV (2026-07-30): over arbitrary
                           -- `ev`/`env` the emission claim is refuted by `λ _ _ → []`.
-                          → ev ≡ ev-x86-32 → env ≡ arith-env-x86-32 (compile-trace prog)
+                          → ev ≡ ev-x86-32 → x86-32-arith-table prog env
                           → External (sem si)
                           → CompiledCorr hv prog fs s
                           → fetch prog (fpc fs) ≡ just (instr-sigop si)
@@ -815,4 +829,4 @@ x86-32-supply = record
 -- dispatch twice.
 open Dispatch.Dispatch o FS slot-size word-eq Reg x86-32-roles X.W.modulus
                        x86-32-emitter x86-32-machine x86-32-traceloop x86-32-supply
-  using (events-agree) public
+  using (events-agree; events-agree-start) public

@@ -64,6 +64,7 @@ module Once.Adequacy.ArchCorrectness.X86-32.FlatSimulation
   where
 
 open import Once.CCC.Machine.SMCore
+open import Data.Unit using (tt)
 open import Once.CCC.Machine.Flat
 open FlatMachine {FS}
 open import Once.CCC.Machine.FlatStoreWF FS using (sv-below; svm-below; StoreWF; FlatWF; flat-wf-step; wf-regs; wf-heap; wf-stack; wf-fresh)
@@ -72,7 +73,7 @@ open X using (mkstate; execInstr; mkflags; _<ᵇ_; writeMem; updateFlags)
   renaming (readReg to xreadReg; writeReg to xwriteReg; readMem to xreadMem)
 open X.State using (memory; flags; pc) renaming (regs to xregs; halted to xhalted)
 open import Once.CCC.Target.X86-32.Syntax
-  using (eax; edx; ecx; esp; ebp; edi; esi; Reg; Operand; Program; reg; imm; mem; mov; add; sub; cmp; label; jmp-l; je; push; pop; lea; ebx; base; base+disp; slots; slot-size; ret; call; mov-code; call-l)
+  using (eax; edx; ecx; esp; ebp; edi; esi; Reg; Operand; Program; reg; imm; mem; mov; add; sub; cmp; label; jmp-l; je; push; pop; lea; abs-sym; ebx; base; base+disp; slots; slot-size; ret; call; mov-code; call-l)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Bool using (true; false)
 open import Data.List using (_∷_; []; _++_; drop; length)
@@ -864,6 +865,77 @@ block-step-c-thunk {hv} prog fs s n b r rpc rest cc h ft lo' lo'≤lo front-lo' 
                             (flink fs) (current-frame (falloc fs)) (frame-slots (falloc fs))
                             (saved-frames (falloc fs)) (fret fs)
                             (λ v p → p) (ret-eq cc))
+
+------------------------------------------------------------------------
+-- Plan 0.107: THE START ↔ `lea once_heap_base, %esi ; sub $4b, %esp` — the
+-- heap register at the heap's base (`sim-heap-base`), then the outermost frame
+-- exactly as a body marker reserves its own (`sim-thunk`). Nothing is owed.
+------------------------------------------------------------------------
+block-step-c-start : ∀ {hv : HeapView} prog fs s b → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
+  → fetch prog (fpc fs) ≡ just (instr-ctrl (c-start b))
+  → (lo' : ℕ) (lo'≤lo : lo' ≤ C.lo hv) (front-lo' : C.hfront hv ≤ lo')
+  → lo' ≤ X.readReg (xregs s) esp ∸ slots b
+  → slots b ≤ X.readReg (xregs s) esp
+  → xreadReg (xregs s) esp < X.W.modulus
+  → C.hfront hv ≡ 0
+  → fret fs ≡ []
+  → BlockStepAt hv (C.descend-view hv lo' lo'≤lo front-lo') prog fs s (instr-ctrl (c-start b))
+block-step-c-start {hv} prog fs s b cc h ft lo' lo'≤lo front-lo' lo'≤esp fits esp<mod h0 nf =
+  post-sub , exec-eq , record { dataCorr = dataPost ; pc-off = pco' ; ret-eq = retPost ; code-eq = code-eq cc }
+  where
+    dc = dataCorr cc ; po = pc-off cc
+    halt-s : X.State.halted s ≡ false
+    halt-s = trans (C.halt-eq dc) h
+    fetch-lea : X.fetch (compile-trace prog) (X.State.pc s) ≡ just (lea esi (abs-sym "once_heap_base"))
+    fetch-lea = trans (cong (X.fetch (compile-trace prog)) po)
+                      (fetch-block-head prog (fpc fs) (instr-ctrl (c-start b)) ft)
+    post-lea : X.State
+    post-lea = record s { regs = xwriteReg (xregs s) esi 0 ; pc = pc s + 1 }
+    step-heap : X.step-not-halted (compile-trace prog) s ≡ just post-lea
+    step-heap = step-lea {compile-trace prog} {s} fetch-lea
+    fetch-sub : X.fetch (compile-trace prog) (X.State.pc post-lea) ≡ just (sub (reg esp) (imm (slots b)))
+    fetch-sub = trans (cong (λ q → X.fetch (compile-trace prog) (q + 1)) po)
+                      (fetch-block-2nd prog (fpc fs) (instr-ctrl (c-start b)) ft)
+    newFlags : X.Flags
+    newFlags = updateFlags (xreadReg (xregs s) esp ∸ slots b)
+    post-sub : X.State
+    post-sub = record post-lea { regs = xwriteReg (xregs post-lea) esp (xreadReg (xregs s) esp ∸ slots b)
+                               ; flags = newFlags ; pc = pc s + 1 + 1 }
+    in-range : slots b < X.W.modulus
+    in-range = ≤-<-trans fits esp<mod
+    borrow-free : xreadReg (xregs s) esp X.W.⊖ X.W.norm (slots b) ≡ xreadReg (xregs s) esp ∸ slots b
+    borrow-free = trans (X.W.⊖-normʳ (xreadReg (xregs s) esp) (slots b) in-range)
+                        (X.W.⊖≡∸ (xreadReg (xregs s) esp) (slots b) fits esp<mod)
+    step-sub : X.step-not-halted (compile-trace prog) post-lea ≡ just post-sub
+    step-sub = subst (λ w → X.step-not-halted (compile-trace prog) post-lea
+                            ≡ just (record post-lea { regs = xwriteReg (xregs post-lea) esp w
+                                                    ; flags = updateFlags w
+                                                    ; pc = pc s + 1 + 1 }))
+                     borrow-free
+                     (step-sub-ri {compile-trace prog} {post-lea} {esp} {slots b} fetch-sub)
+    exec-eq : X.exec 2 (compile-trace prog) s ≡ just post-sub
+    exec-eq = trans (exec-1 {compile-trace prog} {1} {s} {post-lea} halt-s step-heap halt-s)
+                    (exec-1 {compile-trace prog} {0} {post-lea} {post-sub} halt-s step-sub halt-s)
+    lea-corr : C.FlatCorr hv fs post-lea
+    lea-corr = C.sim-heap-base fs s post-lea dc (C.sets-role-x86 s role-heap 0 _ _) h0
+    dataPost : C.FlatCorr (C.descend-view hv lo' lo'≤lo front-lo')
+                          (flat-exec-instr (instr-ctrl (c-start b)) prog fs) post-sub
+    dataPost = C.sim-thunk b fs post-lea _ lea-corr
+                           lo' lo'≤lo front-lo' lo'≤esp fits
+                           (C.sets-role-x86 post-lea role-sp _ _ _)
+    pco' : X.State.pc post-sub
+         ≡ blk-off prog (fpc (flat-exec-instr (instr-ctrl (c-start b)) prog fs))
+    pco' = trans (+-assoc (pc s) 1 1)
+                 (trans (cong (_+ 2) po)
+                        (sym (blk-off-suc prog (fpc fs) (instr-ctrl (c-start b)) ft)))
+    retPost : C.RetAddrs (blk-off prog) (X.State.memory post-sub) (x86-32-link-claim post-sub)
+                         (flink (flat-exec-instr (instr-ctrl (c-start b)) prog fs))
+                         (C.frames-of (falloc (flat-exec-instr (instr-ctrl (c-start b)) prog fs)))
+                         (fret (flat-exec-instr (instr-ctrl (c-start b)) prog fs))
+    retPost = subst (C.RetAddrs (blk-off prog) (X.State.memory post-sub) (x86-32-link-claim post-sub)
+                                (flink (flat-exec-instr (instr-ctrl (c-start b)) prog fs))
+                                (C.frames-of (falloc (flat-exec-instr (instr-ctrl (c-start b)) prog fs))))
+                    (sym nf) tt
 
 ------------------------------------------------------------------------
 -- THE CALL (D098): `instr-call-closure` ↔ `call *0x8(%ebx)`.
@@ -2527,6 +2599,7 @@ x86-32-block-steps = record
   ; bs-scratch-dec              = block-step-scratch-dec
   ; bs-count-inc                = block-step-count-inc
   ; bs-c-thunk                  = block-step-c-thunk
+  ; bs-c-start                  = block-step-c-start
   ; bs-c-ret                    = block-step-c-ret
   ; bs-load-const               = block-step-load-const
   ; bs-load-const-float         = block-step-load-const-float

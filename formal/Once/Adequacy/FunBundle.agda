@@ -61,7 +61,7 @@ open import Once.TypeCheck.Soundness using (check-sound)
 open import Once.Parser using (FunInfo)
 open FunInfo
 import Once.Adequacy.AcceptSound as AS
-open import Once.Adequacy.SourceTrace using (findMain; findMain-here; isEffUU?; mainCall; moduleToIR; moduleToIR-aux)
+open import Once.Compile using (findMain; findMain-here; isEffUU?; mainCall; moduleToIR; moduleToIR-aux)
 open import Once.Adequacy.MainIRForm using (findMain-skip; bare-injective; compileFun-main-EffUU)
 import Once.Adequacy.ModuleComplete as MC
 

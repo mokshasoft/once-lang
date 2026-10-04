@@ -48,9 +48,8 @@ open import Once.Type using (Unit; Type; _⇒[_]_; mk-kind; Many; eff)
 
 open import Once.Denotation.Behavior using (Source; Behavior; at; behavior-by)
 open import Once.Spec.Core.Telescope using (runProgram)
-open import Once.Adequacy.SourceTrace
-  using (⟦_⟧; ⟦⟧-via-module; moduleToIR; moduleToIR-emitted; map-rewrite; ⟦_⟧IR; srcToModule; srcToModule-just; srcToModule-inv;
-         moduleToProgram; moduleTable; programAt; rewrite-program; rewrite-program-linked)
+open import Once.Adequacy.SourceTrace using (⟦_⟧; ⟦⟧-via-module; moduleToIR-emitted; map-rewrite; ⟦_⟧IR; srcToModule; srcToModule-just; srcToModule-inv; rewrite-program-linked)
+open import Once.Compile using (moduleToIR; moduleToProgram; moduleTable; programAt; rewrite-program)
 open import Once.Adequacy.RewritePreserves using (rewrite-program-preserves)
 open import Once.Adequacy.ProgramLinked using (moduleToProgram-linked)
 open import Once.Denotation.Program using (IRProgram; irProgram; table; main; Linked; LinkedProgram)
@@ -86,7 +85,7 @@ open import Once.Denotation.Admissible using (AdmissibleM; admissibleM?)
 open import Data.List.Relation.Unary.All using (All)
 import Once.Word as OnceWord
 open import Relation.Nullary using (Dec; yes; no; ¬_)
-open import Once.Target.Arch using (arch-numerics)
+open import Once.Target.Arch using (arch-numerics; x86-64; x86-32; riscv64)
 
 import Once.Compile as C
 import Once.Grammar as G
@@ -97,17 +96,9 @@ open import Once.Parser using (parseStrict)
 -- former `gmoduleToModule` postulate).
 open import Once.Grammar.ModuleConvert using (gmoduleToModule)
 
--- Plan 0.50 (de-island): `DistinctSymbols` + the PROVED `program-no-clash`,
--- the precondition the assembler trust point demands. Imported and
--- discharged in `Once.Adequacy.NameClash` via `once-symbol-own-≢` (the proven
--- encoding injectivity) over the extractor's distinctness+validity guard.
-open import Once.Adequacy.NameClash using (DistinctSymbols; program-no-clash)
--- D100 — its sibling one level down: the emitted LOCAL labels (`.L…`). Stated
--- and (for now) owed in `Once.Adequacy.LabelClash`; consumed by
--- `ArchCorrect.asm-trace-correct` and supplied at the apex, exactly as
--- `program-no-clash` supplies `DistinctSymbols`.
-open import Once.Adequacy.LabelClash using (DistinctLabels; program-labels-distinct; LabelsResolvable; program-labels-resolvable)
-open import Once.Adequacy.SymbolClash using (SymbolsResolvable; program-symbols-resolvable)
+-- Plan 0.107: the per-arch CPU instances, read CONCRETELY — a file's type, its
+-- well-formedness and its execution are the arch's own.
+import Once.Adequacy.CPU as CPU
 
 -- `Arch` (here, via `Once.Adequacy.CPU.Interface`) and `C.Arch` (via
 -- `Once.Compile`) are now the SAME type — both re-export `Once.Target.Arch`
@@ -189,79 +180,85 @@ compile-cli-asm allocMode stage doOpt arch m =
 -- ════════════════════════════════════════════════════════════════════
 -- Plan 0.105: at an interpretation `ι`, the world both the binary and the
 -- meaning run in; the apex takes every arch's record at every `ι`.
-record ArchCorrect (arch : Arch) (as : ArchSemantics) (ι : Interp) : Set where
+-- PLAN 0.107: THE FILE, PER ARCH. What the compiler emits (`C.FileOf arch`)
+-- and what the CPU model decodes are the SAME type, so a file's execution,
+-- well-formedness and bytes are read off the arch's own `ArchSemantics`.
+AsmWF-of : (arch : Arch) → C.FileOf arch → Set
+AsmWF-of x86-64  = ArchSemantics.AsmWF (CPU.arch-semantics x86-64)
+AsmWF-of x86-32  = ArchSemantics.AsmWF (CPU.arch-semantics x86-32)
+AsmWF-of riscv64 = ArchSemantics.AsmWF (CPU.arch-semantics riscv64)
+
+-- the environment hands the file's program over at its entry point, and it runs
+run-file : (arch : Arch) → Interp → C.FileOf arch → Behavior
+run-file x86-64  ι F = ArchSemantics.run-trace (CPU.arch-semantics x86-64)  ι F (ArchSemantics.initialState (CPU.arch-semantics x86-64)  F)
+run-file x86-32  ι F = ArchSemantics.run-trace (CPU.arch-semantics x86-32)  ι F (ArchSemantics.initialState (CPU.arch-semantics x86-32)  F)
+run-file riscv64 ι F = ArchSemantics.run-trace (CPU.arch-semantics riscv64) ι F (ArchSemantics.initialState (CPU.arch-semantics riscv64) F)
+
+-- the bytes: `as` on the file's canonical text
+file-bytes : (arch : Arch) → C.FileOf arch → List Byte
+file-bytes arch F = ArchSemantics.assemble (CPU.arch-semantics arch) (C.printFile arch F)
+
+-- …and THE ONLY TRUST about them (plan 0.107): assembled, a well-formed file runs
+-- its program (`as-faithful`, through `exec-print`).
+exec-file : ∀ (arch : Arch) (ι : Interp) (F : C.FileOf arch) → AsmWF-of arch F
+          → ArchSemantics.exec-bytes (CPU.arch-semantics arch) ι (file-bytes arch F) ≡ run-file arch ι F
+exec-file x86-64  ι F wf = ArchSemantics.exec-print (CPU.arch-semantics x86-64)  ι F wf
+exec-file x86-32  ι F wf = ArchSemantics.exec-print (CPU.arch-semantics x86-32)  ι F wf
+exec-file riscv64 ι F wf = ArchSemantics.exec-print (CPU.arch-semantics riscv64) ι F wf
+
+-- Plan 0.105: at an interpretation `ι`, the world both the binary and the
+-- meaning run in; the apex takes every arch's record at every `ι`.
+-- PLAN 0.107: the obligations are about the FILE the compiler emits — never its
+-- text. The text is `print` of the file; `as` is trusted to assemble a
+-- well-formed file faithfully, and nothing else is.
+record ArchCorrect (arch : Arch) (ι : Interp) : Set where
   field
-    -- the abstract meaning of an emitted asm string on this arch
-    asm-sem    : String → Behavior
-    -- this arch's flat-machine SigOp trace of the compiled `main` IR
-    -- (`nothing` ⇒ a library, no entry ⇒ []); def = `flat-events ∘
-    -- ir-to-trace` from the loader entry (rides the per-target flat-sim).
-    -- D244/D245: …of the compiled PROGRAM (main and its function table), for a
-    -- LINKED one — every internal call names an entry of the table.
-    -- plan 0.105: …linked against the signatures this world declares.
+    -- this arch's flat-machine SigOp trace of a compiled, linked PROGRAM
+    -- (D244/D245; plan 0.105: linked against the signatures this world declares).
     flat-trace : (p : IRProgram) → LinkedProgram (sig ι) p → Behavior
-    -- assemble-then-execute reproduces the asm-text meaning. HONEST
-    -- precondition (Plan 0.50): `as` is trusted only for asm produced by
-    -- compiling a module whose emitted symbols are distinct — the apex
-    -- supplies this via `program-no-clash` (→ `once-symbol-injective`).
-    assemble-correct :
-      ∀ (m : P.Module) (asm : String) →
-      C.compileFromModule C.Heap C.Build false arch m ≡ C.Built asm →
-      DistinctSymbols m →
-      ∀ (n : ℕ) →
-      at (ArchSemantics.exec-bytes as ι (ArchSemantics.assemble as asm)) n ≡ at (asm-sem asm) n
-    -- the emitted asm's meaning equals the flat trace of the compiled IR.
-    -- D100 — HONEST PRECONDITION, the second one: the emitted LOCAL labels are
-    -- pairwise distinct. This is where the toolchain is trusted TODAY (each
-    -- arch's `<arch>-loader-faithful`), and `as` rejects a file that defines a
-    -- label twice — so without this premise the field is FALSE, not merely
-    -- unproved, for any program the emitter duplicates. `DistinctSymbols` on
-    -- `assemble-correct` is the same idea one level up; note it went VACUOUS
-    -- there once `asm-sem` was defined as `exec-bytes ∘ assemble`, which is the
-    -- general trap — a precondition attached to a trust point stays behind when
-    -- the trust point moves. The apex supplies this one (`program-labels-
-    -- distinct`), so `correct` gains no hypothesis.
-    -- D165 — AND THE RHS IS THE PROGRAM ACTUALLY EMITTED. It used to be
-    -- `flat-trace (moduleToIR m)`, the flat machine on the RAW IR, while `asm`
-    -- is built from `rewrite-ir (directCallIR …)`. So this field was relating
-    -- TWO DIFFERENT PROGRAMS and silently asserting the arith-lifting pass
-    -- preserved meaning — compiler logic inside a toolchain axiom, which is
-    -- D161's fault one level up. The pass is now named (`moduleToIR-emitted`)
-    -- and its preservation is `SourceTrace.rewrite-program-preserves`, so what THIS field
-    -- trusts is only the assembler/loader/printer round trip.
-    -- D167 — HONEST PRECONDITION, the third: the emitted text LINKS. `as`
-    -- rejects a duplicate definition (`DistinctSymbols`, `DistinctLabels`);
-    -- `ld` rejects a call to a symbol nothing defines, and THAT half was
-    -- stated nowhere. Without it this field is FALSE, not merely unproved, for
-    -- any program that emits an unlifted compiler-minted SigOp — which is
-    -- precisely what D163 shipped through a green apex. The apex supplies it
-    -- (`program-symbols-resolvable`), so `correct` gains no hypothesis.
-    asm-trace-correct :
-      ∀ (m : P.Module) (asm : String) →
-      C.compileFromModule C.Heap C.Build false arch m ≡ C.Built asm →
-      DistinctLabels arch m →
-      LabelsResolvable arch m →
-      SymbolsResolvable arch m →
+    -- THE FILE IS WELL-FORMED: what `as` (with `ld`) demands — every symbol
+    -- defined once, every reference defined or an interpretation symbol, the
+    -- entry point an instruction. A PROOF obligation: the compiler must SHOW
+    -- what the toolchain will check (D100/D167 were its postulated halves).
+    file-wf :
+      ∀ (m : P.Module) (F : C.FileOf arch) →
+      C.compileFileFromModule C.Heap false arch m ≡ inj₂ F →
+      AsmWF-of arch F
+    -- RUNNING THE FILE IS THE FLAT TRACE OF THE PROGRAM IT WAS EMITTED FROM: the
+    -- `_start` stub, then the lowered image. Stated over the FILE (a value of the
+    -- arch's syntax), so a disagreement between what is emitted and what the
+    -- proofs reason about is a failed proof, not a hidden one (D261).
+    file-trace-correct :
+      ∀ (m : P.Module) (F : C.FileOf arch) →
+      C.compileFileFromModule C.Heap false arch m ≡ inj₂ F →
       ∀ (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) (mi : moduleToIR m ≡ just ir) →
-      -- plan 0.105: in a world that declares the signatures `m` is compiled
-      -- against (the binary links against them).
       (ls : moduleSig m ≡ sig ι) →
-      ∀ (n : ℕ) → at (asm-sem asm) n
+      ∀ (n : ℕ) → at (run-file arch ι F) n
                 ≡ at (flat-trace (rewrite-program (irProgram (moduleTable m) ir))
                                  (subst (λ σ → LinkedProgram σ (rewrite-program (irProgram (moduleTable m) ir))) ls
                                    (rewrite-program-linked (irProgram (moduleTable m) ir)
                                       (moduleToProgram-linked m ir mi)))) n
-    -- (D165's `rewrite-preserves` field is GONE from this record: at D244 the
-    -- arith pass is stated at the MEANING, `SourceTrace.rewrite-program-
-    -- preserves`, once for every target, and the flat side follows from
-    -- `ir-flat-correct` at the rewritten program.)
-    -- the flat machine's SigOp trace of a compiled IR equals its `obs`.
-    -- D113: at THIS arch's float format. The record is already indexed by
-    -- `arch`, so the obligation sharpens without changing shape — the flat
-    -- machine's trace must match the denotation the SAME target means.
+    -- the flat machine's SigOp trace of a compiled IR equals its `obs` (D113: at
+    -- THIS arch's float format).
     ir-flat-correct :
       ∀ (p : IRProgram) (lk : LinkedProgram (sig ι) p) (n : ℕ)
       → at (flat-trace p lk) n ≡ at (⟦ just p ⟧IR (arch-numerics arch) ι) n
+
+-- The CLI's text and the verified compiler's file are ONE pipeline (plan 0.107):
+-- the Build stage is the print of the file.
+build≡file-ef : ∀ (doOpt : Bool) (arch : Arch) (m : P.Module) (ef : String ⊎ List C.Entry)
+              → C.cfm-ef-aux C.Heap C.Build doOpt arch m ef ≡ C.built-of arch (C.cfm-file-ef C.Heap doOpt arch m ef)
+build≡file-ef doOpt arch m (inj₁ err) = refl
+build≡file-ef doOpt arch m (inj₂ es)  = refl
+
+build≡file : ∀ (doOpt : Bool) (arch : Arch) (m : P.Module)
+           → C.compileFromModule C.Heap C.Build doOpt arch m ≡ C.built-of arch (C.compileFileFromModule C.Heap doOpt arch m)
+build≡file doOpt arch m = build≡file-ef doOpt arch m (C.extractFunctions (C.extractAliases m) m)
+
+built-of-inv : ∀ (arch : Arch) (r : String ⊎ C.FileOf arch) (asm : String)
+             → C.built-of arch r ≡ C.Built asm → Σ-syntax (C.FileOf arch) (λ F → r ≡ inj₂ F)
+built-of-inv arch (inj₁ err) asm ()
+built-of-inv arch (inj₂ F)   asm _ = F , refl
 
 -- (The former `no-main-empty` library-case postulate is gone: with
 -- `⟦_⟧M = ⟦ moduleToIR m ⟧IR`, the library case `moduleToIR m ≡ nothing` is
@@ -319,39 +316,20 @@ import Once.Adequacy.FrontEndBridge as FB
 -- `Once.Adequacy.CPU.arch-semantics`.
 ------------------------------------------------------------------------
 
-module WithCPU (arch-sem : Arch → ArchSemantics)
-               (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect arch (arch-sem arch) ι) where
+module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect arch ι) where
 
-  -- per-arch assembler, from the injected `ArchSemantics` bundle (the
-  -- GNU `as` trust, confined to the driver's instances).
-  string-to-bytes : Arch → String → List Byte
-  string-to-bytes arch = ArchSemantics.assemble (arch-sem arch)
-
-  -- The compile function — concrete body via the existing pipeline,
-  -- finishing with the injected per-arch assembler.
-  --
-  -- This is the VERIFIED *executable* compiler (Plan 0.48): it produces bytes
-  -- only for a runnable program — one whose module has a compilable `main`
-  -- (`moduleToIR m ≡ just _`). A source with no `main` is a *library*, which
-  -- has no runnable behaviour (`⟦_⟧⊥ ≡ nothing`), so `compile ≡ nothing` too —
-  -- this gate is what makes the accept/reject boundary coincide with `⟦_⟧⊥`'s
-  -- just/nothing boundary by construction (no `built⇒main` axiom). The CLI's
-  -- separate library-build path (raw `compileFromModule` + its own `hasMain`)
-  -- is unaffected; libraries get their own correctness later.
-  --
-  -- Factored through explicit-argument helpers (NOT `with`-blocks): every
-  -- branch matches a bound `Maybe`/`CompileResult` variable, so `correct`'s
-  -- companion helpers (`correct-cr`/`-mir`/`-gm`) stay well-typed on the
-  -- neutral pipeline terms without any `with`-reduction alignment.
-  compile-cr : Arch → C.CompileResult → Maybe (List Byte)
-  compile-cr arch (C.Built asm)  = just (string-to-bytes arch asm)
-  compile-cr arch (C.Parsed _ _) = nothing
-  compile-cr arch (C.Checked _)  = nothing
-  compile-cr arch (C.Error _)    = nothing
+  -- The compile function — the VERIFIED *executable* compiler (Plan 0.48): bytes
+  -- only for a runnable program (a module with a compilable `main`); a library
+  -- has no runnable behaviour, so `compile ≡ nothing`. PLAN 0.107: the bytes are
+  -- `as` on the PRINT of the emitted FILE — the same file the obligations below
+  -- are about. Explicit-argument helpers, no `with`.
+  compile-fe : (arch : Arch) → String ⊎ C.FileOf arch → Maybe (List Byte)
+  compile-fe arch (inj₁ _) = nothing
+  compile-fe arch (inj₂ F) = just (file-bytes arch F)
 
   compile-mir : Arch → Bool → P.Module → Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋) → Maybe (List Byte)
   compile-mir arch doOpt m nothing   = nothing
-  compile-mir arch doOpt m (just _)  = compile-cr arch (C.compileFromModule C.Heap C.Build doOpt arch m)
+  compile-mir arch doOpt m (just _)  = compile-fe arch (C.compileFileFromModule C.Heap doOpt arch m)
 
   compile-gm : Arch → Bool → Maybe P.Module → Maybe (List Byte)
   compile-gm arch doOpt nothing   = nothing
@@ -373,13 +351,13 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   refuse-gated : ∀ (arch : Arch) (doOpt : Bool) (m : P.Module)
                    (es : List C.Entry)
                    (d : Dec (AdmissibleM arch m)) → ¬ AdmissibleM arch m
-               → compile-cr arch (C.cfm-build-gated C.Heap doOpt arch m es d) ≡ nothing
+               → compile-fe arch (C.cfm-file-gated C.Heap doOpt arch m es d) ≡ nothing
   refuse-gated arch doOpt m es (yes p) ¬adm = ⊥-elim (¬adm p)
   refuse-gated arch doOpt m es (no  _) ¬adm = refl
 
   refuse-ef : ∀ (arch : Arch) (doOpt : Bool) (m : P.Module)
                 (ef : String ⊎ List C.Entry) → ¬ AdmissibleM arch m
-            → compile-cr arch (C.cfm-ef-aux C.Heap C.Build doOpt arch m ef) ≡ nothing
+            → compile-fe arch (C.cfm-file-ef C.Heap doOpt arch m ef) ≡ nothing
   refuse-ef arch doOpt m (inj₁ err)            ¬adm = refl
   refuse-ef arch doOpt m (inj₂ es) ¬adm =
     refuse-gated arch doOpt m es (admissibleM? arch m) ¬adm
@@ -403,14 +381,14 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   accept-gated : ∀ (arch : Arch) (doOpt : Bool) (m : P.Module)
                    (es : List C.Entry)
                    (d : Dec (AdmissibleM arch m)) {bytes : List Byte}
-               → compile-cr arch (C.cfm-build-gated C.Heap doOpt arch m es d) ≡ just bytes
+               → compile-fe arch (C.cfm-file-gated C.Heap doOpt arch m es d) ≡ just bytes
                → AdmissibleM arch m
   accept-gated arch doOpt m es (yes p) eq = p
   accept-gated arch doOpt m es (no  _) ()
 
   accept-ef : ∀ (arch : Arch) (doOpt : Bool) (m : P.Module)
                 (ef : String ⊎ List C.Entry) {bytes : List Byte}
-            → compile-cr arch (C.cfm-ef-aux C.Heap C.Build doOpt arch m ef) ≡ just bytes
+            → compile-fe arch (C.cfm-file-ef C.Heap doOpt arch m ef) ≡ just bytes
             → AdmissibleM arch m
   accept-ef arch doOpt m (inj₁ err)            ()
   accept-ef arch doOpt m (inj₂ es) eq =
@@ -470,7 +448,9 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   correctR-complete arch doOpt src (mR , mt , hvm) (mU , pt , rmR) adm
     with MC.moduleToIR-complete mR mt hvm
   ... | (ir , mi) with main⇒built arch doOpt mR ir adm mi
-  ...   | (asm , built-eq) = string-to-bytes arch asm , c≡j
+  ...   | (asm , built-eq) with built-of-inv arch (C.compileFileFromModule C.Heap doOpt arch mR) asm
+                                  (trans (sym (build≡file doOpt arch mR)) built-eq)
+  ...     | (F , file-eq) = file-bytes arch F , c≡j
     where p-eq : parseStrict (Source.srcText src) ≡ inj₂ mU
           p-eq = FB.parseStrict-complete (Source.srcText src) mU pt
           res-eq : C.resolveImports (Source.srcImports src) mU ≡ inj₂ mR
@@ -478,8 +458,8 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
                      (P.Module.decls mU) mR rmR
           stm-eq : srcToModule src ≡ just mR
           stm-eq = srcToModule-just src mU mR p-eq res-eq
-          c≡j : compile arch doOpt src ≡ just (string-to-bytes arch asm)
-          c≡j rewrite stm-eq | mi | built-eq = refl
+          c≡j : compile arch doOpt src ≡ just (file-bytes arch F)
+          c≡j rewrite stm-eq | mi | file-eq = refl
 
   -- Plan 0.105 (D257): ACCEPTANCE IS WORLD-FREE. Bytes came out ⇒ the source
   -- resolved to a module `m` with a `main` (`compile-just-ir`), and a module
@@ -548,58 +528,27 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
 
     -- bytes-level execution, derived from the injected per-arch semantics.
     exec : Arch → List Byte → Behavior
-    exec arch bytes = ArchSemantics.exec-bytes (arch-sem arch) ι bytes
+    exec arch bytes = ArchSemantics.exec-bytes (CPU.arch-semantics arch) ι bytes
 
-    -- This arch's asm-text meaning, read off the injected `arch-correct` witness.
-    ⟦_⟧A_ : Arch → String → Behavior
-    ⟦ arch ⟧A asm = ArchCorrect.asm-sem (arch-correct ι arch) asm
-
-    -- Stage 3 — assemble-then-execute matches the asm-text meaning. NOT a
-    -- postulate here: it is the per-arch `assemble-correct` obligation, which the
-    -- arch's instance discharges or (today, GNU `as`) postulates.
-    string-to-bytes-correct :
-      ∀ (arch : Arch) (m : P.Module) (asm : String) →
-      C.compileFromModule C.Heap C.Build false arch m ≡ C.Built asm →
-      ∀ (n : ℕ) → at (exec arch (string-to-bytes arch asm)) n ≡ at (⟦ arch ⟧A asm) n
-    string-to-bytes-correct arch m asm cf n =
-      ArchCorrect.assemble-correct (arch-correct ι arch) m asm cf
-        (program-no-clash m) n
-
-    -- FACTOR 2 — the per-arch asm/printer bridge (`asm-trace-correct`) composed
-    -- with the per-arch IR-observable theorem (`ir-flat-correct`). A theorem here;
-    -- the obligations live (and are discharged or postulated) in the arch instance.
-    codegen-asm-correct :
-      ∀ (arch : Arch) (m : P.Module) (asm : String) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) →
-      C.compileFromModule C.Heap C.Build false arch m ≡ C.Built asm →
+    -- PLAN 0.107: THE CHAIN, over the FILE. Assembled, the well-formed file runs
+    -- its program (`as`, the one trust); running the file is the flat trace of
+    -- the rewritten program (`file-trace-correct`); the flat trace is its `obs`
+    -- (`ir-flat-correct`); the arith pass preserves the meaning
+    -- (`rewrite-program-preserves`). Every link but the first is a proof.
+    file-correct :
+      ∀ (arch : Arch) (m : P.Module) (F : C.FileOf arch) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) →
+      C.compileFileFromModule C.Heap false arch m ≡ inj₂ F →
       moduleToIR m ≡ just ir →
-      -- plan 0.105: in a world that declares the module's signatures
       moduleSig m ≡ sig ι →
-      ∀ (n : ℕ) → at (⟦ arch ⟧A asm) n ≡ at (⟦ just (irProgram (moduleTable m) ir) ⟧IR (arch-numerics arch) ι) n
-    -- D165: three steps now, not two — the middle one is the arith pass, which
-    -- used to be folded into the first. D244: all three are about the PROGRAM.
-    codegen-asm-correct arch m asm ir eq mi ls n =
-      trans (ArchCorrect.asm-trace-correct (arch-correct ι arch) m asm eq
-               (program-labels-distinct arch m)
-               (program-labels-resolvable arch m)
-               (program-symbols-resolvable arch m) ir mi ls n)
+      ∀ (n : ℕ) → at (exec arch (file-bytes arch F)) n ≡ at (⟦ just (irProgram (moduleTable m) ir) ⟧IR (arch-numerics arch) ι) n
+    file-correct arch m F ir eq mi ls n =
+      trans (cong (λ b → at b n) (exec-file arch ι F (ArchCorrect.file-wf (arch-correct ι arch) m F eq)))
+      (trans (ArchCorrect.file-trace-correct (arch-correct ι arch) m F eq ir mi ls n)
       (trans (ArchCorrect.ir-flat-correct (arch-correct ι arch) (rewrite-program P)
                 (subst (λ σ → LinkedProgram σ (rewrite-program P)) ls
                   (rewrite-program-linked P (moduleToProgram-linked m ir mi))) n)
-             (rewrite-program-preserves (arch-numerics arch) ι P n))
+             (rewrite-program-preserves (arch-numerics arch) ι P n)))
       where P = irProgram (moduleTable m) ir
-
-    -- Stage 2 — asm trace = SOURCE trace. With `⟦_⟧M = ⟦ moduleToIR m ⟧IR`
-    -- (D059/D060: the source meaning IS the denotational `evalᴰ`), this is
-    -- `codegen-asm-correct` DIRECTLY — there is no separate `SS.eval` chain to
-    -- bridge; the surface/IR presentations are tied by `faithful` (D060). The library
-    -- (`moduleToIR m ≡ nothing`) case is handled by `codegen-asm-correct` via
-    -- `⟦ nothing ⟧IR = []` (no `mta-aux`/`no-main-empty` needed).
-    module-to-asm-correct :
-      ∀ (arch : Arch) (m : P.Module) (asm : String) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) →
-      C.compileFromModule C.Heap C.Build false arch m ≡ C.Built asm →
-      moduleToIR m ≡ just ir → moduleSig m ≡ sig ι →
-      ∀ (n : ℕ) → at (⟦ arch ⟧A asm) n ≡ at (⟦ just (irProgram (moduleTable m) ir) ⟧IR (arch-numerics arch) ι) n
-    module-to-asm-correct arch m asm ir eq mi ls n = codegen-asm-correct arch m asm ir eq mi ls n
 
     --------------------------------------------------------------------
     -- The grand theorem — by composition of the per-stage postulates.
@@ -690,12 +639,12 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
     -- optimize lift). The doOpt=false trace is PROVEN from the codegen chain
     -- (`trace-false` below).
     postulate
-      opt-trace : ∀ (arch : Arch) (m : P.Module) (asm : String) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) →
-        C.compileFromModule C.Heap C.Build true arch m ≡ C.Built asm →
+      opt-trace : ∀ (arch : Arch) (m : P.Module) (F : C.FileOf arch) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) →
+        C.compileFileFromModule C.Heap true arch m ≡ inj₂ F →
         moduleToIR m ≡ just ir →
         -- plan 0.105: in a world that declares the module's signatures
         moduleSig m ≡ sig ι →
-        ∀ (n : ℕ) → at (exec arch (string-to-bytes arch asm)) n ≡ at (⟦ just (irProgram (moduleTable m) ir) ⟧IR (arch-numerics arch) ι) n
+        ∀ (n : ℕ) → at (exec arch (file-bytes arch F)) n ≡ at (⟦ just (irProgram (moduleTable m) ir) ⟧IR (arch-numerics arch) ι) n
 
 
     -- The Built-case trace obligation, abstracted: GIVEN a `main` (`moduleToIR m
@@ -704,25 +653,24 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
     -- (the proven codegen chain for `false`; `opt-trace` for `true`).
     TraceAt : Arch → Bool → P.Module → IR ⌊ Unit ⌋ ⌊ Unit ⌋ → Set
     TraceAt arch doOpt m ir =
-      ∀ (asm : String) → C.compileFromModule C.Heap C.Build doOpt arch m ≡ C.Built asm →
-      exec arch (string-to-bytes arch asm) ≋ ⟦ just (irProgram (moduleTable m) ir) ⟧IR (arch-numerics arch) ι
+      ∀ (F : C.FileOf arch) → C.compileFileFromModule C.Heap doOpt arch m ≡ inj₂ F →
+      exec arch (file-bytes arch F) ≋ ⟦ just (irProgram (moduleTable m) ir) ⟧IR (arch-numerics arch) ι
 
     -- Layer 3 — over the compile RESULT. The accept case is `PW.just` of the
     -- supplied trace witness; the three reject results are ruled out by
     -- `main⇒built` (a `main` always Builds), so `compile` here can only Build.
-    correct-cr : ∀ (arch : Arch) (doOpt : Bool) (m : P.Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋)
-                   (cr : C.CompileResult) → AdmissibleM arch m →
-                   C.compileFromModule C.Heap C.Build doOpt arch m ≡ cr →
+    correct-fe : ∀ (arch : Arch) (doOpt : Bool) (m : P.Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋)
+                   (fe : String ⊎ C.FileOf arch) → AdmissibleM arch m →
+                   C.compileFileFromModule C.Heap doOpt arch m ≡ fe →
                    moduleToIR m ≡ just ir →
                    TraceAt arch doOpt m ir →
-                   Pointwise _≋_ (map (exec arch) (compile-cr arch cr)) (⟦ programAt (moduleTable m) (just ir) ⟧⊥-ir arch)
-    correct-cr arch doOpt m ir (C.Built asm)  adm cf-eq mi-eq tw = PW.just (tw asm cf-eq)
-    correct-cr arch doOpt m ir (C.Parsed _ _) adm cf-eq mi-eq tw =
-      case trans (sym cf-eq) (proj₂ (main⇒built arch doOpt m ir adm mi-eq)) of λ ()
-    correct-cr arch doOpt m ir (C.Checked _)  adm cf-eq mi-eq tw =
-      case trans (sym cf-eq) (proj₂ (main⇒built arch doOpt m ir adm mi-eq)) of λ ()
-    correct-cr arch doOpt m ir (C.Error _)    adm cf-eq mi-eq tw =
-      case trans (sym cf-eq) (proj₂ (main⇒built arch doOpt m ir adm mi-eq)) of λ ()
+                   Pointwise _≋_ (map (exec arch) (compile-fe arch fe)) (⟦ programAt (moduleTable m) (just ir) ⟧⊥-ir arch)
+    correct-fe arch doOpt m ir (inj₂ F)   adm fe-eq mi-eq tw = PW.just (tw F fe-eq)
+    correct-fe arch doOpt m ir (inj₁ err) adm fe-eq mi-eq tw =
+      -- a program with `main` always Builds (`main⇒built`), and Build IS the
+      -- print of the file, so the file cannot be an error.
+      case trans (sym (cong (C.built-of arch) fe-eq))
+                 (trans (sym (build≡file doOpt arch m)) (proj₂ (main⇒built arch doOpt m ir adm mi-eq))) of λ ()
 
     -- Layer 2 — over `moduleToIR m`. No `main` ⇒ both sides `nothing` (the
     -- executable gate, definitional); a `main` ⇒ defer to `correct-cr`.
@@ -733,7 +681,7 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
                     Pointwise _≋_ (map (exec arch) (compile-mir arch doOpt m mir)) (⟦ programAt (moduleTable m) mir ⟧⊥-ir arch)
     correct-mir arch doOpt m nothing   adm mi-eq tw = PW.nothing
     correct-mir arch doOpt m (just ir) adm mi-eq tw =
-      correct-cr arch doOpt m ir (C.compileFromModule C.Heap C.Build doOpt arch m) adm refl mi-eq (tw ir refl)
+      correct-fe arch doOpt m ir (C.compileFileFromModule C.Heap doOpt arch m) adm refl mi-eq (tw ir refl)
 
 
     -- Layer 1 — over `gmoduleToModule src`. Unparseable ⇒ both `nothing`;
@@ -771,10 +719,9 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
               (∀ m → srcToModule src ≡ just m → moduleSig m ≡ sig ι) →
               Pointwise _≋_ (map (exec arch) (compile arch doOpt src)) (⟦ src ⟧⊥ arch)
     correct arch false src ls = correct-gm arch false (srcToModule src)
-      (λ m sm ir mi asm cf n → trans (string-to-bytes-correct arch m asm cf n)
-                                      (module-to-asm-correct arch m asm ir cf mi (ls m sm) n))
+      (λ m sm ir mi F cf n → file-correct arch m F ir cf mi (ls m sm) n)
     correct arch true src ls = correct-gm arch true (srcToModule src)
-      (λ m sm ir mi asm cf n → opt-trace arch m asm ir cf mi (ls m sm) n)
+      (λ m sm ir mi F cf n → opt-trace arch m F ir cf mi (ls m sm) n)
 
     -- ════════════════════════════════════════════════════════════════════
     -- SOUNDNESS, as a COROLLARY OF `correct` (Plan 0.48): not a sibling

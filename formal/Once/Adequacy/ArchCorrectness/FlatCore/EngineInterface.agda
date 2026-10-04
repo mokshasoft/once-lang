@@ -153,7 +153,12 @@ record TraceLoop (E : Emitter) (M : Machine E) : Set₁ where
     -- pinned, not quantified: the SigOp contracts are false over an arbitrary
     -- `ev`/`env` (2026-07-30)
     ev-arch : String → State → List SigOpEvent
-    arith-env : List Instr → String → Maybe Payload
+    -- plan 0.107: WHICH table is the arith env — the emitted FILE's block
+    -- table for the program whose image is `prog`. A relation, because the
+    -- file's blocks are the program's (`Once.Compile`), not readable off the
+    -- code; pinned per arch, since the contracts are false over an arbitrary
+    -- table.
+    ArithTable : AbstractTrace → (String → Maybe Payload) → Set
     -- HOW A SIGOP IS LOWERED, the same on every target: to ONE call by symbol.
     sigop-call : String → Instr
     sigop-lowering : ∀ {A B} (si : SigOpInfo A B)

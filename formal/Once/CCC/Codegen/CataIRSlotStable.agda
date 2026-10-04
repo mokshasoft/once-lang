@@ -44,7 +44,7 @@ open import Once.IR
 open import Once.CCC.Label using (ℓ)
 open import Once.IRTy using (⌈_⌉F; WellFormedFI; wf-K; wf-Id; wf-Sum; wf-Prod)
 open import Once.Type using (Functor; K; Id; _⊕_; _⊗_; fits-int; fits-float)
-open import Once.CCC.Machine.SMCore using (blocks-layout)
+open import Once.CCC.Machine.SMCore using (blocks-layout; link-top)
 open import Once.CCC.Machine.SMCore using (LabelId; AbstractTrace; AbstractInstr;
          mov-to-output; mov-to-input; load-indirect; load-indirect-suc; load-from-slot; store-at-slot;
          store-indirect; store-indirect-suc; lea-slot; restore-input;
@@ -56,7 +56,7 @@ open import Once.CCC.Machine.SMCore using (LabelId; AbstractTrace; AbstractInstr
          instr-reg-op; instr-ctrl; lea-indexed;
          module AbstractExec)
 open import Once.CCC.Codegen.IRToTrace o
-  using (ir-to-trace; ir-to-trace-lab; ir-to-trace'; cata-strategy; cata-dispatch; resuspend-layer;
+  using (ir-to-trace; ir-to-trace-lab; ir-to-unit; ir-to-trace'; cata-strategy; cata-dispatch; resuspend-layer;
          CataStrategy; strat-const; strat-nat; strat-linear; strat-branching;
          cata-trace-nat; cata-trace-linear; cata-trace-branching;
          visit-walk; rebuild-walk; lsize; cata-br-I₁; cata-br-I₂;
@@ -475,3 +475,9 @@ module CataIRSlotStable {FS : FrameSemantics} where
   ir-to-trace-lab-slot-stable ir l =
     ++⁺ (ir-stable ir 0 l)
         (tt ∷ᴬ blocks-stable _ (ir-blocks-stable ir 0 l))
+
+  -- Plan 0.107: …and the OUTERMOST unit, linked with the silent stop.
+  ir-to-trace-top-slot-stable : ∀ {A B} (ir : IR A B) (d : LabelId) → AllSlotStable (link-top d (ir-to-unit ir))
+  ir-to-trace-top-slot-stable ir d =
+    ++⁺ (ir-stable ir 0 0)
+        (tt ∷ᴬ tt ∷ᴬ blocks-stable _ (ir-blocks-stable ir 0 0))

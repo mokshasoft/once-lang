@@ -156,6 +156,14 @@ step-lla : ∀ {prog s rd ℓ jix}
            ≡ just (record s { regs = writeReg (regs s) rd jix ; pc = pc s + 1 })
 step-lla ft fl rewrite ft | fl = refl
 
+-- plan 0.107: a DATA symbol's address — the runtime's `.bss` heap, at 0
+-- w.l.o.g.
+step-lla-sym : ∀ {prog s rd x}
+             → fetch prog (pc s) ≡ just (lla-sym rd x)
+             → step-not-halted prog s
+               ≡ just (record s { regs = writeReg (regs s) rd 0 ; pc = pc s + 1 })
+step-lla-sym ft rewrite ft = refl
+
 step-lla-missing : ∀ {prog s rd ℓ}
                  → fetch prog (pc s) ≡ just (lla rd ℓ)
                  → find-label prog (thunk ℓ) ≡ nothing

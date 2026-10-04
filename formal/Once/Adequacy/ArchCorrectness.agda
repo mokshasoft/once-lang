@@ -38,34 +38,40 @@ import Once.Adequacy.ArchCorrectness.X86-64.ResourceBounds as RB
 import Once.Adequacy.ArchCorrectness.RiscV64.ResourceBounds as RBr
 import Once.Adequacy.ArchCorrectness.X86-32.ResourceBounds as RB32
 
+-- plan 0.107: the program's owner is the compiler's own (`Once.Compile.entry-owner`)
+-- — fixed, because the file the compiler emits is labelled with it.
+import Once.Compile as Co
+
 module Once.Adequacy.ArchCorrectness
-  (o : CanonicalName)
-  (x86-64-heap-room : ∀ ι → RB.HeapRoom o ι) (x86-64-stack-room : ∀ ι → RB.StackRoom o ι)
-  (x86-64-call-room : ∀ ι → RB.CallRoom o ι)
-  (x86-64-reg-range : ∀ ι → RB.RegRange o ι)
-  (x86-64-scratch-dec-guarded : ∀ ι → RB.ScratchDecGuarded o ι)
-  (x86-64-addr-no-wrap : ∀ ι → RB.AddrNoWrap o ι)
-  (x86-64-lit-fits : ∀ ι → RB.LitFits o ι)
+  (x86-64-heap-room : ∀ ι → RB.HeapRoom Co.entry-owner ι) (x86-64-stack-room : ∀ ι → RB.StackRoom Co.entry-owner ι)
+  (x86-64-call-room : ∀ ι → RB.CallRoom Co.entry-owner ι)
+  (x86-64-reg-range : ∀ ι → RB.RegRange Co.entry-owner ι)
+  (x86-64-scratch-dec-guarded : ∀ ι → RB.ScratchDecGuarded Co.entry-owner ι)
+  (x86-64-addr-no-wrap : ∀ ι → RB.AddrNoWrap Co.entry-owner ι)
+  (x86-64-lit-fits : ∀ ι → RB.LitFits Co.entry-owner ι)
   -- riscv64's family, now the SAME EIGHT as x86-64's (plan 0.65 G3): three of
   -- them were all that existed while its simulation was whole-cloth.
-  (riscv64-heap-room : ∀ ι → RBr.HeapRoom o ι) (riscv64-stack-room : ∀ ι → RBr.StackRoom o ι)
-  (riscv64-call-room : ∀ ι → RBr.CallRoom o ι)
-  (riscv64-reg-range : ∀ ι → RBr.RegRange o ι)
-  (riscv64-scratch-dec-guarded : ∀ ι → RBr.ScratchDecGuarded o ι)
-  (riscv64-slot-addr-no-wrap : ∀ ι → RBr.SlotAddrNoWrap o ι)
-  (riscv64-addr-no-wrap : ∀ ι → RBr.AddrNoWrap o ι)
-  (riscv64-lit-fits : ∀ ι → RBr.LitFits o ι)
+  (riscv64-heap-room : ∀ ι → RBr.HeapRoom Co.entry-owner ι) (riscv64-stack-room : ∀ ι → RBr.StackRoom Co.entry-owner ι)
+  (riscv64-call-room : ∀ ι → RBr.CallRoom Co.entry-owner ι)
+  (riscv64-reg-range : ∀ ι → RBr.RegRange Co.entry-owner ι)
+  (riscv64-scratch-dec-guarded : ∀ ι → RBr.ScratchDecGuarded Co.entry-owner ι)
+  (riscv64-slot-addr-no-wrap : ∀ ι → RBr.SlotAddrNoWrap Co.entry-owner ι)
+  (riscv64-addr-no-wrap : ∀ ι → RBr.AddrNoWrap Co.entry-owner ι)
+  (riscv64-lit-fits : ∀ ι → RBr.LitFits Co.entry-owner ι)
   -- …and x86-32's, the SAME family again (plan 0.66 X3). It had NONE until now,
   -- for the reason D107 names: its simulation was whole-cloth, so nothing above
   -- ever asked what resources the running program needs. Seven, not eight —
   -- `SlotAddrNoWrap` is riscv64's alone (D104: x86-32 computes a slot address
   -- with `lea`, which carries no range obligation, exactly as x86-64 does).
-  (x86-32-heap-room : ∀ ι → RB32.HeapRoom o ι) (x86-32-stack-room : ∀ ι → RB32.StackRoom o ι)
-  (x86-32-call-room : ∀ ι → RB32.CallRoom o ι)
-  (x86-32-reg-range : ∀ ι → RB32.RegRange o ι)
-  (x86-32-scratch-dec-guarded : ∀ ι → RB32.ScratchDecGuarded o ι)
-  (x86-32-addr-no-wrap : ∀ ι → RB32.AddrNoWrap o ι)
-  (x86-32-lit-fits : ∀ ι → RB32.LitFits o ι) where
+  (x86-32-heap-room : ∀ ι → RB32.HeapRoom Co.entry-owner ι) (x86-32-stack-room : ∀ ι → RB32.StackRoom Co.entry-owner ι)
+  (x86-32-call-room : ∀ ι → RB32.CallRoom Co.entry-owner ι)
+  (x86-32-reg-range : ∀ ι → RB32.RegRange Co.entry-owner ι)
+  (x86-32-scratch-dec-guarded : ∀ ι → RB32.ScratchDecGuarded Co.entry-owner ι)
+  (x86-32-addr-no-wrap : ∀ ι → RB32.AddrNoWrap Co.entry-owner ι)
+  (x86-32-lit-fits : ∀ ι → RB32.LitFits Co.entry-owner ι) where
+
+o : CanonicalName
+o = Co.entry-owner
 
 open import Once.Adequacy.CPU using (Arch; x86-64; x86-32; riscv64; arch-semantics)
 open import Once.Adequacy.Compile using (ArchCorrect)
@@ -73,7 +79,8 @@ open import Data.List using (List; [])
 open import Data.Product using (proj₁)
 open import Relation.Binary.PropositionalEquality using (refl)
 open import Once.Denotation.Program using (IRFun; table; main; irProgram; LinkedProgram)
-open import Once.Adequacy.SourceTrace using (moduleToIR; moduleTable; rewrite-program; rewrite-program-linked)
+open import Once.Adequacy.SourceTrace using (rewrite-program-linked)
+open import Once.Compile using (moduleToIR; moduleTable; rewrite-program)
 open import Once.Adequacy.ProgramLinked using (moduleToProgram-linked)
 open import Once.IR using (IR)
 open import Once.IRTy using (⌊_⌋)
@@ -83,6 +90,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; subst)
 open import Once.Spec.Module using (moduleSig)
 import Once.Parser.Module.Core as P
 
+import Once.Adequacy.FileWF as FileWF
 import Once.Adequacy.ArchCorrectness.X86-64 as A64
 import Once.Adequacy.ArchCorrectness.X86-32 as A32
 import Once.Adequacy.ArchCorrectness.RiscV64 as ARV
@@ -118,41 +126,44 @@ BlockRunsHyp-x86-32 = (ι : Interp) (tbl : List IRFun) → X32.BlockRunsHyp-x86-
 BlockRunsHyp-riscv64 : Set
 BlockRunsHyp-riscv64 = (ι : Interp) (tbl : List IRFun) → RV.BlockRunsHyp-riscv64 ι tbl
 
-x86-64-correct : BlockRunsHyp-x86-64 → ∀ (ι : Interp) → ArchCorrect x86-64 (arch-semantics x86-64) ι
+x86-64-correct : BlockRunsHyp-x86-64 → ∀ (ι : Interp) → ArchCorrect x86-64 ι
 x86-64-correct brs ι = record
-  { asm-sem           = X64.asm-sem-x86-64 ι []
-  ; flat-trace        = λ p lk → X64.flat-x86-64 ι (table p) (brs ι (table p)) (main p) lk
-  ; assemble-correct  = λ _ _ _ _ _ → refl
-  ; asm-trace-correct = λ m asm eq dl lr sr ir mi ls n →
-      X64.asm-flat-x86-64 ι (TP m ir) (brs ι (TP m ir)) m asm eq dl lr sr ir mi refl
+  { flat-trace         = λ p lk → X64.flat-x86-64 ι (table p) (brs ι (table p)) (main p) lk
+  -- plan 0.107: the emitted FILE is well-formed (proved, per arch) …
+  ; file-wf            = λ m F eq → FileWF.file-wf x86-64 m F eq
+  -- … and running it is the flat trace of the program it was emitted from.
+  ; file-trace-correct = λ m F eq ir mi ls n →
+      X64.file-flat-x86-64 ι (TP m ir) (brs ι (TP m ir)) m F eq ir mi refl refl
         (subst (λ σ → LinkedProgram σ (rewrite-program (irProgram (moduleTable m) ir))) ls (LK m ir mi)) n
-  ; ir-flat-correct   = λ p lk → X64.ir-flat-correct-x86-64 ι (table p) (brs ι (table p)) (main p) lk
+  ; ir-flat-correct    = λ p lk → X64.ir-flat-correct-x86-64 ι (table p) (brs ι (table p)) (main p) lk
   }
 
-x86-32-correct : BlockRunsHyp-x86-32 → ∀ (ι : Interp) → ArchCorrect x86-32 (arch-semantics x86-32) ι
+x86-32-correct : BlockRunsHyp-x86-32 → ∀ (ι : Interp) → ArchCorrect x86-32 ι
 x86-32-correct brs ι = record
-  { asm-sem           = X32.asm-sem-x86-32 ι []
-  ; flat-trace        = λ p lk → X32.flat-x86-32 ι (table p) (brs ι (table p)) (main p) lk
-  ; assemble-correct  = λ _ _ _ _ _ → refl
-  ; asm-trace-correct = λ m asm eq dl lr sr ir mi ls n →
-      X32.asm-flat-x86-32 ι (TP m ir) (brs ι (TP m ir)) m asm eq dl lr sr ir mi refl
+  { flat-trace         = λ p lk → X32.flat-x86-32 ι (table p) (brs ι (table p)) (main p) lk
+  -- plan 0.107: the emitted FILE is well-formed (proved, per arch) …
+  ; file-wf            = λ m F eq → FileWF.file-wf x86-32 m F eq
+  -- … and running it is the flat trace of the program it was emitted from.
+  ; file-trace-correct = λ m F eq ir mi ls n →
+      X32.file-flat-x86-32 ι (TP m ir) (brs ι (TP m ir)) m F eq ir mi refl refl
         (subst (λ σ → LinkedProgram σ (rewrite-program (irProgram (moduleTable m) ir))) ls (LK m ir mi)) n
-  ; ir-flat-correct   = λ p lk → X32.ir-flat-correct-x86-32 ι (table p) (brs ι (table p)) (main p) lk
+  ; ir-flat-correct    = λ p lk → X32.ir-flat-correct-x86-32 ι (table p) (brs ι (table p)) (main p) lk
   }
 
-riscv64-correct : BlockRunsHyp-riscv64 → ∀ (ι : Interp) → ArchCorrect riscv64 (arch-semantics riscv64) ι
+riscv64-correct : BlockRunsHyp-riscv64 → ∀ (ι : Interp) → ArchCorrect riscv64 ι
 riscv64-correct brs ι = record
-  { asm-sem           = RV.asm-sem-riscv64 ι []
-  ; flat-trace        = λ p lk → RV.flat-riscv64 ι (table p) (brs ι (table p)) (main p) lk
-  ; assemble-correct  = λ _ _ _ _ _ → refl
-  ; asm-trace-correct = λ m asm eq dl lr sr ir mi ls n →
-      RV.asm-flat-riscv64 ι (TP m ir) (brs ι (TP m ir)) m asm eq dl lr sr ir mi refl
+  { flat-trace         = λ p lk → RV.flat-riscv64 ι (table p) (brs ι (table p)) (main p) lk
+  -- plan 0.107: the emitted FILE is well-formed (proved, per arch) …
+  ; file-wf            = λ m F eq → FileWF.file-wf riscv64 m F eq
+  -- … and running it is the flat trace of the program it was emitted from.
+  ; file-trace-correct = λ m F eq ir mi ls n →
+      RV.file-flat-riscv64 ι (TP m ir) (brs ι (TP m ir)) m F eq ir mi refl refl
         (subst (λ σ → LinkedProgram σ (rewrite-program (irProgram (moduleTable m) ir))) ls (LK m ir mi)) n
-  ; ir-flat-correct   = λ p lk → RV.ir-flat-correct-riscv64 ι (table p) (brs ι (table p)) (main p) lk
+  ; ir-flat-correct    = λ p lk → RV.ir-flat-correct-riscv64 ι (table p) (brs ι (table p)) (main p) lk
   }
 
 arch-correctness : BlockRunsHyp-x86-64 → BlockRunsHyp-x86-32 → BlockRunsHyp-riscv64
-                 → ∀ (ι : Interp) (arch : Arch) → ArchCorrect arch (arch-semantics arch) ι
+                 → ∀ (ι : Interp) (arch : Arch) → ArchCorrect arch ι
 arch-correctness b64 b32 brv ι x86-64  = x86-64-correct b64 ι
 arch-correctness b64 b32 brv ι x86-32  = x86-32-correct b32 ι
 arch-correctness b64 b32 brv ι riscv64 = riscv64-correct brv ι

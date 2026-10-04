@@ -42,7 +42,7 @@ import Once.Compile as C
 open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_; >>=T-assoc)
 open import Once.Denotation.DenotTrace using (evalᴰ; CallEnv; ⟦_⟧ᴰᴵ)
 open import Once.Denotation.Program using (IRFun; irFun; fname; fdom; fcod; fbody; tableEnv; tableCalls)
-open import Once.Adequacy.SourceTrace using (irFunOf)
+open import Once.Compile using (irFunOf)
 
 ------------------------------------------------------------------------
 -- Lookup

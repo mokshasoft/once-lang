@@ -609,6 +609,22 @@ record BlockSteps : Set₁ where
       → fret fs ≡ rpc ∷ rest
       → BlockStepAt hv (descend-view hv lo' lo'≤lo front-lo') prog fs s
                     (instr-ctrl (c-entry n b))
+    -- plan 0.107: THE START (pc 0) — the heap register at the heap's base,
+    -- then the outermost frame, reserved exactly as a body marker reserves its
+    -- own (`do-thunk`). At the start nothing is owed (`fret ≡ []`) and the
+    -- view's frontier IS the base.
+    bs-c-start :
+      ∀ {hv : HeapView} prog fs s b → CompiledCorr hv prog fs s
+      → halted (floc fs) ≡ false
+      → fetch prog (fpc fs) ≡ just (instr-ctrl (c-start b))
+      → (lo' : ℕ) (lo'≤lo : lo' ≤ lo hv) (front-lo' : hfront hv ≤ lo')
+      → lo' ≤ rreg s sp-reg ∸ b * slot-size
+      → b * slot-size ≤ rreg s sp-reg
+      → rreg s sp-reg < modulus
+      → hfront hv ≡ 0
+      → fret fs ≡ []
+      → BlockStepAt hv (descend-view hv lo' lo'≤lo front-lo') prog fs s
+                    (instr-ctrl (c-start b))
     -- `c-ret` (D095): the two shapes only the RUN knows — the return stack is
     -- a cons and the released budget IS the reservation in force — plus the
     -- frame it returns into, which `RetMatch` pairs with the return stack for

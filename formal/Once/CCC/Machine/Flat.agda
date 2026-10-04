@@ -943,6 +943,10 @@ module FlatMachine {FS : FrameSemantics} where
   flat-exec-instr : AbstractInstr → AbstractTrace → FlatState → FlatState
   flat-exec-instr (instr-ctrl (c-label _))               _    fs = record fs { fpc = suc (fpc fs) }
   flat-exec-instr (instr-ctrl (c-entry _ b))             _    fs = do-thunk b fs
+  -- plan 0.107: the program's start reserves the outermost frame as an entry
+  -- does (the heap register is a target's concern; the abstract heap starts at
+  -- its base by construction).
+  flat-exec-instr (instr-ctrl (c-start b))               _    fs = do-thunk b fs
   -- D245: a direct call enters the named function, as a closure call enters
   -- the body its closure names.
   flat-exec-instr (instr-ctrl (c-call-fn f))             prog fs = do-call-at (find-fn prog f) fs
@@ -1204,6 +1208,7 @@ module FlatMachine {FS : FrameSemantics} where
   shifted-instr d (instr-reg-op k)                       t₁ t₂ fs fs' _  _  sh = shifted-straight d (instr-reg-op k) fs fs' sh
   shifted-instr d (instr-ctrl (c-label _))               t₁ t₂ fs fs' _  _  sh = shifted-label d fs fs' sh
   shifted-instr d (instr-ctrl (c-entry _ b))             t₁ t₂ fs fs' _  _  sh = shifted-thunk d b fs fs' sh
+  shifted-instr d (instr-ctrl (c-start b))               t₁ t₂ fs fs' _  _  sh = shifted-thunk d b fs fs' sh
   shifted-instr d (instr-ctrl (c-call-fn f))             t₁ t₂ fs fs' _  fe sh =
     shifted-call-at d (find-fn (t₁ ++ t₂) f) (find-fn t₂ f) fs fs' sh (fe (e-fn f))
   shifted-instr d (instr-ctrl (c-ret _))                 t₁ t₂ fs fs' _  _  sh = shifted-ret d fs fs' sh
@@ -1257,6 +1262,7 @@ module FlatMachine {FS : FrameSemantics} where
   flat-exec-instr-prog-irrelevant (instr-reg-op _)                       t t' fs _  = refl
   flat-exec-instr-prog-irrelevant (instr-ctrl (c-label _))               t t' fs _  = refl
   flat-exec-instr-prog-irrelevant (instr-ctrl (c-entry _ _))             t t' fs _  = refl
+  flat-exec-instr-prog-irrelevant (instr-ctrl (c-start _))               t t' fs _  = refl
   flat-exec-instr-prog-irrelevant (instr-ctrl (c-call-fn _))             t t' fs ()
   flat-exec-instr-prog-irrelevant (instr-ctrl (c-ret _))                 t t' fs _  = refl
   flat-exec-instr-prog-irrelevant (instr-ctrl (c-jmp _))                 t t' fs ()
@@ -1338,6 +1344,7 @@ module FlatMachine {FS : FrameSemantics} where
   flat-exec-instr-prefix (instr-reg-op _)           t₁ t₂ fs _  _  = refl
   flat-exec-instr-prefix (instr-ctrl (c-label _))   t₁ t₂ fs _  _  = refl
   flat-exec-instr-prefix (instr-ctrl (c-entry _ _)) t₁ t₂ fs _  _  = refl
+  flat-exec-instr-prefix (instr-ctrl (c-start _))   t₁ t₂ fs _  _  = refl
   flat-exec-instr-prefix (instr-ctrl (c-call-fn f)) t₁ t₂ fs _  fe =
     cong (λ mj → do-call-at mj fs) (fe (e-fn f))
   flat-exec-instr-prefix (instr-ctrl (c-ret _))     t₁ t₂ fs _  _  = refl
@@ -1404,11 +1411,15 @@ module FlatMachine {FS : FrameSemantics} where
     fv-call-fn : ∀ (f : CanonicalName) → i ≡ instr-ctrl (c-call-fn f) → FlinkView i
     -- …and every callable ENTRY clears it, a closure body or a function.
     fv-thunk : ∀ (ℓ : EntryId) (bb : ℕ) → i ≡ instr-ctrl (c-entry ℓ bb) → FlinkView i
+    -- plan 0.107: the program's start clears it too (it reserves a frame as an
+    -- entry does) — but it is NOT an entry, so it is its own row.
+    fv-start : ∀ (bb : ℕ) → i ≡ instr-ctrl (c-start bb) → FlinkView i
     fv-pres  : (∀ prog fs → flink (flat-exec-instr i prog fs) ≡ flink fs) → FlinkView i
 
   flinkView : ∀ (i : AbstractInstr) → FlinkView i
   flinkView (instr-ctrl (c-label _))               = fv-pres (λ _ _ → refl)
   flinkView (instr-ctrl (c-entry ℓ bb))            = fv-thunk ℓ bb refl
+  flinkView (instr-ctrl (c-start bb))              = fv-start bb refl
   flinkView (instr-ctrl (c-call-fn f))             = fv-call-fn f refl
   flinkView (instr-ctrl (c-ret b))                 = fv-pres (λ _ fs → flink-do-ret (fret fs) fs)
   flinkView (instr-ctrl (c-jmp n))                 = fv-pres (λ prog fs → flink-do-jump (find-label prog n) fs)

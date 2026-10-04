@@ -47,7 +47,7 @@ import Once.CCC.Target.RiscV64.Semantics as R
 import Once.CCC.Target.RiscV64.Syntax as RS
 open import Once.CCC.Target.RiscV64.Syntax
   using ( Instr; Program
-        ; ld; sd; add; sub; addi; li; auipc; lla; mv; beq; bne; jal; jalr
+        ; ld; sd; add; sub; addi; li; auipc; lla; lla-sym; mv; beq; bne; jal; jalr
         ; j; ret; call; call-sym; nop; unimp; label
         ; sp; ra; t1; s3; slots )
 open import Once.CCC.Target.RiscV64.AbstractToRiscV using (compile-abstract; compile-trace)
@@ -67,6 +67,7 @@ is-label? (addi _ _ _) = false
 is-label? (li _ _) = false
 is-label? (auipc _ _) = false
 is-label? (lla _ _) = false
+is-label? (lla-sym _ _) = false
 is-label? (mv _ _) = false
 is-label? (beq _ _ _) = false
 is-label? (bne _ _ _) = false
@@ -91,6 +92,7 @@ skip-law t (addi _ _ _) rest xi _ = refl
 skip-law t (li _ _) rest xi _ = refl
 skip-law t (auipc _ _) rest xi _ = refl
 skip-law t (lla _ _) rest xi _ = refl
+skip-law t (lla-sym _ _) rest xi _ = refl
 skip-law t (mv _ _) rest xi _ = refl
 skip-law t (beq _ _ _) rest xi _ = refl
 skip-law t (bne _ _ _) rest xi _ = refl
@@ -171,6 +173,7 @@ headView (instr-ctrl (c-label m)) = hv-clabel m refl (λ _ _ _ → refl) (λ _ _
 -- reservation, and the `ra` spill (D102). `hv-otherlabel`'s explicit tail
 -- absorbs the difference — no core change, one longer list here.
 headView (instr-ctrl (c-call-fn f)) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
+headView (instr-ctrl (c-start b)) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
 headView (instr-ctrl (c-entry m b)) =
   hv-otherlabel m (addi sp sp (ℤ- (+ (slots b))) ∷ sd ra sp (slots b) ∷ []) refl refl
                 (λ _ _ _ → refl) (λ _ _ _ → refl)

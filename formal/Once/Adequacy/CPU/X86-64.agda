@@ -38,8 +38,14 @@ open import Once.Denotation.TraceMonad using (Interp)
 open import Once.Arith.Backend.CallAnswer using (CallResolver; answer-at)
 open import Once.Adequacy.CPU.Interface using (Byte; ArchSemantics)
 
+import Data.Maybe
 import Once.CCC.Target.X86-64.Semantics as X64
 import Once.CCC.Target.X86-64.Syntax    as X64S
+import Once.CCC.Target.X86-64.File as RF
+open import Data.Bool using (if_then_else_)
+open import Data.String using (_==_)
+open import Data.Product using (_,_; proj₁)
+open import Relation.Binary.PropositionalEquality using (_≡_)
 
 -- Plan 0.54 Phase B / Option 2: the emit-and-continue trace over the REAL
 -- x86-64 machine (arith blocks dispatched, Pure ⇒ no event), instanced from
@@ -151,7 +157,6 @@ val-x86-64 (XI.Xmov-out src)          s _ = rd s src
 postulate
   step-budget-x86-64 : ℕ → ℕ
   ev-x86-64        : String → X64.State → List SigOpEvent
-  arith-env-x86-64 : X64S.Program → String → Maybe (List XI.XInstr × ℕ)
   -- plan 0.105: WHICH answering call a label is, and its argument — the same
   -- label→SigOp resolution boundary as `ev-x86-64` (the loaded binary's
   -- symbol table and argument decoding). The answer itself is DEFINED
@@ -160,18 +165,27 @@ postulate
 
 -- Plan 0.105: at the world `ι` the binary runs in — its external calls are
 -- answered by `ι`, and the answer lands in the return register.
-run-trace-x86-64 : Interp → X64S.Program → X64.State → Behavior
-run-trace-x86-64 ι prog s =
-  RT.run-trace val-x86-64 (answer-at ι call-at-x86-64) step-budget-x86-64 ev-x86-64 (arith-env-x86-64 prog) prog s
+-- Plan 0.107: the arith blocks are IN THE FILE, so which block a symbol names is
+-- a lookup, not a postulate (it was `arith-env-x86-64`).
+block-env : List (String × RF.Payload) → String → Maybe (List XI.XInstr × ℕ)
+block-env []              _ = nothing
+block-env ((s′ , p) ∷ bs) s = if s′ == s then just p else block-env bs s
+
+run-trace-x86-64 : Interp → RF.Image → X64.State → Behavior
+run-trace-x86-64 ι P s =
+  RT.run-trace val-x86-64 (answer-at ι call-at-x86-64) step-budget-x86-64 ev-x86-64 (block-env (RF.blocks P)) (RF.code P) s
 
 postulate
   -- decode-x86-64 — POSTULATED. Concrete byte-encoder/decoder per the
   -- Intel SDM is significant work; left as a named gap for now.
-  decode-x86-64 : List Byte → Maybe X64S.Program
+  decode-x86-64 : List Byte → Maybe RF.Image
 
   -- assemble-x86-64 — POSTULATED. GNU `as --target=x86-64` trust point;
   -- removed when the in-Agda assembler (B1) lands.
   assemble-x86-64 : String → List Byte
+  -- THE TRUST POINT (plan 0.107): `as` does what it should.
+  as-faithful-x86-64 : ∀ (F : RF.Image) → RF.AsmWF F
+                  → decode-x86-64 (assemble-x86-64 (RF.print F)) ≡ just F
 
 ------------------------------------------------------------------------
 -- The instance.
@@ -179,11 +193,16 @@ postulate
 
 arch-semantics : ArchSemantics
 arch-semantics = record
-  { Program      = X64S.Program
+  { Program      = RF.Image
   ; State        = X64.State
-  ; initialState = X64.initState
-  ; run          = X64.run
+  ; initialState = λ P → X64.initStateAt (Data.Maybe.fromMaybe 0 (RF.entry P))
+  ; run          = λ P → X64.run (RF.code P)
   ; run-trace    = run-trace-x86-64
   ; decode       = decode-x86-64
   ; assemble     = assemble-x86-64
+  ; File         = RF.Image
+  ; print        = RF.print
+  ; program      = λ F → F
+  ; AsmWF        = RF.AsmWF
+  ; as-faithful  = as-faithful-x86-64
   }

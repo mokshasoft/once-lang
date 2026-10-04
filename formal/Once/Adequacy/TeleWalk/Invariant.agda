@@ -69,7 +69,7 @@ open import Once.Spec.Core.Translate using (ImpSig; TeleSig; i-ffi; i-def; t-def
   monoHere; monoElab; monoBody; monoSchema; monoSg; polyElab; polyBody; polySg)
 import Once.Spec.Core.Abstract as A
 import Once.Spec.Core.Translate as TR
-open import Once.Adequacy.SourceTrace using (irFunOf; tableOf-go; mainCall)
+open import Once.Compile using (irFunOf; tableOf-go; mainCall)
 import Once.Adequacy.AcceptSound as AS
 import Once.Adequacy.FunBundle as FB
 import Once.Adequacy.MainIRForm as MIF

@@ -42,7 +42,7 @@ open import Once.CCC.Machine.SMCore using
   (AbstractInstr; AbstractTrace; Slot; lea-slot;
    mov-to-output; mov-to-input; store-at-slot; load-from-slot;
    store-indirect; store-indirect-suc; instr-alloc-heap; instr-load-tag-lit;
-   instr-ctrl; c-thunk; c-entry; c-call-fn; c-ret; c-label; c-jmp;
+   instr-ctrl; c-thunk; c-entry; c-start; c-call-fn; c-ret; c-label; c-jmp;
    restore-input; load-indirect; load-indirect-suc; instr-load-code-addr;
    c-branch-tag-zero)
 open import Once.CCC.Machine.InstrSlot using (slot-of)
@@ -134,6 +134,7 @@ data SegAction : Set where
 
 seg-action : AbstractInstr → SegAction
 seg-action (instr-ctrl (c-entry _ b)) = seg-push b
+seg-action (instr-ctrl (c-start b))   = seg-push b   -- plan 0.107: the outermost frame
 seg-action (instr-ctrl (c-ret _))     = seg-pop
 {-# CATCHALL #-}
 seg-action _                          = seg-id

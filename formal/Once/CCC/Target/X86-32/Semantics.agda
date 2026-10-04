@@ -140,8 +140,12 @@ initFlags = mkflags false false false
 postulate
   stack-top : Word          -- the %esp the loader hands `main`
 
+-- Plan 0.107: the environment hands the program over AT ITS ENTRY POINT.
+initStateAt : ℕ → State
+initStateAt e = mkstate (writeReg emptyRegFile esp stack-top) emptyMemory initFlags e false
+
 initState : State
-initState = mkstate (writeReg emptyRegFile esp stack-top) emptyMemory initFlags 0 false
+initState = initStateAt 0
 
 ------------------------------------------------------------------------
 -- Operand evaluation
@@ -151,6 +155,8 @@ effectiveAddr : State → Mem → Addr
 effectiveAddr s (base r)         = readReg (regs s) r
 effectiveAddr s (base+disp r d)  = readReg (regs s) r + d
 effectiveAddr s (label-rel n)    = n
+-- Plan 0.107: the `.bss` heap symbol, placed at 0 without loss of generality.
+effectiveAddr s (abs-sym _)      = 0
 
 readOperand : State → Operand → Maybe Word
 readOperand s (reg r) = just (readReg (regs s) r)

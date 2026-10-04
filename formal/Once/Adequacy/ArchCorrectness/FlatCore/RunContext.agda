@@ -160,7 +160,9 @@ record RunAt (prog : AbstractTrace) (fs : FlatState) : Set where
     -- of the table at its objects (the compiler's output is; the backend's
     -- correctness is stated for linked IR).
     run-linked : LinkedImage run-tbl run-ir
-    run-reach : Reachable prog (ir-stack-budget run-ir) fs
+    -- plan 0.107: the run starts OUTSIDE every frame — `c-start` (pc 0) reserves
+    -- the outermost one as an ordinary, proved step.
+    run-reach : Reachable prog 0 fs
 open RunAt public
 
 run-emitted : ∀ {prog fs} → RunAt prog fs → Emitted prog

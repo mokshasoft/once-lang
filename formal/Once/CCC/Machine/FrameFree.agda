@@ -92,6 +92,7 @@ FrameFreeI (lea-slot _)              = ⊥
 -- mark, plus the honest `stack-room`), and `c-ret`'s additionally needs
 -- the `FlatCorr` field relating the ghost `fret` to the machine stack.
 FrameFreeI (instr-ctrl (c-entry _ _)) = ⊥
+FrameFreeI (instr-ctrl (c-start _)) = ⊥  -- plan 0.107: it reserves the outermost frame
 FrameFreeI (instr-ctrl (c-ret _))     = ⊥
 -- …and THE CALL joins them (D092): now that it is modelled, it pushes the
 -- caller's frame and enters one a slot down (`enter-call`), so it moves the
@@ -131,8 +132,60 @@ EmittableI (instr-case-on-tag t₁ t₂) = ⊥
 EmittableI (instr-loop t)            = ⊥
 EmittableI (lea-indexed _)           = ⊥
 EmittableI (lea-slot _)              = ⊥
+-- plan 0.107: the program's START is not in any unit — it is the image's
+-- header (`ProgramImage.program-image`), at pc 0 only.
+EmittableI (instr-ctrl (c-start _))  = ⊥
 {-# CATCHALL #-}
 EmittableI _                         = ⊤
+
+-- …and what may sit ANYWHERE in a program image: a unit's instruction, or the
+-- start. The consumers that run over every reachable pc (the frame and
+-- pointer inductions, `pcView`) take this; the dispatch, which runs only
+-- after the start, takes `EmittableI`.
+ImageI : AbstractInstr → Set
+ImageI (instr-ctrl (c-start _)) = ⊤
+{-# CATCHALL #-}
+ImageI i                        = EmittableI i
+
+emittable-image : ∀ (i : AbstractInstr) → EmittableI i → ImageI i
+emittable-image mov-to-output e = e
+emittable-image mov-to-input e = e
+emittable-image load-indirect e = e
+emittable-image load-indirect-suc e = e
+emittable-image store-indirect e = e
+emittable-image store-indirect-suc e = e
+emittable-image instr-pop-frame e = e
+emittable-image instr-call-closure e = e
+emittable-image instr-save-closure-reg e = e
+emittable-image (load-from-slot _) e = e
+emittable-image (store-at-slot _) e = e
+emittable-image (lea-slot _) e = e
+emittable-image (restore-input _) e = e
+emittable-image (instr-alloc-stack _) e = e
+emittable-image (instr-dealloc-stack _) e = e
+emittable-image (instr-reclaim-to _) e = e
+emittable-image (instr-push-frame _) e = e
+emittable-image (worklist-init _) e = e
+emittable-image (worklist-push _) e = e
+emittable-image (worklist-pop _) e = e
+emittable-image (worklist-check _) e = e
+emittable-image (instr-sigop _) e = e
+emittable-image (instr-load-code-addr _) e = e
+emittable-image (instr-load-tag-lit _) e = e
+emittable-image (instr-alloc-heap _) e = e
+emittable-image (instr-loop _) e = e
+emittable-image (instr-reg-op _) e = e
+emittable-image (lea-indexed _) e = e
+emittable-image (instr-load-const _ _) e = e
+emittable-image (instr-case-on-tag _ _) e = e
+emittable-image (instr-ctrl (c-label _)) e = e
+emittable-image (instr-ctrl (c-jmp _)) e = e
+emittable-image (instr-ctrl (c-branch-scratch-zero _)) e = e
+emittable-image (instr-ctrl (c-branch-tag-zero _)) e = e
+emittable-image (instr-ctrl (c-call-fn _)) e = e
+emittable-image (instr-ctrl (c-ret _)) e = e
+emittable-image (instr-ctrl (c-entry _ _)) e = e
+emittable-image (instr-ctrl (c-start _)) ()
 
 -- …and the fence is WEAKER, so every consumer that only needs "no fossil"
 -- can still be fed a frame-free witness. ENUMERATED on the ⊥ set (the
@@ -147,6 +200,7 @@ frame-free-emittable (instr-loop _)            ()
 frame-free-emittable (lea-indexed _)           ()
 frame-free-emittable (lea-slot _)              ()
 frame-free-emittable (instr-ctrl (c-entry _ _)) ()
+frame-free-emittable (instr-ctrl (c-start _)) ()
 frame-free-emittable (instr-ctrl (c-call-fn _)) ()
 frame-free-emittable (instr-ctrl (c-ret _))     ()
 frame-free-emittable (instr-ctrl (c-label _))            _ = tt

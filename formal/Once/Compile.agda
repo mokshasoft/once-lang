@@ -90,6 +90,24 @@ open import Once.Arith.Machine.Rewrite using (rewrite-ir)
 open import Once.CCC.Label using (Label)
 open import Once.CCC.Codegen.EmittedWF using (labels-def; labels-ref; syms-ref)
 import Once.CCC.Codegen.IRToTrace as IRT
+import Once.CCC.Target.X86-64.File as X64F
+import Once.CCC.Target.X86-32.File as X32F
+import Once.CCC.Target.RiscV64.File as RVF
+import Once.CCC.Target.X86-64.Syntax as X64S
+import Once.CCC.Target.X86-32.Syntax as X32S
+import Once.CCC.Target.RiscV64.Syntax as RVS
+import Once.CCC.Target.X86-64.AbstractToX86 as X64L
+import Once.CCC.Target.X86-32.AbstractToX86-32 as X32L
+import Once.CCC.Target.RiscV64.AbstractToRiscV as RVL
+import Once.Arith.Backend.X86-64.Emit as X64A
+import Once.Arith.Backend.X86-32.Emit as X32A
+import Once.Arith.Backend.RiscV64.Emit as RVA
+import Once.CCC.Label as Label
+open import Once.CCC.Label using (mkLabelId)
+open import Once.CCC.Machine.SMCore using (AbstractTrace; instr-ctrl; c-call-fn)
+open import Once.CCC.Codegen.ProgramImage using (program-image; fns-image)
+open import Once.Denotation.Program using (IRFun; irFun; fname; fdom; fcod; fbody; IRProgram; irProgram; table; main)
+open import Once.CanonicalName using () renaming (_≟ᶜ_ to _≟cn_)
 
 -- Re-export Parser (for module loading)
 open import Once.Parser public
@@ -482,13 +500,6 @@ moduleSyms m doOpt mod = moduleSyms-aux (compileResolvedModule m doOpt mod)
 -- Target selection and compilation
 ------------------------------------------------------------------------
 
-open import Once.Target as T using (Target)
-open T.Target
-
--- Import all targets (qualified to avoid name clashes)
-import Once.Target.X86-64 as X86-64-Target
-import Once.Target.X86-32 as X86-32-Target
-import Once.Target.RiscV64 as RiscV64-Target
 
 -- | Supported architectures — the single shared enum (re-exported so
 -- existing `C.Arch` references downstream are unchanged).
@@ -505,225 +516,222 @@ open import Data.Nat using (_∸_)
 open import Relation.Nullary using (Dec; yes; no)
 open import Data.Integer.Show renaming (show to showℤ)
 
--- | Get target implementation for an architecture
-archTarget : Arch → Target
-archTarget x86-64  = X86-64-Target.x86-64
-archTarget x86-32  = X86-32-Target.x86-32
-archTarget riscv64 = RiscV64-Target.riscv64
+-- (Plan 0.107: the per-function TEXT walk that stood here — `archTarget`,
+-- `compileAllWithTarget`, and the label/symbol lists read off it for the
+-- toolchain axiom's preconditions — is GONE. The file is `emit` of the program
+-- image below, and the text is its print: one walk, D262.)
 
--- | Compile a single function's IR to assembly using a target.
--- Plan 0.11: primitives (signatures) emit nothing — their bodies
--- live in `Strata/Interpretations/<…>.<arch>` files and are
--- statically linked at build time by the driver. Emitting a body
--- here would produce a recursive `once_<name>: ...; call once_<name>;
--- ret` stub.
+------------------------------------------------------------------------
+-- PLAN 0.107: THE PROGRAM, AND THE ASSEMBLY FILE — ONE WALK.
 --
--- Plan 0.2.4.2 Phase B: closure-body labels (`.L_thunk_<n>:`) are
--- emitted via `irToBodies` AFTER the parent's `ret` (epilogue). The
--- parent's fall-through stops at `ret`; bodies are reachable only
--- via `lea label(%rip)` from the parent's curry trace.
---
--- Plan 0.12 Layer 1: takes a starting thunk-label counter `l` and
--- returns the next-available counter alongside the assembly text,
--- so that thunks emitted by separate top-level functions don't
--- collide. Both `irToAsm` and `irToBodies` are called with the same
--- `l` and produce the same `l'` — the calls re-traverse the IR but
--- agree on the label counter advancement (`ir-to-trace'` is
--- deterministic in `l`).
-compileFunWithTarget : Target → ℕ → CompiledFun → ℕ × String × List ArithBlock
-compileFunWithTarget target l cf with cfIsPrimitive cf
-... | true  = l , "" , []  -- primitive: external symbol, no body
-... | false =
-  let -- Plan 0.50 Stage 2: emit the function as a direct-call morphism (D064).
-      (_ , _ , dcIR) = directCallIR (cfType cf) (cfIR cf)
-      -- Plan 0.20 Phase G: arith-block recognition pass before codegen.
-      (ir' , blks)  = rewrite-ir dcIR
-      -- Plan 0.63 (D089): the definition's own identity keys its labels.
-      (l₁ , asm)    = irToAsm    target (cfName cf) l ir'
-  in l₁ , (functionPrologue target (cfName cf) ++
-           asm ++
-           functionEpilogue target) , blks
+-- The program the proofs reason about and the file the binary is assembled
+-- from are computed HERE, from the same compile result, by the same
+-- functions. The emitted text is `printFile` of the file. (These definitions
+-- used to live in `Adequacy.SourceTrace`, beside a SEPARATE text walk that
+-- only the toolchain axiom related to them — D261.)
+------------------------------------------------------------------------
+
+-- | `main`'s type, `IO Unit`.
+EffUU : Type
+EffUU = Unit ⇒[ mk-kind Many eff ] Unit
+
+isEffUU? : (T : Type) → Maybe (T ≡ EffUU)
+isEffUU? T with T ≟T EffUU
+... | yes e = just e
+... | no _  = nothing
+
+open CompiledFun using (cfName; cfType; cfIR; cfIsPrimitive)
+
+-- D253: `main` is an entry like any other; the program's own `main` is the CALL
+-- of it.
+mainCall : IR ⌊ Unit ⌋ ⌊ Unit ⌋
+mainCall = Call (bare "main")
+
+-- The FIRST argument is `cfIsPrimitive cf`: a PRIMITIVE is never the entry.
+findMain-here :
+  (cf : CompiledFun) → Bool → Dec (cfName cf ≡ bare "main") → Maybe (cfType cf ≡ EffUU)
+  → Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋) → Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋)
+findMain-here cf false (yes _) (just _) cont = just mainCall
+findMain-here cf false (yes _) nothing  cont = cont
+findMain-here cf false (no  _) _        cont = cont
+findMain-here cf true  _       _        cont = cont
+
+-- | A module is a PROGRAM when it has an entry `main : IO Unit`.
+findMain : List CompiledFun → Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋)
+findMain []         = nothing
+findMain (cf ∷ rest) =
+  findMain-here cf (cfIsPrimitive cf) (cfName cf ≟cn bare "main") (isEffUU? (cfType cf)) (findMain rest)
+
+moduleToIR-aux : String ⊎ List CompiledFun → Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋)
+moduleToIR-aux (inj₁ _)    = nothing
+moduleToIR-aux (inj₂ funs) = findMain funs
+
+moduleToIR : Module → Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋)
+moduleToIR mod = moduleToIR-aux (compileResolvedModule Heap false mod)
+
+-- D244: the function table, LATEST-FIRST; each entry the DIRECT-CALL morphism
+-- (D064, `directCallIR`) that `once_<name>` implements.
+irFunOf : CompiledFun → IRFun
+irFunOf cf = irFun (cfName cf) ⌊ proj₁ dc ⌋ ⌊ proj₁ (proj₂ dc) ⌋ (proj₂ (proj₂ dc))
+  where dc = directCallIR (cfType cf) (cfIR cf)
+
+tableOf-go : List CompiledFun → List IRFun → List IRFun
+tableOf-go []         sofar = sofar
+tableOf-go (cf ∷ cfs) sofar = tableOf-go cfs (irFunOf cf ∷ sofar)
+
+tableOf : List CompiledFun → List IRFun
+tableOf funs = tableOf-go funs []
+
+tableOfResult : String ⊎ List CompiledFun → List IRFun
+tableOfResult (inj₁ _)    = []
+tableOfResult (inj₂ funs) = tableOf funs
+
+moduleTable : Module → List IRFun
+moduleTable mod = tableOfResult (compileResolvedModule Heap false mod)
+
+programAt : List IRFun → Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋) → Maybe IRProgram
+programAt tbl nothing   = nothing
+programAt tbl (just ir) = just (irProgram tbl ir)
+
+moduleToProgram : Module → Maybe IRProgram
+moduleToProgram mod = programAt (moduleTable mod) (moduleToIR mod)
+
+-- D165/D244: THE PROGRAM THE BACKEND COMPILES — every definition arith-lifted.
+rewrite-fun : IRFun → IRFun
+rewrite-fun e = irFun (fname e) (fdom e) (fcod e) (proj₁ (rewrite-ir (fbody e)))
+
+rewrite-table : List IRFun → List IRFun
+rewrite-table []       = []
+rewrite-table (e ∷ es) = rewrite-fun e ∷ rewrite-table es
+
+rewrite-program : IRProgram → IRProgram
+rewrite-program p = irProgram (rewrite-table (table p)) (proj₁ (rewrite-ir (main p)))
+
+-- …and the arith blocks that lifting minted, from the SAME `rewrite-ir` calls.
+program-blocks : IRProgram → List ArithBlock
+program-blocks p = proj₂ (rewrite-ir (main p)) DL.++ table-blocks (table p)
   where
-    -- Plan 0.29: irToAsm and irToBodies share the thunk-label phase
-    -- (l→l', deterministic, so thunk labels agree between call sites
-    -- and bodies). But the CASE-label phase diverges: irToAsm's l₁
-    -- counts case-on-tags in the MAIN trace, while irToBodies' l₂
-    -- counts case-on-tags inside the thunk BODIES. A cata's algebra
-    -- case-on-tags live in the closure body (l₂ > l₁), so threading
-    -- l₁ alone leaks body case labels into the next function. Thread
-    -- `l₁ ⊔ l₂` so the next function starts past BOTH ranges.
-    -- (Invariant preserved: per function, main cases ⊆ [l', l₁) and
-    -- body cases ⊆ [l', l₂); these overlap only if a function has
-    -- case-on-tag in both main trace and a body — not produced by any
-    -- current IR, since closure-valued IRs put all dispatch in bodies.)
+    table-blocks : List IRFun → List ArithBlock
+    table-blocks []       = []
+    table-blocks (e ∷ es) = proj₂ (rewrite-ir (fbody e)) DL.++ table-blocks es
 
--- | Compile all functions to assembly using a target.
--- Plan 0.12 Layer 1: left-fold threading the thunk-label counter so
--- thunks remain globally unique across the module.
--- Plan 0.20 Phase G: collect ArithBlocks from every function and
--- append `emitArithBlocks` output after the program text, so each
--- `arith.block.<digest>` SigOp call site resolves at link time.
-compileAllWithTarget : Target → List CompiledFun → String
-compileAllWithTarget target cfs =
-  let (_ , asm , blks) = foldl step (0 , "" , []) cfs
-  in asm ++ emitArithBlocks target blks
+-- The interpretation symbols the file calls and `ld` resolves: the module's
+-- declared signatures (its primitives), mangled as a SigOp call is
+-- (`call-sym (once-symbol-path name)`). NOT "whatever the code calls": a call to
+-- anything else must be defined in the file, or the file is not `AsmWF`.
+externsOf : List CompiledFun → List String
+externsOf []         = []
+externsOf (cf ∷ cfs) = ext (cfIsPrimitive cf) cf DL.++ externsOf cfs
   where
-    step : ℕ × String × List ArithBlock → CompiledFun → ℕ × String × List ArithBlock
-    step p cf =
-      let l       = proj₁ p
-          acc     = proj₁ (proj₂ p)
-          accBlks = proj₂ (proj₂ p)
-          (l' , fn-asm , blks) = compileFunWithTarget target l cf
-      in l' , (acc ++ fn-asm) , (accBlks DL.++ blks)
+    ext : Bool → CompiledFun → List String
+    ext true  cf = once-symbol-path (cfName cf) ∷ []
+    ext false cf = []
+
+-- The entry unit's owner: a name no definition can have (an identifier cannot
+-- start with a digit), so its labels and symbol cannot clash.
+entry-owner : CanonicalName
+entry-owner = bare "0entry"
+
 
 ------------------------------------------------------------------------
--- D100 — THE LOCAL LABELS THIS CODEGEN EMITS.
---
--- The exact mirror of `moduleSyms` one level down: that list is the `.globl`
--- function symbols, this one is the `.L…` labels the trace invents. `as`
--- rejects a file that defines either twice, and the 2026-08-06 regression
--- (`symbol .L_thunk_once_4main_10 is already defined`) was a duplicate in THIS
--- list — invisible to every proof, because the only layer that rejects it is
--- the assembler, i.e. the `<arch>-loader-faithful` axiom.
---
--- Defined over the SAME `CompiledFun` list `compileFromModule` renders and
--- threading the SAME counter `compileAllWithTarget`'s fold threads (`l₁ ⊔ l₂`,
--- both targets' walks) — so it cannot drift from what the backend emits. The
--- counter is the one place the arch shows through: `irToAsm` allocates further
--- labels of its own inside `compile-trace-cnt`, and the NEXT function starts
--- past them. The labels themselves are read off the ABSTRACT TRACE
--- (`labels-def`), which is arch-independent, so the invariant is one statement
--- for all three targets.
---
--- SCOPE, honestly: the arch labels `compile-trace-cnt` allocates are inside the
--- range but not in this list. That walk is LINEAR (it never splices a
--- sub-trace twice), so its freshness is a per-arch `LabelRange` one-liner; the
--- non-linear walk (`ir-to-trace'`, whose `Cata` clause splices its algebra
--- twice) is the one this list sees.
+-- The per-arch file: `code` IS the lowered program image, and `_start` is its
+-- first instruction — the image's `c-start` (the heap register, the outermost
+-- frame); `main`'s unit ends in a silent stop. No syscall, no hand-written
+-- runtime: the same on bare metal and under an OS (plan 0.107 §2½).
 ------------------------------------------------------------------------
 
-funLabels-cons : Bool → Target → ℕ → CompiledFun → ℕ × List Label
-funLabels-cons true  target l cf = l , []              -- primitive: no body, no labels
-funLabels-cons false target l cf =
-  let (_ , _ , dcIR) = directCallIR (cfType cf) (cfIR cf)
-      (ir' , _)      = rewrite-ir dcIR
-      (l₁ , _)       = irToAsm    target (cfName cf) l ir'
-      -- D161: over the LINKED program, so the closure bodies' `c-thunk`
-      -- definitions are in this list. `ir-to-trace-from` (the entry block)
-      -- omitted every thunk label, so D100's distinctness claim never covered
-      -- the labels whose duplication caused the 2026-08-06 regression.
-      (_  , at)      = IRT.ir-to-linked-from (cfName cf) l ir'
-  in l₁ , labels-def at
+FileOf : Arch → Set
+FileOf x86-64  = X64F.Image
+FileOf x86-32  = X32F.Image
+FileOf riscv64 = RVF.Image
 
-funLabels : Target → ℕ → CompiledFun → ℕ × List Label
-funLabels target l cf = funLabels-cons (cfIsPrimitive cf) target l cf
+printFile : (arch : Arch) → FileOf arch → String
+printFile x86-64  = X64F.print
+printFile x86-32  = X32F.print
+printFile riscv64 = RVF.print
 
-emittedLabels : Target → ℕ → List CompiledFun → List Label
-emittedLabels target l []         = []
-emittedLabels target l (cf ∷ cfs) =
-  proj₂ (funLabels target l cf) DL.++ emittedLabels target (proj₁ (funLabels target l cf)) cfs
+-- One block per symbol (the first): two definitions lifting the same
+-- arithmetic mint the same digest, and a symbol is defined once.
+dedup-go : List String → List (String × ArithBlock) → List (String × ArithBlock)
+dedup-go seen []             = []
+dedup-go seen ((s , b) ∷ bs) =
+  if DL.any (λ x → x == s) seen then dedup-go seen bs
+                                 else (s , b) ∷ dedup-go (s ∷ seen) bs
 
-moduleLabels-aux : Target → String ⊎ List CompiledFun → List Label
-moduleLabels-aux target (inj₁ _)   = []
-moduleLabels-aux target (inj₂ cfs) = emittedLabels target 0 cfs
+dedup-blocks : List (String × ArithBlock) → List (String × ArithBlock)
+dedup-blocks = dedup-go []
 
-moduleLabels : Arch → AllocMode → Bool → Module → List Label
-moduleLabels arch m doOpt mod =
-  moduleLabels-aux (archTarget arch) (compileResolvedModule m doOpt mod)
+image-of : IRProgram → AbstractTrace
+image-of p = program-image entry-owner (rewrite-program p)
 
-------------------------------------------------------------------------
--- D167 — THE SAME LIST ONE NAMESPACE UP: the `.globl` symbols the emitted
--- text CALLS and this module therefore OWES an implementation for.
---
--- `moduleLabels` is the `as` side (local labels, D100). This is the `ld` side,
--- and it did not exist: nothing anywhere stated that an emitted `call`
--- resolves. D163 walked through the hole — `rewrite-ir` stopped lifting arith
--- subtrees, so `arith.div.int` reached the emitter with its `impl ⊨ semM`
--- undischarged (D061) and the text called a symbol nothing defined.
---
--- Built from the SAME `ir'` the emitter compiles — `directCallIR` then
--- `rewrite-ir`, exactly as `funLabels-cons` does — so this list cannot drift
--- from what the backend emits. That is the whole point: read it off the
--- program that is generated, never off a re-derivation.
-------------------------------------------------------------------------
+-- the file's arith blocks: the program's, by symbol, once each
+blocks-x86-64 : IRProgram → List (String × X64F.Payload)
+blocks-x86-64 p =
+  DL.map (λ sb → proj₁ sb , X64A.block-payload (proj₂ sb))
+    (dedup-blocks (DL.map (λ b → X64A.arith-block-symbol b , b) (program-blocks p)))
 
--- D169: …and the local labels the text REFERENCES (`c-jmp`, the two branches,
--- and the closure-body code address). `moduleLabels` is the DEFINITIONS; this
--- is the other side, so `ld`'s "undefined reference" can be stated for `.L`
--- symbols exactly as D167 stated it for `.globl` ones.
-funLabelRefs-cons : Bool → Target → ℕ → CompiledFun → ℕ × List Label
-funLabelRefs-cons true  target l cf = l , []
-funLabelRefs-cons false target l cf =
-  let (_ , _ , dcIR) = directCallIR (cfType cf) (cfIR cf)
-      (ir' , _)      = rewrite-ir dcIR
-      (l₁ , _)       = irToAsm    target (cfName cf) l ir'
-      (_  , at)      = IRT.ir-to-linked-from (cfName cf) l ir'
-  in l₁ , labels-ref at
+emit-x86-64 : IRProgram → List String → X64F.Image
+emit-x86-64 p ext =
+  X64F.mkImage (proj₂ (X64L.compile-trace-cnt entry-owner 0 (image-of p))) (just 0) (blocks-x86-64 p) ext
 
-funLabelRefs : Target → ℕ → CompiledFun → ℕ × List Label
-funLabelRefs target l cf = funLabelRefs-cons (cfIsPrimitive cf) target l cf
+-- the file's arith blocks: the program's, by symbol, once each
+blocks-x86-32 : IRProgram → List (String × X32F.Payload)
+blocks-x86-32 p =
+  DL.map (λ sb → proj₁ sb , X32A.block-payload (proj₂ sb))
+    (dedup-blocks (DL.map (λ b → X32A.arith-block-symbol b , b) (program-blocks p)))
 
-emittedLabelRefs : Target → ℕ → List CompiledFun → List Label
-emittedLabelRefs target l []         = []
-emittedLabelRefs target l (cf ∷ cfs) =
-  proj₂ (funLabelRefs target l cf) DL.++
-  emittedLabelRefs target (proj₁ (funLabelRefs target l cf)) cfs
+emit-x86-32 : IRProgram → List String → X32F.Image
+emit-x86-32 p ext =
+  X32F.mkImage (proj₂ (X32L.compile-trace-cnt entry-owner 0 (image-of p))) (just 0) (blocks-x86-32 p) ext
 
-moduleLabelRefs-aux : Target → String ⊎ List CompiledFun → List Label
-moduleLabelRefs-aux target (inj₁ _)   = []
-moduleLabelRefs-aux target (inj₂ cfs) = emittedLabelRefs target 0 cfs
+-- the file's arith blocks: the program's, by symbol, once each
+blocks-riscv64 : IRProgram → List (String × RVF.Payload)
+blocks-riscv64 p =
+  DL.map (λ sb → proj₁ sb , RVA.block-payload (proj₂ sb))
+    (dedup-blocks (DL.map (λ b → RVA.arith-block-symbol b , b) (program-blocks p)))
 
-moduleLabelRefs : Arch → AllocMode → Bool → Module → List Label
-moduleLabelRefs arch m doOpt mod =
-  moduleLabelRefs-aux (archTarget arch) (compileResolvedModule m doOpt mod)
+emit-riscv64 : IRProgram → List String → RVF.Image
+emit-riscv64 p ext =
+  RVF.mkImage (proj₂ (RVL.compile-trace-cnt entry-owner 0 (image-of p))) (just 0) (blocks-riscv64 p) ext
 
-funSyms-cons : Bool → Target → ℕ → CompiledFun → ℕ × List CanonicalName
-funSyms-cons true  target l cf = l , []       -- primitive: no body, calls nothing
-funSyms-cons false target l cf =
-  let (_ , _ , dcIR) = directCallIR (cfType cf) (cfIR cf)
-      (ir' , _)      = rewrite-ir dcIR
-      (l₁ , _)       = irToAsm    target (cfName cf) l ir'
-      (_  , at)      = IRT.ir-to-linked-from (cfName cf) l ir'
-  in l₁ , syms-ref at
+emitProgram : (arch : Arch) → IRProgram → List String → FileOf arch
+emitProgram x86-64  = emit-x86-64
+emitProgram x86-32  = emit-x86-32
+emitProgram riscv64 = emit-riscv64
 
-funSyms : Target → ℕ → CompiledFun → ℕ × List CanonicalName
-funSyms target l cf = funSyms-cons (cfIsPrimitive cf) target l cf
+-- A LIBRARY (no `main`): its functions only — no entry unit, no `_start`. The
+-- verified compiler never assembles one (it has no behaviour); the CLI emits it.
+lib-image : List IRFun → AbstractTrace
+lib-image tbl = fns-image 0 (rewrite-table tbl)
 
-emittedSymRefs : Target → ℕ → List CompiledFun → List CanonicalName
-emittedSymRefs target l []         = []
-emittedSymRefs target l (cf ∷ cfs) =
-  proj₂ (funSyms target l cf) DL.++ emittedSymRefs target (proj₁ (funSyms target l cf)) cfs
+lib-blocks : List IRFun → List ArithBlock
+lib-blocks tbl = program-blocks (irProgram tbl Id-unit)
+  where Id-unit : IR ⌊ Unit ⌋ ⌊ Unit ⌋
+        Id-unit = id
 
-moduleSymRefs-aux : Target → String ⊎ List CompiledFun → List CanonicalName
-moduleSymRefs-aux target (inj₁ _)   = []
-moduleSymRefs-aux target (inj₂ cfs) = emittedSymRefs target 0 cfs
+emitLibrary : (arch : Arch) → List IRFun → List String → FileOf arch
+emitLibrary x86-64 tbl ext =
+  X64F.mkImage (proj₂ (X64L.compile-trace-cnt entry-owner 0 (lib-image tbl))) nothing
+    (DL.map (λ sb → proj₁ sb , X64A.block-payload (proj₂ sb))
+      (dedup-blocks (DL.map (λ b → X64A.arith-block-symbol b , b) (lib-blocks tbl)))) ext
+emitLibrary x86-32 tbl ext =
+  X32F.mkImage (proj₂ (X32L.compile-trace-cnt entry-owner 0 (lib-image tbl))) nothing
+    (DL.map (λ sb → proj₁ sb , X32A.block-payload (proj₂ sb))
+      (dedup-blocks (DL.map (λ b → X32A.arith-block-symbol b , b) (lib-blocks tbl)))) ext
+emitLibrary riscv64 tbl ext =
+  RVF.mkImage (proj₂ (RVL.compile-trace-cnt entry-owner 0 (lib-image tbl))) nothing
+    (DL.map (λ sb → proj₁ sb , RVA.block-payload (proj₂ sb))
+      (dedup-blocks (DL.map (λ b → RVA.arith-block-symbol b , b) (lib-blocks tbl)))) ext
 
-moduleSymRefs : Arch → AllocMode → Bool → Module → List CanonicalName
-moduleSymRefs arch m doOpt mod =
-  moduleSymRefs-aux (archTarget arch) (compileResolvedModule m doOpt mod)
+-- | THE FILE OF A COMPILE RESULT — the one walk: a program file when the module
+-- has `main`, a library file otherwise; the compile error if it failed.
+emit-at : (arch : Arch) → List CompiledFun → Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋) → FileOf arch
+emit-at arch funs nothing   = emitLibrary arch (tableOf funs) (externsOf funs)
+emit-at arch funs (just ir) = emitProgram arch (irProgram (tableOf funs) ir) (externsOf funs)
 
--- …and what the module DEFINES for them: every emitted function's own symbol
--- (D245: a definition reference is a DIRECT CALL of `once_<f>`, D064's ABI, so
--- `f` is owed exactly when something calls it), and the arith blocks
--- `emitArithBlocks` writes.
-funBlockSyms-cons : Bool → CompiledFun → List CanonicalName
-funBlockSyms-cons true  cf = []
-funBlockSyms-cons false cf =
-  let (_ , _ , dcIR) = directCallIR (cfType cf) (cfIR cf)
-      (_ , blks)     = rewrite-ir dcIR
-  in cfName cf ∷ DL.map (λ b → bare (block-name (block-body b))) blks
-
-emittedSymDefs : List CompiledFun → List CanonicalName
-emittedSymDefs []         = []
-emittedSymDefs (cf ∷ cfs) =
-  funBlockSyms-cons (cfIsPrimitive cf) cf DL.++ emittedSymDefs cfs
-
-moduleSymDefs-aux : String ⊎ List CompiledFun → List CanonicalName
-moduleSymDefs-aux (inj₁ _)   = []
-moduleSymDefs-aux (inj₂ cfs) = emittedSymDefs cfs
-
-moduleSymDefs : AllocMode → Bool → Module → List CanonicalName
-moduleSymDefs m doOpt mod = moduleSymDefs-aux (compileResolvedModule m doOpt mod)
+emitFromCompiled : (arch : Arch) → String ⊎ List CompiledFun → String ⊎ FileOf arch
+emitFromCompiled arch (inj₁ err)  = inj₁ err
+emitFromCompiled arch (inj₂ funs) = inj₂ (emit-at arch funs (findMain funs))
 
 ------------------------------------------------------------------------
 -- Unified compilation entry point
@@ -741,6 +749,11 @@ data CompileResult : Set where
   Checked : List CompiledFun → CompileResult                 -- Typecheck succeeded
   Built   : String → CompileResult                           -- Codegen succeeded (assembly)
   Error   : String → CompileResult                           -- Any stage failed
+
+-- plan 0.107: THE TEXT IS THE PRINT OF THE FILE (one walk).
+built-of : (arch : Arch) → String ⊎ FileOf arch → CompileResult
+built-of arch (inj₁ err) = Error err
+built-of arch (inj₂ F)   = Built (printFile arch F)
 
 -- | Show a FunInfo as "name : type"
 showFunInfo : FunInfo → String
@@ -783,9 +796,8 @@ compile m stage doOpt arch source with parseStrict source
              (inj₂ compiled) → Checked compiled
            Build → case compileEntries m doOpt emptyCScope es of λ where
              (inj₁ err) → Error err
-             (inj₂ compiled) →
-               let target = archTarget arch
-               in Built (asmHeader target ++ compileAllWithTarget target compiled)
+             (inj₂ compiled) → built-of arch (emitFromCompiled arch (inj₂ compiled))
+
 
 -- | Same as `compile` but starting from a pre-resolved `Module`.
 -- Haskell uses this after driving transitive-import I/O and calling
@@ -796,10 +808,6 @@ compile m stage doOpt arch source with parseStrict source
 -- `extractFunctions`, `cfm-stage-aux` on the stage, and the Check/Build emit
 -- helpers on the `compileEntries` result — the SAME `compileEntries` call as
 -- `compileResolvedModule-aux`, which is what lets `main⇒built` relate them.
-cfm-build-emit : Arch → String ⊎ List CompiledFun → CompileResult
-cfm-build-emit arch (inj₁ err)       = Error err
-cfm-build-emit arch (inj₂ compiled)  =
-  let target = archTarget arch in Built (asmHeader target ++ compileAllWithTarget target compiled)
 
 cfm-check-emit : String ⊎ List CompiledFun → CompileResult
 cfm-check-emit (inj₁ err)       = Error err
@@ -863,19 +871,29 @@ litRangeError arch mod = badLit (firstBadLit arch mod)
 
 -- Explicit-argument aux (no `with`), matching this file's convention, so the
 -- decision stays a subterm downstream proofs can rewrite by.
-cfm-build-gated : AllocMode → Bool → (arch : Arch) → (mod : Module)
-                → List Entry
-                → Dec (AdmissibleM arch mod) → CompileResult
-cfm-build-gated m doOpt arch mod es (no  _) = Error (litRangeError arch mod)
-cfm-build-gated m doOpt arch mod es (yes _) =
-  cfm-build-emit arch (compileEntries m doOpt emptyCScope es)
+-- plan 0.107: THE FILE the gated build produces — the verified compiler
+-- assembles it, the CLI prints it. One pipeline, two consumers.
+cfm-file-gated : AllocMode → Bool → (arch : Arch) → (mod : Module)
+               → List Entry
+               → Dec (AdmissibleM arch mod) → String ⊎ FileOf arch
+cfm-file-gated m doOpt arch mod es (no  _) = inj₁ (litRangeError arch mod)
+cfm-file-gated m doOpt arch mod es (yes _) =
+  emitFromCompiled arch (compileEntries m doOpt emptyCScope es)
+
+cfm-file-ef : AllocMode → Bool → (arch : Arch) → Module → String ⊎ List Entry → String ⊎ FileOf arch
+cfm-file-ef m doOpt arch mod (inj₁ err) = inj₁ err
+cfm-file-ef m doOpt arch mod (inj₂ es)  = cfm-file-gated m doOpt arch mod es (admissibleM? arch mod)
+
+compileFileFromModule : AllocMode → Bool → (arch : Arch) → Module → String ⊎ FileOf arch
+compileFileFromModule m doOpt arch mod =
+  cfm-file-ef m doOpt arch mod (extractFunctions (extractAliases mod) mod)
 
 cfm-stage-aux : AllocMode → Stage → Bool → Arch → Module → List Entry → CompileResult
 cfm-stage-aux m Parse doOpt arch mod es = Parsed (funsOf es) (polysOf es)
 cfm-stage-aux m Check doOpt arch mod es =
   cfm-check-emit (compileEntries m doOpt emptyCScope es)
 cfm-stage-aux m Build doOpt arch mod es =
-  cfm-build-gated m doOpt arch mod es (admissibleM? arch mod)
+  built-of arch (cfm-file-gated m doOpt arch mod es (admissibleM? arch mod))
 
 cfm-ef-aux : AllocMode → Stage → Bool → Arch → Module → String ⊎ List Entry → CompileResult
 cfm-ef-aux m stage doOpt arch mod (inj₁ err) = Error err

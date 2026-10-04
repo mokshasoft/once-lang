@@ -33,7 +33,7 @@ open import Data.List using (List; []; _∷_)
 open import Data.List.Relation.Unary.All using (All) renaming ([] to all-[]; _∷_ to _all∷_)
 open import Relation.Nullary using (Dec; yes; no)
 open import Once.CCC.Machine.SMCore
-open import Once.CCC.Machine.FrameFree using (EmittableI)
+open import Once.CCC.Machine.FrameFree using (EmittableI; ImageI)
 
 -- `compile-trace` (below) is the plain fold; `compile-trace-cnt` (above) is what
 -- the compiler actually emits (`Once.Target.X86-64`). They differ on EXACTLY two
@@ -57,7 +57,7 @@ NoNested (i ∷ is) = NoNestedI i × NoNested is
 -- retiring the `conc-flat-sim-nested` split).
 -- Plan 0.63: the EMITTER FENCE suffices — the closure markers carry no
 -- nested trace either, so widening from `FrameFreeI` costs nothing here.
-no-nested-of-frame-free : ∀ (i : AbstractInstr) → EmittableI i → NoNestedI i
+no-nested-of-frame-free : ∀ (i : AbstractInstr) → ImageI i → NoNestedI i
 no-nested-of-frame-free mov-to-output           _ = tt
 no-nested-of-frame-free mov-to-input            _ = tt
 no-nested-of-frame-free load-indirect           _ = tt
@@ -90,7 +90,7 @@ no-nested-of-frame-free (instr-alloc-heap _)    _ = tt
 no-nested-of-frame-free (instr-reg-op _)        _ = tt
 no-nested-of-frame-free (instr-ctrl _)          _ = tt
 
-no-nested-of-all : ∀ (t : AbstractTrace) → All EmittableI t → NoNested t
+no-nested-of-all : ∀ (t : AbstractTrace) → All ImageI t → NoNested t
 no-nested-of-all []       _          = tt
 no-nested-of-all (i ∷ is) (fi all∷ fis) =
   no-nested-of-frame-free i fi , no-nested-of-all is fis

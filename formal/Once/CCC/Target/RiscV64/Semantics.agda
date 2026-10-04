@@ -205,8 +205,12 @@ postulate
   stack-top : Word          -- the `sp` the loader hands `main`
 
 -- | Initial state
+-- Plan 0.107: the environment hands the program over AT ITS ENTRY POINT.
+initStateAt : ℕ → State
+initStateAt e = mkstate (writeReg emptyRegFile sp stack-top) emptyMemory e false
+
 initState : State
-initState = mkstate (writeReg emptyRegFile sp stack-top) emptyMemory 0 false
+initState = initStateAt 0
 
 ------------------------------------------------------------------------
 -- Address calculation
@@ -375,6 +379,14 @@ execInstr prog s (lla rd ℓ) =
     -- `jix`, not `j`: that name is the jump INSTRUCTION here.
     (just jix) → just (record s { regs = writeReg (regs s) rd jix ; pc = pc s + 1 })
     nothing    → just (record s { halted = true })
+
+-- Plan 0.107: a data symbol's address. The runtime's only data symbol is the
+-- `.bss` heap, and the model places the heap at 0 without loss of generality
+-- (the comment at `stack-top`: addresses are ℕ, only their order matters) —
+-- so `_start`'s `lla s2, once_heap_base` sets the frontier register to the
+-- entry frontier the proofs already assume.
+execInstr prog s (lla-sym rd _) =
+  just (record s { regs = writeReg (regs s) rd 0 ; pc = pc s + 1 })
 
 ------------------------------------------------------------------------
 -- Move (pseudo-instruction)

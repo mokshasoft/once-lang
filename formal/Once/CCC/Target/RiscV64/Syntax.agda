@@ -93,6 +93,9 @@ data Instr : Set where
   -- Address computation
   auipc  : Reg → ℕ → Instr            -- auipc rd, imm : rd = PC + (imm << 12)
   lla    : Reg → LabelId → Instr      -- lla rd, .L_thunk_n : load local (code label) address (Plan 0.53)
+  -- Plan 0.107: the address of a DATA symbol (the runtime's `.bss` heap), so
+  -- the `_start` stub is an instruction in the file, not text beside it.
+  lla-sym : Reg → String → Instr      -- lla rd, sym
 
   -- Move (pseudo-instruction: addi rd, rs, 0)
   mv     : Reg → Reg → Instr          -- mv rd, rs
@@ -195,6 +198,7 @@ instr-consumed-slots (addi _ _ _)    = 0   -- sp adjustment handled separately
 instr-consumed-slots (li _ _)        = 0
 instr-consumed-slots (auipc _ _)     = 0
 instr-consumed-slots (lla _ _)       = 0
+instr-consumed-slots (lla-sym _ _)   = 0
 instr-consumed-slots (mv _ _)        = 0
 instr-consumed-slots (beq _ _ _)     = 0
 instr-consumed-slots (bne _ _ _)     = 0

@@ -53,7 +53,7 @@ open import Relation.Binary.PropositionalEquality using (subst)
 -- transitively pulls in the still-rotted `ErrorProofs`; soundness needs only
 -- this): `checkElab ctx e T ≡ success … ⇒ ctx ⊢ᶜ e ∶ T ⨾ Ψ`.
 open import Once.TypeCheck.Soundness using (check-sound)
-open import Once.Adequacy.SourceTrace using (moduleToIR)
+open import Once.Compile using (moduleToIR)
 open import Once.Adequacy.MainBuilds using (moduleToIR-inj₂)
 import Once.Parser.Module.Core as P
 

@@ -49,12 +49,12 @@ open import Once.Type using (Functor; K; Id; _⊕_; _⊗_)
 open import Once.CCC.Label using (ℓ)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore using (AbstractInstr; AbstractTrace; instr-alloc-heap
-  ; blocks-layout; blocks-layout-++; LabelId
+  ; blocks-layout; blocks-layout-++; LabelId; link-top
   ; restore-input; load-indirect-suc; store-at-slot; mov-to-input
   ; load-from-slot; store-indirect-suc; instr-load-tag-lit; store-indirect)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CCC.Codegen.IRToTrace o using
-  (ir-to-trace'; ir-to-trace; ir-to-trace-at-frontier; ir-to-trace-lab;
+  (ir-to-trace'; ir-to-trace; ir-to-trace-at-frontier; ir-to-trace-lab; ir-to-unit;
    CataStrategy; strat-const; strat-nat; strat-linear; strat-branching;
    cata-strategy; cata-dispatch; cata-trace-nat; cata-trace-linear;
    cata-trace-branching; push2; pop2; wrap-sum; visit-walk; rebuild-walk; lsize;
@@ -407,6 +407,10 @@ ir-to-trace-alloc-min ir = alloc-min-at-frontier ir 0
 -- D244/D245: …and a program's unit placed at label counter `l`.
 ir-to-trace-lab-alloc-min : ∀ {A B} (ir : IR A B) (l : ℕ) → AllocMinTrace (ir-to-trace-lab l ir)
 ir-to-trace-lab-alloc-min ir l = ++⁺ (alloc-min-trace' ir 0 l) (tt ∷ alloc-min-blocks ir 0 l)
+
+-- Plan 0.107: …and the OUTERMOST unit, linked with the silent stop.
+ir-to-trace-top-alloc-min : ∀ {A B} (ir : IR A B) (d : LabelId) → AllocMinTrace (link-top d (ir-to-unit ir))
+ir-to-trace-top-alloc-min ir d = ++⁺ (alloc-min-trace' ir 0 0) (tt ∷ tt ∷ alloc-min-blocks ir 0 0)
 
 module _ {FS : FrameSemantics} where
   open FlatMachine {FS}

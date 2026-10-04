@@ -34,6 +34,7 @@ showMem : Mem → String
 showMem (base r)        = "(" ++ showReg r ++ ")"
 showMem (base+disp r n) = showNat n ++ "(" ++ showReg r ++ ")"
 showMem (label-rel n)   = ".L" ++ showNat n
+showMem (abs-sym s)     = s
 
 ------------------------------------------------------------------------
 -- Operands

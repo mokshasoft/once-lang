@@ -69,7 +69,7 @@ open FrameSemantics FS using (Frame; _≟F_)
 open MemOps {FS}
 open ExecFinal {FS}
 open AbstractExec {FS}
-open import Once.CCC.Machine.FrameFree using (FrameFreeI; EmittableI)
+open import Once.CCC.Machine.FrameFree using (FrameFreeI; EmittableI; ImageI)
 open import Once.CCC.Machine.Flat
 open FlatMachine {FS}
 -- the shared bricks: the register read-after-write enumeration and the
@@ -528,12 +528,14 @@ pb-call-at (just j) fs wf = wf
 pb-call-at nothing  fs wf = pb-halt _ (floc fs) true wf
 
 flat-ptr-bounds : ∀ (i : AbstractInstr) (prog : AbstractTrace) (fs : FlatState)
-                → EmittableI i
+                → ImageI i
                 → (∀ n → i ≡ instr-alloc-heap n → 2 ≤ n)
                 → StoreWF (next-heap-ref (falloc fs)) (floc fs)
                 → PtrBoundsWF fs → PtrBoundsWF (flat-exec-instr i prog fs)
 flat-ptr-bounds (instr-ctrl (c-label m))               prog fs ff am wfS wf = wf
 flat-ptr-bounds (instr-ctrl (c-entry m b))             prog fs ff am wfS wf =
+  pb-thunk b fs wf
+flat-ptr-bounds (instr-ctrl (c-start b))             prog fs ff am wfS wf =
   pb-thunk b fs wf
 flat-ptr-bounds (instr-ctrl (c-call-fn f))             prog fs ff am wfS wf =
   pb-call-at (find-fn prog f) fs wf

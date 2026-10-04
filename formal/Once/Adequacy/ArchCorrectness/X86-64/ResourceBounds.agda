@@ -31,6 +31,8 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 
 -- Plan 0.105: the machine runs against an interpretation, so these facts about
 -- its states are stated at one.
+open import Data.Sum using (_⊎_)
+open import Data.Product using (Σ)
 module Once.Adequacy.ArchCorrectness.X86-64.ResourceBounds (o : CanonicalName) (ι : Interp) where
 
 open import Data.Nat using (ℕ; suc; _+_; _≤_; _<_)
@@ -44,7 +46,7 @@ import Once.CCC.Target.X86-64.Semantics as X
 import Once.Word as W64
 module W = W64.Width 64
 open import Once.CCC.Machine.SMCore
-  using (AbstractTrace; instr-alloc-heap; instr-ctrl; c-thunk; c-entry; c-call-fn; c-ret; instr-call-closure
+  using (AbstractTrace; instr-alloc-heap; instr-ctrl; c-thunk; c-entry; c-start; c-call-fn; c-ret; instr-call-closure
         ; instr-reg-op; scratch-dec; count-inc; instr-load-tag-lit; instr-load-const
         ; AbstractInstr; CallI)
 open import Once.CCC.Label using (LabelId; EntryId)
@@ -109,11 +111,11 @@ StackRoom : Set₁
 StackRoom =
   ∀ {hv : FCx.HeapView x86-64-frame-semantics refl}
     (prog : AbstractTrace) (fs : FlatMachine.FlatState {x86-64-frame-semantics})
-    (s : X.State) (m : EntryId) (b : ℕ)
+    (s : X.State) (b : ℕ)
   → RCx.RunAt o x86-64-frame-semantics refl prog fs
   → FSimx.CompiledCorr o x86-64-frame-semantics refl refl hv prog fs s
-  → FlatMachine.fetch {x86-64-frame-semantics} prog
-      (FlatMachine.fpc {x86-64-frame-semantics} fs) ≡ just (instr-ctrl (c-entry m b))
+  → Σ EntryId (λ m → FlatMachine.fetch {x86-64-frame-semantics} prog (FlatMachine.fpc {x86-64-frame-semantics} fs) ≡ just (instr-ctrl (c-entry m b)))
+      ⊎ (FlatMachine.fetch {x86-64-frame-semantics} prog (FlatMachine.fpc {x86-64-frame-semantics} fs) ≡ just (instr-ctrl (c-start b)))
   → FCx.hfront hv + slots b ≤ X.readReg (X.State.regs s) rsp
 
 ------------------------------------------------------------------------

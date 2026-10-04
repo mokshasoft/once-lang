@@ -14,8 +14,6 @@
 -- IR-observable theorem (and everything under it: the composition case, the
 -- arith value work) was an island. Now:
 --
---   * `asm-sem`          — DEFINED  (`exec-bytes ∘ assemble`)
---   * `assemble-correct` — PROVED   (`refl`, by the `asm-sem` definition)
 --   * `flat-trace`       — DEFINED: `take n (flat-events (EF n) (ir-to-trace ir)
 --                          entry)`, where the adequate fuel `EF n` is exactly the
 --                          `∃[ f ]` witness `traces-agree` supplies at depth `n`
@@ -32,7 +30,7 @@
 -- is literally `valid-unit-wf`; the rest is loader/initial-frame plumbing.
 ------------------------------------------------------------------------
 
-open import Data.Nat using (ℕ; _<_)
+open import Data.Nat using (ℕ; _<_; suc)
 open import Once.Adequacy.CPU.Interface using (Arch; ArchSemantics)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.Target.Arch using (arch-numerics)
@@ -81,6 +79,7 @@ module Once.Adequacy.ArchCorrectness.FlatFromObs (o : CanonicalName) (tbl : List
 open import Data.Bool using (false)
 open import Data.List using (List; []; take)
 open import Data.Maybe using (Maybe; just; nothing)
+import Data.Maybe
 open import Data.Product using (proj₁; proj₂)
 open import Data.String using (String)
 open import Data.Unit using (tt)
@@ -90,8 +89,9 @@ open import Once.IR using (IR; Unit; AllocMode; Stack)
 open import Once.IR.Size using (ir-size)
 open import Once.Denotation.Behavior using (Behavior; at; behavior-by)
 open import Once.Denotation.Trace using (SigOpEvent)
-open import Once.Adequacy.SourceTrace using (moduleToIR; ⟦_⟧IR)
-open import Once.CCC.Codegen.ProgramImage using (program-image; fns-image; fn-next)
+open import Once.Adequacy.SourceTrace using (⟦_⟧IR)
+open import Once.Compile using (moduleToIR)
+open import Once.CCC.Codegen.ProgramImage using (program-image; fns-image; fn-next; top-done)
 import Once.CCC.Codegen.CataIRSlotStable as CIS
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
 open import Data.List.Relation.Unary.All.Properties using (++⁺)
@@ -100,19 +100,19 @@ open import Once.CCC.Label using (LabelId)
 open import Data.Nat using (ℕ)
 open import Relation.Binary.PropositionalEquality using (subst)
 open import Once.CCC.Codegen.IRObsCorrectFlat o tbl using (module IRObsCorrectFlatness)
-open import Once.CCC.Codegen.IRToTrace o using (ir-to-trace; ir-stack-budget; ir-next-label)
+open import Once.CCC.Codegen.IRToTrace o using (ir-to-trace; ir-stack-budget; ir-next-label; ir-to-unit)
 open import Once.CCC.Codegen.BlockLayout using (module Layout)
 open import Once.CCC.Codegen.LabelsUnique o using (module Unique)
 open Layout {FS} using (MissBefore; NoThunks; missBefore-from; blocks-at; Span)
 open import Data.List using (_++_; []; _∷_)
-open import Once.CCC.Machine.SMCore using (instr-ctrl; c-ret; blocks-layout; block-layout; AbstractTrace; e-thunk)
+open import Once.CCC.Machine.SMCore using (instr-ctrl; c-ret; c-start; c-label; c-jmp; link-top; blocks-layout; block-layout; AbstractTrace; e-thunk)
 open import Data.List.Properties using (++-assoc)
 open import Data.List.Properties using (++-identityʳ; take-all)
 open import Once.Denotation.TraceMonad using (projTrace; bnd)
 -- D158: the entry instance supplies the PLACEMENT — the whole program is the
 -- fragment, at offset 0.
 open import Once.CCC.Codegen.CataIRSlotStable o using (module CataIRSlotStable)
-open import Data.Nat.Properties using (+-identityʳ)
+open import Data.Nat.Properties using (+-identityʳ; +-comm)
 open import Once.CCC.Machine.SMCore
   using (LocState; mkLocState; Registers; mkRegs; ValueLocation; AtDynamic; SV-Tag;
          halted)
@@ -127,13 +127,11 @@ import Once.Compile as C
 import Once.Parser.Module.Core as P
 -- D100: the assembler's own precondition — the emitted local labels are
 -- pairwise distinct. Consumed by `AsmTraceCorrect` below.
-open import Once.Adequacy.LabelClash using (DistinctLabels; LabelsResolvable)
-open import Once.Adequacy.SymbolClash using (SymbolsResolvable)
 
 open IRObsCorrectFlatness {FS} using (IRObsCorrectF; CalleeRuns; BlockRuns; MachineRefinesObsF; ValueRealized; in-unit; SpanAt; LabelsAt; emitted; BlocksAt; blocks)
-open FlatMachine {FS} using (mkFlat; fetch; fetch-++-left; find-label; ft-go-prefix)
+open FlatMachine {FS} using (mkFlat; fetch; fetch-++-left; find-label; ft-go-prefix; FlatState; flat-exec-instr; floc; falloc)
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
-open FlatStepsAPI {FS} using (fl-go-prefix)
+open FlatStepsAPI {FS} using (fl-go-prefix; fl-go-shift)
 open CataIRSlotStable {FS} using (ir-to-trace-slot-stable)
 open import Once.CCC.Codegen.CataNextSlot using (module CataNextSlot)
 open CataNextSlot {FS} using (AllSlotStable)
@@ -141,12 +139,8 @@ open FlatEventTrace {FS} using (flat-events; chain-events; flat-events-steps)
 open FrontierInvariant {FS} using (BeforeFrontier; heap-before)
 open ClosureWellFormedDef {FS} using (ValidAtWF; valid-unit-wf)
 
-------------------------------------------------------------------------
--- The DEFINED field (+ its proof)
-------------------------------------------------------------------------
-
-asm-sem : String → Behavior
-asm-sem asm = ArchSemantics.exec-bytes as (Once.CCC.FrameSemantics.fs-interp FS) (ArchSemantics.assemble as asm)
+-- (plan 0.107: `asm-sem` — the text's meaning — is gone; the file's run is
+-- `ArchSemantics.run-trace`, and the text is its print.)
 
 ------------------------------------------------------------------------
 -- The ENTRY STATE residual (narrow, named; replaces the opaque postulates).
@@ -395,15 +389,21 @@ entry-no-thunks ir = Unique.entry-noThunks {FS} ir (ir-stack-budget ir)
 -- …and `entry-blocks` is now a DEFINITION: the proved composition, transported
 -- across `link`'s own associativity
 -- (`entry ++ c-ret ∷ layout` vs `(entry ++ c-ret ∷ []) ++ layout`).
-main-blocks : (ir : IR Unit Unit) → BlocksAt (ir-to-trace ir) (blocks 0 0 ir)
+-- Plan 0.107: the image is the START, then `main`'s unit linked with the
+-- silent stop, then the table. `main`'s code sits at pc 1, and its blocks
+-- follow the stop pair; `top-noThunks` is the label-distinctness fact for
+-- exactly that prefix.
+top-pre : (ir : IR Unit Unit) → AbstractTrace
+top-pre ir = instr-ctrl (c-start (ir-stack-budget ir)) ∷ emitted 0 0 ir
+             ++ instr-ctrl (c-label (top-done o (irProgram tbl ir)))
+             ∷ instr-ctrl (c-jmp (top-done o (irProgram tbl ir))) ∷ []
+
+main-blocks : (ir : IR Unit Unit)
+            → BlocksAt (top-pre ir ++ blocks-layout (blocks 0 0 ir)) (blocks 0 0 ir)
 main-blocks ir =
-  subst (λ prog → BlocksAt prog (blocks 0 0 ir))
-        (++-assoc (emitted 0 0 ir) (instr-ctrl (c-ret (ir-stack-budget ir)) ∷ [])
-                  (blocks-layout (blocks 0 0 ir)))
-        (blocks-at (emitted 0 0 ir ++ instr-ctrl (c-ret (ir-stack-budget ir)) ∷ [])
-                   (blocks 0 0 ir)
-                   (missBefore-from (emitted 0 0 ir ++ instr-ctrl (c-ret (ir-stack-budget ir)) ∷ [])
-                                    (blocks 0 0 ir) (entry-no-thunks ir)))
+  blocks-at (top-pre ir) (blocks 0 0 ir)
+            (missBefore-from (top-pre ir) (blocks 0 0 ir)
+                             (Unique.top-noThunks {FS} ir (ir-stack-budget ir) (top-done o (irProgram tbl ir))))
 
 ------------------------------------------------------------------------
 -- D244/D245: THE PROGRAM IMAGE. `main`'s unit is its PREFIX and the table's
@@ -431,14 +431,43 @@ blocks-prefix t₁ t₂ ((lbl , b , t) ∷ bs) ((j , feq , sp) ∷ rest) =
   (j , ft-go-prefix t₁ t₂ (e-thunk lbl) 0 j feq , span-prefix t₁ t₂ j (block-layout (lbl , b , t)) sp)
   ∷ blocks-prefix t₁ t₂ bs rest
 
-entry-span : (ir : IR Unit Unit) → SpanAt (image ir) 0 (emitted 0 0 ir)
-entry-span ir = span-prefix (ir-to-trace ir) (fns-image (ir-next-label 0 ir) tbl) 0 (emitted 0 0 ir) (main-span ir)
+-- …so `main`'s code is found ONE PAST the start.
+private
+  rest : IR Unit Unit → AbstractTrace
+  rest ir = instr-ctrl (c-label (top-done o (irProgram tbl ir)))
+            ∷ instr-ctrl (c-jmp (top-done o (irProgram tbl ir)))
+            ∷ blocks-layout (blocks 0 0 ir)
 
-entry-labels : (ir : IR Unit Unit) → LabelsAt (image ir) 0 (emitted 0 0 ir)
-entry-labels ir m j eq = fl-go-prefix (ir-to-trace ir) (fns-image (ir-next-label 0 ir) tbl) m 0 _ (main-labels ir m j eq)
+  -- the image, re-associated so the blocks are a suffix of `top-pre`
+  image-assoc : (ir : IR Unit Unit)
+              → image ir ≡ (top-pre ir ++ blocks-layout (blocks 0 0 ir)) ++ fns-image (suc (ir-next-label 0 ir)) tbl
+  image-assoc ir =
+    cong (instr-ctrl (c-start (ir-stack-budget ir)) ∷_)
+      (trans (cong (_++ fns-image (suc (ir-next-label 0 ir)) tbl)
+                   (sym (++-assoc (emitted 0 0 ir)
+                                  (instr-ctrl (c-label (top-done o (irProgram tbl ir)))
+                                   ∷ instr-ctrl (c-jmp (top-done o (irProgram tbl ir))) ∷ [])
+                                  (blocks-layout (blocks 0 0 ir)))))
+             refl)
+
+entry-span : (ir : IR Unit Unit) → SpanAt (image ir) 1 (emitted 0 0 ir)
+entry-span ir k i eq =
+  subst (λ m → fetch (image ir) m ≡ just i) (+-comm 1 k)
+        (fetch-++-left (emitted 0 0 ir ++ rest ir) (fns-image (suc (ir-next-label 0 ir)) tbl) k i
+          (fetch-++-left (emitted 0 0 ir) (rest ir) k i eq))
+
+entry-labels : (ir : IR Unit Unit) → LabelsAt (image ir) 1 (emitted 0 0 ir)
+entry-labels ir m j eq =
+  trans (fl-go-shift ((emitted 0 0 ir ++ rest ir) ++ fns-image (suc (ir-next-label 0 ir)) tbl) m 1 0)
+        (cong (Data.Maybe.map (_+ 1))
+              (fl-go-prefix (emitted 0 0 ir ++ rest ir) _ m 0 j
+                            (fl-go-prefix (emitted 0 0 ir) (rest ir) m 0 j eq)))
 
 entry-blocks : (ir : IR Unit Unit) → BlocksAt (image ir) (blocks 0 0 ir)
-entry-blocks ir = blocks-prefix (ir-to-trace ir) (fns-image (ir-next-label 0 ir) tbl) (blocks 0 0 ir) (main-blocks ir)
+entry-blocks ir =
+  subst (λ prog → BlocksAt prog (blocks 0 0 ir)) (sym (image-assoc ir))
+        (blocks-prefix (top-pre ir ++ blocks-layout (blocks 0 0 ir))
+                       (fns-image (suc (ir-next-label 0 ir)) tbl) (blocks 0 0 ir) (main-blocks ir))
 
 -- Every function entry is slot-stable: its marker moves only the frame, and
 -- its unit is the emitter's, stable under its OWN owner.
@@ -449,17 +478,28 @@ fns-slot-stable l (e ∷ es) =
       (fns-slot-stable (fn-next l e) es)
 
 image-slot-stable : (ir : IR Unit Unit) → AllSlotStable (image ir)
-image-slot-stable ir = ++⁺ (ir-to-trace-slot-stable ir) (fns-slot-stable (ir-next-label 0 ir) tbl)
+image-slot-stable ir =
+  tt ∷ ++⁺ (CIS.CataIRSlotStable.ir-to-trace-top-slot-stable o {FS} ir (top-done o (irProgram tbl ir)))
+           (fns-slot-stable (suc (ir-next-label 0 ir)) tbl)
+
+-- Plan 0.107: THE RUN STARTS OUTSIDE EVERY FRAME (`entry-alloc 0`, pc 0) —
+-- what a kernel's `exec` or a bare-metal reset hands over. The start (pc 0)
+-- reserves `main`'s frame, and `main`'s unit runs from pc 1.
+start-flat : FlatState
+start-flat = mkFlat entry-s (entry-alloc 0) 0
+
+main-flat : IR Unit Unit → FlatState
+main-flat ir = flat-exec-instr (instr-ctrl (c-start (ir-stack-budget ir))) (image ir) start-flat
 
 entry-witness : (ir : IR Unit Unit) → IRObsCorrectF ir
               → (brs : BlockRunsT) → (k : ℕ)
-              → MachineRefinesObsF (image ir) 0 0 0 ir tt entry-s
-                  (entry-alloc (ir-stack-budget ir)) (SV-Tag 0) k
+              → MachineRefinesObsF (image ir) 1 0 0 ir tt (floc (main-flat ir))
+                  (falloc (main-flat ir)) (SV-Tag 0) k
 entry-witness ir ioc brs k =
-  ioc 0 0 (image ir) 0 (image-slot-stable ir)
+  ioc 0 0 (image ir) 1 (image-slot-stable ir)
       (brs ir) (entry-span ir) (entry-blocks ir) (entry-labels ir)
-      Stack tt entry-s (entry-alloc (ir-stack-budget ir)) (SV-Tag 0)
-      (entry-ns (ir-stack-budget ir)) entry-nh
+      Stack tt (floc (main-flat ir)) (falloc (main-flat ir)) (SV-Tag 0)
+      z≤n refl
       -- D153: `main : IR Unit Unit`, so its input has no residence at all.
       (in-unit refl) k
 
@@ -477,14 +517,14 @@ IOC : Set
 IOC = ∀ {A B} (ir : IR A B) → Linked σFS tbl ir → IRObsCorrectF ir
 
 entry-vr : (ir : IR Unit Unit) → LinkedProgram σFS (irProgram tbl ir) → IOC → (brs : BlockRunsT) → (k : ℕ)
-         → ValueRealized (image ir) 0 0 0 ir tt entry-s
-             (entry-alloc (ir-stack-budget ir)) (SV-Tag 0) k
+         → ValueRealized (image ir) 1 0 0 ir tt (floc (main-flat ir))
+             (falloc (main-flat ir)) (SV-Tag 0) k
 entry-vr ir lk ioc brs k = MachineRefinesObsF.value-realized (entry-witness ir (ioc ir (proj₁ lk)) brs k)
 
 flat-trace-fam : IOC → BlockRunsT → (ir : IR Unit Unit) → LinkedProgram σFS (irProgram tbl ir) → ℕ → List SigOpEvent
 flat-trace-fam ioc brs ir lk n =
-  take n (flat-events (ValueRealized.steps (entry-vr ir lk ioc brs n) + 0)
-                      (image ir) (mkFlat entry-s (entry-alloc (ir-stack-budget ir)) 0))
+  take n (flat-events (suc (ValueRealized.steps (entry-vr ir lk ioc brs n) + 0))
+                      (image ir) start-flat)
 
 -- D113/D115: at THIS target's NUMERICS, which is where `IRObsCorrectFlat`'s
 -- `evalᴰ` alias reads them from too, so the two sides mean one thing.

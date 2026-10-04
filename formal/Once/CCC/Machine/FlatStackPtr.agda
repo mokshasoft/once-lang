@@ -71,7 +71,7 @@ open FrameSemantics FS using (Frame; _≟F_)
 open MemOps {FS}
 open ExecFinal {FS}
 open AbstractExec {FS}
-open import Once.CCC.Machine.FrameFree using (FrameFreeI; EmittableI)
+open import Once.CCC.Machine.FrameFree using (FrameFreeI; EmittableI; ImageI)
 open import Once.CCC.Machine.Flat
 open FlatMachine {FS}
 
@@ -575,7 +575,7 @@ sp-call-at (just j) fs wf = wf
 sp-call-at nothing  fs wf = sp-halt (current-frame (falloc fs)) (floc fs) true wf
 
 flat-stack-ptr : ∀ (i : AbstractInstr) (prog : AbstractTrace) (fs : FlatState)
-               → EmittableI i
+               → ImageI i
                → StackPtrWF fs → StackPtrWF (flat-exec-instr i prog fs)
 flat-stack-ptr (instr-ctrl (c-label m))               prog fs ff wf = wf
 -- Plan 0.63 step 2b: THE CLOSURE MARKERS MOVE THE FRAME, AND IT NO LONGER
@@ -589,6 +589,8 @@ flat-stack-ptr (instr-ctrl (c-label m))               prog fs ff wf = wf
 -- the record must be REBUILT. Only `sp-stack` sees the clear, and it survives
 -- it trivially: a cleared cell is `nothing`, and `StackPtrOK? nothing = ⊤`.
 flat-stack-ptr (instr-ctrl (c-entry m b))             prog fs ff wf =
+  sp-thunk b fs wf
+flat-stack-ptr (instr-ctrl (c-start b))             prog fs ff wf =
   sp-thunk b fs wf
 flat-stack-ptr (instr-ctrl (c-call-fn f))             prog fs ff wf =
   sp-call-at (find-fn prog f) fs wf

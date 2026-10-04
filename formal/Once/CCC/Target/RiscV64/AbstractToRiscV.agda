@@ -48,7 +48,7 @@ module IntW = OnceWord.Width 64
 open import Once.CCC.Target.RiscV64.Syntax
   using (Reg; zero; ra; sp; fp; a0; a1; a2; a3; a4; a5; a6; a7;
          s1; s2; s3; s4; t0; t1; t2; t3; t4;
-         Instr; ld; sd; add; sub; addi; li; auipc; lla; mv;
+         Instr; ld; sd; add; sub; addi; li; auipc; lla; lla-sym; mv;
          beq; bne; jal; jalr; j; ret; call; call-sym; nop; unimp; label;
          Label; once; thunk; callee; e-fn;
          Program; slot-size; slots)
@@ -73,7 +73,7 @@ open import Once.CCC.Machine.SMCore
          -- RegOp constructors (Plan 0.53 reg-op lowering)
          scratch-one; scratch-zero; scratch-dec; scratch-load-count; count-zero; count-inc;
          -- FlatCtrl constructors (Plan 0.53 flat-control lowering)
-         c-label; c-jmp; c-branch-scratch-zero; c-branch-tag-zero; c-thunk; c-ret; c-entry; c-call-fn)
+         c-label; c-jmp; c-branch-scratch-zero; c-branch-tag-zero; c-thunk; c-ret; c-entry; c-call-fn; c-start)
 open import Once.CCC.Machine.NoNested public
 
 ------------------------------------------------------------------------
@@ -355,6 +355,9 @@ compile-abstract (instr-ctrl (c-jmp n))                 = j (once n) ∷ []
 -- the same cell as before the split, since the total descent is unchanged.
 -- `c-ret` releases `slots (suc b)` for the same reason and is untouched.
 compile-abstract (instr-ctrl (c-entry e b))             = label (callee e) ∷ addi sp sp (Data.Integer.-_ (+ (slots b))) ∷ sd ra sp (slots b) ∷ []
+-- plan 0.107: `_start` — the heap register (`s2`), then the outermost frame;
+-- nothing called the program, so no `ra` to spill.
+compile-abstract (instr-ctrl (c-start b))               = lla-sym s2 "once_heap_base" ∷ addi sp sp (Data.Integer.-_ (+ (slots b))) ∷ []
   where import Data.Integer
 compile-abstract (instr-ctrl (c-ret b))                 = ld ra sp (slots b) ∷ addi sp sp (+ (slots (suc b))) ∷ ret ∷ []
 -- D245: a direct call of a program function. The caller reserves the callee's

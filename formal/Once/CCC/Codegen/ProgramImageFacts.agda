@@ -20,18 +20,18 @@ open import Data.List using (List; []; _∷_)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
 open import Data.List.Relation.Unary.All.Properties using (++⁺)
 open import Data.Nat using (ℕ; zero; suc; _≤_; z≤n)
-open import Data.Nat.Properties using (≤-refl; ≤-trans)
+open import Data.Nat.Properties using (≤-refl; ≤-trans; n≤1+n)
 open import Data.Maybe using (just)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Data.Unit using (tt)
 open import Relation.Binary.PropositionalEquality using (refl; sym; trans; subst)
 open import Once.IR using (IR; Unit)
-open import Once.CCC.Machine.SMCore using (instr-ctrl; c-entry; e-fn)
-open import Once.CCC.Machine.FrameFree using (EmittableI)
+open import Once.CCC.Machine.SMCore using (instr-ctrl; c-entry; e-fn; c-start; link-top)
+open import Once.CCC.Machine.FrameFree using (EmittableI; ImageI; emittable-image)
 open import Once.CCC.Codegen.AllocMin o using (AllocMinI)
 
 open import Once.CCC.Codegen.ShapeTable using (heap-moded)
-open import Once.CCC.Codegen.ProgramImage using (program-image; fns-image; fn-image; fn-next)
+open import Once.CCC.Codegen.ProgramImage using (program-image; image-body; fns-image; fn-image; fn-next; top-done)
 open import Once.Denotation.Program using (IRFun; irProgram; fname; fbody)
 import Once.CCC.Codegen.FrameFreeTrace as FFT
 import Once.CCC.Codegen.AllocMin as AM
@@ -68,9 +68,21 @@ fns-frame-free l (e ∷ es) =
   ++⁺ (tt ∷ FFT.ir-to-trace-lab-frame-free (fname e) (fbody e) (heap-moded (fbody e)) l)
       (fns-frame-free (fn-next l e) es)
 
+-- Plan 0.107: the BODY is every unit — no start in it; the start is the
+-- image's header, an `ImageI` but not an `EmittableI`.
+body-frame-free : ∀ (tbl : List IRFun) (ir : IR Unit Unit)
+                → All EmittableI (image-body o (irProgram tbl ir))
+body-frame-free tbl ir =
+  ++⁺ (FFT.ir-to-trace-top-frame-free o ir (heap-moded ir) (top-done o (irProgram tbl ir)))
+      (fns-frame-free (suc (IT.ir-next-label o 0 ir)) tbl)
+
 image-frame-free : ∀ (tbl : List IRFun) (ir : IR Unit Unit)
-                 → All EmittableI (program-image o (irProgram tbl ir))
-image-frame-free tbl ir = ++⁺ (FFT.ir-to-trace-frame-free o ir (heap-moded ir)) (fns-frame-free (IT.ir-next-label o 0 ir) tbl)
+                 → All ImageI (program-image o (irProgram tbl ir))
+image-frame-free tbl ir = tt ∷ All-map′ (body-frame-free tbl ir)
+  where
+    All-map′ : ∀ {t : AbstractTrace} → All EmittableI t → All ImageI t
+    All-map′ []       = []
+    All-map′ {i ∷ _} (e ∷ es) = emittable-image i e ∷ All-map′ es
 
 fns-alloc-min : ∀ (l : ℕ) (tbl : List IRFun) → All AllocMinI (fns-image l tbl)
 fns-alloc-min l []       = []
@@ -79,25 +91,32 @@ fns-alloc-min l (e ∷ es) =
 
 image-alloc-min : ∀ (tbl : List IRFun) (ir : IR Unit Unit)
                 → All AllocMinI (program-image o (irProgram tbl ir))
-image-alloc-min tbl ir = ++⁺ (AM.ir-to-trace-alloc-min o ir) (fns-alloc-min (IT.ir-next-label o 0 ir) tbl)
+image-alloc-min tbl ir =
+  tt ∷ ++⁺ (AM.ir-to-trace-top-alloc-min o ir (top-done o (irProgram tbl ir)))
+           (fns-alloc-min (suc (IT.ir-next-label o 0 ir)) tbl)
 
 -- …and the SEGMENT in force. `main`'s unit leaves the state where it began
 -- (`ir-seg-fold` at an empty saved stack); a function's marker pushes its
 -- budget over the caller's, its unit runs there, and its terminator pops back.
-fns-slots : ∀ (B l : ℕ) (tbl : List IRFun) → AllSeg (mkSeg B []) (fns-image l tbl)
-fns-slots B l []       = []
-fns-slots B l (e ∷ es) =
-  allseg-++ (sb-none refl ∷ SB.ir-slots-below-under-lab (fname e) (fbody e) l (B ∷ []))
+fns-slots : ∀ (B : ℕ) (sv : List ℕ) (l : ℕ) (tbl : List IRFun) → AllSeg (mkSeg B sv) (fns-image l tbl)
+fns-slots B sv l []       = []
+fns-slots B sv l (e ∷ es) =
+  allseg-++ (sb-none refl ∷ SB.ir-slots-below-under-lab (fname e) (fbody e) l (B ∷ sv))
             (subst (λ z → AllSeg z (fns-image (fn-next l e) es))
-                   (sym (SB.ir-seg-fold-lab (fname e) (fbody e) l (B ∷ [])))
-                   (fns-slots B (fn-next l e) es))
+                   (sym (SB.ir-seg-fold-lab (fname e) (fbody e) l (B ∷ sv)))
+                   (fns-slots B sv (fn-next l e) es))
 
+-- Plan 0.107: the run starts OUTSIDE every frame (nothing reserved); the start
+-- pushes `main`'s reservation over it, and the stop never pops it.
 image-slots : ∀ (tbl : List IRFun) (ir : IR Unit Unit)
-            → AllSeg (mkSeg (IT.ir-stack-budget o ir) []) (program-image o (irProgram tbl ir))
+            → AllSeg (mkSeg 0 []) (program-image o (irProgram tbl ir))
 image-slots tbl ir =
-  allseg-++ (SB.ir-slots-below-under o ir [])
-            (subst (λ z → AllSeg z (fns-image (IT.ir-next-label o 0 ir) tbl)) (sym (SB.ir-seg-fold o ir []))
-                   (fns-slots (IT.ir-stack-budget o ir) (IT.ir-next-label o 0 ir) tbl))
+  sb-none refl
+  ∷ allseg-++ (SB.ir-slots-below-top o ir d (0 ∷ []))
+              (subst (λ z → AllSeg z (fns-image (suc (IT.ir-next-label o 0 ir)) tbl))
+                     (sym (SB.ir-seg-fold-top o ir d (0 ∷ [])))
+                     (fns-slots (IT.ir-stack-budget o ir) (0 ∷ []) (suc (IT.ir-next-label o 0 ir)) tbl))
+  where d = top-done o (irProgram tbl ir)
 
 ------------------------------------------------------------------------
 -- A JUMP LANDS IN THE SEGMENT IT LEFT, over the whole image. Each unit's
@@ -132,10 +151,15 @@ fns-agree l (e ∷ es) =
 image-agree : ∀ (tbl : List IRFun) (ir : IR Unit Unit)
             → SegAgree (program-image o (irProgram tbl ir))
 image-agree tbl ir =
-  segagree-++ (IT.ir-to-trace o ir) (fns-image L tbl) 0 L (fns-next L tbl)
-              (LS.linked-labels-lab o ir 0) (fns-labels L tbl)
-              (LS.linked-agree-lab o ir 0) (fns-agree L tbl)
+  segagree-pre (instr-ctrl (c-start (IT.ir-stack-budget o ir)) ∷ []) 0 0 (fns-next (suc L) tbl) (refl ∷ [])
+    (++⁺ (ls-weaken ≤-refl (fns-mono (suc L) tbl) (LS.linked-top-labels o ir d refl))
+         (ls-weaken z≤n ≤-refl (fns-labels (suc L) tbl)))
+    z≤n
+    (segagree-++ (link-top d (IT.ir-to-unit o ir)) (fns-image (suc L) tbl) 0 (suc L) (fns-next (suc L) tbl)
+                 (LS.linked-top-labels o ir d refl) (fns-labels (suc L) tbl)
+                 (LS.linked-top-agree o ir d refl) (fns-agree (suc L) tbl))
   where L = IT.ir-next-label o 0 ir
+        d = top-done o (irProgram tbl ir)
 
 module _ {FS : FrameSemantics} where
   open FlatMachine {FS} using (find-label; find-label-lands; fetch)

@@ -58,7 +58,7 @@ open import Once.CCC.Machine.SMCore using
    instr-load-const; instr-load-code-addr; instr-save-closure-reg;
    instr-load-tag-lit; instr-alloc-heap; instr-loop; instr-case-on-tag;
    instr-reg-op; instr-ctrl; c-label; c-jmp; c-branch-scratch-zero;
-   c-branch-tag-zero; c-thunk; c-entry; c-call-fn; c-ret)
+   c-branch-tag-zero; c-thunk; c-entry; c-start; c-call-fn; c-ret)
 open import Once.CCC.Label using (LabelId)
 
 ------------------------------------------------------------------------
@@ -321,6 +321,7 @@ step-expect env st (instr-ctrl (c-label m)) = env m
 -- owns giving body entries a real per-body entry claim (and `c-ret` a real
 -- obligation against the caller's continuation).
 step-expect env st (instr-ctrl (c-entry m b)) = mkExpect e-any e-any []
+step-expect env st (instr-ctrl (c-start b)) = mkExpect e-any e-any []
 -- D245: a direct call, like a closure call, leaves no claim standing.
 step-expect env st (instr-ctrl (c-call-fn f)) = mkExpect e-any e-any []
 -- after a return the fall-through is dead, exactly as after `c-jmp`

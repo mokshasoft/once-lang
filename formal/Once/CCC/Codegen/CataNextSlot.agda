@@ -44,7 +44,7 @@ open import Once.CCC.Machine.SMCore
   using (halted; regs; readReg; Scratch; AtStack; AbstractInstr; AbstractTrace; LocState; StoredValue;
          SV-Tag; SV-Ptr; SV-Lit; SV-Code;
          instr-ctrl; c-label; c-jmp; c-branch-scratch-zero; c-branch-tag-zero;
-         c-thunk; c-entry; c-call-fn; c-ret;
+         c-thunk; c-entry; c-start; c-call-fn; c-ret;
          load-from-slot; restore-input; instr-alloc-stack; instr-reclaim-to; instr-loop;
          instr-case-on-tag;
          mov-to-output; mov-to-input; load-indirect; load-indirect-suc; store-at-slot; store-indirect; store-indirect-suc;
@@ -184,6 +184,7 @@ module CataNextSlot {FS : FrameSemantics} where
   -- (0.61's `leave-frame-next-slot`; `enter-frame` is a plain record
   -- update, so its side is `refl`).
   flat-keeps-next-slot prog fs (instr-ctrl (c-entry _ b)) _ = refl
+  flat-keeps-next-slot prog fs (instr-ctrl (c-start b)) _ = refl
   flat-keeps-next-slot prog fs (instr-ctrl (c-ret b)) _
     with fret fs
   ... | []     = leave-frame-next-slot (falloc fs)

@@ -47,7 +47,7 @@ import Once.Type
 import Once.Surface.Context as Ctx
 open import Once.TypeCheck.Classify using (PolyCtx; lookupPolyPrefix)
 open import Once.Denotation.Realize using (realize)
-open import Once.Adequacy.SourceTrace using (irFunOf; tableOf-go)
+open import Once.Compile using (irFunOf; tableOf-go)
 open import Once.Denotation.Program using (IRFun)
 open import Once.TypeCheck.ElaborateProofs using (resolveExpr)
 open import Once.Surface.Elaborate using (elaborateFull)

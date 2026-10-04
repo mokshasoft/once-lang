@@ -59,6 +59,9 @@ data Mem : Set where
   -- [rip + .L_thunk_<n>]: RIP-relative addressing of a closure-body
   -- label. Plan 0.2.4.2 D7. Emitted as `.L_thunk_<n>(%rip)`.
   rip+label : LabelId → Mem
+  -- Plan 0.107: `sym(%rip)` — a DATA symbol (the runtime's `.bss` heap), so
+  -- the `_start` stub is an instruction in the file.
+  rip+sym : String → Mem
 
 ------------------------------------------------------------------------
 -- Operands

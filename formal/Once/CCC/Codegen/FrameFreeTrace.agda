@@ -60,7 +60,7 @@ open import Once.IR using (IR; AllocMode; Stack; Heap;
 open import Once.IRTy using (fits-int; fits-float; ⌈_⌉F; ⟦_⟧TI; ν-type; WellFormedFI; wf-K; wf-Id; wf-Sum; wf-Prod)
 open import Once.Type using (Functor; K; Id; _⊕_; _⊗_)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
-open import Once.CCC.Machine.SMCore using (blocks-layout)
+open import Once.CCC.Machine.SMCore using (blocks-layout; link-top; instr-ctrl; c-label; c-jmp)
 open import Once.CCC.Machine.SMCore using (LabelId)
 open import Once.CCC.Machine.SMCore using
   (AbstractInstr; AbstractTrace; load-indirect-suc; mov-to-input;
@@ -71,7 +71,7 @@ open import Once.CCC.Machine.FrameFree using
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CCC.Codegen.ShapeTable using (HeapModed; IsHeap)
 open import Once.CCC.Codegen.IRToTrace o using
-  (ir-to-trace'; ir-to-trace; ir-to-trace-at-frontier; ir-to-trace-lab;
+  (ir-to-trace'; ir-to-trace; ir-to-trace-at-frontier; ir-to-trace-lab; ir-to-unit;
    CataStrategy; strat-const; strat-nat; strat-linear; strat-branching;
    cata-strategy; cata-dispatch; cata-trace-nat; cata-trace-linear;
    cata-trace-branching; push2; pop2; wrap-sum; visit-walk; rebuild-walk; lsize;
@@ -436,6 +436,13 @@ ir-to-trace-lab-frame-free : ∀ {A B} (ir : IR A B) (hm : HeapModed ir) (l : �
 ir-to-trace-lab-frame-free ir hm l =
   ++⁺ (frame-free-trace' ir hm 0 l)
       (tt ∷ frame-free-blocks _ (frame-free-blocks' ir hm 0 l))
+
+-- Plan 0.107: …and the OUTERMOST unit, linked with the silent stop.
+ir-to-trace-top-frame-free : ∀ {A B} (ir : IR A B) (hm : HeapModed ir) (d : LabelId)
+                           → FrameFreeTrace (link-top d (ir-to-unit ir))
+ir-to-trace-top-frame-free ir hm d =
+  ++⁺ (frame-free-trace' ir hm 0 0)
+      (tt ∷ tt ∷ frame-free-blocks _ (frame-free-blocks' ir hm 0 0))
 
 -- (`ir-to-trace-frame-free-deep` is GONE with the flip: `FrameFreeT` is the
 -- SEMANTIC predicate and an emitted trace no longer satisfies it — the markers

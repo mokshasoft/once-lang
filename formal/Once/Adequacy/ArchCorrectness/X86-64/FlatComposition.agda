@@ -161,6 +161,7 @@ headView (instr-case-on-tag f g) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ �
 headView (instr-reg-op op) = hv-plain (reg-op-no-label op) (λ _ _ _ → refl) (λ _ _ _ → refl)
 headView (instr-ctrl (c-label m)) = hv-clabel m refl (λ _ _ _ → refl) (λ _ _ _ → refl)
 headView (instr-ctrl (c-call-fn f)) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
+headView (instr-ctrl (c-start b)) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
 headView (instr-ctrl (c-entry m b)) =
   hv-otherlabel m (sub (reg rsp) (imm (slots b)) ∷ []) refl refl
                 (λ _ _ _ → refl) (λ _ _ _ → refl)

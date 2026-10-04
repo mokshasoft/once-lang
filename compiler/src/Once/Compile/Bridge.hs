@@ -153,7 +153,7 @@ fromMResult (MC.C_Error_1088 err)  = Error (agdaToText err)
 
 compile :: Stage -> Bool -> Arch -> Text -> CompileResult
 compile stage doOpt arch source =
-  fromMResult (MC.d_compile_1124 (toMAllocMode AllocHeap) (toMStage stage) doOpt (toMArch arch) (textToAgda source))
+  fromMResult (MC.d_compile_1136 (toMAllocMode AllocHeap) (toMStage stage) doOpt (toMArch arch) (textToAgda source))
 
 ------------------------------------------------------------------------
 -- AST-level pipeline

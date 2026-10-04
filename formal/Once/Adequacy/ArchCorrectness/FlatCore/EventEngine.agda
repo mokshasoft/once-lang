@@ -40,6 +40,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Once.CCC.FrameSemantics using (FrameSemantics; frame-word)
 open import Once.Adequacy.ArchCorrectness.FlatCore.RegRoles using (RegRoles)
 import Once.Adequacy.ArchCorrectness.FlatCore.RegRoles as RR
+open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Once.CCC.Machine.SMCore using (AbstractTrace; AbstractInstr; instr-sigop)
 open import Once.SigOp.Info using (SigOpInfo; effect; Pure; sem; Internal; External)
 open import Once.Target.Symbol using (once-symbol-path)
@@ -107,6 +108,8 @@ open import Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence
 
 open import Once.Adequacy.ArchCorrectness.FlatCore.RunContext o FS slot-size word-eq
   public
+open import Once.Adequacy.ArchCorrectness.FlatCore.RunWF o FS slot-size word-eq
+  using (run-step-pc-pos)
 
 -- …and the data correspondence itself, which `CompiledCorrespondence` keeps
 -- private (an instance re-opened publicly would clash with the `C` every arch
@@ -158,8 +161,12 @@ record FlatInv (ev : RT.EvExtractor) (env : RT.ArithEnv)
     inv-closure : sv-below (next-heap-ref (falloc fs)) (fclosure fs)
     inv-regtag  : FlatRegTag fs
     inv-ev      : ev ≡ ev-arch
-    inv-env     : env ≡ arith-env (compile-trace prog)
+    inv-env     : ArithTable prog env
     inv-run     : RunAt prog fs
+    -- plan 0.107: the correspondence runs AFTER the start (pc 0), which the
+    -- per-arch start lemma covers on its own; no step returns there
+    -- (`RunWF.run-step-pc-pos`).
+    inv-started : fpc fs ≡ 0 → ⊥
 open FlatInv public
 
 -- One flat step preserves it: each component by its own flat-machine theorem
@@ -176,6 +183,7 @@ flat-inv-step i prog fs ftq h inv = record
   ; inv-run     = mkRunAt (run-tbl (inv-run inv)) (run-ir (inv-run inv)) (run-emit (inv-run inv))
                           (run-linked (inv-run inv))
                           (reach-step i fs (run-reach (inv-run inv)) ftq h)
+  ; inv-started = run-step-pc-pos prog fs i (inv-run inv) ftq
   }
 
 ------------------------------------------------------------------------
@@ -446,9 +454,10 @@ record Supply : Set₁ where
              → CompiledCorr hv prog fs s
              → fetch prog (fpc fs) ≡ just (instr-alloc-heap n)
              → CFC.hfront hv + slots n ≤ CFC.lo hv
-    stack-room : ∀ {hv : HeapView} prog fs s m b → RunAt prog fs
+    stack-room : ∀ {hv : HeapView} prog fs s b → RunAt prog fs
               → CompiledCorr hv prog fs s
-              → fetch prog (fpc fs) ≡ just (instr-ctrl (c-entry m b))
+              → Σ EntryId (λ m → fetch prog (fpc fs) ≡ just (instr-ctrl (c-entry m b)))
+      ⊎ (fetch prog (fpc fs) ≡ just (instr-ctrl (c-start b)))
               → CFC.hfront hv + slots b ≤ rreg s sp-reg
     -- D245: at EITHER call, closure or direct: both spend one slot.
     call-room : ∀ {hv : HeapView} prog fs s (c : AbstractInstr) → RunAt prog fs
@@ -495,7 +504,7 @@ record Supply : Set₁ where
     arith-sigop-contract : ∀ {hv : HeapView} (env : RT.ArithEnv) prog fs s {A B}
                             (si : SigOpInfo A B)
                         → RunAt prog fs
-                        → env ≡ arith-env (compile-trace prog)
+                        → ArithTable prog env
                         -- plan 0.105: the COMPILER's SigOp (its body is an
                         -- emitted arith block) — not every `Pure` one: a pure
                         -- FFI contract is `Pure` and external.
@@ -507,7 +516,7 @@ record Supply : Set₁ where
     external-sigop-contract : ∀ {hv : HeapView} (ev : RT.EvExtractor) (env : RT.ArithEnv)
                                prog fs s {A B} (si : SigOpInfo A B)
                            → RunAt prog fs
-                           → ev ≡ ev-arch → env ≡ arith-env (compile-trace prog)
+                           → ev ≡ ev-arch → ArithTable prog env
                            -- plan 0.105: an interpretation's contract (Phase 0:
                            -- unconditioned, `env sym ≡ nothing` is false for an
                            -- arith block).

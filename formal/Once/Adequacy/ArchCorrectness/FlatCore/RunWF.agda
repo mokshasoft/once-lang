@@ -82,7 +82,7 @@ open FlatMachine {FS}
 open import Once.CCC.Machine.FlatStoreWF FS
 open import Once.CCC.Machine.FlatRegTagWF FS
 open import Data.Product using (Σ; _,_; _×_; proj₁; proj₂)
-open import Once.CCC.Codegen.IRToTrace o using (ir-to-trace; ir-stack-budget)
+open import Once.CCC.Codegen.IRToTrace o using (ir-to-trace; ir-stack-budget; ir-to-unit)
 open import Once.CCC.Machine.FrameFree
 open import Data.List.Relation.Unary.All using () renaming (All to AllL; [] to allL-[]; _∷_ to _allL∷_)
 open import Once.CCC.Machine.InstrSlot
@@ -101,7 +101,7 @@ open import Once.CCC.Codegen.SlotSeg
 import Once.CCC.Codegen.SlotBudget as SB
 import Once.CCC.Codegen.FrameFreeTrace as FFT
 import Once.CCC.Codegen.AllocMin as AM
-open import Once.CCC.Codegen.ProgramImage using (program-image; fns-image; fn-image; fn-next)
+open import Once.CCC.Codegen.ProgramImage using (program-image; image-body; fns-image; fn-image; fn-next; top-done)
 import Once.CCC.Codegen.CallsLinked as CLk
 open import Once.CCC.Codegen.CallOK using (CallOKI)
 open import Data.List.Relation.Unary.Any using (Any; here; there)
@@ -112,7 +112,7 @@ open import Once.IRTy using (_≟IRTy_)
 open import Once.Denotation.Program using (IRFun; irProgram; fname; fdom; fcod; fbody; Linked; LinkedAt; LinkedAt-at; LinkedProgram)
 open import Once.Spec.Contract using (ISig)
 open import Data.List.Relation.Unary.All.Properties using (++⁺)
-open import Once.CCC.Codegen.ProgramImageFacts o using (image-frame-free; image-alloc-min; image-slots; image-jump-in-segment)
+open import Once.CCC.Codegen.ProgramImageFacts o using (image-frame-free; body-frame-free; image-alloc-min; image-slots; image-jump-in-segment)
 open import Once.IR using (IR; Unit)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Unit using (⊤; tt)
@@ -167,7 +167,8 @@ private
 
   image-calls : ∀ {σ : ISig} (tbl : List IRFun) (ir : IR Unit Unit) → LinkedProgram σ (irProgram tbl ir)
               → AllL (CallOKI tbl) (program-image o (irProgram tbl ir))
-  image-calls tbl ir (lm , les) = ++⁺ (CLk.ir-to-trace-calls o tbl ir lm) (fns-calls tbl _ tbl les)
+  image-calls tbl ir (lm , les) =
+    tt allL∷ ++⁺ (CLk.ir-to-trace-top-calls o tbl ir (top-done o (irProgram tbl ir)) lm) (fns-calls tbl _ tbl les)
 
   -- a linked call names an entry
   linked-any : ∀ (tbl : List IRFun) {f A B} → LinkedAt tbl f A B → Any (λ e → fname e ≡ f) tbl
@@ -214,7 +215,7 @@ emitted-call-fn-resolves : ∀ prog (fs : FlatState) (f : CanonicalName) → Run
 emitted-call-fn-resolves prog fs f r ftq =
   ft-go-complete prog (e-fn f) 0
     (subst (Any (λ x → entry-of? x ≡ just (e-fn f))) (sym (run-emit r))
-           (Any++⁺ʳ (ir-to-trace (run-ir r)) (entries-in _ (run-tbl r) f (linked-any (run-tbl r) (proj₂ (proj₂ ok))))))
+           (Any++⁺ʳ (instr-ctrl (c-start (ir-stack-budget (run-ir r))) ∷ link-top (top-done o (irProgram (run-tbl r) (run-ir r))) (ir-to-unit (run-ir r))) (entries-in _ (run-tbl r) f (linked-any (run-tbl r) (proj₂ (proj₂ ok))))))
   where
     ok : CallOKI (run-tbl r) (instr-ctrl (c-call-fn f))
     ok = fetch-All (subst (AllL (CallOKI (run-tbl r))) (sym (run-emit r)) (image-calls (run-tbl r) (run-ir r) (run-linked r))) ftq
@@ -417,9 +418,22 @@ postulate
 -- marker's (it moves only the frame) and that unit's.
 ------------------------------------------------------------------------
 frame-op-absurd : ∀ prog (fs : FlatState) (i : AbstractInstr) (em : Emitted prog)
-                → fetch prog (fpc fs) ≡ just i → EmittableI i
+                → fetch prog (fpc fs) ≡ just i → ImageI i
 frame-op-absurd .(program-image o (irProgram tbl ir)) fs i (tbl , ir , refl) ftq =
-  fetch-All (image-frame-free tbl ir) ftq
+  fetch-All {prog = program-image o (irProgram tbl ir)} {k = fpc fs} (image-frame-free tbl ir) ftq
+
+-- Plan 0.107: THE START IS AT pc 0 AND NOWHERE ELSE. The rest of the image is
+-- units (`ProgramImage.image-body`), and no unit holds a start.
+start-at-zero : ∀ prog (k b : ℕ) → Emitted prog
+              → fetch prog k ≡ just (instr-ctrl (c-start b)) → k ≡ 0
+start-at-zero .(program-image o (irProgram tbl ir)) zero    b (tbl , ir , refl) _   = refl
+start-at-zero .(program-image o (irProgram tbl ir)) (suc k) b (tbl , ir , refl) ftq =
+  ⊥-elim (fetch-All {prog = image-body o (irProgram tbl ir)} {k = k} (body-frame-free tbl ir) ftq)
+
+-- …and pc 0 holds it.
+fetch-zero : ∀ prog → (em : Emitted prog)
+           → fetch prog 0 ≡ just (instr-ctrl (c-start (ir-stack-budget (proj₁ (proj₂ em)))))
+fetch-zero .(program-image o (irProgram tbl ir)) (tbl , ir , refl) = refl
 
 
 ------------------------------------------------------------------------
@@ -447,7 +461,7 @@ fetch≡lookup (i ∷ is) (suc k) = fetch≡lookup is k
 
 emitted-slot-below-budget : ∀ (tbl : List IRFun) (ir : IR Unit Unit) (k : ℕ) (i : AbstractInstr) (slot : Slot)
                           → fetch (program-image o (irProgram tbl ir)) k ≡ just i → slot-of i ≡ just slot
-                          → slot < cur (seg-at (program-image o (irProgram tbl ir)) k (mkSeg (ir-stack-budget ir) []))
+                          → slot < cur (seg-at (program-image o (irProgram tbl ir)) k (mkSeg 0 []))
 emitted-slot-below-budget tbl ir k i slot ftq soq =
   below (allseg-at (program-image o (irProgram tbl ir)) k (image-slots tbl ir)
            (trans (sym (fetch≡lookup (program-image o (irProgram tbl ir)) k)) ftq)) slot soq
@@ -664,14 +678,17 @@ data PcView (i : AbstractInstr) : Set where
   -- D245: a callable ENTRY, a closure body's or a program function's.
   pv-thunk : ∀ (ℓ : EntryId) (bb : ℕ) → i ≡ instr-ctrl (c-entry ℓ bb) → PcView i
   pv-ret   : ∀ (bb : ℕ) → i ≡ instr-ctrl (c-ret bb) → PcView i
+  -- plan 0.107: the program's START, which reserves the outermost frame.
+  pv-start : ∀ (bb : ℕ) → i ≡ instr-ctrl (c-start bb) → PcView i
   -- D092: the call is the fifth kind. It moves BOTH stacks and lands the pc on
   -- a body entry, so it is neither frame-free nor a jump.
   pv-call  : i ≡ instr-call-closure → PcView i
   -- D245: …and the direct call, the same transfer to a statically named entry.
   pv-call-fn : ∀ (f : CanonicalName) → i ≡ instr-ctrl (c-call-fn f) → PcView i
 
-pcView : ∀ (i : AbstractInstr) → EmittableI i → PcView i
+pcView : ∀ (i : AbstractInstr) → ImageI i → PcView i
 pcView (instr-ctrl (c-label _))               _ = pv-suc tt tt (λ _ _ → refl)
+pcView (instr-ctrl (c-start bb))              _ = pv-start bb refl
 pcView (instr-ctrl (c-jmp m))                 _ = pv-jump tt m refl go
   where go : ∀ prog fs → JumpPost (instr-ctrl (c-jmp m)) m prog fs
         go prog fs = mk (dj-aux (find-label prog m) fs)
@@ -744,10 +761,10 @@ pcView (instr-reg-op _)                       _ = pv-suc tt tt (λ _ _ → refl)
 -- inlined it becomes two obligations — the marker steps, which move the
 -- segment exactly as they move the frame, and LABEL SCOPING for the jumps.
 run-seg-wf : ∀ prog (fs : FlatState) (r : RunAt prog fs)
-           → SegWF prog (ir-stack-budget (run-ir r)) fs
+           → SegWF prog 0 fs
 run-seg-wf prog fs (mkRunAt tbl ir eq lkd reach) = go fs reach
   where
-    B₀ = mkSeg (ir-stack-budget ir) []
+    B₀ = mkSeg 0 []
     0≢suc : ∀ {n : ℕ} → 0 ≡ suc n → ⊥
     0≢suc ()
     suc-inj : ∀ {m n : ℕ} → suc m ≡ suc n → m ≡ n
@@ -768,13 +785,13 @@ run-seg-wf prog fs (mkRunAt tbl ir eq lkd reach) = go fs reach
             (sym eq)
             (emitted-thunk-guarded tbl ir p ℓ bb
               (subst (λ pr → fetch pr p ≡ just (instr-ctrl (c-entry ℓ bb))) eq H))
-    go : ∀ (fs' : FlatState) → Reachable prog (ir-stack-budget ir) fs'
-       → SegWF prog (ir-stack-budget ir) fs'
+    go : ∀ (fs' : FlatState) → Reachable prog 0 fs'
+       → SegWF prog 0 fs'
     -- AT ENTRY the pc is 0 and `seg-at _ zero` is the starting state outright.
     go fs' (reach-start .fs' el eqB) =
       mkSegWF (inj₁ (subst (λ z → frame-slots (falloc fs') ≡ cur (seg-at prog z B₀))
                            (sym (proj₁ el)) eqB))
-              (subst₂ (RetMatch prog (ir-stack-budget ir))
+              (subst₂ (RetMatch prog 0)
                       (sym (proj₁ (proj₂ (proj₂ (proj₂ el)))))
                       (sym (proj₁ (proj₂ (proj₂ (proj₂ (proj₂ el))))))
                       rm-[])
@@ -799,7 +816,7 @@ run-seg-wf prog fs (mkRunAt tbl ir eq lkd reach) = go fs reach
         ih-eq : (∀ ℓ bb → i ≡ instr-ctrl (c-entry ℓ bb) → ⊥)
               → frame-slots (falloc fs'') ≡ cur (seg-at prog (fpc fs'') B₀)
         ih-eq nt = go-eq (seg-cur ih)
-          where go-eq : SegCur prog (ir-stack-budget ir) fs''
+          where go-eq : SegCur prog 0 fs''
                       → frame-slots (falloc fs'') ≡ cur (seg-at prog (fpc fs'') B₀)
                 go-eq (inj₁ e) = e
                 go-eq (inj₂ (ℓ , bb , tq , _)) =
@@ -830,12 +847,12 @@ run-seg-wf prog fs (mkRunAt tbl ir eq lkd reach) = go fs reach
         ff-not-ret ff b e = subst FrameFreeI e ff
         nj-eq : ∀ {i' : AbstractInstr} → NotJmpI i' → ∀ m → i' ≡ instr-ctrl (c-jmp m) → ⊥
         nj-eq nj m e = subst NotJmpI e nj
-        step : PcView i → SegWF prog (ir-stack-budget ir) (flat-exec-instr i prog fs'')
+        step : PcView i → SegWF prog 0 (flat-exec-instr i prog fs'')
         -- FRAME-FREE, FALLING THROUGH: frames untouched, segment unmoved.
         step (pv-suc ff nj adv) =
           mkSegWF
             (inj₁ (trans (sf-slots same) (trans (ih-eq (ff-not-thunk ff)) (sym stable))))
-            (subst₂ (RetMatch prog (ir-stack-budget ir))
+            (subst₂ (RetMatch prog 0)
                     (sym (sf-saved same)) (sym (sf-ret same)) (seg-stack ih))
             -- a FALL-THROUGH cannot land on a body entry: the emitter put a
             -- `c-jmp` there, and this instruction is not one.
@@ -855,7 +872,7 @@ run-seg-wf prog fs (mkRunAt tbl ir eq lkd reach) = go fs reach
           mkSegWF
             (inj₁ (trans (sf-slots same)
                          (trans (ih-eq (ff-not-thunk ff)) (sym (jgo (jp prog fs''))))))
-            (subst₂ (RetMatch prog (ir-stack-budget ir))
+            (subst₂ (RetMatch prog 0)
                     (sym (sf-saved same)) (sym (sf-ret same)) (seg-stack ih))
             -- THE THREE WAYS A JUMP CAN LAND, and none is a body entry: a
             -- fall-through (branch not taken) is guarded as above; a HALT
@@ -910,7 +927,7 @@ run-seg-wf prog fs (mkRunAt tbl ir eq lkd reach) = go fs reach
           mkSegWF (inj₁ (trans (cong (λ z → frame-slots (falloc (flat-exec-instr z prog fs''))) ieq)
                          (sym (cong cur (trans (cong (λ z → seg-at prog z B₀) (pc-eq ieq))
                                                (trans seg-suc (step-eq ieq)))))))
-                  (subst₂ (RetMatch prog (ir-stack-budget ir))
+                  (subst₂ (RetMatch prog 0)
                           (sym (cong (λ z → saved-frames (falloc (flat-exec-instr z prog fs''))) ieq))
                           (sym (cong (λ z → fret (flat-exec-instr z prog fs'')) ieq))
                           (seg-stack ih))
@@ -932,6 +949,34 @@ run-seg-wf prog fs (mkRunAt tbl ir eq lkd reach) = go fs reach
                     → seg-step i (seg-at prog (fpc fs'') B₀)
                       ≡ mkSeg bb (cur (seg-at prog (fpc fs'') B₀) ∷ saved (seg-at prog (fpc fs'') B₀))
             step-eq refl = refl
+        -- plan 0.107: THE START reserves the outermost frame exactly as a body
+        -- marker reserves its own — `grow-frame bb` against `seg-push bb`.
+        step (pv-start bb ieq) =
+          mkSegWF (inj₁ (trans (cong (λ z → frame-slots (falloc (flat-exec-instr z prog fs''))) ieq)
+                         (sym (cong cur (trans (cong (λ z → seg-at prog z B₀) (pc-eq′ ieq))
+                                               (trans seg-suc (step-eq′ ieq)))))))
+                  (subst₂ (RetMatch prog 0)
+                          (sym (cong (λ z → saved-frames (falloc (flat-exec-instr z prog fs''))) ieq))
+                          (sym (cong (λ z → fret (flat-exec-instr z prog fs'')) ieq))
+                          (seg-stack ih))
+                  -- the marker FALLS THROUGH, so the same guard applies: the
+                  -- position after a body entry is not another body entry.
+                  (λ ℓ' bb' H → ⊥-elim (no-fallthrough (fpc fs'') ℓ' bb' i
+                                  (start-not-jmp ieq) (start-not-ret ieq) ftq
+                                  (subst (λ z → fetch prog z ≡ just (instr-ctrl (c-entry ℓ' bb')))
+                                         (pc-eq′ ieq) H)))
+          where
+            start-not-ret : i ≡ instr-ctrl (c-start bb) → ∀ b → i ≡ instr-ctrl (c-ret b) → ⊥
+            start-not-ret refl b ()
+            start-not-jmp : i ≡ instr-ctrl (c-start bb) → ∀ m → i ≡ instr-ctrl (c-jmp m) → ⊥
+            start-not-jmp refl m ()
+            pc-eq′ : i ≡ instr-ctrl (c-start bb)
+                  → fpc (flat-exec-instr i prog fs'') ≡ suc (fpc fs'')
+            pc-eq′ refl = refl
+            step-eq′ : i ≡ instr-ctrl (c-start bb)
+                    → seg-step i (seg-at prog (fpc fs'') B₀)
+                      ≡ mkSeg bb (cur (seg-at prog (fpc fs'') B₀) ∷ saved (seg-at prog (fpc fs'') B₀))
+            step-eq′ refl = refl
         -- THE RETURN: `leave-frame` restores the caller's count and the pc goes
         -- to the popped return address. That those two BELONG TOGETHER is
         -- exactly `RetMatch`, which is what it was built for.
@@ -944,7 +989,7 @@ run-seg-wf prog fs (mkRunAt tbl ir eq lkd reach) = go fs reach
               where go-c : instr-ctrl (c-ret bb) ≡ instr-ctrl (c-entry ℓ bb') → ⊥
                     go-c ()
             ret-step : i ≡ instr-ctrl (c-ret bb)
-                     → SegWF prog (ir-stack-budget ir) (flat-exec-instr i prog fs'')
+                     → SegWF prog 0 (flat-exec-instr i prog fs'')
             ret-step refl = go-rm (fret fs'') (saved-frames (falloc fs'')) refl refl (seg-stack ih)
               where
                 -- J-style on BOTH stacks at once: `RetMatch` pairs them, so
@@ -953,8 +998,8 @@ run-seg-wf prog fs (mkRunAt tbl ir eq lkd reach) = go fs reach
                 -- caller's reservation (`beq`) and the tail pairing.
                 go-rm : ∀ (rs : List ℕ) (frs : List (Frame × ℕ))
                       → fret fs'' ≡ rs → saved-frames (falloc fs'') ≡ frs
-                      → RetMatch prog (ir-stack-budget ir) frs rs
-                      → SegWF prog (ir-stack-budget ir)
+                      → RetMatch prog 0 frs rs
+                      → SegWF prog 0
                               (flat-exec-instr (instr-ctrl (c-ret bb)) prog fs'')
                 -- an empty return stack HALTS with the pc unmoved, so the
                 -- caller's window is this frame's and the pairing stays empty
@@ -964,7 +1009,7 @@ run-seg-wf prog fs (mkRunAt tbl ir eq lkd reach) = go fs reach
                           (trans (ih-eq (λ _ _ ()))
                                  (cong (λ z → cur (seg-at prog z B₀))
                                        (sym (do-ret-pc-[] fs'' req)))))))
-                          (subst₂ (RetMatch prog (ir-stack-budget ir))
+                          (subst₂ (RetMatch prog 0)
                                   (sym (trans (cong saved-frames (do-ret-alloc fs''))
                                               (leave-frame-saved-[] (falloc fs'') feq)))
                                   (sym (do-ret-fret-[] fs'' req)) rm-[])
@@ -980,7 +1025,7 @@ run-seg-wf prog fs (mkRunAt tbl ir eq lkd reach) = go fs reach
                           (trans (leave-frame-slots-∷ (falloc fs'') f b frs feq)
                           (trans beq (cong (λ z → cur (seg-at prog z B₀))
                                            (sym (do-ret-pc-∷ fs'' rpc rs req)))))))
-                          (subst₂ (RetMatch prog (ir-stack-budget ir))
+                          (subst₂ (RetMatch prog 0)
                                   (sym (trans (cong saved-frames (do-ret-alloc fs''))
                                               (leave-frame-saved-∷ (falloc fs'') f b frs feq)))
                                   (sym (do-ret-fret-∷ fs'' rpc rs req)) rest)
@@ -1012,7 +1057,7 @@ run-seg-wf prog fs (mkRunAt tbl ir eq lkd reach) = go fs reach
         step (pv-call ieq) = call-go ieq
           where
             call-go : i ≡ instr-call-closure
-                    → SegWF prog (ir-stack-budget ir) (flat-exec-instr i prog fs'')
+                    → SegWF prog 0 (flat-exec-instr i prog fs'')
             call-go refl = cgo (callView prog fs'')
               where
                 call-clash : ∀ {ℓ' bb'} → instr-call-closure ≡ instr-ctrl (c-entry ℓ' bb') → ⊥
@@ -1025,7 +1070,7 @@ run-seg-wf prog fs (mkRunAt tbl ir eq lkd reach) = go fs reach
                                    (idle-step instr-call-closure call-seg-id
                                               (seg-at prog (fpc fs'') B₀)))))
                 cgo : CallPost prog fs''
-                    → SegWF prog (ir-stack-budget ir) (do-call prog fs'')
+                    → SegWF prog 0 (do-call prog fs'')
                 -- a malformed call HALTS: no stack moves, so both fields ride
                 cgo (cp-halt e) rewrite e =
                   mkSegWF (seg-cur ih) (seg-stack ih)
@@ -1046,7 +1091,7 @@ run-seg-wf prog fs (mkRunAt tbl ir eq lkd reach) = go fs reach
         step (pv-call-fn f ieq) = callfn-go ieq
           where
             callfn-go : i ≡ instr-ctrl (c-call-fn f)
-                      → SegWF prog (ir-stack-budget ir) (flat-exec-instr i prog fs'')
+                      → SegWF prog 0 (flat-exec-instr i prog fs'')
             callfn-go refl = cfgo (find-fn prog f) refl
               where
                 cf-clash : ∀ {ℓ' bb'} → instr-ctrl (c-call-fn f) ≡ instr-ctrl (c-entry ℓ' bb') → ⊥
@@ -1058,7 +1103,7 @@ run-seg-wf prog fs (mkRunAt tbl ir eq lkd reach) = go fs reach
                                    (idle-step (instr-ctrl (c-call-fn f)) refl
                                               (seg-at prog (fpc fs'') B₀)))))
                 cfgo : ∀ (mj : Maybe ℕ) → find-fn prog f ≡ mj
-                     → SegWF prog (ir-stack-budget ir) (do-call-at (find-fn prog f) fs'')
+                     → SegWF prog 0 (do-call-at (find-fn prog f) fs'')
                 cfgo nothing fe rewrite fe =
                   mkSegWF (seg-cur ih) (seg-stack ih)
                           (λ ℓ bb H → ⊥-elim (cf-clash (just-injI (trans (sym ftq) H))))
@@ -1139,7 +1184,7 @@ thunk-entry-ret prog fs ℓ bb r ftq = proj₂ (proj₂ (seg-entry (run-seg-wf p
 -- — `emitted-lea-slot-pair`, `SlotBudget.SlotBelow`'s second field, and the
 -- `run-stack-slot` transport — is gone with it.
 stack-ptr-step : ∀ (i : AbstractInstr) prog (fs : FlatState) → RunAt prog fs
-               → fetch prog (fpc fs) ≡ just i → EmittableI i
+               → fetch prog (fpc fs) ≡ just i → ImageI i
                → StackPtrWF fs → StackPtrWF (flat-exec-instr i prog fs)
 stack-ptr-step (lea-slot slot) prog fs r ftq () wf
 stack-ptr-step (lea-indexed slot) prog fs r ftq () wf
@@ -1237,6 +1282,76 @@ entry-flat-wf fs (_ , _ , _ , _ , _ , hemp , semp , _ , noptr , _) = record
         go r (SV-Lit p v)  eq rewrite eq = tt
         go r (SV-Code c)   eq rewrite eq = tt
 
+-- Plan 0.107: NO STEP LANDS ON THE START. A fall-through lands one past
+-- something; a jump on a `c-label`, a call on an entry — and pc 0 holds the
+-- start; a return one past a CALL (`RetMatch`'s provenance); and a step that
+-- leaves the pc where it is was not the start (the start falls through). So
+-- the correspondence, which begins AFTER the start, never meets it.
+run-step-pc-pos : ∀ prog (fs : FlatState) (i : AbstractInstr) → RunAt prog fs
+                → fetch prog (fpc fs) ≡ just i
+                → fpc (flat-exec-instr i prog fs) ≡ 0 → ⊥
+run-step-pc-pos prog fs i r ftq = step (pcView i (frame-op-absurd prog fs i (run-emitted r) ftq))
+  where
+    z≢s : ∀ {n : ℕ} → suc n ≡ 0 → ⊥
+    z≢s ()
+    jI : ∀ {a b : AbstractInstr} → just a ≡ just b → a ≡ b
+    jI refl = refl
+    -- whatever sits at a position that is 0 is the start
+    at-zero : ∀ (k : ℕ) (i' : AbstractInstr) → fetch prog k ≡ just i' → k ≡ 0
+            → i' ≡ instr-ctrl (c-start (ir-stack-budget (proj₁ (proj₂ (run-emitted r)))))
+    at-zero k i' fq refl = jI (trans (sym fq) (fetch-zero prog (run-emitted r)))
+    -- the pc did not move: then `i` itself sat at 0, so `i` is the start
+    unmoved : (∀ b → i ≡ instr-ctrl (c-start b) → ⊥)
+            → fpc (flat-exec-instr i prog fs) ≡ fpc fs → fpc (flat-exec-instr i prog fs) ≡ 0 → ⊥
+    unmoved ns e z = ns _ (at-zero (fpc fs) i ftq (trans (sym e) z))
+    lab≢start : ∀ {m b} → instr-ctrl (c-label m) ≡ instr-ctrl (c-start b) → ⊥
+    lab≢start ()
+    ent≢start : ∀ {e b' b} → instr-ctrl (c-entry e b') ≡ instr-ctrl (c-start b) → ⊥
+    ent≢start ()
+    step : PcView i → fpc (flat-exec-instr i prog fs) ≡ 0 → ⊥
+    step (pv-suc ff nj adv) z = z≢s (trans (sym (adv prog fs)) z)
+    step (pv-jump ff m mlab jp) z = jgo (jp prog fs)
+      where
+        not-start : ∀ b → i ≡ instr-ctrl (c-start b) → ⊥
+        not-start b refl = no-once mlab
+          where no-once : ∀ {A : Set} → nothing ≡ just m → A
+                no-once ()
+        jgo : JumpPost i m prog fs → ⊥
+        jgo (jp-suc adv _) = z≢s (trans (sym adv) z)
+        jgo (jp-halt e)    = unmoved not-start e z
+        jgo (jp-to q fq e) =
+          lab≢start (at-zero q _ (find-label-sound prog m q fq) (trans (sym e) z))
+    step (pv-thunk ℓ bb refl) z = z≢s z
+    step (pv-start bb refl)   z = z≢s z
+    step (pv-ret bb refl) z = go (fret fs) refl (seg-stack (run-seg-wf prog fs r))
+      where
+        ret≢start : ∀ b → instr-ctrl (c-ret bb) ≡ instr-ctrl (c-start b) → ⊥
+        ret≢start b ()
+        go : ∀ (rs : List ℕ) → fret fs ≡ rs → RetMatch prog 0 (saved-frames (falloc fs)) (fret fs) → ⊥
+        go []         e _  = unmoved ret≢start (do-ret-pc-[] fs e) z
+        go (rpc ∷ rs) e rm = prov-go (subst (RetMatch prog 0 (saved-frames (falloc fs))) e rm)
+          where
+            prov-go : RetMatch prog 0 (saved-frames (falloc fs)) (rpc ∷ rs) → ⊥
+            prov-go (rm-∷ _ (q , rq , _) _) =
+              z≢s (trans (sym rq) (trans (sym (do-ret-pc-∷ fs rpc rs e)) z))
+    step (pv-call refl) z = cgo (callView prog fs)
+      where
+        cl≢start : ∀ b → instr-call-closure ≡ instr-ctrl (c-start b) → ⊥
+        cl≢start b ()
+        cgo : CallPost prog fs → ⊥
+        cgo (cp-halt heq)         = unmoved cl≢start (cong fpc heq) z
+        cgo (cp-enter ℓ j feq eeq) =
+          ent≢start (at-zero j _ (proj₂ (find-thunk-sound prog ℓ j feq)) (trans (sym (cong fpc eeq)) z))
+    step (pv-call-fn f refl) z = fgo (find-fn prog f) refl
+      where
+        cf≢start : ∀ b → instr-ctrl (c-call-fn f) ≡ instr-ctrl (c-start b) → ⊥
+        cf≢start b ()
+        fgo : ∀ (mj : Maybe ℕ) → find-fn prog f ≡ mj → ⊥
+        fgo nothing  fe = unmoved cf≢start (cong (λ x → fpc (do-call-at x fs)) fe) z
+        fgo (just j) fe =
+          ent≢start (at-zero j _ (proj₂ (find-entry-sound prog (e-fn f) j fe))
+                     (trans (sym (cong (λ x → fpc (do-call-at x fs)) fe)) z))
+
 -- Every stack pointer in a reachable state addresses a live pair of the current
 -- frame. Induction on `Reachable`, exactly like `run-stack-slot`: the entry
 -- state holds no stack pointer at all (its registers hold the heap filler and
@@ -1244,7 +1359,7 @@ entry-flat-wf fs (_ , _ , _ , _ , _ , hemp , semp , _ , noptr , _) = record
 -- program is emitted — frame-free, and its `lea-slot`s address reserved pairs.
 run-stack-ptr : ∀ prog (fs : FlatState) (r : RunAt prog fs) → StackPtrWF fs
 run-stack-ptr prog fs (mkRunAt tbl ir eq lkd reach) = go fs reach
-  where go : ∀ (fs' : FlatState) → Reachable prog (ir-stack-budget ir) fs' → StackPtrWF fs'
+  where go : ∀ (fs' : FlatState) → Reachable prog 0 fs' → StackPtrWF fs'
         go fs' (reach-start .fs' el _) = entry-stack-ptr fs' el
         go .(flat-exec-instr i prog fs'') (reach-step i fs'' r' ftq h) =
           stack-ptr-step i prog fs'' (mkRunAt tbl ir eq lkd r') ftq
@@ -1278,7 +1393,7 @@ slot-read-in-frame : ∀ prog (fs : FlatState) (slot : Slot) (i : AbstractInstr)
 slot-read-in-frame prog fs slot i r ftq soq =
   -- the emitter's positional bound, at the machine's positional window
   subst (slot <_) (sym seg-eq)
-    (subst (λ pr → slot < cur (seg-at pr (fpc fs) (mkSeg (ir-stack-budget (run-ir r)) [])))
+    (subst (λ pr → slot < cur (seg-at pr (fpc fs) (mkSeg 0 [])))
            (sym (run-emit r))
            (emitted-slot-below-budget (run-tbl r) (run-ir r) (fpc fs) i slot
              (subst (λ p → fetch p (fpc fs) ≡ just i) (run-emit r) ftq) soq))
@@ -1289,11 +1404,11 @@ slot-read-in-frame prog fs slot i r ftq soq =
     just-injI : ∀ {a b : AbstractInstr} → just a ≡ just b → a ≡ b
     just-injI refl = refl
     seg-eq : frame-slots (falloc fs)
-           ≡ cur (seg-at prog (fpc fs) (mkSeg (ir-stack-budget (run-ir r)) []))
+           ≡ cur (seg-at prog (fpc fs) (mkSeg 0 []))
     seg-eq = go (seg-cur (run-seg-wf prog fs r))
-      where go : SegCur prog (ir-stack-budget (run-ir r)) fs
+      where go : SegCur prog 0 fs
                → frame-slots (falloc fs)
-               ≡ cur (seg-at prog (fpc fs) (mkSeg (ir-stack-budget (run-ir r)) []))
+               ≡ cur (seg-at prog (fpc fs) (mkSeg 0 []))
             go (inj₁ e) = e
             go (inj₂ (ℓ , bb , tq , _)) =
               ⊥-elim (no-slot (subst (λ z → slot-of z ≡ just slot)
@@ -1321,12 +1436,12 @@ slot-read-in-frame prog fs slot i r ftq soq =
 emitted-alloc-min : ∀ prog (fs : FlatState) (i : AbstractInstr) → Emitted prog
                   → fetch prog (fpc fs) ≡ just i → AllocMinI i
 emitted-alloc-min .(program-image o (irProgram tbl ir)) fs i (tbl , ir , refl) ftq =
-  fetch-All (image-alloc-min tbl ir) ftq
+  fetch-All {prog = program-image o (irProgram tbl ir)} {k = fpc fs} (image-alloc-min tbl ir) ftq
 
 -- ONE FRAME-FREE STEP PRESERVES THE INVARIANT — enumerated like
 -- `stack-ptr-step` (the vacuous alloc premises need `i` concrete).
 ptr-bounds-step : ∀ (i : AbstractInstr) prog (fs : FlatState) → RunAt prog fs
-                → fetch prog (fpc fs) ≡ just i → EmittableI i
+                → fetch prog (fpc fs) ≡ just i → ImageI i
                 → FlatWF fs
                 → PtrBoundsWF fs → PtrBoundsWF (flat-exec-instr i prog fs)
 ptr-bounds-step (instr-case-on-tag f g) prog fs r ftq () wfS wf
@@ -1395,7 +1510,7 @@ ptr-bounds-step (instr-ctrl c) prog fs r ftq ff wfS wf =
 run-wf-ptr-bounds : ∀ prog (fs : FlatState) (r : RunAt prog fs)
                   → FlatWF fs × PtrBoundsWF fs
 run-wf-ptr-bounds prog fs (mkRunAt tbl ir eq lkd reach) = go fs reach
-  where go : ∀ (fs' : FlatState) → Reachable prog (ir-stack-budget ir) fs'
+  where go : ∀ (fs' : FlatState) → Reachable prog 0 fs'
            → FlatWF fs' × PtrBoundsWF fs'
         go fs' (reach-start .fs' el _) = entry-flat-wf fs' el , entry-ptr-bounds fs' el
         go .(flat-exec-instr i prog fs'') (reach-step i fs'' r' ftq h) =
@@ -1657,7 +1772,7 @@ run-link-at-thunk prog fs (mkRunAt tbl ir eq lkd reach) = go fs reach
     Goal fs' = Σ EntryId (λ ℓ → Σ ℕ (λ bb →
                  fetch prog (fpc fs') ≡ just (instr-ctrl (c-entry ℓ bb))))
 
-    go : ∀ (fs' : FlatState) → Reachable prog (ir-stack-budget ir) fs'
+    go : ∀ (fs' : FlatState) → Reachable prog 0 fs'
        → ∀ {r : ℕ} → flink fs' ≡ just r → Goal fs'
     go fs' (reach-start .fs' (_ , _ , _ , _ , _ , _ , _ , _ , _ , fl) _) lk =
       ⊥-elim (nothing≢justℕ (trans (sym fl) lk))
@@ -1719,6 +1834,11 @@ run-link-at-thunk prog fs (mkRunAt tbl ir eq lkd reach) = go fs reach
               where fes = find-entry-sound prog (e-fn f) j fe
         -- THE BODY MARKER clears the link, so it cannot be live after one.
         step (fv-thunk ℓ bb ieq) =
+          ⊥-elim (nothing≢justℕ (trans (sym cleared) lk))
+          where cleared : flink (flat-exec-instr i prog fs'') ≡ nothing
+                cleared = cong (λ z → flink (flat-exec-instr z prog fs'')) ieq
+        -- plan 0.107: …and so does the START (the same `do-thunk`).
+        step (fv-start bb ieq) =
           ⊥-elim (nothing≢justℕ (trans (sym cleared) lk))
           where cleared : flink (flat-exec-instr i prog fs'') ≡ nothing
                 cleared = cong (λ z → flink (flat-exec-instr z prog fs'')) ieq

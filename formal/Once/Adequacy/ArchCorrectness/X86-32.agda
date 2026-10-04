@@ -52,14 +52,14 @@ module Once.Adequacy.ArchCorrectness.X86-32
   -- in range BY CONSTRUCTION; this is the frontend's range, not yet threaded.
   (x86-32-lit-fits : RB.LitFits o ι) where
 
-open import Data.Nat using (ℕ; _+_; s≤s; z≤n)
+open import Data.Nat using (ℕ; _+_; s≤s; z≤n; suc)
 open import Data.Unit using (tt)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.String using (String)
 open import Data.List using ([]; take)
 open import Data.Bool using (false)
-open import Data.Product using (proj₁; proj₂; _,_)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
+open import Data.Product using (proj₁; proj₂; _,_; _×_)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 open import Once.Memory.HeapAddress using (HeapLocation; sucHL; heap-loc; mkHeapRef; heap-offset)
 open import Once.CCC.Machine.SMCore using (AllocState; current-frame)
 open import Once.CCC.FrameSemantics using (frame-base)
@@ -69,7 +69,14 @@ open import Once.CCC.Target.X86-32.AbstractToX86-32 using (slot-to-disp)
 open import Data.Empty using (⊥)
 open import Data.Nat using (_*_)
 open import Data.Nat.Properties using (+-comm; ≤-refl; ≤-reflexive)
-open import Once.Adequacy.CPU.X86-32 using (call-at-x86-32; ev-x86-32; arith-env-x86-32; step-budget-x86-32)
+open import Once.Adequacy.CPU.X86-32 using (call-at-x86-32; ev-x86-32; block-env; run-trace-x86-32; step-budget-x86-32)
+import Once.CCC.Target.X86-32.File as RF
+import Data.Maybe
+open import Data.Sum using (inj₂)
+open import Once.Denotation.Trace using (SigOpEvent)
+open import Once.Adequacy.EmitFile using (file-is-emit)
+open import Once.CCC.Machine.NoNested using (NoNested)
+open import Once.CCC.Codegen.ProgramImage using (program-image)
 -- `val-x86-32` lives with the arith simulation on this arch (x86-64 re-exports
 -- its own from `Adequacy.CPU`).
 open import Once.Adequacy.ArchCorrectness.ArithSimX86-32 using (val-x86-32)
@@ -82,8 +89,9 @@ open import Once.Denotation.Behavior using (Behavior; at; silent)
 open import Once.Adequacy.CPU using (x86-32; arch-semantics)
 open import Once.Adequacy.CPU.Interface using (ArchSemantics)
 open import Once.Arith.Backend.CallAnswer using (answer-at)
-open import Once.Adequacy.SourceTrace using (moduleToIR; moduleTable; rewrite-program; ⟦_⟧IR)
-open import Once.Denotation.Program using (irProgram; table; main; LinkedProgram)
+open import Once.Adequacy.SourceTrace using (⟦_⟧IR)
+open import Once.Compile using (moduleToIR; moduleTable; rewrite-program)
+open import Once.Denotation.Program using (irProgram; table; main; LinkedProgram; IRProgram)
 open import Once.CCC.Codegen.ProgramImageFacts o using (image-frame-free)
 open import Once.Target.Arch using (arch-numerics)
 open import Once.CCC.Target.X86-32.Layout using (InStack; stack-addr)
@@ -102,8 +110,6 @@ import Once.Compile as C
 import Once.Parser.Module.Core as P
 -- D100: the assembler's precondition (distinct emitted local labels), threaded
 -- into this arch's `loader-faithful` axiom.
-open import Once.Adequacy.LabelClash using (DistinctLabels; LabelsResolvable)
-open import Once.Adequacy.SymbolClash using (SymbolsResolvable)
 import Once.Adequacy.ArchCorrectness.FlatFromObs as FFO
 
 -- Plan 0.91 S1 (D213): `program-bound` is GONE. It was introduced by Plan 0.54
@@ -153,49 +159,12 @@ entry-frame-base = refl
 as32 = arch-semantics x86-32
 
 ------------------------------------------------------------------------
--- The seam `asm-trace-correct`, DECOMPOSED (Plan 0.54 rung B step 2).
---
--- The middle term `conc-trace` is the CONCRETE machine's SigOp trace of a
--- compiled IR: lower the IR to a concrete x86-32 `Program` (the compiler's real
--- IR→instruction path `compile-trace ∘ ir-to-trace`) and run the concrete
--- `run-events` machine on it. DEFINED — so the split below is genuine (relates
--- real machines), not two postulates bridged by a third.
+-- Plan 0.107: THE LOADER AXIOM IS GONE. `x86-32-loader-faithful` stood here,
+-- quantified over the TEXT the compiler emitted — so it trusted every piece of
+-- code that built the text (D261's riscv64 prologue hid behind its sibling).
+-- What replaces it is a THEOREM over the FILE (`file-flat-x86-32` below). The only
+-- trust left is `as-faithful`.
 ------------------------------------------------------------------------
-
--- D244/D245: the concrete machine runs the PROGRAM IMAGE — `main` and every
--- table entry, as the emitted file contains them.
-conc-trace : IR Unit Unit → Behavior
-conc-trace ir =
-  -- THE REAL EMITTER: `Once.Target.X86-32` lowers via `compile-trace-cnt`
-  -- (which threads the label counter through case/loop), not the plain fold.
-  ArchSemantics.run-trace as32 ι (proj₂ (compile-trace-cnt o 0 (FFOx.image ir)))
-                          (ArchSemantics.initialState as32)
-
-postulate
-  -- (A) TOOLCHAIN TRUST — the honest external boundary (GNU `as` class): the
-  -- emitted text, assembled+decoded+loaded, traces as the concrete machine
-  -- traces the compiled IR's `Program` directly. This is the assembler + loader
-  -- + printer + decoder round-trip. It is NOT the CPU semantics and NOT the
-  -- arith logic; it is exactly the toolchain boundary every verified compiler
-  -- keeps (cf. CompCert's assembler/loader).
-  -- D100: PRECONDITIONED on the emitted local labels being distinct. Without
-  -- it this axiom is FALSE, not merely trusted: `as` refuses a file that
-  -- defines `.L…` twice, so its LHS is the trace of a program that was never
-  -- produced. Externally false, and no `⊥`-probe could have found it —
-  -- `assemble : String → List Byte` is uninterpreted with no failure mode.
-  x86-32-loader-faithful :
-    ∀ (m : P.Module) (asm : String) →
-    C.compileFromModule C.Heap C.Build false x86-32 m ≡ C.Built asm →
-    DistinctLabels x86-32 m →
-    -- D167: …and it links — every compiler-minted SigOp the text calls has
-    -- its arith block emitted. `ld`'s rejection; nothing stated it before.
-    LabelsResolvable x86-32 m →
-    SymbolsResolvable x86-32 m →
-    -- D244: the emitted PROGRAM, at this instance's table.
-    ∀ (ir : IR Unit Unit) → moduleToIR m ≡ just ir
-    → tbl ≡ table (rewrite-program (irProgram (moduleTable m) ir)) →
-    ∀ (n : ℕ) → at (FFOx.asm-sem asm) n
-              ≡ at (conc-trace (main (rewrite-program (irProgram (moduleTable m) ir)))) n
 
 -- ── (B) THE SIMULATION, WIRED to the ConcFlatSim assembly.
 -- The apex node `conc-flat-sim-just` is DEFINED via `events-agree`; every gap it
@@ -226,8 +195,8 @@ open import Once.Adequacy.ArchCorrectness.X86-32.ConcFlatSim o
   (RB.ret-no-wrap x86-32-addr-no-wrap) (RB.count-no-wrap x86-32-addr-no-wrap)
   (RB.tag-fits x86-32-lit-fits) (RB.lit-fits x86-32-lit-fits) (RB.float-fits o ι)
   (RB.lo-fits x86-32-addr-no-wrap)
-  using (events-agree; CompiledCorr; HeapView
-        ; FlatInv; EntryLike; Reachable; reach-start
+  using (events-agree; events-agree-start; CompiledCorr; HeapView
+        ; FlatInv; EntryLike; Reachable; reach-start; RunAt
         ; inv-wf; inv-regtag; inv-ev; inv-env; inv-run; mkRunAt)
 open import Once.CCC.Machine.FlatStoreWF x86-32-frame-semantics using (FlatWF; sv-below)
 open import Once.CCC.Machine.FlatRegTagWF x86-32-frame-semantics using (FlatRegTag)
@@ -283,8 +252,7 @@ entry-view cprog = record
 -- (`nothing ≡ nothing`, the entry heap is empty). No longer a postulate.
 entry-corr : ∀ (ir : IR Unit Unit)
            → CompiledCorr (entry-view (compile-trace (FFOx.image ir))) (FFOx.image ir)
-                          (mkFlat FFOx.entry-s (FFOx.entry-alloc (ir-stack-budget ir)) 0)
-                          (ArchSemantics.initialState as32)
+                          FFOx.start-flat X.initState
 entry-corr ir = record
   { dataCorr = record
       { in1-eq  = refl
@@ -393,82 +361,57 @@ entry-like B = refl , refl , refl , refl , refl
         no-ptr Scratch loc ()
         no-ptr Count   loc ()
 
-entry-inv : ∀ (ir : IR Unit Unit) → LinkedProgram (sig ι) (irProgram tbl ir)
-          → FlatInv ev-x86-32 (arith-env-x86-32 (compile-trace (FFOx.image ir)))
-                    (FFOx.image ir) (mkFlat FFOx.entry-s (FFOx.entry-alloc (ir-stack-budget ir)) 0)
-entry-inv ir lk = record
-  { inv-wf      = entry-wf (ir-stack-budget ir)
-  -- D097: `mkFlat`'s closure register is the D074 tag filler, and a tag
-  -- references no block at all — so the bound is `tt`.
-  ; inv-closure = tt
-  ; inv-regtag  = entry-regtag (ir-stack-budget ir)
-  ; inv-ev      = refl        -- the apex runs the REAL extractor
-  ; inv-env     = refl        -- …and the REAL arith env
-  -- the program is this IR's emitted trace, and the loader's state starts the run
-  -- INSIDE the frame the prologue reserved: `frame-slots ≡ ir-stack-budget ir`,
-  -- which is what makes the slot cluster a theorem rather than an assumption.
-  ; inv-run     = mkRunAt tbl ir refl lk
-                    (reach-start (mkFlat FFOx.entry-s (FFOx.entry-alloc (ir-stack-budget ir)) 0)
-                                 (entry-like (ir-stack-budget ir)) refl)
-  }
-
--- The flat adequacy witness for `ir` at event-count `n`: the flat step-fuel that
--- `traces-agree` guarantees emits the first `n` events. `flat-trace-of` and
--- `events-agree` both index the flat trace by exactly this `N`.
--- D159/D160: `traces-agree` is CHAIN-BOUNDED now — one fuel that emits the
--- whole chain, with `take k` agreeing for every `k` — so there is no
--- per-`n` existential left to project. The fuel is the witness's own
--- `steps`, which is exactly what `flat-trace-of` runs at, so the two sides
--- match definitionally instead of through a chosen `N`.
+-- Plan 0.107: THE RUN, FROM THE ENVIRONMENT'S STATE. The program's start (pc 0)
+-- is crossed by `events-agree-start` — its block is `block-step-c-start`, so the
+-- prologue the old loader axiom absorbed is now a proved step — and the rest is
+-- `events-agree`. The flat side is `FlatFromObs`'s run from `start-flat`.
 Nof : FFOx.BlockRunsT → (ir : IR Unit Unit) → LinkedProgram (sig ι) (irProgram tbl ir) → ℕ → ℕ
 Nof brs ir lk n =
   ValueRealized.steps
     (MachineRefinesObsF.value-realized (FFOx.entry-witness ir (ir-obs-correct ir (proj₁ lk)) brs n)) + 0
 
+-- the concrete run of the program image under a block table, from the
+-- environment's state
+conc-run : List (String × RF.Payload) → IR Unit Unit → ℕ → List SigOpEvent
+conc-run bs ir M =
+  RTx.run-events val-x86-32 (answer-at ι call-at-x86-32) ev-x86-32 (block-env bs)
+    [] M (compile-trace (FFOx.image ir)) X.initState
+
 postulate
-  -- STEP-BUDGET ADEQUACY / fuel coherence — the honest abstract adequate-fuel seam (D5),
-  -- the SAME gap `FlatFromObs.flat-trace` / `traces-agree` carry on the flat side.
-  --
-  -- `events-agree` supplies an existential concrete fuel `M` that REPRODUCES the adequate
-  -- flat prefix `flat-events (Nof brs ir lk n)` — the flat trace at the adequacy witness for `n`
-  -- events (that is the `hyp` argument). `conc-trace` runs at the DESIGNED budget
-  -- `step-budget-x86-32 n`. Because `M` already reproduces the first-`n`-event prefix and
-  -- `step-budget-x86-32 n` is adequate, their `take n` prefixes agree.
-  --
-  -- This is TRUE, unlike the earlier `∀ M` form (which was false — at `M ≡ 0`,
-  -- `run-events 0 ≡ []`, so it claimed `take n adequate-run ≡ []`). The `hyp` argument
-  -- ties `M` to the adequate flat trace, so the only remaining content is that
-  -- `step-budget-x86-32 n` itself reaches ≥ n events — the abstract adequacy of the
-  -- postulated `ℕ→ℕ` fuel map. Provable core: `run-events` fuel-prefix monotonicity;
-  -- residual leaf: `step-budget-x86-32` adequacy (needs `step-budget` pinned, D5).
-  conc-fuel : ∀ (brs : FFOx.BlockRunsT) (ir : IR Unit Unit) (lk : LinkedProgram (sig ι) (irProgram tbl ir)) (n M : ℕ) →
-      RTx.run-events val-x86-32 (answer-at ι call-at-x86-32) ev-x86-32 (arith-env-x86-32 (compile-trace (FFOx.image ir)))
-        [] M (compile-trace (FFOx.image ir)) (ArchSemantics.initialState as32)
-      ≡ flat-events (Nof brs ir lk n) (FFOx.image ir) (mkFlat FFOx.entry-s (FFOx.entry-alloc (ir-stack-budget ir)) 0) →
-      take n (RTx.run-events val-x86-32 (answer-at ι call-at-x86-32) ev-x86-32 (arith-env-x86-32 (compile-trace (FFOx.image ir)))
-                [] (step-budget-x86-32 n) (compile-trace (FFOx.image ir)) (ArchSemantics.initialState as32))
-    ≡ take n (RTx.run-events val-x86-32 (answer-at ι call-at-x86-32) ev-x86-32 (arith-env-x86-32 (compile-trace (FFOx.image ir)))
-                [] M (compile-trace (FFOx.image ir)) (ArchSemantics.initialState as32))
+  -- STEP-BUDGET ADEQUACY / fuel coherence — the honest abstract adequate-fuel seam
+  -- (D5), the SAME gap `FlatFromObs.flat-trace` / `traces-agree` carry on the
+  -- flat side: a fuel `M` that reproduces the adequate flat prefix agrees, on
+  -- its first `n` events, with the DESIGNED budget `step-budget-x86-32 n`.
+  -- Plan 0.107: over the FILE'S block table (`C.blocks-x86-32 p`), and from
+  -- the environment's state with the start ahead of it.
+  conc-fuel : ∀ (brs : FFOx.BlockRunsT) (p : IRProgram) (ir : IR Unit Unit)
+                (lk : LinkedProgram (sig ι) (irProgram tbl ir)) (n M : ℕ) →
+      conc-run (C.blocks-x86-32 p) ir M
+      ≡ flat-events (suc (Nof brs ir lk n)) (FFOx.image ir) FFOx.start-flat →
+      take n (conc-run (C.blocks-x86-32 p) ir (step-budget-x86-32 n))
+    ≡ take n (conc-run (C.blocks-x86-32 p) ir M)
 
--- `conc-flat-sim-nested` RETIRED (Plan 0.54 item 6, 2026-08-01): with `case`
--- compiled to flat control, EVERY emitted trace is nested-free
--- (`no-nested-of-all` on the frame-free walk), so the two lowerings coincide
--- unconditionally (`compile-trace-cnt-agrees`) and the apex needs no split.
-conc-flat-sim-just :
-  ∀ (brs : FFOx.BlockRunsT) (ir : IR Unit Unit) (lk : LinkedProgram (sig ι) (irProgram tbl ir)) (n : ℕ) →
-  at (conc-trace ir) n ≡ at (FFOx.flat-main ir-obs-correct brs ir lk) n
-conc-flat-sim-just brs ir lk n
-  rewrite compile-trace-cnt-agrees o 0 (FFOx.image ir)
-            (no-nested-of-all (FFOx.image ir) (image-frame-free tbl ir)) =
-  trans (conc-fuel brs ir lk n (proj₁ agree) (proj₂ agree)) (cong (take n) (proj₂ agree))
+-- THE SIMULATION from the environment's state: the concrete run of the image
+-- (under the file's block table) is the flat run of the program.
+conc-flat-sim :
+  ∀ (brs : FFOx.BlockRunsT) (p : IRProgram) (ir : IR Unit Unit)
+    (lk : LinkedProgram (sig ι) (irProgram tbl ir))
+  → FFOx.image ir ≡ C.image-of p
+  → ∀ (n : ℕ) → take n (conc-run (C.blocks-x86-32 p) ir (step-budget-x86-32 n))
+              ≡ at (FFOx.flat-main ir-obs-correct brs ir lk) n
+conc-flat-sim brs p ir lk img n =
+  trans (conc-fuel brs p ir lk n (proj₁ agree) (proj₂ agree)) (cong (take n) (proj₂ agree))
   where
-    agree = events-agree (Nof brs ir lk n)
-              ev-x86-32 (arith-env-x86-32 (compile-trace (FFOx.image ir)))
-              (FFOx.image ir) (mkFlat FFOx.entry-s (FFOx.entry-alloc (ir-stack-budget ir)) 0)
-              (ArchSemantics.initialState as32) (entry-corr ir) (entry-inv ir lk)
+    run₀ : RunAt (FFOx.image ir) FFOx.start-flat
+    run₀ = mkRunAt tbl ir refl lk (reach-start FFOx.start-flat (entry-like 0) refl)
+    agree = events-agree-start (Nof brs ir lk n)
+              ev-x86-32 (block-env (C.blocks-x86-32 p))
+              (FFOx.image ir) FFOx.start-flat X.initState (ir-stack-budget ir) (entry-corr ir)
+              (entry-wf 0) tt (entry-regtag 0) refl (p , img , refl) run₀
+              refl refl refl refl
 
--- THIS INSTANCE'S THREE FACTS, at its table. `ArchCorrectness` assembles them
--- into the per-program `ArchCorrect` (each program brings its own table).
+-- THIS INSTANCE'S FACTS, at its table. `ArchCorrectness` assembles them into
+-- the per-program `ArchCorrect` (each program brings its own table).
 -- plan 0.91 parallel track: the block-table coherence HYPOTHESIS, named so it
 -- can be threaded to `Once.Certified` (each target has its own
 -- `FrameSemantics`, so `BlockRuns` differs per arch and one hypothesis cannot
@@ -483,18 +426,38 @@ ir-flat-correct-x86-32 : ∀ (brs : BlockRunsHyp-x86-32) (ir : IR Unit Unit) (lk
                      → at (flat-x86-32 brs ir lk) n ≡ at (⟦ just (irProgram tbl ir) ⟧IR (arch-numerics x86-32) ι) n
 ir-flat-correct-x86-32 brs = FFOx.ir-flat-correct-main ir-obs-correct brs
 
-asm-sem-x86-32 : String → Behavior
-asm-sem-x86-32 = FFOx.asm-sem
-
--- The seam, ASSEMBLED from (A) ∘ (B): the toolchain axiom, then the simulation.
-asm-flat-x86-32 : ∀ (brs : BlockRunsHyp-x86-32) (m : P.Module) (asm : String) →
-    C.compileFromModule C.Heap C.Build false x86-32 m ≡ C.Built asm →
-    DistinctLabels x86-32 m → LabelsResolvable x86-32 m → SymbolsResolvable x86-32 m →
-    ∀ (ir : IR Unit Unit) (mi : moduleToIR m ≡ just ir)
-    → (teq : tbl ≡ table (rewrite-program (irProgram (moduleTable m) ir)))
-    → (lk : LinkedProgram (sig ι) (irProgram tbl (main (rewrite-program (irProgram (moduleTable m) ir))))) →
-    ∀ (n : ℕ) → at (FFOx.asm-sem asm) n
+-- Plan 0.107: RUNNING THE FILE IS THE FLAT RUN OF THE PROGRAM IT WAS EMITTED
+-- FROM — a theorem, over the file. The file is `emit` of the module's program
+-- (`file-is-emit`); its code is the lowering of the image (one walk, and the
+-- counter-threaded lowering agrees with the plain one on a nested-free image);
+-- its block table is the one `ArithTable` names; and the run starts at its
+-- entry, pc 0, which is the start.
+file-flat-x86-32 :
+  ∀ (brs : BlockRunsHyp-x86-32) (m : P.Module) (F : RF.Image)
+  → C.compileFileFromModule C.Heap false x86-32 m ≡ inj₂ F
+  → ∀ (ir : IR Unit Unit) (mi : moduleToIR m ≡ just ir)
+  → (oq : o ≡ C.entry-owner)
+  → (teq : tbl ≡ table (rewrite-program (irProgram (moduleTable m) ir)))
+  → (lk : LinkedProgram (sig ι) (irProgram tbl (main (rewrite-program (irProgram (moduleTable m) ir)))))
+  → ∀ (n : ℕ) → at (run-trace-x86-32 ι F (X.initStateAt (Data.Maybe.fromMaybe 0 (RF.entry F)))) n
               ≡ at (flat-x86-32 brs (main (rewrite-program (irProgram (moduleTable m) ir))) lk) n
-asm-flat-x86-32 brs m asm eq dl lr sr ir mi teq lk n =
-  trans (x86-32-loader-faithful m asm eq dl lr sr ir mi teq n)
-        (conc-flat-sim-just brs (main (rewrite-program (irProgram (moduleTable m) ir))) lk n)
+file-flat-x86-32 brs m F eq ir mi oq teq lk n =
+  subst (λ G → at (run-trace-x86-32 ι G (X.initStateAt (Data.Maybe.fromMaybe 0 (RF.entry G)))) n
+               ≡ at (flat-x86-32 brs ir′ lk) n)
+        (sym (file-is-emit x86-32 m F ir eq mi))
+        (trans (cong (λ cd → take n (RTx.run-events val-x86-32 (answer-at ι call-at-x86-32) ev-x86-32
+                                       (block-env (C.blocks-x86-32 p)) [] (step-budget-x86-32 n) cd X.initState))
+                     code-eq)
+               (conc-flat-sim brs p ir′ lk img n))
+  where
+    p   = irProgram (moduleTable m) ir
+    ir′ = main (rewrite-program p)
+    img : FFOx.image ir′ ≡ C.image-of p
+    img = img-at o oq tbl teq
+      where img-at : ∀ o′ → o′ ≡ C.entry-owner → ∀ t → t ≡ table (rewrite-program p)
+                   → program-image o′ (irProgram t ir′) ≡ C.image-of p
+            img-at .C.entry-owner refl .(table (rewrite-program p)) refl = refl
+    code-eq : proj₂ (compile-trace-cnt C.entry-owner 0 (C.image-of p)) ≡ compile-trace (FFOx.image ir′)
+    code-eq = trans (cong proj₂ (compile-trace-cnt-agrees C.entry-owner 0 (C.image-of p)
+                       (subst (λ t → NoNested t) img (no-nested-of-all (FFOx.image ir′) (image-frame-free tbl ir′)))))
+                    (cong compile-trace (sym img))

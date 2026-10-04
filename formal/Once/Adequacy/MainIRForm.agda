@@ -25,7 +25,7 @@ open import Relation.Nullary using (yes; no; ¬_)
 open import Function using (case_of_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
-open import Once.Adequacy.SourceTrace using (findMain; findMain-here; isEffUU?)
+open import Once.Compile using (findMain; findMain-here; isEffUU?)
 
 open import Once.Type
   using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_;

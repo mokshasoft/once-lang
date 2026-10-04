@@ -53,21 +53,28 @@ open import Data.Nat using (ℕ)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.List using ([])
 open import Data.Bool using (false)
-open import Data.Product using (proj₁; proj₂; _,_)
+open import Data.Product using (proj₁; proj₂; _,_; _×_)
 open import Data.List using (take)
-open import Once.Adequacy.CPU.RiscV64 using (call-at-riscv64; ev-riscv64; arith-env-riscv64; step-budget-riscv64)
+open import Once.Adequacy.CPU.RiscV64 using (call-at-riscv64; ev-riscv64; block-env; run-trace-riscv64; step-budget-riscv64)
+import Once.CCC.Target.RiscV64.File as RF
+import Data.Maybe
+open import Data.Sum using (inj₂)
+open import Once.Denotation.Trace using (SigOpEvent)
+open import Once.Adequacy.EmitFile using (file-is-emit)
+open import Once.CCC.Codegen.ProgramImage using (program-image)
 open import Once.Adequacy.ArchCorrectness.ArithSimRiscV64 using (val-riscv64)
 import Once.Arith.Backend.RiscV64.RunTrace as RTr
 open import Once.CCC.Codegen.IRToTrace o using (ir-stack-budget)
 open import Data.String using (String)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 open import Once.IR using (IR; Unit)  -- Plan 0.52 M2: IRTy Unit
 open import Once.Denotation.Behavior using (Behavior; at; silent)
 open import Once.Adequacy.CPU using (riscv64; arch-semantics)
 open import Once.Adequacy.CPU.Interface using (ArchSemantics)
 open import Once.Arith.Backend.CallAnswer using (answer-at)
-open import Once.Adequacy.SourceTrace using (moduleToIR; moduleTable; rewrite-program; ⟦_⟧IR)
-open import Once.Denotation.Program using (irProgram; table; main; LinkedProgram)
+open import Once.Adequacy.SourceTrace using (⟦_⟧IR)
+open import Once.Compile using (moduleToIR; moduleTable; rewrite-program)
+open import Once.Denotation.Program using (irProgram; table; main; LinkedProgram; IRProgram)
 open import Once.CCC.Codegen.ProgramImageFacts o using (image-frame-free)
 open import Once.Target.Arch using (arch-numerics)
 open import Once.CCC.Target.RiscV64.FrameInstantiation using () renaming (rv64-frame-semantics to rv64-frame-semantics-at)
@@ -78,7 +85,7 @@ rv64-frame-semantics = rv64-frame-semantics-at ι
 open import Once.CCC.Codegen.IRObsCorrectFlat o tbl using (module IRObsCorrectFlatness)
 open import Once.CCC.Codegen.IRToTrace o using (ir-to-trace)
 open import Once.CCC.Target.RiscV64.AbstractToRiscV using (compile-trace-cnt; compile-trace-cnt-agrees; compile-trace; slot-to-disp)
-open import Once.CCC.Machine.NoNested using (no-nested-of-all)
+open import Once.CCC.Machine.NoNested using (no-nested-of-all; NoNested)
 open import Once.CCC.Target.RiscV64.Syntax using (slot-size) renaming (Program to RVProgram)
 open import Once.Memory.HeapAddress using (HeapLocation; heap-loc; heap-offset; sucHL)
 open import Once.CCC.Label using (LabelId; thunk)
@@ -93,8 +100,6 @@ import Once.Compile as C
 import Once.Parser.Module.Core as P
 -- D100: the assembler's precondition (distinct emitted local labels), threaded
 -- into this arch's `loader-faithful` axiom.
-open import Once.Adequacy.LabelClash using (DistinctLabels; LabelsResolvable)
-open import Once.Adequacy.SymbolClash using (SymbolsResolvable)
 import Once.Adequacy.ArchCorrectness.FlatFromObs as FFO
 import Once.CCC.Target.RiscV64.Semantics as RS
 open import Once.CCC.Target.RiscV64.Layout using (InStack)
@@ -134,34 +139,12 @@ entry-frame-riscv64 = stack-addr RS.stack-top stack-top-in-stack
 module FFOr = FFO o tbl riscv64 rv64-frame-semantics refl entry-frame-riscv64 (arch-semantics riscv64)
 asR = arch-semantics riscv64
 
--- The concrete machine's SigOp trace of a compiled IR (see X86-64 for the full
--- rationale): lower the IR to a concrete riscv64 `Program` (the compiler's real
--- path `compile-trace-cnt ∘ ir-to-trace`) and run the concrete machine on it.
--- D244/D245: the concrete machine runs the PROGRAM IMAGE — `main` and every
--- table entry, as the emitted file contains them.
-conc-trace : IR Unit Unit → Behavior
-conc-trace ir =
-  ArchSemantics.run-trace asR ι (proj₂ (compile-trace-cnt o 0 (FFOr.image ir)))
-                          (ArchSemantics.initialState asR)
-
-postulate
-  -- (A) TOOLCHAIN TRUST — assembler + loader + printer + decoder round-trip
-  -- (GNU `as` class); NOT the CPU, NOT the arith logic.
-  -- D100: preconditioned on distinct emitted local labels — see the x86-64
-  -- instance for why the unconditioned form was FALSE rather than trusted.
-  riscv64-loader-faithful :
-    ∀ (m : P.Module) (asm : String) →
-    C.compileFromModule C.Heap C.Build false riscv64 m ≡ C.Built asm →
-    DistinctLabels riscv64 m →
-    -- D167: …and it links — every compiler-minted SigOp the text calls has
-    -- its arith block emitted. `ld`'s rejection; nothing stated it before.
-    LabelsResolvable riscv64 m →
-    SymbolsResolvable riscv64 m →
-    -- D244: the emitted PROGRAM, at this instance's table.
-    ∀ (ir : IR Unit Unit) → moduleToIR m ≡ just ir
-    → tbl ≡ table (rewrite-program (irProgram (moduleTable m) ir)) →
-    ∀ (n : ℕ) → at (FFOr.asm-sem asm) n
-              ≡ at (conc-trace (main (rewrite-program (irProgram (moduleTable m) ir)))) n
+------------------------------------------------------------------------
+-- Plan 0.107: THE LOADER AXIOM IS GONE. `riscv64-loader-faithful` stood here,
+-- quantified over the TEXT the compiler emitted — the trust point D261's
+-- segfaulting prologue hid behind. What replaces it is a THEOREM over the FILE
+-- (`file-flat-riscv64` below). The only trust left is `as-faithful`.
+------------------------------------------------------------------------
 
 ------------------------------------------------------------------------
 -- THE ENGINE, APPLIED. riscv64's `ConcFlatSim` takes the twelve resource bounds
@@ -176,8 +159,8 @@ open import Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim o
   (RBr.lo-fits riscv64-addr-no-wrap)
   (RBr.tag-fits riscv64-lit-fits) (RBr.lit-fits riscv64-lit-fits)
   (RBr.float-fits o ι)
-  using (events-agree; CompiledCorr
-        ; FlatInv; EntryLike; Reachable; reach-start
+  using (events-agree; events-agree-start; CompiledCorr
+        ; FlatInv; EntryLike; Reachable; reach-start; RunAt
         ; inv-wf; inv-regtag; inv-ev; inv-env; inv-run; mkRunAt)
 
 open FlatMachine {rv64-frame-semantics} using (mkFlat)
@@ -238,8 +221,7 @@ entry-frame-base = refl
 ------------------------------------------------------------------------
 entry-corr : ∀ (ir : IR Unit Unit)
            → CompiledCorr (entry-view (compile-trace (FFOr.image ir))) (FFOr.image ir)
-                          (mkFlat FFOr.entry-s (FFOr.entry-alloc (ir-stack-budget ir)) 0)
-                          (ArchSemantics.initialState asR)
+                          FFOr.start-flat RS.initState
 entry-corr ir = record
   { dataCorr = record
       { in1-eq = refl ; out-eq = refl
@@ -296,70 +278,57 @@ entry-like B = refl , refl , refl , refl , refl
     no-ptr Scratch loc ()
     no-ptr Count   loc ()
 
-entry-inv : ∀ (ir : IR Unit Unit) → LinkedProgram (sig ι) (irProgram tbl ir)
-          → FlatInv ev-riscv64 (arith-env-riscv64 (compile-trace (FFOr.image ir)))
-                    (FFOr.image ir) (mkFlat FFOr.entry-s (FFOr.entry-alloc (ir-stack-budget ir)) 0)
-entry-inv ir lk = record
-  { inv-wf      = entry-wf (ir-stack-budget ir)
-  ; inv-closure = tt          -- D097: the entry closure register is a TAG filler
-  ; inv-regtag  = entry-regtag (ir-stack-budget ir)
-  ; inv-ev      = refl        -- the apex runs the REAL extractor
-  ; inv-env     = refl        -- …and the REAL arith env
-  ; inv-run     = mkRunAt tbl ir refl lk
-                    (reach-start (mkFlat FFOr.entry-s (FFOr.entry-alloc (ir-stack-budget ir)) 0)
-                                 (entry-like (ir-stack-budget ir)) refl)
-  }
-
--- the flat step-fuel that `traces-agree` guarantees emits the first `n` events
--- D159/D160: `traces-agree` is CHAIN-BOUNDED now — one fuel that emits the
--- whole chain, with `take k` agreeing for every `k` — so there is no
--- per-`n` existential left to project. The fuel is the witness's own
--- `steps`, which is exactly what `flat-trace-of` runs at, so the two sides
--- match definitionally instead of through a chosen `N`.
+-- Plan 0.107: THE RUN, FROM THE ENVIRONMENT'S STATE. The program's start (pc 0)
+-- is crossed by `events-agree-start` — its block is `block-step-c-start`, so the
+-- prologue the old loader axiom absorbed is now a proved step — and the rest is
+-- `events-agree`. The flat side is `FlatFromObs`'s run from `start-flat`.
 Nof : FFOr.BlockRunsT → (ir : IR Unit Unit) → LinkedProgram (sig ι) (irProgram tbl ir) → ℕ → ℕ
 Nof brs ir lk n =
   ValueRealized.steps
     (MachineRefinesObsF.value-realized (FFOr.entry-witness ir (ir-obs-correct ir (proj₁ lk)) brs n)) + 0
 
+-- the concrete run of the program image under a block table, from the
+-- environment's state
+conc-run : List (String × RF.Payload) → IR Unit Unit → ℕ → List SigOpEvent
+conc-run bs ir M =
+  RTr.run-events val-riscv64 (answer-at ι call-at-riscv64) ev-riscv64 (block-env bs)
+    [] M (compile-trace (FFOr.image ir)) RS.initState
+
 postulate
-  -- STEP-BUDGET ADEQUACY / fuel coherence — the honest abstract adequate-fuel
-  -- seam (D5), the same one x86-64 carries and the same one `FlatFromObs`
-  -- carries on the flat side. `events-agree` supplies an existential concrete
-  -- fuel `M` that reproduces the adequate flat prefix (that is the `hyp`
-  -- argument); `conc-trace` runs at the DESIGNED budget. Because `M` already
-  -- reproduces the first-`n`-event prefix, the only remaining content is that
-  -- `step-budget-riscv64 n` itself reaches ≥ n events.
-  conc-fuel : ∀ (brs : FFOr.BlockRunsT) (ir : IR Unit Unit) (lk : LinkedProgram (sig ι) (irProgram tbl ir)) (n M : ℕ) →
-      RTr.run-events val-riscv64 (answer-at ι call-at-riscv64) ev-riscv64
-        (arith-env-riscv64 (compile-trace (FFOr.image ir)))
-        [] M (compile-trace (FFOr.image ir)) (ArchSemantics.initialState asR)
-      ≡ flat-events (Nof brs ir lk n) (FFOr.image ir)
-          (mkFlat FFOr.entry-s (FFOr.entry-alloc (ir-stack-budget ir)) 0) →
-      take n (RTr.run-events val-riscv64 (answer-at ι call-at-riscv64) ev-riscv64
-                (arith-env-riscv64 (compile-trace (FFOr.image ir)))
-                [] (step-budget-riscv64 n) (compile-trace (FFOr.image ir))
-                (ArchSemantics.initialState asR))
-    ≡ take n (RTr.run-events val-riscv64 (answer-at ι call-at-riscv64) ev-riscv64
-                (arith-env-riscv64 (compile-trace (FFOr.image ir)))
-                [] M (compile-trace (FFOr.image ir)) (ArchSemantics.initialState asR))
+  -- STEP-BUDGET ADEQUACY / fuel coherence — the honest abstract adequate-fuel seam
+  -- (D5), the SAME gap `FlatFromObs.flat-trace` / `traces-agree` carry on the
+  -- flat side: a fuel `M` that reproduces the adequate flat prefix agrees, on
+  -- its first `n` events, with the DESIGNED budget `step-budget-riscv64 n`.
+  -- Plan 0.107: over the FILE'S block table (`C.blocks-riscv64 p`), and from
+  -- the environment's state with the start ahead of it.
+  conc-fuel : ∀ (brs : FFOr.BlockRunsT) (p : IRProgram) (ir : IR Unit Unit)
+                (lk : LinkedProgram (sig ι) (irProgram tbl ir)) (n M : ℕ) →
+      conc-run (C.blocks-riscv64 p) ir M
+      ≡ flat-events (suc (Nof brs ir lk n)) (FFOr.image ir) FFOr.start-flat →
+      take n (conc-run (C.blocks-riscv64 p) ir (step-budget-riscv64 n))
+    ≡ take n (conc-run (C.blocks-riscv64 p) ir M)
 
-conc-flat-sim-just :
-  ∀ (brs : FFOr.BlockRunsT) (ir : IR Unit Unit) (lk : LinkedProgram (sig ι) (irProgram tbl ir)) (n : ℕ) →
-  at (conc-trace ir) n ≡ at (FFOr.flat-main ir-obs-correct brs ir lk) n
-conc-flat-sim-just brs ir lk n
-  rewrite compile-trace-cnt-agrees o 0 (FFOr.image ir)
-            (no-nested-of-all (FFOr.image ir)
-              (image-frame-free tbl ir)) =
-  trans (conc-fuel brs ir lk n (proj₁ agree) (proj₂ agree)) (cong (take n) (proj₂ agree))
+-- THE SIMULATION from the environment's state: the concrete run of the image
+-- (under the file's block table) is the flat run of the program.
+conc-flat-sim :
+  ∀ (brs : FFOr.BlockRunsT) (p : IRProgram) (ir : IR Unit Unit)
+    (lk : LinkedProgram (sig ι) (irProgram tbl ir))
+  → FFOr.image ir ≡ C.image-of p
+  → ∀ (n : ℕ) → take n (conc-run (C.blocks-riscv64 p) ir (step-budget-riscv64 n))
+              ≡ at (FFOr.flat-main ir-obs-correct brs ir lk) n
+conc-flat-sim brs p ir lk img n =
+  trans (conc-fuel brs p ir lk n (proj₁ agree) (proj₂ agree)) (cong (take n) (proj₂ agree))
   where
-    agree = events-agree (Nof brs ir lk n)
-              ev-riscv64 (arith-env-riscv64 (compile-trace (FFOr.image ir)))
-              (FFOr.image ir) (mkFlat FFOr.entry-s (FFOr.entry-alloc (ir-stack-budget ir)) 0)
-              (ArchSemantics.initialState asR) (entry-corr ir) (entry-inv ir lk)
+    run₀ : RunAt (FFOr.image ir) FFOr.start-flat
+    run₀ = mkRunAt tbl ir refl lk (reach-start FFOr.start-flat (entry-like 0) refl)
+    agree = events-agree-start (Nof brs ir lk n)
+              ev-riscv64 (block-env (C.blocks-riscv64 p))
+              (FFOr.image ir) FFOr.start-flat RS.initState (ir-stack-budget ir) (entry-corr ir)
+              (entry-wf 0) tt (entry-regtag 0) refl (p , img , refl) run₀
+              refl refl refl refl
 
-------------------------------------------------------------------------
--- THIS INSTANCE'S THREE FACTS, at its table. `ArchCorrectness` assembles them
--- into the per-program `ArchCorrect` (each program brings its own table).
+-- THIS INSTANCE'S FACTS, at its table. `ArchCorrectness` assembles them into
+-- the per-program `ArchCorrect` (each program brings its own table).
 -- plan 0.91 parallel track: the block-table coherence HYPOTHESIS, named so it
 -- can be threaded to `Once.Certified` (each target has its own
 -- `FrameSemantics`, so `BlockRuns` differs per arch and one hypothesis cannot
@@ -374,18 +343,38 @@ ir-flat-correct-riscv64 : ∀ (brs : BlockRunsHyp-riscv64) (ir : IR Unit Unit) (
                      → at (flat-riscv64 brs ir lk) n ≡ at (⟦ just (irProgram tbl ir) ⟧IR (arch-numerics riscv64) ι) n
 ir-flat-correct-riscv64 brs = FFOr.ir-flat-correct-main ir-obs-correct brs
 
-asm-sem-riscv64 : String → Behavior
-asm-sem-riscv64 = FFOr.asm-sem
-
--- The seam, ASSEMBLED from (A) ∘ (B): the toolchain axiom, then the simulation.
-asm-flat-riscv64 : ∀ (brs : BlockRunsHyp-riscv64) (m : P.Module) (asm : String) →
-    C.compileFromModule C.Heap C.Build false riscv64 m ≡ C.Built asm →
-    DistinctLabels riscv64 m → LabelsResolvable riscv64 m → SymbolsResolvable riscv64 m →
-    ∀ (ir : IR Unit Unit) (mi : moduleToIR m ≡ just ir)
-    → (teq : tbl ≡ table (rewrite-program (irProgram (moduleTable m) ir)))
-    → (lk : LinkedProgram (sig ι) (irProgram tbl (main (rewrite-program (irProgram (moduleTable m) ir))))) →
-    ∀ (n : ℕ) → at (FFOr.asm-sem asm) n
+-- Plan 0.107: RUNNING THE FILE IS THE FLAT RUN OF THE PROGRAM IT WAS EMITTED
+-- FROM — a theorem, over the file. The file is `emit` of the module's program
+-- (`file-is-emit`); its code is the lowering of the image (one walk, and the
+-- counter-threaded lowering agrees with the plain one on a nested-free image);
+-- its block table is the one `ArithTable` names; and the run starts at its
+-- entry, pc 0, which is the start.
+file-flat-riscv64 :
+  ∀ (brs : BlockRunsHyp-riscv64) (m : P.Module) (F : RF.Image)
+  → C.compileFileFromModule C.Heap false riscv64 m ≡ inj₂ F
+  → ∀ (ir : IR Unit Unit) (mi : moduleToIR m ≡ just ir)
+  → (oq : o ≡ C.entry-owner)
+  → (teq : tbl ≡ table (rewrite-program (irProgram (moduleTable m) ir)))
+  → (lk : LinkedProgram (sig ι) (irProgram tbl (main (rewrite-program (irProgram (moduleTable m) ir)))))
+  → ∀ (n : ℕ) → at (run-trace-riscv64 ι F (RS.initStateAt (Data.Maybe.fromMaybe 0 (RF.entry F)))) n
               ≡ at (flat-riscv64 brs (main (rewrite-program (irProgram (moduleTable m) ir))) lk) n
-asm-flat-riscv64 brs m asm eq dl lr sr ir mi teq lk n =
-  trans (riscv64-loader-faithful m asm eq dl lr sr ir mi teq n)
-        (conc-flat-sim-just brs (main (rewrite-program (irProgram (moduleTable m) ir))) lk n)
+file-flat-riscv64 brs m F eq ir mi oq teq lk n =
+  subst (λ G → at (run-trace-riscv64 ι G (RS.initStateAt (Data.Maybe.fromMaybe 0 (RF.entry G)))) n
+               ≡ at (flat-riscv64 brs ir′ lk) n)
+        (sym (file-is-emit riscv64 m F ir eq mi))
+        (trans (cong (λ cd → take n (RTr.run-events val-riscv64 (answer-at ι call-at-riscv64) ev-riscv64
+                                       (block-env (C.blocks-riscv64 p)) [] (step-budget-riscv64 n) cd RS.initState))
+                     code-eq)
+               (conc-flat-sim brs p ir′ lk img n))
+  where
+    p   = irProgram (moduleTable m) ir
+    ir′ = main (rewrite-program p)
+    img : FFOr.image ir′ ≡ C.image-of p
+    img = img-at o oq tbl teq
+      where img-at : ∀ o′ → o′ ≡ C.entry-owner → ∀ t → t ≡ table (rewrite-program p)
+                   → program-image o′ (irProgram t ir′) ≡ C.image-of p
+            img-at .C.entry-owner refl .(table (rewrite-program p)) refl = refl
+    code-eq : proj₂ (compile-trace-cnt C.entry-owner 0 (C.image-of p)) ≡ compile-trace (FFOr.image ir′)
+    code-eq = trans (cong proj₂ (compile-trace-cnt-agrees C.entry-owner 0 (C.image-of p)
+                       (subst (λ t → NoNested t) img (no-nested-of-all (FFOr.image ir′) (image-frame-free tbl ir′)))))
+                    (cong compile-trace (sym img))

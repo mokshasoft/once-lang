@@ -51,6 +51,11 @@ open import Once.Type.DecEq using (_≟T_)
 open import Once.IR using (IR)
 open import Once.IRTy using (⌊_⌋)
 import Once.Compile as C
+-- plan 0.107: the program is the COMPILER's (one walk) — defined in
+-- `Once.Compile` beside the emitter, and read from there.
+open import Once.Compile using (isEffUU?; mainCall; findMain-here; findMain; moduleToIR-aux; moduleToIR;
+  irFunOf; tableOf-go; tableOf; tableOfResult; moduleTable; programAt; moduleToProgram;
+  rewrite-fun; rewrite-table; rewrite-program)
 import Once.Parser.Module.Core as P
 -- D165: the arith-block lifting the BACKEND runs before codegen. Imported here
 -- so the IR the emitter actually compiles can be NAMED (`moduleToIR-emitted`).
@@ -83,48 +88,25 @@ open import Once.IRTy using (IRTy; _≟IRTy_)
 ------------------------------------------------------------------------
 
 -- | Recognise `main`'s type, `IO Unit`.
-isEffUU? : (T : Type) → Maybe (T ≡ EffUU)
-isEffUU? T with T ≟T EffUU
-... | yes e = just e
-... | no _  = nothing
 
-open C.CompiledFun using (cfName; cfType; cfIR; cfIsPrimitive)
 
 -- D253: `main` is an entry like any other; the program's own `main` is the CALL
 -- of it, `once_main`, which is exactly what `_start` runs.
-mainCall : IR ⌊ Unit ⌋ ⌊ Unit ⌋
-mainCall = I.Call (bare "main")
 
 -- Explicit dispatch on the three decisions (no `with`-opacity), so `findMain`'s
 -- "is this the entry?" choice is analyzable. The FIRST argument is
 -- `cfIsPrimitive cf`: a PRIMITIVE is never the entry — its body is not emitted
 -- at codegen, so it has no `once_main` to call.
-findMain-here :
-  (cf : C.CompiledFun) → Bool → Dec (cfName cf ≡ bare "main") → Maybe (cfType cf ≡ EffUU)
-  → Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋) → Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋)
-findMain-here cf false (yes _) (just _) cont = just mainCall
-findMain-here cf false (yes _) nothing  cont = cont
-findMain-here cf false (no  _) _        cont = cont
-findMain-here cf true  _       _        cont = cont   -- primitive: never the entry
 
 -- | A module is a PROGRAM when it has an entry `main : IO Unit`.
-findMain : List C.CompiledFun → Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋)
-findMain []         = nothing
-findMain (cf ∷ rest) =
-  findMain-here cf (cfIsPrimitive cf) (cfName cf ≟cn bare "main") (isEffUU? (cfType cf)) (findMain rest)
 
 -- Explicit dispatch on the compile result (no `with`-opacity).
-moduleToIR-aux : String ⊎ List C.CompiledFun → Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋)
-moduleToIR-aux (inj₁ _)    = nothing
-moduleToIR-aux (inj₂ funs) = findMain funs
 
 -- Non-resolving: the IR of the program's `main` (the call of the entry,
 -- D253) in an ALREADY-RESOLVED module. The
 -- module-level proofs (`AcceptSound`/`MainBuilds`/`ModuleComplete`) reason
 -- about THIS over a module `mod` (interpreted as the RESOLVED module);
 -- resolution is confined to `srcToModule` below, so those proofs are untouched.
-moduleToIR : P.Module → Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋)
-moduleToIR mod = moduleToIR-aux (C.compileResolvedModule C.Heap false mod)
 
 ------------------------------------------------------------------------
 -- D244: THE COMPILED PROGRAM — the function table and `main`. The table is
@@ -135,35 +117,17 @@ moduleToIR mod = moduleToIR-aux (C.compileResolvedModule C.Heap false mod)
 ------------------------------------------------------------------------
 -- Each entry is the DIRECT-CALL morphism the emitter compiles (D064,
 -- `directCallIR`), which is what `once_<name>` implements in the image.
-irFunOf : C.CompiledFun → IRFun
-irFunOf cf = irFun (cfName cf) ⌊ proj₁ dc ⌋ ⌊ proj₁ (proj₂ dc) ⌋ (proj₂ (proj₂ dc))
-  where dc = C.directCallIR (cfType cf) (cfIR cf)
 
 -- D253: every entry, `main` included — it is the callee of the program's `main`.
-tableOf-go : List C.CompiledFun → List IRFun → List IRFun
-tableOf-go []         acc = acc
-tableOf-go (cf ∷ cfs) acc = tableOf-go cfs (irFunOf cf ∷ acc)
 
-tableOf : List C.CompiledFun → List IRFun
-tableOf funs = tableOf-go funs []
 
 -- The table of a compile RESULT (a failed compile has none), and of a module.
-tableOfResult : String ⊎ List C.CompiledFun → List IRFun
-tableOfResult (inj₁ _)    = []
-tableOfResult (inj₂ funs) = tableOf funs
 
-moduleTable : P.Module → List IRFun
-moduleTable mod = tableOfResult (C.compileResolvedModule C.Heap false mod)
 
 -- The program at a table, given `main`. Stated over `moduleToIR` so that every
 -- apex step that already has `moduleToIR m ≡ just ir` reaches the program by
 -- rewriting with it.
-programAt : List IRFun → Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋) → Maybe IRProgram
-programAt tbl nothing   = nothing
-programAt tbl (just ir) = just (irProgram tbl ir)
 
-moduleToProgram : P.Module → Maybe IRProgram
-moduleToProgram mod = programAt (moduleTable mod) (moduleToIR mod)
 
 ------------------------------------------------------------------------
 -- D165: THE IR THE BACKEND ACTUALLY COMPILES.
@@ -194,15 +158,8 @@ moduleToIR-emitted mod = map-rewrite (moduleToIR mod)
 -- D244: …and the whole PROGRAM the backend compiles. The emitter runs the arith
 -- lifting on EVERY definition (`compileFunWithTarget`), so the emitted program
 -- rewrites `main` and each table entry alike.
-rewrite-fun : IRFun → IRFun
-rewrite-fun e = irFun (fname e) (fdom e) (fcod e) (proj₁ (rewrite-ir (fbody e)))
 
-rewrite-table : List IRFun → List IRFun
-rewrite-table []       = []
-rewrite-table (e ∷ es) = rewrite-fun e ∷ rewrite-table es
 
-rewrite-program : IRProgram → IRProgram
-rewrite-program p = irProgram (rewrite-table (table p)) (proj₁ (rewrite-ir (main p)))
 
 map-rewrite-program : Maybe IRProgram → Maybe IRProgram
 map-rewrite-program nothing  = nothing

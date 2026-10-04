@@ -148,17 +148,17 @@ optimizer: optimizer-cost optimizer-depth
 .PHONY: ccc-x86-64
 ccc-x86-64:
 	@echo "Type-checking X86-64 CCC backend (Target instance)..."
-	@sh -c '$(AGDA_CMD) Once/Target/X86-64.agda'
+	@sh -c '$(AGDA_CMD) Once/CCC/Target/X86-64/File.agda'
 
 .PHONY: ccc-x86-32
 ccc-x86-32:
 	@echo "Type-checking X86-32 CCC backend (Target instance)..."
-	@sh -c '$(AGDA_CMD) Once/Target/X86-32.agda'
+	@sh -c '$(AGDA_CMD) Once/CCC/Target/X86-32/File.agda'
 
 .PHONY: ccc-riscv64
 ccc-riscv64:
 	@echo "Type-checking RISC-V 64 CCC backend (Target instance)..."
-	@sh -c '$(AGDA_CMD) Once/Target/RiscV64.agda'
+	@sh -c '$(AGDA_CMD) Once/CCC/Target/RiscV64/File.agda'
 # Plan 0.65: `RegRoles`, `FlatComposition`, `FlatCorrespondence`,
 # `FlatSimulation` and `ResourceBounds` USED to be named here because nothing
 # imported them. They are now reachable from the apex —
@@ -292,7 +292,7 @@ exact-split-census:
 .PHONY: postulates-ccc-x86-64
 postulates-ccc-x86-64:
 	@echo "Checking postulates in X86-64 CCC (Target instance)..."
-	@sh -c '$(PATCHED_AGDA_CMD) --warn-postulates Once/Target/X86-64.agda'
+	@sh -c '$(PATCHED_AGDA_CMD) --warn-postulates Once/CCC/Target/X86-64/File.agda'
 
 # Precise postulate detection using patched Agda (X86-64 Arith)
 

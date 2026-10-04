@@ -42,12 +42,12 @@ open import Once.Type using (Functor; K; Id; _⊕_; _⊗_)
 open import Once.CCC.Label using (ℓ)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore using (AbstractInstr; AbstractTrace; instr-alloc-heap; instr-ctrl; c-call-fn
-  ; blocks-layout; blocks-layout-++; LabelId
+  ; blocks-layout; blocks-layout-++; LabelId; link-top
   ; restore-input; load-indirect-suc; store-at-slot; mov-to-input
   ; load-from-slot; store-indirect-suc; instr-load-tag-lit; store-indirect)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CCC.Codegen.IRToTrace o using
-  (ir-to-trace'; ir-to-trace; ir-to-trace-at-frontier; ir-to-trace-lab;
+  (ir-to-trace'; ir-to-trace; ir-to-trace-at-frontier; ir-to-trace-lab; ir-to-unit;
    CataStrategy; strat-const; strat-nat; strat-linear; strat-branching;
    cata-strategy; cata-dispatch; cata-trace-nat; cata-trace-linear;
    cata-trace-branching; push2; pop2; wrap-sum; visit-walk; rebuild-walk; lsize;
@@ -369,3 +369,7 @@ ir-to-trace-calls ir lk = ++⁺ (calls-trace' ir 0 0 lk) (tt ∷ calls-blocks ir
 
 ir-to-trace-lab-calls : ∀ {A B} (ir : IR A B) (l : ℕ) → Linked σ tbl ir → CLTrace (ir-to-trace-lab l ir)
 ir-to-trace-lab-calls ir l lk = ++⁺ (calls-trace' ir 0 l lk) (tt ∷ calls-blocks ir 0 l lk)
+
+-- Plan 0.107: …and the OUTERMOST unit, linked with the silent stop.
+ir-to-trace-top-calls : ∀ {A B} (ir : IR A B) (d : LabelId) → Linked σ tbl ir → CLTrace (link-top d (ir-to-unit ir))
+ir-to-trace-top-calls ir d lk = ++⁺ (calls-trace' ir 0 0 lk) (tt ∷ tt ∷ calls-blocks ir 0 0 lk)

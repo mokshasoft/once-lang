@@ -34,7 +34,7 @@ open import Once.Target.Symbol using (once-symbol-path)
 -- Import x86-32 syntax
 open import Once.CCC.Target.X86-32.Syntax
   using (Reg; eax; ebx; ecx; edx; esi; edi; ebp; esp;
-         Mem; base; base+disp; label-rel;
+         Mem; base; base+disp; label-rel; abs-sym;
          Operand; reg; mem; imm;
          Instr; mov; lea; add; sub; cmp; test; push; pop; call; call-sym; ret; jmp; jne; je; nop; ud2; label; call-l;
          mov-code; jmp-l;
@@ -64,7 +64,7 @@ open import Once.CCC.Machine.SMCore
          instr-load-tag-lit; instr-case-on-tag; instr-loop; instr-reg-op; instr-ctrl;
          -- Plan 0.53: RegOp + FlatCtrl constructors for reg-op / flat-control lowering
          scratch-one; scratch-zero; scratch-dec; scratch-load-count; count-zero; count-inc;
-         c-label; c-jmp; c-branch-scratch-zero; c-branch-tag-zero; c-thunk; c-ret; c-entry; c-call-fn)
+         c-label; c-jmp; c-branch-scratch-zero; c-branch-tag-zero; c-thunk; c-ret; c-entry; c-call-fn; c-start)
 open import Once.CCC.Machine.NoNested public
 
 ------------------------------------------------------------------------
@@ -280,6 +280,8 @@ compile-abstract (instr-ctrl (c-jmp n))                 = jmp-l (once n) ∷ []
 -- inline that text is gone, so the reference had no definition — an undefined
 -- symbol at link, caught by the exit tests, invisible to the proofs.
 compile-abstract (instr-ctrl (c-entry e b))             = label (callee e) ∷ sub (reg esp) (imm (slots b)) ∷ []
+-- plan 0.107: `_start` — the heap register, then the outermost frame.
+compile-abstract (instr-ctrl (c-start b))               = lea esi (abs-sym "once_heap_base") ∷ sub (reg esp) (imm (slots b)) ∷ []
 -- D245: a direct call of a program function is `call once_<f>`.
 compile-abstract (instr-ctrl (c-call-fn f))             = call-l (callee (e-fn f)) ∷ []
 compile-abstract (instr-ctrl (c-ret b))                 = add (reg esp) (imm (slots b)) ∷ ret ∷ []

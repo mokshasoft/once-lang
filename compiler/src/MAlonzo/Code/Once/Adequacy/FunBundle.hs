@@ -28,7 +28,6 @@ import qualified MAlonzo.Code.Data.List.Relation.Binary.Pointwise.Properties
 import qualified MAlonzo.Code.Data.String.Properties
 import qualified MAlonzo.Code.Data.Sum.Base
 import qualified MAlonzo.Code.Once.Adequacy.AcceptSound
-import qualified MAlonzo.Code.Once.Adequacy.SourceTrace
 import qualified MAlonzo.Code.Once.CanonicalName
 import qualified MAlonzo.Code.Once.Compile
 import qualified MAlonzo.Code.Once.Functor.Decide
@@ -769,7 +768,7 @@ du_bundle'45'find_852 v0 v1
                -> case coe v18 of
                     MAlonzo.Code.Once.Parser.C_e'45'fun_134 v20
                       -> coe
-                           MAlonzo.Code.Once.Adequacy.SourceTrace.du_findMain'45'here_26
+                           MAlonzo.Code.Once.Compile.du_findMain'45'here_810
                            (coe MAlonzo.Code.Once.Parser.d_funIsPrimitive_112 (coe v20))
                            (coe
                               MAlonzo.Code.Once.CanonicalName.d__'8799''7580'__116
@@ -779,8 +778,7 @@ du_bundle'45'find_852 v0 v1
                               (coe
                                  MAlonzo.Code.Once.CanonicalName.d_bare_12
                                  (coe ("main" :: Data.Text.Text))))
-                           (coe
-                              MAlonzo.Code.Once.Adequacy.SourceTrace.d_isEffUU'63'_8 (coe v5))
+                           (coe MAlonzo.Code.Once.Compile.d_isEffUU'63'_792 (coe v5))
                            (coe du_bundle'45'find_852 (coe v19) (coe v17))
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
@@ -945,8 +943,7 @@ du_bundle'45'find'45'exists_1090 v0 v1
                               (coe
                                  MAlonzo.Code.Once.CanonicalName.d_bare_12
                                  (coe ("main" :: Data.Text.Text))))
-                           (coe
-                              MAlonzo.Code.Once.Adequacy.SourceTrace.d_isEffUU'63'_8 (coe v5))
+                           (coe MAlonzo.Code.Once.Compile.d_isEffUU'63'_792 (coe v5))
                            (\ v21 -> coe du_bundle'45'find'45'exists_1090 (coe v19) (coe v17))
                            erased
                     _ -> MAlonzo.RTE.mazUnreachableError

@@ -688,5 +688,5 @@ du_moduleToIR'45'typed_606 v0
       (coe
          MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
          (coe
-            MAlonzo.Code.Once.Adequacy.MainBuilds.du_moduleToIR'45'inj'8322'_662
+            MAlonzo.Code.Once.Adequacy.MainBuilds.du_moduleToIR'45'inj'8322'_664
             (coe v0)))

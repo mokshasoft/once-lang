@@ -62,7 +62,7 @@ open import Once.CCC.Machine.SMCore
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CCC.Codegen.IRToTrace o using
-  (ir-to-trace'; ir-to-trace; ir-to-trace-lab; ir-next-label
+  (ir-to-trace'; ir-to-unit; ir-to-trace; ir-to-trace-lab; ir-next-label
   ; CataStrategy; strat-const; strat-nat; strat-linear
   ; strat-branching; cata-strategy; cata-dispatch; lsize
   ; push2; pop2; wrap-sum; visit-walk; rebuild-walk
@@ -1964,6 +1964,40 @@ linked-labels-lab : ∀ {A B} (ir : IR A B) (l : ℕ)
                   → LabelsIn l (ir-next-label l ir) (ir-to-trace-lab l ir)
 linked-labels-lab ir l =
   ++⁺ (labels-in ir 0 l) (li-none refl ∷ ScopeOK.bl-in (scope-ok ir 0 l))
+
+-- Plan 0.107: the OUTERMOST unit, linked with the silent stop (`link-top`):
+-- the stop pair `c-label d; c-jmp d` sits in its own window `[L, suc L)` just
+-- above the unit's `[0, L)`, so it neither crosses the entry nor the blocks.
+top-pair-in : ∀ (d : LabelId) (L : ℕ) → idx d ≡ L
+            → LabelsIn L (suc L) (instr-ctrl (c-label d) ∷ instr-ctrl (c-jmp d) ∷ [])
+top-pair-in d L refl = li-lab refl ≤-refl ≤-refl ∷ li-lab refl ≤-refl ≤-refl ∷ []
+
+linked-top-agree : ∀ {A B} (ir : IR A B) (d : LabelId) → idx d ≡ label-of (ir-to-trace' 0 0 ir)
+                 → SegAgree (link-top d (ir-to-unit ir))
+linked-top-agree ir d eq =
+  segagree-++ⁿ E (PAIR ++ BL)
+    (nocross-++ʳ E PAIR BL (nocross-win E PAIR 0 L L (suc L) (labels-in ir 0 0) PI (inj₁ ≤-refl))
+                 (ScopeOK.nc-eb S))
+    (nocross-++ˡ PAIR BL E (nocross-win PAIR E L (suc L) 0 L PI (labels-in ir 0 0) (inj₂ ≤-refl))
+                 (ScopeOK.nc-be S))
+    (seg-agree ir 0 0)
+    (segagree-++' PAIR BL L (suc L) 0 L PI (ScopeOK.bl-in S) (inj₂ ≤-refl)
+                  (segagree-idle PAIR refl) (ScopeOK.bl-agree S))
+  where
+    T    = ir-to-trace' 0 0 ir
+    E    = trace-of T
+    L    = label-of T
+    S    = scope-ok ir 0 0
+    BL   = blocks-layout (bodies-of T)
+    PAIR = instr-ctrl (c-label d) ∷ instr-ctrl (c-jmp d) ∷ []
+    PI   = top-pair-in d L eq
+
+linked-top-labels : ∀ {A B} (ir : IR A B) (d : LabelId) → idx d ≡ label-of (ir-to-trace' 0 0 ir)
+                  → LabelsIn 0 (suc (label-of (ir-to-trace' 0 0 ir))) (link-top d (ir-to-unit ir))
+linked-top-labels ir d eq =
+  ++⁺ (ls-weaken ≤-refl (n≤1+n _) (labels-in ir 0 0))
+      (++⁺ (ls-weaken z≤n ≤-refl (top-pair-in d _ eq))
+           (ls-weaken ≤-refl (n≤1+n _) (ScopeOK.bl-in (scope-ok ir 0 0))))
 
 ------------------------------------------------------------------------
 -- THE TOP-LEVEL STATEMENT (Plan 0.63, obligation (iii)).

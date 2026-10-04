@@ -52,7 +52,7 @@ open import Once.Denotation.GradedOps using (sigOpRefᵛ)
 open import Once.Denotation.Program using (IRFun; tableEnv)
 open import Once.Adequacy.GradedRelation fmt using (RelGT; RelGV; RelGM; RelGT-return)
 open import Once.Adequacy.TableCall fmt φ using (abiT; abi)
-open import Once.Adequacy.SourceTrace using (irFunOf)
+open import Once.Compile using (irFunOf)
 open import Once.IR.Ref using (refIR)
 import Once.Adequacy.MeaningBridge as MB
 import Once.Adequacy.SourceFaithful as SF

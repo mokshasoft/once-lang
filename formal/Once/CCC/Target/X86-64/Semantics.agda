@@ -183,8 +183,12 @@ postulate
 emptyRegFile : RegFile
 emptyRegFile = mkregfile 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
 
+-- Plan 0.107: the environment hands the program over AT ITS ENTRY POINT.
+initStateAt : ℕ → State
+initStateAt e = mkstate (writeReg emptyRegFile rsp stack-top) emptyMemory initFlags e false
+
 initState : State
-initState = mkstate (writeReg emptyRegFile rsp stack-top) emptyMemory initFlags 0 false
+initState = initStateAt 0
 
 ------------------------------------------------------------------------
 -- Operand evaluation
@@ -207,6 +211,9 @@ effectiveAddr s (rip+disp d)     = pc s + d
 -- `rip+label` inside a `mem` operand is not something codegen emits, and if it
 -- ever is, it must resolve the same way — not through this line.
 effectiveAddr s (rip+label n)    = idx n
+-- Plan 0.107: the runtime's only data symbol is the `.bss` heap, placed at 0
+-- without loss of generality (only the order of addresses matters).
+effectiveAddr s (rip+sym _)      = 0
 
 readOperand : State → Operand → Maybe Word
 readOperand s (reg r) = just (readReg (regs s) r)

@@ -16435,3 +16435,42 @@ on ten test programs).
 **What remains.** The text is still ASSEMBLED from per-function pieces in `Compile.agda`, not
 printed from the image, so the axiom still covers more than printer + `as` + `ld`. Plan 0.89
 gains row D4: the emitted text is `programToText (link image)` plus a fixed arch-only stub.
+
+## D262 — TRUST ONLY `as`: THE LOADER AXIOMS ARE GONE; THE START IS PROVED CODE (2026-10-04)
+
+**Relates**: D261 (the bug that forced it), D161/D165, D100/D167/D169 (the text-level residuals
+this consolidates), plan 0.107, plan 0.89 D4.
+
+**The trust law.** `ArchSemantics` gains the assembly FILE (`File`, per arch an `Image` of code,
+entry, arith blocks and externs), its canonical text `print`, and ONE law,
+`as-faithful : ∀ F → AsmWF F → decode (assemble (print F)) ≡ just (program F)`. The compiler's
+result is the file; the CLI's text is `print` of it. `<arch>-loader-faithful` (three
+postulates over the emitted TEXT) are deleted, and so are the postulated `arith-env-<arch>`: the
+arith table is the file's (`block-env (blocks F)`), tied to the engine by an `ArithTable`
+relation that names the program the image came from.
+
+**One walk.** The emitted code is `compile-trace-cnt` of `program-image` — the image every proof
+reasons about (`Once.Compile.image-of`). The parallel per-function text walk no longer feeds the
+result.
+
+**The start is proved code, and platform-general.** `program-image = c-start B ∷ link-top done
+(main's unit) ++ table`. `c-start B` (pc 0) is a new `FlatCtrl`: flat semantics `do-thunk B`;
+lowering = the heap register at the `.bss` heap's base + the frame reservation (`lea`/`lla-sym` +
+`sub`/`addi`). `main` ends in a SILENT STOP (`c-label done; c-jmp done`) — programs don't return
+(observables are SigOp events), so no exit syscall: the same meaning on bare metal and under an
+OS. The environment contract (`initialState`) is "pc at the entry, sp in a stack region, registers
+and memory empty". The run starts OUTSIDE every frame (`Reachable prog 0`, `entry-alloc 0`);
+`RunWF.run-step-pc-pos` proves no step returns to pc 0, so the correspondence engine starts one
+step in (`events-agree-start`, over the per-arch `block-step-c-start`) and refutes `c-start`
+everywhere else (`inv-started` + `start-at-zero`). `StackRoom` covers the start's reservation as
+it covers a body entry's. `file-flat-<arch>` is a THEOREM: running the file is the flat run of
+the program it was emitted from.
+
+**What is still assumed about the file**: `FileWF.file-wf` — the file is what `as`/`ld` accept
+(`AsmWF`: defined once, resolved, entry in range). ONE residual over the FILE replacing three over
+the text (`program-labels-distinct`, `-labels-resolvable`, `-symbols-resolvable`). Known false for
+comparisons (not lifted into blocks, so their calls do not link) exactly as the old
+`program-symbols-resolvable` was; plan 0.108 makes it true, and discharging it is the rest of plan
+0.107 phase d. Known weakness of the environment contract: registers start at 0 in the model, so
+the heap-register `lea` is not yet load-bearing in the proof (the frame reservation is — D261's
+prologue is now a type error).

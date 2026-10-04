@@ -54,7 +54,8 @@ import Once.Spec.Core.Meaning as GM
 open import Once.Denotation.Behavior using (Behavior; mkBehavior)
 open import Once.Denotation.TraceMonad using (T; _>>=T_; PrefixFamily; bnd; sat; coh)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ)
-open import Once.Adequacy.SourceTrace using (moduleToIR; moduleToIR-aux; mainCall; tableOf-go; moduleTable; ⟦_⟧IR)
+open import Once.Adequacy.SourceTrace using (⟦_⟧IR)
+open import Once.Compile using (moduleToIR; moduleToIR-aux; mainCall; tableOf-go; moduleTable; tableOfResult)
 import Once.Adequacy.FunBundle as FB
 open import Once.Denotation.Behavior using (at)
 open import Once.Denotation.Program using (irProgram)

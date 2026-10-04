@@ -11,8 +11,8 @@
 
 module Once.Adequacy.CPU.X86-32 where
 
-open import Data.List using (List)
-open import Data.Maybe using (Maybe)
+open import Data.List using (List; []; _∷_)
+open import Data.Maybe using (Maybe; just; nothing)
 open import Data.String using (String)
 open import Data.Nat using (ℕ)
 open import Data.Product using (_×_)
@@ -23,8 +23,14 @@ open import Once.Denotation.TraceMonad using (Interp)
 open import Once.Arith.Backend.CallAnswer using (CallResolver; answer-at)
 open import Once.Adequacy.CPU.Interface using (Byte; ArchSemantics)
 
+import Data.Maybe
 import Once.CCC.Target.X86-32.Semantics as X32
 import Once.CCC.Target.X86-32.Syntax    as X32S
+import Once.CCC.Target.X86-32.File as RF
+open import Data.Bool using (if_then_else_)
+open import Data.String using (_==_)
+open import Data.Product using (_,_; proj₁)
+open import Relation.Binary.PropositionalEquality using (_≡_)
 
 -- Plan 0.54 Phase B / Option 2: the emit-and-continue trace over the REAL
 -- x86-32 machine, instanced from `Arith.Backend.RunTraceCore` like x86-64/riscv64.
@@ -38,7 +44,7 @@ open import Once.Adequacy.ArchCorrectness.ArithSimX86-32 using (val-x86-32)
 -- run-trace-x86-32 — DERIVED (no longer an opaque observable postulate). Its
 -- remaining ingredients are the SAME named gaps x86-64/riscv64 carry:
 --   * `val-x86-32`        — the concrete XInstr arith interpreter (DEFINED).
---   * `arith-env-x86-32`  — the arith-block table (label ↦ block).
+--   * `block-env`        — the arith-block table, read off the file (plan 0.107).
 --   * `ev-x86-32`         — label→SigOp resolution (inverse of symbol lowering).
 --   * `step-budget-x86-32`— adequate fuel (event-count ↦ machine steps).
 ------------------------------------------------------------------------
@@ -46,7 +52,6 @@ open import Once.Adequacy.ArchCorrectness.ArithSimX86-32 using (val-x86-32)
 postulate
   step-budget-x86-32 : ℕ → ℕ
   ev-x86-32        : String → X32.State → List SigOpEvent
-  arith-env-x86-32 : X32S.Program → String → Maybe (List XInstr)
   -- plan 0.105: WHICH answering call a label is, and its argument — the same
   -- label→SigOp resolution boundary as `ev-x86-32` (the loaded binary's
   -- symbol table and argument decoding). The answer itself is DEFINED
@@ -55,22 +60,36 @@ postulate
 
 -- Plan 0.105: at the world `ι` the binary runs in — its external calls are
 -- answered by `ι`, and the answer lands in the return register.
-run-trace-x86-32 : Interp → X32S.Program → X32.State → Behavior
-run-trace-x86-32 ι prog s =
-  RT.run-trace val-x86-32 (answer-at ι call-at-x86-32) step-budget-x86-32 ev-x86-32 (arith-env-x86-32 prog) prog s
+-- Plan 0.107: the arith blocks are IN THE FILE, so which block a symbol names is
+-- a lookup, not a postulate (it was `arith-env-x86-32`).
+block-env : List (String × RF.Payload) → String → Maybe (List XInstr)
+block-env []              _ = nothing
+block-env ((s′ , p) ∷ bs) s = if s′ == s then just (proj₁ p) else block-env bs s
+
+run-trace-x86-32 : Interp → RF.Image → X32.State → Behavior
+run-trace-x86-32 ι P s =
+  RT.run-trace val-x86-32 (answer-at ι call-at-x86-32) step-budget-x86-32 ev-x86-32 (block-env (RF.blocks P)) (RF.code P) s
 
 postulate
-  decode-x86-32 : List Byte → Maybe X32S.Program
+  decode-x86-32 : List Byte → Maybe RF.Image
   -- GNU `as --target=x86-32` trust point; removed by B1.
   assemble-x86-32 : String → List Byte
+  -- THE TRUST POINT (plan 0.107): `as` does what it should.
+  as-faithful-x86-32 : ∀ (F : RF.Image) → RF.AsmWF F
+                  → decode-x86-32 (assemble-x86-32 (RF.print F)) ≡ just F
 
 arch-semantics : ArchSemantics
 arch-semantics = record
-  { Program      = X32S.Program
+  { Program      = RF.Image
   ; State        = X32.State
-  ; initialState = X32.initState
-  ; run          = X32.run
+  ; initialState = λ P → X32.initStateAt (Data.Maybe.fromMaybe 0 (RF.entry P))
+  ; run          = λ P → X32.run (RF.code P)
   ; run-trace    = run-trace-x86-32
   ; decode       = decode-x86-32
   ; assemble     = assemble-x86-32
+  ; File         = RF.Image
+  ; print        = RF.print
+  ; program      = λ F → F
+  ; AsmWF        = RF.AsmWF
+  ; as-faithful  = as-faithful-x86-32
   }

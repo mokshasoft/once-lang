@@ -23,8 +23,14 @@
 
 module Once.Adequacy.CPU.RiscV64 where
 
-open import Data.List using (List)
-open import Data.Maybe using (Maybe)
+open import Data.List using (List; []; _∷_)
+open import Data.Maybe using (Maybe; just; nothing)
+open import Data.Bool using (if_then_else_)
+open import Data.String using (_==_)
+open import Data.Product using (_,_)
+open import Relation.Binary.PropositionalEquality using (_≡_)
+import Data.Maybe
+import Once.CCC.Target.RiscV64.File as RF
 open import Data.String using (String)
 open import Data.Nat using (ℕ)
 open import Data.Product using (_×_)
@@ -61,38 +67,45 @@ open import Once.Adequacy.ArchCorrectness.ArithSimRiscV64 using (val-riscv64)
 postulate
   step-budget-riscv64 : ℕ → ℕ
   ev-riscv64        : String → RV.State → List SigOpEvent
-  arith-env-riscv64 : RVS.Program → String → Maybe (List XInstr × ℕ)
   -- plan 0.105: WHICH answering call a label is, and its argument — the same
   -- label→SigOp resolution boundary as `ev-riscv64` (the loaded binary's
   -- symbol table and argument decoding). The answer itself is DEFINED
   -- (`CallAnswer.answer-at`): the world's, at the binary's log.
   call-at-riscv64   : CallResolver RV.State
 
--- Plan 0.105: at the world `ι` the binary runs in — its external calls are
--- answered by `ι`, and the answer lands in the return register.
-run-trace-riscv64 : Interp → RVS.Program → RV.State → Behavior
-run-trace-riscv64 ι prog s =
-  RT.run-trace val-riscv64 (answer-at ι call-at-riscv64) step-budget-riscv64 ev-riscv64 (arith-env-riscv64 prog) prog s
+-- Plan 0.107: the arith blocks are IN THE FILE, so which block a symbol names is
+-- a lookup, not a postulate (it was `arith-env-riscv64`).
+block-env : List (String × RF.Payload) → String → Maybe RF.Payload
+block-env []              _ = nothing
+block-env ((s′ , p) ∷ bs) s = if s′ == s then just p else block-env bs s
+
+run-trace-riscv64 : Interp → RF.Image → RV.State → Behavior
+run-trace-riscv64 ι P s =
+  RT.run-trace val-riscv64 (answer-at ι call-at-riscv64) step-budget-riscv64 ev-riscv64
+    (block-env (RF.blocks P)) (RF.code P) s
 
 postulate
-  -- decode-riscv64 — POSTULATED. The RISC-V instruction encoding (32
-  -- bits per instruction in the base ISA) is straightforward but
-  -- mechanical work; left as a named gap for now (closed by B1).
-  decode-riscv64 : List Byte → Maybe RVS.Program
-  -- GNU `as` (RISC-V) trust point; removed by B1.
+  -- The CPU's decoder (the ISA's encoding) — only ever used through
+  -- `as-faithful`.
+  decode-riscv64 : List Byte → Maybe RF.Image
+  -- GNU `as` (RISC-V).
   assemble-riscv64 : String → List Byte
-
-------------------------------------------------------------------------
--- The instance.
-------------------------------------------------------------------------
+  -- THE TRUST POINT (plan 0.107): `as` does what it should.
+  as-faithful-riscv64 : ∀ (F : RF.Image) → RF.AsmWF F
+                      → decode-riscv64 (assemble-riscv64 (RF.print F)) ≡ just F
 
 arch-semantics : ArchSemantics
 arch-semantics = record
-  { Program      = RVS.Program
+  { Program      = RF.Image
   ; State        = RV.State
-  ; initialState = RV.initState
-  ; run          = RV.run
+  ; initialState = λ P → RV.initStateAt (Data.Maybe.fromMaybe 0 (RF.entry P))
+  ; run          = λ P → RV.run (RF.code P)
   ; run-trace    = run-trace-riscv64
   ; decode       = decode-riscv64
   ; assemble     = assemble-riscv64
+  ; File         = RF.Image
+  ; print        = RF.print
+  ; program      = λ F → F
+  ; AsmWF        = RF.AsmWF
+  ; as-faithful  = as-faithful-riscv64
   }

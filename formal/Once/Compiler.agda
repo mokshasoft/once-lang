@@ -30,30 +30,33 @@ import Once.Adequacy.ArchCorrectness.X86-64.ResourceBounds as RB
 import Once.Adequacy.ArchCorrectness.RiscV64.ResourceBounds as RBr
 import Once.Adequacy.ArchCorrectness.X86-32.ResourceBounds as RB32
 
+-- Plan 0.107: the entry unit's owner is the EMITTER's (`Once.Compile.entry-owner`),
+-- not a parameter — the theorem is about the program actually emitted.
+open import Once.Compile using (entry-owner)
+
 module Once.Compiler
-  (o : CanonicalName)
-  (x86-64-heap-room : ∀ ι → RB.HeapRoom o ι) (x86-64-stack-room : ∀ ι → RB.StackRoom o ι)
-  (x86-64-call-room : ∀ ι → RB.CallRoom o ι)
-  (x86-64-reg-range : ∀ ι → RB.RegRange o ι)
-  (x86-64-scratch-dec-guarded : ∀ ι → RB.ScratchDecGuarded o ι)
-  (x86-64-addr-no-wrap : ∀ ι → RB.AddrNoWrap o ι)
-  (x86-64-lit-fits : ∀ ι → RB.LitFits o ι)
-  (riscv64-heap-room : ∀ ι → RBr.HeapRoom o ι) (riscv64-stack-room : ∀ ι → RBr.StackRoom o ι)
-  (riscv64-call-room : ∀ ι → RBr.CallRoom o ι)
-  (riscv64-reg-range : ∀ ι → RBr.RegRange o ι)
-  (riscv64-scratch-dec-guarded : ∀ ι → RBr.ScratchDecGuarded o ι)
-  (riscv64-slot-addr-no-wrap : ∀ ι → RBr.SlotAddrNoWrap o ι)
-  (riscv64-addr-no-wrap : ∀ ι → RBr.AddrNoWrap o ι)
-  (riscv64-lit-fits : ∀ ι → RBr.LitFits o ι)
+  (x86-64-heap-room : ∀ ι → RB.HeapRoom entry-owner ι) (x86-64-stack-room : ∀ ι → RB.StackRoom entry-owner ι)
+  (x86-64-call-room : ∀ ι → RB.CallRoom entry-owner ι)
+  (x86-64-reg-range : ∀ ι → RB.RegRange entry-owner ι)
+  (x86-64-scratch-dec-guarded : ∀ ι → RB.ScratchDecGuarded entry-owner ι)
+  (x86-64-addr-no-wrap : ∀ ι → RB.AddrNoWrap entry-owner ι)
+  (x86-64-lit-fits : ∀ ι → RB.LitFits entry-owner ι)
+  (riscv64-heap-room : ∀ ι → RBr.HeapRoom entry-owner ι) (riscv64-stack-room : ∀ ι → RBr.StackRoom entry-owner ι)
+  (riscv64-call-room : ∀ ι → RBr.CallRoom entry-owner ι)
+  (riscv64-reg-range : ∀ ι → RBr.RegRange entry-owner ι)
+  (riscv64-scratch-dec-guarded : ∀ ι → RBr.ScratchDecGuarded entry-owner ι)
+  (riscv64-slot-addr-no-wrap : ∀ ι → RBr.SlotAddrNoWrap entry-owner ι)
+  (riscv64-addr-no-wrap : ∀ ι → RBr.AddrNoWrap entry-owner ι)
+  (riscv64-lit-fits : ∀ ι → RBr.LitFits entry-owner ι)
   -- …and x86-32's seven (plan 0.66 X3): the arch had none while its simulation
   -- was a whole-cloth postulate, which is precisely what a deleted apex
   -- postulate makes visible — the resources a running program needs.
-  (x86-32-heap-room : ∀ ι → RB32.HeapRoom o ι) (x86-32-stack-room : ∀ ι → RB32.StackRoom o ι)
-  (x86-32-call-room : ∀ ι → RB32.CallRoom o ι)
-  (x86-32-reg-range : ∀ ι → RB32.RegRange o ι)
-  (x86-32-scratch-dec-guarded : ∀ ι → RB32.ScratchDecGuarded o ι)
-  (x86-32-addr-no-wrap : ∀ ι → RB32.AddrNoWrap o ι)
-  (x86-32-lit-fits : ∀ ι → RB32.LitFits o ι) where
+  (x86-32-heap-room : ∀ ι → RB32.HeapRoom entry-owner ι) (x86-32-stack-room : ∀ ι → RB32.StackRoom entry-owner ι)
+  (x86-32-call-room : ∀ ι → RB32.CallRoom entry-owner ι)
+  (x86-32-reg-range : ∀ ι → RB32.RegRange entry-owner ι)
+  (x86-32-scratch-dec-guarded : ∀ ι → RB32.ScratchDecGuarded entry-owner ι)
+  (x86-32-addr-no-wrap : ∀ ι → RB32.AddrNoWrap entry-owner ι)
+  (x86-32-lit-fits : ∀ ι → RB32.LitFits entry-owner ι) where
 
 open import Data.List using (List)
 open import Data.Nat using (ℕ)
@@ -69,7 +72,7 @@ open import Once.Adequacy.SourceTrace using (⟦_⟧)
 -- this assembly point. `Once.Adequacy.Compile.WithCPU` itself stays
 -- free of those imports.
 open import Once.Adequacy.CPU      using (Arch; Byte; arch-semantics)
-open import Once.Adequacy.ArchCorrectness o x86-64-heap-room x86-64-stack-room x86-64-call-room
+open import Once.Adequacy.ArchCorrectness x86-64-heap-room x86-64-stack-room x86-64-call-room
        x86-64-reg-range x86-64-scratch-dec-guarded x86-64-addr-no-wrap x86-64-lit-fits
        riscv64-heap-room riscv64-stack-room riscv64-call-room
        riscv64-reg-range riscv64-scratch-dec-guarded riscv64-slot-addr-no-wrap
@@ -141,4 +144,4 @@ once-compiler b64 b32 brv = record
   ; correct  = VC.correctᵈ
   }
   where
-    module VC = VCompile.WithCPU arch-semantics (arch-correctness b64 b32 brv)
+    module VC = VCompile.WithCPU (arch-correctness b64 b32 brv)

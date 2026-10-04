@@ -444,6 +444,8 @@ flat-regtag-step (instr-ctrl (c-label m))               prog fs wf = wf
 -- read `regs`, which a record update leaves alone, so both come straight over.
 flat-regtag-step (instr-ctrl (c-entry m b))             prog fs wf =
   mkRegTagWF (scratch-tag wf) (count-tag wf)
+flat-regtag-step (instr-ctrl (c-start b))             prog fs wf =
+  mkRegTagWF (scratch-tag wf) (count-tag wf)
 flat-regtag-step (instr-ctrl (c-call-fn f))             prog fs wf = regtag-call-at (find-fn prog f) fs wf
 flat-regtag-step (instr-ctrl (c-ret b))                 prog fs wf = regtag-ret (fret fs) fs wf
 flat-regtag-step (instr-ctrl (c-jmp m))                 prog fs wf = regtag-jump (find-label prog m) fs wf

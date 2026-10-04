@@ -24,8 +24,8 @@ import qualified MAlonzo.Code.Data.List.Relation.Unary.All
 import qualified MAlonzo.Code.Data.List.Relation.Unary.AllPairs.Core
 import qualified MAlonzo.Code.Data.Sum.Base
 import qualified MAlonzo.Code.Once.Adequacy.FunBundle
-import qualified MAlonzo.Code.Once.Adequacy.SourceTrace
 import qualified MAlonzo.Code.Once.Adequacy.TeleWalk.Invariant
+import qualified MAlonzo.Code.Once.Compile
 import qualified MAlonzo.Code.Once.Denotation.DenotTrace
 import qualified MAlonzo.Code.Once.Denotation.Program
 import qualified MAlonzo.Code.Once.Denotation.Trace
@@ -181,7 +181,7 @@ d_runIRAt_106 v0 v1 v2 v3
          (coe
             MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_48
             (coe MAlonzo.Code.Once.Type.C_Unit_120))
-         (coe MAlonzo.Code.Once.Adequacy.SourceTrace.d_mainCall_22)
+         (coe MAlonzo.Code.Once.Compile.d_mainCall_806)
          (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8))
       (coe v3)
 -- Once.Adequacy.CoreBridge.core-ef

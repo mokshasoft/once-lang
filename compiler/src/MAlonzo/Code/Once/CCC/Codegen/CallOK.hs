@@ -23,5 +23,5 @@ import qualified MAlonzo.Code.Once.Denotation.Program
 -- Once.CCC.Codegen.CallOK.CallOKI
 d_CallOKI_8 ::
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2236 -> ()
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2238 -> ()
 d_CallOKI_8 = erased

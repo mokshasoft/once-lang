@@ -60,41 +60,45 @@ d_showMem_10 v0
              MAlonzo.Code.Data.String.Base.d__'43''43'__20
              (MAlonzo.Code.Once.CCC.Label.d_thunkSym_388 (coe v1))
              ("(%rip)" :: Data.Text.Text)
+      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_rip'43'sym_20 v1
+        -> coe
+             MAlonzo.Code.Data.String.Base.d__'43''43'__20 v1
+             ("(%rip)" :: Data.Text.Text)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Target.X86-64.Emit.showOperand
-d_showOperand_22 ::
-  MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.T_Operand_20 ->
+d_showOperand_24 ::
+  MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.T_Operand_22 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6
-d_showOperand_22 v0
+d_showOperand_24 v0
   = case coe v0 of
-      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_22 v1
+      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_24 v1
         -> coe
              MAlonzo.Code.Once.Target.X86Z45Z64.PhysReg.d_showReg_42 (coe v1)
-      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_mem_24 v1
+      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_mem_26 v1
         -> coe d_showMem_10 (coe v1)
-      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_imm_26 v1
+      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_imm_28 v1
         -> coe
              MAlonzo.Code.Data.String.Base.d__'43''43'__20
              ("$" :: Data.Text.Text)
              (coe MAlonzo.Code.Data.Nat.Show.d_show_56 v1)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Target.X86-64.Emit.showInstr
-d_showInstr_30 ::
-  MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.T_Instr_28 ->
+d_showInstr_32 ::
+  MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.T_Instr_30 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6
-d_showInstr_30 v0
+d_showInstr_32 v0
   = case coe v0 of
-      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_mov_30 v1 v2
+      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_mov_32 v1 v2
         -> coe
              MAlonzo.Code.Data.String.Base.d__'43''43'__20
              ("    movq " :: Data.Text.Text)
              (coe
                 MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                (d_showOperand_22 (coe v2))
+                (d_showOperand_24 (coe v2))
                 (coe
                    MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                   (", " :: Data.Text.Text) (d_showOperand_22 (coe v1))))
-      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_lea_32 v1 v2
+                   (", " :: Data.Text.Text) (d_showOperand_24 (coe v1))))
+      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_lea_34 v1 v2
         -> coe
              MAlonzo.Code.Data.String.Base.d__'43''43'__20
              ("    leaq " :: Data.Text.Text)
@@ -106,141 +110,141 @@ d_showInstr_30 v0
                    (", " :: Data.Text.Text)
                    (MAlonzo.Code.Once.Target.X86Z45Z64.PhysReg.d_showReg_42
                       (coe v1))))
-      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_add_34 v1 v2
+      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_add_36 v1 v2
         -> coe
              MAlonzo.Code.Data.String.Base.d__'43''43'__20
              ("    addq " :: Data.Text.Text)
              (coe
                 MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                (d_showOperand_22 (coe v2))
+                (d_showOperand_24 (coe v2))
                 (coe
                    MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                   (", " :: Data.Text.Text) (d_showOperand_22 (coe v1))))
-      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_sub_36 v1 v2
+                   (", " :: Data.Text.Text) (d_showOperand_24 (coe v1))))
+      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_sub_38 v1 v2
         -> coe
              MAlonzo.Code.Data.String.Base.d__'43''43'__20
              ("    subq " :: Data.Text.Text)
              (coe
                 MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                (d_showOperand_22 (coe v2))
+                (d_showOperand_24 (coe v2))
                 (coe
                    MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                   (", " :: Data.Text.Text) (d_showOperand_22 (coe v1))))
-      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_cmp_38 v1 v2
+                   (", " :: Data.Text.Text) (d_showOperand_24 (coe v1))))
+      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_cmp_40 v1 v2
         -> coe
              MAlonzo.Code.Data.String.Base.d__'43''43'__20
              ("    cmpq " :: Data.Text.Text)
              (coe
                 MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                (d_showOperand_22 (coe v2))
+                (d_showOperand_24 (coe v2))
                 (coe
                    MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                   (", " :: Data.Text.Text) (d_showOperand_22 (coe v1))))
-      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_test_40 v1 v2
+                   (", " :: Data.Text.Text) (d_showOperand_24 (coe v1))))
+      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_test_42 v1 v2
         -> coe
              MAlonzo.Code.Data.String.Base.d__'43''43'__20
              ("    testq " :: Data.Text.Text)
              (coe
                 MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                (d_showOperand_22 (coe v2))
+                (d_showOperand_24 (coe v2))
                 (coe
                    MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                   (", " :: Data.Text.Text) (d_showOperand_22 (coe v1))))
-      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_jmp_42 v1
+                   (", " :: Data.Text.Text) (d_showOperand_24 (coe v1))))
+      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_jmp_44 v1
         -> coe
              MAlonzo.Code.Data.String.Base.d__'43''43'__20
              ("    jmp " :: Data.Text.Text)
              (MAlonzo.Code.Once.CCC.Label.d_labelSym_398 (coe v1))
-      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_je_44 v1
+      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_je_46 v1
         -> coe
              MAlonzo.Code.Data.String.Base.d__'43''43'__20
              ("    je " :: Data.Text.Text)
              (MAlonzo.Code.Once.CCC.Label.d_labelSym_398 (coe v1))
-      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_jne_46 v1
+      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_jne_48 v1
         -> coe
              MAlonzo.Code.Data.String.Base.d__'43''43'__20
              ("    jne " :: Data.Text.Text)
              (MAlonzo.Code.Once.CCC.Label.d_labelSym_398 (coe v1))
-      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_call_48 v1
+      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_call_50 v1
         -> case coe v1 of
-             MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_22 v2
+             MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_24 v2
                -> coe
                     MAlonzo.Code.Data.String.Base.d__'43''43'__20
                     ("    call *" :: Data.Text.Text)
                     (MAlonzo.Code.Once.Target.X86Z45Z64.PhysReg.d_showReg_42 (coe v2))
-             MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_mem_24 v2
+             MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_mem_26 v2
                -> coe
                     MAlonzo.Code.Data.String.Base.d__'43''43'__20
                     ("    call *" :: Data.Text.Text) (d_showMem_10 (coe v2))
-             MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_imm_26 v2
+             MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_imm_28 v2
                -> coe
                     MAlonzo.Code.Data.String.Base.d__'43''43'__20
                     ("    call " :: Data.Text.Text)
                     (coe MAlonzo.Code.Data.Nat.Show.d_show_56 v2)
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_call'45'sym_50 v1
+      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_call'45'sym_52 v1
         -> coe
              MAlonzo.Code.Data.String.Base.d__'43''43'__20
              ("    call " :: Data.Text.Text) v1
-      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_call'45'l_52 v1
+      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_call'45'l_54 v1
         -> coe
              MAlonzo.Code.Data.String.Base.d__'43''43'__20
              ("    call " :: Data.Text.Text)
              (MAlonzo.Code.Once.CCC.Label.d_labelSym_398 (coe v1))
-      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_ret_54
+      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_ret_56
         -> coe ("    ret" :: Data.Text.Text)
-      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_push_56 v1
+      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_push_58 v1
         -> case coe v1 of
-             MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_22 v2
+             MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_24 v2
                -> coe
                     MAlonzo.Code.Data.String.Base.d__'43''43'__20
                     ("    pushq " :: Data.Text.Text)
                     (MAlonzo.Code.Once.Target.X86Z45Z64.PhysReg.d_showReg_42 (coe v2))
-             MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_mem_24 v2
+             MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_mem_26 v2
                -> coe
                     MAlonzo.Code.Data.String.Base.d__'43''43'__20
                     ("    pushq " :: Data.Text.Text) (d_showMem_10 (coe v2))
-             MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_imm_26 v2
+             MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_imm_28 v2
                -> coe
                     MAlonzo.Code.Data.String.Base.d__'43''43'__20
                     ("    pushq $" :: Data.Text.Text)
                     (coe MAlonzo.Code.Data.Nat.Show.d_show_56 v2)
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_pop_58 v1
+      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_pop_60 v1
         -> coe
              MAlonzo.Code.Data.String.Base.d__'43''43'__20
              ("    popq " :: Data.Text.Text)
              (MAlonzo.Code.Once.Target.X86Z45Z64.PhysReg.d_showReg_42 (coe v1))
-      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_nop_60
+      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_nop_62
         -> coe ("    nop" :: Data.Text.Text)
-      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_ud2_62
+      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_ud2_64
         -> coe ("    ud2" :: Data.Text.Text)
-      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_syscall_64
+      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_syscall_66
         -> coe ("    syscall" :: Data.Text.Text)
-      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_label_66 v1
+      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_label_68 v1
         -> coe
              MAlonzo.Code.Data.String.Base.d__'43''43'__20
              (MAlonzo.Code.Once.CCC.Label.d_labelSym_398 (coe v1))
              (":" :: Data.Text.Text)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Target.X86-64.Emit.instrToLine
-d_instrToLine_82 ::
-  MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.T_Instr_28 ->
+d_instrToLine_84 ::
+  MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.T_Instr_30 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6
-d_instrToLine_82 v0
+d_instrToLine_84 v0
   = coe
       MAlonzo.Code.Data.String.Base.d__'43''43'__20
-      (d_showInstr_30 (coe v0)) ("\n" :: Data.Text.Text)
+      (d_showInstr_32 (coe v0)) ("\n" :: Data.Text.Text)
 -- Once.CCC.Target.X86-64.Emit.programToText
-d_programToText_86 ::
-  [MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.T_Instr_28] ->
+d_programToText_88 ::
+  [MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.T_Instr_30] ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6
-d_programToText_86
+d_programToText_88
   = coe
       MAlonzo.Code.Data.List.Base.du_foldr_216
       (coe
          (\ v0 ->
             coe
               MAlonzo.Code.Data.String.Base.d__'43''43'__20
-              (d_instrToLine_82 (coe v0))))
+              (d_instrToLine_84 (coe v0))))
       (coe ("" :: Data.Text.Text))

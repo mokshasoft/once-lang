@@ -78,8 +78,7 @@ open import Once.CanonicalName using (canonical; own)
 open import Once.Denotation.Program using (IRFun; fname; fdom; fcod; fbody; irProgram; table; main;
   LinkedAt; LinkedAt-at; Linked; LinkedProgram)
 open import Once.Spec.Module using (ModTele; []; ffi; mono; poly; ModuleTyped; ModuleTyped-ef; EffUU; teleSig; teleSig≡entrySig; moduleSig; moduleSig-ef)
-open import Once.Adequacy.SourceTrace using (moduleToIR; moduleToIR-aux; moduleTable; tableOfResult; tableOf-go;
-  irFunOf; mainCall)
+open import Once.Compile using (moduleToIR; moduleToIR-aux; moduleTable; tableOfResult; tableOf-go; irFunOf; mainCall)
 import Once.Adequacy.AcceptSound as AS
 import Once.Adequacy.FunBundle as FB
 open import Once.Adequacy.TelePosition

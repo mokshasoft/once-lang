@@ -31,7 +31,7 @@ open import Relation.Nullary using (Dec; yes; no)
 -- Import X86 syntax
 open import Once.CCC.Target.X86-64.Syntax
   using (Reg; rax; rbx; rcx; rdx; rdi; rsi; rbp; rsp; r8; r9; r10; r11; r12; r13; r14; r15;
-         Mem; base; base+disp; rip+disp; rip+label;
+         Mem; base; base+disp; rip+disp; rip+label; rip+sym;
          Operand; reg; mem; imm;
          Instr; mov; lea; add; sub; cmp; push; pop; call; call-l; ret; jmp; je; jne; label; ud2;
          Program; slot-size; slots)
@@ -270,6 +270,9 @@ compile-abstract (instr-ctrl (c-jmp n))            = jmp (once n) ∷ []
 -- reservation, and a return RELEASES that frame before returning. Both
 -- blocks are byte-for-byte what `emit-thunk-body` emits as text today.
 compile-abstract (instr-ctrl (c-entry e b))        = label (callee e) ∷ sub (reg rsp) (imm (slots b)) ∷ []
+-- plan 0.107: `_start` — the heap register at the runtime's `.bss` heap, then
+-- the outermost frame (nothing called the program, so no return to spill).
+compile-abstract (instr-ctrl (c-start b))          = lea r15 (rip+sym "once_heap_base") ∷ sub (reg rsp) (imm (slots b)) ∷ []
 -- D245: a direct call of a program function is `call once_<f>`.
 compile-abstract (instr-ctrl (c-call-fn f))        = call-l (callee (e-fn f)) ∷ []
 compile-abstract (instr-ctrl (c-ret b))            = add (reg rsp) (imm (slots b)) ∷ ret ∷ []

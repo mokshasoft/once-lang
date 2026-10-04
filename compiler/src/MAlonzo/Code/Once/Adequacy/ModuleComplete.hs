@@ -28,7 +28,6 @@ import qualified MAlonzo.Code.Data.Bool.Base
 import qualified MAlonzo.Code.Data.String.Properties
 import qualified MAlonzo.Code.Data.Sum.Base
 import qualified MAlonzo.Code.Once.Adequacy.AcceptSound
-import qualified MAlonzo.Code.Once.Adequacy.SourceTrace
 import qualified MAlonzo.Code.Once.CanonicalName
 import qualified MAlonzo.Code.Once.Compile
 import qualified MAlonzo.Code.Once.Denotation.Realize
@@ -718,7 +717,7 @@ du_found_456 :: MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_found_456
   = coe
       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-      (coe MAlonzo.Code.Once.Adequacy.SourceTrace.d_mainCall_22) erased
+      (coe MAlonzo.Code.Once.Compile.d_mainCall_806) erased
 -- Once.Adequacy.ModuleComplete._.step
 d_step_460 ::
   MAlonzo.Code.Once.Compile.T_CScope_376 ->

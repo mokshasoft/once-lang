@@ -910,6 +910,26 @@ sim-mov-to-output {hv} fs s s' corr st = record
   ; lo-le = keep-lo-le corr st (λ ()) ; untouched = keep-untouched corr st ; stack-eq = keep-stack corr st
   }
 
+-- Plan 0.107: THE HEAP REGISTER AT THE HEAP'S BASE — the start's first half
+-- (`lea r15, once_heap_base`; the base is 0 w.l.o.g.). Nothing abstract moves:
+-- the view's frontier already IS the base, which the start's caller supplies.
+sim-heap-base : {hv : HeapView} (fs : FlatState) (s s' : State)
+  → FlatCorr hv fs s
+  → SetsRole s s' role-heap 0
+  → hfront hv ≡ 0
+  → FlatCorr hv fs s'
+sim-heap-base {hv} fs s s' corr st h0 = record
+  { in1-eq  = keep-in1 corr st (λ ())
+  ; out-eq  = keep-out corr st (λ ())
+  ; scratch-eq  = keep-scratch corr st (λ ())
+  ; count-eq  = keep-count corr st (λ ())
+  ; clos-eq = keep-clos corr st (λ ()) ; halt-eq = keep-halt corr st ; sp-eq = keep-sp corr st (λ ())
+  ; frontier-eq = trans (at-role st) (sym h0)
+  ; dom-fresh = dom-fresh corr ; dom-written = dom-written corr ; dom-sized = dom-sized corr
+  ; heap-eq = keep-heap corr st
+  ; lo-le = keep-lo-le corr st (λ ()) ; untouched = keep-untouched corr st ; stack-eq = keep-stack corr st
+  }
+
 -- mov-to-input (Input1 := Output) ↔ `mov rdi, rax`.
 sim-mov-to-input : {hv : HeapView} (fs : FlatState) (s s' : State) → FlatCorr hv fs s
   → SetsRole s s' role-in1 (rreg s out-reg)

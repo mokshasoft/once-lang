@@ -135,6 +135,14 @@ step-lea ft rewrite ft = refl
 -- INDEX in `r`, resolved exactly as `jmp` resolves a target. This is the lemma
 -- that makes a code address a real address, which is what the closure call
 -- needs before it can jump to one.
+-- plan 0.107: a DATA symbol's address — the runtime's `.bss` heap, at 0
+-- w.l.o.g. (`effectiveAddr`'s `rip+sym` clause).
+step-lea-sym : ∀ {prog s r x}
+             → fetch prog (pc s) ≡ just (lea r (rip+sym x))
+             → step-not-halted prog s
+               ≡ just (record s { regs = writeReg (regs s) r 0 ; pc = pc s + 1 })
+step-lea-sym ft rewrite ft = refl
+
 step-lea-label : ∀ {prog s r ℓ j}
                → fetch prog (pc s) ≡ just (lea r (rip+label ℓ))
                → find-label prog (thunk ℓ) ≡ just j

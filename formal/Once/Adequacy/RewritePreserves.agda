@@ -43,7 +43,8 @@ import Once.Denotation.DenotTrace
 open import Once.IRTy.WF using (wf-⌈⌉)
 open import Once.Denotation.TraceMonad using (fmapT)
 open import Once.Denotation.Behavior using (at)
-open import Once.Adequacy.SourceTrace using (rewrite-program; rewrite-table; rewrite-fun; ⟦_⟧IR)
+open import Once.Adequacy.SourceTrace using (⟦_⟧IR)
+open import Once.Compile using (rewrite-program; rewrite-table; rewrite-fun)
 
 -- A lifted arith block means the subtree it replaced (`LiftSound`).
 lift-sound : ∀ (fmt : TargetNum) (ρ : CallEnv) {A B} (ir ir′ : IR A B) (blk : ArithBlock)

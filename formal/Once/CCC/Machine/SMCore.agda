@@ -1101,6 +1101,13 @@ data FlatCtrl : Set where
   -- closure call whose target is named statically instead of read from a
   -- closure record.
   c-call-fn             : CanonicalName → FlatCtrl
+  -- Plan 0.107: THE PROGRAM STARTS — the first instruction of every program
+  -- image, and of the emitted file (`_start`). It reserves the outermost unit's
+  -- frame (its budget) exactly as a body entry does, and it is where each
+  -- target initialises its heap register to the runtime's `.bss` heap — the
+  -- only runtime set-up there is, written in the machine, not beside it.
+  -- Nothing calls the program, so unlike `c-entry` it spills no return.
+  c-start               : ℕ → FlatCtrl
 
 -- A closure-body entry, the marker's original form (Plan 0.63, D082).
 pattern c-thunk ℓ b = c-entry (e-thunk ℓ) b
@@ -1335,6 +1342,15 @@ blocks-layout-++ (b ∷ bs) cs =
 -- ended by falling off, which is only correct while nothing follows it.
 link : CompUnit → AbstractTrace
 link u = entry u ++ instr-ctrl (c-ret (entry-budget u)) ∷ blocks-layout (blocks u)
+
+-- Plan 0.107: THE OUTERMOST UNIT, linked. Nothing called the program, so there
+-- is nothing to return to: where a body returns, the program STOPS SILENTLY — a
+-- jump to itself, which emits nothing, on bare metal as under an OS. (Linked
+-- with `c-ret`, the model said "halted" while the hardware returned into
+-- whatever word sat on the stack.)
+link-top : LabelId → CompUnit → AbstractTrace
+link-top done u =
+  entry u ++ instr-ctrl (c-label done) ∷ instr-ctrl (c-jmp done) ∷ blocks-layout (blocks u)
 
 ------------------------------------------------------------------------
 -- D168 / plan 0.89 Phase D1 — WHERE A BLOCK'S BODY SITS IN THE LINKED IMAGE.

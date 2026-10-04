@@ -40,7 +40,7 @@ d_matchCall_10 v0
   = let v1 = coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 in
     coe
       (case coe v0 of
-         MAlonzo.Code.Once.CCC.Target.RiscV64.Syntax.C_call'45'sym_44 v2
+         MAlonzo.Code.Once.CCC.Target.RiscV64.Syntax.C_call'45'sym_46 v2
            -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe v2)
          _ -> coe v1)
 -- Once.Arith.Backend.RiscV64.RunTrace.ret-past
@@ -142,9 +142,9 @@ d_run'45'events_42 v0 v1
       (coe
          (\ v2 ->
             MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_pc_422 (coe v2)))
-      (coe MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_fetch_488)
+      (coe MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_fetch_492)
       (coe
-         MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_execInstr_546)
+         MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_execInstr_550)
       (coe d_matchCall_10) (coe d_ret'45'call_18 (coe v1))
       (coe
          MAlonzo.Code.Data.Product.Base.du_uncurry_244
@@ -236,9 +236,9 @@ d_run'45'events'45'call_48 v0 v1
       (coe
          (\ v2 ->
             MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_pc_422 (coe v2)))
-      (coe MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_fetch_488)
+      (coe MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_fetch_492)
       (coe
-         MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_execInstr_546)
+         MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_execInstr_550)
       (coe d_matchCall_10) (coe d_ret'45'call_18 (coe v1))
       (coe
          MAlonzo.Code.Data.Product.Base.du_uncurry_244
@@ -276,9 +276,9 @@ d_run'45'events'45'exec_50 v0 v1 v2 v3 v4 v5 v6 v7 v8
       (coe
          (\ v9 ->
             MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_pc_422 (coe v9)))
-      (coe MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_fetch_488)
+      (coe MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_fetch_492)
       (coe
-         MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_execInstr_546)
+         MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_execInstr_550)
       (coe d_matchCall_10) (coe d_ret'45'call_18 (coe v1))
       (coe
          MAlonzo.Code.Data.Product.Base.du_uncurry_244
@@ -343,9 +343,9 @@ d_run'45'events'45'fetch_54 v0 v1
       (coe
          (\ v2 ->
             MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_pc_422 (coe v2)))
-      (coe MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_fetch_488)
+      (coe MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_fetch_492)
       (coe
-         MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_execInstr_546)
+         MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_execInstr_550)
       (coe d_matchCall_10) (coe d_ret'45'call_18 (coe v1))
       (coe
          MAlonzo.Code.Data.Product.Base.du_uncurry_244
@@ -426,9 +426,9 @@ d_run'45'events'45'instr_60 v0 v1
       (coe
          (\ v2 ->
             MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_pc_422 (coe v2)))
-      (coe MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_fetch_488)
+      (coe MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_fetch_492)
       (coe
-         MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_execInstr_546)
+         MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_execInstr_550)
       (coe d_matchCall_10) (coe d_ret'45'call_18 (coe v1))
       (coe
          MAlonzo.Code.Data.Product.Base.du_uncurry_244
@@ -515,9 +515,9 @@ d_run'45'trace_66 v0 v1
       (coe
          (\ v2 ->
             MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_pc_422 (coe v2)))
-      (coe MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_fetch_488)
+      (coe MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_fetch_492)
       (coe
-         MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_execInstr_546)
+         MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_execInstr_550)
       (coe d_matchCall_10) (coe d_ret'45'call_18 (coe v1))
       (coe
          MAlonzo.Code.Data.Product.Base.du_uncurry_244
@@ -552,8 +552,8 @@ d_run'45'trace'45'extends_68 v0 v1
            (coe v2))
       (\ v2 ->
          MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_pc_422 (coe v2))
-      MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_fetch_488
-      MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_execInstr_546
+      MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_fetch_492
+      MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_execInstr_550
       d_matchCall_10 (d_ret'45'call_18 (coe v1))
       (coe
          MAlonzo.Code.Data.Product.Base.du_uncurry_244
@@ -589,9 +589,9 @@ d_run'45'trace'45'fam_70 v0 v1
       (coe
          (\ v2 ->
             MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_pc_422 (coe v2)))
-      (coe MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_fetch_488)
+      (coe MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_fetch_492)
       (coe
-         MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_execInstr_546)
+         MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_execInstr_550)
       (coe d_matchCall_10) (coe d_ret'45'call_18 (coe v1))
       (coe
          MAlonzo.Code.Data.Product.Base.du_uncurry_244

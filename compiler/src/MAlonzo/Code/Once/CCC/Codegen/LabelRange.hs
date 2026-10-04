@@ -37,7 +37,7 @@ d_cata'45'dispatch_14 ::
   Integer ->
   Integer ->
   Integer ->
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2236] ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2238] ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_cata'45'dispatch_14 v0
   = coe
@@ -105,7 +105,7 @@ d_cata'45'label'45'mono_60 ::
   Integer ->
   Integer ->
   Integer ->
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2236] ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2238] ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
 d_cata'45'label'45'mono_60 ~v0 v1 ~v2 ~v3 v4 ~v5
   = du_cata'45'label'45'mono_60 v1 v4

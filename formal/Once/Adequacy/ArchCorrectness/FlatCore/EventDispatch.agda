@@ -290,7 +290,7 @@ module Dispatch (sup : Supply) where
       pend = entry-ret prog fs m b (inv-run wf) ftq
       -- the site's resource fact: the reservation stays above the heap frontier
       room : CFC.hfront hv + slots b ≤ rreg s sp-reg
-      room = stack-room prog fs s m b (inv-run wf) cc ftq
+      room = stack-room prog fs s b (inv-run wf) cc (inj₁ (m , ftq))
       fits : slots b ≤ rreg s sp-reg
       fits = ≤-trans (m≤n+m (slots b) (CFC.hfront hv)) room
       front-rsp : CFC.hfront hv ≤ rreg s sp-reg ∸ slots b
@@ -322,7 +322,7 @@ module Dispatch (sup : Supply) where
     where
       -- `RetMatch` pairs the two stacks, so a cons `fret` forces a cons frame
       -- stack — J-style, because the pairing is data.
-      saved-cons : ∀ {frs' rs'} → RetMatch prog (ir-stack-budget (run-ir (inv-run wf))) frs' rs'
+      saved-cons : ∀ {frs' rs'} → RetMatch prog 0 frs' rs'
                  → ∀ rpc rest → rs' ≡ rpc ∷ rest
                  → Σ Frame (λ f₀ → Σ ℕ (λ b₀ → Σ (List (Frame × ℕ)) (λ frs → frs' ≡ (f₀ , b₀) ∷ frs)))
       saved-cons rm-[] rpc rest ()
@@ -1164,6 +1164,10 @@ module Dispatch (sup : Supply) where
     -- relating the ghost `fret` to the machine stack.
     events-running-fetch {hv} n ev env prog fs s (instr-ctrl (c-entry m b)) cc wf h ftq =
       thunk-step n (events-agree n) ev env prog fs s m b cc wf h ftq
+    -- plan 0.107: the START is at pc 0 only, and the correspondence runs after
+    -- it — the per-arch start lemma is where its lowering is proved.
+    events-running-fetch {hv} n ev env prog fs s (instr-ctrl (c-start b)) cc wf h ftq =
+      ⊥-elim (inv-started wf (start-at-zero prog (fpc fs) b (run-emitted (inv-run wf)) ftq))
     -- D245: the direct call of a program function.
     events-running-fetch {hv} n ev env prog fs s (instr-ctrl (c-call-fn f)) cc wf h ftq =
       callfn-step n (events-agree n) ev env prog fs s f cc wf h ftq
@@ -1198,3 +1202,63 @@ module Dispatch (sup : Supply) where
     events-running-fetch {hv} n ev env prog fs s instr-call-closure cc wf h ftq =
       call-step n (events-agree n) ev env prog fs s cc wf h ftq
 
+
+  -- Plan 0.107: THE START, THEN THE RUN. The correspondence's induction begins
+  -- ONE STEP IN — after the start, which no step returns to (`inv-started`).
+  -- This carries it across: the start's block (`bs-c-start`) takes the
+  -- environment's state to `main`'s first instruction, and the run from there
+  -- is `events-agree`'s. What the start needs of the environment is the stack
+  -- room for `main`'s frame (`stack-room`, the same resource fact a body entry
+  -- needs) and a frontier at the heap's base.
+  events-agree-start : ∀ {hv : HeapView} N (ev : RT.EvExtractor) (env : RT.ArithEnv) prog fs s b
+    → CompiledCorr hv prog fs s
+    → FlatWF fs → sv-below (next-heap-ref (falloc fs)) (fclosure fs) → FlatRegTag fs
+    → ev ≡ ev-arch → ArithTable prog env → RunAt prog fs
+    → halted (floc fs) ≡ false
+    → fetch prog (fpc fs) ≡ just (instr-ctrl (c-start b))
+    → CFC.hfront hv ≡ 0
+    → fret fs ≡ []
+    → Σ ℕ (λ M → RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s
+                 ≡ flat-events (suc N) prog fs)
+  events-agree-start {hv} N ev env prog fs s b cc wf cl rt evq envq run h ftq h0 nf =
+    (blk-len i + proj₁ rec) , trans result (sym step-eq)
+    where
+      i = instr-ctrl (c-start b)
+      room : CFC.hfront hv + slots b ≤ rreg s sp-reg
+      room = stack-room prog fs s b run cc (inj₂ ftq)
+      fits : slots b ≤ rreg s sp-reg
+      fits = ≤-trans (m≤n+m (slots b) (CFC.hfront hv)) room
+      front-rsp : CFC.hfront hv ≤ rreg s sp-reg ∸ slots b
+      front-rsp = m+n≤o⇒m≤o∸n (CFC.hfront hv) room
+      lo' : ℕ
+      lo' = CFC.lo hv ⊓ (rreg s sp-reg ∸ slots b)
+      lo'≤lo : lo' ≤ CFC.lo hv
+      lo'≤lo = m⊓n≤m (CFC.lo hv) (rreg s sp-reg ∸ slots b)
+      lo'≤rsp : lo' ≤ rreg s sp-reg ∸ slots b
+      lo'≤rsp = m⊓n≤n (CFC.lo hv) (rreg s sp-reg ∸ slots b)
+      front-lo' : CFC.hfront hv ≤ lo'
+      front-lo' = ⊓-glb (CFC.front-lo hv) front-rsp
+      bs = bs-c-start bss prog fs s b cc h ftq lo' lo'≤lo front-lo' lo'≤rsp fits
+                      (reg-range prog fs s sp-reg run cc) h0 nf
+      -- the post-start invariant, from the flat-machine theorems; the start
+      -- is behind it now (its pc is one past)
+      inv₁ : FlatInv ev env prog (flat-exec-instr i prog fs)
+      inv₁ = record
+        { inv-wf      = flat-wf-step i prog fs wf
+        ; inv-closure = cl-step i prog fs wf cl
+        ; inv-regtag  = flat-regtag-step i prog fs rt
+        ; inv-ev      = evq
+        ; inv-env     = envq
+        ; inv-run     = mkRunAt (run-tbl run) (run-ir run) (run-emit run) (run-linked run)
+                                (reach-step i fs (run-reach run) ftq h)
+        ; inv-started = λ ()
+        }
+      rec = events-agree N ev env prog (flat-exec-instr i prog fs) (proj₁ bs) (proj₂ (proj₂ bs)) inv₁
+      result : RT.run-events ev env (LocState.ev-log (floc fs)) (blk-len i + proj₁ rec) (compile-trace prog) s
+             ≡ flat-events N prog (flat-exec-instr i prog fs)
+      result =
+        trans (block-run-exec ev env (LocState.ev-log (floc fs)) (blk-len i) (proj₁ rec) (compile-trace prog) s
+                 (proj₁ (proj₂ bs)) (trans (CFC.halt-eq (dataCorr (proj₂ (proj₂ bs)))) h))
+              (proj₂ rec)
+      step-eq : flat-events (suc N) prog fs ≡ flat-events N prog (flat-exec-instr i prog fs)
+      step-eq rewrite h | ftq = refl

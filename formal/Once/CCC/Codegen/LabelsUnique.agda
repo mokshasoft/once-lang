@@ -65,7 +65,7 @@ open import Once.CCC.Codegen.LabelScope o using (trace-of; cata-trace-of)
 open import Once.CCC.Codegen.SlotBudget o using (bodies-of)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore
-  using (AbstractTrace; AbstractInstr; instr-ctrl; c-thunk; c-entry; c-call-fn; c-ret; c-label; block-layout;
+  using (AbstractTrace; AbstractInstr; instr-ctrl; c-thunk; c-entry; c-call-fn; c-ret; c-label; c-start; block-layout;
          mov-to-input; mov-to-output; store-at-slot; restore-input; instr-alloc-heap;
          load-from-slot; store-indirect; store-indirect-suc; c-jmp; c-branch-tag-zero;
          load-indirect-suc)
@@ -582,3 +582,18 @@ module Unique {FS : FrameSemantics} where
                                        (instr-ctrl (c-ret b) ∷ [])
                                        (nt-dec (instr-ctrl (c-ret b) ∷ []) refl)))
                          (defs-uniq ir 0 0))
+
+  -- Plan 0.107: …and the OUTERMOST unit, behind the start and ending in the
+  -- silent stop (neither the start nor the stop pair mints a thunk).
+  top-noThunks : ∀ {A B} (ir : IR A B) (b : ℕ) (d : LabelId)
+               → NoThunks (instr-ctrl (c-start b) ∷ trace-of (ir-to-trace' 0 0 ir)
+                             ++ instr-ctrl (c-label d) ∷ instr-ctrl (c-jmp d) ∷ [])
+                          (bodies-of (ir-to-trace' 0 0 ir))
+  top-noThunks ir b d =
+    noThunks-from (S ++ trace-of (ir-to-trace' 0 0 ir) ++ P) (bodies-of (ir-to-trace' 0 0 ir))
+                  (subst (λ z → AllPairs _≢_ (z ++ block-defs (bodies-of (ir-to-trace' 0 0 ir))))
+                         (sym (trans (tl-pre S (trace-of (ir-to-trace' 0 0 ir) ++ P) (nt-dec S refl))
+                                     (tl-post (trace-of (ir-to-trace' 0 0 ir)) P (nt-dec P refl))))
+                         (defs-uniq ir 0 0))
+    where S = instr-ctrl (c-start b) ∷ []
+          P = instr-ctrl (c-label d) ∷ instr-ctrl (c-jmp d) ∷ []

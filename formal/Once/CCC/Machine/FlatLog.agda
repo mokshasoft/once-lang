@@ -165,6 +165,7 @@ module LogPres {FS : FrameSemantics} where
                       → flog (flat-exec-instr i prog fs) ≡ flog fs
   flat-exec-instr-log (instr-ctrl (c-label _))               _ prog fs = refl
   flat-exec-instr-log (instr-ctrl (c-entry _ b))             _ prog fs = refl
+  flat-exec-instr-log (instr-ctrl (c-start b))             _ prog fs = refl
   flat-exec-instr-log (instr-ctrl (c-call-fn f))             _ prog fs = do-call-at-log (find-fn prog f) fs
   flat-exec-instr-log (instr-ctrl (c-ret b))                 _ prog fs = do-ret-log (fret fs) fs
   flat-exec-instr-log (instr-ctrl (c-jmp n))                 _ prog fs = do-jump-log (find-label prog n) fs

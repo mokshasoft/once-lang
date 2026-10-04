@@ -36,7 +36,7 @@ import Once.Adequacy.ArchCorrectness.RiscV64.FlatCorrespondence as FCr
 import Once.Adequacy.ArchCorrectness.FlatCore.RunContext as RCr
 import Once.CCC.Target.RiscV64.Semantics as RS
 open import Once.CCC.Machine.SMCore using
-  (AbstractTrace; lea-slot; instr-alloc-heap; instr-ctrl; c-thunk; c-entry; c-call-fn; c-ret
+  (AbstractTrace; lea-slot; instr-alloc-heap; instr-ctrl; c-thunk; c-entry; c-start; c-call-fn; c-ret
   ; instr-call-closure; instr-reg-op; scratch-dec; count-inc
   ; instr-load-tag-lit; instr-load-const; AbstractInstr; CallI)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
@@ -52,6 +52,8 @@ open import Data.Integer using (ℤ)
 open import Data.Float using () renaming (Float to AgdaFloat)
 open import Data.Maybe using (just)
 
+open import Data.Sum using (_⊎_)
+open import Data.Product using (Σ)
 module Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim
   (o : CanonicalName)
   (FS : FrameSemantics)
@@ -98,11 +100,11 @@ module Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim
              → FCr.hfront hv + slots n ≤ FCr.lo hv)
   (stack-room : ∀ {hv : FCr.HeapView FS word-eq} (prog : AbstractTrace)
                   (fs : FlatMachine.FlatState {FS}) (s : RS.State)
-                  (m : EntryId) (b : ℕ)
+                  (b : ℕ)
               → RCr.RunAt o FS slot-size word-eq prog fs
               → FSimr.CompiledCorr o FS word-eq fmt-eq hv prog fs s
-              → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs)
-                  ≡ just (instr-ctrl (c-entry m b))
+              → Σ EntryId (λ m → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs) ≡ just (instr-ctrl (c-entry m b)))
+      ⊎ (FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs) ≡ just (instr-ctrl (c-start b)))
               → FCr.hfront hv + slots b ≤ RS.readReg (RS.State.regs s) sp)
   (call-room : ∀ {hv : FCr.HeapView FS word-eq} (prog : AbstractTrace)
                  (fs : FlatMachine.FlatState {FS}) (s : RS.State) (c : AbstractInstr)
@@ -176,7 +178,7 @@ open import Relation.Binary.PropositionalEquality using (refl; sym; trans; cong)
 
 open import Once.CCC.Target.RiscV64.Syntax using
   ( Reg; Instr; Program; label
-  ; ld; sd; add; sub; addi; li; auipc; lla; mv; beq; bne; jal; jalr; j; ret
+  ; ld; sd; add; sub; addi; li; auipc; lla; lla-sym; mv; beq; bne; jal; jalr; j; ret
   ; call; call-sym; nop; unimp )
 import Once.CCC.Target.RiscV64.Semantics as R
 open import Once.CCC.Target.RiscV64.AbstractToRiscV using (compile-abstract; compile-trace)
@@ -184,7 +186,11 @@ open import Once.Adequacy.ArchCorrectness.RiscV64.RegRoles using (riscv64-roles)
 open import Once.Adequacy.ArchCorrectness.RiscV64.FlatComposition FS using
   (is-label?; skip-law; label-hit; label-miss; headView)
 open import Once.Adequacy.ArchCorrectness.RiscV64.StepLemmas using (execInstr-ld)
-open import Once.Adequacy.CPU.RiscV64 using (ev-riscv64; arith-env-riscv64; call-at-riscv64)
+open import Once.Adequacy.CPU.RiscV64 using (ev-riscv64; block-env; call-at-riscv64)
+import Once.Compile as Cmp
+open import Data.String using (String)
+open import Data.Product using (Σ; _×_)
+open import Once.Denotation.Program using (IRProgram)
 open import Once.Arith.Backend.CallAnswer using (answer-at)
 open import Once.CCC.Machine.SMCore using (LocState)
 open import Once.Adequacy.ArchCorrectness.ArithSimRiscV64 using (val-riscv64)
@@ -253,6 +259,7 @@ r-nonhalt-noncall prog s (addi _ _ _) eq hnh = refl
 r-nonhalt-noncall prog s (li _ _)     eq hnh = refl
 r-nonhalt-noncall prog s (auipc _ _)  eq hnh = refl
 r-nonhalt-noncall prog s (lla _ _)    eq hnh = refl
+r-nonhalt-noncall prog s (lla-sym _ _) eq hnh = refl
 r-nonhalt-noncall prog s (mv _ _)     eq hnh = refl
 r-nonhalt-noncall prog s (beq _ _ _)  eq hnh = refl
 r-nonhalt-noncall prog s (bne _ _ _)  eq hnh = refl
@@ -295,6 +302,14 @@ riscv64-machine = record
   ; exec-step-run = r-exec-step-run
   }
 
+
+-- Plan 0.107: THE ARITH TABLE IS THE FILE'S — the block table `Once.Compile`
+-- emits for the program whose image this is. It was the postulated
+-- `arith-env-riscv64`, "read off the code"; the code does not hold it, the file does.
+riscv64-arith-table : AbstractTrace → (String → Maybe (List XInstr × ℕ)) → Set
+riscv64-arith-table prog env =
+  Σ IRProgram (λ p → (prog ≡ Cmp.image-of p) × (env ≡ block-env (Cmp.blocks-riscv64 p)))
+
 riscv64-traceloop : EI.TraceLoop FS Reg riscv64-emitter riscv64-machine
 riscv64-traceloop = record
   { Payload = List XInstr × ℕ
@@ -303,7 +318,7 @@ riscv64-traceloop = record
   -- world being the frame semantics' interpretation.
   ; ret-call = RTr.ret-call (answer-at (Once.CCC.FrameSemantics.fs-interp FS) call-at-riscv64)
   ; dispatchArith = uncurry (dispatch-arith val-riscv64)
-  ; ev-arch = ev-riscv64 ; arith-env = arith-env-riscv64
+  ; ev-arch = ev-riscv64 ; ArithTable = riscv64-arith-table
   ; sigop-call = call-sym ; sigop-lowering = λ _ → refl ; sigop-matchCall = λ _ → refl
   ; nonhalt-noncall = r-nonhalt-noncall
   }
@@ -330,7 +345,7 @@ open EE using (FlatInv; mkFlatInv; inv-wf; inv-closure; inv-regtag; inv-ev; inv-
               ; StuckAt; StuckSteps
               -- …and the run-context vocabulary the APEX needs to exhibit the
               -- entry state as a legitimate start state
-              ; EntryLike; Reachable; reach-start; mkRunAt) public
+              ; EntryLike; Reachable; reach-start; mkRunAt; RunAt) public
 
 -- the ABSTRACT machine's own vocabulary, which the stuck routes state their
 -- premises in (`hiding (Instr)`: this module's `Instr` is the CONCRETE one)
@@ -384,7 +399,7 @@ open import Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation o FS word-eq fm
   ; block-step-c-jmp; block-step-c-branch-scratch-zero; block-step-c-branch-nz
   ; block-step-c-branch-tag-zero; block-step-c-branch-tag-nz
   ; block-step-scratch-dec; block-step-count-inc
-  ; block-step-c-thunk; block-step-c-ret
+  ; block-step-c-thunk; block-step-c-start; block-step-c-ret
   ; block-step-load-const; block-step-load-const-float
   ; block-step-load-code-addr; block-step-call; block-step-call-fn; block-step-alloc-heap
   ; load-indirect-heap-empty-stuck; load-indirect-suc-heap-empty-stuck
@@ -590,6 +605,7 @@ riscv64-block-steps = record
   ; bs-scratch-dec              = block-step-scratch-dec
   ; bs-count-inc                = block-step-count-inc
   ; bs-c-thunk                  = block-step-c-thunk
+  ; bs-c-start                  = block-step-c-start
   ; bs-c-ret                    = block-step-c-ret
   ; bs-load-const               = block-step-load-const
   ; bs-load-const-float         = block-step-load-const-float
@@ -612,7 +628,7 @@ postulate
   arith-sigop-contract : ∀ {hv : HeapView} (env : EE.RT.ArithEnv)
                            prog fs s {A B} (si : SigOpInfo A B)
                        → EE.RunAt prog fs
-                       → env ≡ arith-env-riscv64 (compile-trace prog)
+                       → riscv64-arith-table prog env
                        → Internal (sem si) → CompiledCorr hv prog fs s
                        → fetch prog (fpc fs) ≡ just (instr-sigop si)
                        → Σ (List XInstr × ℕ)
@@ -625,7 +641,7 @@ postulate
                               prog fs s {A B} (si : SigOpInfo A B)
                           → EE.RunAt prog fs
                           → ev ≡ ev-riscv64
-                          → env ≡ arith-env-riscv64 (compile-trace prog)
+                          → riscv64-arith-table prog env
                           → External (sem si)
                           → CompiledCorr hv prog fs s
                           → fetch prog (fpc fs) ≡ just (instr-sigop si)
@@ -658,4 +674,4 @@ riscv64-supply = record
 -- dispatch twice.
 open Dispatch.Dispatch o FS slot-size word-eq Reg riscv64-roles RS.W.modulus
                        riscv64-emitter riscv64-machine riscv64-traceloop riscv64-supply
-  using (events-agree) public
+  using (events-agree; events-agree-start) public
