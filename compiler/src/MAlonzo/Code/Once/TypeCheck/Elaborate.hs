@@ -4917,7 +4917,7 @@ du_ext'45'arrow'45'info_4256 ::
   MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_164
 du_ext'45'arrow'45'info_4256 v0 v1 v2 v3 v4 v5
   = coe
-      MAlonzo.Code.Once.Arith.SigOp.Builders.du_arrow'45'info_370
+      MAlonzo.Code.Once.Arith.SigOp.Builders.du_arrow'45'info_364
       (coe v0)
       (coe
          MAlonzo.Code.Once.Type.C_mk'45'kind_50

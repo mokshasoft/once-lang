@@ -19,9 +19,11 @@ import qualified MAlonzo.RTE
 import qualified Data.Text
 import qualified MAlonzo.Code.Agda.Builtin.Equality
 import qualified MAlonzo.Code.Agda.Builtin.Sigma
+import qualified MAlonzo.Code.Agda.Builtin.Unit
 import qualified MAlonzo.Code.Data.Integer.Base
 import qualified MAlonzo.Code.Data.Nat.Base
 import qualified MAlonzo.Code.Data.Sum.Base
+import qualified MAlonzo.Code.Once.Arith.CmpOp
 import qualified MAlonzo.Code.Once.Float.Arith
 import qualified MAlonzo.Code.Once.Functor.Translate
 import qualified MAlonzo.Code.Once.Res
@@ -867,79 +869,93 @@ d_norm'45'id_228 ::
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_norm'45'id_228 = erased
+-- Once.Arith.Prim.W.sbb-pos
+d_sbb'45'pos_230 ::
+  MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
+  Integer ->
+  MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
+  MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_sbb'45'pos_230 = erased
+-- Once.Arith.Prim.W.sbb-zero
+d_sbb'45'zero_232 ::
+  MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
+  MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_sbb'45'zero_232 = erased
 -- Once.Arith.Prim.W.sdiv2ᵏ
-d_sdiv2'7503'_230 ::
+d_sdiv2'7503'_234 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   Integer -> Integer -> Integer
-d_sdiv2'7503'_230 v0
+d_sdiv2'7503'_234 v0
   = coe
       MAlonzo.Code.Once.Word.d_sdiv2'7503'_138
       (coe MAlonzo.Code.Once.Target.Arch.d_int'45'bits_22 (coe v0))
 -- Once.Arith.Prim.W.shlᵂ
-d_shl'7490'_232 ::
+d_shl'7490'_236 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   Integer -> Integer -> Integer
-d_shl'7490'_232 v0
+d_shl'7490'_236 v0
   = coe
       MAlonzo.Code.Once.Word.d_shl'7490'_132
       (coe MAlonzo.Code.Once.Target.Arch.d_int'45'bits_22 (coe v0))
 -- Once.Arith.Prim.W.sucNegOne≡mod
-d_sucNegOne'8801'mod_234 ::
+d_sucNegOne'8801'mod_238 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   Integer ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_sucNegOne'8801'mod_234 = erased
+d_sucNegOne'8801'mod_238 = erased
 -- Once.Arith.Prim.W.tdiv-neg1
-d_tdiv'45'neg1_236 ::
+d_tdiv'45'neg1_240 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_tdiv'45'neg1_236 = erased
+d_tdiv'45'neg1_240 = erased
 -- Once.Arith.Prim.W.tmod-neg1
-d_tmod'45'neg1_238 ::
+d_tmod'45'neg1_242 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_tmod'45'neg1_238 = erased
+d_tmod'45'neg1_242 = erased
 -- Once.Arith.Prim.W.toWord
-d_toWord_240 ::
+d_toWord_244 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   Integer -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 -> Integer
-d_toWord_240 v0 v1 v2
+d_toWord_244 v0 v1 v2
   = coe
       MAlonzo.Code.Once.Word.du_toWord_68
       (coe MAlonzo.Code.Once.Target.Arch.d_int'45'bits_22 (coe v0)) v1
 -- Once.Arith.Prim.W.toWord≡fromℤ
-d_toWord'8801'fromℤ_242 ::
+d_toWord'8801'fromℤ_246 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   Integer ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_toWord'8801'fromℤ_242 = erased
+d_toWord'8801'fromℤ_246 = erased
 -- Once.Arith.Prim.W.toℤ
-d_toℤ_244 ::
+d_toℤ_248 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 -> Integer -> Integer
-d_toℤ_244 v0
+d_toℤ_248 v0
   = coe
       MAlonzo.Code.Once.Word.d_toℤ_50
       (coe MAlonzo.Code.Once.Target.Arch.d_int'45'bits_22 (coe v0))
 -- Once.Arith.Prim.W.toℤ-negOne
-d_toℤ'45'negOne_246 ::
+d_toℤ'45'negOne_250 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   Integer ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_toℤ'45'negOne_246 = erased
+d_toℤ'45'negOne_250 = erased
 -- Once.Arith.Prim.W.toℤ∘fromℤ
-d_toℤ'8728'fromℤ_248 ::
+d_toℤ'8728'fromℤ_252 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   Integer ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   Integer ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_toℤ'8728'fromℤ_248 = erased
+d_toℤ'8728'fromℤ_252 = erased
 -- Once.Arith.Prim.W.unplus
-d_unplus_250 ::
+d_unplus_254 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   Integer ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
@@ -947,121 +963,128 @@ d_unplus_250 ::
   Integer ->
   MAlonzo.Code.Data.Integer.Base.T__'8804'__26 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-d_unplus_250 ~v0 = du_unplus_250
-du_unplus_250 ::
+d_unplus_254 ~v0 = du_unplus_254
+du_unplus_254 ::
   Integer ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   Integer ->
   Integer ->
   MAlonzo.Code.Data.Integer.Base.T__'8804'__26 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-du_unplus_250 v0 v1 v2 v3 v4
+du_unplus_254 v0 v1 v2 v3 v4
   = coe MAlonzo.Code.Once.Word.du_unplus_648 v4
 -- Once.Arith.Prim.W.≡ᵇ-refl
-d_'8801''7495''45'refl_252 ::
+d_'8801''7495''45'refl_256 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'8801''7495''45'refl_252 = erased
+d_'8801''7495''45'refl_256 = erased
 -- Once.Arith.Prim.W.≡ᵇ0-false
-d_'8801''7495'0'45'false_254 ::
+d_'8801''7495'0'45'false_258 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'8801''7495'0'45'false_254 = erased
+d_'8801''7495'0'45'false_258 = erased
 -- Once.Arith.Prim.W.≤⇒<ᵇfalse
-d_'8804''8658''60''7495'false_256 ::
+d_'8804''8658''60''7495'false_260 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   Integer ->
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'8804''8658''60''7495'false_256 = erased
+d_'8804''8658''60''7495'false_260 = erased
 -- Once.Arith.Prim.W.⊕-neg
-d_'8853''45'neg_258 ::
+d_'8853''45'neg_262 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   Integer ->
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'8853''45'neg_258 = erased
+d_'8853''45'neg_262 = erased
 -- Once.Arith.Prim.W.⊕-neg-suc
-d_'8853''45'neg'45'suc_260 ::
+d_'8853''45'neg'45'suc_264 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   Integer ->
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'8853''45'neg'45'suc_260 = erased
+d_'8853''45'neg'45'suc_264 = erased
 -- Once.Arith.Prim.W.⊕-normʳ
-d_'8853''45'norm'691'_262 ::
+d_'8853''45'norm'691'_266 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   Integer ->
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'8853''45'norm'691'_262 = erased
+d_'8853''45'norm'691'_266 = erased
 -- Once.Arith.Prim.W.⊕≡+
-d_'8853''8801''43'_264 ::
+d_'8853''8801''43'_268 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   Integer ->
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'8853''8801''43'_264 = erased
+d_'8853''8801''43'_268 = erased
 -- Once.Arith.Prim.W.⊖-normʳ
-d_'8854''45'norm'691'_266 ::
+d_'8854''45'norm'691'_270 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   Integer ->
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'8854''45'norm'691'_266 = erased
+d_'8854''45'norm'691'_270 = erased
+-- Once.Arith.Prim.W.⊖-self
+d_'8854''45'self_272 ::
+  MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
+  Integer ->
+  MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_'8854''45'self_272 = erased
 -- Once.Arith.Prim.W.⊖≡∸
-d_'8854''8801''8760'_268 ::
+d_'8854''8801''8760'_274 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   Integer ->
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'8854''8801''8760'_268 = erased
+d_'8854''8801''8760'_274 = erased
 -- Once.Arith.Prim.W.⊗-pow2
-d_'8855''45'pow2_270 ::
+d_'8855''45'pow2_276 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   Integer ->
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'8855''45'pow2_270 = erased
+d_'8855''45'pow2_276 = erased
 -- Once.Arith.Prim.W.⊝_
-d_'8861'__272 ::
+d_'8861'__278 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 -> Integer -> Integer
-d_'8861'__272 v0
+d_'8861'__278 v0
   = coe
       MAlonzo.Code.Once.Word.d_'8861'__44
       (coe MAlonzo.Code.Once.Target.Arch.d_int'45'bits_22 (coe v0))
 -- Once.Arith.Prim.W.⊝-fromℤ
-d_'8861''45'fromℤ_274 ::
+d_'8861''45'fromℤ_280 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'8861''45'fromℤ_274 = erased
+d_'8861''45'fromℤ_280 = erased
 -- Once.Arith.Prim.W.⊝-intMin
-d_'8861''45'intMin_276 ::
+d_'8861''45'intMin_282 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   Integer ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'8861''45'intMin_276 = erased
+d_'8861''45'intMin_282 = erased
 -- Once.Arith.Prim.W.⊝-invol-norm
-d_'8861''45'invol'45'norm_278 ::
+d_'8861''45'invol'45'norm_284 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'8861''45'invol'45'norm_278 = erased
+d_'8861''45'invol'45'norm_284 = erased
 -- Once.Arith.Prim.add-semM
-d_add'45'semM_280 ::
+d_add'45'semM_286 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 -> Integer
-d_add'45'semM_280 v0 v1
+d_add'45'semM_286 v0 v1
   = case coe v1 of
       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v2 v3
         -> coe
@@ -1070,10 +1093,10 @@ d_add'45'semM_280 v0 v1
              (coe v2) (coe v3)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Arith.Prim.sub-semM
-d_sub'45'semM_288 ::
+d_sub'45'semM_294 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 -> Integer
-d_sub'45'semM_288 v0 v1
+d_sub'45'semM_294 v0 v1
   = case coe v1 of
       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v2 v3
         -> coe
@@ -1082,10 +1105,10 @@ d_sub'45'semM_288 v0 v1
              (coe v2) (coe v3)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Arith.Prim.mul-semM
-d_mul'45'semM_296 ::
+d_mul'45'semM_302 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 -> Integer
-d_mul'45'semM_296 v0 v1
+d_mul'45'semM_302 v0 v1
   = case coe v1 of
       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v2 v3
         -> coe
@@ -1094,18 +1117,18 @@ d_mul'45'semM_296 v0 v1
              (coe v2) (coe v3)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Arith.Prim.neg-semM
-d_neg'45'semM_304 ::
+d_neg'45'semM_310 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 -> Integer -> Integer
-d_neg'45'semM_304 v0 v1
+d_neg'45'semM_310 v0 v1
   = coe
       MAlonzo.Code.Once.Word.d_'8861'__44
       (coe MAlonzo.Code.Once.Target.Arch.d_int'45'bits_22 (coe v0))
       (coe v1)
 -- Once.Arith.Prim.fadd-semM
-d_fadd'45'semM_310 ::
+d_fadd'45'semM_316 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 -> Integer
-d_fadd'45'semM_310 v0 v1
+d_fadd'45'semM_316 v0 v1
   = case coe v1 of
       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v2 v3
         -> coe
@@ -1114,10 +1137,10 @@ d_fadd'45'semM_310 v0 v1
              (coe v2) (coe v3)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Arith.Prim.fsub-semM
-d_fsub'45'semM_318 ::
+d_fsub'45'semM_324 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 -> Integer
-d_fsub'45'semM_318 v0 v1
+d_fsub'45'semM_324 v0 v1
   = case coe v1 of
       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v2 v3
         -> coe
@@ -1126,10 +1149,10 @@ d_fsub'45'semM_318 v0 v1
              (coe v2) (coe v3)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Arith.Prim.fmul-semM
-d_fmul'45'semM_326 ::
+d_fmul'45'semM_332 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 -> Integer
-d_fmul'45'semM_326 v0 v1
+d_fmul'45'semM_332 v0 v1
   = case coe v1 of
       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v2 v3
         -> coe
@@ -1138,10 +1161,10 @@ d_fmul'45'semM_326 v0 v1
              (coe v2) (coe v3)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Arith.Prim.fdiv-semM
-d_fdiv'45'semM_334 ::
+d_fdiv'45'semM_340 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 -> Integer
-d_fdiv'45'semM_334 v0 v1
+d_fdiv'45'semM_340 v0 v1
   = case coe v1 of
       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v2 v3
         -> coe
@@ -1150,9 +1173,9 @@ d_fdiv'45'semM_334 v0 v1
              (coe v2) (coe v3)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Arith.Prim.i2f-semM
-d_i2f'45'semM_342 ::
+d_i2f'45'semM_348 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 -> Integer -> Integer
-d_i2f'45'semM_342 v0 v1
+d_i2f'45'semM_348 v0 v1
   = coe
       MAlonzo.Code.Once.Float.Arith.d_i2f_362
       (coe MAlonzo.Code.Once.Target.Arch.d_float'45'format_24 (coe v0))
@@ -1161,10 +1184,10 @@ d_i2f'45'semM_342 v0 v1
          (coe MAlonzo.Code.Once.Target.Arch.d_int'45'bits_22 (coe v0))
          (coe v1))
 -- Once.Arith.Prim.div-semM
-d_div'45'semM_348 ::
+d_div'45'semM_354 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 -> Integer
-d_div'45'semM_348 v0 v1
+d_div'45'semM_354 v0 v1
   = case coe v1 of
       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v2 v3
         -> coe
@@ -1173,10 +1196,10 @@ d_div'45'semM_348 v0 v1
              (coe v2) (coe v3)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Arith.Prim.mod-semM
-d_mod'45'semM_356 ::
+d_mod'45'semM_362 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 -> Integer
-d_mod'45'semM_356 v0 v1
+d_mod'45'semM_362 v0 v1
   = case coe v1 of
       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v2 v3
         -> coe
@@ -1184,34 +1207,66 @@ d_mod'45'semM_356 v0 v1
              (coe MAlonzo.Code.Once.Target.Arch.d_int'45'bits_22 (coe v0))
              (coe v2) (coe v3)
       _ -> MAlonzo.RTE.mazUnreachableError
+-- Once.Arith.Prim.bool
+d_bool_370 :: Bool -> MAlonzo.Code.Data.Sum.Base.T__'8846'__30
+d_bool_370 v0
+  = if coe v0
+      then coe
+             MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42
+             (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
+      else coe
+             MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38
+             (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
+-- Once.Arith.Prim.cmp-bool
+d_cmp'45'bool_372 ::
+  MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
+  MAlonzo.Code.Once.Arith.CmpOp.T_CmpOp_6 ->
+  Integer -> Integer -> Bool
+d_cmp'45'bool_372 v0
+  = coe
+      MAlonzo.Code.Once.Arith.CmpOp.d_cmp'45'word_22
+      (coe MAlonzo.Code.Once.Target.Arch.d_int'45'bits_22 (coe v0))
+-- Once.Arith.Prim.cmp-semM
+d_cmp'45'semM_376 ::
+  MAlonzo.Code.Once.Arith.CmpOp.T_CmpOp_6 ->
+  MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
+  MAlonzo.Code.Data.Sum.Base.T__'8846'__30
+d_cmp'45'semM_376 v0 v1 v2
+  = case coe v2 of
+      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v3 v4
+        -> coe d_bool_370 (coe d_cmp'45'bool_372 v1 v0 v3 v4)
+      _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Arith.Prim.ArithPrim
-d_ArithPrim_364 a0 a1 = ()
-data T_ArithPrim_364
-  = C_p'45'add_366 | C_p'45'sub_368 | C_p'45'mul_370 |
-    C_p'45'div_372 | C_p'45'mod_374 | C_p'45'neg_376 |
-    C_p'45'fadd_378 | C_p'45'fsub_380 | C_p'45'fmul_382 |
-    C_p'45'fdiv_384 | C_p'45'i2f_386
+d_ArithPrim_386 a0 a1 = ()
+data T_ArithPrim_386
+  = C_p'45'add_388 | C_p'45'sub_390 | C_p'45'mul_392 |
+    C_p'45'div_394 | C_p'45'mod_396 | C_p'45'neg_398 |
+    C_p'45'fadd_400 | C_p'45'fsub_402 | C_p'45'fmul_404 |
+    C_p'45'fdiv_406 | C_p'45'i2f_408 |
+    C_p'45'cmp_410 MAlonzo.Code.Once.Arith.CmpOp.T_CmpOp_6
 -- Once.Arith.Prim.primSem
-d_primSem_392 ::
+d_primSem_416 ::
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
-  T_ArithPrim_364 ->
+  T_ArithPrim_386 ->
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 -> AgdaAny -> AgdaAny
-d_primSem_392 ~v0 ~v1 v2 = du_primSem_392 v2
-du_primSem_392 ::
-  T_ArithPrim_364 ->
+d_primSem_416 ~v0 ~v1 v2 = du_primSem_416 v2
+du_primSem_416 ::
+  T_ArithPrim_386 ->
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 -> AgdaAny -> AgdaAny
-du_primSem_392 v0
+du_primSem_416 v0
   = case coe v0 of
-      C_p'45'add_366 -> coe d_add'45'semM_280
-      C_p'45'sub_368 -> coe d_sub'45'semM_288
-      C_p'45'mul_370 -> coe d_mul'45'semM_296
-      C_p'45'div_372 -> coe d_div'45'semM_348
-      C_p'45'mod_374 -> coe d_mod'45'semM_356
-      C_p'45'neg_376 -> coe d_neg'45'semM_304
-      C_p'45'fadd_378 -> coe d_fadd'45'semM_310
-      C_p'45'fsub_380 -> coe d_fsub'45'semM_318
-      C_p'45'fmul_382 -> coe d_fmul'45'semM_326
-      C_p'45'fdiv_384 -> coe d_fdiv'45'semM_334
-      C_p'45'i2f_386 -> coe d_i2f'45'semM_342
+      C_p'45'add_388 -> coe d_add'45'semM_286
+      C_p'45'sub_390 -> coe d_sub'45'semM_294
+      C_p'45'mul_392 -> coe d_mul'45'semM_302
+      C_p'45'div_394 -> coe d_div'45'semM_354
+      C_p'45'mod_396 -> coe d_mod'45'semM_362
+      C_p'45'neg_398 -> coe d_neg'45'semM_310
+      C_p'45'fadd_400 -> coe d_fadd'45'semM_316
+      C_p'45'fsub_402 -> coe d_fsub'45'semM_324
+      C_p'45'fmul_404 -> coe d_fmul'45'semM_332
+      C_p'45'fdiv_406 -> coe d_fdiv'45'semM_340
+      C_p'45'i2f_408 -> coe d_i2f'45'semM_348
+      C_p'45'cmp_410 v1 -> coe d_cmp'45'semM_376 (coe v1)
       _ -> MAlonzo.RTE.mazUnreachableError

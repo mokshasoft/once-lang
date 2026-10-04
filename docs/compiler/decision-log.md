@@ -16531,3 +16531,13 @@ is `valid-inr-reg-wf`/`valid-inl-reg-wf` by the tag. `obs-correct-sigop` routes 
 enumerated (no catch-all): the comparison here, every other SigOp to `obs-correct-sigop-nc` (which
 carries `cmp-of (sem si) ≡ nothing` to see its one-instruction emission). Comparisons no longer
 reach `obs-correct-sigop-rest`. The Spec closure is unchanged.
+
+**Addendum (same day): a BARE primitive is a block too.** The gate's new comparison test failed
+to LINK, and not because of comparisons: `4 * bit c` leaves `SigOp arith.mul.int` bare once its
+operand pair (a `case`) is not arithmetic, and the recogniser only matched `SigOp si ∘ e`, so the
+call named a symbol nothing defined — the exact hole `FileWF.file-wf` was postulated over. The
+walk now lifts a bare primitive as `SigOp si ∘ id` (`Rewrite.bare-at`): the recogniser reads `id`'s
+operands as the input's own leaves (`BView.bv-id`), `LiftSound` proves that case from the leaf
+lemma, and `RewritePreserves.bare-sound` is the monad's left identity. Lifting there (not with a
+`v-bare` view on `SigOp si`) keeps `body-at`'s domain index `⌊ shape ⌋` free of the stuck
+`⌊ X ⌋ ≟ ⌊ shape ⌋`. Test `arith-bare-op` (`inc 3 * inc 4`). Exit tests 74/0/0 ×3, cabal 775/775.

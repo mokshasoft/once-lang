@@ -1,0 +1,20 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
+-- Plan 0.108: an arithmetic op whose operands are NOT arithmetic (here two
+-- calls) is left by the rewrite as a bare `SigOp arith.mul.int`. It must still
+-- be lifted into a block — `SigOp si ∘ id`, a block over its own input — or the
+-- emitted `call` names a symbol nothing defines and the link fails. That was
+-- what `FileWF.file-wf` hid.
+--
+-- inc 3 * inc 4 = 4 * 5.
+--
+-- Expected: exit code 20.
+
+import I.Linux.Syscalls as S
+
+inc : Int -> Int
+inc x = x + 1
+
+main : IO Unit
+main = exit@S (inc 3 * inc 4)

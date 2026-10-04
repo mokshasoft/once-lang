@@ -35,66 +35,69 @@ data T_Instr_10
     C_sub_18 MAlonzo.Code.Once.Target.RiscV64.PhysReg.T_Reg_8
              MAlonzo.Code.Once.Target.RiscV64.PhysReg.T_Reg_8
              MAlonzo.Code.Once.Target.RiscV64.PhysReg.T_Reg_8 |
-    C_addi_20 MAlonzo.Code.Once.Target.RiscV64.PhysReg.T_Reg_8
+    C_sltu_20 MAlonzo.Code.Once.Target.RiscV64.PhysReg.T_Reg_8
+              MAlonzo.Code.Once.Target.RiscV64.PhysReg.T_Reg_8
+              MAlonzo.Code.Once.Target.RiscV64.PhysReg.T_Reg_8 |
+    C_addi_22 MAlonzo.Code.Once.Target.RiscV64.PhysReg.T_Reg_8
               MAlonzo.Code.Once.Target.RiscV64.PhysReg.T_Reg_8 Integer |
-    C_li_22 MAlonzo.Code.Once.Target.RiscV64.PhysReg.T_Reg_8 Integer |
-    C_auipc_24 MAlonzo.Code.Once.Target.RiscV64.PhysReg.T_Reg_8
+    C_li_24 MAlonzo.Code.Once.Target.RiscV64.PhysReg.T_Reg_8 Integer |
+    C_auipc_26 MAlonzo.Code.Once.Target.RiscV64.PhysReg.T_Reg_8
                Integer |
-    C_lla_26 MAlonzo.Code.Once.Target.RiscV64.PhysReg.T_Reg_8
+    C_lla_28 MAlonzo.Code.Once.Target.RiscV64.PhysReg.T_Reg_8
              MAlonzo.Code.Once.CCC.Label.T_LabelId_6 |
-    C_lla'45'sym_28 MAlonzo.Code.Once.Target.RiscV64.PhysReg.T_Reg_8
+    C_lla'45'sym_30 MAlonzo.Code.Once.Target.RiscV64.PhysReg.T_Reg_8
                     MAlonzo.Code.Agda.Builtin.String.T_String_6 |
-    C_mv_30 MAlonzo.Code.Once.Target.RiscV64.PhysReg.T_Reg_8
+    C_mv_32 MAlonzo.Code.Once.Target.RiscV64.PhysReg.T_Reg_8
             MAlonzo.Code.Once.Target.RiscV64.PhysReg.T_Reg_8 |
-    C_beq_32 MAlonzo.Code.Once.Target.RiscV64.PhysReg.T_Reg_8
+    C_beq_34 MAlonzo.Code.Once.Target.RiscV64.PhysReg.T_Reg_8
              MAlonzo.Code.Once.Target.RiscV64.PhysReg.T_Reg_8
              MAlonzo.Code.Once.CCC.Label.T_Label_28 |
-    C_bne_34 MAlonzo.Code.Once.Target.RiscV64.PhysReg.T_Reg_8
+    C_bne_36 MAlonzo.Code.Once.Target.RiscV64.PhysReg.T_Reg_8
              MAlonzo.Code.Once.Target.RiscV64.PhysReg.T_Reg_8
              MAlonzo.Code.Once.CCC.Label.T_Label_28 |
-    C_jal_36 MAlonzo.Code.Once.Target.RiscV64.PhysReg.T_Reg_8
+    C_jal_38 MAlonzo.Code.Once.Target.RiscV64.PhysReg.T_Reg_8
              MAlonzo.Code.Once.CCC.Label.T_Label_28 |
-    C_jalr_38 MAlonzo.Code.Once.Target.RiscV64.PhysReg.T_Reg_8
+    C_jalr_40 MAlonzo.Code.Once.Target.RiscV64.PhysReg.T_Reg_8
               MAlonzo.Code.Once.Target.RiscV64.PhysReg.T_Reg_8 Integer |
-    C_j_40 MAlonzo.Code.Once.CCC.Label.T_Label_28 | C_ret_42 |
-    C_call_44 Integer |
-    C_call'45'sym_46 MAlonzo.Code.Agda.Builtin.String.T_String_6 |
-    C_nop_48 | C_unimp_50 |
-    C_label_52 MAlonzo.Code.Once.CCC.Label.T_Label_28
+    C_j_42 MAlonzo.Code.Once.CCC.Label.T_Label_28 | C_ret_44 |
+    C_call_46 Integer |
+    C_call'45'sym_48 MAlonzo.Code.Agda.Builtin.String.T_String_6 |
+    C_nop_50 | C_unimp_52 |
+    C_label_54 MAlonzo.Code.Once.CCC.Label.T_Label_28
 -- Once.CCC.Target.RiscV64.Syntax.Program
-d_Program_54 :: ()
-d_Program_54 = erased
+d_Program_56 :: ()
+d_Program_56 = erased
 -- Once.CCC.Target.RiscV64.Syntax.Function
-d_Function_56 = ()
-data T_Function_56 = C_mkfun_66 Integer [T_Instr_10]
+d_Function_58 = ()
+data T_Function_58 = C_mkfun_68 Integer [T_Instr_10]
 -- Once.CCC.Target.RiscV64.Syntax.Function.name
-d_name_62 :: T_Function_56 -> Integer
-d_name_62 v0
+d_name_64 :: T_Function_58 -> Integer
+d_name_64 v0
   = case coe v0 of
-      C_mkfun_66 v1 v2 -> coe v1
+      C_mkfun_68 v1 v2 -> coe v1
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Target.RiscV64.Syntax.Function.body
-d_body_64 :: T_Function_56 -> [T_Instr_10]
-d_body_64 v0
+d_body_66 :: T_Function_58 -> [T_Instr_10]
+d_body_66 v0
   = case coe v0 of
-      C_mkfun_66 v1 v2 -> coe v2
+      C_mkfun_68 v1 v2 -> coe v2
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Target.RiscV64.Syntax.slot-size
-d_slot'45'size_68 :: Integer
-d_slot'45'size_68 = coe (8 :: Integer)
+d_slot'45'size_70 :: Integer
+d_slot'45'size_70 = coe (8 :: Integer)
 -- Once.CCC.Target.RiscV64.Syntax.slots
-d_slots_70 :: Integer -> Integer
-d_slots_70 v0 = coe mulInt (coe v0) (coe d_slot'45'size_68)
+d_slots_72 :: Integer -> Integer
+d_slots_72 v0 = coe mulInt (coe v0) (coe d_slot'45'size_70)
 -- Once.CCC.Target.RiscV64.Syntax.instr-consumed-slots
-d_instr'45'consumed'45'slots_74 :: T_Instr_10 -> Integer
-d_instr'45'consumed'45'slots_74 v0
+d_instr'45'consumed'45'slots_76 :: T_Instr_10 -> Integer
+d_instr'45'consumed'45'slots_76 v0
   = coe seq (coe v0) (coe (0 :: Integer))
 -- Once.CCC.Target.RiscV64.Syntax.program-consumed-slots
-d_program'45'consumed'45'slots_76 :: [T_Instr_10] -> Integer
-d_program'45'consumed'45'slots_76 v0
+d_program'45'consumed'45'slots_78 :: [T_Instr_10] -> Integer
+d_program'45'consumed'45'slots_78 v0
   = coe
       MAlonzo.Code.Data.List.Base.du_foldr_216 (coe addInt)
       (coe (0 :: Integer))
       (coe
          MAlonzo.Code.Data.List.Base.du_map_22
-         (coe d_instr'45'consumed'45'slots_74) (coe v0))
+         (coe d_instr'45'consumed'45'slots_76) (coe v0))

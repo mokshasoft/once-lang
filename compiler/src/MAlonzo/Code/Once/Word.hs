@@ -1033,410 +1033,449 @@ d_'8853''45'neg_820 ::
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_'8853''45'neg_820 = erased
+-- Once.Word.Width.⊖-self
+d_'8854''45'self_836 ::
+  Integer ->
+  Integer ->
+  MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_'8854''45'self_836 = erased
+-- Once.Word.Width.sbb-zero
+d_sbb'45'zero_842 ::
+  Integer ->
+  MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_sbb'45'zero_842 = erased
+-- Once.Word.Width.sbb-pos
+d_sbb'45'pos_854 ::
+  Integer ->
+  Integer ->
+  MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
+  MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_sbb'45'pos_854 = erased
 -- Once.Word.Word64._%ˢ_
-d__'37''738'__836 :: Integer -> Integer -> Integer
-d__'37''738'__836 = coe d__'37''738'__126 (coe (64 :: Integer))
+d__'37''738'__868 :: Integer -> Integer -> Integer
+d__'37''738'__868 = coe d__'37''738'__126 (coe (64 :: Integer))
 -- Once.Word.Word64._/ˢ_
-d__'47''738'__838 :: Integer -> Integer -> Integer
-d__'47''738'__838 = coe d__'47''738'__120 (coe (64 :: Integer))
+d__'47''738'__870 :: Integer -> Integer -> Integer
+d__'47''738'__870 = coe d__'47''738'__120 (coe (64 :: Integer))
 -- Once.Word.Word64._<ˢ_
-d__'60''738'__840 :: Integer -> Integer -> Bool
-d__'60''738'__840 = coe d__'60''738'__80 (coe (64 :: Integer))
+d__'60''738'__872 :: Integer -> Integer -> Bool
+d__'60''738'__872 = coe d__'60''738'__80 (coe (64 :: Integer))
 -- Once.Word.Word64._≡ʷ_
-d__'8801''695'__842 :: Integer -> Integer -> Bool
-d__'8801''695'__842 = coe du__'8801''695'__86
+d__'8801''695'__874 :: Integer -> Integer -> Bool
+d__'8801''695'__874 = coe du__'8801''695'__86
 -- Once.Word.Word64._⊕_
-d__'8853'__844 :: Integer -> Integer -> Integer
-d__'8853'__844 = coe d__'8853'__26 (coe (64 :: Integer))
+d__'8853'__876 :: Integer -> Integer -> Integer
+d__'8853'__876 = coe d__'8853'__26 (coe (64 :: Integer))
 -- Once.Word.Word64._⊖_
-d__'8854'__846 :: Integer -> Integer -> Integer
-d__'8854'__846 = coe d__'8854'__32 (coe (64 :: Integer))
+d__'8854'__878 :: Integer -> Integer -> Integer
+d__'8854'__878 = coe d__'8854'__32 (coe (64 :: Integer))
 -- Once.Word.Word64._⊗_
-d__'8855'__848 :: Integer -> Integer -> Integer
-d__'8855'__848 = coe d__'8855'__38 (coe (64 :: Integer))
+d__'8855'__880 :: Integer -> Integer -> Integer
+d__'8855'__880 = coe d__'8855'__38 (coe (64 :: Integer))
 -- Once.Word.Word64.%ˢ-else
-d_'37''738''45'else_850 ::
+d_'37''738''45'else_882 ::
   Integer ->
   Integer ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'37''738''45'else_850 = erased
+d_'37''738''45'else_882 = erased
 -- Once.Word.Word64.%ˢ-in-range
-d_'37''738''45'in'45'range_852 ::
+d_'37''738''45'in'45'range_884 ::
   Integer ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   Integer ->
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-d_'37''738''45'in'45'range_852 v0 v1 v2 v3 v4
+d_'37''738''45'in'45'range_884 v0 v1 v2 v3 v4
   = coe
       du_'37''738''45'in'45'range_604 (coe (64 :: Integer)) v2 v3 v4
 -- Once.Word.Word64.%ˢ-mid
-d_'37''738''45'mid_854 ::
+d_'37''738''45'mid_886 ::
   Integer ->
   Integer ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'37''738''45'mid_854 = erased
+d_'37''738''45'mid_886 = erased
 -- Once.Word.Word64.%ˢ-negOne
-d_'37''738''45'negOne_856 ::
+d_'37''738''45'negOne_888 ::
   Integer ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'37''738''45'negOne_856 = erased
+d_'37''738''45'negOne_888 = erased
 -- Once.Word.Word64.%ˢ-zero
-d_'37''738''45'zero_858 ::
+d_'37''738''45'zero_890 ::
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'37''738''45'zero_858 = erased
+d_'37''738''45'zero_890 = erased
 -- Once.Word.Word64./ˢ-else
-d_'47''738''45'else_860 ::
+d_'47''738''45'else_892 ::
   Integer ->
   Integer ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'47''738''45'else_860 = erased
+d_'47''738''45'else_892 = erased
 -- Once.Word.Word64./ˢ-in-range
-d_'47''738''45'in'45'range_862 ::
+d_'47''738''45'in'45'range_894 ::
   Integer ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   Integer -> Integer -> MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-d_'47''738''45'in'45'range_862 v0 v1 v2 v3
+d_'47''738''45'in'45'range_894 v0 v1 v2 v3
   = coe du_'47''738''45'in'45'range_570 (coe (64 :: Integer)) v2 v3
 -- Once.Word.Word64./ˢ-mid
-d_'47''738''45'mid_864 ::
+d_'47''738''45'mid_896 ::
   Integer ->
   Integer ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'47''738''45'mid_864 = erased
+d_'47''738''45'mid_896 = erased
 -- Once.Word.Word64./ˢ-negOne
-d_'47''738''45'negOne_866 ::
+d_'47''738''45'negOne_898 ::
   Integer ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'47''738''45'negOne_866 = erased
+d_'47''738''45'negOne_898 = erased
 -- Once.Word.Word64./ˢ-pow2
-d_'47''738''45'pow2_868 ::
+d_'47''738''45'pow2_900 ::
   Integer ->
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'47''738''45'pow2_868 = erased
+d_'47''738''45'pow2_900 = erased
 -- Once.Word.Word64./ˢ-zero
-d_'47''738''45'zero_870 ::
+d_'47''738''45'zero_902 ::
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'47''738''45'zero_870 = erased
+d_'47''738''45'zero_902 = erased
 -- Once.Word.Word64.0<half
-d_0'60'half_872 :: MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-d_0'60'half_872 = coe du_0'60'half_168
+d_0'60'half_904 :: MAlonzo.Code.Data.Nat.Base.T__'8804'__22
+d_0'60'half_904 = coe du_0'60'half_168
 -- Once.Word.Word64.0<modulus
-d_0'60'modulus_874 :: MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-d_0'60'modulus_874 = coe du_0'60'modulus_166
+d_0'60'modulus_906 :: MAlonzo.Code.Data.Nat.Base.T__'8804'__22
+d_0'60'modulus_906 = coe du_0'60'modulus_166
 -- Once.Word.Word64.0<negOne
-d_0'60'negOne_876 ::
+d_0'60'negOne_908 ::
   Integer ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-d_0'60'negOne_876 v0 v1
+d_0'60'negOne_908 v0 v1
   = coe du_0'60'negOne_426 (coe (64 :: Integer))
 -- Once.Word.Word64.1<modulus
-d_1'60'modulus_878 ::
+d_1'60'modulus_910 ::
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-d_1'60'modulus_878 = coe d_1'60'modulus_796 (coe (64 :: Integer))
+d_1'60'modulus_910 = coe d_1'60'modulus_796 (coe (64 :: Integer))
 -- Once.Word.Word64.2*n≡n+n
-d_2'42'n'8801'n'43'n_880 ::
+d_2'42'n'8801'n'43'n_912 ::
   Integer ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_2'42'n'8801'n'43'n_880 = erased
+d_2'42'n'8801'n'43'n_912 = erased
 -- Once.Word.Word64.2≤modulus
-d_2'8804'modulus_882 ::
+d_2'8804'modulus_914 ::
   Integer ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-d_2'8804'modulus_882 v0 v1
+d_2'8804'modulus_914 v0 v1
   = coe du_2'8804'modulus_422 (coe (64 :: Integer))
 -- Once.Word.Word64.<⇒<ᵇtrue
-d_'60''8658''60''7495'true_884 ::
+d_'60''8658''60''7495'true_916 ::
   Integer ->
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'60''8658''60''7495'true_884 = erased
+d_'60''8658''60''7495'true_916 = erased
 -- Once.Word.Word64.InRange
-d_InRange_886 :: Integer -> ()
-d_InRange_886 = erased
+d_InRange_918 :: Integer -> ()
+d_InRange_918 = erased
 -- Once.Word.Word64.Word
-d_Word_888 :: ()
-d_Word_888 = erased
+d_Word_920 :: ()
+d_Word_920 = erased
 -- Once.Word.Word64.fromℤ
-d_fromℤ_890 :: Integer -> Integer
-d_fromℤ_890 = coe d_fromℤ_20 (coe (64 :: Integer))
+d_fromℤ_922 :: Integer -> Integer
+d_fromℤ_922 = coe d_fromℤ_20 (coe (64 :: Integer))
 -- Once.Word.Word64.fromℤ-0
-d_fromℤ'45'0_892 ::
+d_fromℤ'45'0_924 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_fromℤ'45'0_892 = erased
+d_fromℤ'45'0_924 = erased
 -- Once.Word.Word64.fromℤ-in-range
-d_fromℤ'45'in'45'range_894 ::
+d_fromℤ'45'in'45'range_926 ::
   Integer -> MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-d_fromℤ'45'in'45'range_894
+d_fromℤ'45'in'45'range_926
   = coe d_fromℤ'45'in'45'range_174 (coe (64 :: Integer))
 -- Once.Word.Word64.fromℤ-neg-toℤ
-d_fromℤ'45'neg'45'toℤ_896 ::
+d_fromℤ'45'neg'45'toℤ_928 ::
   Integer ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_fromℤ'45'neg'45'toℤ_896 = erased
+d_fromℤ'45'neg'45'toℤ_928 = erased
 -- Once.Word.Word64.fromℤ-neg1
-d_fromℤ'45'neg1_898 ::
+d_fromℤ'45'neg1_930 ::
   Integer ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_fromℤ'45'neg1_898 = erased
+d_fromℤ'45'neg1_930 = erased
 -- Once.Word.Word64.half
-d_half_900 :: Integer
-d_half_900 = coe d_half_48 (coe (64 :: Integer))
+d_half_932 :: Integer
+d_half_932 = coe d_half_48 (coe (64 :: Integer))
 -- Once.Word.Word64.half<modulus
-d_half'60'modulus_902 ::
+d_half'60'modulus_934 ::
   Integer ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-d_half'60'modulus_902 v0 v1
+d_half'60'modulus_934 v0 v1
   = coe du_half'60'modulus_430 (coe (64 :: Integer))
 -- Once.Word.Word64.half≡2^b
-d_half'8801'2'94'b_904 ::
+d_half'8801'2'94'b_936 ::
   Integer ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_half'8801'2'94'b_904 = erased
+d_half'8801'2'94'b_936 = erased
 -- Once.Word.Word64.half≤negOne
-d_half'8804'negOne_906 ::
+d_half'8804'negOne_938 ::
   Integer ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-d_half'8804'negOne_906 v0 v1
+d_half'8804'negOne_938 v0 v1
   = coe du_half'8804'negOne_450 (coe (64 :: Integer))
 -- Once.Word.Word64.inRange?
-d_inRange'63'_908 ::
+d_inRange'63'_940 ::
   Integer -> MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20
-d_inRange'63'_908 = coe d_inRange'63'_62 (coe (64 :: Integer))
+d_inRange'63'_940 = coe d_inRange'63'_62 (coe (64 :: Integer))
 -- Once.Word.Word64.intMin
-d_intMin_910 :: Integer
-d_intMin_910 = coe d_intMin_54 (coe (64 :: Integer))
+d_intMin_942 :: Integer
+d_intMin_942 = coe d_intMin_54 (coe (64 :: Integer))
 -- Once.Word.Word64.lit-hi
-d_lit'45'hi_912 ::
+d_lit'45'hi_944 ::
   Integer ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   Integer ->
   MAlonzo.Code.Data.Integer.Base.T__'8804'__26 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-d_lit'45'hi_912 v0 v1 v2 v3 = coe du_lit'45'hi_654 v3
+d_lit'45'hi_944 v0 v1 v2 v3 = coe du_lit'45'hi_654 v3
 -- Once.Word.Word64.lit-lo
-d_lit'45'lo_914 ::
+d_lit'45'lo_946 ::
   Integer ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   Integer ->
   MAlonzo.Code.Data.Integer.Base.T__'8804'__26 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-d_lit'45'lo_914 v0 v1 v2 v3
+d_lit'45'lo_946 v0 v1 v2 v3
   = coe du_lit'45'lo_666 (coe (64 :: Integer)) v2 v3
 -- Once.Word.Word64.modulus
-d_modulus_916 :: Integer
-d_modulus_916 = coe d_modulus_10 (coe (64 :: Integer))
+d_modulus_948 :: Integer
+d_modulus_948 = coe d_modulus_10 (coe (64 :: Integer))
 -- Once.Word.Word64.modulus∸negOne≡1
-d_modulus'8760'negOne'8801'1_918 ::
+d_modulus'8760'negOne'8801'1_950 ::
   Integer ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_modulus'8760'negOne'8801'1_918 = erased
+d_modulus'8760'negOne'8801'1_950 = erased
 -- Once.Word.Word64.modulus≢0
-d_modulus'8802'0_920 :: MAlonzo.Code.Data.Nat.Base.T_NonZero_112
-d_modulus'8802'0_920
+d_modulus'8802'0_952 :: MAlonzo.Code.Data.Nat.Base.T_NonZero_112
+d_modulus'8802'0_952
   = coe d_modulus'8802'0_12 (coe (64 :: Integer))
 -- Once.Word.Word64.mod∸half≡half
-d_mod'8760'half'8801'half_922 ::
+d_mod'8760'half'8801'half_954 ::
   Integer ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_mod'8760'half'8801'half_922 = erased
+d_mod'8760'half'8801'half_954 = erased
 -- Once.Word.Word64.mod≡half+half
-d_mod'8801'half'43'half_924 ::
+d_mod'8801'half'43'half_956 ::
   Integer ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_mod'8801'half'43'half_924 = erased
+d_mod'8801'half'43'half_956 = erased
 -- Once.Word.Word64.negOne
-d_negOne_926 :: Integer
-d_negOne_926 = coe d_negOne_78 (coe (64 :: Integer))
+d_negOne_958 :: Integer
+d_negOne_958 = coe d_negOne_78 (coe (64 :: Integer))
 -- Once.Word.Word64.negOne<modulus
-d_negOne'60'modulus_928 ::
+d_negOne'60'modulus_960 ::
   Integer ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-d_negOne'60'modulus_928 v0 v1
+d_negOne'60'modulus_960 v0 v1
   = coe du_negOne'60'modulus_438 (coe (64 :: Integer))
 -- Once.Word.Word64.negOne≢0
-d_negOne'8802'0_930 ::
+d_negOne'8802'0_962 ::
   Integer ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_negOne'8802'0_930 = erased
+d_negOne'8802'0_962 = erased
 -- Once.Word.Word64.norm
-d_norm_932 :: Integer -> Integer
-d_norm_932 = coe d_norm_16 (coe (64 :: Integer))
+d_norm_964 :: Integer -> Integer
+d_norm_964 = coe d_norm_16 (coe (64 :: Integer))
 -- Once.Word.Word64.norm-0
-d_norm'45'0_934 :: MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_norm'45'0_934 = erased
+d_norm'45'0_966 :: MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_norm'45'0_966 = erased
 -- Once.Word.Word64.norm-id
-d_norm'45'id_936 ::
+d_norm'45'id_968 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_norm'45'id_936 = erased
+d_norm'45'id_968 = erased
+-- Once.Word.Word64.sbb-pos
+d_sbb'45'pos_970 ::
+  Integer ->
+  MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
+  MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_sbb'45'pos_970 = erased
+-- Once.Word.Word64.sbb-zero
+d_sbb'45'zero_972 ::
+  MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_sbb'45'zero_972 = erased
 -- Once.Word.Word64.sdiv2ᵏ
-d_sdiv2'7503'_938 :: Integer -> Integer -> Integer
-d_sdiv2'7503'_938 = coe d_sdiv2'7503'_138 (coe (64 :: Integer))
+d_sdiv2'7503'_974 :: Integer -> Integer -> Integer
+d_sdiv2'7503'_974 = coe d_sdiv2'7503'_138 (coe (64 :: Integer))
 -- Once.Word.Word64.shlᵂ
-d_shl'7490'_940 :: Integer -> Integer -> Integer
-d_shl'7490'_940 = coe d_shl'7490'_132 (coe (64 :: Integer))
+d_shl'7490'_976 :: Integer -> Integer -> Integer
+d_shl'7490'_976 = coe d_shl'7490'_132 (coe (64 :: Integer))
 -- Once.Word.Word64.sucNegOne≡mod
-d_sucNegOne'8801'mod_942 ::
+d_sucNegOne'8801'mod_978 ::
   Integer ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_sucNegOne'8801'mod_942 = erased
+d_sucNegOne'8801'mod_978 = erased
 -- Once.Word.Word64.tdiv-neg1
-d_tdiv'45'neg1_944 ::
+d_tdiv'45'neg1_980 ::
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_tdiv'45'neg1_944 = erased
+d_tdiv'45'neg1_980 = erased
 -- Once.Word.Word64.tmod-neg1
-d_tmod'45'neg1_946 ::
+d_tmod'45'neg1_982 ::
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_tmod'45'neg1_946 = erased
+d_tmod'45'neg1_982 = erased
 -- Once.Word.Word64.toWord
-d_toWord_948 ::
+d_toWord_984 ::
   Integer -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 -> Integer
-d_toWord_948 v0 v1 = coe du_toWord_68 (coe (64 :: Integer)) v0
+d_toWord_984 v0 v1 = coe du_toWord_68 (coe (64 :: Integer)) v0
 -- Once.Word.Word64.toWord≡fromℤ
-d_toWord'8801'fromℤ_950 ::
+d_toWord'8801'fromℤ_986 ::
   Integer ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_toWord'8801'fromℤ_950 = erased
+d_toWord'8801'fromℤ_986 = erased
 -- Once.Word.Word64.toℤ
-d_toℤ_952 :: Integer -> Integer
-d_toℤ_952 = coe d_toℤ_50 (coe (64 :: Integer))
+d_toℤ_988 :: Integer -> Integer
+d_toℤ_988 = coe d_toℤ_50 (coe (64 :: Integer))
 -- Once.Word.Word64.toℤ-negOne
-d_toℤ'45'negOne_954 ::
+d_toℤ'45'negOne_990 ::
   Integer ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_toℤ'45'negOne_954 = erased
+d_toℤ'45'negOne_990 = erased
 -- Once.Word.Word64.toℤ∘fromℤ
-d_toℤ'8728'fromℤ_956 ::
+d_toℤ'8728'fromℤ_992 ::
   Integer ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   Integer ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_toℤ'8728'fromℤ_956 = erased
+d_toℤ'8728'fromℤ_992 = erased
 -- Once.Word.Word64.unplus
-d_unplus_958 ::
+d_unplus_994 ::
   Integer ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   Integer ->
   Integer ->
   MAlonzo.Code.Data.Integer.Base.T__'8804'__26 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-d_unplus_958 v0 v1 v2 v3 v4 = coe du_unplus_648 v4
+d_unplus_994 v0 v1 v2 v3 v4 = coe du_unplus_648 v4
 -- Once.Word.Word64.≡ᵇ-refl
-d_'8801''7495''45'refl_960 ::
+d_'8801''7495''45'refl_996 ::
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'8801''7495''45'refl_960 = erased
+d_'8801''7495''45'refl_996 = erased
 -- Once.Word.Word64.≡ᵇ0-false
-d_'8801''7495'0'45'false_962 ::
+d_'8801''7495'0'45'false_998 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'8801''7495'0'45'false_962 = erased
+d_'8801''7495'0'45'false_998 = erased
 -- Once.Word.Word64.≤⇒<ᵇfalse
-d_'8804''8658''60''7495'false_964 ::
+d_'8804''8658''60''7495'false_1000 ::
   Integer ->
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'8804''8658''60''7495'false_964 = erased
+d_'8804''8658''60''7495'false_1000 = erased
 -- Once.Word.Word64.⊕-neg
-d_'8853''45'neg_966 ::
+d_'8853''45'neg_1002 ::
   Integer ->
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'8853''45'neg_966 = erased
+d_'8853''45'neg_1002 = erased
 -- Once.Word.Word64.⊕-neg-suc
-d_'8853''45'neg'45'suc_968 ::
+d_'8853''45'neg'45'suc_1004 ::
   Integer ->
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'8853''45'neg'45'suc_968 = erased
+d_'8853''45'neg'45'suc_1004 = erased
 -- Once.Word.Word64.⊕-normʳ
-d_'8853''45'norm'691'_970 ::
+d_'8853''45'norm'691'_1006 ::
   Integer ->
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'8853''45'norm'691'_970 = erased
+d_'8853''45'norm'691'_1006 = erased
 -- Once.Word.Word64.⊕≡+
-d_'8853''8801''43'_972 ::
+d_'8853''8801''43'_1008 ::
   Integer ->
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'8853''8801''43'_972 = erased
+d_'8853''8801''43'_1008 = erased
 -- Once.Word.Word64.⊖-normʳ
-d_'8854''45'norm'691'_974 ::
+d_'8854''45'norm'691'_1010 ::
   Integer ->
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'8854''45'norm'691'_974 = erased
+d_'8854''45'norm'691'_1010 = erased
+-- Once.Word.Word64.⊖-self
+d_'8854''45'self_1012 ::
+  Integer ->
+  MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_'8854''45'self_1012 = erased
 -- Once.Word.Word64.⊖≡∸
-d_'8854''8801''8760'_976 ::
+d_'8854''8801''8760'_1014 ::
   Integer ->
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'8854''8801''8760'_976 = erased
+d_'8854''8801''8760'_1014 = erased
 -- Once.Word.Word64.⊗-pow2
-d_'8855''45'pow2_978 ::
+d_'8855''45'pow2_1016 ::
   Integer ->
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'8855''45'pow2_978 = erased
+d_'8855''45'pow2_1016 = erased
 -- Once.Word.Word64.⊝_
-d_'8861'__980 :: Integer -> Integer
-d_'8861'__980 = coe d_'8861'__44 (coe (64 :: Integer))
+d_'8861'__1018 :: Integer -> Integer
+d_'8861'__1018 = coe d_'8861'__44 (coe (64 :: Integer))
 -- Once.Word.Word64.⊝-fromℤ
-d_'8861''45'fromℤ_982 ::
+d_'8861''45'fromℤ_1020 ::
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'8861''45'fromℤ_982 = erased
+d_'8861''45'fromℤ_1020 = erased
 -- Once.Word.Word64.⊝-intMin
-d_'8861''45'intMin_984 ::
+d_'8861''45'intMin_1022 ::
   Integer ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'8861''45'intMin_984 = erased
+d_'8861''45'intMin_1022 = erased
 -- Once.Word.Word64.⊝-invol-norm
-d_'8861''45'invol'45'norm_986 ::
+d_'8861''45'invol'45'norm_1024 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'8861''45'invol'45'norm_986 = erased
+d_'8861''45'invol'45'norm_1024 = erased

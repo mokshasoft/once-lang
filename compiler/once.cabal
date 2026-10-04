@@ -294,6 +294,7 @@ library
       MAlonzo.Code.Once.Arith.Machine.Rewrite
       MAlonzo.Code.Once.Arith.Machine.Shape
       MAlonzo.Code.Once.Arith.SigOp.Block
+      MAlonzo.Code.Once.Arith.SigOp.Compare
       MAlonzo.Code.Once.Arith.SigOp.Builders
       MAlonzo.Code.Once.Arith.SigOp.IntLit
       MAlonzo.Code.Once.Arith.Type
@@ -311,6 +312,7 @@ library
       MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Pair
       MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Prelude
       MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.SigOp
+      MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Compare
       MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Simple
       MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Sum
       MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.TwoCell
@@ -630,6 +632,7 @@ library
       MAlonzo.Code.Once.Adequacy.ViewNatural
       MAlonzo.Code.Once.Arith.Backend.CallAnswer
       MAlonzo.Code.Once.Arith.Prim
+      MAlonzo.Code.Once.Arith.CmpOp
       MAlonzo.Code.Once.CCC.Codegen.CallOK
       MAlonzo.Code.Once.CCC.Codegen.CallsLinked
       MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Call

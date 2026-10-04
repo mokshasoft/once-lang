@@ -98,11 +98,16 @@ pair-of nothing  _        = nothing
 data BView : ∀ {X Y} → IR X Y → Set where
   bv-pair  : ∀ {X Y Z} (a : IR X Y) (b : IR X Z) → BView ⟨ a , b ⟩
   bv-dist  : ∀ {W X Y Z} (a : IR X Y) (b : IR X Z) (h : IR W X) → BView (⟨ a , b ⟩ ∘ h)
+  -- plan 0.108: the identity — the operands are the INPUT's own two leaves.
+  -- The rewrite asks this of a bare primitive, `SigOp si` read as
+  -- `SigOp si ∘ id` (`Rewrite.walk`).
+  bv-id    : ∀ {X} → BView (id {X})
   bv-other : ∀ {X Y} (e : IR X Y) → BView e
 
 b-view : ∀ {X Y} (e : IR X Y) → BView e
 b-view ⟨ a , b ⟩       = bv-pair a b
 b-view (⟨ a , b ⟩ ∘ h) = bv-dist a b h
+b-view id              = bv-id
 {-# CATCHALL #-}
 b-view e               = bv-other e
 
@@ -248,6 +253,7 @@ recognise-binop sh e = rbin-at sh e (b-view e)
 
 rbin-at sh .(⟨ a , b ⟩)     (bv-pair a b)   = pair-of (recognise-body sh a) (recognise-body sh b)
 rbin-at sh .(⟨ a , b ⟩ ∘ h) (bv-dist a b h) = binop-at sh (plumbing? h) a b h
+rbin-at sh .id              bv-id           = pair-of (path-at sh NInt (just (Fst ∷ []))) (path-at sh NInt (just (Snd ∷ [])))
 rbin-at sh e                (bv-other e)    = nothing
 -- D163: `⟨a,b⟩ ∘ h ≡ ⟨ a ∘ h , b ∘ h ⟩` — composition distributes over pairing.
 -- QTT hands the operand pair an environment restriction `h`, and pushing it
@@ -314,6 +320,7 @@ recognise-binop-float sh e = rbinf-at sh e (b-view e)
 -- D163: distribution, the float twin. See the int version.
 rbinf-at sh .(⟨ a , b ⟩)     (bv-pair a b)   = pair-of (recognise-body-float sh a) (recognise-body-float sh b)
 rbinf-at sh .(⟨ a , b ⟩ ∘ h) (bv-dist a b h) = binop-at-float sh (plumbing? h) a b h
+rbinf-at sh .id              bv-id           = pair-of (path-at sh NFloat (just (Fst ∷ []))) (path-at sh NFloat (just (Snd ∷ [])))
 rbinf-at sh e                (bv-other e)    = nothing
 
 binop-at-float sh true a b h = pair-of (recognise-body-float sh (a ∘ h)) (recognise-body-float sh (b ∘ h))

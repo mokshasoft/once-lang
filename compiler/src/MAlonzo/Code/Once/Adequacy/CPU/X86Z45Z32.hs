@@ -73,22 +73,22 @@ d_block'45'env_14 v0 v1
 d_run'45'trace'45'x86'45'32_24 ::
   MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_458 ->
   MAlonzo.Code.Once.CCC.Target.X86Z45Z32.File.T_Image_12 ->
-  MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.T_State_290 ->
+  MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.T_State_296 ->
   MAlonzo.Code.Once.Denotation.Behavior.T_Behavior_6
 d_run'45'trace'45'x86'45'32_24 v0 v1 v2
   = coe
       MAlonzo.Code.Once.Arith.Backend.RunTraceCore.du_run'45'trace_228
       (coe
          (\ v3 ->
-            MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.d_halted_310
+            MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.d_halted_316
               (coe v3)))
       (coe
          (\ v3 ->
-            MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.d_pc_308
+            MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.d_pc_314
               (coe v3)))
-      (coe MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.d_fetch_668)
+      (coe MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.d_fetch_692)
       (coe
-         MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.d_execInstr_412)
+         MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.d_execInstr_418)
       (coe
          MAlonzo.Code.Once.Arith.Backend.X86Z45Z32.RunTrace.d_matchCall_10)
       (coe
@@ -100,7 +100,7 @@ d_run'45'trace'45'x86'45'32_24 v0 v1 v2
          MAlonzo.Code.Once.Arith.Backend.X86Z45Z32.Dispatch.d_dispatch'45'arith_16
          (\ v3 v4 v5 ->
             coe
-              MAlonzo.Code.Once.Adequacy.ArchCorrectness.ArithSimX86Z45Z32.du_val'45'x86'45'32_266
+              MAlonzo.Code.Once.Adequacy.ArchCorrectness.ArithSimX86Z45Z32.du_val'45'x86'45'32_272
               v3 v4))
       (coe d_step'45'budget'45'x86'45'32_8) (coe d_ev'45'x86'45'32_10)
       (coe
@@ -129,13 +129,13 @@ d_arch'45'semantics_40
   = coe
       MAlonzo.Code.Once.Adequacy.CPU.Interface.C_constructor_90
       (\ v0 ->
-         MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.d_initStateAt_324
+         MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.d_initStateAt_330
            (coe
               MAlonzo.Code.Data.Maybe.Base.du_fromMaybe_46 (0 :: Integer)
               (MAlonzo.Code.Once.CCC.Target.X86Z45Z32.File.d_entry_24 (coe v0))))
       (\ v0 ->
          coe
-           MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.d_run_712
+           MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.d_run_736
            (MAlonzo.Code.Once.CCC.Target.X86Z45Z32.File.d_code_22 (coe v0)))
       d_run'45'trace'45'x86'45'32_24 d_decode'45'x86'45'32_32
       d_assemble'45'x86'45'32_34

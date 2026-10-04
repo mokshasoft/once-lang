@@ -30,7 +30,7 @@ open import Once.Spec.Contract using (ISig)
 open import Once.Arith.Type using (NumType; NInt; NFloat)
 
 private variable σ : ISig
-open import Once.Arith.Machine.Rewrite using (rewrite-ir; try-lift; shape-of; block-as-ir; has-op)
+open import Once.Arith.Machine.Rewrite using (rewrite-ir; try-lift; shape-of; block-as-ir; has-op; bare-at)
 open import Once.Arith.Machine.Recognise using (recognise-body; recognise-body-float)
 open import Once.Arith.Machine.IR using (ArithBlock; MArithIR; shape-as-type; numtype-as-type)
 open import Once.Arith.SigOp.Block using (block-info)
@@ -82,6 +82,14 @@ try-lift-linked tbl {A} {_ II.⇛ _}      ir = tt
 try-lift-linked tbl {A} {II.μ-type _}   ir = tt
 try-lift-linked tbl {A} {II.ν-type _}   ir = tt
 
+-- Plan 0.108: a bare primitive is lifted to a block (which owes no
+-- declaration), or stays the declared SigOp it was.
+bare-linked : ∀ (tbl : List IRFun) {X Y} (si : Once.SigOp.Info.SigOpInfo X Y) → Linked σ tbl (SigOp si)
+            → ∀ (d : Maybe (IR II.⌊ X ⌋ II.⌊ Y ⌋ × ArithBlock)) → JustLinked σ tbl d
+            → Linked σ tbl (proj₁ (bare-at si d))
+bare-linked tbl si l (just _) lk = lk
+bare-linked tbl si l nothing  _  = l
+
 -- THE PASS KEEPS A PROGRAM LINKED.
 rewrite-ir-linked : ∀ (tbl : List IRFun) {A B} (ir : IR A B) → Linked σ tbl ir → Linked σ tbl (proj₁ (rewrite-ir ir))
 rewrite-ir-linked tbl ir l with try-lift ir | try-lift-linked tbl ir
@@ -105,5 +113,5 @@ rewrite-ir-linked tbl (Out w)      l        | nothing | _ = tt
 rewrite-ir-linked tbl (in-ν w)     l        | nothing | _ = tt
 rewrite-ir-linked tbl (Ana w f)    l        | nothing | _ = rewrite-ir-linked tbl f l
 rewrite-ir-linked tbl (const p v)  l        | nothing | _ = tt
-rewrite-ir-linked tbl (SigOp si)   l        | nothing | _ = l
+rewrite-ir-linked tbl (SigOp si)   l        | nothing | _ = bare-linked tbl si l (try-lift (SigOp si ∘ id)) (try-lift-linked tbl (SigOp si ∘ id))
 rewrite-ir-linked tbl (Call f)     l        | nothing | _ = l

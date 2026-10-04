@@ -714,7 +714,7 @@ du_sigOpRef'7515'_514 v0 v1 v2 v3 v4 v5
                                                        (coe v2) (coe v3)))
                                                  v11 v13
                                                  (coe
-                                                    MAlonzo.Code.Once.Arith.SigOp.Builders.du_arrow'45'info_370
+                                                    MAlonzo.Code.Once.Arith.SigOp.Builders.du_arrow'45'info_364
                                                     (coe v13) (coe v12) (coe v4) (coe v9) (coe v10))
                                                  (d_prjB_56 (coe v11) (coe v9) (coe v16))))
                                   _ -> MAlonzo.RTE.mazUnreachableError
@@ -750,7 +750,7 @@ du_sigOpRef'7515'_514 v0 v1 v2 v3 v4 v5
                                                        (coe v2) (coe v3)))
                                                  v11 v13
                                                  (coe
-                                                    MAlonzo.Code.Once.Arith.SigOp.Builders.du_arrow'45'info_370
+                                                    MAlonzo.Code.Once.Arith.SigOp.Builders.du_arrow'45'info_364
                                                     (coe v13) (coe v12) (coe v4) (coe v9) (coe v10))
                                                  (d_prjB_56 (coe v11) (coe v9) (coe v16))))
                                   _ -> MAlonzo.RTE.mazUnreachableError

@@ -163,6 +163,15 @@ sigop-blocks : Maybe CmpOp → List ArithBlock
 sigop-blocks (just o) = cmp-block o ∷ []
 sigop-blocks nothing  = []
 
+-- Plan 0.108: a BARE primitive — what the walk leaves when an op's operands are
+-- not arithmetic (`4 * bit c`, `f x + 1` with `f` a call). It is `SigOp si ∘ id`,
+-- a block over its own input, so it is lifted as that: every arithmetic call
+-- then names a block the file defines. What is not a primitive stays a call.
+bare-at : ∀ {X Y} (si : SigOpInfo X Y) → Maybe (IR ⌊ X ⌋ ⌊ Y ⌋ × ArithBlock)
+        → IR ⌊ X ⌋ ⌊ Y ⌋ × List ArithBlock
+bare-at si (just (ir′ , blk)) = ir′ , (blk ∷ [])
+bare-at si nothing            = SigOp si , sigop-blocks (cmp-of (sem si))
+
 rewrite-ir : ∀ {A B} → IR A B → IR A B × List ArithBlock
 rw-at      : ∀ {A B} → IR A B → Maybe (IR A B × ArithBlock) → IR A B × List ArithBlock
 walk       : ∀ {A B} → IR A B → IR A B × List ArithBlock
@@ -208,5 +217,5 @@ walk (Ana w f)         =
 walk (const p v)   = const p v , []
 -- Plan 0.108: a comparison stays one node, but its lowering CALLS its arith
 -- block, so the block is registered here — the file defines it, the call links.
-walk (SigOp si)        = SigOp si , sigop-blocks (cmp-of (sem si))
+walk (SigOp si)        = bare-at si (try-lift (SigOp si ∘ id))
 walk (Call f)          = Call f , []

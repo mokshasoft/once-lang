@@ -123,7 +123,7 @@ d_code'45'text_56 v0 v1 v2
              (d_start'45'mark_36 (coe v0) (coe v1))
              (coe
                 MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                (MAlonzo.Code.Once.CCC.Target.RiscV64.Emit.d_instrToLine_92
+                (MAlonzo.Code.Once.CCC.Target.RiscV64.Emit.d_instrToLine_98
                    (coe v3))
                 (d_code'45'text_56
                    (coe v0) (coe addInt (coe (1 :: Integer)) (coe v1)) (coe v4)))
@@ -140,7 +140,7 @@ d_blocks'45'text_70 v0
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v3 v4
                -> coe
                     MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                    (MAlonzo.Code.Once.Arith.Backend.RiscV64.Emit.d_emit'45'payload_188
+                    (MAlonzo.Code.Once.Arith.Backend.RiscV64.Emit.d_emit'45'payload_224
                        (coe v3) (coe v4))
                     (d_blocks'45'text_70 (coe v2))
              _ -> MAlonzo.RTE.mazUnreachableError
@@ -168,7 +168,7 @@ d_label'45'defs_82 v0
         -> let v3 = d_label'45'defs_82 (coe v2) in
            coe
              (case coe v1 of
-                MAlonzo.Code.Once.CCC.Target.RiscV64.Syntax.C_label_52 v4
+                MAlonzo.Code.Once.CCC.Target.RiscV64.Syntax.C_label_54 v4
                   -> coe
                        MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                        (coe MAlonzo.Code.Once.CCC.Label.d_labelSym_398 (coe v4))
@@ -183,36 +183,36 @@ d_ref'45'syms_90 v0
   = let v1 = coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16 in
     coe
       (case coe v0 of
-         MAlonzo.Code.Once.CCC.Target.RiscV64.Syntax.C_lla_26 v2 v3
+         MAlonzo.Code.Once.CCC.Target.RiscV64.Syntax.C_lla_28 v2 v3
            -> coe
                 MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                 (coe MAlonzo.Code.Once.CCC.Label.d_thunkSym_388 (coe v3))
                 (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
-         MAlonzo.Code.Once.CCC.Target.RiscV64.Syntax.C_lla'45'sym_28 v2 v3
+         MAlonzo.Code.Once.CCC.Target.RiscV64.Syntax.C_lla'45'sym_30 v2 v3
            -> coe
                 MAlonzo.Code.Agda.Builtin.List.C__'8759'__22 (coe v3)
                 (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
-         MAlonzo.Code.Once.CCC.Target.RiscV64.Syntax.C_beq_32 v2 v3 v4
+         MAlonzo.Code.Once.CCC.Target.RiscV64.Syntax.C_beq_34 v2 v3 v4
            -> coe
                 MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                 (coe MAlonzo.Code.Once.CCC.Label.d_labelSym_398 (coe v4))
                 (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
-         MAlonzo.Code.Once.CCC.Target.RiscV64.Syntax.C_bne_34 v2 v3 v4
+         MAlonzo.Code.Once.CCC.Target.RiscV64.Syntax.C_bne_36 v2 v3 v4
            -> coe
                 MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                 (coe MAlonzo.Code.Once.CCC.Label.d_labelSym_398 (coe v4))
                 (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
-         MAlonzo.Code.Once.CCC.Target.RiscV64.Syntax.C_jal_36 v2 v3
+         MAlonzo.Code.Once.CCC.Target.RiscV64.Syntax.C_jal_38 v2 v3
            -> coe
                 MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                 (coe MAlonzo.Code.Once.CCC.Label.d_labelSym_398 (coe v3))
                 (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
-         MAlonzo.Code.Once.CCC.Target.RiscV64.Syntax.C_j_40 v2
+         MAlonzo.Code.Once.CCC.Target.RiscV64.Syntax.C_j_42 v2
            -> coe
                 MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                 (coe MAlonzo.Code.Once.CCC.Label.d_labelSym_398 (coe v2))
                 (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
-         MAlonzo.Code.Once.CCC.Target.RiscV64.Syntax.C_call'45'sym_46 v2
+         MAlonzo.Code.Once.CCC.Target.RiscV64.Syntax.C_call'45'sym_48 v2
            -> coe
                 MAlonzo.Code.Agda.Builtin.List.C__'8759'__22 (coe v2)
                 (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)

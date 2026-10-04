@@ -473,7 +473,7 @@ data T_SigOpSem_142
   = C_pureV_148 (MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
                  AgdaAny -> AgdaAny) |
     C_ffiV_150 | C_callsV_152 | C_emitsV_154 | C_haltsV_156 |
-    C_primV_158 MAlonzo.Code.Once.Arith.Prim.T_ArithPrim_364
+    C_primV_158 MAlonzo.Code.Once.Arith.Prim.T_ArithPrim_386
 -- Once.SigOp.Info.SigOpInfo
 d_SigOpInfo_164 a0 a1 = ()
 data T_SigOpInfo_164
@@ -595,7 +595,7 @@ d_semM'45'of_266 v0 v1 v2 v3 v4
                   MAlonzo.Code.Once.Res.C_returns_12
                   (coe
                      MAlonzo.Code.Once.Semantics.Value.du_erase'7501'_92 (coe v1)
-                     (coe MAlonzo.Code.Once.Arith.Prim.du_primSem_392 v5 v6 v7)))
+                     (coe MAlonzo.Code.Once.Arith.Prim.du_primSem_416 v5 v6 v7)))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.SigOp.Info.effect-of
 d_effect'45'of_332 ::
@@ -716,7 +716,7 @@ du_semP'45'of_432 v0 v1
       C_primV_158 v2
         -> coe
              seq (coe v1)
-             (coe MAlonzo.Code.Once.Arith.Prim.du_primSem_392 (coe v2))
+             (coe MAlonzo.Code.Once.Arith.Prim.du_primSem_416 (coe v2))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.SigOp.Info.stops-shape
 d_stops'45'shape_440 ::

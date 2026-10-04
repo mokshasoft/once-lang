@@ -187,7 +187,7 @@ d_named'45'sem_92 v0 v1 v2 v3 v4 v5 v6 v7
       (coe
          MAlonzo.Code.Once.Denotation.DenotTrace.d_sigOpT_106 v2 v3 v0 v1
          (coe
-            MAlonzo.Code.Once.Arith.SigOp.Builders.du_value'45'info_338
+            MAlonzo.Code.Once.Arith.SigOp.Builders.du_value'45'info_332
             (coe v4) (coe v5) (coe v6))
          (MAlonzo.Code.Once.Denotation.ValueDomain.d_forget'7495'_356
             (coe v0) (coe v5) (coe v7)))
@@ -287,7 +287,7 @@ d_sigOpRef'7472'_186 v0 v1 v2 v3 v4
         -> coe
              d_sigOpVal'7472'_176 (coe v0) (coe v1) (coe v2)
              (coe
-                MAlonzo.Code.Once.Arith.SigOp.Builders.du_value'45'info_338
+                MAlonzo.Code.Once.Arith.SigOp.Builders.du_value'45'info_332
                 (coe v3)
                 (coe MAlonzo.Code.Once.Functor.Translate.C_base'45'Unit_198)
                 (coe v6))
@@ -304,7 +304,7 @@ d_sigOpRef'7472'_186 v0 v1 v2 v3 v4
                                      d_sigOpVal'7472'_176
                                        (coe v12) (coe v1) (coe v2)
                                        (coe
-                                          MAlonzo.Code.Once.Arith.SigOp.Builders.du_value'45'info_338
+                                          MAlonzo.Code.Once.Arith.SigOp.Builders.du_value'45'info_332
                                           (coe v3)
                                           (coe
                                              MAlonzo.Code.Once.Functor.Translate.C_base'45'Unit_198)
@@ -322,7 +322,7 @@ d_sigOpRef'7472'_186 v0 v1 v2 v3 v4
                                           MAlonzo.Code.Once.Denotation.DenotTrace.d_sigOpT_106 v1 v2
                                           v10 v12
                                           (coe
-                                             MAlonzo.Code.Once.Arith.SigOp.Builders.du_arrow'45'info_370
+                                             MAlonzo.Code.Once.Arith.SigOp.Builders.du_arrow'45'info_364
                                              (coe v12) (coe v11) (coe v3) (coe v8) (coe v9))
                                           (MAlonzo.Code.Once.Denotation.ValueDomain.d_forget'7495'_356
                                              (coe v10) (coe v8) (coe v15))))
@@ -339,7 +339,7 @@ d_sigOpRef'7472'_186 v0 v1 v2 v3 v4
                                           MAlonzo.Code.Once.Denotation.DenotTrace.d_sigOpT_106 v1 v2
                                           v10 v12
                                           (coe
-                                             MAlonzo.Code.Once.Arith.SigOp.Builders.du_arrow'45'info_370
+                                             MAlonzo.Code.Once.Arith.SigOp.Builders.du_arrow'45'info_364
                                              (coe v12) (coe v11) (coe v3) (coe v8) (coe v9))
                                           (MAlonzo.Code.Once.Denotation.ValueDomain.d_forget'7495'_356
                                              (coe v10) (coe v8) (coe v15))))
@@ -1772,7 +1772,7 @@ d_'10214'_'10215''7522'_384 v0 v1 v2 v3 v4
                             (coe MAlonzo.Code.Once.Type.C_Int_134) v3 v8 v11 v12 v13)
                          (coe
                             MAlonzo.Code.Once.SigOp.Info.du_semP_418
-                            MAlonzo.Code.Once.Arith.SigOp.Builders.d_neg'45'info_308
+                            MAlonzo.Code.Once.Arith.SigOp.Builders.d_neg'45'info_302
                             (coe MAlonzo.Code.Once.SigOp.Info.C_int'45'prim_372) v11))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'neg'45'float_150
@@ -2140,7 +2140,7 @@ d_'10214'_'10215''7522'_384 v0 v1 v2 v3 v4
                                            (\ v21 ->
                                               coe
                                                 MAlonzo.Code.Once.SigOp.Info.du_semP_418
-                                                MAlonzo.Code.Once.Arith.SigOp.Builders.d_add'45'info_298
+                                                MAlonzo.Code.Once.Arith.SigOp.Builders.d_add'45'info_292
                                                 (coe MAlonzo.Code.Once.SigOp.Info.C_int'45'prim_372)
                                                 v17
                                                 (coe
@@ -2191,7 +2191,7 @@ d_'10214'_'10215''7522'_384 v0 v1 v2 v3 v4
                                            (\ v21 ->
                                               coe
                                                 MAlonzo.Code.Once.SigOp.Info.du_semP_418
-                                                MAlonzo.Code.Once.Arith.SigOp.Builders.d_sub'45'info_300
+                                                MAlonzo.Code.Once.Arith.SigOp.Builders.d_sub'45'info_294
                                                 (coe MAlonzo.Code.Once.SigOp.Info.C_int'45'prim_372)
                                                 v17
                                                 (coe
@@ -2242,7 +2242,7 @@ d_'10214'_'10215''7522'_384 v0 v1 v2 v3 v4
                                            (\ v21 ->
                                               coe
                                                 MAlonzo.Code.Once.SigOp.Info.du_semP_418
-                                                MAlonzo.Code.Once.Arith.SigOp.Builders.d_mul'45'info_302
+                                                MAlonzo.Code.Once.Arith.SigOp.Builders.d_mul'45'info_296
                                                 (coe MAlonzo.Code.Once.SigOp.Info.C_int'45'prim_372)
                                                 v17
                                                 (coe
@@ -2293,7 +2293,7 @@ d_'10214'_'10215''7522'_384 v0 v1 v2 v3 v4
                                            (\ v21 ->
                                               coe
                                                 MAlonzo.Code.Once.SigOp.Info.du_semP_418
-                                                MAlonzo.Code.Once.Arith.SigOp.Builders.d_div'45'info_304
+                                                MAlonzo.Code.Once.Arith.SigOp.Builders.d_div'45'info_298
                                                 (coe MAlonzo.Code.Once.SigOp.Info.C_int'45'prim_372)
                                                 v17
                                                 (coe
@@ -2344,7 +2344,7 @@ d_'10214'_'10215''7522'_384 v0 v1 v2 v3 v4
                                            (\ v21 ->
                                               coe
                                                 MAlonzo.Code.Once.SigOp.Info.du_semP_418
-                                                MAlonzo.Code.Once.Arith.SigOp.Builders.d_mod'45'info_306
+                                                MAlonzo.Code.Once.Arith.SigOp.Builders.d_mod'45'info_300
                                                 (coe MAlonzo.Code.Once.SigOp.Info.C_int'45'prim_372)
                                                 v17
                                                 (coe
@@ -2413,7 +2413,7 @@ d_'10214'_'10215''7522'_384 v0 v1 v2 v3 v4
                                            (\ v21 ->
                                               coe
                                                 MAlonzo.Code.Once.SigOp.Info.du_semP_418
-                                                MAlonzo.Code.Once.Arith.SigOp.Builders.d_fadd'45'info_312
+                                                MAlonzo.Code.Once.Arith.SigOp.Builders.d_fadd'45'info_306
                                                 (coe MAlonzo.Code.Once.SigOp.Info.C_int'45'prim_372)
                                                 v17
                                                 (coe
@@ -2464,7 +2464,7 @@ d_'10214'_'10215''7522'_384 v0 v1 v2 v3 v4
                                            (\ v21 ->
                                               coe
                                                 MAlonzo.Code.Once.SigOp.Info.du_semP_418
-                                                MAlonzo.Code.Once.Arith.SigOp.Builders.d_fsub'45'info_314
+                                                MAlonzo.Code.Once.Arith.SigOp.Builders.d_fsub'45'info_308
                                                 (coe MAlonzo.Code.Once.SigOp.Info.C_int'45'prim_372)
                                                 v17
                                                 (coe
@@ -2515,7 +2515,7 @@ d_'10214'_'10215''7522'_384 v0 v1 v2 v3 v4
                                            (\ v21 ->
                                               coe
                                                 MAlonzo.Code.Once.SigOp.Info.du_semP_418
-                                                MAlonzo.Code.Once.Arith.SigOp.Builders.d_fmul'45'info_316
+                                                MAlonzo.Code.Once.Arith.SigOp.Builders.d_fmul'45'info_310
                                                 (coe MAlonzo.Code.Once.SigOp.Info.C_int'45'prim_372)
                                                 v17
                                                 (coe
@@ -2566,7 +2566,7 @@ d_'10214'_'10215''7522'_384 v0 v1 v2 v3 v4
                                            (\ v21 ->
                                               coe
                                                 MAlonzo.Code.Once.SigOp.Info.du_semP_418
-                                                MAlonzo.Code.Once.Arith.SigOp.Builders.d_fdiv'45'info_318
+                                                MAlonzo.Code.Once.Arith.SigOp.Builders.d_fdiv'45'info_312
                                                 (coe MAlonzo.Code.Once.SigOp.Info.C_int'45'prim_372)
                                                 v17
                                                 (coe
@@ -2603,7 +2603,7 @@ d_'10214'_'10215''7522'_384 v0 v1 v2 v3 v4
                                          (coe v19)))
                                    (coe
                                       MAlonzo.Code.Once.SigOp.Info.du_semP_418
-                                      MAlonzo.Code.Once.Arith.SigOp.Builders.d_i2f'45'info_320
+                                      MAlonzo.Code.Once.Arith.SigOp.Builders.d_i2f'45'info_314
                                       (coe MAlonzo.Code.Once.SigOp.Info.C_int'45'prim_372) v17))
                                 (coe
                                    (\ v20 ->
@@ -2629,7 +2629,7 @@ d_'10214'_'10215''7522'_384 v0 v1 v2 v3 v4
                                            (\ v21 ->
                                               coe
                                                 MAlonzo.Code.Once.SigOp.Info.du_semP_418
-                                                MAlonzo.Code.Once.Arith.SigOp.Builders.d_fadd'45'info_312
+                                                MAlonzo.Code.Once.Arith.SigOp.Builders.d_fadd'45'info_306
                                                 (coe MAlonzo.Code.Once.SigOp.Info.C_int'45'prim_372)
                                                 v17
                                                 (coe
@@ -2660,7 +2660,7 @@ d_'10214'_'10215''7522'_384 v0 v1 v2 v3 v4
                                          (coe v19)))
                                    (coe
                                       MAlonzo.Code.Once.SigOp.Info.du_semP_418
-                                      MAlonzo.Code.Once.Arith.SigOp.Builders.d_i2f'45'info_320
+                                      MAlonzo.Code.Once.Arith.SigOp.Builders.d_i2f'45'info_314
                                       (coe MAlonzo.Code.Once.SigOp.Info.C_int'45'prim_372) v17))
                                 (coe
                                    (\ v20 ->
@@ -2686,7 +2686,7 @@ d_'10214'_'10215''7522'_384 v0 v1 v2 v3 v4
                                            (\ v21 ->
                                               coe
                                                 MAlonzo.Code.Once.SigOp.Info.du_semP_418
-                                                MAlonzo.Code.Once.Arith.SigOp.Builders.d_fsub'45'info_314
+                                                MAlonzo.Code.Once.Arith.SigOp.Builders.d_fsub'45'info_308
                                                 (coe MAlonzo.Code.Once.SigOp.Info.C_int'45'prim_372)
                                                 v17
                                                 (coe
@@ -2717,7 +2717,7 @@ d_'10214'_'10215''7522'_384 v0 v1 v2 v3 v4
                                          (coe v19)))
                                    (coe
                                       MAlonzo.Code.Once.SigOp.Info.du_semP_418
-                                      MAlonzo.Code.Once.Arith.SigOp.Builders.d_i2f'45'info_320
+                                      MAlonzo.Code.Once.Arith.SigOp.Builders.d_i2f'45'info_314
                                       (coe MAlonzo.Code.Once.SigOp.Info.C_int'45'prim_372) v17))
                                 (coe
                                    (\ v20 ->
@@ -2743,7 +2743,7 @@ d_'10214'_'10215''7522'_384 v0 v1 v2 v3 v4
                                            (\ v21 ->
                                               coe
                                                 MAlonzo.Code.Once.SigOp.Info.du_semP_418
-                                                MAlonzo.Code.Once.Arith.SigOp.Builders.d_fmul'45'info_316
+                                                MAlonzo.Code.Once.Arith.SigOp.Builders.d_fmul'45'info_310
                                                 (coe MAlonzo.Code.Once.SigOp.Info.C_int'45'prim_372)
                                                 v17
                                                 (coe
@@ -2774,7 +2774,7 @@ d_'10214'_'10215''7522'_384 v0 v1 v2 v3 v4
                                          (coe v19)))
                                    (coe
                                       MAlonzo.Code.Once.SigOp.Info.du_semP_418
-                                      MAlonzo.Code.Once.Arith.SigOp.Builders.d_i2f'45'info_320
+                                      MAlonzo.Code.Once.Arith.SigOp.Builders.d_i2f'45'info_314
                                       (coe MAlonzo.Code.Once.SigOp.Info.C_int'45'prim_372) v17))
                                 (coe
                                    (\ v20 ->
@@ -2800,7 +2800,7 @@ d_'10214'_'10215''7522'_384 v0 v1 v2 v3 v4
                                            (\ v21 ->
                                               coe
                                                 MAlonzo.Code.Once.SigOp.Info.du_semP_418
-                                                MAlonzo.Code.Once.Arith.SigOp.Builders.d_fdiv'45'info_318
+                                                MAlonzo.Code.Once.Arith.SigOp.Builders.d_fdiv'45'info_312
                                                 (coe MAlonzo.Code.Once.SigOp.Info.C_int'45'prim_372)
                                                 v17
                                                 (coe
@@ -2857,14 +2857,14 @@ d_'10214'_'10215''7522'_384 v0 v1 v2 v3 v4
                                                  (coe v19)))
                                            (coe
                                               MAlonzo.Code.Once.SigOp.Info.du_semP_418
-                                              MAlonzo.Code.Once.Arith.SigOp.Builders.d_i2f'45'info_320
+                                              MAlonzo.Code.Once.Arith.SigOp.Builders.d_i2f'45'info_314
                                               (coe MAlonzo.Code.Once.SigOp.Info.C_int'45'prim_372)
                                               v17))
                                         (coe
                                            (\ v21 ->
                                               coe
                                                 MAlonzo.Code.Once.SigOp.Info.du_semP_418
-                                                MAlonzo.Code.Once.Arith.SigOp.Builders.d_fadd'45'info_312
+                                                MAlonzo.Code.Once.Arith.SigOp.Builders.d_fadd'45'info_306
                                                 (coe MAlonzo.Code.Once.SigOp.Info.C_int'45'prim_372)
                                                 v17
                                                 (coe
@@ -2915,14 +2915,14 @@ d_'10214'_'10215''7522'_384 v0 v1 v2 v3 v4
                                                  (coe v19)))
                                            (coe
                                               MAlonzo.Code.Once.SigOp.Info.du_semP_418
-                                              MAlonzo.Code.Once.Arith.SigOp.Builders.d_i2f'45'info_320
+                                              MAlonzo.Code.Once.Arith.SigOp.Builders.d_i2f'45'info_314
                                               (coe MAlonzo.Code.Once.SigOp.Info.C_int'45'prim_372)
                                               v17))
                                         (coe
                                            (\ v21 ->
                                               coe
                                                 MAlonzo.Code.Once.SigOp.Info.du_semP_418
-                                                MAlonzo.Code.Once.Arith.SigOp.Builders.d_fsub'45'info_314
+                                                MAlonzo.Code.Once.Arith.SigOp.Builders.d_fsub'45'info_308
                                                 (coe MAlonzo.Code.Once.SigOp.Info.C_int'45'prim_372)
                                                 v17
                                                 (coe
@@ -2973,14 +2973,14 @@ d_'10214'_'10215''7522'_384 v0 v1 v2 v3 v4
                                                  (coe v19)))
                                            (coe
                                               MAlonzo.Code.Once.SigOp.Info.du_semP_418
-                                              MAlonzo.Code.Once.Arith.SigOp.Builders.d_i2f'45'info_320
+                                              MAlonzo.Code.Once.Arith.SigOp.Builders.d_i2f'45'info_314
                                               (coe MAlonzo.Code.Once.SigOp.Info.C_int'45'prim_372)
                                               v17))
                                         (coe
                                            (\ v21 ->
                                               coe
                                                 MAlonzo.Code.Once.SigOp.Info.du_semP_418
-                                                MAlonzo.Code.Once.Arith.SigOp.Builders.d_fmul'45'info_316
+                                                MAlonzo.Code.Once.Arith.SigOp.Builders.d_fmul'45'info_310
                                                 (coe MAlonzo.Code.Once.SigOp.Info.C_int'45'prim_372)
                                                 v17
                                                 (coe
@@ -3031,14 +3031,14 @@ d_'10214'_'10215''7522'_384 v0 v1 v2 v3 v4
                                                  (coe v19)))
                                            (coe
                                               MAlonzo.Code.Once.SigOp.Info.du_semP_418
-                                              MAlonzo.Code.Once.Arith.SigOp.Builders.d_i2f'45'info_320
+                                              MAlonzo.Code.Once.Arith.SigOp.Builders.d_i2f'45'info_314
                                               (coe MAlonzo.Code.Once.SigOp.Info.C_int'45'prim_372)
                                               v17))
                                         (coe
                                            (\ v21 ->
                                               coe
                                                 MAlonzo.Code.Once.SigOp.Info.du_semP_418
-                                                MAlonzo.Code.Once.Arith.SigOp.Builders.d_fdiv'45'info_318
+                                                MAlonzo.Code.Once.Arith.SigOp.Builders.d_fdiv'45'info_312
                                                 (coe MAlonzo.Code.Once.SigOp.Info.C_int'45'prim_372)
                                                 v17
                                                 (coe
@@ -3105,8 +3105,8 @@ d_'10214'_'10215''7522'_384 v0 v1 v2 v3 v4
                                            (\ v21 ->
                                               coe
                                                 MAlonzo.Code.Once.SigOp.Info.du_semP_418
-                                                MAlonzo.Code.Once.Arith.SigOp.Builders.d_lt'45'info_322
-                                                (coe MAlonzo.Code.Once.SigOp.Info.C_int'45'pure_368)
+                                                MAlonzo.Code.Once.Arith.SigOp.Builders.d_lt'45'info_316
+                                                (coe MAlonzo.Code.Once.SigOp.Info.C_int'45'prim_372)
                                                 v17
                                                 (coe
                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
@@ -3156,8 +3156,8 @@ d_'10214'_'10215''7522'_384 v0 v1 v2 v3 v4
                                            (\ v21 ->
                                               coe
                                                 MAlonzo.Code.Once.SigOp.Info.du_semP_418
-                                                MAlonzo.Code.Once.Arith.SigOp.Builders.d_le'45'info_324
-                                                (coe MAlonzo.Code.Once.SigOp.Info.C_int'45'pure_368)
+                                                MAlonzo.Code.Once.Arith.SigOp.Builders.d_le'45'info_318
+                                                (coe MAlonzo.Code.Once.SigOp.Info.C_int'45'prim_372)
                                                 v17
                                                 (coe
                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
@@ -3207,8 +3207,8 @@ d_'10214'_'10215''7522'_384 v0 v1 v2 v3 v4
                                            (\ v21 ->
                                               coe
                                                 MAlonzo.Code.Once.SigOp.Info.du_semP_418
-                                                MAlonzo.Code.Once.Arith.SigOp.Builders.d_gt'45'info_326
-                                                (coe MAlonzo.Code.Once.SigOp.Info.C_int'45'pure_368)
+                                                MAlonzo.Code.Once.Arith.SigOp.Builders.d_gt'45'info_320
+                                                (coe MAlonzo.Code.Once.SigOp.Info.C_int'45'prim_372)
                                                 v17
                                                 (coe
                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
@@ -3258,8 +3258,8 @@ d_'10214'_'10215''7522'_384 v0 v1 v2 v3 v4
                                            (\ v21 ->
                                               coe
                                                 MAlonzo.Code.Once.SigOp.Info.du_semP_418
-                                                MAlonzo.Code.Once.Arith.SigOp.Builders.d_ge'45'info_328
-                                                (coe MAlonzo.Code.Once.SigOp.Info.C_int'45'pure_368)
+                                                MAlonzo.Code.Once.Arith.SigOp.Builders.d_ge'45'info_322
+                                                (coe MAlonzo.Code.Once.SigOp.Info.C_int'45'prim_372)
                                                 v17
                                                 (coe
                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
@@ -3309,8 +3309,8 @@ d_'10214'_'10215''7522'_384 v0 v1 v2 v3 v4
                                            (\ v21 ->
                                               coe
                                                 MAlonzo.Code.Once.SigOp.Info.du_semP_418
-                                                MAlonzo.Code.Once.Arith.SigOp.Builders.d_eq'45'info_330
-                                                (coe MAlonzo.Code.Once.SigOp.Info.C_int'45'pure_368)
+                                                MAlonzo.Code.Once.Arith.SigOp.Builders.d_eq'45'info_324
+                                                (coe MAlonzo.Code.Once.SigOp.Info.C_int'45'prim_372)
                                                 v17
                                                 (coe
                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
@@ -3360,8 +3360,8 @@ d_'10214'_'10215''7522'_384 v0 v1 v2 v3 v4
                                            (\ v21 ->
                                               coe
                                                 MAlonzo.Code.Once.SigOp.Info.du_semP_418
-                                                MAlonzo.Code.Once.Arith.SigOp.Builders.d_ne'45'info_332
-                                                (coe MAlonzo.Code.Once.SigOp.Info.C_int'45'pure_368)
+                                                MAlonzo.Code.Once.Arith.SigOp.Builders.d_ne'45'info_326
+                                                (coe MAlonzo.Code.Once.SigOp.Info.C_int'45'prim_372)
                                                 v17
                                                 (coe
                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32

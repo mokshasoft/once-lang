@@ -71,7 +71,7 @@ d_addIR_18
          (coe MAlonzo.Code.Once.Type.C_Int_134)
          (coe MAlonzo.Code.Once.Type.C_Int_134))
       (coe MAlonzo.Code.Once.Type.C_Int_134)
-      (coe MAlonzo.Code.Once.Arith.SigOp.Builders.d_add'45'info_298)
+      (coe MAlonzo.Code.Once.Arith.SigOp.Builders.d_add'45'info_292)
 -- Once.Surface.Elaborate.subIR
 d_subIR_20 :: MAlonzo.Code.Once.IR.T_IR_16
 d_subIR_20
@@ -82,7 +82,7 @@ d_subIR_20
          (coe MAlonzo.Code.Once.Type.C_Int_134)
          (coe MAlonzo.Code.Once.Type.C_Int_134))
       (coe MAlonzo.Code.Once.Type.C_Int_134)
-      (coe MAlonzo.Code.Once.Arith.SigOp.Builders.d_sub'45'info_300)
+      (coe MAlonzo.Code.Once.Arith.SigOp.Builders.d_sub'45'info_294)
 -- Once.Surface.Elaborate.mulIR
 d_mulIR_22 :: MAlonzo.Code.Once.IR.T_IR_16
 d_mulIR_22
@@ -93,7 +93,7 @@ d_mulIR_22
          (coe MAlonzo.Code.Once.Type.C_Int_134)
          (coe MAlonzo.Code.Once.Type.C_Int_134))
       (coe MAlonzo.Code.Once.Type.C_Int_134)
-      (coe MAlonzo.Code.Once.Arith.SigOp.Builders.d_mul'45'info_302)
+      (coe MAlonzo.Code.Once.Arith.SigOp.Builders.d_mul'45'info_296)
 -- Once.Surface.Elaborate.divIR
 d_divIR_24 :: MAlonzo.Code.Once.IR.T_IR_16
 d_divIR_24
@@ -104,7 +104,7 @@ d_divIR_24
          (coe MAlonzo.Code.Once.Type.C_Int_134)
          (coe MAlonzo.Code.Once.Type.C_Int_134))
       (coe MAlonzo.Code.Once.Type.C_Int_134)
-      (coe MAlonzo.Code.Once.Arith.SigOp.Builders.d_div'45'info_304)
+      (coe MAlonzo.Code.Once.Arith.SigOp.Builders.d_div'45'info_298)
 -- Once.Surface.Elaborate.modIR
 d_modIR_26 :: MAlonzo.Code.Once.IR.T_IR_16
 d_modIR_26
@@ -115,7 +115,7 @@ d_modIR_26
          (coe MAlonzo.Code.Once.Type.C_Int_134)
          (coe MAlonzo.Code.Once.Type.C_Int_134))
       (coe MAlonzo.Code.Once.Type.C_Int_134)
-      (coe MAlonzo.Code.Once.Arith.SigOp.Builders.d_mod'45'info_306)
+      (coe MAlonzo.Code.Once.Arith.SigOp.Builders.d_mod'45'info_300)
 -- Once.Surface.Elaborate.faddIR
 d_faddIR_28 :: MAlonzo.Code.Once.IR.T_IR_16
 d_faddIR_28
@@ -126,7 +126,7 @@ d_faddIR_28
          (coe MAlonzo.Code.Once.Type.C_Float_136)
          (coe MAlonzo.Code.Once.Type.C_Float_136))
       (coe MAlonzo.Code.Once.Type.C_Float_136)
-      (coe MAlonzo.Code.Once.Arith.SigOp.Builders.d_fadd'45'info_312)
+      (coe MAlonzo.Code.Once.Arith.SigOp.Builders.d_fadd'45'info_306)
 -- Once.Surface.Elaborate.fsubIR
 d_fsubIR_30 :: MAlonzo.Code.Once.IR.T_IR_16
 d_fsubIR_30
@@ -137,7 +137,7 @@ d_fsubIR_30
          (coe MAlonzo.Code.Once.Type.C_Float_136)
          (coe MAlonzo.Code.Once.Type.C_Float_136))
       (coe MAlonzo.Code.Once.Type.C_Float_136)
-      (coe MAlonzo.Code.Once.Arith.SigOp.Builders.d_fsub'45'info_314)
+      (coe MAlonzo.Code.Once.Arith.SigOp.Builders.d_fsub'45'info_308)
 -- Once.Surface.Elaborate.fmulIR
 d_fmulIR_32 :: MAlonzo.Code.Once.IR.T_IR_16
 d_fmulIR_32
@@ -148,7 +148,7 @@ d_fmulIR_32
          (coe MAlonzo.Code.Once.Type.C_Float_136)
          (coe MAlonzo.Code.Once.Type.C_Float_136))
       (coe MAlonzo.Code.Once.Type.C_Float_136)
-      (coe MAlonzo.Code.Once.Arith.SigOp.Builders.d_fmul'45'info_316)
+      (coe MAlonzo.Code.Once.Arith.SigOp.Builders.d_fmul'45'info_310)
 -- Once.Surface.Elaborate.fdivIR
 d_fdivIR_34 :: MAlonzo.Code.Once.IR.T_IR_16
 d_fdivIR_34
@@ -159,7 +159,7 @@ d_fdivIR_34
          (coe MAlonzo.Code.Once.Type.C_Float_136)
          (coe MAlonzo.Code.Once.Type.C_Float_136))
       (coe MAlonzo.Code.Once.Type.C_Float_136)
-      (coe MAlonzo.Code.Once.Arith.SigOp.Builders.d_fdiv'45'info_318)
+      (coe MAlonzo.Code.Once.Arith.SigOp.Builders.d_fdiv'45'info_312)
 -- Once.Surface.Elaborate.i2fIR
 d_i2fIR_36 :: MAlonzo.Code.Once.IR.T_IR_16
 d_i2fIR_36
@@ -167,7 +167,7 @@ d_i2fIR_36
       MAlonzo.Code.Once.IR.C_SigOp_130
       (coe MAlonzo.Code.Once.Type.C_Int_134)
       (coe MAlonzo.Code.Once.Type.C_Float_136)
-      (coe MAlonzo.Code.Once.Arith.SigOp.Builders.d_i2f'45'info_320)
+      (coe MAlonzo.Code.Once.Arith.SigOp.Builders.d_i2f'45'info_314)
 -- Once.Surface.Elaborate.negIR
 d_negIR_38 :: MAlonzo.Code.Once.IR.T_IR_16
 d_negIR_38
@@ -175,7 +175,7 @@ d_negIR_38
       MAlonzo.Code.Once.IR.C_SigOp_130
       (coe MAlonzo.Code.Once.Type.C_Int_134)
       (coe MAlonzo.Code.Once.Type.C_Int_134)
-      (coe MAlonzo.Code.Once.Arith.SigOp.Builders.d_neg'45'info_308)
+      (coe MAlonzo.Code.Once.Arith.SigOp.Builders.d_neg'45'info_302)
 -- Once.Surface.Elaborate.ltIR
 d_ltIR_40 :: MAlonzo.Code.Once.IR.T_IR_16
 d_ltIR_40
@@ -189,7 +189,7 @@ d_ltIR_40
          MAlonzo.Code.Once.Type.C__'43'__126
          (coe MAlonzo.Code.Once.Type.C_Unit_120)
          (coe MAlonzo.Code.Once.Type.C_Unit_120))
-      (coe MAlonzo.Code.Once.Arith.SigOp.Builders.d_lt'45'info_322)
+      (coe MAlonzo.Code.Once.Arith.SigOp.Builders.d_lt'45'info_316)
 -- Once.Surface.Elaborate.leIR
 d_leIR_42 :: MAlonzo.Code.Once.IR.T_IR_16
 d_leIR_42
@@ -203,7 +203,7 @@ d_leIR_42
          MAlonzo.Code.Once.Type.C__'43'__126
          (coe MAlonzo.Code.Once.Type.C_Unit_120)
          (coe MAlonzo.Code.Once.Type.C_Unit_120))
-      (coe MAlonzo.Code.Once.Arith.SigOp.Builders.d_le'45'info_324)
+      (coe MAlonzo.Code.Once.Arith.SigOp.Builders.d_le'45'info_318)
 -- Once.Surface.Elaborate.gtIR
 d_gtIR_44 :: MAlonzo.Code.Once.IR.T_IR_16
 d_gtIR_44
@@ -217,7 +217,7 @@ d_gtIR_44
          MAlonzo.Code.Once.Type.C__'43'__126
          (coe MAlonzo.Code.Once.Type.C_Unit_120)
          (coe MAlonzo.Code.Once.Type.C_Unit_120))
-      (coe MAlonzo.Code.Once.Arith.SigOp.Builders.d_gt'45'info_326)
+      (coe MAlonzo.Code.Once.Arith.SigOp.Builders.d_gt'45'info_320)
 -- Once.Surface.Elaborate.geIR
 d_geIR_46 :: MAlonzo.Code.Once.IR.T_IR_16
 d_geIR_46
@@ -231,7 +231,7 @@ d_geIR_46
          MAlonzo.Code.Once.Type.C__'43'__126
          (coe MAlonzo.Code.Once.Type.C_Unit_120)
          (coe MAlonzo.Code.Once.Type.C_Unit_120))
-      (coe MAlonzo.Code.Once.Arith.SigOp.Builders.d_ge'45'info_328)
+      (coe MAlonzo.Code.Once.Arith.SigOp.Builders.d_ge'45'info_322)
 -- Once.Surface.Elaborate.eqIR
 d_eqIR_48 :: MAlonzo.Code.Once.IR.T_IR_16
 d_eqIR_48
@@ -245,7 +245,7 @@ d_eqIR_48
          MAlonzo.Code.Once.Type.C__'43'__126
          (coe MAlonzo.Code.Once.Type.C_Unit_120)
          (coe MAlonzo.Code.Once.Type.C_Unit_120))
-      (coe MAlonzo.Code.Once.Arith.SigOp.Builders.d_eq'45'info_330)
+      (coe MAlonzo.Code.Once.Arith.SigOp.Builders.d_eq'45'info_324)
 -- Once.Surface.Elaborate.neIR
 d_neIR_50 :: MAlonzo.Code.Once.IR.T_IR_16
 d_neIR_50
@@ -259,7 +259,7 @@ d_neIR_50
          MAlonzo.Code.Once.Type.C__'43'__126
          (coe MAlonzo.Code.Once.Type.C_Unit_120)
          (coe MAlonzo.Code.Once.Type.C_Unit_120))
-      (coe MAlonzo.Code.Once.Arith.SigOp.Builders.d_ne'45'info_332)
+      (coe MAlonzo.Code.Once.Arith.SigOp.Builders.d_ne'45'info_326)
 -- Once.Surface.Elaborate.proj
 d_proj_58 ::
   Integer ->
@@ -2395,7 +2395,7 @@ du_elaborate_384 v0 v1 v2 v3 v4
                                MAlonzo.Code.Once.IR.C_SigOp_130
                                (coe MAlonzo.Code.Once.Type.C_Unit_120) (coe v3)
                                (coe
-                                  MAlonzo.Code.Once.Arith.SigOp.Builders.du_value'45'info_338
+                                  MAlonzo.Code.Once.Arith.SigOp.Builders.du_value'45'info_332
                                   (coe v8)
                                   (coe MAlonzo.Code.Once.Functor.Translate.C_base'45'Unit_198)
                                   (coe v11)))
@@ -2420,7 +2420,7 @@ du_elaborate_384 v0 v1 v2 v3 v4
                                                   MAlonzo.Code.Once.IR.C_SigOp_130
                                                   (coe MAlonzo.Code.Once.Type.C_Unit_120) (coe v13)
                                                   (coe
-                                                     MAlonzo.Code.Once.Arith.SigOp.Builders.du_value'45'info_338
+                                                     MAlonzo.Code.Once.Arith.SigOp.Builders.du_value'45'info_332
                                                      (coe v8)
                                                      (coe
                                                         MAlonzo.Code.Once.Functor.Translate.C_base'45'Unit_198)
@@ -2435,7 +2435,7 @@ du_elaborate_384 v0 v1 v2 v3 v4
                                                MAlonzo.Code.Once.IR.C_SigOp_130
                                                (coe MAlonzo.Code.Once.Type.C_Unit_120) (coe v3)
                                                (coe
-                                                  MAlonzo.Code.Once.Arith.SigOp.Builders.du_value'45'info_338
+                                                  MAlonzo.Code.Once.Arith.SigOp.Builders.du_value'45'info_332
                                                   (coe v8)
                                                   (coe
                                                      MAlonzo.Code.Once.Functor.Translate.C_base'45'Unit_198)
@@ -2454,7 +2454,7 @@ du_elaborate_384 v0 v1 v2 v3 v4
                                                   MAlonzo.Code.Once.IR.C_SigOp_130 (coe v11)
                                                   (coe v13)
                                                   (coe
-                                                     MAlonzo.Code.Once.Arith.SigOp.Builders.du_arrow'45'info_370
+                                                     MAlonzo.Code.Once.Arith.SigOp.Builders.du_arrow'45'info_364
                                                      (coe v13) (coe v12) (coe v8) (coe v19)
                                                      (coe v20)))
                                                (coe MAlonzo.Code.Once.IR.C_snd_48))
@@ -2467,7 +2467,7 @@ du_elaborate_384 v0 v1 v2 v3 v4
                                                MAlonzo.Code.Once.IR.C_SigOp_130
                                                (coe MAlonzo.Code.Once.Type.C_Unit_120) (coe v3)
                                                (coe
-                                                  MAlonzo.Code.Once.Arith.SigOp.Builders.du_value'45'info_338
+                                                  MAlonzo.Code.Once.Arith.SigOp.Builders.du_value'45'info_332
                                                   (coe v8)
                                                   (coe
                                                      MAlonzo.Code.Once.Functor.Translate.C_base'45'Unit_198)
@@ -2486,7 +2486,7 @@ du_elaborate_384 v0 v1 v2 v3 v4
                                                   MAlonzo.Code.Once.IR.C_SigOp_130 (coe v11)
                                                   (coe v13)
                                                   (coe
-                                                     MAlonzo.Code.Once.Arith.SigOp.Builders.du_arrow'45'info_370
+                                                     MAlonzo.Code.Once.Arith.SigOp.Builders.du_arrow'45'info_364
                                                      (coe v13) (coe v12) (coe v8) (coe v19)
                                                      (coe v20)))
                                                (coe MAlonzo.Code.Once.IR.C_snd_48))
@@ -2499,7 +2499,7 @@ du_elaborate_384 v0 v1 v2 v3 v4
                                                MAlonzo.Code.Once.IR.C_SigOp_130
                                                (coe MAlonzo.Code.Once.Type.C_Unit_120) (coe v3)
                                                (coe
-                                                  MAlonzo.Code.Once.Arith.SigOp.Builders.du_value'45'info_338
+                                                  MAlonzo.Code.Once.Arith.SigOp.Builders.du_value'45'info_332
                                                   (coe v8)
                                                   (coe
                                                      MAlonzo.Code.Once.Functor.Translate.C_base'45'Unit_198)

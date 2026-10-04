@@ -17,6 +17,7 @@ import MAlonzo.RTE (coe, erased, AgdaAny, addInt, subInt, mulInt,
                     rem64, lt64, eq64, word64FromNat, word64ToNat)
 import qualified MAlonzo.RTE
 import qualified Data.Text
+import qualified MAlonzo.Code.Once.Arith.CmpOp
 import qualified MAlonzo.Code.Once.Arith.Machine.IR
 import qualified MAlonzo.Code.Once.Arith.Machine.Shape
 import qualified MAlonzo.Code.Once.Arith.Type
@@ -173,4 +174,13 @@ d_eval'45'arith'45'W_38 v0 v1 v2 v3 v4 v5
                 (coe
                    d_eval'45'arith'45'W_38 (coe v0) (coe v1) (coe v2)
                    (coe MAlonzo.Code.Once.Arith.Type.C_NInt_8) (coe v6) (coe v5)))
+      MAlonzo.Code.Once.Arith.Machine.IR.C_acmp_46 v6 v7 v8
+        -> coe
+             MAlonzo.Code.Once.Arith.CmpOp.d_cmp'45'bit_62 (coe v0) (coe v6)
+             (coe
+                d_eval'45'arith'45'W_38 (coe v0) (coe v1) (coe v2)
+                (coe MAlonzo.Code.Once.Arith.Type.C_NInt_8) (coe v7) (coe v5))
+             (coe
+                d_eval'45'arith'45'W_38 (coe v0) (coe v1) (coe v2)
+                (coe MAlonzo.Code.Once.Arith.Type.C_NInt_8) (coe v8) (coe v5))
       _ -> MAlonzo.RTE.mazUnreachableError

@@ -31,7 +31,9 @@ open import Once.CanonicalName using (CanonicalName; _≟ᶜ_)
 open import Once.IRTy using (_≟IRTy_)
 open import Relation.Nullary using (yes; no)
 open import Once.Arith.Machine.IR using (ArithBlock)
-open import Once.Arith.Machine.Rewrite using (rewrite-ir; rw-at; walk; try-lift)
+open import Once.Arith.Machine.Rewrite using (rewrite-ir; rw-at; walk; try-lift; bare-at)
+open import Once.SigOp.Info using (SigOpInfo)
+open import Once.Denotation.TraceMonad using (>>=T-identityˡ)
 open import Once.Denotation.TraceMonad using (T; _>>=T_; returnT; projTrace; Interp; pureHalf)
 open import Once.SigOp.Info using (FFIAnswers)
 open import Once.Denotation.DenotTrace using (evalᴰ; CallEnv; callEnv; cata-ev-algᴰ)
@@ -65,6 +67,15 @@ module _ (fmt : TargetNum) (ρ : CallEnv) where
   rw-at-sound   : ∀ {A B} (ir : IR A B) (d : Maybe (IR A B × ArithBlock)) → try-lift ir ≡ d
                 → E (proj₁ (rw-at ir d)) ≡ E ir
   walk-sound    : ∀ {A B} (ir : IR A B) → E (proj₁ (walk ir)) ≡ E ir
+
+  -- Plan 0.108: a bare primitive is lifted as `SigOp si ∘ id`, which means
+  -- `SigOp si` by the monad's left identity.
+  bare-sound : ∀ {X Y} (si : SigOpInfo X Y) (d : Maybe (IR ⌊ X ⌋ ⌊ Y ⌋ × ArithBlock))
+             → try-lift (SigOp si ∘ id) ≡ d → E (proj₁ (bare-at si d)) ≡ E (SigOp si)
+  bare-sound si (just (ir′ , blk)) eq =
+    trans (lift-sound fmt ρ (SigOp si ∘ id) ir′ blk eq)
+          (extensionality λ a → >>=T-identityˡ a (E (SigOp si)))
+  bare-sound si nothing eq = refl
 
   rewrite-sound ir = rw-at-sound ir (try-lift ir) refl
 
@@ -108,7 +119,7 @@ module _ (fmt : TargetNum) (ρ : CallEnv) where
                            a))
          (rewrite-sound c)
   walk-sound (const p v) = refl
-  walk-sound (SigOp si)  = refl
+  walk-sound (SigOp si)  = bare-sound si (try-lift (SigOp si ∘ id)) refl
   walk-sound (Call f)    = refl
 
 ------------------------------------------------------------------------

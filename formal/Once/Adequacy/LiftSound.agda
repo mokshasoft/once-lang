@@ -53,7 +53,7 @@ open import Once.Arith.Machine.Recognise using (plumbing?; recognise-path-throug
   PView; pv-id; pv-fst; pv-snd; pv-pair; pv-comp; pv-other; p-view; is-terminal?; TView; tv-term; tv-comp; tv-other; t-view; it-at;
   recognise-body; recognise-binop; recognise-prim; binop-at; rb-at; rb-view; RBView; v-reassoc; v-sigop; v-cint; v-cflt; v-other;
   recognise-body-float; recognise-binop-float; recognise-prim-float; binop-at-float; rbf-at;
-  lit-at; flit-at; path-at; binop; unop; recognise-path; rbin-at; rbinf-at; b-view; BView; bv-pair; bv-dist; bv-other; pair-of)
+  lit-at; flit-at; path-at; binop; unop; recognise-path; rbin-at; rbinf-at; b-view; BView; bv-pair; bv-dist; bv-id; bv-other; pair-of)
 open import Once.SigOp.Info using (SigOpInfo; SigOpSem; mk-info'; primV; pureV; emitsV; haltsV)
 open import Once.Arith.Prim using (ArithPrim; primSem; p-add; p-sub; p-mul; p-div; p-mod; p-neg; p-fadd; p-fsub; p-fmul; p-fdiv; p-i2f)
 import Once.Type as Ty
@@ -381,6 +381,16 @@ bin-at k sh .(⟨ x , y ⟩ ∘ h) (bv-dist x y h) lt eq a = dist (plumbing? h) 
                   (trans (>>=T-identityˡ c (evalᴰ fmt ρ ⟨ x , y ⟩))
                          (pair-val x y c (through {h = h} {a = a} ec x ebx) (through {h = h} {a = a} ec y eby)))
           , rbx , rby
+bin-at k sh .id bv-id lt eq a = ids (typePath? sh NInt (Fst ∷ [])) refl (typePath? sh NInt (Snd ∷ [])) refl eq
+  where
+    -- plan 0.108: the operands are the input's own leaves, read where they are.
+    ids : ∀ (m₁ : Maybe (Path sh NInt)) → typePath? sh NInt (Fst ∷ []) ≡ m₁
+        → ∀ (m₂ : Maybe (Path sh NInt)) → typePath? sh NInt (Snd ∷ []) ≡ m₂
+        → ∀ {ra rb} → pair-of (unop ainput m₁) (unop ainput m₂) ≡ just (ra , rb) → BinAt sh id ra rb a
+    ids (just t₁) e₁ (just t₂) e₂ refl =
+      a , refl , leaf-sound sh NInt (Fst ∷ []) t₁ e₁ a , leaf-sound sh NInt (Snd ∷ []) t₂ e₂ a
+    ids (just _) _ nothing _ ()
+    ids nothing  _ _       _ ()
 bin-at k sh e (bv-other e) lt () a
 
 ------------------------------------------------------------------------
@@ -470,6 +480,16 @@ fbin-at k sh .(⟨ x , y ⟩ ∘ h) (bv-dist x y h) lt eq a = dist (plumbing? h)
                   (trans (>>=T-identityˡ c (evalᴰ fmt ρ ⟨ x , y ⟩))
                          (pair-val x y c (through {h = h} {a = a} ec x ebx) (through {h = h} {a = a} ec y eby)))
           , rbx , rby
+fbin-at k sh .id bv-id lt eq a = ids (typePath? sh NFloat (Fst ∷ [])) refl (typePath? sh NFloat (Snd ∷ [])) refl eq
+  where
+    -- plan 0.108: the operands are the input's own leaves, read where they are.
+    ids : ∀ (m₁ : Maybe (Path sh NFloat)) → typePath? sh NFloat (Fst ∷ []) ≡ m₁
+        → ∀ (m₂ : Maybe (Path sh NFloat)) → typePath? sh NFloat (Snd ∷ []) ≡ m₂
+        → ∀ {ra rb} → pair-of (unop ainput m₁) (unop ainput m₂) ≡ just (ra , rb) → BinAt sh id ra rb a
+    ids (just t₁) e₁ (just t₂) e₂ refl =
+      a , refl , leaf-sound sh NFloat (Fst ∷ []) t₁ e₁ a , leaf-sound sh NFloat (Snd ∷ []) t₂ e₂ a
+    ids (just _) _ nothing _ ()
+    ids nothing  _ _       _ ()
 fbin-at k sh e (bv-other e) lt () a
 
 ------------------------------------------------------------------------

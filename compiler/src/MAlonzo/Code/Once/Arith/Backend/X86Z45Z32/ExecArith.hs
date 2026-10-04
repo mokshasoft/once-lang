@@ -112,7 +112,17 @@ d_writes_10 v0
                 MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                 (coe MAlonzo.Code.Once.Target.X86Z45Z32.PhysReg.C_eax_10)
                 (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16))
-      MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_Xdiv'45'safe'45'rrr_48 v1 v2 v3
+      MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_Xcmp'45'rrr_48 v1 v2 v3 v4
+        -> coe
+             MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
+             (coe
+                MAlonzo.Code.Once.Arith.Backend.X86Z45Z32.Emit.d_arith'45'reg_10
+                (coe v2))
+             (coe
+                MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
+                (coe MAlonzo.Code.Once.Target.X86Z45Z32.PhysReg.C_eax_10)
+                (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16))
+      MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_Xdiv'45'safe'45'rrr_50 v1 v2 v3
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
              (coe
@@ -122,7 +132,7 @@ d_writes_10 v0
                 MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                 (coe MAlonzo.Code.Once.Target.X86Z45Z32.PhysReg.C_eax_10)
                 (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16))
-      MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_Xrem'45'safe'45'rrr_50 v1 v2 v3
+      MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_Xrem'45'safe'45'rrr_52 v1 v2 v3
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
              (coe
@@ -132,14 +142,14 @@ d_writes_10 v0
                 MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                 (coe MAlonzo.Code.Once.Target.X86Z45Z32.PhysReg.C_eax_10)
                 (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16))
-      MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_Xshl'45'rri_52 v1 v2 v3
+      MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_Xshl'45'rri_54 v1 v2 v3
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
              (coe
                 MAlonzo.Code.Once.Arith.Backend.X86Z45Z32.Emit.d_arith'45'reg_10
                 (coe v1))
              (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
-      MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_Xsdiv'45'pow2'45'rri_54 v1 v2 v3
+      MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_Xsdiv'45'pow2'45'rri_56 v1 v2 v3
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
              (coe
@@ -149,95 +159,95 @@ d_writes_10 v0
                 MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                 (coe MAlonzo.Code.Once.Target.X86Z45Z32.PhysReg.C_eax_10)
                 (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16))
-      MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_Xfadd'45'rr_56 v1 v2
+      MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_Xfadd'45'rr_58 v1 v2
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
              (coe
                 MAlonzo.Code.Once.Arith.Backend.X86Z45Z32.Emit.d_arith'45'reg_10
                 (coe v1))
              (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
-      MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_Xfsub'45'rr_58 v1 v2
+      MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_Xfsub'45'rr_60 v1 v2
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
              (coe
                 MAlonzo.Code.Once.Arith.Backend.X86Z45Z32.Emit.d_arith'45'reg_10
                 (coe v1))
              (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
-      MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_Xfmul'45'rr_60 v1 v2
+      MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_Xfmul'45'rr_62 v1 v2
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
              (coe
                 MAlonzo.Code.Once.Arith.Backend.X86Z45Z32.Emit.d_arith'45'reg_10
                 (coe v1))
              (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
-      MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_Xfdiv'45'rrr_62 v1 v2 v3
+      MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_Xfdiv'45'rrr_64 v1 v2 v3
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
              (coe
                 MAlonzo.Code.Once.Arith.Backend.X86Z45Z32.Emit.d_arith'45'reg_10
                 (coe v1))
              (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
-      MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_Xfsubr'45'rr_64 v1 v2
+      MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_Xfsubr'45'rr_66 v1 v2
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
              (coe
                 MAlonzo.Code.Once.Arith.Backend.X86Z45Z32.Emit.d_arith'45'reg_10
                 (coe v1))
              (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
-      MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_Xfneg'45'r_66 v1
+      MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_Xfneg'45'r_68 v1
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
              (coe
                 MAlonzo.Code.Once.Arith.Backend.X86Z45Z32.Emit.d_arith'45'reg_10
                 (coe v1))
              (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
-      MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_Xi2f'45'r_68 v1 v2
+      MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_Xi2f'45'r_70 v1 v2
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
              (coe
                 MAlonzo.Code.Once.Arith.Backend.X86Z45Z32.Emit.d_arith'45'reg_10
                 (coe v1))
              (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
-      MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_Xmov'45'fimm_70 v1 v2
+      MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_Xmov'45'fimm_72 v1 v2
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
              (coe
                 MAlonzo.Code.Once.Arith.Backend.X86Z45Z32.Emit.d_arith'45'reg_10
                 (coe v1))
              (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
-      MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_Xmov'45'farg_72 v1 v2
+      MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_Xmov'45'farg_74 v1 v2
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
              (coe
                 MAlonzo.Code.Once.Arith.Backend.X86Z45Z32.Emit.d_arith'45'reg_10
                 (coe v1))
              (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
-      MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_Xmov'45'out_74 v1
+      MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_Xmov'45'out_76 v1
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
              (coe MAlonzo.Code.Once.Target.X86Z45Z32.PhysReg.C_eax_10)
              (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Arith.Backend.X86-32.ExecArith._.scratch-addr
-d_scratch'45'addr_78 ::
+d_scratch'45'addr_80 ::
   (MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.T_XInstr_24 ->
-   MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.T_State_290 ->
+   MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.T_State_296 ->
    MAlonzo.Code.Once.Target.X86Z45Z32.PhysReg.T_Reg_8 -> Integer) ->
-  MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.T_State_290 ->
+  MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.T_State_296 ->
   MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.T_XScratch_16 ->
   Integer
-d_scratch'45'addr_78 ~v0 v1 v2 = du_scratch'45'addr_78 v1 v2
-du_scratch'45'addr_78 ::
-  MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.T_State_290 ->
+d_scratch'45'addr_80 ~v0 v1 v2 = du_scratch'45'addr_80 v1 v2
+du_scratch'45'addr_80 ::
+  MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.T_State_296 ->
   MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.T_XScratch_16 ->
   Integer
-du_scratch'45'addr_78 v0 v1
+du_scratch'45'addr_80 v0 v1
   = coe
       addInt
       (coe
-         MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.d_readReg_202
+         MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.d_readReg_208
          (coe
-            MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.d_regs_302
+            MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.d_regs_308
             (coe v0))
          (coe MAlonzo.Code.Once.Target.X86Z45Z32.PhysReg.C_esp_24))
       (coe
@@ -245,42 +255,42 @@ du_scratch'45'addr_78 v0 v1
          (coe
             MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.d_slot_20 (coe v1)))
 -- Once.Arith.Backend.X86-32.ExecArith._.write-regs
-d_write'45'regs_84 ::
+d_write'45'regs_86 ::
   (MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.T_XInstr_24 ->
-   MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.T_State_290 ->
+   MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.T_State_296 ->
    MAlonzo.Code.Once.Target.X86Z45Z32.PhysReg.T_Reg_8 -> Integer) ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
-  MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.T_RegFile_166 ->
-  MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.T_RegFile_166
-d_write'45'regs_84 ~v0 v1 v2 = du_write'45'regs_84 v1 v2
-du_write'45'regs_84 ::
+  MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.T_RegFile_172 ->
+  MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.T_RegFile_172
+d_write'45'regs_86 ~v0 v1 v2 = du_write'45'regs_86 v1 v2
+du_write'45'regs_86 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
-  MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.T_RegFile_166 ->
-  MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.T_RegFile_166
-du_write'45'regs_84 v0 v1
+  MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.T_RegFile_172 ->
+  MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.T_RegFile_172
+du_write'45'regs_86 v0 v1
   = case coe v0 of
       [] -> coe v1
       (:) v2 v3
         -> case coe v2 of
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v4 v5
                -> coe
-                    du_write'45'regs_84 (coe v3)
+                    du_write'45'regs_86 (coe v3)
                     (coe
-                       MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.d_writeReg_220 v1
+                       MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.d_writeReg_226 v1
                        v4 v5)
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Arith.Backend.X86-32.ExecArith._.step-of
-d_step'45'of_96 ::
+d_step'45'of_98 ::
   (MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.T_XInstr_24 ->
-   MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.T_State_290 ->
+   MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.T_State_296 ->
    MAlonzo.Code.Once.Target.X86Z45Z32.PhysReg.T_Reg_8 -> Integer) ->
   MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.T_XInstr_24 ->
-  MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.T_State_290 ->
-  MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.T_RegFile_166
-d_step'45'of_96 v0 v1 v2
+  MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.T_State_296 ->
+  MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.T_RegFile_172
+d_step'45'of_98 v0 v1 v2
   = coe
-      du_write'45'regs_84
+      du_write'45'regs_86
       (coe
          MAlonzo.Code.Data.List.Base.du_map_22
          (coe
@@ -290,80 +300,80 @@ d_step'45'of_96 v0 v1 v2
                  (coe v0 v1 v2 v3)))
          (coe d_writes_10 (coe v1)))
       (coe
-         MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.d_regs_302
+         MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.d_regs_308
          (coe v2))
 -- Once.Arith.Backend.X86-32.ExecArith._.mem-effect
-d_mem'45'effect_104 ::
+d_mem'45'effect_106 ::
   (MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.T_XInstr_24 ->
-   MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.T_State_290 ->
+   MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.T_State_296 ->
    MAlonzo.Code.Once.Target.X86Z45Z32.PhysReg.T_Reg_8 -> Integer) ->
   MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.T_XInstr_24 ->
-  MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.T_State_290 ->
+  MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.T_State_296 ->
   Integer -> Maybe Integer
-d_mem'45'effect_104 ~v0 v1 v2 = du_mem'45'effect_104 v1 v2
-du_mem'45'effect_104 ::
+d_mem'45'effect_106 ~v0 v1 v2 = du_mem'45'effect_106 v1 v2
+du_mem'45'effect_106 ::
   MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.T_XInstr_24 ->
-  MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.T_State_290 ->
+  MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.T_State_296 ->
   Integer -> Maybe Integer
-du_mem'45'effect_104 v0 v1
+du_mem'45'effect_106 v0 v1
   = let v2
-          = MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.d_memory_304
+          = MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.d_memory_310
               (coe v1) in
     coe
       (case coe v0 of
          MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_Xmov'45'r'45'm_30 v3 v4
            -> coe
-                MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.d_writeMem_264
+                MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.d_writeMem_270
                 (coe
-                   MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.d_memory_304
+                   MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.d_memory_310
                    (coe v1))
-                (coe du_scratch'45'addr_78 (coe v1) (coe v3))
+                (coe du_scratch'45'addr_80 (coe v1) (coe v3))
                 (coe
-                   MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.d_readReg_202
+                   MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.d_readReg_208
                    (coe
-                      MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.d_regs_302
+                      MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.d_regs_308
                       (coe v1))
                    (coe
                       MAlonzo.Code.Once.Arith.Backend.X86Z45Z32.Emit.d_arith'45'reg_10
                       (coe v4)))
          _ -> coe v2)
 -- Once.Arith.Backend.X86-32.ExecArith._.exec1
-d_exec1_114 ::
+d_exec1_116 ::
   (MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.T_XInstr_24 ->
-   MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.T_State_290 ->
+   MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.T_State_296 ->
    MAlonzo.Code.Once.Target.X86Z45Z32.PhysReg.T_Reg_8 -> Integer) ->
   MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.T_XInstr_24 ->
-  MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.T_State_290 ->
-  MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.T_State_290
-d_exec1_114 v0 v1 v2
+  MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.T_State_296 ->
+  MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.T_State_296
+d_exec1_116 v0 v1 v2
   = coe
-      MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.C_mkstate_312
-      (coe d_step'45'of_96 (coe v0) (coe v1) (coe v2))
-      (coe du_mem'45'effect_104 (coe v1) (coe v2))
+      MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.C_mkstate_318
+      (coe d_step'45'of_98 (coe v0) (coe v1) (coe v2))
+      (coe du_mem'45'effect_106 (coe v1) (coe v2))
       (coe
-         MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.d_flags_306
+         MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.d_flags_312
          (coe v2))
       (coe
          addInt (coe (1 :: Integer))
          (coe
-            MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.d_pc_308
+            MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.d_pc_314
             (coe v2)))
       (coe
-         MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.d_halted_310
+         MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.d_halted_316
          (coe v2))
 -- Once.Arith.Backend.X86-32.ExecArith._.exec-arith-block
-d_exec'45'arith'45'block_120 ::
+d_exec'45'arith'45'block_122 ::
   (MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.T_XInstr_24 ->
-   MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.T_State_290 ->
+   MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.T_State_296 ->
    MAlonzo.Code.Once.Target.X86Z45Z32.PhysReg.T_Reg_8 -> Integer) ->
   [MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.T_XInstr_24] ->
-  MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.T_State_290 ->
-  MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.T_State_290
-d_exec'45'arith'45'block_120 v0 v1 v2
+  MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.T_State_296 ->
+  MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.T_State_296
+d_exec'45'arith'45'block_122 v0 v1 v2
   = case coe v1 of
       [] -> coe v2
       (:) v3 v4
         -> coe
-             d_exec'45'arith'45'block_120 (coe v0) (coe v4)
-             (coe d_exec1_114 (coe v0) (coe v3) (coe v2))
+             d_exec'45'arith'45'block_122 (coe v0) (coe v4)
+             (coe d_exec1_116 (coe v0) (coe v3) (coe v2))
       _ -> MAlonzo.RTE.mazUnreachableError

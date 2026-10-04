@@ -128,7 +128,7 @@ d_sigOpSemT_32 v0 v1 v2 v3 v4 v5 v6
              MAlonzo.Code.Once.Denotation.TraceMonad.C_ret_182
              (coe
                 MAlonzo.Code.Once.Semantics.Value.du_erase'7501'_92 (coe v3)
-                (coe MAlonzo.Code.Once.Arith.Prim.du_primSem_392 v7 v0 v6))
+                (coe MAlonzo.Code.Once.Arith.Prim.du_primSem_416 v7 v0 v6))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Denotation.DenotTrace.sigOpT
 d_sigOpT_106 ::

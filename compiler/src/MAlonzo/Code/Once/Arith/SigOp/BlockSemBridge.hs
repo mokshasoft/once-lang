@@ -890,79 +890,93 @@ d_norm'45'id_240 ::
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_norm'45'id_240 = erased
+-- Once.Arith.SigOp.BlockSemBridge._.W.sbb-pos
+d_sbb'45'pos_242 ::
+  MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
+  Integer ->
+  MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
+  MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_sbb'45'pos_242 = erased
+-- Once.Arith.SigOp.BlockSemBridge._.W.sbb-zero
+d_sbb'45'zero_244 ::
+  MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
+  MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_sbb'45'zero_244 = erased
 -- Once.Arith.SigOp.BlockSemBridge._.W.sdiv2ᵏ
-d_sdiv2'7503'_242 ::
+d_sdiv2'7503'_246 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   Integer -> Integer -> Integer
-d_sdiv2'7503'_242 v0
+d_sdiv2'7503'_246 v0
   = coe
       MAlonzo.Code.Once.Word.d_sdiv2'7503'_138
       (coe MAlonzo.Code.Once.Target.Arch.d_int'45'bits_22 (coe v0))
 -- Once.Arith.SigOp.BlockSemBridge._.W.shlᵂ
-d_shl'7490'_244 ::
+d_shl'7490'_248 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   Integer -> Integer -> Integer
-d_shl'7490'_244 v0
+d_shl'7490'_248 v0
   = coe
       MAlonzo.Code.Once.Word.d_shl'7490'_132
       (coe MAlonzo.Code.Once.Target.Arch.d_int'45'bits_22 (coe v0))
 -- Once.Arith.SigOp.BlockSemBridge._.W.sucNegOne≡mod
-d_sucNegOne'8801'mod_246 ::
+d_sucNegOne'8801'mod_250 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   Integer ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_sucNegOne'8801'mod_246 = erased
+d_sucNegOne'8801'mod_250 = erased
 -- Once.Arith.SigOp.BlockSemBridge._.W.tdiv-neg1
-d_tdiv'45'neg1_248 ::
+d_tdiv'45'neg1_252 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_tdiv'45'neg1_248 = erased
+d_tdiv'45'neg1_252 = erased
 -- Once.Arith.SigOp.BlockSemBridge._.W.tmod-neg1
-d_tmod'45'neg1_250 ::
+d_tmod'45'neg1_254 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_tmod'45'neg1_250 = erased
+d_tmod'45'neg1_254 = erased
 -- Once.Arith.SigOp.BlockSemBridge._.W.toWord
-d_toWord_252 ::
+d_toWord_256 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   Integer -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 -> Integer
-d_toWord_252 v0 v1 v2
+d_toWord_256 v0 v1 v2
   = coe
       MAlonzo.Code.Once.Word.du_toWord_68
       (coe MAlonzo.Code.Once.Target.Arch.d_int'45'bits_22 (coe v0)) v1
 -- Once.Arith.SigOp.BlockSemBridge._.W.toWord≡fromℤ
-d_toWord'8801'fromℤ_254 ::
+d_toWord'8801'fromℤ_258 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   Integer ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_toWord'8801'fromℤ_254 = erased
+d_toWord'8801'fromℤ_258 = erased
 -- Once.Arith.SigOp.BlockSemBridge._.W.toℤ
-d_toℤ_256 ::
+d_toℤ_260 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 -> Integer -> Integer
-d_toℤ_256 v0
+d_toℤ_260 v0
   = coe
       MAlonzo.Code.Once.Word.d_toℤ_50
       (coe MAlonzo.Code.Once.Target.Arch.d_int'45'bits_22 (coe v0))
 -- Once.Arith.SigOp.BlockSemBridge._.W.toℤ-negOne
-d_toℤ'45'negOne_258 ::
+d_toℤ'45'negOne_262 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   Integer ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_toℤ'45'negOne_258 = erased
+d_toℤ'45'negOne_262 = erased
 -- Once.Arith.SigOp.BlockSemBridge._.W.toℤ∘fromℤ
-d_toℤ'8728'fromℤ_260 ::
+d_toℤ'8728'fromℤ_264 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   Integer ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   Integer ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_toℤ'8728'fromℤ_260 = erased
+d_toℤ'8728'fromℤ_264 = erased
 -- Once.Arith.SigOp.BlockSemBridge._.W.unplus
-d_unplus_262 ::
+d_unplus_266 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   Integer ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
@@ -970,122 +984,129 @@ d_unplus_262 ::
   Integer ->
   MAlonzo.Code.Data.Integer.Base.T__'8804'__26 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-d_unplus_262 ~v0 = du_unplus_262
-du_unplus_262 ::
+d_unplus_266 ~v0 = du_unplus_266
+du_unplus_266 ::
   Integer ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   Integer ->
   Integer ->
   MAlonzo.Code.Data.Integer.Base.T__'8804'__26 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-du_unplus_262 v0 v1 v2 v3 v4
+du_unplus_266 v0 v1 v2 v3 v4
   = coe MAlonzo.Code.Once.Word.du_unplus_648 v4
 -- Once.Arith.SigOp.BlockSemBridge._.W.≡ᵇ-refl
-d_'8801''7495''45'refl_264 ::
+d_'8801''7495''45'refl_268 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'8801''7495''45'refl_264 = erased
+d_'8801''7495''45'refl_268 = erased
 -- Once.Arith.SigOp.BlockSemBridge._.W.≡ᵇ0-false
-d_'8801''7495'0'45'false_266 ::
+d_'8801''7495'0'45'false_270 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'8801''7495'0'45'false_266 = erased
+d_'8801''7495'0'45'false_270 = erased
 -- Once.Arith.SigOp.BlockSemBridge._.W.≤⇒<ᵇfalse
-d_'8804''8658''60''7495'false_268 ::
+d_'8804''8658''60''7495'false_272 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   Integer ->
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'8804''8658''60''7495'false_268 = erased
+d_'8804''8658''60''7495'false_272 = erased
 -- Once.Arith.SigOp.BlockSemBridge._.W.⊕-neg
-d_'8853''45'neg_270 ::
+d_'8853''45'neg_274 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   Integer ->
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'8853''45'neg_270 = erased
+d_'8853''45'neg_274 = erased
 -- Once.Arith.SigOp.BlockSemBridge._.W.⊕-neg-suc
-d_'8853''45'neg'45'suc_272 ::
+d_'8853''45'neg'45'suc_276 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   Integer ->
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'8853''45'neg'45'suc_272 = erased
+d_'8853''45'neg'45'suc_276 = erased
 -- Once.Arith.SigOp.BlockSemBridge._.W.⊕-normʳ
-d_'8853''45'norm'691'_274 ::
+d_'8853''45'norm'691'_278 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   Integer ->
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'8853''45'norm'691'_274 = erased
+d_'8853''45'norm'691'_278 = erased
 -- Once.Arith.SigOp.BlockSemBridge._.W.⊕≡+
-d_'8853''8801''43'_276 ::
+d_'8853''8801''43'_280 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   Integer ->
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'8853''8801''43'_276 = erased
+d_'8853''8801''43'_280 = erased
 -- Once.Arith.SigOp.BlockSemBridge._.W.⊖-normʳ
-d_'8854''45'norm'691'_278 ::
+d_'8854''45'norm'691'_282 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   Integer ->
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'8854''45'norm'691'_278 = erased
+d_'8854''45'norm'691'_282 = erased
+-- Once.Arith.SigOp.BlockSemBridge._.W.⊖-self
+d_'8854''45'self_284 ::
+  MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
+  Integer ->
+  MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_'8854''45'self_284 = erased
 -- Once.Arith.SigOp.BlockSemBridge._.W.⊖≡∸
-d_'8854''8801''8760'_280 ::
+d_'8854''8801''8760'_286 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   Integer ->
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'8854''8801''8760'_280 = erased
+d_'8854''8801''8760'_286 = erased
 -- Once.Arith.SigOp.BlockSemBridge._.W.⊗-pow2
-d_'8855''45'pow2_282 ::
+d_'8855''45'pow2_288 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   Integer ->
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'8855''45'pow2_282 = erased
+d_'8855''45'pow2_288 = erased
 -- Once.Arith.SigOp.BlockSemBridge._.W.⊝_
-d_'8861'__284 ::
+d_'8861'__290 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 -> Integer -> Integer
-d_'8861'__284 v0
+d_'8861'__290 v0
   = coe
       MAlonzo.Code.Once.Word.d_'8861'__44
       (coe MAlonzo.Code.Once.Target.Arch.d_int'45'bits_22 (coe v0))
 -- Once.Arith.SigOp.BlockSemBridge._.W.⊝-fromℤ
-d_'8861''45'fromℤ_286 ::
+d_'8861''45'fromℤ_292 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'8861''45'fromℤ_286 = erased
+d_'8861''45'fromℤ_292 = erased
 -- Once.Arith.SigOp.BlockSemBridge._.W.⊝-intMin
-d_'8861''45'intMin_288 ::
+d_'8861''45'intMin_294 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   Integer ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'8861''45'intMin_288 = erased
+d_'8861''45'intMin_294 = erased
 -- Once.Arith.SigOp.BlockSemBridge._.W.⊝-invol-norm
-d_'8861''45'invol'45'norm_290 ::
+d_'8861''45'invol'45'norm_296 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'8861''45'invol'45'norm_290 = erased
+d_'8861''45'invol'45'norm_296 = erased
 -- Once.Arith.SigOp.BlockSemBridge._.toWord
-d_toWord_294 ::
+d_toWord_300 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
   AgdaAny -> AgdaAny
-d_toWord_294 v0 v1 v2
+d_toWord_300 v0 v1 v2
   = case coe v1 of
       MAlonzo.Code.Once.Arith.Machine.Shape.C_shape'45'unit_10
         -> coe seq (coe v2) (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
@@ -1100,43 +1121,43 @@ d_toWord_294 v0 v1 v2
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v5 v6
                -> coe
                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                    (coe d_toWord_294 (coe v0) (coe v3) (coe v5))
-                    (coe d_toWord_294 (coe v0) (coe v4) (coe v6))
+                    (coe d_toWord_300 (coe v0) (coe v3) (coe v5))
+                    (coe d_toWord_300 (coe v0) (coe v4) (coe v6))
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Arith.SigOp.BlockSemBridge._.project-commute
-d_project'45'commute_314 ::
+d_project'45'commute_320 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
   [MAlonzo.Code.Once.Arith.Machine.Shape.T_Side_24] ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_project'45'commute_314 = erased
+d_project'45'commute_320 = erased
 -- Once.Arith.SigOp.BlockSemBridge._.projectF-commute
-d_projectF'45'commute_362 ::
+d_projectF'45'commute_368 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
   [MAlonzo.Code.Once.Arith.Machine.Shape.T_Side_24] ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_projectF'45'commute_362 = erased
+d_projectF'45'commute_368 = erased
 -- Once.Arith.SigOp.BlockSemBridge._.readLeaf-commute
-d_readLeaf'45'commute_410 ::
+d_readLeaf'45'commute_416 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_Path_68 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_readLeaf'45'commute_410 = erased
+d_readLeaf'45'commute_416 = erased
 -- Once.Arith.SigOp.BlockSemBridge._.readLeafF-commute
-d_readLeafF'45'commute_432 ::
+d_readLeafF'45'commute_438 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_Path_68 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_readLeafF'45'commute_432 = erased
+d_readLeafF'45'commute_438 = erased
 -- Once.Arith.SigOp.BlockSemBridge._.eval≡semM
-d_eval'8801'semM_456 ::
+d_eval'8801'semM_462 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
   MAlonzo.Code.Once.Arith.Type.T_NumType_6 ->
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_eval'8801'semM_456 = erased
+d_eval'8801'semM_462 = erased

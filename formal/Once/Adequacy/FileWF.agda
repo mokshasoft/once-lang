@@ -16,9 +16,10 @@
 -- what the file DOES is proved (`file-flat-<arch>`); this says only that the
 -- toolchain will accept it.
 --
--- Plan 0.108 (D264) removed the one shape it was false for: a comparison's call
--- names its arith block, and the rewrite registers that block, so the file
--- defines it. Discharging it (the label windows of `LabelScope`,
+-- Plan 0.108 (D264) removed the shapes it was false for: a comparison's call
+-- names its arith block, which the rewrite registers, and a BARE arithmetic
+-- primitive (operands not arithmetic) is lifted as `SigOp si ∘ id` — so every
+-- arithmetic call names a block the file defines. Discharging it (the label windows of `LabelScope`,
 -- `LabelsUnique`, the block table) is the rest of phase d.
 ------------------------------------------------------------------------
 
