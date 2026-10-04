@@ -169,6 +169,24 @@ pilot too). It drives F6.0–F6.3 end to end before any big family.
     8 s. Decoders are chains of helpers with stated types (`RowsDec`,
     `PayΣ`, `PayΡ`), never `with`.
 
+- 🟡 (2026-10-04) NEXT: the reduction families `⟶` (67 ξ + 32 computation
+  rules) and `⟶ᵀ` (36), then `≅`/`≅ᵀ`, then `⊢ty`/`⊢`. Design (decided):
+  - decoders are GENERATED from the constructor generator's own state
+    (`gen_con` records, per rule, the row entry at the sources, the value
+    telescope and its `mono-by` R₀, the existentials, premises and Ford
+    entries), so a decoder cannot drift from its constructor;
+  - each rule's decoder is ONE expression chained with `x ▷ f = f x` and
+    pattern lambdas (measured: `▷` chain 14.5 s, no `with`, no per-step
+    signature) — existentials are unquoted and transported by `subst`, not
+    matched (a nested lambda cannot refine an outer variable);
+  - the Spec side of each rule comes from the forward map's own tables
+    (ξ: parsed from `Spec/Typing`; computation: `RED_COMP`, whose agreement
+    `TARGET ⟶* ⌜RHS⌝` closes the Ford by `nf-≅` + quote injectivity);
+  - a NESTED pattern (β's `lam`, ordtr's numerals, …) is decoded by a
+    generic "a CASE hit forces the head" lemma (`fib-β` + `rowAt-elim`:
+    any other head's row is `noRow`, empty) and a generated head view of
+    Spec terms (`hdTm`, `quoteTm t ≡ conₗ (hdTm t) …`, `is⟨H⟩`).
+
 ### F6 — FINDINGS LEDGER (what the invariant caught)
 
 | # | date | where | finding | fix |
