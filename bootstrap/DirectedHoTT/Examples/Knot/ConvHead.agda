@@ -71,6 +71,6 @@ convAt Γ (fcase0 a0) dA dB dr de = _ , conv⊢fcase0 (⊢dep' ⌊ Γ ⌋) (⊢q
 convAt Γ (psplit a0 a1) dA dB dr de = _ , conv⊢psplit (⊢dep' ⌊ Γ ⌋) (⊢quoteCtx Γ) (⊢quoteTm a0) (⊢quoteTm a1) dA dB dr de
 convAt Γ ⌜Nat⌝ dA dB dr de = _ , conv⊢cNat (⊢dep' ⌊ Γ ⌋) (⊢quoteCtx Γ) dA dB dr de
 convAt Γ (⌜IMu⌝ a0 a1 a2) dA dB dr de = _ , conv⊢cIMu (⊢dep' ⌊ Γ ⌋) (⊢quoteCtx Γ) (⊢quoteTm a0) (⊢quoteTm a1) (⊢quoteTm a2) dA dB dr de
-convAt Γ (⌜Fin⌝ a0) dA dB dr de = _ , conv⊢cFin (⊢dep' ⌊ Γ ⌋) (⊢quoteCtx Γ) (⊢quoteℕ a0) dA dB dr de
+convAt Γ (⌜Fin⌝ a0) dA dB dr de = _ , conv⊢cFin (⊢dep' ⌊ Γ ⌋) (⊢quoteCtx Γ) (⊢quoteTm a0) dA dB dr de
 convAt Γ ⌜Unit⌝ dA dB dr de = _ , conv⊢cUnit (⊢dep' ⌊ Γ ⌋) (⊢quoteCtx Γ) dA dB dr de
 convAt Γ (ref a0 a1) dA dB dr de = _ , conv⊢ref (⊢dep' ⌊ Γ ⌋) (⊢quoteCtx Γ) (⊢quoteℕ a0) (⊢quoteTm a1) dA dB dr de

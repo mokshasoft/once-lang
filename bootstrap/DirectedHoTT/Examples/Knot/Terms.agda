@@ -66,7 +66,7 @@ quoteTy (Id a0 a1 a2) = kId (quoteTy a0) (quoteTm a1) (quoteTm a2)
 quoteTy (IMu a0 a1 a2) = kIMu (quoteTm a0) (quoteTm a1) (quoteTm a2)
 quoteTy (Desc a0) = kDesc (quoteTm a0)
 quoteTy (DIh a0 a1 a2 a3) = kDIh (quoteTm a0) (quoteTy a1) (quoteTm a2) (quoteTm a3)
-quoteTy (Fin a0) = kFin (quoteℕ a0)
+quoteTy (Fin a0) = kFin (quoteTm a0)
 
 quoteTm (var a0) = kvar (quoteVar a0)
 quoteTm (lam a0) = klam (quoteTm a0)
@@ -104,7 +104,7 @@ quoteTm (fcase0 a0) = kfcase0 (quoteTm a0)
 quoteTm (psplit a0 a1) = kpsplit (quoteTm a0) (quoteTm a1)
 quoteTm ⌜Nat⌝ = kcNat
 quoteTm (⌜IMu⌝ a0 a1 a2) = kcIMu (quoteTm a0) (quoteTm a1) (quoteTm a2)
-quoteTm (⌜Fin⌝ a0) = kcFin (quoteℕ a0)
+quoteTm (⌜Fin⌝ a0) = kcFin (quoteTm a0)
 quoteTm ⌜Unit⌝ = kcUnit
 quoteTm (ref a0 a1) = kref (quoteℕ a0) (quoteTm a1)
 
@@ -135,7 +135,7 @@ quoteTm (ref a0 a1) = kref (quoteℕ a0) (quoteTm a1)
 ⊢quoteTy {Γ} (DIh a0 a1 a2 a3) =
   ⊢conSyn {sg = KSig} {shs = TyShs} {sh = sh-kDIh} KOK (atᵍ 0) (atʰ 11) (⊢dep' Γ) (a-rec (⊢quoteTm a0) (a-rec (⊢quoteTy a1) (a-rec (⊢quoteTm a2) (a-rec (⊢quoteTm a3) a[]))))
 ⊢quoteTy {Γ} (Fin a0) =
-  ⊢conSyn {sg = KSig} {shs = TyShs} {sh = sh-kFin} KOK (atᵍ 0) (atʰ 12) (⊢dep' Γ) (a-nat (⊢quoteℕ a0) a[])
+  ⊢conSyn {sg = KSig} {shs = TyShs} {sh = sh-kFin} KOK (atᵍ 0) (atʰ 12) (⊢dep' Γ) (a-rec (⊢quoteTm a0) a[])
 
 ⊢quoteTm {Γ} (var a0) =
   ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kvar} KOK (atᵍ 1) (atʰ 0) (⊢dep' Γ) (a-v (⊢quoteVar a0))
@@ -210,7 +210,7 @@ quoteTm (ref a0 a1) = kref (quoteℕ a0) (quoteTm a1)
 ⊢quoteTm {Γ} (⌜IMu⌝ a0 a1 a2) =
   ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kcIMu} KOK (atᵍ 1) (atʰ 35) (⊢dep' Γ) (a-rec (⊢quoteTm a0) (a-rec (⊢quoteTm a1) (a-rec (⊢quoteTm a2) a[])))
 ⊢quoteTm {Γ} (⌜Fin⌝ a0) =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kcFin} KOK (atᵍ 1) (atʰ 36) (⊢dep' Γ) (a-nat (⊢quoteℕ a0) a[])
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kcFin} KOK (atᵍ 1) (atʰ 36) (⊢dep' Γ) (a-rec (⊢quoteTm a0) a[])
 ⊢quoteTm {Γ} ⌜Unit⌝ =
   ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kcUnit} KOK (atᵍ 1) (atʰ 37) (⊢dep' Γ) a[]
 ⊢quoteTm {Γ} (ref a0 a1) =

@@ -71,7 +71,7 @@ sh-kDIh = rec 1 0 ∷ʰ rec 0 2 ∷ʰ rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ
 
 -- Fin
 sh-kFin : Shape
-sh-kFin = nat ∷ʰ []ʰ
+sh-kFin = rec 1 0 ∷ʰ []ʰ
 
 -- var
 sh-kvar : Shape
@@ -219,7 +219,7 @@ sh-kcIMu = rec 1 0 ∷ʰ rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ
 
 -- ⌜Fin⌝
 sh-kcFin : Shape
-sh-kcFin = nat ∷ʰ []ʰ
+sh-kcFin = rec 1 0 ∷ʰ []ʰ
 
 -- ⌜Unit⌝
 sh-kcUnit : Shape
@@ -264,7 +264,7 @@ ok-kDesc = fᵒʰ ((ok-rec (lt-s lt-z)) ∷ᶠ []ᶠ)
 ok-kDIh : ShOK 2 sh-kDIh
 ok-kDIh = fᵒʰ ((ok-rec (lt-s lt-z)) ∷ᶠ (ok-rec lt-z) ∷ᶠ (ok-rec (lt-s lt-z)) ∷ᶠ (ok-rec (lt-s lt-z)) ∷ᶠ []ᶠ)
 ok-kFin : ShOK 2 sh-kFin
-ok-kFin = fᵒʰ ((ok-nat) ∷ᶠ []ᶠ)
+ok-kFin = fᵒʰ ((ok-rec (lt-s lt-z)) ∷ᶠ []ᶠ)
 ok-kvar : ShOK 2 sh-kvar
 ok-kvar = vᵒʰ
 ok-klam : ShOK 2 sh-klam
@@ -338,7 +338,7 @@ ok-kcNat = fᵒʰ ([]ᶠ)
 ok-kcIMu : ShOK 2 sh-kcIMu
 ok-kcIMu = fᵒʰ ((ok-rec (lt-s lt-z)) ∷ᶠ (ok-rec (lt-s lt-z)) ∷ᶠ (ok-rec (lt-s lt-z)) ∷ᶠ []ᶠ)
 ok-kcFin : ShOK 2 sh-kcFin
-ok-kcFin = fᵒʰ ((ok-nat) ∷ᶠ []ᶠ)
+ok-kcFin = fᵒʰ ((ok-rec (lt-s lt-z)) ∷ᶠ []ᶠ)
 ok-kcUnit : ShOK 2 sh-kcUnit
 ok-kcUnit = fᵒʰ ([]ᶠ)
 ok-kref : ShOK 2 sh-kref

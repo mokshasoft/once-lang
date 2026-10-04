@@ -1416,6 +1416,59 @@ jddih₍0₎ ihTy ihTm Γ a0 a1 a2 a3 A {w} hq dq nq =
     R₁ = mono-by {Δ = ε} {n = 7} {as = (j ∷ (fst c) ∷ (snd c) ∷ (fst p) ∷ (fst (snd p)) ∷ (fst (snd (snd p))) ∷ (fst (snd (snd (snd p)))) ∷ [])} {as' = (j ∷ g ∷ X0 ∷ f0 ∷ f1 ∷ f2 ∷ f3 ∷ [])} ⌜ T⊢dih⁽0⁾ v₀ v₁ v₂ v₃ v₄ v₅ v₆ ⌝ᵗ (T⊢dih⁽0⁾-sub (σₗ (j ∷ (fst c) ∷ (snd c) ∷ (fst p) ∷ (fst (snd p)) ∷ (fst (snd (snd p))) ∷ (fst (snd (snd (snd p)))) ∷ [])) v₀ v₁ v₂ v₃ v₄ v₅ v₆) (T⊢dih⁽0⁾-sub (σₗ (j ∷ g ∷ X0 ∷ f0 ∷ f1 ∷ f2 ∷ f3 ∷ [])) v₀ v₁ v₂ v₃ v₄ v₅ v₆) (done ∷ʳ (prj-tup {ws = g ∷ []} X0 nth-z) ∷ʳ (step (βsnd g X0) done) ∷ʳ (prj-tup {ws = f0 ∷ f1 ∷ f2 ∷ f3 ∷ []} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = f0 ∷ f1 ∷ f2 ∷ f3 ∷ []} unit (atᶜ 1)) ∷ʳ (prj-tup {ws = f0 ∷ f1 ∷ f2 ∷ f3 ∷ []} unit (atᶜ 2)) ∷ʳ (prj-tup {ws = f0 ∷ f1 ∷ f2 ∷ f3 ∷ []} unit (atᶜ 3)) ∷ʳ []ʳ)
     R₀ = R₁
 
+jdfzero₍0₎ : {N : ℕ} → IHTy N → IHTm N → (Γ : Ctx) (A : RTy ⌊ Γ ⌋) {w : RTm ε} → sz w < N →
+  ◇ ⊢ w ∷ El (dpay JT D⊢ ⌜ T⊢fzero (dep ⌊ Γ ⌋) unit ((quoteCtx Γ) ,ₚ (quoteTy A)) ⌝ᵗ) → IsNormal w → Γ ⊢ (fzero {⌊ Γ ⌋}) ∷ A
+jdfzero₍0₎ ihTy ihTm Γ A {w} hq dq nq =
+  pay-σ (⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))) done nq
+  ▷ λ { (e0 , (b0 , (eq0 , ((de0 , dq1) , (ne0 , nq1))))) →
+  pay-ρ (⊢-cast (cong (λ Z → El (dpay JT D⊢ Z)) (trans (T⊢fzero⁽1⁾-sub (single e0) (w1 j) (w1 g) (w1 X0) v₀) (T⊢fzero⁽1⁾-cong (subTm (single e0) (w1 j)) j (subTm (single e0) (w1 g)) g (subTm (single e0) (w1 X0)) X0 (subTm (single e0) v₀) e0 (wk-cancel-tm e0 j) (wk-cancel-tm e0 g) (wk-cancel-tm e0 X0) refl))) (⊢conv dq1 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e0) done)))))) done nq1
+  ▷ λ { (r0 , (b1 , (eq1 , ((dr0 , dq2) , (nr0 , nq2))))) →
+  pay-σ dq2 done nq2
+  ▷ λ { (_ , (b2 , (eq2 , ((dF , dq3) , (nF , nq3))))) →
+  unqTm {Γ = ⌊ Γ ⌋} (⊢conv de0 (credᵀ El-⌜Tm⌝)) ne0
+  ▷ λ { (E0 , eqE0) →
+  ihTm Γ E0 Nat (<ˡ eq1 (<ʳ eq0 hq)) (subst (λ z → ◇ ⊢ r0 ∷ IMu JT D⊢ (tmIx j g z (kNat))) eqE0 dr0) nr0
+  ▷ λ D0 →
+  quoteTy-inj A (RTy.Fin (nsuc E0)) (nf-≅ (quoteTy-normal {Γ = ⌊ Γ ⌋} A) (quoteTy-normal {Γ = ⌊ Γ ⌋} (RTy.Fin (nsuc E0))) (subst (λ z → X0 ≅ (kFin (knsuc z))) eqE0 (idrefl-decᶜ dF nF)))
+  ▷ λ eqA →
+  (subst (λ z → Γ ⊢ (fzero {⌊ Γ ⌋}) ∷ z) (sym eqA) (⊢fzero D0)) } } } }
+  where
+    j g X0 p c : RTm ε
+    j = dep ⌊ Γ ⌋
+    g = quoteCtx Γ
+    X0 = quoteTy A
+    p = unit
+    c = pair g X0
+    R₁ = mono-by {Δ = ε} {n = 3} {as = (j ∷ (fst c) ∷ (snd c) ∷ [])} {as' = (j ∷ g ∷ X0 ∷ [])} ⌜ T⊢fzero⁽0⁾ v₀ v₁ v₂ ⌝ᵗ (T⊢fzero⁽0⁾-sub (σₗ (j ∷ (fst c) ∷ (snd c) ∷ [])) v₀ v₁ v₂) (T⊢fzero⁽0⁾-sub (σₗ (j ∷ g ∷ X0 ∷ [])) v₀ v₁ v₂) (done ∷ʳ (prj-tup {ws = g ∷ []} X0 nth-z) ∷ʳ (step (βsnd g X0) done) ∷ʳ []ʳ)
+    R₀ = R₁
+
+jdfsuc₍0₎ : {N : ℕ} → IHTy N → IHTm N → (Γ : Ctx) (a0 : RTm (⌊ Γ ⌋)) (A : RTy ⌊ Γ ⌋) {w : RTm ε} → sz w < N →
+  ◇ ⊢ w ∷ El (dpay JT D⊢ ⌜ T⊢fsuc (dep ⌊ Γ ⌋) ((quoteTm a0) ,ₚ unit) ((quoteCtx Γ) ,ₚ (quoteTy A)) ⌝ᵗ) → IsNormal w → Γ ⊢ (fsuc a0) ∷ A
+jdfsuc₍0₎ ihTy ihTm Γ a0 A {w} hq dq nq =
+  pay-σ (⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))) done nq
+  ▷ λ { (e0 , (b0 , (eq0 , ((de0 , dq1) , (ne0 , nq1))))) →
+  pay-ρ (⊢-cast (cong (λ Z → El (dpay JT D⊢ Z)) (trans (T⊢fsuc⁽1⁾-sub (single e0) (w1 j) (w1 g) (w1 X0) (w1 f0) v₀) (T⊢fsuc⁽1⁾-cong (subTm (single e0) (w1 j)) j (subTm (single e0) (w1 g)) g (subTm (single e0) (w1 X0)) X0 (subTm (single e0) (w1 f0)) f0 (subTm (single e0) v₀) e0 (wk-cancel-tm e0 j) (wk-cancel-tm e0 g) (wk-cancel-tm e0 X0) (wk-cancel-tm e0 f0) refl))) (⊢conv dq1 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e0) done)))))) done nq1
+  ▷ λ { (r0 , (b1 , (eq1 , ((dr0 , dq2) , (nr0 , nq2))))) →
+  pay-σ dq2 done nq2
+  ▷ λ { (_ , (b2 , (eq2 , ((dF , dq3) , (nF , nq3))))) →
+  unqTm {Γ = ⌊ Γ ⌋} (⊢conv de0 (credᵀ El-⌜Tm⌝)) ne0
+  ▷ λ { (E0 , eqE0) →
+  ihTm Γ a0 (RTy.Fin E0) (<ˡ eq1 (<ʳ eq0 hq)) (subst (λ z → ◇ ⊢ r0 ∷ IMu JT D⊢ (tmIx j g f0 (kFin z))) eqE0 dr0) nr0
+  ▷ λ D0 →
+  quoteTy-inj A (RTy.Fin (nsuc E0)) (nf-≅ (quoteTy-normal {Γ = ⌊ Γ ⌋} A) (quoteTy-normal {Γ = ⌊ Γ ⌋} (RTy.Fin (nsuc E0))) (subst (λ z → X0 ≅ (kFin (knsuc z))) eqE0 (idrefl-decᶜ dF nF)))
+  ▷ λ eqA →
+  (subst (λ z → Γ ⊢ (fsuc a0) ∷ z) (sym eqA) (⊢fsuc D0)) } } } }
+  where
+    j g f0 X0 p c : RTm ε
+    j = dep ⌊ Γ ⌋
+    g = quoteCtx Γ
+    f0 = (quoteTm a0)
+    X0 = quoteTy A
+    p = (f0 ,ₚ unit)
+    c = pair g X0
+    R₁ = mono-by {Δ = ε} {n = 4} {as = (j ∷ (fst c) ∷ (snd c) ∷ (fst p) ∷ [])} {as' = (j ∷ g ∷ X0 ∷ f0 ∷ [])} ⌜ T⊢fsuc⁽0⁾ v₀ v₁ v₂ v₃ ⌝ᵗ (T⊢fsuc⁽0⁾-sub (σₗ (j ∷ (fst c) ∷ (snd c) ∷ (fst p) ∷ [])) v₀ v₁ v₂ v₃) (T⊢fsuc⁽0⁾-sub (σₗ (j ∷ g ∷ X0 ∷ f0 ∷ [])) v₀ v₁ v₂ v₃) (done ∷ʳ (prj-tup {ws = g ∷ []} X0 nth-z) ∷ʳ (step (βsnd g X0) done) ∷ʳ (prj-tup {ws = f0 ∷ []} unit (atᶜ 0)) ∷ʳ []ʳ)
+    R₀ = R₁
+
 jdfcase₍0₎ : {N : ℕ} → IHTy N → IHTm N → (Γ : Ctx) (a0 : RTm (⌊ Γ ⌋)) (a1 : RTm (⌊ Γ ⌋)) (a2 : RTm (⌊ Γ ⌋ ∙)) (A : RTy ⌊ Γ ⌋) {w : RTm ε} → sz w < N →
   ◇ ⊢ w ∷ El (dpay JT D⊢ ⌜ T⊢fcase (dep ⌊ Γ ⌋) ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ((quoteCtx Γ) ,ₚ (quoteTy A)) ⌝ᵗ) → IsNormal w → Γ ⊢ (fcase a0 a1 a2) ∷ A
 jdfcase₍0₎ ihTy ihTm Γ a0 a1 a2 A {w} hq dq nq =
@@ -1433,19 +1486,17 @@ jdfcase₍0₎ ihTy ihTm Γ a0 a1 a2 A {w} hq dq nq =
   ▷ λ { (r3 , (b5 , (eq5 , ((dr3 , dq6) , (nr3 , nq6))))) →
   pay-σ dq6 done nq6
   ▷ λ { (_ , (b6 , (eq6 , ((dF , dq7) , (nF , nq7))))) →
-  nat-unq de0 ne0
-  ▷ λ { (E0 , eqN0) →
-  trans eqN0 (num-quoteℕ E0)
-  ▷ λ eqE0 →
+  unqTm {Γ = ⌊ Γ ⌋} (⊢conv de0 (credᵀ El-⌜Tm⌝)) ne0
+  ▷ λ { (E0 , eqE0) →
   unqTy {Γ = ⌊ Γ ⌋ ∙} (⊢conv de1 (credᵀ El-⌜Ty⌝)) ne1
   ▷ λ { (E1 , eqE1) →
-  ihTy (Γ ▹ (RTy.Fin (suc E0))) E1 (<ˡ eq2 (<ʳ eq1 (<ʳ eq0 hq))) (subst (λ z → ◇ ⊢ r0 ∷ IMu JT D⊢ (tyIx (nsuc j) (cext g (kFin (nsuc (quoteℕ E0)))) z)) eqE1 (subst (λ z → ◇ ⊢ r0 ∷ IMu JT D⊢ (tyIx (nsuc j) (cext g (kFin (nsuc z))) e1)) eqE0 dr0)) nr0
+  ihTy (Γ ▹ (RTy.Fin (nsuc E0))) E1 (<ˡ eq2 (<ʳ eq1 (<ʳ eq0 hq))) (subst (λ z → ◇ ⊢ r0 ∷ IMu JT D⊢ (tyIx (nsuc j) (cext g (kFin (knsuc (quoteTm E0)))) z)) eqE1 (subst (λ z → ◇ ⊢ r0 ∷ IMu JT D⊢ (tyIx (nsuc j) (cext g (kFin (knsuc z))) e1)) eqE0 dr0)) nr0
   ▷ λ D0 →
-  ihTm Γ a0 (RTy.Fin (suc E0)) (<ˡ eq3 (<ʳ eq2 (<ʳ eq1 (<ʳ eq0 hq)))) (subst (λ z → ◇ ⊢ r1 ∷ IMu JT D⊢ (tmIx j g f0 (kFin (nsuc z)))) eqE0 dr1) nr1
+  ihTm Γ a0 (RTy.Fin (nsuc E0)) (<ˡ eq3 (<ʳ eq2 (<ʳ eq1 (<ʳ eq0 hq)))) (subst (λ z → ◇ ⊢ r1 ∷ IMu JT D⊢ (tmIx j g f0 (kFin (knsuc z)))) eqE0 dr1) nr1
   ▷ λ D1 →
   ihTm Γ a1 (subTy (single fzero) E1) (<ˡ eq4 (<ʳ eq3 (<ʳ eq2 (<ʳ eq1 (<ʳ eq0 hq))))) (⊢conv (subst (λ z → ◇ ⊢ r2 ∷ IMu JT D⊢ (tmIx j g f1 (sub0 0 j z (kfzero)))) eqE1 dr2) (tmIx≅ done done (sub0-agree-ty E1 fzero))) nr2
   ▷ λ D2 →
-  ihTm (Γ ▹ (RTy.Fin E0)) a2 (subTy fsucS E1) (<ˡ eq5 (<ʳ eq4 (<ʳ eq3 (<ʳ eq2 (<ʳ eq1 (<ʳ eq0 hq)))))) (⊢conv (subst (λ z → ◇ ⊢ r3 ∷ IMu JT D⊢ (tmIx (nsuc j) (cext g (kFin (quoteℕ E0))) f2 (fsucSK j z))) eqE1 (subst (λ z → ◇ ⊢ r3 ∷ IMu JT D⊢ (tmIx (nsuc j) (cext g (kFin z)) f2 (fsucSK j e1))) eqE0 dr3)) (tmIx≅ done done (fsucS-agree E1))) nr3
+  ihTm (Γ ▹ (RTy.Fin E0)) a2 (subTy fsucS E1) (<ˡ eq5 (<ʳ eq4 (<ʳ eq3 (<ʳ eq2 (<ʳ eq1 (<ʳ eq0 hq)))))) (⊢conv (subst (λ z → ◇ ⊢ r3 ∷ IMu JT D⊢ (tmIx (nsuc j) (cext g (kFin (quoteTm E0))) f2 (fsucSK j z))) eqE1 (subst (λ z → ◇ ⊢ r3 ∷ IMu JT D⊢ (tmIx (nsuc j) (cext g (kFin z)) f2 (fsucSK j e1))) eqE0 dr3)) (tmIx≅ done done (fsucS-agree E1))) nr3
   ▷ λ D3 →
   quoteTy-inj A (subTy (single a0) E1) (nf-≅ (quoteTy-normal {Γ = ⌊ Γ ⌋} A) (quoteTy-normal {Γ = ⌊ Γ ⌋} (subTy (single a0) E1)) (ctrn (subst (λ z → X0 ≅ (sub0 0 j z f0)) eqE1 (idrefl-decᶜ dF nF)) (⟶*→≅ (sub0-agree-ty E1 a0))))
   ▷ λ eqA →
@@ -1476,9 +1527,9 @@ jdfcase0₍0₎ ihTy ihTm Γ a0 A {w} hq dq nq =
   ▷ λ { (_ , (b3 , (eq3 , ((dF , dq4) , (nF , nq4))))) →
   unqTy {Γ = ⌊ Γ ⌋ ∙} (⊢conv de0 (credᵀ El-⌜Ty⌝)) ne0
   ▷ λ { (E0 , eqE0) →
-  ihTy (Γ ▹ (RTy.Fin zero)) E0 (<ˡ eq1 (<ʳ eq0 hq)) (subst (λ z → ◇ ⊢ r0 ∷ IMu JT D⊢ (tyIx (nsuc j) (cext g (kFin nzero)) z)) eqE0 dr0) nr0
+  ihTy (Γ ▹ (RTy.Fin nzero)) E0 (<ˡ eq1 (<ʳ eq0 hq)) (subst (λ z → ◇ ⊢ r0 ∷ IMu JT D⊢ (tyIx (nsuc j) (cext g (kFin (knzero))) z)) eqE0 dr0) nr0
   ▷ λ D0 →
-  ihTm Γ a0 (RTy.Fin zero) (<ˡ eq2 (<ʳ eq1 (<ʳ eq0 hq))) dr1 nr1
+  ihTm Γ a0 (RTy.Fin nzero) (<ˡ eq2 (<ʳ eq1 (<ʳ eq0 hq))) dr1 nr1
   ▷ λ D1 →
   quoteTy-inj A (subTy (single a0) E0) (nf-≅ (quoteTy-normal {Γ = ⌊ Γ ⌋} A) (quoteTy-normal {Γ = ⌊ Γ ⌋} (subTy (single a0) E0)) (ctrn (subst (λ z → X0 ≅ (sub0 0 j z f0)) eqE0 (idrefl-decᶜ dF nF)) (⟶*→≅ (sub0-agree-ty E0 a0))))
   ▷ λ eqA →
@@ -1640,39 +1691,41 @@ jdcIMu₍0₎ ihTy ihTm Γ a0 a1 a2 A {w} hq dq nq =
     dq₂ = subst (λ z → ◇ ⊢ w ∷ El (dpay JT D⊢ (PT⊢cIMu.CASE j z c'))) (quote-hdTy A) dq₁
     dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⊢cIMu.case-any {j = j} {q = pfTy A} {c = c'} (atᵍ 0) (nhTy A)))))
 
-jdcFin₍0₎ᴸ : {N : ℕ} → IHTy N → IHTm N → (Γ : Ctx) (a0 : ℕ) {w : RTm ε} → sz w < N →
-  ◇ ⊢ w ∷ El (dpay JT D⊢ (PT⊢cFin.CX (dep ⌊ Γ ⌋) ((quoteℕ a0) ,ₚ unit) ((quoteCtx Γ) ,ₚ (quoteTy (U {⌊ Γ ⌋}))))) → IsNormal w → Γ ⊢ (⌜Fin⌝ {⌊ Γ ⌋} a0) ∷ (U {⌊ Γ ⌋})
+jdcFin₍0₎ᴸ : {N : ℕ} → IHTy N → IHTm N → (Γ : Ctx) (a0 : RTm (⌊ Γ ⌋)) {w : RTm ε} → sz w < N →
+  ◇ ⊢ w ∷ El (dpay JT D⊢ (PT⊢cFin.CX (dep ⌊ Γ ⌋) ((quoteTm a0) ,ₚ unit) ((quoteCtx Γ) ,ₚ (quoteTy (U {⌊ Γ ⌋}))))) → IsNormal w → Γ ⊢ (⌜Fin⌝ a0) ∷ (U {⌊ Γ ⌋})
 jdcFin₍0₎ᴸ ihTy ihTm Γ a0 {w} hq dq nq =
-  pay-ι (⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))) done nq
-  ▷ λ _ →
-  ⊢⌜Fin⌝
+  pay-ρ (⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))) done nq
+  ▷ λ { (r0 , (b0 , (eq0 , ((dr0 , dq1) , (nr0 , nq1))))) →
+  ihTm Γ a0 Nat (<ˡ eq0 hq) dr0 nr0
+  ▷ λ D0 →
+  (⊢⌜Fin⌝ D0) }
   where
     j g f0 X0 p c q c' : RTm ε
     j = dep ⌊ Γ ⌋
     g = quoteCtx Γ
-    f0 = (quoteℕ a0)
+    f0 = (quoteTm a0)
     X0 = quoteTy (U {⌊ Γ ⌋})
     p = (f0 ,ₚ unit)
     c = pair g X0
     q = unit
     c' = pair g p
-    R₁ = mono-by {Δ = ε} {n = 0} {as = ([])} {as' = ([])} ⌜ T⊢cFin⁽0⁾ ⌝ᵗ (T⊢cFin⁽0⁾-sub (σₗ ([])) ) (T⊢cFin⁽0⁾-sub (σₗ ([])) ) ([]ʳ)
-    R₀ : (PT⊢cFin.CX j p c) ⟶* ⌜ T⊢cFin⁽0⁾ ⌝ᵗ
-    R₀ = ⟶*-trans {t = (PT⊢cFin.CX j p c)} {u = PT⊢cFin.CASE j X0 ((fst c) ,ₚ p)} {v = ⌜ T⊢cFin⁽0⁾ ⌝ᵗ} (PT⊢cFin.CASE-⟶ᵃ (step (βsnd g X0) done))
-           (⟶*-trans {t = PT⊢cFin.CASE j X0 ((fst c) ,ₚ p)} {u = PT⊢cFin.CASE j X0 c'} {v = ⌜ T⊢cFin⁽0⁾ ⌝ᵗ} (PT⊢cFin.CASE-⟶ᶜ (⟶*-pairˡ (step (βfst g X0) done)))
-           (⟶*-trans {t = PT⊢cFin.CASE j X0 c'} {u = ⌜ T⊢cFin j q c' ⌝ᵗ} {v = ⌜ T⊢cFin⁽0⁾ ⌝ᵗ} (PT⊢cFin.case-β {j = j} {q = q} {c = c'} (atᵍ 0) (atʰ 1)) R₁))
+    R₁ = mono-by {Δ = ε} {n = 3} {as = (j ∷ (fst c') ∷ (fst (snd c')) ∷ [])} {as' = (j ∷ g ∷ f0 ∷ [])} ⌜ T⊢cFin⁽0⁾ v₀ v₁ v₂ ⌝ᵗ (T⊢cFin⁽0⁾-sub (σₗ (j ∷ (fst c') ∷ (fst (snd c')) ∷ [])) v₀ v₁ v₂) (T⊢cFin⁽0⁾-sub (σₗ (j ∷ g ∷ f0 ∷ [])) v₀ v₁ v₂) (done ∷ʳ (prj-tup {ws = g ∷ f0 ∷ []} unit nth-z) ∷ʳ (prj-tup {ws = g ∷ f0 ∷ []} unit (atᶜ 1)) ∷ʳ []ʳ)
+    R₀ : (PT⊢cFin.CX j p c) ⟶* ⌜ T⊢cFin⁽0⁾ j g f0 ⌝ᵗ
+    R₀ = ⟶*-trans {t = (PT⊢cFin.CX j p c)} {u = PT⊢cFin.CASE j X0 ((fst c) ,ₚ p)} {v = ⌜ T⊢cFin⁽0⁾ j g f0 ⌝ᵗ} (PT⊢cFin.CASE-⟶ᵃ (step (βsnd g X0) done))
+           (⟶*-trans {t = PT⊢cFin.CASE j X0 ((fst c) ,ₚ p)} {u = PT⊢cFin.CASE j X0 c'} {v = ⌜ T⊢cFin⁽0⁾ j g f0 ⌝ᵗ} (PT⊢cFin.CASE-⟶ᶜ (⟶*-pairˡ (step (βfst g X0) done)))
+           (⟶*-trans {t = PT⊢cFin.CASE j X0 c'} {u = ⌜ T⊢cFin j q c' ⌝ᵗ} {v = ⌜ T⊢cFin⁽0⁾ j g f0 ⌝ᵗ} (PT⊢cFin.case-β {j = j} {q = q} {c = c'} (atᵍ 0) (atʰ 1)) R₁))
 
-jdcFin₍0₎ : {N : ℕ} → IHTy N → IHTm N → (Γ : Ctx) (a0 : ℕ) (A : RTy ⌊ Γ ⌋) {w : RTm ε} → sz w < N →
-  ◇ ⊢ w ∷ El (dpay JT D⊢ (PT⊢cFin.CX (dep ⌊ Γ ⌋) ((quoteℕ a0) ,ₚ unit) ((quoteCtx Γ) ,ₚ (quoteTy A)))) → IsNormal w → Γ ⊢ (⌜Fin⌝ {⌊ Γ ⌋} a0) ∷ A
+jdcFin₍0₎ : {N : ℕ} → IHTy N → IHTm N → (Γ : Ctx) (a0 : RTm (⌊ Γ ⌋)) (A : RTy ⌊ Γ ⌋) {w : RTm ε} → sz w < N →
+  ◇ ⊢ w ∷ El (dpay JT D⊢ (PT⊢cFin.CX (dep ⌊ Γ ⌋) ((quoteTm a0) ,ₚ unit) ((quoteCtx Γ) ,ₚ (quoteTy A)))) → IsNormal w → Γ ⊢ (⌜Fin⌝ a0) ∷ A
 jdcFin₍0₎ ihTy ihTm Γ a0 A {w} hq dq nq =
   pat-hit 0 1 (hdTy A) dq₃ nq
   ▷ λ e → isU A e
-  ▷ λ { eqv → subst (λ z → Γ ⊢ (⌜Fin⌝ {⌊ Γ ⌋} a0) ∷ z) (sym eqv) (jdcFin₍0₎ᴸ ihTy ihTm Γ a0 hq (subst (λ z → ◇ ⊢ w ∷ El (dpay JT D⊢ (PT⊢cFin.CX (dep ⌊ Γ ⌋) ((quoteℕ a0) ,ₚ unit) ((quoteCtx Γ) ,ₚ (quoteTy z))))) eqv dq) nq) }
+  ▷ λ { eqv → subst (λ z → Γ ⊢ (⌜Fin⌝ a0) ∷ z) (sym eqv) (jdcFin₍0₎ᴸ ihTy ihTm Γ a0 hq (subst (λ z → ◇ ⊢ w ∷ El (dpay JT D⊢ (PT⊢cFin.CX (dep ⌊ Γ ⌋) ((quoteTm a0) ,ₚ unit) ((quoteCtx Γ) ,ₚ (quoteTy z))))) eqv dq) nq) }
   where
     j g f0 X0 p c c' : RTm ε
     j = dep ⌊ Γ ⌋
     g = quoteCtx Γ
-    f0 = (quoteℕ a0)
+    f0 = (quoteTm a0)
     X0 = quoteTy A
     p = (f0 ,ₚ unit)
     c = pair g X0

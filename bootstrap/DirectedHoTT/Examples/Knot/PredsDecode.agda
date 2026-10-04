@@ -45,8 +45,8 @@ private
        RowsDec NNCₘ.J NNCF.DF (⌜ TNNC⊢cbase (dep Γ) unit unit ⌝ᵗ ∷ []) x → NoNatC (⌜base⌝ {Γ})
   dNNC⊢cUnit₁ : {Γ : Cx} {x : RTm ε} →
        RowsDec NNCₘ.J NNCF.DF (⌜ TNNC⊢cUnit (dep Γ) unit unit ⌝ᵗ ∷ []) x → NoNatC (⌜Unit⌝ {Γ})
-  dNNC⊢cFin₁ : {Γ : Cx} (a0 : ℕ) {x : RTm ε} →
-       RowsDec NNCₘ.J NNCF.DF (⌜ TNNC⊢cFin (dep Γ) ((quoteℕ a0) ,ₚ unit) unit ⌝ᵗ ∷ []) x → NoNatC (⌜Fin⌝ {Γ} a0)
+  dNNC⊢cFin₁ : {Γ : Cx} (a0 : RTm (Γ)) {x : RTm ε} →
+       RowsDec NNCₘ.J NNCF.DF (⌜ TNNC⊢cFin (dep Γ) ((quoteTm a0) ,ₚ unit) unit ⌝ᵗ ∷ []) x → NoNatC (⌜Fin⌝ a0)
   dNNC⊢cSg₁ : {Γ : Cx} (a0 : RTm (Γ)) (a1 : RTm (Γ ∙)) {x : RTm ε} →
        RowsDec NNCₘ.J NNCF.DF (⌜ TNNC⊢cSg (dep Γ) ((quoteTm a0) ,ₚ ((quoteTm a1) ,ₚ unit)) unit ⌝ᵗ ∷ []) x → NoNatC (⌜Σ⌝ a0 a1)
   dNNC⊢cId₁ : {Γ : Cx} (a0 : RTm (Γ)) (a1 : RTm (Γ)) (a2 : RTm (Γ)) {x : RTm ε} →
@@ -67,8 +67,8 @@ private
        RowsDec StkAₘ.J StkAF.DF (⌜ TStkA⊢cId (dep Γ) ((quoteTm a0) ,ₚ ((quoteTm a1) ,ₚ ((quoteTm a2) ,ₚ unit))) unit ⌝ᵗ ∷ []) x → stkA? (⌜Id⌝ a0 a1 a2) ≡ true
   dStkA⊢cUnit₁ : {Γ : Cx} {x : RTm ε} →
        RowsDec StkAₘ.J StkAF.DF (⌜ TStkA⊢cUnit (dep Γ) unit unit ⌝ᵗ ∷ []) x → stkA? (⌜Unit⌝ {Γ}) ≡ true
-  dStkA⊢cFin₁ : {Γ : Cx} (a0 : ℕ) {x : RTm ε} →
-       RowsDec StkAₘ.J StkAF.DF (⌜ TStkA⊢cFin (dep Γ) ((quoteℕ a0) ,ₚ unit) unit ⌝ᵗ ∷ []) x → stkA? (⌜Fin⌝ {Γ} a0) ≡ true
+  dStkA⊢cFin₁ : {Γ : Cx} (a0 : RTm (Γ)) {x : RTm ε} →
+       RowsDec StkAₘ.J StkAF.DF (⌜ TStkA⊢cFin (dep Γ) ((quoteTm a0) ,ₚ unit) unit ⌝ᵗ ∷ []) x → stkA? (⌜Fin⌝ a0) ≡ true
   dStkA⊢cNat₁ : {Γ : Cx} {x : RTm ε} →
        RowsDec StkAₘ.J StkAF.DF (⌜ TStkA⊢cNat (dep Γ) unit unit ⌝ᵗ ∷ []) x → stkA? (⌜Nat⌝ {Γ}) ≡ true
   dStkA⊢cIMu₁ : {Γ : Cx} (a0 : RTm (Γ)) (a1 : RTm (Γ)) (a2 : RTm (Γ)) {x : RTm ε} →
@@ -85,8 +85,8 @@ private
        RowsDec StkCₘ.J StkCF.DF (⌜ TStkC⊢cId (dep Γ) ((quoteTm a0) ,ₚ ((quoteTm a1) ,ₚ ((quoteTm a2) ,ₚ unit))) unit ⌝ᵗ ∷ []) x → stkC? (⌜Id⌝ a0 a1 a2) ≡ true
   dStkC⊢cUnit₁ : {Γ : Cx} {x : RTm ε} →
        RowsDec StkCₘ.J StkCF.DF (⌜ TStkC⊢cUnit (dep Γ) unit unit ⌝ᵗ ∷ []) x → stkC? (⌜Unit⌝ {Γ}) ≡ true
-  dStkC⊢cFin₁ : {Γ : Cx} (a0 : ℕ) {x : RTm ε} →
-       RowsDec StkCₘ.J StkCF.DF (⌜ TStkC⊢cFin (dep Γ) ((quoteℕ a0) ,ₚ unit) unit ⌝ᵗ ∷ []) x → stkC? (⌜Fin⌝ {Γ} a0) ≡ true
+  dStkC⊢cFin₁ : {Γ : Cx} (a0 : RTm (Γ)) {x : RTm ε} →
+       RowsDec StkCₘ.J StkCF.DF (⌜ TStkC⊢cFin (dep Γ) ((quoteTm a0) ,ₚ unit) unit ⌝ᵗ ∷ []) x → stkC? (⌜Fin⌝ a0) ≡ true
   dStkC⊢cIMu₁ : {Γ : Cx} (a0 : RTm (Γ)) (a1 : RTm (Γ)) (a2 : RTm (Γ)) {x : RTm ε} →
        RowsDec StkCₘ.J StkCF.DF (⌜ TStkC⊢cIMu (dep Γ) ((quoteTm a0) ,ₚ ((quoteTm a1) ,ₚ ((quoteTm a2) ,ₚ unit))) unit ⌝ᵗ ∷ []) x → stkC? (⌜IMu⌝ a0 a1 a2) ≡ true
   dStkC⊢cHom₁ : {Γ : Cx} (a0 : RTm (Γ)) (a1 : RTm (Γ)) (a2 : RTm (Γ)) {x : RTm ε} →
@@ -202,8 +202,8 @@ decNNC {Γ} (psplit a0 a1) dx nrm = ⊥-elim (rows-none (NNCF.fibF {s = 1} {k = 
 decNNC {Γ} ⌜Nat⌝ dx nrm = ⊥-elim (rows-none (NNCF.fibF {s = 1} {k = 34} {j = dep Γ} {c = unit} (atᵍ 1) (atʰ 34)) dx nrm)
 decNNC {Γ} (⌜IMu⌝ a0 a1 a2) dx nrm = ⊥-elim (rows-none (NNCF.fibF {s = 1} {k = 35} {j = dep Γ} {c = unit} (atᵍ 1) (atʰ 35)) dx nrm)
 decNNC {Γ} (⌜Fin⌝ a0) dx nrm =
-  dNNC⊢cFin₁ {Γ = Γ} a0 (rows-dec {I = NNCₘ.J} {D = NNCF.DF} {i = ixNNC (dep Γ) (quoteTm (⌜Fin⌝ {Γ} a0))} {m = 1} {Cs = ⌜ TNNC⊢cFin (dep Γ) ((quoteℕ a0) ,ₚ unit) unit ⌝ᵗ ∷ []}
-    (NNCF.fibF {s = 1} {k = 36} {j = dep Γ} {p = ((quoteℕ a0) ,ₚ unit)} {c = unit} (atᵍ 1) (atʰ 36)) dx nrm)
+  dNNC⊢cFin₁ {Γ = Γ} a0 (rows-dec {I = NNCₘ.J} {D = NNCF.DF} {i = ixNNC (dep Γ) (quoteTm (⌜Fin⌝ a0))} {m = 1} {Cs = ⌜ TNNC⊢cFin (dep Γ) ((quoteTm a0) ,ₚ unit) unit ⌝ᵗ ∷ []}
+    (NNCF.fibF {s = 1} {k = 36} {j = dep Γ} {p = ((quoteTm a0) ,ₚ unit)} {c = unit} (atᵍ 1) (atʰ 36)) dx nrm)
 decNNC {Γ} ⌜Unit⌝ dx nrm =
   dNNC⊢cUnit₁ {Γ = Γ} (rows-dec {I = NNCₘ.J} {D = NNCF.DF} {i = ixNNC (dep Γ) (quoteTm (⌜Unit⌝ {Γ}))} {m = 1} {Cs = ⌜ TNNC⊢cUnit (dep Γ) unit unit ⌝ᵗ ∷ []}
     (NNCF.fibF {s = 1} {k = 37} {j = dep Γ} {p = unit} {c = unit} (atᵍ 1) (atʰ 37)) dx nrm)
@@ -258,8 +258,8 @@ decStkA {Γ} (⌜IMu⌝ a0 a1 a2) dx nrm =
   dStkA⊢cIMu₁ {Γ = Γ} a0 a1 a2 (rows-dec {I = StkAₘ.J} {D = StkAF.DF} {i = ixStkA (dep Γ) (quoteTm (⌜IMu⌝ a0 a1 a2))} {m = 1} {Cs = ⌜ TStkA⊢cIMu (dep Γ) ((quoteTm a0) ,ₚ ((quoteTm a1) ,ₚ ((quoteTm a2) ,ₚ unit))) unit ⌝ᵗ ∷ []}
     (StkAF.fibF {s = 1} {k = 35} {j = dep Γ} {p = ((quoteTm a0) ,ₚ ((quoteTm a1) ,ₚ ((quoteTm a2) ,ₚ unit)))} {c = unit} (atᵍ 1) (atʰ 35)) dx nrm)
 decStkA {Γ} (⌜Fin⌝ a0) dx nrm =
-  dStkA⊢cFin₁ {Γ = Γ} a0 (rows-dec {I = StkAₘ.J} {D = StkAF.DF} {i = ixStkA (dep Γ) (quoteTm (⌜Fin⌝ {Γ} a0))} {m = 1} {Cs = ⌜ TStkA⊢cFin (dep Γ) ((quoteℕ a0) ,ₚ unit) unit ⌝ᵗ ∷ []}
-    (StkAF.fibF {s = 1} {k = 36} {j = dep Γ} {p = ((quoteℕ a0) ,ₚ unit)} {c = unit} (atᵍ 1) (atʰ 36)) dx nrm)
+  dStkA⊢cFin₁ {Γ = Γ} a0 (rows-dec {I = StkAₘ.J} {D = StkAF.DF} {i = ixStkA (dep Γ) (quoteTm (⌜Fin⌝ a0))} {m = 1} {Cs = ⌜ TStkA⊢cFin (dep Γ) ((quoteTm a0) ,ₚ unit) unit ⌝ᵗ ∷ []}
+    (StkAF.fibF {s = 1} {k = 36} {j = dep Γ} {p = ((quoteTm a0) ,ₚ unit)} {c = unit} (atᵍ 1) (atʰ 36)) dx nrm)
 decStkA {Γ} ⌜Unit⌝ dx nrm =
   dStkA⊢cUnit₁ {Γ = Γ} (rows-dec {I = StkAₘ.J} {D = StkAF.DF} {i = ixStkA (dep Γ) (quoteTm (⌜Unit⌝ {Γ}))} {m = 1} {Cs = ⌜ TStkA⊢cUnit (dep Γ) unit unit ⌝ᵗ ∷ []}
     (StkAF.fibF {s = 1} {k = 37} {j = dep Γ} {p = unit} {c = unit} (atᵍ 1) (atʰ 37)) dx nrm)
@@ -312,8 +312,8 @@ decStkC {Γ} (⌜IMu⌝ a0 a1 a2) dx nrm =
   dStkC⊢cIMu₁ {Γ = Γ} a0 a1 a2 (rows-dec {I = StkCₘ.J} {D = StkCF.DF} {i = ixStkC (dep Γ) (quoteTm (⌜IMu⌝ a0 a1 a2))} {m = 1} {Cs = ⌜ TStkC⊢cIMu (dep Γ) ((quoteTm a0) ,ₚ ((quoteTm a1) ,ₚ ((quoteTm a2) ,ₚ unit))) unit ⌝ᵗ ∷ []}
     (StkCF.fibF {s = 1} {k = 35} {j = dep Γ} {p = ((quoteTm a0) ,ₚ ((quoteTm a1) ,ₚ ((quoteTm a2) ,ₚ unit)))} {c = unit} (atᵍ 1) (atʰ 35)) dx nrm)
 decStkC {Γ} (⌜Fin⌝ a0) dx nrm =
-  dStkC⊢cFin₁ {Γ = Γ} a0 (rows-dec {I = StkCₘ.J} {D = StkCF.DF} {i = ixStkC (dep Γ) (quoteTm (⌜Fin⌝ {Γ} a0))} {m = 1} {Cs = ⌜ TStkC⊢cFin (dep Γ) ((quoteℕ a0) ,ₚ unit) unit ⌝ᵗ ∷ []}
-    (StkCF.fibF {s = 1} {k = 36} {j = dep Γ} {p = ((quoteℕ a0) ,ₚ unit)} {c = unit} (atᵍ 1) (atʰ 36)) dx nrm)
+  dStkC⊢cFin₁ {Γ = Γ} a0 (rows-dec {I = StkCₘ.J} {D = StkCF.DF} {i = ixStkC (dep Γ) (quoteTm (⌜Fin⌝ a0))} {m = 1} {Cs = ⌜ TStkC⊢cFin (dep Γ) ((quoteTm a0) ,ₚ unit) unit ⌝ᵗ ∷ []}
+    (StkCF.fibF {s = 1} {k = 36} {j = dep Γ} {p = ((quoteTm a0) ,ₚ unit)} {c = unit} (atᵍ 1) (atʰ 36)) dx nrm)
 decStkC {Γ} ⌜Unit⌝ dx nrm =
   dStkC⊢cUnit₁ {Γ = Γ} (rows-dec {I = StkCₘ.J} {D = StkCF.DF} {i = ixStkC (dep Γ) (quoteTm (⌜Unit⌝ {Γ}))} {m = 1} {Cs = ⌜ TStkC⊢cUnit (dep Γ) unit unit ⌝ᵗ ∷ []}
     (StkCF.fibF {s = 1} {k = 37} {j = dep Γ} {p = unit} {c = unit} (atᵍ 1) (atʰ 37)) dx nrm)

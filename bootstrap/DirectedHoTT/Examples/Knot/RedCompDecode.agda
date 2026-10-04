@@ -1024,8 +1024,8 @@ cd⟶tr₍7₎ {Γ} a0 a1 a2 u {q} dq nq =
     dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶tr₈ᶜ0.CASE j z (c ,ₚ p ,ₚ unit)))) (quote-hdTm a1) dq₁
     dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶tr₈ᶜ0.case-any {j = j} {q = pfTm a1} {c = (c ,ₚ p ,ₚ unit)} (atᵍ 1) (nhTm a1)))))
 
-cd⟶tr₍8₎ᴸ2 : {Γ : Cx} (a0 : RTm (Γ ∙)) (a2 : RTm (Γ)) (x0ᵢ1 : RTm (Γ)) (x1ᵢ0 : ℕ) (u : RTm Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶tr₉ᶜ0.CASE (dep Γ) (fst (snd ((quoteTm a0) ,ₚ (quoteTm (hrefl (⌜Fin⌝ {Γ} x1ᵢ0) x0ᵢ1)) ,ₚ (quoteTm a2) ,ₚ unit))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm (hrefl (⌜Fin⌝ {Γ} x1ᵢ0) x0ᵢ1)) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (tr a0 (hrefl (⌜Fin⌝ {Γ} x1ᵢ0) x0ᵢ1) a2) ⟶ u
+cd⟶tr₍8₎ᴸ2 : {Γ : Cx} (a0 : RTm (Γ ∙)) (a2 : RTm (Γ)) (x0ᵢ1 : RTm (Γ)) (x1ᵢ0 : RTm (Γ)) (u : RTm Γ) {q : RTm ε} →
+  ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶tr₉ᶜ0.CASE (dep Γ) (fst (snd ((quoteTm a0) ,ₚ (quoteTm (hrefl (⌜Fin⌝ x1ᵢ0) x0ᵢ1)) ,ₚ (quoteTm a2) ,ₚ unit))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm (hrefl (⌜Fin⌝ x1ᵢ0) x0ᵢ1)) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (tr a0 (hrefl (⌜Fin⌝ x1ᵢ0) x0ᵢ1) a2) ⟶ u
 cd⟶tr₍8₎ᴸ2 {Γ} a0 a2 x0ᵢ1 x1ᵢ0 u {q} dq nq =
   pay-σ (⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))) done nq
   ▷ λ { (e0 , (_ , (_ , ((de0 , dq1) , (ne0 , nq1))))) →
@@ -1045,16 +1045,16 @@ cd⟶tr₍8₎ᴸ2 {Γ} a0 a2 x0ᵢ1 x1ᵢ0 u {q} dq nq =
   ▷ λ { (E2 , eqE2) →
   quoteTm-inj a0 (⌜Hom⌝ E0 E1 E2) (nf-≅ (quoteTm-normal {Γ = Γ ∙} a0) (quoteTm-normal {Γ = Γ ∙} (⌜Hom⌝ E0 E1 E2)) (subst (λ z → f0 ≅ (kcHom (quoteTm E0) (quoteTm E1) z)) eqE2 (subst (λ z → f0 ≅ (kcHom (quoteTm E0) z e2)) eqE1 (subst (λ z → f0 ≅ (kcHom z e1 e2)) eqE0 (idrefl-decᶜ de3 ne3)))))
   ▷ λ eqM3 →
-  (subst (λ z → (tr z (hrefl (⌜Fin⌝ {Γ} x1ᵢ0) x0ᵢ1) a2) ⟶ u) (sym eqM3) (close (tr-J-Fin {_} {x1ᵢ0} E0 E1 E2 x0ᵢ1 a2) (idrefl-decᶜ dF nF))) } } } } } } } }
+  (subst (λ z → (tr z (hrefl (⌜Fin⌝ x1ᵢ0) x0ᵢ1) a2) ⟶ u) (sym eqM3) (close (tr-J-Fin {_} {x1ᵢ0} E0 E1 E2 x0ᵢ1 a2) (idrefl-decᶜ dF nF))) } } } } } } } }
   where
     j f0 f1 f2 a0ᵢ0 a0ᵢ1 a1ᵢ0 p c q0 q1 cv0 cv1 : RTm ε
     j = dep Γ
     f0 = (quoteTm a0)
-    f1 = (quoteTm (hrefl (⌜Fin⌝ {Γ} x1ᵢ0) x0ᵢ1))
+    f1 = (quoteTm (hrefl (⌜Fin⌝ x1ᵢ0) x0ᵢ1))
     f2 = (quoteTm a2)
-    a0ᵢ0 = (quoteTm (⌜Fin⌝ {Γ} x1ᵢ0))
+    a0ᵢ0 = (quoteTm (⌜Fin⌝ x1ᵢ0))
     a0ᵢ1 = (quoteTm x0ᵢ1)
-    a1ᵢ0 = (quoteℕ x1ᵢ0)
+    a1ᵢ0 = (quoteTm x1ᵢ0)
     p = (f0 ,ₚ f1 ,ₚ f2 ,ₚ unit)
     c = quoteTm u
     q0 = (a0ᵢ0 ,ₚ a0ᵢ1 ,ₚ unit)
@@ -2248,8 +2248,8 @@ cd⟶ᵀEl₍7₎ {Γ} a0 u {q} dq nq =
     dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay RedTₘ.J ⟶ᵀF.DF (PT⟶ᵀEl₈ᶜ0.CASE j z (c ,ₚ p ,ₚ unit)))) (quote-hdTm a0) dq₁
     dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶ᵀEl₈ᶜ0.case-any {j = j} {q = pfTm a0} {c = (c ,ₚ p ,ₚ unit)} (atᵍ 1) (nhTm a0)))))
 
-cd⟶ᵀEl₍8₎ᴸ1 : {Γ : Cx} (x0ᵢ0 : ℕ) (u : RTy Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay RedTₘ.J ⟶ᵀF.DF (PT⟶ᵀEl₉ᶜ0.CASE (dep Γ) (fst ((quoteTm (⌜Fin⌝ {Γ} x0ᵢ0)) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTm (⌜Fin⌝ {Γ} x0ᵢ0)) ,ₚ unit) ,ₚ unit))) → IsNormal q → (El (⌜Fin⌝ {Γ} x0ᵢ0)) ⟶ᵀ u
+cd⟶ᵀEl₍8₎ᴸ1 : {Γ : Cx} (x0ᵢ0 : RTm (Γ)) (u : RTy Γ) {q : RTm ε} →
+  ◇ ⊢ q ∷ El (dpay RedTₘ.J ⟶ᵀF.DF (PT⟶ᵀEl₉ᶜ0.CASE (dep Γ) (fst ((quoteTm (⌜Fin⌝ x0ᵢ0)) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTm (⌜Fin⌝ x0ᵢ0)) ,ₚ unit) ,ₚ unit))) → IsNormal q → (El (⌜Fin⌝ x0ᵢ0)) ⟶ᵀ u
 cd⟶ᵀEl₍8₎ᴸ1 {Γ} x0ᵢ0 u {q} dq nq =
   pay-σ (⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))) done nq
   ▷ λ { (_ , (_ , (_ , ((dF , _) , (nF , _))))) →
@@ -2257,8 +2257,8 @@ cd⟶ᵀEl₍8₎ᴸ1 {Γ} x0ᵢ0 u {q} dq nq =
   where
     j f0 a0ᵢ0 p c q0 cv0 : RTm ε
     j = dep Γ
-    f0 = (quoteTm (⌜Fin⌝ {Γ} x0ᵢ0))
-    a0ᵢ0 = (quoteℕ x0ᵢ0)
+    f0 = (quoteTm (⌜Fin⌝ x0ᵢ0))
+    a0ᵢ0 = (quoteTm x0ᵢ0)
     p = (f0 ,ₚ unit)
     c = quoteTy u
     q0 = (a0ᵢ0 ,ₚ unit)

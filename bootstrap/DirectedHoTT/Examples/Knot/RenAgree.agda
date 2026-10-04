@@ -99,7 +99,7 @@ ren-agree-ty {Γ} {Δ} (Desc a0) {f = f} r =
 ren-agree-ty {Γ} {Δ} (DIh a0 a1 a2 a3) {f = f} r =
   ⟶*-trans (TR.trav-con (atᵍ 0) (atʰ 11) TR.f-cons) (⟶*-con (⟶*-pairʳ (TR.fld-rec {s = 1} {k = 0} {sh = rec 0 2 ∷ʰ rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ} {e = dep Δ} {f = f} {d = dep Γ} (ren-agree-tm a0 (liftsR 0 r)) (TR.fld-rec {s = 0} {k = 2} {sh = rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ} {e = dep Δ} {f = f} {d = dep Γ} (ren-agree-ty a1 (liftsR 2 r)) (TR.fld-rec {s = 1} {k = 0} {sh = rec 1 0 ∷ʰ []ʰ} {e = dep Δ} {f = f} {d = dep Γ} (ren-agree-tm a2 (liftsR 0 r)) (TR.fld-rec {s = 1} {k = 0} {sh = []ʰ} {e = dep Δ} {f = f} {d = dep Γ} (ren-agree-tm a3 (liftsR 0 r)) done))))))
 ren-agree-ty {Γ} {Δ} (Fin a0) {f = f} r =
-  ⟶*-trans (TR.trav-con (atᵍ 0) (atʰ 12) TR.f-cons) (⟶*-con (⟶*-pairʳ (TR.fld-nat {sh = []ʰ} {e = dep Δ} {f = f} {d = dep Γ} done)))
+  ⟶*-trans (TR.trav-con (atᵍ 0) (atʰ 12) TR.f-cons) (⟶*-con (⟶*-pairʳ (TR.fld-rec {s = 1} {k = 0} {sh = []ʰ} {e = dep Δ} {f = f} {d = dep Γ} (ren-agree-tm a0 (liftsR 0 r)) done)))
 
 ren-agree-tm (var a0) r = ⟶*-trans (TR.trav-var (atᵍ 1) (atʰ 0)) (step (ξ-appˡ (β _ _)) (step (β _ _) (⟶*-con (⟶*-pairʳ (⟶*-pairˡ (⟶*-trans (⟶*-appʳ (step (βfst _ _) done)) (r a0)))))))
 ren-agree-tm {Γ} {Δ} (lam a0) {f = f} r =
@@ -167,7 +167,7 @@ ren-agree-tm ⌜Nat⌝ r = TR.trav-con (atᵍ 1) (atʰ 34) TR.f-nil
 ren-agree-tm {Γ} {Δ} (⌜IMu⌝ a0 a1 a2) {f = f} r =
   ⟶*-trans (TR.trav-con (atᵍ 1) (atʰ 35) TR.f-cons) (⟶*-con (⟶*-pairʳ (TR.fld-rec {s = 1} {k = 0} {sh = rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ} {e = dep Δ} {f = f} {d = dep Γ} (ren-agree-tm a0 (liftsR 0 r)) (TR.fld-rec {s = 1} {k = 0} {sh = rec 1 0 ∷ʰ []ʰ} {e = dep Δ} {f = f} {d = dep Γ} (ren-agree-tm a1 (liftsR 0 r)) (TR.fld-rec {s = 1} {k = 0} {sh = []ʰ} {e = dep Δ} {f = f} {d = dep Γ} (ren-agree-tm a2 (liftsR 0 r)) done)))))
 ren-agree-tm {Γ} {Δ} (⌜Fin⌝ a0) {f = f} r =
-  ⟶*-trans (TR.trav-con (atᵍ 1) (atʰ 36) TR.f-cons) (⟶*-con (⟶*-pairʳ (TR.fld-nat {sh = []ʰ} {e = dep Δ} {f = f} {d = dep Γ} done)))
+  ⟶*-trans (TR.trav-con (atᵍ 1) (atʰ 36) TR.f-cons) (⟶*-con (⟶*-pairʳ (TR.fld-rec {s = 1} {k = 0} {sh = []ʰ} {e = dep Δ} {f = f} {d = dep Γ} (ren-agree-tm a0 (liftsR 0 r)) done)))
 ren-agree-tm ⌜Unit⌝ r = TR.trav-con (atᵍ 1) (atʰ 37) TR.f-nil
 ren-agree-tm {Γ} {Δ} (ref a0 a1) {f = f} r =
   ⟶*-trans (TR.trav-con (atᵍ 1) (atʰ 38) TR.f-cons) (⟶*-con (⟶*-pairʳ (TR.fld-nat {sh = cls 1 ∷ʰ []ʰ} {e = dep Δ} {f = f} {d = dep Γ} (TR.fld-cls {s = 1} {sh = []ʰ} {e = dep Δ} {f = f} {d = dep Γ} done))))
