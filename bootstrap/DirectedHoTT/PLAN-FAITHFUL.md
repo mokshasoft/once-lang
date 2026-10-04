@@ -2,7 +2,7 @@
 
 > Opened 2026-09-29, after PLAN-LEVITATION Stage 6. Branch
 > `ocp-0009-levitation` (no rebase for now).
-> ✅ **F1–F5 DONE 2026-09-30** (commit `4e6e46904`). 🟡 **F6 (decoding, the converse) opened 2026-10-02; started 2026-10-03, BEFORE PLAN-BIDI S7b (user).** Next: PLAN-BIDI, after
+> ✅ **F1–F5 DONE 2026-09-30** (commit `4e6e46904`). ✅ **F6 (decoding, the converse) DONE 2026-10-04: THE KNOT IS EXACT (`Knot/Exact`). It found ONE bug, in the KERNEL (ledger below).** Next: PLAN-BIDI S7b (paused for F6, awaiting the user's (c)/(c1) decision), after
 > PLAN-LEVITATION's clean measurement (`HANDOFF-2026-10-02.md` §4).
 
 ## Goal
@@ -43,9 +43,9 @@ ships REDUCTION lemmas for its methods. `Lib/SynTrav` ships typings only.
 | F3 | op agreement | `sub0`, `wk`, the SubEnv ops (`nrsK`, `pairSK`, `fsucSK`, `methSK`, `lift2K`, `iinstK`, `MethTyK`, `iinstTmK`, `pwShK`, `wk2uK`): Represents for CONS/LIFT/WK environments |
 | F4 | side conditions | the `Preds` families and `Pw` are COMPLETE for Spec's `NoNatC`, `stkA?`, `stkC?`, `flat?`, `pw?`/`pwBody` |
 | F5 | `enJudge` | mutual maps from Spec derivations through the constructors; F2/F3 bridge indices by `⊢conv` |
-| F6 | 🟡 **decoding** (adequacy, the converse) | every CLOSED Knot inhabitant at a quoted judgement comes from a Spec derivation — see below; NOW, before PLAN-BIDI S7b |
+| F6 | ✅ **decoding** (adequacy, the converse) | every CLOSED Knot inhabitant at a quoted judgement comes from a Spec derivation — `Knot/Exact` (2026-10-04) |
 
-## ⬜ F6 — the OTHER half: decoding (opened 2026-10-02)
+## ✅ F6 — the OTHER half: decoding (opened 2026-10-02, DONE 2026-10-04)
 
 F1–F5 prove the quoted Spec sits INSIDE the Knot: a Knot rule too weak, or
 of the wrong shape, to express a Spec rule fails `enTm`. Nothing yet
@@ -98,9 +98,9 @@ The core is stated on NORMAL closed inhabitants and recurses on `sz`
 | F6.1 | `Lib/SynDecode` (generic) | a closed normal `SK sg s ⌜d⌝` is `conₗ k p` with `p`'s fields as normal `Args` — the converse of `⊢payArgsF` |
 | F6.2 | `Knot/Unquote` | closed normal `⌜Ty⌝`/`⌜Tm⌝`/`Ctx` inhabitants ARE quotes (a 51-way dispatch on the tag, generated with the quotation); quotes are normal; `⌜x⌝ ≅ ⌜y⌝ → x ≡ y` (Church–Rosser + normality + injectivity) |
 | F6.3 | `Lib/SynFibDecode` (generic) | a closed normal inhabitant of a `SynFib` family at a subject of head `k` is one of `k`'s rows, with its payload — the converse of `fib-β` + `⊢conRow` |
-| F6.4 | backward agreements | `op ⌜x⌝ ≅ ⌜y⌝ → y ≡ op x` for every F3 operation: forward agreement + F6.2 injectivity |
+| F6.4 | backward agreements | `op ⌜x⌝ ≅ ⌜y⌝ → y ≡ op x` for every F3 operation: forward agreement + F6.2 injectivity — ✅ NOT a separate stage: each decoder composes the forward agreement with `nf-≅` + quote injectivity at its Ford |
 | F6.5 | per family, bottom-up | `Pw` and `Preds` (F4⁻¹) → `∋` → `⟶`/`⟶ᵀ` → `≅`/`≅ᵀ` → `⊢ty`/`⊢` (F5⁻¹): each row's payload back to its Spec constructor |
-| F6.6 | the wrapper | an arbitrary closed typed `k`: `wnorm`, SR, then the normal decoder |
+| F6.6 | the wrapper | an arbitrary closed typed `k`: `wnorm`, SR, then the normal decoder — ✅ `Knot/Exact` |
 
 **Pilot: `Pw`** (two rows, no dependency on other families, and S7b's
 pilot too). It drives F6.0–F6.3 end to end before any big family.
@@ -210,6 +210,34 @@ pilot too). It drives F6.0–F6.3 end to end before any big family.
     CLAUSE of a helper, with the peel passed as an argument, and its
     equation matched as `refl`.
 
+- ✅ (2026-10-04) `⊢ty`/`⊢` DECODED — F5⁻¹, the last family:
+  - `JudgeDecodeTy` (13 rows, 23 s) and `JudgeDecodeTm` (45 rows, 1 min 52 s,
+    3.6 GB) are GENERATED from the constructors' state, like `RedDecode`.
+    `JudgeDecode` dispatches (generated, 1 min 30 s). `JudgeDecodeBase` (the
+    `⊢conv` row, shared by every term head) and `JudgeDecodeHand` (`⊢ref`,
+    `⊢fzero`, `⊢fsuc`) are hand-written.
+  - A typing premise is often NOT a subterm of the subject (`⊢lam`'s
+    `⊢ty A`, the endpoint premises, `⊢conv`). So a row decoder takes
+    induction hypotheses `IHTy N`/`IHTm N` for inhabitants below a bound
+    and is not recursive itself. The dispatcher ties the knot with `Acc`
+    on `sz` (`Lib/Size`). Measured: `Acc` recursion through `▷` lambdas
+    passes termination; fuel threaded through them does not.
+  - Each premise's Knot index is reduced to its quoted Spec index by
+    COMPOSING the F3 agreements over the rule table's structured
+    expressions (`sub0`, `wk`, `DF`, `MC`, the ops, `node-k` congruences).
+    The Spec side is TRANSLATED from the same table, so it cannot drift.
+- ✅ (2026-10-04) F6.6 `Knot/Exact`: every closed Knot inhabitant at a
+  quoted judgement — normal or not — is a Spec derivation (`wnorm` + `sr*`
+  + the normal decoders), for `⊢ty`, `⊢`, `⟶`, `⟶ᵀ`, `≅`, `≅ᵀ`, `∋`,
+  `Pw`, `NoNatC`, `stkA?`, `stkC?`, `flat?`. With F5: the Knot's families
+  say EXACTLY what the Agda kernel's judgements say.
+- ✅ (2026-10-04) COLD SWEEP: ALL GREEN, 247 modules (5349 s, inflated by
+  another session's Agda run; two 143 retries). The decoders cost: RedDecode
+  ~19 min under contention (5.0 GB standalone, killed at the first RTS rung,
+  passed at `-A64m -c`), JudgeDecodeTm 126 s, RedCompDecode 109 s,
+  JudgeDecode 102 s, RedTDecode 63 s. ⚠ RedDecode is the new cost centre:
+  split it by head group before it grows (it holds the 67 ξ rules + δ).
+
 ### F6 — FINDINGS LEDGER (what the invariant caught)
 
 | # | date | where | finding | fix |
@@ -222,6 +250,17 @@ Families decoded with NO finding (exact both ways):
   by `gen-judge.py` from the same `PREDS` table as the rows — 39 s).
 - `∋` (2 rules, `here`/`there`; `Knot/LookupDecode`, hand-written along
   `⊢here∋`/`⊢there∋` — 9 s).
+- `⟶` (67 ξ + 32 computation + δ) and `⟶ᵀ` (36 ξ + 17 computation)
+  (`RedDecode`, `RedTDecode`, `RedCompDecode`, GENERATED).
+- `≅`/`≅ᵀ` (4 rules each; `ConvDecode`, hand-written).
+- `⊢ty` (13) and `⊢` (45 generated + `⊢conv`, `⊢ref`, `⊢fzero`, `⊢fsuc`)
+  (`JudgeDecode*`).
+
+**TOTAL: ONE bug, and it was in the KERNEL, not the Knot.** Every Knot
+family turned out to be exact. The one finding was a hole in the Agda
+kernel's own metatheory (Unit not canonical): F6 needs every payload's
+`unit` tail to be literally `unit`, and the kernel did not guarantee it.
+So F6 constrains the kernel too, not only the Knot.
 
 
 ## Log
