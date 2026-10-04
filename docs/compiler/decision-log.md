@@ -16677,3 +16677,24 @@ Nothing outside the deleted lemmas named them; apex green. The LIVE ones are tak
   (347 lines, nothing outside used them), deleted.
 
 Apex green.
+
+## D271 — TWO MORE POSTULATES OF ⊥, BOTH UNDER DEAD CODE: DELETED (2026-10-05)
+
+**Relates**: plan 0.100 P0 audit (D266–D270), `SigOp/Info.agda`, `Optimize.agda`,
+`CCC/IR/Stack.agda`.
+
+* **`sigOpInfo-name-coherence : name si₁ ≡ name si₂ → si₁ ≡ si₂`** — `⊥`: `mk-info' n ffiV b b` and
+  `mk-info' n callsV b b` share a name and differ by constructor. It existed to make
+  `_≟SigOpInfo_` a `Dec`, for the optimizer's IR decider `_≟IR_`. No live module calls `_≟IR_`
+  (its importers — `Optimizer.Normal`/`IRReducible`/`PairCaseNormal`, `Optimize.Shape` — are red
+  islands outside the cone), and it cannot be made honest: a `pureV` semantics is a function, so
+  `SigOpInfo` equality is undecidable. The decider (its `HeadView`, aux helpers, and the
+  postulate `≟const-irrelevant`) and `_≟SigOpInfo_` are deleted; `IRHead`/`_≟IRHead_`, which the
+  eta rules use, stay. Equality of signature members is `_≟SigOpInfo-name_`.
+* **`sum-`/`prod-layer-cap-bound`** — `layer-capacity (wf-Sum wf-Id wf-Id) wfG alg ≤
+  ir-stack-requirement (Cata wfG alg)` reads `2 + R ≤ R`; the file's own comments said
+  "BLOCKED: this is false when children contain Id". The whole layer-capacity model
+  (`layer-capacity`, its Sum/Prod lemmas, `layer-cap-bound`, `ir-stack-req-geq-layer-cap`) had no
+  consumer outside `Stack.agda`; deleted.
+
+Apex green.

@@ -338,23 +338,8 @@ mk-info nm f Answers   bA cB = mk-info' nm callsV        bA cB
 _≟SigOpInfo-name_ : ∀ {A B} (si₁ si₂ : SigOpInfo A B) → Dec (name si₁ ≡ name si₂)
 si₁ ≟SigOpInfo-name si₂ = name si₁ ≟ᶜ name si₂
 
--- | Name coherence (axiomatic).
---
--- Two `SigOpInfo`s with equal names are considered equal. The
--- semantic fields (`semI`, `semM`) are not compared — they are
--- derived data, not identity. The surface-to-IR elaborator is a
--- function, so in practice same-name-implies-same-record by
--- construction; this postulate makes that coherence visible to the
--- optimizer's decidable IR equality.
---
--- Under D047, a SigOp is a member of the signature Σ identified by
--- its `name`. Equality of signature elements is equality of names.
-postulate
-  sigOpInfo-name-coherence :
-    ∀ {A B} (si₁ si₂ : SigOpInfo A B) → name si₁ ≡ name si₂ → si₁ ≡ si₂
-
--- | Decidable equality on `SigOpInfo` (via name + coherence).
-_≟SigOpInfo_ : ∀ {A B} (si₁ si₂ : SigOpInfo A B) → Dec (si₁ ≡ si₂)
-si₁ ≟SigOpInfo si₂ with si₁ ≟SigOpInfo-name si₂
-... | yes eq = yes (sigOpInfo-name-coherence si₁ si₂ eq)
-... | no ne = no (λ { refl → ne refl })
+-- (D271: `sigOpInfo-name-coherence : name si₁ ≡ name si₂ → si₁ ≡ si₂` and the
+-- `Dec (si₁ ≡ si₂)` it supported are deleted. The postulate was `⊥` —
+-- `mk-info' n ffiV b b` and `mk-info' n callsV b b` share a name — and its one
+-- consumer, the optimizer's `_≟IR_`, was dead. Equality of signature members
+-- is equality of names: `_≟SigOpInfo-name_`.)
