@@ -16653,3 +16653,27 @@ lemma are deleted, with the lemmas:
 
 Nothing outside the deleted lemmas named them; apex green. The LIVE ones are taken one at a time
 (D270 onward).
+
+## D270 — THE LIVE ⊥s OF THE STRUCTURED MACHINE: THE PREMISE THEY WERE, OR ABSURD (2026-10-05)
+
+**Relates**: plan 0.100 P0 audit (D266–D269), `CCC/Machine/SMPrimitives.agda`, `SMCore.agda`,
+`ClosureWellFormed.agda`.
+
+* **`sigop-preserves-halted`** said no SigOp halts; `exec-abstract` halts on a `Halts` SigOp (an
+  `exit`), so it was `⊥` given any running state (probe checked, deleted). Its own comment called
+  it "a premise the caller owes", so it is one now: `InstrWF s alloc (instr-sigop si)` IS the fact
+  that the step does not halt, and likewise for `instr-case-on-tag` (runs a sub-trace) and
+  `instr-loop` (fuel can run out) — whose `*-preserves-halted` postulates go too. No caller ran
+  `exec-abstract-preserves-halted-WF` at those three; `InstrWF-frame-eq` (unused since D269) is
+  deleted rather than extended.
+* **`worklist-push-preserves-stack-slot`** said `worklist-push k` changes no stack slot; it writes
+  slot `k`. Its consumer's premise `instr-writes-slot i ≡ nothing` is `just k ≡ nothing` there,
+  so the clause is absurd and the postulate is gone.
+* **`exec-abstract-preserves-not-halted'`**, a `where`-postulate of `exec-trace-++` — "no
+  instruction halts", over every instruction and state. `exec-trace-++` was unused
+  (`exec-trace-append` is the proved law); both deleted.
+* **`μ-validity-in-regions-stub`** moved validity between ARBITRARY states; with the dead
+  `validityWF-mem-preserved-in-regions` (unsafe) and `-strong`, `LocInRegions`/`LocsInRegions`
+  (347 lines, nothing outside used them), deleted.
+
+Apex green.

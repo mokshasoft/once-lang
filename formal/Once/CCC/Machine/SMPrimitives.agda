@@ -60,7 +60,8 @@ open import Once.CCC.Machine.SMCore public
 --
 -- Naming them also separated kinds the hole had flattened: an interface
 -- obligation the design intends (`sigop-preserves-halted` — a SigOp MAY halt
--- per its `EffectShape`), ordinary deferred proofs, and two REFUTABLE-prefixed
+-- per its `EffectShape`; D270 made it the `InstrWF` premise it always was,
+-- the postulate was `⊥` at a `Halts` SigOp), ordinary deferred proofs, and two REFUTABLE-prefixed
 -- assumptions that are FALSE at `instr-alloc-heap` and were being supplied in
 -- ARGUMENT position, where a hole reads as an ordinary application. (D269:
 -- both, and the dead trace lemmas that consumed them, are deleted.)
@@ -914,14 +915,6 @@ module InstrPrimitives {FS : FrameSemantics} where
   -- Uses positive bounds: j < k means writing to k preserves j.
   ------------------------------------------------------------------------
 
-  -- Instructions that don't write to stack preserve all stack slots
-  -- These instructions only modify registers, heap, or nothing
-  -- D175: the one case this function does not prove, named.
-  postulate
-    worklist-push-preserves-stack-slot :
-      ∀ (k : ℕ) (s : LocState FS) (alloc : AllocState {FS}) (f : Frame FS) (slot : ℕ) →
-      readLoc (proj₁ (exec-abstract (worklist-push k) s alloc)) (AtStack f slot)
-        ≡ readLoc s (AtStack f slot)
 
   exec-abstract-preserves-stack-slot : ∀ (i : AbstractInstr) (s : LocState FS)
     (alloc : AllocState {FS}) (f : Frame FS) (slot : ℕ) →
@@ -973,9 +966,9 @@ module InstrPrimitives {FS : FrameSemantics} where
   exec-abstract-preserves-stack-slot instr-call-closure s alloc f slot _ _ = refl
   -- OCP-0003: Worklist instructions
   exec-abstract-preserves-stack-slot (worklist-init _) s alloc f slot _ _ = refl
-  -- worklist-push is like store-at-slot - need to handle separately with slot bounds
-  -- (needs slot-bound reasoning; see the named postulate above)
-  exec-abstract-preserves-stack-slot (worklist-push k) s alloc f slot _ _ = worklist-push-preserves-stack-slot k s alloc f slot
+  -- worklist-push writes slot `k` (`instr-writes-slot` says so), so the premise
+  -- rules it out (D270: it was a postulate claiming EVERY slot unchanged).
+  exec-abstract-preserves-stack-slot (worklist-push k) s alloc f slot _ ()
   exec-abstract-preserves-stack-slot (worklist-pop k) s alloc f slot _ _
     with readLoc s (AtStack (current-frame alloc) k)
   ... | just _  = refl
@@ -2190,6 +2183,14 @@ module TracePrimitives {FS : FrameSemantics} where
   InstrWF s alloc (worklist-pop slot)      =
     ∃-syntax (λ (v : StoredValue FS) →
       readLoc s (AtStack (current-frame alloc) slot) ≡ just v)
+  -- D270: a SigOp MAY halt (its `EffectShape`), a case runs a sub-trace and
+  -- a loop can run out of fuel — so for these three the witness IS the
+  -- fact that this step does not halt, owed by whoever runs it. (They were
+  -- `⊤` with three postulates supplying the fact; the SigOp one was `⊥` at a
+  -- `Halts` SigOp.)
+  InstrWF s alloc (instr-sigop si)         = halted (proj₁ (exec-abstract (instr-sigop si) s alloc)) ≡ false
+  InstrWF s alloc (instr-case-on-tag f g)  = halted (proj₁ (exec-abstract (instr-case-on-tag f g) s alloc)) ≡ false
+  InstrWF s alloc (instr-loop body)        = halted (proj₁ (exec-abstract (instr-loop body) s alloc)) ≡ false
   InstrWF _ _     _                        = ⊤
 
   ------------------------------------------------------------------------
@@ -2236,32 +2237,6 @@ module TracePrimitives {FS : FrameSemantics} where
   -- For unconditional instructions InstrWF = ⊤ and the proof falls back
   -- on the existing exec-abstract-preserves-halted with the appropriate iph.
   -- For conditional ones the InstrWF witness rules out the halt branch.
-  -- D175: THE THREE CASES THIS FUNCTION DOES NOT PROVE, NAMED.
-  --
-  -- They were `= !!` clauses, which is worse than a deferred theorem: the
-  -- function reads as proved at every use site while three of its cases are
-  -- assumed. Named here so each assumption travels with its case and appears
-  -- in the trust base on its own, with its own type.
-  --
-  -- `instr-sigop` is the honest one — a SigOp MAY halt, per its own
-  -- `EffectShape`, so this is not a gap to close but a premise the caller owes
-  -- (`InstrWF` is `⊤` here, which is why the clause cannot discharge it).
-  -- The other two are real deferred proofs: `instr-case-on-tag` runs a
-  -- sub-trace, and `instr-loop` can halt on fuel-out (plan 0.29, M4).
-  postulate
-    sigop-preserves-halted :
-      ∀ {A B} (si : SigOpInfo A B) (s : LocState FS) (alloc : AllocState {FS}) →
-      halted s ≡ false →
-      halted (proj₁ (exec-abstract (instr-sigop si) s alloc)) ≡ false
-    case-on-tag-preserves-halted :
-      ∀ (f g : AbstractTrace) (s : LocState FS) (alloc : AllocState {FS}) →
-      halted s ≡ false →
-      halted (proj₁ (exec-abstract (instr-case-on-tag f g) s alloc)) ≡ false
-    loop-preserves-halted :
-      ∀ (body : AbstractTrace) (s : LocState FS) (alloc : AllocState {FS}) →
-      halted s ≡ false →
-      halted (proj₁ (exec-abstract (instr-loop body) s alloc)) ≡ false
-
   exec-abstract-preserves-halted-WF : ∀ (i : AbstractInstr) (s : LocState FS) (alloc : AllocState {FS}) →
     halted s ≡ false →
     InstrWF s alloc i →
@@ -2318,17 +2293,13 @@ module TracePrimitives {FS : FrameSemantics} where
   ... | .(just v) | refl = h-eq
   exec-abstract-preserves-halted-WF (worklist-check _)      s alloc h-eq _ = h-eq
   exec-abstract-preserves-halted-WF instr-save-closure-reg  s alloc h-eq _ = h-eq
-  -- instr-sigop and instr-load-const / instr-load-code-addr / instr-case-on-tag
-  -- instr-sigop and instr-load-tag-lit / instr-load-code-addr / instr-case-on-tag
-  -- aren't currently named in InstrWF; fall back on ⊤. SigOp may halt
-  -- per its own postulate so InstrWF = ⊤ would be unsound — leave it
-  -- for the SigOp-aware lift in 0.13.3 Phase c.
-  exec-abstract-preserves-halted-WF (instr-sigop si)        s alloc h-eq _ = sigop-preserves-halted si s alloc h-eq
+  -- sigop / case-on-tag / loop: the witness is the fact (D270).
+  exec-abstract-preserves-halted-WF (instr-sigop si)        s alloc h-eq iwf = iwf
   exec-abstract-preserves-halted-WF (instr-load-const _ _)  s alloc h-eq _ = h-eq
   exec-abstract-preserves-halted-WF (instr-load-tag-lit _)  s alloc h-eq _ = h-eq
   exec-abstract-preserves-halted-WF (instr-load-code-addr _) s alloc h-eq _ = h-eq
-  exec-abstract-preserves-halted-WF (instr-case-on-tag f g) s alloc h-eq _ = case-on-tag-preserves-halted f g s alloc h-eq
-  exec-abstract-preserves-halted-WF (instr-loop body)       s alloc h-eq _ = loop-preserves-halted body s alloc h-eq
+  exec-abstract-preserves-halted-WF (instr-case-on-tag f g) s alloc h-eq iwf = iwf
+  exec-abstract-preserves-halted-WF (instr-loop body)       s alloc h-eq iwf = iwf
   exec-abstract-preserves-halted-WF (instr-alloc-heap _)    s alloc h-eq _ = h-eq
 
   -- Universal trace-level halt preservation under TraceWF.
@@ -2381,58 +2352,6 @@ module TracePrimitives {FS : FrameSemantics} where
     let h-step = exec-abstract-preserves-halted-WF i s alloc h-eq iwf
         (rest-twf , t₂-twf) = twf-++-decomp rest h-step twf-rest
     in (twf-∷ iwf rest-twf) , t₂-twf
-
-  -- (G'') Alloc-frame transfer for TraceWF.
-  -- Plan 0.13.3: the pair / apply / rec patterns call rec-wf at a
-  -- compile-time bookkeeping `alloc-after-...-slots` (advanced
-  -- next-slot). At runtime, pair-trace runs f-trace with the
-  -- original `alloc`. Since InstrWF references only `current-frame
-  -- alloc` (never `next-slot alloc`), and every instruction
-  -- preserves current-frame, TraceWF transfers across allocs that
-  -- share a current-frame.
-
-  -- Per-instruction: InstrWF only inspects `current-frame alloc` for
-  -- the slot-using cases.
-  InstrWF-frame-eq : ∀ (i : AbstractInstr) (s : LocState FS)
-    (alloc alloc' : AllocState {FS}) →
-    current-frame alloc ≡ current-frame alloc' →
-    InstrWF s alloc i → InstrWF s alloc' i
-  InstrWF-frame-eq mov-to-output           s _ _ _  iwf = iwf
-  InstrWF-frame-eq (instr-reg-op _)        s _ _ _  iwf = iwf
-  InstrWF-frame-eq (instr-ctrl _)        s _ _ _  iwf = iwf
-  InstrWF-frame-eq mov-to-input            s _ _ _  iwf = iwf
-  InstrWF-frame-eq (store-at-slot _)       s _ _ _  iwf = iwf
-  InstrWF-frame-eq store-indirect          s _ _ _  iwf = iwf
-  InstrWF-frame-eq store-indirect-suc      s _ _ _  iwf = iwf
-  InstrWF-frame-eq (lea-slot _)            s _ _ _  iwf = iwf
-  InstrWF-frame-eq (instr-alloc-stack _)   s _ _ _  iwf = iwf
-  InstrWF-frame-eq (instr-dealloc-stack _) s _ _ _  iwf = iwf
-  InstrWF-frame-eq (instr-reclaim-to _)    s _ _ _  iwf = iwf
-  InstrWF-frame-eq (instr-push-frame _)    s _ _ _  iwf = iwf
-  InstrWF-frame-eq instr-pop-frame         s _ _ _  iwf = iwf
-  InstrWF-frame-eq instr-call-closure      s _ _ _  iwf = iwf
-  InstrWF-frame-eq load-indirect           s _ _ _  iwf = iwf
-  InstrWF-frame-eq load-indirect-suc       s _ _ _  iwf = iwf
-  -- The slot-using cases: rewrite via the frame equality.
-  InstrWF-frame-eq (load-from-slot slot)   s alloc alloc' fe (v , read-eq) =
-    v , subst (λ f → readLoc s (AtStack f slot) ≡ just v) fe read-eq
-  InstrWF-frame-eq (lea-indexed slot)    s alloc alloc' fe (loc , read-eq) =
-    loc , subst (λ f → readLoc s (AtStack f slot) ≡ just (SV-Ptr loc)) fe read-eq
-  InstrWF-frame-eq (restore-input slot)    s alloc alloc' fe (v , read-eq) =
-    v , subst (λ f → readLoc s (AtStack f slot) ≡ just v) fe read-eq
-  InstrWF-frame-eq (worklist-init _)       s _ _ _  iwf = iwf
-  InstrWF-frame-eq (worklist-push _)       s _ _ _  iwf = iwf
-  InstrWF-frame-eq (worklist-pop slot)     s alloc alloc' fe (v , read-eq) =
-    v , subst (λ f → readLoc s (AtStack f slot) ≡ just v) fe read-eq
-  InstrWF-frame-eq (worklist-check _)      s _ _ _  iwf = iwf
-  InstrWF-frame-eq instr-save-closure-reg  s _ _ _  iwf = iwf
-  InstrWF-frame-eq (instr-sigop _)         s _ _ _  iwf = iwf
-  InstrWF-frame-eq (instr-load-const _ _)  s _ _ _  iwf = iwf
-  InstrWF-frame-eq (instr-load-tag-lit _)  s _ _ _  iwf = iwf
-  InstrWF-frame-eq (instr-load-code-addr _) s _ _ _ iwf = iwf
-  InstrWF-frame-eq (instr-case-on-tag _ _) s _ _ _  iwf = iwf
-  InstrWF-frame-eq (instr-loop _)          s _ _ _  iwf = iwf
-  InstrWF-frame-eq (instr-alloc-heap _)    s _ _ _  iwf = iwf
 
   -- exec-abstract's *state* output (proj₁) depends only on (s,
   -- current-frame alloc, instr) — never on next-slot. (instr-alloc-stack

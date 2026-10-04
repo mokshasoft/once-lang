@@ -2417,23 +2417,9 @@ module AbstractExec {FS : FrameSemantics} where
   --     Need to know which branch is taken to establish equivalence
   ------------------------------------------------------------------------
 
-  -- | treeToFlat preserves sequential composition
-  exec-trace-++ : ∀ (t₁ t₂ : AbstractTrace) (s : LocState FS) (alloc : AllocState {FS}) →
-    halted s ≡ false →
-    exec-trace (t₁ ++ t₂) s alloc ≡
-      let (s' , alloc') = exec-trace t₁ s alloc
-      in exec-trace t₂ s' alloc'
-  exec-trace-++ [] t₂ s alloc not-halted = refl
-  exec-trace-++ (i ∷ t₁) t₂ s alloc not-halted with halted s
-  ... | true with () ← not-halted
-  ... | false = exec-trace-++ t₁ t₂ (proj₁ (exec-abstract i s alloc))
-                              (proj₂ (exec-abstract i s alloc))
-                              exec-abstract-preserves-not-halted'
-    where
-      -- Helper: exec-abstract preserves not-halted (postulated for now)
-      -- Full proof requires case analysis on all instructions
-      postulate
-        exec-abstract-preserves-not-halted' : halted (proj₁ (exec-abstract i s alloc)) ≡ false
+  -- (`exec-trace-++` stood here, unused, on a `where`-postulate that no
+  -- instruction halts — false; D270 deleted both. `SMPrimitives.exec-trace-append`
+  -- is the proved composition law.)
 
   -- | Simple trees (no branch): exec-tree-trace ≡ exec-trace ∘ treeToFlat
   -- This is the foundation for proving recursive scheme correctness
