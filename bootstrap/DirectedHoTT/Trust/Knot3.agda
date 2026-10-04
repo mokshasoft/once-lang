@@ -27,10 +27,11 @@
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Trust.Knot3 where
 
-import DirectedHoTT.Examples.Knot.JudgeIx
 import DirectedHoTT.Examples.Knot.JudgeRowsGen
 import DirectedHoTT.Examples.Knot.JudgeRowsTm
 import DirectedHoTT.Examples.Knot.JudgeTmIx
 import DirectedHoTT.Examples.Knot.Lookup
 import DirectedHoTT.Examples.Knot.LookupAgree
 import DirectedHoTT.Examples.Knot.LookupCon
+import DirectedHoTT.Examples.Knot.LookupDecode
+import DirectedHoTT.Examples.Knot.NestIx

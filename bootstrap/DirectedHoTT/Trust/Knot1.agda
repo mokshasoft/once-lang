@@ -30,6 +30,7 @@ module DirectedHoTT.Trust.Knot1 where
 import DirectedHoTT.Examples.Knot.Conv
 import DirectedHoTT.Examples.Knot.ConvAgree
 import DirectedHoTT.Examples.Knot.ConvCon
+import DirectedHoTT.Examples.Knot.ConvDecode
 import DirectedHoTT.Examples.Knot.ConvHead
 import DirectedHoTT.Examples.Knot.Core
 import DirectedHoTT.Examples.Knot.Ctors
