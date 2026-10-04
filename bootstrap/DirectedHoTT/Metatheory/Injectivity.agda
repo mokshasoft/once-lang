@@ -27,7 +27,7 @@
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Metatheory.Injectivity where
 open import normalizer.Syntax.Types
-  using ( _≡_; refl; sym; trans; subst; Σ; _,_; _×_ ; cong₂ )
+  using ( _≡_; refl; sym; trans; subst; Σ; _,_; _×_ ; cong₂; ⊥ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; RTy; base; U; Π; Σ'; El; Hom; RTm; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝
@@ -50,9 +50,9 @@ open import DirectedHoTT.Spec.Typing
         ; ξ-ielimᴰ; ξ-ielimⁱ; ξ-ielimᵉ; ξ-ielimᵗ; ξ-dσˢ; ξ-dσᶠ; ξ-dρʲ
         ; ξ-dρᶜ; ξ-dpayᴵ; ξ-dpayᴰ; ξ-dpayᶜ; ξ-dihᴰ; ξ-dihᵉ; ξ-dihᶜ
         ; ξ-dihᵖ; ξ-fsuc; ξ-fcaseᵗ; ξ-fcaseᵃ; ξ-fcaseᵇ; ξ-fcase0; ξ-psplitᵇ
-        ; ξ-psplitᵍ; tr-J-IMu; tr-J-Fin; ξ-Fin; single )
+        ; ξ-psplitᵍ; tr-J-IMu; tr-J-Fin; ξ-Fin; ξ-nsuc; single )
 open import DirectedHoTT.Metatheory.Confluence
-  using ( _⟹_; pvar; plam; papp; pβ; ppair; pabsurd; pfst; psnd; pβfst; pβsnd
+  using ( church-rosser; _⟹_; pvar; plam; papp; pβ; ppair; pabsurd; pfst; psnd; pβfst; pβsnd
         ; p⌜base⌝; p⌜Π⌝; p⌜Σ⌝; p⌜Hom⌝; phrefl; ptr; ptr-J-base; ptr-J-Σ
         ; ptr-taut; phrefl-pw; phrefl-Nat-z; phrefl-Nat-s; ptr-J-Hom; ptr-pw; pap; pap-J; p⌜Id⌝; pidrefl
         ; pjsub; pjsub-refl; ptr-J-Id; punit; pnzero; pnsuc; pnatrec
@@ -1039,6 +1039,32 @@ Fin-inj c with church-rosserᵀ c
 ... | C , (r₁ , r₂) with Fin-reduct r₁ | Fin-reduct r₂
 ...   | m₁ , (eq₁ , rm₁) | m₂ , (eq₂ , rm₂) =
         ctrn (hom→≅ rm₁) (csym (hom→≅ (subst (_ ⟶*_) (sym (Fininj≡ (trans (sym eq₁) eq₂))) rm₂)))
+
+-- a successor steps only under itself, so convertible successors have
+--   convertible predecessors
+nsuc-reduct : {n w : RTm Γ} → nsuc n ⟶* w → Σ (RTm Γ) (λ m → (w ≡ nsuc m) × (n ⟶* m))
+nsuc-reduct done = _ , (refl , done)
+nsuc-reduct (step (ξ-nsuc r) p) with nsuc-reduct p
+... | m , (eq , rm) = m , (eq , step r rm)
+
+nsuc-inj≅ : {n n' : RTm Γ} → nsuc n ≅ nsuc n' → n ≅ n'
+nsuc-inj≅ c with church-rosser c
+... | w , (r₁ , r₂) with nsuc-reduct r₁ | nsuc-reduct r₂
+...   | m₁ , (refl , rm₁) | m₂ , (refl , rm₂) = ctrn (hom→≅ rm₁) (csym (hom→≅ rm₂))
+
+-- `nzero` is normal, so it is never convertible to a successor
+nzero≇nsuc : {n : RTm Γ} → nzero ≅ nsuc n → ⊥
+nzero≇nsuc c with church-rosser c
+... | w , (r₁ , r₂) with nsuc-reduct r₂
+...   | m , (refl , _) with r₁
+...     | step () _
+
+-- …and `Fin` is a congruence for conversion of its index
+Fin-cong≅ : {n n' : RTm Γ} → n ≅ n' → Fin n ≅ᵀ Fin n'
+Fin-cong≅ (cred r)   = credᵀ (ξ-Fin r)
+Fin-cong≅ crfl       = crflᵀ
+Fin-cong≅ (csym c)   = csymᵀ (Fin-cong≅ c)
+Fin-cong≅ (ctrn c d) = ctrnᵀ (Fin-cong≅ c) (Fin-cong≅ d)
 
 -- ★ Π-INJECTIVITY OF CONVERSION — dHoTT-24's scoped ceiling, discharged.
 Π-inj : {A A' : RTy Γ} {B B' : RTy (Γ ∙)} →

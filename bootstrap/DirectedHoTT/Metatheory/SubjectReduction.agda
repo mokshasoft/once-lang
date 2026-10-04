@@ -49,7 +49,7 @@ open import DirectedHoTT.Spec.Variance
         ; posc-Hom; posc-ren; posc-sub; pw?; stkC?; pwDom; pwBody; pwShift
         ; pw?-sub; stkC?-sub; pwBody-sub; pwDom-sub; pwBody-occ; ren-as-sub
         ; avoids-pwShift; subTm-occ; stkC?-ren; wk-ren-tm; wk-sub-tm; flat?
-        ; flat→stk; flat?-ren; flat?-sub; NoNatC; nnc-base; nnc-Unit; nnc-Π
+        ; flat→stk; flat?-ren; flat?-sub; NoNatC; nnc-base; nnc-Unit; nnc-Fin; nnc-Π
         ; nnc-Σ; nnc-Hom; nnc-Id; nonatc-ren; nonatc-sub; nonatc-pwBody; stkA?
         ; stkA?-ren; stkA?-sub; stkC?→stkA?; NoNatHd; nnh-base; nnh-Unit
         ; nnh-Σ; nnh-Id; nnh-Π; nnh-Hom; nnh-IMu; nonatc→hd; stkC?→hd
@@ -76,7 +76,7 @@ open import DirectedHoTT.Spec.Typing
         ; ty-Unit; ty-Nat; ⊢ctx_; c-◇; c-▹; ξ-con; ξ-ielimⁱ; ξ-ielimᵗ; ⊢con
         ; wk-single; iinst; ty-IMu; ⊢ielim; ⊢⌜IMu⌝; _≅_; csym; ctrn; cred
         ; crfl
-        ; El-⌜Fin⌝; DIh-ι; DIh-σ; DIh-ρ; ξ-IMuᴵ; ξ-IMuᴰ; ξ-IMuⁱ; ξ-Desc; ξ-DIhᴰ; ξ-DIhᴹ; ξ-DIhᶜ; ξ-DIhᵖ; ι; dpay-ι; dpay-σ; dpay-ρ; dih-ι; dih-σ; dih-ρ; fcase-z; fcase-s; psplit-β; ξ-⌜IMu⌝ᴵ; ξ-⌜IMu⌝ᴰ; ξ-⌜IMu⌝ⁱ; ξ-ielimᴰ; ξ-ielimᵉ; ξ-dσˢ; ξ-dσᶠ; ξ-dρʲ; ξ-dρᶜ; ξ-dpayᴵ; ξ-dpayᴰ; ξ-dpayᶜ; ξ-dihᴰ; ξ-dihᵉ; ξ-dihᶜ; ξ-dihᵖ; ξ-fsuc; ξ-fcaseᵗ; ξ-fcaseᵃ; ξ-fcaseᵇ; ξ-fcase0; ξ-psplitᵇ; ξ-psplitᵍ; tr-J-Fin; ⊢⌜Fin⌝; ⊢dι; ⊢dσ; ⊢dρ; ⊢dpay; ⊢dih; ⊢fzero; ⊢fsuc; ⊢fcase; ⊢fcase0; ⊢psplit; ty-Desc; ty-DIh; ty-Fin; MethTy; motCtx; methS; wk2M; single2; pairS; fsucS; DescF
+        ; El-⌜Fin⌝; DIh-ι; DIh-σ; DIh-ρ; ξ-IMuᴵ; ξ-IMuᴰ; ξ-IMuⁱ; ξ-Desc; ξ-Fin; ξ-⌜Fin⌝; ξ-DIhᴰ; ξ-DIhᴹ; ξ-DIhᶜ; ξ-DIhᵖ; ι; dpay-ι; dpay-σ; dpay-ρ; dih-ι; dih-σ; dih-ρ; fcase-z; fcase-s; psplit-β; ξ-⌜IMu⌝ᴵ; ξ-⌜IMu⌝ᴰ; ξ-⌜IMu⌝ⁱ; ξ-ielimᴰ; ξ-ielimᵉ; ξ-dσˢ; ξ-dσᶠ; ξ-dρʲ; ξ-dρᶜ; ξ-dpayᴵ; ξ-dpayᴰ; ξ-dpayᶜ; ξ-dihᴰ; ξ-dihᵉ; ξ-dihᶜ; ξ-dihᵖ; ξ-fsuc; ξ-fcaseᵗ; ξ-fcaseᵃ; ξ-fcaseᵇ; ξ-fcase0; ξ-psplitᵇ; ξ-psplitᵍ; tr-J-Fin; ⊢⌜Fin⌝; ⊢dι; ⊢dσ; ⊢dρ; ⊢dpay; ⊢dih; ⊢fzero; ⊢fsuc; ⊢fcase; ⊢fcase0; ⊢psplit; ty-Desc; ty-DIh; ty-Fin; MethTy; motCtx; methS; wk2M; single2; pairS; fsucS; DescF
         ; δref; ⊢ref )
 open import DirectedHoTT.Metatheory.SubjectReductionBase using ( ≅ᵀ-sub; ⟶-sub )
 open import DirectedHoTT.Metatheory.Confluence
@@ -91,7 +91,7 @@ open import DirectedHoTT.Metatheory.Injectivity
         ; ⟶ᵀ*-Idᵀ; ⟶ᵀ*-Idˡ; ⟶ᵀ*-Idʳ; Id-reduct
         ; church-rosserᵀ; Π-reduct; ΠRed; mkΠRed
         ; ⟶ᵀ*-IMu; IMu-inj; IMu-reduct; IMuRed; mkIMuRed
-        ; Desc-inj; Fin-inj; ⟶ᵀ*-Desc )
+        ; Desc-inj; Fin-inj; nsuc-inj≅; Fin-cong≅; ⟶ᵀ*-Desc )
 
 private
   variable
@@ -155,7 +155,7 @@ open import DirectedHoTT.Metatheory.TySub public
 nonathd-red : {c c' : RTm Γ} → NoNatHd c → c ⟶ c' → NoNatHd c'
 nonathd-red nnh-base ()
 nonathd-red nnh-Unit ()
-nonathd-red nnh-Fin ()
+nonathd-red nnh-Fin (ξ-⌜Fin⌝ _) = nnh-Fin
 nonathd-red nnh-IMu (ξ-⌜IMu⌝ᴵ _) = nnh-IMu
 nonathd-red nnh-IMu (ξ-⌜IMu⌝ᴰ _) = nnh-IMu
 nonathd-red nnh-IMu (ξ-⌜IMu⌝ⁱ _) = nnh-IMu
@@ -173,6 +173,7 @@ nonathd-red nnh-Hom (ξ-⌜Hom⌝ʳ _) = nnh-Hom
 nonatc-red : {c c' : RTm Γ} → NoNatC c → c ⟶ c' → NoNatC c'
 nonatc-red nnc-base ()
 nonatc-red nnc-Unit ()
+nonatc-red nnc-Fin (ξ-⌜Fin⌝ _) = nnc-Fin
 nonatc-red nnc-Σ (ξ-⌜Σ⌝ˡ _) = nnc-Σ
 nonatc-red nnc-Σ (ξ-⌜Σ⌝ʳ _) = nnc-Σ
 nonatc-red nnc-Id (ξ-⌜Id⌝ᶜ _) = nnc-Id
@@ -196,13 +197,13 @@ data NoNat {Γ} : RTy Γ → Set where
   -- ⚠ NOT closed by an absurd reduction — the family's three slots are
   --   terms and step, so `nonat-red` has real rows below.
   nn-IMu  : {I D i : RTm Γ} → NoNat (IMu I D i)
-  nn-Fin  : {n : ℕ} → NoNat (Fin {Γ} n)
+  nn-Fin  : {n : RTm Γ} → NoNat (Fin n)
 
 nonat-red : {A A' : RTy Γ} → NoNat A → A ⟶ᵀ A' → NoNat A'
 nonat-red nn-base ()
 nonat-red nn-U ()
 nonat-red nn-Unit ()
-nonat-red nn-Fin ()
+nonat-red nn-Fin (ξ-Fin _) = nn-Fin
 nonat-red (nn-El _)  El-⌜base⌝        = nn-base
 nonat-red (nn-El _)  (El-⌜Π⌝ _ _)     = nn-Π
 nonat-red (nn-El _)  (El-⌜Σ⌝ _ _)     = nn-Σ
@@ -826,7 +827,7 @@ data StkAmb {Γ : Cx} : RTy Γ → Set where
   -- ★ `IMu I D i` is never `U`, never `Π` — but its slots reduce, so
   --   it is INERT-SHAPED, not inert.  `Fin n` is inert.
   st-IMu  : {I D i : RTm Γ} → StkAmb (IMu I D i)
-  st-Fin  : {n : ℕ} → StkAmb (Fin {Γ} n)
+  st-Fin  : {n : RTm Γ} → StkAmb (Fin n)
   -- ★★ SpikeNatJ: `Nat` IS a stable ambient.  `StkAmb A` means "A never
   -- becomes `U` or `Π`", NOT "A is stuck" — that second notion is LR's
   -- `StkHd`, and the two must not be confused.  `Nat` is inert, and a
@@ -845,7 +846,7 @@ stamb-red (st-el {c = ⌜IMu⌝ _ _ _} k) El-⌜IMu⌝ = st-IMu
 stamb-red st-IMu (ξ-IMuᴵ r) = st-IMu
 stamb-red st-IMu (ξ-IMuᴰ r) = st-IMu
 stamb-red st-IMu (ξ-IMuⁱ r) = st-IMu
-stamb-red st-Fin ()
+stamb-red st-Fin (ξ-Fin r) = st-Fin
 stamb-red (st-el {c = ⌜Nat⌝} k) El-⌜Nat⌝ = st-Nat
 stamb-red st-Nat ()
 stamb-red st-Unit ()
@@ -1050,6 +1051,11 @@ gen-⌜IMu⌝ (⊢⌜IMu⌝ dI dD di) = dI , (dD , (di , crflᵀ))
 gen-⌜IMu⌝ (⊢conv d c) with gen-⌜IMu⌝ d
 ... | dI , (dD , (di , c')) = dI , (dD , (di , ctrnᵀ (csymᵀ c) c'))
 
+gen-⌜Fin⌝ : {Γ : Ctx} {n : RTm ⌊ Γ ⌋} {C : RTy ⌊ Γ ⌋} → Γ ⊢ ⌜Fin⌝ n ∷ C → (Γ ⊢ n ∷ Nat) × (C ≅ᵀ U)
+gen-⌜Fin⌝ (⊢⌜Fin⌝ dn) = dn , crflᵀ
+gen-⌜Fin⌝ (⊢conv d c) with gen-⌜Fin⌝ d
+... | dn , c' = dn , ctrnᵀ (csymᵀ c) c'
+
 gen-dι : {Γ : Ctx} {C : RTy ⌊ Γ ⌋} → Γ ⊢ dι ∷ C →
          Σ (RTm ⌊ Γ ⌋) (λ I → (Γ ⊢ I ∷ U) × (C ≅ᵀ Desc I))
 gen-dι (⊢dι dI) = _ , (dI , crflᵀ)
@@ -1086,15 +1092,15 @@ gen-dih (⊢conv d c) with gen-dih d
       I , (M , (dI , (dD , (dM , (de , (dC , (dp , ctrnᵀ (csymᵀ c) c')))))))
 
 gen-fsuc : {Γ : Ctx} {t : RTm ⌊ Γ ⌋} {C : RTy ⌊ Γ ⌋} → Γ ⊢ fsuc t ∷ C →
-           Σ ℕ (λ n → (Γ ⊢ t ∷ Fin n) × (C ≅ᵀ Fin (suc n)))
+           Σ (RTm ⌊ Γ ⌋) (λ n → (Γ ⊢ t ∷ Fin n) × (C ≅ᵀ Fin (nsuc n)))
 gen-fsuc (⊢fsuc dt) = _ , (dt , crflᵀ)
 gen-fsuc (⊢conv d c) with gen-fsuc d
 ... | n , (dt , c') = n , (dt , ctrnᵀ (csymᵀ c) c')
 
 gen-fcase : {Γ : Ctx} {t a : RTm ⌊ Γ ⌋} {b : RTm (⌊ Γ ⌋ ∙)} {C : RTy ⌊ Γ ⌋} →
             Γ ⊢ fcase t a b ∷ C →
-            Σ ℕ (λ n → Σ (RTy (⌊ Γ ⌋ ∙)) (λ P →
-              ((Γ ▹ Fin (suc n)) ⊢ty P) × ((Γ ⊢ t ∷ Fin (suc n)) ×
+            Σ (RTm ⌊ Γ ⌋) (λ n → Σ (RTy (⌊ Γ ⌋ ∙)) (λ P →
+              ((Γ ▹ Fin (nsuc n)) ⊢ty P) × ((Γ ⊢ t ∷ Fin (nsuc n)) ×
               ((Γ ⊢ a ∷ subTy (single fzero) P) × (((Γ ▹ Fin n) ⊢ b ∷ subTy fsucS P) ×
               (C ≅ᵀ subTy (single t) P))))))
 gen-fcase (⊢fcase dP dt da db) = _ , (_ , (dP , (dt , (da , (db , crflᵀ)))))
@@ -1102,7 +1108,7 @@ gen-fcase (⊢conv d c) with gen-fcase d
 ... | n , (P , (dP , (dt , (da , (db , c'))))) = n , (P , (dP , (dt , (da , (db , ctrnᵀ (csymᵀ c) c')))))
 
 gen-fcase0 : {Γ : Ctx} {t : RTm ⌊ Γ ⌋} {C : RTy ⌊ Γ ⌋} → Γ ⊢ fcase0 t ∷ C →
-             Σ (RTy (⌊ Γ ⌋ ∙)) (λ P → ((Γ ▹ Fin zero) ⊢ty P) × ((Γ ⊢ t ∷ Fin zero) ×
+             Σ (RTy (⌊ Γ ⌋ ∙)) (λ P → ((Γ ▹ Fin nzero) ⊢ty P) × ((Γ ⊢ t ∷ Fin nzero) ×
                (C ≅ᵀ subTy (single t) P)))
 gen-fcase0 (⊢fcase0 dP dt) = _ , (dP , (dt , crflᵀ))
 gen-fcase0 (⊢conv d c) with gen-fcase0 d
@@ -1221,8 +1227,8 @@ sr d (fcase-z a b) with gen-fcase d
 ... | n , (P , (dP , (dt , (da , (db , cC))))) = ⊢conv da (csymᵀ cC)
 sr d (fcase-s t a b) with gen-fcase d
 ... | n , (P , (dP , (dt , (da , (db , cC))))) with gen-fsuc dt
-...   | n' , (dt' , c') with Fin-inj c'
-...     | refl = ⊢conv (⊢-cast (fsucS-inst t P) (⊢[] db dt')) (csymᵀ cC)
+...   | n' , (dt' , c') =
+        ⊢conv (⊢-cast (fsucS-inst t P) (⊢[] db (⊢conv dt' (Fin-cong≅ (csym (nsuc-inj≅ (Fin-inj c'))))))) (csymᵀ cC)
 -- ★ δ: the body, weakened from the empty context
 sr d (δref n b) with gen-ref d
 ... | A , (db , c) = ⊢conv (sub-lemma db (λ ())) (csymᵀ c)
@@ -1239,6 +1245,8 @@ sr d (ξ-⌜IMu⌝ᴵ r) with gen-⌜IMu⌝ d
 ... | dI , (dD , (di , cU)) =
       ⊢conv (⊢⌜IMu⌝ (sr dI r) (⊢conv dD (DescF-step r)) (⊢conv di (credᵀ (ξ-El r))))
             (csymᵀ cU)
+sr d (ξ-⌜Fin⌝ r) with gen-⌜Fin⌝ d
+... | dn , cU = ⊢conv (⊢⌜Fin⌝ (sr dn r)) (csymᵀ cU)
 sr d (ξ-⌜IMu⌝ᴰ r) with gen-⌜IMu⌝ d
 ... | dI , (dD , (di , cU)) = ⊢conv (⊢⌜IMu⌝ dI (sr dD r) di) (csymᵀ cU)
 sr d (ξ-⌜IMu⌝ⁱ r) with gen-⌜IMu⌝ d

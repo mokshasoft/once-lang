@@ -26,7 +26,7 @@ TYS = [
  ('IMu', [f(M), f(M), f(M)]),                       # IMu I D i
  ('Desc', [f(M)]),                                  # Desc I
  ('DIh', [f(M,0,A), f(M), f(T,2), f(M), f(M)]),  # DIh [I] D M C p
- ('Fin', [f(N)]),
+ ('Fin', [f(M)]),                                   # Fin n (S7b step 2: a Nat TERM)
 ]
 TMS = [
  ('var', [f(V)]),
@@ -50,7 +50,7 @@ TMS = [
  ('⌜Nat⌝', []), ('⌜Unit⌝', []),
  # ★ levitated inductive families (PLAN-LEVITATION)
  ('⌜IMu⌝', [f(M), f(M), f(M)]),                     # ⌜IMu⌝ I D i
- ('⌜Fin⌝', [f(N)]),
+ ('⌜Fin⌝', [f(M)]),
  ('con', [f(M,0,A), f(M,0,A), f(M,0,A), f(M)]),      # con [I D i] p
  ('ielim', [f(M,0,A), f(M), f(T,2,A), f(M), f(M), f(M)]),  # ielim [I] D [M] i e t
  ('dι', [f(M,0,A)]),                                # dι [I]
@@ -58,9 +58,9 @@ TMS = [
  ('dρ', [f(M,0,A), f(M), f(M)]),                    # dρ [I] j C
  ('dpay', [f(M)]*3),                                # dpay I D C
  ('dih', [f(M,0,A), f(M), f(T,2,A), f(M), f(M), f(M)]),  # dih [I] D [M] e C p
- ('fzero', [f(N,0,A)]),                             # fzero [n]
- ('fsuc', [f(N,0,A), f(M)]),                        # fsuc [n] t
- ('fcase', [f(N,0,A), f(T,1,A), f(M), f(M), f(M,1)]),  # fcase [n P] t a b
+ ('fzero', [f(M,0,A)]),                             # fzero [n]
+ ('fsuc', [f(M,0,A), f(M)]),                        # fsuc [n] t
+ ('fcase', [f(M,0,A), f(T,1,A), f(M), f(M), f(M,1)]),  # fcase [n P] t a b
  ('fcase0', [f(T,1,A), f(M)]),                      # fcase0 [P] t
  ('psplit', [f(T,0,A), f(T,1,A), f(T,1,A), f(M,2), f(M)]),  # psplit [A B P] b q
  # ★ a reference to the d-th entry of the global signature (PLAN-BIDI

@@ -42,7 +42,7 @@ data STy where
   IMu : ∀ {Γ} → STm Γ → STm Γ → STm Γ → STy Γ
   Desc : ∀ {Γ} → STm Γ → STy Γ
   DIh : ∀ {Γ} → STm Γ → STm Γ → STy ((Γ ∙) ∙) → STm Γ → STm Γ → STy Γ
-  Fin : ∀ {Γ} → ℕ → STy Γ
+  Fin : ∀ {Γ} → STm Γ → STy Γ
   □ᵀ : ∀ {Γ} → STy Γ
 
 data STm where
@@ -71,7 +71,7 @@ data STm where
   ⌜Nat⌝ : ∀ {Γ} → STm Γ
   ⌜Unit⌝ : ∀ {Γ} → STm Γ
   ⌜IMu⌝ : ∀ {Γ} → STm Γ → STm Γ → STm Γ → STm Γ
-  ⌜Fin⌝ : ∀ {Γ} → ℕ → STm Γ
+  ⌜Fin⌝ : ∀ {Γ} → STm Γ → STm Γ
   con : ∀ {Γ} → STm Γ → STm Γ → STm Γ → STm Γ → STm Γ
   ielim : ∀ {Γ} → STm Γ → STm Γ → STy ((Γ ∙) ∙) → STm Γ → STm Γ → STm Γ → STm Γ
   dι : ∀ {Γ} → STm Γ → STm Γ
@@ -79,9 +79,9 @@ data STm where
   dρ : ∀ {Γ} → STm Γ → STm Γ → STm Γ → STm Γ
   dpay : ∀ {Γ} → STm Γ → STm Γ → STm Γ → STm Γ
   dih : ∀ {Γ} → STm Γ → STm Γ → STy ((Γ ∙) ∙) → STm Γ → STm Γ → STm Γ → STm Γ
-  fzero : ∀ {Γ} → ℕ → STm Γ
-  fsuc : ∀ {Γ} → ℕ → STm Γ → STm Γ
-  fcase : ∀ {Γ} → ℕ → STy (Γ ∙) → STm Γ → STm Γ → STm (Γ ∙) → STm Γ
+  fzero : ∀ {Γ} → STm Γ → STm Γ
+  fsuc : ∀ {Γ} → STm Γ → STm Γ → STm Γ
+  fcase : ∀ {Γ} → STm Γ → STy (Γ ∙) → STm Γ → STm Γ → STm (Γ ∙) → STm Γ
   fcase0 : ∀ {Γ} → STy (Γ ∙) → STm Γ → STm Γ
   psplit : ∀ {Γ} → STy Γ → STy (Γ ∙) → STy (Γ ∙) → STm ((Γ ∙) ∙) → STm Γ → STm Γ
   ref : ∀ {Γ} → ℕ → STm Γ
@@ -105,7 +105,7 @@ holesTy (R.Id x0 x1 x2) = Id (holesTy x0) (holesTm x1) (holesTm x2)
 holesTy (R.IMu x0 x1 x2) = IMu (holesTm x0) (holesTm x1) (holesTm x2)
 holesTy (R.Desc x0) = Desc (holesTm x0)
 holesTy (R.DIh x1 x2 x3 x4) = DIh □ (holesTm x1) (holesTy x2) (holesTm x3) (holesTm x4)
-holesTy (R.Fin x0) = Fin x0
+holesTy (R.Fin x0) = Fin (holesTm x0)
 holesTm (R.var x) = var x
 holesTm (R.lam x1) = lam □ᵀ (holesTm x1)
 holesTm (R.app x0 x1) = app (holesTm x0) (holesTm x1)
@@ -131,7 +131,7 @@ holesTm (R.natrec x1 x2 x3) = natrec □ᵀ (holesTm x1) (holesTm x2) (holesTm x
 holesTm R.⌜Nat⌝ = ⌜Nat⌝
 holesTm R.⌜Unit⌝ = ⌜Unit⌝
 holesTm (R.⌜IMu⌝ x0 x1 x2) = ⌜IMu⌝ (holesTm x0) (holesTm x1) (holesTm x2)
-holesTm (R.⌜Fin⌝ x0) = ⌜Fin⌝ x0
+holesTm (R.⌜Fin⌝ x0) = ⌜Fin⌝ (holesTm x0)
 holesTm (R.con x3) = con □ □ □ (holesTm x3)
 holesTm (R.ielim x1 x3 x4 x5) = ielim □ (holesTm x1) □ᵀ (holesTm x3) (holesTm x4) (holesTm x5)
 holesTm R.dι = dι □
@@ -139,9 +139,9 @@ holesTm (R.dσ x1 x2) = dσ □ (holesTm x1) (holesTm x2)
 holesTm (R.dρ x1 x2) = dρ □ (holesTm x1) (holesTm x2)
 holesTm (R.dpay x0 x1 x2) = dpay (holesTm x0) (holesTm x1) (holesTm x2)
 holesTm (R.dih x1 x3 x4 x5) = dih □ (holesTm x1) □ᵀ (holesTm x3) (holesTm x4) (holesTm x5)
-holesTm R.fzero = fzero 0
-holesTm (R.fsuc x1) = fsuc 0 (holesTm x1)
-holesTm (R.fcase x2 x3 x4) = fcase 0 □ᵀ (holesTm x2) (holesTm x3) (holesTm x4)
+holesTm R.fzero = fzero □
+holesTm (R.fsuc x1) = fsuc □ (holesTm x1)
+holesTm (R.fcase x2 x3 x4) = fcase □ □ᵀ (holesTm x2) (holesTm x3) (holesTm x4)
 holesTm (R.fcase0 x1) = fcase0 □ᵀ (holesTm x1)
 holesTm (R.psplit x3 x4) = psplit □ᵀ □ᵀ □ᵀ (holesTm x3) (holesTm x4)
 holesTm (R.ref x0 b) = ref x0
@@ -161,7 +161,7 @@ renTyˢ ρ (Id x0 x1 x2) = Id (renTyˢ ρ x0) (renTmˢ ρ x1) (renTmˢ ρ x2)
 renTyˢ ρ (IMu x0 x1 x2) = IMu (renTmˢ ρ x0) (renTmˢ ρ x1) (renTmˢ ρ x2)
 renTyˢ ρ (Desc x0) = Desc (renTmˢ ρ x0)
 renTyˢ ρ (DIh x0 x1 x2 x3 x4) = DIh (renTmˢ ρ x0) (renTmˢ ρ x1) (renTyˢ (extR (extR ρ)) x2) (renTmˢ ρ x3) (renTmˢ ρ x4)
-renTyˢ ρ (Fin x0) = Fin x0
+renTyˢ ρ (Fin x0) = Fin (renTmˢ ρ x0)
 renTyˢ ρ □ᵀ = □ᵀ
 renTmˢ ρ (var x) = var (ρ x)
 renTmˢ ρ (lam x0 x1) = lam (renTyˢ ρ x0) (renTmˢ (extR ρ) x1)
@@ -188,7 +188,7 @@ renTmˢ ρ (natrec x0 x1 x2 x3) = natrec (renTyˢ (extR ρ) x0) (renTmˢ ρ x1) 
 renTmˢ ρ ⌜Nat⌝ = ⌜Nat⌝
 renTmˢ ρ ⌜Unit⌝ = ⌜Unit⌝
 renTmˢ ρ (⌜IMu⌝ x0 x1 x2) = ⌜IMu⌝ (renTmˢ ρ x0) (renTmˢ ρ x1) (renTmˢ ρ x2)
-renTmˢ ρ (⌜Fin⌝ x0) = ⌜Fin⌝ x0
+renTmˢ ρ (⌜Fin⌝ x0) = ⌜Fin⌝ (renTmˢ ρ x0)
 renTmˢ ρ (con x0 x1 x2 x3) = con (renTmˢ ρ x0) (renTmˢ ρ x1) (renTmˢ ρ x2) (renTmˢ ρ x3)
 renTmˢ ρ (ielim x0 x1 x2 x3 x4 x5) = ielim (renTmˢ ρ x0) (renTmˢ ρ x1) (renTyˢ (extR (extR ρ)) x2) (renTmˢ ρ x3) (renTmˢ ρ x4) (renTmˢ ρ x5)
 renTmˢ ρ (dι x0) = dι (renTmˢ ρ x0)
@@ -196,9 +196,9 @@ renTmˢ ρ (dσ x0 x1 x2) = dσ (renTmˢ ρ x0) (renTmˢ ρ x1) (renTmˢ ρ x2)
 renTmˢ ρ (dρ x0 x1 x2) = dρ (renTmˢ ρ x0) (renTmˢ ρ x1) (renTmˢ ρ x2)
 renTmˢ ρ (dpay x0 x1 x2) = dpay (renTmˢ ρ x0) (renTmˢ ρ x1) (renTmˢ ρ x2)
 renTmˢ ρ (dih x0 x1 x2 x3 x4 x5) = dih (renTmˢ ρ x0) (renTmˢ ρ x1) (renTyˢ (extR (extR ρ)) x2) (renTmˢ ρ x3) (renTmˢ ρ x4) (renTmˢ ρ x5)
-renTmˢ ρ (fzero x0) = fzero x0
-renTmˢ ρ (fsuc x0 x1) = fsuc x0 (renTmˢ ρ x1)
-renTmˢ ρ (fcase x0 x1 x2 x3 x4) = fcase x0 (renTyˢ (extR ρ) x1) (renTmˢ ρ x2) (renTmˢ ρ x3) (renTmˢ (extR ρ) x4)
+renTmˢ ρ (fzero x0) = fzero (renTmˢ ρ x0)
+renTmˢ ρ (fsuc x0 x1) = fsuc (renTmˢ ρ x0) (renTmˢ ρ x1)
+renTmˢ ρ (fcase x0 x1 x2 x3 x4) = fcase (renTmˢ ρ x0) (renTyˢ (extR ρ) x1) (renTmˢ ρ x2) (renTmˢ ρ x3) (renTmˢ (extR ρ) x4)
 renTmˢ ρ (fcase0 x0 x1) = fcase0 (renTyˢ (extR ρ) x0) (renTmˢ ρ x1)
 renTmˢ ρ (psplit x0 x1 x2 x3 x4) = psplit (renTyˢ ρ x0) (renTyˢ (extR ρ) x1) (renTyˢ (extR ρ) x2) (renTmˢ (extR (extR ρ)) x3) (renTmˢ ρ x4)
 renTmˢ ρ (ref x0) = ref x0
@@ -226,7 +226,7 @@ subTyˢ σ (Id x0 x1 x2) = Id (subTyˢ σ x0) (subTmˢ σ x1) (subTmˢ σ x2)
 subTyˢ σ (IMu x0 x1 x2) = IMu (subTmˢ σ x0) (subTmˢ σ x1) (subTmˢ σ x2)
 subTyˢ σ (Desc x0) = Desc (subTmˢ σ x0)
 subTyˢ σ (DIh x0 x1 x2 x3 x4) = DIh (subTmˢ σ x0) (subTmˢ σ x1) (subTyˢ (extSˢ (extSˢ σ)) x2) (subTmˢ σ x3) (subTmˢ σ x4)
-subTyˢ σ (Fin x0) = Fin x0
+subTyˢ σ (Fin x0) = Fin (subTmˢ σ x0)
 subTyˢ σ □ᵀ = □ᵀ
 subTmˢ σ (var x) = σ x
 subTmˢ σ (lam x0 x1) = lam (subTyˢ σ x0) (subTmˢ (extSˢ σ) x1)
@@ -253,7 +253,7 @@ subTmˢ σ (natrec x0 x1 x2 x3) = natrec (subTyˢ (extSˢ σ) x0) (subTmˢ σ x1
 subTmˢ σ ⌜Nat⌝ = ⌜Nat⌝
 subTmˢ σ ⌜Unit⌝ = ⌜Unit⌝
 subTmˢ σ (⌜IMu⌝ x0 x1 x2) = ⌜IMu⌝ (subTmˢ σ x0) (subTmˢ σ x1) (subTmˢ σ x2)
-subTmˢ σ (⌜Fin⌝ x0) = ⌜Fin⌝ x0
+subTmˢ σ (⌜Fin⌝ x0) = ⌜Fin⌝ (subTmˢ σ x0)
 subTmˢ σ (con x0 x1 x2 x3) = con (subTmˢ σ x0) (subTmˢ σ x1) (subTmˢ σ x2) (subTmˢ σ x3)
 subTmˢ σ (ielim x0 x1 x2 x3 x4 x5) = ielim (subTmˢ σ x0) (subTmˢ σ x1) (subTyˢ (extSˢ (extSˢ σ)) x2) (subTmˢ σ x3) (subTmˢ σ x4) (subTmˢ σ x5)
 subTmˢ σ (dι x0) = dι (subTmˢ σ x0)
@@ -261,9 +261,9 @@ subTmˢ σ (dσ x0 x1 x2) = dσ (subTmˢ σ x0) (subTmˢ σ x1) (subTmˢ σ x2)
 subTmˢ σ (dρ x0 x1 x2) = dρ (subTmˢ σ x0) (subTmˢ σ x1) (subTmˢ σ x2)
 subTmˢ σ (dpay x0 x1 x2) = dpay (subTmˢ σ x0) (subTmˢ σ x1) (subTmˢ σ x2)
 subTmˢ σ (dih x0 x1 x2 x3 x4 x5) = dih (subTmˢ σ x0) (subTmˢ σ x1) (subTyˢ (extSˢ (extSˢ σ)) x2) (subTmˢ σ x3) (subTmˢ σ x4) (subTmˢ σ x5)
-subTmˢ σ (fzero x0) = fzero x0
-subTmˢ σ (fsuc x0 x1) = fsuc x0 (subTmˢ σ x1)
-subTmˢ σ (fcase x0 x1 x2 x3 x4) = fcase x0 (subTyˢ (extSˢ σ) x1) (subTmˢ σ x2) (subTmˢ σ x3) (subTmˢ (extSˢ σ) x4)
+subTmˢ σ (fzero x0) = fzero (subTmˢ σ x0)
+subTmˢ σ (fsuc x0 x1) = fsuc (subTmˢ σ x0) (subTmˢ σ x1)
+subTmˢ σ (fcase x0 x1 x2 x3 x4) = fcase (subTmˢ σ x0) (subTyˢ (extSˢ σ) x1) (subTmˢ σ x2) (subTmˢ σ x3) (subTmˢ (extSˢ σ) x4)
 subTmˢ σ (fcase0 x0 x1) = fcase0 (subTyˢ (extSˢ σ) x0) (subTmˢ σ x1)
 subTmˢ σ (psplit x0 x1 x2 x3 x4) = psplit (subTyˢ σ x0) (subTyˢ (extSˢ σ) x1) (subTyˢ (extSˢ σ) x2) (subTmˢ (extSˢ (extSˢ σ)) x3) (subTmˢ σ x4)
 subTmˢ σ (ref x0) = ref x0
