@@ -26,7 +26,8 @@ open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast; wk-cancel-tm )
 open import DirectedHoTT.Metatheory.SubjectReductionBase using ( wk-sub )
 open import DirectedHoTT.Metatheory.Fundamental.Syntactic using ( ⟨_⟩ᵣ; subTy-var; subTm-var )
-open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_; conₗ; tag; selF; ⊢selF; AllD; []ᵈ; _∷ᵈ_; subC; lt-z; nth-z; nth-s; v₀; v₁; v₂; v₃; v₄; v₅; _,ₚ_ )
+open import DirectedHoTT.Lib.NatNum using ( ⊢num )
+open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_; conₗ; tag; selF; Dσ; ⊢selF; AllD; []ᵈ; _∷ᵈ_; subC; lt-z; nth-z; nth-s; v₀; v₁; v₂; v₃; v₄; v₅; _,ₚ_ )
 open import DirectedHoTT.Lib.Tel
 open import DirectedHoTT.Lib.TelAt using ( HypAt; ⊢payAt )
 open import DirectedHoTT.Lib.MethAt
@@ -138,10 +139,10 @@ pd i = natrec nzero v₁ i
 
 -- a fibre: a tag, then the selected row
 rows : {c : ℕ} → Cons Γ c → RTm Γ
-rows {c = c} Cs = dσ (⌜Fin⌝ c) (selF Cs)
+rows Cs = Dσ Cs
 
 ⊢rows : {Γ : Ctx} {I : RTm ⌊ Γ ⌋} {c : ℕ} {Cs : Cons ⌊ Γ ⌋ c} → Γ ⊢ I ∷ U → AllD Γ I Cs → Γ ⊢ rows Cs ∷ Desc I
-⊢rows dI ds = ⊢dσ dI ⊢⌜Fin⌝ (⊢selF dI ds)
+⊢rows {c = c} dI ds = ⊢dσ dI (⊢⌜Fin⌝ (⊢num c)) (⊢selF dI ds)
 
 ------------------------------------------------------------------------
 -- 2. THE TWO ROWS.

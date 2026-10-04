@@ -17,7 +17,7 @@ open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast; wk-cancel-tm 
 open import DirectedHoTT.Metatheory.SubjectReductionBase using () renaming ( wk-sub to wkS )
 open import DirectedHoTT.Metatheory.Fundamental.Syntactic using ( ⟨_⟩ᵣ; subTm-var )
 open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; _⟶ᵀ*_; stepᵀ; doneᵀ; ⟶*-trans; ⟶*-appˡ; ⟶*-appʳ; ⟶*-ielimⁱ; ⟶*-ielimᵗ; ⟶*-fst; ⟶*-snd; ⟶*-pairˡ; ⟶*-pairʳ; ⟶*-con; ⟶ᵀ*-IMu )
-open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_; conₗ; tag; Lt; lt-z; lt-s; subC; selF-sub; []ᵈ; _∷ᵈ_; v₀; v₁; v₂; _,ₚ_ )
+open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_; conₗ; tag; Lt; lt-z; lt-s; subC; selF-sub; Dσ-sub; []ᵈ; _∷ᵈ_; v₀; v₁; v₂; _,ₚ_ )
 open import DirectedHoTT.Lib.SynView using ( PayV; payV-red; ⊢recFst; ⊢recSnd; ⊢atDepthSK )
 open import DirectedHoTT.Lib.FinFam using ( FinI; ffz; ⊢ffz; ⊢isuc )
 open import DirectedHoTT.Examples.Knot.Ctors
@@ -254,7 +254,7 @@ tmIx j g t A = ixJ ((tag 1) ,ₚ j) t (g ,ₚ A)
 ------------------------------------------------------------------------
 
 rows-sub' : {c : ℕ} (τ : Sub Δ Θ) (Cs : Cons Δ c) → subTm τ (rows Cs) ≡ rows (subC τ Cs)
-rows-sub' {c = c} τ Cs = cong (dσ (⌜Fin⌝ c)) (selF-sub τ Cs)
+rows-sub' τ Cs = Dσ-sub τ Cs
 
 row1 : Tel Δ → RTm Δ
 row1 T = rows (⌜ T ⌝ᵗ ∷ [])
