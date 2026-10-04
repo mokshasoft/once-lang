@@ -34,7 +34,7 @@ open import DirectedHoTT.Metatheory.TySub using ( ⊢-cast )
 open import DirectedHoTT.Metatheory.SubjectReduction using ( gen-nsuc )
 open import DirectedHoTT.Metatheory.LogicalRelation using ( IsNormal )
 open import DirectedHoTT.Metatheory.Canonicity
-  using ( canNat; NatShape; ns-zero; ns-suc; sz; _≤_; z≤n; s≤s; ≤-refl; ≤-trans; ≤-suc; un≤; ≤+ˡ; ≤+ʳ )
+  using ( canNat; NatShape; ns-zero; ns-suc; sz; _≤_; ≤-refl )
 open import DirectedHoTT.Lib.Sugar using ( tag; conₗ; Lt; lt-z; lt-s; selF-β; nth-sub; subC; selF; Nth; [] )
 open import DirectedHoTT.Lib.Tel using ( ⌜_⌝ᵗ; ⌜_⌝ₛ; nth-⌜⌝; nthᵗ-z; nthᵗ-s )
 open import DirectedHoTT.Lib.NatNum using ( num )
@@ -43,6 +43,7 @@ open import DirectedHoTT.Lib.FinFam using ( FinD; FinI; FinTs; ffz; ffs; toI; fr
 open import DirectedHoTT.Lib.Syn
 open import DirectedHoTT.Lib.Decode
 open import DirectedHoTT.Lib.SynDecode
+open import DirectedHoTT.Lib.Size using ( szp; szˡ; szʳ )
 
 private
   variable
@@ -211,16 +212,6 @@ nthG-of (_ ∷ᵍ sg)   (lt-s l) with nthG-of sg l
 nsucs-num : (k d : ℕ) → nsucs {ε} k (num d) ≡ num (k + d)
 nsucs-num zero    d = refl
 nsucs-num (suc k) d = cong nsuc (nsucs-num k d)
-
-private
-  -- the payload of a node is smaller than the node
-  szp : (k : ℕ) (p : RTm ε) {f : ℕ} → sz (conₗ k p) ≤ suc f → sz p ≤ f
-  szp k p h = ≤-trans (≤-trans (≤+ʳ (sz (tag {ε} k)) (sz p)) (≤-suc ≤-refl)) (un≤ h)
-  -- …and so are a field and the rest
-  szˡ : (a r : RTm ε) {f : ℕ} → sz (pair a r) ≤ suc f → sz a ≤ f
-  szˡ a r h = ≤-trans (≤+ˡ (sz a) (sz r)) (un≤ h)
-  szʳ : (a r : RTm ε) {f : ℕ} → sz (pair a r) ≤ suc f → sz r ≤ f
-  szʳ a r h = ≤-trans (≤+ʳ (sz a) (sz r)) (un≤ h)
 
 syn-unq : {sg : Sig n} → SigOK n sg → (f : ℕ) {s d : ℕ} {shs : Shapes c} {t : RTm ε} →
           NthG sg s shs → sz t ≤ f → ◇ ⊢ t ∷ SK sg s (num d) → IsNormal t →
