@@ -66,7 +66,7 @@ look-nth (nthᵍ-s ng) nh = look-nth ng nh
 
 -- the empty fibre
 noRow : Row
-noRow = record { R = λ j p c → dσ (⌜Fin⌝ 0) (selF []) ; R-sub = λ σ j p c → refl }
+noRow = record { R = λ j p c → dσ (⌜Fin⌝ nzero) (selF []) ; R-sub = λ σ j p c → refl }
 
 -- the row `r` at (s₀ , h), none elsewhere
 rowAt : ℕ → ℕ → Row → ℕ → ℕ → Row
@@ -110,7 +110,7 @@ module Pat {sg : Sig n} (ok : SigOK n sg)
 
   private
     okNo : {s : ℕ} {sh : Shape} → RowOK s sh noRow
-    okNo dj dp dc = ⊢dσ ⊢J ⊢⌜Fin⌝ (⊢selF ⊢J []ᵈ)
+    okNo dj dp dc = ⊢dσ ⊢J (⊢⌜Fin⌝ ⊢nzero) (⊢selF ⊢J []ᵈ)
 
     okHit : {s k c' : ℕ} {shs : Shapes c'} {sh : Shape} → NthG sg s shs → NthSh shs k sh →
             RowOK s₀ (lookSh sg s₀ h) r → s ≡ s₀ → k ≡ h → RowOK s sh r

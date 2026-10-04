@@ -44,6 +44,7 @@ open import DirectedHoTT.Lib.Tel
 open import DirectedHoTT.Lib.TelAt using ( HypAt; entₛ; nth-⌜⌝ₛₛ; allSD )
 open import DirectedHoTT.Lib.MethAt
 open import DirectedHoTT.Lib.Sorted using ( σₛ; ιₛ; ⊢ιₛ; PerS; []ₚ; _∷ₚ_; ⊢sortMeth; ⊢methₛ; SortT; ιₛ-red )
+open import DirectedHoTT.Lib.NatNum using ( num )
 open import DirectedHoTT.Lib.Syn
 open import DirectedHoTT.Lib.SynView using ( PayV; payV-red; ren-tel )
 open import DirectedHoTT.Lib.SynTravM using ( _+'_; +'-zero )
@@ -212,9 +213,6 @@ module Fib {sg : Sig n} (ok : SigOK n sg)
                         ≡ Π (El (Cat (W2 (ιₛ s)))) (Desc J)
     FM-at s k = trans (subTy-renTy FM) (FM-sub (atS (ιₛ s) (conₗ k (var (vs vz))) ₛ∘ᵣ extR (extR vs)))
 
-    SD-ren : (ρ : Ren Δ Θ) → renTm ρ (SD {Δ = Δ} sg) ≡ SD sg
-    SD-ren ρ = trans (sym (subTm-var ρ (SD sg))) (SD-sub ⟨ ρ ⟩ᵣ sg)
-
     W3ι : (s : ℕ) → W3 (ιₛ {Δ = Δ} s) ≡ pair (tag s) (var (vs (vs (vs vz))))
     W3ι s = cong (λ z → pair z (var (vs (vs (vs vz)))))
                  (trans (cong (renTm vs) (trans (cong (renTm vs) (tag-ren vs s)) (tag-ren vs s))) (tag-ren vs s))
@@ -235,7 +233,7 @@ module Fib {sg : Sig n} (ok : SigOK n sg)
         dιₛ : (Γ ▹ El ⌜Nat⌝) ⊢ ιₛ s ∷ El (renTm vs (SI n))
         dιₛ = ⊢ιₛ ⊢⌜Nat⌝ (nthG-lt ng)
         dCs : H ⊢ Cat ι₂ ∷ U
-        dCs = ⊢Cat (⊢wk (⊢wk dιₛ))
+        dCs = ⊢Cat (⊢wkSI (⊢wkSI (⊢-cast (cong El (SI-ren vs n)) dιₛ)))
         H₃ = H ▹ El (Cat ι₂)
         dj : H₃ ⊢ var (vs (vs (vs vz))) ∷ El ⌜Nat⌝
         dj = ⊢var (there (there (there here)))
@@ -252,7 +250,7 @@ module Fib {sg : Sig n} (ok : SigOK n sg)
         eD = trans (cong (λ z → renTm vs (renTm vs (renTm vs z))) (SD-ren vs))
              (trans (cong (λ z → renTm vs (renTm vs z)) (SD-ren vs)) (trans (cong (renTm vs) (SD-ren vs)) (SD-ren vs)))
         dp : H₃ ⊢ var (vs (vs vz)) ∷ PayV sh ι₃ (SI n) (SD sg)
-        dp = ⊢conv (⊢-cast (cong₂ (λ D X → El (dpay (SI n) D X)) eD eP) (⊢var (there (there here))))
+        dp = ⊢conv (⊢-cast (cong₃ (λ I D X → El (dpay I D X)) (SI-wks 4) eD eP) (⊢var (there (there here))))
                    (red→≅ᵀ (payV-red sh ι₃ (SI n) (SD sg)))
         dR : H₃ ⊢ R (row s k) (var (vs (vs (vs vz)))) (var (vs (vs vz))) (var vz) ∷ Desc J
         dR = rok dj dp dc
@@ -379,13 +377,9 @@ module Fib {sg : Sig n} (ok : SigOK n sg)
 -- 6. ★ A CONSTRUCTOR OF A ONE-ROW FIBRE: tag 0, then the row's payload.
 ------------------------------------------------------------------------
 
-private
-  rowsR : {c : ℕ} → Cons Δ c → RTm Δ
-  rowsR {c = c} Cs = dσ (⌜Fin⌝ c) (selF Cs)
-
 -- a constructor of a one-row fibre
 ⊢conRow : {Ξ : Ctx} {I D i C p : RTm ⌊ Ξ ⌋} → Ξ ⊢ I ∷ U → Ξ ⊢ D ∷ DescF I → Ξ ⊢ i ∷ El I →
-          app D i ⟶* dσ (⌜Fin⌝ 1) (selF (C ∷ [])) → Ξ ⊢ C ∷ Desc I → Ξ ⊢ p ∷ El (dpay I D C) → Ξ ⊢ conₗ 0 p ∷ IMu I D i
+          app D i ⟶* dσ (⌜Fin⌝ (num 1)) (selF (C ∷ [])) → Ξ ⊢ C ∷ Desc I → Ξ ⊢ p ∷ El (dpay I D C) → Ξ ⊢ conₗ 0 p ∷ IMu I D i
 ⊢conRow {Ξ} {I} {D} {i} {C} {p} dI dD di r dC dp =
   ⊢con-fib dI dD di r
     (⊢pay-σ dI dD (⊢selF dI (dC ∷ᵈ []ᵈ)) (⊢conv (⊢tag lt-z) (csymᵀ (credᵀ El-⌜Fin⌝)))
@@ -395,7 +389,7 @@ private
 -- ★ …and of an n-row fibre, at row `k`
 ⊢conRowₖ : {Ξ : Ctx} {c k : ℕ} {I D i C p : RTm ⌊ Ξ ⌋} {Cs : Cons ⌊ Ξ ⌋ c} → Nth Cs k C →
            Ξ ⊢ I ∷ U → Ξ ⊢ D ∷ DescF I → Ξ ⊢ i ∷ El I →
-           app D i ⟶* dσ (⌜Fin⌝ c) (selF Cs) → AllD Ξ I Cs → Ξ ⊢ p ∷ El (dpay I D C) → Ξ ⊢ conₗ k p ∷ IMu I D i
+           app D i ⟶* dσ (⌜Fin⌝ (num c)) (selF Cs) → AllD Ξ I Cs → Ξ ⊢ p ∷ El (dpay I D C) → Ξ ⊢ conₗ k p ∷ IMu I D i
 ⊢conRowₖ {Ξ} {c} {k} {I} {D} {i} {C} {p} {Cs} nt dI dD di r ds dp =
   ⊢con-fib dI dD di r
     (⊢pay-σ dI dD (⊢selF dI ds) (⊢conv (⊢tag (nth-lt nt)) (csymᵀ (credᵀ El-⌜Fin⌝)))

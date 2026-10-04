@@ -78,12 +78,14 @@ module TravM {sg : Sig n} (ok : SigOK n sg) (κ : Kit n sg) (vok : VarsAt sg (Ki
       ιx = ιₛ {Δ = ⌊ Γ ⌋} s
       C = subTm (σₛ s) ⌜ tel vʰ (var vz) ⌝ᵗ
       dix : Γ' ⊢ ιx ∷ El (SI n)
-      dix = ⊢ιₛ ⊢⌜Nat⌝ (nthG-lt ng)
+      dix = ⊢-cast (cong El (SI-ren vs n)) (⊢ιₛ ⊢⌜Nat⌝ (nthG-lt ng))
       dC : Γ' ⊢ C ∷ Desc (SI n)
       dC = ⊢tel ⊢SI (telOK vᵒʰ dix)
-      dD' = ⊢wkD {B = El ⌜Nat⌝} (⊢SD {Γ = Γ} ok)
-      dPay = ty-El (⊢dpay ⊢SI dD' dC)
-      dHyp = ty-DIh ⊢SI (⊢wkD dD') (mot-ren there (mot-ren there (⊢TM {Γ = Γ}))) (⊢wk dC) (⊢var here)
+      dD' : Γ' ⊢ renTm vs (SD sg) ∷ DescF (SI n)
+      dD' = subst (λ X → Γ' ⊢ X ∷ DescF (SI n)) (sym (SD-ren vs)) (⊢SD {Γ = Γ'} ok)
+      dPay = subst (λ X → Γ' ⊢ty El (dpay X (renTm vs (SD sg)) C)) (sym (SI-ren vs n)) (ty-El (⊢dpay ⊢SI dD' dC))
+      dHyp = ty-DIh ⊢SI (⊢wkDSI dD') (motSI (SI-wks 2) (mot-ren there (mot-ren there (⊢TM {Γ = Γ})))) (⊢wkDescSI dC)
+                    (⊢-cast (cong (λ X → El (dpay X (renTm vs (renTm vs (SD sg))) (renTm vs C))) (SI-wks 2)) (⊢var here))
       τ = atS ιx (conₗ k (var (vs vz))) ₛ∘ᵣ extR (extR vs)
       eqT = trans (subTy-renTy TM) (TM-sub τ)
       ι₃ = renTm vs (renTm vs (renTm vs ιx))
@@ -98,7 +100,7 @@ module TravM {sg : Sig n} (ok : SigOK n sg) (κ : Kit n sg) (vok : VarsAt sg (Ki
       f₄ = var vz
       j₄ = var (vs (vs (vs (vs vz))))
       dp : Γ₄ ⊢ p₄ ∷ PayV vʰ ι₄ (SI n) (SD sg)
-      dp = ⊢conv (⊢-cast (cong₂ (λ D X → El (dpay (SI n) D X)) SD-r4 (tel-r4 s vʰ)) (⊢var (there (there (there here)))))
+      dp = ⊢conv (⊢-cast (cong₃ (λ I D X → El (dpay I D X)) (SI-wks 5) SD-r4 (tel-r4 s vʰ)) (⊢var (there (there (there here)))))
                  (red→≅ᵀ (payV-red vʰ ι₄ (SI n) (SD sg)))
       dx : Γ₄ ⊢ fst p₄ ∷ FinI j₄
       dx = ⊢conv (⊢fst dp) (ctrnᵀ (credᵀ El-⌜IMu⌝) (credᵀ (ξ-IMuⁱ (βsnd _ _))))
@@ -114,7 +116,7 @@ module TravM {sg : Sig n} (ok : SigOK n sg) (κ : Kit n sg) (vok : VarsAt sg (Ki
                  ∷ Π (El ⌜Nat⌝) (Π (Env (snd ι₃) (var vz))
                                    (IMu (SI n) (SD sg) (pair (fst ι₄) (var (vs vz)))))
       BODY = ⊢lam (ty-El ⊢⌜Nat⌝)
-               (⊢lam (ty-Env (⊢depth (⊢wk (⊢wk (⊢wk dix)))) (⊢var here))
+               (⊢lam (ty-Env (⊢depth (⊢wkSI (⊢wkSI (⊢wkSI dix)))) (⊢var here))
                  (⊢conv (⊢-cast (trans (SK-def {sg = sg} {s = s} {d = e₄}) (cong (λ z → IMu (SI n) (SD sg) (pair z e₄)) (sym (tagr4 s)))) NODEv)
                         (csymᵀ (red→≅ᵀ (⟶ᵀ*-IMu (⟶*-pairˡ (step (βfst _ _) done)))))))
 
