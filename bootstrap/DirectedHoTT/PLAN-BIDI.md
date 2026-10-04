@@ -513,6 +513,17 @@ tag rules key on it (`⊢fzero : Fin (suc n)`). After:
 - **Order.** (1) Spec + metatheory on a branch, cold sweep of `Trust/Kernel`;
   (2) Lib numerals; (3) Knot regenerate + Fin rows + F5/F6; (4) cold sweep,
   ff; (5) FinFam deletion as its own step.
+- **Status (2026-10-04).** (1)–(3) DONE on `ocp-0009-fin-term`; (4) the cold
+  sweep is the gate before ff.
+  - Lib: `num c` is stuck under `renTm`/`subTm` at a variable `c`, so the
+    arity casts live in ONE place each — `Lib/Syn` (`SI-ren`/`SI-sub`,
+    `SI-wks k` for `k` stacked weakenings, `⊢varSI`, `IMuSI-sub`,
+    `⊢wkSI`/`⊢wkDSI`/`⊢wkDescSI`, `motSI`) and `Lib/Sugar` (`Dσ-sub`, `Dσ` now
+    at any context). Two private `SD-ren` copies merged into `Lib/Syn`.
+  - Knot: SIMPLER. With the index a term, `fzero`/`fsuc` are ordinary Ford
+    rows of the table; the hand-written case-on-the-type rows (`PFz`/`PFs`),
+    `Knot/JudgeConFin` and the `jdfzero`/`jdfsuc` decoders are DELETED.
+    `rows` is `Dσ`. F5 (`TypingAgree`) and F6 (`Exact`) green.
 
 **Then, the migration recipe** (each step is one family):
 - a schema becomes a CLOSED λ-entry; an instance becomes
