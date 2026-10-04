@@ -16698,3 +16698,26 @@ Apex green.
   consumer outside `Stack.agda`; deleted.
 
 Apex green.
+
+## D272 — FINDING: THE TOOLCHAIN AXIOM `as-faithful-<arch>` IS ⊥ AS STATED; FIX BELONGS TO THE SYMBOL-NAMESPACE DESIGN (2026-10-05)
+
+**Relates**: plan 0.100 P0 audit (D266–D271), plan 0.107 phase d (§7, blocked on the
+symbol-namespace design), `Adequacy/CPU/<arch>.as-faithful-<arch>`, `CCC/Target/<arch>/File.agda`.
+
+**The defect.** `as-faithful-x86-64 : ∀ F → AsmWF F → decode (assemble (print F)) ≡ just F`
+claims `print` is injective on well-formed images. It is not:
+
+1. `print` drops `externs`. `mkImage [] nothing [] []` and `mkImage [] nothing [] ("x" ∷ [])`
+   are both `AsmWF` and print the same text; the axiom equates them — `⊥` (probe checked, then
+   deleted). The x86-32 and riscv64 twins have the same shape.
+2. Printing `.extern` lines does not close it alone: `AsmWF` admits ARBITRARY symbol strings,
+   so a symbol containing `"\n    ret"` forges instruction text, and two different `code`s
+   print alike.
+
+**The fix (not landed — it is phase d's decision).** `AsmWF` must carry what `as` actually
+demands lexically — every defined/referenced/extern symbol is a valid assembler identifier — and
+`print` must emit the externs it declares. Then injectivity is a real (provable) property of
+`print`, and `FileWF.file-wf` owes symbol validity from the emitter (true by construction:
+symbols are `once-symbol` z-encodings, label numbers and fixed names). This is the same
+"one FFI identity; a reserved compiler namespace" decision plan 0.107 §7 is blocked on, so it is
+recorded here and in the ledger, not patched halfway.
