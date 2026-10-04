@@ -121,7 +121,7 @@ occTy x Nat         = false
 occTy x (IMu I D i) = occTm x I ∨ (occTm x D ∨ occTm x i)
 occTy x (Desc I) = occTm x I
 occTy x (DIh D M C p) = occTm x D ∨ (occTy (vs (vs x)) M ∨ (occTm x C ∨ occTm x p))
-occTy x (Fin n) = false
+occTy x (Fin n) = occTm x n
 
 occTm x (var y)    = eqv x y
 occTm x (lam t)    = occTm (vs x) t
@@ -145,7 +145,7 @@ occTm x (ap c b p)    = occTm x c ∨ occTm (vs x) b ∨ occTm x p
 occTm x ⌜Nat⌝         = false
 occTm x ⌜Unit⌝        = false
 occTm x (⌜IMu⌝ I D i) = occTm x I ∨ (occTm x D ∨ occTm x i)
-occTm x (⌜Fin⌝ n) = false
+occTm x (⌜Fin⌝ n) = occTm x n
 occTm x (con p) = occTm x p
 occTm x (ielim D i m t) = occTm x D ∨ (occTm x i ∨ (occTm x m ∨ occTm x t))
 occTm x dι = false
@@ -229,7 +229,7 @@ occ-ren-ty h (IMu I D i) =
 occ-ren-ty h (Desc I) = occ-ren-tm h I
 occ-ren-ty h (DIh D M C p) =
   ∨-false (occ-ren-tm h D) (∨-false (occ-ren-ty (avoids-ext (avoids-ext h)) M) (∨-false (occ-ren-tm h C) (occ-ren-tm h p)))
-occ-ren-ty h (Fin n) = refl
+occ-ren-ty h (Fin n) = occ-ren-tm h n
 occ-ren-ty h U        = refl
 occ-ren-ty h (Π A B)  =
   ∨-false (occ-ren-ty h A) (occ-ren-ty (avoids-ext h) B)
@@ -266,7 +266,7 @@ occ-ren-tm h ⌜Nat⌝      = refl
 occ-ren-tm h ⌜Unit⌝     = refl
 occ-ren-tm h (⌜IMu⌝ I D i) =
   ∨-false (occ-ren-tm h I) (∨-false (occ-ren-tm h D) (occ-ren-tm h i))
-occ-ren-tm h (⌜Fin⌝ n) = refl
+occ-ren-tm h (⌜Fin⌝ n) = occ-ren-tm h n
 occ-ren-tm h (con p) = occ-ren-tm h p
 occ-ren-tm h (ielim D i m t) =
   ∨-false (occ-ren-tm h D) (∨-false (occ-ren-tm h i) (∨-false (occ-ren-tm h m) (occ-ren-tm h t)))
@@ -458,7 +458,7 @@ occ-ren-eq h ⌜Nat⌝      = refl
 occ-ren-eq h ⌜Unit⌝     = refl
 occ-ren-eq h (⌜IMu⌝ I D i) =
   cong₂ _∨_ (occ-ren-eq h I) (cong₂ _∨_ (occ-ren-eq h D) (occ-ren-eq h i))
-occ-ren-eq h (⌜Fin⌝ n) = refl
+occ-ren-eq h (⌜Fin⌝ n) = occ-ren-eq h n
 occ-ren-eq h (con p) = occ-ren-eq h p
 occ-ren-eq h (ielim D i m t) =
   cong₂ _∨_ (occ-ren-eq h D) (cong₂ _∨_ (occ-ren-eq h i) (cong₂ _∨_ (occ-ren-eq h m) (occ-ren-eq h t)))
@@ -512,7 +512,7 @@ occ-sub h ⌜Nat⌝      e = refl
 occ-sub h ⌜Unit⌝     e = refl
 occ-sub {x = x} h (⌜IMu⌝ I D i) e =
   ∨-false (occ-sub h I (∨-false₁ (occTm x I) e)) (∨-false (occ-sub h D (∨-false₁ (occTm x D) (∨-false₂ (occTm x I) e))) (occ-sub h i (∨-false₂ (occTm x D) (∨-false₂ (occTm x I) e))))
-occ-sub h (⌜Fin⌝ n) e = refl
+occ-sub h (⌜Fin⌝ n) e = occ-sub h n e
 occ-sub h (con p) e = occ-sub h p e
 occ-sub {x = x} h (ielim D i m t) e =
   ∨-false (occ-sub h D (∨-false₁ (occTm x D) e)) (∨-false (occ-sub h i (∨-false₁ (occTm x i) (∨-false₂ (occTm x D) e))) (∨-false (occ-sub h m (∨-false₁ (occTm x m) (∨-false₂ (occTm x i) (∨-false₂ (occTm x D) e)))) (occ-sub h t (∨-false₂ (occTm x m) (∨-false₂ (occTm x i) (∨-false₂ (occTm x D) e))))))
@@ -614,7 +614,7 @@ occ-sub' : {σ : Sub Γ Δ} {x' : Var Δ} →
 occ-sub' h ⌜Nat⌝ = refl
 occ-sub' h ⌜Unit⌝ = refl
 occ-sub' h (⌜IMu⌝ I D i) = ∨-false (occ-sub' h I) (∨-false (occ-sub' h D) (occ-sub' h i))
-occ-sub' h (⌜Fin⌝ n) = refl
+occ-sub' h (⌜Fin⌝ n) = occ-sub' h n
 occ-sub' h (con p) = occ-sub' h p
 occ-sub' h (ielim D i m t) = ∨-false (occ-sub' h D) (∨-false (occ-sub' h i) (∨-false (occ-sub' h m) (occ-sub' h t)))
 occ-sub' h dι = refl
@@ -667,7 +667,7 @@ subTm-occ ⌜Nat⌝      h = refl
 subTm-occ ⌜Unit⌝     h = refl
 subTm-occ (⌜IMu⌝ I D i) h =
   cong₃ ⌜IMu⌝ (subTm-occ I (λ x o → h x (∨-inl o))) (subTm-occ D (λ x o → h x (∨-inr (occTm x I) (∨-inl o)))) (subTm-occ i (λ x o → h x (∨-inr (occTm x I) (∨-inr (occTm x D) o))))
-subTm-occ (⌜Fin⌝ n) h = refl
+subTm-occ (⌜Fin⌝ n) h = cong ⌜Fin⌝ (subTm-occ n h)
 subTm-occ (con p) h =
   cong con (subTm-occ p h)
 subTm-occ (ielim D i m t) h =
@@ -812,7 +812,7 @@ data NoNatC {Γ} : RTm Γ → Set where
   nnc-base : NoNatC (⌜base⌝ {Γ})
   nnc-Unit : NoNatC (⌜Unit⌝ {Γ})
   -- ★ `El (⌜Fin⌝ n)` decodes to `Fin n`, which is never `Nat`.
-  nnc-Fin  : {n : ℕ} → NoNatC (⌜Fin⌝ {Γ} n)
+  nnc-Fin  : {n : RTm Γ} → NoNatC (⌜Fin⌝ n)
   nnc-Σ    : {c : RTm Γ} {d : RTm (Γ ∙)} → NoNatC (⌜Σ⌝ c d)
   nnc-Id   : {c a b : RTm Γ} → NoNatC (⌜Id⌝ c a b)
   -- ★★ HEREDITARY along the pw-spine, and this is not decoration:
@@ -966,7 +966,7 @@ stkC?→stkA? (natrec _ _ _) ()
 data NoNatHd {Γ} : RTm Γ → Set where
   nnh-base : NoNatHd (⌜base⌝ {Γ})
   nnh-Unit : NoNatHd (⌜Unit⌝ {Γ})
-  nnh-Fin  : {n : ℕ} → NoNatHd (⌜Fin⌝ {Γ} n)
+  nnh-Fin  : {n : RTm Γ} → NoNatHd (⌜Fin⌝ n)
   nnh-Σ    : {c : RTm Γ} {d : RTm (Γ ∙)} → NoNatHd (⌜Σ⌝ c d)
   nnh-Id   : {c a b : RTm Γ} → NoNatHd (⌜Id⌝ c a b)
   nnh-Π    : {c : RTm Γ} {d : RTm (Γ ∙)} → NoNatHd (⌜Π⌝ c d)
@@ -1579,7 +1579,7 @@ ren-as-sub ρ ⌜Unit⌝ = refl
 ren-as-sub ρ (⌜IMu⌝ I D i) =
   cong₃ ⌜IMu⌝ (ren-as-sub ρ I) (ren-as-sub ρ D) (ren-as-sub ρ i)
 ren-as-sub ρ (⌜Fin⌝ n) =
-  refl
+  cong ⌜Fin⌝ (ren-as-sub ρ n)
 ren-as-sub ρ (con p) =
   cong con (ren-as-sub ρ p)
 ren-as-sub ρ (ielim D i m t) =

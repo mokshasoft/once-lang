@@ -61,7 +61,7 @@ open import DirectedHoTT.Spec.Typing
         ; ξ-ordtrq; ξ-fst; ξ-snd; ξ-⌜Π⌝ˡ; ξ-⌜Π⌝ʳ; ξ-⌜Σ⌝ˡ; ξ-⌜Σ⌝ʳ; tr-J-base
         ; tr-J-Σ; tr-J-Id; tr-taut; hrefl-pw; hrefl-Nat-z; hrefl-Nat-s; tr-J-Hom; tr-pw; ξ-⌜Hom⌝ᶜ
         ; ξ-⌜Hom⌝ˡ; ξ-⌜Hom⌝ʳ; ξ-hreflᶜ; ξ-hreflᵃ; ξ-trᵈ; ξ-trᵖ; ξ-trᵉ; ap-J
-        ; ξ-apᶜ; ξ-apᵇ; ξ-apᵖ; jsub-refl; ξ-⌜Id⌝ᶜ; ξ-⌜Id⌝ˡ; ξ-⌜Id⌝ʳ; ξ-idreflᶜ
+        ; ξ-apᶜ; ξ-apᵇ; ξ-apᵖ; jsub-refl; ξ-⌜Id⌝ᶜ; ξ-⌜Id⌝ˡ; ξ-⌜Id⌝ʳ; ξ-⌜Fin⌝; ξ-idreflᶜ
         ; ξ-idreflᵃ; ξ-jsubᵈ; ξ-jsubᵖ; ξ-jsubᵉ; natrec-zero; natrec-suc
         ; ξ-nsuc; ξ-natrecᶻ; ξ-natrecˢ; ξ-natrecⁿ; tr-J-Unit; tr-J-IMu
         ; El-⌜Nat⌝; El-⌜Unit⌝; _⟶*_; done; step; _≅_; cred; crfl; csym; ctrn
@@ -154,7 +154,7 @@ data _⟹_ : {Γ : Cx} → RTm Γ → RTm Γ → Set where
   --   discards the path whole.
   ptr-J-IMu : {Iⁱ Dⁱ iˣ : RTm Γ} {c a m : RTm (Γ ∙)} {s e e' : RTm Γ} →
               e ⟹ e' → tr (⌜Hom⌝ c a m) (hrefl (⌜IMu⌝ Iⁱ Dⁱ iˣ) s) e ⟹ e'
-  ptr-J-Fin : {n : ℕ} {c a m : RTm (Γ ∙)} {s e e' : RTm Γ} →
+  ptr-J-Fin : {n : RTm Γ} {c a m : RTm (Γ ∙)} {s e e' : RTm Γ} →
               e ⟹ e' → tr (⌜Hom⌝ c a m) (hrefl (⌜Fin⌝ n) s) e ⟹ e'
   ptr-J-Σ : {c a m : RTm (Γ ∙)} {c₁ : RTm Γ} {c₂ : RTm (Γ ∙)} {s e e' : RTm Γ} →
             e ⟹ e' → tr (⌜Hom⌝ c a m) (hrefl (⌜Σ⌝ c₁ c₂) s) e ⟹ e'
@@ -216,7 +216,7 @@ data _⟹_ : {Γ : Cx} → RTm Γ → RTm Γ → Set where
   --   carries premises only for what its right-hand side mentions).
   p⌜IMu⌝ : {I I' D D' i i' : RTm Γ} → I ⟹ I' → D ⟹ D' → i ⟹ i' →
            ⌜IMu⌝ I D i ⟹ ⌜IMu⌝ I' D' i'
-  p⌜Fin⌝ : {n : ℕ} → ⌜Fin⌝ {Γ} n ⟹ ⌜Fin⌝ n
+  p⌜Fin⌝ : {n n' : RTm Γ} → n ⟹ n' → ⌜Fin⌝ n ⟹ ⌜Fin⌝ n'
   pcon   : {p p' : RTm Γ} → p ⟹ p' → con p ⟹ con p'
   pielim : {D D' i i' e e' t t' : RTm Γ} →
            D ⟹ D' → i ⟹ i' → e ⟹ e' → t ⟹ t' → ielim D i e t ⟹ ielim D' i' e' t'
@@ -270,7 +270,7 @@ data _⟹_ : {Γ : Cx} → RTm Γ → RTm Γ → Set where
 ⟹-refl nzero      = pnzero
 ⟹-refl (nsuc n)   = pnsuc (⟹-refl n)
 ⟹-refl (⌜IMu⌝ I D i) = p⌜IMu⌝ (⟹-refl I) (⟹-refl D) (⟹-refl i)
-⟹-refl (⌜Fin⌝ n) = p⌜Fin⌝
+⟹-refl (⌜Fin⌝ n) = p⌜Fin⌝ (⟹-refl n)
 ⟹-refl (con p) = pcon (⟹-refl p)
 ⟹-refl (ielim D i e t) = pielim (⟹-refl D) (⟹-refl i) (⟹-refl e) (⟹-refl t)
 ⟹-refl dι = pdι
@@ -391,7 +391,7 @@ stkA?-⟹ {C = fcase0 _} _ ()
 stkA?-⟹ {C = psplit _ _} _ ()
 stkA?-⟹ {C = ⌜Nat⌝} p⌜Nat⌝ h = refl
 stkA?-⟹ {C = ⌜IMu⌝ _ _ _} (p⌜IMu⌝ _ _ _) h = refl
-stkA?-⟹ {C = ⌜Fin⌝ _} p⌜Fin⌝ h = refl
+stkA?-⟹ {C = ⌜Fin⌝ _} (p⌜Fin⌝ _) h = refl
 stkA?-⟹ {C = ⌜Unit⌝} p⌜Unit⌝ h = refl
 
 -- split on the SOURCE's head first: a non-key head is refuted on the key
@@ -434,7 +434,7 @@ stkC?-⟹ {C = fcase0 _} _ ()
 stkC?-⟹ {C = psplit _ _} _ ()
 stkC?-⟹ {C = ⌜Nat⌝} _ ()
 stkC?-⟹ {C = ⌜IMu⌝ _ _ _} (p⌜IMu⌝ _ _ _) h = refl
-stkC?-⟹ {C = ⌜Fin⌝ _} p⌜Fin⌝ h = refl
+stkC?-⟹ {C = ⌜Fin⌝ _} (p⌜Fin⌝ _) h = refl
 stkC?-⟹ {C = ⌜Unit⌝} p⌜Unit⌝ h = refl
 
 
@@ -483,6 +483,7 @@ stkC?-⟹ {C = ⌜Unit⌝} p⌜Unit⌝ h = refl
 ⟶→⟹ (natrec-zero z s)  = pnatrec-zero (⟹-refl z) (⟹-refl s)
 ⟶→⟹ (natrec-suc z s n) = pnatrec-suc (⟹-refl z) (⟹-refl s) (⟹-refl n)
 ⟶→⟹ (ξ-nsuc r)    = pnsuc (⟶→⟹ r)
+⟶→⟹ (ξ-⌜Fin⌝ r)   = p⌜Fin⌝ (⟶→⟹ r)
 ⟶→⟹ (ξ-natrecᶻ r) = pnatrec (⟶→⟹ r) (⟹-refl _) (⟹-refl _)
 ⟶→⟹ (ξ-natrecˢ r) = pnatrec (⟹-refl _) (⟶→⟹ r) (⟹-refl _)
 ⟶→⟹ (ξ-natrecⁿ r) = pnatrec (⟹-refl _) (⟹-refl _) (⟶→⟹ r)
@@ -554,7 +555,7 @@ stkC?-⟹ {C = ⌜Unit⌝} p⌜Unit⌝ h = refl
 ⟹→⟶* (pnsuc p)  = ⟶*-nsuc (⟹→⟶* p)
 ⟹→⟶* (p⌜IMu⌝ pI pD pi) =
   ⟶*-trans (⟶*-⌜IMu⌝ᴵ (⟹→⟶* pI)) (⟶*-trans (⟶*-⌜IMu⌝ᴰ (⟹→⟶* pD)) (⟶*-⌜IMu⌝ⁱ (⟹→⟶* pi)))
-⟹→⟶* p⌜Fin⌝ = done
+⟹→⟶* (p⌜Fin⌝ p) = ⟶*-⌜Fin⌝ (⟹→⟶* p)
 ⟹→⟶* (pcon p) = ⟶*-con (⟹→⟶* p)
 ⟹→⟶* (pielim pD pi pe pt) =
   ⟶*-trans (⟶*-ielimᴰ (⟹→⟶* pD)) (⟶*-trans (⟶*-ielimⁱ (⟹→⟶* pi))
@@ -749,7 +750,7 @@ stkC?-⟹ {C = ⌜Unit⌝} p⌜Unit⌝ h = refl
 ⟹-ren ρ p⌜Unit⌝    = p⌜Unit⌝
 ⟹-ren ρ (ptr-J-Unit p) = ptr-J-Unit (⟹-ren ρ p)
 ⟹-ren ρ (p⌜IMu⌝ a b c) = p⌜IMu⌝ (⟹-ren ρ a) (⟹-ren ρ b) (⟹-ren ρ c)
-⟹-ren ρ p⌜Fin⌝ = p⌜Fin⌝
+⟹-ren ρ (p⌜Fin⌝ p) = p⌜Fin⌝ (⟹-ren ρ p)
 ⟹-ren ρ (pcon a) = pcon (⟹-ren ρ a)
 ⟹-ren ρ (pielim a b c d) = pielim (⟹-ren ρ a) (⟹-ren ρ b) (⟹-ren ρ c) (⟹-ren ρ d)
 ⟹-ren ρ (pι a b c d) = pι (⟹-ren ρ a) (⟹-ren ρ b) (⟹-ren ρ c) (⟹-ren ρ d)
@@ -932,7 +933,7 @@ pwBody-⟹ {C = ⌜Unit⌝} _ ()
 ⟹-sub h p⌜Unit⌝    = p⌜Unit⌝
 ⟹-sub h (ptr-J-Unit p) = ptr-J-Unit (⟹-sub h p)
 ⟹-sub h (p⌜IMu⌝ a b c) = p⌜IMu⌝ (⟹-sub h a) (⟹-sub h b) (⟹-sub h c)
-⟹-sub h p⌜Fin⌝ = p⌜Fin⌝
+⟹-sub h (p⌜Fin⌝ p) = p⌜Fin⌝ (⟹-sub h p)
 ⟹-sub h (pcon a) = pcon (⟹-sub h a)
 ⟹-sub h (pielim a b c d) = pielim (⟹-sub h a) (⟹-sub h b) (⟹-sub h c) (⟹-sub h d)
 ⟹-sub h (pι a b c d) = pι (⟹-sub h a) (⟹-sub h b) (⟹-sub h c) (⟹-sub h d)
@@ -1173,7 +1174,7 @@ descV _        = notDesc
 data JC {Γ : Cx} : RTm Γ → Set where
   jcUnit : JC ⌜Unit⌝
   jcIMu  : (I D i : RTm Γ) → JC (⌜IMu⌝ I D i)
-  jcFin  : (n : ℕ) → JC (⌜Fin⌝ n)
+  jcFin  : (n : RTm Γ) → JC (⌜Fin⌝ n)
   jcBase : JC ⌜base⌝
   jcΣ    : (c : RTm Γ) (d : RTm (Γ ∙)) → JC (⌜Σ⌝ c d)
   jcId   : (c a b : RTm Γ) → JC (⌜Id⌝ c a b)
@@ -1393,7 +1394,7 @@ nzero ⁺            = nzero
 nsuc n ⁺           = nsuc (n ⁺)
 natrec z s n ⁺     = natK (natV n) (z ⁺) (s ⁺) (n ⁺)
 ⌜IMu⌝ I D i ⁺      = ⌜IMu⌝ (I ⁺) (D ⁺) (i ⁺)
-⌜Fin⌝ n ⁺          = ⌜Fin⌝ n
+⌜Fin⌝ n ⁺          = ⌜Fin⌝ (n ⁺)
 con c ⁺            = con (c ⁺)
 ielim D i e t ⁺    = ielK (conV t) (D ⁺) (i ⁺) (e ⁺) (t ⁺)
 dι ⁺               = dι
@@ -1515,7 +1516,7 @@ tri-tr (trJ _ _ _ jcUnit _)         (p⌜Hom⌝ _ _ _) (phrefl p⌜Unit⌝ _)   
 tri-tr (trJ _ _ _ jcUnit _)         _ (phrefl-pw () _ _)                      _ _ _
 tri-tr (trJ _ _ _ (jcIMu _ _ _) _)  (p⌜Hom⌝ _ _ _) (phrefl (p⌜IMu⌝ _ _ _) _)  _ _ re = ptr-J-IMu re
 tri-tr (trJ _ _ _ (jcIMu _ _ _) _)  _ (phrefl-pw () _ _)                      _ _ _
-tri-tr (trJ _ _ _ (jcFin _) _)      (p⌜Hom⌝ _ _ _) (phrefl p⌜Fin⌝ _)          _ _ re = ptr-J-Fin re
+tri-tr (trJ _ _ _ (jcFin _) _)      (p⌜Hom⌝ _ _ _) (phrefl (p⌜Fin⌝ _) _)      _ _ re = ptr-J-Fin re
 tri-tr (trJ _ _ _ (jcFin _) _)      _ (phrefl-pw () _ _)                      _ _ _
 tri-tr (trJ _ _ _ jcBase _)         (p⌜Hom⌝ _ _ _) (phrefl p⌜base⌝ _)         _ _ re = ptr-J-base re
 tri-tr (trJ _ _ _ jcBase _)         _ (phrefl-pw () _ _)                      _ _ _
@@ -1639,7 +1640,7 @@ rootAp refl refl r = r
   ⟹-sub (single-⟹ (pnatrec (⟹-⁺ pz) (⟹-⁺ ps) (⟹-⁺ pn)))
         (⟹-sub (⟹-exts (single-⟹ (⟹-⁺ pn))) (⟹-⁺ ps))
 ⟹-⁺ (p⌜IMu⌝ a b c)         = p⌜IMu⌝ (⟹-⁺ a) (⟹-⁺ b) (⟹-⁺ c)
-⟹-⁺ p⌜Fin⌝                 = p⌜Fin⌝
+⟹-⁺ (p⌜Fin⌝ p)             = p⌜Fin⌝ (⟹-⁺ p)
 ⟹-⁺ (pcon pp)              = pcon (⟹-⁺ pp)
 ⟹-⁺ (pielim {t = t} pD pi pe pt) = tri-iel (conV t) pt (⟹-⁺ pD) (⟹-⁺ pi) (⟹-⁺ pe) (⟹-⁺ pt)
 ⟹-⁺ (pι pD pi pe pp) =

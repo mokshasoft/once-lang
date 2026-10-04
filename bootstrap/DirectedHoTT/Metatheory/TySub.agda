@@ -111,7 +111,7 @@ open import DirectedHoTT.Spec.Typing
         ; ⊢⌜Unit⌝; _⊢ty_; ty-base; ty-U; ty-Π; ty-Σ; ty-El; ty-Hom; ty-Id
         ; ty-Unit; ty-Nat; ⊢ctx_; c-◇; c-▹; ξ-con; ξ-ielimⁱ; ξ-ielimᵗ; ⊢con
         ; wk-single; iinst; ty-IMu; ⊢ielim; ⊢⌜IMu⌝; _≅_; csym; ctrn; cred
-        ; crfl; El-⌜Fin⌝; DIh-ι; DIh-σ; DIh-ρ; ξ-IMuᴵ; ξ-IMuᴰ; ξ-IMuⁱ; ξ-Desc
+        ; crfl; El-⌜Fin⌝; DIh-ι; DIh-σ; DIh-ρ; ξ-IMuᴵ; ξ-IMuᴰ; ξ-IMuⁱ; ξ-Desc; ξ-Fin; ξ-⌜Fin⌝
         ; ξ-DIhᴰ; ξ-DIhᴹ; ξ-DIhᶜ; ξ-DIhᵖ; ι; dpay-ι; dpay-σ; dpay-ρ; dih-ι
         ; dih-σ; dih-ρ; fcase-z; fcase-s; psplit-β; tr-J-Fin; single2; methS
         ; wk2M; MethTy; fsucS; pairS; motCtx; ty-Desc; ty-DIh; ty-Fin; ⊢⌜Fin⌝
@@ -128,7 +128,7 @@ open import DirectedHoTT.Metatheory.RedCong
         ; single-mono; stkC?-red; stkA?-red; _⟶ᵀ*_; doneᵀ; stepᵀ; ⟶ᵀ*-trans
         ; ⟶ᵀ*-El; ⟶ᵀ*-Πˡ; ⟶ᵀ*-Πʳ; ⟶ᵀ*-Σˡ; ⟶ᵀ*-Σʳ; ⟶ᵀ*-Homᵀ; ⟶ᵀ*-Homˡ; ⟶ᵀ*-Homʳ
         ; red→≅ᵀ; ⟶ᵀ*-Idᵀ; ⟶ᵀ*-Idˡ; ⟶ᵀ*-Idʳ; ⟶ᵀ*-IMu; ⟶ᵀ*-IMuᴵ; ⟶ᵀ*-IMuᴰ
-        ; ⟶ᵀ*-Desc; ⟶ᵀ*-DIhᴰ; ⟶ᵀ*-DIhᴹ; ⟶ᵀ*-DIhᶜ; ⟶ᵀ*-DIhᵖ; ⟶*-trans; ⟶*-dpayᴰ
+        ; ⟶ᵀ*-Desc; ⟶ᵀ*-Fin; ⟶*-⌜Fin⌝; ⟶ᵀ*-DIhᴰ; ⟶ᵀ*-DIhᴹ; ⟶ᵀ*-DIhᶜ; ⟶ᵀ*-DIhᵖ; ⟶*-trans; ⟶*-dpayᴰ
         ; ⟶*-dpayᶜ; ⟶*-appˡ )
 open import DirectedHoTT.Metatheory.SubjectReductionBase
   using ( sub-comm; ⟶ᵀ-sub; subTy-comm; sub-comm-ty-ext; iinst-sub; wk-sub
@@ -253,6 +253,7 @@ wk2-renTy ρ M =
 ⟶ᵀ-ren ρ (ξ-IMuᴰ r) = ξ-IMuᴰ (⟶-ren ρ r)
 ⟶ᵀ-ren ρ (ξ-IMuⁱ r) = ξ-IMuⁱ (⟶-ren ρ r)
 ⟶ᵀ-ren ρ (ξ-Desc r) = ξ-Desc (⟶-ren ρ r)
+⟶ᵀ-ren ρ (ξ-Fin r) = ξ-Fin (⟶-ren ρ r)
 ⟶ᵀ-ren ρ (ξ-DIhᴰ r) = ξ-DIhᴰ (⟶-ren ρ r)
 ⟶ᵀ-ren ρ (ξ-DIhᴹ r) = ξ-DIhᴹ (⟶ᵀ-ren (extR (extR ρ)) r)
 ⟶ᵀ-ren ρ (ξ-DIhᶜ r) = ξ-DIhᶜ (⟶-ren ρ r)
@@ -302,7 +303,7 @@ subTy-monoˢ h (DIh D M C p) =
   ⟶ᵀ*-trans (⟶ᵀ*-DIhᴰ (subTm-monoˢ h D))
     (⟶ᵀ*-trans (⟶ᵀ*-DIhᴹ (subTy-monoˢ (extS-mono (extS-mono h)) M))
       (⟶ᵀ*-trans (⟶ᵀ*-DIhᶜ (subTm-monoˢ h C)) (⟶ᵀ*-DIhᵖ (subTm-monoˢ h p))))
-subTy-monoˢ h (Fin n) = doneᵀ
+subTy-monoˢ h (Fin n) = ⟶ᵀ*-Fin (subTm-monoˢ h n)
 subTy-monoˢ h U        = doneᵀ
 subTy-monoˢ h (El t)   = ⟶ᵀ*-El (subTm-monoˢ h t)
 subTy-monoˢ h (Π A B)  =
@@ -393,6 +394,7 @@ occ-red {x = x} (β t u) e = occ-sub h t (∨-false₁ (occTm (vs x) t) e)
 occ-red {x = x} (βfst a b) e = ∨-false₁ (occTm x a) e
 occ-red {x = x} (βsnd a b) e = ∨-false₂ (occTm x a) e
 occ-red (ξ-nsuc r) e = occ-red r e
+occ-red (ξ-⌜Fin⌝ r) e = occ-red r e
 -- ★ LEVITATION: the levitated rules introduce no variable.
 occ-red {x = x} (ξ-⌜IMu⌝ᴵ {I = I} {D = D} {i = i} r) e =
   ∨-false (occ-red r (∨-false₁ (occTm x I) e)) (∨-false (∨-false₁ (occTm x D) (∨-false₂ (occTm x I) e)) (∨-false₂ (occTm x D) (∨-false₂ (occTm x I) e)))
@@ -906,7 +908,7 @@ ren-ty {Δ = Δ} {ρ = ρ} (ty-DIh {I = I} {D = D} {M = M} dI dD dM dC dp) h =
              (cong₂ (λ a b → IMu a b (var vz)) (wk-ren ρ I) (wk-ren ρ D))
              (ren-ty dM (Ren⊢-ext (Ren⊢-ext h))))
     (ren-lemma dC h) (ren-lemma dp h)
-ren-ty ty-Fin h = ty-Fin
+ren-ty (ty-Fin dn) h = ty-Fin (ren-lemma dn h)
 ren-ty ty-U          h = ty-U
 ren-ty (ty-Π dA dB)  h = ty-Π (ren-ty dA h) (ren-ty dB (Ren⊢-ext h))
 ren-ty (ty-Σ dA dB)  h = ty-Σ (ren-ty dA h) (ren-ty dB (Ren⊢-ext h))
@@ -928,7 +930,7 @@ ren-lemma {ρ = ρ} (⊢natrec {M = M} {n = n} dM dz ds dn) h =
              (ren-lemma dn h))
 -- ★★ LEVITATION
 ren-lemma {ρ = ρ} (⊢⌜IMu⌝ {I = I} dI dD di) h = ⊢⌜IMu⌝ (ren-lemma dI h) (⊢-cast (DescF-ren ρ I) (ren-lemma dD h)) (ren-lemma di h)
-ren-lemma ⊢⌜Fin⌝ h = ⊢⌜Fin⌝
+ren-lemma (⊢⌜Fin⌝ dn) h = ⊢⌜Fin⌝ (ren-lemma dn h)
 ren-lemma (⊢dι dI) h = ⊢dι (ren-lemma dI h)
 ren-lemma {ρ = ρ} (⊢dσ {I = I} {S = S} dI dS df) h =
   ⊢dσ (ren-lemma dI h) (ren-lemma dS h)
@@ -951,7 +953,7 @@ ren-lemma {Δ = Δ} {ρ = ρ} (⊢ielim {I = I} {D = D} {M = M} {i = i} {t = t} 
              (ren-ty dM (Ren⊢-ext (Ren⊢-ext h))))
       (⊢-cast (MethTy-ren ρ I D M) (ren-lemma de h))
       (ren-lemma di h) (ren-lemma dt h))
-ren-lemma ⊢fzero h = ⊢fzero
+ren-lemma (⊢fzero dn) h = ⊢fzero (ren-lemma dn h)
 ren-lemma (⊢fsuc dt) h = ⊢fsuc (ren-lemma dt h)
 ren-lemma {ρ = ρ} (⊢fcase {P = P} {t = t} dP dt da db) h =
   ⊢-cast (sym (ren-comm-ty ρ P t))
@@ -1066,7 +1068,7 @@ sub-ty {Δ = Δ} {σ = σ} (ty-DIh {I = I} {D = D} {M = M} dI dD dM dC dp) h =
              (cong₂ (λ a b → IMu a b (var vz)) (wk-sub σ I) (wk-sub σ D))
              (sub-ty dM (Sub⊢-ext (Sub⊢-ext h))))
     (sub-lemma dC h) (sub-lemma dp h)
-sub-ty ty-Fin h = ty-Fin
+sub-ty (ty-Fin dn) h = ty-Fin (sub-lemma dn h)
 sub-ty ty-U         h = ty-U
 sub-ty (ty-Π dA dB) h = ty-Π (sub-ty dA h) (sub-ty dB (Sub⊢-ext h))
 sub-ty (ty-Σ dA dB) h = ty-Σ (sub-ty dA h) (sub-ty dB (Sub⊢-ext h))
@@ -1087,7 +1089,7 @@ sub-lemma {σ = σ} (⊢natrec {M = M} {n = n} dM dz ds dn) h =
              (sub-lemma dn h))
 -- ★★ LEVITATION
 sub-lemma {σ = σ} (⊢⌜IMu⌝ {I = I} dI dD di) h = ⊢⌜IMu⌝ (sub-lemma dI h) (⊢-cast (DescF-sub σ I) (sub-lemma dD h)) (sub-lemma di h)
-sub-lemma ⊢⌜Fin⌝ h = ⊢⌜Fin⌝
+sub-lemma (⊢⌜Fin⌝ dn) h = ⊢⌜Fin⌝ (sub-lemma dn h)
 sub-lemma (⊢dι dI) h = ⊢dι (sub-lemma dI h)
 sub-lemma {σ = σ} (⊢dσ {I = I} {S = S} dI dS df) h =
   ⊢dσ (sub-lemma dI h) (sub-lemma dS h)
@@ -1110,7 +1112,7 @@ sub-lemma {Δ = Δ} {σ = σ} (⊢ielim {I = I} {D = D} {M = M} {i = i} {t = t} 
              (sub-ty dM (Sub⊢-ext (Sub⊢-ext h))))
       (⊢-cast (MethTy-sub σ I D M) (sub-lemma de h))
       (sub-lemma di h) (sub-lemma dt h))
-sub-lemma ⊢fzero h = ⊢fzero
+sub-lemma (⊢fzero dn) h = ⊢fzero (sub-lemma dn h)
 sub-lemma (⊢fsuc dt) h = ⊢fsuc (sub-lemma dt h)
 sub-lemma {σ = σ} (⊢fcase {P = P} {t = t} dP dt da db) h =
   ⊢-cast (sym (subTy-comm σ P t))

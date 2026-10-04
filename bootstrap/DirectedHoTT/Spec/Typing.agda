@@ -255,7 +255,7 @@ data _⟶_ : {Γ : Cx} → RTm Γ → RTm Γ → Set where
               (s e : RTm Γ) →
               tr (⌜Hom⌝ c a m) (hrefl (⌜IMu⌝ I D iˣ) s) e ⟶ e
   -- ★ tags: `Hom (Fin n)` computes nothing either, so J fires there too.
-  tr-J-Fin  : {n : ℕ} (c a m : RTm (Γ ∙)) (s e : RTm Γ) →
+  tr-J-Fin  : {n : RTm Γ} (c a m : RTm (Γ ∙)) (s e : RTm Γ) →
               tr (⌜Hom⌝ c a m) (hrefl (⌜Fin⌝ n) s) e ⟶ e
   -- directed univalence computing a third time: transport at the
   -- tautological motive along a (canonical) universe path is application
@@ -332,6 +332,8 @@ data _⟶_ : {Γ : Cx} → RTm Γ → RTm Γ → Set where
   ξ-⌜Id⌝ᶜ  : {c c' a b : RTm Γ} → c ⟶ c' → ⌜Id⌝ c a b ⟶ ⌜Id⌝ c' a b
   ξ-⌜Id⌝ˡ  : {c a a' b : RTm Γ} → a ⟶ a' → ⌜Id⌝ c a b ⟶ ⌜Id⌝ c a' b
   ξ-⌜Id⌝ʳ  : {c a b b' : RTm Γ} → b ⟶ b' → ⌜Id⌝ c a b ⟶ ⌜Id⌝ c a b'
+  -- ★ S7b step 2: a finite set's size is a Nat TERM
+  ξ-⌜Fin⌝  : {n n' : RTm Γ} → n ⟶ n' → ⌜Fin⌝ n ⟶ ⌜Fin⌝ n'
   ξ-idreflᶜ : {c c' t : RTm Γ} → c ⟶ c' → idrefl c t ⟶ idrefl c' t
   ξ-idreflᵃ : {c t t' : RTm Γ} → t ⟶ t' → idrefl c t ⟶ idrefl c t'
   ξ-jsubᵈ  : {d d' : RTm (Γ ∙)} {p e : RTm Γ} → d ⟶ d' → jsub d p e ⟶ jsub d' p e
@@ -419,7 +421,7 @@ data _⟶ᵀ_ : {Γ : Cx} → RTy Γ → RTy Γ → Set where
   -- ★ stage C (N-in): the datatype codes decode.
   El-⌜Nat⌝  : El (⌜Nat⌝ {Γ}) ⟶ᵀ Nat
   El-⌜IMu⌝  : {I D i : RTm Γ} → El (⌜IMu⌝ I D i) ⟶ᵀ IMu I D i
-  El-⌜Fin⌝  : {n : ℕ} → El (⌜Fin⌝ {Γ} n) ⟶ᵀ Fin n
+  El-⌜Fin⌝  : {n : RTm Γ} → El (⌜Fin⌝ n) ⟶ᵀ Fin n
   -- ★★ the hypotheses' TYPE computes on the telescope head (S3).
   DIh-ι : (D : RTm Γ) (M : RTy ((Γ ∙) ∙)) (p : RTm Γ) → DIh D M dι p ⟶ᵀ Unit
   DIh-σ : (D : RTm Γ) (M : RTy ((Γ ∙) ∙)) (S f p : RTm Γ) →
@@ -469,6 +471,7 @@ data _⟶ᵀ_ : {Γ : Cx} → RTy Γ → RTy Γ → Set where
   ξ-IMuᴰ  : {I D D' i : RTm Γ} → D ⟶ D' → IMu I D i ⟶ᵀ IMu I D' i
   ξ-IMuⁱ  : {I D i i' : RTm Γ} → i ⟶ i' → IMu I D i ⟶ᵀ IMu I D i'
   ξ-Desc  : {I I' : RTm Γ} → I ⟶ I' → Desc I ⟶ᵀ Desc I'
+  ξ-Fin   : {n n' : RTm Γ} → n ⟶ n' → Fin n ⟶ᵀ Fin n'
   ξ-DIhᴰ  : {D D' C p : RTm Γ} {M : RTy ((Γ ∙) ∙)} → D ⟶ D' → DIh D M C p ⟶ᵀ DIh D' M C p
   ξ-DIhᴹ  : {D C p : RTm Γ} {M M' : RTy ((Γ ∙) ∙)} → M ⟶ᵀ M' → DIh D M C p ⟶ᵀ DIh D M' C p
   ξ-DIhᶜ  : {D C C' p : RTm Γ} {M : RTy ((Γ ∙) ∙)} → C ⟶ C' → DIh D M C p ⟶ᵀ DIh D M C' p
@@ -682,7 +685,7 @@ data _⊢_∷_ where
   -- the code CONTAINS its index code, so it types it (as every former
   --   types each term it contains — SN of the code needs SN of `I`).
   ⊢⌜IMu⌝  : ∀ {Γ I D i} → Γ ⊢ I ∷ U → Γ ⊢ D ∷ DescF I → Γ ⊢ i ∷ El I → Γ ⊢ ⌜IMu⌝ I D i ∷ U
-  ⊢⌜Fin⌝  : ∀ {Γ n} → Γ ⊢ ⌜Fin⌝ {⌊ Γ ⌋} n ∷ U
+  ⊢⌜Fin⌝  : ∀ {Γ n} → Γ ⊢ n ∷ Nat → Γ ⊢ ⌜Fin⌝ n ∷ U
   ⊢⌜Unit⌝ : ∀ {Γ} → Γ ⊢ ⌜Unit⌝ {⌊ Γ ⌋} ∷ U
   ⊢idrefl : ∀ {Γ c t}   → Γ ⊢ c ∷ U → Γ ⊢ t ∷ El c →
                           Γ ⊢ idrefl c t ∷ Id (El c) t t
@@ -730,14 +733,15 @@ data _⊢_∷_ where
            Γ ⊢ I ∷ U → Γ ⊢ D ∷ DescF I → motCtx Γ I D ⊢ty M → Γ ⊢ e ∷ MethTy I D M →
            Γ ⊢ i ∷ El I → Γ ⊢ t ∷ IMu I D i →
            Γ ⊢ ielim D i e t ∷ iinst i t M
-  -- tags: Fin (n+1) ≅ 1 + Fin n, and the empty Fin 0
-  ⊢fzero  : ∀ {Γ n} → Γ ⊢ fzero ∷ Fin (suc n)
-  ⊢fsuc   : ∀ {Γ n t} → Γ ⊢ t ∷ Fin n → Γ ⊢ fsuc t ∷ Fin (suc n)
+  -- tags: Fin (n+1) ≅ 1 + Fin n, and the empty Fin 0.  ★ S7b step 2: the
+  --   size `n` is a Nat TERM (`fzero` types it: nothing else does).
+  ⊢fzero  : ∀ {Γ n} → Γ ⊢ n ∷ Nat → Γ ⊢ fzero ∷ Fin (nsuc n)
+  ⊢fsuc   : ∀ {Γ n t} → Γ ⊢ t ∷ Fin n → Γ ⊢ fsuc t ∷ Fin (nsuc n)
   ⊢fcase  : ∀ {Γ n P t a b} →
-            (Γ ▹ Fin (suc n)) ⊢ty P → Γ ⊢ t ∷ Fin (suc n) →
+            (Γ ▹ Fin (nsuc n)) ⊢ty P → Γ ⊢ t ∷ Fin (nsuc n) →
             Γ ⊢ a ∷ subTy (single fzero) P → (Γ ▹ Fin n) ⊢ b ∷ subTy fsucS P →
             Γ ⊢ fcase t a b ∷ subTy (single t) P
-  ⊢fcase0 : ∀ {Γ P t} → (Γ ▹ Fin zero) ⊢ty P → Γ ⊢ t ∷ Fin zero →
+  ⊢fcase0 : ∀ {Γ P t} → (Γ ▹ Fin nzero) ⊢ty P → Γ ⊢ t ∷ Fin nzero →
             Γ ⊢ fcase0 t ∷ subTy (single t) P
   -- ★ Σ-INDUCTION (D071)
   ⊢psplit : ∀ {Γ A B P q b} →
@@ -766,7 +770,7 @@ data _⊢ty_ where
   ty-DIh  : ∀ {Γ I D M C p} →
             Γ ⊢ I ∷ U → Γ ⊢ D ∷ DescF I → motCtx Γ I D ⊢ty M → Γ ⊢ C ∷ Desc I →
             Γ ⊢ p ∷ El (dpay I D C) → Γ ⊢ty DIh D M C p
-  ty-Fin  : ∀ {Γ n} → Γ ⊢ty Fin n
+  ty-Fin  : ∀ {Γ n} → Γ ⊢ n ∷ Nat → Γ ⊢ty Fin n
   -- W2: `Hom` FORMATION — both endpoints at the same (well-formed) type.
   ty-Hom  : ∀ {Γ A t u} → Γ ⊢ty A → Γ ⊢ t ∷ A → Γ ⊢ u ∷ A → Γ ⊢ty Hom A t u
 

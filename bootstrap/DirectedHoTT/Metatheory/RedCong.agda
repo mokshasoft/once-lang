@@ -59,7 +59,7 @@ open import DirectedHoTT.Spec.Typing
         ; ξ-ordtrq; ξ-fst; ξ-snd; ξ-⌜Π⌝ˡ; ξ-⌜Π⌝ʳ; ξ-⌜Σ⌝ˡ; ξ-⌜Σ⌝ʳ; tr-J-base
         ; tr-J-Σ; tr-J-Id; tr-taut; hrefl-pw; hrefl-Nat-z; hrefl-Nat-s; tr-J-Hom; tr-pw; ξ-⌜Hom⌝ᶜ
         ; ξ-⌜Hom⌝ˡ; ξ-⌜Hom⌝ʳ; ξ-hreflᶜ; ξ-hreflᵃ; ξ-trᵈ; ξ-trᵖ; ξ-trᵉ; ap-J
-        ; ξ-apᶜ; ξ-apᵇ; ξ-apᵖ; jsub-refl; ξ-⌜Id⌝ᶜ; ξ-⌜Id⌝ˡ; ξ-⌜Id⌝ʳ; ξ-idreflᶜ
+        ; ξ-apᶜ; ξ-apᵇ; ξ-apᵖ; jsub-refl; ξ-⌜Id⌝ᶜ; ξ-⌜Id⌝ˡ; ξ-⌜Id⌝ʳ; ξ-⌜Fin⌝; ξ-idreflᶜ
         ; ξ-idreflᵃ; ξ-jsubᵈ; ξ-jsubᵖ; ξ-jsubᵉ; natrec-zero; natrec-suc
         ; ξ-nsuc; ξ-natrecᶻ; ξ-natrecˢ; ξ-natrecⁿ; tr-J-Unit; tr-J-IMu
         ; El-⌜Nat⌝; El-⌜Unit⌝; _⟶*_; done; step; _≅_; cred; crfl; csym; ctrn
@@ -70,7 +70,7 @@ open import DirectedHoTT.Spec.Typing
         ; ξ-⌜IMu⌝ⁱ; ξ-ielimᴰ; ξ-ielimᵉ; ξ-dσˢ; ξ-dσᶠ; ξ-dρʲ; ξ-dρᶜ; ξ-dpayᴵ
         ; ξ-dpayᴰ; ξ-dpayᶜ; ξ-dihᴰ; ξ-dihᵉ; ξ-dihᶜ; ξ-dihᵖ; ξ-fsuc; ξ-fcaseᵗ
         ; ξ-fcaseᵃ; ξ-fcaseᵇ; ξ-fcase0; ξ-psplitᵇ; ξ-psplitᵍ; ξ-IMuᴵ; ξ-IMuᴰ
-        ; ξ-IMuⁱ; ξ-Desc; ξ-DIhᴰ; ξ-DIhᴹ; ξ-DIhᶜ; ξ-DIhᵖ
+        ; ξ-IMuⁱ; ξ-Desc; ξ-Fin; ξ-DIhᴰ; ξ-DIhᴹ; ξ-DIhᶜ; ξ-DIhᵖ
         ; δref )
 open import DirectedHoTT.Metatheory.SubjectReductionBase
   using ( sub-comm; sub-comm-ext; ⟶-sub; wk-sub; wk₁-sub; swp-sub; pwShift-sub )
@@ -234,6 +234,10 @@ private
 ⟶*-nsuc : {n n' : RTm Γ} → n ⟶* n' → nsuc n ⟶* nsuc n'
 ⟶*-nsuc done       = done
 ⟶*-nsuc (step r q) = step (ξ-nsuc r) (⟶*-nsuc q)
+
+⟶*-⌜Fin⌝ : {n n' : RTm Γ} → n ⟶* n' → ⌜Fin⌝ n ⟶* ⌜Fin⌝ n'
+⟶*-⌜Fin⌝ done       = done
+⟶*-⌜Fin⌝ (step r q) = step (ξ-⌜Fin⌝ r) (⟶*-⌜Fin⌝ q)
 
 ⟶*-natrecᶻ : {z z' : RTm Γ} {s : RTm ((Γ ∙) ∙)} {n : RTm Γ} →
              z ⟶* z' → natrec z s n ⟶* natrec z' s n
@@ -543,6 +547,7 @@ ren-comm2 {Γ} ρ b x y =
 ⟶-ren ρ (ξ-psplitᵇ r) = ξ-psplitᵇ (⟶-ren (extR (extR ρ)) r)
 ⟶-ren ρ (ξ-psplitᵍ r) = ξ-psplitᵍ (⟶-ren ρ r)
 ⟶-ren ρ (ξ-nsuc r)    = ξ-nsuc (⟶-ren ρ r)
+⟶-ren ρ (ξ-⌜Fin⌝ r)   = ξ-⌜Fin⌝ (⟶-ren ρ r)
 ⟶-ren ρ (ξ-natrecᶻ r) = ξ-natrecᶻ (⟶-ren ρ r)
 ⟶-ren ρ (ξ-natrecˢ r) = ξ-natrecˢ (⟶-ren (extR (extR ρ)) r)
 ⟶-ren ρ (ξ-natrecⁿ r) = ξ-natrecⁿ (⟶-ren ρ r)
@@ -727,7 +732,6 @@ stkA?-red {C = fcase _ _ _} _ ()
 stkA?-red {C = fcase0 _} _ ()
 stkA?-red {C = psplit _ _} _ ()
 stkA?-red {C = ⌜Nat⌝} () _
-stkA?-red {C = ⌜Fin⌝ _} () _
 stkA?-red {C = ⌜Unit⌝} () _
 stkA?-red (ξ-⌜IMu⌝ᴵ r) h = refl
 stkA?-red (ξ-⌜IMu⌝ᴰ r) h = refl
@@ -738,6 +742,7 @@ stkA?-red (ξ-⌜Hom⌝ᶜ r) h = stkA?-red r h
 stkA?-red (ξ-⌜Id⌝ᶜ r) h = refl
 stkA?-red (ξ-⌜Id⌝ˡ r) h = refl
 stkA?-red (ξ-⌜Id⌝ʳ r) h = refl
+stkA?-red (ξ-⌜Fin⌝ r) h = refl
 stkA?-red (ξ-⌜Hom⌝ˡ r) h = h
 stkA?-red (ξ-⌜Hom⌝ʳ r) h = h
 -- ⚠ §10.4: `stkA? (⌜IMu⌝ …)` is `true` and the INDEX steps, so this is
@@ -777,7 +782,6 @@ stkC?-red {C = fcase _ _ _} _ ()
 stkC?-red {C = fcase0 _} _ ()
 stkC?-red {C = psplit _ _} _ ()
 stkC?-red {C = ⌜Nat⌝} _ ()
-stkC?-red {C = ⌜Fin⌝ _} () _
 stkC?-red {C = ⌜Unit⌝} () _
 stkC?-red (ξ-⌜IMu⌝ᴵ r) h = refl
 stkC?-red (ξ-⌜IMu⌝ᴰ r) h = refl
@@ -788,6 +792,7 @@ stkC?-red (ξ-⌜Hom⌝ᶜ r) h = stkA?-red r h
 stkC?-red (ξ-⌜Id⌝ᶜ r) h = refl
 stkC?-red (ξ-⌜Id⌝ˡ r) h = refl
 stkC?-red (ξ-⌜Id⌝ʳ r) h = refl
+stkC?-red (ξ-⌜Fin⌝ r) h = refl
 stkC?-red (ξ-⌜Hom⌝ˡ r) h = h
 stkC?-red (ξ-⌜Hom⌝ʳ r) h = h
 
@@ -898,7 +903,7 @@ subTm-monoˢ h ⌜Unit⌝   = done
 subTm-monoˢ h unit     = done
 subTm-monoˢ h nzero    = done
 subTm-monoˢ h (nsuc n) = ⟶*-nsuc (subTm-monoˢ h n)
-subTm-monoˢ h (⌜Fin⌝ n) = done
+subTm-monoˢ h (⌜Fin⌝ n) = ⟶*-⌜Fin⌝ (subTm-monoˢ h n)
 subTm-monoˢ h fzero = done
 subTm-monoˢ h (⌜IMu⌝ I D i) =
   ⟶*-trans (⟶*-⌜IMu⌝ᴵ (subTm-monoˢ h I)) (⟶*-trans (⟶*-⌜IMu⌝ᴰ (subTm-monoˢ h D)) (⟶*-⌜IMu⌝ⁱ (subTm-monoˢ h i)))
@@ -1021,6 +1026,10 @@ data _⟶ᵀ*_ : {Γ : Cx} → RTy Γ → RTy Γ → Set where
 ⟶ᵀ*-Desc : {I I' : RTm Γ} → I ⟶* I' → Desc I ⟶ᵀ* Desc I'
 ⟶ᵀ*-Desc done       = doneᵀ
 ⟶ᵀ*-Desc (step r p) = stepᵀ (ξ-Desc r) (⟶ᵀ*-Desc p)
+
+⟶ᵀ*-Fin : {n n' : RTm Γ} → n ⟶* n' → RTy.Fin n ⟶ᵀ* RTy.Fin n'
+⟶ᵀ*-Fin done       = doneᵀ
+⟶ᵀ*-Fin (step r p) = stepᵀ (ξ-Fin r) (⟶ᵀ*-Fin p)
 
 ⟶ᵀ*-DIhᴰ : {D D' C p : RTm Γ} {M : RTy ((Γ ∙) ∙)} → D ⟶* D' → DIh D M C p ⟶ᵀ* DIh D' M C p
 ⟶ᵀ*-DIhᴰ done       = doneᵀ

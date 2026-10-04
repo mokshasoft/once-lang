@@ -50,7 +50,7 @@ open import DirectedHoTT.Spec.Typing
         ; ξ-ielimᴰ; ξ-ielimⁱ; ξ-ielimᵉ; ξ-ielimᵗ; ξ-dσˢ; ξ-dσᶠ; ξ-dρʲ
         ; ξ-dρᶜ; ξ-dpayᴵ; ξ-dpayᴰ; ξ-dpayᶜ; ξ-dihᴰ; ξ-dihᵉ; ξ-dihᶜ
         ; ξ-dihᵖ; ξ-fsuc; ξ-fcaseᵗ; ξ-fcaseᵃ; ξ-fcaseᵇ; ξ-fcase0; ξ-psplitᵇ
-        ; ξ-psplitᵍ; tr-J-IMu; tr-J-Fin; single )
+        ; ξ-psplitᵍ; tr-J-IMu; tr-J-Fin; ξ-Fin; single )
 open import DirectedHoTT.Metatheory.Confluence
   using ( _⟹_; pvar; plam; papp; pβ; ppair; pabsurd; pfst; psnd; pβfst; pβsnd
         ; p⌜base⌝; p⌜Π⌝; p⌜Σ⌝; p⌜Hom⌝; phrefl; ptr; ptr-J-base; ptr-J-Σ
@@ -165,8 +165,8 @@ data _⟹ᵀ_ : {Γ : Cx} → RTy Γ → RTy Γ → Set where
   pEl-⌜IMu⌝ : {I I' D D' i i' : RTm Γ} → I ⟹ I' → D ⟹ D' → i ⟹ i' →
               El (⌜IMu⌝ I D i) ⟹ᵀ IMu I' D' i'
   pDesc     : {I I' : RTm Γ} → I ⟹ I' → Desc I ⟹ᵀ Desc I'
-  pFin      : {n : ℕ} → Fin {Γ} n ⟹ᵀ Fin n
-  pEl-⌜Fin⌝ : {n : ℕ} → El (⌜Fin⌝ {Γ} n) ⟹ᵀ Fin n
+  pFin      : {n n' : RTm Γ} → n ⟹ n' → Fin n ⟹ᵀ Fin n'
+  pEl-⌜Fin⌝ : {n n' : RTm Γ} → n ⟹ n' → El (⌜Fin⌝ n) ⟹ᵀ Fin n'
   pDIh      : {D D' C C' p p' : RTm Γ} {M M' : RTy ((Γ ∙) ∙)} →
               D ⟹ D' → M ⟹ᵀ M' → C ⟹ C' → p ⟹ p' → DIh D M C p ⟹ᵀ DIh D' M' C' p'
   pDIh-ι    : {D p : RTm Γ} {M : RTy ((Γ ∙) ∙)} → DIh D M dι p ⟹ᵀ Unit
@@ -189,7 +189,7 @@ data _⟹ᵀ_ : {Γ : Cx} → RTy Γ → RTy Γ → Set where
 ⟹ᵀ-refl (El t)   = pEl (⟹-refl t)
 ⟹ᵀ-refl (IMu I D i) = pIMu (⟹-refl I) (⟹-refl D) (⟹-refl i)
 ⟹ᵀ-refl (Desc I) = pDesc (⟹-refl I)
-⟹ᵀ-refl (Fin n) = pFin
+⟹ᵀ-refl (Fin n) = pFin (⟹-refl n)
 ⟹ᵀ-refl (DIh D M C p) = pDIh (⟹-refl D) (⟹ᵀ-refl M) (⟹-refl C) (⟹-refl p)
 ⟹ᵀ-refl U        = pU
 ⟹ᵀ-refl (Π A B)  = pΠ (⟹ᵀ-refl A) (⟹ᵀ-refl B)
@@ -205,7 +205,7 @@ data _⟹ᵀ_ : {Γ : Cx} → RTy Γ → RTy Γ → Set where
 ⟶ᵀ→⟹ᵀ El-⌜Unit⌝    = pEl-⌜Unit⌝
 ⟶ᵀ→⟹ᵀ El-⌜base⌝    = pEl-⌜base⌝
 ⟶ᵀ→⟹ᵀ El-⌜IMu⌝     = pEl-⌜IMu⌝ (⟹-refl _) (⟹-refl _) (⟹-refl _)
-⟶ᵀ→⟹ᵀ El-⌜Fin⌝     = pEl-⌜Fin⌝
+⟶ᵀ→⟹ᵀ El-⌜Fin⌝     = pEl-⌜Fin⌝ (⟹-refl _)
 ⟶ᵀ→⟹ᵀ (DIh-ι D M p) = pDIh-ι
 ⟶ᵀ→⟹ᵀ (DIh-σ D M S f p) = pDIh-σ (⟹-refl D) (⟹ᵀ-refl M) (⟹-refl f) (⟹-refl p)
 ⟶ᵀ→⟹ᵀ (DIh-ρ D M j C p) = pDIh-ρ (⟹-refl D) (⟹ᵀ-refl M) (⟹-refl j) (⟹-refl C) (⟹-refl p)
@@ -213,6 +213,7 @@ data _⟹ᵀ_ : {Γ : Cx} → RTy Γ → RTy Γ → Set where
 ⟶ᵀ→⟹ᵀ (ξ-IMuᴰ r) = pIMu (⟹-refl _) (⟶→⟹ r) (⟹-refl _)
 ⟶ᵀ→⟹ᵀ (ξ-IMuⁱ r) = pIMu (⟹-refl _) (⟹-refl _) (⟶→⟹ r)
 ⟶ᵀ→⟹ᵀ (ξ-Desc r) = pDesc (⟶→⟹ r)
+⟶ᵀ→⟹ᵀ (ξ-Fin r) = pFin (⟶→⟹ r)
 ⟶ᵀ→⟹ᵀ (ξ-DIhᴰ r) = pDIh (⟶→⟹ r) (⟹ᵀ-refl _) (⟹-refl _) (⟹-refl _)
 ⟶ᵀ→⟹ᵀ (ξ-DIhᴹ r) = pDIh (⟹-refl _) (⟶ᵀ→⟹ᵀ r) (⟹-refl _) (⟹-refl _)
 ⟶ᵀ→⟹ᵀ (ξ-DIhᶜ r) = pDIh (⟹-refl _) (⟹ᵀ-refl _) (⟶→⟹ r) (⟹-refl _)
@@ -248,8 +249,8 @@ data _⟹ᵀ_ : {Γ : Cx} → RTy Γ → RTy Γ → Set where
 ⟹ᵀ→⟶ᵀ* (pEl-⌜IMu⌝ a b c) =
   stepᵀ El-⌜IMu⌝ (⟶ᵀ*-trans (⟶ᵀ*-IMuᴵ (⟹→⟶* a)) (⟶ᵀ*-trans (⟶ᵀ*-IMuᴰ (⟹→⟶* b)) (⟶ᵀ*-IMu (⟹→⟶* c))))
 ⟹ᵀ→⟶ᵀ* (pDesc a) = ⟶ᵀ*-Desc (⟹→⟶* a)
-⟹ᵀ→⟶ᵀ* pFin = doneᵀ
-⟹ᵀ→⟶ᵀ* pEl-⌜Fin⌝ = stepᵀ El-⌜Fin⌝ doneᵀ
+⟹ᵀ→⟶ᵀ* (pFin a) = ⟶ᵀ*-Fin (⟹→⟶* a)
+⟹ᵀ→⟶ᵀ* (pEl-⌜Fin⌝ a) = stepᵀ El-⌜Fin⌝ (⟶ᵀ*-Fin (⟹→⟶* a))
 ⟹ᵀ→⟶ᵀ* (pDIh a m c d) =
   ⟶ᵀ*-trans (⟶ᵀ*-DIhᴰ (⟹→⟶* a)) (⟶ᵀ*-trans (⟶ᵀ*-DIhᴹ (⟹ᵀ→⟶ᵀ* m))
     (⟶ᵀ*-trans (⟶ᵀ*-DIhᶜ (⟹→⟶* c)) (⟶ᵀ*-DIhᵖ (⟹→⟶* d))))
@@ -318,7 +319,7 @@ data _⟹ᵀ_ : {Γ : Cx} → RTy Γ → RTy Γ → Set where
 ⟹ᵀ-ren ρ pU = pU
 ⟹ᵀ-ren ρ pUnit = pUnit
 ⟹ᵀ-ren ρ pNat = pNat
-⟹ᵀ-ren ρ pFin = pFin
+⟹ᵀ-ren ρ (pFin a) = pFin (⟹-ren ρ a)
 ⟹ᵀ-ren ρ (pEl a) = pEl (⟹-ren ρ a)
 ⟹ᵀ-ren ρ (pΠ a b) = pΠ (⟹ᵀ-ren ρ a) (⟹ᵀ-ren (extR ρ) b)
 ⟹ᵀ-ren ρ (pΣ a b) = pΣ (⟹ᵀ-ren ρ a) (⟹ᵀ-ren (extR ρ) b)
@@ -345,7 +346,7 @@ data _⟹ᵀ_ : {Γ : Cx} → RTy Γ → RTy Γ → Set where
 ⟹ᵀ-ren ρ (pIMu a b c) = pIMu (⟹-ren ρ a) (⟹-ren ρ b) (⟹-ren ρ c)
 ⟹ᵀ-ren ρ (pEl-⌜IMu⌝ a b c) = pEl-⌜IMu⌝ (⟹-ren ρ a) (⟹-ren ρ b) (⟹-ren ρ c)
 ⟹ᵀ-ren ρ (pDesc a) = pDesc (⟹-ren ρ a)
-⟹ᵀ-ren ρ pEl-⌜Fin⌝ = pEl-⌜Fin⌝
+⟹ᵀ-ren ρ (pEl-⌜Fin⌝ a) = pEl-⌜Fin⌝ (⟹-ren ρ a)
 ⟹ᵀ-ren ρ (pDIh a m c d) = pDIh (⟹-ren ρ a) (⟹ᵀ-ren (extR (extR ρ)) m) (⟹-ren ρ c) (⟹-ren ρ d)
 ⟹ᵀ-ren ρ pDIh-ι = pDIh-ι
 ⟹ᵀ-ren ρ (pDIh-σ a m c d) = pDIh-σ (⟹-ren ρ a) (⟹ᵀ-ren (extR (extR ρ)) m) (⟹-ren ρ c) (⟹-ren ρ d)
@@ -362,7 +363,7 @@ data _⟹ᵀ_ : {Γ : Cx} → RTy Γ → RTy Γ → Set where
 ⟹ᵀ-sub h pU = pU
 ⟹ᵀ-sub h pUnit = pUnit
 ⟹ᵀ-sub h pNat = pNat
-⟹ᵀ-sub h pFin = pFin
+⟹ᵀ-sub h (pFin a) = pFin (⟹-sub h a)
 ⟹ᵀ-sub h (pEl a) = pEl (⟹-sub h a)
 ⟹ᵀ-sub h (pΠ a b) = pΠ (⟹ᵀ-sub h a) (⟹ᵀ-sub (⟹-exts h) b)
 ⟹ᵀ-sub h (pΣ a b) = pΣ (⟹ᵀ-sub h a) (⟹ᵀ-sub (⟹-exts h) b)
@@ -389,7 +390,7 @@ data _⟹ᵀ_ : {Γ : Cx} → RTy Γ → RTy Γ → Set where
 ⟹ᵀ-sub h (pIMu a b c) = pIMu (⟹-sub h a) (⟹-sub h b) (⟹-sub h c)
 ⟹ᵀ-sub h (pEl-⌜IMu⌝ a b c) = pEl-⌜IMu⌝ (⟹-sub h a) (⟹-sub h b) (⟹-sub h c)
 ⟹ᵀ-sub h (pDesc a) = pDesc (⟹-sub h a)
-⟹ᵀ-sub h pEl-⌜Fin⌝ = pEl-⌜Fin⌝
+⟹ᵀ-sub h (pEl-⌜Fin⌝ a) = pEl-⌜Fin⌝ (⟹-sub h a)
 ⟹ᵀ-sub h (pDIh a m c d) = pDIh (⟹-sub h a) (⟹ᵀ-sub (⟹-exts (⟹-exts h)) m) (⟹-sub h c) (⟹-sub h d)
 ⟹ᵀ-sub h pDIh-ι = pDIh-ι
 ⟹ᵀ-sub h (pDIh-σ a m c d) = pDIh-σ (⟹-sub h a) (⟹ᵀ-sub (⟹-exts (⟹-exts h)) m) (⟹-sub h c) (⟹-sub h d)
@@ -410,7 +411,7 @@ Unit ⁺ᵀ         = Unit
 Nat ⁺ᵀ          = Nat
 IMu I D i ⁺ᵀ = IMu (I ⁺) (D ⁺) (i ⁺)
 Desc I ⁺ᵀ = Desc (I ⁺)
-Fin n ⁺ᵀ = Fin n
+Fin n ⁺ᵀ = Fin (n ⁺)
 DIh D M dι p ⁺ᵀ = Unit
 DIh D M (dσ S f) p ⁺ᵀ = DIh (D ⁺) (M ⁺ᵀ) (app (f ⁺) (fst (p ⁺))) (snd (p ⁺))
 DIh D M (dρ j C) p ⁺ᵀ =
@@ -418,7 +419,7 @@ DIh D M (dρ j C) p ⁺ᵀ =
      (DIh (renTm vs (D ⁺)) (renTy (extR (extR vs)) (M ⁺ᵀ)) (renTm vs (C ⁺)) (snd (renTm vs (p ⁺))))
 DIh D M C p ⁺ᵀ = DIh (D ⁺) (M ⁺ᵀ) (C ⁺) (p ⁺)
 El (⌜IMu⌝ I D i) ⁺ᵀ = IMu (I ⁺) (D ⁺) (i ⁺)
-El (⌜Fin⌝ n) ⁺ᵀ = Fin n
+El (⌜Fin⌝ n) ⁺ᵀ = Fin (n ⁺)
 El (con c) ⁺ᵀ = El (con c ⁺)
 El dι ⁺ᵀ = El (dι ⁺)
 El (dσ S f) ⁺ᵀ = El (dσ S f ⁺)
@@ -496,7 +497,7 @@ Hom (Id A a b) t u ⁺ᵀ  = Hom ((Id A a b) ⁺ᵀ) (t ⁺) (u ⁺)
 -- head dispatch at all.
 Hom (IMu I D i) t u ⁺ᵀ = Hom (IMu (I ⁺) (D ⁺) (i ⁺)) (t ⁺) (u ⁺)
 Hom (Desc I) t u ⁺ᵀ = Hom (Desc (I ⁺)) (t ⁺) (u ⁺)
-Hom (Fin n) t u ⁺ᵀ = Hom (Fin n) (t ⁺) (u ⁺)
+Hom (Fin n) t u ⁺ᵀ = Hom (Fin (n ⁺)) (t ⁺) (u ⁺)
 Hom (DIh D M C p) t u ⁺ᵀ = Hom ((DIh D M C p) ⁺ᵀ) (t ⁺) (u ⁺)
 Id A t u ⁺ᵀ = Id (A ⁺ᵀ) (t ⁺) (u ⁺)
 
@@ -663,7 +664,7 @@ Id A t u ⁺ᵀ = Id (A ⁺ᵀ) (t ⁺) (u ⁺)
 ⟹ᵀ-⁺ (pHom pNat (pnsuc pm) pu@(pnatrec-suc _ _ _)) = pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ pu)
 ⟹ᵀ-⁺ (pHom pNat (pnsuc pm) pu@(pcon _)) = pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ pu)
 ⟹ᵀ-⁺ (pHom pNat (pnsuc pm) pu@(p⌜IMu⌝ _ _ _)) = pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ pu)
-⟹ᵀ-⁺ (pHom pNat (pnsuc pm) pu@p⌜Fin⌝) = pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom pNat (pnsuc pm) pu@(p⌜Fin⌝ _)) = pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ pu)
 ⟹ᵀ-⁺ (pHom pNat (pnsuc pm) pu@(pielim _ _ _ _)) = pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ pu)
 ⟹ᵀ-⁺ (pHom pNat (pnsuc pm) pu@(pι _ _ _ _)) = pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ pu)
 ⟹ᵀ-⁺ (pHom pNat (pnsuc pm) pu@pdι) = pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ pu)
@@ -726,7 +727,7 @@ Id A t u ⁺ᵀ = Id (A ⁺ᵀ) (t ⁺) (u ⁺)
 ⟹ᵀ-⁺ (pHom pNat pt@(pnatrec-suc _ _ _) pu) = pHom pNat (⟹-⁺ pt) (⟹-⁺ pu)
 ⟹ᵀ-⁺ (pHom pNat pt@(pcon _) pu) = pHom pNat (⟹-⁺ pt) (⟹-⁺ pu)
 ⟹ᵀ-⁺ (pHom pNat pt@(p⌜IMu⌝ _ _ _) pu) = pHom pNat (⟹-⁺ pt) (⟹-⁺ pu)
-⟹ᵀ-⁺ (pHom pNat pt@p⌜Fin⌝ pu) = pHom pNat (⟹-⁺ pt) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom pNat pt@(p⌜Fin⌝ _) pu) = pHom pNat (⟹-⁺ pt) (⟹-⁺ pu)
 ⟹ᵀ-⁺ (pHom pNat pt@(pielim _ _ _ _) pu) = pHom pNat (⟹-⁺ pt) (⟹-⁺ pu)
 ⟹ᵀ-⁺ (pHom pNat pt@(pι _ _ _ _) pu) = pHom pNat (⟹-⁺ pt) (⟹-⁺ pu)
 ⟹ᵀ-⁺ (pHom pNat pt@pdι pu) = pHom pNat (⟹-⁺ pt) (⟹-⁺ pu)
@@ -800,9 +801,9 @@ Id A t u ⁺ᵀ = Id (A ⁺ᵀ) (t ⁺) (u ⁺)
 ⟹ᵀ-⁺ (pEl-⌜IMu⌝ a b c) = pIMu (⟹-⁺ a) (⟹-⁺ b) (⟹-⁺ c)
 ⟹ᵀ-⁺ (pEl (p⌜IMu⌝ a b c)) = pEl-⌜IMu⌝ (⟹-⁺ a) (⟹-⁺ b) (⟹-⁺ c)
 ⟹ᵀ-⁺ (pDesc a) = pDesc (⟹-⁺ a)
-⟹ᵀ-⁺ pFin = pFin
-⟹ᵀ-⁺ pEl-⌜Fin⌝ = pFin
-⟹ᵀ-⁺ (pEl p⌜Fin⌝) = pEl-⌜Fin⌝
+⟹ᵀ-⁺ (pFin a) = pFin (⟹-⁺ a)
+⟹ᵀ-⁺ (pEl-⌜Fin⌝ a) = pFin (⟹-⁺ a)
+⟹ᵀ-⁺ (pEl (p⌜Fin⌝ a)) = pEl-⌜Fin⌝ (⟹-⁺ a)
 ⟹ᵀ-⁺ (pDIh pD pM pdι pp) = pDIh-ι
 ⟹ᵀ-⁺ (pDIh pD pM (pdσ pS pf) pp) = pDIh-σ (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ pf) (⟹-⁺ pp)
 ⟹ᵀ-⁺ (pDIh pD pM (pdρ pj pC) pp) = pDIh-ρ (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ pj) (⟹-⁺ pC) (⟹-⁺ pp)
@@ -857,7 +858,7 @@ Id A t u ⁺ᵀ = Id (A ⁺ᵀ) (t ⁺) (u ⁺)
 ⟹ᵀ-⁺ (pDIh pD pM w@(pnatrec-zero _ _) pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
 ⟹ᵀ-⁺ (pDIh pD pM w@(pnatrec-suc _ _ _) pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
 ⟹ᵀ-⁺ (pDIh pD pM w@(p⌜IMu⌝ _ _ _) pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
-⟹ᵀ-⁺ (pDIh pD pM w@p⌜Fin⌝ pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
+⟹ᵀ-⁺ (pDIh pD pM w@(p⌜Fin⌝ _) pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
 ⟹ᵀ-⁺ (pDIh pD pM w@(pcon _) pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
 ⟹ᵀ-⁺ (pDIh pD pM w@(pielim _ _ _ _) pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
 ⟹ᵀ-⁺ (pDIh pD pM w@(pι _ _ _ _) pp) = pDIh (⟹-⁺ pD) (⟹ᵀ-⁺ pM) (⟹-⁺ w) (⟹-⁺ pp)
@@ -886,8 +887,8 @@ Id A t u ⁺ᵀ = Id (A ⁺ᵀ) (t ⁺) (u ⁺)
 ⟹ᵀ-⁺ (pHom w@(pIMu _ _ _) pt pu) = pHom (⟹ᵀ-⁺ w) (⟹-⁺ pt) (⟹-⁺ pu)
 ⟹ᵀ-⁺ (pHom w@(pEl-⌜IMu⌝ _ _ _) pt pu) = pHom (⟹ᵀ-⁺ w) (⟹-⁺ pt) (⟹-⁺ pu)
 ⟹ᵀ-⁺ (pHom w@(pDesc _) pt pu) = pHom (⟹ᵀ-⁺ w) (⟹-⁺ pt) (⟹-⁺ pu)
-⟹ᵀ-⁺ (pHom w@pFin pt pu) = pHom (⟹ᵀ-⁺ w) (⟹-⁺ pt) (⟹-⁺ pu)
-⟹ᵀ-⁺ (pHom w@pEl-⌜Fin⌝ pt pu) = pHom (⟹ᵀ-⁺ w) (⟹-⁺ pt) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom w@(pFin _) pt pu) = pHom (⟹ᵀ-⁺ w) (⟹-⁺ pt) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom w@(pEl-⌜Fin⌝ _) pt pu) = pHom (⟹ᵀ-⁺ w) (⟹-⁺ pt) (⟹-⁺ pu)
 ⟹ᵀ-⁺ (pHom w@(pDIh _ _ _ _) pt pu) = pHom (⟹ᵀ-⁺ w) (⟹-⁺ pt) (⟹-⁺ pu)
 ⟹ᵀ-⁺ (pHom w@pDIh-ι pt pu) = pHom (⟹ᵀ-⁺ w) (⟹-⁺ pt) (⟹-⁺ pu)
 ⟹ᵀ-⁺ (pHom w@(pDIh-σ _ _ _ _) pt pu) = pHom (⟹ᵀ-⁺ w) (⟹-⁺ pt) (⟹-⁺ pu)
@@ -1023,16 +1024,21 @@ Desc-inj c with church-rosserᵀ c
 ...   | J₁ , (eq₁ , rJ₁) | J₂ , (eq₂ , rJ₂) =
         ctrn (hom→≅ rJ₁) (csym (hom→≅ (subst (_ ⟶*_) (sym (Descinj≡ (trans (sym eq₁) eq₂))) rJ₂)))
 
-Fin-reduct : {n : ℕ} {C : RTy Γ} → Fin n ⟶ᵀ* C → C ≡ Fin n
-Fin-reduct doneᵀ = refl
-Fin-reduct (stepᵀ () _)
+-- ★ S7b step 2: a finite set's size is a term, so its injectivity is up to
+--   CONVERSION (as `Desc`'s); at closed numerals that is equality (`nf-≅`).
+Fin-reduct : {n : RTm Γ} {C : RTy Γ} → Fin n ⟶ᵀ* C → Σ (RTm Γ) (λ m → (C ≡ Fin m) × (n ⟶* m))
+Fin-reduct doneᵀ = _ , (refl , done)
+Fin-reduct (stepᵀ (ξ-Fin r) p) with Fin-reduct p
+... | m , (eq , rm) = m , (eq , step r rm)
 
-Fininj≡ : {n n' : ℕ} → Fin {Γ} n ≡ Fin n' → n ≡ n'
+Fininj≡ : {n n' : RTm Γ} → Fin n ≡ Fin n' → n ≡ n'
 Fininj≡ refl = refl
 
-Fin-inj : {n n' : ℕ} → Fin {Γ} n ≅ᵀ Fin n' → n ≡ n'
+Fin-inj : {n n' : RTm Γ} → Fin n ≅ᵀ Fin n' → n ≅ n'
 Fin-inj c with church-rosserᵀ c
-... | C , (r₁ , r₂) = Fininj≡ (trans (sym (Fin-reduct r₁)) (Fin-reduct r₂))
+... | C , (r₁ , r₂) with Fin-reduct r₁ | Fin-reduct r₂
+...   | m₁ , (eq₁ , rm₁) | m₂ , (eq₂ , rm₂) =
+        ctrn (hom→≅ rm₁) (csym (hom→≅ (subst (_ ⟶*_) (sym (Fininj≡ (trans (sym eq₁) eq₂))) rm₂)))
 
 -- ★ Π-INJECTIVITY OF CONVERSION — dHoTT-24's scoped ceiling, discharged.
 Π-inj : {A A' : RTy Γ} {B B' : RTy (Γ ∙)} →

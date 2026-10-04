@@ -59,7 +59,7 @@ open import DirectedHoTT.Spec.Typing
         ; ξ-ordtrq; ξ-fst; ξ-snd; ξ-⌜Π⌝ˡ; ξ-⌜Π⌝ʳ; ξ-⌜Σ⌝ˡ; ξ-⌜Σ⌝ʳ; tr-J-base
         ; tr-J-Σ; tr-J-Id; tr-taut; hrefl-pw; hrefl-Nat-z; hrefl-Nat-s; tr-J-Hom; tr-pw; ξ-⌜Hom⌝ᶜ
         ; ξ-⌜Hom⌝ˡ; ξ-⌜Hom⌝ʳ; ξ-hreflᶜ; ξ-hreflᵃ; ξ-trᵈ; ξ-trᵖ; ξ-trᵉ; ap-J
-        ; ξ-apᶜ; ξ-apᵇ; ξ-apᵖ; jsub-refl; ξ-⌜Id⌝ᶜ; ξ-⌜Id⌝ˡ; ξ-⌜Id⌝ʳ; ξ-idreflᶜ
+        ; ξ-apᶜ; ξ-apᵇ; ξ-apᵖ; jsub-refl; ξ-⌜Id⌝ᶜ; ξ-⌜Id⌝ˡ; ξ-⌜Id⌝ʳ; ξ-⌜Fin⌝; ξ-idreflᶜ
         ; ξ-idreflᵃ; ξ-jsubᵈ; ξ-jsubᵖ; ξ-jsubᵉ; El-⌜Id⌝; ξ-Idᵀ; ξ-Idˡ; ξ-Idʳ
         ; natrec-zero; natrec-suc; ξ-nsuc; ξ-natrecᶻ; ξ-natrecˢ; ξ-natrecⁿ
         ; Hom-Nat-z; Hom-Nat-sz; Hom-Nat-ss; El-⌜Nat⌝; El-⌜Unit⌝; tr-J-Unit
@@ -72,7 +72,7 @@ open import DirectedHoTT.Spec.Typing
         ; ξ-dρʲ; ξ-dρᶜ; ξ-dpayᴵ; ξ-dpayᴰ; ξ-dpayᶜ; ξ-dihᴰ; ξ-dihᵉ; ξ-dihᶜ
         ; ξ-dihᵖ; ξ-fsuc; ξ-fcaseᵗ; ξ-fcaseᵃ; ξ-fcaseᵇ; ξ-fcase0; ξ-psplitᵇ
         ; ξ-psplitᵍ; tr-J-Fin; El-⌜Fin⌝; DIh-ι; DIh-σ; DIh-ρ; ξ-IMuᴵ; ξ-IMuᴰ
-        ; ξ-IMuⁱ; ξ-Desc; ξ-DIhᴰ; ξ-DIhᴹ; ξ-DIhᶜ; ξ-DIhᵖ; single2; iinst
+        ; ξ-IMuⁱ; ξ-Desc; ξ-Fin; ξ-DIhᴰ; ξ-DIhᴹ; ξ-DIhᶜ; ξ-DIhᵖ; single2; iinst
         ; wk-single
         ; δref )
 
@@ -343,6 +343,7 @@ sub-comm2 {Γ} σ b x y =
 ⟶-sub σ (ξ-⌜Id⌝ᶜ r) = ξ-⌜Id⌝ᶜ (⟶-sub σ r)
 ⟶-sub σ (ξ-⌜Id⌝ˡ r) = ξ-⌜Id⌝ˡ (⟶-sub σ r)
 ⟶-sub σ (ξ-⌜Id⌝ʳ r) = ξ-⌜Id⌝ʳ (⟶-sub σ r)
+⟶-sub σ (ξ-⌜Fin⌝ r) = ξ-⌜Fin⌝ (⟶-sub σ r)
 ⟶-sub σ (ξ-idreflᶜ r) = ξ-idreflᶜ (⟶-sub σ r)
 ⟶-sub σ (ξ-idreflᵃ r) = ξ-idreflᵃ (⟶-sub σ r)
 ⟶-sub σ (natrec-zero z s) =
@@ -443,6 +444,7 @@ sub-comm2 {Γ} σ b x y =
 ⟶ᵀ-sub σ (ξ-IMuᴰ r) = ξ-IMuᴰ (⟶-sub σ r)
 ⟶ᵀ-sub σ (ξ-IMuⁱ r) = ξ-IMuⁱ (⟶-sub σ r)
 ⟶ᵀ-sub σ (ξ-Desc r) = ξ-Desc (⟶-sub σ r)
+⟶ᵀ-sub σ (ξ-Fin r) = ξ-Fin (⟶-sub σ r)
 ⟶ᵀ-sub σ (ξ-DIhᴰ r) = ξ-DIhᴰ (⟶-sub σ r)
 ⟶ᵀ-sub σ (ξ-DIhᴹ r) = ξ-DIhᴹ (⟶ᵀ-sub (extS (extS σ)) r)
 ⟶ᵀ-sub σ (ξ-DIhᶜ r) = ξ-DIhᶜ (⟶-sub σ r)
