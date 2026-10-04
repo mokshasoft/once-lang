@@ -39,7 +39,8 @@ import Once.Compile as C
 open import Once.Adequacy.Compile using (AsmWF-of)
 open import Once.Adequacy.EmitFile using (file-is-emit; file-is-lib; moduleExterns)
 open import Once.Adequacy.ImageWF
-  using (prog-defs; lib-defs; Resolved; prog-unique; prog-resolved; lib-unique; lib-resolved)
+  using (prog-defs; lib-defs; Resolved; prog-unique; lib-unique; lib-resolved)
+open import Once.Adequacy.ImageResolved using (prog-resolved)
 open import Once.CCC.Codegen.ImageSymbols using (adefs; arefs)
 open import Once.CCC.Machine.NoNested using (NoNested; no-nested-of-all)
 open import Once.CCC.Machine.FrameFree using (emittable-image)

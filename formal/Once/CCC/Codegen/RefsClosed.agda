@@ -52,6 +52,8 @@ open IRm.IR
 open import Once.IRTy using (⌈_⌉F; fits-int; fits-float)
 open import Once.CCC.Machine.SMCore
 open import Once.CCC.Codegen.ImageSymbols using (instr-defs; instr-refs; adefs; arefs)
+import Once.CCC.Codegen.NodesOK
+open Once.CCC.Codegen.NodesOK using (sigop-syms)
 open import Once.CCC.Codegen.IRToTrace o using
   (sigop-code; ir-to-trace'; cata-dispatch; cata-strategy; CataStrategy;
    strat-const; strat-nat; strat-linear; strat-branching; lsize; fsize; cata-body; cata-call-setup; cata-call;
@@ -106,36 +108,10 @@ arefs-++ (i ∷ is) b = trans (cong (instr-refs i ++_) (arefs-++ is b))
 -- The context: what counts as GLOBAL, and the leaf obligations.
 ------------------------------------------------------------------------
 
--- The symbol a SigOp's lowering calls: itself, or (a comparison) its block.
-sigop-syms : ∀ {A B} → SigOpInfo A B → Maybe CmpOp → List String
-sigop-syms si nothing  = once-symbol-path (name si) ∷ []
-sigop-syms si (just c) = once-symbol-path (name (cmp-block-info c)) ∷ []
-
 module _ (G : String → Set) where
 
-  -- the leaf obligations, at the IR's `SigOp` and `Call` nodes
-  NodesOK : ∀ {A B} → IR A B → Set
-  NodesOK (g ∘ f)          = NodesOK g × NodesOK f
-  NodesOK ⟨ f , g ⟩        = NodesOK f × NodesOK g
-  NodesOK (case f g)       = NodesOK f × NodesOK g
-  NodesOK (curry f)        = NodesOK f
-  NodesOK (Cata _ alg)     = NodesOK alg
-  NodesOK (Ana _ coalg)    = NodesOK coalg
-  NodesOK (Call f)         = G (labelSym (callee (e-fn f)))
-  NodesOK (SigOp si)       = All G (sigop-syms si (cmp-of (sem si)))
-  NodesOK id               = ⊤
-  NodesOK fst              = ⊤
-  NodesOK snd              = ⊤
-  NodesOK inl              = ⊤
-  NodesOK inr              = ⊤
-  NodesOK terminal         = ⊤
-  NodesOK initial          = ⊤
-  NodesOK apply            = ⊤
-  NodesOK (In _)           = ⊤
-  NodesOK (out-μ _)        = ⊤
-  NodesOK (Out _)          = ⊤
-  NodesOK (in-ν _)         = ⊤
-  NodesOK (const _ _)      = ⊤
+  open Once.CCC.Codegen.NodesOK using (NodesOK)
+  private NOK = NodesOK G
 
   -- every reference resolved: defined (in `D`) or global
   Closes : List String → AbstractTrace → Set
@@ -441,7 +417,7 @@ module _ (G : String → Set) where
   sigop-closes si n (just c) (g ∷ []) = inj₂ g ∷ []
 
   close : ∀ {A B} (ir : IR A B) (n l : ℕ) {D}
-        → Defd D (Unit (ir-to-trace' n l ir)) → NodesOK ir
+        → Defd D (Unit (ir-to-trace' n l ir)) → NOK ir
         → Closes D (trace-of (ir-to-trace' n l ir)) × Closes D (blocks-layout (bodies-of (ir-to-trace' n l ir)))
   close id       n l d ok = [] , []
   close fst      n l d ok = [] , []
