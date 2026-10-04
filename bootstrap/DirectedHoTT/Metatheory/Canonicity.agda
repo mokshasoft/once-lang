@@ -62,7 +62,7 @@ open import DirectedHoTT.Metatheory.Confluence using ( ⟶-ren; confluent; ⟶*-
 open import DirectedHoTT.Metatheory.SubjectReductionBase using ( ≅ᵀ-sub )
 open import DirectedHoTT.Metatheory.Injectivity
   using ( _⟶ᵀ*_; doneᵀ; stepᵀ; church-rosserᵀ; red→≅ᵀ
-        ; Π-reduct; ΠRed; mkΠRed; Id-reduct; Fin-inj )
+        ; Π-reduct; ΠRed; mkΠRed; Id-reduct; Fin-inj; nzero≇nsuc )
 open import DirectedHoTT.Metatheory.SubjectReduction
   using ( gen-lam; gen-app; gen-absurd; gen-pair; gen-fst; gen-snd; gen-ap
         ; gen-⌜Id⌝; gen-idrefl; gen-jsub; gen-nsuc; gen-natrec; gen-ordtr
@@ -104,14 +104,14 @@ data Inert {Γ : Cx} : RTy Γ → Hd → Set where
   in-Id   : {A : RTy Γ} {a b : RTm Γ} → Inert (Id A a b) hId
   in-IMu  : {I D i : RTm Γ} → Inert (IMu I D i) hIMu
   in-Desc : {I : RTm Γ} → Inert (Desc I) hDesc
-  in-Fin  : {n : ℕ} → Inert (Fin n) hFin
+  in-Fin  : {n : RTm Γ} → Inert (Fin n) hFin
 
 inert-red : {Γ : Cx} {A B : RTy Γ} {h : Hd} → Inert A h → A ⟶ᵀ B → Inert B h
 inert-red in-base ()
 inert-red in-U    ()
 inert-red in-Unit ()
 inert-red in-Nat  ()
-inert-red in-Fin  ()
+inert-red in-Fin  (ξ-Fin _) = in-Fin
 inert-red in-Π (ξ-Πˡ _) = in-Π
 inert-red in-Π (ξ-Πʳ _) = in-Π
 inert-red in-Σ (ξ-Σˡ _) = in-Σ
@@ -501,7 +501,7 @@ szb (natrec z w n) = sz z + sz w + sz n
 szb (con p)        = sz p
 szb (ielim D i e t) = sz D + sz i + sz e + sz t
 szb (⌜IMu⌝ I D i)  = sz I + sz D + sz i
-szb (⌜Fin⌝ n)      = zero
+szb (⌜Fin⌝ n)      = sz n
 szb dι             = zero
 szb (dσ S f)       = sz S + sz f
 szb (dρ j C)       = sz j + sz C
@@ -550,7 +550,7 @@ szb-ren ρ (con p)       = sz-ren ρ p
 szb-ren ρ (ielim D i e t) =
   cong₂ _+_ (cong₂ _+_ (cong₂ _+_ (sz-ren ρ D) (sz-ren ρ i)) (sz-ren ρ e)) (sz-ren ρ t)
 szb-ren ρ (⌜IMu⌝ I D i) = cong₂ _+_ (cong₂ _+_ (sz-ren ρ I) (sz-ren ρ D)) (sz-ren ρ i)
-szb-ren ρ (⌜Fin⌝ n)     = refl
+szb-ren ρ (⌜Fin⌝ n)     = sz-ren ρ n
 szb-ren ρ dι            = refl
 szb-ren ρ (dσ S f)      = cong₂ _+_ (sz-ren ρ S) (sz-ren ρ f)
 szb-ren ρ (dρ j C)      = cong₂ _+_ (sz-ren ρ j) (sz-ren ρ C)
@@ -596,7 +596,7 @@ data Canon {Γ : Cx} : RTm Γ → Set where
   --   formers and the tags are introduction forms / codes.
   can-con   : (p : RTm Γ)                → Canon (con p)
   can-cIMu  : (I D i : RTm Γ)            → Canon (⌜IMu⌝ I D i)
-  can-cFin  : (n : ℕ)                    → Canon (⌜Fin⌝ {Γ} n)
+  can-cFin  : (n : RTm Γ)                → Canon (⌜Fin⌝ n)
   can-dι    :                              Canon (dι {Γ})
   can-dσ    : (S f : RTm Γ)              → Canon (dσ S f)
   can-dρ    : (j C : RTm Γ)              → Canon (dρ j C)
@@ -639,12 +639,12 @@ gen-⌜Unit⌝ : {Γ : Ctx} {C : RTy ⌊ Γ ⌋} → Γ ⊢ ⌜Unit⌝ ∷ C →
 gen-⌜Unit⌝ ⊢⌜Unit⌝      = crflᵀ
 gen-⌜Unit⌝ (⊢conv d c) = ctrnᵀ (csymᵀ c) (gen-⌜Unit⌝ d)
 
-gen-⌜Fin⌝ : {Γ : Ctx} {n : ℕ} {C : RTy ⌊ Γ ⌋} → Γ ⊢ ⌜Fin⌝ n ∷ C → C ≅ᵀ U
-gen-⌜Fin⌝ ⊢⌜Fin⌝      = crflᵀ
+gen-⌜Fin⌝ : {Γ : Ctx} {n : RTm ⌊ Γ ⌋} {C : RTy ⌊ Γ ⌋} → Γ ⊢ ⌜Fin⌝ n ∷ C → C ≅ᵀ U
+gen-⌜Fin⌝ (⊢⌜Fin⌝ _)  = crflᵀ
 gen-⌜Fin⌝ (⊢conv d c) = ctrnᵀ (csymᵀ c) (gen-⌜Fin⌝ d)
 
-gen-fzero : {Γ : Ctx} {C : RTy ⌊ Γ ⌋} → Γ ⊢ fzero ∷ C → Σ ℕ (λ n → C ≅ᵀ Fin (suc n))
-gen-fzero ⊢fzero      = _ , crflᵀ
+gen-fzero : {Γ : Ctx} {C : RTy ⌊ Γ ⌋} → Γ ⊢ fzero ∷ C → Σ (RTm ⌊ Γ ⌋) (λ n → C ≅ᵀ Fin (nsuc n))
+gen-fzero (⊢fzero _)  = _ , crflᵀ
 gen-fzero (⊢conv d c) with gen-fzero d
 ... | n , c' = n , ctrnᵀ (csymᵀ c) c'
 
@@ -667,7 +667,7 @@ data CanOf {Γ : Cx} : Hd → RTm Γ → Set where
   co-cNat   : CanOf hU ⌜Nat⌝
   co-cUnit  : CanOf hU ⌜Unit⌝
   co-cIMu   : (I D i : RTm Γ) → CanOf hU (⌜IMu⌝ I D i)
-  co-cFin   : (n : ℕ) → CanOf hU (⌜Fin⌝ n)
+  co-cFin   : (n : RTm Γ) → CanOf hU (⌜Fin⌝ n)
   co-idrefl : (c s : RTm Γ) → CanOf hId (idrefl c s)
   co-unit   : CanOf hUnit unit
   co-nzero  : CanOf hNat nzero
@@ -1230,11 +1230,9 @@ mutual
   ...   | prog-step r = _ , ξ-fcase0 r
   ...   | prog-can cn with canAt dt crflᵀ in-Fin (λ ()) cn
   ...     | co-fzero with gen-fzero dt
-  ...       | _ , cv with Fin-inj cv
-  ...         | ()
+  ...       | _ , cv = ⊥-elim (nzero≇nsuc (Fin-inj cv))
   fcase0S m {t} dv q | P , (dP , (dt , cC)) | prog-can cn | co-fsuc t' with gen-fsuc dt
-  ... | _ , (_ , cv) with Fin-inj cv
-  ...   | ()
+  ... | _ , (_ , cv) = ⊥-elim (nzero≇nsuc (Fin-inj cv))
 
   -- Σ-induction: a closed pair fires β.
   psplitS : (m : ℕ) {b : RTm ((ε ∙) ∙)} {q : RTm ε} {T : RTy ε} →

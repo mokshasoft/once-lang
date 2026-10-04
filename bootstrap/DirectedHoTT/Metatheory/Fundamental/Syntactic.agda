@@ -164,7 +164,7 @@ subTy-var ρ (DIh D M C p) =
   cong₄ DIh (subTm-var ρ D)
             (trans (subTy-cong (exts2-var ρ) M) (subTy-var (extR (extR ρ)) M))
             (subTm-var ρ C) (subTm-var ρ p)
-subTy-var ρ (Fin n) = refl
+subTy-var ρ (Fin n) = cong Fin (subTm-var ρ n)
 subTy-var ρ (Id A t u) =
   Id-cong₃ (subTy-var ρ A) (subTm-var ρ t) (subTm-var ρ u)
 -- ★ the TERM half is `Spec/Variance`'s generated `ren-as-sub` (⟨ ρ ⟩ᵣ is
@@ -383,7 +383,7 @@ sn-anti {t = snd p}    (sn-exp r h) with snr-anti r
 --   parts; the eliminators are `natrec`'s two rows (neutral / expansion),
 --   except `fcase0`, which never steps (`absurd`'s shape).
 sn-anti {t = ⌜IMu⌝ I D i} (sn-cIMu hI hD hi) = sn-cIMu (sn-anti hI) (sn-anti hD) (sn-anti hi)
-sn-anti {t = ⌜Fin⌝ n}  _               = sn-cFin
+sn-anti {t = ⌜Fin⌝ n}  (sn-cFin h)      = sn-cFin (sn-anti h)
 sn-anti {t = con q}    (sn-con h)      = sn-con (sn-anti h)
 sn-anti {t = dι}       _               = sn-dι
 sn-anti {t = dσ S f}   (sn-dσ h₁ h₂)   = sn-dσ (sn-anti h₁) (sn-anti h₂)
@@ -703,7 +703,7 @@ sn-ren (sn-nsuc h)      = sn-nsuc (sn-ren h)
 sn-ren (sn-con h)       = sn-con (sn-ren h)
 sn-ren (sn-exp r h)     = sn-exp (snr-ren r) (sn-ren h)
 sn-ren (sn-cIMu h₁ h₂ h₃) = sn-cIMu (sn-ren h₁) (sn-ren h₂) (sn-ren h₃)
-sn-ren sn-cFin          = sn-cFin
+sn-ren (sn-cFin h)      = sn-cFin (sn-ren h)
 sn-ren (sn-con h)       = sn-con (sn-ren h)
 sn-ren sn-dι            = sn-dι
 sn-ren (sn-dσ h₁ h₂)    = sn-dσ (sn-ren h₁) (sn-ren h₂)

@@ -67,7 +67,7 @@ open import DirectedHoTT.Algorithm.DecideConversion
   using ( dec-conv )
 open import DirectedHoTT.Metatheory.Injectivity
   using ( confluentᵀ; church-rosserᵀ; Π-inj; Π-reduct; Σ-reduct; mkΠRed
-        ; mkΣRed; Id-reduct )
+        ; mkΣRed; Id-reduct; nsuc-inj≅ )
 open import DirectedHoTT.Metatheory.SubjectReduction
   using ( HomΠShape; hsΠ; hsH; hom-shape; hom-shapeN; nn-U; NoNat
         ; pw-El-decode; HomRed; mkHomRed; Hom-to-Hom; homAmb→; HomToΠ; via-U
@@ -107,7 +107,7 @@ open import DirectedHoTT.Metatheory.LogicalRelation
         ; snr-ielimᵗ; snr-J-IMu; ⊩₀IMu; ⊩₁IMu; IMuMem; imm-ne; imm-exp; ILift
         ; IKInterp; iki-ι; iki-ρ; ikpredsOf; ⊩₀Fin; sn-dσ; conv₀; sne→finstk
         ; snr-fcaseᵗ; sn-cFin; sne-psplit; El≅; imm-con; sne-fcase
-        ; snr-psplit-β; sn-dι; FinMem; ⊩₁Desc; snr-psplitᵍ; ikinterp-sn
+        ; snr-psplit-β; sn-dι; FinMem; finmem-conv; ⊩₁Desc; snr-psplitᵍ; ikinterp-sn
         ; snr-fcase-s; sn-fsuc; ⊩₁Fin; sn-dρ; iki-σ; fm-zero; snr-fcase-z
         ; sn-fzero; sne-fcase0; fm-exp; fm-ne; fm-suc; sne-dih; sne-dpay
         ; snr-J-Fin; ⊩₁DIhNe
@@ -409,7 +409,7 @@ sem-tr {Ξ = Ξ} {σ = σ} {A = A} {c = c₀} {a = a₀} {p = p₀} {e = e₀} {
   go sn-nzero hp'          = cr3 sn-nzero refl
   go (sn-nsuc h) hp'       = cr3 (sn-nsuc h) refl
   go (sn-cIMu h₁ h₂ h₃) hp'       = cr3 (sn-cIMu h₁ h₂ h₃) refl
-  go sn-cFin hp'       = cr3 sn-cFin refl
+  go h₀@(sn-cFin _) hp'       = cr3 h₀ refl
   go sn-dι hp'       = cr3 sn-dι refl
   go (sn-dσ h₁ h₂) hp'       = cr3 (sn-dσ h₁ h₂) refl
   go (sn-dρ h₁ h₂) hp'       = cr3 (sn-dρ h₁ h₂) refl
@@ -456,7 +456,7 @@ sem-tr {Ξ = Ξ} {σ = σ} {A = A} {c = c₀} {a = a₀} {p = p₀} {e = e₀} {
     cr3 (sn-ne (sne-hrefl (sn-nsuc h) sns (hk c' s' refl refl))) refl
   goh (sn-cIMu h₁ h₂ h₃) sns kn hp' =
     ( R_result , exp₁ R_result (snr-J-IMu snD sns) heTgt )
-  goh sn-cFin sns kn hp' =
+  goh h₀@(sn-cFin _) sns kn hp' =
     ( R_result , exp₁ R_result (snr-J-Fin snD sns) heTgt )
   goh {c' = c'} {s' = s'} sn-dι sns kn hp' =
     cr3 (sn-ne (sne-hrefl sn-dι sns (hk c' s' refl refl))) refl
@@ -516,7 +516,7 @@ sem-tr {Ξ = Ξ} {σ = σ} {A = A} {c = c₀} {a = a₀} {p = p₀} {e = e₀} {
   goNh h@sn-cNat hp' = cr3 (sn-ne (sne-hrefl sn-cNat h refl)) refl
   goNh h@sn-cUnit hp' = cr3 (sn-ne (sne-hrefl sn-cNat h refl)) refl
   goNh h@(sn-cIMu _ _ _) hp' = cr3 (sn-ne (sne-hrefl sn-cNat h refl)) refl
-  goNh h@sn-cFin hp' = cr3 (sn-ne (sne-hrefl sn-cNat h refl)) refl
+  goNh h@(sn-cFin _) hp' = cr3 (sn-ne (sne-hrefl sn-cNat h refl)) refl
   goNh h@sn-unit hp' = cr3 (sn-ne (sne-hrefl sn-cNat h refl)) refl
   goNh h@(sn-con _) hp' = cr3 (sn-ne (sne-hrefl sn-cNat h refl)) refl
   goNh h@sn-dι hp' = cr3 (sn-ne (sne-hrefl sn-cNat h refl)) refl
@@ -725,7 +725,7 @@ sem-ap {Ξ = Ξ} {σ = σ} {cA = cA} {cB = cB} {b = b} {p = p₀} {t = t₀} {u 
   goP sn-nzero          = CR3₀ R_H (sne-ap snCB snBB sn-nzero refl)
   goP (sn-nsuc h)       = CR3₀ R_H (sne-ap snCB snBB (sn-nsuc h) refl)
   goP (sn-cIMu h₁ h₂ h₃)       = CR3₀ R_H (sne-ap snCB snBB (sn-cIMu h₁ h₂ h₃) refl)
-  goP sn-cFin       = CR3₀ R_H (sne-ap snCB snBB sn-cFin refl)
+  goP h₀@(sn-cFin _)       = CR3₀ R_H (sne-ap snCB snBB h₀ refl)
   goP sn-dι       = CR3₀ R_H (sne-ap snCB snBB sn-dι refl)
   goP (sn-dσ h₁ h₂)       = CR3₀ R_H (sne-ap snCB snBB (sn-dσ h₁ h₂) refl)
   goP (sn-dρ h₁ h₂)       = CR3₀ R_H (sne-ap snCB snBB (sn-dρ h₁ h₂) refl)
@@ -891,8 +891,8 @@ sem-jsub {Ξ = Ξ} {σ = σ} {A = A} {d = d} {t = t₀} {u = u₀} {p = p₀} {e
     CR3₁ (emb R₀u) (sne-jsub snDI (sn-nsuc h) (CR1₁ (emb R₀t) hEt) refl)
   goP (sn-cIMu h₁ h₂ h₃) pay =
     CR3₁ (emb R₀u) (sne-jsub snDI (sn-cIMu h₁ h₂ h₃) (CR1₁ (emb R₀t) hEt) refl)
-  goP sn-cFin pay =
-    CR3₁ (emb R₀u) (sne-jsub snDI sn-cFin (CR1₁ (emb R₀t) hEt) refl)
+  goP h₀@(sn-cFin _) pay =
+    CR3₁ (emb R₀u) (sne-jsub snDI h₀ (CR1₁ (emb R₀t) hEt) refl)
   goP sn-dι pay =
     CR3₁ (emb R₀u) (sne-jsub snDI sn-dι (CR1₁ (emb R₀t) hEt) refl)
   goP (sn-dσ h₁ h₂) pay =
@@ -1007,7 +1007,7 @@ sem-trU {Ξ = Ξ} {σ = σ} {p = p₀} {e = e₀} {t = t₀} {u = u₀} dt du dp
   piCase q ⊩F ⊩G rt ru rEt rEu sn-nzero hp' = cr3 sn-nzero refl
   piCase q ⊩F ⊩G rt ru rEt rEu (sn-nsuc h) hp' = cr3 (sn-nsuc h) refl
   piCase q ⊩F ⊩G rt ru rEt rEu (sn-cIMu h₁ h₂ h₃) hp' = cr3 (sn-cIMu h₁ h₂ h₃) refl
-  piCase q ⊩F ⊩G rt ru rEt rEu sn-cFin hp' = cr3 sn-cFin refl
+  piCase q ⊩F ⊩G rt ru rEt rEu h₀@(sn-cFin _) hp' = cr3 h₀ refl
   piCase q ⊩F ⊩G rt ru rEt rEu sn-dι hp' = cr3 sn-dι refl
   piCase q ⊩F ⊩G rt ru rEt rEu (sn-dσ h₁ h₂) hp' = cr3 (sn-dσ h₁ h₂) refl
   piCase q ⊩F ⊩G rt ru rEt rEu (sn-dρ h₁ h₂) hp' = cr3 (sn-dρ h₁ h₂) refl
@@ -1153,7 +1153,7 @@ sem-psplit {Ξ = Ξ} {σ = σ} {A = A} {B = B} {P = P} {q = q} {b = b} dA dB dP 
     go _ (sn-cIMu _ _ _) r with CR1₁ (dfst (⊩₁-fstm Rq r)) (dsnd (⊩₁-fstm Rq r))
     ... | sn-ne (sne-fst ())
     ... | sn-exp (snr-fst ()) _
-    go _ sn-cFin r with CR1₁ (dfst (⊩₁-fstm Rq r)) (dsnd (⊩₁-fstm Rq r))
+    go _ (sn-cFin _) r with CR1₁ (dfst (⊩₁-fstm Rq r)) (dsnd (⊩₁-fstm Rq r))
     ... | sn-ne (sne-fst ())
     ... | sn-exp (snr-fst ()) _
     go _ sn-unit r with CR1₁ (dfst (⊩₁-fstm Rq r)) (dsnd (⊩₁-fstm Rq r))
@@ -1294,13 +1294,13 @@ sem-natrec {Ξ = Ξ} {σ = σ} {M = M} {z = z} {s = w} {n = n} tyM dz dw dn IH0 
                        (subTm ((σ ,ₛ m) ,ₛ recTm) w) (dsnd bodyS))
 
 -- ★ `⊢fcase`'s semantics, OUTSIDE `fund`'s mutual block (see `sem-tr`'s section note).
-sem-fcase : {σ : Sub ⌊ Γ ⌋ Ξ} {n : ℕ} {P : RTy (⌊ Γ ⌋ ∙)} {t a : RTm ⌊ Γ ⌋} {b : RTm (⌊ Γ ⌋ ∙)} →
-  (Γ ▹ Fin (suc n)) ⊢ty P →
-  (Γ) ⊢ t ∷ Fin (suc n) →
+sem-fcase : {σ : Sub ⌊ Γ ⌋ Ξ} {n : RTm ⌊ Γ ⌋} {P : RTy (⌊ Γ ⌋ ∙)} {t a : RTm ⌊ Γ ⌋} {b : RTm (⌊ Γ ⌋ ∙)} →
+  (Γ ▹ Fin (nsuc n)) ⊢ty P →
+  (Γ) ⊢ t ∷ Fin (nsuc n) →
   (Γ) ⊢ a ∷ subTy (single fzero) P →
   (Γ ▹ Fin n) ⊢ b ∷ subTy fsucS P →
-  ({σ' : Sub (⌊ Γ ⌋ ∙) Ξ} → Var Ξ → (Γ ▹ Fin (suc n)) ⊩ˢ σ' → ⊩₁ (subTy σ' (P))) →
-  ({σ' : Sub (⌊ Γ ⌋) Ξ} → Var Ξ → (Γ) ⊩ˢ σ' → Rel (subTy σ' (Fin (suc n))) (subTm σ' (t))) →
+  ({σ' : Sub (⌊ Γ ⌋ ∙) Ξ} → Var Ξ → (Γ ▹ Fin (nsuc n)) ⊩ˢ σ' → ⊩₁ (subTy σ' (P))) →
+  ({σ' : Sub (⌊ Γ ⌋) Ξ} → Var Ξ → (Γ) ⊩ˢ σ' → Rel (subTy σ' (Fin (nsuc n))) (subTm σ' (t))) →
   ({σ' : Sub (⌊ Γ ⌋) Ξ} → Var Ξ → (Γ) ⊩ˢ σ' → Rel (subTy σ' (subTy (single fzero) P)) (subTm σ' (a))) →
   ({σ' : Sub (⌊ Γ ⌋ ∙) Ξ} → Var Ξ → (Γ ▹ Fin n) ⊩ˢ σ' → Rel (subTy σ' (subTy fsucS P)) (subTm σ' (b))) →
   Var Ξ → Γ ⊩ˢ σ → Rel (subTy σ (subTy (single t) P)) (subTm σ (fcase t a b))
@@ -1312,9 +1312,10 @@ sem-fcase {Ξ = Ξ} {σ = σ} {n = n} {P = P} {t = t} {a = a} {b = b} dP dt da d
     aI = subTm σ a
     bI = subTm (extS σ) b
 
-    ⊩F : ⊩₁ (Fin {Ξ} (suc n))
+    nI = subTm σ n
+    ⊩F : ⊩₁ (Fin (nsuc nI))
     ⊩F = ⊩₁Fin doneᵀ
-    ⊩F' : ⊩₁ (Fin {Ξ} n)
+    ⊩F' : ⊩₁ (Fin nI)
     ⊩F' = ⊩₁Fin doneᵀ
 
     ht : ⊩F ⊩₁∋ tI
@@ -1324,7 +1325,7 @@ sem-fcase {Ξ = Ξ} {σ = σ} {n = n} {P = P} {t = t} {a = a} {b = b} dP dt da d
     MotC u r = IH0 x₀ (⊩ˢ-ext ρ ⊩F u r)
 
     hZ0 : ⊩F ⊩₁∋ fzero
-    hZ0 = (sn-fzero , fm-zero)
+    hZ0 = (sn-fzero , fm-zero crfl)
 
     hA : (MotC fzero hZ0) ⊩₁∋ aI
     hA = projl (irrel₁ crflᵀ (dfst ba) (MotC fzero hZ0)) aI (dsnd ba)
@@ -1344,7 +1345,7 @@ sem-fcase {Ξ = Ξ} {σ = σ} {n = n} {P = P} {t = t} {a = a} {b = b} dP dt da d
       where
       hb = IH3 x₀ (⊩ˢ-ext ρ ⊩F' (var x₀) (CR3₁ ⊩F' (sne-var x₀)))
 
-    go : (u : RTm Ξ) (snu : SN u) (fm : FinMem (suc n) u) (r : ⊩F ⊩₁∋ u) →
+    go : (u : RTm Ξ) (snu : SN u) (fm : FinMem (nsuc nI) u) (r : ⊩F ⊩₁∋ u) →
          (MotC u r) ⊩₁∋ fcase u aI bI
     go u snu (fm-ne nt) r = CR3₁ (MotC u r) (sne-fcase snu snA snB (sne→finstk nt))
     go u snu (fm-exp {t' = u'} rr fm) r =
@@ -1359,14 +1360,14 @@ sem-fcase {Ξ = Ξ} {σ = σ} {n = n} {P = P} {t = t} {a = a} {b = b} dP dt da d
         cons-mono (vs y) = done
         conv : subTy (σ ,ₛ u) P ≅ᵀ subTy (σ ,ₛ u') P
         conv = red→≅ᵀ (subTy-monoˢ cons-mono P)
-    go .fzero snu fm-zero r =
+    go .fzero snu (fm-zero _) r =
       exp₁ (MotC fzero r) (snr-fcase-z snB)
         (projl (irrel₁ crflᵀ (MotC fzero hZ0) (MotC fzero r)) aI hA)
-    go .(fsuc m) snu (fm-suc {t = m} fm) r =
+    go .(fsuc m) snu (fm-suc {t = m} e fm) r =
       exp₁ (MotC (fsuc m) r) (snr-fcase-s (snfsuc-inv snu) snA)
         (projl (irrel₁ crflᵀ (dfst hb) (MotC (fsuc m) r)) _ (dsnd hb))
       where
-        hb = bAt m (snfsuc-inv snu , fm)
+        hb = bAt m (snfsuc-inv snu , finmem-conv (csym (nsuc-inj≅ e)) fm)
 
 fund-ty : {σ : Sub ⌊ Γ ⌋ Ξ} {A : RTy ⌊ Γ ⌋} →
           Γ ⊢ty A → Var Ξ → Γ ⊩ˢ σ → ⊩₁ (subTy σ A)
@@ -1432,7 +1433,7 @@ fund-ty {σ = σ} (ty-IMu {I = I} dI dD di) x₀ ρ =
         (famInterp crfl ⊩I (relTy (DescF-sub σ I) (fund dD x₀ ρ)))
   where ⊩I = sem-El doneᵀ (uSem (fund dI x₀ ρ))
 fund-ty (ty-Desc dI) x₀ ρ = ⊩₁Desc doneᵀ crfl (sem-El doneᵀ (uSem (fund dI x₀ ρ)))
-fund-ty ty-Fin x₀ ρ = ⊩₁Fin doneᵀ
+fund-ty (ty-Fin dn) x₀ ρ = ⊩₁Fin doneᵀ
 fund-ty {σ = σ} (ty-DIh {I = I} dI dD dM dC dp) x₀ ρ = dihTy KF (motSem dM x₀ ρ crfl ⊩I KF) KC l
   where
     ⊩I = sem-El doneᵀ (uSem (fund dI x₀ ρ))
@@ -1561,9 +1562,9 @@ fund {σ = σ} (⊢dpay {I = I} dI dD dC) x₀ ρ =
     KC = rebase (desc-view (dfst (fund dC x₀ ρ)) (dsnd (fund dC x₀ ρ))) ⊩I crfl
 -- ★ the TAGS: `NatMem`'s shape; `Fin 0` has no canonical member, so
 --   `fcase0` is a permanent neutral.
-fund ⊢fzero x₀ ρ = ( ⊩₁Fin doneᵀ , (sn-fzero , fm-zero) )
+fund (⊢fzero dn) x₀ ρ = ( ⊩₁Fin doneᵀ , (sn-fzero , fm-zero crfl) )
 fund {σ = σ} (⊢fsuc {t = t} dt) x₀ ρ =
-  ( ⊩₁Fin doneᵀ , (sn-fsuc (projl h) , fm-suc (projr h)) )
+  ( ⊩₁Fin doneᵀ , (sn-fsuc (projl h) , fm-suc crfl (projr h)) )
   where
     h = projl (irrel₁ crflᵀ (dfst (fund dt x₀ ρ)) (⊩₁Fin doneᵀ)) (subTm σ t) (dsnd (fund dt x₀ ρ))
 fund {σ = σ} (⊢fcase0 {P = P} {t = t} dP dt) x₀ ρ =
@@ -1732,8 +1733,9 @@ fund {σ = σ} (⊢⌜IMu⌝ {I = I} {i = i} dI dD di) x₀ ρ =
     hD = relTy (DescF-sub σ I) (fund dD x₀ ρ)
     KF = famInterp crfl ⊩I hD
     hi = fund di x₀ ρ
-fund ⊢⌜Fin⌝ x₀ ρ =
-  ( ⊩₁U doneᵀ , (sn-cFin , (⊩₀Fin (stepᵀ El-⌜Fin⌝ doneᵀ) , _)) )
+fund (⊢⌜Fin⌝ dn) x₀ ρ =
+  ( ⊩₁U doneᵀ , (sn-cFin (CR1₁ (dfst hn) (dsnd hn)) , (⊩₀Fin (stepᵀ El-⌜Fin⌝ doneᵀ) , _)) )
+  where hn = fund dn x₀ ρ
 fund {Ξ = Ξ} {σ = σ} (⊢⌜Π⌝ {c = c} {d = e} dc de) x₀ ρ =
   ( ⊩₁U doneᵀ , sem-⌜Π⌝ doneᵀ snc sne ⊩c f pays )
   where

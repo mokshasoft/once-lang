@@ -79,7 +79,7 @@ data ATy where
   IMu : ∀ {Γ} → ATm Γ → ATm Γ → ATm Γ → ATy Γ
   Desc : ∀ {Γ} → ATm Γ → ATy Γ
   DIh : ∀ {Γ} → ATm Γ → ATm Γ → ATy ((Γ ∙) ∙) → ATm Γ → ATm Γ → ATy Γ
-  Fin : ∀ {Γ} → ℕ → ATy Γ
+  Fin : ∀ {Γ} → ATm Γ → ATy Γ
 
 data ATm where
   var : ∀ {Γ} → Var Γ → ATm Γ
@@ -107,7 +107,7 @@ data ATm where
   ⌜Nat⌝ : ∀ {Γ} → ATm Γ
   ⌜Unit⌝ : ∀ {Γ} → ATm Γ
   ⌜IMu⌝ : ∀ {Γ} → ATm Γ → ATm Γ → ATm Γ → ATm Γ
-  ⌜Fin⌝ : ∀ {Γ} → ℕ → ATm Γ
+  ⌜Fin⌝ : ∀ {Γ} → ATm Γ → ATm Γ
   con : ∀ {Γ} → ATm Γ → ATm Γ → ATm Γ → ATm Γ → ATm Γ
   ielim : ∀ {Γ} → ATm Γ → ATm Γ → ATy ((Γ ∙) ∙) → ATm Γ → ATm Γ → ATm Γ → ATm Γ
   dι : ∀ {Γ} → ATm Γ → ATm Γ
@@ -115,9 +115,9 @@ data ATm where
   dρ : ∀ {Γ} → ATm Γ → ATm Γ → ATm Γ → ATm Γ
   dpay : ∀ {Γ} → ATm Γ → ATm Γ → ATm Γ → ATm Γ
   dih : ∀ {Γ} → ATm Γ → ATm Γ → ATy ((Γ ∙) ∙) → ATm Γ → ATm Γ → ATm Γ → ATm Γ
-  fzero : ∀ {Γ} → ℕ → ATm Γ
-  fsuc : ∀ {Γ} → ℕ → ATm Γ → ATm Γ
-  fcase : ∀ {Γ} → ℕ → ATy (Γ ∙) → ATm Γ → ATm Γ → ATm (Γ ∙) → ATm Γ
+  fzero : ∀ {Γ} → ATm Γ → ATm Γ
+  fsuc : ∀ {Γ} → ATm Γ → ATm Γ → ATm Γ
+  fcase : ∀ {Γ} → ATm Γ → ATy (Γ ∙) → ATm Γ → ATm Γ → ATm (Γ ∙) → ATm Γ
   fcase0 : ∀ {Γ} → ATy (Γ ∙) → ATm Γ → ATm Γ
   psplit : ∀ {Γ} → ATy Γ → ATy (Γ ∙) → ATy (Γ ∙) → ATm ((Γ ∙) ∙) → ATm Γ → ATm Γ
   ref : ∀ {Γ} → ℕ → ATm Γ
@@ -136,7 +136,7 @@ renTyᴬ ρ (Id x0 x1 x2) = Id (renTyᴬ ρ x0) (renTmᴬ ρ x1) (renTmᴬ ρ x2
 renTyᴬ ρ (IMu x0 x1 x2) = IMu (renTmᴬ ρ x0) (renTmᴬ ρ x1) (renTmᴬ ρ x2)
 renTyᴬ ρ (Desc x0) = Desc (renTmᴬ ρ x0)
 renTyᴬ ρ (DIh x0 x1 x2 x3 x4) = DIh (renTmᴬ ρ x0) (renTmᴬ ρ x1) (renTyᴬ (extR (extR ρ)) x2) (renTmᴬ ρ x3) (renTmᴬ ρ x4)
-renTyᴬ ρ (Fin x0) = Fin x0
+renTyᴬ ρ (Fin x0) = Fin (renTmᴬ ρ x0)
 renTmᴬ ρ (var x) = var (ρ x)
 renTmᴬ ρ (lam x0 x1) = lam (renTyᴬ ρ x0) (renTmᴬ (extR ρ) x1)
 renTmᴬ ρ (app x0 x1) = app (renTmᴬ ρ x0) (renTmᴬ ρ x1)
@@ -162,7 +162,7 @@ renTmᴬ ρ (natrec x0 x1 x2 x3) = natrec (renTyᴬ (extR ρ) x0) (renTmᴬ ρ x
 renTmᴬ ρ ⌜Nat⌝ = ⌜Nat⌝
 renTmᴬ ρ ⌜Unit⌝ = ⌜Unit⌝
 renTmᴬ ρ (⌜IMu⌝ x0 x1 x2) = ⌜IMu⌝ (renTmᴬ ρ x0) (renTmᴬ ρ x1) (renTmᴬ ρ x2)
-renTmᴬ ρ (⌜Fin⌝ x0) = ⌜Fin⌝ x0
+renTmᴬ ρ (⌜Fin⌝ x0) = ⌜Fin⌝ (renTmᴬ ρ x0)
 renTmᴬ ρ (con x0 x1 x2 x3) = con (renTmᴬ ρ x0) (renTmᴬ ρ x1) (renTmᴬ ρ x2) (renTmᴬ ρ x3)
 renTmᴬ ρ (ielim x0 x1 x2 x3 x4 x5) = ielim (renTmᴬ ρ x0) (renTmᴬ ρ x1) (renTyᴬ (extR (extR ρ)) x2) (renTmᴬ ρ x3) (renTmᴬ ρ x4) (renTmᴬ ρ x5)
 renTmᴬ ρ (dι x0) = dι (renTmᴬ ρ x0)
@@ -170,9 +170,9 @@ renTmᴬ ρ (dσ x0 x1 x2) = dσ (renTmᴬ ρ x0) (renTmᴬ ρ x1) (renTmᴬ ρ 
 renTmᴬ ρ (dρ x0 x1 x2) = dρ (renTmᴬ ρ x0) (renTmᴬ ρ x1) (renTmᴬ ρ x2)
 renTmᴬ ρ (dpay x0 x1 x2) = dpay (renTmᴬ ρ x0) (renTmᴬ ρ x1) (renTmᴬ ρ x2)
 renTmᴬ ρ (dih x0 x1 x2 x3 x4 x5) = dih (renTmᴬ ρ x0) (renTmᴬ ρ x1) (renTyᴬ (extR (extR ρ)) x2) (renTmᴬ ρ x3) (renTmᴬ ρ x4) (renTmᴬ ρ x5)
-renTmᴬ ρ (fzero x0) = fzero x0
-renTmᴬ ρ (fsuc x0 x1) = fsuc x0 (renTmᴬ ρ x1)
-renTmᴬ ρ (fcase x0 x1 x2 x3 x4) = fcase x0 (renTyᴬ (extR ρ) x1) (renTmᴬ ρ x2) (renTmᴬ ρ x3) (renTmᴬ (extR ρ) x4)
+renTmᴬ ρ (fzero x0) = fzero (renTmᴬ ρ x0)
+renTmᴬ ρ (fsuc x0 x1) = fsuc (renTmᴬ ρ x0) (renTmᴬ ρ x1)
+renTmᴬ ρ (fcase x0 x1 x2 x3 x4) = fcase (renTmᴬ ρ x0) (renTyᴬ (extR ρ) x1) (renTmᴬ ρ x2) (renTmᴬ ρ x3) (renTmᴬ (extR ρ) x4)
 renTmᴬ ρ (fcase0 x0 x1) = fcase0 (renTyᴬ (extR ρ) x0) (renTmᴬ ρ x1)
 renTmᴬ ρ (psplit x0 x1 x2 x3 x4) = psplit (renTyᴬ ρ x0) (renTyᴬ (extR ρ) x1) (renTyᴬ (extR ρ) x2) (renTmᴬ (extR (extR ρ)) x3) (renTmᴬ ρ x4)
 renTmᴬ ρ (ref x0) = ref x0
@@ -198,7 +198,7 @@ subTyᴬ σ (Id x0 x1 x2) = Id (subTyᴬ σ x0) (subTmᴬ σ x1) (subTmᴬ σ x2
 subTyᴬ σ (IMu x0 x1 x2) = IMu (subTmᴬ σ x0) (subTmᴬ σ x1) (subTmᴬ σ x2)
 subTyᴬ σ (Desc x0) = Desc (subTmᴬ σ x0)
 subTyᴬ σ (DIh x0 x1 x2 x3 x4) = DIh (subTmᴬ σ x0) (subTmᴬ σ x1) (subTyᴬ (extSᴬ (extSᴬ σ)) x2) (subTmᴬ σ x3) (subTmᴬ σ x4)
-subTyᴬ σ (Fin x0) = Fin x0
+subTyᴬ σ (Fin x0) = Fin (subTmᴬ σ x0)
 subTmᴬ σ (var x) = σ x
 subTmᴬ σ (lam x0 x1) = lam (subTyᴬ σ x0) (subTmᴬ (extSᴬ σ) x1)
 subTmᴬ σ (app x0 x1) = app (subTmᴬ σ x0) (subTmᴬ σ x1)
@@ -224,7 +224,7 @@ subTmᴬ σ (natrec x0 x1 x2 x3) = natrec (subTyᴬ (extSᴬ σ) x0) (subTmᴬ �
 subTmᴬ σ ⌜Nat⌝ = ⌜Nat⌝
 subTmᴬ σ ⌜Unit⌝ = ⌜Unit⌝
 subTmᴬ σ (⌜IMu⌝ x0 x1 x2) = ⌜IMu⌝ (subTmᴬ σ x0) (subTmᴬ σ x1) (subTmᴬ σ x2)
-subTmᴬ σ (⌜Fin⌝ x0) = ⌜Fin⌝ x0
+subTmᴬ σ (⌜Fin⌝ x0) = ⌜Fin⌝ (subTmᴬ σ x0)
 subTmᴬ σ (con x0 x1 x2 x3) = con (subTmᴬ σ x0) (subTmᴬ σ x1) (subTmᴬ σ x2) (subTmᴬ σ x3)
 subTmᴬ σ (ielim x0 x1 x2 x3 x4 x5) = ielim (subTmᴬ σ x0) (subTmᴬ σ x1) (subTyᴬ (extSᴬ (extSᴬ σ)) x2) (subTmᴬ σ x3) (subTmᴬ σ x4) (subTmᴬ σ x5)
 subTmᴬ σ (dι x0) = dι (subTmᴬ σ x0)
@@ -232,9 +232,9 @@ subTmᴬ σ (dσ x0 x1 x2) = dσ (subTmᴬ σ x0) (subTmᴬ σ x1) (subTmᴬ σ 
 subTmᴬ σ (dρ x0 x1 x2) = dρ (subTmᴬ σ x0) (subTmᴬ σ x1) (subTmᴬ σ x2)
 subTmᴬ σ (dpay x0 x1 x2) = dpay (subTmᴬ σ x0) (subTmᴬ σ x1) (subTmᴬ σ x2)
 subTmᴬ σ (dih x0 x1 x2 x3 x4 x5) = dih (subTmᴬ σ x0) (subTmᴬ σ x1) (subTyᴬ (extSᴬ (extSᴬ σ)) x2) (subTmᴬ σ x3) (subTmᴬ σ x4) (subTmᴬ σ x5)
-subTmᴬ σ (fzero x0) = fzero x0
-subTmᴬ σ (fsuc x0 x1) = fsuc x0 (subTmᴬ σ x1)
-subTmᴬ σ (fcase x0 x1 x2 x3 x4) = fcase x0 (subTyᴬ (extSᴬ σ) x1) (subTmᴬ σ x2) (subTmᴬ σ x3) (subTmᴬ (extSᴬ σ) x4)
+subTmᴬ σ (fzero x0) = fzero (subTmᴬ σ x0)
+subTmᴬ σ (fsuc x0 x1) = fsuc (subTmᴬ σ x0) (subTmᴬ σ x1)
+subTmᴬ σ (fcase x0 x1 x2 x3 x4) = fcase (subTmᴬ σ x0) (subTyᴬ (extSᴬ σ) x1) (subTmᴬ σ x2) (subTmᴬ σ x3) (subTmᴬ (extSᴬ σ) x4)
 subTmᴬ σ (fcase0 x0 x1) = fcase0 (subTyᴬ (extSᴬ σ) x0) (subTmᴬ σ x1)
 subTmᴬ σ (psplit x0 x1 x2 x3 x4) = psplit (subTyᴬ σ x0) (subTyᴬ (extSᴬ σ) x1) (subTyᴬ (extSᴬ σ) x2) (subTmᴬ (extSᴬ (extSᴬ σ)) x3) (subTmᴬ σ x4)
 subTmᴬ σ (ref x0) = ref x0
@@ -258,7 +258,7 @@ module Era (δ : ℕ → RTm ε) where
   ⌈ (IMu x0 x1 x2) ⌉ᵀ = IMu (⌈ x0 ⌉) (⌈ x1 ⌉) (⌈ x2 ⌉)
   ⌈ (Desc x0) ⌉ᵀ = Desc (⌈ x0 ⌉)
   ⌈ (DIh x0 x1 x2 x3 x4) ⌉ᵀ = DIh (⌈ x1 ⌉) (⌈ x2 ⌉ᵀ) (⌈ x3 ⌉) (⌈ x4 ⌉)
-  ⌈ (Fin x0) ⌉ᵀ = Fin x0
+  ⌈ (Fin x0) ⌉ᵀ = Fin (⌈ x0 ⌉)
   ⌈ (var x) ⌉ = var x
   ⌈ (lam x0 x1) ⌉ = lam (⌈ x1 ⌉)
   ⌈ (app x0 x1) ⌉ = app (⌈ x0 ⌉) (⌈ x1 ⌉)
@@ -284,7 +284,7 @@ module Era (δ : ℕ → RTm ε) where
   ⌈ ⌜Nat⌝ ⌉ = ⌜Nat⌝
   ⌈ ⌜Unit⌝ ⌉ = ⌜Unit⌝
   ⌈ (⌜IMu⌝ x0 x1 x2) ⌉ = ⌜IMu⌝ (⌈ x0 ⌉) (⌈ x1 ⌉) (⌈ x2 ⌉)
-  ⌈ (⌜Fin⌝ x0) ⌉ = ⌜Fin⌝ x0
+  ⌈ (⌜Fin⌝ x0) ⌉ = ⌜Fin⌝ (⌈ x0 ⌉)
   ⌈ (con x0 x1 x2 x3) ⌉ = con (⌈ x3 ⌉)
   ⌈ (ielim x0 x1 x2 x3 x4 x5) ⌉ = ielim (⌈ x1 ⌉) (⌈ x3 ⌉) (⌈ x4 ⌉) (⌈ x5 ⌉)
   ⌈ (dι x0) ⌉ = dι
@@ -314,7 +314,7 @@ module Era (δ : ℕ → RTm ε) where
   era-renTy ρ (IMu x0 x1 x2) = cong3 (λ a0 a1 a2 → IMu a0 a1 a2) (era-renTm ρ x0) (era-renTm ρ x1) (era-renTm ρ x2)
   era-renTy ρ (Desc x0) = cong1 (λ a0 → Desc a0) (era-renTm ρ x0)
   era-renTy ρ (DIh x0 x1 x2 x3 x4) = cong4 (λ a0 a1 a2 a3 → DIh a0 a1 a2 a3) (era-renTm ρ x1) (era-renTy (extR (extR ρ)) x2) (era-renTm ρ x3) (era-renTm ρ x4)
-  era-renTy ρ (Fin x0) = refl
+  era-renTy ρ (Fin x0) = cong1 (λ a0 → Fin a0) (era-renTm ρ x0)
   era-renTm ρ (var x) = refl
   era-renTm ρ (lam x0 x1) = cong1 (λ a0 → lam a0) (era-renTm (extR ρ) x1)
   era-renTm ρ (app x0 x1) = cong2 (λ a0 a1 → app a0 a1) (era-renTm ρ x0) (era-renTm ρ x1)
@@ -340,7 +340,7 @@ module Era (δ : ℕ → RTm ε) where
   era-renTm ρ ⌜Nat⌝ = refl
   era-renTm ρ ⌜Unit⌝ = refl
   era-renTm ρ (⌜IMu⌝ x0 x1 x2) = cong3 (λ a0 a1 a2 → ⌜IMu⌝ a0 a1 a2) (era-renTm ρ x0) (era-renTm ρ x1) (era-renTm ρ x2)
-  era-renTm ρ (⌜Fin⌝ x0) = refl
+  era-renTm ρ (⌜Fin⌝ x0) = cong1 (λ a0 → ⌜Fin⌝ a0) (era-renTm ρ x0)
   era-renTm ρ (con x0 x1 x2 x3) = cong1 (λ a0 → con a0) (era-renTm ρ x3)
   era-renTm ρ (ielim x0 x1 x2 x3 x4 x5) = cong4 (λ a0 a1 a2 a3 → ielim a0 a1 a2 a3) (era-renTm ρ x1) (era-renTm ρ x3) (era-renTm ρ x4) (era-renTm ρ x5)
   era-renTm ρ (dι x0) = refl
@@ -378,7 +378,7 @@ module Era (δ : ℕ → RTm ε) where
   era-subTy σ τ h (IMu x0 x1 x2) = cong3 (λ a0 a1 a2 → IMu a0 a1 a2) (era-subTm σ τ h x0) (era-subTm σ τ h x1) (era-subTm σ τ h x2)
   era-subTy σ τ h (Desc x0) = cong1 (λ a0 → Desc a0) (era-subTm σ τ h x0)
   era-subTy σ τ h (DIh x0 x1 x2 x3 x4) = cong4 (λ a0 a1 a2 a3 → DIh a0 a1 a2 a3) (era-subTm σ τ h x1) (era-subTy (extSᴬ (extSᴬ σ)) (extS (extS τ)) (era-ext (era-ext h)) x2) (era-subTm σ τ h x3) (era-subTm σ τ h x4)
-  era-subTy σ τ h (Fin x0) = refl
+  era-subTy σ τ h (Fin x0) = cong1 (λ a0 → Fin a0) (era-subTm σ τ h x0)
   era-subTm σ τ h (var x) = h x
   era-subTm σ τ h (lam x0 x1) = cong1 (λ a0 → lam a0) (era-subTm (extSᴬ σ) (extS τ) (era-ext h) x1)
   era-subTm σ τ h (app x0 x1) = cong2 (λ a0 a1 → app a0 a1) (era-subTm σ τ h x0) (era-subTm σ τ h x1)
@@ -404,7 +404,7 @@ module Era (δ : ℕ → RTm ε) where
   era-subTm σ τ h ⌜Nat⌝ = refl
   era-subTm σ τ h ⌜Unit⌝ = refl
   era-subTm σ τ h (⌜IMu⌝ x0 x1 x2) = cong3 (λ a0 a1 a2 → ⌜IMu⌝ a0 a1 a2) (era-subTm σ τ h x0) (era-subTm σ τ h x1) (era-subTm σ τ h x2)
-  era-subTm σ τ h (⌜Fin⌝ x0) = refl
+  era-subTm σ τ h (⌜Fin⌝ x0) = cong1 (λ a0 → ⌜Fin⌝ a0) (era-subTm σ τ h x0)
   era-subTm σ τ h (con x0 x1 x2 x3) = cong1 (λ a0 → con a0) (era-subTm σ τ h x3)
   era-subTm σ τ h (ielim x0 x1 x2 x3 x4 x5) = cong4 (λ a0 a1 a2 a3 → ielim a0 a1 a2 a3) (era-subTm σ τ h x1) (era-subTm σ τ h x3) (era-subTm σ τ h x4) (era-subTm σ τ h x5)
   era-subTm σ τ h (dι x0) = refl
