@@ -260,3 +260,36 @@ syn-unquote : {sg : Sig n} → SigOK n sg → {s d : ℕ} {shs : Shapes c} {t : 
           NthG sg s shs → ◇ ⊢ t ∷ SK sg s (num d) → IsNormal t →
           Σ (STm sg s d) (λ x → t ≡ ⌜ x ⌝ˢ)
 syn-unquote ok {d = d} {t = t} ng dt nrm = syn-unq ok (sz t) {d = d} ng ≤-refl dt nrm
+
+------------------------------------------------------------------------
+-- 5. ★ Quotes are NORMAL: built from introduction forms only.
+------------------------------------------------------------------------
+
+tag-normal : (k : ℕ) → IsNormal (tag {Θ} k)
+tag-normal zero    ()
+tag-normal (suc k) (ξ-fsuc r) = tag-normal k r
+
+num-normal : (m : ℕ) → IsNormal (num {Θ} m)
+num-normal zero    ()
+num-normal (suc m) (ξ-nsuc r) = num-normal m r
+
+fnum-normal : (i : ℕ) → IsNormal (fnum {Θ} i)
+fnum-normal zero    (ξ-con (ξ-pairˡ ()))
+fnum-normal zero    (ξ-con (ξ-pairʳ ()))
+fnum-normal (suc i) (ξ-con (ξ-pairˡ r)) = tag-normal 1 r
+fnum-normal (suc i) (ξ-con (ξ-pairʳ (ξ-pairˡ r))) = fnum-normal i r
+fnum-normal (suc i) (ξ-con (ξ-pairʳ (ξ-pairʳ ())))
+
+⌜⌝ˢ-normal : {sg : Sig n} (x : STm sg s d) → IsNormal (⌜ x ⌝ˢ {Θ})
+⌜⌝ᵃ-normal : {sg : Sig n} {sh : Shape} (as : SArgs sg d sh) → IsNormal (⌜ as ⌝ᵃ {Θ})
+⌜⌝ˢ-normal (node {k = k} _ _ as) (ξ-con (ξ-pairˡ r)) = tag-normal k r
+⌜⌝ˢ-normal (node _ _ as) (ξ-con (ξ-pairʳ r)) = ⌜⌝ᵃ-normal as r
+⌜⌝ᵃ-normal s[] ()
+⌜⌝ᵃ-normal (s-rec t as) (ξ-pairˡ r) = ⌜⌝ˢ-normal t r
+⌜⌝ᵃ-normal (s-rec t as) (ξ-pairʳ r) = ⌜⌝ᵃ-normal as r
+⌜⌝ᵃ-normal (s-nat m as) (ξ-pairˡ r) = num-normal m r
+⌜⌝ᵃ-normal (s-nat m as) (ξ-pairʳ r) = ⌜⌝ᵃ-normal as r
+⌜⌝ᵃ-normal (s-cls t as) (ξ-pairˡ r) = ⌜⌝ˢ-normal t r
+⌜⌝ᵃ-normal (s-cls t as) (ξ-pairʳ r) = ⌜⌝ᵃ-normal as r
+⌜⌝ᵃ-normal (s-v i l) (ξ-pairˡ r) = fnum-normal i r
+⌜⌝ᵃ-normal (s-v i l) (ξ-pairʳ ())

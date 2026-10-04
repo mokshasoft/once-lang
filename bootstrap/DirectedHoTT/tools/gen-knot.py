@@ -673,7 +673,7 @@ module DirectedHoTT.Examples.Knot.Unquote where
 -- structurally, row by row — from the same rows as the quotation.
 ------------------------------------------------------------------------
 
-open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂; Σ; _,_ )
+open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂; subst; Σ; _,_ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
@@ -860,6 +860,13 @@ quoteTy-inj A B e =
   trans (sym (from-toTy A))
     (trans (cong fromTy (⌜⌝ˢ-inj (toTy A) (toTy B) (trans (quote-toTy A) (trans e (sym (quote-toTy B))))))
            (from-toTy B))
+
+-- quotes are normal
+quoteTy-normal : (A : RTy Γ) → IsNormal (quoteTy A {Θ})
+quoteTy-normal {Θ = Θ} A = subst IsNormal (quote-toTy A) (⌜⌝ˢ-normal (toTy A))
+
+quoteTm-normal : (t : RTm Γ) → IsNormal (quoteTm t {Θ})
+quoteTm-normal {Θ = Θ} t = subst IsNormal (quote-toTm t) (⌜⌝ˢ-normal (toTm t))
 
 quoteTm-inj : (u v : RTm Γ) → quoteTm u {Θ} ≡ quoteTm v → u ≡ v
 quoteTm-inj u v e =

@@ -55,7 +55,7 @@ open import DirectedHoTT.Metatheory.Canonicity
         ; co-con; co-pair; co-unit; co-fzero; co-fsuc; co-idrefl
         ; gen-fzero; canUnit )
 open import DirectedHoTT.Metatheory.Fundamental.Syntactic using ( _,ₛ_ )
-open import DirectedHoTT.Lib.Sugar using ( tag; Lt; lt-z; lt-s )
+open import DirectedHoTT.Lib.Sugar using ( tag; conₗ; Lt; lt-z; lt-s; Cons; []; _∷_; Nth; nth-z; nth-s; selF; selF-β )
 open import DirectedHoTT.Lib.Tel using ( Tel; tι; tσ; tρ; ⌜_⌝ᵗ; sub-snoc )
 
 ------------------------------------------------------------------------
@@ -133,9 +133,16 @@ pay-ι : {p I D C : RTm ε} → ◇ ⊢ p ∷ El (dpay I D C) → C ⟶* dι →
 pay-ι d r nrm =
   canUnit (⊢conv d (red→≅ᵀ (⟶ᵀ*-trans (⟶ᵀ*-El (⟶*-dpayᶜ r)) (stepᵀ (ξ-El (dpay-ι _ _)) (stepᵀ El-⌜Unit⌝ doneᵀ))))) nrm
 
-pay-σ : {p I D C S f : RTm ε} → ◇ ⊢ p ∷ El (dpay I D C) → C ⟶* dσ S f → IsNormal p →
-        Σ (RTm ε) (λ a → Σ (RTm ε) (λ b → (p ≡ pair a b) ×
-          (((◇ ⊢ a ∷ El S) × (◇ ⊢ b ∷ El (dpay I D (app f a)))) × (IsNormal a × IsNormal b))))
+-- what the payload decoders return (named: a caller's helper states them)
+PayΣ : (I D S f p : RTm ε) → Set
+PayΣ I D S f p = Σ (RTm ε) (λ a → Σ (RTm ε) (λ b → (p ≡ pair a b) ×
+                   (((◇ ⊢ a ∷ El S) × (◇ ⊢ b ∷ El (dpay I D (app f a)))) × (IsNormal a × IsNormal b))))
+
+PayΡ : (I D j C' p : RTm ε) → Set
+PayΡ I D j C' p = Σ (RTm ε) (λ r → Σ (RTm ε) (λ b → (p ≡ pair r b) ×
+                    (((◇ ⊢ r ∷ IMu I D j) × (◇ ⊢ b ∷ El (dpay I D C'))) × (IsNormal r × IsNormal b))))
+
+pay-σ : {p I D C S f : RTm ε} → ◇ ⊢ p ∷ El (dpay I D C) → C ⟶* dσ S f → IsNormal p → PayΣ I D S f p
 pay-σ {I = I} {D} {S = S} {f} d r nrm
   with pair-dec d (⟶ᵀ*-trans (⟶ᵀ*-El (⟶*-dpayᶜ r))
                     (stepᵀ (ξ-El (dpay-σ I D S f)) (stepᵀ (El-⌜Σ⌝ _ _) doneᵀ))) nrm
@@ -145,9 +152,7 @@ pay-σ {I = I} {D} {S = S} {f} d r nrm
     cong₃' : {I₁ I₂ D₁ D₂ C₁ C₂ : RTm ε} → I₁ ≡ I₂ → D₁ ≡ D₂ → C₁ ≡ C₂ → dpay I₁ D₁ C₁ ≡ dpay I₂ D₂ C₂
     cong₃' refl refl refl = refl
 
-pay-ρ : {p I D C j C' : RTm ε} → ◇ ⊢ p ∷ El (dpay I D C) → C ⟶* dρ j C' → IsNormal p →
-        Σ (RTm ε) (λ r → Σ (RTm ε) (λ b → (p ≡ pair r b) ×
-          (((◇ ⊢ r ∷ IMu I D j) × (◇ ⊢ b ∷ El (dpay I D C'))) × (IsNormal r × IsNormal b))))
+pay-ρ : {p I D C j C' : RTm ε} → ◇ ⊢ p ∷ El (dpay I D C) → C ⟶* dρ j C' → IsNormal p → PayΡ I D j C' p
 pay-ρ {I = I} {D} {j = j} {C'} d r nrm
   with pair-dec d (⟶ᵀ*-trans (⟶ᵀ*-El (⟶*-dpayᶜ r))
                     (stepᵀ (ξ-El (dpay-ρ I D j C')) (stepᵀ (El-⌜Σ⌝ _ _) doneᵀ))) nrm
@@ -223,3 +228,48 @@ tel-dec {I = I} {D} σ (tσ S T) dp nrm with pay-σ dp done nrm
                 (⊢conv db (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ a) done)))))) nb)
 tel-dec σ (tρ j T) dp nrm with pay-ρ dp done nrm
 ... | r , (b , (refl , ((dr , db) , (nr , nb)))) = td-ρ dr nr (tel-dec σ T db nb)
+
+------------------------------------------------------------------------
+-- 7. ★ Normal forms are unique up to conversion.
+------------------------------------------------------------------------
+
+⟶*→≅ : {Γ : Cx} {a b : RTm Γ} → a ⟶* b → a ≅ b
+⟶*→≅ done       = crfl
+⟶*→≅ (step r p) = ctrn (cred r) (⟶*→≅ p)
+
+nf-red : {a b : RTm ε} → IsNormal a → a ⟶* b → a ≡ b
+nf-red nrm done       = refl
+nf-red nrm (step r _) = ⊥-elim (nrm r)
+
+nf-≅ : {a b : RTm ε} → IsNormal a → IsNormal b → a ≅ b → a ≡ b
+nf-≅ na nb c with church-rosser c
+... | w , (ra , rb) = trans (nf-red na ra) (sym (nf-red nb rb))
+
+------------------------------------------------------------------------
+-- 8. ★ A FIBRE OF RULES: `dσ (⌜Fin⌝ m) (selF Cs)` — a closed normal
+--    inhabitant is one rule `k`, with its payload at that rule's
+--    telescope.  With no rules (`m = 0`) there is none.
+------------------------------------------------------------------------
+
+nthC : {Δ : Cx} {m k : ℕ} (Cs : Cons Δ m) → Lt k m → Σ (RTm Δ) (Nth Cs k)
+nthC (C ∷ Cs) lt-z     = C , nth-z
+nthC (C ∷ Cs) (lt-s l) with nthC Cs l
+... | C' , nt = C' , nth-s nt
+
+RowsDec : (I D : RTm ε) {m : ℕ} → Cons ε m → RTm ε → Set
+RowsDec I D Cs x = Σ ℕ (λ k → Σ (RTm ε) (λ C → Σ (RTm ε) (λ q →
+                     Nth Cs k C × ((x ≡ conₗ k q) × ((◇ ⊢ q ∷ El (dpay I D C)) × IsNormal q)))))
+
+rows-dec : {I D i x : RTm ε} {m : ℕ} {Cs : Cons ε m} → app D i ⟶* dσ (⌜Fin⌝ m) (selF Cs) →
+           ◇ ⊢ x ∷ IMu I D i → IsNormal x → RowsDec I D Cs x
+rows-dec {I = I} {D} {Cs = Cs} r dx nrm with con-dec dx nrm
+... | q₀ , (refl , (dq₀ , nq₀)) with pay-σ dq₀ r nq₀
+...   | t , (q , (refl , ((dt , dq) , (nt , nq)))) with tag-decᶜ dt nt
+...     | k , (lt , refl) with nthC Cs lt
+...       | C , nth = k , (C , (q , (nth , (refl ,
+                        (⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (selF-β nth)))) , nq)))))
+
+-- a fibre with no rule is empty
+rows-none : {I D i x : RTm ε} → app D i ⟶* dσ (⌜Fin⌝ 0) (selF ([] {ε})) → ◇ ⊢ x ∷ IMu I D i → IsNormal x → ⊥
+rows-none r dx nrm with rows-dec r dx nrm
+... | _ , (_ , (_ , (() , _)))
