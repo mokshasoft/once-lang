@@ -41,7 +41,7 @@ open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Metatheory.RedCong
   using ( _⟶ᵀ*_; doneᵀ; stepᵀ; ⟶ᵀ*-trans; ⟶ᵀ*-El; ⟶ᵀ*-Πˡ; ⟶ᵀ*-Πʳ
         ; ⟶ᵀ*-Σˡ; ⟶ᵀ*-Σʳ; ⟶ᵀ*-Homᵀ; ⟶ᵀ*-Homˡ; ⟶ᵀ*-Homʳ
-        ; ⟶ᵀ*-Idᵀ; ⟶ᵀ*-Idˡ; ⟶ᵀ*-Idʳ; ⟶ᵀ*-IMu; ⟶ᵀ*-IMuᴵ; ⟶ᵀ*-IMuᴰ; ⟶ᵀ*-Desc
+        ; ⟶ᵀ*-Idᵀ; ⟶ᵀ*-Idˡ; ⟶ᵀ*-Idʳ; ⟶ᵀ*-IMu; ⟶ᵀ*-IMuᴵ; ⟶ᵀ*-IMuᴰ; ⟶ᵀ*-Desc; ⟶ᵀ*-Fin
         ; ⟶ᵀ*-DIhᴰ; ⟶ᵀ*-DIhᴹ; ⟶ᵀ*-DIhᶜ; ⟶ᵀ*-DIhᵖ; red→≅ᵀ )
 open import DirectedHoTT.Metatheory.TySub
   using ( Sub⊢; Sub⊢-ext; ⊢single; sub-lemma; sub-ty; Ren⊢; Ren⊢-ext; ren-lemma; ren-ty
@@ -116,7 +116,7 @@ data NoU {Γ : Cx} : RTy Γ → Set where
   nu-IMu  : {I D i : RTm Γ} → NoU (IMu I D i)
   nu-Desc : {I : RTm Γ} → NoU (Desc I)
   nu-DIh  : {D C p : RTm Γ} {M : RTy ((Γ ∙) ∙)} → NoU (DIh D M C p)
-  nu-Fin  : {n : ℕ} → NoU (Fin n)
+  nu-Fin  : {n : RTm Γ} → NoU (Fin n)
 
 -- a normal form that is moreover `U`-free
 record WNᵁ {Γ : Cx} (A : RTy Γ) : Set where
@@ -234,7 +234,7 @@ elNF wΓ (⌜IMu⌝ I D i) dc nc =
   mkWNᵁ (IMu I D i) (stepᵀ El-⌜IMu⌝ doneᵀ)
     (λ { (ξ-IMuᴵ q) → nc (ξ-⌜IMu⌝ᴵ q) ; (ξ-IMuᴰ q) → nc (ξ-⌜IMu⌝ᴰ q) ; (ξ-IMuⁱ q) → nc (ξ-⌜IMu⌝ⁱ q) })
     nu-IMu
-elNF wΓ (⌜Fin⌝ n) dc nc = mkWNᵁ (Fin n) (stepᵀ El-⌜Fin⌝ doneᵀ) (λ ()) nu-Fin
+elNF wΓ (⌜Fin⌝ n) dc nc = mkWNᵁ (Fin n) (stepᵀ El-⌜Fin⌝ doneᵀ) (λ { (ξ-Fin q) → nc (ξ-⌜Fin⌝ q) }) nu-Fin
 -- every other head: `El c` is stuck, and Agda refutes each decode rule by
 -- index mismatch.
 elNF wΓ c@(var _) dc nc = mkWNᵁ (El c) doneᵀ (λ { (ξ-El q) → nc q }) nu-El
@@ -471,7 +471,9 @@ normTyS wΔ ty-base h = mkWNᵀ base doneᵀ (λ ())
 normTyS wΔ ty-U    h = mkWNᵀ U doneᵀ (λ ())
 normTyS wΔ ty-Unit h = mkWNᵀ Unit doneᵀ (λ ())
 normTyS wΔ ty-Nat  h = mkWNᵀ Nat doneᵀ (λ ())
-normTyS wΔ ty-Fin  h = mkWNᵀ (Fin _) doneᵀ (λ ())
+normTyS wΔ (ty-Fin dn) h =
+  let mkWN n' rn nn _ = wnorm wΔ (sub-lemma dn h)
+  in  mkWNᵀ (Fin n') (⟶ᵀ*-Fin rn) (λ { (ξ-Fin q) → nn q })
 normTyS {σ = σ} wΔ (ty-IMu {I = I} dI dD di) h =
   let mkWN I' rI nI _ = wnorm wΔ (sub-lemma dI h)
       mkWN D' rD nD _ = wnorm wΔ (⊢-cast (DescF-sub σ I) (sub-lemma dD h))

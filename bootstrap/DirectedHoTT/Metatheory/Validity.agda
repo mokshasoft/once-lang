@@ -36,7 +36,7 @@ open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; subst
 open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Metatheory.SubjectReduction
-  using ( sr; gen-⌜Π⌝; gen-⌜Σ⌝; gen-⌜Hom⌝; gen-⌜Id⌝; gen-⌜IMu⌝; gen-nsuc
+  using ( sr; gen-⌜Π⌝; gen-⌜Σ⌝; gen-⌜Hom⌝; gen-⌜Id⌝; gen-⌜IMu⌝; gen-⌜Fin⌝; gen-nsuc
         ; ren-ty; sub-ty; sub-lemma; ⊢wk; ⊢single; ⊢[]; ⊢-cast; Sub⊢
         ; wk-cancel; wk-cancel-tm; ⟶ᵀ*-sub'; iinst-wf; conv-ctxᵀ; dσ-step
         ; dρ-step; DescF-step )
@@ -45,9 +45,9 @@ open import DirectedHoTT.Metatheory.SubjectReductionBase
 open import DirectedHoTT.Metatheory.TySub
   using ( ≅ᵀ-ren )
 open import DirectedHoTT.Metatheory.RedCong
-  using ( _⟶ᵀ*_; doneᵀ; stepᵀ; red→≅ᵀ; ⟶-ren )
+  using ( _⟶ᵀ*_; doneᵀ; stepᵀ; red→≅ᵀ; ⟶-ren; ⟶ᵀ*-Fin; ⟶*-nsuc )
 open import DirectedHoTT.Metatheory.Injectivity
-  using ( church-rosserᵀ; Π-reduct; Σ-reduct; ΠRed; ΣRed; mkΠRed; mkΣRed )
+  using ( church-rosserᵀ; Π-reduct; Σ-reduct; ΠRed; ΣRed; mkΠRed; mkΣRed; Fin-reduct )
 
 private
   variable
@@ -87,7 +87,7 @@ srᵀ (ty-El dc) El-⌜Nat⌝  = ty-Nat
 srᵀ (ty-El dc) El-⌜Unit⌝ = ty-Unit
 srᵀ (ty-El dc) El-⌜IMu⌝ with gen-⌜IMu⌝ dc
 ... | dI , (dD , (di , _)) = ty-IMu dI dD di
-srᵀ (ty-El dc) El-⌜Fin⌝ = ty-Fin
+srᵀ (ty-El dc) El-⌜Fin⌝ = ty-Fin (Σ.fst (gen-⌜Fin⌝ dc))
 srᵀ (ty-El dc) (ξ-El r) = ty-El (sr dc r)
 -- congruences
 srᵀ (ty-Π dA dB) (ξ-Πˡ r) = ty-Π (srᵀ dA r) (conv-ctxᵀ (credᵀ r) dB)
@@ -129,6 +129,7 @@ srᵀ (ty-IMu dI dD di) (ξ-IMuᴵ r) =
 srᵀ (ty-IMu dI dD di) (ξ-IMuᴰ r) = ty-IMu dI (sr dD r) di
 srᵀ (ty-IMu dI dD di) (ξ-IMuⁱ r) = ty-IMu dI dD (sr di r)
 srᵀ (ty-Desc dI) (ξ-Desc r) = ty-Desc (sr dI r)
+srᵀ (ty-Fin dn) (ξ-Fin r) = ty-Fin (sr dn r)
 srᵀ (ty-DIh dI dD dM dC dp) (ξ-DIhᴰ r) =
   ty-DIh dI (sr dD r) (conv-ctxᵀ (credᵀ (ξ-IMuᴰ (⟶-ren vs r))) dM) dC
          (⊢conv dp (credᵀ (ξ-El (ξ-dpayᴰ r))))
@@ -206,6 +207,13 @@ toΣWf (wf T c dT) with church-rosserᵀ c
 ≅ᵀ-Σˡ (csymᵀ c)   = csymᵀ (≅ᵀ-Σˡ c)
 ≅ᵀ-Σˡ (ctrnᵀ c d) = ctrnᵀ (≅ᵀ-Σˡ c) (≅ᵀ-Σˡ d)
 
+-- ★ S7b step 2: a well-formed type convertible to `Fin n` reduces to
+--   `Fin m` with `n ⟶* m`, and `m` is typed (subject reduction)
+toFinWf : {n : RTm ⌊ Γ ⌋} → WfUpTo Γ (Fin n) → Σ (RTm ⌊ Γ ⌋) (λ m → (n ⟶* m) × (Γ ⊢ m ∷ Nat))
+toFinWf (wf T c dT) with church-rosserᵀ c
+... | W , (FW , TW) with Fin-reduct FW | srᵀ* dT TW
+...   | m , (refl , rm) | ty-Fin dm = m , (rm , dm)
+
 validity : {t : RTm ⌊ Γ ⌋} {A : RTy ⌊ Γ ⌋} → ⊢ctx Γ → Γ ⊢ t ∷ A → WfUpTo Γ A
 validity wΓ (⊢var v) = exact (lookup-wf wΓ v)
 validity wΓ (⊢lam dA d) with validity (c-▹ wΓ dA) d
@@ -240,7 +248,7 @@ validity wΓ (⊢ap {cB = cB} {b = b} {t = t} {u = u} dcA fl dcB db dt du dp) =
 validity wΓ (⊢⌜Id⌝ dc da db) = exact ty-U
 validity wΓ ⊢⌜Nat⌝ = exact ty-U
 validity wΓ (⊢⌜IMu⌝ dI dD di) = exact ty-U
-validity wΓ ⊢⌜Fin⌝ = exact ty-U
+validity wΓ (⊢⌜Fin⌝ _) = exact ty-U
 validity wΓ ⊢⌜Unit⌝ = exact ty-U
 validity wΓ (⊢idrefl dc dt) = exact (ty-Id (ty-El dc) dt dt)
 validity wΓ (⊢jsub dd dt du dp de) = exact (ty-El (⊢[] dd du))
@@ -256,8 +264,9 @@ validity wΓ (⊢dpay dI dD dC) = exact ty-U
 validity wΓ (⊢con dI dD di dp) = exact (ty-IMu dI dD di)
 validity wΓ (⊢dih dI dD dM de dC dp) = exact (ty-DIh dI dD dM dC dp)
 validity wΓ (⊢ielim {M = M} {i = i} {t = t} dI dD dM de di dt) = exact (iinst-wf M i t di dt dM)
-validity wΓ ⊢fzero = exact ty-Fin
-validity wΓ (⊢fsuc dt) = exact ty-Fin
+validity wΓ (⊢fzero dn) = exact (ty-Fin (⊢nsuc dn))
+validity wΓ (⊢fsuc dt) with toFinWf (validity wΓ dt)
+... | m , (rm , dm) = wf (Fin (nsuc m)) (red→≅ᵀ (⟶ᵀ*-Fin (⟶*-nsuc rm))) (ty-Fin (⊢nsuc dm))
 validity wΓ (⊢fcase dP dt da db) = exact (sub-ty dP (⊢single dt))
 validity wΓ (⊢fcase0 dP dt) = exact (sub-ty dP (⊢single dt))
 validity wΓ (⊢psplit dA dB dP dq db) = exact (sub-ty dP (⊢single dq))

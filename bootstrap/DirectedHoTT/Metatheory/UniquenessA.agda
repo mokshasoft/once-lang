@@ -106,7 +106,7 @@ uniqᴬ {t = ⌜Id⌝ c a b} d₁ d₂ =
 uniqᴬ {t = ⌜Nat⌝} d₁ d₂ = via (genᴬ-⌜Nat⌝ d₁) (genᴬ-⌜Nat⌝ d₂)
 uniqᴬ {t = ⌜IMu⌝ I D i} d₁ d₂ =
   let (_ , (_ , (_ , c₁))) = genᴬ-⌜IMu⌝ d₁ in let (_ , (_ , (_ , c₂))) = genᴬ-⌜IMu⌝ d₂ in via c₁ c₂
-uniqᴬ {t = ⌜Fin⌝ n} d₁ d₂ = via (genᴬ-⌜Fin⌝ d₁) (genᴬ-⌜Fin⌝ d₂)
+uniqᴬ {t = ⌜Fin⌝ n} d₁ d₂ = via (Σ.snd (genᴬ-⌜Fin⌝ d₁)) (Σ.snd (genᴬ-⌜Fin⌝ d₂))
 uniqᴬ {t = ⌜Unit⌝} d₁ d₂ = via (genᴬ-⌜Unit⌝ d₁) (genᴬ-⌜Unit⌝ d₂)
 uniqᴬ {t = idrefl c t} d₁ d₂ =
   let (_ , (_ , c₁)) = genᴬ-idrefl d₁ in let (_ , (_ , c₂)) = genᴬ-idrefl d₂ in via c₁ c₂
@@ -135,11 +135,11 @@ uniqᴬ {t = dih I D M e C p} d₁ d₂ =
   let (_ , (_ , (_ , (_ , (_ , (_ , c₁)))))) = genᴬ-dih d₁ in let (_ , (_ , (_ , (_ , (_ , (_ , c₂)))))) = genᴬ-dih d₂ in via c₁ c₂
 uniqᴬ {t = ielim I D M i e t} d₁ d₂ =
   let (_ , (_ , (_ , (_ , (_ , (_ , c₁)))))) = genᴬ-ielim d₁ in let (_ , (_ , (_ , (_ , (_ , (_ , c₂)))))) = genᴬ-ielim d₂ in via c₁ c₂
-uniqᴬ {t = fzero n} d₁ d₂ = via (genᴬ-fzero d₁) (genᴬ-fzero d₂)
+uniqᴬ {t = fzero n} d₁ d₂ = via (Σ.snd (genᴬ-fzero d₁)) (Σ.snd (genᴬ-fzero d₂))
 uniqᴬ {t = fsuc n t} d₁ d₂ =
-  let (_ , c₁) = genᴬ-fsuc d₁ in let (_ , c₂) = genᴬ-fsuc d₂ in via c₁ c₂
+  let (_ , (_ , c₁)) = genᴬ-fsuc d₁ in let (_ , (_ , c₂)) = genᴬ-fsuc d₂ in via c₁ c₂
 uniqᴬ {t = fcase n P t a b} d₁ d₂ =
-  let (_ , (_ , (_ , (_ , c₁)))) = genᴬ-fcase d₁ in let (_ , (_ , (_ , (_ , c₂)))) = genᴬ-fcase d₂ in via c₁ c₂
+  let (_ , (_ , (_ , (_ , (_ , c₁))))) = genᴬ-fcase d₁ in let (_ , (_ , (_ , (_ , (_ , c₂))))) = genᴬ-fcase d₂ in via c₁ c₂
 uniqᴬ {t = fcase0 P t} d₁ d₂ =
   let (_ , (_ , c₁)) = genᴬ-fcase0 d₁ in let (_ , (_ , c₂)) = genᴬ-fcase0 d₂ in via c₁ c₂
 uniqᴬ {t = psplit A B P b q} d₁ d₂ =

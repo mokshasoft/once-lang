@@ -160,15 +160,22 @@ descV A with whTy A
 ... | Desc I = just I
 ... | _      = nothing
 
-finV : ATy Γ → Maybe ℕ
+finV : ATy Γ → Maybe (ATm Γ)
 finV A with whTy A
 ... | Fin n = just n
 ... | _     = nothing
 
-finSV : ATy Γ → Maybe ℕ
-finSV A with whTy A
-... | Fin (suc n) = just n
-... | _           = nothing
+-- ★ S7b step 2: the bound is a term, so its successor is read off its
+--   weak-head form
+sucV : ATm Γ → Maybe (ATm Γ)
+sucV n with whTm fuel n
+... | nsuc k = just k
+... | _      = nothing
+
+finSV : ATy Γ → Maybe (ATm Γ)
+finSV A with finV A
+... | just n  = sucV n
+... | nothing = nothing
 
 -- the code of an `El` type
 elV : ATy Γ → Maybe (ATm Γ)
@@ -273,7 +280,7 @@ elT e S.base    = ok base
 elT e S.U       = ok U
 elT e S.Unit    = ok Unit
 elT e S.Nat     = ok Nat
-elT e (S.Fin n) = ok (Fin n)
+elT e (S.Fin n) = at "Fin" (chk e n Nat >>= λ n' → ok (Fin n'))
 elT e (S.Π A B) = elT e A >>= λ A' → elT (e ▸ A') B >>= λ B' → ok (Π A' B')
 elT e (S.Σ' A B) = elT e A >>= λ A' → elT (e ▸ A') B >>= λ B' → ok (Σ' A' B')
 elT e (S.El c)  = at "El" (chk e c U >>= λ c' → ok (El c'))
@@ -387,7 +394,7 @@ el e S.⌜Unit⌝ mT = ok (⌜Unit⌝ ∶ U)
 el e (S.⌜IMu⌝ I D i) mT = at "⌜IMu⌝" (
   chk e I U >>= λ I' → chk e D (DescFᴬ I') >>= λ D' → chk e i (El I') >>= λ i' →
   ok (⌜IMu⌝ I' D' i' ∶ U))
-el e (S.⌜Fin⌝ n) mT = ok (⌜Fin⌝ n ∶ U)
+el e (S.⌜Fin⌝ n) mT = at "⌜Fin⌝" (chk e n Nat >>= λ n' → ok (⌜Fin⌝ n' ∶ U))
 -- ★ the levitated formers: index code (description, index) from the
 --   expected type or the scrutinee
 el e (S.con I D i p) mT = at "con" (
@@ -427,24 +434,24 @@ el e (S.dih I D M x C p) mT = at "dih" (
   chk e p (El (dpay I' D' C')) >>= λ p' →
   ok (dih I' D' M' x' C' p' ∶ DIh I' D' M' C' p'))
 -- a bound is a ℕ, so it has no hole: the expected type's wins
-el e (S.fzero n) mT with mT ⟫ finSV
-... | just k  = ok (fzero k ∶ Fin (suc k))
-... | nothing = ok (fzero n ∶ Fin (suc n))
+el e (S.fzero n) mT = at "fzero" (
+  annM "the bound, from an expected Fin (suc n)" e n (mT ⟫ finSV) (just Nat) >>= λ k →
+  ok (fzero k ∶ Fin (nsuc k)))
 el e (S.fsuc n t) mT with mT ⟫ finSV
-... | just k  = at "fsuc" (chk e t (Fin k) >>= λ t' → ok (fsuc k t' ∶ Fin (suc k)))
+... | just k  = at "fsuc" (chk e t (Fin k) >>= λ t' → ok (fsuc k t' ∶ Fin (nsuc k)))
 ... | nothing = at "fsuc" (
   inf e t >>= λ r → need "the bound, from the argument's Fin" (finV (ty r)) >>= λ k →
-  ok (fsuc k (tm r) ∶ Fin (suc k)))
+  ok (fsuc k (tm r) ∶ Fin (nsuc k)))
 el e (S.fcase n P t a b) mT = at "fcase" (
   inf e t >>= λ rt → need "the scrutinee is not a Fin (suc n)" (finSV (ty rt)) >>= λ k →
   constMot e P a mT >>= λ mP →
-  annMot "the motive (the constant one needs an expected type)" (e ▸ Fin (suc k)) P mP >>= λ P' →
+  annMot "the motive (the constant one needs an expected type)" (e ▸ Fin (nsuc k)) P mP >>= λ P' →
   chk e a (subTyᴬ (singleᴬ (fzero k)) P') >>= λ a' →
   chk (e ▸ Fin k) b (subTyᴬ (fsucSᴬ k) P') >>= λ b' →
   ok (fcase k P' (tm rt) a' b' ∶ subTyᴬ (singleᴬ (tm rt)) P'))
 el e (S.fcase0 P t) mT = at "fcase0" (
-  annMot "the motive (the constant one needs an expected type)" (e ▸ Fin zero) P (mapᵐ wk1 mT) >>= λ P' →
-  chk e t (Fin zero) >>= λ t' →
+  annMot "the motive (the constant one needs an expected type)" (e ▸ Fin nzero) P (mapᵐ wk1 mT) >>= λ P' →
+  chk e t (Fin nzero) >>= λ t' →
   ok (fcase0 P' t' ∶ subTyᴬ (singleᴬ t') P'))
 el e (S.psplit A B P b q) mT = at "psplit" (
   inf e q >>= λ rq →

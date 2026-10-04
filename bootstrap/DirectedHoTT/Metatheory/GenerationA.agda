@@ -130,10 +130,10 @@ genᴬ-⌜IMu⌝ : {Γ : ACtx} {I : ATm ⌊ Γ ⌋ᴬ} {D : ATm ⌊ Γ ⌋ᴬ} {
 genᴬ-⌜IMu⌝ (⊢ᴬ⌜IMu⌝ dI dD di) = (dI , (dD , (di , crflᵀ)))
 genᴬ-⌜IMu⌝ (⊢ᴬconv d c) = let (dI , (dD , (di , c'))) = genᴬ-⌜IMu⌝ d in (dI , (dD , (di , ctrnᵀ c' c)))
 
-genᴬ-⌜Fin⌝ : {Γ : ACtx} {n : ℕ} {Z : ATy ⌊ Γ ⌋ᴬ} →
-          Γ ⊢ᴬ ⌜Fin⌝ n ∷ Z → ⌈ U ⌉ᵀ ≅ᵀ ⌈ Z ⌉ᵀ
-genᴬ-⌜Fin⌝ (⊢ᴬ⌜Fin⌝) = crflᵀ
-genᴬ-⌜Fin⌝ (⊢ᴬconv d c) = let c' = genᴬ-⌜Fin⌝ d in ctrnᵀ c' c
+genᴬ-⌜Fin⌝ : {Γ : ACtx} {n : ATm ⌊ Γ ⌋ᴬ} {Z : ATy ⌊ Γ ⌋ᴬ} →
+          Γ ⊢ᴬ ⌜Fin⌝ n ∷ Z → (Γ ⊢ᴬ n ∷ Nat) × (⌈ U ⌉ᵀ ≅ᵀ ⌈ Z ⌉ᵀ)
+genᴬ-⌜Fin⌝ (⊢ᴬ⌜Fin⌝ dn) = (dn , crflᵀ)
+genᴬ-⌜Fin⌝ (⊢ᴬconv d c) = let (dn , c') = genᴬ-⌜Fin⌝ d in (dn , ctrnᵀ c' c)
 
 genᴬ-⌜Unit⌝ : {Γ : ACtx}  {Z : ATy ⌊ Γ ⌋ᴬ} →
           Γ ⊢ᴬ ⌜Unit⌝ ∷ Z → ⌈ U ⌉ᵀ ≅ᵀ ⌈ Z ⌉ᵀ
@@ -211,23 +211,23 @@ genᴬ-ielim : {Γ : ACtx} {I : ATm ⌊ Γ ⌋ᴬ} {D : ATm ⌊ Γ ⌋ᴬ} {M : 
 genᴬ-ielim (⊢ᴬielim dI dD dM de di dt) = (dI , (dD , (dM , (de , (di , (dt , crflᵀ))))))
 genᴬ-ielim (⊢ᴬconv d c) = let (dI , (dD , (dM , (de , (di , (dt , c')))))) = genᴬ-ielim d in (dI , (dD , (dM , (de , (di , (dt , ctrnᵀ c' c))))))
 
-genᴬ-fzero : {Γ : ACtx} {n : ℕ} {Z : ATy ⌊ Γ ⌋ᴬ} →
-          Γ ⊢ᴬ fzero n ∷ Z → ⌈ Fin (suc n) ⌉ᵀ ≅ᵀ ⌈ Z ⌉ᵀ
-genᴬ-fzero (⊢ᴬfzero) = crflᵀ
-genᴬ-fzero (⊢ᴬconv d c) = let c' = genᴬ-fzero d in ctrnᵀ c' c
+genᴬ-fzero : {Γ : ACtx} {n : ATm ⌊ Γ ⌋ᴬ} {Z : ATy ⌊ Γ ⌋ᴬ} →
+          Γ ⊢ᴬ fzero n ∷ Z → (Γ ⊢ᴬ n ∷ Nat) × (⌈ Fin (nsuc n) ⌉ᵀ ≅ᵀ ⌈ Z ⌉ᵀ)
+genᴬ-fzero (⊢ᴬfzero dn) = (dn , crflᵀ)
+genᴬ-fzero (⊢ᴬconv d c) = let (dn , c') = genᴬ-fzero d in (dn , ctrnᵀ c' c)
 
-genᴬ-fsuc : {Γ : ACtx} {n : ℕ} {t : ATm ⌊ Γ ⌋ᴬ} {Z : ATy ⌊ Γ ⌋ᴬ} →
-          Γ ⊢ᴬ fsuc n t ∷ Z → (Γ ⊢ᴬ t ∷ Fin n) × (⌈ Fin (suc n) ⌉ᵀ ≅ᵀ ⌈ Z ⌉ᵀ)
-genᴬ-fsuc (⊢ᴬfsuc dt) = (dt , crflᵀ)
-genᴬ-fsuc (⊢ᴬconv d c) = let (dt , c') = genᴬ-fsuc d in (dt , ctrnᵀ c' c)
+genᴬ-fsuc : {Γ : ACtx} {n : ATm ⌊ Γ ⌋ᴬ} {t : ATm ⌊ Γ ⌋ᴬ} {Z : ATy ⌊ Γ ⌋ᴬ} →
+          Γ ⊢ᴬ fsuc n t ∷ Z → (Γ ⊢ᴬ n ∷ Nat) × ((Γ ⊢ᴬ t ∷ Fin n) × (⌈ Fin (nsuc n) ⌉ᵀ ≅ᵀ ⌈ Z ⌉ᵀ))
+genᴬ-fsuc (⊢ᴬfsuc dn dt) = (dn , (dt , crflᵀ))
+genᴬ-fsuc (⊢ᴬconv d c) = let (dn , (dt , c')) = genᴬ-fsuc d in (dn , (dt , ctrnᵀ c' c))
 
-genᴬ-fcase : {Γ : ACtx} {n : ℕ} {P : ATy (⌊ Γ ⌋ᴬ ∙)} {t : ATm ⌊ Γ ⌋ᴬ} {a : ATm ⌊ Γ ⌋ᴬ} {b : ATm (⌊ Γ ⌋ᴬ ∙)} {Z : ATy ⌊ Γ ⌋ᴬ} →
-          Γ ⊢ᴬ fcase n P t a b ∷ Z → ((Γ ▹ᴬ Fin (suc n)) ⊢tyᴬ P) × ((Γ ⊢ᴬ t ∷ Fin (suc n)) × ((Γ ⊢ᴬ a ∷ subTyᴬ (singleᴬ (fzero n)) P) × (((Γ ▹ᴬ Fin n) ⊢ᴬ b ∷ subTyᴬ (fsucSᴬ n) P) × (⌈ subTyᴬ (singleᴬ t) P ⌉ᵀ ≅ᵀ ⌈ Z ⌉ᵀ))))
-genᴬ-fcase (⊢ᴬfcase dP dt da db) = (dP , (dt , (da , (db , crflᵀ))))
-genᴬ-fcase (⊢ᴬconv d c) = let (dP , (dt , (da , (db , c')))) = genᴬ-fcase d in (dP , (dt , (da , (db , ctrnᵀ c' c))))
+genᴬ-fcase : {Γ : ACtx} {n : ATm ⌊ Γ ⌋ᴬ} {P : ATy (⌊ Γ ⌋ᴬ ∙)} {t : ATm ⌊ Γ ⌋ᴬ} {a : ATm ⌊ Γ ⌋ᴬ} {b : ATm (⌊ Γ ⌋ᴬ ∙)} {Z : ATy ⌊ Γ ⌋ᴬ} →
+          Γ ⊢ᴬ fcase n P t a b ∷ Z → (Γ ⊢ᴬ n ∷ Nat) × (((Γ ▹ᴬ Fin (nsuc n)) ⊢tyᴬ P) × ((Γ ⊢ᴬ t ∷ Fin (nsuc n)) × ((Γ ⊢ᴬ a ∷ subTyᴬ (singleᴬ (fzero n)) P) × (((Γ ▹ᴬ Fin n) ⊢ᴬ b ∷ subTyᴬ (fsucSᴬ n) P) × (⌈ subTyᴬ (singleᴬ t) P ⌉ᵀ ≅ᵀ ⌈ Z ⌉ᵀ)))))
+genᴬ-fcase (⊢ᴬfcase dn dP dt da db) = (dn , (dP , (dt , (da , (db , crflᵀ)))))
+genᴬ-fcase (⊢ᴬconv d c) = let (dn , (dP , (dt , (da , (db , c'))))) = genᴬ-fcase d in (dn , (dP , (dt , (da , (db , ctrnᵀ c' c)))))
 
 genᴬ-fcase0 : {Γ : ACtx} {P : ATy (⌊ Γ ⌋ᴬ ∙)} {t : ATm ⌊ Γ ⌋ᴬ} {Z : ATy ⌊ Γ ⌋ᴬ} →
-          Γ ⊢ᴬ fcase0 P t ∷ Z → ((Γ ▹ᴬ Fin zero) ⊢tyᴬ P) × ((Γ ⊢ᴬ t ∷ Fin zero) × (⌈ subTyᴬ (singleᴬ t) P ⌉ᵀ ≅ᵀ ⌈ Z ⌉ᵀ))
+          Γ ⊢ᴬ fcase0 P t ∷ Z → ((Γ ▹ᴬ Fin nzero) ⊢tyᴬ P) × ((Γ ⊢ᴬ t ∷ Fin nzero) × (⌈ subTyᴬ (singleᴬ t) P ⌉ᵀ ≅ᵀ ⌈ Z ⌉ᵀ))
 genᴬ-fcase0 (⊢ᴬfcase0 dP dt) = (dP , (dt , crflᵀ))
 genᴬ-fcase0 (⊢ᴬconv d c) = let (dP , (dt , c')) = genᴬ-fcase0 d in (dP , (dt , ctrnᵀ c' c))
 

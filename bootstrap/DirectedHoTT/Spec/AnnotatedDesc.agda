@@ -95,11 +95,12 @@ era-pairS : (A : ATy Γ) (B : ATy (Γ ∙)) → ∀ z → ⌈ pairSᴬ A B z ⌉
 era-pairS A B vz     = refl
 era-pairS A B (vs z) = refl
 
-fsucSᴬ : ℕ → Subᴬ (Γ ∙) (Γ ∙)
-fsucSᴬ n vz     = fsuc n (var vz)
+-- the bound annotates the successor; it lives in `Γ`, weakened past the tag
+fsucSᴬ : ATm Γ → Subᴬ (Γ ∙) (Γ ∙)
+fsucSᴬ n vz     = fsuc (renTmᴬ vs n) (var vz)
 fsucSᴬ n (vs x) = var (vs x)
 
-era-fsucS : (n : ℕ) → ∀ z → ⌈ fsucSᴬ {Γ} n z ⌉ ≡ fsucS z
+era-fsucS : (n : ATm Γ) → ∀ z → ⌈ fsucSᴬ n z ⌉ ≡ fsucS z
 era-fsucS n vz     = refl
 era-fsucS n (vs z) = refl
 

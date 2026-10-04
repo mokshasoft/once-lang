@@ -228,8 +228,10 @@ pairS⊢ {A = A} dB (there {A = A₀} v) =
   ⊢-cast (trans (renTy-renTy A₀) (sym (trans (subTy-renTy A₀) (subTy-var (λ x → vs (vs x)) A₀))))
          (⊢var (there (there v)))
 
-fsucS⊢ : {Δ : Ctx} {n : ℕ} → Sub⊢ (Δ ▹ Fin (suc n)) (Δ ▹ Fin n) fsucS
-fsucS⊢ here = ⊢fsuc (⊢var here)
+-- ★ S7b step 2: the bound is a term, weakened past the tag — `fsucS` fixes it
+fsucS⊢ : {Δ : Ctx} {n : RTm ⌊ Δ ⌋} → Sub⊢ (Δ ▹ Fin (nsuc n)) (Δ ▹ Fin n) fsucS
+fsucS⊢ {n = n} here =
+  ⊢-cast (cong (λ z → Fin (nsuc z)) (sym (trans (subTm-renTm n) (subTm-var vs n)))) (⊢fsuc (⊢var here))
 fsucS⊢ (there {A = A₀} v) =
   ⊢-cast (sym (trans (subTy-renTy A₀) (subTy-var vs A₀))) (⊢var (there v))
 

@@ -169,7 +169,7 @@ data _⊢ᴬ_∷_ where
                          Γ ⊢ᴬ ⌜Id⌝ c a b ∷ U
   ⊢ᴬ⌜Nat⌝  : ∀ {Γ} → Γ ⊢ᴬ ⌜Nat⌝ ∷ U
   ⊢ᴬ⌜IMu⌝  : ∀ {Γ I D i} → Γ ⊢ᴬ I ∷ U → Γ ⊢ᴬ D ∷ DescFᴬ I → Γ ⊢ᴬ i ∷ El I → Γ ⊢ᴬ ⌜IMu⌝ I D i ∷ U
-  ⊢ᴬ⌜Fin⌝  : ∀ {Γ n} → Γ ⊢ᴬ ⌜Fin⌝ n ∷ U
+  ⊢ᴬ⌜Fin⌝  : ∀ {Γ n} → Γ ⊢ᴬ n ∷ Nat → Γ ⊢ᴬ ⌜Fin⌝ n ∷ U
   ⊢ᴬ⌜Unit⌝ : ∀ {Γ} → Γ ⊢ᴬ ⌜Unit⌝ ∷ U
   ⊢ᴬidrefl : ∀ {Γ c t} → Γ ⊢ᴬ c ∷ U → Γ ⊢ᴬ t ∷ El c →
                          Γ ⊢ᴬ idrefl c t ∷ Id (El c) t t
@@ -207,14 +207,15 @@ data _⊢ᴬ_∷_ where
             Γ ⊢ᴬ I ∷ U → Γ ⊢ᴬ D ∷ DescFᴬ I → motCtxᴬ Γ I D ⊢tyᴬ M → Γ ⊢ᴬ e ∷ MethTyᴬ I D M →
             Γ ⊢ᴬ i ∷ El I → Γ ⊢ᴬ t ∷ IMu I D i →
             Γ ⊢ᴬ ielim I D M i e t ∷ iinstᴬ i t M
-  ⊢ᴬfzero  : ∀ {Γ n} → Γ ⊢ᴬ fzero n ∷ Fin (suc n)
-  ⊢ᴬfsuc   : ∀ {Γ n t} → Γ ⊢ᴬ t ∷ Fin n → Γ ⊢ᴬ fsuc n t ∷ Fin (suc n)
-  ⊢ᴬfcase  : ∀ {Γ n P t a b} →
-             (Γ ▹ᴬ Fin (suc n)) ⊢tyᴬ P → Γ ⊢ᴬ t ∷ Fin (suc n) →
+  ⊢ᴬfzero  : ∀ {Γ n} → Γ ⊢ᴬ n ∷ Nat → Γ ⊢ᴬ fzero n ∷ Fin (nsuc n)
+  -- ★ S7b step 2: the bound annotation is a term, checked (it states the types)
+  ⊢ᴬfsuc   : ∀ {Γ n t} → Γ ⊢ᴬ n ∷ Nat → Γ ⊢ᴬ t ∷ Fin n → Γ ⊢ᴬ fsuc n t ∷ Fin (nsuc n)
+  ⊢ᴬfcase  : ∀ {Γ n P t a b} → Γ ⊢ᴬ n ∷ Nat →
+             (Γ ▹ᴬ Fin (nsuc n)) ⊢tyᴬ P → Γ ⊢ᴬ t ∷ Fin (nsuc n) →
              Γ ⊢ᴬ a ∷ subTyᴬ (singleᴬ (fzero n)) P →
              (Γ ▹ᴬ Fin n) ⊢ᴬ b ∷ subTyᴬ (fsucSᴬ n) P →
              Γ ⊢ᴬ fcase n P t a b ∷ subTyᴬ (singleᴬ t) P
-  ⊢ᴬfcase0 : ∀ {Γ P t} → (Γ ▹ᴬ Fin zero) ⊢tyᴬ P → Γ ⊢ᴬ t ∷ Fin zero →
+  ⊢ᴬfcase0 : ∀ {Γ P t} → (Γ ▹ᴬ Fin nzero) ⊢tyᴬ P → Γ ⊢ᴬ t ∷ Fin nzero →
              Γ ⊢ᴬ fcase0 P t ∷ subTyᴬ (singleᴬ t) P
   ⊢ᴬpsplit : ∀ {Γ A B P q b} →
              Γ ⊢tyᴬ A → (Γ ▹ᴬ A) ⊢tyᴬ B → (Γ ▹ᴬ Σ' A B) ⊢tyᴬ P → Γ ⊢ᴬ q ∷ Σ' A B →
@@ -240,6 +241,6 @@ data _⊢tyᴬ_ where
   tyᴬ-DIh  : ∀ {Γ I D M C p} →
              Γ ⊢ᴬ I ∷ U → Γ ⊢ᴬ D ∷ DescFᴬ I → motCtxᴬ Γ I D ⊢tyᴬ M → Γ ⊢ᴬ C ∷ Desc I →
              Γ ⊢ᴬ p ∷ El (dpay I D C) → Γ ⊢tyᴬ DIh I D M C p
-  tyᴬ-Fin  : ∀ {Γ n} → Γ ⊢tyᴬ Fin n
+  tyᴬ-Fin  : ∀ {Γ n} → Γ ⊢ᴬ n ∷ Nat → Γ ⊢tyᴬ Fin n
   tyᴬ-Hom  : ∀ {Γ A t u} → Γ ⊢tyᴬ A → Γ ⊢ᴬ t ∷ A → Γ ⊢ᴬ u ∷ A → Γ ⊢tyᴬ Hom A t u
 
