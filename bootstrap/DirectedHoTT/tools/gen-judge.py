@@ -1991,6 +1991,7 @@ def main():
         outs[K(REDMOD[fam][0])] = "\n".join(gen_red(fam)) + "\n"
     outs[K("RedDecode")] = "\n".join(gen_red_dec()) + "\n"
     outs[K("RedTDecode")] = "\n".join(gen_red_dec(("⟶ᵀ",), "RedTDecode")) + "\n"
+    for _m, _L in GEN_EXTRA.items(): outs[K(_m)] = "\n".join(_L) + "\n"
     outs[K("RedCompDecode")] = "\n".join(gen_comp_decs()) + "\n"
     for _m, _L in gen_judge_decs().items(): outs[K(_m)] = "\n".join(_L) + "\n"
     outs[K("JudgeDecode")] = "\n".join(gen_judge_dispatch()) + "\n"
@@ -2397,6 +2398,7 @@ open import DirectedHoTT.Examples.Knot.RedT
 open import DirectedHoTT.Examples.Knot.OpAgree
 open import DirectedHoTT.Examples.Knot.PwDecode using ( decPw )
 open import DirectedHoTT.Examples.Knot.PredsDecode
+open import DirectedHoTT.Lib.RowsElim
 open import DirectedHoTT.Examples.Knot.RedCompDecode
 open import DirectedHoTT.Examples.Knot.Ref using ( Tδ )
 open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-trans; ⟶*-natrecᶻ )
@@ -2488,8 +2490,8 @@ def gen_red_dec(fams=("⟶",), mod="RedDecode"):
             ent = lambda r: csf[r][0]("(dep Γ)", PP, "(%s u)" % Q)
             ENTRIES = " ∷ ".join(ent(r) for r in range(nc)) + " ∷ []"
             cl = ["%s {Γ} %s {u} dk nrm =" % (dn, pat),
-                  "  rows-dec {I = %s} {D = %s} {i = %s (dep Γ) (%s %s) (%s u)} {m = %d} {Cs = %s}" % (Jn, Dn, F["ix"], Q, subjE, Q, nc, ENTRIES),
-                  "    (%s {s = %d} {k = %d} {j = dep Γ} {p = %s} {c = %s u} (atᵍ %d) (atʰ %d)) dk nrm" % (F["fib"], S, K, PP, Q, S, K)]
+                  "  rows-elim (rows-dec {I = %s} {D = %s} {i = %s (dep Γ) (%s %s) (%s u)} {m = %d} {Cs = %s}" % (Jn, Dn, F["ix"], Q, subjE, Q, nc, ENTRIES),
+                  "    (%s {s = %d} {k = %d} {j = dep Γ} {p = %s} {c = %s u} (atᵍ %d) (atʰ %d)) dk nrm)" % (F["fib"], S, K, PP, Q, S, K)]
             alts_ = []
             for r in range(nc):
                 nth = "nth-z"
@@ -2497,21 +2499,44 @@ def gen_red_dec(fams=("⟶",), mod="RedDecode"):
                 hn = "d%s%s₍%d₎" % (fam, h, r)
                 if recs.get(r) is not None and recs[r]["al"].comp: hn = comp_name(fam, h, r)
                 else: helpers.append(gen_rule_dec(fam, h, r, recs.get(r), hn, fs, args, pat, subjE, PP, ent(r), ximap, qf, fty))
-                alts_.append("(_ , (_ , (_ , (%s , (_ , (dq , nq)))))) → %s%s u dq nq" % (nth, hn, "".join(" " + a for a in args)))
-            cl.append("  ▷ λ { " + "\n      ; ".join(alts_) + " }")
+                ihf = rule_ih(recs.get(r)) if not (recs.get(r) is not None and recs[r]["al"].comp) else None
+                ihA = " (%s %s)" % (dn, args[ihf]) if ihf is not None else ""
+                alts_.append("%s%s%s u" % (hn, "".join(" " + a for a in args), ihA))
+            # ★ one handler per row (`rows-elim`), not a pattern lambda over `Nth`: half the cost (measured)
+            hs_ = "tt"
+            for a_ in reversed(alts_): hs_ = "(%s , %s)" % (a_, hs_)
+            cl.append("    " + hs_)
             clauses += cl
-    L.append("private")
-    for hl in helpers:
-        L += ["  " + x if x else "" for x in hl]
-    L.append("")
+    # ★ split by consumption: the (non-recursive) rule helpers in their own module
+    H = [hdr.replace("module DirectedHoTT.Examples.Knot.%s where" % mod, "module DirectedHoTT.Examples.Knot.%sXi where" % mod)
+            .replace("open import DirectedHoTT.Lib.RowsElim\n", "")]
+    for fam in fams:
+        dn, RT, Q, _, arr = FAMSPEC[fam]
+        F = FAMS[fam]
+        H += ["-- the induction hypothesis a ξ helper receives: the caller's decoder at the field",
+              "IH%s : {Γ : Cx} → %s Γ → Set" % (arr, RT),
+              "IH%s {Γ} t = {u : %s Γ} {k : RTm ε} → ◇ ⊢ k ∷ IMu %s %s (%s (dep Γ) (%s t) (%s u)) → IsNormal k → t %s u" % (
+                  arr, RT, F["J"], F["D"], F["ix"], Q, Q, arr), ""]
+    for hl in helpers: H += hl
+    L.insert(1, "open import DirectedHoTT.Examples.Knot.%sXi\n" % mod)
     L += clauses
+    GEN_EXTRA[mod + "Xi"] = H
     return L
+
+GEN_EXTRA = {}
+
+def rule_ih(rec):
+    """a ξ rule whose premise is a body row of its OWN family: the field it recurses on"""
+    if rec is None or rec["Ln"] or rec["case"] or rec["al"].comp or rec.get("xi") is None: return None
+    return rec["xi"] if any(e[0] == "red" for e in rec["body"]) else None
 
 def gen_rule_dec(fam, h, r, rec, hn, fs, args, pat, subjE, PP, entry, ximap, qf, fty):
     """one rule's decoder: its signature and its ▷ chain"""
     dn, RT, Q, arr = ("decRed", "RTm", "quoteTm", "⟶") if fam == "⟶" else ("decRedT", "RTy", "quoteTy", "⟶ᵀ")
     F = FAMS[fam]; Jn, Dn = F["J"], F["D"]
     binds = "".join(" (%s : %s)" % (a, fty(f)) for f, a in zip(fs, args))
+    ihf = rule_ih(rec)
+    if ihf is not None: binds += " (ih : IH%s %s)" % (arr, args[ihf])
     sig = ["%s : {Γ : Cx}%s (u : %s Γ) {q : RTm ε} →" % (hn, binds, RT),
            "  ◇ ⊢ q ∷ El (dpay %s %s %s) → IsNormal q → %s %s u" % (Jn, Dn, entry, subjE, arr)]
     if rec is None or rec["Ln"] or rec["case"] or rec["al"].comp or rec.get("xi") is None:
@@ -2536,7 +2561,7 @@ def gen_rule_dec(fam, h, r, rec, hn, fs, args, pat, subjE, PP, entry, ximap, qf,
              " ".join(["(wk-cancel-tm e%d %s)" % (k, x) for x in a_] + ["refl"]))
         return "(⊢-cast (cong (λ Z → El (dpay %s %s Z)) %s) (⊢conv %s (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e%d) done))))))" % (
             Jn, Dn, eq, dq, k)
-    lines = ["%s {Γ}%s u dq nq =" % (hn, "".join(" " + a for a in args)),
+    lines = ["%s {Γ}%s%s u dq nq =" % (hn, "".join(" " + a for a in args), " ih" if ihf is not None else ""),
              "  pay-σ (⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R)))) done nq"]
     depth = 0
     cur = "dq"
@@ -2571,9 +2596,9 @@ def gen_rule_dec(fam, h, r, rec, hn, fs, args, pat, subjE, PP, entry, ximap, qf,
     if prem is not None:
         tp, e = prem
         ix = "%s %s" % (F["ix"], " ".join("(%s)" % al.body.expr(y, val) for y in e[1:]))
-        sub_dec = dn
-        ih = "(%s %s {E} (subst (λ z → ◇ ⊢ r%d ∷ IMu %s %s (%s)) eqE dr%d) nr%d)" % (
-            sub_dec, args[i], tp, Jn, Dn, _tokrep(ix, "e0", "z"), tp, tp)
+        # ★ the recursion is the CALLER's (`ih = decRed aᵢ`): the helper is not in decRed's mutual block
+        ih = "(ih {E} (subst (λ z → ◇ ⊢ r%d ∷ IMu %s %s (%s)) eqE dr%d) nr%d)" % (
+            tp, Jn, Dn, _tokrep(ix, "e0", "z"), tp, tp)
     else:
         # the premise is the existential `e1`, a code of the term reduction (`RedC`)
         dd = "(%s)" % ("j" if dz == 0 else ("(nsuc j)" if dz == 1 else "(nsuc (nsuc j))"))
@@ -3385,7 +3410,8 @@ open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_; conₗ; _,ₚ_; nth-
 open import DirectedHoTT.Lib.Tel
 open import DirectedHoTT.Lib.Syn
 open import DirectedHoTT.Lib.Decode
-open import DirectedHoTT.Lib.Size using ( Acc; acc; <-wf; <ᶜ )
+open import DirectedHoTT.Lib.Size using ( Acc; acc; <-wf )
+open import DirectedHoTT.Lib.RowsElim
 open import DirectedHoTT.Examples.Knot.Sig
 open import DirectedHoTT.Examples.Knot.Terms
 open import DirectedHoTT.Examples.Knot.Ctx using ( quoteCtx )
@@ -3448,8 +3474,8 @@ def gen_judge_dispatch():
             ix = "tyIx (dep ⌊ Γ ⌋) (quoteCtx Γ) (quoteTy %s)" % patE if S == 0 else "tmIx (dep ⌊ Γ ⌋) (quoteCtx Γ) (quoteTm %s) (quoteTy A)" % patE
             hdr = "%s (acc rs) Γ %s%s {k} hk dk nk =" % (dn, pat, "" if S == 0 else " A")
             cl = [hdr,
-                  "  rows-dec {I = JT} {D = D⊢} {i = %s} {m = %d} {Cs = %s}" % (ix, nc, " ∷ ".join(ents + ["[]"])),
-                  "    (fibK {s = %d} {k = %d} {j = dep ⌊ Γ ⌋} {p = %s} {c = %s} (atᵍ %d) (atʰ %d)) dk nk" % (S, K, PP, C, S, K)]
+                  "  rows-elim< (rows-dec {I = JT} {D = D⊢} {i = %s} {m = %d} {Cs = %s}" % (ix, nc, " ∷ ".join(ents + ["[]"])),
+                  "    (fibK {s = %d} {k = %d} {j = dep ⌊ Γ ⌋} {p = %s} {c = %s} (atᵍ %d) (atʰ %d)) dk nk)" % (S, K, PP, C, S, K)]
             alts_ = []
             for r in range(nc):
                 nth = "nth-z"
@@ -3460,8 +3486,10 @@ def gen_judge_dispatch():
                     call = hands
                 else:
                     call = "%s ihTy ihTm Γ%s%s" % (jdec_name(fam, h, r), "".join(" " + a for a in args), "" if S == 0 else " A")
-                alts_.append("(_ , (_ , (_ , (%s , (eq , (dq , nq)))))) → %s (<ᶜ eq hk) dq nq" % (nth, call))
-            cl.append("  ▷ λ { " + "\n      ; ".join(alts_) + " }")
+                alts_.append(call)
+            hs_ = "tt"
+            for a_ in reversed(alts_): hs_ = "(%s , %s)" % (a_, hs_)
+            cl.append("    hk " + hs_)
             cl.append("  where")
             cl += IH
             L += cl + [""]

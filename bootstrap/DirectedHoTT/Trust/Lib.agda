@@ -70,6 +70,7 @@ import DirectedHoTT.Lib.Pair
 import DirectedHoTT.Lib.PatDecode
 import DirectedHoTT.Lib.Rec
 import DirectedHoTT.Lib.RedChain
+import DirectedHoTT.Lib.RowsElim
 import DirectedHoTT.Lib.Size
 import DirectedHoTT.Lib.Sorted
 import DirectedHoTT.Lib.Strong

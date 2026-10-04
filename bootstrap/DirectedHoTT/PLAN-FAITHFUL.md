@@ -237,6 +237,18 @@ pilot too). It drives F6.0–F6.3 end to end before any big family.
   passed at `-A64m -c`), JudgeDecodeTm 126 s, RedCompDecode 109 s,
   JudgeDecode 102 s, RedTDecode 63 s. ⚠ RedDecode is the new cost centre:
   split it by head group before it grows (it holds the 67 ξ rules + δ).
+- ✅ (2026-10-04) RedDecode PROFILED (patched Agda) and FIXED. Before: 314 s CPU,
+  251 GB allocated, 5.0 GB peak. Of that, 190 s was `decRed`'s dispatch
+  clauses (5.8 M `renTm` unfoldings), 52 s termination and 31 s positivity:
+  every ξ helper called `decRed`, so all ~70 helpers sat in ONE mutual block.
+  - The ξ helpers now take the induction hypothesis (`ih = decRed aᵢ`,
+    partially applied, `IH⟶`/`IH⟶ᵀ`). They are no longer recursive and
+    moved to `RedDecodeXi`/`RedTDecodeXi` (2 min 9 s, 2.9 GB, once).
+  - The dispatch is `rows-elim` with a HANDLER TUPLE (`Lib/RowsElim`) instead
+    of a `▷ λ { … nth-s (nth-s …) … }` pattern lambda: about half the cost per row.
+  - After: RedDecode 61 s CPU / 1.06 GB, RedTDecode 63 → 28 s. JudgeDecode
+    84 s (was 89 s; `rows-elim<` carries the size bound). Its remaining
+    ~1 s/head is spread evenly over handlers and the `rows-dec` argument.
 
 ### F6 — FINDINGS LEDGER (what the invariant caught)
 
