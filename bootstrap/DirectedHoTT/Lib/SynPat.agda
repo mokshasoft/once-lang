@@ -162,6 +162,12 @@ module Pat {sg : Sig n} (ok : SigOK n sg)
     CASE-⟶ᶜ : {j a c c' : RTm Δ} → c ⟶* c' → CASE j a c ⟶* CASE j a c'
     CASE-⟶ᶜ r = ⟶*-appʳ r
 
+    -- ★ at ANY head: the row the table holds there (the pattern's, or
+    --   `noRow`) — what a decoder (PLAN-FAITHFUL F6) reads a CASE with
+    case-any : {c' k : ℕ} {shs : Shapes c'} {sh : Shape} {j q c : RTm Δ} → NthG sg s₀ shs → NthSh shs k sh →
+               CASE j (conₗ k q) c ⟶* R (rowAt s₀ h r s₀ k) j q c
+    case-any {j = j} {q} {c} ng nh = fib-β {D = SD sg} {j = j} {p = q} {c₀ = c} ng nh
+
     -- ★ at the pattern's head, the case IS the row
     case-β : {c' : ℕ} {shs : Shapes c'} {sh : Shape} {j q c : RTm Δ} → NthG sg s₀ shs → NthSh shs h sh →
              CASE j (conₗ h q) c ⟶* R r j q c

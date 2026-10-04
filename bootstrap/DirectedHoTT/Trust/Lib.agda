@@ -67,6 +67,7 @@ import DirectedHoTT.Lib.NatVal
 import DirectedHoTT.Lib.Natrec
 import DirectedHoTT.Lib.Ord
 import DirectedHoTT.Lib.Pair
+import DirectedHoTT.Lib.PatDecode
 import DirectedHoTT.Lib.Rec
 import DirectedHoTT.Lib.RedChain
 import DirectedHoTT.Lib.Sorted
