@@ -20,8 +20,11 @@
 
 module Once.Memory.RuntimeContract where
 
-open import Data.Nat using (ℕ; zero; _≤_; z≤n)
-open import Data.Product using (_×_)
+open import Data.Nat using (ℕ; zero; _≤_; _<_; z≤n)
+open import Data.Nat.Properties using (<-irrefl; ≤-<-trans; <-trans)
+open import Data.Empty using (⊥)
+open import Relation.Binary.PropositionalEquality using (refl)
+open import Data.Product using (_×_; _,_)
 open import Relation.Nullary using (¬_)
 
 -- Import core types from existing MemoryLayoutSemantics
@@ -38,21 +41,25 @@ record RuntimeContract : Set where
     --------------------------------------------------------------------
     -- Memory Region Bounds (provided by OS/linker)
     --
-    -- Stack and code regions have lower = 0 by convention.
-    -- This makes many proofs definitional (refl).
+    -- PLAN 0.100 P0: the regions are ORDERED, stack below heap below code,
+    -- and their disjointness is a THEOREM of that order. The contract used to
+    -- POSTULATE disjointness while placing the stack AND the code at address
+    -- 0, and it bounded EVERY program length by `code-upper` — so every
+    -- `RuntimeContract` was empty and the per-arch postulates were postulates
+    -- of `⊥` (`Probe.RuntimeContractModel` records the refutation and builds a model). An order is satisfiable (the
+    -- probe also builds one), and nothing of the old content was used.
     --------------------------------------------------------------------
 
     stack-upper : ℕ    -- Stack region: [0, stack-upper]
     heap-lower  : ℕ    -- Heap region:  [heap-lower, heap-upper]
     heap-upper  : ℕ
-    code-upper  : ℕ    -- Code region:  [0, code-upper]
+    code-lower  : ℕ    -- Code region:  [code-lower, code-upper]
+    code-upper  : ℕ
 
-    --------------------------------------------------------------------
-    -- Region Validity (linker guarantee)
-    --------------------------------------------------------------------
-
-    -- Heap bounds are well-formed
+    stack<heap : stack-upper < heap-lower
     heap-valid : heap-lower ≤ heap-upper
+    heap<code  : heap-upper < code-lower
+    code-valid : code-lower ≤ code-upper
 
   --------------------------------------------------------------------
   -- Derived: Construct RegionBounds from fields
@@ -65,26 +72,28 @@ record RuntimeContract : Set where
   heap-bounds = record { lower = heap-lower ; upper = heap-upper ; bounds-valid = heap-valid }
 
   code-bounds : RegionBounds
-  code-bounds = record { lower = 0 ; upper = code-upper ; bounds-valid = z≤n }
+  code-bounds = record { lower = code-lower ; upper = code-upper ; bounds-valid = code-valid }
 
-  field
-    --------------------------------------------------------------------
-    -- Region Disjointness (linker guarantee)
-    --
-    -- No address belongs to multiple regions.
-    --------------------------------------------------------------------
+  --------------------------------------------------------------------
+  -- Region Disjointness — no address belongs to two regions, because each
+  -- region ends below the next one's start.
+  --------------------------------------------------------------------
 
-    intervals-disjoint : ∀ (a : Addr) →
-      ¬ (InRegion stack-bounds a × InRegion heap-bounds a) ×
-      ¬ (InRegion stack-bounds a × InRegion code-bounds a) ×
-      ¬ (InRegion heap-bounds a × InRegion code-bounds a)
+  private
+    -- `a ≤ x < y ≤ a` is impossible
+    gap : ∀ {a x y} → a ≤ x → x < y → y ≤ a → ⊥
+    gap a≤x x<y y≤a = <-irrefl refl (≤-<-trans y≤a (≤-<-trans a≤x x<y))
 
-    --------------------------------------------------------------------
-    -- Code Region Sufficiency (compiler + linker)
-    --
-    -- Any compiled program fits in the code region.
-    --------------------------------------------------------------------
+  stack<code : stack-upper < code-lower
+  stack<code = <-trans stack<heap (≤-<-trans heap-valid heap<code)
 
-    prog-fits : ∀ (prog-len : ℕ) → prog-len ≤ code-upper
+  intervals-disjoint : ∀ (a : Addr) →
+    ¬ (InRegion stack-bounds a × InRegion heap-bounds a) ×
+    ¬ (InRegion stack-bounds a × InRegion code-bounds a) ×
+    ¬ (InRegion heap-bounds a × InRegion code-bounds a)
+  intervals-disjoint a =
+      (λ { ((_ , a≤s) , (h≤a , _)) → gap a≤s stack<heap h≤a })
+    , (λ { ((_ , a≤s) , (c≤a , _)) → gap a≤s stack<code c≤a })
+    , (λ { ((_ , a≤h) , (c≤a , _)) → gap a≤h heap<code c≤a })
 
 open RuntimeContract public

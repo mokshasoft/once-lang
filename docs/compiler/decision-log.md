@@ -16572,3 +16572,22 @@ varying — a parameterized `Ana` in the IR (`IR (E × A) …`, the mirror of D1
 equal, to the meaning's (`νᵈ` is coinductive), and the project has no bisimulation-to-equality
 axiom. The parameterized `Ana` touches the ν codegen (suspension cells, re-suspension) and its
 correspondence proofs, so it is its own step. Until then def ⇒ let still fails for `ana`.
+
+## D266 — THE RUNTIME CONTRACT WAS A POSTULATE OF ⊥; ITS REGIONS ARE NOW ORDERED (2026-10-05)
+
+**Relates**: plan 0.100 P0, `Memory/RuntimeContract.agda`, the three `<arch>-runtime` postulates,
+the residual ledger (an inconsistent axiom is the worst class).
+
+**The defect.** `RuntimeContract` placed the stack at `[0, stack-upper]` and the code at
+`[0, code-upper]` — both contain address 0 — while POSTULATING `intervals-disjoint`, and its
+`prog-fits : ∀ prog-len → prog-len ≤ code-upper` is false at `suc code-upper`. So the record type was
+EMPTY, and each per-arch `postulate <arch>-runtime : RuntimeContract` was a postulate of `⊥`, in the
+apex's import cone (the `Layout` modules instantiate `Regions`/`StackSlots`/`FrameOps` with it, and
+the apex uses `InStack`, `stack-addr`, `stackAddr-write-preserves-heap`). The probe derived `⊥`
+both ways before the fix.
+
+**The fix.** The regions are ORDERED — stack `[0, su]` below heap `[hl, hu]` below code `[cl, cu]`
+(`stack<heap`, `heap<code`, both bounds valid) — and `intervals-disjoint` is a THEOREM of the
+order. `prog-fits`, `pc-in-code` and `code-lower-zero` are deleted: nothing consumed them.
+`Probe.RuntimeContractModel` builds an instance, so the per-arch postulates are of an inhabited
+type. Apex green; no consumer changed.

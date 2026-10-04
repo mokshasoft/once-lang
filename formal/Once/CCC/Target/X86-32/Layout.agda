@@ -100,24 +100,6 @@ open import Once.Memory.Memory using (Memory; Word; readMem; writeMem) public
 x86-32-stack-lower-zero : lower stack-bounds ≡ 0
 x86-32-stack-lower-zero = refl
 
--- | x86-32 code region has lower bound 0
--- Definitional from RuntimeContract's code-bounds
-x86-32-code-lower-zero : lower code-bounds ≡ 0
-x86-32-code-lower-zero = refl
-
--- | Program fits in code region (from RuntimeContract)
-prog-fits-in-code : ∀ (prog-len : ℕ) → prog-len ≤ upper code-bounds
-prog-fits-in-code = RC.prog-fits RP.x86-32-runtime
-
--- | Valid program counter is in code region
-pc-in-code : ∀ (pc : Addr) (prog-len : ℕ) →
-  pc < prog-len →
-  InCode pc
-pc-in-code pc prog-len pc<prog-len = (z≤n , pc≤upper)
-  where
-    open import Data.Nat.Properties using (<⇒≤)
-    pc≤upper : pc ≤ upper code-bounds
-    pc≤upper = ≤-trans (<⇒≤ pc<prog-len) (prog-fits-in-code prog-len)
 
 ------------------------------------------------------------------------
 -- Stack Subtraction (uses lower = 0)
