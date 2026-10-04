@@ -56,6 +56,10 @@ open import Once.CCC.Machine.SMCore using (LabelId; AbstractTrace; AbstractInstr
          instr-reg-op; instr-ctrl; lea-indexed;
          module AbstractExec)
 open import Once.CCC.Codegen.IRToTrace o
+open import Data.Maybe using (Maybe; just; nothing)
+open import Once.SigOp.Info using (SigOpInfo; sem)
+open import Once.Arith.CmpOp using (CmpOp)
+open import Once.Arith.SigOp.Compare using (cmp-of)
   using (ir-to-trace; ir-to-trace-lab; ir-to-unit; ir-to-trace'; cata-strategy; cata-dispatch; resuspend-layer;
          CataStrategy; strat-const; strat-nat; strat-linear; strat-branching;
          cata-trace-nat; cata-trace-linear; cata-trace-branching;
@@ -337,6 +341,13 @@ module CataIRSlotStable {FS : FrameSemantics} where
   -- refl`; the four sub-trace-carrying constructors (∘ / pair / case /
   -- Cata) recurse + `++⁺` / `All→AllI` / `cata-dispatch-slot-stable`.
   ----------------------------------------------------------------------
+  -- Plan 0.108: a SigOp is one call, or a comparison's straight-line
+  -- lowering; the decider settles either once the choice is known.
+  sigop-stable : ∀ {A B} (si : SigOpInfo A B) (m : Maybe CmpOp) (n l : ℕ)
+               → AllSlotStable (sigop-code si n m)
+  sigop-stable si nothing  n l = all-stable?-sound _ refl
+  sigop-stable si (just c) n l = all-stable?-sound _ refl
+
   ir-stable : ∀ {A B} (ir : IR A B) (n l : ℕ) → AllSlotStable (trc (ir-to-trace' n l ir))
   ir-stable id              n l = all-stable?-sound _ refl
   ir-stable fst             n l = all-stable?-sound _ refl
@@ -348,7 +359,7 @@ module CataIRSlotStable {FS : FrameSemantics} where
   -- straight-line code and the decider settles it — the recursion into the
   -- body moved to `ir-blocks-stable`, where the body actually lives.
   ir-stable (curry b)  n l = all-stable?-sound _ refl
-  ir-stable (SigOp _)       n l = all-stable?-sound _ refl
+  ir-stable (SigOp si)      n l = sigop-stable si (cmp-of (sem si)) n l
   ir-stable (Call _)       n l = all-stable?-sound _ refl
   ir-stable (const fits-int _)   n l = all-stable?-sound _ refl
   ir-stable (const fits-float _) n l = all-stable?-sound _ refl

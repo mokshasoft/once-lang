@@ -56,13 +56,13 @@ open import Once.Arith.Machine.AbsState
          InputShape; ⟦_⟧S; InputPath; project; projectF;
          Path; here-int; here-flt; go-fst; go-snd; readLeaf; ⌊_⌋ᴾ;
          project-path; projectF-path)
-open import Once.Arith.Machine.AbsInstr using (AbstractInstr; load-input; load-finput; load-imm; load-fimm; add-rrr; sub-rrr; mul-rrr; div-rrr; rem-rrr; div-safe-rrr; rem-safe-rrr; shl-rri; sdiv-pow2-rri; neg-rr; spill; reload; fadd-rrr; fsub-rrr; fmul-rrr; fdiv-rrr; fneg-rr; i2f-rr; bin-op; un-op; maybe-zero; maybe-zero-f; move-to-out)
+open import Once.Arith.Machine.AbsInstr using (AbstractInstr; load-input; load-finput; load-imm; load-fimm; add-rrr; sub-rrr; mul-rrr; div-rrr; rem-rrr; cmp-rrr; div-safe-rrr; rem-safe-rrr; shl-rri; sdiv-pow2-rri; neg-rr; spill; reload; fadd-rrr; fsub-rrr; fmul-rrr; fdiv-rrr; fneg-rr; i2f-rr; bin-op; un-op; maybe-zero; maybe-zero-f; move-to-out)
 import Once.Arith.Backend.Correct as Correct
 -- PLAN 0.75 F4: pinned at `NInt`. The simulation core models two INTEGER
 -- scratch registers (`XR0`/`XR1`); a float block needs its own register file
 -- and has no correspondence here yet. Stated in the type so the gate sees it.
 open import Once.Arith.Type using (NumType; NInt; NFloat)
-open import Once.Arith.Machine.IR using (MArithIR; alit; aflit; ainput; aadd; asub; amul; adiv; amod; aneg; ai2f)
+open import Once.Arith.Machine.IR using (MArithIR; alit; aflit; ainput; aadd; asub; amul; adiv; amod; aneg; ai2f; acmp)
 open import Once.Arith.Backend.XInstr.CodeGen using (_≟x_; emit; emit-program)
 open import Once.Arith.Machine.Compile using (compile-abs; compile-go; mul-op; div-op; rem-op; mul-choose; div-choose; div-instr; rem-instr; pow2?; safe-divisor?)
 open import Once.Arith.SigOp.Block using (block-semM)
@@ -79,6 +79,7 @@ import Once.Word as OnceWord
 
 open import Once.Target.Arch using (TargetNum; int-bits; float-format)
 import Once.Float.Arith as FA
+open import Once.Arith.CmpOp using (cmp-bit)
 open import Once.Float.Decimal using (round)
 
 ------------------------------------------------------------------------
@@ -108,6 +109,7 @@ module At (tn : TargetNum) where
   tgt (XI.Xneg-r d)             = just d
   tgt (XI.Xshl-rri d _ _)       = just d
   tgt (XI.Xdiv-rrr d _ _)       = just d
+  tgt (XI.Xcmp-rrr _ d _ _)     = just d
   tgt (XI.Xfdiv-rrr d _ _)      = just d
   tgt (XI.Xrem-rrr d _ _)       = just d
   tgt (XI.Xdiv-safe-rrr d _ _)  = just d
@@ -265,6 +267,7 @@ module At (tn : TargetNum) where
   compile-loads {n = NInt}   d (adiv a b) =
     lw-bin d a b _ (compile-loads d a) (compile-loads (ℕ.suc d) b) (_ , lw-++ (emit (div-op b)) [] (lw-div-op b) _)
   compile-loads {n = NFloat} d (adiv a b) = lw-bin d a b _ (compile-loads d a) (compile-loads (ℕ.suc d) b) _
+  compile-loads d (acmp o a b) = lw-bin d a b _ (compile-loads d a) (compile-loads (ℕ.suc d) b) _
   compile-loads d (amod a b) =
     lw-bin d a b _ (compile-loads d a) (compile-loads (ℕ.suc d) b) (_ , lw-++ (emit (rem-op b)) [] (lw-rem-op b) _)
   compile-loads {n = NInt}   d (aneg a) = lw-un d a _ (compile-loads d a) _
@@ -297,6 +300,7 @@ module At (tn : TargetNum) where
   scratch-unchanged (XI.Xneg-r _)             _ s = refl
   scratch-unchanged (XI.Xshl-rri _ _ _)       _ s = refl
   scratch-unchanged (XI.Xdiv-rrr _ _ _)       _ s = refl
+  scratch-unchanged (XI.Xcmp-rrr _ _ _ _)    _ s = refl
   scratch-unchanged (XI.Xfdiv-rrr _ _ _)      _ s = refl
   scratch-unchanged (XI.Xrem-rrr _ _ _)       _ s = refl
   scratch-unchanged (XI.Xdiv-safe-rrr _ _ _)  _ s = refl
@@ -327,6 +331,7 @@ module At (tn : TargetNum) where
   input-unchanged (XI.Xneg-r _)             s = refl
   input-unchanged (XI.Xshl-rri _ _ _)       s = refl
   input-unchanged (XI.Xdiv-rrr _ _ _)       s = refl
+  input-unchanged (XI.Xcmp-rrr _ _ _ _)    s = refl
   input-unchanged (XI.Xfdiv-rrr _ _ _)      s = refl
   input-unchanged (XI.Xrem-rrr _ _ _)       s = refl
   input-unchanged (XI.Xdiv-safe-rrr _ _ _)  s = refl
@@ -397,6 +402,8 @@ module At (tn : TargetNum) where
     (rt-shl     : ∀ d src imm s → rr (e1 (XI.Xshl-rri d src imm) s) (arith-reg d) ≡ shlᵂ (rr s (arith-reg src)) imm)
     (rt-div     : ∀ d a b s  → rr (e1 (XI.Xdiv-rrr d a b) s)      (arith-reg d) ≡ rr s (arith-reg a) /ˢ rr s (arith-reg b))
     (rt-rem     : ∀ d a b s  → rr (e1 (XI.Xrem-rrr d a b) s)      (arith-reg d) ≡ rr s (arith-reg a) %ˢ rr s (arith-reg b))
+    -- plan 0.108: the comparison writes its 0/1 word.
+    (rt-cmp     : ∀ o d a b s → rr (e1 (XI.Xcmp-rrr o d a b) s)  (arith-reg d) ≡ cmp-bit (int-bits tn) o (rr s (arith-reg a)) (rr s (arith-reg b)))
     (rt-div-safe : ∀ d a b s → rr (e1 (XI.Xdiv-safe-rrr d a b) s) (arith-reg d) ≡ rr s (arith-reg a) /ˢ rr s (arith-reg b))
     (rt-rem-safe : ∀ d a b s → rr (e1 (XI.Xrem-safe-rrr d a b) s) (arith-reg d) ≡ rr s (arith-reg a) %ˢ rr s (arith-reg b))
     (rt-sdiv    : ∀ d src imm s → rr (e1 (XI.Xsdiv-pow2-rri d src imm) s) (arith-reg d) ≡ sdiv2ᵏ (rr s (arith-reg src)) imm)
@@ -694,6 +701,10 @@ module At (tn : TargetNum) where
     ... | yes refl = trans (bin-value _/ˢ_ a b s-abs s-conc w r (trans (sym (store-write-same (ArithAbsState.regs s-abs) (xreg-idx d) _)) eq))
                            (sym (rt-div d a b s-conc))
     ... | no ¬eq = step-other (XI.Xdiv-rrr d a b) d x w s-abs s-conc refl r ¬eq eq
+    R-step-full (XI.Xcmp-rrr o d a b) lok s-abs s-conc (r , _ , _) x w eq with x ≟x d
+    ... | yes refl = trans (bin-value (cmp-bit (int-bits tn) o) a b s-abs s-conc w r (trans (sym (store-write-same (ArithAbsState.regs s-abs) (xreg-idx d) _)) eq))
+                           (sym (rt-cmp o d a b s-conc))
+    ... | no ¬eq = step-other (XI.Xcmp-rrr o d a b) d x w s-abs s-conc refl r ¬eq eq
     R-step-full (XI.Xfdiv-rrr d a b) lok s-abs s-conc (r , _ , _) x w eq with x ≟x d
     ... | yes refl = trans (bin-value (FA.fdiv (float-format tn)) a b s-abs s-conc w r (trans (sym (store-write-same (ArithAbsState.regs s-abs) (xreg-idx d) _)) eq))
                            (sym (rt-fdiv d a b s-conc))
@@ -767,6 +778,7 @@ module At (tn : TargetNum) where
     scratch-frame (XI.Xneg-r d) s-abs s-conc r rsc = nonspill-sf (XI.Xneg-r d) tt s-abs s-conc rsc
     scratch-frame (XI.Xshl-rri d src imm) s-abs s-conc r rsc = nonspill-sf (XI.Xshl-rri d src imm) tt s-abs s-conc rsc
     scratch-frame (XI.Xdiv-rrr d a b) s-abs s-conc r rsc = nonspill-sf (XI.Xdiv-rrr d a b) tt s-abs s-conc rsc
+    scratch-frame (XI.Xcmp-rrr o d a b) s-abs s-conc r rsc = nonspill-sf (XI.Xcmp-rrr o d a b) tt s-abs s-conc rsc
     scratch-frame (XI.Xfdiv-rrr d a b) s-abs s-conc r rsc = nonspill-sf (XI.Xfdiv-rrr d a b) tt s-abs s-conc rsc
     scratch-frame (XI.Xrem-rrr d a b) s-abs s-conc r rsc = nonspill-sf (XI.Xrem-rrr d a b) tt s-abs s-conc rsc
     scratch-frame (XI.Xdiv-safe-rrr d a b) s-abs s-conc r rsc = nonspill-sf (XI.Xdiv-safe-rrr d a b) tt s-abs s-conc rsc

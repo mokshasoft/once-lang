@@ -34,6 +34,7 @@ open import Data.Empty using (⊥-elim)
 
 open import Once.Arith.Backend.XInstr.Syntax as XI using (XInstr; XReg; XScratch)
 import Once.Float.Arith as FA
+open import Once.Arith.CmpOp using (cmp-bit)
 open import Once.Float.Decimal using (round)
 open import Once.Float.Dyadic using (binary32; binary64)
 open XI using (XR0; XR1)
@@ -97,6 +98,7 @@ val-x86-32 (XI.Xsub-rr d src)         s _ = rd s d W.⊖ rd s src
 val-x86-32 (XI.Ximul-rr d src)        s _ = rd s d W.⊗ rd s src
 val-x86-32 (XI.Xdiv-rrr d a b)        s _ = rd s a W./ˢ rd s b
 val-x86-32 (XI.Xrem-rrr d a b)        s _ = rd s a W.%ˢ rd s b
+val-x86-32 (XI.Xcmp-rrr o d a b)      s _ = cmp-bit 32 o (rd s a) (rd s b)
 val-x86-32 (XI.Xdiv-safe-rrr d a b)   s _ = rd s a W./ˢ rd s b
 val-x86-32 (XI.Xrem-safe-rrr d a b)   s _ = rd s a W.%ˢ rd s b
 val-x86-32 (XI.Xshl-rri d src imm)    s _ = W.shlᵂ (rd s src) imm
@@ -192,6 +194,9 @@ rf-other (XI.Xdiv-rrr d a b) s x h =
 rf-other (XI.Xrem-rrr d a b) s x h =
   trans (readReg-wr-eax-arith (writeReg (regs s) (arith-reg d) (V (XI.Xrem-rrr d a b) s)) x (V (XI.Xrem-rrr d a b) s))
         (readReg-wr-arith-other (regs s) d x (V (XI.Xrem-rrr d a b) s) (¬d≡x d x h))
+rf-other (XI.Xcmp-rrr o d a b) s x h =
+  trans (readReg-wr-eax-arith (writeReg (regs s) (arith-reg d) (V (XI.Xcmp-rrr o d a b) s)) x (V (XI.Xcmp-rrr o d a b) s))
+        (readReg-wr-arith-other (regs s) d x (V (XI.Xcmp-rrr o d a b) s) (¬d≡x d x h))
 rf-other (XI.Xdiv-safe-rrr d a b) s x h =
   trans (readReg-wr-eax-arith (writeReg (regs s) (arith-reg d) (V (XI.Xdiv-safe-rrr d a b) s)) x (V (XI.Xdiv-safe-rrr d a b) s))
         (readReg-wr-arith-other (regs s) d x (V (XI.Xdiv-safe-rrr d a b) s) (¬d≡x d x h))
@@ -265,6 +270,9 @@ safe-inv R wa we (XI.Xdiv-rrr d a b) s =
 safe-inv R wa we (XI.Xrem-rrr d a b) s =
   trans (we (writeReg (regs s) (arith-reg d) (V (XI.Xrem-rrr d a b) s)) (V (XI.Xrem-rrr d a b) s))
         (wa (regs s) d (V (XI.Xrem-rrr d a b) s))
+safe-inv R wa we (XI.Xcmp-rrr o d a b) s =
+  trans (we (writeReg (regs s) (arith-reg d) (V (XI.Xcmp-rrr o d a b) s)) (V (XI.Xcmp-rrr o d a b) s))
+        (wa (regs s) d (V (XI.Xcmp-rrr o d a b) s))
 safe-inv R wa we (XI.Xdiv-safe-rrr d a b) s =
   trans (we (writeReg (regs s) (arith-reg d) (V (XI.Xdiv-safe-rrr d a b) s)) (V (XI.Xdiv-safe-rrr d a b) s))
         (wa (regs s) d (V (XI.Xdiv-safe-rrr d a b) s))
@@ -292,6 +300,7 @@ mem-keep (XI.Xneg-r _)             s addr _ = refl
 mem-keep (XI.Xshl-rri _ _ _)       s addr _ = refl
 mem-keep (XI.Xdiv-rrr _ _ _)       s addr _ = refl
 mem-keep (XI.Xrem-rrr _ _ _)       s addr _ = refl
+mem-keep (XI.Xcmp-rrr _ _ _ _)     s addr _ = refl
 mem-keep (XI.Xdiv-safe-rrr _ _ _)  s addr _ = refl
 mem-keep (XI.Xrem-safe-rrr _ _ _)  s addr _ = refl
 mem-keep (XI.Xsdiv-pow2-rri _ _ _) s addr _ = refl
@@ -367,6 +376,7 @@ mem-agree-heap (XI.Xneg-r d) s inStk a inH = mem-keep (XI.Xneg-r d) s a tt
 mem-agree-heap (XI.Xshl-rri d src imm) s inStk a inH = mem-keep (XI.Xshl-rri d src imm) s a tt
 mem-agree-heap (XI.Xdiv-rrr d x y) s inStk a inH = mem-keep (XI.Xdiv-rrr d x y) s a tt
 mem-agree-heap (XI.Xrem-rrr d x y) s inStk a inH = mem-keep (XI.Xrem-rrr d x y) s a tt
+mem-agree-heap (XI.Xcmp-rrr o d x y) s inStk a inH = mem-keep (XI.Xcmp-rrr o d x y) s a tt
 mem-agree-heap (XI.Xdiv-safe-rrr d x y) s inStk a inH = mem-keep (XI.Xdiv-safe-rrr d x y) s a tt
 mem-agree-heap (XI.Xrem-safe-rrr d x y) s inStk a inH = mem-keep (XI.Xrem-safe-rrr d x y) s a tt
 mem-agree-heap (XI.Xsdiv-pow2-rri d src imm) s inStk a inH = mem-keep (XI.Xsdiv-pow2-rri d src imm) s a tt
@@ -401,6 +411,7 @@ pl-inv (XI.Xneg-r d) s wf p = pl-inv-ns (XI.Xneg-r d) s p refl
 pl-inv (XI.Xshl-rri d src imm) s wf p = pl-inv-ns (XI.Xshl-rri d src imm) s p refl
 pl-inv (XI.Xdiv-rrr d a b) s wf p = pl-inv-ns (XI.Xdiv-rrr d a b) s p refl
 pl-inv (XI.Xrem-rrr d a b) s wf p = pl-inv-ns (XI.Xrem-rrr d a b) s p refl
+pl-inv (XI.Xcmp-rrr o d a b) s wf p = pl-inv-ns (XI.Xcmp-rrr o d a b) s p refl
 pl-inv (XI.Xdiv-safe-rrr d a b) s wf p = pl-inv-ns (XI.Xdiv-safe-rrr d a b) s p refl
 pl-inv (XI.Xrem-safe-rrr d a b) s wf p = pl-inv-ns (XI.Xrem-safe-rrr d a b) s p refl
 pl-inv (XI.Xsdiv-pow2-rri d src imm) s wf p = pl-inv-ns (XI.Xsdiv-pow2-rri d src imm) s p refl
@@ -446,9 +457,10 @@ open Core
   -- rt-neg rt-shl
   (λ d s      → readReg-wr-arith-same (regs s) d _)
   (λ d src imm s → readReg-wr-arith-same (regs s) d _)
-  -- rt-div rt-rem rt-div-safe rt-rem-safe (peel eax — double-write)
+  -- rt-div rt-rem rt-cmp rt-div-safe rt-rem-safe (peel eax — double-write)
   (λ d a b s  → trans (readReg-wr-eax-arith (writeReg (regs s) (arith-reg d) _) d _) (readReg-wr-arith-same (regs s) d _))
   (λ d a b s  → trans (readReg-wr-eax-arith (writeReg (regs s) (arith-reg d) _) d _) (readReg-wr-arith-same (regs s) d _))
+  (λ o d a b s → trans (readReg-wr-eax-arith (writeReg (regs s) (arith-reg d) _) d _) (readReg-wr-arith-same (regs s) d _))
   (λ d a b s  → trans (readReg-wr-eax-arith (writeReg (regs s) (arith-reg d) _) d _) (readReg-wr-arith-same (regs s) d _))
   (λ d a b s  → trans (readReg-wr-eax-arith (writeReg (regs s) (arith-reg d) _) d _) (readReg-wr-arith-same (regs s) d _))
   -- rt-sdiv (peel eax)

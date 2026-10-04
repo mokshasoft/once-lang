@@ -55,6 +55,7 @@ open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl public
 
 open import Once.CCC.Codegen.IRObsCorrect.Simple  o tbl
 open import Once.CCC.Codegen.IRObsCorrect.SigOp   o tbl
+open import Once.CCC.Codegen.IRObsCorrect.Compare o tbl
 open import Once.CCC.Codegen.IRObsCorrect.Sum     o tbl
 open import Once.CCC.Codegen.IRObsCorrect.TwoCell o tbl
 open import Once.CCC.Codegen.IRObsCorrect.Apply   o tbl
@@ -74,6 +75,7 @@ module IRObsCorrectFlatness {FS : FrameSemantics} where
   open Mach     {FS} public
   open Simp     {FS} public
   open SigOpC   {FS} public
+  open CompareC {FS} public
   open SumC     {FS} public
   open TwoCellC {FS} public
   open ApplyC   {FS} public

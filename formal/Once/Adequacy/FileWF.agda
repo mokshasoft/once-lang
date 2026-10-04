@@ -16,11 +16,10 @@
 -- what the file DOES is proved (`file-flat-<arch>`); this says only that the
 -- toolchain will accept it.
 --
--- KNOWN FALSE for one shape, exactly as `program-symbols-resolvable` was: a
--- comparison is not lifted into an arith block, so its call does not link.
--- Plan 0.108 (comparisons, `true = inr`) is what makes it true; discharging it
--- (the label windows of `LabelScope`, `LabelsUnique`, the block table) is the
--- rest of phase d.
+-- Plan 0.108 (D264) removed the one shape it was false for: a comparison's call
+-- names its arith block, and the rewrite registers that block, so the file
+-- defines it. Discharging it (the label windows of `LabelScope`,
+-- `LabelsUnique`, the block table) is the rest of phase d.
 ------------------------------------------------------------------------
 
 module Once.Adequacy.FileWF where

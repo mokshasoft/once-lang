@@ -30,6 +30,7 @@ open import Data.Maybe using (Maybe; just; nothing)
 
 open import Once.Arith.Machine.AbsState
 open import Once.Word using (module Width)
+open import Once.Arith.CmpOp using (CmpOp; cmp-bit)
 open import Once.Arith.Machine.Shape using (projectF)
 open import Once.Float.Dyadic using (FloatFormat)
 open import Once.Float.Decimal using (Decimal; round)
@@ -60,6 +61,9 @@ data AbstractInstr : Set where
 
   -- | `rem-rrr dst a b` : reg dst := reg a %ˢ reg b (D055 total signed rem).
   rem-rrr     : ℕ → ℕ → ℕ → AbstractInstr
+
+  -- | plan 0.108: `cmp-rrr op dst a b` : reg dst := (reg a ⋚ reg b) as 0/1.
+  cmp-rrr     : CmpOp → ℕ → ℕ → ℕ → AbstractInstr
 
   -- | `div-safe-rrr dst a b` / `rem-safe-rrr dst a b` : SEMANTICALLY IDENTICAL
   -- to `div-rrr`/`rem-rrr` (both denote `_/ˢ_`/`_%ˢ_`). The `-safe` marker is
@@ -202,6 +206,10 @@ module Exec (bits : ℕ) (F : FloatFormat) where
   step (rem-rrr dst a b) s = record s
     { regs = ArithAbsState.regs s [ dst ↦
         bin-op _%ˢ_ (ArithAbsState.regs s [ a ]) (ArithAbsState.regs s [ b ]) ] }
+  step (cmp-rrr o dst a b) s = record s
+    { regs = ArithAbsState.regs s [ dst ↦
+        bin-op (cmp-bit bits o)
+               (ArithAbsState.regs s [ a ]) (ArithAbsState.regs s [ b ]) ] }
   -- `-safe` variants: step is IDENTICAL to the guarded div-rrr/rem-rrr.
   step (div-safe-rrr dst a b) s = record s
     { regs = ArithAbsState.regs s [ dst ↦

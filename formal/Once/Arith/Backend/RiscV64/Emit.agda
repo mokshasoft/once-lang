@@ -35,6 +35,7 @@ open import Data.Product using (_×_; _,_)
 open import Data.String using (String; _++_)
 
 open import Once.Arith.Backend.XInstr.Syntax
+open import Once.Arith.CmpOp using (CmpOp; c-lt; c-le; c-gt; c-ge; c-eq; c-ne)
 open import Once.Arith.Backend.XInstr.CodeGen using (emit-program)
 open import Once.Arith.Machine.AbsState using (InputPath; Side; Fst; Snd)
 open import Once.Arith.Machine.Compile using (compile-abs; required-scratch; normalize)
@@ -159,6 +160,23 @@ instr-text (Xsub-rr dst src)  = "    sub " ++ reg-text dst ++ ", " ++ reg-text d
 instr-text (Ximul-rr dst src) = "    mul " ++ reg-text dst ++ ", " ++ reg-text dst ++ ", " ++ reg-text src ++ "\n"
 -- RV64M `div`/`rem` are signed and TOTAL by spec (D055): div-by-zero → -1
 -- (quotient) / dividend (remainder); INT_MIN/-1 → INT_MIN / 0. Clean 1-1.
+-- plan 0.108: a SIGNED comparison into a 0/1 word. `slt` reads both operands
+-- before it writes, so `dst` may alias either; `≤`/`≥` are the negated `slt`,
+-- `=`/`≠` the zero test of the difference.
+instr-text (Xcmp-rrr c-lt dst a b) = "    slt " ++ reg-text dst ++ ", " ++ reg-text a ++ ", " ++ reg-text b ++ "\n"
+instr-text (Xcmp-rrr c-gt dst a b) = "    slt " ++ reg-text dst ++ ", " ++ reg-text b ++ ", " ++ reg-text a ++ "\n"
+instr-text (Xcmp-rrr c-le dst a b) =
+  "    slt " ++ reg-text dst ++ ", " ++ reg-text b ++ ", " ++ reg-text a ++ "\n" ++
+  "    xori " ++ reg-text dst ++ ", " ++ reg-text dst ++ ", 1\n"
+instr-text (Xcmp-rrr c-ge dst a b) =
+  "    slt " ++ reg-text dst ++ ", " ++ reg-text a ++ ", " ++ reg-text b ++ "\n" ++
+  "    xori " ++ reg-text dst ++ ", " ++ reg-text dst ++ ", 1\n"
+instr-text (Xcmp-rrr c-eq dst a b) =
+  "    sub " ++ reg-text dst ++ ", " ++ reg-text a ++ ", " ++ reg-text b ++ "\n" ++
+  "    seqz " ++ reg-text dst ++ ", " ++ reg-text dst ++ "\n"
+instr-text (Xcmp-rrr c-ne dst a b) =
+  "    sub " ++ reg-text dst ++ ", " ++ reg-text a ++ ", " ++ reg-text b ++ "\n" ++
+  "    snez " ++ reg-text dst ++ ", " ++ reg-text dst ++ "\n"
 instr-text (Xdiv-rrr dst a b) = "    div " ++ reg-text dst ++ ", " ++ reg-text a ++ ", " ++ reg-text b ++ "\n"
 instr-text (Xrem-rrr dst a b) = "    rem " ++ reg-text dst ++ ", " ++ reg-text a ++ ", " ++ reg-text b ++ "\n"
 -- `-safe` variants: RV64 `div`/`rem` are already total (no #DE trap), so the

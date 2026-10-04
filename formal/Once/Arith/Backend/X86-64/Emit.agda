@@ -45,6 +45,7 @@ open import Data.Product using (_×_; _,_)
 open import Data.String using (String; _++_)
 
 open import Once.Arith.Backend.XInstr.Syntax
+open import Once.Arith.CmpOp using (CmpOp; c-lt; c-le; c-gt; c-ge; c-eq; c-ne)
 open import Once.Arith.Backend.XInstr.CodeGen using (emit-program)
 open import Once.Arith.Machine.AbsState using (InputPath; Side; Fst; Snd)
 open import Once.Arith.Machine.Compile using (compile-abs; required-scratch; normalize)
@@ -158,6 +159,21 @@ instr-text (Ximul-rr dst src) = "    imulq " ++ reg-text src ++ ", " ++ reg-text
 -- Result computed in %rax; %rdx is caller-saved scratch (never an arith
 -- register). GNU-as numeric local labels (`1f`/`2f`/`3f`) are per-emission
 -- reusable, so multiple div/rem sequences never collide.
+-- plan 0.108: a SIGNED comparison into a 0/1 word. `cmpq b, a` sets the flags
+-- of `a − b`; `set<cc>` reads them; `%rax` is the arith scratch (as for
+-- division). Both operands are read before anything is written.
+instr-text (Xcmp-rrr o dst a b) =
+     "    cmpq " ++ reg-text b ++ ", " ++ reg-text a ++ "\n" ++
+     "    " ++ setcc o ++ " %al\n" ++
+     "    movzbq %al, %rax\n" ++
+     "    movq %rax, " ++ reg-text dst ++ "\n"
+  where setcc : CmpOp → String
+        setcc c-lt = "setl"
+        setcc c-le = "setle"
+        setcc c-gt = "setg"
+        setcc c-ge = "setge"
+        setcc c-eq = "sete"
+        setcc c-ne = "setne"
 instr-text (Xdiv-rrr dst a b) =
      "    movq " ++ reg-text a ++ ", %rax\n" ++
      "    testq " ++ reg-text b ++ ", " ++ reg-text b ++ "\n" ++

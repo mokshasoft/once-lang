@@ -49,7 +49,7 @@ open import Once.CCC.Label using (ℓ)
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
 open import Data.List.Relation.Unary.All.Properties using (++⁺)
-open import Data.Maybe using (just)
+open import Data.Maybe using (Maybe; just; nothing)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
 open import Once.IR using (IR; AllocMode; Stack; Heap;
@@ -70,8 +70,11 @@ open import Once.CCC.Machine.FrameFree using
   (FrameFreeI; FrameFreeT; frame-free-nest; EmittableI)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CCC.Codegen.ShapeTable using (HeapModed; IsHeap)
+open import Once.SigOp.Info using (SigOpInfo; sem)
+open import Once.Arith.CmpOp using (CmpOp)
+open import Once.Arith.SigOp.Compare using (cmp-of)
 open import Once.CCC.Codegen.IRToTrace o using
-  (ir-to-trace'; ir-to-trace; ir-to-trace-at-frontier; ir-to-trace-lab; ir-to-unit;
+  (sigop-code; ir-to-trace'; ir-to-trace; ir-to-trace-at-frontier; ir-to-trace-lab; ir-to-unit;
    CataStrategy; strat-const; strat-nat; strat-linear; strat-branching;
    cata-strategy; cata-dispatch; cata-trace-nat; cata-trace-linear;
    cata-trace-branching; push2; pop2; wrap-sum; visit-walk; rebuild-walk; lsize;
@@ -272,6 +275,11 @@ cata-dispatch-ff (strat-branching F) bb n1 l1 at ff = cata-branching-ff F bb n1 
 -- IS emitted — by the four STACK-mode clauses below, whose `IsHeap Stack`
 -- premise is `⊥`. So the theorem is exactly as strong as it can be: a
 -- heap-moded trace contains no frame op and no `lea-slot`.
+-- Plan 0.108: neither SigOp lowering touches a frame.
+sigop-frame-free : ∀ {A B} (si : SigOpInfo A B) (n : ℕ) (m : Maybe CmpOp) → FrameFreeTrace (sigop-code si n m)
+sigop-frame-free si n nothing  = tt ∷ []
+sigop-frame-free si n (just _) = tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
+
 frame-free-trace' : ∀ {A B} (ir : IR A B) (hm : HeapModed ir) (n l : ℕ)
                   → FrameFreeTrace (trace-of (ir-to-trace' n l ir))
 frame-free-trace' id       hm n l = tt ∷ []
@@ -322,7 +330,7 @@ frame-free-trace' (in-ν _)     hm n l =
 -- closure body, emitted at frontier 0 under the ν's own label.
 frame-free-trace' (Ana _ c)      hm n l =
   tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
-frame-free-trace' (SigOp _)      hm n l = tt ∷ []
+frame-free-trace' (SigOp si)     hm n l = sigop-frame-free si n (cmp-of (sem si))
 frame-free-trace' (Call _)      hm n l = tt ∷ []
 frame-free-trace' (const fits-int _)   hm n l = tt ∷ []
 frame-free-trace' (const fits-float _) hm n l = tt ∷ []

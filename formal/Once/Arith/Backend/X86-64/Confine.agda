@@ -49,6 +49,8 @@ writes (Xdiv-rrr dst _ _)       = arith-reg dst ∷ rax ∷ rdx ∷ []
 writes (Xrem-rrr dst _ _)       = arith-reg dst ∷ rax ∷ rdx ∷ []
 writes (Xdiv-safe-rrr dst _ _)  = arith-reg dst ∷ rax ∷ rdx ∷ []
 writes (Xrem-safe-rrr dst _ _)  = arith-reg dst ∷ rax ∷ rdx ∷ []
+-- plan 0.108: `cmp; set<cc> %al; movzbq %al, %rax; mov %rax, dst`.
+writes (Xcmp-rrr _ dst _ _)     = arith-reg dst ∷ rax ∷ []
 writes (Xshl-rri dst _ _)       = arith-reg dst ∷ []
 writes (Xsdiv-pow2-rri dst _ _) = arith-reg dst ∷ rax ∷ []
 -- PLAN 0.75 F4: the float instructions write their destination GPR (the
@@ -103,6 +105,7 @@ confined (Xdiv-rrr dst _ _)       = arith-notccc dst ∷ rax-notccc ∷ rdx-notc
 confined (Xrem-rrr dst _ _)       = arith-notccc dst ∷ rax-notccc ∷ rdx-notccc ∷ []
 confined (Xdiv-safe-rrr dst _ _)  = arith-notccc dst ∷ rax-notccc ∷ rdx-notccc ∷ []
 confined (Xrem-safe-rrr dst _ _)  = arith-notccc dst ∷ rax-notccc ∷ rdx-notccc ∷ []
+confined (Xcmp-rrr _ dst _ _)     = arith-notccc dst ∷ rax-notccc ∷ []
 confined (Xshl-rri dst _ _)       = arith-notccc dst ∷ []
 confined (Xsdiv-pow2-rri dst _ _) = arith-notccc dst ∷ rax-notccc ∷ []
 confined (Xfadd-rr dst _)         = arith-notccc dst ∷ []

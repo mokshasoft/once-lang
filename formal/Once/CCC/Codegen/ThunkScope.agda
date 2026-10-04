@@ -51,7 +51,10 @@ import Once.IR as IRm
 open IRm.IR
 open import Once.IRTy using (⌈_⌉F; WellFormedFI; wf-K; wf-Id; wf-Sum; wf-Prod)
 open import Once.Type using (Functor; K; Id; _⊕_; _⊗_)
-open import Once.CCC.Codegen.IRToTrace o using (ir-to-trace'; cata-dispatch; cata-strategy; CataStrategy;
+open import Once.SigOp.Info using (SigOpInfo; sem)
+open import Once.Arith.CmpOp using (CmpOp)
+open import Once.Arith.SigOp.Compare using (cmp-of)
+open import Once.CCC.Codegen.IRToTrace o using (sigop-code; ir-to-trace'; cata-dispatch; cata-strategy; CataStrategy;
          strat-const; strat-nat; strat-linear; strat-branching; lsize; fsize; cata-body; cata-call-setup; cata-call;
          cata-nat-I₁; cata-nat-I₂; cata-nat-I₃; cata-lin-I₁; cata-lin-I₂; cata-lin-I₃;
          cata-br-I₁; cata-br-I₂;
@@ -291,6 +294,12 @@ module Scope {FS : FrameSemantics} where
   -- `all-no-thunk-in _ refl`; the cata strategies are where a marker lives.
   ------------------------------------------------------------------------
 
+  -- Plan 0.108: a comparison's lowering is straight-line, thunk-free.
+  sigop-thunks : ∀ {A B} (si : SigOpInfo A B) (n l : ℕ) (m : Maybe CmpOp)
+               → ThunksIn l l (sigop-code si n m)
+  sigop-thunks si n l nothing  = all-no-thunk-in _ refl
+  sigop-thunks si n l (just _) = all-no-thunk-in _ refl
+
   thunks-in : ∀ {A B} (ir : IR A B) (n l : ℕ)
             → ThunksIn l (label-of (ir-to-trace' n l ir)) (trace-of (ir-to-trace' n l ir))
   thunks-in id n l = all-no-thunk-in _ refl
@@ -310,7 +319,7 @@ module Scope {FS : FrameSemantics} where
   -- the trace only reduces once that is matched.
   thunks-in (const fits-int   v) n l = all-no-thunk-in _ refl
   thunks-in (const fits-float v) n l = all-no-thunk-in _ refl
-  thunks-in (SigOp x)  n l = all-no-thunk-in _ refl
+  thunks-in (SigOp x)  n l = sigop-thunks x n l (cmp-of (sem x))
   thunks-in (Call _)  n l = all-no-thunk-in _ refl
   thunks-in (Ana x c)  n l = all-no-thunk-in _ refl
   thunks-in (g ∘ f)    n l =

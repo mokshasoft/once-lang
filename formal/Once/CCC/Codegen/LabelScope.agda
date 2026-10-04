@@ -61,8 +61,11 @@ open import Once.Type using (Functor; K; Id; _⊕_; _⊗_)
 open import Once.CCC.Machine.SMCore
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
+open import Once.SigOp.Info using (SigOpInfo; sem)
+open import Once.Arith.CmpOp using (CmpOp)
+open import Once.Arith.SigOp.Compare using (cmp-of)
 open import Once.CCC.Codegen.IRToTrace o using
-  (ir-to-trace'; ir-to-unit; ir-to-trace; ir-to-trace-lab; ir-next-label
+  (sigop-code; ir-to-trace'; ir-to-unit; ir-to-trace; ir-to-trace-lab; ir-next-label
   ; CataStrategy; strat-const; strat-nat; strat-linear
   ; strat-branching; cata-strategy; cata-dispatch; lsize
   ; push2; pop2; wrap-sum; visit-walk; rebuild-walk
@@ -482,6 +485,12 @@ cata-ls (strat-branching F) lo bb n1 l1 at le atls = cata-branching-ls F lo bb n
 -- its counter was handed. `slots-below`'s shape — each splice weakens the
 -- sub-IR's window through `label-mono`.
 ------------------------------------------------------------------------
+-- Plan 0.108: a comparison's lowering is straight-line too — no labels.
+sigop-labels : ∀ {A B} (si : SigOpInfo A B) (n l : ℕ) (m : Maybe CmpOp)
+             → LabelsIn l l (sigop-code si n m)
+sigop-labels si n l nothing  = li-none refl ∷ []
+sigop-labels si n l (just _) = li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ []
+
 labels-in : ∀ {A B} (ir : IR A B) (n l : ℕ)
           → LabelsIn l (label-of (ir-to-trace' n l ir)) (trace-of (ir-to-trace' n l ir))
 labels-in id       n l = li-none refl ∷ []
@@ -555,7 +564,7 @@ labels-in (in-ν _) n l =
 labels-in (Ana _ c) n l =
   li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
   li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ []
-labels-in (SigOp _)      n l = li-none refl ∷ []
+labels-in (SigOp si)     n l = sigop-labels si n l (cmp-of (sem si))
 labels-in (Call _)      n l = li-none refl ∷ []
 labels-in (const fits-int _)   n l = li-none refl ∷ []
 labels-in (const fits-float _) n l = li-none refl ∷ []
@@ -1277,6 +1286,9 @@ cata-agree st lo bb n1 l1 at natl saB lsB =
 -- is a called body, D099 / C1) and `case` through `Pieces2` (two different
 -- embedded traces, descending windows).
 ------------------------------------------------------------------------
+sigop-seg : ∀ {A B} (si : SigOpInfo A B) (n : ℕ) (m : Maybe CmpOp) → SegAgree (sigop-code si n m)
+sigop-seg si n nothing  = segagree-nolab _ (refl ∷ [])
+sigop-seg si n (just _) = segagree-nolab _ (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ [])
 seg-agree   : ∀ {A B} (ir : IR A B) (n l : ℕ) → SegAgree (trace-of (ir-to-trace' n l ir))
 pair-agree-heap : ∀ {A B C} (f : IR A B) (g : IR A C) (n l : ℕ)
             → SegAgree (trace-of (ir-to-trace' n l (⟨ f , g ⟩)))
@@ -1301,7 +1313,7 @@ seg-agree (in-ν w) n l =
 seg-agree (Ana w c) n l =
   segagree-nolab _ (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷
                     refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ [])
-seg-agree (SigOp w) n l = segagree-nolab _ (refl ∷ [])
+seg-agree (SigOp w) n l = sigop-seg w n (cmp-of (sem w))
 seg-agree (Call _) n l = segagree-nolab _ (refl ∷ [])
 seg-agree (const fits-int v) n l = segagree-nolab _ (refl ∷ [])
 seg-agree (const fits-float v) n l = segagree-nolab _ (refl ∷ [])

@@ -28,7 +28,7 @@ open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
 open import Data.List.Relation.Unary.All.Properties using (++⁺)
-open import Data.Maybe using (just)
+open import Data.Maybe using (Maybe; just; nothing)
 open import Relation.Binary.PropositionalEquality using (_≡_; subst; sym)
 
 open import Once.IR using (IR; AllocMode; Stack; Heap;
@@ -46,8 +46,11 @@ open import Once.CCC.Machine.SMCore using (AbstractInstr; AbstractTrace; instr-a
   ; restore-input; load-indirect-suc; store-at-slot; mov-to-input
   ; load-from-slot; store-indirect-suc; instr-load-tag-lit; store-indirect)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
+open import Once.SigOp.Info using (SigOpInfo; sem)
+open import Once.Arith.CmpOp using (CmpOp)
+open import Once.Arith.SigOp.Compare using (cmp-of)
 open import Once.CCC.Codegen.IRToTrace o using
-  (ir-to-trace'; ir-to-trace; ir-to-trace-at-frontier; ir-to-trace-lab; ir-to-unit;
+  (sigop-code; ir-to-trace'; ir-to-trace; ir-to-trace-at-frontier; ir-to-trace-lab; ir-to-unit;
    CataStrategy; strat-const; strat-nat; strat-linear; strat-branching;
    cata-strategy; cata-dispatch; cata-trace-nat; cata-trace-linear;
    cata-trace-branching; push2; pop2; wrap-sum; visit-walk; rebuild-walk; lsize;
@@ -222,6 +225,11 @@ cata-dispatch-cl (strat-branching F) bb n1 l1  at ih = cata-branching-cl F bb n1
 -- THE THEOREM, over arbitrary frontier `n` / label counter `l`.
 ------------------------------------------------------------------------
 
+-- Plan 0.108: a comparison calls its own arith block, which the file defines.
+sigop-calls : ∀ {A B} (si : SigOpInfo A B) (n : ℕ) (m : Maybe CmpOp) → CLTrace (sigop-code si n m)
+sigop-calls si n nothing  = tt ∷ []
+sigop-calls si n (just _) = tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
+
 calls-trace' : ∀ {A B} (ir : IR A B) (n l : ℕ) → Linked σ tbl ir
              → CLTrace (trace-of (ir-to-trace' n l ir))
 calls-trace' id       n l _ = tt ∷ []
@@ -260,7 +268,7 @@ calls-trace' (in-ν _)     n l _ =
   tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
 calls-trace' (Ana _ c)      n l _ =
   tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
-calls-trace' (SigOp _)      n l _ = tt ∷ []
+calls-trace' (SigOp si)     n l _ = sigop-calls si n (cmp-of (sem si))
 calls-trace' (Call {A} {B} f) n l lk = (A , B , lk) ∷ []
 calls-trace' (const fits-int _)   n l _ = tt ∷ []
 calls-trace' (const fits-float _) n l _ = tt ∷ []

@@ -35,6 +35,7 @@ open import Data.Product using (_×_; _,_)
 open import Data.String using (String; _++_)
 
 open import Once.Arith.Backend.XInstr.Syntax
+open import Once.Arith.CmpOp using (CmpOp; c-lt; c-le; c-gt; c-ge; c-eq; c-ne)
 open import Once.Arith.Backend.XInstr.CodeGen using (emit-program)
 open import Once.Arith.Machine.AbsState using (InputPath; Side; Fst; Snd)
 open import Once.Arith.Machine.Compile using (compile-abs; required-scratch; normalize)
@@ -124,6 +125,20 @@ instr-text (Ximul-rr dst src) = "    imull " ++ reg-text src ++ ", " ++ reg-text
 -- an arith register (XR0) here, the divisor is stashed on the stack so
 -- `cltd`/`idivl` can freely clobber %edx, and both operands are read before
 -- any clobber. Result in %eax. Guards div-by-0 and INT_MIN/-1 (both #DE).
+-- plan 0.108: a SIGNED comparison into a 0/1 word (see the x86-64 emitter;
+-- `%eax` is the arith scratch here too).
+instr-text (Xcmp-rrr o dst a b) =
+     "    cmpl " ++ reg-text b ++ ", " ++ reg-text a ++ "\n" ++
+     "    " ++ setcc o ++ " %al\n" ++
+     "    movzbl %al, %eax\n" ++
+     "    movl %eax, " ++ reg-text dst ++ "\n"
+  where setcc : CmpOp → String
+        setcc c-lt = "setl"
+        setcc c-le = "setle"
+        setcc c-gt = "setg"
+        setcc c-ge = "setge"
+        setcc c-eq = "sete"
+        setcc c-ne = "setne"
 instr-text (Xdiv-rrr dst a b) =
      "    pushl " ++ reg-text b ++ "\n" ++
      "    movl " ++ reg-text a ++ ", %eax\n" ++

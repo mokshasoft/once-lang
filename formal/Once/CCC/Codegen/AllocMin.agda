@@ -35,7 +35,7 @@ open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
 open import Data.List.Relation.Unary.All.Properties using (++⁺)
-open import Data.Maybe using (just)
+open import Data.Maybe using (Maybe; just; nothing)
 open import Relation.Binary.PropositionalEquality using (_≡_; subst; sym)
 
 open import Once.IR using (IR; AllocMode; Stack; Heap;
@@ -53,8 +53,11 @@ open import Once.CCC.Machine.SMCore using (AbstractInstr; AbstractTrace; instr-a
   ; restore-input; load-indirect-suc; store-at-slot; mov-to-input
   ; load-from-slot; store-indirect-suc; instr-load-tag-lit; store-indirect)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
+open import Once.SigOp.Info using (SigOpInfo; sem)
+open import Once.Arith.CmpOp using (CmpOp)
+open import Once.Arith.SigOp.Compare using (cmp-of)
 open import Once.CCC.Codegen.IRToTrace o using
-  (ir-to-trace'; ir-to-trace; ir-to-trace-at-frontier; ir-to-trace-lab; ir-to-unit;
+  (sigop-code; ir-to-trace'; ir-to-trace; ir-to-trace-at-frontier; ir-to-trace-lab; ir-to-unit;
    CataStrategy; strat-const; strat-nat; strat-linear; strat-branching;
    cata-strategy; cata-dispatch; cata-trace-nat; cata-trace-linear;
    cata-trace-branching; push2; pop2; wrap-sum; visit-walk; rebuild-walk; lsize;
@@ -237,6 +240,11 @@ cata-dispatch-am (strat-branching F) bb n1 l1 at am = cata-branching-am F bb n1 
 ------------------------------------------------------------------------
 -- THE THEOREM, over arbitrary frontier `n` / label counter `l`.
 ------------------------------------------------------------------------
+-- Plan 0.108: a comparison allocates its sum node, two cells.
+sigop-alloc-min : ∀ {A B} (si : SigOpInfo A B) (n : ℕ) (m : Maybe CmpOp) → AllocMinTrace (sigop-code si n m)
+sigop-alloc-min si n nothing  = tt ∷ []
+sigop-alloc-min si n (just _) = tt ∷ tt ∷ tt ∷ am2 ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
+
 alloc-min-trace' : ∀ {A B} (ir : IR A B) (n l : ℕ)
                  → AllocMinTrace (trace-of (ir-to-trace' n l ir))
 alloc-min-trace' id       n l = tt ∷ []
@@ -287,7 +295,7 @@ alloc-min-trace' (in-ν _)     n l =
 -- closure body, emitted at frontier 0 under the ν's own label.
 alloc-min-trace' (Ana _ c)      n l =
   tt ∷ tt ∷ am2 ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
-alloc-min-trace' (SigOp _)      n l = tt ∷ []
+alloc-min-trace' (SigOp si)     n l = sigop-alloc-min si n (cmp-of (sem si))
 alloc-min-trace' (Call _)      n l = tt ∷ []
 alloc-min-trace' (const fits-int _)   n l = tt ∷ []
 alloc-min-trace' (const fits-float _) n l = tt ∷ []

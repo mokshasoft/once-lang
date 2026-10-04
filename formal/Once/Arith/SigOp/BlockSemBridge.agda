@@ -33,11 +33,12 @@ open import Once.Arith.Machine.Shape
   using (InputShape; shape-unit; shape-int; shape-float; shape-pair; ⟦_⟧S; InputPath; Side; Fst; Snd; project; projectF;
          Path; here-int; here-flt; go-fst; go-snd; readLeaf; ⌊_⌋ᴾ)
 open import Once.Arith.Machine.IR
-  using (MArithIR; alit; aflit; ainput; aadd; asub; amul; adiv; amod; aneg; ai2f;
+  using (MArithIR; alit; aflit; ainput; aadd; asub; amul; adiv; amod; aneg; ai2f; acmp;
          numtype-as-type; shape-as-type)
 open import Once.Arith.Machine.WordSem using (module Sem)
 open import Once.Arith.Type using (NumType; NInt; NFloat)
 import Once.Float.Arith as FA
+open import Once.Arith.CmpOp using (cmp-bit)
 
 import Once.Word as OnceWord
 open import Once.Float.Dyadic using (Dyadic)
@@ -154,3 +155,4 @@ module _ (tn : TargetNum) where
   eval≡semM {n = NInt}   (aneg a)   env = cong  W.⊝_   (eval≡semM a env)
   eval≡semM {n = NFloat} (aneg a)   env = cong  (FA.fneg F) (eval≡semM a env)
   eval≡semM (ai2f a)   env = cong (λ w → FA.i2f F (W.toℤ w)) (eval≡semM a env)
+  eval≡semM (acmp o a b) env = cong₂ (cmp-bit (int-bits tn) o) (eval≡semM a env) (eval≡semM b env)

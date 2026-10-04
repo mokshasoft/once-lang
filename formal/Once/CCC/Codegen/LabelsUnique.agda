@@ -54,8 +54,11 @@ open IRm.IR
 open import Once.IRTy using (⌈_⌉F)
 open import Once.Type using (Functor)
 open import Once.IRTy using (FitsInRegI; fits-int; fits-float)
+open import Once.SigOp.Info using (SigOpInfo; sem)
+open import Once.Arith.CmpOp using (CmpOp)
+open import Once.Arith.SigOp.Compare using (cmp-of)
 open import Once.CCC.Codegen.IRToTrace o
-  using (ir-to-trace'; cata-dispatch; cata-strategy; CataStrategy;
+  using (sigop-code; ir-to-trace'; cata-dispatch; cata-strategy; CataStrategy;
          strat-const; strat-nat; strat-linear; strat-branching; lsize;
          cata-body; cata-call-setup; cata-call;
          cata-nat-I₁; cata-nat-I₂; cata-nat-I₃; cata-lin-I₁; cata-lin-I₂; cata-lin-I₃;
@@ -462,6 +465,12 @@ module Unique {FS : FrameSemantics} where
   --   * the binary nodes MERGE, and `regroup` is that step.
   ------------------------------------------------------------------------
 
+  -- Plan 0.108: neither SigOp lowering defines a label.
+  sigop-defs : ∀ {A B} (si : SigOpInfo A B) (n : ℕ) (m : Maybe CmpOp)
+             → AllPairs _≢_ (thunk-labels (sigop-code si n m) ++ [])
+  sigop-defs si n nothing  = []
+  sigop-defs si n (just _) = []
+
   defs-uniq : ∀ {A B} (ir : IR A B) (n l : ℕ) → AllPairs _≢_ (defs (ir-to-trace' n l ir))
   defs-uniq id                    n l = []
   defs-uniq fst                   n l = []
@@ -476,7 +485,7 @@ module Unique {FS : FrameSemantics} where
   defs-uniq (Out _)               n l = []
   defs-uniq (const fits-int   v)  n l = []
   defs-uniq (const fits-float v)  n l = []
-  defs-uniq (SigOp _)             n l = []
+  defs-uniq (SigOp si)            n l = sigop-defs si n (cmp-of (sem si))
   defs-uniq (Call _)             n l = []
   -- `in-ν`'s block is a one-instruction stub and it owns no children, so its
   -- single minted label has nothing to be distinct from.

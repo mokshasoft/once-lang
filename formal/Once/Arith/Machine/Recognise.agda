@@ -54,7 +54,7 @@ open import Once.Arith.Machine.AbsState
 -- instead of a float tree silently taking the integer path.
 open import Once.Arith.Type using (NumType; NInt; NFloat)
 open import Once.Arith.Machine.IR
-  using (MArithIR; alit; aflit; ainput; aadd; asub; amul; adiv; amod; aneg; ai2f;
+  using (MArithIR; alit; aflit; ainput; aadd; asub; amul; adiv; amod; aneg; ai2f; acmp;
          numtype-as-type; ArithBlock;
          mk-block)
 

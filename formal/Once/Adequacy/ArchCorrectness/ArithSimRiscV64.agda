@@ -38,6 +38,7 @@ open import Data.Empty using (⊥-elim)
 
 open import Once.Arith.Backend.XInstr.Syntax as XI using (XInstr; XReg; XScratch)
 import Once.Float.Arith as FA
+open import Once.Arith.CmpOp using (cmp-bit)
 open import Once.Float.Decimal using (round)
 open import Once.Float.Dyadic using (binary32; binary64)
 open XI using (XR0; XR1)
@@ -115,6 +116,7 @@ val-riscv64 (XI.Xsub-rr d src)         s _ = rd s d W.⊖ rd s src
 val-riscv64 (XI.Ximul-rr d src)        s _ = rd s d W.⊗ rd s src
 val-riscv64 (XI.Xdiv-rrr d a b)        s _ = rd s a W./ˢ rd s b
 val-riscv64 (XI.Xrem-rrr d a b)        s _ = rd s a W.%ˢ rd s b
+val-riscv64 (XI.Xcmp-rrr o d a b)      s _ = cmp-bit 64 o (rd s a) (rd s b)
 val-riscv64 (XI.Xdiv-safe-rrr d a b)   s _ = rd s a W./ˢ rd s b
 val-riscv64 (XI.Xrem-safe-rrr d a b)   s _ = rd s a W.%ˢ rd s b
 val-riscv64 (XI.Xshl-rri d src imm)    s _ = W.shlᵂ (rd s src) imm
@@ -217,6 +219,7 @@ module _ (N : ℕ) where
   mem-keep (XI.Xshl-rri _ _ _)       s addr _ = refl
   mem-keep (XI.Xdiv-rrr _ _ _)       s addr _ = refl
   mem-keep (XI.Xrem-rrr _ _ _)       s addr _ = refl
+  mem-keep (XI.Xcmp-rrr _ _ _ _)     s addr _ = refl
   mem-keep (XI.Xdiv-safe-rrr _ _ _)  s addr _ = refl
   mem-keep (XI.Xrem-safe-rrr _ _ _)  s addr _ = refl
   mem-keep (XI.Xsdiv-pow2-rri _ _ _) s addr _ = refl
@@ -264,6 +267,7 @@ module _ (N : ℕ) where
   rf-other (XI.Xshl-rri d src imm) s x h = readReg-wr-arith-other (regs s) d x (V (XI.Xshl-rri d src imm) s) (¬d≡x d x h)
   rf-other (XI.Xdiv-rrr d a b) s x h = readReg-wr-arith-other (regs s) d x (V (XI.Xdiv-rrr d a b) s) (¬d≡x d x h)
   rf-other (XI.Xrem-rrr d a b) s x h = readReg-wr-arith-other (regs s) d x (V (XI.Xrem-rrr d a b) s) (¬d≡x d x h)
+  rf-other (XI.Xcmp-rrr o d a b) s x h = readReg-wr-arith-other (regs s) d x (V (XI.Xcmp-rrr o d a b) s) (¬d≡x d x h)
   rf-other (XI.Xdiv-safe-rrr d a b) s x h = readReg-wr-arith-other (regs s) d x (V (XI.Xdiv-safe-rrr d a b) s) (¬d≡x d x h)
   rf-other (XI.Xrem-safe-rrr d a b) s x h = readReg-wr-arith-other (regs s) d x (V (XI.Xrem-safe-rrr d a b) s) (¬d≡x d x h)
   rf-other (XI.Xsdiv-pow2-rri d src imm) s x h =
@@ -307,6 +311,7 @@ module _ (N : ℕ) where
   t0-inv (XI.Xshl-rri d src imm) s = wr-arith-t0 (regs s) d (V (XI.Xshl-rri d src imm) s)
   t0-inv (XI.Xdiv-rrr d a b) s = wr-arith-t0 (regs s) d (V (XI.Xdiv-rrr d a b) s)
   t0-inv (XI.Xrem-rrr d a b) s = wr-arith-t0 (regs s) d (V (XI.Xrem-rrr d a b) s)
+  t0-inv (XI.Xcmp-rrr o d a b) s = wr-arith-t0 (regs s) d (V (XI.Xcmp-rrr o d a b) s)
   t0-inv (XI.Xdiv-safe-rrr d a b) s = wr-arith-t0 (regs s) d (V (XI.Xdiv-safe-rrr d a b) s)
   t0-inv (XI.Xrem-safe-rrr d a b) s = wr-arith-t0 (regs s) d (V (XI.Xrem-safe-rrr d a b) s)
   t0-inv (XI.Xsdiv-pow2-rri d src imm) s =
@@ -347,6 +352,7 @@ module _ (N : ℕ) where
   mem-agree-heap (XI.Xshl-rri d src imm) s inStk a inH = mem-keep (XI.Xshl-rri d src imm) s a tt
   mem-agree-heap (XI.Xdiv-rrr d x y) s inStk a inH = mem-keep (XI.Xdiv-rrr d x y) s a tt
   mem-agree-heap (XI.Xrem-rrr d x y) s inStk a inH = mem-keep (XI.Xrem-rrr d x y) s a tt
+  mem-agree-heap (XI.Xcmp-rrr o d x y) s inStk a inH = mem-keep (XI.Xcmp-rrr o d x y) s a tt
   mem-agree-heap (XI.Xdiv-safe-rrr d x y) s inStk a inH = mem-keep (XI.Xdiv-safe-rrr d x y) s a tt
   mem-agree-heap (XI.Xrem-safe-rrr d x y) s inStk a inH = mem-keep (XI.Xrem-safe-rrr d x y) s a tt
   mem-agree-heap (XI.Xsdiv-pow2-rri d src imm) s inStk a inH = mem-keep (XI.Xsdiv-pow2-rri d src imm) s a tt
@@ -384,6 +390,7 @@ module _ (N : ℕ) where
   pl-inv (XI.Xshl-rri d src imm) s wf p = pl-inv-ns (XI.Xshl-rri d src imm) s p refl
   pl-inv (XI.Xdiv-rrr d a b) s wf p = pl-inv-ns (XI.Xdiv-rrr d a b) s p refl
   pl-inv (XI.Xrem-rrr d a b) s wf p = pl-inv-ns (XI.Xrem-rrr d a b) s p refl
+  pl-inv (XI.Xcmp-rrr o d a b) s wf p = pl-inv-ns (XI.Xcmp-rrr o d a b) s p refl
   pl-inv (XI.Xdiv-safe-rrr d a b) s wf p = pl-inv-ns (XI.Xdiv-safe-rrr d a b) s p refl
   pl-inv (XI.Xrem-safe-rrr d a b) s wf p = pl-inv-ns (XI.Xrem-safe-rrr d a b) s p refl
   pl-inv (XI.Xsdiv-pow2-rri d src imm) s wf p = pl-inv-ns (XI.Xsdiv-pow2-rri d src imm) s p refl
@@ -425,9 +432,10 @@ module _ (N : ℕ) where
     -- rt-neg rt-shl
     (λ d s      → readReg-wr-arith-same (regs s) d _)
     (λ d src imm s → readReg-wr-arith-same (regs s) d _)
-    -- rt-div rt-rem rt-div-safe rt-rem-safe (single write — no peel)
+    -- rt-div rt-rem rt-cmp rt-div-safe rt-rem-safe (single write — no peel)
     (λ d a b s  → readReg-wr-arith-same (regs s) d _)
     (λ d a b s  → readReg-wr-arith-same (regs s) d _)
+    (λ o d a b s → readReg-wr-arith-same (regs s) d _)
     (λ d a b s  → readReg-wr-arith-same (regs s) d _)
     (λ d a b s  → readReg-wr-arith-same (regs s) d _)
     -- rt-sdiv (peel a0)

@@ -1,0 +1,28 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
+-- Plan 0.108: the six comparisons, end to end. A comparison is `Bool =
+-- Unit + Unit` with true = `inr`, so `case no yes` reads it as a bit, and each
+-- bit gets its own weight — a comparison that answered wrong, or an injection
+-- that picked the wrong side, changes the exit code. The last row is SIGNED:
+-- `0 - 1 < 0` is true only if the word is read as two's complement.
+--
+--   lt 2 5 = 1 (·1), le 5 5 = 1 (·2), gt 2 5 = 0 (·4), ge 5 2 = 1 (·8),
+--   eq 3 3 = 1 (·16), ne 3 3 = 0 (·32), lt (0-1) 0 = 1 (·64)
+--
+-- Expected: exit code 91.
+
+import I.Linux.Syscalls as S
+
+no : Unit -> Int
+no _ = 0
+
+yes : Unit -> Int
+yes _ = 1
+
+bit : Unit + Unit -> Int
+bit = case no yes
+
+main : IO Unit
+main = exit@S (bit (2 < 5) + 2 * bit (5 <= 5) + 4 * bit (2 > 5) + 8 * bit (5 >= 2)
+               + 16 * bit (3 == 3) + 32 * bit (3 != 3) + 64 * bit ((0 - 1) < 0))

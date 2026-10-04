@@ -37,6 +37,7 @@ open import Relation.Binary.PropositionalEquality
 open import Once.Arith.Machine.AbsState
 open import Once.Arith.Machine.AbsInstr
 open import Once.Arith.Backend.XInstr.Syntax
+open import Once.Arith.CmpOp using (CmpOp; cmp-bit)
 open import Once.Arith.Backend.XInstr.CodeGen using (emit; emit-program; abs-reg; _≟x_)
 -- PLAN 0.75 F4: the abstract-machine compile path is pinned at `NInt`, and
 -- that restriction is STATED rather than assumed. Its instruction set
@@ -44,7 +45,7 @@ open import Once.Arith.Backend.XInstr.CodeGen using (emit; emit-program; abs-reg
 -- no lowering here yet; saying so in the type means the gate sees the gap
 -- instead of a float tree silently taking the integer path.
 open import Once.Arith.Type using (NumType; NInt; NFloat)
-open import Once.Arith.Machine.IR using (MArithIR; alit; aflit; ainput; aadd; asub; amul; adiv; amod; aneg; ai2f)
+open import Once.Arith.Machine.IR using (MArithIR; alit; aflit; ainput; aadd; asub; amul; adiv; amod; aneg; ai2f; acmp)
 open import Once.Arith.Machine.Compile
   using (compile-go; compile-abs; mul-op; mul-choose; div-op; div-choose; rem-op;
          div-instr; rem-instr; safe-divisor?; pow2?)
@@ -89,6 +90,7 @@ exec-xinstr (Xadd-rr d src)   s = record s { regs = ArithAbsState.regs s [ xreg-
 exec-xinstr (Xsub-rr d src)   s = record s { regs = ArithAbsState.regs s [ xreg-idx d ↦ bin-op _⊖_ (ArithAbsState.regs s [ xreg-idx d ]) (ArithAbsState.regs s [ xreg-idx src ]) ] }
 exec-xinstr (Ximul-rr d src)  s = record s { regs = ArithAbsState.regs s [ xreg-idx d ↦ bin-op _⊗_ (ArithAbsState.regs s [ xreg-idx d ]) (ArithAbsState.regs s [ xreg-idx src ]) ] }
 exec-xinstr (Xdiv-rrr d a b)  s = record s { regs = ArithAbsState.regs s [ xreg-idx d ↦ bin-op _/ˢ_ (ArithAbsState.regs s [ xreg-idx a ]) (ArithAbsState.regs s [ xreg-idx b ]) ] }
+exec-xinstr (Xcmp-rrr o d a b) s = record s { regs = ArithAbsState.regs s [ xreg-idx d ↦ bin-op (cmp-bit bits o) (ArithAbsState.regs s [ xreg-idx a ]) (ArithAbsState.regs s [ xreg-idx b ]) ] }
 exec-xinstr (Xrem-rrr d a b)  s = record s { regs = ArithAbsState.regs s [ xreg-idx d ↦ bin-op _%ˢ_ (ArithAbsState.regs s [ xreg-idx a ]) (ArithAbsState.regs s [ xreg-idx b ]) ] }
 -- `-safe` variants: SAME concrete meaning as the guarded div/rem (bare idiv is
 -- a faithful realisation of `/ˢ`/`%ˢ` for a safe divisor — guaranteed by
@@ -413,6 +415,18 @@ refine-fdiv dst a b xd xa xb eqd eqa eqb s
 ... | just _   | nothing  | _        = ⊥-elim (just≢nothing (sym eqa))
 ... | just _   | just _   | nothing  = ⊥-elim (just≢nothing (sym eqb))
 
+-- plan 0.108: the comparison is 3-address too, so the same generic refiner
+-- with the 0/1 compare as the operation.
+refine-cmp : ∀ {sh} (o : CmpOp) (dst a b : ℕ) (xd xa xb : XReg) →
+  abs-reg dst ≡ just xd → abs-reg a ≡ just xa → abs-reg b ≡ just xb →
+  (s : ArithAbsState sh) → exec-xprog (emit (cmp-rrr o dst a b)) s ≡ step (cmp-rrr o dst a b) s
+refine-cmp o dst a b xd xa xb eqd eqa eqb s
+  with abs-reg dst in pd | abs-reg a in pa | abs-reg b in pb
+... | just xd′ | just xa′ | just xb′ = refine-3addr-just (cmp-bit bits o) dst a b xd′ xa′ xb′ s pd pa pb
+... | nothing  | _        | _        = ⊥-elim (just≢nothing (sym eqd))
+... | just _   | nothing  | _        = ⊥-elim (just≢nothing (sym eqa))
+... | just _   | just _   | nothing  = ⊥-elim (just≢nothing (sym eqb))
+
 refine-rem : ∀ {sh} (dst a b : ℕ) (xd xa xb : XReg) →
   abs-reg dst ≡ just xd → abs-reg a ≡ just xa → abs-reg b ≡ just xb →
   (s : ArithAbsState sh) → exec-xprog (emit (rem-rrr dst a b)) s ≡ step (rem-rrr dst a b) s
@@ -502,6 +516,7 @@ exec-xinstr-cong (Xadd-rr d src)   (rc , sc , oc , ic) = store-cong2 rc (xreg-id
 exec-xinstr-cong (Xsub-rr d src)   (rc , sc , oc , ic) = store-cong2 rc (xreg-idx d) (cong₂ (bin-op _⊖_) (rc (xreg-idx d)) (rc (xreg-idx src))) , sc , oc , ic
 exec-xinstr-cong (Ximul-rr d src)  (rc , sc , oc , ic) = store-cong2 rc (xreg-idx d) (cong₂ (bin-op _⊗_) (rc (xreg-idx d)) (rc (xreg-idx src))) , sc , oc , ic
 exec-xinstr-cong (Xdiv-rrr d a b)  (rc , sc , oc , ic) = store-cong2 rc (xreg-idx d) (cong₂ (bin-op _/ˢ_) (rc (xreg-idx a)) (rc (xreg-idx b))) , sc , oc , ic
+exec-xinstr-cong (Xcmp-rrr o d a b) (rc , sc , oc , ic) = store-cong2 rc (xreg-idx d) (cong₂ (bin-op (cmp-bit bits o)) (rc (xreg-idx a)) (rc (xreg-idx b))) , sc , oc , ic
 exec-xinstr-cong (Xrem-rrr d a b)  (rc , sc , oc , ic) = store-cong2 rc (xreg-idx d) (cong₂ (bin-op _%ˢ_) (rc (xreg-idx a)) (rc (xreg-idx b))) , sc , oc , ic
 exec-xinstr-cong (Xdiv-safe-rrr d a b) (rc , sc , oc , ic) = store-cong2 rc (xreg-idx d) (cong₂ (bin-op _/ˢ_) (rc (xreg-idx a)) (rc (xreg-idx b))) , sc , oc , ic
 exec-xinstr-cong (Xrem-safe-rrr d a b) (rc , sc , oc , ic) = store-cong2 rc (xreg-idx d) (cong₂ (bin-op _%ˢ_) (rc (xreg-idx a)) (rc (xreg-idx b))) , sc , oc , ic
@@ -528,6 +543,7 @@ step-cong (add-rrr dst a b)(rc , sc , oc , ic) = store-cong2 rc dst (cong₂ (bi
 step-cong (sub-rrr dst a b)(rc , sc , oc , ic) = store-cong2 rc dst (cong₂ (bin-op _⊖_) (rc a) (rc b)) , sc , oc , ic
 step-cong (mul-rrr dst a b)(rc , sc , oc , ic) = store-cong2 rc dst (cong₂ (bin-op _⊗_) (rc a) (rc b)) , sc , oc , ic
 step-cong (div-rrr dst a b)(rc , sc , oc , ic) = store-cong2 rc dst (cong₂ (bin-op _/ˢ_) (rc a) (rc b)) , sc , oc , ic
+step-cong (cmp-rrr o dst a b)(rc , sc , oc , ic) = store-cong2 rc dst (cong₂ (bin-op (cmp-bit bits o)) (rc a) (rc b)) , sc , oc , ic
 step-cong (rem-rrr dst a b)(rc , sc , oc , ic) = store-cong2 rc dst (cong₂ (bin-op _%ˢ_) (rc a) (rc b)) , sc , oc , ic
 step-cong (div-safe-rrr dst a b)(rc , sc , oc , ic) = store-cong2 rc dst (cong₂ (bin-op _/ˢ_) (rc a) (rc b)) , sc , oc , ic
 step-cong (rem-safe-rrr dst a b)(rc , sc , oc , ic) = store-cong2 rc dst (cong₂ (bin-op _%ˢ_) (rc a) (rc b)) , sc , oc , ic
@@ -691,6 +707,7 @@ reg-bound (add-rrr dst a b) = InBound dst × InBound a × InBound b
 reg-bound (sub-rrr dst a b) = InBound dst × InBound a × InBound b
 reg-bound (mul-rrr dst a b) = InBound dst × InBound a × InBound b
 reg-bound (div-rrr dst a b) = InBound dst × InBound a × InBound b
+reg-bound (cmp-rrr o dst a b) = InBound dst × InBound a × InBound b
 reg-bound (rem-rrr dst a b) = InBound dst × InBound a × InBound b
 reg-bound (div-safe-rrr dst a b) = InBound dst × InBound a × InBound b
 reg-bound (rem-safe-rrr dst a b) = InBound dst × InBound a × InBound b
@@ -716,6 +733,7 @@ refine (add-rrr dst a b) ((xd , ed) , (xa , ea) , (xb , eb)) s = refine-add dst 
 refine (sub-rrr dst a b) ((xd , ed) , (xa , ea) , (xb , eb)) s = refine-sub dst a b xd xa xb ed ea eb s
 refine (mul-rrr dst a b) ((xd , ed) , (xa , ea) , (xb , eb)) s = refine-mul dst a b xd xa xb ed ea eb s
 refine (div-rrr dst a b) ((xd , ed) , (xa , ea) , (xb , eb)) s = ≡→~ (refine-div dst a b xd xa xb ed ea eb s)
+refine (cmp-rrr o dst a b) ((xd , ed) , (xa , ea) , (xb , eb)) s = ≡→~ (refine-cmp o dst a b xd xa xb ed ea eb s)
 refine (rem-rrr dst a b) ((xd , ed) , (xa , ea) , (xb , eb)) s = ≡→~ (refine-rem dst a b xd xa xb ed ea eb s)
 refine (div-safe-rrr dst a b) ((xd , ed) , (xa , ea) , (xb , eb)) s = ≡→~ (refine-div-safe dst a b xd xa xb ed ea eb s)
 refine (rem-safe-rrr dst a b) ((xd , ed) , (xa , ea) , (xb , eb)) s = ≡→~ (refine-rem-safe dst a b xd xa xb ed ea eb s)
@@ -810,6 +828,10 @@ compile-go-bound d (amod a b) =
   All-bound-++ (compile-go d a) _ (compile-go-bound d a)
     (bound0 , All-bound-++ (compile-go (suc d) b) _ (compile-go-bound (suc d) b)
                 (bound1 , rem-op-bound b , tt))
+compile-go-bound d (acmp o a b) =
+  All-bound-++ (compile-go d a) _ (compile-go-bound d a)
+    (bound0 , All-bound-++ (compile-go (suc d) b) _ (compile-go-bound (suc d) b)
+                (bound1 , (bound0 , bound1 , bound0) , tt))
 compile-go-bound d (aneg a) =
   All-bound-++ (compile-go d a) _ (compile-go-bound d a) ((bound0 , bound0) , tt)
 

@@ -79,7 +79,10 @@ open import Data.Bool using (Bool; true; false; if_then_else_; _∨_)
 open import Data.Product using (_×_; _,_; proj₂)
 open import Data.List using (List; []; _∷_; _++_)
 
-open import Once.SigOp.Info using (SigOpInfo)
+open import Once.SigOp.Info using (SigOpInfo; sem)
+open import Data.Maybe using (Maybe; just; nothing)
+open import Once.Arith.CmpOp using (CmpOp)
+open import Once.Arith.SigOp.Compare using (cmp-of; cmp-block-info)
 open import Once.CCC.Label using (LabelId; mkLabelId; ℓ)
 open SigOpInfo using (name)
 
@@ -743,6 +746,38 @@ resuspend-layer n l lbl (wf-Sum wfF wfG) =
      arm tF 0 ++
      (instr-ctrl (c-label (ℓ o l-end)) ∷ [])
 
+-- Plan 0.108: a SigOp is one call — unless it is a COMPARISON. Then it is
+-- its arith block (`Output := 0/1`), `out-nz` (the word as a tag), and the
+-- sum build of `inl`/`inr` with the tag taken from a slot and a unit payload
+-- (any word; `instr-load-tag-lit 0` fills the cell).
+cmp-trace : CmpOp → ℕ → AbstractTrace
+cmp-trace o n =
+  instr-sigop (cmp-block-info o) ∷
+  instr-reg-op out-nz ∷
+  store-at-slot n ∷
+  instr-alloc-heap 2 ∷
+  store-at-slot (suc n) ∷
+  mov-to-input ∷
+  load-from-slot n ∷
+  store-indirect ∷
+  instr-load-tag-lit 0 ∷
+  store-indirect-suc ∷
+  load-from-slot (suc n) ∷ []
+
+-- Only the budget and the code depend on the choice; the label counter and
+-- the (empty) block list do not, so they reduce at any SigOp.
+sigop-budget : ℕ → Maybe CmpOp → ℕ
+sigop-budget n nothing  = n
+sigop-budget n (just _) = suc (suc n)
+
+sigop-code : ∀ {A B} → SigOpInfo A B → ℕ → Maybe CmpOp → AbstractTrace
+sigop-code si n nothing  = instr-sigop si ∷ []
+sigop-code si n (just o) = cmp-trace o n
+
+sigop-trace : ∀ {A B} → ℕ → ℕ → SigOpInfo A B → Maybe CmpOp
+            → ℕ × ℕ × AbstractTrace × List (LabelId × ℕ × AbstractTrace)
+sigop-trace n l si m = sigop-budget n m , l , sigop-code si n m , []
+
 ir-to-trace' : ∀ {A B} → ℕ → ℕ → IR A B
               → ℕ × ℕ × AbstractTrace × List (LabelId × ℕ × AbstractTrace)
 
@@ -951,7 +986,7 @@ ir-to-trace' n l apply =
 -- SigOp — per-name dispatch handled by per-arch compile-abstract.
 -- ────────────────────────────────────────────────────────────────────
 
-ir-to-trace' n l (SigOp si) = n , l , (instr-sigop si ∷ []) , []
+ir-to-trace' n l (SigOp si) = sigop-trace n l si (cmp-of (sem si))
 -- D245: a call runs the callee's table entry, which the program image holds
 -- under its `c-fn` marker.
 ir-to-trace' n l (Call f) = n , l , (instr-ctrl (c-call-fn f) ∷ []) , []

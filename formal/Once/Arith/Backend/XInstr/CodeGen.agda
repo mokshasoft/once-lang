@@ -24,7 +24,7 @@ open import Relation.Nullary using (Dec; yes; no)
 open import Once.Arith.Machine.AbsState using (InputPath; Side; Fst; Snd)
 open import Once.Arith.Machine.AbsInstr
   using (load-finput; load-fimm; fadd-rrr; fsub-rrr; fmul-rrr; fdiv-rrr; fneg-rr; i2f-rr; AbstractInstr; load-input; load-imm; add-rrr; sub-rrr; mul-rrr;
-         div-rrr; rem-rrr; div-safe-rrr; rem-safe-rrr; shl-rri; sdiv-pow2-rri;
+         div-rrr; rem-rrr; cmp-rrr; div-safe-rrr; rem-safe-rrr; shl-rri; sdiv-pow2-rri;
          neg-rr; spill; reload; move-to-out)
 open import Once.Arith.Backend.XInstr.Syntax
 
@@ -113,6 +113,10 @@ emit (div-rrr dst a b) with abs-reg dst | abs-reg a | abs-reg b
 ... | _       | _       | _                = []
 emit (rem-rrr dst a b) with abs-reg dst | abs-reg a | abs-reg b
 ... | just xd | just xa | just xb          = Xrem-rrr xd xa xb ∷ []
+... | _       | _       | _                = []
+-- plan 0.108: a comparison, three-address like division (`dst := a ⋚ b`).
+emit (cmp-rrr o dst a b) with abs-reg dst | abs-reg a | abs-reg b
+... | just xd | just xa | just xb          = Xcmp-rrr o xd xa xb ∷ []
 ... | _       | _       | _                = []
 -- `-safe` variants: same 3-address shape, guard-elided Emit downstream.
 emit (div-safe-rrr dst a b) with abs-reg dst | abs-reg a | abs-reg b

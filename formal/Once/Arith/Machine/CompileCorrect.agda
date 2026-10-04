@@ -39,7 +39,7 @@ open import Once.Arith.Machine.AbsState
          Store; empty-store; _[_↦_]; _[_]; store-write-same; store-write-other)
 open import Once.Arith.Machine.AbsInstr
   using (load-finput; load-fimm; fadd-rrr; fsub-rrr; fmul-rrr; fdiv-rrr; fneg-rr; i2f-rr; AbstractInstr; load-input; load-imm; add-rrr; sub-rrr; mul-rrr;
-         div-rrr; rem-rrr; div-safe-rrr; rem-safe-rrr; neg-rr; spill; reload;
+         div-rrr; rem-rrr; cmp-rrr; div-safe-rrr; rem-safe-rrr; neg-rr; spill; reload;
          move-to-out; maybe-zero; maybe-zero-f; bin-op; un-op; module Exec)
 open Exec bits F using (step; run-abstract)
 -- PLAN 0.75 F4: the abstract-machine compile path is pinned at `NInt`, and
@@ -49,13 +49,17 @@ open Exec bits F using (step; run-abstract)
 -- instead of a float tree silently taking the integer path.
 open import Once.Arith.Type using (NumType; NInt; NFloat)
 open import Once.Arith.Machine.IR
-  using (MArithIR; alit; aflit; ainput; aadd; asub; amul; adiv; amod; aneg; ai2f;
+  using (MArithIR; alit; aflit; ainput; aadd; asub; amul; adiv; amod; aneg; ai2f; acmp;
          numtype-as-type; eval-arith)
 open import Once.Word using (module Width)
 open Width bits using
   (toℤ; fromℤ; _⊕_; _⊖_; _⊗_; _/ˢ_; _%ˢ_; ⊝_; modulus; modulus≢0; shlᵂ; sdiv2ᵏ; ⊗-pow2;
    /ˢ-zero; %ˢ-zero; fromℤ-0; fromℤ-in-range; fromℤ-neg1;
-   /ˢ-negOne; %ˢ-negOne; /ˢ-in-range; %ˢ-in-range)
+   /ˢ-negOne; %ˢ-negOne; /ˢ-in-range; %ˢ-in-range; 0<modulus)
+open import Once.Arith.CmpOp using (CmpOp; cmp-word; cmp-bit)
+open import Data.Bool using (if_then_else_)
+open import Data.Nat.Properties using (*-monoʳ-≤; m^n>0)
+open import Relation.Binary.PropositionalEquality using (subst)
 open import Once.Arith.Machine.WordSem using (module Sem)
 open Sem bits F using (eval-arith-W)
 open import Once.Arith.Machine.Compile
@@ -112,6 +116,7 @@ step-mul-op-eq (amul a b) env s h = refl
 step-mul-op-eq (adiv a b) env s h = refl
 step-mul-op-eq (amod a b) env s h = refl
 step-mul-op-eq (aneg a)   env s h = refl
+step-mul-op-eq (acmp o a b) env s h = refl
 
 step-div-op-eq : ∀ {sh} (b : MArithIR sh NInt) (env : ⟦ sh ⟧S) (s : ArithAbsState sh) →
   regs s [ 0 ] ≡ just (eval-arith-W b env) →
@@ -140,6 +145,7 @@ step-div-op-eq (amul a b) env s h = refl
 step-div-op-eq (adiv a b) env s h = refl
 step-div-op-eq (amod a b) env s h = refl
 step-div-op-eq (aneg a)   env s h = refl
+step-div-op-eq (acmp o a b) env s h = refl
 
 step-rem-instr : ∀ {sh} (t : Bool) (s : ArithAbsState sh) →
   step (rem-instr t) s ≡ step (rem-rrr 0 1 0) s
@@ -299,6 +305,49 @@ asub-correct {sh} d a b s ih-a IHb = record
         (spill 0 d ∷ compile-go (suc d) b ++ (reload d 1 ∷ sub-rrr 0 1 0 ∷ [])) s)
       (run-abstract-app (compile-go (suc d) b)
         (reload d 1 ∷ sub-rrr 0 1 0 ∷ []) s2)
+
+    scratch-s3-d : scratch s3 [ d ] ≡ regs s1 [ 0 ]
+    scratch-s3-d = trans (scratch≤ ih-b d ≤-refl)
+                         (store-write-same (scratch s1) d (regs s1 [ 0 ]))
+
+    regs-s3-0 : regs s3 [ 0 ] ≡ just (eval-arith-W b (input s))
+    regs-s3-0 = trans (reg0 ih-b)
+                      (cong (λ x → just (eval-arith-W b x)) (input-eq ih-a))
+
+-- plan 0.108: a comparison is compiled exactly like subtraction, with the
+-- 0/1 compare in place of the difference.
+acmp-correct : ∀ {sh} (o : CmpOp) (d : ℕ) (a b : MArithIR sh NInt) (s : ArithAbsState sh) →
+  CompileGoInv d a s → (∀ s′ → CompileGoInv (suc d) b s′) →
+  CompileGoInv d (acmp o a b) s
+acmp-correct {sh} o d a b s ih-a IHb = record
+  { reg0      = trans (cong (λ x → regs x [ 0 ]) bridge)
+                      (cong₂ (bin-op (cmp-bit bits o))
+                             (trans scratch-s3-d (reg0 ih-a))
+                             regs-s3-0)
+  ; scratch≤  = λ i lt → trans (cong (λ x → scratch x [ i ]) bridge)
+                          (trans (scratch≤ ih-b i (<-suc lt))
+                          (trans (store-write-other (scratch s1) d i
+                                   (regs s1 [ 0 ]) (d≢i lt))
+                                 (scratch≤ ih-a i lt)))
+  ; input-eq  = trans (cong input bridge)
+                      (trans (input-eq ih-b) (input-eq ih-a))
+  ; output-eq = trans (cong output bridge)
+                      (trans (output-eq ih-b) (output-eq ih-a))
+  }
+  where
+    s1   = run-abstract (compile-go d a) s
+    s2   = step (spill 0 d) s1
+    ih-b = IHb s2
+    s3   = run-abstract (compile-go (suc d) b) s2
+    s4   = step (reload d 1) s3
+    s5   = step (cmp-rrr o 0 1 0) s4
+
+    bridge : run-abstract (compile-go d (acmp o a b)) s ≡ s5
+    bridge = trans
+      (run-abstract-app (compile-go d a)
+        (spill 0 d ∷ compile-go (suc d) b ++ (reload d 1 ∷ cmp-rrr o 0 1 0 ∷ [])) s)
+      (run-abstract-app (compile-go (suc d) b)
+        (reload d 1 ∷ cmp-rrr o 0 1 0 ∷ []) s2)
 
     scratch-s3-d : scratch s3 [ d ] ≡ regs s1 [ 0 ]
     scratch-s3-d = trans (scratch≤ ih-b d ≤-refl)
@@ -685,6 +734,7 @@ compile-go-correct {n = NInt} d (asub a b) s = asub-correct d a b s (compile-go-
 compile-go-correct {n = NInt} d (amul a b) s = amul-correct d a b s (compile-go-correct d a s) (λ s′ → compile-go-correct (suc d) b s′)
 compile-go-correct {n = NInt}   d (adiv a b) s = adiv-correct d a b s (compile-go-correct d a s) (λ s′ → compile-go-correct (suc d) b s′)
 compile-go-correct {n = NFloat} d (adiv a b) s = fdiv-correct d a b s (compile-go-correct d a s) (λ s′ → compile-go-correct (suc d) b s′)
+compile-go-correct d (acmp o a b) s = acmp-correct o d a b s (compile-go-correct d a s) (λ s′ → compile-go-correct (suc d) b s′)
 compile-go-correct d (amod a b) s = amod-correct d a b s (compile-go-correct d a s) (λ s′ → compile-go-correct (suc d) b s′)
 
 ------------------------------------------------------------------------
@@ -722,6 +772,14 @@ module _ (b : ℕ) (eqb : bits ≡ suc b) where
   eval-in-range (amod a c) env =
     %ˢ-in-range b eqb (eval-arith-W a env) (eval-arith-W c env) (eval-in-range a env)
   eval-in-range (aneg a)   env = m%n<n _ modulus
+  eval-in-range (acmp o a c) env =
+    bit<modulus (cmp-word bits o (eval-arith-W a env) (eval-arith-W c env))
+    where
+      1<modulus : 1 < modulus
+      1<modulus = subst (λ k → 1 < 2 ^ k) (sym eqb) (*-monoʳ-≤ 2 (m^n>0 2 b))
+      bit<modulus : ∀ t → (if t then 1 else 0) < modulus
+      bit<modulus true  = 1<modulus
+      bit<modulus false = 0<modulus
 
   -- single-node folds (the `alit 0 / alit -1` divisor cases); every other
   -- divisor is left untouched (`fold-div a c = adiv a c`, `refl`).
@@ -744,6 +802,7 @@ module _ (b : ℕ) (eqb : bits ≡ suc b) where
   fold-div-preserves a (adiv _ _) env _ = refl
   fold-div-preserves a (amod _ _) env _ = refl
   fold-div-preserves a (aneg _)   env _ = refl
+  fold-div-preserves a (acmp _ _ _) env _ = refl
 
   fold-mod-preserves : ∀ {sh} (a c : MArithIR sh NInt) (env : ⟦ sh ⟧S) →
     eval-arith-W (fold-mod a c) env ≡ eval-arith-W (amod a c) env
@@ -763,6 +822,7 @@ module _ (b : ℕ) (eqb : bits ≡ suc b) where
   fold-mod-preserves a (adiv _ _) env = refl
   fold-mod-preserves a (amod _ _) env = refl
   fold-mod-preserves a (aneg _)   env = refl
+  fold-mod-preserves a (acmp _ _ _) env = refl
 
   normalize-preserves : ∀ {sh} (e : MArithIR sh NInt) (env : ⟦ sh ⟧S) →
     eval-arith-W (normalize e) env ≡ eval-arith-W e env
@@ -779,6 +839,9 @@ module _ (b : ℕ) (eqb : bits ≡ suc b) where
     trans (fold-div-preserves (normalize a) (normalize c) env
              (eval-in-range (normalize a) env))
           (cong₂ _/ˢ_ (normalize-preserves a env) (normalize-preserves c env))
+  normalize-preserves (acmp o a c) env =
+    cong₂ (cmp-bit bits o)
+          (normalize-preserves a env) (normalize-preserves c env)
   normalize-preserves (amod a c) env =
     trans (fold-mod-preserves (normalize a) (normalize c) env)
           (cong₂ _%ˢ_ (normalize-preserves a env) (normalize-preserves c env))

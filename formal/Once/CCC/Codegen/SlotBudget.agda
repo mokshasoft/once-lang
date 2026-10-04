@@ -68,9 +68,12 @@ open import Once.CCC.Machine.SMCore using
    restore-input; load-indirect; load-indirect-suc; instr-load-code-addr;
    c-branch-tag-zero)
 open import Once.CCC.Machine.InstrSlot using (slot-of)
+open import Once.SigOp.Info using (SigOpInfo; sem)
+open import Once.Arith.CmpOp using (CmpOp)
+open import Once.Arith.SigOp.Compare using (cmp-of)
 open import Once.CCC.Codegen.IRToTrace o using
   (ir-to-trace'; ir-to-trace; ir-stack-budget; resuspend-layer; ir-to-trace-lab; ir-stack-budget-from;
-   ir-to-unit;
+   ir-to-unit; sigop-budget; sigop-code;
    CataStrategy; strat-const; strat-nat; strat-linear; strat-branching;
    cata-strategy; cata-dispatch; fsize; lsize;
    push2; pop2; wrap-sum; visit-walk; rebuild-walk; cata-nat-layer
@@ -121,6 +124,11 @@ cata-mono (strat-branching F) bb n1 l1 at =
       (≤-trans (m≤m+n ((n1 + 7) + 4 * fsize F) 4)
                (m≤m+n (((n1 + 7) + 4 * fsize F) + 4) 4)))
 
+-- Plan 0.108: a comparison stashes its tag and its sum, two slots.
+sigop-mono : ∀ (n : ℕ) (m : Maybe CmpOp) → n ≤ sigop-budget n m
+sigop-mono n nothing  = ≤-refl
+sigop-mono n (just _) = ≤-trans (n≤1+n n) (n≤1+n (suc n))
+
 frontier-mono : ∀ {A B} (ir : IR A B) (n l : ℕ) → n ≤ budget-of (ir-to-trace' n l ir)
 frontier-mono id       n l = ≤-refl
 frontier-mono fst      n l = ≤-refl
@@ -154,7 +162,7 @@ frontier-mono (in-ν _)     n l = ≤-trans (n≤1+n n) (n≤1+n (suc n))
 -- its walk clause is `curry`'s. The coalgebra is a named block, like the
 -- closure body, emitted at frontier 0 under the ν's own label.
 frontier-mono (Ana _ c)      n l = ≤-trans (n≤1+n n) (n≤1+n (suc n))
-frontier-mono (SigOp _)      n l = ≤-refl
+frontier-mono (SigOp si)     n l = sigop-mono n (cmp-of (sem si))
 frontier-mono (Call _)      n l = ≤-refl
 frontier-mono (const fits-int _)   n l = ≤-refl
 frontier-mono (const fits-float _) n l = ≤-refl
@@ -764,6 +772,14 @@ resuspend-below n l lbl (wf-Sum wfF wfG) =
            sb-none refl ∷ sb-none refl ∷
            sb-slot refl sn<B (λ _ ()) ∷ [])))
 
+sigop-below : ∀ {A B} (si : SigOpInfo A B) (n : ℕ) (m : Maybe CmpOp)
+            → SegOK (sigop-budget n m) (sigop-code si n m)
+sigop-below si n nothing  = segok-idle _ refl (sb-none refl ∷ [])
+sigop-below si n (just _) = segok-idle _ refl
+  (sb-none refl ∷ sb-none refl ∷ sb-slot refl (≤-step ≤-refl) (λ _ ()) ∷ sb-none refl ∷
+  sb-slot refl ≤-refl (λ _ ()) ∷ sb-none refl ∷ sb-slot refl (≤-step ≤-refl) (λ _ ()) ∷
+  sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ sb-slot refl ≤-refl (λ _ ()) ∷ [])
+
 slots-below : ∀ {A B} (ir : IR A B) (n l : ℕ)
             → SegOK (budget-of (ir-to-trace' n l ir)) (trace-of (ir-to-trace' n l ir))
 slots-below id       n l = segok-idle _ refl (sb-none refl ∷ [])
@@ -849,7 +865,7 @@ slots-below (Ana _ c) n l =
     (sb-none refl ∷ sb-slot refl (≤-step ≤-refl) (λ _ ()) ∷ sb-none refl ∷
      sb-slot refl ≤-refl (λ _ ()) ∷ sb-none refl ∷ sb-slot refl (≤-step ≤-refl) (λ _ ()) ∷
      sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ sb-slot refl ≤-refl (λ _ ()) ∷ [])
-slots-below (SigOp _)      n l = segok-idle _ refl (sb-none refl ∷ [])
+slots-below (SigOp si)     n l = sigop-below si n (cmp-of (sem si))
 slots-below (Call _)      n l = segok-idle _ refl (sb-none refl ∷ [])
 slots-below (const fits-int _)   n l = segok-idle _ refl (sb-none refl ∷ [])
 slots-below (const fits-float _) n l = segok-idle _ refl (sb-none refl ∷ [])

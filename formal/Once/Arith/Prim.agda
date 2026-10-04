@@ -19,6 +19,8 @@ open import Once.Type using (Type; Int; Float; Unit; _*_; _+_)
 open import Data.Bool using (Bool; true; false; not)
 open import Data.Sum using (inj₁; inj₂)
 open import Data.Unit using (tt)
+open import Once.Arith.CmpOp using (CmpOp)
+open import Once.Arith.CmpOp using (cmp-word)
 open import Once.Word using (Carrier)
 import Once.Word as OnceWord
 open import Once.Target.Arch using (TargetNum; int-bits; float-format)
@@ -106,13 +108,11 @@ bool : Bool → M.⟦ Unit + Unit ⟧ᵍ
 bool false = inj₁ tt
 bool true  = inj₂ tt
 
-lt-semM le-semM gt-semM ge-semM eq-semM ne-semM : TargetNum → M.⟦ Int * Int ⟧ → M.⟦ Unit + Unit ⟧ᵍ
-lt-semM tn (a , b) = bool (W._<ˢ_ tn a b)
-le-semM tn (a , b) = bool (not (W._<ˢ_ tn b a))
-gt-semM tn (a , b) = bool (W._<ˢ_ tn b a)
-ge-semM tn (a , b) = bool (not (W._<ˢ_ tn a b))
-eq-semM tn (a , b) = bool (W._≡ʷ_ tn a b)
-ne-semM tn (a , b) = bool (not (W._≡ʷ_ tn a b))
+cmp-bool : TargetNum → CmpOp → M.⟦ Int ⟧ → M.⟦ Int ⟧ → Bool
+cmp-bool tn = cmp-word (int-bits tn)
+
+cmp-semM : CmpOp → TargetNum → M.⟦ Int * Int ⟧ → M.⟦ Unit + Unit ⟧ᵍ
+cmp-semM op tn (a , b) = bool (cmp-bool tn op a b)
 
 ------------------------------------------------------------------------
 -- The primitives
@@ -124,7 +124,7 @@ data ArithPrim : Type → Type → Set where
   p-fadd p-fsub p-fmul p-fdiv   : ArithPrim (Float * Float) Float
   p-i2f                         : ArithPrim Int Float
   -- plan 0.108: the comparisons, into `Bool = Unit + Unit`
-  p-lt p-le p-gt p-ge p-eq p-ne : ArithPrim (Int * Int) (Unit + Unit)
+  p-cmp                         : CmpOp → ArithPrim (Int * Int) (Unit + Unit)
 
 primSem : ∀ {A B} → ArithPrim A B → TargetNum → M.⟦ A ⟧ → M.⟦ B ⟧ᵍ
 primSem p-add  = add-semM
@@ -138,9 +138,4 @@ primSem p-fsub = fsub-semM
 primSem p-fmul = fmul-semM
 primSem p-fdiv = fdiv-semM
 primSem p-i2f  = i2f-semM
-primSem p-lt   = lt-semM
-primSem p-le   = le-semM
-primSem p-gt   = gt-semM
-primSem p-ge   = ge-semM
-primSem p-eq   = eq-semM
-primSem p-ne   = ne-semM
+primSem (p-cmp op) = cmp-semM op

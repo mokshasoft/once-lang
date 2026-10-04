@@ -53,6 +53,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_)
 -- `X64.run`'s step semantics, replacing the old opaque observable postulate.
 open import Once.Arith.Backend.XInstr.Syntax as XI
 import Once.Float.Arith as FA
+open import Once.Arith.CmpOp using (cmp-bit)
 open import Once.Float.Decimal using (round)
 open import Once.Float.Dyadic using (binary32; binary64)
 open import Once.Target.X86-64.PhysReg using (Reg; rsp; rdi)
@@ -135,6 +136,7 @@ val-x86-64 (XI.Xdiv-rrr d a b)        s _ = rd s a W./ˢ rd s b
 val-x86-64 (XI.Xrem-rrr d a b)        s _ = rd s a W.%ˢ rd s b
 val-x86-64 (XI.Xdiv-safe-rrr d a b)   s _ = rd s a W./ˢ rd s b
 val-x86-64 (XI.Xrem-safe-rrr d a b)   s _ = rd s a W.%ˢ rd s b
+val-x86-64 (XI.Xcmp-rrr o d a b)      s _ = cmp-bit 64 o (rd s a) (rd s b)
 val-x86-64 (XI.Xshl-rri d src imm)    s _ = W.shlᵂ (rd s src) imm
 val-x86-64 (XI.Xsdiv-pow2-rri d src imm) s _ = W.sdiv2ᵏ (rd s src) imm
 val-x86-64 (XI.Xneg-r d)              s _ = W.⊝ (rd s d)

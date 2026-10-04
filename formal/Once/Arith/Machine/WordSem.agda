@@ -22,7 +22,7 @@ open import Data.Maybe using (just; nothing)
 import Once.Word as W
 open import Once.Arith.Machine.Shape using (InputShape; ⟦_⟧S; InputPath; project; projectF; Path; readLeaf; ⌊_⌋ᴾ; project-path; projectF-path)
 open import Once.Arith.Machine.IR
-  using (MArithIR; alit; aflit; ainput; aadd; asub; amul; adiv; amod; aneg; ai2f)
+  using (MArithIR; alit; aflit; ainput; aadd; asub; amul; adiv; amod; aneg; ai2f; acmp)
 open import Once.Arith.Type using (NumType; NInt; NFloat)
 open import Once.Float.Dyadic using (FloatFormat)
 open import Once.Float.Decimal using (round)
@@ -33,6 +33,8 @@ import Once.Float.Arith as FA
 -- float one, and neither is hard-coded here. A float result IS a bit pattern
 -- (D113), and a `Word` IS `Carrier` (`ℕ`), so the two kinds share a result
 -- type and `eval-arith-W` stays a single function.
+open import Once.Arith.CmpOp using (cmp-bit)
+
 module Sem (bits : ℕ) (F : FloatFormat) where
   open W.Width bits using (Word; fromℤ; toℤ; _⊕_; _⊖_; _⊗_; _/ˢ_; _%ˢ_; ⊝_)
 
@@ -73,3 +75,5 @@ module Sem (bits : ℕ) (F : FloatFormat) where
   eval-arith-W {n = NFloat} (aneg a)   inp = FA.fneg F (eval-arith-W a inp)
   -- D125's widening reads the operand at its SIGNED value before rounding.
   eval-arith-W (ai2f a) inp = FA.i2f F (toℤ (eval-arith-W a inp))
+  -- plan 0.108: a signed comparison, as a 0/1 word.
+  eval-arith-W (acmp o a b) inp = cmp-bit bits o (eval-arith-W a inp) (eval-arith-W b inp)

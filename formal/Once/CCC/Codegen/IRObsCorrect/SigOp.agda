@@ -52,6 +52,8 @@ open import Once.CanonicalName using (showCanonical)
 open import Once.Res using (is-stopped)
 open import Once.SigOp.Info using (SigOpSem; sem; effect-of; semM; baseA; conB; name;
                                    pureV; primV; emitsV; haltsV; ffiV; callsV)
+open import Once.Arith.SigOp.Compare using (cmp-of)
+open import Once.CCC.Codegen.IRToTrace o using (sigop-code)
 
 module SigOpC {FS : FrameSemantics} where
 
@@ -160,7 +162,15 @@ module SigOpC {FS : FrameSemantics} where
               (n l : ℕ) (prog : AbstractTrace) (base : ℕ)
               (span : SpanAt prog base (emitted n l (SigOp si)))
               (x : ⟦ ⌊ A ⌋ ⟧) (s : LocState FS) (alloc : AllocState {FS}) (cl : StoredValue FS)
-              (nh : halted s ≡ false) where
+              (nh : halted s ≡ false)
+              -- plan 0.108: not a comparison, so the emission is the one call.
+              (nc : cmp-of (sem si) ≡ nothing) where
+
+    em≡ : emitted n l (SigOp si) ≡ instr-sigop si DL.∷ DL.[]
+    em≡ = cong (sigop-code si n) nc
+
+    span′ : SpanAt prog base (instr-sigop si DL.∷ DL.[])
+    span′ = subst (SpanAt prog base) em≡ span
 
     E : TM.T ⟦ ⌊ B ⌋ ⟧
     E = evalᴰ (SigOp si) x
@@ -177,8 +187,8 @@ module SigOpC {FS : FrameSemantics} where
     build ev-eq live stops place k = record
       { traces-agree = trans (++-identityʳ _) ev-eq
       ; value-realized =
-          realized 1 fs₁ Stack (falloc fs₁) ((nh , span 0 _ refl) ∷ [])
-                   live (λ _ → refl) stops refl refl
+          realized 1 fs₁ Stack (falloc fs₁) ((nh , span′ 0 _ refl) ∷ [])
+                   live (λ _ → cong (λ t → DL.length t + base) (sym em≡)) stops refl refl
                    (cong (LocState.ev-log s DL.++_) ev-eq)
                    place
                    -- D204: `exec-abstract (instr-sigop si)` writes the Output
@@ -271,13 +281,13 @@ module SigOpC {FS : FrameSemantics} where
   -- The four contract classes.
   ------------------------------------------------------------------------
   pure-obs : ∀ {A B} (si : SigOpInfo A B) (c : SigOpSem A B) → sem si ≡ c → effect-of c ≡ Pure
-           → Declared-at σᶠ si c → FitsInReg B → Readable A → IRObsCorrectF (SigOp si)
-  pure-obs {A} {B} si c e eff d fit rA n l prog base _ _ span _ _ mIn x s alloc cl _ nh inp =
+           → Declared-at σᶠ si c → cmp-of (sem si) ≡ nothing → FitsInReg B → Readable A → IRObsCorrectF (SigOp si)
+  pure-obs {A} {B} si c e eff d nc fit rA n l prog base _ _ span _ _ mIn x s alloc cl _ nh inp =
     S.build ev-eq (λ _ → trans (halts-at si c e s) (cong (λ z → exec-sigop-halts-of z si s) eff))
                   (λ st → case trans (sym stops-f) st of λ ())
                   place
     where
-      module S = Step si n l prog base span x s alloc cl nh
+      module S = Step si n l prog base span x s alloc cl nh nc
       a = argOf si x
       w = proj₁ (pure-agree si c eff d a)
       E≡ : evalᴰ (SigOp si) x ≡ TM.ret (resOf si w)
@@ -308,7 +318,7 @@ module SigOpC {FS : FrameSemantics} where
                   (λ st → case trans (sym (cong (stopsAt s) E≡)) st of λ ())
                   (λ _ → unit-result)
     where
-      module S = Step si n l prog base span x s alloc cl nh
+      module S = Step si n l prog base span x s alloc cl nh (cong cmp-of e)
       E≡ = evalᴰ-at si (emitsV refl) e x
       ev-eq : sigop-events si s ≡ eventsAt s (evalᴰ (SigOp si) x)
       ev-eq = trans (events-at si (emitsV refl) e s)
@@ -320,7 +330,7 @@ module SigOpC {FS : FrameSemantics} where
                   (λ _ → halts-at si (haltsV refl) e s)
                   (λ p → case trans (sym (cong (resultAt s) E≡)) p of λ ())
     where
-      module S = Step si n l prog base span x s alloc cl nh
+      module S = Step si n l prog base span x s alloc cl nh (cong cmp-of e)
       E≡ = evalᴰ-at si (haltsV refl) e x
       ev-eq : sigop-events si s ≡ eventsAt s (evalᴰ (SigOp si) x)
       ev-eq = trans (events-at si (haltsV refl) e s)
@@ -341,7 +351,7 @@ module SigOpC {FS : FrameSemantics} where
                   (λ st → case trans (sym (cong is-stopped res-call)) (trans (sym (cong (stopsAt s) E≡)) st) of λ ())
                   place
     where
-      module S = Step si n l prog base span x s alloc cl nh
+      module S = Step si n l prog base span x s alloc cl nh (cong cmp-of e)
       E≡ = evalᴰ-at si callsV e x
       op = TM.callOp (name si) A (baseA si) B
       y  = yes-of d
@@ -390,22 +400,26 @@ module SigOpC {FS : FrameSemantics} where
 
   -- The routing, by explicit-argument helpers (no `with`).
   pure-route : ∀ {A B} (si : SigOpInfo A B) (c : SigOpSem A B) → sem si ≡ c → effect-of c ≡ Pure → Declared-at σᶠ si c
-             → Maybe (FitsInReg B) → Readable A → IRObsCorrectF (SigOp si)
-  pure-route si c e eff d (just fit) rA = pure-obs si c e eff d fit rA
-  pure-route si c e eff d nothing    _  = obs-correct-sigop-rest si
+             → cmp-of (sem si) ≡ nothing → Maybe (FitsInReg B) → Readable A → IRObsCorrectF (SigOp si)
+  pure-route si c e eff d nc (just fit) rA = pure-obs si c e eff d nc fit rA
+  pure-route si c e eff d nc nothing    _  = obs-correct-sigop-rest si
 
   calls-route : ∀ {A B} (si : SigOpInfo A B) → sem si ≡ callsV → Declared-at σᶠ si callsV → Maybe (FitsInReg B) → IRObsCorrectF (SigOp si)
   calls-route si e d (just fit) = calls-obs si e d fit
   calls-route si e d nothing    = obs-correct-sigop-rest si
 
-  by-sem : ∀ {A B} (si : SigOpInfo A B) (c : SigOpSem A B) → sem si ≡ c → Declared-at σᶠ si c → IRObsCorrectF (SigOp si)
-  by-sem {A} {B} si (pureV f)     e d = pure-route si (pureV f) e refl d (fits-in-reg? B) (readable-base (baseA si))
-  by-sem {A} {B} si (primV p)     e d = pure-route si (primV p) e refl d (fits-in-reg? B) (readable-base (baseA si))
-  by-sem {A} {B} si ffiV          e d = pure-route si ffiV e refl d (fits-in-reg? B) (readable-base (baseA si))
-  by-sem         si (emitsV refl) e d = emits-obs si e
-  by-sem         si (haltsV refl) e d = halts-obs si e
-  by-sem {B = B} si callsV        e d = calls-route si e d (fits-in-reg? B)
+  by-sem : ∀ {A B} (si : SigOpInfo A B) (c : SigOpSem A B) → sem si ≡ c → Declared-at σᶠ si c
+         → cmp-of (sem si) ≡ nothing → IRObsCorrectF (SigOp si)
+  by-sem {A} {B} si (pureV f)     e d nc = pure-route si (pureV f) e refl d nc (fits-in-reg? B) (readable-base (baseA si))
+  by-sem {A} {B} si (primV p)     e d nc = pure-route si (primV p) e refl d nc (fits-in-reg? B) (readable-base (baseA si))
+  by-sem {A} {B} si ffiV          e d nc = pure-route si ffiV e refl d nc (fits-in-reg? B) (readable-base (baseA si))
+  by-sem         si (emitsV refl) e d _  = emits-obs si e
+  by-sem         si (haltsV refl) e d _  = halts-obs si e
+  by-sem {B = B} si callsV        e d _  = calls-route si e d (fits-in-reg? B)
 
   -- plan 0.105: at a SigOp the program's interpretation declares (`Linked`).
-  obs-correct-sigop : ∀ {A B} (si : SigOpInfo A B) → Declared σᶠ si → IRObsCorrectF (SigOp si)
-  obs-correct-sigop si d = by-sem si (sem si) refl d
+  -- Plan 0.108: every SigOp that is NOT a comparison — a comparison lowers to
+  -- its block and a sum build, and `IRObsCorrect.Compare` routes it.
+  obs-correct-sigop-nc : ∀ {A B} (si : SigOpInfo A B) → Declared σᶠ si
+                       → cmp-of (sem si) ≡ nothing → IRObsCorrectF (SigOp si)
+  obs-correct-sigop-nc si d nc = by-sem si (sem si) refl d nc

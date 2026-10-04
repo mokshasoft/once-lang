@@ -16495,3 +16495,39 @@ undefined and is now defined — the user's decision, not a proof convenience.
 Still open (plan 0.108 B–E): the correctness proof routes `Unit + Unit` to
 `obs-correct-sigop-rest`, and the emitted call does not link. The design is a TAG then an
 INJECTION — a 0/1 compare in an arith block, then `bool-of : IR Int (Unit + Unit)`.
+
+## D264 — A COMPARISON IS ITS BLOCK, THEN A TAG, THEN A SUM: proved, linked (2026-10-04)
+
+**Relates**: D263 (what a comparison means), plan 0.108 §§5–6, D262 (`FileWF.file-wf`), D255.
+
+**The comparison stays one IR node** (`SigOp lt-info`). A `bool-of : IR Int (Unit + Unit)` morphism
+was tried and backed out (plan §6): an `IR`-level step must be correct for every residence of its
+input, and an `Int` may sit behind a pointer (`in-loc`), so no word→tag step on `Input1` is sound.
+The factoring lives in CODEGEN instead (`IRToTrace.cmp-trace`):
+
+    instr-sigop (cmp-block-info op)   -- the arith block: Output := 0/1 (signed compare)
+    instr-reg-op out-nz               -- Output := that word as a tag
+    store-at-slot n ; instr-alloc-heap 2 ; store-at-slot (n+1) ; mov-to-input ;
+    load-from-slot n ; store-indirect ; instr-load-tag-lit 0 ; store-indirect-suc ;
+    load-from-slot (n+1)              -- `inl`/`inr`'s build, tag from the slot, unit payload
+
+`out-nz` reads a word the block has JUST written to `Output`, never one behind a pointer.
+
+**One source for "is a comparison".** `Arith.SigOp.Compare.cmp-of : SigOpSem A B → Maybe CmpOp`
+(only `primV (p-cmp op)` answers). Codegen lowers by it (`sigop-trace` = `sigop-budget` ×
+`sigop-code`, label and blocks independent of the choice), and the rewrite registers the same block
+(`walk (SigOp si) = SigOp si , sigop-blocks (cmp-of (sem si))`), so the file DEFINES what the call
+names — the reason `FileWF.file-wf` was false for comparisons is gone.
+
+**The arith layers gain one node, all the way down.** `MArithIR.acmp`, `AbsInstr.cmp-rrr`,
+`XInstr.Xcmp-rrr` (meaning `CmpOp.cmp-bit`, the 0/1 word), emitters (x86 `cmp; set<cc> %al;
+movzb`, riscv `slt`/`xori`/`sub`+`seqz`/`snez`), `CompileCorrect.acmp-correct`, the backend refine,
+the three ArithSims (`rt-cmp`) and confinement (x86 writes `%rax`/`%eax`). `ArithPrim`'s six
+constructors became `p-cmp : CmpOp → …` (`Once.Arith.CmpOp`, one operation code).
+
+**The proof.** `IRObsCorrect.Compare.cmp-obs` is the comparison's `IRObsCorrectF`, over
+`NineStepPres` started after the two register steps; the denotation is `ret (bool c)` and the place
+is `valid-inr-reg-wf`/`valid-inl-reg-wf` by the tag. `obs-correct-sigop` routes by the contract,
+enumerated (no catch-all): the comparison here, every other SigOp to `obs-correct-sigop-nc` (which
+carries `cmp-of (sem si) ≡ nothing` to see its one-instruction emission). Comparisons no longer
+reach `obs-correct-sigop-rest`. The Spec closure is unchanged.

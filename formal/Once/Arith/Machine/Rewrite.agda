@@ -34,7 +34,9 @@ open import Relation.Nullary using (Dec; yes; no)
 open import Once.Type using (Type; Unit; Int; _*_; _+_; _⇒[_]_)
 open import Once.IR
 import Once.IRTy as II
-open import Once.SigOp.Info using (SigOpInfo)
+open import Once.SigOp.Info using (SigOpInfo; sem)
+open import Once.Arith.CmpOp using (CmpOp)
+open import Once.Arith.SigOp.Compare using (cmp-of; cmp-block)
 
 open import Once.Arith.Machine.AbsState
   using (InputShape; shape-unit; shape-int; shape-float; shape-pair)
@@ -45,7 +47,7 @@ open import Once.Arith.Machine.AbsState
 -- instead of a float tree silently taking the integer path.
 open import Once.Arith.Type using (NumType; NInt; NFloat)
 open import Once.Arith.Machine.IR
-  using (MArithIR; alit; aflit; ainput; aadd; asub; amul; adiv; amod; aneg; ai2f;
+  using (MArithIR; alit; aflit; ainput; aadd; asub; amul; adiv; amod; aneg; ai2f; acmp;
          numtype-as-type;
          ArithBlock; mk-block; shape-as-type)
 open Once.Arith.Machine.IR.ArithBlock using (block-shape; block-body)
@@ -93,6 +95,7 @@ has-op (amul _ _)  = true
 has-op (adiv _ _)  = true
 has-op (amod _ _)  = true
 has-op (aneg _)    = true
+has-op (acmp _ _ _) = true
 
 ------------------------------------------------------------------------
 -- Block-as-IR construction
@@ -156,6 +159,10 @@ try-lift {_} {_} _ = nothing
 -- With-free (explicit-aux form): the lift decision is a bound argument, so a
 -- proof follows the pass by casing on it, and the walk is TOP-LEVEL. The
 -- recursion is structural through the walk, so no pragma is needed.
+sigop-blocks : Maybe CmpOp → List ArithBlock
+sigop-blocks (just o) = cmp-block o ∷ []
+sigop-blocks nothing  = []
+
 rewrite-ir : ∀ {A B} → IR A B → IR A B × List ArithBlock
 rw-at      : ∀ {A B} → IR A B → Maybe (IR A B × ArithBlock) → IR A B × List ArithBlock
 walk       : ∀ {A B} → IR A B → IR A B × List ArithBlock
@@ -199,5 +206,7 @@ walk (Ana w f)         =
   let (f' , bf) = rewrite-ir f
   in Ana w f' , bf
 walk (const p v)   = const p v , []
-walk (SigOp si)        = SigOp si , []
+-- Plan 0.108: a comparison stays one node, but its lowering CALLS its arith
+-- block, so the block is registered here — the file defines it, the call links.
+walk (SigOp si)        = SigOp si , sigop-blocks (cmp-of (sem si))
 walk (Call f)          = Call f , []

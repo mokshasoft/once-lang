@@ -20,6 +20,8 @@ module Once.Arith.Machine.IR where
 open import Data.Integer using (ℤ; +_; ∣_∣; sign; _◃_)
 import Data.Integer as ℤ
 open import Data.Maybe using (Maybe; just; nothing)
+open import Once.Arith.CmpOp using (CmpOp; c-lt; c-le; c-gt; c-ge; c-eq; c-ne)
+open import Data.Bool using (Bool; not; _∧_; if_then_else_)
 open import Data.Product using (_,_; proj₁; proj₂)
 open import Data.Nat using (ℕ; zero; suc)
 import Data.Nat as ℕ
@@ -78,6 +80,9 @@ data MArithIR (sh : InputShape) : NumType → Set where
   aneg       : ∀ {n} → MArithIR sh n → MArithIR sh n
   -- D125's widening, as a node: `1 + 1.5` puts one of these on the `Int` side.
   ai2f       : MArithIR sh NInt → MArithIR sh NFloat
+  -- plan 0.108: a COMPARISON, as a 0/1 word — the tag of the `Bool` the
+  -- comparison SigOp means (true = inr = 1, D263). Int operands only.
+  acmp       : CmpOp → MArithIR sh NInt → MArithIR sh NInt → MArithIR sh NInt
 
 ------------------------------------------------------------------------
 -- Denotational semantics
@@ -120,6 +125,17 @@ eval-arith (amul a b) inp = eval-arith a inp ℤ.* eval-arith b inp
 eval-arith (adiv a b) inp = divℤ (eval-arith a inp) (eval-arith b inp)
 eval-arith (amod a b) inp = modℤ (eval-arith a inp) (eval-arith b inp)
 eval-arith (aneg a)   inp = ℤ.- eval-arith a inp
+eval-arith (acmp o a b) inp = if cmpℤ o (eval-arith a inp) (eval-arith b inp) then + 1 else + 0
+  where
+    -- plan 0.108: the comparison on unbounded integers (this reference
+    -- evaluator's domain); the word-level meaning is `Prim.cmp-bool`.
+    cmpℤ : CmpOp → ℤ → ℤ → Bool
+    cmpℤ c-lt x y = not (y ℤ.≤ᵇ x)
+    cmpℤ c-le x y = x ℤ.≤ᵇ y
+    cmpℤ c-gt x y = not (x ℤ.≤ᵇ y)
+    cmpℤ c-ge x y = y ℤ.≤ᵇ x
+    cmpℤ c-eq x y = (x ℤ.≤ᵇ y) ∧ (y ℤ.≤ᵇ x)
+    cmpℤ c-ne x y = not ((x ℤ.≤ᵇ y) ∧ (y ℤ.≤ᵇ x))
 
 -- (The machine-level modular-`Word` evaluator `eval-arith-W` is now in
 -- the width-parameterised `Once.Arith.Machine.WordSem`, so this module
@@ -185,3 +201,4 @@ leaf-count (adiv a b)   = leaf-count a ℕ.+ leaf-count b
 leaf-count (amod a b)   = leaf-count a ℕ.+ leaf-count b
 leaf-count (aneg a)     = leaf-count a
 leaf-count (ai2f a)     = leaf-count a
+leaf-count (acmp _ a b) = leaf-count a ℕ.+ leaf-count b

@@ -27,6 +27,7 @@ module Once.Arith.Backend.XInstr.Syntax where
 
 open import Data.Integer using (ℤ)
 open import Data.Nat using (ℕ)
+open import Once.Arith.CmpOp using (CmpOp)
 open import Data.List using (List)
 
 open import Once.Arith.Machine.AbsState using (InputPath)
@@ -105,6 +106,11 @@ data XInstr : Set where
   -- aliasing constraint on `dst`. `dst := a /ˢ b` / `dst := a %ˢ b`.
   Xdiv-rrr  : XReg → XReg → XReg → XInstr    -- dst := dividend /ˢ divisor
   Xrem-rrr  : XReg → XReg → XReg → XInstr    -- dst := dividend %ˢ divisor
+
+  -- plan 0.108: COMPARISON into a 0/1 word, three-address like division
+  -- (`dst := if a ⋚ b then 1 else 0`, signed). Per-arch Emit renders
+  -- `cmp; setcc; movzx` (x86) or `slt`/`xor`/`seqz`/`snez` (RISC-V).
+  Xcmp-rrr  : CmpOp → XReg → XReg → XReg → XInstr
 
   -- Guard-ELIDED division / remainder (Plan: div-guard elision). SAME meaning
   -- as `Xdiv-rrr`/`Xrem-rrr` (`/ˢ`/`%ˢ`); the per-arch Emit renders a BARE

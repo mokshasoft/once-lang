@@ -34,7 +34,8 @@ open import Once.Type using (Type; Unit; Void; Int; _*_; _+_;
                               ArrowKind; mk-kind; Purity; pure; eff; isUnit?; isVoid?)
 open import Relation.Nullary using (Dec; yes; no)
 open import Once.SigOp.Info using (SigOpInfo; SigOpSem; mk-info; mk-info'; pureV; primV; emitsV; haltsV; ffiV; callsV; EffectShape; Pure; Halts)
-open import Once.Arith.Prim using (ArithPrim; p-lt; p-le; p-gt; p-ge; p-eq; p-ne; p-add; p-sub; p-mul; p-div; p-mod; p-neg; p-fadd; p-fsub; p-fmul; p-fdiv; p-i2f)
+open import Once.Arith.CmpOp using (c-lt; c-le; c-gt; c-ge; c-eq; c-ne)
+open import Once.Arith.Prim using (ArithPrim; p-cmp; p-add; p-sub; p-mul; p-div; p-mod; p-neg; p-fadd; p-fsub; p-fmul; p-fdiv; p-i2f)
 open import Once.Functor.Translate using (IsBaseType;
   base-Unit; base-Int; base-Float; base-Prod; base-Sum)
 open import Once.CanonicalName using (CanonicalName; bare; showCanonical)
@@ -160,22 +161,22 @@ i2f-info = mk-info' (bare "arith.i2f") (primV p-i2f) base-Int base-Float
 
 -- Comparisons
 lt-info : SigOpInfo (Int * Int) (Unit + Unit)
-lt-info = mk-info' (bare "arith.lt.int") (primV p-lt) base-I×I base-U+U
+lt-info = mk-info' (bare "arith.lt.int") (primV (p-cmp c-lt)) base-I×I base-U+U
 
 le-info : SigOpInfo (Int * Int) (Unit + Unit)
-le-info = mk-info' (bare "arith.le.int") (primV p-le) base-I×I base-U+U
+le-info = mk-info' (bare "arith.le.int") (primV (p-cmp c-le)) base-I×I base-U+U
 
 gt-info : SigOpInfo (Int * Int) (Unit + Unit)
-gt-info = mk-info' (bare "arith.gt.int") (primV p-gt) base-I×I base-U+U
+gt-info = mk-info' (bare "arith.gt.int") (primV (p-cmp c-gt)) base-I×I base-U+U
 
 ge-info : SigOpInfo (Int * Int) (Unit + Unit)
-ge-info = mk-info' (bare "arith.ge.int") (primV p-ge) base-I×I base-U+U
+ge-info = mk-info' (bare "arith.ge.int") (primV (p-cmp c-ge)) base-I×I base-U+U
 
 eq-info : SigOpInfo (Int * Int) (Unit + Unit)
-eq-info = mk-info' (bare "arith.eq.int") (primV p-eq) base-I×I base-U+U
+eq-info = mk-info' (bare "arith.eq.int") (primV (p-cmp c-eq)) base-I×I base-U+U
 
 ne-info : SigOpInfo (Int * Int) (Unit + Unit)
-ne-info = mk-info' (bare "arith.ne.int") (primV p-ne) base-I×I base-U+U
+ne-info = mk-info' (bare "arith.ne.int") (primV (p-cmp c-ne)) base-I×I base-U+U
 
 -- String literal family
 

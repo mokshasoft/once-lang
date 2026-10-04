@@ -23,7 +23,8 @@
 
 module Once.Arith.SigOp.Block where
 
-open import Data.Bool using (Bool; true; false)
+open import Data.Bool using (Bool; true; false; if_then_else_)
+open import Once.Arith.CmpOp using (CmpOp; c-lt; c-le; c-gt; c-ge; c-eq; c-ne; cmp-bit)
 open import Data.Integer using (ℤ; +_; -[1+_]) renaming (_<?_ to _<ℤ?_)
 import Data.Integer as ℤ
 open import Data.Nat using (ℕ; zero; suc)
@@ -42,7 +43,7 @@ open import Once.Arith.Machine.AbsState
   using (InputShape; shape-unit; shape-int; shape-float; shape-pair; ⟦_⟧S; InputPath; Side; Fst; Snd;
          Path; here-int; here-flt; go-fst; go-snd; ⌊_⌋ᴾ)
 open import Once.Arith.Machine.IR
-  using (MArithIR; alit; aflit; ainput; aadd; asub; amul; adiv; amod; aneg; ai2f;
+  using (MArithIR; alit; aflit; ainput; aadd; asub; amul; adiv; amod; aneg; ai2f; acmp;
          numtype-as-type;
          shape-as-type; ArithBlock; mk-block)
 import Once.Word as OnceWord
@@ -115,6 +116,15 @@ show-arith-ir (adiv a b)   = "D" ++ show-arith-ir a ++ show-arith-ir b
 show-arith-ir (amod a b)   = "R" ++ show-arith-ir a ++ show-arith-ir b
 show-arith-ir (aneg a)     = "G" ++ show-arith-ir a
 show-arith-ir (ai2f a)     = "C" ++ show-arith-ir a
+-- plan 0.108: `K` and ONE digit for the comparison — prefix-free like the rest.
+show-arith-ir (acmp o a b) = "K" ++ show-cmp o ++ show-arith-ir a ++ show-arith-ir b
+  where show-cmp : CmpOp → String
+        show-cmp c-lt = "0"
+        show-cmp c-le = "1"
+        show-cmp c-gt = "2"
+        show-cmp c-ge = "3"
+        show-cmp c-eq = "4"
+        show-cmp c-ne = "5"
 
 -- | The digest is just the serialisation. (A hash function would be
 -- stable across re-renders and shorter; the plan's "64-bit hex digest"
@@ -219,6 +229,7 @@ block-semM (amod a b)      tn inp = W._%ˢ_ tn (block-semM a tn inp) (block-semM
 block-semM {n = NInt}   (aneg a)   tn inp = W.⊝_   tn (block-semM a tn inp)
 block-semM {n = NFloat} (aneg a)   tn inp = FA.fneg (float-format tn) (block-semM a tn inp)
 block-semM (ai2f a)        tn inp = FA.i2f (float-format tn) (W.toℤ tn (block-semM a tn inp))
+block-semM (acmp o a b)    tn inp = cmp-bit (int-bits tn) o (block-semM a tn inp) (block-semM b tn inp)
 
 -- | The block's `SigOpInfo`.
 --
