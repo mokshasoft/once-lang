@@ -17,9 +17,7 @@ import MAlonzo.RTE (coe, erased, AgdaAny, addInt, subInt, mulInt,
                     rem64, lt64, eq64, word64FromNat, word64ToNat)
 import qualified MAlonzo.RTE
 import qualified Data.Text
-import qualified MAlonzo.Code.Agda.Builtin.Sigma
 import qualified MAlonzo.Code.Once.Denotation.TraceMonad
-import qualified MAlonzo.Code.Once.Res
 import qualified MAlonzo.Code.Once.Target.Arch
 import qualified MAlonzo.Code.Once.Type
 
@@ -32,52 +30,50 @@ d_RelV_10 = erased
 d_RelT_14 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_T_10 ->
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_T_10 -> ()
+  MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178 ->
+  MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178 -> ()
 d_RelT_14 = erased
 -- Once.Adequacy.MeaningRelation.RelT-return
-d_RelT'45'return_132 ::
+d_RelT'45'return_122 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
   AgdaAny ->
   AgdaAny ->
-  AgdaAny -> Integer -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_RelT'45'return_132 ~v0 ~v1 ~v2 ~v3 v4 ~v5
-  = du_RelT'45'return_132 v4
-du_RelT'45'return_132 ::
-  AgdaAny -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-du_RelT'45'return_132 v0
-  = coe
-      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 erased
-      (coe MAlonzo.Code.Once.Res.C_rel'45'returns_140 v0)
+  AgdaAny ->
+  MAlonzo.Code.Once.Denotation.TraceMonad.T_RelT'8242'_1076
+d_RelT'45'return_122 ~v0 ~v1 ~v2 ~v3 v4 = du_RelT'45'return_122 v4
+du_RelT'45'return_122 ::
+  AgdaAny ->
+  MAlonzo.Code.Once.Denotation.TraceMonad.T_RelT'8242'_1076
+du_RelT'45'return_122 v0
+  = coe MAlonzo.Code.Once.Denotation.TraceMonad.C_rel'45'ret_1088 v0
 -- Once.Adequacy.MeaningRelation.RelT-bind
-d_RelT'45'bind_154 ::
+d_RelT'45'bind_142 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_T_10 ->
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_T_10 ->
-  (AgdaAny -> MAlonzo.Code.Once.Denotation.TraceMonad.T_T_10) ->
-  (AgdaAny -> MAlonzo.Code.Once.Denotation.TraceMonad.T_T_10) ->
-  (Integer -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14) ->
+  MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178 ->
+  MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178 ->
+  (AgdaAny -> MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178) ->
+  (AgdaAny -> MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178) ->
+  MAlonzo.Code.Once.Denotation.TraceMonad.T_RelT'8242'_1076 ->
   (AgdaAny ->
    AgdaAny ->
-   AgdaAny -> Integer -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14) ->
-  Integer -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_RelT'45'bind_154 ~v0 ~v1 ~v2 v3 v4 ~v5 ~v6 v7 v8 v9
-  = du_RelT'45'bind_154 v3 v4 v7 v8 v9
-du_RelT'45'bind_154 ::
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_T_10 ->
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_T_10 ->
-  (Integer -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14) ->
+   AgdaAny ->
+   MAlonzo.Code.Once.Denotation.TraceMonad.T_RelT'8242'_1076) ->
+  MAlonzo.Code.Once.Denotation.TraceMonad.T_RelT'8242'_1076
+d_RelT'45'bind_142 ~v0 ~v1 ~v2 v3 v4 ~v5 ~v6 v7 v8
+  = du_RelT'45'bind_142 v3 v4 v7 v8
+du_RelT'45'bind_142 ::
+  MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178 ->
+  MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178 ->
+  MAlonzo.Code.Once.Denotation.TraceMonad.T_RelT'8242'_1076 ->
   (AgdaAny ->
    AgdaAny ->
-   AgdaAny -> Integer -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14) ->
-  Integer -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-du_RelT'45'bind_154 v0 v1 v2 v3 v4
+   AgdaAny ->
+   MAlonzo.Code.Once.Denotation.TraceMonad.T_RelT'8242'_1076) ->
+  MAlonzo.Code.Once.Denotation.TraceMonad.T_RelT'8242'_1076
+du_RelT'45'bind_142 v0 v1 v2 v3
   = coe
-      MAlonzo.Code.Once.Denotation.TraceMonad.du_bindRes'45'rel_1080
-      (coe MAlonzo.Code.Once.Denotation.TraceMonad.d_resT_20 (coe v0))
-      (coe MAlonzo.Code.Once.Denotation.TraceMonad.d_resT_20 (coe v1))
-      erased (coe MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30 (coe v2 v4))
-      (coe v3)
+      MAlonzo.Code.Once.Denotation.TraceMonad.du_RelT'8242''45'bind_1132
+      (coe v0) (coe v1) (coe v2) (coe (\ v4 v5 -> coe v3 v4 v5))

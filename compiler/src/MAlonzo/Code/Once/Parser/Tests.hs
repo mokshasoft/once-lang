@@ -39,47 +39,35 @@ d_parseType'45'Int_12 = erased
 d_parseType'45'Float_14 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_parseType'45'Float_14 = erased
--- Once.Parser.Tests.parseType-Buffer
-d_parseType'45'Buffer_16 ::
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_parseType'45'Buffer_16 = erased
--- Once.Parser.Tests.parseType-String
-d_parseType'45'String_18 ::
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_parseType'45'String_18 = erased
 -- Once.Parser.Tests.parseType-Unit-leftover
-d_parseType'45'Unit'45'leftover_20 ::
+d_parseType'45'Unit'45'leftover_16 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_parseType'45'Unit'45'leftover_20 = erased
+d_parseType'45'Unit'45'leftover_16 = erased
 -- Once.Parser.Tests.parseType-Unit*Int
-d_parseType'45'Unit'42'Int_22 ::
+d_parseType'45'Unit'42'Int_18 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_parseType'45'Unit'42'Int_22 = erased
--- Once.Parser.Tests.parseType-Int+Str
-d_parseType'45'Int'43'Str_24 ::
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_parseType'45'Int'43'Str_24 = erased
+d_parseType'45'Unit'42'Int_18 = erased
 -- Once.Parser.Tests.parseType-Int⇒Int-default
-d_parseType'45'Int'8658'Int'45'default_26 ::
+d_parseType'45'Int'8658'Int'45'default_20 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_parseType'45'Int'8658'Int'45'default_26 = erased
+d_parseType'45'Int'8658'Int'45'default_20 = erased
 -- Once.Parser.Tests.parseType-Int-linear-Int
-d_parseType'45'Int'45'linear'45'Int_28 ::
+d_parseType'45'Int'45'linear'45'Int_22 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_parseType'45'Int'45'linear'45'Int_28 = erased
+d_parseType'45'Int'45'linear'45'Int_22 = erased
 -- Once.Parser.Tests.parseType-Int-erased-Unit
-d_parseType'45'Int'45'erased'45'Unit_30 ::
+d_parseType'45'Int'45'erased'45'Unit_24 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_parseType'45'Int'45'erased'45'Unit_30 = erased
+d_parseType'45'Int'45'erased'45'Unit_24 = erased
 -- Once.Parser.Tests.parseType-paren-Int
-d_parseType'45'paren'45'Int_32 ::
+d_parseType'45'paren'45'Int_26 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_parseType'45'paren'45'Int_32 = erased
+d_parseType'45'paren'45'Int_26 = erased
 -- Once.Parser.Tests.parseType-arrow-alone
-d_parseType'45'arrow'45'alone_34 ::
+d_parseType'45'arrow'45'alone_28 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_parseType'45'arrow'45'alone_34 = erased
+d_parseType'45'arrow'45'alone_28 = erased
 -- Once.Parser.Tests.parseType-star-alone
-d_parseType'45'star'45'alone_36 ::
+d_parseType'45'star'45'alone_30 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_parseType'45'star'45'alone_36 = erased
+d_parseType'45'star'45'alone_30 = erased

@@ -26,4 +26,4 @@ import qualified MAlonzo.Code.Once.Type
 -- Once.Spec.Grammar.Signature.ParsesSignature
 d_ParsesSignature_8 a0 a1 a2 = ()
 newtype T_ParsesSignature_8
-  = C_psig'45'mk_18 MAlonzo.Code.Once.Parser.Generic.Relation.T_ParsesTypeG_396
+  = C_psig'45'mk_18 MAlonzo.Code.Once.Parser.Generic.Relation.T_ParsesTypeG_364

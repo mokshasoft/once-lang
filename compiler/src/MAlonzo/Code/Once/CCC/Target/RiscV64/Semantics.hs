@@ -1126,7 +1126,7 @@ d_fetch_488 v0 v1
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Target.RiscV64.Semantics.find-label-go
 d_find'45'label'45'go_496 ::
-  MAlonzo.Code.Once.CCC.Label.T_Label_22 ->
+  MAlonzo.Code.Once.CCC.Label.T_Label_28 ->
   [MAlonzo.Code.Once.CCC.Target.RiscV64.Syntax.T_Instr_10] ->
   Integer -> Maybe Integer
 d_find'45'label'45'go_496 v0 v1 v2
@@ -1142,7 +1142,7 @@ d_find'45'label'45'go_496 v0 v1 v2
                   -> coe
                        MAlonzo.Code.Data.Bool.Base.du_if_then_else__44
                        (coe
-                          MAlonzo.Code.Once.CCC.Label.d__'8801''7495''7480'__224 (coe v6)
+                          MAlonzo.Code.Once.CCC.Label.d__'8801''7495''7480'__360 (coe v6)
                           (coe v0))
                        (coe MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe v2))
                        (coe
@@ -1153,7 +1153,7 @@ d_find'45'label'45'go_496 v0 v1 v2
 -- Once.CCC.Target.RiscV64.Semantics.find-label
 d_find'45'label_514 ::
   [MAlonzo.Code.Once.CCC.Target.RiscV64.Syntax.T_Instr_10] ->
-  MAlonzo.Code.Once.CCC.Label.T_Label_22 -> Maybe Integer
+  MAlonzo.Code.Once.CCC.Label.T_Label_28 -> Maybe Integer
 d_find'45'label_514 v0 v1
   = coe
       d_find'45'label'45'go_496 (coe v1) (coe v0) (coe (0 :: Integer))
@@ -1161,7 +1161,7 @@ d_find'45'label_514 v0 v1
 d_jump'45'to_520 ::
   [MAlonzo.Code.Once.CCC.Target.RiscV64.Syntax.T_Instr_10] ->
   T_State_408 ->
-  MAlonzo.Code.Once.CCC.Label.T_Label_22 -> Maybe T_State_408
+  MAlonzo.Code.Once.CCC.Label.T_Label_28 -> Maybe T_State_408
 d_jump'45'to_520 v0 v1 v2
   = let v3
           = d_find'45'label'45'go_496
@@ -1290,7 +1290,10 @@ d_execInstr_546 v0 v1 v2
       MAlonzo.Code.Once.CCC.Target.RiscV64.Syntax.C_lla_26 v3 v4
         -> let v5
                  = d_find'45'label_514
-                     (coe v0) (coe MAlonzo.Code.Once.CCC.Label.C_thunk_28 (coe v4)) in
+                     (coe v0)
+                     (coe
+                        MAlonzo.Code.Once.CCC.Label.C_callee_34
+                        (coe MAlonzo.Code.Once.CCC.Label.C_e'45'thunk_24 (coe v4))) in
            coe
              (case coe v5 of
                 MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v6

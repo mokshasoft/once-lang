@@ -25,7 +25,7 @@ open import Data.Nat.Show using () renaming (show to showNat)
 -- D159/Phase B: a closure body's symbol is rendered from its LabelId on BOTH
 -- sides now — the reference already was; the definition used `showNat` on a
 -- bare counter and produced a DIFFERENT symbol.
-open import Once.CCC.Label using (LabelId; showLabelId; thunkSym)
+open import Once.CCC.Label using (LabelId; showLabelId; thunkSym; e-fn)
 open import Data.List using (List; []; _∷_)
 open import Data.Product using (_×_; _,_)
 
@@ -38,8 +38,8 @@ open import Once.IR using (IR)
 -- and `irToAsm` takes that identity as an argument (it differs per function),
 -- so this importer telescopes it at each use rather than applying the module.
 import Once.CCC.Codegen.IRToTrace as IRT
-open import Once.CCC.Machine.SMCore using (AbstractTrace)
-open import Once.CCC.Target.RiscV64.AbstractToRiscV using (compile-trace-cnt)
+open import Once.CCC.Machine.SMCore using (AbstractTrace; instr-ctrl; c-entry)
+open import Once.CCC.Target.RiscV64.AbstractToRiscV using (compile-trace-cnt; compile-abstract)
 open import Once.CCC.Target.RiscV64.Emit using (programToText)
 open import Once.Arith.Backend.RiscV64.Emit using (emit-arith-blocks)
 
@@ -66,13 +66,16 @@ riscv64-asmHeader =
   -- own frame via `addi sp,sp,-N` at entry; _start only does runtime
   -- setup not expressible in CCC IR:
   --   1. Initialize the heap bump pointer (s2 = once_heap_base).
-  --   2. Call once_main.
+  --   2. Call once_main, RESERVING its return-address slot first: every
+  --      riscv64 entry is callee-style (`c-entry`), and `c-ret` releases that
+  --      caller-reserved word (plan 0.105 gate, 2026-10-04).
   --   3. On return, sys_exit(0)  (a7=93, a0=0, ecall).
   ".globl _start\n" ++
   "_start:\n" ++
   "    lla s2, once_heap_base\n" ++
   "    lla t0, once_heap_pos\n" ++
   "    sd s2, 0(t0)\n" ++
+  "    addi sp, sp, -8\n" ++
   "    call " ++ once-symbol-own "main" ++ "\n" ++
   "    li a7, 93\n" ++
   "    li a0, 0\n" ++
@@ -97,6 +100,11 @@ riscv64-functionEpilogue = "\n"   -- D161: `ret` comes from the trace's `c-ret`
 -- restores `ra` (one extra slot at offset budget*8), the standard RV64
 -- calling convention — without it, any function that returns after making a
 -- closure call would jump through a stale `ra` and loop.
+-- The entry marker's own instructions, without its label.
+drop-label : ∀ {X : Set} → List X → List X
+drop-label []       = []
+drop-label (_ ∷ xs) = xs
+
 riscv64-irToAsm : CanonicalName → ℕ → ∀ {A B} → IR A B → ℕ × String
 riscv64-irToAsm o l ir =
   let budget        = IRT.ir-stack-budget-from o l ir
@@ -104,14 +112,18 @@ riscv64-irToAsm o l ir =
       -- Plan 0.53: compile-trace-cnt o (not compile-trace) so structured
       -- case-on-tag / loop nodes expand with fresh labels; thread the counter.
       (l'' , prog)  = compile-trace-cnt o l' trace
-      raOff         = budget * 8
-      frame         = raOff + 8   -- +8 for the saved ra
   -- D161: the `ld ra` / `addi sp` teardown is NOT written here any more — the
   -- linked program ends in `c-ret budget`, whose lowering is exactly
   -- `ld ra sp (slots budget) ∷ addi sp sp (slots (suc budget)) ∷ ret`, i.e.
   -- character for character what this used to paste on by hand.
-  in l'' , ("    addi sp, sp, -" ++ showNat frame ++ "\n" ++
-            "    sd ra, " ++ showNat raOff ++ "(sp)\n" ++
+  -- 2026-10-04 (plan 0.105 gate): the frame is `c-entry`'s OWN lowering, the
+  -- label dropped (`functionPrologue` writes it). This used to be hand-written
+  -- ENTRY-style (allocate `frame`, save `ra` inside it) while `c-ret` and every
+  -- direct call (`c-call-fn`, D245) are CALLEE-style: the caller reserves the
+  -- `ra` word and `c-ret` releases it. A directly-called function therefore
+  -- returned with `sp` 8 bytes low — 45/72 riscv64 exit tests segfaulted. The
+  -- verified program image (`ProgramImage`) always opened with `c-entry`.
+  in l'' , (programToText (drop-label (compile-abstract (instr-ctrl (c-entry (e-fn o) budget)))) ++
             programToText prog)
 
 -- Plan 0.53: closure-body (thunk) emission. For each `(label, budget,

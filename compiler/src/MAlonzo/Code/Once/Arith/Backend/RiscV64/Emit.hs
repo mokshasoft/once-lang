@@ -795,7 +795,7 @@ d_arith'45'block'45'symbol_206 v0
   = coe
       MAlonzo.Code.Once.Target.Symbol.d_once'45'symbol'45'own_56
       (coe
-         MAlonzo.Code.Once.Arith.SigOp.Block.du_block'45'name_344
+         MAlonzo.Code.Once.Arith.SigOp.Block.du_block'45'name_348
          (coe
             MAlonzo.Code.Once.Arith.Machine.IR.d_block'45'shape_134 (coe v0))
          (coe

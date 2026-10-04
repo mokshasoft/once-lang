@@ -338,49 +338,29 @@ du_'60''45'suc_518 ::
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
 du_'60''45'suc_518 v0 = coe v0
--- Once.Arith.Machine.CompileCorrect.compile-go-correct
-d_compile'45'go'45'correct_532 ::
-  Integer ->
-  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
-  MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
-  MAlonzo.Code.Once.Arith.Type.T_NumType_6 ->
-  Integer ->
-  MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
-  MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
-  T_CompileGoInv_390
-d_compile'45'go'45'correct_532 = erased
 -- Once.Arith.Machine.CompileCorrect.aneg-correct
-d_aneg'45'correct_542 ::
+d_aneg'45'correct_530 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
   Integer ->
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
-  T_CompileGoInv_390
-d_aneg'45'correct_542 = erased
--- Once.Arith.Machine.CompileCorrect._.ih
-d_ih_556 ::
-  Integer ->
-  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
-  MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
-  Integer ->
-  MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
-  MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
-  T_CompileGoInv_390
-d_ih_556 = erased
+  T_CompileGoInv_390 -> T_CompileGoInv_390
+d_aneg'45'correct_530 = erased
 -- Once.Arith.Machine.CompileCorrect._.bridge
-d_bridge_558 ::
+d_bridge_546 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
   Integer ->
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  T_CompileGoInv_390 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_bridge_558 = erased
+d_bridge_546 = erased
 -- Once.Arith.Machine.CompileCorrect.aadd-correct
-d_aadd'45'correct_578 ::
+d_aadd'45'correct_568 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
@@ -388,21 +368,13 @@ d_aadd'45'correct_578 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  T_CompileGoInv_390 ->
+  (MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+   T_CompileGoInv_390) ->
   T_CompileGoInv_390
-d_aadd'45'correct_578 = erased
--- Once.Arith.Machine.CompileCorrect._.ih-a
-d_ih'45'a_594 ::
-  Integer ->
-  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
-  MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
-  Integer ->
-  MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
-  MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
-  MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
-  T_CompileGoInv_390
-d_ih'45'a_594 = erased
+d_aadd'45'correct_568 = erased
 -- Once.Arith.Machine.CompileCorrect._.s1
-d_s1_596 ::
+d_s1_588 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
@@ -410,9 +382,13 @@ d_s1_596 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  T_CompileGoInv_390 ->
+  (MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+   T_CompileGoInv_390) ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130
-d_s1_596 v0 v1 v2 v3 v4 ~v5 v6 = du_s1_596 v0 v1 v2 v3 v4 v6
-du_s1_596 ::
+d_s1_588 v0 v1 v2 v3 v4 ~v5 v6 ~v7 ~v8
+  = du_s1_588 v0 v1 v2 v3 v4 v6
+du_s1_588 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
@@ -420,7 +396,7 @@ du_s1_596 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130
-du_s1_596 v0 v1 v2 v3 v4 v5
+du_s1_588 v0 v1 v2 v3 v4 v5
   = coe
       MAlonzo.Code.Once.Arith.Machine.AbsInstr.d_run'45'abstract_284
       (coe v0) (coe v1) (coe v2)
@@ -430,7 +406,7 @@ du_s1_596 v0 v1 v2 v3 v4 v5
          (coe v4))
       (coe v5)
 -- Once.Arith.Machine.CompileCorrect._.s2
-d_s2_598 ::
+d_s2_590 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
@@ -438,9 +414,13 @@ d_s2_598 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  T_CompileGoInv_390 ->
+  (MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+   T_CompileGoInv_390) ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130
-d_s2_598 v0 v1 v2 v3 v4 ~v5 v6 = du_s2_598 v0 v1 v2 v3 v4 v6
-du_s2_598 ::
+d_s2_590 v0 v1 v2 v3 v4 ~v5 v6 ~v7 ~v8
+  = du_s2_590 v0 v1 v2 v3 v4 v6
+du_s2_590 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
@@ -448,16 +428,16 @@ du_s2_598 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130
-du_s2_598 v0 v1 v2 v3 v4 v5
+du_s2_590 v0 v1 v2 v3 v4 v5
   = coe
       MAlonzo.Code.Once.Arith.Machine.AbsInstr.d_step_108 v0 v1 v2
       (coe
          MAlonzo.Code.Once.Arith.Machine.AbsInstr.C_spill_34
          (coe (0 :: Integer)) (coe v3))
       (coe
-         du_s1_596 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5))
+         du_s1_588 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5))
 -- Once.Arith.Machine.CompileCorrect._.ih-b
-d_ih'45'b_600 ::
+d_ih'45'b_592 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
@@ -465,10 +445,27 @@ d_ih'45'b_600 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  T_CompileGoInv_390 ->
+  (MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+   T_CompileGoInv_390) ->
   T_CompileGoInv_390
-d_ih'45'b_600 = erased
+d_ih'45'b_592 = erased
 -- Once.Arith.Machine.CompileCorrect._.s3
-d_s3_602 ::
+d_s3_594 ::
+  Integer ->
+  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
+  MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
+  Integer ->
+  MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
+  MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
+  MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  T_CompileGoInv_390 ->
+  (MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+   T_CompileGoInv_390) ->
+  MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130
+d_s3_594 v0 v1 v2 v3 v4 v5 v6 ~v7 ~v8
+  = du_s3_594 v0 v1 v2 v3 v4 v5 v6
+du_s3_594 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
@@ -477,7 +474,7 @@ d_s3_602 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130
-d_s3_602 v0 v1 v2 v3 v4 v5 v6
+du_s3_594 v0 v1 v2 v3 v4 v5 v6
   = coe
       MAlonzo.Code.Once.Arith.Machine.AbsInstr.d_run'45'abstract_284
       (coe v0) (coe v1) (coe v2)
@@ -486,9 +483,23 @@ d_s3_602 v0 v1 v2 v3 v4 v5 v6
          (coe v2) (coe MAlonzo.Code.Once.Arith.Type.C_NInt_8)
          (coe addInt (coe (1 :: Integer)) (coe v3)) (coe v5))
       (coe
-         du_s2_598 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v6))
+         du_s2_590 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v6))
 -- Once.Arith.Machine.CompileCorrect._.s4
-d_s4_604 ::
+d_s4_596 ::
+  Integer ->
+  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
+  MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
+  Integer ->
+  MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
+  MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
+  MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  T_CompileGoInv_390 ->
+  (MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+   T_CompileGoInv_390) ->
+  MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130
+d_s4_596 v0 v1 v2 v3 v4 v5 v6 ~v7 ~v8
+  = du_s4_596 v0 v1 v2 v3 v4 v5 v6
+du_s4_596 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
@@ -497,16 +508,31 @@ d_s4_604 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130
-d_s4_604 v0 v1 v2 v3 v4 v5 v6
+du_s4_596 v0 v1 v2 v3 v4 v5 v6
   = coe
       MAlonzo.Code.Once.Arith.Machine.AbsInstr.d_step_108 v0 v1 v2
       (coe
          MAlonzo.Code.Once.Arith.Machine.AbsInstr.C_reload_36 (coe v3)
          (coe (1 :: Integer)))
-      (d_s3_602
-         (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v6))
+      (coe
+         du_s3_594 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5)
+         (coe v6))
 -- Once.Arith.Machine.CompileCorrect._.s5
-d_s5_606 ::
+d_s5_598 ::
+  Integer ->
+  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
+  MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
+  Integer ->
+  MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
+  MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
+  MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  T_CompileGoInv_390 ->
+  (MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+   T_CompileGoInv_390) ->
+  MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130
+d_s5_598 v0 v1 v2 v3 v4 v5 v6 ~v7 ~v8
+  = du_s5_598 v0 v1 v2 v3 v4 v5 v6
+du_s5_598 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
@@ -515,16 +541,17 @@ d_s5_606 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130
-d_s5_606 v0 v1 v2 v3 v4 v5 v6
+du_s5_598 v0 v1 v2 v3 v4 v5 v6
   = coe
       MAlonzo.Code.Once.Arith.Machine.AbsInstr.d_step_108 v0 v1 v2
       (coe
          MAlonzo.Code.Once.Arith.Machine.AbsInstr.C_add'45'rrr_14
          (coe (0 :: Integer)) (coe (1 :: Integer)) (coe (0 :: Integer)))
-      (d_s4_604
-         (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v6))
+      (coe
+         du_s4_596 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5)
+         (coe v6))
 -- Once.Arith.Machine.CompileCorrect._.bridge
-d_bridge_608 ::
+d_bridge_600 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
@@ -532,10 +559,13 @@ d_bridge_608 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  T_CompileGoInv_390 ->
+  (MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+   T_CompileGoInv_390) ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_bridge_608 = erased
+d_bridge_600 = erased
 -- Once.Arith.Machine.CompileCorrect._.scratch-s3-d
-d_scratch'45's3'45'd_610 ::
+d_scratch'45's3'45'd_602 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
@@ -543,10 +573,13 @@ d_scratch'45's3'45'd_610 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  T_CompileGoInv_390 ->
+  (MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+   T_CompileGoInv_390) ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_scratch'45's3'45'd_610 = erased
+d_scratch'45's3'45'd_602 = erased
 -- Once.Arith.Machine.CompileCorrect._.regs-s3-0
-d_regs'45's3'45'0_612 ::
+d_regs'45's3'45'0_604 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
@@ -554,10 +587,13 @@ d_regs'45's3'45'0_612 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  T_CompileGoInv_390 ->
+  (MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+   T_CompileGoInv_390) ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_regs'45's3'45'0_612 = erased
+d_regs'45's3'45'0_604 = erased
 -- Once.Arith.Machine.CompileCorrect.asub-correct
-d_asub'45'correct_634 ::
+d_asub'45'correct_628 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
@@ -565,21 +601,13 @@ d_asub'45'correct_634 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  T_CompileGoInv_390 ->
+  (MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+   T_CompileGoInv_390) ->
   T_CompileGoInv_390
-d_asub'45'correct_634 = erased
--- Once.Arith.Machine.CompileCorrect._.ih-a
-d_ih'45'a_650 ::
-  Integer ->
-  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
-  MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
-  Integer ->
-  MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
-  MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
-  MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
-  T_CompileGoInv_390
-d_ih'45'a_650 = erased
+d_asub'45'correct_628 = erased
 -- Once.Arith.Machine.CompileCorrect._.s1
-d_s1_652 ::
+d_s1_648 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
@@ -587,9 +615,13 @@ d_s1_652 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  T_CompileGoInv_390 ->
+  (MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+   T_CompileGoInv_390) ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130
-d_s1_652 v0 v1 v2 v3 v4 ~v5 v6 = du_s1_652 v0 v1 v2 v3 v4 v6
-du_s1_652 ::
+d_s1_648 v0 v1 v2 v3 v4 ~v5 v6 ~v7 ~v8
+  = du_s1_648 v0 v1 v2 v3 v4 v6
+du_s1_648 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
@@ -597,7 +629,7 @@ du_s1_652 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130
-du_s1_652 v0 v1 v2 v3 v4 v5
+du_s1_648 v0 v1 v2 v3 v4 v5
   = coe
       MAlonzo.Code.Once.Arith.Machine.AbsInstr.d_run'45'abstract_284
       (coe v0) (coe v1) (coe v2)
@@ -607,7 +639,7 @@ du_s1_652 v0 v1 v2 v3 v4 v5
          (coe v4))
       (coe v5)
 -- Once.Arith.Machine.CompileCorrect._.s2
-d_s2_654 ::
+d_s2_650 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
@@ -615,9 +647,13 @@ d_s2_654 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  T_CompileGoInv_390 ->
+  (MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+   T_CompileGoInv_390) ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130
-d_s2_654 v0 v1 v2 v3 v4 ~v5 v6 = du_s2_654 v0 v1 v2 v3 v4 v6
-du_s2_654 ::
+d_s2_650 v0 v1 v2 v3 v4 ~v5 v6 ~v7 ~v8
+  = du_s2_650 v0 v1 v2 v3 v4 v6
+du_s2_650 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
@@ -625,16 +661,16 @@ du_s2_654 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130
-du_s2_654 v0 v1 v2 v3 v4 v5
+du_s2_650 v0 v1 v2 v3 v4 v5
   = coe
       MAlonzo.Code.Once.Arith.Machine.AbsInstr.d_step_108 v0 v1 v2
       (coe
          MAlonzo.Code.Once.Arith.Machine.AbsInstr.C_spill_34
          (coe (0 :: Integer)) (coe v3))
       (coe
-         du_s1_652 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5))
+         du_s1_648 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5))
 -- Once.Arith.Machine.CompileCorrect._.ih-b
-d_ih'45'b_656 ::
+d_ih'45'b_652 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
@@ -642,10 +678,27 @@ d_ih'45'b_656 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  T_CompileGoInv_390 ->
+  (MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+   T_CompileGoInv_390) ->
   T_CompileGoInv_390
-d_ih'45'b_656 = erased
+d_ih'45'b_652 = erased
 -- Once.Arith.Machine.CompileCorrect._.s3
-d_s3_658 ::
+d_s3_654 ::
+  Integer ->
+  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
+  MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
+  Integer ->
+  MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
+  MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
+  MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  T_CompileGoInv_390 ->
+  (MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+   T_CompileGoInv_390) ->
+  MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130
+d_s3_654 v0 v1 v2 v3 v4 v5 v6 ~v7 ~v8
+  = du_s3_654 v0 v1 v2 v3 v4 v5 v6
+du_s3_654 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
@@ -654,7 +707,7 @@ d_s3_658 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130
-d_s3_658 v0 v1 v2 v3 v4 v5 v6
+du_s3_654 v0 v1 v2 v3 v4 v5 v6
   = coe
       MAlonzo.Code.Once.Arith.Machine.AbsInstr.d_run'45'abstract_284
       (coe v0) (coe v1) (coe v2)
@@ -663,9 +716,23 @@ d_s3_658 v0 v1 v2 v3 v4 v5 v6
          (coe v2) (coe MAlonzo.Code.Once.Arith.Type.C_NInt_8)
          (coe addInt (coe (1 :: Integer)) (coe v3)) (coe v5))
       (coe
-         du_s2_654 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v6))
+         du_s2_650 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v6))
 -- Once.Arith.Machine.CompileCorrect._.s4
-d_s4_660 ::
+d_s4_656 ::
+  Integer ->
+  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
+  MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
+  Integer ->
+  MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
+  MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
+  MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  T_CompileGoInv_390 ->
+  (MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+   T_CompileGoInv_390) ->
+  MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130
+d_s4_656 v0 v1 v2 v3 v4 v5 v6 ~v7 ~v8
+  = du_s4_656 v0 v1 v2 v3 v4 v5 v6
+du_s4_656 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
@@ -674,16 +741,31 @@ d_s4_660 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130
-d_s4_660 v0 v1 v2 v3 v4 v5 v6
+du_s4_656 v0 v1 v2 v3 v4 v5 v6
   = coe
       MAlonzo.Code.Once.Arith.Machine.AbsInstr.d_step_108 v0 v1 v2
       (coe
          MAlonzo.Code.Once.Arith.Machine.AbsInstr.C_reload_36 (coe v3)
          (coe (1 :: Integer)))
-      (d_s3_658
-         (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v6))
+      (coe
+         du_s3_654 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5)
+         (coe v6))
 -- Once.Arith.Machine.CompileCorrect._.s5
-d_s5_662 ::
+d_s5_658 ::
+  Integer ->
+  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
+  MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
+  Integer ->
+  MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
+  MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
+  MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  T_CompileGoInv_390 ->
+  (MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+   T_CompileGoInv_390) ->
+  MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130
+d_s5_658 v0 v1 v2 v3 v4 v5 v6 ~v7 ~v8
+  = du_s5_658 v0 v1 v2 v3 v4 v5 v6
+du_s5_658 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
@@ -692,16 +774,17 @@ d_s5_662 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130
-d_s5_662 v0 v1 v2 v3 v4 v5 v6
+du_s5_658 v0 v1 v2 v3 v4 v5 v6
   = coe
       MAlonzo.Code.Once.Arith.Machine.AbsInstr.d_step_108 v0 v1 v2
       (coe
          MAlonzo.Code.Once.Arith.Machine.AbsInstr.C_sub'45'rrr_16
          (coe (0 :: Integer)) (coe (1 :: Integer)) (coe (0 :: Integer)))
-      (d_s4_660
-         (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v6))
+      (coe
+         du_s4_656 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5)
+         (coe v6))
 -- Once.Arith.Machine.CompileCorrect._.bridge
-d_bridge_664 ::
+d_bridge_660 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
@@ -709,10 +792,13 @@ d_bridge_664 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  T_CompileGoInv_390 ->
+  (MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+   T_CompileGoInv_390) ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_bridge_664 = erased
+d_bridge_660 = erased
 -- Once.Arith.Machine.CompileCorrect._.scratch-s3-d
-d_scratch'45's3'45'd_666 ::
+d_scratch'45's3'45'd_662 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
@@ -720,10 +806,13 @@ d_scratch'45's3'45'd_666 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  T_CompileGoInv_390 ->
+  (MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+   T_CompileGoInv_390) ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_scratch'45's3'45'd_666 = erased
+d_scratch'45's3'45'd_662 = erased
 -- Once.Arith.Machine.CompileCorrect._.regs-s3-0
-d_regs'45's3'45'0_668 ::
+d_regs'45's3'45'0_664 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
@@ -731,10 +820,13 @@ d_regs'45's3'45'0_668 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  T_CompileGoInv_390 ->
+  (MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+   T_CompileGoInv_390) ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_regs'45's3'45'0_668 = erased
+d_regs'45's3'45'0_664 = erased
 -- Once.Arith.Machine.CompileCorrect.amul-correct
-d_amul'45'correct_690 ::
+d_amul'45'correct_688 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
@@ -742,19 +834,11 @@ d_amul'45'correct_690 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  T_CompileGoInv_390 ->
+  (MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+   T_CompileGoInv_390) ->
   T_CompileGoInv_390
-d_amul'45'correct_690 = erased
--- Once.Arith.Machine.CompileCorrect._.ih-a
-d_ih'45'a_706 ::
-  Integer ->
-  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
-  MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
-  Integer ->
-  MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
-  MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
-  MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
-  T_CompileGoInv_390
-d_ih'45'a_706 = erased
+d_amul'45'correct_688 = erased
 -- Once.Arith.Machine.CompileCorrect._.s1
 d_s1_708 ::
   Integer ->
@@ -764,8 +848,12 @@ d_s1_708 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  T_CompileGoInv_390 ->
+  (MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+   T_CompileGoInv_390) ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130
-d_s1_708 v0 v1 v2 v3 v4 ~v5 v6 = du_s1_708 v0 v1 v2 v3 v4 v6
+d_s1_708 v0 v1 v2 v3 v4 ~v5 v6 ~v7 ~v8
+  = du_s1_708 v0 v1 v2 v3 v4 v6
 du_s1_708 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
@@ -792,8 +880,12 @@ d_s2_710 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  T_CompileGoInv_390 ->
+  (MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+   T_CompileGoInv_390) ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130
-d_s2_710 v0 v1 v2 v3 v4 ~v5 v6 = du_s2_710 v0 v1 v2 v3 v4 v6
+d_s2_710 v0 v1 v2 v3 v4 ~v5 v6 ~v7 ~v8
+  = du_s2_710 v0 v1 v2 v3 v4 v6
 du_s2_710 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
@@ -819,6 +911,9 @@ d_ih'45'b_712 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  T_CompileGoInv_390 ->
+  (MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+   T_CompileGoInv_390) ->
   T_CompileGoInv_390
 d_ih'45'b_712 = erased
 -- Once.Arith.Machine.CompileCorrect._.s3
@@ -830,8 +925,22 @@ d_s3_714 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  T_CompileGoInv_390 ->
+  (MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+   T_CompileGoInv_390) ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130
-d_s3_714 v0 v1 v2 v3 v4 v5 v6
+d_s3_714 v0 v1 v2 v3 v4 v5 v6 ~v7 ~v8
+  = du_s3_714 v0 v1 v2 v3 v4 v5 v6
+du_s3_714 ::
+  Integer ->
+  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
+  MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
+  Integer ->
+  MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
+  MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
+  MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130
+du_s3_714 v0 v1 v2 v3 v4 v5 v6
   = coe
       MAlonzo.Code.Once.Arith.Machine.AbsInstr.d_run'45'abstract_284
       (coe v0) (coe v1) (coe v2)
@@ -850,15 +959,30 @@ d_s4_716 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  T_CompileGoInv_390 ->
+  (MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+   T_CompileGoInv_390) ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130
-d_s4_716 v0 v1 v2 v3 v4 v5 v6
+d_s4_716 v0 v1 v2 v3 v4 v5 v6 ~v7 ~v8
+  = du_s4_716 v0 v1 v2 v3 v4 v5 v6
+du_s4_716 ::
+  Integer ->
+  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
+  MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
+  Integer ->
+  MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
+  MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
+  MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130
+du_s4_716 v0 v1 v2 v3 v4 v5 v6
   = coe
       MAlonzo.Code.Once.Arith.Machine.AbsInstr.d_step_108 v0 v1 v2
       (coe
          MAlonzo.Code.Once.Arith.Machine.AbsInstr.C_reload_36 (coe v3)
          (coe (1 :: Integer)))
-      (d_s3_714
-         (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v6))
+      (coe
+         du_s3_714 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5)
+         (coe v6))
 -- Once.Arith.Machine.CompileCorrect._.s5
 d_s5_718 ::
   Integer ->
@@ -868,15 +992,30 @@ d_s5_718 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  T_CompileGoInv_390 ->
+  (MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+   T_CompileGoInv_390) ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130
-d_s5_718 v0 v1 v2 v3 v4 v5 v6
+d_s5_718 v0 v1 v2 v3 v4 v5 v6 ~v7 ~v8
+  = du_s5_718 v0 v1 v2 v3 v4 v5 v6
+du_s5_718 ::
+  Integer ->
+  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
+  MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
+  Integer ->
+  MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
+  MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
+  MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130
+du_s5_718 v0 v1 v2 v3 v4 v5 v6
   = coe
       MAlonzo.Code.Once.Arith.Machine.AbsInstr.d_step_108 v0 v1 v2
       (coe
          MAlonzo.Code.Once.Arith.Machine.AbsInstr.C_mul'45'rrr_18
          (coe (0 :: Integer)) (coe (1 :: Integer)) (coe (0 :: Integer)))
-      (d_s4_716
-         (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v6))
+      (coe
+         du_s4_716 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5)
+         (coe v6))
 -- Once.Arith.Machine.CompileCorrect._.regs-s3-0
 d_regs'45's3'45'0_720 ::
   Integer ->
@@ -886,6 +1025,9 @@ d_regs'45's3'45'0_720 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  T_CompileGoInv_390 ->
+  (MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+   T_CompileGoInv_390) ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_regs'45's3'45'0_720 = erased
 -- Once.Arith.Machine.CompileCorrect._.regs-s4-0
@@ -897,6 +1039,9 @@ d_regs'45's4'45'0_724 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  T_CompileGoInv_390 ->
+  (MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+   T_CompileGoInv_390) ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_regs'45's4'45'0_724 = erased
 -- Once.Arith.Machine.CompileCorrect._.bridge
@@ -908,6 +1053,9 @@ d_bridge_726 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  T_CompileGoInv_390 ->
+  (MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+   T_CompileGoInv_390) ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_bridge_726 = erased
 -- Once.Arith.Machine.CompileCorrect._.scratch-s3-d
@@ -919,10 +1067,13 @@ d_scratch'45's3'45'd_728 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  T_CompileGoInv_390 ->
+  (MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+   T_CompileGoInv_390) ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_scratch'45's3'45'd_728 = erased
 -- Once.Arith.Machine.CompileCorrect.adiv-correct
-d_adiv'45'correct_748 ::
+d_adiv'45'correct_750 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
@@ -930,21 +1081,13 @@ d_adiv'45'correct_748 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  T_CompileGoInv_390 ->
+  (MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+   T_CompileGoInv_390) ->
   T_CompileGoInv_390
-d_adiv'45'correct_748 = erased
--- Once.Arith.Machine.CompileCorrect._.ih-a
-d_ih'45'a_764 ::
-  Integer ->
-  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
-  MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
-  Integer ->
-  MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
-  MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
-  MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
-  T_CompileGoInv_390
-d_ih'45'a_764 = erased
+d_adiv'45'correct_750 = erased
 -- Once.Arith.Machine.CompileCorrect._.s1
-d_s1_766 ::
+d_s1_770 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
@@ -952,9 +1095,13 @@ d_s1_766 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  T_CompileGoInv_390 ->
+  (MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+   T_CompileGoInv_390) ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130
-d_s1_766 v0 v1 v2 v3 v4 ~v5 v6 = du_s1_766 v0 v1 v2 v3 v4 v6
-du_s1_766 ::
+d_s1_770 v0 v1 v2 v3 v4 ~v5 v6 ~v7 ~v8
+  = du_s1_770 v0 v1 v2 v3 v4 v6
+du_s1_770 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
@@ -962,7 +1109,7 @@ du_s1_766 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130
-du_s1_766 v0 v1 v2 v3 v4 v5
+du_s1_770 v0 v1 v2 v3 v4 v5
   = coe
       MAlonzo.Code.Once.Arith.Machine.AbsInstr.d_run'45'abstract_284
       (coe v0) (coe v1) (coe v2)
@@ -972,7 +1119,7 @@ du_s1_766 v0 v1 v2 v3 v4 v5
          (coe v4))
       (coe v5)
 -- Once.Arith.Machine.CompileCorrect._.s2
-d_s2_768 ::
+d_s2_772 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
@@ -980,9 +1127,13 @@ d_s2_768 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  T_CompileGoInv_390 ->
+  (MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+   T_CompileGoInv_390) ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130
-d_s2_768 v0 v1 v2 v3 v4 ~v5 v6 = du_s2_768 v0 v1 v2 v3 v4 v6
-du_s2_768 ::
+d_s2_772 v0 v1 v2 v3 v4 ~v5 v6 ~v7 ~v8
+  = du_s2_772 v0 v1 v2 v3 v4 v6
+du_s2_772 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
@@ -990,16 +1141,16 @@ du_s2_768 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130
-du_s2_768 v0 v1 v2 v3 v4 v5
+du_s2_772 v0 v1 v2 v3 v4 v5
   = coe
       MAlonzo.Code.Once.Arith.Machine.AbsInstr.d_step_108 v0 v1 v2
       (coe
          MAlonzo.Code.Once.Arith.Machine.AbsInstr.C_spill_34
          (coe (0 :: Integer)) (coe v3))
       (coe
-         du_s1_766 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5))
+         du_s1_770 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5))
 -- Once.Arith.Machine.CompileCorrect._.ih-b
-d_ih'45'b_770 ::
+d_ih'45'b_774 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
@@ -1007,10 +1158,27 @@ d_ih'45'b_770 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  T_CompileGoInv_390 ->
+  (MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+   T_CompileGoInv_390) ->
   T_CompileGoInv_390
-d_ih'45'b_770 = erased
+d_ih'45'b_774 = erased
 -- Once.Arith.Machine.CompileCorrect._.s3
-d_s3_772 ::
+d_s3_776 ::
+  Integer ->
+  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
+  MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
+  Integer ->
+  MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
+  MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
+  MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  T_CompileGoInv_390 ->
+  (MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+   T_CompileGoInv_390) ->
+  MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130
+d_s3_776 v0 v1 v2 v3 v4 v5 v6 ~v7 ~v8
+  = du_s3_776 v0 v1 v2 v3 v4 v5 v6
+du_s3_776 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
@@ -1019,7 +1187,7 @@ d_s3_772 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130
-d_s3_772 v0 v1 v2 v3 v4 v5 v6
+du_s3_776 v0 v1 v2 v3 v4 v5 v6
   = coe
       MAlonzo.Code.Once.Arith.Machine.AbsInstr.d_run'45'abstract_284
       (coe v0) (coe v1) (coe v2)
@@ -1028,9 +1196,23 @@ d_s3_772 v0 v1 v2 v3 v4 v5 v6
          (coe v2) (coe MAlonzo.Code.Once.Arith.Type.C_NInt_8)
          (coe addInt (coe (1 :: Integer)) (coe v3)) (coe v5))
       (coe
-         du_s2_768 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v6))
+         du_s2_772 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v6))
 -- Once.Arith.Machine.CompileCorrect._.s4
-d_s4_774 ::
+d_s4_778 ::
+  Integer ->
+  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
+  MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
+  Integer ->
+  MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
+  MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
+  MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  T_CompileGoInv_390 ->
+  (MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+   T_CompileGoInv_390) ->
+  MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130
+d_s4_778 v0 v1 v2 v3 v4 v5 v6 ~v7 ~v8
+  = du_s4_778 v0 v1 v2 v3 v4 v5 v6
+du_s4_778 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
@@ -1039,16 +1221,31 @@ d_s4_774 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130
-d_s4_774 v0 v1 v2 v3 v4 v5 v6
+du_s4_778 v0 v1 v2 v3 v4 v5 v6
   = coe
       MAlonzo.Code.Once.Arith.Machine.AbsInstr.d_step_108 v0 v1 v2
       (coe
          MAlonzo.Code.Once.Arith.Machine.AbsInstr.C_reload_36 (coe v3)
          (coe (1 :: Integer)))
-      (d_s3_772
-         (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v6))
+      (coe
+         du_s3_776 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5)
+         (coe v6))
 -- Once.Arith.Machine.CompileCorrect._.s5
-d_s5_776 ::
+d_s5_780 ::
+  Integer ->
+  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
+  MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
+  Integer ->
+  MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
+  MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
+  MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  T_CompileGoInv_390 ->
+  (MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+   T_CompileGoInv_390) ->
+  MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130
+d_s5_780 v0 v1 v2 v3 v4 v5 v6 ~v7 ~v8
+  = du_s5_780 v0 v1 v2 v3 v4 v5 v6
+du_s5_780 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
@@ -1057,16 +1254,17 @@ d_s5_776 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130
-d_s5_776 v0 v1 v2 v3 v4 v5 v6
+du_s5_780 v0 v1 v2 v3 v4 v5 v6
   = coe
       MAlonzo.Code.Once.Arith.Machine.AbsInstr.d_step_108 v0 v1 v2
       (coe
          MAlonzo.Code.Once.Arith.Machine.AbsInstr.C_div'45'rrr_20
          (coe (0 :: Integer)) (coe (1 :: Integer)) (coe (0 :: Integer)))
-      (d_s4_774
-         (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v6))
+      (coe
+         du_s4_778 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5)
+         (coe v6))
 -- Once.Arith.Machine.CompileCorrect._.regs-s3-0
-d_regs'45's3'45'0_778 ::
+d_regs'45's3'45'0_782 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
@@ -1074,10 +1272,13 @@ d_regs'45's3'45'0_778 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  T_CompileGoInv_390 ->
+  (MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+   T_CompileGoInv_390) ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_regs'45's3'45'0_778 = erased
+d_regs'45's3'45'0_782 = erased
 -- Once.Arith.Machine.CompileCorrect._.regs-s4-0
-d_regs'45's4'45'0_782 ::
+d_regs'45's4'45'0_786 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
@@ -1085,10 +1286,13 @@ d_regs'45's4'45'0_782 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  T_CompileGoInv_390 ->
+  (MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+   T_CompileGoInv_390) ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_regs'45's4'45'0_782 = erased
+d_regs'45's4'45'0_786 = erased
 -- Once.Arith.Machine.CompileCorrect._.bridge
-d_bridge_784 ::
+d_bridge_788 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
@@ -1096,10 +1300,13 @@ d_bridge_784 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  T_CompileGoInv_390 ->
+  (MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+   T_CompileGoInv_390) ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_bridge_784 = erased
+d_bridge_788 = erased
 -- Once.Arith.Machine.CompileCorrect._.scratch-s3-d
-d_scratch'45's3'45'd_786 ::
+d_scratch'45's3'45'd_790 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
@@ -1107,10 +1314,13 @@ d_scratch'45's3'45'd_786 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  T_CompileGoInv_390 ->
+  (MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+   T_CompileGoInv_390) ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_scratch'45's3'45'd_786 = erased
+d_scratch'45's3'45'd_790 = erased
 -- Once.Arith.Machine.CompileCorrect.amod-correct
-d_amod'45'correct_806 ::
+d_amod'45'correct_812 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
@@ -1118,21 +1328,13 @@ d_amod'45'correct_806 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  T_CompileGoInv_390 ->
+  (MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+   T_CompileGoInv_390) ->
   T_CompileGoInv_390
-d_amod'45'correct_806 = erased
--- Once.Arith.Machine.CompileCorrect._.ih-a
-d_ih'45'a_822 ::
-  Integer ->
-  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
-  MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
-  Integer ->
-  MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
-  MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
-  MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
-  T_CompileGoInv_390
-d_ih'45'a_822 = erased
+d_amod'45'correct_812 = erased
 -- Once.Arith.Machine.CompileCorrect._.s1
-d_s1_824 ::
+d_s1_832 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
@@ -1140,9 +1342,13 @@ d_s1_824 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  T_CompileGoInv_390 ->
+  (MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+   T_CompileGoInv_390) ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130
-d_s1_824 v0 v1 v2 v3 v4 ~v5 v6 = du_s1_824 v0 v1 v2 v3 v4 v6
-du_s1_824 ::
+d_s1_832 v0 v1 v2 v3 v4 ~v5 v6 ~v7 ~v8
+  = du_s1_832 v0 v1 v2 v3 v4 v6
+du_s1_832 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
@@ -1150,7 +1356,7 @@ du_s1_824 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130
-du_s1_824 v0 v1 v2 v3 v4 v5
+du_s1_832 v0 v1 v2 v3 v4 v5
   = coe
       MAlonzo.Code.Once.Arith.Machine.AbsInstr.d_run'45'abstract_284
       (coe v0) (coe v1) (coe v2)
@@ -1160,7 +1366,7 @@ du_s1_824 v0 v1 v2 v3 v4 v5
          (coe v4))
       (coe v5)
 -- Once.Arith.Machine.CompileCorrect._.s2
-d_s2_826 ::
+d_s2_834 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
@@ -1168,9 +1374,13 @@ d_s2_826 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  T_CompileGoInv_390 ->
+  (MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+   T_CompileGoInv_390) ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130
-d_s2_826 v0 v1 v2 v3 v4 ~v5 v6 = du_s2_826 v0 v1 v2 v3 v4 v6
-du_s2_826 ::
+d_s2_834 v0 v1 v2 v3 v4 ~v5 v6 ~v7 ~v8
+  = du_s2_834 v0 v1 v2 v3 v4 v6
+du_s2_834 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
@@ -1178,16 +1388,16 @@ du_s2_826 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130
-du_s2_826 v0 v1 v2 v3 v4 v5
+du_s2_834 v0 v1 v2 v3 v4 v5
   = coe
       MAlonzo.Code.Once.Arith.Machine.AbsInstr.d_step_108 v0 v1 v2
       (coe
          MAlonzo.Code.Once.Arith.Machine.AbsInstr.C_spill_34
          (coe (0 :: Integer)) (coe v3))
       (coe
-         du_s1_824 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5))
+         du_s1_832 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5))
 -- Once.Arith.Machine.CompileCorrect._.ih-b
-d_ih'45'b_828 ::
+d_ih'45'b_836 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
@@ -1195,10 +1405,27 @@ d_ih'45'b_828 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  T_CompileGoInv_390 ->
+  (MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+   T_CompileGoInv_390) ->
   T_CompileGoInv_390
-d_ih'45'b_828 = erased
+d_ih'45'b_836 = erased
 -- Once.Arith.Machine.CompileCorrect._.s3
-d_s3_830 ::
+d_s3_838 ::
+  Integer ->
+  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
+  MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
+  Integer ->
+  MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
+  MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
+  MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  T_CompileGoInv_390 ->
+  (MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+   T_CompileGoInv_390) ->
+  MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130
+d_s3_838 v0 v1 v2 v3 v4 v5 v6 ~v7 ~v8
+  = du_s3_838 v0 v1 v2 v3 v4 v5 v6
+du_s3_838 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
@@ -1207,7 +1434,7 @@ d_s3_830 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130
-d_s3_830 v0 v1 v2 v3 v4 v5 v6
+du_s3_838 v0 v1 v2 v3 v4 v5 v6
   = coe
       MAlonzo.Code.Once.Arith.Machine.AbsInstr.d_run'45'abstract_284
       (coe v0) (coe v1) (coe v2)
@@ -1216,9 +1443,23 @@ d_s3_830 v0 v1 v2 v3 v4 v5 v6
          (coe v2) (coe MAlonzo.Code.Once.Arith.Type.C_NInt_8)
          (coe addInt (coe (1 :: Integer)) (coe v3)) (coe v5))
       (coe
-         du_s2_826 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v6))
+         du_s2_834 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v6))
 -- Once.Arith.Machine.CompileCorrect._.s4
-d_s4_832 ::
+d_s4_840 ::
+  Integer ->
+  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
+  MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
+  Integer ->
+  MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
+  MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
+  MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  T_CompileGoInv_390 ->
+  (MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+   T_CompileGoInv_390) ->
+  MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130
+d_s4_840 v0 v1 v2 v3 v4 v5 v6 ~v7 ~v8
+  = du_s4_840 v0 v1 v2 v3 v4 v5 v6
+du_s4_840 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
@@ -1227,16 +1468,31 @@ d_s4_832 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130
-d_s4_832 v0 v1 v2 v3 v4 v5 v6
+du_s4_840 v0 v1 v2 v3 v4 v5 v6
   = coe
       MAlonzo.Code.Once.Arith.Machine.AbsInstr.d_step_108 v0 v1 v2
       (coe
          MAlonzo.Code.Once.Arith.Machine.AbsInstr.C_reload_36 (coe v3)
          (coe (1 :: Integer)))
-      (d_s3_830
-         (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v6))
+      (coe
+         du_s3_838 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5)
+         (coe v6))
 -- Once.Arith.Machine.CompileCorrect._.s5
-d_s5_834 ::
+d_s5_842 ::
+  Integer ->
+  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
+  MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
+  Integer ->
+  MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
+  MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
+  MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  T_CompileGoInv_390 ->
+  (MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+   T_CompileGoInv_390) ->
+  MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130
+d_s5_842 v0 v1 v2 v3 v4 v5 v6 ~v7 ~v8
+  = du_s5_842 v0 v1 v2 v3 v4 v5 v6
+du_s5_842 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
@@ -1245,16 +1501,17 @@ d_s5_834 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130
-d_s5_834 v0 v1 v2 v3 v4 v5 v6
+du_s5_842 v0 v1 v2 v3 v4 v5 v6
   = coe
       MAlonzo.Code.Once.Arith.Machine.AbsInstr.d_step_108 v0 v1 v2
       (coe
          MAlonzo.Code.Once.Arith.Machine.AbsInstr.C_rem'45'rrr_22
          (coe (0 :: Integer)) (coe (1 :: Integer)) (coe (0 :: Integer)))
-      (d_s4_832
-         (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v6))
+      (coe
+         du_s4_840 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5)
+         (coe v6))
 -- Once.Arith.Machine.CompileCorrect._.bridge
-d_bridge_836 ::
+d_bridge_844 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
@@ -1262,10 +1519,13 @@ d_bridge_836 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  T_CompileGoInv_390 ->
+  (MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+   T_CompileGoInv_390) ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_bridge_836 = erased
+d_bridge_844 = erased
 -- Once.Arith.Machine.CompileCorrect._.scratch-s3-d
-d_scratch'45's3'45'd_838 ::
+d_scratch'45's3'45'd_846 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
@@ -1273,10 +1533,13 @@ d_scratch'45's3'45'd_838 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  T_CompileGoInv_390 ->
+  (MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+   T_CompileGoInv_390) ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_scratch'45's3'45'd_838 = erased
+d_scratch'45's3'45'd_846 = erased
 -- Once.Arith.Machine.CompileCorrect._.regs-s3-0
-d_regs'45's3'45'0_840 ::
+d_regs'45's3'45'0_848 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
@@ -1284,70 +1547,55 @@ d_regs'45's3'45'0_840 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  T_CompileGoInv_390 ->
+  (MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+   T_CompileGoInv_390) ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_regs'45's3'45'0_840 = erased
+d_regs'45's3'45'0_848 = erased
 -- Once.Arith.Machine.CompileCorrect.fneg-correct
-d_fneg'45'correct_860 ::
+d_fneg'45'correct_868 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
   Integer ->
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
-  T_CompileGoInv_390
-d_fneg'45'correct_860 = erased
--- Once.Arith.Machine.CompileCorrect._.ih
-d_ih_874 ::
-  Integer ->
-  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
-  MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
-  Integer ->
-  MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
-  MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
-  T_CompileGoInv_390
-d_ih_874 = erased
+  T_CompileGoInv_390 -> T_CompileGoInv_390
+d_fneg'45'correct_868 = erased
 -- Once.Arith.Machine.CompileCorrect._.bridge
-d_bridge_876 ::
+d_bridge_884 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
   Integer ->
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  T_CompileGoInv_390 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_bridge_876 = erased
+d_bridge_884 = erased
 -- Once.Arith.Machine.CompileCorrect.i2f-correct
-d_i2f'45'correct_894 ::
+d_i2f'45'correct_902 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
   Integer ->
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
-  T_CompileGoInv_390
-d_i2f'45'correct_894 = erased
--- Once.Arith.Machine.CompileCorrect._.ih
-d_ih_908 ::
-  Integer ->
-  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
-  MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
-  Integer ->
-  MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
-  MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
-  T_CompileGoInv_390
-d_ih_908 = erased
+  T_CompileGoInv_390 -> T_CompileGoInv_390
+d_i2f'45'correct_902 = erased
 -- Once.Arith.Machine.CompileCorrect._.bridge
-d_bridge_910 ::
+d_bridge_918 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
   Integer ->
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  T_CompileGoInv_390 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_bridge_910 = erased
+d_bridge_918 = erased
 -- Once.Arith.Machine.CompileCorrect.fadd-correct
-d_fadd'45'correct_932 ::
+d_fadd'45'correct_942 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
@@ -1355,21 +1603,13 @@ d_fadd'45'correct_932 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  T_CompileGoInv_390 ->
+  (MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+   T_CompileGoInv_390) ->
   T_CompileGoInv_390
-d_fadd'45'correct_932 = erased
--- Once.Arith.Machine.CompileCorrect._.ih-a
-d_ih'45'a_948 ::
-  Integer ->
-  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
-  MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
-  Integer ->
-  MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
-  MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
-  MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
-  T_CompileGoInv_390
-d_ih'45'a_948 = erased
+d_fadd'45'correct_942 = erased
 -- Once.Arith.Machine.CompileCorrect._.s1
-d_s1_950 ::
+d_s1_962 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
@@ -1377,9 +1617,13 @@ d_s1_950 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  T_CompileGoInv_390 ->
+  (MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+   T_CompileGoInv_390) ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130
-d_s1_950 v0 v1 v2 v3 v4 ~v5 v6 = du_s1_950 v0 v1 v2 v3 v4 v6
-du_s1_950 ::
+d_s1_962 v0 v1 v2 v3 v4 ~v5 v6 ~v7 ~v8
+  = du_s1_962 v0 v1 v2 v3 v4 v6
+du_s1_962 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
@@ -1387,7 +1631,7 @@ du_s1_950 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130
-du_s1_950 v0 v1 v2 v3 v4 v5
+du_s1_962 v0 v1 v2 v3 v4 v5
   = coe
       MAlonzo.Code.Once.Arith.Machine.AbsInstr.d_run'45'abstract_284
       (coe v0) (coe v1) (coe v2)
@@ -1397,7 +1641,7 @@ du_s1_950 v0 v1 v2 v3 v4 v5
          (coe v4))
       (coe v5)
 -- Once.Arith.Machine.CompileCorrect._.s2
-d_s2_952 ::
+d_s2_964 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
@@ -1405,9 +1649,13 @@ d_s2_952 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  T_CompileGoInv_390 ->
+  (MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+   T_CompileGoInv_390) ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130
-d_s2_952 v0 v1 v2 v3 v4 ~v5 v6 = du_s2_952 v0 v1 v2 v3 v4 v6
-du_s2_952 ::
+d_s2_964 v0 v1 v2 v3 v4 ~v5 v6 ~v7 ~v8
+  = du_s2_964 v0 v1 v2 v3 v4 v6
+du_s2_964 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
@@ -1415,16 +1663,16 @@ du_s2_952 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130
-du_s2_952 v0 v1 v2 v3 v4 v5
+du_s2_964 v0 v1 v2 v3 v4 v5
   = coe
       MAlonzo.Code.Once.Arith.Machine.AbsInstr.d_step_108 v0 v1 v2
       (coe
          MAlonzo.Code.Once.Arith.Machine.AbsInstr.C_spill_34
          (coe (0 :: Integer)) (coe v3))
       (coe
-         du_s1_950 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5))
+         du_s1_962 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5))
 -- Once.Arith.Machine.CompileCorrect._.ih-b
-d_ih'45'b_954 ::
+d_ih'45'b_966 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
@@ -1432,10 +1680,27 @@ d_ih'45'b_954 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  T_CompileGoInv_390 ->
+  (MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+   T_CompileGoInv_390) ->
   T_CompileGoInv_390
-d_ih'45'b_954 = erased
+d_ih'45'b_966 = erased
 -- Once.Arith.Machine.CompileCorrect._.s3
-d_s3_956 ::
+d_s3_968 ::
+  Integer ->
+  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
+  MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
+  Integer ->
+  MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
+  MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
+  MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  T_CompileGoInv_390 ->
+  (MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+   T_CompileGoInv_390) ->
+  MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130
+d_s3_968 v0 v1 v2 v3 v4 v5 v6 ~v7 ~v8
+  = du_s3_968 v0 v1 v2 v3 v4 v5 v6
+du_s3_968 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
@@ -1444,7 +1709,7 @@ d_s3_956 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130
-d_s3_956 v0 v1 v2 v3 v4 v5 v6
+du_s3_968 v0 v1 v2 v3 v4 v5 v6
   = coe
       MAlonzo.Code.Once.Arith.Machine.AbsInstr.d_run'45'abstract_284
       (coe v0) (coe v1) (coe v2)
@@ -1453,9 +1718,23 @@ d_s3_956 v0 v1 v2 v3 v4 v5 v6
          (coe v2) (coe MAlonzo.Code.Once.Arith.Type.C_NFloat_10)
          (coe addInt (coe (1 :: Integer)) (coe v3)) (coe v5))
       (coe
-         du_s2_952 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v6))
+         du_s2_964 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v6))
 -- Once.Arith.Machine.CompileCorrect._.s4
-d_s4_958 ::
+d_s4_970 ::
+  Integer ->
+  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
+  MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
+  Integer ->
+  MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
+  MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
+  MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  T_CompileGoInv_390 ->
+  (MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+   T_CompileGoInv_390) ->
+  MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130
+d_s4_970 v0 v1 v2 v3 v4 v5 v6 ~v7 ~v8
+  = du_s4_970 v0 v1 v2 v3 v4 v5 v6
+du_s4_970 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
@@ -1464,16 +1743,31 @@ d_s4_958 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130
-d_s4_958 v0 v1 v2 v3 v4 v5 v6
+du_s4_970 v0 v1 v2 v3 v4 v5 v6
   = coe
       MAlonzo.Code.Once.Arith.Machine.AbsInstr.d_step_108 v0 v1 v2
       (coe
          MAlonzo.Code.Once.Arith.Machine.AbsInstr.C_reload_36 (coe v3)
          (coe (1 :: Integer)))
-      (d_s3_956
-         (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v6))
+      (coe
+         du_s3_968 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5)
+         (coe v6))
 -- Once.Arith.Machine.CompileCorrect._.s5
-d_s5_960 ::
+d_s5_972 ::
+  Integer ->
+  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
+  MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
+  Integer ->
+  MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
+  MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
+  MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  T_CompileGoInv_390 ->
+  (MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+   T_CompileGoInv_390) ->
+  MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130
+d_s5_972 v0 v1 v2 v3 v4 v5 v6 ~v7 ~v8
+  = du_s5_972 v0 v1 v2 v3 v4 v5 v6
+du_s5_972 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
@@ -1482,16 +1776,17 @@ d_s5_960 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130
-d_s5_960 v0 v1 v2 v3 v4 v5 v6
+du_s5_972 v0 v1 v2 v3 v4 v5 v6
   = coe
       MAlonzo.Code.Once.Arith.Machine.AbsInstr.d_step_108 v0 v1 v2
       (coe
          MAlonzo.Code.Once.Arith.Machine.AbsInstr.C_fadd'45'rrr_44
          (coe (0 :: Integer)) (coe (1 :: Integer)) (coe (0 :: Integer)))
-      (d_s4_958
-         (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v6))
+      (coe
+         du_s4_970 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5)
+         (coe v6))
 -- Once.Arith.Machine.CompileCorrect._.bridge
-d_bridge_962 ::
+d_bridge_974 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
@@ -1499,10 +1794,13 @@ d_bridge_962 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  T_CompileGoInv_390 ->
+  (MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+   T_CompileGoInv_390) ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_bridge_962 = erased
+d_bridge_974 = erased
 -- Once.Arith.Machine.CompileCorrect._.scratch-s3-d
-d_scratch'45's3'45'd_964 ::
+d_scratch'45's3'45'd_976 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
@@ -1510,10 +1808,13 @@ d_scratch'45's3'45'd_964 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  T_CompileGoInv_390 ->
+  (MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+   T_CompileGoInv_390) ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_scratch'45's3'45'd_964 = erased
+d_scratch'45's3'45'd_976 = erased
 -- Once.Arith.Machine.CompileCorrect._.regs-s3-0
-d_regs'45's3'45'0_966 ::
+d_regs'45's3'45'0_978 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
@@ -1521,10 +1822,13 @@ d_regs'45's3'45'0_966 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  T_CompileGoInv_390 ->
+  (MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+   T_CompileGoInv_390) ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_regs'45's3'45'0_966 = erased
+d_regs'45's3'45'0_978 = erased
 -- Once.Arith.Machine.CompileCorrect.fsub-correct
-d_fsub'45'correct_988 ::
+d_fsub'45'correct_1002 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
@@ -1532,21 +1836,13 @@ d_fsub'45'correct_988 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  T_CompileGoInv_390 ->
+  (MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+   T_CompileGoInv_390) ->
   T_CompileGoInv_390
-d_fsub'45'correct_988 = erased
--- Once.Arith.Machine.CompileCorrect._.ih-a
-d_ih'45'a_1004 ::
-  Integer ->
-  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
-  MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
-  Integer ->
-  MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
-  MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
-  MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
-  T_CompileGoInv_390
-d_ih'45'a_1004 = erased
+d_fsub'45'correct_1002 = erased
 -- Once.Arith.Machine.CompileCorrect._.s1
-d_s1_1006 ::
+d_s1_1022 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
@@ -1554,9 +1850,13 @@ d_s1_1006 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  T_CompileGoInv_390 ->
+  (MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+   T_CompileGoInv_390) ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130
-d_s1_1006 v0 v1 v2 v3 v4 ~v5 v6 = du_s1_1006 v0 v1 v2 v3 v4 v6
-du_s1_1006 ::
+d_s1_1022 v0 v1 v2 v3 v4 ~v5 v6 ~v7 ~v8
+  = du_s1_1022 v0 v1 v2 v3 v4 v6
+du_s1_1022 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
@@ -1564,7 +1864,7 @@ du_s1_1006 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130
-du_s1_1006 v0 v1 v2 v3 v4 v5
+du_s1_1022 v0 v1 v2 v3 v4 v5
   = coe
       MAlonzo.Code.Once.Arith.Machine.AbsInstr.d_run'45'abstract_284
       (coe v0) (coe v1) (coe v2)
@@ -1574,7 +1874,7 @@ du_s1_1006 v0 v1 v2 v3 v4 v5
          (coe v4))
       (coe v5)
 -- Once.Arith.Machine.CompileCorrect._.s2
-d_s2_1008 ::
+d_s2_1024 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
@@ -1582,9 +1882,13 @@ d_s2_1008 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  T_CompileGoInv_390 ->
+  (MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+   T_CompileGoInv_390) ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130
-d_s2_1008 v0 v1 v2 v3 v4 ~v5 v6 = du_s2_1008 v0 v1 v2 v3 v4 v6
-du_s2_1008 ::
+d_s2_1024 v0 v1 v2 v3 v4 ~v5 v6 ~v7 ~v8
+  = du_s2_1024 v0 v1 v2 v3 v4 v6
+du_s2_1024 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
@@ -1592,16 +1896,16 @@ du_s2_1008 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130
-du_s2_1008 v0 v1 v2 v3 v4 v5
+du_s2_1024 v0 v1 v2 v3 v4 v5
   = coe
       MAlonzo.Code.Once.Arith.Machine.AbsInstr.d_step_108 v0 v1 v2
       (coe
          MAlonzo.Code.Once.Arith.Machine.AbsInstr.C_spill_34
          (coe (0 :: Integer)) (coe v3))
       (coe
-         du_s1_1006 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5))
+         du_s1_1022 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5))
 -- Once.Arith.Machine.CompileCorrect._.ih-b
-d_ih'45'b_1010 ::
+d_ih'45'b_1026 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
@@ -1609,10 +1913,27 @@ d_ih'45'b_1010 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  T_CompileGoInv_390 ->
+  (MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+   T_CompileGoInv_390) ->
   T_CompileGoInv_390
-d_ih'45'b_1010 = erased
+d_ih'45'b_1026 = erased
 -- Once.Arith.Machine.CompileCorrect._.s3
-d_s3_1012 ::
+d_s3_1028 ::
+  Integer ->
+  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
+  MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
+  Integer ->
+  MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
+  MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
+  MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  T_CompileGoInv_390 ->
+  (MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+   T_CompileGoInv_390) ->
+  MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130
+d_s3_1028 v0 v1 v2 v3 v4 v5 v6 ~v7 ~v8
+  = du_s3_1028 v0 v1 v2 v3 v4 v5 v6
+du_s3_1028 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
@@ -1621,7 +1942,7 @@ d_s3_1012 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130
-d_s3_1012 v0 v1 v2 v3 v4 v5 v6
+du_s3_1028 v0 v1 v2 v3 v4 v5 v6
   = coe
       MAlonzo.Code.Once.Arith.Machine.AbsInstr.d_run'45'abstract_284
       (coe v0) (coe v1) (coe v2)
@@ -1630,9 +1951,23 @@ d_s3_1012 v0 v1 v2 v3 v4 v5 v6
          (coe v2) (coe MAlonzo.Code.Once.Arith.Type.C_NFloat_10)
          (coe addInt (coe (1 :: Integer)) (coe v3)) (coe v5))
       (coe
-         du_s2_1008 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v6))
+         du_s2_1024 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v6))
 -- Once.Arith.Machine.CompileCorrect._.s4
-d_s4_1014 ::
+d_s4_1030 ::
+  Integer ->
+  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
+  MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
+  Integer ->
+  MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
+  MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
+  MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  T_CompileGoInv_390 ->
+  (MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+   T_CompileGoInv_390) ->
+  MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130
+d_s4_1030 v0 v1 v2 v3 v4 v5 v6 ~v7 ~v8
+  = du_s4_1030 v0 v1 v2 v3 v4 v5 v6
+du_s4_1030 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
@@ -1641,16 +1976,31 @@ d_s4_1014 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130
-d_s4_1014 v0 v1 v2 v3 v4 v5 v6
+du_s4_1030 v0 v1 v2 v3 v4 v5 v6
   = coe
       MAlonzo.Code.Once.Arith.Machine.AbsInstr.d_step_108 v0 v1 v2
       (coe
          MAlonzo.Code.Once.Arith.Machine.AbsInstr.C_reload_36 (coe v3)
          (coe (1 :: Integer)))
-      (d_s3_1012
-         (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v6))
+      (coe
+         du_s3_1028 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5)
+         (coe v6))
 -- Once.Arith.Machine.CompileCorrect._.s5
-d_s5_1016 ::
+d_s5_1032 ::
+  Integer ->
+  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
+  MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
+  Integer ->
+  MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
+  MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
+  MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  T_CompileGoInv_390 ->
+  (MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+   T_CompileGoInv_390) ->
+  MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130
+d_s5_1032 v0 v1 v2 v3 v4 v5 v6 ~v7 ~v8
+  = du_s5_1032 v0 v1 v2 v3 v4 v5 v6
+du_s5_1032 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
@@ -1659,16 +2009,17 @@ d_s5_1016 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130
-d_s5_1016 v0 v1 v2 v3 v4 v5 v6
+du_s5_1032 v0 v1 v2 v3 v4 v5 v6
   = coe
       MAlonzo.Code.Once.Arith.Machine.AbsInstr.d_step_108 v0 v1 v2
       (coe
          MAlonzo.Code.Once.Arith.Machine.AbsInstr.C_fsub'45'rrr_46
          (coe (0 :: Integer)) (coe (1 :: Integer)) (coe (0 :: Integer)))
-      (d_s4_1014
-         (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v6))
+      (coe
+         du_s4_1030 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5)
+         (coe v6))
 -- Once.Arith.Machine.CompileCorrect._.bridge
-d_bridge_1018 ::
+d_bridge_1034 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
@@ -1676,10 +2027,13 @@ d_bridge_1018 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  T_CompileGoInv_390 ->
+  (MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+   T_CompileGoInv_390) ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_bridge_1018 = erased
+d_bridge_1034 = erased
 -- Once.Arith.Machine.CompileCorrect._.scratch-s3-d
-d_scratch'45's3'45'd_1020 ::
+d_scratch'45's3'45'd_1036 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
@@ -1687,10 +2041,13 @@ d_scratch'45's3'45'd_1020 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  T_CompileGoInv_390 ->
+  (MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+   T_CompileGoInv_390) ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_scratch'45's3'45'd_1020 = erased
+d_scratch'45's3'45'd_1036 = erased
 -- Once.Arith.Machine.CompileCorrect._.regs-s3-0
-d_regs'45's3'45'0_1022 ::
+d_regs'45's3'45'0_1038 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
@@ -1698,10 +2055,13 @@ d_regs'45's3'45'0_1022 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  T_CompileGoInv_390 ->
+  (MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+   T_CompileGoInv_390) ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_regs'45's3'45'0_1022 = erased
+d_regs'45's3'45'0_1038 = erased
 -- Once.Arith.Machine.CompileCorrect.fmul-correct
-d_fmul'45'correct_1044 ::
+d_fmul'45'correct_1062 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
@@ -1709,21 +2069,13 @@ d_fmul'45'correct_1044 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  T_CompileGoInv_390 ->
+  (MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+   T_CompileGoInv_390) ->
   T_CompileGoInv_390
-d_fmul'45'correct_1044 = erased
--- Once.Arith.Machine.CompileCorrect._.ih-a
-d_ih'45'a_1060 ::
-  Integer ->
-  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
-  MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
-  Integer ->
-  MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
-  MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
-  MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
-  T_CompileGoInv_390
-d_ih'45'a_1060 = erased
+d_fmul'45'correct_1062 = erased
 -- Once.Arith.Machine.CompileCorrect._.s1
-d_s1_1062 ::
+d_s1_1082 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
@@ -1731,9 +2083,13 @@ d_s1_1062 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  T_CompileGoInv_390 ->
+  (MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+   T_CompileGoInv_390) ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130
-d_s1_1062 v0 v1 v2 v3 v4 ~v5 v6 = du_s1_1062 v0 v1 v2 v3 v4 v6
-du_s1_1062 ::
+d_s1_1082 v0 v1 v2 v3 v4 ~v5 v6 ~v7 ~v8
+  = du_s1_1082 v0 v1 v2 v3 v4 v6
+du_s1_1082 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
@@ -1741,7 +2097,7 @@ du_s1_1062 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130
-du_s1_1062 v0 v1 v2 v3 v4 v5
+du_s1_1082 v0 v1 v2 v3 v4 v5
   = coe
       MAlonzo.Code.Once.Arith.Machine.AbsInstr.d_run'45'abstract_284
       (coe v0) (coe v1) (coe v2)
@@ -1751,7 +2107,7 @@ du_s1_1062 v0 v1 v2 v3 v4 v5
          (coe v4))
       (coe v5)
 -- Once.Arith.Machine.CompileCorrect._.s2
-d_s2_1064 ::
+d_s2_1084 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
@@ -1759,9 +2115,13 @@ d_s2_1064 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  T_CompileGoInv_390 ->
+  (MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+   T_CompileGoInv_390) ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130
-d_s2_1064 v0 v1 v2 v3 v4 ~v5 v6 = du_s2_1064 v0 v1 v2 v3 v4 v6
-du_s2_1064 ::
+d_s2_1084 v0 v1 v2 v3 v4 ~v5 v6 ~v7 ~v8
+  = du_s2_1084 v0 v1 v2 v3 v4 v6
+du_s2_1084 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
@@ -1769,16 +2129,16 @@ du_s2_1064 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130
-du_s2_1064 v0 v1 v2 v3 v4 v5
+du_s2_1084 v0 v1 v2 v3 v4 v5
   = coe
       MAlonzo.Code.Once.Arith.Machine.AbsInstr.d_step_108 v0 v1 v2
       (coe
          MAlonzo.Code.Once.Arith.Machine.AbsInstr.C_spill_34
          (coe (0 :: Integer)) (coe v3))
       (coe
-         du_s1_1062 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5))
+         du_s1_1082 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5))
 -- Once.Arith.Machine.CompileCorrect._.ih-b
-d_ih'45'b_1066 ::
+d_ih'45'b_1086 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
@@ -1786,10 +2146,27 @@ d_ih'45'b_1066 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  T_CompileGoInv_390 ->
+  (MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+   T_CompileGoInv_390) ->
   T_CompileGoInv_390
-d_ih'45'b_1066 = erased
+d_ih'45'b_1086 = erased
 -- Once.Arith.Machine.CompileCorrect._.s3
-d_s3_1068 ::
+d_s3_1088 ::
+  Integer ->
+  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
+  MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
+  Integer ->
+  MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
+  MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
+  MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  T_CompileGoInv_390 ->
+  (MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+   T_CompileGoInv_390) ->
+  MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130
+d_s3_1088 v0 v1 v2 v3 v4 v5 v6 ~v7 ~v8
+  = du_s3_1088 v0 v1 v2 v3 v4 v5 v6
+du_s3_1088 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
@@ -1798,7 +2175,7 @@ d_s3_1068 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130
-d_s3_1068 v0 v1 v2 v3 v4 v5 v6
+du_s3_1088 v0 v1 v2 v3 v4 v5 v6
   = coe
       MAlonzo.Code.Once.Arith.Machine.AbsInstr.d_run'45'abstract_284
       (coe v0) (coe v1) (coe v2)
@@ -1807,9 +2184,23 @@ d_s3_1068 v0 v1 v2 v3 v4 v5 v6
          (coe v2) (coe MAlonzo.Code.Once.Arith.Type.C_NFloat_10)
          (coe addInt (coe (1 :: Integer)) (coe v3)) (coe v5))
       (coe
-         du_s2_1064 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v6))
+         du_s2_1084 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v6))
 -- Once.Arith.Machine.CompileCorrect._.s4
-d_s4_1070 ::
+d_s4_1090 ::
+  Integer ->
+  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
+  MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
+  Integer ->
+  MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
+  MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
+  MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  T_CompileGoInv_390 ->
+  (MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+   T_CompileGoInv_390) ->
+  MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130
+d_s4_1090 v0 v1 v2 v3 v4 v5 v6 ~v7 ~v8
+  = du_s4_1090 v0 v1 v2 v3 v4 v5 v6
+du_s4_1090 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
@@ -1818,16 +2209,31 @@ d_s4_1070 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130
-d_s4_1070 v0 v1 v2 v3 v4 v5 v6
+du_s4_1090 v0 v1 v2 v3 v4 v5 v6
   = coe
       MAlonzo.Code.Once.Arith.Machine.AbsInstr.d_step_108 v0 v1 v2
       (coe
          MAlonzo.Code.Once.Arith.Machine.AbsInstr.C_reload_36 (coe v3)
          (coe (1 :: Integer)))
-      (d_s3_1068
-         (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v6))
+      (coe
+         du_s3_1088 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5)
+         (coe v6))
 -- Once.Arith.Machine.CompileCorrect._.s5
-d_s5_1072 ::
+d_s5_1092 ::
+  Integer ->
+  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
+  MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
+  Integer ->
+  MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
+  MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
+  MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  T_CompileGoInv_390 ->
+  (MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+   T_CompileGoInv_390) ->
+  MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130
+d_s5_1092 v0 v1 v2 v3 v4 v5 v6 ~v7 ~v8
+  = du_s5_1092 v0 v1 v2 v3 v4 v5 v6
+du_s5_1092 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
@@ -1836,16 +2242,17 @@ d_s5_1072 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130
-d_s5_1072 v0 v1 v2 v3 v4 v5 v6
+du_s5_1092 v0 v1 v2 v3 v4 v5 v6
   = coe
       MAlonzo.Code.Once.Arith.Machine.AbsInstr.d_step_108 v0 v1 v2
       (coe
          MAlonzo.Code.Once.Arith.Machine.AbsInstr.C_fmul'45'rrr_48
          (coe (0 :: Integer)) (coe (1 :: Integer)) (coe (0 :: Integer)))
-      (d_s4_1070
-         (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v6))
+      (coe
+         du_s4_1090 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5)
+         (coe v6))
 -- Once.Arith.Machine.CompileCorrect._.bridge
-d_bridge_1074 ::
+d_bridge_1094 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
@@ -1853,10 +2260,13 @@ d_bridge_1074 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  T_CompileGoInv_390 ->
+  (MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+   T_CompileGoInv_390) ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_bridge_1074 = erased
+d_bridge_1094 = erased
 -- Once.Arith.Machine.CompileCorrect._.scratch-s3-d
-d_scratch'45's3'45'd_1076 ::
+d_scratch'45's3'45'd_1096 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
@@ -1864,10 +2274,13 @@ d_scratch'45's3'45'd_1076 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  T_CompileGoInv_390 ->
+  (MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+   T_CompileGoInv_390) ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_scratch'45's3'45'd_1076 = erased
+d_scratch'45's3'45'd_1096 = erased
 -- Once.Arith.Machine.CompileCorrect._.regs-s3-0
-d_regs'45's3'45'0_1078 ::
+d_regs'45's3'45'0_1098 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
@@ -1875,10 +2288,13 @@ d_regs'45's3'45'0_1078 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  T_CompileGoInv_390 ->
+  (MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+   T_CompileGoInv_390) ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_regs'45's3'45'0_1078 = erased
+d_regs'45's3'45'0_1098 = erased
 -- Once.Arith.Machine.CompileCorrect.fdiv-correct
-d_fdiv'45'correct_1100 ::
+d_fdiv'45'correct_1122 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
@@ -1886,21 +2302,13 @@ d_fdiv'45'correct_1100 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  T_CompileGoInv_390 ->
+  (MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+   T_CompileGoInv_390) ->
   T_CompileGoInv_390
-d_fdiv'45'correct_1100 = erased
--- Once.Arith.Machine.CompileCorrect._.ih-a
-d_ih'45'a_1116 ::
-  Integer ->
-  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
-  MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
-  Integer ->
-  MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
-  MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
-  MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
-  T_CompileGoInv_390
-d_ih'45'a_1116 = erased
+d_fdiv'45'correct_1122 = erased
 -- Once.Arith.Machine.CompileCorrect._.s1
-d_s1_1118 ::
+d_s1_1142 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
@@ -1908,9 +2316,13 @@ d_s1_1118 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  T_CompileGoInv_390 ->
+  (MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+   T_CompileGoInv_390) ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130
-d_s1_1118 v0 v1 v2 v3 v4 ~v5 v6 = du_s1_1118 v0 v1 v2 v3 v4 v6
-du_s1_1118 ::
+d_s1_1142 v0 v1 v2 v3 v4 ~v5 v6 ~v7 ~v8
+  = du_s1_1142 v0 v1 v2 v3 v4 v6
+du_s1_1142 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
@@ -1918,7 +2330,7 @@ du_s1_1118 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130
-du_s1_1118 v0 v1 v2 v3 v4 v5
+du_s1_1142 v0 v1 v2 v3 v4 v5
   = coe
       MAlonzo.Code.Once.Arith.Machine.AbsInstr.d_run'45'abstract_284
       (coe v0) (coe v1) (coe v2)
@@ -1928,7 +2340,7 @@ du_s1_1118 v0 v1 v2 v3 v4 v5
          (coe v4))
       (coe v5)
 -- Once.Arith.Machine.CompileCorrect._.s2
-d_s2_1120 ::
+d_s2_1144 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
@@ -1936,9 +2348,13 @@ d_s2_1120 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  T_CompileGoInv_390 ->
+  (MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+   T_CompileGoInv_390) ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130
-d_s2_1120 v0 v1 v2 v3 v4 ~v5 v6 = du_s2_1120 v0 v1 v2 v3 v4 v6
-du_s2_1120 ::
+d_s2_1144 v0 v1 v2 v3 v4 ~v5 v6 ~v7 ~v8
+  = du_s2_1144 v0 v1 v2 v3 v4 v6
+du_s2_1144 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
@@ -1946,16 +2362,16 @@ du_s2_1120 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130
-du_s2_1120 v0 v1 v2 v3 v4 v5
+du_s2_1144 v0 v1 v2 v3 v4 v5
   = coe
       MAlonzo.Code.Once.Arith.Machine.AbsInstr.d_step_108 v0 v1 v2
       (coe
          MAlonzo.Code.Once.Arith.Machine.AbsInstr.C_spill_34
          (coe (0 :: Integer)) (coe v3))
       (coe
-         du_s1_1118 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5))
+         du_s1_1142 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5))
 -- Once.Arith.Machine.CompileCorrect._.ih-b
-d_ih'45'b_1122 ::
+d_ih'45'b_1146 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
@@ -1963,10 +2379,27 @@ d_ih'45'b_1122 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  T_CompileGoInv_390 ->
+  (MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+   T_CompileGoInv_390) ->
   T_CompileGoInv_390
-d_ih'45'b_1122 = erased
+d_ih'45'b_1146 = erased
 -- Once.Arith.Machine.CompileCorrect._.s3
-d_s3_1124 ::
+d_s3_1148 ::
+  Integer ->
+  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
+  MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
+  Integer ->
+  MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
+  MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
+  MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  T_CompileGoInv_390 ->
+  (MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+   T_CompileGoInv_390) ->
+  MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130
+d_s3_1148 v0 v1 v2 v3 v4 v5 v6 ~v7 ~v8
+  = du_s3_1148 v0 v1 v2 v3 v4 v5 v6
+du_s3_1148 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
@@ -1975,7 +2408,7 @@ d_s3_1124 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130
-d_s3_1124 v0 v1 v2 v3 v4 v5 v6
+du_s3_1148 v0 v1 v2 v3 v4 v5 v6
   = coe
       MAlonzo.Code.Once.Arith.Machine.AbsInstr.d_run'45'abstract_284
       (coe v0) (coe v1) (coe v2)
@@ -1984,9 +2417,23 @@ d_s3_1124 v0 v1 v2 v3 v4 v5 v6
          (coe v2) (coe MAlonzo.Code.Once.Arith.Type.C_NFloat_10)
          (coe addInt (coe (1 :: Integer)) (coe v3)) (coe v5))
       (coe
-         du_s2_1120 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v6))
+         du_s2_1144 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v6))
 -- Once.Arith.Machine.CompileCorrect._.s4
-d_s4_1126 ::
+d_s4_1150 ::
+  Integer ->
+  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
+  MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
+  Integer ->
+  MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
+  MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
+  MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  T_CompileGoInv_390 ->
+  (MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+   T_CompileGoInv_390) ->
+  MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130
+d_s4_1150 v0 v1 v2 v3 v4 v5 v6 ~v7 ~v8
+  = du_s4_1150 v0 v1 v2 v3 v4 v5 v6
+du_s4_1150 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
@@ -1995,16 +2442,31 @@ d_s4_1126 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130
-d_s4_1126 v0 v1 v2 v3 v4 v5 v6
+du_s4_1150 v0 v1 v2 v3 v4 v5 v6
   = coe
       MAlonzo.Code.Once.Arith.Machine.AbsInstr.d_step_108 v0 v1 v2
       (coe
          MAlonzo.Code.Once.Arith.Machine.AbsInstr.C_reload_36 (coe v3)
          (coe (1 :: Integer)))
-      (d_s3_1124
-         (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v6))
+      (coe
+         du_s3_1148 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5)
+         (coe v6))
 -- Once.Arith.Machine.CompileCorrect._.s5
-d_s5_1128 ::
+d_s5_1152 ::
+  Integer ->
+  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
+  MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
+  Integer ->
+  MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
+  MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
+  MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  T_CompileGoInv_390 ->
+  (MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+   T_CompileGoInv_390) ->
+  MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130
+d_s5_1152 v0 v1 v2 v3 v4 v5 v6 ~v7 ~v8
+  = du_s5_1152 v0 v1 v2 v3 v4 v5 v6
+du_s5_1152 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
@@ -2013,16 +2475,17 @@ d_s5_1128 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130
-d_s5_1128 v0 v1 v2 v3 v4 v5 v6
+du_s5_1152 v0 v1 v2 v3 v4 v5 v6
   = coe
       MAlonzo.Code.Once.Arith.Machine.AbsInstr.d_step_108 v0 v1 v2
       (coe
          MAlonzo.Code.Once.Arith.Machine.AbsInstr.C_fdiv'45'rrr_50
          (coe (0 :: Integer)) (coe (1 :: Integer)) (coe (0 :: Integer)))
-      (d_s4_1126
-         (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v6))
+      (coe
+         du_s4_1150 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5)
+         (coe v6))
 -- Once.Arith.Machine.CompileCorrect._.bridge
-d_bridge_1130 ::
+d_bridge_1154 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
@@ -2030,10 +2493,13 @@ d_bridge_1130 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  T_CompileGoInv_390 ->
+  (MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+   T_CompileGoInv_390) ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_bridge_1130 = erased
+d_bridge_1154 = erased
 -- Once.Arith.Machine.CompileCorrect._.scratch-s3-d
-d_scratch'45's3'45'd_1132 ::
+d_scratch'45's3'45'd_1156 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
@@ -2041,10 +2507,13 @@ d_scratch'45's3'45'd_1132 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  T_CompileGoInv_390 ->
+  (MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+   T_CompileGoInv_390) ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_scratch'45's3'45'd_1132 = erased
+d_scratch'45's3'45'd_1156 = erased
 -- Once.Arith.Machine.CompileCorrect._.regs-s3-0
-d_regs'45's3'45'0_1134 ::
+d_regs'45's3'45'0_1158 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
@@ -2052,19 +2521,33 @@ d_regs'45's3'45'0_1134 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  T_CompileGoInv_390 ->
+  (MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+   T_CompileGoInv_390) ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_regs'45's3'45'0_1134 = erased
+d_regs'45's3'45'0_1158 = erased
+-- Once.Arith.Machine.CompileCorrect.compile-go-correct
+d_compile'45'go'45'correct_1180 ::
+  Integer ->
+  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
+  MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
+  MAlonzo.Code.Once.Arith.Type.T_NumType_6 ->
+  Integer ->
+  MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
+  MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  T_CompileGoInv_390
+d_compile'45'go'45'correct_1180 = erased
 -- Once.Arith.Machine.CompileCorrect.abs-validity
-d_abs'45'validity_1282 ::
+d_abs'45'validity_1336 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
   MAlonzo.Code.Once.Arith.Type.T_NumType_6 ->
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_abs'45'validity_1282 = erased
+d_abs'45'validity_1336 = erased
 -- Once.Arith.Machine.CompileCorrect._.eval-in-range
-d_eval'45'in'45'range_1304 ::
+d_eval'45'in'45'range_1358 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   Integer ->
@@ -2072,15 +2555,15 @@ d_eval'45'in'45'range_1304 ::
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   AgdaAny -> MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-d_eval'45'in'45'range_1304 v0 v1 ~v2 ~v3 v4 v5 v6
-  = du_eval'45'in'45'range_1304 v0 v1 v4 v5 v6
-du_eval'45'in'45'range_1304 ::
+d_eval'45'in'45'range_1358 v0 v1 ~v2 ~v3 v4 v5 v6
+  = du_eval'45'in'45'range_1358 v0 v1 v4 v5 v6
+du_eval'45'in'45'range_1358 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   AgdaAny -> MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-du_eval'45'in'45'range_1304 v0 v1 v2 v3 v4
+du_eval'45'in'45'range_1358 v0 v1 v2 v3 v4
   = case coe v3 of
       MAlonzo.Code.Once.Arith.Machine.IR.C_alit_14 v5
         -> coe
@@ -2158,7 +2641,7 @@ du_eval'45'in'45'range_1304 v0 v1 v2 v3 v4
                 (coe v0) (coe v1) (coe v2)
                 (coe MAlonzo.Code.Once.Arith.Type.C_NInt_8) (coe v6) (coe v4))
              (coe
-                du_eval'45'in'45'range_1304 (coe v0) (coe v1) (coe v2) (coe v5)
+                du_eval'45'in'45'range_1358 (coe v0) (coe v1) (coe v2) (coe v5)
                 (coe v4))
       MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_42 v6
         -> coe
@@ -2172,7 +2655,7 @@ du_eval'45'in'45'range_1304 v0 v1 v2 v3 v4
              (coe MAlonzo.Code.Once.Word.d_modulus_10 (coe v0))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Arith.Machine.CompileCorrect._.fold-div-preserves
-d_fold'45'div'45'preserves_1356 ::
+d_fold'45'div'45'preserves_1410 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   Integer ->
@@ -2183,9 +2666,9 @@ d_fold'45'div'45'preserves_1356 ::
   AgdaAny ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_fold'45'div'45'preserves_1356 = erased
+d_fold'45'div'45'preserves_1410 = erased
 -- Once.Arith.Machine.CompileCorrect._.fold-mod-preserves
-d_fold'45'mod'45'preserves_1416 ::
+d_fold'45'mod'45'preserves_1470 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   Integer ->
@@ -2194,9 +2677,9 @@ d_fold'45'mod'45'preserves_1416 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_fold'45'mod'45'preserves_1416 = erased
+d_fold'45'mod'45'preserves_1470 = erased
 -- Once.Arith.Machine.CompileCorrect._.normalize-preserves
-d_normalize'45'preserves_1472 ::
+d_normalize'45'preserves_1526 ::
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   Integer ->
@@ -2204,4 +2687,4 @@ d_normalize'45'preserves_1472 ::
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_normalize'45'preserves_1472 = erased
+d_normalize'45'preserves_1526 = erased

@@ -46,44 +46,45 @@ data T_Instr_28
     C_sub_36 T_Operand_20 T_Operand_20 |
     C_cmp_38 T_Operand_20 T_Operand_20 |
     C_test_40 T_Operand_20 T_Operand_20 |
-    C_jmp_42 MAlonzo.Code.Once.CCC.Label.T_Label_22 |
-    C_je_44 MAlonzo.Code.Once.CCC.Label.T_Label_22 |
-    C_jne_46 MAlonzo.Code.Once.CCC.Label.T_Label_22 |
+    C_jmp_42 MAlonzo.Code.Once.CCC.Label.T_Label_28 |
+    C_je_44 MAlonzo.Code.Once.CCC.Label.T_Label_28 |
+    C_jne_46 MAlonzo.Code.Once.CCC.Label.T_Label_28 |
     C_call_48 T_Operand_20 |
     C_call'45'sym_50 MAlonzo.Code.Agda.Builtin.String.T_String_6 |
-    C_ret_52 | C_push_54 T_Operand_20 |
-    C_pop_56 MAlonzo.Code.Once.Target.X86Z45Z64.PhysReg.T_Reg_8 |
-    C_nop_58 | C_ud2_60 | C_syscall_62 |
-    C_label_64 MAlonzo.Code.Once.CCC.Label.T_Label_22
+    C_call'45'l_52 MAlonzo.Code.Once.CCC.Label.T_Label_28 | C_ret_54 |
+    C_push_56 T_Operand_20 |
+    C_pop_58 MAlonzo.Code.Once.Target.X86Z45Z64.PhysReg.T_Reg_8 |
+    C_nop_60 | C_ud2_62 | C_syscall_64 |
+    C_label_66 MAlonzo.Code.Once.CCC.Label.T_Label_28
 -- Once.CCC.Target.X86-64.Syntax.Program
-d_Program_66 :: ()
-d_Program_66 = erased
+d_Program_68 :: ()
+d_Program_68 = erased
 -- Once.CCC.Target.X86-64.Syntax.Function
-d_Function_68 = ()
-data T_Function_68 = C_mkfun_78 Integer [T_Instr_28]
+d_Function_70 = ()
+data T_Function_70 = C_mkfun_80 Integer [T_Instr_28]
 -- Once.CCC.Target.X86-64.Syntax.Function.name
-d_name_74 :: T_Function_68 -> Integer
-d_name_74 v0
+d_name_76 :: T_Function_70 -> Integer
+d_name_76 v0
   = case coe v0 of
-      C_mkfun_78 v1 v2 -> coe v1
+      C_mkfun_80 v1 v2 -> coe v1
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Target.X86-64.Syntax.Function.body
-d_body_76 :: T_Function_68 -> [T_Instr_28]
-d_body_76 v0
+d_body_78 :: T_Function_70 -> [T_Instr_28]
+d_body_78 v0
   = case coe v0 of
-      C_mkfun_78 v1 v2 -> coe v2
+      C_mkfun_80 v1 v2 -> coe v2
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Target.X86-64.Syntax.slot-size
-d_slot'45'size_80 :: Integer
-d_slot'45'size_80 = coe (8 :: Integer)
+d_slot'45'size_82 :: Integer
+d_slot'45'size_82 = coe (8 :: Integer)
 -- Once.CCC.Target.X86-64.Syntax.slots
-d_slots_82 :: Integer -> Integer
-d_slots_82 v0 = coe mulInt (coe v0) (coe d_slot'45'size_80)
+d_slots_84 :: Integer -> Integer
+d_slots_84 v0 = coe mulInt (coe v0) (coe d_slot'45'size_82)
 -- Once.CCC.Target.X86-64.Syntax.sub-rsp-consumed
-d_sub'45'rsp'45'consumed_86 ::
+d_sub'45'rsp'45'consumed_88 ::
   MAlonzo.Code.Once.Target.X86Z45Z64.PhysReg.T_Reg_8 ->
   T_Operand_20 -> Integer
-d_sub'45'rsp'45'consumed_86 v0 v1
+d_sub'45'rsp'45'consumed_88 v0 v1
   = case coe v0 of
       MAlonzo.Code.Once.Target.X86Z45Z64.PhysReg.C_rax_10
         -> coe (0 :: Integer)
@@ -106,7 +107,7 @@ d_sub'45'rsp'45'consumed_86 v0 v1
              C_imm_26 v2
                -> coe
                     MAlonzo.Code.Data.Nat.Base.du__'47'__318 (coe v2)
-                    (coe d_slot'45'size_80)
+                    (coe d_slot'45'size_82)
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Target.X86Z45Z64.PhysReg.C_r8_26
         -> coe (0 :: Integer)
@@ -126,15 +127,15 @@ d_sub'45'rsp'45'consumed_86 v0 v1
         -> coe (0 :: Integer)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Target.X86-64.Syntax.instr-consumed-slots
-d_instr'45'consumed'45'slots_94 :: T_Instr_28 -> Integer
-d_instr'45'consumed'45'slots_94 v0
+d_instr'45'consumed'45'slots_96 :: T_Instr_28 -> Integer
+d_instr'45'consumed'45'slots_96 v0
   = case coe v0 of
       C_mov_30 v1 v2 -> coe (0 :: Integer)
       C_lea_32 v1 v2 -> coe (0 :: Integer)
       C_add_34 v1 v2 -> coe (0 :: Integer)
       C_sub_36 v1 v2
         -> case coe v1 of
-             C_reg_22 v3 -> coe d_sub'45'rsp'45'consumed_86 (coe v3) (coe v2)
+             C_reg_22 v3 -> coe d_sub'45'rsp'45'consumed_88 (coe v3) (coe v2)
              C_mem_24 v3 -> coe (0 :: Integer)
              C_imm_26 v3 -> coe (0 :: Integer)
              _ -> MAlonzo.RTE.mazUnreachableError
@@ -145,37 +146,38 @@ d_instr'45'consumed'45'slots_94 v0
       C_jne_46 v1 -> coe (0 :: Integer)
       C_call_48 v1 -> coe (1 :: Integer)
       C_call'45'sym_50 v1 -> coe (1 :: Integer)
-      C_ret_52 -> coe (0 :: Integer)
-      C_push_54 v1 -> coe (1 :: Integer)
-      C_pop_56 v1 -> coe (0 :: Integer)
-      C_nop_58 -> coe (0 :: Integer)
-      C_ud2_60 -> coe (0 :: Integer)
-      C_syscall_62 -> coe (0 :: Integer)
-      C_label_64 v1 -> coe (0 :: Integer)
+      C_call'45'l_52 v1 -> coe (1 :: Integer)
+      C_ret_54 -> coe (0 :: Integer)
+      C_push_56 v1 -> coe (1 :: Integer)
+      C_pop_58 v1 -> coe (0 :: Integer)
+      C_nop_60 -> coe (0 :: Integer)
+      C_ud2_62 -> coe (0 :: Integer)
+      C_syscall_64 -> coe (0 :: Integer)
+      C_label_66 v1 -> coe (0 :: Integer)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Target.X86-64.Syntax.instrs-consumed-slots
-d_instrs'45'consumed'45'slots_100 :: [T_Instr_28] -> Integer
-d_instrs'45'consumed'45'slots_100
+d_instrs'45'consumed'45'slots_102 :: [T_Instr_28] -> Integer
+d_instrs'45'consumed'45'slots_102
   = coe
       MAlonzo.Code.Data.List.Base.du_foldr_216
       (coe
-         (\ v0 -> addInt (coe d_instr'45'consumed'45'slots_94 (coe v0))))
+         (\ v0 -> addInt (coe d_instr'45'consumed'45'slots_96 (coe v0))))
       (coe (0 :: Integer))
 -- Once.CCC.Target.X86-64.Syntax.fstOffset
-d_fstOffset_106 :: Integer
-d_fstOffset_106 = coe (0 :: Integer)
+d_fstOffset_108 :: Integer
+d_fstOffset_108 = coe (0 :: Integer)
 -- Once.CCC.Target.X86-64.Syntax.sndOffset
-d_sndOffset_108 :: Integer
-d_sndOffset_108 = coe d_slot'45'size_80
+d_sndOffset_110 :: Integer
+d_sndOffset_110 = coe d_slot'45'size_82
 -- Once.CCC.Target.X86-64.Syntax.tagOffset
-d_tagOffset_110 :: Integer
-d_tagOffset_110 = coe (0 :: Integer)
+d_tagOffset_112 :: Integer
+d_tagOffset_112 = coe (0 :: Integer)
 -- Once.CCC.Target.X86-64.Syntax.valueOffset
-d_valueOffset_112 :: Integer
-d_valueOffset_112 = coe d_slot'45'size_80
+d_valueOffset_114 :: Integer
+d_valueOffset_114 = coe d_slot'45'size_82
 -- Once.CCC.Target.X86-64.Syntax.inlTag
-d_inlTag_114 :: Integer
-d_inlTag_114 = coe (0 :: Integer)
+d_inlTag_116 :: Integer
+d_inlTag_116 = coe (0 :: Integer)
 -- Once.CCC.Target.X86-64.Syntax.inrTag
-d_inrTag_116 :: Integer
-d_inrTag_116 = coe (1 :: Integer)
+d_inrTag_118 :: Integer
+d_inrTag_118 = coe (1 :: Integer)

@@ -23,6 +23,7 @@ import qualified MAlonzo.Code.Once.Adequacy.CPU.RiscV64
 import qualified MAlonzo.Code.Once.Adequacy.CPU.X86Z45Z32
 import qualified MAlonzo.Code.Once.Adequacy.CPU.X86Z45Z64
 import qualified MAlonzo.Code.Once.Denotation.Behavior
+import qualified MAlonzo.Code.Once.Denotation.TraceMonad
 import qualified MAlonzo.Code.Once.Target.Arch
 
 -- Once.Adequacy.CPU.arch-semantics
@@ -33,20 +34,21 @@ d_arch'45'semantics_6 v0
   = case coe v0 of
       MAlonzo.Code.Once.Target.Arch.C_x86'45'64_8
         -> coe
-             MAlonzo.Code.Once.Adequacy.CPU.X86Z45Z64.d_arch'45'semantics_376
+             MAlonzo.Code.Once.Adequacy.CPU.X86Z45Z64.d_arch'45'semantics_380
       MAlonzo.Code.Once.Target.Arch.C_x86'45'32_10
         -> coe
-             MAlonzo.Code.Once.Adequacy.CPU.X86Z45Z32.d_arch'45'semantics_24
+             MAlonzo.Code.Once.Adequacy.CPU.X86Z45Z32.d_arch'45'semantics_28
       MAlonzo.Code.Once.Target.Arch.C_riscv64_12
         -> coe
-             MAlonzo.Code.Once.Adequacy.CPU.RiscV64.d_arch'45'semantics_24
+             MAlonzo.Code.Once.Adequacy.CPU.RiscV64.d_arch'45'semantics_28
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.CPU.exec
 d_exec_8 ::
   MAlonzo.Code.Once.Target.Arch.T_Arch_6 ->
+  MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_458 ->
   [MAlonzo.Code.Data.Fin.Base.T_Fin_10] ->
   MAlonzo.Code.Once.Denotation.Behavior.T_Behavior_6
-d_exec_8 v0 v1
+d_exec_8 v0 v1 v2
   = coe
       MAlonzo.Code.Once.Adequacy.CPU.Interface.d_exec'45'bytes_40
-      (coe d_arch'45'semantics_6 (coe v0)) (coe v1)
+      (coe d_arch'45'semantics_6 (coe v0)) (coe v1) (coe v2)

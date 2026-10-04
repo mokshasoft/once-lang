@@ -482,7 +482,7 @@ d_resolvesVar'45'complete_830 v0 v1 v2
                                MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v6
                                  -> coe
                                       MAlonzo.Code.Once.Spec.Resolution.C_rv'45'import_88 v6
-                                      (MAlonzo.Code.Once.Parser.Module.Resolve.d_expandPath_350
+                                      (MAlonzo.Code.Once.Parser.Module.Resolve.d_expandPath_366
                                          (coe v6))
                                       (coe du_lookupUn'45'sound_330 (coe v1) (coe v2))
                                       (d_expandPath'45'sound_688 (coe v6))
@@ -575,7 +575,7 @@ d_resolves'45'complete_1222 v0 v1 v2 v3
                                     MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v10
                                       -> coe
                                            MAlonzo.Code.Once.Spec.Resolution.C_re'45'qual_128 v10
-                                           (MAlonzo.Code.Once.Parser.Module.Resolve.d_expandPath_350
+                                           (MAlonzo.Code.Once.Parser.Module.Resolve.d_expandPath_366
                                               (coe v10))
                                            (coe du_lookupAl'45'sound_564 (coe v1) (coe v5))
                                            (d_expandPath'45'sound_688 (coe v10))
@@ -824,7 +824,7 @@ du_resolvesDecls'45'complete_1976 v0 v1 v2 v3 v4
                     (coe MAlonzo.Code.Once.Spec.Resolution.C_nim'45'typesig_338)
                     (coe v6)
                     (coe
-                       MAlonzo.Code.Once.Parser.Module.Resolve.d_resolveDecls_884 (coe v1)
+                       MAlonzo.Code.Once.Parser.Module.Resolve.d_resolveDecls_900 (coe v1)
                        (coe v2) (coe v3) (coe v0) (coe v6))
              MAlonzo.Code.Once.Parser.Module.Core.C_DFunDef_24 v7 v8
                -> coe
@@ -832,21 +832,21 @@ du_resolvesDecls'45'complete_1976 v0 v1 v2 v3 v4
                     (coe MAlonzo.Code.Once.Spec.Resolution.C_nim'45'fundef_344)
                     (coe v6)
                     (coe
-                       MAlonzo.Code.Once.Parser.Module.Resolve.d_resolveDecls_884 (coe v1)
+                       MAlonzo.Code.Once.Parser.Module.Resolve.d_resolveDecls_900 (coe v1)
                        (coe v2) (coe v3) (coe v0) (coe v6))
              MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_26 v7 v8 v9
                -> coe
                     du_rdc'45'cons_2020 (coe v0) (coe v1) (coe v2) (coe v3) (coe v5)
                     (coe MAlonzo.Code.Once.Spec.Resolution.C_nim'45'sig_352) (coe v6)
                     (coe
-                       MAlonzo.Code.Once.Parser.Module.Resolve.d_resolveDecls_884 (coe v1)
+                       MAlonzo.Code.Once.Parser.Module.Resolve.d_resolveDecls_900 (coe v1)
                        (coe v2) (coe v3) (coe v0) (coe v6))
              MAlonzo.Code.Once.Parser.Module.Core.C_DTypeAlias_28 v7 v8 v9
                -> coe
                     du_rdc'45'cons_2020 (coe v0) (coe v1) (coe v2) (coe v3) (coe v5)
                     (coe MAlonzo.Code.Once.Spec.Resolution.C_nim'45'alias_360) (coe v6)
                     (coe
-                       MAlonzo.Code.Once.Parser.Module.Resolve.d_resolveDecls_884 (coe v1)
+                       MAlonzo.Code.Once.Parser.Module.Resolve.d_resolveDecls_900 (coe v1)
                        (coe v2) (coe v3) (coe v0) (coe v6))
              MAlonzo.Code.Once.Parser.Module.Core.C_DImport_30 v7
                -> coe
@@ -856,7 +856,7 @@ du_resolvesDecls'45'complete_1976 v0 v1 v2 v3 v4
                        MAlonzo.Code.Once.Parser.Module.Resolve.d_lookupModule_40 (coe v0)
                        (coe MAlonzo.Code.Once.Parser.Module.Core.d_path_14 (coe v7)))
                     (coe
-                       MAlonzo.Code.Once.Parser.Module.Resolve.d_resolveDecls_884 (coe v1)
+                       MAlonzo.Code.Once.Parser.Module.Resolve.d_resolveDecls_900 (coe v1)
                        (coe v2) (coe v3) (coe v0) (coe v6))
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
@@ -975,9 +975,9 @@ du_resolvesModule'45'complete_2268 v0 v1
   = coe
       du_go_2284 (coe v0) (coe v1)
       (coe
-         MAlonzo.Code.Once.Parser.Module.Resolve.d_resolveDecls_884
+         MAlonzo.Code.Once.Parser.Module.Resolve.d_resolveDecls_900
          (coe
-            MAlonzo.Code.Once.Parser.Module.Resolve.d_polyDefNames_346
+            MAlonzo.Code.Once.Parser.Module.Resolve.d_polyDefNames_362
             (coe v1))
          (coe
             MAlonzo.Code.Once.Parser.Module.Resolve.d_collectUnaliased_130
@@ -1009,7 +1009,7 @@ du_go_2284 v0 v1 v2
          (coe
             du_resolvesDecls'45'complete_1976 (coe v0)
             (coe
-               MAlonzo.Code.Once.Parser.Module.Resolve.d_polyDefNames_346
+               MAlonzo.Code.Once.Parser.Module.Resolve.d_polyDefNames_362
                (coe v1))
             (coe
                MAlonzo.Code.Once.Parser.Module.Resolve.d_collectUnaliased_130

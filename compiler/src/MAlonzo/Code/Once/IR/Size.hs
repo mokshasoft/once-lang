@@ -88,7 +88,7 @@ d_ir'45'size_10 v0 v1 v2
                               (coe
                                  MAlonzo.Code.Once.IRTy.C__'42'__20 (coe v8)
                                  (coe
-                                    MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_84 (coe v10)
+                                    MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_80 (coe v10)
                                     (coe v1)))
                               (coe v1) (coe v7))
                     _ -> MAlonzo.RTE.mazUnreachableError
@@ -103,11 +103,12 @@ d_ir'45'size_10 v0 v1 v2
                     (coe
                        d_ir'45'size_10 (coe v0)
                        (coe
-                          MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_84 (coe v7) (coe v0))
+                          MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_80 (coe v7) (coe v0))
                        (coe v6))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.IR.C_const_124 v4 v5 -> coe (1 :: Integer)
       MAlonzo.Code.Once.IR.C_SigOp_130 v3 v4 v5 -> coe (1 :: Integer)
+      MAlonzo.Code.Once.IR.C_Call_136 v5 -> coe (1 :: Integer)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.IR.Size.∘-f-smaller
 d_'8728''45'f'45'smaller_40 ::

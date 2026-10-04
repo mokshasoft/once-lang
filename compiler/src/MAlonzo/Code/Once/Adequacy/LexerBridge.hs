@@ -958,19 +958,36 @@ d_lexer'45'sound_702 v0
       du_lexes'45'tok_12
       (coe MAlonzo.Code.Agda.Builtin.String.d_primStringToList_12 v0)
       (coe (0 :: Integer))
+-- Once.Adequacy.LexerBridge.tok-step
+d_tok'45'step_726 ::
+  [MAlonzo.Code.Agda.Builtin.Char.T_Char_6] ->
+  [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
+  Integer ->
+  (Integer ->
+   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
+   MAlonzo.Code.Induction.WellFounded.T_Acc_42) ->
+  MAlonzo.Code.Once.Spec.Lexing.T_LexesChars_6 ->
+  ([MAlonzo.Code.Agda.Builtin.Char.T_Char_6] ->
+   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
+   Integer ->
+   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
+   MAlonzo.Code.Once.Spec.Lexing.T_LexesChars_6 ->
+   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12) ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_tok'45'step_726 = erased
 -- Once.Adequacy.LexerBridge.tok-complete
-d_tok'45'complete_714 ::
+d_tok'45'complete_1506 ::
   [MAlonzo.Code.Agda.Builtin.Char.T_Char_6] ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   Integer ->
   MAlonzo.Code.Induction.WellFounded.T_Acc_42 ->
   MAlonzo.Code.Once.Spec.Lexing.T_LexesChars_6 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_tok'45'complete_714 = erased
+d_tok'45'complete_1506 = erased
 -- Once.Adequacy.LexerBridge.lexer-complete
-d_lexer'45'complete_1404 ::
+d_lexer'45'complete_1520 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Once.Spec.Lexing.T_LexesChars_6 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_lexer'45'complete_1404 = erased
+d_lexer'45'complete_1520 = erased

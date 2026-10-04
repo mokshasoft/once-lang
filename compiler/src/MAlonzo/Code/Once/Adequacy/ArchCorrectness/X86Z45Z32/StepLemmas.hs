@@ -70,7 +70,7 @@ d_exec'45'1_96 = erased
 d_step'45'label_122 ::
   [MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Syntax.T_Instr_26] ->
   MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.T_State_290 ->
-  MAlonzo.Code.Once.CCC.Label.T_Label_22 ->
+  MAlonzo.Code.Once.CCC.Label.T_Label_28 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_step'45'label_122 = erased
@@ -241,111 +241,121 @@ d_step'45'call'45'sym_444 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_step'45'call'45'sym_444 = erased
+-- Once.Adequacy.ArchCorrectness.X86-32.StepLemmas.step-call-l
+d_step'45'call'45'l_460 ::
+  [MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Syntax.T_Instr_26] ->
+  MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.T_State_290 ->
+  MAlonzo.Code.Once.CCC.Label.T_Label_28 ->
+  Integer ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_step'45'call'45'l_460 = erased
 -- Once.Adequacy.ArchCorrectness.X86-32.StepLemmas.step-ret
-d_step'45'ret_458 ::
+d_step'45'ret_480 ::
   [MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Syntax.T_Instr_26] ->
   MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.T_State_290 ->
   Integer ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_step'45'ret_458 = erased
+d_step'45'ret_480 = erased
 -- Once.Adequacy.ArchCorrectness.X86-32.StepLemmas.step-jmp-l
-d_step'45'jmp'45'l_480 ::
+d_step'45'jmp'45'l_502 ::
   [MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Syntax.T_Instr_26] ->
   MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.T_State_290 ->
-  MAlonzo.Code.Once.CCC.Label.T_Label_22 ->
+  MAlonzo.Code.Once.CCC.Label.T_Label_28 ->
   Integer ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_step'45'jmp'45'l_480 = erased
+d_step'45'jmp'45'l_502 = erased
 -- Once.Adequacy.ArchCorrectness.X86-32.StepLemmas.step-jmp-l-miss
-d_step'45'jmp'45'l'45'miss_500 ::
+d_step'45'jmp'45'l'45'miss_522 ::
   [MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Syntax.T_Instr_26] ->
   MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.T_State_290 ->
-  MAlonzo.Code.Once.CCC.Label.T_Label_22 ->
+  MAlonzo.Code.Once.CCC.Label.T_Label_28 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_step'45'jmp'45'l'45'miss_500 = erased
+d_step'45'jmp'45'l'45'miss_522 = erased
 -- Once.Adequacy.ArchCorrectness.X86-32.StepLemmas.step-jmp-i
-d_step'45'jmp'45'i_520 ::
+d_step'45'jmp'45'i_542 ::
   [MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Syntax.T_Instr_26] ->
   MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.T_State_290 ->
   Integer ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_step'45'jmp'45'i_520 = erased
+d_step'45'jmp'45'i_542 = erased
 -- Once.Adequacy.ArchCorrectness.X86-32.StepLemmas.step-je-taken
-d_step'45'je'45'taken_536 ::
+d_step'45'je'45'taken_558 ::
   [MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Syntax.T_Instr_26] ->
   MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.T_State_290 ->
-  MAlonzo.Code.Once.CCC.Label.T_Label_22 ->
+  MAlonzo.Code.Once.CCC.Label.T_Label_28 ->
   Integer ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_step'45'je'45'taken_536 = erased
+d_step'45'je'45'taken_558 = erased
 -- Once.Adequacy.ArchCorrectness.X86-32.StepLemmas.step-je-miss
-d_step'45'je'45'miss_562 ::
+d_step'45'je'45'miss_584 ::
   [MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Syntax.T_Instr_26] ->
   MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.T_State_290 ->
-  MAlonzo.Code.Once.CCC.Label.T_Label_22 ->
+  MAlonzo.Code.Once.CCC.Label.T_Label_28 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_step'45'je'45'miss_562 = erased
+d_step'45'je'45'miss_584 = erased
 -- Once.Adequacy.ArchCorrectness.X86-32.StepLemmas.step-je-not
-d_step'45'je'45'not_588 ::
+d_step'45'je'45'not_610 ::
   [MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Syntax.T_Instr_26] ->
   MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.T_State_290 ->
-  MAlonzo.Code.Once.CCC.Label.T_Label_22 ->
+  MAlonzo.Code.Once.CCC.Label.T_Label_28 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_step'45'je'45'not_588 = erased
+d_step'45'je'45'not_610 = erased
 -- Once.Adequacy.ArchCorrectness.X86-32.StepLemmas.step-jne-taken
-d_step'45'jne'45'taken_610 ::
+d_step'45'jne'45'taken_632 ::
   [MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Syntax.T_Instr_26] ->
   MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.T_State_290 ->
-  MAlonzo.Code.Once.CCC.Label.T_Label_22 ->
+  MAlonzo.Code.Once.CCC.Label.T_Label_28 ->
   Integer ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_step'45'jne'45'taken_610 = erased
+d_step'45'jne'45'taken_632 = erased
 -- Once.Adequacy.ArchCorrectness.X86-32.StepLemmas.step-jne-not
-d_step'45'jne'45'not_636 ::
+d_step'45'jne'45'not_658 ::
   [MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Syntax.T_Instr_26] ->
   MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.T_State_290 ->
-  MAlonzo.Code.Once.CCC.Label.T_Label_22 ->
+  MAlonzo.Code.Once.CCC.Label.T_Label_28 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_step'45'jne'45'not_636 = erased
+d_step'45'jne'45'not_658 = erased
 -- Once.Adequacy.ArchCorrectness.X86-32.StepLemmas.step-ud2
-d_step'45'ud2_654 ::
+d_step'45'ud2_676 ::
   [MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Syntax.T_Instr_26] ->
   MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.T_State_290 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_step'45'ud2_654 = erased
+d_step'45'ud2_676 = erased
 -- Once.Adequacy.ArchCorrectness.X86-32.StepLemmas.Steps
-d_Steps_664 a0 a1 a2 a3 = ()
-data T_Steps_664
-  = C_'91''93'_670 |
-    C__'8759'__680 MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.T_State_290
-                   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 T_Steps_664
+d_Steps_686 a0 a1 a2 a3 = ()
+data T_Steps_686
+  = C_'91''93'_692 |
+    C__'8759'__702 MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.T_State_290
+                   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 T_Steps_686
 -- Once.Adequacy.ArchCorrectness.X86-32.StepLemmas.exec-steps
-d_exec'45'steps_692 ::
+d_exec'45'steps_714 ::
   [MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Syntax.T_Instr_26] ->
   Integer ->
   Integer ->
   MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.T_State_290 ->
   MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.T_State_290 ->
-  T_Steps_664 -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_exec'45'steps_692 = erased
+  T_Steps_686 -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_exec'45'steps_714 = erased

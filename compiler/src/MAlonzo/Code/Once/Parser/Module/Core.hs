@@ -55,12 +55,12 @@ d_alias_16 v0
 d_Decl_20 = ()
 data T_Decl_20
   = C_DTypeSig_22 MAlonzo.Code.Agda.Builtin.String.T_String_6
-                  MAlonzo.Code.Once.Type.T_PolyType_246 |
+                  MAlonzo.Code.Once.Type.T_PolyType_254 |
     C_DFunDef_24 MAlonzo.Code.Agda.Builtin.String.T_String_6
                  MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 |
     C_DSignature_26 MAlonzo.Code.Agda.Builtin.String.T_String_6
                     (Maybe MAlonzo.Code.Agda.Builtin.String.T_String_6)
-                    MAlonzo.Code.Once.Type.T_PolyType_246 |
+                    MAlonzo.Code.Once.Type.T_PolyType_254 |
     C_DTypeAlias_28 MAlonzo.Code.Agda.Builtin.String.T_String_6
                     [MAlonzo.Code.Agda.Builtin.String.T_String_6]
                     MAlonzo.Code.Once.Type.T_Type_108 |
@@ -101,7 +101,7 @@ d_parseTypeB'45'adapt_70 v0 v1
                               (coe
                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v5)
                                  (coe
-                                    MAlonzo.Code.Once.Parser.TypeRelation.d_ParsesType'45'shrinks_448
+                                    MAlonzo.Code.Once.Parser.TypeRelation.d_ParsesType'45'shrinks_440
                                     (coe v0) (coe v3) (coe v5) (coe v6))))
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError

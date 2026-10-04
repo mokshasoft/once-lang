@@ -22,61 +22,76 @@ import qualified MAlonzo.Code.Agda.Builtin.Sigma
 -- Once.Adequacy.CorrectCompiler
 d_CorrectCompiler_4 = ()
 data T_CorrectCompiler_4
-  = C_constructor_82 (AgdaAny -> AgdaAny -> AgdaAny)
-                     (AgdaAny -> AgdaAny -> AgdaAny)
-                     (AgdaAny -> Bool -> AgdaAny -> Maybe AgdaAny)
-                     (AgdaAny ->
-                      Bool -> AgdaAny -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14)
+  = C_constructor_106 (AgdaAny -> AgdaAny)
+                      (AgdaAny -> AgdaAny -> AgdaAny -> AgdaAny)
+                      (AgdaAny -> AgdaAny -> AgdaAny -> AgdaAny -> AgdaAny)
+                      (AgdaAny -> Bool -> AgdaAny -> Maybe AgdaAny)
+                      (AgdaAny ->
+                       Bool -> AgdaAny -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14)
 -- Once.Adequacy.CorrectCompiler.Arch
-d_Arch_44 :: T_CorrectCompiler_4 -> ()
-d_Arch_44 = erased
+d_Arch_56 :: T_CorrectCompiler_4 -> ()
+d_Arch_56 = erased
 -- Once.Adequacy.CorrectCompiler.Source
-d_Source_46 :: T_CorrectCompiler_4 -> ()
-d_Source_46 = erased
+d_Source_58 :: T_CorrectCompiler_4 -> ()
+d_Source_58 = erased
 -- Once.Adequacy.CorrectCompiler.Bytes
-d_Bytes_48 :: T_CorrectCompiler_4 -> ()
-d_Bytes_48 = erased
+d_Bytes_60 :: T_CorrectCompiler_4 -> ()
+d_Bytes_60 = erased
 -- Once.Adequacy.CorrectCompiler.Behavior
-d_Behavior_50 :: T_CorrectCompiler_4 -> ()
-d_Behavior_50 = erased
+d_Behavior_62 :: T_CorrectCompiler_4 -> ()
+d_Behavior_62 = erased
+-- Once.Adequacy.CorrectCompiler.Signature
+d_Signature_64 :: T_CorrectCompiler_4 -> ()
+d_Signature_64 = erased
+-- Once.Adequacy.CorrectCompiler.Implementation
+d_Implementation_66 :: T_CorrectCompiler_4 -> AgdaAny -> ()
+d_Implementation_66 = erased
 -- Once.Adequacy.CorrectCompiler.Typed
-d_Typed_52 :: T_CorrectCompiler_4 -> ()
-d_Typed_52 = erased
+d_Typed_68 :: T_CorrectCompiler_4 -> ()
+d_Typed_68 = erased
 -- Once.Adequacy.CorrectCompiler._⊢_
-d__'8866'__54 :: T_CorrectCompiler_4 -> AgdaAny -> AgdaAny -> ()
-d__'8866'__54 = erased
--- Once.Adequacy.CorrectCompiler.⟦_⟧ˢ
-d_'10214'_'10215''738'_56 ::
-  T_CorrectCompiler_4 -> AgdaAny -> AgdaAny -> AgdaAny
-d_'10214'_'10215''738'_56 v0
+d__'8866'__70 :: T_CorrectCompiler_4 -> AgdaAny -> AgdaAny -> ()
+d__'8866'__70 = erased
+-- Once.Adequacy.CorrectCompiler.sigOf
+d_sigOf_72 :: T_CorrectCompiler_4 -> AgdaAny -> AgdaAny
+d_sigOf_72 v0
   = case coe v0 of
-      C_constructor_82 v7 v8 v11 v12 -> coe v7
+      C_constructor_106 v9 v10 v11 v14 v15 -> coe v9
+      _ -> MAlonzo.RTE.mazUnreachableError
+-- Once.Adequacy.CorrectCompiler.⟦_⟧ˢ
+d_'10214'_'10215''738'_76 ::
+  T_CorrectCompiler_4 -> AgdaAny -> AgdaAny -> AgdaAny -> AgdaAny
+d_'10214'_'10215''738'_76 v0
+  = case coe v0 of
+      C_constructor_106 v9 v10 v11 v14 v15 -> coe v10
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.CorrectCompiler.exec
-d_exec_58 :: T_CorrectCompiler_4 -> AgdaAny -> AgdaAny -> AgdaAny
-d_exec_58 v0
+d_exec_80 ::
+  T_CorrectCompiler_4 ->
+  AgdaAny -> AgdaAny -> AgdaAny -> AgdaAny -> AgdaAny
+d_exec_80 v0
   = case coe v0 of
-      C_constructor_82 v7 v8 v11 v12 -> coe v8
+      C_constructor_106 v9 v10 v11 v14 v15 -> coe v11
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.CorrectCompiler._≈_
-d__'8776'__60 :: T_CorrectCompiler_4 -> AgdaAny -> AgdaAny -> ()
-d__'8776'__60 = erased
+d__'8776'__82 :: T_CorrectCompiler_4 -> AgdaAny -> AgdaAny -> ()
+d__'8776'__82 = erased
 -- Once.Adequacy.CorrectCompiler.Admissible
-d_Admissible_62 :: T_CorrectCompiler_4 -> AgdaAny -> AgdaAny -> ()
-d_Admissible_62 = erased
+d_Admissible_84 :: T_CorrectCompiler_4 -> AgdaAny -> AgdaAny -> ()
+d_Admissible_84 = erased
 -- Once.Adequacy.CorrectCompiler.compile
-d_compile_64 ::
+d_compile_86 ::
   T_CorrectCompiler_4 -> AgdaAny -> Bool -> AgdaAny -> Maybe AgdaAny
-d_compile_64 v0
+d_compile_86 v0
   = case coe v0 of
-      C_constructor_82 v7 v8 v11 v12 -> coe v11
+      C_constructor_106 v9 v10 v11 v14 v15 -> coe v14
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.CorrectCompiler.correct
-d_correct_80 ::
+d_correct_104 ::
   T_CorrectCompiler_4 ->
   AgdaAny ->
   Bool -> AgdaAny -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_correct_80 v0
+d_correct_104 v0
   = case coe v0 of
-      C_constructor_82 v7 v8 v11 v12 -> coe v12
+      C_constructor_106 v9 v10 v11 v14 v15 -> coe v15
       _ -> MAlonzo.RTE.mazUnreachableError

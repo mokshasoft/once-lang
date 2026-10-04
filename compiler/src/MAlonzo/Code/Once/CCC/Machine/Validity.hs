@@ -31,7 +31,7 @@ d_pair_8 ::
   MAlonzo.Code.Once.Type.T_Type_108 ->
   AgdaAny -> AgdaAny -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_pair_8 v0 v1 v2 v3
-  = coe MAlonzo.Code.Once.Semantics.Value.du_sem'45'pair_322 v2 v3
+  = coe MAlonzo.Code.Once.Semantics.Value.du_sem'45'pair_462 v2 v3
 -- Once.CCC.Machine.Validity.ReadLocEq._.readLoc
 d_readLoc_24 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
@@ -44,7 +44,7 @@ du_readLoc_24 ::
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   Maybe MAlonzo.Code.Once.CCC.Machine.SMCore.T_StoredValue_66
 du_readLoc_24
-  = coe MAlonzo.Code.Once.CCC.Machine.SMCore.du_readLoc_644
+  = coe MAlonzo.Code.Once.CCC.Machine.SMCore.du_readLoc_654
 -- Once.CCC.Machine.Validity.ReadLocEq.readLoc-stack-heap-eq
 d_readLoc'45'stack'45'heap'45'eq_62 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->

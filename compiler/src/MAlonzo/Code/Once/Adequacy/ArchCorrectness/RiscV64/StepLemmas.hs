@@ -39,7 +39,7 @@ d_exec'45'1_18 = erased
 d_step'45'label_44 ::
   [MAlonzo.Code.Once.CCC.Target.RiscV64.Syntax.T_Instr_10] ->
   MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_State_408 ->
-  MAlonzo.Code.Once.CCC.Label.T_Label_22 ->
+  MAlonzo.Code.Once.CCC.Label.T_Label_28 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_step'45'label_44 = erased
@@ -145,7 +145,7 @@ d_step'45'lla'45'missing_226 = erased
 d_step'45'j_246 ::
   [MAlonzo.Code.Once.CCC.Target.RiscV64.Syntax.T_Instr_10] ->
   MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_State_408 ->
-  MAlonzo.Code.Once.CCC.Label.T_Label_22 ->
+  MAlonzo.Code.Once.CCC.Label.T_Label_28 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_step'45'j_246 = erased
@@ -205,7 +205,7 @@ d_step'45'beq'45'taken_366 ::
   MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_State_408 ->
   MAlonzo.Code.Once.Target.RiscV64.PhysReg.T_Reg_8 ->
   MAlonzo.Code.Once.Target.RiscV64.PhysReg.T_Reg_8 ->
-  MAlonzo.Code.Once.CCC.Label.T_Label_22 ->
+  MAlonzo.Code.Once.CCC.Label.T_Label_28 ->
   Integer ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
@@ -218,7 +218,7 @@ d_step'45'beq'45'not_396 ::
   MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_State_408 ->
   MAlonzo.Code.Once.Target.RiscV64.PhysReg.T_Reg_8 ->
   MAlonzo.Code.Once.Target.RiscV64.PhysReg.T_Reg_8 ->
-  MAlonzo.Code.Once.CCC.Label.T_Label_22 ->
+  MAlonzo.Code.Once.CCC.Label.T_Label_28 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
@@ -227,9 +227,20 @@ d_step'45'beq'45'not_396 = erased
 d_step'45'j'45'found_418 ::
   [MAlonzo.Code.Once.CCC.Target.RiscV64.Syntax.T_Instr_10] ->
   MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_State_408 ->
-  MAlonzo.Code.Once.CCC.Label.T_Label_22 ->
+  MAlonzo.Code.Once.CCC.Label.T_Label_28 ->
   Integer ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_step'45'j'45'found_418 = erased
+-- Once.Adequacy.ArchCorrectness.RiscV64.StepLemmas.step-jal-found
+d_step'45'jal'45'found_442 ::
+  [MAlonzo.Code.Once.CCC.Target.RiscV64.Syntax.T_Instr_10] ->
+  MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_State_408 ->
+  MAlonzo.Code.Once.Target.RiscV64.PhysReg.T_Reg_8 ->
+  MAlonzo.Code.Once.CCC.Label.T_Label_28 ->
+  Integer ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_step'45'jal'45'found_442 = erased

@@ -61,14 +61,13 @@ d_RawType_68 = ()
 data T_RawType_68
   = C_RTVar_70 MAlonzo.Code.Agda.Builtin.String.T_String_6 |
     C_RTUnit_72 | C_RTVoid_74 | C_RTInt_76 | C_RTFloat_78 |
-    C_RTBuffer_80 | C_RTStr_82 |
-    C_RTProduct_84 T_RawType_68 T_RawType_68 |
-    C_RTSum_86 T_RawType_68 T_RawType_68 |
-    C_RTArrow_88 T_RawType_68 T_RawType_68 |
-    C_RTEff_90 T_RawType_68 T_RawType_68 | C_RTFix_92 T_RawType_68
+    C_RTStr_80 | C_RTProduct_82 T_RawType_68 T_RawType_68 |
+    C_RTSum_84 T_RawType_68 T_RawType_68 |
+    C_RTArrow_86 T_RawType_68 T_RawType_68 |
+    C_RTEff_88 T_RawType_68 T_RawType_68 | C_RTFix_90 T_RawType_68
 -- Once.TypeCheck.Raw.isComparisonOp
-d_isComparisonOp_94 :: T_BinOp_6 -> Bool
-d_isComparisonOp_94 v0
+d_isComparisonOp_92 :: T_BinOp_6 -> Bool
+d_isComparisonOp_92 v0
   = case coe v0 of
       C_OpAdd_8 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
       C_OpSub_10 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
@@ -83,8 +82,8 @@ d_isComparisonOp_94 v0
       C_OpNe_28 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.TypeCheck.Raw.isFloatArithmeticOp
-d_isFloatArithmeticOp_96 :: T_BinOp_6 -> Bool
-d_isFloatArithmeticOp_96 v0
+d_isFloatArithmeticOp_94 :: T_BinOp_6 -> Bool
+d_isFloatArithmeticOp_94 v0
   = case coe v0 of
       C_OpAdd_8 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
       C_OpSub_10 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
@@ -99,8 +98,8 @@ d_isFloatArithmeticOp_96 v0
       C_OpNe_28 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.TypeCheck.Raw.isArithmeticOp
-d_isArithmeticOp_98 :: T_BinOp_6 -> Bool
-d_isArithmeticOp_98 v0
+d_isArithmeticOp_96 :: T_BinOp_6 -> Bool
+d_isArithmeticOp_96 v0
   = case coe v0 of
       C_OpAdd_8 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
       C_OpSub_10 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
@@ -115,57 +114,57 @@ d_isArithmeticOp_98 v0
       C_OpNe_28 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.TypeCheck.Raw.ClosedLiftShape
-d_ClosedLiftShape_100 a0 = ()
-data T_ClosedLiftShape_100
-  = C_cls'45'var_104 | C_cls'45'qual_110 | C_cls'45'res_114 |
-    C_cls'45'let_122 | C_cls'45'destr_134 | C_cls'45'unit_136 |
-    C_cls'45'str_140 | C_cls'45'annot_146 | C_cls'45'binop_154
+d_ClosedLiftShape_98 a0 = ()
+data T_ClosedLiftShape_98
+  = C_cls'45'var_102 | C_cls'45'qual_108 | C_cls'45'res_112 |
+    C_cls'45'let_120 | C_cls'45'destr_132 | C_cls'45'unit_134 |
+    C_cls'45'str_138 | C_cls'45'annot_144 | C_cls'45'binop_152
 -- Once.TypeCheck.Raw.closedLiftShape?
-d_closedLiftShape'63'_158 ::
-  T_RawExpr_34 -> Maybe T_ClosedLiftShape_100
-d_closedLiftShape'63'_158 v0
+d_closedLiftShape'63'_156 ::
+  T_RawExpr_34 -> Maybe T_ClosedLiftShape_98
+d_closedLiftShape'63'_156 v0
   = case coe v0 of
       C_RVar_36 v1
         -> coe
-             MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe C_cls'45'var_104)
+             MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe C_cls'45'var_102)
       C_RQualified_38 v1 v2
         -> coe
-             MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe C_cls'45'qual_110)
+             MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe C_cls'45'qual_108)
       C_RResolved_40 v1
         -> coe
-             MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe C_cls'45'res_114)
+             MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe C_cls'45'res_112)
       C_RApp_42 v1 v2 -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
       C_RLam_44 v1 v2 -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
       C_RLet_46 v1 v2 v3
         -> coe
-             MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe C_cls'45'let_122)
+             MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe C_cls'45'let_120)
       C_RPair_48 v1 v2
         -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
       C_RDestruct_50 v1 v2 v3 v4 v5
         -> coe
-             MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe C_cls'45'destr_134)
+             MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe C_cls'45'destr_132)
       C_RUnit_52
         -> coe
-             MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe C_cls'45'unit_136)
+             MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe C_cls'45'unit_134)
       C_RInt_54 v1 -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
       C_RFloat_56 v1 v2 v3 v4
         -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
       C_RStringLit_58 v1
         -> coe
-             MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe C_cls'45'str_140)
+             MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe C_cls'45'str_138)
       C_RAnnot_60 v1 v2
         -> coe
-             MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe C_cls'45'annot_146)
+             MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe C_cls'45'annot_144)
       C_RBinOp_62 v1 v2 v3
         -> coe
-             MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe C_cls'45'binop_154)
+             MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe C_cls'45'binop_152)
       C_RUnaryOp_64 v2
         -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
       C_RAna_66 v1 v2 -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.TypeCheck.Raw.closedLiftShape?-just
-d_closedLiftShape'63''45'just_164 ::
+d_closedLiftShape'63''45'just_162 ::
   T_RawExpr_34 ->
-  T_ClosedLiftShape_100 ->
+  T_ClosedLiftShape_98 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_closedLiftShape'63''45'just_164 = erased
+d_closedLiftShape'63''45'just_162 = erased

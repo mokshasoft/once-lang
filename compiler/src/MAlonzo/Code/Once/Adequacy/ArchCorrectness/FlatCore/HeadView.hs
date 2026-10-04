@@ -28,16 +28,16 @@ import qualified MAlonzo.Code.Once.CCC.Machine.SMCore
 d_fl'45'go_22 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   () ->
-  (MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2218 ->
+  (MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2236 ->
    [AgdaAny]) ->
   (AgdaAny -> Bool) ->
-  (MAlonzo.Code.Once.CCC.Label.T_Label_22 -> AgdaAny) ->
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2218] ->
+  (MAlonzo.Code.Once.CCC.Label.T_Label_28 -> AgdaAny) ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2236] ->
   MAlonzo.Code.Once.CCC.Label.T_LabelId_6 -> Integer -> Maybe Integer
 d_fl'45'go_22 v0 ~v1 ~v2 ~v3 ~v4 = du_fl'45'go_22 v0
 du_fl'45'go_22 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2218] ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2236] ->
   MAlonzo.Code.Once.CCC.Label.T_LabelId_6 -> Integer -> Maybe Integer
 du_fl'45'go_22 v0
   = coe MAlonzo.Code.Once.CCC.Machine.Flat.d_fl'45'go_126 (coe v0)
@@ -45,19 +45,19 @@ du_fl'45'go_22 v0
 d_fl'45'label'45'match_24 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   () ->
-  (MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2218 ->
+  (MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2236 ->
    [AgdaAny]) ->
   (AgdaAny -> Bool) ->
-  (MAlonzo.Code.Once.CCC.Label.T_Label_22 -> AgdaAny) ->
+  (MAlonzo.Code.Once.CCC.Label.T_Label_28 -> AgdaAny) ->
   Bool ->
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2218] ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2236] ->
   MAlonzo.Code.Once.CCC.Label.T_LabelId_6 -> Integer -> Maybe Integer
 d_fl'45'label'45'match_24 v0 ~v1 ~v2 ~v3 ~v4
   = du_fl'45'label'45'match_24 v0
 du_fl'45'label'45'match_24 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Bool ->
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2218] ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2236] ->
   MAlonzo.Code.Once.CCC.Label.T_LabelId_6 -> Integer -> Maybe Integer
 du_fl'45'label'45'match_24 v0
   = coe
@@ -67,46 +67,50 @@ du_fl'45'label'45'match_24 v0
 d_ft'45'go_26 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   () ->
-  (MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2218 ->
+  (MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2236 ->
    [AgdaAny]) ->
   (AgdaAny -> Bool) ->
-  (MAlonzo.Code.Once.CCC.Label.T_Label_22 -> AgdaAny) ->
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2218] ->
-  MAlonzo.Code.Once.CCC.Label.T_LabelId_6 -> Integer -> Maybe Integer
+  (MAlonzo.Code.Once.CCC.Label.T_Label_28 -> AgdaAny) ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2236] ->
+  MAlonzo.Code.Once.CCC.Label.T_EntryId_22 ->
+  Integer -> Maybe Integer
 d_ft'45'go_26 v0 ~v1 ~v2 ~v3 ~v4 = du_ft'45'go_26 v0
 du_ft'45'go_26 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2218] ->
-  MAlonzo.Code.Once.CCC.Label.T_LabelId_6 -> Integer -> Maybe Integer
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2236] ->
+  MAlonzo.Code.Once.CCC.Label.T_EntryId_22 ->
+  Integer -> Maybe Integer
 du_ft'45'go_26 v0
-  = coe MAlonzo.Code.Once.CCC.Machine.Flat.d_ft'45'go_172 (coe v0)
+  = coe MAlonzo.Code.Once.CCC.Machine.Flat.d_ft'45'go_192 (coe v0)
 -- Once.Adequacy.ArchCorrectness.FlatCore.HeadView._.ft-match
 d_ft'45'match_28 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   () ->
-  (MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2218 ->
+  (MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2236 ->
    [AgdaAny]) ->
   (AgdaAny -> Bool) ->
-  (MAlonzo.Code.Once.CCC.Label.T_Label_22 -> AgdaAny) ->
+  (MAlonzo.Code.Once.CCC.Label.T_Label_28 -> AgdaAny) ->
   Bool ->
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2218] ->
-  MAlonzo.Code.Once.CCC.Label.T_LabelId_6 -> Integer -> Maybe Integer
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2236] ->
+  MAlonzo.Code.Once.CCC.Label.T_EntryId_22 ->
+  Integer -> Maybe Integer
 d_ft'45'match_28 v0 ~v1 ~v2 ~v3 ~v4 = du_ft'45'match_28 v0
 du_ft'45'match_28 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Bool ->
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2218] ->
-  MAlonzo.Code.Once.CCC.Label.T_LabelId_6 -> Integer -> Maybe Integer
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2236] ->
+  MAlonzo.Code.Once.CCC.Label.T_EntryId_22 ->
+  Integer -> Maybe Integer
 du_ft'45'match_28 v0
-  = coe MAlonzo.Code.Once.CCC.Machine.Flat.d_ft'45'match_176 (coe v0)
+  = coe MAlonzo.Code.Once.CCC.Machine.Flat.d_ft'45'match_196 (coe v0)
 -- Once.Adequacy.ArchCorrectness.FlatCore.HeadView.has-label
 d_has'45'label_30 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   () ->
-  (MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2218 ->
+  (MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2236 ->
    [AgdaAny]) ->
   (AgdaAny -> Bool) ->
-  (MAlonzo.Code.Once.CCC.Label.T_Label_22 -> AgdaAny) ->
+  (MAlonzo.Code.Once.CCC.Label.T_Label_28 -> AgdaAny) ->
   [AgdaAny] -> Bool
 d_has'45'label_30 ~v0 ~v1 ~v2 v3 ~v4 v5 = du_has'45'label_30 v3 v5
 du_has'45'label_30 :: (AgdaAny -> Bool) -> [AgdaAny] -> Bool
@@ -125,5 +129,5 @@ d_HeadView_50 a0 a1 a2 a3 a4 a5 = ()
 data T_HeadView_50
   = C_hv'45'clabel_68 MAlonzo.Code.Once.CCC.Label.T_LabelId_6 |
     C_hv'45'plain_82 |
-    C_hv'45'otherlabel_100 MAlonzo.Code.Once.CCC.Label.T_LabelId_6
+    C_hv'45'otherlabel_100 MAlonzo.Code.Once.CCC.Label.T_EntryId_22
                            [AgdaAny]

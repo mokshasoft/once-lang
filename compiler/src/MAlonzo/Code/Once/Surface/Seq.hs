@@ -19,7 +19,6 @@ import qualified MAlonzo.RTE
 import qualified Data.Text
 import qualified MAlonzo.Code.Agda.Builtin.Equality
 import qualified MAlonzo.Code.Once.Surface.Context
-import qualified MAlonzo.Code.Once.Surface.Elaborate
 import qualified MAlonzo.Code.Once.Surface.Syntax
 import qualified MAlonzo.Code.Once.Type
 
@@ -80,21 +79,9 @@ d_embedClosed_60 ::
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8
-d_embedClosed_60 v0 ~v1 v2 v3 = du_embedClosed_60 v0 v2 v3
+d_embedClosed_60 ~v0 ~v1 ~v2 v3 = du_embedClosed_60 v3
 du_embedClosed_60 ::
-  Integer ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8
-du_embedClosed_60 v0 v1 v2
-  = coe
-      MAlonzo.Code.Once.Surface.Syntax.C_morph'45'app_428
-      (MAlonzo.Code.Once.Surface.Context.d_zeroUsage_70 (coe v0))
-      (coe MAlonzo.Code.Once.Type.C_Unit_118)
-      (coe
-         MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_390
-         (coe (0 :: Integer))
-         (coe MAlonzo.Code.Once.Surface.Context.C_'8709'_8)
-         (coe MAlonzo.Code.Once.Surface.Context.C_'91''93'_62) (coe v1)
-         (coe v2))
-      (coe MAlonzo.Code.Once.Surface.Syntax.C_unit_154)
+du_embedClosed_60 v0
+  = coe MAlonzo.Code.Once.Surface.Syntax.C_closed_406 v0

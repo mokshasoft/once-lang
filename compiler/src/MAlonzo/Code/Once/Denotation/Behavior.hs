@@ -29,13 +29,13 @@ import qualified MAlonzo.Code.Once.Denotation.Trace
 d_Behavior_6 = ()
 data T_Behavior_6
   = C_mkBehavior_40 (Integer ->
-                     [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_120])
+                     [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_124])
                     (Integer -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14)
                     (Integer -> MAlonzo.Code.Data.Nat.Base.T__'8804'__22)
 -- Once.Denotation.Behavior.Behavior.at
 d_at_24 ::
   T_Behavior_6 ->
-  Integer -> [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_120]
+  Integer -> [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_124]
 d_at_24 v0
   = case coe v0 of
       C_mkBehavior_40 v1 v2 v3 -> coe v1
@@ -76,14 +76,14 @@ d_silent_42
 d_behavior'45'by_50 ::
   T_Behavior_6 ->
   (Integer ->
-   [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_120]) ->
+   [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_124]) ->
   (Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12) ->
   T_Behavior_6
 d_behavior'45'by_50 v0 v1 ~v2 = du_behavior'45'by_50 v0 v1
 du_behavior'45'by_50 ::
   T_Behavior_6 ->
   (Integer ->
-   [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_120]) ->
+   [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_124]) ->
   T_Behavior_6
 du_behavior'45'by_50 v0 v1
   = coe
@@ -93,7 +93,7 @@ du_behavior'45'by_50 v0 v1
 d_ext_66 ::
   T_Behavior_6 ->
   (Integer ->
-   [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_120]) ->
+   [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_124]) ->
   (Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12) ->
   Integer -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_ext_66 v0 ~v1 ~v2 v3 = du_ext_66 v0 v3
@@ -109,7 +109,7 @@ du_ext_66 v0 v1
 d_bnd_74 ::
   T_Behavior_6 ->
   (Integer ->
-   [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_120]) ->
+   [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_124]) ->
   (Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12) ->
   Integer -> MAlonzo.Code.Data.Nat.Base.T__'8804'__22
 d_bnd_74 v0 ~v1 ~v2 v3 = du_bnd_74 v0 v3
@@ -120,7 +120,7 @@ du_bnd_74 v0 v1 = coe d_bounded_34 v0 v1
 d_sat_82 ::
   T_Behavior_6 ->
   (Integer ->
-   [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_120]) ->
+   [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_124]) ->
   (Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12) ->
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
@@ -129,15 +129,15 @@ d_sat_82 = erased
 -- Once.Denotation.Behavior.take-all
 d_take'45'all_94 ::
   Integer ->
-  [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_120] ->
+  [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_124] ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_take'45'all_94 = erased
 -- Once.Denotation.Behavior.take-++-≤
 d_take'45''43''43''45''8804'_114 ::
   Integer ->
-  [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_120] ->
-  [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_120] ->
+  [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_124] ->
+  [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_124] ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_take'45''43''43''45''8804'_114 = erased

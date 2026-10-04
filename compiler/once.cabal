@@ -76,13 +76,8 @@ library
       MAlonzo.Code.Once.TypeCheck.Soundness
       MAlonzo.Code.Once.Adequacy.AcceptSound
       MAlonzo.Code.Once.Adequacy.MainBuilds
-      MAlonzo.Code.Once.Adequacy.MainExtract
       MAlonzo.Code.Once.Adequacy.MainIRForm
-      MAlonzo.Code.Once.Adequacy.MainRealizeAgrees
       MAlonzo.Code.Once.Adequacy.ModuleComplete
-      MAlonzo.Code.Once.Adequacy.RealizeAgrees
-      MAlonzo.Code.Once.Adequacy.RealizeBridge
-      MAlonzo.Code.Once.Adequacy.WrapBridge
       MAlonzo.Code.Agda.Builtin.Bool
       MAlonzo.Code.Agda.Builtin.Char
       MAlonzo.Code.Agda.Builtin.Char.Properties
@@ -314,7 +309,6 @@ library
       MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Machine
       MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Out
       MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Pair
-      MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.PairAssemble
       MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Prelude
       MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.SigOp
       MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Simple
@@ -483,18 +477,13 @@ library
       MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64
       MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z32
       MAlonzo.Code.Once.Adequacy.CanonResolve
-      MAlonzo.Code.Once.Adequacy.AnaBridge
       MAlonzo.Code.Once.Adequacy.CataBridge
       MAlonzo.Code.Once.Adequacy.OutErased
       MAlonzo.Code.Once.Adequacy.CataRel
       MAlonzo.Code.Once.Adequacy.SeqRel
       MAlonzo.Code.Once.Adequacy.FunBundle
-      MAlonzo.Code.Once.Adequacy.MainForm
-      MAlonzo.Code.Once.Adequacy.MainMeaningBridge
       MAlonzo.Code.Once.Adequacy.MeaningBridge
       MAlonzo.Code.Once.Adequacy.MeaningRelation
-      MAlonzo.Code.Once.Adequacy.MtIndep
-      MAlonzo.Code.Once.Adequacy.RealizeInvariant
       MAlonzo.Code.Once.Adequacy.ResolveFaithful
       MAlonzo.Code.Once.CCC.Target.RiscV64.FrameInstantiation
       MAlonzo.Code.Once.CCC.Target.RiscV64.Layout
@@ -504,9 +493,7 @@ library
       MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Layout
       MAlonzo.Code.Once.CCC.Target.X86Z45Z32.RuntimeParams
       MAlonzo.Code.Once.CCC.Target.X86Z45Z32.StackGrowth
-      MAlonzo.Code.Once.Denotation.MainMeaning
       MAlonzo.Code.Once.Denotation.Meaning
-      MAlonzo.Code.Once.Denotation.DenotPrefix
       MAlonzo.Code.Once.Denotation.ValueDomain
       MAlonzo.Code.Once.Denotation.ValueDomainLaws
       MAlonzo.Code.Once.Surface.Context
@@ -614,6 +601,84 @@ library
       MAlonzo.Code.Once.Float.Decimal
       MAlonzo.Code.Once.Warnings
       MAlonzo.Code.Once.Float.Arith
+      MAlonzo.Code.Once.Adequacy.Coherence
+      MAlonzo.Code.Once.Adequacy.CoherenceHet
+      MAlonzo.Code.Once.Adequacy.CoherenceLaws
+      MAlonzo.Code.Once.Adequacy.CoherenceLawsWrap
+      MAlonzo.Code.Once.Adequacy.CoreAbsSem
+      MAlonzo.Code.Once.Adequacy.CoreBridge
+      MAlonzo.Code.Once.Adequacy.CoreEnv
+      MAlonzo.Code.Once.Adequacy.CoreInst
+      MAlonzo.Code.Once.Adequacy.CoreMeaningBridge
+      MAlonzo.Code.Once.Adequacy.CoreRenameSem
+      MAlonzo.Code.Once.Adequacy.ElabCommute
+      MAlonzo.Code.Once.Adequacy.ElabInst
+      MAlonzo.Code.Once.Adequacy.ElaborateLinked
+      MAlonzo.Code.Once.Adequacy.EntriesValid
+      MAlonzo.Code.Once.Adequacy.GradedAnaBridge
+      MAlonzo.Code.Once.Adequacy.GradedCataBridge
+      MAlonzo.Code.Once.Adequacy.GradedRelation
+      MAlonzo.Code.Once.Adequacy.LiftSound
+      MAlonzo.Code.Once.Adequacy.ProgramLinked
+      MAlonzo.Code.Once.Adequacy.RewriteLinked
+      MAlonzo.Code.Once.Adequacy.RewritePreserves
+      MAlonzo.Code.Once.Adequacy.TableCall
+      MAlonzo.Code.Once.Adequacy.TeleEntry
+      MAlonzo.Code.Once.Adequacy.TeleEnvLemmas
+      MAlonzo.Code.Once.Adequacy.TelePosition
+      MAlonzo.Code.Once.Adequacy.TeleWalk
+      MAlonzo.Code.Once.Adequacy.TeleWalk.Invariant
+      MAlonzo.Code.Once.Adequacy.ViewNatural
+      MAlonzo.Code.Once.Arith.Backend.CallAnswer
+      MAlonzo.Code.Once.Arith.Prim
+      MAlonzo.Code.Once.CCC.Codegen.CallOK
+      MAlonzo.Code.Once.CCC.Codegen.CallsLinked
+      MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Call
+      MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Pair.Chain
+      MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Pair.Place
+      MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Pair.Pres
+      MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Pair.Proof
+      MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.TwoCell.Build
+      MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.TwoCell.Run
+      MAlonzo.Code.Once.CCC.Codegen.LabelSeg
+      MAlonzo.Code.Once.CCC.Codegen.ProgramImage
+      MAlonzo.Code.Once.CCC.Codegen.ProgramImageFacts
+      MAlonzo.Code.Once.CCC.Codegen.SlotSeg
+      MAlonzo.Code.Once.CCC.Machine.FlatLog
+      MAlonzo.Code.Once.Denotation.DefEnv
+      MAlonzo.Code.Once.Denotation.EnvAlgebraV
+      MAlonzo.Code.Once.Denotation.GradedDomain
+      MAlonzo.Code.Once.Denotation.GradedOps
+      MAlonzo.Code.Once.Denotation.PhaseV
+      MAlonzo.Code.Once.Denotation.Program
+      MAlonzo.Code.Once.IR.Ref
+      MAlonzo.Code.Once.Spec.Contract
+      MAlonzo.Code.Once.Spec.Core.AbsTy
+      MAlonzo.Code.Once.Spec.Core.Abstract
+      MAlonzo.Code.Once.Spec.Core.Derived
+      MAlonzo.Code.Once.Spec.Core.DerivedTyping
+      MAlonzo.Code.Once.Spec.Core.Meaning
+      MAlonzo.Code.Once.Spec.Core.PolyTy
+      MAlonzo.Code.Once.Spec.Core.PolyTyping
+      MAlonzo.Code.Once.Spec.Core.Rename
+      MAlonzo.Code.Once.Spec.Core.Schema
+      MAlonzo.Code.Once.Spec.Core.Syntax
+      MAlonzo.Code.Once.Spec.Core.Telescope
+      MAlonzo.Code.Once.Spec.Core.Translate
+      MAlonzo.Code.Once.Spec.Core.TySubst
+      MAlonzo.Code.Once.Spec.Core.Typing
+      MAlonzo.Code.Once.Spec.Elaboration
+      MAlonzo.Code.Once.Type.Determined
+      MAlonzo.Code.Once.Type.Instance
+      MAlonzo.Code.Once.Type.Match
+      MAlonzo.Code.Once.Type.Rigid
+      MAlonzo.Code.Once.TypeCheck.Completeness.Rules
+      MAlonzo.Code.Once.TypeCheck.Instance
+      MAlonzo.Code.Once.TypeCheck.ModeSub
+      MAlonzo.Code.Once.TypeCheck.RigidSubst
+      MAlonzo.Code.Once.TypeCheck.Route
+      MAlonzo.Code.Once.TypeCheck.RouteBuild
+      MAlonzo.Code.Once.TypeCheck.TargetView
       MAlonzo.Code.Relation.Binary
       MAlonzo.Code.Relation.Binary.Bundles
       MAlonzo.Code.Relation.Binary.Bundles.Raw
@@ -671,6 +736,109 @@ library
       MAlonzo.Code.Relation.Unary
       MAlonzo.Code.Relation.Unary.PredicateTransformer
       MAlonzo.Code.Relation.Unary.Properties
+      MAlonzo.Code.Agda.Builtin.Equality.Erase
+      MAlonzo.Code.Agda.Builtin.Reflection
+      MAlonzo.Code.Agda.Builtin.Reflection.Properties
+      MAlonzo.Code.Agda.Builtin.TrustMe
+      MAlonzo.Code.Algebra.Definitions.RawMonoid
+      MAlonzo.Code.Algebra.Definitions.RawSemiring
+      MAlonzo.Code.Algebra.Properties.AbelianGroup
+      MAlonzo.Code.Algebra.Properties.CommutativeMonoid.Mult
+      MAlonzo.Code.Algebra.Properties.CommutativeMonoid.Mult.TCOptimised
+      MAlonzo.Code.Algebra.Properties.CommutativeSemiring.Exp.TCOptimised
+      MAlonzo.Code.Algebra.Properties.Group
+      MAlonzo.Code.Algebra.Properties.Loop
+      MAlonzo.Code.Algebra.Properties.Monoid.Mult
+      MAlonzo.Code.Algebra.Properties.Monoid.Mult.TCOptimised
+      MAlonzo.Code.Algebra.Properties.QQuasigroup
+      MAlonzo.Code.Algebra.Properties.Ring
+      MAlonzo.Code.Algebra.Properties.RingWithoutOne
+      MAlonzo.Code.Algebra.Properties.Semiring.Exp
+      MAlonzo.Code.Algebra.Properties.Semiring.Exp.TCOptimised
+      MAlonzo.Code.Algebra.Solver.Ring
+      MAlonzo.Code.Algebra.Solver.Ring.AlmostCommutativeRing
+      MAlonzo.Code.Algebra.Solver.Ring.Lemmas
+      MAlonzo.Code.Algebra.Solver.Ring.Simple
+      MAlonzo.Code.Axiom.UniquenessOfIdentityProofs.WithK
+      MAlonzo.Code.Data.Digit.Properties
+      MAlonzo.Code.Data.List.Kleene
+      MAlonzo.Code.Data.List.Kleene.Base
+      MAlonzo.Code.Data.List.Reflection
+      MAlonzo.Code.Data.List.Relation.Binary.Subset.DecPropositional
+      MAlonzo.Code.Data.List.Relation.Binary.Subset.DecSetoid
+      MAlonzo.Code.Data.Nat.ListAction
+      MAlonzo.Code.Data.Nat.Reflection
+      MAlonzo.Code.Data.Nat.Show.Properties
+      MAlonzo.Code.Data.Nat.Solver
+      MAlonzo.Code.Data.Nat.Tactic.RingSolver
+      MAlonzo.Code.Data.Product.Nary.NonDependent
+      MAlonzo.Code.Data.String.Unsafe
+      MAlonzo.Code.Data.Sum.Effectful.Left
+      MAlonzo.Code.Data.Vec.Functional
+      MAlonzo.Code.Data.Vec.Membership.Propositional
+      MAlonzo.Code.Data.Vec.Membership.Setoid
+      MAlonzo.Code.Data.Vec.NZ45Zary
+      MAlonzo.Code.Data.Vec.Properties
+      MAlonzo.Code.Data.Vec.Reflection
+      MAlonzo.Code.Data.Vec.Relation.Binary.Equality.Cast
+      MAlonzo.Code.Data.Vec.Relation.Unary.All
+      MAlonzo.Code.Data.Vec.Relation.Unary.All.Properties
+      MAlonzo.Code.Data.Vec.Relation.Unary.AllPairs
+      MAlonzo.Code.Data.Vec.Relation.Unary.AllPairs.Core
+      MAlonzo.Code.Data.Vec.Relation.Unary.AllPairs.Properties
+      MAlonzo.Code.Data.Vec.Relation.Unary.Any
+      MAlonzo.Code.Data.Vec.Relation.Unary.Unique.Propositional
+      MAlonzo.Code.Data.Vec.Relation.Unary.Unique.Propositional.Properties
+      MAlonzo.Code.Data.Vec.Relation.Unary.Unique.Setoid
+      MAlonzo.Code.Data.Vec.Relation.Unary.Unique.Setoid.Properties
+      MAlonzo.Code.Function.Nary.NonDependent
+      MAlonzo.Code.Function.Nary.NonDependent.Base
+      MAlonzo.Code.Reflection
+      MAlonzo.Code.Reflection.AST
+      MAlonzo.Code.Reflection.AST.Abstraction
+      MAlonzo.Code.Reflection.AST.AlphaEquality
+      MAlonzo.Code.Reflection.AST.Argument
+      MAlonzo.Code.Reflection.AST.Argument.Information
+      MAlonzo.Code.Reflection.AST.Argument.Modality
+      MAlonzo.Code.Reflection.AST.Argument.QQuantity
+      MAlonzo.Code.Reflection.AST.Argument.Relevance
+      MAlonzo.Code.Reflection.AST.Argument.Visibility
+      MAlonzo.Code.Reflection.AST.Definition
+      MAlonzo.Code.Reflection.AST.Literal
+      MAlonzo.Code.Reflection.AST.Meta
+      MAlonzo.Code.Reflection.AST.Name
+      MAlonzo.Code.Reflection.AST.Pattern
+      MAlonzo.Code.Reflection.AST.Show
+      MAlonzo.Code.Reflection.AST.Term
+      MAlonzo.Code.Reflection.TCM
+      MAlonzo.Code.Reflection.TCM.Format
+      MAlonzo.Code.Reflection.TCM.Syntax
+      MAlonzo.Code.Relation.Binary.HeterogeneousEquality
+      MAlonzo.Code.Relation.Binary.HeterogeneousEquality.Core
+      MAlonzo.Code.Relation.Binary.Indexed.Heterogeneous.Construct.At
+      MAlonzo.Code.Relation.Binary.PropositionalEquality.TrustMe
+      MAlonzo.Code.Relation.Binary.Reflection
+      MAlonzo.Code.Tactic.RingSolver
+      MAlonzo.Code.Tactic.RingSolver.Core.AlmostCommutativeRing
+      MAlonzo.Code.Tactic.RingSolver.Core.Expression
+      MAlonzo.Code.Tactic.RingSolver.Core.NatSet
+      MAlonzo.Code.Tactic.RingSolver.Core.Polynomial.Base
+      MAlonzo.Code.Tactic.RingSolver.Core.Polynomial.Homomorphism
+      MAlonzo.Code.Tactic.RingSolver.Core.Polynomial.Homomorphism.Addition
+      MAlonzo.Code.Tactic.RingSolver.Core.Polynomial.Homomorphism.Constants
+      MAlonzo.Code.Tactic.RingSolver.Core.Polynomial.Homomorphism.Exponentiation
+      MAlonzo.Code.Tactic.RingSolver.Core.Polynomial.Homomorphism.Lemmas
+      MAlonzo.Code.Tactic.RingSolver.Core.Polynomial.Homomorphism.Multiplication
+      MAlonzo.Code.Tactic.RingSolver.Core.Polynomial.Homomorphism.Negation
+      MAlonzo.Code.Tactic.RingSolver.Core.Polynomial.Homomorphism.Variables
+      MAlonzo.Code.Tactic.RingSolver.Core.Polynomial.Parameters
+      MAlonzo.Code.Tactic.RingSolver.Core.Polynomial.Reasoning
+      MAlonzo.Code.Tactic.RingSolver.Core.Polynomial.Semantics
+      MAlonzo.Code.Tactic.RingSolver.NonReflective
+      MAlonzo.Code.Text.Format
+      MAlonzo.Code.Text.Format.Generic
+      MAlonzo.Code.Text.Printf
+      MAlonzo.Code.Text.Printf.Generic
       MAlonzo.RTE.Float
   autogen-modules:
       Paths_once

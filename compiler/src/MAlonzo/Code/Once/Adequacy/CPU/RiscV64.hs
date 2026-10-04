@@ -20,12 +20,14 @@ import qualified Data.Text
 import qualified MAlonzo.Code.Data.Product.Base
 import qualified MAlonzo.Code.Once.Adequacy.ArchCorrectness.ArithSimRiscV64
 import qualified MAlonzo.Code.Once.Adequacy.CPU.Interface
+import qualified MAlonzo.Code.Once.Arith.Backend.CallAnswer
 import qualified MAlonzo.Code.Once.Arith.Backend.RiscV64.Dispatch
 import qualified MAlonzo.Code.Once.Arith.Backend.RiscV64.RunTrace
 import qualified MAlonzo.Code.Once.Arith.Backend.RunTraceCore
 import qualified MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics
 import qualified MAlonzo.Code.Once.CCC.Target.RiscV64.Syntax
 import qualified MAlonzo.Code.Once.Denotation.Behavior
+import qualified MAlonzo.Code.Once.Denotation.TraceMonad
 
 -- Once.Adequacy.CPU.RiscV64.step-budget-riscv64
 d_step'45'budget'45'riscv64_8
@@ -39,55 +41,63 @@ d_ev'45'riscv64_10
 d_arith'45'env'45'riscv64_12
   = error
       "MAlonzo Runtime Error: postulate evaluated: Once.Adequacy.CPU.RiscV64.arith-env-riscv64"
+-- Once.Adequacy.CPU.RiscV64.call-at-riscv64
+d_call'45'at'45'riscv64_14
+  = error
+      "MAlonzo Runtime Error: postulate evaluated: Once.Adequacy.CPU.RiscV64.call-at-riscv64"
 -- Once.Adequacy.CPU.RiscV64.run-trace-riscv64
-d_run'45'trace'45'riscv64_14 ::
+d_run'45'trace'45'riscv64_16 ::
+  MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_458 ->
   [MAlonzo.Code.Once.CCC.Target.RiscV64.Syntax.T_Instr_10] ->
   MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_State_408 ->
   MAlonzo.Code.Once.Denotation.Behavior.T_Behavior_6
-d_run'45'trace'45'riscv64_14 v0 v1
+d_run'45'trace'45'riscv64_16 v0 v1 v2
   = coe
-      MAlonzo.Code.Once.Arith.Backend.RunTraceCore.du_run'45'trace_208
+      MAlonzo.Code.Once.Arith.Backend.RunTraceCore.du_run'45'trace_228
       (coe
-         (\ v2 ->
+         (\ v3 ->
             MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_halted_424
-              (coe v2)))
+              (coe v3)))
       (coe
-         (\ v2 ->
-            MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_pc_422 (coe v2)))
+         (\ v3 ->
+            MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_pc_422 (coe v3)))
       (coe MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_fetch_488)
       (coe
          MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_execInstr_546)
       (coe
          MAlonzo.Code.Once.Arith.Backend.RiscV64.RunTrace.d_matchCall_10)
       (coe
-         MAlonzo.Code.Once.Arith.Backend.RiscV64.RunTrace.d_ret'45'past_14)
+         MAlonzo.Code.Once.Arith.Backend.RiscV64.RunTrace.d_ret'45'call_18
+         (coe
+            MAlonzo.Code.Once.Arith.Backend.CallAnswer.du_answer'45'at_220
+            (coe v0) (coe d_call'45'at'45'riscv64_14)))
       (coe
          MAlonzo.Code.Data.Product.Base.du_uncurry_244
-         (\ v2 v3 v4 ->
+         (\ v3 v4 v5 ->
             coe
               MAlonzo.Code.Once.Arith.Backend.RiscV64.Dispatch.du_dispatch'45'arith_18
-              (\ v5 v6 v7 ->
+              (\ v6 v7 v8 ->
                  coe
                    MAlonzo.Code.Once.Adequacy.ArchCorrectness.ArithSimRiscV64.du_val'45'riscv64_310
-                   v5 v6)
-              v2 v4))
+                   v6 v7)
+              v3 v5))
       (coe d_step'45'budget'45'riscv64_8) (coe d_ev'45'riscv64_10)
-      (coe d_arith'45'env'45'riscv64_12 v0) (coe v0) (coe v1)
+      (coe d_arith'45'env'45'riscv64_12 v1) (coe v1) (coe v2)
 -- Once.Adequacy.CPU.RiscV64.decode-riscv64
-d_decode'45'riscv64_20
+d_decode'45'riscv64_24
   = error
       "MAlonzo Runtime Error: postulate evaluated: Once.Adequacy.CPU.RiscV64.decode-riscv64"
 -- Once.Adequacy.CPU.RiscV64.assemble-riscv64
-d_assemble'45'riscv64_22
+d_assemble'45'riscv64_26
   = error
       "MAlonzo Runtime Error: postulate evaluated: Once.Adequacy.CPU.RiscV64.assemble-riscv64"
 -- Once.Adequacy.CPU.RiscV64.arch-semantics
-d_arch'45'semantics_24 ::
+d_arch'45'semantics_28 ::
   MAlonzo.Code.Once.Adequacy.CPU.Interface.T_ArchSemantics_10
-d_arch'45'semantics_24
+d_arch'45'semantics_28
   = coe
-      MAlonzo.Code.Once.Adequacy.CPU.Interface.C_constructor_54
+      MAlonzo.Code.Once.Adequacy.CPU.Interface.C_constructor_60
       MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_initState_436
       MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_run_886
-      d_run'45'trace'45'riscv64_14 d_decode'45'riscv64_20
-      d_assemble'45'riscv64_22
+      d_run'45'trace'45'riscv64_16 d_decode'45'riscv64_24
+      d_assemble'45'riscv64_26

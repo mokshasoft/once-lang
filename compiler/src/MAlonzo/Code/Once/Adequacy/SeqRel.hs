@@ -21,7 +21,6 @@ import qualified MAlonzo.Code.Agda.Builtin.Sigma
 import qualified MAlonzo.Code.Data.Sum.Base
 import qualified MAlonzo.Code.Once.Denotation.TraceMonad
 import qualified MAlonzo.Code.Once.Denotation.ValueDomain
-import qualified MAlonzo.Code.Once.Res
 import qualified MAlonzo.Code.Once.Type
 
 -- Once.Adequacy.SeqRel.RelF
@@ -29,138 +28,61 @@ d_RelF_14 ::
   MAlonzo.Code.Once.Type.T_Functor_106 ->
   () -> () -> (AgdaAny -> AgdaAny -> ()) -> AgdaAny -> AgdaAny -> ()
 d_RelF_14 = erased
--- Once.Adequacy.SeqRel.RelRes-map
-d_RelRes'45'map_100 ::
-  () ->
-  () ->
-  () ->
-  () ->
-  (AgdaAny -> AgdaAny -> ()) ->
-  (AgdaAny -> AgdaAny -> ()) ->
-  (AgdaAny -> AgdaAny) ->
-  (AgdaAny -> AgdaAny) ->
-  MAlonzo.Code.Once.Res.T_Res_6 ->
-  MAlonzo.Code.Once.Res.T_Res_6 ->
-  (AgdaAny -> AgdaAny -> AgdaAny -> AgdaAny) ->
-  MAlonzo.Code.Once.Res.T_Res'45'rel_126 ->
-  MAlonzo.Code.Once.Res.T_Res'45'rel_126
-d_RelRes'45'map_100 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 ~v6 ~v7 v8 v9 v10 v11
-  = du_RelRes'45'map_100 v8 v9 v10 v11
-du_RelRes'45'map_100 ::
-  MAlonzo.Code.Once.Res.T_Res_6 ->
-  MAlonzo.Code.Once.Res.T_Res_6 ->
-  (AgdaAny -> AgdaAny -> AgdaAny -> AgdaAny) ->
-  MAlonzo.Code.Once.Res.T_Res'45'rel_126 ->
-  MAlonzo.Code.Once.Res.T_Res'45'rel_126
-du_RelRes'45'map_100 v0 v1 v2 v3
-  = case coe v0 of
-      MAlonzo.Code.Once.Res.C_stopped_10
-        -> coe
-             seq (coe v1) (coe MAlonzo.Code.Once.Res.C_rel'45'stopped_134)
-      MAlonzo.Code.Once.Res.C_returns_12 v4
-        -> case coe v1 of
-             MAlonzo.Code.Once.Res.C_returns_12 v5
-               -> case coe v3 of
-                    MAlonzo.Code.Once.Res.C_rel'45'returns_140 v8
-                      -> coe MAlonzo.Code.Once.Res.C_rel'45'returns_140 (coe v2 v4 v5 v8)
-                    _ -> MAlonzo.RTE.mazUnreachableError
-             _ -> MAlonzo.RTE.mazUnreachableError
-      _ -> MAlonzo.RTE.mazUnreachableError
--- Once.Adequacy.SeqRel.RelT′-fmap
-d_RelT'8242''45'fmap_174 ::
-  () ->
-  () ->
-  () ->
-  () ->
-  (AgdaAny -> AgdaAny -> ()) ->
-  (AgdaAny -> AgdaAny -> ()) ->
-  (AgdaAny -> AgdaAny) ->
-  (AgdaAny -> AgdaAny) ->
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_T_10 ->
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_T_10 ->
-  (AgdaAny -> AgdaAny -> AgdaAny -> AgdaAny) ->
-  (Integer -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14) ->
-  Integer -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_RelT'8242''45'fmap_174 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 ~v6 ~v7 v8 v9 v10
-                         v11 v12
-  = du_RelT'8242''45'fmap_174 v8 v9 v10 v11 v12
-du_RelT'8242''45'fmap_174 ::
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_T_10 ->
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_T_10 ->
-  (AgdaAny -> AgdaAny -> AgdaAny -> AgdaAny) ->
-  (Integer -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14) ->
-  Integer -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-du_RelT'8242''45'fmap_174 v0 v1 v2 v3 v4
-  = coe
-      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-      (coe MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28 (coe v3 v4))
-      (coe
-         du_RelRes'45'map_100
-         (coe MAlonzo.Code.Once.Denotation.TraceMonad.d_resT_20 (coe v0))
-         (coe MAlonzo.Code.Once.Denotation.TraceMonad.d_resT_20 (coe v1))
-         (coe v2)
-         (coe MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30 (coe v3 v4)))
 -- Once.Adequacy.SeqRel.seqF-rel
-d_seqF'45'rel_206 ::
+d_seqF'45'rel_88 ::
   MAlonzo.Code.Once.Type.T_Functor_106 ->
   () ->
   () ->
   (AgdaAny -> AgdaAny -> ()) ->
   AgdaAny ->
   AgdaAny ->
-  AgdaAny -> Integer -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_seqF'45'rel_206 v0 ~v1 ~v2 ~v3 v4 v5 v6
-  = du_seqF'45'rel_206 v0 v4 v5 v6
-du_seqF'45'rel_206 ::
+  AgdaAny ->
+  MAlonzo.Code.Once.Denotation.TraceMonad.T_RelT'8242'_1076
+d_seqF'45'rel_88 v0 ~v1 ~v2 ~v3 v4 v5 v6
+  = du_seqF'45'rel_88 v0 v4 v5 v6
+du_seqF'45'rel_88 ::
   MAlonzo.Code.Once.Type.T_Functor_106 ->
   AgdaAny ->
   AgdaAny ->
-  AgdaAny -> Integer -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-du_seqF'45'rel_206 v0 v1 v2 v3
+  AgdaAny ->
+  MAlonzo.Code.Once.Denotation.TraceMonad.T_RelT'8242'_1076
+du_seqF'45'rel_88 v0 v1 v2 v3
   = case coe v0 of
-      MAlonzo.Code.Once.Type.C_K_110 v4
-        -> coe
-             (\ v5 ->
-                coe
-                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 erased
-                  (coe MAlonzo.Code.Once.Res.C_rel'45'returns_140 v3))
-      MAlonzo.Code.Once.Type.C_Id_112 -> coe v3
-      MAlonzo.Code.Once.Type.C__'8853'__114 v4 v5
+      MAlonzo.Code.Once.Type.C_K_112 v4
+        -> coe MAlonzo.Code.Once.Denotation.TraceMonad.C_rel'45'ret_1088 v3
+      MAlonzo.Code.Once.Type.C_Id_114 -> coe v3
+      MAlonzo.Code.Once.Type.C__'8853'__116 v4 v5
         -> case coe v1 of
              MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 v6
                -> case coe v2 of
                     MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 v7
                       -> coe
-                           du_RelT'8242''45'fmap_174
+                           MAlonzo.Code.Once.Denotation.TraceMonad.du_RelT'8242''45'fmap_1182
                            (coe
-                              MAlonzo.Code.Once.Denotation.ValueDomain.du_seqF_196 (coe v4)
+                              MAlonzo.Code.Once.Denotation.ValueDomain.du_seqF_28 (coe v4)
                               (coe v6))
                            (coe
-                              MAlonzo.Code.Once.Denotation.ValueDomain.du_seqF_196 (coe v4)
+                              MAlonzo.Code.Once.Denotation.ValueDomain.du_seqF_28 (coe v4)
                               (coe v7))
                            (coe (\ v8 v9 v10 -> v10))
-                           (coe du_seqF'45'rel_206 (coe v4) (coe v6) (coe v7) (coe v3))
-                    MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42 v7
-                      -> coe (\ v8 -> MAlonzo.RTE.mazUnreachableError)
+                           (coe du_seqF'45'rel_88 (coe v4) (coe v6) (coe v7) (coe v3))
                     _ -> MAlonzo.RTE.mazUnreachableError
              MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42 v6
                -> case coe v2 of
-                    MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 v7
-                      -> coe (\ v8 -> MAlonzo.RTE.mazUnreachableError)
                     MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42 v7
                       -> coe
-                           du_RelT'8242''45'fmap_174
+                           MAlonzo.Code.Once.Denotation.TraceMonad.du_RelT'8242''45'fmap_1182
                            (coe
-                              MAlonzo.Code.Once.Denotation.ValueDomain.du_seqF_196 (coe v5)
+                              MAlonzo.Code.Once.Denotation.ValueDomain.du_seqF_28 (coe v5)
                               (coe v6))
                            (coe
-                              MAlonzo.Code.Once.Denotation.ValueDomain.du_seqF_196 (coe v5)
+                              MAlonzo.Code.Once.Denotation.ValueDomain.du_seqF_28 (coe v5)
                               (coe v7))
                            (coe (\ v8 v9 v10 -> v10))
-                           (coe du_seqF'45'rel_206 (coe v5) (coe v6) (coe v7) (coe v3))
+                           (coe du_seqF'45'rel_88 (coe v5) (coe v6) (coe v7) (coe v3))
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.Type.C__'8855'__116 v4 v5
+      MAlonzo.Code.Once.Type.C__'8855'__118 v4 v5
         -> case coe v1 of
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v6 v7
                -> case coe v2 of
@@ -168,45 +90,33 @@ du_seqF'45'rel_206 v0 v1 v2 v3
                       -> case coe v3 of
                            MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v10 v11
                              -> coe
-                                  MAlonzo.Code.Once.Denotation.TraceMonad.du_RelT'8242''45'bind_946
+                                  MAlonzo.Code.Once.Denotation.TraceMonad.du_RelT'8242''45'bind_1132
                                   (coe
-                                     MAlonzo.Code.Once.Denotation.ValueDomain.du_seqF_196 (coe v4)
+                                     MAlonzo.Code.Once.Denotation.ValueDomain.du_seqF_28 (coe v4)
                                      (coe v6))
                                   (coe
-                                     MAlonzo.Code.Once.Denotation.ValueDomain.du_seqF_196 (coe v4)
+                                     MAlonzo.Code.Once.Denotation.ValueDomain.du_seqF_28 (coe v4)
                                      (coe v8))
+                                  (coe du_seqF'45'rel_88 (coe v4) (coe v6) (coe v8) (coe v10))
                                   (coe
-                                     (\ v12 v13 v14 v15 ->
+                                     (\ v12 v13 v14 ->
                                         coe
-                                          MAlonzo.Code.Once.Denotation.TraceMonad.du_RelT'8242''45'bind_946
+                                          MAlonzo.Code.Once.Denotation.TraceMonad.du_RelT'8242''45'bind_1132
                                           (coe
-                                             MAlonzo.Code.Once.Denotation.ValueDomain.du_seqF_196
+                                             MAlonzo.Code.Once.Denotation.ValueDomain.du_seqF_28
                                              (coe v5) (coe v7))
                                           (coe
-                                             MAlonzo.Code.Once.Denotation.ValueDomain.du_seqF_196
+                                             MAlonzo.Code.Once.Denotation.ValueDomain.du_seqF_28
                                              (coe v5) (coe v9))
                                           (coe
-                                             (\ v16 v17 v18 v19 v20 ->
+                                             du_seqF'45'rel_88 (coe v5) (coe v7) (coe v9) (coe v11))
+                                          (coe
+                                             (\ v15 v16 v17 ->
                                                 coe
-                                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 erased
+                                                  MAlonzo.Code.Once.Denotation.TraceMonad.C_rel'45'ret_1088
                                                   (coe
-                                                     MAlonzo.Code.Once.Res.C_rel'45'returns_140
-                                                     (coe
-                                                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                                        (coe
-                                                           MAlonzo.Code.Once.Denotation.TraceMonad.du_RelRes'45'value_790
-                                                           (coe
-                                                              MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
-                                                              (coe
-                                                                 du_seqF'45'rel_206 v4 v6 v8 v10
-                                                                 (0 :: Integer))))
-                                                        (coe
-                                                           MAlonzo.Code.Once.Denotation.TraceMonad.du_RelRes'45'value_790
-                                                           (coe
-                                                              MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
-                                                              (coe
-                                                                 du_seqF'45'rel_206 v5 v7 v9 v11
-                                                                 (0 :: Integer))))))))))
+                                                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                                                     (coe v14) (coe v17))))))
                            _ -> MAlonzo.RTE.mazUnreachableError
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError

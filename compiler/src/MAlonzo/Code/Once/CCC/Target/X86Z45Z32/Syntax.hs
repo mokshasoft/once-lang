@@ -45,21 +45,22 @@ data T_Instr_26
     C_sub_38 T_Operand_18 T_Operand_18 |
     C_cmp_40 T_Operand_18 T_Operand_18 |
     C_test_42 T_Operand_18 T_Operand_18 | C_jmp_44 T_Operand_18 |
-    C_jne_46 MAlonzo.Code.Once.CCC.Label.T_Label_22 |
-    C_je_48 MAlonzo.Code.Once.CCC.Label.T_Label_22 |
+    C_jne_46 MAlonzo.Code.Once.CCC.Label.T_Label_28 |
+    C_je_48 MAlonzo.Code.Once.CCC.Label.T_Label_28 |
     C_call_50 T_Operand_18 |
     C_call'45'sym_52 MAlonzo.Code.Agda.Builtin.String.T_String_6 |
-    C_ret_54 | C_nop_56 | C_ud2_58 |
-    C_label_60 MAlonzo.Code.Once.CCC.Label.T_Label_22 |
-    C_mov'45'code_62 MAlonzo.Code.Once.Target.X86Z45Z32.PhysReg.T_Reg_8
+    C_call'45'l_54 MAlonzo.Code.Once.CCC.Label.T_Label_28 | C_ret_56 |
+    C_nop_58 | C_ud2_60 |
+    C_label_62 MAlonzo.Code.Once.CCC.Label.T_Label_28 |
+    C_mov'45'code_64 MAlonzo.Code.Once.Target.X86Z45Z32.PhysReg.T_Reg_8
                      MAlonzo.Code.Once.CCC.Label.T_LabelId_6 |
-    C_jmp'45'l_64 MAlonzo.Code.Once.CCC.Label.T_Label_22
+    C_jmp'45'l_66 MAlonzo.Code.Once.CCC.Label.T_Label_28
 -- Once.CCC.Target.X86-32.Syntax.Program
-d_Program_66 :: ()
-d_Program_66 = erased
+d_Program_68 :: ()
+d_Program_68 = erased
 -- Once.CCC.Target.X86-32.Syntax.slot-size
-d_slot'45'size_68 :: Integer
-d_slot'45'size_68 = coe (4 :: Integer)
+d_slot'45'size_70 :: Integer
+d_slot'45'size_70 = coe (4 :: Integer)
 -- Once.CCC.Target.X86-32.Syntax.slots
-d_slots_70 :: Integer -> Integer
-d_slots_70 v0 = coe mulInt (coe v0) (coe d_slot'45'size_68)
+d_slots_72 :: Integer -> Integer
+d_slots_72 v0 = coe mulInt (coe v0) (coe d_slot'45'size_70)

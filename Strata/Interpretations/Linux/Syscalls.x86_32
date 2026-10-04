@@ -16,6 +16,7 @@
 .equ SYS_exit_group,    252
 .equ SYS_read,          3
 .equ SYS_write,         4
+.equ SYS_dup,           41
 
 .section .text
 
@@ -40,3 +41,18 @@ exit:
     movl    $SYS_exit_group, %eax
     int     $0x80
 .size exit, .-exit
+
+# ----------------------------------------------------------------------
+# fd_dup - Duplicate file descriptor. Input: Int (fd) in %ecx.
+# Output: Int (new fd or -errno) in %eax. Returns, so %ebx is preserved.
+# ----------------------------------------------------------------------
+.global fd_dup
+.type fd_dup, @function
+fd_dup:
+    pushl   %ebx
+    movl    %ecx, %ebx             # fd = Input1 (%ecx)
+    movl    $SYS_dup, %eax
+    int     $0x80
+    popl    %ebx
+    ret
+.size fd_dup, .-fd_dup

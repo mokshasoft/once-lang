@@ -196,21 +196,11 @@ du_complete'45'atomWFraw_290 v0 v1 v2 v3
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
              (coe MAlonzo.Code.Once.Parser.TypeRelation.C_pa'45'float_134)
              erased
-      MAlonzo.Code.Once.Parser.TypeRelation.C_pa'45'buffer_138
-        -> coe
-             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-             (coe MAlonzo.Code.Once.Parser.TypeRelation.C_pa'45'buffer_138)
-             erased
-      MAlonzo.Code.Once.Parser.TypeRelation.C_pa'45'string_142
-        -> coe
-             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-             (coe MAlonzo.Code.Once.Parser.TypeRelation.C_pa'45'string_142)
-             erased
-      MAlonzo.Code.Once.Parser.TypeRelation.C_pa'45'eff_154 v5 v9 v10
+      MAlonzo.Code.Once.Parser.TypeRelation.C_pa'45'eff_146 v5 v9 v10
         -> case coe v0 of
              (:) v11 v12
                -> case coe v1 of
-                    MAlonzo.Code.Once.Type.C__'8658''91'_'93'__126 v13 v14 v15
+                    MAlonzo.Code.Once.Type.C__'8658''91'_'93'__128 v13 v14 v15
                       -> let v16
                                = coe
                                    du_complete'45'atomWFraw_290 (coe v12) (coe v13) (coe v5)
@@ -228,18 +218,18 @@ du_complete'45'atomWFraw_290 v0 v1 v2 v3
                                           -> coe
                                                MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                (coe
-                                                  MAlonzo.Code.Once.Parser.TypeRelation.C_pa'45'eff_154
+                                                  MAlonzo.Code.Once.Parser.TypeRelation.C_pa'45'eff_146
                                                   v5 v17 v20)
                                                erased
                                         _ -> MAlonzo.RTE.mazUnreachableError)
                               _ -> MAlonzo.RTE.mazUnreachableError)
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.Parser.TypeRelation.C_pa'45'io_162 v7
+      MAlonzo.Code.Once.Parser.TypeRelation.C_pa'45'io_154 v7
         -> case coe v0 of
              (:) v8 v9
                -> case coe v1 of
-                    MAlonzo.Code.Once.Type.C__'8658''91'_'93'__126 v10 v11 v12
+                    MAlonzo.Code.Once.Type.C__'8658''91'_'93'__128 v10 v11 v12
                       -> let v13
                                = coe
                                    du_complete'45'atomWFraw_290 (coe v9) (coe v12) (coe v2)
@@ -249,12 +239,12 @@ du_complete'45'atomWFraw_290 v0 v1 v2 v3
                               MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v14 v15
                                 -> coe
                                      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                     (coe MAlonzo.Code.Once.Parser.TypeRelation.C_pa'45'io_162 v14)
+                                     (coe MAlonzo.Code.Once.Parser.TypeRelation.C_pa'45'io_154 v14)
                                      erased
                               _ -> MAlonzo.RTE.mazUnreachableError)
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.Parser.TypeRelation.C_pa'45'paren_172 v5 v8
+      MAlonzo.Code.Once.Parser.TypeRelation.C_pa'45'paren_164 v5 v8
         -> case coe v0 of
              (:) v10 v11
                -> let v12
@@ -270,7 +260,7 @@ du_complete'45'atomWFraw_290 v0 v1 v2 v3
                          -> coe
                               MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                               (coe
-                                 MAlonzo.Code.Once.Parser.TypeRelation.C_pa'45'paren_172
+                                 MAlonzo.Code.Once.Parser.TypeRelation.C_pa'45'paren_164
                                  (coe
                                     MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                                     (coe MAlonzo.Code.Once.Parser.Token.C_TRParen_18) (coe v2))
@@ -278,7 +268,7 @@ du_complete'45'atomWFraw_290 v0 v1 v2 v3
                               erased
                        _ -> MAlonzo.RTE.mazUnreachableError)
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.Parser.TypeRelation.C_pa'45'mu_180 v7
+      MAlonzo.Code.Once.Parser.TypeRelation.C_pa'45'mu_172 v7
         -> case coe v0 of
              (:) v8 v9
                -> let v10
@@ -288,11 +278,11 @@ du_complete'45'atomWFraw_290 v0 v1 v2 v3
                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v11 v12
                          -> coe
                               MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                              (coe MAlonzo.Code.Once.Parser.TypeRelation.C_pa'45'mu_180 v11)
+                              (coe MAlonzo.Code.Once.Parser.TypeRelation.C_pa'45'mu_172 v11)
                               erased
                        _ -> MAlonzo.RTE.mazUnreachableError)
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.Parser.TypeRelation.C_pa'45'nu_188 v7
+      MAlonzo.Code.Once.Parser.TypeRelation.C_pa'45'nu_180 v7
         -> case coe v0 of
              (:) v8 v9
                -> let v10
@@ -302,11 +292,11 @@ du_complete'45'atomWFraw_290 v0 v1 v2 v3
                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v11 v12
                          -> coe
                               MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                              (coe MAlonzo.Code.Once.Parser.TypeRelation.C_pa'45'nu_188 v11)
+                              (coe MAlonzo.Code.Once.Parser.TypeRelation.C_pa'45'nu_180 v11)
                               erased
                        _ -> MAlonzo.RTE.mazUnreachableError)
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.Parser.TypeRelation.C_pa'45'nu'45'eff_196 v7
+      MAlonzo.Code.Once.Parser.TypeRelation.C_pa'45'nu'45'eff_188 v7
         -> case coe v0 of
              (:) v8 v9
                -> case coe v9 of
@@ -321,7 +311,7 @@ du_complete'45'atomWFraw_290 v0 v1 v2 v3
                                        -> coe
                                             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                             (coe
-                                               MAlonzo.Code.Once.Parser.TypeRelation.C_pa'45'nu'45'eff_196
+                                               MAlonzo.Code.Once.Parser.TypeRelation.C_pa'45'nu'45'eff_188
                                                v15)
                                             erased
                                      _ -> MAlonzo.RTE.mazUnreachableError)
@@ -345,7 +335,7 @@ du_complete'45'prodWFraw_304 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_complete'45'prodWFraw_304 v0 v1
   = case coe v1 of
-      MAlonzo.Code.Once.Parser.TypeRelation.C_pp'45'mk_208 v3 v5 v7 v8
+      MAlonzo.Code.Once.Parser.TypeRelation.C_pp'45'mk_200 v3 v5 v7 v8
         -> let v9
                  = coe
                      du_complete'45'atomWFraw_290 (coe v0) (coe v5) (coe v3) (coe v7) in
@@ -360,7 +350,7 @@ du_complete'45'prodWFraw_304 v0 v1
                             -> coe
                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                  (coe
-                                    MAlonzo.Code.Once.Parser.TypeRelation.C_pp'45'mk_208 v3 v5 v10
+                                    MAlonzo.Code.Once.Parser.TypeRelation.C_pp'45'mk_200 v3 v5 v10
                                     v13)
                                  erased
                           _ -> MAlonzo.RTE.mazUnreachableError)
@@ -383,13 +373,13 @@ du_complete'45'prodTailWFraw_320 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_complete'45'prodTailWFraw_320 v0 v1
   = case coe v1 of
-      MAlonzo.Code.Once.Parser.TypeRelation.C_ppt'45'done_214 v4
+      MAlonzo.Code.Once.Parser.TypeRelation.C_ppt'45'done_206 v4
         -> case coe v0 of
              []
                -> coe
                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                     (coe
-                       MAlonzo.Code.Once.Parser.TypeRelation.C_ppt'45'done_214
+                       MAlonzo.Code.Once.Parser.TypeRelation.C_ppt'45'done_206
                        (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8))
                     erased
              (:) v5 v6
@@ -398,11 +388,11 @@ du_complete'45'prodTailWFraw_320 v0 v1
                     (coe
                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                        (coe
-                          MAlonzo.Code.Once.Parser.TypeRelation.C_ppt'45'done_214
+                          MAlonzo.Code.Once.Parser.TypeRelation.C_ppt'45'done_206
                           (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8))
                        erased)
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.Parser.TypeRelation.C_ppt'45'star_228 v4 v6 v8 v9
+      MAlonzo.Code.Once.Parser.TypeRelation.C_ppt'45'star_220 v4 v6 v8 v9
         -> case coe v0 of
              (:) v10 v11
                -> let v12
@@ -420,7 +410,7 @@ du_complete'45'prodTailWFraw_320 v0 v1
                                    -> coe
                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                         (coe
-                                           MAlonzo.Code.Once.Parser.TypeRelation.C_ppt'45'star_228
+                                           MAlonzo.Code.Once.Parser.TypeRelation.C_ppt'45'star_220
                                            v4 v6 v13 v16)
                                         erased
                                  _ -> MAlonzo.RTE.mazUnreachableError)
@@ -443,7 +433,7 @@ du_complete'45'sumWFraw_334 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_complete'45'sumWFraw_334 v0 v1
   = case coe v1 of
-      MAlonzo.Code.Once.Parser.TypeRelation.C_ps'45'mk_240 v3 v5 v7 v8
+      MAlonzo.Code.Once.Parser.TypeRelation.C_ps'45'mk_232 v3 v5 v7 v8
         -> let v9 = coe du_complete'45'prodWFraw_304 (coe v0) (coe v7) in
            coe
              (case coe v9 of
@@ -456,7 +446,7 @@ du_complete'45'sumWFraw_334 v0 v1
                             -> coe
                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                  (coe
-                                    MAlonzo.Code.Once.Parser.TypeRelation.C_ps'45'mk_240 v3 v5 v10
+                                    MAlonzo.Code.Once.Parser.TypeRelation.C_ps'45'mk_232 v3 v5 v10
                                     v13)
                                  erased
                           _ -> MAlonzo.RTE.mazUnreachableError)
@@ -479,13 +469,13 @@ du_complete'45'sumTailWFraw_350 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_complete'45'sumTailWFraw_350 v0 v1
   = case coe v1 of
-      MAlonzo.Code.Once.Parser.TypeRelation.C_pst'45'done_246 v4
+      MAlonzo.Code.Once.Parser.TypeRelation.C_pst'45'done_238 v4
         -> case coe v0 of
              []
                -> coe
                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                     (coe
-                       MAlonzo.Code.Once.Parser.TypeRelation.C_pst'45'done_246
+                       MAlonzo.Code.Once.Parser.TypeRelation.C_pst'45'done_238
                        (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8))
                     erased
              (:) v5 v6
@@ -494,11 +484,11 @@ du_complete'45'sumTailWFraw_350 v0 v1
                     (coe
                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                        (coe
-                          MAlonzo.Code.Once.Parser.TypeRelation.C_pst'45'done_246
+                          MAlonzo.Code.Once.Parser.TypeRelation.C_pst'45'done_238
                           (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8))
                        erased)
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.Parser.TypeRelation.C_pst'45'plus_260 v4 v6 v8 v9
+      MAlonzo.Code.Once.Parser.TypeRelation.C_pst'45'plus_252 v4 v6 v8 v9
         -> case coe v0 of
              (:) v10 v11
                -> let v12 = coe du_complete'45'prodWFraw_304 (coe v11) (coe v8) in
@@ -513,7 +503,7 @@ du_complete'45'sumTailWFraw_350 v0 v1
                                    -> coe
                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                         (coe
-                                           MAlonzo.Code.Once.Parser.TypeRelation.C_pst'45'plus_260
+                                           MAlonzo.Code.Once.Parser.TypeRelation.C_pst'45'plus_252
                                            v4 v6 v13 v16)
                                         erased
                                  _ -> MAlonzo.RTE.mazUnreachableError)
@@ -539,13 +529,13 @@ du_complete'45'arrowTailWFraw_366 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_complete'45'arrowTailWFraw_366 v0 v1 v2 v3
   = case coe v3 of
-      MAlonzo.Code.Once.Parser.TypeRelation.C_pat'45'done_278 v6
+      MAlonzo.Code.Once.Parser.TypeRelation.C_pat'45'done_270 v6
         -> case coe v0 of
              []
                -> coe
                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                     (coe
-                       MAlonzo.Code.Once.Parser.TypeRelation.C_pat'45'done_278
+                       MAlonzo.Code.Once.Parser.TypeRelation.C_pat'45'done_270
                        (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8))
                     erased
              (:) v7 v8
@@ -554,17 +544,17 @@ du_complete'45'arrowTailWFraw_366 v0 v1 v2 v3
                     (coe
                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                        (coe
-                          MAlonzo.Code.Once.Parser.TypeRelation.C_pat'45'done_278
+                          MAlonzo.Code.Once.Parser.TypeRelation.C_pat'45'done_270
                           (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8))
                        erased)
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.Parser.TypeRelation.C_pat'45'arrow'45'g_290 v9
+      MAlonzo.Code.Once.Parser.TypeRelation.C_pat'45'arrow'45'g_282 v9
         -> case coe v0 of
              (:) v10 v11
                -> case coe v11 of
                     (:) v12 v13
                       -> case coe v1 of
-                           MAlonzo.Code.Once.Type.C__'8658''91'_'93'__126 v14 v15 v16
+                           MAlonzo.Code.Once.Type.C__'8658''91'_'93'__128 v14 v15 v16
                              -> case coe v15 of
                                   MAlonzo.Code.Once.Type.C_mk'45'kind_50 v17 v18
                                     -> coe
@@ -579,7 +569,7 @@ du_complete'45'arrowTailWFraw_366 v0 v1 v2 v3
                                                  -> coe
                                                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                       (coe
-                                                         MAlonzo.Code.Once.Parser.TypeRelation.C_pat'45'arrow'45'g_290
+                                                         MAlonzo.Code.Once.Parser.TypeRelation.C_pat'45'arrow'45'g_282
                                                          v20)
                                                       erased
                                                _ -> MAlonzo.RTE.mazUnreachableError))
@@ -587,11 +577,11 @@ du_complete'45'arrowTailWFraw_366 v0 v1 v2 v3
                            _ -> MAlonzo.RTE.mazUnreachableError
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.Parser.TypeRelation.C_pat'45'arrow_300 v8
+      MAlonzo.Code.Once.Parser.TypeRelation.C_pat'45'arrow_292 v8
         -> case coe v0 of
              (:) v9 v10
                -> case coe v1 of
-                    MAlonzo.Code.Once.Type.C__'8658''91'_'93'__126 v11 v12 v13
+                    MAlonzo.Code.Once.Type.C__'8658''91'_'93'__128 v11 v12 v13
                       -> let v14
                                = coe
                                    du_complete'45'typeWFraw_380 (coe v10) (coe v13) (coe v2)
@@ -602,7 +592,7 @@ du_complete'45'arrowTailWFraw_366 v0 v1 v2 v3
                                 -> coe
                                      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                      (coe
-                                        MAlonzo.Code.Once.Parser.TypeRelation.C_pat'45'arrow_300
+                                        MAlonzo.Code.Once.Parser.TypeRelation.C_pat'45'arrow_292
                                         v15)
                                      erased
                               _ -> MAlonzo.RTE.mazUnreachableError)
@@ -627,7 +617,7 @@ du_complete'45'typeWFraw_380 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_complete'45'typeWFraw_380 v0 v1 v2 v3
   = case coe v3 of
-      MAlonzo.Code.Once.Parser.TypeRelation.C_pt'45'mk_272 v5 v7 v9 v10
+      MAlonzo.Code.Once.Parser.TypeRelation.C_pt'45'mk_264 v5 v7 v9 v10
         -> let v11 = coe du_complete'45'sumWFraw_334 (coe v0) (coe v9) in
            coe
              (case coe v11 of
@@ -642,7 +632,7 @@ du_complete'45'typeWFraw_380 v0 v1 v2 v3
                             -> coe
                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                  (coe
-                                    MAlonzo.Code.Once.Parser.TypeRelation.C_pt'45'mk_272 v5 v7 v12
+                                    MAlonzo.Code.Once.Parser.TypeRelation.C_pt'45'mk_264 v5 v7 v12
                                     v15)
                                  erased
                           _ -> MAlonzo.RTE.mazUnreachableError)
@@ -666,15 +656,15 @@ du_complete'45'functorAtomWFraw_394 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_complete'45'functorAtomWFraw_394 v0 v1 v2 v3
   = case coe v3 of
-      MAlonzo.Code.Once.Parser.TypeRelation.C_pfa'45'id_304
+      MAlonzo.Code.Once.Parser.TypeRelation.C_pfa'45'id_296
         -> coe
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-             (coe MAlonzo.Code.Once.Parser.TypeRelation.C_pfa'45'id_304) erased
-      MAlonzo.Code.Once.Parser.TypeRelation.C_pfa'45'k_312 v7
+             (coe MAlonzo.Code.Once.Parser.TypeRelation.C_pfa'45'id_296) erased
+      MAlonzo.Code.Once.Parser.TypeRelation.C_pfa'45'k_304 v7
         -> case coe v0 of
              (:) v8 v9
                -> case coe v1 of
-                    MAlonzo.Code.Once.Type.C_K_110 v10
+                    MAlonzo.Code.Once.Type.C_K_112 v10
                       -> let v11
                                = coe
                                    du_complete'45'atomWFraw_290 (coe v9) (coe v10) (coe v2)
@@ -684,12 +674,12 @@ du_complete'45'functorAtomWFraw_394 v0 v1 v2 v3
                               MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v12 v13
                                 -> coe
                                      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                     (coe MAlonzo.Code.Once.Parser.TypeRelation.C_pfa'45'k_312 v12)
+                                     (coe MAlonzo.Code.Once.Parser.TypeRelation.C_pfa'45'k_304 v12)
                                      erased
                               _ -> MAlonzo.RTE.mazUnreachableError)
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.Parser.TypeRelation.C_pfa'45'paren_322 v5 v8
+      MAlonzo.Code.Once.Parser.TypeRelation.C_pfa'45'paren_314 v5 v8
         -> case coe v0 of
              (:) v10 v11
                -> let v12
@@ -700,7 +690,7 @@ du_complete'45'functorAtomWFraw_394 v0 v1 v2 v3
                          -> coe
                               MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                               (coe
-                                 MAlonzo.Code.Once.Parser.TypeRelation.C_pfa'45'paren_322
+                                 MAlonzo.Code.Once.Parser.TypeRelation.C_pfa'45'paren_314
                                  (coe
                                     MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                                     (coe MAlonzo.Code.Once.Parser.Token.C_TRParen_18) (coe v2))
@@ -725,7 +715,7 @@ du_complete'45'functorProdWFraw_408 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_complete'45'functorProdWFraw_408 v0 v1
   = case coe v1 of
-      MAlonzo.Code.Once.Parser.TypeRelation.C_pfp'45'mk_334 v3 v5 v7 v8
+      MAlonzo.Code.Once.Parser.TypeRelation.C_pfp'45'mk_326 v3 v5 v7 v8
         -> let v9
                  = coe
                      du_complete'45'functorAtomWFraw_394 (coe v0) (coe v5) (coe v3)
@@ -741,7 +731,7 @@ du_complete'45'functorProdWFraw_408 v0 v1
                             -> coe
                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                  (coe
-                                    MAlonzo.Code.Once.Parser.TypeRelation.C_pfp'45'mk_334 v3 v5 v10
+                                    MAlonzo.Code.Once.Parser.TypeRelation.C_pfp'45'mk_326 v3 v5 v10
                                     v13)
                                  erased
                           _ -> MAlonzo.RTE.mazUnreachableError)
@@ -764,13 +754,13 @@ du_complete'45'functorProdTailWFraw_424 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_complete'45'functorProdTailWFraw_424 v0 v1
   = case coe v1 of
-      MAlonzo.Code.Once.Parser.TypeRelation.C_pfpt'45'done_340 v4
+      MAlonzo.Code.Once.Parser.TypeRelation.C_pfpt'45'done_332 v4
         -> case coe v0 of
              []
                -> coe
                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                     (coe
-                       MAlonzo.Code.Once.Parser.TypeRelation.C_pfpt'45'done_340
+                       MAlonzo.Code.Once.Parser.TypeRelation.C_pfpt'45'done_332
                        (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8))
                     erased
              (:) v5 v6
@@ -779,11 +769,11 @@ du_complete'45'functorProdTailWFraw_424 v0 v1
                     (coe
                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                        (coe
-                          MAlonzo.Code.Once.Parser.TypeRelation.C_pfpt'45'done_340
+                          MAlonzo.Code.Once.Parser.TypeRelation.C_pfpt'45'done_332
                           (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8))
                        erased)
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.Parser.TypeRelation.C_pfpt'45'star_354 v4 v6 v8 v9
+      MAlonzo.Code.Once.Parser.TypeRelation.C_pfpt'45'star_346 v4 v6 v8 v9
         -> case coe v0 of
              (:) v10 v11
                -> let v12
@@ -801,7 +791,7 @@ du_complete'45'functorProdTailWFraw_424 v0 v1
                                    -> coe
                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                         (coe
-                                           MAlonzo.Code.Once.Parser.TypeRelation.C_pfpt'45'star_354
+                                           MAlonzo.Code.Once.Parser.TypeRelation.C_pfpt'45'star_346
                                            v4 v6 v13 v16)
                                         erased
                                  _ -> MAlonzo.RTE.mazUnreachableError)
@@ -824,7 +814,7 @@ du_complete'45'functorSumWFraw_438 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_complete'45'functorSumWFraw_438 v0 v1
   = case coe v1 of
-      MAlonzo.Code.Once.Parser.TypeRelation.C_pfs'45'mk_366 v3 v5 v7 v8
+      MAlonzo.Code.Once.Parser.TypeRelation.C_pfs'45'mk_358 v3 v5 v7 v8
         -> let v9
                  = coe du_complete'45'functorProdWFraw_408 (coe v0) (coe v7) in
            coe
@@ -838,7 +828,7 @@ du_complete'45'functorSumWFraw_438 v0 v1
                             -> coe
                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                  (coe
-                                    MAlonzo.Code.Once.Parser.TypeRelation.C_pfs'45'mk_366 v3 v5 v10
+                                    MAlonzo.Code.Once.Parser.TypeRelation.C_pfs'45'mk_358 v3 v5 v10
                                     v13)
                                  erased
                           _ -> MAlonzo.RTE.mazUnreachableError)
@@ -861,13 +851,13 @@ du_complete'45'functorSumTailWFraw_454 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_complete'45'functorSumTailWFraw_454 v0 v1
   = case coe v1 of
-      MAlonzo.Code.Once.Parser.TypeRelation.C_pfst'45'done_372 v4
+      MAlonzo.Code.Once.Parser.TypeRelation.C_pfst'45'done_364 v4
         -> case coe v0 of
              []
                -> coe
                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                     (coe
-                       MAlonzo.Code.Once.Parser.TypeRelation.C_pfst'45'done_372
+                       MAlonzo.Code.Once.Parser.TypeRelation.C_pfst'45'done_364
                        (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8))
                     erased
              (:) v5 v6
@@ -876,11 +866,11 @@ du_complete'45'functorSumTailWFraw_454 v0 v1
                     (coe
                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                        (coe
-                          MAlonzo.Code.Once.Parser.TypeRelation.C_pfst'45'done_372
+                          MAlonzo.Code.Once.Parser.TypeRelation.C_pfst'45'done_364
                           (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8))
                        erased)
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.Parser.TypeRelation.C_pfst'45'plus_386 v4 v6 v8 v9
+      MAlonzo.Code.Once.Parser.TypeRelation.C_pfst'45'plus_378 v4 v6 v8 v9
         -> case coe v0 of
              (:) v10 v11
                -> let v12
@@ -896,7 +886,7 @@ du_complete'45'functorSumTailWFraw_454 v0 v1
                                    -> coe
                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                         (coe
-                                           MAlonzo.Code.Once.Parser.TypeRelation.C_pfst'45'plus_386
+                                           MAlonzo.Code.Once.Parser.TypeRelation.C_pfst'45'plus_378
                                            v4 v6 v13 v16)
                                         erased
                                  _ -> MAlonzo.RTE.mazUnreachableError)
@@ -904,35 +894,35 @@ du_complete'45'functorSumTailWFraw_454 v0 v1
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Grammar.ParserBridge.complete-atom
-d_complete'45'atom_1198 ::
+d_complete'45'atom_1194 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Once.Parser.TypeRelation.T_ParsesAtom_96 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_complete'45'atom_1198 = erased
+d_complete'45'atom_1194 = erased
 -- Once.Grammar.ParserBridge.complete-type
-d_complete'45'type_1222 ::
+d_complete'45'type_1218 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Once.Parser.TypeRelation.T_ParsesType_106 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_complete'45'type_1222 = erased
+d_complete'45'type_1218 = erased
 -- Once.Grammar.ParserBridge.stripType-inv
-d_stripType'45'inv_1250 ::
+d_stripType'45'inv_1246 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_stripType'45'inv_1250 ~v0 v1 ~v2 ~v3 ~v4
-  = du_stripType'45'inv_1250 v1
-du_stripType'45'inv_1250 ::
+d_stripType'45'inv_1246 ~v0 v1 ~v2 ~v3 ~v4
+  = du_stripType'45'inv_1246 v1
+du_stripType'45'inv_1246 ::
   Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-du_stripType'45'inv_1250 v0
+du_stripType'45'inv_1246 v0
   = case coe v0 of
       MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v1
         -> case coe v1 of
@@ -944,19 +934,19 @@ du_stripType'45'inv_1250 v0
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Grammar.ParserBridge.stripAtom-inv
-d_stripAtom'45'inv_1272 ::
+d_stripAtom'45'inv_1268 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_stripAtom'45'inv_1272 ~v0 v1 ~v2 ~v3 ~v4
-  = du_stripAtom'45'inv_1272 v1
-du_stripAtom'45'inv_1272 ::
+d_stripAtom'45'inv_1268 ~v0 v1 ~v2 ~v3 ~v4
+  = du_stripAtom'45'inv_1268 v1
+du_stripAtom'45'inv_1268 ::
   Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-du_stripAtom'45'inv_1272 v0
+du_stripAtom'45'inv_1268 v0
   = case coe v0 of
       MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v1
         -> case coe v1 of
@@ -968,20 +958,20 @@ du_stripAtom'45'inv_1272 v0
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Grammar.ParserBridge.sound-type
-d_sound'45'type_1290 ::
+d_sound'45'type_1286 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Once.Parser.TypeRelation.T_ParsesType_106
-d_sound'45'type_1290 v0 ~v1 ~v2 ~v3 = du_sound'45'type_1290 v0
-du_sound'45'type_1290 ::
+d_sound'45'type_1286 v0 ~v1 ~v2 ~v3 = du_sound'45'type_1286 v0
+du_sound'45'type_1286 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Once.Parser.TypeRelation.T_ParsesType_106
-du_sound'45'type_1290 v0
+du_sound'45'type_1286 v0
   = let v1
           = coe
-              du_stripType'45'inv_1250
+              du_stripType'45'inv_1246
               (let v1
                      = coe
                          MAlonzo.Code.Once.Parser.Type.du_parseTypeAtomWF_130 (coe v0) in
@@ -1005,7 +995,7 @@ du_sound'45'type_1290 v0
                                                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v11 v12
                                                             -> let v13
                                                                      = coe
-                                                                         MAlonzo.Code.Once.Parser.TypeRelation.C_pp'45'mk_208
+                                                                         MAlonzo.Code.Once.Parser.TypeRelation.C_pp'45'mk_200
                                                                          v5 v3 v6 v12 in
                                                                coe
                                                                  (let v14
@@ -1021,7 +1011,7 @@ du_sound'45'type_1290 v0
                                                                                      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v18 v19
                                                                                        -> let v20
                                                                                                 = coe
-                                                                                                    MAlonzo.Code.Once.Parser.TypeRelation.C_ps'45'mk_240
+                                                                                                    MAlonzo.Code.Once.Parser.TypeRelation.C_ps'45'mk_232
                                                                                                     v11
                                                                                                     v9
                                                                                                     v13
@@ -1055,7 +1045,7 @@ du_sound'45'type_1290 v0
                                                                                                                              (coe
                                                                                                                                 v25)
                                                                                                                              (coe
-                                                                                                                                MAlonzo.Code.Once.Parser.TypeRelation.C_pt'45'mk_272
+                                                                                                                                MAlonzo.Code.Once.Parser.TypeRelation.C_pt'45'mk_264
                                                                                                                                 v18
                                                                                                                                 v16
                                                                                                                                 v20
@@ -1104,7 +1094,7 @@ du_sound'45'type_1290 v0
                                                                                                                                  (coe
                                                                                                                                     v24)
                                                                                                                                  (coe
-                                                                                                                                    MAlonzo.Code.Once.Parser.TypeRelation.C_pt'45'mk_272
+                                                                                                                                    MAlonzo.Code.Once.Parser.TypeRelation.C_pt'45'mk_264
                                                                                                                                     v18
                                                                                                                                     v16
                                                                                                                                     v19
@@ -1145,7 +1135,7 @@ du_sound'45'type_1290 v0
                                                                                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v17 v18
                                                                                            -> let v19
                                                                                                     = coe
-                                                                                                        MAlonzo.Code.Once.Parser.TypeRelation.C_ps'45'mk_240
+                                                                                                        MAlonzo.Code.Once.Parser.TypeRelation.C_ps'45'mk_232
                                                                                                         v11
                                                                                                         v9
                                                                                                         v12
@@ -1179,7 +1169,7 @@ du_sound'45'type_1290 v0
                                                                                                                                  (coe
                                                                                                                                     v24)
                                                                                                                                  (coe
-                                                                                                                                    MAlonzo.Code.Once.Parser.TypeRelation.C_pt'45'mk_272
+                                                                                                                                    MAlonzo.Code.Once.Parser.TypeRelation.C_pt'45'mk_264
                                                                                                                                     v17
                                                                                                                                     v15
                                                                                                                                     v19
@@ -1229,7 +1219,7 @@ du_sound'45'type_1290 v0
                                                                                                                                      (coe
                                                                                                                                         v23)
                                                                                                                                      (coe
-                                                                                                                                        MAlonzo.Code.Once.Parser.TypeRelation.C_pt'45'mk_272
+                                                                                                                                        MAlonzo.Code.Once.Parser.TypeRelation.C_pt'45'mk_264
                                                                                                                                         v17
                                                                                                                                         v15
                                                                                                                                         v18
@@ -1280,7 +1270,7 @@ du_sound'45'type_1290 v0
                                                                                                              (coe
                                                                                                                 v17)
                                                                                                              (coe
-                                                                                                                MAlonzo.Code.Once.Parser.TypeRelation.C_pt'45'mk_272
+                                                                                                                MAlonzo.Code.Once.Parser.TypeRelation.C_pt'45'mk_264
                                                                                                                 v11
                                                                                                                 v9
                                                                                                                 v12
@@ -1319,7 +1309,7 @@ du_sound'45'type_1290 v0
                                                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v11 v12
                                                                    -> let v13
                                                                             = coe
-                                                                                MAlonzo.Code.Once.Parser.TypeRelation.C_ps'45'mk_240
+                                                                                MAlonzo.Code.Once.Parser.TypeRelation.C_ps'45'mk_232
                                                                                 v5 v3 v6 v12 in
                                                                       coe
                                                                         (let v14
@@ -1346,7 +1336,7 @@ du_sound'45'type_1290 v0
                                                                                                          (coe
                                                                                                             v18)
                                                                                                          (coe
-                                                                                                            MAlonzo.Code.Once.Parser.TypeRelation.C_pt'45'mk_272
+                                                                                                            MAlonzo.Code.Once.Parser.TypeRelation.C_pt'45'mk_264
                                                                                                             v11
                                                                                                             v9
                                                                                                             v13
@@ -1390,7 +1380,7 @@ du_sound'45'type_1290 v0
                                                                                                              (coe
                                                                                                                 v17)
                                                                                                              (coe
-                                                                                                                MAlonzo.Code.Once.Parser.TypeRelation.C_pt'45'mk_272
+                                                                                                                MAlonzo.Code.Once.Parser.TypeRelation.C_pt'45'mk_264
                                                                                                                 v11
                                                                                                                 v9
                                                                                                                 v12
@@ -1435,7 +1425,7 @@ du_sound'45'type_1290 v0
                                                                                      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                      (coe v11)
                                                                                      (coe
-                                                                                        MAlonzo.Code.Once.Parser.TypeRelation.C_pt'45'mk_272
+                                                                                        MAlonzo.Code.Once.Parser.TypeRelation.C_pt'45'mk_264
                                                                                         v5 v3 v6
                                                                                         v12)))
                                                                         _ -> MAlonzo.RTE.mazUnreachableError
@@ -1454,20 +1444,20 @@ du_sound'45'type_1290 v0
          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v2 v3 -> coe v2
          _ -> MAlonzo.RTE.mazUnreachableError)
 -- Once.Grammar.ParserBridge.sound-atom
-d_sound'45'atom_1312 ::
+d_sound'45'atom_1308 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Once.Parser.TypeRelation.T_ParsesAtom_96
-d_sound'45'atom_1312 v0 ~v1 ~v2 ~v3 = du_sound'45'atom_1312 v0
-du_sound'45'atom_1312 ::
+d_sound'45'atom_1308 v0 ~v1 ~v2 ~v3 = du_sound'45'atom_1308 v0
+du_sound'45'atom_1308 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Once.Parser.TypeRelation.T_ParsesAtom_96
-du_sound'45'atom_1312 v0
+du_sound'45'atom_1308 v0
   = let v1
           = coe
-              du_stripAtom'45'inv_1272
+              du_stripAtom'45'inv_1268
               (coe
                  MAlonzo.Code.Once.Parser.Type.du_parseTypeAtomWF_130 (coe v0)) in
     coe

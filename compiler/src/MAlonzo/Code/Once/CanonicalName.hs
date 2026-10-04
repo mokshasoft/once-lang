@@ -54,23 +54,26 @@ d_bare_12 v0
 -- Once.CanonicalName.generatorNS
 d_generatorNS_16 :: MAlonzo.Code.Agda.Builtin.String.T_String_6
 d_generatorNS_16 = coe ("Generators" :: Data.Text.Text)
+-- Once.CanonicalName.NotOwn
+d_NotOwn_26 :: T_CanonicalName_4 -> ()
+d_NotOwn_26 = erased
 -- Once.CanonicalName.gen≢bare
-d_gen'8802'bare_26 ::
+d_gen'8802'bare_32 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20
-d_gen'8802'bare_26 = erased
+d_gen'8802'bare_32 = erased
 -- Once.CanonicalName.gen-inj
-d_gen'45'inj_36 ::
+d_gen'45'inj_42 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_gen'45'inj_36 = erased
+d_gen'45'inj_42 = erased
 -- Once.CanonicalName.genWords
-d_genWords_38 :: [MAlonzo.Code.Agda.Builtin.String.T_String_6]
-d_genWords_38
+d_genWords_44 :: [MAlonzo.Code.Agda.Builtin.String.T_String_6]
+d_genWords_44
   = coe
       MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
       (coe ("id" :: Data.Text.Text))
@@ -125,28 +128,28 @@ d_genWords_38
                                                       (coe
                                                          MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)))))))))))))))))
 -- Once.CanonicalName.GenWord
-d_GenWord_40 :: MAlonzo.Code.Agda.Builtin.String.T_String_6 -> ()
-d_GenWord_40 = erased
+d_GenWord_46 :: MAlonzo.Code.Agda.Builtin.String.T_String_6 -> ()
+d_GenWord_46 = erased
 -- Once.CanonicalName.genWord?
-d_genWord'63'_48 ::
+d_genWord'63'_54 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20
-d_genWord'63'_48 v0
+d_genWord'63'_54 v0
   = coe
       MAlonzo.Code.Data.List.Relation.Unary.Any.du_any'63'_138
       (coe MAlonzo.Code.Data.String.Properties.d__'8799'__54 (coe v0))
-      (coe d_genWords_38)
+      (coe d_genWords_44)
 -- Once.CanonicalName.genWord?-no
-d_genWord'63''45'no_58 ::
+d_genWord'63''45'no_64 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   (MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
    MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20) ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_genWord'63''45'no_58 v0 ~v1 = du_genWord'63''45'no_58 v0
-du_genWord'63''45'no_58 ::
+d_genWord'63''45'no_64 v0 ~v1 = du_genWord'63''45'no_64 v0
+du_genWord'63''45'no_64 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-du_genWord'63''45'no_58 v0
+du_genWord'63''45'no_64 v0
   = let v1
           = coe
               MAlonzo.Code.Relation.Nullary.Decidable.Core.du_map'8242'_178
@@ -221,8 +224,8 @@ du_genWord'63''45'no_58 v0
                        (coe MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 erased erased)
          _ -> MAlonzo.RTE.mazUnreachableError)
 -- Once.CanonicalName.genNames
-d_genNames_80 :: [MAlonzo.Code.Agda.Builtin.String.T_String_6]
-d_genNames_80
+d_genNames_86 :: [MAlonzo.Code.Agda.Builtin.String.T_String_6]
+d_genNames_86
   = coe
       MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
       (coe ("id" :: Data.Text.Text))
@@ -249,16 +252,16 @@ d_genNames_80
                            (coe ("unit" :: Data.Text.Text))
                            (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16))))))))
 -- Once.CanonicalName.NotGenerator
-d_NotGenerator_82 :: T_CanonicalName_4 -> ()
-d_NotGenerator_82 = erased
+d_NotGenerator_88 :: T_CanonicalName_4 -> ()
+d_NotGenerator_88 = erased
 -- Once.CanonicalName.bare-NotGenerator
-d_bare'45'NotGenerator_90 ::
+d_bare'45'NotGenerator_96 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44
-d_bare'45'NotGenerator_90 ~v0 = du_bare'45'NotGenerator_90
-du_bare'45'NotGenerator_90 ::
+d_bare'45'NotGenerator_96 ~v0 = du_bare'45'NotGenerator_96
+du_bare'45'NotGenerator_96 ::
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44
-du_bare'45'NotGenerator_90
+du_bare'45'NotGenerator_96
   = coe
       MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60 erased
       (coe
@@ -278,11 +281,11 @@ du_bare'45'NotGenerator_90
                            (coe
                               MAlonzo.Code.Data.List.Relation.Unary.All.C_'91''93'_50))))))))
 -- Once.CanonicalName._≟ᶜ_
-d__'8799''7580'__110 ::
+d__'8799''7580'__116 ::
   T_CanonicalName_4 ->
   T_CanonicalName_4 ->
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20
-d__'8799''7580'__110 v0 v1
+d__'8799''7580'__116 v0 v1
   = case coe v0 of
       C_canonical_10 v2
         -> case coe v1 of
@@ -314,9 +317,9 @@ d__'8799''7580'__110 v0 v1
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CanonicalName.showCanonical
-d_showCanonical_134 ::
+d_showCanonical_140 ::
   T_CanonicalName_4 -> MAlonzo.Code.Agda.Builtin.String.T_String_6
-d_showCanonical_134 v0
+d_showCanonical_140 v0
   = case coe v0 of
       C_canonical_10 v1
         -> case coe v1 of
@@ -328,7 +331,7 @@ d_showCanonical_134 v0
                             (coe
                                MAlonzo.Code.Data.String.Base.d__'43''43'__20
                                ("." :: Data.Text.Text)
-                               (d_showCanonical_134 (coe C_canonical_10 (coe v3)))) in
+                               (d_showCanonical_140 (coe C_canonical_10 (coe v3)))) in
                   coe
                     (case coe v3 of
                        [] -> coe v2

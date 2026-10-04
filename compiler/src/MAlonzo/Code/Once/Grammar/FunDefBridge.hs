@@ -32367,7 +32367,7 @@ du_complete'45'body_284 v0 v1
       MAlonzo.Code.Once.Spec.Grammar.FunDef.C_pfb'45'mk_52 v3 v6
         -> let v7
                  = coe
-                     MAlonzo.Code.Once.Grammar.ExprBridge.du_complete'45'exprWFraw_508
+                     MAlonzo.Code.Once.Grammar.ExprBridge.du_complete'45'exprWFraw_2236
                      (coe
                         MAlonzo.Code.Once.Parser.Module.FunDef.Body.d_drop1_12 (coe v0))
                      (coe v6) in

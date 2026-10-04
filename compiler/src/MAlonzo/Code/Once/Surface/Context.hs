@@ -66,10 +66,10 @@ du_'10214'_'10215''7580'_38 ::
   T_Ctx_6 -> MAlonzo.Code.Once.Type.T_Type_108
 du_'10214'_'10215''7580'_38 v0
   = case coe v0 of
-      C_'8709'_8 -> coe MAlonzo.Code.Once.Type.C_Unit_118
+      C_'8709'_8 -> coe MAlonzo.Code.Once.Type.C_Unit_120
       C__'44'_'94'__12 v2 v3 v4
         -> coe
-             MAlonzo.Code.Once.Type.C__'42'__122
+             MAlonzo.Code.Once.Type.C__'42'__124
              (coe du_'10214'_'10215''7580'_38 (coe v2)) (coe v3)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Surface.Context.lookupQuantity
