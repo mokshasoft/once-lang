@@ -136,8 +136,12 @@ pilot too). It drives F6.0–F6.3 end to end before any big family.
     stated kernel invariant, not an F6 lemma.
   - ✅ Cold sweep ALL GREEN (230 modules, 3 064 s); `ocp-0009-stepext-once`
     fast-forwarded to `6c08c54f6` (2026-10-04), branch deleted.
-- 🟡 (2026-10-04) F6.2 WRITTEN, ⚠ NOT YET TYPE-CHECKED (RAM held by another
-  session). Branch `ocp-0009-f6-unquote`.
+- ✅ (2026-10-04) F6.2 DONE — `Lib/SynUnq` (100 s cold, 4.9 GB with its
+  closure) and `Knot/Unquote` (39 s) check. Branch `ocp-0009-f6-unquote`
+  (ff into `stepext-once` after the next cold sweep). Four fixes on the
+  first check, all elaboration: a generalized constructor index is not
+  nameable (bind it through the shape), argument order, `⌜ Ts ⌝ₛ` is not
+  injective (pin `FinTs`), generalized `Θ` precedes `i``.
   - `Lib/SynUnq` (generic): the signature's syntax as an Agda datatype
     `STm sg s d`, its quotation `⌜_⌝ˢ` (the Knot's own encoding),
     `⌜⌝ˢ-inj` (structural), `nat-unq`/`fin-unq` (numerals, variables via
