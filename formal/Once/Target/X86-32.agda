@@ -21,8 +21,8 @@ open import Data.Nat.Show using () renaming (show to showNat)
 -- D159/Phase B: a closure body's symbol is rendered from its LabelId on BOTH
 -- sides now — the reference already was; the definition used `showNat` on a
 -- bare counter and produced a DIFFERENT symbol.
-open import Once.CCC.Label using (LabelId; showLabelId; thunkSym)
-open import Data.List using (List; []; _∷_)
+open import Once.CCC.Label using (LabelId; showLabelId; thunkSym; e-fn)
+open import Data.List using (List; []; _∷_; drop)
 open import Data.Product using (_×_; _,_)
 
 open import Once.Target using (Target)
@@ -34,8 +34,8 @@ open import Once.IR using (IR)
 -- and `irToAsm` takes that identity as an argument (it differs per function),
 -- so this importer telescopes it at each use rather than applying the module.
 import Once.CCC.Codegen.IRToTrace as IRT
-open import Once.CCC.Machine.SMCore using (AbstractTrace)
-open import Once.CCC.Target.X86-32.AbstractToX86-32 using (compile-trace-cnt)
+open import Once.CCC.Machine.SMCore using (AbstractTrace; instr-ctrl; c-entry)
+open import Once.CCC.Target.X86-32.AbstractToX86-32 using (compile-trace-cnt; compile-abstract)
 open import Once.CCC.Target.X86-32.Emit using (programToText)
 open import Once.Arith.Backend.X86-32.Emit using (emit-arith-blocks)
 
@@ -97,10 +97,12 @@ x86-32-irToAsm o l ir =
   let budget       = IRT.ir-stack-budget-from o l ir
       (l' , trace) = IRT.ir-to-linked-from o l ir
       (l'' , prog) = compile-trace-cnt o l' trace
-      frame        = budget * 4
   -- The frame IS the reservation: `slot*4(%esp)` indexes up into it, and the
   -- return address sits just above. Same shape as x86-64's.
-  in l'' , ("    subl $" ++ showNat frame ++ ", %esp\n" ++
+  -- 2026-10-04 (D261): the frame is `c-entry`'s OWN lowering, label dropped
+  -- (`functionPrologue` writes it) — so the text is the verified image's entry
+  -- by CONSTRUCTION, not by a hand-written string that happens to agree.
+  in l'' , (programToText (drop 1 (compile-abstract (instr-ctrl (c-entry (e-fn o) budget)))) ++
             programToText prog)
 
 

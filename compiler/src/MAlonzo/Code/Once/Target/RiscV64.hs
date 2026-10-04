@@ -19,6 +19,7 @@ import qualified MAlonzo.RTE
 import qualified Data.Text
 import qualified MAlonzo.Code.Agda.Builtin.Sigma
 import qualified MAlonzo.Code.Agda.Builtin.String
+import qualified MAlonzo.Code.Data.List.Base
 import qualified MAlonzo.Code.Data.String.Base
 import qualified MAlonzo.Code.Once.Arith.Backend.RiscV64.Emit
 import qualified MAlonzo.Code.Once.CCC.Codegen.IRToTrace
@@ -132,24 +133,15 @@ d_riscv64'45'functionPrologue_8 v0
 d_riscv64'45'functionEpilogue_12 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6
 d_riscv64'45'functionEpilogue_12 = coe ("\n" :: Data.Text.Text)
--- Once.Target.RiscV64.drop-label
-d_drop'45'label_16 :: () -> [AgdaAny] -> [AgdaAny]
-d_drop'45'label_16 ~v0 v1 = du_drop'45'label_16 v1
-du_drop'45'label_16 :: [AgdaAny] -> [AgdaAny]
-du_drop'45'label_16 v0
-  = case coe v0 of
-      [] -> coe v0
-      (:) v1 v2 -> coe v2
-      _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Target.RiscV64.riscv64-irToAsm
-d_riscv64'45'irToAsm_24 ::
+d_riscv64'45'irToAsm_18 ::
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
   Integer ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_riscv64'45'irToAsm_24 v0 v1 v2 v3 v4
+d_riscv64'45'irToAsm_18 v0 v1 v2 v3 v4
   = coe
       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
       (coe
@@ -172,7 +164,7 @@ d_riscv64'45'irToAsm_24 v0 v1 v2 v3 v4
          (coe
             MAlonzo.Code.Once.CCC.Target.RiscV64.Emit.d_programToText_92
             (coe
-               du_drop'45'label_16
+               MAlonzo.Code.Data.List.Base.du_drop_542 (coe (1 :: Integer))
                (coe
                   MAlonzo.Code.Once.CCC.Target.RiscV64.AbstractToRiscV.d_compile'45'abstract_168
                   (coe
@@ -200,11 +192,11 @@ d_riscv64'45'irToAsm_24 v0 v1 v2 v3 v4
                         MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'linked'45'from_864
                         (coe v0) (coe v2) (coe v3) (coe v1) (coe v4)))))))
 -- Once.Target.RiscV64.riscv64
-d_riscv64_42 :: MAlonzo.Code.Once.Target.T_Target_4
-d_riscv64_42
+d_riscv64_36 :: MAlonzo.Code.Once.Target.T_Target_4
+d_riscv64_36
   = coe
       MAlonzo.Code.Once.Target.C_constructor_38
-      (coe d_riscv64'45'irToAsm_24) (coe d_riscv64'45'asmHeader_6)
+      (coe d_riscv64'45'irToAsm_18) (coe d_riscv64'45'asmHeader_6)
       (coe d_riscv64'45'functionPrologue_8)
       (coe d_riscv64'45'functionEpilogue_12)
       (coe

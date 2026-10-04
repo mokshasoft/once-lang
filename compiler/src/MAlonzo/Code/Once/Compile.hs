@@ -1144,9 +1144,9 @@ d_archTarget_788 v0
       MAlonzo.Code.Once.Target.Arch.C_x86'45'64_8
         -> coe MAlonzo.Code.Once.Target.X86Z45Z64.d_x86'45'64_52
       MAlonzo.Code.Once.Target.Arch.C_x86'45'32_10
-        -> coe MAlonzo.Code.Once.Target.X86Z45Z32.d_x86'45'32_38
+        -> coe MAlonzo.Code.Once.Target.X86Z45Z32.d_x86'45'32_36
       MAlonzo.Code.Once.Target.Arch.C_riscv64_12
-        -> coe MAlonzo.Code.Once.Target.RiscV64.d_riscv64_42
+        -> coe MAlonzo.Code.Once.Target.RiscV64.d_riscv64_36
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Compile.compileFunWithTarget
 d_compileFunWithTarget_790 ::

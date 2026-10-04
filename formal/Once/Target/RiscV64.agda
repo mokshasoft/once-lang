@@ -26,7 +26,7 @@ open import Data.Nat.Show using () renaming (show to showNat)
 -- sides now — the reference already was; the definition used `showNat` on a
 -- bare counter and produced a DIFFERENT symbol.
 open import Once.CCC.Label using (LabelId; showLabelId; thunkSym; e-fn)
-open import Data.List using (List; []; _∷_)
+open import Data.List using (List; []; _∷_; drop)
 open import Data.Product using (_×_; _,_)
 
 open import Once.Target using (Target)
@@ -100,11 +100,6 @@ riscv64-functionEpilogue = "\n"   -- D161: `ret` comes from the trace's `c-ret`
 -- restores `ra` (one extra slot at offset budget*8), the standard RV64
 -- calling convention — without it, any function that returns after making a
 -- closure call would jump through a stale `ra` and loop.
--- The entry marker's own instructions, without its label.
-drop-label : ∀ {X : Set} → List X → List X
-drop-label []       = []
-drop-label (_ ∷ xs) = xs
-
 riscv64-irToAsm : CanonicalName → ℕ → ∀ {A B} → IR A B → ℕ × String
 riscv64-irToAsm o l ir =
   let budget        = IRT.ir-stack-budget-from o l ir
@@ -122,8 +117,8 @@ riscv64-irToAsm o l ir =
   -- direct call (`c-call-fn`, D245) are CALLEE-style: the caller reserves the
   -- `ra` word and `c-ret` releases it. A directly-called function therefore
   -- returned with `sp` 8 bytes low — 45/72 riscv64 exit tests segfaulted. The
-  -- verified program image (`ProgramImage`) always opened with `c-entry`.
-  in l'' , (programToText (drop-label (compile-abstract (instr-ctrl (c-entry (e-fn o) budget)))) ++
+  -- verified program image (`ProgramImage`) always opened with `c-entry` (D261).
+  in l'' , (programToText (drop 1 (compile-abstract (instr-ctrl (c-entry (e-fn o) budget)))) ++
             programToText prog)
 
 -- Plan 0.53: closure-body (thunk) emission. For each `(label, budget,

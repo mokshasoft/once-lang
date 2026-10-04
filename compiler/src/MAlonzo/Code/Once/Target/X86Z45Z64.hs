@@ -19,11 +19,13 @@ import qualified MAlonzo.RTE
 import qualified Data.Text
 import qualified MAlonzo.Code.Agda.Builtin.Sigma
 import qualified MAlonzo.Code.Agda.Builtin.String
+import qualified MAlonzo.Code.Data.List.Base
 import qualified MAlonzo.Code.Data.Nat.Show
 import qualified MAlonzo.Code.Data.String.Base
 import qualified MAlonzo.Code.Once.Arith.Backend.X86Z45Z64.Emit
 import qualified MAlonzo.Code.Once.CCC.Codegen.IRToTrace
 import qualified MAlonzo.Code.Once.CCC.Label
+import qualified MAlonzo.Code.Once.CCC.Machine.SMCore
 import qualified MAlonzo.Code.Once.CCC.Target.X86Z45Z64.AbstractToX86
 import qualified MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Emit
 import qualified MAlonzo.Code.Once.CanonicalName
@@ -158,35 +160,36 @@ d_x86'45'64'45'irToAsm_18 v0 v1 v2 v3 v4
                   (coe v0) (coe v2) (coe v3) (coe v1) (coe v4)))))
       (coe
          MAlonzo.Code.Data.String.Base.d__'43''43'__20
-         ("    subq $" :: Data.Text.Text)
          (coe
-            MAlonzo.Code.Data.String.Base.d__'43''43'__20
+            MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Emit.d_programToText_86
             (coe
-               MAlonzo.Code.Data.Nat.Show.d_show_56
-               (mulInt
-                  (coe
-                     MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'stack'45'budget'45'from_854
-                     (coe v0) (coe v2) (coe v3) (coe v1) (coe v4))
-                  (coe (8 :: Integer))))
-            (coe
-               MAlonzo.Code.Data.String.Base.d__'43''43'__20
-               (", %rsp\n" :: Data.Text.Text)
+               MAlonzo.Code.Data.List.Base.du_drop_542 (coe (1 :: Integer))
                (coe
-                  MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Emit.d_programToText_86
-                  (MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
+                  MAlonzo.Code.Once.CCC.Target.X86Z45Z64.AbstractToX86.d_compile'45'abstract_14
+                  (coe
+                     MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'ctrl_2304
                      (coe
-                        MAlonzo.Code.Once.CCC.Target.X86Z45Z64.AbstractToX86.d_compile'45'trace'45'cnt_70
-                        (coe v0)
+                        MAlonzo.Code.Once.CCC.Machine.SMCore.C_c'45'entry_2224
+                        (coe MAlonzo.Code.Once.CCC.Label.C_e'45'fn_26 (coe v0))
                         (coe
-                           MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
-                           (coe
-                              MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'linked'45'from_864
-                              (coe v0) (coe v2) (coe v3) (coe v1) (coe v4)))
-                        (coe
-                           MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
-                           (coe
-                              MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'linked'45'from_864
-                              (coe v0) (coe v2) (coe v3) (coe v1) (coe v4)))))))))
+                           MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'stack'45'budget'45'from_854
+                           (coe v0) (coe v2) (coe v3) (coe v1) (coe v4)))))))
+         (coe
+            MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Emit.d_programToText_86
+            (MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
+               (coe
+                  MAlonzo.Code.Once.CCC.Target.X86Z45Z64.AbstractToX86.d_compile'45'trace'45'cnt_70
+                  (coe v0)
+                  (coe
+                     MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
+                     (coe
+                        MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'linked'45'from_864
+                        (coe v0) (coe v2) (coe v3) (coe v1) (coe v4)))
+                  (coe
+                     MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
+                     (coe
+                        MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'linked'45'from_864
+                        (coe v0) (coe v2) (coe v3) (coe v1) (coe v4)))))))
 -- Once.Target.X86-64.emit-thunk-body
 d_emit'45'thunk'45'body_36 ::
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->

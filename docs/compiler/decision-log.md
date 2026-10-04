@@ -16410,3 +16410,28 @@ deleted; their closure lives here.
 * 0.99 §6, deliberately out of scope: variance under `μ`/`ν`; sub-usage (QTT `q ≤ q′`).
 * 0.103's performance follow-on (profile-2026-09-29): `Apply.call-eq`, `Pair.{bf,heapref,cf}-tail`,
   a backend re-profile. `PairAssemble` is no longer extracted.
+
+## D261 — THE RISCV64 SEGFAULTS HID BEHIND `riscv64-loader-faithful`; EVERY PROLOGUE IS `c-entry`'S LOWERING (2026-10-04)
+
+**Relates**: D259 (the gate that found it), D245 (direct calls), D161/D165 (compiler logic must
+not live inside a toolchain axiom), D100/D167 (the axiom's honest preconditions), plan 0.89 D4.
+
+**The question asked of every green-apex/red-binary pair: which postulate hid it?**
+`riscv64-loader-faithful` (`ArchCorrectness/RiscV64.agda`), class "(A) TOOLCHAIN TRUST —
+assembler + loader + printer". It states `asm-sem asm ≡ conc-trace (main (rewrite-program …))`:
+the emitted text means what the concrete machine does on the VERIFIED image. The image opens
+each program function with `c-entry` (callee-style: the caller reserves the `ra` word, `c-ret`
+releases it). The text did not come from the image: `riscv64-irToAsm` hand-wrote an
+ENTRY-style frame. So for every program with a direct call (D245, plan 0.103) the postulate
+was FALSE — it trusted, under the name "printer", a compiler decision that disagreed with the
+image. Exactly D161/D165's fault one level down.
+
+**Fix.** All three `irToAsm`s now emit `drop 1 (compile-abstract (c-entry (e-fn o) budget))`:
+the entry's own lowering, label dropped (`functionPrologue` writes it). riscv64's changed (and
+`_start` reserves `main`'s slot); x86-64's and x86-32's agreed with their `c-entry` lowering
+only by coincidence and now agree by construction — their binaries are byte-identical (checked
+on ten test programs).
+
+**What remains.** The text is still ASSEMBLED from per-function pieces in `Compile.agda`, not
+printed from the image, so the axiom still covers more than printer + `as` + `ld`. Plan 0.89
+gains row D4: the emitted text is `programToText (link image)` plus a fixed arch-only stub.

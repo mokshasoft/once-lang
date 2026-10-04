@@ -16,8 +16,8 @@ open import Data.Nat.Show using () renaming (show to showNat)
 -- D159/Phase B: a closure body's symbol is rendered from its LabelId on BOTH
 -- sides now — the reference already was; the definition used `showNat` on a
 -- bare counter and produced a DIFFERENT symbol.
-open import Once.CCC.Label using (LabelId; showLabelId; thunkSym)
-open import Data.List using (List; []; _∷_; foldr)
+open import Once.CCC.Label using (LabelId; showLabelId; thunkSym; e-fn)
+open import Data.List using (List; []; _∷_; foldr; drop)
 open import Data.Product using (_×_; _,_)
 
 open import Once.Target using (Target)
@@ -39,8 +39,8 @@ import Once.CCC.Codegen.IRToTrace as IRT
 open import Once.Arith.Backend.X86-64.Emit using (emit-arith-blocks)
 open import Data.Nat using (ℕ)
 open import Data.Product using (_×_; _,_)
-open import Once.CCC.Machine.SMCore using (AbstractTrace)
-open import Once.CCC.Target.X86-64.AbstractToX86 using (compile-trace; compile-trace-cnt)
+open import Once.CCC.Machine.SMCore using (AbstractTrace; instr-ctrl; c-entry)
+open import Once.CCC.Target.X86-64.AbstractToX86 using (compile-trace; compile-trace-cnt; compile-abstract)
 open import Data.Product using (proj₁; proj₂)
 open import Once.CCC.Target.X86-64.Emit using (programToText)
 
@@ -127,7 +127,10 @@ x86-64-irToAsm o l ir =
       -- compile-trace-cnt o so case-on-tag dispatch gets fresh
       -- (globally-unique) labels per function.
       (l'' , prog) = compile-trace-cnt o l' trace
-  in l'' , ("    subq $" ++ showNat (budget * 8) ++ ", %rsp\n" ++
+  -- 2026-10-04 (D261): the frame is `c-entry`'s OWN lowering, label dropped
+  -- (`functionPrologue` writes it) — so the text is the verified image's entry
+  -- by CONSTRUCTION, not by a hand-written string that happens to agree.
+  in l'' , (programToText (drop 1 (compile-abstract (instr-ctrl (c-entry (e-fn o) budget)))) ++
             programToText prog)
 
 -- | Plan 0.2.4.5 D1: emit closure-body labels for an IR (frameless,
