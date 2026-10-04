@@ -179,6 +179,8 @@ Families decoded with NO finding (exact both ways):
 - `Pw` (2 rules; `Knot/PwDecode`, hand-written pilot);
 - `NoNatC`, `stkA?`, `stkC?`, `flat?` (24 rules; `Knot/PredsDecode`, GENERATED
   by `gen-judge.py` from the same `PREDS` table as the rows — 39 s).
+- `∋` (2 rules, `here`/`there`; `Knot/LookupDecode`, hand-written along
+  `⊢here∋`/`⊢there∋` — 9 s).
 
 
 ## Log
