@@ -583,7 +583,7 @@ elaborate {Γ = Γ} m (morph-app {Ψ = Ψ} morph x) =
 -- emits, re-emitted per layer — disagreeing with `⟦ cata alg ⟧ᶜ`, which binds
 -- the algebra once like every other combinator arm (D130).
 elaborate m (cata {F = F} {A = A} wfF alg) =
-  cataM wfF m ∘ (elaborate m alg ∘ terminal)
+  cataM wfF m ∘ elaborate m alg
 
 -- Anamorphism (dual of cata): a closed `Ana`, lifted to the surrounding realm
 -- exactly like `cata`. Coalgebra `A → ⟦F⟧T A` built from the closed `coalg`;

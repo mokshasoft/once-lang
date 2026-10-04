@@ -19,14 +19,14 @@
 --     no locals. (Zero usage in Γ would NOT do: a local may occur inside an
 --     erased argument, and such an `e` cannot leave Γ.)
 --   * `x` is not already a local, an import or a definition, so it names the
---     new definition everywhere — including inside `cata`/`ana` algebras, which
---     are typed without locals and so see the definition but never the let.
+--     new definition everywhere — including inside an `ana` coalgebra, which is
+--     typed without locals and so sees the definition but never the let.
 --   * `A` is stated by a ground signature `s` (`extractGround s g ≡ A`) — the
 --     signature the definition is written with.
 --
--- The converse (def ⇒ let) is FALSE while algebras cannot capture locals
--- (`cata (\l -> x)` sees a definition `x` but not a let-bound one); that is
--- plan 0.101's, not a gap in this proof.
+-- The converse (def ⇒ let) is FALSE while a coalgebra cannot capture locals
+-- (`ana (\a -> x)` sees a definition `x` but not a let-bound one); plan 0.101
+-- made `cata` algebras capture (D265), `ana`'s needs a parameterized `Ana`.
 --
 -- The proof is one mutual induction over the three judgments, carrying a
 -- relation `LD` between the let-side and def-side contexts: the let slot
@@ -261,7 +261,7 @@ module Transfer
     tr-c ld (t-case-copair-check df dg) = cᶜ (sym (drop-+ ld _ _)) (t-case-copair-check (tr-c ld df) (tr-c ld dg))
     tr-c ld (t-pair-morph-check df dg) = cᶜ (sym (drop-+ ld _ _)) (t-pair-morph-check (tr-c ld df) (tr-c ld dg))
     tr-c ld (t-curry-check d) = t-curry-check (tr-c ld d)
-    tr-c ld (t-cata-check wf dalg) = cᶜ (sym (drop-zero ld)) (t-cata-check wf (tr-c {GL = Context.∅} {ΔL = SC.∅} ld-top dalg))
+    tr-c ld (t-cata-check wf dalg) = t-cata-check wf (tr-c ld dalg)
     tr-c ld (t-ana-check wf dco) = cᶜ (sym (drop-zero ld)) (t-ana-check wf (tr-c {GL = Context.∅} {ΔL = SC.∅} ld-top dco))
     tr-c ld (t-sub d p) = t-sub (tr-i ld d) p
     tr-c ld (t-lam {x = y} {A = B} leq body) = t-lam leq (tr-c (ld-under y B ld) body)
@@ -285,7 +285,7 @@ module Transfer
     tr-d ld d-initial = cᵈ (sym (drop-zero ld)) d-initial
     tr-d ld (d-case df dg) = cᵈ (sym (drop-+ ld _ _)) (d-case (tr-d ld df) (tr-d ld dg))
     tr-d ld (d-pair df dg) = cᵈ (sym (drop-+ ld _ _)) (d-pair (tr-d ld df) (tr-d ld dg))
-    tr-d ld (d-cata wf dalg) = cᵈ (sym (drop-zero ld)) (d-cata wf (tr-i {GL = Context.∅} {ΔL = SC.∅} ld-top dalg))
+    tr-d ld (d-cata wf dalg) = d-cata wf (tr-i ld dalg)
 
 
 ------------------------------------------------------------------------

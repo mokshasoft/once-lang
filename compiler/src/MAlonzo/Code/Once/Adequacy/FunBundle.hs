@@ -108,7 +108,7 @@ du_compileFunBody'45'ce_108 v0 v1 v2 v3
   = coe
       MAlonzo.Code.Once.Adequacy.AcceptSound.du_compileFunBody'45'aux'45'success_36
       (coe
-         MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV_6158
+         MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV_6172
          (coe
             MAlonzo.Code.Once.TypeCheck.Classify.d_ctxWithImportsAndPolys_412
             (coe v0) (coe v1))
@@ -395,7 +395,7 @@ du_ce'45'bundleP_392 v0 v1 v2
                -> coe
                     du_cgb'45'poly_440 (coe v0) (coe v5) (coe v4) (coe v2)
                     (coe
-                       MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV_6158
+                       MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV_6172
                        (coe d_ctxC_8 (coe v0))
                        (coe MAlonzo.Code.Once.Parser.d_pfunBody_128 (coe v5))
                        (coe

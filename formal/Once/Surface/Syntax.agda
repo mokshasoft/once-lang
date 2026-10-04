@@ -314,9 +314,11 @@ data Expr : ∀ {n} → Ctx n → Usage n → Type → Set where
   -- Plan 0.36 Phase 1: grade-polymorphic — the algebra's purity π flows to
   -- the cata's realm (D032 uniform composition). π = pure is the value fold;
   -- π = eff is the effect-emitting fold.
-  cata : ∀ {n} {Γ : Ctx n} {F : Functor} {A} {π : Purity}
-       → WellFormedF F → Expr ∅ zeroUsage (⟦ F ⟧T A ⇒[ mk-kind Many π ] A)
-       → Expr Γ zeroUsage (μ-type F ⇒[ mk-kind Many π ] A)
+  -- PLAN 0.101 (D265): the algebra is an ordinary term IN CONTEXT — it may
+  -- capture locals — and is obtained once, where the cata term is evaluated.
+  cata : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {F : Functor} {A} {π : Purity}
+       → WellFormedF F → Expr Γ Ψ (⟦ F ⟧T A ⇒[ mk-kind Many π ] A)
+       → Expr Γ Ψ (μ-type F ⇒[ mk-kind Many π ] A)
 
   -- Anamorphism (dual of `cata`): given a coalgebra `A → F(A)`, produce the
   -- unfold `A → νF`. This is the PRODUCTIVE / corecursive scheme — `νF` is

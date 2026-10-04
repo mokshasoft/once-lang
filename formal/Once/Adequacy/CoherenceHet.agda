@@ -175,7 +175,8 @@ module _ {Γ : Ctx n} where
          → x ≅ x′ → lam {π = π} Many ≤p x ≅ lam Many ≤p′ x′
   lamd-h ≤p ≤p′ (≅i refl refl h) = lam-h ≤p ≤p′ (≅i refl refl h)
 
-  cata-h : ∀ {F} (w w′ : WellFormedF F) {a a′ : Expr ∅ zeroUsage (⟦ F ⟧T A ⇒[ mk-kind Many π ] A)}
+  cata-h : ∀ {F} (w w′ : WellFormedF F) {a : Expr Γ Ψ (⟦ F ⟧T A ⇒[ mk-kind Many π ] A)}
+           {a′ : Expr Γ Ψ′ (⟦ F ⟧T A ⇒[ mk-kind Many π ] A)}
          → a ≅ a′ → cata {Γ = Γ} w a ≅ cata w′ a′
   cata-h w w′ {a′ = a′} (≅i refl refl h) =
     ≅i refl refl (≈-trans (cata-cong w h) (≈-intro (cong (λ v → ⟦ cata {Γ = Γ} v a′ ⟧ˢ fmt) (WellFormedF-irrelevant w w′))))
@@ -187,13 +188,13 @@ module _ {Γ : Ctx n} where
 
   -- A fold's carrier is its algebra's codomain, so equal algebras give one carrier.
   private
-    catad : ∀ {F} (w w′ : WellFormedF F) {a : Expr ∅ zeroUsage (⟦ F ⟧T A ⇒[ mk-kind Many π ] A)}
-              {a′ : Expr ∅ zeroUsage (⟦ F ⟧T A′ ⇒[ mk-kind Many π ] A′)}
+    catad : ∀ {F} (w w′ : WellFormedF F) {a : Expr Γ Ψ (⟦ F ⟧T A ⇒[ mk-kind Many π ] A)}
+              {a′ : Expr Γ Ψ′ (⟦ F ⟧T A′ ⇒[ mk-kind Many π ] A′)}
           → A ≡ A′ → a ≅ a′ → cata {Γ = Γ} w a ≅ cata w′ a′
     catad w w′ refl h = cata-h w w′ h
 
-  catad-h : ∀ {F} (w w′ : WellFormedF F) {a : Expr ∅ zeroUsage (⟦ F ⟧T A ⇒[ mk-kind Many π ] A)}
-              {a′ : Expr ∅ zeroUsage (⟦ F ⟧T A′ ⇒[ mk-kind Many π ] A′)}
+  catad-h : ∀ {F} (w w′ : WellFormedF F) {a : Expr Γ Ψ (⟦ F ⟧T A ⇒[ mk-kind Many π ] A)}
+              {a′ : Expr Γ Ψ′ (⟦ F ⟧T A′ ⇒[ mk-kind Many π ] A′)}
           → a ≅ a′ → cata {Γ = Γ} w a ≅ cata w′ a′
   catad-h w w′ h = catad w w′ (cod-≡ (≅-ty h)) h
 
@@ -288,8 +289,8 @@ module _ {Γ : Ctx n} where
   forkc-h {f = f} {g = g} pb pc (≅i refl refl h) (≅i refl refl k) =
     ≅i refl refl (≈-trans (≈-sym (fork-coerce pb pc (⊑π-refl _) f g)) (fork-cong h k))
 
-  catac-h : ∀ {F} (w w′ : WellFormedF F) {a : Expr ∅ zeroUsage (⟦ F ⟧T A ⇒[ mk-kind Many π ] A)}
-              {a′ : Expr ∅ zeroUsage (⟦ F ⟧T A′ ⇒[ mk-kind Many π ] A′)} (p : A <: A′)
+  catac-h : ∀ {F} (w w′ : WellFormedF F) {a : Expr Γ Ψ (⟦ F ⟧T A ⇒[ mk-kind Many π ] A)}
+              {a′ : Expr Γ Ψ′ (⟦ F ⟧T A′ ⇒[ mk-kind Many π ] A′)} (p : A <: A′)
               (s : (⟦ F ⟧T A ⇒[ mk-kind Many π ] A) <: (⟦ F ⟧T A′ ⇒[ mk-kind Many π ] A′))
           → coerce s a ≅ a′ → coerce (sub-arr (<:-refl (μ-type F)) p (⊑π-refl π)) (cata {Γ = Γ} w a) ≅ cata w′ a′
   catac-h w w′ {a = a} {a′ = a′} p (sub-arr d p₀ g₀) (≅i refl refl h) =

@@ -238,7 +238,7 @@ mutual
   tm-c (t-pair-morph-check df dg)  = arms (tm-c df) (tm-c dg)
   tm-c (t-curry-check df)          = cong (λ u → G.let′ u _) (tm-c df)
   tm-c (t-cata-check {F = F} {A = A} {π = π} wf da) =
-    cong (λ u → G.let′ u _) (closeT (trans (⇝ᶜ-tm (cong (λ X → X T.⇒[ mk-kind Many π ] ρ̂ A) (ρ̂-⟦⟧ F A)) _) (tm-c da)))
+    cong (λ u → G.let′ u _) (trans (⇝ᶜ-tm (cong (λ X → X T.⇒[ mk-kind Many π ] ρ̂ A) (ρ̂-⟦⟧ F A)) _) (tm-c da))
   tm-c (t-ana-check {F = F} {A = A} {π = π} wf dc) =
     cong (λ u → G.lam (G.unfold u (G.var zero)))
          (trans (cong G.wk (closeT (trans (⇝ᶜ-tm (cong (λ X → ρ̂ A T.⇒[ mk-kind Many π ] X) (ρ̂-⟦⟧ F A)) _) (tm-c dc))))
@@ -269,7 +269,7 @@ mutual
   tm-d (d-case df dg)      = arms (tm-d df) (tm-d dg)
   tm-d (d-pair df dg)      = arms (tm-d df) (tm-d dg)
   tm-d (d-cata {F = F} {A = A} {π = π} wf da) =
-    cong (λ u → G.let′ u _) (closeT (trans (⇝ᵢ-tm (cong (λ X → X T.⇒[ mk-kind Many π ] ρ̂ A) (ρ̂-⟦⟧ F A)) _) (tm-i da)))
+    cong (λ u → G.let′ u _) (trans (⇝ᵢ-tm (cong (λ X → X T.⇒[ mk-kind Many π ] ρ̂ A) (ρ̂-⟦⟧ F A)) _) (tm-i da))
 
   dr-i : ∀ {n Γ D fr e A Ψ} (d : mkCtx n Γ D fr imps polys ⊢ᵢ e ∶ A ⨾ Ψ)
        → proj₂ (elabᵢ V (subst-i′ ir d)) ≅ ρ̂ᶜ (proj₂ (elabᵢ V d))
@@ -419,11 +419,10 @@ mutual
   dr-c (t-curry-check {π₀ = π₀} df) =
     H.trans (≅1 _ _ (DT.⊢curryᶜ {π₀ = π₀}) refl (tm-c df) (dr-c df)) (H.sym (c-curry {π₀ = π₀} (proj₂ (elabᶜ V df))))
   dr-c (t-cata-check {F = F} {A = A} {π = π} wf da) =
-    H.trans (≅1 _ _ (DT.⊢cataᶜ (ρ̂-wf wf)) refl (closeT TE)
-                (H.trans (closeH TE (sym q) (H.trans (⇝ᶜ-dr q _) (dr-c da)))
-                  (H.trans (H.sym (close≅ (proj₂ (elabᶜ V da))))
-                           (H.sym (rmA (λ X → X T.⇒[ mk-kind Many π ] ρ̂ A) (ρ̂-⟦⟧ F A))))))
-            (H.sym (c-cata wf (RN.⊢close (proj₂ (elabᶜ V da)))))
+    H.trans (≅1 _ _ (DT.⊢cataᶜ (ρ̂-wf wf)) refl TE
+                (H.trans (H.trans (⇝ᶜ-dr q _) (dr-c da))
+                         (H.sym (rmA (λ X → X T.⇒[ mk-kind Many π ] ρ̂ A) (ρ̂-⟦⟧ F A)))))
+            (H.sym (c-cata wf (proj₂ (elabᶜ V da))))
     where
       q  = cong (λ X → X T.⇒[ mk-kind Many π ] ρ̂ A) (ρ̂-⟦⟧ F A)
       TE = trans (⇝ᶜ-tm q _) (tm-c da)
@@ -470,11 +469,10 @@ mutual
   dr-d (d-pair df dg)      =
     H.trans (≅2 _ _ DT.⊢pairᶜ refl (tm-d df) (dr-d df) refl (tm-d dg) (dr-d dg)) (H.sym (c-pair (proj₂ (elabᵈ V df)) (proj₂ (elabᵈ V dg))))
   dr-d (d-cata {F = F} {A = A} {π = π} wf da) =
-    H.trans (≅1 _ _ (DT.⊢cataᶜ (ρ̂-wf wf)) refl (closeT TE)
-                (H.trans (closeH TE (sym q) (H.trans (⇝ᵢ-dr q _) (dr-i da)))
-                  (H.trans (H.sym (close≅ (proj₂ (elabᵢ V da))))
-                           (H.sym (rmA (λ X → X T.⇒[ mk-kind Many π ] ρ̂ A) (ρ̂-⟦⟧ F A))))))
-            (H.sym (c-cata wf (RN.⊢close (proj₂ (elabᵢ V da)))))
+    H.trans (≅1 _ _ (DT.⊢cataᶜ (ρ̂-wf wf)) refl TE
+                (H.trans (H.trans (⇝ᵢ-dr q _) (dr-i da))
+                         (H.sym (rmA (λ X → X T.⇒[ mk-kind Many π ] ρ̂ A) (ρ̂-⟦⟧ F A)))))
+            (H.sym (c-cata wf (proj₂ (elabᵢ V da))))
     where
       q  = cong (λ X → X T.⇒[ mk-kind Many π ] ρ̂ A) (ρ̂-⟦⟧ F A)
       TE = trans (⇝ᵢ-tm q _) (tm-i da)

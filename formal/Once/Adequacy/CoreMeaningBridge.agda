@@ -387,9 +387,9 @@ module _ {δ : GM.DefSem} where
   bridge-c V ag (t-curry-check df) dγ =
     trans (bindC (bridge-c V ag df dγ) (λ vf → refl))
           (sym (Comb.curry-sem {δ = δ} (proj₂ (elabᶜ V df)) dγ))
-  bridge-c {ctx = ctx} V ag (t-cata-check wf dalg) dγ =
-    trans (bindC (trans (bridge-c {ctx = ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx)} V ag dalg tt) (sym (RS.close-sem {Γ = NamedCtx.debruijn ctx} (proj₂ (elabᶜ V dalg)) fmt δ dγ))) (λ valg → refl))
-          (sym (Comb.cata-sem′ {δ = δ} wf (⊢close {Γ = NamedCtx.debruijn ctx} (proj₂ (elabᶜ V dalg))) dγ))
+  bridge-c V ag (t-cata-check wf dalg) dγ =
+    trans (bindC (bridge-c V ag dalg dγ) (λ valg → refl))
+          (sym (Comb.cata-sem′ {δ = δ} wf (proj₂ (elabᶜ V dalg)) dγ))
   bridge-c V ag (t-sub d p) dγ = cong ⟦ p ⟧<:ᵛ (bridge-i V ag d dγ)
   bridge-c V ag (t-lam {q = Zero} {q' = Zero} {π = π} le d) dγ = extensionality λ a → cong (subM (pure⊑ π)) (bridge-c V ag d _)
   bridge-c V ag (t-lam {q = One}  {q' = Zero} {π = π} le d) dγ = extensionality λ a → cong (subM (pure⊑ π)) (bridge-c V ag d _)
@@ -551,8 +551,7 @@ module _ {δ : GM.DefSem} where
   bridge-d V ag (d-pair df dg) dγ =
     trans (bindC (bridge-d V ag df _) (λ vf → bindC (bridge-d V ag dg _) (λ vg → refl)))
           (sym (Comb.pair-sem {δ = δ} (proj₂ (elabᵈ V df)) (proj₂ (elabᵈ V dg)) dγ))
-  bridge-d {ctx = ctx} V ag (d-cata wf dalg) dγ =
-    trans (bindC (trans (bridge-i {ctx = ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx)} V ag dalg tt)
-                        (sym (RS.close-sem {Γ = NamedCtx.debruijn ctx} (proj₂ (elabᵢ V dalg)) fmt δ dγ))) (λ valg → refl))
-          (sym (Comb.cata-sem′ {δ = δ} wf (⊢close {Γ = NamedCtx.debruijn ctx} (proj₂ (elabᵢ V dalg))) dγ))
+  bridge-d V ag (d-cata wf dalg) dγ =
+    trans (bindC (bridge-i V ag dalg dγ) (λ valg → refl))
+          (sym (Comb.cata-sem′ {δ = δ} wf (proj₂ (elabᵢ V dalg)) dγ))
 

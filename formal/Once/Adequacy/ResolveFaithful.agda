@@ -548,14 +548,14 @@ resolveExpr-faithful polys imps userFns fresh
   thunk-binop-faithful {C = B} polys imps userFns fresh f x (Srf.⊑ᵘ-+ˡ Ψ₁ (Many Srf.*ᵘ Ψ₂)) (Srf.⊑ᵘ-trans (Srf.⊑ᵘ-*Many Ψ₂) (Srf.⊑ᵘ-+ʳ Ψ₁ (Many Srf.*ᵘ Ψ₂))) (λ vf vx → vf vx) dγ
     (resolveExpr-faithful polys imps userFns fresh f (restrictᴰ {Γ = Γ} (Srf.⊑ᵘ-+ˡ Ψ₁ (Many Srf.*ᵘ Ψ₂)) dγ))
     (resolveExpr-faithful polys imps userFns fresh x (restrictᴰ {Γ = Γ} (Srf.⊑ᵘ-trans (Srf.⊑ᵘ-*Many Ψ₂) (Srf.⊑ᵘ-+ʳ Ψ₁ (Many Srf.*ᵘ Ψ₂))) dγ))
--- cata: D131 — the algebra is BOUND, so both sides are `⟦alg⟧ˢ tt >>=T` the
+-- cata: D131 — the algebra is BOUND, so both sides are `⟦alg⟧ˢ dγ >>=T` the
 -- same continuation and the whole clause is ONE `cong` over the algebra
--- denotation (the IH at empty env `tt`, lifted to a full T-value by funext
--- over fuel). The bind is why the trace is no longer syntactically `[]`.
+-- denotation (the IH at the same environment — plan 0.101, the algebra lives
+-- in the context).
 resolveExpr-faithful polys imps userFns fresh (Srf.cata {F = F} {A = A} wf alg) dγ =
   cong (λ ac → (ac >>=T λ valg →
                   returnT (λ x → sem-cata wf (SD.cata-ev-algˢ {F} {A} wf (returnT valg)) x)))
-       (( resolveExpr-faithful polys imps userFns fresh alg tt))
+       (( resolveExpr-faithful polys imps userFns fresh alg dγ))
 -- ana: dual of cata — a closure over the CLOSED coalgebra `⟦coalg⟧ˢ tt`.
 -- D179: the coalgebra now appears ONCE (inside the suspension) instead of
 -- twice (in `ana-eventsˢ` for the trace and in `sem-ana` for the value), so

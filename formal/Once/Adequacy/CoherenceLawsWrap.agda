@@ -176,8 +176,8 @@ module _ {n} {Γ : Ctx n} where
   curry-cong {Ψ} {A} {B} {C} {π₀} {π} {f} {f′} (≈-intro h1) = ≈-intro (curry-congˢ {Γ = Γ} {Ψ} {A} {B} {C} {π₀} {π} {f} {f′} h1)
 
 module _ {n} {Γ : Ctx n} where
-  cata-cong : ∀ {F A π} (wf : WellFormedF F) {g g′ : Expr ∅ zeroUsage (⟦ F ⟧T A ⇒[ mk-kind Many π ] A)} → g ≈ g′ → cata {Γ = Γ} wf g ≈ cata wf g′
-  cata-cong {F} {A} {π} wf {g} {g′} (≈-intro h1) = ≈-intro (cata-congˢ {Γ = Γ} {F} {A} {π} wf {g} {g′} h1)
+  cata-cong : ∀ {Ψ F A π} (wf : WellFormedF F) {g g′ : Expr Γ Ψ (⟦ F ⟧T A ⇒[ mk-kind Many π ] A)} → g ≈ g′ → cata {Γ = Γ} wf g ≈ cata wf g′
+  cata-cong {Ψ} {F} {A} {π} wf {g} {g′} (≈-intro h1) = ≈-intro (cata-congˢ {Γ = Γ} {Ψ} {F} {A} {π} wf {g} {g′} h1)
 
 module _ {n} {Γ : Ctx n} where
   ana-cong : ∀ {F A π₀ π} (wf : WellFormedF F) {g g′ : Expr ∅ zeroUsage (A ⇒[ mk-kind Many π ] ⟦ F ⟧T A)} → g ≈ g′ → ana {Γ = Γ} {π₀ = π₀} wf g ≈ ana wf g′
@@ -240,5 +240,5 @@ module _ {n} {Γ : Ctx n} where
   initial-coerce {A} {π} r = ≈-intro (initial-coerceˢ {Γ = Γ} {A} {π} r)
 
 module _ {n} {Γ : Ctx n} where
-  cata-coerce : ∀ {F A A′ π} (wf : WellFormedF F) (d : ⟦ F ⟧T A′ <: ⟦ F ⟧T A) (p : A <: A′) (g : π ⊑π π) (alg : Expr ∅ zeroUsage (⟦ F ⟧T A ⇒[ mk-kind Many π ] A)) → cata {Γ = Γ} wf (coerce (sub-arr {q = Many} d p g) alg) ≈ coerce (sub-arr (<:-refl (μ-type F)) p (⊑π-refl π)) (cata {Γ = Γ} wf alg)
-  cata-coerce {F} {A} {A′} {π} wf d p g alg = ≈-intro (cata-coerceˢ {Γ = Γ} {F} {A} {A′} {π} wf d p g alg)
+  cata-coerce : ∀ {Ψ F A A′ π} (wf : WellFormedF F) (d : ⟦ F ⟧T A′ <: ⟦ F ⟧T A) (p : A <: A′) (g : π ⊑π π) (alg : Expr Γ Ψ (⟦ F ⟧T A ⇒[ mk-kind Many π ] A)) → cata {Γ = Γ} wf (coerce (sub-arr {q = Many} d p g) alg) ≈ coerce (sub-arr (<:-refl (μ-type F)) p (⊑π-refl π)) (cata {Γ = Γ} wf alg)
+  cata-coerce {Ψ} {F} {A} {A′} {π} wf d p g alg = ≈-intro (cata-coerceˢ {Γ = Γ} {Ψ} {F} {A} {A′} {π} wf d p g alg)

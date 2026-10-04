@@ -278,13 +278,11 @@ rename {Δ = Δ} θ (Surface.closed e) =
   subst (λ Ψ → SExpr Δ Ψ _) (sym (thin-usage-zeroUsage θ)) (Surface.closed e)
 rename {Δ = Δ} θ (Surface.lift-morphism m) =
   subst (λ Ψ → SExpr Δ Ψ _) (sym (thin-usage-zeroUsage θ)) (Surface.lift-morphism m)
--- Plan 0.36 Phase 2a: cata is zeroUsage and its algebra lives in the
--- EMPTY context (`∅`), so the thinning θ : Γ ⊆ Δ never touches it —
--- same shape as `lift-morphism`.
-rename {Δ = Δ} θ (Surface.cata wfF alg) =
-  subst (λ Ψ → SExpr Δ Ψ _) (sym (thin-usage-zeroUsage θ)) (Surface.cata wfF alg)
--- `ana` (dual of `cata`): also zeroUsage with a coalgebra in `∅`, so θ never
--- touches it.
+-- Plan 0.101 (D265): the algebra lives in the context and carries the cata's
+-- usage, so renaming goes under it (unary, usage-preserving, like `neg`).
+rename θ (Surface.cata wfF alg) = Surface.cata wfF (rename θ alg)
+-- `ana`'s coalgebra stays CLOSED (plan 0.101: its capture needs a
+-- parameterized `Ana`), so θ never touches it.
 rename {Δ = Δ} θ (Surface.ana wfF coalg) =
   subst (λ Ψ → SExpr Δ Ψ _) (sym (thin-usage-zeroUsage θ)) (Surface.ana wfF coalg)
 -- Plan 0.2.4.5 D2: morphism-realm application. Usage shape mirrors

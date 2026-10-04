@@ -31767,8 +31767,7 @@ du_x86'45'64'45'correct_458 v0 v1 v2 v3 v4 v5 v6 v7 v8
            (coe
               v7 v8 (MAlonzo.Code.Once.Denotation.Program.d_table_386 (coe v9)))
            (MAlonzo.Code.Once.Denotation.Program.d_main_388 (coe v9)))
-      (coe
-         MAlonzo.Code.Once.Adequacy.FileWF.d_file'45'wf_12
+      (MAlonzo.Code.Once.Adequacy.FileWF.d_file'45'wf_310
          (coe MAlonzo.Code.Once.Target.Arch.C_x86'45'64_8))
 -- Once.Adequacy.ArchCorrectness.x86-32-correct
 d_x86'45'32'45'correct_496 ::
@@ -32019,8 +32018,7 @@ du_x86'45'32'45'correct_496 v0 v1 v2 v3 v4 v5 v6 v7 v8
            (coe
               v7 v8 (MAlonzo.Code.Once.Denotation.Program.d_table_386 (coe v9)))
            (MAlonzo.Code.Once.Denotation.Program.d_main_388 (coe v9)))
-      (coe
-         MAlonzo.Code.Once.Adequacy.FileWF.d_file'45'wf_12
+      (MAlonzo.Code.Once.Adequacy.FileWF.d_file'45'wf_310
          (coe MAlonzo.Code.Once.Target.Arch.C_x86'45'32_10))
 -- Once.Adequacy.ArchCorrectness.riscv64-correct
 d_riscv64'45'correct_534 ::
@@ -32281,8 +32279,7 @@ du_riscv64'45'correct_534 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
            (coe
               v8 v9 (MAlonzo.Code.Once.Denotation.Program.d_table_386 (coe v10)))
            (MAlonzo.Code.Once.Denotation.Program.d_main_388 (coe v10)))
-      (coe
-         MAlonzo.Code.Once.Adequacy.FileWF.d_file'45'wf_12
+      (MAlonzo.Code.Once.Adequacy.FileWF.d_file'45'wf_310
          (coe MAlonzo.Code.Once.Target.Arch.C_riscv64_12))
 -- Once.Adequacy.ArchCorrectness.arch-correctness
 d_arch'45'correctness_574 ::

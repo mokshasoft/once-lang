@@ -681,13 +681,12 @@ mutual
                              (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] C))
                           ⨾ Ψ
 
-    -- The cata algebra keeps `m-cata`'s CLEARED context, deliberately.
-    -- Widening it to the ambient context would admit a CAPTURING algebra —
-    -- a real semantic widening, and plan 0.76 risk 3 says to decide that in
-    -- its own entry rather than inherit it from this refactor.
-    -- The algebra's usage is `zeroUsage`, STATED rather than quantified: the
-    -- cleared context has no locals, so there is nothing for it to use. This
-    -- is the same closedness `Surface.cata` demands of the algebra it carries.
+    -- PLAN 0.101 (D265): the algebra is typed in the AMBIENT context — it may
+    -- capture locals — and its usage is the cata's. This is the core's
+    -- `⊢fold` (the algebra is an ordinary term in context, obtained once,
+    -- D131) and what makes `let x = e in b` and a top-level `x = e` used in `b`
+    -- interderivable (plan 0.94 §0): the cleared context was the last place a
+    -- definition and its definiens were not interchangeable.
     -- PLAN 0.80 A1: the premise is `WellFormedF F`, the PROPERTY — not
     -- `wellFormedF? F ≡ just wfF`, an equation about the DECIDER. The decider
     -- is sound and complete for the property, so the same judgments are
@@ -695,14 +694,12 @@ mutual
     -- a decision procedure. The elaborator still uses `wellFormedF?` — that is
     -- where an algorithm belongs — and hands its output over as the witness.
     t-cata-check : ∀ {ctx : NamedCtx} {alg : RawExpr} {F : Functor} {A : Type}
-                   {π : Once.Type.Purity}
+                   {π : Once.Type.Purity} {Ψ : Surface.Usage (NamedCtx.size ctx)}
                  → WellFormedF F
-                 → ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx)
-                     ⊢ᶜ alg ∶ ((⟦ F ⟧T A) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] A)
-                     ⨾ Surface.zeroUsage
+                 → ctx ⊢ᶜ alg ∶ ((⟦ F ⟧T A) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] A) ⨾ Ψ
                  → ctx ⊢ᶜ RApp (RResolved (gen "cata")) alg
                          ∶ ((μ-type F) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] A)
-                         ⨾ Surface.zeroUsage
+                         ⨾ Ψ
 
     -- D192: `ana coalg` in check mode at `A ⇒ ν-type F` — `t-cata-check`'s
     -- DUAL, and stated as its exact mirror so the two schemes cannot drift.
@@ -946,11 +943,10 @@ mutual
     -- D228 (phase C′): `cata` is the eliminator of `μF`; its carrier is what the
     -- algebra SYNTHESIZES (initiality: `cata alg` is determined by `alg`).
     d-cata     : ∀ {ctx : NamedCtx} {alg : RawExpr} {F : Functor} {A : Type} {π : Once.Type.Purity}
+                   {Ψ : Surface.Usage (NamedCtx.size ctx)}
                → WellFormedF F
-               → ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx)
-                   ⊢ᵢ alg ∶ ((⟦ F ⟧T A) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] A)
-                   ⨾ Surface.zeroUsage
-               → ctx ⊢ᵈ RApp (RResolved (gen "cata")) alg ∶ (μ-type F) ⇒[ π ]↦ A ⨾ Surface.zeroUsage
+               → ctx ⊢ᵢ alg ∶ ((⟦ F ⟧T A) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] A) ⨾ Ψ
+               → ctx ⊢ᵈ RApp (RResolved (gen "cata")) alg ∶ (μ-type F) ⇒[ π ]↦ A ⨾ Ψ
 
 _⊢_∶_⨾_ : (ctx : NamedCtx) → RawExpr → (A : Type)
          → Surface.Usage (NamedCtx.size ctx) → Set

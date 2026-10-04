@@ -1365,7 +1365,7 @@ du_ccE_586 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_ccE_586 v0 v1 v2 v3
   = coe
-      MAlonzo.Code.Once.TypeCheck.Completeness.du_check'45'complete_2580
+      MAlonzo.Code.Once.TypeCheck.Completeness.du_check'45'complete_2508
       (coe
          MAlonzo.Code.Once.Spec.Module.d_ctxOf_20
          (coe
@@ -1428,7 +1428,7 @@ du_D'8242'_590 v0 v1 v2
   = coe
       MAlonzo.Code.Once.Adequacy.TelePosition.du_sound'45'of_320
       (coe
-         MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV_6158
+         MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV_6172
          (coe du_ctx_574 (coe v0))
          (coe MAlonzo.Code.Once.Parser.d_funBody_110 (coe v1)) (coe v2))
 -- Once.Adequacy.TeleWalk.Invariant.MonoStep.M
@@ -3877,7 +3877,7 @@ du_ccU_902 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_ccU_902 v0 v1 v2 v3 v4 v5
   = coe
-      MAlonzo.Code.Once.TypeCheck.Completeness.du_check'45'complete_2580
+      MAlonzo.Code.Once.TypeCheck.Completeness.du_check'45'complete_2508
       (coe
          MAlonzo.Code.Once.TypeCheck.Classify.d_ctxWithImportsAndPolys_412
          (coe
@@ -3959,7 +3959,7 @@ du_cr_906 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_cr_906 v0 v1 v2
   = coe
-      MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV_6158
+      MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV_6172
       (coe
          MAlonzo.Code.Once.TypeCheck.Classify.d_ctxWithImportsAndPolys_412
          (coe MAlonzo.Code.Once.Compile.d_cimps_382 (coe v0))

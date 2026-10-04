@@ -1,0 +1,34 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
+-- Plan 0.101 (D265): a cata algebra may CAPTURE locals. `withBase k` folds a
+-- list with an algebra that reads the parameter `k` at the base case; `viaLet`
+-- binds the base with `let` — before D265 the first was rejected (the algebra
+-- was typed in a cleared context) and only a top-level `k` would do, so a
+-- definition and its definiens were not interchangeable (plan 0.94 §0).
+--
+--   withBase 5 [10, 20] = 10 + 20 + 5 = 35
+--   viaLet     [10, 20] = 10 + 20 + 2 = 32
+--   35 + 32 = 67
+--
+-- (A `let` body is INFERRED and a bare `cata` only CHECKS, so the let-bound
+-- fold carries an annotation — a mode fact, unrelated to capture.)
+--
+-- Expected: exit code 67.
+
+import I.Linux.Syscalls as S
+
+addPair : Int * Int -> Int
+addPair p = fst p + snd p
+
+withBase : Int -> Mu (K Unit + (K Int * Id)) -> Int
+withBase k = cata (case (\_ -> k) addPair)
+
+viaLet : Mu (K Unit + (K Int * Id)) -> Int
+viaLet = let b = 2 in (cata (case (\_ -> b) addPair) : Mu (K Unit + (K Int * Id)) -> Int)
+
+xs : Mu (K Unit + (K Int * Id))
+xs = In (inr (10, In (inr (20, In (inl unit)))))
+
+main : IO Unit
+main = exit@S (withBase 5 xs + viaLet xs)

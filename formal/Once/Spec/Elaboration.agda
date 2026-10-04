@@ -172,7 +172,7 @@ elabᶜ V (t-compose-check-f wf p dg) = lift2 composeᶜ ⊢composeᶜ (coerceE 
 elabᶜ V (t-case-copair-check df dg) = lift2 caseᶜ ⊢caseᶜ (elabᶜ V df) (elabᶜ V dg)
 elabᶜ V (t-pair-morph-check df dg)  = lift2 pairᶜ ⊢pairᶜ (elabᶜ V df) (elabᶜ V dg)
 elabᶜ V (t-curry-check df)          = lift1 curryᶜ ⊢curryᶜ (elabᶜ V df)
-elabᶜ V (t-cata-check wf dalg)      = lift1 cataᶜ (⊢cataᶜ wf) (closeE (elabᶜ V dalg))
+elabᶜ V (t-cata-check wf dalg)      = lift1 cataᶜ (⊢cataᶜ wf) (elabᶜ V dalg)
 elabᶜ V (t-ana-check wf dc)         = lift1 anaᶜ (⊢anaᶜ wf) (closeE (elabᶜ V dc))
 elabᶜ V (t-sub d p)                 = coerceE p (elabᵢ V d)
 elabᶜ V (t-lam {π = π} ≤p d)        = let (b , ⊢b) = elabᶜ V d in lam b , ⊢lam ≤p (⊢sub-eff (pure⊑ π) ⊢b)
@@ -280,4 +280,4 @@ elabᵈ V d-terminal = terminalᶜ , ⊢terminalᶜ
 elabᵈ V d-initial  = initialᶜ , ⊢initialᶜ
 elabᵈ V (d-case df dg) = lift2 caseᶜ ⊢caseᶜ (elabᵈ V df) (elabᵈ V dg)
 elabᵈ V (d-pair df dg) = lift2 pairᶜ ⊢pairᶜ (elabᵈ V df) (elabᵈ V dg)
-elabᵈ V (d-cata wf dalg) = lift1 cataᶜ (⊢cataᶜ wf) (closeE (elabᵢ V dalg))
+elabᵈ V (d-cata wf dalg) = lift1 cataᶜ (⊢cataᶜ wf) (elabᵢ V dalg)

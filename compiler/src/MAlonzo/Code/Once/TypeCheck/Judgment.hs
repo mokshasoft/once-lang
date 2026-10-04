@@ -161,32 +161,32 @@ data T__'8866''7580'_'8758'_'10814'__16
                                       T__'8866''7580'_'8758'_'10814'__16
                                       T__'8866''7580'_'8758'_'10814'__16 |
     C_t'45'curry'45'check_578 T__'8866''7580'_'8758'_'10814'__16 |
-    C_t'45'cata'45'check_590 MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_236
+    C_t'45'cata'45'check_592 MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_236
                              T__'8866''7580'_'8758'_'10814'__16 |
-    C_t'45'ana'45'check_604 MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_236
+    C_t'45'ana'45'check_606 MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_236
                             T__'8866''7580'_'8758'_'10814'__16 |
-    C_t'45'sub_616 MAlonzo.Code.Once.Type.T_Type_108
+    C_t'45'sub_618 MAlonzo.Code.Once.Type.T_Type_108
                    T__'8866''7522'_'8758'_'10814'__10
                    MAlonzo.Code.Once.Type.Sub.T__'60''58'__48 |
-    C_t'45'lam_636 MAlonzo.Code.Once.Type.T_Quantity_4
+    C_t'45'lam_638 MAlonzo.Code.Once.Type.T_Quantity_4
                    T__'8866''7580'_'8758'_'10814'__16 |
-    C_t'45'pair'45'lit'45'check_652 MAlonzo.Code.Once.Surface.Context.T_Usage_60
+    C_t'45'pair'45'lit'45'check_654 MAlonzo.Code.Once.Surface.Context.T_Usage_60
                                     MAlonzo.Code.Once.Surface.Context.T_Usage_60
                                     T__'8866''7580'_'8758'_'10814'__16
                                     T__'8866''7580'_'8758'_'10814'__16 |
-    C_t'45'In'45'app'45'check_662 MAlonzo.Code.Once.Surface.Context.T_Usage_60
+    C_t'45'In'45'app'45'check_664 MAlonzo.Code.Once.Surface.Context.T_Usage_60
                                   MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_236
                                   T__'8866''7580'_'8758'_'10814'__16 |
-    C_t'45'apply'45'check_674 MAlonzo.Code.Once.Type.T_Type_108
+    C_t'45'apply'45'check_676 MAlonzo.Code.Once.Type.T_Type_108
                               MAlonzo.Code.Once.Surface.Context.T_Usage_60
                               T__'8866''7522'_'8758'_'10814'__10 |
-    C_t'45'inl'45'app'45'check_686 MAlonzo.Code.Once.Surface.Context.T_Usage_60
+    C_t'45'inl'45'app'45'check_688 MAlonzo.Code.Once.Surface.Context.T_Usage_60
                                    T__'8866''7580'_'8758'_'10814'__16 |
-    C_t'45'inr'45'app'45'check_698 MAlonzo.Code.Once.Surface.Context.T_Usage_60
+    C_t'45'inr'45'app'45'check_700 MAlonzo.Code.Once.Surface.Context.T_Usage_60
                                    T__'8866''7580'_'8758'_'10814'__16 |
-    C_t'45'initial'45'app'45'check_708 MAlonzo.Code.Once.Surface.Context.T_Usage_60
+    C_t'45'initial'45'app'45'check_710 MAlonzo.Code.Once.Surface.Context.T_Usage_60
                                        T__'8866''7580'_'8758'_'10814'__16 |
-    C_t'45'var'45'poly'45'instantiate_722 MAlonzo.Code.Once.Type.T_PolyType_254
+    C_t'45'var'45'poly'45'instantiate_724 MAlonzo.Code.Once.Type.T_PolyType_254
                                           MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34
                                           [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14]
                                           MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
@@ -195,12 +195,12 @@ d__'8866''7496'_'8758'_'8658''91'_'93''8614'_'10814'__24 a0 a1 a2
                                                          a3 a4 a5
   = ()
 data T__'8866''7496'_'8758'_'8658''91'_'93''8614'_'10814'__24
-  = C_d'45'infer_740 MAlonzo.Code.Once.Type.T_Type_108
+  = C_d'45'infer_742 MAlonzo.Code.Once.Type.T_Type_108
                      MAlonzo.Code.Once.Type.T_Purity_32
                      T__'8866''7522'_'8758'_'10814'__10
                      MAlonzo.Code.Once.Type.Sub.T__'60''58'__48
                      MAlonzo.Code.Once.Type.Sub.T__'8849'π__6 |
-    C_d'45'poly_764 MAlonzo.Code.Once.Type.T_Purity_32
+    C_d'45'poly_766 MAlonzo.Code.Once.Type.T_Purity_32
                     MAlonzo.Code.Once.Type.T_PolyType_254
                     MAlonzo.Code.Once.Type.T_PolyType_254
                     MAlonzo.Code.Once.Type.T_PolyType_254
@@ -212,36 +212,36 @@ data T__'8866''7496'_'8758'_'8658''91'_'93''8614'_'10814'__24
                      MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34)
                     MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
                     MAlonzo.Code.Once.Type.Sub.T__'8849'π__6 |
-    C_d'45'lam_782 MAlonzo.Code.Once.Type.T_Quantity_4
+    C_d'45'lam_784 MAlonzo.Code.Once.Type.T_Quantity_4
                    T__'8866''7522'_'8758'_'10814'__10 |
-    C_d'45'compose_802 MAlonzo.Code.Once.Type.T_Type_108
+    C_d'45'compose_804 MAlonzo.Code.Once.Type.T_Type_108
                        MAlonzo.Code.Once.Surface.Context.T_Usage_60
                        MAlonzo.Code.Once.Surface.Context.T_Usage_60
                        T__'8866''7496'_'8758'_'8658''91'_'93''8614'_'10814'__24
                        T__'8866''7496'_'8758'_'8658''91'_'93''8614'_'10814'__24 |
-    C_d'45'id_810 | C_d'45'fst_820 | C_d'45'snd_830 |
-    C_d'45'terminal_838 | C_d'45'initial_844 |
-    C_d'45'case_864 MAlonzo.Code.Once.Surface.Context.T_Usage_60
+    C_d'45'id_812 | C_d'45'fst_822 | C_d'45'snd_832 |
+    C_d'45'terminal_840 | C_d'45'initial_846 |
+    C_d'45'case_866 MAlonzo.Code.Once.Surface.Context.T_Usage_60
                     MAlonzo.Code.Once.Surface.Context.T_Usage_60
                     T__'8866''7496'_'8758'_'8658''91'_'93''8614'_'10814'__24
                     T__'8866''7496'_'8758'_'8658''91'_'93''8614'_'10814'__24 |
-    C_d'45'pair_884 MAlonzo.Code.Once.Surface.Context.T_Usage_60
+    C_d'45'pair_886 MAlonzo.Code.Once.Surface.Context.T_Usage_60
                     MAlonzo.Code.Once.Surface.Context.T_Usage_60
                     T__'8866''7496'_'8758'_'8658''91'_'93''8614'_'10814'__24
                     T__'8866''7496'_'8758'_'8658''91'_'93''8614'_'10814'__24 |
-    C_d'45'cata_896 MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_236
+    C_d'45'cata_900 MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_236
                     T__'8866''7522'_'8758'_'10814'__10
 -- Once.TypeCheck.Judgment._⊢_∶_⨾_
-d__'8866'_'8758'_'10814'__902 ::
+d__'8866'_'8758'_'10814'__906 ::
   MAlonzo.Code.Once.TypeCheck.Classify.T_NamedCtx_378 ->
   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Surface.Context.T_Usage_60 -> ()
-d__'8866'_'8758'_'10814'__902 = erased
+d__'8866'_'8758'_'10814'__906 = erased
 -- Once.TypeCheck.Judgment.Typed
-d_Typed_914 ::
+d_Typed_918 ::
   MAlonzo.Code.Once.TypeCheck.Classify.T_NamedCtx_378 ->
   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Surface.Context.T_Usage_60 -> ()
-d_Typed_914 = erased
+d_Typed_918 = erased

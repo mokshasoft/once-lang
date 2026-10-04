@@ -428,7 +428,7 @@ mutual
   agree-cc (t-case-copair-check df dg) (t-case-copair-check df′ dg′) = cong₂ _+ᵘ_ (agree-cc df df′) (agree-cc dg dg′)
   agree-cc (t-pair-morph-check df dg) (t-pair-morph-check df′ dg′) = cong₂ _+ᵘ_ (agree-cc df df′) (agree-cc dg dg′)
   agree-cc (t-curry-check d) (t-curry-check d′) = agree-cc d d′
-  agree-cc (t-cata-check _ _) (t-cata-check _ _) = refl
+  agree-cc (t-cata-check _ d) (t-cata-check _ d′) = agree-cc d d′
   agree-cc (t-ana-check _ _) (t-ana-check _ _) = refl
   agree-cc (t-lam _ b) (t-lam _ b′) with agree-cc b b′
   ... | refl = refl
@@ -490,7 +490,7 @@ mutual
   agree-dc d-initial t-initial-morph-check = refl
   agree-dc (d-case df dg) (t-case-copair-check df′ dg′) = cong₂ _+ᵘ_ (agree-dc df df′) (agree-dc dg dg′)
   agree-dc (d-pair df dg) (t-pair-morph-check df′ dg′) = cong₂ _+ᵘ_ (agree-dc df df′) (agree-dc dg dg′)
-  agree-dc (d-cata _ _) (t-cata-check _ _) = refl
+  agree-dc (d-cata _ a) (t-cata-check _ c) = agree-ic a c
   agree-dc (d-poly _ _ _ _ _ _ _ _) (t-var-poly-instantiate _ _ _ _ _) = refl
 
   ----------------------------------------------------------------------
@@ -534,7 +534,7 @@ mutual
   agree-dd (d-pair df dg) (d-pair df′ dg′) with agree-dd df df′ | agree-dd dg dg′
   ... | refl , refl | refl , refl = refl , refl
   agree-dd (d-cata _ a) (d-cata _ a′) with cod-≡ (proj₁ (agree-ii a a′))
-  ... | refl = refl , refl
+  ... | refl = refl , proj₂ (agree-ii a a′)
   -- Plan 0.103 phase 2b: the domain's instance determines the codomain.
   agree-dd (d-poly _ _ p _ as inc (θ , e , _) _) (d-poly _ _ p′ _ as′ _ (θ′ , e′ , _) _) with trans (sym p) p′
   ... | refl = dpoly-det as as′ inc θ θ′ e e′ , refl

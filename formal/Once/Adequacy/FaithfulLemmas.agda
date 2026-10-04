@@ -190,46 +190,41 @@ cataM-fold {F} {A} {π} wfF c =
                      (subst (λ o → IR (⌊ ⟦ F ⟧T A ⇒[ mk-kind Many π ] A ⌋ C.* o) ⌊ A ⌋)
                             (⌊⟧T-commute F A) applyIR)
 
--- D131: the elaboration is `cataM ∘ (ealg ∘ terminal)` and BOTH sides now bind
--- the algebra once, so this is a bind-congruence over a shared computation
--- plus one per-closure fold equality — structurally simpler than the old
--- proof, which had to bridge a per-layer REBUILD against a bound closure.
-cata-body : ∀ {m} {Γ : Ctx m} {F : Functor} {A} {π : Purity}
+-- D131: the elaboration is `cataM ∘ ealg` and BOTH sides bind the algebra once,
+-- so this is a bind-congruence over a shared computation plus one per-closure
+-- fold equality. PLAN 0.101 (D265): the algebra lives in the context, so its
+-- own faithfulness (`ih`) is at the SAME environment `dγ`.
+cata-body : ∀ {m} {Γ : Ctx m} {Ψ : Usage m} {F : Functor} {A} {π : Purity}
               (wf : WellFormedF F)
-              (alg : Expr ∅ zeroUsage (⟦ F ⟧T A ⇒[ mk-kind Many π ] A))
-              (ih : liftFn fmt ρ {⟦ ∅ ⟧ᶜ} {⟦ F ⟧T A ⇒[ mk-kind Many π ] A} (elaborate C.Heap alg) tt ≡ SD.⟦ alg ⟧ˢ fmt σ₀ tt)
-              (dγ : ⟦ ⟦ Γ ↾ zeroUsage ⟧ᶜ ⟧ᴰ)
-            → liftFn fmt ρ {⟦ Γ ↾ zeroUsage ⟧ᶜ} {μ-type F ⇒[ mk-kind Many π ] A}
+              (alg : Expr Γ Ψ (⟦ F ⟧T A ⇒[ mk-kind Many π ] A))
+              (dγ : ⟦ ⟦ Γ ↾ Ψ ⟧ᶜ ⟧ᴰ)
+              (ih : liftFn fmt ρ {⟦ Γ ↾ Ψ ⟧ᶜ} {⟦ F ⟧T A ⇒[ mk-kind Many π ] A} (elaborate C.Heap alg) dγ
+                    ≡ SD.⟦ alg ⟧ˢ fmt σ₀ dγ)
+            → liftFn fmt ρ {⟦ Γ ↾ Ψ ⟧ᶜ} {μ-type F ⇒[ mk-kind Many π ] A}
                 (elaborate C.Heap (cata {Γ = Γ} wf alg)) dγ
               ≡ SD.⟦ cata {Γ = Γ} wf alg ⟧ˢ fmt σ₀ dγ
-cata-body {Γ = Γ} {F = F} {A = A} {π = π} wf alg ih dγ =
+cata-body {Γ = Γ} {Ψ = Ψ} {F = F} {A = A} {π = π} wf alg dγ ih =
   trans split fold-step
   where
     ealg   = elaborate C.Heap alg
     cataM' = cataM {F} {A} wf C.Heap
     -- `liftFn`'s surface implicits cannot be inferred through `⌊_⌋`, so pin
-    -- them once here rather than at each of the four occurrences.
+    -- them once here.
     liftCataM = liftFn fmt ρ {⟦ F ⟧T A ⇒[ mk-kind Many π ] A}
                            {μ-type F ⇒[ mk-kind Many π ] A} cataM'
-    liftEalg  = liftFn fmt ρ {⟦ ∅ ⟧ᶜ} {⟦ F ⟧T A ⇒[ mk-kind Many π ] A} ealg
 
-    -- The composition splits and `∘ terminal` feeds the algebra the empty
-    -- environment, so the left factor is the algebra's own denotation and the
-    -- IH applies to it directly.
-    split : liftFn fmt ρ {⟦ Γ ↾ zeroUsage ⟧ᶜ} {μ-type F ⇒[ mk-kind Many π ] A}
+    -- The composition splits; the left factor is the algebra's own
+    -- denotation, which the IH identifies with its surface meaning.
+    split : liftFn fmt ρ {⟦ Γ ↾ Ψ ⟧ᶜ} {μ-type F ⇒[ mk-kind Many π ] A}
                    (elaborate C.Heap (cata {Γ = Γ} wf alg)) dγ
-          ≡ (SD.⟦ alg ⟧ˢ fmt σ₀ tt >>=T liftCataM)
-    split = trans (cong (λ h → h dγ) (liftFn-∘ {B = ⟦ F ⟧T A ⇒[ mk-kind Many π ] A} {C = μ-type F ⇒[ mk-kind Many π ] A} {A = ⟦ Γ ↾ zeroUsage ⟧ᶜ} cataM' (ealg C.∘ C.terminal)))
-                  (cong (λ t → t >>=T liftCataM)
-                        (trans (cong (λ h → h dγ) (liftFn-∘ {B = ⟦ ∅ ⟧ᶜ} {C = ⟦ F ⟧T A ⇒[ mk-kind Many π ] A} {A = ⟦ Γ ↾ zeroUsage ⟧ᶜ} ealg C.terminal))
-                               (trans (cong (λ t → t >>=T liftEalg)
-                                            (cong (λ h → h dγ) (liftFn-terminal {⟦ Γ ↾ zeroUsage ⟧ᶜ})))
-                                      ih)))
+          ≡ (SD.⟦ alg ⟧ˢ fmt σ₀ dγ >>=T liftCataM)
+    split = trans (cong (λ h → h dγ) (liftFn-∘ {B = ⟦ F ⟧T A ⇒[ mk-kind Many π ] A} {C = μ-type F ⇒[ mk-kind Many π ] A} {A = ⟦ Γ ↾ Ψ ⟧ᶜ} cataM' ealg))
+                  (cong (λ t → t >>=T liftCataM) ih)
 
     -- Per obtained closure the fold agrees — `cataM-fold`.
-    fold-step : (SD.⟦ alg ⟧ˢ fmt σ₀ tt >>=T liftCataM)
+    fold-step : (SD.⟦ alg ⟧ˢ fmt σ₀ dγ >>=T liftCataM)
               ≡ SD.⟦ cata {Γ = Γ} wf alg ⟧ˢ fmt σ₀ dγ
-    fold-step = cong (λ g → SD.⟦ alg ⟧ˢ fmt σ₀ tt >>=T g)
+    fold-step = cong (λ g → SD.⟦ alg ⟧ˢ fmt σ₀ dγ >>=T g)
                      (extensionality (λ c → cataM-fold {F} {A} {π} wf c))
 
 ------------------------------------------------------------------------

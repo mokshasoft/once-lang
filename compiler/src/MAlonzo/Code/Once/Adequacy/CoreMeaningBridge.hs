@@ -1295,7 +1295,7 @@ d_bridge'45'c_1736 ::
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_bridge'45'c_1736 = erased
 -- Once.Adequacy.CoreMeaningBridge._..extendedlambda0
-d_'46'extendedlambda0_2540 ::
+d_'46'extendedlambda0_2538 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
@@ -1324,4 +1324,4 @@ d_'46'extendedlambda0_2540 ::
   AgdaAny ->
   MAlonzo.Code.Data.Sum.Base.T__'8846'__30 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'46'extendedlambda0_2540 = erased
+d_'46'extendedlambda0_2538 = erased

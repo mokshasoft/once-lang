@@ -28,6 +28,7 @@ open import Once.CanonicalName using (CanonicalName; bare; _≟ᶜ_; showCanonic
 open import Once.IR using (IR)
 import Once.IR as IR
 open import Once.IRTy using (IRTy; ⌊_⌋; _≟IRTy_)
+import Once.IRTy.WF
 open import Once.IR.Ref using (refIR)
 open import Once.Functor.Translate using (IsConcrete; con-base; con-fun; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; base-rigid)
 open import Once.Surface.Syntax hiding (_,_; _,_^_)
@@ -259,6 +260,7 @@ Linked-subst : ∀ {tbl : List IRFun} {I : Set} (F G : I → IRTy) {i j} (eq : i
 Linked-subst F G refl ir l = l
 
 linked-[] : ∀ {tbl : List IRFun} {A B} (ir : IR A B) → Linked σ [] ir → Linked σ tbl ir
+
 linked-[] {tbl = tbl} = linked-mono (λ {f} {A} {B} → linkedAt-[] {tbl} {f} {A} {B})
 
 restrictEnv-cf : ∀ {n} {Γ : Ctx n} {Ψ Ψ′ : Usage n} (m : _) (ule : Ψ′ ⊑ᵘ Ψ) → Linked σ [] (restrictEnv {Γ = Γ} m ule)
@@ -444,7 +446,7 @@ module _ {σ : ISig} (tbl : List IRFun) where
   elaborate-linked′ m (cata {F = F} {A = A} wfF alg) r =
     Linked-subst (λ o → (⌊ ⟦ F ⟧T A ⌋ Once.IRTy.⇛ ⌊ A ⌋) Once.IRTy.* o) (λ _ → ⌊ A ⌋)
                  (Once.IRTy.⌊⟧T-commute F A) (IR.apply IR.∘ IR.⟨ IR.fst , IR.snd ⟩) (tt , (tt , tt))
-    , (elaborate-linked′ m alg r , tt)
+    , elaborate-linked′ m alg r
   elaborate-linked′ m (ana {F = F} {A = A} wfF coalg) r =
     Linked-subst (λ _ → ⌊ A ⌋) (λ o → o) (Once.IRTy.⌊⟧T-commute F A)
                  (IR.apply IR.∘ IR.⟨ elaborate m coalg IR.∘ IR.terminal , IR.id ⟩) (tt , ((elaborate-linked′ m coalg r , tt) , tt))

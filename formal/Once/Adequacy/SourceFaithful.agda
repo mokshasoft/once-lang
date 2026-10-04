@@ -1716,7 +1716,7 @@ faithful (case' {Γ = Γ} {Ψs = Ψs} {Ψₗ = Ψₗ} {Ψᵣ = Ψᵣ} {qℓ = q�
             (trans (cong (λ w → subst T (cohᴰ C) (evalᴰ fmt ρ RR w))
                          (sym (pair-subst⁻ (cohᴰ ⟦ Γ ↾ (Ψₗ ⊔ᵘ Ψᵣ) ⟧ᶜ) (cohᴰ B) Eall b)))
                    ((RR-lift b)))
-faithful {Γ = Γ} (cata wf alg) dγ = FL.cata-body {Γ = Γ} wf alg (faithful alg tt) dγ
+faithful {Γ = Γ} (cata wf alg) dγ = FL.cata-body {Γ = Γ} wf alg dγ (faithful alg dγ)
 -- ana: dual of cata; reduces to the same closure-bridge via `ana-body`
 -- (+ the `ana-ev-bridge` trace lemma).
 faithful {Γ = Γ} (ana {π₀ = π₀} {π = π} wf coalg) dγ = FL.ana-body {Γ = Γ} {π₀ = π₀} {π = π} wf coalg (faithful coalg tt) dγ

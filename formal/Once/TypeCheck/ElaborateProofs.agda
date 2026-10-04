@@ -1288,22 +1288,23 @@ checkCataGoV-pure-J ctx alg F A .(wellFormedF? F) refl = refl
 checkCataGo-just-success :
   ∀ (ctx : NamedCtx) (alg : RawExpr) (F : Once.Type.Functor) (A : Type) (π : Once.Type.Purity)
     (wfF : Once.Functor.Translate.WellFormedF F) (eqW : wellFormedF? F ≡ just wfF)
-    {algE : SExpr (NamedCtx.debruijn (ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx)))
-                  Surface.zeroUsage (Once.Type.⟦ F ⟧T A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] A)}
+    {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {algE : SExpr (NamedCtx.debruijn ctx)
+                  Ψ (Once.Type.⟦ F ⟧T A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] A)}
     {d fr : ℕ}
-    {w : ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx)
+    {w : ctx
            ⊢ᶜ alg ∶ (Once.Type.⟦ F ⟧T A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] A)
-           ⨾ Surface.zeroUsage}
-  → checkElabV (ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx))
+           ⨾ Ψ}
+  → checkElabV ctx
               alg (Once.Type.⟦ F ⟧T A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] A)
-      ≡ (success Surface.zeroUsage algE d fr , w)
+      ≡ (success Ψ algE d fr , w)
   → checkCataGo ctx alg F A π (just wfF) eqW
-      ≡ (success Surface.zeroUsage (Surface.cata wfF algE) (suc d) (NamedCtx.freshCounter ctx)
+      ≡ (success Ψ (Surface.cata wfF algE) (suc d) fr
           , t-cata-check wfF w)
 checkCataGo-just-success ctx alg F A π wfF eqW eqAlgV
-  with checkElabV (ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx))
+  with checkElabV ctx
                   alg (Once.Type.⟦ F ⟧T A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] A) | eqAlgV
-... | (success Surface.[] _ _ _ , w) | refl = refl
+... | (success _ _ _ _ , w) | refl = refl
 
 -- D192: the ANA bridges. `checkAna` has no eff/pure split — it is grade-
 -- generic in one clause, because the coalgebra's grade IS the unfold's and
@@ -1354,20 +1355,21 @@ checkAnaGo-just-success ctx coalg F A π₀ π wfF eqW eqCoalgV
 checkCata-eff-strong-hlp :
   ∀ (ctx : NamedCtx) (alg : RawExpr) (F : Once.Type.Functor) (A : Type)
     {wfF : Once.Functor.Translate.WellFormedF F} {eqW : wellFormedF? F ≡ just wfF}
-    {algE : SExpr (NamedCtx.debruijn (ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx)))
-                  Surface.zeroUsage (Once.Type.⟦ F ⟧T A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] A)}
-    {d : ℕ}
-    {w : ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx)
+    {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {algE : SExpr (NamedCtx.debruijn ctx)
+                  Ψ (Once.Type.⟦ F ⟧T A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] A)}
+    {d fr : ℕ}
+    {w : ctx
            ⊢ᶜ alg ∶ (Once.Type.⟦ F ⟧T A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] A)
-           ⨾ Surface.zeroUsage}
+           ⨾ Ψ}
     (r : VerifiedCheckResult ctx (Raw.RApp (Raw.RResolved (gen "cata")) alg)
            (Once.Type.μ-type F Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] A))
   → checkCataGo ctx alg F A Once.Type.eff (wellFormedF? F) refl ≡ r
-  → r ≡ (success Surface.zeroUsage (Surface.cata wfF algE) (suc d) (NamedCtx.freshCounter ctx)
+  → r ≡ (success Ψ (Surface.cata wfF algE) (suc d) fr
           , t-cata-check wfF w)
   → checkElabV ctx (Raw.RApp (Raw.RResolved (gen "cata")) alg)
               (Once.Type.μ-type F Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] A)
-      ≡ (success Surface.zeroUsage (Surface.cata wfF algE) (suc d) (NamedCtx.freshCounter ctx)
+      ≡ (success Ψ (Surface.cata wfF algE) (suc d) fr
           , t-cata-check wfF w)
 checkCata-eff-strong-hlp ctx alg F A (success Ψ eE d fr , w) eqr eqStrong
   rewrite eqr = eqStrong

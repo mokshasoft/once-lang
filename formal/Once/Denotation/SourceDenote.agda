@@ -327,7 +327,7 @@ sigOpˢ fmt σ si a = fmapT (injectᵇ (conB si)) (sigOpT fmt (ffiE (calls σ)) 
 -- once per layer. Binding it here is the same rule every other combinator arm
 -- follows (D130) and matches both `⟦_⟧ᶜ` and the elaboration (`cataM ∘ ealg`).
 ⟦ cata {Γ = Γ} {F = F} {A = A} wf alg ⟧ˢ fmt σ dγ =
-  ⟦ alg ⟧ˢ fmt σ tt >>=T λ valg →
+  ⟦ alg ⟧ˢ fmt σ dγ >>=T λ valg →
   returnT (λ x → sem-cata wf (cata-ev-algˢ {F} {A} wf (returnT valg)) x)
 -- Ana: the productive unfold. Coalgebra CLOSED (∅) → `⟦coalg⟧ˢ tt` is the
 -- closure. TRACE via `ana-eventsˢ` (depth-bounded prefix, the SOLE T-ℕ consumer);

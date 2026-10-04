@@ -234,9 +234,9 @@ module _ {n} {Γ : Ctx n} where
              → f ≈ˢ f′ → curry' {π₀ = π₀} f ≈ˢ curry' f′
   curry-congˢ = cong (λ X σ dγ → X σ dγ >>=T λ vf → returnT (λ a → returnT (λ b → vf (a , b))))
 
-  cata-congˢ : ∀ {F A π} (wf : WellFormedF F) {g g′ : Expr ∅ zeroUsage (⟦ F ⟧T A ⇒[ mk-kind Many π ] A)}
+  cata-congˢ : ∀ {Ψ F A π} (wf : WellFormedF F) {g g′ : Expr Γ Ψ (⟦ F ⟧T A ⇒[ mk-kind Many π ] A)}
             → g ≈ˢ g′ → cata {Γ = Γ} wf g ≈ˢ cata wf g′
-  cata-congˢ {F} {A} wf = cong (λ X σ dγ → X σ _ >>=T λ valg →
+  cata-congˢ {F = F} {A} wf = cong (λ X σ dγ → X σ dγ >>=T λ valg →
     returnT (λ x → sem-cata wf (cata-ev-algˢ {F} {A} wf (returnT valg)) x))
 
   ana-congˢ : ∀ {F A π₀ π} (wf : WellFormedF F) {g g′ : Expr ∅ zeroUsage (A ⇒[ mk-kind Many π ] ⟦ F ⟧T A)}
@@ -457,14 +457,14 @@ cata-core {F} wf {A} {A′} d p g valg x =
 
 module _ {n} {Γ : Ctx n} where
 
-  cata-coerceˢ : ∀ {F A A′ π} (wf : WellFormedF F) (d : ⟦ F ⟧T A′ <: ⟦ F ⟧T A) (p : A <: A′) (g : π ⊑π π)
-                  (alg : Expr ∅ zeroUsage (⟦ F ⟧T A ⇒[ mk-kind Many π ] A))
+  cata-coerceˢ : ∀ {Ψ F A A′ π} (wf : WellFormedF F) (d : ⟦ F ⟧T A′ <: ⟦ F ⟧T A) (p : A <: A′) (g : π ⊑π π)
+                  (alg : Expr Γ Ψ (⟦ F ⟧T A ⇒[ mk-kind Many π ] A))
               → cata {Γ = Γ} wf (coerce (sub-arr {q = Many} d p g) alg)
                 ≈ˢ coerce (sub-arr (<:-refl (μ-type F)) p (⊑π-refl π)) (cata {Γ = Γ} wf alg)
   cata-coerceˢ wf d p g alg = extensionality λ σ → extensionality λ dγ →
-    trans (bind-fmap _ (⟦ alg ⟧ˢ fmt σ tt) _)
-     (trans (bind-congʳ (⟦ alg ⟧ˢ fmt σ tt) λ valg → cong returnT (extensionality λ x → cata-core wf d p g valg x))
-            (sym (fmap-bind _ (⟦ alg ⟧ˢ fmt σ tt) _)))
+    trans (bind-fmap _ (⟦ alg ⟧ˢ fmt σ dγ) _)
+     (trans (bind-congʳ (⟦ alg ⟧ˢ fmt σ dγ) λ valg → cong returnT (extensionality λ x → cata-core wf d p g valg x))
+            (sym (fmap-bind _ (⟦ alg ⟧ˢ fmt σ dγ) _)))
 
 -- The same laws at `_≈_` live in `CoherenceLawsWrap` (split for the 30 s
 -- per-module check budget).

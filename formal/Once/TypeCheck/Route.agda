@@ -154,7 +154,8 @@ mutual
             → Rcc df df′ → Rcc dg dg′ → Rcc (t-pair-morph-check df dg) (t-pair-morph-check df′ dg′)
     cc-curry : ∀ {Ψ Ψ′} {d : ctx ⊢ᶜ e ∶ ((A * B) ⇒[ T.mk-kind T.Many π ] C) ⨾ Ψ} {d′ : ctx ⊢ᶜ e ∶ ((A * B) ⇒[ T.mk-kind T.Many π ] C) ⨾ Ψ′}
              → Rcc d d′ → Rcc (t-curry-check {π₀ = π₀} d) (t-curry-check d′)
-    cc-cata : ∀ {F w w′} {a a′ : _ ⊢ᶜ e ∶ ((T.⟦ F ⟧T A) ⇒[ T.mk-kind T.Many π ] A) ⨾ Surface.zeroUsage}
+    cc-cata : ∀ {F w w′ Ψ Ψ′} {a : ctx ⊢ᶜ e ∶ ((T.⟦ F ⟧T A) ⇒[ T.mk-kind T.Many π ] A) ⨾ Ψ}
+                {a′ : ctx ⊢ᶜ e ∶ ((T.⟦ F ⟧T A) ⇒[ T.mk-kind T.Many π ] A) ⨾ Ψ′}
             → Rcc a a′ → Rcc (t-cata-check {ctx = ctx} {F = F} w a) (t-cata-check {F = F} w′ a′)
     cc-ana : ∀ {F w w′} {a a′ : _ ⊢ᶜ e ∶ (A ⇒[ T.mk-kind T.Many π ] (T.⟦ F ⟧T A)) ⨾ Surface.zeroUsage}
            → Rcc a a′ → Rcc (t-ana-check {ctx = ctx} {F = F} {π₀ = π₀} w a) (t-ana-check {F = F} w′ a′)
@@ -208,8 +209,8 @@ mutual
     dc-pair : ∀ {Ψ₁ Ψ₁′ Ψ₂ Ψ₂′} {df : ctx ⊢ᵈ e₁ ∶ A ⇒[ π ]↦ B ⨾ Ψ₁} {df′ : ctx ⊢ᶜ e₁ ∶ (A ⇒[ T.mk-kind T.Many π ] B₁) ⨾ Ψ₁′}
                 {dg : ctx ⊢ᵈ e₂ ∶ A ⇒[ π ]↦ C ⨾ Ψ₂} {dg′ : ctx ⊢ᶜ e₂ ∶ (A ⇒[ T.mk-kind T.Many π ] C₁) ⨾ Ψ₂′}
             → Rdc df df′ → Rdc dg dg′ → Rdc (d-pair df dg) (t-pair-morph-check df′ dg′)
-    dc-cata : ∀ {F w w′} {a : _ ⊢ᵢ e ∶ ((T.⟦ F ⟧T A) ⇒[ T.mk-kind T.Many π ] A) ⨾ Surface.zeroUsage}
-                {a′ : _ ⊢ᶜ e ∶ ((T.⟦ F ⟧T A′) ⇒[ T.mk-kind T.Many π ] A′) ⨾ Surface.zeroUsage}
+    dc-cata : ∀ {F w w′ Ψ Ψ′} {a : ctx ⊢ᵢ e ∶ ((T.⟦ F ⟧T A) ⇒[ T.mk-kind T.Many π ] A) ⨾ Ψ}
+                {a′ : ctx ⊢ᶜ e ∶ ((T.⟦ F ⟧T A′) ⇒[ T.mk-kind T.Many π ] A′) ⨾ Ψ′}
             → Ric a a′ → Rdc (d-cata {ctx = ctx} {F = F} w a) (t-cata-check {F = F} w′ a′)
     dc-poly : ∀ {x s s′ sd sc b b′ pr pr′ ln ln′ li li′ p p′ g g′ as ki ki′ gr} {inc : T.CodVarsInDom sd sc}
       → Rdc {ctx} (d-poly {x = x} {A = A} {B = B} {π = π} {π′ = π′} {schema = s} {sd = sd} {sc = sc} {body = b} {prefix = pr}
@@ -244,8 +245,8 @@ mutual
     dd-pair : ∀ {Ψ₁ Ψ₁′ Ψ₂ Ψ₂′} {df : ctx ⊢ᵈ e₁ ∶ A ⇒[ π ]↦ B ⨾ Ψ₁} {df′ : ctx ⊢ᵈ e₁ ∶ A ⇒[ π ]↦ B′ ⨾ Ψ₁′}
                 {dg : ctx ⊢ᵈ e₂ ∶ A ⇒[ π ]↦ C ⨾ Ψ₂} {dg′ : ctx ⊢ᵈ e₂ ∶ A ⇒[ π ]↦ C′ ⨾ Ψ₂′}
             → Rdd df df′ → Rdd dg dg′ → Rdd (d-pair df dg) (d-pair df′ dg′)
-    dd-cata : ∀ {F w w′} {a : _ ⊢ᵢ e ∶ ((T.⟦ F ⟧T A) ⇒[ T.mk-kind T.Many π ] A) ⨾ Surface.zeroUsage}
-                {a′ : _ ⊢ᵢ e ∶ ((T.⟦ F ⟧T A′) ⇒[ T.mk-kind T.Many π ] A′) ⨾ Surface.zeroUsage}
+    dd-cata : ∀ {F w w′ Ψ Ψ′} {a : ctx ⊢ᵢ e ∶ ((T.⟦ F ⟧T A) ⇒[ T.mk-kind T.Many π ] A) ⨾ Ψ}
+                {a′ : ctx ⊢ᵢ e ∶ ((T.⟦ F ⟧T A′) ⇒[ T.mk-kind T.Many π ] A′) ⨾ Ψ′}
             → Rii a a′ → Rdd (d-cata {ctx = ctx} {F = F} w a) (d-cata {F = F} w′ a′)
     dd-poly : ∀ {x s s′ sd sc sd′ sc′ b b′ pr pr′ ln ln′ li li′ p p′ g g′ as as′ ki ki′ gr gr′}
                 {inc : T.CodVarsInDom sd sc} {inc′ : T.CodVarsInDom sd′ sc′}

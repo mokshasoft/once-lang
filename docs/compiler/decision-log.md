@@ -16541,3 +16541,34 @@ operands as the input's own leaves (`BView.bv-id`), `LiftSound` proves that case
 lemma, and `RewritePreserves.bare-sound` is the monad's left identity. Lifting there (not with a
 `v-bare` view on `SigOp si`) keeps `body-at`'s domain index `⌊ shape ⌋` free of the stuck
 `⌊ X ⌋ ≟ ⌊ shape ⌋`. Test `arith-bare-op` (`inc 3 * inc 4`). Exit tests 74/0/0 ×3, cabal 775/775.
+
+## D265 — A `cata` ALGEBRA MAY CAPTURE LOCALS (plan 0.101, the `cata` half) (2026-10-05)
+
+**Relates**: plan 0.101, plan 0.94 §0 (`let x = e in b` and a top-level `x = e` used in `b` are
+interderivable), D131 (the algebra is obtained once), D127, plan 0.76 risk 3 (which deferred this
+widening to its own entry — this one), D192/D179 (ana).
+
+**The language change.** `t-cata-check` and `d-cata` type the algebra in the AMBIENT context and
+the fold's usage is the algebra's (`Ψ`, not `zeroUsage`). This is the core's `⊢fold` (the algebra
+is an ordinary term in context) and removes the last place where a definition and its definiens
+were not interchangeable for `cata`: `f k = cata (case (\_ -> k) add)` and
+`let b = 2 in cata (case (\_ -> b) add)` are now accepted.
+
+**Spec hunks, each forced by that rule and nothing else:**
+* `TypeCheck.Judgment` (= `Spec.Typing`): the two rules above.
+* `Denotation.Meaning` (= `Spec.Meaning`): the algebra's meaning is read at the term's own
+  environment `dγ` instead of the empty one `tt` — the premise now lives in that context.
+* `Spec.Elaboration`: the algebra elaborates in the same context, so `closeE` is not applied.
+
+**Implementation.** `Surface.cata` carries `Expr Γ Ψ`; the compiler elaborates `cataM ∘ elaborate alg`
+(no `∘ terminal`): the algebra is OBTAINED ONCE, both in the IR and in the meaning, as D131 already
+required. `Unfold`'s substitution now scopes lexically under a cata algebra (`isAlgV ahv-cata =
+false`); `LetIsDef` transfers the algebra like any subterm. Exit test `cata-capture`.
+
+**`ana` is NOT changed (the other half of plan 0.101, open).** Its meaning re-runs the coalgebra at
+every forced layer (D179), so a captured coalgebra must see a FIXED environment with the seed
+varying — a parameterized `Ana` in the IR (`IR (E × A) …`, the mirror of D131's parameterized
+`Cata`). Threading the environment through the SEED instead gives a ν that is only bisimilar, not
+equal, to the meaning's (`νᵈ` is coinductive), and the project has no bisimulation-to-equality
+axiom. The parameterized `Ana` touches the ν codegen (suspension cells, re-suspension) and its
+correspondence proofs, so it is its own step. Until then def ⇒ let still fails for `ana`.

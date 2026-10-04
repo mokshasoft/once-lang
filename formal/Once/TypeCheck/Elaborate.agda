@@ -299,25 +299,24 @@ given-infer ctx e A π (success T Ψ eE d fr , w) = failure ComposeMiddleUndeter
 -- the given grade; then its codomain `A` is the fold's output.
 given-cata-dec : ∀ (ctx : NamedCtx) (alg : RawExpr) (F : Once.Type.Functor) (π : Once.Type.Purity)
                    (wfF : Once.Functor.Translate.WellFormedF F) (X A : Type) (k : Once.Type.ArrowKind)
-               → SExpr (NamedCtx.debruijn (ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx)))
-                       Surface.[] (X Once.Type.⇒[ k ] A)
-               → (depth : ℕ)
-               → ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx)
-                   ⊢ᵢ alg ∶ (X Once.Type.⇒[ k ] A) ⨾ Surface.[]
+                   (Ψ : Surface.Usage (NamedCtx.size ctx))
+               → SExpr (NamedCtx.debruijn ctx) Ψ (X Once.Type.⇒[ k ] A)
+               → (depth : ℕ) → (fr : ℕ)
+               → ctx ⊢ᵢ alg ∶ (X Once.Type.⇒[ k ] A) ⨾ Ψ
                → Dec ((X Once.Type.⇒[ k ] A)
                         ≡ (⟦ F ⟧T A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] A))
                → VerifiedGivenResult ctx (Raw.RApp (Raw.RResolved (gen "cata")) alg) (Once.Type.μ-type F) π
-given-cata-dec ctx alg F π wfF X A k algE d w (yes refl) =
-  success A _ (Surface.cata wfF algE) (suc d) (NamedCtx.freshCounter ctx) , d-cata wfF w
-given-cata-dec ctx alg F π wfF X A k algE d w (no _) = failure (BuiltinTypeMismatch "cata") , tt
+given-cata-dec ctx alg F π wfF X A k Ψ algE d fr w (yes refl) =
+  success A Ψ (Surface.cata wfF algE) (suc d) fr , d-cata wfF w
+given-cata-dec ctx alg F π wfF X A k Ψ algE d fr w (no _) = failure (BuiltinTypeMismatch "cata") , tt
 
 given-cata : ∀ (ctx : NamedCtx) (alg : RawExpr) (F : Once.Type.Functor) (π : Once.Type.Purity)
                (wfF : Once.Functor.Translate.WellFormedF F)
-           → VerifiedInferResult (ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx)) alg
+           → VerifiedInferResult ctx alg
            → VerifiedGivenResult ctx (Raw.RApp (Raw.RResolved (gen "cata")) alg) (Once.Type.μ-type F) π
 given-cata ctx alg F π wfF (failure err , _) = failure err , tt
-given-cata ctx alg F π wfF (success (X Once.Type.⇒[ k ] A) Surface.[] algE d fr , w) =
-  given-cata-dec ctx alg F π wfF X A k algE d w
+given-cata ctx alg F π wfF (success (X Once.Type.⇒[ k ] A) Ψ algE d fr , w) =
+  given-cata-dec ctx alg F π wfF X A k Ψ algE d fr w
     ((X Once.Type.⇒[ k ] A) ≟T (⟦ F ⟧T A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] A))
 given-cata ctx alg F π wfF (success _ _ _ _ _ , _) = failure (BuiltinTypeMismatch "cata") , tt
 
@@ -2129,8 +2128,7 @@ mutual
   elabGivenApp ctx .(Raw.RResolved (gen "cata")) alg (Once.Type.μ-type F) π ahv-cata _ with wellFormedF? F
   ... | nothing = failure (BuiltinTypeMismatch "cata") , tt
   ... | just wfF =
-          given-cata ctx alg F π wfF
-            (inferElabV (ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx)) alg)
+          given-cata ctx alg F π wfF (inferElabV ctx alg)
   elabGivenApp ctx .(Raw.RResolved (gen "cata")) alg _ π ahv-cata _ = failure (BuiltinTypeMismatch "cata") , tt
   elabGivenApp ctx f g A π _ r = given-infer ctx (Raw.RApp f g) A π r
 
@@ -2195,25 +2193,19 @@ mutual
   checkCataOn ctx alg _ (cata-at F π A) = checkCataGo ctx alg F A π (wellFormedF? F) refl
   checkCataOn _ _ _ cata-other = failure (BuiltinTypeMismatch "cata") , tt
 
-  -- Plan 0.36 Phase 2a: the algebra is ANY closed function `⟦F⟧T A → A`.
-  -- Elaborate it in the EMPTY debruijn context (closed ⇔ empty ctx),
-  -- keeping the ambient imports/polys so named/arith/effectful refs
-  -- resolve. The result `algE : Expr ∅ zeroUsage (⟦F⟧T A ⇒ A)` rides the
-  -- `Surface.cata` node past `resolveExpr` (which inlines it); the closed
-  -- `IR.Cata` is built later by `Surface.Elaborate.elaborate`. The empty
-  -- context forces closedness: a non-closed algebra fails to elaborate
-  -- here (true runtime closures are out of scope — see plan 0.36).
+  -- Plan 0.36 Phase 2a: the algebra is ANY function `⟦F⟧T A → A`.
+  -- PLAN 0.101 (D265): checked in the AMBIENT context — it may capture
+  -- locals — and its usage is the cata's.
   checkCataGo ctx alg F A π nothing _ = failure (BuiltinTypeMismatch "cata") , tt
   checkCataGo ctx alg F A π (just wfF) eqW
-    with checkElabV (ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx))
-                    alg (⟦ F ⟧T A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] A)
+    with checkElabV ctx alg (⟦ F ⟧T A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] A)
   ... | failure err , _ = failure err , tt
   -- D127: no witness extraction. The algebra's own check-derivation IS the
   -- premise, and the empty debruijn context is what `Surface.cata` demands of
   -- the algebra it carries — the closedness is enforced by the CONTEXT, as it
   -- always was, not by a realm.
-  ... | success Surface.[] algE d fr , wArg =
-          success _ (Surface.cata wfF algE) (suc d) (NamedCtx.freshCounter ctx)
+  ... | success Ψ algE d fr , wArg =
+          success _ (Surface.cata wfF algE) (suc d) fr
             -- PLAN 0.80 A1: the rule takes the WITNESS, not the decider
             -- equation. `wfF` is the decider's own output, bound by the
             -- `just wfF` pattern above — so the elaborator hands over exactly

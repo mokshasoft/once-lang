@@ -322,10 +322,10 @@ given-infer-complete {A = A} {A′} {π = π} {π′} (success _ _ _ _ _ , _) re
 
 -- `d-cata`: the algebra synthesizes the arrow the fold needs.
 given-cata-complete : ∀ {ctx : NamedCtx} {alg : RawExpr} {F : Functor} {A : Type} {π : T.Purity}
-    (wfF : WellFormedF F) {eE : _} {d f : ℕ}
-    (r : VerifiedInferResult (ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx)) alg)
-  → proj₁ r ≡ success (⟦ F ⟧T A T.⇒[ T.mk-kind T.Many π ] A) [] eE d f
-  → ∃[ eE′ ] ∃[ d′ ] ∃[ f′ ] proj₁ (given-cata ctx alg F π wfF r) ≡ success A zeroUsage eE′ d′ f′
+    (wfF : WellFormedF F) {Ψ : Surface.Usage (NamedCtx.size ctx)} {eE : _} {d f : ℕ}
+    (r : VerifiedInferResult ctx alg)
+  → proj₁ r ≡ success (⟦ F ⟧T A T.⇒[ T.mk-kind T.Many π ] A) Ψ eE d f
+  → ∃[ eE′ ] ∃[ d′ ] ∃[ f′ ] proj₁ (given-cata ctx alg F π wfF r) ≡ success A Ψ eE′ d′ f′
 given-cata-complete {F = F} {A} {π} wfF (success _ _ _ _ _ , _) refl
   with (⟦ F ⟧T A T.⇒[ T.mk-kind T.Many π ] A) ≟T (⟦ F ⟧T A T.⇒[ T.mk-kind T.Many π ] A)
 ... | yes refl = _ , _ , _ , refl
@@ -567,19 +567,6 @@ private
   -- weakened but FALSE, and their only consumers were the eff-complete family
   -- that went with the realm.
 
-  -- Plan 0.54: `checkCataGo` emits `success zeroUsage …` on its sole success leaf;
-  -- recover that usage after a `with`-abstraction loses it (the eff-clause
-  -- passthrough branch in `cata-eff-complete`). Mirrors `ccgo-usage`.
-  ccatago-usage : ∀ {ctx alg F A} {π : T.Purity} {wfF : WellFormedF F}
-    {eqW : wellFormedF? F ≡ just wfF}
-    {Ψ : Srf.Usage (NamedCtx.size ctx)} {se d fr w}
-    → checkCataGo ctx alg F A π (just wfF) eqW ≡ (success Ψ se d fr , w)
-    → Ψ ≡ zeroUsage
-  ccatago-usage {ctx} {alg} {F} {A} {π} eq
-    with checkElabV (ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx))
-                    alg (⟦ F ⟧T A T.⇒[ T.mk-kind T.Many π ] A) | eq
-  ... | failure _ , _ | ()
-  ... | success [] algE d fr , wArg | refl = refl
 
 -- D127: the `StrongElab` postulate block that stood here is GONE with the
 -- realm. It held the `m-named` follow-up — a bare import elaborating to a
@@ -946,8 +933,7 @@ mutual
   ...   | success _ _ _ _ _ , _ | (_ , _ , _ , refl) = _ , _ , _ , refl
   given-complete {ctx} (d-cata {alg = alg} {F = F} {A = A} {π = π} wfF dalg)
     rewrite wellFormedF?-complete-at wfF =
-      given-cata-complete wfF
-        (inferElabV (ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx)) alg)
+      given-cata-complete wfF (inferElabV ctx alg)
         (proj₂ (proj₂ (proj₂ (infer-complete dalg))))
 
   -- Plan 0.49 / D063: the MORPHISM-COMPLETENESS theorem. A `⊢ᵐ` morphism

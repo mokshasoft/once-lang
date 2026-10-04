@@ -297,7 +297,7 @@ seqᴰ m₁ m₂ = (m₁ >>=T λ x → m₂ >>=T λ y → returnT (x , y)) >>=T 
 -- back for its own decision), so it runs on the empty environment — the same
 -- `tt` the telescope rules use.
 ⟦_⟧ᶜ {ctx = ctx} (t-cata-check {π = π} wfF dalg) fmt ρ dγ =
-  (⟦ dalg ⟧ᶜ fmt ρ) tt >>=ᵖ λ valg → λ v → cata-semᵛ π wfF valg v
+  (⟦ dalg ⟧ᶜ fmt ρ) dγ >>=ᵖ λ valg → λ v → cata-semᵛ π wfF valg v
 ⟦_⟧ᶜ {ctx = ctx} (t-ana-check {π₀ = π₀} {π = π} wfF dcoalg) fmt ρ dγ =
   λ a → ana-semᵛ π π₀ wfF (returnM π₀ ((⟦ dcoalg ⟧ᶜ fmt ρ) tt)) a
 -- D226: the mode switch maps the inferred computation's RESULT along `p`.
@@ -523,4 +523,4 @@ seqᴰ m₁ m₂ = (m₁ >>=T λ x → m₂ >>=T λ y → returnT (x , y)) >>=T 
   (⟦ df ⟧ᵈ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=ᵖ λ vf → (⟦ dg ⟧ᵈ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=ᵖ λ vg →
   λ a → bindM π (vf a) λ b → bindM π (vg a) λ c → returnM π (b , c)
 ⟦_⟧ᵈ {ctx = ctx} (d-cata {π = π} wfF dalg) fmt ρ dγ =
-  (⟦ dalg ⟧ᵢ fmt ρ) tt >>=ᵖ λ valg → λ v → cata-semᵛ π wfF valg v
+  (⟦ dalg ⟧ᵢ fmt ρ) dγ >>=ᵖ λ valg → λ v → cata-semᵛ π wfF valg v

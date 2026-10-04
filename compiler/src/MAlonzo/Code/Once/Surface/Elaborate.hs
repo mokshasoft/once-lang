@@ -2828,13 +2828,13 @@ du_elaborate_384 v0 v1 v2 v3 v4
                            _ -> MAlonzo.RTE.mazUnreachableError
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.Surface.Syntax.C_cata_514 v10 v11
+      MAlonzo.Code.Once.Surface.Syntax.C_cata_516 v11 v12
         -> case coe v3 of
-             MAlonzo.Code.Once.Type.C__'8658''91'_'93'__128 v12 v13 v14
-               -> case coe v12 of
-                    MAlonzo.Code.Once.Type.C_μ'45'type_130 v15
-                      -> case coe v13 of
-                           MAlonzo.Code.Once.Type.C_mk'45'kind_50 v16 v17
+             MAlonzo.Code.Once.Type.C__'8658''91'_'93'__128 v13 v14 v15
+               -> case coe v13 of
+                    MAlonzo.Code.Once.Type.C_μ'45'type_130 v16
+                      -> case coe v14 of
+                           MAlonzo.Code.Once.Type.C_mk'45'kind_50 v17 v18
                              -> coe
                                   MAlonzo.Code.Once.IR.C__'8728'__28
                                   (coe
@@ -2842,42 +2842,26 @@ du_elaborate_384 v0 v1 v2 v3 v4
                                      (coe
                                         MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_48
                                         (coe
-                                           MAlonzo.Code.Once.Type.d_'10214'_'10215'T_170 (coe v15)
-                                           (coe v14)))
-                                     (coe MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_48 (coe v14)))
-                                  (coe du_cataM_364 (coe v15) (coe v14) (coe v10))
+                                           MAlonzo.Code.Once.Type.d_'10214'_'10215'T_170 (coe v16)
+                                           (coe v15)))
+                                     (coe MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_48 (coe v15)))
+                                  (coe du_cataM_364 (coe v16) (coe v15) (coe v11))
                                   (coe
-                                     MAlonzo.Code.Once.IR.C__'8728'__28
-                                     (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_48
-                                        (coe
-                                           MAlonzo.Code.Once.Surface.Context.du_'10214'_'10215''7580'_38
-                                           (coe
-                                              MAlonzo.Code.Once.Surface.Context.du__'8638'__234
-                                              (coe MAlonzo.Code.Once.Surface.Context.C_'8709'_8)
-                                              (coe
-                                                 MAlonzo.Code.Once.Surface.Context.d_zeroUsage_70
-                                                 (coe (0 :: Integer))))))
+                                     du_elaborate_384 (coe v0) (coe v1) (coe v2)
                                      (coe
-                                        du_elaborate_384 (coe (0 :: Integer))
-                                        (coe MAlonzo.Code.Once.Surface.Context.C_'8709'_8)
+                                        MAlonzo.Code.Once.Type.C__'8658''91'_'93'__128
                                         (coe
-                                           MAlonzo.Code.Once.Surface.Context.d_zeroUsage_70
-                                           (coe (0 :: Integer)))
+                                           MAlonzo.Code.Once.Type.d_'10214'_'10215'T_170 (coe v16)
+                                           (coe v15))
                                         (coe
-                                           MAlonzo.Code.Once.Type.C__'8658''91'_'93'__128
-                                           (coe
-                                              MAlonzo.Code.Once.Type.d_'10214'_'10215'T_170
-                                              (coe v15) (coe v14))
-                                           (coe
-                                              MAlonzo.Code.Once.Type.C_mk'45'kind_50
-                                              (coe MAlonzo.Code.Once.Type.C_Many_10) (coe v17))
-                                           (coe v14))
-                                        (coe v11))
-                                     (coe MAlonzo.Code.Once.IR.C_terminal_72))
+                                           MAlonzo.Code.Once.Type.C_mk'45'kind_50
+                                           (coe MAlonzo.Code.Once.Type.C_Many_10) (coe v18))
+                                        (coe v15))
+                                     (coe v12))
                            _ -> MAlonzo.RTE.mazUnreachableError
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.Surface.Syntax.C_ana_528 v11 v12
+      MAlonzo.Code.Once.Surface.Syntax.C_ana_530 v11 v12
         -> case coe v3 of
              MAlonzo.Code.Once.Type.C__'8658''91'_'93'__128 v13 v14 v15
                -> case coe v15 of

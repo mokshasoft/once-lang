@@ -1112,7 +1112,7 @@ bridge-c (t-curry-check {A = A} {B = B} {C = C} {π₀ = π₀} {π = π} df) re
 bridge-c (t-cata-check {F = F} {A = A} {π = π} wfF dalg) re er =
   RelGᵖ-bind {A = ⟦ F ⟧T A ⇒[ mk-kind Many π ] A}
             {B = μ-type F ⇒[ mk-kind Many π ] A}
-            (bridge-c dalg (mk↾ tt) er) (λ {c₁} {c₂} ralg →
+            (bridge-c dalg re er) (λ {c₁} {c₂} ralg →
   RelGT-return {A = μ-type F ⇒[ mk-kind Many π ] A}
               {x = λ v → cata-semᵛ π wfF c₁ v}
               {y = λ x → sem-cata wfF (SD.cata-ev-algˢ {F} {A} wfF (returnT c₂)) x}
@@ -1229,7 +1229,7 @@ bridge-d (d-pair {A = A} {B = B} {C = C} {π = π} df dg) re er =
 bridge-d (d-cata {F = F} {A = A} {π = π} wfF dalg) re er =
   RelGᵖ-bind {A = ⟦ F ⟧T A ⇒[ mk-kind Many π ] A}
             {B = μ-type F ⇒[ mk-kind Many π ] A}
-            (bridge-i dalg (mk↾ tt) er) (λ {c₁} {c₂} ralg →
+            (bridge-i dalg re er) (λ {c₁} {c₂} ralg →
   RelGT-return {A = μ-type F ⇒[ mk-kind Many π ] A}
               {x = λ v → cata-semᵛ π wfF c₁ v}
               {y = λ x → sem-cata wfF (SD.cata-ev-algˢ {F} {A} wfF (returnT c₂)) x}
