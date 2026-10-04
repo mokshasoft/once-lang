@@ -97,7 +97,8 @@ selF Cs = lam (sel (wkC Cs) (var vz))
 
 -- ★ D074: the FIBRE over the index variable — the tag, then the selected
 --   constructor telescope (the list lives OVER the index) — and the family
-Dσ : Cons (Δ ∙) c → RTm (Δ ∙)
+-- a fibre of `c` rules: a tag, then the selected rule
+Dσ : Cons Δ c → RTm Δ
 Dσ {c = c} Cs = dσ (⌜Fin⌝ (num c)) (selF Cs)
 
 Dₗ : Cons (Δ ∙) c → RTm Δ
@@ -193,7 +194,7 @@ selF-sub σ Cs =
   cong lam (trans (sel-sub (extS σ) (wkC Cs) (var vz)) (cong (λ X → sel X (var vz)) (subC-wkC σ Cs)))
 
 -- ★ the family commutes with substitution
-Dσ-sub : {Θ : Cx} (τ : Sub (Δ ∙) (Θ ∙)) (Cs : Cons (Δ ∙) c) → subTm τ (Dσ Cs) ≡ Dσ (subC τ Cs)
+Dσ-sub : {Θ : Cx} (τ : Sub Δ Θ) (Cs : Cons Δ c) → subTm τ (Dσ Cs) ≡ Dσ (subC τ Cs)
 Dσ-sub {c = c} τ Cs = cong₂ (λ N X → dσ (⌜Fin⌝ N) X) (num-sub τ c) (selF-sub τ Cs)
 
 nth-sub : {Θ : Cx} (σ : Sub Δ Θ) {Cs : Cons Δ c} {C : RTm Δ} → Nth Cs k C →
