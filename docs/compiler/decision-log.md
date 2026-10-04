@@ -16591,3 +16591,16 @@ both ways before the fix.
 order. `prog-fits`, `pc-in-code` and `code-lower-zero` are deleted: nothing consumed them.
 `Probe.RuntimeContractModel` builds an instance, so the per-arch postulates are of an inhabited
 type. Apex green; no consumer changed.
+
+## D267 — `StackSlots.slot-in-stack` WAS A POSTULATE OF ⊥; DELETED (2026-10-05)
+
+**Relates**: plan 0.100 P0 audit (after D266), `Memory/StackSlots.agda`, the residual ledger.
+
+**The defect.** `slot-in-stack : ∀ sp k → InStack (slot-addr sp k)` (its `suc` case a local
+postulate `slot-in-stack-suc`) claims every slot of every stack pointer lies in the stack. `grow`
+is injective in the slot and the stack `[lower, upper]` is finite, so `suc (suc upper)` slots of
+one pointer map injectively into `suc upper` addresses: pigeonhole gives `⊥` (probe checked,
+then deleted). It sat in the apex cone (every `Layout` instantiates `StackSlots`).
+
+**The fix.** Deleted, with its postulate: nothing consumed it (`slot-in-stack-0` stays, a theorem;
+slots past 0 take capacity evidence from `StackCapacity`). Apex green.

@@ -84,16 +84,9 @@ sp-distinct sp₁ sp₂ k addr≢ = grow-addr-injective (addr sp₁) (addr sp₂
 slot-in-stack-0 : ∀ sp → InStack (slot-addr sp 0)
 slot-in-stack-0 sp = subst InStack (sym (grow-identity (addr sp))) (in-stack sp)
 
--- | DEPRECATED: General slot-in-stack requires capacity evidence for k > 0
--- Kept for backward compatibility; callers should migrate to:
---   k = 0: use slot-in-stack-0
---   k > 0: use StackCapacity.capacity-maintained
-slot-in-stack : ∀ sp k → InStack (slot-addr sp k)
-slot-in-stack sp zero = slot-in-stack-0 sp
-slot-in-stack sp (suc k) = slot-in-stack-suc sp k
-  where
-    postulate
-      slot-in-stack-suc : ∀ sp k → InStack (slot-addr sp (suc k))
+-- (D267: the general `slot-in-stack : ∀ sp k → InStack (slot-addr sp k)` was a
+-- postulate of ⊥ — `grow` is injective and the stack finite, so pigeonhole
+-- refutes it. Slots past 0 need capacity evidence: `StackCapacity`.)
 
 ------------------------------------------------------------------------
 -- Address Type Conversions
