@@ -16627,3 +16627,29 @@ consistent (the step count to the n-th event, or to the last one, is such a budg
 named CPU-model axiom until the budget is defined. `conc-fuel` is unchanged in meaning, observed
 at `conc-budget` (the budget of the run it states). Not Spec: the concrete run is
 implementation-side. Apex green.
+
+## D269 — DEAD POSTULATES OVER A MODULE PARAMETER, TWO OF THEM ⊥, DELETED (2026-10-05)
+
+**Relates**: plan 0.100 P0 audit (D266–D268), `CCC/Machine/SMPrimitives.agda`,
+`CCC/Machine/ClosureWellFormed.agda`.
+
+**The lesson of D268, swept.** A postulate inside a parameterized module holds for EVERY
+instantiation, so it is only as true as its weakest instance. The sweep listed 22 postulate blocks
+under module parameters in the apex's import cone. Those with no consumer outside their own dead
+lemma are deleted, with the lemmas:
+
+* `REFUTABLE-effect-state-only-frame-dep` (⊥ at `instr-alloc-heap`, its own comment said so) and
+  the three trace lemmas it fed — `exec-trace-same-frame`, `exec-trace-state-frame-eq`,
+  `TraceWF-frame-eq` — none used;
+* `REFUTABLE-alloc-heap-trace-preserves-heap-ref`, `case-on-tag-`/`loop-trace-preserves-heap-ref`
+  and `exec-trace-preserves-heap-ref` (unused);
+* `mem-deterministic-step` (no premise relates its two states — false) and
+  `exec-trace-mem-deterministic` (unused);
+* `case-on-tag-`/`loop-state-next-slot-invariant` and `exec-abstract-state-next-slot-invariant`
+  (unused);
+* declaration-only: `exec-trace-independent`, `exec-trace-independent-below`,
+  `exec-trace-deterministic`, `exec-trace-output-deterministic`, `prod-left-setup-mem-helper`,
+  `prod-left-setup-saves-input`, `validityWF-mem-preserved-excluding`, `ν-validity-in-regions-stub`.
+
+Nothing outside the deleted lemmas named them; apex green. The LIVE ones are taken one at a time
+(D270 onward).

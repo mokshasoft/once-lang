@@ -2329,26 +2329,6 @@ module ClosureWellFormedDef {FS : FrameSemantics} where
   -- locations.
   ------------------------------------------------------------------------
 
-  -- Validity transfers when memory differs only at gap slot.
-  -- The gap slot is NOT accessed because of disjoint slot ranges:
-  --   - Input1 data is at slots < gap-slot
-  --   - Fresh allocations are at slots ≥ suc gap-slot
-  --   - gap-slot falls between these ranges
-  postulate
-    validityWF-mem-preserved-excluding :
-      ∀ {m A} (alloc : AllocState {FS}) (v : ⟦ A ⟧) (loc : ValueLocation FS)
-        (gap-frame : Frame) (gap-slot : ℕ)
-        (s₁ s₂ : LocState FS) →
-      -- Location is before frontier
-      BeforeFrontier alloc loc →
-      -- Memory agrees on all BeforeFrontier locations except the gap
-      (∀ (loc' : ValueLocation FS) →
-         BeforeFrontier alloc loc' →
-         loc' ≢ AtStack gap-frame gap-slot →
-         readLoc s₁ loc' ≡ readLoc s₂ loc') →
-      -- Validity transfers
-      ValidAtWF m alloc {A} v loc s₁ →
-      ValidAtWF m alloc {A} v loc s₂
 
   ------------------------------------------------------------------------
   -- Validity preservation with positive region bounds
@@ -2487,13 +2467,6 @@ module ClosureWellFormedDef {FS : FrameSemantics} where
       ValidAtWF m alloc {⟦ F ⟧TI (μ-type F)} (TM.valueT ιᶠ [] (evalᴰ (out-μ wf) x)) loc s₁ →
       ValidAtWF m alloc {⟦ F ⟧TI (μ-type F)} (TM.valueT ιᶠ [] (evalᴰ (out-μ wf) x)) loc s₂
 
-    -- plan 0.98: `Out` may STOP — `⟦ν⟧`'s layers are `Res`-valued — so the
-    -- witness that this one did is an explicit premise rather than a meta.
-    ν-validity-in-regions-stub : ∀ {m alloc F} {wf : WellFormedFI F} {x loc s₁ s₂}
-                                   {input-bound fresh-start : ℕ}
-                                   {h : List SigOpEvent} {p : TM.Returns? (TM.resultAt ιᶠ h (evalᴰ (Out wf) x))} →
-      ValidAtWF m alloc {⟦ F ⟧TI (ν-type F)} (TM.valueT ιᶠ h (evalᴰ (Out wf) x) {p}) loc s₁ →
-      ValidAtWF m alloc {⟦ F ⟧TI (ν-type F)} (TM.valueT ιᶠ h (evalᴰ (Out wf) x) {p}) loc s₂
 
   -- STRONG version: requires an additional LocsInRegions hypothesis that
   -- witnesses the value's sub-locations all land in input/fresh/heap/anc
