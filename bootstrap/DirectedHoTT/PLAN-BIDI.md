@@ -470,10 +470,49 @@ gives `#wk`. The traversal recurses on the SIGNATURE, not on `Desc`.**
 - **Recommendation:** (c) with (c1). Then step 2 is the `Fin`-index
   increment end to end, and step 3's spike is `#Sig`/`#SD`/`#trav` over a SMALL
   signature (one sort, `var`/`lam`/`app`), then `#wk` at `⌜KSig⌝`.
-- ⬜ **Awaiting the user's decision** (it revises the 2026-10-02 framing
-  "(a) or (b)").
-- ⏸ **S7b PAUSED (user, 2026-10-03): PLAN-FAITHFUL F6 (decoding) goes
-  first**, as the oracle the migration runs against.
+- ✅ **DECIDED (user, 2026-10-04): (c) with (c1).** Levitate the Lib's `Sig`
+  (`#Sig`/`#SD`/`#trav` as core datatypes and definitions); the one kernel
+  increment is `Fin`/`⌜Fin⌝` indexed by a Nat TERM. This revises the
+  2026-10-02 framing "(a) or (b)"; (a) stays deferred.
+- ▶ **S7b RESUMED 2026-10-04** after PLAN-FAITHFUL F6 (DONE: `Knot/Exact`).
+  F6 is the oracle the migration runs against. Step 2 = the `Fin`-index
+  increment end to end (kernel, metatheory, Knot rows, F5/F6 at the Fin rows).
+
+**S7b step 2 — `Fin` indexed by a Nat TERM (design, 2026-10-04).**
+Today: `Fin : ℕ → RTy Γ` and `⌜Fin⌝ : ℕ → RTm Γ` take a META number, and the
+tag rules key on it (`⊢fzero : Fin (suc n)`). After:
+- **Syntax.** `Fin : RTm Γ → RTy Γ`, `⌜Fin⌝ : RTm Γ → RTm Γ`. The index is
+  a subterm, so `renTm`/`subTm`/`occ`/`sz` traverse it, as `IMu`'s index.
+- **Typing.** `ty-Fin : Γ ⊢ n ∷ Nat → Γ ⊢ty Fin n`; `⊢⌜Fin⌝` likewise into
+  `U`. `⊢fzero : Γ ⊢ n ∷ Nat → Γ ⊢ fzero ∷ Fin (nsuc n)`;
+  `⊢fsuc : Γ ⊢ t ∷ Fin n → Γ ⊢ fsuc t ∷ Fin (nsuc n)`; `⊢fcase` at
+  `Fin (nsuc n)` with `b` at `Fin n`; `⊢fcase0` at `Fin nzero`. The
+  premise `Γ ⊢ n ∷ Nat` is there because the conclusion contains `n` (every
+  former types each term it contains: levitation stage-2 lesson).
+- **Reduction.** `El-⌜Fin⌝ : El (⌜Fin⌝ n) ⟶ᵀ Fin n` and congruences `ξ-Fin`
+  and `ξ-⌜Fin⌝` on the index. `tr-J-Fin`/`Hom (Fin n)` keep their shape,
+  with `n` a term.
+- **Metatheory, the one real change.** `Fin n` is a type whose inhabitants
+  depend on WHERE `n` reduces. The LR interprets `Fin n` through `n`'s
+  normal form: at a numeral `num m` the tags below `m`; at a neutral `n`
+  only neutrals (`fzero` needs `nsuc`, so `Fin n` is stuck like `IMu` at a
+  neutral index). Canonicity: closed `Fin n` means `n ⟶* num m`, so the
+  closed inhabitants are tags `< m` (F6's `tag-dec` restated). Injectivity
+  gains `Fin n ≅ᵀ Fin n' → n ≅ n'`.
+- **Lib.** Every meta-arity tag code `⌜Fin⌝ c` becomes `⌜Fin⌝ (num c)`
+  (103 sites in Lib/, plus the generated Knot rows). `Lib/FinFam`'s
+  `FinD`/`FinI` become `Fin`/`⌜Fin⌝` themselves and are DELETED in a
+  follow-up: the Knot's variable field is `⌜Fin⌝ d`.
+  - ⚠ Watch [[literal-vs-suc-index-mismatch]]: a numeral appears as
+    `num (suc c)` in one place and `nsuc (num c)` in another. Pick ONE form
+    (the reduct) in the generated codes.
+- **Knot.** gen-knot parses `Spec/Syntax`, so `Fin`/`⌜Fin⌝`'s field
+  becomes `rec Tm`. The `fzero`/`fsuc`/`fcase`/`fcase0` typing rows change
+  their index form, and `JudgeConFin`/`JudgeDecodeHand`'s Fin rows follow.
+  F5 (`TypingAgree`) and F6 (`Exact`) must stay green: they are the oracle.
+- **Order.** (1) Spec + metatheory on a branch, cold sweep of `Trust/Kernel`;
+  (2) Lib numerals; (3) Knot regenerate + Fin rows + F5/F6; (4) cold sweep,
+  ff; (5) FinFam deletion as its own step.
 
 **Then, the migration recipe** (each step is one family):
 - a schema becomes a CLOSED λ-entry; an instance becomes
