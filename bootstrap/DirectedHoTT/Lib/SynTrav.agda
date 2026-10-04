@@ -447,8 +447,8 @@ module Trav {sg : Sig n} (ok : SigOK n sg) (κ : Kit n sg) where
 
   ⊢TM : {Γ : Ctx} → motCtx Γ (SI n) (SD sg) ⊢ty TM
   ⊢TM = ty-Π (ty-El ⊢⌜Nat⌝)
-          (ty-Π (ty-Env (⊢depth (⊢var (there (there here)))) (⊢var here))
-                (ty-IMu ⊢SI (⊢SD ok) (⊢conv (⊢pair (ty-El ⊢⌜Nat⌝) (⊢fst (unSortI (⊢var (there (there (there here))))))
+          (ty-Π (ty-Env (⊢depth (⊢varSI (there (there here)) (SI-wks 3))) (⊢var here))
+                (ty-IMu ⊢SI (⊢SD ok) (⊢conv (⊢pair (ty-El ⊢⌜Nat⌝) (⊢fst (unSortI (⊢varSI (there (there (there here))) (SI-wks 4))))
                                                    (⊢var (there here)))
                                             (csymᵀ (credᵀ (El-⌜Σ⌝ _ _))))))
 
@@ -470,12 +470,26 @@ module Trav {sg : Sig n} (ok : SigOK n sg) (κ : Kit n sg) where
       eqR : subTy (single v) (subTy (extS (single e)) (subTy (extS (extS (single t)))
               (subTy (extS (extS (extS (single J)))) (IMu (SI n) (SD sg) (pair (fst (var (vs (vs (vs vz))))) (var (vs vz)))))))
             ≡ IMu (SI n) (SD sg) (pair (fst J) e)
-      eqR = cong₂ (λ D j → IMu (SI n) D j)
+      D₀ j₀ : RTm _
+      D₀ = SD sg
+      j₀ = pair (fst (var (vs (vs (vs vz))))) (var (vs vz))
+      D₁ = subTm (extS (extS (extS (single J)))) D₀
+      j₁ = subTm (extS (extS (extS (single J)))) j₀
+      D₂ = subTm (extS (extS (single t))) D₁
+      j₂ = subTm (extS (extS (single t))) j₁
+      D₃ = subTm (extS (single e)) D₂
+      j₃ = subTm (extS (single e)) j₂
+      eqR = trans (cong (λ z → subTy (single v) (subTy (extS (single e)) (subTy (extS (extS (single t))) z)))
+                        (IMuSI-sub {n = n} (extS (extS (extS (single J)))) D₀ j₀))
+            (trans (cong (λ z → subTy (single v) (subTy (extS (single e)) z))
+                         (IMuSI-sub {n = n} (extS (extS (single t))) D₁ j₁))
+            (trans (cong (subTy (single v)) (IMuSI-sub {n = n} (extS (single e)) D₂ j₂))
+            (trans (IMuSI-sub {n = n} (single v) D₃ j₃) (cong₂ (λ D j → IMu (SI n) D j)
               (trans (cong (λ z → subTm (single v) (subTm (extS (single e)) (subTm (extS (extS (single t))) z)))
                            (SD-sub (extS (extS (extS (single J)))) sg))
                 (trans (cong (λ z → subTm (single v) (subTm (extS (single e)) z)) (SD-sub (extS (extS (single t))) sg))
                   (trans (cong (subTm (single v)) (SD-sub (extS (single e)) sg)) (SD-sub (single v) sg))))
-              (cong₂ pair (cong fst (wkc3 v e t J)) (wkc v e))
+              (cong₂ pair (cong fst (wkc3 v e t J)) (wkc v e))))))
 
   ------------------------------------------------------------------------
   -- 5. ★★ ONE NODE, generically: the payload rebuilt field by field — a
@@ -515,7 +529,7 @@ module Trav {sg : Sig n} (ok : SigOK n sg) (κ : Kit n sg) where
     where
       dp' : Γ ⊢ snd p ∷ PayV sh i (SI n) (SD sg)
       dp' = ⊢-cast (trans (PayV-sub (single (fst p)) sh (renTm vs i) (renTm vs (SI n)) (renTm vs (SD sg)))
-                          (cong₂ (λ a b → PayV sh a (SI n) b) (wkc (fst p) i) (wkc (fst p) (SD sg))))
+                          (cong₃ (PayV sh) (wkc (fst p) i) (wkc (fst p) (SI n)) (wkc (fst p) (SD sg))))
                    (⊢snd dp)
       dh' : Γ ⊢ snd h ∷ IhV sh i (SD sg) TM (snd p)
       dh' = ⊢-cast (trans (IhV-sub (single (fst h)) sh (renTm vs i) (renTm vs (SD sg)) (renTy (extR (extR vs)) TM)
@@ -528,7 +542,7 @@ module Trav {sg : Sig n} (ok : SigOK n sg) (κ : Kit n sg) where
     where
       dp' : Γ ⊢ snd p ∷ PayV sh i (SI n) (SD sg)
       dp' = ⊢-cast (trans (PayV-sub (single (fst p)) sh (renTm vs i) (renTm vs (SI n)) (renTm vs (SD sg)))
-                          (cong₂ (λ a b → PayV sh a (SI n) b) (wkc (fst p) i) (wkc (fst p) (SD sg))))
+                          (cong₃ (PayV sh) (wkc (fst p) i) (wkc (fst p) (SI n)) (wkc (fst p) (SD sg))))
                    (⊢snd dp)
       dh' : Γ ⊢ snd h ∷ IhV sh i (SD sg) TM (snd p)
       dh' = ⊢-cast (trans (IhV-sub (single (fst h)) sh (renTm vs i) (renTm vs (SD sg)) (renTy (extR (extR vs)) TM)
@@ -541,7 +555,7 @@ module Trav {sg : Sig n} (ok : SigOK n sg) (κ : Kit n sg) where
     where
       dp' : Γ ⊢ snd p ∷ PayV sh i (SI n) (SD sg)
       dp' = ⊢-cast (trans (PayV-sub (single (fst p)) sh (renTm vs i) (renTm vs (SI n)) (renTm vs (SD sg)))
-                          (cong₂ (λ a b → PayV sh a (SI n) b) (wkc (fst p) i) (wkc (fst p) (SD sg))))
+                          (cong₃ (PayV sh) (wkc (fst p) i) (wkc (fst p) (SI n)) (wkc (fst p) (SD sg))))
                    (⊢snd dp)
 
   ------------------------------------------------------------------------
@@ -561,7 +575,7 @@ module Trav {sg : Sig n} (ok : SigOK n sg) (κ : Kit n sg) where
   TM-sub τ =
     cong (Π (El ⌜Nat⌝))
       (cong₂ Π (Env-sub (extS τ) (snd (var (vs (vs vz)))) (var vz))
-               (cong₂ (λ D j → IMu (SI n) D j) (SD-sub (extS (extS τ)) sg) refl))
+               (trans (IMuSI-sub {n = n} (extS (extS τ)) (SD sg) (pair (fst (var (vs (vs (vs vz))))) (var (vs vz)))) (cong₂ (λ D j → IMu (SI n) D j) (SD-sub (extS (extS τ)) sg) refl)))
 
   TM-ren : (ρ : Ren Γ Δ) → renTy (extR (extR ρ)) TM ≡ TM
   TM-ren ρ = trans (sym (subTy-var (extR (extR ρ)) TM)) (TM-sub ⟨ extR (extR ρ) ⟩ᵣ)
@@ -624,12 +638,13 @@ module Trav {sg : Sig n} (ok : SigOK n sg) (κ : Kit n sg) where
       ιx = ιₛ {Δ = ⌊ Γ ⌋} s
       C = subTm (σₛ s) ⌜ tel sh (var vz) ⌝ᵗ
       dix : Γ' ⊢ ιx ∷ El (SI n)
-      dix = ⊢ιₛ ⊢⌜Nat⌝ (nthG-lt ng)
+      dix = ⊢-cast (cong El (SI-ren vs n)) (⊢ιₛ ⊢⌜Nat⌝ (nthG-lt ng))
       dC : Γ' ⊢ C ∷ Desc (SI n)
       dC = subst (λ X → Γ' ⊢ X ∷ Desc (SI n)) (sym (sub-tel (σₛ s) sh (var vz))) (⊢tel ⊢SI (telOKf fok dix))
-      dD' = ⊢wkD {B = El ⌜Nat⌝} (⊢SD {Γ = Γ} ok)
-      dPay = ty-El (⊢dpay ⊢SI dD' dC)
-      dHyp = ty-DIh ⊢SI (⊢wkD dD') (mot-ren there (mot-ren there (⊢TM {Γ = Γ}))) (⊢wk dC) (⊢var here)
+      dD' : Γ' ⊢ renTm vs (SD sg) ∷ DescF (SI n)
+      dD' = subst (λ X → Γ' ⊢ X ∷ DescF (SI n)) (sym (SD-ren vs)) (⊢SD {Γ = Γ'} ok)
+      dPay = subst (λ X → Γ' ⊢ty El (dpay X (renTm vs (SD sg)) C)) (sym (SI-ren vs n)) (ty-El (⊢dpay ⊢SI dD' dC))
+      dHyp = ty-DIh ⊢SI (⊢wkDSI dD') (motSI (SI-wks 2) (mot-ren there (mot-ren there (⊢TM {Γ = Γ})))) (⊢wkDescSI dC) (⊢-cast (cong (λ X → El (dpay X (renTm vs (renTm vs (SD sg))) (renTm vs C))) (SI-wks 2)) (⊢var here))
       τ = atS ιx (conₗ k (var (vs vz))) ₛ∘ᵣ extR (extR vs)
       eqT = trans (subTy-renTy TM) (TM-sub τ)
       ι₃ = renTm vs (renTm vs (renTm vs ιx))
@@ -646,7 +661,7 @@ module Trav {sg : Sig n} (ok : SigOK n sg) (κ : Kit n sg) where
       j₄ = var (vs (vs (vs (vs vz))))
       -- the payload and the hypotheses, at their views
       dp : Γ₄ ⊢ p₄ ∷ PayV sh ι₄ (SI n) (SD sg)
-      dp = ⊢conv (⊢-cast (cong₂ (λ D X → El (dpay (SI n) D X)) SD-r4 (tel-r4 s sh)) (⊢var (there (there (there here)))))
+      dp = ⊢conv (⊢-cast (cong₃ (λ I D X → El (dpay I D X)) (SI-wks 5) SD-r4 (tel-r4 s sh)) (⊢var (there (there (there here)))))
                  (red→≅ᵀ (payV-red sh ι₄ (SI n) (SD sg)))
       dh : Γ₄ ⊢ h₄ ∷ IhV sh ι₄ (SD sg) TM p₄
       dh = ⊢conv (⊢-cast (cong₃ (λ D M X → DIh D M X p₄) SD-r4
@@ -666,6 +681,6 @@ module Trav {sg : Sig n} (ok : SigOK n sg) (κ : Kit n sg) where
                  ∷ Π (El ⌜Nat⌝) (Π (Env (snd ι₃) (var vz))
                                    (IMu (SI n) (SD sg) (pair (fst ι₄) (var (vs vz)))))
       BODY = ⊢lam (ty-El ⊢⌜Nat⌝)
-               (⊢lam (ty-Env (⊢depth (⊢wk (⊢wk (⊢wk dix)))) (⊢var here))
+               (⊢lam (ty-Env (⊢depth (⊢wkSI (⊢wkSI (⊢wkSI dix)))) (⊢var here))
                  (⊢conv (⊢-cast (trans (SK-def {sg = sg} {s = s} {d = e₄}) (cong (λ z → IMu (SI n) (SD sg) (pair z e₄)) (sym (tagr4 s)))) CON)
                         (csymᵀ (red→≅ᵀ (⟶ᵀ*-IMu (⟶*-pairˡ (step (βfst _ _) done)))))))

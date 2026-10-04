@@ -42,7 +42,7 @@ open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-trans; ⟶*-pairʳ; ⟶*-nsuc; red→≅ᵀ; ⟶ᵀ*-IMu; _⟶ᵀ*_ )
 open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast; wk-cancel-tm )
 open import DirectedHoTT.Metatheory.SubjectReductionBase using ( wk-sub )
-open import DirectedHoTT.Lib.Sugar using ( tag; conₗ; Lt; lt-z; lt-s; Cons; []; _∷_; subC; sel; selF; sel-sub; selF-sub )
+open import DirectedHoTT.Lib.Sugar using ( tag; conₗ; Lt; lt-z; lt-s; Cons; []; _∷_; subC; sel; selF; sel-sub; selF-sub; Dσ; Dσ-sub )
 open import DirectedHoTT.Lib.Tel
 open import DirectedHoTT.Lib.Sorted
 open import DirectedHoTT.Lib.TelAt
@@ -215,6 +215,59 @@ SI n = SortI ⌜Nat⌝ n
 ⊢SI : {Γ : Ctx} → Γ ⊢ SI n ∷ U
 ⊢SI = ⊢SortI ⊢⌜Nat⌝
 
+SI-ren : {Θ : Cx} (ρ : Ren Δ Θ) (n : ℕ) → renTm ρ (SI n) ≡ SI n
+SI-ren ρ n = SortI-ren ρ ⌜Nat⌝ n
+
+SI-sub : {Θ : Cx} (σ : Sub Δ Θ) (n : ℕ) → subTm σ (SI n) ≡ SI n
+SI-sub σ n = SortI-sub σ ⌜Nat⌝ n
+
+-- the family's inductive type commutes with substitution, the arity included
+IMuSI-sub : {Θ : Cx} (σ : Sub Δ Θ) (D j : RTm Δ) → subTy σ (IMu (SI n) D j) ≡ IMu (SI n) (subTm σ D) (subTm σ j)
+IMuSI-sub {n = n} σ D j = cong (λ I → IMu I (subTm σ D) (subTm σ j)) (SI-sub σ n)
+
+IMuSI-ren : {Θ : Cx} (ρ : Ren Δ Θ) (D j : RTm Δ) → renTy ρ (IMu (SI n) D j) ≡ IMu (SI n) (renTm ρ D) (renTm ρ j)
+IMuSI-ren {n = n} ρ D j = cong (λ I → IMu I (renTm ρ D) (renTm ρ j)) (SI-ren ρ n)
+
+-- `k` binders further out
+_⁺_ : Cx → ℕ → Cx
+Δ ⁺ zero  = Δ
+Δ ⁺ suc k = (Δ ⁺ k) ∙
+
+wks : (k : ℕ) → RTm Δ → RTm (Δ ⁺ k)
+wks zero    t = t
+wks (suc k) t = renTm vs (wks k t)
+
+SI-wks : (k : ℕ) → wks {Δ = Δ} k (SI n) ≡ SI n
+SI-wks zero            = refl
+SI-wks {n = n} (suc k) = trans (cong (renTm vs) (SI-wks k)) (SI-ren vs n)
+
+-- a variable at the family: its stored type is `SI n` under `k` weakenings,
+--   at the call site `⊢varSI x (SI-wks k)`
+⊢varSI : {Γ : Ctx} {x : Var ⌊ Γ ⌋} {X : RTm ⌊ Γ ⌋} → Γ ∋ x ∷ El X → X ≡ SI n → Γ ⊢ var x ∷ El (SI n)
+⊢varSI x e = ⊢-cast (cong El e) (⊢var x)
+
+-- weakening an index of `SI n` — the numeral arity does not compute under `vs`
+⊢wkSI : {Γ : Ctx} {A : RTy ⌊ Γ ⌋} {i : RTm ⌊ Γ ⌋} → Γ ⊢ i ∷ El (SI n) → (Γ ▹ A) ⊢ renTm vs i ∷ El (SI n)
+⊢wkSI {n = n} di = ⊢-cast (cong El (SI-ren vs n)) (⊢wk di)
+
+⊢wkDSI : {Γ : Ctx} {B : RTy ⌊ Γ ⌋} {D : RTm ⌊ Γ ⌋} → Γ ⊢ D ∷ DescF (SI n) → (Γ ▹ B) ⊢ renTm vs D ∷ DescF (SI n)
+⊢wkDSI {n = n} {Γ = Γ} {B = B} {D = D} dD =
+  subst (λ X → (Γ ▹ B) ⊢ renTm vs D ∷ DescF X) (SI-ren vs n) (⊢wkD dD)
+  where open import DirectedHoTT.Metatheory.Premises using ( ⊢wkD )
+
+⊢wkDescSI : {Γ : Ctx} {B : RTy ⌊ Γ ⌋} {C : RTm ⌊ Γ ⌋} → Γ ⊢ C ∷ Desc (SI n) → (Γ ▹ B) ⊢ renTm vs C ∷ Desc (SI n)
+⊢wkDescSI {n = n} dC = ⊢-cast (cong Desc (SI-ren vs n)) (⊢wk dC)
+
+-- a motive context over a renamed `SI n`
+motSI : {Γ : Ctx} {X D : RTm ⌊ Γ ⌋} {M : RTy ((⌊ Γ ⌋ ∙) ∙)} → X ≡ SI n → motCtx Γ X D ⊢ty M → motCtx Γ (SI n) D ⊢ty M
+motSI {n = n} {Γ = Γ} {D = D} {M = M} e d = subst (λ X → motCtx Γ X D ⊢ty M) e d
+
+-- `ok-σ` at a family `SI n`, cast back to the renamed index
+ok-σSI : {Γ : Ctx} {S : RTm ⌊ Γ ⌋} {T : Tel (⌊ Γ ⌋ ∙)} →
+         Γ ⊢ S ∷ U → TelOK (Γ ▹ El S) (SI n) T → TelOK Γ (SI n) (tσ S T)
+ok-σSI {n = n} {Γ = Γ} {S = S} {T = T} dS ok =
+  ok-σ dS (subst (λ X → TelOK (Γ ▹ El S) X T) (sym (SI-ren vs n)) ok)
+
 SD : Sig n → RTm Δ
 SD sg = Dₛₜ (stels sg)
 
@@ -264,21 +317,22 @@ telOKf : {Γ : Ctx} {sh : Shape} {i : RTm ⌊ Γ ⌋} →
          FOK n sh → Γ ⊢ i ∷ El (SI n) → TelOK Γ (SI n) (tel sh i)
 telOKf []ᶠ                        di = ok-ι
 telOKf {sh = rec s k ∷ʰ _} (ok-rec lt ∷ᶠ ok) di = ok-ρ (⊢ix lt (⊢nsucs k (⊢depth di))) (telOKf ok di)
-telOKf (ok-nat ∷ᶠ ok)             di = ok-σ ⊢⌜Nat⌝ (telOKf ok (⊢wk di))
+telOKf (ok-nat ∷ᶠ ok)             di = ok-σSI ⊢⌜Nat⌝ (telOKf ok (⊢wkSI di))
 telOKf (ok-cls lt ∷ᶠ ok)          di = ok-ρ (⊢ix lt (toI ⊢nzero)) (telOKf ok di)
 
 telOK : {Γ : Ctx} {sh : Shape} {i : RTm ⌊ Γ ⌋} →
         ShOK n sh → Γ ⊢ i ∷ El (SI n) → TelOK Γ (SI n) (tel sh i)
 telOK (fᵒʰ ok) di = telOKf ok di
-telOK vᵒʰ      di = ok-σ (⊢⌜IMu⌝ ⊢⌜Nat⌝ ⊢FinD (⊢depth di)) ok-ι
+telOK vᵒʰ      di = ok-σSI (⊢⌜IMu⌝ ⊢⌜Nat⌝ ⊢FinD (⊢depth di)) ok-ι
 
 telsOK : {Γ : Ctx} {shs : Shapes c} → ShsOK n shs → AllOK (Γ ▹ El (SI n)) (SI n) (tels shs)
 telsOK []ᵒˢ         = []ᵒ
-telsOK (ok ∷ᵒˢ oks) = telOK ok (⊢var here) ∷ᵒ telsOK oks
+telsOK {n = n} (ok ∷ᵒˢ oks) = telOK ok (⊢-cast (cong El (SI-ren vs n)) (⊢var here)) ∷ᵒ telsOK oks
 
 sigOK : {Γ : Ctx} {sg : Sig k} → SigOK n sg → AllSOK Γ (SI n) (stels sg)
 sigOK []ᵒᵍ         = []ˢᵒ
-sigOK (ok ∷ᵒᵍ oks) = telsOK ok ∷ˢᵒ sigOK oks
+sigOK {n = n} {Γ = Γ} (_∷ᵒᵍ_ {shs = shs} ok oks) =
+  subst (λ X → AllOK (Γ ▹ El (SI n)) X (tels shs)) (sym (SI-ren vs n)) (telsOK ok) ∷ˢᵒ sigOK oks
 
 ⊢SD : {Γ : Ctx} {sg : Sig n} → SigOK n sg → Γ ⊢ SD sg ∷ DescF (SI n)
 ⊢SD ok = ⊢Dₛₜ ⊢⌜Nat⌝ (sigOK ok)
@@ -347,7 +401,7 @@ private
   ⊢payρ ⊢SI dD (ok-ρ (⊢ix lt (toI ⊢nzero)) (telOKf ok di))
         (⊢SK→IMu {sg = sg} {s = s} {d = nzero} da) (⊢payArgsF dD ok di r as)
 ⊢payArgsF {sg = sg} {i = i} {sh = nat ∷ʰ sh} dD (ok-nat ∷ᶠ ok) di r (a-nat {a = a} {p = p} da as) =
-  ⊢payσ ⊢SI dD (ok-σ ⊢⌜Nat⌝ (telOKf ok (⊢wk di))) da
+  ⊢payσ ⊢SI dD (ok-σSI ⊢⌜Nat⌝ (telOKf ok (⊢wkSI di))) da
     (subst (λ X → _ ⊢ p ∷ El (dpay (SI _) (SD sg) X)) (sym (sub-rest a sh i)) (⊢payArgsF dD ok di r as))
 
 ⊢payArgs : {Γ : Ctx} {sg : Sig n} {i d p : RTm ⌊ Γ ⌋} {sh : Shape} →
@@ -355,7 +409,7 @@ private
            Args Γ n sg d sh p → Γ ⊢ p ∷ El (dpay (SI n) (SD sg) ⌜ tel sh i ⌝ᵗ)
 ⊢payArgs dD (fᵒʰ ok) di r as = ⊢payArgsF dD ok di r as
 ⊢payArgs {Γ = Γ} {i = i} {sh = vʰ} dD vᵒʰ di r (a-v {a = a} da) =
-  ⊢payσ ⊢SI dD (ok-σ (⊢⌜IMu⌝ ⊢⌜Nat⌝ ⊢FinD (⊢depth di)) ok-ι)
+  ⊢payσ ⊢SI dD (ok-σSI (⊢⌜IMu⌝ ⊢⌜Nat⌝ ⊢FinD (⊢depth di)) ok-ι)
     (⊢conv da (csymᵀ (ctrnᵀ (credᵀ El-⌜IMu⌝) (red→≅ᵀ (⟶ᵀ*-IMu r)))))
     (⊢payι ⊢SI dD ⊢unit)
 
@@ -392,7 +446,7 @@ private
   sds-sub : (σ : Sub Δ Θ) (sg : Sig n) → subC (extS σ) (SDs ⌜ stels {Δ = Δ} sg ⌝ₛₛ) ≡ SDs ⌜ stels sg ⌝ₛₛ
   sds-sub σ []ᵍ         = refl
   sds-sub σ (shs ∷ᵍ sg) =
-    cong₂ _∷_ (cong (dσ (⌜Fin⌝ _)) (trans (selF-sub (extS σ) ⌜ tels shs ⌝ₛ) (cong selF (tels-sub σ shs))))
+    cong₂ _∷_ (trans (Dσ-sub (extS σ) ⌜ tels shs ⌝ₛ) (cong Dσ (tels-sub σ shs)))
               (sds-sub σ sg)
 
 SD-sub : (σ : Sub Δ Θ) (sg : Sig n) → subTm σ (SD {Δ = Δ} sg) ≡ SD sg
@@ -403,7 +457,9 @@ SD-sub σ sg =
 opaque
   unfolding SK
   SK-sub : (σ : Sub Δ Θ) (sg : Sig n) (s : ℕ) (d : RTm Δ) → subTy σ (SK sg s d) ≡ SK sg s (subTm σ d)
-  SK-sub {n = n} σ sg s d = cong₂ (λ D j → IMu (SI n) D j) (SD-sub σ sg) (cong₂ pair (tag-sub σ s) refl)
+  SK-sub {n = n} σ sg s d =
+    trans (cong (λ I → IMu I (subTm σ (SD sg)) (subTm σ (pair (tag s) d))) (SI-sub σ n))
+          (cong₂ (λ D j → IMu (SI n) D j) (SD-sub σ sg) (cong₂ pair (tag-sub σ s) refl))
 
 -- …and renaming, whose cast is what keeps the checker from normalising
 --   the whole description under `renTm` (measured: 20 s per occurrence)

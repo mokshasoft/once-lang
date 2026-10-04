@@ -192,6 +192,10 @@ selF-sub : {Θ : Cx} (σ : Sub Δ Θ) (Cs : Cons Δ c) → subTm σ (selF Cs) �
 selF-sub σ Cs =
   cong lam (trans (sel-sub (extS σ) (wkC Cs) (var vz)) (cong (λ X → sel X (var vz)) (subC-wkC σ Cs)))
 
+-- ★ the family commutes with substitution
+Dσ-sub : {Θ : Cx} (τ : Sub (Δ ∙) (Θ ∙)) (Cs : Cons (Δ ∙) c) → subTm τ (Dσ Cs) ≡ Dσ (subC τ Cs)
+Dσ-sub {c = c} τ Cs = cong₂ (λ N X → dσ (⌜Fin⌝ N) X) (num-sub τ c) (selF-sub τ Cs)
+
 nth-sub : {Θ : Cx} (σ : Sub Δ Θ) {Cs : Cons Δ c} {C : RTm Δ} → Nth Cs k C →
           Nth (subC σ Cs) k (subTm σ C)
 nth-sub σ nth-z     = nth-z
