@@ -27,6 +27,5 @@
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Trust.Knot8 where
 
-import DirectedHoTT.Examples.Knot.Terms
 import DirectedHoTT.Examples.Knot.TypingAgree
 import DirectedHoTT.Examples.Knot.Unquote

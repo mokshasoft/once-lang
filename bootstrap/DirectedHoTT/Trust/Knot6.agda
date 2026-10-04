@@ -27,7 +27,6 @@
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Trust.Knot6 where
 
-import DirectedHoTT.Examples.Knot.RedDecodeXi
 import DirectedHoTT.Examples.Knot.RedIx
 import DirectedHoTT.Examples.Knot.RedT
 import DirectedHoTT.Examples.Knot.RedTAgree
@@ -36,3 +35,4 @@ import DirectedHoTT.Examples.Knot.RedTDecode
 import DirectedHoTT.Examples.Knot.RedTDecodeXi
 import DirectedHoTT.Examples.Knot.RedXiConGen
 import DirectedHoTT.Examples.Knot.Ref
+import DirectedHoTT.Examples.Knot.RefCon
