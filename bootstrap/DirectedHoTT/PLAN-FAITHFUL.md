@@ -134,6 +134,8 @@ pilot too). It drives F6.0–F6.3 end to end before any big family.
   - ★ **New kernel theorem `Canonicity.canUnit`**: a closed normal
     inhabitant of `Unit` IS `unit`. Strong data canonicity is now a
     stated kernel invariant, not an F6 lemma.
+  - ✅ Cold sweep ALL GREEN (230 modules, 3 064 s); `ocp-0009-stepext-once`
+    fast-forwarded to `6c08c54f6` (2026-10-04), branch deleted.
 
 
 ## Log
