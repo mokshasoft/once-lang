@@ -679,7 +679,7 @@ open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Metatheory.TySub using ( ⊢-cast )
 open import DirectedHoTT.Metatheory.LogicalRelation using ( IsNormal )
-open import DirectedHoTT.Lib.Sugar using ( Lt; lt-z; lt-s )
+open import DirectedHoTT.Lib.Sugar using ( Lt; lt-z; lt-s; conₗ )
 open import DirectedHoTT.Lib.FinFam using ( ffz; ffs )
 open import DirectedHoTT.Lib.NatNum using ( num )
 open import DirectedHoTT.Lib.Syn
@@ -841,6 +841,63 @@ def gen_unquote(rows):
                 else: eqs.append("(toVar-from %s)" % a)
             L.append("%s %s = %s" % (FT[s], pat, congs(name, eqs)))
         L.append("")
+    # ★ the HEAD VIEW: the head's position, the quoted payload, and the way back
+    L.append("------------------------------------------------------------------------")
+    L.append("-- 2b. ★ THE HEAD VIEW (F6 nested patterns): `quoteTm t` IS `conₗ (hdTm t)")
+    L.append("--     (pfTm t)`, the head's position typed (`nhTm`), and `is⟨H⟩` reads a head")
+    L.append("--     equation back as the Spec constructor.")
+    L.append("------------------------------------------------------------------------")
+    L.append("")
+    HD = ["hdTy", "hdTm"]; PF = ["pfTy", "pfTm"]; SH = ["shTy", "shTm"]; NH = ["nhTy", "nhTm"]; QH = ["quote-hdTy", "quote-hdTm"]
+    RT = ["RTy", "RTm"]; SHS = ["TyShs", "TmShs"]; QN = ["quoteTy", "quoteTm"]
+    def qfld(f, a):
+        if f[0] in ("rec", "cls"): return "(%s %s)" % (QN[f[1]], a)
+        if f[0] == "nat": return "(quoteℕ %s)" % a
+        return "(quoteVar %s)" % a
+    for s_ in (0, 1):
+        L.append("%s : RTy Γ → ℕ" % HD[s_] if s_ == 0 else "%s : RTm Γ → ℕ" % HD[s_])
+        L.append("%s : %s Γ → RTm Θ" % (PF[s_], RT[s_]))
+        L.append("%s : %s Γ → Shape" % (SH[s_], RT[s_]))
+        L.append("%s : (t : %s Γ) → NthSh %s (%s t) (%s t)" % (NH[s_], RT[s_], SHS[s_], HD[s_], SH[s_]))
+        L.append("%s : (t : %s Γ) → %s t {Θ} ≡ conₗ (%s t) (%s t)" % (QH[s_], RT[s_], QN[s_], HD[s_], PF[s_]))
+        rowsH = []
+        for k, (name, fs) in enumerate(by[s_]):
+            args = ["a%d" % j for j in range(len(fs))]
+            pat = "(%s)" % " ".join([name] + args) if args else name
+            pf = "unit"
+            for f, a in reversed(list(zip(fs, args))): pf = "(pair %s %s)" % (qfld(f, a), pf)
+            rowsH.append((k, name, pat, pf))
+        for k, name, pat, pf in rowsH: L.append("%s %s = %d" % (HD[s_], pat, k))
+        for k, name, pat, pf in rowsH: L.append("%s %s = %s" % (PF[s_], pat, pf))
+        for k, name, pat, pf in rowsH: L.append("%s %s = %s" % (SH[s_], pat, "sh-" + kname(name)))
+        for k, name, pat, pf in rowsH: L.append("%s %s = %s" % (NH[s_], pat, nthsh(k)))
+        for k, name, pat, pf in rowsH: L.append("%s %s = refl" % (QH[s_], pat))
+        L.append("")
+    # is⟨H⟩: a head equation, read back
+    for s_ in (0, 1):
+        for k, (name, fs) in enumerate(by[s_]):
+            if any(f[0] == "var" for f in fs): continue
+            nm = "is" + kname(name)[1:]
+            binds = []
+            for j, f in enumerate(fs):
+                if f[0] == "nat": binds.append(("b%d" % j, "ℕ"))
+                elif f[0] == "cls": binds.append(("b%d" % j, "%s ε" % RT[f[1]]))
+                else: binds.append(("b%d" % j, "%s (Γ%s)" % (RT[f[1]], " ∙" * f[2])))
+            res = "%s ≡ %s" % ("t", "(%s)" % " ".join([name + ("" if any(f[0] in ("rec", "cls") for f in fs) else " {Γ}")] + [b for b, _ in binds]))
+            ty = res
+            for b, bt in reversed(binds): ty = "Σ (%s) (λ %s → %s)" % (bt, b, ty)
+            if not binds: ty = res
+            L.append("%s : (t : %s Γ) → %s t ≡ %d → %s" % (nm, RT[s_], HD[s_], k, ty))
+            for k2, (name2, fs2) in enumerate(by[s_]):
+                args = ["a%d" % j for j in range(len(fs2))]
+                pat = "(%s)" % " ".join([name2] + args) if args else name2
+                if k2 == k:
+                    val = "refl"
+                    for a in reversed(args): val = "(%s , %s)" % (a, val)
+                    L.append("%s %s refl = %s" % (nm, pat, val))
+                else:
+                    L.append("%s %s ()" % (nm, pat))
+            L.append("")
     L.append("""------------------------------------------------------------------------
 -- 3. ★ THE THEOREMS.
 ------------------------------------------------------------------------

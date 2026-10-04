@@ -273,3 +273,18 @@ rows-dec {I = I} {D} {Cs = Cs} r dx nrm with con-dec dx nrm
 rows-none : {I D i x : RTm ε} → app D i ⟶* dσ (⌜Fin⌝ 0) (selF ([] {ε})) → ◇ ⊢ x ∷ IMu I D i → IsNormal x → ⊥
 rows-none r dx nrm with rows-dec r dx nrm
 ... | _ , (_ , (_ , (() , _)))
+
+------------------------------------------------------------------------
+-- 9. Chaining decoders without `with` (with-over-knot-contexts-ooms):
+--    `step ▷ λ { pattern → next }`, each step typed by the one before.
+------------------------------------------------------------------------
+
+infixl 1 _▷_
+_▷_ : {A B : Set} → A → (A → B) → B
+x ▷ f = f x
+
+-- a payload at an EMPTY rule list (`dσ (⌜Fin⌝ 0) …`) has no inhabitant
+pay-none : {p I D C f : RTm ε} → ◇ ⊢ p ∷ El (dpay I D C) → C ⟶* dσ (⌜Fin⌝ 0) f → IsNormal p → ⊥
+pay-none dp r np with pay-σ dp r np
+... | t , (_ , (_ , ((dt , _) , (nt , _)))) with tag-decᶜ dt nt
+...   | _ , (() , _)
