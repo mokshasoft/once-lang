@@ -77,7 +77,7 @@ interleaved mutual
 
   -- the code of the kernel's types at a depth
   tys #Ty = Π (El ⌜ℕ⌝) U
-  tms #Ty = lam □ᵀ (⌜IMu⌝ SI₂ (ref #KD) (pair □ᵀ □ᵀ (fzero 0) v₀))
+  tms #Ty = lam □ᵀ (⌜IMu⌝ SI₂ (ref #KD) (pair □ᵀ □ᵀ (fzero □) v₀))
 
   -- contexts, indexed by their depth: empty, or a context and a type
   tys #CtxD = ↑ᵀ (T.DescF R.⌜Nat⌝)
@@ -90,7 +90,7 @@ interleaved mutual
   -- the convoy over an index (sort, depth): a context, and for a term a type
   tys #CT = Π (El SI₂) U
   tms #CT = lam □ᵀ (⌜Σ⌝ (app (ref #Ctx) (snd v₀))
-                        (fcase 0 □ᵀ (fst v₁) ⌜Unit⌝ (app (ref #Ty) (snd v₂))))
+                        (fcase □ □ᵀ (fst v₁) ⌜Unit⌝ (app (ref #Ty) (snd v₂))))
 
   -- the typing judgement's index: (i , t , c)
   tys #JT = U

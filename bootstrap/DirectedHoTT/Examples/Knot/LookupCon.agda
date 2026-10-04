@@ -28,7 +28,7 @@ open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast; wk-cancel-tm )
 open import DirectedHoTT.Metatheory.SubjectReductionBase using () renaming ( wk-sub to wkS )
 open import DirectedHoTT.Metatheory.RedCong
-open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_; conₗ; tag; selF; selF-sub; ⊢selF; selF-β; subC; nth-z; nth-s; lt-z; ⊢tag; ⊢pay-σ; ⊢con-fib; []ᵈ; _∷ᵈ_; v₀; v₁; v₂; v₃; v₄; v₅; _,ₚ_ )
+open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_; conₗ; tag; selF; selF-sub; Dσ-sub; ⊢selF; selF-β; subC; nth-z; nth-s; lt-z; ⊢tag; ⊢pay-σ; ⊢con-fib; []ᵈ; _∷ᵈ_; v₀; v₁; v₂; v₃; v₄; v₅; _,ₚ_ )
 open import DirectedHoTT.Lib.Tel
 open import DirectedHoTT.Lib.MethAt
 open import DirectedHoTT.Lib.NatFib
@@ -49,7 +49,7 @@ private
 ------------------------------------------------------------------------
 
 rows-sub : {c : ℕ} (τ : Sub Δ Θ) (Cs : Cons Δ c) → subTm τ (rows Cs) ≡ rows (subC τ Cs)
-rows-sub {c = c} τ Cs = cong (dσ (⌜Fin⌝ c)) (selF-sub τ Cs)
+rows-sub τ Cs = Dσ-sub τ Cs
 
 hereT-sub : (σ : Sub Δ Θ) (m a' a : RTm Δ) →
             subTm σ ⌜ hereT m a' a ⌝ᵗ ≡ ⌜ hereT (subTm σ m) (subTm σ a') (subTm σ a) ⌝ᵗ

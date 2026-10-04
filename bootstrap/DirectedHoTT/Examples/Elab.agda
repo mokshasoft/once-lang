@@ -19,8 +19,9 @@ module DirectedHoTT.Examples.Elab where
 open import normalizer.Syntax.Types using ( ⊤; ⊥ )
 open import Agda.Builtin.Maybe using ( Maybe; just; nothing )
 open import DirectedHoTT.Spec.Syntax using ( vz; vs )
-open import DirectedHoTT.Spec.Typing using ( c-◇; ty-Nat; ty-Π; ty-Σ; ty-Unit; ty-Fin )
+open import DirectedHoTT.Spec.Typing using ( c-◇; ty-Nat; ty-Π; ty-Σ; ty-Unit; ty-Fin; ⊢nsuc; ⊢nzero )
 open import DirectedHoTT.Spec.Annotated using ( ATy; Π; Σ'; Nat; Unit; Fin )
+import DirectedHoTT.Spec.Annotated as AN
 open import DirectedHoTT.Algorithm.Surface
 open import DirectedHoTT.Metatheory.Signature using ( wf→ok )
 open import DirectedHoTT.Examples.Signature using ( Σ₃; wf )
@@ -64,7 +65,7 @@ ok-pair : isJust (elaborate TA.◇ᴬ c-◇ (pair □ᵀ □ᵀ nzero unit) (Σ'
 ok-pair = _
 
 -- `fsuc`'s bound from the expected `Fin`
-ok-fin : isJust (elaborate TA.◇ᴬ c-◇ (fsuc 0 (fzero 0)) (Fin 2) ty-Fin)
+ok-fin : isJust (elaborate TA.◇ᴬ c-◇ (fsuc □ (fzero □)) (Fin (AN.nsuc (AN.nsuc AN.nzero))) (ty-Fin (⊢nsuc (⊢nsuc ⊢nzero))))
 ok-fin = _
 
 -- a signature reference whose type needs δ (`El (ref 1)` is `Nat`)

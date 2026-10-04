@@ -3778,7 +3778,7 @@ REDT_COMP = [
   ("El-⌜Id⌝ c a b", "El", 4, [_q("c"), _q("a"), _q("b")], None),
   ("El-⌜Nat⌝", "El", 5, [], None),
   ("El-⌜IMu⌝ {I} {D} {i}", "El", 6, [_q("I"), _q("D"), _q("i")], None),
-  ("El-⌜Fin⌝ {n}", "El", 7, ["(⊢quoteℕ n)"], None),
+  ("El-⌜Fin⌝ {n}", "El", 7, [_q("n")], None),
   ("El-⌜Unit⌝", "El", 8, [], None),
   ("DIh-ι D M p", "DIh", 0, [_q("D"), _qT("M"), _q("p")], None),
   ("DIh-σ D M S f p", "DIh", 1, [_q("D"), _qT("M"), _q("p"), _q("S"), _q("f")], None),
