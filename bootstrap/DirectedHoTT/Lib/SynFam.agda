@@ -56,9 +56,8 @@ module SynFam {sg : Sig n} (ok : SigOK n sg)
 
   J-sub : (σ : Sub Δ Θ) → subTm σ (J {Δ}) ≡ J
   J-sub {Δ} σ =
-    cong₂ (λ D X → ⌜Σ⌝ (SI n) (⌜Σ⌝ (⌜IMu⌝ (SI n) D (var vz)) X))
-          {x = subTm (extS σ) (SD {Δ = Δ ∙} sg)} {x' = SD sg}
-          {y = subTm (extS (extS σ)) (renTm vs (C {Δ}))} {y' = renTm vs C}
+    cong₄ (λ I I' D X → ⌜Σ⌝ I (⌜Σ⌝ (⌜IMu⌝ I' D (var vz)) X))
+          (SI-sub σ n) (SI-sub (extS σ) n)
           (SD-sub (extS σ) sg)
           (trans (wkS (extS σ) C) (cong (renTm vs) {x = subTm (extS σ) C} {y = C} (C-sub σ)))
 
@@ -69,7 +68,7 @@ module SynFam {sg : Sig n} (ok : SigOK n sg)
   ⊢wkC {Γ} = ⊢wk {Γ ▹ El (SI n)} {El (⌜IMu⌝ (SI n) (SD sg) (var vz))} {C} {U} ⊢C
 
   ⊢J : {Γ : Ctx} → Γ ⊢ J ∷ U
-  ⊢J = ⊢⌜Σ⌝ ⊢SI (⊢⌜Σ⌝ (⊢⌜IMu⌝ ⊢SI (⊢SD ok) (⊢var here)) ⊢wkC)
+  ⊢J = ⊢⌜Σ⌝ ⊢SI (⊢⌜Σ⌝ (⊢⌜IMu⌝ ⊢SI (⊢SD ok) (⊢varSI here (SI-wks 1))) ⊢wkC)
 
   open Fib₀ ok J J-sub ⊢J C C-sub ⊢C public
 
@@ -87,7 +86,7 @@ module SynFam {sg : Sig n} (ok : SigOK n sg)
     e1 : (i : RTm Δ) → subTy (single i) (El B1) ≡ El (⌜Σ⌝ (⌜IMu⌝ (SI n) (SD sg) i) (renTm vs (Cat i)))
     e1 {Δ} i = cong El (cong₂ ⌜Σ⌝ {x = subTm (single i) (⌜IMu⌝ (SI n) (SD {Δ = Δ ∙} sg) (var vz))} {x' = ⌜IMu⌝ (SI n) (SD sg) i}
                                  {y = subTm (extS (single i)) (renTm vs C)} {y' = renTm vs (Cat i)}
-                         (cong (λ D → ⌜IMu⌝ (SI n) D i) (SD-sub (single i) sg))
+                         (cong₂ (λ I D → ⌜IMu⌝ I D i) (SI-sub (single i) n) (SD-sub (single i) sg))
                          (wkS (single i) C))
 
   ⊢ixJ : {Ξ : Ctx} {i t c : RTm ⌊ Ξ ⌋} → Ξ ⊢ i ∷ El (SI n) → Ξ ⊢ t ∷ IMu (SI n) (SD sg) i → Ξ ⊢ c ∷ El (Cat i) →
@@ -99,7 +98,7 @@ module SynFam {sg : Sig n} (ok : SigOK n sg)
       e2 : subTy (single t) (El B2) ≡ El (Cat i)
       e2 = cong El (wk-cancel-tm t (Cat i))
       tyB1 : (Ξ ▹ El (SI n)) ⊢ty El B1
-      tyB1 = ty-El (⊢⌜Σ⌝ (⊢⌜IMu⌝ ⊢SI (⊢SD ok) (⊢var here)) ⊢wkC)
+      tyB1 = ty-El (⊢⌜Σ⌝ (⊢⌜IMu⌝ ⊢SI (⊢SD ok) (⊢varSI here (SI-wks 1))) ⊢wkC)
       tyB2 : (Ξ ▹ El (⌜IMu⌝ (SI n) (SD sg) i)) ⊢ty El B2
       tyB2 = ty-El (⊢wk {Ξ} {El (⌜IMu⌝ (SI n) (SD sg) i)} {Cat i} {U} (⊢Cat di))
       p2 : Ξ ⊢ pair t c ∷ Σ' (El (⌜IMu⌝ (SI n) (SD sg) i)) (El B2)

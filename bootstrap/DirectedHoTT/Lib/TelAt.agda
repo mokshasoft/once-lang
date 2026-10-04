@@ -32,8 +32,8 @@ open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast; conv-ctx; sub
 open import DirectedHoTT.Metatheory.Fundamental.Syntactic using ( subTm-var )
 open import DirectedHoTT.Metatheory.Premises using ( mot-ren; ⊢wkD )
 open import DirectedHoTT.Lib.Sugar
-open import DirectedHoTT.Lib.NatNum using ( num )
   using ( Cons; []; _∷_; Nth; nth-z; nth-s; tag; selF; selF-β; nth-sub; subC; conₗ; AllD )
+open import DirectedHoTT.Lib.NatNum using ( num )
 open import DirectedHoTT.Lib.Tel
 open import DirectedHoTT.Lib.MethAt
 open import DirectedHoTT.Lib.Sorted

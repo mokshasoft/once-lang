@@ -40,11 +40,11 @@ open import DirectedHoTT.Metatheory.TySub
 open import DirectedHoTT.Metatheory.Premises using ( mot-ren; ⊢wkD; MethTy-wf; pairS⊢ )
 open import DirectedHoTT.Metatheory.Validity using ( wk-app-vz )
 open import DirectedHoTT.Lib.Sugar
-open import DirectedHoTT.Lib.NatNum using ( num; ⊢num; num-ren; num-sub )
   using ( Cons; []; _∷_; wkC; subC; Nth; nth-z; nth-s; tag; sel; selF; Dσ; conₗ
         ; sel-sub; sel-β; selF-β; selF-sub; nth-sub; subC-wkC
         ; AllD; []ᵈ; _∷ᵈ_; ⊢sel; ⊢selF; ⊢Dσ; subAllD; ⊢con-fib; ⊢pay-σ; ⊢tag; nth-lt; Lt; lt-z; lt-s
         ; selM; tag-ren; AllQ; []q; _∷q_; castQ; ⊢selG; fsucsS; fsucsS-zero; fsucsS-suc; fsucsS-head; wk-single-tag )
+open import DirectedHoTT.Lib.NatNum using ( num; ⊢num; num-ren; num-sub )
 open import DirectedHoTT.Lib.MethAt
 
 private

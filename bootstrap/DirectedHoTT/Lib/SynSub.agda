@@ -52,7 +52,7 @@ module Sub {sg : Sig n} (ok : SigOK n sg) {v kv : ℕ} {shs : Shapes c}
   VFs = lam (⌜IMu⌝ (SI n) (SD sg) (pair (tag v) (var vz)))
 
   VFs-sub : {Γ Δ : Cx} (σ : Sub Γ Δ) → subTm σ (VFs {Γ}) ≡ VFs {Δ}
-  VFs-sub σ = cong lam (cong₂ (λ D t → ⌜IMu⌝ (SI n) D (pair t (var vz))) (SD-sub (extS σ) sg) (tag-sub (extS σ) v))
+  VFs-sub σ = cong lam (cong₃ (λ I D t → ⌜IMu⌝ I D (pair t (var vz))) (SI-sub (extS σ) n) (SD-sub (extS σ) sg) (tag-sub (extS σ) v))
 
   -- a value bound by a binder, seen from under it
   VatR : {Γ : Cx} (e : RTm Γ) → renTy vs (Vat (VFs {Γ}) e) ≡ Vat VFs (renTm vs e)
@@ -70,12 +70,12 @@ module Sub {sg : Sig n} (ok : SigOK n sg) {v kv : ℕ} {shs : Shapes c}
   -- a value IS a term of the variable sort
   toSK : {Γ : Ctx} {e t : RTm ⌊ Γ ⌋} → Γ ⊢ t ∷ Vat VFs e → Γ ⊢ t ∷ SK sg v e
   toSK {e = e} dt = ⊢IMu→SK {sg = sg} {s = v} {d = e} (
-    ⊢-cast (cong₂ (λ D x → IMu (SI n) D (pair x e)) (SD-sub (single e) sg) (tag-sub (single e) v))
+    ⊢-cast (cong₃ (λ I D x → IMu I D (pair x e)) (SI-sub (single e) n) (SD-sub (single e) sg) (tag-sub (single e) v))
       (⊢conv dt (ctrnᵀ (credᵀ (ξ-El (β _ e))) (credᵀ El-⌜IMu⌝))))
 
   fromSK : {Γ : Ctx} {e t : RTm ⌊ Γ ⌋} → Γ ⊢ t ∷ SK sg v e → Γ ⊢ t ∷ Vat VFs e
   fromSK {e = e} dt =
-    ⊢conv (⊢-cast (sym (cong₂ (λ D x → IMu (SI n) D (pair x e)) (SD-sub (single e) sg) (tag-sub (single e) v))) (⊢SK→IMu {sg = sg} {s = v} {d = e} dt))
+    ⊢conv (⊢-cast (sym (cong₃ (λ I D x → IMu I D (pair x e)) (SI-sub (single e) n) (SD-sub (single e) sg) (tag-sub (single e) v))) (⊢SK→IMu {sg = sg} {s = v} {d = e} dt))
           (csymᵀ (ctrnᵀ (credᵀ (ξ-El (β _ e))) (credᵀ El-⌜IMu⌝)))
 
   -- the variable node at `x : Fin e`

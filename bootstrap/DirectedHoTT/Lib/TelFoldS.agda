@@ -30,6 +30,7 @@ open import DirectedHoTT.Lib.Tel
 open import DirectedHoTT.Lib.TelFold
   using ( Alg; module Alg; IhK; IhN-K; IhK-ren; K-ren; foldK; foldK-sub; ⊢foldK )
 open import DirectedHoTT.Lib.MethAt
+open import DirectedHoTT.Lib.NatNum using ( num )
 open import DirectedHoTT.Lib.Sorted
 open import DirectedHoTT.Lib.TelAt
 
@@ -92,7 +93,7 @@ module _ (A : Alg) where
 
   private
     perS : {Γ : Ctx} {J : RTm (⌊ Γ ⌋ ∙)} {Tss : STels (⌊ Γ ⌋ ∙) n} {Tss' : STels (⌊ Γ ⌋ ∙) k} {s₀ : ℕ} →
-           (Γ ▹ El (⌜Fin⌝ n)) ⊢ J ∷ U → AllSOK Γ (SortI J n) Tss →
+           (Γ ▹ El (⌜Fin⌝ (num n))) ⊢ J ∷ U → AllSOK Γ (SortI J n) Tss →
            ({j c : ℕ} {Ts : Tels (⌊ Γ ⌋ ∙) c} → NthST Tss' j Ts → NthST Tss (j +' s₀) Ts) →
            PerS Γ (SortT (SortI J n) (Dₛₜ Tss) K J) s₀ (sortFolds Tss')
     perS {Tss' = []ˢᵗ} dJ oks lookS = []ₚ
@@ -112,7 +113,7 @@ module _ (A : Alg) where
 
   -- ★ the fold's one method
   ⊢foldₛ : {Γ : Ctx} {J : RTm (⌊ Γ ⌋ ∙)} {Tss : STels (⌊ Γ ⌋ ∙) n} →
-           (Γ ▹ El (⌜Fin⌝ n)) ⊢ J ∷ U → AllSOK Γ (SortI J n) Tss →
+           (Γ ▹ El (⌜Fin⌝ (num n))) ⊢ J ∷ U → AllSOK Γ (SortI J n) Tss →
            Γ ⊢ methAt (sortFolds Tss) ∷ MethTy (SortI J n) (Dₛₜ Tss) K
   ⊢foldₛ dJ oks = ⊢methₛ dJ (⊢Dₛₜ dJ oks) ⊢K (perS dJ oks (λ {j} n → subst (λ m → NthST _ m _) (sym (+'-zero j)) n))
 

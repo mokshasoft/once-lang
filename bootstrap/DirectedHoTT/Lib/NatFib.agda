@@ -37,9 +37,9 @@ open import DirectedHoTT.Metatheory.TySub
 open import DirectedHoTT.Metatheory.Premises using ( mot-ren; ⊢wkD; MethTy-wf )
 open import DirectedHoTT.Lib.Sugar using ( sel )
 open import DirectedHoTT.Lib.Sugar
-open import DirectedHoTT.Lib.NatNum using ( num; ⊢num; num-ren; num-sub )
-  using ( Cons; []; _∷_; Nth; subC; Dσ; selF; conₗ; tag; selF-β; selF-sub; nth-sub; nth-lt
+  using ( Cons; []; _∷_; Nth; subC; Dσ; Dσ-sub; selF; conₗ; tag; selF-β; selF-sub; nth-sub; nth-lt
         ; AllD; []ᵈ; _∷ᵈ_; ⊢Dσ; ⊢selF; ⊢con-fib; ⊢pay-σ; ⊢tag; subAllD )
+open import DirectedHoTT.Lib.NatNum using ( num; ⊢num; num-ren; num-sub )
 open import DirectedHoTT.Lib.MethAt
 
 private
