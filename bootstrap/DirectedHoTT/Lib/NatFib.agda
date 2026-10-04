@@ -37,6 +37,7 @@ open import DirectedHoTT.Metatheory.TySub
 open import DirectedHoTT.Metatheory.Premises using ( mot-ren; ⊢wkD; MethTy-wf )
 open import DirectedHoTT.Lib.Sugar using ( sel )
 open import DirectedHoTT.Lib.Sugar
+open import DirectedHoTT.Lib.NatNum using ( num; ⊢num; num-ren; num-sub )
   using ( Cons; []; _∷_; Nth; subC; Dσ; selF; conₗ; tag; selF-β; selF-sub; nth-sub; nth-lt
         ; AllD; []ᵈ; _∷ᵈ_; ⊢Dσ; ⊢selF; ⊢con-fib; ⊢pay-σ; ⊢tag; subAllD )
 open import DirectedHoTT.Lib.MethAt
@@ -60,7 +61,7 @@ DN C0 CS = lam (natrec (Dσ C0) (renTm ρS (Dσ CS)) (var vz))
 
 -- ★ the family commutes with substitution (its lists under the index binder)
 Dσ-sub : {Θ : Cx} (τ : Sub (Δ ∙) (Θ ∙)) (Cs : Cons (Δ ∙) c) → subTm τ (Dσ Cs) ≡ Dσ (subC τ Cs)
-Dσ-sub τ Cs = cong (dσ (⌜Fin⌝ _)) (selF-sub τ Cs)
+Dσ-sub {c = c} τ Cs = cong₂ (λ N X → dσ (⌜Fin⌝ N) X) (num-sub τ c) (selF-sub τ Cs)
 
 -- the step's predecessor renaming commutes with substitution
 ρS-sub : {Θ : Cx} (σ : Sub Δ Θ) (t : RTm (Δ ∙)) → subTm (extS (extS (extS σ))) (renTm ρS t) ≡ renTm ρS (subTm (extS σ) t)
@@ -100,11 +101,11 @@ hS (there {A = A₀} v) =
 ------------------------------------------------------------------------
 
 fibN-z : (C0 : Cons (Δ ∙) c₀) (CS : Cons (Δ ∙) cₛ) →
-         app (DN C0 CS) nzero ⟶* dσ (⌜Fin⌝ c₀) (selF (subC (single nzero) C0))
+         app (DN C0 CS) nzero ⟶* dσ (⌜Fin⌝ (num c₀)) (selF (subC (single nzero) C0))
 fibN-z {c₀ = c₀} C0 CS =
   step (β _ _) (step (natrec-zero _ _)
-    (subst (λ X → dσ (⌜Fin⌝ c₀) (subTm (single nzero) (selF C0)) ⟶* dσ (⌜Fin⌝ c₀) X)
-           (selF-sub (single nzero) C0) done))
+    (subst (λ X → subTm (single nzero) (Dσ C0) ⟶* X)
+           (cong₂ (λ N X → dσ (⌜Fin⌝ N) X) (num-sub (single nzero) c₀) (selF-sub (single nzero) C0)) done))
 
 -- the substitution a successor case leaves on a step-body: the predecessor
 sucS : RTm Δ → Sub (Δ ∙) Δ
@@ -124,12 +125,12 @@ private
       pt (vs x) = refl
 
 fibN-s : (C0 : Cons (Δ ∙) c₀) (CS : Cons (Δ ∙) cₛ) (m : RTm Δ) →
-         app (DN C0 CS) (nsuc m) ⟶* dσ (⌜Fin⌝ cₛ) (selF (subC (single m) CS))
+         app (DN C0 CS) (nsuc m) ⟶* dσ (⌜Fin⌝ (num cₛ)) (selF (subC (single m) CS))
 fibN-s {cₛ = cₛ} C0 CS m =
   step (β _ _) (step (natrec-suc _ _ _)
-    (subst (λ X → X ⟶* dσ (⌜Fin⌝ cₛ) (selF (subC (single m) CS))) (sym (step-flat m _ (Dσ CS)))
-      (subst (λ X → dσ (⌜Fin⌝ cₛ) (subTm (single m) (selF CS)) ⟶* dσ (⌜Fin⌝ cₛ) X)
-             (selF-sub (single m) CS) done)))
+    (subst (λ X → X ⟶* dσ (⌜Fin⌝ (num cₛ)) (selF (subC (single m) CS))) (sym (step-flat m _ (Dσ CS)))
+      (subst (λ X → subTm (single m) (Dσ CS) ⟶* X)
+             (cong₂ (λ N X → dσ (⌜Fin⌝ N) X) (num-sub (single m) cₛ) (selF-sub (single m) CS)) done)))
 
 ------------------------------------------------------------------------
 -- 3. ★ CONSTRUCTORS at `0` and at `suc m`.
@@ -276,11 +277,12 @@ NTS-inst D M =
 
 -- the fibre of the WEAKENED family at `suc` of the fresh variable
 fibN-s-wk : (C0 : Cons (Δ ∙) c₀) (CS : Cons (Δ ∙) cₛ) →
-            app (renTm vs (DN C0 CS)) (nsuc (var vz)) ⟶* dσ (⌜Fin⌝ cₛ) (selF (subC (single (var vz) ₛ∘ᵣ extR vs) CS))
+            app (renTm vs (DN C0 CS)) (nsuc (var vz)) ⟶* dσ (⌜Fin⌝ (num cₛ)) (selF (subC (single (var vz) ₛ∘ᵣ extR vs) CS))
 fibN-s-wk {cₛ = cₛ} C0 CS =
   step (β _ _) (step (natrec-suc _ _ _)
-    (subst (λ X → X ⟶* dσ (⌜Fin⌝ cₛ) (selF (subC τ CS))) (sym flat)
-      (subst (λ X → dσ (⌜Fin⌝ cₛ) (subTm τ (selF CS)) ⟶* dσ (⌜Fin⌝ cₛ) X) (selF-sub τ CS) done)))
+    (subst (λ X → X ⟶* dσ (⌜Fin⌝ (num cₛ)) (selF (subC τ CS))) (sym flat)
+      (subst (λ X → subTm τ (Dσ CS) ⟶* X)
+             (cong₂ (λ N X → dσ (⌜Fin⌝ N) X) (num-sub τ cₛ) (selF-sub τ CS)) done)))
   where
     τ = single (var vz) ₛ∘ᵣ extR vs
     t = Dσ CS

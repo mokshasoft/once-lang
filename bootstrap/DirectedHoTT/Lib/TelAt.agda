@@ -32,6 +32,7 @@ open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast; conv-ctx; sub
 open import DirectedHoTT.Metatheory.Fundamental.Syntactic using ( subTm-var )
 open import DirectedHoTT.Metatheory.Premises using ( mot-ren; ⊢wkD )
 open import DirectedHoTT.Lib.Sugar
+open import DirectedHoTT.Lib.NatNum using ( num )
   using ( Cons; []; _∷_; Nth; nth-z; nth-s; tag; selF; selF-β; nth-sub; subC; conₗ; AllD )
 open import DirectedHoTT.Lib.Tel
 open import DirectedHoTT.Lib.MethAt
@@ -119,13 +120,13 @@ Dₛₜ : STels (Δ ∙) n → RTm Δ
 Dₛₜ Tss = Dₛ ⌜ Tss ⌝ₛₛ
 
 ⊢Dₛₜ : {Γ : Ctx} {J : RTm (⌊ Γ ⌋ ∙)} {Tss : STels (⌊ Γ ⌋ ∙) n} →
-       (Γ ▹ El (⌜Fin⌝ n)) ⊢ J ∷ U → AllSOK Γ (SortI J n) Tss → Γ ⊢ Dₛₜ Tss ∷ DescF (SortI J n)
+       (Γ ▹ El (⌜Fin⌝ (num n))) ⊢ J ∷ U → AllSOK Γ (SortI J n) Tss → Γ ⊢ Dₛₜ Tss ∷ DescF (SortI J n)
 ⊢Dₛₜ dJ oks = ⊢Dₛ (⊢SortI dJ) (allSD (⊢SortI dJ) oks)
 
 -- ★ constructor `k` of sort `s`, its payload read along the telescope
 ⊢conₛₜ : {Γ : Ctx} {J : RTm (⌊ Γ ⌋ ∙)} {Tss : STels (⌊ Γ ⌋ ∙) n} {Ts : Tels (⌊ Γ ⌋ ∙) c}
          {T : Tel (⌊ Γ ⌋ ∙)} {j p : RTm ⌊ Γ ⌋} →
-         (Γ ▹ El (⌜Fin⌝ n)) ⊢ J ∷ U → AllSOK Γ (SortI J n) Tss → NthST Tss s Ts → NthT Ts k T →
+         (Γ ▹ El (⌜Fin⌝ (num n))) ⊢ J ∷ U → AllSOK Γ (SortI J n) Tss → NthST Tss s Ts → NthT Ts k T →
          Γ ⊢ j ∷ El (subTm (single (tag s)) J) →
          Γ ⊢ p ∷ El (dpay (SortI J n) (Dₛₜ Tss) (subTm (single (pair (tag s) j)) ⌜ T ⌝ᵗ)) →
          Γ ⊢ conₗ k p ∷ IMu (SortI J n) (Dₛₜ Tss) (pair (tag s) j)
@@ -176,7 +177,7 @@ nth-OK (_ ∷ᵒ oks) (nthᵗ-s n) = nth-OK oks n
 
 entₛ : {Γ : Ctx} {J : RTm (⌊ Γ ⌋ ∙)} {Tss : STels (⌊ Γ ⌋ ∙) n} {Ts : Tels (⌊ Γ ⌋ ∙) c}
        {T : Tel (⌊ Γ ⌋ ∙)} {M : RTy ((⌊ Γ ⌋ ∙) ∙)} {b : RTm (((⌊ Γ ⌋ ∙) ∙) ∙)} →
-       (Γ ▹ El (⌜Fin⌝ n)) ⊢ J ∷ U → AllSOK Γ (SortI J n) Tss → motCtx Γ (SortI J n) (Dₛₜ Tss) ⊢ty M →
+       (Γ ▹ El (⌜Fin⌝ (num n))) ⊢ J ∷ U → AllSOK Γ (SortI J n) Tss → motCtx Γ (SortI J n) (Dₛₜ Tss) ⊢ty M →
        NthST Tss s Ts → NthT Ts k T →
        HypAt (Γ ▹ El (subTm (single (tag s)) J)) (renTm vs (SortI J n)) (renTm vs (Dₛₜ Tss)) (wk1M M) (σₛ s) T
          ⊢ b ∷ subTy (atS (ιₛ s) (conₗ k (var (vs vz)))) (wk1M M) →
