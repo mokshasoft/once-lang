@@ -186,7 +186,7 @@ data Nf where
   nf-⌜Nat⌝  : Nf (⌜Nat⌝ {Γ})
   nf-⌜Unit⌝ : Nf (⌜Unit⌝ {Γ})
   nf-⌜IMu⌝  : {I D i : RTm Γ} → Nf I → Nf D → Nf i → Nf (⌜IMu⌝ I D i)
-  nf-⌜Fin⌝  : {n : ℕ} → Nf (⌜Fin⌝ {Γ} n)
+  nf-⌜Fin⌝  : {n : RTm Γ} → Nf n → Nf (⌜Fin⌝ n)
   nf-con    : {p : RTm Γ} → Nf p → Nf (con p)
   nf-ielim  : {D i e t : RTm Γ} → Nf D → Nf i → Nf e → Nf t →
               head (ielim D i e t) ≡ nothing → Nf (ielim D i e t)
@@ -220,7 +220,7 @@ data Nfᵀ where
   nf-Desc : {I : RTm Γ} → Nf I → Nfᵀ (Desc I)
   nf-DIh  : {D C p : RTm Γ} {M : RTy ((Γ ∙) ∙)} → Nf D → Nfᵀ M → Nf C → Nf p →
             headᵀ (DIh D M C p) ≡ nothing → Nfᵀ (DIh D M C p)
-  nf-Fin  : {n : ℕ} → Nfᵀ (Fin {Γ} n)
+  nf-Fin  : {n : RTm Γ} → Nf n → Nfᵀ (Fin n)
 
 ------------------------------------------------------------------------
 -- 3. ★ A NORMAL FORM DOES NOT STEP — by case on the STEP: every rule.
@@ -312,6 +312,7 @@ nf-irr (nf-jsub _ _ n _) (ξ-jsubᵉ s) = nf-irr n s
 nf-irr (nf-natrec _ _ _ ()) (natrec-zero _ _)
 nf-irr (nf-natrec _ _ _ ()) (natrec-suc _ _ _)
 nf-irr (nf-nsuc n) (ξ-nsuc s) = nf-irr n s
+nf-irr (nf-⌜Fin⌝ n) (ξ-⌜Fin⌝ s) = nf-irr n s
 nf-irr (nf-natrec n _ _ _) (ξ-natrecᶻ s) = nf-irr n s
 nf-irr (nf-natrec _ n _ _) (ξ-natrecˢ s) = nf-irr n s
 nf-irr (nf-natrec _ _ n _) (ξ-natrecⁿ s) = nf-irr n s
@@ -384,6 +385,7 @@ nf-irrᵀ (nf-IMu n _ _) (ξ-IMuᴵ s) = nf-irr n s
 nf-irrᵀ (nf-IMu _ n _) (ξ-IMuᴰ s) = nf-irr n s
 nf-irrᵀ (nf-IMu _ _ n) (ξ-IMuⁱ s) = nf-irr n s
 nf-irrᵀ (nf-Desc n) (ξ-Desc s) = nf-irr n s
+nf-irrᵀ (nf-Fin n) (ξ-Fin s) = nf-irr n s
 nf-irrᵀ (nf-DIh n _ _ _ _) (ξ-DIhᴰ s) = nf-irr n s
 nf-irrᵀ (nf-DIh _ n _ _ _) (ξ-DIhᴹ s) = nf-irrᵀ n s
 nf-irrᵀ (nf-DIh _ _ n _ _) (ξ-DIhᶜ s) = nf-irr n s
@@ -545,7 +547,7 @@ eval k (⌜IMu⌝ I D i) =
   fld (λ x → ⌜IMu⌝ x D i) ξ-⌜IMu⌝ᴵ done (eval k I) λ {I'} nI c1 →
   fld (λ x → ⌜IMu⌝ I' x i) ξ-⌜IMu⌝ᴰ c1 (eval k D) λ {D'} nD c2 →
   fld (⌜IMu⌝ I' D') ξ-⌜IMu⌝ⁱ c2 (eval k i) λ ni c3 → nfd _ c3 (nf-⌜IMu⌝ nI nD ni)
-eval k (⌜Fin⌝ n) = nfd _ done nf-⌜Fin⌝
+eval k (⌜Fin⌝ n) = fld ⌜Fin⌝ ξ-⌜Fin⌝ done (eval k n) λ nn ch → nfd _ ch (nf-⌜Fin⌝ nn)
 eval k (con p) = fld con ξ-con done (eval k p) λ np ch → nfd _ ch (nf-con np)
 eval k (ielim D i e t) =
   fld (λ x → ielim x i e t) ξ-ielimᴰ done (eval k D) λ {D'} nD c1 →
@@ -587,7 +589,7 @@ evalᵀ k base = nfdᵀ _ doneᵀ nf-base
 evalᵀ k U    = nfdᵀ _ doneᵀ nf-U
 evalᵀ k Unit = nfdᵀ _ doneᵀ nf-Unit
 evalᵀ k Nat  = nfdᵀ _ doneᵀ nf-Nat
-evalᵀ k (Fin n) = nfdᵀ _ doneᵀ nf-Fin
+evalᵀ k (Fin n) = fldᵗ Fin ξ-Fin doneᵀ (eval k n) λ nn ch → nfdᵀ _ ch (nf-Fin nn)
 evalᵀ k (Π A B) =
   fldᵀ (λ X → Π X B) ξ-Πˡ doneᵀ (evalᵀ k A) λ {A'} nA ch →
   fldᵀ (Π A') ξ-Πʳ ch (evalᵀ k B) λ nB ch' → nfdᵀ _ ch' (nf-Π nA nB)

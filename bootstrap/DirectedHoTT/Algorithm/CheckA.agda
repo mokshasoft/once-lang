@@ -126,7 +126,7 @@ liftTy (Id x0 x1 x2) = Id (liftTy x0) (liftTm x1) (liftTm x2)
 liftTy (IMu x0 x1 x2) = IMu (liftTm x0) (liftTm x1) (liftTm x2)
 liftTy (Desc x0) = Desc (liftTm x0)
 liftTy (DIh x0 x1 x2 x3) = DIh nzero (liftTm x0) (liftTy x1) (liftTm x2) (liftTm x3)
-liftTy (Fin x0) = Fin x0
+liftTy (Fin x0) = Fin (liftTm x0)
 liftTm (var x0) = var x0
 liftTm (lam x0) = lam base (liftTm x0)
 liftTm (app x0 x1) = app (liftTm x0) (liftTm x1)
@@ -152,7 +152,7 @@ liftTm (natrec x0 x1 x2) = natrec base (liftTm x0) (liftTm x1) (liftTm x2)
 liftTm ⌜Nat⌝ = ⌜Nat⌝
 liftTm ⌜Unit⌝ = ⌜Unit⌝
 liftTm (⌜IMu⌝ x0 x1 x2) = ⌜IMu⌝ (liftTm x0) (liftTm x1) (liftTm x2)
-liftTm (⌜Fin⌝ x0) = ⌜Fin⌝ x0
+liftTm (⌜Fin⌝ x0) = ⌜Fin⌝ (liftTm x0)
 liftTm (con x0) = con nzero nzero nzero (liftTm x0)
 liftTm (ielim x0 x1 x2 x3) = ielim nzero (liftTm x0) base (liftTm x1) (liftTm x2) (liftTm x3)
 liftTm dι = dι nzero
@@ -160,9 +160,9 @@ liftTm (dσ x0 x1) = dσ nzero (liftTm x0) (liftTm x1)
 liftTm (dρ x0 x1) = dρ nzero (liftTm x0) (liftTm x1)
 liftTm (dpay x0 x1 x2) = dpay (liftTm x0) (liftTm x1) (liftTm x2)
 liftTm (dih x0 x1 x2 x3) = dih nzero (liftTm x0) base (liftTm x1) (liftTm x2) (liftTm x3)
-liftTm fzero = fzero zero
-liftTm (fsuc x0) = fsuc zero (liftTm x0)
-liftTm (fcase x0 x1 x2) = fcase zero base (liftTm x0) (liftTm x1) (liftTm x2)
+liftTm fzero = fzero nzero
+liftTm (fsuc x0) = fsuc nzero (liftTm x0)
+liftTm (fcase x0 x1 x2) = fcase nzero base (liftTm x0) (liftTm x1) (liftTm x2)
 liftTm (fcase0 x0) = fcase0 base (liftTm x0)
 liftTm (psplit x0 x1) = psplit base base base (liftTm x0) (liftTm x1)
 liftTm (ref d b) = ref d
@@ -183,7 +183,7 @@ era-liftTy (Id x0 x1 x2) n = cong3 (λ a0 a1 a2 → Id a0 a1 a2) (era-liftTy x0 
 era-liftTy (IMu x0 x1 x2) n = cong3 (λ a0 a1 a2 → IMu a0 a1 a2) (era-liftTm x0 (λ s → n (ξ-IMuᴵ s))) (era-liftTm x1 (λ s → n (ξ-IMuᴰ s))) (era-liftTm x2 (λ s → n (ξ-IMuⁱ s)))
 era-liftTy (Desc x0) n = cong1 (λ a0 → Desc a0) (era-liftTm x0 (λ s → n (ξ-Desc s)))
 era-liftTy (DIh x0 x1 x2 x3) n = cong4 (λ a0 a1 a2 a3 → DIh a0 a1 a2 a3) (era-liftTm x0 (λ s → n (ξ-DIhᴰ s))) (era-liftTy x1 (λ s → n (ξ-DIhᴹ s))) (era-liftTm x2 (λ s → n (ξ-DIhᶜ s))) (era-liftTm x3 (λ s → n (ξ-DIhᵖ s)))
-era-liftTy (Fin x0) n = refl
+era-liftTy (Fin x0) n = cong1 (λ a0 → Fin a0) (era-liftTm x0 (λ s → n (ξ-Fin s)))
 era-liftTm (var x0) n = refl
 era-liftTm (lam x0) n = cong1 (λ a0 → lam a0) (era-liftTm x0 (λ s → n (ξ-lam s)))
 era-liftTm (app x0 x1) n = cong2 (λ a0 a1 → app a0 a1) (era-liftTm x0 (λ s → n (ξ-appˡ s))) (era-liftTm x1 (λ s → n (ξ-appʳ s)))
@@ -209,7 +209,7 @@ era-liftTm (natrec x0 x1 x2) n = cong3 (λ a0 a1 a2 → natrec a0 a1 a2) (era-li
 era-liftTm ⌜Nat⌝ n = refl
 era-liftTm ⌜Unit⌝ n = refl
 era-liftTm (⌜IMu⌝ x0 x1 x2) n = cong3 (λ a0 a1 a2 → ⌜IMu⌝ a0 a1 a2) (era-liftTm x0 (λ s → n (ξ-⌜IMu⌝ᴵ s))) (era-liftTm x1 (λ s → n (ξ-⌜IMu⌝ᴰ s))) (era-liftTm x2 (λ s → n (ξ-⌜IMu⌝ⁱ s)))
-era-liftTm (⌜Fin⌝ x0) n = refl
+era-liftTm (⌜Fin⌝ x0) n = cong1 (λ a0 → ⌜Fin⌝ a0) (era-liftTm x0 (λ s → n (ξ-⌜Fin⌝ s)))
 era-liftTm (con x0) n = cong1 (λ a0 → con a0) (era-liftTm x0 (λ s → n (ξ-con s)))
 era-liftTm (ielim x0 x1 x2 x3) n = cong4 (λ a0 a1 a2 a3 → ielim a0 a1 a2 a3) (era-liftTm x0 (λ s → n (ξ-ielimᴰ s))) (era-liftTm x1 (λ s → n (ξ-ielimⁱ s))) (era-liftTm x2 (λ s → n (ξ-ielimᵉ s))) (era-liftTm x3 (λ s → n (ξ-ielimᵗ s)))
 era-liftTm dι n = refl
@@ -580,7 +580,8 @@ checkTyᴬ Γ wΓ base    = yes tyᴬ-base
 checkTyᴬ Γ wΓ U       = yes tyᴬ-U
 checkTyᴬ Γ wΓ Unit    = yes tyᴬ-Unit
 checkTyᴬ Γ wΓ Nat     = yes tyᴬ-Nat
-checkTyᴬ Γ wΓ (Fin n) = yes tyᴬ-Fin
+checkTyᴬ Γ wΓ (Fin n) =
+  bind (checkᴬ Γ wΓ n Nat ty-Nat) (λ { (tyᴬ-Fin dn) → dn }) λ dn → yes (tyᴬ-Fin dn)
 checkTyᴬ Γ wΓ (Π A B) =
   bind (checkTyᴬ Γ wΓ A) (λ { (tyᴬ-Π dA _) → dA }) λ dA →
   bind (checkTyᴬ (Γ ▹ᴬ A) (c-▹ wΓ (erase-ty dA)) B) (λ { (tyᴬ-Π _ dB) → dB }) λ dB →
@@ -806,7 +807,9 @@ inferᴬ Γ wΓ ⌜Nat⌝  =
 inferᴬ Γ wΓ ⌜Unit⌝ =
   yes (U , ⊢ᴬ⌜Unit⌝)
 inferᴬ Γ wΓ (⌜Fin⌝ n) =
-  yes (U , ⊢ᴬ⌜Fin⌝)
+  bind (checkᴬ Γ wΓ n Nat ty-Nat)
+       (λ { (_ , w) → Σ.fst (genᴬ-⌜Fin⌝ w) }) λ dn →
+  yes (U , ⊢ᴬ⌜Fin⌝ dn)
 inferᴬ Γ wΓ (⌜IMu⌝ I D i) =
   bind (checkᴬ Γ wΓ I U ty-U)
        (λ { (_ , w) → let (dI , (_ , (_ , _))) = genᴬ-⌜IMu⌝ w in dI }) λ dI →
@@ -882,25 +885,31 @@ inferᴬ Γ wΓ (dih I D M e C p) =
        (λ { (_ , w) → let (_ , (_ , (_ , (_ , (_ , (dp , _)))))) = genᴬ-dih w in dp }) λ dp →
   yes (DIh I D M C p , ⊢ᴬdih dI dD dM de dC dp)
 inferᴬ Γ wΓ (fzero n) =
-  yes (Fin (suc n) , ⊢ᴬfzero)
+  bind (checkᴬ Γ wΓ n Nat ty-Nat)
+       (λ { (_ , w) → Σ.fst (genᴬ-fzero w) }) λ dn →
+  yes (Fin (nsuc n) , ⊢ᴬfzero dn)
 inferᴬ Γ wΓ (fsuc n t) =
-  bind (checkᴬ Γ wΓ t (Fin n) ty-Fin)
-       (λ { (_ , w) → let (dt , _) = genᴬ-fsuc w in dt }) λ dt →
-  yes (Fin (suc n) , ⊢ᴬfsuc dt)
+  bind (checkᴬ Γ wΓ n Nat ty-Nat)
+       (λ { (_ , w) → let (dn , _) = genᴬ-fsuc w in dn }) λ dn →
+  bind (checkᴬ Γ wΓ t (Fin n) (ty-Fin (erase dn)))
+       (λ { (_ , w) → let (_ , (dt , _)) = genᴬ-fsuc w in dt }) λ dt →
+  yes (Fin (nsuc n) , ⊢ᴬfsuc dn dt)
 inferᴬ Γ wΓ (fcase n P t a b) =
-  bind (checkTyᴬ (Γ ▹ᴬ Fin (suc n)) (c-▹ wΓ ty-Fin) P)
-       (λ { (_ , w) → let (dP , (_ , (_ , (_ , _)))) = genᴬ-fcase w in dP }) λ dP →
-  bind (checkᴬ Γ wΓ t (Fin (suc n)) ty-Fin)
-       (λ { (_ , w) → let (_ , (dt , (_ , (_ , _)))) = genᴬ-fcase w in dt }) λ dt →
-  bind (checkᴬ Γ wΓ a (subTyᴬ (singleᴬ (fzero n)) P) (subst (λ Z → ⌈ Γ ⌉ᶜ ⊢ty Z) (sym (sub1 (fzero n) P)) (sub-ty (erase-ty dP) (⊢single ⊢fzero))))
-       (λ { (_ , w) → let (_ , (_ , (da , (_ , _)))) = genᴬ-fcase w in da }) λ da →
-  bind (checkᴬ (Γ ▹ᴬ Fin n) (c-▹ wΓ ty-Fin) b (subTyᴬ (fsucSᴬ n) P) (subst (λ Z → ⌈ Γ ▹ᴬ Fin n ⌉ᶜ ⊢ty Z) (sym (era-subTy (fsucSᴬ n) fsucS (era-fsucS n) P)) (sub-ty (erase-ty dP) fsucS⊢)))
-       (λ { (_ , w) → let (_ , (_ , (_ , (db , _)))) = genᴬ-fcase w in db }) λ db →
-  yes (subTyᴬ (singleᴬ t) P , ⊢ᴬfcase dP dt da db)
+  bind (checkᴬ Γ wΓ n Nat ty-Nat)
+       (λ { (_ , w) → let (dn , _) = genᴬ-fcase w in dn }) λ dn →
+  bind (checkTyᴬ (Γ ▹ᴬ Fin (nsuc n)) (c-▹ wΓ (ty-Fin (⊢nsuc (erase dn)))) P)
+       (λ { (_ , w) → let (_ , (dP , (_ , (_ , (_ , _))))) = genᴬ-fcase w in dP }) λ dP →
+  bind (checkᴬ Γ wΓ t (Fin (nsuc n)) (ty-Fin (⊢nsuc (erase dn))))
+       (λ { (_ , w) → let (_ , (_ , (dt , (_ , (_ , _))))) = genᴬ-fcase w in dt }) λ dt →
+  bind (checkᴬ Γ wΓ a (subTyᴬ (singleᴬ (fzero n)) P) (subst (λ Z → ⌈ Γ ⌉ᶜ ⊢ty Z) (sym (sub1 (fzero n) P)) (sub-ty (erase-ty dP) (⊢single (⊢fzero (erase dn))))))
+       (λ { (_ , w) → let (_ , (_ , (_ , (da , (_ , _))))) = genᴬ-fcase w in da }) λ da →
+  bind (checkᴬ (Γ ▹ᴬ Fin n) (c-▹ wΓ (ty-Fin (erase dn))) b (subTyᴬ (fsucSᴬ n) P) (subst (λ Z → ⌈ Γ ▹ᴬ Fin n ⌉ᶜ ⊢ty Z) (sym (era-subTy (fsucSᴬ n) fsucS (era-fsucS n) P)) (sub-ty (erase-ty dP) fsucS⊢)))
+       (λ { (_ , w) → let (_ , (_ , (_ , (_ , (db , _))))) = genᴬ-fcase w in db }) λ db →
+  yes (subTyᴬ (singleᴬ t) P , ⊢ᴬfcase dn dP dt da db)
 inferᴬ Γ wΓ (fcase0 P t) =
-  bind (checkTyᴬ (Γ ▹ᴬ Fin zero) (c-▹ wΓ ty-Fin) P)
+  bind (checkTyᴬ (Γ ▹ᴬ Fin nzero) (c-▹ wΓ (ty-Fin ⊢nzero)) P)
        (λ { (_ , w) → let (dP , (_ , _)) = genᴬ-fcase0 w in dP }) λ dP →
-  bind (checkᴬ Γ wΓ t (Fin zero) ty-Fin)
+  bind (checkᴬ Γ wΓ t (Fin nzero) (ty-Fin ⊢nzero))
        (λ { (_ , w) → let (_ , (dt , _)) = genᴬ-fcase0 w in dt }) λ dt →
   yes (subTyᴬ (singleᴬ t) P , ⊢ᴬfcase0 dP dt)
 inferᴬ Γ wΓ (psplit A B P b q) =

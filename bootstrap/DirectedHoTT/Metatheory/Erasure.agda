@@ -95,7 +95,7 @@ erase (⊢ᴬap {cB = cB} {b = b} {t = t} {u = u} dcA fl dcB db dt du dp) =
 erase (⊢ᴬ⌜Id⌝ dc da db) = ⊢⌜Id⌝ (erase dc) (erase da) (erase db)
 erase ⊢ᴬ⌜Nat⌝ = ⊢⌜Nat⌝
 erase (⊢ᴬ⌜IMu⌝ {I = I} dI dD di) = ⊢⌜IMu⌝ (erase dI) (⊢-cast (era-DescF I) (erase dD)) (erase di)
-erase ⊢ᴬ⌜Fin⌝ = ⊢⌜Fin⌝
+erase (⊢ᴬ⌜Fin⌝ dn) = ⊢⌜Fin⌝ (erase dn)
 erase (⊢ᴬdι dI) = ⊢dι (erase dI)
 erase (⊢ᴬdσ {I = I} {S = S} dI dS df) =
   ⊢dσ (erase dI) (erase dS)
@@ -110,9 +110,9 @@ erase (⊢ᴬielim {I = I} {D = D} {M = M} {i = i} {t = t} dI dD dM de di dt) =
   ⊢-cast (sym (era-iinst i t M))
     (⊢ielim (erase dI) (⊢-cast (era-DescF I) (erase dD)) (motCtx-era {I = I} {D = D} (erase-ty dM)) (⊢-cast (era-MethTy I D M) (erase de))
             (erase di) (erase dt))
-erase ⊢ᴬfzero = ⊢fzero
-erase (⊢ᴬfsuc d) = ⊢fsuc (erase d)
-erase (⊢ᴬfcase {n = n} {P = P} {t = t} dP dt da db) =
+erase (⊢ᴬfzero dn) = ⊢fzero (erase dn)
+erase (⊢ᴬfsuc _ d) = ⊢fsuc (erase d)
+erase (⊢ᴬfcase {n = n} {P = P} {t = t} _ dP dt da db) =
   ⊢-cast (sym (sub1 t P))
     (⊢fcase (erase-ty dP) (erase dt) (⊢-cast (sub1 (fzero n) P) (erase da))
             (⊢-cast (era-subTy (fsucSᴬ n) fsucS (era-fsucS n) P) (erase db)))
@@ -154,7 +154,7 @@ erase-ty (tyᴬ-IMu {I = I} dI dD di) = ty-IMu (erase dI) (⊢-cast (era-DescF I
 erase-ty (tyᴬ-Desc dI) = ty-Desc (erase dI)
 erase-ty (tyᴬ-DIh {I = I} {D = D} dI dD dM dC dp) =
   ty-DIh (erase dI) (⊢-cast (era-DescF I) (erase dD)) (motCtx-era {I = I} {D = D} (erase-ty dM)) (erase dC) (erase dp)
-erase-ty tyᴬ-Fin = ty-Fin
+erase-ty (tyᴬ-Fin dn) = ty-Fin (erase dn)
 erase-ty (tyᴬ-Hom dA dt du) = ty-Hom (erase-ty dA) (erase dt) (erase du)
 
 ------------------------------------------------------------------------
