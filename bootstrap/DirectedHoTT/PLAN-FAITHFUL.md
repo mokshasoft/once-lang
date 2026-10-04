@@ -153,6 +153,29 @@ pilot too). It drives F6.0–F6.3 end to end before any big family.
     quotes) and `quoteTy-inj`/`quoteTm-inj`.
   - Design point: ALL typing is generic (Lib); the Knot bridge is purely
     structural, so the generator emits no proofs about typing.
+- ✅ (2026-10-04) F6.3 generic + the `Pw` PILOT: `Knot/PwDecode.decPw` —
+  a closed normal `KPw (dep Γ) ⌜c⌝ ⌜b⌝` inhabitant gives `pw? c ≡ true`
+  and `b ≡ pwBody c`. With F4's `⊢pwC` the Knot's `Pw` is EXACTLY the
+  Spec's `pw?`/`pwBody` (15 s).
+  - Lib: `rows-dec`/`rows-none` (a fibre of rules: one rule and its
+    payload, or nothing), `nf-≅` (convertible normal forms are equal),
+    `⌜⌝ˢ-normal` → `quoteTm-normal`.
+  - Each row is decoded along its FORWARD constructor (`PwConGen`): the
+    same `mono-by` reduction of the row's telescope to its values, the
+    same β-casts, the payload peeled by `pay-σ`/`pay-ρ`, each identity
+    proof closed by `nf-≅` + quote injectivity + the F3 agreement.
+  - ⚠ Measured trap: `with` over a decoder's result in these contexts
+    runs out of memory (> 5 GB); the same call as an ARGUMENT checks in
+    8 s. Decoders are chains of helpers with stated types (`RowsDec`,
+    `PayΣ`, `PayΡ`), never `with`.
+
+### F6 — FINDINGS LEDGER (what the invariant caught)
+
+| # | date | where | finding | fix |
+| --- | --- | --- | --- | --- |
+| 1 | 2026-10-03 | KERNEL (`Spec/Typing`, metatheory) | `Unit` not canonical: `hrefl ⌜Nat⌝ nzero` a closed normal non-`unit` inhabitant (a junk tail in every Knot payload) | `hrefl-Nat-z/s` + `canUnit` |
+
+Families decoded with NO finding: `Pw` (both rules exact).
 
 
 ## Log
