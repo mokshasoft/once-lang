@@ -16332,3 +16332,49 @@ correspondence. No exit test used them.
 **Rejected.** A Spec premise excluding programs that pass strings to SigOps (keeps a type the
 theorem excludes); keeping the refutable residual as a documented gap (the apex stays
 inconsistent).
+
+## D259 — PLANS 0.105 AND 0.106 CLOSE; THE GATE FOUND A RISCV64 FRAME BUG (2026-10-04)
+
+**Relates**: D257 (plan 0.105), D258 (plan 0.106), D245 (direct calls), D161 (the trace owns
+`ret`), D228/D226 (0.99 F, the same extraction gate).
+
+Both plans close at one gate: `Once.Certified` green; MAlonzo re-extracted and synced; `cabal
+test` 775/775; exit tests 72/0/0 on x86-64, x86-32/qemu and riscv64/qemu, including the new
+`answer-two-reads` (two `fd_dup 1` calls answer 3 then 4: the world answers, a fixed function
+would not). The plan files are deleted; their closure lives here.
+
+### What landed
+
+* **0.105 (D257 + amendments 1–3).** A program means an interaction tree run against an
+  interpretation; FFI contracts are the program's parameter (`Once.Spec.Contract`: `ISig`,
+  `contractOf`, `Impl Σ`); `generic-semM` deleted; the Spec's trace conjunct holds at every
+  implementation. §g: a SigOp argument is decoded from MEMORY (`decode-at`, `readTyped` with
+  Float and sums); `decode-unread` deleted (it gave `⊥` at `base-Void`).
+* **0.106 (D258).** `Str`/`Buffer` removed, string literals rejected
+  (`StringLiteralUnsupported`), `Readable` total on base types, `decode-boxed` deleted.
+
+### What the gate found
+
+`riscv64-irToAsm` hand-wrote an ENTRY-style frame (allocate `budget*8+8`, save `ra` inside) while
+`c-ret` and every direct call (`c-call-fn`, D245, plan 0.103) are CALLEE-style: the caller
+reserves the `ra` word and `c-ret` releases it. A directly-called function returned with `sp`
+8 bytes low and 45/72 riscv64 exit tests segfaulted; x86 cannot see it (`call`/`ret` own the
+word). The prologue is now `c-entry`'s own lowering, label dropped — the verified program image
+always opened with `c-entry`, only the text path diverged — and `_start` reserves `main`'s slot.
+The proof could not catch it: the emitted TEXT is outside the verified image (the class D157
+names). x86-32's Linux interpretation gained `fd_dup`.
+
+### What remains, and where it went
+
+* `obs-correct-sigop-rest` — now exactly a NON-REGISTER CODOMAIN (structured pure/prim/FFI
+  results, e.g. the comparisons' `Unit + Unit`, and answering calls returning one): plan 0.88's
+  row; stated `∀ si`, narrowing it is part of that row.
+* `lt-semM … ne-semM` postulated pending the Bool encoding (0.105 §6) — with the row above.
+* One FFI contract still has several names (entry `bare x`, qualified, resolved) — a front-end
+  cleanup, the import table keyed by `CanonicalName`.
+* Strings and buffers come back in their own plan (D258's out-of-scope list: representation,
+  a static-data region for literals, the concrete correspondence, `Buffer`'s mutability).
+* Termination vs divergence in `Behavior` — plan 0.97 §6.
+* Pre-existing islands seen by the island pass (not introduced here): `Adequacy.AnaBridge`
+  (`T.resT`, the pre-0.105 trace shape), `Semantics.Coherence` (a parse error),
+  `Spike.RelSpike`. Stale `ModuleDoesntExport` warnings remain (hygiene).
