@@ -27,7 +27,6 @@
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Trust.Knot3 where
 
-import DirectedHoTT.Examples.Knot.JudgeDecodeTm
 import DirectedHoTT.Examples.Knot.JudgeDecodeTy
 import DirectedHoTT.Examples.Knot.JudgeFib
 import DirectedHoTT.Examples.Knot.JudgeIx
@@ -36,3 +35,4 @@ import DirectedHoTT.Examples.Knot.JudgeRowsTm
 import DirectedHoTT.Examples.Knot.JudgeTmIx
 import DirectedHoTT.Examples.Knot.Lookup
 import DirectedHoTT.Examples.Knot.LookupAgree
+import DirectedHoTT.Examples.Knot.LookupCon
