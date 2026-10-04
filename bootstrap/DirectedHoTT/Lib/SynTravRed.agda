@@ -209,7 +209,7 @@ module TravRed {sg : Sig n} (ok : SigOK n sg) (κ : Kit n sg) (vok : VarsAt sg (
              dih (SD sg) TRAVM (app (SD sg) (pair (tag s) d)) (pair (tag k) p) ⟶* DihV sh (pair (tag s) d) (SD sg) TRAVM p
   hyps-red {Γ = Γ} {s = s} {c = c} {k = k} {shs = shs} {sh = sh} {d} {p} ng nh =
     ⟶*-trans (⟶*-dihᶜ (fibₛ-β d (nth-⌜⌝ₛₛ (nth-stels ng))))
-    (step (dih-σ D M (⌜Fin⌝ c) (selF Cs) q)
+    (step (dih-σ D M _ (selF Cs) q)
     (⟶*-trans (⟶*-dihᶜ (⟶*-appʳ (step (βfst (tag k) p) done)))
     (⟶*-trans (⟶*-dihᵖ (step (βsnd (tag k) p) done))
     (⟶*-trans (⟶*-dihᶜ (selF-β (nth-sub (single ix) (nth-⌜⌝ (nth-tels nh)))))
