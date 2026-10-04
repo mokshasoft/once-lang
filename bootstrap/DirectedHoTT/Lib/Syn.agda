@@ -454,6 +454,10 @@ SD-sub σ sg =
   cong lam (trans (sel-sub (extS σ) (SDs ⌜ stels sg ⌝ₛₛ) (fst (var vz)))
                   (cong (λ X → sel X (fst (var vz))) (sds-sub σ sg)))
 
+SD-ren : (ρ : Ren Δ Θ) {sg : Sig n} → renTm ρ (SD {Δ = Δ} sg) ≡ SD sg
+SD-ren ρ {sg} = trans (sym (subTm-var ρ (SD sg))) (SD-sub ⟨ ρ ⟩ᵣ sg)
+  where open import DirectedHoTT.Metatheory.Fundamental.Syntactic using ( ⟨_⟩ᵣ; subTm-var )
+
 opaque
   unfolding SK
   SK-sub : (σ : Sub Δ Θ) (sg : Sig n) (s : ℕ) (d : RTm Δ) → subTy σ (SK sg s d) ≡ SK sg s (subTm σ d)

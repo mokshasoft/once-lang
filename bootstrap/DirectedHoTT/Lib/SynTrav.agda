@@ -565,8 +565,6 @@ module Trav {sg : Sig n} (ok : SigOK n sg) (κ : Kit n sg) where
   private
     open import DirectedHoTT.Metatheory.Fundamental.Syntactic using ( ⟨_⟩ᵣ; subTy-var; subTm-var )
 
-  SD-ren : (ρ : Ren Γ Δ) → renTm ρ (SD {Δ = Γ} sg) ≡ SD sg
-  SD-ren ρ = trans (sym (subTm-var ρ (SD sg))) (SD-sub ⟨ ρ ⟩ᵣ sg)
 
   -- the motive under any substitution of its two binders
   TM-sub : (τ : Sub ((Γ ∙) ∙) Δ) →
