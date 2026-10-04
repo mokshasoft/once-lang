@@ -175,7 +175,10 @@ pilot too). It drives F6.0–F6.3 end to end before any big family.
 | --- | --- | --- | --- | --- |
 | 1 | 2026-10-03 | KERNEL (`Spec/Typing`, metatheory) | `Unit` not canonical: `hrefl ⌜Nat⌝ nzero` a closed normal non-`unit` inhabitant (a junk tail in every Knot payload) | `hrefl-Nat-z/s` + `canUnit` |
 
-Families decoded with NO finding: `Pw` (both rules exact).
+Families decoded with NO finding (exact both ways):
+- `Pw` (2 rules; `Knot/PwDecode`, hand-written pilot);
+- `NoNatC`, `stkA?`, `stkC?`, `flat?` (24 rules; `Knot/PredsDecode`, GENERATED
+  by `gen-judge.py` from the same `PREDS` table as the rows — 39 s).
 
 
 ## Log
