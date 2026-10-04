@@ -40,6 +40,7 @@ open import DirectedHoTT.Metatheory.TySub
 open import DirectedHoTT.Metatheory.Premises using ( mot-ren; ⊢wkD; MethTy-wf; pairS⊢ )
 open import DirectedHoTT.Metatheory.Validity using ( wk-app-vz )
 open import DirectedHoTT.Lib.Sugar
+open import DirectedHoTT.Lib.NatNum using ( num; ⊢num; num-ren; num-sub )
   using ( Cons; []; _∷_; wkC; subC; Nth; nth-z; nth-s; tag; sel; selF; Dσ; conₗ
         ; sel-sub; sel-β; selF-β; selF-sub; nth-sub; subC-wkC
         ; AllD; []ᵈ; _∷ᵈ_; ⊢sel; ⊢selF; ⊢Dσ; subAllD; ⊢con-fib; ⊢pay-σ; ⊢tag; nth-lt; Lt; lt-z; lt-s
@@ -100,21 +101,30 @@ private
 
 -- the index code `Σ (s : Fin ns) J` decodes to a `Σ'`
 SortI : RTm (Δ ∙) → ℕ → RTm Δ
-SortI J n = ⌜Σ⌝ (⌜Fin⌝ n) J
+SortI J n = ⌜Σ⌝ (⌜Fin⌝ (num n)) J
+
+-- ★ S7b step 2: the sort count is a numeral, so the index code commutes
+--   with renaming and substitution only up to `num-ren`/`num-sub`
+SortI-ren : {Θ : Cx} (ρ : Ren Δ Θ) (J : RTm (Δ ∙)) (n : ℕ) → renTm ρ (SortI J n) ≡ SortI (renTm (extR ρ) J) n
+SortI-ren ρ J n = cong (λ N → ⌜Σ⌝ (⌜Fin⌝ N) (renTm (extR ρ) J)) (num-ren ρ n)
+
+SortI-sub : {Θ : Cx} (σ : Sub Δ Θ) (J : RTm (Δ ∙)) (n : ℕ) → subTm σ (SortI J n) ≡ SortI (subTm (extS σ) J) n
+SortI-sub σ J n = cong (λ N → ⌜Σ⌝ (⌜Fin⌝ N) (subTm (extS σ) J)) (num-sub σ n)
 
 unSortI : {Γ : Ctx} {J : RTm (⌊ Γ ⌋ ∙)} {i : RTm ⌊ Γ ⌋} →
-          Γ ⊢ i ∷ El (SortI J n) → Γ ⊢ i ∷ Σ' (El (⌜Fin⌝ n)) (El J)
+          Γ ⊢ i ∷ El (SortI J n) → Γ ⊢ i ∷ Σ' (El (⌜Fin⌝ (num n))) (El J)
 unSortI d = ⊢conv d (credᵀ (El-⌜Σ⌝ _ _))
 
 -- the sort of an index
 ⊢sortOf : {Γ : Ctx} {J : RTm (⌊ Γ ⌋ ∙)} {i : RTm ⌊ Γ ⌋} →
-          Γ ⊢ i ∷ El (SortI J n) → Γ ⊢ fst i ∷ Fin n
+          Γ ⊢ i ∷ El (SortI J n) → Γ ⊢ fst i ∷ Fin (num n)
 ⊢sortOf d = ⊢conv (⊢fst (unSortI d)) (credᵀ El-⌜Fin⌝)
 
 -- ★ (a) the family types
 ⊢Dₛ : {Γ : Ctx} {J : RTm (⌊ Γ ⌋ ∙)} {Css : SCons (⌊ Γ ⌋ ∙) n} →
       Γ ⊢ SortI J n ∷ U → AllSD Γ (SortI J n) Css → Γ ⊢ Dₛ Css ∷ DescF (SortI J n)
-⊢Dₛ dI dss = ⊢lam (ty-El dI) (⊢sel (⊢wk dI) (allSDs dI dss) (⊢sortOf (⊢var here)))
+⊢Dₛ {n = n} {J = J} dI dss =
+  ⊢lam (ty-El dI) (⊢sel (⊢wk dI) (allSDs dI dss) (⊢sortOf (⊢-cast (cong El (SortI-ren vs J n)) (⊢var here))))
 
 ------------------------------------------------------------------------
 -- 2. ★ THE FIBRE COMPUTES AT A SORTED INDEX.
@@ -128,25 +138,25 @@ sel-fst (C ∷ Cs) a b = step (ξ-fcaseᵗ (βfst a b)) done
 -- the fibre under ANY substitution that puts a sorted pair at the index
 fibₛ-sub : {Css : SCons (Δ ∙) n} {Cs : Cons (Δ ∙) c} (σ : Sub (Δ ∙) Θ) (j : RTm Θ) →
            NthS Css s Cs → σ vz ≡ pair (tag s) j →
-           subTm σ (sel (SDs Css) (fst (var vz))) ⟶* dσ (⌜Fin⌝ c) (selF (subC σ Cs))
+           subTm σ (sel (SDs Css) (fst (var vz))) ⟶* dσ (⌜Fin⌝ (num c)) (selF (subC σ Cs))
 fibₛ-sub {c = c} {s = s} {Css = Css} {Cs = Cs} σ j nt e =
   subst (λ X → X ⟶* R) (sym (sel-sub σ (SDs Css) (fst (var vz))))
     (subst (λ z → sel (subC σ (SDs Css)) (fst z) ⟶* R) (sym e)
       (⟶*-trans (sel-fst (subC σ (SDs Css)) (tag s) j)
-        (subst (λ X → sel (subC σ (SDs Css)) (tag s) ⟶* dσ (⌜Fin⌝ c) X) (selF-sub σ Cs)
+        (subst (λ X → sel (subC σ (SDs Css)) (tag s) ⟶* X) (cong₂ (λ N X → dσ (⌜Fin⌝ N) X) (num-sub σ c) (selF-sub σ Cs))
                (sel-β (nth-sub σ (nth-SDs nt))))))
-  where R = dσ (⌜Fin⌝ c) (selF (subC σ Cs))
+  where R = dσ (⌜Fin⌝ (num c)) (selF (subC σ Cs))
 
 -- ★ the fibre over `(tag s , j)` is sort `s`'s constructors, at the index
 fibₛ-β : {Css : SCons (Δ ∙) n} {Cs : Cons (Δ ∙) c} (j : RTm Δ) → NthS Css s Cs →
-         app (Dₛ Css) (pair (tag s) j) ⟶* dσ (⌜Fin⌝ c) (selF (subC (single (pair (tag s) j)) Cs))
+         app (Dₛ Css) (pair (tag s) j) ⟶* dσ (⌜Fin⌝ (num c)) (selF (subC (single (pair (tag s) j)) Cs))
 fibₛ-β {s = s} {Css = Css} j nt =
   step (β _ _) (fibₛ-sub (single (pair (tag s) j)) j nt refl)
 
 -- …and the same for the family WEAKENED (a method's own binder in scope)
 fibₛ-wk : {Css : SCons (Δ ∙) n} {Cs : Cons (Δ ∙) c} (j : RTm (Δ ∙)) → NthS Css s Cs →
           app (renTm vs (Dₛ Css)) (pair (tag s) j)
-            ⟶* dσ (⌜Fin⌝ c) (selF (subC (single (pair (tag s) j) ₛ∘ᵣ extR vs) Cs))
+            ⟶* dσ (⌜Fin⌝ (num c)) (selF (subC (single (pair (tag s) j) ₛ∘ᵣ extR vs) Cs))
 fibₛ-wk {s = s} {Css = Css} j nt =
   step (β _ _)
     (subst (λ X → X ⟶* _) (sym (subTm-renTm (sel (SDs Css) (fst (var vz)))))
@@ -157,13 +167,13 @@ fibₛ-wk {s = s} {Css = Css} j nt =
 ------------------------------------------------------------------------
 
 ⊢ixₛ : {Γ : Ctx} {J : RTm (⌊ Γ ⌋ ∙)} {j : RTm ⌊ Γ ⌋} {s n : ℕ} →
-       (Γ ▹ El (⌜Fin⌝ n)) ⊢ J ∷ U → Lt s n → Γ ⊢ j ∷ El (subTm (single (tag s)) J) →
+       (Γ ▹ El (⌜Fin⌝ (num n))) ⊢ J ∷ U → Lt s n → Γ ⊢ j ∷ El (subTm (single (tag s)) J) →
        Γ ⊢ pair (tag s) j ∷ El (SortI J n)
 ⊢ixₛ dJ lt dj =
   ⊢conv (⊢pair (ty-El dJ) (⊢conv (⊢tag lt) (csymᵀ (credᵀ El-⌜Fin⌝))) dj) (csymᵀ (credᵀ (El-⌜Σ⌝ _ _)))
 
-⊢SortI : {Γ : Ctx} {J : RTm (⌊ Γ ⌋ ∙)} → (Γ ▹ El (⌜Fin⌝ n)) ⊢ J ∷ U → Γ ⊢ SortI J n ∷ U
-⊢SortI dJ = ⊢⌜Σ⌝ ⊢⌜Fin⌝ dJ
+⊢SortI : {Γ : Ctx} {J : RTm (⌊ Γ ⌋ ∙)} → (Γ ▹ El (⌜Fin⌝ (num n))) ⊢ J ∷ U → Γ ⊢ SortI J n ∷ U
+⊢SortI {n = n} dJ = ⊢⌜Σ⌝ (⊢⌜Fin⌝ (⊢num n)) dJ
 
 nthS-lt : {Css : SCons Δ n} {Cs : Cons Δ c} → NthS Css s Cs → Lt s n
 nthS-lt nthˢ-z      = lt-z
@@ -172,7 +182,7 @@ nthS-lt (nthˢ-s nt) = lt-s (nthS-lt nt)
 -- ★ constructor `k` of sort `s`: a payload of its telescope AT THE INDEX
 ⊢conₛ : {Γ : Ctx} {J : RTm (⌊ Γ ⌋ ∙)} {Css : SCons (⌊ Γ ⌋ ∙) n} {Cs : Cons (⌊ Γ ⌋ ∙) c}
         {C : RTm (⌊ Γ ⌋ ∙)} {j p : RTm ⌊ Γ ⌋} →
-        (Γ ▹ El (⌜Fin⌝ n)) ⊢ J ∷ U → AllSD Γ (SortI J n) Css → NthS Css s Cs → Nth Cs k C →
+        (Γ ▹ El (⌜Fin⌝ (num n))) ⊢ J ∷ U → AllSD Γ (SortI J n) Css → NthS Css s Cs → Nth Cs k C →
         Γ ⊢ j ∷ El (subTm (single (tag s)) J) →
         Γ ⊢ p ∷ El (dpay (SortI J n) (Dₛ Css) (subTm (single (pair (tag s) j)) C)) →
         Γ ⊢ conₗ k p ∷ IMu (SortI J n) (Dₛ Css) (pair (tag s) j)
@@ -221,12 +231,12 @@ private
 ⊢T₀ {Γ} {I} {D} {M} dI dD dM = Π-cod (subst (λ X → Γ ⊢ty X) (MethTy-At I D M) (MethTy-wf dI dD dM))
 
 -- the index decodes to the split's `Σ'`
-elSortI : {J : RTm (Δ ∙)} → El (SortI J n) ≅ᵀ Σ' (Fin n) (El J)
+elSortI : {J : RTm (Δ ∙)} → El (SortI J n) ≅ᵀ Σ' (Fin (num n)) (El J)
 elSortI = red→≅ᵀ (stepᵀ (El-⌜Σ⌝ _ _) (⟶ᵀ*-Σˡ (stepᵀ El-⌜Fin⌝ doneᵀ)))
 
 ⊢SortT : {Γ : Ctx} {J : RTm (⌊ Γ ⌋ ∙)} {D : RTm ⌊ Γ ⌋} {M : RTy ((⌊ Γ ⌋ ∙) ∙)} →
-         (Γ ▹ El (⌜Fin⌝ n)) ⊢ J ∷ U → Γ ⊢ D ∷ DescF (SortI J n) → motCtx Γ (SortI J n) D ⊢ty M →
-         (Γ ▹ Fin n) ⊢ty SortT (SortI J n) D M J
+         (Γ ▹ El (⌜Fin⌝ (num n))) ⊢ J ∷ U → Γ ⊢ D ∷ DescF (SortI J n) → motCtx Γ (SortI J n) D ⊢ty M →
+         (Γ ▹ Fin (num n)) ⊢ty SortT (SortI J n) D M J
 ⊢SortT dJ dD dM =
   ty-Π (ty-El dJ') (sub-ty (conv-ctxᵀ elSortI (⊢T₀ (⊢SortI dJ) dD dM)) (pairS⊢ (ty-El dJ')))
   where dJ' = conv-ctx (credᵀ El-⌜Fin⌝) dJ
@@ -248,17 +258,18 @@ private
 
 -- ★ a selector over ANY motive: entry `k` at `Q[tag k]`
 ⊢selQ : {Γ : Ctx} {Q : RTy (⌊ Γ ⌋ ∙)} {Es : Cons ⌊ Γ ⌋ n} →
-        (Γ ▹ Fin n) ⊢ty Q → PerS Γ Q zero Es → Γ ⊢ selM Es ∷ Π (El (⌜Fin⌝ n)) Q
-⊢selQ {Q = Q} dQ ps =
-  ⊢lam (ty-El ⊢⌜Fin⌝)
+        (Γ ▹ Fin (num n)) ⊢ty Q → PerS Γ Q zero Es → Γ ⊢ selM Es ∷ Π (El (⌜Fin⌝ (num n))) Q
+⊢selQ {n = n} {Γ = Γ} {Q = Q} dQ ps =
+  ⊢lam (ty-El (⊢⌜Fin⌝ (⊢num n)))
        (⊢-cast (wk-app-vz Q)
-               (⊢selG (ren-ty dQ (Ren⊢-ext there))
+               (⊢selG (subst (λ X → ((Γ ▹ El (⌜Fin⌝ (num n))) ▹ X) ⊢ty renTy (extR vs) Q) (cong Fin (num-ren vs n))
+                        (ren-ty dQ (Ren⊢-ext there)))
                       (castQ (fsucsS-zero (renTy (extR vs) Q)) (mkAllQS ps))
-                      (⊢conv (⊢var here) (credᵀ El-⌜Fin⌝))))
+                      (⊢-cast (cong Fin (num-ren vs n)) (⊢conv (⊢var here) (credᵀ El-⌜Fin⌝)))))
 
 -- ★★ THE ONE METHOD of a sorted family: split the index, select the sort
 ⊢methₛ : {Γ : Ctx} {J : RTm (⌊ Γ ⌋ ∙)} {D : RTm ⌊ Γ ⌋} {M : RTy ((⌊ Γ ⌋ ∙) ∙)} {Es : Cons ⌊ Γ ⌋ n} →
-         (Γ ▹ El (⌜Fin⌝ n)) ⊢ J ∷ U → Γ ⊢ D ∷ DescF (SortI J n) → motCtx Γ (SortI J n) D ⊢ty M →
+         (Γ ▹ El (⌜Fin⌝ (num n))) ⊢ J ∷ U → Γ ⊢ D ∷ DescF (SortI J n) → motCtx Γ (SortI J n) D ⊢ty M →
          PerS Γ (SortT (SortI J n) D M J) zero Es →
          Γ ⊢ methAt Es ∷ MethTy (SortI J n) D M
 ⊢methₛ {n = n} {Γ = Γ} {J = J} {D} {M} {Es} dJ dD dM ps =
@@ -271,12 +282,12 @@ private
     Γ₁ = Γ ▹ El I
     dT : Γ₁ ⊢ty T
     dT = ⊢T₀ dI dD dM
-    A = El (⌜Fin⌝ {⌊ Γ₁ ⌋} n)
+    A = El (⌜Fin⌝ (renTm vs (num n)))
     B = El (renTm (extR vs) J)
     cvq : renTy vs (El I) ≅ᵀ Σ' A B
     cvq = credᵀ (El-⌜Σ⌝ _ _)
     dq = ⊢conv (⊢var here) cvq
-    dA = ty-El (⊢⌜Fin⌝ {n = n})
+    dA = ty-El (⊢⌜Fin⌝ (⊢wk (⊢num n)))
     dB : (Γ₁ ▹ A) ⊢ty B
     dB = ty-El (ren-lemma dJ (Ren⊢-ext there))
     ρP : Ren ⌊ Γ₁ ⌋ (⌊ Γ₁ ⌋ ∙)
@@ -301,9 +312,13 @@ private
     Q = SortT I D M J
     h3 : Ren⊢ Γ Γ₃ w3
     h3 {A = A₀} v = ∋-cast (ren3ᵀ A₀) (there (there (there v)))
-    dSel : Γ₃ ⊢ renTm w3 (selM Es) ∷ Π (El (⌜Fin⌝ n)) (renTy (extR w3) Q)
+    dSel : Γ₃ ⊢ renTm w3 (selM Es) ∷ Π (El (⌜Fin⌝ (renTm w3 (num n)))) (renTy (extR w3) Q)
     dSel = ren-lemma (⊢selQ (⊢SortT dJ dD dM) ps) h3
-    d1 = ⊢app dSel (⊢var (there here))
+    eA : El (⌜Fin⌝ (renTm vs (renTm vs (renTm vs (num {⌊ Γ ⌋} n))))) ≡ El (⌜Fin⌝ (renTm w3 (num n)))
+    eA = cong (λ N → El (⌜Fin⌝ N))
+              (trans (cong (λ z → renTm vs (renTm vs z)) (num-ren vs n))
+                     (trans (cong (renTm vs) (num-ren vs n)) (trans (num-ren vs n) (sym (num-ren w3 n)))))
+    d1 = ⊢app dSel (⊢-cast eA (⊢var (there here)))
     eJ : renTm vs (renTm (extR vs) J) ≡ subTm (single x) (renTm (extR w3) J)
     ρx : Ren (⌊ Γ ⌋ ∙) ⌊ Γ₃ ⌋
     ρx vz     = vs vz
@@ -388,10 +403,13 @@ subAllDₛ {I = I} s dx (d ∷ᵈ ds) =
   ⊢-cast (cong Desc (fl-σₛ s I)) (sub-lemma d (hσₛ s dx)) ∷ᵈ subAllDₛ s dx ds
 
 -- sort `s`'s index is well-typed over its `j`
-⊢ιₛ : {Γ : Ctx} {J : RTm (⌊ Γ ⌋ ∙)} → (Γ ▹ El (⌜Fin⌝ n)) ⊢ J ∷ U → Lt s n →
+⊢ιₛ : {Γ : Ctx} {J : RTm (⌊ Γ ⌋ ∙)} → (Γ ▹ El (⌜Fin⌝ (num n))) ⊢ J ∷ U → Lt s n →
       (Γ ▹ El (subTm (single (tag s)) J)) ⊢ ιₛ s ∷ El (renTm vs (SortI J n))
-⊢ιₛ {s = s} {J = J} dJ lt =
-  ⊢ixₛ (ren-lemma dJ (Ren⊢-ext there)) lt (⊢-cast (cong El eq) (⊢var here))
+⊢ιₛ {n = n} {s = s} {Γ = Γ} {J = J} dJ lt =
+  ⊢-cast (cong El (sym (SortI-ren vs J n)))
+    (⊢ixₛ (subst (λ X → ((Γ ▹ El (subTm (single (tag s)) J)) ▹ El (⌜Fin⌝ X)) ⊢ renTm (extR vs) J ∷ U) (num-ren vs n)
+                 (ren-lemma dJ (Ren⊢-ext there)))
+          lt (⊢-cast (cong El eq) (⊢var here)))
   where
     eq : renTm vs (subTm (single (tag s)) J) ≡ subTm (single (tag s)) (renTm (extR vs) J)
     eq = trans (renTm-subTm J)
@@ -401,7 +419,7 @@ subAllDₛ {I = I} s dx (d ∷ᵈ ds) =
 -- ★ sort `s`'s method, from its constructors' methods at `ιₛ s`
 ⊢sortMeth : {Γ : Ctx} {J : RTm (⌊ Γ ⌋ ∙)} {Css : SCons (⌊ Γ ⌋ ∙) n} {Cs : Cons (⌊ Γ ⌋ ∙) c}
             {M : RTy ((⌊ Γ ⌋ ∙) ∙)} {ms : Cons (⌊ Γ ⌋ ∙) c} →
-            (Γ ▹ El (⌜Fin⌝ n)) ⊢ J ∷ U → AllSD Γ (SortI J n) Css → motCtx Γ (SortI J n) (Dₛ Css) ⊢ty M →
+            (Γ ▹ El (⌜Fin⌝ (num n))) ⊢ J ∷ U → AllSD Γ (SortI J n) Css → motCtx Γ (SortI J n) (Dₛ Css) ⊢ty M →
             NthS Css s Cs →
             PerKAt (Γ ▹ El (subTm (single (tag s)) J)) (renTm vs (SortI J n)) (renTm vs (Dₛ Css)) (wk1M M)
                    (ιₛ s) (selF (subC (σₛ s) Cs)) zero ms →
@@ -419,8 +437,9 @@ subAllDₛ {I = I} s dx (d ∷ᵈ ds) =
     dJs : Γ ⊢ subTm (single (tag s)) J ∷ U
     dJs = sub-lemma dJ hs
       where
-        hs : Sub⊢ (Γ ▹ El (⌜Fin⌝ n)) Γ (single (tag s))
-        hs here = ⊢conv (⊢tag (nthS-lt nts)) (csymᵀ (credᵀ El-⌜Fin⌝))
+        hs : Sub⊢ (Γ ▹ El (⌜Fin⌝ (num n))) Γ (single (tag s))
+        hs here = ⊢-cast (cong (λ N → El (⌜Fin⌝ N)) (sym (trans (cong (subTm (single (tag s))) (num-ren vs n)) (num-sub (single (tag s)) n))))
+                         (⊢conv (⊢tag (nthS-lt nts)) (csymᵀ (credᵀ El-⌜Fin⌝)))
         hs (there {A = A₀} v) = ⊢-cast (sym (wk-cancelᵀ A₀)) (⊢var v)
           where
             wk-cancelᵀ : (A : RTy ⌊ Γ ⌋) → subTy (single (tag s)) (renTy vs A) ≡ A
