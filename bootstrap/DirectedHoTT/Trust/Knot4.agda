@@ -27,10 +27,10 @@
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Trust.Knot4 where
 
+import DirectedHoTT.Examples.Knot.LookupDecode
 import DirectedHoTT.Examples.Knot.NestIx
 import DirectedHoTT.Examples.Knot.OpAgree
 import DirectedHoTT.Examples.Knot.Preds
 import DirectedHoTT.Examples.Knot.PredsAgree
 import DirectedHoTT.Examples.Knot.PredsCon
 import DirectedHoTT.Examples.Knot.PredsDecode
-import DirectedHoTT.Examples.Knot.Pw
