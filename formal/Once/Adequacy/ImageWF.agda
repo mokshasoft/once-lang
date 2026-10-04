@@ -83,7 +83,15 @@ postulate
   prog-unique   : ∀ (m : Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) → moduleToIR m ≡ just ir
                 → Unique (prog-defs (irProgram (moduleTable m) ir))
   -- every SigOp the rewritten program calls names one of its blocks (the
-  -- rewrite registered it — D264) or a declared interpretation symbol
+  -- rewrite registered it — D264) or a declared interpretation symbol.
+  --
+  -- KNOWN FALSE (found 2026-10-05, plan 0.107 §7): an FFI reference keeps its
+  -- RESOLVED name — `main` calls `once_15Interpretations_5Linux_8Syscalls_4exit`,
+  -- the symbol the interpretation object defines — while `externsOf` (and the
+  -- primitive's own table entry) use `bare (funName fi)`, i.e.
+  -- `once_38InterpretationszdLinuxzdSyscallszdexit`. The block half holds (D264);
+  -- the extern half needs ONE name per FFI declaration (the open FFI-identity
+  -- decision: the import table keyed by `CanonicalName`).
   prog-sigops   : ∀ (m : Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) → moduleToIR m ≡ just ir
                 → SigLeaves (ProgP m ir) (main (rewrite-program (irProgram (moduleTable m) ir)))
                 × All (λ e → SigLeaves (ProgP m ir) (fbody e)) (table (rewrite-program (irProgram (moduleTable m) ir)))
