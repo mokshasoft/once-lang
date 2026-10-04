@@ -370,6 +370,10 @@ conc-run bs ir M =
   RTx.run-events val-x86-64 (answer-at ι call-at-x86-64) ev-x86-64 (block-env bs)
     [] M (compile-trace (FFOx.image ir)) X.initState
 
+-- …and the fuel that run is observed at (D268: the budget reads the run)
+conc-budget : List (String × RF.Payload) → IR Unit Unit → ℕ → ℕ
+conc-budget bs ir = step-budget-x86-64 bs (compile-trace (FFOx.image ir)) X.initState
+
 postulate
   -- STEP-BUDGET ADEQUACY / fuel coherence — the honest abstract adequate-fuel seam
   -- (D5), the SAME gap `FlatFromObs.flat-trace` / `traces-agree` carry on the
@@ -381,7 +385,7 @@ postulate
                 (lk : LinkedProgram (sig ι) (irProgram tbl ir)) (n M : ℕ) →
       conc-run (C.blocks-x86-64 p) ir M
       ≡ flat-events (suc (Nof brs ir lk n)) (FFOx.image ir) FFOx.start-flat →
-      take n (conc-run (C.blocks-x86-64 p) ir (step-budget-x86-64 n))
+      take n (conc-run (C.blocks-x86-64 p) ir (conc-budget (C.blocks-x86-64 p) ir n))
     ≡ take n (conc-run (C.blocks-x86-64 p) ir M)
 
 -- THE SIMULATION from the environment's state: the concrete run of the image
@@ -390,7 +394,7 @@ conc-flat-sim :
   ∀ (brs : FFOx.BlockRunsT) (p : IRProgram) (ir : IR Unit Unit)
     (lk : LinkedProgram (sig ι) (irProgram tbl ir))
   → FFOx.image ir ≡ C.image-of p
-  → ∀ (n : ℕ) → take n (conc-run (C.blocks-x86-64 p) ir (step-budget-x86-64 n))
+  → ∀ (n : ℕ) → take n (conc-run (C.blocks-x86-64 p) ir (conc-budget (C.blocks-x86-64 p) ir n))
               ≡ at (FFOx.flat-main ir-obs-correct brs ir lk) n
 conc-flat-sim brs p ir lk img n =
   trans (conc-fuel brs p ir lk n (proj₁ agree) (proj₂ agree)) (cong (take n) (proj₂ agree))
@@ -439,7 +443,7 @@ file-flat-x86-64 brs m F eq ir mi oq teq lk n =
                ≡ at (flat-x86-64 brs ir′ lk) n)
         (sym (file-is-emit x86-64 m F ir eq mi))
         (trans (cong (λ cd → take n (RTx.run-events val-x86-64 (answer-at ι call-at-x86-64) ev-x86-64
-                                       (block-env (C.blocks-x86-64 p)) [] (step-budget-x86-64 n) cd X.initState))
+                                       (block-env (C.blocks-x86-64 p)) [] (step-budget-x86-64 (C.blocks-x86-64 p) cd X.initState n) cd X.initState))
                      code-eq)
                (conc-flat-sim brs p ir′ lk img n))
   where

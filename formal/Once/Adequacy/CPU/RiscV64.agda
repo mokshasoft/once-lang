@@ -65,7 +65,10 @@ open import Once.Adequacy.ArchCorrectness.ArithSimRiscV64 using (val-riscv64)
 ------------------------------------------------------------------------
 
 postulate
-  step-budget-riscv64 : ℕ → ℕ
+  -- D268: the adequate fuel of THIS run — it reads the block table, the code
+  -- and the start state (a program-independent `ℕ → ℕ` cannot be adequate:
+  -- event-free prefixes are unboundedly long).
+  step-budget-riscv64 : List (String × RF.Payload) → RVS.Program → RV.State → ℕ → ℕ
   ev-riscv64        : String → RV.State → List SigOpEvent
   -- plan 0.105: WHICH answering call a label is, and its argument — the same
   -- label→SigOp resolution boundary as `ev-riscv64` (the loaded binary's
@@ -79,10 +82,21 @@ block-env : List (String × RF.Payload) → String → Maybe RF.Payload
 block-env []              _ = nothing
 block-env ((s′ , p) ∷ bs) s = if s′ == s then just p else block-env bs s
 
+postulate
+  -- D268: what an adequate budget MEANS (`RunTraceCore.Adequate`) — a deeper
+  -- observation only adds events, and a short one is the whole run. Class
+  -- **axiom** of the CPU model, consistent: the step count to the n-th event
+  -- (or the run's end) is such a budget.
+  step-budget-riscv64-adequate :
+    ∀ (ι : Interp) (bs : List (String × RF.Payload)) (code : RVS.Program) (s : RV.State)
+    → RT.Adequate val-riscv64 (answer-at ι call-at-riscv64)
+        (RT.run-trace-fam val-riscv64 (answer-at ι call-at-riscv64) (step-budget-riscv64 bs code s) ev-riscv64 (block-env bs) code s)
+
 run-trace-riscv64 : Interp → RF.Image → RV.State → Behavior
 run-trace-riscv64 ι P s =
-  RT.run-trace val-riscv64 (answer-at ι call-at-riscv64) step-budget-riscv64 ev-riscv64
+  RT.run-trace val-riscv64 (answer-at ι call-at-riscv64) (step-budget-riscv64 (RF.blocks P) (RF.code P) s) ev-riscv64
     (block-env (RF.blocks P)) (RF.code P) s
+    (step-budget-riscv64-adequate ι (RF.blocks P) (RF.code P) s)
 
 postulate
   -- The CPU's decoder (the ISA's encoding) — only ever used through

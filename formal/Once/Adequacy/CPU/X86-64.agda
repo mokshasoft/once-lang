@@ -157,7 +157,10 @@ val-x86-64 (XI.Xmov-farg d p)          s _ = path-load s p
 val-x86-64 (XI.Xmov-out src)          s _ = rd s src
 
 postulate
-  step-budget-x86-64 : ℕ → ℕ
+  -- D268: the adequate fuel of THIS run — it reads the block table, the code
+  -- and the start state (a program-independent `ℕ → ℕ` cannot be adequate:
+  -- event-free prefixes are unboundedly long).
+  step-budget-x86-64 : List (String × RF.Payload) → X64S.Program → X64.State → ℕ → ℕ
   ev-x86-64        : String → X64.State → List SigOpEvent
   -- plan 0.105: WHICH answering call a label is, and its argument — the same
   -- label→SigOp resolution boundary as `ev-x86-64` (the loaded binary's
@@ -173,9 +176,20 @@ block-env : List (String × RF.Payload) → String → Maybe (List XI.XInstr × 
 block-env []              _ = nothing
 block-env ((s′ , p) ∷ bs) s = if s′ == s then just p else block-env bs s
 
+postulate
+  -- D268: what an adequate budget MEANS (`RunTraceCore.Adequate`) — a deeper
+  -- observation only adds events, and a short one is the whole run. Class
+  -- **axiom** of the CPU model, consistent: the step count to the n-th event
+  -- (or the run's end) is such a budget.
+  step-budget-x86-64-adequate :
+    ∀ (ι : Interp) (bs : List (String × RF.Payload)) (code : X64S.Program) (s : X64.State)
+    → RT.Adequate val-x86-64 (answer-at ι call-at-x86-64)
+        (RT.run-trace-fam val-x86-64 (answer-at ι call-at-x86-64) (step-budget-x86-64 bs code s) ev-x86-64 (block-env bs) code s)
+
 run-trace-x86-64 : Interp → RF.Image → X64.State → Behavior
 run-trace-x86-64 ι P s =
-  RT.run-trace val-x86-64 (answer-at ι call-at-x86-64) step-budget-x86-64 ev-x86-64 (block-env (RF.blocks P)) (RF.code P) s
+  RT.run-trace val-x86-64 (answer-at ι call-at-x86-64) (step-budget-x86-64 (RF.blocks P) (RF.code P) s) ev-x86-64 (block-env (RF.blocks P)) (RF.code P) s
+    (step-budget-x86-64-adequate ι (RF.blocks P) (RF.code P) s)
 
 postulate
   -- decode-x86-64 — POSTULATED. Concrete byte-encoder/decoder per the

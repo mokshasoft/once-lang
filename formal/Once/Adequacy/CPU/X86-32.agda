@@ -50,7 +50,10 @@ open import Once.Adequacy.ArchCorrectness.ArithSimX86-32 using (val-x86-32)
 ------------------------------------------------------------------------
 
 postulate
-  step-budget-x86-32 : ℕ → ℕ
+  -- D268: the adequate fuel of THIS run — it reads the block table, the code
+  -- and the start state (a program-independent `ℕ → ℕ` cannot be adequate:
+  -- event-free prefixes are unboundedly long).
+  step-budget-x86-32 : List (String × RF.Payload) → X32S.Program → X32.State → ℕ → ℕ
   ev-x86-32        : String → X32.State → List SigOpEvent
   -- plan 0.105: WHICH answering call a label is, and its argument — the same
   -- label→SigOp resolution boundary as `ev-x86-32` (the loaded binary's
@@ -66,9 +69,20 @@ block-env : List (String × RF.Payload) → String → Maybe (List XInstr)
 block-env []              _ = nothing
 block-env ((s′ , p) ∷ bs) s = if s′ == s then just (proj₁ p) else block-env bs s
 
+postulate
+  -- D268: what an adequate budget MEANS (`RunTraceCore.Adequate`) — a deeper
+  -- observation only adds events, and a short one is the whole run. Class
+  -- **axiom** of the CPU model, consistent: the step count to the n-th event
+  -- (or the run's end) is such a budget.
+  step-budget-x86-32-adequate :
+    ∀ (ι : Interp) (bs : List (String × RF.Payload)) (code : X32S.Program) (s : X32.State)
+    → RT.Adequate val-x86-32 (answer-at ι call-at-x86-32)
+        (RT.run-trace-fam val-x86-32 (answer-at ι call-at-x86-32) (step-budget-x86-32 bs code s) ev-x86-32 (block-env bs) code s)
+
 run-trace-x86-32 : Interp → RF.Image → X32.State → Behavior
 run-trace-x86-32 ι P s =
-  RT.run-trace val-x86-32 (answer-at ι call-at-x86-32) step-budget-x86-32 ev-x86-32 (block-env (RF.blocks P)) (RF.code P) s
+  RT.run-trace val-x86-32 (answer-at ι call-at-x86-32) (step-budget-x86-32 (RF.blocks P) (RF.code P) s) ev-x86-32 (block-env (RF.blocks P)) (RF.code P) s
+    (step-budget-x86-32-adequate ι (RF.blocks P) (RF.code P) s)
 
 postulate
   decode-x86-32 : List Byte → Maybe RF.Image

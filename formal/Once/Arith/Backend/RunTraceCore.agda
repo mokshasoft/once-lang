@@ -129,30 +129,25 @@ module RunTrace
   --
   -- `bounded` is free (a `take n` is at most `n` long), and is proved.
   --
-  -- The two are POSTULATED here, in the same class and at the same boundary as
-  -- `stepBudget` itself (which is an abstract parameter of every per-arch
-  -- instance): they are what an adequate budget map MEANS. Class **deferred
-  -- proof / model gap** — they become provable the moment `stepBudget` stops
-  -- being abstract. Note this is the concrete machine only: the abstract
-  -- machine's family borrows its laws from the denotation (`behavior-by` in
-  -- `FlatFromObs`) and needs no assumption at all.
-  postulate
-    run-trace-extends :
-      ∀ (stepBudget : ℕ → ℕ) (ev : EvExtractor) (env : ArithEnv) (prog : Program) (s : State) (n : ℕ)
-      → ∃[ rest ] (run-trace-fam stepBudget ev env prog s (suc n)
-                   ≡ run-trace-fam stepBudget ev env prog s n ++ rest)
-    run-trace-saturates :
-      ∀ (stepBudget : ℕ → ℕ) (ev : EvExtractor) (env : ArithEnv) (prog : Program) (s : State) (n : ℕ)
-      → length (run-trace-fam stepBudget ev env prog s n) < n
-      → run-trace-fam stepBudget ev env prog s (suc n)
-        ≡ run-trace-fam stepBudget ev env prog s n
+  -- The two are NOT free: they are what an adequate budget MEANS, so `run-trace`
+  -- takes them as a premise (`Adequate`). D268: they were postulated here for
+  -- EVERY `stepBudget` — a non-monotone budget refutes `extends` on any
+  -- instance (a postulate of `⊥`). The per-arch instance states adequacy of ITS
+  -- budget, which reads the program it runs. Note this is the concrete machine
+  -- only: the abstract machine's family borrows its laws from the denotation
+  -- (`behavior-by` in `FlatFromObs`) and needs no assumption at all.
+  record Adequate (fam : ℕ → List SigOpEvent) : Set where
+    field
+      extends   : ∀ n → ∃[ rest ] (fam (suc n) ≡ fam n ++ rest)
+      saturates : ∀ n → length (fam n) < n → fam (suc n) ≡ fam n
 
-  run-trace : (stepBudget : ℕ → ℕ) → EvExtractor → ArithEnv → Program → State → Behavior
-  run-trace stepBudget ev env prog s =
+  run-trace : (stepBudget : ℕ → ℕ) (ev : EvExtractor) (env : ArithEnv) (prog : Program) (s : State)
+            → Adequate (run-trace-fam stepBudget ev env prog s) → Behavior
+  run-trace stepBudget ev env prog s ad =
     mkBehavior (run-trace-fam stepBudget ev env prog s)
-               (run-trace-extends stepBudget ev env prog s)
+               (Adequate.extends ad)
                bnd
-               (run-trace-saturates stepBudget ev env prog s)
+               (Adequate.saturates ad)
     where
       bnd : ∀ n → length (run-trace-fam stepBudget ev env prog s n) ≤ n
       bnd n = subst (_≤ n) (sym (length-take n (run-events ev env [] (stepBudget n) prog s)))

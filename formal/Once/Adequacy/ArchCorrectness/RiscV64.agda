@@ -294,6 +294,10 @@ conc-run bs ir M =
   RTr.run-events val-riscv64 (answer-at ι call-at-riscv64) ev-riscv64 (block-env bs)
     [] M (compile-trace (FFOr.image ir)) RS.initState
 
+-- …and the fuel that run is observed at (D268: the budget reads the run)
+conc-budget : List (String × RF.Payload) → IR Unit Unit → ℕ → ℕ
+conc-budget bs ir = step-budget-riscv64 bs (compile-trace (FFOr.image ir)) RS.initState
+
 postulate
   -- STEP-BUDGET ADEQUACY / fuel coherence — the honest abstract adequate-fuel seam
   -- (D5), the SAME gap `FlatFromObs.flat-trace` / `traces-agree` carry on the
@@ -305,7 +309,7 @@ postulate
                 (lk : LinkedProgram (sig ι) (irProgram tbl ir)) (n M : ℕ) →
       conc-run (C.blocks-riscv64 p) ir M
       ≡ flat-events (suc (Nof brs ir lk n)) (FFOr.image ir) FFOr.start-flat →
-      take n (conc-run (C.blocks-riscv64 p) ir (step-budget-riscv64 n))
+      take n (conc-run (C.blocks-riscv64 p) ir (conc-budget (C.blocks-riscv64 p) ir n))
     ≡ take n (conc-run (C.blocks-riscv64 p) ir M)
 
 -- THE SIMULATION from the environment's state: the concrete run of the image
@@ -314,7 +318,7 @@ conc-flat-sim :
   ∀ (brs : FFOr.BlockRunsT) (p : IRProgram) (ir : IR Unit Unit)
     (lk : LinkedProgram (sig ι) (irProgram tbl ir))
   → FFOr.image ir ≡ C.image-of p
-  → ∀ (n : ℕ) → take n (conc-run (C.blocks-riscv64 p) ir (step-budget-riscv64 n))
+  → ∀ (n : ℕ) → take n (conc-run (C.blocks-riscv64 p) ir (conc-budget (C.blocks-riscv64 p) ir n))
               ≡ at (FFOr.flat-main ir-obs-correct brs ir lk) n
 conc-flat-sim brs p ir lk img n =
   trans (conc-fuel brs p ir lk n (proj₁ agree) (proj₂ agree)) (cong (take n) (proj₂ agree))
@@ -363,7 +367,7 @@ file-flat-riscv64 brs m F eq ir mi oq teq lk n =
                ≡ at (flat-riscv64 brs ir′ lk) n)
         (sym (file-is-emit riscv64 m F ir eq mi))
         (trans (cong (λ cd → take n (RTr.run-events val-riscv64 (answer-at ι call-at-riscv64) ev-riscv64
-                                       (block-env (C.blocks-riscv64 p)) [] (step-budget-riscv64 n) cd RS.initState))
+                                       (block-env (C.blocks-riscv64 p)) [] (step-budget-riscv64 (C.blocks-riscv64 p) cd RS.initState n) cd RS.initState))
                      code-eq)
                (conc-flat-sim brs p ir′ lk img n))
   where

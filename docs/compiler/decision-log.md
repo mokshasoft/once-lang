@@ -16604,3 +16604,26 @@ then deleted). It sat in the apex cone (every `Layout` instantiates `StackSlots`
 
 **The fix.** Deleted, with its postulate: nothing consumed it (`slot-in-stack-0` stays, a theorem;
 slots past 0 take capacity evidence from `StackCapacity`). Apex green.
+
+## D268 — THE CONCRETE TRACE LAWS WERE A POSTULATE OF ⊥; THE BUDGET NOW READS THE RUN (2026-10-05)
+
+**Relates**: plan 0.100 P0 audit (after D266/D267), `Arith/Backend/RunTraceCore.agda`, the three
+`Adequacy/CPU/<arch>` modules, ledger P2 and #11 (`conc-fuel`), D179, D5.
+
+**The defect.** `RunTrace.run-trace-extends` / `run-trace-saturates` — the `Behavior` laws of the
+concrete machine's fuelled trace family — were postulated inside the parameterized module FOR
+EVERY `stepBudget`. A non-monotone budget (`1 ↦ 1`, else `0`) on a one-instruction toy instance
+emitting one event refutes `extends` at `n = 1` (`[] ≡ e ∷ rest`); the probe derived `⊥` (deleted).
+Every arch's `run-trace-<arch>` used them, so it was in the apex cone.
+
+A second, semantic defect sat under it: `step-budget-<arch> : ℕ → ℕ` was program-INDEPENDENT, and
+no such function is adequate — programs with arbitrarily long event-free prefixes exist. So the
+ledger's route for `conc-fuel` ("pin `step-budget` to a definition") was unavailable at that type.
+
+**The fix.** `run-trace` takes the laws as a premise (`RunTraceCore.Adequate fam`). Each arch's
+budget reads the run — `step-budget-<arch> : blocks → code → state → ℕ → ℕ` — and one postulate
+per arch, `step-budget-<arch>-adequate`, states adequacy of THAT budget at the arch's `ev`. It is
+consistent (the step count to the n-th event, or to the last one, is such a budget) and is the
+named CPU-model axiom until the budget is defined. `conc-fuel` is unchanged in meaning, observed
+at `conc-budget` (the budget of the run it states). Not Spec: the concrete run is
+implementation-side. Apex green.
