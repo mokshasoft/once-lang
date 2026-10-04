@@ -112,7 +112,7 @@ data RTy where
   --   (`_⟶ᵀ_`); stuck on a neutral telescope.
   DIh  : ∀ {Γ} → RTm Γ → RTy ((Γ ∙) ∙) → RTm Γ → RTm Γ → RTy Γ
   -- ★ the TAG type: a finite enumeration {0 … n-1} (constructor choice).
-  Fin  : ∀ {Γ} → ℕ → RTy Γ
+  Fin  : ∀ {Γ} → RTm Γ → RTy Γ
 
 data RTm where
   var  : ∀ {Γ} → Var Γ → RTm Γ
@@ -199,7 +199,7 @@ data RTm where
   -- ★ the CODE of a family at an index: families are SMALL, so they
   --   nest (a field of code `⌜IMu⌝ …`) and are `amrec` carriers.
   ⌜IMu⌝  : ∀ {Γ} → RTm Γ → RTm Γ → RTm Γ → RTm Γ
-  ⌜Fin⌝  : ∀ {Γ} → ℕ → RTm Γ
+  ⌜Fin⌝  : ∀ {Γ} → RTm Γ → RTm Γ
   ⌜Unit⌝ : ∀ {Γ} → RTm Γ
   -- ★ A DEFINITION (PLAN-BIDI §2-ter): a name with its CLOSED body.  It
   --   unfolds by δ (`ref d b ⟶ εwkTm b`); renaming and substitution stop
@@ -255,7 +255,7 @@ renTy ρ (Id A t u) = Id (renTy ρ A) (renTm ρ t) (renTm ρ u)
 renTy ρ (IMu I D i) = IMu (renTm ρ I) (renTm ρ D) (renTm ρ i)
 renTy ρ (Desc I) = Desc (renTm ρ I)
 renTy ρ (DIh D M C p) = DIh (renTm ρ D) (renTy (extR (extR ρ)) M) (renTm ρ C) (renTm ρ p)
-renTy ρ (Fin n) = Fin n
+renTy ρ (Fin n) = Fin (renTm ρ n)
 renTm ρ (var x)   = var (ρ x)
 renTm ρ (lam t)   = lam (renTm (extR ρ) t)
 renTm ρ (app t u)  = app (renTm ρ t) (renTm ρ u)
@@ -277,7 +277,7 @@ renTm ρ (jsub d p e)    = jsub (renTm (extR ρ) d) (renTm ρ p) (renTm ρ e)
 renTm ρ (ap c b p)    = ap (renTm ρ c) (renTm (extR ρ) b) (renTm ρ p)
 renTm ρ ⌜Nat⌝         = ⌜Nat⌝
 renTm ρ (⌜IMu⌝ I D i) = ⌜IMu⌝ (renTm ρ I) (renTm ρ D) (renTm ρ i)
-renTm ρ (⌜Fin⌝ n) = ⌜Fin⌝ n
+renTm ρ (⌜Fin⌝ n) = ⌜Fin⌝ (renTm ρ n)
 renTm ρ (con p) = con (renTm ρ p)
 renTm ρ (ielim D i e t) = ielim (renTm ρ D) (renTm ρ i) (renTm ρ e) (renTm ρ t)
 renTm ρ dι = dι
@@ -323,7 +323,7 @@ subTy σ (Id A t u) = Id (subTy σ A) (subTm σ t) (subTm σ u)
 subTy σ (IMu I D i) = IMu (subTm σ I) (subTm σ D) (subTm σ i)
 subTy σ (Desc I) = Desc (subTm σ I)
 subTy σ (DIh D M C p) = DIh (subTm σ D) (subTy (extS (extS σ)) M) (subTm σ C) (subTm σ p)
-subTy σ (Fin n) = Fin n
+subTy σ (Fin n) = Fin (subTm σ n)
 subTm σ (var x)   = σ x
 subTm σ (lam t)   = lam (subTm (extS σ) t)
 subTm σ (app t u)  = app (subTm σ t) (subTm σ u)
@@ -345,7 +345,7 @@ subTm σ (jsub d p e)    = jsub (subTm (extS σ) d) (subTm σ p) (subTm σ e)
 subTm σ (ap c b p)    = ap (subTm σ c) (subTm (extS σ) b) (subTm σ p)
 subTm σ ⌜Nat⌝         = ⌜Nat⌝
 subTm σ (⌜IMu⌝ I D i) = ⌜IMu⌝ (subTm σ I) (subTm σ D) (subTm σ i)
-subTm σ (⌜Fin⌝ n) = ⌜Fin⌝ n
+subTm σ (⌜Fin⌝ n) = ⌜Fin⌝ (subTm σ n)
 subTm σ (con p) = con (subTm σ p)
 subTm σ (ielim D i e t) = ielim (subTm σ D) (subTm σ i) (subTm σ e) (subTm σ t)
 subTm σ dι = dι
@@ -488,7 +488,7 @@ renTy-cong h (Desc I) =
 renTy-cong h (DIh D M C p) =
   cong₄ DIh (renTm-cong h D) (renTy-cong (extR-cong (extR-cong h)) M) (renTm-cong h C) (renTm-cong h p)
 renTy-cong h (Fin n) =
-  refl
+  cong Fin (renTm-cong h n)
 renTm-cong h (var x)   = cong var (h x)
 renTm-cong h (lam t)   = cong lam (renTm-cong (extR-cong h) t)
 renTm-cong h (app t u)  = cong₂ app (renTm-cong h t) (renTm-cong h u)
@@ -502,7 +502,7 @@ renTm-cong h ⌜Nat⌝      = refl
 renTm-cong h (⌜IMu⌝ I D i) =
   cong₃ ⌜IMu⌝ (renTm-cong h I) (renTm-cong h D) (renTm-cong h i)
 renTm-cong h (⌜Fin⌝ n) =
-  refl
+  cong ⌜Fin⌝ (renTm-cong h n)
 renTm-cong h (con p) =
   cong con (renTm-cong h p)
 renTm-cong h (ielim D i e t) =
@@ -576,7 +576,7 @@ subTy-cong h (Desc I) =
 subTy-cong h (DIh D M C p) =
   cong₄ DIh (subTm-cong h D) (subTy-cong (extS-cong (extS-cong h)) M) (subTm-cong h C) (subTm-cong h p)
 subTy-cong h (Fin n) =
-  refl
+  cong Fin (subTm-cong h n)
 subTm-cong h (var x)   = h x
 subTm-cong h (lam t)   = cong lam (subTm-cong (extS-cong h) t)
 subTm-cong h (app t u)  = cong₂ app (subTm-cong h t) (subTm-cong h u)
@@ -590,7 +590,7 @@ subTm-cong h ⌜Nat⌝      = refl
 subTm-cong h (⌜IMu⌝ I D i) =
   cong₃ ⌜IMu⌝ (subTm-cong h I) (subTm-cong h D) (subTm-cong h i)
 subTm-cong h (⌜Fin⌝ n) =
-  refl
+  cong ⌜Fin⌝ (subTm-cong h n)
 subTm-cong h (con p) =
   cong con (subTm-cong h p)
 subTm-cong h (ielim D i e t) =
@@ -672,7 +672,7 @@ renTy-renTy {ρ' = ρ'} {ρ} (Desc I) =
 renTy-renTy {ρ' = ρ'} {ρ} (DIh D M C p) =
   cong₄ DIh (renTm-renTm D) (trans (renTy-renTy M) (renTy-cong (λ x → trans (extr-extr (extR ρ') (extR ρ) x) (extR-cong (extr-extr ρ' ρ) x)) M)) (renTm-renTm C) (renTm-renTm p)
 renTy-renTy {ρ' = ρ'} {ρ} (Fin n) =
-  refl
+  cong Fin (renTm-renTm n)
 renTm-renTm (var x)   = refl
 renTm-renTm {ρ' = ρ'} {ρ} (lam t) =
   cong lam (trans (renTm-renTm t) (renTm-cong (extr-extr ρ' ρ) t))
@@ -687,7 +687,7 @@ renTm-renTm ⌜Nat⌝      = refl
 renTm-renTm {ρ' = ρ'} {ρ} (⌜IMu⌝ I D i) =
   cong₃ ⌜IMu⌝ (renTm-renTm I) (renTm-renTm D) (renTm-renTm i)
 renTm-renTm {ρ' = ρ'} {ρ} (⌜Fin⌝ n) =
-  refl
+  cong ⌜Fin⌝ (renTm-renTm n)
 renTm-renTm {ρ' = ρ'} {ρ} (con p) =
   cong con (renTm-renTm p)
 renTm-renTm {ρ' = ρ'} {ρ} (ielim D i e t) =
@@ -773,7 +773,7 @@ subTy-renTy {σ = σ} {ρ} (Desc I) =
 subTy-renTy {σ = σ} {ρ} (DIh D M C p) =
   cong₄ DIh (subTm-renTm D) (trans (subTy-renTy M) (subTy-cong (λ x → trans (exts-extr (extS σ) (extR ρ) x) (extS-cong (exts-extr σ ρ) x)) M)) (subTm-renTm C) (subTm-renTm p)
 subTy-renTy {σ = σ} {ρ} (Fin n) =
-  refl
+  cong Fin (subTm-renTm n)
 subTm-renTm (var x)   = refl
 subTm-renTm {σ = σ} {ρ} (lam t) =
   cong lam (trans (subTm-renTm t) (subTm-cong (exts-extr σ ρ) t))
@@ -788,7 +788,7 @@ subTm-renTm ⌜Nat⌝      = refl
 subTm-renTm {σ = σ} {ρ} (⌜IMu⌝ I D i) =
   cong₃ ⌜IMu⌝ (subTm-renTm I) (subTm-renTm D) (subTm-renTm i)
 subTm-renTm {σ = σ} {ρ} (⌜Fin⌝ n) =
-  refl
+  cong ⌜Fin⌝ (subTm-renTm n)
 subTm-renTm {σ = σ} {ρ} (con p) =
   cong con (subTm-renTm p)
 subTm-renTm {σ = σ} {ρ} (ielim D i e t) =
@@ -874,7 +874,7 @@ renTy-subTy {ρ = ρ} {σ} (Desc I) =
 renTy-subTy {ρ = ρ} {σ} (DIh D M C p) =
   cong₄ DIh (renTm-subTm D) (trans (renTy-subTy M) (subTy-cong (λ x → trans (extr-exts (extR ρ) (extS σ) x) (extS-cong (extr-exts ρ σ) x)) M)) (renTm-subTm C) (renTm-subTm p)
 renTy-subTy {ρ = ρ} {σ} (Fin n) =
-  refl
+  cong Fin (renTm-subTm n)
 renTm-subTm (var x)   = refl
 renTm-subTm {ρ = ρ} {σ} (lam t) =
   cong lam (trans (renTm-subTm t) (subTm-cong (extr-exts ρ σ) t))
@@ -889,7 +889,7 @@ renTm-subTm ⌜Nat⌝      = refl
 renTm-subTm {ρ = ρ} {σ} (⌜IMu⌝ I D i) =
   cong₃ ⌜IMu⌝ (renTm-subTm I) (renTm-subTm D) (renTm-subTm i)
 renTm-subTm {ρ = ρ} {σ} (⌜Fin⌝ n) =
-  refl
+  cong ⌜Fin⌝ (renTm-subTm n)
 renTm-subTm {ρ = ρ} {σ} (con p) =
   cong con (renTm-subTm p)
 renTm-subTm {ρ = ρ} {σ} (ielim D i e t) =
@@ -975,7 +975,7 @@ subTy-subTy {τ = τ} {σ} (Desc I) =
 subTy-subTy {τ = τ} {σ} (DIh D M C p) =
   cong₄ DIh (subTm-subTm D) (trans (subTy-subTy M) (subTy-cong (λ x → trans (exts-exts (extS τ) (extS σ) x) (extS-cong (exts-exts τ σ) x)) M)) (subTm-subTm C) (subTm-subTm p)
 subTy-subTy {τ = τ} {σ} (Fin n) =
-  refl
+  cong Fin (subTm-subTm n)
 subTm-subTm (var x)   = refl
 subTm-subTm {τ = τ} {σ} (lam t) =
   cong lam (trans (subTm-subTm t) (subTm-cong (exts-exts τ σ) t))
@@ -990,7 +990,7 @@ subTm-subTm ⌜Nat⌝      = refl
 subTm-subTm {τ = τ} {σ} (⌜IMu⌝ I D i) =
   cong₃ ⌜IMu⌝ (subTm-subTm I) (subTm-subTm D) (subTm-subTm i)
 subTm-subTm {τ = τ} {σ} (⌜Fin⌝ n) =
-  refl
+  cong ⌜Fin⌝ (subTm-subTm n)
 subTm-subTm {τ = τ} {σ} (con p) =
   cong con (subTm-subTm p)
 subTm-subTm {τ = τ} {σ} (ielim D i e t) =
@@ -1069,7 +1069,7 @@ subTy-id (Desc I) =
 subTy-id (DIh D M C p) =
   cong₄ DIh (subTm-id D) (trans (subTy-cong (λ x → trans (extS-cong exts-id x) (exts-id x)) M) (subTy-id M)) (subTm-id C) (subTm-id p)
 subTy-id (Fin n) =
-  refl
+  cong Fin (subTm-id n)
 subTm-id (var x)   = refl
 subTm-id (lam t)   = cong lam (trans (subTm-cong exts-id t) (subTm-id t))
 subTm-id (app t u)  = cong₂ app (subTm-id t) (subTm-id u)
@@ -1083,7 +1083,7 @@ subTm-id ⌜Nat⌝      = refl
 subTm-id (⌜IMu⌝ I D i) =
   cong₃ ⌜IMu⌝ (subTm-id I) (subTm-id D) (subTm-id i)
 subTm-id (⌜Fin⌝ n) =
-  refl
+  cong ⌜Fin⌝ (subTm-id n)
 subTm-id (con p) =
   cong con (subTm-id p)
 subTm-id (ielim D i e t) =

@@ -128,7 +128,7 @@ mutual
   encTy (IMu I D i) = n3 0 9 (encTm I) (encTm D) (encTm i)
   encTy (Desc I) = n1 1 0 (encTm I)
   encTy (DIh D M C p) = n4 1 1 (encTm D) (encTy M) (encTm C) (encTm p)
-  encTy (Fin n) = n1 1 2 (nat n)
+  encTy (Fin n) = n1 1 2 (encTm n)
 
   encTm : RTm Γ → Tree
   encTm (var x)             = n1 0 0 (nat (encVar x))
@@ -168,7 +168,7 @@ mutual
   encTm (fcase t a b) = n3 3 4 (encTm t) (encTm a) (encTm b)
   encTm (fcase0 t) = n1 3 5 (encTm t)
   encTm (psplit b q) = n2 3 6 (encTm b) (encTm q)
-  encTm (⌜Fin⌝ n) = n1 3 7 (nat n)
+  encTm (⌜Fin⌝ n) = n1 3 7 (encTm n)
   encTm (ref d b) = n2 3 8 (nat d) (encTm b)
 
 
@@ -208,7 +208,7 @@ mutual
   decTy Γ (node 0 9 (a ∷ b ∷ c ∷ [])) = decTm Γ a >>= λ I₀ → decTm Γ b >>= λ D₀ → decTm Γ c >>= λ i₀ → just (IMu I₀ D₀ i₀)
   decTy Γ (node 1 0 (a ∷ [])) = decTm Γ a >>= λ I₀ → just (Desc I₀)
   decTy Γ (node 1 1 (a ∷ b ∷ c ∷ d ∷ [])) = decTm Γ a >>= λ D₀ → decTy ((Γ ∙) ∙) b >>= λ M₀ → decTm Γ c >>= λ C₀ → decTm Γ d >>= λ p₀ → just (DIh D₀ M₀ C₀ p₀)
-  decTy Γ (node 1 2 (nat n ∷ [])) = just (Fin n)
+  decTy Γ (node 1 2 (a ∷ [])) = decTm Γ a >>= λ n₀ → just (Fin n₀)
   decTy Γ _ = nothing
 
   decTm : (Γ : Cx) → Tree → Maybe (RTm Γ)
@@ -251,7 +251,7 @@ mutual
   decTm Γ (node 3 4 (a ∷ b ∷ c ∷ [])) = decTm Γ a >>= λ t₀ → decTm Γ b >>= λ a₀ → decTm (Γ ∙) c >>= λ b₀ → just (fcase t₀ a₀ b₀)
   decTm Γ (node 3 5 (a ∷ [])) = decTm Γ a >>= λ t₀ → just (fcase0 t₀)
   decTm Γ (node 3 6 (a ∷ b ∷ [])) = decTm ((Γ ∙) ∙) a >>= λ b₀ → decTm Γ b >>= λ q₀ → just (psplit b₀ q₀)
-  decTm Γ (node 3 7 (nat n ∷ [])) = just (⌜Fin⌝ n)
+  decTm Γ (node 3 7 (a ∷ [])) = decTm Γ a >>= λ n₀ → just (⌜Fin⌝ n₀)
   decTm Γ (node 3 8 (nat d ∷ b ∷ [])) = decTm ε b >>= λ b' → just (ref d b')
   decTm Γ _ = nothing
 
@@ -278,7 +278,7 @@ mutual
   dec-encTy (IMu I D i) = dec-encTm I ⟫ dec-encTm D ⟫ dec-encTm i ⟫ refl
   dec-encTy (Desc I) = dec-encTm I ⟫ refl
   dec-encTy (DIh D M C p) = dec-encTm D ⟫ dec-encTy M ⟫ dec-encTm C ⟫ dec-encTm p ⟫ refl
-  dec-encTy (Fin n) = refl
+  dec-encTy (Fin n) = dec-encTm n ⟫ refl
 
   dec-encTm : (t : RTm Γ) → decTm Γ (encTm t) ≡ just t
   dec-encTm (var x) = dec-encVar x ⟫ refl
@@ -318,7 +318,7 @@ mutual
   dec-encTm (fcase t a b) = dec-encTm t ⟫ dec-encTm a ⟫ dec-encTm b ⟫ refl
   dec-encTm (fcase0 t) = dec-encTm t ⟫ refl
   dec-encTm (psplit b q) = dec-encTm b ⟫ dec-encTm q ⟫ refl
-  dec-encTm (⌜Fin⌝ n) = refl
+  dec-encTm (⌜Fin⌝ n) = dec-encTm n ⟫ refl
   dec-encTm (ref d b) = dec-encTm b ⟫ refl
 
 
