@@ -320,29 +320,30 @@ lab (_ , k , _ , _) = k
 -- D199: every heap allocation the re-suspension pass emits is the two-cell
 -- one — the suspension in `wf-Id`, the fresh pair in `wf-Prod`, the fresh
 -- tagged node in each `wf-Sum` arm — so `am2` discharges all of them.
-resuspend-am : ∀ (n l : ℕ) (lbl : LabelId) {F} (wf : WellFormedFI F)
-             → AllocMinTrace (proj₂ (proj₂ (resuspend-layer n l lbl wf)))
-resuspend-am n l lbl (wf-K _) = []
-resuspend-am n l lbl wf-Id =
+resuspend-am : ∀ (n l : ℕ) (lbl : LabelId) (env : ℕ) {F} (wf : WellFormedFI F)
+             → AllocMinTrace (proj₂ (proj₂ (resuspend-layer n l lbl env wf)))
+resuspend-am n l lbl env (wf-K _) = []
+resuspend-am n l lbl env wf-Id =
+  tt ∷ am2 ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷
   tt ∷ am2 ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
-resuspend-am n l lbl (wf-Prod wfF wfG) =
+resuspend-am n l lbl env (wf-Prod wfF wfG) =
   tt ∷ tt ∷ tt ∷
-  ++⁺ (resuspend-am (suc (suc (suc n))) l lbl wfF)
+  ++⁺ (resuspend-am (suc (suc (suc n))) l lbl env wfF)
       (tt ∷ am2 ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷
-       ++⁺ (resuspend-am n2 l2 lbl wfG)
+       ++⁺ (resuspend-am n2 l2 lbl env wfG)
            (tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []))
   where
-    n2 = proj₁ (resuspend-layer (suc (suc (suc n))) l lbl wfF)
-    l2 = proj₁ (proj₂ (resuspend-layer (suc (suc (suc n))) l lbl wfF))
-resuspend-am n l lbl (wf-Sum wfF wfG) =
+    n2 = proj₁ (resuspend-layer (suc (suc (suc n))) l lbl env wfF)
+    l2 = proj₁ (proj₂ (resuspend-layer (suc (suc (suc n))) l lbl env wfF))
+resuspend-am n l lbl env (wf-Sum wfF wfG) =
   tt ∷ tt ∷ tt ∷
-  ++⁺ (arm 1 (resuspend-am n2 l2 lbl wfG))
+  ++⁺ (arm 1 (resuspend-am n2 l2 lbl env wfG))
       (tt ∷ tt ∷
-       ++⁺ (arm 0 (resuspend-am (suc (suc (suc n))) (suc (suc l)) lbl wfF))
+       ++⁺ (arm 0 (resuspend-am (suc (suc (suc n))) (suc (suc l)) lbl env wfF))
            (tt ∷ []))
   where
-    n2 = proj₁ (resuspend-layer (suc (suc (suc n))) (suc (suc l)) lbl wfF)
-    l2 = proj₁ (proj₂ (resuspend-layer (suc (suc (suc n))) (suc (suc l)) lbl wfF))
+    n2 = proj₁ (resuspend-layer (suc (suc (suc n))) (suc (suc l)) lbl env wfF)
+    l2 = proj₁ (proj₂ (resuspend-layer (suc (suc (suc n))) (suc (suc l)) lbl env wfF))
     arm : ∀ (tag : ℕ) {t} → AllocMinTrace t
         → AllocMinTrace (restore-input n ∷ load-indirect-suc ∷
                          t ++ (store-at-slot (suc (suc n)) ∷ instr-alloc-heap 2 ∷
@@ -368,12 +369,12 @@ alloc-min-blocks (Out _)    n l = []
 alloc-min-blocks (in-ν _) n l = tt ∷ tt ∷ tt ∷ []
 -- D199: the block is `coalg ++ re-suspension`.
 alloc-min-blocks (Ana wf c) n l =
-  ++⁺ (tt ∷ ++⁺ (++⁺ (alloc-min-trace' c 0 (suc l))
-                     (resuspend-am (proj₁ (ir-to-trace' 0 (suc l) c))
-                                   (proj₁ (proj₂ (ir-to-trace' 0 (suc l) c)))
-                                   (ℓ o l) wf))
+  ++⁺ (tt ∷ ++⁺ (tt ∷ tt ∷ (++⁺ (alloc-min-trace' c 1 (suc l))
+                     (resuspend-am (proj₁ (ir-to-trace' 1 (suc l) c))
+                                   (proj₁ (proj₂ (ir-to-trace' 1 (suc l) c)))
+                                   (ℓ o l) 0 wf)))
                 (tt ∷ []))
-      (alloc-min-blocks c 0 (suc l))
+      (alloc-min-blocks c 1 (suc l))
 alloc-min-blocks (SigOp _)      n l = []
 alloc-min-blocks (Call _)      n l = []
 alloc-min-blocks (const fits-int _)   n l = []

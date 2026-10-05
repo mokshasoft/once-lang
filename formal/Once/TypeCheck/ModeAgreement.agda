@@ -429,7 +429,7 @@ mutual
   agree-cc (t-pair-morph-check df dg) (t-pair-morph-check df′ dg′) = cong₂ _+ᵘ_ (agree-cc df df′) (agree-cc dg dg′)
   agree-cc (t-curry-check d) (t-curry-check d′) = agree-cc d d′
   agree-cc (t-cata-check _ d) (t-cata-check _ d′) = agree-cc d d′
-  agree-cc (t-ana-check _ _) (t-ana-check _ _) = refl
+  agree-cc (t-ana-check _ d) (t-ana-check _ d′) = agree-cc d d′
   agree-cc (t-lam _ b) (t-lam _ b′) with agree-cc b b′
   ... | refl = refl
   agree-cc (t-pair-lit-check a b) (t-pair-lit-check a′ b′) = cong₂ _+ᵘ_ (agree-cc a a′) (agree-cc b b′)

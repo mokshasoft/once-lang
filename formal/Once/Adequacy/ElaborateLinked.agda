@@ -447,10 +447,11 @@ module _ {σ : ISig} (tbl : List IRFun) where
     Linked-subst (λ o → (⌊ ⟦ F ⟧T A ⌋ Once.IRTy.⇛ ⌊ A ⌋) Once.IRTy.* o) (λ _ → ⌊ A ⌋)
                  (Once.IRTy.⌊⟧T-commute F A) (IR.apply IR.∘ IR.⟨ IR.fst , IR.snd ⟩) (tt , (tt , tt))
     , elaborate-linked′ m alg r
+  -- D273: `anaM ∘ ecoalg`, `cata`'s shape.
   elaborate-linked′ m (ana {F = F} {A = A} wfF coalg) r =
-    Linked-subst (λ _ → ⌊ A ⌋) (λ o → o) (Once.IRTy.⌊⟧T-commute F A)
-                 (IR.apply IR.∘ IR.⟨ elaborate m coalg IR.∘ IR.terminal , IR.id ⟩) (tt , ((elaborate-linked′ m coalg r , tt) , tt))
-    , tt
+    Linked-subst (λ _ → (⌊ A ⌋ Once.IRTy.⇛ ⌊ ⟦ F ⟧T A ⌋) Once.IRTy.* ⌊ A ⌋) (λ o → o)
+                 (Once.IRTy.⌊⟧T-commute F A) (IR.apply IR.∘ IR.⟨ IR.fst , IR.snd ⟩) (tt , (tt , tt))
+    , elaborate-linked′ m coalg r
 
   elaborate-linked : ∀ (m : _) {n} {Γ : Ctx n} {Ψ : Usage n} {A} (e : Expr Γ Ψ A) → Refs (DeclIn σ) L L e
                    → Linked σ tbl (elaborateFull m e)

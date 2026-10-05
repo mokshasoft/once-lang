@@ -293,13 +293,12 @@ seqᴰ m₁ m₂ = (m₁ >>=T λ x → m₂ >>=T λ y → returnT (x , y)) >>=T 
   λ a → bindM π (vf a) λ b → bindM π (vg a) λ c → returnM π (b , c)
 ⟦_⟧ᶜ {ctx = ctx} (t-curry-check {π₀ = π₀} df) fmt ρ dγ =
   (⟦ df ⟧ᶜ fmt ρ) dγ >>=ᵖ λ vf → λ a → returnM π₀ (λ b → vf (a , b))
--- The algebra is typed in the CLEARED context (plan 0.76 holds the widening
--- back for its own decision), so it runs on the empty environment — the same
--- `tt` the telescope rules use.
+-- PLAN 0.101 (D265, D273): the algebra / coalgebra is typed in the ambient
+-- context, so it reads the term's own environment `dγ`.
 ⟦_⟧ᶜ {ctx = ctx} (t-cata-check {π = π} wfF dalg) fmt ρ dγ =
   (⟦ dalg ⟧ᶜ fmt ρ) dγ >>=ᵖ λ valg → λ v → cata-semᵛ π wfF valg v
 ⟦_⟧ᶜ {ctx = ctx} (t-ana-check {π₀ = π₀} {π = π} wfF dcoalg) fmt ρ dγ =
-  λ a → ana-semᵛ π π₀ wfF (returnM π₀ ((⟦ dcoalg ⟧ᶜ fmt ρ) tt)) a
+  λ a → ana-semᵛ π π₀ wfF (returnM π₀ ((⟦ dcoalg ⟧ᶜ fmt ρ) dγ)) a
 -- D226: the mode switch maps the inferred computation's RESULT along `p`.
 ⟦_⟧ᶜ {ctx = ctx} (t-sub d p) fmt ρ dγ = fmapᵖ ⟦ p ⟧<:ᵛ ((⟦ d ⟧ᵢ fmt ρ) dγ)
 -- D143: the arrow's declared quantity `q` decides whether the meaning receives

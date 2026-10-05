@@ -2214,19 +2214,19 @@ mutual
             , t-cata-check wfF wArg
 
   -- D192: the unfold. Same three moves as the fold — read `F` from the
-  -- expected type, decide `WellFormedF F`, check the coalgebra CLOSED in the
-  -- cleared context — with the coalgebra's arrow pointing the other way.
+  -- expected type, decide `WellFormedF F`, check the coalgebra — with the
+  -- coalgebra's arrow pointing the other way. PLAN 0.101 (D273): checked in
+  -- the AMBIENT context — it may capture locals — and its usage is the ana's.
   checkAna ctx coalg T = checkAnaOn ctx coalg T (anaTarget T)
   checkAnaOn ctx coalg _ (ana-at A π₀ F π) = checkAnaGo ctx coalg F A π₀ π (wellFormedF? F) refl
   checkAnaOn _ _ _ ana-other = failure (BuiltinTypeMismatch "ana") , tt
 
   checkAnaGo ctx coalg F A π₀ π nothing _ = failure (BuiltinTypeMismatch "ana") , tt
   checkAnaGo ctx coalg F A π₀ π (just wfF) eqW
-    with checkElabV (ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx))
-                    coalg (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] ⟦ F ⟧T A)
+    with checkElabV ctx coalg (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] ⟦ F ⟧T A)
   ... | failure err , _ = failure err , tt
-  ... | success Surface.[] coalgE d fr , wArg =
-          success _ (Surface.ana wfF coalgE) (suc d) (NamedCtx.freshCounter ctx)
+  ... | success Ψ coalgE d fr , wArg =
+          success _ (Surface.ana wfF coalgE) (suc d) fr
             , t-ana-check wfF wArg
 
 

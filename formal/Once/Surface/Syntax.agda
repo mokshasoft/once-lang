@@ -328,9 +328,11 @@ data Expr : ∀ {n} → Ctx n → Usage n → Type → Set where
   -- denotational `evalᴰ` reads its budget-`n` event prefix (`ana-events`).
   -- D233: the stream carries the coalgebra's grade (`ν-type F π` = ν(T∘F) at
   -- `eff`); building it runs nothing, so `ana`'s own arrow is free (`π₀`).
-  ana : ∀ {n} {Γ : Ctx n} {F : Functor} {A} {π₀ π : Purity}
-      → WellFormedF F → Expr ∅ zeroUsage (A ⇒[ mk-kind Many π ] ⟦ F ⟧T A)
-      → Expr Γ zeroUsage (A ⇒[ mk-kind Many π₀ ] ν-type F π)
+  -- PLAN 0.101 (D273): the coalgebra is an ordinary term IN CONTEXT — it may
+  -- capture locals — obtained once, as `cata`'s algebra is.
+  ana : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {F : Functor} {A} {π₀ π : Purity}
+      → WellFormedF F → Expr Γ Ψ (A ⇒[ mk-kind Many π ] ⟦ F ⟧T A)
+      → Expr Γ Ψ (A ⇒[ mk-kind Many π₀ ] ν-type F π)
 
 
 

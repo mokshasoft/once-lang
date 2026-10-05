@@ -130,9 +130,10 @@ module TwoCellC {FS : FrameSemantics} where
   -- `curry` still needs `valid-closure-wf`/`valid-closure-reg-wf` to say the
   -- same thing twice.
   ------------------------------------------------------------------------
-  obs-correct-Ana : ∀ {F} (wf : WellFormedFI F) {A} (coalg : IR A (⟦ F ⟧TI A))
+  -- D273: the seed is the pair `(e , a)`; nothing here depends on its shape.
+  obs-correct-Ana : ∀ {F} (wf : WellFormedFI F) {E A} (coalg : IR (E IRTy.* A) (⟦ F ⟧TI A))
                   → IRObsCorrectF (Ana wf coalg)
-  obs-correct-Ana {F} wf {A} coalg n l prog base _ cr span _ _ mIn x s alloc cl n≤ nh inp k =
+  obs-correct-Ana {F} wf {E} {A} coalg n l prog base _ cr span _ _ mIn x s alloc cl n≤ nh inp k =
     record
       { traces-agree   = sym (denot-[] k)
       ; value-realized =
@@ -159,12 +160,11 @@ module TwoCellC {FS : FrameSemantics} where
 
       -- THE SEED CELL — one clause per residence, one constructor for all three.
       cell-of : InputAt mIn alloc x s
-              → CellAt (falloc TCR.fs10) A x TCR.obj-loc (floc TCR.fs10)
+              → CellAt (falloc TCR.fs10) (E IRTy.* A) x TCR.obj-loc (floc TCR.fs10)
       cell-of (in-reg fit eq) =
         cell-inline (rep-prim fit)
           (trans TCB.cell0-fs10 (cong just (trans cell0v≡in eq)))
-      cell-of (in-unit refl) =
-        cell-inline (rep-unit refl TCR.cell0v) TCB.cell0-fs10
+      cell-of (in-unit ())
       cell-of (in-loc loc valid bf eq) =
         cell-ptr (trans TCB.cell0-fs10 (cong just (trans cell0v≡in eq)))
                  (TCB.bf-advance bf) (TCB.valid-transport x loc bf valid)

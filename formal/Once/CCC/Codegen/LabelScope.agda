@@ -1443,19 +1443,19 @@ scope-nolab t bs lo hi nl li sa =
 -- point a fresh suspension's code cell at it — contributes no label at all, and
 -- the only labels the pass owns are `wf-Sum`'s branch target and join.
 
-resuspend-idle : ∀ (n l : ℕ) (lbl : LabelId) {F} (wf : WellFormedFI F)
-               → seg-idle? (proj₂ (proj₂ (resuspend-layer n l lbl wf))) ≡ true
-resuspend-idle n l lbl (wf-K _) = refl
-resuspend-idle n l lbl wf-Id    = refl
-resuspend-idle n l lbl (wf-Prod wfF wfG) =
+resuspend-idle : ∀ (n l : ℕ) (lbl : LabelId) (env : ℕ) {F} (wf : WellFormedFI F)
+               → seg-idle? (proj₂ (proj₂ (resuspend-layer n l lbl env wf))) ≡ true
+resuspend-idle n l lbl env (wf-K _) = refl
+resuspend-idle n l lbl env wf-Id    = refl
+resuspend-idle n l lbl env (wf-Prod wfF wfG) =
   idle-++ (store-at-slot n ∷ restore-input n ∷ load-indirect ∷ tF) mid
-    (resuspend-idle (suc (suc (suc n))) l lbl wfF)
-    (idle-++ tG tail2 (resuspend-idle n2 l2 lbl wfG) refl)
+    (resuspend-idle (suc (suc (suc n))) l lbl env wfF)
+    (idle-++ tG tail2 (resuspend-idle n2 l2 lbl env wfG) refl)
   where
-    n2 = proj₁ (resuspend-layer (suc (suc (suc n))) l lbl wfF)
-    l2 = proj₁ (proj₂ (resuspend-layer (suc (suc (suc n))) l lbl wfF))
-    tF = proj₂ (proj₂ (resuspend-layer (suc (suc (suc n))) l lbl wfF))
-    tG = proj₂ (proj₂ (resuspend-layer n2 l2 lbl wfG))
+    n2 = proj₁ (resuspend-layer (suc (suc (suc n))) l lbl env wfF)
+    l2 = proj₁ (proj₂ (resuspend-layer (suc (suc (suc n))) l lbl env wfF))
+    tF = proj₂ (proj₂ (resuspend-layer (suc (suc (suc n))) l lbl env wfF))
+    tG = proj₂ (proj₂ (resuspend-layer n2 l2 lbl env wfG))
     tail2 = store-at-slot (suc (suc n)) ∷ restore-input (suc n) ∷
             load-from-slot (suc (suc n)) ∷ store-indirect-suc ∷
             load-from-slot (suc n) ∷ []
@@ -1463,17 +1463,17 @@ resuspend-idle n l lbl (wf-Prod wfF wfG) =
           store-at-slot (suc n) ∷ mov-to-input ∷
           load-from-slot (suc (suc n)) ∷ store-indirect ∷
           restore-input n ∷ load-indirect-suc ∷ (tG ++ tail2)
-resuspend-idle n l lbl (wf-Sum wfF wfG) =
+resuspend-idle n l lbl env (wf-Sum wfF wfG) =
   idle-++ (tG ++ tail9 1) rest
-    (idle-++ tG (tail9 1) (resuspend-idle n2 l2 lbl wfG) refl)
+    (idle-++ tG (tail9 1) (resuspend-idle n2 l2 lbl env wfG) refl)
     (idle-++ (tF ++ tail9 0) (instr-ctrl (c-label (ℓ o (suc l))) ∷ [])
-      (idle-++ tF (tail9 0) (resuspend-idle (suc (suc (suc n))) (suc (suc l)) lbl wfF) refl)
+      (idle-++ tF (tail9 0) (resuspend-idle (suc (suc (suc n))) (suc (suc l)) lbl env wfF) refl)
       refl)
   where
-    n2 = proj₁ (resuspend-layer (suc (suc (suc n))) (suc (suc l)) lbl wfF)
-    l2 = proj₁ (proj₂ (resuspend-layer (suc (suc (suc n))) (suc (suc l)) lbl wfF))
-    tF = proj₂ (proj₂ (resuspend-layer (suc (suc (suc n))) (suc (suc l)) lbl wfF))
-    tG = proj₂ (proj₂ (resuspend-layer n2 l2 lbl wfG))
+    n2 = proj₁ (resuspend-layer (suc (suc (suc n))) (suc (suc l)) lbl env wfF)
+    l2 = proj₁ (proj₂ (resuspend-layer (suc (suc (suc n))) (suc (suc l)) lbl env wfF))
+    tF = proj₂ (proj₂ (resuspend-layer (suc (suc (suc n))) (suc (suc l)) lbl env wfF))
+    tG = proj₂ (proj₂ (resuspend-layer n2 l2 lbl env wfG))
     tail9 : ℕ → AbstractTrace
     tail9 tag = store-at-slot (suc (suc n)) ∷ instr-alloc-heap 2 ∷
                 store-at-slot (suc n) ∷ mov-to-input ∷
@@ -1484,43 +1484,45 @@ resuspend-idle n l lbl (wf-Sum wfF wfG) =
            restore-input n ∷ load-indirect-suc ∷
            ((tF ++ tail9 0) ++ (instr-ctrl (c-label (ℓ o (suc l))) ∷ []))
 
-resuspend-labels-in : ∀ (lo hi n l : ℕ) (lbl : LabelId) {F} (wf : WellFormedFI F)
+resuspend-labels-in : ∀ (lo hi n l : ℕ) (lbl : LabelId) (env : ℕ) {F} (wf : WellFormedFI F)
                     → lo ≤ l
-                    → proj₁ (proj₂ (resuspend-layer n l lbl wf)) ≤ hi
-                    → LabelsIn lo hi (proj₂ (proj₂ (resuspend-layer n l lbl wf)))
-resuspend-labels-in lo hi n l lbl (wf-K _) lo≤ ≤hi = []
-resuspend-labels-in lo hi n l lbl wf-Id lo≤ ≤hi =
+                    → proj₁ (proj₂ (resuspend-layer n l lbl env wf)) ≤ hi
+                    → LabelsIn lo hi (proj₂ (proj₂ (resuspend-layer n l lbl env wf)))
+resuspend-labels-in lo hi n l lbl env (wf-K _) lo≤ ≤hi = []
+resuspend-labels-in lo hi n l lbl env wf-Id lo≤ ≤hi =
+  li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
+  li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
   li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
   li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ []
-resuspend-labels-in lo hi n l lbl (wf-Prod wfF wfG) lo≤ ≤hi =
+resuspend-labels-in lo hi n l lbl env (wf-Prod wfF wfG) lo≤ ≤hi =
   li-none refl ∷ li-none refl ∷ li-none refl ∷
-  ++⁺ (resuspend-labels-in lo hi (suc (suc (suc n))) l lbl wfF lo≤
-        (≤-trans (resuspend-label-mono n2 l2 lbl wfG) ≤hi))
+  ++⁺ (resuspend-labels-in lo hi (suc (suc (suc n))) l lbl env wfF lo≤
+        (≤-trans (resuspend-label-mono n2 l2 lbl env wfG) ≤hi))
       (li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
        li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
-       ++⁺ (resuspend-labels-in lo hi n2 l2 lbl wfG
-             (≤-trans lo≤ (resuspend-label-mono (suc (suc (suc n))) l lbl wfF)) ≤hi)
+       ++⁺ (resuspend-labels-in lo hi n2 l2 lbl env wfG
+             (≤-trans lo≤ (resuspend-label-mono (suc (suc (suc n))) l lbl env wfF)) ≤hi)
            (li-none refl ∷ li-none refl ∷ li-none refl ∷
             li-none refl ∷ li-none refl ∷ []))
   where
-    n2 = proj₁ (resuspend-layer (suc (suc (suc n))) l lbl wfF)
-    l2 = proj₁ (proj₂ (resuspend-layer (suc (suc (suc n))) l lbl wfF))
-resuspend-labels-in lo hi n l lbl (wf-Sum wfF wfG) lo≤ ≤hi =
+    n2 = proj₁ (resuspend-layer (suc (suc (suc n))) l lbl env wfF)
+    l2 = proj₁ (proj₂ (resuspend-layer (suc (suc (suc n))) l lbl env wfF))
+resuspend-labels-in lo hi n l lbl env (wf-Sum wfF wfG) lo≤ ≤hi =
   li-none refl ∷ li-none refl ∷ li-lab refl lo≤ l<hi ∷
-  ++⁺ (arm 1 (resuspend-labels-in lo hi n2 l2 lbl wfG
+  ++⁺ (arm 1 (resuspend-labels-in lo hi n2 l2 lbl env wfG
              (≤-trans lo≤ (≤-trans (≤-step (≤-step ≤-refl)) upF)) ≤hi))
       (li-lab refl (≤-trans lo≤ (n≤1+n l)) sl<hi ∷ li-lab refl lo≤ l<hi ∷
-       ++⁺ (arm 0 (resuspend-labels-in lo hi (suc (suc (suc n))) (suc (suc l)) lbl wfF
+       ++⁺ (arm 0 (resuspend-labels-in lo hi (suc (suc (suc n))) (suc (suc l)) lbl env wfF
                   (≤-trans lo≤ (≤-step (≤-step ≤-refl)))
-                  (≤-trans (resuspend-label-mono n2 l2 lbl wfG) ≤hi)))
+                  (≤-trans (resuspend-label-mono n2 l2 lbl env wfG) ≤hi)))
            (li-lab refl (≤-trans lo≤ (n≤1+n l)) sl<hi ∷ []))
   where
-    n2 = proj₁ (resuspend-layer (suc (suc (suc n))) (suc (suc l)) lbl wfF)
-    l2 = proj₁ (proj₂ (resuspend-layer (suc (suc (suc n))) (suc (suc l)) lbl wfF))
+    n2 = proj₁ (resuspend-layer (suc (suc (suc n))) (suc (suc l)) lbl env wfF)
+    l2 = proj₁ (proj₂ (resuspend-layer (suc (suc (suc n))) (suc (suc l)) lbl env wfF))
     upF : suc (suc l) ≤ l2
-    upF = resuspend-label-mono (suc (suc (suc n))) (suc (suc l)) lbl wfF
+    upF = resuspend-label-mono (suc (suc (suc n))) (suc (suc l)) lbl env wfF
     up : suc (suc l) ≤ hi
-    up = ≤-trans upF (≤-trans (resuspend-label-mono n2 l2 lbl wfG) ≤hi)
+    up = ≤-trans upF (≤-trans (resuspend-label-mono n2 l2 lbl env wfG) ≤hi)
     sl<hi : suc l < hi
     sl<hi = up
     l<hi : l < hi
@@ -1597,36 +1599,43 @@ scope-ok (Ana wf c) n l =
     ana-bl-in ana-bl-agree
   where
     lb = suc l
-    D  = ir-to-trace' 0 lb c
+    D  = ir-to-trace' 1 lb c
     ct = trace-of D
     l' = label-of D
-    R  = resuspend-layer (budget-of D) l' (ℓ o l) wf
+    R  = resuspend-layer (budget-of D) l' (ℓ o l) 0 wf
     rt = proj₂ (proj₂ R)
     bb = proj₁ R
     hi = proj₁ (proj₂ R)
     BB = blocks-layout (bodies-of D)
     tl = instr-ctrl (c-ret bb) ∷ []
-    bt = ct ++ rt
+    bc = ct ++ rt
+    -- D273: behind the label-free prologue that keeps the seed pair in slot 0
+    pro = mov-to-output ∷ store-at-slot 0 ∷ []
+    bt = pro ++ bc
     blk = instr-ctrl (c-thunk (ℓ o l) bb) ∷ (bt ++ tl)
-    S  = scope-ok c 0 lb
+    S  = scope-ok c 1 lb
 
     l'≤hi : l' ≤ hi
-    l'≤hi = resuspend-label-mono (budget-of D) l' (ℓ o l) wf
+    l'≤hi = resuspend-label-mono (budget-of D) l' (ℓ o l) 0 wf
     l≤l' : l ≤ l'
-    l≤l' = ≤-trans (n≤1+n l) (label-mono c 0 lb)
+    l≤l' = ≤-trans (n≤1+n l) (label-mono c 1 lb)
 
     ctL : LabelsIn lb l' ct
-    ctL = labels-in c 0 lb
+    ctL = labels-in c 1 lb
     rtL : LabelsIn l' hi rt
-    rtL = resuspend-labels-in l' hi (budget-of D) l' (ℓ o l) wf ≤-refl ≤-refl
+    rtL = resuspend-labels-in l' hi (budget-of D) l' (ℓ o l) 0 wf ≤-refl ≤-refl
+    bcL : LabelsIn l hi bc
+    bcL = ++⁺ (ls-weaken (n≤1+n l) l'≤hi ctL) (ls-weaken l≤l' ≤-refl rtL)
     btL : LabelsIn l hi bt
-    btL = ++⁺ (ls-weaken (n≤1+n l) l'≤hi ctL) (ls-weaken l≤l' ≤-refl rtL)
+    btL = li-none refl ∷ li-none refl ∷ bcL
     btlL : LabelsIn l hi (bt ++ tl)
     btlL = ++⁺ btL (li-none refl ∷ [])
 
+    bcA : SegAgree bc
+    bcA = segagree-++' ct rt lb l' l' hi ctL rtL (inj₁ ≤-refl)
+            (seg-agree c 1 lb) (segagree-idle rt (resuspend-idle (budget-of D) l' (ℓ o l) 0 wf))
     btA : SegAgree bt
-    btA = segagree-++' ct rt lb l' l' hi ctL rtL (inj₁ ≤-refl)
-            (seg-agree c 0 lb) (segagree-idle rt (resuspend-idle (budget-of D) l' (ℓ o l) wf))
+    btA = segagree-pre pro l l hi (refl ∷ refl ∷ []) bcL ≤-refl bcA
     btlA : SegAgree (bt ++ tl)
     btlA = segagree-++' bt tl l hi 0 0 btL (nolab-any 0 tl (refl ∷ [])) (inj₂ z≤n)
              btA (segagree-nolab tl (refl ∷ []))
@@ -1645,13 +1654,15 @@ scope-ok (Ana wf c) n l =
     nc1 = nocross-++ˡ (instr-ctrl (c-thunk (ℓ o l) bb) ∷ []) (bt ++ tl) BB
             (nocross-nolabˡ _ BB (refl ∷ []))
             (nocross-++ˡ bt tl BB
-              (nocross-++ˡ ct rt BB (ScopeOK.nc-eb S) ncRB)
+              (nocross-++ˡ pro bc BB (nocross-nolabˡ pro BB (refl ∷ refl ∷ []))
+                (nocross-++ˡ ct rt BB (ScopeOK.nc-eb S) ncRB))
               (nocross-nolabˡ tl BB (refl ∷ [])))
     nc2 : NoCross BB blk
     nc2 = nocross-++ʳ BB (instr-ctrl (c-thunk (ℓ o l) bb) ∷ []) (bt ++ tl)
             (nocross-nolabʳ BB _ (refl ∷ []))
             (nocross-++ʳ BB bt tl
-              (nocross-++ʳ BB ct rt (ScopeOK.nc-be S) ncBR)
+              (nocross-++ʳ BB pro bc (nocross-nolabʳ BB pro (refl ∷ refl ∷ []))
+                (nocross-++ʳ BB ct rt (ScopeOK.nc-be S) ncBR))
               (nocross-nolabʳ BB tl (refl ∷ [])))
 
     ana-bl-in : LabelsIn l hi (blocks-layout ((ℓ o l , bb , bt) ∷ bodies-of D))

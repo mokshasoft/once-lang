@@ -338,10 +338,13 @@ sigOpˢ fmt σ si a = fmapT (injectᵇ (conB si)) (sigOpT fmt (ffiE (calls σ)) 
 -- could not hold them) and re-invented them as an eager unfold in
 -- `ana-eventsˢ`; the two traversals disagree at a functor with more than one
 -- recursive position.
+-- D273: the coalgebra lives in the context and is bound ONCE, here, exactly as
+-- `cata`'s algebra is — and as the elaboration (`anaM ∘ ecoalg`) does; every
+-- forced layer applies the same closure.
 ⟦ ana {Γ = Γ} {F = F} {A = A} wf coalg ⟧ˢ fmt σ dγ =
+  ⟦ coalg ⟧ˢ fmt σ dγ >>=T λ clo →
   returnT (λ a → returnT (anaFᵈ F
-            (λ a' → fmapT (coerce-functor-D wf A)
-                          (⟦ coalg ⟧ˢ fmt σ tt >>=T λ clo → clo a'))
+            (λ a' → fmapT (coerce-functor-D wf A) (clo a'))
             a))
 -- Effect primitives (sigOp/closure/poly): named external ops resolved to
 -- their contract infos, meant through the SAME `sigOpˢ` the IR's SigOp means

@@ -707,8 +707,9 @@ module Core {FS : FrameSemantics} where
   -- premise cannot serve both.
   CoalgRuns : AbstractTrace → Set
   CoalgRuns prog =
-    ∀ {A : IRTy} {F : Once.IRTy.IRFunctor} (wf : WellFormedFI F)
-      (coalg : IR A (⟦ F ⟧TI A)) (seed : ⟦ A ⟧) (ℓ : LabelId)
+    -- D273: the seed is the PAIR `(e , a)` of the parameterized `Ana`.
+    ∀ {E A : IRTy} {F : Once.IRTy.IRFunctor} (wf : WellFormedFI F)
+      (coalg : IR (E IRTy.* A) (⟦ F ⟧TI A)) (seed : ⟦ E IRTy.* A ⟧) (ℓ : LabelId)
       {m : AllocMode} {alloc' : AllocState {FS}}
       {vloc : ValueLocation FS} {st : LocState FS}
     → ValidAtWF m alloc' {ν-type F}
@@ -720,7 +721,7 @@ module Core {FS : FrameSemantics} where
              (ret-pc k : ℕ) (mIn' : AllocMode)
            → fpc fs ≡ j → halted (floc fs) ≡ false → fret fs ≡ ret-pc ∷ []
            → falloc fs ≡ enter-call pre-alloc
-           → InputAt {A} mIn' pre-alloc seed (floc fs)
+           → InputAt {E IRTy.* A} mIn' pre-alloc seed (floc fs)
            -- D199: the block is the coalgebra FOLLOWED BY the re-suspension of
            -- every recursive position, so what it computes is not `coalg` but
            -- the FORCED LAYER — `evalᴰ (Out wf)` of the very ν whose code cell

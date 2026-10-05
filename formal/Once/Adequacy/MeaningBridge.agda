@@ -1117,17 +1117,21 @@ bridge-c (t-cata-check {F = F} {A = A} {π = π} wfF dalg) re er =
               {x = λ v → cata-semᵛ π wfF c₁ v}
               {y = λ x → sem-cata wfF (SD.cata-ev-algˢ {F} {A} wfF (returnT c₂)) x}
               (λ {a} {b} rv → cata-bridgeᵍ π {wfF = wfF} c₁ c₂ ralg rv))
--- D193: the unfold. Both sides are `returnT (λ a → returnT (anaFᵈ …))` with
--- the SAME continuation shape — `⟦_⟧ᶜ`'s ana clause is `⟦ ana ⟧ˢ`'s, bind
--- inside and all — so the whole clause is two `RelGT-return`s around
--- `ana-bridge`, whose premise is the coalgebra's own bridge bound through
--- `RelGᵖ-bind`. The equality at the ν (which is what `RelGV` asks for there)
--- comes from coalgebraic extensionality, not from structural work.
-bridge-c (t-ana-check {F = F} {A = A} {π₀ = π₀} {π = π} wfF dcoalg) {ρ = ρ} re er =
+-- D193 / D273: the unfold. The coalgebra lives in the context and the source
+-- side binds it ONCE (`⟦ ana ⟧ˢ`, as `cata`), so this is `cata`'s shape: the
+-- coalgebra's own bridge through `RelGᵖ-bind`, then `ana-bridge` per related
+-- closure pair, at the closure's `returnT`. The equality at the ν (which is
+-- what `RelGV` asks for there) comes from coalgebraic extensionality.
+-- (`RelGT-bind` at `returnT`, not `RelGᵖ-bind`: the Spec clause applies its
+-- continuation directly rather than through the opaque `>>=ᵖ`.)
+bridge-c (t-ana-check {F = F} {A = A} {π₀ = π₀} {π = π} wfF dcoalg) re er =
+  RelGT-bind {A = A ⇒[ mk-kind Many π ] ⟦ F ⟧T A}
+            {B = A ⇒[ mk-kind Many π₀ ] ν-type F π}
+            (bridge-c dcoalg re er) (λ {c₁} {c₂} rco →
   RelGT-return {A = A ⇒[ mk-kind Many π₀ ] ν-type F π}
     (λ {a} {b} rab →
-      ana-bridgeᵍ π π₀ wfF ((⟦ dcoalg ⟧ᶜ fmt ρ) tt) ((SD.⟦ realize dcoalg ⟧ˢ fmt σ) tt)
-                  (bridge-c dcoalg (mk↾ tt) er) rab)
+      ana-bridgeᵍ π π₀ wfF c₁ (returnT c₂)
+                  (RelGT-return {A = A ⇒[ mk-kind Many π ] ⟦ F ⟧T A} rco) rab))
 -- D226: the mode switch. Both sides map their result along the same `⟦ p ⟧<:`,
 -- and the relation respects every conversion (`RelGT-sub`).
 bridge-c (t-sub d p) re er = RelGT-sub p (bridge-i d re er)

@@ -705,9 +705,10 @@ mutual
     -- DUAL, and stated as its exact mirror so the two schemes cannot drift.
     -- The coalgebra runs the arrow the other way (`A → ⟦F⟧T A` rather than
     -- `⟦F⟧T A → A`) and the conclusion produces a ν where the cata consumes a
-    -- μ; everything else — the cleared context, the `zeroUsage`, the
-    -- `WellFormedF` property rather than the decider's equation — is
-    -- `t-cata-check`'s, for `t-cata-check`'s reasons.
+    -- μ; everything else — the coalgebra typed in the AMBIENT context with
+    -- the ana's usage (PLAN 0.101, D273: it may capture locals, the core's
+    -- `⊢unfold`), the `WellFormedF` property rather than the decider's
+    -- equation — is `t-cata-check`'s, for `t-cata-check`'s reasons.
     --
     -- `F` is read from the EXPECTED type, which is what makes `ana` need no
     -- syntax of its own: it is an ordinary applied builtin, like `cata`, and
@@ -715,14 +716,12 @@ mutual
     -- D233: the stream carries the coalgebra's grade; building it runs
     -- nothing, so `ana`'s own arrow is free (`π₀`, as `curry`'s outer arrow).
     t-ana-check : ∀ {ctx : NamedCtx} {coalg : RawExpr} {F : Functor} {A : Type}
-                  {π₀ π : Once.Type.Purity}
+                  {π₀ π : Once.Type.Purity} {Ψ : Surface.Usage (NamedCtx.size ctx)}
                 → WellFormedF F
-                → ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx)
-                    ⊢ᶜ coalg ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] (⟦ F ⟧T A))
-                    ⨾ Surface.zeroUsage
+                → ctx ⊢ᶜ coalg ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] (⟦ F ⟧T A)) ⨾ Ψ
                 → ctx ⊢ᶜ RApp (RResolved (gen "ana")) coalg
                         ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π₀ ] (ν-type F π))
-                        ⨾ Surface.zeroUsage
+                        ⨾ Ψ
 
     -- | THE MODE SWITCH, with subsumption (D226 / plan 0.99). A term whose type
     -- is INFERRED checks at any supertype. Inference reports the least

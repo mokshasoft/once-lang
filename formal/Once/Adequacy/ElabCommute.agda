@@ -241,7 +241,7 @@ mutual
     cong (λ u → G.let′ u _) (trans (⇝ᶜ-tm (cong (λ X → X T.⇒[ mk-kind Many π ] ρ̂ A) (ρ̂-⟦⟧ F A)) _) (tm-c da))
   tm-c (t-ana-check {F = F} {A = A} {π = π} wf dc) =
     cong (λ u → G.lam (G.unfold u (G.var zero)))
-         (trans (cong G.wk (closeT (trans (⇝ᶜ-tm (cong (λ X → ρ̂ A T.⇒[ mk-kind Many π ] X) (ρ̂-⟦⟧ F A)) _) (tm-c dc))))
+         (trans (cong G.wk (trans (⇝ᶜ-tm (cong (λ X → ρ̂ A T.⇒[ mk-kind Many π ] X) (ρ̂-⟦⟧ F A)) _) (tm-c dc)))
                 (sym (ρ̂ₜ-ren suc _)))
   tm-c (t-sub d p)          = cong (G.coerce _ _) (tm-i d)
   tm-c (t-lam le d)         = cong G.lam (tm-c d)
@@ -426,12 +426,12 @@ mutual
     where
       q  = cong (λ X → X T.⇒[ mk-kind Many π ] ρ̂ A) (ρ̂-⟦⟧ F A)
       TE = trans (⇝ᶜ-tm q _) (tm-c da)
+  -- D273: `cata`'s shape — the coalgebra lives in the context, no `close`.
   dr-c (t-ana-check {F = F} {A = A} {π₀ = π₀} {π = π} wf dc) =
-    H.trans (≅1 _ _ (DT.⊢anaᶜ {π₀ = π₀} (ρ̂-wf wf)) refl (closeT TE)
-                (H.trans (closeH TE (sym q) (H.trans (⇝ᶜ-dr q _) (dr-c dc)))
-                  (H.trans (H.sym (close≅ (proj₂ (elabᶜ V dc))))
-                           (H.sym (rmA (λ X → ρ̂ A T.⇒[ mk-kind Many π ] X) (ρ̂-⟦⟧ F A))))))
-            (H.sym (c-ana {π₀ = π₀} wf (RN.⊢close (proj₂ (elabᶜ V dc)))))
+    H.trans (≅1 _ _ (DT.⊢anaᶜ {π₀ = π₀} (ρ̂-wf wf)) refl TE
+                (H.trans (H.trans (⇝ᶜ-dr q _) (dr-c dc))
+                         (H.sym (rmA (λ X → ρ̂ A T.⇒[ mk-kind Many π ] X) (ρ̂-⟦⟧ F A)))))
+            (H.sym (c-ana {π₀ = π₀} wf (proj₂ (elabᶜ V dc))))
     where
       q  = cong (λ X → ρ̂ A T.⇒[ mk-kind Many π ] X) (ρ̂-⟦⟧ F A)
       TE = trans (⇝ᶜ-tm q _) (tm-c dc)

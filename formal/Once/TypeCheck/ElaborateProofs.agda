@@ -1329,22 +1329,23 @@ checkAnaGoV-J ctx coalg F A π₀ π .(wellFormedF? F) refl = refl
 checkAnaGo-just-success :
   ∀ (ctx : NamedCtx) (coalg : RawExpr) (F : Once.Type.Functor) (A : Type) (π₀ π : Once.Type.Purity)
     (wfF : Once.Functor.Translate.WellFormedF F) (eqW : wellFormedF? F ≡ just wfF)
-    {coalgE : SExpr (NamedCtx.debruijn (ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx)))
-                  Surface.zeroUsage (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] Once.Type.⟦ F ⟧T A)}
+    {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {coalgE : SExpr (NamedCtx.debruijn ctx)
+                  Ψ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] Once.Type.⟦ F ⟧T A)}
     {d fr : ℕ}
-    {w : ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx)
+    {w : ctx
            ⊢ᶜ coalg ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] Once.Type.⟦ F ⟧T A)
-           ⨾ Surface.zeroUsage}
-  → checkElabV (ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx))
+           ⨾ Ψ}
+  → checkElabV ctx
               coalg (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] Once.Type.⟦ F ⟧T A)
-      ≡ (success Surface.zeroUsage coalgE d fr , w)
+      ≡ (success Ψ coalgE d fr , w)
   → checkAnaGo ctx coalg F A π₀ π (just wfF) eqW
-      ≡ (success Surface.zeroUsage (Surface.ana wfF coalgE) (suc d) (NamedCtx.freshCounter ctx)
+      ≡ (success Ψ (Surface.ana wfF coalgE) (suc d) fr
           , t-ana-check wfF w)
 checkAnaGo-just-success ctx coalg F A π₀ π wfF eqW eqCoalgV
-  with checkElabV (ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx))
+  with checkElabV ctx
                   coalg (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] Once.Type.⟦ F ⟧T A) | eqCoalgV
-... | (success Surface.[] _ _ _ , w) | refl = refl
+... | (success _ _ _ _ , w) | refl = refl
 
 -- Plan 0.54: cata at EFF with a GENUINELY-eff algebra. `checkCata`'s eff clause
 -- first tries the eff-Go and passes it through on success. Given the eff-Go IS the

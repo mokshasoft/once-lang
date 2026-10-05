@@ -162,28 +162,28 @@ module Scope {FS : FrameSemantics} where
   -- `c-thunk` — the block entry it points at was minted by `Ana` itself. Same
   -- induction `resuspend-label-mono` runs over `WellFormedFI`.
   ------------------------------------------------------------------------
-  resuspend-nt : ∀ (n l : ℕ) (lbl : LabelId) {F} (wf : WellFormedFI F)
-               → NoThunkT (proj₂ (proj₂ (resuspend-layer n l lbl wf)))
-  resuspend-nt n l lbl (wf-K _) = []
-  resuspend-nt n l lbl wf-Id    = nt-dec _ refl
-  resuspend-nt n l lbl (wf-Prod wfF wfG) =
+  resuspend-nt : ∀ (n l : ℕ) (lbl : LabelId) (env : ℕ) {F} (wf : WellFormedFI F)
+               → NoThunkT (proj₂ (proj₂ (resuspend-layer n l lbl env wf)))
+  resuspend-nt n l lbl env (wf-K _) = []
+  resuspend-nt n l lbl env wf-Id    = nt-dec _ refl
+  resuspend-nt n l lbl env (wf-Prod wfF wfG) =
     refl ∷ refl ∷ refl ∷ 
-    ++⁺ (resuspend-nt (suc (suc (suc n))) l lbl wfF)
+    ++⁺ (resuspend-nt (suc (suc (suc n))) l lbl env wfF)
         (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ 
-         ++⁺ (resuspend-nt (proj₁ (resuspend-layer (suc (suc (suc n))) l lbl wfF))
-                           (proj₁ (proj₂ (resuspend-layer (suc (suc (suc n))) l lbl wfF)))
-                           lbl wfG)
+         ++⁺ (resuspend-nt (proj₁ (resuspend-layer (suc (suc (suc n))) l lbl env wfF))
+                           (proj₁ (proj₂ (resuspend-layer (suc (suc (suc n))) l lbl env wfF)))
+                           lbl env wfG)
              (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ []))
   -- `arm t tag` is `(2 ∷) ++ t ++ (9 ∷)`, so each arm splits LEFT-nested
   -- against the rest of the trace — `(t ++ 9list) ++ …`, not `t ++ …`.
-  resuspend-nt n l lbl (wf-Sum wfF wfG) =
+  resuspend-nt n l lbl env (wf-Sum wfF wfG) =
     refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ 
-    ++⁺ (++⁺ (resuspend-nt (proj₁ (resuspend-layer (suc (suc (suc n))) (suc (suc l)) lbl wfF))
-                           (proj₁ (proj₂ (resuspend-layer (suc (suc (suc n))) (suc (suc l)) lbl wfF)))
-                           lbl wfG)
+    ++⁺ (++⁺ (resuspend-nt (proj₁ (resuspend-layer (suc (suc (suc n))) (suc (suc l)) lbl env wfF))
+                           (proj₁ (proj₂ (resuspend-layer (suc (suc (suc n))) (suc (suc l)) lbl env wfF)))
+                           lbl env wfG)
              (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ []))
         (refl ∷ refl ∷ refl ∷ refl ∷ 
-         ++⁺ (++⁺ (resuspend-nt (suc (suc (suc n))) (suc (suc l)) lbl wfF)
+         ++⁺ (++⁺ (resuspend-nt (suc (suc (suc n))) (suc (suc l)) lbl env wfF)
                   (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ []))
              (refl ∷ []))
 
@@ -425,23 +425,23 @@ module Scope {FS : FrameSemantics} where
   blocks-thunks-in (in-ν _) n l =
     ((≤-refl , ≤-refl) , all-no-thunk-in _ refl) ∷ []
   blocks-thunks-in (Ana wf c) n l =
-    ((≤-refl , ≤-trans (label-mono c 0 (suc l))
-                 (resuspend-label-mono (proj₁ (ir-to-trace' 0 (suc l) c))
-                                       (proj₁ (proj₂ (ir-to-trace' 0 (suc l) c)))
-                                       (ℓ o l) wf))
-      , ++⁺ (ts-weaken (≤-step ≤-refl)
-               (resuspend-label-mono (proj₁ (ir-to-trace' 0 (suc l) c))
-                                     (proj₁ (proj₂ (ir-to-trace' 0 (suc l) c)))
-                                     (ℓ o l) wf)
-               (thunks-in c 0 (suc l)))
-            (ts-from-nt (resuspend-nt (proj₁ (ir-to-trace' 0 (suc l) c))
-                                      (proj₁ (proj₂ (ir-to-trace' 0 (suc l) c)))
-                                      (ℓ o l) wf)))
+    ((≤-refl , ≤-trans (label-mono c 1 (suc l))
+                 (resuspend-label-mono (proj₁ (ir-to-trace' 1 (suc l) c))
+                                       (proj₁ (proj₂ (ir-to-trace' 1 (suc l) c)))
+                                       (ℓ o l) 0 wf))
+      , ++⁺ (ts-from-nt (nt-dec (AbstractInstr.mov-to-output ∷ AbstractInstr.store-at-slot 0 ∷ []) refl)) (++⁺ (ts-weaken (≤-step ≤-refl)
+               (resuspend-label-mono (proj₁ (ir-to-trace' 1 (suc l) c))
+                                     (proj₁ (proj₂ (ir-to-trace' 1 (suc l) c)))
+                                     (ℓ o l) 0 wf)
+               (thunks-in c 1 (suc l)))
+            (ts-from-nt (resuspend-nt (proj₁ (ir-to-trace' 1 (suc l) c))
+                                      (proj₁ (proj₂ (ir-to-trace' 1 (suc l) c)))
+                                      (ℓ o l) 0 wf))))
     ∷ All-map (λ {b} → bts-weaken b (≤-step ≤-refl)
-                (resuspend-label-mono (proj₁ (ir-to-trace' 0 (suc l) c))
-                                      (proj₁ (proj₂ (ir-to-trace' 0 (suc l) c)))
-                                      (ℓ o l) wf))
-              (blocks-thunks-in c 0 (suc l))
+                (resuspend-label-mono (proj₁ (ir-to-trace' 1 (suc l) c))
+                                      (proj₁ (proj₂ (ir-to-trace' 1 (suc l) c)))
+                                      (ℓ o l) 0 wf))
+              (blocks-thunks-in c 1 (suc l))
   -- Every strategy ends the same way: a thunk-free skeleton (`cata-call-setup`,
   -- the `cata-call`s and the `I` fragments carry no `c-thunk`) followed by ONE
   -- `cata-body`, whose marker is the body label. So the four clauses differ

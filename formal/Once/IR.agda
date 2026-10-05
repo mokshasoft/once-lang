@@ -231,11 +231,18 @@ data IR where
   -- Provides symmetry with μ-type operations.
   in-ν : ∀ {F} → WellFormedFI F → IR (⟦ F ⟧TI (ν-type F)) (ν-type F)
 
-  -- Ana: given IR morphism (A → F(A)), produce A → νF
+  -- Ana: the PARAMETERIZED unfold — `Cata`'s mirror (D131, plan 0.101 D273).
+  -- Given a coalgebra that may read a fixed environment `E` — `E * A → F(A)` —
+  -- produce `E * A → νF`. A source-level `ana coalg` evaluates its coalgebra
+  -- arm ONCE and applies the resulting arrow per forced layer; the closure is
+  -- the environment, so `anaM` (Surface.Elaborate) is a closed morphism
+  -- `(A ⇛ F A) → (A ⇛ νF)` and a coalgebra may capture locals. Every forced
+  -- layer reads the SAME environment — the meaning's (`evalᴰ`), not a ν that
+  -- threads it through the seed (only bisimilar to it).
   -- Productivity follows from IR totality: coalgebras are IR morphisms,
   -- IR morphisms are total, therefore each coalgebra step terminates and
   -- produces one F-layer. See IR/Totality.agda and IR/Productivity.agda.
-  Ana : ∀ {F} → WellFormedFI F → ∀ {A} → IR A (⟦ F ⟧TI A) → IR A (ν-type F)
+  Ana : ∀ {F} → WellFormedFI F → ∀ {E A} → IR (E * A) (⟦ F ⟧TI A) → IR (E * A) (ν-type F)
 
   -- Guard/Unguard removed: GuardedT was unnecessary.
   -- Productivity follows from IR totality, not type-level guardedness.

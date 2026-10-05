@@ -1719,7 +1719,7 @@ faithful (case' {Γ = Γ} {Ψs = Ψs} {Ψₗ = Ψₗ} {Ψᵣ = Ψᵣ} {qℓ = q�
 faithful {Γ = Γ} (cata wf alg) dγ = FL.cata-body {Γ = Γ} wf alg dγ (faithful alg dγ)
 -- ana: dual of cata; reduces to the same closure-bridge via `ana-body`
 -- (+ the `ana-ev-bridge` trace lemma).
-faithful {Γ = Γ} (ana {π₀ = π₀} {π = π} wf coalg) dγ = FL.ana-body {Γ = Γ} {π₀ = π₀} {π = π} wf coalg (faithful coalg tt) dγ
+faithful {Γ = Γ} (ana {π₀ = π₀} {π = π} wf coalg) dγ = FL.ana-body {Γ = Γ} {π₀ = π₀} {π = π} wf coalg dγ (faithful coalg dγ)
 
 ------------------------------------------------------------------------
 -- D143: faithfulness at the EMPTY context, stated for `elaborateFull`.

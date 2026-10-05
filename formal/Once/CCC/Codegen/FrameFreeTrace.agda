@@ -362,29 +362,30 @@ frame-free-blocks ((lb , bb , t) ∷ bs) (q ∷ qs) =
 -- flat control — and, in particular, no `instr-case-on-tag`: its sum arm
 -- branches with `c-branch-tag-zero`/`c-jmp`/`c-label`, exactly as `case` does,
 -- which is why `EmittableI`'s retired-fossil ⊥ cases are never reached.
-resuspend-ff : ∀ (n l : ℕ) (lbl : LabelId) {F} (wf : WellFormedFI F)
-             → FrameFreeTrace (proj₂ (proj₂ (resuspend-layer n l lbl wf)))
-resuspend-ff n l lbl (wf-K _) = []
-resuspend-ff n l lbl wf-Id =
+resuspend-ff : ∀ (n l : ℕ) (lbl : LabelId) (env : ℕ) {F} (wf : WellFormedFI F)
+             → FrameFreeTrace (proj₂ (proj₂ (resuspend-layer n l lbl env wf)))
+resuspend-ff n l lbl env (wf-K _) = []
+resuspend-ff n l lbl env wf-Id =
+  tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷
   tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
-resuspend-ff n l lbl (wf-Prod wfF wfG) =
+resuspend-ff n l lbl env (wf-Prod wfF wfG) =
   tt ∷ tt ∷ tt ∷
-  ++⁺ (resuspend-ff (suc (suc (suc n))) l lbl wfF)
+  ++⁺ (resuspend-ff (suc (suc (suc n))) l lbl env wfF)
       (tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷
-       ++⁺ (resuspend-ff n2 l2 lbl wfG)
+       ++⁺ (resuspend-ff n2 l2 lbl env wfG)
            (tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []))
   where
-    n2 = proj₁ (resuspend-layer (suc (suc (suc n))) l lbl wfF)
-    l2 = proj₁ (proj₂ (resuspend-layer (suc (suc (suc n))) l lbl wfF))
-resuspend-ff n l lbl (wf-Sum wfF wfG) =
+    n2 = proj₁ (resuspend-layer (suc (suc (suc n))) l lbl env wfF)
+    l2 = proj₁ (proj₂ (resuspend-layer (suc (suc (suc n))) l lbl env wfF))
+resuspend-ff n l lbl env (wf-Sum wfF wfG) =
   tt ∷ tt ∷ tt ∷
-  ++⁺ (arm 1 (resuspend-ff n2 l2 lbl wfG))
+  ++⁺ (arm 1 (resuspend-ff n2 l2 lbl env wfG))
       (tt ∷ tt ∷
-       ++⁺ (arm 0 (resuspend-ff (suc (suc (suc n))) (suc (suc l)) lbl wfF))
+       ++⁺ (arm 0 (resuspend-ff (suc (suc (suc n))) (suc (suc l)) lbl env wfF))
            (tt ∷ []))
   where
-    n2 = proj₁ (resuspend-layer (suc (suc (suc n))) (suc (suc l)) lbl wfF)
-    l2 = proj₁ (proj₂ (resuspend-layer (suc (suc (suc n))) (suc (suc l)) lbl wfF))
+    n2 = proj₁ (resuspend-layer (suc (suc (suc n))) (suc (suc l)) lbl env wfF)
+    l2 = proj₁ (proj₂ (resuspend-layer (suc (suc (suc n))) (suc (suc l)) lbl env wfF))
     arm : ∀ (tag : ℕ) {t} → FrameFreeTrace t
         → FrameFreeTrace (restore-input n ∷ load-indirect-suc ∷
                           t ++ (store-at-slot (suc (suc n)) ∷ instr-alloc-heap 2 ∷
@@ -419,10 +420,11 @@ frame-free-blocks' (Out _)        hm n l = []
 frame-free-blocks' (in-ν _)     hm n l = (tt ∷ []) ∷ []
 -- D199: the block is `coalg ++ re-suspension`.
 frame-free-blocks' (Ana wf c)     hc n l =
-  ++⁺ (frame-free-trace' c hc 0 (suc l))
-      (resuspend-ff (proj₁ (ir-to-trace' 0 (suc l) c))
-                    (proj₁ (proj₂ (ir-to-trace' 0 (suc l) c))) (ℓ o l) wf)
-    ∷ frame-free-blocks' c hc 0 (suc l)
+  (tt ∷ tt ∷
+   ++⁺ (frame-free-trace' c hc 1 (suc l))
+       (resuspend-ff (proj₁ (ir-to-trace' 1 (suc l) c))
+                     (proj₁ (proj₂ (ir-to-trace' 1 (suc l) c))) (ℓ o l) 0 wf))
+    ∷ frame-free-blocks' c hc 1 (suc l)
 frame-free-blocks' (SigOp _)      hm n l = []
 frame-free-blocks' (Call _)      hm n l = []
 frame-free-blocks' (const fits-int _)   hm n l = []

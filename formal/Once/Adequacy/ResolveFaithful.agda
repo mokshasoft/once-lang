@@ -556,15 +556,13 @@ resolveExpr-faithful polys imps userFns fresh (Srf.cata {F = F} {A = A} wf alg) 
   cong (λ ac → (ac >>=T λ valg →
                   returnT (λ x → sem-cata wf (SD.cata-ev-algˢ {F} {A} wf (returnT valg)) x)))
        (( resolveExpr-faithful polys imps userFns fresh alg dγ))
--- ana: dual of cata — a closure over the CLOSED coalgebra `⟦coalg⟧ˢ tt`.
--- D179: the coalgebra now appears ONCE (inside the suspension) instead of
--- twice (in `ana-eventsˢ` for the trace and in `sem-ana` for the value), so
--- this is a single `cong` over the coalgebra denotation with nothing to
--- reconcile between the halves.
+-- ana: dual of cata (D273) — the coalgebra is BOUND once at the same
+-- environment, so the clause is ONE `cong` over the coalgebra denotation.
 resolveExpr-faithful polys imps userFns fresh (Srf.ana {F = F} {A = A} wf coalg) dγ =
-  cong (λ ac → returnT (λ a → returnT (anaFᵈ F
-         (λ a' → fmapT (coerce-functor-D wf A) (ac >>=T λ clo → clo a')) a)))
-       (( resolveExpr-faithful polys imps userFns fresh coalg tt))
+  cong (λ ac → (ac >>=T λ clo →
+                  returnT (λ a → returnT (anaFᵈ F
+                    (λ a' → fmapT (coerce-functor-D wf A) (clo a')) a))))
+       (( resolveExpr-faithful polys imps userFns fresh coalg dγ))
 -- sigOp: D246 — the resolver passes it through, and a SigOp reads no environment.
 resolveExpr-faithful {Γ = Γ} {A = A} polys imps userFns fresh (Srf.sigOp s conc) dγ =
   sigOp-σ-irrel {Γ = Γ} {A = A} ρ _ _ s conc dγ

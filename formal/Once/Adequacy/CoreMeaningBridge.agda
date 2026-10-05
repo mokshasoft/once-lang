@@ -406,11 +406,10 @@ module _ {δ : GM.DefSem} where
   bridge-c V ag (t-inl-app-check d) dγ = app-comb _ (λ v → >>=ᵖ-β v _) (bridge-c V ag d _)
   bridge-c V ag (t-inr-app-check d) dγ = app-comb _ (λ v → >>=ᵖ-β v _) (bridge-c V ag d _)
   bridge-c {ctx = ctx} V ag (t-initial-app-check d) dγ = app-comb {F = λ w → ⊥-elim w} _ (λ v → >>=ᵖ-β v (λ w → ⊥-elim w)) (bridge-c V ag d (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-trans (⊑ᵘ-*Many _) (⊑ᵘ-+ʳ zeroUsage _)) dγ))
+  -- D273: the coalgebra lives in the context — no `close`, read at `dγ`.
   bridge-c {ctx = ctx} V ag (t-ana-check {π₀ = π₀} {π = π} wf dcoalg) dγ =
-    trans (cong (λ C → λ a → ana-semᵛ π π₀ wf (returnM π₀ C) a)
-                (trans (bridge-c {ctx = ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx)} V ag dcoalg tt)
-                       (sym (RS.close-sem {Γ = NamedCtx.debruijn ctx} (proj₂ (elabᶜ V dcoalg)) fmt δ dγ))))
-          (sym (Comb.ana-sem″ {δ = δ} wf (⊢close {Γ = NamedCtx.debruijn ctx} (proj₂ (elabᶜ V dcoalg))) dγ))
+    trans (cong (λ C → λ a → ana-semᵛ π π₀ wf (returnM π₀ C) a) (bridge-c V ag dcoalg dγ))
+          (sym (Comb.ana-sem″ {δ = δ} wf (proj₂ (elabᶜ V dcoalg)) dγ))
   bridge-c {ctx = ctx} V ag (t-apply-check {A = A} {B = B} dp) dγ =
     trans (bindC (bridge-i V ag dp _) (λ fa → refl))
           (sym (Comb.appC-sem {δ = δ} (λ fa → proj₁ fa (proj₂ fa)) (⊢applyᶜ {Γ = NamedCtx.debruijn ctx} {A = A} {B = B})

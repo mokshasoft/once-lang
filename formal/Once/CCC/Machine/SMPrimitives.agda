@@ -2191,6 +2191,7 @@ module TracePrimitives {FS : FrameSemantics} where
   InstrWF s alloc (instr-sigop si)         = halted (proj₁ (exec-abstract (instr-sigop si) s alloc)) ≡ false
   InstrWF s alloc (instr-case-on-tag f g)  = halted (proj₁ (exec-abstract (instr-case-on-tag f g) s alloc)) ≡ false
   InstrWF s alloc (instr-loop body)        = halted (proj₁ (exec-abstract (instr-loop body) s alloc)) ≡ false
+  {-# CATCHALL #-}
   InstrWF _ _     _                        = ⊤
 
   ------------------------------------------------------------------------

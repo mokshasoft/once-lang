@@ -281,10 +281,8 @@ rename {Δ = Δ} θ (Surface.lift-morphism m) =
 -- Plan 0.101 (D265): the algebra lives in the context and carries the cata's
 -- usage, so renaming goes under it (unary, usage-preserving, like `neg`).
 rename θ (Surface.cata wfF alg) = Surface.cata wfF (rename θ alg)
--- `ana`'s coalgebra stays CLOSED (plan 0.101: its capture needs a
--- parameterized `Ana`), so θ never touches it.
-rename {Δ = Δ} θ (Surface.ana wfF coalg) =
-  subst (λ Ψ → SExpr Δ Ψ _) (sym (thin-usage-zeroUsage θ)) (Surface.ana wfF coalg)
+-- …and so does `ana`'s coalgebra (D273, the parameterized `Ana`).
+rename θ (Surface.ana wfF coalg) = Surface.ana wfF (rename θ coalg)
 -- Plan 0.2.4.5 D2: morphism-realm application. Usage shape mirrors
 -- `Surface.app` (with f-usage = zeroUsage, q = Many): renaming the
 -- argument propagates through `+ᵘ` and `*ᵘ` and `zeroUsage`.

@@ -1,0 +1,34 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
+-- Plan 0.101 (D273): an ana coalgebra may CAPTURE locals — `cata-capture`'s
+-- dual. `fromK k` unfolds a stream whose coalgebra reads the parameter `k`;
+-- `viaLet` binds it with `let`. Before D273 both were rejected (the coalgebra
+-- was typed in a cleared context).
+--
+-- Each is forced TWICE, through the recursive position, so the second layer
+-- comes from a RE-SUSPENSION — the machine must carry the environment into
+-- the fresh suspension, or the second layer reads garbage:
+--
+--   fromK 5 from 10:  layers (15, 11) then (16, 12)  → 16
+--   viaLet  from 20:  layers (23, 22) then (25, 24)  → 25
+--   16 + 25 = 41
+--
+-- (A `let` body is INFERRED and a bare `ana` only CHECKS, so the let-bound
+-- unfold carries an annotation — a mode fact, unrelated to capture.)
+--
+-- Expected: exit code 41.
+
+import I.Linux.Syscalls as S
+
+fromK : Int -> Int -> Nu (K Int * Id)
+fromK k = ana (\s -> (s + k, s + 1))
+
+viaLet : Int -> Nu (K Int * Id)
+viaLet = let b = 3 in (ana (\s -> (s + b, s + 2)) : Int -> Nu (K Int * Id))
+
+second : Nu (K Int * Id) -> Int
+second v = fst (Out (snd (Out v)))
+
+main : IO Unit
+main = exit@S (second (fromK 5 10) + second (viaLet 20))

@@ -106,23 +106,23 @@ cata-label-mono (strat-branching F) bb n1 l1 at =
 -- `c-branch-tag-zero` target and the join — so the counter advances through it
 -- too, and `Ana`'s window now ends where the PASS left it, not where the
 -- coalgebra did.
-resuspend-label-mono : ∀ (n l : ℕ) (lbl : LabelId) {F} (wf : WellFormedFI F)
-                     → l ≤ proj₁ (proj₂ (resuspend-layer n l lbl wf))
-resuspend-label-mono n l lbl (wf-K _) = ≤-refl
-resuspend-label-mono n l lbl wf-Id    = ≤-refl
-resuspend-label-mono n l lbl (wf-Prod wfF wfG) =
-  ≤-trans (resuspend-label-mono (suc (suc (suc n))) l lbl wfF)
-          (resuspend-label-mono (proj₁ (resuspend-layer (suc (suc (suc n))) l lbl wfF))
-                                (proj₁ (proj₂ (resuspend-layer (suc (suc (suc n))) l lbl wfF)))
-                                lbl wfG)
-resuspend-label-mono n l lbl (wf-Sum wfF wfG) =
+resuspend-label-mono : ∀ (n l : ℕ) (lbl : LabelId) (env : ℕ) {F} (wf : WellFormedFI F)
+                     → l ≤ proj₁ (proj₂ (resuspend-layer n l lbl env wf))
+resuspend-label-mono n l lbl env (wf-K _) = ≤-refl
+resuspend-label-mono n l lbl env wf-Id    = ≤-refl
+resuspend-label-mono n l lbl env (wf-Prod wfF wfG) =
+  ≤-trans (resuspend-label-mono (suc (suc (suc n))) l lbl env wfF)
+          (resuspend-label-mono (proj₁ (resuspend-layer (suc (suc (suc n))) l lbl env wfF))
+                                (proj₁ (proj₂ (resuspend-layer (suc (suc (suc n))) l lbl env wfF)))
+                                lbl env wfG)
+resuspend-label-mono n l lbl env (wf-Sum wfF wfG) =
   ≤-trans (n≤1+n l)
     (≤-trans (n≤1+n (suc l))
-      (≤-trans (resuspend-label-mono (suc (suc (suc n))) (suc (suc l)) lbl wfF)
+      (≤-trans (resuspend-label-mono (suc (suc (suc n))) (suc (suc l)) lbl env wfF)
                (resuspend-label-mono
-                  (proj₁ (resuspend-layer (suc (suc (suc n))) (suc (suc l)) lbl wfF))
-                  (proj₁ (proj₂ (resuspend-layer (suc (suc (suc n))) (suc (suc l)) lbl wfF)))
-                  lbl wfG)))
+                  (proj₁ (resuspend-layer (suc (suc (suc n))) (suc (suc l)) lbl env wfF))
+                  (proj₁ (proj₂ (resuspend-layer (suc (suc (suc n))) (suc (suc l)) lbl env wfF)))
+                  lbl env wfG)))
 
 label-mono : ∀ {A B} (ir : IR A B) (n l : ℕ) → l ≤ label-of (ir-to-trace' n l ir)
 label-mono id       n l = ≤-refl
@@ -164,10 +164,10 @@ label-mono (in-ν _)     n l = n≤1+n l
 -- closure body, emitted at frontier 0 under the ν's own label.
 label-mono (Ana wf c)     n l =
   ≤-trans (n≤1+n l)
-    (≤-trans (label-mono c 0 (suc l))
-             (resuspend-label-mono (proj₁ (ir-to-trace' 0 (suc l) c))
-                                   (proj₁ (proj₂ (ir-to-trace' 0 (suc l) c)))
-                                   (ℓ o l) wf))
+    (≤-trans (label-mono c 1 (suc l))
+             (resuspend-label-mono (proj₁ (ir-to-trace' 1 (suc l) c))
+                                   (proj₁ (proj₂ (ir-to-trace' 1 (suc l) c)))
+                                   (ℓ o l) 0 wf))
 label-mono (SigOp _)      n l = ≤-refl
 label-mono (Call _)      n l = ≤-refl
 label-mono (const fits-int _)   n l = ≤-refl

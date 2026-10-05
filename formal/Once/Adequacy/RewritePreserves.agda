@@ -111,12 +111,12 @@ module _ (fmt : TargetNum) (ρ : CallEnv) where
              (rewrite-sound alg)
   walk-sound (Out w)  = refl
   walk-sound (in-ν w) = refl
-  walk-sound (Ana {F} w {A′} c) = extensionality λ a →
+  walk-sound (Ana {F} w {E′} {A′} c) = extensionality λ a →
     cong (λ X → returnT (anaFᵈ ⌈ F ⌉F
                            (λ a′ → fmapT (λ x → coerce-functor-D (wf-⌈⌉ w) ⌈ A′ ⌉
                                                   (subst (λ Ty → ⟦ Ty ⟧ᴰ) (⌈⟧TI-commute F A′) x))
-                                         (X a′))
-                           a))
+                                         (X (proj₁ a , a′)))
+                           (proj₂ a)))
          (rewrite-sound c)
   walk-sound (const p v) = refl
   walk-sound (SigOp si)  = bare-sound si (try-lift (SigOp si ∘ id)) refl

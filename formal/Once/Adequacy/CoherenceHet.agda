@@ -181,7 +181,8 @@ module _ {Γ : Ctx n} where
   cata-h w w′ {a′ = a′} (≅i refl refl h) =
     ≅i refl refl (≈-trans (cata-cong w h) (≈-intro (cong (λ v → ⟦ cata {Γ = Γ} v a′ ⟧ˢ fmt) (WellFormedF-irrelevant w w′))))
 
-  ana-h : ∀ {F} (w w′ : WellFormedF F) {a a′ : Expr ∅ zeroUsage (A ⇒[ mk-kind Many π ] ⟦ F ⟧T A)}
+  ana-h : ∀ {F} (w w′ : WellFormedF F) {a : Expr Γ Ψ (A ⇒[ mk-kind Many π ] ⟦ F ⟧T A)}
+          {a′ : Expr Γ Ψ′ (A ⇒[ mk-kind Many π ] ⟦ F ⟧T A)}
         → a ≅ a′ → ana {Γ = Γ} {π₀ = π₀} w a ≅ ana w′ a′
   ana-h {π₀ = π₀} w w′ {a′ = a′} (≅i refl refl h) =
     ≅i refl refl (≈-trans (ana-cong w h) (≈-intro (cong (λ v → ⟦ ana {Γ = Γ} {π₀ = π₀} v a′ ⟧ˢ fmt) (WellFormedF-irrelevant w w′))))

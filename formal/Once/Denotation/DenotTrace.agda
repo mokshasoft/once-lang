@@ -189,12 +189,13 @@ evalᴰ fmt ρ (SigOp {A} {B} si) a   =
 evalᴰ fmt ρ (Call {A} {B} f) a = callsE ρ f A B a
 evalᴰ fmt ρ (Cata {F} wf {E} {C} alg)  a =
   sem-cata (wf-⌈⌉ wf) (cata-ev-algᴰ fmt ρ {F} {E} {C} wf alg (proj₁ a)) (proj₂ a)
-evalᴰ fmt ρ (Ana {F} wf {A} coalg) a =
+-- D273: the coalgebra reads the FIXED environment `proj₁ a` at every layer.
+evalᴰ fmt ρ (Ana {F} wf {E} {A} coalg) a =
   returnT (anaFᵈ ⌈ F ⌉F
             (λ a' → fmapT (λ x → coerce-functor-D (wf-⌈⌉ wf) ⌈ A ⌉
                                    (subst (λ Ty → ⟦ Ty ⟧ᴰ) (⌈⟧TI-commute F A) x))
-                          (evalᴰ fmt ρ coalg a'))
-            a)
+                          (evalᴰ fmt ρ coalg (proj₁ a , a')))
+            (proj₂ a))
 evalᴰ fmt ρ (Out {F} wf) v =
   fmapT (λ layer → subst (λ Ty → ⟦ Ty ⟧ᴰ) (sym (⌈⟧TI-commute F (ν-type F)))
                      (coerce-functor⁻¹-D (wf-⌈⌉ wf) ⌈ ν-type F ⌉

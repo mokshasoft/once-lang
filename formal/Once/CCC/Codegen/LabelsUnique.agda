@@ -495,11 +495,11 @@ module Unique {FS : FrameSemantics} where
   defs-uniq (curry b)             n l =
     head-fresh′ l (n≤1+n (suc l)) (defsA b 0 (s² l)) ∷ defs-uniq b 0 (s² l)
   defs-uniq (Ana wf c)            n l =
-    subst (λ z → AllPairs _≢_ (ℓ o l ∷ (z ++ block-defs (bodies-of (ir-to-trace' 0 (suc l) c)))))
-          (sym (tl-post (trace-of (ir-to-trace' 0 (suc l) c)) _
-                        (resuspend-nt (proj₁ (ir-to-trace' 0 (suc l) c))
-                                      (label-of (ir-to-trace' 0 (suc l) c)) (ℓ o l) wf)))
-          (head-fresh′ l ≤-refl (defsA c 0 (suc l)) ∷ defs-uniq c 0 (suc l))
+    subst (λ z → AllPairs _≢_ (ℓ o l ∷ (z ++ block-defs (bodies-of (ir-to-trace' 1 (suc l) c)))))
+          (sym (tl-post (trace-of (ir-to-trace' 1 (suc l) c)) _
+                        (resuspend-nt (proj₁ (ir-to-trace' 1 (suc l) c))
+                                      (label-of (ir-to-trace' 1 (suc l) c)) (ℓ o l) 0 wf)))
+          (head-fresh′ l ≤-refl (defsA c 1 (suc l)) ∷ defs-uniq c 1 (suc l))
   -- …AND THE ONE THAT MINTS ABOVE. `cata-body`'s label is the DISPATCH's, past
   -- everything the algebra took.
   defs-uniq (Cata {F} _ a)        n l =

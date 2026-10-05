@@ -52,7 +52,7 @@ open import Once.Semantics.Machine using
 open import Once.Semantics.Functor using (νS; ⟦_⟧SF; SFunctor)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰᴵ)
 open import Once.Surface.Syntax using (Expr; Ctx; Usage; ∅; zeroUsage; ⟦_⟧ᶜ; _↾_)
-open import Once.Surface.Elaborate using (elaborate; cataM)
+open import Once.Surface.Elaborate using (elaborate; cataM; anaM)
 import Once.Compile as C
 open import Once.Denotation.Trace using (SigOpEvent)
 open import Once.Res using (Res; stopped; returns; mapRes; mapRes-id; mapRes-∘; mapRes-cong)
@@ -276,37 +276,46 @@ subst-fam-T P refl m = refl
 --
 -- D143: same restriction as `morph-app-bridge` — the coalgebra is applied
 -- through `apply`, so its arrow must be NON-erased.
-ana-body : ∀ {mm} {Γ : Ctx mm} {F : Functor} {A} {π₀ π : Purity}
-             (wf : WellFormedF F)
-             (coalg : Expr ∅ zeroUsage (A ⇒[ mk-kind Many π ] ⟦ F ⟧T A))
-             (ih : liftFn fmt ρ {⟦ ∅ ⟧ᶜ} {A ⇒[ mk-kind Many π ] ⟦ F ⟧T A} (elaborate C.Heap coalg) tt ≡ SD.⟦ coalg ⟧ˢ fmt σ₀ tt)
-             (dγ : ⟦ ⟦ Γ ↾ zeroUsage ⟧ᶜ ⟧ᴰ)
-           → liftFn fmt ρ {⟦ Γ ↾ zeroUsage ⟧ᶜ} {A ⇒[ mk-kind Many π₀ ] ν-type F π} (elaborate C.Heap (ana {Γ = Γ} {π₀ = π₀} {π = π} wf coalg)) dγ
-             ≡ SD.⟦ ana {Γ = Γ} {π₀ = π₀} {π = π} wf coalg ⟧ˢ fmt σ₀ dγ
-ana-body {Γ = Γ} {F = F} {A = A} {π₀ = π₀} {π = π} wf coalg ih dγ =
+-- D273: what `anaM` MEANS applied to an obtained coalgebra closure — `cataM-fold`'s
+-- mirror. `anaM wf m = curry (Ana (wf-⌊⌋ wf) (subst … (apply ∘ ⟨ fst , snd ⟩)))`,
+-- so the unfold's per-layer coalgebra is "apply `c`" at the SAME closure.
+anaM-unfold : ∀ {F : Functor} {A : Type} {π₀ π : Purity} (wf : WellFormedF F)
+                (c : ⟦ A ⇒[ mk-kind Many π ] ⟦ F ⟧T A ⟧ᴰ)
+            → liftFn fmt ρ {A ⇒[ mk-kind Many π ] ⟦ F ⟧T A} {A ⇒[ mk-kind Many π₀ ] ν-type F π}
+                     (anaM {F} {A} {π} wf C.Heap) c
+              ≡ returnT (λ a → returnT (anaFᵈ F (λ a' → fmapT (coerce-functor-D wf A) (c a')) a))
+anaM-unfold {F} {A} {π₀} {π} wf c =
   trans elab-ana-reduce (cong returnT per-a)
   where
-    coalgIR : IR ⌊ A ⌋ ⌊ ⟦ F ⟧T A ⌋
-    coalgIR = apply ∘ ⟨ elaborate C.Heap coalg ∘ terminal , id ⟩
-    coalg' = subst (λ o → IR ⌊ A ⌋ o) (⌊⟧T-commute F A) coalgIR
-    Ana-IR : IR ⌊ A ⌋ ⌊ ν-type F π ⌋
+    Arr = A ⇒[ mk-kind Many π ] ⟦ F ⟧T A
+    c' = subst (λ z → z) (sym (cohᴰ Arr)) c
+    applyIR : IR (⌊ Arr ⌋ C.* ⌊ A ⌋) ⌊ ⟦ F ⟧T A ⌋
+    applyIR = C.apply C.∘ C.⟨ C.fst , C.snd ⟩
+    coalg' = subst (λ o → IR (⌊ Arr ⌋ C.* ⌊ A ⌋) o) (⌊⟧T-commute F A) applyIR
+    Ana-IR : IR (⌊ Arr ⌋ C.* ⌊ A ⌋) ⌊ ν-type F π ⌋
     Ana-IR = Ana (wf-⌊⌋ wf) coalg'
 
-    elab-ana-reduce : liftFn fmt ρ {⟦ Γ ↾ zeroUsage ⟧ᶜ} {A ⇒[ mk-kind Many π₀ ] ν-type F π} (elaborate C.Heap (ana {Γ = Γ} {π₀ = π₀} {π = π} wf coalg)) dγ
-                      ≡ returnT (λ a → liftFn fmt ρ {A} {ν-type F π} Ana-IR a)
+    elab-ana-reduce : liftFn fmt ρ {Arr} {A ⇒[ mk-kind Many π₀ ] ν-type F π} (anaM {F} {A} {π} wf C.Heap) c
+                      ≡ returnT (λ a → subst T (cohᴰ (ν-type F π))
+                                         (evalᴰ fmt ρ Ana-IR (c' , subst (λ z → z) (sym (cohᴰ A)) a)))
     elab-ana-reduce =
-      (trans (subst-T-returnT (cong₂ (λ x y → x → T y) (cohᴰ A) (cohᴰ (ν-type F π))) (λ a → evalᴰ fmt ρ Ana-IR a))
-             (cong returnT (subst-arrow (cohᴰ A) (cohᴰ (ν-type F π)) (λ a → evalᴰ fmt ρ Ana-IR a))))
+      (trans (subst-T-returnT (cong₂ (λ x y → x → T y) (cohᴰ A) (cohᴰ (ν-type F π))) (λ b → evalᴰ fmt ρ Ana-IR (c' , b)))
+             (cong returnT (subst-arrow (cohᴰ A) (cohᴰ (ν-type F π)) (λ b → evalᴰ fmt ρ Ana-IR (c' , b)))))
+
+    -- Applying the carried closure IS the coalgebra (pair-η, then application).
+    apply-closure : ∀ (z : ⟦ A ⟧ᴰ)
+                  → liftFn fmt ρ {Arr Once.Type.* A} {⟦ F ⟧T A} applyIR (c , z) ≡ c z
+    apply-closure z = cong (λ h → h (c , z)) (liftFn-apply {A} {⟦ F ⟧T A} {π})
 
     -- The IR-side coalgebra, as `anaFᵈ` receives it.
     cE : ⟦ ⌊ A ⌋ ⟧ᴰᴵ → T (⟦ ⌈ eraseF F ⌉F ⟧F ⟦ ⌊ A ⌋ ⟧ᴰᴵ)
     cE = λ a' → fmapT (λ x → coerce-functor-D (wf-⌈⌉ (wf-⌊⌋ wf)) ⌈ ⌊ A ⌋ ⌉
                                (subst (λ Ty → ⟦ Ty ⟧ᴰ) (⌈⟧TI-commute (eraseF F) ⌊ A ⌋) x))
-                      (evalᴰ fmt ρ coalg' a')
+                      (evalᴰ fmt ρ coalg' (c' , a'))
 
     -- The surface-side coalgebra.
     cS : ⟦ A ⟧ᴰ → T (⟦ F ⟧F ⟦ A ⟧ᴰ)
-    cS = λ a' → fmapT (coerce-functor-D wf A) (SD.⟦ coalg ⟧ˢ fmt σ₀ tt >>=T λ clo → clo a')
+    cS = λ a' → fmapT (coerce-functor-D wf A) (c a')
 
     -- THE content of `ana`-faithfulness, now that both sides are `anaᵈ`: the
     -- two coalgebras agree after the erasure transports. Everything else is
@@ -335,15 +344,17 @@ ana-body {Γ = Γ} {F = F} {A = A} {π₀ = π₀} {π = π} wf coalg ih dγ =
     -- The IR side's computation IS the shared one, up to `coalg'`'s codomain
     -- transport.
     e-eq : ∀ (x : ⟦ A ⟧ᴰ)
-         → evalᴰ fmt ρ coalg' (seedOf x)
-           ≡ subst T (cong ⟦_⟧ᴰᴵ (⌊⟧T-commute F A)) (evalᴰ fmt ρ coalgIR (seedOf x))
-    e-eq x = evalᴰ-subst-cod (⌊⟧T-commute F A) coalgIR (seedOf x)
+         → evalᴰ fmt ρ coalg' (c' , seedOf x)
+           ≡ subst T (cong ⟦_⟧ᴰᴵ (⌊⟧T-commute F A)) (evalᴰ fmt ρ applyIR (c' , seedOf x))
+    e-eq x = evalᴰ-subst-cod (⌊⟧T-commute F A) applyIR (c' , seedOf x)
 
-    -- The surface side's computation is the shared one too — that is the IH.
+    -- The surface side's computation is the shared one too: applying `c`.
     s-eq : ∀ (x : ⟦ A ⟧ᴰ)
-         → (SD.⟦ coalg ⟧ˢ fmt σ₀ tt >>=T (λ clo → clo x))
-           ≡ subst T (cohᴰ (⟦ F ⟧T A)) (evalᴰ fmt ρ coalgIR (seedOf x))
-    s-eq x = sym (morph-app-bridge coalg ih x)
+         → c x ≡ subst T (cohᴰ (⟦ F ⟧T A)) (evalᴰ fmt ρ applyIR (c' , seedOf x))
+    s-eq x =
+      sym (trans (cong (λ W → subst T (cohᴰ (⟦ F ⟧T A)) (evalᴰ fmt ρ applyIR W))
+                       (sym (pairᴰ-subst⁻ (cohᴰ Arr) (cohᴰ A) c x)))
+                 (apply-closure x))
 
     per-x-D179 : ∀ (x : ⟦ A ⟧ᴰ)
       → subst (λ H → T (⟦ H ⟧SF ⟦ A ⟧ᴰ)) (tF-coh F)
@@ -362,7 +373,7 @@ ana-body {Γ = Γ} {F = F} {A = A} {π₀ = π₀} {π = π} wf coalg ih dγ =
     per-x-D179 x =
       trans lhs (trans (fmapT-cong (coerce-νin-erase-D wf A) M) (sym rhs))
       where
-        M = evalᴰ fmt ρ coalgIR (seedOf x)
+        M = evalᴰ fmt ρ applyIR (c' , seedOf x)
 
         fM : ⟦ ⌊ ⟦ F ⟧T A ⌋ ⟧ᴰᴵ → ⟦ translateF Carrier Carrier ⌈ eraseF F ⌉F ⟧SF ⟦ ⌊ A ⌋ ⟧ᴰᴵ
         fM w = coerce-ν-in ⌈ eraseF F ⌉F ⟦ ⌊ A ⌋ ⟧ᴰᴵ
@@ -427,9 +438,44 @@ ana-body {Γ = Γ} {F = F} {A = A} {π₀ = π₀} {π = π} wf coalg ih dγ =
                   coalg-agree)
                (cong (anaFᵈ F cS) (subst-subst-sym (cohᴰ A))))
 
-    per-a : (λ a → liftFn fmt ρ {A} {ν-type F π} Ana-IR a)
+    per-a : (λ a → subst T (cohᴰ (ν-type F π))
+                     (evalᴰ fmt ρ Ana-IR (c' , subst (λ z → z) (sym (cohᴰ A)) a)))
             ≡ (λ a → returnT (anaFᵈ F cS a))
     per-a = extensionality (λ a →
       trans (subst-T-returnT (cohᴰ (ν-type F π))
                (anaFᵈ ⌈ eraseF F ⌉F cE (subst (λ z → z) (sym (cohᴰ A)) a)))
             (cong returnT (ana-agree a)))
+
+-- D131 / D273: the elaboration is `anaM ∘ ecoalg` and BOTH sides bind the
+-- coalgebra once, so this is `cata-body`'s shape: a bind-congruence over a shared
+-- computation plus the per-closure unfold equality. The coalgebra lives in the
+-- context, so its own faithfulness (`ih`) is at the SAME environment `dγ`.
+ana-body : ∀ {m} {Γ : Ctx m} {Ψ : Usage m} {F : Functor} {A} {π₀ π : Purity}
+             (wf : WellFormedF F)
+             (coalg : Expr Γ Ψ (A ⇒[ mk-kind Many π ] ⟦ F ⟧T A))
+             (dγ : ⟦ ⟦ Γ ↾ Ψ ⟧ᶜ ⟧ᴰ)
+             (ih : liftFn fmt ρ {⟦ Γ ↾ Ψ ⟧ᶜ} {A ⇒[ mk-kind Many π ] ⟦ F ⟧T A} (elaborate C.Heap coalg) dγ
+                   ≡ SD.⟦ coalg ⟧ˢ fmt σ₀ dγ)
+           → liftFn fmt ρ {⟦ Γ ↾ Ψ ⟧ᶜ} {A ⇒[ mk-kind Many π₀ ] ν-type F π}
+               (elaborate C.Heap (ana {Γ = Γ} {π₀ = π₀} {π = π} wf coalg)) dγ
+             ≡ SD.⟦ ana {Γ = Γ} {π₀ = π₀} {π = π} wf coalg ⟧ˢ fmt σ₀ dγ
+ana-body {Γ = Γ} {Ψ = Ψ} {F = F} {A = A} {π₀ = π₀} {π = π} wf coalg dγ ih =
+  trans split unfold-step
+  where
+    ecoalg = elaborate C.Heap coalg
+    anaM'  = anaM {F} {A} {π} wf C.Heap
+    liftAnaM = liftFn fmt ρ {A ⇒[ mk-kind Many π ] ⟦ F ⟧T A}
+                            {A ⇒[ mk-kind Many π₀ ] ν-type F π} anaM'
+
+    split : liftFn fmt ρ {⟦ Γ ↾ Ψ ⟧ᶜ} {A ⇒[ mk-kind Many π₀ ] ν-type F π}
+                   (elaborate C.Heap (ana {Γ = Γ} {π₀ = π₀} {π = π} wf coalg)) dγ
+          ≡ (SD.⟦ coalg ⟧ˢ fmt σ₀ dγ >>=T liftAnaM)
+    split = trans (cong (λ h → h dγ) (liftFn-∘ {B = A ⇒[ mk-kind Many π ] ⟦ F ⟧T A}
+                                                {C = A ⇒[ mk-kind Many π₀ ] ν-type F π}
+                                                {A = ⟦ Γ ↾ Ψ ⟧ᶜ} anaM' ecoalg))
+                  (cong (λ t → t >>=T liftAnaM) ih)
+
+    unfold-step : (SD.⟦ coalg ⟧ˢ fmt σ₀ dγ >>=T liftAnaM)
+                ≡ SD.⟦ ana {Γ = Γ} {π₀ = π₀} {π = π} wf coalg ⟧ˢ fmt σ₀ dγ
+    unfold-step = cong (λ g → SD.⟦ coalg ⟧ˢ fmt σ₀ dγ >>=T g)
+                       (extensionality (λ c → anaM-unfold {F} {A} {π₀} {π} wf c))

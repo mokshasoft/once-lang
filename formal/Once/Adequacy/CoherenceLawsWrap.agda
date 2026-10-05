@@ -180,8 +180,8 @@ module _ {n} {Γ : Ctx n} where
   cata-cong {Ψ} {F} {A} {π} wf {g} {g′} (≈-intro h1) = ≈-intro (cata-congˢ {Γ = Γ} {Ψ} {F} {A} {π} wf {g} {g′} h1)
 
 module _ {n} {Γ : Ctx n} where
-  ana-cong : ∀ {F A π₀ π} (wf : WellFormedF F) {g g′ : Expr ∅ zeroUsage (A ⇒[ mk-kind Many π ] ⟦ F ⟧T A)} → g ≈ g′ → ana {Γ = Γ} {π₀ = π₀} wf g ≈ ana wf g′
-  ana-cong {F} {A} {π₀} {π} wf {g} {g′} (≈-intro h1) = ≈-intro (ana-congˢ {Γ = Γ} {F} {A} {π₀} {π} wf {g} {g′} h1)
+  ana-cong : ∀ {Ψ F A π₀ π} (wf : WellFormedF F) {g g′ : Expr Γ Ψ (A ⇒[ mk-kind Many π ] ⟦ F ⟧T A)} → g ≈ g′ → ana {Γ = Γ} {π₀ = π₀} wf g ≈ ana wf g′
+  ana-cong {Ψ} {F} {A} {π₀} {π} wf {g} {g′} (≈-intro h1) = ≈-intro (ana-congˢ {Γ = Γ} {Ψ} {F} {A} {π₀} {π} wf {g} {g′} h1)
 
 module _ {n} {Γ : Ctx n} where
   let-cong : ∀ {Ψ₁ Ψ₂ A B q} {e₁ e₁′ : Expr Γ Ψ₁ A} {e₂ e₂′ : Expr (_,_^_ Γ A Many) (q ∷ Ψ₂) B} → e₁ ≈ e₁′ → e₂ ≈ e₂′ → let' e₁ e₂ ≈ let' e₁′ e₂′

@@ -662,19 +662,37 @@ cata-dispatch (strat-branching F) bb n1 l1 at = cata-trace-branching F bb n1 l1 
 -- leaves in Output, re-suspended. Input1 is clobbered. Every container cell
 -- holds either an inline value or an `SV-Ptr` (`CellAt`), so `wf-Id`'s freshly
 -- allocated pointer is what any parent cell wants, uniformly.
-resuspend-layer : ℕ → ℕ → LabelId → ∀ {F} → WellFormedFI F
+--
+-- D273: the suspension's seed is the PAIR `(e , a)` (`Ana` is parameterized),
+-- and slot `env` holds the forced suspension's own seed pair, whose first cell
+-- is the environment every layer shares.
+resuspend-layer : ℕ → ℕ → LabelId → ℕ → ∀ {F} → WellFormedFI F
                 → ℕ × ℕ × AbstractTrace
 -- A constant position holds a base value. Nothing to suspend.
-resuspend-layer n l lbl (wf-K _) = n , l , []
--- THE RECURSIVE POSITION: Output holds a seed, and owes a suspension. These
--- are `Ana`'s own ten instructions minus the leading `mov-to-output` (the seed
--- is already in Output here, where at the `Ana` site it arrives in Input1),
--- and with the code cell pointing at the block being emitted.
-resuspend-layer n l lbl wf-Id =
-  let seed-stash = n
+resuspend-layer n l lbl env (wf-K _) = n , l , []
+-- THE RECURSIVE POSITION: Output holds a seed `a'`, and owes a suspension of
+-- the seed pair `(e , a')`. First the pair: a fresh two-cell node whose first
+-- cell copies the environment cell of the pair in slot `env`. Then `Ana`'s own
+-- ten instructions minus the leading `mov-to-output` (the seed is already in
+-- Output here, where at the `Ana` site it arrives in Input1), with the code
+-- cell pointing at the block being emitted.
+resuspend-layer n l lbl env wf-Id =
+  let a-stash    = n
+      q-stash    = suc a-stash
+      seed-stash = suc q-stash
       susp-stash = suc seed-stash
   in suc susp-stash , l ,
-     (store-at-slot seed-stash ∷
+     (store-at-slot a-stash ∷
+      instr-alloc-heap 2 ∷
+      store-at-slot q-stash ∷
+      restore-input env ∷
+      load-indirect ∷
+      restore-input q-stash ∷
+      store-indirect ∷
+      load-from-slot a-stash ∷
+      store-indirect-suc ∷
+      load-from-slot q-stash ∷
+      store-at-slot seed-stash ∷
       instr-alloc-heap 2 ∷
       store-at-slot susp-stash ∷
       mov-to-input ∷
@@ -685,12 +703,12 @@ resuspend-layer n l lbl wf-Id =
       load-from-slot susp-stash ∷ [])
 -- A product layer is two cells at the pair pointer (`valid-pair-wf`). Read
 -- each child, transform it, and build a FRESH pair from the results.
-resuspend-layer n l lbl (wf-Prod wfF wfG) =
+resuspend-layer n l lbl env (wf-Prod wfF wfG) =
   let src             = n
       dst             = suc src
       tmp             = suc dst
-      (n2 , l2 , tF)  = resuspend-layer (suc tmp) l lbl wfF
-      (n3 , l3 , tG)  = resuspend-layer n2 l2 lbl wfG
+      (n2 , l2 , tF)  = resuspend-layer (suc tmp) l lbl env wfF
+      (n3 , l3 , tG)  = resuspend-layer n2 l2 lbl env wfG
   in n3 , l3 ,
      (store-at-slot src ∷
       restore-input src ∷ load-indirect ∷
@@ -716,14 +734,14 @@ resuspend-layer n l lbl (wf-Prod wfF wfG) =
 --
 -- Each arm builds a FRESH node and writes its own tag literally: inside an arm
 -- the tag is known, so there is nothing to copy.
-resuspend-layer n l lbl (wf-Sum wfF wfG) =
+resuspend-layer n l lbl env (wf-Sum wfF wfG) =
   let src             = n
       dst             = suc src
       tmp             = suc dst
       l-inl           = l
       l-end           = suc l
-      (n2 , l2 , tF)  = resuspend-layer (suc tmp) (suc (suc l)) lbl wfF
-      (n3 , l3 , tG)  = resuspend-layer n2 l2 lbl wfG
+      (n2 , l2 , tF)  = resuspend-layer (suc tmp) (suc (suc l)) lbl env wfF
+      (n3 , l3 , tG)  = resuspend-layer n2 l2 lbl env wfG
       arm             = λ t tag →
                           (restore-input src ∷ load-indirect-suc ∷ []) ++
                           t ++
@@ -1185,13 +1203,16 @@ ir-to-trace' n l (Ana wf coalg) =
       seed-stash  = n
       susp-stash  = suc seed-stash
       next        = suc susp-stash
-      (coalg-budget , l2 , coalg-trace , coalg-bodies) = ir-to-trace' 0 l1 coalg
+      -- D273: the block first keeps its input — the seed PAIR `(e , a)` — in
+      -- slot 0, so every re-suspension can share `e`; the coalgebra runs from
+      -- frontier 1, reading the same pair in Input1.
+      (coalg-budget , l2 , coalg-trace , coalg-bodies) = ir-to-trace' 1 l1 coalg
       -- D199: the block is the coalgebra FOLLOWED BY the re-suspension of
       -- every recursive position — `mapAnaᵈ H H coalg`, which is the half of
       -- `forceᵈ` the machine used to skip. Its slots continue the block's own
       -- frame, so they start where the coalgebra's frontier ended.
       (block-budget , l3 , resusp-trace) =
-        resuspend-layer coalg-budget l2 (ℓ o this-label) wf
+        resuspend-layer coalg-budget l2 (ℓ o this-label) 0 wf
       this-trace  = (mov-to-output ∷
                      store-at-slot seed-stash ∷
                      instr-alloc-heap 2 ∷
@@ -1203,7 +1224,7 @@ ir-to-trace' n l (Ana wf coalg) =
                      store-indirect-suc ∷
                      load-from-slot susp-stash ∷ [])
       all-bodies  = (ℓ o this-label , block-budget ,
-                     coalg-trace ++ resusp-trace) ∷ coalg-bodies
+                     mov-to-output ∷ store-at-slot 0 ∷ coalg-trace ++ resusp-trace) ∷ coalg-bodies
   in next , l3 , this-trace , all-bodies
 
 -- free-heap is semantically a no-op (returns its input unchanged).

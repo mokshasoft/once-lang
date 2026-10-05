@@ -290,29 +290,30 @@ lab (_ , k , _ , _) = k
 -- D199: every heap allocation the re-suspension pass emits is the two-cell
 -- one — the suspension in `wf-Id`, the fresh pair in `wf-Prod`, the fresh
 -- tagged node in each `wf-Sum` arm — so `tt` discharges all of them.
-resuspend-cl : ∀ (n l : ℕ) (lbl : LabelId) {F} (wf : WellFormedFI F)
-             → CLTrace (proj₂ (proj₂ (resuspend-layer n l lbl wf)))
-resuspend-cl n l lbl (wf-K _) = []
-resuspend-cl n l lbl wf-Id =
+resuspend-cl : ∀ (n l : ℕ) (lbl : LabelId) (env : ℕ) {F} (wf : WellFormedFI F)
+             → CLTrace (proj₂ (proj₂ (resuspend-layer n l lbl env wf)))
+resuspend-cl n l lbl env (wf-K _) = []
+resuspend-cl n l lbl env wf-Id =
+  tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷
   tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
-resuspend-cl n l lbl (wf-Prod wfF wfG) =
+resuspend-cl n l lbl env (wf-Prod wfF wfG) =
   tt ∷ tt ∷ tt ∷
-  ++⁺ (resuspend-cl (suc (suc (suc n))) l lbl wfF)
+  ++⁺ (resuspend-cl (suc (suc (suc n))) l lbl env wfF)
       (tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷
-       ++⁺ (resuspend-cl n2 l2 lbl wfG)
+       ++⁺ (resuspend-cl n2 l2 lbl env wfG)
            (tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []))
   where
-    n2 = proj₁ (resuspend-layer (suc (suc (suc n))) l lbl wfF)
-    l2 = proj₁ (proj₂ (resuspend-layer (suc (suc (suc n))) l lbl wfF))
-resuspend-cl n l lbl (wf-Sum wfF wfG) =
+    n2 = proj₁ (resuspend-layer (suc (suc (suc n))) l lbl env wfF)
+    l2 = proj₁ (proj₂ (resuspend-layer (suc (suc (suc n))) l lbl env wfF))
+resuspend-cl n l lbl env (wf-Sum wfF wfG) =
   tt ∷ tt ∷ tt ∷
-  ++⁺ (arm 1 (resuspend-cl n2 l2 lbl wfG))
+  ++⁺ (arm 1 (resuspend-cl n2 l2 lbl env wfG))
       (tt ∷ tt ∷
-       ++⁺ (arm 0 (resuspend-cl (suc (suc (suc n))) (suc (suc l)) lbl wfF))
+       ++⁺ (arm 0 (resuspend-cl (suc (suc (suc n))) (suc (suc l)) lbl env wfF))
            (tt ∷ []))
   where
-    n2 = proj₁ (resuspend-layer (suc (suc (suc n))) (suc (suc l)) lbl wfF)
-    l2 = proj₁ (proj₂ (resuspend-layer (suc (suc (suc n))) (suc (suc l)) lbl wfF))
+    n2 = proj₁ (resuspend-layer (suc (suc (suc n))) (suc (suc l)) lbl env wfF)
+    l2 = proj₁ (proj₂ (resuspend-layer (suc (suc (suc n))) (suc (suc l)) lbl env wfF))
     arm : ∀ (tag : ℕ) {t} → CLTrace t
         → CLTrace (restore-input n ∷ load-indirect-suc ∷
                          t ++ (store-at-slot (suc (suc n)) ∷ instr-alloc-heap 2 ∷
@@ -337,12 +338,12 @@ calls-blocks (out-μ _)  n l _ = []
 calls-blocks (Out _)    n l _ = []
 calls-blocks (in-ν _) n l _ = tt ∷ tt ∷ tt ∷ []
 calls-blocks (Ana wf c) n l lc =
-  ++⁺ (tt ∷ ++⁺ (++⁺ (calls-trace' c 0 (suc l) lc)
-                     (resuspend-cl (proj₁ (ir-to-trace' 0 (suc l) c))
-                                   (proj₁ (proj₂ (ir-to-trace' 0 (suc l) c)))
-                                   (ℓ o l) wf))
+  ++⁺ (tt ∷ ++⁺ (tt ∷ tt ∷ (++⁺ (calls-trace' c 1 (suc l) lc)
+                     (resuspend-cl (proj₁ (ir-to-trace' 1 (suc l) c))
+                                   (proj₁ (proj₂ (ir-to-trace' 1 (suc l) c)))
+                                   (ℓ o l) 0 wf)))
                 (tt ∷ []))
-      (calls-blocks c 0 (suc l) lc)
+      (calls-blocks c 1 (suc l) lc)
 calls-blocks (SigOp _)      n l _ = []
 calls-blocks (Call _)      n l _ = []
 calls-blocks (const fits-int _)   n l _ = []

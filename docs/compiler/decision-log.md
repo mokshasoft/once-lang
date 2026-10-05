@@ -16721,3 +16721,34 @@ demands lexically — every defined/referenced/extern symbol is a valid assemble
 symbols are `once-symbol` z-encodings, label numbers and fixed names). This is the same
 "one FFI identity; a reserved compiler namespace" decision plan 0.107 §7 is blocked on, so it is
 recorded here and in the ledger, not patched halfway.
+
+## D273 — AN ANA COALGEBRA MAY CAPTURE LOCALS; `Ana` IS PARAMETERIZED (2026-10-05)
+
+**Relates**: plan 0.101 (the `ana` half; D265 was the `cata` half), D131 (the parameterized
+`Cata`), D189/D199 (ν suspensions and re-suspension), D247 (`ana`'s coalgebra is not evaluated at
+build), plan 0.94 §12 (def ⇒ let).
+
+**The decision.** `t-ana-check` types its coalgebra in the AMBIENT context with the ana's usage
+(the core's `⊢unfold` already did), and the Spec meaning reads it at the term's environment `dγ`
+instead of `tt` — the same two Spec hunks D265 made for `cata`. `Spec.Elaboration` drops the
+`closeE`; the core's `anaᶜ` is unchanged (its coalgebra is pure, so D247's per-call evaluation
+and a once-evaluated closure mean the same).
+
+**The IR.** `Ana : WellFormedFI F → IR (E * A) (F A) → IR (E * A) νF` — `Cata`'s mirror. Its
+meaning reads the coalgebra at the FIXED `proj₁` of the seed pair at every layer, which is the
+source meaning; threading the environment through the seed instead would give a ν that is only
+bisimilar to it (no bisim ⇒ ≡ for `νᵈ`). The compiler elaborates `anaM ∘ elaborate coalg`
+(`anaM`, `cataM`'s mirror): the closure is obtained once and is the environment. The source
+meaning (`⟦ ana ⟧ˢ`) binds the coalgebra once too, as `cata`'s does.
+
+**The codegen.** A suspension's seed cell holds the pair `(e , a)`. The forced block keeps its
+input pair in slot 0 and runs the coalgebra from frontier 1; each `wf-Id` re-suspension builds a
+fresh pair whose first cell copies the environment cell of the slot-0 pair, then the two-cell
+suspension on it. The structural lemmas (slot budget — `resuspend-below` gains `env < n`; label
+scope/range; thunk scope; frame-free; calls-linked; alloc-min; refs-closed; slot-stable) follow;
+`obs-correct-Ana`/`-Out` generalize over the seed type (a pair seed is never `Unit`); the
+BlockRuns premise `CoalgRuns` speaks of the pair seed.
+
+**Consequence.** `LetIsDef`'s converse obstruction is gone (`ana` coalgebras scope lexically, so
+`Unfold`'s algebra-position flag is constant `false`). Exit test `ana-capture` (41): a captured
+`k` and a `let`-bound `b`, each forced through a re-suspension. Apex green.

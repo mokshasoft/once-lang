@@ -15,11 +15,9 @@
 --     checked against its signature, and a use of it SYNTHESIZES `A`; a bare
 --     `e` (say `inl 1`) need not synthesize, so `case x of …` would stop
 --     typing. `(e : A)` synthesizes `A` exactly as the use did.
---   * Substitution follows Once's SCOPING, which is not purely lexical: a
---     binder named `x` shadows the definition — except inside an `ana`
---     coalgebra, which is typed without locals and so sees the definition even
---     under `\x`. `sub` carries that as a flag, reset at a coalgebra position.
---     (Plan 0.101: a `cata` algebra sees the locals, so it scopes lexically.)
+--   * Substitution follows Once's SCOPING, which is lexical: a binder named
+--     `x` shadows the definition. (Plan 0.101: `cata` algebras (D265) and
+--     `ana` coalgebras (D273) see the locals, so no position clears them.)
 --
 -- Capture is excluded by a premise, not by renaming: no binder of `b` and no
 -- local of Γ is a name that occurs in `e` (`NC`, `Fr`) — the variable
@@ -147,7 +145,7 @@ NC e (RAna _ a) = NC e a
 
 isAlgV : ∀ {f} → AppHeadView f → Bool
 isAlgV ahv-cata = false   -- plan 0.101 (D265): a cata algebra sees the locals
-isAlgV ahv-ana = true
+isAlgV ahv-ana = false    -- …and so does an ana coalgebra (D273)
 isAlgV _ = false
 
 isAlg : RawExpr → Bool
@@ -383,7 +381,7 @@ module Weaken (imps : Imports) (P : PolyCtx) where
     W-c wk ((_ , f₁) , f₂) (t-pair-morph-check df dg) = cᶜ (sym (up-+ wk _ _)) (t-pair-morph-check (W-c wk f₁ df) (W-c wk f₂ dg))
     W-c wk (_ , fr) (t-curry-check d) = t-curry-check (W-c wk fr d)
     W-c wk (_ , fr) (t-cata-check wf dalg) = t-cata-check wf (W-c wk fr dalg)
-    W-c wk _ (t-ana-check wf dco) = cᶜ (sym (up-zero wk)) (t-ana-check wf dco)
+    W-c wk (_ , fr) (t-ana-check wf dco) = t-ana-check wf (W-c wk fr dco)
     W-c wk fr (t-sub d p) = t-sub (W-i wk fr d) p
     W-c wk fb (t-lam {x = y} {A = B} leq body) = t-lam leq (W-c (wk-under y B wk) fb body)
     W-c wk (f₁ , f₂) (t-pair-lit-check d₁ d₂) = cᶜ (sym (up-+ wk _ _)) (t-pair-lit-check (W-c wk f₁ d₁) (W-c wk f₂ d₂))
@@ -660,7 +658,7 @@ module Unfolding
     S-c r ((_ , n₁) , n₂) (t-pair-morph-check df dg) = t-pair-morph-check (S-c r n₁ df) (S-c r n₂ dg)
     S-c r (_ , nc) (t-curry-check d) = t-curry-check (S-c r nc d)
     S-c r (_ , nc) (t-cata-check wf dalg) = t-cata-check wf (S-c r nc dalg)
-    S-c r (_ , nc) (t-ana-check wf dco) = t-ana-check wf (S-c sr-alg nc dco)
+    S-c r (_ , nc) (t-ana-check wf dco) = t-ana-check wf (S-c r nc dco)
     S-c r nc (t-sub d p) = t-sub (S-i r nc d) p
     S-c r (ny , nb) (t-lam {x = y} {A = B} leq body) = t-lam leq (S-c (sr-ext r y B ny) nb body)
     S-c r (n₁ , n₂) (t-pair-lit-check d₁ d₂) = t-pair-lit-check (S-c r n₁ d₁) (S-c r n₂ d₂)
@@ -1187,7 +1185,7 @@ module Unfolding
     ...   | refl = t-cata-check wf (F-c r (proj₂ nc) dalg ea)
     F-c {sh = sh} r {b = b} nc (t-ana-check wf dco) eq with inv-RApp {sh = sh} {b = b} eq
     ... | f₀ , a₀ , refl , ef , ea with inv-RResolved {sh = sh} {b = f₀} ef
-    ...   | refl = t-ana-check wf (F-c sr-alg (proj₂ nc) dco ea)
+    ...   | refl = t-ana-check wf (F-c r (proj₂ nc) dco ea)
     F-c {sh = sh} r {b = b} nc (t-sub d p) eq = t-sub (F-i r nc d eq) p
     F-c {sh = sh} r {b = b} nc (t-lam {x = y} {A = B} leq body) eq with inv-RLam {sh = sh} {b = b} eq
     ... | u₀ , refl , eu = t-lam leq (F-c (sr-ext r y B (proj₁ nc)) (proj₂ nc) body eu)

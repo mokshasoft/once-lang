@@ -157,7 +157,8 @@ mutual
     cc-cata : ∀ {F w w′ Ψ Ψ′} {a : ctx ⊢ᶜ e ∶ ((T.⟦ F ⟧T A) ⇒[ T.mk-kind T.Many π ] A) ⨾ Ψ}
                 {a′ : ctx ⊢ᶜ e ∶ ((T.⟦ F ⟧T A) ⇒[ T.mk-kind T.Many π ] A) ⨾ Ψ′}
             → Rcc a a′ → Rcc (t-cata-check {ctx = ctx} {F = F} w a) (t-cata-check {F = F} w′ a′)
-    cc-ana : ∀ {F w w′} {a a′ : _ ⊢ᶜ e ∶ (A ⇒[ T.mk-kind T.Many π ] (T.⟦ F ⟧T A)) ⨾ Surface.zeroUsage}
+    cc-ana : ∀ {F w w′ Ψ Ψ′} {a : ctx ⊢ᶜ e ∶ (A ⇒[ T.mk-kind T.Many π ] (T.⟦ F ⟧T A)) ⨾ Ψ}
+               {a′ : ctx ⊢ᶜ e ∶ (A ⇒[ T.mk-kind T.Many π ] (T.⟦ F ⟧T A)) ⨾ Ψ′}
            → Rcc a a′ → Rcc (t-ana-check {ctx = ctx} {F = F} {π₀ = π₀} w a) (t-ana-check {F = F} w′ a′)
     cc-lam : ∀ {x q₁ q₁′ Ψ Ψ′ ≤p ≤p′} {b : extendNamedCtx ctx x A ⊢ᶜ e ∶ B ⨾ (q₁ Surface.Usage.∷ Ψ)}
                {b′ : extendNamedCtx ctx x A ⊢ᶜ e ∶ B ⨾ (q₁′ Surface.Usage.∷ Ψ′)}

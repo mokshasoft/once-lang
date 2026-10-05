@@ -408,29 +408,30 @@ module CataIRSlotStable {FS : FrameSemantics} where
   -- none of which touch `next-slot`. It cannot go through `all-stable?-sound`
   -- like `in-ν`'s literal stub does: the trace is not concrete, it is generated
   -- from the functor witness, so the induction mirrors `resuspend-layer`'s own.
-  resuspend-stable : ∀ (n l : ℕ) (lbl : LabelId) {F} (wf : WellFormedFI F)
-                   → AllSlotStable (proj₂ (proj₂ (resuspend-layer n l lbl wf)))
-  resuspend-stable n l lbl (wf-K _) = []ᴬ
-  resuspend-stable n l lbl wf-Id =
+  resuspend-stable : ∀ (n l : ℕ) (lbl : LabelId) (env : ℕ) {F} (wf : WellFormedFI F)
+                   → AllSlotStable (proj₂ (proj₂ (resuspend-layer n l lbl env wf)))
+  resuspend-stable n l lbl env (wf-K _) = []ᴬ
+  resuspend-stable n l lbl env wf-Id =
+    tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ
     tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ []ᴬ
-  resuspend-stable n l lbl (wf-Prod wfF wfG) =
+  resuspend-stable n l lbl env (wf-Prod wfF wfG) =
     tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ
-    ++⁺ (resuspend-stable (suc (suc (suc n))) l lbl wfF)
+    ++⁺ (resuspend-stable (suc (suc (suc n))) l lbl env wfF)
         (tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ
-         ++⁺ (resuspend-stable n2 l2 lbl wfG)
+         ++⁺ (resuspend-stable n2 l2 lbl env wfG)
              (tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ []ᴬ))
     where
-      n2 = proj₁ (resuspend-layer (suc (suc (suc n))) l lbl wfF)
-      l2 = proj₁ (proj₂ (resuspend-layer (suc (suc (suc n))) l lbl wfF))
-  resuspend-stable n l lbl (wf-Sum wfF wfG) =
+      n2 = proj₁ (resuspend-layer (suc (suc (suc n))) l lbl env wfF)
+      l2 = proj₁ (proj₂ (resuspend-layer (suc (suc (suc n))) l lbl env wfF))
+  resuspend-stable n l lbl env (wf-Sum wfF wfG) =
     tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ
-    ++⁺ (arm 1 (resuspend-stable n2 l2 lbl wfG))
+    ++⁺ (arm 1 (resuspend-stable n2 l2 lbl env wfG))
         (tt ∷ᴬ tt ∷ᴬ
-         ++⁺ (arm 0 (resuspend-stable (suc (suc (suc n))) (suc (suc l)) lbl wfF))
+         ++⁺ (arm 0 (resuspend-stable (suc (suc (suc n))) (suc (suc l)) lbl env wfF))
              (tt ∷ᴬ []ᴬ))
     where
-      n2 = proj₁ (resuspend-layer (suc (suc (suc n))) (suc (suc l)) lbl wfF)
-      l2 = proj₁ (proj₂ (resuspend-layer (suc (suc (suc n))) (suc (suc l)) lbl wfF))
+      n2 = proj₁ (resuspend-layer (suc (suc (suc n))) (suc (suc l)) lbl env wfF)
+      l2 = proj₁ (proj₂ (resuspend-layer (suc (suc (suc n))) (suc (suc l)) lbl env wfF))
       -- Each arm reads the payload, transforms it, and builds a fresh node.
       arm : ∀ (tag : ℕ) {t} → AllSlotStable t
           → AllSlotStable (restore-input n ∷ load-indirect-suc ∷
@@ -463,10 +464,11 @@ module CataIRSlotStable {FS : FrameSemantics} where
   ir-blocks-stable (in-ν _)           n l = all-stable?-sound _ refl ∷ᴬ []ᴬ
   -- D199: the block is `coalg ++ re-suspension`, so its stability is theirs.
   ir-blocks-stable (Ana wf c)           n l =
-    ++⁺ (ir-stable c 0 (suc l))
-        (resuspend-stable (proj₁ (ir-to-trace' 0 (suc l) c))
-                          (proj₁ (proj₂ (ir-to-trace' 0 (suc l) c))) (ℓ o l) wf)
-      ∷ᴬ ir-blocks-stable c 0 (suc l)
+    (tt ∷ᴬ tt ∷ᴬ
+     ++⁺ (ir-stable c 1 (suc l))
+         (resuspend-stable (proj₁ (ir-to-trace' 1 (suc l) c))
+                           (proj₁ (proj₂ (ir-to-trace' 1 (suc l) c))) (ℓ o l) 0 wf))
+      ∷ᴬ ir-blocks-stable c 1 (suc l)
   ir-blocks-stable (g ∘ f)              n l = ++⁺ (ir-blocks-stable f n l)
                                                   (ir-blocks-stable g _ _)
   ir-blocks-stable ⟨ f , g ⟩            n l = ++⁺ (ir-blocks-stable f _ l)

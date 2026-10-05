@@ -293,38 +293,38 @@ module _ (G : String → Set) where
   -- THE RE-SUSPENSION PASS (D199): its code addresses name the `Ana` block
   -- (`lbl`, which the caller has defined); its `⊕` levels are `case`'s.
   ------------------------------------------------------------------------
-  resusp-closes : ∀ (n l : ℕ) (lbl : LabelId) {F} (wf : WellFormedFI F) {D}
+  resusp-closes : ∀ (n l : ℕ) (lbl : LabelId) (env : ℕ) {F} (wf : WellFormedFI F) {D}
                 → thunkSym lbl ∈ D
-                → Defd D (proj₂ (proj₂ (resuspend-layer n l lbl wf)))
-                → Closes D (proj₂ (proj₂ (resuspend-layer n l lbl wf)))
-  resusp-closes n l lbl (wf-K _) h d = []
-  resusp-closes n l lbl wf-Id    h d = inj₁ h ∷ []
-  resusp-closes n l lbl (wf-Prod wfF wfG) h d =
-    closes-++ tF _ (resusp-closes (suc (suc (suc n))) l lbl wfF h (defd-⊆ tF⊆ d))
-      (closes-++ tG _ (resusp-closes (proj₁ RF) (proj₁ (proj₂ RF)) lbl wfG h (defd-⊆ tG⊆ d)) [])
+                → Defd D (proj₂ (proj₂ (resuspend-layer n l lbl env wf)))
+                → Closes D (proj₂ (proj₂ (resuspend-layer n l lbl env wf)))
+  resusp-closes n l lbl env (wf-K _) h d = []
+  resusp-closes n l lbl env wf-Id    h d = inj₁ h ∷ []
+  resusp-closes n l lbl env (wf-Prod wfF wfG) h d =
+    closes-++ tF _ (resusp-closes (suc (suc (suc n))) l lbl env wfF h (defd-⊆ tF⊆ d))
+      (closes-++ tG _ (resusp-closes (proj₁ RF) (proj₁ (proj₂ RF)) lbl env wfG h (defd-⊆ tG⊆ d)) [])
     where
-      RF = resuspend-layer (suc (suc (suc n))) l lbl wfF
+      RF = resuspend-layer (suc (suc (suc n))) l lbl env wfF
       tF = proj₂ (proj₂ RF)
-      tG = proj₂ (proj₂ (resuspend-layer (proj₁ RF) (proj₁ (proj₂ RF)) lbl wfG))
-      W = proj₂ (proj₂ (resuspend-layer n l lbl (wf-Prod wfF wfG)))
+      tG = proj₂ (proj₂ (resuspend-layer (proj₁ RF) (proj₁ (proj₂ RF)) lbl env wfG))
+      W = proj₂ (proj₂ (resuspend-layer n l lbl env (wf-Prod wfF wfG)))
       tF⊆ : tF ⊆ W
       tF⊆ m = there (there (there (∈-++⁺ˡ m)))
       tG⊆ : tG ⊆ W
       tG⊆ m = there (there (there (∈-++⁺ʳ tF (there (there (there (there (there (there (there (there (∈-++⁺ˡ m))))))))))))
-  resusp-closes n l lbl (wf-Sum wfF wfG) h d =
+  resusp-closes n l lbl env (wf-Sum wfF wfG) h d =
     inj₁ (lab∈ (ℓ o l) d inl∈) ∷
-    closes-++ (tG ++ ch 1) _ (closes-++ tG (ch 1) (resusp-closes (proj₁ RF) (proj₁ (proj₂ RF)) lbl wfG h (defd-⊆ tG⊆ d)) [])
+    closes-++ (tG ++ ch 1) _ (closes-++ tG (ch 1) (resusp-closes (proj₁ RF) (proj₁ (proj₂ RF)) lbl env wfG h (defd-⊆ tG⊆ d)) [])
       (inj₁ (lab∈ (ℓ o (suc l)) d end∈) ∷
-       closes-++ (tF ++ ch 0) _ (closes-++ tF (ch 0) (resusp-closes (suc (suc (suc n))) (suc (suc l)) lbl wfF h (defd-⊆ tF⊆ d)) []) [])
+       closes-++ (tF ++ ch 0) _ (closes-++ tF (ch 0) (resusp-closes (suc (suc (suc n))) (suc (suc l)) lbl env wfF h (defd-⊆ tF⊆ d)) []) [])
     where
-      RF = resuspend-layer (suc (suc (suc n))) (suc (suc l)) lbl wfF
+      RF = resuspend-layer (suc (suc (suc n))) (suc (suc l)) lbl env wfF
       tF = proj₂ (proj₂ RF)
-      tG = proj₂ (proj₂ (resuspend-layer (proj₁ RF) (proj₁ (proj₂ RF)) lbl wfG))
+      tG = proj₂ (proj₂ (resuspend-layer (proj₁ RF) (proj₁ (proj₂ RF)) lbl env wfG))
       ch : ℕ → AbstractTrace
       ch tag = store-at-slot (suc (suc n)) ∷ instr-alloc-heap 2 ∷ store-at-slot (suc n) ∷ mov-to-input ∷
                load-from-slot (suc (suc n)) ∷ store-indirect-suc ∷ instr-load-tag-lit tag ∷ store-indirect ∷
                load-from-slot (suc n) ∷ []
-      W = proj₂ (proj₂ (resuspend-layer n l lbl (wf-Sum wfF wfG)))
+      W = proj₂ (proj₂ (resuspend-layer n l lbl env (wf-Sum wfF wfG)))
       tG⊆ : tG ⊆ W
       tG⊆ m = there (there (there (there (there (∈-++⁺ˡ (∈-++⁺ˡ m))))))
       inl∈ : instr-ctrl (c-label (ℓ o l)) ∈ W
@@ -551,25 +551,29 @@ module _ (G : String → Set) where
                                            (⊆-++ʳ T L)) d) ok
   close (Ana wf c) n l {D} d ok =
     inj₁ (thk∈ (ℓ o l) d (∈-++⁺ʳ T (here refl))) ∷ []
-    , closes-++ (block-layout (ℓ o l , bb , ct ++ rt)) (blocks-layout cbs)
-                (closes-++ (ct ++ rt) (instr-ctrl (c-ret bb) ∷ [])
+    , closes-++ (block-layout (ℓ o l , bb , bt)) (blocks-layout cbs)
+                (closes-++ bt (instr-ctrl (c-ret bb) ∷ [])
                    (closes-++ ct rt (proj₁ cc)
-                      (resusp-closes cb l2 (ℓ o l) wf (thk∈ (ℓ o l) d (∈-++⁺ʳ T (here refl)))
+                      (resusp-closes cb l2 (ℓ o l) 0 wf (thk∈ (ℓ o l) d (∈-++⁺ʳ T (here refl)))
                                      (defd-⊆ rtU d)))
                    [])
                 (proj₂ cc)
     where
-      X = ir-to-trace' 0 (suc l) c
+      X = ir-to-trace' 1 (suc l) c
       cb = proj₁ X ; l2 = proj₁ (proj₂ X) ; ct = trace-of X ; cbs = bodies-of X
-      R = resuspend-layer cb l2 (ℓ o l) wf
+      R = resuspend-layer cb l2 (ℓ o l) 0 wf
       bb = proj₁ R ; rt = proj₂ (proj₂ R)
+      -- D273: the block's prologue keeps the seed pair; it names no symbol.
+      bt = mov-to-output ∷ store-at-slot 0 ∷ (ct ++ rt)
       T = trace-of (ir-to-trace' n l (Ana wf c))
-      L = blocks-layout ((ℓ o l , bb , ct ++ rt) ∷ cbs)
+      L = blocks-layout ((ℓ o l , bb , bt) ∷ cbs)
+      blkU₀ : bt ⊆ T ++ L
+      blkU₀ m = ∈-++⁺ʳ T (there (∈-++⁺ˡ {ys = blocks-layout cbs} (∈-++⁺ˡ m)))
       blkU : (ct ++ rt) ⊆ T ++ L
-      blkU m = ∈-++⁺ʳ T (there (∈-++⁺ˡ {ys = blocks-layout cbs} (∈-++⁺ˡ m)))
+      blkU m = blkU₀ (there (there m))
       rtU : rt ⊆ T ++ L
       rtU = ⊆-trans (⊆-++ʳ ct rt) blkU
       cbsU : blocks-layout cbs ⊆ T ++ L
-      cbsU m = ∈-++⁺ʳ T (∈-++⁺ʳ (block-layout (ℓ o l , bb , ct ++ rt)) m)
-      cc = close c 0 (suc l) (defd-⊆ (++-⊆ ct (blocks-layout cbs) (⊆-trans (⊆-++ˡ ct rt) blkU) cbsU) d) ok
+      cbsU m = ∈-++⁺ʳ T (∈-++⁺ʳ (block-layout (ℓ o l , bb , bt)) m)
+      cc = close c 1 (suc l) (defd-⊆ (++-⊆ ct (blocks-layout cbs) (⊆-trans (⊆-++ˡ ct rt) blkU) cbsU) d) ok
 

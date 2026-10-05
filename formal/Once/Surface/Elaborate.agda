@@ -315,6 +315,16 @@ cataM {F} {A} wfF m =
                      (⌊⟧T-commute F A)
                      (apply ∘ ⟨ fst , snd ⟩)))
 
+-- D273: `cataM`'s mirror. The coalgebra CLOSURE is the environment of the
+-- parameterized `Ana`, so the arm is evaluated once and applied per forced
+-- layer, and it may capture locals.
+anaM : ∀ {F : Functor} {A : Type} {π : Purity} → WellFormedF F → AllocMode
+     → IR (⌊ A ⌋ ⇛ ⌊ ⟦ F ⟧T A ⌋) (⌊ A ⌋ ⇛ ⌊ ν-type F π ⌋)
+anaM {F} {A} wfF m =
+  curry (Ana (wf-⌊⌋ wfF)
+             (subst (λ o → IR ((⌊ A ⌋ ⇛ ⌊ ⟦ F ⟧T A ⌋) * ⌊ A ⌋) o)
+                    (⌊⟧T-commute F A)
+                    (apply ∘ ⟨ fst , snd ⟩)))
 
 -- D142 / plan 0.86 step B: the environment is `Γ ↾ Ψ` — EXACTLY the variables
 -- this term uses — not the whole context. A dead variable cannot be in the
@@ -585,12 +595,11 @@ elaborate {Γ = Γ} m (morph-app {Ψ = Ψ} morph x) =
 elaborate m (cata {F = F} {A = A} wfF alg) =
   cataM wfF m ∘ elaborate m alg
 
--- Anamorphism (dual of cata): a closed `Ana`, lifted to the surrounding realm
--- exactly like `cata`. Coalgebra `A → ⟦F⟧T A` built from the closed `coalg`;
--- `Ana wfF coalgebra : IR A (νF)`; `∘ snd` projects the seed from the curry's
--- `(env, seed)`; `curry … m : IR Γ (A ⇒ νF)`.
-elaborate m (ana {F = F} {A = A} wfF coalg) =
-  curry (Ana (wf-⌊⌋ wfF) (subst (λ o → IR ⌊ A ⌋ o) (⌊⟧T-commute F A) (apply ∘ ⟨ elaborate m coalg ∘ terminal , id ⟩)) ∘ snd)
+-- Anamorphism (dual of cata, D273): the coalgebra is an ordinary term in
+-- context, producing the coalgebra CLOSURE once; `anaM` is a closed morphism
+-- from that closure to the unfold — exactly `cata`'s `cataM ∘ ealg`.
+elaborate m (ana {F = F} {A = A} {π = π} wfF coalg) =
+  anaM {π = π} wfF m ∘ elaborate m coalg
 
 -- | `erase` — THE PHASE PROJECTION, from the FULL environment (every binding)
 --   to the RUNTIME one (only what the term uses). This is `NbEPQTT.erase`

@@ -378,15 +378,16 @@ module ClosureWellFormedDef {FS : FrameSemantics} where
       -- cell held, so a `Unit` or register-literal seed lands inline, exactly
       -- as a closure's environment does.
       ------------------------------------------------------------------------
-      valid-ν-susp-wf : ∀ {F A}
+      -- D273: the seed is the PAIR `(e , a)` the parameterized `Ana` reads.
+      valid-ν-susp-wf : ∀ {F E A}
         (wf : WellFormedFI F)
-        {coalg : IR A (⟦ F ⟧TI A)}
-        {seed : ⟦ A ⟧}
+        {coalg : IR (E * A) (⟦ F ⟧TI A)}
+        {seed : ⟦ E * A ⟧}
         {alloc : AllocState {FS}}
         {ν-loc : ValueLocation FS} {s : LocState FS}
         {coalg-label : LabelId} →
         LocMatchesMode Heap ν-loc →
-        CellAt alloc A seed ν-loc s →
+        CellAt alloc (E * A) seed ν-loc s →
         readLoc s (sucLoc ν-loc) ≡ just (SV-Code coalg-label) →
         BeforeFrontier alloc (sucLoc ν-loc) →
         ValidAtWF Heap alloc {ν-type F}
