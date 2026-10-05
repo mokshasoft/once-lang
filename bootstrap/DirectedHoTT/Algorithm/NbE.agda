@@ -77,12 +77,11 @@ data Clo where
   --   pw-shaped: the rule's side condition `pw? C`)
   cloHrefl : (C : Val) → PwSpine C → Val → Clo      -- x ↦ hrefl (pwBody C)[x] (s x)
   cloDpay  : Val → Val → Val → Clo       -- x ↦ dpay I D (f x)                       (dpay-σ)
-  -- tr-pw: the fuel k₀ and level m its motive was inspected at, the
-  --   inspection's pw-normal ambient c (with its spine) and endpoint a, the
-  --   motive d, the body f, the point e.  That (c, a) IS `trPwView k₀ m d`'s
-  --   result is an invariant of the values the evaluator builds
-  --   (`Algorithm/NbERead.Sc`), not a recomputation.
-  cloTrPw  : ℕ → ℕ → (c : Val) → PwSpine c → Val → Clo → Clo → Val → Clo
+  -- tr-pw: the motive d, the body f, the point e.  ★ `vlam (cloTrPw d f e)`
+  --   READS AS THE REDEX `tr d (lam f) e` itself; instantiation and readback
+  --   re-check the guard (`trPwView`) at their OWN fuel, and take the rule's
+  --   step only then — so nothing about the closure has to be remembered.
+  cloTrPw  : Clo → Clo → Val → Clo
   cloHomTo : Val → Val → Clo             -- z ↦ ⌜Hom⌝ C A z                          (tr-pw's motive)
 
 -- a body under TWO binders (natrec's step: pred, rec; psplit: x, y)
@@ -273,6 +272,16 @@ codeV (v⌜IMu⌝ I D i)  = cIMu I D i
 codeV (v⌜Fin⌝ t)      = cFin t
 codeV v               = cOther v
 
+-- is this closure tr-pw's? (its λ-value reads as a REDEX, not a `lam`, so
+-- transport rules that need a syntactic λ path leave it stuck)
+isTrPw : Clo → Bool
+isTrPw (clo _ _)        = false
+isTrPw (cloK _)         = false
+isTrPw (cloHrefl _ _ _) = false
+isTrPw (cloDpay _ _ _)  = false
+isTrPw (cloHomTo _ _)   = false
+isTrPw (cloTrPw _ _ _)  = true
+
 -- is this value the level `n`?
 isLvl : ℕ → {v : Val} → VarV v → Bool
 isLvl n (isVar l) = l == n
@@ -303,6 +312,7 @@ trPwView : ℕ → ℕ → Clo → Maybe TrPwV
 tpvH  : ℕ → ℕ → {h : Val} → HomV h → Maybe TrPwV
 tpvL  : ℕ → Val → Val → Bool → Maybe TrPwV
 tpvS  : Val → (c : Val) → Maybe (PwSpine c) → Maybe TrPwV
+trPwN : ℕ → ℕ → Clo → Clo → Clo → Val → Val → Maybe TrPwV → Val
 trPwI : ℕ → ℕ → Clo → Clo → Clo → Val → Val → {h : Val} → HomV h → Val
 trPwK : ℕ → ℕ → Clo → Clo → Val → Val → Val → Val → Val
 trPwS : ℕ → ℕ → Clo → Clo → Val → Val → Val → {c : Val} → Maybe (PwSpine c) → Val
@@ -331,6 +341,8 @@ trG     : ℕ → ℕ → Clo → Val → Val → Val → Val
 trF     : ℕ → ℕ → Clo → {h : Val} → HomV h → {p : Val} → HreflV p → LamV p → VarV h → Val → Val
 trJB    : Bool → Clo → Val → Val → Val
 trPwC   : ℕ → ℕ → Clo → Clo → Val → Maybe TrPwV → Val
+trPwP   : ℕ → ℕ → Clo → Clo → Val → Bool → Val
+trTautP : ℕ → ℕ → ℕ → Clo → Clo → Val → Bool → Val
 trTautB : ℕ → ℕ → Bool → Clo → Clo → Val → Val
 trJ     : ℕ → {C : Val} → CodeV C → Bool
 vAp     : ℕ → ℕ → Val → Clo → Val → Val
@@ -412,7 +424,7 @@ inst (suc k) n (cloK w)           v = w
 inst (suc k) n (cloHrefl C sp s)  v = vHrefl k n (pwAtS k n sp v) (vApp k n s v)
 inst (suc k) n (cloDpay I D f)    v = vDpay k I D (vApp k n f v)
 inst (suc k) n (cloHomTo C A)     v = v⌜Hom⌝ C A v
-inst (suc k) n self@(cloTrPw k₀ m c sp a d f e) y = trPwI k n self d f e y (homV (force k (inst k n d y)))
+inst (suc k) n self@(cloTrPw d f e) y = trPwN k n self d f e y (trPwView k n d)
 
 -- ★ tr-pw's inspection: the motive at the fresh level m, its head ⌜Hom⌝
 --   with endpoint exactly that level, its ambient pw-normal after forcing
@@ -424,6 +436,10 @@ tpvL k c a false = nothing
 tpvS a c (just sp) = just (trpw c sp a)
 tpvS a c nothing   = nothing
 
+
+-- instantiated only if the guard holds at THIS fuel (else the β-redex)
+trPwN k n self d f e y (just _) = trPwI k n self d f e y (homV (force k (inst k n d y)))
+trPwN k n self d f e y nothing  = vapp (vlam self) y
 
 -- `tr-pw`'s body at y: the motive re-inspected at y; pw-normal ⇒ the
 --   right-hand side, else the β-redex itself (sound at any fuel)
@@ -514,15 +530,19 @@ vTr (suc k) n d p e = trG k n d (force k (inst k (suc n) d (vvar n))) (force k p
 -- (an argument, not a `where`: a `where` binding is re-evaluated per use)
 trG k n d h p e = trF k n d (homV h) (hreflV p) (lamV p) (varV h) e
 trF k n d (isHom c a m) (isHrefl C s) w        v e = trJB (trJ k (codeV (force k C))) d (vhrefl C s) e   -- tr-J-*
-trF k n d (isHom c a m) (notHrefl _) (isLam f) v e = trPwC k n d f e (trPwView k n d)   -- tr-pw
+trF k n d (isHom c a m) (notHrefl _) (isLam f) v e = trPwP k n d f e (isTrPw f)   -- tr-pw
 trF k n d (isHom c a m) (notHrefl _) (notLam p) v e = vtr d p e
-trF k n d (notHom _) w (isLam f) (isVar l) e = trTautB k n (l == n) d f e   -- tr-taut (and β)
+trF k n d (notHom _) w (isLam f) (isVar l) e = trTautP k n l d f e (isTrPw f)   -- tr-taut (and β)
 trF k n d (notHom _) w (isLam f) (notVar _) e = vtr d (vlam f) e
 trF k n d (notHom _) w (notLam p) v e = vtr d p e
 
 trJB true  d p e = e
 trJB false d p e = vtr d p e
-trPwC k n d f e (just (trpw c sp a)) = vlam (cloTrPw k n c sp a d f e)
+trPwP k n d f e true  = vtr d (vlam f) e
+trPwP k n d f e false = trPwC k n d f e (trPwView k n d)
+trTautP k n l d f e true  = vtr d (vlam f) e
+trTautP k n l d f e false = trTautB k n (l == n) d f e
+trPwC k n d f e (just _) = vlam (cloTrPw d f e)
 trPwC k n d f e nothing  = vtr d (vlam f) e
 trTautB k n true  d f e = inst k n f e
 trTautB k n false d f e = vtr d (vlam f) e
@@ -627,6 +647,7 @@ bindL m L l = pickTm (l == m) (var vz) (wk (L l))
 ⌊_⌋ᶜ : Clo → Lv Δ → RTm (Δ ∙)
 ⌊_⌋² : Clo₂ → Lv Δ → RTm ((Δ ∙) ∙)
 ⌊_⌋ᵉ : Env Γ → Lv Δ → Sub Γ Δ
+readLam : Clo → Lv Δ → RTm Δ
 
 ⌊ [] ⌋ᵉ     L ()
 ⌊ ρ , v ⌋ᵉ  L vz     = ⌊ v ⌋ L
@@ -637,17 +658,22 @@ bindL m L l = pickTm (l == m) (var vz) (wk (L l))
 ⌊ cloHrefl C sp s ⌋ᶜ L = hrefl (pwBody (⌊ C ⌋ L)) (app (wk (⌊ s ⌋ L)) (var vz))
 ⌊ cloDpay I D f ⌋ᶜ  L = dpay (wk (⌊ I ⌋ L)) (wk (⌊ D ⌋ L)) (app (wk (⌊ f ⌋ L)) (var vz))
 ⌊ cloHomTo C A ⌋ᶜ   L = ⌜Hom⌝ (wk (⌊ C ⌋ L)) (wk (⌊ A ⌋ L)) (var vz)
--- ★ tr-pw's right-hand-side body: the stored ambient and endpoint read
---   with level m as the motive's bound variable, collapsed onto the new
---   binder as the rule's `pwShift` collapses it.
-⌊ cloTrPw k₀ m c sp a d f e ⌋ᶜ L =
-  tr (⌜Hom⌝ (renTm pwShift (pwBody (⌊ c ⌋ (bindL m L)))) (app (renTm vs (⌊ a ⌋ (bindL m L))) (var (vs vz))) (var vz))
-     (⌊ f ⌋ᶜ L) (app (wk (⌊ e ⌋ L)) (var vz))
+-- tr-pw's closure under a binder: its redex applied (only `vlam` of it is
+-- ever read, as the redex itself — `readLam`)
+⌊ cloTrPw d f e ⌋ᶜ L = app (wk (tr (⌊ d ⌋ᶜ L) (lam (⌊ f ⌋ᶜ L)) (⌊ e ⌋ L))) (var vz)
+
+-- a λ-value: its closure's body under `lam` — except tr-pw's, the redex
+readLam c@(clo _ _)        L = lam (⌊ c ⌋ᶜ L)
+readLam c@(cloK _)         L = lam (⌊ c ⌋ᶜ L)
+readLam c@(cloHrefl _ _ _) L = lam (⌊ c ⌋ᶜ L)
+readLam c@(cloDpay _ _ _)  L = lam (⌊ c ⌋ᶜ L)
+readLam c@(cloHomTo _ _)   L = lam (⌊ c ⌋ᶜ L)
+readLam (cloTrPw d f e)    L = tr (⌊ d ⌋ᶜ L) (lam (⌊ f ⌋ᶜ L)) (⌊ e ⌋ L)
 
 ⌊ clo₂ ρ t ⌋² L = subTm (extS (extS (⌊ ρ ⌋ᵉ L))) t
 
 ⌊ vvar l ⌋           L = L l
-⌊ vlam c ⌋           L = lam (⌊ c ⌋ᶜ L)
+⌊ vlam c ⌋           L = readLam c L
 ⌊ vapp f a ⌋         L = app (⌊ f ⌋ L) (⌊ a ⌋ L)
 ⌊ vpair a b ⌋        L = pair (⌊ a ⌋ L) (⌊ b ⌋ L)
 ⌊ vabsurd c e ⌋      L = absurd (⌊ c ⌋ L) (⌊ e ⌋ L)
@@ -705,10 +731,12 @@ lvl (Γ ∙) l = bindL (len Γ) (lvl Γ) l
 
 rb  : Bool → ℕ → (Γ : Cx) → Val → RTm Γ
 rbᶜ : Bool → ℕ → (Γ : Cx) → Clo → RTm (Γ ∙)
+rbLam : Bool → ℕ → (Γ : Cx) → Clo → RTm Γ
+rbTrPw : Bool → ℕ → (Γ : Cx) → Clo → Clo → Clo → Val → Maybe TrPwV → RTm Γ
 rb₂ : Bool → ℕ → (Γ : Cx) → Clo₂ → RTm ((Γ ∙) ∙)
 
 rb u k Γ (vvar l)        = lvl Γ l
-rb u k Γ (vlam c)        = lam (rbᶜ u k Γ c)
+rb u k Γ (vlam c)        = rbLam u k Γ c
 rb u k Γ (vapp f a)      = app (rb u k Γ f) (rb u k Γ a)
 rb u k Γ (vpair a b)     = pair (rb u k Γ a) (rb u k Γ b)
 rb u k Γ (vabsurd c e)   = absurd (rb u k Γ c) (rb u k Γ e)
@@ -748,6 +776,17 @@ rb u k Γ (v⌜Fin⌝ t)      = ⌜Fin⌝ (rb u k Γ t)
 rb false k Γ (vref d b)  = ref d b
 rb true zero Γ (vref d b) = ref d b
 rb true (suc k) Γ (vref d b) = rb true k Γ (eval k 0 [] b)
+
+-- a λ-value: λ of its body — except tr-pw's, whose guard is re-checked
+--   (at this fuel): the λ of its body when it holds, else the redex
+rbLam u k Γ c@(clo _ _)        = lam (rbᶜ u k Γ c)
+rbLam u k Γ c@(cloK _)         = lam (rbᶜ u k Γ c)
+rbLam u k Γ c@(cloHrefl _ _ _) = lam (rbᶜ u k Γ c)
+rbLam u k Γ c@(cloDpay _ _ _)  = lam (rbᶜ u k Γ c)
+rbLam u k Γ c@(cloHomTo _ _)   = lam (rbᶜ u k Γ c)
+rbLam u k Γ c@(cloTrPw d f e)  = rbTrPw u k Γ c d f e (trPwView k (len Γ) d)
+rbTrPw u k Γ c d f e (just _) = lam (rbᶜ u k Γ c)
+rbTrPw u k Γ c d f e nothing  = tr (rbᶜ u k Γ d) (lam (rbᶜ u k Γ f)) (rb u k Γ e)
 
 rbᶜ u zero    Γ c = ⌊ c ⌋ᶜ (lvl Γ)
 rbᶜ u (suc k) Γ c = rb u k (Γ ∙) (inst k (suc (len Γ)) c (vvar (len Γ)))

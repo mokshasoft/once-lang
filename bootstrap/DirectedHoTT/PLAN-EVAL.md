@@ -102,7 +102,7 @@
 | E0 | **Spike, `Algorithm/NbE` (untrusted).** Values, `eval`, `quote`, `whnf`; the term rules SigCore uses (λ, Σ/psplit, natrec, Fin/fcase, con/ielim, dpay/dih, descriptions, codes, Id/jsub, ref) | ① the parked `SigTravTest`/`SigSubKnotTest` pass with `nfOf` = NbE, each `refl` with its negative control; ② `SigCoreTest` agrees; ③ measured time/RSS vs `normLazy` | ✅ **2026-10-05** (§2a) |
 | E1 | **Full coverage + agreement oracle.** Every `head`/`headᵀ` rule; type evaluation; `Examples/NbETest`: `quote (eval t) ≡ nf t` (from `Algorithm/Eval`) on a corpus (Knot/Core entries, SigCore entries, ported OCP0009 programs: gcd facts, `div 0`, System T nested-natrec Ackermann), plus closed directed-former cases (`tr`/`ap`/`hrefl` at each code) | every corpus row green; a deliberately dropped rule turns a row red (control) | ✅ **2026-10-05** (§2b) |
 | E2 | **Use it where trust is not needed.** The elaborator's weak-head evaluator (`Elab.whTm`/`whTyₖ`) becomes NbE `whnf`; test files evaluate with it; Q1 (decoder form) re-judged with E0's measurements | Elab-driven entries (SigCore, Knot/Core) unchanged and faster | ⬜ |
-| E3 | **Certification** (design §2c). Soundness `t ≅ nbe t` by READING values as terms; then conversion decides by readback equality (yes: `≅`; no: distinct normal forms, Church–Rosser + `nf-uniqueᵀ`). CheckA/ConvLazy switch to it. Totality without fuel (ROADMAP Q4) later, from the LR's `wnorm`: typed NbE is forced for completeness (OCP0009 F3), and the LR already is typed | `decConvFast`/`convTm` replaced; `Knot/Core`, SigCore checking times no worse | ⬜ |
+| E3 | **Certification** (design §2c). Soundness `t ≅ nbe t` by READING values as terms; then conversion decides by readback equality (yes: `≅`; no: distinct normal forms, Church–Rosser + `nf-uniqueᵀ`). CheckA/ConvLazy switch to it. Totality without fuel (ROADMAP Q4) later, from the LR's `wnorm`: typed NbE is forced for completeness (OCP0009 F3), and the LR already is typed | `decConvFast`/`convTm` replaced; `Knot/Core`, SigCore checking times no worse | 🟡 **terms proved 2026-10-06** (§2e); types + checker integration next |
 | E4 | **Sharing = references as PROJECTIONS.** If E0–E2 measure repeated δ-unfolding: a GLOBAL environment of entry values (each entry evaluated once; `ref d` is a projection from it). This is the categorical reading the compiler adopted (its D071: `⟦ref x⟧Γ = Γ(x)`, ROADMAP Q5) | measured before built ([[slower-abstraction-profile-dont-discard]]) | ⬜ conditional |
 | E5 | **The CAM reading (feeds R5/R6).** Translate `RTm` to categorical combinators (Curien: `⟨_,_⟩`, `π₁`/`π₂`, `Λ`, `ev`) and prove `eval` factors through the machine; then the cost-instrumented variant per `NbEPLinCore` (allocation counts; dup-free ⇒ zero alloc) | written as PLAN-LINEAR / R6 when reached | 🔬 |
 
@@ -238,6 +238,42 @@ need a logical relation: values are syntax-shaped, so READ them back as
   re-inspection does not reach pw-normal form. Church–Rosser gives
   `pwBody p ≅ pwBody q` for `≅` pw-normal codes (their heads are inert, so a
   common reduct keeps the shape and `pwBody` follows reduction).
+
+### 2e. ★ E3 — the soundness theorem (2026-10-06)
+
+`Algorithm/NbESound.nbe-sound : (k : ℕ) (t : RTm Γ) → t ≅ nbe k t` — at
+EVERY fuel, `--safe`, no postulates; the module checks in 7.8 s.
+
+- **Method** (§2c): read values as terms; one lemma per evaluator function
+  by the same views; each rule's case is force/instantiate soundness, a
+  congruence (`Algorithm/ConvCong`, generated from the ξ-rules), one kernel
+  step, a fusion equation.  Scope (`NbEScope`) supplies the fresh-level
+  argument (`S-fresh`, `S-fresh2`).
+- **The pointwise rules decided the design** (three iterations, each
+  forced by a failed proof obligation):
+  1. stored inspection results needed an invariant tying them to the motive
+     — not available from a value;
+  2. recomputing the inspection at the CREATION fuel `k₀` broke
+     termination (k₀ can exceed the current fuel);
+  3. ★ final: `vlam (cloTrPw d f e)` READS AS THE REDEX `tr d (lam f) e`;
+     instantiation and readback re-check the guard at their OWN fuel and
+     take the kernel's `tr-pw` step only then (`S-trPwApp`, `S-rbL`).  No
+     invariant, no stored fuel, structural reading.
+  `hrefl-pw` forces the code's pw-SPINE and records it (`PwSpine`), so the
+  rule's syntactic side condition holds of the reading (`pw-read`).
+- **Church–Rosser does the conversion bookkeeping**: `⌜Hom⌝` injectivity
+  (`Hom-inj`), `pwBody` between convertible pw-shaped codes (`pwBody≅`),
+  substitution respecting `≅` (`sub1≅`, `sub-cong≅`, `≅-sub`).
+- **Sound fallbacks everywhere** (fuel exhaustion): readback at fuel 0 is
+  the reading; `tinst`/`tinst₂` at the type level.
+- ⚠ **Known incompleteness (sound):** a transport whose PATH is itself a
+  tr-pw λ-value is left stuck (its reading is a redex, not a syntactic λ,
+  so the kernel's `tr-pw`/`tr-taut` do not apply directly).  No corpus row
+  exercises it.
+- ⬜ **Next for E3:** the type level (`nbeᵀ`, the same method over `_⟶ᵀ_`);
+  then the checker's conversion by NbE (yes: `t ≅ nbe t`; no: distinct
+  normal forms — `Nf` decided structurally, Church–Rosser + `nf-uniqueᵀ`),
+  measured on SigCore / Knot/Core.
 
 **Fallback, recorded and not chosen.** If E0's gate fails because Agda's
 evaluator itself is the limit, run evaluation tests COMPILED (MAlonzo, a

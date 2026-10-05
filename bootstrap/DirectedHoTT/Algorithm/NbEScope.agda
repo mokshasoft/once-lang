@@ -46,6 +46,8 @@ ScV : ℕ → Maybe TrPwV → Set
 ScV n (just (trpw c sp a)) = Sc n c × Sc n a
 ScV n nothing              = ⊤
 
+sc-trPwN  : (k n : ℕ) (self d f : Clo) (e y : Val) (w : Maybe TrPwV) →
+            Scᶜ n self → Scᶜ n d → Scᶜ n f → Sc n e → Sc n y → Sc n (trPwN k n self d f e y w)
 sc-trPwView : (k m : ℕ) (d : Clo) → Scᶜ m d → ScV (suc m) (trPwView k m d)
 sc-tpvH   : (k m : ℕ) {h : Val} (w : HomV h) → Sc (suc m) h → ScV (suc m) (tpvH k m w)
 sc-trPwI  : (k n : ℕ) (self d f : Clo) (e y : Val) {h : Val} (w : HomV h) →
@@ -77,7 +79,7 @@ sc-vTr    : (k n : ℕ) (d : Clo) (p e : Val) → Scᶜ n d → Sc n p → Sc n 
 sc-trF    : (k n : ℕ) (d : Clo) {h : Val} (c : HomV h) {p : Val} (w : HreflV p) (lw : LamV p) (vw : VarV h) (e : Val) →
             Scᶜ n d → Sc n p → Sc n e → Sc (suc n) h → Sc n (trF k n d c w lw vw e)
 sc-trPwC  : (k n : ℕ) (d f : Clo) (e : Val) (w : Maybe TrPwV) →
-            Scᶜ n d → Scᶜ n f → Sc n e → ScV (suc n) w → trPwView k n d ≡ w → Sc n (trPwC k n d f e w)
+            Scᶜ n d → Scᶜ n f → Sc n e → Sc n (trPwC k n d f e w)
 sc-trTautB : (k n : ℕ) (b : Bool) (d f : Clo) (e : Val) → Scᶜ n d → Scᶜ n f → Sc n e → Sc n (trTautB k n b d f e)
 sc-vAp    : (k n : ℕ) (cB : Val) (b : Clo) (p : Val) → Sc n cB → Scᶜ n b → Sc n p → Sc n (vAp k n cB b p)
 sc-apF    : (k n : ℕ) (cB : Val) (b : Clo) {p : Val} (w : HreflV p) → Sc n cB → Scᶜ n b → Sc n p → Sc n (apF k n cB b w)
@@ -157,9 +159,12 @@ sc-inst (suc k) n (cloHrefl C sp s) v (sC , ss) sv =
   sc-vHrefl k n _ _ (sc-pwAtS k n sp v sC sv) (sc-vApp k n s v ss sv)
 sc-inst (suc k) n (cloDpay I D f)  v (sI , (sD , sf)) sv = sc-vDpay k n _ _ _ sI sD (sc-vApp k n f v sf sv)
 sc-inst (suc k) n (cloHomTo C A)   v (sC , sA) sv = sC , (sA , sv)
-sc-inst (suc k) n self@(cloTrPw k₀ m c sp a d f e) y sself@(mn , (sd , (sca , (sf , (se , eq))))) sy =
-  sc-trPwI k n self d f e y (homV (force k (inst k n d y))) sself sdn sf se sy (sc-force k n _ (sc-inst k n d y sdn sy))
-  where sdn = monoᶜ d (up-of-le m n mn) sd
+sc-inst (suc k) n self@(cloTrPw d f e) y sself@(sd , (sf , se)) sy =
+  sc-trPwN k n self d f e y (trPwView k n d) sself sd sf se sy
+
+sc-trPwN k n self d f e y (just _) sself sd sf se sy =
+  sc-trPwI k n self d f e y (homV (force k (inst k n d y))) sself sd sf se sy (sc-force k n _ (sc-inst k n d y sd sy))
+sc-trPwN k n self d f e y nothing  sself sd sf se sy = sself , sy
 
 sc-trPwView k m d sd =
   sc-tpvH k m (homV (force k (inst k (suc m) d (vvar m))))
@@ -260,14 +265,21 @@ sc-trF k n d (isHom c a m) (isHrefl C s) w v e sd sp se sh = sc-J (trJ k (codeV 
   sc-J : (b : Bool) → Sc n (trJB b d (vhrefl C s) e)
   sc-J true  = se
   sc-J false = sd , (sp , se)
-sc-trF k n d (isHom c a m) (notHrefl _) (isLam f) v e sd sp se sh =
-  sc-trPwC k n d f e (trPwView k n d) sd sp se (sc-trPwView k n d sd) refl
+sc-trF k n d (isHom c a m) (notHrefl _) (isLam f) v e sd sp se sh = byP (isTrPw f)
+  where
+  byP : (b : Bool) → Sc n (trPwP k n d f e b)
+  byP true  = sd , (sp , se)
+  byP false = sc-trPwC k n d f e (trPwView k n d) sd sp se
 sc-trF k n d (isHom c a m) (notHrefl _) (notLam p) v e sd sp se sh = sd , (sp , se)
-sc-trF k n d (notHom _) w (isLam f) (isVar l) e sd sp se sh = sc-trTautB k n (l == n) d f e sd sp se
+sc-trF k n d (notHom _) w (isLam f) (isVar l) e sd sp se sh = byP (isTrPw f)
+  where
+  byP : (b : Bool) → Sc n (trTautP k n l d f e b)
+  byP true  = sd , (sp , se)
+  byP false = sc-trTautB k n (l == n) d f e sd sp se
 sc-trF k n d (notHom _) w (isLam f) (notVar _) e sd sp se sh = sd , (sp , se)
 sc-trF k n d (notHom _) w (notLam p) v e sd sp se sh = sd , (sp , se)
-sc-trPwC k n d f e (just (trpw c sp a)) sd sf se sv eq = lt-self n , (sd , (sv , (sf , (se , eq))))
-sc-trPwC k n d f e nothing              sd sf se sv eq = sd , (sf , se)
+sc-trPwC k n d f e (just _) sd sf se = sd , (sf , se)
+sc-trPwC k n d f e nothing  sd sf se = sd , (sf , se)
 
 sc-trTautB k n true  d f e sd sf se = sc-inst k n f e sf se
 sc-trTautB k n false d f e sd sf se = sd , (sf , se)
