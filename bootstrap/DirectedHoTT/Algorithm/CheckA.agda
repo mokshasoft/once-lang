@@ -78,6 +78,7 @@ open import DirectedHoTT.Metatheory.LogicalRelation using ( IsNormal )
 open import DirectedHoTT.Metatheory.Injectivity using ( Π-inj; church-rosserᵀ )
 open import DirectedHoTT.Algorithm.Eval
   using ( Nfᵀ; nfdᵀ; outᵀ; evalᵀ; decConvFast; nf-irrᵀ; nf-stuckᵀ )
+open import DirectedHoTT.Algorithm.ConvLazy using ( convTy )
 -- ★ S5: one checker per signature; `ok` (from `WfSig`, Metatheory/Signature)
 --   is what erasure — the bridge to the kernel's validity — needs
 module DirectedHoTT.Algorithm.CheckA (S : Sig) (ok : SigOK S) where
@@ -279,12 +280,21 @@ decToSlow wΓ d B dB with validity wΓ (erase d)
 --   normalised, their normal forms compared; a "no" is uniqueness of
 --   normal forms.  No derivation is touched.  The derivation-driven
 --   procedure runs only if the fuel runs out.
-decTo : {t : ATm ⌊ Γ ⌋ᴬ} {A : ATy ⌊ Γ ⌋ᴬ} → ⊢ctx ⌈ Γ ⌉ᶜ → Γ ⊢ᴬ t ∷ A →
-        (B : ATy ⌊ Γ ⌋ᴬ) → ⌈ Γ ⌉ᶜ ⊢ty ⌈ B ⌉ᵀ → Dec (Γ ⊢ᴬ t ∷ B)
-decTo {A = A} wΓ d B dB with decConvFast evalFuel ⌈ A ⌉ᵀ ⌈ B ⌉ᵀ
+decToFast : {t : ATm ⌊ Γ ⌋ᴬ} {A : ATy ⌊ Γ ⌋ᴬ} → ⊢ctx ⌈ Γ ⌉ᶜ → Γ ⊢ᴬ t ∷ A →
+            (B : ATy ⌊ Γ ⌋ᴬ) → ⌈ Γ ⌉ᶜ ⊢ty ⌈ B ⌉ᵀ → Dec (Γ ⊢ᴬ t ∷ B)
+decToFast {A = A} wΓ d B dB with decConvFast evalFuel ⌈ A ⌉ᵀ ⌈ B ⌉ᵀ
 ... | just (yes c) = yes (⊢ᴬconv d c)
 ... | just (no ¬c) = no (λ d' → ¬c (uniqᴬ d d'))
 ... | nothing      = decToSlow wΓ d B dB
+
+-- ★ S7b: LAZILY first (`Algorithm/ConvLazy`: syntactic, then weak-head,
+--   then field by field) — a proof or nothing; full normal forms decide
+--   only what it leaves open
+decTo : {t : ATm ⌊ Γ ⌋ᴬ} {A : ATy ⌊ Γ ⌋ᴬ} → ⊢ctx ⌈ Γ ⌉ᶜ → Γ ⊢ᴬ t ∷ A →
+        (B : ATy ⌊ Γ ⌋ᴬ) → ⌈ Γ ⌉ᶜ ⊢ty ⌈ B ⌉ᵀ → Dec (Γ ⊢ᴬ t ∷ B)
+decTo {A = A} wΓ d B dB with convTy evalFuel ⌈ A ⌉ᵀ ⌈ B ⌉ᵀ
+... | just c  = yes (⊢ᴬconv d c)
+... | nothing = decToFast wΓ d B dB
 
 -- a check from an inference: a "no" there refutes every typing
 fromInf : {t : ATm ⌊ Γ ⌋ᴬ} → ⊢ctx ⌈ Γ ⌉ᶜ → Dec (Inf Γ t) →

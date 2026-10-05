@@ -8,8 +8,14 @@
 -- `refl` was checked against a deliberately wrong right-hand side.
 ------------------------------------------------------------------------
 
+-- ⚠ PARKED (2026-10-05): with the Lib-form decoder these evaluations OOM
+--   the type checker (cgroup cap) even at fuel 40 — Agda's evaluation of an
+--   object-level interpreter shares no work across β's `subTm` towers.  They
+--   PASSED with the select-then-map decoder (commit cb30cfb1a); see
+--   PLAN-BIDI "S7b step 3", the evaluation question.
+
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Examples.SigTravTest where
+module DirectedHoTT.Negative.SigTravTest where
 open import normalizer.Syntax.Types using ( _≡_; refl; _×_; _,_ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import Agda.Builtin.List using ( List; []; _∷_ )

@@ -88,8 +88,6 @@ import DirectedHoTT.Examples.SigBuild
 import DirectedHoTT.Examples.SigCore
 import DirectedHoTT.Examples.SigCoreEval
 import DirectedHoTT.Examples.SigCoreTest
-import DirectedHoTT.Examples.SigSubKnotTest
-import DirectedHoTT.Examples.SigTravTest
 import DirectedHoTT.Examples.Signature
 import DirectedHoTT.Examples.Small
 import DirectedHoTT.Examples.Strong

@@ -29,6 +29,7 @@ module DirectedHoTT.Trust.Kernel where
 
 import DirectedHoTT.Algorithm.Check
 import DirectedHoTT.Algorithm.CheckA
+import DirectedHoTT.Algorithm.ConvLazy
 import DirectedHoTT.Algorithm.DecEq
 import DirectedHoTT.Algorithm.DecideConversion
 import DirectedHoTT.Algorithm.DecideConversionTyped
