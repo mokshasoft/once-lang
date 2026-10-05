@@ -3581,13 +3581,13 @@ d_entry'45'ptr'45'bounds_3442 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
-  MAlonzo.Code.Once.CCC.Machine.FlatPtrBounds.T_PBInv_572
+  MAlonzo.Code.Once.CCC.Machine.FlatPtrBounds.T_PBInv_578
 d_entry'45'ptr'45'bounds_3442 ~v0 ~v1 ~v2 ~v3 v4 v5
   = du_entry'45'ptr'45'bounds_3442 v4 v5
 du_entry'45'ptr'45'bounds_3442 ::
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
-  MAlonzo.Code.Once.CCC.Machine.FlatPtrBounds.T_PBInv_572
+  MAlonzo.Code.Once.CCC.Machine.FlatPtrBounds.T_PBInv_578
 du_entry'45'ptr'45'bounds_3442 v0 v1
   = case coe v1 of
       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v2 v3
@@ -3608,7 +3608,7 @@ du_entry'45'ptr'45'bounds_3442 v0 v1
                                                          -> coe
                                                               seq (coe v17)
                                                               (coe
-                                                                 MAlonzo.Code.Once.CCC.Machine.FlatPtrBounds.C_mkPtrBounds_606
+                                                                 MAlonzo.Code.Once.CCC.Machine.FlatPtrBounds.C_mkPtrBounds_612
                                                                  (coe
                                                                     (\ v18 ->
                                                                        coe
@@ -4339,8 +4339,8 @@ d_ptr'45'bounds'45'step_3976 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   AgdaAny ->
   MAlonzo.Code.Once.CCC.Machine.FlatStoreWF.T_StoreWF_734 ->
-  MAlonzo.Code.Once.CCC.Machine.FlatPtrBounds.T_PBInv_572 ->
-  MAlonzo.Code.Once.CCC.Machine.FlatPtrBounds.T_PBInv_572
+  MAlonzo.Code.Once.CCC.Machine.FlatPtrBounds.T_PBInv_578 ->
+  MAlonzo.Code.Once.CCC.Machine.FlatPtrBounds.T_PBInv_578
 d_ptr'45'bounds'45'step_3976 v0 v1 ~v2 ~v3 v4 v5 v6 v7 ~v8 v9 v10
                              v11
   = du_ptr'45'bounds'45'step_3976 v0 v1 v4 v5 v6 v7 v9 v10 v11
@@ -4353,139 +4353,139 @@ du_ptr'45'bounds'45'step_3976 ::
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RunContext.T_RunAt_422 ->
   AgdaAny ->
   MAlonzo.Code.Once.CCC.Machine.FlatStoreWF.T_StoreWF_734 ->
-  MAlonzo.Code.Once.CCC.Machine.FlatPtrBounds.T_PBInv_572 ->
-  MAlonzo.Code.Once.CCC.Machine.FlatPtrBounds.T_PBInv_572
+  MAlonzo.Code.Once.CCC.Machine.FlatPtrBounds.T_PBInv_578 ->
+  MAlonzo.Code.Once.CCC.Machine.FlatPtrBounds.T_PBInv_578
 du_ptr'45'bounds'45'step_3976 v0 v1 v2 v3 v4 v5 v6 v7 v8
   = case coe v2 of
       MAlonzo.Code.Once.CCC.Machine.SMCore.C_mov'45'to'45'output_2252
         -> coe
-             MAlonzo.Code.Once.CCC.Machine.FlatPtrBounds.d_flat'45'ptr'45'bounds_2156
+             MAlonzo.Code.Once.CCC.Machine.FlatPtrBounds.d_flat'45'ptr'45'bounds_2162
              (coe v1) (coe v2) (coe v3) (coe v4) (coe v6)
              (coe (\ v9 v10 -> MAlonzo.RTE.mazUnreachableError)) (coe v7)
              (coe v8)
       MAlonzo.Code.Once.CCC.Machine.SMCore.C_mov'45'to'45'input_2254
         -> coe
-             MAlonzo.Code.Once.CCC.Machine.FlatPtrBounds.d_flat'45'ptr'45'bounds_2156
+             MAlonzo.Code.Once.CCC.Machine.FlatPtrBounds.d_flat'45'ptr'45'bounds_2162
              (coe v1) (coe v2) (coe v3) (coe v4) (coe v6)
              (coe (\ v9 v10 -> MAlonzo.RTE.mazUnreachableError)) (coe v7)
              (coe v8)
       MAlonzo.Code.Once.CCC.Machine.SMCore.C_load'45'indirect_2256
         -> coe
-             MAlonzo.Code.Once.CCC.Machine.FlatPtrBounds.d_flat'45'ptr'45'bounds_2156
+             MAlonzo.Code.Once.CCC.Machine.FlatPtrBounds.d_flat'45'ptr'45'bounds_2162
              (coe v1) (coe v2) (coe v3) (coe v4) (coe v6)
              (coe (\ v9 v10 -> MAlonzo.RTE.mazUnreachableError)) (coe v7)
              (coe v8)
       MAlonzo.Code.Once.CCC.Machine.SMCore.C_load'45'indirect'45'suc_2258
         -> coe
-             MAlonzo.Code.Once.CCC.Machine.FlatPtrBounds.d_flat'45'ptr'45'bounds_2156
+             MAlonzo.Code.Once.CCC.Machine.FlatPtrBounds.d_flat'45'ptr'45'bounds_2162
              (coe v1) (coe v2) (coe v3) (coe v4) (coe v6)
              (coe (\ v9 v10 -> MAlonzo.RTE.mazUnreachableError)) (coe v7)
              (coe v8)
       MAlonzo.Code.Once.CCC.Machine.SMCore.C_load'45'from'45'slot_2260 v9
         -> coe
-             MAlonzo.Code.Once.CCC.Machine.FlatPtrBounds.d_flat'45'ptr'45'bounds_2156
+             MAlonzo.Code.Once.CCC.Machine.FlatPtrBounds.d_flat'45'ptr'45'bounds_2162
              (coe v1) (coe v2) (coe v3) (coe v4) (coe v6)
              (coe (\ v10 v11 -> MAlonzo.RTE.mazUnreachableError)) (coe v7)
              (coe v8)
       MAlonzo.Code.Once.CCC.Machine.SMCore.C_store'45'at'45'slot_2262 v9
         -> coe
-             MAlonzo.Code.Once.CCC.Machine.FlatPtrBounds.d_flat'45'ptr'45'bounds_2156
+             MAlonzo.Code.Once.CCC.Machine.FlatPtrBounds.d_flat'45'ptr'45'bounds_2162
              (coe v1) (coe v2) (coe v3) (coe v4) (coe v6)
              (coe (\ v10 v11 -> MAlonzo.RTE.mazUnreachableError)) (coe v7)
              (coe v8)
       MAlonzo.Code.Once.CCC.Machine.SMCore.C_store'45'indirect_2264
         -> coe
-             MAlonzo.Code.Once.CCC.Machine.FlatPtrBounds.d_flat'45'ptr'45'bounds_2156
+             MAlonzo.Code.Once.CCC.Machine.FlatPtrBounds.d_flat'45'ptr'45'bounds_2162
              (coe v1) (coe v2) (coe v3) (coe v4) (coe v6)
              (coe (\ v9 v10 -> MAlonzo.RTE.mazUnreachableError)) (coe v7)
              (coe v8)
       MAlonzo.Code.Once.CCC.Machine.SMCore.C_store'45'indirect'45'suc_2266
         -> coe
-             MAlonzo.Code.Once.CCC.Machine.FlatPtrBounds.d_flat'45'ptr'45'bounds_2156
+             MAlonzo.Code.Once.CCC.Machine.FlatPtrBounds.d_flat'45'ptr'45'bounds_2162
              (coe v1) (coe v2) (coe v3) (coe v4) (coe v6)
              (coe (\ v9 v10 -> MAlonzo.RTE.mazUnreachableError)) (coe v7)
              (coe v8)
       MAlonzo.Code.Once.CCC.Machine.SMCore.C_lea'45'slot_2268 v9
         -> coe
-             MAlonzo.Code.Once.CCC.Machine.FlatPtrBounds.d_flat'45'ptr'45'bounds_2156
+             MAlonzo.Code.Once.CCC.Machine.FlatPtrBounds.d_flat'45'ptr'45'bounds_2162
              (coe v1) (coe v2) (coe v3) (coe v4) (coe v6)
              (coe (\ v10 v11 -> MAlonzo.RTE.mazUnreachableError)) (coe v7)
              (coe v8)
       MAlonzo.Code.Once.CCC.Machine.SMCore.C_restore'45'input_2270 v9
         -> coe
-             MAlonzo.Code.Once.CCC.Machine.FlatPtrBounds.d_flat'45'ptr'45'bounds_2156
+             MAlonzo.Code.Once.CCC.Machine.FlatPtrBounds.d_flat'45'ptr'45'bounds_2162
              (coe v1) (coe v2) (coe v3) (coe v4) (coe v6)
              (coe (\ v10 v11 -> MAlonzo.RTE.mazUnreachableError)) (coe v7)
              (coe v8)
       MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'reclaim'45'to_2276 v9
         -> coe
-             MAlonzo.Code.Once.CCC.Machine.FlatPtrBounds.d_flat'45'ptr'45'bounds_2156
+             MAlonzo.Code.Once.CCC.Machine.FlatPtrBounds.d_flat'45'ptr'45'bounds_2162
              (coe v1) (coe v2) (coe v3) (coe v4) (coe v6)
              (coe (\ v10 v11 -> MAlonzo.RTE.mazUnreachableError)) (coe v7)
              (coe v8)
       MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'call'45'closure_2282
         -> coe
-             MAlonzo.Code.Once.CCC.Machine.FlatPtrBounds.d_flat'45'ptr'45'bounds_2156
+             MAlonzo.Code.Once.CCC.Machine.FlatPtrBounds.d_flat'45'ptr'45'bounds_2162
              (coe v1) (coe v2) (coe v3) (coe v4) (coe v6)
              (coe (\ v9 v10 -> MAlonzo.RTE.mazUnreachableError)) (coe v7)
              (coe v8)
       MAlonzo.Code.Once.CCC.Machine.SMCore.C_worklist'45'init_2284 v9
         -> coe
-             MAlonzo.Code.Once.CCC.Machine.FlatPtrBounds.d_flat'45'ptr'45'bounds_2156
+             MAlonzo.Code.Once.CCC.Machine.FlatPtrBounds.d_flat'45'ptr'45'bounds_2162
              (coe v1) (coe v2) (coe v3) (coe v4) (coe v6)
              (coe (\ v10 v11 -> MAlonzo.RTE.mazUnreachableError)) (coe v7)
              (coe v8)
       MAlonzo.Code.Once.CCC.Machine.SMCore.C_worklist'45'push_2286 v9
         -> coe
-             MAlonzo.Code.Once.CCC.Machine.FlatPtrBounds.d_flat'45'ptr'45'bounds_2156
+             MAlonzo.Code.Once.CCC.Machine.FlatPtrBounds.d_flat'45'ptr'45'bounds_2162
              (coe v1) (coe v2) (coe v3) (coe v4) (coe v6)
              (coe (\ v10 v11 -> MAlonzo.RTE.mazUnreachableError)) (coe v7)
              (coe v8)
       MAlonzo.Code.Once.CCC.Machine.SMCore.C_worklist'45'pop_2288 v9
         -> coe
-             MAlonzo.Code.Once.CCC.Machine.FlatPtrBounds.d_flat'45'ptr'45'bounds_2156
+             MAlonzo.Code.Once.CCC.Machine.FlatPtrBounds.d_flat'45'ptr'45'bounds_2162
              (coe v1) (coe v2) (coe v3) (coe v4) (coe v6)
              (coe (\ v10 v11 -> MAlonzo.RTE.mazUnreachableError)) (coe v7)
              (coe v8)
       MAlonzo.Code.Once.CCC.Machine.SMCore.C_worklist'45'check_2290 v9
         -> coe
-             MAlonzo.Code.Once.CCC.Machine.FlatPtrBounds.d_flat'45'ptr'45'bounds_2156
+             MAlonzo.Code.Once.CCC.Machine.FlatPtrBounds.d_flat'45'ptr'45'bounds_2162
              (coe v1) (coe v2) (coe v3) (coe v4) (coe v6)
              (coe (\ v10 v11 -> MAlonzo.RTE.mazUnreachableError)) (coe v7)
              (coe v8)
       MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'sigop_2296 v9 v10 v11
         -> coe
-             MAlonzo.Code.Once.CCC.Machine.FlatPtrBounds.d_flat'45'ptr'45'bounds_2156
+             MAlonzo.Code.Once.CCC.Machine.FlatPtrBounds.d_flat'45'ptr'45'bounds_2162
              (coe v1) (coe v2) (coe v3) (coe v4) (coe v6)
              (coe (\ v12 v13 -> MAlonzo.RTE.mazUnreachableError)) (coe v7)
              (coe v8)
       MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'load'45'const_2302 v9 v10 v11
         -> coe
-             MAlonzo.Code.Once.CCC.Machine.FlatPtrBounds.d_flat'45'ptr'45'bounds_2156
+             MAlonzo.Code.Once.CCC.Machine.FlatPtrBounds.d_flat'45'ptr'45'bounds_2162
              (coe v1) (coe v2) (coe v3) (coe v4) (coe v6)
              (coe (\ v12 v13 -> MAlonzo.RTE.mazUnreachableError)) (coe v7)
              (coe v8)
       MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'load'45'code'45'addr_2304 v9
         -> coe
-             MAlonzo.Code.Once.CCC.Machine.FlatPtrBounds.d_flat'45'ptr'45'bounds_2156
+             MAlonzo.Code.Once.CCC.Machine.FlatPtrBounds.d_flat'45'ptr'45'bounds_2162
              (coe v1) (coe v2) (coe v3) (coe v4) (coe v6)
              (coe (\ v10 v11 -> MAlonzo.RTE.mazUnreachableError)) (coe v7)
              (coe v8)
       MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'save'45'closure'45'reg_2306
         -> coe
-             MAlonzo.Code.Once.CCC.Machine.FlatPtrBounds.d_flat'45'ptr'45'bounds_2156
+             MAlonzo.Code.Once.CCC.Machine.FlatPtrBounds.d_flat'45'ptr'45'bounds_2162
              (coe v1) (coe v2) (coe v3) (coe v4) (coe v6)
              (coe (\ v9 v10 -> MAlonzo.RTE.mazUnreachableError)) (coe v7)
              (coe v8)
       MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'load'45'tag'45'lit_2308 v9
         -> coe
-             MAlonzo.Code.Once.CCC.Machine.FlatPtrBounds.d_flat'45'ptr'45'bounds_2156
+             MAlonzo.Code.Once.CCC.Machine.FlatPtrBounds.d_flat'45'ptr'45'bounds_2162
              (coe v1) (coe v2) (coe v3) (coe v4) (coe v6)
              (coe (\ v10 v11 -> MAlonzo.RTE.mazUnreachableError)) (coe v7)
              (coe v8)
       MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'alloc'45'heap_2312 v9
         -> coe
-             MAlonzo.Code.Once.CCC.Machine.FlatPtrBounds.d_flat'45'ptr'45'bounds_2156
+             MAlonzo.Code.Once.CCC.Machine.FlatPtrBounds.d_flat'45'ptr'45'bounds_2162
              (coe v1) (coe v2) (coe v3) (coe v4) (coe v6)
              (coe
                 (\ v10 v11 ->
@@ -4505,13 +4505,13 @@ du_ptr'45'bounds'45'step_3976 v0 v1 v2 v3 v4 v5 v6 v7 v8
              (coe v7) (coe v8)
       MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'reg'45'op_2316 v9
         -> coe
-             MAlonzo.Code.Once.CCC.Machine.FlatPtrBounds.d_flat'45'ptr'45'bounds_2156
+             MAlonzo.Code.Once.CCC.Machine.FlatPtrBounds.d_flat'45'ptr'45'bounds_2162
              (coe v1) (coe v2) (coe v3) (coe v4) (coe v6)
              (coe (\ v10 v11 -> MAlonzo.RTE.mazUnreachableError)) (coe v7)
              (coe v8)
       MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'ctrl_2318 v9
         -> coe
-             MAlonzo.Code.Once.CCC.Machine.FlatPtrBounds.d_flat'45'ptr'45'bounds_2156
+             MAlonzo.Code.Once.CCC.Machine.FlatPtrBounds.d_flat'45'ptr'45'bounds_2162
              (coe v1) (coe v2) (coe v3) (coe v4) (coe v6)
              (coe (\ v10 v11 -> MAlonzo.RTE.mazUnreachableError)) (coe v7)
              (coe v8)
@@ -4621,7 +4621,7 @@ d_run'45'ptr'45'bounds_4548 ::
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RunContext.T_RunAt_422 ->
-  MAlonzo.Code.Once.CCC.Machine.FlatPtrBounds.T_PBInv_572
+  MAlonzo.Code.Once.CCC.Machine.FlatPtrBounds.T_PBInv_578
 d_run'45'ptr'45'bounds_4548 v0 v1 ~v2 ~v3 v4 v5 v6
   = du_run'45'ptr'45'bounds_4548 v0 v1 v4 v5 v6
 du_run'45'ptr'45'bounds_4548 ::
@@ -4630,7 +4630,7 @@ du_run'45'ptr'45'bounds_4548 ::
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RunContext.T_RunAt_422 ->
-  MAlonzo.Code.Once.CCC.Machine.FlatPtrBounds.T_PBInv_572
+  MAlonzo.Code.Once.CCC.Machine.FlatPtrBounds.T_PBInv_578
 du_run'45'ptr'45'bounds_4548 v0 v1 v2 v3 v4
   = coe
       MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
@@ -5845,7 +5845,7 @@ du_store'45'indirect'45'inbounds_4892 ::
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
 du_store'45'indirect'45'inbounds_4892 v0 v1 v2 v3 v4 v5
   = coe
-      MAlonzo.Code.Once.CCC.Machine.FlatPtrBounds.du_ptr'45'bounds'45'cell_636
+      MAlonzo.Code.Once.CCC.Machine.FlatPtrBounds.du_ptr'45'bounds'45'cell_642
       (coe MAlonzo.Code.Once.CCC.Machine.SMCore.C_Input1_56) (coe v4)
       (coe
          du_run'45'ptr'45'bounds_4548 (coe v0) (coe v1) (coe v2) (coe v3)
@@ -5875,7 +5875,7 @@ du_store'45'indirect'45'suc'45'inbounds_4912 ::
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
 du_store'45'indirect'45'suc'45'inbounds_4912 v0 v1 v2 v3 v4
   = coe
-      MAlonzo.Code.Once.CCC.Machine.FlatPtrBounds.du_ptr'45'bounds'45'suc_618
+      MAlonzo.Code.Once.CCC.Machine.FlatPtrBounds.du_ptr'45'bounds'45'suc_624
       (coe MAlonzo.Code.Once.CCC.Machine.SMCore.C_Input1_56)
       (coe
          du_run'45'ptr'45'bounds_4548 (coe v0) (coe v1) (coe v2) (coe v3)
@@ -5936,7 +5936,7 @@ du_load'45'indirect'45'target'45'wf_4934 v0 v1 v2 v3 v4 v5
                    (coe
                       (\ v9 v10 ->
                          coe
-                           MAlonzo.Code.Once.CCC.Machine.FlatPtrBounds.du_ptr'45'bounds'45'cell_636
+                           MAlonzo.Code.Once.CCC.Machine.FlatPtrBounds.du_ptr'45'bounds'45'cell_642
                            (coe MAlonzo.Code.Once.CCC.Machine.SMCore.C_Input1_56) (coe v9)
                            (coe
                               du_run'45'ptr'45'bounds_4548 (coe v0) (coe v1) (coe v3) (coe v4)
@@ -5999,7 +5999,7 @@ du_load'45'indirect'45'suc'45'target'45'wf_4972 v0 v1 v2 v3 v4 v5
                    (coe
                       (\ v9 v10 ->
                          coe
-                           MAlonzo.Code.Once.CCC.Machine.FlatPtrBounds.du_ptr'45'bounds'45'suc_618
+                           MAlonzo.Code.Once.CCC.Machine.FlatPtrBounds.du_ptr'45'bounds'45'suc_624
                            (coe MAlonzo.Code.Once.CCC.Machine.SMCore.C_Input1_56)
                            (coe
                               du_run'45'ptr'45'bounds_4548 (coe v0) (coe v1) (coe v3) (coe v4)

@@ -212,8 +212,13 @@ is-ptr (e-repr (a +ᵗ b)) = true
 is-ptr (e-inl a b)       = true
 is-ptr (e-inr a b)       = true
 is-ptr (e-fresh _ _)     = true
-{-# CATCHALL #-}
-is-ptr _                 = false
+is-ptr (e-repr Unit)     = false
+is-ptr (e-repr Void)     = false
+is-ptr (e-repr Int)      = false
+is-ptr (e-repr Float)    = false
+is-ptr e-any             = false
+is-ptr (e-tag _)         = false
+is-ptr e-word            = false
 
 -- the shape of cell 0 seen through a load (`load-indirect`): pairs yield
 -- the first component's representation; a fresh block yields its carried

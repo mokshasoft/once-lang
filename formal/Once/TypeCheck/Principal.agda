@@ -626,8 +626,8 @@ principal ctx e =
 
 pgProj : Maybe (Type ⊎ PolyType) → Maybe Type
 pgProj (just (inj₁ T)) = just T
-{-# CATCHALL #-}
-pgProj _ = nothing
+pgProj (just (inj₂ _)) = nothing
+pgProj nothing         = nothing
 
 -- | Ground-only projection (the M2 wiring point).
 principalGround : NamedCtx → RawExpr → Maybe Type
@@ -635,8 +635,8 @@ principalGround ctx e = pgProj (principal ctx e)
 
 pgSchema : Maybe (Type ⊎ PolyType) → Maybe PolyType
 pgSchema (just (inj₂ pty)) = just pty
-{-# CATCHALL #-}
-pgSchema _ = nothing
+pgSchema (just (inj₁ _))   = nothing
+pgSchema nothing           = nothing
 
 -- | The M3 routing criterion: a sig-less definition whose body has a
 -- NON-ground principal type in the EMPTY context (builtins + literals

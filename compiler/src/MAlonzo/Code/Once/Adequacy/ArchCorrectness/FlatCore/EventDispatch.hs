@@ -9945,14 +9945,14 @@ d_entry'45'ptr'45'bounds_1276 ::
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface.T_TraceLoop_366 ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
-  MAlonzo.Code.Once.CCC.Machine.FlatPtrBounds.T_PBInv_572
+  MAlonzo.Code.Once.CCC.Machine.FlatPtrBounds.T_PBInv_578
 d_entry'45'ptr'45'bounds_1276 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8
                               ~v9 ~v10
   = du_entry'45'ptr'45'bounds_1276
 du_entry'45'ptr'45'bounds_1276 ::
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
-  MAlonzo.Code.Once.CCC.Machine.FlatPtrBounds.T_PBInv_572
+  MAlonzo.Code.Once.CCC.Machine.FlatPtrBounds.T_PBInv_578
 du_entry'45'ptr'45'bounds_1276
   = coe
       MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RunWF.du_entry'45'ptr'45'bounds_3442
@@ -10319,8 +10319,8 @@ d_ptr'45'bounds'45'step_1310 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   AgdaAny ->
   MAlonzo.Code.Once.CCC.Machine.FlatStoreWF.T_StoreWF_734 ->
-  MAlonzo.Code.Once.CCC.Machine.FlatPtrBounds.T_PBInv_572 ->
-  MAlonzo.Code.Once.CCC.Machine.FlatPtrBounds.T_PBInv_572
+  MAlonzo.Code.Once.CCC.Machine.FlatPtrBounds.T_PBInv_578 ->
+  MAlonzo.Code.Once.CCC.Machine.FlatPtrBounds.T_PBInv_578
 d_ptr'45'bounds'45'step_1310 v0 v1 ~v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9
                              ~v10
   = du_ptr'45'bounds'45'step_1310 v0 v1
@@ -10334,8 +10334,8 @@ du_ptr'45'bounds'45'step_1310 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   AgdaAny ->
   MAlonzo.Code.Once.CCC.Machine.FlatStoreWF.T_StoreWF_734 ->
-  MAlonzo.Code.Once.CCC.Machine.FlatPtrBounds.T_PBInv_572 ->
-  MAlonzo.Code.Once.CCC.Machine.FlatPtrBounds.T_PBInv_572
+  MAlonzo.Code.Once.CCC.Machine.FlatPtrBounds.T_PBInv_578 ->
+  MAlonzo.Code.Once.CCC.Machine.FlatPtrBounds.T_PBInv_578
 du_ptr'45'bounds'45'step_1310 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
   = coe
       MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RunWF.du_ptr'45'bounds'45'step_3976
@@ -10529,7 +10529,7 @@ d_run'45'ptr'45'bounds_1342 ::
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RunContext.T_RunAt_422 ->
-  MAlonzo.Code.Once.CCC.Machine.FlatPtrBounds.T_PBInv_572
+  MAlonzo.Code.Once.CCC.Machine.FlatPtrBounds.T_PBInv_578
 d_run'45'ptr'45'bounds_1342 v0 v1 ~v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9
                             ~v10
   = du_run'45'ptr'45'bounds_1342 v0 v1
@@ -10539,7 +10539,7 @@ du_run'45'ptr'45'bounds_1342 ::
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RunContext.T_RunAt_422 ->
-  MAlonzo.Code.Once.CCC.Machine.FlatPtrBounds.T_PBInv_572
+  MAlonzo.Code.Once.CCC.Machine.FlatPtrBounds.T_PBInv_578
 du_run'45'ptr'45'bounds_1342 v0 v1
   = coe
       MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RunWF.du_run'45'ptr'45'bounds_4548

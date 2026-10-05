@@ -81,12 +81,15 @@ open import Once.CCC.Machine.FlatStoreWF FS
 ------------------------------------------------------------------------
 -- The per-value predicate, over the block-size map alone (it reads NOTHING
 -- from the LocState — unlike `StackPtrOK` there is no anchor to transport).
--- CATCHALL on the non-heap-pointer shapes, reducing on every constructor.
+-- Trivial on every non-heap-pointer shape (enumerated, so a new
+-- StoredValue constructor must be classified here).
 ------------------------------------------------------------------------
 PtrB : (ℕ → ℕ) → StoredValue FS → Set
 PtrB bs (SV-Ptr (AtDynamic hl)) = suc (heap-offset hl) < bs (ref-id (heap-ref hl))
-{-# CATCHALL #-}
-PtrB bs _                       = ⊤
+PtrB bs (SV-Ptr (AtStack _ _))  = ⊤
+PtrB bs (SV-Tag _)              = ⊤
+PtrB bs (SV-Lit _ _)            = ⊤
+PtrB bs (SV-Code _)             = ⊤
 
 PtrB? : (ℕ → ℕ) → Maybe (StoredValue FS) → Set
 PtrB? bs (just v) = PtrB bs v

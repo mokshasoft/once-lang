@@ -100,9 +100,11 @@ module FlatMachine {FS : FrameSemantics} where
   -- `with`-free decision helpers
   ----------------------------------------------------------------------
   sv-is-zero : StoredValue FS → Bool
-  sv-is-zero (SV-Tag 0) = true
-  {-# CATCHALL #-}
-  sv-is-zero _          = false
+  sv-is-zero (SV-Tag 0)       = true
+  sv-is-zero (SV-Tag (suc _)) = false
+  sv-is-zero (SV-Ptr _)       = false
+  sv-is-zero (SV-Lit _ _)     = false
+  sv-is-zero (SV-Code _)      = false
 
   tag-zf : Maybe (StoredValue FS) → Bool
   tag-zf (just v) = sv-is-zero v

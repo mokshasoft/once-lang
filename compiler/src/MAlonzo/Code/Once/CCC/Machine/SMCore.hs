@@ -364,27 +364,29 @@ d_sv'45'nz_386 ::
 d_sv'45'nz_386 ~v0 v1 = du_sv'45'nz_386 v1
 du_sv'45'nz_386 :: T_StoredValue_66 -> T_StoredValue_66
 du_sv'45'nz_386 v0
-  = let v1 = coe C_SV'45'Tag_72 (coe (1 :: Integer)) in
-    coe
-      (case coe v0 of
-         C_SV'45'Tag_72 v2
-           -> coe
-                C_SV'45'Tag_72
-                (coe
-                   MAlonzo.Code.Data.Bool.Base.du_if_then_else__44
-                   (coe eqInt (coe v2) (coe (0 :: Integer))) (coe (0 :: Integer))
-                   (coe (1 :: Integer)))
-         C_SV'45'Lit_76 v2 v3 v4
-           -> case coe v3 of
-                MAlonzo.Code.Once.Type.C_fits'45'int_202
-                  -> coe
-                       C_SV'45'Tag_72
-                       (coe
-                          MAlonzo.Code.Data.Bool.Base.du_if_then_else__44
-                          (coe eqInt (coe v4) (coe (0 :: Integer))) (coe (0 :: Integer))
-                          (coe (1 :: Integer)))
-                _ -> coe v1
-         _ -> coe v1)
+  = case coe v0 of
+      C_SV'45'Ptr_70 v1 -> coe C_SV'45'Tag_72 (coe (1 :: Integer))
+      C_SV'45'Tag_72 v1
+        -> coe
+             C_SV'45'Tag_72
+             (coe
+                MAlonzo.Code.Data.Bool.Base.du_if_then_else__44
+                (coe eqInt (coe v1) (coe (0 :: Integer))) (coe (0 :: Integer))
+                (coe (1 :: Integer)))
+      C_SV'45'Lit_76 v1 v2 v3
+        -> case coe v2 of
+             MAlonzo.Code.Once.Type.C_fits'45'int_202
+               -> coe
+                    C_SV'45'Tag_72
+                    (coe
+                       MAlonzo.Code.Data.Bool.Base.du_if_then_else__44
+                       (coe eqInt (coe v3) (coe (0 :: Integer))) (coe (0 :: Integer))
+                       (coe (1 :: Integer)))
+             MAlonzo.Code.Once.Type.C_fits'45'float_204
+               -> coe C_SV'45'Tag_72 (coe (1 :: Integer))
+             _ -> MAlonzo.RTE.mazUnreachableError
+      C_SV'45'Code_78 v1 -> coe C_SV'45'Tag_72 (coe (1 :: Integer))
+      _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Machine.SMCore.sv-succ
 d_sv'45'succ_394 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
@@ -392,12 +394,13 @@ d_sv'45'succ_394 ::
 d_sv'45'succ_394 ~v0 v1 = du_sv'45'succ_394 v1
 du_sv'45'succ_394 :: T_StoredValue_66 -> T_StoredValue_66
 du_sv'45'succ_394 v0
-  = let v1 = coe C_SV'45'Tag_72 (coe (1 :: Integer)) in
-    coe
-      (case coe v0 of
-         C_SV'45'Tag_72 v2
-           -> coe C_SV'45'Tag_72 (coe addInt (coe (1 :: Integer)) (coe v2))
-         _ -> coe v1)
+  = case coe v0 of
+      C_SV'45'Ptr_70 v1 -> coe C_SV'45'Tag_72 (coe (1 :: Integer))
+      C_SV'45'Tag_72 v1
+        -> coe C_SV'45'Tag_72 (coe addInt (coe (1 :: Integer)) (coe v1))
+      C_SV'45'Lit_76 v1 v2 v3 -> coe C_SV'45'Tag_72 (coe (1 :: Integer))
+      C_SV'45'Code_78 v1 -> coe C_SV'45'Tag_72 (coe (1 :: Integer))
+      _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Machine.SMCore.sv-pred
 d_sv'45'pred_400 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
@@ -405,24 +408,25 @@ d_sv'45'pred_400 ::
 d_sv'45'pred_400 ~v0 v1 = du_sv'45'pred_400 v1
 du_sv'45'pred_400 :: T_StoredValue_66 -> T_StoredValue_66
 du_sv'45'pred_400 v0
-  = let v1 = coe C_SV'45'Tag_72 (coe (0 :: Integer)) in
-    coe
-      (case coe v0 of
-         C_SV'45'Tag_72 v2
-           -> case coe v2 of
-                _ | coe geqInt (coe v2) (coe (1 :: Integer)) ->
-                    let v3 = subInt (coe v2) (coe (1 :: Integer)) in
-                    coe (coe C_SV'45'Tag_72 (coe v3))
-                _ -> coe v1
-         _ -> coe v1)
+  = case coe v0 of
+      C_SV'45'Ptr_70 v1 -> coe C_SV'45'Tag_72 (coe (0 :: Integer))
+      C_SV'45'Tag_72 v1
+        -> case coe v1 of
+             0 -> coe C_SV'45'Tag_72 (coe (0 :: Integer))
+             _ -> let v2 = subInt (coe v1) (coe (1 :: Integer)) in
+                  coe (coe C_SV'45'Tag_72 (coe v2))
+      C_SV'45'Lit_76 v1 v2 v3 -> coe C_SV'45'Tag_72 (coe (0 :: Integer))
+      C_SV'45'Code_78 v1 -> coe C_SV'45'Tag_72 (coe (0 :: Integer))
+      _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Machine.SMCore.sv-tag-val
 d_sv'45'tag'45'val_406 :: T_StoredValue_66 -> Integer
 d_sv'45'tag'45'val_406 v0
-  = let v1 = 0 :: Integer in
-    coe
-      (case coe v0 of
-         C_SV'45'Tag_72 v2 -> coe v2
-         _ -> coe v1)
+  = case coe v0 of
+      C_SV'45'Ptr_70 v1 -> coe (0 :: Integer)
+      C_SV'45'Tag_72 v1 -> coe v1
+      C_SV'45'Lit_76 v1 v2 v3 -> coe (0 :: Integer)
+      C_SV'45'Code_78 v1 -> coe (0 :: Integer)
+      _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Machine.SMCore.LocState
 d_LocState_412 a0 = ()
 data T_LocState_412
@@ -2739,18 +2743,25 @@ d_readTyped'45'int_2712 ::
 d_readTyped'45'int_2712 ~v0 v1 = du_readTyped'45'int_2712 v1
 du_readTyped'45'int_2712 :: Maybe T_StoredValue_66 -> Maybe Integer
 du_readTyped'45'int_2712 v0
-  = let v1 = coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 in
-    coe
-      (case coe v0 of
-         MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v2
-           -> case coe v2 of
-                C_SV'45'Lit_76 v3 v4 v5
-                  -> case coe v4 of
-                       MAlonzo.Code.Once.Type.C_fits'45'int_202
-                         -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe v5)
-                       _ -> coe v1
-                _ -> coe v1
-         _ -> coe v1)
+  = case coe v0 of
+      MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v1
+        -> case coe v1 of
+             C_SV'45'Ptr_70 v2
+               -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
+             C_SV'45'Tag_72 v2
+               -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
+             C_SV'45'Lit_76 v2 v3 v4
+               -> case coe v3 of
+                    MAlonzo.Code.Once.Type.C_fits'45'int_202
+                      -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe v4)
+                    MAlonzo.Code.Once.Type.C_fits'45'float_204
+                      -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
+                    _ -> MAlonzo.RTE.mazUnreachableError
+             C_SV'45'Code_78 v2
+               -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
+             _ -> MAlonzo.RTE.mazUnreachableError
+      MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v0
+      _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Machine.SMCore.AbstractExec.readTyped-float
 d_readTyped'45'float_2716 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
@@ -2759,18 +2770,25 @@ d_readTyped'45'float_2716 ~v0 v1 = du_readTyped'45'float_2716 v1
 du_readTyped'45'float_2716 ::
   Maybe T_StoredValue_66 -> Maybe Integer
 du_readTyped'45'float_2716 v0
-  = let v1 = coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 in
-    coe
-      (case coe v0 of
-         MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v2
-           -> case coe v2 of
-                C_SV'45'Lit_76 v3 v4 v5
-                  -> case coe v4 of
-                       MAlonzo.Code.Once.Type.C_fits'45'float_204
-                         -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe v5)
-                       _ -> coe v1
-                _ -> coe v1
-         _ -> coe v1)
+  = case coe v0 of
+      MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v1
+        -> case coe v1 of
+             C_SV'45'Ptr_70 v2
+               -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
+             C_SV'45'Tag_72 v2
+               -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
+             C_SV'45'Lit_76 v2 v3 v4
+               -> case coe v3 of
+                    MAlonzo.Code.Once.Type.C_fits'45'int_202
+                      -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
+                    MAlonzo.Code.Once.Type.C_fits'45'float_204
+                      -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe v4)
+                    _ -> MAlonzo.RTE.mazUnreachableError
+             C_SV'45'Code_78 v2
+               -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
+             _ -> MAlonzo.RTE.mazUnreachableError
+      MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v0
+      _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Machine.SMCore.AbstractExec.readTyped-cell
 d_readTyped'45'cell_2722 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
@@ -3331,12 +3349,16 @@ d_exec'45'sigop'45'halts'45'of_3132 ~v0 ~v1 ~v2 v3 ~v4 ~v5
 du_exec'45'sigop'45'halts'45'of_3132 ::
   MAlonzo.Code.Once.SigOp.Info.T_EffectShape_126 -> Bool
 du_exec'45'sigop'45'halts'45'of_3132 v0
-  = let v1 = coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8 in
-    coe
-      (case coe v0 of
-         MAlonzo.Code.Once.SigOp.Info.C_Halts_134
-           -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
-         _ -> coe v1)
+  = case coe v0 of
+      MAlonzo.Code.Once.SigOp.Info.C_Pure_130
+        -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
+      MAlonzo.Code.Once.SigOp.Info.C_Emits_132
+        -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
+      MAlonzo.Code.Once.SigOp.Info.C_Halts_134
+        -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
+      MAlonzo.Code.Once.SigOp.Info.C_Answers_136
+        -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
+      _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Machine.SMCore.AbstractExec.exec-sigop-halts
 d_exec'45'sigop'45'halts_3138 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->

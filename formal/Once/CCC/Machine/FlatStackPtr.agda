@@ -93,9 +93,11 @@ open FlatMachine {FS}
 -- correspondingly unprovable, and its route is made absurd one level up in
 -- `ConcFlatSim.stack-ptr-step`, where `RunAt` supplies `run-heap`.
 StackPtrOK : StoredValue FS → Set
-StackPtrOK (SV-Ptr (AtStack f k)) = ⊥
-{-# CATCHALL #-}
-StackPtrOK _                      = ⊤
+StackPtrOK (SV-Ptr (AtStack f k))  = ⊥
+StackPtrOK (SV-Ptr (AtDynamic _))  = ⊤
+StackPtrOK (SV-Tag _)              = ⊤
+StackPtrOK (SV-Lit _ _)            = ⊤
+StackPtrOK (SV-Code _)             = ⊤
 
 -- …lifted to a memory cell (an unwritten cell holds no pointer at all)
 StackPtrOK? : Maybe (StoredValue FS) → Set

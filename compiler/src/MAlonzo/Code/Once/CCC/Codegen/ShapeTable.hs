@@ -397,27 +397,36 @@ d_as'45'sum_240 v0
 -- Once.CCC.Codegen.ShapeTable.is-ptr
 d_is'45'ptr_250 :: T_RegExpect_8 -> Bool
 d_is'45'ptr_250 v0
-  = let v1 = coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8 in
-    coe
-      (case coe v0 of
-         C_e'45'repr_12 v2
-           -> case coe v2 of
-                MAlonzo.Code.Once.IRTy.C__'42'__20 v3 v4
-                  -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
-                MAlonzo.Code.Once.IRTy.C__'43'__22 v3 v4
-                  -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
-                MAlonzo.Code.Once.IRTy.C__'8667'__24 v3 v4
-                  -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
-                MAlonzo.Code.Once.IRTy.C_μ'45'type_26 v3
-                  -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
-                MAlonzo.Code.Once.IRTy.C_ν'45'type_28 v3
-                  -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
-                _ -> coe v1
-         C_e'45'inl_14 v2 v3 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
-         C_e'45'inr_16 v2 v3 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
-         C_e'45'fresh_22 v2 v3
-           -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
-         _ -> coe v1)
+  = case coe v0 of
+      C_e'45'any_10 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
+      C_e'45'repr_12 v1
+        -> case coe v1 of
+             MAlonzo.Code.Once.IRTy.C_Unit_16
+               -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
+             MAlonzo.Code.Once.IRTy.C_Void_18
+               -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
+             MAlonzo.Code.Once.IRTy.C__'42'__20 v2 v3
+               -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
+             MAlonzo.Code.Once.IRTy.C__'43'__22 v2 v3
+               -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
+             MAlonzo.Code.Once.IRTy.C__'8667'__24 v2 v3
+               -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
+             MAlonzo.Code.Once.IRTy.C_μ'45'type_26 v2
+               -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
+             MAlonzo.Code.Once.IRTy.C_ν'45'type_28 v2
+               -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
+             MAlonzo.Code.Once.IRTy.C_Int_30
+               -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
+             MAlonzo.Code.Once.IRTy.C_Float_32
+               -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
+             _ -> MAlonzo.RTE.mazUnreachableError
+      C_e'45'inl_14 v1 v2 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
+      C_e'45'inr_16 v1 v2 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
+      C_e'45'tag_18 v1 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
+      C_e'45'word_20 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
+      C_e'45'fresh_22 v1 v2
+        -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
+      _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Codegen.ShapeTable.fst-of
 d_fst'45'of_276 :: MAlonzo.Code.Once.IRTy.T_IRTy_6 -> T_RegExpect_8
 d_fst'45'of_276 v0

@@ -112,14 +112,18 @@ d_sv'45'is'45'zero_104 ~v0 v1 = du_sv'45'is'45'zero_104 v1
 du_sv'45'is'45'zero_104 ::
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_StoredValue_66 -> Bool
 du_sv'45'is'45'zero_104 v0
-  = let v1 = coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8 in
-    coe
-      (case coe v0 of
-         MAlonzo.Code.Once.CCC.Machine.SMCore.C_SV'45'Tag_72 v2
-           -> case coe v2 of
-                0 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
-                _ -> coe v1
-         _ -> coe v1)
+  = case coe v0 of
+      MAlonzo.Code.Once.CCC.Machine.SMCore.C_SV'45'Ptr_70 v1
+        -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
+      MAlonzo.Code.Once.CCC.Machine.SMCore.C_SV'45'Tag_72 v1
+        -> case coe v1 of
+             0 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
+             _ -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
+      MAlonzo.Code.Once.CCC.Machine.SMCore.C_SV'45'Lit_76 v1 v2 v3
+        -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
+      MAlonzo.Code.Once.CCC.Machine.SMCore.C_SV'45'Code_78 v1
+        -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
+      _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Machine.Flat.FlatMachine.tag-zf
 d_tag'45'zf_106 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->

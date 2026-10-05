@@ -426,27 +426,32 @@ data RegOp : Set where
 sv-nz : ∀ {FS} → StoredValue FS → StoredValue FS
 sv-nz (SV-Lit fits-int w) = SV-Tag (if w ℕ.≡ᵇ 0 then 0 else 1)
 sv-nz (SV-Tag n)          = SV-Tag (if n ℕ.≡ᵇ 0 then 0 else 1)
-{-# CATCHALL #-}
-sv-nz _                   = SV-Tag 1
+sv-nz (SV-Lit fits-float _) = SV-Tag 1
+sv-nz (SV-Ptr _)          = SV-Tag 1
+sv-nz (SV-Code _)         = SV-Tag 1
 
 -- Plan 0.29 (M5): SV-Tag counter arithmetic for instr-reg-op.
 sv-succ : ∀ {FS} → StoredValue FS → StoredValue FS
-sv-succ (SV-Tag n) = SV-Tag (suc n)
-{-# CATCHALL #-}
-sv-succ _          = SV-Tag 1
+sv-succ (SV-Tag n)   = SV-Tag (suc n)
+sv-succ (SV-Ptr _)   = SV-Tag 1
+sv-succ (SV-Lit _ _) = SV-Tag 1
+sv-succ (SV-Code _)  = SV-Tag 1
 
 sv-pred : ∀ {FS} → StoredValue FS → StoredValue FS
 sv-pred (SV-Tag (suc n)) = SV-Tag n
-{-# CATCHALL #-}
-sv-pred _                = SV-Tag 0
+sv-pred (SV-Tag 0)       = SV-Tag 0
+sv-pred (SV-Ptr _)       = SV-Tag 0
+sv-pred (SV-Lit _ _)     = SV-Tag 0
+sv-pred (SV-Code _)      = SV-Tag 0
 
 -- Plan 0.36 Phase 2b: read a count register (SV-Tag n) as the ℕ index
 -- for `lea-indexed`'s `offsetLoc`. Non-tags index 0 (never reached when
 -- the index register holds the descend/ascend counter).
 sv-tag-val : ∀ {FS} → StoredValue FS → ℕ
-sv-tag-val (SV-Tag n) = n
-{-# CATCHALL #-}
-sv-tag-val _          = 0
+sv-tag-val (SV-Tag n)   = n
+sv-tag-val (SV-Ptr _)   = 0
+sv-tag-val (SV-Lit _ _) = 0
+sv-tag-val (SV-Code _)  = 0
 
 ------------------------------------------------------------------------
 -- LocState: Abstract Machine State
@@ -1642,14 +1647,20 @@ module AbstractExec {FS : FrameSemantics} where
   -- (`ReadTypedAdequate`) can `rewrite` the `readLoc` results — a `with` on the
   -- abstract `readLoc s loc` would not reduce under the proof's rewrites.
   readTyped-int : Maybe (StoredValue FS) → Maybe ⟦ Int ⟧
-  readTyped-int (just (SV-Lit fits-int v)) = just v
-  {-# CATCHALL #-}
-  readTyped-int _                          = nothing
+  readTyped-int (just (SV-Lit fits-int v))   = just v
+  readTyped-int (just (SV-Lit fits-float _)) = nothing
+  readTyped-int (just (SV-Ptr _))            = nothing
+  readTyped-int (just (SV-Tag _))            = nothing
+  readTyped-int (just (SV-Code _))           = nothing
+  readTyped-int nothing                      = nothing
 
   readTyped-float : Maybe (StoredValue FS) → Maybe ⟦ Float ⟧
   readTyped-float (just (SV-Lit fits-float v)) = just v
-  {-# CATCHALL #-}
-  readTyped-float _                            = nothing
+  readTyped-float (just (SV-Lit fits-int _))   = nothing
+  readTyped-float (just (SV-Ptr _))            = nothing
+  readTyped-float (just (SV-Tag _))            = nothing
+  readTyped-float (just (SV-Code _))           = nothing
+  readTyped-float nothing                      = nothing
 
   -- D187: A PAIR CELL IS A POINTER **OR** THE COMPONENT ITSELF. The emitter
   -- does not box: every compound build copies whatever the source cell held,
@@ -1876,8 +1887,9 @@ module AbstractExec {FS : FrameSemantics} where
   exec-sigop-halts-of : ∀ {A B} → EffectShape B → SigOpInfo A B →
                         LocState FS → Bool
   exec-sigop-halts-of (Halts _) _ _ = true
-  {-# CATCHALL #-}
-  exec-sigop-halts-of _         _ _ = false
+  exec-sigop-halts-of Pure      _ _ = false
+  exec-sigop-halts-of (Emits _) _ _ = false
+  exec-sigop-halts-of Answers   _ _ = false
 
   -- | Dispatch-derived halt-flag (wrapper).
   exec-sigop-halts : ∀ {A B} → SigOpInfo A B → LocState FS → Bool

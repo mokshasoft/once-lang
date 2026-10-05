@@ -2859,15 +2859,16 @@ d_pgProj_2130 ::
   Maybe MAlonzo.Code.Data.Sum.Base.T__'8846'__30 ->
   Maybe MAlonzo.Code.Once.Type.T_Type_108
 d_pgProj_2130 v0
-  = let v1 = coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 in
-    coe
-      (case coe v0 of
-         MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v2
-           -> case coe v2 of
-                MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 v3
-                  -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe v3)
-                _ -> coe v1
-         _ -> coe v1)
+  = case coe v0 of
+      MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v1
+        -> case coe v1 of
+             MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 v2
+               -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe v2)
+             MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42 v2
+               -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
+             _ -> MAlonzo.RTE.mazUnreachableError
+      MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v0
+      _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.TypeCheck.Principal.principalGround
 d_principalGround_2134 ::
   MAlonzo.Code.Once.TypeCheck.Classify.T_NamedCtx_378 ->
@@ -2880,15 +2881,16 @@ d_pgSchema_2140 ::
   Maybe MAlonzo.Code.Data.Sum.Base.T__'8846'__30 ->
   Maybe MAlonzo.Code.Once.Type.T_PolyType_254
 d_pgSchema_2140 v0
-  = let v1 = coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 in
-    coe
-      (case coe v0 of
-         MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v2
-           -> case coe v2 of
-                MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42 v3
-                  -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe v3)
-                _ -> coe v1
-         _ -> coe v1)
+  = case coe v0 of
+      MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v1
+        -> case coe v1 of
+             MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 v2
+               -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
+             MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42 v2
+               -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe v2)
+             _ -> MAlonzo.RTE.mazUnreachableError
+      MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v0
+      _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.TypeCheck.Principal.siglessSchema
 d_siglessSchema_2144 ::
   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
