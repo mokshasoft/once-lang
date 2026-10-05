@@ -188,6 +188,24 @@ need a logical relation: values are syntax-shaped, so READ them back as
 - Estimated 1500–2500 lines; the per-rule lemmas mirror `Eval.head`'s
   clauses. Totality without fuel (Q4) is separate and later.
 
+### 2d. E3 progress (2026-10-05)
+
+- ✅ `Algorithm/NbERead`: the reading `⌊_⌋` through a level map; renaming
+  commutes with reading UNCONDITIONALLY (`ren⌊⌋`); the scope predicate `Sc`
+  with `agree` (reading depends only on the levels below the scope) and
+  `mono`.
+- ✅ The evaluator's eliminators case on small EXHAUSTIVE VIEWS
+  (`LamV`, `PairV`, `NatV`, `FinV`, `ConV`, `DescV`, `HreflV`, `IdreflV`,
+  `HomV`, `VarV`, `CodeV`, `TyV`) instead of `Val` with catch-alls, so each
+  proof has one case per view constructor (the redex-view lesson).
+  ⚠ A catch-all view constructor CARRIES its value (`notLam f`) and clauses
+  use the field: the implicit index inferred at a call site
+  `lamV (force k f)` is a separate copy of the scrutinee expression, so
+  using it re-evaluates it. Behaviour and timings unchanged (E0/E1 suites
+  re-run: 10.4 / 8.3 / 6.0 / 1.5 s).
+- ✅ `Algorithm/NbEScope`: every evaluator function preserves scope.
+- ⬜ Next: the soundness lemmas ①–⑤ (§2c), up to `≅`.
+
 **Fallback, recorded and not chosen.** If E0's gate fails because Agda's
 evaluator itself is the limit, run evaluation tests COMPILED (MAlonzo, a
 test executable) and keep `refl` tests only for small cases. That would

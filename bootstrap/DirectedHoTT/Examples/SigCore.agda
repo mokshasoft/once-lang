@@ -5,6 +5,9 @@
 -- OCP-0009 · EXAMPLES — ★ THE LIB'S `Sig`, WRITTEN IN THE CORE.
 --                        (PLAN-BIDI S7b step 3)
 --
+-- ⚠ Needs the COMPACTING COLLECTOR (`+RTS -c`): the checker run `wf` peaks
+--   at ~4.6 GB and is killed at the cap without it (2026-10-05).
+--
 -- `Lib/Syn`'s signatures, their decoder `SD` and the generic TRAVERSAL
 -- (`Lib/SynTrav`: renaming, substitution) as core definitions checked by
 -- `Algorithm/SigBuild` — no derivation written.  A signature is a FINITE

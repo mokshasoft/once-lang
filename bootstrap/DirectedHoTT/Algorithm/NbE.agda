@@ -41,6 +41,10 @@
 module DirectedHoTT.Algorithm.NbE where
 open import Agda.Builtin.Nat using ( zero; suc; _==_ ) renaming ( Nat to ℕ )
 open import Agda.Builtin.Bool using ( Bool; true; false )
+
+_∧_ : Bool → Bool → Bool
+true  ∧ b = b
+false ∧ b = false
 open import DirectedHoTT.Spec.Syntax
 
 private
@@ -117,53 +121,198 @@ lookup (ρ , v) vz     = v
 lookup (ρ , v) (vs x) = lookup ρ x
 
 ------------------------------------------------------------------------
--- 2. The guards (`Spec/Variance`'s `pw?`, `stkA?`, `stkC?`), on values.
---    They read only code HEADS; a reference in a head is unfolded.
+-- 2. VIEWS: what each rule inspects, as a small EXHAUSTIVE family.
+--    Every eliminator below cases on a view, never on `Val` with a
+--    catch-all — so a proof about it has one case per view constructor,
+--    not one per value head (the redex-view lesson of `Metatheory`).
 ------------------------------------------------------------------------
 
--- `stkA?`/`stkC?` agree except at ⌜Nat⌝ (and recurse through ⌜Hom⌝ into
--- `stkA?` both); `nat` says what ⌜Nat⌝ answers.
-stkV : Bool → ℕ → Val → Bool
+data RefV : Val → Set where
+  isRef  : (d : ℕ) (b : RTm ε) → RefV (vref d b)
+  notRef : (v : Val) → RefV v
+
+data LamV : Val → Set where
+  isLam  : (c : Clo) → LamV (vlam c)
+  notLam : (v : Val) → LamV v
+
+data PairV : Val → Set where
+  isPair  : (a b : Val) → PairV (vpair a b)
+  notPair : (v : Val) → PairV v
+
+data NatV : Val → Set where
+  isZero : NatV vnzero
+  isSuc  : (t : Val) → NatV (vnsuc t)
+  notNat : (v : Val) → NatV v
+
+data FinV : Val → Set where
+  isFz   : FinV vfzero
+  isFs   : (t : Val) → FinV (vfsuc t)
+  notFin : (v : Val) → FinV v
+
+data ConV : Val → Set where
+  isCon  : (p : Val) → ConV (vcon p)
+  notCon : (v : Val) → ConV v
+
+data DescV : Val → Set where
+  isDι    : DescV vdι
+  isDσ    : (S f : Val) → DescV (vdσ S f)
+  isDρ    : (j C : Val) → DescV (vdρ j C)
+  notDesc : (v : Val) → DescV v
+
+data HreflV : Val → Set where
+  isHrefl  : (C s : Val) → HreflV (vhrefl C s)
+  notHrefl : (v : Val) → HreflV v
+
+data IdreflV : Val → Set where
+  isIdrefl  : (c s : Val) → IdreflV (vidrefl c s)
+  notIdrefl : (v : Val) → IdreflV v
+
+data HomV : Val → Set where
+  isHom  : (c a m : Val) → HomV (v⌜Hom⌝ c a m)
+  notHom : (v : Val) → HomV v
+
+data VarV : Val → Set where
+  isVar  : (l : ℕ) → VarV (vvar l)
+  notVar : (v : Val) → VarV v
+
+-- the codes, as the guards and `El` see them
+-- ★ every catch-all constructor CARRIES the value: a clause uses the field,
+--   never the implicit index — an index inferred at the call site is a
+--   separate copy of the scrutinee expression and would be re-evaluated
+--   (measured: the traversal tests 10 s → OOM when stuck branches used it).
+data CodeV : Val → Set where
+  cbase : CodeV v⌜base⌝
+  cΠ    : (c : Val) (d : Clo) → CodeV (v⌜Π⌝ c d)
+  cΣ    : (c : Val) (d : Clo) → CodeV (v⌜Σ⌝ c d)
+  cHom  : (c a b : Val) → CodeV (v⌜Hom⌝ c a b)
+  cId   : (c a b : Val) → CodeV (v⌜Id⌝ c a b)
+  cNat  : CodeV v⌜Nat⌝
+  cUnit : CodeV v⌜Unit⌝
+  cIMu  : (I D i : Val) → CodeV (v⌜IMu⌝ I D i)
+  cFin  : (t : Val) → CodeV (v⌜Fin⌝ t)
+  cOther : (v : Val) → CodeV v
+
+refV : (v : Val) → RefV v
+refV (vref d b) = isRef d b
+refV v          = notRef v
+
+lamV : (v : Val) → LamV v
+lamV (vlam c) = isLam c
+lamV v        = notLam v
+
+pairV : (v : Val) → PairV v
+pairV (vpair a b) = isPair a b
+pairV v           = notPair v
+
+natV : (v : Val) → NatV v
+natV vnzero    = isZero
+natV (vnsuc t) = isSuc t
+natV v         = notNat v
+
+finV : (v : Val) → FinV v
+finV vfzero    = isFz
+finV (vfsuc t) = isFs t
+finV v         = notFin v
+
+conV : (v : Val) → ConV v
+conV (vcon p) = isCon p
+conV v        = notCon v
+
+descV : (v : Val) → DescV v
+descV vdι       = isDι
+descV (vdσ S f) = isDσ S f
+descV (vdρ j C) = isDρ j C
+descV v         = notDesc v
+
+hreflV : (v : Val) → HreflV v
+hreflV (vhrefl C s) = isHrefl C s
+hreflV v            = notHrefl v
+
+idreflV : (v : Val) → IdreflV v
+idreflV (vidrefl c s) = isIdrefl c s
+idreflV v             = notIdrefl v
+
+homV : (v : Val) → HomV v
+homV (v⌜Hom⌝ c a m) = isHom c a m
+homV v              = notHom v
+
+varV : (v : Val) → VarV v
+varV (vvar l) = isVar l
+varV v        = notVar v
+
+codeV : (v : Val) → CodeV v
+codeV v⌜base⌝         = cbase
+codeV (v⌜Π⌝ c d)      = cΠ c d
+codeV (v⌜Σ⌝ c d)      = cΣ c d
+codeV (v⌜Hom⌝ c a b)  = cHom c a b
+codeV (v⌜Id⌝ c a b)   = cId c a b
+codeV v⌜Nat⌝          = cNat
+codeV v⌜Unit⌝         = cUnit
+codeV (v⌜IMu⌝ I D i)  = cIMu I D i
+codeV (v⌜Fin⌝ t)      = cFin t
+codeV v               = cOther v
+
+-- is this value the level `n`?
+isLvl : ℕ → {v : Val} → VarV v → Bool
+isLvl n (isVar l) = l == n
+isLvl n (notVar _) = false
+
+------------------------------------------------------------------------
+-- The evaluator's signatures (one mutual block).
+------------------------------------------------------------------------
 
 eval  : ℕ → ℕ → Env Γ → RTm Γ → Val
 force : ℕ → Val → Val
+forceR : ℕ → {v : Val} → RefV v → Val
 inst  : ℕ → ℕ → Clo → Val → Val
 inst₂ : ℕ → ℕ → Clo₂ → Val → Val → Val
-pwV   : ℕ → Val → Bool
-pwAt  : ℕ → ℕ → Val → Val → Val
-vApp    : ℕ → ℕ → Val → Val → Val
-vFst vSnd : ℕ → Val → Val
-vPsplit : ℕ → ℕ → Clo₂ → Val → Val
-vNatrec : ℕ → ℕ → Val → Clo₂ → Val → Val
-vFcase  : ℕ → ℕ → Val → Val → Clo → Val
-vOrdtr  : ℕ → ℕ → Val → Val → Val → Val → Val → Val
-vHrefl  : ℕ → ℕ → Val → Val → Val
-vTr     : ℕ → ℕ → Clo → Val → Val → Val
-vAp     : ℕ → ℕ → Val → Clo → Val → Val
-vJsub   : ℕ → Clo → Val → Val → Val
-vIelim  : ℕ → ℕ → Val → Val → Val → Val → Val
-vDpay   : ℕ → Val → Val → Val → Val
-vDih    : ℕ → ℕ → Val → Val → Val → Val → Val
+trPwI : ℕ → ℕ → Clo → Clo → Val → Val → {h : Val} → CodeV h → Val
 
--- helpers on forced values (no fuel of their own: callers force first)
-appF    : ℕ → ℕ → Val → Val → Val
-fstF sndF : Val → Val
-psplitF : ℕ → ℕ → Clo₂ → Val → Val
-natrecF : ℕ → ℕ → Val → Clo₂ → Val → Val
-fcaseF  : ℕ → ℕ → Val → Val → Clo → Val
-ordtrF  : ℕ → ℕ → Val → Val → Val → Val → Val → Val
-hreflF  : ℕ → ℕ → Bool → Val → Val → Val
+vApp    : ℕ → ℕ → Val → Val → Val
+appF    : ℕ → ℕ → {f : Val} → LamV f → Val → Val
+vFst vSnd : ℕ → Val → Val
+fstF sndF : {p : Val} → PairV p → Val
+vPsplit : ℕ → ℕ → Clo₂ → Val → Val
+psplitF : ℕ → ℕ → Clo₂ → {p : Val} → PairV p → Val
+vNatrec : ℕ → ℕ → Val → Clo₂ → Val → Val
+natrecF : ℕ → ℕ → Val → Clo₂ → {t : Val} → NatV t → Val
+vFcase  : ℕ → ℕ → Val → Val → Clo → Val
+fcaseF  : ℕ → ℕ → {t : Val} → FinV t → Val → Clo → Val
+vOrdtr  : ℕ → ℕ → Val → Val → Val → Val → Val → Val
+ordA    : ℕ → ℕ → {a : Val} → NatV a → Val → Val → Val → Val → Val
+ordB    : ℕ → ℕ → Val → {t u : Val} → NatV t → NatV u → Val → Val → Val
+vHrefl  : ℕ → ℕ → Val → Val → Val
+hreflH  : ℕ → ℕ → Val → Val → Val
+hreflB  : ℕ → ℕ → Bool → Val → Val → Val
+hreflC  : ℕ → ℕ → {C : Val} → CodeV C → Val → Val
 hreflNat : ℕ → ℕ → Val → Val
-trF     : ℕ → ℕ → Clo → Val → Val → Val → Val
-trJ     : ℕ → Val → Bool
-apF     : ℕ → ℕ → Val → Clo → Val → Val
-jsubF   : Clo → Val → Val → Val
-ielimF  : ℕ → ℕ → Val → Val → Val → Val → Val
-dpayF   : ℕ → Val → Val → Val → Val
-dihF    : ℕ → ℕ → Val → Val → Val → Val → Val
-pwAtF   : ℕ → ℕ → Val → Val → Val
-stkF    : Bool → ℕ → Val → Bool
-pwF     : ℕ → Val → Bool
+hreflN  : ℕ → ℕ → {s : Val} → NatV s → Val
+vTr     : ℕ → ℕ → Clo → Val → Val → Val
+trG     : ℕ → ℕ → Clo → Val → Val → Val → Val
+trF     : ℕ → ℕ → Clo → {h : Val} → HomV h → {p : Val} → HreflV p → LamV p → VarV h → Val → Val
+trJB    : Bool → Clo → Val → Val → Val
+trPwB   : Bool → Clo → Clo → Val → Val
+trTautB : ℕ → ℕ → Bool → Clo → Clo → Val → Val
+trJ     : ℕ → {C : Val} → CodeV C → Bool
+vAp     : ℕ → ℕ → Val → Clo → Val → Val
+apF     : ℕ → ℕ → Val → Clo → {p : Val} → HreflV p → Val
+apB     : ℕ → ℕ → Bool → Val → Clo → Val → Val → Val
+vJsub   : ℕ → Clo → Val → Val → Val
+jsubF   : Clo → {p : Val} → IdreflV p → Val → Val
+vIelim  : ℕ → ℕ → Val → Val → Val → Val → Val
+ielimF  : ℕ → ℕ → Val → Val → Val → {t : Val} → ConV t → Val
+vDpay   : ℕ → Val → Val → Val → Val
+dpayF   : ℕ → Val → Val → {C : Val} → DescV C → Val
+vDih    : ℕ → ℕ → Val → Val → Val → Val → Val
+dihF    : ℕ → ℕ → Val → Val → {C : Val} → DescV C → Val → Val
+pwAt    : ℕ → ℕ → Val → Val → Val
+pwAtF   : ℕ → ℕ → {C : Val} → CodeV C → Val → Val
+pwV     : ℕ → Val → Bool
+pwF     : ℕ → {C : Val} → CodeV C → Bool
+-- `stkA?`/`stkC?` agree except at ⌜Nat⌝ (and recurse through ⌜Hom⌝ into
+-- `stkA?` both); `nat` says what ⌜Nat⌝ answers.
+stkV    : Bool → ℕ → Val → Bool
+stkF    : Bool → ℕ → {C : Val} → CodeV C → Bool
 
 ------------------------------------------------------------------------
 -- 3. Evaluation: structural on the term, at the same fuel.
@@ -210,8 +359,10 @@ eval k n ρ ⌜Unit⌝            = v⌜Unit⌝
 eval k n ρ (ref d b)         = vref d b
 
 -- ★ lazy δ: unfold references at the head, and only there
-force (suc k) (vref d b) = force k (eval k 0 [] b)
-force k       v          = v
+force zero    v = v
+force (suc k) v = forceR k (refV v)
+forceR k (isRef d b)    = force k (eval k 0 [] b)
+forceR k (notRef v)     = v
 
 ------------------------------------------------------------------------
 -- 4. Closures.  Instantiation is where fuel is spent.
@@ -223,9 +374,19 @@ inst (suc k) n (cloK w)           v = w
 inst (suc k) n (cloHrefl C s)     v = vHrefl k n (pwAt k n C v) (vApp k n s v)
 inst (suc k) n (cloDpay I D f)    v = vDpay k I D (vApp k n f v)
 inst (suc k) n (cloHomTo C A)     v = v⌜Hom⌝ C A v
-inst (suc k) n (cloTrPw d f e)    y with force k (inst k n d y)
-... | v⌜Hom⌝ c a _ = vTr k n (cloHomTo (pwAt k n c y) (vApp k n a y)) (inst k n f y) (vApp k n e y)
-... | h            = vtr d (inst k n f y) (vApp k n e y)     -- unreachable: guarded at creation
+inst (suc k) n (cloTrPw d f e)    y = trPwI k n d f e y (codeV (force k (inst k n d y)))
+
+-- `tr-pw`'s body at y: the motive's ambient and endpoint, read at y
+trPwI k n d f e y (cHom c a _) = vTr k n (cloHomTo (pwAt k n c y) (vApp k n a y)) (inst k n f y) (vApp k n e y)
+trPwI k n d f e y cbase        = vtr d (inst k n f y) (vApp k n e y)   -- unreachable: guarded at creation
+trPwI k n d f e y (cΠ _ _)     = vtr d (inst k n f y) (vApp k n e y)
+trPwI k n d f e y (cΣ _ _)     = vtr d (inst k n f y) (vApp k n e y)
+trPwI k n d f e y (cId _ _ _)  = vtr d (inst k n f y) (vApp k n e y)
+trPwI k n d f e y cNat         = vtr d (inst k n f y) (vApp k n e y)
+trPwI k n d f e y cUnit        = vtr d (inst k n f y) (vApp k n e y)
+trPwI k n d f e y (cIMu _ _ _) = vtr d (inst k n f y) (vApp k n e y)
+trPwI k n d f e y (cFin _)     = vtr d (inst k n f y) (vApp k n e y)
+trPwI k n d f e y (cOther _)   = vtr d (inst k n f y) (vApp k n e y)
 
 inst₂ zero    n (clo₂ ρ t) x y = vpsplit (clo₂ ρ t) (vpair x y)
 inst₂ (suc k) n (clo₂ ρ t) x y = eval k n ((ρ , x) , y) t
@@ -234,124 +395,188 @@ inst₂ (suc k) n (clo₂ ρ t) x y = eval k n ((ρ , x) , y) t
 -- 5. The rules, as smart eliminators (`Algorithm/Eval.head`'s order).
 ------------------------------------------------------------------------
 
-vApp k n f u = appF k n (force k f) u
-appF (suc k) n (vlam c) u = inst k n c u                       -- β
-appF k       n f        u = vapp f u
+vApp k n f u = appF k n (lamV (force k f)) u
+appF zero    n (isLam c)      u = vapp (vlam c) u
+appF zero    n (notLam f)     u = vapp f u
+appF (suc k) n (isLam c)      u = inst k n c u                  -- β
+appF (suc k) n (notLam f)     u = vapp f u
 
-vFst k p = fstF (force k p)
-vSnd k p = sndF (force k p)
-fstF (vpair a b) = a                                            -- βfst
-fstF p           = vfst p
-sndF (vpair a b) = b                                            -- βsnd
-sndF p           = vsnd p
+vFst k p = fstF (pairV (force k p))
+vSnd k p = sndF (pairV (force k p))
+fstF (isPair a b) = a                                           -- βfst
+fstF (notPair p)  = vfst p
+sndF (isPair a b) = b                                           -- βsnd
+sndF (notPair p)  = vsnd p
 
-vPsplit k n b p = psplitF k n b (force k p)
-psplitF (suc k) n b (vpair x y) = inst₂ k n b x y               -- psplit-β
-psplitF k       n b p           = vpsplit b p
+vPsplit k n b p = psplitF k n b (pairV (force k p))
+psplitF zero    n b (isPair x y)   = vpsplit b (vpair x y)
+psplitF zero    n b (notPair p)    = vpsplit b p
+psplitF (suc k) n b (isPair x y)   = inst₂ k n b x y            -- psplit-β
+psplitF (suc k) n b (notPair p)    = vpsplit b p
 
-vNatrec k n z s t = natrecF k n z s (force k t)
-natrecF k       n z s vnzero    = z                             -- natrec-zero
-natrecF (suc k) n z s (vnsuc t) = inst₂ k n s t (vNatrec k n z s t)   -- natrec-suc
-natrecF k       n z s t         = vnatrec z s t
+vNatrec k n z s t = natrecF k n z s (natV (force k t))
+natrecF k       n z s isZero    = z                             -- natrec-zero
+natrecF zero    n z s (isSuc t) = vnatrec z s (vnsuc t)
+natrecF (suc k) n z s (isSuc t) = inst₂ k n s t (vNatrec k n z s t)   -- natrec-suc
+natrecF k       n z s (notNat t) = vnatrec z s t
 
-vFcase k n t a b = fcaseF k n (force k t) a b
-fcaseF k       n vfzero    a b = a                              -- fcase-z
-fcaseF (suc k) n (vfsuc t) a b = inst k n b t                   -- fcase-s
-fcaseF k       n t         a b = vfcase t a b
+vFcase k n t a b = fcaseF k n (finV (force k t)) a b
+fcaseF k       n isFz       a b = a                             -- fcase-z
+fcaseF zero    n (isFs t)   a b = vfcase (vfsuc t) a b
+fcaseF (suc k) n (isFs t)   a b = inst k n b t                  -- fcase-s
+fcaseF k       n (notFin t) a b = vfcase t a b
 
-vOrdtr k n a t u p q = ordtrF k n (force k a) (force k t) (force k u) p q
-ordtrF k       n vnzero    t         u         p q = vunit      -- ordtr-z
-ordtrF k       n (vnsuc a) vnzero    vnzero    p q = p          -- ordtr-szz
-ordtrF k       n (vnsuc a) (vnsuc t) vnzero    p q = q          -- ordtr-ssz
-ordtrF k       n (vnsuc a) vnzero    (vnsuc u) p q = vabsurd (v⌜Hom⌝ v⌜Nat⌝ a u) p   -- ordtr-szs
-ordtrF (suc k) n (vnsuc a) (vnsuc t) (vnsuc u) p q = vOrdtr k n a t u p q            -- ordtr-sss
-ordtrF k       n a         t         u         p q = vordtr a t u p q
+vOrdtr k n a t u p q = ordA k n (natV (force k a)) (force k t) (force k u) p q
+ordA k n isZero      t u p q = vunit                            -- ordtr-z
+ordA k n (isSuc a)   t u p q = ordB k n a (natV t) (natV u) p q
+ordA k n (notNat a)  t u p q = vordtr a t u p q
+ordB k       n a isZero    isZero    p q = p                    -- ordtr-szz
+ordB k       n a (isSuc t) isZero    p q = q                    -- ordtr-ssz
+ordB k       n a isZero    (isSuc u) p q = vabsurd (v⌜Hom⌝ v⌜Nat⌝ a u) p   -- ordtr-szs
+ordB zero    n a (isSuc t) (isSuc u) p q = vordtr (vnsuc a) (vnsuc t) (vnsuc u) p q
+ordB (suc k) n a (isSuc t) (isSuc u) p q = vOrdtr k n a t u p q -- ordtr-sss
+ordB k       n a (notNat t) isZero     p q = vordtr (vnsuc a) t vnzero p q
+ordB k       n a (notNat t) (isSuc u)  p q = vordtr (vnsuc a) t (vnsuc u) p q
+ordB k       n a (notNat t) (notNat u) p q = vordtr (vnsuc a) t u p q
+ordB k       n a isZero     (notNat u) p q = vordtr (vnsuc a) vnzero u p q
+ordB k       n a (isSuc t)  (notNat u) p q = vordtr (vnsuc a) (vnsuc t) u p q
 
 -- hrefl: pw-able code ⇒ pointwise (hrefl-pw); else the order's
 -- reflexivity at ⌜Nat⌝ (hrefl-Nat-z/s); else stuck.
-vHrefl k n C s = hreflF k n (pwV k C') C' s where C' = force k C
-hreflF k n true  C s = vlam (cloHrefl C s)                      -- hrefl-pw
-hreflF k n false v⌜Nat⌝ s = hreflNat k n s
-hreflF k n false C s = vhrefl C s
-hreflNat (suc k) n s with force k s
-... | vnzero  = vunit                                           -- hrefl-Nat-z
-... | vnsuc m = hreflNat k n m                                  -- hrefl-Nat-s
-... | s'      = vhrefl v⌜Nat⌝ s'
-hreflNat zero n s = vhrefl v⌜Nat⌝ s
+vHrefl k n C s = hreflH k n (force k C) s
+hreflH k n C s = hreflB k n (pwV k C) C s
+hreflB k n true  C s = vlam (cloHrefl C s)                      -- hrefl-pw
+hreflB k n false C s = hreflC k n (codeV C) s
+hreflC k n cNat           s = hreflNat k n s
+hreflC k n cbase          s = vhrefl v⌜base⌝ s
+hreflC k n (cΠ c d)       s = vhrefl (v⌜Π⌝ c d) s
+hreflC k n (cΣ c d)       s = vhrefl (v⌜Σ⌝ c d) s
+hreflC k n (cHom c a b)   s = vhrefl (v⌜Hom⌝ c a b) s
+hreflC k n (cId c a b)    s = vhrefl (v⌜Id⌝ c a b) s
+hreflC k n cUnit          s = vhrefl v⌜Unit⌝ s
+hreflC k n (cIMu I D i)   s = vhrefl (v⌜IMu⌝ I D i) s
+hreflC k n (cFin t)       s = vhrefl (v⌜Fin⌝ t) s
+hreflC k n (cOther C)     s = vhrefl C s
+hreflNat zero    n s = vhrefl v⌜Nat⌝ s
+hreflNat (suc k) n s = hreflN k n (natV (force k s))
+hreflN k n isZero      = vunit                                  -- hrefl-Nat-z
+hreflN k n (isSuc m)   = hreflNat k n m                         -- hrefl-Nat-s
+hreflN k n (notNat s)  = vhrefl v⌜Nat⌝ s
 
 -- tr: the motive is inspected at the fresh level n
 vTr zero    n d p e = vtr d p e
-vTr (suc k) n d p e = trF k n d (force k (inst k (suc n) d (vvar n))) (force k p) e
-trF k n d (v⌜Hom⌝ c a m) (vhrefl C s) e with trJ k (force k C)
-... | true  = e                                                 -- tr-J-*
-... | false = vtr d (vhrefl C s) e
-trF k n d (v⌜Hom⌝ c a (vvar m)) (vlam f) e with m == n | pwV k c
-... | true | true = vlam (cloTrPw d f e)                        -- tr-pw
-... | _    | _    = vtr d (vlam f) e
-trF k n d (vvar m) (vlam f) e with m == n
-... | true  = inst k n f e                                      -- tr-taut (and β)
-... | false = vtr d (vlam f) e
-trF k n d h p e = vtr d p e
+vTr (suc k) n d p e = trG k n d (force k (inst k (suc n) d (vvar n))) (force k p) e
+-- (an argument, not a `where`: a `where` binding is re-evaluated per use)
+trG k n d h p e = trF k n d (homV h) (hreflV p) (lamV p) (varV h) e
+trF k n d (isHom c a m) (isHrefl C s) w        v e = trJB (trJ k (codeV (force k C))) d (vhrefl C s) e   -- tr-J-*
+trF k n d (isHom c a m) (notHrefl _) (isLam f) v e = trPwB (isLvl n (varV m) ∧ pwV k c) d f e     -- tr-pw
+trF k n d (isHom c a m) (notHrefl _) (notLam p) v e = vtr d p e
+trF k n d (notHom _) w (isLam f) (isVar l) e = trTautB k n (l == n) d f e   -- tr-taut (and β)
+trF k n d (notHom _) w (isLam f) (notVar _) e = vtr d (vlam f) e
+trF k n d (notHom _) w (notLam p) v e = vtr d p e
+
+trJB true  d p e = e
+trJB false d p e = vtr d p e
+trPwB true  d f e = vlam (cloTrPw d f e)
+trPwB false d f e = vtr d (vlam f) e
+trTautB k n true  d f e = inst k n f e
+trTautB k n false d f e = vtr d (vlam f) e
 
 -- which codes make `tr (⌜Hom⌝ ⋯) (hrefl C s) e ⟶ e`
-trJ k v⌜base⌝          = true
-trJ k (v⌜Σ⌝ _ _)       = true
-trJ k v⌜Unit⌝          = true
-trJ k (v⌜Id⌝ _ _ _)    = true
-trJ k (v⌜IMu⌝ _ _ _)   = true
-trJ k (v⌜Fin⌝ _)       = true
-trJ k (v⌜Hom⌝ c₁ _ _)  = stkV true k c₁                        -- tr-J-Hom (stkA?)
-trJ k _                = false
+trJ k cbase          = true
+trJ k (cΣ _ _)       = true
+trJ k cUnit          = true
+trJ k (cId _ _ _)    = true
+trJ k (cIMu _ _ _)   = true
+trJ k (cFin _)       = true
+trJ k (cHom c₁ _ _)  = stkV true k c₁                           -- tr-J-Hom (stkA?)
+trJ k (cΠ _ _)       = false
+trJ k cNat           = false
+trJ k (cOther _)     = false
 
-vAp k n cB b p = apF k n cB b (force k p)
-apF (suc k) n cB b (vhrefl c₁ s) with stkV false k c₁
-... | true  = vHrefl k n cB (inst k n b s)                      -- ap-J (stkC?)
-... | false = vap cB b (vhrefl c₁ s)
-apF k n cB b p = vap cB b p
+vAp k n cB b p = apF k n cB b (hreflV (force k p))
+apF zero    n cB b (isHrefl c₁ s)     = vap cB b (vhrefl c₁ s)
+apF zero    n cB b (notHrefl p)       = vap cB b p
+apF (suc k) n cB b (isHrefl c₁ s)     = apB k n (stkV false k c₁) cB b c₁ s
+apF (suc k) n cB b (notHrefl p)       = vap cB b p
+apB k n true  cB b c₁ s = vHrefl k n cB (inst k n b s)          -- ap-J (stkC?)
+apB k n false cB b c₁ s = vap cB b (vhrefl c₁ s)
 
-vJsub k d p e = jsubF d (force k p) e
-jsubF d (vidrefl c s) e = e                                     -- jsub-refl
-jsubF d p             e = vjsub d p e
+vJsub k d p e = jsubF d (idreflV (force k p)) e
+jsubF d (isIdrefl c s) e = e                                    -- jsub-refl
+jsubF d (notIdrefl p)  e = vjsub d p e
 
-vIelim k n D i e t = ielimF k n D i e (force k t)
-ielimF (suc k) n D i e (vcon p) =                               -- ι
+vIelim k n D i e t = ielimF k n D i e (conV (force k t))
+ielimF zero    n D i e (isCon p)  = vielim D i e (vcon p)
+ielimF zero    n D i e (notCon t) = vielim D i e t
+ielimF (suc k) n D i e (isCon p) =                              -- ι
   vApp k n (vApp k n (vApp k n e i) p) (vDih k n D e (vApp k n D i) p)
-ielimF k n D i e t = vielim D i e t
+ielimF (suc k) n D i e (notCon t) = vielim D i e t
 
-vDpay k I D C = dpayF k I D (force k C)
-dpayF k       I D vdι       = v⌜Unit⌝                           -- dpay-ι
-dpayF k       I D (vdσ S f) = v⌜Σ⌝ S (cloDpay I D f)            -- dpay-σ
-dpayF (suc k) I D (vdρ j C) = v⌜Σ⌝ (v⌜IMu⌝ I D j) (cloK (vDpay k I D C))   -- dpay-ρ: a constant body
-dpayF k       I D C         = vdpay I D C
+vDpay k I D C = dpayF k I D (descV (force k C))
+dpayF k       I D isDι       = v⌜Unit⌝                          -- dpay-ι
+dpayF k       I D (isDσ S f) = v⌜Σ⌝ S (cloDpay I D f)           -- dpay-σ
+dpayF zero    I D (isDρ j C) = vdpay I D (vdρ j C)
+dpayF (suc k) I D (isDρ j C) = v⌜Σ⌝ (v⌜IMu⌝ I D j) (cloK (vDpay k I D C))   -- dpay-ρ: a constant body
+dpayF k       I D (notDesc C) = vdpay I D C
 
-vDih k n D e C p = dihF k n D e (force k C) p
-dihF k       n D e vdι       p = vunit                          -- dih-ι
-dihF (suc k) n D e (vdσ S f) p = vDih k n D e (vApp k n f (vFst k p)) (vSnd k p)   -- dih-σ
-dihF (suc k) n D e (vdρ j C) p =                                -- dih-ρ
+vDih k n D e C p = dihF k n D e (descV (force k C)) p
+dihF k       n D e isDι       p = vunit                         -- dih-ι
+dihF zero    n D e (isDσ S f) p = vdih D e (vdσ S f) p
+dihF (suc k) n D e (isDσ S f) p = vDih k n D e (vApp k n f (vFst k p)) (vSnd k p)   -- dih-σ
+dihF zero    n D e (isDρ j C) p = vdih D e (vdρ j C) p
+dihF (suc k) n D e (isDρ j C) p =                               -- dih-ρ
   vpair (vIelim k n D j e (vFst k p)) (vDih k n D e C (vSnd k p))
-dihF k n D e C p = vdih D e C p
+dihF k n D e (notDesc C) p = vdih D e C p
 
 -- pwBody, at a level: unfold a pw-able code at `x`
-pwAt k n C x = pwAtF k n (force k C) x
-pwAtF (suc k) n (v⌜Π⌝ γ δ)     x = inst k n δ x
-pwAtF (suc k) n (v⌜Hom⌝ C a b) x = v⌜Hom⌝ (pwAt k n C x) (vApp k n a x) (vApp k n b x)
-pwAtF k       n C              x = C
+pwAt k n C x = pwAtF k n (codeV (force k C)) x
+pwAtF zero    n (cΠ γ δ)     x = v⌜Π⌝ γ δ
+pwAtF zero    n (cHom C a b) x = v⌜Hom⌝ C a b
+pwAtF zero    n cbase        x = v⌜base⌝
+pwAtF zero    n (cΣ c d)     x = v⌜Σ⌝ c d
+pwAtF zero    n (cId c a b)  x = v⌜Id⌝ c a b
+pwAtF zero    n cNat         x = v⌜Nat⌝
+pwAtF zero    n cUnit        x = v⌜Unit⌝
+pwAtF zero    n (cIMu I D i) x = v⌜IMu⌝ I D i
+pwAtF zero    n (cFin t)     x = v⌜Fin⌝ t
+pwAtF zero    n (cOther C)   x = C
+pwAtF (suc k) n (cΠ γ δ)     x = inst k n δ x
+pwAtF (suc k) n (cHom C a b) x = v⌜Hom⌝ (pwAt k n C x) (vApp k n a x) (vApp k n b x)
+pwAtF (suc k) n cbase        x = v⌜base⌝
+pwAtF (suc k) n (cΣ c d)     x = v⌜Σ⌝ c d
+pwAtF (suc k) n (cId c a b)  x = v⌜Id⌝ c a b
+pwAtF (suc k) n cNat         x = v⌜Nat⌝
+pwAtF (suc k) n cUnit        x = v⌜Unit⌝
+pwAtF (suc k) n (cIMu I D i) x = v⌜IMu⌝ I D i
+pwAtF (suc k) n (cFin t)     x = v⌜Fin⌝ t
+pwAtF (suc k) n (cOther C)   x = C
 
-pwV k C = pwF k (force k C)
-pwF k       (v⌜Π⌝ _ _)     = true
-pwF (suc k) (v⌜Hom⌝ C _ _) = pwV k C
-pwF k       _              = false
+pwV k C = pwF k (codeV (force k C))
+pwF k       (cΠ _ _)     = true
+pwF zero    (cHom C _ _) = false
+pwF (suc k) (cHom C _ _) = pwV k C
+pwF k cbase        = false
+pwF k (cΣ _ _)     = false
+pwF k (cId _ _ _)  = false
+pwF k cNat         = false
+pwF k cUnit        = false
+pwF k (cIMu _ _ _) = false
+pwF k (cFin _)     = false
+pwF k (cOther _)   = false
 
-stkV nat k C = stkF nat k (force k C)
-stkF nat k       v⌜base⌝         = true
-stkF nat k       (v⌜Σ⌝ _ _)      = true
-stkF nat k       (v⌜Id⌝ _ _ _)   = true
-stkF nat k       v⌜Unit⌝         = true
-stkF nat k       (v⌜Fin⌝ _)      = true
-stkF nat k       v⌜Nat⌝          = nat
-stkF nat k       (v⌜IMu⌝ _ _ _)  = true
-stkF nat (suc k) (v⌜Hom⌝ C _ _)  = stkV true k C
-stkF nat k       _               = false
+stkV nat k C = stkF nat k (codeV (force k C))
+stkF nat k       cbase          = true
+stkF nat k       (cΣ _ _)       = true
+stkF nat k       (cId _ _ _)    = true
+stkF nat k       cUnit          = true
+stkF nat k       (cFin _)       = true
+stkF nat k       cNat           = nat
+stkF nat k       (cIMu _ _ _)   = true
+stkF nat zero    (cHom C _ _)   = false
+stkF nat (suc k) (cHom C _ _)   = stkV true k C
+stkF nat k       (cΠ _ _)       = false
+stkF nat k       (cOther _)     = false
 
 ------------------------------------------------------------------------
 -- 6. Readback, at a context.  `unfold` = true unfolds every reference
@@ -453,15 +678,31 @@ data TVal where
   tDIh  : Val → TClo₂ → Val → Val → TVal
   tFin  : Val → TVal
 
+-- what `Hom` inspects of its ambient
+data TyV : TVal → Set where
+  tvNat   : TyV tNat
+  tvU     : TyV tU
+  tvΠ     : (A : TVal) (B : TClo) → TyV (tΠ A B)
+  tvOther : (A : TVal) → TyV A
+
+tyV : (A : TVal) → TyV A
+tyV tNat     = tvNat
+tyV tU       = tvU
+tyV (tΠ A B) = tvΠ A B
+tyV A        = tvOther A
+
 evalᵀ  : ℕ → ℕ → Env Γ → RTy Γ → TVal
 instᵀ  : ℕ → ℕ → TClo → Val → TVal
 instᵀ₂ : ℕ → ℕ → TClo₂ → Val → Val → TVal
 tElS   : ℕ → ℕ → Val → TVal
-tElF   : ℕ → ℕ → Val → TVal
+tElF   : ℕ → ℕ → {c : Val} → CodeV c → TVal
 tHomS  : ℕ → ℕ → TVal → Val → Val → TVal
+tHomF  : ℕ → ℕ → {A : TVal} → TyV A → Val → Val → TVal
 tHomNat : ℕ → Val → Val → TVal
+tHomA  : ℕ → {a : Val} → NatV a → Val → TVal
+tHomB  : ℕ → Val → {b : Val} → NatV b → TVal
 tDIhS  : ℕ → ℕ → Val → TClo₂ → Val → Val → TVal
-tDIhF  : ℕ → ℕ → Val → TClo₂ → Val → Val → TVal
+tDIhF  : ℕ → ℕ → Val → TClo₂ → {C : Val} → DescV C → Val → TVal
 
 evalᵀ k n ρ base          = tbase
 evalᵀ k n ρ U             = tU
@@ -488,39 +729,46 @@ instᵀ₂ zero    n c           j t = tEl vunit
 instᵀ₂ (suc k) n (tclo₂ ρ M) j t = evalᵀ k n ((ρ , j) , t) M
 
 -- El of a code decodes it (El-⌜…⌝); a ⌜Hom⌝ code's decode may compute further
-tElS k n c = tElF k n (force k c)
-tElF k       n v⌜base⌝        = tbase
-tElF (suc k) n (v⌜Π⌝ c d)     = tΠ (tElS k n c) (tcloEl d)
-tElF (suc k) n (v⌜Σ⌝ c d)     = tΣ (tElS k n c) (tcloEl d)
-tElF (suc k) n (v⌜Hom⌝ c a b) = tHomS k n (tElS k n c) a b
-tElF (suc k) n (v⌜Id⌝ c a b)  = tId (tElS k n c) a b
-tElF k       n v⌜Nat⌝         = tNat
-tElF k       n (v⌜IMu⌝ I D i) = tIMu I D i
-tElF k       n (v⌜Fin⌝ t)     = tFin t
-tElF k       n v⌜Unit⌝        = tUnit
-tElF k       n c              = tEl c
+tElS k n c = tElF k n (codeV (force k c))
+tElF k       n cbase        = tbase
+tElF zero    n (cΠ c d)     = tEl (v⌜Π⌝ c d)
+tElF (suc k) n (cΠ c d)     = tΠ (tElS k n c) (tcloEl d)
+tElF zero    n (cΣ c d)     = tEl (v⌜Σ⌝ c d)
+tElF (suc k) n (cΣ c d)     = tΣ (tElS k n c) (tcloEl d)
+tElF zero    n (cHom c a b) = tEl (v⌜Hom⌝ c a b)
+tElF (suc k) n (cHom c a b) = tHomS k n (tElS k n c) a b
+tElF zero    n (cId c a b)  = tEl (v⌜Id⌝ c a b)
+tElF (suc k) n (cId c a b)  = tId (tElS k n c) a b
+tElF k       n cNat         = tNat
+tElF k       n (cIMu I D i) = tIMu I D i
+tElF k       n (cFin t)     = tFin t
+tElF k       n cUnit        = tUnit
+tElF k       n (cOther c)   = tEl c
 
 -- Hom computes at Nat (the order), U (functions) and Π (pointwise)
-tHomS k       n tNat     a b = tHomNat k a b
-tHomS (suc k) n tU       c d = tΠ (tElS k n c) (tcloK (tElS k n d))            -- Hom-U
-tHomS k       n (tΠ A B) f g = tΠ A (tcloHom B f g)                            -- Hom-Π
-tHomS k       n A        a b = tHom A a b
-tHomNat k a b with force k a
-... | vnzero  = tUnit                                                          -- Hom-Nat-z
-... | vnsuc m = tHomNatS k m (force k b)
-  where
-  tHomNatS : ℕ → Val → Val → TVal
-  tHomNatS k       m vnzero    = tbase                                         -- Hom-Nat-sz
-  tHomNatS (suc k) m (vnsuc b) = tHomNat k m b                                 -- Hom-Nat-ss
-  tHomNatS k       m b         = tHom tNat (vnsuc m) b
-... | a'      = tHom tNat a' b
+tHomS k n A a b = tHomF k n (tyV A) a b
+tHomF k       n tvNat     a b = tHomNat k a b
+tHomF zero    n tvU       c d = tHom tU c d
+tHomF (suc k) n tvU       c d = tΠ (tElS k n c) (tcloK (tElS k n d))         -- Hom-U
+tHomF k       n (tvΠ A B) f g = tΠ A (tcloHom B f g)                         -- Hom-Π
+tHomF k       n (tvOther A) a b = tHom A a b
+tHomNat k a b = tHomA k (natV (force k a)) b
+tHomA k isZero    b = tUnit                                                  -- Hom-Nat-z
+tHomA k (isSuc m) b = tHomB k m (natV (force k b))
+tHomA k (notNat a) b = tHom tNat a b
+tHomB k       m isZero    = tbase                                            -- Hom-Nat-sz
+tHomB zero    m (isSuc b) = tHom tNat (vnsuc m) (vnsuc b)
+tHomB (suc k) m (isSuc b) = tHomNat k m b                                    -- Hom-Nat-ss
+tHomB k       m (notNat b) = tHom tNat (vnsuc m) b
 
-tDIhS k n D M C p = tDIhF k n D M (force k C) p
-tDIhF k       n D M vdι       p = tUnit                                        -- DIh-ι
-tDIhF (suc k) n D M (vdσ S f) p = tDIhS k n D M (vApp k n f (vFst k p)) (vSnd k p)   -- DIh-σ
-tDIhF (suc k) n D M (vdρ j C) p =                                              -- DIh-ρ
+tDIhS k n D M C p = tDIhF k n D M (descV (force k C)) p
+tDIhF k       n D M isDι       p = tUnit                                     -- DIh-ι
+tDIhF zero    n D M (isDσ S f) p = tDIh D M (vdσ S f) p
+tDIhF (suc k) n D M (isDσ S f) p = tDIhS k n D M (vApp k n f (vFst k p)) (vSnd k p)   -- DIh-σ
+tDIhF zero    n D M (isDρ j C) p = tDIh D M (vdρ j C) p
+tDIhF (suc k) n D M (isDρ j C) p =                                           -- DIh-ρ
   tΣ (instᵀ₂ k n M j (vFst k p)) (tcloDIh D M C p)
-tDIhF k       n D M C         p = tDIh D M C p
+tDIhF k       n D M (notDesc C) p = tDIh D M C p
 
 rbᵀ  : Bool → ℕ → (Γ : Cx) → TVal → RTy Γ
 rbᵀᶜ : Bool → ℕ → (Γ : Cx) → TClo → RTy (Γ ∙)
