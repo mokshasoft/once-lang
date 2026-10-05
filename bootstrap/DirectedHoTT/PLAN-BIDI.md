@@ -636,6 +636,28 @@ tag rules key on it (`⊢fzero : Fin (suc n)`). After:
   This is how the Knot scales past one module's memory: one segment per
   family.
 
+- ★ **Pw POC, REVISED (2026-10-05).** The 2026-10-02 sketch (a Ford-style
+  family, two constructors) predates F6, which ELIMINATES Pw (decoding),
+  and contradicts D077 (fibre by the subject, Ford only computed outputs).
+  The core Pw is the Lib's fibred family: a generic fibre method in the
+  core over the decoder's tables (mirroring `Lib/MethAt.methAt`'s
+  `psplit` + selection cascade, as `#tabD` mirrors `tabD`), Pw's two rows
+  (`kcPi`, `kcHom`; every other constructor the empty row), instantiated
+  at `⌜KSig⌝` in a `SigExtend` segment over SigCore. The interface keeps
+  the Lib's `KPw`, so the consumers (`Red`, `RedAgree`, `PwAgree`,
+  `PwDecode`, `Exact`) are untouched IF the core description is
+  CONVERTIBLE with `PwF.DF`. It is closed, so that is a normal-form
+  comparison — but its certified PROOF (`El-⌜Pw⌝`) needs a certified
+  conversion at the scale of a whole `KD`-sized method cascade, where the
+  substitution evaluator OOMs. ⇒ PLAN-EVAL E3 (NbE soundness) is on the
+  critical path of the Pw POC. Order: E3 → core fibre method → Pw rows →
+  `El-⌜Pw⌝` by NbE-certified conversion → measure.
+  - Two small facts from the design: `U` has no code for `Desc` (by design:
+    a `⌜Desc⌝` in `U` would need a universe hierarchy), so the fibre walk is
+    its own entry at `Desc`-valued results, not an instance of `#walk`; and
+    entries above literal 20 cannot be matched, so segments index their
+    tables RELATIVELY (`SigExtend`).
+
 **Then, the migration recipe** (each step is one family):
 - a schema becomes a CLOSED λ-entry; an instance becomes
   `app (ref d) args`;
