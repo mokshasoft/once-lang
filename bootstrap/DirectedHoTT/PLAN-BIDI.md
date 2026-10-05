@@ -658,6 +658,34 @@ tag rules key on it (`⊢fzero : Fin (suc n)`). After:
     entries above literal 20 cannot be matched, so segments index their
     tables RELATIVELY (`SigExtend`).
 
+- **Pw POC — the construction (2026-10-06).** The Lib's family is
+  `SynFam` (`Lib/SynFam`): `DF = λx. ielim (SD sg) (fst x) FIBMₒ (fst (snd x))
+  (snd (snd x))`, `FIBM = methAt (per sort s: λ j. methAt (per constructor k:
+  λ p h c. R_{s,k} j p c))`, `methAt ms = λx. psplit (λ t r. selM ms t r) x`,
+  `selM` an `fcase` cascade (`Lib/Sugar.sel`). `FIBMₒ` and the convoy `CP`
+  are Agda-`opaque` (`context-form-mismatch-opaque`), so the conversion
+  proof sits in an `unfolding` block. The core side, as `SigExtend` entries
+  over SigCore:
+  - P1 `#selM`/`#methAt`: the selection cascade from a table by `natrec`
+    on its length — the `#tabD` pattern, which already reproduces `tabD`'s
+    normal form exactly; typed over a per-entry method-type family (the
+    `#walk` pattern, `Desc`-valued results).
+  - P2 `#FIBM n vs sg rows`: sorts then constructors, leaves `λ p h c. rows
+    s k j p c`; rows a typed table (per-constructor payload types — a
+    dependent cascade, the `FCONS`/`MOTM` pattern of `#rnM`).
+  - P3 Pw's rows (`kcPi`: `dσ (⌜Id⌝ A₀ X F₁) dι`; `kcHom`: one `dρ` at the
+    inner code, then the equation; every other constructor the empty row),
+    `#PwD = DF` at `⌜KSig⌝`, `#Pw d t u = ⌜IMu⌝ J #PwD (ix d t u)`.
+  - P4 the interface (`Knot/PwCore`): `⌜Pw⌝ d t u = app³ (ref #Pw) d t u`,
+    `⌜Pw⌝-sub = refl`, `⊢⌜Pw⌝` from `WfSig`, `El-⌜Pw⌝ : El (⌜Pw⌝ d t u) ≅ᵀ KPw
+    d t u` by δ + β³ + `Algorithm/NbESound` on the closed descriptions (the
+    pattern of `NbEKDTest.kd-conv`). Consumers unchanged; `PwConGen`'s
+    constructors re-derived through the same conversion.
+  - P5 measure: lines a human writes vs the generated Pw (256) + PwConGen
+    (86) + PwAgree (121).
+  Each step is checked by an NbE normal-form equality with the Lib's
+  term at `⌜KSig⌝` (and a negative control) before the next.
+
 **Then, the migration recipe** (each step is one family):
 - a schema becomes a CLOSED λ-entry; an instance becomes
   `app (ref d) args`;
