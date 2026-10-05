@@ -1,2 +1,0 @@
-# warning-gate baseline (plan 0.109 S0): warnings per (module, warning) that predate the gate.
-# Counts may only go DOWN; S5 deletes this file and turns on `-W error`.

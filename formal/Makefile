@@ -216,11 +216,6 @@ pragma-gate:
 public-gate:
 	@scripts/public-gate.sh
 
-.PHONY: warning-gate
-# Plan 0.109 S0: no new Agda warning in the apex/compiler closure; the baseline only shrinks.
-warning-gate:
-	@scripts/warning-gate.sh
-
 .PHONY: malonzo
 malonzo:
 	@if [ -z "$$AGDA_SAFE_ACTIVE" ] && [ -z "$$AGDA_SAFE_DISABLE" ]; then \
@@ -231,7 +226,7 @@ malonzo:
 	@# Extract from Once/Compiler.agda (the verified instance) which
 	@# transitively reaches Once.Compile + the Verified hierarchy. Bridge.hs
 	@# imports the verified entry point from this extraction.
-	@sh -c '$(AGDA_CMD) -c --ghc-dont-call-ghc --compile-dir=_build/malonzo Once/Compiler.agda'
+	@sh -c '$(AGDA_CMD) -c --no-main --ghc-dont-call-ghc --compile-dir=_build/malonzo Once/Compiler.agda'
 	@echo "Copying extracted modules to compiler..."
 	@rm -rf ../compiler/src/MAlonzo/Code/Once
 	@mkdir -p ../compiler/src/MAlonzo/Code/Once

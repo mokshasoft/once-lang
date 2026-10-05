@@ -1,5 +1,8 @@
 -- SPDX-License-Identifier: AGPL-3.0-or-later
 -- Copyright (C) 2025-2026 Jonas Claesson
+{-# OPTIONS --inversion-max-depth=100 #-}
+-- (Plan 0.109: the `seg-idle? … ≡ true` witnesses over long concrete traces need
+-- Agda to invert past its default depth of 50; the constraints are satisfiable.)
 
 ------------------------------------------------------------------------
 -- Once.CCC.Codegen.SlotBudget   (Plan 0.54 rung D, item 2)

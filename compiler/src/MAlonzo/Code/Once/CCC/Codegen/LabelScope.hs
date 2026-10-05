@@ -3715,9 +3715,7 @@ du_H0_670 ::
   Integer -> MAlonzo.Code.Data.Nat.Base.T__'8804'__22
 du_H0_670 v0 v1
   = coe
-      MAlonzo.Code.Data.Nat.Properties.d_'60''45'trans'737'_6714 v1
-      (addInt (coe (4 :: Integer)) (coe v1))
-      (coe du_hi_644 (coe v0) (coe v1))
+      MAlonzo.Code.Data.Nat.Properties.du_'60''45''8804''45'trans_3134
       (coe
          MAlonzo.Code.Once.CCC.Codegen.LabelSeg.du_a'60'a'43'suc_162
          (coe v1))
@@ -3740,10 +3738,7 @@ du_H1_672 ::
   Integer -> MAlonzo.Code.Data.Nat.Base.T__'8804'__22
 du_H1_672 v0 v1
   = coe
-      MAlonzo.Code.Data.Nat.Properties.d_'60''45'trans'737'_6714
-      (addInt (coe (1 :: Integer)) (coe v1))
-      (addInt (coe (4 :: Integer)) (coe v1))
-      (coe du_hi_644 (coe v0) (coe v1))
+      MAlonzo.Code.Data.Nat.Properties.du_'60''45''8804''45'trans_3134
       (coe
          MAlonzo.Code.Once.CCC.Codegen.LabelSeg.du_sa'60'a'43'ss_174
          (coe v1))
@@ -3766,12 +3761,10 @@ du_H2_674 ::
   Integer -> MAlonzo.Code.Data.Nat.Base.T__'8804'__22
 du_H2_674 v0 v1
   = coe
-      MAlonzo.Code.Data.Nat.Properties.d_'60''45'trans'737'_6714
-      (addInt (coe (2 :: Integer)) (coe v1))
-      (addInt (coe (4 :: Integer)) (coe v1))
-      (coe du_hi_644 (coe v0) (coe v1))
-      (MAlonzo.Code.Once.CCC.Codegen.LabelSeg.d_'43'lt_198
-         (coe v1) (coe (2 :: Integer)) (coe (4 :: Integer))
+      MAlonzo.Code.Data.Nat.Properties.du_'60''45''8804''45'trans_3134
+      (coe
+         MAlonzo.Code.Once.CCC.Codegen.LabelSeg.d_'43'lt_198 (coe v1)
+         (coe (2 :: Integer)) (coe (4 :: Integer))
          (coe
             MAlonzo.Code.Data.Nat.Base.C_s'8804's_34
             (coe
@@ -3798,12 +3791,10 @@ du_H3_676 ::
   Integer -> MAlonzo.Code.Data.Nat.Base.T__'8804'__22
 du_H3_676 v0 v1
   = coe
-      MAlonzo.Code.Data.Nat.Properties.d_'60''45'trans'737'_6714
-      (addInt (coe (3 :: Integer)) (coe v1))
-      (addInt (coe (4 :: Integer)) (coe v1))
-      (coe du_hi_644 (coe v0) (coe v1))
-      (MAlonzo.Code.Once.CCC.Codegen.LabelSeg.d_'43'lt_198
-         (coe v1) (coe (3 :: Integer)) (coe (4 :: Integer))
+      MAlonzo.Code.Data.Nat.Properties.du_'60''45''8804''45'trans_3134
+      (coe
+         MAlonzo.Code.Once.CCC.Codegen.LabelSeg.d_'43'lt_198 (coe v1)
+         (coe (3 :: Integer)) (coe (4 :: Integer))
          (coe
             MAlonzo.Code.Data.Nat.Base.C_s'8804's_34
             (coe
@@ -5476,11 +5467,10 @@ d_pieces2'45'mentions_1044 ::
   MAlonzo.Code.Once.CCC.Label.T_LabelId_6 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Data.Sum.Base.T__'8846'__30
-d_pieces2'45'mentions_1044 v0 v1 v2 v3 v4 v5 v6 v7 ~v8
-  = du_pieces2'45'mentions_1044 v0 v1 v2 v3 v4 v5 v6 v7
+d_pieces2'45'mentions_1044 v0 v1 v2 ~v3 v4 v5 v6 v7 ~v8
+  = du_pieces2'45'mentions_1044 v0 v1 v2 v4 v5 v6 v7
 du_pieces2'45'mentions_1044 ::
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
-  Integer ->
   Integer ->
   Integer ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
@@ -5488,22 +5478,22 @@ du_pieces2'45'mentions_1044 ::
   Integer ->
   MAlonzo.Code.Once.CCC.Label.T_LabelId_6 ->
   MAlonzo.Code.Data.Sum.Base.T__'8846'__30
-du_pieces2'45'mentions_1044 v0 v1 v2 v3 v4 v5 v6 v7
-  = case coe v5 of
-      C_p2nil_966 v11
+du_pieces2'45'mentions_1044 v0 v1 v2 v3 v4 v5 v6
+  = case coe v4 of
+      C_p2nil_966 v10
         -> coe
              MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38
              (coe
-                MAlonzo.Code.Once.CCC.Codegen.LabelSeg.du_win'45'at_990 (coe v4)
-                (coe v11) (coe v6) (coe v7))
-      C_p2cons_982 v9 v10 v11 v12 v13 v15 v18 v19 v20 v21 v22
+                MAlonzo.Code.Once.CCC.Codegen.LabelSeg.du_win'45'at_990 (coe v3)
+                (coe v10) (coe v5) (coe v6))
+      C_p2cons_982 v8 v9 v10 v11 v12 v14 v17 v18 v19 v20 v21
         -> coe
-             du_go_1106 (coe v0) (coe v1) (coe v2) (coe v3) (coe v9) (coe v10)
-             (coe v11) (coe v12) (coe v13) (coe v15) (coe v18) (coe v20)
-             (coe v21) (coe v22) (coe v6) (coe v7)
+             du_go_1106 (coe v0) (coe v1) (coe v2) (coe v8) (coe v9) (coe v10)
+             (coe v11) (coe v14) (coe v17) (coe v19) (coe v20) (coe v21)
+             (coe v5) (coe v6)
              (coe
-                MAlonzo.Code.Once.CCC.Codegen.SlotSeg.d_split'45'pos_936 (coe v9)
-                (coe v6))
+                MAlonzo.Code.Once.CCC.Codegen.SlotSeg.d_split'45'pos_936 (coe v8)
+                (coe v5))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Codegen.LabelScope._.go
 d_go_1106 ::
@@ -5537,19 +5527,16 @@ d_go_1106 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Data.Sum.Base.T__'8846'__30 ->
   MAlonzo.Code.Data.Sum.Base.T__'8846'__30
-d_go_1106 v0 v1 v2 v3 v4 v5 v6 v7 v8 ~v9 v10 ~v11 ~v12 v13 ~v14 v15
-          v16 v17 v18 v19 ~v20 v21
-  = du_go_1106
-      v0 v1 v2 v3 v4 v5 v6 v7 v8 v10 v13 v15 v16 v17 v18 v19 v21
+d_go_1106 v0 v1 v2 ~v3 v4 v5 v6 v7 ~v8 ~v9 v10 ~v11 ~v12 v13 ~v14
+          v15 v16 v17 v18 v19 ~v20 v21
+  = du_go_1106 v0 v1 v2 v4 v5 v6 v7 v10 v13 v15 v16 v17 v18 v19 v21
 du_go_1106 ::
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
   Integer ->
   Integer ->
-  Integer ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
-  Integer ->
   Integer ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
@@ -5560,25 +5547,23 @@ du_go_1106 ::
   MAlonzo.Code.Once.CCC.Label.T_LabelId_6 ->
   MAlonzo.Code.Data.Sum.Base.T__'8846'__30 ->
   MAlonzo.Code.Data.Sum.Base.T__'8846'__30
-du_go_1106 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
-           v16
-  = case coe v16 of
-      MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 v17
+du_go_1106 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14
+  = case coe v14 of
+      MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 v15
         -> coe
              MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38
              (coe
-                MAlonzo.Code.Once.CCC.Codegen.LabelSeg.du_win'45'at_990 (coe v4)
-                (coe v9) (coe v14) (coe v15))
-      MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42 v17
-        -> case coe v17 of
-             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v18 v19
+                MAlonzo.Code.Once.CCC.Codegen.LabelSeg.du_win'45'at_990 (coe v3)
+                (coe v7) (coe v12) (coe v13))
+      MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42 v15
+        -> case coe v15 of
+             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v16 v17
                -> coe
-                    du_go2_1124 (coe v0) (coe v1) (coe v2) (coe v3) (coe v5) (coe v6)
-                    (coe v7) (coe v8) (coe v10) (coe v11) (coe v12) (coe v13) (coe v15)
-                    (coe v18)
+                    du_go2_1124 (coe v0) (coe v1) (coe v2) (coe v4) (coe v5) (coe v6)
+                    (coe v8) (coe v9) (coe v10) (coe v11) (coe v13) (coe v16)
                     (coe
-                       MAlonzo.Code.Once.CCC.Codegen.SlotSeg.d_split'45'pos_936 (coe v5)
-                       (coe v18))
+                       MAlonzo.Code.Once.CCC.Codegen.SlotSeg.d_split'45'pos_936 (coe v4)
+                       (coe v16))
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Codegen.LabelScope._._.e'
@@ -5649,17 +5634,15 @@ d_go2_1124 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Data.Sum.Base.T__'8846'__30 ->
   MAlonzo.Code.Data.Sum.Base.T__'8846'__30
-d_go2_1124 v0 v1 v2 v3 ~v4 v5 v6 v7 v8 ~v9 ~v10 ~v11 ~v12 v13 ~v14
-           v15 v16 v17 ~v18 v19 ~v20 v21 ~v22 v23
-  = du_go2_1124 v0 v1 v2 v3 v5 v6 v7 v8 v13 v15 v16 v17 v19 v21 v23
+d_go2_1124 v0 v1 v2 ~v3 ~v4 v5 v6 v7 ~v8 ~v9 ~v10 ~v11 ~v12 v13
+           ~v14 v15 v16 v17 ~v18 v19 ~v20 v21 ~v22 v23
+  = du_go2_1124 v0 v1 v2 v5 v6 v7 v13 v15 v16 v17 v19 v21 v23
 du_go2_1124 ::
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
   Integer ->
   Integer ->
-  Integer ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
-  Integer ->
   Integer ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
@@ -5669,38 +5652,38 @@ du_go2_1124 ::
   Integer ->
   MAlonzo.Code.Data.Sum.Base.T__'8846'__30 ->
   MAlonzo.Code.Data.Sum.Base.T__'8846'__30
-du_go2_1124 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14
-  = case coe v14 of
-      MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 v15
+du_go2_1124 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
+  = case coe v12 of
+      MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 v13
         -> coe
              MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42
              (coe
-                MAlonzo.Code.Data.Nat.Properties.d_'60''45'trans'737'_6714
-                (MAlonzo.Code.Once.CCC.Label.d_idx_18 (coe v12)) v7 v3
-                (MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
+                MAlonzo.Code.Data.Nat.Properties.du_'60''45''8804''45'trans_3134
+                (coe
+                   MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                    (coe
-                      MAlonzo.Code.Once.CCC.Codegen.LabelSeg.du_win'45'at_990 (coe v4)
-                      (coe v8) (coe v13) (coe v12)))
-                v10)
-      MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42 v15
-        -> case coe v15 of
-             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v16 v17
-               -> let v18
+                      MAlonzo.Code.Once.CCC.Codegen.LabelSeg.du_win'45'at_990 (coe v3)
+                      (coe v6) (coe v11) (coe v10)))
+                (coe v8))
+      MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42 v13
+        -> case coe v13 of
+             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v14 v15
+               -> let v16
                         = coe
-                            du_pieces2'45'mentions_1044 (coe v0) (coe v1) (coe v2) (coe v6)
-                            (coe v5) (coe v11) (coe v16) (coe v12) in
+                            du_pieces2'45'mentions_1044 (coe v0) (coe v1) (coe v2) (coe v4)
+                            (coe v9) (coe v14) (coe v10) in
                   coe
-                    (case coe v18 of
-                       MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 v19 -> coe v18
-                       MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42 v19
+                    (case coe v16 of
+                       MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 v17 -> coe v16
+                       MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42 v17
                          -> coe
                               MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42
                               (coe
-                                 MAlonzo.Code.Data.Nat.Properties.d_'60''45'trans'737'_6714
-                                 (MAlonzo.Code.Once.CCC.Label.d_idx_18 (coe v12)) v6 v3 v19
+                                 MAlonzo.Code.Data.Nat.Properties.du_'60''45''8804''45'trans_3134
+                                 (coe v17)
                                  (coe
                                     MAlonzo.Code.Data.Nat.Properties.du_'8804''45'trans_2908
-                                    (coe v9) (coe v10)))
+                                    (coe v7) (coe v8)))
                        _ -> MAlonzo.RTE.mazUnreachableError)
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
@@ -8919,9 +8902,7 @@ du_H0_2152 ::
   Integer -> MAlonzo.Code.Data.Nat.Base.T__'8804'__22
 du_H0_2152 v0 v1
   = coe
-      MAlonzo.Code.Data.Nat.Properties.d_'60''45'trans'737'_6714 v1
-      (addInt (coe (4 :: Integer)) (coe v1))
-      (coe du_hi_2106 (coe v0) (coe v1))
+      MAlonzo.Code.Data.Nat.Properties.du_'60''45''8804''45'trans_3134
       (coe
          MAlonzo.Code.Once.CCC.Codegen.LabelSeg.du_a'60'a'43'suc_162
          (coe v1))
@@ -8941,10 +8922,7 @@ du_H1_2154 ::
   Integer -> MAlonzo.Code.Data.Nat.Base.T__'8804'__22
 du_H1_2154 v0 v1
   = coe
-      MAlonzo.Code.Data.Nat.Properties.d_'60''45'trans'737'_6714
-      (addInt (coe (1 :: Integer)) (coe v1))
-      (addInt (coe (4 :: Integer)) (coe v1))
-      (coe du_hi_2106 (coe v0) (coe v1))
+      MAlonzo.Code.Data.Nat.Properties.du_'60''45''8804''45'trans_3134
       (coe
          MAlonzo.Code.Once.CCC.Codegen.LabelSeg.du_sa'60'a'43'ss_174
          (coe v1))
@@ -8964,12 +8942,10 @@ du_H2_2156 ::
   Integer -> MAlonzo.Code.Data.Nat.Base.T__'8804'__22
 du_H2_2156 v0 v1
   = coe
-      MAlonzo.Code.Data.Nat.Properties.d_'60''45'trans'737'_6714
-      (addInt (coe (2 :: Integer)) (coe v1))
-      (addInt (coe (4 :: Integer)) (coe v1))
-      (coe du_hi_2106 (coe v0) (coe v1))
-      (MAlonzo.Code.Once.CCC.Codegen.LabelSeg.d_'43'lt_198
-         (coe v1) (coe (2 :: Integer)) (coe (4 :: Integer))
+      MAlonzo.Code.Data.Nat.Properties.du_'60''45''8804''45'trans_3134
+      (coe
+         MAlonzo.Code.Once.CCC.Codegen.LabelSeg.d_'43'lt_198 (coe v1)
+         (coe (2 :: Integer)) (coe (4 :: Integer))
          (coe
             MAlonzo.Code.Data.Nat.Base.C_s'8804's_34
             (coe
@@ -8993,12 +8969,10 @@ du_H3_2158 ::
   Integer -> MAlonzo.Code.Data.Nat.Base.T__'8804'__22
 du_H3_2158 v0 v1
   = coe
-      MAlonzo.Code.Data.Nat.Properties.d_'60''45'trans'737'_6714
-      (addInt (coe (3 :: Integer)) (coe v1))
-      (addInt (coe (4 :: Integer)) (coe v1))
-      (coe du_hi_2106 (coe v0) (coe v1))
-      (MAlonzo.Code.Once.CCC.Codegen.LabelSeg.d_'43'lt_198
-         (coe v1) (coe (3 :: Integer)) (coe (4 :: Integer))
+      MAlonzo.Code.Data.Nat.Properties.du_'60''45''8804''45'trans_3134
+      (coe
+         MAlonzo.Code.Once.CCC.Codegen.LabelSeg.d_'43'lt_198 (coe v1)
+         (coe (3 :: Integer)) (coe (4 :: Integer))
          (coe
             MAlonzo.Code.Data.Nat.Base.C_s'8804's_34
             (coe

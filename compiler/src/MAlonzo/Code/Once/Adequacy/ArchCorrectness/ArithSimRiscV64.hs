@@ -2254,7 +2254,7 @@ d_Rf'45'init_200 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14
                  v32 v33 v34 v35 v36 v37 v38 v39 v40 v41 v42 v43 v44 v45 v46 v47 v48
                  v49 v50 v51 v52
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.ArithSimCore.du_Rf'45'init_3484
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.ArithSimCore.du_Rf'45'init_3480
       v51 v52
 -- Once.Adequacy.ArchCorrectness.ArithSimRiscV64._.Core.Rf-sim
 d_Rf'45'sim_202 ::
@@ -2414,7 +2414,7 @@ d_Rf'45'sim_202 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14
                 v32 v33 v34 v35 v36 v37 v38 v39 v40 v41 v42 v43 v44 v45 v46 v47 v48
                 v49 v50 v51 v52 v53
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.ArithSimCore.du_Rf'45'sim_3428
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.ArithSimCore.du_Rf'45'sim_3424
       v10 v20 v49 v50 v52 v53
 -- Once.Adequacy.ArchCorrectness.ArithSimRiscV64._.Core.Rf-step
 d_Rf'45'step_204 ::
@@ -2574,7 +2574,7 @@ d_Rf'45'step_204 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14
                  v32 v33 v34 v35 v36 v37 v38 v39 v40 v41 v42 v43 v44 v45 v46 v47 v48
                  v49 v50 v51 v52 v53
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.ArithSimCore.du_Rf'45'step_3400
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.ArithSimCore.du_Rf'45'step_3396
       v20 v49 v52 v53
 -- Once.Adequacy.ArchCorrectness.ArithSimRiscV64._.Core.arith-block-correct
 d_arith'45'block'45'correct_206 ::
@@ -3512,7 +3512,7 @@ d_leafWord_216 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14
                v32 v33 v34 v35 v36 v37 v38 v39 v40 v41 v42 v43 v44 v45 v46 v47 v48
                v49 v50 v51
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.ArithSimCore.du_leafWord_1316
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.ArithSimCore.du_leafWord_1312
       (coe
          MAlonzo.Code.Once.Target.Arch.d_arch'45'numerics_78
          (coe MAlonzo.Code.Once.Target.Arch.C_riscv64_12))
@@ -5640,7 +5640,7 @@ du_val'45'riscv64_316 v0 v1
         -> coe d_rd_242 (coe v1) (coe v2)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.ArchCorrectness.ArithSimRiscV64.readReg-wr-arith-other
-d_readReg'45'wr'45'arith'45'other_502 ::
+d_readReg'45'wr'45'arith'45'other_494 ::
   MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_RegFile_180 ->
   MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.T_XReg_10 ->
   MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.T_XReg_10 ->
@@ -5648,39 +5648,39 @@ d_readReg'45'wr'45'arith'45'other_502 ::
   (MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
    MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20) ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_readReg'45'wr'45'arith'45'other_502 = erased
+d_readReg'45'wr'45'arith'45'other_494 = erased
 -- Once.Adequacy.ArchCorrectness.ArithSimRiscV64.readReg-wr-arith-same
-d_readReg'45'wr'45'arith'45'same_530 ::
+d_readReg'45'wr'45'arith'45'same_522 ::
   MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_RegFile_180 ->
   MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.T_XReg_10 ->
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_readReg'45'wr'45'arith'45'same_530 = erased
+d_readReg'45'wr'45'arith'45'same_522 = erased
 -- Once.Adequacy.ArchCorrectness.ArithSimRiscV64.readReg-wr-a0-arith
-d_readReg'45'wr'45'a0'45'arith_546 ::
+d_readReg'45'wr'45'a0'45'arith_538 ::
   MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_RegFile_180 ->
   MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.T_XReg_10 ->
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_readReg'45'wr'45'a0'45'arith_546 = erased
+d_readReg'45'wr'45'a0'45'arith_538 = erased
 -- Once.Adequacy.ArchCorrectness.ArithSimRiscV64.readReg-wr-a0-same
-d_readReg'45'wr'45'a0'45'same_560 ::
+d_readReg'45'wr'45'a0'45'same_552 ::
   MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_RegFile_180 ->
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_readReg'45'wr'45'a0'45'same_560 = erased
+d_readReg'45'wr'45'a0'45'same_552 = erased
 -- Once.Adequacy.ArchCorrectness.ArithSimRiscV64.rr
-d_rr_566 ::
+d_rr_558 ::
   MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_State_414 ->
   MAlonzo.Code.Once.Target.RiscV64.PhysReg.T_Reg_8 -> Integer
-d_rr_566 v0 v1
+d_rr_558 v0 v1
   = coe
       MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_readReg_264
       (coe
          MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_regs_424 (coe v0))
       (coe v1)
 -- Once.Adequacy.ArchCorrectness.ArithSimRiscV64.mem
-d_mem_572 ::
+d_mem_564 ::
   MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_State_414 ->
   Integer -> Maybe Integer
-d_mem_572 v0 v1
+d_mem_564 v0 v1
   = coe
       MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_readMem_398
       (coe
@@ -5688,13 +5688,13 @@ d_mem_572 v0 v1
          (coe v0))
       (coe v1)
 -- Once.Adequacy.ArchCorrectness.ArithSimRiscV64.readMem-writeMem-same
-d_readMem'45'writeMem'45'same_584 ::
+d_readMem'45'writeMem'45'same_576 ::
   (Integer -> Maybe Integer) ->
   Integer ->
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_readMem'45'writeMem'45'same_584 = erased
+d_readMem'45'writeMem'45'same_576 = erased
 -- Once.Adequacy.ArchCorrectness.ArithSimRiscV64.sa-inj
-d_sa'45'inj_616 ::
+d_sa'45'inj_608 ::
   MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_State_414 ->
   MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.T_XScratch_16 ->
   MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.T_XScratch_16 ->
@@ -5702,44 +5702,44 @@ d_sa'45'inj_616 ::
    MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20) ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20
-d_sa'45'inj_616 = erased
+d_sa'45'inj_608 = erased
 -- Once.Adequacy.ArchCorrectness.ArithSimRiscV64.wr-arith-t0
-d_wr'45'arith'45't0_630 ::
+d_wr'45'arith'45't0_622 ::
   MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_RegFile_180 ->
   MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.T_XReg_10 ->
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_wr'45'arith'45't0_630 = erased
+d_wr'45'arith'45't0_622 = erased
 -- Once.Adequacy.ArchCorrectness.ArithSimRiscV64.wr-a0-t0
-d_wr'45'a0'45't0_644 ::
+d_wr'45'a0'45't0_636 ::
   MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_RegFile_180 ->
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_wr'45'a0'45't0_644 = erased
+d_wr'45'a0'45't0_636 = erased
 -- Once.Adequacy.ArchCorrectness.ArithSimRiscV64._.sa-inv
-d_sa'45'inv_662 ::
+d_sa'45'inv_654 ::
   Integer ->
   MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.T_XInstr_24 ->
   MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_State_414 ->
   MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.T_XScratch_16 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_sa'45'inv_662 = erased
+d_sa'45'inv_654 = erased
 -- Once.Adequacy.ArchCorrectness.ArithSimRiscV64._.mem-keep
-d_mem'45'keep_678 ::
+d_mem'45'keep_670 ::
   Integer ->
   MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.T_XInstr_24 ->
   MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_State_414 ->
   Integer ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_mem'45'keep_678 = erased
+d_mem'45'keep_670 = erased
 -- Once.Adequacy.ArchCorrectness.ArithSimRiscV64._.mem-spill-hit
-d_mem'45'spill'45'hit_790 ::
+d_mem'45'spill'45'hit_778 ::
   Integer ->
   MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.T_XScratch_16 ->
   MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.T_XReg_10 ->
   MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_State_414 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_mem'45'spill'45'hit_790 = erased
+d_mem'45'spill'45'hit_778 = erased
 -- Once.Adequacy.ArchCorrectness.ArithSimRiscV64._.mem-spill-miss
-d_mem'45'spill'45'miss_806 ::
+d_mem'45'spill'45'miss_794 ::
   Integer ->
   MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.T_XScratch_16 ->
   MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.T_XReg_10 ->
@@ -5748,21 +5748,21 @@ d_mem'45'spill'45'miss_806 ::
   (MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
    MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20) ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_mem'45'spill'45'miss_806 = erased
+d_mem'45'spill'45'miss_794 = erased
 -- Once.Adequacy.ArchCorrectness.ArithSimRiscV64._.V
-d_V_818 ::
+d_V_806 ::
   Integer ->
   MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.T_XInstr_24 ->
   MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_State_414 ->
   Integer
-d_V_818 ~v0 v1 v2 = du_V_818 v1 v2
-du_V_818 ::
+d_V_806 ~v0 v1 v2 = du_V_806 v1 v2
+du_V_806 ::
   MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.T_XInstr_24 ->
   MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_State_414 ->
   Integer
-du_V_818 v0 v1 = coe du_val'45'riscv64_316 (coe v0) (coe v1)
+du_V_806 v0 v1 = coe du_val'45'riscv64_316 (coe v0) (coe v1)
 -- Once.Adequacy.ArchCorrectness.ArithSimRiscV64._.rf-other
-d_rf'45'other_832 ::
+d_rf'45'other_820 ::
   Integer ->
   MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.T_XInstr_24 ->
   MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_State_414 ->
@@ -5772,25 +5772,25 @@ d_rf'45'other_832 ::
    MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
    MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20) ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_rf'45'other_832 = erased
+d_rf'45'other_820 = erased
 -- Once.Adequacy.ArchCorrectness.ArithSimRiscV64._.t0-inv
-d_t0'45'inv_1110 ::
+d_t0'45'inv_1098 ::
   Integer ->
   MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.T_XInstr_24 ->
   MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_State_414 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_t0'45'inv_1110 = erased
+d_t0'45'inv_1098 = erased
 -- Once.Adequacy.ArchCorrectness.ArithSimRiscV64._.pl-inv-ns
-d_pl'45'inv'45'ns_1286 ::
+d_pl'45'inv'45'ns_1274 ::
   Integer ->
   MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.T_XInstr_24 ->
   MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_State_414 ->
   [MAlonzo.Code.Once.Arith.Machine.Shape.T_Side_24] ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_pl'45'inv'45'ns_1286 = erased
+d_pl'45'inv'45'ns_1274 = erased
 -- Once.Adequacy.ArchCorrectness.ArithSimRiscV64._.mem-agree-heap
-d_mem'45'agree'45'heap_1306 ::
+d_mem'45'agree'45'heap_1294 ::
   Integer ->
   MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.T_XInstr_24 ->
   MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_State_414 ->
@@ -5799,19 +5799,19 @@ d_mem'45'agree'45'heap_1306 ::
   Integer ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_mem'45'agree'45'heap_1306 = erased
+d_mem'45'agree'45'heap_1294 = erased
 -- Once.Adequacy.ArchCorrectness.ArithSimRiscV64._.wf-e1
-d_wf'45'e1_1636 ::
+d_wf'45'e1_1624 ::
   Integer ->
   MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.T_XInstr_24 ->
   MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_State_414 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_wf'45'e1_1636 ~v0 ~v1 ~v2 v3 = du_wf'45'e1_1636 v3
-du_wf'45'e1_1636 ::
+d_wf'45'e1_1624 ~v0 ~v1 ~v2 v3 = du_wf'45'e1_1624 v3
+du_wf'45'e1_1624 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-du_wf'45'e1_1636 v0
+du_wf'45'e1_1624 v0
   = case coe v0 of
       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v1 v2
         -> coe
@@ -5824,23 +5824,23 @@ du_wf'45'e1_1636 v0
                      (coe v3) (coe v2 v3)))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.ArchCorrectness.ArithSimRiscV64._.pl-inv
-d_pl'45'inv_1658 ::
+d_pl'45'inv_1646 ::
   Integer ->
   MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.T_XInstr_24 ->
   MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_State_414 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   [MAlonzo.Code.Once.Arith.Machine.Shape.T_Side_24] ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_pl'45'inv_1658 = erased
+d_pl'45'inv_1646 = erased
 -- Once.Adequacy.ArchCorrectness.ArithSimRiscV64._._.R
-d_R_2108 ::
+d_R_2096 ::
   Integer ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
   MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_State_414 -> ()
-d_R_2108 = erased
+d_R_2096 = erased
 -- Once.Adequacy.ArchCorrectness.ArithSimRiscV64._._.R-init
-d_R'45'init_2110 ::
+d_R'45'init_2098 ::
   Integer ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
   AgdaAny ->
@@ -5849,23 +5849,23 @@ d_R'45'init_2110 ::
   Integer ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_R'45'init_2110 = erased
+d_R'45'init_2098 = erased
 -- Once.Adequacy.ArchCorrectness.ArithSimRiscV64._._.R-input
-d_R'45'input_2112 ::
+d_R'45'input_2100 ::
   Integer ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
   MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_State_414 -> ()
-d_R'45'input_2112 = erased
+d_R'45'input_2100 = erased
 -- Once.Adequacy.ArchCorrectness.ArithSimRiscV64._._.R-scratch
-d_R'45'scratch_2114 ::
+d_R'45'scratch_2102 ::
   Integer ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
   MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_State_414 -> ()
-d_R'45'scratch_2114 = erased
+d_R'45'scratch_2102 = erased
 -- Once.Adequacy.ArchCorrectness.ArithSimRiscV64._._.R-scratch-init
-d_R'45'scratch'45'init_2116 ::
+d_R'45'scratch'45'init_2104 ::
   Integer ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
   AgdaAny ->
@@ -5874,9 +5874,9 @@ d_R'45'scratch'45'init_2116 ::
   Integer ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_R'45'scratch'45'init_2116 = erased
+d_R'45'scratch'45'init_2104 = erased
 -- Once.Adequacy.ArchCorrectness.ArithSimRiscV64._._.R-step-arg
-d_R'45'step'45'arg_2118 ::
+d_R'45'step'45'arg_2106 ::
   Integer ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
   MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.T_XReg_10 ->
@@ -5894,9 +5894,9 @@ d_R'45'step'45'arg_2118 ::
   Integer ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_R'45'step'45'arg_2118 = erased
+d_R'45'step'45'arg_2106 = erased
 -- Once.Adequacy.ArchCorrectness.ArithSimRiscV64._._.R-step-farg
-d_R'45'step'45'farg_2120 ::
+d_R'45'step'45'farg_2108 ::
   Integer ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
   MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.T_XReg_10 ->
@@ -5914,9 +5914,9 @@ d_R'45'step'45'farg_2120 ::
   Integer ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_R'45'step'45'farg_2120 = erased
+d_R'45'step'45'farg_2108 = erased
 -- Once.Adequacy.ArchCorrectness.ArithSimRiscV64._._.R-step-full
-d_R'45'step'45'full_2122 ::
+d_R'45'step'45'full_2110 ::
   Integer ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
   MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.T_XInstr_24 ->
@@ -5928,9 +5928,9 @@ d_R'45'step'45'full_2122 ::
   Integer ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_R'45'step'45'full_2122 = erased
+d_R'45'step'45'full_2110 = erased
 -- Once.Adequacy.ArchCorrectness.ArithSimRiscV64._._.R-step-reload
-d_R'45'step'45'reload_2124 ::
+d_R'45'step'45'reload_2112 ::
   Integer ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
   MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.T_XReg_10 ->
@@ -5949,16 +5949,16 @@ d_R'45'step'45'reload_2124 ::
   Integer ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_R'45'step'45'reload_2124 = erased
+d_R'45'step'45'reload_2112 = erased
 -- Once.Adequacy.ArchCorrectness.ArithSimRiscV64._._.Rf
-d_Rf_2126 ::
+d_Rf_2114 ::
   Integer ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
   MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_State_414 -> ()
-d_Rf_2126 = erased
+d_Rf_2114 = erased
 -- Once.Adequacy.ArchCorrectness.ArithSimRiscV64._._.Rf-init
-d_Rf'45'init_2128 ::
+d_Rf'45'init_2116 ::
   Integer ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
   AgdaAny ->
@@ -5968,8 +5968,8 @@ d_Rf'45'init_2128 ::
    MAlonzo.Code.Once.Arith.Machine.Shape.T_Path_68 ->
    MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12) ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_Rf'45'init_2128 ~v0 = du_Rf'45'init_2128
-du_Rf'45'init_2128 ::
+d_Rf'45'init_2116 ~v0 = du_Rf'45'init_2116
+du_Rf'45'init_2116 ::
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
   AgdaAny ->
   MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_State_414 ->
@@ -5978,12 +5978,12 @@ du_Rf'45'init_2128 ::
    MAlonzo.Code.Once.Arith.Machine.Shape.T_Path_68 ->
    MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12) ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-du_Rf'45'init_2128 v0 v1 v2 v3 v4
+du_Rf'45'init_2116 v0 v1 v2 v3 v4
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.ArithSimCore.du_Rf'45'init_3484
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.ArithSimCore.du_Rf'45'init_3480
       v3 v4
 -- Once.Adequacy.ArchCorrectness.ArithSimRiscV64._._.Rf-sim
-d_Rf'45'sim_2130 ::
+d_Rf'45'sim_2118 ::
   Integer ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
   [MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.T_XInstr_24] ->
@@ -5992,8 +5992,8 @@ d_Rf'45'sim_2130 ::
   MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_State_414 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_Rf'45'sim_2130 ~v0 = du_Rf'45'sim_2130
-du_Rf'45'sim_2130 ::
+d_Rf'45'sim_2118 ~v0 = du_Rf'45'sim_2118
+du_Rf'45'sim_2118 ::
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
   [MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.T_XInstr_24] ->
   AgdaAny ->
@@ -6001,15 +6001,15 @@ du_Rf'45'sim_2130 ::
   MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_State_414 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-du_Rf'45'sim_2130 v0 v1 v2 v3 v4 v5
+du_Rf'45'sim_2118 v0 v1 v2 v3 v4 v5
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.ArithSimCore.du_Rf'45'sim_3428
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.ArithSimCore.du_Rf'45'sim_3424
       (coe
          MAlonzo.Code.Once.Arith.Backend.RiscV64.ExecArith.du_exec1_68
          (\ v6 v7 v8 -> coe du_val'45'riscv64_316 v6 v7))
-      (\ v6 v7 v8 -> coe du_wf'45'e1_1636 v8) v1 v2 v4 v5
+      (\ v6 v7 v8 -> coe du_wf'45'e1_1624 v8) v1 v2 v4 v5
 -- Once.Adequacy.ArchCorrectness.ArithSimRiscV64._._.Rf-step
-d_Rf'45'step_2132 ::
+d_Rf'45'step_2120 ::
   Integer ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
   MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.T_XInstr_24 ->
@@ -6018,8 +6018,8 @@ d_Rf'45'step_2132 ::
   MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_State_414 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_Rf'45'step_2132 ~v0 = du_Rf'45'step_2132
-du_Rf'45'step_2132 ::
+d_Rf'45'step_2120 ~v0 = du_Rf'45'step_2120
+du_Rf'45'step_2120 ::
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
   MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.T_XInstr_24 ->
   AgdaAny ->
@@ -6027,12 +6027,12 @@ du_Rf'45'step_2132 ::
   MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_State_414 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-du_Rf'45'step_2132 v0 v1 v2 v3 v4 v5
+du_Rf'45'step_2120 v0 v1 v2 v3 v4 v5
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.ArithSimCore.du_Rf'45'step_3400
-      (\ v6 v7 v8 -> coe du_wf'45'e1_1636 v8) v1 v4 v5
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.ArithSimCore.du_Rf'45'step_3396
+      (\ v6 v7 v8 -> coe du_wf'45'e1_1624 v8) v1 v4 v5
 -- Once.Adequacy.ArchCorrectness.ArithSimRiscV64._._.arith-block-correct
-d_arith'45'block'45'correct_2134 ::
+d_arith'45'block'45'correct_2122 ::
   Integer ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
@@ -6043,9 +6043,9 @@ d_arith'45'block'45'correct_2134 ::
    MAlonzo.Code.Once.Arith.Machine.Shape.T_Path_68 ->
    MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12) ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_arith'45'block'45'correct_2134 = erased
+d_arith'45'block'45'correct_2122 = erased
 -- Once.Adequacy.ArchCorrectness.ArithSimRiscV64._._.bin-value
-d_bin'45'value_2136 ::
+d_bin'45'value_2124 ::
   Integer ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
   (Integer -> Integer -> Integer) ->
@@ -6060,17 +6060,17 @@ d_bin'45'value_2136 ::
    MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12) ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_bin'45'value_2136 = erased
+d_bin'45'value_2124 = erased
 -- Once.Adequacy.ArchCorrectness.ArithSimRiscV64._._.eb-++
-d_eb'45''43''43'_2138 ::
+d_eb'45''43''43'_2126 ::
   Integer ->
   [MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.T_XInstr_24] ->
   [MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.T_XInstr_24] ->
   MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_State_414 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_eb'45''43''43'_2138 = erased
+d_eb'45''43''43'_2126 = erased
 -- Once.Adequacy.ArchCorrectness.ArithSimRiscV64._._.frame-hyp
-d_frame'45'hyp_2140 ::
+d_frame'45'hyp_2128 ::
   Integer ->
   MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.T_XInstr_24 ->
   MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.T_XReg_10 ->
@@ -6082,9 +6082,9 @@ d_frame'45'hyp_2140 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20
-d_frame'45'hyp_2140 = erased
+d_frame'45'hyp_2128 = erased
 -- Once.Adequacy.ArchCorrectness.ArithSimRiscV64._._.input-frame
-d_input'45'frame_2142 ::
+d_input'45'frame_2130 ::
   Integer ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
   MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.T_XInstr_24 ->
@@ -6097,43 +6097,43 @@ d_input'45'frame_2142 ::
   MAlonzo.Code.Once.Arith.Type.T_NumType_6 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_Path_68 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_input'45'frame_2142 = erased
+d_input'45'frame_2130 = erased
 -- Once.Adequacy.ArchCorrectness.ArithSimRiscV64._._.leafWord
-d_leafWord_2144 ::
+d_leafWord_2132 ::
   Integer ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
   MAlonzo.Code.Once.Arith.Type.T_NumType_6 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_Path_68 ->
   AgdaAny -> Integer
-d_leafWord_2144 ~v0 = du_leafWord_2144
-du_leafWord_2144 ::
+d_leafWord_2132 ~v0 = du_leafWord_2132
+du_leafWord_2132 ::
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
   MAlonzo.Code.Once.Arith.Type.T_NumType_6 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_Path_68 ->
   AgdaAny -> Integer
-du_leafWord_2144 v0 v1 v2 v3
+du_leafWord_2132 v0 v1 v2 v3
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.ArithSimCore.du_leafWord_1316
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.ArithSimCore.du_leafWord_1312
       (coe
          MAlonzo.Code.Once.Target.Arch.d_arch'45'numerics_78
          (coe MAlonzo.Code.Once.Target.Arch.C_riscv64_12))
       v0 v2 v3
 -- Once.Adequacy.ArchCorrectness.ArithSimRiscV64._._.leafWord-flt
-d_leafWord'45'flt_2146 ::
+d_leafWord'45'flt_2134 ::
   Integer ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_Path_68 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_leafWord'45'flt_2146 = erased
+d_leafWord'45'flt_2134 = erased
 -- Once.Adequacy.ArchCorrectness.ArithSimRiscV64._._.leafWord-int
-d_leafWord'45'int_2148 ::
+d_leafWord'45'int_2136 ::
   Integer ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_Path_68 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_leafWord'45'int_2148 = erased
+d_leafWord'45'int_2136 = erased
 -- Once.Adequacy.ArchCorrectness.ArithSimRiscV64._._.no-tgt-hyp
-d_no'45'tgt'45'hyp_2150 ::
+d_no'45'tgt'45'hyp_2138 ::
   Integer ->
   MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.T_XInstr_24 ->
   MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.T_XReg_10 ->
@@ -6142,9 +6142,9 @@ d_no'45'tgt'45'hyp_2150 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20
-d_no'45'tgt'45'hyp_2150 = erased
+d_no'45'tgt'45'hyp_2138 = erased
 -- Once.Adequacy.ArchCorrectness.ArithSimRiscV64._._.nonspill-sf
-d_nonspill'45'sf_2152 ::
+d_nonspill'45'sf_2140 ::
   Integer ->
   MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.T_XInstr_24 ->
   AgdaAny ->
@@ -6159,16 +6159,16 @@ d_nonspill'45'sf_2152 ::
   Integer ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_nonspill'45'sf_2152 = erased
+d_nonspill'45'sf_2140 = erased
 -- Once.Adequacy.ArchCorrectness.ArithSimRiscV64._._.n≢j
-d_n'8802'j_2154 ::
+d_n'8802'j_2142 ::
   Integer ->
   Integer ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20
-d_n'8802'j_2154 = erased
+d_n'8802'j_2142 = erased
 -- Once.Adequacy.ArchCorrectness.ArithSimRiscV64._._.output-extract
-d_output'45'extract_2156 ::
+d_output'45'extract_2144 ::
   Integer ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
@@ -6179,9 +6179,9 @@ d_output'45'extract_2156 ::
    MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
    MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12) ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_output'45'extract_2156 = erased
+d_output'45'extract_2144 = erased
 -- Once.Adequacy.ArchCorrectness.ArithSimRiscV64._._.result-correct
-d_result'45'correct_2158 ::
+d_result'45'correct_2146 ::
   Integer ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
   MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.T_XReg_10 ->
@@ -6194,18 +6194,18 @@ d_result'45'correct_2158 ::
    MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12) ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_result'45'correct_2158 = erased
+d_result'45'correct_2146 = erased
 -- Once.Adequacy.ArchCorrectness.ArithSimRiscV64._._.sa-slot-eq
-d_sa'45'slot'45'eq_2160 ::
+d_sa'45'slot'45'eq_2148 ::
   Integer ->
   MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_State_414 ->
   MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.T_XScratch_16 ->
   MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.T_XScratch_16 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_sa'45'slot'45'eq_2160 = erased
+d_sa'45'slot'45'eq_2148 = erased
 -- Once.Adequacy.ArchCorrectness.ArithSimRiscV64._._.scratch-frame
-d_scratch'45'frame_2162 ::
+d_scratch'45'frame_2150 ::
   Integer ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
   MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.T_XInstr_24 ->
@@ -6223,9 +6223,9 @@ d_scratch'45'frame_2162 ::
   Integer ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_scratch'45'frame_2162 = erased
+d_scratch'45'frame_2150 = erased
 -- Once.Adequacy.ArchCorrectness.ArithSimRiscV64._._.step-other
-d_step'45'other_2164 ::
+d_step'45'other_2152 ::
   Integer ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
   Maybe Integer ->
@@ -6244,9 +6244,9 @@ d_step'45'other_2164 ::
    MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20) ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_step'45'other_2164 = erased
+d_step'45'other_2152 = erased
 -- Once.Adequacy.ArchCorrectness.ArithSimRiscV64._._.un-value
-d_un'45'value_2166 ::
+d_un'45'value_2154 ::
   Integer ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
   (Integer -> Integer) ->
@@ -6260,12 +6260,12 @@ d_un'45'value_2166 ::
    MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12) ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_un'45'value_2166 = erased
+d_un'45'value_2154 = erased
 -- Once.Adequacy.ArchCorrectness.ArithSimRiscV64._._.xreg-idx-inj
-d_xreg'45'idx'45'inj_2168 ::
+d_xreg'45'idx'45'inj_2156 ::
   Integer ->
   MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.T_XReg_10 ->
   MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.T_XReg_10 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_xreg'45'idx'45'inj_2168 = erased
+d_xreg'45'idx'45'inj_2156 = erased

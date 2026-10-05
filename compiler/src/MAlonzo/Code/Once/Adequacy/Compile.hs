@@ -84,7 +84,7 @@ d_compile'45'asm_6 v0 v1
                                    (MAlonzo.Code.Once.Denotation.Behavior.d_srcText_204 (coe v1)))
                                 (coe (0 :: Integer)))
                              (coe
-                                MAlonzo.Code.Once.Parser.Core.d_skipNewlines_278
+                                MAlonzo.Code.Once.Parser.Core.d_skipNewlines_282
                                 (coe
                                    MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_640
                                    (coe
@@ -130,7 +130,7 @@ d_compile'45'asm_6 v0 v1
                                          (coe v1)))
                                    (coe (0 :: Integer)))
                                 (coe
-                                   MAlonzo.Code.Once.Parser.Core.d_skipNewlines_278
+                                   MAlonzo.Code.Once.Parser.Core.d_skipNewlines_282
                                    (coe
                                       MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_640
                                       (coe
@@ -1705,7 +1705,7 @@ du_sound_1506 v0 v1
                                          (coe v1)))
                                    (coe (0 :: Integer)))
                                 (coe
-                                   MAlonzo.Code.Once.Parser.Core.d_skipNewlines_278
+                                   MAlonzo.Code.Once.Parser.Core.d_skipNewlines_282
                                    (coe
                                       MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_640
                                       (coe
@@ -1752,7 +1752,7 @@ du_sound_1506 v0 v1
                                             (coe v1)))
                                       (coe (0 :: Integer)))
                                    (coe
-                                      MAlonzo.Code.Once.Parser.Core.d_skipNewlines_278
+                                      MAlonzo.Code.Once.Parser.Core.d_skipNewlines_282
                                       (coe
                                          MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_640
                                          (coe
@@ -1812,7 +1812,7 @@ du_sound_1506 v0 v1
                                                               (coe v1)))
                                                         (coe (0 :: Integer)))
                                                      (coe
-                                                        MAlonzo.Code.Once.Parser.Core.d_skipNewlines_278
+                                                        MAlonzo.Code.Once.Parser.Core.d_skipNewlines_282
                                                         (coe
                                                            MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_640
                                                            (coe
@@ -1859,7 +1859,7 @@ du_sound_1506 v0 v1
                                                                  (coe v1)))
                                                            (coe (0 :: Integer)))
                                                         (coe
-                                                           MAlonzo.Code.Once.Parser.Core.d_skipNewlines_278
+                                                           MAlonzo.Code.Once.Parser.Core.d_skipNewlines_282
                                                            (coe
                                                               MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_640
                                                               (coe
@@ -1942,7 +1942,7 @@ du_sound_1506 v0 v1
                                                                         (coe v1)))
                                                                   (coe (0 :: Integer)))
                                                                (coe
-                                                                  MAlonzo.Code.Once.Parser.Core.d_skipNewlines_278
+                                                                  MAlonzo.Code.Once.Parser.Core.d_skipNewlines_282
                                                                   (coe
                                                                      MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_640
                                                                      (coe
@@ -1989,7 +1989,7 @@ du_sound_1506 v0 v1
                                                                            (coe v1)))
                                                                      (coe (0 :: Integer)))
                                                                   (coe
-                                                                     MAlonzo.Code.Once.Parser.Core.d_skipNewlines_278
+                                                                     MAlonzo.Code.Once.Parser.Core.d_skipNewlines_282
                                                                      (coe
                                                                         MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_640
                                                                         (coe

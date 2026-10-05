@@ -1368,7 +1368,7 @@ du_fns'45'slot'45'stable_2988 v0 v1 v2
              (coe
                 MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
                 (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
-                (MAlonzo.Code.Once.CCC.Codegen.CataIRSlotStable.d_ir'45'to'45'trace'45'lab'45'slot'45'stable_950
+                (MAlonzo.Code.Once.CCC.Codegen.CataIRSlotStable.d_ir'45'to'45'trace'45'lab'45'slot'45'stable_910
                    (coe MAlonzo.Code.Once.Denotation.Program.d_fname_16 (coe v3))
                    (coe v0)
                    (coe MAlonzo.Code.Once.Denotation.Program.d_fdom_18 (coe v3))
@@ -1420,7 +1420,7 @@ du_image'45'slot'45'stable_3000 v0 v1 v2 v3
                (coe MAlonzo.Code.Once.IRTy.C_Unit_16)
                (coe MAlonzo.Code.Once.IRTy.C_Unit_16) v3))
          (coe
-            MAlonzo.Code.Once.CCC.Codegen.CataIRSlotStable.du_ir'45'to'45'trace'45'top'45'slot'45'stable_964
+            MAlonzo.Code.Once.CCC.Codegen.CataIRSlotStable.du_ir'45'to'45'trace'45'top'45'slot'45'stable_924
             (coe v0) (coe v2) (coe MAlonzo.Code.Once.IRTy.C_Unit_16)
             (coe MAlonzo.Code.Once.IRTy.C_Unit_16) (coe v3))
          (coe

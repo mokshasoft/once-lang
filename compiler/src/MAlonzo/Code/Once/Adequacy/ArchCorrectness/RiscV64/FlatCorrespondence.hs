@@ -1495,7 +1495,7 @@ du_ret'45'write'45'in'45'frame_264 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
       MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.du_ret'45'write'45'in'45'frame_5182
       (coe v0)
       (coe MAlonzo.Code.Once.CCC.Target.RiscV64.Syntax.d_slot'45'size_70)
-      v1 v6 v8 v11 v12 v13 v14 v15 v16 v17 v18
+      v1 v6 v11 v12 v13 v14 v15 v16 v17 v18
 -- Once.Adequacy.ArchCorrectness.RiscV64.FlatCorrespondence._.rm-at-addr
 d_rm'45'at'45'addr_266 ::
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_SetsRoleMem_1396 ->

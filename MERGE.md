@@ -278,6 +278,23 @@ universe checking beyond `scripts/pragma-gate.baseline`.
   baseline file. They are implementation-side totality gaps, not Spec
   holes, but they block `--safe`.
 
+## 4d. Warnings are errors (plan 0.109)
+
+`formal/Once.agda-lib` carries `-W error`: every Agda warning fails the build, the
+extraction included (`make malonzo` passes `--no-main`, since `Once.Compiler` is a
+library). A warning has repeatedly been the only signal of a real defect — a
+constructor captured as a pattern variable (`UnreachableClauses`), a `rewrite`
+that fires nothing (`RewritesNothing`), a moved name in a `using` list
+(`ModuleDoesntExport`) — so none may be silenced to get green:
+
+- **Fix the cause.** A catch-all that cannot be a definitional equation is marked
+  `{-# CATCHALL #-}` only when it IS an intended fallback; an unreachable clause is
+  read before it is deleted (it may be a captured constructor).
+- **Per-module options need a reason** in a comment beside them (e.g.
+  `--inversion-max-depth` for a long concrete trace).
+- Red islands outside the apex/compiler closure are not exempt: they stay red
+  until fixed, as before.
+
 ## 5. Merge
 
 - Fast-forward or `--no-ff` per repo convention; do not squash away the

@@ -5201,7 +5201,7 @@ du_ret'45'write'45'in'45'frame_628 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                                    v10 v11 v12 v13 v14 v15 v16 v17 v18 v19
   = coe
       MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.du_ret'45'write'45'in'45'frame_5182
-      (coe v0) (coe v1) v2 v7 v9 v12 v13 v14 v15 v16 v17 v18 v19
+      (coe v0) (coe v1) v2 v7 v12 v13 v14 v15 v16 v17 v18 v19
 -- Once.Adequacy.ArchCorrectness.FlatCore.EventDispatch._.CFC.rm-at-addr
 d_rm'45'at'45'addr_630 ::
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_SetsRoleMem_1396 ->

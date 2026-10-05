@@ -1192,7 +1192,7 @@ du_rp'45'case_682 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10
                       -> coe
                            du_as'45'case_628
                            (coe
-                              MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV_6172
+                              MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV_6160
                               (coe
                                  MAlonzo.Code.Once.TypeCheck.Classify.d_ctxWithImportsAndPolys_412
                                  (coe v0 v4) (coe v15))
@@ -2234,7 +2234,7 @@ du_SpliceOK'45'mono_1690 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
          du_spliceWith_48 (coe v7) (coe v1) (coe v10) (coe v11) (coe v2)
          (coe v3) (coe v1 v2) (coe v6)
          (coe
-            MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV_6172
+            MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV_6160
             (coe
                MAlonzo.Code.Once.TypeCheck.Classify.d_ctxWithImportsAndPolys_412
                (coe v1 v2) (coe v7))
@@ -2643,7 +2643,7 @@ du_D'8242'_2008 v0 v1 v2
   = coe
       MAlonzo.Code.Once.Adequacy.TelePosition.du_sound'45'of_320
       (coe
-         MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV_6172
+         MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV_6160
          (coe
             MAlonzo.Code.Once.TypeCheck.Classify.d_ctxWithImportsAndPolys_412
             (coe MAlonzo.Code.Once.Compile.d_cimps_382 (coe v0))
@@ -3028,7 +3028,7 @@ du_cr_2176 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_cr_2176 v0 v1 v2
   = coe
-      MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV_6172
+      MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV_6160
       (coe
          MAlonzo.Code.Once.TypeCheck.Classify.d_ctxWithImportsAndPolys_412
          (coe du_imps_2134 (coe v0)) (coe du_polys_2132 (coe v0)))

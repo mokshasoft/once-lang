@@ -456,31 +456,32 @@ d_check_236 v0 v1
 d_anyWord_248 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_anyWord_248
-  = coe
-      du_satisfy_128
-      (coe
-         (\ v0 ->
-            let v1 = coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 in
-            coe
-              (case coe v0 of
-                 MAlonzo.Code.Once.Parser.Token.C_TWord_8 v2
-                   -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe v2)
-                 _ -> coe v1)))
+d_anyWord_248 = coe du_satisfy_128 (coe d_word'63'_254)
+-- Once.Parser.Core._.word?
+d_word'63'_254 ::
+  MAlonzo.Code.Once.Parser.Token.T_Token_6 ->
+  Maybe MAlonzo.Code.Agda.Builtin.String.T_String_6
+d_word'63'_254 v0
+  = let v1 = coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 in
+    coe
+      (case coe v0 of
+         MAlonzo.Code.Once.Parser.Token.C_TWord_8 v2
+           -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe v2)
+         _ -> coe v1)
 -- Once.Parser.Core.optional
-d_optional_256 ::
+d_optional_260 ::
   () ->
   ([MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
    Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14) ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_optional_256 ~v0 v1 v2 = du_optional_256 v1 v2
-du_optional_256 ::
+d_optional_260 ~v0 v1 v2 = du_optional_260 v1 v2
+du_optional_260 ::
   ([MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
    Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14) ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-du_optional_256 v0 v1
+du_optional_260 v0 v1
   = let v2 = coe v0 v1 in
     coe
       (case coe v2 of
@@ -499,10 +500,10 @@ du_optional_256 v0 v1
                 (coe MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v2) (coe v1))
          _ -> MAlonzo.RTE.mazUnreachableError)
 -- Once.Parser.Core.skipNewlines
-d_skipNewlines_278 ::
+d_skipNewlines_282 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_skipNewlines_278 v0
+d_skipNewlines_282 v0
   = case coe v0 of
       []
         -> coe
@@ -518,7 +519,7 @@ d_skipNewlines_278 v0
            coe
              (case coe v1 of
                 MAlonzo.Code.Once.Parser.Token.C_TNewline_74
-                  -> let v4 = d_skipNewlines_278 (coe v2) in
+                  -> let v4 = d_skipNewlines_282 (coe v2) in
                      coe
                        (case coe v4 of
                           MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v5

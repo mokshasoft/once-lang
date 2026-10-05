@@ -426,7 +426,7 @@ du_skipNewlines'45''8804'_176 v0
                     (coe MAlonzo.Code.Data.List.Base.du_length_268 v0)
              MAlonzo.Code.Once.Parser.Token.C_TNewline_74
                -> let v3
-                        = MAlonzo.Code.Once.Parser.Core.d_skipNewlines_278 (coe v2) in
+                        = MAlonzo.Code.Once.Parser.Core.d_skipNewlines_282 (coe v2) in
                   coe
                     (let v4
                            = \ v4 v5 v6 -> coe du_skipNewlines'45''8804'_176 (coe v2) in
@@ -570,7 +570,7 @@ du_parseDeclsWF_316 ::
 du_parseDeclsWF_316 v0
   = coe
       du_pdwf'45'sk_308 (coe v0)
-      (coe MAlonzo.Code.Once.Parser.Core.d_skipNewlines_278 (coe v0))
+      (coe MAlonzo.Code.Once.Parser.Core.d_skipNewlines_282 (coe v0))
       (\ v1 v2 v3 -> coe du_skipNewlines'45''8804'_176 (coe v0))
 -- Once.Parser.Module.parseDecls
 d_parseDecls_362 ::
