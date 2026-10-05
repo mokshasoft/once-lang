@@ -41,15 +41,18 @@
 module DirectedHoTT.Algorithm.NbE where
 open import Agda.Builtin.Nat using ( zero; suc; _==_ ) renaming ( Nat to ℕ )
 open import Agda.Builtin.Bool using ( Bool; true; false )
+open import Agda.Builtin.Maybe using ( Maybe; just; nothing )
 
 _∧_ : Bool → Bool → Bool
 true  ∧ b = b
 false ∧ b = false
 open import DirectedHoTT.Spec.Syntax
+open import DirectedHoTT.Spec.Variance using ( pwBody; pwShift )
+open import DirectedHoTT.Spec.Typing using ( single )
 
 private
   variable
-    Γ : Cx
+    Γ Δ : Cx
 
 ------------------------------------------------------------------------
 -- 1. Values, closures, environments.
@@ -59,6 +62,7 @@ data Val : Set
 data Clo : Set
 data Clo₂ : Set
 data Env : Cx → Set
+data PwSpine : Val → Set
 
 data Env where
   []  : Env ε
@@ -69,9 +73,16 @@ data Clo where
   clo      : Env Γ → RTm (Γ ∙) → Clo
   -- the defunctionalised binders of the rules' right-hand sides
   cloK     : Val → Clo                   -- x ↦ v            (dpay-ρ: a weakened term)
-  cloHrefl : Val → Val → Clo             -- x ↦ hrefl (pwBody C)[x] (s x)            (hrefl-pw)
+  -- hrefl-pw: the code C with its pw-SPINE (forced, so its reading is
+  --   pw-shaped: the rule's side condition `pw? C`)
+  cloHrefl : (C : Val) → PwSpine C → Val → Clo      -- x ↦ hrefl (pwBody C)[x] (s x)
   cloDpay  : Val → Val → Val → Clo       -- x ↦ dpay I D (f x)                       (dpay-σ)
-  cloTrPw  : Clo → Clo → Val → Clo       -- y ↦ tr (z ↦ ⌜Hom⌝ ⋯) (f y) (e y)         (tr-pw)
+  -- tr-pw: the fuel k₀ and level m its motive was inspected at, the
+  --   inspection's pw-normal ambient c (with its spine) and endpoint a, the
+  --   motive d, the body f, the point e.  That (c, a) IS `trPwView k₀ m d`'s
+  --   result is an invariant of the values the evaluator builds
+  --   (`Algorithm/NbERead.Sc`), not a recomputation.
+  cloTrPw  : ℕ → ℕ → (c : Val) → PwSpine c → Val → Clo → Clo → Val → Clo
   cloHomTo : Val → Val → Clo             -- z ↦ ⌜Hom⌝ C A z                          (tr-pw's motive)
 
 -- a body under TWO binders (natrec's step: pred, rec; psplit: x, y)
@@ -115,6 +126,16 @@ data Val where
   v⌜IMu⌝ : Val → Val → Val → Val
   v⌜Fin⌝ : Val → Val
   vref   : ℕ → RTm ε → Val
+
+-- tr-pw's inspection, when its guard holds: the pw-normal ambient (with
+-- its spine) and the endpoint of the motive at its bound level
+data TrPwV : Set where
+  trpw : (c : Val) → PwSpine c → Val → TrPwV
+
+-- ★ a pw-able code's SPINE, forced: ⌜Π⌝, or ⌜Hom⌝ over a spine
+data PwSpine where
+  spΠ   : (c : Val) (d : Clo) → PwSpine (v⌜Π⌝ c d)
+  spHom : {C : Val} → PwSpine C → (a b : Val) → PwSpine (v⌜Hom⌝ C a b)
 
 lookup : Env Γ → Var Γ → Val
 lookup (ρ , v) vz     = v
@@ -257,6 +278,18 @@ isLvl : ℕ → {v : Val} → VarV v → Bool
 isLvl n (isVar l) = l == n
 isLvl n (notVar _) = false
 
+-- ★ is this (forced) code pw-shaped all along its spine?  Structural: the
+--   evaluator forces the spine first (`pwForce`), so a `ref` left unforced
+--   means "not seen to be pw-able", never a wrong "yes".
+pwSpine? : (v : Val) → Maybe (PwSpine v)
+pwSpine? (v⌜Π⌝ c d)     = just (spΠ c d)
+pwSpine? (v⌜Hom⌝ C a b) = homSp (pwSpine? C)
+  where
+  homSp : Maybe (PwSpine C) → Maybe (PwSpine (v⌜Hom⌝ C a b))
+  homSp (just sp) = just (spHom sp a b)
+  homSp nothing   = nothing
+pwSpine? v              = nothing
+
 ------------------------------------------------------------------------
 -- The evaluator's signatures (one mutual block).
 ------------------------------------------------------------------------
@@ -266,7 +299,13 @@ force : ℕ → Val → Val
 forceR : ℕ → {v : Val} → RefV v → Val
 inst  : ℕ → ℕ → Clo → Val → Val
 inst₂ : ℕ → ℕ → Clo₂ → Val → Val → Val
-trPwI : ℕ → ℕ → Clo → Clo → Val → Val → {h : Val} → CodeV h → Val
+trPwView : ℕ → ℕ → Clo → Maybe TrPwV
+tpvH  : ℕ → ℕ → {h : Val} → HomV h → Maybe TrPwV
+tpvL  : ℕ → Val → Val → Bool → Maybe TrPwV
+tpvS  : Val → (c : Val) → Maybe (PwSpine c) → Maybe TrPwV
+trPwI : ℕ → ℕ → Clo → Clo → Clo → Val → Val → {h : Val} → HomV h → Val
+trPwK : ℕ → ℕ → Clo → Clo → Val → Val → Val → Val → Val
+trPwS : ℕ → ℕ → Clo → Clo → Val → Val → Val → {c : Val} → Maybe (PwSpine c) → Val
 
 vApp    : ℕ → ℕ → Val → Val → Val
 appF    : ℕ → ℕ → {f : Val} → LamV f → Val → Val
@@ -282,8 +321,8 @@ vOrdtr  : ℕ → ℕ → Val → Val → Val → Val → Val → Val
 ordA    : ℕ → ℕ → {a : Val} → NatV a → Val → Val → Val → Val → Val
 ordB    : ℕ → ℕ → Val → {t u : Val} → NatV t → NatV u → Val → Val → Val
 vHrefl  : ℕ → ℕ → Val → Val → Val
-hreflH  : ℕ → ℕ → Val → Val → Val
-hreflB  : ℕ → ℕ → Bool → Val → Val → Val
+hreflP  : ℕ → ℕ → Val → Val → Val
+hreflS  : ℕ → ℕ → (C : Val) → Maybe (PwSpine C) → Val → Val
 hreflC  : ℕ → ℕ → {C : Val} → CodeV C → Val → Val
 hreflNat : ℕ → ℕ → Val → Val
 hreflN  : ℕ → ℕ → {s : Val} → NatV s → Val
@@ -291,7 +330,7 @@ vTr     : ℕ → ℕ → Clo → Val → Val → Val
 trG     : ℕ → ℕ → Clo → Val → Val → Val → Val
 trF     : ℕ → ℕ → Clo → {h : Val} → HomV h → {p : Val} → HreflV p → LamV p → VarV h → Val → Val
 trJB    : Bool → Clo → Val → Val → Val
-trPwB   : Bool → Clo → Clo → Val → Val
+trPwC   : ℕ → ℕ → Clo → Clo → Val → Maybe TrPwV → Val
 trTautB : ℕ → ℕ → Bool → Clo → Clo → Val → Val
 trJ     : ℕ → {C : Val} → CodeV C → Bool
 vAp     : ℕ → ℕ → Val → Clo → Val → Val
@@ -305,10 +344,9 @@ vDpay   : ℕ → Val → Val → Val → Val
 dpayF   : ℕ → Val → Val → {C : Val} → DescV C → Val
 vDih    : ℕ → ℕ → Val → Val → Val → Val → Val
 dihF    : ℕ → ℕ → Val → Val → {C : Val} → DescV C → Val → Val
-pwAt    : ℕ → ℕ → Val → Val → Val
-pwAtF   : ℕ → ℕ → {C : Val} → CodeV C → Val → Val
-pwV     : ℕ → Val → Bool
-pwF     : ℕ → {C : Val} → CodeV C → Bool
+pwAtS   : ℕ → ℕ → {C : Val} → PwSpine C → Val → Val
+pwForce : ℕ → Val → Val
+pwForceH : ℕ → {C : Val} → HomV C → Val
 -- `stkA?`/`stkC?` agree except at ⌜Nat⌝ (and recurse through ⌜Hom⌝ into
 -- `stkA?` both); `nat` says what ⌜Nat⌝ answers.
 stkV    : Bool → ℕ → Val → Bool
@@ -371,22 +409,29 @@ forceR k (notRef v)     = v
 inst zero    n c                  v = vapp (vlam c) v
 inst (suc k) n (clo ρ t)          v = eval k n (ρ , v) t
 inst (suc k) n (cloK w)           v = w
-inst (suc k) n (cloHrefl C s)     v = vHrefl k n (pwAt k n C v) (vApp k n s v)
+inst (suc k) n (cloHrefl C sp s)  v = vHrefl k n (pwAtS k n sp v) (vApp k n s v)
 inst (suc k) n (cloDpay I D f)    v = vDpay k I D (vApp k n f v)
 inst (suc k) n (cloHomTo C A)     v = v⌜Hom⌝ C A v
-inst (suc k) n (cloTrPw d f e)    y = trPwI k n d f e y (codeV (force k (inst k n d y)))
+inst (suc k) n self@(cloTrPw k₀ m c sp a d f e) y = trPwI k n self d f e y (homV (force k (inst k n d y)))
 
--- `tr-pw`'s body at y: the motive's ambient and endpoint, read at y
-trPwI k n d f e y (cHom c a _) = vTr k n (cloHomTo (pwAt k n c y) (vApp k n a y)) (inst k n f y) (vApp k n e y)
-trPwI k n d f e y cbase        = vtr d (inst k n f y) (vApp k n e y)   -- unreachable: guarded at creation
-trPwI k n d f e y (cΠ _ _)     = vtr d (inst k n f y) (vApp k n e y)
-trPwI k n d f e y (cΣ _ _)     = vtr d (inst k n f y) (vApp k n e y)
-trPwI k n d f e y (cId _ _ _)  = vtr d (inst k n f y) (vApp k n e y)
-trPwI k n d f e y cNat         = vtr d (inst k n f y) (vApp k n e y)
-trPwI k n d f e y cUnit        = vtr d (inst k n f y) (vApp k n e y)
-trPwI k n d f e y (cIMu _ _ _) = vtr d (inst k n f y) (vApp k n e y)
-trPwI k n d f e y (cFin _)     = vtr d (inst k n f y) (vApp k n e y)
-trPwI k n d f e y (cOther _)   = vtr d (inst k n f y) (vApp k n e y)
+-- ★ tr-pw's inspection: the motive at the fresh level m, its head ⌜Hom⌝
+--   with endpoint exactly that level, its ambient pw-normal after forcing
+trPwView k m d = tpvH k m (homV (force k (inst k (suc m) d (vvar m))))
+tpvH k m (isHom c a mm) = tpvL k c a (isLvl m (varV mm))
+tpvH k m (notHom _)     = nothing
+tpvL k c a true  = tpvS a (pwForce k c) (pwSpine? (pwForce k c))
+tpvL k c a false = nothing
+tpvS a c (just sp) = just (trpw c sp a)
+tpvS a c nothing   = nothing
+
+
+-- `tr-pw`'s body at y: the motive re-inspected at y; pw-normal ⇒ the
+--   right-hand side, else the β-redex itself (sound at any fuel)
+trPwI k n self d f e y (isHom c a _) = trPwK k n self f e y a (pwForce k c)
+trPwI k n self d f e y (notHom _)    = vapp (vlam self) y
+trPwK k n self f e y a c = trPwS k n self f e y a (pwSpine? c)
+trPwS k n self f e y a (just sp) = vTr k n (cloHomTo (pwAtS k n sp y) (vApp k n a y)) (inst k n f y) (vApp k n e y)
+trPwS k n self f e y a nothing   = vapp (vlam self) y
 
 inst₂ zero    n (clo₂ ρ t) x y = vpsplit (clo₂ ρ t) (vpair x y)
 inst₂ (suc k) n (clo₂ ρ t) x y = eval k n ((ρ , x) , y) t
@@ -443,10 +488,10 @@ ordB k       n a (isSuc t)  (notNat u) p q = vordtr (vnsuc a) (vnsuc t) u p q
 
 -- hrefl: pw-able code ⇒ pointwise (hrefl-pw); else the order's
 -- reflexivity at ⌜Nat⌝ (hrefl-Nat-z/s); else stuck.
-vHrefl k n C s = hreflH k n (force k C) s
-hreflH k n C s = hreflB k n (pwV k C) C s
-hreflB k n true  C s = vlam (cloHrefl C s)                      -- hrefl-pw
-hreflB k n false C s = hreflC k n (codeV C) s
+vHrefl k n C s = hreflP k n (pwForce k C) s
+hreflP k n C s = hreflS k n C (pwSpine? C) s
+hreflS k n C (just sp) s = vlam (cloHrefl C sp s)               -- hrefl-pw
+hreflS k n C nothing   s = hreflC k n (codeV C) s
 hreflC k n cNat           s = hreflNat k n s
 hreflC k n cbase          s = vhrefl v⌜base⌝ s
 hreflC k n (cΠ c d)       s = vhrefl (v⌜Π⌝ c d) s
@@ -469,7 +514,7 @@ vTr (suc k) n d p e = trG k n d (force k (inst k (suc n) d (vvar n))) (force k p
 -- (an argument, not a `where`: a `where` binding is re-evaluated per use)
 trG k n d h p e = trF k n d (homV h) (hreflV p) (lamV p) (varV h) e
 trF k n d (isHom c a m) (isHrefl C s) w        v e = trJB (trJ k (codeV (force k C))) d (vhrefl C s) e   -- tr-J-*
-trF k n d (isHom c a m) (notHrefl _) (isLam f) v e = trPwB (isLvl n (varV m) ∧ pwV k c) d f e     -- tr-pw
+trF k n d (isHom c a m) (notHrefl _) (isLam f) v e = trPwC k n d f e (trPwView k n d)   -- tr-pw
 trF k n d (isHom c a m) (notHrefl _) (notLam p) v e = vtr d p e
 trF k n d (notHom _) w (isLam f) (isVar l) e = trTautB k n (l == n) d f e   -- tr-taut (and β)
 trF k n d (notHom _) w (isLam f) (notVar _) e = vtr d (vlam f) e
@@ -477,8 +522,8 @@ trF k n d (notHom _) w (notLam p) v e = vtr d p e
 
 trJB true  d p e = e
 trJB false d p e = vtr d p e
-trPwB true  d f e = vlam (cloTrPw d f e)
-trPwB false d f e = vtr d (vlam f) e
+trPwC k n d f e (just (trpw c sp a)) = vlam (cloTrPw k n c sp a d f e)
+trPwC k n d f e nothing  = vtr d (vlam f) e
 trTautB k n true  d f e = inst k n f e
 trTautB k n false d f e = vtr d (vlam f) e
 
@@ -529,41 +574,15 @@ dihF (suc k) n D e (isDρ j C) p =                               -- dih-ρ
   vpair (vIelim k n D j e (vFst k p)) (vDih k n D e C (vSnd k p))
 dihF k n D e (notDesc C) p = vdih D e C p
 
--- pwBody, at a level: unfold a pw-able code at `x`
-pwAt k n C x = pwAtF k n (codeV (force k C)) x
-pwAtF zero    n (cΠ γ δ)     x = v⌜Π⌝ γ δ
-pwAtF zero    n (cHom C a b) x = v⌜Hom⌝ C a b
-pwAtF zero    n cbase        x = v⌜base⌝
-pwAtF zero    n (cΣ c d)     x = v⌜Σ⌝ c d
-pwAtF zero    n (cId c a b)  x = v⌜Id⌝ c a b
-pwAtF zero    n cNat         x = v⌜Nat⌝
-pwAtF zero    n cUnit        x = v⌜Unit⌝
-pwAtF zero    n (cIMu I D i) x = v⌜IMu⌝ I D i
-pwAtF zero    n (cFin t)     x = v⌜Fin⌝ t
-pwAtF zero    n (cOther C)   x = C
-pwAtF (suc k) n (cΠ γ δ)     x = inst k n δ x
-pwAtF (suc k) n (cHom C a b) x = v⌜Hom⌝ (pwAt k n C x) (vApp k n a x) (vApp k n b x)
-pwAtF (suc k) n cbase        x = v⌜base⌝
-pwAtF (suc k) n (cΣ c d)     x = v⌜Σ⌝ c d
-pwAtF (suc k) n (cId c a b)  x = v⌜Id⌝ c a b
-pwAtF (suc k) n cNat         x = v⌜Nat⌝
-pwAtF (suc k) n cUnit        x = v⌜Unit⌝
-pwAtF (suc k) n (cIMu I D i) x = v⌜IMu⌝ I D i
-pwAtF (suc k) n (cFin t)     x = v⌜Fin⌝ t
-pwAtF (suc k) n (cOther C)   x = C
+-- pwBody, at a level, along a SPINE: structural, no forcing
+pwAtS k n (spΠ c d)      x = inst k n d x
+pwAtS k n (spHom sp a b) x = v⌜Hom⌝ (pwAtS k n sp x) (vApp k n a x) (vApp k n b x)
 
-pwV k C = pwF k (codeV (force k C))
-pwF k       (cΠ _ _)     = true
-pwF zero    (cHom C _ _) = false
-pwF (suc k) (cHom C _ _) = pwV k C
-pwF k cbase        = false
-pwF k (cΣ _ _)     = false
-pwF k (cId _ _ _)  = false
-pwF k cNat         = false
-pwF k cUnit        = false
-pwF k (cIMu _ _ _) = false
-pwF k (cFin _)     = false
-pwF k (cOther _)   = false
+-- force a code's head, and along a ⌜Hom⌝ spine its ambient
+pwForce zero    C = C
+pwForce (suc k) C = pwForceH k (homV (force k C))
+pwForceH k (isHom C a b) = v⌜Hom⌝ (pwForce k C) a b
+pwForceH k (notHom v)    = v
 
 stkV nat k C = stkF nat k (codeV (force k C))
 stkF nat k       cbase          = true
@@ -579,7 +598,97 @@ stkF nat k       (cΠ _ _)       = false
 stkF nat k       (cOther _)     = false
 
 ------------------------------------------------------------------------
--- 6. Readback, at a context.  `unfold` = true unfolds every reference
+-- 6. ★ READING a value as a term (PLAN-EVAL E3).  Levels are read through
+--    a map `L : ℕ → RTm Δ`; a closure as its body (a defunctionalised one
+--    as its rule's right-hand-side body).  Not a normal form: what
+--    readback falls back to when the fuel runs out, and what the soundness
+--    proof relates every evaluation step to (`Algorithm/NbERead`).
+------------------------------------------------------------------------
+
+-- what the levels stand for
+Lv : Cx → Set
+Lv Δ = ℕ → RTm Δ
+
+wkL : Lv Δ → Lv (Δ ∙)
+wkL L l = renTm vs (L l)
+
+wk : RTm Δ → RTm (Δ ∙)
+wk = renTm vs
+
+pickTm : Bool → RTm Δ → RTm Δ → RTm Δ
+pickTm true  x y = x
+pickTm false x y = y
+
+-- under a binder that binds level m
+bindL : ℕ → Lv Δ → Lv (Δ ∙)
+bindL m L l = pickTm (l == m) (var vz) (wk (L l))
+
+⌊_⌋  : Val → Lv Δ → RTm Δ
+⌊_⌋ᶜ : Clo → Lv Δ → RTm (Δ ∙)
+⌊_⌋² : Clo₂ → Lv Δ → RTm ((Δ ∙) ∙)
+⌊_⌋ᵉ : Env Γ → Lv Δ → Sub Γ Δ
+
+⌊ [] ⌋ᵉ     L ()
+⌊ ρ , v ⌋ᵉ  L vz     = ⌊ v ⌋ L
+⌊ ρ , v ⌋ᵉ  L (vs x) = ⌊ ρ ⌋ᵉ L x
+
+⌊ clo ρ t ⌋ᶜ        L = subTm (extS (⌊ ρ ⌋ᵉ L)) t
+⌊ cloK v ⌋ᶜ         L = wk (⌊ v ⌋ L)
+⌊ cloHrefl C sp s ⌋ᶜ L = hrefl (pwBody (⌊ C ⌋ L)) (app (wk (⌊ s ⌋ L)) (var vz))
+⌊ cloDpay I D f ⌋ᶜ  L = dpay (wk (⌊ I ⌋ L)) (wk (⌊ D ⌋ L)) (app (wk (⌊ f ⌋ L)) (var vz))
+⌊ cloHomTo C A ⌋ᶜ   L = ⌜Hom⌝ (wk (⌊ C ⌋ L)) (wk (⌊ A ⌋ L)) (var vz)
+-- ★ tr-pw's right-hand-side body: the stored ambient and endpoint read
+--   with level m as the motive's bound variable, collapsed onto the new
+--   binder as the rule's `pwShift` collapses it.
+⌊ cloTrPw k₀ m c sp a d f e ⌋ᶜ L =
+  tr (⌜Hom⌝ (renTm pwShift (pwBody (⌊ c ⌋ (bindL m L)))) (app (renTm vs (⌊ a ⌋ (bindL m L))) (var (vs vz))) (var vz))
+     (⌊ f ⌋ᶜ L) (app (wk (⌊ e ⌋ L)) (var vz))
+
+⌊ clo₂ ρ t ⌋² L = subTm (extS (extS (⌊ ρ ⌋ᵉ L))) t
+
+⌊ vvar l ⌋           L = L l
+⌊ vlam c ⌋           L = lam (⌊ c ⌋ᶜ L)
+⌊ vapp f a ⌋         L = app (⌊ f ⌋ L) (⌊ a ⌋ L)
+⌊ vpair a b ⌋        L = pair (⌊ a ⌋ L) (⌊ b ⌋ L)
+⌊ vabsurd c e ⌋      L = absurd (⌊ c ⌋ L) (⌊ e ⌋ L)
+⌊ vordtr a t u p q ⌋ L = ordtr (⌊ a ⌋ L) (⌊ t ⌋ L) (⌊ u ⌋ L) (⌊ p ⌋ L) (⌊ q ⌋ L)
+⌊ vfst p ⌋           L = fst (⌊ p ⌋ L)
+⌊ vsnd p ⌋           L = snd (⌊ p ⌋ L)
+⌊ v⌜base⌝ ⌋          L = ⌜base⌝
+⌊ v⌜Π⌝ c d ⌋         L = ⌜Π⌝ (⌊ c ⌋ L) (⌊ d ⌋ᶜ L)
+⌊ v⌜Σ⌝ c d ⌋         L = ⌜Σ⌝ (⌊ c ⌋ L) (⌊ d ⌋ᶜ L)
+⌊ v⌜Hom⌝ c a b ⌋     L = ⌜Hom⌝ (⌊ c ⌋ L) (⌊ a ⌋ L) (⌊ b ⌋ L)
+⌊ vhrefl c t ⌋       L = hrefl (⌊ c ⌋ L) (⌊ t ⌋ L)
+⌊ vtr d p e ⌋        L = tr (⌊ d ⌋ᶜ L) (⌊ p ⌋ L) (⌊ e ⌋ L)
+⌊ vap c b p ⌋        L = ap (⌊ c ⌋ L) (⌊ b ⌋ᶜ L) (⌊ p ⌋ L)
+⌊ v⌜Id⌝ c a b ⌋      L = ⌜Id⌝ (⌊ c ⌋ L) (⌊ a ⌋ L) (⌊ b ⌋ L)
+⌊ vidrefl c t ⌋      L = idrefl (⌊ c ⌋ L) (⌊ t ⌋ L)
+⌊ vjsub d p e ⌋      L = jsub (⌊ d ⌋ᶜ L) (⌊ p ⌋ L) (⌊ e ⌋ L)
+⌊ vunit ⌋            L = unit
+⌊ vnzero ⌋           L = nzero
+⌊ vnsuc t ⌋          L = nsuc (⌊ t ⌋ L)
+⌊ vnatrec z s t ⌋    L = natrec (⌊ z ⌋ L) (⌊ s ⌋² L) (⌊ t ⌋ L)
+⌊ vcon p ⌋           L = con (⌊ p ⌋ L)
+⌊ vielim D i e t ⌋   L = ielim (⌊ D ⌋ L) (⌊ i ⌋ L) (⌊ e ⌋ L) (⌊ t ⌋ L)
+⌊ vdι ⌋              L = dι
+⌊ vdσ S f ⌋          L = dσ (⌊ S ⌋ L) (⌊ f ⌋ L)
+⌊ vdρ j C ⌋          L = dρ (⌊ j ⌋ L) (⌊ C ⌋ L)
+⌊ vdpay I D C ⌋      L = dpay (⌊ I ⌋ L) (⌊ D ⌋ L) (⌊ C ⌋ L)
+⌊ vdih D e C p ⌋     L = dih (⌊ D ⌋ L) (⌊ e ⌋ L) (⌊ C ⌋ L) (⌊ p ⌋ L)
+⌊ vfzero ⌋           L = fzero
+⌊ vfsuc t ⌋          L = fsuc (⌊ t ⌋ L)
+⌊ vfcase t a b ⌋     L = fcase (⌊ t ⌋ L) (⌊ a ⌋ L) (⌊ b ⌋ᶜ L)
+⌊ vfcase0 t ⌋        L = fcase0 (⌊ t ⌋ L)
+⌊ vpsplit b p ⌋      L = psplit (⌊ b ⌋² L) (⌊ p ⌋ L)
+⌊ v⌜Nat⌝ ⌋           L = ⌜Nat⌝
+⌊ v⌜Unit⌝ ⌋          L = ⌜Unit⌝
+⌊ v⌜IMu⌝ I D i ⌋     L = ⌜IMu⌝ (⌊ I ⌋ L) (⌊ D ⌋ L) (⌊ i ⌋ L)
+⌊ v⌜Fin⌝ t ⌋         L = ⌜Fin⌝ (⌊ t ⌋ L)
+⌊ vref d b ⌋         L = ref d b
+
+
+------------------------------------------------------------------------
+-- 7. Readback, at a context.  `unfold` = true unfolds every reference
 --    (the kernel's normal form); false keeps them as atoms.
 ------------------------------------------------------------------------
 
@@ -592,9 +701,7 @@ len (Γ ∙) = suc (len Γ)
 -- `absurd unit unit` makes such a bug visible in a test, never silent)
 lvl : (Γ : Cx) → ℕ → RTm Γ
 lvl ε       l = absurd unit unit
-lvl (Γ ∙) l with l == len Γ
-... | true  = var vz
-... | false = renTm vs (lvl Γ l)
+lvl (Γ ∙) l = bindL (len Γ) (lvl Γ) l
 
 rb  : Bool → ℕ → (Γ : Cx) → Val → RTm Γ
 rbᶜ : Bool → ℕ → (Γ : Cx) → Clo → RTm (Γ ∙)
@@ -642,15 +749,15 @@ rb false k Γ (vref d b)  = ref d b
 rb true zero Γ (vref d b) = ref d b
 rb true (suc k) Γ (vref d b) = rb true k Γ (eval k 0 [] b)
 
-rbᶜ u zero    Γ c = absurd unit unit
+rbᶜ u zero    Γ c = ⌊ c ⌋ᶜ (lvl Γ)
 rbᶜ u (suc k) Γ c = rb u k (Γ ∙) (inst k (suc (len Γ)) c (vvar (len Γ)))
 
-rb₂ u zero    Γ c = absurd unit unit
+rb₂ u zero    Γ c = ⌊ c ⌋² (lvl Γ)
 rb₂ u (suc k) Γ c = rb u k ((Γ ∙) ∙)
   (inst₂ k (suc (suc (len Γ))) c (vvar (len Γ)) (vvar (suc (len Γ))))
 
 ------------------------------------------------------------------------
--- 7. TYPES (`_⟶ᵀ_`, `Algorithm/Eval.headᵀ`).  Terms never contain types,
+-- 8. TYPES (`_⟶ᵀ_`, `Algorithm/Eval.headᵀ`).  Terms never contain types,
 --    so this is a second layer over the term evaluator, not mutual with it.
 ------------------------------------------------------------------------
 
@@ -677,6 +784,10 @@ data TVal where
   tDesc : Val → TVal
   tDIh  : Val → TClo₂ → Val → Val → TVal
   tFin  : Val → TVal
+  -- a type closure applied, when the fuel ran out (sound: read as the
+  --   substitution it stands for)
+  tinst  : TClo → Val → TVal
+  tinst₂ : TClo₂ → Val → Val → TVal
 
 -- what `Hom` inspects of its ambient
 data TyV : TVal → Set where
@@ -718,14 +829,14 @@ evalᵀ k n ρ (Desc I)      = tDesc (eval k n ρ I)
 evalᵀ k n ρ (DIh D M C p) = tDIhS k n (eval k n ρ D) (tclo₂ ρ M) (eval k n ρ C) (eval k n ρ p)
 evalᵀ k n ρ (Fin t)       = tFin (eval k n ρ t)
 
-instᵀ zero    n c                 v = tEl (vapp (vlam (clo [] unit)) v)   -- fuel out: visibly wrong
+instᵀ zero    n c                 v = tinst c v
 instᵀ (suc k) n (tclo ρ B)        v = evalᵀ k n (ρ , v) B
 instᵀ (suc k) n (tcloK A)         v = A
 instᵀ (suc k) n (tcloEl d)        v = tElS k n (inst k n d v)
 instᵀ (suc k) n (tcloHom B f g)   v = tHomS k n (instᵀ k n B v) (vApp k n f v) (vApp k n g v)
 instᵀ (suc k) n (tcloDIh D M C p) v = tDIhS k n D M C (vSnd k p)
 
-instᵀ₂ zero    n c           j t = tEl vunit
+instᵀ₂ zero    n c           j t = tinst₂ c j t
 instᵀ₂ (suc k) n (tclo₂ ρ M) j t = evalᵀ k n ((ρ , j) , t) M
 
 -- El of a code decodes it (El-⌜…⌝); a ⌜Hom⌝ code's decode may compute further
@@ -770,6 +881,34 @@ tDIhF (suc k) n D M (isDρ j C) p =                                           --
   tΣ (instᵀ₂ k n M j (vFst k p)) (tcloDIh D M C p)
 tDIhF k       n D M (notDesc C) p = tDIh D M C p
 
+-- reading a type value
+⌊_⌋ᵀ  : TVal → Lv Δ → RTy Δ
+⌊_⌋ᵀᶜ : TClo → Lv Δ → RTy (Δ ∙)
+⌊_⌋ᵀ² : TClo₂ → Lv Δ → RTy ((Δ ∙) ∙)
+
+⌊ tclo ρ B ⌋ᵀᶜ        L = subTy (extS (⌊ ρ ⌋ᵉ L)) B
+⌊ tcloK A ⌋ᵀᶜ         L = renTy vs (⌊ A ⌋ᵀ L)
+⌊ tcloEl d ⌋ᵀᶜ        L = El (⌊ d ⌋ᶜ L)
+⌊ tcloHom B f g ⌋ᵀᶜ   L = Hom (⌊ B ⌋ᵀᶜ L) (app (wk (⌊ f ⌋ L)) (var vz)) (app (wk (⌊ g ⌋ L)) (var vz))
+⌊ tcloDIh D M C p ⌋ᵀᶜ L = DIh (wk (⌊ D ⌋ L)) (renTy (extR (extR vs)) (⌊ M ⌋ᵀ² L)) (wk (⌊ C ⌋ L)) (snd (wk (⌊ p ⌋ L)))
+⌊ tclo₂ ρ M ⌋ᵀ²       L = subTy (extS (extS (⌊ ρ ⌋ᵉ L))) M
+
+⌊ tbase ⌋ᵀ          L = base
+⌊ tU ⌋ᵀ             L = U
+⌊ tUnit ⌋ᵀ          L = Unit
+⌊ tNat ⌋ᵀ           L = Nat
+⌊ tΠ A B ⌋ᵀ         L = Π (⌊ A ⌋ᵀ L) (⌊ B ⌋ᵀᶜ L)
+⌊ tΣ A B ⌋ᵀ         L = Σ' (⌊ A ⌋ᵀ L) (⌊ B ⌋ᵀᶜ L)
+⌊ tEl c ⌋ᵀ          L = El (⌊ c ⌋ L)
+⌊ tHom A a b ⌋ᵀ     L = Hom (⌊ A ⌋ᵀ L) (⌊ a ⌋ L) (⌊ b ⌋ L)
+⌊ tId A a b ⌋ᵀ      L = Id (⌊ A ⌋ᵀ L) (⌊ a ⌋ L) (⌊ b ⌋ L)
+⌊ tIMu I D i ⌋ᵀ     L = IMu (⌊ I ⌋ L) (⌊ D ⌋ L) (⌊ i ⌋ L)
+⌊ tDesc I ⌋ᵀ        L = Desc (⌊ I ⌋ L)
+⌊ tDIh D M C p ⌋ᵀ   L = DIh (⌊ D ⌋ L) (⌊ M ⌋ᵀ² L) (⌊ C ⌋ L) (⌊ p ⌋ L)
+⌊ tFin t ⌋ᵀ         L = Fin (⌊ t ⌋ L)
+⌊ tinst c v ⌋ᵀ      L = subTy (single (⌊ v ⌋ L)) (⌊ c ⌋ᵀᶜ L)
+⌊ tinst₂ c j t ⌋ᵀ   L = subTy (single (⌊ t ⌋ L)) (subTy (extS (single (⌊ j ⌋ L))) (⌊ c ⌋ᵀ² L))
+
 rbᵀ  : Bool → ℕ → (Γ : Cx) → TVal → RTy Γ
 rbᵀᶜ : Bool → ℕ → (Γ : Cx) → TClo → RTy (Γ ∙)
 rbᵀ₂ : Bool → ℕ → (Γ : Cx) → TClo₂ → RTy ((Γ ∙) ∙)
@@ -787,16 +926,20 @@ rbᵀ u k Γ (tIMu I D i)   = IMu (rb u k Γ I) (rb u k Γ D) (rb u k Γ i)
 rbᵀ u k Γ (tDesc I)      = Desc (rb u k Γ I)
 rbᵀ u k Γ (tDIh D M C p) = DIh (rb u k Γ D) (rbᵀ₂ u k Γ M) (rb u k Γ C) (rb u k Γ p)
 rbᵀ u k Γ (tFin t)       = Fin (rb u k Γ t)
+rbᵀ u zero    Γ (tinst c v)    = ⌊ tinst c v ⌋ᵀ (lvl Γ)
+rbᵀ u (suc k) Γ (tinst c v)    = rbᵀ u k Γ (instᵀ k (len Γ) c v)
+rbᵀ u zero    Γ (tinst₂ c j t) = ⌊ tinst₂ c j t ⌋ᵀ (lvl Γ)
+rbᵀ u (suc k) Γ (tinst₂ c j t) = rbᵀ u k Γ (instᵀ₂ k (len Γ) c j t)
 
-rbᵀᶜ u zero    Γ c = base
+rbᵀᶜ u zero    Γ c = ⌊ c ⌋ᵀᶜ (lvl Γ)
 rbᵀᶜ u (suc k) Γ c = rbᵀ u k (Γ ∙) (instᵀ k (suc (len Γ)) c (vvar (len Γ)))
 
-rbᵀ₂ u zero    Γ c = base
+rbᵀ₂ u zero    Γ c = ⌊ c ⌋ᵀ² (lvl Γ)
 rbᵀ₂ u (suc k) Γ c = rbᵀ u k ((Γ ∙) ∙)
   (instᵀ₂ k (suc (suc (len Γ))) c (vvar (len Γ)) (vvar (suc (len Γ))))
 
 ------------------------------------------------------------------------
--- 8. The entry points.
+-- 9. The entry points.
 ------------------------------------------------------------------------
 
 -- the identity environment: variable i of Γ is its own level
