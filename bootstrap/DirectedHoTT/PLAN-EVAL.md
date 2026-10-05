@@ -102,7 +102,7 @@
 | E0 | **Spike, `Algorithm/NbE` (untrusted).** Values, `eval`, `quote`, `whnf`; the term rules SigCore uses (λ, Σ/psplit, natrec, Fin/fcase, con/ielim, dpay/dih, descriptions, codes, Id/jsub, ref) | ① the parked `SigTravTest`/`SigSubKnotTest` pass with `nfOf` = NbE, each `refl` with its negative control; ② `SigCoreTest` agrees; ③ measured time/RSS vs `normLazy` | ✅ **2026-10-05** (§2a) |
 | E1 | **Full coverage + agreement oracle.** Every `head`/`headᵀ` rule; type evaluation; `Examples/NbETest`: `quote (eval t) ≡ nf t` (from `Algorithm/Eval`) on a corpus (Knot/Core entries, SigCore entries, ported OCP0009 programs: gcd facts, `div 0`, System T nested-natrec Ackermann), plus closed directed-former cases (`tr`/`ap`/`hrefl` at each code) | every corpus row green; a deliberately dropped rule turns a row red (control) | ✅ **2026-10-05** (§2b) |
 | E2 | **Use it where trust is not needed.** The elaborator's weak-head evaluator (`Elab.whTm`/`whTyₖ`) becomes NbE `whnf`; test files evaluate with it; Q1 (decoder form) re-judged with E0's measurements | Elab-driven entries (SigCore, Knot/Core) unchanged and faster | ⬜ |
-| E3 | **Certification.** Soundness: a relation `t ⊩ v` ("`t ⟶*` a term whose readback-head matches `v`") with `eval`-soundness by the usual environment lemma; readback gives `t ⟶* quote v`. Conversion then decides by `quote` equality (yes: the chains; no: `nf-uniqueᵀ` as today). CheckA/ConvLazy switch to it. Totality without fuel (ROADMAP Q4) from the LR's `wnorm`: well-typed ⇒ evaluation terminates. Typed NbE is forced for completeness (OCP0009 F3), and the LR already is typed | `decConvFast`/`convTm` replaced; `Knot/Core`, SigCore checking times no worse | ⬜ |
+| E3 | **Certification** (design §2c). Soundness `t ≅ nbe t` by READING values as terms; then conversion decides by readback equality (yes: `≅`; no: distinct normal forms, Church–Rosser + `nf-uniqueᵀ`). CheckA/ConvLazy switch to it. Totality without fuel (ROADMAP Q4) later, from the LR's `wnorm`: typed NbE is forced for completeness (OCP0009 F3), and the LR already is typed | `decConvFast`/`convTm` replaced; `Knot/Core`, SigCore checking times no worse | ⬜ |
 | E4 | **Sharing = references as PROJECTIONS.** If E0–E2 measure repeated δ-unfolding: a GLOBAL environment of entry values (each entry evaluated once; `ref d` is a projection from it). This is the categorical reading the compiler adopted (its D071: `⟦ref x⟧Γ = Γ(x)`, ROADMAP Q5) | measured before built ([[slower-abstraction-profile-dont-discard]]) | ⬜ conditional |
 | E5 | **The CAM reading (feeds R5/R6).** Translate `RTm` to categorical combinators (Curien: `⟨_,_⟩`, `π₁`/`π₂`, `Λ`, `ev`) and prove `eval` factors through the machine; then the cost-instrumented variant per `NbEPLinCore` (allocation counts; dup-free ⇒ zero alloc) | written as PLAN-LINEAR / R6 when reached | 🔬 |
 
@@ -153,9 +153,15 @@ with cached imports (the floor, loading SigCore, is ~5.5 s / 0.48 GB).
 
 ### 2c. E3 design — soundness by READING values as terms (2026-10-05)
 
-The certificate the checker needs is `t ⟶* nbe t` (a "yes" is then two
-chains meeting; a "no" is two distinct NORMAL forms, `nf-uniqueᵀ` as today,
-with `Nf` decided structurally from `head ≡ nothing`). The proof does not
+★ **Prove it UP TO CONVERSION: `t ≅ nbe t`.** `_≅_` is the untyped
+equivalence closure of `_⟶_` (`Spec/Typing`), which is all the checker
+needs: a "yes" is `t ≅ nbe t ≡ nbe u ≅ u`; a "no" is two distinct NORMAL
+forms (`Nf` decided structurally from `head ≡ nothing`) — Church–Rosser
+turns `t ≅ nbe t` with `nbe t` normal into the chain `nf-uniqueᵀ` takes.
+Up to `≅`, two reducts of one term are interchangeable, so the proof never
+has to match the evaluator's FUEL between two computations of the same
+value (e.g. `tr-pw`'s motive, inspected once in `trF` and re-instantiated in
+`cloTrPw`), and every lemma is equational. The proof does not
 need a logical relation: values are syntax-shaped, so READ them back as
 (not necessarily normal) terms.
 
@@ -173,11 +179,11 @@ need a logical relation: values are syntax-shaped, so READ them back as
   `⌊v⌋_{Δ∙} ≡ renTm vs ⌊v⌋_Δ` by induction on values (the existing
   `renTm-subTm`/`subTm-subTm`/`exts-*` fusion lemmas).
 - **Lemmas, by induction on fuel mirroring the evaluator:**
-  ① `subTm ⌊ρ⌋ t ⟶* ⌊eval ρ t⌋` (congruences via `map*`; β/δ/each rule one
+  ① `subTm ⌊ρ⌋ t ≅ ⌊eval ρ t⌋` (congruences via `ConvLazy.cong≅`; β/δ/each rule one
   step plus a fusion equation); ② each smart eliminator:
-  `elim ⌊args⌋ ⟶* ⌊smartElim args⌋`; ③ `force`: `⌊v⌋ ⟶* ⌊force v⌋`;
-  ④ the guards: `pwV v ≡ true → pw? ⌊force v⌋ ≡ true` (likewise `stkV`);
-  ⑤ readback: `⌊v⌋ ⟶* rb v`. Then `t ≡ subTm ⌊idEnv⌋ t ⟶* ⌊⟦t⟧⌋ ⟶* nbe t`.
+  `elim ⌊args⌋ ≅ ⌊smartElim args⌋`; ③ `force`: `⌊v⌋ ≅ ⌊force v⌋`;
+  ④ the guards: `pwV v ≡ true → Σ c. ⌊v⌋ ⟶* c × pw? c ≡ true` (likewise
+  `stkV`); ⑤ readback: `⌊v⌋ ≅ rb v`. Then `t ≡ subTm ⌊idEnv⌋ t ≅ ⌊⟦t⟧⌋ ≅ nbe t`.
 - Types the same way over `_⟶ᵀ_`.
 - Estimated 1500–2500 lines; the per-rule lemmas mirror `Eval.head`'s
   clauses. Totality without fuel (Q4) is separate and later.
