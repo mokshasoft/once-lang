@@ -39,7 +39,8 @@ open import DirectedHoTT.Lib.Sugar using ( tag; conₗ; Lt; lt-z; lt-s; selF-β;
 open import DirectedHoTT.Lib.Tel using ( ⌜_⌝ᵗ; ⌜_⌝ₛ; nth-⌜⌝; nthᵗ-z; nthᵗ-s )
 open import DirectedHoTT.Lib.NatNum using ( num )
 open import DirectedHoTT.Lib.NatFib using ( fibN-z; fibN-s )
-open import DirectedHoTT.Lib.FinFam using ( FinD; FinI; FinTs; ffz; ffs; toI; fromI )
+open import DirectedHoTT.Lib.FinFam using ( FinD; FinI; FinTs; ffz; ffs )
+open import DirectedHoTT.Lib.NatCode using ( toI; fromI )
 open import DirectedHoTT.Lib.Syn
 open import DirectedHoTT.Lib.Decode
 open import DirectedHoTT.Lib.SynDecode

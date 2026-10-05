@@ -322,3 +322,7 @@ nose. ⇒ the remaining work per row is the PAYLOAD, not the head.
   the `sDesc`/`sIDesc` slots, `RenAgree`'s shape for the `sTm` ones, and a
   PINNED projection for `cTm-cIMu`'s `sTy`.  Then `cTm-var` (row 11, a
   GIVEN row, discharged by `Represents` itself) closes `ren-agree`.
+
+- **Nat-at-code helpers are duplicated** (find-dup-lemmas, 2026-10-05):
+  `Lib/NatCode.toI` = `Lib/Pair.asP` = `natAsEl` = `Examples/PairLib.asP`;
+  `Lib/NatCode.fromI` = `Lib/Pair.asN`. Keep NatCode's, repoint the rest.

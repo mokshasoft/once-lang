@@ -33,7 +33,8 @@ open import DirectedHoTT.Examples.Knot.JudgeTmIx
 open import DirectedHoTT.Examples.Knot.JudgeFib using () renaming ( RowOK to RowOKₒ )
 open import DirectedHoTT.Examples.Knot.Ctors
 open import DirectedHoTT.Examples.Knot.Ren using ( wk; ⊢wkS )
-open import DirectedHoTT.Lib.FinFam using ( ⊢isuc; ⊢ffz )
+open import DirectedHoTT.Lib.FinFam using ( ⊢ffz )
+open import DirectedHoTT.Lib.NatCode using ( ⊢isuc )
 
 private
   variable

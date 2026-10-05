@@ -26,7 +26,7 @@ open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong�
 open import DirectedHoTT.Lib.Sugar using ( conₗ; tag; nth-z; lt-z; _∷ᵈ_; []ᵈ; []; _∷_; subC; AllD; v₀; _,ₚ_ )
 open import DirectedHoTT.Lib.Tel
 open import DirectedHoTT.Lib.NatFib
-open import DirectedHoTT.Lib.FinFam using ( toI; ⊢isuc )
+open import DirectedHoTT.Lib.NatCode using ( toI; ⊢isuc )
 open import DirectedHoTT.Lib.Syn
 open import DirectedHoTT.Examples.Knot.Sig
 open import DirectedHoTT.Examples.Knot.Terms

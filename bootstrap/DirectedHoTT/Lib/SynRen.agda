@@ -23,6 +23,7 @@ open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast )
 open import DirectedHoTT.Lib.Sugar using ( conₗ; tag; Lt )
 open import DirectedHoTT.Lib.FinFam
+open import DirectedHoTT.Lib.NatCode
 open import DirectedHoTT.Lib.Syn
 open import DirectedHoTT.Lib.SynTrav
 open import DirectedHoTT.Lib.SynTravM

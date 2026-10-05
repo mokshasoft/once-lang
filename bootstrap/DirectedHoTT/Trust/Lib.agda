@@ -56,6 +56,7 @@ import DirectedHoTT.Lib.MonusLe
 import DirectedHoTT.Lib.MonusPlus
 import DirectedHoTT.Lib.Mul
 import DirectedHoTT.Lib.Nat
+import DirectedHoTT.Lib.NatCode
 import DirectedHoTT.Lib.NatEq
 import DirectedHoTT.Lib.NatEqNum
 import DirectedHoTT.Lib.NatEval

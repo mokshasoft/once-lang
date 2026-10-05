@@ -21,7 +21,8 @@ open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax hiding ( Fin )
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Lib.Sugar using ( Lt; lt-z; lt-s; v₀; _,ₚ_ )
-open import DirectedHoTT.Lib.FinFam using ( FinI; FinD; ⊢FinD; ffz; ffs; ⊢ffz; ⊢ffs; ⊢isuc )
+open import DirectedHoTT.Lib.FinFam using ( FinI; FinD; ⊢FinD; ffz; ffs; ⊢ffz; ⊢ffs )
+open import DirectedHoTT.Lib.NatCode using ( ⊢isuc )
 open import DirectedHoTT.Lib.Syn
 open import DirectedHoTT.Metatheory.TySub using ( ⊢wk )
 open import DirectedHoTT.Examples.Knot.Sig
