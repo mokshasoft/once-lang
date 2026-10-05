@@ -1853,7 +1853,7 @@ du_valid'45'transport_5590 ::
 du_valid'45'transport_5590 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11
                            v12
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_validityWF'45'frontier'45'advance_4418
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_validityWF'45'frontier'45'advance_4420
       (coe v0) (coe v1) (coe v2) (coe v7)
       (coe
          MAlonzo.Code.Once.CCC.Machine.Flat.d_falloc_84
@@ -1871,7 +1871,7 @@ du_valid'45'transport_5590 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11
       (coe du_nextslot'45''8804'_5556 (coe v7))
       (coe du_heapref'45''8804'_5558 (coe v7))
       (coe
-         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_validityWF'45'mem'45'preserved_5170
+         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_validityWF'45'mem'45'preserved_5172
          (coe v0) (coe v1) (coe v2) (coe v7) (coe v9) (coe v10) (coe v6)
          (coe
             MAlonzo.Code.Once.CCC.Machine.Flat.d_floc_82

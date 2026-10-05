@@ -269,7 +269,7 @@ du_compileFunBody'45'aux_64 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                    MAlonzo.Code.Once.TypeCheck.Classify.d_debruijn_396 (coe v0))))
                           (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_48 (coe v7))
                           (coe
-                             MAlonzo.Code.Once.Surface.Elaborate.du_elaborateFull_978
+                             MAlonzo.Code.Once.Surface.Elaborate.du_elaborateFull_996
                              (coe MAlonzo.Code.Once.TypeCheck.Classify.d_size_392 (coe v0))
                              (coe MAlonzo.Code.Once.TypeCheck.Classify.d_debruijn_396 (coe v0))
                              (coe v11) (coe v7)
@@ -286,7 +286,7 @@ du_compileFunBody'45'aux_64 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                    MAlonzo.Code.Once.Denotation.Realize.d_realize_20 (coe v0)
                                    (coe v1) (coe v7) (coe v11) (coe v10)))))
                        (coe
-                          MAlonzo.Code.Once.Surface.Elaborate.du_elaborateFull_978
+                          MAlonzo.Code.Once.Surface.Elaborate.du_elaborateFull_996
                           (coe MAlonzo.Code.Once.TypeCheck.Classify.d_size_392 (coe v0))
                           (coe MAlonzo.Code.Once.TypeCheck.Classify.d_debruijn_396 (coe v0))
                           (coe v11) (coe v7)
@@ -856,7 +856,7 @@ d_ce'45'prim'45'conc_462 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                  (coe MAlonzo.Code.Once.Parser.d_funName_106 (coe v3)))
                               (coe v5)
                               (coe
-                                 MAlonzo.Code.Once.Surface.Elaborate.du_elaborateFull_978
+                                 MAlonzo.Code.Once.Surface.Elaborate.du_elaborateFull_996
                                  (coe (0 :: Integer))
                                  (coe MAlonzo.Code.Once.Surface.Context.C_'8709'_8)
                                  (coe
@@ -1175,7 +1175,7 @@ d_isEffUU'63'_792 v0
 d_mainCall_806 :: MAlonzo.Code.Once.IR.T_IR_16
 d_mainCall_806
   = coe
-      MAlonzo.Code.Once.IR.C_Call_136
+      MAlonzo.Code.Once.IR.C_Call_138
       (MAlonzo.Code.Once.CanonicalName.d_bare_12
          (coe ("main" :: Data.Text.Text)))
 -- Once.Compile.findMain-here

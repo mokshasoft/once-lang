@@ -450,10 +450,11 @@ d_cata'45'cong_1196 ::
   MAlonzo.Code.Once.Adequacy.CoherenceLaws.T__'8776'__34
 d_cata'45'cong_1196 = erased
 -- Once.Adequacy.CoherenceLawsWrap._.ana-cong
-d_ana'45'cong_1236 ::
+d_ana'45'cong_1238 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   Integer ->
   MAlonzo.Code.Once.Surface.Context.T_Ctx_6 ->
+  MAlonzo.Code.Once.Surface.Context.T_Usage_60 ->
   MAlonzo.Code.Once.Type.T_Functor_106 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Type.T_Purity_32 ->
@@ -463,9 +464,9 @@ d_ana'45'cong_1236 ::
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
   MAlonzo.Code.Once.Adequacy.CoherenceLaws.T__'8776'__34 ->
   MAlonzo.Code.Once.Adequacy.CoherenceLaws.T__'8776'__34
-d_ana'45'cong_1236 = erased
+d_ana'45'cong_1238 = erased
 -- Once.Adequacy.CoherenceLawsWrap._.let-cong
-d_let'45'cong_1280 ::
+d_let'45'cong_1284 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   Integer ->
   MAlonzo.Code.Once.Surface.Context.T_Ctx_6 ->
@@ -481,9 +482,9 @@ d_let'45'cong_1280 ::
   MAlonzo.Code.Once.Adequacy.CoherenceLaws.T__'8776'__34 ->
   MAlonzo.Code.Once.Adequacy.CoherenceLaws.T__'8776'__34 ->
   MAlonzo.Code.Once.Adequacy.CoherenceLaws.T__'8776'__34
-d_let'45'cong_1280 = erased
+d_let'45'cong_1284 = erased
 -- Once.Adequacy.CoherenceLawsWrap._.case-cong
-d_case'45'cong_1340 ::
+d_case'45'cong_1344 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   Integer ->
   MAlonzo.Code.Once.Surface.Context.T_Ctx_6 ->
@@ -505,9 +506,9 @@ d_case'45'cong_1340 ::
   MAlonzo.Code.Once.Adequacy.CoherenceLaws.T__'8776'__34 ->
   MAlonzo.Code.Once.Adequacy.CoherenceLaws.T__'8776'__34 ->
   MAlonzo.Code.Once.Adequacy.CoherenceLaws.T__'8776'__34
-d_case'45'cong_1340 = erased
+d_case'45'cong_1344 = erased
 -- Once.Adequacy.CoherenceLawsWrap._.lam-cong
-d_lam'45'cong_1402 ::
+d_lam'45'cong_1406 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   Integer ->
   MAlonzo.Code.Once.Surface.Context.T_Ctx_6 ->
@@ -522,9 +523,9 @@ d_lam'45'cong_1402 ::
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
   MAlonzo.Code.Once.Adequacy.CoherenceLaws.T__'8776'__34 ->
   MAlonzo.Code.Once.Adequacy.CoherenceLaws.T__'8776'__34
-d_lam'45'cong_1402 = erased
+d_lam'45'cong_1406 = erased
 -- Once.Adequacy.CoherenceLawsWrap._.coerce-refl
-d_coerce'45'refl_1438 ::
+d_coerce'45'refl_1442 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   Integer ->
   MAlonzo.Code.Once.Surface.Context.T_Ctx_6 ->
@@ -532,9 +533,9 @@ d_coerce'45'refl_1438 ::
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
   MAlonzo.Code.Once.Adequacy.CoherenceLaws.T__'8776'__34
-d_coerce'45'refl_1438 = erased
+d_coerce'45'refl_1442 = erased
 -- Once.Adequacy.CoherenceLawsWrap._.coerce-trans
-d_coerce'45'trans_1468 ::
+d_coerce'45'trans_1472 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   Integer ->
   MAlonzo.Code.Once.Surface.Context.T_Ctx_6 ->
@@ -546,9 +547,9 @@ d_coerce'45'trans_1468 ::
   MAlonzo.Code.Once.Type.Sub.T__'60''58'__48 ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
   MAlonzo.Code.Once.Adequacy.CoherenceLaws.T__'8776'__34
-d_coerce'45'trans_1468 = erased
+d_coerce'45'trans_1472 = erased
 -- Once.Adequacy.CoherenceLawsWrap._.coerce-uniq
-d_coerce'45'uniq_1504 ::
+d_coerce'45'uniq_1508 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   Integer ->
   MAlonzo.Code.Once.Surface.Context.T_Ctx_6 ->
@@ -559,9 +560,9 @@ d_coerce'45'uniq_1504 ::
   MAlonzo.Code.Once.Type.Sub.T__'60''58'__48 ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
   MAlonzo.Code.Once.Adequacy.CoherenceLaws.T__'8776'__34
-d_coerce'45'uniq_1504 = erased
+d_coerce'45'uniq_1508 = erased
 -- Once.Adequacy.CoherenceLawsWrap._.pair-coerce
-d_pair'45'coerce_1546 ::
+d_pair'45'coerce_1550 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   Integer ->
   MAlonzo.Code.Once.Surface.Context.T_Ctx_6 ->
@@ -576,9 +577,9 @@ d_pair'45'coerce_1546 ::
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
   MAlonzo.Code.Once.Adequacy.CoherenceLaws.T__'8776'__34
-d_pair'45'coerce_1546 = erased
+d_pair'45'coerce_1550 = erased
 -- Once.Adequacy.CoherenceLawsWrap._.app-coerce
-d_app'45'coerce_1594 ::
+d_app'45'coerce_1598 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   Integer ->
   MAlonzo.Code.Once.Surface.Context.T_Ctx_6 ->
@@ -592,9 +593,9 @@ d_app'45'coerce_1594 ::
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
   MAlonzo.Code.Once.Adequacy.CoherenceLaws.T__'8776'__34
-d_app'45'coerce_1594 = erased
+d_app'45'coerce_1598 = erased
 -- Once.Adequacy.CoherenceLawsWrap._.comp-post
-d_comp'45'post_1646 ::
+d_comp'45'post_1650 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   Integer ->
   MAlonzo.Code.Once.Surface.Context.T_Ctx_6 ->
@@ -611,9 +612,9 @@ d_comp'45'post_1646 ::
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
   MAlonzo.Code.Once.Adequacy.CoherenceLaws.T__'8776'__34
-d_comp'45'post_1646 = erased
+d_comp'45'post_1650 = erased
 -- Once.Adequacy.CoherenceLawsWrap._.comp-pre
-d_comp'45'pre_1708 ::
+d_comp'45'pre_1712 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   Integer ->
   MAlonzo.Code.Once.Surface.Context.T_Ctx_6 ->
@@ -632,9 +633,9 @@ d_comp'45'pre_1708 ::
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
   MAlonzo.Code.Once.Adequacy.CoherenceLaws.T__'8776'__34
-d_comp'45'pre_1708 = erased
+d_comp'45'pre_1712 = erased
 -- Once.Adequacy.CoherenceLawsWrap._.lam-coerce
-d_lam'45'coerce_1764 ::
+d_lam'45'coerce_1768 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   Integer ->
   MAlonzo.Code.Once.Surface.Context.T_Ctx_6 ->
@@ -648,9 +649,9 @@ d_lam'45'coerce_1764 ::
   MAlonzo.Code.Once.Type.Sub.T__'60''58'__48 ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
   MAlonzo.Code.Once.Adequacy.CoherenceLaws.T__'8776'__34
-d_lam'45'coerce_1764 = erased
+d_lam'45'coerce_1768 = erased
 -- Once.Adequacy.CoherenceLawsWrap._.copair-coerce
-d_copair'45'coerce_1814 ::
+d_copair'45'coerce_1818 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   Integer ->
   MAlonzo.Code.Once.Surface.Context.T_Ctx_6 ->
@@ -666,9 +667,9 @@ d_copair'45'coerce_1814 ::
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
   MAlonzo.Code.Once.Adequacy.CoherenceLaws.T__'8776'__34
-d_copair'45'coerce_1814 = erased
+d_copair'45'coerce_1818 = erased
 -- Once.Adequacy.CoherenceLawsWrap._.fork-coerce
-d_fork'45'coerce_1872 ::
+d_fork'45'coerce_1876 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   Integer ->
   MAlonzo.Code.Once.Surface.Context.T_Ctx_6 ->
@@ -686,9 +687,9 @@ d_fork'45'coerce_1872 ::
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
   MAlonzo.Code.Once.Adequacy.CoherenceLaws.T__'8776'__34
-d_fork'45'coerce_1872 = erased
+d_fork'45'coerce_1876 = erased
 -- Once.Adequacy.CoherenceLawsWrap._.initial-coerce
-d_initial'45'coerce_1914 ::
+d_initial'45'coerce_1918 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   Integer ->
   MAlonzo.Code.Once.Surface.Context.T_Ctx_6 ->
@@ -696,9 +697,9 @@ d_initial'45'coerce_1914 ::
   MAlonzo.Code.Once.Type.T_Purity_32 ->
   MAlonzo.Code.Once.Type.Sub.T__'8849'π__6 ->
   MAlonzo.Code.Once.Adequacy.CoherenceLaws.T__'8776'__34
-d_initial'45'coerce_1914 = erased
+d_initial'45'coerce_1918 = erased
 -- Once.Adequacy.CoherenceLawsWrap._.cata-coerce
-d_cata'45'coerce_1950 ::
+d_cata'45'coerce_1954 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   Integer ->
   MAlonzo.Code.Once.Surface.Context.T_Ctx_6 ->
@@ -713,4 +714,4 @@ d_cata'45'coerce_1950 ::
   MAlonzo.Code.Once.Type.Sub.T__'8849'π__6 ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
   MAlonzo.Code.Once.Adequacy.CoherenceLaws.T__'8776'__34
-d_cata'45'coerce_1950 = erased
+d_cata'45'coerce_1954 = erased

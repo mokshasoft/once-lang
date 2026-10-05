@@ -82,7 +82,7 @@ du_fn'45'mono_28 ::
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
 du_fn'45'mono_28 v0 v1
   = coe
-      MAlonzo.Code.Once.CCC.Codegen.LabelRange.d_label'45'mono_150
+      MAlonzo.Code.Once.CCC.Codegen.LabelRange.d_label'45'mono_160
       (coe MAlonzo.Code.Once.Denotation.Program.d_fname_16 (coe v1))
       (coe MAlonzo.Code.Once.Denotation.Program.d_fdom_18 (coe v1))
       (coe MAlonzo.Code.Once.Denotation.Program.d_fcod_20 (coe v1))
@@ -143,7 +143,7 @@ du_fns'45'frame'45'free_52 v0 v1
                          MAlonzo.Code.Once.CCC.Label.C_e'45'fn_26
                          (coe MAlonzo.Code.Once.Denotation.Program.d_fname_16 (coe v2)))
                       (coe
-                         MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'stack'45'budget'45'from_896
+                         MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'stack'45'budget'45'from_908
                          (coe MAlonzo.Code.Once.Denotation.Program.d_fname_16 (coe v2))
                          (coe MAlonzo.Code.Once.Denotation.Program.d_fdom_18 (coe v2))
                          (coe MAlonzo.Code.Once.Denotation.Program.d_fcod_20 (coe v2))
@@ -153,7 +153,7 @@ du_fns'45'frame'45'free_52 v0 v1
                        = MAlonzo.Code.Once.Denotation.Program.d_fname_16 (coe v2) in
                  coe
                    (coe
-                      MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace'45'lab_924
+                      MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace'45'lab_936
                       (coe v4)
                       (coe MAlonzo.Code.Once.Denotation.Program.d_fdom_18 (coe v2))
                       (coe MAlonzo.Code.Once.Denotation.Program.d_fcod_20 (coe v2))
@@ -162,7 +162,7 @@ du_fns'45'frame'45'free_52 v0 v1
              (coe
                 MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
                 (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
-                (MAlonzo.Code.Once.CCC.Codegen.FrameFreeTrace.d_ir'45'to'45'trace'45'lab'45'frame'45'free_1010
+                (MAlonzo.Code.Once.CCC.Codegen.FrameFreeTrace.d_ir'45'to'45'trace'45'lab'45'frame'45'free_1020
                    (coe MAlonzo.Code.Once.Denotation.Program.d_fname_16 (coe v2))
                    (coe MAlonzo.Code.Once.Denotation.Program.d_fdom_18 (coe v2))
                    (coe MAlonzo.Code.Once.Denotation.Program.d_fcod_20 (coe v2))
@@ -198,11 +198,11 @@ d_body'45'frame'45'free_66 v0 v1 v2
                MAlonzo.Code.Once.Denotation.Program.C_irProgram_390 (coe v1)
                (coe v2)))
          (coe
-            MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'unit_842 v0
+            MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'unit_854 v0
             (coe MAlonzo.Code.Once.IRTy.C_Unit_16)
             (coe MAlonzo.Code.Once.IRTy.C_Unit_16) v2))
       (coe
-         MAlonzo.Code.Once.CCC.Codegen.FrameFreeTrace.du_ir'45'to'45'trace'45'top'45'frame'45'free_1028
+         MAlonzo.Code.Once.CCC.Codegen.FrameFreeTrace.du_ir'45'to'45'trace'45'top'45'frame'45'free_1038
          (coe v0) (coe MAlonzo.Code.Once.IRTy.C_Unit_16)
          (coe MAlonzo.Code.Once.IRTy.C_Unit_16) (coe v2)
          (coe
@@ -214,7 +214,7 @@ d_body'45'frame'45'free_66 v0 v1 v2
          (coe
             addInt (coe (1 :: Integer))
             (coe
-               MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'next'45'label_934
+               MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'next'45'label_946
                (coe v0) (coe MAlonzo.Code.Once.IRTy.C_Unit_16)
                (coe MAlonzo.Code.Once.IRTy.C_Unit_16) (coe (0 :: Integer))
                (coe v2)))
@@ -293,7 +293,7 @@ du_fns'45'alloc'45'min_100 v0 v1
                          MAlonzo.Code.Once.CCC.Label.C_e'45'fn_26
                          (coe MAlonzo.Code.Once.Denotation.Program.d_fname_16 (coe v2)))
                       (coe
-                         MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'stack'45'budget'45'from_896
+                         MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'stack'45'budget'45'from_908
                          (coe MAlonzo.Code.Once.Denotation.Program.d_fname_16 (coe v2))
                          (coe MAlonzo.Code.Once.Denotation.Program.d_fdom_18 (coe v2))
                          (coe MAlonzo.Code.Once.Denotation.Program.d_fcod_20 (coe v2))
@@ -303,7 +303,7 @@ du_fns'45'alloc'45'min_100 v0 v1
                        = MAlonzo.Code.Once.Denotation.Program.d_fname_16 (coe v2) in
                  coe
                    (coe
-                      MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace'45'lab_924
+                      MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace'45'lab_936
                       (coe v4)
                       (coe MAlonzo.Code.Once.Denotation.Program.d_fdom_18 (coe v2))
                       (coe MAlonzo.Code.Once.Denotation.Program.d_fcod_20 (coe v2))
@@ -312,7 +312,7 @@ du_fns'45'alloc'45'min_100 v0 v1
              (coe
                 MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
                 (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
-                (MAlonzo.Code.Once.CCC.Codegen.AllocMin.d_ir'45'to'45'trace'45'lab'45'alloc'45'min_912
+                (MAlonzo.Code.Once.CCC.Codegen.AllocMin.d_ir'45'to'45'trace'45'lab'45'alloc'45'min_922
                    (coe MAlonzo.Code.Once.Denotation.Program.d_fname_16 (coe v2))
                    (coe MAlonzo.Code.Once.Denotation.Program.d_fdom_18 (coe v2))
                    (coe MAlonzo.Code.Once.Denotation.Program.d_fcod_20 (coe v2))
@@ -346,11 +346,11 @@ d_image'45'alloc'45'min_114 v0 v1 v2
                   MAlonzo.Code.Once.Denotation.Program.C_irProgram_390 (coe v1)
                   (coe v2)))
             (coe
-               MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'unit_842 v0
+               MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'unit_854 v0
                (coe MAlonzo.Code.Once.IRTy.C_Unit_16)
                (coe MAlonzo.Code.Once.IRTy.C_Unit_16) v2))
          (coe
-            MAlonzo.Code.Once.CCC.Codegen.AllocMin.du_ir'45'to'45'trace'45'top'45'alloc'45'min_926
+            MAlonzo.Code.Once.CCC.Codegen.AllocMin.du_ir'45'to'45'trace'45'top'45'alloc'45'min_936
             (coe v0) (coe MAlonzo.Code.Once.IRTy.C_Unit_16)
             (coe MAlonzo.Code.Once.IRTy.C_Unit_16) (coe v2))
          (coe
@@ -358,7 +358,7 @@ d_image'45'alloc'45'min_114 v0 v1 v2
             (coe
                addInt (coe (1 :: Integer))
                (coe
-                  MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'next'45'label_934
+                  MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'next'45'label_946
                   (coe v0) (coe MAlonzo.Code.Once.IRTy.C_Unit_16)
                   (coe MAlonzo.Code.Once.IRTy.C_Unit_16) (coe (0 :: Integer))
                   (coe v2)))
@@ -395,7 +395,7 @@ du_fns'45'slots_128 v0 v1 v2 v3
                          MAlonzo.Code.Once.CCC.Label.C_e'45'fn_26
                          (coe MAlonzo.Code.Once.Denotation.Program.d_fname_16 (coe v4)))
                       (coe
-                         MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'stack'45'budget'45'from_896
+                         MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'stack'45'budget'45'from_908
                          (coe MAlonzo.Code.Once.Denotation.Program.d_fname_16 (coe v4))
                          (coe MAlonzo.Code.Once.Denotation.Program.d_fdom_18 (coe v4))
                          (coe MAlonzo.Code.Once.Denotation.Program.d_fcod_20 (coe v4))
@@ -405,7 +405,7 @@ du_fns'45'slots_128 v0 v1 v2 v3
                        = MAlonzo.Code.Once.Denotation.Program.d_fname_16 (coe v4) in
                  coe
                    (coe
-                      MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace'45'lab_924
+                      MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace'45'lab_936
                       (coe v6)
                       (coe MAlonzo.Code.Once.Denotation.Program.d_fdom_18 (coe v4))
                       (coe MAlonzo.Code.Once.Denotation.Program.d_fcod_20 (coe v4))
@@ -414,7 +414,7 @@ du_fns'45'slots_128 v0 v1 v2 v3
              (coe
                 MAlonzo.Code.Once.CCC.Codegen.SlotSeg.C__'8759'__236
                 (coe MAlonzo.Code.Once.CCC.Codegen.SlotSeg.du_sb'45'none_40)
-                (MAlonzo.Code.Once.CCC.Codegen.SlotBudget.d_ir'45'slots'45'below'45'under'45'lab_1872
+                (MAlonzo.Code.Once.CCC.Codegen.SlotBudget.d_ir'45'slots'45'below'45'under'45'lab_1944
                    (coe MAlonzo.Code.Once.Denotation.Program.d_fname_16 (coe v4))
                    (coe MAlonzo.Code.Once.Denotation.Program.d_fdom_18 (coe v4))
                    (coe MAlonzo.Code.Once.Denotation.Program.d_fcod_20 (coe v4))
@@ -445,11 +445,11 @@ d_image'45'slots_152 v0 v1 v2
             MAlonzo.Code.Once.CCC.Machine.SMCore.d_link'45'top_2376
             (coe d_d_162 (coe v0) (coe v1) (coe v2))
             (coe
-               MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'unit_842 v0
+               MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'unit_854 v0
                (coe MAlonzo.Code.Once.IRTy.C_Unit_16)
                (coe MAlonzo.Code.Once.IRTy.C_Unit_16) v2))
          (coe
-            MAlonzo.Code.Once.CCC.Codegen.SlotBudget.du_ir'45'slots'45'below'45'top_1910
+            MAlonzo.Code.Once.CCC.Codegen.SlotBudget.du_ir'45'slots'45'below'45'top_1982
             (coe v0) (coe MAlonzo.Code.Once.IRTy.C_Unit_16)
             (coe MAlonzo.Code.Once.IRTy.C_Unit_16) (coe v2)
             (coe
@@ -458,7 +458,7 @@ d_image'45'slots_152 v0 v1 v2
          (coe
             du_fns'45'slots_128
             (coe
-               MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'stack'45'budget_866
+               MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'stack'45'budget_878
                (coe v0) (coe MAlonzo.Code.Once.IRTy.C_Unit_16)
                (coe MAlonzo.Code.Once.IRTy.C_Unit_16) (coe v2))
             (coe
@@ -467,7 +467,7 @@ d_image'45'slots_152 v0 v1 v2
             (coe
                addInt (coe (1 :: Integer))
                (coe
-                  MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'next'45'label_934
+                  MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'next'45'label_946
                   (coe v0) (coe MAlonzo.Code.Once.IRTy.C_Unit_16)
                   (coe MAlonzo.Code.Once.IRTy.C_Unit_16) (coe (0 :: Integer))
                   (coe v2)))
@@ -500,7 +500,7 @@ du_fn'45'labels_170 v0 v1
   = coe
       MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
       (coe MAlonzo.Code.Once.CCC.Codegen.LabelSeg.du_li'45'none_54)
-      (MAlonzo.Code.Once.CCC.Codegen.LabelScope.d_linked'45'labels'45'lab_3512
+      (MAlonzo.Code.Once.CCC.Codegen.LabelScope.d_linked'45'labels'45'lab_3540
          (coe MAlonzo.Code.Once.Denotation.Program.d_fname_16 (coe v1))
          (coe MAlonzo.Code.Once.Denotation.Program.d_fdom_18 (coe v1))
          (coe MAlonzo.Code.Once.Denotation.Program.d_fcod_20 (coe v1))
@@ -614,7 +614,7 @@ du_L_228 ::
   MAlonzo.Code.Once.IR.T_IR_16 -> Integer
 du_L_228 v0 v1
   = coe
-      MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'next'45'label_934
+      MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'next'45'label_946
       (coe v0) (coe MAlonzo.Code.Once.IRTy.C_Unit_16)
       (coe MAlonzo.Code.Once.IRTy.C_Unit_16) (coe (0 :: Integer))
       (coe v1)

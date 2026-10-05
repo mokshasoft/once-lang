@@ -103,7 +103,7 @@ du_cfb'45'aux'45'doOpt_30 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                    MAlonzo.Code.Once.TypeCheck.Classify.d_debruijn_396 (coe v0))))
                           (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_48 (coe v7))
                           (coe
-                             MAlonzo.Code.Once.Surface.Elaborate.du_elaborateFull_978
+                             MAlonzo.Code.Once.Surface.Elaborate.du_elaborateFull_996
                              (coe MAlonzo.Code.Once.TypeCheck.Classify.d_size_392 (coe v0))
                              (coe MAlonzo.Code.Once.TypeCheck.Classify.d_debruijn_396 (coe v0))
                              (coe v11) (coe v7)
@@ -120,7 +120,7 @@ du_cfb'45'aux'45'doOpt_30 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                    MAlonzo.Code.Once.Denotation.Realize.d_realize_20 (coe v0)
                                    (coe v1) (coe v7) (coe v11) (coe v10)))))
                        (coe
-                          MAlonzo.Code.Once.Surface.Elaborate.du_elaborateFull_978
+                          MAlonzo.Code.Once.Surface.Elaborate.du_elaborateFull_996
                           (coe MAlonzo.Code.Once.TypeCheck.Classify.d_size_392 (coe v0))
                           (coe MAlonzo.Code.Once.TypeCheck.Classify.d_debruijn_396 (coe v0))
                           (coe v11) (coe v7)
@@ -497,7 +497,7 @@ du_conc_402 v0 v1 v2 v3 v4 v5 v6 v7
                                       MAlonzo.Code.Once.IR.C__'8728'__28
                                       (coe MAlonzo.Code.Once.IRTy.C_Unit_16)
                                       (coe
-                                         MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_384
+                                         MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_402
                                          (coe (0 :: Integer))
                                          (coe MAlonzo.Code.Once.Surface.Context.C_'8709'_8)
                                          (coe MAlonzo.Code.Once.Surface.Context.C_'91''93'_62)

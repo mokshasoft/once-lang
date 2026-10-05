@@ -134,10 +134,10 @@ du_ir'45'head_90 v0
       MAlonzo.Code.Once.IR.C_Cata_106 v2 v5 -> coe C_h'45'Cata_36
       MAlonzo.Code.Once.IR.C_Out_110 v2 -> coe C_h'45'Out_38
       MAlonzo.Code.Once.IR.C_in'45'ν_114 v2 -> coe C_h'45'in'45'ν_40
-      MAlonzo.Code.Once.IR.C_Ana_120 v2 v4 -> coe C_h'45'Ana_42
-      MAlonzo.Code.Once.IR.C_const_124 v2 v3 -> coe C_h'45'const_46
-      MAlonzo.Code.Once.IR.C_SigOp_130 v1 v2 v3 -> coe C_h'45'SigOp_44
-      MAlonzo.Code.Once.IR.C_Call_136 v3 -> coe C_h'45'Call_48
+      MAlonzo.Code.Once.IR.C_Ana_122 v2 v5 -> coe C_h'45'Ana_42
+      MAlonzo.Code.Once.IR.C_const_126 v2 v3 -> coe C_h'45'const_46
+      MAlonzo.Code.Once.IR.C_SigOp_132 v1 v2 v3 -> coe C_h'45'SigOp_44
+      MAlonzo.Code.Once.IR.C_Call_138 v3 -> coe C_h'45'Call_48
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Optimize.dec-to-bool
 d_dec'45'to'45'bool_96 ::
@@ -378,13 +378,13 @@ du_pairView'45'gen_342 v0
       MAlonzo.Code.Once.IR.C_Out_110 v2 -> coe C_is'45'other'45'pair_178
       MAlonzo.Code.Once.IR.C_in'45'ν_114 v2
         -> coe C_is'45'other'45'pair_178
-      MAlonzo.Code.Once.IR.C_Ana_120 v2 v4
+      MAlonzo.Code.Once.IR.C_Ana_122 v2 v5
         -> coe C_is'45'other'45'pair_178
-      MAlonzo.Code.Once.IR.C_const_124 v2 v3
+      MAlonzo.Code.Once.IR.C_const_126 v2 v3
         -> coe C_is'45'other'45'pair_178
-      MAlonzo.Code.Once.IR.C_SigOp_130 v1 v2 v3
+      MAlonzo.Code.Once.IR.C_SigOp_132 v1 v2 v3
         -> coe C_is'45'other'45'pair_178
-      MAlonzo.Code.Once.IR.C_Call_136 v3 -> coe C_is'45'other'45'pair_178
+      MAlonzo.Code.Once.IR.C_Call_138 v3 -> coe C_is'45'other'45'pair_178
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Optimize.pairView
 d_pairView_430 ::
@@ -437,13 +437,13 @@ du_coprodView'45'gen_446 v0
         -> coe C_is'45'other'45'coprod_208
       MAlonzo.Code.Once.IR.C_in'45'ν_114 v2
         -> coe C_is'45'other'45'coprod_208
-      MAlonzo.Code.Once.IR.C_Ana_120 v2 v4
+      MAlonzo.Code.Once.IR.C_Ana_122 v2 v5
         -> coe C_is'45'other'45'coprod_208
-      MAlonzo.Code.Once.IR.C_const_124 v2 v3
+      MAlonzo.Code.Once.IR.C_const_126 v2 v3
         -> coe C_is'45'other'45'coprod_208
-      MAlonzo.Code.Once.IR.C_SigOp_130 v1 v2 v3
+      MAlonzo.Code.Once.IR.C_SigOp_132 v1 v2 v3
         -> coe C_is'45'other'45'coprod_208
-      MAlonzo.Code.Once.IR.C_Call_136 v3
+      MAlonzo.Code.Once.IR.C_Call_138 v3
         -> coe C_is'45'other'45'coprod_208
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Optimize.coprodView
@@ -485,10 +485,10 @@ du_composeFirstView_542 v0
       MAlonzo.Code.Once.IR.C_Cata_106 v2 v5 -> coe C_cf'45'other_254
       MAlonzo.Code.Once.IR.C_Out_110 v2 -> coe C_cf'45'other_254
       MAlonzo.Code.Once.IR.C_in'45'ν_114 v2 -> coe C_cf'45'other_254
-      MAlonzo.Code.Once.IR.C_Ana_120 v2 v4 -> coe C_cf'45'other_254
-      MAlonzo.Code.Once.IR.C_const_124 v2 v3 -> coe C_cf'45'other_254
-      MAlonzo.Code.Once.IR.C_SigOp_130 v1 v2 v3 -> coe C_cf'45'other_254
-      MAlonzo.Code.Once.IR.C_Call_136 v3 -> coe C_cf'45'other_254
+      MAlonzo.Code.Once.IR.C_Ana_122 v2 v5 -> coe C_cf'45'other_254
+      MAlonzo.Code.Once.IR.C_const_126 v2 v3 -> coe C_cf'45'other_254
+      MAlonzo.Code.Once.IR.C_SigOp_132 v1 v2 v3 -> coe C_cf'45'other_254
+      MAlonzo.Code.Once.IR.C_Call_138 v3 -> coe C_cf'45'other_254
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Optimize.composeSecondView
 d_composeSecondView_588 ::
@@ -519,10 +519,10 @@ du_composeSecondView_588 v0
       MAlonzo.Code.Once.IR.C_Cata_106 v2 v5 -> coe C_cs'45'other_276
       MAlonzo.Code.Once.IR.C_Out_110 v2 -> coe C_cs'45'other_276
       MAlonzo.Code.Once.IR.C_in'45'ν_114 v2 -> coe C_cs'45'other_276
-      MAlonzo.Code.Once.IR.C_Ana_120 v2 v4 -> coe C_cs'45'other_276
-      MAlonzo.Code.Once.IR.C_const_124 v2 v3 -> coe C_cs'45'other_276
-      MAlonzo.Code.Once.IR.C_SigOp_130 v1 v2 v3 -> coe C_cs'45'other_276
-      MAlonzo.Code.Once.IR.C_Call_136 v3 -> coe C_cs'45'other_276
+      MAlonzo.Code.Once.IR.C_Ana_122 v2 v5 -> coe C_cs'45'other_276
+      MAlonzo.Code.Once.IR.C_const_126 v2 v3 -> coe C_cs'45'other_276
+      MAlonzo.Code.Once.IR.C_SigOp_132 v1 v2 v3 -> coe C_cs'45'other_276
+      MAlonzo.Code.Once.IR.C_Call_138 v3 -> coe C_cs'45'other_276
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Optimize.fstSndView
 d_fstSndView_634 ::
@@ -553,10 +553,10 @@ du_fstSndView_634 v0
       MAlonzo.Code.Once.IR.C_Cata_106 v2 v5 -> coe C_fsv'45'other_302
       MAlonzo.Code.Once.IR.C_Out_110 v2 -> coe C_fsv'45'other_302
       MAlonzo.Code.Once.IR.C_in'45'ν_114 v2 -> coe C_fsv'45'other_302
-      MAlonzo.Code.Once.IR.C_Ana_120 v2 v4 -> coe C_fsv'45'other_302
-      MAlonzo.Code.Once.IR.C_const_124 v2 v3 -> coe C_fsv'45'other_302
-      MAlonzo.Code.Once.IR.C_SigOp_130 v1 v2 v3 -> coe C_fsv'45'other_302
-      MAlonzo.Code.Once.IR.C_Call_136 v3 -> coe C_fsv'45'other_302
+      MAlonzo.Code.Once.IR.C_Ana_122 v2 v5 -> coe C_fsv'45'other_302
+      MAlonzo.Code.Once.IR.C_const_126 v2 v3 -> coe C_fsv'45'other_302
+      MAlonzo.Code.Once.IR.C_SigOp_132 v1 v2 v3 -> coe C_fsv'45'other_302
+      MAlonzo.Code.Once.IR.C_Call_138 v3 -> coe C_fsv'45'other_302
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Optimize.inlInrView
 d_inlInrView_680 ::
@@ -587,10 +587,10 @@ du_inlInrView_680 v0
       MAlonzo.Code.Once.IR.C_Cata_106 v2 v5 -> coe C_iiv'45'other_328
       MAlonzo.Code.Once.IR.C_Out_110 v2 -> coe C_iiv'45'other_328
       MAlonzo.Code.Once.IR.C_in'45'ν_114 v2 -> coe C_iiv'45'other_328
-      MAlonzo.Code.Once.IR.C_Ana_120 v2 v4 -> coe C_iiv'45'other_328
-      MAlonzo.Code.Once.IR.C_const_124 v2 v3 -> coe C_iiv'45'other_328
-      MAlonzo.Code.Once.IR.C_SigOp_130 v1 v2 v3 -> coe C_iiv'45'other_328
-      MAlonzo.Code.Once.IR.C_Call_136 v3 -> coe C_iiv'45'other_328
+      MAlonzo.Code.Once.IR.C_Ana_122 v2 v5 -> coe C_iiv'45'other_328
+      MAlonzo.Code.Once.IR.C_const_126 v2 v3 -> coe C_iiv'45'other_328
+      MAlonzo.Code.Once.IR.C_SigOp_132 v1 v2 v3 -> coe C_iiv'45'other_328
+      MAlonzo.Code.Once.IR.C_Call_138 v3 -> coe C_iiv'45'other_328
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Optimize.has-effect?
 d_has'45'effect'63'_724 ::
@@ -666,20 +666,23 @@ d_has'45'effect'63'_724 v0 v1 v2
         -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
       MAlonzo.Code.Once.IR.C_in'45'ν_114 v4
         -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
-      MAlonzo.Code.Once.IR.C_Ana_120 v4 v6
-        -> case coe v1 of
-             MAlonzo.Code.Once.IRTy.C_ν'45'type_28 v7
-               -> coe
-                    d_has'45'effect'63'_724 (coe v0)
-                    (coe
-                       MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_80 (coe v7) (coe v0))
-                    (coe v6)
+      MAlonzo.Code.Once.IR.C_Ana_122 v4 v7
+        -> case coe v0 of
+             MAlonzo.Code.Once.IRTy.C__'42'__20 v8 v9
+               -> case coe v1 of
+                    MAlonzo.Code.Once.IRTy.C_ν'45'type_28 v10
+                      -> coe
+                           d_has'45'effect'63'_724 (coe v0)
+                           (coe
+                              MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_80 (coe v10) (coe v9))
+                           (coe v7)
+                    _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.IR.C_const_124 v4 v5
+      MAlonzo.Code.Once.IR.C_const_126 v4 v5
         -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
-      MAlonzo.Code.Once.IR.C_SigOp_130 v3 v4 v5
+      MAlonzo.Code.Once.IR.C_SigOp_132 v3 v4 v5
         -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
-      MAlonzo.Code.Once.IR.C_Call_136 v5
+      MAlonzo.Code.Once.IR.C_Call_138 v5
         -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Optimize.optimize-fst
@@ -1112,20 +1115,23 @@ d_optimize'45'once'45'structural_1072 v0 v1 v2
         -> coe MAlonzo.Code.Once.IR.C_Out_110 v4
       MAlonzo.Code.Once.IR.C_in'45'ν_114 v4
         -> coe MAlonzo.Code.Once.IR.C_in'45'ν_114 v4
-      MAlonzo.Code.Once.IR.C_Ana_120 v4 v6
-        -> case coe v1 of
-             MAlonzo.Code.Once.IRTy.C_ν'45'type_28 v7
-               -> coe
-                    MAlonzo.Code.Once.IR.C_Ana_120 v4
-                    (d_optimize'45'once_1078
-                       (coe v0)
-                       (coe
-                          MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_80 (coe v7) (coe v0))
-                       (coe v6))
+      MAlonzo.Code.Once.IR.C_Ana_122 v4 v7
+        -> case coe v0 of
+             MAlonzo.Code.Once.IRTy.C__'42'__20 v8 v9
+               -> case coe v1 of
+                    MAlonzo.Code.Once.IRTy.C_ν'45'type_28 v10
+                      -> coe
+                           MAlonzo.Code.Once.IR.C_Ana_122 v4
+                           (d_optimize'45'once_1078
+                              (coe v0)
+                              (coe
+                                 MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_80 (coe v10) (coe v9))
+                              (coe v7))
+                    _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.IR.C_const_124 v4 v5
-        -> coe MAlonzo.Code.Once.IR.C_const_124 v4 v5
-      MAlonzo.Code.Once.IR.C_SigOp_130 v3 v4 v5
+      MAlonzo.Code.Once.IR.C_const_126 v4 v5
+        -> coe MAlonzo.Code.Once.IR.C_const_126 v4 v5
+      MAlonzo.Code.Once.IR.C_SigOp_132 v3 v4 v5
         -> let v6
                  = MAlonzo.Code.Once.Type.DecEq.d__'8799'T__192
                      (coe v3) (coe MAlonzo.Code.Once.Type.C_Void_122) in
@@ -1136,8 +1142,8 @@ d_optimize'45'once'45'structural_1072 v0 v1 v2
                        then coe seq (coe v8) (coe MAlonzo.Code.Once.IR.C_initial_76)
                        else coe seq (coe v8) (coe v2)
                 _ -> MAlonzo.RTE.mazUnreachableError)
-      MAlonzo.Code.Once.IR.C_Call_136 v5
-        -> coe MAlonzo.Code.Once.IR.C_Call_136 v5
+      MAlonzo.Code.Once.IR.C_Call_138 v5
+        -> coe MAlonzo.Code.Once.IR.C_Call_138 v5
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Optimize.optimize-once
 d_optimize'45'once_1078 ::

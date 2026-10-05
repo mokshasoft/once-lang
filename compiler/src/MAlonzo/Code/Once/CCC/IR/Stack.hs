@@ -156,21 +156,24 @@ d_ir'45'stack'45'requirement_40 v0 v1 v2
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.IR.C_Out_110 v4 -> coe (0 :: Integer)
       MAlonzo.Code.Once.IR.C_in'45'ν_114 v4 -> coe (1 :: Integer)
-      MAlonzo.Code.Once.IR.C_Ana_120 v4 v6
-        -> case coe v1 of
-             MAlonzo.Code.Once.IRTy.C_ν'45'type_28 v7
-               -> coe
-                    addInt
-                    (coe
-                       d_ir'45'stack'45'requirement_40 (coe v0)
-                       (coe
-                          MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_80 (coe v7) (coe v0))
-                       (coe v6))
-                    (coe d_pair'45'slots_8)
+      MAlonzo.Code.Once.IR.C_Ana_122 v4 v7
+        -> case coe v0 of
+             MAlonzo.Code.Once.IRTy.C__'42'__20 v8 v9
+               -> case coe v1 of
+                    MAlonzo.Code.Once.IRTy.C_ν'45'type_28 v10
+                      -> coe
+                           addInt
+                           (coe
+                              d_ir'45'stack'45'requirement_40 (coe v0)
+                              (coe
+                                 MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_80 (coe v10) (coe v9))
+                              (coe v7))
+                           (coe d_pair'45'slots_8)
+                    _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.IR.C_const_124 v4 v5 -> coe (0 :: Integer)
-      MAlonzo.Code.Once.IR.C_SigOp_130 v3 v4 v5 -> coe (0 :: Integer)
-      MAlonzo.Code.Once.IR.C_Call_136 v5 -> coe (0 :: Integer)
+      MAlonzo.Code.Once.IR.C_const_126 v4 v5 -> coe (0 :: Integer)
+      MAlonzo.Code.Once.IR.C_SigOp_132 v3 v4 v5 -> coe (0 :: Integer)
+      MAlonzo.Code.Once.IR.C_Call_138 v5 -> coe (0 :: Integer)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.IR.Stack.ir-scratch-requirement
 d_ir'45'scratch'45'requirement_64 ::

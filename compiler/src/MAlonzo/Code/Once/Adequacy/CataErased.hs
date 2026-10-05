@@ -526,7 +526,7 @@ du_algM_580 v0 v1 v2 v3 v4 v5 v6 v7 v8
       (coe v3) (coe v5)
       (coe
          (\ v9 ->
-            MAlonzo.Code.Once.Denotation.DenotTrace.d_liftFn_390
+            MAlonzo.Code.Once.Denotation.DenotTrace.d_liftFn_392
               (coe v0) (coe v1)
               (coe
                  MAlonzo.Code.Once.Type.C__'42'__124 (coe v4)
@@ -771,7 +771,7 @@ du_contM_640 ::
   AgdaAny -> MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178
 du_contM_640 v0 v1 v2 v3 v4 v5 v6 v7 v8
   = coe
-      MAlonzo.Code.Once.Denotation.DenotTrace.d_liftFn_390 (coe v0)
+      MAlonzo.Code.Once.Denotation.DenotTrace.d_liftFn_392 (coe v0)
       (coe v1)
       (coe
          MAlonzo.Code.Once.Type.C__'42'__124 (coe v4)

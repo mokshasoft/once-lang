@@ -319,7 +319,7 @@ du_go_118 v0 v1 v2 v3 v4
                                   (coe
                                      MAlonzo.Code.Once.Surface.Syntax.C_lift'45'morphism_418
                                      (coe
-                                        MAlonzo.Code.Once.IR.C_SigOp_130 (coe v5) (coe v7)
+                                        MAlonzo.Code.Once.IR.C_SigOp_132 (coe v5) (coe v7)
                                         (coe
                                            MAlonzo.Code.Once.TypeCheck.Elaborate.du_ext'45'arrow'45'info_4270
                                            (coe v7) (coe v2) (coe v1) (coe v9)
@@ -1430,7 +1430,7 @@ du_infer'45'complete'45'RVar'45'local_1030 v0 v1
   = coe
       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
       (coe
-         MAlonzo.Code.Once.Surface.Syntax.du_svar'8594'expr_540 (coe v1))
+         MAlonzo.Code.Once.Surface.Syntax.du_svar'8594'expr_542 (coe v1))
       (coe
          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe (0 :: Integer))
          (coe

@@ -363,12 +363,12 @@ du_rb'45'view_402 v0
            -> case coe v5 of
                 MAlonzo.Code.Once.IR.C__'8728'__28 v8 v10 v11
                   -> coe C_v'45'reassoc_358
-                MAlonzo.Code.Once.IR.C_const_124 v8 v9
+                MAlonzo.Code.Once.IR.C_const_126 v8 v9
                   -> case coe v8 of
                        MAlonzo.Code.Once.IRTy.C_fits'45'int_520 -> coe C_v'45'cint_378
                        MAlonzo.Code.Once.IRTy.C_fits'45'float_522 -> coe C_v'45'cflt_386
                        _ -> MAlonzo.RTE.mazUnreachableError
-                MAlonzo.Code.Once.IR.C_SigOp_130 v7 v8 v9 -> coe C_v'45'sigop_370
+                MAlonzo.Code.Once.IR.C_SigOp_132 v7 v8 v9 -> coe C_v'45'sigop_370
                 _ -> coe v1
          _ -> coe v1)
 -- Once.Arith.Machine.Recognise.lit-at
@@ -561,7 +561,7 @@ d_rb'45'at_490 v0 v1 v2 v3 v4
         -> case coe v3 of
              MAlonzo.Code.Once.IR.C__'8728'__28 v11 v13 v14
                -> case coe v13 of
-                    MAlonzo.Code.Once.IR.C_SigOp_130 v15 v16 v17
+                    MAlonzo.Code.Once.IR.C_SigOp_132 v15 v16 v17
                       -> coe
                            du_recognise'45'prim_480 (coe v0) (coe v1)
                            (coe MAlonzo.Code.Once.SigOp.Info.d_sem_180 (coe v17)) (coe v14)
@@ -571,7 +571,7 @@ d_rb'45'at_490 v0 v1 v2 v3 v4
         -> case coe v3 of
              MAlonzo.Code.Once.IR.C__'8728'__28 v9 v11 v12
                -> case coe v11 of
-                    MAlonzo.Code.Once.IR.C_const_124 v14 v15
+                    MAlonzo.Code.Once.IR.C_const_126 v14 v15
                       -> coe
                            du_lit'45'at_426 (coe du_is'45'terminal'63'_178 (coe v1) (coe v12))
                            (coe v15)
@@ -795,7 +795,7 @@ d_rbf'45'at_650 v0 v1 v2 v3 v4
         -> case coe v3 of
              MAlonzo.Code.Once.IR.C__'8728'__28 v11 v13 v14
                -> case coe v13 of
-                    MAlonzo.Code.Once.IR.C_SigOp_130 v15 v16 v17
+                    MAlonzo.Code.Once.IR.C_SigOp_132 v15 v16 v17
                       -> coe
                            du_recognise'45'prim'45'float_640 (coe v0) (coe v1)
                            (coe MAlonzo.Code.Once.SigOp.Info.d_sem_180 (coe v17)) (coe v14)
@@ -806,7 +806,7 @@ d_rbf'45'at_650 v0 v1 v2 v3 v4
         -> case coe v3 of
              MAlonzo.Code.Once.IR.C__'8728'__28 v9 v11 v12
                -> case coe v11 of
-                    MAlonzo.Code.Once.IR.C_const_124 v14 v15
+                    MAlonzo.Code.Once.IR.C_const_126 v14 v15
                       -> coe
                            du_flit'45'at_434
                            (coe du_is'45'terminal'63'_178 (coe v1) (coe v12)) (coe v15)

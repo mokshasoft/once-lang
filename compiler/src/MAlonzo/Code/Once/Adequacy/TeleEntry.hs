@@ -284,7 +284,7 @@ du_ir_330 ::
   MAlonzo.Code.Once.IR.T_IR_16
 du_ir_330 v0 v1 v2
   = coe
-      MAlonzo.Code.Once.Surface.Elaborate.du_elaborateFull_978
+      MAlonzo.Code.Once.Surface.Elaborate.du_elaborateFull_996
       (coe (0 :: Integer))
       (coe MAlonzo.Code.Once.Surface.Context.C_'8709'_8)
       (coe

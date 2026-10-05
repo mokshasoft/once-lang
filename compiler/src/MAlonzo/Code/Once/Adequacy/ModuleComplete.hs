@@ -151,7 +151,7 @@ du_succ_78 v0 v1 v2 v3 v4 v5 v6
                             (coe MAlonzo.Code.Once.Surface.Context.C_'8709'_8)))
                       (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_48 (coe v4))
                       (coe
-                         MAlonzo.Code.Once.Surface.Elaborate.du_elaborateFull_978
+                         MAlonzo.Code.Once.Surface.Elaborate.du_elaborateFull_996
                          (coe (0 :: Integer))
                          (coe MAlonzo.Code.Once.Surface.Context.C_'8709'_8)
                          (coe MAlonzo.Code.Once.Surface.Context.C_'91''93'_62) (coe v4)
@@ -174,7 +174,7 @@ du_succ_78 v0 v1 v2 v3 v4 v5 v6
                                (coe v5) (coe v4)
                                (coe MAlonzo.Code.Once.Surface.Context.C_'91''93'_62) (coe v8)))))
                    (coe
-                      MAlonzo.Code.Once.Surface.Elaborate.du_elaborateFull_978
+                      MAlonzo.Code.Once.Surface.Elaborate.du_elaborateFull_996
                       (coe (0 :: Integer))
                       (coe MAlonzo.Code.Once.Surface.Context.C_'8709'_8)
                       (coe MAlonzo.Code.Once.Surface.Context.C_'91''93'_62) (coe v4)
@@ -299,7 +299,7 @@ d_ce'45'complete_204 v0 v1 v2 v3
                                     (coe MAlonzo.Code.Once.Parser.d_funName_106 (coe v16)))
                                  (coe v6)
                                  (coe
-                                    MAlonzo.Code.Once.Surface.Elaborate.du_elaborateFull_978
+                                    MAlonzo.Code.Once.Surface.Elaborate.du_elaborateFull_996
                                     (coe (0 :: Integer))
                                     (coe MAlonzo.Code.Once.Surface.Context.C_'8709'_8)
                                     (coe
@@ -426,7 +426,7 @@ d_ce'45'find'45'complete_322 v0 v1 v2 v3 v4
                                     (coe MAlonzo.Code.Once.Parser.d_funName_106 (coe v17)))
                                  (coe v7)
                                  (coe
-                                    MAlonzo.Code.Once.Surface.Elaborate.du_elaborateFull_978
+                                    MAlonzo.Code.Once.Surface.Elaborate.du_elaborateFull_996
                                     (coe (0 :: Integer))
                                     (coe MAlonzo.Code.Once.Surface.Context.C_'8709'_8)
                                     (coe

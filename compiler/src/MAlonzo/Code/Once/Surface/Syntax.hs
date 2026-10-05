@@ -112,19 +112,19 @@ data T_Expr_8
     C_curry''_502 T_Expr_8 |
     C_cata_516 MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_236
                T_Expr_8 |
-    C_ana_530 MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_236
+    C_ana_532 MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_236
               T_Expr_8
 -- Once.Surface.Syntax.svar→expr
-d_svar'8594'expr_540 ::
+d_svar'8594'expr_542 ::
   Integer ->
   MAlonzo.Code.Once.Surface.Context.T_Ctx_6 ->
   MAlonzo.Code.Once.Surface.Context.T_Usage_60 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Surface.Context.T_SVar_210 -> T_Expr_8
-d_svar'8594'expr_540 ~v0 ~v1 ~v2 ~v3 v4 = du_svar'8594'expr_540 v4
-du_svar'8594'expr_540 ::
+d_svar'8594'expr_542 ~v0 ~v1 ~v2 ~v3 v4 = du_svar'8594'expr_542 v4
+du_svar'8594'expr_542 ::
   MAlonzo.Code.Once.Surface.Context.T_SVar_210 -> T_Expr_8
-du_svar'8594'expr_540 v0
+du_svar'8594'expr_542 v0
   = case coe v0 of
       MAlonzo.Code.Once.Surface.Context.C_svar_218 v3 -> coe C_var_16 v3
       _ -> MAlonzo.RTE.mazUnreachableError

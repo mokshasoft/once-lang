@@ -302,7 +302,7 @@ d_primCF_332 v0 v1 v2
          (coe MAlonzo.Code.Once.Parser.d_funName_106 (coe v0)))
       (coe v1)
       (coe
-         MAlonzo.Code.Once.Surface.Elaborate.du_elaborateFull_978
+         MAlonzo.Code.Once.Surface.Elaborate.du_elaborateFull_996
          (coe (0 :: Integer))
          (coe MAlonzo.Code.Once.Surface.Context.C_'8709'_8)
          (coe

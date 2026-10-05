@@ -1801,7 +1801,7 @@ du_n1_5208 v0 v1 v2 v3 v4 v5
   = coe
       MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
       (coe
-         MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace''_530
+         MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace''_542
          (coe v0) (coe v1) (coe v2) (coe du_f'45'start_5204 (coe v4))
          (coe v5) (coe v3))
 -- Once.CCC.Codegen.IRObsCorrect.Pair.Chain.PairC.PairShape.l1
@@ -1827,7 +1827,7 @@ du_l1_5210 v0 v1 v2 v3 v4 v5
       (coe
          MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
          (coe
-            MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace''_530
+            MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace''_542
             (coe v0) (coe v1) (coe v2) (coe du_f'45'start_5204 (coe v4))
             (coe v5) (coe v3)))
 -- Once.CCC.Codegen.IRObsCorrect.Pair.Chain.PairC.PairShape.gt

@@ -2131,7 +2131,7 @@ du_body'45'at_1334 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
         -> case coe v5 of
              MAlonzo.Code.Once.IR.C__'8728'__28 v16 v18 v19
                -> case coe v18 of
-                    MAlonzo.Code.Once.IR.C_SigOp_130 v20 v21 v22
+                    MAlonzo.Code.Once.IR.C_SigOp_132 v20 v21 v22
                       -> case coe v22 of
                            MAlonzo.Code.Once.SigOp.Info.C_mk'45'info''_186 v23 v24 v25 v26
                              -> coe
@@ -2151,7 +2151,7 @@ du_body'45'at_1334 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
         -> case coe v5 of
              MAlonzo.Code.Once.IR.C__'8728'__28 v14 v16 v17
                -> case coe v16 of
-                    MAlonzo.Code.Once.IR.C_const_124 v19 v20
+                    MAlonzo.Code.Once.IR.C_const_126 v19 v20
                       -> coe
                            du_lit_1520 (coe v0) (coe v20)
                            (coe
@@ -3185,7 +3185,7 @@ du_fbody'45'at_2026 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
         -> case coe v5 of
              MAlonzo.Code.Once.IR.C__'8728'__28 v16 v18 v19
                -> case coe v18 of
-                    MAlonzo.Code.Once.IR.C_SigOp_130 v20 v21 v22
+                    MAlonzo.Code.Once.IR.C_SigOp_132 v20 v21 v22
                       -> case coe v22 of
                            MAlonzo.Code.Once.SigOp.Info.C_mk'45'info''_186 v23 v24 v25 v26
                              -> coe
@@ -3205,7 +3205,7 @@ du_fbody'45'at_2026 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
         -> case coe v5 of
              MAlonzo.Code.Once.IR.C__'8728'__28 v14 v16 v17
                -> case coe v16 of
-                    MAlonzo.Code.Once.IR.C_const_124 v19 v20
+                    MAlonzo.Code.Once.IR.C_const_126 v19 v20
                       -> coe
                            du_lit_2212 (coe v0) (coe v20)
                            (coe

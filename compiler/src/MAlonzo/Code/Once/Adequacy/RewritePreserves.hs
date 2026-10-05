@@ -121,7 +121,7 @@ d_alg'8801'_392 ::
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_alg'8801'_392 = erased
 -- Once.Adequacy.RewritePreserves.calls-sound
-d_calls'45'sound_444 ::
+d_calls'45'sound_446 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   (MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
    MAlonzo.Code.Once.Type.T_Type_108 ->
@@ -129,9 +129,9 @@ d_calls'45'sound_444 ::
    AgdaAny -> MAlonzo.Code.Once.Res.T_Res_6) ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_calls'45'sound_444 = erased
+d_calls'45'sound_446 = erased
 -- Once.Adequacy.RewritePreserves._.ih
-d_ih_462 ::
+d_ih_464 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   (MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
    MAlonzo.Code.Once.Type.T_Type_108 ->
@@ -140,9 +140,9 @@ d_ih_462 ::
   MAlonzo.Code.Once.Denotation.Program.T_IRFun_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_ih_462 = erased
+d_ih_464 = erased
 -- Once.Adequacy.RewritePreserves._.ihE
-d_ihE_464 ::
+d_ihE_466 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   (MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
    MAlonzo.Code.Once.Type.T_Type_108 ->
@@ -151,9 +151,9 @@ d_ihE_464 ::
   MAlonzo.Code.Once.Denotation.Program.T_IRFun_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_ihE_464 = erased
+d_ihE_466 = erased
 -- Once.Adequacy.RewritePreserves._.at-sound
-d_at'45'sound_482 ::
+d_at'45'sound_484 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   (MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
    MAlonzo.Code.Once.Type.T_Type_108 ->
@@ -168,9 +168,9 @@ d_at'45'sound_482 ::
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20 ->
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_at'45'sound_482 = erased
+d_at'45'sound_484 = erased
 -- Once.Adequacy.RewritePreserves.table-sound
-d_table'45'sound_546 ::
+d_table'45'sound_548 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   (MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
    MAlonzo.Code.Once.Type.T_Type_108 ->
@@ -178,11 +178,11 @@ d_table'45'sound_546 ::
    AgdaAny -> MAlonzo.Code.Once.Res.T_Res_6) ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_table'45'sound_546 = erased
+d_table'45'sound_548 = erased
 -- Once.Adequacy.RewritePreserves.rewrite-program-preserves
-d_rewrite'45'program'45'preserves_564 ::
+d_rewrite'45'program'45'preserves_566 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_458 ->
   MAlonzo.Code.Once.Denotation.Program.T_IRProgram_380 ->
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_rewrite'45'program'45'preserves_564 = erased
+d_rewrite'45'program'45'preserves_566 = erased

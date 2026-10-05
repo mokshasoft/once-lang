@@ -141,7 +141,7 @@ du_ir'45'to'45'trace_22 ::
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250]
 du_ir'45'to'45'trace_22 v0
   = coe
-      MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace_848
+      MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace_860
       (coe v0)
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ir-to-trace'
 d_ir'45'to'45'trace''_24 ::
@@ -164,7 +164,7 @@ du_ir'45'to'45'trace''_24 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_ir'45'to'45'trace''_24 v0
   = coe
-      MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace''_530
+      MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace''_542
       (coe v0)
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.validAtWF-set-halted
 d_validAtWF'45'set'45'halted_26 ::
@@ -488,7 +488,7 @@ du_ir'45'blocks'45'stable_60 ::
   Integer -> MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44
 du_ir'45'blocks'45'stable_60 v0
   = coe
-      MAlonzo.Code.Once.CCC.Codegen.CataIRSlotStable.d_ir'45'blocks'45'stable_810
+      MAlonzo.Code.Once.CCC.Codegen.CataIRSlotStable.d_ir'45'blocks'45'stable_820
       (coe v0)
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.CataIRSlotStable.ir-stable
 d_ir'45'stable_62 ::
@@ -533,7 +533,7 @@ du_ir'45'to'45'trace'45'lab'45'slot'45'stable_64 ::
   Integer -> MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44
 du_ir'45'to'45'trace'45'lab'45'slot'45'stable_64 v0
   = coe
-      MAlonzo.Code.Once.CCC.Codegen.CataIRSlotStable.d_ir'45'to'45'trace'45'lab'45'slot'45'stable_940
+      MAlonzo.Code.Once.CCC.Codegen.CataIRSlotStable.d_ir'45'to'45'trace'45'lab'45'slot'45'stable_950
       (coe v0)
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.CataIRSlotStable.ir-to-trace-slot-stable
 d_ir'45'to'45'trace'45'slot'45'stable_66 ::
@@ -555,7 +555,7 @@ du_ir'45'to'45'trace'45'slot'45'stable_66 ::
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44
 du_ir'45'to'45'trace'45'slot'45'stable_66 v0
   = coe
-      MAlonzo.Code.Once.CCC.Codegen.CataIRSlotStable.d_ir'45'to'45'trace'45'slot'45'stable_928
+      MAlonzo.Code.Once.CCC.Codegen.CataIRSlotStable.d_ir'45'to'45'trace'45'slot'45'stable_938
       (coe v0)
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.CataIRSlotStable.ir-to-trace-top-slot-stable
 d_ir'45'to'45'trace'45'top'45'slot'45'stable_68 ::
@@ -579,7 +579,7 @@ du_ir'45'to'45'trace'45'top'45'slot'45'stable_68 ::
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44
 du_ir'45'to'45'trace'45'top'45'slot'45'stable_68 v0 v1 v2 v3 v4 v5
   = coe
-      MAlonzo.Code.Once.CCC.Codegen.CataIRSlotStable.du_ir'45'to'45'trace'45'top'45'slot'45'stable_954
+      MAlonzo.Code.Once.CCC.Codegen.CataIRSlotStable.du_ir'45'to'45'trace'45'top'45'slot'45'stable_964
       (coe v0) v1 v2 v3 v4
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.CataIRSlotStable.rebuild-walk-stable
 d_rebuild'45'walk'45'stable_70 ::
@@ -615,6 +615,7 @@ d_resuspend'45'stable_72 ::
   Integer ->
   Integer ->
   MAlonzo.Code.Once.CCC.Label.T_LabelId_6 ->
+  Integer ->
   MAlonzo.Code.Once.IRTy.T_IRFunctor_4 ->
   MAlonzo.Code.Once.IRTy.T_WellFormedFI_122 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44
@@ -625,13 +626,14 @@ du_resuspend'45'stable_72 ::
   Integer ->
   Integer ->
   MAlonzo.Code.Once.CCC.Label.T_LabelId_6 ->
+  Integer ->
   MAlonzo.Code.Once.IRTy.T_IRFunctor_4 ->
   MAlonzo.Code.Once.IRTy.T_WellFormedFI_122 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44
-du_resuspend'45'stable_72 v0 v1 v2 v3 v4 v5 v6
+du_resuspend'45'stable_72 v0 v1 v2 v3 v4 v5 v6 v7
   = coe
-      MAlonzo.Code.Once.CCC.Codegen.CataIRSlotStable.du_resuspend'45'stable_740
-      (coe v0) v2 v3 v4 v5 v6
+      MAlonzo.Code.Once.CCC.Codegen.CataIRSlotStable.du_resuspend'45'stable_742
+      (coe v0) v2 v3 v4 v5 v6 v7
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.CataIRSlotStable.sigop-stable
 d_sigop'45'stable_74 ::
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
@@ -834,7 +836,7 @@ d_base_162 ::
   MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_IRResultBase_670
 d_base_162 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_base_1306
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_base_1308
       (coe v0)
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.before-frontier-monotone
 d_before'45'frontier'45'monotone_164 ::
@@ -863,7 +865,7 @@ du_before'45'frontier'45'monotone_164 ::
   MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_664
 du_before'45'frontier'45'monotone_164 v0 v1 v2 v3 v4 v5 v6 v7
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_before'45'frontier'45'monotone_5924
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_before'45'frontier'45'monotone_5926
       v5 v6 v7
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.body-cap-eq
 d_body'45'cap'45'eq_166 ::
@@ -876,15 +878,15 @@ d_body'45'capacity_168 ::
   Integer
 d_body'45'capacity_168 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_body'45'capacity_1474
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_body'45'capacity_1476
       (coe v0)
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.body-correct
 d_body'45'correct_170 ::
-  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ClosureWellFormed_1556 ->
+  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ClosureWellFormed_1558 ->
   MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_BodyCorrect_778
 d_body'45'correct_170 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_body'45'correct_1612
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_body'45'correct_1614
       (coe v0)
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.bump
 d_bump_172 ::
@@ -892,9 +894,9 @@ d_bump_172 ::
   MAlonzo.Code.Once.CCC.Machine.Allocation.T_AllocBump_930
 d_bump_172 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_bump_1148
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_bump_1150
       (coe
-         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_base_1306
+         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_base_1308
          (coe v0))
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.bump-fits-heap-budget
 d_bump'45'fits'45'heap'45'budget_174 ::
@@ -902,9 +904,9 @@ d_bump'45'fits'45'heap'45'budget_174 ::
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
 d_bump'45'fits'45'heap'45'budget_174 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_bump'45'fits'45'heap'45'budget_1276
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_bump'45'fits'45'heap'45'budget_1278
       (coe
-         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_heap'45'inv_1310
+         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_heap'45'inv_1312
          (coe v0))
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.bump-fits-stack-budget
 d_bump'45'fits'45'stack'45'budget_176 ::
@@ -912,21 +914,21 @@ d_bump'45'fits'45'stack'45'budget_176 ::
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
 d_bump'45'fits'45'stack'45'budget_176 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_bump'45'fits'45'stack'45'budget_1224
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_bump'45'fits'45'stack'45'budget_1226
       (coe
-         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_stack'45'inv_1308
+         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_stack'45'inv_1310
          (coe v0))
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.code-before
 d_code'45'before_182 ::
-  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ClosureWellFormed_1556 ->
+  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ClosureWellFormed_1558 ->
   MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_664
 d_code'45'before_182 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_code'45'before_1604
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_code'45'before_1606
       (coe v0)
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.code-ptr
 d_code'45'ptr_184 ::
-  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ClosureWellFormed_1556 ->
+  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ClosureWellFormed_1558 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_code'45'ptr_184 = erased
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.decomposeClosureWF
@@ -942,7 +944,7 @@ d_decomposeClosureWF_186 ::
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_412 ->
   MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ValidAtWF_594 ->
-  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ClosureValidWF_1660
+  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ClosureValidWF_1662
 d_decomposeClosureWF_186 ~v0 ~v1 = du_decomposeClosureWF_186
 du_decomposeClosureWF_186 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
@@ -954,10 +956,10 @@ du_decomposeClosureWF_186 ::
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_412 ->
   MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ValidAtWF_594 ->
-  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ClosureValidWF_1660
+  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ClosureValidWF_1662
 du_decomposeClosureWF_186 v0 v1 v2 v3 v4 v5 v6 v7 v8
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_decomposeClosureWF_1730
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_decomposeClosureWF_1732
       v8
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.decomposeInlWF
 d_decomposeInlWF_188 ::
@@ -972,7 +974,7 @@ d_decomposeInlWF_188 ::
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_412 ->
   MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ValidAtWF_594 ->
-  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_InlValidWF_2016
+  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_InlValidWF_2018
 d_decomposeInlWF_188 ~v0 ~v1 = du_decomposeInlWF_188
 du_decomposeInlWF_188 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
@@ -984,10 +986,10 @@ du_decomposeInlWF_188 ::
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_412 ->
   MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ValidAtWF_594 ->
-  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_InlValidWF_2016
+  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_InlValidWF_2018
 du_decomposeInlWF_188 v0 v1 v2 v3 v4 v5 v6 v7 v8
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_decomposeInlWF_2106
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_decomposeInlWF_2108
       v5 v8
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.decomposeInrWF
 d_decomposeInrWF_190 ::
@@ -1002,7 +1004,7 @@ d_decomposeInrWF_190 ::
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_412 ->
   MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ValidAtWF_594 ->
-  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_InrValidWF_2060
+  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_InrValidWF_2062
 d_decomposeInrWF_190 ~v0 ~v1 = du_decomposeInrWF_190
 du_decomposeInrWF_190 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
@@ -1014,10 +1016,10 @@ du_decomposeInrWF_190 ::
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_412 ->
   MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ValidAtWF_594 ->
-  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_InrValidWF_2060
+  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_InrValidWF_2062
 du_decomposeInrWF_190 v0 v1 v2 v3 v4 v5 v6 v7 v8
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_decomposeInrWF_2148
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_decomposeInrWF_2150
       v5 v8
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.decomposePairWF
 d_decomposePairWF_192 ::
@@ -1032,7 +1034,7 @@ d_decomposePairWF_192 ::
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_412 ->
   MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ValidAtWF_594 ->
-  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_PairValidWF_1884
+  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_PairValidWF_1886
 d_decomposePairWF_192 ~v0 ~v1 = du_decomposePairWF_192
 du_decomposePairWF_192 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
@@ -1044,10 +1046,10 @@ du_decomposePairWF_192 ::
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_412 ->
   MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ValidAtWF_594 ->
-  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_PairValidWF_1884
+  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_PairValidWF_1886
 du_decomposePairWF_192 v0 v1 v2 v3 v4 v5 v6 v7 v8
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_decomposePairWF_1926
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_decomposePairWF_1928
       v8
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.derive-mem-preserved
 d_derive'45'mem'45'preserved_194 ::
@@ -1081,24 +1083,24 @@ d_derive'45'mem'45'preserved'45'at_196 ::
 d_derive'45'mem'45'preserved'45'at_196 = erased
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.env-before
 d_env'45'before_200 ::
-  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ClosureWellFormed_1556 ->
+  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ClosureWellFormed_1558 ->
   MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_664
 d_env'45'before_200 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_env'45'before_1602
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_env'45'before_1604
       (coe v0)
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.env-ptr
 d_env'45'ptr_204 ::
-  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ClosureWellFormed_1556 ->
+  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ClosureWellFormed_1558 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_env'45'ptr_204 = erased
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.env-valid
 d_env'45'valid_206 ::
-  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ClosureWellFormed_1556 ->
+  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ClosureWellFormed_1558 ->
   MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ValidAtWF_594
 d_env'45'valid_206 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_env'45'valid_1610
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_env'45'valid_1612
       (coe v0)
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.evalᴰ
 d_eval'7472'_208 ::
@@ -1137,7 +1139,7 @@ d_execute_210 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_execute_210 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_execute_1492
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_execute_1494
       (coe v0)
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.final-alloc
 d_final'45'alloc_212 ::
@@ -1161,10 +1163,10 @@ du_final'45'alloc_212 ::
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_504
 du_final'45'alloc_212 v0 v1
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_final'45'alloc_1178
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_final'45'alloc_1180
       (coe v0)
       (coe
-         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_base_1306
+         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_base_1308
          (coe v1))
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.final-state
 d_final'45'state_214 ::
@@ -1172,9 +1174,9 @@ d_final'45'state_214 ::
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_412
 d_final'45'state_214 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_final'45'state_1144
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_final'45'state_1146
       (coe
-         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_base_1306
+         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_base_1308
          (coe v0))
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.frame-preserved
 d_frame'45'preserved_216 ::
@@ -1202,9 +1204,9 @@ d_frontier'45'slot'45'stable_218 ::
   MAlonzo.Code.Data.Sum.Base.T__'8846'__30
 d_frontier'45'slot'45'stable_218 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_frontier'45'slot'45'stable_1234
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_frontier'45'slot'45'stable_1236
       (coe
-         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_stack'45'inv_1308
+         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_stack'45'inv_1310
          (coe v0))
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.heap-budget
 d_heap'45'budget_220 ::
@@ -1212,9 +1214,9 @@ d_heap'45'budget_220 ::
   Integer
 d_heap'45'budget_220 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_heap'45'budget_1272
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_heap'45'budget_1274
       (coe
-         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_heap'45'inv_1310
+         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_heap'45'inv_1312
          (coe v0))
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.heap-inv
 d_heap'45'inv_222 ::
@@ -1222,7 +1224,7 @@ d_heap'45'inv_222 ::
   MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_IRHeapBudget_688
 d_heap'45'inv_222 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_heap'45'inv_1310
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_heap'45'inv_1312
       (coe v0)
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.heap-monotone
 d_heap'45'monotone_224 ::
@@ -1245,7 +1247,7 @@ du_heap'45'monotone_224 ::
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
 du_heap'45'monotone_224 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_heap'45'monotone_1282
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_heap'45'monotone_1284
       (coe v0)
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.heap-preserved-of
 d_heap'45'preserved'45'of_226 ::
@@ -1283,7 +1285,7 @@ du_inline'45'sv_234 v0 v1 v2 v3
       v2 v3
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.input-read
 d_input'45'read_236 ::
-  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_InputPlace_1790 ->
+  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_InputPlace_1792 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_input'45'read_236 = erased
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.input-sv
@@ -1296,7 +1298,7 @@ d_input'45'sv_238 ::
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_504 ->
   AgdaAny ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_412 ->
-  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_InputPlace_1790 ->
+  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_InputPlace_1792 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_StoredValue_66
 d_input'45'sv_238 ~v0 ~v1 = du_input'45'sv_238
 du_input'45'sv_238 ::
@@ -1306,11 +1308,11 @@ du_input'45'sv_238 ::
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_504 ->
   AgdaAny ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_412 ->
-  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_InputPlace_1790 ->
+  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_InputPlace_1792 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_StoredValue_66
 du_input'45'sv_238 v0 v1 v2 v3 v4 v5 v6
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_input'45'sv_1822
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_input'45'sv_1824
       v4 v5 v6
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.inputPlace-transport
 d_inputPlace'45'transport_240 ::
@@ -1324,7 +1326,7 @@ d_inputPlace'45'transport_240 ::
   AgdaAny ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_412 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_412 ->
-  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_InputPlace_1790 ->
+  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_InputPlace_1792 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
@@ -1332,11 +1334,11 @@ d_inputPlace'45'transport_240 ::
    MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_664 ->
    MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12) ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_InputPlace_1790
+  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_InputPlace_1792
 d_inputPlace'45'transport_240 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11
                               v12 v13 v14 v15
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_inputPlace'45'transport_5570
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_inputPlace'45'transport_5572
       (coe v0) (coe v1) v2 v3 v5 v6 v7 v8 v9 v10 v12 v13
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.ir-returns
 d_ir'45'returns_242 ::
@@ -1344,9 +1346,9 @@ d_ir'45'returns_242 ::
   AgdaAny
 d_ir'45'returns_242 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_ir'45'returns_1158
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_ir'45'returns_1160
       (coe
-         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_base_1306
+         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_base_1308
          (coe v0))
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.irresult-mem-preserved
 d_irresult'45'mem'45'preserved_244 ::
@@ -1357,11 +1359,11 @@ d_irresult'45'mem'45'preserved_244 ::
 d_irresult'45'mem'45'preserved_244 = erased
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.mEnv
 d_mEnv_246 ::
-  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ClosureWellFormed_1556 ->
+  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ClosureWellFormed_1558 ->
   MAlonzo.Code.Once.IR.T_AllocMode_4
 d_mEnv_246 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_mEnv_1608
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_mEnv_1610
       (coe v0)
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.max-heap-ref-geq-final
 d_max'45'heap'45'ref'45'geq'45'final_248 ::
@@ -1369,9 +1371,9 @@ d_max'45'heap'45'ref'45'geq'45'final_248 ::
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
 d_max'45'heap'45'ref'45'geq'45'final_248 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_max'45'heap'45'ref'45'geq'45'final_1278
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_max'45'heap'45'ref'45'geq'45'final_1280
       (coe
-         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_heap'45'inv_1310
+         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_heap'45'inv_1312
          (coe v0))
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.max-heap-ref-written
 d_max'45'heap'45'ref'45'written_250 ::
@@ -1379,9 +1381,9 @@ d_max'45'heap'45'ref'45'written_250 ::
   Integer
 d_max'45'heap'45'ref'45'written_250 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_max'45'heap'45'ref'45'written_1274
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_max'45'heap'45'ref'45'written_1276
       (coe
-         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_heap'45'inv_1310
+         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_heap'45'inv_1312
          (coe v0))
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.max-heap-usage-bound
 d_max'45'heap'45'usage'45'bound_252 ::
@@ -1389,9 +1391,9 @@ d_max'45'heap'45'usage'45'bound_252 ::
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
 d_max'45'heap'45'usage'45'bound_252 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_max'45'heap'45'usage'45'bound_1280
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_max'45'heap'45'usage'45'bound_1282
       (coe
-         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_heap'45'inv_1310
+         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_heap'45'inv_1312
          (coe v0))
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.max-slot-geq-final
 d_max'45'slot'45'geq'45'final_254 ::
@@ -1399,9 +1401,9 @@ d_max'45'slot'45'geq'45'final_254 ::
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
 d_max'45'slot'45'geq'45'final_254 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_max'45'slot'45'geq'45'final_1226
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_max'45'slot'45'geq'45'final_1228
       (coe
-         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_stack'45'inv_1308
+         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_stack'45'inv_1310
          (coe v0))
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.max-slot-usage-bound
 d_max'45'slot'45'usage'45'bound_256 ::
@@ -1409,9 +1411,9 @@ d_max'45'slot'45'usage'45'bound_256 ::
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
 d_max'45'slot'45'usage'45'bound_256 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_max'45'slot'45'usage'45'bound_1228
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_max'45'slot'45'usage'45'bound_1230
       (coe
-         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_stack'45'inv_1308
+         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_stack'45'inv_1310
          (coe v0))
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.max-slot-written
 d_max'45'slot'45'written_258 ::
@@ -1419,9 +1421,9 @@ d_max'45'slot'45'written_258 ::
   Integer
 d_max'45'slot'45'written_258 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_max'45'slot'45'written_1220
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_max'45'slot'45'written_1222
       (coe
-         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_stack'45'inv_1308
+         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_stack'45'inv_1310
          (coe v0))
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.mem-preserved-before
 d_mem'45'preserved'45'before_260 ::
@@ -1559,13 +1561,13 @@ d_obs'45'budget_270 ::
   Integer
 d_obs'45'budget_270 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_obs'45'budget_1156
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_obs'45'budget_1158
       (coe
-         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_base_1306
+         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_base_1308
          (coe v0))
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.payload-read
 d_payload'45'read_276 ::
-  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_PayloadAt_1946 ->
+  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_PayloadAt_1948 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_payload'45'read_276 = erased
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.payload-sv
@@ -1578,7 +1580,7 @@ d_payload'45'sv_278 ::
   AgdaAny ->
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_412 ->
-  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_PayloadAt_1946 ->
+  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_PayloadAt_1948 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_StoredValue_66
 d_payload'45'sv_278 ~v0 ~v1 = du_payload'45'sv_278
 du_payload'45'sv_278 ::
@@ -1588,11 +1590,11 @@ du_payload'45'sv_278 ::
   AgdaAny ->
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_412 ->
-  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_PayloadAt_1946 ->
+  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_PayloadAt_1948 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_StoredValue_66
 du_payload'45'sv_278 v0 v1 v2 v3 v4 v5 v6
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_payload'45'sv_1978
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_payload'45'sv_1980
       v3 v6
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.place-rax
 d_place'45'rax_280 ::
@@ -1657,7 +1659,7 @@ du_reclaim'45'alloc_286 ::
   Integer -> MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_504
 du_reclaim'45'alloc_286 v0 v1 v2
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_reclaim'45'alloc_5604
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_reclaim'45'alloc_5606
       v1 v2
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.reclaim-preserves-frontier
 d_reclaim'45'preserves'45'frontier_288 ::
@@ -1682,7 +1684,7 @@ du_reclaim'45'preserves'45'frontier_288 ::
   MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_664
 du_reclaim'45'preserves'45'frontier_288 v0 v1 v2 v3 v4 v5
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_reclaim'45'preserves'45'frontier_5618
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_reclaim'45'preserves'45'frontier_5620
       v3 v4 v5
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.result-place
 d_result'45'place_294 ::
@@ -1690,9 +1692,9 @@ d_result'45'place_294 ::
   MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ResultPlace_624
 d_result'45'place_294 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_result'45'place_1160
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_result'45'place_1162
       (coe
-         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_base_1306
+         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_base_1308
          (coe v0))
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.scratch-bounded
 d_scratch'45'bounded_296 ::
@@ -1700,9 +1702,9 @@ d_scratch'45'bounded_296 ::
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
 d_scratch'45'bounded_296 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_scratch'45'bounded_1246
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_scratch'45'bounded_1248
       (coe
-         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_stack'45'inv_1308
+         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_stack'45'inv_1310
          (coe v0))
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.scratch-budget
 d_scratch'45'budget_298 ::
@@ -1710,9 +1712,9 @@ d_scratch'45'budget_298 ::
   Integer
 d_scratch'45'budget_298 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_scratch'45'budget_1244
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_scratch'45'budget_1246
       (coe
-         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_stack'45'inv_1308
+         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_stack'45'inv_1310
          (coe v0))
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.slot-monotone
 d_slot'45'monotone_300 ::
@@ -1735,7 +1737,7 @@ du_slot'45'monotone_300 ::
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
 du_slot'45'monotone_300 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_slot'45'monotone_1248
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_slot'45'monotone_1250
       (coe v0)
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.slot-stays-in-budget
 d_slot'45'stays'45'in'45'budget_302 ::
@@ -1760,15 +1762,15 @@ du_slot'45'stays'45'in'45'budget_302 ::
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
 du_slot'45'stays'45'in'45'budget_302 v0 v1
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_slot'45'stays'45'in'45'budget_1250
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_slot'45'stays'45'in'45'budget_1252
       (coe v0)
       (coe
-         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_bump_1148
+         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_bump_1150
          (coe
-            MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_base_1306
+            MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_base_1308
             (coe v1)))
       (coe
-         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_stack'45'inv_1308
+         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_stack'45'inv_1310
          (coe v1))
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.stack-budget
 d_stack'45'budget_304 ::
@@ -1776,9 +1778,9 @@ d_stack'45'budget_304 ::
   Integer
 d_stack'45'budget_304 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_stack'45'budget_1222
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_stack'45'budget_1224
       (coe
-         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_stack'45'inv_1308
+         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_stack'45'inv_1310
          (coe v0))
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.stack-inv
 d_stack'45'inv_306 ::
@@ -1786,15 +1788,15 @@ d_stack'45'inv_306 ::
   MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_IRStackBudget_680
 d_stack'45'inv_306 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_stack'45'inv_1308
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_stack'45'inv_1310
       (coe v0)
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.sucLoc-before
 d_sucLoc'45'before_308 ::
-  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ClosureWellFormed_1556 ->
+  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ClosureWellFormed_1558 ->
   MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_664
 d_sucLoc'45'before_308 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_sucLoc'45'before_1606
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_sucLoc'45'before_1608
       (coe v0)
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.trace
 d_trace_310 ::
@@ -1802,9 +1804,9 @@ d_trace_310 ::
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250]
 d_trace_310 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_trace_1146
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_trace_1148
       (coe
-         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_base_1306
+         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_base_1308
          (coe v0))
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.trace-correct
 d_trace'45'correct_312 ::
@@ -1822,9 +1824,9 @@ d_trace'45'no'45'frame'45'ops_316 ::
   AgdaAny
 d_trace'45'no'45'frame'45'ops_316 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_trace'45'no'45'frame'45'ops_1176
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_trace'45'no'45'frame'45'ops_1178
       (coe
-         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_base_1306
+         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_base_1308
          (coe v0))
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.trace-preserves-halted
 d_trace'45'preserves'45'halted_318 ::
@@ -1841,9 +1843,9 @@ d_trace'45'slot'45'reads'45'above_320 ::
   AgdaAny
 d_trace'45'slot'45'reads'45'above_320 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_trace'45'slot'45'reads'45'above_1238
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_trace'45'slot'45'reads'45'above_1240
       (coe
-         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_stack'45'inv_1308
+         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_stack'45'inv_1310
          (coe v0))
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.trace-slot-reads-below
 d_trace'45'slot'45'reads'45'below_322 ::
@@ -1851,9 +1853,9 @@ d_trace'45'slot'45'reads'45'below_322 ::
   AgdaAny
 d_trace'45'slot'45'reads'45'below_322 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_trace'45'slot'45'reads'45'below_1242
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_trace'45'slot'45'reads'45'below_1244
       (coe
-         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_stack'45'inv_1308
+         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_stack'45'inv_1310
          (coe v0))
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.trace-twf
 d_trace'45'twf_324 ::
@@ -1861,9 +1863,9 @@ d_trace'45'twf_324 ::
   MAlonzo.Code.Once.CCC.Machine.SMPrimitives.T_TraceWF_8036
 d_trace'45'twf_324 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_trace'45'twf_1168
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_trace'45'twf_1170
       (coe
-         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_base_1306
+         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_base_1308
          (coe v0))
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.trace-writes-above
 d_trace'45'writes'45'above_326 ::
@@ -1871,9 +1873,9 @@ d_trace'45'writes'45'above_326 ::
   AgdaAny
 d_trace'45'writes'45'above_326 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_trace'45'writes'45'above_1236
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_trace'45'writes'45'above_1238
       (coe
-         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_stack'45'inv_1308
+         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_stack'45'inv_1310
          (coe v0))
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.trace-writes-below
 d_trace'45'writes'45'below_328 ::
@@ -1881,9 +1883,9 @@ d_trace'45'writes'45'below_328 ::
   AgdaAny
 d_trace'45'writes'45'below_328 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_trace'45'writes'45'below_1240
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_trace'45'writes'45'below_1242
       (coe
-         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_stack'45'inv_1308
+         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_stack'45'inv_1310
          (coe v0))
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.transport-SumTag
 d_transport'45'SumTag_330 ::
@@ -1952,7 +1954,7 @@ du_valid'45'to'45'validWF'45'unit_354 ::
   MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ValidAtWF_594
 du_valid'45'to'45'validWF'45'unit_354 v0 v1 v2 v3 v4
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_valid'45'to'45'validWF'45'unit_2184
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_valid'45'to'45'validWF'45'unit_2186
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.validityWF-alloc-advance
 d_validityWF'45'alloc'45'advance_362 ::
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
@@ -1970,7 +1972,7 @@ d_validityWF'45'alloc'45'advance_362 ::
 d_validityWF'45'alloc'45'advance_362 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                                      v10
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_validityWF'45'alloc'45'advance_4078
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_validityWF'45'alloc'45'advance_4080
       (coe v0) (coe v1) v2 v4 v5 v6 v7 v8 v9 v10
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.validityWF-frontier-advance
 d_validityWF'45'frontier'45'advance_364 ::
@@ -1992,7 +1994,7 @@ d_validityWF'45'frontier'45'advance_364 ::
 d_validityWF'45'frontier'45'advance_364 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                         v9 v10 v11 v12 v13
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_validityWF'45'frontier'45'advance_4418
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_validityWF'45'frontier'45'advance_4420
       (coe v0) (coe v1) v2 v4 v5 v6 v7 v8 v9 v11 v12 v13
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.validityWF-mem-only
 d_validityWF'45'mem'45'only_366 ::
@@ -2013,7 +2015,7 @@ d_validityWF'45'mem'45'only_366 ::
 d_validityWF'45'mem'45'only_366 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10
                                 v11 v12
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_validityWF'45'mem'45'only_2200
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_validityWF'45'mem'45'only_2202
       (coe v0) (coe v1) v2 v4 v5 v6 v8 v9 v12
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.validityWF-mem-preserved
 d_validityWF'45'mem'45'preserved_368 ::
@@ -2036,7 +2038,7 @@ d_validityWF'45'mem'45'preserved_368 ::
 d_validityWF'45'mem'45'preserved_368 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                                      v10 v11 v12
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_validityWF'45'mem'45'preserved_5170
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_validityWF'45'mem'45'preserved_5172
       (coe v0) (coe v1) v2 v4 v5 v6 v8 v9 v12
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.validityWF-reclaim
 d_validityWF'45'reclaim_370 ::
@@ -2057,7 +2059,7 @@ d_validityWF'45'reclaim_370 ::
 d_validityWF'45'reclaim_370 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11
                             v12
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_validityWF'45'reclaim_5702
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_validityWF'45'reclaim_5704
       (coe v0) (coe v1) v2 v4 v5 v6 v7 v8 v9 v10 v12
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.validityWF-trace-preserves
 d_validityWF'45'trace'45'preserves_372 ::
@@ -2079,7 +2081,7 @@ d_validityWF'45'trace'45'preserves_372 ::
 d_validityWF'45'trace'45'preserves_372 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                        v9 v10 v11 v12 v13
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_validityWF'45'trace'45'preserves_5842
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_validityWF'45'trace'45'preserves_5844
       (coe v0) (coe v1) v2 v4 v5 v6 v7 v9 v11
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.validityWF-with-bf-transfer
 d_validityWF'45'with'45'bf'45'transfer_374 ::
@@ -2101,7 +2103,7 @@ d_validityWF'45'with'45'bf'45'transfer_374 ::
 d_validityWF'45'with'45'bf'45'transfer_374 v0 v1 v2 v3 v4 v5 v6 v7
                                            v8 v9 v10 v11
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_validityWF'45'with'45'bf'45'transfer_4834
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_validityWF'45'with'45'bf'45'transfer_4836
       (coe v0) (coe v1) v2 v4 v5 v6 v7 v8 v9 v10 v11
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.validityWF-write-at-frontier
 d_validityWF'45'write'45'at'45'frontier_376 ::
@@ -2121,7 +2123,7 @@ d_validityWF'45'write'45'at'45'frontier_376 ::
 d_validityWF'45'write'45'at'45'frontier_376 v0 v1 v2 v3 v4 v5 v6 v7
                                             v8 v9 v10 v11
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_validityWF'45'write'45'at'45'frontier_2588
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_validityWF'45'write'45'at'45'frontier_2590
       (coe v0) (coe v1) v2 v4 v5 v6 v8 v9 v11
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.validityWF-write-at-suc-frontier
 d_validityWF'45'write'45'at'45'suc'45'frontier_378 ::
@@ -2141,7 +2143,7 @@ d_validityWF'45'write'45'at'45'suc'45'frontier_378 ::
 d_validityWF'45'write'45'at'45'suc'45'frontier_378 v0 v1 v2 v3 v4
                                                    v5 v6 v7 v8 v9 v10 v11
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_validityWF'45'write'45'at'45'suc'45'frontier_2960
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_validityWF'45'write'45'at'45'suc'45'frontier_2962
       (coe v0) (coe v1) v2 v4 v5 v6 v8 v9 v11
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.validityWF-write-sv-at-frontier
 d_validityWF'45'write'45'sv'45'at'45'frontier_380 ::
@@ -2161,7 +2163,7 @@ d_validityWF'45'write'45'sv'45'at'45'frontier_380 ::
 d_validityWF'45'write'45'sv'45'at'45'frontier_380 v0 v1 v2 v3 v4 v5
                                                   v6 v7 v8 v9 v10 v11
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_validityWF'45'write'45'sv'45'at'45'frontier_3332
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_validityWF'45'write'45'sv'45'at'45'frontier_3334
       (coe v0) (coe v1) v2 v4 v5 v6 v8 v9 v11
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.validityWF-write-sv-at-suc-frontier
 d_validityWF'45'write'45'sv'45'at'45'suc'45'frontier_382 ::
@@ -2181,7 +2183,7 @@ d_validityWF'45'write'45'sv'45'at'45'suc'45'frontier_382 ::
 d_validityWF'45'write'45'sv'45'at'45'suc'45'frontier_382 v0 v1 v2
                                                          v3 v4 v5 v6 v7 v8 v9 v10 v11
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_validityWF'45'write'45'sv'45'at'45'suc'45'frontier_3704
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_validityWF'45'write'45'sv'45'at'45'suc'45'frontier_3706
       (coe v0) (coe v1) v2 v4 v5 v6 v8 v9 v11
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.ιᶠ
 d_ι'7584'_384 ::
@@ -2206,7 +2208,7 @@ d_body'45'capacity_390 ::
   Integer
 d_body'45'capacity_390 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_body'45'capacity_1474
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_body'45'capacity_1476
       (coe v0)
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.BodyCorrect.execute
 d_execute_392 ::
@@ -2224,130 +2226,130 @@ d_execute_392 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_execute_392 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_execute_1492
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_execute_1494
       (coe v0)
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.ClosureValidWF.EnvType
 d_EnvType_402 ::
-  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ClosureValidWF_1660 ->
+  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ClosureValidWF_1662 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6
 d_EnvType_402 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_EnvType_1694
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_EnvType_1696
       (coe v0)
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.ClosureValidWF.body
 d_body_404 ::
-  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ClosureValidWF_1660 ->
+  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ClosureValidWF_1662 ->
   MAlonzo.Code.Once.IR.T_IR_16
 d_body_404 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_body_1696
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_body_1698
       (coe v0)
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.ClosureValidWF.body-label
 d_body'45'label_406 ::
-  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ClosureValidWF_1660 ->
+  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ClosureValidWF_1662 ->
   MAlonzo.Code.Once.CCC.Label.T_LabelId_6
 d_body'45'label_406 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_body'45'label_1700
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_body'45'label_1702
       (coe v0)
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.ClosureValidWF.code-ptr
 d_code'45'ptr_408 ::
-  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ClosureValidWF_1660 ->
+  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ClosureValidWF_1662 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_code'45'ptr_408 = erased
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.ClosureValidWF.env
 d_env_410 ::
-  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ClosureValidWF_1660 ->
+  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ClosureValidWF_1662 ->
   AgdaAny
 d_env_410 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_env_1698 (coe v0)
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_env_1700 (coe v0)
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.ClosureValidWF.env-at
 d_env'45'at_412 ::
-  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ClosureValidWF_1660 ->
-  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_EnvAt_1626
+  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ClosureValidWF_1662 ->
+  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_EnvAt_1628
 d_env'45'at_412 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_env'45'at_1704
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_env'45'at_1706
       (coe v0)
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.ClosureValidWF.f-is-closure
 d_f'45'is'45'closure_414 ::
-  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ClosureValidWF_1660 ->
+  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ClosureValidWF_1662 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_f'45'is'45'closure_414 = erased
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.ClosureValidWF.loc-mode
 d_loc'45'mode_416 ::
-  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ClosureValidWF_1660 ->
+  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ClosureValidWF_1662 ->
   AgdaAny
 d_loc'45'mode_416 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_loc'45'mode_1702
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_loc'45'mode_1704
       (coe v0)
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.ClosureValidWF.sucLoc-before
 d_sucLoc'45'before_418 ::
-  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ClosureValidWF_1660 ->
+  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ClosureValidWF_1662 ->
   MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_664
 d_sucLoc'45'before_418 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_sucLoc'45'before_1708
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_sucLoc'45'before_1710
       (coe v0)
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.ClosureWellFormed.body-correct
 d_body'45'correct_422 ::
-  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ClosureWellFormed_1556 ->
+  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ClosureWellFormed_1558 ->
   MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_BodyCorrect_778
 d_body'45'correct_422 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_body'45'correct_1612
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_body'45'correct_1614
       (coe v0)
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.ClosureWellFormed.code-before
 d_code'45'before_424 ::
-  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ClosureWellFormed_1556 ->
+  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ClosureWellFormed_1558 ->
   MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_664
 d_code'45'before_424 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_code'45'before_1604
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_code'45'before_1606
       (coe v0)
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.ClosureWellFormed.code-ptr
 d_code'45'ptr_426 ::
-  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ClosureWellFormed_1556 ->
+  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ClosureWellFormed_1558 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_code'45'ptr_426 = erased
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.ClosureWellFormed.env-before
 d_env'45'before_428 ::
-  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ClosureWellFormed_1556 ->
+  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ClosureWellFormed_1558 ->
   MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_664
 d_env'45'before_428 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_env'45'before_1602
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_env'45'before_1604
       (coe v0)
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.ClosureWellFormed.env-ptr
 d_env'45'ptr_430 ::
-  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ClosureWellFormed_1556 ->
+  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ClosureWellFormed_1558 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_env'45'ptr_430 = erased
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.ClosureWellFormed.env-valid
 d_env'45'valid_432 ::
-  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ClosureWellFormed_1556 ->
+  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ClosureWellFormed_1558 ->
   MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ValidAtWF_594
 d_env'45'valid_432 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_env'45'valid_1610
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_env'45'valid_1612
       (coe v0)
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.ClosureWellFormed.mEnv
 d_mEnv_434 ::
-  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ClosureWellFormed_1556 ->
+  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ClosureWellFormed_1558 ->
   MAlonzo.Code.Once.IR.T_AllocMode_4
 d_mEnv_434 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_mEnv_1608
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_mEnv_1610
       (coe v0)
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.ClosureWellFormed.sucLoc-before
 d_sucLoc'45'before_436 ::
-  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ClosureWellFormed_1556 ->
+  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ClosureWellFormed_1558 ->
   MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_664
 d_sucLoc'45'before_436 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_sucLoc'45'before_1606
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_sucLoc'45'before_1608
       (coe v0)
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.IRHeapBudget.bump-fits-heap-budget
 d_bump'45'fits'45'heap'45'budget_446 ::
@@ -2355,7 +2357,7 @@ d_bump'45'fits'45'heap'45'budget_446 ::
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
 d_bump'45'fits'45'heap'45'budget_446 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_bump'45'fits'45'heap'45'budget_1276
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_bump'45'fits'45'heap'45'budget_1278
       (coe v0)
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.IRHeapBudget.heap-budget
 d_heap'45'budget_448 ::
@@ -2363,7 +2365,7 @@ d_heap'45'budget_448 ::
   Integer
 d_heap'45'budget_448 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_heap'45'budget_1272
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_heap'45'budget_1274
       (coe v0)
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.IRHeapBudget.heap-monotone
 d_heap'45'monotone_450 ::
@@ -2385,7 +2387,7 @@ du_heap'45'monotone_450 ::
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
 du_heap'45'monotone_450 v0 v1 v2 v3 v4
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_heap'45'monotone_1282
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_heap'45'monotone_1284
       v1
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.IRHeapBudget.max-heap-ref-geq-final
 d_max'45'heap'45'ref'45'geq'45'final_452 ::
@@ -2393,7 +2395,7 @@ d_max'45'heap'45'ref'45'geq'45'final_452 ::
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
 d_max'45'heap'45'ref'45'geq'45'final_452 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_max'45'heap'45'ref'45'geq'45'final_1278
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_max'45'heap'45'ref'45'geq'45'final_1280
       (coe v0)
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.IRHeapBudget.max-heap-ref-written
 d_max'45'heap'45'ref'45'written_454 ::
@@ -2401,7 +2403,7 @@ d_max'45'heap'45'ref'45'written_454 ::
   Integer
 d_max'45'heap'45'ref'45'written_454 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_max'45'heap'45'ref'45'written_1274
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_max'45'heap'45'ref'45'written_1276
       (coe v0)
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.IRHeapBudget.max-heap-usage-bound
 d_max'45'heap'45'usage'45'bound_456 ::
@@ -2409,7 +2411,7 @@ d_max'45'heap'45'usage'45'bound_456 ::
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
 d_max'45'heap'45'usage'45'bound_456 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_max'45'heap'45'usage'45'bound_1280
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_max'45'heap'45'usage'45'bound_1282
       (coe v0)
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.IRResultAWF.alloc-correct
 d_alloc'45'correct_460 ::
@@ -2422,7 +2424,7 @@ d_base_462 ::
   MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_IRResultBase_670
 d_base_462 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_base_1306
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_base_1308
       (coe v0)
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.IRResultAWF.bump
 d_bump_464 ::
@@ -2430,9 +2432,9 @@ d_bump_464 ::
   MAlonzo.Code.Once.CCC.Machine.Allocation.T_AllocBump_930
 d_bump_464 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_bump_1148
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_bump_1150
       (coe
-         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_base_1306
+         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_base_1308
          (coe v0))
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.IRResultAWF.bump-fits-heap-budget
 d_bump'45'fits'45'heap'45'budget_466 ::
@@ -2440,9 +2442,9 @@ d_bump'45'fits'45'heap'45'budget_466 ::
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
 d_bump'45'fits'45'heap'45'budget_466 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_bump'45'fits'45'heap'45'budget_1276
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_bump'45'fits'45'heap'45'budget_1278
       (coe
-         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_heap'45'inv_1310
+         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_heap'45'inv_1312
          (coe v0))
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.IRResultAWF.bump-fits-stack-budget
 d_bump'45'fits'45'stack'45'budget_468 ::
@@ -2450,9 +2452,9 @@ d_bump'45'fits'45'stack'45'budget_468 ::
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
 d_bump'45'fits'45'stack'45'budget_468 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_bump'45'fits'45'stack'45'budget_1224
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_bump'45'fits'45'stack'45'budget_1226
       (coe
-         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_stack'45'inv_1308
+         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_stack'45'inv_1310
          (coe v0))
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.IRResultAWF.final-alloc
 d_final'45'alloc_470 ::
@@ -2476,10 +2478,10 @@ du_final'45'alloc_470 ::
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_504
 du_final'45'alloc_470 v0 v1
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_final'45'alloc_1178
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_final'45'alloc_1180
       (coe v0)
       (coe
-         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_base_1306
+         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_base_1308
          (coe v1))
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.IRResultAWF.final-state
 d_final'45'state_472 ::
@@ -2487,9 +2489,9 @@ d_final'45'state_472 ::
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_412
 d_final'45'state_472 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_final'45'state_1144
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_final'45'state_1146
       (coe
-         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_base_1306
+         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_base_1308
          (coe v0))
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.IRResultAWF.frame-preserved
 d_frame'45'preserved_474 ::
@@ -2517,9 +2519,9 @@ d_frontier'45'slot'45'stable_476 ::
   MAlonzo.Code.Data.Sum.Base.T__'8846'__30
 d_frontier'45'slot'45'stable_476 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_frontier'45'slot'45'stable_1234
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_frontier'45'slot'45'stable_1236
       (coe
-         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_stack'45'inv_1308
+         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_stack'45'inv_1310
          (coe v0))
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.IRResultAWF.heap-budget
 d_heap'45'budget_478 ::
@@ -2527,9 +2529,9 @@ d_heap'45'budget_478 ::
   Integer
 d_heap'45'budget_478 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_heap'45'budget_1272
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_heap'45'budget_1274
       (coe
-         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_heap'45'inv_1310
+         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_heap'45'inv_1312
          (coe v0))
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.IRResultAWF.heap-inv
 d_heap'45'inv_480 ::
@@ -2537,7 +2539,7 @@ d_heap'45'inv_480 ::
   MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_IRHeapBudget_688
 d_heap'45'inv_480 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_heap'45'inv_1310
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_heap'45'inv_1312
       (coe v0)
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.IRResultAWF.heap-monotone
 d_heap'45'monotone_482 ::
@@ -2560,7 +2562,7 @@ du_heap'45'monotone_482 ::
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
 du_heap'45'monotone_482 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_heap'45'monotone_1282
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_heap'45'monotone_1284
       (coe v0)
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.IRResultAWF.ir-returns
 d_ir'45'returns_484 ::
@@ -2568,9 +2570,9 @@ d_ir'45'returns_484 ::
   AgdaAny
 d_ir'45'returns_484 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_ir'45'returns_1158
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_ir'45'returns_1160
       (coe
-         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_base_1306
+         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_base_1308
          (coe v0))
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.IRResultAWF.max-heap-ref-geq-final
 d_max'45'heap'45'ref'45'geq'45'final_486 ::
@@ -2578,9 +2580,9 @@ d_max'45'heap'45'ref'45'geq'45'final_486 ::
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
 d_max'45'heap'45'ref'45'geq'45'final_486 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_max'45'heap'45'ref'45'geq'45'final_1278
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_max'45'heap'45'ref'45'geq'45'final_1280
       (coe
-         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_heap'45'inv_1310
+         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_heap'45'inv_1312
          (coe v0))
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.IRResultAWF.max-heap-ref-written
 d_max'45'heap'45'ref'45'written_488 ::
@@ -2588,9 +2590,9 @@ d_max'45'heap'45'ref'45'written_488 ::
   Integer
 d_max'45'heap'45'ref'45'written_488 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_max'45'heap'45'ref'45'written_1274
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_max'45'heap'45'ref'45'written_1276
       (coe
-         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_heap'45'inv_1310
+         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_heap'45'inv_1312
          (coe v0))
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.IRResultAWF.max-heap-usage-bound
 d_max'45'heap'45'usage'45'bound_490 ::
@@ -2598,9 +2600,9 @@ d_max'45'heap'45'usage'45'bound_490 ::
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
 d_max'45'heap'45'usage'45'bound_490 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_max'45'heap'45'usage'45'bound_1280
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_max'45'heap'45'usage'45'bound_1282
       (coe
-         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_heap'45'inv_1310
+         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_heap'45'inv_1312
          (coe v0))
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.IRResultAWF.max-slot-geq-final
 d_max'45'slot'45'geq'45'final_492 ::
@@ -2608,9 +2610,9 @@ d_max'45'slot'45'geq'45'final_492 ::
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
 d_max'45'slot'45'geq'45'final_492 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_max'45'slot'45'geq'45'final_1226
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_max'45'slot'45'geq'45'final_1228
       (coe
-         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_stack'45'inv_1308
+         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_stack'45'inv_1310
          (coe v0))
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.IRResultAWF.max-slot-usage-bound
 d_max'45'slot'45'usage'45'bound_494 ::
@@ -2618,9 +2620,9 @@ d_max'45'slot'45'usage'45'bound_494 ::
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
 d_max'45'slot'45'usage'45'bound_494 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_max'45'slot'45'usage'45'bound_1228
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_max'45'slot'45'usage'45'bound_1230
       (coe
-         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_stack'45'inv_1308
+         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_stack'45'inv_1310
          (coe v0))
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.IRResultAWF.max-slot-written
 d_max'45'slot'45'written_496 ::
@@ -2628,9 +2630,9 @@ d_max'45'slot'45'written_496 ::
   Integer
 d_max'45'slot'45'written_496 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_max'45'slot'45'written_1220
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_max'45'slot'45'written_1222
       (coe
-         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_stack'45'inv_1308
+         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_stack'45'inv_1310
          (coe v0))
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.IRResultAWF.mem-preserved-before
 d_mem'45'preserved'45'before_498 ::
@@ -2650,9 +2652,9 @@ d_obs'45'budget_502 ::
   Integer
 d_obs'45'budget_502 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_obs'45'budget_1156
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_obs'45'budget_1158
       (coe
-         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_base_1306
+         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_base_1308
          (coe v0))
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.IRResultAWF.result-place
 d_result'45'place_504 ::
@@ -2660,9 +2662,9 @@ d_result'45'place_504 ::
   MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ResultPlace_624
 d_result'45'place_504 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_result'45'place_1160
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_result'45'place_1162
       (coe
-         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_base_1306
+         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_base_1308
          (coe v0))
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.IRResultAWF.scratch-bounded
 d_scratch'45'bounded_506 ::
@@ -2670,9 +2672,9 @@ d_scratch'45'bounded_506 ::
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
 d_scratch'45'bounded_506 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_scratch'45'bounded_1246
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_scratch'45'bounded_1248
       (coe
-         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_stack'45'inv_1308
+         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_stack'45'inv_1310
          (coe v0))
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.IRResultAWF.scratch-budget
 d_scratch'45'budget_508 ::
@@ -2680,9 +2682,9 @@ d_scratch'45'budget_508 ::
   Integer
 d_scratch'45'budget_508 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_scratch'45'budget_1244
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_scratch'45'budget_1246
       (coe
-         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_stack'45'inv_1308
+         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_stack'45'inv_1310
          (coe v0))
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.IRResultAWF.slot-monotone
 d_slot'45'monotone_510 ::
@@ -2705,7 +2707,7 @@ du_slot'45'monotone_510 ::
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
 du_slot'45'monotone_510 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_slot'45'monotone_1248
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_slot'45'monotone_1250
       (coe v0)
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.IRResultAWF.slot-stays-in-budget
 d_slot'45'stays'45'in'45'budget_512 ::
@@ -2730,15 +2732,15 @@ du_slot'45'stays'45'in'45'budget_512 ::
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
 du_slot'45'stays'45'in'45'budget_512 v0 v1
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_slot'45'stays'45'in'45'budget_1250
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_slot'45'stays'45'in'45'budget_1252
       (coe v0)
       (coe
-         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_bump_1148
+         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_bump_1150
          (coe
-            MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_base_1306
+            MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_base_1308
             (coe v1)))
       (coe
-         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_stack'45'inv_1308
+         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_stack'45'inv_1310
          (coe v1))
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.IRResultAWF.stack-budget
 d_stack'45'budget_514 ::
@@ -2746,9 +2748,9 @@ d_stack'45'budget_514 ::
   Integer
 d_stack'45'budget_514 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_stack'45'budget_1222
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_stack'45'budget_1224
       (coe
-         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_stack'45'inv_1308
+         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_stack'45'inv_1310
          (coe v0))
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.IRResultAWF.stack-inv
 d_stack'45'inv_516 ::
@@ -2756,7 +2758,7 @@ d_stack'45'inv_516 ::
   MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_IRStackBudget_680
 d_stack'45'inv_516 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_stack'45'inv_1308
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_stack'45'inv_1310
       (coe v0)
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.IRResultAWF.trace
 d_trace_518 ::
@@ -2764,9 +2766,9 @@ d_trace_518 ::
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250]
 d_trace_518 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_trace_1146
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_trace_1148
       (coe
-         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_base_1306
+         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_base_1308
          (coe v0))
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.IRResultAWF.trace-correct
 d_trace'45'correct_520 ::
@@ -2784,9 +2786,9 @@ d_trace'45'no'45'frame'45'ops_524 ::
   AgdaAny
 d_trace'45'no'45'frame'45'ops_524 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_trace'45'no'45'frame'45'ops_1176
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_trace'45'no'45'frame'45'ops_1178
       (coe
-         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_base_1306
+         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_base_1308
          (coe v0))
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.IRResultAWF.trace-preserves-halted
 d_trace'45'preserves'45'halted_526 ::
@@ -2803,9 +2805,9 @@ d_trace'45'slot'45'reads'45'above_528 ::
   AgdaAny
 d_trace'45'slot'45'reads'45'above_528 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_trace'45'slot'45'reads'45'above_1238
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_trace'45'slot'45'reads'45'above_1240
       (coe
-         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_stack'45'inv_1308
+         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_stack'45'inv_1310
          (coe v0))
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.IRResultAWF.trace-slot-reads-below
 d_trace'45'slot'45'reads'45'below_530 ::
@@ -2813,9 +2815,9 @@ d_trace'45'slot'45'reads'45'below_530 ::
   AgdaAny
 d_trace'45'slot'45'reads'45'below_530 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_trace'45'slot'45'reads'45'below_1242
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_trace'45'slot'45'reads'45'below_1244
       (coe
-         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_stack'45'inv_1308
+         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_stack'45'inv_1310
          (coe v0))
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.IRResultAWF.trace-twf
 d_trace'45'twf_532 ::
@@ -2823,9 +2825,9 @@ d_trace'45'twf_532 ::
   MAlonzo.Code.Once.CCC.Machine.SMPrimitives.T_TraceWF_8036
 d_trace'45'twf_532 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_trace'45'twf_1168
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_trace'45'twf_1170
       (coe
-         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_base_1306
+         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_base_1308
          (coe v0))
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.IRResultAWF.trace-writes-above
 d_trace'45'writes'45'above_534 ::
@@ -2833,9 +2835,9 @@ d_trace'45'writes'45'above_534 ::
   AgdaAny
 d_trace'45'writes'45'above_534 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_trace'45'writes'45'above_1236
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_trace'45'writes'45'above_1238
       (coe
-         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_stack'45'inv_1308
+         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_stack'45'inv_1310
          (coe v0))
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.IRResultAWF.trace-writes-below
 d_trace'45'writes'45'below_536 ::
@@ -2843,9 +2845,9 @@ d_trace'45'writes'45'below_536 ::
   AgdaAny
 d_trace'45'writes'45'below_536 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_trace'45'writes'45'below_1240
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_trace'45'writes'45'below_1242
       (coe
-         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_stack'45'inv_1308
+         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_stack'45'inv_1310
          (coe v0))
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.IRResultBase.alloc-correct
 d_alloc'45'correct_540 ::
@@ -2858,7 +2860,7 @@ d_bump_542 ::
   MAlonzo.Code.Once.CCC.Machine.Allocation.T_AllocBump_930
 d_bump_542 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_bump_1148
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_bump_1150
       (coe v0)
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.IRResultBase.final-alloc
 d_final'45'alloc_544 ::
@@ -2888,7 +2890,7 @@ du_final'45'alloc_544 ::
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_504
 du_final'45'alloc_544 v0 v1 v2 v3 v4 v5 v6 v7 v8
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_final'45'alloc_1178
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_final'45'alloc_1180
       v7 v8
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.IRResultBase.final-state
 d_final'45'state_546 ::
@@ -2896,7 +2898,7 @@ d_final'45'state_546 ::
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_412
 d_final'45'state_546 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_final'45'state_1144
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_final'45'state_1146
       (coe v0)
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.IRResultBase.frame-preserved
 d_frame'45'preserved_548 ::
@@ -2919,7 +2921,7 @@ d_ir'45'returns_550 ::
   AgdaAny
 d_ir'45'returns_550 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_ir'45'returns_1158
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_ir'45'returns_1160
       (coe v0)
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.IRResultBase.mem-preserved-before
 d_mem'45'preserved'45'before_552 ::
@@ -2939,7 +2941,7 @@ d_obs'45'budget_556 ::
   Integer
 d_obs'45'budget_556 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_obs'45'budget_1156
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_obs'45'budget_1158
       (coe v0)
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.IRResultBase.result-place
 d_result'45'place_558 ::
@@ -2947,7 +2949,7 @@ d_result'45'place_558 ::
   MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ResultPlace_624
 d_result'45'place_558 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_result'45'place_1160
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_result'45'place_1162
       (coe v0)
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.IRResultBase.trace
 d_trace_560 ::
@@ -2955,7 +2957,7 @@ d_trace_560 ::
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250]
 d_trace_560 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_trace_1146
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_trace_1148
       (coe v0)
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.IRResultBase.trace-correct
 d_trace'45'correct_562 ::
@@ -2973,7 +2975,7 @@ d_trace'45'no'45'frame'45'ops_566 ::
   AgdaAny
 d_trace'45'no'45'frame'45'ops_566 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_trace'45'no'45'frame'45'ops_1176
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_trace'45'no'45'frame'45'ops_1178
       (coe v0)
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.IRResultBase.trace-preserves-halted
 d_trace'45'preserves'45'halted_568 ::
@@ -2990,7 +2992,7 @@ d_trace'45'twf_570 ::
   MAlonzo.Code.Once.CCC.Machine.SMPrimitives.T_TraceWF_8036
 d_trace'45'twf_570 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_trace'45'twf_1168
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_trace'45'twf_1170
       (coe v0)
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.IRStackBudget.bump-fits-stack-budget
 d_bump'45'fits'45'stack'45'budget_574 ::
@@ -2998,7 +3000,7 @@ d_bump'45'fits'45'stack'45'budget_574 ::
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
 d_bump'45'fits'45'stack'45'budget_574 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_bump'45'fits'45'stack'45'budget_1224
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_bump'45'fits'45'stack'45'budget_1226
       (coe v0)
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.IRStackBudget.frontier-slot-stable
 d_frontier'45'slot'45'stable_576 ::
@@ -3011,7 +3013,7 @@ d_frontier'45'slot'45'stable_576 ::
   MAlonzo.Code.Data.Sum.Base.T__'8846'__30
 d_frontier'45'slot'45'stable_576 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_frontier'45'slot'45'stable_1234
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_frontier'45'slot'45'stable_1236
       (coe v0)
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.IRStackBudget.max-slot-geq-final
 d_max'45'slot'45'geq'45'final_578 ::
@@ -3019,7 +3021,7 @@ d_max'45'slot'45'geq'45'final_578 ::
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
 d_max'45'slot'45'geq'45'final_578 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_max'45'slot'45'geq'45'final_1226
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_max'45'slot'45'geq'45'final_1228
       (coe v0)
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.IRStackBudget.max-slot-usage-bound
 d_max'45'slot'45'usage'45'bound_580 ::
@@ -3027,7 +3029,7 @@ d_max'45'slot'45'usage'45'bound_580 ::
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
 d_max'45'slot'45'usage'45'bound_580 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_max'45'slot'45'usage'45'bound_1228
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_max'45'slot'45'usage'45'bound_1230
       (coe v0)
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.IRStackBudget.max-slot-written
 d_max'45'slot'45'written_582 ::
@@ -3035,7 +3037,7 @@ d_max'45'slot'45'written_582 ::
   Integer
 d_max'45'slot'45'written_582 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_max'45'slot'45'written_1220
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_max'45'slot'45'written_1222
       (coe v0)
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.IRStackBudget.scratch-bounded
 d_scratch'45'bounded_584 ::
@@ -3043,7 +3045,7 @@ d_scratch'45'bounded_584 ::
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
 d_scratch'45'bounded_584 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_scratch'45'bounded_1246
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_scratch'45'bounded_1248
       (coe v0)
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.IRStackBudget.scratch-budget
 d_scratch'45'budget_586 ::
@@ -3051,7 +3053,7 @@ d_scratch'45'budget_586 ::
   Integer
 d_scratch'45'budget_586 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_scratch'45'budget_1244
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_scratch'45'budget_1246
       (coe v0)
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.IRStackBudget.slot-monotone
 d_slot'45'monotone_588 ::
@@ -3075,7 +3077,7 @@ du_slot'45'monotone_588 ::
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
 du_slot'45'monotone_588 v0 v1 v2 v3 v4 v5
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_slot'45'monotone_1248
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_slot'45'monotone_1250
       v1
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.IRStackBudget.slot-stays-in-budget
 d_slot'45'stays'45'in'45'budget_590 ::
@@ -3100,7 +3102,7 @@ du_slot'45'stays'45'in'45'budget_590 ::
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
 du_slot'45'stays'45'in'45'budget_590 v0 v1 v2 v3 v4 v5
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_slot'45'stays'45'in'45'budget_1250
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_slot'45'stays'45'in'45'budget_1252
       v1 v2 v5
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.IRStackBudget.stack-budget
 d_stack'45'budget_592 ::
@@ -3108,7 +3110,7 @@ d_stack'45'budget_592 ::
   Integer
 d_stack'45'budget_592 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_stack'45'budget_1222
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_stack'45'budget_1224
       (coe v0)
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.IRStackBudget.trace-slot-reads-above
 d_trace'45'slot'45'reads'45'above_594 ::
@@ -3116,7 +3118,7 @@ d_trace'45'slot'45'reads'45'above_594 ::
   AgdaAny
 d_trace'45'slot'45'reads'45'above_594 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_trace'45'slot'45'reads'45'above_1238
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_trace'45'slot'45'reads'45'above_1240
       (coe v0)
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.IRStackBudget.trace-slot-reads-below
 d_trace'45'slot'45'reads'45'below_596 ::
@@ -3124,7 +3126,7 @@ d_trace'45'slot'45'reads'45'below_596 ::
   AgdaAny
 d_trace'45'slot'45'reads'45'below_596 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_trace'45'slot'45'reads'45'below_1242
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_trace'45'slot'45'reads'45'below_1244
       (coe v0)
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.IRStackBudget.trace-writes-above
 d_trace'45'writes'45'above_598 ::
@@ -3132,7 +3134,7 @@ d_trace'45'writes'45'above_598 ::
   AgdaAny
 d_trace'45'writes'45'above_598 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_trace'45'writes'45'above_1236
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_trace'45'writes'45'above_1238
       (coe v0)
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.IRStackBudget.trace-writes-below
 d_trace'45'writes'45'below_600 ::
@@ -3140,87 +3142,87 @@ d_trace'45'writes'45'below_600 ::
   AgdaAny
 d_trace'45'writes'45'below_600 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_trace'45'writes'45'below_1240
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_trace'45'writes'45'below_1242
       (coe v0)
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.InlValidWF.a
 d_a_604 ::
-  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_InlValidWF_2016 ->
+  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_InlValidWF_2018 ->
   AgdaAny
 d_a_604 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_a_2038 (coe v0)
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_a_2040 (coe v0)
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.InlValidWF.payload
 d_payload_606 ::
-  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_InlValidWF_2016 ->
-  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_PayloadAt_1946
+  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_InlValidWF_2018 ->
+  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_PayloadAt_1948
 d_payload_606 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_payload_2042
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_payload_2044
       (coe v0)
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.InlValidWF.sucLoc-before
 d_sucLoc'45'before_608 ::
-  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_InlValidWF_2016 ->
+  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_InlValidWF_2018 ->
   MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_664
 d_sucLoc'45'before_608 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_sucLoc'45'before_2040
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_sucLoc'45'before_2042
       (coe v0)
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.InlValidWF.v-is-inl
 d_v'45'is'45'inl_610 ::
-  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_InlValidWF_2016 ->
+  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_InlValidWF_2018 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_v'45'is'45'inl_610 = erased
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.InrValidWF.b
 d_b_628 ::
-  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_InrValidWF_2060 ->
+  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_InrValidWF_2062 ->
   AgdaAny
 d_b_628 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_b_2082 (coe v0)
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_b_2084 (coe v0)
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.InrValidWF.payload
 d_payload_630 ::
-  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_InrValidWF_2060 ->
-  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_PayloadAt_1946
+  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_InrValidWF_2062 ->
+  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_PayloadAt_1948
 d_payload_630 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_payload_2086
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_payload_2088
       (coe v0)
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.InrValidWF.sucLoc-before
 d_sucLoc'45'before_632 ::
-  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_InrValidWF_2060 ->
+  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_InrValidWF_2062 ->
   MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_664
 d_sucLoc'45'before_632 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_sucLoc'45'before_2084
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_sucLoc'45'before_2086
       (coe v0)
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.InrValidWF.v-is-inr
 d_v'45'is'45'inr_634 ::
-  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_InrValidWF_2060 ->
+  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_InrValidWF_2062 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_v'45'is'45'inr_634 = erased
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.PairValidWF.fst-cell
 d_fst'45'cell_638 ::
-  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_PairValidWF_1884 ->
+  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_PairValidWF_1886 ->
   MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_CellAt_590
 d_fst'45'cell_638 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_fst'45'cell_1906
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_fst'45'cell_1908
       (coe v0)
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.PairValidWF.snd-cell
 d_snd'45'cell_640 ::
-  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_PairValidWF_1884 ->
+  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_PairValidWF_1886 ->
   MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_CellAt_590
 d_snd'45'cell_640 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_snd'45'cell_1908
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_snd'45'cell_1910
       (coe v0)
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.ClosureWellFormedDef.PairValidWF.sucLoc-before
 d_sucLoc'45'before_642 ::
-  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_PairValidWF_1884 ->
+  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_PairValidWF_1886 ->
   MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_664
 d_sucLoc'45'before_642 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_sucLoc'45'before_1904
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_sucLoc'45'before_1906
       (coe v0)
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.Core.AllSlotStable
 d_AllSlotStable_694 ::
@@ -3524,7 +3526,7 @@ d_cata'45'correct_782 ::
    [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
    Integer ->
    MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
-   MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Interface.T_BlockRuns_4000 ->
+   MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Interface.T_BlockRuns_4002 ->
    (Integer ->
     MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250 ->
     MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
@@ -3549,7 +3551,7 @@ d_cata'45'correct_782 ::
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
   Integer ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
-  MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Interface.T_BlockRuns_4000 ->
+  MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Interface.T_BlockRuns_4002 ->
   (Integer ->
    MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250 ->
    MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
@@ -3571,7 +3573,7 @@ d_cata'45'correct_782 ::
   MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Interface.T_MachineRefinesObsF_3706
 d_cata'45'correct_782 v0 v1
   = coe
-      MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Interface.d_cata'45'correct_4060
+      MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Interface.d_cata'45'correct_4062
       v0 v1
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.Core.chain-events
 d_chain'45'events_788 ::
@@ -3648,7 +3650,7 @@ d_decomposeClosureWF_800 ::
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_412 ->
   MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ValidAtWF_594 ->
-  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ClosureValidWF_1660
+  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ClosureValidWF_1662
 d_decomposeClosureWF_800 ~v0 ~v1 ~v2 = du_decomposeClosureWF_800
 du_decomposeClosureWF_800 ::
   MAlonzo.Code.Once.IR.T_AllocMode_4 ->
@@ -3659,10 +3661,10 @@ du_decomposeClosureWF_800 ::
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_412 ->
   MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ValidAtWF_594 ->
-  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ClosureValidWF_1660
+  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ClosureValidWF_1662
 du_decomposeClosureWF_800 v0 v1 v2 v3 v4 v5 v6 v7
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_decomposeClosureWF_1730
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_decomposeClosureWF_1732
       v7
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.Core.decomposePairWF
 d_decomposePairWF_802 ::
@@ -3677,7 +3679,7 @@ d_decomposePairWF_802 ::
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_412 ->
   MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ValidAtWF_594 ->
-  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_PairValidWF_1884
+  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_PairValidWF_1886
 d_decomposePairWF_802 ~v0 ~v1 ~v2 = du_decomposePairWF_802
 du_decomposePairWF_802 ::
   MAlonzo.Code.Once.IR.T_AllocMode_4 ->
@@ -3688,10 +3690,10 @@ du_decomposePairWF_802 ::
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_412 ->
   MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ValidAtWF_594 ->
-  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_PairValidWF_1884
+  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_PairValidWF_1886
 du_decomposePairWF_802 v0 v1 v2 v3 v4 v5 v6 v7
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_decomposePairWF_1926
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_decomposePairWF_1928
       v7
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.Core.do-branch
 d_do'45'branch_804 ::
@@ -5418,7 +5420,7 @@ du_ir'45'to'45'trace'45'slot'45'stable_1048 ::
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44
 du_ir'45'to'45'trace'45'slot'45'stable_1048 v0 v1
   = coe
-      MAlonzo.Code.Once.CCC.Codegen.CataIRSlotStable.d_ir'45'to'45'trace'45'slot'45'stable_928
+      MAlonzo.Code.Once.CCC.Codegen.CataIRSlotStable.d_ir'45'to'45'trace'45'slot'45'stable_938
       (coe v0) (coe v1)
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.Core.just-injℕ
 d_just'45'injℕ_1050 ::
@@ -6712,7 +6714,7 @@ d_validityWF'45'frontier'45'advance_1230 ::
 d_validityWF'45'frontier'45'advance_1230 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                          v9 v10 v11 v12 v13
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_validityWF'45'frontier'45'advance_4418
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_validityWF'45'frontier'45'advance_4420
       (coe v0) (coe v1) (coe v2) v4 v5 v6 v7 v8 v9 v11 v12 v13
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.Core.validityWF-mem-preserved
 d_validityWF'45'mem'45'preserved_1232 ::
@@ -6735,7 +6737,7 @@ d_validityWF'45'mem'45'preserved_1232 ::
 d_validityWF'45'mem'45'preserved_1232 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                                       v10 v11 v12
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_validityWF'45'mem'45'preserved_5170
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_validityWF'45'mem'45'preserved_5172
       (coe v0) (coe v1) (coe v2) v4 v5 v6 v8 v9 v12
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.Core.validityWF-with-bf-transfer
 d_validityWF'45'with'45'bf'45'transfer_1234 ::
@@ -6757,7 +6759,7 @@ d_validityWF'45'with'45'bf'45'transfer_1234 ::
 d_validityWF'45'with'45'bf'45'transfer_1234 v0 v1 v2 v3 v4 v5 v6 v7
                                             v8 v9 v10 v11
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_validityWF'45'with'45'bf'45'transfer_4834
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_validityWF'45'with'45'bf'45'transfer_4836
       (coe v0) (coe v1) (coe v2) v4 v5 v6 v7 v8 v9 v10 v11
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.Core.vr-mem-pres
 d_vr'45'mem'45'pres_1236 ::
@@ -6830,7 +6832,7 @@ d_'8801''7495''45'true_1242 ::
 d_'8801''7495''45'true_1242 = erased
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.Core.BlockRuns.closures
 d_closures_1254 ::
-  MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Interface.T_BlockRuns_4000 ->
+  MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Interface.T_BlockRuns_4002 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
@@ -6846,16 +6848,17 @@ d_closures_1254 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_closures_1254 v0
   = coe
-      MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Interface.d_closures_4010
+      MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Interface.d_closures_4012
       (coe v0)
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.Core.BlockRuns.coalgs
 d_coalgs_1256 ::
-  MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Interface.T_BlockRuns_4000 ->
+  MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Interface.T_BlockRuns_4002 ->
+  MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRFunctor_4 ->
   MAlonzo.Code.Once.IRTy.T_WellFormedFI_122 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
-  AgdaAny ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Once.CCC.Label.T_LabelId_6 ->
   MAlonzo.Code.Once.IR.T_AllocMode_4 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_504 ->
@@ -6866,18 +6869,18 @@ d_coalgs_1256 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_coalgs_1256 v0
   = coe
-      MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Interface.d_coalgs_4012
+      MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Interface.d_coalgs_4014
       (coe v0)
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.Core.BlockRuns.functions
 d_functions_1258 ::
-  MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Interface.T_BlockRuns_4000 ->
+  MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Interface.T_BlockRuns_4002 ->
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_functions_1258 v0
   = coe
-      MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Interface.d_functions_4014
+      MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Interface.d_functions_4016
       (coe v0)
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.Core.CalleeRun.bf-mono
 d_bf'45'mono_1268 ::
@@ -6999,68 +7002,68 @@ d_stops_1298 ::
 d_stops_1298 = erased
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.Core.ClosureValidWF.EnvType
 d_EnvType_1308 ::
-  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ClosureValidWF_1660 ->
+  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ClosureValidWF_1662 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6
 d_EnvType_1308 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_EnvType_1694
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_EnvType_1696
       (coe v0)
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.Core.ClosureValidWF.body
 d_body_1310 ::
-  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ClosureValidWF_1660 ->
+  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ClosureValidWF_1662 ->
   MAlonzo.Code.Once.IR.T_IR_16
 d_body_1310 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_body_1696
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_body_1698
       (coe v0)
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.Core.ClosureValidWF.body-label
 d_body'45'label_1312 ::
-  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ClosureValidWF_1660 ->
+  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ClosureValidWF_1662 ->
   MAlonzo.Code.Once.CCC.Label.T_LabelId_6
 d_body'45'label_1312 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_body'45'label_1700
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_body'45'label_1702
       (coe v0)
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.Core.ClosureValidWF.code-ptr
 d_code'45'ptr_1314 ::
-  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ClosureValidWF_1660 ->
+  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ClosureValidWF_1662 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_code'45'ptr_1314 = erased
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.Core.ClosureValidWF.env
 d_env_1316 ::
-  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ClosureValidWF_1660 ->
+  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ClosureValidWF_1662 ->
   AgdaAny
 d_env_1316 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_env_1698 (coe v0)
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_env_1700 (coe v0)
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.Core.ClosureValidWF.env-at
 d_env'45'at_1318 ::
-  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ClosureValidWF_1660 ->
-  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_EnvAt_1626
+  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ClosureValidWF_1662 ->
+  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_EnvAt_1628
 d_env'45'at_1318 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_env'45'at_1704
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_env'45'at_1706
       (coe v0)
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.Core.ClosureValidWF.f-is-closure
 d_f'45'is'45'closure_1320 ::
-  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ClosureValidWF_1660 ->
+  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ClosureValidWF_1662 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_f'45'is'45'closure_1320 = erased
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.Core.ClosureValidWF.loc-mode
 d_loc'45'mode_1322 ::
-  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ClosureValidWF_1660 ->
+  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ClosureValidWF_1662 ->
   AgdaAny
 d_loc'45'mode_1322 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_loc'45'mode_1702
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_loc'45'mode_1704
       (coe v0)
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.Core.ClosureValidWF.sucLoc-before
 d_sucLoc'45'before_1324 ::
-  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ClosureValidWF_1660 ->
+  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ClosureValidWF_1662 ->
   MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_664
 d_sucLoc'45'before_1324 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_sucLoc'45'before_1708
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_sucLoc'45'before_1710
       (coe v0)
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.Core.FlatState.falloc
 d_falloc_1334 ::
@@ -7110,27 +7113,27 @@ d_value'45'realized_1382 v0
       (coe v0)
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.Core.PairValidWF.fst-cell
 d_fst'45'cell_1386 ::
-  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_PairValidWF_1884 ->
+  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_PairValidWF_1886 ->
   MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_CellAt_590
 d_fst'45'cell_1386 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_fst'45'cell_1906
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_fst'45'cell_1908
       (coe v0)
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.Core.PairValidWF.snd-cell
 d_snd'45'cell_1388 ::
-  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_PairValidWF_1884 ->
+  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_PairValidWF_1886 ->
   MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_CellAt_590
 d_snd'45'cell_1388 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_snd'45'cell_1908
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_snd'45'cell_1910
       (coe v0)
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.Core.PairValidWF.sucLoc-before
 d_sucLoc'45'before_1390 ::
-  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_PairValidWF_1884 ->
+  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_PairValidWF_1886 ->
   MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_664
 d_sucLoc'45'before_1390 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_sucLoc'45'before_1904
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.d_sucLoc'45'before_1906
       (coe v0)
 -- Once.CCC.Codegen.IRObsCorrect.Machine._.Core.ValueRealized.at-end
 d_at'45'end_1444 ::
@@ -14971,7 +14974,7 @@ d_cata'45'correct_3422 ::
    [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
    Integer ->
    MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
-   MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Interface.T_BlockRuns_4000 ->
+   MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Interface.T_BlockRuns_4002 ->
    (Integer ->
     MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250 ->
     MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
@@ -14996,7 +14999,7 @@ d_cata'45'correct_3422 ::
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
   Integer ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
-  MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Interface.T_BlockRuns_4000 ->
+  MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Interface.T_BlockRuns_4002 ->
   (Integer ->
    MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250 ->
    MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
@@ -15018,7 +15021,7 @@ d_cata'45'correct_3422 ::
   MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Interface.T_MachineRefinesObsF_3706
 d_cata'45'correct_3422 v0 v1 v2
   = coe
-      MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Interface.d_cata'45'correct_4060
+      MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Interface.d_cata'45'correct_4062
       v0 v1 v2
 -- Once.CCC.Codegen.IRObsCorrect.Machine.Mach._.chain-events
 d_chain'45'events_3428 ::
@@ -15095,7 +15098,7 @@ d_decomposeClosureWF_3440 ::
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_412 ->
   MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ValidAtWF_594 ->
-  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ClosureValidWF_1660
+  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ClosureValidWF_1662
 d_decomposeClosureWF_3440 ~v0 ~v1 ~v2 = du_decomposeClosureWF_3440
 du_decomposeClosureWF_3440 ::
   MAlonzo.Code.Once.IR.T_AllocMode_4 ->
@@ -15106,10 +15109,10 @@ du_decomposeClosureWF_3440 ::
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_412 ->
   MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ValidAtWF_594 ->
-  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ClosureValidWF_1660
+  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ClosureValidWF_1662
 du_decomposeClosureWF_3440 v0 v1 v2 v3 v4 v5 v6 v7
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_decomposeClosureWF_1730
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_decomposeClosureWF_1732
       v7
 -- Once.CCC.Codegen.IRObsCorrect.Machine.Mach._.decomposePairWF
 d_decomposePairWF_3442 ::
@@ -15124,7 +15127,7 @@ d_decomposePairWF_3442 ::
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_412 ->
   MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ValidAtWF_594 ->
-  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_PairValidWF_1884
+  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_PairValidWF_1886
 d_decomposePairWF_3442 ~v0 ~v1 ~v2 = du_decomposePairWF_3442
 du_decomposePairWF_3442 ::
   MAlonzo.Code.Once.IR.T_AllocMode_4 ->
@@ -15135,10 +15138,10 @@ du_decomposePairWF_3442 ::
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_412 ->
   MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ValidAtWF_594 ->
-  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_PairValidWF_1884
+  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_PairValidWF_1886
 du_decomposePairWF_3442 v0 v1 v2 v3 v4 v5 v6 v7
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_decomposePairWF_1926
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_decomposePairWF_1928
       v7
 -- Once.CCC.Codegen.IRObsCorrect.Machine.Mach._.do-branch
 d_do'45'branch_3444 ::
@@ -16758,7 +16761,7 @@ du_ir'45'to'45'trace'45'slot'45'stable_3688 ::
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44
 du_ir'45'to'45'trace'45'slot'45'stable_3688 v0 v1
   = coe
-      MAlonzo.Code.Once.CCC.Codegen.CataIRSlotStable.d_ir'45'to'45'trace'45'slot'45'stable_928
+      MAlonzo.Code.Once.CCC.Codegen.CataIRSlotStable.d_ir'45'to'45'trace'45'slot'45'stable_938
       (coe v0) (coe v1)
 -- Once.CCC.Codegen.IRObsCorrect.Machine.Mach._.just-injℕ
 d_just'45'injℕ_3690 ::
@@ -17898,7 +17901,7 @@ d_validityWF'45'frontier'45'advance_3870 ::
 d_validityWF'45'frontier'45'advance_3870 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                          v9 v10 v11 v12 v13
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_validityWF'45'frontier'45'advance_4418
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_validityWF'45'frontier'45'advance_4420
       (coe v0) (coe v1) (coe v2) v4 v5 v6 v7 v8 v9 v11 v12 v13
 -- Once.CCC.Codegen.IRObsCorrect.Machine.Mach._.validityWF-mem-preserved
 d_validityWF'45'mem'45'preserved_3872 ::
@@ -17921,7 +17924,7 @@ d_validityWF'45'mem'45'preserved_3872 ::
 d_validityWF'45'mem'45'preserved_3872 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                                       v10 v11 v12
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_validityWF'45'mem'45'preserved_5170
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_validityWF'45'mem'45'preserved_5172
       (coe v0) (coe v1) (coe v2) v4 v5 v6 v8 v9 v12
 -- Once.CCC.Codegen.IRObsCorrect.Machine.Mach._.validityWF-with-bf-transfer
 d_validityWF'45'with'45'bf'45'transfer_3874 ::
@@ -17943,7 +17946,7 @@ d_validityWF'45'with'45'bf'45'transfer_3874 ::
 d_validityWF'45'with'45'bf'45'transfer_3874 v0 v1 v2 v3 v4 v5 v6 v7
                                             v8 v9 v10 v11
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_validityWF'45'with'45'bf'45'transfer_4834
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_validityWF'45'with'45'bf'45'transfer_4836
       (coe v0) (coe v1) (coe v2) v4 v5 v6 v7 v8 v9 v10 v11
 -- Once.CCC.Codegen.IRObsCorrect.Machine.Mach._.vr-mem-pres
 d_vr'45'mem'45'pres_3876 ::
@@ -18008,7 +18011,7 @@ d_'8801''7495''45'true_3882 ::
 d_'8801''7495''45'true_3882 = erased
 -- Once.CCC.Codegen.IRObsCorrect.Machine.Mach._.BlockRuns.closures
 d_closures_3894 ::
-  MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Interface.T_BlockRuns_4000 ->
+  MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Interface.T_BlockRuns_4002 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
@@ -18024,16 +18027,17 @@ d_closures_3894 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_closures_3894 v0
   = coe
-      MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Interface.d_closures_4010
+      MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Interface.d_closures_4012
       (coe v0)
 -- Once.CCC.Codegen.IRObsCorrect.Machine.Mach._.BlockRuns.coalgs
 d_coalgs_3896 ::
-  MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Interface.T_BlockRuns_4000 ->
+  MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Interface.T_BlockRuns_4002 ->
+  MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRFunctor_4 ->
   MAlonzo.Code.Once.IRTy.T_WellFormedFI_122 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
-  AgdaAny ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Once.CCC.Label.T_LabelId_6 ->
   MAlonzo.Code.Once.IR.T_AllocMode_4 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_504 ->
@@ -18044,18 +18048,18 @@ d_coalgs_3896 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_coalgs_3896 v0
   = coe
-      MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Interface.d_coalgs_4012
+      MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Interface.d_coalgs_4014
       (coe v0)
 -- Once.CCC.Codegen.IRObsCorrect.Machine.Mach._.BlockRuns.functions
 d_functions_3898 ::
-  MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Interface.T_BlockRuns_4000 ->
+  MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Interface.T_BlockRuns_4002 ->
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_functions_3898 v0
   = coe
-      MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Interface.d_functions_4014
+      MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Interface.d_functions_4016
       (coe v0)
 -- Once.CCC.Codegen.IRObsCorrect.Machine.Mach._.CalleeRun.bf-mono
 d_bf'45'mono_3908 ::
@@ -23323,7 +23327,7 @@ du_carry_5570 ::
   MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ValidAtWF_594
 du_carry_5570 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11
   = coe
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_validityWF'45'frontier'45'advance_4418
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_validityWF'45'frontier'45'advance_4420
       (coe v0) (coe v1) (coe v2) (coe v6)
       (coe
          MAlonzo.Code.Once.CCC.Machine.Flat.d_falloc_84
@@ -23337,7 +23341,7 @@ du_carry_5570 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11
       (coe du_nextslot'45'a16'45''8804'_5538 (coe v6))
       (coe du_heapref'45'a16'45''8804'_5540 (coe v6))
       (coe
-         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_validityWF'45'mem'45'preserved_5170
+         MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_validityWF'45'mem'45'preserved_5172
          (coe v0) (coe v1) (coe v2) (coe v6) (coe v8) (coe v9) (coe v5)
          (coe
             MAlonzo.Code.Once.CCC.Machine.Flat.d_floc_82

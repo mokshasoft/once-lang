@@ -329,34 +329,43 @@ d_eval'7472'_120 v0 v1 v2 v3 v4 v5
                                 (coe v7))
                              (coe v5))))
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.IR.C_Ana_120 v7 v9
-        -> case coe v3 of
-             MAlonzo.Code.Once.IRTy.C_ν'45'type_28 v10
-               -> coe
-                    MAlonzo.Code.Once.Denotation.TraceMonad.du_returnT_194
-                    (coe
-                       MAlonzo.Code.Once.Denotation.ValueDomain.du_anaF'7496'_264
-                       (MAlonzo.Code.Once.IRTy.d_'8968'_'8969'F_608 (coe v10))
-                       (\ v11 ->
-                          coe
-                            MAlonzo.Code.Once.Denotation.TraceMonad.du_fmapT_238
-                            (coe
-                               (\ v12 ->
-                                  coe
-                                    MAlonzo.Code.Once.Denotation.ValueDomain.du_coerce'45'functor'45'D_418
-                                    (coe MAlonzo.Code.Once.IRTy.d_'8968'_'8969'F_608 (coe v10))
-                                    (coe
-                                       MAlonzo.Code.Once.IRTy.WF.d_wf'45''8968''8969'_20 (coe v10)
-                                       (coe v7))
-                                    (coe v12)))
-                            (coe
-                               d_eval'7472'_120 (coe v0) (coe v1) (coe v2)
-                               (coe
-                                  MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_80 (coe v10) (coe v2))
-                               (coe v9) (coe v11)))
-                       v5)
+      MAlonzo.Code.Once.IR.C_Ana_122 v7 v10
+        -> case coe v2 of
+             MAlonzo.Code.Once.IRTy.C__'42'__20 v11 v12
+               -> case coe v3 of
+                    MAlonzo.Code.Once.IRTy.C_ν'45'type_28 v13
+                      -> coe
+                           MAlonzo.Code.Once.Denotation.TraceMonad.du_returnT_194
+                           (coe
+                              MAlonzo.Code.Once.Denotation.ValueDomain.du_anaF'7496'_264
+                              (MAlonzo.Code.Once.IRTy.d_'8968'_'8969'F_608 (coe v13))
+                              (\ v14 ->
+                                 coe
+                                   MAlonzo.Code.Once.Denotation.TraceMonad.du_fmapT_238
+                                   (coe
+                                      (\ v15 ->
+                                         coe
+                                           MAlonzo.Code.Once.Denotation.ValueDomain.du_coerce'45'functor'45'D_418
+                                           (coe
+                                              MAlonzo.Code.Once.IRTy.d_'8968'_'8969'F_608 (coe v13))
+                                           (coe
+                                              MAlonzo.Code.Once.IRTy.WF.d_wf'45''8968''8969'_20
+                                              (coe v13) (coe v7))
+                                           (coe v15)))
+                                   (coe
+                                      d_eval'7472'_120 (coe v0) (coe v1) (coe v2)
+                                      (coe
+                                         MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_80 (coe v13)
+                                         (coe v12))
+                                      (coe v10)
+                                      (coe
+                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                                         (coe MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28 (coe v5))
+                                         (coe v14))))
+                              (MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30 (coe v5)))
+                    _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.IR.C_const_124 v7 v8
+      MAlonzo.Code.Once.IR.C_const_126 v7 v8
         -> case coe v7 of
              MAlonzo.Code.Once.IRTy.C_fits'45'int_520
                -> coe
@@ -371,7 +380,7 @@ d_eval'7472'_120 v0 v1 v2 v3 v4 v5
                        (coe MAlonzo.Code.Once.Target.Arch.d_float'45'format_24 (coe v0))
                        (coe v8))
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.IR.C_SigOp_130 v6 v7 v8
+      MAlonzo.Code.Once.IR.C_SigOp_132 v6 v7 v8
         -> coe
              MAlonzo.Code.Once.Denotation.TraceMonad.du_fmapT_238
              (coe
@@ -384,7 +393,7 @@ d_eval'7472'_120 v0 v1 v2 v3 v4 v5
                 (MAlonzo.Code.Once.Denotation.ValueDomain.d_forget'7495'_356
                    (coe v6) (coe MAlonzo.Code.Once.SigOp.Info.d_baseA_182 (coe v8))
                    (coe v5)))
-      MAlonzo.Code.Once.IR.C_Call_136 v8
+      MAlonzo.Code.Once.IR.C_Call_138 v8
         -> coe d_callsE_20 v1 v8 v2 v3 v5
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Denotation.DenotTrace.cata-ev-algᴰ
@@ -424,14 +433,14 @@ d_cata'45'ev'45'alg'7472'_130 v0 v1 v2 v3 v4 v5 v6 v7 v8
                        (coe v5))
                     (coe v9)))))
 -- Once.Denotation.DenotTrace.liftFn
-d_liftFn_390 ::
+d_liftFn_392 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   T_CallEnv_6 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   AgdaAny -> MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178
-d_liftFn_390 v0 v1 v2 v3 v4 v5
+d_liftFn_392 v0 v1 v2 v3 v4 v5
   = coe
       d_eval'7472'_120 (coe v0) (coe v1)
       (coe MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_48 (coe v2))
