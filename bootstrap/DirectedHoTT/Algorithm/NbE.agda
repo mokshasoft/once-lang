@@ -425,7 +425,130 @@ rb₂ u (suc k) Γ c = rb u k ((Γ ∙) ∙)
   (inst₂ k (suc (suc (len Γ))) c (vvar (len Γ)) (vvar (suc (len Γ))))
 
 ------------------------------------------------------------------------
--- 7. The entry points.
+-- 7. TYPES (`_⟶ᵀ_`, `Algorithm/Eval.headᵀ`).  Terms never contain types,
+--    so this is a second layer over the term evaluator, not mutual with it.
+------------------------------------------------------------------------
+
+data TVal : Set
+data TClo : Set
+data TClo₂ : Set
+
+data TClo where
+  tclo    : Env Γ → RTy (Γ ∙) → TClo
+  tcloK   : TVal → TClo                  -- x ↦ A               (Hom-U: El (wk d))
+  tcloEl  : Clo → TClo                   -- x ↦ El (d x)        (El-⌜Π⌝, El-⌜Σ⌝)
+  tcloHom : TClo → Val → Val → TClo      -- x ↦ Hom (B x) (f x) (g x)              (Hom-Π)
+  tcloDIh : Val → TClo₂ → Val → Val → TClo   -- x ↦ DIh D M C (snd p)            (DIh-ρ)
+
+data TClo₂ where
+  tclo₂ : Env Γ → RTy ((Γ ∙) ∙) → TClo₂
+
+data TVal where
+  tbase tU tUnit tNat : TVal
+  tΠ tΣ : TVal → TClo → TVal
+  tEl   : Val → TVal
+  tHom tId : TVal → Val → Val → TVal
+  tIMu  : Val → Val → Val → TVal
+  tDesc : Val → TVal
+  tDIh  : Val → TClo₂ → Val → Val → TVal
+  tFin  : Val → TVal
+
+evalᵀ  : ℕ → ℕ → Env Γ → RTy Γ → TVal
+instᵀ  : ℕ → ℕ → TClo → Val → TVal
+instᵀ₂ : ℕ → ℕ → TClo₂ → Val → Val → TVal
+tElS   : ℕ → ℕ → Val → TVal
+tElF   : ℕ → ℕ → Val → TVal
+tHomS  : ℕ → ℕ → TVal → Val → Val → TVal
+tHomNat : ℕ → Val → Val → TVal
+tDIhS  : ℕ → ℕ → Val → TClo₂ → Val → Val → TVal
+tDIhF  : ℕ → ℕ → Val → TClo₂ → Val → Val → TVal
+
+evalᵀ k n ρ base          = tbase
+evalᵀ k n ρ U             = tU
+evalᵀ k n ρ (Π A B)       = tΠ (evalᵀ k n ρ A) (tclo ρ B)
+evalᵀ k n ρ (Σ' A B)      = tΣ (evalᵀ k n ρ A) (tclo ρ B)
+evalᵀ k n ρ (El c)        = tElS k n (eval k n ρ c)
+evalᵀ k n ρ (Hom A a b)   = tHomS k n (evalᵀ k n ρ A) (eval k n ρ a) (eval k n ρ b)
+evalᵀ k n ρ Unit          = tUnit
+evalᵀ k n ρ Nat           = tNat
+evalᵀ k n ρ (Id A a b)    = tId (evalᵀ k n ρ A) (eval k n ρ a) (eval k n ρ b)
+evalᵀ k n ρ (IMu I D i)   = tIMu (eval k n ρ I) (eval k n ρ D) (eval k n ρ i)
+evalᵀ k n ρ (Desc I)      = tDesc (eval k n ρ I)
+evalᵀ k n ρ (DIh D M C p) = tDIhS k n (eval k n ρ D) (tclo₂ ρ M) (eval k n ρ C) (eval k n ρ p)
+evalᵀ k n ρ (Fin t)       = tFin (eval k n ρ t)
+
+instᵀ zero    n c                 v = tEl (vapp (vlam (clo [] unit)) v)   -- fuel out: visibly wrong
+instᵀ (suc k) n (tclo ρ B)        v = evalᵀ k n (ρ , v) B
+instᵀ (suc k) n (tcloK A)         v = A
+instᵀ (suc k) n (tcloEl d)        v = tElS k n (inst k n d v)
+instᵀ (suc k) n (tcloHom B f g)   v = tHomS k n (instᵀ k n B v) (vApp k n f v) (vApp k n g v)
+instᵀ (suc k) n (tcloDIh D M C p) v = tDIhS k n D M C (vSnd k p)
+
+instᵀ₂ zero    n c           j t = tEl vunit
+instᵀ₂ (suc k) n (tclo₂ ρ M) j t = evalᵀ k n ((ρ , j) , t) M
+
+-- El of a code decodes it (El-⌜…⌝); a ⌜Hom⌝ code's decode may compute further
+tElS k n c = tElF k n (force k c)
+tElF k       n v⌜base⌝        = tbase
+tElF (suc k) n (v⌜Π⌝ c d)     = tΠ (tElS k n c) (tcloEl d)
+tElF (suc k) n (v⌜Σ⌝ c d)     = tΣ (tElS k n c) (tcloEl d)
+tElF (suc k) n (v⌜Hom⌝ c a b) = tHomS k n (tElS k n c) a b
+tElF (suc k) n (v⌜Id⌝ c a b)  = tId (tElS k n c) a b
+tElF k       n v⌜Nat⌝         = tNat
+tElF k       n (v⌜IMu⌝ I D i) = tIMu I D i
+tElF k       n (v⌜Fin⌝ t)     = tFin t
+tElF k       n v⌜Unit⌝        = tUnit
+tElF k       n c              = tEl c
+
+-- Hom computes at Nat (the order), U (functions) and Π (pointwise)
+tHomS k       n tNat     a b = tHomNat k a b
+tHomS (suc k) n tU       c d = tΠ (tElS k n c) (tcloK (tElS k n d))            -- Hom-U
+tHomS k       n (tΠ A B) f g = tΠ A (tcloHom B f g)                            -- Hom-Π
+tHomS k       n A        a b = tHom A a b
+tHomNat k a b with force k a
+... | vnzero  = tUnit                                                          -- Hom-Nat-z
+... | vnsuc m = tHomNatS k m (force k b)
+  where
+  tHomNatS : ℕ → Val → Val → TVal
+  tHomNatS k       m vnzero    = tbase                                         -- Hom-Nat-sz
+  tHomNatS (suc k) m (vnsuc b) = tHomNat k m b                                 -- Hom-Nat-ss
+  tHomNatS k       m b         = tHom tNat (vnsuc m) b
+... | a'      = tHom tNat a' b
+
+tDIhS k n D M C p = tDIhF k n D M (force k C) p
+tDIhF k       n D M vdι       p = tUnit                                        -- DIh-ι
+tDIhF (suc k) n D M (vdσ S f) p = tDIhS k n D M (vApp k n f (vFst k p)) (vSnd k p)   -- DIh-σ
+tDIhF (suc k) n D M (vdρ j C) p =                                              -- DIh-ρ
+  tΣ (instᵀ₂ k n M j (vFst k p)) (tcloDIh D M C p)
+tDIhF k       n D M C         p = tDIh D M C p
+
+rbᵀ  : Bool → ℕ → (Γ : Cx) → TVal → RTy Γ
+rbᵀᶜ : Bool → ℕ → (Γ : Cx) → TClo → RTy (Γ ∙)
+rbᵀ₂ : Bool → ℕ → (Γ : Cx) → TClo₂ → RTy ((Γ ∙) ∙)
+
+rbᵀ u k Γ tbase          = base
+rbᵀ u k Γ tU             = U
+rbᵀ u k Γ tUnit          = Unit
+rbᵀ u k Γ tNat           = Nat
+rbᵀ u k Γ (tΠ A B)       = Π (rbᵀ u k Γ A) (rbᵀᶜ u k Γ B)
+rbᵀ u k Γ (tΣ A B)       = Σ' (rbᵀ u k Γ A) (rbᵀᶜ u k Γ B)
+rbᵀ u k Γ (tEl c)        = El (rb u k Γ c)
+rbᵀ u k Γ (tHom A a b)   = Hom (rbᵀ u k Γ A) (rb u k Γ a) (rb u k Γ b)
+rbᵀ u k Γ (tId A a b)    = Id (rbᵀ u k Γ A) (rb u k Γ a) (rb u k Γ b)
+rbᵀ u k Γ (tIMu I D i)   = IMu (rb u k Γ I) (rb u k Γ D) (rb u k Γ i)
+rbᵀ u k Γ (tDesc I)      = Desc (rb u k Γ I)
+rbᵀ u k Γ (tDIh D M C p) = DIh (rb u k Γ D) (rbᵀ₂ u k Γ M) (rb u k Γ C) (rb u k Γ p)
+rbᵀ u k Γ (tFin t)       = Fin (rb u k Γ t)
+
+rbᵀᶜ u zero    Γ c = base
+rbᵀᶜ u (suc k) Γ c = rbᵀ u k (Γ ∙) (instᵀ k (suc (len Γ)) c (vvar (len Γ)))
+
+rbᵀ₂ u zero    Γ c = base
+rbᵀ₂ u (suc k) Γ c = rbᵀ u k ((Γ ∙) ∙)
+  (instᵀ₂ k (suc (suc (len Γ))) c (vvar (len Γ)) (vvar (suc (len Γ))))
+
+------------------------------------------------------------------------
+-- 8. The entry points.
 ------------------------------------------------------------------------
 
 -- the identity environment: variable i of Γ is its own level
@@ -444,3 +567,7 @@ nbe {Γ} k t = rb true k Γ (⟦ t ⟧ k)
 -- the normal form with references as atoms (lazy δ)
 nbeᵃ : ℕ → RTm Γ → RTm Γ
 nbeᵃ {Γ} k t = rb false k Γ (⟦ t ⟧ k)
+
+-- the normal form of a type, every reference unfolded
+nbeᵀ : ℕ → RTy Γ → RTy Γ
+nbeᵀ {Γ} k A = rbᵀ true k Γ (evalᵀ k (len Γ) (idEnv Γ) A)
