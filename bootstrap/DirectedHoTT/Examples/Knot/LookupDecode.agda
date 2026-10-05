@@ -78,17 +78,17 @@ private
 
   -- there
   dThere₁ : {Γ : Ctx} (A' : RTy ⌊ Γ ⌋) (y : Var ⌊ Γ ⌋) (A : RTy (⌊ Γ ⌋ ∙)) {k : RTm ε} →
-            RowsDec I∋ D∋ (⌜ thereT (dep ⌊ Γ ⌋) (quoteCtx Γ) (fst (quoteVar y ,ₚ unit)) (quoteTy A) ⌝ᵗ ∷ []) k →
+            RowsDec I∋ D∋ (⌜ thereT (dep ⌊ Γ ⌋) (quoteCtx Γ) (quoteVar y) (quoteTy A) ⌝ᵗ ∷ []) k →
             (Γ ▹ A') ∋ vs y ∷ A
   dThere₁ᵇ : {Γ : Ctx} (A' : RTy ⌊ Γ ⌋) (y : Var ⌊ Γ ⌋) (A : RTy (⌊ Γ ⌋ ∙)) {q : RTm ε} →
-             PayΣ I∋ D∋ (⌜Ty⌝ (dep ⌊ Γ ⌋)) (lam ⌜ Tρ (dep ⌊ Γ ⌋) (quoteCtx Γ) (fst (quoteVar y ,ₚ unit)) (quoteTy A) ⌝ᵗ) q →
+             PayΣ I∋ D∋ (⌜Ty⌝ (dep ⌊ Γ ⌋)) (lam ⌜ Tρ (dep ⌊ Γ ⌋) (quoteCtx Γ) (quoteVar y) (quoteTy A) ⌝ᵗ) q →
              (Γ ▹ A') ∋ vs y ∷ A
   dThere₂ : {Γ : Ctx} (A' : RTy ⌊ Γ ⌋) (y : Var ⌊ Γ ⌋) (A : RTy (⌊ Γ ⌋ ∙)) (b rest : RTm ε) →
             Σ (RTy ⌊ Γ ⌋) (λ B → b ≡ quoteTy B) →
-            ◇ ⊢ rest ∷ El (dpay I∋ D∋ (app (lam ⌜ Tρ (dep ⌊ Γ ⌋) (quoteCtx Γ) (fst (quoteVar y ,ₚ unit)) (quoteTy A) ⌝ᵗ) b)) →
+            ◇ ⊢ rest ∷ El (dpay I∋ D∋ (app (lam ⌜ Tρ (dep ⌊ Γ ⌋) (quoteCtx Γ) (quoteVar y) (quoteTy A) ⌝ᵗ) b)) →
             IsNormal rest → (Γ ▹ A') ∋ vs y ∷ A
   dThere₃ : {Γ : Ctx} (A' : RTy ⌊ Γ ⌋) (y : Var ⌊ Γ ⌋) (A : RTy (⌊ Γ ⌋ ∙)) (B : RTy ⌊ Γ ⌋) {rest : RTm ε} →
-            PayΡ I∋ D∋ (ix∋ (dep ⌊ Γ ⌋) (quoteCtx Γ) (fst (quoteVar y ,ₚ unit)) (quoteTy B))
+            PayΡ I∋ D∋ (ix∋ (dep ⌊ Γ ⌋) (quoteCtx Γ) (quoteVar y) (quoteTy B))
                  ⌜ tσ (⌜Id⌝ (⌜Ty⌝ (nsuc (dep ⌊ Γ ⌋))) (quoteTy A) (wk 0 (dep ⌊ Γ ⌋) (quoteTy B))) tι ⌝ᵗ rest →
             (Γ ▹ A') ∋ vs y ∷ A
   dThere₄ : {Γ : Ctx} (A' : RTy ⌊ Γ ⌋) (y : Var ⌊ Γ ⌋) (A : RTy (⌊ Γ ⌋ ∙)) (B : RTy ⌊ Γ ⌋) {rest : RTm ε} → Γ ∋ y ∷ B →
@@ -97,8 +97,8 @@ private
 
   dThere₁ {Γ} A' y A (_ , (_ , (q , (nth-z , (_ , (dq , nq)))))) =
     dThere₁ᵇ {Γ} A' y A
-      (pay-σ {I = I∋} {D = D∋} {C = ⌜ thereT (dep ⌊ Γ ⌋) (quoteCtx Γ) (fst (quoteVar y ,ₚ unit)) (quoteTy A) ⌝ᵗ}
-             {S = ⌜Ty⌝ (dep ⌊ Γ ⌋)} {f = lam ⌜ Tρ (dep ⌊ Γ ⌋) (quoteCtx Γ) (fst (quoteVar y ,ₚ unit)) (quoteTy A) ⌝ᵗ} dq done nq)
+      (pay-σ {I = I∋} {D = D∋} {C = ⌜ thereT (dep ⌊ Γ ⌋) (quoteCtx Γ) (quoteVar y) (quoteTy A) ⌝ᵗ}
+             {S = ⌜Ty⌝ (dep ⌊ Γ ⌋)} {f = lam ⌜ Tρ (dep ⌊ Γ ⌋) (quoteCtx Γ) (quoteVar y) (quoteTy A) ⌝ᵗ} dq done nq)
   dThere₁ᵇ {Γ} A' y A (b , (rest , (_ , ((db , drest) , (nb , nrest))))) =
     dThere₂ {Γ} A' y A b rest (unqTy {Γ = ⌊ Γ ⌋} (⊢conv db (credᵀ El-⌜Ty⌝)) nb) drest nrest
   dThere₂ {Γ} A' y A _ rest (B , refl) drest nrest =
@@ -110,10 +110,10 @@ private
              done nrest)
     where m = dep ⌊ Γ ⌋
           g = quoteCtx Γ
-          y' = fst (quoteVar y ,ₚ unit)
+          y' = quoteVar y
   dThere₃ {Γ} A' y A B (r , (rest₂ , (_ , ((dr , drest₂) , (nr , nrest₂))))) =
     dThere₄ {Γ} A' y A B
-      (decLk {Γ} y {B} (⊢conv dr (credᵀ (ξ-IMuⁱ (ξ-pairʳ (ξ-pairʳ (ξ-pairˡ (βfst (quoteVar y) unit))))))) nr)
+      (decLk {Γ} y {B} dr nr)
       (pay-σ {I = I∋} {D = D∋} {C = ⌜ tσ (⌜Id⌝ (⌜Ty⌝ (nsuc (dep ⌊ Γ ⌋))) (quoteTy A) (wk 0 (dep ⌊ Γ ⌋) (quoteTy B))) tι ⌝ᵗ}
              {S = ⌜Id⌝ (⌜Ty⌝ (nsuc (dep ⌊ Γ ⌋))) (quoteTy A) (wk 0 (dep ⌊ Γ ⌋) (quoteTy B))} {f = lam dι} drest₂ done nrest₂)
   dThere₄ {Γ} A' y A B d (e , (_ , (_ , ((de , _) , (ne , _))))) =
@@ -127,5 +127,5 @@ decLk {Γ ▹ A'} vz {A} dk nrm =
 decLk {Γ ▹ A'} (vs y) {A} dk nrm =
   dThere₁ {Γ} A' y A
     (rows-dec {I = I∋} {D = D∋} {i = ix∋ (nsuc (dep ⌊ Γ ⌋)) (cext (quoteCtx Γ) (quoteTy A')) (fsuc (quoteVar y)) (quoteTy A)} {m = 1}
-              {Cs = ⌜ thereT (dep ⌊ Γ ⌋) (quoteCtx Γ) (fst (quoteVar y ,ₚ unit)) (quoteTy A) ⌝ᵗ ∷ []}
+              {Cs = ⌜ thereT (dep ⌊ Γ ⌋) (quoteCtx Γ) (quoteVar y) (quoteTy A) ⌝ᵗ ∷ []}
               (fib-there (dep ⌊ Γ ⌋) (quoteCtx Γ) (quoteTy A') (quoteVar y) (quoteTy A)) dk nrm)
