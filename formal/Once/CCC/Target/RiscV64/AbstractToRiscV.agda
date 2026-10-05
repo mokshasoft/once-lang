@@ -74,7 +74,7 @@ open import Once.CCC.Machine.SMCore
          scratch-one; scratch-zero; scratch-dec; scratch-load-count; count-zero; count-inc; out-nz;
          -- FlatCtrl constructors (Plan 0.53 flat-control lowering)
          c-label; c-jmp; c-branch-scratch-zero; c-branch-tag-zero; c-thunk; c-ret; c-entry; c-call-fn; c-start)
-open import Once.CCC.Machine.NoNested public
+open import Once.CCC.Machine.NoNested
 
 ------------------------------------------------------------------------
 -- Slot to displacement conversion

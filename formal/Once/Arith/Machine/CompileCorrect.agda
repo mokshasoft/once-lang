@@ -34,9 +34,8 @@ open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂)
 open import Relation.Nullary using (¬_)
 
-open import Once.Arith.Machine.AbsState
-  using (ArithAbsState; InputShape; ⟦_⟧S; init; output-of; InputPath; project; projectF; Path; readLeaf; ⌊_⌋ᴾ; project-path; projectF-path;
-         Store; empty-store; _[_↦_]; _[_]; store-write-same; store-write-other)
+open import Once.Arith.Machine.AbsState using (ArithAbsState; init; output-of; Store; empty-store; _[_↦_]; _[_]; store-write-same; store-write-other)
+open import Once.Arith.Machine.Shape using (InputShape; ⟦_⟧S; InputPath; project; projectF; Path; readLeaf; ⌊_⌋ᴾ; project-path; projectF-path)
 open import Once.Arith.Machine.AbsInstr
   using (load-finput; load-fimm; fadd-rrr; fsub-rrr; fmul-rrr; fdiv-rrr; fneg-rr; i2f-rr; AbstractInstr; load-input; load-imm; add-rrr; sub-rrr; mul-rrr;
          div-rrr; rem-rrr; cmp-rrr; div-safe-rrr; rem-safe-rrr; neg-rr; spill; reload;

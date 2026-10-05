@@ -40,7 +40,7 @@ open import Once.Compile using (moduleToIR; moduleToIR-aux)
 import Once.Surface.Syntax as Srf
 open import Once.TypeCheck.Elaborate as TE using (CheckElabResult)
 open import Once.TypeCheck.Raw using (RawExpr)
-open import Once.Adequacy.CPU.Interface using (Arch)
+open import Once.Target.Arch using (Arch)
 import Once.Parser.Module.Core as P
 
 ------------------------------------------------------------------------

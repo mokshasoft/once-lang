@@ -31,7 +31,8 @@
 ------------------------------------------------------------------------
 
 open import Data.Nat using (ℕ; _<_; suc)
-open import Once.Adequacy.CPU.Interface using (Arch; ArchSemantics)
+open import Once.Adequacy.CPU.Interface using (ArchSemantics)
+open import Once.Target.Arch using (Arch)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.Target.Arch using (arch-numerics)
 open import Relation.Binary.PropositionalEquality using (_≡_; subst)

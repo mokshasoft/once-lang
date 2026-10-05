@@ -65,7 +65,7 @@ open import Once.CCC.Machine.SMCore
          -- Plan 0.53: RegOp + FlatCtrl constructors for reg-op / flat-control lowering
          scratch-one; scratch-zero; scratch-dec; scratch-load-count; count-zero; count-inc; out-nz;
          c-label; c-jmp; c-branch-scratch-zero; c-branch-tag-zero; c-thunk; c-ret; c-entry; c-call-fn; c-start)
-open import Once.CCC.Machine.NoNested public
+open import Once.CCC.Machine.NoNested
 
 ------------------------------------------------------------------------
 -- Slot to displacement conversion

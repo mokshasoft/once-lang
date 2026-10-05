@@ -21,7 +21,7 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Relation.Nullary using (Dec; yes; no)
 
-open import Once.Arith.Machine.AbsState using (InputPath; Side; Fst; Snd)
+open import Once.Arith.Machine.Shape using (InputPath; Side; Fst; Snd)
 open import Once.Arith.Machine.AbsInstr
   using (load-finput; load-fimm; fadd-rrr; fsub-rrr; fmul-rrr; fdiv-rrr; fneg-rr; i2f-rr; AbstractInstr; load-input; load-imm; add-rrr; sub-rrr; mul-rrr;
          div-rrr; rem-rrr; cmp-rrr; div-safe-rrr; rem-safe-rrr; shl-rri; sdiv-pow2-rri;

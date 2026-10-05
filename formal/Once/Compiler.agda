@@ -71,7 +71,8 @@ open import Once.Adequacy.SourceTrace using (⟦_⟧)
 -- per-arch instance postulates; that is intentional and confined to
 -- this assembly point. `Once.Adequacy.Compile.WithCPU` itself stays
 -- free of those imports.
-open import Once.Adequacy.CPU      using (Arch; Byte; arch-semantics)
+open import Once.Adequacy.CPU using (Byte; arch-semantics)
+open import Once.Target.Arch using (Arch)
 open import Once.Adequacy.ArchCorrectness x86-64-heap-room x86-64-stack-room x86-64-call-room
        x86-64-reg-range x86-64-scratch-dec-guarded x86-64-addr-no-wrap x86-64-lit-fits
        riscv64-heap-room riscv64-stack-room riscv64-call-room

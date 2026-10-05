@@ -37,7 +37,7 @@ open import Data.String using (String; _++_)
 open import Once.Arith.Backend.XInstr.Syntax
 open import Once.Arith.CmpOp using (CmpOp; c-lt; c-le; c-gt; c-ge; c-eq; c-ne)
 open import Once.Arith.Backend.XInstr.CodeGen using (emit-program)
-open import Once.Arith.Machine.AbsState using (InputPath; Side; Fst; Snd)
+open import Once.Arith.Machine.Shape using (InputPath; Side; Fst; Snd)
 open import Once.Arith.Machine.Compile using (compile-abs; required-scratch; normalize)
 open import Once.Arith.Type using (NumType; NInt; NFloat)
 open import Once.Arith.Machine.IR using (MArithIR; ArithBlock; mk-block)
@@ -49,7 +49,8 @@ open import Once.Target.Symbol using (once-symbol-own)
 -- Register / scratch text
 ------------------------------------------------------------------------
 
-open import Once.Target.RiscV64.PhysReg using (Reg; a3; a4; a5; showReg; owner; RegClass; arith)
+open import Once.Target.RiscV64.PhysReg using (Reg; a3; a4; a5; showReg; owner)
+open import Once.Target.RegConvention using (RegClass; arith)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 -- XR0..XR3 acquire the CCC-free caller-saved argument registers a3/a4/a5 from

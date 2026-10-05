@@ -69,7 +69,7 @@ import Data.Maybe
 open import Data.Sum using (inj₂)
 open import Once.Denotation.Trace using (SigOpEvent)
 open import Once.Adequacy.EmitFile using (file-is-emit)
-open import Once.CCC.Machine.NoNested using (NoNested)
+open import Once.CCC.Machine.NoNested using (NoNested; no-nested-of-all)
 open import Once.CCC.Codegen.ProgramImage using (program-image)
 import Once.Arith.Backend.X86-64.RunTrace as RTx
 import Once.CCC.Target.X86-64.Semantics as X
@@ -77,7 +77,8 @@ import Once.CCC.Target.X86-64.Syntax as XS
 open import Once.CCC.Label using (LabelId; thunk)
 open import Once.IR using (IR; Unit)  -- Plan 0.52 M2: IRTy Unit
 open import Once.Denotation.Behavior using (Behavior; at; silent)
-open import Once.Adequacy.CPU using (x86-64; arch-semantics)
+open import Once.Adequacy.CPU using (arch-semantics)
+open import Once.Target.Arch using (x86-64)
 open import Once.Adequacy.CPU.Interface using (ArchSemantics)
 open import Once.Arith.Backend.CallAnswer using (answer-at)
 open import Once.Adequacy.SourceTrace using (⟦_⟧IR)

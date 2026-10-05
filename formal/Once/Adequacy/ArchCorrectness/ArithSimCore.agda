@@ -51,11 +51,8 @@ open import Data.Empty using (⊥; ⊥-elim)
 open import Once.Arith.Backend.XInstr.Syntax as XI using (XInstr; XReg; XScratch; mk-scratch)
 open XI using (XR0; XR1)
 open import Once.Arith.Machine.Shape using (InputShape; ⟦_⟧S; InputPath; project)
-open import Once.Arith.Machine.AbsState
-  using (ArithAbsState; Store; _[_]; _[_↦_]; init; store-write-same; store-write-other; output-of;
-         InputShape; ⟦_⟧S; InputPath; project; projectF;
-         Path; here-int; here-flt; go-fst; go-snd; readLeaf; ⌊_⌋ᴾ;
-         project-path; projectF-path)
+open import Once.Arith.Machine.AbsState using (ArithAbsState; Store; _[_]; _[_↦_]; init; store-write-same; store-write-other; output-of)
+open import Once.Arith.Machine.Shape using (InputShape; ⟦_⟧S; InputPath; project; projectF; Path; here-int; here-flt; go-fst; go-snd; readLeaf; ⌊_⌋ᴾ; project-path; projectF-path)
 open import Once.Arith.Machine.AbsInstr using (AbstractInstr; load-input; load-finput; load-imm; load-fimm; add-rrr; sub-rrr; mul-rrr; div-rrr; rem-rrr; cmp-rrr; div-safe-rrr; rem-safe-rrr; shl-rri; sdiv-pow2-rri; neg-rr; spill; reload; fadd-rrr; fsub-rrr; fmul-rrr; fdiv-rrr; fneg-rr; i2f-rr; bin-op; un-op; maybe-zero; maybe-zero-f; move-to-out)
 import Once.Arith.Backend.Correct as Correct
 -- PLAN 0.75 F4: pinned at `NInt`. The simulation core models two INTEGER
@@ -309,7 +306,6 @@ module At (tn : TargetNum) where
   scratch-unchanged (XI.Xfadd-rr _ _)         _ s = refl
   scratch-unchanged (XI.Xfsub-rr _ _)         _ s = refl
   scratch-unchanged (XI.Xfmul-rr _ _)         _ s = refl
-  scratch-unchanged (XI.Xfdiv-rrr _ _ _)         _ s = refl
   scratch-unchanged (XI.Xfsubr-rr _ _)        _ s = refl
   scratch-unchanged (XI.Xfneg-r _)            _ s = refl
   scratch-unchanged (XI.Xi2f-r _ _)           _ s = refl
@@ -340,7 +336,6 @@ module At (tn : TargetNum) where
   input-unchanged (XI.Xfadd-rr _ _)         s = refl
   input-unchanged (XI.Xfsub-rr _ _)         s = refl
   input-unchanged (XI.Xfmul-rr _ _)         s = refl
-  input-unchanged (XI.Xfdiv-rrr _ _ _)         s = refl
   input-unchanged (XI.Xfsubr-rr _ _)        s = refl
   input-unchanged (XI.Xfneg-r _)            s = refl
   input-unchanged (XI.Xi2f-r _ _)           s = refl

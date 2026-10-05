@@ -18,9 +18,8 @@ open import Relation.Binary.PropositionalEquality using (_â‰¡_; refl; trans; _â‰
 
 open import Once.Arith.Backend.X86-64.Confine using (writes; confined; NotCCC)
 open import Once.CCC.Target.X86-64.Semantics using (RegFile; readReg; writeReg; Word)
-open import Once.Target.X86-64.PhysReg
-  using (Reg; rax; rbx; rcx; rdx; rsi; rdi; rbp; rsp; r8; r9; r10; r11; r12; r13; r14; r15;
-         owner; ccc)
+open import Once.Target.X86-64.PhysReg using (Reg; rax; rbx; rcx; rdx; rsi; rdi; rbp; rsp; r8; r9; r10; r11; r12; r13; r14; r15; owner)
+open import Once.Target.RegConvention using (ccc)
 
 ------------------------------------------------------------------------
 -- BASE: agreement on the 7 CCC-owned registers (a RECORD so `AgreeCCC-trans`

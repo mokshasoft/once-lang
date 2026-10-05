@@ -39,9 +39,7 @@ open import Once.SigOp.Info using (SigOpInfo; mk-info; name; Pure)
 open import Once.Functor.Translate using (IsBaseType; base-Unit; base-Int; base-Float; base-Prod)
 open import Once.CanonicalName using (bare)
 
-open import Once.Arith.Machine.AbsState
-  using (InputShape; shape-unit; shape-int; shape-float; shape-pair; ⟦_⟧S; InputPath; Side; Fst; Snd;
-         Path; here-int; here-flt; go-fst; go-snd; ⌊_⌋ᴾ)
+open import Once.Arith.Machine.Shape using (InputShape; shape-unit; shape-int; shape-float; shape-pair; ⟦_⟧S; InputPath; Side; Fst; Snd; Path; here-int; here-flt; go-fst; go-snd; ⌊_⌋ᴾ)
 open import Once.Arith.Machine.IR
   using (MArithIR; alit; aflit; ainput; aadd; asub; amul; adiv; amod; aneg; ai2f; acmp;
          numtype-as-type;

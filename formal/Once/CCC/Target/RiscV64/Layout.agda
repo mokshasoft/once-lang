@@ -35,11 +35,11 @@ open import Once.Memory.RuntimeContract as RC using (RuntimeContract)
 import Once.CCC.Target.RiscV64.RuntimeParams as RP
 
 -- Import and re-export RISC-V 64 stack growth
-open import Once.CCC.Target.RiscV64.StackGrowth public
+open import Once.CCC.Target.RiscV64.StackGrowth
   using (word-size; rv64-stack-growth)
 
 -- Re-export stack layout constants from IR.Stack
-open import Once.CCC.IR.Stack public
+open import Once.CCC.IR.Stack
   using (pair-slots; closure-slots)
 
 ------------------------------------------------------------------------

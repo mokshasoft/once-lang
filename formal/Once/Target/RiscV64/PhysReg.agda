@@ -55,7 +55,7 @@ showReg t2   = "t2"
 showReg t3   = "t3"
 showReg t4   = "t4"
 
-open import Once.Target.RegConvention public
+open import Once.Target.RegConvention
   using (RegClass; io; ccc; arith; free; RegConvention)
 
 owner : Reg → RegClass

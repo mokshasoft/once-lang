@@ -35,11 +35,11 @@ open import Once.Memory.RuntimeContract as RC using (RuntimeContract)
 import Once.CCC.Target.X86-32.RuntimeParams as RP
 
 -- Import and re-export x86-32 stack growth
-open import Once.CCC.Target.X86-32.StackGrowth public
+open import Once.CCC.Target.X86-32.StackGrowth
   using (word-size; x86-32-stack-growth)
 
 -- Re-export stack layout constants from IR.Stack
-open import Once.CCC.IR.Stack public
+open import Once.CCC.IR.Stack
   using (pair-slots; closure-slots)
 
 ------------------------------------------------------------------------

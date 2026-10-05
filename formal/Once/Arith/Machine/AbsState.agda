@@ -33,7 +33,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 -- The width-agnostic shape/path core now lives in `Shape` and is
 -- re-exported here, so existing consumers of `AbsState` are unaffected
 -- while the width-bearing state below gains a `bits` parameter (L1).
-open import Once.Arith.Machine.Shape public
+open import Once.Arith.Machine.Shape
 
 ------------------------------------------------------------------------
 -- Register file and scratch (Option 2: function-based, unbounded)

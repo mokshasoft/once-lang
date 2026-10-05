@@ -44,9 +44,7 @@ open import Once.IRTy using (⌊_⌋)
 import Once.IRTy as II
 open import Once.CanonicalName using (bare; _≟ᶜ_)
 
-open import Once.Arith.Machine.AbsState
-  using (InputShape; shape-int; shape-float; shape-pair; InputPath;
-         Side; Fst; Snd; Path; typePath?)
+open import Once.Arith.Machine.Shape using (InputShape; shape-int; shape-float; shape-pair; InputPath; Side; Fst; Snd; Path; typePath?)
 -- PLAN 0.75 F4: the abstract-machine compile path is pinned at `NInt`, and
 -- that restriction is STATED rather than assumed. Its instruction set
 -- (`add-rrr`, `div-rrr`, …) is integer-register shaped, so a float block has

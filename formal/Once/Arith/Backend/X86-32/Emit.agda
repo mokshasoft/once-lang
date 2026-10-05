@@ -37,7 +37,7 @@ open import Data.String using (String; _++_)
 open import Once.Arith.Backend.XInstr.Syntax
 open import Once.Arith.CmpOp using (CmpOp; c-lt; c-le; c-gt; c-ge; c-eq; c-ne)
 open import Once.Arith.Backend.XInstr.CodeGen using (emit-program)
-open import Once.Arith.Machine.AbsState using (InputPath; Side; Fst; Snd)
+open import Once.Arith.Machine.Shape using (InputPath; Side; Fst; Snd)
 open import Once.Arith.Machine.Compile using (compile-abs; required-scratch; normalize)
 open import Once.Arith.Type using (NumType; NInt; NFloat)
 open import Once.Arith.Machine.IR using (MArithIR; ArithBlock; mk-block)
@@ -49,7 +49,8 @@ open import Once.Target.Symbol using (once-symbol-own)
 -- Register / scratch text
 ------------------------------------------------------------------------
 
-open import Once.Target.X86-32.PhysReg using (Reg; edx; edi; ebx; esi; showReg; owner; RegClass; ccc)
+open import Once.Target.X86-32.PhysReg using (Reg; edx; edi; ebx; esi; showReg; owner)
+open import Once.Target.RegConvention using (RegClass; ccc)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 -- ia32 is register-POOR: CCC live-uses all 8 GPRs, so there are NO CCC-free

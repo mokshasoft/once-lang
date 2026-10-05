@@ -346,7 +346,7 @@ compile-trace-cnt o n (i ∷ rest) =
 -- `NoNested` marks the traces where they coincide. That predicate mentions no
 -- x86 at all, so it is SHARED (plan 0.65) — re-exported here so every existing
 -- importer of this module reads unchanged.
-open import Once.CCC.Machine.NoNested public
+open import Once.CCC.Machine.NoNested
 
 
 

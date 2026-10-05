@@ -35,6 +35,7 @@ open import Relation.Binary.PropositionalEquality
   using (_≡_; refl; cong; cong₂; sym; trans; subst)
 
 open import Once.Arith.Machine.AbsState
+open import Once.Arith.Machine.Shape
 open import Once.Arith.Machine.AbsInstr
 open import Once.Arith.Backend.XInstr.Syntax
 open import Once.Arith.CmpOp using (CmpOp; cmp-bit)

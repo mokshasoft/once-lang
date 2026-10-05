@@ -38,11 +38,8 @@ open import Once.Float.Dyadic using (binary64)
 open import Once.Memory.MemoryLayoutSemantics using (Addr)
 
 -- Import X86-64 Layout for StackPointer and slot operations
-open import Once.CCC.Target.X86-64.Layout
-  using (StackPointer; slot-addr; word-size;
-         grow-identity; sp-distinct; offset-distinct;
-         frame-below-slot0-disjoint; slot-addr-≥-base;
-         InStack; in-stack)
+open import Once.CCC.Target.X86-64.Layout using (StackPointer; slot-addr; grow-identity; sp-distinct; offset-distinct; frame-below-slot0-disjoint; slot-addr-≥-base; InStack; in-stack)
+open import Once.CCC.Target.X86-64.StackGrowth using (word-size)
 open import Once.CCC.Target.X86-64.Layout using (stack-addr; in-stack; stack-sub-preserves') renaming (addr to sp-addr)
 
 ------------------------------------------------------------------------

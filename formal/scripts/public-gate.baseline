@@ -28,7 +28,6 @@ Once/Adequacy/ArchCorrectness/X86-64/FlatSimulation.agda 1
 Once/Adequacy/ArchCorrectness/X86-64/RegRoles.agda 1
 Once/Adequacy/ArchCorrectness/X86-64/ResourceBounds.agda 2
 Once/Adequacy/ArchCorrectness/X86-64/RunContext.agda 1
-Once/Adequacy/CPU/Interface.agda 1
 Once/Adequacy/CoherenceHet.agda 1
 Once/Adequacy/CoherenceLaws.agda 1
 Once/Adequacy/GradedRelation.agda 1
@@ -49,7 +48,6 @@ Once/Arith/Backend/X86-64/MemPreserve.agda 1
 Once/Arith/Backend/X86-64/Preserve.agda 2
 Once/Arith/Backend/X86-64/RunTrace.agda 1
 Once/Arith/Backend/X86-64/StatePreserve.agda 1
-Once/Arith/Machine/AbsState.agda 1
 Once/Arith/Machine/CompileCorrect.agda 1
 Once/CCC/Codegen/EmittedWF.agda 1
 Once/CCC/Codegen/IRObsCorrect/Interface.agda 17
@@ -72,18 +70,14 @@ Once/CCC/Machine/FlatStackSlot.agda 1
 Once/CCC/Machine/FlatStoreWF.agda 1
 Once/CCC/Machine/SMCore.agda 7
 Once/CCC/Machine/SMPrimitives.agda 3
-Once/CCC/Machine/Validity.agda 1
-Once/CCC/Target/RiscV64/AbstractToRiscV.agda 1
 Once/CCC/Target/RiscV64/File.agda 1
-Once/CCC/Target/RiscV64/Layout.agda 7
+Once/CCC/Target/RiscV64/Layout.agda 5
 Once/CCC/Target/RiscV64/RuntimeParams.agda 1
-Once/CCC/Target/X86-32/AbstractToX86-32.agda 1
 Once/CCC/Target/X86-32/File.agda 1
-Once/CCC/Target/X86-32/Layout.agda 7
+Once/CCC/Target/X86-32/Layout.agda 5
 Once/CCC/Target/X86-32/RuntimeParams.agda 1
-Once/CCC/Target/X86-64/AbstractToX86.agda 1
 Once/CCC/Target/X86-64/File.agda 1
-Once/CCC/Target/X86-64/Layout.agda 7
+Once/CCC/Target/X86-64/Layout.agda 5
 Once/CCC/Target/X86-64/RuntimeParams.agda 1
 Once/CanonicalName.agda 1
 Once/Compile.agda 11
@@ -133,9 +127,6 @@ Once/Spike/ITree.agda 1
 Once/Spike/RelSpike.agda 1
 Once/Surface/Syntax.agda 1
 Once/Target/Arch.agda 1
-Once/Target/RiscV64/PhysReg.agda 1
-Once/Target/X86-32/PhysReg.agda 1
-Once/Target/X86-64/PhysReg.agda 1
 Once/Type.agda 1
 Once/TypeCheck.agda 8
 Once/TypeCheck/Context.agda 1

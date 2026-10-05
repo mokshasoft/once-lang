@@ -30,7 +30,7 @@ open import Data.Nat using (ℕ)
 open import Once.Arith.CmpOp using (CmpOp)
 open import Data.List using (List)
 
-open import Once.Arith.Machine.AbsState using (InputPath)
+open import Once.Arith.Machine.Shape using (InputPath)
 open import Once.Float.Decimal using (Decimal)
 
 ------------------------------------------------------------------------

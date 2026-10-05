@@ -17,7 +17,8 @@ open import Relation.Binary.PropositionalEquality using (_â‰¡_; refl; trans; _â‰
 
 open import Once.Arith.Backend.RiscV64.Confine using (writes; confined; NotCCC)
 open import Once.CCC.Target.RiscV64.Semantics using (RegFile; readReg; writeReg; Word)
-open import Once.Target.RiscV64.PhysReg using (Reg; t0; a0; a3; a4; a5; zero; ra; sp; fp; a1; a2; a6; a7; s1; s2; s3; s4; t1; t2; t3; t4; owner; ccc)
+open import Once.Target.RiscV64.PhysReg using (Reg; t0; a0; a3; a4; a5; zero; ra; sp; fp; a1; a2; a6; a7; s1; s2; s3; s4; t1; t2; t3; t4; owner)
+open import Once.Target.RegConvention using (ccc)
 
 record AgreeCCC (rf rf' : RegFile) : Set where
   constructor mkAgree

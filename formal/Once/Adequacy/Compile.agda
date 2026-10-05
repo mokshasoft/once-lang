@@ -80,7 +80,8 @@ open import Function using (case_of_)
 -- `WithCPU` parameter below, never imported here — so this module
 -- doesn't drag in the per-arch instance postulates. The driver
 -- (`Once.Compiler`) supplies `Once.Adequacy.CPU.arch-semantics`.
-open import Once.Adequacy.CPU.Interface using (Arch; Byte; ArchSemantics)
+open import Once.Adequacy.CPU.Interface using (Byte; ArchSemantics)
+open import Once.Target.Arch using (Arch)
 open import Once.Denotation.Admissible using (AdmissibleM; admissibleM?)
 open import Data.List.Relation.Unary.All using (All)
 import Once.Word as OnceWord

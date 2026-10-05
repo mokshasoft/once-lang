@@ -26,7 +26,8 @@ open import Data.List.Relation.Unary.All using (All; []; _∷_)
 open import Relation.Binary.PropositionalEquality using (_≢_)
 
 open import Once.Arith.Backend.XInstr.Syntax
-open import Once.Target.X86-64.PhysReg using (Reg; rax; rdx; owner; ccc; convention)
+open import Once.Target.X86-64.PhysReg using (Reg; rax; rdx; owner; convention)
+open import Once.Target.RegConvention using (ccc)
 open import Once.Arith.Backend.X86-64.Emit using (arith-reg; arith-disjoint)
 open import Once.Arith.Backend.Adequacy using (ArithEmitConfined)
 

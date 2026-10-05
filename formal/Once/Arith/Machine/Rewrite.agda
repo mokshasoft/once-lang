@@ -38,8 +38,7 @@ open import Once.SigOp.Info using (SigOpInfo; sem)
 open import Once.Arith.CmpOp using (CmpOp)
 open import Once.Arith.SigOp.Compare using (cmp-of; cmp-block)
 
-open import Once.Arith.Machine.AbsState
-  using (InputShape; shape-unit; shape-int; shape-float; shape-pair)
+open import Once.Arith.Machine.Shape using (InputShape; shape-unit; shape-int; shape-float; shape-pair)
 -- PLAN 0.75 F4: the abstract-machine compile path is pinned at `NInt`, and
 -- that restriction is STATED rather than assumed. Its instruction set
 -- (`add-rrr`, `div-rrr`, …) is integer-register shaped, so a float block has

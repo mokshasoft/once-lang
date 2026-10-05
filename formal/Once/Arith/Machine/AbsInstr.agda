@@ -29,6 +29,7 @@ open import Data.List using (List; []; _∷_)
 open import Data.Maybe using (Maybe; just; nothing)
 
 open import Once.Arith.Machine.AbsState
+open import Once.Arith.Machine.Shape
 open import Once.Word using (module Width)
 open import Once.Arith.CmpOp using (CmpOp; cmp-bit)
 open import Once.Arith.Machine.Shape using (projectF)

@@ -73,7 +73,8 @@ module Once.Adequacy.ArchCorrectness
 o : CanonicalName
 o = Co.entry-owner
 
-open import Once.Adequacy.CPU using (Arch; x86-64; x86-32; riscv64; arch-semantics)
+open import Once.Adequacy.CPU using (arch-semantics)
+open import Once.Target.Arch using (Arch; x86-64; x86-32; riscv64)
 open import Once.Adequacy.Compile using (ArchCorrect)
 open import Data.List using (List; [])
 open import Data.Product using (proj₁)
