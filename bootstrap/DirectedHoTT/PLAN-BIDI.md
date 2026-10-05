@@ -605,7 +605,10 @@ tag rules key on it (`⊢fzero : Fin (suc n)`). After:
     and OOMed the checker; with it SigCore checks in 71 s / 4.6 GB.
     Also `normLazy` (certified normal order: weak-head first).
   - ✅ **RESOLVED 2026-10-05 → PLAN-EVAL (D080): an environment-based
-    evaluator, option (a) below.** Record of the question:
+    evaluator, option (a) below.** E0 done the same day: the parked tests
+    pass under `Algorithm/NbE` (≈10 s, 0.6 GB), as does the whole `KD`
+    (5.8 s; it OOMed by `normLazy`); the decoder stays in the Lib form
+    (PLAN-EVAL §2a). Record of the question:
   - ⛔ **(was OPEN) — evaluating core programs inside Agda.** With the Lib form,
     the traversal's evaluation tests OOM the type checker EVEN AT FUEL 40
     (normal order or applicative). Measured: the erased bodies are small

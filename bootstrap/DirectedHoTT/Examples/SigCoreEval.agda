@@ -17,6 +17,7 @@ open import DirectedHoTT.Spec.Signature using ( Sig )
 import DirectedHoTT.Spec.Syntax as R
 open import DirectedHoTT.Algorithm.Eval using ( eval; nfd; out )
 open import DirectedHoTT.Algorithm.ConvLazy using ( normLazy )
+open import DirectedHoTT.Algorithm.NbE using ( nbe )
 open import normalizer.Syntax.Types using ( _,_ )
 open import DirectedHoTT.Lib.Sugar using ( tag )
 open import DirectedHoTT.Examples.SigCore using ( S )
@@ -27,6 +28,12 @@ open import DirectedHoTT.Examples.SigCore using ( S )
 nfOf : {Γ : R.Cx} → R.RTm Γ → R.RTm Γ
 nfOf t with normLazy 100000 t
 ... | u , _ = u
+
+-- ★ the ENVIRONMENT evaluator's normal form (`Algorithm/NbE`, PLAN-EVAL
+--   E0): untrusted — a test that uses it checks the evaluator as much as
+--   the program, so each `refl` keeps its negative control
+nfᴺ : {Γ : R.Cx} → R.RTm Γ → R.RTm Γ
+nfᴺ = nbe 100000
 
 normal? : {Γ : R.Cx} → R.RTm Γ → Bool
 normal? t with eval 100000 t

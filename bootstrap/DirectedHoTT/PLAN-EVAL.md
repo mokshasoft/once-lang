@@ -99,12 +99,42 @@
 
 | # | stage | gate | state |
 |---|---|---|---|
-| E0 | **Spike, `Algorithm/NbE` (untrusted).** Values, `eval`, `quote`, `whnf`; the term rules SigCore uses (λ, Σ/psplit, natrec, Fin/fcase, con/ielim, dpay/dih, descriptions, codes, Id/jsub, ref) | ① the parked `SigTravTest`/`SigSubKnotTest` pass with `nfOf` = NbE, each `refl` with its negative control; ② `SigCoreTest` agrees; ③ measured time/RSS vs `normLazy` | ⬜ next |
+| E0 | **Spike, `Algorithm/NbE` (untrusted).** Values, `eval`, `quote`, `whnf`; the term rules SigCore uses (λ, Σ/psplit, natrec, Fin/fcase, con/ielim, dpay/dih, descriptions, codes, Id/jsub, ref) | ① the parked `SigTravTest`/`SigSubKnotTest` pass with `nfOf` = NbE, each `refl` with its negative control; ② `SigCoreTest` agrees; ③ measured time/RSS vs `normLazy` | ✅ **2026-10-05** (§2a) |
 | E1 | **Full coverage + agreement oracle.** Every `head`/`headᵀ` rule; type evaluation; `Examples/NbETest`: `quote (eval t) ≡ nf t` (from `Algorithm/Eval`) on a corpus (Knot/Core entries, SigCore entries, ported OCP0009 programs: gcd facts, `div 0`, System T nested-natrec Ackermann), plus closed directed-former cases (`tr`/`ap`/`hrefl` at each code) | every corpus row green; a deliberately dropped rule turns a row red (control) | ⬜ |
 | E2 | **Use it where trust is not needed.** The elaborator's weak-head evaluator (`Elab.whTm`/`whTyₖ`) becomes NbE `whnf`; test files evaluate with it; Q1 (decoder form) re-judged with E0's measurements | Elab-driven entries (SigCore, Knot/Core) unchanged and faster | ⬜ |
 | E3 | **Certification.** Soundness: a relation `t ⊩ v` ("`t ⟶*` a term whose readback-head matches `v`") with `eval`-soundness by the usual environment lemma; readback gives `t ⟶* quote v`. Conversion then decides by `quote` equality (yes: the chains; no: `nf-uniqueᵀ` as today). CheckA/ConvLazy switch to it. Totality without fuel (ROADMAP Q4) from the LR's `wnorm`: well-typed ⇒ evaluation terminates. Typed NbE is forced for completeness (OCP0009 F3), and the LR already is typed | `decConvFast`/`convTm` replaced; `Knot/Core`, SigCore checking times no worse | ⬜ |
 | E4 | **Sharing.** If E0–E2 measure repeated δ-unfolding: a signature-level value table (each entry evaluated once, `vref` carries its value). Also the elaborator-side reuse | measured before built ([[slower-abstraction-profile-dont-discard]]) | ⬜ conditional |
 | E5 | **The CAM reading (feeds R5/R6).** Translate `RTm` to categorical combinators (Curien: `⟨_,_⟩`, `π₁`/`π₂`, `Λ`, `ev`) and prove `eval` factors through the machine; then the cost-instrumented variant per `NbEPLinCore` (allocation counts; dup-free ⇒ zero alloc) | written as PLAN-LINEAR / R6 when reached | 🔬 |
+
+### 2a. E0 results (2026-10-05)
+
+`Algorithm/NbE` (≈400 lines; checks in 1.4 s) — every `head` rule
+transcribed, the rule-introduced binders defunctionalised (`cloHrefl`,
+`cloDpay`, `cloTrPw`, `cloHomTo`, `cloK`), lazy δ by `force`. Tests use
+`SigCoreEval.nfᴺ = nbe 100000`. Times are whole-module wall clock / max RSS
+with cached imports (the floor, loading SigCore, is ~5.5 s / 0.48 GB).
+
+| test | substitution evaluator (`normLazy`/`eval`) | NbE |
+|---|---|---|
+| `NbESigTravTest`: generic renaming (λ-calculus; the Knot against `renTm`), substitution on the λ-calculus incl. under a binder; 4 tests + 4 controls | ⛔ OOM at the cgroup cap even at fuel 40 (Lib-form decoder; was `Negative/SigTravTest`) | ✅ 10.3 s / 0.61 GB |
+| `NbESigSubKnotTest`: substitution at the KNOT against `subTm`, also UNDER A BINDER (the kit's `WK` is a nested traversal); 2 tests + 2 controls | ⛔ OOM (under BOTH decoder forms for the binder case) | ✅ 8.2 s / 0.56 GB |
+| `NbESigCoreTest` (= `SigCoreTest`): decoder faithful per constructor | 5.8 s / 0.50 GB | ✅ 5.6 s / 0.48 GB |
+| `NbEKDTest`: the WHOLE `KD` (52 constructors) = the core decoder at `⌜KSig⌝` | ⛔ OOM (4.7 min) | ✅ 5.8 s / 0.48 GB |
+
+- **The hypothesis held:** environments are data, so nothing builds `subTm`
+  towers; the evaluation cost left is below the module-loading floor.
+- **Negative controls are DECIDED inequalities** (`differs t u ≡ true` via
+  `_≟Tm_`): a failing `refl` re-normalises both sides on Agda's failure path
+  and is killed at the cap (rc 143), which is not a usable control
+  ([[exit-143-is-not-evidence-about-cost]]).
+- `Negative/SigTravTest`, `Negative/SigSubKnotTest` deleted (superseded).
+- **Q1 (decoder form) re-judged:** the Lib form (B) runs; its one cost was
+  evaluation, now gone — B stays (convertible with the Lib's `KD`, so the
+  Knot migrates family by family).
+- ⚠ Untrusted: the strongest evidence is the tests whose right-hand side is
+  CONCRETE (`quoteTm (renTm …)`/`quoteTm (subTm …)`); tests with `nfᴺ` on
+  both sides only show agreement with itself. E1's oracle against
+  `Algorithm/Eval` is the real check.
 
 **Fallback, recorded and not chosen.** If E0's gate fails because Agda's
 evaluator itself is the limit, run evaluation tests COMPILED (MAlonzo, a

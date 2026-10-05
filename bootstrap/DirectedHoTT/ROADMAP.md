@@ -67,8 +67,8 @@ Legend: ✅ done · 🟡 in progress · ⬜ planned · 🔬 research (no plan ye
 | R0 | **Kernel + metatheory.** Directed `Hom = ⟶*`, `Id = core(Hom)`; SR, confluence, injectivity, LR, fundamental theorem, canonicity, consistency; empty, checked trust surface | `Spec/`, `Metatheory/`, LESSONS.md | ✅ |
 | R1 | **One datatype former, levitated descriptions; the Knot is EXACT.** Indexed fibred descriptions (D071–D079); the Knot's judgements faithful (F1–F5) and decoded (F6) | PLAN-LEVITATION, PLAN-FAITHFUL | ✅ (2026-10-04) |
 | R2 | **Decidable checking** (S0–S6): annotated core `⊢ᴬ` decidable (CheckA), type conversion (route C), signature + δ + conservativity, untrusted bidirectional elaborator | PLAN-BIDI §3–§3f | ✅ (2026-10-02) |
-| R3 | **The evaluator.** Environment-based NbE over the kernel syntax: closures, neutrals, readback, lazy δ. Untrusted first (tests, elaborator), then certified (checker, conversion) | **PLAN-EVAL** | 🟡 E0 next |
-| R4 | **The Knot in the core** (S7): the Lib's `Sig` levitated (S7b, ✅ steps 2, 3, 5); Pw POC (step 4); then family-by-family migration | PLAN-BIDI §3g | 🟡 blocked on R3 E0 (running core programs) |
+| R3 | **The evaluator.** Environment-based NbE over the kernel syntax: closures, neutrals, readback, lazy δ. Untrusted first (tests, elaborator), then certified (checker, conversion) | **PLAN-EVAL** | 🟡 E0 ✅ (2026-10-05: the parked traversal tests and the whole `KD` run in ~10 s); E1 next |
+| R4 | **The Knot in the core** (S7): the Lib's `Sig` levitated (S7b, ✅ steps 2, 3, 5); Pw POC (step 4); then family-by-family migration | PLAN-BIDI §3g | 🟡 unblocked by R3 E0; step 4 (Pw) next |
 | R5 | **Linear / QTT layer on the kernel.** Grades {0,1,ω} in the judgement, erasure, an allocation-aware evaluator. Blueprint: `poc/OCP0009/NbEPLinCore.agda`, `NbEPQTT*`, `NbEPLinQTT` (§4) | to write (PLAN-LINEAR) | 🔬 |
 | R6 | **Converge with the compiler core.** Present R3's evaluator as a CAM / `Evaluable` instance over a CwF (OCP-0009's "two pillars", `:397-458`); reconcile with `formal/` and the CCC-VM; decide the TCB0 mechanism (§3, Q2) | to write | 🔬 |
 | R7 | **Once in Once.** The checker (CheckA + conversion) as core programs run by the evaluator; the normalizer fixpoint `N ∘ ⌜N⌝ →* ⌜N⌝` run, not only proved | OCP-0009 Rung 6 | 🔬 |
@@ -92,8 +92,8 @@ R3 and R5. R7 needs all of them.
     CCC-native form, since selection is composition with a point;
   - the Lib's map-then-select (B): convertible with today's `KD`, so the
     Knot migrates family by family.
-  The code is at B. ★ Re-judge it with E0's measurements: if the environment
-  evaluator runs B's traversals, B's only cost is gone.
+  The code is at B. ✅ Re-judged with E0 (2026-10-05): the environment
+  evaluator runs B's traversals, so B's only cost is gone — B stays.
 - **Q2 — the TCB0 mechanism.** Repo-level docs disagree:
   - `plans/tcb0-gap-closure.md` (2026-06-10): rule-soundness plus a trace
     verifier;
