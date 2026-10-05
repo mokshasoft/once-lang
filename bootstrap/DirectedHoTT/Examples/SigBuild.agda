@@ -38,7 +38,8 @@ tms 2 = app (ref 0) nzero                                  -- one : El N
 tms 3 = lam □ᵀ (natrec □ᵀ nzero (nsuc (nsuc v₀)) v₀)       -- double
 tms _ = unit
 
-open import DirectedHoTT.Algorithm.SigBuild 4 tys tms 100
+open import DirectedHoTT.Algorithm.SigBuild using ( module SigBuild )
+open SigBuild 4 tys tms 100
 
 -- ★ the whole signature's well-formedness: the checker's output
 wf : WfSig S

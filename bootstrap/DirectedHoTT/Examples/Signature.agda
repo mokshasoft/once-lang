@@ -22,7 +22,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Signature where
-open import normalizer.Syntax.Types using ( _≡_; refl; _,_; ⊤; ⊥ )
+open import normalizer.Syntax.Types using ( _≡_; refl; _,_; ⊤; tt; ⊥ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax using ( Cx; ε; vz; RTm; lam; app; nsuc; nzero; var; ⌜Nat⌝; Nat; El; ref )
 open import DirectedHoTT.Spec.Typing using ( _≅ᵀ_; credᵀ; csymᵀ; ctrnᵀ; El-⌜Nat⌝; ξ-El; δref; c-◇; ty-Nat )
@@ -51,8 +51,9 @@ bd 1 = ⌜Nat⌝
 bd 2 = app (ref 0 (lam (nsuc v₀))) nzero
 bd _ = nzero
 
+-- a TELESCOPE: each entry over the ones before it
 Σ₃ : Sig
-Σ₃ = record { size = 3 ; type = ty ; body = bd }
+Σ₃ = mkSig 3 (∅ ▸ ⟨ ty 0 ∣ bd 0 ⟩ ▸ ⟨ ty 1 ∣ bd 1 ⟩ ▸ ⟨ ty 2 ∣ bd 2 ⟩)
 
 ------------------------------------------------------------------------
 -- ★ Well-formed: each entry over its prefix.
@@ -71,12 +72,14 @@ private
   Nat≅N : {Γ : Cx} → _≅ᵀ_ {Γ} Nat (El (ref 1 ⌜Nat⌝))
   Nat≅N = csymᵀ N≅Nat
 
+-- context formation: entry by entry, each over the telescope before it
+-- (its derivation, its erasure, its references below its position)
 wf : WfSig Σ₃
-wf = ((((_ ,
-  (suc′ , (TA.⊢ᴬlam TA.tyᴬ-Nat (TA.⊢ᴬnsuc (TA.⊢ᴬvar TA.hereᴬ)) , refl))) ,
-  (⌜Nat⌝ , (TA.⊢ᴬ⌜Nat⌝ , refl))) ,
+wf = (((tt ,
+  (suc′ , (TA.⊢ᴬlam TA.tyᴬ-Nat (TA.⊢ᴬnsuc (TA.⊢ᴬvar TA.hereᴬ)) , (refl , (refl , refl))))) ,
+  (⌜Nat⌝ , (TA.⊢ᴬ⌜Nat⌝ , (refl , (refl , refl))))) ,
   -- `one`'s type is `Nat`; its declaration says `El (ref 1)` — δ
-  (one , (TA.⊢ᴬconv (TA.⊢ᴬapp (TA.⊢ᴬref (<-there <-here)) TA.⊢ᴬnzero) Nat≅N , refl))))
+  (one , (TA.⊢ᴬconv (TA.⊢ᴬapp (TA.⊢ᴬref (<-there <-here)) TA.⊢ᴬnzero) Nat≅N , (refl , (refl , refl)))))
 
 consistent : {t : ATm ε} → TA._⊢ᴬ_∷_ Σ₃ TA.◇ᴬ t base → ⊥
 consistent = consistencyˢ Σ₃ wf

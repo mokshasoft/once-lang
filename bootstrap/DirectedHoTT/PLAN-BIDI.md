@@ -628,6 +628,14 @@ tag rules key on it (`⊢fzero : Fin (suc n)`). After:
     (c) evaluate erased programs OUTSIDE type checking (compiled Agda),
         keeping `refl` tests only for small cases.
 
+- ★ **Signatures are TELESCOPES, checked in SEGMENTS (D081, 2026-10-05).**
+  `Algorithm/SigBuild.SigExtend base abase wbase …` checks new entries over
+  a signature built and checked in another module, reusing its proof
+  (`WfSig (S ▸ˢ e)` is `WfSig S × EntryWf S e` definitionally). SigCore
+  66 → 43 s; `Examples/SigExtendTest` extends it by two entries in 4.7 s.
+  This is how the Knot scales past one module's memory: one segment per
+  family.
+
 **Then, the migration recipe** (each step is one family):
 - a schema becomes a CLOSED λ-entry; an instance becomes
   `app (ref d) args`;

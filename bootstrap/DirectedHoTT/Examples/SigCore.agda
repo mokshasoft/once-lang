@@ -618,7 +618,8 @@ tms = at unit (tm-SI ∷ tm-add ∷ tm-FlC ∷ tm-Fld ∷ tm-ShC ∷ tm-Shape �
                ∷ tm-telF ∷ tm-telFs ∷ tm-tel ∷ tm-tabD ∷ tm-SD ∷ tm-walk ∷ tm-lift ∷ tm-lifts ∷ tm-rnF ∷ tm-rnFs ∷ tm-rnM
                ∷ tm-trav ∷ tm-lamΣ ∷ tm-KΣ ∷ tm-rVF ∷ tm-rWK ∷ tm-rV0 ∷ tm-rNλ ∷ tm-rNK ∷ tm-sVF ∷ tm-sWK ∷ tm-sV0 ∷ tm-sN ∷ [])
 
-open import DirectedHoTT.Algorithm.SigBuild 34 tys tms 1000 public
+open import DirectedHoTT.Algorithm.SigBuild using ( module SigBuild )
+open SigBuild 34 tys tms 1000 public
 
 open import normalizer.Syntax.Types using ( _≡_; refl; _×_; _,_ )
 open import DirectedHoTT.Spec.Signature using ( Sig )
