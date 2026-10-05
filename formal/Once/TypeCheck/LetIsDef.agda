@@ -4,9 +4,12 @@
 ------------------------------------------------------------------------
 -- Once.TypeCheck.LetIsDef
 --
--- Plan 0.94 D1 (§0, §4c): a `let` may become a top-level definition.
+-- Plan 0.94 D1 (§0, §4c, §12): a `let` and a top-level definition are
+-- INTERDERIVABLE.
 --
---     (Γ , x ∶ A) ⊢ b ∶ B ⨾ (q ∷ Ψ)     ⟹     Γ ⟨x ≝ e⟩ ⊢ b ∶ B ⨾ Ψ
+--     (Γ , x ∶ A) ⊢ b ∶ B ⨾ (q ∷ Ψ)     ⟺     Γ ⟨x ≝ e⟩ ⊢ b ∶ B ⨾ Ψ
+--
+-- (⟸ for SOME `q`: the uses the definition's references counted.)
 --
 -- `b` is the SAME term on both sides; only where `x` lives changes. On the
 -- left `x` is a local (`t-var-local`, one use); on the right it is a top-level
@@ -24,22 +27,23 @@
 --     signature the definition is written with.
 --
 -- The converse (def ⇒ let) was FALSE while an algebra or coalgebra could not
--- capture locals; plan 0.101 made both capture (D265 `cata`, D273 `ana`).
+-- capture locals; plan 0.101 made both capture (D265 `cata`, D273 `ana`), and
+-- it is `def⇒let*` below.
 --
 -- The proof is one mutual induction over the three judgments, carrying a
 -- relation `LD` between the let-side and def-side contexts: the let slot
--- (`ld-let`), the new definition alone (`ld-top`, for an algebra's cleared
--- context) and any binders under either (`ld-under`).
+-- (`ld-let`) and any binders under it (`ld-under`). (An `ld-top` for an
+-- algebra's cleared context existed until D273: no position clears it now.)
 ------------------------------------------------------------------------
 module Once.TypeCheck.LetIsDef where
 
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Nat using (ℕ; suc)
-open import Data.Product using (∃-syntax; _,_)
+open import Data.Product using (∃-syntax; Σ; _×_; _,_)
 open import Data.String using (String)
 open import Data.String.Properties as StrProp using ()
-open import Relation.Nullary using (yes; no; ¬_)
+open import Relation.Nullary using (Dec; yes; no; ¬_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst; subst₂)
 open import Once.Type as T using (Type; PolyType; Ground; extractGround; Quantity)
 open import Once.TypeCheck.Raw using (RawExpr; RVar)
@@ -50,6 +54,9 @@ open import Once.TypeCheck.Classify
 open import Once.TypeCheck.Context using (Ctx)
 open import Once.TypeCheck.Context as Context using () renaming (_,_∷_ to extendCtx)
 open import Once.TypeCheck.Judgment
+open import Once.TypeCheck.DeciderComplete using (Ground-irrelevant)
+open import Once.CanonicalName using (GenWord)
+open import Once.Functor.Translate using (IsConcrete)
 open import Once.Surface.Context as SC using (Usage; SVar; zeroUsage; _+ᵘ_; _*ᵘ_; _⊔ᵘ_)
 open SC.Usage using () renaming (_∷_ to _∷ᵘ_)
 
@@ -79,7 +86,6 @@ module Transfer
     ld-let   : ∀ {n} {G : Ctx} {Δ : SC.Ctx n}
              → lookupLocal-go x G Δ ≡ nothing
              → LD (extendCtx G x A) (Δ SC., A) G Δ
-    ld-top   : ∀ {n} {G : Ctx} {Δ : SC.Ctx n} → LD G Δ G Δ
     ld-under : ∀ {nL nD} {GL : Ctx} {ΔL : SC.Ctx nL} {GD : Ctx} {ΔD : SC.Ctx nD}
                (y : String) (B : Type)
              → LD GL ΔL GD ΔD
@@ -88,30 +94,25 @@ module Transfer
   -- The let's slot, dropped.
   drop : ∀ {nL nD GL ΔL GD ΔD} → LD {nL} {nD} GL ΔL GD ΔD → Usage nL → Usage nD
   drop (ld-let _) (q ∷ᵘ U) = U
-  drop ld-top U = U
   drop (ld-under _ _ ld) (q ∷ᵘ U) = q ∷ᵘ drop ld U
 
   drop-zero : ∀ {nL nD GL ΔL GD ΔD} (ld : LD {nL} {nD} GL ΔL GD ΔD) → drop ld zeroUsage ≡ zeroUsage
   drop-zero (ld-let _) = refl
-  drop-zero ld-top = refl
   drop-zero (ld-under _ _ ld) = cong (T.Zero ∷ᵘ_) (drop-zero ld)
 
   drop-+ : ∀ {nL nD GL ΔL GD ΔD} (ld : LD {nL} {nD} GL ΔL GD ΔD) (U₁ U₂ : Usage nL)
          → drop ld (U₁ +ᵘ U₂) ≡ drop ld U₁ +ᵘ drop ld U₂
   drop-+ (ld-let _) (_ ∷ᵘ _) (_ ∷ᵘ _) = refl
-  drop-+ ld-top _ _ = refl
   drop-+ (ld-under _ _ ld) (q₁ ∷ᵘ U₁) (q₂ ∷ᵘ U₂) = cong (_ ∷ᵘ_) (drop-+ ld U₁ U₂)
 
   drop-* : ∀ {nL nD GL ΔL GD ΔD} (ld : LD {nL} {nD} GL ΔL GD ΔD) (q : Quantity) (U : Usage nL)
          → drop ld (q *ᵘ U) ≡ q *ᵘ drop ld U
   drop-* (ld-let _) q (_ ∷ᵘ _) = refl
-  drop-* ld-top q _ = refl
   drop-* (ld-under _ _ ld) q (_ ∷ᵘ U) = cong (_ ∷ᵘ_) (drop-* ld q U)
 
   drop-⊔ : ∀ {nL nD GL ΔL GD ΔD} (ld : LD {nL} {nD} GL ΔL GD ΔD) (U₁ U₂ : Usage nL)
          → drop ld (U₁ ⊔ᵘ U₂) ≡ drop ld U₁ ⊔ᵘ drop ld U₂
   drop-⊔ (ld-let _) (_ ∷ᵘ _) (_ ∷ᵘ _) = refl
-  drop-⊔ ld-top _ _ = refl
   drop-⊔ (ld-under _ _ ld) (q₁ ∷ᵘ U₁) (q₂ ∷ᵘ U₂) = cong (_ ∷ᵘ_) (drop-⊔ ld U₁ U₂)
 
   -- The usage shapes the rules conclude with.
@@ -144,9 +145,6 @@ module Transfer
 
   loc-tr : ∀ {nL nD GL ΔL GD ΔD} (ld : LD {nL} {nD} GL ΔL GD ΔD) (y : String)
          → LocRel ld y (lookupLocal-go y GL ΔL) (lookupLocal-go y GD ΔD)
-  loc-tr (ld-top {G = G} {Δ = Δ}) y with lookupLocal-go y G Δ
-  ... | nothing = lr-none
-  ... | just _  = lr-both refl refl
   loc-tr (ld-let {G = G} {Δ = Δ} nx) y with y StrProp.≟ x
   ... | yes y≡x = mk-let (trans (cong (λ z → lookupLocal-go z G Δ) y≡x) nx) y≡x refl refl
   ... | no _ with lookupLocal-go y G Δ
@@ -285,6 +283,232 @@ module Transfer
     tr-d ld (d-pair df dg) = cᵈ (sym (drop-+ ld _ _)) (d-pair (tr-d ld df) (tr-d ld dg))
     tr-d ld (d-cata wf dalg) = d-cata wf (tr-i ld dalg)
 
+  ----------------------------------------------------------------------
+  -- THE CONVERSE (plan 0.94 §12): a def-side derivation transfers back. The
+  -- let's slot gets the usage the definition's references had, read off the
+  -- derivation — so the result is the let-side usage `W` whose `drop` is the
+  -- def-side one.
+  -- (A record, not a `Σ`: its indices then unify — `drop` does not.)
+  record R {nL nD GL ΔL GD ΔD} (ld : LD {nL} {nD} GL ΔL GD ΔD) (J : Usage nL → Set) (U : Usage nD) : Set where
+    constructor mkR
+    field
+      W   : Usage nL
+      eqW : drop ld W ≡ U
+      der : J W
+
+  -- `x` is local on the let side: the let slot, unless a binder shadows it.
+  x-found : ∀ {nL nD GL ΔL GD ΔD} (ld : LD {nL} {nD} GL ΔL GD ΔD)
+          → lookupLocal-go x GL ΔL ≡ nothing → ⊥
+  x-found (ld-let nx) eq with x StrProp.≟ x
+  ... | yes _ with eq
+  ...   | ()
+  x-found (ld-let nx) eq | no ¬p = ¬p refl
+  x-found (ld-under {GL = GL} {ΔL = ΔL} y B ld) eq with x StrProp.≟ y
+  ... | yes _ with eq
+  ...   | ()
+  x-found (ld-under {GL = GL} {ΔL = ΔL} y B ld) eq | no _ with lookupLocal-go x GL ΔL in e₀
+  ...   | nothing = x-found ld e₀
+  ...   | just (_ , _ , SC.svar i) with eq
+  ...     | ()
+
+  -- what a def-side NON-local finds on the let side
+  none-tr⁻ : ∀ {nL nD GL ΔL GD ΔD} {ld : LD {nL} {nD} GL ΔL GD ΔD} {y : String} {r₁ r₂}
+           → LocRel ld y r₁ r₂ → r₂ ≡ nothing → ¬ (y ≡ x) → r₁ ≡ nothing
+  none-tr⁻ lr-none _ _ = refl
+  none-tr⁻ (lr-both _ _) () _
+  none-tr⁻ (lr-let y≡x _ _) _ y≢x = ⊥-elim (y≢x y≡x)
+
+  lpp-tr⁻ : ∀ (y : String) {s′ b pre} → ¬ (y ≡ x) → lookupPolyPrefix P′ y ≡ just (s′ , b , pre)
+          → lookupPolyPrefix P y ≡ just (s′ , b , pre)
+  lpp-tr⁻ y y≢x lp with x StrProp.≟ y
+  ... | yes x≡y = ⊥-elim (y≢x (sym x≡y))
+  ... | no _ = lp
+
+  -- the head of `P′` is the new definition
+  lpp-head⁻ : ∀ {s′ b pre} → lookupPolyPrefix P′ x ≡ just (s′ , b , pre) → s′ ≡ s
+  lpp-head⁻ lp with trans (sym lpp-head) lp
+  ... | refl = refl
+
+  -- A local on both sides, or the let slot for a reference to `x`.
+  var-tr⁻ : ∀ {nL nD GL ΔL GD ΔD fr} (ld : LD {nL} {nD} GL ΔL GD ΔD) (y : String) {T U eV} r₁ r₂
+          → LocRel ld y r₁ r₂ → r₂ ≡ just (T , U , eV) → lookupLocal-go y GL ΔL ≡ r₁
+          → R ld (λ W → Lc GL ΔL fr ⊢ᵢ RVar y ∶ T ⨾ W) U
+  var-tr⁻ ld y _ _ lr-none () _
+  var-tr⁻ ld y _ _ (lr-both {U = UL} refl eU) refl q = mkR UL (sym eU) (t-var-local q)
+  var-tr⁻ ld y _ _ (lr-let _ _ _) () _
+
+  -- the reference to the definition: the let slot, at the declared type
+  ref-tr⁻ : ∀ {nL nD GL ΔL GD ΔD fr} (ld : LD {nL} {nD} GL ΔL GD ΔD) r₁ {r₂}
+          → LocRel ld x r₁ r₂ → r₂ ≡ nothing → lookupLocal-go x GL ΔL ≡ r₁
+          → R ld (λ W → Lc GL ΔL fr ⊢ᵢ RVar x ∶ A ⨾ W) zeroUsage
+  ref-tr⁻ ld .nothing lr-none _ q = ⊥-elim (x-found ld q)
+  ref-tr⁻ ld _ (lr-both _ _) () _
+  ref-tr⁻ ld (just (T′ , U , eV)) (lr-let _ refl dz) _ q = mkR U dz (t-var-local q)
+
+  -- the three non-local references, split on whether they name `x`
+  import-tr⁻ : ∀ {nL nD GL ΔL GD ΔD fr} (ld : LD {nL} {nD} GL ΔL GD ΔD) (y : String) {T}
+             → Dec (y ≡ x) → ¬ GenWord y → lookupLocal-go y GD ΔD ≡ nothing
+             → lookupImport imps y ≡ just T → IsConcrete T
+             → R ld (λ W → Lc GL ΔL fr ⊢ᵢ RVar y ∶ T ⨾ W) zeroUsage
+  import-tr⁻ ld y (yes refl) ¬gw ln li c with trans (sym li) noImp
+  ... | ()
+  import-tr⁻ {GL = GL} {ΔL = ΔL} {GD = GD} {ΔD = ΔD} ld y (no y≢x) ¬gw ln li c =
+    mkR zeroUsage (drop-zero ld)
+        (t-var-import ¬gw (none-tr⁻ (loc-tr ld y) ln y≢x) li c)
+
+  infer-tr⁻ : ∀ {nL nD GL ΔL GD ΔD fr} (ld : LD {nL} {nD} GL ΔL GD ΔD) (y : String)
+                {T schema body prefix} {g′ : T.Ground schema}
+            → Dec (y ≡ x) → lookupLocal-go y GD ΔD ≡ nothing
+            → lookupImport imps y ≡ nothing → lookupPolyPrefix P′ y ≡ just (schema , body , prefix)
+            → T.Ground schema → T ≡ extractGround schema g′
+            → R ld (λ W → Lc GL ΔL fr ⊢ᵢ RVar y ∶ T ⨾ W) zeroUsage
+  infer-tr⁻ {GL = GL} {ΔL = ΔL} ld y {g′ = g′} (yes refl) ln li lp gr eT
+    with lpp-head⁻ lp
+  ... | refl =
+    subst (λ T′ → R ld (λ W → Lc GL ΔL _ ⊢ᵢ RVar x ∶ T′ ⨾ W) zeroUsage)
+          (sym (trans eT (trans (cong (extractGround s) (Ground-irrelevant s g′ g)) eqA)))
+          (ref-tr⁻ ld (lookupLocal-go x GL ΔL) (loc-tr ld x) ln refl)
+  infer-tr⁻ ld y (no y≢x) ln li lp gr eT =
+    mkR zeroUsage (drop-zero ld)
+        (t-var-poly-instantiate-infer (none-tr⁻ (loc-tr ld y) ln y≢x) li (lpp-tr⁻ y y≢x lp) gr eT)
+
+  -- `x`'s schema is GROUND, so the polymorphic rules never name it
+  ground-not⁻ : ∀ {schema body prefix} → lookupPolyPrefix P′ x ≡ just (schema , body , prefix)
+              → ¬ (T.Ground schema) → ⊥
+  ground-not⁻ lp ¬g with lpp-head⁻ lp
+  ... | refl = ¬g g
+
+  ∷ᵘ-inj : ∀ {n} {a b : Quantity} {u v : Usage n} → (a ∷ᵘ u) ≡ (b ∷ᵘ v) → a ≡ b × u ≡ v
+  ∷ᵘ-inj refl = refl , refl
+
+  -- under a binder: the binder's own quantity is the same on both sides
+  under : ∀ {nL nD GL ΔL GD ΔD} {ld : LD {nL} {nD} GL ΔL GD ΔD} {y B}
+            {J : Usage (suc nL) → Set} {q U}
+        → R (ld-under y B ld) J (q ∷ᵘ U) → R ld (λ W → J (q ∷ᵘ W)) U
+  under (mkR (q′ ∷ᵘ W) e d) with ∷ᵘ-inj e
+  ... | refl , e′ = mkR W e′ d
+
+  -- the usage shapes, as in the forward direction
+  module _ {nL nD GL ΔL GD ΔD} {ld : LD {nL} {nD} GL ΔL GD ΔD} where
+    rz : ∀ {K : Usage nL → Set} → K zeroUsage → R ld K zeroUsage
+    rz k = mkR zeroUsage (drop-zero ld) k
+
+    r1 : ∀ {J K : Usage nL → Set} {U} → R ld J U → (∀ {W} → J W → K W) → R ld K U
+    r1 (mkR W e d) f = mkR W e (f d)
+
+    r+ : ∀ {J₁ J₂ K : Usage nL → Set} {U₁ U₂}
+       → R ld J₁ U₁ → R ld J₂ U₂ → (∀ {W₁ W₂} → J₁ W₁ → J₂ W₂ → K (W₁ +ᵘ W₂))
+       → R ld K (U₁ +ᵘ U₂)
+    r+ (mkR W₁ e₁ d₁) (mkR W₂ e₂ d₂) f =
+      mkR (W₁ +ᵘ W₂) (trans (drop-+ ld W₁ W₂) (cong₂ _+ᵘ_ e₁ e₂)) (f d₁ d₂)
+
+    rzM : ∀ {J K : Usage nL → Set} {U}
+        → R ld J U → (∀ {W} → J W → K (zeroUsage +ᵘ (T.Many *ᵘ W)))
+        → R ld K (zeroUsage +ᵘ (T.Many *ᵘ U))
+    rzM (mkR W e d) f =
+      mkR (zeroUsage +ᵘ (T.Many *ᵘ W)) (trans (drop-z+M ld W) (cong (λ V → zeroUsage +ᵘ (T.Many *ᵘ V)) e)) (f d)
+
+    r+* : ∀ {J₁ J₂ K : Usage nL → Set} {U₁ U₂} (q : Quantity)
+        → R ld J₁ U₁ → R ld J₂ U₂ → (∀ {W₁ W₂} → J₁ W₁ → J₂ W₂ → K (W₁ +ᵘ (q *ᵘ W₂)))
+        → R ld K (U₁ +ᵘ (q *ᵘ U₂))
+    r+* q (mkR W₁ e₁ d₁) (mkR W₂ e₂ d₂) f =
+      mkR (W₁ +ᵘ (q *ᵘ W₂)) (trans (drop-+* ld W₁ q W₂) (cong₂ (λ a b → a +ᵘ (q *ᵘ b)) e₁ e₂)) (f d₁ d₂)
+
+    r+⊔ : ∀ {J₀ J₁ J₂ K : Usage nL → Set} {U₀ U₁ U₂}
+        → R ld J₀ U₀ → R ld J₁ U₁ → R ld J₂ U₂
+        → (∀ {W₀ W₁ W₂} → J₀ W₀ → J₁ W₁ → J₂ W₂ → K (W₀ +ᵘ (W₁ ⊔ᵘ W₂)))
+        → R ld K (U₀ +ᵘ (U₁ ⊔ᵘ U₂))
+    r+⊔ (mkR W₀ e₀ d₀) (mkR W₁ e₁ d₁) (mkR W₂ e₂ d₂) f =
+      mkR (W₀ +ᵘ (W₁ ⊔ᵘ W₂))
+          (trans (drop-+⊔ ld W₀ W₁ W₂) (cong₂ _+ᵘ_ e₀ (cong₂ _⊔ᵘ_ e₁ e₂))) (f d₀ d₁ d₂)
+
+  mutual
+    tr⁻-i : ∀ {nL nD GL ΔL GD ΔD fr} (ld : LD {nL} {nD} GL ΔL GD ΔD) {b T U}
+          → Dc GD ΔD fr ⊢ᵢ b ∶ T ⨾ U → R ld (λ W → Lc GL ΔL fr ⊢ᵢ b ∶ T ⨾ W) U
+    tr⁻-c : ∀ {nL nD GL ΔL GD ΔD fr} (ld : LD {nL} {nD} GL ΔL GD ΔD) {b T U}
+          → Dc GD ΔD fr ⊢ᶜ b ∶ T ⨾ U → R ld (λ W → Lc GL ΔL fr ⊢ᶜ b ∶ T ⨾ W) U
+    tr⁻-d : ∀ {nL nD GL ΔL GD ΔD fr} (ld : LD {nL} {nD} GL ΔL GD ΔD) {b A′ π B U}
+          → Dc GD ΔD fr ⊢ᵈ b ∶ A′ ⇒[ π ]↦ B ⨾ U → R ld (λ W → Lc GL ΔL fr ⊢ᵈ b ∶ A′ ⇒[ π ]↦ B ⨾ W) U
+
+    tr⁻-i ld (t-int n) = rz (t-int n)
+    tr⁻-i ld (t-float i f l p) = rz (t-float i f l p)
+    tr⁻-i ld t-unit = rz t-unit
+    tr⁻-i ld t-unit-var = rz t-unit-var
+    tr⁻-i {GL = GL} {ΔL = ΔL} {GD = GD} {ΔD = ΔD} ld (t-var-local {x = y} eq) =
+        var-tr⁻ ld y (lookupLocal-go y GL ΔL) (lookupLocal-go y GD ΔD) (loc-tr ld y) eq refl
+    tr⁻-i ld (t-var-qualified l c) = rz (t-var-qualified l c)
+    tr⁻-i ld (t-var-resolved ng l c) = rz (t-var-resolved ng l c)
+    tr⁻-i ld (t-var-import {x = y} ¬gw ln li c) = import-tr⁻ ld y (y StrProp.≟ x) ¬gw ln li c
+    tr⁻-i ld (t-var-poly-instantiate-infer {x = y} ln li lp gr eT) =
+        infer-tr⁻ ld y (y StrProp.≟ x) ln li lp gr eT
+    tr⁻-i ld (t-annot rf c) = r1 (tr⁻-c ld c) (t-annot rf)
+    tr⁻-i ld (t-pair d₁ d₂) = r+ (tr⁻-i ld d₁) (tr⁻-i ld d₂) t-pair
+    tr⁻-i ld (t-neg d) = r1 (tr⁻-i ld d) t-neg
+    tr⁻-i ld (t-neg-float i f l p) = rz (t-neg-float i f l p)
+    tr⁻-i ld (t-let {x = y} {A = B} {q = q} d₁ d₂) =
+        r+* q (under (tr⁻-i (ld-under y B ld) d₂)) (tr⁻-i ld d₁) (λ d₂′ d₁′ → t-let d₁′ d₂′)
+    tr⁻-i ld (t-case {xL = xL} {xR = xR} {A = AL} {B = AR} dS dL dR) =
+        r+⊔ (tr⁻-i ld dS) (under (tr⁻-i (ld-under xL AL ld) dL)) (under (tr⁻-i (ld-under xR AR ld) dR)) t-case
+    tr⁻-i ld (t-binop-arith o d₁ d₂) = r+ (tr⁻-i ld d₁) (tr⁻-i ld d₂) (t-binop-arith o)
+    tr⁻-i ld (t-binop-arith-float o d₁ d₂) = r+ (tr⁻-i ld d₁) (tr⁻-i ld d₂) (t-binop-arith-float o)
+    tr⁻-i ld (t-binop-arith-float-il o d₁ d₂) = r+ (tr⁻-i ld d₁) (tr⁻-i ld d₂) (t-binop-arith-float-il o)
+    tr⁻-i ld (t-binop-arith-float-ir o d₁ d₂) = r+ (tr⁻-i ld d₁) (tr⁻-i ld d₂) (t-binop-arith-float-ir o)
+    tr⁻-i ld (t-binop-cmp o d₁ d₂) = r+ (tr⁻-i ld d₁) (tr⁻-i ld d₂) (t-binop-cmp o)
+    tr⁻-i ld (t-id-app d) = rzM (tr⁻-i ld d) t-id-app
+    tr⁻-i ld (t-fst-app d) = rzM (tr⁻-i ld d) t-fst-app
+    tr⁻-i ld (t-snd-app d) = rzM (tr⁻-i ld d) t-snd-app
+    tr⁻-i ld (t-terminal-app d) = rzM (tr⁻-i ld d) t-terminal-app
+    tr⁻-i ld (t-apply-app-infer d) = rzM (tr⁻-i ld d) t-apply-app-infer
+    tr⁻-i ld (t-apply-eff-app-infer d) = rzM (tr⁻-i ld d) t-apply-eff-app-infer
+    tr⁻-i ld (t-Out-app-infer wf eq d) = rzM (tr⁻-i ld d) (t-Out-app-infer wf eq)
+    tr⁻-i ld (t-Out-eff-app-infer wf eq d) = rzM (tr⁻-i ld d) (t-Out-eff-app-infer wf eq)
+    tr⁻-i ld (t-app ah dF dX) = r+* _ (tr⁻-i ld dF) (tr⁻-c ld dX) (t-app ah)
+    tr⁻-i ld (t-effApp ah dF dX) = r+* _ (tr⁻-i ld dF) (tr⁻-c ld dX) (t-effApp ah)
+    tr⁻-i ld (t-app-spine ah dX dF) =
+        r+* _ (tr⁻-d ld dF) (tr⁻-i ld dX) (λ dF′ dX′ → t-app-spine ah dX′ dF′)
+    tr⁻-c ld t-id-check = rz t-id-check
+    tr⁻-c ld t-fst-check = rz t-fst-check
+    tr⁻-c ld t-snd-check = rz t-snd-check
+    tr⁻-c ld t-terminal-morph-check = rz t-terminal-morph-check
+    tr⁻-c ld t-initial-morph-check = rz t-initial-morph-check
+    tr⁻-c ld t-inl-morph-check = rz t-inl-morph-check
+    tr⁻-c ld t-inr-morph-check = rz t-inr-morph-check
+    tr⁻-c ld (t-compose-check-g dg df) =
+        r+* _ (tr⁻-c ld df) (tr⁻-d ld dg) (λ df′ dg′ → t-compose-check-g dg′ df′)
+    tr⁻-c ld (t-compose-check-f wf p dg) =
+        r+* _ (tr⁻-i ld wf) (tr⁻-c ld dg) (λ wf′ dg′ → t-compose-check-f wf′ p dg′)
+    tr⁻-c ld (t-case-copair-check df dg) = r+ (tr⁻-c ld df) (tr⁻-c ld dg) t-case-copair-check
+    tr⁻-c ld (t-pair-morph-check df dg) = r+ (tr⁻-c ld df) (tr⁻-c ld dg) t-pair-morph-check
+    tr⁻-c ld (t-curry-check d) = r1 (tr⁻-c ld d) t-curry-check
+    tr⁻-c ld (t-cata-check wf dalg) = r1 (tr⁻-c ld dalg) (t-cata-check wf)
+    tr⁻-c ld (t-ana-check wf dco) = r1 (tr⁻-c ld dco) (t-ana-check wf)
+    tr⁻-c ld (t-sub d p) = r1 (tr⁻-i ld d) (λ d′ → t-sub d′ p)
+    tr⁻-c ld (t-lam {x = y} {A = B} leq body) = r1 (under (tr⁻-c (ld-under y B ld) body)) (t-lam leq)
+    tr⁻-c ld (t-pair-lit-check d₁ d₂) = r+ (tr⁻-c ld d₁) (tr⁻-c ld d₂) t-pair-lit-check
+    tr⁻-c ld (t-In-app-check wf d) = rzM (tr⁻-c ld d) (t-In-app-check wf)
+    tr⁻-c ld (t-apply-check d) = rzM (tr⁻-i ld d) t-apply-check
+    tr⁻-c ld (t-inl-app-check d) = rzM (tr⁻-c ld d) t-inl-app-check
+    tr⁻-c ld (t-inr-app-check d) = rzM (tr⁻-c ld d) t-inr-app-check
+    tr⁻-c ld (t-initial-app-check d) = rzM (tr⁻-c ld d) t-initial-app-check
+    tr⁻-c ld (t-var-poly-instantiate {x = y} ln li lp ¬g inst) with y StrProp.≟ x
+    ... | yes refl = ⊥-elim (ground-not⁻ lp ¬g)
+    ... | no y≢x = rz (t-var-poly-instantiate (none-tr⁻ (loc-tr ld y) ln y≢x) li (lpp-tr⁻ y y≢x lp) ¬g inst)
+    tr⁻-d ld (d-infer w sb gr) = r1 (tr⁻-i ld w) (λ w′ → d-infer w′ sb gr)
+    tr⁻-d ld (d-poly {x = y} ln li lp ¬g as inc inst gr) with y StrProp.≟ x
+    ... | yes refl = ⊥-elim (ground-not⁻ lp ¬g)
+    ... | no y≢x = rz (d-poly (none-tr⁻ (loc-tr ld y) ln y≢x) li (lpp-tr⁻ y y≢x lp) ¬g as inc inst gr)
+    tr⁻-d ld (d-lam {x = y} {A = B} leq body) = r1 (under (tr⁻-i (ld-under y B ld) body)) (d-lam leq)
+    tr⁻-d ld (d-compose dg df) =
+        r+* _ (tr⁻-d ld df) (tr⁻-d ld dg) (λ df′ dg′ → d-compose dg′ df′)
+    tr⁻-d ld d-id = rz d-id
+    tr⁻-d ld d-fst = rz d-fst
+    tr⁻-d ld d-snd = rz d-snd
+    tr⁻-d ld d-terminal = rz d-terminal
+    tr⁻-d ld d-initial = rz d-initial
+    tr⁻-d ld (d-case df dg) = r+ (tr⁻-d ld df) (tr⁻-d ld dg) d-case
+    tr⁻-d ld (d-pair df dg) = r+ (tr⁻-d ld df) (tr⁻-d ld dg) d-pair
+    tr⁻-d ld (d-cata wf dalg) = r1 (tr⁻-i ld dalg) (d-cata wf)
+
 
 ------------------------------------------------------------------------
 -- The theorem, in all three judgments.
@@ -311,3 +535,20 @@ module _ {Γ : NamedCtx} {x : String} {A : Type} {e : RawExpr} {s : PolyType} {g
   let⇒defᵈ : ∀ {b A′ π B q Ψ} → extendNamedCtx Γ x A ⊢ᵈ b ∶ A′ ⇒[ π ]↦ B ⨾ (q ∷ᵘ Ψ)
            → defineNamedCtx Γ x s e ⊢ᵈ b ∶ A′ ⇒[ π ]↦ B ⨾ Ψ
   let⇒defᵈ = Tr.tr-d (Tr.ld-let noLocal)
+
+  -- …and back (plan 0.94 §12): a body that uses the definition `x` types
+  -- with `x` let-bound instead, at the usage its references counted.
+  def⇒letᵢ : ∀ {b B Ψ} → defineNamedCtx Γ x s e ⊢ᵢ b ∶ B ⨾ Ψ
+           → ∃[ q ] (extendNamedCtx Γ x A ⊢ᵢ b ∶ B ⨾ (q ∷ᵘ Ψ))
+  def⇒letᵢ d with Tr.tr⁻-i (Tr.ld-let noLocal) d
+  ... | Tr.mkR (q ∷ᵘ W) refl d′ = q , d′
+
+  def⇒letᶜ : ∀ {b B Ψ} → defineNamedCtx Γ x s e ⊢ᶜ b ∶ B ⨾ Ψ
+           → ∃[ q ] (extendNamedCtx Γ x A ⊢ᶜ b ∶ B ⨾ (q ∷ᵘ Ψ))
+  def⇒letᶜ d with Tr.tr⁻-c (Tr.ld-let noLocal) d
+  ... | Tr.mkR (q ∷ᵘ W) refl d′ = q , d′
+
+  def⇒letᵈ : ∀ {b A′ π B Ψ} → defineNamedCtx Γ x s e ⊢ᵈ b ∶ A′ ⇒[ π ]↦ B ⨾ Ψ
+           → ∃[ q ] (extendNamedCtx Γ x A ⊢ᵈ b ∶ A′ ⇒[ π ]↦ B ⨾ (q ∷ᵘ Ψ))
+  def⇒letᵈ d with Tr.tr⁻-d (Tr.ld-let noLocal) d
+  ... | Tr.mkR (q ∷ᵘ W) refl d′ = q , d′
