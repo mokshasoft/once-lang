@@ -505,3 +505,25 @@ lookup `SigBuild.ext` comparing entry numbers by the proof-carrying
 - The real costs of `wf` are spread (DecEq encodings for the erasure
   comparison, elaboration, `Eval`, substitution); none dominates. The
   environment evaluator (PLAN-EVAL) is not on this path yet.
+
+## 8. 2026-10-05 — the checker's equality decision, and `with` on verdicts
+
+Probes on SigCore's 34 erasure checks (21 196 nodes in all):
+
+| probe | time |
+|---|---|
+| size both sides (forces elaboration) | 8.6 s total |
+| Boolean structural `eqTm` | 9.9 s total (~1.3 s for the comparison) |
+| `eqT (encTm a) (encTm b)` (DecEq's tree encoding, Boolean) | 9.6 s |
+| `⌊ a ≟Tm b ⌋` (no `with`) | 9.0 s |
+| `ok n with a ≟Tm b …` | **killed at the cap after 300 s** |
+
+- The pathology is the `with` over a big decision in a function the type
+  checker RUNS, not the decision itself ([[with-over-knot-contexts-ooms]]).
+- `DecEq.decide` now computes a Boolean (`eqT`) and wraps proofs lazily
+  (no `yes refl` matching on the computational path). `SigBuild` passes
+  verdicts to helpers instead of `with` — on SigBuild itself neither change
+  measured (67 s), its `with`s were not on the hot path.
+- What moved SigCore 66 → 43 s / 3.4 → 2.8 GB was D081: the entry's
+  stored body is its own erasure (`refl`), so the erasure comparison is
+  gone, and each entry is checked over the elaboration telescope.

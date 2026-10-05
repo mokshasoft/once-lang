@@ -99,7 +99,8 @@ interleaved mutual
   tys _ = Unit
   tms _ = unit
 
-open import DirectedHoTT.Algorithm.SigBuild 6 tys tms 1000 public
+open import DirectedHoTT.Algorithm.SigBuild using ( module SigBuild )
+open SigBuild 6 tys tms 1000 public
 
 -- ★ the core is well-formed: the checker's output, nothing written
 open import normalizer.Syntax.Types using ( _≡_; refl )

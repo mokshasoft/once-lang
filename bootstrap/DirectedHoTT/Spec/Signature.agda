@@ -28,22 +28,63 @@
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Spec.Signature where
 open import normalizer.Syntax.Types using ( ¬_ )
-open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
+open import Agda.Builtin.Nat using ( zero; suc; _==_ ) renaming ( Nat to ℕ )
+open import Agda.Builtin.Bool using ( Bool; true; false )
 open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing using ( ◇; _⊢_∷_ )
 open import DirectedHoTT.Spec.Annotated
 
-record Sig : Set where
+-- ★ A TELESCOPE of entries (2026-10-05; the compiler's D071: the signature
+--   is the definition CONTEXT, a reference a projection from it).  Entry n
+--   is checked over the entries before it; extending a signature is
+--   context extension, so a signature built in one module is extended in
+--   another without re-checking it (`Metatheory/Signature.WfSig` is the
+--   context-formation rule).  The length is cached, so a lookup is one
+--   walk down the telescope.
+record Entry : Set where
+  constructor ⟨_∣_⟩
   field
-    size : ℕ
-    type : ℕ → ATy ε
-    body : ℕ → RTm ε
+    eType : ATy ε
+    eBody : RTm ε
+open Entry public
 
--- the signature's first `d` entries
-prefix : Sig → ℕ → Sig
-prefix S d = record S { size = d }
+data Tele : Set where
+  ∅   : Tele
+  _▸_ : Tele → Entry → Tele
+infixl 5 _▸_
 
--- `d` names an entry of a signature with `n` entries
+-- entry d of a telescope of length n (entries counted from the first)
+pickE : Bool → Entry → Entry → Entry
+pickE true  x y = x
+pickE false x y = y
+
+lookupE : ℕ → Tele → ℕ → Entry
+lookupE (suc n) (T ▸ e) d = pickE (d == n) e (lookupE n T d)
+lookupE zero    _       d = ⟨ Unit ∣ nzero ⟩
+lookupE (suc n) ∅       d = ⟨ Unit ∣ nzero ⟩
+
+record Sig : Set where
+  constructor mkSig
+  field
+    len  : ℕ
+    tele : Tele
+  -- what the checker and the erasure consult (`open Sig S`)
+  size : ℕ
+  size = len
+  type : ℕ → ATy ε
+  type d = eType (lookupE len tele d)
+  body : ℕ → RTm ε
+  body d = eBody (lookupE len tele d)
+open Sig public using ( len; tele )
+
+∅ˢ : Sig
+∅ˢ = mkSig 0 ∅
+
+-- extend by one entry
+_▸ˢ_ : Sig → Entry → Sig
+S ▸ˢ e = mkSig (suc (len S)) (tele S ▸ e)
+infixl 5 _▸ˢ_
+
 infix 4 _<ˢ_
 data _<ˢ_ : ℕ → ℕ → Set where
   <-here  : ∀ {n} → n <ˢ suc n

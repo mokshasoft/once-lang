@@ -5463,3 +5463,69 @@ fallback, and (b) is part of (a).
 D071; `bootstrap/DirectedHoTT/PLAN-EVAL.md`;
 `bootstrap/DirectedHoTT/ROADMAP.md`; OCP-0009 `:133-148`, `:397-458`;
 `poc/OCP0009/FINDINGS.md` F3, P1/P2.
+
+## D081: The Signature Is a TELESCOPE; Well-Formedness Is Context Formation (OCP-0009, DirectedHoTT S7 / ROADMAP Q5)
+
+**Date**: 2026-10-05
+**Status**: Accepted (autonomous session under the user's keep-going mandate; principled per the compiler's D071 on branch `plan-0.91-program-facts`)
+
+### Context
+
+The kernel's signature (S5) was a record of FUNCTION tables
+`{size; type : ℕ → ATy ε; body : ℕ → RTm ε}`, and `prefix S n` only changed
+`size`. That made `okUpTo`'s proof easy, because the prefix shares the tables.
+But a signature built and checked in one Agda module could not be
+extended in another. The extension's tables are different functions, so
+the base's proof `WfSig base` does not type at the extension. The Knot
+in the core (PLAN-BIDI S7) needs on the order of a thousand entries,
+while one module (`Examples/SigCore`, 34 entries) already checked at
+66 s / 3.4 GB.
+
+The compiler (branch `plan-0.91-program-facts`, D071) had already decided
+that the definition context is an ordered TELESCOPE and that a reference
+is a projection from it.
+
+### Decision
+
+- **`Spec/Signature`**: a signature is a cached length plus a snoc-telescope
+  of entries ⟨type ∣ erased body⟩. `size`, `type` and `body` are lookups
+  defined inside the record, so `open Sig S` is unchanged for its users.
+- **`Metatheory/Signature`**: `WfSig` is context formation:
+  - `WfTele (suc n) (T ▸ e) = WfTele n T × EntryWf ⟨n, T⟩ e`;
+  - `EntryWf` holds the entry's annotated body, typed over the telescope
+    before it, plus its erasure equation and a decided reference bound
+    (`Metatheory/SigBelow.below`).
+  - By record η, `WfSig (S ▸ˢ e)` is `WfSig S × EntryWf S e`
+    definitionally.
+  - `wf→ok` is proved by induction on the telescope, with `era-agree`:
+    erasure over an extension agrees below the bound.
+- **`Algorithm/SigBuild`** becomes `SigExtend base abase wbase …`, which
+  reuses the base's proof. `SigBuild` is extension of `∅ˢ`. Each entry's
+  stored body is by definition its erasure over the telescope before it,
+  so the erasure equation is `refl`. (The old builder decided it with
+  `_≟Tm_` against a different table.)
+
+### Rationale
+
+- A signature IS a context and its well-formedness IS context formation.
+  Extending it is context extension, and reusing a proof is the
+  structural fact that a well-formed context stays well-formed. This
+  lines up with the compiler's D071 and with the categorical semantics:
+  a definition context is an object of a category with families, and
+  extension is comprehension.
+- The reference bound is recorded as checked DATA. Re-deriving it from
+  every typing derivation would be a 70-rule induction; the Boolean is
+  computed once per entry.
+
+### Consequences (measured)
+
+- `Examples/SigCore`: 66 s / 3.4 GB → **42.6 s / 2.8 GB**.
+- `Examples/SigExtendTest`: extends SigCore's checked signature by two
+  entries that refer into it, in **4.7 s**, reusing `SigCore.wf`. Its
+  negative control (an ill-typed entry) is rejected.
+- The Knot can be checked in SEGMENTS, one module each.
+
+### See Also
+
+D071 (compiler branch), D080; `bootstrap/DirectedHoTT/ROADMAP.md` Q5;
+PLAN-BIDI §3g; PERF §8.

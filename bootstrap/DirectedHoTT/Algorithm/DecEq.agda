@@ -34,7 +34,7 @@
 module DirectedHoTT.Algorithm.DecEq where
 open import normalizer.Syntax.Types
   using ( _≡_; refl; sym; trans; cong; cong₂; ¬_ )
-open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
+open import Agda.Builtin.Nat using ( zero; suc; _==_ ) renaming ( Nat to ℕ )
 open import Agda.Builtin.List using ( List; []; _∷_ )
 open import Agda.Builtin.Maybe using ( Maybe; just; nothing )
 open import Agda.Builtin.Bool using ( Bool; true; false )
@@ -95,6 +95,78 @@ mutual
 ------------------------------------------------------------------------
 -- 2. Encoding.  ⚠ NO catch-all anywhere in this section.
 ------------------------------------------------------------------------
+
+-- ★ Boolean equality on trees, with its reflection lemmas
+infixr 6 _∧_
+_∧_ : Bool → Bool → Bool
+true  ∧ b = b
+false ∧ b = false
+
+∧-l : {a b : Bool} → (a ∧ b) ≡ true → a ≡ true
+∧-l {true} e = refl
+∧-l {false} ()
+
+∧-r : {a b : Bool} → (a ∧ b) ≡ true → b ≡ true
+∧-r {true} e = e
+∧-r {false} ()
+
+t≢f : ¬ (true ≡ false)
+t≢f ()
+
+==-sound : (m n : ℕ) → (m == n) ≡ true → m ≡ n
+==-sound zero    zero    e = refl
+==-sound zero    (suc n) ()
+==-sound (suc m) zero    ()
+==-sound (suc m) (suc n) e = cong suc (==-sound m n e)
+
+==-refl : (n : ℕ) → (n == n) ≡ true
+==-refl zero    = refl
+==-refl (suc n) = ==-refl n
+
+mutual
+  eqT : Tree → Tree → Bool
+  eqT (nat m)       (nat n)       = m == n
+  eqT (nat _)       (node _ _ _)  = false
+  eqT (node _ _ _)  (nat _)       = false
+  eqT (node g k ss) (node h j ts) = (g == h) ∧ ((k == j) ∧ eqL ss ts)
+
+  eqL : List Tree → List Tree → Bool
+  eqL []       []       = true
+  eqL []       (_ ∷ _)  = false
+  eqL (_ ∷ _)  []       = false
+  eqL (s ∷ ss) (t ∷ ts) = eqT s t ∧ eqL ss ts
+
+mutual
+  eqT-sound : (s t : Tree) → eqT s t ≡ true → s ≡ t
+  eqT-sound (nat m)       (nat n)       e = cong nat (==-sound m n e)
+  eqT-sound (nat _)       (node _ _ _)  ()
+  eqT-sound (node _ _ _)  (nat _)       ()
+  eqT-sound (node g k ss) (node h j ts) e
+    with ==-sound g h (∧-l e) | ==-sound k j (∧-l (∧-r {g == h} e)) | eqL-sound ss ts (∧-r (∧-r {g == h} e))
+  ... | refl | refl | refl = refl
+
+  eqL-sound : (ss ts : List Tree) → eqL ss ts ≡ true → ss ≡ ts
+  eqL-sound []       []       e = refl
+  eqL-sound []       (_ ∷ _)  ()
+  eqL-sound (_ ∷ _)  []       ()
+  eqL-sound (s ∷ ss) (t ∷ ts) e
+    with eqT-sound s t (∧-l e) | eqL-sound ss ts (∧-r {eqT s t} e)
+  ... | refl | refl = refl
+
+mutual
+  eqT-refl : (t : Tree) → eqT t t ≡ true
+  eqT-refl (nat n)       = ==-refl n
+  eqT-refl (node g k ss) = ∧-both (==-refl g) (∧-both (==-refl k) (eqL-refl ss))
+
+  eqL-refl : (ts : List Tree) → eqL ts ts ≡ true
+  eqL-refl []       = refl
+  eqL-refl (t ∷ ts) = ∧-both (eqT-refl t) (eqL-refl ts)
+
+  ∧-both : {a b : Bool} → a ≡ true → b ≡ true → (a ∧ b) ≡ true
+  ∧-both refl refl = refl
+
+eqT-≡ : {s t : Tree} → s ≡ t → eqT s t ≡ true
+eqT-≡ {s} refl = eqT-refl s
 
 encVar : Var Γ → ℕ
 encVar vz     = zero
@@ -336,11 +408,19 @@ private
   inj enc dec de {x} {y} e =
     just-inj (trans (sym (de x)) (trans (cong dec e) (de y)))
 
+  -- ★ The decision COMPUTES A BOOLEAN (`eqT`) and only then wraps the
+  --   proofs, which are never evaluated on the computational path.  The
+  --   proof-producing `_≟T_` (matching `yes refl` at every node) was the
+  --   pathology: on SigCore's 34 erasure checks (21 196 nodes in all) it
+  --   was killed at the memory cap after 300 s; the Boolean comparison of
+  --   the same terms takes ~1.3 s (PERF §8, 2026-10-05).
   decide : {X : Set} (enc : X → Tree) (dec : Tree → Maybe X) →
            (∀ x → dec (enc x) ≡ just x) → (x y : X) → Dec (x ≡ y)
-  decide enc dec de x y with enc x ≟T enc y
-  ... | yes e = yes (inj enc dec de e)
-  ... | no ne = no (λ x≡y → ne (cong enc x≡y))
+  decide enc dec de x y = decB (eqT (enc x) (enc y)) refl
+    where
+    decB : (b : Bool) → eqT (enc x) (enc y) ≡ b → Dec (x ≡ y)
+    decB true  e = yes (inj enc dec de (eqT-sound (enc x) (enc y) e))
+    decB false e = no (λ x≡y → t≢f (trans (sym (eqT-≡ (cong enc x≡y))) e))
 
 _≟Var_ : (x y : Var Γ) → Dec (x ≡ y)
 _≟Var_ {Γ} x y = decide (λ v → nat (encVar v)) dv (λ v → dec-encVar v) x y

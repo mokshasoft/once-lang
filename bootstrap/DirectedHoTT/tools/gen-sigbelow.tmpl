@@ -1,0 +1,86 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
+------------------------------------------------------------------------
+-- OCP-0009 · dHoTT — ★ REFERENCES BELOW A BOUND, and what erasure owes them.
+--
+-- A signature is a TELESCOPE (Spec/Signature): entry n is checked over the
+-- entries before it.  Its erasure looks references up in the body table,
+-- so erasing a term whose references are all below n gives the same
+-- kernel term over any two tables that agree below n (`era-agree`).  The
+-- bound is a decided Boolean (`below`), recorded with each entry by the
+-- signature builder — the invariant as CHECKED DATA, not re-derived from
+-- the typing derivation.
+--
+-- ⚠ GENERATED (2026-10-05) from `Spec/Annotated`'s constructor list and
+--   erasure clauses; regenerate when a former is added.
+--
+-- `--safe`, ZERO axioms.
+------------------------------------------------------------------------
+
+{-# OPTIONS --safe #-}
+module DirectedHoTT.Metatheory.SigBelow where
+open import normalizer.Syntax.Types using ( _≡_; refl; cong; cong₂ )
+open import Agda.Builtin.Nat using ( zero; suc; _<_ ) renaming ( Nat to ℕ )
+open import Agda.Builtin.Bool using ( Bool; true; false )
+open import DirectedHoTT.Spec.Syntax using ( Cx; ε; _∙; Var; RTm; ref; cong₃; cong₄ )
+import DirectedHoTT.Spec.Syntax as R
+open import DirectedHoTT.Spec.Annotated
+
+private
+  variable
+    Γ : Cx
+
+infixr 6 _∧_
+_∧_ : Bool → Bool → Bool
+true  ∧ b = b
+false ∧ b = false
+
+∧-l : (a b : Bool) → (a ∧ b) ≡ true → a ≡ true
+∧-l true  b e = refl
+∧-l false b ()
+
+∧-r : (a b : Bool) → (a ∧ b) ≡ true → b ≡ true
+∧-r true  b e = e
+∧-r false b ()
+
+∧-both : {a b : Bool} → a ≡ true → b ≡ true → (a ∧ b) ≡ true
+∧-both refl refl = refl
+
+cong₅ : {A B C D E F : Set} (f : A → B → C → D → E → F) {a a' : A} {b b' : B} {c c' : C} {d d' : D} {e e' : E} →
+        a ≡ a' → b ≡ b' → c ≡ c' → d ≡ d' → e ≡ e' → f a b c d e ≡ f a' b' c' d' e'
+cong₅ f refl refl refl refl refl = refl
+
+-- every reference below n
+belowᵀ : ℕ → ATy Γ → Bool
+below  : ℕ → ATm Γ → Bool
+@BELOW@
+
+-- two body tables agreeing below n
+Agree : ℕ → (ℕ → RTm ε) → (ℕ → RTm ε) → Set
+Agree n δ δ' = (d : ℕ) → (d < n) ≡ true → δ d ≡ δ' d
+
+module _ {δ δ' : ℕ → RTm ε} where
+  private
+    module E = Era δ
+    module E' = Era δ'
+
+  era-agreeᵀ : (n : ℕ) → Agree n δ δ' → (A : ATy Γ) → belowᵀ n A ≡ true → E.⌈ A ⌉ᵀ ≡ E'.⌈ A ⌉ᵀ
+  era-agree  : (n : ℕ) → Agree n δ δ' → (t : ATm Γ) → below n t ≡ true → E.⌈ t ⌉ ≡ E'.⌈ t ⌉
+@AGREE@
+
+-- the bound is monotone
+Up : ℕ → ℕ → Set
+Up n m = (d : ℕ) → (d < n) ≡ true → (d < m) ≡ true
+
+mono-belowᵀ : {n m : ℕ} → Up n m → (A : ATy Γ) → belowᵀ n A ≡ true → belowᵀ m A ≡ true
+mono-below  : {n m : ℕ} → Up n m → (t : ATm Γ) → below n t ≡ true → below m t ≡ true
+@MONO@
+
+lt-suc : (d n : ℕ) → (d < n) ≡ true → (d < suc n) ≡ true
+lt-suc zero    n       e = refl
+lt-suc (suc d) zero    ()
+lt-suc (suc d) (suc n) e = lt-suc d n e
+
+up-suc : (n : ℕ) → Up n (suc n)
+up-suc n d = lt-suc d n

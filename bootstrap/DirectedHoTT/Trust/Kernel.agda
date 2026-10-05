@@ -35,6 +35,9 @@ import DirectedHoTT.Algorithm.DecideConversion
 import DirectedHoTT.Algorithm.DecideConversionTyped
 import DirectedHoTT.Algorithm.Elab
 import DirectedHoTT.Algorithm.Eval
+import DirectedHoTT.Algorithm.NbE
+import DirectedHoTT.Algorithm.NbERead
+import DirectedHoTT.Algorithm.NbEScope
 import DirectedHoTT.Algorithm.Result
 import DirectedHoTT.Algorithm.SigBuild
 import DirectedHoTT.Algorithm.Surface
@@ -53,6 +56,7 @@ import DirectedHoTT.Metatheory.NormTy
 import DirectedHoTT.Metatheory.NormalShape
 import DirectedHoTT.Metatheory.Premises
 import DirectedHoTT.Metatheory.RedCong
+import DirectedHoTT.Metatheory.SigBelow
 import DirectedHoTT.Metatheory.Signature
 import DirectedHoTT.Metatheory.SubjectReduction
 import DirectedHoTT.Metatheory.SubjectReductionBase

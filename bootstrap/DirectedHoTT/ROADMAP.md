@@ -105,7 +105,11 @@ R3 and R5. R7 needs all of them.
   category or contextual category. OCP-0009 names the CwF as the structural
   pillar. No design exists for this kernel's formers (Hom/Id/tr/ap, IMu,
   Desc).
-- **Q5 — references as context projections** (alignment, R3 E4 / R6). The
+- **Q5 — references as context projections** — ✅ PARTLY DONE 2026-10-05
+  (D081): the signature is a TELESCOPE and `WfSig` is context formation, so
+  signatures extend across modules (the Knot is checked in segments). Still
+  open: the erased `ref d b` carries its body (E4's global value table is
+  the projection reading). The
   compiler (branch `plan-0.91-program-facts`, its D071) decided that an
   internal definition reference is a PROJECTION from the definition
   context Γ (the DTT global signature): `⟦ref x⟧Γ = Γ(x)` IS δ. This kernel's

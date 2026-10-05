@@ -12,30 +12,35 @@
 --   so a well-formedness proof is `fromJust (wfSig) _`: nobody writes or
 --   generates a derivation.
 --
--- ★ TWO PASSES, and why.
---   1. ELABORATE (untrusted): entry `n` is elaborated over `sigAt n`, the
---      signature of the entries before it, built by structural recursion
---      on `n` together with the elaborated types and bodies.
---   2. CHECK (trusted): the elaborated body is re-checked by `CheckA` over
---      `prefix S n` of the FINAL signature, the one `WfSig` speaks about,
---      and its erasure is compared (`_≟Tm_`) with the final `body n`.
---   The elaboration pass never needs to agree with the final signature:
---   it only proposes terms.  So no lemma relates the two.
+-- ★ THE SIGNATURE IS A TELESCOPE (2026-10-05, `Spec/Signature`).  Entry
+--   n is ELABORATED (untrusted) over the telescope of the entries before
+--   it, then CHECKED (trusted, `CheckA`) over that same telescope; its
+--   stored body is BY DEFINITION the erasure of its elaborated body there,
+--   so the erasure equation of `EntryWf` is `refl` (the old builder decided
+--   it with `_≟Tm_` against a different table).  The reference bound is a
+--   decided Boolean.
+--
+-- ★ EXTENSION (`SigExtend`).  A module extends a signature built and
+--   checked in another: `WfSig (S ▸ˢ e)` is `WfSig S × EntryWf S e`
+--   definitionally, so the base's proof is REUSED, not recomputed — the
+--   Knot is checked in segments.  `SigBuild` is extension of the empty
+--   signature.
 --
 -- `--safe`, ZERO axioms.
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
 open import normalizer.Syntax.Types using ( _≡_; refl; Σ; _,_; _×_; ⊤; tt; ⊥ )
-open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
-open import Agda.Builtin.Maybe using ( Maybe; just; nothing )
+open import Agda.Builtin.Nat using ( zero; suc; _+_ ) renaming ( Nat to ℕ )
+open import Agda.Builtin.Bool using ( Bool; true; false )
 open import DirectedHoTT.Spec.Syntax using ( ε; RTm; nzero )
 open import DirectedHoTT.Spec.Typing using ( c-◇ )
 open import DirectedHoTT.Spec.Annotated
-open import DirectedHoTT.Spec.Signature using ( Sig; prefix )
-open import DirectedHoTT.Metatheory.Signature using ( EntryWf; WfUpTo; WfSig; okUpTo )
+open import DirectedHoTT.Spec.Signature using ( Sig; Entry; ⟨_∣_⟩; len; _▸ˢ_; ∅ˢ )
+open import DirectedHoTT.Metatheory.Signature using ( EntryWf; WfSig; wf→ok )
+open import DirectedHoTT.Metatheory.SigBelow using ( below; belowᵀ )
 open import DirectedHoTT.Algorithm.Surface using ( STy; STm )
-open import DirectedHoTT.Algorithm.DecEq using ( Dec; yes; no; _≟ℕ_; _≟Tm_ )
+open import DirectedHoTT.Algorithm.DecEq using ( Dec; yes; no; _≟ℕ_ )
 import DirectedHoTT.Spec.TypingA as TA
 import DirectedHoTT.Algorithm.Elab as E
 open import DirectedHoTT.Algorithm.Result using ( R; ok; err; why )
@@ -43,97 +48,126 @@ open import Agda.Builtin.String using ( String; primStringAppend; primShowNat )
 import DirectedHoTT.Algorithm.CheckA as CA
 import DirectedHoTT.Metatheory.Erasure as Er
 
--- entry `d` is declared `tys d` with body `tms d`
-module DirectedHoTT.Algorithm.SigBuild
-  (size : ℕ) (tys : ℕ → STy ε) (tms : ℕ → STm ε) (fuel : ℕ) where
+-- `size` new entries over a checked `base`: new entry i (i < size; its
+-- absolute index — what a `ref` names — is `len base + i`) is declared
+-- `tys i` with body `tms i`
+module DirectedHoTT.Algorithm.SigBuild where
 
-private
-  fromR : {A : Set} → A → R A → A
-  fromR a (err _) = a
-  fromR a (ok x)  = x
+module SigExtend (base : Sig) (abase : ℕ → ATm ε) (wbase : WfSig base)
+                 (size : ℕ) (tys : ℕ → STy ε) (tms : ℕ → STm ε) (fuel : ℕ) where
 
-  -- extend a table below `n` by entry `n`
-  ext : {A : Set} → ℕ → A → (ℕ → A) → ℕ → A
-  ext n a f d with d ≟ℕ n
-  ... | yes _ = a
-  ... | no _  = f d
+  private
+    fromR : {A : Set} → A → R A → A
+    fromR a (err _) = a
+    fromR a (ok x)  = x
 
-------------------------------------------------------------------------
--- 1. ELABORATION: entry n over the signature of the entries before it.
-------------------------------------------------------------------------
+    -- extend a table below `n` by entry `n`
+    ext : {A : Set} → ℕ → A → (ℕ → A) → ℕ → A
+    ext n a f d with d ≟ℕ n
+    ... | yes _ = a
+    ... | no _  = f d
 
-typeAt  : ℕ → ℕ → ATy ε
-abodyAt : ℕ → ℕ → ATm ε
-bodyAt  : ℕ → ℕ → RTm ε
-elabTy  : ℕ → ATy ε
-elabTm  : ℕ → ATm ε
+  -- the absolute index of new entry i
+  ix : ℕ → ℕ
+  ix i = len base + i
 
-sigAt : ℕ → Sig
-sigAt n = record { size = n ; type = typeAt n ; body = bodyAt n }
+  ----------------------------------------------------------------------
+  -- 1. The telescope, entry by entry: elaborated over the entries before.
+  ----------------------------------------------------------------------
 
-elabTyR : ℕ → R (ATy ε)
-elabTyR n = E.elT (sigAt n) (abodyAt n) fuel (λ ()) (tys n)
+  sigAt   : ℕ → Sig
+  abodyAt : ℕ → ℕ → ATm ε
+  elabTyR : ℕ → R (ATy ε)
+  elabTmR : ℕ → R (ATm ε)
+  elabTy  : ℕ → ATy ε
+  elabTm  : ℕ → ATm ε
+  entryAt : ℕ → Entry
 
-elabTmR : ℕ → R (ATm ε)
-elabTmR n = E.chk (sigAt n) (abodyAt n) fuel (λ ()) (tms n) (elabTy n)
+  elabTyR i = E.elT (sigAt i) (abodyAt i) fuel (λ ()) (tys i)
+  elabTmR i = E.chk (sigAt i) (abodyAt i) fuel (λ ()) (tms i) (elabTy i)
+  elabTy i = fromR Unit (elabTyR i)
+  elabTm i = fromR nzero (elabTmR i)
 
-elabTy n = fromR Unit (elabTyR n)
-elabTm n = fromR nzero (elabTmR n)
+  -- ★ the stored body IS the erasure of the elaborated one, over the
+  --   telescope before it
+  entryAt i = ⟨ elabTy i ∣ Era.⌈_⌉ (Sig.body (sigAt i)) (elabTm i) ⟩
 
-typeAt zero    = λ _ → Unit
-typeAt (suc n) = ext n (elabTy n) (typeAt n)
-abodyAt zero    = λ _ → nzero
-abodyAt (suc n) = ext n (elabTm n) (abodyAt n)
-bodyAt zero    = λ _ → nzero
-bodyAt (suc n) = ext n (Era.⌈_⌉ (bodyAt n) (elabTm n)) (bodyAt n)
+  sigAt zero    = base
+  sigAt (suc i) = sigAt i ▸ˢ entryAt i
+  abodyAt zero    = abase
+  abodyAt (suc i) = ext (ix i) (elabTm i) (abodyAt i)
 
-------------------------------------------------------------------------
--- 2. ★ The signature, and its well-formedness — CHECKED.
-------------------------------------------------------------------------
+  ----------------------------------------------------------------------
+  -- 2. ★ The signature, and its well-formedness — CHECKED.
+  ----------------------------------------------------------------------
 
-S : Sig
-S = sigAt size
+  S : Sig
+  S = sigAt size
 
--- the annotated body of entry n (the elaborated one)
-abody : ℕ → ATm ε
-abody = abodyAt size
+  -- the annotated bodies (base entries from `abase`)
+  abody : ℕ → ATm ε
+  abody = abodyAt size
 
--- why entry n failed to ELABORATE ("ok" if it did) — read it off a type
--- error: `why-entry 3 ≡ "ok"` by `refl`
-why-entry : ℕ → String
-why-entry n with elabTyR n
-... | err w = primStringAppend "type › " w
-... | ok _  = primStringAppend "body › " (why (elabTmR n))
+  -- why new entry i failed to ELABORATE ("ok" if it did) — read it off a
+  -- type error: `why-entry 3 ≡ "ok"` by `refl`
+  why-entry : ℕ → String
+  why-entry i with elabTyR i
+  ... | err w = primStringAppend "type › " w
+  ... | ok _  = primStringAppend "body › " (why (elabTmR i))
 
-private
-  entry : (n : ℕ) → WfUpTo S n → R (EntryWf S n)
-  entry n w with CA.checkTyᴬ (prefix S n) (okUpTo S n w) TA.◇ᴬ c-◇ (Sig.type S n)
-  ... | no _ = err (primStringAppend "the checker rejects the type › " (why-entry n))
-  ... | yes dA
-      with CA.checkᴬ (prefix S n) (okUpTo S n w) TA.◇ᴬ c-◇ (abody n) (Sig.type S n)
-             (Er.erase-ty (prefix S n) (okUpTo S n w) dA)
-  ...   | no _ = err (primStringAppend "the checker rejects the body › " (why-entry n))
-  ...   | yes d with Era.⌈_⌉ (Sig.body S) (abody n) ≟Tm Sig.body S n
-  ...     | yes eq = ok (abody n , (d , eq))
-  ...     | no _   = err "the erased body differs from the stored one"
+  -- ★ NO `with` on the checker's verdicts: each is an ARGUMENT of a helper
+  --   (memory: with-over-knot-contexts-ooms).
+  private
+    isTrue : {X : Set} (b : Bool) → String → (b ≡ true → R X) → R X
+    isTrue true  m k = k refl
+    isTrue false m k = err m
 
-wfUpTo : (n : ℕ) → R (WfUpTo S n)
-wfUpTo zero = ok tt
-wfUpTo (suc n) with wfUpTo n
-... | err w = err w
-... | ok w with entry n w
-...   | err w' = err (primStringAppend "entry " (primStringAppend (primShowNat n) (primStringAppend " › " w')))
-...   | ok e   = ok (w , e)
+    module Chk (i : ℕ) (w : WfSig (sigAt i)) where
+      Sᵢ = sigAt i
+      wΓ = wf→ok Sᵢ w
 
--- ★ the signature's well-formedness, when it holds — else the reason
-wfSig : R (WfSig S)
-wfSig = wfUpTo size
+      byBelow : TA._⊢ᴬ_∷_ Sᵢ TA.◇ᴬ (elabTm i) (elabTy i) → R (EntryWf Sᵢ (entryAt i))
+      byBelow d =
+        isTrue (below (len Sᵢ) (elabTm i)) "a reference in the body is not below the entry" λ bb →
+        isTrue (belowᵀ (len Sᵢ) (elabTy i)) "a reference in the type is not below the entry" λ bt →
+        ok (elabTm i , (d , (refl , (bb , bt))))
 
--- for a concrete signature: `wf = fromJust wfSig _`
-IsJust : {A : Set} → R A → Set
-IsJust (ok _)  = ⊤
-IsJust (err _) = ⊥
+      byBody : Dec (TA._⊢ᴬ_∷_ Sᵢ TA.◇ᴬ (elabTm i) (elabTy i)) → R (EntryWf Sᵢ (entryAt i))
+      byBody (yes d) = byBelow d
+      byBody (no _)  = err (primStringAppend "the checker rejects the body › " (why-entry i))
 
-fromJust : {A : Set} (m : R A) → IsJust m → A
-fromJust (ok a) _ = a
-fromJust (err _)  ()
+      byType : Dec (TA._⊢tyᴬ_ Sᵢ TA.◇ᴬ (elabTy i)) → R (EntryWf Sᵢ (entryAt i))
+      byType (yes dA) = byBody (CA.checkᴬ Sᵢ wΓ TA.◇ᴬ c-◇ (elabTm i) (elabTy i) (Er.erase-ty Sᵢ wΓ dA))
+      byType (no _)   = err (primStringAppend "the checker rejects the type › " (why-entry i))
+
+      entry : R (EntryWf Sᵢ (entryAt i))
+      entry = byType (CA.checkTyᴬ Sᵢ wΓ TA.◇ᴬ c-◇ (elabTy i))
+
+    next : (i : ℕ) → WfSig (sigAt i) → R (EntryWf (sigAt i) (entryAt i)) → R (WfSig (sigAt (suc i)))
+    next i w (err w') = err (primStringAppend "entry " (primStringAppend (primShowNat (ix i)) (primStringAppend " › " w')))
+    next i w (ok e)   = ok (w , e)
+
+    step : (i : ℕ) → R (WfSig (sigAt i)) → R (WfSig (sigAt (suc i)))
+    step i (err w) = err w
+    step i (ok w)  = next i w (Chk.entry i w)
+
+  wfAt : (i : ℕ) → R (WfSig (sigAt i))
+  wfAt zero    = ok wbase
+  wfAt (suc i) = step i (wfAt i)
+
+  -- ★ the signature's well-formedness, when it holds — else the reason
+  wfSig : R (WfSig S)
+  wfSig = wfAt size
+
+  -- for a concrete signature: `wf = fromJust wfSig _`
+  IsJust : {A : Set} → R A → Set
+  IsJust (ok _)  = ⊤
+  IsJust (err _) = ⊥
+
+  fromJust : {A : Set} (m : R A) → IsJust m → A
+  fromJust (ok a) _ = a
+  fromJust (err _)  ()
+
+-- a signature from scratch: extension of the empty one
+module SigBuild (size : ℕ) (tys : ℕ → STy ε) (tms : ℕ → STm ε) (fuel : ℕ) =
+  SigExtend ∅ˢ (λ _ → nzero) tt size tys tms fuel

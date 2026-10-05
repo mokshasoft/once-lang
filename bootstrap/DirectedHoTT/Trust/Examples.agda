@@ -74,6 +74,11 @@ import DirectedHoTT.Examples.MaxLib
 import DirectedHoTT.Examples.MuNest
 import DirectedHoTT.Examples.Mutual
 import DirectedHoTT.Examples.Nat
+import DirectedHoTT.Examples.NbEAgree
+import DirectedHoTT.Examples.NbEKDTest
+import DirectedHoTT.Examples.NbESigCoreTest
+import DirectedHoTT.Examples.NbESigSubKnotTest
+import DirectedHoTT.Examples.NbESigTravTest
 import DirectedHoTT.Examples.OneApp
 import DirectedHoTT.Examples.Ord
 import DirectedHoTT.Examples.Overview
@@ -88,6 +93,7 @@ import DirectedHoTT.Examples.SigBuild
 import DirectedHoTT.Examples.SigCore
 import DirectedHoTT.Examples.SigCoreEval
 import DirectedHoTT.Examples.SigCoreTest
+import DirectedHoTT.Examples.SigExtendTest
 import DirectedHoTT.Examples.Signature
 import DirectedHoTT.Examples.Small
 import DirectedHoTT.Examples.Strong
