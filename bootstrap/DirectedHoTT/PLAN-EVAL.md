@@ -225,8 +225,19 @@ need a logical relation: values are syntax-shaped, so READ them back as
      is related by Church–Rosser: two `≅` pw-normal codes have `≅` bodies
      (code heads are inert, so a common reduct keeps the pw-shape).
 - Priority: the `SigCore` profile shows evaluation is NOT the checker's
-  cost today (PERF §7), so E3 is certification, not speed; it runs
-  alongside R4 (ROADMAP order).
+  cost today (PERF §7). ★ REVISED the same day: the Pw POC (PLAN-BIDI §3g)
+  needs a CERTIFIED conversion of a `KD`-sized closed description — the
+  substitution evaluator OOMs there, NbE takes 6 s. E3 is on R4's
+  critical path.
+- **The `tr-pw` closure carries its WITNESS.** `cloTrPw` is created only
+  when the motive, inspected at the fresh level `n`, is pw-shaped; the
+  proof of its instantiation needs that fact, and a value cannot be
+  re-asked. So the closure stores the inspection's pw-normal ambient `c*`,
+  `a*` and the level `n` (read with `n ↦` the binder), and instantiation
+  falls back to the sound `vapp (vlam (cloTrPw …)) u` whenever its own
+  re-inspection does not reach pw-normal form. Church–Rosser gives
+  `pwBody p ≅ pwBody q` for `≅` pw-normal codes (their heads are inert, so a
+  common reduct keeps the shape and `pwBody` follows reduction).
 
 **Fallback, recorded and not chosen.** If E0's gate fails because Agda's
 evaluator itself is the limit, run evaluation tests COMPILED (MAlonzo, a
