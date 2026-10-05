@@ -5,6 +5,12 @@ That directory still holds 329 `.agda` files across several unrelated
 tracks; **it is no longer built by anything** and is kept only as an
 archive. Everything live is here.
 
+**The plan of record is [`ROADMAP.md`](ROADMAP.md)** — the goal (the shape
+of dependent types in Once, toward Once implemented in Once), the stages
+R0–R7, the open questions and the document map. Stage plans:
+`PLAN-BIDI.md` (decidable checking; the Knot in the core) and
+`PLAN-EVAL.md` (the evaluator).
+
 ## What this is
 
 `Hom t u = t ⟶* u` — a **directed** identity type. Once's IR already owns a
@@ -21,9 +27,9 @@ so directed is strictly the richer primitive.
 | `Spec/` | Syntax → Variance → Typing | **the theory.** Read this first; if it is wrong nothing else matters |
 | `Trust.agda` | — | **what is assumed.** Empty, and *checked* by `tools/check-trust.sh` |
 | `Metatheory/` | SubjectReduction, Confluence, Injectivity, LogicalRelation, Fundamental, Canonicity | that the theory is well-behaved |
-| `Algorithm/` | DecideConversion | executable artifacts + their correctness |
-| `Lib/` | Amrec, AmrecInd, IHCall, Wk, Arith, … | derived combinators |
-| `Examples/` | Gcd/, Amrec, Id, … | evidence you can program in it |
+| `Algorithm/` | Eval, ConvLazy, CheckA, Elab, SigBuild, Surface, … | executable artifacts + their correctness (CheckA certifies; Elab is untrusted) |
+| `Lib/` | Syn, SynTrav, Sugar, NatCode, Amrec, AmrecInd, … | derived combinators |
+| `Examples/` | Knot/, SigCore, Gcd/, Amrec, Id, … | evidence you can program in it; `Knot/` is the kernel described in itself |
 | `Comparison/` | gcd three ways; the concrete IndStep | benchmarks — **built**, reported apart |
 | `Negative/` | the lexrec track | refuted — **not built** |
 
@@ -44,7 +50,7 @@ syntactic predicates, so the variance judgment is part of what the theory
 
 ## Building
 
-    ./DirectedHoTT/tools/sweep.sh              # 90 modules, ~200s warm
+    ./DirectedHoTT/tools/sweep.sh              # 249 modules, ~65 min cold (2026-10-05)
     ./DirectedHoTT/tools/sweep.sh --negative   # also build the refuted track
     ./DirectedHoTT/tools/check-trust.sh        # the trust surface alone
 

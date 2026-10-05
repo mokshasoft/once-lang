@@ -1,5 +1,8 @@
 # PLAN · DECIDABLE TYPE CHECKING — an annotated core, a bidirectional surface
 
+> **Stage R2 (done) and R4 (S7, in progress) of `ROADMAP.md`** — read that
+> first. The evaluator S7 runs on is PLAN-EVAL (R3, D080).
+
 ★ Decided 2026-09-25. The goal is OCP-0009's title claim, *decidable
 dependent types*, stated so that it holds of the KERNEL, not only of a
 front end.
@@ -211,7 +214,7 @@ not?"
 | S4 | Decide TYPE conversion `≅ᵀ` completely — ROUTE C (§3b): ① validity + `srᵀ` (`Metatheory/Validity`) ✅; ② inversion — the existing `gen-*` sufficed ✅; ③ `normTy`/`decConvᵀ` (`Metatheory/NormTy`) ✅ — **structural, NO measure needed**: `homNF` recurses on the NORMAL ambient (`G` ⊂ `Π F G`), the created `app f↑ vz` go through the typed `wnorm`, and a `NoU` witness breaks the harmless `elNF ↔ homNF` cycle | ✅ |
 | S5 | The signature: constants, δ, and the conservativity theorem — design (ii), §2-bis, route B | ✅ **2026-10-02** (§3e): `ref d` in the annotated layer, `⊢ᴬref`, δ by erasure; δ-elimination + conservativity (`Metatheory/Signature`); `CheckA` decides `ref` |
 | S6 | The bidirectional SURFACE → annotated core elaborator | ✅ **2026-10-02** (§3f): `Algorithm/Surface` (generated: the annotated syntax + holes) and `Algorithm/Elab` (UNTRUSTED; re-checked by `CheckA`) |
-| S7 | The Knot WRITTEN in the annotated core with signature references; its wf derivations come from `inferᴬ`, not from a generator. User, 2026-10-02: "if we have to write code to generate the Knot something is wrong". Measure against `HANDOFF-2026-09-24` §4's split | 🟡 **in progress** (§3g): machinery ✅, slice 1 (the closed core) ✅, S7a the certified evaluator ✅ (Core 56 → 7.4 s), B1′ `ref` in the kernel + the Knot encodes it ✅; the Pw POC is blocked on `#wk` ⇒ **S7b: a `Desc` eliminator (or levitated `Desc`), then generic traversal as core definitions** |
+| S7 | The Knot WRITTEN in the annotated core with signature references; its wf derivations come from `inferᴬ`, not from a generator. User, 2026-10-02: "if we have to write code to generate the Knot something is wrong". Measure against `HANDOFF-2026-09-24` §4's split | 🟡 **in progress** (§3g): machinery ✅, slice 1 (the closed core) ✅, S7a the certified evaluator ✅ (Core 56 → 7.4 s), B1′ `ref` in the kernel + the Knot encodes it ✅; S7b (c)+(c1) levitate the Lib's `Sig`: steps 2, 3, 5 ✅ (Fin over a Nat term, `Examples/SigCore`, FinFam deleted), lazy conversion `ConvLazy` ✅; **running core programs is blocked on PLAN-EVAL E0** (the environment evaluator), then step 4 (Pw) |
 
 ## 3g. ★ S7 — THE KNOT IN THE CORE (in progress, 2026-10-02)
 
@@ -601,7 +604,9 @@ tag rules key on it (`⊢fzero : Fin (suc n)`). After:
     Lib-form payload types at `⌜KSig⌝` normalised to the whole `KD` cascade
     and OOMed the checker; with it SigCore checks in 71 s / 4.6 GB.
     Also `normLazy` (certified normal order: weak-head first).
-  - ⛔ **OPEN — evaluating core programs inside Agda.** With the Lib form,
+  - ✅ **RESOLVED 2026-10-05 → PLAN-EVAL (D080): an environment-based
+    evaluator, option (a) below.** Record of the question:
+  - ⛔ **(was OPEN) — evaluating core programs inside Agda.** With the Lib form,
     the traversal's evaluation tests OOM the type checker EVEN AT FUEL 40
     (normal order or applicative). Measured: the erased bodies are small
     (`#rnM`: 190 nodes shallow, ~900 deep) and one elaboration is ~5 s, so
@@ -612,7 +617,7 @@ tag rules key on it (`⊢fzero : Fin (suc n)`). After:
     `cb30cfb1a`); the Lib form's extra cascade steps push past it. The
     tests are parked in `Negative/` (not built). This bears on S7's
     "checker by evaluation" generally, not only on the spike. Candidate
-    fixes, a DESIGN decision (user):
+    fixes (decided: (a), user 2026-10-05; (c) is PLAN-EVAL's recorded fallback):
     (a) an ENVIRONMENT-based evaluator (closures, NbE-style) — no `subTm`
         towers, so work is shared by construction;
     (b) lazy δ with refs as atoms in comparisons (helps conversion, not

@@ -1,5 +1,9 @@
 # OCP-0009 — PLAN: THE RENAMING PARAMETER, AND THE BUG CLASS IT HIDES
 
+> ⛔ **HISTORICAL (2026-10-05, ROADMAP §5).** Its open items target code
+> deleted or replaced by levitation (PLAN-LEVITATION) and PLAN-BIDI. Do not
+> resume an item without re-deriving it against the levitated kernel.
+
 Opened 2026-09-03. Read `FUTURE.md` §"CATEGORY D′ IN DETAIL" for the
 defect analysis; this file is the WORK PLAN and the running BUG TALLY.
 
