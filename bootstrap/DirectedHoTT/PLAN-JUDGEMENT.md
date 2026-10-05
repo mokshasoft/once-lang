@@ -1,5 +1,9 @@
 # OCP-0009 — PLAN: THE JUDGEMENT LAYER
 
+> ⛔ **HISTORICAL (2026-10-05, ROADMAP §5).** Its open items target code
+> deleted or replaced by levitation (PLAN-LEVITATION) and PLAN-BIDI. Do not
+> resume an item without re-deriving it against the levitated kernel. Done through step 2; step 4 (dogfooding) lives on as ROADMAP R4/R7.
+
 Companion to `PLAN-INDEXED.md`, which took the SYNTAX into the kernel.
 This one takes the JUDGEMENTS. It is a build plan, not a spike record:
 the spikes are done and §1 says what they settled, so that nothing here

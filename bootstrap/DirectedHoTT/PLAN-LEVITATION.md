@@ -12,6 +12,10 @@
 > (the Lib's traversals as core definitions) needs either a dependent
 > `Desc` eliminator or `Desc` itself levitated. Decided direction; the
 > sketch comparing the two is PLAN-BIDI S7b step 1.
+> ✅ **Resolved 2026-10-04: neither.** The traversal recurses on the
+> SIGNATURE, not on `Desc`; the user chose (c)+(c1) — levitate the Lib's
+> `Sig` in the core, with `Fin` indexed by a Nat term (PLAN-BIDI S7b).
+> `Desc` stays primitive. This plan is DONE (ROADMAP R1).
 
 ## Target kernel (from S3/S4)
 

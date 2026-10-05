@@ -5393,3 +5393,73 @@ demand the rule (as it did for `occK`).
 ### See Also
 
 D072, D077, D078; HANDOFF-2026-09-10 §2; OCC-ATTEMPTS.md §35.
+
+## D080: The Evaluator Is ENVIRONMENT-BASED NbE — Closures, Levels, Lazy δ (OCP-0009, DirectedHoTT ROADMAP R3)
+
+**Date**: 2026-10-05
+**Status**: Accepted (user, 2026-10-05; plan: `bootstrap/DirectedHoTT/PLAN-EVAL.md`)
+
+### Context
+
+PLAN-BIDI S7 makes the Knot a set of core programs. Their tests and
+conversions are COMPUTED ("checker by evaluation"). The certified evaluator
+`Algorithm/Eval` (S7a) is substitution-based: innermost order, eager δ, one
+`_⟶_` step at a time. Inside Agda's type checker every β leaves a `subTm`
+tower as an unshared closure.
+
+`Examples/SigCore`'s generic traversal OOMs even at fuel 40. Its bodies are
+small (190 / ~900 nodes) and elaboration is cheap (~5 s), so the cost is the
+evaluation strategy, not the encoding.
+
+The question was put to the user as three options:
+- (a) an environment-based evaluator;
+- (b) lazy δ only;
+- (c) evaluation outside type checking, in compiled Agda.
+
+The user then asked whether NbE is the right design for Once at all.
+
+### Decision
+
+(a). The evaluator is untyped, environment-based NbE over erased kernel
+terms:
+- closures (a body plus an environment), and free variables as de Bruijn
+  LEVELS, so values need no renaming action;
+- neutrals per eliminator, and readback in full and weak-head modes;
+- lazy δ (`ref` is a name, unfolded only when eliminated);
+- exactly the computation rules of `Algorithm/Eval.head`/`headᵀ`.
+
+It is untrusted until its soundness theorem exists (PLAN-EVAL E3). It then
+replaces `decConvFast` as the checker's conversion. (c) is the recorded
+fallback, and (b) is part of (a).
+
+### Rationale
+
+- **NbE is forced, not chosen.** Full βη rewriting in a CCC is non-confluent
+  (`formal/Theory/Syntax/StrongCCL/CCT1/NonConfluenceWitness.agda`).
+  OCP-0009 already defines conversion as "determinism + totality of a
+  big-step evaluator to canonical values; conv = ⌜eval a⌝ ≟ ⌜eval b⌝". The
+  only open part was the evaluation strategy.
+- **Environments are the CCC reading.** Environment-based evaluation of de
+  Bruijn terms is Curien's categorical abstract machine: an environment is
+  a product, a closure is the exponential transpose, a variable is a
+  projection. So the POC's evaluator is the λ-side reading of the CCC-VM
+  (`bootstrap/theory/cccvm-sketch.md`). That is the route to ONE evaluator
+  for conversion and execution, and to Once in Once (ROADMAP R6/R7).
+  Substitution-based evaluation has no such reading.
+- **Substitution is the measured cost centre.** It shows up as substitution
+  towers, per-step casts in β-chains, and now the evaluation OOM. An
+  environment evaluator never builds `subTm`.
+
+### Consequences
+
+- PLAN-NF becomes historical (its Phase 1 is S7a; the rest is PLAN-EVAL).
+- The decoder-form question (select-then-map vs the Lib's form, PLAN-BIDI
+  §3g) is re-judged on E0's measurements.
+- The linear/QTT layer (ROADMAP R5) builds its allocation-aware evaluator
+  on this value domain, following `poc/OCP0009/NbEPLinCore.agda`.
+
+### See Also
+
+D071; `bootstrap/DirectedHoTT/PLAN-EVAL.md`;
+`bootstrap/DirectedHoTT/ROADMAP.md`; OCP-0009 `:133-148`, `:397-458`;
+`poc/OCP0009/FINDINGS.md` F3, P1/P2.

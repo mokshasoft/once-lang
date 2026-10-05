@@ -1,5 +1,9 @@
 # Computed datatype indices — the plan
 
+> ⛔ **HISTORICAL (2026-10-05, ROADMAP §5).** Its open items target code
+> deleted or replaced by levitation (PLAN-LEVITATION) and PLAN-BIDI. Do not
+> resume an item without re-deriving it against the levitated kernel.
+
 *Decided 2026-09-16, from the profiling session of 2026-09-13/16. This is a
 KERNEL change to `Spec/Typing`, reopening the metatheory. It is proposed
 because the dogfooding exhibit measured a 267× cost with a known cause and

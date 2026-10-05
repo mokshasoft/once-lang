@@ -1,8 +1,10 @@
 # DirectedHoTT · TODO
 
-⚠ **Tracking list.** The narrative lives in `PLAN-JUDGEMENT.md` and the
-dated `HANDOFF-2026-08-NN.md`; the rules in `LESSONS.md`. This file is
-just the checklist, newest state as of **2026-09-10**.
+⚠ **Tracking list, subordinate to the plans.** The plan of record is
+`ROADMAP.md` (→ PLAN-BIDI, PLAN-EVAL); the rules are in `LESSONS.md`;
+session state is the newest `HANDOFF-*.md`. ⚠ Most sections below
+predate levitation (2026-09-10 and older; the 53-row Knot they track
+was deleted) — treat them as history unless they name a current module.
 
 Legend: ✅ done · 🟡 partly done, state recorded in the module header · ⬜ not started
 

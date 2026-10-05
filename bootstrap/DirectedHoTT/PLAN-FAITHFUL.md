@@ -2,8 +2,8 @@
 
 > Opened 2026-09-29, after PLAN-LEVITATION Stage 6. Branch
 > `ocp-0009-levitation` (no rebase for now).
-> ✅ **F1–F5 DONE 2026-09-30** (commit `4e6e46904`). ✅ **F6 (decoding, the converse) DONE 2026-10-04: THE KNOT IS EXACT (`Knot/Exact`). It found ONE bug, in the KERNEL (ledger below).** Next: PLAN-BIDI S7b (paused for F6, awaiting the user's (c)/(c1) decision), after
-> PLAN-LEVITATION's clean measurement (`HANDOFF-2026-10-02.md` §4).
+> ✅ **F1–F5 DONE 2026-09-30** (commit `4e6e46904`). ✅ **F6 (decoding, the converse) DONE 2026-10-04: THE KNOT IS EXACT (`Knot/Exact`). It found ONE bug, in the KERNEL (ledger below).** F6 is the oracle PLAN-BIDI S7b migrates against
+> (S7b resumed 2026-10-04 with (c)+(c1)). DONE — ROADMAP R1.
 
 ## Goal
 

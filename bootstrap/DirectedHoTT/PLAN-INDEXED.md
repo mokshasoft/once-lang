@@ -1,5 +1,9 @@
 # Indexed descriptions, and `Vec` as sugar — the plan
 
+> ⛔ **HISTORICAL (2026-10-05, ROADMAP §5).** Its open items target code
+> deleted or replaced by levitation (PLAN-LEVITATION) and PLAN-BIDI. Do not
+> resume an item without re-deriving it against the levitated kernel. Superseded by PLAN-LEVITATION (one datatype former).
+
 *Decided 2026-08-22, mid-implementation. Supersedes `poc/OCP0009/PLAN-INDUCTIVE.md`
 §7's treatment of indexing, which deferred `Vec` and `RTm`'s shape together as
 one item. They separate.*

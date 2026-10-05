@@ -1,5 +1,9 @@
 # SIMPLIFYING THE KNOT — the ideas, ranked, with their evidence
 
+> ⛔ **HISTORICAL (2026-10-05, ROADMAP §5).** Its open items target code
+> deleted or replaced by levitation (PLAN-LEVITATION) and PLAN-BIDI. Do not
+> resume an item without re-deriving it against the levitated kernel. Its §3 (the evaluator) shipped as PLAN-BIDI S7a; §8.2 (the bidirectional checker) as PLAN-BIDI S3/S6.
+
 ★ **The metric.** Not lines. `KNOT-LESSONS` §10 and the use-site
 scorecard settled this: the Knot's difficulty is **how much a proof
 author must know and write per row**, measured as
