@@ -537,6 +537,39 @@ tag rules key on it (`⊢fzero : Fin (suc n)`). After:
   - The Nat-at-code helpers moved to `Lib/NatCode`.
   - `Examples/WkFin` is `natrec` + `fcase` (weakening needs recursion on
     the index; the kernel's `fcase` is only a case).
+- **Step 3 spike (2026-10-05): DONE — `Examples/SigCore`.** The Lib's `Sig`,
+  its decoder and generic RENAMING, written in the core and checked by
+  `SigBuild` (26 entries, no derivation written):
+  - **Representation: finite maps.** `Sig n = Fin n → Σ c. Fin c → Shape n`,
+    `Shape`/`Fld` Σ-coded by a `Fin` tag. Selection is application; a list
+    fold is `natrec` on its length. Only Π, Σ, `natrec`, `fcase`.
+  - **Two decoder forms, and the decision.** The Lib's form maps then
+    selects (`tabD`: a `fcase` cascade of descriptions) — `#SDℓ` has the
+    Lib's `SD` normal form EXACTLY (tested: λ-calculus whole; `⌜KSig⌝` per
+    constructor). But at a VARIABLE constructor it is stuck in the cascade,
+    so a generic program would have to re-walk it. The core's `#SD` SELECTS
+    THEN MAPS: its fibre at variable `k` is `tel n (sg s k) i`, which is what
+    generic programs need. ★ DECIDED (principled): `#SD` is the decoder;
+    `#SDℓ` stays only as the bridge evidence. Consequence: `#KD := #SD 2
+    ⌜KSig⌝` is NOT convertible to the Lib's `KD` (no commuting conversions)
+    — the Knot moves onto `#KD`, as the plan already intended.
+  - **Generic renaming** (`#ren`): `ielim` whose method follows the decoder in
+    LOCKSTEP — the decoder's pieces are named entries (`#telV`, `#dRec`,
+    `#dNat`, `#dCls`, `#telF`, `#telFs`, `#tel`) and the traversal's convoy
+    motives mention the same terms (`tfBody`/`tBody` generators).
+    Tested: on the λ-calculus (free variable moves, bound stays), and at
+    `⌜KSig⌝` AGAINST THE KERNEL: `ren (quoteTm t) ≡ quoteTm (renTm vs t)` for
+    a term with a binder, a crossing variable and a `ref` (nat + cls).
+    Every test has a negative control.
+  - **Elaborator**: its weak-head evaluator now has `fcase`, `dpay` and
+    `DIh` (untrusted, so free); without them every convoy binder needed its
+    reduced type by hand.
+  - **Limits found**: Agda refuses literal patterns > 20 (entries are now a
+    table); the WHOLE `KD` by normal form OOMs the type checker (cgroup cap,
+    4.7 min) — per-constructor tests instead.
+  - ▶ **Next:** (i) generalize `#ren` to a kit (`#trav`), instances `#wk` and
+    `#sub` (substitution against `subTm`); (ii) design the Knot's move onto
+    `#KD` (every row's `fibK` chain changes; the evaluator computes them).
 
 **Then, the migration recipe** (each step is one family):
 - a schema becomes a CLOSED λ-entry; an instance becomes
