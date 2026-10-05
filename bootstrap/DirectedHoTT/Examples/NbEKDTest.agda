@@ -11,7 +11,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.NbEKDTest where
-open import normalizer.Syntax.Types using ( _≡_; refl )
+open import normalizer.Syntax.Types using ( _≡_; refl; sym )
 open import Agda.Builtin.Bool using ( Bool; true; false )
 open import Agda.Builtin.List using ( List; []; _∷_ )
 open import DirectedHoTT.Spec.Syntax using ( ε )
@@ -35,3 +35,18 @@ private
 
 kd-whole✗ : differs (nfᴺ {ε} (⟪ #SD ⟫ ⋆ (num 2 ∷ tag 1 ∷ ⟪ #KΣ ⟫ ∷ []))) (nfᴺ (⟪ #SD ⟫ ⋆ (num 1 ∷ tag 0 ∷ ⟪ #lamΣ ⟫ ∷ []))) ≡ true
 kd-whole✗ = refl
+
+------------------------------------------------------------------------
+-- ★ CERTIFIED: the core decoder at ⌜KSig⌝ is CONVERTIBLE with the Lib's
+--   whole `KD` — by the evaluator's soundness (`Algorithm/NbESound`):
+--   t ≅ nbe t ≡ nbe u ≅ u.  (The substitution evaluator OOMed computing
+--   either normal form.)
+------------------------------------------------------------------------
+
+open import DirectedHoTT.Spec.Typing using ( _≅_; ctrn; csym )
+open import DirectedHoTT.Algorithm.NbESound using ( nbe-sound )
+open import normalizer.Syntax.Types using ( subst )
+
+kd-conv : (⟪ #SD ⟫ ⋆ (num 2 ∷ tag 1 ∷ ⟪ #KΣ ⟫ ∷ [])) ≅ KD {ε}
+kd-conv = ctrn (nbe-sound 100000 (⟪ #SD ⟫ ⋆ (num 2 ∷ tag 1 ∷ ⟪ #KΣ ⟫ ∷ [])))
+               (subst (λ z → z ≅ KD) (sym kd-whole) (csym (nbe-sound 100000 KD)))
