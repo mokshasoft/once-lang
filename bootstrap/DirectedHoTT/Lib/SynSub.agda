@@ -21,7 +21,7 @@ module DirectedHoTT.Lib.SynSub where
 
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂; subst; _,_ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
-open import DirectedHoTT.Spec.Syntax hiding ( Fin )
+open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; ⟶ᵀ*-El )
 open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast; wk-cancel-tm )
@@ -31,7 +31,6 @@ open import DirectedHoTT.Lib.Tel
 open import DirectedHoTT.Lib.TelAt using ( ⊢payAt )
 open import DirectedHoTT.Lib.MethAt
 open import DirectedHoTT.Lib.NatFib
-open import DirectedHoTT.Lib.FinFam
 open import DirectedHoTT.Lib.NatCode
 open import DirectedHoTT.Lib.Syn
 open import DirectedHoTT.Lib.SynTrav
@@ -83,7 +82,7 @@ module Sub {sg : Sig n} (ok : SigOK n sg) {v kv : ℕ} {shs : Shapes c}
   vnode : RTm Γ → RTm Γ
   vnode x = conₗ kv (pair x unit)
 
-  ⊢vnode : {Γ : Ctx} {e x : RTm ⌊ Γ ⌋} → Γ ⊢ e ∷ El ⌜Nat⌝ → Γ ⊢ x ∷ FinI e → Γ ⊢ vnode x ∷ SK sg v e
+  ⊢vnode : {Γ : Ctx} {e x : RTm ⌊ Γ ⌋} → Γ ⊢ e ∷ El ⌜Nat⌝ → Γ ⊢ x ∷ Fin e → Γ ⊢ vnode x ∷ SK sg v e
   ⊢vnode de dx = ⊢conSyn ok ngv nhv de (a-v dx)
 
   subKit : Kit n sg
@@ -91,13 +90,13 @@ module Sub {sg : Sig n} (ok : SigOK n sg) {v kv : ℕ} {shs : Shapes c}
     { vsort = v
     ; VF    = VFs
     ; WK    = lam (lam (R.wk v (var (vs vz)) (var vz)))
-    ; V0    = lam (vnode ffz)
+    ; V0    = lam (vnode fzero)
     ; NODE  = lam (lam (var vz))
     ; VF-sub = VFs-sub
     ; ⊢VF   = ⊢VFs
     ; ⊢WK   = ⊢lam (ty-El ⊢⌜Nat⌝) (⊢lam (ty-El (⊢app ⊢VFs (⊢var here)))
                  (fromSK (R.⊢wkS lt (⊢var (there here)) (toSK hereV))))
-    ; ⊢V0   = ⊢lam (ty-El ⊢⌜Nat⌝) (fromSK (⊢vnode (⊢isuc (⊢var here)) (⊢ffz (⊢var here))))
+    ; ⊢V0   = ⊢lam (ty-El ⊢⌜Nat⌝) (fromSK (⊢vnode (⊢isuc (⊢var here)) (⊢fzero (fromI (⊢var here)))))
     ; ⊢NODE = ⊢lam (ty-El ⊢⌜Nat⌝) (⊢lam (ty-El (⊢app ⊢VFs (⊢var here))) (toSK hereV))
     }
     where
@@ -117,7 +116,7 @@ module Sub {sg : Sig n} (ok : SigOK n sg) {v kv : ℕ} {shs : Shapes c}
   IDS = lam (vnode (var vz))
 
   ⊢IDS : {Γ : Ctx} {d : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ IDS ∷ Env d d
-  ⊢IDS dd = ⊢lam (ty-IMu ⊢⌜Nat⌝ ⊢FinD dd) (fromSK (⊢vnode (⊢wk dd) (⊢var here)))
+  ⊢IDS dd = ⊢lam (ty-Fin (fromI dd)) (fromSK (⊢vnode (⊢wk dd) (⊢var here)))
 
   SINGLE : RTm Γ
   SINGLE = lam (lam (app (app (app (app CONS (var (vs vz))) (var (vs vz))) (var vz)) IDS))

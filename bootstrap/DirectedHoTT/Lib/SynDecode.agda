@@ -24,16 +24,15 @@ module DirectedHoTT.Lib.SynDecode where
 
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; subst; Σ; _,_; _×_ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
-open import DirectedHoTT.Spec.Syntax hiding ( Fin )
+open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
-open import DirectedHoTT.Metatheory.RedCong using ( _⟶ᵀ*_; doneᵀ; stepᵀ; ⟶ᵀ*-El; ⟶ᵀ*-IMu; red→≅ᵀ; ⟶*-dpayᶜ; ⟶*-pairʳ )
+open import DirectedHoTT.Metatheory.RedCong using ( _⟶ᵀ*_; doneᵀ; stepᵀ; ⟶ᵀ*-El; ⟶ᵀ*-IMu; ⟶ᵀ*-Fin; red→≅ᵀ; ⟶*-dpayᶜ; ⟶*-pairʳ )
 open import DirectedHoTT.Metatheory.TySub using ( wk-cancel-tm; ⊢-cast )
 open import DirectedHoTT.Metatheory.LogicalRelation using ( IsNormal )
 open import DirectedHoTT.Lib.Sugar using ( tag; conₗ; Lt; lt-z; lt-s; selF-β; nth-sub )
 open import DirectedHoTT.Lib.Tel using ( ⌜_⌝ᵗ; nth-⌜⌝ )
 open import DirectedHoTT.Lib.TelAt using ( nth-⌜⌝ₛₛ )
 open import DirectedHoTT.Lib.Sorted using ( fibₛ-β )
-open import DirectedHoTT.Lib.FinFam using ( FinD; FinI )
 open import DirectedHoTT.Lib.Syn
 open import DirectedHoTT.Lib.Decode
 
@@ -55,7 +54,7 @@ data DArgs (sg : Sig n) (d : RTm ε) : Shape → RTm ε → Set where
   d-cls : {a p : RTm ε} {sh : Shape} →
           ◇ ⊢ a ∷ SK sg s nzero → IsNormal a → DArgs sg d sh p →
           DArgs sg d (cls s ∷ʰ sh) (pair a p)
-  d-v   : {a : RTm ε} → ◇ ⊢ a ∷ FinI d → IsNormal a → DArgs sg d vʰ (pair a unit)
+  d-v   : {a : RTm ε} → ◇ ⊢ a ∷ Fin d → IsNormal a → DArgs sg d vʰ (pair a unit)
 
 ------------------------------------------------------------------------
 -- 2. A payload, peeled along its shape.
@@ -88,7 +87,7 @@ args-dec {sg = sg} (cls s ∷ʰ sh) r dp nrm with pay-ρ dp done nrm
       d-cls (⊢IMu→SK {sg = sg} {s = s} da) na (args-dec sh r db nb)
 args-dec vʰ r dp nrm with pay-σ dp done nrm
 ... | a , (b , (refl , ((da , db) , (na , nb)))) with pay-ι (βι db) done nb
-...   | refl = d-v (⊢conv (⊢conv da (credᵀ El-⌜IMu⌝)) (red→≅ᵀ (⟶ᵀ*-IMu r))) na
+...   | refl = d-v (⊢conv (⊢conv da (credᵀ El-⌜Fin⌝)) (red→≅ᵀ (⟶ᵀ*-Fin r))) na
 
 ------------------------------------------------------------------------
 -- 3. ★ A closed normal term of a syntax is a constructor.

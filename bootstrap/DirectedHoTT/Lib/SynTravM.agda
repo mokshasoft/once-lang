@@ -22,16 +22,15 @@ module DirectedHoTT.Lib.SynTravM where
 
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂; subst; _×_; _,_ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
-open import DirectedHoTT.Spec.Syntax hiding ( Fin )
+open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
-open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; ⟶ᵀ*-IMu; ⟶ᵀ*-Πˡ; ⟶*-pairˡ )
+open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; ⟶ᵀ*-IMu; ⟶ᵀ*-Fin; ⟶ᵀ*-Πˡ; ⟶*-pairˡ )
 open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast )
 open import DirectedHoTT.Metatheory.Premises using ( mot-ren; ⊢wkD )
 open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_; selF; subC; tag; conₗ; selF-β; nth-sub; Lt )
 open import DirectedHoTT.Lib.Tel
 open import DirectedHoTT.Lib.TelAt using ( allSD; nth-⌜⌝ₛₛ )
 open import DirectedHoTT.Lib.MethAt
-open import DirectedHoTT.Lib.FinFam using ( FinD; FinI )
 open import DirectedHoTT.Lib.Sorted using ( σₛ; ιₛ; ⊢ιₛ; PerS; []ₚ; _∷ₚ_; ⊢sortMeth; ⊢methₛ; SortT )
 open import DirectedHoTT.Lib.Syn
 open import DirectedHoTT.Lib.SynView
@@ -102,13 +101,13 @@ module TravM {sg : Sig n} (ok : SigOK n sg) (κ : Kit n sg) (vok : VarsAt sg (Ki
       dp : Γ₄ ⊢ p₄ ∷ PayV vʰ ι₄ (SI n) (SD sg)
       dp = ⊢conv (⊢-cast (cong₃ (λ I D X → El (dpay I D X)) (SI-wks 5) SD-r4 (tel-r4 s vʰ)) (⊢var (there (there (there here)))))
                  (red→≅ᵀ (payV-red vʰ ι₄ (SI n) (SD sg)))
-      dx : Γ₄ ⊢ fst p₄ ∷ FinI j₄
-      dx = ⊢conv (⊢fst dp) (ctrnᵀ (credᵀ El-⌜IMu⌝) (credᵀ (ξ-IMuⁱ (βsnd _ _))))
+      dx : Γ₄ ⊢ fst p₄ ∷ Fin j₄
+      dx = ⊢conv (⊢fst dp) (ctrnᵀ (credᵀ El-⌜Fin⌝) (credᵀ (ξ-Fin (βsnd _ _))))
       de : Γ₄ ⊢ e₄ ∷ El ⌜Nat⌝
       de = ⊢var (there here)
       df : Γ₄ ⊢ f₄ ∷ Env j₄ e₄
       df = ⊢conv (⊢-cast (Env-ren vs (snd ι₃) (var vz)) (⊢var here))
-                 (red→≅ᵀ (⟶ᵀ*-Πˡ (⟶ᵀ*-IMu (step (βsnd _ _) done))))
+                 (red→≅ᵀ (⟶ᵀ*-Πˡ (⟶ᵀ*-Fin (step (βsnd _ _) done))))
       NODEv : Γ₄ ⊢ app (app NODE e₄) (app f₄ (fst p₄)) ∷ SK sg s e₄
       NODEv = subst (λ z → Γ₄ ⊢ app (app NODE e₄) (app f₄ (fst p₄)) ∷ SK sg z e₄) (vok ng nh)
                     (⊢NODE· de (⊢Env· df dx))
@@ -179,5 +178,5 @@ module TravM {sg : Sig n} (ok : SigOK n sg) (κ : Kit n sg) (vok : VarsAt sg (Ki
           Γ ⊢ trav s d t e f ∷ SK sg s e
   ⊢trav {s = s} {d = d} lt dd dt de df = ⊢IMu→SK {sg = sg} {s = s}
     (⊢conv (⊢TM· (⊢ielim ⊢SI (⊢SD ok) ⊢TM ⊢TRAVM (⊢ix lt dd) (⊢SK→IMu {sg = sg} {s = s} {d = d} dt)) de
-                (⊢conv df (csymᵀ (red→≅ᵀ (⟶ᵀ*-Πˡ (⟶ᵀ*-IMu (step (βsnd _ _) done)))))))
+                (⊢conv df (csymᵀ (red→≅ᵀ (⟶ᵀ*-Πˡ (⟶ᵀ*-Fin (step (βsnd _ _) done)))))))
           (red→≅ᵀ (⟶ᵀ*-IMu (⟶*-pairˡ (step (βfst _ _) done)))))
