@@ -567,9 +567,26 @@ tag rules key on it (`⊢fzero : Fin (suc n)`). After:
   - **Limits found**: Agda refuses literal patterns > 20 (entries are now a
     table); the WHOLE `KD` by normal form OOMs the type checker (cgroup cap,
     4.7 min) — per-constructor tests instead.
-  - ▶ **Next:** (i) generalize `#ren` to a kit (`#trav`), instances `#wk` and
-    `#sub` (substitution against `subTm`); (ii) design the Knot's move onto
-    `#KD` (every row's `fibK` chain changes; the evaluator computes them).
+  - ✅ **Kit-generic traversal (2026-10-05):** `#trav` takes the Lib's kit
+    (`VF`/`WK`/`V0`/`NODE`); the renaming kit and the substitution kit (its
+    `WK` is renaming, `NODE` the identity) are entries. A signature now
+    carries its variable sort `vs` and, in each variable shape, a proof
+    `Id (Fin n) vs s` — the Lib's `VarsAt` hypothesis AS DATA (once per
+    signature, not per term): the traversal's variable case transports the
+    kit's node along it, and at a concrete signature (`idrefl`) the
+    transport computes away. Entries are written by LEVEL (`L ℓ`).
+    Tests (`SigCoreTest`, `SigTravTest`, `SigSubKnotTest`; each with a
+    negative control): substitution on the λ-calculus, under a binder too;
+    at the Knot AGAINST THE KERNEL: `ren`/`sub` of a quotation = quotation of
+    `renTm vs`/`subTm (single u)`.
+  - ⚠ **Test-evaluator limit:** `Algorithm/Eval` is applicative order with
+    eager δ, so a substitution UNDER A BINDER at the Knot (its `WK` is a
+    nested `#trav`) normalises the generic traversal inlined in itself and
+    OOMs the type checker. Not an encoding problem (the λ-calculus covers
+    it); a normal-order / lazy-δ evaluator would lift it.
+  - ▶ **Next:** design the Knot's move onto `#KD = #SD 2 ⌜KSig⌝` (every
+    row's `fibK` chain changes); its operations (`wk`, `sub0`, `SubEnv`'s
+    named substitutions) become `#trav` instances.
 
 **Then, the migration recipe** (each step is one family):
 - a schema becomes a CLOSED λ-entry; an instance becomes
