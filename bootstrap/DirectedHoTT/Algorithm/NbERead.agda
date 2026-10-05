@@ -13,96 +13,99 @@
 --   stands for), so reading needs no scope argument; the readback's own
 --   map is `lvl Δ`.  Under a binder the map is weakened (`wkL`).
 --
--- ★ A DEFUNCTIONALISED closure reads as its rule's right-hand-side body;
---   `cloTrPw` is the exception (its rule's side condition is syntactic):
---   `vlam (cloTrPw d f e)` reads as the REDEX `tr ⌊d⌋ (lam ⌊f⌋) ⌊e⌋`.
+-- ★ The reading itself lives in `Algorithm/NbE` (readback falls back to it
+--   when the fuel runs out); this module is its algebra.
 --
 -- `--safe`, ZERO axioms.
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Algorithm.NbERead where
-open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂; _×_; _,_; ⊤; tt )
+open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂; subst; _×_; _,_; ⊤; tt )
 open import Agda.Builtin.Nat using ( zero; suc; _<_; _==_ ) renaming ( Nat to ℕ )
 open import Agda.Builtin.Bool using ( Bool; true; false )
+open import Agda.Builtin.Maybe using ( Maybe; just; nothing )
 open import DirectedHoTT.Spec.Syntax
-open import DirectedHoTT.Spec.Variance using ( pwBody )
+open import DirectedHoTT.Spec.Variance using ( pwBody; pwShift )
 open import DirectedHoTT.Algorithm.NbE
 
 private
   variable
     Γ Δ Θ : Cx
 
--- what the levels stand for
-Lv : Cx → Set
-Lv Δ = ℕ → RTm Δ
+cong₅ : {A B C D E F : Set} (f : A → B → C → D → E → F) {a a' : A} {b b' : B} {c c' : C} {d d' : D} {e e' : E} →
+        a ≡ a' → b ≡ b' → c ≡ c' → d ≡ d' → e ≡ e' → f a b c d e ≡ f a' b' c' d' e'
+cong₅ f refl refl refl refl refl = refl
 
-wkL : Lv Δ → Lv (Δ ∙)
-wkL L l = renTm vs (L l)
+_ᴸ_ : Ren Δ Θ → Lv Δ → Lv Θ
+(r ᴸ L) l = renTm r (L l)
 
-wk : RTm Δ → RTm (Δ ∙)
-wk = renTm vs
 
-⌊_⌋  : Val → Lv Δ → RTm Δ
-⌊_⌋ᶜ : Clo → Lv Δ → RTm (Δ ∙)
-⌊_⌋² : Clo₂ → Lv Δ → RTm ((Δ ∙) ∙)
-⌊_⌋ᵉ : Env Γ → Lv Δ → Sub Γ Δ
 
-⌊ [] ⌋ᵉ     L ()
-⌊ ρ , v ⌋ᵉ  L vz     = ⌊ v ⌋ L
-⌊ ρ , v ⌋ᵉ  L (vs x) = ⌊ ρ ⌋ᵉ L x
+-- reading respects POINTWISE-equal level maps (no scope needed)
+read-cong  : (v : Val) {L L' : Lv Δ} → (∀ l → L l ≡ L' l) → ⌊ v ⌋ L ≡ ⌊ v ⌋ L'
+read-congᶜ : (c : Clo) {L L' : Lv Δ} → (∀ l → L l ≡ L' l) → ⌊ c ⌋ᶜ L ≡ ⌊ c ⌋ᶜ L'
+read-cong² : (c : Clo₂) {L L' : Lv Δ} → (∀ l → L l ≡ L' l) → ⌊ c ⌋² L ≡ ⌊ c ⌋² L'
+read-congᵉ : (ρ : Env Γ) {L L' : Lv Δ} → (∀ l → L l ≡ L' l) → (x : Var Γ) → ⌊ ρ ⌋ᵉ L x ≡ ⌊ ρ ⌋ᵉ L' x
 
-⌊ clo ρ t ⌋ᶜ        L = subTm (extS (⌊ ρ ⌋ᵉ L)) t
-⌊ cloK v ⌋ᶜ         L = wk (⌊ v ⌋ L)
-⌊ cloHrefl C s ⌋ᶜ   L = hrefl (pwBody (⌊ C ⌋ L)) (app (wk (⌊ s ⌋ L)) (var vz))
-⌊ cloDpay I D f ⌋ᶜ  L = dpay (wk (⌊ I ⌋ L)) (wk (⌊ D ⌋ L)) (app (wk (⌊ f ⌋ L)) (var vz))
-⌊ cloHomTo C A ⌋ᶜ   L = ⌜Hom⌝ (wk (⌊ C ⌋ L)) (wk (⌊ A ⌋ L)) (var vz)
--- never read under a binder: `cloTrPw` only ever occurs as `vlam (cloTrPw …)`,
--- which `⌊_⌋` reads as its redex.  (Any term would do; this one is honest.)
-⌊ cloTrPw d f e ⌋ᶜ  L = app (wk (tr (⌊ d ⌋ᶜ L) (lam (⌊ f ⌋ᶜ L)) (⌊ e ⌋ L))) (var vz)
 
-⌊ clo₂ ρ t ⌋² L = subTm (extS (extS (⌊ ρ ⌋ᵉ L))) t
+bind-cong : (m : ℕ) {L L' : Lv Δ} → (∀ l → L l ≡ L' l) → ∀ l → bindL m L l ≡ bindL m L' l
+bind-cong m h l = cong (pickTm (l == m) (var vz)) (cong wk (h l))
 
-⌊ vvar l ⌋           L = L l
-⌊ vlam (cloTrPw d f e) ⌋ L = tr (⌊ d ⌋ᶜ L) (lam (⌊ f ⌋ᶜ L)) (⌊ e ⌋ L)
-⌊ vlam c ⌋           L = lam (⌊ c ⌋ᶜ L)
-⌊ vapp f a ⌋         L = app (⌊ f ⌋ L) (⌊ a ⌋ L)
-⌊ vpair a b ⌋        L = pair (⌊ a ⌋ L) (⌊ b ⌋ L)
-⌊ vabsurd c e ⌋      L = absurd (⌊ c ⌋ L) (⌊ e ⌋ L)
-⌊ vordtr a t u p q ⌋ L = ordtr (⌊ a ⌋ L) (⌊ t ⌋ L) (⌊ u ⌋ L) (⌊ p ⌋ L) (⌊ q ⌋ L)
-⌊ vfst p ⌋           L = fst (⌊ p ⌋ L)
-⌊ vsnd p ⌋           L = snd (⌊ p ⌋ L)
-⌊ v⌜base⌝ ⌋          L = ⌜base⌝
-⌊ v⌜Π⌝ c d ⌋         L = ⌜Π⌝ (⌊ c ⌋ L) (⌊ d ⌋ᶜ L)
-⌊ v⌜Σ⌝ c d ⌋         L = ⌜Σ⌝ (⌊ c ⌋ L) (⌊ d ⌋ᶜ L)
-⌊ v⌜Hom⌝ c a b ⌋     L = ⌜Hom⌝ (⌊ c ⌋ L) (⌊ a ⌋ L) (⌊ b ⌋ L)
-⌊ vhrefl c t ⌋       L = hrefl (⌊ c ⌋ L) (⌊ t ⌋ L)
-⌊ vtr d p e ⌋        L = tr (⌊ d ⌋ᶜ L) (⌊ p ⌋ L) (⌊ e ⌋ L)
-⌊ vap c b p ⌋        L = ap (⌊ c ⌋ L) (⌊ b ⌋ᶜ L) (⌊ p ⌋ L)
-⌊ v⌜Id⌝ c a b ⌋      L = ⌜Id⌝ (⌊ c ⌋ L) (⌊ a ⌋ L) (⌊ b ⌋ L)
-⌊ vidrefl c t ⌋      L = idrefl (⌊ c ⌋ L) (⌊ t ⌋ L)
-⌊ vjsub d p e ⌋      L = jsub (⌊ d ⌋ᶜ L) (⌊ p ⌋ L) (⌊ e ⌋ L)
-⌊ vunit ⌋            L = unit
-⌊ vnzero ⌋           L = nzero
-⌊ vnsuc t ⌋          L = nsuc (⌊ t ⌋ L)
-⌊ vnatrec z s t ⌋    L = natrec (⌊ z ⌋ L) (⌊ s ⌋² L) (⌊ t ⌋ L)
-⌊ vcon p ⌋           L = con (⌊ p ⌋ L)
-⌊ vielim D i e t ⌋   L = ielim (⌊ D ⌋ L) (⌊ i ⌋ L) (⌊ e ⌋ L) (⌊ t ⌋ L)
-⌊ vdι ⌋              L = dι
-⌊ vdσ S f ⌋          L = dσ (⌊ S ⌋ L) (⌊ f ⌋ L)
-⌊ vdρ j C ⌋          L = dρ (⌊ j ⌋ L) (⌊ C ⌋ L)
-⌊ vdpay I D C ⌋      L = dpay (⌊ I ⌋ L) (⌊ D ⌋ L) (⌊ C ⌋ L)
-⌊ vdih D e C p ⌋     L = dih (⌊ D ⌋ L) (⌊ e ⌋ L) (⌊ C ⌋ L) (⌊ p ⌋ L)
-⌊ vfzero ⌋           L = fzero
-⌊ vfsuc t ⌋          L = fsuc (⌊ t ⌋ L)
-⌊ vfcase t a b ⌋     L = fcase (⌊ t ⌋ L) (⌊ a ⌋ L) (⌊ b ⌋ᶜ L)
-⌊ vfcase0 t ⌋        L = fcase0 (⌊ t ⌋ L)
-⌊ vpsplit b p ⌋      L = psplit (⌊ b ⌋² L) (⌊ p ⌋ L)
-⌊ v⌜Nat⌝ ⌋           L = ⌜Nat⌝
-⌊ v⌜Unit⌝ ⌋          L = ⌜Unit⌝
-⌊ v⌜IMu⌝ I D i ⌋     L = ⌜IMu⌝ (⌊ I ⌋ L) (⌊ D ⌋ L) (⌊ i ⌋ L)
-⌊ v⌜Fin⌝ t ⌋         L = ⌜Fin⌝ (⌊ t ⌋ L)
-⌊ vref d b ⌋         L = ref d b
+read-congᵉ (ρ , v) h vz     = read-cong v h
+read-congᵉ (ρ , v) h (vs x) = read-congᵉ ρ h x
+
+read-congᶜ (clo ρ t) h = subTm-cong (extS-cong (read-congᵉ ρ h)) t
+read-congᶜ (cloK v) h = cong wk (read-cong v h)
+read-congᶜ (cloHrefl C sp s) h = cong₂ hrefl (cong pwBody (read-cong C h)) (cong (λ z → app (wk z) (var vz)) (read-cong s h))
+read-congᶜ (cloDpay I D f) h = cong₃ dpay (cong wk (read-cong I h)) (cong wk (read-cong D h)) (cong (λ z → app (wk z) (var vz)) (read-cong f h))
+read-congᶜ (cloHomTo C A) h = cong₃ ⌜Hom⌝ (cong wk (read-cong C h)) (cong wk (read-cong A h)) refl
+read-congᶜ (cloTrPw k₀ m c sp a d f e) h =
+  cong₃ tr (cong₃ ⌜Hom⌝ (cong (λ z → renTm pwShift (pwBody z)) (read-cong c (bind-cong m h)))
+                        (cong (λ z → app (renTm vs z) (var (vs vz))) (read-cong a (bind-cong m h))) refl)
+           (read-congᶜ f h) (cong (λ z → app (wk z) (var vz)) (read-cong e h))
+
+read-cong² (clo₂ ρ t) h = subTm-cong (extS-cong (extS-cong (read-congᵉ ρ h))) t
+
+read-cong (vvar l) h = h l
+read-cong (vlam c) h = cong lam (read-congᶜ c h)
+read-cong (vapp f a) h = cong₂ app (read-cong f h) (read-cong a h)
+read-cong (vpair a b) h = cong₂ pair (read-cong a h) (read-cong b h)
+read-cong (vabsurd c e) h = cong₂ absurd (read-cong c h) (read-cong e h)
+read-cong (vordtr a t u p q) h = cong₅ ordtr (read-cong a h) (read-cong t h) (read-cong u h) (read-cong p h) (read-cong q h)
+read-cong (vfst p) h = cong fst (read-cong p h)
+read-cong (vsnd p) h = cong snd (read-cong p h)
+read-cong v⌜base⌝ h = refl
+read-cong (v⌜Π⌝ c d) h = cong₂ ⌜Π⌝ (read-cong c h) (read-congᶜ d h)
+read-cong (v⌜Σ⌝ c d) h = cong₂ ⌜Σ⌝ (read-cong c h) (read-congᶜ d h)
+read-cong (v⌜Hom⌝ c a b) h = cong₃ ⌜Hom⌝ (read-cong c h) (read-cong a h) (read-cong b h)
+read-cong (vhrefl c t) h = cong₂ hrefl (read-cong c h) (read-cong t h)
+read-cong (vtr d p e) h = cong₃ tr (read-congᶜ d h) (read-cong p h) (read-cong e h)
+read-cong (vap c b p) h = cong₃ ap (read-cong c h) (read-congᶜ b h) (read-cong p h)
+read-cong (v⌜Id⌝ c a b) h = cong₃ ⌜Id⌝ (read-cong c h) (read-cong a h) (read-cong b h)
+read-cong (vidrefl c t) h = cong₂ idrefl (read-cong c h) (read-cong t h)
+read-cong (vjsub d p e) h = cong₃ jsub (read-congᶜ d h) (read-cong p h) (read-cong e h)
+read-cong vunit h = refl
+read-cong vnzero h = refl
+read-cong (vnsuc t) h = cong nsuc (read-cong t h)
+read-cong (vnatrec z s t) h = cong₃ natrec (read-cong z h) (read-cong² s h) (read-cong t h)
+read-cong (vcon p) h = cong con (read-cong p h)
+read-cong (vielim D i e t) h = cong₄ ielim (read-cong D h) (read-cong i h) (read-cong e h) (read-cong t h)
+read-cong vdι h = refl
+read-cong (vdσ S f) h = cong₂ dσ (read-cong S h) (read-cong f h)
+read-cong (vdρ j C) h = cong₂ dρ (read-cong j h) (read-cong C h)
+read-cong (vdpay I D C) h = cong₃ dpay (read-cong I h) (read-cong D h) (read-cong C h)
+read-cong (vdih D e C p) h = cong₄ dih (read-cong D h) (read-cong e h) (read-cong C h) (read-cong p h)
+read-cong vfzero h = refl
+read-cong (vfsuc t) h = cong fsuc (read-cong t h)
+read-cong (vfcase t a b) h = cong₃ fcase (read-cong t h) (read-cong a h) (read-congᶜ b h)
+read-cong (vfcase0 t) h = cong fcase0 (read-cong t h)
+read-cong (vpsplit b p) h = cong₂ psplit (read-cong² b h) (read-cong p h)
+read-cong v⌜Nat⌝ h = refl
+read-cong v⌜Unit⌝ h = refl
+read-cong (v⌜IMu⌝ I D i) h = cong₃ ⌜IMu⌝ (read-cong I h) (read-cong D h) (read-cong i h)
+read-cong (v⌜Fin⌝ t) h = cong ⌜Fin⌝ (read-cong t h)
+read-cong (vref d b) h = refl
 
 ------------------------------------------------------------------------
 -- RENAMING commutes with reading (no scope argument: the level map is
@@ -111,6 +114,24 @@ wk = renTm vs
 
 wk-ren : (r : Ren Δ Θ) (t : RTm Δ) → renTm (extR r) (wk t) ≡ wk (renTm r t)
 wk-ren r t = trans (renTm-renTm t) (sym (renTm-renTm t))
+
+-- renaming commutes with binding level m
+pick-ren : {Θ : Cx} (r : Ren Δ Θ) (b : Bool) (X : RTm Δ) → renTm (extR r) (pickTm b (var vz) (wk X)) ≡ pickTm b (var vz) (wk (renTm r X))
+pick-ren r true  X = refl
+pick-ren r false X = wk-ren r X
+
+bind-ren : {Θ : Cx} (r : Ren Δ Θ) (m : ℕ) (L : Lv Δ) → ∀ l → (extR r ᴸ bindL m L) l ≡ bindL m (r ᴸ L) l
+bind-ren r m L l = pick-ren r (l == m) (L l)
+
+-- pwShift commutes with a renaming under two binders
+pwShift-ren : {Θ : Cx} (r : Ren Δ Θ) (t : RTm ((Δ ∙) ∙)) →
+              renTm (extR (extR r)) (renTm pwShift t) ≡ renTm pwShift (renTm (extR (extR r)) t)
+pwShift-ren r t = trans (renTm-renTm t) (trans (renTm-cong pt t) (sym (renTm-renTm t)))
+  where
+  pt : ∀ x → (extR (extR r) ∘ᵣ pwShift) x ≡ (pwShift ∘ᵣ extR (extR r)) x
+  pt vz          = refl
+  pt (vs vz)     = refl
+  pt (vs (vs y)) = refl
 
 -- `pwBody` commutes with renaming at EVERY code (Variance's `pwBody-ren`
 -- asks `pw? C`; a reading may be any term)
@@ -157,17 +178,11 @@ pwBody-ren r t@(⌜Fin⌝ _) = wk-ren r t
 pwBody-ren r t@⌜Unit⌝ = wk-ren r t
 pwBody-ren r t@(ref _ _) = wk-ren r t
 
-_ᴸ_ : Ren Δ Θ → Lv Δ → Lv Θ
-(r ᴸ L) l = renTm r (L l)
-
-cong₅ : {A B C D E F : Set} (f : A → B → C → D → E → F) {a a' : A} {b b' : B} {c c' : C} {d d' : D} {e e' : E} →
-        a ≡ a' → b ≡ b' → c ≡ c' → d ≡ d' → e ≡ e' → f a b c d e ≡ f a' b' c' d' e'
-cong₅ f refl refl refl refl refl = refl
-
 ren⌊⌋  : (r : Ren Δ Θ) (v : Val) (L : Lv Δ) → renTm r (⌊ v ⌋ L) ≡ ⌊ v ⌋ (r ᴸ L)
 renᶜ   : (r : Ren Δ Θ) (c : Clo) (L : Lv Δ) → renTm (extR r) (⌊ c ⌋ᶜ L) ≡ ⌊ c ⌋ᶜ (r ᴸ L)
 ren²   : (r : Ren Δ Θ) (c : Clo₂) (L : Lv Δ) → renTm (extR (extR r)) (⌊ c ⌋² L) ≡ ⌊ c ⌋² (r ᴸ L)
 renᵉ   : (r : Ren Δ Θ) (ρ : Env Γ) (L : Lv Δ) (x : Var Γ) → (r ᵣ∘ₛ ⌊ ρ ⌋ᵉ L) x ≡ ⌊ ρ ⌋ᵉ (r ᴸ L) x
+
 
 renᵉ r (ρ , v) L vz     = ren⌊⌋ r v L
 renᵉ r (ρ , v) L (vs x) = renᵉ r ρ L x
@@ -177,7 +192,7 @@ renᶜ r (clo ρ t) L =
   (trans (subTm-cong (extr-exts r (⌊ ρ ⌋ᵉ L)) t)
          (subTm-cong (extS-cong (renᵉ r ρ L)) t))
 renᶜ r (cloK v) L = trans (wk-ren r (⌊ v ⌋ L)) (cong wk (ren⌊⌋ r v L))
-renᶜ r (cloHrefl C s) L =
+renᶜ r (cloHrefl C sp s) L =
   cong₂ hrefl (trans (pwBody-ren r (⌊ C ⌋ L)) (cong pwBody (ren⌊⌋ r C L)))
               (cong (λ z → app z (var vz)) (trans (wk-ren r (⌊ s ⌋ L)) (cong wk (ren⌊⌋ r s L))))
 renᶜ r (cloDpay I D f) L =
@@ -187,10 +202,18 @@ renᶜ r (cloDpay I D f) L =
 renᶜ r (cloHomTo C A) L =
   cong₃ ⌜Hom⌝ (trans (wk-ren r (⌊ C ⌋ L)) (cong wk (ren⌊⌋ r C L)))
               (trans (wk-ren r (⌊ A ⌋ L)) (cong wk (ren⌊⌋ r A L))) refl
-renᶜ r (cloTrPw d f e) L =
-  cong (λ z → app z (var vz))
-       (trans (wk-ren r (tr (⌊ d ⌋ᶜ L) (lam (⌊ f ⌋ᶜ L)) (⌊ e ⌋ L)))
-              (cong wk (cong₃ tr (renᶜ r d L) (cong lam (renᶜ r f L)) (ren⌊⌋ r e L))))
+renᶜ r (cloTrPw k₀ m c sp a d f e) L =
+  cong₃ tr
+    (cong₃ ⌜Hom⌝
+       (trans (pwShift-ren r (pwBody (⌊ c ⌋ (bindL m L))))
+              (cong (renTm pwShift) (trans (pwBody-ren (extR r) (⌊ c ⌋ (bindL m L)))
+                                           (cong pwBody (trans (ren⌊⌋ (extR r) c (bindL m L)) (read-cong c (bind-ren r m L)))))))
+       (cong (λ z → app z (var (vs vz)))
+             (trans (wk-ren (extR r) (⌊ a ⌋ (bindL m L)))
+                    (cong wk (trans (ren⌊⌋ (extR r) a (bindL m L)) (read-cong a (bind-ren r m L))))))
+       refl)
+    (renᶜ r f L)
+    (cong (λ z → app z (var vz)) (trans (wk-ren r (⌊ e ⌋ L)) (cong wk (ren⌊⌋ r e L))))
 
 ren² r (clo₂ ρ t) L =
   trans (renTm-subTm t)
@@ -199,12 +222,7 @@ ren² r (clo₂ ρ t) L =
          (subTm-cong (extS-cong (extS-cong (renᵉ r ρ L))) t)))
 
 ren⌊⌋ r (vvar l) L = refl
-ren⌊⌋ r (vlam (cloTrPw d f e)) L = cong₃ tr (renᶜ r d L) (cong lam (renᶜ r f L)) (ren⌊⌋ r e L)
-ren⌊⌋ r (vlam c@(clo _ _)) L      = cong lam (renᶜ r c L)
-ren⌊⌋ r (vlam c@(cloK _)) L       = cong lam (renᶜ r c L)
-ren⌊⌋ r (vlam c@(cloHrefl _ _)) L = cong lam (renᶜ r c L)
-ren⌊⌋ r (vlam c@(cloDpay _ _ _)) L = cong lam (renᶜ r c L)
-ren⌊⌋ r (vlam c@(cloHomTo _ _)) L = cong lam (renᶜ r c L)
+ren⌊⌋ r (vlam c) L = cong lam (renᶜ r c L)
 ren⌊⌋ r (vapp f a) L = cong₂ app (ren⌊⌋ r f L) (ren⌊⌋ r a L)
 ren⌊⌋ r (vpair a b) L = cong₂ pair (ren⌊⌋ r a L) (ren⌊⌋ r b L)
 ren⌊⌋ r (vabsurd c e) L = cong₂ absurd (ren⌊⌋ r c L) (ren⌊⌋ r e L)
@@ -243,6 +261,7 @@ ren⌊⌋ r (v⌜IMu⌝ I D i) L = cong₃ ⌜IMu⌝ (ren⌊⌋ r I L) (ren⌊�
 ren⌊⌋ r (v⌜Fin⌝ t) L = cong ⌜Fin⌝ (ren⌊⌋ r t L)
 ren⌊⌋ r (vref d b) L = refl
 
+
 ------------------------------------------------------------------------
 -- SCOPE: a value built at depth `n` mentions only the levels below `n`.
 -- Reading a scoped value depends only on what the levels below `n` stand
@@ -260,12 +279,18 @@ Scᵉ n (ρ , v) = Scᵉ n ρ × Sc n v
 
 Scᶜ n (clo ρ t)       = Scᵉ n ρ
 Scᶜ n (cloK v)        = Sc n v
-Scᶜ n (cloHrefl C s)  = Sc n C × Sc n s
+Scᶜ n (cloHrefl C sp s) = Sc n C × Sc n s
 Scᶜ n (cloDpay I D f) = Sc n I × (Sc n D × Sc n f)
 Scᶜ n (cloHomTo C A)  = Sc n C × Sc n A
-Scᶜ n (cloTrPw d f e) = Scᶜ n d × (Scᶜ n f × Sc n e)
+-- tr-pw: created at depth m (its motive scoped there), its stored ambient
+--   and endpoint bind level m (so they live below m + 1) — and ★ they ARE
+--   the inspection's result (the invariant the soundness proof reads)
+Scᶜ n (cloTrPw k₀ m c sp a d f e) =
+  ((m < suc n) ≡ true) × (Scᶜ m d × ((Sc (suc m) c × Sc (suc m) a) × (Scᶜ n f × (Sc n e × (trPwView k₀ m d ≡ just (trpw c sp a))))))
 
 Sc² n (clo₂ ρ t) = Scᵉ n ρ
+
+
 
 Sc n (vvar l)           = (l < n) ≡ true
 Sc n (vlam c)           = Scᶜ n c
@@ -307,82 +332,41 @@ Sc n (v⌜IMu⌝ I D i)     = Sc n I × (Sc n D × Sc n i)
 Sc n (v⌜Fin⌝ t)         = Sc n t
 Sc n (vref d b)         = ⊤
 
--- levels below n
-Below : ℕ → Lv Δ → Lv Δ → Set
-Below n L L' = (l : ℕ) → (l < n) ≡ true → L l ≡ L' l
-
-agree  : (n : ℕ) (v : Val) {L L' : Lv Δ} → Below n L L' → Sc n v → ⌊ v ⌋ L ≡ ⌊ v ⌋ L'
-agreeᶜ : (n : ℕ) (c : Clo) {L L' : Lv Δ} → Below n L L' → Scᶜ n c → ⌊ c ⌋ᶜ L ≡ ⌊ c ⌋ᶜ L'
-agree² : (n : ℕ) (c : Clo₂) {L L' : Lv Δ} → Below n L L' → Sc² n c → ⌊ c ⌋² L ≡ ⌊ c ⌋² L'
-agreeᵉ : (n : ℕ) (ρ : Env Γ) {L L' : Lv Δ} → Below n L L' → Scᵉ n ρ → (x : Var Γ) → ⌊ ρ ⌋ᵉ L x ≡ ⌊ ρ ⌋ᵉ L' x
-
-agreeᵉ n (ρ , v) h (sρ , sv) vz     = agree n v h sv
-agreeᵉ n (ρ , v) h (sρ , sv) (vs x) = agreeᵉ n ρ h sρ x
-
-agreeᶜ n (clo ρ t) h s = subTm-cong (extS-cong (agreeᵉ n ρ h s)) t
-agreeᶜ n (cloK v) h s = cong wk (agree n v h s)
-agreeᶜ n (cloHrefl C t) h (sC , st) =
-  cong₂ hrefl (cong pwBody (agree n C h sC)) (cong (λ z → app (wk z) (var vz)) (agree n t h st))
-agreeᶜ n (cloDpay I D f) h (sI , (sD , sf)) =
-  cong₃ dpay (cong wk (agree n I h sI)) (cong wk (agree n D h sD)) (cong (λ z → app (wk z) (var vz)) (agree n f h sf))
-agreeᶜ n (cloHomTo C A) h (sC , sA) = cong₃ ⌜Hom⌝ (cong wk (agree n C h sC)) (cong wk (agree n A h sA)) refl
-agreeᶜ n (cloTrPw d f e) h (sd , (sf , se)) =
-  cong (λ z → app (wk z) (var vz)) (cong₃ tr (agreeᶜ n d h sd) (cong lam (agreeᶜ n f h sf)) (agree n e h se))
-
-agree² n (clo₂ ρ t) h s = subTm-cong (extS-cong (extS-cong (agreeᵉ n ρ h s))) t
-
-agree n (vvar l) h s = h l s
-agree n (vlam (cloTrPw d f e)) h (sd , (sf , se)) =
-  cong₃ tr (agreeᶜ n d h sd) (cong lam (agreeᶜ n f h sf)) (agree n e h se)
-agree n (vlam c@(clo _ _)) h s       = cong lam (agreeᶜ n c h s)
-agree n (vlam c@(cloK _)) h s        = cong lam (agreeᶜ n c h s)
-agree n (vlam c@(cloHrefl _ _)) h s  = cong lam (agreeᶜ n c h s)
-agree n (vlam c@(cloDpay _ _ _)) h s = cong lam (agreeᶜ n c h s)
-agree n (vlam c@(cloHomTo _ _)) h s  = cong lam (agreeᶜ n c h s)
-agree n (vapp f a) h (s₁ , s₂) = cong₂ app (agree n f h s₁) (agree n a h s₂)
-agree n (vpair a b) h (s₁ , s₂) = cong₂ pair (agree n a h s₁) (agree n b h s₂)
-agree n (vabsurd c e) h (s₁ , s₂) = cong₂ absurd (agree n c h s₁) (agree n e h s₂)
-agree n (vordtr a t u p q) h (s₁ , (s₂ , (s₃ , (s₄ , s₅)))) =
-  cong₅ ordtr (agree n a h s₁) (agree n t h s₂) (agree n u h s₃) (agree n p h s₄) (agree n q h s₅)
-agree n (vfst p) h s = cong fst (agree n p h s)
-agree n (vsnd p) h s = cong snd (agree n p h s)
-agree n v⌜base⌝ h s = refl
-agree n (v⌜Π⌝ c d) h (s₁ , s₂) = cong₂ ⌜Π⌝ (agree n c h s₁) (agreeᶜ n d h s₂)
-agree n (v⌜Σ⌝ c d) h (s₁ , s₂) = cong₂ ⌜Σ⌝ (agree n c h s₁) (agreeᶜ n d h s₂)
-agree n (v⌜Hom⌝ c a b) h (s₁ , (s₂ , s₃)) = cong₃ ⌜Hom⌝ (agree n c h s₁) (agree n a h s₂) (agree n b h s₃)
-agree n (vhrefl c t) h (s₁ , s₂) = cong₂ hrefl (agree n c h s₁) (agree n t h s₂)
-agree n (vtr d p e) h (s₁ , (s₂ , s₃)) = cong₃ tr (agreeᶜ n d h s₁) (agree n p h s₂) (agree n e h s₃)
-agree n (vap c b p) h (s₁ , (s₂ , s₃)) = cong₃ ap (agree n c h s₁) (agreeᶜ n b h s₂) (agree n p h s₃)
-agree n (v⌜Id⌝ c a b) h (s₁ , (s₂ , s₃)) = cong₃ ⌜Id⌝ (agree n c h s₁) (agree n a h s₂) (agree n b h s₃)
-agree n (vidrefl c t) h (s₁ , s₂) = cong₂ idrefl (agree n c h s₁) (agree n t h s₂)
-agree n (vjsub d p e) h (s₁ , (s₂ , s₃)) = cong₃ jsub (agreeᶜ n d h s₁) (agree n p h s₂) (agree n e h s₃)
-agree n vunit h s = refl
-agree n vnzero h s = refl
-agree n (vnsuc t) h s = cong nsuc (agree n t h s)
-agree n (vnatrec z c t) h (s₁ , (s₂ , s₃)) = cong₃ natrec (agree n z h s₁) (agree² n c h s₂) (agree n t h s₃)
-agree n (vcon p) h s = cong con (agree n p h s)
-agree n (vielim D i e t) h (s₁ , (s₂ , (s₃ , s₄))) =
-  cong₄ ielim (agree n D h s₁) (agree n i h s₂) (agree n e h s₃) (agree n t h s₄)
-agree n vdι h s = refl
-agree n (vdσ S f) h (s₁ , s₂) = cong₂ dσ (agree n S h s₁) (agree n f h s₂)
-agree n (vdρ j C) h (s₁ , s₂) = cong₂ dρ (agree n j h s₁) (agree n C h s₂)
-agree n (vdpay I D C) h (s₁ , (s₂ , s₃)) = cong₃ dpay (agree n I h s₁) (agree n D h s₂) (agree n C h s₃)
-agree n (vdih D e C p) h (s₁ , (s₂ , (s₃ , s₄))) =
-  cong₄ dih (agree n D h s₁) (agree n e h s₂) (agree n C h s₃) (agree n p h s₄)
-agree n vfzero h s = refl
-agree n (vfsuc t) h s = cong fsuc (agree n t h s)
-agree n (vfcase t a b) h (s₁ , (s₂ , s₃)) = cong₃ fcase (agree n t h s₁) (agree n a h s₂) (agreeᶜ n b h s₃)
-agree n (vfcase0 t) h s = cong fcase0 (agree n t h s)
-agree n (vpsplit b p) h (s₁ , s₂) = cong₂ psplit (agree² n b h s₁) (agree n p h s₂)
-agree n v⌜Nat⌝ h s = refl
-agree n v⌜Unit⌝ h s = refl
-agree n (v⌜IMu⌝ I D i) h (s₁ , (s₂ , s₃)) = cong₃ ⌜IMu⌝ (agree n I h s₁) (agree n D h s₂) (agree n i h s₃)
-agree n (v⌜Fin⌝ t) h s = cong ⌜Fin⌝ (agree n t h s)
-agree n (vref d b) h s = refl
-
 -- scope is monotone in the depth
 Up : ℕ → ℕ → Set
 Up n m = (l : ℕ) → (l < n) ≡ true → (l < m) ≡ true
+
+-- a bound level stays below the (raised) depth
+lt-suc : (l n : ℕ) → (l < n) ≡ true → (l < suc n) ≡ true
+lt-suc zero    n       h = refl
+lt-suc (suc l) zero    ()
+lt-suc (suc l) (suc n) h = lt-suc l n h
+
+up-suc : (n : ℕ) → Up n (suc n)
+up-suc n l = lt-suc l n
+
+up-zero : (n : ℕ) → Up 0 n
+up-zero n l ()
+
+-- a bound below n + 1 raises to n
+
+up-le : {n n' : ℕ} → Up n n' → (m : ℕ) → (m < suc n) ≡ true → (m < suc n') ≡ true
+up-le {n} {n'} h m e = byLt (m < n) refl
+  where
+  lt-refl : (k : ℕ) → (k < suc k) ≡ true
+  lt-refl zero    = refl
+  lt-refl (suc k) = lt-refl k
+  le-not-lt : (m n : ℕ) → (m < suc n) ≡ true → (m < n) ≡ false → m ≡ n
+  le-not-lt zero    zero    e f = refl
+  le-not-lt zero    (suc n) e ()
+  le-not-lt (suc m) zero    () f
+  le-not-lt (suc m) (suc n) e f = cong suc (le-not-lt m n e f)
+  n-le : (k : ℕ) → Up k n' → (k < suc n') ≡ true
+  n-le zero    h' = refl
+  n-le (suc k) h' = h' k (lt-refl k)
+  byLt : (b : Bool) → (m < n) ≡ b → (m < suc n') ≡ true
+  byLt true  p = lt-suc m n' (h m p)
+  byLt false p = subst (λ x → (x < suc n') ≡ true) (sym (le-not-lt m n e p)) (n-le n h)
 
 mono  : {n m : ℕ} (v : Val) → Up n m → Sc n v → Sc m v
 monoᶜ : {n m : ℕ} (c : Clo) → Up n m → Scᶜ n c → Scᶜ m c
@@ -393,10 +377,11 @@ monoᵉ [] h s1 = tt
 monoᵉ (ρ , v) h (s1 , s2) = (monoᵉ ρ h s1 , mono v h s2)
 monoᶜ (clo ρ t) h s1 = monoᵉ ρ h s1
 monoᶜ (cloK v) h s1 = mono v h s1
-monoᶜ (cloHrefl C s) h (s1 , s2) = (mono C h s1 , mono s h s2)
+monoᶜ (cloHrefl C sp s) h (s1 , s2) = (mono C h s1 , mono s h s2)
 monoᶜ (cloDpay I D f) h (s1 , (s2 , s3)) = (mono I h s1 , (mono D h s2 , mono f h s3))
 monoᶜ (cloHomTo C A) h (s1 , s2) = (mono C h s1 , mono A h s2)
-monoᶜ (cloTrPw d f e) h (s1 , (s2 , s3)) = (monoᶜ d h s1 , (monoᶜ f h s2 , mono e h s3))
+monoᶜ (cloTrPw k₀ m c sp a d f e) h (mn , (sd , (sca , (sf , (se , eq))))) =
+  (up-le h m mn , (sd , (sca , (monoᶜ f h sf , (mono e h se , eq)))))
 mono² (clo₂ ρ t) h s1 = monoᵉ ρ h s1
 mono (vvar l) h s1 = h l s1
 mono (vlam c) h s1 = monoᶜ c h s1
@@ -438,13 +423,112 @@ mono (v⌜IMu⌝ I D i) h (s1 , (s2 , s3)) = (mono I h s1 , (mono D h s2 , mono 
 mono (v⌜Fin⌝ t) h s1 = mono t h s1
 mono (vref d b) h s1 = tt
 
-lt-suc : (l n : ℕ) → (l < n) ≡ true → (l < suc n) ≡ true
-lt-suc zero    n       h = refl
-lt-suc (suc l) zero    ()
-lt-suc (suc l) (suc n) h = lt-suc l n h
+up-of-le : (m n : ℕ) → (m < suc n) ≡ true → Up m n
+up-of-le m n mn l p = <-trans≤′ l m n p mn
+  where
+  <-trans≤′ : (l m n : ℕ) → (l < m) ≡ true → (m < suc n) ≡ true → (l < n) ≡ true
+  <-trans≤′ zero    (suc m) zero    e ()
+  <-trans≤′ zero    (suc m) (suc n) e f = refl
+  <-trans≤′ (suc l) (suc m) zero    e ()
+  <-trans≤′ (suc l) (suc m) (suc n) e f = <-trans≤′ l m n e f
+  <-trans≤′ zero    zero    n       () f
+  <-trans≤′ (suc l) zero    n       () f
 
-up-suc : (n : ℕ) → Up n (suc n)
-up-suc n l = lt-suc l n
+-- levels below n
+Below : ℕ → Lv Δ → Lv Δ → Set
+Below n L L' = (l : ℕ) → (l < n) ≡ true → L l ≡ L' l
 
-up-zero : (n : ℕ) → Up 0 n
-up-zero n l ()
+-- ★ arithmetic on the Boolean order
+private
+  <-split : (l m : ℕ) → (l < suc m) ≡ true → (l == m) ≡ false → (l < m) ≡ true
+  <-split zero    zero    e ()
+  <-split zero    (suc m) e f = refl
+  <-split (suc l) zero    () f
+  <-split (suc l) (suc m) e f = <-split l m e f
+
+  <-trans≤ : (l m n : ℕ) → (l < m) ≡ true → (m < suc n) ≡ true → (l < n) ≡ true
+  <-trans≤ zero    (suc m) zero    e ()
+  <-trans≤ zero    (suc m) (suc n) e f = refl
+  <-trans≤ (suc l) (suc m) zero    e ()
+  <-trans≤ (suc l) (suc m) (suc n) e f = <-trans≤ l m n e f
+  <-trans≤ zero    zero    n       () f
+  <-trans≤ (suc l) zero    n       () f
+
+  pick-agree : {L L' : Lv Δ} (b : Bool) (l : ℕ) → (b ≡ false → L l ≡ L' l) →
+               pickTm b (var vz) (wk (L l)) ≡ pickTm b (var vz) (wk (L' l))
+  pick-agree true  l h = refl
+  pick-agree false l h = cong wk (h refl)
+
+-- binding level m keeps two maps agreeing (one level higher)
+bind-below : (n m : ℕ) {L L' : Lv Δ} → Below n L L' → (m < suc n) ≡ true → Below (suc m) (bindL m L) (bindL m L')
+bind-below n m {L} {L'} h mn l p = pick-agree {L = L} {L' = L'} (l == m) l (λ f → h l (<-trans≤ l m n (<-split l m p f) mn))
+
+agree  : (n : ℕ) (v : Val) {L L' : Lv Δ} → Below n L L' → Sc n v → ⌊ v ⌋ L ≡ ⌊ v ⌋ L'
+agreeᶜ : (n : ℕ) (c : Clo) {L L' : Lv Δ} → Below n L L' → Scᶜ n c → ⌊ c ⌋ᶜ L ≡ ⌊ c ⌋ᶜ L'
+agree² : (n : ℕ) (c : Clo₂) {L L' : Lv Δ} → Below n L L' → Sc² n c → ⌊ c ⌋² L ≡ ⌊ c ⌋² L'
+agreeᵉ : (n : ℕ) (ρ : Env Γ) {L L' : Lv Δ} → Below n L L' → Scᵉ n ρ → (x : Var Γ) → ⌊ ρ ⌋ᵉ L x ≡ ⌊ ρ ⌋ᵉ L' x
+
+
+agreeᵉ n (ρ , v) h (sρ , sv) vz     = agree n v h sv
+agreeᵉ n (ρ , v) h (sρ , sv) (vs x) = agreeᵉ n ρ h sρ x
+
+agreeᶜ n (clo ρ t) h s = subTm-cong (extS-cong (agreeᵉ n ρ h s)) t
+agreeᶜ n (cloK v) h s = cong wk (agree n v h s)
+agreeᶜ n (cloHrefl C sp t) h (sC , st) =
+  cong₂ hrefl (cong pwBody (agree n C h sC)) (cong (λ z → app (wk z) (var vz)) (agree n t h st))
+agreeᶜ n (cloDpay I D f) h (sI , (sD , sf)) =
+  cong₃ dpay (cong wk (agree n I h sI)) (cong wk (agree n D h sD)) (cong (λ z → app (wk z) (var vz)) (agree n f h sf))
+agreeᶜ n (cloHomTo C A) h (sC , sA) = cong₃ ⌜Hom⌝ (cong wk (agree n C h sC)) (cong wk (agree n A h sA)) refl
+agreeᶜ n (cloTrPw k₀ m c sp a d f e) h (mn , (sd , ((sc , sa) , (sf , (se , eq))))) =
+  cong₃ tr
+    (cong₃ ⌜Hom⌝ (cong (λ z → renTm pwShift (pwBody z)) (agree (suc m) c (bind-below n m h mn) sc))
+                 (cong (λ z → app (renTm vs z) (var (vs vz))) (agree (suc m) a (bind-below n m h mn) sa))
+                 refl)
+    (agreeᶜ n f h sf)
+    (cong (λ z → app (wk z) (var vz)) (agree n e h se))
+
+agree² n (clo₂ ρ t) h s = subTm-cong (extS-cong (extS-cong (agreeᵉ n ρ h s))) t
+
+agree n (vvar l) h s = h l s
+agree n (vlam c) h s = cong lam (agreeᶜ n c h s)
+agree n (vapp f a) h (s₁ , s₂) = cong₂ app (agree n f h s₁) (agree n a h s₂)
+agree n (vpair a b) h (s₁ , s₂) = cong₂ pair (agree n a h s₁) (agree n b h s₂)
+agree n (vabsurd c e) h (s₁ , s₂) = cong₂ absurd (agree n c h s₁) (agree n e h s₂)
+agree n (vordtr a t u p q) h (s₁ , (s₂ , (s₃ , (s₄ , s₅)))) =
+  cong₅ ordtr (agree n a h s₁) (agree n t h s₂) (agree n u h s₃) (agree n p h s₄) (agree n q h s₅)
+agree n (vfst p) h s = cong fst (agree n p h s)
+agree n (vsnd p) h s = cong snd (agree n p h s)
+agree n v⌜base⌝ h s = refl
+agree n (v⌜Π⌝ c d) h (s₁ , s₂) = cong₂ ⌜Π⌝ (agree n c h s₁) (agreeᶜ n d h s₂)
+agree n (v⌜Σ⌝ c d) h (s₁ , s₂) = cong₂ ⌜Σ⌝ (agree n c h s₁) (agreeᶜ n d h s₂)
+agree n (v⌜Hom⌝ c a b) h (s₁ , (s₂ , s₃)) = cong₃ ⌜Hom⌝ (agree n c h s₁) (agree n a h s₂) (agree n b h s₃)
+agree n (vhrefl c t) h (s₁ , s₂) = cong₂ hrefl (agree n c h s₁) (agree n t h s₂)
+agree n (vtr d p e) h (s₁ , (s₂ , s₃)) = cong₃ tr (agreeᶜ n d h s₁) (agree n p h s₂) (agree n e h s₃)
+agree n (vap c b p) h (s₁ , (s₂ , s₃)) = cong₃ ap (agree n c h s₁) (agreeᶜ n b h s₂) (agree n p h s₃)
+agree n (v⌜Id⌝ c a b) h (s₁ , (s₂ , s₃)) = cong₃ ⌜Id⌝ (agree n c h s₁) (agree n a h s₂) (agree n b h s₃)
+agree n (vidrefl c t) h (s₁ , s₂) = cong₂ idrefl (agree n c h s₁) (agree n t h s₂)
+agree n (vjsub d p e) h (s₁ , (s₂ , s₃)) = cong₃ jsub (agreeᶜ n d h s₁) (agree n p h s₂) (agree n e h s₃)
+agree n vunit h s = refl
+agree n vnzero h s = refl
+agree n (vnsuc t) h s = cong nsuc (agree n t h s)
+agree n (vnatrec z c t) h (s₁ , (s₂ , s₃)) = cong₃ natrec (agree n z h s₁) (agree² n c h s₂) (agree n t h s₃)
+agree n (vcon p) h s = cong con (agree n p h s)
+agree n (vielim D i e t) h (s₁ , (s₂ , (s₃ , s₄))) =
+  cong₄ ielim (agree n D h s₁) (agree n i h s₂) (agree n e h s₃) (agree n t h s₄)
+agree n vdι h s = refl
+agree n (vdσ S f) h (s₁ , s₂) = cong₂ dσ (agree n S h s₁) (agree n f h s₂)
+agree n (vdρ j C) h (s₁ , s₂) = cong₂ dρ (agree n j h s₁) (agree n C h s₂)
+agree n (vdpay I D C) h (s₁ , (s₂ , s₃)) = cong₃ dpay (agree n I h s₁) (agree n D h s₂) (agree n C h s₃)
+agree n (vdih D e C p) h (s₁ , (s₂ , (s₃ , s₄))) =
+  cong₄ dih (agree n D h s₁) (agree n e h s₂) (agree n C h s₃) (agree n p h s₄)
+agree n vfzero h s = refl
+agree n (vfsuc t) h s = cong fsuc (agree n t h s)
+agree n (vfcase t a b) h (s₁ , (s₂ , s₃)) = cong₃ fcase (agree n t h s₁) (agree n a h s₂) (agreeᶜ n b h s₃)
+agree n (vfcase0 t) h s = cong fcase0 (agree n t h s)
+agree n (vpsplit b p) h (s₁ , s₂) = cong₂ psplit (agree² n b h s₁) (agree n p h s₂)
+agree n v⌜Nat⌝ h s = refl
+agree n v⌜Unit⌝ h s = refl
+agree n (v⌜IMu⌝ I D i) h (s₁ , (s₂ , s₃)) = cong₃ ⌜IMu⌝ (agree n I h s₁) (agree n D h s₂) (agree n i h s₃)
+agree n (v⌜Fin⌝ t) h s = cong ⌜Fin⌝ (agree n t h s)
+agree n (vref d b) h s = refl
+
