@@ -151,6 +151,37 @@ with cached imports (the floor, loading SigCore, is ~5.5 s / 0.48 GB).
 - **Control:** replacing `fcase-s` by a wrong clause makes the oracle name
   row 40 (the datatype fold).
 
+### 2c. E3 design — soundness by READING values as terms (2026-10-05)
+
+The certificate the checker needs is `t ⟶* nbe t` (a "yes" is then two
+chains meeting; a "no" is two distinct NORMAL forms, `nf-uniqueᵀ` as today,
+with `Nf` decided structurally from `head ≡ nothing`). The proof does not
+need a logical relation: values are syntax-shaped, so READ them back as
+(not necessarily normal) terms.
+
+- **`⌊_⌋ : (Δ : Cx) → Val → RTm Δ`**, levels to indices as in `rb`, a
+  syntactic closure `clo ρ t` read as `subTm (extS ⌊ρ⌋) t`, a stuck
+  eliminator as itself. A DEFUNCTIONALISED closure reads as its rule's
+  right-hand-side body (`cloHrefl C s` ↦ `hrefl (pwBody ⌊C⌋) (app (wk ⌊s⌋) v₀)`
+  — `C` is forced, so `pwBody` sees the head), EXCEPT ★ `cloTrPw`, whose
+  rule has a syntactic side condition (`tr-pw` needs the motive LITERALLY
+  `⌜Hom⌝ c a (var vz)`): `vlam (cloTrPw d f e)` reads as the REDEX
+  `tr ⌊d⌋ (lam ⌊f⌋) ⌊e⌋`, and readback first reduces the motive to that
+  shape (it is `d` at the fresh level), then takes the `tr-pw` step.
+- **Scoping invariant:** values built at depth `n` mention levels `< n`
+  only; `⌊_⌋` at `Δ` with `len Δ = n`. Weakening stability
+  `⌊v⌋_{Δ∙} ≡ renTm vs ⌊v⌋_Δ` by induction on values (the existing
+  `renTm-subTm`/`subTm-subTm`/`exts-*` fusion lemmas).
+- **Lemmas, by induction on fuel mirroring the evaluator:**
+  ① `subTm ⌊ρ⌋ t ⟶* ⌊eval ρ t⌋` (congruences via `map*`; β/δ/each rule one
+  step plus a fusion equation); ② each smart eliminator:
+  `elim ⌊args⌋ ⟶* ⌊smartElim args⌋`; ③ `force`: `⌊v⌋ ⟶* ⌊force v⌋`;
+  ④ the guards: `pwV v ≡ true → pw? ⌊force v⌋ ≡ true` (likewise `stkV`);
+  ⑤ readback: `⌊v⌋ ⟶* rb v`. Then `t ≡ subTm ⌊idEnv⌋ t ⟶* ⌊⟦t⟧⌋ ⟶* nbe t`.
+- Types the same way over `_⟶ᵀ_`.
+- Estimated 1500–2500 lines; the per-rule lemmas mirror `Eval.head`'s
+  clauses. Totality without fuel (Q4) is separate and later.
+
 **Fallback, recorded and not chosen.** If E0's gate fails because Agda's
 evaluator itself is the limit, run evaluation tests COMPILED (MAlonzo, a
 test executable) and keep `refl` tests only for small cases. That would
