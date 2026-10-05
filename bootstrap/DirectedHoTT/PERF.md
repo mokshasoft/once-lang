@@ -483,3 +483,25 @@ emitted module.
 
   run TWICE — the first rebuilds the closure, the second measures M.  Any
   per-module claim not made from the second run is not evidence.
+
+## 7. 2026-10-05 — unfolding COUNTS are not time (SigCore's checker run)
+
+`agda-profile.sh` on `Examples/SigCore` (74 s, all inside `wf`, the
+checker run): 27 M unfoldings, of which `DecEq._≟ℕ_` 4.9 M — the entry
+lookup `SigBuild.ext` comparing entry numbers by the proof-carrying
+`_≟ℕ_`. Replaced by the primitive Bool `_==_` (nothing reasons about `ext`):
+
+| `ext` | SigCore (cold recheck) |
+|---|---|
+| `with d ≟ℕ n` (as is) | 69.8 s / 4.0 GB |
+| `pick (d == n) a (f d)`, top-level `pick` | 65.6 s / 4.6 GB — inside noise |
+| `if d == n then … ` with `if` in a `where` | **> 222 s, killed** |
+
+- The 4.9 M unfoldings cost almost nothing: rank by CPU/allocation per
+  site, never by unfolding count.
+- ★ A `where`-local helper in a HOT lookup is a cliff: the `where` function
+  is lifted over `ext`'s arguments (the table `f` and the entry `a`), and
+  the sharing the `with` version had is lost. Kept the original.
+- The real costs of `wf` are spread (DecEq encodings for the erasure
+  comparison, elaboration, `Eval`, substitution); none dominates. The
+  environment evaluator (PLAN-EVAL) is not on this path yet.
