@@ -48,6 +48,7 @@ open import DirectedHoTT.Lib.Tel
 open import DirectedHoTT.Lib.MethAt
 open import DirectedHoTT.Lib.NatFib
 open import DirectedHoTT.Lib.FinFam
+open import DirectedHoTT.Lib.NatCode
 
 -- `El (⌜IMu⌝ ⌜Nat⌝ FinD n) ≅ᵀ Fin n`
 fromFin : {Γ : Ctx} {n t : RTm ⌊ Γ ⌋} → Γ ⊢ t ∷ El (⌜IMu⌝ ⌜Nat⌝ FinD n) → Γ ⊢ t ∷ FinI n

@@ -41,6 +41,7 @@ open import DirectedHoTT.Lib.Tel
 open import DirectedHoTT.Lib.TelFold using ( sizeAlg; foldMs; ⊢foldE; fold-ι )
 
 open import DirectedHoTT.Lib.FinFam public
+open import DirectedHoTT.Lib.NatCode public
 
 ------------------------------------------------------------------------
 -- 2. THE SYNTAX — telescopes over the index `n` (`var vz`).  No field

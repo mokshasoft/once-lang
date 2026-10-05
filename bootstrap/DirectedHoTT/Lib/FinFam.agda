@@ -24,30 +24,8 @@ open import DirectedHoTT.Metatheory.TySub using ( ⊢wk )
 open import DirectedHoTT.Lib.Sugar using ( conₗ; []; nth-z; nth-s; []ᵈ )
 open import DirectedHoTT.Lib.Tel
 open import DirectedHoTT.Lib.NatFib
+open import DirectedHoTT.Lib.NatCode using ( toI; fromI )
 
-------------------------------------------------------------------------
--- 0. The index CODE: context depth.  `El ⌜Nat⌝` decodes to `Nat`.
-------------------------------------------------------------------------
-
-INat : {Γ : Cx} → RTy Γ
-INat = El ⌜Nat⌝
-
-toI : {Γ : Ctx} {t : RTm ⌊ Γ ⌋} → Γ ⊢ t ∷ Nat → Γ ⊢ t ∷ El ⌜Nat⌝
-toI d = ⊢conv d (csymᵀ (credᵀ El-⌜Nat⌝))
-
-fromI : {Γ : Ctx} {t : RTm ⌊ Γ ⌋} → Γ ⊢ t ∷ El ⌜Nat⌝ → Γ ⊢ t ∷ Nat
-fromI d = ⊢conv d (credᵀ El-⌜Nat⌝)
-
--- `suc` of an index, as an index
-⊢isuc : {Γ : Ctx} {t : RTm ⌊ Γ ⌋} → Γ ⊢ t ∷ El ⌜Nat⌝ → Γ ⊢ nsuc t ∷ El ⌜Nat⌝
-⊢isuc d = toI (⊢nsuc (fromI d))
-
--- an index equation, as a code, and its canonical proof
-⊢Eq : {Γ : Ctx} {a b : RTm ⌊ Γ ⌋} → Γ ⊢ a ∷ El ⌜Nat⌝ → Γ ⊢ b ∷ El ⌜Nat⌝ → Γ ⊢ ⌜Id⌝ ⌜Nat⌝ a b ∷ U
-⊢Eq = ⊢⌜Id⌝ ⊢⌜Nat⌝
-
-⊢eqrefl : {Γ : Ctx} {a : RTm ⌊ Γ ⌋} → Γ ⊢ a ∷ El ⌜Nat⌝ → Γ ⊢ idrefl ⌜Nat⌝ a ∷ El (⌜Id⌝ ⌜Nat⌝ a a)
-⊢eqrefl {a = a} da = ⊢conv (⊢idrefl ⊢⌜Nat⌝ da) (csymᵀ (credᵀ (El-⌜Id⌝ ⌜Nat⌝ a a)))
 
 ------------------------------------------------------------------------
 -- 1. `Fin` — the constructors at `suc m`, telescopes over `m`.

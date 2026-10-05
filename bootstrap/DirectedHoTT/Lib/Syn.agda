@@ -46,7 +46,8 @@ open import DirectedHoTT.Lib.Sugar using ( tag; conₗ; Lt; lt-z; lt-s; Cons; []
 open import DirectedHoTT.Lib.Tel
 open import DirectedHoTT.Lib.Sorted
 open import DirectedHoTT.Lib.TelAt
-open import DirectedHoTT.Lib.FinFam using ( FinD; ⊢FinD; FinI; ⊢isuc; toI )
+open import DirectedHoTT.Lib.FinFam using ( FinD; ⊢FinD; FinI )
+open import DirectedHoTT.Lib.NatCode using ( ⊢isuc; toI )
 
 private
   variable

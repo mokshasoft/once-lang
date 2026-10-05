@@ -15,7 +15,7 @@ open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax hiding ( Fin )
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Lib.Sugar using ( Lt; lt-z; lt-s; tag; _,ₚ_; v₀; v₁ )
-open import DirectedHoTT.Lib.FinFam using ( toI; fromI )
+open import DirectedHoTT.Lib.NatCode using ( toI; fromI )
 open import DirectedHoTT.Metatheory.TySub using ( ⊢-cast )
 open import normalizer.Syntax.Types using ( cong₂ )
 open import DirectedHoTT.Lib.Syn

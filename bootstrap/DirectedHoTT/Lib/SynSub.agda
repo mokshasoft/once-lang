@@ -32,6 +32,7 @@ open import DirectedHoTT.Lib.TelAt using ( ⊢payAt )
 open import DirectedHoTT.Lib.MethAt
 open import DirectedHoTT.Lib.NatFib
 open import DirectedHoTT.Lib.FinFam
+open import DirectedHoTT.Lib.NatCode
 open import DirectedHoTT.Lib.Syn
 open import DirectedHoTT.Lib.SynTrav
 open import DirectedHoTT.Lib.SynTravM

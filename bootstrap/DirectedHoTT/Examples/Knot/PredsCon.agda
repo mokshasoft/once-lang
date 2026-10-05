@@ -20,7 +20,7 @@ open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; ⟶ᵀ*-El; �
 open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_; tag; conₗ; lt-z; lt-s; nth-z; nth-s; atᶜ; []ᵈ; _∷ᵈ_; v₀; v₁; v₂; v₃; _,ₚ_ )
 open import DirectedHoTT.Lib.SynFib using ( ⊢conRowₖ )
 open import DirectedHoTT.Lib.SynRed
-open import DirectedHoTT.Lib.FinFam using ( ⊢isuc )
+open import DirectedHoTT.Lib.NatCode using ( ⊢isuc )
 open import DirectedHoTT.Lib.Tel
 open import DirectedHoTT.Lib.Syn
 open import DirectedHoTT.Examples.Knot.Ctors

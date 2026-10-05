@@ -42,6 +42,7 @@ open import DirectedHoTT.Lib.TelAt using ( ⊢payAt )
 open import DirectedHoTT.Lib.MethAt
 open import DirectedHoTT.Lib.NatFib
 open import DirectedHoTT.Lib.FinFam
+open import DirectedHoTT.Lib.NatCode
 open import DirectedHoTT.Lib.Syn
 open import DirectedHoTT.Lib.Sorted using ( unSortI; σₛ; ιₛ; ⊢ιₛ; PerS; []ₚ; _∷ₚ_; SortT; ⊢sortMeth; ⊢methₛ; NthS; nthˢ-z; nthˢ-s )
 open import DirectedHoTT.Lib.SynView

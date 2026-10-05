@@ -201,7 +201,8 @@ module DirectedHoTT.Examples.Knot.Terms where
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
-open import DirectedHoTT.Lib.FinFam using ( FinI; ffz; ffs; ⊢ffz; ⊢ffs; toI; ⊢isuc )
+open import DirectedHoTT.Lib.FinFam using ( FinI; ffz; ffs; ⊢ffz; ⊢ffs )
+open import DirectedHoTT.Lib.NatCode using ( toI; ⊢isuc )
 open import DirectedHoTT.Lib.Syn
 open import DirectedHoTT.Examples.Knot.Sig
 

@@ -15,7 +15,7 @@ open import normalizer.Syntax.Types using ( Σ; _,_ )
 open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; stepᵀ; ⟶ᵀ*-Idʳ )
-open import DirectedHoTT.Lib.FinFam using ( ⊢isuc )
+open import DirectedHoTT.Lib.NatCode using ( ⊢isuc )
 open import DirectedHoTT.Examples.Knot.Terms
 open import DirectedHoTT.Examples.Knot.Ctx
 open import DirectedHoTT.Examples.Knot.Ren using ( wk )
