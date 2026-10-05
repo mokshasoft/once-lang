@@ -16,13 +16,17 @@ open import DirectedHoTT.Spec.Syntax using ( ε; _∙; vz; vs )
 open import DirectedHoTT.Spec.Signature using ( Sig )
 import DirectedHoTT.Spec.Syntax as R
 open import DirectedHoTT.Algorithm.Eval using ( eval; nfd; out )
+open import DirectedHoTT.Algorithm.ConvLazy using ( normLazy )
+open import normalizer.Syntax.Types using ( _,_ )
 open import DirectedHoTT.Lib.Sugar using ( tag )
 open import DirectedHoTT.Examples.SigCore using ( S )
 
+-- ★ the NORMAL-ORDER reduct (`Algorithm/ConvLazy.normLazy`): weak-head
+--   first, so an unapplied generic definition is never normalised; a
+--   reduct of the input (its chain is the evidence a `refl` test rests on)
 nfOf : {Γ : R.Cx} → R.RTm Γ → R.RTm Γ
-nfOf t with eval 100000 t
-... | nfd u _ _ = u
-... | out u _   = u
+nfOf t with normLazy 100000 t
+... | u , _ = u
 
 normal? : {Γ : R.Cx} → R.RTm Γ → Bool
 normal? t with eval 100000 t

@@ -584,9 +584,41 @@ tag rules key on it (`⊢fzero : Fin (suc n)`). After:
     nested `#trav`) normalises the generic traversal inlined in itself and
     OOMs the type checker. Not an encoding problem (the λ-calculus covers
     it); a normal-order / lazy-δ evaluator would lift it.
-  - ▶ **Next:** design the Knot's move onto `#KD = #SD 2 ⌜KSig⌝` (every
-    row's `fibK` chain changes); its operations (`wk`, `sub0`, `SubEnv`'s
-    named substitutions) become `#trav` instances.
+  - ↺ **Decoder form, REVISED (2026-10-05): back to the Lib's form.** The
+    migration recipe moves the Knot family by family, which needs the core
+    `#KD` CONVERTIBLE with the Lib's `KD` — only the map-then-select form
+    is. Generic programs walk its `tabD` cascades with ONE generic entry,
+    `#walk` (lockstep natrec + fcase over a table of descriptions, a
+    convoy over payload, hypotheses and a node builder `mk`); the method
+    walks sorts, then constructors. So the Lib form is generic AND
+    compatible; select-then-map's only advantage was cheaper evaluation.
+    All 34 entries check (`wf`), the decoder tests pass.
+  - ★ **Lazy conversion in the checker** (`Algorithm/ConvLazy`, hooked
+    first in `CheckA.decTo`): syntactic, then certified weak-head, then
+    field by field through ONE generic congruence (`cong≅`: any one-hole
+    context + its ξ-rule). It returns a proof or `nothing` (full normal
+    forms then decide), so it is sound by construction. Without it the
+    Lib-form payload types at `⌜KSig⌝` normalised to the whole `KD` cascade
+    and OOMed the checker; with it SigCore checks in 71 s / 4.6 GB.
+    Also `normLazy` (certified normal order: weak-head first).
+  - ⛔ **OPEN — evaluating core programs inside Agda.** With the Lib form,
+    the traversal's evaluation tests OOM the type checker EVEN AT FUEL 40
+    (normal order or applicative). Measured: the erased bodies are small
+    (`#rnM`: 190 nodes shallow, ~900 deep) and one elaboration is ~5 s, so
+    neither re-elaboration nor body size is the cause; it is Agda's
+    evaluation of an object-level interpreter — every β leaves a `subTm`
+    tower as an unshared closure that each later inspection recomputes.
+    Select-then-map stayed under the cliff (its tests passed, commit
+    `cb30cfb1a`); the Lib form's extra cascade steps push past it. The
+    tests are parked in `Negative/` (not built). This bears on S7's
+    "checker by evaluation" generally, not only on the spike. Candidate
+    fixes, a DESIGN decision (user):
+    (a) an ENVIRONMENT-based evaluator (closures, NbE-style) — no `subTm`
+        towers, so work is shared by construction;
+    (b) lazy δ with refs as atoms in comparisons (helps conversion, not
+        running programs);
+    (c) evaluate erased programs OUTSIDE type checking (compiled Agda),
+        keeping `refl` tests only for small cases.
 
 **Then, the migration recipe** (each step is one family):
 - a schema becomes a CLOSED λ-entry; an instance becomes
