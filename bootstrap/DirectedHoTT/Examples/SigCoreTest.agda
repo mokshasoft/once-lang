@@ -36,8 +36,8 @@ private
   libTel s sh = ⌜ L.tel sh (ixK s) ⌝ᵗ
 
 -- (1) the Lib-form decoder IS the Lib's `SD` (the λ-calculus, whole)
-sdℓ-faithful : nfOf {ε} (⟪ #SDℓ ⟫ ⋆ (num 1 ∷ tag 0 ∷ ⟪ #lamΣ ⟫ ∷ [])) ≡ nfOf (L.SD libΣ)
-sdℓ-faithful = refl
+sd-lib : nfOf {ε} (⟪ #SD ⟫ ⋆ (num 1 ∷ tag 0 ∷ ⟪ #lamΣ ⟫ ∷ [])) ≡ nfOf (L.SD libΣ)
+sd-lib = refl
 
 -- (2) the decoder, constructor by constructor: the λ-calculus …
 sd-faithful : (nfOf (coreTel 1 0 #lamΣ 0 0) ≡ nfOf (libTel 0 L.vʰ))
