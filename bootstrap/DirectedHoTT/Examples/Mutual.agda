@@ -43,6 +43,7 @@ open import DirectedHoTT.Lib.Sugar
   using ( Cons; []; _∷_; conₗ; tag; selF-β; nth-sub; nth-z; nth-s; lt-z; lt-s; AllD; _∷ᵈ_; []ᵈ )
 open import DirectedHoTT.Lib.Tel
 open import DirectedHoTT.Lib.MethAt
+open import DirectedHoTT.Lib.NatNum using ( num )
 open import DirectedHoTT.Lib.Sorted
 open import DirectedHoTT.Lib.TelAt
 open import DirectedHoTT.Lib.TelFold using ( sizeAlg )
@@ -56,7 +57,7 @@ open import DirectedHoTT.Lib.TelFoldS using ( sortFolds; ⊢foldₛ )
 I : {Γ : Cx} → RTm Γ
 I = SortI ⌜Unit⌝ 2
 
-⊢J : {Γ : Ctx} → (Γ ▹ El (⌜Fin⌝ 2)) ⊢ ⌜Unit⌝ ∷ U
+⊢J : {Γ : Ctx} → (Γ ▹ El (⌜Fin⌝ (num 2))) ⊢ ⌜Unit⌝ ∷ U
 ⊢J = ⊢⌜Unit⌝
 
 ⊢u : {Γ : Ctx} → Γ ⊢ unit ∷ El ⌜Unit⌝
