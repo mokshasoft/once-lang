@@ -105,6 +105,18 @@ R3 and R5. R7 needs all of them.
   category or contextual category. OCP-0009 names the CwF as the structural
   pillar. No design exists for this kernel's formers (Hom/Id/tr/ap, IMu,
   Desc).
+- **Q5 — references as context projections** (alignment, R3 E4 / R6). The
+  compiler (branch `plan-0.91-program-facts`, its D071) decided that an
+  internal definition reference is a PROJECTION from the definition
+  context Γ (the DTT global signature): `⟦ref x⟧Γ = Γ(x)` IS δ. This kernel's
+  erased `ref d b` instead carries its body (S5 route B, "δ by erasure").
+  The environment evaluator makes the categorical reading concrete: a
+  GLOBAL environment of entry values, so `ref d` is a projection evaluated
+  once. That is E4 (sharing) and the shape R6 should adopt. Not blocking.
+- **Housekeeping — decision-log numbering diverged.** `D071`–`D079` mean
+  different things here (OCP-0009 levitation) and on the compiler branch
+  (D071 = references as projections, …, up to D272 there). D080 here is the
+  evaluator. Reconcile the numbering when the branches meet.
 - **Q4 — totality without fuel** (PLAN-BIDI `:983`, old PLAN-NF Phase 2).
   The certified evaluator should become total by the LR's normalization
   (`wnorm`), not by fuel. Owner: PLAN-EVAL E3.
