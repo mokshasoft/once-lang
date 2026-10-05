@@ -144,7 +144,7 @@ du_succ_78 v0 v1 v2 v3 v4 v5 v6
                    MAlonzo.Code.Data.Bool.Base.du_if_then_else__44
                    (coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8)
                    (coe
-                      MAlonzo.Code.Once.Optimize.d_optimize_2662
+                      MAlonzo.Code.Once.Optimize.d_optimize_1238
                       (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_48
                          (coe
                             MAlonzo.Code.Once.Surface.Context.du_'10214'_'10215''7580'_38

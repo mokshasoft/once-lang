@@ -4063,31 +4063,17 @@ d_exec'45'tree'45'trace'45'flat_4186 ::
   T_AllocState_504 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_exec'45'tree'45'trace'45'flat_4186 = erased
--- Once.CCC.Machine.SMCore.AbstractExec.exec-trace-++
-d_exec'45'trace'45''43''43'_4206 ::
-  MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
-  [T_AbstractInstr_2250] ->
-  [T_AbstractInstr_2250] ->
-  T_LocState_412 ->
-  T_AllocState_504 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_exec'45'trace'45''43''43'_4206 = erased
--- Once.CCC.Machine.SMCore.AbstractExec._.exec-abstract-preserves-not-halted'
-d_exec'45'abstract'45'preserves'45'not'45'halted''_4264
-  = error
-      "MAlonzo Runtime Error: postulate evaluated: Once.CCC.Machine.SMCore.AbstractExec._.exec-abstract-preserves-not-halted'"
 -- Once.CCC.Machine.SMCore.AbstractExec.exec-tree-flat-equiv-simple
-d_exec'45'tree'45'flat'45'equiv'45'simple_4272 ::
+d_exec'45'tree'45'flat'45'equiv'45'simple_4200 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   T_TreeTrace_2438 ->
   T_LocState_412 ->
   T_AllocState_504 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Unit.T_'8868'_6
-d_exec'45'tree'45'flat'45'equiv'45'simple_4272 ~v0 ~v1 ~v2 ~v3 ~v4
-  = du_exec'45'tree'45'flat'45'equiv'45'simple_4272
-du_exec'45'tree'45'flat'45'equiv'45'simple_4272 ::
+d_exec'45'tree'45'flat'45'equiv'45'simple_4200 ~v0 ~v1 ~v2 ~v3 ~v4
+  = du_exec'45'tree'45'flat'45'equiv'45'simple_4200
+du_exec'45'tree'45'flat'45'equiv'45'simple_4200 ::
   MAlonzo.Code.Agda.Builtin.Unit.T_'8868'_6
-du_exec'45'tree'45'flat'45'equiv'45'simple_4272
+du_exec'45'tree'45'flat'45'equiv'45'simple_4200
   = coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8

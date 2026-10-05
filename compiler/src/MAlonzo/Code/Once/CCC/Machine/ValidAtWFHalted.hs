@@ -37,28 +37,28 @@ import qualified MAlonzo.Code.Once.Semantics.Functor
 -- Once.CCC.Machine.ValidAtWFHalted._.ClosureWellFormedDef.CellAt
 d_CellAt_22 a0 a1 a2 a3 a4 a5 a6 a7 = ()
 -- Once.CCC.Machine.ValidAtWFHalted._.ClosureWellFormedDef.ValidAtWF
-d_ValidAtWF_84 a0 a1 a2 a3 a4 a5 a6 a7 a8 = ()
+d_ValidAtWF_78 a0 a1 a2 a3 a4 a5 a6 a7 a8 = ()
 -- Once.CCC.Machine.ValidAtWFHalted._._.CellAt
-d_CellAt_664 a0 a1 a2 a3 a4 a5 a6 a7 = ()
+d_CellAt_628 a0 a1 a2 a3 a4 a5 a6 a7 = ()
 -- Once.CCC.Machine.ValidAtWFHalted._._.ValidAtWF
-d_ValidAtWF_726 a0 a1 a2 a3 a4 a5 a6 a7 a8 = ()
+d_ValidAtWF_684 a0 a1 a2 a3 a4 a5 a6 a7 a8 = ()
 -- Once.CCC.Machine.ValidAtWFHalted._._.readLoc
-d_readLoc_1294 ::
+d_readLoc_1222 ::
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_412 ->
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   Maybe MAlonzo.Code.Once.CCC.Machine.SMCore.T_StoredValue_66
-d_readLoc_1294 ~v0 ~v1 ~v2 = du_readLoc_1294
-du_readLoc_1294 ::
+d_readLoc_1222 ~v0 ~v1 ~v2 = du_readLoc_1222
+du_readLoc_1222 ::
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_412 ->
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   Maybe MAlonzo.Code.Once.CCC.Machine.SMCore.T_StoredValue_66
-du_readLoc_1294
+du_readLoc_1222
   = coe MAlonzo.Code.Once.CCC.Machine.SMCore.du_readLoc_666
 -- Once.CCC.Machine.ValidAtWFHalted._.rl
-d_rl_1306 ::
+d_rl_1234 ::
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
@@ -66,9 +66,9 @@ d_rl_1306 ::
   Bool ->
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_rl_1306 = erased
+d_rl_1234 = erased
 -- Once.CCC.Machine.ValidAtWFHalted._.validAtWF-set-halted
-d_validAtWF'45'set'45'halted_1328 ::
+d_validAtWF'45'set'45'halted_1256 ::
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
@@ -79,12 +79,12 @@ d_validAtWF'45'set'45'halted_1328 ::
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_412 ->
   Bool ->
-  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ValidAtWF_616 ->
-  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ValidAtWF_616
-d_validAtWF'45'set'45'halted_1328 v0 v1 v2 ~v3 v4 v5 v6 ~v7 v8 v9
+  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ValidAtWF_594 ->
+  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ValidAtWF_594
+d_validAtWF'45'set'45'halted_1256 v0 v1 v2 ~v3 v4 v5 v6 ~v7 v8 v9
                                   v10
-  = du_validAtWF'45'set'45'halted_1328 v0 v1 v2 v4 v5 v6 v8 v9 v10
-du_validAtWF'45'set'45'halted_1328 ::
+  = du_validAtWF'45'set'45'halted_1256 v0 v1 v2 v4 v5 v6 v8 v9 v10
+du_validAtWF'45'set'45'halted_1256 ::
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
@@ -93,90 +93,90 @@ du_validAtWF'45'set'45'halted_1328 ::
   AgdaAny ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_412 ->
   Bool ->
-  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ValidAtWF_616 ->
-  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ValidAtWF_616
-du_validAtWF'45'set'45'halted_1328 v0 v1 v2 v3 v4 v5 v6 v7 v8
+  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ValidAtWF_594 ->
+  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ValidAtWF_594
+du_validAtWF'45'set'45'halted_1256 v0 v1 v2 v3 v4 v5 v6 v7 v8
   = case coe v8 of
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_valid'45'unit'45'wf_838
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_valid'45'unit'45'wf_816
         -> coe
-             MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_valid'45'unit'45'wf_838
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_valid'45'pair'45'wf_856 v17 v18 v19 v20
+             MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_valid'45'unit'45'wf_816
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_valid'45'pair'45'wf_834 v17 v18 v19 v20
         -> case coe v4 of
              MAlonzo.Code.Once.IRTy.C__'42'__20 v21 v22
                -> case coe v5 of
                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v23 v24
                       -> coe
-                           MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_valid'45'pair'45'wf_856
+                           MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_valid'45'pair'45'wf_834
                            v17 v18
                            (coe
-                              du_cellAt'45'set'45'halted_1342 (coe v0) (coe v1) (coe v2) (coe v3)
+                              du_cellAt'45'set'45'halted_1270 (coe v0) (coe v1) (coe v2) (coe v3)
                               (coe v21) (coe v23) (coe v6) (coe v7) (coe v19))
                            (coe
-                              du_cellAt'45'set'45'halted_1342 (coe v0) (coe v1) (coe v2) (coe v3)
+                              du_cellAt'45'set'45'halted_1270 (coe v0) (coe v1) (coe v2) (coe v3)
                               (coe v22) (coe v24) (coe v6) (coe v7) (coe v20))
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_valid'45'closure'45'wf_882 v9 v12 v13 v16 v18 v19 v20 v23 v24 v25
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_valid'45'closure'45'wf_860 v9 v12 v13 v16 v18 v19 v20 v23 v24 v25
         -> coe
-             MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_valid'45'closure'45'wf_882
+             MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_valid'45'closure'45'wf_860
              v9 v12 v13 v16 v18 v19 v20 v23 v24
              (coe
-                du_validAtWF'45'set'45'halted_1328 (coe v0) (coe v1) (coe v2)
+                du_validAtWF'45'set'45'halted_1256 (coe v0) (coe v1) (coe v2)
                 (coe v3) (coe v9) (coe v13) (coe v6) (coe v7) (coe v25))
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_valid'45'closure'45'reg'45'wf_906 v9 v12 v13 v17 v18 v19 v22
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_valid'45'closure'45'reg'45'wf_884 v9 v12 v13 v17 v18 v19 v22
         -> coe
-             MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_valid'45'closure'45'reg'45'wf_906
+             MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_valid'45'closure'45'reg'45'wf_884
              v9 v12 v13 v17 v18 v19 v22
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_valid'45'ν'45'susp'45'wf_926 v10 v11 v12 v13 v17 v18 v19 v21
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_valid'45'ν'45'susp'45'wf_904 v10 v11 v12 v13 v17 v18 v19 v21
         -> coe
-             MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_valid'45'ν'45'susp'45'wf_926
+             MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_valid'45'ν'45'susp'45'wf_904
              v10 v11 v12 v13 v17 v18
              (coe
-                du_cellAt'45'set'45'halted_1342 (coe v0) (coe v1) (coe v2) (coe v3)
+                du_cellAt'45'set'45'halted_1270 (coe v0) (coe v1) (coe v2) (coe v3)
                 (coe v10) (coe v13) (coe v6) (coe v7) (coe v19))
              v21
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_valid'45'inl'45'wf_946 v15 v17 v18 v21 v22 v23
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_valid'45'inl'45'wf_924 v15 v17 v18 v21 v22 v23
         -> case coe v4 of
              MAlonzo.Code.Once.IRTy.C__'43'__22 v24 v25
                -> case coe v5 of
                     MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 v26
                       -> coe
-                           MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_valid'45'inl'45'wf_946
+                           MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_valid'45'inl'45'wf_924
                            v15 v17 v18 v21 v22
                            (coe
-                              du_validAtWF'45'set'45'halted_1328 (coe v0) (coe v1) (coe v2)
+                              du_validAtWF'45'set'45'halted_1256 (coe v0) (coe v1) (coe v2)
                               (coe v3) (coe v24) (coe v26) (coe v6) (coe v7) (coe v23))
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_valid'45'inr'45'wf_966 v15 v17 v18 v21 v22 v23
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_valid'45'inr'45'wf_944 v15 v17 v18 v21 v22 v23
         -> case coe v4 of
              MAlonzo.Code.Once.IRTy.C__'43'__22 v24 v25
                -> case coe v5 of
                     MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42 v26
                       -> coe
-                           MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_valid'45'inr'45'wf_966
+                           MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_valid'45'inr'45'wf_944
                            v15 v17 v18 v21 v22
                            (coe
-                              du_validAtWF'45'set'45'halted_1328 (coe v0) (coe v1) (coe v2)
+                              du_validAtWF'45'set'45'halted_1256 (coe v0) (coe v1) (coe v2)
                               (coe v3) (coe v25) (coe v26) (coe v6) (coe v7) (coe v23))
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_valid'45'inl'45'reg'45'wf_984 v16 v18 v20
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_valid'45'inl'45'reg'45'wf_962 v16 v18 v20
         -> coe
-             MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_valid'45'inl'45'reg'45'wf_984
+             MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_valid'45'inl'45'reg'45'wf_962
              v16 v18 v20
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_valid'45'inr'45'reg'45'wf_1002 v16 v18 v20
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_valid'45'inr'45'reg'45'wf_980 v16 v18 v20
         -> coe
-             MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_valid'45'inr'45'reg'45'wf_1002
+             MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_valid'45'inr'45'reg'45'wf_980
              v16 v18 v20
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_valid'45'μ'45'wf_1018 v14 v16
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_valid'45'μ'45'wf_996 v14 v16
         -> case coe v4 of
              MAlonzo.Code.Once.IRTy.C_μ'45'type_26 v17
                -> coe
-                    MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_valid'45'μ'45'wf_1018
+                    MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_valid'45'μ'45'wf_996
                     v14
                     (coe
-                       du_validAtWF'45'set'45'halted_1328 (coe v0) (coe v1) (coe v2)
+                       du_validAtWF'45'set'45'halted_1256 (coe v0) (coe v1) (coe v2)
                        (coe v3)
                        (coe
                           MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_80 (coe v17) (coe v4))
@@ -193,17 +193,17 @@ du_validAtWF'45'set'45'halted_1328 v0 v1 v2 v3 v4 v5 v6 v7 v8
                              (coe MAlonzo.Code.Once.IR.C_out'45'μ_98 v14) v5))
                        (coe v6) (coe v7) (coe v16))
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_valid'45'int'45'wf_1030 v14
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_valid'45'int'45'wf_1008 v14
         -> coe
-             MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_valid'45'int'45'wf_1030
+             MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_valid'45'int'45'wf_1008
              v14
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_valid'45'float'45'wf_1042 v14
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_valid'45'float'45'wf_1020 v14
         -> coe
-             MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_valid'45'float'45'wf_1042
+             MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_valid'45'float'45'wf_1020
              v14
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Machine.ValidAtWFHalted._.cellAt-set-halted
-d_cellAt'45'set'45'halted_1342 ::
+d_cellAt'45'set'45'halted_1270 ::
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
@@ -213,11 +213,11 @@ d_cellAt'45'set'45'halted_1342 ::
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_412 ->
   Bool ->
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
-  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_CellAt_612 ->
-  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_CellAt_612
-d_cellAt'45'set'45'halted_1342 v0 v1 v2 v3 v4 v5 v6 v7 ~v8 v9
-  = du_cellAt'45'set'45'halted_1342 v0 v1 v2 v3 v4 v5 v6 v7 v9
-du_cellAt'45'set'45'halted_1342 ::
+  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_CellAt_590 ->
+  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_CellAt_590
+d_cellAt'45'set'45'halted_1270 v0 v1 v2 v3 v4 v5 v6 v7 ~v8 v9
+  = du_cellAt'45'set'45'halted_1270 v0 v1 v2 v3 v4 v5 v6 v7 v9
+du_cellAt'45'set'45'halted_1270 ::
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
@@ -226,19 +226,19 @@ du_cellAt'45'set'45'halted_1342 ::
   AgdaAny ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_412 ->
   Bool ->
-  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_CellAt_612 ->
-  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_CellAt_612
-du_cellAt'45'set'45'halted_1342 v0 v1 v2 v3 v4 v5 v6 v7 v8
+  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_CellAt_590 ->
+  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_CellAt_590
+du_cellAt'45'set'45'halted_1270 v0 v1 v2 v3 v4 v5 v6 v7 v8
   = case coe v8 of
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_cell'45'ptr_816 v12 v14 v16 v17
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_cell'45'ptr_794 v12 v14 v16 v17
         -> coe
-             MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_cell'45'ptr_816
+             MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_cell'45'ptr_794
              v12 v14 v16
              (coe
-                du_validAtWF'45'set'45'halted_1328 (coe v0) (coe v1) (coe v2)
+                du_validAtWF'45'set'45'halted_1256 (coe v0) (coe v1) (coe v2)
                 (coe v3) (coe v4) (coe v5) (coe v6) (coe v7) (coe v17))
-      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_cell'45'inline_828 v13
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_cell'45'inline_806 v13
         -> coe
-             MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_cell'45'inline_828
+             MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_cell'45'inline_806
              v13
       _ -> MAlonzo.RTE.mazUnreachableError

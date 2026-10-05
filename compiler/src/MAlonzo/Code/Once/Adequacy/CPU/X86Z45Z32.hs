@@ -69,15 +69,19 @@ d_block'45'env_14 v0 v1
                     (coe d_block'45'env_14 (coe v3) (coe v1))
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
+-- Once.Adequacy.CPU.X86-32.step-budget-x86-32-adequate
+d_step'45'budget'45'x86'45'32'45'adequate_32
+  = error
+      "MAlonzo Runtime Error: postulate evaluated: Once.Adequacy.CPU.X86-32.step-budget-x86-32-adequate"
 -- Once.Adequacy.CPU.X86-32.run-trace-x86-32
-d_run'45'trace'45'x86'45'32_24 ::
+d_run'45'trace'45'x86'45'32_34 ::
   MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_458 ->
   MAlonzo.Code.Once.CCC.Target.X86Z45Z32.File.T_Image_12 ->
   MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.T_State_296 ->
   MAlonzo.Code.Once.Denotation.Behavior.T_Behavior_6
-d_run'45'trace'45'x86'45'32_24 v0 v1 v2
+d_run'45'trace'45'x86'45'32_34 v0 v1 v2
   = coe
-      MAlonzo.Code.Once.Arith.Backend.RunTraceCore.du_run'45'trace_228
+      MAlonzo.Code.Once.Arith.Backend.RunTraceCore.du_run'45'trace_234
       (coe
          (\ v3 ->
             MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.d_halted_316
@@ -102,7 +106,12 @@ d_run'45'trace'45'x86'45'32_24 v0 v1 v2
             coe
               MAlonzo.Code.Once.Adequacy.ArchCorrectness.ArithSimX86Z45Z32.du_val'45'x86'45'32_272
               v3 v4))
-      (coe d_step'45'budget'45'x86'45'32_8) (coe d_ev'45'x86'45'32_10)
+      (coe
+         d_step'45'budget'45'x86'45'32_8
+         (MAlonzo.Code.Once.CCC.Target.X86Z45Z32.File.d_blocks_26 (coe v1))
+         (MAlonzo.Code.Once.CCC.Target.X86Z45Z32.File.d_code_22 (coe v1))
+         v2)
+      (coe d_ev'45'x86'45'32_10)
       (coe
          d_block'45'env_14
          (coe
@@ -110,22 +119,27 @@ d_run'45'trace'45'x86'45'32_24 v0 v1 v2
       (coe
          MAlonzo.Code.Once.CCC.Target.X86Z45Z32.File.d_code_22 (coe v1))
       (coe v2)
+      (coe
+         d_step'45'budget'45'x86'45'32'45'adequate_32 v0
+         (MAlonzo.Code.Once.CCC.Target.X86Z45Z32.File.d_blocks_26 (coe v1))
+         (MAlonzo.Code.Once.CCC.Target.X86Z45Z32.File.d_code_22 (coe v1))
+         v2)
 -- Once.Adequacy.CPU.X86-32.decode-x86-32
-d_decode'45'x86'45'32_32
+d_decode'45'x86'45'32_42
   = error
       "MAlonzo Runtime Error: postulate evaluated: Once.Adequacy.CPU.X86-32.decode-x86-32"
 -- Once.Adequacy.CPU.X86-32.assemble-x86-32
-d_assemble'45'x86'45'32_34
+d_assemble'45'x86'45'32_44
   = error
       "MAlonzo Runtime Error: postulate evaluated: Once.Adequacy.CPU.X86-32.assemble-x86-32"
 -- Once.Adequacy.CPU.X86-32.as-faithful-x86-32
-d_as'45'faithful'45'x86'45'32_38
+d_as'45'faithful'45'x86'45'32_48
   = error
       "MAlonzo Runtime Error: postulate evaluated: Once.Adequacy.CPU.X86-32.as-faithful-x86-32"
 -- Once.Adequacy.CPU.X86-32.arch-semantics
-d_arch'45'semantics_40 ::
+d_arch'45'semantics_50 ::
   MAlonzo.Code.Once.Adequacy.CPU.Interface.T_ArchSemantics_10
-d_arch'45'semantics_40
+d_arch'45'semantics_50
   = coe
       MAlonzo.Code.Once.Adequacy.CPU.Interface.C_constructor_90
       (\ v0 ->
@@ -137,6 +151,6 @@ d_arch'45'semantics_40
          coe
            MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.d_run_736
            (MAlonzo.Code.Once.CCC.Target.X86Z45Z32.File.d_code_22 (coe v0)))
-      d_run'45'trace'45'x86'45'32_24 d_decode'45'x86'45'32_32
-      d_assemble'45'x86'45'32_34
+      d_run'45'trace'45'x86'45'32_34 d_decode'45'x86'45'32_42
+      d_assemble'45'x86'45'32_44
       MAlonzo.Code.Once.CCC.Target.X86Z45Z32.File.d_print_78 (\ v0 -> v0)

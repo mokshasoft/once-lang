@@ -164,31 +164,17 @@ d_slot'45'in'45'stack'45'0_92 ~v0 ~v1 v2
 du_slot'45'in'45'stack'45'0_92 ::
   T_StackAddr_14 -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_slot'45'in'45'stack'45'0_92 v0 = coe d_in'45'stack_22 (coe v0)
--- Once.Memory.StackSlots.slot-in-stack
-d_slot'45'in'45'stack_100 ::
-  MAlonzo.Code.Once.Memory.MemoryLayoutSemantics.T_MemoryLayout_30 ->
-  MAlonzo.Code.Once.Memory.MemoryLayoutSemantics.T_StackGrowth_54 ->
-  T_StackAddr_14 -> Integer -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_slot'45'in'45'stack_100 v0 v1 v2 v3
-  = case coe v3 of
-      0 -> coe du_slot'45'in'45'stack'45'0_92 (coe v2)
-      _ -> let v4 = subInt (coe v3) (coe (1 :: Integer)) in
-           coe (coe d_slot'45'in'45'stack'45'suc_116 v0 v1 v2 v4 v2 v4)
--- Once.Memory.StackSlots._.slot-in-stack-suc
-d_slot'45'in'45'stack'45'suc_116
-  = error
-      "MAlonzo Runtime Error: postulate evaluated: Once.Memory.StackSlots._.slot-in-stack-suc"
 -- Once.Memory.StackSlots.from-raw-stack
-d_from'45'raw'45'stack_120 ::
+d_from'45'raw'45'stack_98 ::
   MAlonzo.Code.Once.Memory.MemoryLayoutSemantics.T_MemoryLayout_30 ->
   MAlonzo.Code.Once.Memory.MemoryLayoutSemantics.T_StackGrowth_54 ->
   Integer -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 -> T_StackAddr_14
-d_from'45'raw'45'stack_120 ~v0 ~v1 v2 v3
-  = du_from'45'raw'45'stack_120 v2 v3
-du_from'45'raw'45'stack_120 ::
+d_from'45'raw'45'stack_98 ~v0 ~v1 v2 v3
+  = du_from'45'raw'45'stack_98 v2 v3
+du_from'45'raw'45'stack_98 ::
   Integer -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 -> T_StackAddr_14
-du_from'45'raw'45'stack_120 v0 v1
+du_from'45'raw'45'stack_98 v0 v1
   = coe C_stack'45'addr_24 (coe v0) (coe v1)
 -- Once.Memory.StackSlots.to-raw-stack
-d_to'45'raw'45'stack_126 :: T_StackAddr_14 -> Integer
-d_to'45'raw'45'stack_126 v0 = coe d_addr_20 (coe v0)
+d_to'45'raw'45'stack_104 :: T_StackAddr_14 -> Integer
+d_to'45'raw'45'stack_104 v0 = coe d_addr_20 (coe v0)

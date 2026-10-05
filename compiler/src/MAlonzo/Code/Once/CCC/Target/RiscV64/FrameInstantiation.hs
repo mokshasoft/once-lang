@@ -304,7 +304,7 @@ du_slot'8322''8805'f'8322'_236 ::
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
 du_slot'8322''8805'f'8322'_236 v0
   = coe
-      MAlonzo.Code.Once.CCC.Target.RiscV64.Layout.du_slot'45'addr'45''8805''45'base_172
+      MAlonzo.Code.Once.CCC.Target.RiscV64.Layout.du_slot'45'addr'45''8805''45'base_170
       (coe v0)
 -- Once.CCC.Target.RiscV64.FrameInstantiation._.slot₁<slot₂
 d_slot'8321''60'slot'8322'_238 ::
@@ -424,7 +424,7 @@ d_rv64'45'shift'45'frame_302 v0 v1
             (coe
                MAlonzo.Code.Once.CCC.Target.RiscV64.StackGrowth.d_word'45'size_10)))
       (coe
-         MAlonzo.Code.Once.CCC.Target.RiscV64.Layout.d_stack'45'sub'45'preserves''_158
+         MAlonzo.Code.Once.CCC.Target.RiscV64.Layout.d_stack'45'sub'45'preserves''_156
          (coe MAlonzo.Code.Once.Memory.StackSlots.d_addr_20 (coe v0))
          (coe
             mulInt (coe v1)
