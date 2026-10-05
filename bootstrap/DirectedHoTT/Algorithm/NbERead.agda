@@ -47,6 +47,7 @@ read-cong  : (v : Val) {L L' : Lv Δ} → (∀ l → L l ≡ L' l) → ⌊ v ⌋
 read-congᶜ : (c : Clo) {L L' : Lv Δ} → (∀ l → L l ≡ L' l) → ⌊ c ⌋ᶜ L ≡ ⌊ c ⌋ᶜ L'
 read-cong² : (c : Clo₂) {L L' : Lv Δ} → (∀ l → L l ≡ L' l) → ⌊ c ⌋² L ≡ ⌊ c ⌋² L'
 read-congᵉ : (ρ : Env Γ) {L L' : Lv Δ} → (∀ l → L l ≡ L' l) → (x : Var Γ) → ⌊ ρ ⌋ᵉ L x ≡ ⌊ ρ ⌋ᵉ L' x
+read-congL : (c : Clo) {L L' : Lv Δ} → (∀ l → L l ≡ L' l) → readLam c L ≡ readLam c L'
 
 
 bind-cong : (m : ℕ) {L L' : Lv Δ} → (∀ l → L l ≡ L' l) → ∀ l → bindL m L l ≡ bindL m L' l
@@ -60,15 +61,20 @@ read-congᶜ (cloK v) h = cong wk (read-cong v h)
 read-congᶜ (cloHrefl C sp s) h = cong₂ hrefl (cong pwBody (read-cong C h)) (cong (λ z → app (wk z) (var vz)) (read-cong s h))
 read-congᶜ (cloDpay I D f) h = cong₃ dpay (cong wk (read-cong I h)) (cong wk (read-cong D h)) (cong (λ z → app (wk z) (var vz)) (read-cong f h))
 read-congᶜ (cloHomTo C A) h = cong₃ ⌜Hom⌝ (cong wk (read-cong C h)) (cong wk (read-cong A h)) refl
-read-congᶜ (cloTrPw k₀ m c sp a d f e) h =
-  cong₃ tr (cong₃ ⌜Hom⌝ (cong (λ z → renTm pwShift (pwBody z)) (read-cong c (bind-cong m h)))
-                        (cong (λ z → app (renTm vs z) (var (vs vz))) (read-cong a (bind-cong m h))) refl)
-           (read-congᶜ f h) (cong (λ z → app (wk z) (var vz)) (read-cong e h))
+read-congᶜ (cloTrPw d f e) h =
+  cong (λ z → app (wk z) (var vz)) (cong₃ tr (read-congᶜ d h) (cong lam (read-congᶜ f h)) (read-cong e h))
+
+read-congL c@(clo _ _)        h = cong lam (read-congᶜ c h)
+read-congL c@(cloK _)         h = cong lam (read-congᶜ c h)
+read-congL c@(cloHrefl _ _ _) h = cong lam (read-congᶜ c h)
+read-congL c@(cloDpay _ _ _)  h = cong lam (read-congᶜ c h)
+read-congL c@(cloHomTo _ _)   h = cong lam (read-congᶜ c h)
+read-congL (cloTrPw d f e)    h = cong₃ tr (read-congᶜ d h) (cong lam (read-congᶜ f h)) (read-cong e h)
 
 read-cong² (clo₂ ρ t) h = subTm-cong (extS-cong (extS-cong (read-congᵉ ρ h))) t
 
 read-cong (vvar l) h = h l
-read-cong (vlam c) h = cong lam (read-congᶜ c h)
+read-cong (vlam c) h = read-congL c h
 read-cong (vapp f a) h = cong₂ app (read-cong f h) (read-cong a h)
 read-cong (vpair a b) h = cong₂ pair (read-cong a h) (read-cong b h)
 read-cong (vabsurd c e) h = cong₂ absurd (read-cong c h) (read-cong e h)
@@ -182,6 +188,7 @@ ren⌊⌋  : (r : Ren Δ Θ) (v : Val) (L : Lv Δ) → renTm r (⌊ v ⌋ L) ≡
 renᶜ   : (r : Ren Δ Θ) (c : Clo) (L : Lv Δ) → renTm (extR r) (⌊ c ⌋ᶜ L) ≡ ⌊ c ⌋ᶜ (r ᴸ L)
 ren²   : (r : Ren Δ Θ) (c : Clo₂) (L : Lv Δ) → renTm (extR (extR r)) (⌊ c ⌋² L) ≡ ⌊ c ⌋² (r ᴸ L)
 renᵉ   : (r : Ren Δ Θ) (ρ : Env Γ) (L : Lv Δ) (x : Var Γ) → (r ᵣ∘ₛ ⌊ ρ ⌋ᵉ L) x ≡ ⌊ ρ ⌋ᵉ (r ᴸ L) x
+renL   : (r : Ren Δ Θ) (c : Clo) (L : Lv Δ) → renTm r (readLam c L) ≡ readLam c (r ᴸ L)
 
 
 renᵉ r (ρ , v) L vz     = ren⌊⌋ r v L
@@ -202,18 +209,17 @@ renᶜ r (cloDpay I D f) L =
 renᶜ r (cloHomTo C A) L =
   cong₃ ⌜Hom⌝ (trans (wk-ren r (⌊ C ⌋ L)) (cong wk (ren⌊⌋ r C L)))
               (trans (wk-ren r (⌊ A ⌋ L)) (cong wk (ren⌊⌋ r A L))) refl
-renᶜ r (cloTrPw k₀ m c sp a d f e) L =
-  cong₃ tr
-    (cong₃ ⌜Hom⌝
-       (trans (pwShift-ren r (pwBody (⌊ c ⌋ (bindL m L))))
-              (cong (renTm pwShift) (trans (pwBody-ren (extR r) (⌊ c ⌋ (bindL m L)))
-                                           (cong pwBody (trans (ren⌊⌋ (extR r) c (bindL m L)) (read-cong c (bind-ren r m L)))))))
-       (cong (λ z → app z (var (vs vz)))
-             (trans (wk-ren (extR r) (⌊ a ⌋ (bindL m L)))
-                    (cong wk (trans (ren⌊⌋ (extR r) a (bindL m L)) (read-cong a (bind-ren r m L))))))
-       refl)
-    (renᶜ r f L)
-    (cong (λ z → app z (var vz)) (trans (wk-ren r (⌊ e ⌋ L)) (cong wk (ren⌊⌋ r e L))))
+renᶜ r (cloTrPw d f e) L =
+  cong (λ z → app z (var vz))
+       (trans (wk-ren r (tr (⌊ d ⌋ᶜ L) (lam (⌊ f ⌋ᶜ L)) (⌊ e ⌋ L)))
+              (cong wk (cong₃ tr (renᶜ r d L) (cong lam (renᶜ r f L)) (ren⌊⌋ r e L))))
+
+renL r c@(clo _ _)        L = cong lam (renᶜ r c L)
+renL r c@(cloK _)         L = cong lam (renᶜ r c L)
+renL r c@(cloHrefl _ _ _) L = cong lam (renᶜ r c L)
+renL r c@(cloDpay _ _ _)  L = cong lam (renᶜ r c L)
+renL r c@(cloHomTo _ _)   L = cong lam (renᶜ r c L)
+renL r (cloTrPw d f e)    L = cong₃ tr (renᶜ r d L) (cong lam (renᶜ r f L)) (ren⌊⌋ r e L)
 
 ren² r (clo₂ ρ t) L =
   trans (renTm-subTm t)
@@ -222,7 +228,7 @@ ren² r (clo₂ ρ t) L =
          (subTm-cong (extS-cong (extS-cong (renᵉ r ρ L))) t)))
 
 ren⌊⌋ r (vvar l) L = refl
-ren⌊⌋ r (vlam c) L = cong lam (renᶜ r c L)
+ren⌊⌋ r (vlam c) L = renL r c L
 ren⌊⌋ r (vapp f a) L = cong₂ app (ren⌊⌋ r f L) (ren⌊⌋ r a L)
 ren⌊⌋ r (vpair a b) L = cong₂ pair (ren⌊⌋ r a L) (ren⌊⌋ r b L)
 ren⌊⌋ r (vabsurd c e) L = cong₂ absurd (ren⌊⌋ r c L) (ren⌊⌋ r e L)
@@ -282,11 +288,7 @@ Scᶜ n (cloK v)        = Sc n v
 Scᶜ n (cloHrefl C sp s) = Sc n C × Sc n s
 Scᶜ n (cloDpay I D f) = Sc n I × (Sc n D × Sc n f)
 Scᶜ n (cloHomTo C A)  = Sc n C × Sc n A
--- tr-pw: created at depth m (its motive scoped there), its stored ambient
---   and endpoint bind level m (so they live below m + 1) — and ★ they ARE
---   the inspection's result (the invariant the soundness proof reads)
-Scᶜ n (cloTrPw k₀ m c sp a d f e) =
-  ((m < suc n) ≡ true) × (Scᶜ m d × ((Sc (suc m) c × Sc (suc m) a) × (Scᶜ n f × (Sc n e × (trPwView k₀ m d ≡ just (trpw c sp a))))))
+Scᶜ n (cloTrPw d f e) = Scᶜ n d × (Scᶜ n f × Sc n e)
 
 Sc² n (clo₂ ρ t) = Scᵉ n ρ
 
@@ -380,8 +382,7 @@ monoᶜ (cloK v) h s1 = mono v h s1
 monoᶜ (cloHrefl C sp s) h (s1 , s2) = (mono C h s1 , mono s h s2)
 monoᶜ (cloDpay I D f) h (s1 , (s2 , s3)) = (mono I h s1 , (mono D h s2 , mono f h s3))
 monoᶜ (cloHomTo C A) h (s1 , s2) = (mono C h s1 , mono A h s2)
-monoᶜ (cloTrPw k₀ m c sp a d f e) h (mn , (sd , (sca , (sf , (se , eq))))) =
-  (up-le h m mn , (sd , (sca , (monoᶜ f h sf , (mono e h se , eq)))))
+monoᶜ (cloTrPw d f e) h (sd , (sf , se)) = (monoᶜ d h sd , (monoᶜ f h sf , mono e h se))
 mono² (clo₂ ρ t) h s1 = monoᵉ ρ h s1
 mono (vvar l) h s1 = h l s1
 mono (vlam c) h s1 = monoᶜ c h s1
@@ -467,6 +468,7 @@ agree  : (n : ℕ) (v : Val) {L L' : Lv Δ} → Below n L L' → Sc n v → ⌊ 
 agreeᶜ : (n : ℕ) (c : Clo) {L L' : Lv Δ} → Below n L L' → Scᶜ n c → ⌊ c ⌋ᶜ L ≡ ⌊ c ⌋ᶜ L'
 agree² : (n : ℕ) (c : Clo₂) {L L' : Lv Δ} → Below n L L' → Sc² n c → ⌊ c ⌋² L ≡ ⌊ c ⌋² L'
 agreeᵉ : (n : ℕ) (ρ : Env Γ) {L L' : Lv Δ} → Below n L L' → Scᵉ n ρ → (x : Var Γ) → ⌊ ρ ⌋ᵉ L x ≡ ⌊ ρ ⌋ᵉ L' x
+agreeL : (n : ℕ) (c : Clo) {L L' : Lv Δ} → Below n L L' → Scᶜ n c → readLam c L ≡ readLam c L'
 
 
 agreeᵉ n (ρ , v) h (sρ , sv) vz     = agree n v h sv
@@ -479,18 +481,20 @@ agreeᶜ n (cloHrefl C sp t) h (sC , st) =
 agreeᶜ n (cloDpay I D f) h (sI , (sD , sf)) =
   cong₃ dpay (cong wk (agree n I h sI)) (cong wk (agree n D h sD)) (cong (λ z → app (wk z) (var vz)) (agree n f h sf))
 agreeᶜ n (cloHomTo C A) h (sC , sA) = cong₃ ⌜Hom⌝ (cong wk (agree n C h sC)) (cong wk (agree n A h sA)) refl
-agreeᶜ n (cloTrPw k₀ m c sp a d f e) h (mn , (sd , ((sc , sa) , (sf , (se , eq))))) =
-  cong₃ tr
-    (cong₃ ⌜Hom⌝ (cong (λ z → renTm pwShift (pwBody z)) (agree (suc m) c (bind-below n m h mn) sc))
-                 (cong (λ z → app (renTm vs z) (var (vs vz))) (agree (suc m) a (bind-below n m h mn) sa))
-                 refl)
-    (agreeᶜ n f h sf)
-    (cong (λ z → app (wk z) (var vz)) (agree n e h se))
+agreeᶜ n (cloTrPw d f e) h (sd , (sf , se)) =
+  cong (λ z → app (wk z) (var vz)) (cong₃ tr (agreeᶜ n d h sd) (cong lam (agreeᶜ n f h sf)) (agree n e h se))
+
+agreeL n c@(clo _ _)        h s = cong lam (agreeᶜ n c h s)
+agreeL n c@(cloK _)         h s = cong lam (agreeᶜ n c h s)
+agreeL n c@(cloHrefl _ _ _) h s = cong lam (agreeᶜ n c h s)
+agreeL n c@(cloDpay _ _ _)  h s = cong lam (agreeᶜ n c h s)
+agreeL n c@(cloHomTo _ _)   h s = cong lam (agreeᶜ n c h s)
+agreeL n (cloTrPw d f e)    h (sd , (sf , se)) = cong₃ tr (agreeᶜ n d h sd) (cong lam (agreeᶜ n f h sf)) (agree n e h se)
 
 agree² n (clo₂ ρ t) h s = subTm-cong (extS-cong (extS-cong (agreeᵉ n ρ h s))) t
 
 agree n (vvar l) h s = h l s
-agree n (vlam c) h s = cong lam (agreeᶜ n c h s)
+agree n (vlam c) h s = agreeL n c h s
 agree n (vapp f a) h (s₁ , s₂) = cong₂ app (agree n f h s₁) (agree n a h s₂)
 agree n (vpair a b) h (s₁ , s₂) = cong₂ pair (agree n a h s₁) (agree n b h s₂)
 agree n (vabsurd c e) h (s₁ , s₂) = cong₂ absurd (agree n c h s₁) (agree n e h s₂)
