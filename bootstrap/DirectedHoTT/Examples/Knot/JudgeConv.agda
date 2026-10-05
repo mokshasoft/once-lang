@@ -14,11 +14,10 @@ module DirectedHoTT.Examples.Knot.JudgeConv where
 
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
-open import DirectedHoTT.Spec.Syntax hiding ( Fin )
+open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Lib.Sugar using ( tag; conₗ; tag-sub; v₀; v₁; v₂; v₃; _,ₚ_ )
 open import DirectedHoTT.Lib.SynView using ( PayV; ⊢conP )
-open import DirectedHoTT.Lib.FinFam using ( FinI )
 open import DirectedHoTT.Lib.Tel
 open import DirectedHoTT.Lib.Syn
 open import DirectedHoTT.Examples.Knot.Sig
@@ -129,7 +128,7 @@ opaque
   ⌜∋⌝ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ
   ⌜∋⌝ d g x a = ⌜IMu⌝ I∋ D∋ (ix∋ d g x a)
 
-  ⊢⌜∋⌝ : {Ξ : Ctx} {d g x a : RTm ⌊ Ξ ⌋} → Ξ ⊢ d ∷ El ⌜Nat⌝ → Ξ ⊢ g ∷ KCtx d → Ξ ⊢ x ∷ FinI d → Ξ ⊢ a ∷ K 0 d →
+  ⊢⌜∋⌝ : {Ξ : Ctx} {d g x a : RTm ⌊ Ξ ⌋} → Ξ ⊢ d ∷ El ⌜Nat⌝ → Ξ ⊢ g ∷ KCtx d → Ξ ⊢ x ∷ Fin d → Ξ ⊢ a ∷ K 0 d →
          Ξ ⊢ ⌜∋⌝ d g x a ∷ U
   ⊢⌜∋⌝ dd dg dx da = ⊢⌜IMu⌝ ⊢I∋ ⊢D∋ (⊢ix∋ dd dg dx da)
 

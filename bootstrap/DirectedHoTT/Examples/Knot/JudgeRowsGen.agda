@@ -15,12 +15,12 @@ module DirectedHoTT.Examples.Knot.JudgeRowsGen where
 
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂; subst )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
-open import DirectedHoTT.Spec.Syntax hiding ( Fin )
+open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Metatheory.TySub using ( ⊢wk )
 open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_; tag; Lt; lt-z; lt-s; []ᵈ; _∷ᵈ_; AllD; v₀; v₁; v₂; v₃; v₄; v₅; v₆; _,ₚ_ )
 open import DirectedHoTT.Lib.SynView using ( PayV; ⊢recFst; ⊢recSnd; ⊢atDepthSK )
-open import DirectedHoTT.Lib.FinFam using ( ffz; ⊢ffz; ffs; ⊢ffs )
+open import DirectedHoTT.Lib.NatCode using ( fromI )
 open import DirectedHoTT.Lib.NatCode using ( ⊢isuc; toI )
 open import DirectedHoTT.Lib.Tel
 open import DirectedHoTT.Lib.Syn
@@ -42,7 +42,6 @@ open import DirectedHoTT.Metatheory.SubjectReductionBase using () renaming ( wk-
 open import DirectedHoTT.Examples.Knot.JudgeRowsTm using ( ⊢varOf )
 open import DirectedHoTT.Examples.Knot.JudgeConv using ( TCVat; TCVat-law; okTCVat; ⌜∋⌝; ⊢⌜∋⌝; ⌜∋⌝-sub )
 open import DirectedHoTT.Examples.Knot.RefJudge using ( r⊢ref; ok⊢ref )
-open import DirectedHoTT.Lib.FinFam using ( FinI )
 
 private
   variable
@@ -664,7 +663,7 @@ C⊢var_0I-sub σ J G X F0 = C⊢var_0A-cong (subTm σ J) (subTm σ G) (subTm σ
 C⊢var_0I-cong : {Δ : Cx} → (J J' : RTm Δ) → (G G' : RTm Δ) → (X X' : RTm Δ) → (F0 F0' : RTm Δ) → J ≡ J' → G ≡ G' → X ≡ X' → F0 ≡ F0' → (C⊢var_0I {Δ} J G X F0) ≡ (C⊢var_0I J' G' X' F0')
 C⊢var_0I-cong J J' G G' X X' F0 F0' refl refl refl refl = refl
 
-okC⊢var_0I : {Ξ : Ctx} {J G X F0 : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ G ∷ KCtx J → Ξ ⊢ X ∷ K 0 J → Ξ ⊢ F0 ∷ FinI J → Ξ ⊢ C⊢var_0I J G X F0 ∷ U
+okC⊢var_0I : {Ξ : Ctx} {J G X F0 : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ G ∷ KCtx J → Ξ ⊢ X ∷ K 0 J → Ξ ⊢ F0 ∷ Fin J → Ξ ⊢ C⊢var_0I J G X F0 ∷ U
 okC⊢var_0I dJ dG dX dF0 = (⊢⌜∋⌝ dJ dG dF0 dX)
 
 T⊢varA : Tel Δ
@@ -1469,7 +1468,7 @@ okC⊢tr₁_1I : {Ξ : Ctx} {J : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ �
 okC⊢tr₁_1I dJ = (⊢⌜Tm⌝ dJ)
 
 C⊢tr₁_2A : RTm Δ → RTm Δ → RTm Δ → RTm Δ
-C⊢tr₁_2A J F0 A0 = (⌜Id⌝ A0 F0 (kvar ffz))
+C⊢tr₁_2A J F0 A0 = (⌜Id⌝ A0 F0 (kvar fzero))
 
 C⊢tr₁_2I : RTm Δ → RTm Δ → RTm Δ
 C⊢tr₁_2I J F0 = C⊢tr₁_2A J F0 (⌜Tm⌝ (nsuc J))
@@ -1484,7 +1483,7 @@ C⊢tr₁_2I-cong : {Δ : Cx} → (J J' : RTm Δ) → (F0 F0' : RTm Δ) → J �
 C⊢tr₁_2I-cong J J' F0 F0' refl refl = refl
 
 okC⊢tr₁_2I : {Ξ : Ctx} {J F0 : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ F0 ∷ K 1 (nsuc J) → Ξ ⊢ C⊢tr₁_2I J F0 ∷ U
-okC⊢tr₁_2I dJ dF0 = (⊢⌜Id⌝ (⊢⌜Tm⌝ (⊢isuc dJ)) (toTm dF0) (toTm (⊢kvar (⊢isuc dJ) (⊢ffz dJ))))
+okC⊢tr₁_2I dJ dF0 = (⊢⌜Id⌝ (⊢⌜Tm⌝ (⊢isuc dJ)) (toTm dF0) (toTm (⊢kvar (⊢isuc dJ) (⊢fzero (fromI dJ)))))
 
 T⊢tr₁A : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⊢tr₁A J G X F1 F2 E0 E1 A0 = tρ (tmIx J G E0 (kU)) (tρ (tmIx J G E1 (kU)) (tρ (tmIx J G F1 (kHom (kU) E0 E1)) (tρ (tmIx J G F2 (kEl E0)) (tσ (⌜Id⌝ A0 X (kEl E1)) tι))))
@@ -1625,7 +1624,7 @@ okC⊢tr₂_3I : {Ξ : Ctx} {J E1 : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat�
 okC⊢tr₂_3I dJ dE1 = (⊢⌜NNC⌝ dJ dE1)
 
 C⊢tr₂_4A : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ
-C⊢tr₂_4A J F0 E1 E2 A0 A1 A2 = (⌜Id⌝ A0 F0 (kcHom A1 A2 (kvar ffz)))
+C⊢tr₂_4A J F0 E1 E2 A0 A1 A2 = (⌜Id⌝ A0 F0 (kcHom A1 A2 (kvar fzero)))
 
 C⊢tr₂_4I : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ
 C⊢tr₂_4I J F0 E1 E2 = C⊢tr₂_4A J F0 E1 E2 (⌜Tm⌝ (nsuc J)) (wk 1 J E1) (wk 1 J E2)
@@ -1640,7 +1639,7 @@ C⊢tr₂_4I-cong : {Δ : Cx} → (J J' : RTm Δ) → (F0 F0' : RTm Δ) → (E1 
 C⊢tr₂_4I-cong J J' F0 F0' E1 E1' E2 E2' refl refl refl refl = refl
 
 okC⊢tr₂_4I : {Ξ : Ctx} {J F0 E1 E2 : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ F0 ∷ K 1 (nsuc J) → Ξ ⊢ E1 ∷ K 1 J → Ξ ⊢ E2 ∷ K 1 J → Ξ ⊢ C⊢tr₂_4I J F0 E1 E2 ∷ U
-okC⊢tr₂_4I dJ dF0 dE1 dE2 = (⊢⌜Id⌝ (⊢⌜Tm⌝ (⊢isuc dJ)) (toTm dF0) (toTm (⊢kcHom (⊢isuc dJ) (⊢wkS (lt-s lt-z) dJ dE1) (⊢wkS (lt-s lt-z) dJ dE2) (⊢kvar (⊢isuc dJ) (⊢ffz dJ)))))
+okC⊢tr₂_4I dJ dF0 dE1 dE2 = (⊢⌜Id⌝ (⊢⌜Tm⌝ (⊢isuc dJ)) (toTm dF0) (toTm (⊢kcHom (⊢isuc dJ) (⊢wkS (lt-s lt-z) dJ dE1) (⊢wkS (lt-s lt-z) dJ dE2) (⊢kvar (⊢isuc dJ) (⊢fzero (fromI dJ))))))
 
 C⊢tr₂_5A : RTm Δ → RTm Δ → RTm Δ
 C⊢tr₂_5A J A0 = A0
@@ -1679,7 +1678,7 @@ okC⊢tr₂_6I : {Ξ : Ctx} {J : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ �
 okC⊢tr₂_6I dJ = (⊢⌜Tm⌝ dJ)
 
 T⊢tr₂A : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
-T⊢tr₂A J G X F1 F2 E0 E1 E2 E5 E6 A0 A1 A2 = tρ (tmIx (nsuc J) (cext G E0) A0 (kU)) (tρ (tmIx (nsuc J) (cext G E0) A1 (kEl A0)) (tρ (tmIx (nsuc J) (cext G E0) (kvar ffz) (kEl A0)) (tρ (tmIx J G E5 E0) (tρ (tmIx J G E6 E0) (tρ (tmIx J G F1 (kHom E0 E5 E6)) (tρ (tmIx J G F2 (kEl (kcHom E1 E2 E5))) (tσ (⌜Id⌝ A2 X (kEl (kcHom E1 E2 E6))) tι)))))))
+T⊢tr₂A J G X F1 F2 E0 E1 E2 E5 E6 A0 A1 A2 = tρ (tmIx (nsuc J) (cext G E0) A0 (kU)) (tρ (tmIx (nsuc J) (cext G E0) A1 (kEl A0)) (tρ (tmIx (nsuc J) (cext G E0) (kvar fzero) (kEl A0)) (tρ (tmIx J G E5 E0) (tρ (tmIx J G E6 E0) (tρ (tmIx J G F1 (kHom E0 E5 E6)) (tρ (tmIx J G F2 (kEl (kcHom E1 E2 E5))) (tσ (⌜Id⌝ A2 X (kEl (kcHom E1 E2 E6))) tι)))))))
 
 T⊢tr₂I : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⊢tr₂I J G X F1 F2 E0 E1 E2 E5 E6 = T⊢tr₂A J G X F1 F2 E0 E1 E2 E5 E6 (wk 1 J E1) (wk 1 J E2) (⌜Ty⌝ J)
@@ -1694,7 +1693,7 @@ T⊢tr₂I-cong : {Δ : Cx} → (J J' : RTm Δ) → (G G' : RTm Δ) → (X X' : 
 T⊢tr₂I-cong J J' G G' X X' F1 F1' F2 F2' E0 E0' E1 E1' E2 E2' E5 E5' E6 E6' refl refl refl refl refl refl refl refl refl refl = refl
 
 okT⊢tr₂I : {Ξ : Ctx} {J G X F1 F2 E0 E1 E2 E5 E6 : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ G ∷ KCtx J → Ξ ⊢ X ∷ K 0 J → Ξ ⊢ F1 ∷ K 1 J → Ξ ⊢ F2 ∷ K 1 J → Ξ ⊢ E0 ∷ K 0 J → Ξ ⊢ E1 ∷ K 1 J → Ξ ⊢ E2 ∷ K 1 J → Ξ ⊢ E5 ∷ K 1 J → Ξ ⊢ E6 ∷ K 1 J → TelOK Ξ JT (T⊢tr₂I J G X F1 F2 E0 E1 E2 E5 E6)
-okT⊢tr₂I dJ dG dX dF1 dF2 dE0 dE1 dE2 dE5 dE6 = ok-ρ (⊢tmIx (⊢isuc dJ) (⊢cext dJ dG dE0) (⊢wkS (lt-s lt-z) dJ dE1) (⊢kU (⊢isuc dJ))) (ok-ρ (⊢tmIx (⊢isuc dJ) (⊢cext dJ dG dE0) (⊢wkS (lt-s lt-z) dJ dE2) (⊢kEl (⊢isuc dJ) (⊢wkS (lt-s lt-z) dJ dE1))) (ok-ρ (⊢tmIx (⊢isuc dJ) (⊢cext dJ dG dE0) (⊢kvar (⊢isuc dJ) (⊢ffz dJ)) (⊢kEl (⊢isuc dJ) (⊢wkS (lt-s lt-z) dJ dE1))) (ok-ρ (⊢tmIx dJ dG dE5 dE0) (ok-ρ (⊢tmIx dJ dG dE6 dE0) (ok-ρ (⊢tmIx dJ dG dF1 (⊢kHom dJ dE0 dE5 dE6)) (ok-ρ (⊢tmIx dJ dG dF2 (⊢kEl dJ (⊢kcHom dJ dE1 dE2 dE5))) (ok-σ (⊢⌜Id⌝ (⊢⌜Ty⌝ dJ) (toTy dX) (toTy (⊢kEl dJ (⊢kcHom dJ dE1 dE2 dE6)))) ok-ι)))))))
+okT⊢tr₂I dJ dG dX dF1 dF2 dE0 dE1 dE2 dE5 dE6 = ok-ρ (⊢tmIx (⊢isuc dJ) (⊢cext dJ dG dE0) (⊢wkS (lt-s lt-z) dJ dE1) (⊢kU (⊢isuc dJ))) (ok-ρ (⊢tmIx (⊢isuc dJ) (⊢cext dJ dG dE0) (⊢wkS (lt-s lt-z) dJ dE2) (⊢kEl (⊢isuc dJ) (⊢wkS (lt-s lt-z) dJ dE1))) (ok-ρ (⊢tmIx (⊢isuc dJ) (⊢cext dJ dG dE0) (⊢kvar (⊢isuc dJ) (⊢fzero (fromI dJ))) (⊢kEl (⊢isuc dJ) (⊢wkS (lt-s lt-z) dJ dE1))) (ok-ρ (⊢tmIx dJ dG dE5 dE0) (ok-ρ (⊢tmIx dJ dG dE6 dE0) (ok-ρ (⊢tmIx dJ dG dF1 (⊢kHom dJ dE0 dE5 dE6)) (ok-ρ (⊢tmIx dJ dG dF2 (⊢kEl dJ (⊢kcHom dJ dE1 dE2 dE5))) (ok-σ (⊢⌜Id⌝ (⊢⌜Ty⌝ dJ) (toTy dX) (toTy (⊢kEl dJ (⊢kcHom dJ dE1 dE2 dE6)))) ok-ι)))))))
 
 T⊢tr₂⁽7⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⊢tr₂⁽7⁾ J G X F0 F1 F2 E0 E1 E2 E3 E4 E5 E6 = (T⊢tr₂I J G X F1 F2 E0 E1 E2 E5 E6)

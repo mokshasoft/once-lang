@@ -14,7 +14,6 @@ module DirectedHoTT.Examples.Knot.Ctors where
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
-open import DirectedHoTT.Lib.FinFam using ( FinI )
 open import DirectedHoTT.Lib.Syn
 open import DirectedHoTT.Examples.Knot.Sig
 open import DirectedHoTT.Lib.Sugar using ( _,ₚ_ )
@@ -77,7 +76,7 @@ open import DirectedHoTT.Lib.Sugar using ( _,ₚ_ )
 ⊢kFin {Γ} {d} {a0} dd da0 =
   ⊢conSyn {sg = KSig} {shs = TyShs} {sh = sh-kFin} {d = d} {p = pair a0 (unit)} KOK (atᵍ 0) (atʰ 12) dd (a-rec da0 a[])
 
-⊢kvar : {Γ : Ctx} {d a0 : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ a0 ∷ FinI d → Γ ⊢ kvar a0 ∷ K 1 d
+⊢kvar : {Γ : Ctx} {d a0 : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ a0 ∷ Fin d → Γ ⊢ kvar a0 ∷ K 1 d
 ⊢kvar {Γ} {d} {a0} dd da0 =
   ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kvar} {d = d} {p = pair a0 (unit)} KOK (atᵍ 1) (atʰ 0) dd (a-v da0)
 

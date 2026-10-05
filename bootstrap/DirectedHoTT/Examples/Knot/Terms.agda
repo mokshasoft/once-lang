@@ -14,8 +14,7 @@ module DirectedHoTT.Examples.Knot.Terms where
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
-open import DirectedHoTT.Lib.FinFam using ( FinI; ffz; ffs; ⊢ffz; ⊢ffs )
-open import DirectedHoTT.Lib.NatCode using ( toI; ⊢isuc )
+open import DirectedHoTT.Lib.NatCode using ( toI; fromI; ⊢isuc )
 open import DirectedHoTT.Lib.Syn
 open import DirectedHoTT.Examples.Knot.Sig
 open import DirectedHoTT.Lib.Sugar using ( _,ₚ_ )
@@ -45,12 +44,12 @@ quoteℕ (suc n) = nsuc (quoteℕ n)
 
 -- a variable is a `Fin` of the depth
 quoteVar : {Γ : Cx} → Var Γ → {Θ : Cx} → RTm Θ
-quoteVar {Γ ∙} vz     = ffz
-quoteVar {Γ ∙} (vs x) = ffs (quoteVar x)
+quoteVar {Γ ∙} vz     = fzero
+quoteVar {Γ ∙} (vs x) = fsuc (quoteVar x)
 
-⊢quoteVar : {Γ : Cx} (x : Var Γ) {Θ : Ctx} → Θ ⊢ quoteVar x ∷ FinI (dep Γ)
-⊢quoteVar {Γ ∙} vz     = ⊢ffz (⊢dep' Γ)
-⊢quoteVar {Γ ∙} (vs x) = ⊢ffs (⊢dep' Γ) (⊢quoteVar x)
+⊢quoteVar : {Γ : Cx} (x : Var Γ) {Θ : Ctx} → Θ ⊢ quoteVar x ∷ Fin (dep Γ)
+⊢quoteVar {Γ ∙} vz     = ⊢fzero (fromI (⊢dep' Γ))
+⊢quoteVar {Γ ∙} (vs x) = ⊢fsuc (⊢quoteVar x)
 
 quoteTy : {Γ : Cx} → RTy Γ → {Θ : Cx} → RTm Θ
 quoteTm : {Γ : Cx} → RTm Γ → {Θ : Cx} → RTm Θ

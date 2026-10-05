@@ -8,7 +8,7 @@ FIBRED BY SORT (D075) with the depth RIDING (D074).
   `s`'s constructor list (`Lib/Sorted.Dₛ`): NO constructor carries a sort
   equation, and none carries a depth equation — a recursive field names
   its own index outright (`lam`'s body is at `(1 , suc d)`).
-  `Var Γ` is the nested `Fin` family (`Lib/FinFam`), a σ-field at the
+  `Var Γ` is the kernel's `Fin` of the depth, a σ-field at the
   ambient depth; `ℕ` arguments are σ-fields of code `⌜Nat⌝`.
   Descriptions are terms (D072), so there are no Desc/DCon/IDesc/ICon sorts.
 
@@ -201,8 +201,7 @@ module DirectedHoTT.Examples.Knot.Terms where
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
-open import DirectedHoTT.Lib.FinFam using ( FinI; ffz; ffs; ⊢ffz; ⊢ffs )
-open import DirectedHoTT.Lib.NatCode using ( toI; ⊢isuc )
+open import DirectedHoTT.Lib.NatCode using ( toI; fromI; ⊢isuc )
 open import DirectedHoTT.Lib.Syn
 open import DirectedHoTT.Examples.Knot.Sig
 
@@ -231,12 +230,12 @@ quoteℕ (suc n) = nsuc (quoteℕ n)
 
 -- a variable is a `Fin` of the depth
 quoteVar : {Γ : Cx} → Var Γ → {Θ : Cx} → RTm Θ
-quoteVar {Γ ∙} vz     = ffz
-quoteVar {Γ ∙} (vs x) = ffs (quoteVar x)
+quoteVar {Γ ∙} vz     = fzero
+quoteVar {Γ ∙} (vs x) = fsuc (quoteVar x)
 
-⊢quoteVar : {Γ : Cx} (x : Var Γ) {Θ : Ctx} → Θ ⊢ quoteVar x ∷ FinI (dep Γ)
-⊢quoteVar {Γ ∙} vz     = ⊢ffz (⊢dep' Γ)
-⊢quoteVar {Γ ∙} (vs x) = ⊢ffs (⊢dep' Γ) (⊢quoteVar x)
+⊢quoteVar : {Γ : Cx} (x : Var Γ) {Θ : Ctx} → Θ ⊢ quoteVar x ∷ Fin (dep Γ)
+⊢quoteVar {Γ ∙} vz     = ⊢fzero (fromI (⊢dep' Γ))
+⊢quoteVar {Γ ∙} (vs x) = ⊢fsuc (⊢quoteVar x)
 
 quoteTy : {Γ : Cx} → RTy Γ → {Θ : Cx} → RTm Θ
 quoteTm : {Γ : Cx} → RTm Γ → {Θ : Cx} → RTm Θ
@@ -289,7 +288,6 @@ module DirectedHoTT.Examples.Knot.Ctors where
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
-open import DirectedHoTT.Lib.FinFam using ( FinI )
 open import DirectedHoTT.Lib.Syn
 open import DirectedHoTT.Examples.Knot.Sig
 
@@ -307,7 +305,7 @@ open import DirectedHoTT.Examples.Knot.Sig
         if f[0] == "rec": return "Γ ⊢ %s ∷ K %d %s" % (a, f[1], depth(f[2]))
         if f[0] == "cls": return "Γ ⊢ %s ∷ K %d nzero" % (a, f[1])
         if f[0] == "nat": return "Γ ⊢ %s ∷ El ⌜Nat⌝" % a
-        if f[0] == "var": return "Γ ⊢ %s ∷ FinI d" % a
+        if f[0] == "var": return "Γ ⊢ %s ∷ Fin d" % a
     def darg(f, a):
         if f[0] == "rec": return "a-rec d" + a
         if f[0] == "cls": return "a-cls d" + a
@@ -386,8 +384,7 @@ open import normalizer.Syntax.Types using ( _≡_; refl; cong )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
-open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-trans; ⟶*-appʳ; ⟶*-pairˡ; ⟶*-pairʳ; ⟶*-con )
-open import DirectedHoTT.Lib.FinFam using ( ffz; ffs )
+open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-trans; ⟶*-appʳ; ⟶*-pairˡ; ⟶*-pairʳ; ⟶*-con; ⟶*-fsuc )
 open import DirectedHoTT.Lib.Syn
 open import DirectedHoTT.Lib.SynRed using ( _∙ⁿ_ )
 open import DirectedHoTT.Lib.SynTrav using ( module Trav )
@@ -416,13 +413,10 @@ private
 RepR : Ren Γ Δ → RTm Θ → Set
 RepR {Γ} ρ f = (x : Var Γ) → app f (quoteVar x) ⟶* quoteVar (ρ x)
 
-ffs-mono : {v v' : RTm Θ} → v ⟶* v' → ffs v ⟶* ffs v'
-ffs-mono r = ⟶*-con (⟶*-pairʳ (⟶*-pairˡ r))
-
 -- …and the lifted environment the lifted renaming
 repR-lift : {ρ : Ren Γ Δ} {f : RTm Θ} → RepR ρ f → RepR (extR ρ) (ER.LIFT· (dep Δ) (dep Γ) f)
-repR-lift {Δ = Δ} r vz     = ⟶*-trans ER.lift-z (step (β ffz (dep Δ)) done)
-repR-lift         r (vs x) = ⟶*-trans ER.lift-s (step (ξ-appˡ (β _ _)) (step (β _ _) (ffs-mono (r x))))
+repR-lift {Δ = Δ} r vz     = ⟶*-trans ER.lift-z (step (β fzero (dep Δ)) done)
+repR-lift         r (vs x) = ⟶*-trans ER.lift-s (step (ξ-appˡ (β _ _)) (step (β _ _) (⟶*-fsuc (r x))))
 
 extRⁿ : (k : ℕ) → Ren Γ Δ → Ren (Γ ∙ⁿ k) (Δ ∙ⁿ k)
 extRⁿ zero    ρ = ρ
@@ -462,8 +456,7 @@ open import normalizer.Syntax.Types using ( _≡_; refl; cong; sym; subst )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
-open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-trans; ⟶*-appʳ; ⟶*-pairˡ; ⟶*-pairʳ; ⟶*-con )
-open import DirectedHoTT.Lib.FinFam using ( ffz; ffs )
+open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-trans; ⟶*-appʳ; ⟶*-pairˡ; ⟶*-pairʳ; ⟶*-con; ⟶*-fsuc )
 open import DirectedHoTT.Lib.Syn
 open import DirectedHoTT.Lib.SynRed using ( _∙ⁿ_ )
 open import DirectedHoTT.Lib.SynTrav using ( module Trav )
@@ -680,8 +673,7 @@ open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Metatheory.TySub using ( ⊢-cast )
 open import DirectedHoTT.Metatheory.LogicalRelation using ( IsNormal )
-open import DirectedHoTT.Lib.Sugar using ( Lt; lt-z; lt-s; conₗ )
-open import DirectedHoTT.Lib.FinFam using ( ffz; ffs )
+open import DirectedHoTT.Lib.Sugar using ( Lt; lt-z; lt-s; conₗ; tag )
 open import DirectedHoTT.Lib.NatNum using ( num )
 open import DirectedHoTT.Lib.Syn
 open import DirectedHoTT.Lib.SynUnq
@@ -737,14 +729,14 @@ toVar-from : (x : Var Γ) → toVar (fromVar-lt x) ≡ x
 toVar-from vz     = refl
 toVar-from (vs x) = cong vs (toVar-from x)
 
-fnum-fromVar : (x : Var Γ) → fnum (fromVar x) ≡ quoteVar x {Θ}
-fnum-fromVar vz     = refl
-fnum-fromVar (vs x) = cong ffs (fnum-fromVar x)
+tag-fromVar : (x : Var Γ) → tag (fromVar x) ≡ quoteVar x {Θ}
+tag-fromVar vz     = refl
+tag-fromVar (vs x) = cong fsuc (tag-fromVar x)
 
-quoteVar-toVar : {i : ℕ} (l : Lt i (len Γ)) → quoteVar (toVar l) {Θ} ≡ fnum i
+quoteVar-toVar : {i : ℕ} (l : Lt i (len Γ)) → quoteVar (toVar l) {Θ} ≡ tag i
 quoteVar-toVar {Γ = ε}   ()
 quoteVar-toVar {Γ = Γ ∙} {i = zero}  lt-z     = refl
-quoteVar-toVar {Γ = Γ ∙} {i = suc i} (lt-s l) = cong ffs (quoteVar-toVar l)
+quoteVar-toVar {Γ = Γ ∙} {i = suc i} (lt-s l) = cong fsuc (quoteVar-toVar l)
 
 ------------------------------------------------------------------------
 -- 2. The Spec's syntax and the generic trees, row by row.
@@ -826,7 +818,7 @@ def gen_unquote(rows):
             for f, a in zip(fs, args):
                 if f[0] in ("rec", "cls"): eqs.append("(%s %s)" % (QT[f[1]], a))
                 elif f[0] == "nat": eqs.append("(sym (quoteℕ-num %s))" % a)
-                else: eqs.append("(fnum-fromVar %s)" % a)
+                else: eqs.append("(tag-fromVar %s)" % a)
             L.append("%s %s = %s" % (QT[s], pat, congs(kname(name), eqs)))
         L.append("")
     L.append("from-toTy : (A : RTy Γ) → fromTy (toTy A) ≡ A")

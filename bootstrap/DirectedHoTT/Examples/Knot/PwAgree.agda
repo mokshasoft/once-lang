@@ -19,7 +19,6 @@ open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Spec.Variance using ( 𝔹; true; false; pw?; pwBody )
 open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; ⟶ᵀ*-IMu; ⟶*-pairʳ; ⟶*-trans )
 open import DirectedHoTT.Lib.Sugar using ( conₗ; _,ₚ_ )
-open import DirectedHoTT.Lib.FinFam using ( ffz )
 open import DirectedHoTT.Examples.Knot.Sig using ( kcHom; kapp; kvar )
 open import DirectedHoTT.Examples.Knot.Terms
 open import DirectedHoTT.Examples.Knot.JudgeIx using ( ⌜Tm⌝ )
@@ -30,7 +29,7 @@ open import DirectedHoTT.Examples.Knot.OpAgree using ( wk-agree-tm; node-2; node
 
 -- a ⌜Hom⌝'s pointwise body, as the Knot writes it (with `wk`)
 Xh : {Θ : Cx} (Γ : Cx) (C a b : RTm Γ) → RTm Θ
-Xh Γ C a b = kcHom (quoteTm (pwBody C)) (kapp (wk 1 (dep Γ) (quoteTm a)) (kvar ffz)) (kapp (wk 1 (dep Γ) (quoteTm b)) (kvar ffz))
+Xh Γ C a b = kcHom (quoteTm (pwBody C)) (kapp (wk 1 (dep Γ) (quoteTm a)) (kvar fzero)) (kapp (wk 1 (dep Γ) (quoteTm b)) (kvar fzero))
 
 -- …which is the quoted Spec body
 Xh-agree : {Γ Θ : Cx} (C a b : RTm Γ) → Xh {Θ} Γ C a b ⟶* quoteTm (pwBody (⌜Hom⌝ C a b))

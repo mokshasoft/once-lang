@@ -14,14 +14,14 @@ module DirectedHoTT.Examples.Knot.RedXiConGen where
 
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
-open import DirectedHoTT.Spec.Syntax hiding ( Fin )
+open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; ⟶ᵀ*-El; ⟶*-dpayᶜ; ⟶*-trans; ⟶*-pairˡ )
 open import DirectedHoTT.Metatheory.TySub using ( ⊢-cast; wk-cancel-tm )
 open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_; tag; conₗ; lt-z; lt-s; nth-z; nth-s; atᶜ; v₀; v₁; v₂; v₃; v₄; v₅; v₆; _,ₚ_ )
 open import DirectedHoTT.Lib.SynFib using ( ⊢conRowₖ )
 open import DirectedHoTT.Lib.SynRed
-open import DirectedHoTT.Lib.FinFam using ( FinI; ffz; ⊢ffz; ffs; ⊢ffs )
+open import DirectedHoTT.Lib.NatCode using ( fromI )
 open import DirectedHoTT.Lib.NatCode using ( ⊢isuc; toI )
 open import DirectedHoTT.Lib.Tel
 open import DirectedHoTT.Lib.Syn

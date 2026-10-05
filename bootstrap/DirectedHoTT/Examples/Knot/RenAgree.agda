@@ -16,8 +16,7 @@ open import normalizer.Syntax.Types using ( _≡_; refl; cong )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
-open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-trans; ⟶*-appʳ; ⟶*-pairˡ; ⟶*-pairʳ; ⟶*-con )
-open import DirectedHoTT.Lib.FinFam using ( ffz; ffs )
+open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-trans; ⟶*-appʳ; ⟶*-pairˡ; ⟶*-pairʳ; ⟶*-con; ⟶*-fsuc )
 open import DirectedHoTT.Lib.Syn
 open import DirectedHoTT.Lib.SynRed using ( _∙ⁿ_ )
 open import DirectedHoTT.Lib.SynTrav using ( module Trav )
@@ -47,13 +46,10 @@ private
 RepR : Ren Γ Δ → RTm Θ → Set
 RepR {Γ} ρ f = (x : Var Γ) → app f (quoteVar x) ⟶* quoteVar (ρ x)
 
-ffs-mono : {v v' : RTm Θ} → v ⟶* v' → ffs v ⟶* ffs v'
-ffs-mono r = ⟶*-con (⟶*-pairʳ (⟶*-pairˡ r))
-
 -- …and the lifted environment the lifted renaming
 repR-lift : {ρ : Ren Γ Δ} {f : RTm Θ} → RepR ρ f → RepR (extR ρ) (ER.LIFT· (dep Δ) (dep Γ) f)
-repR-lift {Δ = Δ} r vz     = ⟶*-trans ER.lift-z (step (β ffz (dep Δ)) done)
-repR-lift         r (vs x) = ⟶*-trans ER.lift-s (step (ξ-appˡ (β _ _)) (step (β _ _) (ffs-mono (r x))))
+repR-lift {Δ = Δ} r vz     = ⟶*-trans ER.lift-z (step (β fzero (dep Δ)) done)
+repR-lift         r (vs x) = ⟶*-trans ER.lift-s (step (ξ-appˡ (β _ _)) (step (β _ _) (⟶*-fsuc (r x))))
 
 extRⁿ : (k : ℕ) → Ren Γ Δ → Ren (Γ ∙ⁿ k) (Δ ∙ⁿ k)
 extRⁿ zero    ρ = ρ

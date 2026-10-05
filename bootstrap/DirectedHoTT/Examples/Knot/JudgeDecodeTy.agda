@@ -19,7 +19,7 @@ module DirectedHoTT.Examples.Knot.JudgeDecodeTy where
 
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂; subst; Σ; _,_; _×_ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
-open import DirectedHoTT.Spec.Syntax hiding ( Fin )
+open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Spec.Variance using ( NoNatC; nonatc-ren; occ-ren-tm; avoids-wk )
 open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; ⟶ᵀ*-El; ⟶*-dpayᶜ; ⟶*-trans; ⟶*-pairˡ )
@@ -34,7 +34,6 @@ open import DirectedHoTT.Lib.Decode
 open import DirectedHoTT.Lib.PatDecode
 open import DirectedHoTT.Lib.Size using ( _<_; <ˡ; <ʳ )
 open import DirectedHoTT.Lib.SynUnq using ( nat-unq )
-open import DirectedHoTT.Lib.FinFam using ( FinI; ffz; ffs )
 open import DirectedHoTT.Examples.Knot.Sig
 open import DirectedHoTT.Examples.Knot.Ctors
 open import DirectedHoTT.Examples.Knot.Terms

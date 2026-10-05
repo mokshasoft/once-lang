@@ -11,7 +11,8 @@ module DirectedHoTT.Examples.Knot.JudgeIx where
 
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂; subst; _,_ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
-open import DirectedHoTT.Spec.Syntax hiding ( Fin )
+open import DirectedHoTT.Spec.Syntax
+open import DirectedHoTT.Lib.NatCode using ( fromI )
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast; wk-cancel-tm )
 open import DirectedHoTT.Metatheory.SubjectReductionBase using () renaming ( wk-sub to wkS )
@@ -19,7 +20,6 @@ open import DirectedHoTT.Metatheory.Fundamental.Syntactic using ( ⟨_⟩ᵣ; su
 open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; _⟶ᵀ*_; stepᵀ; doneᵀ; ⟶*-trans; ⟶*-appˡ; ⟶*-appʳ; ⟶*-ielimⁱ; ⟶*-ielimᵗ; ⟶*-fst; ⟶*-snd; ⟶*-pairˡ; ⟶*-pairʳ; ⟶*-con; ⟶ᵀ*-IMu )
 open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_; conₗ; tag; Lt; lt-z; lt-s; subC; selF-sub; Dσ-sub; []ᵈ; _∷ᵈ_; v₀; v₁; v₂; _,ₚ_ )
 open import DirectedHoTT.Lib.SynView using ( PayV; payV-red; ⊢recFst; ⊢recSnd; ⊢atDepthSK )
-open import DirectedHoTT.Lib.FinFam using ( FinI; ffz; ⊢ffz )
 open import DirectedHoTT.Lib.NatCode using ( ⊢isuc )
 open import DirectedHoTT.Examples.Knot.Ctors
 open import DirectedHoTT.Examples.Knot.Ren using ( wk; wk-sub; ⊢wkS )
@@ -308,11 +308,11 @@ opaque
 
 
 mc : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ
-mc j g I D = cext (cext g (kEl I)) (kIMu (wk 1 j I) (wk 1 j D) (kvar ffz))
+mc j g I D = cext (cext g (kEl I)) (kIMu (wk 1 j I) (wk 1 j D) (kvar fzero))
 
 mc-sub : (σ : Sub Δ Θ) (j g I D : RTm Δ) → subTm σ (mc j g I D) ≡ mc (subTm σ j) (subTm σ g) (subTm σ I) (subTm σ D)
 mc-sub σ j g I D =
-  cong₂ (λ a b → cext (cext (subTm σ g) (kEl (subTm σ I))) (kIMu a b (kvar ffz)))
+  cong₂ (λ a b → cext (cext (subTm σ g) (kEl (subTm σ I))) (kIMu a b (kvar fzero)))
         {x = subTm σ (wk 1 j I)} {x' = wk 1 (subTm σ j) (subTm σ I)} {y = subTm σ (wk 1 j D)} {y' = wk 1 (subTm σ j) (subTm σ D)}
         (wk-sub σ 1 j I) (wk-sub σ 1 j D)
 

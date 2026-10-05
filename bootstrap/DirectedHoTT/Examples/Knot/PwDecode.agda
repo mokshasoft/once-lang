@@ -21,14 +21,13 @@ module DirectedHoTT.Examples.Knot.PwDecode where
 
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; Σ; _,_; _×_; ⊥; ⊥-elim )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
-open import DirectedHoTT.Spec.Syntax hiding ( Fin )
+open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Spec.Variance using ( 𝔹; true; false; pw?; pwBody )
 open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; ⟶ᵀ*-El; ⟶*-dpayᶜ )
 open import DirectedHoTT.Metatheory.TySub using ( ⊢-cast; wk-cancel-tm )
 open import DirectedHoTT.Metatheory.LogicalRelation using ( IsNormal )
 open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_; conₗ; atᶜ; v₀; v₁; v₂; v₃; v₄; _,ₚ_; nth-z )
-open import DirectedHoTT.Lib.FinFam using ( ffz )
 open import DirectedHoTT.Examples.Knot.Ren using ( wk )
 open import DirectedHoTT.Lib.SynRed
 open import DirectedHoTT.Lib.Tel
@@ -95,7 +94,7 @@ module _ {Γ : Cx} where
   CH₁ a0 a1 a2 b e = ⌜ TPwcHom⁽1⁾ (dep Γ) (quoteTm b) (quoteTm a0) (quoteTm a1) (quoteTm a2) e ⌝ᵗ
   IdH : (a1 a2 : RTm Γ) → RTm (Γ ∙) → RTm ε → RTm ε
   IdH a1 a2 b e = ⌜Id⌝ (⌜Tm⌝ (nsuc (dep Γ))) (quoteTm b)
-                       (kcHom e (kapp (wk 1 (dep Γ) (quoteTm a1)) (kvar ffz)) (kapp (wk 1 (dep Γ) (quoteTm a2)) (kvar ffz)))
+                       (kcHom e (kapp (wk 1 (dep Γ) (quoteTm a1)) (kvar fzero)) (kapp (wk 1 (dep Γ) (quoteTm a2)) (kvar fzero)))
 
 -- ★ THE DECODER — written WITHOUT `with`: a with-abstraction over these
 --   contexts runs out of memory (measured: > 5 GB, the same call 8 s as an

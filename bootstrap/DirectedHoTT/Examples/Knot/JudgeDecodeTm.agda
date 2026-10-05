@@ -19,7 +19,7 @@ module DirectedHoTT.Examples.Knot.JudgeDecodeTm where
 
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂; subst; Σ; _,_; _×_ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
-open import DirectedHoTT.Spec.Syntax hiding ( Fin )
+open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Spec.Variance using ( NoNatC; nonatc-ren; occ-ren-tm; avoids-wk )
 open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; ⟶ᵀ*-El; ⟶*-dpayᶜ; ⟶*-trans; ⟶*-pairˡ )
@@ -34,7 +34,6 @@ open import DirectedHoTT.Lib.Decode
 open import DirectedHoTT.Lib.PatDecode
 open import DirectedHoTT.Lib.Size using ( _<_; <ˡ; <ʳ )
 open import DirectedHoTT.Lib.SynUnq using ( nat-unq )
-open import DirectedHoTT.Lib.FinFam using ( FinI; ffz; ffs )
 open import DirectedHoTT.Examples.Knot.Sig
 open import DirectedHoTT.Examples.Knot.Ctors
 open import DirectedHoTT.Examples.Knot.Terms
@@ -652,7 +651,7 @@ jdtr₍1₎ ihTy ihTm Γ a0 a1 a2 A {w} hq dq nq =
   ▷ λ { (E5 , eqE5) →
   unqTm {Γ = ⌊ Γ ⌋} (⊢conv de6 (credᵀ El-⌜Tm⌝)) ne6
   ▷ λ { (E6 , eqE6) →
-  quoteTm-inj a0 (⌜Hom⌝ (renTm vs E1) (renTm vs E2) v₀) (nf-≅ (quoteTm-normal {Γ = ⌊ Γ ⌋ ∙} a0) (quoteTm-normal {Γ = ⌊ Γ ⌋ ∙} (⌜Hom⌝ (renTm vs E1) (renTm vs E2) v₀)) (ctrn (subst (λ z → f0 ≅ (kcHom (wk 1 j (quoteTm E1)) (wk 1 j z) (kvar ffz))) eqE2 (subst (λ z → f0 ≅ (kcHom (wk 1 j z) (wk 1 j e2) (kvar ffz))) eqE1 (idrefl-decᶜ de4 ne4))) (⟶*→≅ (⟶*-trans (node-1 (wk-agree-tm E1)) (node-2 (wk-agree-tm E2))))))
+  quoteTm-inj a0 (⌜Hom⌝ (renTm vs E1) (renTm vs E2) v₀) (nf-≅ (quoteTm-normal {Γ = ⌊ Γ ⌋ ∙} a0) (quoteTm-normal {Γ = ⌊ Γ ⌋ ∙} (⌜Hom⌝ (renTm vs E1) (renTm vs E2) v₀)) (ctrn (subst (λ z → f0 ≅ (kcHom (wk 1 j (quoteTm E1)) (wk 1 j z) (kvar fzero))) eqE2 (subst (λ z → f0 ≅ (kcHom (wk 1 j z) (wk 1 j e2) (kvar fzero))) eqE1 (idrefl-decᶜ de4 ne4))) (⟶*→≅ (⟶*-trans (node-1 (wk-agree-tm E1)) (node-2 (wk-agree-tm E2))))))
   ▷ λ eqM4 →
   decNNC {Γ = ⌊ Γ ⌋} E1 (subst (λ z → ◇ ⊢ e3 ∷ KNNC j z) eqE1 (⊢conv de3 El-⌜NNC⌝)) ne3
   ▷ λ P3 →
@@ -660,7 +659,7 @@ jdtr₍1₎ ihTy ihTm Γ a0 a1 a2 A {w} hq dq nq =
   ▷ λ D0 →
   ihTm (Γ ▹ E0) (renTm vs E2) (El (renTm vs E1)) (<ˡ eq8 (<ʳ eq7 (<ʳ eq6 (<ʳ eq5 (<ʳ eq4 (<ʳ eq3 (<ʳ eq2 (<ʳ eq1 (<ʳ eq0 hq))))))))) (⊢conv (subst (λ z → ◇ ⊢ r1 ∷ IMu JT D⊢ (tmIx (nsuc j) (cext g (quoteTy E0)) (wk 1 j z) (kEl (wk 1 j (quoteTm E1))))) eqE2 (subst (λ z → ◇ ⊢ r1 ∷ IMu JT D⊢ (tmIx (nsuc j) (cext g (quoteTy E0)) (wk 1 j e2) (kEl (wk 1 j z)))) eqE1 (subst (λ z → ◇ ⊢ r1 ∷ IMu JT D⊢ (tmIx (nsuc j) (cext g z) (wk 1 j e2) (kEl (wk 1 j e1)))) eqE0 dr1))) (tmIx≅ done (wk-agree-tm E2) (node-1 (wk-agree-tm E1)))) nr1
   ▷ λ D1 →
-  ihTm (Γ ▹ E0) v₀ (El (renTm vs E1)) (<ˡ eq9 (<ʳ eq8 (<ʳ eq7 (<ʳ eq6 (<ʳ eq5 (<ʳ eq4 (<ʳ eq3 (<ʳ eq2 (<ʳ eq1 (<ʳ eq0 hq)))))))))) (⊢conv (subst (λ z → ◇ ⊢ r2 ∷ IMu JT D⊢ (tmIx (nsuc j) (cext g (quoteTy E0)) (kvar ffz) (kEl (wk 1 j z)))) eqE1 (subst (λ z → ◇ ⊢ r2 ∷ IMu JT D⊢ (tmIx (nsuc j) (cext g z) (kvar ffz) (kEl (wk 1 j e1)))) eqE0 dr2)) (tmIx≅ done done (node-1 (wk-agree-tm E1)))) nr2
+  ihTm (Γ ▹ E0) v₀ (El (renTm vs E1)) (<ˡ eq9 (<ʳ eq8 (<ʳ eq7 (<ʳ eq6 (<ʳ eq5 (<ʳ eq4 (<ʳ eq3 (<ʳ eq2 (<ʳ eq1 (<ʳ eq0 hq)))))))))) (⊢conv (subst (λ z → ◇ ⊢ r2 ∷ IMu JT D⊢ (tmIx (nsuc j) (cext g (quoteTy E0)) (kvar fzero) (kEl (wk 1 j z)))) eqE1 (subst (λ z → ◇ ⊢ r2 ∷ IMu JT D⊢ (tmIx (nsuc j) (cext g z) (kvar fzero) (kEl (wk 1 j e1)))) eqE0 dr2)) (tmIx≅ done done (node-1 (wk-agree-tm E1)))) nr2
   ▷ λ D2 →
   ihTm Γ E5 E0 (<ˡ eq10 (<ʳ eq9 (<ʳ eq8 (<ʳ eq7 (<ʳ eq6 (<ʳ eq5 (<ʳ eq4 (<ʳ eq3 (<ʳ eq2 (<ʳ eq1 (<ʳ eq0 hq))))))))))) (subst (λ z → ◇ ⊢ r3 ∷ IMu JT D⊢ (tmIx j g z (quoteTy E0))) eqE5 (subst (λ z → ◇ ⊢ r3 ∷ IMu JT D⊢ (tmIx j g e5 z)) eqE0 dr3)) nr3
   ▷ λ D3 →
