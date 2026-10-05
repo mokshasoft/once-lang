@@ -204,7 +204,29 @@ need a logical relation: values are syntax-shaped, so READ them back as
   using it re-evaluates it. Behaviour and timings unchanged (E0/E1 suites
   re-run: 10.4 / 8.3 / 6.0 / 1.5 s).
 - ✅ `Algorithm/NbEScope`: every evaluator function preserves scope.
-- ⬜ Next: the soundness lemmas ①–⑤ (§2c), up to `≅`.
+- ⬜ Next: the soundness lemmas ①–⑤ (§2c), up to `≅`. Two obligations
+  found while designing them (2026-10-05):
+  1. **Every fuel-exhaustion fallback must be SOUND, not merely stuck** —
+     the proof is then fuel-agnostic (two computations of one value at
+     different fuel are `≅`). Most are (`inst zero c v = vapp (vlam c) v` is
+     the β-redex; stuck eliminators read as themselves). NOT yet:
+     `pwAtF zero` (returns the code, not its body), `instᵀ zero`/`instᵀ₂ zero`
+     (placeholders — add `tinst`/`tinst₂` values reading as the
+     substitution), and readback at fuel 0 (`absurd unit unit` — must fall
+     back to the value's READING, so `⌊_⌋` moves into `Algorithm/NbE`).
+  2. **The pointwise rules have SYNTACTIC side conditions** (`hrefl-pw`:
+     `pw? C`; `tr-pw`: motive literally `⌜Hom⌝ c a (var vz)` with `pw? c`), and
+     `pwBody` is not a congruence for `≅` at arbitrary codes (a `ref` reads
+     as `wk (ref …)`). Design: the evaluator FORCES the code's pw-spine
+     before firing (`pwForce`; a fuel-free structural `pwN?` checks the
+     result), stores the pw-NORMAL code in the closure, and reads the
+     closure as the rule's right-hand side over it (`tr-pw` stores its
+     bound level so the reading binds it); instantiation's re-inspection
+     is related by Church–Rosser: two `≅` pw-normal codes have `≅` bodies
+     (code heads are inert, so a common reduct keeps the pw-shape).
+- Priority: the `SigCore` profile shows evaluation is NOT the checker's
+  cost today (PERF §7), so E3 is certification, not speed; it runs
+  alongside R4 (ROADMAP order).
 
 **Fallback, recorded and not chosen.** If E0's gate fails because Agda's
 evaluator itself is the limit, run evaluation tests COMPILED (MAlonzo, a
