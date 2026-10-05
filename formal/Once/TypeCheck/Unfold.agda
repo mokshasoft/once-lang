@@ -139,24 +139,9 @@ NC e (RBinOp _ a b) = NC e a × NC e b
 NC e (RUnaryOp _ a) = NC e a
 NC e (RAna _ a) = NC e a
 
-------------------------------------------------------------------------
--- Algebra positions reset the local scope.
-------------------------------------------------------------------------
-
-isAlgV : ∀ {f} → AppHeadView f → Bool
-isAlgV ahv-cata = false   -- plan 0.101 (D265): a cata algebra sees the locals
-isAlgV ahv-ana = false    -- …and so does an ana coalgebra (D273)
-isAlgV _ = false
-
-isAlg : RawExpr → Bool
-isAlg f = isAlgV (classifyAppHeadView f)
-
-scopeOf : Bool → Bool → Bool
-scopeOf true _ = false
-scopeOf false sh = sh
-
-isAlg-other : ∀ {f} → classifyAppHead f ≡ nothing → isAlg f ≡ false
-isAlg-other {f} ah rewrite classifyAppHead-nothing⇒view-other ah = refl
+-- (Plan 0.101: an algebra/coalgebra position used to RESET the local scope —
+-- `cata`'s until D265, `ana`'s until D273. Both now see the locals, so the
+-- scoping is lexical and no position clears it.)
 
 -- The head classification does not look at an application's argument.
 app-head-irr : ∀ (h a a′ : RawExpr) → classifyAppHead (RApp h a) ≡ classifyAppHead (RApp h a′)
@@ -426,7 +411,7 @@ module Sub (x : String) (ê : RawExpr) where
   sub sh (RVar y) = subVar sh y (y StrProp.≟ x)
   sub sh (RQualified n a) = RQualified n a
   sub sh (RResolved c) = RResolved c
-  sub sh (RApp f a) = RApp (sub sh f) (sub (scopeOf (isAlg f) sh) a)
+  sub sh (RApp f a) = RApp (sub sh f) (sub sh a)
   sub sh (RLam y b) = RLam y (sub (bindSh (y StrProp.≟ x) sh) b)
   sub sh (RLet y a b) = RLet y (sub sh a) (sub (bindSh (y StrProp.≟ x) sh) b)
   sub sh (RPair a b) = RPair (sub sh a) (sub sh b)
@@ -530,8 +515,6 @@ module Unfolding
         ; yesX = λ q o → SR.yesX r q (miss-ext← (λ x≡y → y≢x (sym x≡y)) o)
         ; clr = Fr-map₂ (λ z l z≢y → miss-ext z≢y l) e (SR.clr r) ny }
 
-  sr-alg : SR false Context.∅ SC.∅
-  sr-alg = record { noX = λ _ → refl ; yesX = λ () ; clr = Fr-triv (λ _ → refl) e }
 
   Dc : ∀ {n} → Ctx → SC.Ctx n → ℕ → NamedCtx
   Dc {n} G Δ fr = mkCtx n G Δ fr imps P′
@@ -593,14 +576,6 @@ module Unfolding
   ... | refl = ⊥-elim (¬g g)
   s-dpoly r y (no y≢x) ln li lp ¬g as inc inst gr = d-poly ln li (lpp-skip y≢x lp) ¬g as inc inst gr
 
-  -- An application whose head is not a builtin keeps the scope for its argument.
-  app-scope : ∀ {n G Δ fr sh} {f a : RawExpr} {T U}
-            → classifyAppHead f ≡ nothing
-            → Lc {n} G Δ fr ⊢ᵢ RApp (sub sh f) (sub sh a) ∶ T ⨾ U
-            → Lc G Δ fr ⊢ᵢ sub sh (RApp f a) ∶ T ⨾ U
-  app-scope {G = G} {Δ = Δ} {fr = fr} {sh = sh} {f = f} {a = a} {T} {U} ah d =
-    subst (λ b → Lc G Δ fr ⊢ᵢ RApp (sub sh f) (sub (scopeOf b sh) a) ∶ T ⨾ U) (sym (isAlg-other ah)) d
-
   head-ok : ∀ {sh f} → classifyAppHead f ≡ nothing → classifyAppHead (sub sh f) ≡ nothing
   head-ok {sh} {f} ah = trans (sub-head sh f) ah
 
@@ -642,9 +617,9 @@ module Unfolding
     S-i r (_ , nc) (t-apply-eff-app-infer d) = t-apply-eff-app-infer (S-i r nc d)
     S-i r (_ , nc) (t-Out-app-infer wf eq d) = t-Out-app-infer wf eq (S-i r nc d)
     S-i r (_ , nc) (t-Out-eff-app-infer wf eq d) = t-Out-eff-app-infer wf eq (S-i r nc d)
-    S-i r (n₁ , n₂) (t-app {x = xa} ah dF dX) = app-scope {a = xa} ah (t-app (head-ok ah) (S-i r n₁ dF) (S-c r n₂ dX))
-    S-i r (n₁ , n₂) (t-effApp {x = xa} ah dF dX) = app-scope {a = xa} ah (t-effApp (head-ok ah) (S-i r n₁ dF) (S-c r n₂ dX))
-    S-i r (n₁ , n₂) (t-app-spine {arg = xa} ah dX dF) = app-scope {a = xa} ah (t-app-spine (head-ok ah) (S-i r n₂ dX) (S-d r n₁ dF))
+    S-i r (n₁ , n₂) (t-app {x = xa} ah dF dX) = (t-app (head-ok ah) (S-i r n₁ dF) (S-c r n₂ dX))
+    S-i r (n₁ , n₂) (t-effApp {x = xa} ah dF dX) = (t-effApp (head-ok ah) (S-i r n₁ dF) (S-c r n₂ dX))
+    S-i r (n₁ , n₂) (t-app-spine {arg = xa} ah dX dF) = (t-app-spine (head-ok ah) (S-i r n₂ dX) (S-d r n₁ dF))
     S-c r _ t-id-check = t-id-check
     S-c r _ t-fst-check = t-fst-check
     S-c r _ t-snd-check = t-snd-check
@@ -731,7 +706,7 @@ module Unfolding
   inv-RResolved {b = (RUnaryOp _ _)} ()
   inv-RResolved {b = (RAna _ _)} ()
   inv-RApp : ∀ {sh b f a} → sub sh b ≡ (RApp f a)
-            → ∃[ f₀ ] ∃[ a₀ ] (b ≡ RApp f₀ a₀ × sub (sh) f₀ ≡ f × sub (scopeOf (isAlg f₀) sh) a₀ ≡ a)
+            → ∃[ f₀ ] ∃[ a₀ ] (b ≡ RApp f₀ a₀ × sub (sh) f₀ ≡ f × sub sh a₀ ≡ a)
   inv-RApp {b = (RApp f₀ a₀)} refl = f₀ , a₀ , refl , refl , refl
   inv-RApp {sh} {b = RVar y} eq with y StrProp.≟ x | sh | eq
   ... | no _ | _ | ()
@@ -1131,22 +1106,19 @@ module Unfolding
     ...   | refl = t-Out-eff-app-infer wf eqC (F-i r (proj₂ nc) d ea)
     F-i {sh = sh} r {b = b} nc (t-app ah dF dX) eq with inv-RApp {sh = sh} {b = b} eq
     ... | f₀ , a₀ , refl , refl , refl =
-          t-app ah₀ (F-i r (proj₁ nc) dF refl) (F-c r (proj₂ nc) dX eqX)
+          t-app ah₀ (F-i r (proj₁ nc) dF refl) (F-c r (proj₂ nc) dX refl)
         where
           ah₀ = trans (sym (sub-head sh f₀)) ah
-          eqX = cong (λ β → sub (scopeOf β sh) a₀) (sym (isAlg-other ah₀))
     F-i {sh = sh} r {b = b} nc (t-effApp ah dF dX) eq with inv-RApp {sh = sh} {b = b} eq
     ... | f₀ , a₀ , refl , refl , refl =
-          t-effApp ah₀ (F-i r (proj₁ nc) dF refl) (F-c r (proj₂ nc) dX eqX)
+          t-effApp ah₀ (F-i r (proj₁ nc) dF refl) (F-c r (proj₂ nc) dX refl)
         where
           ah₀ = trans (sym (sub-head sh f₀)) ah
-          eqX = cong (λ β → sub (scopeOf β sh) a₀) (sym (isAlg-other ah₀))
     F-i {sh = sh} r {b = b} nc (t-app-spine ah dX dF) eq with inv-RApp {sh = sh} {b = b} eq
     ... | f₀ , a₀ , refl , refl , refl =
-          t-app-spine ah₀ (F-i r (proj₂ nc) dX eqX) (F-d r (proj₁ nc) dF refl)
+          t-app-spine ah₀ (F-i r (proj₂ nc) dX refl) (F-d r (proj₁ nc) dF refl)
         where
           ah₀ = trans (sym (sub-head sh f₀)) ah
-          eqX = cong (λ β → sub (scopeOf β sh) a₀) (sym (isAlg-other ah₀))
     F-c {sh = sh} r {b = b} nc t-id-check eq with inv-RResolved {sh = sh} {b = b} eq
     ... | refl = t-id-check
     F-c {sh = sh} r {b = b} nc t-fst-check eq with inv-RResolved {sh = sh} {b = b} eq
