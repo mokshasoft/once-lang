@@ -30,6 +30,7 @@ open import DirectedHoTT.Spec.Syntax using ( ε; _∙; vz; vs )
 open import DirectedHoTT.Spec.Syntax using () renaming ( _∙ to _R∙ )
 open import DirectedHoTT.Metatheory.Signature using ( WfSig )
 open import DirectedHoTT.Algorithm.Surface
+open import DirectedHoTT.Examples.Knot.Sig using ( KSig; KD )
 
 private
   pattern v₀ = var vz
@@ -84,6 +85,7 @@ pattern #rnFs  = 21     --   a field list (lockstep with telFs)
 pattern #rnSh  = 22     --   a shape (lockstep with tel)
 pattern #rnM   = 23     --   the method
 pattern #ren   = 24     -- ★ RENAMING, generic in the signature
+pattern #KΣ    = 25     -- ★ the Knot's signature, quoted
 
 private
   SIc : {Γ : _} → STm Γ → STm Γ
@@ -440,6 +442,81 @@ tm-ren = lam □ᵀ (lam □ᵀ (lam □ᵀ (lam □ᵀ (lam □ᵀ (lam □ᵀ 
 
 
 
+------------------------------------------------------------------------
+-- ★ QUOTING a Lib signature into core data (an Agda-level generator):
+--   lists become case cascades over a `Fin`, lengths numerals.
+------------------------------------------------------------------------
+
+private
+  open import Agda.Builtin.List using ( List; []; _∷_ )
+  import DirectedHoTT.Lib.Syn as LS
+
+  numS tagS : {Γ : _} → ℕ → STm Γ
+  numS zero    = nzero
+  numS (suc k) = nsuc (numS k)
+  tagS zero    = fzero □
+  tagS (suc k) = fsuc □ (tagS k)
+
+  Closed : Set
+  Closed = {Γ : _} → STm Γ
+
+  len : {A : Set} → List A → ℕ
+  len []       = 0
+  len (_ ∷ xs) = suc (len xs)
+
+  -- the k-th element at the tag v₀: a cascade of cases
+  casc : {Γ : _} → List Closed → STm (Γ R∙)
+  casc []       = fcase0 □ᵀ v₀
+  casc (x ∷ xs) = fcase □ □ᵀ v₀ x (casc xs)
+
+  qFld : ℕ → LS.Fld → Closed
+  qFld n (LS.rec s k) = pair (Fin n₃) (El (FlC (numS n) v₀)) (fzero □) (pair (Fin (numS n)) Nat (tagS s) (numS k))
+  qFld n LS.nat       = pair (Fin n₃) (El (FlC (numS n) v₀)) (fsuc □ (fzero □)) unit
+  qFld n (LS.cls s)   = pair (Fin n₃) (El (FlC (numS n) v₀)) (fsuc □ (fsuc □ (fzero □))) (tagS s)
+
+  data ShV : Set where
+    fields : List LS.Fld → ShV
+    var'   : ShV
+
+  view : LS.Shape → ShV
+  view LS.[]ʰ       = fields []
+  view (f LS.∷ʰ sh) with view sh
+  ... | fields fs = fields (f ∷ fs)
+  ... | var'      = var'                       -- not well-formed (`ShOK`)
+  view LS.vʰ        = var'
+
+  mapL : {A B : Set} → (A → B) → List A → List B
+  mapL f []       = []
+  mapL f (x ∷ xs) = f x ∷ mapL f xs
+
+  qShape : ℕ → LS.Shape → Closed
+  qShape n sh with view sh
+  ... | fields fs = pair (Fin n₂) (El (ShC (numS n) v₀)) (fzero □)
+                      (pair Nat (Π (Fin v₀) (FldT (numS n))) (numS (len fs))
+                            (lam (Fin (numS (len fs))) (casc (mapL (qFld n) fs))))
+  ... | var'      = pair (Fin n₂) (El (ShC (numS n) v₀)) (fsuc □ (fzero □)) unit
+
+  shapes : {c : ℕ} → LS.Shapes c → List LS.Shape
+  shapes LS.[]ˢʰ        = []
+  shapes (sh LS.∷ˢʰ shs) = sh ∷ shapes shs
+
+  sorts : {m : ℕ} → LS.Sig m → List (List LS.Shape)
+  sorts LS.[]ᵍ         = []
+  sorts (shs LS.∷ᵍ sg) = shapes shs ∷ sorts sg
+
+  qSort : ℕ → List LS.Shape → Closed
+  qSort n shs = pair Nat (Π (Fin v₀) (El (app (ref #Shape) (numS n)))) (numS (len shs))
+                     (lam (Fin (numS (len shs))) (casc (mapL (qShape n) shs)))
+
+-- ★ ⌜ sg ⌝Σ : El (Sig n)
+⌜_⌝Σ : {n : ℕ} → LS.Sig n → STm ε
+⌜_⌝Σ {n} sg = lam (Fin (numS n)) (casc (mapL (qSort n) (sorts sg)))
+
+ty-KΣ : STy ε
+ty-KΣ = El (app (ref #Sig) n₂)
+tm-KΣ : STm ε
+tm-KΣ = ⌜ KSig ⌝Σ
+
 -- the table, in entry order (`#SI` = 0 … `#ren` = 24)
 private
   open import Agda.Builtin.List using ( List; []; _∷_ )
@@ -449,12 +526,12 @@ private
   at d (x ∷ xs) (suc k) = at d xs k
 
 tys : ℕ → STy ε
-tys = at Unit (ty-SI ∷ ty-add ∷ ty-FlC ∷ ty-Fld ∷ ty-ShC ∷ ty-Shape ∷ ty-Sig ∷ ty-telV ∷ ty-dRec ∷ ty-dNat ∷ ty-dCls ∷ ty-telF ∷ ty-telFs ∷ ty-tel ∷ ty-tabD ∷ ty-SDℓ ∷ ty-SD ∷ ty-lamΣ ∷ ty-lift ∷ ty-lifts ∷ ty-rnF ∷ ty-rnFs ∷ ty-rnSh ∷ ty-rnM ∷ ty-ren ∷ [])
+tys = at Unit (ty-SI ∷ ty-add ∷ ty-FlC ∷ ty-Fld ∷ ty-ShC ∷ ty-Shape ∷ ty-Sig ∷ ty-telV ∷ ty-dRec ∷ ty-dNat ∷ ty-dCls ∷ ty-telF ∷ ty-telFs ∷ ty-tel ∷ ty-tabD ∷ ty-SDℓ ∷ ty-SD ∷ ty-lamΣ ∷ ty-lift ∷ ty-lifts ∷ ty-rnF ∷ ty-rnFs ∷ ty-rnSh ∷ ty-rnM ∷ ty-ren ∷ ty-KΣ ∷ [])
 
 tms : ℕ → STm ε
-tms = at unit (tm-SI ∷ tm-add ∷ tm-FlC ∷ tm-Fld ∷ tm-ShC ∷ tm-Shape ∷ tm-Sig ∷ tm-telV ∷ tm-dRec ∷ tm-dNat ∷ tm-dCls ∷ tm-telF ∷ tm-telFs ∷ tm-tel ∷ tm-tabD ∷ tm-SDℓ ∷ tm-SD ∷ tm-lamΣ ∷ tm-lift ∷ tm-lifts ∷ tm-rnF ∷ tm-rnFs ∷ tm-rnSh ∷ tm-rnM ∷ tm-ren ∷ [])
+tms = at unit (tm-SI ∷ tm-add ∷ tm-FlC ∷ tm-Fld ∷ tm-ShC ∷ tm-Shape ∷ tm-Sig ∷ tm-telV ∷ tm-dRec ∷ tm-dNat ∷ tm-dCls ∷ tm-telF ∷ tm-telFs ∷ tm-tel ∷ tm-tabD ∷ tm-SDℓ ∷ tm-SD ∷ tm-lamΣ ∷ tm-lift ∷ tm-lifts ∷ tm-rnF ∷ tm-rnFs ∷ tm-rnSh ∷ tm-rnM ∷ tm-ren ∷ tm-KΣ ∷ [])
 
-open import DirectedHoTT.Algorithm.SigBuild 25 tys tms 1000 public
+open import DirectedHoTT.Algorithm.SigBuild 26 tys tms 1000 public
 
 open import normalizer.Syntax.Types using ( _≡_; refl; _×_; _,_ )
 open import DirectedHoTT.Spec.Signature using ( Sig )
@@ -547,3 +624,55 @@ ren-var = refl
 ren-lam : nfOf {ε} (wk1 (lamK (appK (varK R.fzero) (varK (R.fsuc R.fzero)))))
         ≡ lamK (appK (varK R.fzero) (varK (R.fsuc (R.fsuc R.fzero))))
 ren-lam = refl
+
+------------------------------------------------------------------------
+-- ★★ THE KNOT'S DESCRIPTION, FROM THE CORE: the quoted Knot signature
+--   decodes, constructor by constructor, to the Lib's telescopes — every
+--   field kind (variable, binder, cross-sort, `nat`, `cls`), both sorts,
+--   and the arities.  (The WHOLE `KD` by normal form does not fit the
+--   type checker: OOM at the cgroup's cap after 4.7 min, 2026-10-05.)
+------------------------------------------------------------------------
+
+private
+  open import DirectedHoTT.Examples.Knot.Sig using ( sh-kPi; sh-kFin; sh-kvar; sh-klam; sh-kref; sh-knatrec )
+
+  ixK : ℕ → R.RTm (ε R.∙)
+  ixK s = R.pair (tag s) (R.var vz)
+
+  kTel : ℕ → ℕ → R.RTm (ε R.∙)
+  kTel s k = R.app (R.app (R.app ⟪ #tel ⟫ (num 2)) (R.app (R.snd (R.app ⟪ #KΣ ⟫ (tag s))) (tag k))) (ixK s)
+
+  lTel : ℕ → L.Shape → R.RTm (ε R.∙)
+  lTel s sh = ⌜ L.tel sh (ixK s) ⌝ᵗ
+
+kd-arity : (nfOf {ε} (R.fst (R.app ⟪ #KΣ ⟫ (tag 0))) ≡ num 13) × (nfOf {ε} (R.fst (R.app ⟪ #KΣ ⟫ (tag 1))) ≡ num 39)
+kd-arity = refl , refl
+
+kd-faithful : (nfOf (kTel 0 2) ≡ nfOf (lTel 0 sh-kPi)) × ((nfOf (kTel 0 12) ≡ nfOf (lTel 0 sh-kFin))
+            × ((nfOf (kTel 1 0) ≡ nfOf (lTel 1 sh-kvar)) × ((nfOf (kTel 1 1) ≡ nfOf (lTel 1 sh-klam))
+            × ((nfOf (kTel 1 38) ≡ nfOf (lTel 1 sh-kref)) × (nfOf (kTel 1 21) ≡ nfOf (lTel 1 sh-knatrec))))))
+kd-faithful = refl , (refl , (refl , (refl , (refl , refl))))
+
+kd-normal : (normal? (kTel 0 2) ≡ true) × ((normal? (kTel 1 38) ≡ true) × (normal? (kTel 1 21) ≡ true))
+kd-normal = refl , (refl , refl)
+
+------------------------------------------------------------------------
+-- ★★ RENAMING AGREES WITH THE KERNEL: the core `ren` at the quoted Knot
+--   signature, weakening by `fsuc`, IS the quotation of `renTm vs` — a
+--   binder, an application, a variable crossing the binder, and a
+--   definition reference (its `nat` index and its CLOSED body copied).
+------------------------------------------------------------------------
+
+private
+  open import DirectedHoTT.Examples.Knot.Terms using ( quoteTm )
+
+  -- the kernel term `λ. (x₀ x₁) (ref 0 0)` at depth 1
+  tK : R.RTm (ε R.∙)
+  tK = R.lam (R.app (R.app (R.var vz) (R.var (vs vz))) (R.ref 0 R.nzero))
+
+  wkK : R.RTm ε → R.RTm ε
+  wkK t = R.app (R.app (R.app (R.app (R.app (R.app (R.app ⟪ #ren ⟫ (num 2)) ⟪ #KΣ ⟫) (tag 1)) (num 1)) t)
+                       (num 2)) (R.lam (R.fsuc (R.var vz)))
+
+ren-knot : nfOf (wkK (quoteTm tK)) ≡ quoteTm (R.renTm vs tK)
+ren-knot = refl
