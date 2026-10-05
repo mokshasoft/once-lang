@@ -405,6 +405,7 @@ data LetShape : List Token → Set where
 
 letView : (toks : List Token) → LetShape toks
 letView (TWord name ∷ TEquals ∷ rest) = let-head name rest
+{-# CATCHALL #-}
 letView toks                           = let-other toks
 
 parseLetWF toks (acc rec) with letView toks
@@ -431,6 +432,7 @@ data RBShape : List Token → Set where
 
 rbView : (toks : List Token) → RBShape toks
 rbView (TSemicolon ∷ TWord w ∷ TWord y ∷ TArrow ∷ rest) = rb-head w y rest
+{-# CATCHALL #-}
 rbView toks = rb-other toks
 
 parseRightBranchWF scrut x left toks (acc rec) with rbView toks
@@ -490,6 +492,7 @@ data DBShape : List Token → Set where
 
 dbView : (toks : List Token) → DBShape toks
 dbView (TWord w ∷ TWord x ∷ TArrow ∷ rest) = db-head w x rest
+{-# CATCHALL #-}
 dbView toks                                 = db-other toks
 
 parseDestructBranchesWF scrut toks (acc rec) with dbView toks
@@ -517,6 +520,7 @@ data DOShape : List Token → Set where
 
 doView : (toks : List Token) → DOShape toks
 doView (TWord w ∷ TLBrace ∷ rest) = do-head w rest
+{-# CATCHALL #-}
 doView toks                        = do-other toks
 
 parseDestructOfWF scrut toks (acc rec) with doView toks

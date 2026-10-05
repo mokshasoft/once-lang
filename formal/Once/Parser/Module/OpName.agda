@@ -35,6 +35,7 @@ opTokClass TGt        = otChar '>'
 opTokClass TPipe      = otChar '|'
 opTokClass TAmpersand = otChar '&'
 opTokClass TAt        = otChar '@'
+{-# CATCHALL #-}
 opTokClass _          = otNone
 
 -- | Bounded variant of `parseOpChars`: scans operator characters until
@@ -73,6 +74,7 @@ parseOperatorNameB : (toks : List Token) → ParseAtB {String} toks
 parseOperatorNameB (TLParen ∷ rest) with parseOpCharsB rest []
 ... | just (s , rest' , bnd) = just (s , rest' , <-trans bnd (s≤s ≤-refl))
 ... | nothing = nothing
+{-# CATCHALL #-}
 parseOperatorNameB _ = nothing
 
 -- | Parse an operator name: (.) (&) (|>) etc.

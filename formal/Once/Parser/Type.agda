@@ -283,6 +283,7 @@ parseTypeAtomWF (TEOF       ∷ _) _ = nothing
 nuEff : ∀ {r} → ParseFunctorSumD r → ParseAtomD (TWord "Nu" ∷ TLParen ∷ TWord "Eff" ∷ r)
 nuEff nothing                          = nothing
 nuEff (just (F , TRParen ∷ r2 , dF))   = just (ν-type F eff , r2 , pa-nu-eff dF)
+{-# CATCHALL #-}
 nuEff (just (F , _ , dF))              = nothing
 
 parseNuWord : (w : String) (r : List Token) → Dec (w ≡ "Eff")
@@ -294,6 +295,7 @@ parseNuWord w r (no _) rec = nothing
 
 parseNuEffWF : (rest : List Token) → WfRec _<_ (Acc _<_) (length (TWord "Nu" ∷ rest)) → ParseAtomD (TWord "Nu" ∷ rest)
 parseNuEffWF (TLParen ∷ TWord w ∷ r) rec = parseNuWord w r (w ≟ "Eff") rec
+{-# CATCHALL #-}
 parseNuEffWF _ _ = nothing
 
 nuTry : (rest : List Token) → WfRec _<_ (Acc _<_) (length (TWord "Nu" ∷ rest))
@@ -505,8 +507,11 @@ parseArrowTailWF left (TCaretW ∷ TArrow ∷ rest) (acc rec)
       just (left ⇒[ mk-kind Many pure ] B , rest' , pat-arrow-g dT)
 
 -- Grade without arrow: strict reject.
+{-# CATCHALL #-}
 parseArrowTailWF left (TCaret1 ∷ _)           _ = nothing
+{-# CATCHALL #-}
 parseArrowTailWF left (TCaret0 ∷ _)           _ = nothing
+{-# CATCHALL #-}
 parseArrowTailWF left (TCaretW ∷ _)           _ = nothing
 -- Plain arrow (no grade, default Many).
 parseArrowTailWF left (TArrow ∷ rest) (acc rec)
@@ -574,11 +579,13 @@ parseFunctorAtomWF (TWord name ∷ rest) _ | no _ | no _ = nothing
 parseFunctorAtomWF (TLParen ∷ rest) (acc rec) =
   parseFunctorAtomWF-TLParen rest (rec (s≤s ≤-refl))
 -- Any other leading token: not a functor atom.
+{-# CATCHALL #-}
 parseFunctorAtomWF _ _ = nothing
 
 parseFunctorAtomWF-TLParen rest a with parseFunctorSumWF rest a
 ... | nothing = nothing
 ... | just (F , TRParen ∷ rest' , dF) = just (F , rest' , pfa-paren dF refl)
+{-# CATCHALL #-}
 ... | just (_ , _ , _) = nothing
 
 -- fProd ::= fAtom ('*' fAtom)*

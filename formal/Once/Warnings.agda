@@ -150,6 +150,7 @@ errorOf sig e m E =
 -- already decided can reduce through it.
 warn-exact : ℕ → ℕ → ℕ → ℕ → FloatFormat → ExactQ → ExactQ → Maybe Warning
 warn-exact i f l at F ((+ zero) /Q _) u = nothing            -- exact: say nothing
+{-# CATCHALL #-}
 warn-exact i f l at F a               u =
   just (FloatRounded i f l at (round F (decimalOf i f l)) a u)
 

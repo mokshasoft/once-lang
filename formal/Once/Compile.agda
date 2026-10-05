@@ -155,6 +155,7 @@ open import Once.Denotation.Realize using (realize)
 -- between "exit code" and "value to compose with".
 validateMain : Type → String ⊎ ⊤
 validateMain (Unit ⇒[ mk-kind Many eff ] Unit) = inj₂ tt
+{-# CATCHALL #-}
 validateMain ty = inj₁ ("main must have type IO Unit (= Eff Unit Unit), but got: " ++ showType ty)
 
 -- D253: `main` is an entry like any other. It is not rewritten: its entry
@@ -179,6 +180,7 @@ directCallIR : (ty : Type) → IR ⌊ Unit ⌋ ⌊ ty ⌋ → ∃[ D ] ∃[ C ] 
 directCallIR (A ⇒[ mk-kind Zero π ] B) ir = Unit , B , apply ∘ ⟨ ir ∘ terminal , id ⟩
 directCallIR (A ⇒[ mk-kind One  π ] B) ir = A , B , apply ∘ ⟨ ir ∘ terminal , id ⟩
 directCallIR (A ⇒[ mk-kind Many π ] B) ir = A , B , apply ∘ ⟨ ir ∘ terminal , id ⟩
+{-# CATCHALL #-}
 directCallIR ty           ir = Unit , ty , ir
 
 ------------------------------------------------------------------------
@@ -770,11 +772,13 @@ showPolyFunInfo pfi = pfunName pfi ++ " : " ++ showPolyType (pfunType pfi)
 showFunInfos : List FunInfo → String
 showFunInfos [] = ""
 showFunInfos (fi ∷ []) = showFunInfo fi
+{-# CATCHALL #-}
 showFunInfos (fi ∷ rest) = showFunInfo fi ++ "\n" ++ showFunInfos rest
 
 showPolyFunInfos : List PolyFunInfo → String
 showPolyFunInfos [] = ""
 showPolyFunInfos (pfi ∷ []) = showPolyFunInfo pfi
+{-# CATCHALL #-}
 showPolyFunInfos (pfi ∷ rest) = showPolyFunInfo pfi ++ "\n" ++ showPolyFunInfos rest
 
 -- | Unified compile function - single entry point for all stages

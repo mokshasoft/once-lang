@@ -427,6 +427,7 @@ mutual
   fmapAna-fuel (G₁ ⊕ G₂) n coalg (inj₂ y) = map inj₂ (fmapAna-fuel G₂ n coalg y)
   fmapAna-fuel (G₁ ⊗ G₂) n coalg (x , y) with fmapAna-fuel G₁ n coalg x | fmapAna-fuel G₂ n coalg y
   ... | just x' | just y' = just (x' , y')
+  {-# CATCHALL #-}
   ... | _ | _ = nothing
 
 ------------------------------------------------------------------------

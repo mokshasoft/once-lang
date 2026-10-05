@@ -56,9 +56,11 @@ sound-opChars (tok ∷ rest) cs h = sound-pocGo tok rest cs (opTokClass tok) ref
 
 sound-pocGo tok rest []       otClose     eq h with () ← h
 sound-pocGo tok rest (c ∷ cs) otClose     eq h with refl ← h = poc-close eq
+{-# CATCHALL #-}
 sound-pocGo tok rest cs       (otChar ch) eq h with parseOpCharsB rest (ch ∷ cs) in pp
 ... | just (s , rest' , bnd) with refl ← h = poc-char eq (sound-opChars rest (ch ∷ cs) pp)
 ... | nothing with () ← h
+{-# CATCHALL #-}
 sound-pocGo tok rest cs       otNone      eq h with () ← h
 
 complete-opChars : ∀ {toks cs s rest} → ParsesOpChars toks cs s rest →

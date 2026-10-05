@@ -124,6 +124,7 @@ parseExprB toks = parseExprB-adapt toks
 -- shorter than the input.
 anyWordB : (toks : List Token) → ParseAtB {String} toks
 anyWordB (TWord s ∷ rest) = just (s , rest , s≤s ≤-refl)
+{-# CATCHALL #-}
 anyWordB _ = nothing
 
 -- | Does the stream start with a word? PLAN 0.84: this is an executable parser

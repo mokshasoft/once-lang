@@ -257,6 +257,7 @@ suc m <ᵇ suc n = m <ᵇ n
 find-label-go : Label → Program → ℕ → Maybe ℕ
 find-label-go target []             _ = nothing
 find-label-go target (label m ∷ is) i = if m ≡ᵇᴸ target then just i else find-label-go target is (suc i)
+{-# CATCHALL #-}
 find-label-go target (_       ∷ is) i = find-label-go target is (suc i)
 
 find-label : Program → Label → Maybe ℕ
@@ -294,6 +295,7 @@ execInstr prog s (lea r (rip+label ℓ)) =
     (just j) → just (record s { regs = writeReg (regs s) r j ; pc = pc s + 1 })
     nothing  → just (record s { halted = true })
 
+{-# CATCHALL #-}
 execInstr prog s (lea r m) =
   just (record s { regs = writeReg (regs s) r (effectiveAddr s m)
                  ; pc = pc s + 1 })

@@ -102,6 +102,7 @@ allTrailing : List Token → Bool
 allTrailing []              = true
 allTrailing (TNewline ∷ xs) = allTrailing xs
 allTrailing (TEOF     ∷ xs) = allTrailing xs
+{-# CATCHALL #-}
 allTrailing _               = false
 
 -- | Show the first few tokens (approximate position indicator) for
@@ -168,6 +169,7 @@ knownTypeWord w = does (w ≟ "Unit") ∨ does (w ≟ "Void") ∨ does (w ≟ "I
 hasUpperTVar : List Token → Bool
 hasUpperTVar []              = false
 hasUpperTVar (TWord w  ∷ ts) = (isUpperWord w ∧ not (knownTypeWord w)) ∨ hasUpperTVar ts
+{-# CATCHALL #-}
 hasUpperTVar (_        ∷ ts) = hasUpperTVar ts
 tvarHint : List Token → String
 tvarHint toks with hasUpperTVar toks
@@ -201,6 +203,7 @@ extractAliases (mkModule ds) = go ds
   go : List Decl → TypeAliasEnv
   go [] = []
   go (DTypeAlias name params body ∷ rest) = (name , params , body) ∷ go rest
+  {-# CATCHALL #-}
   go (_ ∷ rest) = go rest
 
 -- | Extract function definitions with their types (paired sig + def)
@@ -360,6 +363,7 @@ extractFunctions-go aliases (DSignature name (just owner) ty ∷ rest) _ with pr
 ... | inj₂ gty  =
          let qname = owner ++ "." ++ name
          in extractFunctions-consFun (extractFunctions-go aliases rest nothing) (mkFunInfo qname (just gty) (RVar qname) true)
+{-# CATCHALL #-}
 extractFunctions-go aliases (_ ∷ rest) pending = extractFunctions-go aliases rest pending
 
 extractFunctions-sigless aliases name body rest (yes _) =

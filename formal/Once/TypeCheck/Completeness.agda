@@ -123,14 +123,23 @@ private
   leaf-route ctx ._ A π r (_ ∷ᴬ _ ∷ᴬ ¬snd ∷ᴬ _) Once.TypeCheck.ElaborateProofs.ahv-snd = ⊥-elim (¬snd refl)
   leaf-route ctx ._ A π r (_ ∷ᴬ _ ∷ᴬ _ ∷ᴬ ¬t ∷ᴬ _) Once.TypeCheck.ElaborateProofs.ahv-terminal = ⊥-elim (¬t refl)
   leaf-route ctx ._ A π r (_ ∷ᴬ _ ∷ᴬ _ ∷ᴬ _ ∷ᴬ ¬i ∷ᴬ _) Once.TypeCheck.ElaborateProofs.ahv-initial = ⊥-elim (¬i refl)
+  {-# CATCHALL #-}
   leaf-route ctx ._ A π r _ Once.TypeCheck.ElaborateProofs.ahv-inl = refl
+  {-# CATCHALL #-}
   leaf-route ctx ._ A π r _ Once.TypeCheck.ElaborateProofs.ahv-inr = refl
+  {-# CATCHALL #-}
   leaf-route ctx ._ A π r _ Once.TypeCheck.ElaborateProofs.ahv-curry = refl
+  {-# CATCHALL #-}
   leaf-route ctx ._ A π r _ Once.TypeCheck.ElaborateProofs.ahv-apply = refl
+  {-# CATCHALL #-}
   leaf-route ctx ._ A π r _ Once.TypeCheck.ElaborateProofs.ahv-In = refl
+  {-# CATCHALL #-}
   leaf-route ctx ._ A π r _ Once.TypeCheck.ElaborateProofs.ahv-cata = refl
+  {-# CATCHALL #-}
   leaf-route ctx ._ A π r _ Once.TypeCheck.ElaborateProofs.ahv-ana = refl
+  {-# CATCHALL #-}
   leaf-route ctx ._ A π r _ Once.TypeCheck.ElaborateProofs.ahv-Out = refl
+  {-# CATCHALL #-}
   leaf-route ctx cn A π r _ ahv-other = refl
 
   app-other-route : ∀ (ctx : NamedCtx) (f x : RawExpr) (A : Type) (π : T.Purity)

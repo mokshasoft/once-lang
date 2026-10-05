@@ -20,6 +20,7 @@ open import Once.Parser.Module.FunDef.Params
 -- the adequacy bridge steps it for a variable tail.
 eqHead : List Token → Bool
 eqHead (TEquals ∷ _) = true
+{-# CATCHALL #-}
 eqHead _             = false
 
 drop1 : List Token → List Token

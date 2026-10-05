@@ -229,6 +229,7 @@ mutual
   agree-ii t-unit-var t-unit-var = refl , refl
   agree-ii t-unit-var (t-var-resolved (_ ∷ _ ∷ _ ∷ _ ∷ _ ∷ _ ∷ _ ∷ ¬u ∷ _) _ _) = ⊥-elim (¬u refl)
   agree-ii (t-var-resolved (_ ∷ _ ∷ _ ∷ _ ∷ _ ∷ _ ∷ _ ∷ ¬u ∷ _) _ _) t-unit-var = ⊥-elim (¬u refl)
+  {-# CATCHALL #-}
   agree-ii (t-var-resolved _ l _) (t-var-resolved _ l′ _) with trans (sym l) l′
   ... | refl = refl , refl
   agree-ii (t-var-qualified l _) (t-var-qualified l′ _) with trans (sym l) l′
@@ -329,8 +330,10 @@ mutual
   -- stream are different types, so the two `Out` rules never overlap.
   agree-ii (t-Out-eff-app-infer _ refl d) (t-Out-eff-app-infer _ refl d′) with agree-ii d d′
   ... | refl , refl = refl , refl
+  {-# CATCHALL #-}
   agree-ii (t-Out-eff-app-infer _ _ d) (t-Out-app-infer _ _ d′) with agree-ii d d′
   ... | () , _
+  {-# CATCHALL #-}
   agree-ii (t-Out-app-infer _ _ d) (t-Out-eff-app-infer _ _ d′) with agree-ii d d′
   ... | () , _
   agree-ii (t-Out-eff-app-infer _ _ _) (t-app () _ _)
@@ -409,6 +412,7 @@ mutual
   ----------------------------------------------------------------------
   -- agree-cc
   agree-cc (t-sub d _) c = agree-ic d c
+  {-# CATCHALL #-}
   agree-cc c (t-sub d _) = sym (agree-ic d c)
   agree-cc t-id-check t-id-check = refl
   agree-cc t-fst-check t-fst-check = refl
@@ -476,6 +480,7 @@ mutual
   ----------------------------------------------------------------------
   -- agree-dc
   agree-dc (d-infer w _ _) c = agree-ic w c
+  {-# CATCHALL #-}
   agree-dc dd (t-sub d _) = proj₂ (proj₂ (proj₂ (proj₂ (agree-di dd d))))
   agree-dc (d-lam _ b) (t-lam _ b′) with agree-ic b b′
   ... | refl = refl
@@ -517,6 +522,7 @@ mutual
   -- agree-dd
   agree-dd (d-infer w _ _) dd′ with agree-di dd′ w
   ... | _ , _ , refl , _ , refl = refl , refl
+  {-# CATCHALL #-}
   agree-dd dd (d-infer w _ _) with agree-di dd w
   ... | _ , _ , refl , _ , refl = refl , refl
   agree-dd (d-lam _ b) (d-lam _ b′) with agree-ii b b′

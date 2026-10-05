@@ -28,6 +28,7 @@ open import Once.Arith.SigOp.Block using (block-info)
 -- primitives answer `just`.
 cmp-of : ∀ {A B} → SigOpSem A B → Maybe CmpOp
 cmp-of (primV (p-cmp o)) = just o
+{-# CATCHALL #-}
 cmp-of _                 = nothing
 
 -- | The block: compare the pair's two `Int`s.

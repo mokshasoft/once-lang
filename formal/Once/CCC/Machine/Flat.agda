@@ -101,6 +101,7 @@ module FlatMachine {FS : FrameSemantics} where
   ----------------------------------------------------------------------
   sv-is-zero : StoredValue FS → Bool
   sv-is-zero (SV-Tag 0) = true
+  {-# CATCHALL #-}
   sv-is-zero _          = false
 
   tag-zf : Maybe (StoredValue FS) → Bool
@@ -126,6 +127,7 @@ module FlatMachine {FS : FrameSemantics} where
   -- is `just m` exactly on `instr-ctrl (c-label m)`, `nothing` elsewhere.
   label-of? : AbstractInstr → Maybe LabelId
   label-of? (instr-ctrl (c-label m)) = just m
+  {-# CATCHALL #-}
   label-of? _                        = nothing
 
   -- WITH-FREE since D094, for the same reason `ft-go` was (D092): the
@@ -150,6 +152,7 @@ module FlatMachine {FS : FrameSemantics} where
   -- closure body or a program function.
   entry-of? : AbstractInstr → Maybe EntryId
   entry-of? (instr-ctrl (c-entry e _)) = just e
+  {-# CATCHALL #-}
   entry-of? _                          = nothing
 
   -- …and `thunk-of?` is its restriction to closure bodies, for the consumers
@@ -964,6 +967,7 @@ module FlatMachine {FS : FrameSemantics} where
   flat-exec-instr (instr-dealloc-stack n) _ fs = flat-step-frame (instr-dealloc-stack n) leave-frame             fs
   flat-exec-instr (instr-push-frame cap)  _ fs = flat-step-frame (instr-push-frame cap)  (enter-frame (suc cap)) fs
   flat-exec-instr instr-pop-frame         _ fs = flat-step-frame instr-pop-frame         leave-frame             fs
+  {-# CATCHALL #-}
   flat-exec-instr i                                      _    fs = flat-step-straight i fs
 
   ------------------------------------------------------------------------

@@ -26,6 +26,7 @@ data CataTarget : Type → Set where
 
 cataTarget : (T : Type) → CataTarget T
 cataTarget (μ-type F ⇒[ mk-kind Many π ] A) = cata-at F π A
+{-# CATCHALL #-}
 cataTarget _ = cata-other
 
 -- `ana coalg` : A ⇒ ν F
@@ -35,6 +36,7 @@ data AnaTarget : Type → Set where
 
 anaTarget : (T : Type) → AnaTarget T
 anaTarget (A ⇒[ mk-kind Many π₀ ] ν-type F π) = ana-at A π₀ F π
+{-# CATCHALL #-}
 anaTarget _ = ana-other
 
 -- `In arg` : μ F
@@ -44,6 +46,7 @@ data InTarget : Type → Set where
 
 inTarget : (T : Type) → InTarget T
 inTarget (μ-type F) = in-at F
+{-# CATCHALL #-}
 inTarget _ = in-other
 
 -- `curry f` : A ⇒ (B ⇒ C)
@@ -53,6 +56,7 @@ data CurryTarget : Type → Set where
 
 curryTarget : (T : Type) → CurryTarget T
 curryTarget (A ⇒[ mk-kind Many π₀ ] (B ⇒[ mk-kind Many π ] C)) = curry-at A π₀ B π C
+{-# CATCHALL #-}
 curryTarget _ = curry-other
 
 -- `pair f g` : A ⇒ (B * C)
@@ -62,6 +66,7 @@ data PairTarget : Type → Set where
 
 pairTarget : (T : Type) → PairTarget T
 pairTarget (A ⇒[ mk-kind Many π ] (B * C)) = pair-at A π B C
+{-# CATCHALL #-}
 pairTarget _ = pair-other
 
 -- `case f g` : (A + B) ⇒ C
@@ -71,6 +76,7 @@ data CaseTarget : Type → Set where
 
 caseTarget : (T : Type) → CaseTarget T
 caseTarget ((A + B) ⇒[ mk-kind Many π ] C) = case-at A B π C
+{-# CATCHALL #-}
 caseTarget _ = case-other
 
 -- `compose f g` : A ⇒ C
@@ -80,6 +86,7 @@ data ArrowTarget : Type → Set where
 
 arrowTarget : (T : Type) → ArrowTarget T
 arrowTarget (A ⇒[ mk-kind Many π ] C) = arrow-at A π C
+{-# CATCHALL #-}
 arrowTarget _ = arrow-other
 
 -- `inl a` / `inr b` : A + B
@@ -89,6 +96,7 @@ data SumTarget : Type → Set where
 
 sumTarget : (T : Type) → SumTarget T
 sumTarget (A + B) = sum-at A B
+{-# CATCHALL #-}
 sumTarget _ = sum-other
 
 ------------------------------------------------------------------------
@@ -103,6 +111,7 @@ data NuView : Type → Set where
 
 nuView : (T : Type) → NuView T
 nuView (ν-type F π) = nu-at F π
+{-# CATCHALL #-}
 nuView _            = nu-other
 
 data ApplyView : Type → Set where
@@ -111,6 +120,7 @@ data ApplyView : Type → Set where
 
 applyView : (T : Type) → ApplyView T
 applyView ((A ⇒[ mk-kind Many π ] B) * A') = apply-at A π B A'
+{-# CATCHALL #-}
 applyView _ = apply-other
 
 -- `fst` / `snd` : a pair.
@@ -120,4 +130,5 @@ data ProdView : Type → Set where
 
 prodView : (T : Type) → ProdView T
 prodView (A * B) = prod-at A B
+{-# CATCHALL #-}
 prodView _       = prod-other

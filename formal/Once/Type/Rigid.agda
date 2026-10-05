@@ -284,6 +284,7 @@ mutual
 private
   both : ∀ {X Y Z : Set} → (X → Y → Z) → Maybe X → Maybe Y → Maybe Z
   both f (just x) (just y) = just (f x y)
+  {-# CATCHALL #-}
   both f _        _        = nothing
 
   one : ∀ {X Z : Set} → (X → Z) → Maybe X → Maybe Z

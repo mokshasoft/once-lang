@@ -102,6 +102,7 @@ mapDecls : List GDecl → Maybe (List Decl)
 mapDecls []       = just []
 mapDecls (d ∷ ds) with gdeclToDecl d | mapDecls ds
 ... | just d' | just ds' = just (d' ∷ ds')
+{-# CATCHALL #-}
 ... | _       | _        = nothing
 
 gmoduleToModule : GModule → Maybe Module

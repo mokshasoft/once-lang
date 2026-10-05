@@ -111,6 +111,7 @@ rawIntLits (RFloat _ _ _ _)       = []
 rawIntLits (RStringLit _)       = []
 
 negLits (RInt n) = (- n) ∷ []
+{-# CATCHALL #-}
 negLits e        = rawIntLits e
 
 declIntLits : Decl → List ℤ

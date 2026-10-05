@@ -294,9 +294,11 @@ compile-abs e = compile-go 0 e ++ (move-to-out 0 ∷ [])
 fold-div fold-mod : ∀ {sh} → MArithIR sh NInt → MArithIR sh NInt → MArithIR sh NInt
 fold-div a (alit (+ 0))      = alit (-[1+ 0 ])   -- a / 0  = −1
 fold-div a (alit (-[1+ 0 ])) = aneg a            -- a / −1 = −a
+{-# CATCHALL #-}
 fold-div a b                 = adiv a b
 fold-mod a (alit (+ 0))      = a                 -- a % 0  = a
 fold-mod a (alit (-[1+ 0 ])) = alit (+ 0)        -- a % −1 = 0
+{-# CATCHALL #-}
 fold-mod a b                 = amod a b
 
 -- | Recursively fold degenerate literal divisors throughout the tree.

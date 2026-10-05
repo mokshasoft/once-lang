@@ -36,6 +36,7 @@ import Once.Arith.Backend.RunTraceCore as Core
 -- `call-sym` constructor, so the trace loop still reduces definitionally.
 matchCall : Instr → Maybe String
 matchCall (call-sym lbl) = just lbl
+{-# CATCHALL #-}
 matchCall _              = nothing
 
 -- Return past a `call` (the SigOp/subroutine returns to the next instruction).

@@ -41,6 +41,7 @@ open import Once.Arith.Backend.X86-64.StatePreserve
 -- frame `N`; other instructions carry no obligation.
 InFrame : ℕ → XInstr → Set
 InFrame N (Xmov-r-m sc _) = 8 * XScratch.slot sc < N
+{-# CATCHALL #-}
 InFrame N _               = ⊤
 
 module _ (val : XInstr → State → Reg → Word) (N : ℕ) where

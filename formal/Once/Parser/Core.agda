@@ -115,6 +115,7 @@ expect expected (t ∷ ts) = matchToken expected t ts
   matchToken TNeq TNeq rest = just (TNeq , rest)
   matchToken TNewline TNewline rest = just (TNewline , rest)
   matchToken TEOF TEOF rest = just (TEOF , rest)
+  {-# CATCHALL #-}
   matchToken _ _ _ = nothing
 
 -- | Expect a specific keyword/identifier
@@ -125,13 +126,17 @@ word w = satisfy check
   check (TWord s) with w ≟ s
   ... | yes _ = just w
   ... | no _  = nothing
+  {-# CATCHALL #-}
   check _ = nothing
 
 -- | Parse any identifier (TWord that is not a reserved word)
 anyWord : Parser String
-anyWord = satisfy λ where
-  (TWord s) → just s
-  _ → nothing
+anyWord = satisfy word?
+  where
+    word? : Token → Maybe String
+    word? (TWord s) = just s
+    {-# CATCHALL #-}
+    word? _ = nothing
 
 -- | Optional: try to parse, return nothing if it fails
 optional : {A : Set} → Parser A → Parser (Maybe A)
@@ -151,4 +156,5 @@ skipNewlines [] = just ([] , [])
 skipNewlines (TNewline ∷ rest) with skipNewlines rest
 ... | just (ns , rest') = just (TNewline ∷ ns , rest')
 ... | nothing = just (TNewline ∷ [] , rest)
+{-# CATCHALL #-}
 skipNewlines (t ∷ rest) = just ([] , t ∷ rest)

@@ -86,13 +86,16 @@ readable? Unit    = just r-unit
 readable? Int     = just r-int
 readable? (A * B) with readable? A | readable? B
 ... | just ra | just rb = just (r-pair ra rb)
+{-# CATCHALL #-}
 ... | _       | _       = nothing
 readable? Float   = just r-float
 readable? Void    = just r-void
 readable? (rigid _ _) = just r-rigid
 readable? (A + B) with readable? A | readable? B
 ... | just ra | just rb = just (r-sum ra rb)
+{-# CATCHALL #-}
 ... | _       | _       = nothing
+{-# CATCHALL #-}
 readable? _       = nothing
 
 -- Transport of a product decomposes componentwise (standard J-style).

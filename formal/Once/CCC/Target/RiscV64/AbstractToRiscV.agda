@@ -419,6 +419,7 @@ compile-trace-cnt o n (instr-case-on-tag f g ∷ rest) =
                   pf ++
                   (label (once (ℓ o lbl-end)) ∷ [])
   in n3 , dispatch ++ pr
+{-# CATCHALL #-}
 compile-trace-cnt o n (i ∷ rest) =
   let (n1 , pr) = compile-trace-cnt o n rest
   in n1 , compile-abstract i ++ pr

@@ -76,6 +76,7 @@ module-has-main m = go (decls m)
     go : List Decl → Bool
     go []                  = false
     go (DFunDef n _ ∷ ds)  = is-main n ∨ go ds
+    {-# CATCHALL #-}
     go (_ ∷ ds)            = go ds
 
 -- | The module's imports, as (path, alias) pairs. The bridge rebuilds its own
@@ -86,6 +87,7 @@ module-imports m = go (decls m)
     go : List Decl → List (List String × Maybe String)
     go []                = []
     go (DImport i ∷ ds)  = (path i , alias i) ∷ go ds
+    {-# CATCHALL #-}
     go (_ ∷ ds)          = go ds
 
 -- …and its two projections, so the bridge never names `Σ`'s extracted fields

@@ -34,6 +34,7 @@ open import Once.Parser.Module.Resolve
 
 NotImport : Decl → Set
 NotImport (DImport _) = ⊥
+{-# CATCHALL #-}
 NotImport _           = ⊤
 
 NoImports : List Decl → Set

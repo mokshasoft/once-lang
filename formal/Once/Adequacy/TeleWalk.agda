@@ -273,6 +273,7 @@ mutual
   walk-mono-d er g D rest cf rest-b mi′ tl is ts sg pre inv u ((hd ∷ _) , _) vx vd (yes refl) (no _) n =
     ⊥-elim (not-in hd (mainIn-name rest mi′))
   -- not `main`: the entry joins the table and the telescope
+  {-# CATCHALL #-}
   walk-mono-d {csc} {es} {x} {ft} {bd} {ty} er g D rest {irFun} cf rest-b mi′ tl is ts sg pre inv u fr vx vd (no ¬q) td n =
     walk rest rest-b mi′ _ (i-def zero refl (wkI is)) (wkT ts) (monoSg sg g)
          (irFunOf (C.mkCompiledFun (bare x) ty irFun false) ∷ pre)

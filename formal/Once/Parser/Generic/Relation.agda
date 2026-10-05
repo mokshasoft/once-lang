@@ -31,10 +31,12 @@ open import Once.Parser.Token
 
 isStar : List Token → Bool
 isStar (TStar ∷ _) = true
+{-# CATCHALL #-}
 isStar _           = false
 
 isPlus : List Token → Bool
 isPlus (TPlus ∷ _) = true
+{-# CATCHALL #-}
 isPlus _           = false
 
 data ArrowDir : Set where
@@ -48,9 +50,13 @@ arrowDir (TCaret1 ∷ TArrow ∷ _) = adG One
 arrowDir (TCaret0 ∷ TArrow ∷ _) = adG Zero
 arrowDir (TCaretW ∷ TArrow ∷ _) = adG Many
 arrowDir (TArrow ∷ _)           = adA
+{-# CATCHALL #-}
 arrowDir (TCaret1 ∷ _)          = adR
+{-# CATCHALL #-}
 arrowDir (TCaret0 ∷ _)          = adR
+{-# CATCHALL #-}
 arrowDir (TCaretW ∷ _)          = adR
+{-# CATCHALL #-}
 arrowDir _                      = adD
 
 drop1 : List Token → List Token
@@ -63,6 +69,7 @@ drop1-≤ (_ ∷ xs) = m≤n⇒m≤1+n ≤-refl
 
 drop2 : List Token → List Token
 drop2 (_ ∷ _ ∷ xs) = xs
+{-# CATCHALL #-}
 drop2 xs           = xs
 
 drop2-≤ : (xs : List Token) → length (drop2 xs) ≤ length xs

@@ -47,10 +47,13 @@ Int    ≡T? Int    = just refl
 Float  ≡T? Float  = just refl
 (A₁ * B₁) ≡T? (A₂ * B₂) with A₁ ≡T? A₂ | B₁ ≡T? B₂
 ... | just refl | just refl = just refl
+{-# CATCHALL #-}
 ... | _         | _         = nothing
 (A₁ + B₁) ≡T? (A₂ + B₂) with A₁ ≡T? A₂ | B₁ ≡T? B₂
 ... | just refl | just refl = just refl
+{-# CATCHALL #-}
 ... | _         | _         = nothing
+{-# CATCHALL #-}
 _ ≡T? _ = nothing
 
 ------------------------------------------------------------------------
@@ -91,8 +94,10 @@ morphRaw? (RVar x) with StrProp._≟_ x "id"
 morphRaw? (RApp (RApp (RVar x) f) g) with StrProp._≟_ x "case"
 ... | yes refl with morphRaw? f | morphRaw? g
 ...   | just mf | just mg = just (mr-case mf mg)
+{-# CATCHALL #-}
 ...   | _       | _       = nothing
 morphRaw? (RApp (RApp (RVar x) f) g) | no _ = nothing
+{-# CATCHALL #-}
 morphRaw? _ = nothing
 
 ------------------------------------------------------------------------
@@ -108,24 +113,32 @@ morphToIR mr-id X A with X ≡T? A
 morphToIR mr-fst (P * Q) A with P ≡T? A
 ... | just refl = just IR.fst
 ... | nothing   = nothing
+{-# CATCHALL #-}
 morphToIR mr-fst _ _ = nothing
 morphToIR mr-snd (P * Q) A with Q ≡T? A
 ... | just refl = just IR.snd
 ... | nothing   = nothing
+{-# CATCHALL #-}
 morphToIR mr-snd _ _ = nothing
 morphToIR mr-inl X (L + R) with X ≡T? L
 ... | just refl = just (IR.inl {A = ⌊ X ⌋} {B = ⌊ R ⌋})
 ... | nothing   = nothing
+{-# CATCHALL #-}
 morphToIR mr-inl _ _ = nothing
 morphToIR mr-inr X (L + R) with X ≡T? R
 ... | just refl = just (IR.inr {A = ⌊ L ⌋} {B = ⌊ X ⌋})
 ... | nothing   = nothing
+{-# CATCHALL #-}
 morphToIR mr-inr _ _ = nothing
 morphToIR mr-terminal X Unit = just IR.terminal
+{-# CATCHALL #-}
 morphToIR mr-terminal _ _ = nothing
 morphToIR mr-initial Void A = just IR.initial
+{-# CATCHALL #-}
 morphToIR mr-initial _ _ = nothing
 morphToIR (mr-case mf mg) (P + Q) A with morphToIR mf P A | morphToIR mg Q A
 ... | just cf | just cg = just (IR.case cf cg)
+{-# CATCHALL #-}
 ... | _       | _       = nothing
+{-# CATCHALL #-}
 morphToIR (mr-case mf mg) _ _ = nothing

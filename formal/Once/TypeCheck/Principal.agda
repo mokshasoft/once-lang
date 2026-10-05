@@ -61,16 +61,19 @@ eqQuantity : Quantity → Quantity → Bool
 eqQuantity Zero Zero = true
 eqQuantity One  One  = true
 eqQuantity Many Many = true
+{-# CATCHALL #-}
 eqQuantity _    _    = false
 
 map2P : (PolyType → PolyType → PolyType)
       → Maybe PolyType → Maybe PolyType → Maybe PolyType
 map2P f (just a) (just b) = just (f a b)
+{-# CATCHALL #-}
 map2P _ _ _ = nothing
 
 map2F : (PolyFunctor → PolyFunctor → PolyFunctor)
       → Maybe PolyFunctor → Maybe PolyFunctor → Maybe PolyFunctor
 map2F f (just a) (just b) = just (f a b)
+{-# CATCHALL #-}
 map2F _ _ _ = nothing
 
 ------------------------------------------------------------------------
@@ -96,6 +99,7 @@ walk zero _ t = t
 walk (suc n) s (PTVar x) with lookupP x s
 ... | just t  = walk n s t
 ... | nothing = PTVar x
+{-# CATCHALL #-}
 walk (suc _) _ t = t
 
 -- | Full deep substitution (fuel spent following solutions AND on
@@ -112,6 +116,7 @@ mutual
   zonk (suc n) s (PEff a b)    = PEff (zonk n s a) (zonk n s b)
   zonk (suc n) s (Pμ-type F)   = Pμ-type (zonkF n s F)
   zonk (suc n) s (Pν-type F π)   = Pν-type (zonkF n s F) π
+  {-# CATCHALL #-}
   zonk (suc _) _ t = t
 
   zonkF : ℕ → PSubst → PolyFunctor → PolyFunctor
@@ -133,6 +138,7 @@ mutual
   occurs x (PEff a b)    = occurs x a ∨ occurs x b
   occurs x (Pμ-type F)   = occursF x F
   occurs x (Pν-type F _) = occursF x F
+  {-# CATCHALL #-}
   occurs _ _ = false
 
   occursF : String → PolyFunctor → Bool
@@ -149,6 +155,7 @@ bindVar fuel x t s = go (zonk fuel s t)
   go (PTVar y) with x ≟ y
   ... | yes _ = just s
   ... | no _  = just ((x , PTVar y) ∷ s)
+  {-# CATCHALL #-}
   go t' = if occurs x t' then nothing else just ((x , t') ∷ s)
 
 ------------------------------------------------------------------------
@@ -164,6 +171,7 @@ mutual
 
   unify' : ℕ → PSubst → PolyType → PolyType → Maybe PSubst
   unify' n s (PTVar x) t = bindVar n x t s
+  {-# CATCHALL #-}
   unify' n s t (PTVar x) = bindVar n x t s
   unify' n s PUnit PUnit = just s
   unify' n s PVoid PVoid = just s
@@ -177,6 +185,7 @@ mutual
   unify' n s (Pμ-type F) (Pμ-type G) = unifyF n s F G
   unify' n s (Pν-type F π) (Pν-type G π′) =
     if purityEqBool π π′ then unifyF n s F G else nothing
+  {-# CATCHALL #-}
   unify' _ _ _ _ = nothing
 
   unify2 : ℕ → PSubst → PolyType → PolyType → PolyType → PolyType → Maybe PSubst
@@ -194,6 +203,7 @@ mutual
   unifyF (suc n) s (F P⊗ G) (F' P⊗ G') with unifyF n s F F'
   ... | nothing = nothing
   ... | just s' = unifyF n s' G G'
+  {-# CATCHALL #-}
   unifyF (suc _) _ _ _ = nothing
 
 ------------------------------------------------------------------------
@@ -215,6 +225,7 @@ mutual
     map2P (λ x y → x P⇒[ q ] y) (typeToPoly a) (typeToPoly b)
   typeToPoly (a ⇒[ mk-kind Many eff ] b) =
     map2P PEff (typeToPoly a) (typeToPoly b)
+  {-# CATCHALL #-}
   typeToPoly (a ⇒[ mk-kind _ eff ] b) = nothing
   typeToPoly (μ-type F) with functorToPoly F
   ... | just G  = just (Pμ-type G)
@@ -320,6 +331,7 @@ mutual
     let (F' , n₁ , acc₁) = freshenF F n acc in Pμ-type F' , n₁ , acc₁
   freshen (Pν-type F π) n acc =
     let (F' , n₁ , acc₁) = freshenF F n acc in Pν-type F' π , n₁ , acc₁
+  {-# CATCHALL #-}
   freshen t n acc = t , n , acc
 
   freshenF : PolyFunctor → ℕ → List (String × String)
@@ -392,6 +404,7 @@ canonKey : CanonicalName → String
 canonKey (canonical (ns ∷ g ∷ [])) with ns ≟ generatorNS
 ... | yes _ = g
 ... | no  _ = showCanonical (canonical (ns ∷ g ∷ []))
+{-# CATCHALL #-}
 canonKey cn = showCanonical cn
 
 -- | Name-keyed leaf lookup, shared by `RVar` and `RResolved` so the two
@@ -424,6 +437,7 @@ arrowParts s t n = go (walk fuelD s t)
   go (PTVar x) with bindVar fuelD x (PTVar (mv n) P⇒[ Many ] PTVar (mv (suc n))) s
   ... | just s' = just (PTVar (mv n) , PTVar (mv (suc n)) , false , s' , suc (suc n))
   ... | nothing = nothing
+  {-# CATCHALL #-}
   go _ = nothing
 
 -- | Finish a general application `f x` once both types are inferred.
@@ -490,6 +504,7 @@ mutual
     retTy PInt n₁ (unify fuelD s₁ ta PInt) }
   -- Not covered in v1 (signature required): qualified-unresolved refs,
   -- cata/In/ana (functor metavariables).
+  {-# CATCHALL #-}
   pInfer _ _ _ _ _ _ = nothing
 
   -- | Application dispatch. `compose f g` is grade-polymorphic, so it
@@ -502,6 +517,7 @@ mutual
   -- treatment must NOT fire — hence `false` rather than a `≟` on the name.
   pInferApp imps sch env f@(Raw.RApp (Raw.RResolved cn) f') g n s =
     pInferAppB imps sch env f f' g n s (isYes (cn ≟ᶜ gen "compose"))
+  {-# CATCHALL #-}
   pInferApp imps sch env f x n s = pAppGen imps sch env f x n s
 
   -- | Bool-dispatched continuation of `pInferApp` (with-free so the
@@ -570,6 +586,7 @@ renameVars t = proj₁ (freshen' t 0 [])
       let (F' , k₁ , acc₁) = freshenF' F k acc in Pμ-type F' , k₁ , acc₁
     freshen' (Pν-type F π) k acc =
       let (F' , k₁ , acc₁) = freshenF' F k acc in Pν-type F' π , k₁ , acc₁
+    {-# CATCHALL #-}
     freshen' u k acc = u , k , acc
 
     freshenF' : PolyFunctor → ℕ → List (String × String)
@@ -609,6 +626,7 @@ principal ctx e =
 
 pgProj : Maybe (Type ⊎ PolyType) → Maybe Type
 pgProj (just (inj₁ T)) = just T
+{-# CATCHALL #-}
 pgProj _ = nothing
 
 -- | Ground-only projection (the M2 wiring point).
@@ -617,6 +635,7 @@ principalGround ctx e = pgProj (principal ctx e)
 
 pgSchema : Maybe (Type ⊎ PolyType) → Maybe PolyType
 pgSchema (just (inj₂ pty)) = just pty
+{-# CATCHALL #-}
 pgSchema _ = nothing
 
 -- | The M3 routing criterion: a sig-less definition whose body has a

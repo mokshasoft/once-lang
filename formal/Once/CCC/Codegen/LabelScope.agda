@@ -891,6 +891,7 @@ segagree-curry H body ℓ bb e a b' c d idle ls natl saB lsB we b'≤c p q m st 
             disj (inj₂ le) w1 w2 = <-asym (proj₂ w2) (≤-trans le (proj₁ w1))
     go : CurryLoc H body ℓ bb e a b' st p → CurryLoc H body ℓ bb e a b' st q → _
     go (cl-mark nq) _ = none-absurd (trans (sym nq) mq)
+    {-# CATCHALL #-}
     go _ (cl-mark nq) = none-absurd (trans (sym nq) lq-men)
     go (cl-out sp _) (cl-out sq _) = trans sq (sym sp)
     go (cl-out _ wp) (cl-body k _ fq) =

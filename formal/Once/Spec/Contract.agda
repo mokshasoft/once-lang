@@ -49,7 +49,9 @@ key n A B ≟K key n′ A′ B′ = go (n ≟ˢ n′) (A ≟T A′) (B ≟T B′
     go : Dec (n ≡ n′) → Dec (A ≡ A′) → Dec (B ≡ B′) → Dec (key n A B ≡ key n′ A′ B′)
     go (yes refl) (yes refl) (yes refl) = yes refl
     go (no ¬p) _ _ = no λ { refl → ¬p refl }
+    {-# CATCHALL #-}
     go (yes _) (no ¬p) _ = no λ { refl → ¬p refl }
+    {-# CATCHALL #-}
     go (yes _) (yes _) (no ¬p) = no λ { refl → ¬p refl }
 
 open import Data.List.Membership.Propositional using (_∈_)
@@ -91,6 +93,7 @@ contractOf c (A ⇒[ mk-kind One  Ty.pure ] B) = value (key c A B)
 contractOf c (A ⇒[ mk-kind Many Ty.pure ] B) = value (key c A B)
 contractOf c (A ⇒[ mk-kind One  Ty.eff ]  B) = contract-eff c A B (isVoid? B) (isUnit? B)
 contractOf c (A ⇒[ mk-kind Many Ty.eff ]  B) = contract-eff c A B (isVoid? B) (isUnit? B)
+{-# CATCHALL #-}
 contractOf c T                            = value (key c UnitT T)
 
 -- The value and answer keys a signature declares. Built by top-level steps (no

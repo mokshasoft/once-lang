@@ -129,6 +129,7 @@ instr-text (Xmov-arg dst path) = path-load-text dst path
     walk-rax-rest : XReg → InputPath → String
     walk-rax-rest dst (s ∷ []) =
       "    movq " ++ side-offset s ++ "(%rax), " ++ reg-text dst ++ "\n"
+    {-# CATCHALL #-}
     walk-rax-rest dst (s ∷ ss) =
       "    movq " ++ side-offset s ++ "(%rax), %rax\n" ++ walk-rax-rest dst ss
     -- Path [] inside an intermediate walk is unreachable for shapes
@@ -149,6 +150,7 @@ instr-text (Xmov-arg dst path) = path-load-text dst path
       "    movq %rdi, " ++ reg-text dst ++ "\n"
     path-load-text dst (s ∷ [])   =
       "    movq " ++ side-offset s ++ "(%rdi), " ++ reg-text dst ++ "\n"
+    {-# CATCHALL #-}
     path-load-text dst (s ∷ rest) =
       "    movq " ++ side-offset s ++ "(%rdi), %rax\n" ++
       walk-rax-rest dst rest

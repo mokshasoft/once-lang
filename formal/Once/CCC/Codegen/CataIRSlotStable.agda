@@ -99,6 +99,7 @@ module CataIRSlotStable {FS : FrameSemantics} where
   stable? (instr-reclaim-to _)    = false
   stable? (instr-loop _)          = false
   stable? (instr-case-on-tag f g) = all-stable? f ∧ all-stable? g
+  {-# CATCHALL #-}
   stable? _                       = true
   all-stable? []       = true
   all-stable? (i ∷ is) = stable? i ∧ all-stable? is

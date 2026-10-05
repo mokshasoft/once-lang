@@ -40,6 +40,7 @@ open import Once.Parser.Token
 NotStar : List Token → Set
 NotStar [] = Data.Unit.⊤ where open import Data.Unit
 NotStar (TStar ∷ _) = Data.Empty.⊥ where open import Data.Empty
+{-# CATCHALL #-}
 NotStar (_ ∷ _) = Data.Unit.⊤ where open import Data.Unit
 
 -- Residual doesn't start with `TPlus` — the only sum-tail trigger.
@@ -48,6 +49,7 @@ NotStar (_ ∷ _) = Data.Unit.⊤ where open import Data.Unit
 NotStarPlus : List Token → Set
 NotStarPlus [] = Data.Unit.⊤ where open import Data.Unit
 NotStarPlus (TPlus ∷ _) = Data.Empty.⊥ where open import Data.Empty
+{-# CATCHALL #-}
 NotStarPlus (_ ∷ _) = Data.Unit.⊤ where open import Data.Unit
 
 -- Residual doesn't start with an arrow-tail consumption trigger
@@ -59,6 +61,7 @@ NotArrowOrGrade (TArrow  ∷ _) = Data.Empty.⊥ where open import Data.Empty
 NotArrowOrGrade (TCaret0 ∷ _) = Data.Empty.⊥ where open import Data.Empty
 NotArrowOrGrade (TCaret1 ∷ _) = Data.Empty.⊥ where open import Data.Empty
 NotArrowOrGrade (TCaretW ∷ _) = Data.Empty.⊥ where open import Data.Empty
+{-# CATCHALL #-}
 NotArrowOrGrade (_ ∷ _) = Data.Unit.⊤ where open import Data.Unit
 
 -- All-clean: rejects every token any tail-parser would consume.
@@ -72,6 +75,7 @@ NotCont (TArrow  ∷ _) = Data.Empty.⊥ where open import Data.Empty
 NotCont (TCaret0 ∷ _) = Data.Empty.⊥ where open import Data.Empty
 NotCont (TCaret1 ∷ _) = Data.Empty.⊥ where open import Data.Empty
 NotCont (TCaretW ∷ _) = Data.Empty.⊥ where open import Data.Empty
+{-# CATCHALL #-}
 NotCont (_ ∷ _) = Data.Unit.⊤ where open import Data.Unit
 
 ------------------------------------------------------------------------

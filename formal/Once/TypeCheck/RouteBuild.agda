@@ -152,6 +152,7 @@ mutual
   route-ii t-unit-var t-unit-var = ii-unit-var
   route-ii t-unit-var (t-var-resolved (_ ∷ _ ∷ _ ∷ _ ∷ _ ∷ _ ∷ _ ∷ ¬u ∷ _) _ _) = ⊥-elim (¬u refl)
   route-ii (t-var-resolved (_ ∷ _ ∷ _ ∷ _ ∷ _ ∷ _ ∷ _ ∷ ¬u ∷ _) _ _) t-unit-var = ⊥-elim (¬u refl)
+  {-# CATCHALL #-}
   route-ii (t-var-resolved _ _ _) (t-var-resolved _ _ _) = ii-resolved
   route-ii (t-var-qualified _ _) (t-var-qualified _ _) = ii-qualified
   route-ii (t-var-local _) (t-var-local _) = ii-local
@@ -206,7 +207,9 @@ mutual
   route-ii (t-apply-eff-app-infer d) (t-apply-eff-app-infer d′) = ii-apply-eff (route-ii d d′)
   route-ii (t-Out-app-infer _ refl d) (t-Out-app-infer _ refl d′) = ii-Out (route-ii d d′)
   route-ii (t-Out-eff-app-infer _ refl d) (t-Out-eff-app-infer _ refl d′) = ii-Out-eff (route-ii d d′)
+  {-# CATCHALL #-}
   route-ii (t-Out-eff-app-infer _ _ d) (t-Out-app-infer _ _ d′) = ⊥-elim (ex (agree-ii d d′) λ { (() , _) })
+  {-# CATCHALL #-}
   route-ii (t-Out-app-infer _ _ d) (t-Out-eff-app-infer _ _ d′) = ⊥-elim (ex (agree-ii d d′) λ { (() , _) })
   route-ii (t-Out-eff-app-infer _ _ _) (t-app () _ _)
   route-ii (t-app () _ _) (t-Out-eff-app-infer _ _ _)
@@ -266,6 +269,7 @@ mutual
   route-ii (t-app-spine _ _ dF) (t-effApp _ wF′ _) = ⊥-elim (ex (agree-di dF wF′) λ { (_ , _ , refl , () , _) })
   route-ii (t-app-spine h dX dF) (t-app-spine h′ dX′ dF′) = spine-r h dX dF h′ dX′ dF′ (proj₁ (agree-ii dX dX′))
   route-cc (t-sub d _) c = cc-sub-l (route-ic d c)
+  {-# CATCHALL #-}
   route-cc c (t-sub d _) = cc-sub-r (route-ic d c)
   route-cc t-id-check t-id-check = cc-id
   route-cc t-fst-check t-fst-check = cc-fst
@@ -321,6 +325,7 @@ mutual
   route-ic d (t-inr-app-check _) = ⊥-elim (noinf-inr-app d)
   route-ic d (t-initial-app-check _) = ⊥-elim (noinf-initial-app d)
   route-dc (d-infer w _ _) c = dc-infer (route-ic w c)
+  {-# CATCHALL #-}
   route-dc dd (t-sub d p) = dcsub-r dd d p (agree-di dd d)
   route-dc (d-lam _ b) (t-lam _ b′) = dc-lam (route-ic b b′)
   route-dc (d-compose dg df) (t-compose-check-g dg′ df′) = cg-r dg df dg′ df′ (proj₁ (agree-dd dg dg′))
@@ -349,6 +354,7 @@ mutual
   route-di (d-poly _ inn _ _ _ _ _ _) (t-var-import _ _ i _) = ⊥-elim (just≢nothing (trans (sym i) inn))
   route-di (d-poly _ _ p ¬g _ _ _ _) (t-var-poly-instantiate-infer _ _ p′ g _) = ⊥-elim (ex (trans (sym p) p′) λ { refl → (¬g g) })
   route-dd (d-infer w _ _) dd′ = dd-infer-l (route-di dd′ w)
+  {-# CATCHALL #-}
   route-dd dd (d-infer w _ _) = dd-infer-r (route-di dd w)
   route-dd (d-lam _ b) (d-lam _ b′) = dd-lam (route-ii b b′)
   route-dd (d-compose dg df) (d-compose dg′ df′) = comp-r dg df dg′ df′ (proj₁ (agree-dd dg dg′))

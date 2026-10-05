@@ -365,6 +365,7 @@ sigOpˢ fmt σ si a = fmapT (injectᵇ (conB si)) (sigOpT fmt (ffiE (calls σ)) 
 -- (`value-info` is `ffiV`), so the reference is the interpretation's value.
 -- Matches elaborate's `SigOp (value-info name) ∘ terminal` ⇒ `faithful` stays
 -- `refl`.
+{-# CATCHALL #-}
 ⟦ sigOp {Γ = Γ} {A = A} name (con-base ib) ⟧ˢ fmt σ dγ = sigOpˢ fmt σ (value-info {Unit} {A} name base-Unit ib) tt
 -- D246: a reference to a module ENTRY is a CALL of it (the IR's `Call`), so it
 -- reads the CALL environment; a spliced telescope reference (`poly`) reads the

@@ -163,6 +163,7 @@ expandPath-complete [] [] ex-nil = refl
 expandPath-complete ("I" ∷ rest) _ ex-I with "I" ≟ "I"
 ... | yes _ = refl
 ... | no ¬e = ⊥-elim (¬e refl)
+{-# CATCHALL #-}
 expandPath-complete (c ∷ rest) _ (ex-other c≢I) with c ≟ "I"
 ... | yes e = ⊥-elim (c≢I e)
 ... | no  _ = refl

@@ -49,6 +49,7 @@ tvarGo name rest false pf = nothing
 tvarP : (toks : List Token) → Maybe (Σ[ a ∈ PolyType ] Σ[ rest ∈ List Token ] TVarRel toks a rest)
 tvarP (TWord name ∷ rest) = tvarGo name rest (isLowerWord name) refl
 tvarP []        = nothing
+{-# CATCHALL #-}
 tvarP (_ ∷ _)   = nothing
 
 tvar-shrink : ∀ {toks a rest} → TVarRel toks a rest → length rest < length toks

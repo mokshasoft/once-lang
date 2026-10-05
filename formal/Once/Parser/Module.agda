@@ -75,6 +75,7 @@ parseDeclB : (toks : List Token) → ParseAtB {Decl} toks
 parseDeclB []               = nothing
 parseDeclB (TWord w ∷ rest) = pdb-kw1 w rest (w ≟ "import")
 parseDeclB (TLParen ∷ rest) = tryOpDeclB (TLParen ∷ rest)
+{-# CATCHALL #-}
 parseDeclB _                = nothing
 
 parseDecl : Parser Decl

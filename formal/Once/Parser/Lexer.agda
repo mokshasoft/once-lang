@@ -119,6 +119,7 @@ collectFracB ('.' ∷ c ∷ cs) with isDigit c
 ... | true  = let (digs , rest , bnd) = collectDigitsB cs
               in  just (c ∷ digs , rest , s≤s (m≤n⇒m≤1+n bnd))
 ... | false = nothing
+{-# CATCHALL #-}
 collectFracB _ = nothing
 
 collectDigits : List Char → List Char × List Char
@@ -165,6 +166,7 @@ collectStringB ('\\' ∷ '"' ∷ cs) with collectStringB cs
 ... | just (s , rest , bnd) =
         just ('"' ∷ s , rest , m≤n⇒m≤1+n (m≤n⇒m≤1+n bnd))
 ... | nothing = nothing
+{-# CATCHALL #-}
 collectStringB (c ∷ cs) with collectStringB cs
 ... | just (s , rest , bnd) = just (c ∷ s , rest , m≤n⇒m≤1+n bnd)
 ... | nothing = nothing

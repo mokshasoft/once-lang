@@ -32,6 +32,7 @@ dropDot-≤ (_ ∷ xs) = m≤n⇒m≤1+n ≤-refl
 -- continue; `parseModulePath-WFB (dropDot tail)` then decides cons vs stop).
 dotHead : List Token → Bool
 dotHead (TDot ∷ _) = true
+{-# CATCHALL #-}
 dotHead _          = false
 
 -- | Parse a dotted module path via well-founded recursion. Each step consumes

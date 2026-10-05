@@ -74,6 +74,7 @@ module FlatEventTrace {FS : FrameSemantics} where
   ev-of-loc : AbstractInstr → LocState FS → List SigOpEvent
   -- The step's own events: what `exec-abstract` appends to the log.
   ev-of-loc (instr-sigop si) loc = sigop-events si loc
+  {-# CATCHALL #-}
   ev-of-loc _                _   = []
 
   -- Events emitted by executing one instruction from state `fs`.
@@ -215,6 +216,7 @@ module FlatEventTrace {FS : FrameSemantics} where
   NotNested : AbstractInstr → Set
   NotNested (SMC.instr-case-on-tag _ _) = ⊥
   NotNested (SMC.instr-loop _)          = ⊥
+  {-# CATCHALL #-}
   NotNested _                       = ⊤
 
   private

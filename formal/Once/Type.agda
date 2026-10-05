@@ -214,6 +214,7 @@ eff  ≟p eff  = yes refl
 -- `≟T-⇒-aux`: a decider that insists on both columns goes stuck on variables and
 -- hides the decisions underneath it from a proof's `with`.
 ≟k-aux (no ¬q)    _          = no λ { refl → ¬q refl }
+{-# CATCHALL #-}
 ≟k-aux _          (no ¬p)    = no λ { refl → ¬p refl }
 ≟k-aux (yes refl) (yes refl) = yes refl
 
@@ -421,6 +422,7 @@ data FitsInReg : Type → Set where
 fits-in-reg? : (B : Type) → Maybe (FitsInReg B)
 fits-in-reg? Int   = just fits-int
 fits-in-reg? Float = just fits-float
+{-# CATCHALL #-}
 fits-in-reg? _     = nothing
 
 ------------------------------------------------------------------------
@@ -653,6 +655,7 @@ purityEqBool eff  eff  = true
 tkindEqBool : TKind → TKind → Bool
 tkindEqBool k-base k-base = true
 tkindEqBool k-any  k-any  = true
+{-# CATCHALL #-}
 tkindEqBool _      _      = false
 
 mutual
@@ -740,7 +743,9 @@ mutual
   typeEqBool Float Int = false
   typeEqBool Float Float = true
   typeEqBool (rigid k i) (rigid k′ i′) = tkindEqBool k k′ ∧ (i Data.Nat.≡ᵇ i′)
+  {-# CATCHALL #-}
   typeEqBool (rigid _ _) _ = false
+  {-# CATCHALL #-}
   typeEqBool _ (rigid _ _) = false
 
   functorEqBool : Functor → Functor → Bool

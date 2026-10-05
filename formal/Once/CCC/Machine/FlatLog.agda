@@ -35,6 +35,7 @@ LogFree : AbstractInstr → Set
 LogFree (instr-sigop _)         = ⊥
 LogFree (instr-case-on-tag _ _) = ⊥
 LogFree (instr-loop _)          = ⊥
+{-# CATCHALL #-}
 LogFree _                       = ⊤
 
 module LogPres {FS : FrameSemantics} where

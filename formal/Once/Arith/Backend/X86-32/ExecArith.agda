@@ -85,6 +85,7 @@ module _ (val : XInstr → State → Reg → Word) where
 
   mem-effect : XInstr → State → Memory
   mem-effect (Xmov-r-m sc src) s = writeMem (memory s) (scratch-addr s sc) (readReg (regs s) (arith-reg src))
+  {-# CATCHALL #-}
   mem-effect _                 s = memory s
 
   exec1 : XInstr → State → State

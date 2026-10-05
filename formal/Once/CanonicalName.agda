@@ -76,6 +76,7 @@ pattern own x = canonical (x ∷ [])
 -- module (or the empty name).
 NotOwn : CanonicalName → Set
 NotOwn (own _) = ⊥
+{-# CATCHALL #-}
 NotOwn _       = ⊤
 
 -- A user path can never BE a generator name: `bare x = canonical [x]` has one
@@ -153,4 +154,5 @@ canonical ps ≟ᶜ canonical qs with ≡-dec _≟ˢ_ ps qs
 showCanonical : CanonicalName → String
 showCanonical (canonical [])        = ""
 showCanonical (canonical (x ∷ []))  = x
+{-# CATCHALL #-}
 showCanonical (canonical (x ∷ xs))  = x ++ˢ "." ++ˢ showCanonical (canonical xs)

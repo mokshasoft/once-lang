@@ -47,15 +47,19 @@ concreteType? TInt    = just c-int
 concreteType? TFloat  = just c-float
 concreteType? (a ⊗ b) with concreteType? a | concreteType? b
 ... | just ca | just cb = just (c-prod ca cb)
+{-# CATCHALL #-}
 ... | _       | _       = nothing
 concreteType? (a ⊕ b) with concreteType? a | concreteType? b
 ... | just ca | just cb = just (c-sum ca cb)
+{-# CATCHALL #-}
 ... | _       | _       = nothing
 concreteType? (a ⇒[ q ] b) with concreteType? a | concreteType? b
 ... | just ca | just cb = just (c-fun ca cb)
+{-# CATCHALL #-}
 ... | _       | _       = nothing
 concreteType? (TEff a b) with concreteType? a | concreteType? b
 ... | just ca | just cb = just (c-eff ca cb)
+{-# CATCHALL #-}
 ... | _       | _       = nothing
 concreteType? (TVar _) = nothing
 -- `GMu`/`GNu` are outside the round-trip `Concrete` domain (no c-mu/c-nu
@@ -86,27 +90,34 @@ concrete? (ELam x body) with concrete? body
 ... | nothing = nothing
 concrete? (EApp f x) with concrete? f | concrete? x
 ... | just cf | just cx = just (c-e-app cf cx)
+{-# CATCHALL #-}
 ... | _       | _       = nothing
 concrete? (EPair a b) with concrete? a | concrete? b
 ... | just ca | just cb = just (c-e-pair ca cb)
+{-# CATCHALL #-}
 ... | _       | _       = nothing
 concrete? (EAnnot e t) with concrete? e | concreteType? t
 ... | just ce | just ct = just (c-e-annot ce ct)
+{-# CATCHALL #-}
 ... | _       | _       = nothing
 concrete? (EBinOp op a b) with concrete? a | concrete? b
 ... | just ca | just cb = just (c-e-binop ca cb)
+{-# CATCHALL #-}
 ... | _       | _       = nothing
 concrete? (EUnaryOp op e) with concrete? e
 ... | just ce = just (c-e-unary ce)
 ... | nothing = nothing
 concrete? (ECompose f g) with concrete? f | concrete? g
 ... | just cf | just cg = just (c-e-comp cf cg)
+{-# CATCHALL #-}
 ... | _       | _       = nothing
 concrete? (ELet [] body)                = nothing
 concrete? (ELet ((x , v) ∷ []) body) with concrete? v | concrete? body
 ... | just cv | just cb = just (c-e-let1 cv cb)
+{-# CATCHALL #-}
 ... | _       | _       = nothing
 concrete? (ELet (_ ∷ _ ∷ _) body)       = nothing
 concrete? (EDestruct scrut x l y r) with concrete? scrut | concrete? l | concrete? r
 ... | just cs | just cl | just cr = just (c-e-destr cs cl cr)
+{-# CATCHALL #-}
 ... | _       | _       | _       = nothing

@@ -48,6 +48,7 @@ open import Data.List.Membership.Propositional using (_∈_)
 answer-word : (B : Type) → M.⟦ B ⟧ → ℕ
 answer-word Int   v = v
 answer-word Float v = v
+{-# CATCHALL #-}
 answer-word _     _ = 0
 
 -- What an external call a label is at a state resolves to, with its argument:

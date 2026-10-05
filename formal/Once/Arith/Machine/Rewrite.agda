@@ -68,7 +68,9 @@ shape-of II.Unit                           = just (shape-unit , refl)
 shape-of II.Int                            = just (shape-int  , refl)
 shape-of (l II.* r)                        with shape-of l | shape-of r
 ... | just (sl , refl) | just (sr , refl)  = just (shape-pair sl sr , refl)
+{-# CATCHALL #-}
 ... | _                | _                 = nothing
+{-# CATCHALL #-}
 shape-of _                                 = nothing
 
 ------------------------------------------------------------------------
@@ -141,6 +143,7 @@ try-lift {A} {II.Float} ir                         with shape-of A
 ...     | true                                      =
             just (block-as-ir eq body , mk-block sh NFloat body)
 -- Any other codomain: never lift.
+{-# CATCHALL #-}
 try-lift {_} {_} _ = nothing
 
 ------------------------------------------------------------------------

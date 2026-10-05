@@ -29,6 +29,7 @@ effHead? : (rest : List Token) → Maybe (Σ[ r ∈ List Token ] rest ≡ TLPare
 effHead? (TLParen ∷ TWord w ∷ r) with w ≟s "Eff"
 ... | yes refl = just (r , refl)
 ... | no _     = nothing
+{-# CATCHALL #-}
 effHead? _ = nothing
 
 module Make (alg : TyAlg) where
@@ -82,8 +83,10 @@ module Make (alg : TyAlg) where
     | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ = nothing
   atomKw (TLParen ∷ rest) with typeP rest
   ... | just (T , TRParen ∷ rest2) = just (T , rest2)
+  {-# CATCHALL #-}
   ... | just (_ , _) = nothing
   ... | nothing = nothing
+  {-# CATCHALL #-}
   atomKw _ = nothing
 
   nuP rest = nuTryP rest (fSumP rest)
@@ -91,6 +94,7 @@ module Make (alg : TyAlg) where
   nuTryP rest nothing         = nuEffP rest
   nuEffP rest = nuEffWith rest (effHead? rest)
   nuCloseP (just (F , TRParen ∷ r2)) = just (aNuEff F , r2)
+  {-# CATCHALL #-}
   nuCloseP (just (F , _))            = nothing
   nuCloseP nothing                   = nothing
 
@@ -142,8 +146,10 @@ module Make (alg : TyAlg) where
   fAtomP (TWord name ∷ rest) | no _ | no _ = nothing
   fAtomP (TLParen ∷ rest) with fSumP rest
   ... | just (F , TRParen ∷ rest2) = just (F , rest2)
+  {-# CATCHALL #-}
   ... | just (_ , _) = nothing
   ... | nothing = nothing
+  {-# CATCHALL #-}
   fAtomP _ = nothing
 
   fProdP toks with fAtomP toks

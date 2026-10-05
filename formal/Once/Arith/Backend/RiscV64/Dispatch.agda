@@ -43,6 +43,7 @@ module _ (val : XInstr → State → Reg → Word) where
   step-instr env prog s (call-sym lbl) with env lbl
   ... | just (blk , N) = just (dispatch-arith blk N s)
   ... | nothing        = execInstr prog s (call-sym lbl)
+  {-# CATCHALL #-}
   step-instr env prog s i = execInstr prog s i
 
   step-wp : ArithEnv → Program → State → Maybe State

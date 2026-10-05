@@ -97,6 +97,7 @@ isReserved _          = false
 NotDot : List Token → Set
 NotDot [] = ⊤
 NotDot (TDot ∷ _) = ⊥
+{-# CATCHALL #-}
 NotDot (_ ∷ _) = ⊤
 
 -- Does NOT start with an add-tail trigger: TPlus or TMinus.
@@ -104,6 +105,7 @@ NotAdd : List Token → Set
 NotAdd [] = ⊤
 NotAdd (TPlus  ∷ _) = ⊥
 NotAdd (TMinus ∷ _) = ⊥
+{-# CATCHALL #-}
 NotAdd (_ ∷ _) = ⊤
 
 -- Does NOT start with a mul-tail trigger: TStar / TSlash / TPercent.
@@ -112,6 +114,7 @@ NotMul [] = ⊤
 NotMul (TStar    ∷ _) = ⊥
 NotMul (TSlash   ∷ _) = ⊥
 NotMul (TPercent ∷ _) = ⊥
+{-# CATCHALL #-}
 NotMul (_ ∷ _) = ⊤
 
 -- Does NOT start with a comparison-operator trigger.
@@ -123,6 +126,7 @@ NotCmp (TGt   ∷ _) = ⊥
 NotCmp (TGe   ∷ _) = ⊥
 NotCmp (TEqEq ∷ _) = ⊥
 NotCmp (TNeq  ∷ _) = ⊥
+{-# CATCHALL #-}
 NotCmp (_ ∷ _) = ⊤
 
 -- Does NOT start with a token that parseAtomExpr would accept.

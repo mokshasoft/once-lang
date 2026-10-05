@@ -148,6 +148,7 @@ mutual
   instantiateAcc (PEff _ _)      Void            _ = nothing
   instantiateAcc (PEff _ _)      (_ * _)         _ = nothing
   instantiateAcc (PEff _ _)      (_ + _)         _ = nothing
+  {-# CATCHALL #-}
   instantiateAcc (PEff _ _)      (_ ⇒[ mk-kind _ pure ] _) _ = nothing
   instantiateAcc (PEff _ _)      (μ-type _)      _ = nothing
   instantiateAcc (PEff _ _)      (ν-type _ _)      _ = nothing
@@ -161,13 +162,21 @@ mutual
   instantiateAcc (Pμ-type _)     (ν-type _ _)      _ = nothing
   instantiateAcc (Pμ-type _)     Int             _ = nothing
   instantiateAcc (Pμ-type _)     Float           _ = nothing
+  {-# CATCHALL #-}
   instantiateAcc (Pν-type _ _)     Unit            _ = nothing
+  {-# CATCHALL #-}
   instantiateAcc (Pν-type _ _)     Void            _ = nothing
+  {-# CATCHALL #-}
   instantiateAcc (Pν-type _ _)     (_ * _)         _ = nothing
+  {-# CATCHALL #-}
   instantiateAcc (Pν-type _ _)     (_ + _)         _ = nothing
+  {-# CATCHALL #-}
   instantiateAcc (Pν-type _ _)     (_ ⇒[ _ ] _)    _ = nothing
+  {-# CATCHALL #-}
   instantiateAcc (Pν-type _ _)     (μ-type _)      _ = nothing
+  {-# CATCHALL #-}
   instantiateAcc (Pν-type _ _)     Int             _ = nothing
+  {-# CATCHALL #-}
   instantiateAcc (Pν-type _ _)     Float           _ = nothing
   instantiateAcc PInt            Unit            _ = nothing
   instantiateAcc PInt            Void            _ = nothing
@@ -193,6 +202,7 @@ mutual
   instantiateAcc (_ P⇒[ _ ] _)   (rigid _ _)     _ = nothing
   instantiateAcc (PEff _ _)      (rigid _ _)     _ = nothing
   instantiateAcc (Pμ-type _)     (rigid _ _)     _ = nothing
+  {-# CATCHALL #-}
   instantiateAcc (Pν-type _ _)   (rigid _ _)     _ = nothing
   instantiateAcc PInt            (rigid _ _)     _ = nothing
   instantiateAcc PFloat          (rigid _ _)     _ = nothing

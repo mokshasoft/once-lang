@@ -120,6 +120,7 @@ isRIntVliftTarget? :
   Maybe (∃-syntax (λ X → ∃-syntax (λ π → T ≡ (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] Int))))
 isRIntVliftTarget? (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] Int) =
   just (X , π , refl)
+{-# CATCHALL #-}
 isRIntVliftTarget? _ = nothing
 
 -- …and the same view for a float literal. `gd-completeV` is what forces this
@@ -132,6 +133,7 @@ isRFloatVliftTarget? :
   Maybe (∃-syntax (λ X → ∃-syntax (λ π → T ≡ (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] Once.Type.Float))))
 isRFloatVliftTarget? (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] Once.Type.Float) =
   just (X , π , refl)
+{-# CATCHALL #-}
 isRFloatVliftTarget? _ = nothing
 
 -- | Classify a check-mode target type for a pair literal: a product `A * B`
@@ -152,6 +154,7 @@ classifyRPairTarget (A Once.Type.* B) = rpt-prod A B
 classifyRPairTarget
   (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] (A Once.Type.* B)) =
   rpt-vlift X A B π
+{-# CATCHALL #-}
 classifyRPairTarget T = rpt-other T
 
 ------------------------------------------------------------------------
@@ -232,6 +235,7 @@ data NegOperandView : RawExpr → Set where
 negOperandView : (e : RawExpr) → NegOperandView e
 negOperandView (Raw.RInt n)         = nov-int n
 negOperandView (Raw.RFloat i f l p) = nov-float i f l p
+{-# CATCHALL #-}
 negOperandView e                    = nov-other e
 
 soundOf : (ctx : NamedCtx) (e : RawExpr)
@@ -293,6 +297,7 @@ given-infer : ∀ (ctx : NamedCtx) (e : RawExpr) (A : Type) (π : Once.Type.Puri
 given-infer ctx e A π (failure err , _) = failure err , tt
 given-infer ctx e A π (success (A′ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π′ ] B) Ψ eE d fr , w) =
   given-infer-dec ctx e A A′ B π π′ eE d fr w (A <:? A′) (π′ ⊑π? π)
+{-# CATCHALL #-}
 given-infer ctx e A π (success T Ψ eE d fr , w) = failure ComposeMiddleUndetermined , tt
 
 -- The `d-cata` step: the algebra's synthesized arrow must be `⟦ F ⟧T A ⇒ A` at
@@ -318,6 +323,7 @@ given-cata ctx alg F π wfF (failure err , _) = failure err , tt
 given-cata ctx alg F π wfF (success (X Once.Type.⇒[ k ] A) Ψ algE d fr , w) =
   given-cata-dec ctx alg F π wfF X A k Ψ algE d fr w
     ((X Once.Type.⇒[ k ] A) ≟T (⟦ F ⟧T A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] A))
+{-# CATCHALL #-}
 given-cata ctx alg F π wfF (success _ _ _ _ _ , _) = failure (BuiltinTypeMismatch "cata") , tt
 
 
@@ -476,6 +482,7 @@ extract-morph-aux : ∀ {n} {Γ : SCtx n} {Ψ : Surface.Usage n} {T : Type} {A B
                   → T ≡ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B)
                   → Maybe (∃-syntax (λ (m : IR ⌊ A ⌋ ⌊ B ⌋) → Ψ ≡ Surface.zeroUsage))
 extract-morph-aux (Surface.lift-morphism m) refl = just (m , refl)
+{-# CATCHALL #-}
 extract-morph-aux _ _ = nothing
 
 extract-morph : ∀ {n} {Γ : SCtx n} {Ψ : Surface.Usage n} {A B : Type}
@@ -930,15 +937,19 @@ elabGivenLeaf ctx .(gen "id") A π ahv-id _ =
   success A _ (Surface.lift-morphism IR.id) 0 (NamedCtx.freshCounter ctx) , d-id
 elabGivenLeaf ctx .(gen "fst") (A Once.Type.* B) π ahv-fst _ =
   success A _ (Surface.lift-morphism IR.fst) 0 (NamedCtx.freshCounter ctx) , d-fst
+{-# CATCHALL #-}
 elabGivenLeaf ctx .(gen "fst") _ π ahv-fst _ = failure (BuiltinTypeMismatch "fst") , tt
 elabGivenLeaf ctx .(gen "snd") (A Once.Type.* B) π ahv-snd _ =
   success B _ (Surface.lift-morphism IR.snd) 0 (NamedCtx.freshCounter ctx) , d-snd
+{-# CATCHALL #-}
 elabGivenLeaf ctx .(gen "snd") _ π ahv-snd _ = failure (BuiltinTypeMismatch "snd") , tt
 elabGivenLeaf ctx .(gen "terminal") A π ahv-terminal _ =
   success Unit _ (Surface.lift-morphism IR.terminal) 0 (NamedCtx.freshCounter ctx) , d-terminal
 elabGivenLeaf ctx .(gen "initial") Void π ahv-initial _ =
   success Void _ (Surface.lift-morphism IR.initial) 0 (NamedCtx.freshCounter ctx) , d-initial
+{-# CATCHALL #-}
 elabGivenLeaf ctx .(gen "initial") _ π ahv-initial _ = failure (BuiltinTypeMismatch "initial") , tt
+{-# CATCHALL #-}
 elabGivenLeaf ctx cn A π _ r = given-infer ctx (Raw.RResolved cn) A π r
 
 -- Recursion-scheme generators (Plan 0.28 Commit 2). The `…Go`/`…A/B/C`
@@ -1293,6 +1304,7 @@ inferElabV-RQualified-aux :
 inferElabV-RQualified-aux ctx name alias
   (just (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B)) eq =
   inferElabV-RQualified-arrow-aux ctx name alias eq (isBaseType? A) refl (isBaseType? B) refl
+{-# CATCHALL #-}
 inferElabV-RQualified-aux ctx name alias (just ty) eq =
   inferElabV-RQualified-value-aux ctx name alias ty eq (isConcrete? ty) refl
 inferElabV-RQualified-aux ctx name alias nothing _ =
@@ -1339,6 +1351,7 @@ resolvedArrowTerm : ∀ {A B} (ctx : NamedCtx) → CanonicalName → (π : Purit
                   → Surface.Expr (NamedCtx.debruijn ctx) Surface.zeroUsage
                                  (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B)
 resolvedArrowTerm ctx (own x) π bA cB = Surface.closure x
+{-# CATCHALL #-}
 resolvedArrowTerm ctx cn π bA cB =
   Surface.lift-morphism {π = π} (IR.SigOp (ext-resolved-info ctx cn π bA cB))
 
@@ -1364,6 +1377,7 @@ inferElabV-RResolved-arrow-aux ctx cn ng {A} {B} {π} eq (just _) _ nothing _ =
 
 resolvedValueTerm : ∀ {n} {Γ : Surface.Ctx n} {A} → CanonicalName → IsConcrete A → Surface.Expr Γ Surface.zeroUsage A
 resolvedValueTerm (own x) conc = Surface.closure x
+{-# CATCHALL #-}
 resolvedValueTerm cn conc = Surface.sigOp cn conc
 
 inferElabV-RResolved-value-aux :
@@ -1384,6 +1398,7 @@ inferElabV-RResolved-aux :
 inferElabV-RResolved-aux ctx cn ng
   (just (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B)) eq =
   inferElabV-RResolved-arrow-aux ctx cn ng eq (isBaseType? A) refl (isBaseType? B) refl
+{-# CATCHALL #-}
 inferElabV-RResolved-aux ctx cn ng (just ty) eq =
   inferElabV-RResolved-value-aux ctx cn ng ty eq (isConcrete? ty) refl
 inferElabV-RResolved-aux ctx cn ng nothing _ =
@@ -1524,14 +1539,23 @@ checkElabV-RVar-bbc-terminal-failure-aux ctx Float err = failure err , tt
 checkElabV-RVar-bbc-terminal-failure-aux ctx (rigid kᵣ iᵣ) err = failure err , tt
 checkElabV-RVar-bbc-terminal-failure-aux ctx (_ Once.Type.* _) err = failure err , tt
 checkElabV-RVar-bbc-terminal-failure-aux ctx (_ Once.Type.+ _) err = failure err , tt
+{-# CATCHALL #-}
 checkElabV-RVar-bbc-terminal-failure-aux ctx (_ Once.Type.⇒[ _ ] Void) err = failure err , tt
+{-# CATCHALL #-}
 checkElabV-RVar-bbc-terminal-failure-aux ctx (_ Once.Type.⇒[ _ ] Int) err = failure err , tt
+{-# CATCHALL #-}
 checkElabV-RVar-bbc-terminal-failure-aux ctx (_ Once.Type.⇒[ _ ] Float) err = failure err , tt
+{-# CATCHALL #-}
 checkElabV-RVar-bbc-terminal-failure-aux ctx (_ Once.Type.⇒[ _ ] (rigid kᵣ iᵣ)) err = failure err , tt
+{-# CATCHALL #-}
 checkElabV-RVar-bbc-terminal-failure-aux ctx (_ Once.Type.⇒[ _ ] (_ Once.Type.* _)) err = failure err , tt
+{-# CATCHALL #-}
 checkElabV-RVar-bbc-terminal-failure-aux ctx (_ Once.Type.⇒[ _ ] (_ Once.Type.+ _)) err = failure err , tt
+{-# CATCHALL #-}
 checkElabV-RVar-bbc-terminal-failure-aux ctx (_ Once.Type.⇒[ _ ] (_ Once.Type.⇒[ _ ] _)) err = failure err , tt
+{-# CATCHALL #-}
 checkElabV-RVar-bbc-terminal-failure-aux ctx (_ Once.Type.⇒[ _ ] (Once.Type.μ-type _)) err = failure err , tt
+{-# CATCHALL #-}
 checkElabV-RVar-bbc-terminal-failure-aux ctx (_ Once.Type.⇒[ _ ] (Once.Type.ν-type _ _)) err = failure err , tt
 checkElabV-RVar-bbc-terminal-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Zero _ ] Unit) err = failure err , tt
 checkElabV-RVar-bbc-terminal-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.One _ ] Unit) err = failure err , tt
@@ -1580,14 +1604,23 @@ checkElabV-RVar-bbc-inl-failure-aux ctx Float err = failure err , tt
 checkElabV-RVar-bbc-inl-failure-aux ctx (rigid kᵣ iᵣ) err = failure err , tt
 checkElabV-RVar-bbc-inl-failure-aux ctx (_ Once.Type.* _) err = failure err , tt
 checkElabV-RVar-bbc-inl-failure-aux ctx (_ Once.Type.+ _) err = failure err , tt
+{-# CATCHALL #-}
 checkElabV-RVar-bbc-inl-failure-aux ctx (_ Once.Type.⇒[ _ ] Unit) err = failure err , tt
+{-# CATCHALL #-}
 checkElabV-RVar-bbc-inl-failure-aux ctx (_ Once.Type.⇒[ _ ] Void) err = failure err , tt
+{-# CATCHALL #-}
 checkElabV-RVar-bbc-inl-failure-aux ctx (_ Once.Type.⇒[ _ ] Int) err = failure err , tt
+{-# CATCHALL #-}
 checkElabV-RVar-bbc-inl-failure-aux ctx (_ Once.Type.⇒[ _ ] Float) err = failure err , tt
+{-# CATCHALL #-}
 checkElabV-RVar-bbc-inl-failure-aux ctx (_ Once.Type.⇒[ _ ] (rigid kᵣ iᵣ)) err = failure err , tt
+{-# CATCHALL #-}
 checkElabV-RVar-bbc-inl-failure-aux ctx (_ Once.Type.⇒[ _ ] (_ Once.Type.* _)) err = failure err , tt
+{-# CATCHALL #-}
 checkElabV-RVar-bbc-inl-failure-aux ctx (_ Once.Type.⇒[ _ ] (_ Once.Type.⇒[ _ ] _)) err = failure err , tt
+{-# CATCHALL #-}
 checkElabV-RVar-bbc-inl-failure-aux ctx (_ Once.Type.⇒[ _ ] (Once.Type.μ-type _)) err = failure err , tt
+{-# CATCHALL #-}
 checkElabV-RVar-bbc-inl-failure-aux ctx (_ Once.Type.⇒[ _ ] (Once.Type.ν-type _ _)) err = failure err , tt
 checkElabV-RVar-bbc-inl-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Zero _ ] (_ Once.Type.+ _)) err = failure err , tt
 checkElabV-RVar-bbc-inl-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.One _ ] (_ Once.Type.+ _)) err = failure err , tt
@@ -1609,14 +1642,23 @@ checkElabV-RVar-bbc-inr-failure-aux ctx Float err = failure err , tt
 checkElabV-RVar-bbc-inr-failure-aux ctx (rigid kᵣ iᵣ) err = failure err , tt
 checkElabV-RVar-bbc-inr-failure-aux ctx (_ Once.Type.* _) err = failure err , tt
 checkElabV-RVar-bbc-inr-failure-aux ctx (_ Once.Type.+ _) err = failure err , tt
+{-# CATCHALL #-}
 checkElabV-RVar-bbc-inr-failure-aux ctx (_ Once.Type.⇒[ _ ] Unit) err = failure err , tt
+{-# CATCHALL #-}
 checkElabV-RVar-bbc-inr-failure-aux ctx (_ Once.Type.⇒[ _ ] Void) err = failure err , tt
+{-# CATCHALL #-}
 checkElabV-RVar-bbc-inr-failure-aux ctx (_ Once.Type.⇒[ _ ] Int) err = failure err , tt
+{-# CATCHALL #-}
 checkElabV-RVar-bbc-inr-failure-aux ctx (_ Once.Type.⇒[ _ ] Float) err = failure err , tt
+{-# CATCHALL #-}
 checkElabV-RVar-bbc-inr-failure-aux ctx (_ Once.Type.⇒[ _ ] (rigid kᵣ iᵣ)) err = failure err , tt
+{-# CATCHALL #-}
 checkElabV-RVar-bbc-inr-failure-aux ctx (_ Once.Type.⇒[ _ ] (_ Once.Type.* _)) err = failure err , tt
+{-# CATCHALL #-}
 checkElabV-RVar-bbc-inr-failure-aux ctx (_ Once.Type.⇒[ _ ] (_ Once.Type.⇒[ _ ] _)) err = failure err , tt
+{-# CATCHALL #-}
 checkElabV-RVar-bbc-inr-failure-aux ctx (_ Once.Type.⇒[ _ ] (Once.Type.μ-type _)) err = failure err , tt
+{-# CATCHALL #-}
 checkElabV-RVar-bbc-inr-failure-aux ctx (_ Once.Type.⇒[ _ ] (Once.Type.ν-type _ _)) err = failure err , tt
 checkElabV-RVar-bbc-inr-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Zero _ ] (_ Once.Type.+ _)) err = failure err , tt
 checkElabV-RVar-bbc-inr-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.One _ ] (_ Once.Type.+ _)) err = failure err , tt
@@ -1998,6 +2040,7 @@ mutual
   -- never an effectful ARM, which is what an emitting `ana` coalgebra needs.
   checkPair ctx (Raw.RApp (Raw.RResolved (gen "pair")) f_inner) arg T =
     checkPairOn ctx f_inner arg T (pairTarget T)
+  {-# CATCHALL #-}
   checkPair _ _ _ _ = failure (BuiltinTypeMismatch "pair") , tt
   checkPairOn ctx f_inner arg _ (pair-at A π B C)
     with checkElabV ctx f_inner (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B)
@@ -2038,6 +2081,7 @@ mutual
   -- eff-clause. Try eff arms; else check the whole case at PURE and subsume.
   checkCase ctx (Raw.RApp (Raw.RResolved (gen "case")) f_inner) arg T =
     checkCaseOn ctx f_inner arg T (caseTarget T)
+  {-# CATCHALL #-}
   checkCase _ _ _ _ = failure (BuiltinTypeMismatch "case") , tt
   checkCaseOn ctx f_inner arg _ (case-at A B π C) = checkCaseGo ctx f_inner arg A B C π
   checkCaseOn _ _ _ _ case-other = failure (BuiltinTypeMismatch "case") , tt
@@ -2058,6 +2102,7 @@ mutual
   -- synthesized input — and otherwise needs an annotation.
   checkCompose ctx (Raw.RApp (Raw.RResolved (gen "compose")) f_inner) arg T =
     checkComposeOn ctx f_inner arg T (arrowTarget T)
+  {-# CATCHALL #-}
   checkCompose _ _ _ _ = failure (BuiltinTypeMismatch "compose") , tt
   checkComposeOn ctx f_inner arg _ (arrow-at A π C) =
     checkCompose-g ctx f_inner arg A C π (elabGivenV ctx arg A π)
@@ -2083,6 +2128,7 @@ mutual
   ...     | success Ψg gE dg frg , wG =
               success _ (Surface.comp' (Surface.coerce p fE) gE) (suc (df Data.Nat.⊔ dg)) frg
               , t-compose-check-f wF p wG
+  {-# CATCHALL #-}
   checkCompose-f ctx f g A C π | _ = failure ComposeMiddleUndetermined , tt
 
   -- The domain-given mode, one clause per `⊢ᵈ` rule.
@@ -2094,6 +2140,7 @@ mutual
   elabGivenV ctx (Raw.RResolved cn) A π = elabGivenLeaf ctx cn A π (classifyAppHeadView (Raw.RResolved cn)) (inferElabV ctx (Raw.RResolved cn))
   elabGivenV ctx (Raw.RApp f g) A π = elabGivenApp ctx f g A π (classifyAppHeadView f) (inferElabV ctx (Raw.RApp f g))
   elabGivenV ctx (Raw.RVar x) A π = given-var ctx x A π (inferElabV ctx (Raw.RVar x))
+  {-# CATCHALL #-}
   elabGivenV ctx e A π = given-infer ctx e A π (inferElabV ctx e)
 
 
@@ -2114,6 +2161,7 @@ mutual
   ...     | no _ = failure (TypeMismatch C C′) , tt
   ...     | yes refl =
               success C _ (Surface.copair' fE gE) (suc (df Data.Nat.⊔ dg)) frg , d-case wF wG
+  {-# CATCHALL #-}
   elabGivenApp ctx .(Raw.RApp (Raw.RResolved (gen "case")) f) g _ π (ahv-case-applied {f}) _ =
     failure (BuiltinTypeMismatch "case") , tt
   elabGivenApp ctx .(Raw.RApp (Raw.RResolved (gen "pair")) f) g A π (ahv-pair-applied {f}) _
@@ -2127,7 +2175,9 @@ mutual
   ... | nothing = failure (BuiltinTypeMismatch "cata") , tt
   ... | just wfF =
           given-cata ctx alg F π wfF (inferElabV ctx alg)
+  {-# CATCHALL #-}
   elabGivenApp ctx .(Raw.RResolved (gen "cata")) alg _ π ahv-cata _ = failure (BuiltinTypeMismatch "cata") , tt
+  {-# CATCHALL #-}
   elabGivenApp ctx f g A π _ r = given-infer ctx (Raw.RApp f g) A π r
 
   -- Plan 0.6 Phase C.7 POC-3: `curry f` check-mode.
@@ -2360,6 +2410,7 @@ mutual
   ...   | just eq = success _ (Surface.lam q eq bodyE) (suc d) fr , t-lam eq wBody
   ...   | nothing = failure (UsageViolation x q q') , tt
   -- Non-arrow T: a lambda has no check-mode rule.
+  {-# CATCHALL #-}
   checkElabV-wf ctx ac (Raw.RLam _ _) _ = failure LambdaRequiresFunctionType , tt
 
   ----------------------------------------------------------------------
@@ -2422,6 +2473,7 @@ mutual
   -- mutual `checkElab`↔`inferElab` same-size call (`checkElab e → inferElab e`)
   -- is accepted by the foetus checker only as a `with`-scrutinee; extracting it
   -- to an explicit-arg aux breaks termination. NOT every `with` is removable.
+  {-# CATCHALL #-}
   checkElabV-wf ctx ac e T = embedOrSubsume ctx e T (inferElabV ctx e)
 
 
@@ -2724,6 +2776,7 @@ checkApply ctx arg T | success ((_ Once.Type.* _) Once.Type.* _) _ _ _ _ , _ = f
 checkApply ctx arg T | success ((_ Once.Type.+ _) Once.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
 checkApply ctx arg T | success ((_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Zero Once.Type.pure ] _) Once.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
 checkApply ctx arg T | success ((_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.One Once.Type.pure ] _) Once.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
+{-# CATCHALL #-}
 checkApply ctx arg T | success ((_ Once.Type.⇒[ Once.Type.mk-kind _ Once.Type.eff ] _) Once.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
 checkApply ctx arg T | success ((Once.Type.μ-type _) Once.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
 checkApply ctx arg T | success ((Once.Type.ν-type _ _) Once.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt

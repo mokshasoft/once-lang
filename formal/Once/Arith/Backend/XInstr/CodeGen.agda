@@ -82,6 +82,7 @@ emit (add-rrr dst a b) with abs-reg dst | abs-reg a | abs-reg b
 ...   | no _                               with xd ≟x xb
 ...     | yes _                            = Xadd-rr xd xa ∷ []
 ...     | no _                             = Xmov-rr xd xa ∷ Xadd-rr xd xb ∷ []
+{-# CATCHALL #-}
 emit (add-rrr _ _ _) | _ | _ | _           = []
 
 -- | `sub-rrr dst a b` = `dst := a - b`. Subtraction is NOT
@@ -93,6 +94,7 @@ emit (sub-rrr dst a b) with abs-reg dst | abs-reg a | abs-reg b
 ...   | no _                               with xd ≟x xb
 ...     | yes _                            = Xneg-r xd ∷ Xadd-rr xd xa ∷ []
 ...     | no _                             = Xmov-rr xd xa ∷ Xsub-rr xd xb ∷ []
+{-# CATCHALL #-}
 emit (sub-rrr _ _ _) | _ | _ | _           = []
 
 -- | `mul-rrr dst a b` = `dst := a * b`. Commutative; same aliasing
@@ -103,6 +105,7 @@ emit (mul-rrr dst a b) with abs-reg dst | abs-reg a | abs-reg b
 ...   | no _                               with xd ≟x xb
 ...     | yes _                            = Ximul-rr xd xa ∷ []
 ...     | no _                             = Xmov-rr xd xa ∷ Ximul-rr xd xb ∷ []
+{-# CATCHALL #-}
 emit (mul-rrr _ _ _) | _ | _ | _           = []
 -- | `div-rrr dst a b` / `rem-rrr dst a b`. THREE-address: emit a single
 -- neutral `Xdiv-rrr`/`Xrem-rrr` with explicit dividend/divisor. No aliasing
@@ -110,20 +113,25 @@ emit (mul-rrr _ _ _) | _ | _ | _           = []
 -- `dst` (x86 idiv consumes rax/rdx internally; RV64 div/rem is 3-address).
 emit (div-rrr dst a b) with abs-reg dst | abs-reg a | abs-reg b
 ... | just xd | just xa | just xb          = Xdiv-rrr xd xa xb ∷ []
+{-# CATCHALL #-}
 ... | _       | _       | _                = []
 emit (rem-rrr dst a b) with abs-reg dst | abs-reg a | abs-reg b
 ... | just xd | just xa | just xb          = Xrem-rrr xd xa xb ∷ []
+{-# CATCHALL #-}
 ... | _       | _       | _                = []
 -- plan 0.108: a comparison, three-address like division (`dst := a ⋚ b`).
 emit (cmp-rrr o dst a b) with abs-reg dst | abs-reg a | abs-reg b
 ... | just xd | just xa | just xb          = Xcmp-rrr o xd xa xb ∷ []
+{-# CATCHALL #-}
 ... | _       | _       | _                = []
 -- `-safe` variants: same 3-address shape, guard-elided Emit downstream.
 emit (div-safe-rrr dst a b) with abs-reg dst | abs-reg a | abs-reg b
 ... | just xd | just xa | just xb          = Xdiv-safe-rrr xd xa xb ∷ []
+{-# CATCHALL #-}
 ... | _       | _       | _                = []
 emit (rem-safe-rrr dst a b) with abs-reg dst | abs-reg a | abs-reg b
 ... | just xd | just xa | just xb          = Xrem-safe-rrr xd xa xb ∷ []
+{-# CATCHALL #-}
 ... | _       | _       | _                = []
 -- Strength-reduced multiply / divide by a power-of-two literal. Single-write
 -- (`dst := f src`); the neutral XInstr carries both regs plus the immediate
@@ -131,12 +139,15 @@ emit (rem-safe-rrr dst a b) with abs-reg dst | abs-reg a | abs-reg b
 -- writing `dst`.
 emit (shl-rri dst src imm) with abs-reg dst | abs-reg src
 ... | just xd | just xs                    = Xshl-rri xd xs imm ∷ []
+{-# CATCHALL #-}
 ... | _       | _                          = []
 emit (sdiv-pow2-rri dst src imm) with abs-reg dst | abs-reg src
 ... | just xd | just xs                    = Xsdiv-pow2-rri xd xs imm ∷ []
+{-# CATCHALL #-}
 ... | _       | _                          = []
 emit (neg-rr dst a) with abs-reg dst | abs-reg a
 ... | just xd | just xa = Xmov-rr xd xa ∷ Xneg-r xd ∷ []
+{-# CATCHALL #-}
 ... | _       | _       = []
 
 ----------------------------------------------------------------------
@@ -160,6 +171,7 @@ emit (fadd-rrr dst a b) with abs-reg dst | abs-reg a | abs-reg b
 ...   | no _                               with xd ≟x xb
 ...     | yes _                            = Xfadd-rr xd xa ∷ []
 ...     | no _                             = Xmov-rr xd xa ∷ Xfadd-rr xd xb ∷ []
+{-# CATCHALL #-}
 emit (fadd-rrr _ _ _) | _ | _ | _          = []
 emit (fsub-rrr dst a b) with abs-reg dst | abs-reg a | abs-reg b
 ... | just xd | just xa | just xb        with xd ≟x xa
@@ -167,6 +179,7 @@ emit (fsub-rrr dst a b) with abs-reg dst | abs-reg a | abs-reg b
 ...   | no _                               with xd ≟x xb
 ...     | yes _                            = Xfsubr-rr xd xa ∷ []
 ...     | no _                             = Xmov-rr xd xa ∷ Xfsub-rr xd xb ∷ []
+{-# CATCHALL #-}
 emit (fsub-rrr _ _ _) | _ | _ | _          = []
 emit (fmul-rrr dst a b) with abs-reg dst | abs-reg a | abs-reg b
 ... | just xd | just xa | just xb        with xd ≟x xa
@@ -174,17 +187,21 @@ emit (fmul-rrr dst a b) with abs-reg dst | abs-reg a | abs-reg b
 ...   | no _                               with xd ≟x xb
 ...     | yes _                            = Xfmul-rr xd xa ∷ []
 ...     | no _                             = Xmov-rr xd xa ∷ Xfmul-rr xd xb ∷ []
+{-# CATCHALL #-}
 emit (fmul-rrr _ _ _) | _ | _ | _          = []
 -- Three-address: the sources are read before the destination is written, so
 -- the `dst ≡ b` aliasing that forces `fmul`'s swap analysis cannot bite.
 emit (fdiv-rrr dst a b) with abs-reg dst | abs-reg a | abs-reg b
 ... | just xd | just xa | just xb          = Xfdiv-rrr xd xa xb ∷ []
+{-# CATCHALL #-}
 ... | _       | _       | _                = []
 emit (fneg-rr dst a) with abs-reg dst | abs-reg a
 ... | just xd | just xa = Xmov-rr xd xa ∷ Xfneg-r xd ∷ []
+{-# CATCHALL #-}
 ... | _       | _       = []
 emit (i2f-rr dst a) with abs-reg dst | abs-reg a
 ... | just xd | just xa = Xi2f-r xd xa ∷ []
+{-# CATCHALL #-}
 ... | _       | _       = []
 emit (spill src slot) with abs-reg src
 ... | just xs = Xmov-r-m (mk-scratch slot) xs ∷ []

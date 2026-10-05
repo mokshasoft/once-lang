@@ -445,6 +445,7 @@ module Width (bits : ℕ) where
       trans (m<n⇒m%n≡m 0<modulus) (sym (n%n≡0 modulus))
     fromℤ-neg-toℤ (suc x') x<mod | true  =
       cong (λ w → norm (modulus ∸ w)) (m<n⇒m%n≡m x<mod)
+    {-# CATCHALL #-}
     fromℤ-neg-toℤ x        x<mod | false =
       trans (cong (λ z → fromℤ (- z)) toℤ-x-hi)
             (cong fromℤ (neg-involutive (+ (modulus ∸ x))))

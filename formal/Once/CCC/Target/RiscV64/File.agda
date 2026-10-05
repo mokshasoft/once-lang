@@ -93,6 +93,7 @@ print F = preamble ++ˢ code-text (entry F) 0 (code F) ++ˢ blocks-text (blocks 
 label-defs : Program → List String
 label-defs []              = []
 label-defs (label l ∷ is)  = labelSym l ∷ label-defs is
+{-# CATCHALL #-}
 label-defs (_ ∷ is)        = label-defs is
 
 ref-syms : Instr → List String
@@ -103,6 +104,7 @@ ref-syms (j l)         = labelSym l ∷ []
 ref-syms (lla _ n)     = thunkSym n ∷ []
 ref-syms (lla-sym _ s) = s ∷ []
 ref-syms (call-sym s)  = s ∷ []
+{-# CATCHALL #-}
 ref-syms _             = []
 
 refs : Program → List String

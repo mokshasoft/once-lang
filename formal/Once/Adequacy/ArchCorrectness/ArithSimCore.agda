@@ -175,6 +175,7 @@ module At (tn : TargetNum) where
   LoadOK : InputShape → XInstr → Set
   LoadOK sh (XI.Xmov-arg  d p) = Σ-syntax (Path sh NInt)   (λ tp → ⌊ tp ⌋ᴾ ≡ p)
   LoadOK sh (XI.Xmov-farg d p) = Σ-syntax (Path sh NFloat) (λ tp → ⌊ tp ⌋ᴾ ≡ p)
+  {-# CATCHALL #-}
   LoadOK sh _                  = ⊤
 
   LoadsWF : InputShape → List XInstr → Set
@@ -283,6 +284,7 @@ module At (tn : TargetNum) where
 
   NonSpill : XInstr → Set
   NonSpill (XI.Xmov-r-m _ _) = ⊥
+  {-# CATCHALL #-}
   NonSpill _                 = ⊤
 
   scratch-unchanged : ∀ i → NonSpill i → ∀ {sh} (s : ArithAbsState sh)

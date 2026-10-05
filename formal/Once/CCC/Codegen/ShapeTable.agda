@@ -123,6 +123,7 @@ func-eq (K a)   (K b)   = ty-eq a b
 func-eq Id      Id      = true
 func-eq (f ⊕ g) (h ⊕ i) = func-eq f h ∧ func-eq g i
 func-eq (f ⊗ g) (h ⊗ i) = func-eq f h ∧ func-eq g i
+{-# CATCHALL #-}
 func-eq _       _       = false
 
 ty-eq Unit      Unit      = true
@@ -133,11 +134,13 @@ ty-eq (a +ᵗ b)  (c +ᵗ d)  = ty-eq a c ∧ ty-eq b d
 ty-eq (a ⇛ b)   (c ⇛ d)   = ty-eq a c ∧ ty-eq b d
 ty-eq (μ-type f) (μ-type g) = func-eq f g
 ty-eq (ν-type f) (ν-type g) = func-eq f g
+{-# CATCHALL #-}
 ty-eq _         _         = false
 
 nat-eq : ℕ → ℕ → Bool
 nat-eq zero    zero    = true
 nat-eq (suc a) (suc b) = nat-eq a b
+{-# CATCHALL #-}
 nat-eq _       _       = false
 
 -- entailment on register expectations: anything entails e-any; otherwise
@@ -158,6 +161,7 @@ sub-reg e-word       e-word       = true
 sub-reg (e-fresh (just (e-tag zero)) (just (e-repr p))) (e-repr (a +ᵗ b)) = ty-eq p a
 sub-reg (e-fresh (just (e-tag (suc zero))) (just (e-repr p))) (e-repr (a +ᵗ b)) = ty-eq p b
 sub-reg (e-fresh (just (e-repr p)) (just (e-repr q))) (e-repr (a * b)) = ty-eq p a ∧ ty-eq q b
+{-# CATCHALL #-}
 sub-reg _            _            = false
 
 -- entailment on whole expectations: registers pointwise; every slot claim
@@ -178,6 +182,7 @@ sub-expect s t = sub-reg (e-in1 s) (e-in1 t)
 -- the sum view of a TYPE (aux-style — no `with`, so it inverts)
 as-sum-of : IRTy → Maybe (IRTy × IRTy)
 as-sum-of (a +ᵗ b) = just (a , b)
+{-# CATCHALL #-}
 as-sum-of _        = nothing
 
 as-sum-of-inv : ∀ T {a b} → as-sum-of T ≡ just (a , b) → T ≡ (a +ᵗ b)
@@ -194,6 +199,7 @@ as-sum (e-repr (μ-type f)) = as-sum-of (⟦ f ⟧TI (μ-type f))
 -- where the sum (and so the tag) becomes readable. The μ line above stays
 -- unfolded because a μ IS its layer.
 as-sum (e-repr (ν-type f)) = nothing
+{-# CATCHALL #-}
 as-sum _ = nothing
 
 -- is this claim certainly a pointer? (the load/store site requirement)
@@ -206,6 +212,7 @@ is-ptr (e-repr (a +ᵗ b)) = true
 is-ptr (e-inl a b)       = true
 is-ptr (e-inr a b)       = true
 is-ptr (e-fresh _ _)     = true
+{-# CATCHALL #-}
 is-ptr _                 = false
 
 -- the shape of cell 0 seen through a load (`load-indirect`): pairs yield
@@ -214,18 +221,21 @@ is-ptr _                 = false
 -- no claim); everything else: no claim.
 fst-of : IRTy → RegExpect
 fst-of (a * b) = e-repr a
+{-# CATCHALL #-}
 fst-of _       = e-any
 
 load-fst : RegExpect → RegExpect
 load-fst (e-repr (a * b)) = e-repr a
 load-fst (e-fresh (just c₀) _) = c₀
 load-fst (e-repr (μ-type f)) = fst-of (⟦ f ⟧TI (μ-type f))
+{-# CATCHALL #-}
 load-fst _ = e-any
 
 -- cell 1 through `load-indirect-suc`: pairs yield the second component; a
 -- REFINED sum yields its payload (this is the descend-loop step, G2).
 snd-of : IRTy → RegExpect
 snd-of (a * b) = e-repr b
+{-# CATCHALL #-}
 snd-of _       = e-any
 
 load-snd : RegExpect → RegExpect
@@ -234,6 +244,7 @@ load-snd (e-inl a b)      = e-repr a
 load-snd (e-inr a b)      = e-repr b
 load-snd (e-fresh _ (just c₁)) = c₁
 load-snd (e-repr (μ-type f)) = snd-of (⟦ f ⟧TI (μ-type f))
+{-# CATCHALL #-}
 load-snd _ = e-any
 
 ------------------------------------------------------------------------
@@ -247,6 +258,7 @@ load-snd _ = e-any
 -- the result, or the `SV-Lit fits-int 0` sentinel) — the claim `out-nz` needs.
 claim-at : ∀ {B} → EffectShape B → Maybe (FitsInReg B) → RegExpect
 claim-at Pure (just Ty.fits-int) = e-word
+{-# CATCHALL #-}
 claim-at _    _                  = e-any
 
 sigop-claim : ∀ {A B} → SigOpInfo A B → RegExpect
@@ -275,9 +287,11 @@ step-expect env st (store-at-slot k) =
 -- share).
 step-expect env st store-indirect with e-in1 st
 ... | e-fresh c₀ c₁ = record st { e-in1 = e-fresh (just (e-out st)) c₁ }
+{-# CATCHALL #-}
 ... | _             = st
 step-expect env st store-indirect-suc with e-in1 st
 ... | e-fresh c₀ c₁ = record st { e-in1 = e-fresh c₀ (just (e-out st)) }
+{-# CATCHALL #-}
 ... | _             = st
 step-expect env st (lea-slot k) =
   record st { e-out = e-any }
@@ -315,6 +329,7 @@ step-expect env st (instr-alloc-heap n) =
   where
     scrub : RegExpect → RegExpect
     scrub (e-fresh _ _) = e-any
+    {-# CATCHALL #-}
     scrub e             = e
     scrub-slots : SlotEnv → SlotEnv
     scrub-slots []             = []
@@ -326,6 +341,7 @@ step-expect env st (instr-loop b)          = st    -- unemittable
 step-expect env st (instr-case-on-tag f g) = st    -- unemittable
 -- plan 0.108: `out-nz` writes a tag the checker does not track by value
 step-expect env st (instr-reg-op out-nz) = record st { e-out = e-any }
+{-# CATCHALL #-}
 step-expect env st (instr-reg-op op) = st
 -- CONTROL. A label ADOPTS its environment entry (the join point's claim —
 -- the fall-in path's obligation to entail it is the checker's job). A jump
@@ -352,6 +368,7 @@ step-expect env st (instr-ctrl (c-jmp m)) =
 step-expect env st (instr-ctrl (c-branch-scratch-zero m)) = st
 step-expect env st (instr-ctrl (c-branch-tag-zero m)) with e-in1 st
 ... | e-fresh c₀ c₁ = st                     -- statically-decided tag: no refinement needed
+{-# CATCHALL #-}
 ... | e₁ with as-sum e₁
 ...   | just (a , b) = record st { e-in1 = e-inr a b }   -- fall-through = inr
 ...   | nothing      = st
@@ -367,10 +384,12 @@ step-expect env st (instr-ctrl (c-branch-tag-zero m)) with e-in1 st
 -- what a discipline site REQUIRES of the incoming state
 is-word : RegExpect → Bool
 is-word e-word = true
+{-# CATCHALL #-}
 is-word _      = false
 
 is-fresh : RegExpect → Bool
 is-fresh (e-fresh _ _) = true
+{-# CATCHALL #-}
 is-fresh _             = false
 
 is-just : ∀ {A : Set} → Maybe A → Bool
@@ -381,7 +400,9 @@ is-just nothing  = false
 -- a sum-viewed representation
 tag-site-ok : RegExpect → Bool
 tag-site-ok (e-fresh (just (e-tag t)) c₁) = true
+{-# CATCHALL #-}
 tag-site-ok (e-fresh _ _)                 = false
+{-# CATCHALL #-}
 tag-site-ok e₁                            = is-just (as-sum e₁)
 
 -- A SLOT READ REQUIRES A CLAIM (Plan 0.54 rung D). `MeetsSlot e-any … = ⊤`
@@ -398,6 +419,7 @@ tag-site-ok e₁                            = is-just (as-sum e₁)
 -- what refutes the empty-slot routes.
 not-any : RegExpect → Bool
 not-any e-any = false
+{-# CATCHALL #-}
 not-any _     = true
 
 site-ok : Expect → AbstractInstr → Bool
@@ -412,6 +434,7 @@ site-ok st store-indirect-suc = is-fresh (e-in1 st)
 site-ok st (instr-ctrl (c-branch-tag-zero m)) = tag-site-ok (e-in1 st)
 -- plan 0.108: `out-nz` reads an `Int` word from Output
 site-ok st (instr-reg-op out-nz) = is-word (e-out st)
+{-# CATCHALL #-}
 site-ok st _ = true
 
 -- control-transfer obligation of one instruction: jumps and taken branches
@@ -424,7 +447,9 @@ ctrl-ok env st (instr-ctrl (c-branch-tag-zero m)) with e-in1 st
 ... | e-fresh (just (e-tag zero)) c₁ = sub-expect st (env m)
 -- nonzero tag known: never taken — no obligation at all
 ... | e-fresh (just (e-tag (suc t))) c₁ = true
+{-# CATCHALL #-}
 ... | e-fresh c₀ c₁ = false
+{-# CATCHALL #-}
 ... | e₁ with as-sum e₁
 ...   | just (a , b) = sub-expect (record st { e-in1 = e-inl a b }) (env m)
 ...   | nothing      = false
@@ -436,6 +461,7 @@ ctrl-ok env st (instr-ctrl (c-label m)) = sub-expect st (env m)
 -- replaces them with the per-body entry/return obligations.
 ctrl-ok env st (instr-ctrl (c-entry m b)) = true
 ctrl-ok env st (instr-ctrl (c-ret b)) = true
+{-# CATCHALL #-}
 ctrl-ok env st _ = true
 
 check-shapes : LabelEnv → Expect → AbstractTrace → Bool

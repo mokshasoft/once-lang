@@ -36,9 +36,11 @@ isBaseType? Int    = just base-Int
 isBaseType? Float  = just base-Float
 isBaseType? (A * B) with isBaseType? A | isBaseType? B
 ... | just bA | just bB = just (base-Prod bA bB)
+{-# CATCHALL #-}
 ... | _       | _       = nothing
 isBaseType? (A + B) with isBaseType? A | isBaseType? B
 ... | just bA | just bB = just (base-Sum bA bB)
+{-# CATCHALL #-}
 ... | _       | _       = nothing
 isBaseType? (_ ⇒[ _ ] _) = nothing
 isBaseType? (μ-type _) = nothing
@@ -52,7 +54,9 @@ isBaseType? (rigid k-any _)  = nothing
 isConcrete? : (A : Type) → Maybe (IsConcrete A)
 isConcrete? (A ⇒[ _ ] B) with isBaseType? A | isBaseType? B
 ... | just bA | just bB = just (con-fun bA bB)
+{-# CATCHALL #-}
 ... | _       | _       = nothing
+{-# CATCHALL #-}
 isConcrete? A with isBaseType? A
 ... | just bA = just (con-base bA)
 ... | nothing = nothing
@@ -97,7 +101,9 @@ wellFormedF? (K A) with isBaseType? A
 wellFormedF? Id = just wf-Id
 wellFormedF? (F ⊕ G) with wellFormedF? F | wellFormedF? G
 ... | just wF | just wG = just (wf-Sum wF wG)
+{-# CATCHALL #-}
 ... | _       | _       = nothing
 wellFormedF? (F ⊗ G) with wellFormedF? F | wellFormedF? G
 ... | just wF | just wG = just (wf-Prod wF wG)
+{-# CATCHALL #-}
 ... | _       | _       = nothing

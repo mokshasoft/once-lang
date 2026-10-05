@@ -432,10 +432,12 @@ sv-nz _                   = SV-Tag 1
 -- Plan 0.29 (M5): SV-Tag counter arithmetic for instr-reg-op.
 sv-succ : ∀ {FS} → StoredValue FS → StoredValue FS
 sv-succ (SV-Tag n) = SV-Tag (suc n)
+{-# CATCHALL #-}
 sv-succ _          = SV-Tag 1
 
 sv-pred : ∀ {FS} → StoredValue FS → StoredValue FS
 sv-pred (SV-Tag (suc n)) = SV-Tag n
+{-# CATCHALL #-}
 sv-pred _                = SV-Tag 0
 
 -- Plan 0.36 Phase 2b: read a count register (SV-Tag n) as the ℕ index
@@ -443,6 +445,7 @@ sv-pred _                = SV-Tag 0
 -- the index register holds the descend/ascend counter).
 sv-tag-val : ∀ {FS} → StoredValue FS → ℕ
 sv-tag-val (SV-Tag n) = n
+{-# CATCHALL #-}
 sv-tag-val _          = 0
 
 ------------------------------------------------------------------------
@@ -1632,6 +1635,7 @@ module AbstractExec {FS : FrameSemantics} where
   -- of Unit/Int (`Arith.SigOp.Block.shape-as-type`), the covered cases.
   combine-typed : ∀ {A B : Type} → Maybe ⟦ A ⟧ → Maybe ⟦ B ⟧ → Maybe ⟦ A * B ⟧
   combine-typed (just a) (just b) = just (a , b)
+  {-# CATCHALL #-}
   combine-typed _        _        = nothing
 
   -- Aux-style (Maybe-argument) helpers so the adequacy proof
@@ -1639,10 +1643,12 @@ module AbstractExec {FS : FrameSemantics} where
   -- abstract `readLoc s loc` would not reduce under the proof's rewrites.
   readTyped-int : Maybe (StoredValue FS) → Maybe ⟦ Int ⟧
   readTyped-int (just (SV-Lit fits-int v)) = just v
+  {-# CATCHALL #-}
   readTyped-int _                          = nothing
 
   readTyped-float : Maybe (StoredValue FS) → Maybe ⟦ Float ⟧
   readTyped-float (just (SV-Lit fits-float v)) = just v
+  {-# CATCHALL #-}
   readTyped-float _                            = nothing
 
   -- D187: A PAIR CELL IS A POINTER **OR** THE COMPONENT ITSELF. The emitter
@@ -1683,6 +1689,7 @@ module AbstractExec {FS : FrameSemantics} where
   readReg-typed Unit _                  = just tt
   readReg-typed Int (SV-Lit fits-int v) = just v
   readReg-typed Float (SV-Lit fits-float v) = just v
+  {-# CATCHALL #-}
   readReg-typed _   _                   = nothing
 
   -- Plan 0.105 §g: A SUM is its tag cell (`SV-Tag 0`/`SV-Tag 1`) and its
@@ -1711,6 +1718,7 @@ module AbstractExec {FS : FrameSemantics} where
     readTyped-sum (readTyped-cell (λ l → readTyped A l s) (readReg-typed A))
                   (readTyped-cell (λ l → readTyped B l s) (readReg-typed B))
       (readLoc s loc) (readLoc s (sucLoc loc))
+  {-# CATCHALL #-}
   readTyped _       loc s = nothing
 
   -- Plan 0.26 — `pure-sigop-output` discharged via `FitsInReg`.
@@ -1740,7 +1748,9 @@ module AbstractExec {FS : FrameSemantics} where
   decode-at base-Unit  _                      _ = just tt
   decode-at base-Int   (SV-Lit fits-int   v)  _ = just v
   decode-at base-Float (SV-Lit fits-float v)  _ = just v
+  {-# CATCHALL #-}
   decode-at {A} _      (SV-Ptr loc)           s = readTyped A loc s
+  {-# CATCHALL #-}
   decode-at _          _                      _ = nothing
 
   -- The events a SigOp invocation is: its call, at the argument decoded from
@@ -1866,6 +1876,7 @@ module AbstractExec {FS : FrameSemantics} where
   exec-sigop-halts-of : ∀ {A B} → EffectShape B → SigOpInfo A B →
                         LocState FS → Bool
   exec-sigop-halts-of (Halts _) _ _ = true
+  {-# CATCHALL #-}
   exec-sigop-halts-of _         _ _ = false
 
   -- | Dispatch-derived halt-flag (wrapper).
@@ -1933,6 +1944,7 @@ module AbstractExec {FS : FrameSemantics} where
   ... | true  = s , alloc
   ... | false with readReg (regs s) Scratch
   ...   | SV-Tag 0 = s , alloc
+  {-# CATCHALL #-}
   ...   | _        = exec-loop-run run n (loop-reanchor-loc s (proj₁ (run s alloc)))
                                          (loop-reanchor-alloc alloc (proj₂ (run s alloc)))
 

@@ -197,6 +197,7 @@ suc m <ᵇ suc n = m <ᵇ n
 find-label-go : Label → Program → ℕ → Maybe ℕ
 find-label-go target []             _ = nothing
 find-label-go target (label m ∷ is) i = if m ≡ᵇᴸ target then just i else find-label-go target is (suc i)
+{-# CATCHALL #-}
 find-label-go target (_       ∷ is) i = find-label-go target is (suc i)
 
 find-label : Program → Label → Maybe ℕ

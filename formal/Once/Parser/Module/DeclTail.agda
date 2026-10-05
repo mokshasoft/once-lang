@@ -21,6 +21,7 @@ open import Data.Nat.Properties using (<-≤-trans)
 -- Local head classifier + `taDrop1` (Plan 0.52 bridge-readiness).
 taEqHead : List Token → Bool
 taEqHead (TEquals ∷ _) = true
+{-# CATCHALL #-}
 taEqHead _             = false
 
 taDrop1 : List Token → List Token
@@ -80,6 +81,7 @@ parseTypeAlias toks with parseTypeAliasB toks
 -- (instead of matching `TColon ∷ rest` on the anyWordB residual) for the bridge.
 colonHead : List Token → Bool
 colonHead (TColon ∷ _) = true
+{-# CATCHALL #-}
 colonHead _            = false
 
 colDrop1 : List Token → List Token

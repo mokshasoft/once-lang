@@ -29,6 +29,7 @@ import Once.Arith.Backend.RunTraceCore as Core
 
 matchCall : Instr → Maybe String
 matchCall (call-sym lbl) = just lbl
+{-# CATCHALL #-}
 matchCall _              = nothing
 
 ret-past : State → State

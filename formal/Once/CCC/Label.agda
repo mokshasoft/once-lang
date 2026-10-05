@@ -195,6 +195,7 @@ _≡ᵇᴸ_ : Label → Label → Bool
 once  a   ≡ᵇᴸ once  b   = a ≡ᵇᴵ b
 sigop a n ≡ᵇᴸ sigop b m = (a ==ˢ b) ∧ (n ≡ᵇ m)
 callee a  ≡ᵇᴸ callee b  = a ≡ᵇᴱ b
+{-# CATCHALL #-}
 _         ≡ᵇᴸ _         = false
 
 ------------------------------------------------------------------------

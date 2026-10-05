@@ -107,6 +107,7 @@ instr-text (Xmov-arg dst path) = path-load-text dst path
     walk-eax-rest : XReg → InputPath → String
     walk-eax-rest dst (s ∷ []) =
       "    movl " ++ side-offset s ++ "(%eax), " ++ reg-text dst ++ "\n"
+    {-# CATCHALL #-}
     walk-eax-rest dst (s ∷ ss) =
       "    movl " ++ side-offset s ++ "(%eax), %eax\n" ++ walk-eax-rest dst ss
     walk-eax-rest dst []       = ""
@@ -116,6 +117,7 @@ instr-text (Xmov-arg dst path) = path-load-text dst path
       "    movl %ecx, " ++ reg-text dst ++ "\n"
     path-load-text dst (s ∷ [])   =
       "    movl " ++ side-offset s ++ "(%ecx), " ++ reg-text dst ++ "\n"
+    {-# CATCHALL #-}
     path-load-text dst (s ∷ rest) =
       "    movl " ++ side-offset s ++ "(%ecx), %eax\n" ++
       walk-eax-rest dst rest

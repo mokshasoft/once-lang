@@ -70,7 +70,9 @@ import Data.Nat as ℕ
 -- from a proof's `with`, which is what made D126's `embedOrSubsume-lifts`
 -- unprovable. Same decisions, same results; just decided sooner.
 ≟T-⇒-aux _          (no ¬k)    _          = no λ { refl → ¬k refl }
+{-# CATCHALL #-}
 ≟T-⇒-aux (no ¬p)    _          _          = no λ { refl → ¬p refl }
+{-# CATCHALL #-}
 ≟T-⇒-aux _          _          (no ¬r)    = no λ { refl → ¬r refl }
 ≟T-⇒-aux (yes refl) (yes refl) (yes refl) = yes refl
 
@@ -81,6 +83,7 @@ import Data.Nat as ℕ
 -- D233: the grade is decided FIRST, for the reason `≟T-⇒-aux` gives.
 ≟T-ν-aux : ∀ {F₁ F₂ π₁ π₂} → Dec (π₁ ≡ π₂) → Dec (F₁ ≡ F₂) → Dec (ν-type F₁ π₁ ≡ ν-type F₂ π₂)
 ≟T-ν-aux (no ¬π)    _          = no λ { refl → ¬π refl }
+{-# CATCHALL #-}
 ≟T-ν-aux _          (no ¬p)    = no λ { refl → ¬p refl }
 ≟T-ν-aux (yes refl) (yes refl) = yes refl
 
@@ -94,6 +97,7 @@ k-any  ≟tk k-any  = yes refl
 
 ≟T-rigid-aux : ∀ {k₁ k₂ i₁ i₂} → Dec (k₁ ≡ k₂) → Dec (i₁ ≡ i₂) → Dec (rigid k₁ i₁ ≡ rigid k₂ i₂)
 ≟T-rigid-aux (no ¬k)    _          = no λ { refl → ¬k refl }
+{-# CATCHALL #-}
 ≟T-rigid-aux _          (no ¬i)    = no λ { refl → ¬i refl }
 ≟T-rigid-aux (yes refl) (yes refl) = yes refl
 

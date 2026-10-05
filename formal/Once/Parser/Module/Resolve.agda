@@ -88,6 +88,7 @@ lookupModule ((p , m) ∷ rest)  path with p path≟ path
 showPath : List String → String
 showPath []          = ""
 showPath (x ∷ [])    = x
+{-# CATCHALL #-}
 showPath (x ∷ xs)    = x ++ "." ++ showPath xs
 
 ------------------------------------------------------------------------
@@ -112,6 +113,7 @@ collectAliases : List Decl → AliasMap
 collectAliases []                                            = []
 collectAliases (DImport (mkImport path (just alias)) ∷ rest) =
   (alias , path) ∷ collectAliases rest
+{-# CATCHALL #-}
 collectAliases (_ ∷ rest)                                    = collectAliases rest
 
 lookupImportAlias : AliasMap → String → Maybe (List String)
@@ -133,6 +135,7 @@ UnaliasedMap = List (String × List String)
 sigNames : List Decl → List String
 sigNames []                          = []
 sigNames (DSignature name _ _ ∷ r) = name ∷ sigNames r
+{-# CATCHALL #-}
 sigNames (_ ∷ r)                     = sigNames r
 
 collectUnaliased : ModuleMap → List Decl → UnaliasedMap
@@ -140,6 +143,7 @@ collectUnaliased _      []                                       = []
 collectUnaliased modMap (DImport (mkImport path nothing) ∷ rest) with lookupModule modMap path
 ... | just (mkModule impDs) = map (λ n → (n , path)) (sigNames impDs) ++L collectUnaliased modMap rest
 ... | nothing               = collectUnaliased modMap rest
+{-# CATCHALL #-}
 collectUnaliased modMap (_ ∷ rest)                              = collectUnaliased modMap rest
 
 lookupUnaliased : UnaliasedMap → String → Maybe (List String)
@@ -215,6 +219,7 @@ pdn-go (DFunDef name body ∷ rest) (just _) = pdn-go rest nothing
 pdn-go (DFunDef name body ∷ rest) nothing = pdn-sigless name body rest (name ≟ "main")
 -- A DSignature resets the pending (mirror of `extractFunctions-go`).
 pdn-go (DSignature name owner ty ∷ rest) _ = pdn-go rest nothing
+{-# CATCHALL #-}
 pdn-go (_ ∷ rest) pending                = pdn-go rest pending
 
 pdn-sigless name body rest (yes _) = pdn-go rest nothing
@@ -346,6 +351,7 @@ cls-reflect bound um am (RAna _ _) ()
 -- them are KEPT as `RVar` (taking `t-var-poly-instantiate`), never canonicalized.
 canonDecl : List String → UnaliasedMap → AliasMap → Decl → Decl
 canonDecl polys um am (DFunDef name body) = DFunDef name (canonExpr polys um am body)
+{-# CATCHALL #-}
 canonDecl polys um am d                         = d
 
 ------------------------------------------------------------------------
@@ -359,6 +365,7 @@ signaturesWithOwner : Maybe String → List Decl → List Decl
 signaturesWithOwner _     []                                   = []
 signaturesWithOwner owner (DSignature name _ ty ∷ rest)   =
   DSignature name owner ty ∷ signaturesWithOwner owner rest
+{-# CATCHALL #-}
 signaturesWithOwner owner (_ ∷ rest)                           =
   signaturesWithOwner owner rest
 
@@ -408,6 +415,7 @@ resolveDecls polys um am modMap (DImport imp ∷ rest) =
   resolveDecls-import-aux polys um am modMap imp rest
     (lookupModule modMap (Import.path imp)) refl
     (resolveDecls polys um am modMap rest) refl
+{-# CATCHALL #-}
 resolveDecls polys um am modMap (d ∷ rest) =
   resolveDecls-cons-aux polys um am d (resolveDecls polys um am modMap rest)
 

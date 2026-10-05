@@ -139,8 +139,10 @@ module SigOpC {FS : FrameSemantics} where
   arg-agree base-Unit  x  s inp = refl
   arg-agree base-Void  () s inp
   arg-agree base-rigid () s inp
+  {-# CATCHALL #-}
   arg-agree bt x s (in-loc loc v _ eq) rewrite eq =
     trans (decode-ptr bt loc s) (readTyped-adequate (readable-base bt) bt v)
+  {-# CATCHALL #-}
   arg-agree bt x s (in-reg fit eq) = arg-reg bt fit x s eq
   arg-agree base-Int        x s (in-unit ())
   arg-agree base-Float      x s (in-unit ())

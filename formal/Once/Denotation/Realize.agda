@@ -153,6 +153,7 @@ realize-infer (t-var-qualified {name = name} {alias = alias} _ conc) = sigOp (ba
 -- D248: a reference to the OWN module's entry is a call of it (D246); only a
 -- reference into another module (an inlined FFI signature) is a SigOp.
 realize-infer (t-var-resolved {cn = own x} _ _ conc) = closure x
+{-# CATCHALL #-}
 realize-infer (t-var-resolved {cn = cn} _ _ conc) = sigOp cn conc
 -- D246: a module entry's reference is a call of the entry.
 realize-infer (t-var-import {x = x} _ _ _ conc) = closure x

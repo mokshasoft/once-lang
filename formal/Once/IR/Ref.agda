@@ -26,4 +26,5 @@ refIR : (T : Type) → CanonicalName → IR Unit ⌊ T ⌋
 refIR (A ⇒[ mk-kind Zero π ] B) f = curry (Call f ∘ snd)
 refIR (A ⇒[ mk-kind One  π ] B) f = curry (Call f ∘ snd)
 refIR (A ⇒[ mk-kind Many π ] B) f = curry (Call f ∘ snd)
+{-# CATCHALL #-}
 refIR T                         f = Call f ∘ terminal

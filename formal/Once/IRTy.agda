@@ -211,14 +211,17 @@ mutual
   ≟IRTy-diag (A * B) (C * D) _ with A ≟IRTy C | B ≟IRTy D
   ... | yes refl | yes refl = yes refl
   ... | no ne    | _        = no (λ { refl → ne refl })
+  {-# CATCHALL #-}
   ... | _        | no ne    = no (λ { refl → ne refl })
   ≟IRTy-diag (A + B) (C + D) _ with A ≟IRTy C | B ≟IRTy D
   ... | yes refl | yes refl = yes refl
   ... | no ne    | _        = no (λ { refl → ne refl })
+  {-# CATCHALL #-}
   ... | _        | no ne    = no (λ { refl → ne refl })
   ≟IRTy-diag (A ⇛ B) (C ⇛ D) _ with A ≟IRTy C | B ≟IRTy D
   ... | yes refl | yes refl = yes refl
   ... | no ne    | _        = no (λ { refl → ne refl })
+  {-# CATCHALL #-}
   ... | _        | no ne    = no (λ { refl → ne refl })
   ≟IRTy-diag (μ-type F) (μ-type G) _ with F ≟IRFun G
   ... | yes refl = yes refl
@@ -237,10 +240,12 @@ mutual
   (F ⊕ G) ≟IRFun (F' ⊕ G') with F ≟IRFun F' | G ≟IRFun G'
   ... | yes refl | yes refl = yes refl
   ... | no ne    | _        = no (λ { refl → ne refl })
+  {-# CATCHALL #-}
   ... | _        | no ne    = no (λ { refl → ne refl })
   (F ⊗ G) ≟IRFun (F' ⊗ G') with F ≟IRFun F' | G ≟IRFun G'
   ... | yes refl | yes refl = yes refl
   ... | no ne    | _        = no (λ { refl → ne refl })
+  {-# CATCHALL #-}
   ... | _        | no ne    = no (λ { refl → ne refl })
   K _ ≟IRFun Id      = no (λ ())
   K _ ≟IRFun (_ ⊕ _) = no (λ ())

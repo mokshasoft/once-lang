@@ -527,6 +527,7 @@ module Unfolding
   s-local {G = G} {Δ = Δ} {sh = false} r y (yes y≡x) eq =
     ⊥-elim (just≢nothing (trans (sym eq) (subst (λ z → lookupLocal-go z G Δ ≡ nothing) (sym y≡x) (SR.noX r refl))))
   s-local {sh = true} r y (yes _) eq = t-var-local eq
+  {-# CATCHALL #-}
   s-local r y (no _) eq = t-var-local eq
 
   s-import : ∀ {n G Δ fr sh} → SR {n} sh G Δ → (y : String) (d : Dec (y ≡ x)) → ∀ {T}
@@ -549,6 +550,7 @@ module Unfolding
   ... | refl =
     subst (λ T → _ ⊢ᵢ RAnnot e A ∶ T ⨾ zeroUsage) (sym (trans eT (trans (extractGround-irr s g′ g) eqA)))
       (t-annot (subst RigidFree eqA (extractGround-rf s g)) (W-c wk-base (SR.clr r) eD))
+  {-# CATCHALL #-}
   s-poly-infer r y (no y≢x) ln li lp gr eT =
     t-var-poly-instantiate-infer ln li (lpp-skip y≢x lp) gr eT
 

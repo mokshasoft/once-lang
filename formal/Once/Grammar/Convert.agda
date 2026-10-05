@@ -62,15 +62,19 @@ mutual
   gtypeToType G.TFloat  = just T.Float
   gtypeToType (A G.⇒[ q ] B) with gtypeToType A | gtypeToType B
   ... | just A' | just B' = just (A' T.⇒[ T.mk-kind q T.pure ] B')
+  {-# CATCHALL #-}
   ... | _       | _       = nothing
   gtypeToType (A G.⊗ B) with gtypeToType A | gtypeToType B
   ... | just A' | just B' = just (A' T.* B')
+  {-# CATCHALL #-}
   ... | _       | _       = nothing
   gtypeToType (A G.⊕ B) with gtypeToType A | gtypeToType B
   ... | just A' | just B' = just (A' T.+ B')
+  {-# CATCHALL #-}
   ... | _       | _       = nothing
   gtypeToType (G.TEff A B) with gtypeToType A | gtypeToType B
   ... | just A' | just B' = just (A' T.⇒[ T.mk-kind T.Many T.eff ] B')
+  {-# CATCHALL #-}
   ... | _       | _       = nothing
   gtypeToType (G.GMu gf) with gfunctorToFunctor gf
   ... | just F  = just (T.μ-type F)
@@ -92,9 +96,11 @@ mutual
   gfunctorToFunctor G.GFId = just T.Id
   gfunctorToFunctor (G.GFSum f g) with gfunctorToFunctor f | gfunctorToFunctor g
   ... | just Ff | just Fg = just (Ff T.⊕ Fg)
+  {-# CATCHALL #-}
   ... | _       | _       = nothing
   gfunctorToFunctor (G.GFProd f g) with gfunctorToFunctor f | gfunctorToFunctor g
   ... | just Ff | just Fg = just (Ff T.⊗ Fg)
+  {-# CATCHALL #-}
   ... | _       | _       = nothing
 
 ------------------------------------------------------------------------
@@ -113,15 +119,19 @@ mutual
   typeToGType (T.rigid _ _) = nothing   -- D243: source never writes a rigid parameter
   typeToGType (A T.⇒[ T.mk-kind q T.pure ] B) with typeToGType A | typeToGType B
   ... | just A' | just B' = just (A' G.⇒[ q ] B')
+  {-# CATCHALL #-}
   ... | _       | _       = nothing
   typeToGType (A T.* B) with typeToGType A | typeToGType B
   ... | just A' | just B' = just (A' G.⊗ B')
+  {-# CATCHALL #-}
   ... | _       | _       = nothing
   typeToGType (A T.+ B) with typeToGType A | typeToGType B
   ... | just A' | just B' = just (A' G.⊕ B')
+  {-# CATCHALL #-}
   ... | _       | _       = nothing
   typeToGType (A T.⇒[ T.mk-kind T.Many T.eff ] B) with typeToGType A | typeToGType B
   ... | just A' | just B' = just (G.TEff A' B')
+  {-# CATCHALL #-}
   ... | _       | _       = nothing
   -- Degenerate kinds: eff + Zero/One. Grammar has no form for these.
   typeToGType (_ T.⇒[ T.mk-kind T.Zero T.eff ] _) = nothing
@@ -145,9 +155,11 @@ mutual
   functorToGFunctor T.Id = just G.GFId
   functorToGFunctor (F T.⊕ G') with functorToGFunctor F | functorToGFunctor G'
   ... | just gf | just gg = just (G.GFSum gf gg)
+  {-# CATCHALL #-}
   ... | _       | _       = nothing
   functorToGFunctor (F T.⊗ G') with functorToGFunctor F | functorToGFunctor G'
   ... | just gf | just gg = just (G.GFProd gf gg)
+  {-# CATCHALL #-}
   ... | _       | _       = nothing
 
 ------------------------------------------------------------------------

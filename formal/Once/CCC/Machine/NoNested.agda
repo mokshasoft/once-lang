@@ -44,6 +44,7 @@ open import Once.CCC.Machine.FrameFree using (EmittableI; ImageI)
 NoNestedI : AbstractInstr → Set
 NoNestedI (instr-case-on-tag _ _) = ⊥
 NoNestedI (instr-loop _)          = ⊥
+{-# CATCHALL #-}
 NoNestedI _                       = ⊤
 
 NoNested : AbstractTrace → Set
@@ -134,4 +135,5 @@ NoNested? []       = yes tt
 NoNested? (i ∷ is) with NoNestedI? i | NoNested? is
 ... | yes p | yes q = yes (p , q)
 ... | no ¬p | _     = no (λ z → ¬p (proj₁ z))
+{-# CATCHALL #-}
 ... | _     | no ¬q = no (λ z → ¬q (proj₂ z))

@@ -27,6 +27,7 @@ data SepK : Set where skEq skWord skStop : SepK
 sepClass : List Token → SepK
 sepClass (TEquals ∷ _) = skEq
 sepClass (TWord _ ∷ _)  = skWord
+{-# CATCHALL #-}
 sepClass _              = skStop
 
 -- | Bounded parse of function parameters before `=`. Always succeeds (empty list
