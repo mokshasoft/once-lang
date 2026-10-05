@@ -34,7 +34,7 @@ open import Once.CanonicalName using (CanonicalName)
 module Once.CCC.Codegen.LabelsUnique (o : CanonicalName) where
 
 open import Data.Nat using (ℕ; suc; _≤_; _<_; _+_; s≤s; z≤n) renaming (_*_ to _*ℕ_)
-open import Data.Nat.Properties using (≤-refl; ≤-trans; <⇒≢; n≤1+n; m≤m+n; ≤-step)
+open import Data.Nat.Properties using (≤-refl; ≤-trans; <⇒≢; n≤1+n; m≤m+n; m≤n⇒m≤1+n)
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.List.Properties using (++-assoc; ++-identityʳ)
 open import Data.List.Relation.Unary.All using (All; []; _∷_) renaming (map to All-map)

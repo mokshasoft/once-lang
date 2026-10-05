@@ -40,7 +40,7 @@ open import Data.Char using (isAlpha; isLower)
 open import Data.Nat using (ℕ; _<_; _≤_; s≤s; z≤n)
 open import Data.Nat.Properties using (≤-refl; ≤-trans; <-trans;
                                         ≤-<-trans; <-≤-trans;
-                                        n<1+n; m≤n⇒m≤1+n; ≤-step;
+                                        n<1+n; m≤n⇒m≤1+n;
                                         n≤1+n; <⇒≤)
 open import Data.Nat.Induction using (<-wellFounded)
 open import Induction.WellFounded using (Acc; acc; WfRec)

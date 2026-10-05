@@ -31,7 +31,7 @@ module Once.Allocator.Mempool (layout : MemoryLayout) where
 
 open import Data.Nat using (ℕ; zero; suc; _+_; _*_; _<_; _≤_; _≤?_; _∸_)
 open import Data.Nat.Properties
-  using (≤-refl; ≤-trans; ≤-step; m≤m+n; +-comm; +-assoc;
+  using (≤-refl; ≤-trans; m≤n⇒m≤1+n; m≤m+n; +-comm; +-assoc;
          +-monoʳ-≤; *-monoˡ-≤; ≤-reflexive)
 open import Data.List using (List; []; _∷_; length)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax)

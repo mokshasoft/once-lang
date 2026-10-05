@@ -17,7 +17,7 @@ module Once.CCC.Codegen.SlotSeg where
 open import Data.Nat using (ℕ; zero; suc; _+_; _≤_; _<_; z≤n; s≤s; _*_)
 open import Data.Nat.Properties using
   (≤-refl; ≤-trans; ≤-reflexive; n≤1+n; m≤m+n; m≤n+m; +-monoʳ-≤; +-comm; +-assoc; +-suc;
-   *-suc; *-monoʳ-≤; ≤-step)
+   *-suc; *-monoʳ-≤; m≤n⇒m≤1+n)
 open import Data.Bool using (Bool; true; false; _∧_)
 open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥; ⊥-elim)

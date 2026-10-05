@@ -102,7 +102,7 @@ slot-size>0 = nz⇒pos slot-size
 
 open import Data.Nat using (zero; suc; _+_; _∸_; _*_; _≡ᵇ_; _≟_; _<_; _≤_; s≤s; z≤n)
 open import Data.Nat.Properties using (+-comm; +-assoc; +-cancelˡ-≡; *-cancelʳ-≡; n∸n≡0; m≤m+n; <-irrefl;
-                                       <-trans; <-transʳ; <-transˡ; +-monoʳ-<; *-monoˡ-<; ≤-refl; ≤-trans;
+                                       <-trans; ≤-<-trans; <-≤-trans; +-monoʳ-<; *-monoˡ-<; ≤-refl; ≤-trans;
                                        m<n⇒m<1+n; m+n≤o⇒m≤o∸n; <⇒≢; m∸n+n≡m; ≤-reflexive; m<m+n; +-monoʳ-≤;
                                        +-identityʳ; m∸n≤m; *-identityˡ; <⇒≤)
 open import Data.Bool using (Bool; true; false; if_then_else_)
@@ -878,7 +878,7 @@ untouched-descend : ∀ {hv : HeapView} {fs : FlatState} {s : State}
                     (corr : FlatCorr hv fs s)
                   → ∀ (a : ℕ) → hfront hv ≤ a → a < lo'
                   → readMem (memory s) a ≡ nothing
-untouched-descend lo' le fl corr a fa a<lo' = untouched corr a fa (<-transˡ a<lo' le)
+untouched-descend lo' le fl corr a fa a<lo' = untouched corr a fa (<-≤-trans a<lo' le)
 
 ------------------------------------------------------------------------
 -- Per-instruction simulation (Plan 0.32 M3 Phase D). Each lemma: one
@@ -1133,7 +1133,7 @@ untouched-heap-store : ∀ {hv : HeapView} {fs : FlatState} {s s' : State}
                      → readMem (memory s') a ≡ nothing
 untouched-heap-store {hv} {fs} {s} hl v' d corr sm a fa a<lo =
   untouched-write (haddr hv hl) v' a sm
-    (λ eq → <-irrefl refl (<-transˡ (subst (_< hfront hv) (sym eq) (dom-below hv d)) fa))
+    (λ eq → <-irrefl refl (<-≤-trans (subst (_< hfront hv) (sym eq) (dom-below hv d)) fa))
     (untouched corr a fa a<lo)
 
 -- A STACK store misses it from the other side: its target is at or above `lo`
@@ -1144,7 +1144,7 @@ untouched-stack-store : ∀ {hv : HeapView} {fs : FlatState} {s s' : State}
                       → ∀ (a : ℕ) → hfront hv ≤ a → a < lo hv
                       → readMem (memory s') a ≡ nothing
 untouched-stack-store {hv} {fs} {s} waddr v' lo≤w corr sm a fa a<lo =
-  untouched-write waddr v' a sm (<⇒≢ (<-transˡ a<lo lo≤w)) (untouched corr a fa a<lo)
+  untouched-write waddr v' a sm (<⇒≢ (<-≤-trans a<lo lo≤w)) (untouched corr a fa a<lo)
 
 -- The store correspondence: writing `v` at heap cell `hl` (x86: haddr hv hl)
 -- preserves the heap agreement at every other cell, and installs enc-sv v
@@ -1297,7 +1297,7 @@ window-store-above : ∀ {am : AddrMap} (mem : Memory) (stk : StackMem FS)
                    → Window am (writeMem mem a v) stk f b
 window-store-above mem stk a v f b le win k k<b sv st =
   trans (read-write-miss mem a v (frame-base f + slot-to-disp k)
-          (<⇒≢ (<-transˡ (+-monoʳ-< (frame-base f) (*-monoˡ-< slot-size k<b)) le)))
+          (<⇒≢ (<-≤-trans (+-monoʳ-< (frame-base f) (*-monoˡ-< slot-size k<b)) le)))
         (win k k<b sv st)
 
 windows-store-gap : ∀ {am : AddrMap} (mem : Memory) (stk : StackMem FS) (v : Word)
@@ -1313,7 +1313,7 @@ windows-store-gap {am} mem stk v fl f b ((f₀ , b₀) ∷ fr) gn (bd , win , re
      , windows-lower (frame-base f₀) a ((f₀ , b₀) ∷ fr) a≤next
          (windows-above mem (writeMem mem a v) stk stk (frame-base f₀) ((f₀ , b₀) ∷ fr)
             (λ c le → read-write-miss mem a v c
-                        (λ eq → <⇒≢ (<-transˡ a<next le) (sym eq)))
+                        (λ eq → <⇒≢ (<-≤-trans a<next le) (sym eq)))
             (λ _ _ _ → refl)
             (windows-reanchor a (frame-base f₀) f₀ b₀ fr ≤-refl rest))
   where
@@ -1336,7 +1336,7 @@ windows-write-below : ∀ {am : AddrMap} {s s' : State} (stk : StackMem FS)
                     → StackWindows am (memory s') stk fl fr
 windows-write-below {am} {s} {s'} stk waddr v' fl fr sm lt =
   windows-above {am} (memory s) (memory s') stk stk fl fr
-    (λ a fl≤a → off-addr sm a (λ eq → <⇒≢ (<-transˡ lt fl≤a) (sym eq)))
+    (λ a fl≤a → off-addr sm a (λ eq → <⇒≢ (<-≤-trans lt fl≤a) (sym eq)))
     (λ _ _ _ → refl)
 
 -- STACK preservation under a HEAP store, derived rather than assumed: the
@@ -1352,7 +1352,7 @@ windows-heap-store : ∀ {hv : HeapView} {fs : FlatState} {s s' : State}
                                   (stackMem (floc fs)) (lo hv) (frames-of (falloc fs))
 windows-heap-store {hv} {fs} {s} hl v' d corr sm =
   windows-write-below (stackMem (floc fs)) (haddr hv hl) v'
-    (lo hv) (frames-of (falloc fs)) sm (<-transˡ (dom-below hv d) (front-lo hv)) (stack-eq corr)
+    (lo hv) (frames-of (falloc fs)) sm (<-≤-trans (dom-below hv d) (front-lo hv)) (stack-eq corr)
 
 -- store-indirect: *Input1 := Output ↔ `mov [rdi], rax`. Hypotheses:
 --   Input1 = SV-Ptr (AtDynamic hl)   (destination is a heap cell)
@@ -1539,7 +1539,7 @@ windows-slot-store {am} {s} {s'} ls cf b slot Out fl fr sm slot<b (bd , win , re
   , store-slot-stack-eq {am} (frame-base cf) slot Out ls cf b sm win
   , windows-above {am} (memory s) (memory s') (stackMem ls) (stackMem (writeLoc ls (AtStack cf slot) Out))
       (frame-base cf + slots b) fr
-      (λ a le → off-addr sm a (λ eq → <⇒≢ (<-transˡ w<fl le) (sym eq)))
+      (λ a le → off-addr sm a (λ eq → <⇒≢ (<-≤-trans w<fl le) (sym eq)))
       (λ f' le k → writeLoc-preserves-other ls (AtStack cf slot) (AtStack f' k) Out
                      (λ eq → <-irrefl (cong frame-base (atstack-frame-inj eq)) (base< le)))
       rest
@@ -1548,7 +1548,7 @@ windows-slot-store {am} {s} {s'} ls cf b slot Out fl fr sm slot<b (bd , win , re
     w<fl : waddr < frame-base cf + slots b
     w<fl = +-monoʳ-< (frame-base cf) (*-monoˡ-< slot-size slot<b)
     base< : ∀ {f' : Frame} → frame-base cf + slots b ≤ frame-base f' → frame-base cf < frame-base f'
-    base< le = <-transˡ (m<m+n (frame-base cf) (*-monoˡ-< slot-size (<-transʳ z≤n slot<b))) le
+    base< le = <-≤-trans (m<m+n (frame-base cf) (*-monoˡ-< slot-size (≤-<-trans z≤n slot<b))) le
 
 sim-store-at-slot : {hv : HeapView} (slot : Slot) (fs : FlatState) (s s' : State) → FlatCorr hv fs s
   -- THE FRAME DISCIPLINE (Plan 0.63, D085): the written slot is inside the
@@ -2094,7 +2094,7 @@ ext-addr-base hv st =
 
 -- m + k is never < m — the frontier-ordering fact the extension laws lean on.
 +-not-< : ∀ (m k : ℕ) → m + k < m → ⊥
-+-not-< m k lt = <-irrefl refl (<-transʳ (m≤m+n m k) lt)
++-not-< m k lt = <-irrefl refl (≤-<-trans (m≤m+n m k) lt)
 
 ext-suc-aux : ∀ (hv : HeapView) (st : ℕ) (r : HeapRef) (o : ℕ)
               (d : Dec (ref-id r ≡ st))
@@ -2139,7 +2139,7 @@ extend-view hv st n fresh room = record
     below : ∀ {hl : HeapLocation} → ExtDom hv st n hl → ext-addr hv st hl < hfront hv + slots n
     below {hl} (ext-old d) =
       subst (_< hfront hv + slots n) (sym (ext-addr-old hv st hl (fresh d)))
-            (<-transˡ (dom-below hv d) (m≤m+n (hfront hv) (slots n)))
+            (<-≤-trans (dom-below hv d) (m≤m+n (hfront hv) (slots n)))
     below {hl} (ext-fresh req o<n) =
       subst (_< hfront hv + slots n) (sym (ext-addr-fresh hv st hl req))
             (+-monoʳ-< (hfront hv) (*-monoˡ-< slot-size o<n))
@@ -2303,7 +2303,7 @@ sim-alloc-heap {hv} n fs s s' corr wf1 wfs wfc wfcl wf-heap wf-stack fresh-abs r
     fresh-x86 : ∀ i → i < n → readMem (memory s) (hfront hv + slot-to-disp i) ≡ nothing
     fresh-x86 i i<n = untouched corr (hfront hv + slot-to-disp i)
                         (m≤m+n (hfront hv) (slot-to-disp i))
-                        (<-transˡ (+-monoʳ-< (hfront hv) (*-monoˡ-< slot-size i<n)) room)
+                        (<-≤-trans (+-monoʳ-< (hfront hv) (*-monoˡ-< slot-size i<n)) room)
     df : ∀ {hl : HeapLocation} → ExtDom hv st n hl → ref-id (heap-ref hl) < suc st
     df (ext-old d)       = m<n⇒m<1+n (dfr d)
     df (ext-fresh req _) = subst (_< suc st) (sym req) ≤-refl
@@ -2541,12 +2541,12 @@ corr-store-gap {hv} fs s s' v corr rr hh mm gn = record
   ; dom-sized = dom-sized corr
   ; heap-eq = λ hl d → trans (cong (λ m → readMem m (haddr hv hl)) mm)
                        (trans (read-write-miss (memory s) a v (haddr hv hl)
-                                (<⇒≢ (<-transˡ (dom-below hv d) front≤a)))
+                                (<⇒≢ (<-≤-trans (dom-below hv d) front≤a)))
                               (heap-eq corr hl d))
   ; lo-le = subst (lo hv ≤_) (sym (rr sp-reg)) (lo-le corr)
   ; untouched = λ c fc c<lo → trans (cong (λ m → readMem m c) mm)
                               (trans (read-write-miss (memory s) a v c
-                                       (<⇒≢ (<-transˡ c<lo lo≤a)))
+                                       (<⇒≢ (<-≤-trans c<lo lo≤a)))
                                      (untouched corr c fc c<lo))
   ; stack-eq = subst (λ m → StackWindows (amap hv) m (stackMem (floc fs))
                                          (lo hv) (frames-of (falloc fs)))
@@ -2623,15 +2623,15 @@ ret-write-in-frame xoff {am} mem LK LK' (just _) stk a v fl f b fr (x ∷ rs) lt
   lag (frame-base f + slots b) (xoff x) lt h
   , g
   , ret-agree-above xoff mem (writeMem mem a v) LK LK' nothing stk (frame-base f + slots b) fr rs
-      (λ c le → read-write-miss mem a v c (λ eq → <⇒≢ (<-transˡ lt le) (sym eq)))
-      (λ c w le → lag c w (<-transˡ lt le))
+      (λ c le → read-write-miss mem a v c (λ eq → <⇒≢ (<-≤-trans lt le) (sym eq)))
+      (λ c w le → lag c w (<-≤-trans lt le))
       rest t
 ret-write-in-frame xoff {am} mem LK LK' nothing stk a v fl f b fr (x ∷ rs) lt lag (bd , win , rest) (h , g , t) =
   trans (read-write-miss mem a v (frame-base f + slots b) (λ eq → <⇒≢ lt (sym eq))) h
   , g
   , ret-agree-above xoff mem (writeMem mem a v) LK LK' nothing stk (frame-base f + slots b) fr rs
-      (λ c le → read-write-miss mem a v c (λ eq → <⇒≢ (<-transˡ lt le) (sym eq)))
-      (λ c w le → lag c w (<-transˡ lt le))
+      (λ c le → read-write-miss mem a v c (λ eq → <⇒≢ (<-≤-trans lt le) (sym eq)))
+      (λ c w le → lag c w (<-≤-trans lt le))
       rest t
 
 -- A CHANGE THE OLDER ROWS DO NOT SEE, with no claim transport to supply. Once
@@ -2689,7 +2689,7 @@ ret-spill xoff {am} mem LK LK' stk r f b v ((f₀ , b₀) ∷ fr) (x ∷ rs) sw 
   , ret-agree-nothing xoff mem (writeMem mem (frame-base f + slots b) v) LK LK' stk
       (frame-base f₀) ((f₀ , b₀) ∷ fr) rs
       (λ c le → read-write-miss mem (frame-base f + slots b) v c
-                  (λ eq → <⇒≢ (<-transˡ a<next le) (sym eq)))
+                  (λ eq → <⇒≢ (<-≤-trans a<next le) (sym eq)))
       (windows-reanchor (frame-base f + slots b) (frame-base f₀) f₀ b₀ fr ≤-refl sw)
       t
   where

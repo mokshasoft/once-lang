@@ -1085,7 +1085,7 @@ resolveExpr-sigOp-extern :
   → lookupImport userFns (showCanonical s) ≡ nothing
   → resolveExpr {Γ = Γ} polys imps userFns fresh (Surface.sigOp {A = A} s conc)
       ≡ Surface.sigOp s conc
-resolveExpr-sigOp-extern _ _ _ _ _ conc eq rewrite eq = refl
+resolveExpr-sigOp-extern _ _ _ _ _ conc eq = refl
 
 -- Plan 0.6.2 Phase 4: polymorphic schema-instantiation.
 -- POSTULATE DELETED (Option A, 2026-04-22). Phase 1 emits a proper

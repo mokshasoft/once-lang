@@ -45,7 +45,7 @@ open import Once.CanonicalName using (CanonicalName; showCanonical; gen; gen≢b
 open import Once.TypeCheck.ElaborateProofs
   using (NamedCtx; inferElab; checkElab; InferElabResult; CheckElabResult;
          success; failure; lookupLocal; lookupImport; inferElabV; checkElabV;
-         _≟T_; embedOrSubsume; VerifiedInferResult; isRIntVliftTarget?;
+         embedOrSubsume; VerifiedInferResult; isRIntVliftTarget?;
          classifyAppHead; classifyAppHeadView; ahv-other;
          classifyAppHead-nothing⇒view-other; AppHeadView; inspectWellFormedF;
          wfv-yes; wfv-no; classifyRPairTarget; rpt-vlift; rpt-other;

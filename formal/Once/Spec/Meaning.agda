@@ -66,8 +66,7 @@ open import Once.Denotation.Trace public
   using ( SigOpEvent ; ev-name ; ev-dom ; ev-arg ; mkEvent )
 
 open import Once.Denotation.ValueDomain public
-  using ( ⟦_⟧ᴰ ; ⟦_⟧ᴰᴵ ; cohᴰ ; forget ; inject ; emit-D
-        ; coerce-functor⁻¹-D )
+  using ( ⟦_⟧ᴰ ; ⟦_⟧ᴰᴵ ; cohᴰ ; coerce-functor⁻¹-D )
 open import Once.Denotation.Behavior public
   using (Behavior; Source)
 open import Once.Denotation.Meaning public

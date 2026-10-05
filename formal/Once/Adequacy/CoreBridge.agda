@@ -68,7 +68,6 @@ import Once.Adequacy.EntriesValid as EV
 open EV using (valid-mod)
 import Once.Adequacy.TelePosition as TP
 import Once.Spec.Core.Translate as TR
-open import Once.Adequacy.SourceTrace using (tableOfResult)
 open import Once.Denotation.Program using (tableEnv; IRFun)
 open import Once.Denotation.Trace using (SigOpEvent)
 open import Once.Spec.Module using (EffUU)

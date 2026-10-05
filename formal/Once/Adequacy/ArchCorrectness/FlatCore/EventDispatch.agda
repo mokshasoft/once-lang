@@ -85,7 +85,7 @@ open EI.TraceLoop {FS} {Reg} {E} {M} T
 
 
 open import Data.Product using (Σ; _,_; _×_; proj₁; proj₂; uncurry)
-open import Data.Nat.Properties using (≤-reflexive; ≤-trans; <-transˡ; <-irrefl; m≤m+n; m≤n+m
+open import Data.Nat.Properties using (≤-reflexive; ≤-trans; <-≤-trans; <-irrefl; m≤m+n; m≤n+m
                                       ; m∸n≤m; ⊓-glb; m⊓n≤m; m⊓n≤n; m+n≤o⇒m≤o∸n; +-identityʳ
                                       ; +-assoc; +-comm)
 open import Once.Word using (Carrier)

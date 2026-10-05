@@ -34,7 +34,7 @@ open import Data.Nat using (ℕ; suc; _≤_; _<_; s≤s; z≤n; _+_) renaming (_
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.List.Relation.Unary.All using (All; []; _∷_) renaming (map to All-map)
 open import Data.List.Relation.Unary.All.Properties using (++⁺)
-open import Data.Nat.Properties using (≤-refl; ≤-trans; ≤-step; m≤m+n; +-suc; +-identityʳ; ≤-reflexive; n≤1+n; +-monoʳ-≤)
+open import Data.Nat.Properties using (≤-refl; ≤-trans; m≤n⇒m≤1+n; m≤m+n; +-suc; +-identityʳ; ≤-reflexive; n≤1+n; +-monoʳ-≤)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
@@ -338,9 +338,9 @@ module Scope {FS : FrameSemantics} where
   -- replaced by vacuous ones.
   thunks-in (case f g) n l =
     ++⁺ (thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ [])
-        (++⁺ (ts-weaken (≤-trans (≤-step (≤-step ≤-refl)) (label-mono f n (suc (suc l)))) ≤-refl (thunks-in g _ _))
+        (++⁺ (ts-weaken (≤-trans (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl)) (label-mono f n (suc (suc l)))) ≤-refl (thunks-in g _ _))
              (++⁺ (thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ [])
-                  (++⁺ (ts-weaken (≤-step (≤-step ≤-refl)) (label-mono g _ _) (thunks-in f n (suc (suc l))))
+                  (++⁺ (ts-weaken (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl)) (label-mono g _ _) (thunks-in f n (suc (suc l))))
                        (thunk-none-in _ refl ∷ []))))
   -- THE ONE CONSTRUCTOR THAT EMITS A MARKER. `cata-body` (IRToTrace.agda:262-267)
   -- splices `c-thunk (ℓ o body-label) bb` inline, for all four strategies, so
@@ -401,9 +401,9 @@ module Scope {FS : FrameSemantics} where
     ++⁺ (All-map (λ {b} → bts-weaken b ≤-refl (label-mono g _ _)) (blocks-thunks-in f _ l))
         (All-map (λ {b} → bts-weaken b (label-mono f _ l) ≤-refl) (blocks-thunks-in g _ _))
   blocks-thunks-in (case f g) n l =
-    ++⁺ (All-map (λ {b} → bts-weaken b (≤-step (≤-step ≤-refl)) (label-mono g _ _))
+    ++⁺ (All-map (λ {b} → bts-weaken b (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl)) (label-mono g _ _))
                  (blocks-thunks-in f n (suc (suc l))))
-        (All-map (λ {b} → bts-weaken b (≤-trans (≤-step (≤-step ≤-refl)) (label-mono f n (suc (suc l)))) ≤-refl)
+        (All-map (λ {b} → bts-weaken b (≤-trans (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl)) (label-mono f n (suc (suc l)))) ≤-refl)
                  (blocks-thunks-in g _ _))
   -- The window widens to the DISPATCH's outgoing counter, not the algebra's.
   blocks-thunks-in (Cata {F} _ alg) n l =
@@ -417,9 +417,9 @@ module Scope {FS : FrameSemantics} where
   -- definitionally — so the label sits at the BOTTOM of its own window, and the
   -- body's markers come from the trace-channel induction.
   blocks-thunks-in (curry b) n l =
-    ((≤-refl , ≤-trans (≤-step ≤-refl) (label-mono b 0 (suc (suc l))))
-      , ts-weaken (≤-step (≤-step ≤-refl)) ≤-refl (thunks-in b 0 (suc (suc l))))
-    ∷ All-map (λ {b} → bts-weaken b (≤-step (≤-step ≤-refl)) ≤-refl)
+    ((≤-refl , ≤-trans (m≤n⇒m≤1+n ≤-refl) (label-mono b 0 (suc (suc l))))
+      , ts-weaken (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl)) ≤-refl (thunks-in b 0 (suc (suc l))))
+    ∷ All-map (λ {b} → bts-weaken b (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl)) ≤-refl)
               (blocks-thunks-in b 0 (suc (suc l)))
   -- `in-ν`'s block is the singleton `mov-to-output ∷ []` — no markers at all.
   blocks-thunks-in (in-ν _) n l =
@@ -429,7 +429,7 @@ module Scope {FS : FrameSemantics} where
                  (resuspend-label-mono (proj₁ (ir-to-trace' 1 (suc l) c))
                                        (proj₁ (proj₂ (ir-to-trace' 1 (suc l) c)))
                                        (ℓ o l) 0 wf))
-      , ++⁺ (ts-from-nt (nt-dec (AbstractInstr.mov-to-output ∷ AbstractInstr.store-at-slot 0 ∷ []) refl)) (++⁺ (ts-weaken (≤-step ≤-refl)
+      , ++⁺ (ts-from-nt (nt-dec (AbstractInstr.mov-to-output ∷ AbstractInstr.store-at-slot 0 ∷ []) refl)) (++⁺ (ts-weaken (m≤n⇒m≤1+n ≤-refl)
                (resuspend-label-mono (proj₁ (ir-to-trace' 1 (suc l) c))
                                      (proj₁ (proj₂ (ir-to-trace' 1 (suc l) c)))
                                      (ℓ o l) 0 wf)
@@ -437,7 +437,7 @@ module Scope {FS : FrameSemantics} where
             (ts-from-nt (resuspend-nt (proj₁ (ir-to-trace' 1 (suc l) c))
                                       (proj₁ (proj₂ (ir-to-trace' 1 (suc l) c)))
                                       (ℓ o l) 0 wf))))
-    ∷ All-map (λ {b} → bts-weaken b (≤-step ≤-refl)
+    ∷ All-map (λ {b} → bts-weaken b (m≤n⇒m≤1+n ≤-refl)
                 (resuspend-label-mono (proj₁ (ir-to-trace' 1 (suc l) c))
                                       (proj₁ (proj₂ (ir-to-trace' 1 (suc l) c)))
                                       (ℓ o l) 0 wf))

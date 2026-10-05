@@ -25,6 +25,7 @@ module Once.Compile where
 open import Data.Bool using (Bool; true; false; if_then_else_)
 open import Data.List using (List; []; _∷_; foldr; foldl)
 import Data.List as DL
+import Data.Bool.ListAction as BLA
 open import Data.Nat using (ℕ; _⊔_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (_×_; _,_; ∃; ∃-syntax; proj₁; proj₂)
@@ -655,7 +656,7 @@ printFile riscv64 = RVF.print
 dedup-go : List String → List (String × ArithBlock) → List (String × ArithBlock)
 dedup-go seen []             = []
 dedup-go seen ((s , b) ∷ bs) =
-  if DL.any (λ x → x == s) seen then dedup-go seen bs
+  if BLA.any (λ x → x == s) seen then dedup-go seen bs
                                  else (s , b) ∷ dedup-go (s ∷ seen) bs
 
 dedup-blocks : List (String × ArithBlock) → List (String × ArithBlock)

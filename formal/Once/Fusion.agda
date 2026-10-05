@@ -176,8 +176,6 @@ fusion-once (Ana {F} wf coalg) = Ana {F} wf (fusion-once coalg)
 -- Guard/Unguard removed: productivity follows from IR totality
 -- out-μ/in-ν: Lambek isomorphisms, pass through (potential fusion with In/Out)
 
--- Effects: nothing to fuse
-fusion-once arr = arr
 
 -- Primitives: opaque, pass through
 fusion-once (SigOp name) = SigOp name

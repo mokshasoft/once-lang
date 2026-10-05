@@ -39,7 +39,7 @@ module Once.CCC.Codegen.SlotBudget (o : CanonicalName) where
 open import Data.Nat using (ℕ; zero; suc; _+_; _≤_; _<_; z≤n; s≤s; _*_)
 open import Data.Nat.Properties using
   (≤-refl; ≤-trans; ≤-reflexive; n≤1+n; m≤m+n; m≤n+m; +-monoʳ-≤; +-comm; +-assoc; +-suc;
-   *-suc; *-monoʳ-≤; ≤-step)
+   *-suc; *-monoʳ-≤; m≤n⇒m≤1+n)
 open import Data.Bool using (Bool; true; false; _∧_)
 open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥; ⊥-elim)
@@ -117,7 +117,7 @@ cata-mono strat-nat           bb n1 l1 at =
           (≤-trans (n≤1+n (suc (suc (suc (suc n1)))))
                    (n≤1+n (suc (suc (suc (suc (suc n1))))))))))
 cata-mono strat-linear        bb n1 l1 at =
-  ≤-step (≤-step (≤-step (≤-step (≤-step (≤-step (≤-step (≤-step (≤-step (≤-step ≤-refl)))))))))
+  m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl)))))))))
 cata-mono (strat-branching F) bb n1 l1 at =
   ≤-trans (m≤m+n n1 7)
     (≤-trans (m≤m+n (n1 + 7) (4 * fsize F))
@@ -262,15 +262,15 @@ cata-nat-below bb n1 l1 at bok =
   where
     b = suc (suc (suc (suc (suc (suc n1)))))
     p<b : n1 < b
-    p<b = ≤-step (≤-step (≤-step (≤-step (≤-step (≤-refl)))))
+    p<b = m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (≤-refl)))))
     s<b : suc n1 < b
-    s<b = ≤-step (≤-step (≤-step (≤-step (≤-refl))))
+    s<b = m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (≤-refl))))
     cl<b : suc (suc n1) < b
-    cl<b = ≤-step (≤-step (≤-step (≤-refl)))
+    cl<b = m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (≤-refl)))
     k<b : suc (suc (suc n1)) < b
-    k<b = ≤-step (≤-step (≤-refl))
+    k<b = m≤n⇒m≤1+n (m≤n⇒m≤1+n (≤-refl))
     ev<b : suc (suc (suc (suc n1))) < b
-    ev<b = ≤-step (≤-refl)
+    ev<b = m≤n⇒m≤1+n (≤-refl)
     pr<b : suc (suc (suc (suc (suc n1)))) < b
     pr<b = ≤-refl
     setup : All (SlotBelow b) _
@@ -317,23 +317,23 @@ cata-linear-below bb n1 l1 at bok =
   where
     b = (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc n1))))))))))
     p0 : n1 < b
-    p0 = ≤-step (≤-step (≤-step (≤-step (≤-step (≤-step (≤-step (≤-step (≤-step (≤-refl)))))))))
+    p0 = m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (≤-refl)))))))))
     p1 : suc n1 < b
-    p1 = ≤-step (≤-step (≤-step (≤-step (≤-step (≤-step (≤-step (≤-step (≤-refl))))))))
+    p1 = m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (≤-refl))))))))
     p2 : suc (suc n1) < b
-    p2 = ≤-step (≤-step (≤-step (≤-step (≤-step (≤-step (≤-step (≤-refl)))))))
+    p2 = m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (≤-refl)))))))
     p3 : suc (suc (suc n1)) < b
-    p3 = ≤-step (≤-step (≤-step (≤-step (≤-step (≤-step (≤-refl))))))
+    p3 = m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (≤-refl))))))
     p4 : suc (suc (suc (suc n1))) < b
-    p4 = ≤-step (≤-step (≤-step (≤-step (≤-step (≤-refl)))))
+    p4 = m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (≤-refl)))))
     p5 : suc (suc (suc (suc (suc n1)))) < b
-    p5 = ≤-step (≤-step (≤-step (≤-step (≤-refl))))
+    p5 = m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (≤-refl))))
     cl<b : (suc (suc (suc (suc (suc (suc n1)))))) < b
-    cl<b = ≤-step (≤-step (≤-step (≤-refl)))
+    cl<b = m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (≤-refl)))
     k<b : (suc (suc (suc (suc (suc (suc (suc n1))))))) < b
-    k<b = ≤-step (≤-step (≤-refl))
+    k<b = m≤n⇒m≤1+n (m≤n⇒m≤1+n (≤-refl))
     ev<b : (suc (suc (suc (suc (suc (suc (suc (suc n1)))))))) < b
-    ev<b = ≤-step (≤-refl)
+    ev<b = m≤n⇒m≤1+n (≤-refl)
     pr<b : (suc (suc (suc (suc (suc (suc (suc (suc (suc n1))))))))) < b
     pr<b = ≤-refl
     setup : All (SlotBelow b) _
@@ -593,20 +593,20 @@ cata-branching-below F bb n1 l1 at bok =
     fixed7' : 7 + n1 ≤ b
     fixed7' = subst (_≤ b) (+-comm n1 7) fixed7
     q0 : n1 < b
-    q0 = ≤-trans (≤-step (≤-step (≤-step (≤-step (≤-step (≤-step ≤-refl)))))) fixed7'
+    q0 = ≤-trans (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl)))))) fixed7'
     q1 : suc n1 < b
-    q1 = ≤-trans (≤-step (≤-step (≤-step (≤-step (≤-step ≤-refl))))) fixed7'
+    q1 = ≤-trans (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl))))) fixed7'
     q2 : n1 + 2 < b
     q2 = ≤-trans (subst (λ z → suc z ≤ 7 + n1) (+-comm 2 n1)
-                        (≤-step (≤-step (≤-step (≤-step ≤-refl))))) fixed7'
+                        (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl))))) fixed7'
     q3 : n1 + 3 < b
     q3 = ≤-trans (subst (λ z → suc z ≤ 7 + n1) (+-comm 3 n1)
-                        (≤-step (≤-step (≤-step ≤-refl)))) fixed7'
+                        (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl)))) fixed7'
     q4 : n1 + 4 < b
     q4 = ≤-trans (subst (λ z → suc z ≤ 7 + n1) (+-comm 4 n1)
-                        (≤-step (≤-step ≤-refl))) fixed7'
+                        (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl))) fixed7'
     q5 : n1 + 5 < b
-    q5 = ≤-trans (subst (λ z → suc z ≤ 7 + n1) (+-comm 5 n1) (≤-step ≤-refl)) fixed7'
+    q5 = ≤-trans (subst (λ z → suc z ≤ 7 + n1) (+-comm 5 n1) (m≤n⇒m≤1+n ≤-refl)) fixed7'
     q6 : n1 + 6 < b
     q6 = ≤-trans (subst (λ z → suc z ≤ 7 + n1) (+-comm 6 n1) ≤-refl) fixed7'
     walk-room : n1 + 7 + 4 * fsize F ≤ b
@@ -673,15 +673,15 @@ cata-slots-below (strat-branching F) bb n1 l1 at bok = cata-branching-below F bb
 resuspend-mono : ∀ (n l : ℕ) (lbl : LabelId) (env : ℕ) {F} (wf : WellFormedFI F)
                → n ≤ proj₁ (resuspend-layer n l lbl env wf)
 resuspend-mono n l lbl env (wf-K _) = ≤-refl
-resuspend-mono n l lbl env wf-Id    = ≤-step (≤-step (≤-step (≤-step ≤-refl)))
+resuspend-mono n l lbl env wf-Id    = m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl)))
 resuspend-mono n l lbl env (wf-Prod wfF wfG) =
-  ≤-trans (≤-step (≤-step (≤-step ≤-refl)))
+  ≤-trans (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl)))
     (≤-trans (resuspend-mono (suc (suc (suc n))) l lbl env wfF)
              (resuspend-mono (proj₁ (resuspend-layer (suc (suc (suc n))) l lbl env wfF))
                              (proj₁ (proj₂ (resuspend-layer (suc (suc (suc n))) l lbl env wfF)))
                              lbl env wfG))
 resuspend-mono n l lbl env (wf-Sum wfF wfG) =
-  ≤-trans (≤-step (≤-step (≤-step ≤-refl)))
+  ≤-trans (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl)))
     (≤-trans (resuspend-mono (suc (suc (suc n))) (suc (suc l)) lbl env wfF)
              (resuspend-mono (proj₁ (resuspend-layer (suc (suc (suc n))) (suc (suc l)) lbl env wfF))
                              (proj₁ (proj₂ (resuspend-layer (suc (suc (suc n))) (suc (suc l)) lbl env wfF)))
@@ -707,13 +707,13 @@ resuspend-below n l lbl env wf-Id e<n =
      sb-slot refl ≤-refl (λ _ ()) ∷ [])
   where
     n2 : suc (suc n) < suc (suc (suc (suc n)))
-    n2 = ≤-step ≤-refl
+    n2 = m≤n⇒m≤1+n ≤-refl
     n1 : suc n < suc (suc (suc (suc n)))
-    n1 = ≤-step (≤-step ≤-refl)
+    n1 = m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl)
     n0 : n < suc (suc (suc (suc n)))
-    n0 = ≤-step (≤-step (≤-step ≤-refl))
+    n0 = m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl))
     e<B : env < suc (suc (suc (suc n)))
-    e<B = ≤-trans e<n (≤-step (≤-step (≤-step (≤-step ≤-refl))))
+    e<B = ≤-trans e<n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl))))
 -- Three stashes per container level — source, destination, and the child being
 -- carried across the allocation — so the children start at `n + 3` and the
 -- budget bound for every one of them comes from a single `base`.
@@ -743,11 +743,11 @@ resuspend-below n l lbl env (wf-Prod wfF wfG) e<n =
     base : suc (suc (suc n)) ≤ B
     base = ≤-trans (resuspend-mono (suc (suc (suc n))) l lbl env wfF) mid
     sn<B : suc (suc n) ≤ B
-    sn<B = ≤-trans (≤-step ≤-refl) base
+    sn<B = ≤-trans (m≤n⇒m≤1+n ≤-refl) base
     n<B : suc n ≤ B
-    n<B = ≤-trans (≤-step (≤-step ≤-refl)) base
+    n<B = ≤-trans (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl)) base
     e<3n : env < suc (suc (suc n))
-    e<3n = ≤-trans e<n (≤-step (≤-step (≤-step ≤-refl)))
+    e<3n = ≤-trans e<n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl)))
     e<n2 : env < n2
     e<n2 = ≤-trans e<3n (resuspend-mono (suc (suc (suc n))) l lbl env wfF)
 resuspend-below n l lbl env (wf-Sum wfF wfG) e<n =
@@ -770,11 +770,11 @@ resuspend-below n l lbl env (wf-Sum wfF wfG) e<n =
     base : suc (suc (suc n)) ≤ B
     base = ≤-trans (resuspend-mono (suc (suc (suc n))) (suc (suc l)) lbl env wfF) mid
     sn<B : suc (suc n) ≤ B
-    sn<B = ≤-trans (≤-step ≤-refl) base
+    sn<B = ≤-trans (m≤n⇒m≤1+n ≤-refl) base
     n<B : suc n ≤ B
-    n<B = ≤-trans (≤-step (≤-step ≤-refl)) base
+    n<B = ≤-trans (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl)) base
     e<3n : env < suc (suc (suc n))
-    e<3n = ≤-trans e<n (≤-step (≤-step (≤-step ≤-refl)))
+    e<3n = ≤-trans e<n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl)))
     e<n2 : env < n2
     e<n2 = ≤-trans e<3n (resuspend-mono (suc (suc (suc n))) (suc (suc l)) lbl env wfF)
     arm : ∀ (tag : ℕ) {t} → SegOK B t
@@ -798,8 +798,8 @@ sigop-below : ∀ {A B} (si : SigOpInfo A B) (n : ℕ) (m : Maybe CmpOp)
             → SegOK (sigop-budget n m) (sigop-code si n m)
 sigop-below si n nothing  = segok-idle _ refl (sb-none refl ∷ [])
 sigop-below si n (just _) = segok-idle _ refl
-  (sb-none refl ∷ sb-none refl ∷ sb-slot refl (≤-step ≤-refl) (λ _ ()) ∷ sb-none refl ∷
-  sb-slot refl ≤-refl (λ _ ()) ∷ sb-none refl ∷ sb-slot refl (≤-step ≤-refl) (λ _ ()) ∷
+  (sb-none refl ∷ sb-none refl ∷ sb-slot refl (m≤n⇒m≤1+n ≤-refl) (λ _ ()) ∷ sb-none refl ∷
+  sb-slot refl ≤-refl (λ _ ()) ∷ sb-none refl ∷ sb-slot refl (m≤n⇒m≤1+n ≤-refl) (λ _ ()) ∷
   sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ sb-slot refl ≤-refl (λ _ ()) ∷ [])
 
 slots-below : ∀ {A B} (ir : IR A B) (n l : ℕ)
@@ -816,20 +816,20 @@ slots-below (g ∘ f)  n l =
 -- same LHS when the pair's mode was dropped, and shadowed the heap one.
 slots-below (⟨ f , g ⟩) n l =
   segok-pre _ refl
-    (sb-none refl ∷ sb-slot refl (≤-trans (≤-step (≤-step (≤-step ≤-refl))) h) (λ _ ()) ∷ [])
+    (sb-none refl ∷ sb-slot refl (≤-trans (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl))) h) (λ _ ()) ∷ [])
   (segok-++ (segok-weaken (frontier-mono g _ _) (slots-below f _ l))
       (segok-pre _ refl
-        (sb-slot refl (≤-trans (≤-step (≤-step ≤-refl)) h) (λ _ ()) ∷
-         sb-slot refl (≤-trans (≤-step (≤-step (≤-step ≤-refl))) h) (λ _ ()) ∷ [])
+        (sb-slot refl (≤-trans (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl)) h) (λ _ ()) ∷
+         sb-slot refl (≤-trans (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl))) h) (λ _ ()) ∷ [])
        (segok-++ (slots-below g _ _)
            (segok-idle _ refl
-            (sb-slot refl (≤-trans (≤-step ≤-refl) h) (λ _ ()) ∷
+            (sb-slot refl (≤-trans (m≤n⇒m≤1+n ≤-refl) h) (λ _ ()) ∷
             sb-none refl ∷
             sb-slot refl h (λ _ ()) ∷
             sb-none refl ∷
-            sb-slot refl (≤-trans (≤-step (≤-step ≤-refl)) h) (λ _ ()) ∷
+            sb-slot refl (≤-trans (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl)) h) (λ _ ()) ∷
             sb-none refl ∷
-            sb-slot refl (≤-trans (≤-step ≤-refl) h) (λ _ ()) ∷
+            sb-slot refl (≤-trans (m≤n⇒m≤1+n ≤-refl) h) (λ _ ()) ∷
             sb-none refl ∷
             sb-slot refl h (λ _ ()) ∷ [])))))
   where h : suc (suc (suc (suc n))) ≤ budget-of (ir-to-trace' n l (⟨ f , g ⟩))
@@ -842,24 +842,24 @@ slots-below (⟨ f , g ⟩) n l =
 -- any program with a body.
 slots-below (curry b) n l =
   segok-idle _ refl
-    (sb-none refl ∷ sb-slot refl (≤-step ≤-refl) (λ _ ()) ∷ sb-none refl ∷
-     sb-slot refl ≤-refl (λ _ ()) ∷ sb-none refl ∷ sb-slot refl (≤-step ≤-refl) (λ _ ()) ∷
+    (sb-none refl ∷ sb-slot refl (m≤n⇒m≤1+n ≤-refl) (λ _ ()) ∷ sb-none refl ∷
+     sb-slot refl ≤-refl (λ _ ()) ∷ sb-none refl ∷ sb-slot refl (m≤n⇒m≤1+n ≤-refl) (λ _ ()) ∷
      sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ sb-slot refl ≤-refl (λ _ ()) ∷ [])
 slots-below apply n l = segok-idle _ refl
-  (sb-none refl ∷ sb-slot refl (≤-step (≤-step ≤-refl)) (λ _ ()) ∷ sb-none refl ∷
+  (sb-none refl ∷ sb-slot refl (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl)) (λ _ ()) ∷ sb-none refl ∷
   sb-none refl ∷ sb-none refl ∷ sb-none refl ∷
-  sb-slot refl (≤-step ≤-refl) (λ _ ()) ∷ sb-none refl ∷ sb-slot refl ≤-refl (λ _ ()) ∷
-  sb-none refl ∷ sb-slot refl (≤-step ≤-refl) (λ _ ()) ∷ sb-none refl ∷
-  sb-slot refl (≤-step (≤-step ≤-refl)) (λ _ ()) ∷ sb-none refl ∷
+  sb-slot refl (m≤n⇒m≤1+n ≤-refl) (λ _ ()) ∷ sb-none refl ∷ sb-slot refl ≤-refl (λ _ ()) ∷
+  sb-none refl ∷ sb-slot refl (m≤n⇒m≤1+n ≤-refl) (λ _ ()) ∷ sb-none refl ∷
+  sb-slot refl (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl)) (λ _ ()) ∷ sb-none refl ∷
   sb-slot refl ≤-refl (λ _ ()) ∷ sb-none refl ∷ sb-none refl ∷ [])
 slots-below inl n l = segok-idle _ refl
-  (sb-none refl ∷ sb-slot refl (≤-step ≤-refl) (λ _ ()) ∷ sb-none refl ∷
+  (sb-none refl ∷ sb-slot refl (m≤n⇒m≤1+n ≤-refl) (λ _ ()) ∷ sb-none refl ∷
   sb-slot refl ≤-refl (λ _ ()) ∷ sb-none refl ∷ sb-none refl ∷ sb-none refl ∷
-  sb-slot refl (≤-step ≤-refl) (λ _ ()) ∷ sb-none refl ∷ sb-slot refl ≤-refl (λ _ ()) ∷ [])
+  sb-slot refl (m≤n⇒m≤1+n ≤-refl) (λ _ ()) ∷ sb-none refl ∷ sb-slot refl ≤-refl (λ _ ()) ∷ [])
 slots-below inr n l = segok-idle _ refl
-  (sb-none refl ∷ sb-slot refl (≤-step ≤-refl) (λ _ ()) ∷ sb-none refl ∷
+  (sb-none refl ∷ sb-slot refl (m≤n⇒m≤1+n ≤-refl) (λ _ ()) ∷ sb-none refl ∷
   sb-slot refl ≤-refl (λ _ ()) ∷ sb-none refl ∷ sb-none refl ∷ sb-none refl ∷
-  sb-slot refl (≤-step ≤-refl) (λ _ ()) ∷ sb-none refl ∷ sb-slot refl ≤-refl (λ _ ()) ∷ [])
+  sb-slot refl (m≤n⇒m≤1+n ≤-refl) (λ _ ()) ∷ sb-none refl ∷ sb-slot refl ≤-refl (λ _ ()) ∷ [])
 -- item 6: case is FLAT CONTROL — the branches are main-trace splices, bounded
 -- by their own inductions (f weakened through g's frontier, like `∘`).
 slots-below (case f g) n l =
@@ -879,13 +879,13 @@ slots-below (Out _)        n l =
   segok-idle _ refl (sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ [])
 slots-below (in-ν _) n l =
   segok-idle _ refl
-    (sb-none refl ∷ sb-slot refl (≤-step ≤-refl) (λ _ ()) ∷ sb-none refl ∷
-     sb-slot refl ≤-refl (λ _ ()) ∷ sb-none refl ∷ sb-slot refl (≤-step ≤-refl) (λ _ ()) ∷
+    (sb-none refl ∷ sb-slot refl (m≤n⇒m≤1+n ≤-refl) (λ _ ()) ∷ sb-none refl ∷
+     sb-slot refl ≤-refl (λ _ ()) ∷ sb-none refl ∷ sb-slot refl (m≤n⇒m≤1+n ≤-refl) (λ _ ()) ∷
      sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ sb-slot refl ≤-refl (λ _ ()) ∷ [])
 slots-below (Ana _ c) n l =
   segok-idle _ refl
-    (sb-none refl ∷ sb-slot refl (≤-step ≤-refl) (λ _ ()) ∷ sb-none refl ∷
-     sb-slot refl ≤-refl (λ _ ()) ∷ sb-none refl ∷ sb-slot refl (≤-step ≤-refl) (λ _ ()) ∷
+    (sb-none refl ∷ sb-slot refl (m≤n⇒m≤1+n ≤-refl) (λ _ ()) ∷ sb-none refl ∷
+     sb-slot refl ≤-refl (λ _ ()) ∷ sb-none refl ∷ sb-slot refl (m≤n⇒m≤1+n ≤-refl) (λ _ ()) ∷
      sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ sb-slot refl ≤-refl (λ _ ()) ∷ [])
 slots-below (SigOp si)     n l = sigop-below si n (cmp-of (sem si))
 slots-below (Call _)      n l = segok-idle _ refl (sb-none refl ∷ [])

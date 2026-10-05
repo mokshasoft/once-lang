@@ -100,7 +100,7 @@ open MemOps {FS} using (writeLoc; writeLocToHeap; readLoc)
 open FlatMachine {FS} using (floc; fetch)
 open import Once.Memory.HeapAddress using (HeapLocation; sucHL; heap-ref; ref-id)
 open import Data.Nat using (zero; suc; _+_; _*_; _∸_; _≤_; _<_)
-open import Data.Nat.Properties using (<-irrefl; <-transˡ; ≤-trans; m≤m+n)
+open import Data.Nat.Properties using (<-irrefl; <-≤-trans; ≤-trans; m≤m+n)
 open import Data.List using (List; []; _∷_; drop)
 open import Data.List.Properties using (drop-[])
 open import Data.Maybe using (nothing)
@@ -177,7 +177,7 @@ fetch-just-drop (x ∷ xs) (suc k) i eq = fetch-just-drop xs k i eq
 above-frontier-disj : ∀ {hv : CFC.HeapView} (a : ℕ) → CFC.hfront hv ≤ a
                     → ∀ hl → CFC.HDom hv hl → a ≡ CFC.haddr hv hl → ⊥
 above-frontier-disj {hv} a le hl live eq =
-  <-irrefl (sym eq) (<-transˡ (CFC.dom-below hv live) le)
+  <-irrefl (sym eq) (<-≤-trans (CFC.dom-below hv live) le)
 
 -- …and the instance every stack store needs: a current-frame slot address is at
 -- or above the stack pointer, hence above every live heap cell. Stated through

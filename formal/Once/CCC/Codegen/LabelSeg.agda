@@ -15,7 +15,7 @@ module Once.CCC.Codegen.LabelSeg where
 open import Data.Nat using (ℕ; zero; suc; _+_; _≤_; _<_; z≤n; s≤s; _*_)
 open import Data.Nat.Properties using
   (≤-refl; ≤-trans; ≤-reflexive; n≤1+n; m≤m+n; m≤n+m; +-monoʳ-≤; +-monoˡ-≤
-  ; +-comm; +-assoc; +-identityʳ; ≤-step; m<n⇒m<1+n; <-transˡ; <-transʳ; +-suc)
+  ; +-comm; +-assoc; +-identityʳ; m≤n⇒m≤1+n; m<n⇒m<1+n; <-≤-trans; ≤-<-trans; +-suc)
 open import Data.Bool using (Bool; true; false)
 open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥; ⊥-elim)

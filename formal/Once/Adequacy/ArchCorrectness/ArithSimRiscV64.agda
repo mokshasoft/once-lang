@@ -132,7 +132,6 @@ val-riscv64 (XI.Xfmul-rr d src)          s _ = FA.fmul binary64 (rd s d) (rd s s
 val-riscv64 (XI.Xfdiv-rrr d a b)          s _ = FA.fdiv binary64 (rd s a) (rd s b)
 -- Three-address: both sources are named, so unlike the 2-address float ops
 -- the destination is not also an operand.
-val-riscv64 (XI.Xfdiv-rrr d a b)       s _ = FA.fdiv binary64 (rd s a) (rd s b)
 val-riscv64 (XI.Xfsubr-rr d src)         s _ = FA.fsub binary64 (rd s src) (rd s d)
 val-riscv64 (XI.Xfneg-r d)               s _ = FA.fneg binary64 (rd s d)
 val-riscv64 (XI.Xi2f-r d src)            s _ = FA.i2f binary64 (W.toℤ (rd s src))
@@ -228,7 +227,6 @@ module _ (N : ℕ) where
   mem-keep (XI.Xfsub-rr _ _)           s addr _ = refl
   mem-keep (XI.Xfmul-rr _ _)           s addr _ = refl
   mem-keep (XI.Xfdiv-rrr _ _ _)           s addr _ = refl
-  mem-keep (XI.Xfdiv-rrr _ _ _) s addr _ = refl
   mem-keep (XI.Xfsubr-rr _ _)          s addr _ = refl
   mem-keep (XI.Xfneg-r _)              s addr _ = refl
   mem-keep (XI.Xi2f-r _ _)             s addr _ = refl

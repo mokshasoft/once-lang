@@ -55,12 +55,12 @@ open import Once.CCC.Machine.SMCore using (LabelId; AbstractTrace; AbstractInstr
          instr-load-tag-lit; instr-case-on-tag; instr-alloc-heap; instr-loop;
          instr-reg-op; instr-ctrl; lea-indexed;
          module AbstractExec)
-open import Once.CCC.Codegen.IRToTrace o
 open import Data.Maybe using (Maybe; just; nothing)
 open import Once.SigOp.Info using (SigOpInfo; sem)
 open import Once.Arith.CmpOp using (CmpOp)
 open import Once.Arith.SigOp.Compare using (cmp-of)
-  using (ir-to-trace; ir-to-trace-lab; ir-to-unit; ir-to-trace'; cata-strategy; cata-dispatch; resuspend-layer;
+open import Once.CCC.Codegen.IRToTrace o
+  using (sigop-code; ir-to-trace; ir-to-trace-lab; ir-to-unit; ir-to-trace'; cata-strategy; cata-dispatch; resuspend-layer;
          CataStrategy; strat-const; strat-nat; strat-linear; strat-branching;
          cata-trace-nat; cata-trace-linear; cata-trace-branching;
          visit-walk; rebuild-walk; lsize; cata-br-I₁; cata-br-I₂;

@@ -42,10 +42,10 @@ open import Once.IRTy.WF using (wf-⌊⌋; wf-⌈⌉)
 open import Once.Semantics.Functor using (SFunctor; SK; _S⊕_; _S⊗_; ⟦_⟧SF)
 open import Once.Semantics.Machine using (coerce-functor⁻¹; coh; tF-coh; base-coh; ⟦_⟧F; coerce-ν-out)
 open import Once.Denotation.TraceMonad using (T; fmapT; fmapT-id; fmapT-∘; fmapT-cong; RelT′-refl)
-open import Once.Denotation.ValueDomain
 open import Once.Denotation.ValueDomainLaws using (∼ᵈ-refl; _∼ᵈ_)
 open import Once.Semantics.Functor.Laws using (⟦_⟧SF-rel)
 open import Data.Empty using (⊥-elim)
+open import Once.Denotation.ValueDomain
   using (⟦_⟧ᴰ; ⟦_⟧ᴰᴵ; νᵈ; forceᵈ; cohᴰ; coerce-functor⁻¹-D)
 open import Once.Denotation.DenotTrace using (evalᴰ; liftFn)
 open import Once.Denotation.Meaning using (out-sem)

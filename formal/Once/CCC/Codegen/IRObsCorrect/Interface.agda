@@ -148,7 +148,7 @@ module Core {FS : FrameSemantics} where
   open MemOps {FS} using (readLoc) public
   open ReadLocEq {FS} using (readLoc-stack-heap-eq) public
   open FlatEventTrace {FS} using (flat-events; event-of; flat-events-[]; chain-events; chain-events-nil; chain-events-++; chain-events-subst-start) public
-  private open FlatEventTrace {FS} using (ChainNotNested; chain-log)
+  open FlatEventTrace {FS} using (ChainNotNested; chain-log)
 
   -- …and in general: a chain of emitted (non-nested) instructions grows the
   -- log by its events, so a clause's `log` follows from its `traces-agree`.

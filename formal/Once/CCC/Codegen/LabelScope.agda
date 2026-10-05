@@ -37,7 +37,7 @@ open import Once.CCC.Label using (LabelId; idx; ℓ)
 open import Data.Nat using (ℕ; zero; suc; _+_; _≤_; _<_; z≤n; s≤s; _*_)
 open import Data.Nat.Properties using
   (≤-refl; ≤-trans; ≤-reflexive; n≤1+n; m≤m+n; m≤n+m; +-monoʳ-≤; +-monoˡ-≤
-  ; +-comm; +-assoc; +-identityʳ; ≤-step; m<n⇒m<1+n; <-transˡ; <-transʳ; +-suc)
+  ; +-comm; +-assoc; +-identityʳ; m≤n⇒m≤1+n; m<n⇒m<1+n; <-≤-trans; ≤-<-trans; +-suc)
 open import Data.Bool using (Bool; true; false)
 open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥; ⊥-elim)
@@ -132,7 +132,7 @@ visit-ls (F ⊕ G) todo tv tb s lb =
     hiF = subst (suc (suc (lb + lsize F)) ≤_) (sym (+ss lb (lsize F + lsize G)))
                 (s≤s (s≤s (+-monoʳ-≤ lb (m≤m+n (lsize F) (lsize G)))))
     loG : lb ≤ suc (suc lb) + lsize F
-    loG = ≤-step (≤-step (m≤m+n lb (lsize F)))
+    loG = m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤m+n lb (lsize F)))
     hiG : suc (suc lb) + lsize F + lsize G ≤ hi
     hiG = subst (suc (suc (lb + lsize F + lsize G)) ≤_) (sym (+ss lb (lsize F + lsize G)))
                 (s≤s (s≤s (≤-reflexive (+-assoc lb (lsize F) (lsize G)))))
@@ -172,7 +172,7 @@ rebuild-ls (F ⊕ G) val tv tb s lb =
     hiF = subst (suc (suc (lb + lsize F)) ≤_) (sym (+ss lb (lsize F + lsize G)))
                 (s≤s (s≤s (+-monoʳ-≤ lb (m≤m+n (lsize F) (lsize G)))))
     loG : lb ≤ suc (suc lb) + lsize F
-    loG = ≤-step (≤-step (m≤m+n lb (lsize F)))
+    loG = m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤m+n lb (lsize F)))
     hiG : suc (suc lb) + lsize F + lsize G ≤ hi
     hiG = subst (suc (suc (lb + lsize F + lsize G)) ≤_) (sym (+ss lb (lsize F + lsize G)))
                 (s≤s (s≤s (≤-reflexive (+-assoc lb (lsize F) (lsize G)))))
@@ -248,39 +248,39 @@ cata-nat-ls lo bb n1 l1 at lo≤l1 atls =
     L0 : lo ≤ l1
     L0 = lo≤l1
     L1 : lo ≤ suc l1
-    L1 = ≤-step L0
+    L1 = m≤n⇒m≤1+n L0
     L2 : lo ≤ suc (suc l1)
-    L2 = ≤-step L1
+    L2 = m≤n⇒m≤1+n L1
     L3 : lo ≤ suc (suc (suc l1))
-    L3 = ≤-step L2
+    L3 = m≤n⇒m≤1+n L2
     L4 : lo ≤ suc (suc (suc (suc l1)))
-    L4 = ≤-step L3
+    L4 = m≤n⇒m≤1+n L3
     L5 : lo ≤ suc (suc (suc (suc (suc l1))))
-    L5 = ≤-step L4
+    L5 = m≤n⇒m≤1+n L4
     L6 : lo ≤ bodyL
-    L6 = ≤-step L5
+    L6 = m≤n⇒m≤1+n L5
     L7 : lo ≤ endL
-    L7 = ≤-step L6
+    L7 = m≤n⇒m≤1+n L6
     -- two more than before: the body label and the jump-over join.
     H0 : l1 < hi
-    H0 = ≤-step (≤-step (≤-step (≤-step (≤-step (≤-step (≤-step ≤-refl))))))
+    H0 = m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl))))))
     H1 : suc l1 < hi
-    H1 = ≤-step (≤-step (≤-step (≤-step (≤-step (≤-step ≤-refl)))))
+    H1 = m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl)))))
     H2 : suc (suc l1) < hi
-    H2 = ≤-step (≤-step (≤-step (≤-step (≤-step ≤-refl))))
+    H2 = m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl))))
     H3 : suc (suc (suc l1)) < hi
-    H3 = ≤-step (≤-step (≤-step (≤-step ≤-refl)))
+    H3 = m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl)))
     H4 : suc (suc (suc (suc l1))) < hi
-    H4 = ≤-step (≤-step (≤-step ≤-refl))
+    H4 = m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl))
     H5 : suc (suc (suc (suc (suc l1)))) < hi
-    H5 = ≤-step (≤-step ≤-refl)
+    H5 = m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl)
     H6 : bodyL < hi
-    H6 = ≤-step ≤-refl
+    H6 = m≤n⇒m≤1+n ≤-refl
     H7 : endL < hi
     H7 = ≤-refl
     at' : LabelsIn lo hi at
     at' = ls-weaken ≤-refl
-            (≤-step (≤-step (≤-step (≤-step (≤-step (≤-step (≤-step (≤-step ≤-refl)))))))) atls
+            (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl)))))))) atls
     -- `build-layer tag` is ten slot/heap instructions: no label anywhere.
     -- Indexed by the tag because the skeleton uses it at BOTH 0 and 1, and a
     -- `_`-inferred trace would unify with whichever came first.
@@ -327,31 +327,31 @@ cata-linear-ls lo bb n1 l1 at lo≤l1 atls =
     L0 : lo ≤ l1
     L0 = lo≤l1
     L1 : lo ≤ suc l1
-    L1 = ≤-step L0
+    L1 = m≤n⇒m≤1+n L0
     L2 : lo ≤ suc (suc l1)
-    L2 = ≤-step L1
+    L2 = m≤n⇒m≤1+n L1
     L3 : lo ≤ suc (suc (suc l1))
-    L3 = ≤-step L2
+    L3 = m≤n⇒m≤1+n L2
     L4 : lo ≤ suc (suc (suc (suc l1)))
-    L4 = ≤-step L3
+    L4 = m≤n⇒m≤1+n L3
     L5 : lo ≤ suc (suc (suc (suc (suc l1))))
-    L5 = ≤-step L4
+    L5 = m≤n⇒m≤1+n L4
     -- two more than before: the body label and the jump-over join.
     H0 : l1 < hi
-    H0 = ≤-step (≤-step (≤-step (≤-step (≤-step ≤-refl))))
+    H0 = m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl))))
     H1 : suc l1 < hi
-    H1 = ≤-step (≤-step (≤-step (≤-step ≤-refl)))
+    H1 = m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl)))
     H2 : suc (suc l1) < hi
-    H2 = ≤-step (≤-step (≤-step ≤-refl))
+    H2 = m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl))
     H3 : suc (suc (suc l1)) < hi
-    H3 = ≤-step (≤-step ≤-refl)
+    H3 = m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl)
     H4 : suc (suc (suc (suc l1))) < hi
-    H4 = ≤-step ≤-refl
+    H4 = m≤n⇒m≤1+n ≤-refl
     H5 : suc (suc (suc (suc (suc l1)))) < hi
     H5 = ≤-refl
     at' : LabelsIn lo hi at
     at' = ls-weaken ≤-refl
-            (≤-step (≤-step (≤-step (≤-step (≤-step (≤-step ≤-refl)))))) atls
+            (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl)))))) atls
     descend : LabelsIn lo hi _
     descend =
       li-none refl ∷ li-none refl ∷ li-none refl ∷
@@ -414,19 +414,19 @@ cata-branching-ls F lo bb n1 l1 at lo≤l1 atls =
     L0 : lo ≤ l1
     L0 = lo≤l1
     L1 : lo ≤ suc l1
-    L1 = ≤-step L0
+    L1 = m≤n⇒m≤1+n L0
     L2 : lo ≤ l1 + 2
     L2 = ≤-trans L0 (m≤m+n l1 2)
     L3 : lo ≤ l1 + 3
     L3 = ≤-trans L0 (m≤m+n l1 3)
     H0 : l1 < hi
-    H0 = <-transˡ (a<a+suc l1 3) top
+    H0 = <-≤-trans (a<a+suc l1 3) top
     H1 : suc l1 < hi
-    H1 = <-transˡ (sa<a+ss l1 2) top
+    H1 = <-≤-trans (sa<a+ss l1 2) top
     H2 : l1 + 2 < hi
-    H2 = <-transˡ (+lt l1 2 4 (s≤s (s≤s (s≤s z≤n)))) top
+    H2 = <-≤-trans (+lt l1 2 4 (s≤s (s≤s (s≤s z≤n)))) top
     H3 : l1 + 3 < hi
-    H3 = <-transˡ (+lt l1 3 4 (s≤s (s≤s (s≤s (s≤s z≤n))))) top
+    H3 = <-≤-trans (+lt l1 3 4 (s≤s (s≤s (s≤s (s≤s z≤n))))) top
     at' : LabelsIn lo hi at
     at' = ls-weaken ≤-refl (≤-trans (m≤m+n l1 4) top) atls
     I₁-ls : LabelsIn lo hi (cata-br-I₁ F n1 l1)
@@ -533,18 +533,18 @@ labels-in inr n l =
 -- compiled above them, so all four mentions sit at the bottom of the range.
 labels-in (case f g) n l =
   ++⁺ (li-lab refl ≤-refl case-l<hi ∷ li-none refl ∷ li-none refl ∷ [])
-      (++⁺ (ls-weaken (≤-trans (≤-step (≤-step ≤-refl)) (label-mono f n (suc (suc l)))) ≤-refl
+      (++⁺ (ls-weaken (≤-trans (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl)) (label-mono f n (suc (suc l)))) ≤-refl
                       (labels-in g _ _))
            (++⁺ (li-lab refl (n≤1+n l) case-sl<hi ∷ li-lab refl ≤-refl case-l<hi ∷
                  li-none refl ∷ li-none refl ∷ [])
-                (++⁺ (ls-weaken (≤-step (≤-step ≤-refl)) (label-mono g _ _)
+                (++⁺ (ls-weaken (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl)) (label-mono g _ _)
                                 (labels-in f n (suc (suc l))))
                      (li-lab refl (n≤1+n l) case-sl<hi ∷ []))))
   where
     up : suc (suc l) ≤ label-of (ir-to-trace' n l (case f g))
     up = ≤-trans (label-mono f n (suc (suc l))) (label-mono g _ _)
     case-l<hi : l < label-of (ir-to-trace' n l (case f g))
-    case-l<hi = ≤-trans (≤-step ≤-refl) up
+    case-l<hi = ≤-trans (m≤n⇒m≤1+n ≤-refl) up
     case-sl<hi : suc l < label-of (ir-to-trace' n l (case f g))
     case-sl<hi = up
 labels-in (In _)   n l = li-none refl ∷ []
@@ -622,13 +622,13 @@ pieces2-mentions a b hi .(I ++ at ++ t) (p2cons {I = I} {at = at} {t = t} c d id
                    (subst (λ z → mention-at (I ++ at ++ t) z ≡ just m) peq e)
         go2 : (k < length at) ⊎ (Σ ℕ (λ j → k ≡ length at + j)) → ((a ≤ idx m) × (idx m < b)) ⊎ (idx m < hi)
         go2 (inj₁ klt) =
-          inj₂ (<-transˡ (proj₂ (win-at c d at lsAt k m
+          inj₂ (<-≤-trans (proj₂ (win-at c d at lsAt k m
                                    (trans (sym (cong mention-of (fetch-++ˡ at t k klt))) e'))) d≤hi)
         go2 (inj₂ (j , keq)) with pieces2-mentions a b c t ps j m
                                    (trans (sym (cong mention-of (fetch-++ʳ at t j)))
                                           (subst (λ z → mention-at (at ++ t) z ≡ just m) keq e'))
         ... | inj₁ w   = inj₁ w
-        ... | inj₂ m<c = inj₂ (<-transˡ m<c (≤-trans c≤d d≤hi))
+        ... | inj₂ m<c = inj₂ (<-≤-trans m<c (≤-trans c≤d d≤hi))
 
 -- WHAT `pieces2-agree` STILL NEEDS (2026-08-05, found by attempting it): a
 -- classification like `pieces-pos` is not enough on its own. Two positions
@@ -984,29 +984,29 @@ cata-nat-split bb n1 l1 at =
     L0 : l1 ≤ l1
     L0 = ≤-refl
     L1 : l1 ≤ suc l1
-    L1 = ≤-step L0
+    L1 = m≤n⇒m≤1+n L0
     L2 : l1 ≤ suc (suc l1)
-    L2 = ≤-step L1
+    L2 = m≤n⇒m≤1+n L1
     L3 : l1 ≤ suc (suc (suc l1))
-    L3 = ≤-step L2
+    L3 = m≤n⇒m≤1+n L2
     L4 : l1 ≤ suc (suc (suc (suc l1)))
-    L4 = ≤-step L3
+    L4 = m≤n⇒m≤1+n L3
     L5 : l1 ≤ suc (suc (suc (suc (suc l1))))
-    L5 = ≤-step L4
+    L5 = m≤n⇒m≤1+n L4
     L7 : l1 ≤ endL
-    L7 = ≤-step (≤-step L5)
+    L7 = m≤n⇒m≤1+n (m≤n⇒m≤1+n L5)
     H0 : l1 < hi
-    H0 = ≤-step (≤-step (≤-step (≤-step (≤-step (≤-step (≤-step ≤-refl))))))
+    H0 = m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl))))))
     H1 : suc l1 < hi
-    H1 = ≤-step (≤-step (≤-step (≤-step (≤-step (≤-step ≤-refl)))))
+    H1 = m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl)))))
     H2 : suc (suc l1) < hi
-    H2 = ≤-step (≤-step (≤-step (≤-step (≤-step ≤-refl))))
+    H2 = m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl))))
     H3 : suc (suc (suc l1)) < hi
-    H3 = ≤-step (≤-step (≤-step (≤-step ≤-refl)))
+    H3 = m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl)))
     H4 : suc (suc (suc (suc l1))) < hi
-    H4 = ≤-step (≤-step (≤-step ≤-refl))
+    H4 = m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl))
     H5 : suc (suc (suc (suc (suc l1)))) < hi
-    H5 = ≤-step (≤-step ≤-refl)
+    H5 = m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl)
     H7 : endL < hi
     H7 = ≤-refl
     layer : ∀ (tag : ℕ) → LabelsIn l1 hi
@@ -1061,21 +1061,21 @@ cata-lin-split bb n1 l1 at =
     L0 : l1 ≤ l1
     L0 = ≤-refl
     L1 : l1 ≤ suc l1
-    L1 = ≤-step L0
+    L1 = m≤n⇒m≤1+n L0
     L2 : l1 ≤ suc (suc l1)
-    L2 = ≤-step L1
+    L2 = m≤n⇒m≤1+n L1
     L3 : l1 ≤ suc (suc (suc l1))
-    L3 = ≤-step L2
+    L3 = m≤n⇒m≤1+n L2
     L5 : l1 ≤ endL
-    L5 = ≤-step (≤-step L3)
+    L5 = m≤n⇒m≤1+n (m≤n⇒m≤1+n L3)
     H0 : l1 < hi
-    H0 = ≤-step (≤-step (≤-step (≤-step (≤-step ≤-refl))))
+    H0 = m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl))))
     H1 : suc l1 < hi
-    H1 = ≤-step (≤-step (≤-step (≤-step ≤-refl)))
+    H1 = m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl)))
     H2 : suc (suc l1) < hi
-    H2 = ≤-step (≤-step (≤-step ≤-refl))
+    H2 = m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl))
     H3 : suc (suc (suc l1)) < hi
-    H3 = ≤-step (≤-step ≤-refl)
+    H3 = m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl)
     H5 : endL < hi
     H5 = ≤-refl
     descend : LabelsIn l1 hi _
@@ -1146,19 +1146,19 @@ cata-br-split F bb n1 l1 at =
     L0 : l1 ≤ l1
     L0 = ≤-refl
     L1 : l1 ≤ suc l1
-    L1 = ≤-step L0
+    L1 = m≤n⇒m≤1+n L0
     L2 : l1 ≤ l1 + 2
     L2 = m≤m+n l1 2
     L3 : l1 ≤ l1 + 3
     L3 = m≤m+n l1 3
     H0 : l1 < hi
-    H0 = <-transˡ (a<a+suc l1 3) top
+    H0 = <-≤-trans (a<a+suc l1 3) top
     H1 : suc l1 < hi
-    H1 = <-transˡ (sa<a+ss l1 2) top
+    H1 = <-≤-trans (sa<a+ss l1 2) top
     H2 : l1 + 2 < hi
-    H2 = <-transˡ (+lt l1 2 4 (s≤s (s≤s (s≤s z≤n)))) top
+    H2 = <-≤-trans (+lt l1 2 4 (s≤s (s≤s (s≤s z≤n)))) top
     H3 : l1 + 3 < hi
-    H3 = <-transˡ (+lt l1 3 4 (s≤s (s≤s (s≤s (s≤s z≤n))))) top
+    H3 = <-≤-trans (+lt l1 3 4 (s≤s (s≤s (s≤s (s≤s z≤n))))) top
     I₁-idle : seg-idle? (cata-br-I₁ F n1 l1) ≡ true
     I₁-idle = idle-++ (visit-walk n1 (n1 + 4) (n1 + 5) F (n1 + 7) lv) _
                 (visit-idle F n1 (n1 + 4) (n1 + 5) (n1 + 7) lv)
@@ -1510,10 +1510,10 @@ resuspend-labels-in lo hi n l lbl env (wf-Prod wfF wfG) lo≤ ≤hi =
 resuspend-labels-in lo hi n l lbl env (wf-Sum wfF wfG) lo≤ ≤hi =
   li-none refl ∷ li-none refl ∷ li-lab refl lo≤ l<hi ∷
   ++⁺ (arm 1 (resuspend-labels-in lo hi n2 l2 lbl env wfG
-             (≤-trans lo≤ (≤-trans (≤-step (≤-step ≤-refl)) upF)) ≤hi))
+             (≤-trans lo≤ (≤-trans (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl)) upF)) ≤hi))
       (li-lab refl (≤-trans lo≤ (n≤1+n l)) sl<hi ∷ li-lab refl lo≤ l<hi ∷
        ++⁺ (arm 0 (resuspend-labels-in lo hi (suc (suc (suc n))) (suc (suc l)) lbl env wfF
-                  (≤-trans lo≤ (≤-step (≤-step ≤-refl)))
+                  (≤-trans lo≤ (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl)))
                   (≤-trans (resuspend-label-mono n2 l2 lbl env wfG) ≤hi)))
            (li-lab refl (≤-trans lo≤ (n≤1+n l)) sl<hi ∷ []))
   where
@@ -1526,7 +1526,7 @@ resuspend-labels-in lo hi n l lbl env (wf-Sum wfF wfG) lo≤ ≤hi =
     sl<hi : suc l < hi
     sl<hi = up
     l<hi : l < hi
-    l<hi = ≤-trans (≤-step ≤-refl) up
+    l<hi = ≤-trans (m≤n⇒m≤1+n ≤-refl) up
     arm : ∀ (tag : ℕ) {t} → LabelsIn lo hi t
         → LabelsIn lo hi (restore-input n ∷ load-indirect-suc ∷
                           t ++ (store-at-slot (suc (suc n)) ∷ instr-alloc-heap 2 ∷
@@ -1679,7 +1679,7 @@ scope-ok (const fits-float _) n l = scope-nil _ _ _
 scope-ok (curry bd) n l =
   scope-nolab _ _ l _
     (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ [])
-    (body-bl-in bd n l (suc (suc l)) (≤-step (n≤1+n l))
+    (body-bl-in bd n l (suc (suc l)) (m≤n⇒m≤1+n (n≤1+n l))
                 (scope-ok bd 0 (suc (suc l))))
     (body-bl-agree bd n l (suc (suc l)) (scope-ok bd 0 (suc (suc l))))
 
@@ -1816,7 +1816,7 @@ scope-ok (case f g) n l = mkScope blin blagr nceb ncbe
     l2≤lf = label-mono f n l2
     lf≤lg = label-mono g (budget-of F) lf
     l≤l2 : l ≤ l2
-    l≤l2 = ≤-step (n≤1+n l)
+    l≤l2 = m≤n⇒m≤1+n (n≤1+n l)
     l2≤lg = ≤-trans l2≤lf lf≤lg
     p1 = instr-ctrl (c-branch-tag-zero (ℓ o l)) ∷ load-indirect-suc ∷ mov-to-input ∷ []
     p3 = instr-ctrl (c-jmp (ℓ o (suc l))) ∷ instr-ctrl (c-label (ℓ o l)) ∷

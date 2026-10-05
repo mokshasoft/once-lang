@@ -40,7 +40,7 @@ open import Once.Memory.HeapAddress using (HeapLocation; sucHL; heap-offset; hea
 open import Once.CCC.Machine.SMCore using (AllocState)
 open import Once.CCC.Label using (once; LabelId)
 open import Data.Nat using (ℕ; _+_; _*_; _<_; _≤_; _∸_; _≡ᵇ_; _⊓_)
-open import Data.Nat.Properties using (≤-reflexive; ≤-trans; <-transˡ; <-irrefl; m≤m+n; m≤n+m; m∸n≤m
+open import Data.Nat.Properties using (≤-reflexive; ≤-trans; <-≤-trans; <-irrefl; m≤m+n; m≤n+m; m∸n≤m
                                       ; ⊓-glb; m⊓n≤m; m⊓n≤n; m+n≤o⇒m≤o∸n; +-identityʳ)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 -- …and the pieces the RESOURCE parameter's type needs. Imported UNAPPLIED, so

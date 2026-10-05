@@ -39,12 +39,13 @@ open import Once.CanonicalName using (gen)
 import Once.Type as T
 open import Once.TypeCheck.Raw as Raw
   using (RawExpr; RVar; RLam; RQualified)
-open import Once.TypeCheck.Elaborate
 open import Once.Type.DecEq using (_≟T_; _≟F_)
 open import Once.Type.Sub using (_<:_; _<:?_; <:-refl; sub-int; sub-unit)
-  using (NamedCtx; inferElab; checkElab; InferElabResult; CheckElabResult;
+open import Once.TypeCheck.Elaborate
+  using (NamedCtx; inferElab; checkElab; InferElabResult; CheckElabResult; VerifiedInferResult;
          success; failure; lookupLocal; lookupImport;
-         inferElabV; checkElabV; _≟T_;
+         inferElabV; checkElabV;
+         inferElabV-RUnaryOp-aux; inferElabV-neg-aux; inferFstOn; inferSndOn; inferElabV-RDestruct-aux;
          -- the negation dispatch's literal view (plan 0.74 J6 step 3 for
          -- `RInt`, plan 0.73 F3 for `RFloat`) — the CONSTRUCTORS have to be
          -- listed, the qualified name alone does not bring them into pattern
@@ -664,7 +665,6 @@ neg-non-Int-Float : ∀ (ctx : NamedCtx) (e : Raw.RawExpr)
 -- fold been wired without a matching rule in `_⊢ᵢ_∶_⨾_`, this `()` would not
 -- typecheck, because `- 3.14` would still be a failure whose error is now
 -- something else. The lemma is a live check on the pair, not a formality.
-neg-non-Int-Float ctx e eqInner eqOuter = neg-rejects e (negOperandView e) eqInner refl eqOuter
 neg-non-Int-Float ctx e eqInner eqOuter = neg-rejects e (negOperandView e) eqInner refl eqOuter
 
 

@@ -294,7 +294,7 @@ open import Once.Adequacy.MainBuilds using (main⇒built)
 -- declaratively well-typed programs, so `⟦_⟧⊥`'s `just` domain is genuine
 -- (not true-by-construction). `ModuleTyped m` is the INDEPENDENT predicate
 -- "every function of `m` has a `_⊢ᶜ_∶_⨾_` derivation".
-open import Once.Adequacy.AcceptSound as AS using (moduleToIR-typed; moduleToIR-polys)
+open import Once.Adequacy.AcceptSound as AS using (moduleToIR-typed)
 -- Plan 0.51: the NAMED resolver-correctness obligations bridging the
 -- un-resolved independent meaning to the resolved compilation. The resolver is
 -- now in the verified loop (`srcToModule`); these are the explicit gaps.

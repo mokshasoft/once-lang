@@ -96,7 +96,7 @@ x86-64-frame-semantics = x86-64-frame-semantics-at ι
 open import Once.CCC.Codegen.IRObsCorrectFlat o tbl using (module IRObsCorrectFlatness)
 open import Once.CCC.Codegen.IRToTrace o using (ir-to-trace; ir-stack-budget)
 open import Once.CCC.Target.X86-64.AbstractToX86
-  using (compile-trace; compile-trace-cnt; compile-trace-cnt-agrees; no-nested-of-all)
+  using (compile-trace; compile-trace-cnt; compile-trace-cnt-agrees)
 open import Data.Empty using (⊥)
 import Once.Compile as C
 import Once.Parser.Module.Core as P

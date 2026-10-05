@@ -30,7 +30,7 @@ open import Once.CCC.Target.X86-32.Syntax using
   ; mov; lea; add; sub; sbb; cmp; test; jmp; je; jne; call; call-sym
   ; ret; push; pop; nop; ud2; label; mov-code; jmp-l; call-l )
 open import Data.Nat using (ℕ; suc; _+_; _*_; _<_; _≤_; _∸_; _≡ᵇ_; _⊓_)
-open import Data.Nat.Properties using (≤-reflexive; ≤-trans; <-transˡ; <-irrefl; m≤m+n; m≤n+m; m∸n≤m
+open import Data.Nat.Properties using (≤-reflexive; ≤-trans; <-≤-trans; <-irrefl; m≤m+n; m≤n+m; m∸n≤m
                                       ; ⊓-glb; m⊓n≤m; m⊓n≤n; m+n≤o⇒m≤o∸n; +-identityʳ)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 -- …and the pieces the RESOURCE parameter's type needs. Imported UNAPPLIED, so

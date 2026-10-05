@@ -86,7 +86,7 @@ open import Once.Adequacy.ArchCorrectness.FlatCore.RegRoles
   using (role-sp; role-clos; role-heap; role-out; role-in1; role-scratch; role-count)
 open import Once.CCC.Target.RiscV64.AbstractToRiscV using (compile-trace; compile-abstract; slot-to-disp)
 open import Relation.Binary.PropositionalEquality using (subst₂)
-open import Data.Nat.Properties using (+-monoʳ-<; *-monoˡ-<; ≤-<-trans; ≤-trans; <-transˡ; <⇒≢
+open import Data.Nat.Properties using (+-monoʳ-<; *-monoˡ-<; ≤-<-trans; ≤-trans; <-≤-trans; <⇒≢
                                       ; m∸n+n≡m)
 open import Data.Empty using (⊥)
 open import Once.CCC.FrameSemantics using (frame-base; slot-addr; slot-addr-linear; shift-frame; shift-base)
@@ -784,7 +784,7 @@ ret-heap-store {hv} prog fs s a v cc a<lo =
   C.ret-agree-above (blk-off prog) (R.State.memory s) (R.writeMem (R.State.memory s) a v)
     (riscv64-link-claim s) (riscv64-link-claim s) (flink fs)
     (stackMem (floc fs)) (C.lo hv) (C.frames-of (falloc fs)) (fret fs)
-    (λ c le → C.read-write-miss (R.State.memory s) a v c (λ eq → <⇒≢ (<-transˡ a<lo le) (sym eq)))
+    (λ c le → C.read-write-miss (R.State.memory s) a v c (λ eq → <⇒≢ (<-≤-trans a<lo le) (sym eq)))
     (λ c w le p → p)
     (C.stack-eq (dataCorr cc)) (ret-eq cc)
 

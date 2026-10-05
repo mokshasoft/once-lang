@@ -12,7 +12,7 @@
 ------------------------------------------------------------------------
 
 open import Data.Nat using (ℕ; _<_; _≤_)
-open import Data.Nat.Properties using (<-transˡ; <⇒≢)
+open import Data.Nat.Properties using (<-≤-trans; <⇒≢)
 open import Data.Maybe using (Maybe)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; _≢_)
 
@@ -42,4 +42,4 @@ writeMem-below-preserves m fr addr val addr<fr a fr≤a =
   sym (readMem-writeMem-other m addr val a a≢addr)
   where
     a≢addr : a ≢ addr
-    a≢addr a≡addr = <⇒≢ (<-transˡ addr<fr fr≤a) (sym a≡addr)
+    a≢addr a≡addr = <⇒≢ (<-≤-trans addr<fr fr≤a) (sym a≡addr)

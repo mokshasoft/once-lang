@@ -46,4 +46,4 @@ open import Once.Spec.Contract public  -- WHAT AN INTERPRETATION OWES (D061, D25
 open import Once.Spec.Program public   -- WHAT a typed program is, and WHEN a
   using ( Typed ; _⊢R_               -- source denotes one: the criterion's own
         ; ParsesText ; ModuleTyped   -- `Typed`/`_⊢_`, which used to live in a
-        ; HasValidMain-decl )        -- PROOF module, outside this boundary
+         )        -- PROOF module, outside this boundary

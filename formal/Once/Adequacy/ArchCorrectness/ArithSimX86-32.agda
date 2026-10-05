@@ -114,7 +114,6 @@ val-x86-32 (XI.Xfmul-rr d src)           s _ = FA.fmul binary32 (rd s d) (rd s s
 val-x86-32 (XI.Xfdiv-rrr d a b)           s _ = FA.fdiv binary32 (rd s a) (rd s b)
 -- Three-address: both sources are named, so unlike the 2-address float ops
 -- the destination is not also an operand.
-val-x86-32 (XI.Xfdiv-rrr d a b)       s _ = FA.fdiv binary32 (rd s a) (rd s b)
 val-x86-32 (XI.Xfsubr-rr d src)          s _ = FA.fsub binary32 (rd s src) (rd s d)
 val-x86-32 (XI.Xfneg-r d)                s _ = FA.fneg binary32 (rd s d)
 val-x86-32 (XI.Xi2f-r d src)             s _ = FA.i2f binary32 (W.toℤ (rd s src))

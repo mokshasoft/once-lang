@@ -1187,7 +1187,6 @@ inferElabV-RBinOp-aux ctx Raw.OpSub e₁ e₂ (success Float Ψ₁ e₁E d₁ f�
 inferElabV-RBinOp-aux ctx Raw.OpMul e₁ e₂ (success Float Ψ₁ e₁E d₁ f₁ , w₁) (success Int Ψ₂ e₂E d₂ f₂ , w₂) = success Float _ (Surface.fmul e₁E (Surface.i2f e₂E)) (d₁ ⊔ d₂) f₂ , t-binop-arith-float-ir refl w₁ w₂
 inferElabV-RBinOp-aux ctx Raw.OpDiv e₁ e₂ (success Float Ψ₁ e₁E d₁ f₁ , w₁) (success Int Ψ₂ e₂E d₂ f₂ , w₂) = success Float _ (Surface.fdiv e₁E (Surface.i2f e₂E)) (d₁ ⊔ d₂) f₂ , t-binop-arith-float-ir refl w₁ w₂
 -- `/`, `%` and the comparisons keep the error they gave before.
-inferElabV-RBinOp-aux ctx Raw.OpDiv e₁ e₂ (success Int _ _ _ _ , _) (success Float _ _ _ _ , _) = failure (BinOpRightError (TypeMismatch Int Float)) , tt
 inferElabV-RBinOp-aux ctx Raw.OpMod e₁ e₂ (success Int _ _ _ _ , _) (success Float _ _ _ _ , _) = failure (BinOpRightError (TypeMismatch Int Float)) , tt
 inferElabV-RBinOp-aux ctx Raw.OpLt e₁ e₂ (success Int _ _ _ _ , _) (success Float _ _ _ _ , _) = failure (BinOpRightError (TypeMismatch Int Float)) , tt
 inferElabV-RBinOp-aux ctx Raw.OpLe e₁ e₂ (success Int _ _ _ _ , _) (success Float _ _ _ _ , _) = failure (BinOpRightError (TypeMismatch Int Float)) , tt
@@ -1195,7 +1194,6 @@ inferElabV-RBinOp-aux ctx Raw.OpGt e₁ e₂ (success Int _ _ _ _ , _) (success 
 inferElabV-RBinOp-aux ctx Raw.OpGe e₁ e₂ (success Int _ _ _ _ , _) (success Float _ _ _ _ , _) = failure (BinOpRightError (TypeMismatch Int Float)) , tt
 inferElabV-RBinOp-aux ctx Raw.OpEq e₁ e₂ (success Int _ _ _ _ , _) (success Float _ _ _ _ , _) = failure (BinOpRightError (TypeMismatch Int Float)) , tt
 inferElabV-RBinOp-aux ctx Raw.OpNe e₁ e₂ (success Int _ _ _ _ , _) (success Float _ _ _ _ , _) = failure (BinOpRightError (TypeMismatch Int Float)) , tt
-inferElabV-RBinOp-aux ctx Raw.OpDiv e₁ e₂ (success Float _ _ _ _ , _) (success Int _ _ _ _ , _) = failure (BinOpRightError (TypeMismatch Float Int)) , tt
 inferElabV-RBinOp-aux ctx Raw.OpMod e₁ e₂ (success Float _ _ _ _ , _) (success Int _ _ _ _ , _) = failure (BinOpRightError (TypeMismatch Float Int)) , tt
 inferElabV-RBinOp-aux ctx Raw.OpLt e₁ e₂ (success Float _ _ _ _ , _) (success Int _ _ _ _ , _) = failure (BinOpRightError (TypeMismatch Float Int)) , tt
 inferElabV-RBinOp-aux ctx Raw.OpLe e₁ e₂ (success Float _ _ _ _ , _) (success Int _ _ _ _ , _) = failure (BinOpRightError (TypeMismatch Float Int)) , tt

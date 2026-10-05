@@ -406,7 +406,6 @@ classifyAppHeadView (Raw.RApp (Raw.RResolved (canonical (_ ∷ _ ∷ _ ∷ _))) 
 classifyAppHeadView (Raw.RApp (Raw.RVar _) _)           = ahv-other
 classifyAppHeadView (Raw.RApp (Raw.RApp _ _) _)         = ahv-other
 classifyAppHeadView (Raw.RApp (Raw.RQualified _ _) _)   = ahv-other
-classifyAppHeadView (Raw.RApp (Raw.RResolved _) _)      = ahv-other
 classifyAppHeadView (Raw.RApp (Raw.RLam _ _) _)         = ahv-other
 classifyAppHeadView (Raw.RApp (Raw.RLet _ _ _) _)       = ahv-other
 classifyAppHeadView (Raw.RApp (Raw.RPair _ _) _)        = ahv-other
@@ -421,7 +420,6 @@ classifyAppHeadView (Raw.RApp (Raw.RUnaryOp _ _) _)     = ahv-other
 classifyAppHeadView (Raw.RApp (Raw.RAna _ _) _)         = ahv-other
 classifyAppHeadView (Raw.RAna _ _)            = ahv-other
 classifyAppHeadView (Raw.RQualified _ _)      = ahv-other
-classifyAppHeadView (Raw.RResolved _)         = ahv-other
 classifyAppHeadView (Raw.RLam _ _)            = ahv-other
 classifyAppHeadView (Raw.RLet _ _ _)          = ahv-other
 classifyAppHeadView (Raw.RPair _ _)           = ahv-other

@@ -54,7 +54,7 @@ open El S using (View; elabᶜ; elabᵢ; elabᵈ; ImportAt; ffi; def; importE; r
 open RSm Δ τ r using (ρ̂; ρ̂S; ρ̂N; ρ̂-<:; ρ̂-wf; ρ̂-⟦⟧; ρ̂-rf; ρ̂-ki; lookup-ρ̂; lk-just;
   subst-c′; subst-i′; subst-d′; _⇝ᵢ_; _⇝ᶜ_)
 import Once.Adequacy.CoreInst S Δ τ r as CI
-open CI using (ρ̂ₜ; ρ̂ₜ-ren)
+open CI using (ρ̂ₜ)
 open CI.WithSG sg
 open VN.Natural nat
 

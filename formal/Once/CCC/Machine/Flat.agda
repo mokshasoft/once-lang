@@ -1696,13 +1696,9 @@ module FlatMachine {FS : FrameSemantics} where
         ≡ falloc (exec-flat fuel rest (mkFlat loc alloc k))
   shift-loc zero    i rest loc alloc k straight = refl , refl
   shift-loc (suc n) i rest loc alloc k straight with halted loc in h-eq
-  ... | true  rewrite exec-flat-halted (suc n) (i ∷ rest) (mkFlat loc alloc (suc k)) h-eq
-                    | exec-flat-halted (suc n) rest        (mkFlat loc alloc k)       h-eq
-                    = refl , refl
+  ... | true  = refl , refl
   ... | false with fetch rest k in f-eq
-  ...   | nothing rewrite exec-flat-offend n (i ∷ rest) (mkFlat loc alloc (suc k)) h-eq f-eq
-                        | exec-flat-offend n rest        (mkFlat loc alloc k)       h-eq f-eq
-                        = refl , refl
+  ...   | nothing = refl , refl
   ...   | just j  rewrite fetch-Straight straight f-eq (i ∷ rest) (mkFlat loc alloc (suc k))
                         | fetch-Straight straight f-eq rest        (mkFlat loc alloc k)
                         = shift-loc n i rest
@@ -1733,10 +1729,8 @@ module FlatMachine {FS : FrameSemantics} where
         ≡ proj₂ (exec-trace prog s alloc)
   exec-trace-is-flat prog s alloc straight with halted s in hs
   ... | true
-        rewrite exec-flat-halted (suc (length prog)) prog (mkFlat s alloc 0) hs
-              | exec-trace-halted prog s alloc hs = refl , refl
-  exec-trace-is-flat [] s alloc straight | false
-        rewrite exec-flat-offend 0 [] (mkFlat s alloc 0) hs refl = refl , refl
+        rewrite exec-trace-halted prog s alloc hs = refl , refl
+  exec-trace-is-flat [] s alloc straight | false = refl , refl
   -- `with halted s | false` already peeled ONE exec-flat step (-> flat-exec-instr i)
   -- and reduced exec-trace (i∷rest) -> exec-trace rest s' alloc'. Convert the
   -- stuck `flat-exec-instr i` to `flat-step-straight i` (= mkFlat s' alloc' 1)

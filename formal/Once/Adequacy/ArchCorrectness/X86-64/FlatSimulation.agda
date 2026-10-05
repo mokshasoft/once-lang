@@ -96,7 +96,7 @@ open import Data.Empty using (⊥)
 open import Data.Nat using (zero; suc)
 open import Data.Nat.Properties using (+-assoc; +-identityʳ; +-comm; ∸-+-assoc; *-suc; *-identityʳ; *-assoc
                                       ; +-monoʳ-<; *-monoˡ-<
-                                      ; <⇒≢; <-transˡ; ≤-trans; m∸n≤m; m≤m+n; m∸n+n≡m
+                                      ; <⇒≢; <-≤-trans; ≤-trans; m∸n≤m; m≤m+n; m∸n+n≡m
                                       ; m<m+n; ≤-refl; ≤-<-trans; m≤n+m; +-monoʳ-≤)
 open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (sym; trans; cong; cong₂; subst; subst₂)
@@ -222,12 +222,12 @@ ret-heap-store {hv} prog fs s a v cc a<lo =
     (x86-64-link-claim s) (λ ad w → writeMem (X.State.memory s) a v ad ≡ just w)
     (flink fs)
     (stackMem (floc fs)) (C.lo hv) (C.frames-of (falloc fs)) (fret fs)
-    (λ c le → C.read-write-miss (X.State.memory s) a v c (λ eq → <⇒≢ (<-transˡ a<lo le) (sym eq)))
+    (λ c le → C.read-write-miss (X.State.memory s) a v c (λ eq → <⇒≢ (<-≤-trans a<lo le) (sym eq)))
     -- THE HEAD ROW TRAVELS BY THE SAME MISS, because on x86-64 it IS the memory
     -- claim (`call` pushed the return address). This is the two-line adapter the
     -- plan promised, and it is why the ~21 call sites did not move.
     (λ c w le p → trans (C.read-write-miss (X.State.memory s) a v c
-                           (λ eq → <⇒≢ (<-transˡ a<lo le) (sym eq))) p)
+                           (λ eq → <⇒≢ (<-≤-trans a<lo le) (sym eq))) p)
     (C.stack-eq (dataCorr cc)) (ret-eq cc)
 
 -- A STACK STORE MISSES EVERY PENDING RETURN (D093). The write is inside this
@@ -1102,9 +1102,9 @@ block-step-call {hv} prog fs s hl ℓ j cc h ft ceq heq live fteq lo' lo'≤lo f
                  (stackMem (floc fs)) (frame-base FS (current-frame (falloc fs)))
                  (C.frames-of (falloc fs)) (fret fs)
                  (λ a le → C.read-write-miss (memory s) waddr retAddr a
-                             (λ eq → <⇒≢ (<-transˡ w<base le) (sym eq)))
+                             (λ eq → <⇒≢ (<-≤-trans w<base le) (sym eq)))
                  (λ a v le p → trans (C.read-write-miss (memory s) waddr retAddr a
-                                        (λ eq → <⇒≢ (<-transˡ w<base le) (sym eq))) p)
+                                        (λ eq → <⇒≢ (<-≤-trans w<base le) (sym eq))) p)
                  (C.windows-reanchor (C.lo hv) (frame-base FS (current-frame (falloc fs)))
                     (current-frame (falloc fs)) (frame-slots (falloc fs))
                     (saved-frames (falloc fs)) ≤-refl (C.stack-eq dc))
@@ -1241,9 +1241,9 @@ block-step-call-fn {hv} prog fs s f j cc h ft fteq lo' lo'≤lo front-lo' lo'≤
                  (stackMem (floc fs)) (frame-base FS (current-frame (falloc fs)))
                  (C.frames-of (falloc fs)) (fret fs)
                  (λ a le → C.read-write-miss (memory s) waddr retAddr a
-                             (λ eq → <⇒≢ (<-transˡ w<base le) (sym eq)))
+                             (λ eq → <⇒≢ (<-≤-trans w<base le) (sym eq)))
                  (λ a v le p → trans (C.read-write-miss (memory s) waddr retAddr a
-                                        (λ eq → <⇒≢ (<-transˡ w<base le) (sym eq))) p)
+                                        (λ eq → <⇒≢ (<-≤-trans w<base le) (sym eq))) p)
                  (C.windows-reanchor (C.lo hv) (frame-base FS (current-frame (falloc fs)))
                     (current-frame (falloc fs)) (frame-slots (falloc fs))
                     (saved-frames (falloc fs)) ≤-refl (C.stack-eq dc))
