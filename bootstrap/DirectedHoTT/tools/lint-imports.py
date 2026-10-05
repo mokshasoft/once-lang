@@ -45,6 +45,9 @@ def modname(path):
     return rel.replace(os.sep, ".")
 
 def strip_comments(s):
+    # string literals first: a word inside "…" is not a use (2026-10-05:
+    #   "the checker rejects the body" read as a use of `rejects`)
+    s = re.sub(r'"(?:[^"\\\n]|\\.)*"', '""', s)
     s = re.sub(r"\{-.*?-\}", lambda m: "\n" * m.group(0).count("\n"), s, flags=re.S)
     return "\n".join(re.sub(r"(^|\s)--.*$", "", l) for l in s.split("\n"))
 
@@ -139,7 +142,10 @@ def declared(src):
             m = re.match(r"^module\s+(\S+)", st)
             if m and "." not in m.group(1):
                 in_modblock = m.group(1)
-                if in_modblock != "_": exp.add("module " + in_modblock)
+                if in_modblock != "_":
+                    exp.add("module " + in_modblock)
+                    # a local module's NAME is used bare (`Agree.f`, `open Agree …`)
+                    loc.add(in_modblock)
                 continue
             # ★ `mutual`/`abstract`/`instance` blocks: their indented
             #   declarations are the file's own, exported.
