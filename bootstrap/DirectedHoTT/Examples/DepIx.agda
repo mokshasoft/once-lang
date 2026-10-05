@@ -34,13 +34,14 @@
 module DirectedHoTT.Examples.DepIx where
 open import normalizer.Syntax.Types using ( _≡_; sym; subst )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
-open import DirectedHoTT.Spec.Syntax hiding ( Fin )
+open import DirectedHoTT.Spec.Syntax
+open import DirectedHoTT.Lib.NatCode using ( fromI )
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Metatheory.TySub using ( ⊢wk )
 open import DirectedHoTT.Lib.Sugar using ( conₗ; Dₗ )
 open import DirectedHoTT.Lib.Tel
 open import DirectedHoTT.Examples.Scoped
-  using ( TmD; ⊢TmD; Tm; toI; ⊢isuc; tlam; ⊢tlam; tvar; ⊢tvar; ⊢ffz; fz; idTm; ⊢idTm )
+  using ( TmD; ⊢TmD; Tm; toI; ⊢isuc; tlam; ⊢tlam; tvar; ⊢tvar; fromI; fz; idTm; ⊢idTm )
 
 ------------------------------------------------------------------------
 -- 1. ★★★ THE DEPENDENT INDEX CODE.
@@ -167,5 +168,5 @@ module _ {Γ : Ctx} {n b : RTm ⌊ Γ ⌋} (dn : Γ ⊢ n ∷ El ⌜Nat⌝) (db 
 
 -- `islam : IsLam (0 , λx. x)` — a closed inhabitant
 ⊢islam₀ : ◇ ⊢ islam nzero (tvar fz) ∷ IsLam (pair nzero idTm)
-⊢islam₀ = ⊢islam z (⊢tvar (⊢isuc z) (⊢ffz z))
+⊢islam₀ = ⊢islam z (⊢tvar (⊢isuc z) (⊢fzero (fromI z)))
   where z = toI ⊢nzero

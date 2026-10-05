@@ -41,7 +41,6 @@ import DirectedHoTT.Lib.Decode
 import DirectedHoTT.Lib.Dvd
 import DirectedHoTT.Lib.DvdArith
 import DirectedHoTT.Lib.Eval
-import DirectedHoTT.Lib.FinFam
 import DirectedHoTT.Lib.ICast
 import DirectedHoTT.Lib.IHCall
 import DirectedHoTT.Lib.IHeadRed

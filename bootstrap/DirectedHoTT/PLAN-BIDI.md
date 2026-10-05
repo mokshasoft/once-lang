@@ -524,6 +524,19 @@ tag rules key on it (`⊢fzero : Fin (suc n)`). After:
     rows of the table; the hand-written case-on-the-type rows (`PFz`/`PFs`),
     `Knot/JudgeConFin` and the `jdfzero`/`jdfsuc` decoders are DELETED.
     `rows` is `Dσ`. F5 (`TypingAgree`) and F6 (`Exact`) green.
+- **Step 5 (2026-10-05): `Lib/FinFam` DELETED.** Variables are the kernel's
+  `fzero`/`fsuc` at `Fin d` everywhere. What it simplified:
+  - `Lib/SynTrav.CONS` is one `fcase` at a constant motive (`CM`, `consM`,
+    `predT` gone); `SynTravRed`'s `cons-z`/`cons-s` are one step each.
+  - `Lib/SynUnq`: `fin-zero`/`fin-step`/`fin-unq` are Decode's `tag-dec`;
+    `fnum` is Sugar's `tag`.
+  - `Knot/Lookup`: the variable case is one `fcase` (no `pd`, no convoy
+    motive `XM`, no `xM` methods) — 232 lines out, 61 in; `LookupCon`'s
+    chains end in one `fcase-z`/`fcase-s`, and the `there` row's variable
+    is clean (no `fst (y , unit)`). Net −116 lines.
+  - The Nat-at-code helpers moved to `Lib/NatCode`.
+  - `Examples/WkFin` is `natrec` + `fcase` (weakening needs recursion on
+    the index; the kernel's `fcase` is only a case).
 
 **Then, the migration recipe** (each step is one family):
 - a schema becomes a CLOSED λ-entry; an instance becomes

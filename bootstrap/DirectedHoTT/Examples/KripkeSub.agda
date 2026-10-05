@@ -29,12 +29,13 @@
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.KripkeSub where
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
-open import DirectedHoTT.Spec.Syntax hiding ( Fin )
+open import DirectedHoTT.Spec.Syntax
+open import DirectedHoTT.Lib.NatCode using ( fromI )
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Lib.Sugar using ( conₗ; MethK )
 open import DirectedHoTT.Lib.Tel
 open import DirectedHoTT.Examples.Scoped
-  using ( TmD; ⊢TmD; Tm; lamT; lamOK; FinD; ⊢FinD; FinI; ⊢isuc; ffz; ⊢ffz; tlam; ⊢tlam; tvar; ⊢tvar )
+  using ( TmD; ⊢TmD; Tm; lamT; lamOK; fromI; ⊢isuc; tlam; ⊢tlam; tvar; ⊢tvar )
 
 ------------------------------------------------------------------------
 -- ★★★ THE MOTIVE.
@@ -49,17 +50,17 @@ open import DirectedHoTT.Examples.Scoped
 ------------------------------------------------------------------------
 
 sMot : {Γ : Cx} → RTy ((Γ ∙) ∙)
-sMot = Π (El ⌜Nat⌝) (Π (Π (FinI (var (vs (vs vz)))) (Tm (var (vs vz)))) (Tm (var (vs vz))))
+sMot = Π (El ⌜Nat⌝) (Π (Π (Fin (var (vs (vs vz)))) (Tm (var (vs vz)))) (Tm (var (vs vz))))
 
 ⊢sMot : {Γ : Ctx} → ((Γ ▹ El ⌜Nat⌝) ▹ Tm (var vz)) ⊢ty sMot
 ⊢sMot =
   ty-Π (ty-El ⊢⌜Nat⌝)
-    (ty-Π (ty-Π (ty-IMu ⊢⌜Nat⌝ ⊢FinD (⊢var (there (there here))))
+    (ty-Π (ty-Π (ty-Fin (fromI (⊢var (there (there here)))))
                 (ty-IMu ⊢⌜Nat⌝ ⊢TmD (⊢var (there here))))
           (ty-IMu ⊢⌜Nat⌝ ⊢TmD (⊢var (there here))))
 
 ------------------------------------------------------------------------
--- ★ A `Fin` ZERO AT A **VARIABLE** DEPTH is simply `ffz` (at `suc n`):
+-- ★ A `Fin` ZERO AT A **VARIABLE** DEPTH is simply `fzero` (at `suc n`):
 --   under D074 its constructor telescopes are depth-generic, so the
 --   variable-index twin the one-telescope form needed (and its
 --   `wk-single` round trip) is gone.  Every `Tm` at a variable depth
@@ -89,28 +90,28 @@ sMot = Π (El ⌜Nat⌝) (Π (Π (FinI (var (vs (vs vz)))) (Tm (var (vs vz)))) (
 sLam : {Γ : Cx} → RTm Γ
 sLam = lam (lam (lam (lam (lam
          (tlam (app (app (fst (var (vs (vs vz)))) (nsuc (var (vs vz))))
-                    (lam (tvar ffz))))))))
+                    (lam (tvar fzero))))))))
 
 module _ {Γ : Ctx} where
   private
     H  = HypCtx Γ ⌜Nat⌝ TmD sMot lamT
     Hn = H ▹ El ⌜Nat⌝
-    Hσ = Hn ▹ Π (FinI (var (vs (vs (vs vz))))) (Tm (var (vs vz)))
+    Hσ = Hn ▹ Π (Fin (var (vs (vs (vs vz))))) (Tm (var (vs vz)))
     dn : Hσ ⊢ var (vs vz) ∷ El ⌜Nat⌝
     dn = ⊢var (there here)
     di : Hσ ⊢ var (vs (vs (vs (vs vz)))) ∷ El ⌜Nat⌝
     di = ⊢var (there (there (there (there here))))
 
   -- the stub extension: `Fin (suc i) → Tm (suc n)`
-  ⊢stub : Hσ ⊢ lam (tvar ffz) ∷ Π (FinI (nsuc (var (vs (vs (vs (vs vz))))))) (Tm (nsuc (var (vs (vs vz)))))
-  ⊢stub = ⊢lam (ty-IMu ⊢⌜Nat⌝ ⊢FinD (⊢isuc di))
-            (⊢tvar (⊢isuc (⊢var (there (there here)))) (⊢ffz (⊢var (there (there here)))))
+  ⊢stub : Hσ ⊢ lam (tvar fzero) ∷ Π (Fin (nsuc (var (vs (vs (vs (vs vz))))))) (Tm (nsuc (var (vs (vs vz)))))
+  ⊢stub = ⊢lam (ty-Fin (fromI (⊢isuc di)))
+            (⊢tvar (⊢isuc (⊢var (there (there here)))) (⊢fzero (fromI (⊢var (there (there here))))))
 
   ⊢sLam : Γ ⊢ sLam ∷ MethK ⌜Nat⌝ TmD sMot ⌜ lamT ⌝ᵗ (suc zero)
   ⊢sLam =
     ⊢methT {T = lamT} {s = conₗ (suc zero) (var (vs vz))} ⊢⌜Nat⌝ ⊢TmD ⊢sMot lamOK
       (⊢lam (ty-El ⊢⌜Nat⌝)
-        (⊢lam (ty-Π (ty-IMu ⊢⌜Nat⌝ ⊢FinD (⊢var (there (there (there here)))))
+        (⊢lam (ty-Π (ty-Fin (fromI (⊢var (there (there (there here))))))
                     (ty-IMu ⊢⌜Nat⌝ ⊢TmD (⊢var (there here))))
           -- ★ the IH at `suc n`, then `tlam` back down to `Tm n`
           (⊢tlam dn (⊢app (⊢app (⊢fst (⊢var (there (there here)))) (⊢isuc dn)) ⊢stub))))

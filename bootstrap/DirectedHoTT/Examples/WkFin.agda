@@ -24,106 +24,81 @@
 --   is a motive that mentions the INDEX slot and lands in the family
 --   being eliminated.
 --
--- ★ `Fin` IS FIBRED OVER ℕ (`Lib/FinFam`, `Lib/NatFib`): `Fin 0 = ∅`,
---   `Fin (suc m) = fzero | fsuc (Fin m)`.  So the method is a case on
---   the index, each constructor's method sits at `suc m` — where `fsuc`'s
---   field is at `m` DEFINITIONALLY — and weakening is
+-- ★ `Fin` is the KERNEL's, indexed by a Nat TERM (S7b step 2): `fcase`
+--   splits `Fin (suc m)` into `fzero | fsuc (Fin m)`, and the recursion
+--   on the index is `natrec` at the motive `Fin n → Fin (suc n)`:
 --
---       fzero  ↦ fzero        fsuc y ↦ fsuc (wk y)
+--       0     ↦ λ x. fcase0 x
+--       suc m ↦ λ x. fcase x fzero (λ y. fsuc (r y))
 --
---   with NO transport.  (Under the Forded `Fin` the `fsuc` case needed a
---   `jsub` along its equation: 2026-09-27's version of this file.)
+--   with NO transport: every substitution is at variables.  (Its first
+--   form was an `ielim` over a Lib family `FinFam`, deleted 2026-10-05;
+--   before that a Forded `Fin` needed a `jsub` per `fsuc`.)
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.WkFin where
-open import normalizer.Syntax.Types using ( _,_; cong; sym ) renaming ( subst to subst' )
-open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
-open import DirectedHoTT.Spec.Syntax hiding ( Fin )
+open import normalizer.Syntax.Types using ( cong )
+open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
-open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-trans )
-open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast )
-open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_; nth-z; nth-s; []ᵈ; selF; subC; tag )
-open import DirectedHoTT.Lib.Tel
-open import DirectedHoTT.Lib.MethAt
-open import DirectedHoTT.Lib.NatFib
-open import DirectedHoTT.Lib.FinFam
-open import DirectedHoTT.Lib.NatCode
+open import DirectedHoTT.Metatheory.TySub using ( ⊢-cast; wk-cancel-tm )
+open import DirectedHoTT.Lib.NatCode using ( fromI )
 
--- `El (⌜IMu⌝ ⌜Nat⌝ FinD n) ≅ᵀ Fin n`
-fromFin : {Γ : Ctx} {n t : RTm ⌊ Γ ⌋} → Γ ⊢ t ∷ El (⌜IMu⌝ ⌜Nat⌝ FinD n) → Γ ⊢ t ∷ FinI n
-fromFin d = ⊢conv d (credᵀ El-⌜IMu⌝)
+-- `El (⌜Fin⌝ n) ≅ᵀ Fin n`
+fromFin : {Γ : Ctx} {n t : RTm ⌊ Γ ⌋} → Γ ⊢ t ∷ El (⌜Fin⌝ n) → Γ ⊢ t ∷ Fin n
+fromFin d = ⊢conv d (credᵀ El-⌜Fin⌝)
 
-toFin : {Γ : Ctx} {n t : RTm ⌊ Γ ⌋} → Γ ⊢ t ∷ FinI n → Γ ⊢ t ∷ El (⌜IMu⌝ ⌜Nat⌝ FinD n)
-toFin d = ⊢conv d (csymᵀ (credᵀ El-⌜IMu⌝))
+toFin : {Γ : Ctx} {n t : RTm ⌊ Γ ⌋} → Γ ⊢ t ∷ Fin n → Γ ⊢ t ∷ El (⌜Fin⌝ n)
+toFin d = ⊢conv d (csymᵀ (credᵀ El-⌜Fin⌝))
 
 ------------------------------------------------------------------------
--- 1. THE MOTIVE THAT MOVES THE INDEX:  M(i, t) = Fin (suc i).
+-- 1. THE MOTIVE THAT MOVES THE INDEX:  M(n) = Fin n → Fin (suc n).
 ------------------------------------------------------------------------
 
-wkMot : {Γ : Cx} → RTy ((Γ ∙) ∙)
-wkMot = FinI (nsuc (var (vs vz)))
+wkMot : {Γ : Cx} → RTy (Γ ∙)
+wkMot = Π (Fin (var vz)) (Fin (nsuc (var (vs vz))))
 
-⊢wkMot : {Γ : Ctx} → ((Γ ▹ El ⌜Nat⌝) ▹ FinI (var vz)) ⊢ty wkMot
-⊢wkMot = ty-IMu ⊢⌜Nat⌝ ⊢FinD (⊢isuc (⊢var (there here)))
+⊢wkMot : {Γ : Ctx} → (Γ ▹ Nat) ⊢ty wkMot
+⊢wkMot = ty-Π (ty-Fin (⊢var here)) (ty-Fin (⊢nsuc (⊢var (there here))))
 
 ------------------------------------------------------------------------
--- 2. THE METHODS, at the successor case's index `suc m`: the method
---    context is `m`, the payload, the hypotheses.
+-- 2. THE TWO CASES.
 ------------------------------------------------------------------------
 
-mfz mfs : {Γ : Cx} → RTm Γ
-mfz = lam (lam ffz)                          -- fzero  ↦ fzero
-mfs = lam (lam (ffs (fst (var vz))))         -- fsuc y ↦ fsuc (wk y)
+wkZ : {Γ : Cx} → RTm Γ                      -- Fin 0 is empty
+wkZ = lam (fcase0 (var vz))
 
-WkMs : {Γ : Cx} → Cons Γ 2
-WkMs = mfz ∷ mfs ∷ []
-
-wkM : {Γ : Cx} → RTm Γ
-wkM = methN (methAt []) (methAt WkMs)
+wkS : {Γ : Cx} → RTm ((Γ ∙) ∙)              -- fzero ↦ fzero ; fsuc y ↦ fsuc (r y)
+wkS = lam (fcase (var vz) fzero (fsuc (app (var (vs (vs vz))) (var vz))))
 
 module _ {Γ : Ctx} where
-  private
-    dS = allD (⊢wk ⊢⌜Nat⌝) (FinOK {Γ})
-    -- `m`, two binders out
-    dm₂ : {A : RTy _} {B : RTy _} → (((Γ ▹ El ⌜Nat⌝) ▹ A) ▹ B) ⊢ var (vs (vs vz)) ∷ El ⌜Nat⌝
-    dm₂ = ⊢var (there (there here))
+  ⊢wkZ : Γ ⊢ wkZ ∷ subTy (single nzero) wkMot
+  ⊢wkZ = ⊢lam (ty-Fin ⊢nzero) (⊢fcase0 (ty-Fin (⊢nsuc ⊢nzero)) (⊢var here))
 
-  perS : PerKAt (Γ ▹ El ⌜Nat⌝) ⌜Nat⌝ (renTm vs FinD) (wk1M wkMot) (nsuc (var vz))
-                (selF (subC τS ⌜ FinTs ⌝ₛ)) zero WkMs
-  perS = entN {Ts = FinTs} {T = fzeroT} []ᵈ FinOK ⊢wkMot nthᵗ-z (⊢ffz (⊢isuc dm₂))
-      ∷ₐ entN {Ts = FinTs} {T = fsucT} []ᵈ FinOK ⊢wkMot (nthᵗ-s nthᵗ-z) (⊢ffs (⊢isuc dm₂) (⊢fst (⊢var here)))
-      ∷ₐ []ₐ
-
-  ⊢wkM : Γ ⊢ wkM ∷ MethTy ⌜Nat⌝ FinD wkMot
-  ⊢wkM = ⊢methN ⊢FinD ⊢wkMot (⊢caseZ []ᵈ dS ⊢wkMot []ₐ) (⊢caseS []ᵈ dS ⊢wkMot perS)
+  ⊢wkS : ((Γ ▹ Nat) ▹ wkMot) ⊢ wkS ∷ subTy nrs wkMot
+  ⊢wkS = ⊢lam (ty-Fin (⊢nsuc (⊢var (there here))))
+           (⊢fcase (ty-Fin (⊢nsuc (⊢nsuc (⊢var (there (there (there here)))))))
+                   (⊢var here)
+                   (⊢fzero (⊢nsuc (⊢var (there (there here)))))
+                   (⊢fsuc (⊢app (⊢var (there (there here))) (⊢var here))))
 
 ------------------------------------------------------------------------
--- 3. ★★★ OBJECT-LEVEL WEAKENING: `Fin n → Fin (suc n)`, by `ielim`.
+-- 3. ★★★ OBJECT-LEVEL WEAKENING: `Fin n → Fin (suc n)`, by `natrec`.
 ------------------------------------------------------------------------
 
 wkFinTm : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ
-wkFinTm n k = ielim FinD n wkM k
+wkFinTm n k = app (natrec wkZ wkS n) k
 
--- ⚠ ONE `wk-single`: `iinst n k M` weakens the index past the scrutinee
---   binder and substitutes it back — the residue every two-slot motive pays.
 ⊢wkFinTm : {Γ : Ctx} {n k : RTm ⌊ Γ ⌋} →
-           Γ ⊢ n ∷ El ⌜Nat⌝ → Γ ⊢ k ∷ FinI n → Γ ⊢ wkFinTm n k ∷ FinI (nsuc n)
-⊢wkFinTm {n = n} dn dk =
-  ⊢-cast (cong (λ z → FinI (nsuc z)) (wk-single n))
-    (⊢ielim ⊢⌜Nat⌝ ⊢FinD ⊢wkMot ⊢wkM dn dk)
+           Γ ⊢ n ∷ El ⌜Nat⌝ → Γ ⊢ k ∷ Fin n → Γ ⊢ wkFinTm n k ∷ Fin (nsuc n)
+⊢wkFinTm {n = n} {k} dn dk =
+  ⊢-cast (cong (λ z → Fin (nsuc z)) (wk-cancel-tm k n))
+    (⊢app (⊢natrec ⊢wkMot ⊢wkZ ⊢wkS (fromI dn)) dk)
 
 ------------------------------------------------------------------------
--- 4. ★★ …AND IT COMPUTES: `fz : Fin 1` weakens to `fzero` at index 2 —
---    the index case, the tag selection, two β.
+-- 4. ★★ …AND IT COMPUTES: `fzero : Fin 1` weakens to `fzero` at index 2 —
+--    one natrec step, one β, one fcase.
 ------------------------------------------------------------------------
 
-wk-fz : {Γ : Cx} → wkFinTm {Γ} (nsuc nzero) ffz ⟶* ffz
-wk-fz {Γ} =
-  ⟶*-trans ιN-s
-    (subst' (λ X → app (app X q) h ⟶* ffz) (sym (methAt-sub (single nzero) WkMs))
-      (⟶*-trans (methAt-β nth-z) (step (ξ-appˡ (β _ _)) (step (β _ _) done))))
-  where
-    q : RTm Γ
-    q = pair (tag zero) unit
-    h = dih FinD wkM (app FinD (nsuc nzero)) q
+wk-fz : {Γ : Cx} → wkFinTm {Γ} (nsuc nzero) fzero ⟶* fzero
+wk-fz = step (ξ-appˡ (natrec-suc _ _ _)) (step (β _ _) (step (fcase-z _ _) done))
