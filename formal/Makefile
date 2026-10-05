@@ -216,6 +216,11 @@ pragma-gate:
 public-gate:
 	@scripts/public-gate.sh
 
+.PHONY: warning-gate
+# Plan 0.109 S0: no new Agda warning in the apex/compiler closure; the baseline only shrinks.
+warning-gate:
+	@scripts/warning-gate.sh
+
 .PHONY: malonzo
 malonzo:
 	@if [ -z "$$AGDA_SAFE_ACTIVE" ] && [ -z "$$AGDA_SAFE_DISABLE" ]; then \
