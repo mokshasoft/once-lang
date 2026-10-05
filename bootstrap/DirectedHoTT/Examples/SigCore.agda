@@ -8,9 +8,10 @@
 -- ⚠ Needs the COMPACTING COLLECTOR (`+RTS -c`): the checker run `wf` peaks
 --   at ~4.6 GB and is killed at the cap without it (2026-10-05).
 --
--- `Lib/Syn`'s signatures, their decoder `SD` and the generic TRAVERSAL
--- (`Lib/SynTrav`: renaming, substitution) as core definitions checked by
--- `Algorithm/SigBuild` — no derivation written.  A signature is a FINITE
+-- `Lib/Syn`'s signatures, their decoder `SD` and the generic traversal's
+-- FIELD steps (`Lib/SynTrav`) as core definitions checked by
+-- `Algorithm/SigBuild` — no derivation written.  The traversal's method,
+-- the traversal and its kits are the segment `Examples/SigMeth`.  A signature is a FINITE
 -- MAP, so it is represented as one (Fin-indexed functions), with `vs` the
 -- sort of the variables:
 --
@@ -21,15 +22,15 @@
 --
 -- ★ A variable shape carries `vs = s`: the Lib's `VarsAt` hypothesis, as
 --   DATA of the signature (once, not per term).  The traversal's variable
---   case transports the kit's node along it; at a concrete signature it is
---   `idrefl`, and the transport computes away.
+--   case (`SigMeth`) transports the kit's node along it; at a concrete
+--   signature it is `idrefl`, and the transport computes away.
 --
 -- ★ The decoder has the Lib's `SD` normal form EXACTLY (map, then
 --   tabulate as a `fcase` cascade): so the core's `#SD … ⌜KSig⌝` is
 --   CONVERTIBLE with the Knot's `KD`, and the Knot can move onto the core
 --   one family at a time.  A generic program follows the decoder in
---   LOCKSTEP: `#walk` walks a table of descriptions, `tfBody`/`tBody`
---   generate the decoder's bodies that its convoy motives reuse.
+--   LOCKSTEP (`SigMeth`'s cascades); `tfBody`/`tBody` generate the
+--   decoder's bodies that its convoy motives reuse.
 --
 -- Variables in the entries are written by LEVEL (`L ℓ`, position from the
 -- root), so they do not shift under binders.
@@ -122,24 +123,13 @@ pattern #telFs = 12     -- a field list (natrec on its length)
 pattern #tel   = 13     -- ★ a shape's telescope at an index
 pattern #tabD  = 14     -- a table of descriptions as a case cascade
 pattern #SD    = 15     -- ★ the decoder: per sort its table, mapped, then tabulated
-pattern #walk  = 16     -- ★ a generic program's walk over such a table
-pattern #lift  = 17     -- an environment, under a binder
-pattern #lifts = 18     -- …under k binders
-pattern #rnF   = 19     -- ★ the traversal, one field (lockstep with telF)
-pattern #rnFs  = 20     --   a field list (lockstep with telFs)
-pattern #rnM   = 21     --   the method (a case on the shape)
-pattern #trav  = 22     -- ★ THE TRAVERSAL, generic in signature and kit
-pattern #lamΣ  = 23     -- the scoped λ-calculus
-pattern #KΣ    = 24     -- ★ the Knot's signature, quoted
-pattern #rVF   = 25     -- the renaming kit: values are variables
-pattern #rWK   = 26
-pattern #rV0   = 27
-pattern #rNλ   = 28     --   its variable node, per signature
-pattern #rNK   = 29
-pattern #sVF   = 30     -- ★ the substitution kit: values are terms of sort vs
-pattern #sWK   = 31     --   (weakening a value is renaming it)
-pattern #sV0   = 32
-pattern #sN    = 33
+pattern #lift  = 16     -- an environment, under a binder
+pattern #lifts = 17     -- …under k binders
+pattern #rnF   = 18     -- ★ the traversal, one field (lockstep with telF)
+pattern #rnFs  = 19     --   a field list (lockstep with telFs)
+pattern #lamΣ  = 20     -- the scoped λ-calculus
+pattern #KΣ    = 21     -- ★ the Knot's signature, quoted
+-- the traversal's method, the traversal and its kits: `Examples/SigMeth`
 
 ------------------------------------------------------------------------
 -- Generators.  Their T arguments are levels or closed terms.
@@ -202,8 +192,6 @@ private
   WKt V0t : T → TT
   WKt VF = Π Nat (Π (El (app VF v₀)) (El (app VF (nsuc v₁))))
   V0t VF = Π Nat (El (app VF (nsuc v₀)))
-  NODEt : (n v sg VF : T) → TT
-  NODEt n v sg VF = Π Nat (Π (El (app VF v₀)) (MUg n v sg (pair □ᵀ □ᵀ v v₁)))
 
   TFe : {Γ : Cx} → STm Γ → STm Γ → STm Γ → STm Γ → STm Γ
   TFe n i f rest = app⁴ (ref #telF) n i f rest
@@ -215,9 +203,6 @@ private
     lam □ᵀ (dσ □ (⌜Fin⌝ (fst (app sg v₀)))
                  (app³ (ref #tabD) n (fst (app sg v₀))
                        (lam □ᵀ (app⁴ (app (ref #tel) n) v v₁ (app (snd (app sg v₁)) v₀) i))))
-  -- a table applied to its tag
-  TabApp : (n : T) {Γ : Cx} → STm Γ → STm Γ → STm Γ → STm Γ
-  TabApp n m G s = app (app³ (ref #tabD) n m G) s
   TFs : {Γ : Cx} → STm Γ → STm Γ → STm Γ → STm Γ → STm Γ
   TFs n i len fs = app⁴ (ref #telFs) n i len fs
 
@@ -232,8 +217,8 @@ private
   infixr 5 _++_
 
   -- ★ the traversal's globals, by level
-  N VS SG VF WK V0 NODE : T
-  N = L 0 ; VS = L 1 ; SG = L 2 ; VF = L 3 ; WK = L 4 ; V0 = L 5 ; NODE = L 6
+  N VS SG VF WK V0 : T
+  N = L 0 ; VS = L 1 ; SG = L 2 ; VF = L 3 ; WK = L 4 ; V0 = L 5
 
   -- n , vs , sg , VF , WK , V0
   kit : List TT
@@ -332,9 +317,9 @@ libΣ = (LS.vʰ LS.∷ˢʰ (LS.rec 0 1 LS.∷ʰ LS.[]ʰ) LS.∷ˢʰ (LS.rec 0 0 
 ------------------------------------------------------------------------
 
 ty-SI ty-add ty-FlC ty-Fld ty-ShC ty-Shape ty-Sig ty-telV ty-dRec ty-dNat ty-dCls ty-telF ty-telFs ty-tel
-  ty-tabD ty-SD ty-walk ty-lift ty-lifts ty-rnF ty-rnFs ty-rnM ty-trav ty-lamΣ ty-KΣ ty-rVF ty-rWK ty-rV0 ty-rNλ ty-rNK ty-sVF ty-sWK ty-sV0 ty-sN : STy ε
+  ty-tabD ty-SD ty-lift ty-lifts ty-rnF ty-rnFs ty-lamΣ ty-KΣ : STy ε
 tm-SI tm-add tm-FlC tm-Fld tm-ShC tm-Shape tm-Sig tm-telV tm-dRec tm-dNat tm-dCls tm-telF tm-telFs tm-tel
-  tm-tabD tm-SD tm-walk tm-lift tm-lifts tm-rnF tm-rnFs tm-rnM tm-trav tm-lamΣ tm-KΣ tm-rVF tm-rWK tm-rV0 tm-rNλ tm-rNK tm-sVF tm-sWK tm-sV0 tm-sN : STm ε
+  tm-tabD tm-SD tm-lift tm-lifts tm-rnF tm-rnFs tm-lamΣ tm-KΣ : STm ε
 
 ty-SI = Π Nat U
 tm-SI = lam □ᵀ (⌜Σ⌝ (⌜Fin⌝ (L 0)) ⌜Nat⌝)
@@ -401,43 +386,6 @@ tm-tabD = λ⁺ 2 (natrec (Π (Π (Fin v₀) (Dt (L 0))) (Π (Fin v₁) (Dt (L 0
 -- ★ SD n vs sg i : per sort its table (mapped), then tabulated — the Lib's form
 ty-SD = Π Nat (Π (Fin v₀) (Π (SigT v₁ v₀) (Π (El (SIc v₂)) (Dt v₃))))
 tm-SD = λ⁺ 4 (app (app³ (ref #tabD) (L 0) (L 0) (persortG (L 0) (L 1) (L 2) (L 3))) (fst (L 3)))
-
--- ★ walk … m Gi Ge R f s p h mk : a generic program over a table of m
---   descriptions, in lockstep with `tabD` — at entry s, `f s` (given the
---   payload, its hypotheses, and how to build the result from a payload
---   of the OUTPUT table).  [n vs sg VF m Gi Ge R f s p h mk]
-private
-  GT : TT
-  GT = Π (Fin (L 4)) (Dt N)
-  FT : TT
-  FT = Π (Fin (L 4)) (Π (PAYg N VS SG (app (L 5) (L 8))) (Π (DIhg N VS SG VF (app (L 5) (L 8)) (L 9))
-         (Π (Π (PAYg N VS SG (app (L 6) (L 8))) (El (app (L 7) (L 8)))) (El (app (L 7) (L 8))))))
-
-ty-walk = Πˢ (Nat ∷ Fin N ∷ SigT N VS ∷ Π Nat U ∷ Nat ∷ GT ∷ GT ∷ Π (Fin (L 4)) U ∷ FT ∷ Fin (L 4)
-              ∷ PAYg N VS SG (TabApp N (L 4) (L 5) (L 9)) ∷ DIhg N VS SG VF (TabApp N (L 4) (L 5) (L 9)) (L 10)
-              ∷ Π (PAYg N VS SG (TabApp N (L 4) (L 6) (L 9))) (El (app (L 7) (L 9))) ∷ [])
-             (El (app (L 7) (L 9)))
-tm-walk = λ⁺ 5 (natrec MOTW (λ⁺ 8 (fcase0 □ᵀ (L 9))) SW (L 4))
-  where
-    MOTW : {Γ : Cx} → STy (Γ ∙)
-    MOTW = Πˢ (Π (Fin (L 5)) (Dt N) ∷ Π (Fin (L 5)) (Dt N) ∷ Π (Fin (L 5)) U
-               ∷ Π (Fin (L 5)) (Π (PAYg N VS SG (app (L 6) (L 9))) (Π (DIhg N VS SG VF (app (L 6) (L 9)) (L 10))
-                   (Π (Π (PAYg N VS SG (app (L 7) (L 9))) (El (app (L 8) (L 9)))) (El (app (L 8) (L 9))))))
-               ∷ Fin (L 5) ∷ PAYg N VS SG (TabApp N (L 5) (L 6) (L 10)) ∷ DIhg N VS SG VF (TabApp N (L 5) (L 6) (L 10)) (L 11)
-               ∷ Π (PAYg N VS SG (TabApp N (L 5) (L 7) (L 10))) (El (app (L 8) (L 10))) ∷ [])
-              (El (app (L 8) (L 10)))
-    -- [m ih] Gi Ge R f s p h mk: a case on s, the tail through ih
-    SW : T
-    SW = λ⁺ 8 (app³ (fcase □ MOTS (L 11) (app (L 10) (fzero □))
-                           ((L 6) · (lam □ᵀ (app (L 7) (fsuc □ (L 16))) ∷ lam □ᵀ (app (L 8) (fsuc □ (L 16)))
-                                     ∷ lam □ᵀ (app (L 9) (fsuc □ (L 16))) ∷ lam □ᵀ (app (L 10) (fsuc □ (L 16))) ∷ L 15 ∷ [])))
-                    (L 12) (L 13) (L 14))
-      where
-        MOTS : {Γ : Cx} → STy (Γ ∙)
-        MOTS = Π (PAYg N VS SG (TabApp N (nsuc (L 5)) (L 7) (L 15)))
-                 (Π (DIhg N VS SG VF (TabApp N (nsuc (L 5)) (L 7) (L 15)) (L 16))
-                    (Π (Π (PAYg N VS SG (TabApp N (nsuc (L 5)) (L 8) (L 15))) (El (app (L 9) (L 15))))
-                       (El (app (L 9) (L 15)))))
 
 -- lift VF WK V0 d e σ = λ x. case x of 0 ↦ V0 e ; suc y ↦ WK e (σ y)
 ty-lift = Π (Π Nat U) (Π (WKt (L 0)) (Π (V0t (L 0)) (Π Nat (Π Nat (Π (EnvT (L 0) (L 3) (L 4)) (EnvT (L 0) (nsuc (L 3)) (nsuc (L 4))))))))
@@ -507,96 +455,11 @@ tm-rnFs = λ⁺ 10 (natrec MOTN (λ⁺ 3 unit) SN (L 9))
                            ∷ TFs N (L 6) (L 10) TAIL ∷ TFs N (IX (L 6) (L 7)) (L 10) TAIL
                            ∷ λ⁺ 2 (app³ (L 11) TAIL (L 15) (L 16)) ∷ L 13 ∷ L 14 ∷ []))
 
--- ★ the method: [kit… NODE i p h e σ] — walk the decoder's tables (sorts,
---   then the sort's constructors); at constructor k a case on its shape:
---   fields rebuild the node (`mk`), a variable is the kit's NODE moved
---   from the variable sort to this one along the signature's proof
-ty-rnM = Πˢ (kit ++ NODEt N VS SG VF ∷ El (SIc N) ∷ PAYg N VS SG (app (SDg N VS SG) (L 7))
-                 ∷ DIhg N VS SG VF (app (SDg N VS SG) (L 7)) (L 8) ∷ Nat ∷ EnvT VF (snd (L 7)) (L 10) ∷ [])
-            (MUg N VS SG (IX (L 7) (L 10)))
-tm-rnM = λ⁺ 12 (ref #walk · (N ∷ VS ∷ SG ∷ VF ∷ N ∷ persortG N VS SG (L 7) ∷ persortG N VS SG (IX (L 7) (L 10))
-                             ∷ lam □ᵀ (⌜IMu⌝ (SIc N) (SDg N VS SG) (pair □ᵀ □ᵀ (L 12) (L 10)))
-                             ∷ FSORT ∷ fst (L 7) ∷ L 8 ∷ L 9 ∷ lam □ᵀ (con □ □ □ (L 12)) ∷ []))
-  where
-    -- constructor k (L 16) of sort s (L 12): its payload p' h' and builder mk'
-    MUse : TT
-    MUse = MUg N VS SG (pair □ᵀ □ᵀ (L 12) (L 10))
-    FCONS : T
-    FCONS = λ⁺ 4 (app³ (app (fcase □ MOTM (fst SHk) FB VB) (snd SHk)) (L 17) (L 18) (L 19))
-      where
-        SHk : T
-        SHk = app (snd (app SG (L 12))) (L 16)
-        MOTM : {Γ : Cx} → STy (Γ ∙)
-        MOTM = Π (El (ShC N VS (L 12) (L 20)))
-                 (Π (PAYg N VS SG (tBody N VS (L 12) (L 7) (L 20) (L 21)))
-                    (Π (DIhg N VS SG VF (tBody N VS (L 12) (L 7) (L 20) (L 21)) (L 22))
-                       (Π (Π (PAYg N VS SG (tBody N VS (L 12) (IX (L 7) (L 10)) (L 20) (L 21))) MUse) MUse)))
-        FB : T
-        FB = λ⁺ 4 (app (L 23) (ref #rnFs · (N ∷ VS ∷ SG ∷ VF ∷ WK ∷ V0 ∷ L 7 ∷ L 10 ∷ L 11
-                                             ∷ fst (L 20) ∷ snd (L 20) ∷ L 21 ∷ L 22 ∷ [])))
-        VB : T
-        VB = fcase □ MOTV (L 20)
-               (λ⁺ 4 (jsub □ᵀ □ □ (⌜IMu⌝ (SIc N) (SDg N VS SG) (pair □ᵀ □ᵀ (L 25) (L 10))) (L 21)
-                            (app² NODE (L 10) (app (L 11) (fst (L 22))))))
-               (fcase0 □ᵀ (L 21))
-          where
-            MOTV : {Γ : Cx} → STy (Γ ∙)
-            MOTV = Π (El (ShC N VS (L 12) (fsuc □ (L 21))))
-                     (Π (PAYg N VS SG (tBody N VS (L 12) (L 7) (fsuc □ (L 21)) (L 22)))
-                        (Π (DIhg N VS SG VF (tBody N VS (L 12) (L 7) (fsuc □ (L 21)) (L 22)) (L 23))
-                           (Π (Π (PAYg N VS SG (tBody N VS (L 12) (IX (L 7) (L 10)) (fsuc □ (L 21)) (L 22))) MUse) MUse)))
-    -- sort s (L 12), its payload p, hypotheses h, builder mk: walk its table
-    FSORT : T
-    FSORT = λ⁺ 4 (ref #walk · (N ∷ VS ∷ SG ∷ VF ∷ fst (app SG (L 12))
-                                ∷ lam □ᵀ (app⁴ (app (ref #tel) N) VS (L 12) (app (snd (app SG (L 12))) (L 16)) (L 7))
-                                ∷ lam □ᵀ (app⁴ (app (ref #tel) N) VS (L 12) (app (snd (app SG (L 12))) (L 16)) (IX (L 7) (L 10)))
-                                ∷ lam □ᵀ (⌜IMu⌝ (SIc N) (SDg N VS SG) (pair □ᵀ □ᵀ (L 12) (L 10)))
-                                ∷ FCONS ∷ fst (L 13) ∷ snd (L 13) ∷ L 14
-                                ∷ lam □ᵀ (app (L 15) (pair □ᵀ □ᵀ (fst (L 13)) (L 16))) ∷ []))
-
--- ★ trav … NODE s d t e σ : the term t of sort s, from depth d to e
-ty-trav = Πˢ (kit ++ NODEt N VS SG VF ∷ Fin N ∷ Nat ∷ MUg N VS SG (pair □ᵀ □ᵀ (L 7) (L 8)) ∷ Nat ∷ EnvT VF (L 8) (L 10) ∷ [])
-             (MUg N VS SG (pair □ᵀ □ᵀ (L 7) (L 10)))
-tm-trav = λ⁺ 12 (app² (ielim □ (SDg N VS SG) (TMg N VS SG VF) (pair □ᵀ □ᵀ (L 7) (L 8))
-                             (ref #rnM · (N ∷ VS ∷ SG ∷ VF ∷ WK ∷ V0 ∷ NODE ∷ [])) (L 9))
-                      (L 10) (L 11))
-
 -- the signatures
 ty-lamΣ = SigT n₁ (fzero □)
 tm-lamΣ = ⌜ libΣ ⌝Σ 0
 ty-KΣ = SigT n₂ (fsuc □ (fzero □))
 tm-KΣ = ⌜ KSig ⌝Σ 1
-
--- ★ the renaming kit: values are variables
-ty-rVF = Π Nat U
-tm-rVF = lam □ᵀ (⌜Fin⌝ (L 0))
-ty-rWK = WKt (ref #rVF)
-tm-rWK = λ⁺ 2 (fsuc □ (L 1))
-ty-rV0 = V0t (ref #rVF)
-tm-rV0 = lam □ᵀ (fzero □)
--- …and its variable node, per signature (constructor 0 of the variable sort)
-ty-rNλ = NODEt n₁ (fzero □) (ref #lamΣ) (ref #rVF)
-tm-rNλ = λ⁺ 2 (con □ □ □ (pair □ᵀ □ᵀ (fzero □) (pair □ᵀ □ᵀ (L 1) unit)))
-ty-rNK = NODEt n₂ (fsuc □ (fzero □)) (ref #KΣ) (ref #rVF)
-tm-rNK = λ⁺ 2 (con □ □ □ (pair □ᵀ □ᵀ (fzero □) (pair □ᵀ □ᵀ (L 1) unit)))
-
--- ★ the substitution kit, generic in the signature (given its variable
---   node at the renaming kit): [n vs sg rN]
-private
-  rNt : TT
-  rNt = NODEt N VS SG (ref #rVF)
-  sVF : T
-  sVF = app³ (ref #sVF) N VS SG
-
-ty-sVF = Π Nat (Π (Fin v₀) (Π (SigT v₁ v₀) (Π Nat U)))
-tm-sVF = λ⁺ 4 (⌜IMu⌝ (SIc N) (SDg N VS SG) (pair □ᵀ □ᵀ VS (L 3)))
-ty-sWK = Πˢ (Nat ∷ Fin N ∷ SigT N VS ∷ rNt ∷ []) (WKt sVF)
-tm-sWK = λ⁺ 6 (ref #trav · (N ∷ VS ∷ SG ∷ ref #rVF ∷ ref #rWK ∷ ref #rV0 ∷ L 3
-                            ∷ VS ∷ L 4 ∷ L 5 ∷ nsuc (L 4) ∷ lam □ᵀ (fsuc □ (L 6)) ∷ []))
-ty-sV0 = Πˢ (Nat ∷ Fin N ∷ SigT N VS ∷ rNt ∷ []) (V0t sVF)
-tm-sV0 = λ⁺ 5 (app² (L 3) (nsuc (L 4)) (fzero □))
-ty-sN = Πˢ (Nat ∷ Fin N ∷ SigT N VS ∷ []) (NODEt N VS SG sVF)
-tm-sN = λ⁺ 5 (L 4)
 
 ------------------------------------------------------------------------
 -- The table, in entry order.
@@ -610,16 +473,16 @@ private
 
 tys : ℕ → STy ε
 tys = at Unit (ty-SI ∷ ty-add ∷ ty-FlC ∷ ty-Fld ∷ ty-ShC ∷ ty-Shape ∷ ty-Sig ∷ ty-telV ∷ ty-dRec ∷ ty-dNat ∷ ty-dCls
-               ∷ ty-telF ∷ ty-telFs ∷ ty-tel ∷ ty-tabD ∷ ty-SD ∷ ty-walk ∷ ty-lift ∷ ty-lifts ∷ ty-rnF ∷ ty-rnFs ∷ ty-rnM
-               ∷ ty-trav ∷ ty-lamΣ ∷ ty-KΣ ∷ ty-rVF ∷ ty-rWK ∷ ty-rV0 ∷ ty-rNλ ∷ ty-rNK ∷ ty-sVF ∷ ty-sWK ∷ ty-sV0 ∷ ty-sN ∷ [])
+               ∷ ty-telF ∷ ty-telFs ∷ ty-tel ∷ ty-tabD ∷ ty-SD ∷ ty-lift ∷ ty-lifts ∷ ty-rnF ∷ ty-rnFs
+               ∷ ty-lamΣ ∷ ty-KΣ ∷ [])
 
 tms : ℕ → STm ε
 tms = at unit (tm-SI ∷ tm-add ∷ tm-FlC ∷ tm-Fld ∷ tm-ShC ∷ tm-Shape ∷ tm-Sig ∷ tm-telV ∷ tm-dRec ∷ tm-dNat ∷ tm-dCls
-               ∷ tm-telF ∷ tm-telFs ∷ tm-tel ∷ tm-tabD ∷ tm-SD ∷ tm-walk ∷ tm-lift ∷ tm-lifts ∷ tm-rnF ∷ tm-rnFs ∷ tm-rnM
-               ∷ tm-trav ∷ tm-lamΣ ∷ tm-KΣ ∷ tm-rVF ∷ tm-rWK ∷ tm-rV0 ∷ tm-rNλ ∷ tm-rNK ∷ tm-sVF ∷ tm-sWK ∷ tm-sV0 ∷ tm-sN ∷ [])
+               ∷ tm-telF ∷ tm-telFs ∷ tm-tel ∷ tm-tabD ∷ tm-SD ∷ tm-lift ∷ tm-lifts ∷ tm-rnF ∷ tm-rnFs
+               ∷ tm-lamΣ ∷ tm-KΣ ∷ [])
 
 open import DirectedHoTT.Algorithm.SigBuild using ( module SigBuild )
-open SigBuild 34 tys tms 1000 public
+open SigBuild 22 tys tms 1000 public
 
 open import normalizer.Syntax.Types using ( _≡_; refl; _×_; _,_ )
 open import DirectedHoTT.Spec.Signature using ( Sig )

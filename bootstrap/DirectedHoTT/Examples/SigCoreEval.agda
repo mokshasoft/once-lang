@@ -20,7 +20,7 @@ open import DirectedHoTT.Algorithm.ConvLazy using ( normLazy )
 open import DirectedHoTT.Algorithm.NbE using ( nbe )
 open import normalizer.Syntax.Types using ( _,_ )
 open import DirectedHoTT.Lib.Sugar using ( tag )
-open import DirectedHoTT.Examples.SigCore using ( S )
+open import DirectedHoTT.Examples.SigMeth using ( S )
 
 -- ★ the NORMAL-ORDER reduct (`Algorithm/ConvLazy.normLazy`): weak-head
 --   first, so an unapplied generic definition is never normalised; a

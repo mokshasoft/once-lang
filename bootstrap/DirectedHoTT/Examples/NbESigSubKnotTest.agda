@@ -25,6 +25,7 @@ open import DirectedHoTT.Lib.NatNum using ( num )
 open import DirectedHoTT.Lib.Sugar using ( tag )
 open import DirectedHoTT.Examples.Knot.Terms using ( quoteTm )
 open import DirectedHoTT.Examples.SigCore
+open import DirectedHoTT.Examples.SigMeth using ( #trav; #rVF; #rWK; #rV0; #rNλ; #rNK; #sVF; #sWK; #sV0; #sN )
 open import DirectedHoTT.Examples.SigCoreEval
 open import Agda.Builtin.Bool using ( Bool; true; false )
 open import DirectedHoTT.Algorithm.DecEq using ( _≟Tm_; yes; no )
