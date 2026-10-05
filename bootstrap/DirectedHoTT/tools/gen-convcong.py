@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-#!/usr/bin/env python3
 # Generates Algorithm/ConvCong.agda: one conversion congruence per term
 # former, `a₁ ≅ b₁ → … → C a₁ … ≅ C b₁ …`, from `Spec/Syntax`'s RTm
 # constructors and `Spec/Typing`'s ξ-rules (one per argument position).
