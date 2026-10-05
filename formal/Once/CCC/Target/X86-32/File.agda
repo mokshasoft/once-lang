@@ -31,6 +31,7 @@ open import Data.Sum using (_⊎_)
 import Data.Unit
 
 open import Once.CCC.Label using (labelSym; thunkSym)
+open import Once.Target.AsmSymbol using (AsmSym)
 open import Once.CCC.Target.X86-32.Syntax
 open import Once.CCC.Target.X86-32.Emit using (instrToLine)
 open import Once.Arith.Backend.XInstr.Syntax using (XProgram)
@@ -81,8 +82,14 @@ blocks-text : List (String × Payload) → String
 blocks-text []               = ""
 blocks-text ((s , p) ∷ bs)   = emit-payload s p ++ˢ blocks-text bs
 
+-- D272: the externs are PART of the text. Leaving them out made `print` identify
+-- images that differ only in `externs`, and `as-faithful` then proved ⊥.
+externs-text : List String → String
+externs-text []       = ""
+externs-text (s ∷ ss) = ".extern " ++ˢ s ++ˢ "\n" ++ˢ externs-text ss
+
 print : Image → String
-print F = preamble ++ˢ code-text (entry F) 0 (code F) ++ˢ blocks-text (blocks F)
+print F = preamble ++ˢ externs-text (externs F) ++ˢ code-text (entry F) 0 (code F) ++ˢ blocks-text (blocks F)
 
 ------------------------------------------------------------------------
 -- WHAT `as` (WITH `ld`) DEMANDS OF A FILE. Every symbol the text defines is
@@ -127,3 +134,8 @@ record AsmWF (F : Image) : Set where
     defined-once : Unique (defs F)
     resolved     : All (λ s → s ∈ defs F ⊎ s ∈ externs F) (refs (code F))
     entry-in     : EntryIn (entry F) (length (code F))
+    -- D272: every symbol is one `as` reads as a symbol name, so no symbol can
+    -- carry text of its own (a newline and an instruction) into the file.
+    -- References need no clause: `resolved` puts each among these.
+    defs-valid    : All AsmSym (defs F)
+    externs-valid : All AsmSym (externs F)

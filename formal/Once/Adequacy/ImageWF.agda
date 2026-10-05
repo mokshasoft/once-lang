@@ -46,6 +46,7 @@ open import Once.Arith.Machine.IR using (ArithBlock)
 open Once.Arith.Machine.IR.ArithBlock using (block-body)
 open import Once.Arith.SigOp.Block using (block-name)
 open import Once.Target.Symbol using (once-symbol-own)
+open import Once.Target.AsmSymbol using (AsmSym)
 open import Once.Compile using (Module; moduleToIR; moduleTable; image-of; program-blocks; rewrite-program;
                                 lib-image; lib-blocks; dedup-blocks)
 open import Once.Adequacy.EmitFile using (moduleExterns)
@@ -98,3 +99,13 @@ postulate
   lib-unique    : ∀ (m : Module) → moduleToIR m ≡ nothing → Unique (lib-defs m)
   lib-resolved  : ∀ (m : Module) → moduleToIR m ≡ nothing
                 → Resolved (lib-defs m) (moduleExterns m) (arefs (lib-image (moduleTable m)))
+  -- D272 / plan 0.107 §8 step 1: every symbol the file defines or declares
+  -- external is an `as` symbol name. TRUE by construction: the symbols are
+  -- `once-symbol-path` of lexer identifiers (z-encoded, so letters, digits, `_`)
+  -- and of arith-block names (letters, digits, `_`, `.`), `labelSym`s, and the
+  -- fixed `once_heap_base`/`_start`. Discharged with uniqueness (step 4), which
+  -- needs the same per-component identifier facts.
+  prog-defs-valid : ∀ (m : Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) → moduleToIR m ≡ just ir
+                  → All AsmSym (prog-defs (irProgram (moduleTable m) ir))
+  lib-defs-valid  : ∀ (m : Module) → moduleToIR m ≡ nothing → All AsmSym (lib-defs m)
+  externs-valid   : ∀ (m : Module) → All AsmSym (moduleExterns m)
