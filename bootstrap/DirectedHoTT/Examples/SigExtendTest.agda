@@ -4,7 +4,7 @@
 ------------------------------------------------------------------------
 -- OCP-0009 · EXAMPLES — ★ A SIGNATURE EXTENDED IN ANOTHER MODULE.
 --
--- `Examples/SigCore`'s signature (34 entries, checked there) is extended
+-- `Examples/SigCore`'s signature (22 entries, checked there) is extended
 -- here by two entries that refer into it.  The base's proof `SigCore.wf`
 -- is REUSED: `WfSig (S ▸ˢ e)` is `WfSig S × EntryWf S e` definitionally
 -- (`Metatheory/Signature`), so only the new entries are checked — this
@@ -25,12 +25,12 @@ open import DirectedHoTT.Algorithm.NbE using ( nbe )
 open import DirectedHoTT.Lib.NatNum using ( num )
 import DirectedHoTT.Examples.SigCore as Base
 
--- references are ABSOLUTE (the base has 34 entries); the tables below are
+-- references are ABSOLUTE (the base has 22 entries); the tables below are
 -- indexed by the new entry's position in this segment
 pattern #add    = 1
 #double #four : ℕ
-#double = 34
-#four   = 35
+#double = 22
+#four   = 23
 
 interleaved mutual
   tys : ℕ → STy ε
