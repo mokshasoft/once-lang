@@ -133,6 +133,10 @@ pattern #rWK   = 26
 pattern #rV0   = 27
 pattern #rNλ   = 28     --   its variable node, per signature
 pattern #rNK   = 29
+pattern #sVF   = 30     -- ★ the substitution kit: values are terms of sort vs
+pattern #sWK   = 31     --   (weakening a value is renaming it)
+pattern #sV0   = 32
+pattern #sN    = 33
 
 ------------------------------------------------------------------------
 -- Generators.  Their T arguments are levels or closed terms.
@@ -314,9 +318,9 @@ libΣ = (LS.vʰ LS.∷ˢʰ (LS.rec 0 1 LS.∷ʰ LS.[]ʰ) LS.∷ˢʰ (LS.rec 0 0 
 ------------------------------------------------------------------------
 
 ty-SI ty-add ty-FlC ty-Fld ty-ShC ty-Shape ty-Sig ty-telV ty-dRec ty-dNat ty-dCls ty-telF ty-telFs ty-tel
-  ty-tabD ty-SDℓ ty-SD ty-lift ty-lifts ty-rnF ty-rnFs ty-rnM ty-trav ty-lamΣ ty-KΣ ty-rVF ty-rWK ty-rV0 ty-rNλ ty-rNK : STy ε
+  ty-tabD ty-SDℓ ty-SD ty-lift ty-lifts ty-rnF ty-rnFs ty-rnM ty-trav ty-lamΣ ty-KΣ ty-rVF ty-rWK ty-rV0 ty-rNλ ty-rNK ty-sVF ty-sWK ty-sV0 ty-sN : STy ε
 tm-SI tm-add tm-FlC tm-Fld tm-ShC tm-Shape tm-Sig tm-telV tm-dRec tm-dNat tm-dCls tm-telF tm-telFs tm-tel
-  tm-tabD tm-SDℓ tm-SD tm-lift tm-lifts tm-rnF tm-rnFs tm-rnM tm-trav tm-lamΣ tm-KΣ tm-rVF tm-rWK tm-rV0 tm-rNλ tm-rNK : STm ε
+  tm-tabD tm-SDℓ tm-SD tm-lift tm-lifts tm-rnF tm-rnFs tm-rnM tm-trav tm-lamΣ tm-KΣ tm-rVF tm-rWK tm-rV0 tm-rNλ tm-rNK tm-sVF tm-sWK tm-sV0 tm-sN : STm ε
 
 ty-SI = Π Nat U
 tm-SI = lam □ᵀ (⌜Σ⌝ (⌜Fin⌝ (L 0)) ⌜Nat⌝)
@@ -524,6 +528,24 @@ tm-rNλ = λ⁺ 2 (con □ □ □ (pair □ᵀ □ᵀ (fzero □) (pair □ᵀ 
 ty-rNK = NODEt n₂ (fsuc □ (fzero □)) (ref #KΣ) (ref #rVF)
 tm-rNK = λ⁺ 2 (con □ □ □ (pair □ᵀ □ᵀ (fzero □) (pair □ᵀ □ᵀ (L 1) unit)))
 
+-- ★ the substitution kit, generic in the signature (given its variable
+--   node at the renaming kit): [n vs sg rN]
+private
+  rNt : TT
+  rNt = NODEt N VS SG (ref #rVF)
+  sVF : T
+  sVF = app³ (ref #sVF) N VS SG
+
+ty-sVF = Π Nat (Π (Fin v₀) (Π (SigT v₁ v₀) (Π Nat U)))
+tm-sVF = λ⁺ 4 (⌜IMu⌝ (SIc N) (SDg N VS SG) (pair □ᵀ □ᵀ VS (L 3)))
+ty-sWK = Πˢ (Nat ∷ Fin N ∷ SigT N VS ∷ rNt ∷ []) (WKt sVF)
+tm-sWK = λ⁺ 6 (ref #trav · (N ∷ VS ∷ SG ∷ ref #rVF ∷ ref #rWK ∷ ref #rV0 ∷ L 3
+                            ∷ VS ∷ L 4 ∷ L 5 ∷ nsuc (L 4) ∷ lam □ᵀ (fsuc □ (L 6)) ∷ []))
+ty-sV0 = Πˢ (Nat ∷ Fin N ∷ SigT N VS ∷ rNt ∷ []) (V0t sVF)
+tm-sV0 = λ⁺ 5 (app² (L 3) (nsuc (L 4)) (fzero □))
+ty-sN = Πˢ (Nat ∷ Fin N ∷ SigT N VS ∷ []) (NODEt N VS SG sVF)
+tm-sN = λ⁺ 5 (L 4)
+
 ------------------------------------------------------------------------
 -- The table, in entry order.
 ------------------------------------------------------------------------
@@ -537,14 +559,14 @@ private
 tys : ℕ → STy ε
 tys = at Unit (ty-SI ∷ ty-add ∷ ty-FlC ∷ ty-Fld ∷ ty-ShC ∷ ty-Shape ∷ ty-Sig ∷ ty-telV ∷ ty-dRec ∷ ty-dNat ∷ ty-dCls
                ∷ ty-telF ∷ ty-telFs ∷ ty-tel ∷ ty-tabD ∷ ty-SDℓ ∷ ty-SD ∷ ty-lift ∷ ty-lifts ∷ ty-rnF ∷ ty-rnFs ∷ ty-rnM
-               ∷ ty-trav ∷ ty-lamΣ ∷ ty-KΣ ∷ ty-rVF ∷ ty-rWK ∷ ty-rV0 ∷ ty-rNλ ∷ ty-rNK ∷ [])
+               ∷ ty-trav ∷ ty-lamΣ ∷ ty-KΣ ∷ ty-rVF ∷ ty-rWK ∷ ty-rV0 ∷ ty-rNλ ∷ ty-rNK ∷ ty-sVF ∷ ty-sWK ∷ ty-sV0 ∷ ty-sN ∷ [])
 
 tms : ℕ → STm ε
 tms = at unit (tm-SI ∷ tm-add ∷ tm-FlC ∷ tm-Fld ∷ tm-ShC ∷ tm-Shape ∷ tm-Sig ∷ tm-telV ∷ tm-dRec ∷ tm-dNat ∷ tm-dCls
                ∷ tm-telF ∷ tm-telFs ∷ tm-tel ∷ tm-tabD ∷ tm-SDℓ ∷ tm-SD ∷ tm-lift ∷ tm-lifts ∷ tm-rnF ∷ tm-rnFs ∷ tm-rnM
-               ∷ tm-trav ∷ tm-lamΣ ∷ tm-KΣ ∷ tm-rVF ∷ tm-rWK ∷ tm-rV0 ∷ tm-rNλ ∷ tm-rNK ∷ [])
+               ∷ tm-trav ∷ tm-lamΣ ∷ tm-KΣ ∷ tm-rVF ∷ tm-rWK ∷ tm-rV0 ∷ tm-rNλ ∷ tm-rNK ∷ tm-sVF ∷ tm-sWK ∷ tm-sV0 ∷ tm-sN ∷ [])
 
-open import DirectedHoTT.Algorithm.SigBuild 30 tys tms 1000 public
+open import DirectedHoTT.Algorithm.SigBuild 34 tys tms 1000 public
 
 open import normalizer.Syntax.Types using ( _≡_; refl; _×_; _,_ )
 open import DirectedHoTT.Spec.Signature using ( Sig )

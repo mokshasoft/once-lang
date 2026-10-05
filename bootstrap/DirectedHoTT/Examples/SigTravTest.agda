@@ -15,6 +15,7 @@ open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import Agda.Builtin.List using ( List; []; _∷_ )
 open import DirectedHoTT.Spec.Syntax using ( ε; _∙; vz; vs )
 import DirectedHoTT.Spec.Syntax as R
+import DirectedHoTT.Spec.Typing as Ty
 open import DirectedHoTT.Lib.NatNum using ( num )
 open import DirectedHoTT.Lib.Sugar using ( tag )
 open import DirectedHoTT.Examples.Knot.Terms using ( quoteTm )
@@ -55,3 +56,44 @@ ren-λ = refl
 --   the renaming (a binder, a crossing variable, a ref's nat and cls)
 ren-knot : nfOf (wkKn 1 1 (quoteTm tK)) ≡ quoteTm (R.renTm vs tK)
 ren-knot = refl
+
+------------------------------------------------------------------------
+-- ★ SUBSTITUTION (the traversal at the substitution kit) COMPUTES.
+------------------------------------------------------------------------
+
+private
+  -- the substitution kit at a signature (n , vs , sg , its renaming node)
+  subKit : ℕ → ℕ → ℕ → ℕ → List (R.RTm ε)
+  subKit n v sg rN = ⟪ #sVF ⟫ ⋆ (num n ∷ tag v ∷ ⟪ sg ⟫ ∷ [])
+                   ∷ ⟪ #sWK ⟫ ⋆ (num n ∷ tag v ∷ ⟪ sg ⟫ ∷ ⟪ rN ⟫ ∷ [])
+                   ∷ ⟪ #sV0 ⟫ ⋆ (num n ∷ tag v ∷ ⟪ sg ⟫ ∷ ⟪ rN ⟫ ∷ [])
+                   ∷ ⟪ #sN ⟫ ⋆ (num n ∷ tag v ∷ ⟪ sg ⟫ ∷ []) ∷ []
+
+  _++_ : {A : Set} → List A → List A → List A
+  []       ++ ys = ys
+  (x ∷ xs) ++ ys = x ∷ (xs ++ ys)
+  infixr 5 _++_
+
+  -- the single substitution [u/x₀] at depth 1 → 0, as an environment
+  single : R.RTm ε → R.RTm ε
+  single u = R.lam (R.fcase (R.var vz) (R.renTm (λ ()) u) (R.fcase0 (R.var vz)))
+
+  subλ : R.RTm ε → R.RTm ε → R.RTm ε
+  subλ u t = ⟪ #trav ⟫ ⋆ ((num 1 ∷ tag 0 ∷ ⟪ #lamΣ ⟫ ∷ []) ++ subKit 1 0 #lamΣ #rNλ
+                          ++ (tag 0 ∷ num 1 ∷ t ∷ num 0 ∷ single u ∷ []))
+
+  subKn : R.RTm ε → R.RTm ε → R.RTm ε
+  subKn u t = ⟪ #trav ⟫ ⋆ ((num 2 ∷ tag 1 ∷ ⟪ #KΣ ⟫ ∷ []) ++ subKit 2 1 #KΣ #rNK
+                          ++ (tag 1 ∷ num 1 ∷ t ∷ num 0 ∷ single u ∷ []))
+
+  uλ : R.RTm ε                                -- λ x. x
+  uλ = lamK (varK R.fzero)
+
+-- (x₀ x₀)[u/x₀] = u u
+sub-λ : nfOf (subλ uλ (appK (varK R.fzero) (varK R.fzero))) ≡ appK uλ uλ
+sub-λ = refl
+
+-- under a binder: λ.(x₀ x₁)[u] = λ.(x₀ u) — the bound variable stays,
+--   the substituted term is weakened (the kit's WK: renaming)
+sub-λ-bind : nfOf (subλ uλ (lamK (appK (varK R.fzero) (varK (R.fsuc R.fzero))))) ≡ lamK (appK (varK R.fzero) uλ)
+sub-λ-bind = refl
