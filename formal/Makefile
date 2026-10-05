@@ -211,6 +211,11 @@ check-extraction-sync:
 pragma-gate:
 	@scripts/pragma-gate.sh
 
+.PHONY: public-gate
+# Plan 0.92 S0: no new `public` re-export; the baseline only shrinks.
+public-gate:
+	@scripts/public-gate.sh
+
 .PHONY: malonzo
 malonzo:
 	@if [ -z "$$AGDA_SAFE_ACTIVE" ] && [ -z "$$AGDA_SAFE_DISABLE" ]; then \
