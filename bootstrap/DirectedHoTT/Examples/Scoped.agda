@@ -32,7 +32,7 @@ module DirectedHoTT.Examples.Scoped where
 open import DirectedHoTT.Metatheory.TySub using ( ⊢wk )
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; subst )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
-open import DirectedHoTT.Spec.Syntax hiding ( Fin )
+open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-trans; ⟶*-nsuc )
 open import DirectedHoTT.Metatheory.TySub using ( ⊢wk )
@@ -40,7 +40,6 @@ open import DirectedHoTT.Lib.Sugar using ( conₗ; methₗ; Dₗ )
 open import DirectedHoTT.Lib.Tel
 open import DirectedHoTT.Lib.TelFold using ( sizeAlg; foldMs; ⊢foldE; fold-ι )
 
-open import DirectedHoTT.Lib.FinFam public
 open import DirectedHoTT.Lib.NatCode public
 
 ------------------------------------------------------------------------
@@ -50,7 +49,7 @@ open import DirectedHoTT.Lib.NatCode public
 ------------------------------------------------------------------------
 
 varT lamT appT : {Γ : Cx} → Tel (Γ ∙)
-varT = tσ (⌜IMu⌝ ⌜Nat⌝ FinD (var vz)) tι          -- a variable: `Fin n`
+varT = tσ (⌜Fin⌝ (var vz)) tι          -- a variable: `Fin n`
 lamT = tρ (nsuc (var vz)) tι                      -- ★ the body, at `suc n`
 appT = tρ (var vz) (tρ (var vz) tι)               -- function and argument, at `n`
 
@@ -64,7 +63,7 @@ Tm : {Γ : Cx} → RTm Γ → RTy Γ
 Tm n = IMu ⌜Nat⌝ TmD n
 
 varOK : {Γ : Ctx} → TelOK (Γ ▹ El ⌜Nat⌝) ⌜Nat⌝ varT
-varOK = ok-σ (⊢⌜IMu⌝ ⊢⌜Nat⌝ ⊢FinD (⊢var here)) ok-ι
+varOK = ok-σ (⊢⌜Fin⌝ (fromI (⊢var here))) ok-ι
 
 lamOK : {Γ : Ctx} → TelOK (Γ ▹ El ⌜Nat⌝) ⌜Nat⌝ lamT
 lamOK = ok-ρ (⊢isuc (⊢var here)) ok-ι
@@ -93,11 +92,11 @@ tapp f a = conₗ (suc (suc zero)) (pair f (pair a unit))
 
 module _ {Γ : Ctx} {n : RTm ⌊ Γ ⌋} (dn : Γ ⊢ n ∷ El ⌜Nat⌝) where
 
-  ⊢tvar : {k : RTm ⌊ Γ ⌋} → Γ ⊢ k ∷ FinI n → Γ ⊢ tvar k ∷ Tm n
+  ⊢tvar : {k : RTm ⌊ Γ ⌋} → Γ ⊢ k ∷ Fin n → Γ ⊢ tvar k ∷ Tm n
   ⊢tvar dk =
     ⊢conₜ ⊢⌜Nat⌝ TmOK nthᵗ-z dn
-      (⊢payσ ⊢⌜Nat⌝ ⊢TmD (ok-σ (⊢⌜IMu⌝ ⊢⌜Nat⌝ ⊢FinD dn) ok-ι)
-             (⊢conv dk (csymᵀ (credᵀ El-⌜IMu⌝))) (⊢payι ⊢⌜Nat⌝ ⊢TmD ⊢unit))
+      (⊢payσ ⊢⌜Nat⌝ ⊢TmD (ok-σ (⊢⌜Fin⌝ (fromI dn)) ok-ι)
+             (⊢conv dk (csymᵀ (credᵀ El-⌜Fin⌝))) (⊢payι ⊢⌜Nat⌝ ⊢TmD ⊢unit))
 
   -- ★★★ THE BINDING CONSTRUCTOR.  Its recursive field is at `suc n`.
   ⊢tlam : {b : RTm ⌊ Γ ⌋} → Γ ⊢ b ∷ Tm (nsuc n) → Γ ⊢ tlam b ∷ Tm n
@@ -113,15 +112,15 @@ module _ {Γ : Ctx} {n : RTm ⌊ Γ ⌋} (dn : Γ ⊢ n ∷ El ⌜Nat⌝) where
 
 -- `fz : Fin 1` — the de Bruijn variable `0`, at depth 1.
 fz : {Γ : Cx} → RTm Γ
-fz = ffz
+fz = fzero
 
 -- `λ x. x` at depth 0.  ⚠ THE SCOPE CHECK IS IN THE TYPE: the bound
---   occurrence sits at depth `suc zero`, so its `Fin` must be `FinI 1`.
+--   occurrence sits at depth `suc zero`, so its `Fin` must be `Fin 1`.
 idTm : {Γ : Cx} → RTm Γ
 idTm = tlam (tvar fz)
 
 ⊢idTm : {Γ : Ctx} → Γ ⊢ idTm ∷ Tm nzero
-⊢idTm = ⊢tlam z (⊢tvar (⊢isuc z) (⊢ffz z))
+⊢idTm = ⊢tlam z (⊢tvar (⊢isuc z) (⊢fzero (fromI z)))
   where z = toI ⊢nzero
 
 ------------------------------------------------------------------------

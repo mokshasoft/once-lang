@@ -26,7 +26,7 @@
 module DirectedHoTT.Examples.WkTm where
 open import normalizer.Syntax.Types using ( _≡_; cong; _,_ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
-open import DirectedHoTT.Spec.Syntax hiding ( Fin )
+open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-trans; ⟶*-con; ⟶*-pairˡ; ⟶*-pairʳ )
 open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast )
@@ -36,7 +36,7 @@ open import DirectedHoTT.Lib.Sugar
 open import DirectedHoTT.Lib.Tel
 open import DirectedHoTT.Examples.Scoped
   using ( TmTs; TmD; ⊢TmD; TmOK; Tm; varT; lamT; appT; varOK; lamOK; appOK
-        ; tvar; tlam; tapp; ⊢tvar; ⊢tlam; ⊢tapp; ⊢isuc; fz; ffz; idTm; FinD )
+        ; tvar; tlam; tapp; ⊢tvar; ⊢tlam; ⊢tapp; ⊢isuc; fz; idTm )
 open import DirectedHoTT.Examples.WkFin using ( wkFinTm; ⊢wkFinTm; fromFin; wk-fz )
 
 ------------------------------------------------------------------------
@@ -76,7 +76,7 @@ module _ {Γ : Ctx} where
     idx : {T : Tel (⌊ Γ ⌋ ∙)} → HypCtx Γ ⌜Nat⌝ TmD wkTmMot T ⊢ v₂ ∷ El ⌜Nat⌝
     idx = ⊢var (there (there here))
 
-  ⊢kV : HV ⊢ fst v₁ ∷ El (⌜IMu⌝ ⌜Nat⌝ FinD v₂)
+  ⊢kV : HV ⊢ fst v₁ ∷ El (⌜Fin⌝ v₂)
   ⊢kV = ⊢fst (⊢payHyp {I = ⌜Nat⌝} {D = TmD} {M = wkTmMot} {T = varT})
 
   ⊢wkVar : Γ ⊢ wkVar ∷ MethK ⌜Nat⌝ TmD wkTmMot ⌜ varT ⌝ᵗ zero
@@ -119,14 +119,14 @@ wkTmTm n t = ielim TmD n (methₗ WkMs) t
 ⟶*-arg₁ : {Γ : Cx} {k : ℕ} {a a' r : RTm Γ} → a ⟶* a' → conₗ k (pair a r) ⟶* conₗ k (pair a' r)
 ⟶*-arg₁ s = ⟶*-con (⟶*-pairʳ (⟶*-pairˡ s))
 
-wk-var : {Γ : Cx} → wkTmTm {Γ} (nsuc nzero) (tvar fz) ⟶* tvar ffz
+wk-var : {Γ : Cx} → wkTmTm {Γ} (nsuc nzero) (tvar fz) ⟶* tvar fzero
 wk-var =
   ⟶*-trans (ιT {Cs = ⌜ TmTs ⌝ₛ} {ms = WkMs} {T = varT} (nth-⌜⌝ {Ts = TmTs} nthᵗ-z) nth-z)
     (step (ξ-appˡ (ξ-appˡ (β _ _))) (step (ξ-appˡ (β _ _)) (step (β _ _)
-    (step (ξ-con (ξ-pairʳ (ξ-pairˡ (ξ-ielimᵗ (βfst _ _)))))
+    (step (ξ-con (ξ-pairʳ (ξ-pairˡ (ξ-appʳ (βfst _ _)))))
       (⟶*-arg₁ wk-fz)))))
 
-wk-id : {Γ : Cx} → wkTmTm {Γ} nzero idTm ⟶* tlam (tvar ffz)
+wk-id : {Γ : Cx} → wkTmTm {Γ} nzero idTm ⟶* tlam (tvar fzero)
 wk-id =
   ⟶*-trans (ιT {Cs = ⌜ TmTs ⌝ₛ} {ms = WkMs} {T = lamT} (nth-⌜⌝ {Ts = TmTs} (nthᵗ-s nthᵗ-z)) (nth-s nth-z))
     (step (ξ-appˡ (ξ-appˡ (β _ _))) (step (ξ-appˡ (β _ _)) (step (β _ _)

@@ -36,7 +36,8 @@
 module DirectedHoTT.Examples.KripkeIx where
 open import normalizer.Syntax.Types using ( _≡_; cong; _,_ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
-open import DirectedHoTT.Spec.Syntax hiding ( Fin )
+open import DirectedHoTT.Spec.Syntax
+open import DirectedHoTT.Lib.NatCode using ( fromI )
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-trans )
 open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast )
@@ -46,7 +47,7 @@ open import DirectedHoTT.Lib.Sugar
 open import DirectedHoTT.Lib.Tel
 open import DirectedHoTT.Examples.Scoped
   using ( TmTs; TmD; ⊢TmD; TmOK; Tm; varT; lamT; appT; varOK; lamOK; appOK
-        ; FinD; ⊢FinD; FinI; ⊢isuc; tvar; fz )
+        ; fromI; ⊢isuc; tvar; fz )
 open import DirectedHoTT.Examples.WkFin using ( fromFin )
 
 ------------------------------------------------------------------------
@@ -54,10 +55,10 @@ open import DirectedHoTT.Examples.WkFin using ( fromFin )
 ------------------------------------------------------------------------
 
 kMot : {Γ : Cx} → RTy ((Γ ∙) ∙)
-kMot = Π (Π (FinI (var (vs vz))) Nat) Nat
+kMot = Π (Π (Fin (var (vs vz))) Nat) Nat
 
 ⊢kMot : {Γ : Ctx} → ((Γ ▹ El ⌜Nat⌝) ▹ Tm (var vz)) ⊢ty kMot
-⊢kMot = ty-Π (ty-Π (ty-IMu ⊢⌜Nat⌝ ⊢FinD (⊢var (there here))) ty-Nat) ty-Nat
+⊢kMot = ty-Π (ty-Π (ty-Fin (fromI (⊢var (there here)))) ty-Nat) ty-Nat
 
 ------------------------------------------------------------------------
 -- 2. THE THREE METHODS.  Method binders `i p h` (`v₂ v₁ v₀`), then the
@@ -93,10 +94,10 @@ module _ {Γ : Ctx} where
     H T = HypCtx Γ ⌜Nat⌝ TmD kMot T
     idx : {T : Tel (⌊ Γ ⌋ ∙)} → H T ⊢ v₂ ∷ El ⌜Nat⌝
     idx = ⊢var (there (there here))
-    ρTy : {T : Tel (⌊ Γ ⌋ ∙)} → H T ⊢ty Π (FinI v₂) Nat
-    ρTy = ty-Π (ty-IMu ⊢⌜Nat⌝ ⊢FinD idx) ty-Nat
+    ρTy : {T : Tel (⌊ Γ ⌋ ∙)} → H T ⊢ty Π (Fin v₂) Nat
+    ρTy = ty-Π (ty-Fin (fromI idx)) ty-Nat
 
-  ⊢kV : H varT ⊢ fst v₁ ∷ El (⌜IMu⌝ ⌜Nat⌝ FinD v₂)
+  ⊢kV : H varT ⊢ fst v₁ ∷ El (⌜Fin⌝ v₂)
   ⊢kV = ⊢fst (⊢payHyp {I = ⌜Nat⌝} {D = TmD} {M = kMot} {T = varT})
 
   ⊢kVar : Γ ⊢ kVar ∷ MethK ⌜Nat⌝ TmD kMot ⌜ varT ⌝ᵗ zero
@@ -106,7 +107,7 @@ module _ {Γ : Ctx} where
   ⊢kLam : Γ ⊢ kLam ∷ MethK ⌜Nat⌝ TmD kMot ⌜ lamT ⌝ᵗ (suc zero)
   ⊢kLam = ⊢methT {T = lamT} {s = conₗ (suc zero) (var (vs vz))} ⊢⌜Nat⌝ ⊢TmD ⊢kMot lamOK
             (⊢lam ρTy (⊢app (⊢fst (⊢var (there here)))
-                            (⊢lam (ty-IMu ⊢⌜Nat⌝ ⊢FinD (⊢isuc (⊢wk idx))) ⊢nzero)))
+                            (⊢lam (ty-Fin (fromI (⊢isuc (⊢wk idx)))) ⊢nzero)))
 
   ⊢kApp : Γ ⊢ kApp ∷ MethK ⌜Nat⌝ TmD kMot ⌜ appT ⌝ᵗ (suc (suc zero))
   ⊢kApp = ⊢methT {T = appT} {s = conₗ (suc (suc zero)) (var (vs vz))} ⊢⌜Nat⌝ ⊢TmD ⊢kMot appOK
@@ -128,9 +129,9 @@ kEval n t = ielim TmD n (methₗ KMs) t
 
 ⊢kEval : {Γ : Ctx} {n t : RTm ⌊ Γ ⌋} →
          Γ ⊢ n ∷ El ⌜Nat⌝ → Γ ⊢ t ∷ Tm n →
-         Γ ⊢ kEval n t ∷ Π (Π (FinI n) Nat) Nat
+         Γ ⊢ kEval n t ∷ Π (Π (Fin n) Nat) Nat
 ⊢kEval {n = n} dn dt =
-  ⊢-cast (cong (λ z → Π (Π (FinI z) Nat) Nat) (wk-single n))
+  ⊢-cast (cong (λ z → Π (Π (Fin z) Nat) Nat) (wk-single n))
     (⊢ielim ⊢⌜Nat⌝ ⊢TmD ⊢kMot (⊢methₗ ⊢⌜Nat⌝ (allD (⊢wk ⊢⌜Nat⌝) TmOK) ⊢kMot perK) dn dt)
 
 ------------------------------------------------------------------------
