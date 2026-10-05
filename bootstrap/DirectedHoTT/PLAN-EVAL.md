@@ -140,7 +140,7 @@ with cached imports (the floor, loading SigCore, is ~5.5 s / 0.48 GB).
 
 - **Types** (`evalᵀ`/`rbᵀ`/`nbeᵀ`): every `headᵀ` rule; rule-introduced
   binders defunctionalised (`tcloEl`, `tcloHom`, `tcloDIh`, `tcloK`).
-- **`Examples/NbEAgree`** — the oracle against `Algorithm/Eval`, 56 term rows
+- **`Examples/NbEAgree`** — the oracle against `Algorithm/Eval`, 54 term rows
   + 19 type rows, open terms over three free variables: every rule and both
   sides of every guard (`pw?` through ⌜Hom⌝, `stkA?` at ⌜Nat⌝ vs `stkC?`, the
   `var vz` motives of `tr-pw`/`tr-taut`), stuck eliminators, congruence
