@@ -27,7 +27,7 @@ open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast; wk-cancel-tm 
 open import DirectedHoTT.Metatheory.SubjectReductionBase using ( wk-sub )
 open import DirectedHoTT.Metatheory.Fundamental.Syntactic using ( ⟨_⟩ᵣ; subTy-var; subTm-var )
 open import DirectedHoTT.Lib.NatNum using ( ⊢num )
-open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_; conₗ; tag; selF; Dσ; ⊢selF; AllD; []ᵈ; _∷ᵈ_; subC; lt-z; nth-z; nth-s; v₀; v₁; v₂; v₃; v₄; v₅; _,ₚ_ )
+open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_; conₗ; tag; selF; Dσ; ⊢selF; AllD; []ᵈ; _∷ᵈ_; subC; lt-z; nth-z; nth-s; v₀; v₁; v₂; v₃; v₄; v₅; v₆; v₇; _,ₚ_ )
 open import DirectedHoTT.Lib.Tel
 open import DirectedHoTT.Lib.TelAt using ( HypAt; ⊢payAt )
 open import DirectedHoTT.Lib.MethAt
@@ -223,11 +223,15 @@ GM-sub τ = cong₂ Π refl (cong₂ Π (SK-sub (extS τ) KSig 0 v₂) (Desc∋-
 gz : RTm Γ
 gz = lam (lam (lam (lam (rows []))))
 
--- at suc m (binders m | payload (Γ', A'), hypotheses, x, A): case on the variable,
---   `here` at `fzero`, `there` at `fsuc y` (one binder more)
+-- at suc m (binders m | payload (Γ', A'), hypotheses, x, A): the payload's
+--   two components bound by λ (so the rows come out clean), then the case
+--   on the variable — `here` at `fzero`, `there` at `fsuc y`
+FB : RTm (((((((Γ ∙) ∙) ∙) ∙) ∙) ∙) ∙)          -- binders … x, A, A', Γ'
+FB = fcase v₃ (rows (⌜ hereT v₆ v₁ v₂ ⌝ᵗ ∷ []))
+              (rows (⌜ thereT v₇ v₁ v₀ v₃ ⌝ᵗ ∷ []))
+
 gsB : RTm (((((Γ ∙) ∙) ∙) ∙) ∙)
-gsB = fcase v₁ (rows (⌜ hereT v₄ (fst (snd v₃)) v₀ ⌝ᵗ ∷ []))
-               (rows (⌜ thereT v₅ (fst v₄) v₀ v₁ ⌝ᵗ ∷ []))
+gsB = app (app (lam (lam FB)) (fst (snd v₃))) (fst v₃)
 
 gs : RTm (Γ ∙)
 gs = lam (lam (lam (lam gsB)))
@@ -294,22 +298,51 @@ module _ {Θ : Ctx} where
     dx = ⊢wk {HS ▹ Fin (nsuc v₂)} {K 0 (nsuc v₃)} {v₀} {Fin (nsuc v₃)} (⊢var here)
     dA : C2 ⊢ v₀ ∷ K 0 (nsuc m4)
     dA = hereSK {Γ = HS ▹ Fin (nsuc v₂)} {sg = KSig} {s = 0} {d = nsuc v₃}
+    -- the λ-bound A' and Γ', over C2
+    C4 : Ctx
+    C4 = (C2 ▹ K 0 m4) ▹ KCtx (renTm vs m4)
+    m6 : RTm ⌊ C4 ⌋
+    m6 = v₆
+    dm6 : C4 ⊢ m6 ∷ El ⌜Nat⌝
+    dm6 = ⊢wk (⊢wk dm4)
+    da6 : C4 ⊢ v₁ ∷ K 0 m6
+    da6 = ⊢wkSK {Γ = C2 ▹ K 0 m4} {B = KCtx (renTm vs m4)} {sg = KSig} {s = 0}
+                (hereSK {Γ = C2} {sg = KSig} {s = 0} {d = m4})
+    dg6 : C4 ⊢ v₀ ∷ KCtx m6
+    dg6 = hereCtx {C2 ▹ K 0 m4} {renTm vs m4}
+    dA6 : C4 ⊢ v₂ ∷ K 0 (nsuc m6)
+    dA6 = ⊢wkSK {Γ = C2 ▹ K 0 m4} {B = KCtx (renTm vs m4)} {sg = KSig} {s = 0}
+                (⊢wkSK {Γ = C2} {B = K 0 m4} {sg = KSig} {s = 0} dA)
+    dx6 : C4 ⊢ v₃ ∷ Fin (nsuc m6)
+    dx6 = ⊢wk (⊢wk dx)
     -- here, at `fzero`
-    hRow : C2 ⊢ rows (⌜ hereT m4 (fst (snd v₃)) v₀ ⌝ᵗ ∷ []) ∷ Desc I∋
-    hRow = ⊢rows {C2} {I∋} {1} {⌜ hereT m4 (fst (snd v₃)) v₀ ⌝ᵗ ∷ []} ⊢I∋
-             (⊢tel {C2} {I∋} {hereT m4 (fst (snd v₃)) v₀} ⊢I∋ (hereOK {C2} {m4} dm4 dA' dA) ∷ᵈ []ᵈ)
+    hRow : C4 ⊢ rows (⌜ hereT m6 v₁ v₂ ⌝ᵗ ∷ []) ∷ Desc I∋
+    hRow = ⊢rows {C4} {I∋} {1} {⌜ hereT m6 v₁ v₂ ⌝ᵗ ∷ []} ⊢I∋
+             (⊢tel {C4} {I∋} {hereT m6 v₁ v₂} ⊢I∋ (hereOK {C4} {m6} dm6 da6 dA6) ∷ᵈ []ᵈ)
     -- there, at `fsuc y`, one binder further
-    C3 : Ctx
-    C3 = C2 ▹ Fin m4
-    tRow : C3 ⊢ rows (⌜ thereT v₅ (fst v₄) v₀ v₁ ⌝ᵗ ∷ []) ∷ Desc I∋
-    tRow = ⊢rows {C3} {I∋} {1} {⌜ thereT v₅ (fst v₄) v₀ v₁ ⌝ᵗ ∷ []} ⊢I∋
-             (⊢tel {C3} {I∋} {thereT v₅ (fst v₄) v₀ v₁} ⊢I∋
-                   (thereOK {C3} {v₅} {fst v₄} {v₀} {v₁} (⊢wk dm4) (⊢wkCtx {C2} {Fin m4} dG') (⊢var here)
-                            (⊢wkSK {Γ = C2} {B = Fin m4} {sg = KSig} {s = 0} dA)) ∷ᵈ []ᵈ)
+    C5 : Ctx
+    C5 = C4 ▹ Fin m6
+    tRow : C5 ⊢ rows (⌜ thereT v₇ v₁ v₀ v₃ ⌝ᵗ ∷ []) ∷ Desc I∋
+    tRow = ⊢rows {C5} {I∋} {1} {⌜ thereT v₇ v₁ v₀ v₃ ⌝ᵗ ∷ []} ⊢I∋
+             (⊢tel {C5} {I∋} {thereT v₇ v₁ v₀ v₃} ⊢I∋
+                   (thereOK {C5} {v₇} {v₁} {v₀} {v₃} (⊢wk dm6) (⊢wkCtx {C4} {Fin m6} dg6) (⊢var here)
+                            (⊢wkSK {Γ = C4} {B = Fin m6} {sg = KSig} {s = 0} dA6)) ∷ᵈ []ᵈ)
+    dFB : C4 ⊢ FB ∷ Desc I∋
+    dFB = ⊢-cast (Desc∋-sub (single v₃))
+            (⊢fcase (ty-Desc ⊢I∋) dx6 (⊢-cast (sym (Desc∋-sub (single fzero))) hRow)
+                    (⊢-cast (sym (Desc∋-sub fsucS)) tRow))
+    -- the two λs, applied to the payload's components
+    L2 : RTy (⌊ C2 ⌋ ∙)
+    L2 = Π (KCtx (renTm vs m4)) (Desc I∋)
+    dL : C2 ⊢ lam (lam FB) ∷ Π (K 0 m4) L2
+    dL = ⊢lam (tyK dm4) (⊢lam (tyCtx (⊢wk dm4)) dFB)
+    e1 : subTy (single (fst (snd v₃))) L2 ≡ Π (KCtx m4) (Desc I∋)
+    e1 = cong₂ Π (trans (KCtx-sub (single (fst (snd v₃))) (renTm vs m4))
+                        (cong KCtx {x = subTm (single (fst (snd v₃))) (renTm vs m4)} {y = m4} (wk-cancel-tm (fst (snd v₃)) m4)))
+                 (Desc∋-sub (extS (single (fst (snd v₃)))))
     body : C2 ⊢ gsB ∷ Desc I∋
-    body = ⊢-cast (Desc∋-sub (single v₁))
-             (⊢fcase (ty-Desc ⊢I∋) dx (⊢-cast (sym (Desc∋-sub (single fzero))) hRow)
-                     (⊢-cast (sym (Desc∋-sub fsucS)) tRow))
+    body = ⊢-cast (Desc∋-sub (single (fst v₃)))
+             (⊢app (⊢-cast e1 (⊢app dL dA')) dG')
 
     bs' : HS ⊢ lam (lam gsB) ∷ subTy (atS (nsuc v₀) (conₗ 0 v₁)) (wk1M GM)
     bs' = ⊢-cast {HS} {_} {GB (nsuc v₂)} {subTy (atS (nsuc v₀) (conₗ 0 v₁)) (wk1M GM)}
