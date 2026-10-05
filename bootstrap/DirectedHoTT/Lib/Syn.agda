@@ -13,7 +13,7 @@
 --               definition's body); renaming and substitution copy it
 --
 -- and one distinguished shape `vʰ`, THE VARIABLE: a `Fin d` of the
--- ambient scope (`Lib/FinFam`).  Variables are a shape, not a field kind,
+-- ambient scope, the kernel's own `Fin`.  Variables are a shape, not a field kind,
 -- because substitution replaces the whole node (Allais et al.'s `'var`).
 --
 -- and the syntax is the sorted, fibred family (`Lib/Sorted`, D075) over
@@ -37,17 +37,16 @@ module DirectedHoTT.Lib.Syn where
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂; subst; _,_ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import Agda.Builtin.Unit using ( ⊤ )
-open import DirectedHoTT.Spec.Syntax hiding ( Fin )
+open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
-open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-trans; ⟶*-pairʳ; ⟶*-nsuc; red→≅ᵀ; ⟶ᵀ*-IMu; _⟶ᵀ*_ )
+open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-trans; ⟶*-pairʳ; ⟶*-nsuc; red→≅ᵀ; ⟶ᵀ*-IMu; ⟶ᵀ*-Fin; _⟶ᵀ*_ )
 open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast; wk-cancel-tm )
 open import DirectedHoTT.Metatheory.SubjectReductionBase using ( wk-sub )
 open import DirectedHoTT.Lib.Sugar using ( tag; conₗ; Lt; lt-z; lt-s; Cons; []; _∷_; subC; sel; selF; sel-sub; selF-sub; Dσ; Dσ-sub )
 open import DirectedHoTT.Lib.Tel
 open import DirectedHoTT.Lib.Sorted
 open import DirectedHoTT.Lib.TelAt
-open import DirectedHoTT.Lib.FinFam using ( FinD; ⊢FinD; FinI )
-open import DirectedHoTT.Lib.NatCode using ( ⊢isuc; toI )
+open import DirectedHoTT.Lib.NatCode using ( ⊢isuc; toI; fromI )
 
 private
   variable
@@ -182,7 +181,7 @@ tel []ʰ            i = tι
 tel (rec s k ∷ʰ sh) i = tρ (pair (tag s) (nsucs k (snd i))) (tel sh i)
 tel (nat ∷ʰ sh)     i = tσ ⌜Nat⌝ (tel sh (renTm vs i))
 tel (cls s ∷ʰ sh)   i = tρ (pair (tag s) nzero) (tel sh i)
-tel vʰ              i = tσ (⌜IMu⌝ ⌜Nat⌝ FinD (snd i)) tι
+tel vʰ              i = tσ (⌜Fin⌝ (snd i)) tι
 
 tels : Shapes c → Tels (Δ ∙) c
 tels []ˢʰ        = []ᵗ
@@ -324,7 +323,7 @@ telOKf (ok-cls lt ∷ᶠ ok)          di = ok-ρ (⊢ix lt (toI ⊢nzero)) (telO
 telOK : {Γ : Ctx} {sh : Shape} {i : RTm ⌊ Γ ⌋} →
         ShOK n sh → Γ ⊢ i ∷ El (SI n) → TelOK Γ (SI n) (tel sh i)
 telOK (fᵒʰ ok) di = telOKf ok di
-telOK vᵒʰ      di = ok-σSI (⊢⌜IMu⌝ ⊢⌜Nat⌝ ⊢FinD (⊢depth di)) ok-ι
+telOK vᵒʰ      di = ok-σSI (⊢⌜Fin⌝ (fromI (⊢depth di))) ok-ι
 
 telsOK : {Γ : Ctx} {shs : Shapes c} → ShsOK n shs → AllOK (Γ ▹ El (SI n)) (SI n) (tels shs)
 telsOK []ᵒˢ         = []ᵒ
@@ -379,7 +378,7 @@ data Args (Γ : Ctx) (n : ℕ) (sg : Sig n) (d : RTm ⌊ Γ ⌋) : Shape → RTm
   a-cls : {a p : RTm ⌊ Γ ⌋} {sh : Shape} →
           Γ ⊢ a ∷ SK sg s nzero → Args Γ n sg d sh p →
           Args Γ n sg d (cls s ∷ʰ sh) (pair a p)
-  a-v   : {a : RTm ⌊ Γ ⌋} → Γ ⊢ a ∷ FinI d → Args Γ n sg d vʰ (pair a unit)
+  a-v   : {a : RTm ⌊ Γ ⌋} → Γ ⊢ a ∷ Fin d → Args Γ n sg d vʰ (pair a unit)
 
 private
   ixConv : {Γ : Ctx} {I D t i i' : RTm ⌊ Γ ⌋} → i ⟶* i' → Γ ⊢ t ∷ IMu I D i' → Γ ⊢ t ∷ IMu I D i
@@ -410,8 +409,8 @@ private
            Args Γ n sg d sh p → Γ ⊢ p ∷ El (dpay (SI n) (SD sg) ⌜ tel sh i ⌝ᵗ)
 ⊢payArgs dD (fᵒʰ ok) di r as = ⊢payArgsF dD ok di r as
 ⊢payArgs {Γ = Γ} {i = i} {sh = vʰ} dD vᵒʰ di r (a-v {a = a} da) =
-  ⊢payσ ⊢SI dD (ok-σSI (⊢⌜IMu⌝ ⊢⌜Nat⌝ ⊢FinD (⊢depth di)) ok-ι)
-    (⊢conv da (csymᵀ (ctrnᵀ (credᵀ El-⌜IMu⌝) (red→≅ᵀ (⟶ᵀ*-IMu r)))))
+  ⊢payσ ⊢SI dD (ok-σSI (⊢⌜Fin⌝ (fromI (⊢depth di))) ok-ι)
+    (⊢conv da (csymᵀ (ctrnᵀ (credᵀ El-⌜Fin⌝) (red→≅ᵀ (⟶ᵀ*-Fin r)))))
     (⊢payι ⊢SI dD ⊢unit)
 
 -- ★★ CONSTRUCTOR `k` OF SORT `s`, at depth `d`

@@ -8,7 +8,7 @@
 -- A signature's syntax as an AGDA datatype, `STm sg s d` (sort `s`,
 -- depth `d`), quoted exactly the way the Knot's constructors build
 -- terms (`conₗ k (field , … , unit)`, numerals `num`, variables
--- `ffz`/`ffs`):
+-- tags `fzero`/`fsuc`):
 --
 --     ⌜_⌝ˢ      : STm sg s d → RTm Θ
 --     ⌜⌝ˢ-inj   : ⌜ x ⌝ˢ ≡ ⌜ y ⌝ˢ → x ≡ y                 (structural)
@@ -27,7 +27,7 @@ module DirectedHoTT.Lib.SynUnq where
 
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂; subst; Σ; _,_; _×_; ⊥; ⊥-elim; _⊎_; inj₁; inj₂ )
 open import Agda.Builtin.Nat using ( zero; suc; _+_ ) renaming ( Nat to ℕ )
-open import DirectedHoTT.Spec.Syntax hiding ( Fin )
+open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Metatheory.RedCong using ( ⟶ᵀ*-El; red→≅ᵀ; ⟶*-dpayᶜ )
 open import DirectedHoTT.Metatheory.TySub using ( ⊢-cast )
@@ -39,7 +39,6 @@ open import DirectedHoTT.Lib.Sugar using ( tag; conₗ; Lt; lt-z; lt-s; selF-β;
 open import DirectedHoTT.Lib.Tel using ( ⌜_⌝ᵗ; ⌜_⌝ₛ; nth-⌜⌝; nthᵗ-z; nthᵗ-s )
 open import DirectedHoTT.Lib.NatNum using ( num )
 open import DirectedHoTT.Lib.NatFib using ( fibN-z; fibN-s )
-open import DirectedHoTT.Lib.FinFam using ( FinD; FinI; FinTs; ffz; ffs )
 open import DirectedHoTT.Lib.NatCode using ( toI; fromI )
 open import DirectedHoTT.Lib.Syn
 open import DirectedHoTT.Lib.Decode
@@ -54,11 +53,6 @@ private
 ------------------------------------------------------------------------
 -- 1. THE TREES, and their quotation.
 ------------------------------------------------------------------------
-
--- a variable of depth `d`, as its object numeral
-fnum : ℕ → RTm Θ
-fnum zero    = ffz
-fnum (suc i) = ffs (fnum i)
 
 data STm (sg : Sig n) : ℕ → ℕ → Set
 data SArgs (sg : Sig n) (d : ℕ) : Shape → Set
@@ -81,7 +75,7 @@ data SArgs sg d where
 ⌜ s-rec t as ⌝ᵃ = pair ⌜ t ⌝ˢ ⌜ as ⌝ᵃ
 ⌜ s-nat m as ⌝ᵃ = pair (num m) ⌜ as ⌝ᵃ
 ⌜ s-cls t as ⌝ᵃ = pair ⌜ t ⌝ˢ ⌜ as ⌝ᵃ
-⌜ s-v i _ ⌝ᵃ    = pair (fnum i) unit
+⌜ s-v i _ ⌝ᵃ    = pair (tag i) unit
 
 ------------------------------------------------------------------------
 -- 2. ★ QUOTATION IS INJECTIVE — structurally.
@@ -111,12 +105,6 @@ num-inj zero    (suc m') ()
 num-inj (suc m) zero     ()
 num-inj (suc m) (suc m') e = cong suc (num-inj m m' (nsuc-inj e))
 
-fnum-inj : (i j : ℕ) → fnum {Θ} i ≡ fnum j → i ≡ j
-fnum-inj zero    zero    _ = refl
-fnum-inj zero    (suc j) ()
-fnum-inj (suc i) zero    ()
-fnum-inj (suc i) (suc j) e = cong suc (fnum-inj i j (pairˡ (pairʳ (con-inj e))))
-
 lt-uniq : {i d : ℕ} (p q : Lt i d) → p ≡ q
 lt-uniq lt-z     lt-z     = refl
 lt-uniq (lt-s p) (lt-s q) = cong lt-s (lt-uniq p q)
@@ -144,7 +132,7 @@ nthSh-uniq (nthʰ-s a) (nthʰ-s b) with nthSh-uniq a b
 ⌜⌝ᵃ-inj (s-rec t as) (s-rec u bs) e = cong₂ s-rec (⌜⌝ˢ-inj t u (pairˡ e)) (⌜⌝ᵃ-inj as bs (pairʳ e))
 ⌜⌝ᵃ-inj {Θ = Θ} (s-nat m as) (s-nat m' bs) e = cong₂ s-nat (num-inj {Θ} m m' (pairˡ e)) (⌜⌝ᵃ-inj as bs (pairʳ e))
 ⌜⌝ᵃ-inj (s-cls t as) (s-cls u bs) e = cong₂ s-cls (⌜⌝ˢ-inj t u (pairˡ e)) (⌜⌝ᵃ-inj as bs (pairʳ e))
-⌜⌝ᵃ-inj {Θ = Θ} (s-v i l) (s-v j l') e with fnum-inj {Θ} i j (pairˡ e)
+⌜⌝ᵃ-inj {Θ = Θ} (s-v i l) (s-v j l') e with tag-inj {Θ} i j (pairˡ e)
 ... | refl with lt-uniq l l'
 ...   | refl = refl
 
@@ -159,45 +147,6 @@ nat-unq d nrm | ns-zero = zero , refl
 nat-unq {t = nsuc t'} d nrm | ns-suc .t' with gen-nsuc (fromI d)
 ... | (dt , _) with nat-unq (toI dt) (λ r → nrm (ξ-nsuc r))
 ...   | m , eq = suc m , cong nsuc eq
-
-private
-  -- the tag layer of `Fin`'s fibre at `suc m`, and its two telescopes
-  finStep : {m b : RTm ε} (k : ℕ) (C : RTm (ε ∙)) →
-            Nth (subC (single m) ⌜ FinTs ⌝ₛ) k (subTm (single m) C) →
-            ◇ ⊢ b ∷ El (dpay ⌜Nat⌝ FinD (app (selF (subC (single m) ⌜ FinTs ⌝ₛ)) (tag k))) →
-            ◇ ⊢ b ∷ El (dpay ⌜Nat⌝ FinD (subTm (single m) C))
-  finStep k C nt db = ⊢conv db (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (selF-β nt))))
-
--- the empty fibre
-fin-zero : {a : RTm ε} → ◇ ⊢ a ∷ FinI nzero → IsNormal a → ⊥
-fin-zero d nrm with con-dec d nrm
-... | q , (refl , (dq , nq)) with pay-σ dq (fibN-z [] ⌜ FinTs ⌝ₛ) nq
-...   | t , (b , (refl , ((dt , _) , (nt , _)))) with tag-decᶜ dt nt
-...     | k , (() , _)
-
--- the successor fibre: `ffz`, or `ffs` of a smaller variable
-fin-step : {m a : RTm ε} → ◇ ⊢ a ∷ FinI (nsuc m) → IsNormal a →
-           (a ≡ ffz) ⊎ Σ (RTm ε) (λ a' → (a ≡ ffs a') × ((◇ ⊢ a' ∷ FinI m) × IsNormal a'))
-fin-step {m = m} d nrm with con-dec d nrm
-... | q , (refl , (dq , nq)) with pay-σ dq (fibN-s [] ⌜ FinTs ⌝ₛ m) nq
-...   | t , (b , (refl , ((dt , db) , (nt , nb)))) with tag-decᶜ dt nt
-...     | zero , (lt-z , refl) with pay-ι (finStep 0 dι (nth-sub (single m) (nth-⌜⌝ {Ts = FinTs} nthᵗ-z)) db) done nb
-...       | refl = inj₁ refl
-fin-step {m = m} d nrm | q , (refl , (dq , nq)) | t , (b , (refl , ((dt , db) , (nt , nb))))
-  | suc zero , (lt-s lt-z , refl)
-  with pay-ρ (finStep 1 (dρ (var vz) dι) (nth-sub (single m) (nth-⌜⌝ {Ts = FinTs} (nthᵗ-s nthᵗ-z))) db) done nb
-... | r , (b' , (refl , ((dr , db') , (nr , nb')))) with pay-ι db' done nb'
-...   | refl = inj₂ (r , (refl , (dr , nr)))
-fin-step d nrm | q , (refl , (dq , nq)) | t , (b , (refl , ((dt , db) , (nt , nb))))
-  | suc (suc _) , (lt-s (lt-s ()) , _)
-
--- ★ a closed normal variable at depth `num d` is a numeral below `d`
-fin-unq : (d : ℕ) {a : RTm ε} → ◇ ⊢ a ∷ FinI (num d) → IsNormal a → Σ ℕ (λ i → Lt i d × (a ≡ fnum i))
-fin-unq zero    da na = ⊥-elim (fin-zero da na)
-fin-unq (suc d) da na with fin-step da na
-... | inj₁ refl = zero , (lt-z , refl)
-... | inj₂ (a' , (refl , (da' , na'))) with fin-unq d da' na'
-...   | i , (l , refl) = suc i , (lt-s l , refl)
 
 ------------------------------------------------------------------------
 -- 4. ★ A CLOSED NORMAL TERM OF A SYNTAX IS A QUOTED TREE.
@@ -243,7 +192,7 @@ args-unq {sg = sg} ok (suc f) (fᵒʰ (ok-cls lt ∷ᶠ fok)) h (d-cls {a = a} {
 ... | _ , (_ , ng)
   with syn-unq ok f {d = zero} ng (szˡ a r h) da na | args-unq ok f (fᵒʰ fok) (szʳ a r h) rest
 ...   | x , refl | as , refl = s-cls x as , refl
-args-unq ok (suc f) {d = d} vᵒʰ h (d-v da na) with fin-unq d da na
+args-unq ok (suc f) {d = d} vᵒʰ h (d-v da na) with tag-dec da na
 ... | i , (l , refl) = s-v i l , refl
 args-unq ok (suc f) (fᵒʰ ()) h (d-v da na)
 
@@ -265,13 +214,6 @@ num-normal : (m : ℕ) → IsNormal (num {Θ} m)
 num-normal zero    ()
 num-normal (suc m) (ξ-nsuc r) = num-normal m r
 
-fnum-normal : (i : ℕ) → IsNormal (fnum {Θ} i)
-fnum-normal zero    (ξ-con (ξ-pairˡ ()))
-fnum-normal zero    (ξ-con (ξ-pairʳ ()))
-fnum-normal (suc i) (ξ-con (ξ-pairˡ r)) = tag-normal 1 r
-fnum-normal (suc i) (ξ-con (ξ-pairʳ (ξ-pairˡ r))) = fnum-normal i r
-fnum-normal (suc i) (ξ-con (ξ-pairʳ (ξ-pairʳ ())))
-
 ⌜⌝ˢ-normal : {sg : Sig n} (x : STm sg s d) → IsNormal (⌜ x ⌝ˢ {Θ})
 ⌜⌝ᵃ-normal : {sg : Sig n} {sh : Shape} (as : SArgs sg d sh) → IsNormal (⌜ as ⌝ᵃ {Θ})
 ⌜⌝ˢ-normal (node {k = k} _ _ as) (ξ-con (ξ-pairˡ r)) = tag-normal k r
@@ -283,5 +225,5 @@ fnum-normal (suc i) (ξ-con (ξ-pairʳ (ξ-pairʳ ())))
 ⌜⌝ᵃ-normal (s-nat m as) (ξ-pairʳ r) = ⌜⌝ᵃ-normal as r
 ⌜⌝ᵃ-normal (s-cls t as) (ξ-pairˡ r) = ⌜⌝ˢ-normal t r
 ⌜⌝ᵃ-normal (s-cls t as) (ξ-pairʳ r) = ⌜⌝ᵃ-normal as r
-⌜⌝ᵃ-normal (s-v i l) (ξ-pairˡ r) = fnum-normal i r
+⌜⌝ᵃ-normal (s-v i l) (ξ-pairˡ r) = tag-normal i r
 ⌜⌝ᵃ-normal (s-v i l) (ξ-pairʳ ())

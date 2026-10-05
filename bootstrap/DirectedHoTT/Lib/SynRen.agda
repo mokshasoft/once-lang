@@ -18,11 +18,10 @@ module DirectedHoTT.Lib.SynRen where
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; subst )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import Agda.Builtin.Bool using ( Bool; true; false )
-open import DirectedHoTT.Spec.Syntax hiding ( Fin )
+open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast )
 open import DirectedHoTT.Lib.Sugar using ( conₗ; tag; Lt )
-open import DirectedHoTT.Lib.FinFam
 open import DirectedHoTT.Lib.NatCode
 open import DirectedHoTT.Lib.Syn
 open import DirectedHoTT.Lib.SynTrav
@@ -109,30 +108,30 @@ module Ren {sg : Sig n} (ok : SigOK n sg) {v kv : ℕ} {shs : Shapes c}
            (ngv : NthG sg v shs) (nhv : NthSh shs kv vʰ) (vok : VarsAt sg v) where
 
   VFr : RTm Γ
-  VFr = lam (⌜IMu⌝ ⌜Nat⌝ FinD (var vz))
+  VFr = lam (⌜Fin⌝ (var vz))
 
   -- a value IS a variable
-  vf≅ : {e : RTm Γ} → Vat VFr e ≅ᵀ FinI e
-  vf≅ {e = e} = ctrnᵀ (credᵀ (ξ-El (β _ e))) (credᵀ El-⌜IMu⌝)
+  vf≅ : {e : RTm Γ} → Vat VFr e ≅ᵀ Fin e
+  vf≅ {e = e} = ctrnᵀ (credᵀ (ξ-El (β _ e))) (credᵀ El-⌜Fin⌝)
 
   renKit : Kit n sg
   renKit = record
     { vsort = v
     ; VF    = VFr
-    ; WK    = lam (lam (ffs (var vz)))
-    ; V0    = lam ffz
+    ; WK    = lam (lam (fsuc (var vz)))
+    ; V0    = lam fzero
     ; NODE  = lam (lam (conₗ kv (pair (var vz) unit)))
     ; VF-sub = λ σ → refl
-    ; ⊢VF   = ⊢lam (ty-El ⊢⌜Nat⌝) (⊢⌜IMu⌝ ⊢⌜Nat⌝ ⊢FinD (⊢var here))
+    ; ⊢VF   = ⊢lam (ty-El ⊢⌜Nat⌝) (⊢⌜Fin⌝ (fromI (⊢var here)))
     ; ⊢WK   = ⊢lam (ty-El ⊢⌜Nat⌝) (⊢lam (ty-El (⊢app ⊢VFr (⊢var here)))
-                 (⊢conv (⊢ffs (⊢var (there here)) (⊢conv (⊢var here) vf≅)) (csymᵀ vf≅)))
-    ; ⊢V0   = ⊢lam (ty-El ⊢⌜Nat⌝) (⊢conv (⊢ffz (⊢var here)) (csymᵀ vf≅))
+                 (⊢conv (⊢fsuc (⊢conv (⊢var here) vf≅)) (csymᵀ vf≅)))
+    ; ⊢V0   = ⊢lam (ty-El ⊢⌜Nat⌝) (⊢conv (⊢fzero (fromI (⊢var here))) (csymᵀ vf≅))
     ; ⊢NODE = ⊢lam (ty-El ⊢⌜Nat⌝) (⊢lam (ty-El (⊢app ⊢VFr (⊢var here)))
                  (⊢conSyn ok ngv nhv (⊢var (there here)) (a-v (⊢conv (⊢var here) vf≅))))
     }
     where
       ⊢VFr : {Γ : Ctx} → Γ ⊢ VFr ∷ Π (El ⌜Nat⌝) U
-      ⊢VFr = ⊢lam (ty-El ⊢⌜Nat⌝) (⊢⌜IMu⌝ ⊢⌜Nat⌝ ⊢FinD (⊢var here))
+      ⊢VFr = ⊢lam (ty-El ⊢⌜Nat⌝) (⊢⌜Fin⌝ (fromI (⊢var here)))
 
   open TravM ok renKit vok public
 
@@ -142,10 +141,10 @@ module Ren {sg : Sig n} (ok : SigOK n sg) {v kv : ℕ} {shs : Shapes c}
 
   -- the weakening environment `λ x. fsuc x : Fin d → Fin (suc d)`
   WKρ : RTm Γ
-  WKρ = lam (ffs (var vz))
+  WKρ = lam (fsuc (var vz))
 
   ⊢WKρ : {Γ : Ctx} {d : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ WKρ ∷ Trav.Env ok renKit d (nsuc d)
-  ⊢WKρ dd = ⊢lam (ty-IMu ⊢⌜Nat⌝ ⊢FinD dd) (⊢conv (⊢ffs (⊢wk dd) (⊢var here)) (csymᵀ vf≅))
+  ⊢WKρ dd = ⊢lam (ty-Fin (fromI dd)) (⊢conv (⊢fsuc (⊢var here)) (csymᵀ vf≅))
 
   -- ★ WEAKENING: `renTm vs`, object-level
   wk : ℕ → RTm Γ → RTm Γ → RTm Γ
