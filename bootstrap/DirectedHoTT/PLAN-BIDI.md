@@ -686,6 +686,47 @@ tag rules key on it (`⊢fzero : Fin (suc n)`). After:
   Each step is checked by an NbE normal-form equality with the Lib's
   term at `⌜KSig⌝` (and a negative control) before the next.
 
+- **Pw POC — progress (2026-10-06, overnight).**
+  - ✅ **P1+P2, as `Examples/SigMeth`** (a segment over SigCore, 48 s):
+    the core's `methAt`. A method is written as the Lib writes it:
+    1. split the index;
+    2. a cascade over the sorts;
+    3. split the payload;
+    4. a cascade over the constructors;
+    5. a leaf per constructor.
+
+    Leaves are typed at the decoder's MAP form (a `dσ`, a telescope) and
+    results at its TABULATED form (`tabD G k`). The `natrec` over the
+    table's length lines the two up in lockstep. At the identity embedding,
+    the tabulated form is the decoder. There is one generator per result
+    kind (`Casc`), because the motive is over the index only and `U` has
+    no code for `Desc`:
+    - Desc-valued (`#methD`, for fibres);
+    - U-coded (`#methU`, for programs).
+  - ★ **The traversal was rebuilt on it, because the old one had the wrong
+    normal form.**
+    - Measured: SigCore's walk-based `#trav` at `⌜KSig⌝` on an open term
+      normalised to 2317 nodes; the Knot's `wk` normalises to 1921.
+    - The methods differ (the old one was `λ i p h e σ. walk …`). Pw's
+      kcHom row uses `wk`, so no family using `wk` could have moved onto
+      the core by conversion.
+    - `#trav` is now `#methU` with leaves `#rnL`. Nodes are built by
+      `#conAt`, the constructor at the map form, through the two cascades
+      in the other direction.
+    - `Examples/NbETravAgree.trav-is-wk`: the normal forms are EQUAL, with
+      a negative control.
+    - `#walk`/`#rnM`/old `#trav` are deleted. SigCore went from 34 entries
+      in 43 s to 22 entries in 18.7 s.
+  - ⛔ **P3 is BLOCKED on PLAN-EVAL E3, measured.**
+    - `Negative/PwCore` (the rows as `#methD`'s leaves; `#PwD`; `#Pw`)
+      runs out of memory in the checker, killed at the cap after
+      350–470 s, EVEN WITH EVERY ROW EMPTY.
+    - The cost is the 52 dependently-typed cascade branches over the
+      quoted Knot signature, each converted by CheckA's SUBSTITUTION
+      evaluators. `#PwC`/`#PwJ` alone check in 6 s.
+    - Next, in order: `nbeᵀ` soundness, CheckA's conversion by NbE, then
+      un-park PwCore and run the `#PwD ≅ PwF.DF` normal-form test.
+
 **Then, the migration recipe** (each step is one family):
 - a schema becomes a CLOSED λ-entry; an instance becomes
   `app (ref d) args`;
