@@ -15,7 +15,8 @@ module DirectedHoTT.Examples.Knot.JudgeCase where
 
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂; subst )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
-open import DirectedHoTT.Spec.Syntax hiding ( Fin )
+open import DirectedHoTT.Spec.Syntax
+open import DirectedHoTT.Lib.NatCode using ( fromI )
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast )
 open import DirectedHoTT.Metatheory.SubjectReductionBase using () renaming ( wk-sub to wkS )
@@ -33,7 +34,6 @@ open import DirectedHoTT.Examples.Knot.JudgeTmIx
 open import DirectedHoTT.Examples.Knot.JudgeFib using () renaming ( RowOK to RowOKₒ )
 open import DirectedHoTT.Examples.Knot.Ctors
 open import DirectedHoTT.Examples.Knot.Ren using ( wk; ⊢wkS )
-open import DirectedHoTT.Lib.FinFam using ( ⊢ffz )
 open import DirectedHoTT.Lib.NatCode using ( ⊢isuc )
 
 private
@@ -87,7 +87,7 @@ toTm da = ⊢conv da (csymᵀ (credᵀ El-⌜Tm⌝))
 ⊢mc : {Ξ : Ctx} {j g I D : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ g ∷ KCtx j → Ξ ⊢ I ∷ K 1 j → Ξ ⊢ D ∷ K 1 j →
       Ξ ⊢ mc j g I D ∷ KCtx (nsuc (nsuc j))
 ⊢mc dj dg dI dD = ⊢cext (⊢isuc dj) (⊢cext dj dg (⊢kEl dj dI))
-                        (⊢kIMu (⊢isuc dj) (⊢wkS (lt-s lt-z) dj dI) (⊢wkS (lt-s lt-z) dj dD) (⊢kvar (⊢isuc dj) (⊢ffz dj)))
+                        (⊢kIMu (⊢isuc dj) (⊢wkS (lt-s lt-z) dj dI) (⊢wkS (lt-s lt-z) dj dD) (⊢kvar (⊢isuc dj) (⊢fzero (fromI dj))))
 
 ------------------------------------------------------------------------
 -- 3. ★ A ROW BY CASE ON THE CONCLUSION TYPE.

@@ -18,7 +18,7 @@ module DirectedHoTT.Examples.Knot.JudgeDecode where
 
 open import normalizer.Syntax.Types using ( _≡_; refl; Σ; _,_; ⊥-elim )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
-open import DirectedHoTT.Spec.Syntax hiding ( Fin )
+open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Metatheory.LogicalRelation using ( IsNormal )
 open import DirectedHoTT.Metatheory.Canonicity using ( sz; _≤_; ≤-refl )

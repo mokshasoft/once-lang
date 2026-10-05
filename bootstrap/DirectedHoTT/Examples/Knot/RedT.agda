@@ -16,13 +16,13 @@ module DirectedHoTT.Examples.Knot.RedT where
 
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂; subst )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
-open import DirectedHoTT.Spec.Syntax hiding ( Fin )
+open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Metatheory.TySub using ( ⊢wk )
 open import DirectedHoTT.Metatheory.SubjectReductionBase using () renaming ( wk-sub to wkS )
 open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_; tag; Lt; lt-z; lt-s; []ᵈ; _∷ᵈ_; AllD; v₀; v₁; _,ₚ_ )
 open import DirectedHoTT.Lib.SynView using ( PayV; ⊢recFst; ⊢recSnd; ⊢atDepthSK; ⊢natFst; ⊢natSnd )
-open import DirectedHoTT.Lib.FinFam using ( ffz; ⊢ffz; ffs; ⊢ffs )
+open import DirectedHoTT.Lib.NatCode using ( fromI )
 open import DirectedHoTT.Lib.NatCode using ( ⊢isuc; toI )
 open import DirectedHoTT.Lib.Tel
 open import DirectedHoTT.Lib.Syn
@@ -1249,7 +1249,7 @@ okrT⟶ᵀHom₇L1 : PT⟶ᵀHom₇ᶜ0.RowOK 0 sh-kU rT⟶ᵀHom₇L1
 okrT⟶ᵀHom₇L1 {Ξ} {j} {q} {c} dj dq dc = ⊢tel {Ξ} {RedTₘ.J} {T⟶ᵀHom₇ j q c} RedTₘ.⊢J (okT⟶ᵀHom₇ dj dq dc)
 
 T⟶ᵀHom₈A : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
-T⟶ᵀHom₈A J X F1 F2 R0ᵢ0 R0ᵢ1 A0 A1 A2 = tσ (⌜Id⌝ A2 X (kPi R0ᵢ0 (kHom R0ᵢ1 (kapp A0 (kvar ffz)) (kapp A1 (kvar ffz))))) tι
+T⟶ᵀHom₈A J X F1 F2 R0ᵢ0 R0ᵢ1 A0 A1 A2 = tσ (⌜Id⌝ A2 X (kPi R0ᵢ0 (kHom R0ᵢ1 (kapp A0 (kvar fzero)) (kapp A1 (kvar fzero))))) tι
 
 T⟶ᵀHom₈I : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶ᵀHom₈I J X F1 F2 R0ᵢ0 R0ᵢ1 = T⟶ᵀHom₈A J X F1 F2 R0ᵢ0 R0ᵢ1 (wk 1 J F1) (wk 1 J F2) (⌜Ty⌝ J)
@@ -1264,7 +1264,7 @@ T⟶ᵀHom₈I-cong : {Δ : Cx} → (J J' : RTm Δ) → (X X' : RTm Δ) → (F1 
 T⟶ᵀHom₈I-cong J J' X X' F1 F1' F2 F2' R0ᵢ0 R0ᵢ0' R0ᵢ1 R0ᵢ1' refl refl refl refl refl refl = refl
 
 okT⟶ᵀHom₈I : {Ξ : Ctx} {J X F1 F2 R0ᵢ0 R0ᵢ1 : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ X ∷ K 0 J → Ξ ⊢ F1 ∷ K 1 J → Ξ ⊢ F2 ∷ K 1 J → Ξ ⊢ R0ᵢ0 ∷ K 0 J → Ξ ⊢ R0ᵢ1 ∷ K 0 (nsuc J) → TelOK Ξ RedTₘ.J (T⟶ᵀHom₈I J X F1 F2 R0ᵢ0 R0ᵢ1)
-okT⟶ᵀHom₈I dJ dX dF1 dF2 dR0ᵢ0 dR0ᵢ1 = ok-σ (⊢⌜Id⌝ (⊢⌜Ty⌝ dJ) (toTy dX) (toTy (⊢kPi dJ dR0ᵢ0 (⊢kHom (⊢isuc dJ) dR0ᵢ1 (⊢kapp (⊢isuc dJ) (⊢wkS (lt-s lt-z) dJ dF1) (⊢kvar (⊢isuc dJ) (⊢ffz dJ))) (⊢kapp (⊢isuc dJ) (⊢wkS (lt-s lt-z) dJ dF2) (⊢kvar (⊢isuc dJ) (⊢ffz dJ))))))) ok-ι
+okT⟶ᵀHom₈I dJ dX dF1 dF2 dR0ᵢ0 dR0ᵢ1 = ok-σ (⊢⌜Id⌝ (⊢⌜Ty⌝ dJ) (toTy dX) (toTy (⊢kPi dJ dR0ᵢ0 (⊢kHom (⊢isuc dJ) dR0ᵢ1 (⊢kapp (⊢isuc dJ) (⊢wkS (lt-s lt-z) dJ dF1) (⊢kvar (⊢isuc dJ) (⊢fzero (fromI dJ)))) (⊢kapp (⊢isuc dJ) (⊢wkS (lt-s lt-z) dJ dF2) (⊢kvar (⊢isuc dJ) (⊢fzero (fromI dJ)))))))) ok-ι
 
 T⟶ᵀHom₈⁽0⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶ᵀHom₈⁽0⁾ J X F1 F2 R0ᵢ0 R0ᵢ1 = (T⟶ᵀHom₈I J X F1 F2 R0ᵢ0 R0ᵢ1)

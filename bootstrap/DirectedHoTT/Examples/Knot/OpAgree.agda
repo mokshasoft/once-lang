@@ -27,7 +27,6 @@ open import DirectedHoTT.Spec.Variance using ( pwShift )
 open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-trans; ⟶*-con; ⟶*-pairˡ; ⟶*-pairʳ; ⟶*-appˡ; ⟶*-ielimᵗ )
 open import DirectedHoTT.Metatheory.TySub using ( wk-cancel-tm )
 open import DirectedHoTT.Metatheory.Fundamental.Syntactic using ( ⟨_⟩ᵣ; subTm-var; subTy-var )
-open import DirectedHoTT.Lib.FinFam using ( ffz; ffs )
 open import DirectedHoTT.Lib.Sugar using ( conₗ; v₀; v₁; _,ₚ_ )
 open import DirectedHoTT.Lib.Syn
 open import DirectedHoTT.Examples.Knot.Sig

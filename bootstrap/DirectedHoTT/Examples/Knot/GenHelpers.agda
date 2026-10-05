@@ -13,7 +13,7 @@
 module DirectedHoTT.Examples.Knot.GenHelpers where
 
 open import normalizer.Syntax.Types using ( _≡_; refl; trans; cong )
-open import DirectedHoTT.Spec.Syntax hiding ( Fin )
+open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Metatheory.SubjectReductionBase using () renaming ( wk-sub to wkS )
 open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_ )
 open import DirectedHoTT.Examples.Knot.JudgeCase using ( w1; w2; w3; w1-sub; w2-sub; w3-sub )

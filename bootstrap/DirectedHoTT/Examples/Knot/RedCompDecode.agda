@@ -20,7 +20,7 @@ module DirectedHoTT.Examples.Knot.RedCompDecode where
 
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; subst; Σ; _,_; _×_ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
-open import DirectedHoTT.Spec.Syntax hiding ( Fin )
+open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Spec.Variance using ( 𝔹; true; false; pw?; pwBody; stkA?; stkC? )
 open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; ⟶ᵀ*-El; ⟶*-dpayᶜ; ⟶*-trans )
@@ -32,7 +32,6 @@ open import DirectedHoTT.Lib.Tel
 open import DirectedHoTT.Lib.Syn
 open import DirectedHoTT.Lib.Decode
 open import DirectedHoTT.Lib.PatDecode
-open import DirectedHoTT.Lib.FinFam using ( FinI; ffz; ffs )
 open import DirectedHoTT.Examples.Knot.Sig
 open import DirectedHoTT.Examples.Knot.Ctors
 open import DirectedHoTT.Examples.Knot.Terms
@@ -1258,11 +1257,11 @@ cd⟶tr₍11₎ᴸ1 {Γ} a0 a2 x0ᵢ0 u {q} dq nq =
   ▷ λ { (E1 , eqE1) →
   unqTm {Γ = Γ ∙ ∙} (⊢conv de3 (credᵀ El-⌜Tm⌝)) ne3
   ▷ λ { (E3 , eqE3) →
-  quoteTm-inj a0 (⌜Hom⌝ E0 E1 v₀) (nf-≅ (quoteTm-normal {Γ = Γ ∙} a0) (quoteTm-normal {Γ = Γ ∙} (⌜Hom⌝ E0 E1 v₀)) (subst (λ z → f0 ≅ (kcHom (quoteTm E0) z (kvar ffz))) eqE1 (subst (λ z → f0 ≅ (kcHom z e1 (kvar ffz))) eqE0 (idrefl-decᶜ de2 ne2))))
+  quoteTm-inj a0 (⌜Hom⌝ E0 E1 v₀) (nf-≅ (quoteTm-normal {Γ = Γ ∙} a0) (quoteTm-normal {Γ = Γ ∙} (⌜Hom⌝ E0 E1 v₀)) (subst (λ z → f0 ≅ (kcHom (quoteTm E0) z (kvar fzero))) eqE1 (subst (λ z → f0 ≅ (kcHom z e1 (kvar fzero))) eqE0 (idrefl-decᶜ de2 ne2))))
   ▷ λ eqM2 →
   decPw {Γ = Γ ∙} E0 {E3} (subst (λ z → ◇ ⊢ e4 ∷ KPw (nsuc j) (quoteTm E0) z) eqE3 (subst (λ z → ◇ ⊢ e4 ∷ KPw (nsuc j) z e3) eqE0 (⊢conv de4 El-⌜Pw⌝))) ne4
   ▷ λ { (pr4 , eqP4) →
-  (subst (λ z → (tr z (lam x0ᵢ0) a2) ⟶ u) (sym eqM2) (close (tr-pw E0 E1 x0ᵢ0 a2 pr4) (ctrn (subst (λ z → c ≅ (klam (ktr (kcHom (pwShK j (quoteTm z)) (kapp (wk 1 (nsuc j) (quoteTm E1)) (kvar (ffs ffz))) (kvar ffz)) a0ᵢ0 (kapp (wk 1 j f2) (kvar ffz))))) eqP4 (subst (λ z → c ≅ (klam (ktr (kcHom (pwShK j z) (kapp (wk 1 (nsuc j) (quoteTm E1)) (kvar (ffs ffz))) (kvar ffz)) a0ᵢ0 (kapp (wk 1 j f2) (kvar ffz))))) eqE3 (subst (λ z → c ≅ (klam (ktr (kcHom (pwShK j e3) (kapp (wk 1 (nsuc j) z) (kvar (ffs ffz))) (kvar ffz)) a0ᵢ0 (kapp (wk 1 j f2) (kvar ffz))))) eqE1 (idrefl-decᶜ dF nF)))) (⟶*→≅ (node-1 (⟶*-trans (node-1 (⟶*-trans (node-1 (pwSh-agree (pwBody E0))) (node-2 (node-1 (wk-agree-tm E1))))) (node-3 (node-1 (wk-agree-tm a2))))))))) } } } } } } } } } }
+  (subst (λ z → (tr z (lam x0ᵢ0) a2) ⟶ u) (sym eqM2) (close (tr-pw E0 E1 x0ᵢ0 a2 pr4) (ctrn (subst (λ z → c ≅ (klam (ktr (kcHom (pwShK j (quoteTm z)) (kapp (wk 1 (nsuc j) (quoteTm E1)) (kvar (fsuc fzero))) (kvar fzero)) a0ᵢ0 (kapp (wk 1 j f2) (kvar fzero))))) eqP4 (subst (λ z → c ≅ (klam (ktr (kcHom (pwShK j z) (kapp (wk 1 (nsuc j) (quoteTm E1)) (kvar (fsuc fzero))) (kvar fzero)) a0ᵢ0 (kapp (wk 1 j f2) (kvar fzero))))) eqE3 (subst (λ z → c ≅ (klam (ktr (kcHom (pwShK j e3) (kapp (wk 1 (nsuc j) z) (kvar (fsuc fzero))) (kvar fzero)) a0ᵢ0 (kapp (wk 1 j f2) (kvar fzero))))) eqE1 (idrefl-decᶜ dF nF)))) (⟶*→≅ (node-1 (⟶*-trans (node-1 (⟶*-trans (node-1 (pwSh-agree (pwBody E0))) (node-2 (node-1 (wk-agree-tm E1))))) (node-3 (node-1 (wk-agree-tm a2))))))))) } } } } } } } } } }
   where
     j f0 f1 f2 a0ᵢ0 p c q0 cv0 : RTm ε
     j = dep Γ
@@ -1309,7 +1308,7 @@ cd⟶hrefl₍2₎ {Γ} a0 a1 u {q} dq nq =
   ▷ λ { (E0 , eqE0) →
   decPw {Γ = Γ} a0 {E0} (subst (λ z → ◇ ⊢ e1 ∷ KPw j f0 z) eqE0 (⊢conv de1 El-⌜Pw⌝)) ne1
   ▷ λ { (pr1 , eqP1) →
-  (close (hrefl-pw a0 a1 pr1) (ctrn (subst (λ z → c ≅ (klam (khrefl (quoteTm z) (kapp (wk 1 j f1) (kvar ffz))))) eqP1 (subst (λ z → c ≅ (klam (khrefl z (kapp (wk 1 j f1) (kvar ffz))))) eqE0 (idrefl-decᶜ dF nF))) (⟶*→≅ (node-1 (node-2 (node-1 (wk-agree-tm a1))))))) } } } } }
+  (close (hrefl-pw a0 a1 pr1) (ctrn (subst (λ z → c ≅ (klam (khrefl (quoteTm z) (kapp (wk 1 j f1) (kvar fzero))))) eqP1 (subst (λ z → c ≅ (klam (khrefl z (kapp (wk 1 j f1) (kvar fzero))))) eqE0 (idrefl-decᶜ dF nF))) (⟶*→≅ (node-1 (node-2 (node-1 (wk-agree-tm a1))))))) } } } } }
   where
     j f0 f1 p c : RTm ε
     j = dep Γ

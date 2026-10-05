@@ -18,10 +18,10 @@ module DirectedHoTT.Examples.Knot.SubEnv where
 
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
-open import DirectedHoTT.Spec.Syntax hiding ( Fin )
+open import DirectedHoTT.Spec.Syntax
+open import DirectedHoTT.Lib.NatCode using ( fromI )
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Lib.Sugar using ( Lt; lt-z; lt-s; v₀; _,ₚ_ )
-open import DirectedHoTT.Lib.FinFam using ( FinI; FinD; ⊢FinD; ffz; ffs; ⊢ffz; ⊢ffs )
 open import DirectedHoTT.Lib.NatCode using ( ⊢isuc )
 open import DirectedHoTT.Lib.Syn
 open import DirectedHoTT.Metatheory.TySub using ( ⊢wk )
@@ -48,35 +48,35 @@ private
 
 -- `vs^k` : Env d (d + k)
 WK1 WK2 WK3 : RTm Γ
-WK1 = lam (vnode (ffs v₀))
-WK2 = lam (vnode (ffs (ffs v₀)))
-WK3 = lam (vnode (ffs (ffs (ffs v₀))))
+WK1 = lam (vnode (fsuc v₀))
+WK2 = lam (vnode (fsuc (fsuc v₀)))
+WK3 = lam (vnode (fsuc (fsuc (fsuc v₀))))
 
 module _ {Ξ : Ctx} {d : RTm ⌊ Ξ ⌋} (dd : Ξ ⊢ d ∷ El ⌜Nat⌝) where
   private
-    dd' : (Ξ ▹ FinI d) ⊢ renTm vs d ∷ El ⌜Nat⌝
+    dd' : (Ξ ▹ Fin d) ⊢ renTm vs d ∷ El ⌜Nat⌝
     dd' = ⊢wk dd
   ⊢WK1 : Ξ ⊢ WK1 ∷ Env d (nsuc d)
-  ⊢WK1 = ⊢lam (ty-IMu ⊢⌜Nat⌝ ⊢FinD dd) (fromSK (⊢vnode (⊢isuc dd') (⊢ffs dd' (⊢var here))))
+  ⊢WK1 = ⊢lam (ty-Fin (fromI dd)) (fromSK (⊢vnode (⊢isuc dd') (⊢fsuc (⊢var here))))
   ⊢WK2 : Ξ ⊢ WK2 ∷ Env d (nsuc (nsuc d))
-  ⊢WK2 = ⊢lam (ty-IMu ⊢⌜Nat⌝ ⊢FinD dd) (fromSK (⊢vnode (⊢isuc (⊢isuc dd')) (⊢ffs (⊢isuc dd') (⊢ffs dd' (⊢var here)))))
+  ⊢WK2 = ⊢lam (ty-Fin (fromI dd)) (fromSK (⊢vnode (⊢isuc (⊢isuc dd')) (⊢fsuc (⊢fsuc (⊢var here)))))
   ⊢WK3 : Ξ ⊢ WK3 ∷ Env d (nsuc (nsuc (nsuc d)))
-  ⊢WK3 = ⊢lam (ty-IMu ⊢⌜Nat⌝ ⊢FinD dd)
-               (fromSK (⊢vnode (⊢isuc (⊢isuc (⊢isuc dd'))) (⊢ffs (⊢isuc (⊢isuc dd')) (⊢ffs (⊢isuc dd') (⊢ffs dd' (⊢var here))))))
+  ⊢WK3 = ⊢lam (ty-Fin (fromI dd))
+               (fromSK (⊢vnode (⊢isuc (⊢isuc (⊢isuc dd'))) (⊢fsuc (⊢fsuc (⊢fsuc (⊢var here))))))
 
 -- the variables `0 , 1 , 2` at depth `d + k`
 v0 v1 v2 : RTm Γ
-v0 = kvar ffz
-v1 = kvar (ffs ffz)
-v2 = kvar (ffs (ffs ffz))
+v0 = kvar fzero
+v1 = kvar (fsuc fzero)
+v2 = kvar (fsuc (fsuc fzero))
 
 module _ {Ξ : Ctx} {d : RTm ⌊ Ξ ⌋} (dd : Ξ ⊢ d ∷ El ⌜Nat⌝) where
   ⊢v0 : Ξ ⊢ v0 ∷ K 1 (nsuc d)
-  ⊢v0 = ⊢kvar (⊢isuc dd) (⊢ffz dd)
+  ⊢v0 = ⊢kvar (⊢isuc dd) (⊢fzero (fromI dd))
   ⊢v1 : Ξ ⊢ v1 ∷ K 1 (nsuc (nsuc d))
-  ⊢v1 = ⊢kvar (⊢isuc (⊢isuc dd)) (⊢ffs (⊢isuc dd) (⊢ffz dd))
+  ⊢v1 = ⊢kvar (⊢isuc (⊢isuc dd)) (⊢fsuc (⊢fzero (fromI dd)))
   ⊢v2 : Ξ ⊢ v2 ∷ K 1 (nsuc (nsuc (nsuc d)))
-  ⊢v2 = ⊢kvar (⊢isuc (⊢isuc (⊢isuc dd))) (⊢ffs (⊢isuc (⊢isuc dd)) (⊢ffs (⊢isuc dd) (⊢ffz dd)))
+  ⊢v2 = ⊢kvar (⊢isuc (⊢isuc (⊢isuc dd))) (⊢fsuc (⊢fsuc (⊢fzero (fromI dd))))
 
 -- nrs    : Env (j+1) (j+2)   0 ↦ suc 1 , x+1 ↦ x+2
 -- pairS  : Env (j+1) (j+2)   0 ↦ (1 , 0) , x+1 ↦ x+2

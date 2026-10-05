@@ -364,8 +364,8 @@ class PObj:
         if tag == "cext": return "(cext %s %s)" % (self.expr(x[1], env, atoms), self.expr(x[2], env, atoms))
         if tag == "nsuc": return "(nsuc %s)" % self.expr(x[1], env, atoms)
         if tag == "nzero": return "nzero"
-        if tag == "v0": return "(kvar ffz)"
-        if tag == "v1": return "(kvar (ffs ffz))"
+        if tag == "v0": return "(kvar fzero)"
+        if tag == "v1": return "(kvar (fsuc fzero))"
         if tag in ("sub0", "wk", "DF", "mc") or tag in OPS:
             key = (tag, x[1:])
             if atoms: return "A%d" % self.atoms.index(key)
@@ -444,10 +444,10 @@ class PObj:
         tag = x[0]
         if tag == "v0":
             assert s == 1 and dnum(d) >= 1
-            return "(⊢kvar %s (⊢ffz %s))" % (dty(d, denv["J"]), dty(minus1(d), denv["J"]))
+            return "(⊢kvar %s (⊢fzero (fromI %s)))" % (dty(d, denv["J"]), dty(minus1(d), denv["J"]))
         if tag == "v1":
             assert s == 1 and dnum(d) >= 2
-            return "(⊢kvar %s (⊢ffs %s (⊢ffz %s)))" % (dty(d, denv["J"]), dty(minus1(d), denv["J"]), dty(minus1(minus1(d)), denv["J"]))
+            return "(⊢kvar %s (⊢fsuc (⊢fzero (fromI %s))))" % (dty(d, denv["J"]), dty(minus1(minus1(d)), denv["J"]))
         if tag == "k":
             srt, fs, _ = SIG[x[1]]
             assert srt == s, (x, s)
@@ -546,12 +546,12 @@ def pty(rc, p):
     if p[0] == "r":
         f = SIG[rc.nest[p[1]][1]][1][p[2]]
         if f[0] == "nat": return "El ⌜Nat⌝"
-        if f[0] == "var": return "FinI J"
+        if f[0] == "var": return "Fin J"
         return "K %d %s" % (f[1], dep(DEPTHS[f[2]]))
     if p[0] in ("f", "q"):
         fs = rc.fields if p[0] == "f" else rc.tfields
         f = fs[p[1]]
-        if f[0] == "var": return "FinI J"
+        if f[0] == "var": return "Fin J"
         assert f[0] == "rec", (rc.n, p, f)
         return "K %d %s" % (f[1], dep(DEPTHS[f[2]]))
     if p[0] == "e":
@@ -1036,14 +1036,14 @@ def gen_con(al, ci, nc, R, csf):
     # the hypotheses
     hyps = [("j", "El ⌜Nat⌝")] + ([] if fam_ else [("g", "KCtx j")])
     if not ford and not case and not ty_: hyps.append(("x", FAM["XK"].replace("J", "j") if fam_ else "K 0 j"))
-    fty = lambda f: "FinI j" if f[0] == "var" else ("El ⌜Nat⌝" if f[0] == "nat" else "K %d %s" % (f[1], nsucs(f[2], "j")))
+    fty = lambda f: "Fin j" if f[0] == "var" else ("El ⌜Nat⌝" if f[0] == "nat" else "K %d %s" % (f[1], nsucs(f[2], "j")))
     for i, f in enumerate(fs):
         if ("f", i) not in scrut: hyps.append(("f%d" % i, fty(f)))
     for m in range(Ln):
         for i, f in enumerate(SIG[nest[m][1]][1]):
             if ("r", m, i) not in scrut: hyps.append((val[("r", m, i)], fty(f)))
     for i, f in enumerate(qf):
-        hyps.append(("q%d" % i, "FinI j" if f[0] == "var" else ("El ⌜Nat⌝" if f[0] == "nat" else "K %d %s" % (f[1], nsucs(f[2], "j")))))
+        hyps.append(("q%d" % i, "Fin j" if f[0] == "var" else ("El ⌜Nat⌝" if f[0] == "nat" else "K %d %s" % (f[1], nsucs(f[2], "j")))))
     for i in range(n): hyps.append(("e%d" % i, ehyp(i)))
     for t, ri in enumerate(rs):
         e = body[ri]
@@ -1377,7 +1377,7 @@ def subject_parts(h):
         for i in reversed(range(len(fs))):
             p_ = "(pair f%d %s)" % (i, p_)
             args_ = "(%s df%d %s)" % ("a-nat" if fs[i][0] == "nat" else "a-rec", i, args_)
-    hyps = [("f%d" % i, "FinI j" if f[0] == "var" else ("El ⌜Nat⌝" if f[0] == "nat" else "K %d %s" % (f[1], nsucs(f[2], "j"))))
+    hyps = [("f%d" % i, "Fin j" if f[0] == "var" else ("El ⌜Nat⌝" if f[0] == "nat" else "K %d %s" % (f[1], nsucs(f[2], "j"))))
             for i, f in enumerate(fs)]
     return p_, args_, "(k%s%s)" % (h, "".join(" " + x for x in fv)), "(⊢k%s dj%s)" % (h, "".join(" df%d" % i for i in range(len(fs)))), hyps
 
@@ -1712,7 +1712,7 @@ module DirectedHoTT.Examples.Knot.Preds where
 
 open import normalizer.Syntax.Types using ( _≡_; refl; cong; cong₂ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
-open import DirectedHoTT.Spec.Syntax hiding ( Fin )
+open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_; tag; lt-z; lt-s; []ᵈ; _∷ᵈ_ )
 open import DirectedHoTT.Lib.SynView using ( PayV; ⊢recFst; ⊢recSnd; ⊢atDepthSK )
@@ -1904,13 +1904,13 @@ module DirectedHoTT.Examples.Knot.MODNAME where
 
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂; subst )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
-open import DirectedHoTT.Spec.Syntax hiding ( Fin )
+open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Metatheory.TySub using ( ⊢wk )
 open import DirectedHoTT.Metatheory.SubjectReductionBase using () renaming ( wk-sub to wkS )
 open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_; tag; Lt; lt-z; lt-s; []ᵈ; _∷ᵈ_; AllD )
 open import DirectedHoTT.Lib.SynView using ( PayV; ⊢recFst; ⊢recSnd; ⊢atDepthSK; ⊢natFst; ⊢natSnd )
-open import DirectedHoTT.Lib.FinFam using ( ffz; ⊢ffz; ffs; ⊢ffs )
+open import DirectedHoTT.Lib.NatCode using ( fromI )
 open import DirectedHoTT.Lib.NatCode using ( ⊢isuc; toI )
 open import DirectedHoTT.Lib.Tel
 open import DirectedHoTT.Lib.Syn
@@ -2032,7 +2032,7 @@ GHDR = """----------------------------------------------------------------------
 module DirectedHoTT.Examples.Knot.GenHelpers where
 
 open import normalizer.Syntax.Types using ( _≡_; refl; trans; cong )
-open import DirectedHoTT.Spec.Syntax hiding ( Fin )
+open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Metatheory.SubjectReductionBase using () renaming ( wk-sub to wkS )
 open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_ )
 open import DirectedHoTT.Examples.Knot.JudgeCase using ( w1; w2; w3; w1-sub; w2-sub; w3-sub )
@@ -2057,12 +2057,12 @@ module DirectedHoTT.Examples.Knot.JudgeRowsGen where
 
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂; subst )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
-open import DirectedHoTT.Spec.Syntax hiding ( Fin )
+open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Metatheory.TySub using ( ⊢wk )
 open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_; tag; Lt; lt-z; lt-s; []ᵈ; _∷ᵈ_; AllD )
 open import DirectedHoTT.Lib.SynView using ( PayV; ⊢recFst; ⊢recSnd; ⊢atDepthSK )
-open import DirectedHoTT.Lib.FinFam using ( ffz; ⊢ffz; ffs; ⊢ffs )
+open import DirectedHoTT.Lib.NatCode using ( fromI )
 open import DirectedHoTT.Lib.NatCode using ( ⊢isuc; toI )
 open import DirectedHoTT.Lib.Tel
 open import DirectedHoTT.Lib.Syn
@@ -2084,7 +2084,6 @@ open import DirectedHoTT.Metatheory.SubjectReductionBase using () renaming ( wk-
 open import DirectedHoTT.Examples.Knot.JudgeRowsTm using ( ⊢varOf )
 open import DirectedHoTT.Examples.Knot.JudgeConv using ( TCVat; TCVat-law; okTCVat; ⌜∋⌝; ⊢⌜∋⌝; ⌜∋⌝-sub )
 open import DirectedHoTT.Examples.Knot.RefJudge using ( r⊢ref; ok⊢ref )
-open import DirectedHoTT.Lib.FinFam using ( FinI )
 
 private
   variable
@@ -2106,14 +2105,14 @@ module DirectedHoTT.Examples.Knot.JudgeConGen where
 
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
-open import DirectedHoTT.Spec.Syntax hiding ( Fin )
+open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; ⟶ᵀ*-El; ⟶*-dpayᶜ; ⟶*-trans; ⟶*-pairˡ )
 open import DirectedHoTT.Metatheory.TySub using ( ⊢-cast; wk-cancel-tm )
 open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_; tag; conₗ; lt-z; lt-s; nth-z; nth-s; atᶜ )
 open import DirectedHoTT.Lib.SynFib using ( ⊢conRowₖ )
 open import DirectedHoTT.Lib.SynRed
-open import DirectedHoTT.Lib.FinFam using ( FinI; ffz; ⊢ffz; ffs; ⊢ffs )
+open import DirectedHoTT.Lib.NatCode using ( fromI )
 open import DirectedHoTT.Lib.NatCode using ( ⊢isuc; toI )
 open import DirectedHoTT.Lib.Tel
 open import DirectedHoTT.Lib.Syn
@@ -2221,7 +2220,7 @@ module DirectedHoTT.Examples.Knot.PredsDecode where
 
 open import normalizer.Syntax.Types using ( _≡_; refl; Σ; _,_; _×_; ⊥; ⊥-elim )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
-open import DirectedHoTT.Spec.Syntax hiding ( Fin )
+open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Spec.Variance using ( 𝔹; true; false; stkA?; stkC?; flat?; NoNatC; nnc-base; nnc-Unit; nnc-Fin; nnc-Σ; nnc-Id; nnc-Π; nnc-Hom )
 open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; ⟶ᵀ*-El; ⟶*-dpayᶜ )
@@ -2365,7 +2364,7 @@ module DirectedHoTT.Examples.Knot.RedDecode where
 
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂; subst; Σ; _,_; _×_; ⊥; ⊥-elim )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
-open import DirectedHoTT.Spec.Syntax hiding ( Fin )
+open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Spec.Variance using ( 𝔹; true; false; pw?; pwBody; stkA?; stkC? )
 open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; ⟶ᵀ*-El; ⟶*-dpayᶜ )
@@ -2377,7 +2376,6 @@ open import DirectedHoTT.Lib.Tel
 open import DirectedHoTT.Lib.Syn
 open import DirectedHoTT.Lib.Decode
 open import DirectedHoTT.Lib.PatDecode
-open import DirectedHoTT.Lib.FinFam using ( FinI; ffz; ffs )
 open import DirectedHoTT.Examples.Knot.Sig
 open import DirectedHoTT.Examples.Knot.Ctors
 open import DirectedHoTT.Examples.Knot.Terms
@@ -2637,7 +2635,7 @@ module DirectedHoTT.Examples.Knot.RedCompDecode where
 
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; subst; Σ; _,_; _×_ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
-open import DirectedHoTT.Spec.Syntax hiding ( Fin )
+open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Spec.Variance using ( 𝔹; true; false; pw?; pwBody; stkA?; stkC? )
 open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; ⟶ᵀ*-El; ⟶*-dpayᶜ; ⟶*-trans )
@@ -2649,7 +2647,6 @@ open import DirectedHoTT.Lib.Tel
 open import DirectedHoTT.Lib.Syn
 open import DirectedHoTT.Lib.Decode
 open import DirectedHoTT.Lib.PatDecode
-open import DirectedHoTT.Lib.FinFam using ( FinI; ffz; ffs )
 open import DirectedHoTT.Examples.Knot.Sig
 open import DirectedHoTT.Examples.Knot.Ctors
 open import DirectedHoTT.Examples.Knot.Terms
@@ -3000,7 +2997,7 @@ module DirectedHoTT.Examples.Knot.MODNAME where
 
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂; subst; Σ; _,_; _×_ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
-open import DirectedHoTT.Spec.Syntax hiding ( Fin )
+open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Spec.Variance using ( NoNatC; nonatc-ren; occ-ren-tm; avoids-wk )
 open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; ⟶ᵀ*-El; ⟶*-dpayᶜ; ⟶*-trans; ⟶*-pairˡ )
@@ -3015,7 +3012,6 @@ open import DirectedHoTT.Lib.Decode
 open import DirectedHoTT.Lib.PatDecode
 open import DirectedHoTT.Lib.Size using ( _<_; <ˡ; <ʳ )
 open import DirectedHoTT.Lib.SynUnq using ( nat-unq )
-open import DirectedHoTT.Lib.FinFam using ( FinI; ffz; ffs )
 open import DirectedHoTT.Examples.Knot.Sig
 open import DirectedHoTT.Examples.Knot.Ctors
 open import DirectedHoTT.Examples.Knot.Terms
@@ -3402,7 +3398,7 @@ module DirectedHoTT.Examples.Knot.JudgeDecode where
 
 open import normalizer.Syntax.Types using ( _≡_; refl; Σ; _,_; ⊥-elim )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
-open import DirectedHoTT.Spec.Syntax hiding ( Fin )
+open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Metatheory.LogicalRelation using ( IsNormal )
 open import DirectedHoTT.Metatheory.Canonicity using ( sz; _≤_; ≤-refl )
@@ -3547,7 +3543,6 @@ open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Spec.Variance using ( 𝔹; true; false; pw?; pwBody )
 open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; ⟶ᵀ*-IMu; ⟶*-pairʳ; ⟶*-trans )
 open import DirectedHoTT.Lib.Sugar using ( conₗ )
-open import DirectedHoTT.Lib.FinFam using ( ffz )
 open import DirectedHoTT.Examples.Knot.Sig using ( kcHom; kapp; kvar )
 open import DirectedHoTT.Examples.Knot.Terms
 open import DirectedHoTT.Examples.Knot.JudgeIx using ( ⌜Tm⌝ )
@@ -3558,7 +3553,7 @@ open import DirectedHoTT.Examples.Knot.OpAgree using ( wk-agree-tm; node-2; node
 
 -- a ⌜Hom⌝'s pointwise body, as the Knot writes it (with `wk`)
 Xh : {Θ : Cx} (Γ : Cx) (C a b : RTm Γ) → RTm Θ
-Xh Γ C a b = kcHom (quoteTm (pwBody C)) (kapp (wk 1 (dep Γ) (quoteTm a)) (kvar ffz)) (kapp (wk 1 (dep Γ) (quoteTm b)) (kvar ffz))
+Xh Γ C a b = kcHom (quoteTm (pwBody C)) (kapp (wk 1 (dep Γ) (quoteTm a)) (kvar fzero)) (kapp (wk 1 (dep Γ) (quoteTm b)) (kvar fzero))
 
 -- …which is the quoted Spec body
 Xh-agree : {Γ Θ : Cx} (C a b : RTm Γ) → Xh {Θ} Γ C a b ⟶* quoteTm (pwBody (⌜Hom⌝ C a b))
@@ -3870,7 +3865,7 @@ module DirectedHoTT.Examples.Knot.PredsCon where
 
 open import normalizer.Syntax.Types using ( _≡_; refl; cong )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
-open import DirectedHoTT.Spec.Syntax hiding ( Fin )
+open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; ⟶ᵀ*-El; ⟶*-dpayᶜ )
 open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_; tag; conₗ; lt-z; lt-s; nth-z; nth-s; atᶜ; []ᵈ; _∷ᵈ_ )
@@ -3903,14 +3898,14 @@ module DirectedHoTT.Examples.Knot.RedConGen where
 
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
-open import DirectedHoTT.Spec.Syntax hiding ( Fin )
+open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; ⟶ᵀ*-El; ⟶*-dpayᶜ; ⟶*-trans; ⟶*-pairˡ )
 open import DirectedHoTT.Metatheory.TySub using ( ⊢-cast; wk-cancel-tm )
 open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_; tag; conₗ; lt-z; lt-s; nth-z; nth-s; atᶜ )
 open import DirectedHoTT.Lib.SynFib using ( ⊢conRowₖ )
 open import DirectedHoTT.Lib.SynRed
-open import DirectedHoTT.Lib.FinFam using ( FinI; ffz; ⊢ffz; ffs; ⊢ffs )
+open import DirectedHoTT.Lib.NatCode using ( fromI )
 open import DirectedHoTT.Lib.NatCode using ( ⊢isuc; toI )
 open import DirectedHoTT.Lib.Tel
 open import DirectedHoTT.Lib.Syn

@@ -16,8 +16,7 @@ open import normalizer.Syntax.Types using ( _≡_; refl; cong; sym; subst )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
-open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-trans; ⟶*-appʳ; ⟶*-pairˡ; ⟶*-pairʳ; ⟶*-con )
-open import DirectedHoTT.Lib.FinFam using ( ffz; ffs )
+open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-trans; ⟶*-appʳ; ⟶*-pairˡ; ⟶*-pairʳ; ⟶*-con; ⟶*-fsuc )
 open import DirectedHoTT.Lib.Syn
 open import DirectedHoTT.Lib.SynRed using ( _∙ⁿ_ )
 open import DirectedHoTT.Lib.SynTrav using ( module Trav )

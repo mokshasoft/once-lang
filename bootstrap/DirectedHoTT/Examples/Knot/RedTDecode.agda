@@ -19,7 +19,7 @@ module DirectedHoTT.Examples.Knot.RedTDecode where
 
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂; subst; Σ; _,_; _×_; ⊥; ⊥-elim )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
-open import DirectedHoTT.Spec.Syntax hiding ( Fin )
+open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Spec.Variance using ( 𝔹; true; false; pw?; pwBody; stkA?; stkC? )
 open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; ⟶ᵀ*-El; ⟶*-dpayᶜ )
@@ -31,7 +31,6 @@ open import DirectedHoTT.Lib.Tel
 open import DirectedHoTT.Lib.Syn
 open import DirectedHoTT.Lib.Decode
 open import DirectedHoTT.Lib.PatDecode
-open import DirectedHoTT.Lib.FinFam using ( FinI; ffz; ffs )
 open import DirectedHoTT.Examples.Knot.Sig
 open import DirectedHoTT.Examples.Knot.Ctors
 open import DirectedHoTT.Examples.Knot.Terms

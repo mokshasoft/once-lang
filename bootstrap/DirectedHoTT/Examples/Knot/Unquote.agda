@@ -24,8 +24,7 @@ open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Metatheory.TySub using ( ⊢-cast )
 open import DirectedHoTT.Metatheory.LogicalRelation using ( IsNormal )
-open import DirectedHoTT.Lib.Sugar using ( Lt; lt-z; lt-s; conₗ; _,ₚ_ )
-open import DirectedHoTT.Lib.FinFam using ( ffz; ffs )
+open import DirectedHoTT.Lib.Sugar using ( Lt; lt-z; lt-s; conₗ; tag; _,ₚ_ )
 open import DirectedHoTT.Lib.NatNum using ( num )
 open import DirectedHoTT.Lib.Syn
 open import DirectedHoTT.Lib.SynUnq
@@ -81,14 +80,14 @@ toVar-from : (x : Var Γ) → toVar (fromVar-lt x) ≡ x
 toVar-from vz     = refl
 toVar-from (vs x) = cong vs (toVar-from x)
 
-fnum-fromVar : (x : Var Γ) → fnum (fromVar x) ≡ quoteVar x {Θ}
-fnum-fromVar vz     = refl
-fnum-fromVar (vs x) = cong ffs (fnum-fromVar x)
+tag-fromVar : (x : Var Γ) → tag (fromVar x) ≡ quoteVar x {Θ}
+tag-fromVar vz     = refl
+tag-fromVar (vs x) = cong fsuc (tag-fromVar x)
 
-quoteVar-toVar : {i : ℕ} (l : Lt i (len Γ)) → quoteVar (toVar l) {Θ} ≡ fnum i
+quoteVar-toVar : {i : ℕ} (l : Lt i (len Γ)) → quoteVar (toVar l) {Θ} ≡ tag i
 quoteVar-toVar {Γ = ε}   ()
 quoteVar-toVar {Γ = Γ ∙} {i = zero}  lt-z     = refl
-quoteVar-toVar {Γ = Γ ∙} {i = suc i} (lt-s l) = cong ffs (quoteVar-toVar l)
+quoteVar-toVar {Γ = Γ ∙} {i = suc i} (lt-s l) = cong fsuc (quoteVar-toVar l)
 
 ------------------------------------------------------------------------
 -- 2. The Spec's syntax and the generic trees, row by row.
@@ -280,7 +279,7 @@ quote-toTy (Desc a0) = cong kDesc (quote-toTm a0)
 quote-toTy (DIh a0 a1 a2 a3) = c4 kDIh (quote-toTm a0) (quote-toTy a1) (quote-toTm a2) (quote-toTm a3)
 quote-toTy (Fin a0) = cong kFin (quote-toTm a0)
 
-quote-toTm (var a0) = cong kvar (fnum-fromVar a0)
+quote-toTm (var a0) = cong kvar (tag-fromVar a0)
 quote-toTm (lam a0) = cong klam (quote-toTm a0)
 quote-toTm (app a0 a1) = cong₂ kapp (quote-toTm a0) (quote-toTm a1)
 quote-toTm (a0 ,ₚ a1) = cong₂ kpair (quote-toTm a0) (quote-toTm a1)

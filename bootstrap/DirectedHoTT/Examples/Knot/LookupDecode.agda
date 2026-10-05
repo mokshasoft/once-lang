@@ -19,14 +19,13 @@ module DirectedHoTT.Examples.Knot.LookupDecode where
 
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂; subst; Σ; _,_ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
-open import DirectedHoTT.Spec.Syntax hiding ( Fin )
+open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; ⟶ᵀ*-El; ⟶*-dpayᶜ )
 open import DirectedHoTT.Metatheory.TySub using ( ⊢-cast; wk-cancel-tm )
 open import DirectedHoTT.Metatheory.LogicalRelation using ( IsNormal )
 open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_; nth-z; v₀; _,ₚ_ )
 open import DirectedHoTT.Lib.Tel
-open import DirectedHoTT.Lib.FinFam using ( ffz; ffs )
 open import DirectedHoTT.Lib.Decode
 open import DirectedHoTT.Examples.Knot.Sig
 open import DirectedHoTT.Examples.Knot.Terms
@@ -122,11 +121,11 @@ private
 
 decLk {Γ ▹ A'} vz {A} dk nrm =
   dHere₁ {Γ} A' A
-    (rows-dec {I = I∋} {D = D∋} {i = ix∋ (nsuc (dep ⌊ Γ ⌋)) (cext (quoteCtx Γ) (quoteTy A')) ffz (quoteTy A)} {m = 1}
+    (rows-dec {I = I∋} {D = D∋} {i = ix∋ (nsuc (dep ⌊ Γ ⌋)) (cext (quoteCtx Γ) (quoteTy A')) fzero (quoteTy A)} {m = 1}
               {Cs = ⌜ hereT (dep ⌊ Γ ⌋) (quoteTy A') (quoteTy A) ⌝ᵗ ∷ []}
               (fib-here (dep ⌊ Γ ⌋) (quoteCtx Γ) (quoteTy A') (quoteTy A)) dk nrm)
 decLk {Γ ▹ A'} (vs y) {A} dk nrm =
   dThere₁ {Γ} A' y A
-    (rows-dec {I = I∋} {D = D∋} {i = ix∋ (nsuc (dep ⌊ Γ ⌋)) (cext (quoteCtx Γ) (quoteTy A')) (ffs (quoteVar y)) (quoteTy A)} {m = 1}
+    (rows-dec {I = I∋} {D = D∋} {i = ix∋ (nsuc (dep ⌊ Γ ⌋)) (cext (quoteCtx Γ) (quoteTy A')) (fsuc (quoteVar y)) (quoteTy A)} {m = 1}
               {Cs = ⌜ thereT (dep ⌊ Γ ⌋) (quoteCtx Γ) (fst (quoteVar y ,ₚ unit)) (quoteTy A) ⌝ᵗ ∷ []}
               (fib-there (dep ⌊ Γ ⌋) (quoteCtx Γ) (quoteTy A') (quoteVar y) (quoteTy A)) dk nrm)
