@@ -43,7 +43,7 @@ open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import Agda.Builtin.Maybe using ( Maybe; just; nothing )
 open import Agda.Builtin.String using ( String; primStringAppend )
 open import DirectedHoTT.Algorithm.Result
-open import DirectedHoTT.Spec.Syntax using ( Cx; ε; _∙; Var; vz; vs )
+open import DirectedHoTT.Spec.Syntax using ( Cx; ε; _∙; Var; vz; vs; extR )
 open import DirectedHoTT.Spec.Typing using ( ⊢ctx_; _⊢ty_; c-◇ )
 open import DirectedHoTT.Spec.Annotated
 open import DirectedHoTT.Spec.Signature using ( Sig; SigOK )
@@ -101,6 +101,17 @@ whTm (suc k) (natrec M z s n) with whTm k n
 ... | nzero  = whTm k z
 ... | nsuc m = whTm k (subTmᴬ (single2ᴬ m (natrec M z s m)) s)
 ... | n'     = natrec M z s n'
+-- ★ S7b step 3: a case on a tag, and the payload code of a telescope —
+--   so a convoy's motive, instantiated at a constructor, is seen through
+whTm (suc k) (fcase n P t a b) with whTm k t
+... | fzero _    = whTm k a
+... | fsuc _ t'  = whTm k (subTmᴬ (singleᴬ t') b)
+... | t'         = fcase n P t' a b
+whTm (suc k) (dpay I D C) with whTm k C
+... | dι _       = ⌜Unit⌝
+... | dσ _ S f   = ⌜Σ⌝ S (dpay (renTmᴬ vs I) (renTmᴬ vs D) (app (renTmᴬ vs f) (var vz)))
+... | dρ _ j C'  = ⌜Σ⌝ (⌜IMu⌝ I D j) (dpay (renTmᴬ vs I) (renTmᴬ vs D) (renTmᴬ vs C'))
+... | C'         = dpay I D C'
 whTm (suc k) t = t
 
 -- `El` of a code decodes to its type former
@@ -116,9 +127,20 @@ decode (⌜IMu⌝ I D i) = IMu I D i
 decode (⌜Fin⌝ n)     = Fin n
 decode c             = El c
 
+-- the hypotheses of a payload, along its telescope's head (`DIh-ι/σ/ρ`)
+whTyₖ : ℕ → ATy Γ → ATy Γ
+whTyₖ k (El c) = decode (whTm fuel c)
+whTyₖ zero    A = A
+whTyₖ (suc k) (DIh I D M C p) with whTm fuel C
+... | dι _      = Unit
+... | dσ _ S f  = whTyₖ k (DIh I D M (app f (fst p)) (snd p))
+... | dρ _ j C' = Σ' (iinstᴬ j (fst p) M)
+                      (DIh (renTmᴬ vs I) (renTmᴬ vs D) (renTyᴬ (extR (extR vs)) M) (renTmᴬ vs C') (snd (renTmᴬ vs p)))
+... | C'        = DIh I D M C' p
+whTyₖ (suc k) A = A
+
 whTy : ATy Γ → ATy Γ
-whTy (El c) = decode (whTm fuel c)
-whTy A      = A
+whTy A = whTyₖ fuel A
 
 ------------------------------------------------------------------------
 -- 2. Views of a (weak-head) type.
