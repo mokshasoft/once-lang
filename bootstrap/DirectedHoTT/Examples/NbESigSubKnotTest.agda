@@ -5,23 +5,16 @@
 -- OCP-0009 · EXAMPLES — ★ `Examples/SigCore`'s SUBSTITUTION AT THE KNOT,
 -- against the kernel's own `subTm`, through the Knot's quotation.
 --
--- ⚠ No binder here: under one, the kit's `WK` is itself a `#trav`, and the
---   test evaluator (`Algorithm/Eval`: applicative order, δ unfolded
---   eagerly) normalises the generic traversal inlined inside the generic
---   traversal — the type checker OOMs at the cgroup's cap (2026-10-05).
---   Substitution UNDER a binder is tested on the λ-calculus
---   (`Examples/SigTravTest.sub-λ-bind`), by the same signature-generic code.
---   Each `refl` was checked against a deliberately wrong right-hand side.
+-- ★ UNDER A BINDER too (`sub-knot-bind`): there the kit's `WK` is itself a
+--   `#trav`, nested inside the traversal.  Negative controls are decided
+--   inequalities at the end.
+-- ★ RUN BY THE ENVIRONMENT EVALUATOR (`Algorithm/NbE`, PLAN-EVAL E0).
+--   By the substitution evaluator these OOMed the type checker even at fuel
+--   40 (they were parked in `Negative/`); by NbE the module checks in ~10 s.
 ------------------------------------------------------------------------
 
--- ⚠ PARKED (2026-10-05): with the Lib-form decoder these evaluations OOM
---   the type checker (cgroup cap) even at fuel 40 — Agda's evaluation of an
---   object-level interpreter shares no work across β's `subTm` towers.  They
---   PASSED with the select-then-map decoder (commit cb30cfb1a); see
---   PLAN-BIDI "S7b step 3", the evaluation question.
-
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Negative.SigSubKnotTest where
+module DirectedHoTT.Examples.NbESigSubKnotTest where
 open import normalizer.Syntax.Types using ( _≡_; refl )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import Agda.Builtin.List using ( List; []; _∷_ )
@@ -33,6 +26,8 @@ open import DirectedHoTT.Lib.Sugar using ( tag )
 open import DirectedHoTT.Examples.Knot.Terms using ( quoteTm )
 open import DirectedHoTT.Examples.SigCore
 open import DirectedHoTT.Examples.SigCoreEval
+open import Agda.Builtin.Bool using ( Bool; true; false )
+open import DirectedHoTT.Algorithm.DecEq using ( _≟Tm_; yes; no )
 
 private
   -- the single substitution [u/x₀] at depth 1 → 0, as an environment
@@ -52,5 +47,29 @@ private
   tS = R.app (R.app (R.var vz) (R.var vz)) (R.nsuc (R.var vz))
 
 -- ★★ substituting into the quotation IS quoting the substitution
-sub-knot : nfOf (subKn (quoteTm (R.nzero {ε})) (quoteTm tS)) ≡ quoteTm (R.subTm (Ty.single R.nzero) tS)
+sub-knot : nfᴺ (subKn (quoteTm (R.nzero {ε})) (quoteTm tS)) ≡ quoteTm (R.subTm (Ty.single R.nzero) tS)
 sub-knot = refl
+
+private
+  -- under a BINDER: `λ. x₁ x₀` at depth 1 (the kit's WK is a nested traversal)
+  tB : R.RTm (ε R.∙)
+  tB = R.lam (R.app (R.var (vs vz)) (R.var vz))
+
+sub-knot-bind : nfᴺ (subKn (quoteTm (R.nsuc (R.nzero {ε}))) (quoteTm tB)) ≡ quoteTm (R.subTm (Ty.single (R.nsuc R.nzero)) tB)
+sub-knot-bind = refl
+
+------------------------------------------------------------------------
+-- ★ NEGATIVE CONTROLS, as decided inequalities (see NbESigTravTest)
+------------------------------------------------------------------------
+
+private
+  differs : {Γ : R.Cx} → R.RTm Γ → R.RTm Γ → Bool
+  differs t u with t ≟Tm u
+  ... | yes _ = false
+  ... | no  _ = true
+
+sub-knot✗ : differs (nfᴺ (subKn (quoteTm (R.nzero {ε})) (quoteTm tS))) (quoteTm (R.subTm (Ty.single (R.nsuc R.nzero)) tS)) ≡ true
+sub-knot✗ = refl
+
+sub-knot-bind✗ : differs (nfᴺ (subKn (quoteTm (R.nsuc (R.nzero {ε}))) (quoteTm tB))) (quoteTm (R.subTm (Ty.single R.nzero) tB)) ≡ true
+sub-knot-bind✗ = refl

@@ -8,14 +8,12 @@
 -- `refl` was checked against a deliberately wrong right-hand side.
 ------------------------------------------------------------------------
 
--- ⚠ PARKED (2026-10-05): with the Lib-form decoder these evaluations OOM
---   the type checker (cgroup cap) even at fuel 40 — Agda's evaluation of an
---   object-level interpreter shares no work across β's `subTm` towers.  They
---   PASSED with the select-then-map decoder (commit cb30cfb1a); see
---   PLAN-BIDI "S7b step 3", the evaluation question.
+-- ★ RUN BY THE ENVIRONMENT EVALUATOR (`Algorithm/NbE`, PLAN-EVAL E0).
+--   By the substitution evaluator these OOMed the type checker even at fuel
+--   40 (they were parked in `Negative/`); by NbE the module checks in ~10 s.
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Negative.SigTravTest where
+module DirectedHoTT.Examples.NbESigTravTest where
 open import normalizer.Syntax.Types using ( _≡_; refl; _×_; _,_ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import Agda.Builtin.List using ( List; []; _∷_ )
@@ -27,6 +25,8 @@ open import DirectedHoTT.Lib.Sugar using ( tag )
 open import DirectedHoTT.Examples.Knot.Terms using ( quoteTm )
 open import DirectedHoTT.Examples.SigCore
 open import DirectedHoTT.Examples.SigCoreEval
+open import Agda.Builtin.Bool using ( Bool; true; false )
+open import DirectedHoTT.Algorithm.DecEq using ( _≟Tm_; yes; no )
 
 ------------------------------------------------------------------------
 -- ★ RENAMING (the traversal at the renaming kit) COMPUTES.
@@ -54,13 +54,13 @@ private
   tK = R.lam (R.app (R.app (R.var vz) (R.var (vs vz))) (R.ref 0 R.nzero))
 
 -- a free variable moves, the bound one stays (the environment is lifted)
-ren-λ : nfOf (wkλ 1 (lamK (appK (varK R.fzero) (varK (R.fsuc R.fzero)))))
+ren-λ : nfᴺ (wkλ 1 (lamK (appK (varK R.fzero) (varK (R.fsuc R.fzero)))))
       ≡ lamK (appK (varK R.fzero) (varK (R.fsuc (R.fsuc R.fzero))))
 ren-λ = refl
 
 -- ★★ at the Knot, AGAINST THE KERNEL: renaming the quotation IS quoting
 --   the renaming (a binder, a crossing variable, a ref's nat and cls)
-ren-knot : nfOf (wkKn 1 1 (quoteTm tK)) ≡ quoteTm (R.renTm vs tK)
+ren-knot : nfᴺ (wkKn 1 1 (quoteTm tK)) ≡ quoteTm (R.renTm vs tK)
 ren-knot = refl
 
 ------------------------------------------------------------------------
@@ -96,10 +96,37 @@ private
   uλ = lamK (varK R.fzero)
 
 -- (x₀ x₀)[u/x₀] = u u
-sub-λ : nfOf (subλ uλ (appK (varK R.fzero) (varK R.fzero))) ≡ appK uλ uλ
+sub-λ : nfᴺ (subλ uλ (appK (varK R.fzero) (varK R.fzero))) ≡ appK uλ uλ
 sub-λ = refl
 
 -- under a binder: λ.(x₀ x₁)[u] = λ.(x₀ u) — the bound variable stays,
 --   the substituted term is weakened (the kit's WK: renaming)
-sub-λ-bind : nfOf (subλ uλ (lamK (appK (varK R.fzero) (varK (R.fsuc R.fzero))))) ≡ lamK (appK (varK R.fzero) uλ)
+sub-λ-bind : nfᴺ (subλ uλ (lamK (appK (varK R.fzero) (varK (R.fsuc R.fzero))))) ≡ lamK (appK (varK R.fzero) uλ)
 sub-λ-bind = refl
+
+------------------------------------------------------------------------
+-- ★ NEGATIVE CONTROLS, as DECIDED inequalities: each test's left-hand side
+--   differs from a deliberately wrong right-hand side.  (A failing `refl`
+--   is not a usable control here: Agda's failure path re-normalises both
+--   sides without sharing and is killed at the memory cap, rc 143.)
+------------------------------------------------------------------------
+
+private
+  differs : {Γ : R.Cx} → R.RTm Γ → R.RTm Γ → Bool
+  differs t u with t ≟Tm u
+  ... | yes _ = false
+  ... | no  _ = true
+
+ren-λ✗ : differs (nfᴺ (wkλ 1 (lamK (appK (varK R.fzero) (varK (R.fsuc R.fzero))))))
+                 (lamK (appK (varK R.fzero) (varK (R.fsuc R.fzero)))) ≡ true
+ren-λ✗ = refl
+
+ren-knot✗ : differs (nfᴺ (wkKn 1 1 (quoteTm tK))) (quoteTm tK) ≡ true
+ren-knot✗ = refl
+
+sub-λ✗ : differs (nfᴺ (subλ uλ (appK (varK R.fzero) (varK R.fzero)))) (appK uλ (varK R.fzero)) ≡ true
+sub-λ✗ = refl
+
+sub-λ-bind✗ : differs (nfᴺ (subλ uλ (lamK (appK (varK R.fzero) (varK (R.fsuc R.fzero))))))
+                      (lamK (appK (varK R.fzero) (varK (R.fsuc R.fzero)))) ≡ true
+sub-λ-bind✗ = refl
