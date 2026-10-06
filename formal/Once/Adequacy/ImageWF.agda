@@ -83,10 +83,8 @@ ProgG m ir s = s ∈ prog-defs (irProgram (moduleTable m) ir) ⊎ s ∈ externs-
 ProgP : Module → IR ⌊ Unit ⌋ ⌊ Unit ⌋ → ∀ {A B} → SigOpInfo A B → Set
 ProgP m ir si = All (ProgG m ir) (sigop-syms si (cmp-of (sem si)))
 
-postulate
-  prog-unique   : ∀ (m : Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) → moduleToIR m ≡ just ir
-                → Unique (prog-defs (irProgram (moduleTable m) ir))
-  lib-unique    : ∀ (m : Module) → moduleToIR m ≡ nothing → Unique (lib-defs m)
+-- That each file defines every symbol once is `Once.Adequacy.ImageUnique`'s
+-- (plan 0.107 §8 step 4; were postulates here).
 
 ------------------------------------------------------------------------
 -- D274 / plan 0.107 §9 2D: every SigOp the rewritten program calls names one of

@@ -103,7 +103,6 @@ import Once.TypeCheck.Completeness
 import Once.TypeCheck.Elaborate
 open import Once.TypeCheck.ElaborateProofs using (resolveExpr)
 open import Once.Parser using (validIdentB)
-open import Once.Adequacy.EntriesValid using (MonoValid)
 open import Once.Denotation.DenotTrace using (evalᴰ; cohᴰ)
 open import Once.Denotation.Program using (tableEnv)
 open import Once.Adequacy.TableCall fmt φ using (abiT; abi; tableEnv-skip; tableEnv-hit; uncurry-app)
@@ -183,13 +182,7 @@ inv-sig {csc = csc} {x = x} {ty = ty} {g = g} inv = record
 -- leg A in the scope's environment, leg B, and F for the read-back.
 ------------------------------------------------------------------------
 
--- Every name the telescope may define is an identifier (`EntriesValid`).
-
 private
-  does-no : ∀ {A : Set} (d : Dec A) → ¬ A → Relation.Nullary.isYes d ≡ false
-  does-no (yes a) ¬a = ⊥-elim (¬a a)
-  does-no (no _)  _  = refl
-
   -- The splice of a telescope body is its derivation's realization, resolved.
   splice-form : ∀ (I : String → TopCtx) (uf : Imports) (pre : Once.TypeCheck.Classify.PolyCtx) (y : String)
                   {Xs : TopCtx} {b : _} {A : Type} {se : _} {d f : ℕ}

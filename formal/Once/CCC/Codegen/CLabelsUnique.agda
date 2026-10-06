@@ -39,93 +39,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym
 open import Once.CCC.Label using (LabelId; idx; ℓ; e-thunk; e-fn)
 open import Once.CCC.Machine.SMCore
 
-------------------------------------------------------------------------
--- Distinctness, as a small algebra.
-------------------------------------------------------------------------
-
-Dst : List ℕ → Set
-Dst = AllPairs _≢_
-
-Dj : List ℕ → List ℕ → Set
-Dj xs ys = All (λ x → All (x ≢_) ys) xs
-
-Win : ℕ → ℕ → List ℕ → Set
-Win lo hi = All (λ k → (lo ≤ k) × (k < hi))
-
-dj-[] : ∀ (xs : List ℕ) → Dj xs []
-dj-[] []       = []
-dj-[] (_ ∷ xs) = [] ∷ dj-[] xs
-
-dj-sym : ∀ {xs ys} → Dj xs ys → Dj ys xs
-dj-sym {xs} {ys} d = tabulate (λ {y} y∈ → tabulate (λ {x} x∈ eq → lookup (lookup d x∈) y∈ (sym eq)))
-
-dj-++ˡ : ∀ {xs ys zs} → Dj xs zs → Dj ys zs → Dj (xs ++ ys) zs
-dj-++ˡ = All-++⁺
-
-dj-++ʳ : ∀ {xs ys zs} → Dj xs ys → Dj xs zs → Dj xs (ys ++ zs)
-dj-++ʳ []       []       = []
-dj-++ʳ (p ∷ ps) (q ∷ qs) = All-++⁺ p q ∷ dj-++ʳ ps qs
-
-dst-++ : ∀ {xs ys} → Dst xs → Dst ys → Dj xs ys → Dst (xs ++ ys)
-dst-++ = AP-++⁺
-
-dst-split : ∀ (xs ys : List ℕ) → Dst (xs ++ ys) → Dst xs × Dst ys × Dj xs ys
-dst-split []       ys ap        = [] , ap , []
-dst-split (x ∷ xs) ys (px ∷ ap) =
-  let (a , b , c) = dst-split xs ys ap
-  in (++⁻ˡ xs px ∷ a) , b , (++⁻ʳ xs px ∷ c)
-
--- windows that do not meet are disjoint
-dj-win : ∀ {a b c d xs ys} → Win a b xs → Win c d ys → b ≤ c → Dj xs ys
-dj-win []         wy b≤c = []
-dj-win (px ∷ pxs) wy b≤c =
-  All-map (λ py eq → <⇒≢ (<-≤-trans (proj₂ px) (≤-trans b≤c (proj₁ py))) eq) wy ∷ dj-win pxs wy b≤c
-
-win-weaken : ∀ {lo lo′ hi hi′ xs} → lo′ ≤ lo → hi ≤ hi′ → Win lo hi xs → Win lo′ hi′ xs
-win-weaken a b = All-map (λ p → ≤-trans a (proj₁ p) , ≤-trans (proj₂ p) b)
-
--- a number below a window, or at/above its end, is none of its elements
-fresh-below : ∀ {k lo hi xs} → k < lo → Win lo hi xs → All (k ≢_) xs
-fresh-below k<lo = All-map (λ p eq → <⇒≢ (<-≤-trans k<lo (proj₁ p)) eq)
-
-fresh-above : ∀ {k lo hi xs} → hi ≤ k → Win lo hi xs → All (k ≢_) xs
-fresh-above hi≤k = All-map (λ p eq → <⇒≢ (<-≤-trans (proj₂ p) hi≤k) (sym eq))
-
-------------------------------------------------------------------------
--- The `c-label` definitions of a trace, by index.
-------------------------------------------------------------------------
-
-ctrl-clab : FlatCtrl → Maybe ℕ
-ctrl-clab (c-label m)               = just (idx m)
-ctrl-clab (c-jmp _)                 = nothing
-ctrl-clab (c-branch-scratch-zero _) = nothing
-ctrl-clab (c-branch-tag-zero _)     = nothing
-ctrl-clab (c-entry (e-thunk m) _)   = just (idx m)
-ctrl-clab (c-entry (e-fn _) _)      = nothing
-ctrl-clab (c-ret _)                 = nothing
-ctrl-clab (c-call-fn _)             = nothing
-ctrl-clab (c-start _)               = nothing
-
-clab-of : AbstractInstr → Maybe ℕ
-clab-of (instr-ctrl c) = ctrl-clab c
-{-# CATCHALL #-}
-clab-of _              = nothing
-
-cl-at : Maybe ℕ → List ℕ → List ℕ
-cl-at (just k) r = k ∷ r
-cl-at nothing  r = r
-
-clabs : AbstractTrace → List ℕ
-clabs []       = []
-clabs (i ∷ is) = cl-at (clab-of i) (clabs is)
-
-clabs-++ : ∀ (x y : AbstractTrace) → clabs (x ++ y) ≡ clabs x ++ clabs y
-clabs-++ []       y = refl
-clabs-++ (i ∷ is) y = go (clab-of i)
-  where
-    go : ∀ (mo : Maybe ℕ) → cl-at mo (clabs (is ++ y)) ≡ cl-at mo (clabs is) ++ clabs y
-    go (just k) = cong (k ∷_) (clabs-++ is y)
-    go nothing  = clabs-++ is y
+open import Once.CCC.Codegen.LabelDefs
 
 ------------------------------------------------------------------------
 -- THE CASE SHAPE: a branch's labels `k` (entry of the second arm) and
@@ -723,3 +637,114 @@ frag (Ana wf c) n l =
 -- …and so a fragment's label definitions, trace then blocks, are distinct.
 frag-dst : ∀ {A B} (ir : IR A B) (n l : ℕ) → Dst (TL ir n l ++ BL ir n l)
 frag-dst ir n l = dst-++ (proj₁ (proj₁ (frag ir n l))) (proj₁ (proj₂ (proj₁ (frag ir n l)))) (proj₂ (proj₂ (proj₁ (frag ir n l))))
+
+------------------------------------------------------------------------
+-- …AND A FRAGMENT DEFINES NO FUNCTION ENTRY: `c-entry (e-fn _)` is only
+-- ever a table entry's head (`ProgramImage.fn-image`), never inside a unit.
+------------------------------------------------------------------------
+
+open import Once.CanonicalName using (CanonicalName)
+
+private
+  nf-bl : ∀ (xs ys : List (LabelId × ℕ × AbstractTrace))
+        → NoFn (blocks-layout xs) → NoFn (blocks-layout ys) → NoFn (blocks-layout (xs ++ ys))
+  nf-bl xs ys hx hy = subst NoFn (sym (blocks-layout-++ xs ys)) (nf (blocks-layout xs) (blocks-layout ys) hx hy)
+
+visit-nf : ∀ (F : Functor) (todo tv tb s lb : ℕ) → NoFn (visit-walk todo tv tb F s lb)
+visit-nf (K _)   todo tv tb s lb = refl
+visit-nf Id      todo tv tb s lb = refl
+visit-nf (F ⊕ G) todo tv tb s lb =
+  nf (visit-walk todo tv tb G (s + 4) (suc (suc lb) + lsize F)) _ (visit-nf G todo tv tb (s + 4) (suc (suc lb) + lsize F))
+     (nf (visit-walk todo tv tb F (s + 4) (suc (suc lb))) _ (visit-nf F todo tv tb (s + 4) (suc (suc lb))) refl)
+visit-nf (F ⊗ G) todo tv tb s lb =
+  nf (visit-walk todo tv tb F (s + 4) lb) _ (visit-nf F todo tv tb (s + 4) lb) (visit-nf G todo tv tb (s + 4) (lb + lsize F))
+
+rebuild-nf : ∀ (F : Functor) (val tv tb s lb : ℕ) → NoFn (rebuild-walk val tv tb F s lb)
+rebuild-nf (K _)   val tv tb s lb = refl
+rebuild-nf Id      val tv tb s lb = refl
+rebuild-nf (F ⊕ G) val tv tb s lb =
+  nf (rebuild-walk val tv tb G (s + 4) (suc (suc lb) + lsize F)) _ (rebuild-nf G val tv tb (s + 4) (suc (suc lb) + lsize F))
+     (nf (rebuild-walk val tv tb F (s + 4) (suc (suc lb))) _ (rebuild-nf F val tv tb (s + 4) (suc (suc lb))) refl)
+rebuild-nf (F ⊗ G) val tv tb s lb =
+  nf (rebuild-walk val tv tb G (s + 4) (lb + lsize F)) _ (rebuild-nf G val tv tb (s + 4) (lb + lsize F))
+     (nf (rebuild-walk val tv tb F (s + 4) lb) _ (rebuild-nf F val tv tb (s + 4) lb) refl)
+
+resusp-nf : ∀ (n l : ℕ) (lbl : LabelId) (env : ℕ) {F} (wf : WellFormedFI F) → NoFn (rs-trace n l lbl env wf)
+resusp-nf n l lbl env (wf-K _) = refl
+resusp-nf n l lbl env wf-Id    = refl
+resusp-nf n l lbl env (wf-Prod wfF wfG) =
+  nf (rs-trace (suc (suc (suc n))) l lbl env wfF) _ (resusp-nf (suc (suc (suc n))) l lbl env wfF)
+     (nf (rs-trace (proj₁ (resuspend-layer (suc (suc (suc n))) l lbl env wfF)) (rs-label (suc (suc (suc n))) l lbl env wfF) lbl env wfG) _
+         (resusp-nf (proj₁ (resuspend-layer (suc (suc (suc n))) l lbl env wfF)) (rs-label (suc (suc (suc n))) l lbl env wfF) lbl env wfG) refl)
+resusp-nf n l lbl env (wf-Sum wfF wfG) =
+  nf (tG ++ _) _ (nf tG _ (resusp-nf n2 l2 lbl env wfG) refl)
+     (nf (tF ++ _) _ (nf tF _ (resusp-nf (suc (suc (suc n))) (suc (suc l)) lbl env wfF) refl) refl)
+  where
+    n2 = proj₁ (resuspend-layer (suc (suc (suc n))) (suc (suc l)) lbl env wfF)
+    l2 = rs-label (suc (suc (suc n))) (suc (suc l)) lbl env wfF
+    tF = rs-trace (suc (suc (suc n))) (suc (suc l)) lbl env wfF
+    tG = rs-trace n2 l2 lbl env wfG
+
+private
+  cata-nf : ∀ (st : CataStrategy) (bb n1 l1 : ℕ) (at : AbstractTrace) → NoFn at
+          → NoFn (proj₂ (proj₂ (cata-dispatch st bb n1 l1 at)))
+  cata-nf strat-const  bb n1 l1 at h = nf at _ h refl
+  cata-nf strat-nat    bb n1 l1 at h = nf at _ h refl
+  cata-nf strat-linear bb n1 l1 at h = nf at _ h refl
+  cata-nf (strat-branching F) bb n1 l1 at h =
+    nf (vw ++ _) _ (nf vw _ (visit-nf F n1 (n1 + 4) (n1 + 5) (n1 + 7) (l1 + 4))
+                           (nf rw _ (rebuild-nf F (n1 + 2) (n1 + 4) (n1 + 5) (n1 + 7) (l1 + 4 + lsize F)) refl))
+                   (nf at _ h refl)
+    where
+      vw = visit-walk n1 (n1 + 4) (n1 + 5) F (n1 + 7) (l1 + 4)
+      rw = rebuild-walk (n1 + 2) (n1 + 4) (n1 + 5) F (n1 + 7) (l1 + 4 + lsize F)
+
+  sig-nf : ∀ {A B} (si : SigOpInfo A B) (n : ℕ) (m : Maybe CmpOp) → NoFn (sigop-code si n m)
+  sig-nf si n nothing  = refl
+  sig-nf si n (just _) = refl
+
+frag-nf : ∀ {A B} (ir : IR A B) (n l : ℕ)
+        → NoFn (trace-of (ir-to-trace' n l ir)) × NoFn (blocks-layout (bodies-of (ir-to-trace' n l ir)))
+frag-nf id       n l = refl , refl
+frag-nf fst      n l = refl , refl
+frag-nf snd      n l = refl , refl
+frag-nf terminal n l = refl , refl
+frag-nf initial  n l = refl , refl
+frag-nf (g ∘ f)  n l =
+  nf (trace-of Xf) _ (proj₁ (frag-nf f n l)) (proj₁ (frag-nf g _ _))
+  , nf-bl (bodies-of Xf) _ (proj₂ (frag-nf f n l)) (proj₂ (frag-nf g _ _))
+  where Xf = ir-to-trace' n l f
+frag-nf ⟨ f , g ⟩ n l =
+  nf (trace-of Xf) _ (proj₁ (frag-nf f _ l)) (nf (trace-of (ir-to-trace' (proj₁ Xf) (label-of Xf) g)) _ (proj₁ (frag-nf g _ _)) refl)
+  , nf-bl (bodies-of Xf) _ (proj₂ (frag-nf f _ l)) (proj₂ (frag-nf g _ _))
+  where Xf = ir-to-trace' (suc (suc (suc (suc n)))) l f
+frag-nf (curry b) n l =
+  refl , nf (trace-of Xb ++ _) _ (nf (trace-of Xb) _ (proj₁ (frag-nf b 0 _)) refl) (proj₂ (frag-nf b 0 _))
+  where Xb = ir-to-trace' 0 (suc (suc l)) b
+frag-nf apply n l = refl , refl
+frag-nf (SigOp si) n l = sig-nf si n (cmp-of (sem si)) , refl
+frag-nf (Call _) n l = refl , refl
+frag-nf (const fits-int _)   n l = refl , refl
+frag-nf (const fits-float _) n l = refl , refl
+frag-nf inl n l = refl , refl
+frag-nf inr n l = refl , refl
+frag-nf (case f g) n l =
+  nf (trace-of (ir-to-trace' (proj₁ Xf) (label-of Xf) g)) _ (proj₁ (frag-nf g _ _))
+     (nf (trace-of Xf) _ (proj₁ (frag-nf f _ _)) refl)
+  , nf-bl (bodies-of Xf) _ (proj₂ (frag-nf f _ _)) (proj₂ (frag-nf g _ _))
+  where Xf = ir-to-trace' n (suc (suc l)) f
+frag-nf (In _)     n l = refl , refl
+frag-nf (out-μ _)  n l = refl , refl
+frag-nf (Cata {F} _ alg) n l =
+  cata-nf (cata-strategy ⌈ F ⌉F) (proj₁ XA) n (label-of XA) (trace-of XA) (proj₁ (frag-nf alg 0 l))
+  , proj₂ (frag-nf alg 0 l)
+  where XA = ir-to-trace' 0 l alg
+frag-nf (Out _)    n l = refl , refl
+frag-nf (in-ν _)   n l = refl , refl
+frag-nf (Ana wf c) n l =
+  refl , nf ((ct ++ rt) ++ _) _ (nf (ct ++ rt) _ (nf ct rt (proj₁ (frag-nf c 1 (suc l))) (resusp-nf (proj₁ Xc) (label-of Xc) (ℓ o l) 0 wf)) refl)
+                                 (proj₂ (frag-nf c 1 (suc l)))
+  where
+    Xc = ir-to-trace' 1 (suc l) c
+    ct = trace-of Xc
+    rt = rs-trace (proj₁ Xc) (label-of Xc) (ℓ o l) 0 wf

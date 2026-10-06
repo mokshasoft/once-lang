@@ -40,7 +40,8 @@ import Once.Compile as C
 open import Once.Adequacy.Compile using (AsmWF-of)
 open import Once.Adequacy.EmitFile using (file-is-emit; file-is-lib)
 open import Once.Adequacy.ImageWF
-  using (prog-defs; lib-defs; Resolved; prog-unique; lib-unique)
+  using (prog-defs; lib-defs; Resolved)
+open import Once.Adequacy.ImageUnique using (prog-unique; lib-unique)
 open import Once.Adequacy.ImageValid using (prog-defs-valid; lib-defs-valid; externs-valid)
 open import Once.Adequacy.ImageResolved using (prog-resolved; lib-resolved)
 open import Once.CCC.Codegen.ImageSymbols using (adefs; arefs)
@@ -80,7 +81,7 @@ module X8664W where
   prog-wf : ∀ (m : Module) ir → C.moduleToIR m ≡ just ir
           → F.AsmWF (C.emitProgram x86-64 (irProgram (C.moduleTable m) ir))
   prog-wf m ir mi = record
-    { defined-once = subst Unique (sym defs≡) (prog-unique m ir mi)
+    { defined-once = subst Unique (sym defs≡) (prog-unique m ir)
     ; resolved     = resolved-at defs≡ refs≡ (prog-resolved m ir mi)
     ; entry-in     = s≤s z≤n
     ; defs-valid    = subst (All AsmSym) (sym defs≡) (prog-defs-valid (irProgram (C.moduleTable m) ir))
@@ -100,7 +101,7 @@ module X8664W where
   lib-wf : ∀ (m : Module) → C.moduleToIR m ≡ nothing
          → F.AsmWF (C.emitLibrary x86-64 (C.moduleTable m))
   lib-wf m mi = record
-    { defined-once = subst Unique (sym defs≡) (lib-unique m mi)
+    { defined-once = subst Unique (sym defs≡) (lib-unique m)
     ; resolved     = resolved-at defs≡ refs≡ (lib-resolved m)
     ; entry-in     = tt
     ; defs-valid    = subst (All AsmSym) (sym defs≡) (lib-defs-valid m)
@@ -136,7 +137,7 @@ module X8632W where
   prog-wf : ∀ (m : Module) ir → C.moduleToIR m ≡ just ir
           → F.AsmWF (C.emitProgram x86-32 (irProgram (C.moduleTable m) ir))
   prog-wf m ir mi = record
-    { defined-once = subst Unique (sym defs≡) (prog-unique m ir mi)
+    { defined-once = subst Unique (sym defs≡) (prog-unique m ir)
     ; resolved     = resolved-at defs≡ refs≡ (prog-resolved m ir mi)
     ; entry-in     = s≤s z≤n
     ; defs-valid    = subst (All AsmSym) (sym defs≡) (prog-defs-valid (irProgram (C.moduleTable m) ir))
@@ -156,7 +157,7 @@ module X8632W where
   lib-wf : ∀ (m : Module) → C.moduleToIR m ≡ nothing
          → F.AsmWF (C.emitLibrary x86-32 (C.moduleTable m))
   lib-wf m mi = record
-    { defined-once = subst Unique (sym defs≡) (lib-unique m mi)
+    { defined-once = subst Unique (sym defs≡) (lib-unique m)
     ; resolved     = resolved-at defs≡ refs≡ (lib-resolved m)
     ; entry-in     = tt
     ; defs-valid    = subst (All AsmSym) (sym defs≡) (lib-defs-valid m)
@@ -192,7 +193,7 @@ module RiscV64W where
   prog-wf : ∀ (m : Module) ir → C.moduleToIR m ≡ just ir
           → F.AsmWF (C.emitProgram riscv64 (irProgram (C.moduleTable m) ir))
   prog-wf m ir mi = record
-    { defined-once = subst Unique (sym defs≡) (prog-unique m ir mi)
+    { defined-once = subst Unique (sym defs≡) (prog-unique m ir)
     ; resolved     = resolved-at defs≡ refs≡ (prog-resolved m ir mi)
     ; entry-in     = s≤s z≤n
     ; defs-valid    = subst (All AsmSym) (sym defs≡) (prog-defs-valid (irProgram (C.moduleTable m) ir))
@@ -212,7 +213,7 @@ module RiscV64W where
   lib-wf : ∀ (m : Module) → C.moduleToIR m ≡ nothing
          → F.AsmWF (C.emitLibrary riscv64 (C.moduleTable m))
   lib-wf m mi = record
-    { defined-once = subst Unique (sym defs≡) (lib-unique m mi)
+    { defined-once = subst Unique (sym defs≡) (lib-unique m)
     ; resolved     = resolved-at defs≡ refs≡ (lib-resolved m)
     ; entry-in     = tt
     ; defs-valid    = subst (All AsmSym) (sym defs≡) (lib-defs-valid m)

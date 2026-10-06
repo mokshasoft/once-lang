@@ -49,7 +49,6 @@ open import Once.CanonicalName using (CanonicalName; bare; _≟ᶜ_; showCanonic
 open import Once.Spec.Contract using (ISig)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.List.Relation.Unary.Any using (here; there)
-open import Once.Adequacy.EntriesValid using (MonoValid; valid-mod; dot-invalid)
 open import Once.Parser using (validIdentB)
 open import Function using (case_of_)
 open import Once.IR using (IR)
