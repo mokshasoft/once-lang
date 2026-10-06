@@ -28,6 +28,7 @@ import qualified MAlonzo.Code.Once.Spec.Contract
 import qualified MAlonzo.Code.Once.Spec.Core.Meaning
 import qualified MAlonzo.Code.Once.Spec.Core.PolyTy
 import qualified MAlonzo.Code.Once.Spec.Core.PolyTyping
+import qualified MAlonzo.Code.Once.Surface.Context
 import qualified MAlonzo.Code.Once.Target.Arch
 import qualified MAlonzo.Code.Once.Type
 
@@ -35,8 +36,8 @@ import qualified MAlonzo.Code.Once.Type
 d_Tele_12 a0 a1 a2 = ()
 data T_Tele_12
   = C_'91''93'_16 |
-    C_def_28 T_Tele_12 MAlonzo.Code.Once.Spec.Core.PolyTyping.T_PTm_382
-             MAlonzo.Code.Once.Spec.Core.PolyTyping.T__'8873'_'8866''91'_'93'_'8759'_'33'__722
+    C_def_28 T_Tele_12 MAlonzo.Code.Once.Spec.Core.PolyTyping.T_PTm_390
+             MAlonzo.Code.Once.Spec.Core.PolyTyping.T__'8873'_'8866''91'_'93'_'8759'_'33'__730
 -- Once.Spec.Core.Telescope.teleSem
 d_teleSem_36 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
@@ -44,10 +45,10 @@ d_teleSem_36 ::
   MAlonzo.Code.Once.Spec.Core.PolyTy.T_Sig_864 ->
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Once.Spec.Contract.T_Impl_408 ->
-  T_Tele_12 -> MAlonzo.Code.Once.Spec.Core.Meaning.T_DefSem_340
+  T_Tele_12 -> MAlonzo.Code.Once.Spec.Core.Meaning.T_DefSem_348
 d_teleSem_36 v0 v1 v2 v3 v4 v5
   = coe
-      MAlonzo.Code.Once.Spec.Core.Meaning.C_defSem_358
+      MAlonzo.Code.Once.Spec.Core.Meaning.C_defSem_366
       (coe
          d_teleDefs_50 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
          (coe v5))
@@ -77,9 +78,9 @@ d_teleDefs_50 v0 v1 v2 v3 v4 v5 v6 v7 v8
                   -> case coe v6 of
                        MAlonzo.Code.Data.Fin.Base.C_zero_12
                          -> coe
-                              MAlonzo.Code.Once.Spec.Core.Meaning.du_'10214'_'10215'_452 v0
+                              MAlonzo.Code.Once.Spec.Core.Meaning.du_'10214'_'10215'_460 v0
                               (coe
-                                 MAlonzo.Code.Once.Spec.Core.PolyTyping.du__'10218'_'10219''7580'_436
+                                 MAlonzo.Code.Once.Spec.Core.PolyTyping.du__'10218'_'10219''7580'_444
                                  (coe
                                     MAlonzo.Code.Once.Spec.Core.PolyTy.d_arity_854
                                     (coe
@@ -87,9 +88,10 @@ d_teleDefs_50 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                        (coe
                                           MAlonzo.Code.Once.Spec.Core.PolyTy.C__'9655'__872 v18 v19)
                                        (coe MAlonzo.Code.Data.Fin.Base.C_zero_12)))
-                                 (coe MAlonzo.Code.Once.Spec.Core.PolyTyping.C_'8709'_346) (coe v7))
+                                 (coe MAlonzo.Code.Once.Spec.Core.PolyTyping.C_'8709'_354) (coe v7))
+                              (coe MAlonzo.Code.Once.Surface.Context.C_'91''93'_62)
                               (coe
-                                 MAlonzo.Code.Once.Spec.Core.PolyTyping.du__'10218'_'10219''8348'_482
+                                 MAlonzo.Code.Once.Spec.Core.PolyTyping.du__'10218'_'10219''8348'_490
                                  (coe
                                     MAlonzo.Code.Once.Spec.Core.PolyTy.d_arity_854
                                     (coe
@@ -110,7 +112,7 @@ d_teleDefs_50 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                  (coe v7))
                               (coe MAlonzo.Code.Once.Type.C_pure_34)
                               (coe
-                                 MAlonzo.Code.Once.Spec.Core.PolyTyping.du_instantiate_1126
+                                 MAlonzo.Code.Once.Spec.Core.PolyTyping.du_instantiate_1148
                                  (coe
                                     MAlonzo.Code.Once.Spec.Core.PolyTy.d_arity_854
                                     (coe
@@ -248,7 +250,7 @@ d_runProgram_146 v0 v1 v2 v3 v4
              (coe
                 du_runEntry_136
                 (coe
-                   MAlonzo.Code.Once.Spec.Core.Meaning.d_defs_354
+                   MAlonzo.Code.Once.Spec.Core.Meaning.d_defs_362
                    (d_teleSem_36
                       (coe v0) (coe v5) (coe v6) (coe v1) (coe v3) (coe v7))
                    v8))

@@ -34,28 +34,28 @@ d_ImportAt_14 a0 a1 a2 a3 a4 = ()
 d_View_18 a0 a1 a2 a3 a4 a5 = ()
 -- Once.Adequacy.ViewNatural._.ImportAt.entryOf
 d_entryOf_26 ::
-  MAlonzo.Code.Once.Spec.Elaboration.T_ImportAt_476 ->
+  MAlonzo.Code.Once.Spec.Elaboration.T_ImportAt_484 ->
   MAlonzo.Code.Data.Fin.Base.T_Fin_10
 d_entryOf_26 v0
-  = coe MAlonzo.Code.Once.Spec.Elaboration.d_entryOf_486 (coe v0)
+  = coe MAlonzo.Code.Once.Spec.Elaboration.d_entryOf_494 (coe v0)
 -- Once.Adequacy.ViewNatural._.ImportAt.instOf
 d_instOf_28 ::
-  MAlonzo.Code.Once.Spec.Elaboration.T_ImportAt_476 ->
+  MAlonzo.Code.Once.Spec.Elaboration.T_ImportAt_484 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_instOf_28 v0
-  = coe MAlonzo.Code.Once.Spec.Elaboration.d_instOf_488 (coe v0)
+  = coe MAlonzo.Code.Once.Spec.Elaboration.d_instOf_496 (coe v0)
 -- Once.Adequacy.ViewNatural._.View.declares
 d_declares_32 ::
-  MAlonzo.Code.Once.Spec.Elaboration.T_View_498 ->
+  MAlonzo.Code.Once.Spec.Elaboration.T_View_506 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Once.Spec.Elaboration.T_Declared_452
+  MAlonzo.Code.Once.Spec.Elaboration.T_Declared_460
 d_declares_32 v0
-  = coe MAlonzo.Code.Once.Spec.Elaboration.d_declares_566 (coe v0)
+  = coe MAlonzo.Code.Once.Spec.Elaboration.d_declares_574 (coe v0)
 -- Once.Adequacy.ViewNatural._.View.entry
 d_entry_34 ::
-  MAlonzo.Code.Once.Spec.Elaboration.T_View_498 ->
+  MAlonzo.Code.Once.Spec.Elaboration.T_View_506 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Once.Type.T_PolyType_254 ->
   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
@@ -63,10 +63,10 @@ d_entry_34 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Data.Fin.Base.T_Fin_10
 d_entry_34 v0
-  = coe MAlonzo.Code.Once.Spec.Elaboration.d_entry_576 (coe v0)
+  = coe MAlonzo.Code.Once.Spec.Elaboration.d_entry_584 (coe v0)
 -- Once.Adequacy.ViewNatural._.View.ground
 d_ground_36 ::
-  MAlonzo.Code.Once.Spec.Elaboration.T_View_498 ->
+  MAlonzo.Code.Once.Spec.Elaboration.T_View_506 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Once.Type.T_PolyType_254 ->
   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
@@ -74,19 +74,19 @@ d_ground_36 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_ground_36 v0
-  = coe MAlonzo.Code.Once.Spec.Elaboration.d_ground_590 (coe v0)
+  = coe MAlonzo.Code.Once.Spec.Elaboration.d_ground_598 (coe v0)
 -- Once.Adequacy.ViewNatural._.View.imported
 d_imported_38 ::
-  MAlonzo.Code.Once.Spec.Elaboration.T_View_498 ->
+  MAlonzo.Code.Once.Spec.Elaboration.T_View_506 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Once.Spec.Elaboration.T_ImportAt_476
+  MAlonzo.Code.Once.Spec.Elaboration.T_ImportAt_484
 d_imported_38 v0
-  = coe MAlonzo.Code.Once.Spec.Elaboration.d_imported_560 (coe v0)
+  = coe MAlonzo.Code.Once.Spec.Elaboration.d_imported_568 (coe v0)
 -- Once.Adequacy.ViewNatural._.View.inst
 d_inst_40 ::
-  MAlonzo.Code.Once.Spec.Elaboration.T_View_498 ->
+  MAlonzo.Code.Once.Spec.Elaboration.T_View_506 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Once.Type.T_PolyType_254 ->
   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
@@ -97,7 +97,7 @@ d_inst_40 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_inst_40 v0
-  = coe MAlonzo.Code.Once.Spec.Elaboration.d_inst_604 (coe v0)
+  = coe MAlonzo.Code.Once.Spec.Elaboration.d_inst_612 (coe v0)
 -- Once.Adequacy.ViewNatural._.NatImp
 d_NatImp_58 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
@@ -113,7 +113,7 @@ d_NatImp_58 ::
    MAlonzo.Code.Once.Functor.Translate.T_IsBaseType_196) ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.Spec.Elaboration.T_ImportAt_476 -> ()
+  MAlonzo.Code.Once.Spec.Elaboration.T_ImportAt_484 -> ()
 d_NatImp_58 = erased
 -- Once.Adequacy.ViewNatural._.Natural
 d_Natural_74 a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 = ()
