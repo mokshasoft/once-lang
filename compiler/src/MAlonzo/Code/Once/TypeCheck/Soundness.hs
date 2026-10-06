@@ -99,7 +99,7 @@ d_inferBundle_72 v0 v1
   = coe
       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
       (coe
-         MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElab_9768 (coe v0)
+         MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElab_9828 (coe v0)
          (coe v1))
       erased
 -- Once.TypeCheck.Soundness.CheckBundle
@@ -118,7 +118,7 @@ d_checkBundle_96 v0 v1 v2
   = coe
       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
       (coe
-         MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElab_9782 (coe v0)
+         MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElab_9842 (coe v0)
          (coe v1) (coe v2))
       erased
 -- Once.TypeCheck.Soundness.ViewBundle
@@ -133,7 +133,7 @@ d_viewBundle_112 v0
   = coe
       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
       (coe
-         MAlonzo.Code.Once.TypeCheck.Classify.d_classifyAppHeadView_844
+         MAlonzo.Code.Once.TypeCheck.Classify.d_classifyAppHeadView_862
          (coe v0))
       erased
 -- Once.TypeCheck.Soundness.check-soundV
@@ -157,7 +157,7 @@ du_check'45'soundV_130 ::
 du_check'45'soundV_130 v0 v1 v2
   = let v3
           = coe
-              MAlonzo.Code.Once.TypeCheck.Elaborate.du_checkElabV'45'wf_6168
+              MAlonzo.Code.Once.TypeCheck.Elaborate.du_checkElabV'45'wf_6228
               (coe v0) (coe v1) (coe v2) in
     coe
       (case coe v3 of
@@ -183,7 +183,7 @@ du_infer'45'soundV_218 ::
   MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7522'_'8758'_'10814'__10
 du_infer'45'soundV_218 v0 v1
   = let v2
-          = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_6152
+          = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_6212
               (coe v0) (coe v1) in
     coe
       (case coe v2 of
@@ -226,7 +226,7 @@ du_sound'45'RUnaryOp'45'neg_328 ::
   MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7522'_'8758'_'10814'__10
 du_sound'45'RUnaryOp'45'neg_328 v0 v1
   = let v2
-          = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV'45'neg'45'aux_6188
+          = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV'45'neg'45'aux_6248
               (coe v0) (coe v1)
               (coe
                  MAlonzo.Code.Once.TypeCheck.Elaborate.d_negOperandView_138
@@ -268,7 +268,7 @@ du_sound'45'RAnnot_432 v0 v1 v2
               (coe v2)
               (coe MAlonzo.Code.Once.Type.Rigid.d_rigidFree'63'_838 (coe v2))
               (coe
-                 MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV_6160 (coe v0)
+                 MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV_6220 (coe v0)
                  (coe v1) (coe v2)) in
     coe
       (case coe v3 of
@@ -313,10 +313,10 @@ du_sound'45'RPair_560 v0 v1 v2
           = coe
               MAlonzo.Code.Once.TypeCheck.Elaborate.du_inferElabV'45'RPair'45'aux_2664
               (coe
-                 MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_6152 (coe v0)
+                 MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_6212 (coe v0)
                  (coe v1))
               (coe
-                 MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_6152 (coe v0)
+                 MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_6212 (coe v0)
                  (coe v2)) in
     coe
       (case coe v3 of
@@ -337,7 +337,7 @@ d_lookupBundle_674 v0 v1
   = coe
       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
       (coe
-         MAlonzo.Code.Once.TypeCheck.Classify.d_lookupImport_454 (coe v0)
+         MAlonzo.Code.Once.TypeCheck.Classify.d_lookupImport_472 (coe v0)
          (coe v1))
       erased
 -- Once.TypeCheck.Soundness.sound-RQualified
@@ -365,8 +365,8 @@ du_sound'45'RQualified_696 v0 v1 v2
               MAlonzo.Code.Once.TypeCheck.Elaborate.du_inferElabV'45'RQualified'45'aux_4378
               (coe v0) (coe v1) (coe v2)
               (coe
-                 MAlonzo.Code.Once.TypeCheck.Classify.d_lookupImport_454
-                 (coe MAlonzo.Code.Once.TypeCheck.Classify.d_imports_400 (coe v0))
+                 MAlonzo.Code.Once.TypeCheck.Classify.d_lookupImport_472
+                 (coe MAlonzo.Code.Once.TypeCheck.Classify.d_sig_406 (coe v0))
                  (coe
                     MAlonzo.Code.Data.String.Base.d__'43''43'__20 v2
                     (coe
@@ -391,7 +391,7 @@ d_localLookupBundle_790 v0 v1
   = coe
       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
       (coe
-         MAlonzo.Code.Once.TypeCheck.Classify.d_lookupLocal_584 (coe v0)
+         MAlonzo.Code.Once.TypeCheck.Classify.d_lookupLocal_602 (coe v0)
          (coe v1))
       erased
 -- Once.TypeCheck.Soundness.UnitDecBundle
@@ -429,17 +429,17 @@ du_sound'45'RVar_824 ::
 du_sound'45'RVar_824 v0 v1
   = let v2
           = coe
-              MAlonzo.Code.Once.TypeCheck.Elaborate.du_inferElabV'45'RVar'45'lookup'45'aux_4690
+              MAlonzo.Code.Once.TypeCheck.Elaborate.du_inferElabV'45'RVar'45'lookup'45'aux_4750
               (coe v0) (coe v1)
               (coe
-                 MAlonzo.Code.Once.TypeCheck.Classify.d_lookupLocal'45'go_496
-                 (coe MAlonzo.Code.Once.TypeCheck.Classify.d_size_392 (coe v0))
+                 MAlonzo.Code.Once.TypeCheck.Classify.d_lookupLocal'45'go_514
+                 (coe MAlonzo.Code.Once.TypeCheck.Classify.d_size_394 (coe v0))
                  (coe v1)
-                 (coe MAlonzo.Code.Once.TypeCheck.Classify.d_named_394 (coe v0))
-                 (coe MAlonzo.Code.Once.TypeCheck.Classify.d_debruijn_396 (coe v0)))
+                 (coe MAlonzo.Code.Once.TypeCheck.Classify.d_named_396 (coe v0))
+                 (coe MAlonzo.Code.Once.TypeCheck.Classify.d_debruijn_398 (coe v0)))
               (coe
-                 MAlonzo.Code.Once.TypeCheck.Classify.d_lookupImport_454
-                 (coe MAlonzo.Code.Once.TypeCheck.Classify.d_imports_400 (coe v0))
+                 MAlonzo.Code.Once.TypeCheck.Classify.d_lookupImport_472
+                 (coe MAlonzo.Code.Once.TypeCheck.Classify.d_imports_402 (coe v0))
                  (coe v1)) in
     coe
       (case coe v2 of
@@ -464,7 +464,7 @@ du_sound'45'check'45'RVar'45'id_904 ::
   MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7580'_'8758'_'10814'__16
 du_sound'45'check'45'RVar'45'id_904 v0 v1
   = let v2
-          = MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV'45'RVar'45'bbc'45'id'45'failure'45'aux_4728
+          = MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV'45'RVar'45'bbc'45'id'45'failure'45'aux_4788
               (coe v0) (coe v1)
               (coe
                  MAlonzo.Code.Once.TypeCheck.Error.C_UnboundVariable_8
@@ -533,10 +533,10 @@ du_sound'45'RBinOp_1026 v0 v1 v2 v3
               MAlonzo.Code.Once.TypeCheck.Elaborate.du_inferElabV'45'RBinOp'45'aux_2936
               (coe v1)
               (coe
-                 MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_6152 (coe v0)
+                 MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_6212 (coe v0)
                  (coe v2))
               (coe
-                 MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_6152 (coe v0)
+                 MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_6212 (coe v0)
                  (coe v3)) in
     coe
       (case coe v4 of
@@ -561,9 +561,9 @@ d_letBodyBundle_1162 v0 v1 v2 v3
   = coe
       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
       (coe
-         MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElab_9768
+         MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElab_9828
          (coe
-            MAlonzo.Code.Once.TypeCheck.Classify.d_extendNamedCtx_418 (coe v0)
+            MAlonzo.Code.Once.TypeCheck.Classify.d_extendNamedCtx_432 (coe v0)
             (coe v1) (coe v2))
          (coe v3))
       erased
@@ -606,10 +606,10 @@ du_sound'45'RLet_1216 ::
 du_sound'45'RLet_1216 v0 v1 v2 v3
   = let v4
           = coe
-              MAlonzo.Code.Once.TypeCheck.Elaborate.du_inferElabV'45'RLet'45'aux_6206
+              MAlonzo.Code.Once.TypeCheck.Elaborate.du_inferElabV'45'RLet'45'aux_6266
               (coe v0) (coe v1) (coe v3)
               (coe
-                 MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_6152 (coe v0)
+                 MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_6212 (coe v0)
                  (coe v2)) in
     coe
       (case coe v4 of
@@ -634,9 +634,9 @@ d_caseBranchBundle_1352 v0 v1 v2 v3
   = coe
       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
       (coe
-         MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElab_9768
+         MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElab_9828
          (coe
-            MAlonzo.Code.Once.TypeCheck.Classify.d_extendNamedCtx_418 (coe v0)
+            MAlonzo.Code.Once.TypeCheck.Classify.d_extendNamedCtx_432 (coe v0)
             (coe v1) (coe v2))
          (coe v3))
       erased
@@ -708,10 +708,10 @@ du_sound'45'RDestruct_1446 ::
 du_sound'45'RDestruct_1446 v0 v1 v2 v3 v4 v5
   = let v6
           = coe
-              MAlonzo.Code.Once.TypeCheck.Elaborate.du_inferElabV'45'RDestruct'45'aux_6220
+              MAlonzo.Code.Once.TypeCheck.Elaborate.du_inferElabV'45'RDestruct'45'aux_6280
               (coe v0) (coe v2) (coe v3) (coe v4) (coe v5)
               (coe
-                 MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_6152 (coe v0)
+                 MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_6212 (coe v0)
                  (coe v1)) in
     coe
       (case coe v6 of
@@ -738,9 +738,9 @@ d_lamBodyBundle_1618 v0 v1 v2 v3 v4
   = coe
       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
       (coe
-         MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElab_9782
+         MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElab_9842
          (coe
-            MAlonzo.Code.Once.TypeCheck.Classify.d_extendNamedCtx_418 (coe v0)
+            MAlonzo.Code.Once.TypeCheck.Classify.d_extendNamedCtx_432 (coe v0)
             (coe v1) (coe v2))
          (coe v3) (coe v4))
       erased
@@ -795,9 +795,9 @@ du_sound'45'check'45'RLam_1682 ::
 du_sound'45'check'45'RLam_1682 v0 v1 v2 v3 v4 v5
   = let v6
           = coe
-              MAlonzo.Code.Once.TypeCheck.Elaborate.du_checkElabV'45'wf_6168
+              MAlonzo.Code.Once.TypeCheck.Elaborate.du_checkElabV'45'wf_6228
               (coe
-                 MAlonzo.Code.Once.TypeCheck.Classify.d_extendNamedCtx_418 (coe v0)
+                 MAlonzo.Code.Once.TypeCheck.Classify.d_extendNamedCtx_432 (coe v0)
                  (coe v1) (coe v3))
               (coe v2) (coe v5) in
     coe
@@ -825,7 +825,7 @@ du_sound'45'check'45'RLam_1682 v0 v1 v2 v3 v4 v5
                                       coe
                                         (let v19
                                                = coe
-                                                   MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'lam_640
+                                                   MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'lam_648
                                                    v14 v8 in
                                          coe (coe seq (coe v18) (coe v19)))
                                  MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
@@ -862,7 +862,7 @@ du_sound'45'RApp'45'id_1822 ::
   MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7522'_'8758'_'10814'__10
 du_sound'45'RApp'45'id_1822 v0 v1
   = let v2
-          = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_6152
+          = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_6212
               (coe v0) (coe v1) in
     coe
       (case coe v2 of
@@ -876,7 +876,7 @@ du_sound'45'RApp'45'id_1822 v0 v1
                                   MAlonzo.Code.Once.Surface.Context.du__'43''7512'__116
                                   (coe
                                      MAlonzo.Code.Once.Surface.Context.d_zeroUsage_70
-                                     (coe MAlonzo.Code.Once.TypeCheck.Classify.d_size_392 (coe v0)))
+                                     (coe MAlonzo.Code.Once.TypeCheck.Classify.d_size_394 (coe v0)))
                                   (coe
                                      MAlonzo.Code.Once.Surface.Context.du__'42''7512'__128
                                      (coe MAlonzo.Code.Once.Type.C_Many_10) (coe v6)))
@@ -887,7 +887,7 @@ du_sound'45'RApp'45'id_1822 v0 v1
                      coe
                        (let v11
                               = coe
-                                  MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'id'45'app_280 v6 v4 in
+                                  MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'id'45'app_288 v6 v4 in
                         coe (coe seq (coe v10) (coe v11)))
                 MAlonzo.Code.Once.TypeCheck.Elaborate.C_failure_90 v5
                   -> coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8
@@ -919,7 +919,7 @@ du_sound'45'RApp'45'terminal_1926 ::
   MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7522'_'8758'_'10814'__10
 du_sound'45'RApp'45'terminal_1926 v0 v1
   = let v2
-          = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_6152
+          = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_6212
               (coe v0) (coe v1) in
     coe
       (case coe v2 of
@@ -934,7 +934,7 @@ du_sound'45'RApp'45'terminal_1926 v0 v1
                                   MAlonzo.Code.Once.Surface.Context.du__'43''7512'__116
                                   (coe
                                      MAlonzo.Code.Once.Surface.Context.d_zeroUsage_70
-                                     (coe MAlonzo.Code.Once.TypeCheck.Classify.d_size_392 (coe v0)))
+                                     (coe MAlonzo.Code.Once.TypeCheck.Classify.d_size_394 (coe v0)))
                                   (coe
                                      MAlonzo.Code.Once.Surface.Context.du__'42''7512'__128
                                      (coe MAlonzo.Code.Once.Type.C_Many_10) (coe v6)))
@@ -945,7 +945,7 @@ du_sound'45'RApp'45'terminal_1926 v0 v1
                      coe
                        (let v11
                               = coe
-                                  MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'terminal'45'app_314 v5
+                                  MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'terminal'45'app_322 v5
                                   v6 v4 in
                         coe (coe seq (coe v10) (coe v11)))
                 MAlonzo.Code.Once.TypeCheck.Elaborate.C_failure_90 v5
@@ -981,7 +981,7 @@ du_sound'45'RApp'45'fst_2030 v0 v1
           = coe
               MAlonzo.Code.Once.TypeCheck.Elaborate.du_inferFstOn_2372 (coe v0)
               (coe
-                 MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_6152 (coe v0)
+                 MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_6212 (coe v0)
                  (coe v1)) in
     coe
       (case coe v2 of
@@ -1017,7 +1017,7 @@ du_sound'45'RApp'45'snd_2134 v0 v1
           = coe
               MAlonzo.Code.Once.TypeCheck.Elaborate.du_inferSndOn_2448 (coe v0)
               (coe
-                 MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_6152 (coe v0)
+                 MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_6212 (coe v0)
                  (coe v1)) in
     coe
       (case coe v2 of
@@ -1053,7 +1053,7 @@ du_sound'45'RApp'45'apply_2238 v0 v1
           = coe
               MAlonzo.Code.Once.TypeCheck.Elaborate.du_inferApplyOn_2634 (coe v0)
               (coe
-                 MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_6152 (coe v0)
+                 MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_6212 (coe v0)
                  (coe v1)) in
     coe
       (case coe v2 of
@@ -1098,10 +1098,10 @@ du_sound'45'RApp'45'generic_2356 ::
 du_sound'45'RApp'45'generic_2356 v0 v1 v2
   = let v3
           = coe
-              MAlonzo.Code.Once.TypeCheck.Elaborate.du_inferElabV'45'RApp'45'dispatch_6268
+              MAlonzo.Code.Once.TypeCheck.Elaborate.du_inferElabV'45'RApp'45'dispatch_6328
               (coe v0) (coe v1) (coe v2)
               (coe
-                 MAlonzo.Code.Once.TypeCheck.Classify.d_classifyAppHeadView_844
+                 MAlonzo.Code.Once.TypeCheck.Classify.d_classifyAppHeadView_862
                  (coe v1)) in
     coe
       (case coe v3 of
@@ -1163,7 +1163,7 @@ du_infer'45'sound_2486 ::
   MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7522'_'8758'_'10814'__10
 du_infer'45'sound_2486 v0 v1
   = let v2
-          = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_6152
+          = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_6212
               (coe v0) (coe v1) in
     coe
       (case coe v2 of
@@ -1191,7 +1191,7 @@ du_check'45'sound_2502 ::
 du_check'45'sound_2502 v0 v1 v2
   = let v3
           = coe
-              MAlonzo.Code.Once.TypeCheck.Elaborate.du_checkElabV'45'wf_6168
+              MAlonzo.Code.Once.TypeCheck.Elaborate.du_checkElabV'45'wf_6228
               (coe v0) (coe v1) (coe v2) in
     coe
       (case coe v3 of

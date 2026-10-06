@@ -20,6 +20,7 @@ import qualified Data.Text
 import qualified MAlonzo.Code.Agda.Builtin.Char
 import qualified MAlonzo.Code.Agda.Builtin.List
 import qualified MAlonzo.Code.Agda.Builtin.String
+import qualified MAlonzo.Code.Data.Bool.Base
 import qualified MAlonzo.Code.Data.Char.Properties
 import qualified MAlonzo.Code.Data.List.Base
 import qualified MAlonzo.Code.Data.Nat.Show
@@ -36,8 +37,21 @@ d_showNat_6
 -- Once.Target.Symbol.once-prefix
 d_once'45'prefix_8 :: MAlonzo.Code.Agda.Builtin.String.T_String_6
 d_once'45'prefix_8 = coe ("once_" :: Data.Text.Text)
+-- Once.Target.Symbol.symbol-char?
+d_symbol'45'char'63'_10 ::
+  MAlonzo.Code.Agda.Builtin.Char.T_Char_6 -> Bool
+d_symbol'45'char'63'_10 v0
+  = coe
+      MAlonzo.Code.Data.Bool.Base.d__'8744'__30
+      (coe MAlonzo.Code.Agda.Builtin.Char.d_primIsAlpha_12 v0)
+      (coe
+         MAlonzo.Code.Data.Bool.Base.d__'8744'__30
+         (coe MAlonzo.Code.Agda.Builtin.Char.d_primIsDigit_10 v0)
+         (coe
+            eqInt (coe MAlonzo.Code.Agda.Builtin.Char.d_primCharToNat_28 v0)
+            (coe MAlonzo.Code.Agda.Builtin.Char.d_primCharToNat_28 '_')))
 -- Once.Target.Symbol.z-encode-char-aux
-d_z'45'encode'45'char'45'aux_12 ::
+d_z'45'encode'45'char'45'aux_16 ::
   MAlonzo.Code.Agda.Builtin.Char.T_Char_6 ->
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20 ->
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20 ->
@@ -46,37 +60,37 @@ d_z'45'encode'45'char'45'aux_12 ::
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20 ->
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20 ->
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20 ->
-  [MAlonzo.Code.Agda.Builtin.Char.T_Char_6]
-d_z'45'encode'45'char'45'aux_12 v0 v1 v2 v3 v4 v5 v6 v7
+  Bool -> [MAlonzo.Code.Agda.Builtin.Char.T_Char_6]
+d_z'45'encode'45'char'45'aux_16 v0 v1 v2 v3 v4 v5 v6 v7 v8
   = case coe v1 of
-      MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v8 v9
-        -> if coe v8
+      MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v9 v10
+        -> if coe v9
              then coe
-                    seq (coe v9)
+                    seq (coe v10)
                     (coe
                        MAlonzo.Code.Agda.Builtin.List.C__'8759'__22 (coe 'z')
                        (coe
                           MAlonzo.Code.Agda.Builtin.List.C__'8759'__22 (coe 'z')
                           (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)))
              else coe
-                    seq (coe v9)
+                    seq (coe v10)
                     (case coe v2 of
-                       MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v10 v11
-                         -> if coe v10
+                       MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v11 v12
+                         -> if coe v11
                               then coe
-                                     seq (coe v11)
+                                     seq (coe v12)
                                      (coe
                                         MAlonzo.Code.Agda.Builtin.List.C__'8759'__22 (coe 'z')
                                         (coe
                                            MAlonzo.Code.Agda.Builtin.List.C__'8759'__22 (coe 'q')
                                            (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)))
                               else coe
-                                     seq (coe v11)
+                                     seq (coe v12)
                                      (case coe v3 of
-                                        MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v12 v13
-                                          -> if coe v12
+                                        MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v13 v14
+                                          -> if coe v13
                                                then coe
-                                                      seq (coe v13)
+                                                      seq (coe v14)
                                                       (coe
                                                          MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                                                          (coe 'z')
@@ -86,12 +100,12 @@ d_z'45'encode'45'char'45'aux_12 v0 v1 v2 v3 v4 v5 v6 v7
                                                             (coe
                                                                MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)))
                                                else coe
-                                                      seq (coe v13)
+                                                      seq (coe v14)
                                                       (case coe v4 of
-                                                         MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v14 v15
-                                                           -> if coe v14
+                                                         MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v15 v16
+                                                           -> if coe v15
                                                                 then coe
-                                                                       seq (coe v15)
+                                                                       seq (coe v16)
                                                                        (coe
                                                                           MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                                                                           (coe 'z')
@@ -101,13 +115,13 @@ d_z'45'encode'45'char'45'aux_12 v0 v1 v2 v3 v4 v5 v6 v7
                                                                              (coe
                                                                                 MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)))
                                                                 else coe
-                                                                       seq (coe v15)
+                                                                       seq (coe v16)
                                                                        (case coe v5 of
-                                                                          MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v16 v17
-                                                                            -> if coe v16
+                                                                          MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v17 v18
+                                                                            -> if coe v17
                                                                                  then coe
                                                                                         seq
-                                                                                        (coe v17)
+                                                                                        (coe v18)
                                                                                         (coe
                                                                                            MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                                                                                            (coe 'z')
@@ -119,16 +133,16 @@ d_z'45'encode'45'char'45'aux_12 v0 v1 v2 v3 v4 v5 v6 v7
                                                                                                  MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)))
                                                                                  else coe
                                                                                         seq
-                                                                                        (coe v17)
+                                                                                        (coe v18)
                                                                                         (case coe
                                                                                                 v6 of
-                                                                                           MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v18 v19
+                                                                                           MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v19 v20
                                                                                              -> if coe
-                                                                                                     v18
+                                                                                                     v19
                                                                                                   then coe
                                                                                                          seq
                                                                                                          (coe
-                                                                                                            v19)
+                                                                                                            v20)
                                                                                                          (coe
                                                                                                             MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                                                                                                             (coe
@@ -142,16 +156,16 @@ d_z'45'encode'45'char'45'aux_12 v0 v1 v2 v3 v4 v5 v6 v7
                                                                                                   else coe
                                                                                                          seq
                                                                                                          (coe
-                                                                                                            v19)
+                                                                                                            v20)
                                                                                                          (case coe
                                                                                                                  v7 of
-                                                                                                            MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v20 v21
+                                                                                                            MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v21 v22
                                                                                                               -> if coe
-                                                                                                                      v20
+                                                                                                                      v21
                                                                                                                    then coe
                                                                                                                           seq
                                                                                                                           (coe
-                                                                                                                             v21)
+                                                                                                                             v22)
                                                                                                                           (coe
                                                                                                                              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                                                                                                                              (coe
@@ -165,13 +179,38 @@ d_z'45'encode'45'char'45'aux_12 v0 v1 v2 v3 v4 v5 v6 v7
                                                                                                                    else coe
                                                                                                                           seq
                                                                                                                           (coe
-                                                                                                                             v21)
-                                                                                                                          (coe
-                                                                                                                             MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
-                                                                                                                             (coe
-                                                                                                                                v0)
-                                                                                                                             (coe
-                                                                                                                                MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16))
+                                                                                                                             v22)
+                                                                                                                          (if coe
+                                                                                                                                v8
+                                                                                                                             then coe
+                                                                                                                                    MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
+                                                                                                                                    (coe
+                                                                                                                                       v0)
+                                                                                                                                    (coe
+                                                                                                                                       MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
+                                                                                                                             else coe
+                                                                                                                                    MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
+                                                                                                                                    (coe
+                                                                                                                                       'z')
+                                                                                                                                    (coe
+                                                                                                                                       MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
+                                                                                                                                       (coe
+                                                                                                                                          'u')
+                                                                                                                                       (coe
+                                                                                                                                          MAlonzo.Code.Data.List.Base.du__'43''43'__32
+                                                                                                                                          (coe
+                                                                                                                                             MAlonzo.Code.Agda.Builtin.String.d_primStringToList_12
+                                                                                                                                             (coe
+                                                                                                                                                d_showNat_6
+                                                                                                                                                (coe
+                                                                                                                                                   MAlonzo.Code.Agda.Builtin.Char.d_primCharToNat_28
+                                                                                                                                                   v0)))
+                                                                                                                                          (coe
+                                                                                                                                             MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
+                                                                                                                                             (coe
+                                                                                                                                                '_')
+                                                                                                                                             (coe
+                                                                                                                                                MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)))))
                                                                                                             _ -> MAlonzo.RTE.mazUnreachableError)
                                                                                            _ -> MAlonzo.RTE.mazUnreachableError)
                                                                           _ -> MAlonzo.RTE.mazUnreachableError)
@@ -180,12 +219,12 @@ d_z'45'encode'45'char'45'aux_12 v0 v1 v2 v3 v4 v5 v6 v7
                        _ -> MAlonzo.RTE.mazUnreachableError)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Target.Symbol.z-encode-char
-d_z'45'encode'45'char_30 ::
+d_z'45'encode'45'char_36 ::
   MAlonzo.Code.Agda.Builtin.Char.T_Char_6 ->
   [MAlonzo.Code.Agda.Builtin.Char.T_Char_6]
-d_z'45'encode'45'char_30 v0
+d_z'45'encode'45'char_36 v0
   = coe
-      d_z'45'encode'45'char'45'aux_12 (coe v0)
+      d_z'45'encode'45'char'45'aux_16 (coe v0)
       (coe
          MAlonzo.Code.Data.Char.Properties.d__'8799'__14 (coe v0) (coe 'z'))
       (coe
@@ -201,22 +240,23 @@ d_z'45'encode'45'char_30 v0
          MAlonzo.Code.Data.Char.Properties.d__'8799'__14 (coe v0) (coe '?'))
       (coe
          MAlonzo.Code.Data.Char.Properties.d__'8799'__14 (coe v0) (coe '.'))
+      (coe d_symbol'45'char'63'_10 (coe v0))
 -- Once.Target.Symbol.z-encode
-d_z'45'encode_34 ::
+d_z'45'encode_40 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6
-d_z'45'encode_34 v0
+d_z'45'encode_40 v0
   = coe
       MAlonzo.Code.Agda.Builtin.String.d_primStringFromList_14
       (coe
          MAlonzo.Code.Data.List.Base.du_concatMap_246
-         (coe d_z'45'encode'45'char_30)
+         (coe d_z'45'encode'45'char_36)
          (coe MAlonzo.Code.Agda.Builtin.String.d_primStringToList_12 v0))
 -- Once.Target.Symbol.mangle-component
-d_mangle'45'component_38 ::
+d_mangle'45'component_44 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6
-d_mangle'45'component_38 v0
+d_mangle'45'component_44 v0
   = coe
       MAlonzo.Code.Data.String.Base.d__'43''43'__20
       (coe
@@ -225,13 +265,13 @@ d_mangle'45'component_38 v0
             MAlonzo.Code.Data.List.Base.du_length_268
             (coe
                MAlonzo.Code.Agda.Builtin.String.d_primStringToList_12
-               (d_z'45'encode_34 (coe v0)))))
-      (d_z'45'encode_34 (coe v0))
+               (d_z'45'encode_40 (coe v0)))))
+      (d_z'45'encode_40 (coe v0))
 -- Once.Target.Symbol.join-us
-d_join'45'us_42 ::
+d_join'45'us_48 ::
   [MAlonzo.Code.Agda.Builtin.String.T_String_6] ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6
-d_join'45'us_42 v0
+d_join'45'us_48 v0
   = case coe v0 of
       [] -> coe ("" :: Data.Text.Text)
       (:) v1 v2
@@ -242,28 +282,28 @@ d_join'45'us_42 v0
                     MAlonzo.Code.Data.String.Base.d__'43''43'__20 v1
                     (coe
                        MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                       ("_" :: Data.Text.Text) (d_join'45'us_42 (coe v2)))
+                       ("_" :: Data.Text.Text) (d_join'45'us_48 (coe v2)))
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Target.Symbol.once-symbol-path
-d_once'45'symbol'45'path_52 ::
+d_once'45'symbol'45'path_58 ::
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6
-d_once'45'symbol'45'path_52 v0
+d_once'45'symbol'45'path_58 v0
   = coe
       MAlonzo.Code.Data.String.Base.d__'43''43'__20 d_once'45'prefix_8
-      (d_join'45'us_42
+      (d_join'45'us_48
          (coe
             MAlonzo.Code.Data.List.Base.du_map_22
-            (coe d_mangle'45'component_38)
+            (coe d_mangle'45'component_44)
             (coe MAlonzo.Code.Once.CanonicalName.d_parts_8 (coe v0))))
 -- Once.Target.Symbol.once-symbol-own
-d_once'45'symbol'45'own_56 ::
+d_once'45'symbol'45'own_62 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6
-d_once'45'symbol'45'own_56 v0
+d_once'45'symbol'45'own_62 v0
   = coe
-      d_once'45'symbol'45'path_52
+      d_once'45'symbol'45'path_58
       (coe
          MAlonzo.Code.Once.CanonicalName.C_canonical_10
          (coe

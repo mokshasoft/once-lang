@@ -49,6 +49,21 @@ library
       MAlonzo.RTE
   other-modules:
       MAlonzo.Code.Once.Adequacy.CoerceFaithful
+      MAlonzo.Code.Once.Adequacy.ImageResolved
+      MAlonzo.Code.Once.Adequacy.ImageUnique
+      MAlonzo.Code.Once.Adequacy.ImageValid
+      MAlonzo.Code.Once.Adequacy.ImageWF
+      MAlonzo.Code.Once.Adequacy.LabelSymbols
+      MAlonzo.Code.Once.CCC.Codegen.CLabelsUnique
+      MAlonzo.Code.Once.CCC.Codegen.ImageSymbols
+      MAlonzo.Code.Once.CCC.Codegen.LabelDefs
+      MAlonzo.Code.Once.CCC.Codegen.NodesOK
+      MAlonzo.Code.Once.CCC.Codegen.RefsClosed
+      MAlonzo.Code.Once.CCC.Target.RiscV64.FileSymbols
+      MAlonzo.Code.Once.CCC.Target.X86Z45Z32.FileSymbols
+      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.FileSymbols
+      MAlonzo.Code.Once.Target.AsmSymbol
+      MAlonzo.Code.Once.Target.SymbolValid
       MAlonzo.Code.Once.CCC.Codegen.BlockLayout
       MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Case
       MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.CaseArmL
@@ -299,7 +314,6 @@ library
       MAlonzo.Code.Once.Arith.SigOp.IntLit
       MAlonzo.Code.Once.Arith.Type
       MAlonzo.Code.Once.CCC.Codegen.CataIRSlotStable
-      MAlonzo.Code.Once.CCC.Codegen.EmittedWF
       MAlonzo.Code.Once.CCC.Codegen.AllocMin
       MAlonzo.Code.Once.CCC.Codegen.CataNextSlot
       MAlonzo.Code.Once.CCC.Codegen.FlatStepLemmas
@@ -615,7 +629,6 @@ library
       MAlonzo.Code.Once.Adequacy.ElabCommute
       MAlonzo.Code.Once.Adequacy.ElabInst
       MAlonzo.Code.Once.Adequacy.ElaborateLinked
-      MAlonzo.Code.Once.Adequacy.EntriesValid
       MAlonzo.Code.Once.Adequacy.GradedAnaBridge
       MAlonzo.Code.Once.Adequacy.GradedCataBridge
       MAlonzo.Code.Once.Adequacy.GradedRelation

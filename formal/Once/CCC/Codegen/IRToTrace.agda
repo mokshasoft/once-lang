@@ -1323,9 +1323,9 @@ ir-to-bodies ir = proj-bodies (ir-to-trace' 0 0 ir)
 -- module with "symbol already defined".
 --
 -- These variants take a starting label `l` and return the
--- next-available label alongside the result. `Once.Compile`'s
--- `compileAllWithTarget` left-folds with this counter to keep
--- thunk labels globally unique across the module.
+-- next-available label alongside the result. `fns-image` threads this
+-- counter through the whole program image, so labels are unique across it
+-- (`Adequacy.ImageUnique`).
 ------------------------------------------------------------------------
 
 -- | Trace + next-label, given a starting label counter.

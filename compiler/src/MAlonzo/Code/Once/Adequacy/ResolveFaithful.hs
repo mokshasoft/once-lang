@@ -33,6 +33,7 @@ import qualified MAlonzo.Code.Once.Surface.Context
 import qualified MAlonzo.Code.Once.Surface.Syntax
 import qualified MAlonzo.Code.Once.Target.Arch
 import qualified MAlonzo.Code.Once.Type
+import qualified MAlonzo.Code.Once.TypeCheck.Classify
 import qualified MAlonzo.Code.Once.TypeCheck.ElaborateProofs
 import qualified MAlonzo.Code.Once.TypeCheck.Raw
 
@@ -51,7 +52,7 @@ d_σR_12 ::
   MAlonzo.Code.Once.Denotation.DenotTrace.T_CallEnv_6 ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   (MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14]) ->
+   MAlonzo.Code.Once.TypeCheck.Classify.T_TopCtx_412) ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer -> MAlonzo.Code.Once.Denotation.SourceDenote.T_DefsSem_70
 d_σR_12 v0 v1 v2 v3 v4 v5
@@ -97,7 +98,7 @@ d_splice'45'ctx'45'indep_208 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   MAlonzo.Code.Induction.WellFounded.T_Acc_42 ->
   (MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14]) ->
+   MAlonzo.Code.Once.TypeCheck.Classify.T_TopCtx_412) ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
@@ -118,7 +119,7 @@ d_poly'45'ctx'45'indep_268 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   MAlonzo.Code.Induction.WellFounded.T_Acc_42 ->
   (MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14]) ->
+   MAlonzo.Code.Once.TypeCheck.Classify.T_TopCtx_412) ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
@@ -154,7 +155,7 @@ d_binop'45'le'45'faithful_384 ::
   MAlonzo.Code.Once.Type.T_Type_108 ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   (MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14]) ->
+   MAlonzo.Code.Once.TypeCheck.Classify.T_TopCtx_412) ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
@@ -182,7 +183,7 @@ d_Ea_416 ::
   MAlonzo.Code.Once.Type.T_Type_108 ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   (MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14]) ->
+   MAlonzo.Code.Once.TypeCheck.Classify.T_TopCtx_412) ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
@@ -221,7 +222,7 @@ d_Eb_418 ::
   MAlonzo.Code.Once.Type.T_Type_108 ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   (MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14]) ->
+   MAlonzo.Code.Once.TypeCheck.Classify.T_TopCtx_412) ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
@@ -259,7 +260,7 @@ d_binop'45'faithful_478 ::
   MAlonzo.Code.Once.Type.T_Type_108 ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   (MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14]) ->
+   MAlonzo.Code.Once.TypeCheck.Classify.T_TopCtx_412) ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
@@ -285,7 +286,7 @@ d_thunk'45'binop'45'faithful_558 ::
   MAlonzo.Code.Once.Type.T_Type_108 ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   (MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14]) ->
+   MAlonzo.Code.Once.TypeCheck.Classify.T_TopCtx_412) ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
@@ -313,7 +314,7 @@ d_Ea_592 ::
   MAlonzo.Code.Once.Type.T_Type_108 ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   (MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14]) ->
+   MAlonzo.Code.Once.TypeCheck.Classify.T_TopCtx_412) ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
@@ -352,7 +353,7 @@ d_Eb_594 ::
   MAlonzo.Code.Once.Type.T_Type_108 ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   (MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14]) ->
+   MAlonzo.Code.Once.TypeCheck.Classify.T_TopCtx_412) ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
@@ -391,7 +392,7 @@ d_inner_604 ::
   MAlonzo.Code.Once.Type.T_Type_108 ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   (MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14]) ->
+   MAlonzo.Code.Once.TypeCheck.Classify.T_TopCtx_412) ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
@@ -417,7 +418,7 @@ d_unop'45'faithful_638 ::
   MAlonzo.Code.Once.Type.T_Type_108 ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   (MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14]) ->
+   MAlonzo.Code.Once.TypeCheck.Classify.T_TopCtx_412) ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
@@ -437,7 +438,7 @@ d_resolveExpr'45'faithful_682 ::
   MAlonzo.Code.Once.Type.T_Type_108 ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   (MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14]) ->
+   MAlonzo.Code.Once.TypeCheck.Classify.T_TopCtx_412) ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
@@ -452,7 +453,7 @@ d_E'8321'_1660 ::
   MAlonzo.Code.Once.Type.T_Type_108 ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   (MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14]) ->
+   MAlonzo.Code.Once.TypeCheck.Classify.T_TopCtx_412) ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
   MAlonzo.Code.Once.Surface.Context.T_Usage_60 ->
@@ -506,7 +507,7 @@ d_E'8322'_1662 ::
   MAlonzo.Code.Once.Type.T_Type_108 ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   (MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14]) ->
+   MAlonzo.Code.Once.TypeCheck.Classify.T_TopCtx_412) ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
   MAlonzo.Code.Once.Surface.Context.T_Usage_60 ->
@@ -546,7 +547,7 @@ d_E'8321'_1696 ::
   MAlonzo.Code.Once.Type.T_Type_108 ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   (MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14]) ->
+   MAlonzo.Code.Once.TypeCheck.Classify.T_TopCtx_412) ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
   MAlonzo.Code.Once.Surface.Context.T_Usage_60 ->
@@ -600,7 +601,7 @@ d_E'8322'_1698 ::
   MAlonzo.Code.Once.Type.T_Type_108 ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   (MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14]) ->
+   MAlonzo.Code.Once.TypeCheck.Classify.T_TopCtx_412) ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
   MAlonzo.Code.Once.Surface.Context.T_Usage_60 ->
@@ -640,7 +641,7 @@ d_Eall_1742 ::
   MAlonzo.Code.Once.Type.T_Type_108 ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   (MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14]) ->
+   MAlonzo.Code.Once.TypeCheck.Classify.T_TopCtx_412) ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
   MAlonzo.Code.Once.Surface.Context.T_Usage_60 ->
@@ -688,7 +689,7 @@ d_Es_1744 ::
   MAlonzo.Code.Once.Type.T_Type_108 ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   (MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14]) ->
+   MAlonzo.Code.Once.TypeCheck.Classify.T_TopCtx_412) ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
   MAlonzo.Code.Once.Surface.Context.T_Usage_60 ->
@@ -734,7 +735,7 @@ d_E'8343'_1746 ::
   MAlonzo.Code.Once.Type.T_Type_108 ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   (MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14]) ->
+   MAlonzo.Code.Once.TypeCheck.Classify.T_TopCtx_412) ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
   MAlonzo.Code.Once.Surface.Context.T_Usage_60 ->
@@ -775,7 +776,7 @@ d_E'7523'_1748 ::
   MAlonzo.Code.Once.Type.T_Type_108 ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   (MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14]) ->
+   MAlonzo.Code.Once.TypeCheck.Classify.T_TopCtx_412) ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
   MAlonzo.Code.Once.Surface.Context.T_Usage_60 ->
@@ -816,7 +817,7 @@ d_'46'extendedlambda0_1762 ::
   MAlonzo.Code.Once.Type.T_Type_108 ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   (MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14]) ->
+   MAlonzo.Code.Once.TypeCheck.Classify.T_TopCtx_412) ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
   MAlonzo.Code.Once.Surface.Context.T_Usage_60 ->

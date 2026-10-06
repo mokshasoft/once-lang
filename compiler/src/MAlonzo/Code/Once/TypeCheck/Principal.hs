@@ -24,6 +24,7 @@ import qualified MAlonzo.Code.Agda.Builtin.Sigma
 import qualified MAlonzo.Code.Agda.Builtin.String
 import qualified MAlonzo.Code.Agda.Primitive
 import qualified MAlonzo.Code.Data.Bool.Base
+import qualified MAlonzo.Code.Data.List.Base
 import qualified MAlonzo.Code.Data.Nat.Show
 import qualified MAlonzo.Code.Data.String.Base
 import qualified MAlonzo.Code.Data.String.Properties
@@ -1474,7 +1475,7 @@ d_lookupName_996 v0 v1 v2 v3
                                       (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)))))
                    MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                      -> let v6
-                              = MAlonzo.Code.Once.TypeCheck.Classify.d_lookupImport_454
+                              = MAlonzo.Code.Once.TypeCheck.Classify.d_lookupImport_472
                                   (coe v0) (coe v2) in
                         coe
                           (case coe v6 of
@@ -2847,10 +2848,13 @@ d_principal_2124 v0 v1
       d_finishP_2118
       (coe
          d_pInfer_1378
-         (coe MAlonzo.Code.Once.TypeCheck.Classify.d_imports_400 (coe v0))
+         (coe
+            MAlonzo.Code.Data.List.Base.du__'43''43'__32
+            (coe MAlonzo.Code.Once.TypeCheck.Classify.d_sig_406 (coe v0))
+            (coe MAlonzo.Code.Once.TypeCheck.Classify.d_imports_402 (coe v0)))
          (coe
             d_projSchemas_938
-            (coe MAlonzo.Code.Once.TypeCheck.Classify.d_polys_402 (coe v0)))
+            (coe MAlonzo.Code.Once.TypeCheck.Classify.d_polys_404 (coe v0)))
          (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16) (coe v1)
          (coe (0 :: Integer))
          (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16))
@@ -2900,4 +2904,4 @@ d_siglessSchema_2144 v0
       d_pgSchema_2140
       (coe
          d_principal_2124
-         (coe MAlonzo.Code.Once.TypeCheck.Classify.d_emptyCtx_406) (coe v0))
+         (coe MAlonzo.Code.Once.TypeCheck.Classify.d_emptyCtx_410) (coe v0))

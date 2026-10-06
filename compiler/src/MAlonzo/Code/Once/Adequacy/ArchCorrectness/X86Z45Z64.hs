@@ -4174,7 +4174,7 @@ d_agree_2326 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
       (coe
          MAlonzo.Code.Once.Adequacy.CPU.X86Z45Z64.d_block'45'env_382
          (coe
-            MAlonzo.Code.Once.Compile.d_blocks'45'x86'45'64_958 (coe v11)))
+            MAlonzo.Code.Once.Compile.d_blocks'45'x86'45'64_976 (coe v11)))
       (coe
          MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_image_2868
          (coe v0) (coe v1) (coe v12))
@@ -4505,7 +4505,7 @@ du_p_2392 ::
 du_p_2392 v0 v1
   = coe
       MAlonzo.Code.Once.Denotation.Program.C_irProgram_390
-      (coe MAlonzo.Code.Once.Compile.d_moduleTable_870 (coe v0)) (coe v1)
+      (coe MAlonzo.Code.Once.Compile.d_moduleTable_874 (coe v0)) (coe v1)
 -- Once.Adequacy.ArchCorrectness.X86-64._.ir′
 d_ir'8242'_2394 ::
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
@@ -4577,7 +4577,7 @@ du_ir'8242'_2394 v0 v1
   = coe
       MAlonzo.Code.Once.Denotation.Program.d_main_388
       (coe
-         MAlonzo.Code.Once.Compile.d_rewrite'45'program_896
+         MAlonzo.Code.Once.Compile.d_rewrite'45'program_900
          (coe du_p_2392 (coe v0) (coe v1)))
 -- Once.Adequacy.ArchCorrectness.X86-64._.img
 d_img_2396 ::

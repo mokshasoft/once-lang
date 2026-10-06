@@ -24,9 +24,9 @@ import qualified MAlonzo.Code.Agda.Builtin.String
 import qualified MAlonzo.Code.Agda.Builtin.Unit
 import qualified MAlonzo.Code.Data.List.Relation.Unary.All
 import qualified MAlonzo.Code.Data.Nat.Base
-import qualified MAlonzo.Code.Once.Adequacy.EmitFile
 import qualified MAlonzo.Code.Once.Adequacy.ImageResolved
-import qualified MAlonzo.Code.Once.Adequacy.ImageWF
+import qualified MAlonzo.Code.Once.Adequacy.ImageUnique
+import qualified MAlonzo.Code.Once.Adequacy.ImageValid
 import qualified MAlonzo.Code.Once.Arith.Machine.Rewrite
 import qualified MAlonzo.Code.Once.CCC.Codegen.ProgramImage
 import qualified MAlonzo.Code.Once.CCC.Codegen.ProgramImageFacts
@@ -58,7 +58,7 @@ d_image'45'frame'45'free_10 ::
 d_image'45'frame'45'free_10
   = coe
       MAlonzo.Code.Once.CCC.Codegen.ProgramImageFacts.d_image'45'frame'45'free_76
-      (coe MAlonzo.Code.Once.Compile.d_entry'45'owner_930)
+      (coe MAlonzo.Code.Once.Compile.d_entry'45'owner_964)
 -- Once.Adequacy.FileWF.map-fst
 d_map'45'fst_24 ::
   () ->
@@ -78,12 +78,12 @@ d_prog'45'nn_40 v0 v1
       MAlonzo.Code.Once.CCC.Machine.NoNested.d_no'45'nested'45'of'45'all_22
       (coe
          MAlonzo.Code.Once.CCC.Codegen.ProgramImage.d_program'45'image_42
-         (coe MAlonzo.Code.Once.Compile.d_entry'45'owner_930)
+         (coe MAlonzo.Code.Once.Compile.d_entry'45'owner_964)
          (coe
             MAlonzo.Code.Once.Denotation.Program.C_irProgram_390
             (coe
-               MAlonzo.Code.Once.Compile.d_rewrite'45'table_890
-               (coe MAlonzo.Code.Once.Compile.d_moduleTable_870 (coe v0)))
+               MAlonzo.Code.Once.Compile.d_rewrite'45'table_894
+               (coe MAlonzo.Code.Once.Compile.d_moduleTable_874 (coe v0)))
             (coe
                MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                (coe
@@ -92,10 +92,10 @@ d_prog'45'nn_40 v0 v1
                   (coe MAlonzo.Code.Once.IRTy.C_Unit_16) (coe v1)))))
       (coe
          MAlonzo.Code.Once.CCC.Codegen.ProgramImageFacts.d_image'45'frame'45'free_76
-         (coe MAlonzo.Code.Once.Compile.d_entry'45'owner_930)
+         (coe MAlonzo.Code.Once.Compile.d_entry'45'owner_964)
          (coe
-            MAlonzo.Code.Once.Compile.d_rewrite'45'table_890
-            (coe MAlonzo.Code.Once.Compile.d_moduleTable_870 (coe v0)))
+            MAlonzo.Code.Once.Compile.d_rewrite'45'table_894
+            (coe MAlonzo.Code.Once.Compile.d_moduleTable_874 (coe v0)))
          (coe
             MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
             (coe
@@ -112,8 +112,8 @@ d_lib'45'nn_48 v0
          MAlonzo.Code.Once.CCC.Codegen.ProgramImage.d_fns'45'image_20
          (coe (0 :: Integer))
          (coe
-            MAlonzo.Code.Once.Compile.d_rewrite'45'table_890
-            (coe MAlonzo.Code.Once.Compile.d_moduleTable_870 (coe v0))))
+            MAlonzo.Code.Once.Compile.d_rewrite'45'table_894
+            (coe MAlonzo.Code.Once.Compile.d_moduleTable_874 (coe v0))))
       (coe
          MAlonzo.Code.Data.List.Relation.Unary.All.du_map_164
          (coe
@@ -124,14 +124,14 @@ d_lib'45'nn_48 v0
             MAlonzo.Code.Once.CCC.Codegen.ProgramImage.d_fns'45'image_20
             (coe (0 :: Integer))
             (coe
-               MAlonzo.Code.Once.Compile.d_rewrite'45'table_890
-               (coe MAlonzo.Code.Once.Compile.d_moduleTable_870 (coe v0))))
+               MAlonzo.Code.Once.Compile.d_rewrite'45'table_894
+               (coe MAlonzo.Code.Once.Compile.d_moduleTable_874 (coe v0))))
          (coe
             MAlonzo.Code.Once.CCC.Codegen.ProgramImageFacts.du_fns'45'frame'45'free_52
             (coe (0 :: Integer))
             (coe
-               MAlonzo.Code.Once.Compile.d_rewrite'45'table_890
-               (coe MAlonzo.Code.Once.Compile.d_moduleTable_870 (coe v0)))))
+               MAlonzo.Code.Once.Compile.d_rewrite'45'table_894
+               (coe MAlonzo.Code.Once.Compile.d_moduleTable_874 (coe v0)))))
 -- Once.Adequacy.FileWF.resolved-at
 d_resolved'45'at_66 ::
   [MAlonzo.Code.Agda.Builtin.String.T_String_6] ->
@@ -154,24 +154,36 @@ d_prog'45'wf_76 ::
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_32 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Once.CCC.Target.X86Z45Z64.File.T_AsmWF_128
+  MAlonzo.Code.Once.CCC.Target.X86Z45Z64.File.T_AsmWF_134
 d_prog'45'wf_76 v0 v1 ~v2 = du_prog'45'wf_76 v0 v1
 du_prog'45'wf_76 ::
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_32 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
-  MAlonzo.Code.Once.CCC.Target.X86Z45Z64.File.T_AsmWF_128
+  MAlonzo.Code.Once.CCC.Target.X86Z45Z64.File.T_AsmWF_134
 du_prog'45'wf_76 v0 v1
   = coe
-      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.File.C_constructor_148
+      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.File.C_constructor_162
       (coe
-         MAlonzo.Code.Once.Adequacy.ImageWF.d_prog'45'unique_58 v0 v1
-         erased)
+         MAlonzo.Code.Once.Adequacy.ImageUnique.d_prog'45'unique_1474
+         (coe v0) (coe v1))
       (coe
-         MAlonzo.Code.Once.Adequacy.ImageResolved.du_prog'45'resolved_364
+         MAlonzo.Code.Once.Adequacy.ImageResolved.du_prog'45'resolved_412
          (coe v0) (coe v1))
       (coe
          MAlonzo.Code.Data.Nat.Base.C_s'8804's_34
          (coe MAlonzo.Code.Data.Nat.Base.C_z'8804'n_26))
+      (coe
+         MAlonzo.Code.Once.Adequacy.ImageValid.d_prog'45'defs'45'valid_190
+         (coe
+            MAlonzo.Code.Once.Denotation.Program.C_irProgram_390
+            (coe MAlonzo.Code.Once.Compile.d_moduleTable_874 (coe v0))
+            (coe v1)))
+      (coe
+         MAlonzo.Code.Once.Adequacy.ImageValid.d_externs'45'valid_248
+         (coe
+            MAlonzo.Code.Once.Denotation.Program.C_irProgram_390
+            (coe MAlonzo.Code.Once.Compile.d_moduleTable_874 (coe v0))
+            (coe v1)))
 -- Once.Adequacy.FileWF.X8664W._.p
 d_p_88 ::
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_32 ->
@@ -186,7 +198,7 @@ du_p_88 ::
 du_p_88 v0 v1
   = coe
       MAlonzo.Code.Once.Denotation.Program.C_irProgram_390
-      (coe MAlonzo.Code.Once.Compile.d_moduleTable_870 (coe v0)) (coe v1)
+      (coe MAlonzo.Code.Once.Compile.d_moduleTable_874 (coe v0)) (coe v1)
 -- Once.Adequacy.FileWF.X8664W._.G
 d_G_90 ::
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_32 ->
@@ -200,10 +212,9 @@ du_G_90 ::
   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.File.T_Image_12
 du_G_90 v0 v1
   = coe
-      MAlonzo.Code.Once.Compile.d_emitProgram_1002
+      MAlonzo.Code.Once.Compile.d_emitProgram_1014
       (coe MAlonzo.Code.Once.Target.Arch.C_x86'45'64_8)
       (coe du_p_88 (coe v0) (coe v1))
-      (MAlonzo.Code.Once.Adequacy.EmitFile.d_moduleExterns_10 (coe v0))
 -- Once.Adequacy.FileWF.X8664W._.code≡
 d_code'8801'_92 ::
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_32 ->
@@ -229,19 +240,28 @@ d_refs'8801'_98 = erased
 d_lib'45'wf_102 ::
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_32 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Once.CCC.Target.X86Z45Z64.File.T_AsmWF_128
+  MAlonzo.Code.Once.CCC.Target.X86Z45Z64.File.T_AsmWF_134
 d_lib'45'wf_102 v0 ~v1 = du_lib'45'wf_102 v0
 du_lib'45'wf_102 ::
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_32 ->
-  MAlonzo.Code.Once.CCC.Target.X86Z45Z64.File.T_AsmWF_128
+  MAlonzo.Code.Once.CCC.Target.X86Z45Z64.File.T_AsmWF_134
 du_lib'45'wf_102 v0
   = coe
-      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.File.C_constructor_148
+      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.File.C_constructor_162
       (coe
-         MAlonzo.Code.Once.Adequacy.ImageWF.d_lib'45'unique_70 v0 erased)
+         MAlonzo.Code.Once.Adequacy.ImageUnique.d_lib'45'unique_1530
+         (coe v0))
       (coe
-         MAlonzo.Code.Once.Adequacy.ImageWF.d_lib'45'resolved_74 v0 erased)
+         MAlonzo.Code.Once.Adequacy.ImageResolved.d_lib'45'resolved_630 v0)
       (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
+      (coe
+         MAlonzo.Code.Once.Adequacy.ImageValid.d_lib'45'defs'45'valid_196
+         (coe v0))
+      (coe
+         MAlonzo.Code.Once.Adequacy.ImageValid.d_externs'45'valid_248
+         (coe
+            MAlonzo.Code.Once.Compile.d_lib'45'program_1020
+            (coe MAlonzo.Code.Once.Compile.d_moduleTable_874 (coe v0))))
 -- Once.Adequacy.FileWF.X8664W._.G
 d_G_112 ::
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_32 ->
@@ -253,11 +273,9 @@ du_G_112 ::
   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.File.T_Image_12
 du_G_112 v0
   = coe
-      MAlonzo.Code.Once.Compile.d_emitLibrary_1020
+      MAlonzo.Code.Once.Compile.d_emitLibrary_1030
       (coe MAlonzo.Code.Once.Target.Arch.C_x86'45'64_8)
-      (coe MAlonzo.Code.Once.Compile.d_moduleTable_870 (coe v0))
-      (coe
-         MAlonzo.Code.Once.Adequacy.EmitFile.d_moduleExterns_10 (coe v0))
+      (coe MAlonzo.Code.Once.Compile.d_moduleTable_874 (coe v0))
 -- Once.Adequacy.FileWF.X8664W._.code≡
 d_code'8801'_114 ::
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_32 ->
@@ -281,15 +299,15 @@ d_file'45'wf_126 ::
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_32 ->
   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.File.T_Image_12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Once.CCC.Target.X86Z45Z64.File.T_AsmWF_128
+  MAlonzo.Code.Once.CCC.Target.X86Z45Z64.File.T_AsmWF_134
 d_file'45'wf_126 v0 ~v1 ~v2 = du_file'45'wf_126 v0
 du_file'45'wf_126 ::
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_32 ->
-  MAlonzo.Code.Once.CCC.Target.X86Z45Z64.File.T_AsmWF_128
+  MAlonzo.Code.Once.CCC.Target.X86Z45Z64.File.T_AsmWF_134
 du_file'45'wf_126 v0
   = coe
       du_by_140 (coe v0)
-      (coe MAlonzo.Code.Once.Compile.d_moduleToIR_838 (coe v0))
+      (coe MAlonzo.Code.Once.Compile.d_moduleToIR_842 (coe v0))
 -- Once.Adequacy.FileWF.X8664W._.by
 d_by_140 ::
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_32 ->
@@ -297,12 +315,12 @@ d_by_140 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   Maybe MAlonzo.Code.Once.IR.T_IR_16 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Once.CCC.Target.X86Z45Z64.File.T_AsmWF_128
+  MAlonzo.Code.Once.CCC.Target.X86Z45Z64.File.T_AsmWF_134
 d_by_140 v0 ~v1 ~v2 v3 ~v4 = du_by_140 v0 v3
 du_by_140 ::
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_32 ->
   Maybe MAlonzo.Code.Once.IR.T_IR_16 ->
-  MAlonzo.Code.Once.CCC.Target.X86Z45Z64.File.T_AsmWF_128
+  MAlonzo.Code.Once.CCC.Target.X86Z45Z64.File.T_AsmWF_134
 du_by_140 v0 v1
   = case coe v1 of
       MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v2
@@ -315,24 +333,36 @@ d_prog'45'wf_154 ::
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_32 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Once.CCC.Target.X86Z45Z32.File.T_AsmWF_128
+  MAlonzo.Code.Once.CCC.Target.X86Z45Z32.File.T_AsmWF_134
 d_prog'45'wf_154 v0 v1 ~v2 = du_prog'45'wf_154 v0 v1
 du_prog'45'wf_154 ::
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_32 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
-  MAlonzo.Code.Once.CCC.Target.X86Z45Z32.File.T_AsmWF_128
+  MAlonzo.Code.Once.CCC.Target.X86Z45Z32.File.T_AsmWF_134
 du_prog'45'wf_154 v0 v1
   = coe
-      MAlonzo.Code.Once.CCC.Target.X86Z45Z32.File.C_constructor_148
+      MAlonzo.Code.Once.CCC.Target.X86Z45Z32.File.C_constructor_162
       (coe
-         MAlonzo.Code.Once.Adequacy.ImageWF.d_prog'45'unique_58 v0 v1
-         erased)
+         MAlonzo.Code.Once.Adequacy.ImageUnique.d_prog'45'unique_1474
+         (coe v0) (coe v1))
       (coe
-         MAlonzo.Code.Once.Adequacy.ImageResolved.du_prog'45'resolved_364
+         MAlonzo.Code.Once.Adequacy.ImageResolved.du_prog'45'resolved_412
          (coe v0) (coe v1))
       (coe
          MAlonzo.Code.Data.Nat.Base.C_s'8804's_34
          (coe MAlonzo.Code.Data.Nat.Base.C_z'8804'n_26))
+      (coe
+         MAlonzo.Code.Once.Adequacy.ImageValid.d_prog'45'defs'45'valid_190
+         (coe
+            MAlonzo.Code.Once.Denotation.Program.C_irProgram_390
+            (coe MAlonzo.Code.Once.Compile.d_moduleTable_874 (coe v0))
+            (coe v1)))
+      (coe
+         MAlonzo.Code.Once.Adequacy.ImageValid.d_externs'45'valid_248
+         (coe
+            MAlonzo.Code.Once.Denotation.Program.C_irProgram_390
+            (coe MAlonzo.Code.Once.Compile.d_moduleTable_874 (coe v0))
+            (coe v1)))
 -- Once.Adequacy.FileWF.X8632W._.p
 d_p_166 ::
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_32 ->
@@ -347,7 +377,7 @@ du_p_166 ::
 du_p_166 v0 v1
   = coe
       MAlonzo.Code.Once.Denotation.Program.C_irProgram_390
-      (coe MAlonzo.Code.Once.Compile.d_moduleTable_870 (coe v0)) (coe v1)
+      (coe MAlonzo.Code.Once.Compile.d_moduleTable_874 (coe v0)) (coe v1)
 -- Once.Adequacy.FileWF.X8632W._.G
 d_G_168 ::
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_32 ->
@@ -361,10 +391,9 @@ du_G_168 ::
   MAlonzo.Code.Once.CCC.Target.X86Z45Z32.File.T_Image_12
 du_G_168 v0 v1
   = coe
-      MAlonzo.Code.Once.Compile.d_emitProgram_1002
+      MAlonzo.Code.Once.Compile.d_emitProgram_1014
       (coe MAlonzo.Code.Once.Target.Arch.C_x86'45'32_10)
       (coe du_p_166 (coe v0) (coe v1))
-      (MAlonzo.Code.Once.Adequacy.EmitFile.d_moduleExterns_10 (coe v0))
 -- Once.Adequacy.FileWF.X8632W._.code≡
 d_code'8801'_170 ::
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_32 ->
@@ -390,19 +419,28 @@ d_refs'8801'_176 = erased
 d_lib'45'wf_180 ::
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_32 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Once.CCC.Target.X86Z45Z32.File.T_AsmWF_128
+  MAlonzo.Code.Once.CCC.Target.X86Z45Z32.File.T_AsmWF_134
 d_lib'45'wf_180 v0 ~v1 = du_lib'45'wf_180 v0
 du_lib'45'wf_180 ::
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_32 ->
-  MAlonzo.Code.Once.CCC.Target.X86Z45Z32.File.T_AsmWF_128
+  MAlonzo.Code.Once.CCC.Target.X86Z45Z32.File.T_AsmWF_134
 du_lib'45'wf_180 v0
   = coe
-      MAlonzo.Code.Once.CCC.Target.X86Z45Z32.File.C_constructor_148
+      MAlonzo.Code.Once.CCC.Target.X86Z45Z32.File.C_constructor_162
       (coe
-         MAlonzo.Code.Once.Adequacy.ImageWF.d_lib'45'unique_70 v0 erased)
+         MAlonzo.Code.Once.Adequacy.ImageUnique.d_lib'45'unique_1530
+         (coe v0))
       (coe
-         MAlonzo.Code.Once.Adequacy.ImageWF.d_lib'45'resolved_74 v0 erased)
+         MAlonzo.Code.Once.Adequacy.ImageResolved.d_lib'45'resolved_630 v0)
       (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
+      (coe
+         MAlonzo.Code.Once.Adequacy.ImageValid.d_lib'45'defs'45'valid_196
+         (coe v0))
+      (coe
+         MAlonzo.Code.Once.Adequacy.ImageValid.d_externs'45'valid_248
+         (coe
+            MAlonzo.Code.Once.Compile.d_lib'45'program_1020
+            (coe MAlonzo.Code.Once.Compile.d_moduleTable_874 (coe v0))))
 -- Once.Adequacy.FileWF.X8632W._.G
 d_G_190 ::
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_32 ->
@@ -414,11 +452,9 @@ du_G_190 ::
   MAlonzo.Code.Once.CCC.Target.X86Z45Z32.File.T_Image_12
 du_G_190 v0
   = coe
-      MAlonzo.Code.Once.Compile.d_emitLibrary_1020
+      MAlonzo.Code.Once.Compile.d_emitLibrary_1030
       (coe MAlonzo.Code.Once.Target.Arch.C_x86'45'32_10)
-      (coe MAlonzo.Code.Once.Compile.d_moduleTable_870 (coe v0))
-      (coe
-         MAlonzo.Code.Once.Adequacy.EmitFile.d_moduleExterns_10 (coe v0))
+      (coe MAlonzo.Code.Once.Compile.d_moduleTable_874 (coe v0))
 -- Once.Adequacy.FileWF.X8632W._.code≡
 d_code'8801'_192 ::
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_32 ->
@@ -442,15 +478,15 @@ d_file'45'wf_204 ::
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_32 ->
   MAlonzo.Code.Once.CCC.Target.X86Z45Z32.File.T_Image_12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Once.CCC.Target.X86Z45Z32.File.T_AsmWF_128
+  MAlonzo.Code.Once.CCC.Target.X86Z45Z32.File.T_AsmWF_134
 d_file'45'wf_204 v0 ~v1 ~v2 = du_file'45'wf_204 v0
 du_file'45'wf_204 ::
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_32 ->
-  MAlonzo.Code.Once.CCC.Target.X86Z45Z32.File.T_AsmWF_128
+  MAlonzo.Code.Once.CCC.Target.X86Z45Z32.File.T_AsmWF_134
 du_file'45'wf_204 v0
   = coe
       du_by_218 (coe v0)
-      (coe MAlonzo.Code.Once.Compile.d_moduleToIR_838 (coe v0))
+      (coe MAlonzo.Code.Once.Compile.d_moduleToIR_842 (coe v0))
 -- Once.Adequacy.FileWF.X8632W._.by
 d_by_218 ::
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_32 ->
@@ -458,12 +494,12 @@ d_by_218 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   Maybe MAlonzo.Code.Once.IR.T_IR_16 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Once.CCC.Target.X86Z45Z32.File.T_AsmWF_128
+  MAlonzo.Code.Once.CCC.Target.X86Z45Z32.File.T_AsmWF_134
 d_by_218 v0 ~v1 ~v2 v3 ~v4 = du_by_218 v0 v3
 du_by_218 ::
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_32 ->
   Maybe MAlonzo.Code.Once.IR.T_IR_16 ->
-  MAlonzo.Code.Once.CCC.Target.X86Z45Z32.File.T_AsmWF_128
+  MAlonzo.Code.Once.CCC.Target.X86Z45Z32.File.T_AsmWF_134
 du_by_218 v0 v1
   = case coe v1 of
       MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v2
@@ -476,24 +512,36 @@ d_prog'45'wf_232 ::
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_32 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Once.CCC.Target.RiscV64.File.T_AsmWF_128
+  MAlonzo.Code.Once.CCC.Target.RiscV64.File.T_AsmWF_134
 d_prog'45'wf_232 v0 v1 ~v2 = du_prog'45'wf_232 v0 v1
 du_prog'45'wf_232 ::
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_32 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
-  MAlonzo.Code.Once.CCC.Target.RiscV64.File.T_AsmWF_128
+  MAlonzo.Code.Once.CCC.Target.RiscV64.File.T_AsmWF_134
 du_prog'45'wf_232 v0 v1
   = coe
-      MAlonzo.Code.Once.CCC.Target.RiscV64.File.C_constructor_148
+      MAlonzo.Code.Once.CCC.Target.RiscV64.File.C_constructor_162
       (coe
-         MAlonzo.Code.Once.Adequacy.ImageWF.d_prog'45'unique_58 v0 v1
-         erased)
+         MAlonzo.Code.Once.Adequacy.ImageUnique.d_prog'45'unique_1474
+         (coe v0) (coe v1))
       (coe
-         MAlonzo.Code.Once.Adequacy.ImageResolved.du_prog'45'resolved_364
+         MAlonzo.Code.Once.Adequacy.ImageResolved.du_prog'45'resolved_412
          (coe v0) (coe v1))
       (coe
          MAlonzo.Code.Data.Nat.Base.C_s'8804's_34
          (coe MAlonzo.Code.Data.Nat.Base.C_z'8804'n_26))
+      (coe
+         MAlonzo.Code.Once.Adequacy.ImageValid.d_prog'45'defs'45'valid_190
+         (coe
+            MAlonzo.Code.Once.Denotation.Program.C_irProgram_390
+            (coe MAlonzo.Code.Once.Compile.d_moduleTable_874 (coe v0))
+            (coe v1)))
+      (coe
+         MAlonzo.Code.Once.Adequacy.ImageValid.d_externs'45'valid_248
+         (coe
+            MAlonzo.Code.Once.Denotation.Program.C_irProgram_390
+            (coe MAlonzo.Code.Once.Compile.d_moduleTable_874 (coe v0))
+            (coe v1)))
 -- Once.Adequacy.FileWF.RiscV64W._.p
 d_p_244 ::
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_32 ->
@@ -508,7 +556,7 @@ du_p_244 ::
 du_p_244 v0 v1
   = coe
       MAlonzo.Code.Once.Denotation.Program.C_irProgram_390
-      (coe MAlonzo.Code.Once.Compile.d_moduleTable_870 (coe v0)) (coe v1)
+      (coe MAlonzo.Code.Once.Compile.d_moduleTable_874 (coe v0)) (coe v1)
 -- Once.Adequacy.FileWF.RiscV64W._.G
 d_G_246 ::
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_32 ->
@@ -522,10 +570,9 @@ du_G_246 ::
   MAlonzo.Code.Once.CCC.Target.RiscV64.File.T_Image_12
 du_G_246 v0 v1
   = coe
-      MAlonzo.Code.Once.Compile.d_emitProgram_1002
+      MAlonzo.Code.Once.Compile.d_emitProgram_1014
       (coe MAlonzo.Code.Once.Target.Arch.C_riscv64_12)
       (coe du_p_244 (coe v0) (coe v1))
-      (MAlonzo.Code.Once.Adequacy.EmitFile.d_moduleExterns_10 (coe v0))
 -- Once.Adequacy.FileWF.RiscV64W._.code≡
 d_code'8801'_248 ::
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_32 ->
@@ -551,19 +598,28 @@ d_refs'8801'_254 = erased
 d_lib'45'wf_258 ::
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_32 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Once.CCC.Target.RiscV64.File.T_AsmWF_128
+  MAlonzo.Code.Once.CCC.Target.RiscV64.File.T_AsmWF_134
 d_lib'45'wf_258 v0 ~v1 = du_lib'45'wf_258 v0
 du_lib'45'wf_258 ::
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_32 ->
-  MAlonzo.Code.Once.CCC.Target.RiscV64.File.T_AsmWF_128
+  MAlonzo.Code.Once.CCC.Target.RiscV64.File.T_AsmWF_134
 du_lib'45'wf_258 v0
   = coe
-      MAlonzo.Code.Once.CCC.Target.RiscV64.File.C_constructor_148
+      MAlonzo.Code.Once.CCC.Target.RiscV64.File.C_constructor_162
       (coe
-         MAlonzo.Code.Once.Adequacy.ImageWF.d_lib'45'unique_70 v0 erased)
+         MAlonzo.Code.Once.Adequacy.ImageUnique.d_lib'45'unique_1530
+         (coe v0))
       (coe
-         MAlonzo.Code.Once.Adequacy.ImageWF.d_lib'45'resolved_74 v0 erased)
+         MAlonzo.Code.Once.Adequacy.ImageResolved.d_lib'45'resolved_630 v0)
       (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
+      (coe
+         MAlonzo.Code.Once.Adequacy.ImageValid.d_lib'45'defs'45'valid_196
+         (coe v0))
+      (coe
+         MAlonzo.Code.Once.Adequacy.ImageValid.d_externs'45'valid_248
+         (coe
+            MAlonzo.Code.Once.Compile.d_lib'45'program_1020
+            (coe MAlonzo.Code.Once.Compile.d_moduleTable_874 (coe v0))))
 -- Once.Adequacy.FileWF.RiscV64W._.G
 d_G_268 ::
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_32 ->
@@ -575,11 +631,9 @@ du_G_268 ::
   MAlonzo.Code.Once.CCC.Target.RiscV64.File.T_Image_12
 du_G_268 v0
   = coe
-      MAlonzo.Code.Once.Compile.d_emitLibrary_1020
+      MAlonzo.Code.Once.Compile.d_emitLibrary_1030
       (coe MAlonzo.Code.Once.Target.Arch.C_riscv64_12)
-      (coe MAlonzo.Code.Once.Compile.d_moduleTable_870 (coe v0))
-      (coe
-         MAlonzo.Code.Once.Adequacy.EmitFile.d_moduleExterns_10 (coe v0))
+      (coe MAlonzo.Code.Once.Compile.d_moduleTable_874 (coe v0))
 -- Once.Adequacy.FileWF.RiscV64W._.code≡
 d_code'8801'_270 ::
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_32 ->
@@ -603,15 +657,15 @@ d_file'45'wf_282 ::
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_32 ->
   MAlonzo.Code.Once.CCC.Target.RiscV64.File.T_Image_12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Once.CCC.Target.RiscV64.File.T_AsmWF_128
+  MAlonzo.Code.Once.CCC.Target.RiscV64.File.T_AsmWF_134
 d_file'45'wf_282 v0 ~v1 ~v2 = du_file'45'wf_282 v0
 du_file'45'wf_282 ::
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_32 ->
-  MAlonzo.Code.Once.CCC.Target.RiscV64.File.T_AsmWF_128
+  MAlonzo.Code.Once.CCC.Target.RiscV64.File.T_AsmWF_134
 du_file'45'wf_282 v0
   = coe
       du_by_296 (coe v0)
-      (coe MAlonzo.Code.Once.Compile.d_moduleToIR_838 (coe v0))
+      (coe MAlonzo.Code.Once.Compile.d_moduleToIR_842 (coe v0))
 -- Once.Adequacy.FileWF.RiscV64W._.by
 d_by_296 ::
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_32 ->
@@ -619,12 +673,12 @@ d_by_296 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   Maybe MAlonzo.Code.Once.IR.T_IR_16 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Once.CCC.Target.RiscV64.File.T_AsmWF_128
+  MAlonzo.Code.Once.CCC.Target.RiscV64.File.T_AsmWF_134
 d_by_296 v0 ~v1 ~v2 v3 ~v4 = du_by_296 v0 v3
 du_by_296 ::
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_32 ->
   Maybe MAlonzo.Code.Once.IR.T_IR_16 ->
-  MAlonzo.Code.Once.CCC.Target.RiscV64.File.T_AsmWF_128
+  MAlonzo.Code.Once.CCC.Target.RiscV64.File.T_AsmWF_134
 du_by_296 v0 v1
   = case coe v1 of
       MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v2

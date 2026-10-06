@@ -24,6 +24,7 @@ import qualified MAlonzo.Code.Data.Irrelevant
 import qualified MAlonzo.Code.Once.Compile
 import qualified MAlonzo.Code.Once.IR
 import qualified MAlonzo.Code.Once.Type
+import qualified MAlonzo.Code.Once.TypeCheck.Classify
 import qualified MAlonzo.Code.Once.TypeCheck.Raw
 
 -- Once.Adequacy.MainIRForm.EffUU
@@ -45,10 +46,10 @@ d_validateMain'45'EffUU_10 ::
 d_validateMain'45'EffUU_10 = erased
 -- Once.Adequacy.MainIRForm.compileFun-main-EffUU
 d_compileFun'45'main'45'EffUU_68 ::
-  [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
+  MAlonzo.Code.Once.TypeCheck.Classify.T_TopCtx_412 ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   (MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14]) ->
+   MAlonzo.Code.Once.TypeCheck.Classify.T_TopCtx_412) ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
@@ -56,27 +57,26 @@ d_compileFun'45'main'45'EffUU_68 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_compileFun'45'main'45'EffUU_68 = erased
 -- Once.Adequacy.MainIRForm.findMain-here-no
-d_findMain'45'here'45'no_130 ::
-  MAlonzo.Code.Once.Compile.T_CompiledFun_232 ->
-  Bool ->
+d_findMain'45'here'45'no_128 ::
+  MAlonzo.Code.Once.Compile.T_CompiledFun_238 ->
   Maybe MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   Maybe MAlonzo.Code.Once.IR.T_IR_16 ->
   (MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
    MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20) ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_findMain'45'here'45'no_130 = erased
+d_findMain'45'here'45'no_128 = erased
 -- Once.Adequacy.MainIRForm.bare-injective
-d_bare'45'injective_152 ::
+d_bare'45'injective_142 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_bare'45'injective_152 = erased
+d_bare'45'injective_142 = erased
 -- Once.Adequacy.MainIRForm.findMain-skip
-d_findMain'45'skip_158 ::
-  MAlonzo.Code.Once.Compile.T_CompiledFun_232 ->
-  [MAlonzo.Code.Once.Compile.T_CompiledFun_232] ->
+d_findMain'45'skip_148 ::
+  MAlonzo.Code.Once.Compile.T_CompiledFun_238 ->
+  [MAlonzo.Code.Once.Compile.T_CompiledFun_238] ->
   (MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
    MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20) ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_findMain'45'skip_158 = erased
+d_findMain'45'skip_148 = erased

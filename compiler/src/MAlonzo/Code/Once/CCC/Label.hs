@@ -26,7 +26,6 @@ import qualified MAlonzo.Code.Data.Bool.Base
 import qualified MAlonzo.Code.Data.Irrelevant
 import qualified MAlonzo.Code.Data.List.Properties
 import qualified MAlonzo.Code.Data.Nat.Properties
-import qualified MAlonzo.Code.Data.Nat.Show
 import qualified MAlonzo.Code.Data.String.Base
 import qualified MAlonzo.Code.Data.String.Properties
 import qualified MAlonzo.Code.Once.CanonicalName
@@ -752,7 +751,7 @@ d_showPath_378 v0
              ("_" :: Data.Text.Text)
              (coe
                 MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                (coe MAlonzo.Code.Data.Nat.Show.d_show_56 v1)
+                (coe MAlonzo.Code.Once.Target.Symbol.d_showNat_6 v1)
                 (d_showPath_378 (coe v2)))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Label.showLabelId
@@ -761,7 +760,7 @@ d_showLabelId_384 ::
 d_showLabelId_384 v0
   = coe
       MAlonzo.Code.Data.String.Base.d__'43''43'__20
-      (MAlonzo.Code.Once.Target.Symbol.d_once'45'symbol'45'path_52
+      (MAlonzo.Code.Once.Target.Symbol.d_once'45'symbol'45'path_58
          (coe d_owner_14 (coe v0)))
       (coe
          MAlonzo.Code.Data.String.Base.d__'43''43'__20
@@ -769,7 +768,8 @@ d_showLabelId_384 v0
          (coe
             MAlonzo.Code.Data.String.Base.d__'43''43'__20
             ("_" :: Data.Text.Text)
-            (coe MAlonzo.Code.Data.Nat.Show.d_show_56 (d_idx_18 (coe v0)))))
+            (coe
+               MAlonzo.Code.Once.Target.Symbol.d_showNat_6 (d_idx_18 (coe v0)))))
 -- Once.CCC.Label.thunkSym
 d_thunkSym_388 ::
   T_LabelId_6 -> MAlonzo.Code.Agda.Builtin.String.T_String_6
@@ -785,7 +785,7 @@ d_entrySym_392 v0
       C_e'45'thunk_24 v1 -> coe d_thunkSym_388 (coe v1)
       C_e'45'fn_26 v1
         -> coe
-             MAlonzo.Code.Once.Target.Symbol.d_once'45'symbol'45'path_52
+             MAlonzo.Code.Once.Target.Symbol.d_once'45'symbol'45'path_58
              (coe v1)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Label.labelSym
@@ -806,7 +806,7 @@ d_labelSym_398 v0
                 (coe
                    MAlonzo.Code.Data.String.Base.d__'43''43'__20
                    ("_" :: Data.Text.Text)
-                   (coe MAlonzo.Code.Data.Nat.Show.d_show_56 v2)))
+                   (coe MAlonzo.Code.Once.Target.Symbol.d_showNat_6 v2)))
       C_callee_34 v1 -> coe d_entrySym_392 (coe v1)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Label.ℓ

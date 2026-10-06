@@ -337,6 +337,16 @@ Strata/
 - Linking interpretations is a separate concern (future work)
 - Each platform interpretation is self-contained
 
+### Amendment (2026-10-06, plan 0.107 step 5): assembly, not C
+The implementation half is the interpretation's hand-written per-arch ASSEMBLY,
+`Strata/Interpretations/<…>/<M>.<arch>` (`x86_64`, `x86_32`, `riscv64`, `arm64`; plan 0.11),
+not a `.c` file. The `.c` files beside them are leftovers of the dropped C backend. The CLI
+(`assembleImplFiles`) assembles that file with `as` and renames each operation's plain symbol to
+`onceSymbolPath (path ++ [op])` (`objcopy --redefine-sym`), and `ld` links it. The program emits
+no body for an FFI declaration (D274): the declaration extends Σ, its call sites name the resolved
+`CanonicalName`'s symbol, and the file lists that symbol as `.extern`. The interpretation's
+contracts stay its author's to discharge (D061); the rename is trusted Haskell on that boundary.
+
 ---
 
 ## D010: Buffer as Primitive Type
@@ -16811,6 +16821,12 @@ names stay pairwise distinct across definitions AND signatures, so `t-var-resolv
 **Once.Spec header** gains the THREE TIMES (D061/D257): building the compiler = proving
 `correct`, `∀ I`; compiling a program = `compile` and `sigOf tp` (Σ is a function of the
 program); an interpretation, offline = an `Impl (sigOf tp)`.
+
+**Addendum (2026-10-06, plan 0.107 §12).** D072's principal-type oracle (`TypeCheck.Principal`,
+untrusted) still read leaves from the definitions only, so sig-less programs referencing an FFI
+name were rejected (`infer-compose` ×3). It now reads `sig ++ imports`, the kernel's order. The
+apex could not see this: the oracle is outside the verified loop by design (check-after-infer),
+which makes such a defect a completeness loss, never a miscompilation.
 
 ## D275 — THE SYMBOL ENCODING IS TOTAL: EVERY NAME RENDERS TO AN `as` SYMBOL (2026-10-06)
 

@@ -151,4 +151,4 @@ d_arch'45'semantics_50
            (MAlonzo.Code.Once.CCC.Target.RiscV64.File.d_code_22 (coe v0)))
       d_run'45'trace'45'riscv64_34 d_decode'45'riscv64_42
       d_assemble'45'riscv64_44
-      MAlonzo.Code.Once.CCC.Target.RiscV64.File.d_print_78 (\ v0 -> v0)
+      MAlonzo.Code.Once.CCC.Target.RiscV64.File.d_print_84 (\ v0 -> v0)

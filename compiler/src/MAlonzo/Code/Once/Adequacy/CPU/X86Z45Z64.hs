@@ -838,4 +838,4 @@ d_arch'45'semantics_418
            (MAlonzo.Code.Once.CCC.Target.X86Z45Z64.File.d_code_22 (coe v0)))
       d_run'45'trace'45'x86'45'64_402 d_decode'45'x86'45'64_410
       d_assemble'45'x86'45'64_412
-      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.File.d_print_78 (\ v0 -> v0)
+      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.File.d_print_84 (\ v0 -> v0)

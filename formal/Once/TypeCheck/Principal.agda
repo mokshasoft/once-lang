@@ -36,7 +36,7 @@ open import Data.Nat using (ℕ; zero; suc)
 open import Data.Nat.Show renaming (show to showℕ)
 open import Data.Bool using (Bool; true; false; _∨_; if_then_else_)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.List using (List; []; _∷_)
+open import Data.List using (List; []; _∷_) renaming (_++_ to _++ᴸ_)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Relation.Nullary using (yes; no)
@@ -620,8 +620,11 @@ finishP (just (t , _ , s)) = groundOr (zonk fuelD s t)
 -- telescope). `nothing` = no type found (genuinely untypeable, or a v1
 -- coverage gap): ask for a signature.
 principal : NamedCtx → RawExpr → Maybe (Type ⊎ PolyType)
+-- D274: the names a leaf may resolve to are Σ's (FFI declarations) and then
+-- the module's own definitions — the kernel's order (`t-var-own` reads a
+-- definition only where Σ lacks the name).
 principal ctx e =
-  finishP (pInfer (NamedCtx.imports ctx) (projSchemas (NamedCtx.polys ctx))
+  finishP (pInfer (NamedCtx.sig ctx ++ᴸ NamedCtx.imports ctx) (projSchemas (NamedCtx.polys ctx))
              [] e 0 [])
 
 pgProj : Maybe (Type ⊎ PolyType) → Maybe Type

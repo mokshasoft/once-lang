@@ -132,7 +132,7 @@ d_instr'45'refs_30 v0
            -> coe
                 MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                 (coe
-                   MAlonzo.Code.Once.Target.Symbol.d_once'45'symbol'45'path_52
+                   MAlonzo.Code.Once.Target.Symbol.d_once'45'symbol'45'path_58
                    (coe MAlonzo.Code.Once.SigOp.Info.d_name_178 (coe v4)))
                 (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
          MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'load'45'code'45'addr_2304 v2

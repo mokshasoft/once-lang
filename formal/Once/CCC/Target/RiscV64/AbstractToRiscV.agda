@@ -311,8 +311,8 @@ compile-abstract instr-save-closure-reg =
 compile-abstract (instr-load-tag-lit n) = li a0 (+ n) ∷ []
 -- case-on-tag / loop are STRUCTURED nodes carrying sub-traces; they are
 -- expanded (with fresh labels + branches) by `compile-trace-cnt` below, not
--- here. This single-instruction view is a sentinel (should never be reached
--- once irToAsm/irToBodies route through compile-trace-cnt).
+-- here. This single-instruction view is a sentinel (never reached: the file
+-- is the lowering of the image through compile-trace-cnt).
 compile-abstract (instr-case-on-tag _ _) = unimp ∷ []
 compile-abstract (instr-loop _) = unimp ∷ []
 -- Plan 0.53 (mirror x86-64 M5): register pokes. Scratch = s3, Count = s4

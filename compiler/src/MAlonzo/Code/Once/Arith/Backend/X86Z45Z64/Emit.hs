@@ -1022,7 +1022,7 @@ d_arith'45'block'45'symbol_224 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6
 d_arith'45'block'45'symbol_224 v0
   = coe
-      MAlonzo.Code.Once.Target.Symbol.d_once'45'symbol'45'own_56
+      MAlonzo.Code.Once.Target.Symbol.d_once'45'symbol'45'own_62
       (coe
          MAlonzo.Code.Once.Arith.SigOp.Block.du_block'45'name_366
          (coe

@@ -17,51 +17,25 @@ import MAlonzo.RTE (coe, erased, AgdaAny, addInt, subInt, mulInt,
                     rem64, lt64, eq64, word64FromNat, word64ToNat)
 import qualified MAlonzo.RTE
 import qualified Data.Text
-import qualified MAlonzo.Code.Agda.Builtin.Bool
 import qualified MAlonzo.Code.Agda.Builtin.Equality
-import qualified MAlonzo.Code.Agda.Builtin.List
-import qualified MAlonzo.Code.Agda.Builtin.String
 import qualified MAlonzo.Code.Data.Sum.Base
-import qualified MAlonzo.Code.Once.Compile
 import qualified MAlonzo.Code.Once.IR
 import qualified MAlonzo.Code.Once.Parser
 import qualified MAlonzo.Code.Once.Parser.Module.Core
 import qualified MAlonzo.Code.Once.Target.Arch
 import qualified MAlonzo.Code.Relation.Nullary.Decidable.Core
 
--- Once.Adequacy.EmitFile.externsOfResult
-d_externsOfResult_6 ::
-  MAlonzo.Code.Data.Sum.Base.T__'8846'__30 ->
-  [MAlonzo.Code.Agda.Builtin.String.T_String_6]
-d_externsOfResult_6 v0
-  = case coe v0 of
-      MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 v1
-        -> coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16
-      MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42 v1
-        -> coe MAlonzo.Code.Once.Compile.d_externsOf_914 (coe v1)
-      _ -> MAlonzo.RTE.mazUnreachableError
--- Once.Adequacy.EmitFile.moduleExterns
-d_moduleExterns_10 ::
-  MAlonzo.Code.Once.Parser.Module.Core.T_Module_32 ->
-  [MAlonzo.Code.Agda.Builtin.String.T_String_6]
-d_moduleExterns_10 v0
-  = coe
-      d_externsOfResult_6
-      (coe
-         MAlonzo.Code.Once.Compile.d_compileResolvedModule_718
-         (coe MAlonzo.Code.Once.IR.C_Heap_8)
-         (coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8) (coe v0))
 -- Once.Adequacy.EmitFile.inj₂-inj
-d_inj'8322''45'inj_22 ::
+d_inj'8322''45'inj_14 ::
   () ->
   () ->
   AgdaAny ->
   AgdaAny ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_inj'8322''45'inj_22 = erased
+d_inj'8322''45'inj_14 = erased
 -- Once.Adequacy.EmitFile.at-funs
-d_at'45'funs_32 ::
+d_at'45'funs_24 ::
   MAlonzo.Code.Once.Target.Arch.T_Arch_6 ->
   MAlonzo.Code.Data.Sum.Base.T__'8846'__30 ->
   AgdaAny ->
@@ -69,9 +43,9 @@ d_at'45'funs_32 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_at'45'funs_32 = erased
+d_at'45'funs_24 = erased
 -- Once.Adequacy.EmitFile.at-gate
-d_at'45'gate_66 ::
+d_at'45'gate_58 ::
   MAlonzo.Code.Once.Target.Arch.T_Arch_6 ->
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_32 ->
   [MAlonzo.Code.Once.Parser.T_Entry_132] ->
@@ -81,9 +55,9 @@ d_at'45'gate_66 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_at'45'gate_66 = erased
+d_at'45'gate_58 = erased
 -- Once.Adequacy.EmitFile.at-ef
-d_at'45'ef_102 ::
+d_at'45'ef_94 ::
   MAlonzo.Code.Once.Target.Arch.T_Arch_6 ->
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_32 ->
   MAlonzo.Code.Data.Sum.Base.T__'8846'__30 ->
@@ -92,18 +66,18 @@ d_at'45'ef_102 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_at'45'ef_102 = erased
+d_at'45'ef_94 = erased
 -- Once.Adequacy.EmitFile.lib-funs
-d_lib'45'funs_132 ::
+d_lib'45'funs_124 ::
   MAlonzo.Code.Once.Target.Arch.T_Arch_6 ->
   MAlonzo.Code.Data.Sum.Base.T__'8846'__30 ->
   AgdaAny ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_lib'45'funs_132 = erased
+d_lib'45'funs_124 = erased
 -- Once.Adequacy.EmitFile.lib-gate
-d_lib'45'gate_160 ::
+d_lib'45'gate_152 ::
   MAlonzo.Code.Once.Target.Arch.T_Arch_6 ->
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_32 ->
   [MAlonzo.Code.Once.Parser.T_Entry_132] ->
@@ -112,9 +86,9 @@ d_lib'45'gate_160 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_lib'45'gate_160 = erased
+d_lib'45'gate_152 = erased
 -- Once.Adequacy.EmitFile.lib-ef
-d_lib'45'ef_190 ::
+d_lib'45'ef_182 ::
   MAlonzo.Code.Once.Target.Arch.T_Arch_6 ->
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_32 ->
   MAlonzo.Code.Data.Sum.Base.T__'8846'__30 ->
@@ -122,9 +96,9 @@ d_lib'45'ef_190 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_lib'45'ef_190 = erased
+d_lib'45'ef_182 = erased
 -- Once.Adequacy.EmitFile.file-is-emit
-d_file'45'is'45'emit_218 ::
+d_file'45'is'45'emit_210 ::
   MAlonzo.Code.Once.Target.Arch.T_Arch_6 ->
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_32 ->
   AgdaAny ->
@@ -132,13 +106,13 @@ d_file'45'is'45'emit_218 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_file'45'is'45'emit_218 = erased
+d_file'45'is'45'emit_210 = erased
 -- Once.Adequacy.EmitFile.file-is-lib
-d_file'45'is'45'lib_238 ::
+d_file'45'is'45'lib_230 ::
   MAlonzo.Code.Once.Target.Arch.T_Arch_6 ->
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_32 ->
   AgdaAny ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_file'45'is'45'lib_238 = erased
+d_file'45'is'45'lib_230 = erased

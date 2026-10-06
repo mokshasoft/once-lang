@@ -505,7 +505,7 @@ d_compile'45'sigOp_172 v0
       (coe
          MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_call'45'sym_54
          (coe
-            MAlonzo.Code.Once.Target.Symbol.d_once'45'symbol'45'path_52
+            MAlonzo.Code.Once.Target.Symbol.d_once'45'symbol'45'path_58
             (coe v0)))
       (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
 -- Once.CCC.Target.X86-64.CodeGen.Primitives.compile-sigOp-size

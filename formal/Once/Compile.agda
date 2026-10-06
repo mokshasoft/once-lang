@@ -89,11 +89,7 @@ open Once.Arith.Machine.IR.ArithBlock using (block-body)
 open import Once.Arith.SigOp.Block using (block-name)
 open import Once.Arith.Machine.Rewrite using (rewrite-ir)
 
--- D100: the emitted LOCAL labels (`moduleLabels`, below) — the `.L…` sibling of
--- `moduleSyms`. `labels-def` reads them off the abstract trace; the trace walk
--- itself is telescoped per definition (`IRT.ir-to-trace-from o l ir`).
 open import Once.CCC.Label using (Label)
-open import Once.CCC.Codegen.EmittedWF using (labels-def; labels-ref; syms-ref)
 import Once.CCC.Codegen.IRToTrace as IRT
 import Once.CCC.Target.X86-64.File as X64F
 import Once.CCC.Target.X86-32.File as X32F

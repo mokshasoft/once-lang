@@ -244,7 +244,7 @@ d_o_94 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9 ~v10 ~v11 ~v12 ~v13
        ~v14 ~v15 ~v16 ~v17 ~v18 ~v19 ~v20 ~v21
   = du_o_94
 du_o_94 :: MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4
-du_o_94 = coe MAlonzo.Code.Once.Compile.d_entry'45'owner_930
+du_o_94 = coe MAlonzo.Code.Once.Compile.d_entry'45'owner_964
 -- Once.Adequacy.ArchCorrectness.X64.BlockRunsHyp-x86-64
 d_BlockRunsHyp'45'x86'45'64_102 ::
   (MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_458 ->
@@ -31363,10 +31363,10 @@ du_TP_426 v0 v1
   = coe
       MAlonzo.Code.Once.Denotation.Program.d_table_386
       (coe
-         MAlonzo.Code.Once.Compile.d_rewrite'45'program_896
+         MAlonzo.Code.Once.Compile.d_rewrite'45'program_900
          (coe
             MAlonzo.Code.Once.Denotation.Program.C_irProgram_390
-            (coe MAlonzo.Code.Once.Compile.d_moduleTable_870 (coe v0))
+            (coe MAlonzo.Code.Once.Compile.d_moduleTable_874 (coe v0))
             (coe v1)))
 -- Once.Adequacy.ArchCorrectness.LK
 d_LK_436 ::
@@ -31552,10 +31552,10 @@ du_LK_436 v0 v1
       MAlonzo.Code.Once.Adequacy.SourceTrace.du_rewrite'45'program'45'linked_244
       (coe
          MAlonzo.Code.Once.Denotation.Program.C_irProgram_390
-         (coe MAlonzo.Code.Once.Compile.d_moduleTable_870 (coe v0))
+         (coe MAlonzo.Code.Once.Compile.d_moduleTable_874 (coe v0))
          (coe v1))
       (coe
-         MAlonzo.Code.Once.Adequacy.ProgramLinked.du_moduleToProgram'45'linked_2704
+         MAlonzo.Code.Once.Adequacy.ProgramLinked.du_moduleToProgram'45'linked_2630
          (coe v0))
 -- Once.Adequacy.ArchCorrectness.BlockRunsHyp-x86-64
 d_BlockRunsHyp'45'x86'45'64_444 ::

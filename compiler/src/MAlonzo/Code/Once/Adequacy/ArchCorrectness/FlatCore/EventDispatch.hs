@@ -19334,7 +19334,7 @@ du_lbl_3502 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6
 du_lbl_3502 v0
   = coe
-      MAlonzo.Code.Once.Target.Symbol.d_once'45'symbol'45'path_52
+      MAlonzo.Code.Once.Target.Symbol.d_once'45'symbol'45'path_58
       (coe MAlonzo.Code.Once.SigOp.Info.d_name_178 (coe v0))
 -- Once.Adequacy.ArchCorrectness.FlatCore.EventDispatch.Dispatch._.rec
 d_rec_3504 ::

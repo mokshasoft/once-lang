@@ -68,7 +68,7 @@ d_moduleToIR'45'emitted_10 ::
 d_moduleToIR'45'emitted_10 v0
   = coe
       d_map'45'rewrite_6
-      (coe MAlonzo.Code.Once.Compile.d_moduleToIR_838 (coe v0))
+      (coe MAlonzo.Code.Once.Compile.d_moduleToIR_842 (coe v0))
 -- Once.Adequacy.SourceTrace.map-rewrite-program
 d_map'45'rewrite'45'program_14 ::
   Maybe MAlonzo.Code.Once.Denotation.Program.T_IRProgram_380 ->
@@ -78,7 +78,7 @@ d_map'45'rewrite'45'program_14 v0
       MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v1
         -> coe
              MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-             (coe MAlonzo.Code.Once.Compile.d_rewrite'45'program_896 (coe v1))
+             (coe MAlonzo.Code.Once.Compile.d_rewrite'45'program_900 (coe v1))
       MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v0
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.SourceTrace.moduleToProgram-emitted
@@ -88,7 +88,7 @@ d_moduleToProgram'45'emitted_18 ::
 d_moduleToProgram'45'emitted_18 v0
   = coe
       d_map'45'rewrite'45'program_14
-      (coe MAlonzo.Code.Once.Compile.d_moduleToProgram_882 (coe v0))
+      (coe MAlonzo.Code.Once.Compile.d_moduleToProgram_886 (coe v0))
 -- Once.Adequacy.SourceTrace.linkedAt-rewrite
 d_linkedAt'45'rewrite_30 ::
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
@@ -515,7 +515,7 @@ d_sourceTrace'45'aux_360 v0 v1
       MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v2
         -> coe
              d_'10214'_'10215'IR_252
-             (coe MAlonzo.Code.Once.Compile.d_moduleToProgram_882 (coe v2))
+             (coe MAlonzo.Code.Once.Compile.d_moduleToProgram_886 (coe v2))
              (coe v1)
       MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
         -> coe (\ v2 -> MAlonzo.Code.Once.Denotation.Behavior.d_silent_42)

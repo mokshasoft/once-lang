@@ -171,10 +171,9 @@ compile-cli-asm allocMode stage doOpt arch m =
 -- The record states only OBLIGATIONS — all phrased as `…-correct`. It bakes
 -- in NO trust: whether a field is discharged by a PROOF or by a POSTULATE is
 -- the INSTANCE's choice (`Once.Adequacy.CPU.<arch>`), not a property of the
--- spec. Today `assemble-correct` (GNU `as`) and `asm-trace-correct` (our
--- `programToText`/`irToAsm` printer + `_start`/loader entry) are postulated
--- per arch — but they are PROVABLE in principle (an in-Agda assembler / a
--- verified printer); nothing here assumes they cannot be proved later.
+-- spec. Since plan 0.107 (D262) the only toolchain trust is `as-faithful`
+-- (GNU `as` reads the printed file as the `File` it prints); the printer and
+-- the `_start` entry are proved code.
 -- `ir-flat-correct` is the SigOp-trace obligation (flat trace ≡ `obs`) — the
 -- connection to ALL CCC IRs, dispatched structurally over the IR (→
 -- IRObsCorrectFlat, cata-correct the loop case).
