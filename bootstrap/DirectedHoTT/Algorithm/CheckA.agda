@@ -70,7 +70,7 @@ open import DirectedHoTT.Metatheory.NormTy
 open import DirectedHoTT.Metatheory.RedCong
   using ( red→≅ᵀ; _⟶ᵀ*_ )
 open import DirectedHoTT.Algorithm.DecEq
-  using ( Dec; yes; no )
+  using ( Dec; yes; no; _≟Ty_ )
 open import DirectedHoTT.Metatheory.Premises
   using ( MethTy-wf; pairS⊢; fsucS⊢; ⊢wkD )
 open import DirectedHoTT.Metatheory.NormalShape using ( nf-Π; nf-Σ )
@@ -79,6 +79,7 @@ open import DirectedHoTT.Metatheory.Injectivity using ( Π-inj; church-rosserᵀ
 open import DirectedHoTT.Algorithm.Eval
   using ( Nfᵀ; nfdᵀ; outᵀ; evalᵀ; decConvFast; nf-irrᵀ; nf-stuckᵀ )
 open import DirectedHoTT.Algorithm.ConvLazy using ( convTy )
+open import DirectedHoTT.Algorithm.ConvNbE using ( decConvNbE; nbeNf; NfOf; nbeNfv )
 -- ★ S5: one checker per signature; `ok` (from `WfSig`, Metatheory/Signature)
 --   is what erasure — the bridge to the kernel's validity — needs
 module DirectedHoTT.Algorithm.CheckA (S : Sig) (ok : SigOK S) where
@@ -290,11 +291,25 @@ decToFast {A = A} wΓ d B dB with decConvFast evalFuel ⌈ A ⌉ᵀ ⌈ B ⌉ᵀ
 -- ★ S7b: LAZILY first (`Algorithm/ConvLazy`: syntactic, then weak-head,
 --   then field by field) — a proof or nothing; full normal forms decide
 --   only what it leaves open
-decTo : {t : ATm ⌊ Γ ⌋ᴬ} {A : ATy ⌊ Γ ⌋ᴬ} → ⊢ctx ⌈ Γ ⌉ᶜ → Γ ⊢ᴬ t ∷ A →
-        (B : ATy ⌊ Γ ⌋ᴬ) → ⌈ Γ ⌉ᶜ ⊢ty ⌈ B ⌉ᵀ → Dec (Γ ⊢ᴬ t ∷ B)
-decTo {A = A} wΓ d B dB with convTy evalFuel ⌈ A ⌉ᵀ ⌈ B ⌉ᵀ
+decToLazy : {t : ATm ⌊ Γ ⌋ᴬ} {A : ATy ⌊ Γ ⌋ᴬ} → ⊢ctx ⌈ Γ ⌉ᶜ → Γ ⊢ᴬ t ∷ A →
+            (B : ATy ⌊ Γ ⌋ᴬ) → ⌈ Γ ⌉ᶜ ⊢ty ⌈ B ⌉ᵀ → Dec (Γ ⊢ᴬ t ∷ B)
+decToLazy {A = A} wΓ d B dB with convTy evalFuel ⌈ A ⌉ᵀ ⌈ B ⌉ᵀ
 ... | just c  = yes (⊢ᴬconv d c)
 ... | nothing = decToFast wΓ d B dB
+
+-- ★ PLAN-EVAL E3: FIRST by the environment evaluator (`Algorithm/ConvNbE`)
+--   — certified normal forms compared: equal ⇒ a conversion; distinct ⇒
+--   none (Church–Rosser).  Only an uncertified readback falls through.
+--   (an argument, not a `with`: PERF §8)
+decToBy : {t : ATm ⌊ Γ ⌋ᴬ} {A : ATy ⌊ Γ ⌋ᴬ} → ⊢ctx ⌈ Γ ⌉ᶜ → Γ ⊢ᴬ t ∷ A →
+          (B : ATy ⌊ Γ ⌋ᴬ) → ⌈ Γ ⌉ᶜ ⊢ty ⌈ B ⌉ᵀ → Maybe (Dec (⌈ A ⌉ᵀ ≅ᵀ ⌈ B ⌉ᵀ)) → Dec (Γ ⊢ᴬ t ∷ B)
+decToBy wΓ d B dB (just (yes c)) = yes (⊢ᴬconv d c)
+decToBy wΓ d B dB (just (no ¬c)) = no (λ d' → ¬c (uniqᴬ d d'))
+decToBy wΓ d B dB nothing        = decToLazy wΓ d B dB
+
+decTo : {t : ATm ⌊ Γ ⌋ᴬ} {A : ATy ⌊ Γ ⌋ᴬ} → ⊢ctx ⌈ Γ ⌉ᶜ → Γ ⊢ᴬ t ∷ A →
+        (B : ATy ⌊ Γ ⌋ᴬ) → ⌈ Γ ⌉ᶜ ⊢ty ⌈ B ⌉ᵀ → Dec (Γ ⊢ᴬ t ∷ B)
+decTo {A = A} wΓ d B dB = decToBy wΓ d B dB (decConvNbE ⌈ A ⌉ᵀ ⌈ B ⌉ᵀ)
 
 -- a check from an inference: a "no" there refutes every typing
 fromInf : {t : ATm ⌊ Γ ⌋ᴬ} → ⊢ctx ⌈ Γ ⌉ᶜ → Dec (Inf Γ t) →
@@ -395,8 +410,8 @@ domΠ wΓ d r n with validity wΓ (erase d)
 ...     | refl with srᵀ* dA' r₁
 ...       | ty-Π dF dG = dF
 
-viewΠ : {t : ATm ⌊ Γ ⌋ᴬ} {T : ATy ⌊ Γ ⌋ᴬ} → ⊢ctx ⌈ Γ ⌉ᶜ → Γ ⊢ᴬ t ∷ T → ΠV Γ t ⊎ (¬ ΠTyped Γ t)
-viewΠ {Γ} {T = T} wΓ d with evalᵀ evalFuel ⌈ T ⌉ᵀ
+viewΠeval : {t : ATm ⌊ Γ ⌋ᴬ} {T : ATy ⌊ Γ ⌋ᴬ} → ⊢ctx ⌈ Γ ⌉ᶜ → Γ ⊢ᴬ t ∷ T → ΠV Γ t ⊎ (¬ ΠTyped Γ t)
+viewΠeval {Γ} {T = T} wΓ d with evalᵀ evalFuel ⌈ T ⌉ᵀ
 ... | outᵀ _ _ = viewΠslow wΓ d
 ... | nfdᵀ N r n with isΠ? N
 ...   | no ¬Π = inj₂ (λ { (_ , (_ , d')) →
@@ -406,8 +421,8 @@ viewΠ {Γ} {T = T} wΓ d with evalᵀ evalFuel ⌈ T ⌉ᵀ
                  (⊢ᴬconv d (subst (λ Z → ⌈ T ⌉ᵀ ≅ᵀ Z) (sym (cong₂Π (era-liftTy F (λ s → nf-irrᵀ n (ξ-Πˡ s))) (era-liftTy G (λ s → nf-irrᵀ n (ξ-Πʳ s))))) (red→≅ᵀ r)))
                  (subst (λ Z → ⌈ Γ ⌉ᶜ ⊢ty Z) (sym (era-liftTy F (λ s → nf-irrᵀ n (ξ-Πˡ s)))) (domΠ wΓ d r n)))
 
-viewΣ : {t : ATm ⌊ Γ ⌋ᴬ} {T : ATy ⌊ Γ ⌋ᴬ} → ⊢ctx ⌈ Γ ⌉ᶜ → Γ ⊢ᴬ t ∷ T → ΣV Γ t ⊎ (¬ ΣTyped Γ t)
-viewΣ {T = T} wΓ d with evalᵀ evalFuel ⌈ T ⌉ᵀ
+viewΣeval : {t : ATm ⌊ Γ ⌋ᴬ} {T : ATy ⌊ Γ ⌋ᴬ} → ⊢ctx ⌈ Γ ⌉ᶜ → Γ ⊢ᴬ t ∷ T → ΣV Γ t ⊎ (¬ ΣTyped Γ t)
+viewΣeval {T = T} wΓ d with evalᵀ evalFuel ⌈ T ⌉ᵀ
 ... | outᵀ _ _ = viewΣslow wΓ d
 ... | nfdᵀ N r n with isΣ? N
 ...   | no ¬Σ = inj₂ (λ { (_ , (_ , d')) →
@@ -415,6 +430,40 @@ viewΣ {T = T} wΓ d with evalᵀ evalFuel ⌈ T ⌉ᵀ
 ...   | yes (F , (G , refl)) =
         inj₁ (σv (liftTy F) (liftTy G)
                  (⊢ᴬconv d (subst (λ Z → ⌈ T ⌉ᵀ ≅ᵀ Z) (sym (cong₂Σ (era-liftTy F (λ s → nf-irrᵀ n (ξ-Σˡ s))) (era-liftTy G (λ s → nf-irrᵀ n (ξ-Σʳ s))))) (red→≅ᵀ r))))
+
+-- ★ PLAN-EVAL E3: the views FIRST by the environment evaluator — its
+--   readback, certified normal (`Algorithm/ConvNbE`), convertible with the
+--   type; the evaluation route only if the readback is not certified
+domΠ≅ : {t : ATm ⌊ Γ ⌋ᴬ} {T : ATy ⌊ Γ ⌋ᴬ} {F : RTy ⌊ Γ ⌋ᴬ} {G : RTy (⌊ Γ ⌋ᴬ ∙)} →
+        ⊢ctx ⌈ Γ ⌉ᶜ → Γ ⊢ᴬ t ∷ T → ⌈ T ⌉ᵀ ≅ᵀ Π F G → Nfᵀ (Π F G) → ⌈ Γ ⌉ᶜ ⊢ty F
+domΠ≅ wΓ d cv n with validity wΓ (erase d)
+... | wf A' c dA' with church-rosserᵀ (ctrnᵀ (csymᵀ c) cv)
+...   | C , (r₁ , r₂) with nf-stuckᵀ n r₂
+...     | refl with srᵀ* dA' r₁
+...       | ty-Π dF dG = dF
+
+viewΠby : {t : ATm ⌊ Γ ⌋ᴬ} {T : ATy ⌊ Γ ⌋ᴬ} → ⊢ctx ⌈ Γ ⌉ᶜ → Γ ⊢ᴬ t ∷ T → Maybe (NfOf ⌈ T ⌉ᵀ) → ΠV Γ t ⊎ (¬ ΠTyped Γ t)
+viewΠby wΓ d nothing = viewΠeval wΓ d
+viewΠby {Γ} {T = T} wΓ d (just (nbeNfv N cv n)) with isΠ? N
+... | no ¬Π = inj₂ (λ { (_ , (_ , d')) → ¬Π (nf-Π (nf-irrᵀ n) (ctrnᵀ (csymᵀ cv) (uniqᴬ d d'))) })
+... | yes (F , (G , refl)) =
+      inj₁ (πv (liftTy F) (liftTy G)
+               (⊢ᴬconv d (subst (λ Z → ⌈ T ⌉ᵀ ≅ᵀ Z) (sym (cong₂Π (era-liftTy F (λ s → nf-irrᵀ n (ξ-Πˡ s))) (era-liftTy G (λ s → nf-irrᵀ n (ξ-Πʳ s))))) cv))
+               (subst (λ Z → ⌈ Γ ⌉ᶜ ⊢ty Z) (sym (era-liftTy F (λ s → nf-irrᵀ n (ξ-Πˡ s)))) (domΠ≅ wΓ d cv n)))
+
+viewΠ : {t : ATm ⌊ Γ ⌋ᴬ} {T : ATy ⌊ Γ ⌋ᴬ} → ⊢ctx ⌈ Γ ⌉ᶜ → Γ ⊢ᴬ t ∷ T → ΠV Γ t ⊎ (¬ ΠTyped Γ t)
+viewΠ {T = T} wΓ d = viewΠby wΓ d (nbeNf ⌈ T ⌉ᵀ)
+
+viewΣby : {t : ATm ⌊ Γ ⌋ᴬ} {T : ATy ⌊ Γ ⌋ᴬ} → ⊢ctx ⌈ Γ ⌉ᶜ → Γ ⊢ᴬ t ∷ T → Maybe (NfOf ⌈ T ⌉ᵀ) → ΣV Γ t ⊎ (¬ ΣTyped Γ t)
+viewΣby wΓ d nothing = viewΣeval wΓ d
+viewΣby {T = T} wΓ d (just (nbeNfv N cv n)) with isΣ? N
+... | no ¬Σ = inj₂ (λ { (_ , (_ , d')) → ¬Σ (nf-Σ (nf-irrᵀ n) (ctrnᵀ (csymᵀ cv) (uniqᴬ d d'))) })
+... | yes (F , (G , refl)) =
+      inj₁ (σv (liftTy F) (liftTy G)
+               (⊢ᴬconv d (subst (λ Z → ⌈ T ⌉ᵀ ≅ᵀ Z) (sym (cong₂Σ (era-liftTy F (λ s → nf-irrᵀ n (ξ-Σˡ s))) (era-liftTy G (λ s → nf-irrᵀ n (ξ-Σʳ s))))) cv)))
+
+viewΣ : {t : ATm ⌊ Γ ⌋ᴬ} {T : ATy ⌊ Γ ⌋ᴬ} → ⊢ctx ⌈ Γ ⌉ᶜ → Γ ⊢ᴬ t ∷ T → ΣV Γ t ⊎ (¬ ΣTyped Γ t)
+viewΣ {T = T} wΓ d = viewΣby wΓ d (nbeNf ⌈ T ⌉ᵀ)
 
 ------------------------------------------------------------------------
 -- 1b. The motive's context, erased, is well-formed (the premise types
