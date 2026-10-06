@@ -47,7 +47,7 @@ record _∼S_ {F : SFunctor} (x y : νS F) : Set where
   field
     unfoldS-∼ : Res-rel (⟦ F ⟧SF-rel (_∼S_ {F})) (unfoldS x) (unfoldS y)
 
-open _∼S_ public
+open _∼S_
 
 -- | Bisimulation implies equality (coalgebraic extensionality)
 --

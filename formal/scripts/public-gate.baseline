@@ -1,7 +1,6 @@
 # public-gate baseline (plan 0.92 S0): `public` re-export lines per module that predate
 # the gate. Counts may only go DOWN; each is a re-export to remove or to justify (§2, S4).
 Once/Adequacy/ArchCorrectness/ArithSimRiscV64.agda 1
-Once/Adequacy/ArchCorrectness/ArithSimX86-32.agda 1
 Once/Adequacy/ArchCorrectness/FlatCore/CompiledCorrespondence.agda 2
 Once/Adequacy/ArchCorrectness/FlatCore/EventDispatch.agda 2
 Once/Adequacy/ArchCorrectness/FlatCore/EventEngine.agda 5
@@ -31,13 +30,12 @@ Once/Adequacy/ArchCorrectness/X86-64/RunContext.agda 1
 Once/Adequacy/CoherenceHet.agda 1
 Once/Adequacy/CoherenceLaws.agda 1
 Once/Adequacy/GradedRelation.agda 1
-Once/Adequacy/MeaningBridge.agda 1
 Once/Allocator/AbstractInstance.agda 1
 Once/Allocator/Malloc.agda 1
 Once/Allocator/Mempool.agda 2
 Once/Allocator/Slab.agda 2
 Once/Arith/Backend/RiscV64/MemPreserve.agda 1
-Once/Arith/Backend/RiscV64/Preserve.agda 2
+Once/Arith/Backend/RiscV64/Preserve.agda 1
 Once/Arith/Backend/RiscV64/RunTrace.agda 1
 Once/Arith/Backend/RiscV64/StatePreserve.agda 1
 Once/Arith/Backend/X86-32/RunTrace.agda 1
@@ -66,10 +64,10 @@ Once/CCC/Machine/FlatStoreWF.agda 1
 Once/CCC/Machine/SMCore.agda 7
 Once/CCC/Machine/SMPrimitives.agda 3
 Once/CCC/Target/RiscV64/File.agda 1
-Once/CCC/Target/RiscV64/Layout.agda 5
+Once/CCC/Target/RiscV64/Layout.agda 3
 Once/CCC/Target/RiscV64/RuntimeParams.agda 1
 Once/CCC/Target/X86-32/File.agda 1
-Once/CCC/Target/X86-32/Layout.agda 5
+Once/CCC/Target/X86-32/Layout.agda 3
 Once/CCC/Target/X86-32/RuntimeParams.agda 1
 Once/CCC/Target/X86-64/File.agda 1
 Once/CCC/Target/X86-64/Layout.agda 3
@@ -86,11 +84,9 @@ Once/Denotation/SourceDenote.agda 1
 Once/Denotation/Trace.agda 1
 Once/Denotation/TraceMonad.agda 4
 Once/Denotation/ValueDomain.agda 1
-Once/Denotation/ValueDomainLaws.agda 1
 Once/Float/Arith.agda 1
 Once/Float/Decimal.agda 1
 Once/Float/Dyadic.agda 2
-Once/Grammar/ParserRelation.agda 1
 Once/IR.agda 2
 Once/Memory/HeapAddress.agda 2
 Once/Memory/Memory.agda 1
@@ -105,7 +101,6 @@ Once/Parser/Module.agda 6
 Once/Parser/Module/Core.agda 20
 Once/Parser/Module/FunDef.agda 4
 Once/Semantics/Functor.agda 1
-Once/Semantics/Functor/Laws.agda 1
 Once/Semantics/Machine.agda 2
 Once/Semantics/Machine/Laws.agda 1
 Once/SigOp/Info.agda 1
@@ -121,7 +116,6 @@ Once/Spike/RelSpike.agda 1
 Once/Surface/Syntax.agda 1
 Once/Target/Arch.agda 1
 Once/Type.agda 1
-Once/TypeCheck/Context.agda 1
 Once/TypeCheck/Elaborate.agda 5
 Once/TypeCheck/ElaborateProofs.agda 4
 Once/Warnings.agda 1

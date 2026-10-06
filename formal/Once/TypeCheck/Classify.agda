@@ -45,7 +45,8 @@ open import Once.TypeCheck.Raw as Raw
 open import Once.CanonicalName using (CanonicalName; canonical; showCanonical; gen; generatorNS; _≟ᶜ_;
   NotGenerator; gen-inj)
 open import Data.List.Relation.Unary.All using () renaming ([] to []ᴬ; _∷_ to _∷ᴬ_)
-open import Once.TypeCheck.Context using (Ctx; ∅; name)
+open import Once.TypeCheck.Context using (Ctx; ∅)
+open Once.TypeCheck.Context.Binding using (name)
 open import Once.TypeCheck.Context as Context using () renaming (_,_∷_ to extendCtx)
 -- Plan 0.58 (OCP-0006): import the IR-FREE `Once.Surface.Context` (not
 -- `Surface.Syntax`, which carries `Once.IR` via `Expr`). `lookupLocal` now

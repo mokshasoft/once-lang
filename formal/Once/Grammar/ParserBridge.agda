@@ -43,6 +43,7 @@ open import Once.Parser.Token
 open import Once.Parser.Type
 open import Once.Parser.AccIrrelevant using (Acc-irrelevant)
 open import Once.Grammar.ParserRelation
+open import Once.Parser.TypeRelation using (ParsesArrowTail; ParsesAtom; ParsesAtom-shrinks; ParsesFunctorAtom; ParsesFunctorAtom-shrinks; ParsesFunctorProd; ParsesFunctorProd-shrinks; ParsesFunctorProdTail; ParsesFunctorSum; ParsesFunctorSumTail; ParsesProd; ParsesProd-shrinks; ParsesProdTail; ParsesSum; ParsesSum-shrinks; ParsesSumTail; ParsesType; pa-eff; pa-float; pa-int; pa-io; pa-mu; pa-nu; pa-nu-eff; pa-paren; pa-unit; pa-void; pat-arrow; pat-arrow-g; pat-done; pfa-id; pfa-k; pfa-paren; pfp-mk; pfpt-done; pfpt-star; pfs-mk; pfst-done; pfst-plus; pp-mk; ppt-done; ppt-star; ps-mk; pst-done; pst-plus; pt-mk)
 
 ------------------------------------------------------------------------
 -- Irrelevance of Acc for each WF parser

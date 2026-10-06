@@ -110,7 +110,30 @@ def sync():
     with open(STAGE + "/libs", "w") as f:
         f.write(STDLIB + "\n" + STAGE + "/formal/Once.agda-lib\n")
 
-def report(mods, out):
+def tree_key():
+    import hashlib
+    h = hashlib.sha256()
+    for p in sorted(all_modules()):
+        h.update(p.encode()); h.update(open(p, "rb").read())
+    return h.hexdigest()[:16]
+
+def report(mods, out, cache=False):
+    """`cache`: a snapshot of an unchanged tree over a superset of `mods` is reused."""
+    if cache:
+        key = tree_key()
+        meta = STAGE + "/snap-" + key + ".mods"
+        if os.path.exists(meta) and set(mods) <= set(open(meta).read().split()):
+            recs = defaultdict(list); want = set(mods)
+            for l in open(STAGE + "/snap-" + key + ".jsonl", encoding="utf-8"):
+                x = json.loads(l)
+                if x.get("module") in want: recs[x["module"]].append(x)
+            print("  (snapshot reused)", flush=True)
+            return recs, None
+        recs, err = report(mods, out)
+        if recs is not None:
+            shutil.copy(out, STAGE + "/snap-" + key + ".jsonl")
+            open(meta, "w").write("\n".join(mods))
+        return recs, err
     sync()
     for m in mods:
         for i in glob.glob(STAGE + "/formal/_build/*/agda/" + m.replace(".", "/") + ".agdai"):
@@ -248,17 +271,32 @@ def run(targets):
         f, ln = t.rsplit(":", 1)
         spots.append((f, int(ln)))
     facades = sorted({modname(f) for f, _ in spots})
-    imps = [m for m in importers(facades) if m not in facades] + facades
-    print(f"importers: {len(imps)}", flush=True)
-    before, err = report(imps, STAGE + "/before.jsonl")
-    if before is None:
-        sys.exit("snapshot failed:\n" + err)
+    # pre-existing RED islands cannot be scope checked, so they cannot be verified;
+    # they are left as they are (plan 0.92 §9)
+    red = set(os.environ.get("RED", "Once.Allocator.Slab Once.Spike.RelSpike Once.Optimizer.Normal").split())
+    imps = [m for m in importers(facades) if m not in facades and m not in red] + facades
+    # The snapshot checks the UNCHANGED tree, so a module failing it is red already:
+    # drop it (and what imports it) and retry.
+    for _ in range(10):
+        print(f"importers: {len(imps)}", flush=True)
+        before, err = report(imps, STAGE + "/before.jsonl", cache=True)
+        if before is not None: break
+        m = re.search(r"stage/formal/(Once/[^:\s]+)\.agda:\d+[.,]\d+-\S*: error", err)
+        if not m:
+            sys.exit("snapshot failed:\n" + err)
+        bad = m.group(1).replace("/", ".")
+        print("  pre-existing RED (left as is): " + bad, flush=True)
+        red.add(bad)
+        imps = [x for x in imps if x != bad and bad not in [i for _, i in imports_of(modpath(x))]]
+    else:
+        sys.exit("snapshot failed repeatedly")
     backup = {}
     def touch(p):
         if p not in backup: backup[p] = open(p, encoding="utf-8").read()
     # classify every spot against the snapshot BEFORE editing
     plan = []
     skipped = []
+    target_of = defaultdict(set)
     for f, ln in spots:
         try:
             kind, x = classify(f, ln)
@@ -279,11 +317,12 @@ def run(targets):
                 if c != "unqualified" or r["written"] != b:
                     why.add(c if c != "unqualified" else "renamed"); continue
                 add[modpath(m)][(r["lineage"][0]["line"] - 1, stmt)].add(b)
+                target_of[(fac, b)].add(stmt)
                 drop[modpath(m)].add(b)
         if why:
             skipped.append((f, ln, ", ".join(sorted(why))))
         else:
-            plan.append((f, ln, fac, add, drop))
+            plan.append((f, ln, fac, add, drop, stmt))
     for f, ln, why in skipped:
         print(f"  skipped {f}:{ln}: {why}")
     if not plan:
@@ -291,7 +330,7 @@ def run(targets):
     for f, ln, *_ in sorted(plan, key=lambda x: (x[0], -x[1])):   # bottom-up: removals shift lines
         touch(f); remove_public(f, ln)
     adds = defaultdict(lambda: defaultdict(set)); drops = defaultdict(lambda: defaultdict(set))
-    for f, ln, fac, add, drop in plan:
+    for f, ln, fac, add, drop, _ in plan:
         for p, d in add.items():
             for k, ns in d.items(): adds[p][k] |= ns
         for p, ns in drop.items(): drops[p][fac] |= ns
@@ -299,10 +338,36 @@ def run(targets):
         touch(p)
         for fac, ns in drops[p].items(): drop_from_directives(p, fac, ns)
         add_imports(p, adds[p])
-    after, err = report(imps, STAGE + "/after.jsonl")
-    if after is None:
+    # A name listed in an importer's directive but never used is not in the report
+    # (directive names are not looked up); Agda names it, so move it and re-run.
+    stmt_of = defaultdict(set)
+    for f, ln, fac, add, drop, stmt in plan:
+        stmt_of[fac].add(stmt)
+    for _ in range(6):
+        after, err = report(imps, STAGE + "/after.jsonl")
+        if after is not None: break
+        m = re.search(r"stage/formal/(Once/[^:\s]+\.agda):(\d+)\.\d+-\S*: warning: -W\[no\]ModuleDoesntExport\s*"
+                      r"The module (\S+) doesn't export the following:\s*\n((?:\s+\S.*\n)+?)when", err)
+        if not m:
+            for f in backup: open(f, "w", encoding="utf-8").write(backup[f])
+            sys.exit("verification run failed (tree restored):\n" + err)
+        path, line, fac = m.group(1), int(m.group(2)), m.group(3)
+        names = {l.strip().split(" ")[0] for l in m.group(4).splitlines() if l.strip()}
+        where = {}
+        for n in names:
+            ts = target_of.get((fac, n)) or (stmt_of.get(fac) if len(stmt_of.get(fac, ())) == 1 else None)
+            if not ts or len(ts) != 1:
+                for f in backup: open(f, "w", encoding="utf-8").write(backup[f])
+                print("AMBIGUOUS-FACADE " + fac)
+                sys.exit("cannot place unused directive name " + n + " of " + fac + " (tree restored)")
+            where.setdefault(next(iter(ts)), set()).add(n)
+        print(f"  moving unused directive names {sorted(names)} at {path}:{line}", flush=True)
+        touch(path)
+        drop_from_directives(path, fac, names)
+        add_imports(path, {(line - 1, st): ns for st, ns in where.items()})
+    else:
         for f in backup: open(f, "w", encoding="utf-8").write(backup[f])
-        sys.exit("verification run failed (tree restored):\n" + err)
+        sys.exit("verification kept failing (tree restored)")
     sb, sa = signature(before), signature(after)
     bad = [m for m in sb if sb[m] != sa.get(m)]
     if bad:

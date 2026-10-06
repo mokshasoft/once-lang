@@ -35,7 +35,7 @@ record Binding : Set where
     type     : Type
     quantity : Quantity
 
-open Binding public
+open Binding
 
 ------------------------------------------------------------------------
 -- Named Typing Context

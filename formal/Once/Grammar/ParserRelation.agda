@@ -25,7 +25,7 @@ open import Once.Grammar.Printer using (Concrete;
                                         c-fun; c-eff)
 
 -- Re-export the parser-layer relations, predicates, and shrinks.
-open import Once.Parser.TypeRelation public
+open import Once.Parser.TypeRelation
 
 -- | Convert a concrete GType to its internal Type.
 toType : ∀ {g : GType} → Concrete g → Type

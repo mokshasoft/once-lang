@@ -50,7 +50,8 @@ import Once.IRTy as II
 open import Once.Semantics.Functor
   using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF; νS; unfoldS; anaS; sfmapAna; anaLayerS)
 open import Once.Semantics.Functor.Laws
-  using (_∼S_; ⟦_⟧SF-rel; unfoldS-∼; bisimS-to-eq)
+  using (_∼S_; ⟦_⟧SF-rel; bisimS-to-eq)
+open Once.Semantics.Functor.Laws._∼S_ using (unfoldS-∼)
 open import Once.Semantics.Machine
   using (⟦_⟧F; ⟦_⟧; sem-ana; sfmapSemAna; semAnaLayer; coerce-ν-in; coerce-functor; coh; tF-coh;
          coerce-full-to-base; base-coh)

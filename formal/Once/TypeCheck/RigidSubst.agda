@@ -41,7 +41,9 @@ open import Once.Spec.Core.AbsTy using (absTy; absF; absTy-⟦⟧; abs-base; abs
 import Once.Surface.Context as Surface
 open Surface using (Usage; SVar; svar; singleUse) renaming (Ctx to SCtx; ∅ to S∅; _,_^_ to _S,_^_)
 open import Once.Type using (One)
-open import Once.TypeCheck.Context using (Binding; mkBinding; name; type; quantity)
+open import Once.TypeCheck.Context using (Binding; mkBinding)
+open Once.TypeCheck.Context.Binding using (quantity)
+open Once.TypeCheck.Context.Binding using (name; type)
 import Once.TypeCheck.Context as NC
 open import Once.TypeCheck.Classify
 open import Once.TypeCheck.Judgment

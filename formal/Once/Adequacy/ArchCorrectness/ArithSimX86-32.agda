@@ -481,4 +481,3 @@ open Core
     (λ d dc s   → readReg-wr-arith-same (regs s) d _)
     -- rt-fdiv: three-address, so four binders rather than three.
     (λ d a b s  → readReg-wr-arith-same (regs s) d _)
-  public

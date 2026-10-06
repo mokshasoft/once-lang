@@ -49,7 +49,8 @@ import Once.CCC.Target.RiscV64.Semantics as RV
 open RV using (State; readReg; writeReg; readMem; writeMem; RegFile; Word)
 open RV.State using (regs; memory)
 import Once.Arith.Backend.RiscV64.ExecArith as EA
-open import Once.Arith.Backend.RiscV64.Preserve using (step-of; step-of-preserves; a-sp)
+open import Once.Arith.Backend.RiscV64.Preserve using (step-of; step-of-preserves)
+open Once.Arith.Backend.RiscV64.Preserve.AgreeCCC using (a-sp)
 open import Once.Arith.Backend.RiscV64.MemPreserve using (readMem-writeMem-other)
 import Once.Word as OnceWord
 -- riscv64 really is 64-bit, so this one is CORRECT and stays. Written as an

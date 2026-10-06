@@ -25,7 +25,8 @@ open import Once.CCC.Target.RiscV64.Semantics
   using (State; mkstate; RegFile; Memory; readReg; writeMem; Word)
 open import Once.Target.RiscV64.PhysReg using (Reg; sp)
 open State
-open import Once.Arith.Backend.RiscV64.Preserve using (step-of; step-of-preserves; a-sp)
+open import Once.Arith.Backend.RiscV64.Preserve using (step-of; step-of-preserves)
+open Once.Arith.Backend.RiscV64.Preserve.AgreeCCC using (a-sp)
 open import Once.Arith.Backend.RiscV64.MemPreserve using (AgreeMemFrom; AgreeMemFrom-refl; writeMem-below-preserves)
 open import Once.Arith.Backend.RiscV64.StatePreserve
   using (PreservesCCCState; mkPresState; preserves-state-refl; preserves-state-trans)

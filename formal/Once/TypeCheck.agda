@@ -30,7 +30,8 @@ open import Once.TypeCheck.Raw
 -- Typing contexts
 open import Once.TypeCheck.Context
   using (Ctx; ∅; _,_∷_; lookup; LookupResult; found; notFound)
-  using (Binding; mkBinding; name; type; quantity)
+  using (Binding; mkBinding)
+open Once.TypeCheck.Context.Binding using (name; quantity; type)
 
 -- Quantities (from Once.Type)
 open import Once.Type

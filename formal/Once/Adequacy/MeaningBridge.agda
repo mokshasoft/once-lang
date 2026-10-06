@@ -133,7 +133,8 @@ open import Once.Arith.SigOp.Builders using (arrow-info)
 open import Once.Adequacy.GradedCataBridge fmt using (cata-bridgeᵍ)
 open import Once.Adequacy.GradedAnaBridge fmt using (ana-bridgeᵍ)
 open import Once.Adequacy.OutErased fmt (calls σ) using (Out-ir; liftFn-Out; out-rel)
-open import Once.Denotation.ValueDomainLaws using (force-∼)
+open import Once.Denotation.ValueDomainLaws using ()
+open Once.Denotation.ValueDomainLaws._∼ᵈ_ using (force-∼)
 
 -- Move a codomain-subst on `f` across `g ∘_` into a domain-subst on `g`.
 -- Match-to-refl.  (`realize-global (g-In) = In ∘ subst(⌊⟧T)(rg) = In-ir ∘ rg`.)
@@ -160,7 +161,7 @@ record RelEnv↾ {n} (Γ : Ctx n) (Ψ : Usage n)
                (dγ₁ : ⟦ ⟦ Γ ↾ Ψ ⟧ᶜᵗ ⟧ᵛ) (dγ₂ : ⟦ ⟦ Γ ↾ Ψ ⟧ᶜᵗ ⟧ᴰ) : Set where
   constructor mk↾
   field un↾ : RelEnv (Γ ↾ Ψ) dγ₁ dγ₂
-open RelEnv↾ public
+open RelEnv↾
 
 -- D143: the RUNTIME lookup. A variable's environment is a SINGLETON (`var i`
 -- has usage `singleUse i One`), and BOTH sides now use `lookupᴰUsed`, so the

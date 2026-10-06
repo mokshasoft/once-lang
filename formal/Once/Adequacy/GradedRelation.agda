@@ -35,7 +35,8 @@ open import Once.Semantics.Functor using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦
 open import Once.Semantics.Functor.Laws using (⟦_⟧SF-rel)
 open import Once.Denotation.TraceMonad using (T; ret; returnT; _>>=T_; RelT′; rel-ret; RelT′-bind)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; νᵈ; forceᵈ; forgetᵇ; injectᵇ)
-open import Once.Denotation.ValueDomainLaws using (_∼ᵈ_; force-∼)
+open import Once.Denotation.ValueDomainLaws using (_∼ᵈ_)
+open Once.Denotation.ValueDomainLaws._∼ᵈ_ using (force-∼)
 open import Once.Denotation.GradedDomain using (M; ⟦_⟧ᵛ; νᵖ; forceᵖ; toT; bindM; returnM;
                                                 _>>=ᵖ_; >>=ᵖ-β)
 

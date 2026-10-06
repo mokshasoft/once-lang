@@ -58,7 +58,8 @@ open import Once.TypeCheck.Error using (TypeError; renderError; ComposeMiddleUnd
   UsageViolation; BuiltinTypeMismatch;
   BinOpLeftError; BinOpRightError;
   UnboundVariable; UnboundQualified; NonConcreteSigOpType) public
-open import Once.TypeCheck.Context using (Ctx; ∅; name)
+open import Once.TypeCheck.Context using (Ctx; ∅)
+open Once.TypeCheck.Context.Binding using (name)
 open import Once.TypeCheck.Context as Context using () renaming (_,_∷_ to extendCtx)
 open import Once.Surface.Syntax as Surface using (lookupUsage; tailUsage; _+ᵘ_)
   renaming (Ctx to SCtx; Expr to SExpr; ∅ to S∅; _,_ to _S,_; _,_^_ to _S,_^_)

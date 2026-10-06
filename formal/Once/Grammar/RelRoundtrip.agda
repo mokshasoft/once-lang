@@ -35,6 +35,7 @@ open import Once.Grammar.Printer using (printGType; quantityToken; Concrete;
                                         c-unit; c-void; c-int; c-float; c-prod; c-sum;
                                         c-fun; c-eff)
 open import Once.Grammar.ParserRelation
+open import Once.Parser.TypeRelation using (NotArrowOrGrade; NotCont; NotStar; NotStarPlus; ParsesAtom; ParsesType; pa-eff; pa-float; pa-int; pa-paren; pa-unit; pa-void; pat-arrow-g; pat-done; pp-mk; ppt-done; ppt-star; ps-mk; pst-done; pst-plus; pt-mk; quantityTokenOf)
 
 ------------------------------------------------------------------------
 -- quantityToken from Printer matches quantityTokenOf in the relation

@@ -51,7 +51,7 @@ record _∼ᵈ_ {F : SFunctor} (x y : νᵈ F) : Set where
   field
     force-∼ : RelT′ (⟦ F ⟧SF-rel (_∼ᵈ_ {F})) (forceᵈ x) (forceᵈ y)
 
-open _∼ᵈ_ public
+open _∼ᵈ_
 
 -- D201: `bisimᵈ-to-eq` — coalgebraic extensionality at the effectful ν — is
 -- GONE, and this module is AXIOM-FREE: the observational relation at a
