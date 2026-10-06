@@ -281,7 +281,7 @@ def run(targets):
         print(f"importers: {len(imps)}", flush=True)
         before, err = report(imps, STAGE + "/before.jsonl", cache=True)
         if before is not None: break
-        m = re.search(r"stage/formal/(Once/[^:\s]+)\.agda:\d+[.,]\d+-\S*: error", err)
+        m = re.search(r"stage/formal/(Once/[^:\s]+)\.agda:\d+[.,]\d+-\S*: (?:error|warning)", err)
         if not m:
             sys.exit("snapshot failed:\n" + err)
         bad = m.group(1).replace("/", ".")
