@@ -128,7 +128,6 @@ Once/Spike/RelSpike.agda 1
 Once/Surface/Syntax.agda 1
 Once/Target/Arch.agda 1
 Once/Type.agda 1
-Once/TypeCheck.agda 8
 Once/TypeCheck/Context.agda 1
 Once/TypeCheck/Elaborate.agda 5
 Once/TypeCheck/ElaborateProofs.agda 4

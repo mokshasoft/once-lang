@@ -17,29 +17,29 @@ module Once.TypeCheck where
 ------------------------------------------------------------------------
 
 -- Types
-open import Once.Type public
+open import Once.Type
   using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒_)
 
 -- Raw syntax (parser output)
-open import Once.TypeCheck.Raw public
+open import Once.TypeCheck.Raw
   using (RawExpr; RVar; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RStringLit; RAnnot; RBinOp; RUnaryOp)
   using (BinOp; OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
   using (UnaryOp; OpNeg)
   using (isComparisonOp; isArithmeticOp)
 
 -- Typing contexts
-open import Once.TypeCheck.Context public
+open import Once.TypeCheck.Context
   using (Ctx; ∅; _,_∷_; lookup; LookupResult; found; notFound)
   using (Binding; mkBinding; name; type; quantity)
 
 -- Quantities (from Once.Type)
-open import Once.Type public
+open import Once.Type
   using (Quantity; Zero; One; Many)
 
 -- Combined inference + elaboration (intrinsically typed)
 -- Soundness is trivial by construction: if inferElab returns success,
 -- the expression IS well-typed (the type is encoded in the term).
-open import Once.TypeCheck.Elaborate as Elaborate public
+open import Once.TypeCheck.Elaborate as Elaborate
   using (InferElabResult)
   renaming (success to elab-success; failure to elab-failure)
   using (NamedCtx; emptyCtx; extendNamedCtx)
@@ -47,11 +47,11 @@ open import Once.TypeCheck.Elaborate as Elaborate public
   using ()
 
 -- Thinning operations (weaken, exchange)
-open import Once.Surface.Thinning public
+open import Once.Surface.Thinning
   using (weaken; exchange)
 
 -- Surface syntax (for empty context S∅)
-open import Once.Surface.Syntax public
+open import Once.Surface.Syntax
   using () renaming (∅ to S∅)
 
 -- Proof-bundled public API.
@@ -68,7 +68,7 @@ open import Once.Surface.Syntax public
 -- are part of what they depend on.
 --
 -- See plans/0.3-frontend-verification-gaps.md.
-open import Once.TypeCheck.Verified public
+open import Once.TypeCheck.Verified
   using (VerifiedTypeChecker; verifiedTypeChecker)
 
 ------------------------------------------------------------------------
