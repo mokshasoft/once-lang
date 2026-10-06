@@ -15,6 +15,7 @@
 
 module Once.Adequacy.MainBuilds where
 
+open import Once.TypeCheck.Classify using (TopCtx)
 open import Data.Bool using (Bool; false; true)
 open import Data.Empty using (⊥-elim)
 open import Relation.Nullary using (Dec; yes; no)
@@ -48,7 +49,7 @@ import Once.Parser.Module.Core as P
 ------------------------------------------------------------------------
 
 cfb-aux-doOpt : ∀ {nctx : TE.NamedCtx} {body : RawExpr}
-  (doOpt : Bool) (ctx : C.FunCtx) (polys : TE.PolyCtx) (impsOf : C.String → C.FunCtx)
+  (doOpt : Bool) (ctx : TopCtx) (polys : TE.PolyCtx) (impsOf : C.String → TopCtx)
   (name : String) (ty : C.Type) (δ : Srf.⟦ TE.NamedCtx.debruijn nctx ⟧ᶜ ≡ Unit)
   (cr : TE.VerifiedCheckResult nctx body ty) {ir : IR ⌊ Unit ⌋ ⌊ ty ⌋} →
   C.compileFunBody-aux C.Heap false ctx polys impsOf name ty δ cr ≡ inj₂ ir →
@@ -56,7 +57,7 @@ cfb-aux-doOpt : ∀ {nctx : TE.NamedCtx} {body : RawExpr}
 cfb-aux-doOpt doOpt ctx polys impsOf name ty δ (TE.failure err , _) ()
 cfb-aux-doOpt doOpt ctx polys impsOf name ty δ (TE.success _ se _ _ , _) eq = _ , refl
 
-cfb-doOpt : ∀ (doOpt : Bool) (ctx : C.FunCtx) (polys : TE.PolyCtx) (impsOf : C.String → C.FunCtx)
+cfb-doOpt : ∀ (doOpt : Bool) (ctx : TopCtx) (polys : TE.PolyCtx) (impsOf : C.String → TopCtx)
   (name : String) (ty : C.Type) (expr : RawExpr) {ir : IR ⌊ Unit ⌋ ⌊ ty ⌋} →
   C.compileFunBody C.Heap false ctx polys impsOf name ty expr ≡ inj₂ ir →
   Σ-syntax (IR ⌊ Unit ⌋ ⌊ ty ⌋) (λ ir' → C.compileFunBody C.Heap doOpt ctx polys impsOf name ty expr ≡ inj₂ ir')
@@ -68,7 +69,7 @@ cfb-doOpt doOpt ctx polys impsOf name ty expr eq =
 -- Layer 1 — `compileFun` success is `doOpt`-independent.
 ------------------------------------------------------------------------
 
-cfun-main-aux-doOpt : ∀ (doOpt : Bool) (ctx : C.FunCtx) (polys : TE.PolyCtx) (impsOf : C.String → C.FunCtx)
+cfun-main-aux-doOpt : ∀ (doOpt : Bool) (ctx : TopCtx) (polys : TE.PolyCtx) (impsOf : C.String → TopCtx)
   (name : String) (ty : C.Type) (expr : RawExpr) (vm : String ⊎ ⊤) {ir : IR ⌊ Unit ⌋ ⌊ ty ⌋} →
   C.compileFun-main-aux C.Heap false ctx polys impsOf name ty expr vm ≡ inj₂ ir →
   Σ-syntax (IR ⌊ Unit ⌋ ⌊ ty ⌋) (λ ir' → C.compileFun-main-aux C.Heap doOpt ctx polys impsOf name ty expr vm ≡ inj₂ ir')
@@ -76,7 +77,7 @@ cfun-main-aux-doOpt doOpt ctx polys impsOf name ty expr (inj₁ err) ()
 cfun-main-aux-doOpt doOpt ctx polys impsOf name ty expr (inj₂ _) eq =
   cfb-doOpt doOpt ctx polys impsOf name ty expr eq
 
-cfun-aux-doOpt : ∀ (doOpt : Bool) (ctx : C.FunCtx) (polys : TE.PolyCtx) (impsOf : C.String → C.FunCtx)
+cfun-aux-doOpt : ∀ (doOpt : Bool) (ctx : TopCtx) (polys : TE.PolyCtx) (impsOf : C.String → TopCtx)
   (name : String) (ty : C.Type) (expr : RawExpr) (b : Bool) {ir : IR ⌊ Unit ⌋ ⌊ ty ⌋} →
   C.compileFun-aux C.Heap false ctx polys impsOf name ty expr b ≡ inj₂ ir →
   Σ-syntax (IR ⌊ Unit ⌋ ⌊ ty ⌋) (λ ir' → C.compileFun-aux C.Heap doOpt ctx polys impsOf name ty expr b ≡ inj₂ ir')
@@ -85,7 +86,7 @@ cfun-aux-doOpt doOpt ctx polys impsOf name ty expr true eq =
 cfun-aux-doOpt doOpt ctx polys impsOf name ty expr false eq =
   cfb-doOpt doOpt ctx polys impsOf name ty expr eq
 
-cfun-doOpt : ∀ (doOpt : Bool) (ctx : C.FunCtx) (polys : TE.PolyCtx) (impsOf : C.String → C.FunCtx)
+cfun-doOpt : ∀ (doOpt : Bool) (ctx : TopCtx) (polys : TE.PolyCtx) (impsOf : C.String → TopCtx)
   (name : String) (ty : C.Type) (expr : RawExpr) {ir : IR ⌊ Unit ⌋ ⌊ ty ⌋} →
   C.compileFun C.Heap false ctx polys impsOf name ty expr ≡ inj₂ ir →
   Σ-syntax (IR ⌊ Unit ⌋ ⌊ ty ⌋) (λ ir' → C.compileFun C.Heap doOpt ctx polys impsOf name ty expr ≡ inj₂ ir')
@@ -118,11 +119,11 @@ ce-doOpt doOpt sc [] eq = _ , refl
 ce-doOpt doOpt sc (C.e-fun fi ∷ es) eq = ce-fun-doOpt doOpt sc fi es (C.FunInfo.funIsPrimitive fi) eq
 ce-doOpt doOpt sc (C.e-poly pfi ∷ es) eq =
   ce-poly-doOpt doOpt sc pfi es
-    (C.checkOK (TE.checkElabV (TE.ctxWithImportsAndPolys (C.CScope.cimps sc) (C.cpolys sc)) (C.PolyFunInfo.pfunBody pfi) (rigidOf (C.PolyFunInfo.pfunType pfi)))) eq
+    (C.checkOK (TE.checkElabV (TE.ctxWithImportsAndPolys (C.ctop sc) (C.cpolys sc)) (C.PolyFunInfo.pfunBody pfi) (rigidOf (C.PolyFunInfo.pfunType pfi)))) eq
 
 ce-fun-doOpt doOpt sc fi es true  eq = ce-prim-doOpt doOpt sc fi es (C.FunInfo.funType fi) eq
 ce-fun-doOpt doOpt sc fi es false eq =
-  ce-mono-doOpt doOpt sc fi es (C.resolveFunType (C.CScope.cimps sc) (C.cpolys sc) (C.FunInfo.funType fi) (C.FunInfo.funBody fi)) eq
+  ce-mono-doOpt doOpt sc fi es (C.resolveFunType (C.ctop sc) (C.cpolys sc) (C.FunInfo.funType fi) (C.FunInfo.funBody fi)) eq
 
 ce-prim-doOpt doOpt sc fi es nothing ()
 ce-prim-doOpt doOpt sc fi es (just ty) eq = conc (isConcrete? ty) (honest? ty) (rigidFree? ty) eq
@@ -132,10 +133,8 @@ ce-prim-doOpt doOpt sc fi es (just ty) eq = conc (isConcrete? ty) (honest? ty) (
     conc nothing _ _ ()
     conc (just _) nothing _ ()
     conc (just _) (just _) nothing ()
-    conc (just cc) (just _) (just _) eq′ with C.compileEntries C.Heap false (C.extendScope sc (C.FunInfo.funName fi) ty) es in rec
-    ... | inj₁ _ = case eq′ of λ ()
-    ... | inj₂ _ = let (_ , recd) = ce-doOpt doOpt (C.extendScope sc (C.FunInfo.funName fi) ty) es rec
-                   in _ , cong (C.consCF _) recd
+    -- D274: an FFI declaration extends Σ only.
+    conc (just cc) (just _) (just _) eq′ = ce-doOpt doOpt (C.extendSig sc (C.FunInfo.funName fi) ty) es eq′
 
 ce-mono-doOpt doOpt sc fi es (inj₁ _) ()
 ce-mono-doOpt doOpt sc fi es (inj₂ ty) eq = grd (rigidFree? ty) eq
@@ -144,17 +143,17 @@ ce-mono-doOpt doOpt sc fi es (inj₂ ty) eq = grd (rigidFree? ty) eq
         → Σ-syntax (List C.CompiledFun) (λ c' → C.ce-mono-g C.Heap doOpt sc fi es ty mg ≡ inj₂ c')
     grd nothing ()
     grd (just _) eqg
-      with C.compileFun C.Heap false (C.CScope.cimps sc) (C.cpolys sc) (C.declImps (C.CScope.ctele sc))
+      with C.compileFun C.Heap false (C.ctop sc) (C.cpolys sc) (C.declImps (C.CScope.ctele sc))
              (C.FunInfo.funName fi) ty (C.FunInfo.funBody fi) in cf-eq
     ... | inj₁ _ = case eqg of λ ()
     ... | inj₂ _
           with C.compileEntries C.Heap false (C.extendScope sc (C.FunInfo.funName fi) ty) es in rec
     ...   | inj₁ _ = case eqg of λ ()
     ...   | inj₂ _ =
-            let (ir-d , cfd) = cfun-doOpt doOpt (C.CScope.cimps sc) (C.cpolys sc) (C.declImps (C.CScope.ctele sc))
+            let (ir-d , cfd) = cfun-doOpt doOpt (C.ctop sc) (C.cpolys sc) (C.declImps (C.CScope.ctele sc))
                                  (C.FunInfo.funName fi) ty (C.FunInfo.funBody fi) cf-eq
                 (_ , recd)   = ce-doOpt doOpt (C.extendScope sc (C.FunInfo.funName fi) ty) es rec
-            in _ , trans (cong (C.ce-mono-ir C.Heap doOpt sc fi es ty) cfd) (cong (C.consCF (C.mkCompiledFun (Once.CanonicalName.bare (C.FunInfo.funName fi)) ty ir-d (C.FunInfo.funIsPrimitive fi))) recd)
+            in _ , trans (cong (C.ce-mono-ir C.Heap doOpt sc fi es ty) cfd) (cong (C.consCF (C.mkCompiledFun (Once.CanonicalName.bare (C.FunInfo.funName fi)) ty ir-d)) recd)
 
 ce-poly-doOpt doOpt sc pfi es (inj₁ _) ()
 ce-poly-doOpt doOpt sc pfi es (inj₂ _) eq = ce-doOpt doOpt (C.addEntry sc pfi) es eq

@@ -57,6 +57,7 @@ mutual
   coh-ii ii-unit = ≅-refl
   coh-ii ii-unit-var = ≅-refl
   coh-ii {ctx = ctx} (ii-resolved {n = n} {n′ = n′} {l = l} {l′ = l′} {c = c} {c′ = c′}) = resolved-h {ctx = ctx} n l c n′ l′ c′
+  coh-ii {ctx = ctx} (ii-own {ns = ns} {ns′ = ns′} {l = l} {l′ = l′} {c = c} {c′ = c′}) = own-h {ctx = ctx} {ns = ns} {ns′ = ns′} {c = c} {c′ = c′} l l′
   coh-ii {ctx = ctx} (ii-qualified {nm = nm} {al = al} {l = l} {l′ = l′} {c = c} {c′ = c′}) = qualified-h {ctx = ctx} {nm = nm} {al = al} l c l′ c′
   coh-ii {ctx = ctx} (ii-local {l = l} {l′ = l′}) = local-h {ctx = ctx} l l′
   coh-ii {ctx = ctx} (ii-import {g = g} {g′ = g′} {ln = ln} {ln′ = ln′} {i = i} {i′ = i′} {c = c} {c′ = c′}) = import-h {ctx = ctx} {g = g} {g′ = g′} {ln = ln} {ln′ = ln′} {c = c} {c′ = c′} i i′

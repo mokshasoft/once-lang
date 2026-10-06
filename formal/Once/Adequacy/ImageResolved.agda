@@ -50,7 +50,7 @@ import Once.CCC.Codegen.SlotBudget as SB
 open import Once.CCC.Codegen.ProgramImage using (fns-image; fn-image; fn-next; top-done)
 import Once.Compile as C
 open import Once.Compile using (Module; moduleToIR; moduleTable)
-open import Once.Adequacy.EmitFile using (moduleExterns)
+open import Once.Compile using (externs-of)
 open import Once.Adequacy.ImageWF using (prog-defs; Resolved; ProgG; ProgP; prog-sigops)
 open import Once.Adequacy.ProgramLinked using (moduleToProgram-linked)
 open import Once.Spec.Module using (moduleSig)
@@ -97,7 +97,7 @@ module Prog (m : Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) (mi : moduleToIR m 
   rp  = C.rewrite-program p
   eo  = C.entry-owner
   D   = prog-defs p
-  ext = moduleExterns m
+  ext = externs-of (irProgram (moduleTable m) ir)
   img = C.image-of p
 
   G : String → Set
@@ -182,6 +182,6 @@ module Prog (m : Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) (mi : moduleToIR m 
 
 -- THE THEOREM (was `ImageWF.prog-resolved`, a postulate).
 prog-resolved : ∀ (m : Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) (mi : moduleToIR m ≡ just ir)
-              → Resolved (prog-defs (irProgram (moduleTable m) ir)) (moduleExterns m)
+              → Resolved (prog-defs (irProgram (moduleTable m) ir)) (externs-of (irProgram (moduleTable m) ir))
                          (arefs (C.image-of (irProgram (moduleTable m) ir)))
 prog-resolved m ir mi = Prog.resolved m ir mi (proj₁ (prog-sigops m ir mi)) (proj₂ (prog-sigops m ir mi))

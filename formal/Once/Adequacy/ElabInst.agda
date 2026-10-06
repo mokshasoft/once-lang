@@ -35,7 +35,7 @@ import Once.Surface.Context as C
 open import Once.Spec.Core.PolyTy using (KCtx; GSub; Respects; _⟪_⟫)
 open import Once.Spec.Core.AbsTy using (absTy)
 open import Once.Spec.Core.Schema using (kindsOf; kinded-instance)
-open import Once.TypeCheck.Classify using (Imports; PolyCtx; NamedCtx; ctxWithImportsAndPolys; lookupPolyPrefix)
+open import Once.TypeCheck.Classify using (Imports; PolyCtx; NamedCtx; ctxWithImportsAndPolys; lookupPolyPrefix; topCtx)
 open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_)
 open import Once.Denotation.GradedDomain using (⟦_⟧ᵛ)
 import Once.TypeCheck.RigidSubst as RS
@@ -44,7 +44,7 @@ import Once.Adequacy.CoreInst as CI
 import Once.Spec.Core.PolyTyping S as PT
 open import Once.Spec.Core.Abstract S using (SigGround; abs-⊢)
 import Once.Spec.Core.Meaning S as GM
-open import Once.Spec.Elaboration S using (View; Views; elabᶜ; ImportAt; ffi; def)
+open import Once.Spec.Elaboration S using (View; Views; elabᶜ; ImportAt; def)
 
 ------------------------------------------------------------------------
 -- The view must agree with instantiation: a use at the substituted instance
@@ -58,18 +58,18 @@ open import Once.Adequacy.ViewNatural S using (NatImp; Natural; module Natural)
 -- elaboration (`ElabCommute`).
 import Once.Adequacy.ElabCommute as EC
 module _ {m} (Δ : KCtx m) (τ : GSub m) (r : Respects Δ τ) where
-  elab-ρ̂ᶜ : ∀ {imps : Imports} {polys : PolyCtx} (V : View imps polys) (nat : Natural Δ τ r V) (sg : SigGround)
-              (ir : RS.ImportsRF Δ τ r imps) {n Γ D fr e A Ψ}
-              (d : Once.TypeCheck.Classify.mkCtx n Γ D fr imps polys ⊢ᶜ e ∶ A ⨾ Ψ)
+  elab-ρ̂ᶜ : ∀ {imps sigs : Imports} {polys : PolyCtx} (V : View imps sigs polys) (nat : Natural Δ τ r V) (sg : SigGround)
+              (ir : RS.TopRF Δ τ r imps sigs) {n Γ D fr e A Ψ}
+              (d : Once.TypeCheck.Classify.mkCtx n Γ D fr imps polys sigs ⊢ᶜ e ∶ A ⨾ Ψ)
           → elabᶜ V (RS.subst-c′ Δ τ r ir d) ≡ (CI.ρ̂ₜ S Δ τ r (proj₁ (elabᶜ V d)) , CI.WithSG.ρ̂ᶜ S Δ τ r sg (proj₂ (elabᶜ V d)))
   elab-ρ̂ᶜ V nat sg ir d = EC.elab-ρ̂ᶜ S Δ τ r sg V nat ir d
 
 -- The elaboration of the substituted derivation means what the instantiated
 -- abstraction of the elaboration means: (ii), then (i) at the empty context.
-elab-inst-sem : ∀ {imps : Imports} {polys : PolyCtx} (V : View imps polys)
+elab-inst-sem : ∀ {imps sigs : Imports} {polys : PolyCtx} (V : View imps sigs polys)
                   {m} (Δ : KCtx m) (τ : GSub m) (r : Respects Δ τ) (nat : Natural Δ τ r V) (sg : SigGround)
-                  (ir : RS.ImportsRF Δ τ r imps)
-                  {body : _} {A : Type} (D : ctxWithImportsAndPolys imps polys ⊢ᶜ body ∶ A ⨾ C.Usage.[])
+                  (ir : RS.TopRF Δ τ r imps sigs)
+                  {body : _} {A : Type} (D : ctxWithImportsAndPolys (topCtx sigs imps) polys ⊢ᶜ body ∶ A ⨾ C.Usage.[])
                   (fmt : TargetNum) (δ : GM.DefSem)
               → GM.⟦ proj₂ (elabᶜ V (RS.subst-c Δ τ r ir D)) ⟧ fmt δ tt
                 ≡ GM.⟦ PT.instantiate τ r (abs-⊢ Δ sg (proj₂ (elabᶜ V D))) ⟧ fmt δ tt
@@ -92,12 +92,13 @@ elab-subst-sem V refl D fmt δ γ = refl
 -- the instance derivation itself is `TypeCheck.Instance.inst-at` (no core).
 inst-at = Inst.inst-at
 
-poly-instance-sem : ∀ {imps : Imports} {polys : PolyCtx} (V : View imps polys) (sg : SigGround)
+poly-instance-sem : ∀ {imps sigs : Imports} {polys : PolyCtx} (V : View imps sigs polys) (sg : SigGround)
                       (fmt : TargetNum) (δ : GM.DefSem) {body : _} (sc : PolyType)
                       (nat : ∀ {U} (ki : KindedInstance sc U)
                              → Natural (kindsOf sc) (proj₁ (kinded-instance sc ki)) (proj₁ (proj₂ (kinded-instance sc ki))) V)
-                      (irf : ∀ {x T} → Once.TypeCheck.Classify.lookupImport imps x ≡ Data.Maybe.just T → Once.Type.Rigid.RigidFree T)
-                      (D : ctxWithImportsAndPolys imps polys ⊢ᶜ body ∶ rigidOf sc ⨾ C.Usage.[]) {U : Type} (ki : KindedInstance sc U)
+                      (irf : (∀ {x T} → Once.TypeCheck.Classify.lookupImport imps x ≡ Data.Maybe.just T → Once.Type.Rigid.RigidFree T)
+                           × (∀ {x T} → Once.TypeCheck.Classify.lookupImport sigs x ≡ Data.Maybe.just T → Once.Type.Rigid.RigidFree T))
+                      (D : ctxWithImportsAndPolys (topCtx sigs imps) polys ⊢ᶜ body ∶ rigidOf sc ⨾ C.Usage.[]) {U : Type} (ki : KindedInstance sc U)
                   → GM.⟦ proj₂ (elabᶜ V (inst-at sc irf D ki)) ⟧ fmt δ tt
                     ≡ subst (λ X → ⟦ X ⟧ᵛ) (proj₂ (proj₂ (kinded-instance sc ki)))
                         (GM.⟦ PT.instantiate (proj₁ (kinded-instance sc ki)) (proj₁ (proj₂ (kinded-instance sc ki)))
@@ -122,7 +123,7 @@ open import Relation.Nullary using (yes; no)
 open import Once.Postulates using (extensionality)
 open import Once.Spec.Core.PolyTy using (Schema; arity; kinds; type; _!!_)
 import Once.Compile as Cmp
-open import Once.Spec.Core.Translate using (ImpSig; TeleSig; viewOf; telFind; poly-inst; mono-inst; i-ffi; i-def)
+open import Once.Spec.Core.Translate using (SigSig; ImpSig; TeleSig; viewOf; telFind; poly-inst; mono-inst; i-def)
 import Once.Spec.Core.Translate as TR
 
 module _ {m} (Δ : KCtx m) (τ : GSub m) (r : Respects Δ τ) where
@@ -144,17 +145,13 @@ module _ {m} (Δ : KCtx m) (τ : GSub m) (r : Respects Δ τ) where
     nat-imp′ : ∀ {imps} (is : ImpSig S imps) {x T} (lk : Once.TypeCheck.Classify.lookupImport imps x ≡ Data.Maybe.just T)
              → NatImp Δ τ r (TR.impAt is lk)
     nat-imp′ TR.[] ()
-    nat-imp′ {(n , T₀) ∷ rest} (i-ffi c h g m is) {x} lk with StrProp._≟_ n x
-    ... | yes refl with just-injective lk
-    ...   | refl = tt
-    nat-imp′ {(n , T₀) ∷ rest} (i-ffi c h g m is) {x} lk | no _ = nat-imp′ is lk
     nat-imp′ {(n , T₀) ∷ rest} (i-def d e is) {x} lk with StrProp._≟_ n x
     ... | yes _ with just-injective lk
     ...   | refl = subst-fix e _ (extensionality (λ ()))
     nat-imp′ {(n , T₀) ∷ rest} (i-def d e is) {x} lk | no _ = nat-imp′ is lk
 
-  viewOf-natural : ∀ {imps ps} (is : ImpSig S imps) (ts : TeleSig S ps) → Natural Δ τ r (viewOf {S = S} is ts)
-  viewOf-natural is ts = record
+  viewOf-natural : ∀ {sg imps ps} (ss : SigSig Fs sg) (is : ImpSig S imps) (ts : TeleSig S ps) → Natural Δ τ r (viewOf {S = S} ss is ts)
+  viewOf-natural ss is ts = record
     { nat-inst   = λ {x} {sc} lp ng ki →
         subst-pt (proj₂ (telFind ts lp)) (kinded-instance sc ki) (kinded-instance sc (RS.ρ̂-ki Δ τ r {sc} ki)) refl
     ; nat-ground = λ {x} {sc} lp g →

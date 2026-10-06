@@ -154,6 +154,10 @@ mutual
   route-ii (t-var-resolved (_ ∷ _ ∷ _ ∷ _ ∷ _ ∷ _ ∷ _ ∷ ¬u ∷ _) _ _) t-unit-var = ⊥-elim (¬u refl)
   {-# CATCHALL #-}
   route-ii (t-var-resolved _ _ _) (t-var-resolved _ _ _) = ii-resolved
+  route-ii (t-var-own _ _ _) (t-var-own _ _ _) = ii-own
+  route-ii (t-var-own n _ _) (t-var-resolved _ l _) = ⊥-elim (just≢nothing (trans (sym l) n))
+  {-# CATCHALL #-}
+  route-ii (t-var-resolved _ l _) (t-var-own n _ _) = ⊥-elim (just≢nothing (trans (sym l) n))
   route-ii (t-var-qualified _ _) (t-var-qualified _ _) = ii-qualified
   route-ii (t-var-local _) (t-var-local _) = ii-local
   route-ii (t-var-local l) (t-var-import _ ln _ _) = ⊥-elim (just≢nothing (trans (sym l) ln))

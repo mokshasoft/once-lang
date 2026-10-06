@@ -16,6 +16,16 @@
 -- never trusted in its place.
 --
 -- Purely organizational (OCP-0006 re-export cut): no logic lives here.
+--
+-- THE THREE TIMES (D061, D257, D274). A program is a morphism of the free CCC
+-- on a signature Σ: its `signature` declarations are Σ's GENERATORS (assumed),
+-- its definitions are BUILT from them. Each time has its own home here:
+--   * building the compiler   = proving `correct`, for EVERY implementation
+--                               (`CorrectCompiler`, `∀ I`);
+--   * compiling a program     = `compile`, and the program's signature
+--                               `sigOf tp` — Σ is a function of the program;
+--   * an interpretation       = an `Impl (sigOf tp)` (`Once.Spec.Contract`),
+--     (offline, by its author)  discharged without the compiler.
 ------------------------------------------------------------------------
 
 module Once.Spec where

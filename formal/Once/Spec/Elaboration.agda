@@ -71,19 +71,29 @@ open import Once.Spec.Core.Rename S using (close; ⊢close)
 InstanceOf : Fin s → Type → Set
 InstanceOf d T = Σ[ τ ∈ GSub (arity (S !! d)) ] Respects (kinds (S !! d)) τ × (type (S !! d) ⟪ τ ⟫ ≡ T)
 
--- What a name in the imports table denotes: an FFI declaration (a SigOp,
--- honest by D231) or one of the module's own definitions (D061/D071: an
--- internal reference is a context projection, never a SigOp).
--- Plan 0.105 (D257 amendment 2): indexed by the import key `x` (the rendered
--- path the table is keyed by), so an FFI entry carries its membership in the
--- interpretation signatures the program is compiled against.
-data ImportAt (x : String) (T : Type) : Set where
-  ffi : HonestFFI T → RigidFree T → (x ,ᵈ T) ∈ sigOf S → ImportAt x T
-  def : (d : Fin s) → InstanceOf d T → ImportAt x T
+-- D274: what a generator of the signature Σ in scope is: an FFI declaration of
+-- the program, honest (D231) and ground (D243). Indexed by its key `x` (the
+-- rendered path Σ is keyed by).
+record Declared (x : String) (T : Type) : Set where
+  constructor declared
+  field
+    honest : HonestFFI T
+    rigid  : RigidFree T
+    member : (x ,ᵈ T) ∈ sigOf S
 
-record View (imps : Imports) (polys : PolyCtx) : Set where
+-- What a name in the definitions table denotes: one of the module's own
+-- definitions (D061/D071: an internal reference is a context projection,
+-- never a SigOp), at a kind-respecting instance of its entry.
+record ImportAt (x : String) (T : Type) : Set where
+  constructor def
+  field
+    entryOf : Fin s
+    instOf  : InstanceOf entryOf T
+
+record View (imps : Imports) (sg : Imports) (polys : PolyCtx) : Set where
   field
     imported : ∀ {x T} → lookupImport imps x ≡ just T → ImportAt x T
+    declares : ∀ {x T} → lookupImport sg x ≡ just T → Declared x T
     entry  : ∀ {x sc body prefix} → lookupPolyPrefix polys x ≡ just (sc , body , prefix) → Fin s
     ground : ∀ {x sc body prefix} (lp : lookupPolyPrefix polys x ≡ just (sc , body , prefix)) (g : Ground sc)
            → InstanceOf (entry lp) (extractGround sc g)
@@ -93,7 +103,7 @@ record View (imps : Imports) (polys : PolyCtx) : Set where
 open View
 
 Views : NamedCtx → Set
-Views ctx = View (NamedCtx.imports ctx) (NamedCtx.polys ctx)
+Views ctx = View (NamedCtx.imports ctx) (NamedCtx.sig ctx) (NamedCtx.polys ctx)
 
 ------------------------------------------------------------------------
 -- Elaborated terms
@@ -138,11 +148,14 @@ coerceE {A = A} {B = B} p = lift1 (coerce A B) (⊢coerce p)
 refE : (d : Fin s) → InstanceOf d A → Elab Γ zeroUsage A
 refE {Γ = Γ} d (τ , r , eq) = ref d τ , subst (λ T → Γ ⊢[ zeroUsage ] ref d τ ∷ T ! pure) eq (⊢ref d τ r)
 
--- The reference's rendered path IS the key it was looked up under (`own x` =
--- `bare x`, and a resolved reference is looked up at `showCanonical cn`).
-importE : (c : Once.CanonicalName.CanonicalName) → IsConcrete A → ImportAt (Once.CanonicalName.showCanonical c) A → Elab Γ zeroUsage A
-importE {A = A} c k (ffi h g m) = sigop c A , ⊢sigop c k h g m
-importE         c k (def d i)   = refE d i
+-- A generator's reference is the SigOp; its rendered path IS the key it was
+-- looked up under in Σ (D274).
+sigE : (c : Once.CanonicalName.CanonicalName) → IsConcrete A → Declared (Once.CanonicalName.showCanonical c) A → Elab Γ zeroUsage A
+sigE {A = A} c k (declared h g m) = sigop c A , ⊢sigop c k h g m
+
+-- A definition's reference is the entry, at its instance.
+importE : ∀ {x} → ImportAt x A → Elab Γ zeroUsage A
+importE (def d i) = refE d i
 
 closeE : Elab ∅ zeroUsage A → Elab Γ zeroUsage A
 closeE (t , d) = close t , ⊢close d
@@ -189,9 +202,10 @@ elabᵢ V (t-float i f l p) = lit (lit-float (decimalOf i f l)) , ⊢lit-float
 elabᵢ V t-unit            = unit , ⊢unit
 elabᵢ V t-unit-var        = unit , ⊢unit
 elabᵢ V (t-var-local {eV = Once.Surface.Context.svar i} _) = var i , ⊢var i
-elabᵢ V (t-var-qualified {name = name} {alias = alias} lk k) = importE (bare (alias ++ "." ++ name)) k (imported V lk)
-elabᵢ V (t-var-resolved {cn = cn} _ lk k) = importE cn k (imported V lk)
-elabᵢ V (t-var-import {x = x} _ _ lk k)    = importE (bare x) k (imported V lk)
+elabᵢ V (t-var-qualified {name = name} {alias = alias} lk k) = sigE (bare (alias ++ "." ++ name)) k (declares V lk)
+elabᵢ V (t-var-resolved {cn = cn} _ lk k) = sigE cn k (declares V lk)
+elabᵢ V (t-var-own _ lk k)                 = importE (imported V lk)
+elabᵢ V (t-var-import _ _ lk k)            = importE (imported V lk)
 elabᵢ V (t-var-poly-instantiate-infer {g = g} _ _ lp _ refl) = refE (entry V lp) (ground V lp g)
 elabᵢ V (t-annot _ d)     = elabᶜ V d
 elabᵢ V (t-pair da db)    = lift2 pair ⊢pair (elabᵢ V da) (elabᵢ V db)

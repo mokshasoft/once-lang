@@ -690,17 +690,17 @@ checkElab-fallback-RApp-apply-effclosure {ctx} {τ} p A B {Ψ} {eE} {d} {fr} eqI
 -- is CLOSED (`closed`), so linking is substitution of closed terms.
 resolveExprWF : ∀ {n} {Γ : Surface.Ctx n} {Ψ : Surface.Usage n} {A}
               → (polys : PolyCtx) → Acc _<_ (length polys)
-              → (String → Imports) → Imports → ℕ
+              → (String → TopCtx) → Imports → ℕ
               → Surface.Expr Γ Ψ A → Surface.Expr Γ Ψ A
 resolvePolyCase : ∀ {n} {Γ : Surface.Ctx n}
                 → (polys : PolyCtx) → Acc _<_ (length polys)
-                → (String → Imports) → Imports → ℕ → (x : String) (A : Type)
+                → (String → TopCtx) → Imports → ℕ → (x : String) (A : Type)
                 → (look : Maybe (PolyType × RawExpr × PolyCtx))
                 → lookupPolyPrefix polys x ≡ look
                 → Surface.Expr Γ Surface.zeroUsage A
 applySplice : ∀ {n} {Γ : Surface.Ctx n}
             → (polys : PolyCtx) → Acc _<_ (length polys)
-            → (imps : String → Imports) → Imports → ℕ → (x : String) (A : Type)
+            → (imps : String → TopCtx) → Imports → ℕ → (x : String) (A : Type)
             → {schema : PolyType} {body : RawExpr} {prefix : PolyCtx}
             → lookupPolyPrefix polys x ≡ just (schema , body , prefix)
             → VerifiedCheckResult (ctxWithImportsAndPolys (imps x) prefix) body A
@@ -829,7 +829,7 @@ applySplice polys (acc rec) imps userFns fresh x A {prefix = prefix} polyEq (suc
 -- evalSurface (closure x)` by construction); the rewrite enables the
 -- elaborator to emit the correct asm calling convention downstream.
 resolveExpr : ∀ {n} {Γ : Surface.Ctx n} {Ψ : Surface.Usage n} {A}
-            → (polys : PolyCtx) → (String → Imports) → Imports → ℕ
+            → (polys : PolyCtx) → (String → TopCtx) → Imports → ℕ
             → Surface.Expr Γ Ψ A → Surface.Expr Γ Ψ A
 resolveExpr polys imps userFns fresh e = resolveExprWF polys (<-wellFounded (length polys)) imps userFns fresh e
 
@@ -845,14 +845,14 @@ resolveExpr polys imps userFns fresh e = resolveExprWF polys (<-wellFounded (len
 
 -- Var is unaffected by resolution.
 resolveExpr-var :
-  ∀ {n} {Γ : Surface.Ctx n} (polys : PolyCtx) (imps : String → Imports) (userFns : Imports) (fresh : ℕ) (i : _)
+  ∀ {n} {Γ : Surface.Ctx n} (polys : PolyCtx) (imps : String → TopCtx) (userFns : Imports) (fresh : ℕ) (i : _)
   → resolveExpr {Γ = Γ} polys imps userFns fresh (Surface.var i) ≡ Surface.var i
 resolveExpr-var _ _ _ _ _ = refl
 
 -- Resolution commutes with lam.
 resolveExpr-lam :
   ∀ {n} {Γ : Surface.Ctx n} {Ψ : Surface.Usage n} {q' A B} {π : Once.Type.Purity}
-    (polys : PolyCtx) (imps : String → Imports) (userFns : Imports) (fresh : ℕ)
+    (polys : PolyCtx) (imps : String → TopCtx) (userFns : Imports) (fresh : ℕ)
     (q : Quantity) (prf : (q' Once.Type.≤q q) ≡ true)
     (b : Surface.Expr (Γ Surface., A) (q' Surface.∷ Ψ) B)
   → resolveExpr polys imps userFns fresh (Surface.lam {π = π} q prf b)
@@ -862,7 +862,7 @@ resolveExpr-lam _ _ _ _ _ _ _ = refl
 -- Resolution commutes with app.
 resolveExpr-app :
   ∀ {n} {Γ : Surface.Ctx n} {Ψ₁ Ψ₂ : Surface.Usage n} {A B q}
-    (polys : PolyCtx) (imps : String → Imports) (userFns : Imports) (fresh : ℕ)
+    (polys : PolyCtx) (imps : String → TopCtx) (userFns : Imports) (fresh : ℕ)
     (f : Surface.Expr Γ Ψ₁ (A Once.Type.⇒[ Once.Type.mk-kind q Once.Type.pure ] B))
     (a : Surface.Expr Γ Ψ₂ A)
   → resolveExpr polys imps userFns fresh (Surface.app f a)
@@ -872,7 +872,7 @@ resolveExpr-app _ _ _ _ _ _ = refl
 -- Resolution commutes with pair.
 resolveExpr-pair :
   ∀ {n} {Γ : Surface.Ctx n} {Ψ₁ Ψ₂ : Surface.Usage n} {A B}
-    (polys : PolyCtx) (imps : String → Imports) (userFns : Imports) (fresh : ℕ)
+    (polys : PolyCtx) (imps : String → TopCtx) (userFns : Imports) (fresh : ℕ)
     (a : Surface.Expr Γ Ψ₁ A) (b : Surface.Expr Γ Ψ₂ B)
   → resolveExpr polys imps userFns fresh (Surface.pair a b)
       ≡ Surface.pair (resolveExpr polys imps userFns fresh a) (resolveExpr polys imps userFns fresh b)
@@ -881,7 +881,7 @@ resolveExpr-pair _ _ _ _ _ _ = refl
 -- Resolution commutes with effApp.
 resolveExpr-effApp :
   ∀ {n} {Γ : Surface.Ctx n} {Ψ₁ Ψ₂ : Surface.Usage n} {A B}
-    (polys : PolyCtx) (imps : String → Imports) (userFns : Imports) (fresh : ℕ)
+    (polys : PolyCtx) (imps : String → TopCtx) (userFns : Imports) (fresh : ℕ)
     (f : Surface.Expr Γ Ψ₁ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B)) (a : Surface.Expr Γ Ψ₂ A)
   → resolveExpr polys imps userFns fresh (Surface.effApp f a)
       ≡ Surface.effApp (resolveExpr polys imps userFns fresh f) (resolveExpr polys imps userFns fresh a)
@@ -890,7 +890,7 @@ resolveExpr-effApp _ _ _ _ _ _ = refl
 -- Resolution commutes with fst'.
 resolveExpr-fst' :
   ∀ {n} {Γ : Surface.Ctx n} {Ψ : Surface.Usage n} {A B}
-    (polys : PolyCtx) (imps : String → Imports) (userFns : Imports) (fresh : ℕ)
+    (polys : PolyCtx) (imps : String → TopCtx) (userFns : Imports) (fresh : ℕ)
     (p : Surface.Expr Γ Ψ (A Once.Type.* B))
   → resolveExpr polys imps userFns fresh (Surface.fst' p)
       ≡ Surface.fst' (resolveExpr polys imps userFns fresh p)
@@ -899,7 +899,7 @@ resolveExpr-fst' _ _ _ _ _ = refl
 -- Resolution commutes with snd'.
 resolveExpr-snd' :
   ∀ {n} {Γ : Surface.Ctx n} {Ψ : Surface.Usage n} {A B}
-    (polys : PolyCtx) (imps : String → Imports) (userFns : Imports) (fresh : ℕ)
+    (polys : PolyCtx) (imps : String → TopCtx) (userFns : Imports) (fresh : ℕ)
     (p : Surface.Expr Γ Ψ (A Once.Type.* B))
   → resolveExpr polys imps userFns fresh (Surface.snd' p)
       ≡ Surface.snd' (resolveExpr polys imps userFns fresh p)
@@ -908,7 +908,7 @@ resolveExpr-snd' _ _ _ _ _ = refl
 -- Resolution commutes with inl'.
 resolveExpr-inl' :
   ∀ {n} {Γ : Surface.Ctx n} {Ψ : Surface.Usage n} {A B}
-    (polys : PolyCtx) (imps : String → Imports) (userFns : Imports) (fresh : ℕ)
+    (polys : PolyCtx) (imps : String → TopCtx) (userFns : Imports) (fresh : ℕ)
     (e : Surface.Expr Γ Ψ A)
   → resolveExpr polys imps userFns fresh (Surface.inl' {B = B} e)
       ≡ Surface.inl' (resolveExpr polys imps userFns fresh e)
@@ -917,7 +917,7 @@ resolveExpr-inl' _ _ _ _ _ = refl
 -- Resolution commutes with inr'.
 resolveExpr-inr' :
   ∀ {n} {Γ : Surface.Ctx n} {Ψ : Surface.Usage n} {A B}
-    (polys : PolyCtx) (imps : String → Imports) (userFns : Imports) (fresh : ℕ)
+    (polys : PolyCtx) (imps : String → TopCtx) (userFns : Imports) (fresh : ℕ)
     (e : Surface.Expr Γ Ψ B)
   → resolveExpr polys imps userFns fresh (Surface.inr' {A = A} e)
       ≡ Surface.inr' (resolveExpr polys imps userFns fresh e)
@@ -926,7 +926,7 @@ resolveExpr-inr' _ _ _ _ _ = refl
 -- Resolution commutes with case'.
 resolveExpr-case' :
   ∀ {n} {Γ : Surface.Ctx n} {Ψs Ψₗ Ψᵣ : Surface.Usage n} {qℓ qr A B C}
-    (polys : PolyCtx) (imps : String → Imports) (userFns : Imports) (fresh : ℕ)
+    (polys : PolyCtx) (imps : String → TopCtx) (userFns : Imports) (fresh : ℕ)
     (s : Surface.Expr Γ Ψs (A Once.Type.+ B))
     (l : Surface.Expr (Γ Surface., A) (qℓ Surface.∷ Ψₗ) C)
     (r : Surface.Expr (Γ Surface., B) (qr Surface.∷ Ψᵣ) C)
@@ -938,14 +938,14 @@ resolveExpr-case' _ _ _ _ _ _ _ = refl
 
 -- Unit is unaffected by resolution.
 resolveExpr-unit :
-  ∀ {n} {Γ : Surface.Ctx n} (polys : PolyCtx) (imps : String → Imports) (userFns : Imports) (fresh : ℕ)
+  ∀ {n} {Γ : Surface.Ctx n} (polys : PolyCtx) (imps : String → TopCtx) (userFns : Imports) (fresh : ℕ)
   → resolveExpr {Γ = Γ} polys imps userFns fresh Surface.unit ≡ Surface.unit
 resolveExpr-unit _ _ _ _ = refl
 
 -- Resolution commutes with absurd.
 resolveExpr-absurd :
   ∀ {n} {Γ : Surface.Ctx n} {Ψ : Surface.Usage n} {A}
-    (polys : PolyCtx) (imps : String → Imports) (userFns : Imports) (fresh : ℕ)
+    (polys : PolyCtx) (imps : String → TopCtx) (userFns : Imports) (fresh : ℕ)
     (e : Surface.Expr Γ Ψ Once.Type.Void)
   → resolveExpr {A = A} polys imps userFns fresh (Surface.absurd e)
       ≡ Surface.absurd (resolveExpr polys imps userFns fresh e)
@@ -954,7 +954,7 @@ resolveExpr-absurd _ _ _ _ _ = refl
 -- Resolution commutes with let'.
 resolveExpr-let' :
   ∀ {n} {Γ : Surface.Ctx n} {Ψ₁ Ψ₂ : Surface.Usage n} {q A B}
-    (polys : PolyCtx) (imps : String → Imports) (userFns : Imports) (fresh : ℕ)
+    (polys : PolyCtx) (imps : String → TopCtx) (userFns : Imports) (fresh : ℕ)
     (e₁ : Surface.Expr Γ Ψ₁ A)
     (e₂ : Surface.Expr (Γ Surface., A) (q Surface.∷ Ψ₂) B)
   → resolveExpr polys imps userFns fresh (Surface.let' e₁ e₂)
@@ -963,14 +963,14 @@ resolveExpr-let' _ _ _ _ _ _ = refl
 
 -- Int / str literals are unaffected.
 resolveExpr-int :
-  ∀ {n} {Γ : Surface.Ctx n} (polys : PolyCtx) (imps : String → Imports) (userFns : Imports) (fresh : ℕ) (z : Data.Integer.ℤ)
+  ∀ {n} {Γ : Surface.Ctx n} (polys : PolyCtx) (imps : String → TopCtx) (userFns : Imports) (fresh : ℕ) (z : Data.Integer.ℤ)
   → resolveExpr {Γ = Γ} polys imps userFns fresh (Surface.int z) ≡ Surface.int z
 resolveExpr-int _ _ _ _ _ = refl
 
 -- Resolution commutes with arithmetic (add / sub / mul / div / mod').
 resolveExpr-add :
   ∀ {n} {Γ : Surface.Ctx n} {Ψ₁ Ψ₂ : Surface.Usage n}
-    (polys : PolyCtx) (imps : String → Imports) (userFns : Imports) (fresh : ℕ)
+    (polys : PolyCtx) (imps : String → TopCtx) (userFns : Imports) (fresh : ℕ)
     (a : Surface.Expr Γ Ψ₁ Int) (b : Surface.Expr Γ Ψ₂ Int)
   → resolveExpr polys imps userFns fresh (Surface.add a b)
       ≡ Surface.add (resolveExpr polys imps userFns fresh a) (resolveExpr polys imps userFns fresh b)
@@ -978,7 +978,7 @@ resolveExpr-add _ _ _ _ _ _ = refl
 
 resolveExpr-sub :
   ∀ {n} {Γ : Surface.Ctx n} {Ψ₁ Ψ₂ : Surface.Usage n}
-    (polys : PolyCtx) (imps : String → Imports) (userFns : Imports) (fresh : ℕ)
+    (polys : PolyCtx) (imps : String → TopCtx) (userFns : Imports) (fresh : ℕ)
     (a : Surface.Expr Γ Ψ₁ Int) (b : Surface.Expr Γ Ψ₂ Int)
   → resolveExpr polys imps userFns fresh (Surface.sub a b)
       ≡ Surface.sub (resolveExpr polys imps userFns fresh a) (resolveExpr polys imps userFns fresh b)
@@ -986,7 +986,7 @@ resolveExpr-sub _ _ _ _ _ _ = refl
 
 resolveExpr-mul :
   ∀ {n} {Γ : Surface.Ctx n} {Ψ₁ Ψ₂ : Surface.Usage n}
-    (polys : PolyCtx) (imps : String → Imports) (userFns : Imports) (fresh : ℕ)
+    (polys : PolyCtx) (imps : String → TopCtx) (userFns : Imports) (fresh : ℕ)
     (a : Surface.Expr Γ Ψ₁ Int) (b : Surface.Expr Γ Ψ₂ Int)
   → resolveExpr polys imps userFns fresh (Surface.mul a b)
       ≡ Surface.mul (resolveExpr polys imps userFns fresh a) (resolveExpr polys imps userFns fresh b)
@@ -994,7 +994,7 @@ resolveExpr-mul _ _ _ _ _ _ = refl
 
 resolveExpr-div :
   ∀ {n} {Γ : Surface.Ctx n} {Ψ₁ Ψ₂ : Surface.Usage n}
-    (polys : PolyCtx) (imps : String → Imports) (userFns : Imports) (fresh : ℕ)
+    (polys : PolyCtx) (imps : String → TopCtx) (userFns : Imports) (fresh : ℕ)
     (a : Surface.Expr Γ Ψ₁ Int) (b : Surface.Expr Γ Ψ₂ Int)
   → resolveExpr polys imps userFns fresh (Surface.div a b)
       ≡ Surface.div (resolveExpr polys imps userFns fresh a) (resolveExpr polys imps userFns fresh b)
@@ -1002,7 +1002,7 @@ resolveExpr-div _ _ _ _ _ _ = refl
 
 resolveExpr-mod' :
   ∀ {n} {Γ : Surface.Ctx n} {Ψ₁ Ψ₂ : Surface.Usage n}
-    (polys : PolyCtx) (imps : String → Imports) (userFns : Imports) (fresh : ℕ)
+    (polys : PolyCtx) (imps : String → TopCtx) (userFns : Imports) (fresh : ℕ)
     (a : Surface.Expr Γ Ψ₁ Int) (b : Surface.Expr Γ Ψ₂ Int)
   → resolveExpr polys imps userFns fresh (Surface.mod' a b)
       ≡ Surface.mod' (resolveExpr polys imps userFns fresh a) (resolveExpr polys imps userFns fresh b)
@@ -1011,7 +1011,7 @@ resolveExpr-mod' _ _ _ _ _ _ = refl
 -- Resolution commutes with neg.
 resolveExpr-neg :
   ∀ {n} {Γ : Surface.Ctx n} {Ψ : Surface.Usage n}
-    (polys : PolyCtx) (imps : String → Imports) (userFns : Imports) (fresh : ℕ)
+    (polys : PolyCtx) (imps : String → TopCtx) (userFns : Imports) (fresh : ℕ)
     (e : Surface.Expr Γ Ψ Int)
   → resolveExpr polys imps userFns fresh (Surface.neg e) ≡ Surface.neg (resolveExpr polys imps userFns fresh e)
 resolveExpr-neg _ _ _ _ _ = refl
@@ -1019,7 +1019,7 @@ resolveExpr-neg _ _ _ _ _ = refl
 -- Resolution commutes with comparison ops (lt / le / gt / ge / eq / ne).
 resolveExpr-lt :
   ∀ {n} {Γ : Surface.Ctx n} {Ψ₁ Ψ₂ : Surface.Usage n}
-    (polys : PolyCtx) (imps : String → Imports) (userFns : Imports) (fresh : ℕ)
+    (polys : PolyCtx) (imps : String → TopCtx) (userFns : Imports) (fresh : ℕ)
     (a : Surface.Expr Γ Ψ₁ Int) (b : Surface.Expr Γ Ψ₂ Int)
   → resolveExpr polys imps userFns fresh (Surface.lt a b)
       ≡ Surface.lt (resolveExpr polys imps userFns fresh a) (resolveExpr polys imps userFns fresh b)
@@ -1027,7 +1027,7 @@ resolveExpr-lt _ _ _ _ _ _ = refl
 
 resolveExpr-le :
   ∀ {n} {Γ : Surface.Ctx n} {Ψ₁ Ψ₂ : Surface.Usage n}
-    (polys : PolyCtx) (imps : String → Imports) (userFns : Imports) (fresh : ℕ)
+    (polys : PolyCtx) (imps : String → TopCtx) (userFns : Imports) (fresh : ℕ)
     (a : Surface.Expr Γ Ψ₁ Int) (b : Surface.Expr Γ Ψ₂ Int)
   → resolveExpr polys imps userFns fresh (Surface.le a b)
       ≡ Surface.le (resolveExpr polys imps userFns fresh a) (resolveExpr polys imps userFns fresh b)
@@ -1035,7 +1035,7 @@ resolveExpr-le _ _ _ _ _ _ = refl
 
 resolveExpr-gt :
   ∀ {n} {Γ : Surface.Ctx n} {Ψ₁ Ψ₂ : Surface.Usage n}
-    (polys : PolyCtx) (imps : String → Imports) (userFns : Imports) (fresh : ℕ)
+    (polys : PolyCtx) (imps : String → TopCtx) (userFns : Imports) (fresh : ℕ)
     (a : Surface.Expr Γ Ψ₁ Int) (b : Surface.Expr Γ Ψ₂ Int)
   → resolveExpr polys imps userFns fresh (Surface.gt a b)
       ≡ Surface.gt (resolveExpr polys imps userFns fresh a) (resolveExpr polys imps userFns fresh b)
@@ -1043,7 +1043,7 @@ resolveExpr-gt _ _ _ _ _ _ = refl
 
 resolveExpr-ge :
   ∀ {n} {Γ : Surface.Ctx n} {Ψ₁ Ψ₂ : Surface.Usage n}
-    (polys : PolyCtx) (imps : String → Imports) (userFns : Imports) (fresh : ℕ)
+    (polys : PolyCtx) (imps : String → TopCtx) (userFns : Imports) (fresh : ℕ)
     (a : Surface.Expr Γ Ψ₁ Int) (b : Surface.Expr Γ Ψ₂ Int)
   → resolveExpr polys imps userFns fresh (Surface.ge a b)
       ≡ Surface.ge (resolveExpr polys imps userFns fresh a) (resolveExpr polys imps userFns fresh b)
@@ -1051,7 +1051,7 @@ resolveExpr-ge _ _ _ _ _ _ = refl
 
 resolveExpr-eq :
   ∀ {n} {Γ : Surface.Ctx n} {Ψ₁ Ψ₂ : Surface.Usage n}
-    (polys : PolyCtx) (imps : String → Imports) (userFns : Imports) (fresh : ℕ)
+    (polys : PolyCtx) (imps : String → TopCtx) (userFns : Imports) (fresh : ℕ)
     (a : Surface.Expr Γ Ψ₁ Int) (b : Surface.Expr Γ Ψ₂ Int)
   → resolveExpr polys imps userFns fresh (Surface.eq a b)
       ≡ Surface.eq (resolveExpr polys imps userFns fresh a) (resolveExpr polys imps userFns fresh b)
@@ -1059,7 +1059,7 @@ resolveExpr-eq _ _ _ _ _ _ = refl
 
 resolveExpr-ne :
   ∀ {n} {Γ : Surface.Ctx n} {Ψ₁ Ψ₂ : Surface.Usage n}
-    (polys : PolyCtx) (imps : String → Imports) (userFns : Imports) (fresh : ℕ)
+    (polys : PolyCtx) (imps : String → TopCtx) (userFns : Imports) (fresh : ℕ)
     (a : Surface.Expr Γ Ψ₁ Int) (b : Surface.Expr Γ Ψ₂ Int)
   → resolveExpr polys imps userFns fresh (Surface.ne a b)
       ≡ Surface.ne (resolveExpr polys imps userFns fresh a) (resolveExpr polys imps userFns fresh b)
@@ -1068,7 +1068,7 @@ resolveExpr-ne _ _ _ _ _ _ = refl
 -- Resolution commutes with a conversion (D226; the former `arr'`).
 resolveExpr-coerce :
   ∀ {n} {Γ : Surface.Ctx n} {Ψ : Surface.Usage n} {A B}
-    (polys : PolyCtx) (imps : String → Imports) (userFns : Imports) (fresh : ℕ)
+    (polys : PolyCtx) (imps : String → TopCtx) (userFns : Imports) (fresh : ℕ)
     (p : A <: B) (e : Surface.Expr Γ Ψ A)
   → resolveExpr polys imps userFns fresh (Surface.coerce p e) ≡ Surface.coerce p (resolveExpr polys imps userFns fresh e)
 resolveExpr-coerce _ _ _ _ _ _ = refl
@@ -1080,7 +1080,7 @@ resolveExpr-coerce _ _ _ _ _ _ = refl
 -- nothing), the resolver is identity.
 resolveExpr-sigOp-extern :
   ∀ {n} {Γ : Surface.Ctx n} {A}
-    (polys : PolyCtx) (imps : String → Imports) (userFns : Imports) (fresh : ℕ) (s : CanonicalName)
+    (polys : PolyCtx) (imps : String → TopCtx) (userFns : Imports) (fresh : ℕ) (s : CanonicalName)
     (conc : IsConcrete A)
   → lookupImport userFns (showCanonical s) ≡ nothing
   → resolveExpr {Γ = Γ} polys imps userFns fresh (Surface.sigOp {A = A} s conc)

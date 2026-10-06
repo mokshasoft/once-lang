@@ -40,7 +40,11 @@ open import Once.Type public
 -- Re-export Core IR
 open import Once.IR public
 open import Once.CanonicalName using (CanonicalName; bare)
-open import Once.Target.Symbol using (once-symbol-path)
+open import Once.Target.Symbol using (once-symbol-path; once-symbol-own)
+open import Once.CCC.Codegen.NodesOK using (leaf-syms)
+open import Data.List.Membership.DecPropositional Data.String._≟_ using () renaming (_∈?_ to _∈ˢ?_; _∈_ to _∈ˢ_)
+open import Relation.Nullary.Decidable.Core using (¬?)
+open import Relation.Nullary.Negation.Core using (¬_)
 
 -- Re-export Surface IR
 open import Once.Surface.IR public
@@ -124,7 +128,7 @@ open import Once.TypeCheck.Elaborate as TE using (CheckElabResult)
 import Once.Surface.Syntax as Srf
 open import Relation.Binary.PropositionalEquality using (subst; cong)
 -- D007 inference: the self-less context for inferring a sig-less def's type.
-open import Once.TypeCheck.Classify using (ctxWithImportsAndPolys; NamedCtx; lookupPolyPrefix)
+open import Once.TypeCheck.Classify using (ctxWithImportsAndPolys; NamedCtx; lookupPolyPrefix; TopCtx; topCtx; emptyTopCtx)
 open import Once.TypeCheck.Error using (renderError)
 open import Relation.Nullary using (Dec; yes; no)
 import Data.String.Properties as SProp
@@ -215,7 +219,7 @@ extendFunCtx ctx name ty = (name , ty) ∷ ctx
 -- D254: the compiled term is the REALIZATION of the checker's derivation
 -- (`realize`), the reference elaboration the Spec reads.
 compileFunBody-aux : ∀ {ctx : NamedCtx} {body : RawExpr}
-  → AllocMode → Bool → FunCtx → PolyCtx → (String → FunCtx) → (name : String) (ty : Type)
+  → AllocMode → Bool → TopCtx → PolyCtx → (String → TopCtx) → (name : String) (ty : Type)
   → Srf.⟦ NamedCtx.debruijn ctx ⟧ᶜ ≡ Unit
   → TE.VerifiedCheckResult ctx body ty → String ⊎ IR ⌊ Unit ⌋ ⌊ ty ⌋
 compileFunBody-aux m doOpt ctx polys impsOf name ty δ-unit (TE.failure err , _) =
@@ -225,12 +229,12 @@ compileFunBody-aux m doOpt ctx polys impsOf name ty δ-unit (TE.success _ _ _ _ 
   -- phase 1c: a telescope body is linked in ITS declaration imports
   -- (`impsOf`), not in this function's. External syscalls are handled via
   -- the qualified-name path and never reach this resolver.
-  let userList = (name , ty) ∷ ctx
+  let userList = (name , ty) ∷ TopCtx.tdefs ctx
       resolved = resolveExpr polys impsOf userList 0 (realize w)
       ir = elaborateFull m resolved
   in inj₂ (subst (λ X → IR X ⌊ ty ⌋) (cong ⌊_⌋ δ-unit) (if doOpt then optimize ir else ir))
 
-compileFunBody : AllocMode → Bool → FunCtx → PolyCtx → (String → FunCtx) → (name : String) (ty : Type) → RawExpr → String ⊎ IR ⌊ Unit ⌋ ⌊ ty ⌋
+compileFunBody : AllocMode → Bool → TopCtx → PolyCtx → (String → TopCtx) → (name : String) (ty : Type) → RawExpr → String ⊎ IR ⌊ Unit ⌋ ⌊ ty ⌋
 compileFunBody m doOpt ctx polys impsOf name ty expr =
   compileFunBody-aux m doOpt ctx polys impsOf name ty refl
     (TE.checkElabV (ctxWithImportsAndPolys ctx polys) expr ty)
@@ -242,15 +246,15 @@ compileFunBody m doOpt ctx polys impsOf name ty expr =
 -- Explicit-argument aux form (Plan 0.48): `compileFun-aux` dispatches on the
 -- `name == "main"` Bool, `compileFun-main-aux` on the `validateMain` result —
 -- both `doOpt`-free guards, so success rides on `compileFunBody` alone.
-compileFun-main-aux : AllocMode → Bool → FunCtx → PolyCtx → (String → FunCtx) → (name : String) (ty : Type) → RawExpr → String ⊎ ⊤ → String ⊎ IR ⌊ Unit ⌋ ⌊ ty ⌋
+compileFun-main-aux : AllocMode → Bool → TopCtx → PolyCtx → (String → TopCtx) → (name : String) (ty : Type) → RawExpr → String ⊎ ⊤ → String ⊎ IR ⌊ Unit ⌋ ⌊ ty ⌋
 compileFun-main-aux m doOpt ctx polys impsOf name ty expr (inj₁ err) = inj₁ err
 compileFun-main-aux m doOpt ctx polys impsOf name ty expr (inj₂ _)   = compileFunBody m doOpt ctx polys impsOf name ty expr
 
-compileFun-aux : AllocMode → Bool → FunCtx → PolyCtx → (String → FunCtx) → (name : String) (ty : Type) → RawExpr → Bool → String ⊎ IR ⌊ Unit ⌋ ⌊ ty ⌋
+compileFun-aux : AllocMode → Bool → TopCtx → PolyCtx → (String → TopCtx) → (name : String) (ty : Type) → RawExpr → Bool → String ⊎ IR ⌊ Unit ⌋ ⌊ ty ⌋
 compileFun-aux m doOpt ctx polys impsOf name ty expr true  = compileFun-main-aux m doOpt ctx polys impsOf name ty expr (validateMain ty)
 compileFun-aux m doOpt ctx polys impsOf name ty expr false = compileFunBody m doOpt ctx polys impsOf name ty expr
 
-compileFun : AllocMode → Bool → FunCtx → PolyCtx → (String → FunCtx) → (name : String) (ty : Type) → RawExpr → String ⊎ IR ⌊ Unit ⌋ ⌊ ty ⌋
+compileFun : AllocMode → Bool → TopCtx → PolyCtx → (String → TopCtx) → (name : String) (ty : Type) → RawExpr → String ⊎ IR ⌊ Unit ⌋ ⌊ ty ⌋
 compileFun m doOpt ctx polys impsOf name ty expr = compileFun-aux m doOpt ctx polys impsOf name ty expr (name == "main")
 
 ------------------------------------------------------------------------
@@ -265,11 +269,8 @@ record CompiledFun : Set where
     cfName : CanonicalName
     cfType : Type
     cfIR   : IR ⌊ Unit ⌋ ⌊ cfType ⌋
-    -- | Plan 0.11: `true` for primitives (signatures whose
-    -- implementation is provided externally via
-    -- `Strata/Interpretations/<…>.<arch>` files). Their function
-    -- body is NOT emitted at codegen time.
-    cfIsPrimitive : Bool
+    -- (D274: no `cfIsPrimitive`. An FFI declaration is a generator of Σ, not
+    -- a definition, so it is never compiled to a function.)
 
 open CompiledFun
 
@@ -302,7 +303,7 @@ inferType-validate nctx body err (just T) with checkElab nctx body T
 ... | TE.success _ _ _ _ = inj₂ T
 ... | TE.failure _       = inj₁ err
 
-inferType : FunCtx → PolyCtx → RawExpr → String ⊎ Type
+inferType : TopCtx → PolyCtx → RawExpr → String ⊎ Type
 inferType ctx polys body with TE.inferElab (ctxWithImportsAndPolys ctx polys) body
 ... | TE.success A _ _ _ _ = inj₂ A
 -- D072: bidirectional synthesis failed — ask the principal-type oracle
@@ -313,7 +314,7 @@ inferType ctx polys body with TE.inferElab (ctxWithImportsAndPolys ctx polys) bo
         (Principal.principalGround (ctxWithImportsAndPolys ctx polys) body)
 
 -- | The explicit signature if given, otherwise the inferred type (D007).
-resolveFunType : FunCtx → PolyCtx → Maybe Type → RawExpr → String ⊎ Type
+resolveFunType : TopCtx → PolyCtx → Maybe Type → RawExpr → String ⊎ Type
 resolveFunType ctx polys (just ty) body = inj₂ ty
 resolveFunType ctx polys nothing   body = inferType ctx polys body
 
@@ -359,38 +360,50 @@ checkOK (TE.success _ _ _ _ , _)   = inj₂ tt
 -- it — exactly as `Spec.Module.ModTele` types it.
 ------------------------------------------------------------------------
 
--- The compile-time scope: `Spec.Module.Scope`, with each telescope entry's
--- DECLARATION imports (where the resolver elaborates its body at a use).
+-- The compile-time scope: `Spec.Module.Scope` — the signature Σ, the
+-- monomorphic definitions — with each telescope entry's DECLARATION scope (where
+-- the resolver elaborates its body at a use).
 record CScope : Set where
   constructor cscope
   field
+    csig  : FunCtx
     cimps : FunCtx
-    ctele : List (PolyFunInfo × FunCtx)
+    ctele : List (PolyFunInfo × TopCtx)
 
 emptyCScope : CScope
-emptyCScope = cscope emptyFunCtx []
+emptyCScope = cscope emptyFunCtx emptyFunCtx []
 
-telePolys : List (PolyFunInfo × FunCtx) → List PolyFunInfo
+-- What the top level holds: Σ and the definitions (D274).
+ctop : CScope → TopCtx
+ctop sc = topCtx (CScope.csig sc) (CScope.cimps sc)
+
+telePolys : List (PolyFunInfo × TopCtx) → List PolyFunInfo
 telePolys = DL.map proj₁
 
 cpolys : CScope → PolyCtx
 cpolys sc = buildPolyCtx (telePolys (CScope.ctele sc))
 
--- The declaration imports of the telescope entry a name refers to — the first
+-- The declaration scope of the telescope entry a name refers to — the first
 -- of that name, as `lookupPolyPrefix` finds it.
-declImps     : List (PolyFunInfo × FunCtx) → String → FunCtx
-declImps-aux : (e : PolyFunInfo × FunCtx) → List (PolyFunInfo × FunCtx) → (x : String)
-             → Dec (pfunName (proj₁ e) ≡ x) → FunCtx
-declImps []       x = emptyFunCtx
+declImps     : List (PolyFunInfo × TopCtx) → String → TopCtx
+declImps-aux : (e : PolyFunInfo × TopCtx) → List (PolyFunInfo × TopCtx) → (x : String)
+             → Dec (pfunName (proj₁ e) ≡ x) → TopCtx
+declImps []       x = emptyTopCtx
 declImps (e ∷ es) x = declImps-aux e es x (pfunName (proj₁ e) SProp.≟ x)
 declImps-aux e es x (yes _) = proj₂ e
 declImps-aux e es x (no _)  = declImps es x
 
+-- A monomorphic definition extends the definitions…
 extendScope : CScope → String → Type → CScope
-extendScope sc x ty = cscope (extendFunCtx (CScope.cimps sc) x ty) (CScope.ctele sc)
+extendScope sc x ty = cscope (CScope.csig sc) (extendFunCtx (CScope.cimps sc) x ty) (CScope.ctele sc)
 
+-- …an FFI declaration the signature Σ (D274)…
+extendSig : CScope → String → Type → CScope
+extendSig sc x ty = cscope (extendFunCtx (CScope.csig sc) x ty) (CScope.cimps sc) (CScope.ctele sc)
+
+-- …and a telescope definition the telescope, with its declaration scope.
 addEntry : CScope → PolyFunInfo → CScope
-addEntry sc pfi = cscope (CScope.cimps sc) ((pfi , CScope.cimps sc) ∷ CScope.ctele sc)
+addEntry sc pfi = cscope (CScope.csig sc) (CScope.cimps sc) ((pfi , ctop sc) ∷ CScope.ctele sc)
 
 consCF : CompiledFun → String ⊎ List CompiledFun → String ⊎ List CompiledFun
 consCF cf (inj₁ err) = inj₁ err
@@ -414,14 +427,14 @@ compileEntries m doOpt sc []                 = inj₂ []
 compileEntries m doOpt sc (e-fun fi ∷ es)    = ce-fun m doOpt sc fi es (funIsPrimitive fi)
 compileEntries m doOpt sc (e-poly pfi ∷ es)  =
   ce-poly m doOpt sc pfi es
-    (checkOK (TE.checkElabV (ctxWithImportsAndPolys (CScope.cimps sc) (cpolys sc)) (pfunBody pfi) (rigidOf (pfunType pfi))))
+    (checkOK (TE.checkElabV (ctxWithImportsAndPolys (ctop sc) (cpolys sc)) (pfunBody pfi) (rigidOf (pfunType pfi))))
 
 ce-fun m doOpt sc fi es true  = ce-prim m doOpt sc fi es (funType fi)
 ce-fun m doOpt sc fi es false =
-  ce-mono m doOpt sc fi es (resolveFunType (CScope.cimps sc) (cpolys sc) (funType fi) (funBody fi))
+  ce-mono m doOpt sc fi es (resolveFunType (ctop sc) (cpolys sc) (funType fi) (funBody fi))
 
--- An FFI declaration has NO body to type (D241): its compiled form is the
--- SigOp reference itself, at its concrete type.
+-- An FFI declaration has NO body to type (D241) and is not compiled: it is a
+-- generator of the signature Σ (D274), and a reference to it is the SigOp.
 ce-prim m doOpt sc fi es nothing   = inj₁ ("FFI signature without a type: " ++ funName fi)
 ce-prim m doOpt sc fi es (just ty) = ce-prim-conc m doOpt sc fi es ty (isConcrete? ty) (honest? ty) (rigidFree? ty)
 ce-prim-conc m doOpt sc fi es ty nothing _ _ =
@@ -431,8 +444,7 @@ ce-prim-conc m doOpt sc fi es ty (just _) nothing _ =
 ce-prim-conc m doOpt sc fi es ty (just _) (just _) nothing =
   inj₁ ("FFI signature `" ++ funName fi ++ "` is not ground: " ++ showType ty)
 ce-prim-conc m doOpt sc fi es ty (just conc) (just _) (just _) =
-  consCF (mkCompiledFun (bare (funName fi)) ty (elaborateFull m (Srf.sigOp {Γ = Srf.∅} (bare (funName fi)) conc)) true)
-         (compileEntries m doOpt (extendScope sc (funName fi) ty) es)
+  compileEntries m doOpt (extendSig sc (funName fi) ty) es
 
 ce-mono m doOpt sc fi es (inj₁ err) = inj₁ err
 ce-mono m doOpt sc fi es (inj₂ ty)  = ce-mono-g m doOpt sc fi es ty (rigidFree? ty)
@@ -441,10 +453,10 @@ ce-mono-g m doOpt sc fi es ty nothing =
   inj₁ ("The type of `" ++ funName fi ++ "` mentions a type parameter: " ++ showType ty)
 ce-mono-g m doOpt sc fi es ty (just _) =
   ce-mono-ir m doOpt sc fi es ty
-    (compileFun m doOpt (CScope.cimps sc) (cpolys sc) (declImps (CScope.ctele sc)) (funName fi) ty (funBody fi))
+    (compileFun m doOpt (ctop sc) (cpolys sc) (declImps (CScope.ctele sc)) (funName fi) ty (funBody fi))
 ce-mono-ir m doOpt sc fi es ty (inj₁ err) = inj₁ err
 ce-mono-ir m doOpt sc fi es ty (inj₂ ir)  =
-  consCF (mkCompiledFun (bare (funName fi)) ty ir (funIsPrimitive fi))
+  consCF (mkCompiledFun (bare (funName fi)) ty ir)
          (compileEntries m doOpt (extendScope sc (funName fi) ty) es)
 
 -- D243: a telescope definition is checked ONCE, at its schema with rigid
@@ -479,18 +491,11 @@ compileModule m doOpt source with parse source
 
 
 -- Plan 0.50 — the symbols THIS codegen actually emits as `.globl` labels, defined
--- on the SAME `CompiledFun` list `compileFromModule` renders (`compileResolvedModule`).
--- `compileFunWithTarget` skips primitives and emits `functionPrologue (cfName cf)` =
--- `once-symbol-path (cfName cf)` for the rest, so `emittedSyms` mirrors that exactly.
--- Clash-freedom (`program-no-clash`) is proven over THIS list, so it cannot drift
--- from what the backend emits (the earlier `extractFunctions`-re-derivation could).
-emittedSyms-cons : Bool → CompiledFun → List String → List String
-emittedSyms-cons true  cf rest = rest                                   -- primitive: no label
-emittedSyms-cons false cf rest = once-symbol-path (cfName cf) ∷ rest
-
+-- on the SAME `CompiledFun` list `compileFromModule` renders (`compileResolvedModule`):
+-- one per compiled function (D274: every one is a definition).
 emittedSyms : List CompiledFun → List String
 emittedSyms []         = []
-emittedSyms (cf ∷ cfs) = emittedSyms-cons (cfIsPrimitive cf) cf (emittedSyms cfs)
+emittedSyms (cf ∷ cfs) = once-symbol-path (cfName cf) ∷ emittedSyms cfs
 
 moduleSyms-aux : String ⊎ List CompiledFun → List String
 moduleSyms-aux (inj₁ _)   = []
@@ -543,27 +548,25 @@ isEffUU? T with T ≟T EffUU
 ... | yes e = just e
 ... | no _  = nothing
 
-open CompiledFun using (cfName; cfType; cfIR; cfIsPrimitive)
+open CompiledFun using (cfName; cfType; cfIR)
 
 -- D253: `main` is an entry like any other; the program's own `main` is the CALL
 -- of it.
 mainCall : IR ⌊ Unit ⌋ ⌊ Unit ⌋
 mainCall = Call (bare "main")
 
--- The FIRST argument is `cfIsPrimitive cf`: a PRIMITIVE is never the entry.
 findMain-here :
-  (cf : CompiledFun) → Bool → Dec (cfName cf ≡ bare "main") → Maybe (cfType cf ≡ EffUU)
+  (cf : CompiledFun) → Dec (cfName cf ≡ bare "main") → Maybe (cfType cf ≡ EffUU)
   → Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋) → Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋)
-findMain-here cf false (yes _) (just _) cont = just mainCall
-findMain-here cf false (yes _) nothing  cont = cont
-findMain-here cf false (no  _) _        cont = cont
-findMain-here cf true  _       _        cont = cont
+findMain-here cf (yes _) (just _) cont = just mainCall
+findMain-here cf (yes _) nothing  cont = cont
+findMain-here cf (no  _) _        cont = cont
 
 -- | A module is a PROGRAM when it has an entry `main : IO Unit`.
 findMain : List CompiledFun → Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋)
 findMain []         = nothing
 findMain (cf ∷ rest) =
-  findMain-here cf (cfIsPrimitive cf) (cfName cf ≟cn bare "main") (isEffUU? (cfType cf)) (findMain rest)
+  findMain-here cf (cfName cf ≟cn bare "main") (isEffUU? (cfType cf)) (findMain rest)
 
 moduleToIR-aux : String ⊎ List CompiledFun → Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋)
 moduleToIR-aux (inj₁ _)    = nothing
@@ -618,17 +621,38 @@ program-blocks p = proj₂ (rewrite-ir (main p)) DL.++ table-blocks (table p)
     table-blocks []       = []
     table-blocks (e ∷ es) = proj₂ (rewrite-ir (fbody e)) DL.++ table-blocks es
 
--- The interpretation symbols the file calls and `ld` resolves: the module's
--- declared signatures (its primitives), mangled as a SigOp call is
--- (`call-sym (once-symbol-path name)`). NOT "whatever the code calls": a call to
--- anything else must be defined in the file, or the file is not `AsmWF`.
-externsOf : List CompiledFun → List String
-externsOf []         = []
-externsOf (cf ∷ cfs) = ext (cfIsPrimitive cf) cf DL.++ externsOf cfs
-  where
-    ext : Bool → CompiledFun → List String
-    ext true  cf = once-symbol-path (cfName cf) ∷ []
-    ext false cf = []
+-- One block per symbol (the first): two definitions lifting the same
+-- arithmetic mint the same digest, and a symbol is defined once.
+dedup-go : List String → List (String × ArithBlock) → List (String × ArithBlock)
+dedup-go seen []             = []
+dedup-go seen ((s , b) ∷ bs) =
+  if BLA.any (λ x → x == s) seen then dedup-go seen bs
+                                 else (s , b) ∷ dedup-go (s ∷ seen) bs
+
+dedup-blocks : List (String × ArithBlock) → List (String × ArithBlock)
+dedup-blocks = dedup-go []
+
+-- An arith block's symbol — what every arch's `arith-block-symbol` is.
+block-symbol : ArithBlock → String
+block-symbol b = once-symbol-own (block-name (block-body b))
+
+-- The file's block table, by symbol, once each (`blocks-<arch>`).
+block-syms : List ArithBlock → List String
+block-syms bs = DL.map proj₁ (dedup-blocks (DL.map (λ b → block-symbol b , b) bs))
+
+-- The symbols the program's SigOps call (`NodesOK.leaf-syms`, leaf by leaf).
+calls-of : IRProgram → List String
+calls-of p = leaf-syms (main p) DL.++ DL.concatMap (λ e → leaf-syms (fbody e)) (table p)
+
+-- plan 0.107 §9 2D / D274: the interpretation symbols the file calls and `ld`
+-- resolves are EXACTLY the SigOp symbols the (rewritten) program calls that are
+-- not its own arith blocks — the names the code actually calls, never a
+-- declaration's spelling. A call to anything else is defined in the file.
+is-extern? : (p : IRProgram) (s : String) → Dec (¬ (s ∈ˢ block-syms (program-blocks p)))
+is-extern? p s = ¬? (s ∈ˢ? block-syms (program-blocks p))
+
+externs-of : IRProgram → List String
+externs-of p = DL.filter (is-extern? p) (calls-of (rewrite-program p))
 
 -- The entry unit's owner: a name no definition can have (an identifier cannot
 -- start with a digit), so its labels and symbol cannot clash.
@@ -653,16 +677,6 @@ printFile x86-64  = X64F.print
 printFile x86-32  = X32F.print
 printFile riscv64 = RVF.print
 
--- One block per symbol (the first): two definitions lifting the same
--- arithmetic mint the same digest, and a symbol is defined once.
-dedup-go : List String → List (String × ArithBlock) → List (String × ArithBlock)
-dedup-go seen []             = []
-dedup-go seen ((s , b) ∷ bs) =
-  if BLA.any (λ x → x == s) seen then dedup-go seen bs
-                                 else (s , b) ∷ dedup-go (s ∷ seen) bs
-
-dedup-blocks : List (String × ArithBlock) → List (String × ArithBlock)
-dedup-blocks = dedup-go []
 
 image-of : IRProgram → AbstractTrace
 image-of p = program-image entry-owner (rewrite-program p)
@@ -673,9 +687,9 @@ blocks-x86-64 p =
   DL.map (λ sb → proj₁ sb , X64A.block-payload (proj₂ sb))
     (dedup-blocks (DL.map (λ b → X64A.arith-block-symbol b , b) (program-blocks p)))
 
-emit-x86-64 : IRProgram → List String → X64F.Image
-emit-x86-64 p ext =
-  X64F.mkImage (proj₂ (X64L.compile-trace-cnt entry-owner 0 (image-of p))) (just 0) (blocks-x86-64 p) ext
+emit-x86-64 : IRProgram → X64F.Image
+emit-x86-64 p =
+  X64F.mkImage (proj₂ (X64L.compile-trace-cnt entry-owner 0 (image-of p))) (just 0) (blocks-x86-64 p) (externs-of p)
 
 -- the file's arith blocks: the program's, by symbol, once each
 blocks-x86-32 : IRProgram → List (String × X32F.Payload)
@@ -683,9 +697,9 @@ blocks-x86-32 p =
   DL.map (λ sb → proj₁ sb , X32A.block-payload (proj₂ sb))
     (dedup-blocks (DL.map (λ b → X32A.arith-block-symbol b , b) (program-blocks p)))
 
-emit-x86-32 : IRProgram → List String → X32F.Image
-emit-x86-32 p ext =
-  X32F.mkImage (proj₂ (X32L.compile-trace-cnt entry-owner 0 (image-of p))) (just 0) (blocks-x86-32 p) ext
+emit-x86-32 : IRProgram → X32F.Image
+emit-x86-32 p =
+  X32F.mkImage (proj₂ (X32L.compile-trace-cnt entry-owner 0 (image-of p))) (just 0) (blocks-x86-32 p) (externs-of p)
 
 -- the file's arith blocks: the program's, by symbol, once each
 blocks-riscv64 : IRProgram → List (String × RVF.Payload)
@@ -693,11 +707,11 @@ blocks-riscv64 p =
   DL.map (λ sb → proj₁ sb , RVA.block-payload (proj₂ sb))
     (dedup-blocks (DL.map (λ b → RVA.arith-block-symbol b , b) (program-blocks p)))
 
-emit-riscv64 : IRProgram → List String → RVF.Image
-emit-riscv64 p ext =
-  RVF.mkImage (proj₂ (RVL.compile-trace-cnt entry-owner 0 (image-of p))) (just 0) (blocks-riscv64 p) ext
+emit-riscv64 : IRProgram → RVF.Image
+emit-riscv64 p =
+  RVF.mkImage (proj₂ (RVL.compile-trace-cnt entry-owner 0 (image-of p))) (just 0) (blocks-riscv64 p) (externs-of p)
 
-emitProgram : (arch : Arch) → IRProgram → List String → FileOf arch
+emitProgram : (arch : Arch) → IRProgram → FileOf arch
 emitProgram x86-64  = emit-x86-64
 emitProgram x86-32  = emit-x86-32
 emitProgram riscv64 = emit-riscv64
@@ -707,30 +721,33 @@ emitProgram riscv64 = emit-riscv64
 lib-image : List IRFun → AbstractTrace
 lib-image tbl = fns-image 0 (rewrite-table tbl)
 
-lib-blocks : List IRFun → List ArithBlock
-lib-blocks tbl = program-blocks (irProgram tbl Id-unit)
-  where Id-unit : IR ⌊ Unit ⌋ ⌊ Unit ⌋
-        Id-unit = id
+-- A library as a program whose `main` does nothing: its blocks and externs
+-- are the table's.
+lib-program : List IRFun → IRProgram
+lib-program tbl = irProgram tbl id
 
-emitLibrary : (arch : Arch) → List IRFun → List String → FileOf arch
-emitLibrary x86-64 tbl ext =
+lib-blocks : List IRFun → List ArithBlock
+lib-blocks tbl = program-blocks (lib-program tbl)
+
+emitLibrary : (arch : Arch) → List IRFun → FileOf arch
+emitLibrary x86-64 tbl =
   X64F.mkImage (proj₂ (X64L.compile-trace-cnt entry-owner 0 (lib-image tbl))) nothing
     (DL.map (λ sb → proj₁ sb , X64A.block-payload (proj₂ sb))
-      (dedup-blocks (DL.map (λ b → X64A.arith-block-symbol b , b) (lib-blocks tbl)))) ext
-emitLibrary x86-32 tbl ext =
+      (dedup-blocks (DL.map (λ b → X64A.arith-block-symbol b , b) (lib-blocks tbl)))) (externs-of (lib-program tbl))
+emitLibrary x86-32 tbl =
   X32F.mkImage (proj₂ (X32L.compile-trace-cnt entry-owner 0 (lib-image tbl))) nothing
     (DL.map (λ sb → proj₁ sb , X32A.block-payload (proj₂ sb))
-      (dedup-blocks (DL.map (λ b → X32A.arith-block-symbol b , b) (lib-blocks tbl)))) ext
-emitLibrary riscv64 tbl ext =
+      (dedup-blocks (DL.map (λ b → X32A.arith-block-symbol b , b) (lib-blocks tbl)))) (externs-of (lib-program tbl))
+emitLibrary riscv64 tbl =
   RVF.mkImage (proj₂ (RVL.compile-trace-cnt entry-owner 0 (lib-image tbl))) nothing
     (DL.map (λ sb → proj₁ sb , RVA.block-payload (proj₂ sb))
-      (dedup-blocks (DL.map (λ b → RVA.arith-block-symbol b , b) (lib-blocks tbl)))) ext
+      (dedup-blocks (DL.map (λ b → RVA.arith-block-symbol b , b) (lib-blocks tbl)))) (externs-of (lib-program tbl))
 
 -- | THE FILE OF A COMPILE RESULT — the one walk: a program file when the module
 -- has `main`, a library file otherwise; the compile error if it failed.
 emit-at : (arch : Arch) → List CompiledFun → Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋) → FileOf arch
-emit-at arch funs nothing   = emitLibrary arch (tableOf funs) (externsOf funs)
-emit-at arch funs (just ir) = emitProgram arch (irProgram (tableOf funs) ir) (externsOf funs)
+emit-at arch funs nothing   = emitLibrary arch (tableOf funs)
+emit-at arch funs (just ir) = emitProgram arch (irProgram (tableOf funs) ir)
 
 emitFromCompiled : (arch : Arch) → String ⊎ List CompiledFun → String ⊎ FileOf arch
 emitFromCompiled arch (inj₁ err)  = inj₁ err

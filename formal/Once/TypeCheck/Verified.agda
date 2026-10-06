@@ -270,7 +270,7 @@ record VerifiedTypeChecker : Set₁ where
 
     tc-err-qualified-unbound :
       ∀ (ctx : NamedCtx) (name alias : String) {err : TypeError}
-      → lookupImport (NamedCtx.imports ctx) (alias Data.String.++ "." Data.String.++ name) ≡ nothing
+      → lookupImport (NamedCtx.sig ctx) (alias Data.String.++ "." Data.String.++ name) ≡ nothing
       → tcInfer ctx (RQualified name alias) ≡ failure err
       → err ≡ (UnboundQualified name alias)
 
@@ -596,7 +596,7 @@ record VerifiedTypeChecker : Set₁ where
 
     tcInfer-complete-RQualified :
       ∀ (ctx : NamedCtx) (name alias : String) (T : Type)
-      → lookupImport (NamedCtx.imports ctx) (alias Data.String.++ "." Data.String.++ name) ≡ just T
+      → lookupImport (NamedCtx.sig ctx) (alias Data.String.++ "." Data.String.++ name) ≡ just T
       → IsConcrete T
       → ∃[ eE ] ∃[ d ] ∃[ f ]
           tcInfer ctx (RQualified name alias) ≡ success T Surface.zeroUsage eE d f

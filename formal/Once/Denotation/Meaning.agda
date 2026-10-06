@@ -37,7 +37,7 @@ open import Data.String using (String; _++_)
 
 open import Once.Type
   using (Type; Unit; Void; Int; _*_; _+_; _⇒[_]_; μ-type; Functor; ⟦_⟧T; Purity; mk-kind; Quantity; Zero; One; Many; Ground; extractGround)
-open import Once.CanonicalName using (CanonicalName; own; showCanonical; bare; canonical; NotOwn)
+open import Once.CanonicalName using (CanonicalName; own; showCanonical; bare; canonical)
 open import Relation.Binary.PropositionalEquality using (_≡_; subst; sym)
 open import Data.Maybe using (just)
 open import Once.Denotation.TraceMonad using (T; ret; returnT; _>>=T_; fmapT; Interp; sig; impl)
@@ -85,7 +85,7 @@ open import Once.TypeCheck.Judgment
          t-var-poly-instantiate;
          t-var-poly-instantiate-infer; d-poly;
          t-int; t-float; t-unit; t-unit-var; t-var-local; t-var-qualified;
-         t-var-resolved; t-var-import; t-annot; t-pair; t-neg; t-neg-float; t-binop-arith-float; t-binop-arith-float-il; t-binop-arith-float-ir; t-let; t-case;
+         t-var-resolved; t-var-own; t-var-import; t-annot; t-pair; t-neg; t-neg-float; t-binop-arith-float; t-binop-arith-float-il; t-binop-arith-float-ir; t-let; t-case;
          t-binop-arith; t-binop-cmp; t-id-app; t-fst-app; t-snd-app;
          t-terminal-app; t-apply-app-infer; t-apply-eff-app-infer; t-Out-app-infer; t-Out-eff-app-infer; t-app; t-effApp)
 
@@ -209,13 +209,13 @@ DefFamily s = (U : Type) → KindedInstance s U → ⟦ U ⟧ᵛ
 DefMeanings : PolyCtx → Set
 DefMeanings = DefEnvOf DefFamily
 
--- D246: …and the meaning of every in-scope module ENTRY at its type: an FFI
--- declaration means its contract, a monomorphic definition its body. A
--- reference to either is a call of the entry (`t-var-import`).
+-- D246: …and the meaning of every in-scope module DEFINITION at its type (its
+-- body). A reference to one is a call of it (`t-var-own`, `t-var-import`).
+-- D274: an FFI declaration is not a definition — it is in Σ, below.
 ImpMeanings : Imports → Set
 ImpMeanings = ImpEnvOf (λ U → ⟦ U ⟧ᵛ)
 
-record Meanings (polys : PolyCtx) (imps : Imports) : Set where
+record Meanings (polys : PolyCtx) (imps : Imports) (sg : Imports) : Set where
   constructor meanings
   field
     defs    : DefMeanings polys
@@ -223,16 +223,16 @@ record Meanings (polys : PolyCtx) (imps : Imports) : Set where
     -- Plan 0.105 (D257 amendment 2): the interpretation the program runs in —
     -- its declared signatures and their implementation…
     world   : Interp
-    -- …which declare what a qualified or resolved reference names (another
-    -- module's FFI signature, inlined into the import table).
-    decl-qual : ∀ {name alias T} → lookupImport imps (alias ++ "." ++ name) ≡ just T
+    -- …which declare every generator of the signature Σ in scope (D274): what a
+    -- qualified or resolved reference names.
+    decl-qual : ∀ {name alias T} → lookupImport sg (alias ++ "." ++ name) ≡ just T
               → (alias ++ "." ++ name , T) ∈ sig world
-    decl-res  : ∀ {cn T} → NotOwn cn → lookupImport imps (showCanonical cn) ≡ just T
+    decl-res  : ∀ {cn T} → lookupImport sg (showCanonical cn) ≡ just T
               → (showCanonical cn , T) ∈ sig world
 open Meanings public
 
 MeaningsOf : NamedCtx → Set
-MeaningsOf ctx = Meanings (NamedCtx.polys ctx) (NamedCtx.imports ctx)
+MeaningsOf ctx = Meanings (NamedCtx.polys ctx) (NamedCtx.imports ctx) (NamedCtx.sig ctx)
 
 -- So the meaning runs over `Γ ↾ Ψ` — exactly the variables the derivation uses
 -- — for the same reason `elaborate` and `⟦_⟧ˢ` do.
@@ -338,12 +338,12 @@ seqᴰ m₁ m₂ = (m₁ >>=T λ x → m₂ >>=T λ y → returnT (x , y)) >>=T 
 -- implementation (`decl-*`: the world declares it).
 ⟦_⟧ᵢ {A = A} (t-var-qualified {name = name} {alias = alias} lk conc) fmt ρ dγ =
   sigOpRefᵛ {A = A} fmt (sig (world ρ)) (impl (world ρ)) (bare (alias ++ "." ++ name)) conc (decl-qual ρ {name = name} {alias = alias} lk)
--- D248: an own-module resolved reference names a module entry (a call of it).
-⟦_⟧ᵢ {ctx = ctx} (t-var-resolved {cn = own x} _ lk _) fmt ρ dγ = impAt (NamedCtx.imports ctx) x (entries ρ) lk
-⟦_⟧ᵢ {A = A} (t-var-resolved {cn = canonical L.[]} _ lk conc) fmt ρ dγ =
-  sigOpRefᵛ {A = A} fmt (sig (world ρ)) (impl (world ρ)) (canonical L.[]) conc (decl-res ρ {cn = canonical L.[]} tt lk)
-⟦_⟧ᵢ {A = A} (t-var-resolved {cn = canonical (a L.∷ b L.∷ rest)} _ lk conc) fmt ρ dγ =
-  sigOpRefᵛ {A = A} fmt (sig (world ρ)) (impl (world ρ)) (canonical (a L.∷ b L.∷ rest)) conc (decl-res ρ {cn = canonical (a L.∷ b L.∷ rest)} tt lk)
+-- D274: a resolved reference names a generator of Σ — own or not, its meaning
+-- is that declaration's implementation.
+⟦_⟧ᵢ {A = A} (t-var-resolved {cn = cn} _ lk conc) fmt ρ dγ =
+  sigOpRefᵛ {A = A} fmt (sig (world ρ)) (impl (world ρ)) cn conc (decl-res ρ {cn = cn} lk)
+-- D248: an own-module DEFINITION's reference is a call of it, and means it.
+⟦_⟧ᵢ {ctx = ctx} (t-var-own {x = x} _ lk _) fmt ρ dγ = impAt (NamedCtx.imports ctx) x (entries ρ) lk
 -- D246: a reference to a module ENTRY is a call of it, and means the entry —
 -- read from the scope's import environment (an FFI entry's is its contract).
 ⟦_⟧ᵢ {ctx = ctx} (t-var-import {x = x} _ _ lk _) fmt ρ dγ = impAt (NamedCtx.imports ctx) x (entries ρ) lk

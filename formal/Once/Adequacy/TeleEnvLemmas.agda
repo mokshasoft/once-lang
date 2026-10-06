@@ -20,6 +20,7 @@
 --     `refIR` reads the environment at its one name (`refIR-cong`).
 ------------------------------------------------------------------------
 
+open import Once.TypeCheck.Classify using (TopCtx)
 open import Once.Target.Arch using (TargetNum)
 
 open import Once.SigOp.Info using (FFIAnswers)
@@ -71,7 +72,7 @@ open import Once.Adequacy.TableCall fmt φ using (tableEnv-skip)
 ------------------------------------------------------------------------
 
 -- Calls of a table, references spliced in `P` with declaration imports `I`.
-σW : List IRFun → PolyCtx → (String → Imports) → Imports → SD.DefsSem
+σW : List IRFun → PolyCtx → (String → TopCtx) → Imports → SD.DefsSem
 σW tbl P I uf = RF.σR fmt (tableEnv fmt φ tbl) P I uf 0
 
 ------------------------------------------------------------------------
@@ -82,10 +83,10 @@ acc-irrel : ∀ {n : ℕ} (a b : Acc _<_ n) → a ≡ b
 acc-irrel (acc f) (acc g) =
   cong acc (cong (λ H {y} → H y) (extensionality λ y → extensionality λ p → acc-irrel (f {y} p) (g {y} p)))
 
-module _ (I : String → Imports) (uf : Imports) where
+module _ (I : String → TopCtx) (uf : Imports) where
 
   -- D254: the spliced body is the realization of its derivation.
-  spliceClosed : ∀ {A} {b : RawExpr} (pre : PolyCtx) (x : String) {Xs : Imports}
+  spliceClosed : ∀ {A} {b : RawExpr} (pre : PolyCtx) (x : String) {Xs : TopCtx}
                → VerifiedCheckResult (ctxWithImportsAndPolys Xs pre) b A → Srf.Expr Srf.∅ Srf.zeroUsage A
   spliceClosed {A} pre x (failure _ , _)             = Srf.poly x A
   spliceClosed     pre x (success Srf.[] eE _ _ , w) = Srf.closed (resolveExpr pre I uf 0 (realize w))
@@ -114,7 +115,7 @@ module _ (I : String → Imports) (uf : Imports) where
   refs-lookup ρ L x A = cong (λ e → SD.⟦ e ⟧ˢ fmt (RF.σ₀ fmt ρ) tt)
                              (case-val L (<-wellFounded (length L)) x A (lookupPolyPrefix L x) refl)
 
-module _ (I : String → Imports) (uf : Imports) (ρ : CallEnv) where
+module _ (I : String → TopCtx) (uf : Imports) (ρ : CallEnv) where
 
   refs-skip : ∀ (n : String) {s b} (L : PolyCtx) (y : String) (A : Type) → n ≢ y
     → SD.refs (RF.σR fmt ρ ((n , s , b) ∷ L) I uf 0) y A ≡ SD.refs (RF.σR fmt ρ L I uf 0) y A
@@ -182,14 +183,14 @@ tableEnv-later []          pre f []         A B a = refl
 tableEnv-later (e ∷ later) pre f (ne ∷ nes) A B a =
   trans (tableEnv-skip e (later ++ pre) ne a) (tableEnv-later later pre f nes A B a)
 
-callSD-later : ∀ (later pre : List IRFun) (P : PolyCtx) (I : String → Imports) (uf : Imports) (x : String) (U : Type)
+callSD-later : ∀ (later pre : List IRFun) (P : PolyCtx) (I : String → TopCtx) (uf : Imports) (x : String) (U : Type)
   → All (λ e → fname e ≢ bare x) later
   → MB.callSD fmt (σW (later ++ pre) P I uf) x U ≡ MB.callSD fmt (σW pre P I uf) x U
 callSD-later later pre P I uf x U nes =
   cong (subst T (cohᴰ U)) (refIR-cong U (bare x) _ _ (tableEnv-later later pre (bare x) nes))
 
 -- Two walk environments over one table make the same calls.
-calls-same : ∀ (tbl : List IRFun) (P P′ : PolyCtx) (I I′ : String → Imports) (uf uf′ : Imports) (imps : Imports)
+calls-same : ∀ (tbl : List IRFun) (P P′ : PolyCtx) (I I′ : String → TopCtx) (uf uf′ : Imports) (imps : Imports)
            → CallsAgree (σW tbl P I uf) (σW tbl P′ I′ uf′) imps
 calls-same tbl P P′ I I′ uf uf′ []             = tt
 calls-same tbl P P′ I I′ uf uf′ ((n , U) ∷ is) = refl , calls-same tbl P P′ I I′ uf uf′ is

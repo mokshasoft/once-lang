@@ -43,7 +43,7 @@ open import Once.TypeCheck.Raw as Raw
   using (RawExpr; RVar; RQualified; RResolved; RInt; RStringLit; RUnit; RAnnot; RPair;
          ClosedLiftShape; cls-var; cls-qual; cls-res; cls-let; cls-destr;
          cls-unit; cls-str; cls-annot; cls-binop)
-open import Once.CanonicalName using (CanonicalName; showCanonical; gen; gen≢bare; NotGenerator; GenWord; genWord?; genWord?-no)
+open import Once.CanonicalName using (CanonicalName; showCanonical; gen; own; gen≢bare; NotGenerator; GenWord; genWord?; genWord?-no)
 open import Once.TypeCheck.ElaborateProofs
   using (NamedCtx; inferElab; checkElab; InferElabResult; CheckElabResult;
          success; failure; lookupLocal; lookupImport; inferElabV; checkElabV;
@@ -137,7 +137,7 @@ infer-complete-RVar-unit = _ , _ , _ , refl
 
 infer-complete-RQualified :
   ∀ {ctx : NamedCtx} {name alias : String} {T : Type}
-  → lookupImport (NamedCtx.imports ctx) (alias ++ "." ++ name) ≡ just T
+  → lookupImport (NamedCtx.sig ctx) (alias ++ "." ++ name) ≡ just T
   → IsConcrete T  -- Plan 0.58: FFI reference is concrete
   → ∃[ eE ] ∃[ d ] ∃[ f ]
       inferElab ctx (RQualified name alias) ≡ success T zeroUsage eE d f
@@ -155,14 +155,14 @@ infer-complete-RQualified {ctx} {name} {alias} {T} eq conc = go T conc eq
     open Once.TypeCheck.ElaborateProofs using (inferElabV-RQualified-aux;
       inferElabV-RQualified-arrow-aux; inferElabV-RQualified-value-aux)
     helper : ∀ (lhs : Maybe Type)
-           → (eq' : lookupImport (NamedCtx.imports ctx) (alias ++ "." ++ name) ≡ lhs)
+           → (eq' : lookupImport (NamedCtx.sig ctx) (alias ++ "." ++ name) ≡ lhs)
            → inferElabV-RQualified-aux ctx name alias
-               (lookupImport (NamedCtx.imports ctx) (alias ++ "." ++ name)) refl
+               (lookupImport (NamedCtx.sig ctx) (alias ++ "." ++ name)) refl
              ≡ inferElabV-RQualified-aux ctx name alias lhs eq'
     helper _ refl = refl
     -- Drive the de-withed arrow / value auxes to their concreteness `just` branch.
     helperArr : ∀ {A B} {π : T.Purity}
-              → (eq' : lookupImport (NamedCtx.imports ctx) (alias ++ "." ++ name)
+              → (eq' : lookupImport (NamedCtx.sig ctx) (alias ++ "." ++ name)
                         ≡ just (A T.⇒[ T.mk-kind T.Many π ] B))
               → (mbA : Maybe (IsBaseType A)) (eqb : isBaseType? A ≡ mbA)
                 (mcB : Maybe (IsBaseType B)) (eqc : isBaseType? B ≡ mcB)
@@ -170,13 +170,13 @@ infer-complete-RQualified {ctx} {name} {alias} {T} eq conc = go T conc eq
                 ≡ inferElabV-RQualified-arrow-aux ctx name alias eq' mbA eqb mcB eqc
     helperArr _ _ refl _ refl = refl
     helperVal : ∀ {ty}
-              → (eq' : lookupImport (NamedCtx.imports ctx) (alias ++ "." ++ name) ≡ just ty)
+              → (eq' : lookupImport (NamedCtx.sig ctx) (alias ++ "." ++ name) ≡ just ty)
               → (mc : Maybe (IsConcrete ty)) (eqc : isConcrete? ty ≡ mc)
               → inferElabV-RQualified-value-aux ctx name alias ty eq' (isConcrete? ty) refl
                 ≡ inferElabV-RQualified-value-aux ctx name alias ty eq' mc eqc
     helperVal _ _ refl = refl
     go : ∀ (T' : Type) → IsConcrete T'
-       → (eq' : lookupImport (NamedCtx.imports ctx) (alias ++ "." ++ name) ≡ just T')
+       → (eq' : lookupImport (NamedCtx.sig ctx) (alias ++ "." ++ name) ≡ just T')
        → ∃[ eE ] ∃[ d ] ∃[ f ]
            inferElab ctx (RQualified name alias) ≡ success T' zeroUsage eE d f
     go (A ⇒[ T.mk-kind Many π ] B) (con-fun bA cB) eq' = _ , _ , _ ,
@@ -219,7 +219,7 @@ infer-complete-RQualified {ctx} {name} {alias} {T} eq conc = go T conc eq
 infer-complete-RResolved :
   ∀ {ctx : NamedCtx} {cn : CanonicalName} {T : Type}
   → (ng : NotGenerator cn)
-  → lookupImport (NamedCtx.imports ctx) (showCanonical cn) ≡ just T
+  → lookupImport (NamedCtx.sig ctx) (showCanonical cn) ≡ just T
   → IsConcrete T  -- Plan 0.58: FFI reference is concrete
   → ∃[ eE ] ∃[ d ] ∃[ f ]
       inferElab ctx (RResolved cn) ≡ success T zeroUsage eE d f
@@ -243,7 +243,7 @@ infer-complete-RResolved-view :
   ∀ {ctx : NamedCtx} {cn : CanonicalName} {T : Type}
   → (gv : GenView cn) → classifyGen cn ≡ gv
   → NotGenerator cn
-  → lookupImport (NamedCtx.imports ctx) (showCanonical cn) ≡ just T
+  → lookupImport (NamedCtx.sig ctx) (showCanonical cn) ≡ just T
   → IsConcrete T
   → ∃[ eE ] ∃[ d ] ∃[ f ]
       inferElab ctx (RResolved cn) ≡ success T zeroUsage eE d f
@@ -261,13 +261,13 @@ infer-complete-RResolved-view {ctx} {cn} {T} (gv-other ng') eqv _ eq conc =
     open Once.TypeCheck.ElaborateProofs using (inferElabV-RResolved-aux;
       inferElabV-RResolved-arrow-aux; inferElabV-RResolved-value-aux)
     helper : ∀ (lhs : Maybe Type)
-           → (eq' : lookupImport (NamedCtx.imports ctx) (showCanonical cn) ≡ lhs)
+           → (eq' : lookupImport (NamedCtx.sig ctx) (showCanonical cn) ≡ lhs)
            → inferElabV-RResolved-aux ctx cn ng'
-               (lookupImport (NamedCtx.imports ctx) (showCanonical cn)) refl
+               (lookupImport (NamedCtx.sig ctx) (showCanonical cn)) refl
              ≡ inferElabV-RResolved-aux ctx cn ng' lhs eq'
     helper _ refl = refl
     helperArr : ∀ {A B} {π : T.Purity}
-              → (eq' : lookupImport (NamedCtx.imports ctx) (showCanonical cn)
+              → (eq' : lookupImport (NamedCtx.sig ctx) (showCanonical cn)
                         ≡ just (A T.⇒[ T.mk-kind T.Many π ] B))
               → (mbA : Maybe (IsBaseType A)) (eqb : isBaseType? A ≡ mbA)
                 (mcB : Maybe (IsBaseType B)) (eqc : isBaseType? B ≡ mcB)
@@ -275,13 +275,13 @@ infer-complete-RResolved-view {ctx} {cn} {T} (gv-other ng') eqv _ eq conc =
                 ≡ inferElabV-RResolved-arrow-aux ctx cn ng' eq' mbA eqb mcB eqc
     helperArr _ _ refl _ refl = refl
     helperVal : ∀ {ty}
-              → (eq' : lookupImport (NamedCtx.imports ctx) (showCanonical cn) ≡ just ty)
+              → (eq' : lookupImport (NamedCtx.sig ctx) (showCanonical cn) ≡ just ty)
               → (mc : Maybe (IsConcrete ty)) (eqc : isConcrete? ty ≡ mc)
               → inferElabV-RResolved-value-aux ctx cn ng' ty eq' (isConcrete? ty) refl
                 ≡ inferElabV-RResolved-value-aux ctx cn ng' ty eq' mc eqc
     helperVal _ _ refl = refl
     go : ∀ (T' : Type) → IsConcrete T'
-       → (eq' : lookupImport (NamedCtx.imports ctx) (showCanonical cn) ≡ just T')
+       → (eq' : lookupImport (NamedCtx.sig ctx) (showCanonical cn) ≡ just T')
        → ∃[ eE ] ∃[ d ] ∃[ f ]
            inferElab ctx (RResolved cn) ≡ success T' zeroUsage eE d f
     go (A ⇒[ T.mk-kind Many π ] B) (con-fun bA cB) eq' = _ , _ , _ ,
@@ -321,6 +321,39 @@ infer-complete-RResolved-view {ctx} {cn} {T} (gv-other ng') eqv _ eq conc =
 
 infer-complete-RResolved {ctx} {cn} {T} ng eq conc =
   infer-complete-RResolved-view (classifyGen cn) refl ng eq conc
+
+-- D274: an OWN reference not in Σ that names a monomorphic definition — the
+-- elaborator reads Σ first, finds nothing, and calls the definition.
+infer-complete-RResolved-own :
+  ∀ {ctx : NamedCtx} {x : String} {T : Type}
+  → lookupImport (NamedCtx.sig ctx) x ≡ nothing
+  → lookupImport (NamedCtx.imports ctx) x ≡ just T
+  → IsConcrete T
+  → ∃[ eE ] ∃[ d ] ∃[ f ]
+      inferElab ctx (RResolved (own x)) ≡ success T zeroUsage eE d f
+infer-complete-RResolved-own {ctx} {x} {T} ns eq conc = view (classifyGen (own x)) refl
+  where
+    open Once.TypeCheck.ElaborateProofs using (inferElabV-RResolved-aux;
+      inferElabV-RResolved-own-aux; inferElabV-RResolved-own-value-aux)
+    h1 : ∀ (ng : NotGenerator (own x)) (lhs : Maybe Type) (e′ : lookupImport (NamedCtx.sig ctx) x ≡ lhs)
+       → inferElabV-RResolved-aux ctx (own x) ng (lookupImport (NamedCtx.sig ctx) x) refl
+         ≡ inferElabV-RResolved-aux ctx (own x) ng lhs e′
+    h1 ng _ refl = refl
+    h2 : ∀ (lhs : Maybe Type) (e′ : lookupImport (NamedCtx.imports ctx) x ≡ lhs)
+       → inferElabV-RResolved-own-aux ctx x ns (lookupImport (NamedCtx.imports ctx) x) refl
+         ≡ inferElabV-RResolved-own-aux ctx x ns lhs e′
+    h2 _ refl = refl
+    h3 : ∀ (mc : Maybe (IsConcrete T)) (ec : isConcrete? T ≡ mc)
+       → inferElabV-RResolved-own-value-aux ctx x ns T eq (isConcrete? T) refl
+         ≡ inferElabV-RResolved-own-value-aux ctx x ns T eq mc ec
+    h3 _ refl = refl
+    view : (gv : GenView (own x)) → classifyGen (own x) ≡ gv
+         → ∃[ eE ] ∃[ d ] ∃[ f ] inferElab ctx (RResolved (own x)) ≡ success T zeroUsage eE d f
+    view (gv-other ng) eqv = _ , _ , _ ,
+      trans (inferElabV-RResolved-J ctx (own x) _ eqv)
+        (trans (cong proj₁ (h1 ng _ ns))
+          (trans (cong proj₁ (h2 _ eq))
+                 (cong proj₁ (h3 _ (proj₂ (isConcrete?-complete conc))))))
 
 ------------------------------------------------------------------------
 -- Sub-expression composition completeness.

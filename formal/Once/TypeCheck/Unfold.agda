@@ -50,7 +50,7 @@ open import Once.CanonicalName using (CanonicalName; canonical; gen; generatorNS
 open import Once.Functor.Translate using (IsConcrete)
 open import Once.TypeCheck.Classify
   using (NamedCtx; mkCtx; Imports; PolyCtx; lookupLocal; lookupLocal-go; lookupImport;
-         lookupPolyPrefix; ctxWithImportsAndPolys; classifyAppHead; classifyAppHeadView;
+         lookupPolyPrefix; ctxWithImportsAndPolys; topCtx; classifyAppHead; classifyAppHeadView;
          AppHeadView; ahv-cata; ahv-ana; ahv-other; classifyAppHead-nothing⇒view-other; _≟ₛ_)
 open import Once.TypeCheck.Context using (Ctx)
 open import Once.TypeCheck.Context as Context using () renaming (_,_∷_ to extendCtx)
@@ -222,7 +222,7 @@ private
 -- mention — with the same type and no use of the new ones.
 ------------------------------------------------------------------------
 
-module Weaken (imps : Imports) (P : PolyCtx) where
+module Weaken (imps : Imports) (sg : Imports) (P : PolyCtx) where
 
   data WK : ∀ {m n} → Ctx → SC.Ctx m → Ctx → SC.Ctx n → Set where
     wk-base  : ∀ {n} {G : Ctx} {Δ : SC.Ctx n} → WK Context.∅ SC.∅ G Δ
@@ -295,7 +295,7 @@ module Weaken (imps : Imports) (P : PolyCtx) where
   wnone (wr-both _ _) ()
 
   Wc : ∀ {n} → Ctx → SC.Ctx n → ℕ → NamedCtx
-  Wc {n} G Δ fr = mkCtx n G Δ fr imps P
+  Wc {n} G Δ fr = mkCtx n G Δ fr imps P sg
 
   wvar : ∀ {m n GL ΔL GD ΔD frD} (wk : WK {m} {n} GL ΔL GD ΔD) (z : String) {T U eV} r₁ r₂
        → WRel wk r₁ r₂ → r₁ ≡ just (T , U , eV) → lookupLocal-go z GD ΔD ≡ r₂
@@ -326,6 +326,7 @@ module Weaken (imps : Imports) (P : PolyCtx) where
         wvar wk z (lookupLocal-go z GL ΔL) (lookupLocal-go z GD ΔD) (wloc wk z fr) eq refl
     W-i wk _ (t-var-qualified l c) = cᵢ (sym (up-zero wk)) (t-var-qualified l c)
     W-i wk _ (t-var-resolved ng l c) = cᵢ (sym (up-zero wk)) (t-var-resolved ng l c)
+    W-i wk _ (t-var-own ns l c) = cᵢ (sym (up-zero wk)) (t-var-own ns l c)
     W-i wk fr (t-var-import {x = z} ¬gw ln li c) = cᵢ (sym (up-zero wk)) (t-var-import ¬gw (wnone (wloc wk z fr) ln) li c)
     W-i wk fr (t-var-poly-instantiate-infer {x = z} ln li lp gr eT) =
         cᵢ (sym (up-zero wk)) (t-var-poly-instantiate-infer (wnone (wloc wk z fr) ln) li lp gr eT)
@@ -433,13 +434,13 @@ module Sub (x : String) (ê : RawExpr) where
 module Unfolding
   (x : String) (A : Type) (e : RawExpr) (s : PolyType) (g : Ground s)
   (eqA : extractGround s g ≡ A)
-  (imps : Imports) (P : PolyCtx)
+  (imps : Imports) (sg : Imports) (P : PolyCtx)
   (noImp : lookupImport imps x ≡ nothing)
-  (eD : ctxWithImportsAndPolys imps P ⊢ᶜ e ∶ A ⨾ zeroUsage)
+  (eD : ctxWithImportsAndPolys (topCtx sg imps) P ⊢ᶜ e ∶ A ⨾ zeroUsage)
   where
 
   open Sub x (RAnnot e A) public
-  open Weaken imps P using (WK; wk-base; W-c)
+  open Weaken imps sg P using (WK; wk-base; W-c)
 
   P′ : PolyCtx
   P′ = (x , s , e) ∷ P
@@ -517,9 +518,9 @@ module Unfolding
 
 
   Dc : ∀ {n} → Ctx → SC.Ctx n → ℕ → NamedCtx
-  Dc {n} G Δ fr = mkCtx n G Δ fr imps P′
+  Dc {n} G Δ fr = mkCtx n G Δ fr imps P′ sg
   Lc : ∀ {n} → Ctx → SC.Ctx n → ℕ → NamedCtx
-  Lc {n} G Δ fr = mkCtx n G Δ fr imps P
+  Lc {n} G Δ fr = mkCtx n G Δ fr imps P sg
 
   -- The variable cases, one per rule that can derive a variable.
   s-local : ∀ {n G Δ fr sh} → SR {n} sh G Δ → (y : String) (d : Dec (y ≡ x)) → ∀ {T U eV}
@@ -596,6 +597,7 @@ module Unfolding
     S-i r _ (t-var-local {x = y} eq) = s-local r y (y StrProp.≟ x) eq
     S-i r _ (t-var-qualified l c) = t-var-qualified l c
     S-i r _ (t-var-resolved ng l c) = t-var-resolved ng l c
+    S-i r _ (t-var-own ns l c) = t-var-own ns l c
     S-i r _ (t-var-import {x = y} ¬gw ln li c) = s-import r y (y StrProp.≟ x) ¬gw ln li c
     S-i r _ (t-var-poly-instantiate-infer {x = y} ln li lp gr eT) =
         s-poly-infer r y (y StrProp.≟ x) ln li lp gr eT
@@ -1048,6 +1050,8 @@ module Unfolding
     ... | refl = t-var-qualified l c
     F-i {sh = sh} r {b = b} nc (t-var-resolved ng l c) eq with inv-RResolved {sh = sh} {b = b} eq
     ... | refl = t-var-resolved ng l c
+    F-i {sh = sh} r {b = b} nc (t-var-own ns l c) eq with inv-RResolved {sh = sh} {b = b} eq
+    ... | refl = t-var-own ns l c
     F-i {sh = sh} r {b = b} nc (t-var-local q) eq with inv-RVar {sh = sh} {b = b} eq
     ... | refl , _ = t-var-local q
     F-i {sh = sh} r {b = b} nc (t-var-import ¬gw ln li c) eq with inv-RVar {sh = sh} {b = b} eq
@@ -1222,10 +1226,10 @@ module _ {Γ : NamedCtx} {x : String} {A : Type} {e : RawExpr} {s : PolyType} {g
   (noLocal : lookupLocal Γ x ≡ nothing)
   (clear : Fr (λ z → lookupLocal Γ z ≡ nothing) e)
   (noImp : lookupImport (NamedCtx.imports Γ) x ≡ nothing)
-  (eD : ctxWithImportsAndPolys (NamedCtx.imports Γ) (NamedCtx.polys Γ) ⊢ᶜ e ∶ A ⨾ zeroUsage)
+  (eD : ctxWithImportsAndPolys (topCtx (NamedCtx.sig Γ) (NamedCtx.imports Γ)) (NamedCtx.polys Γ) ⊢ᶜ e ∶ A ⨾ zeroUsage)
   where
   private
-    module U = Unfolding x A e s g eqA (NamedCtx.imports Γ) (NamedCtx.polys Γ) noImp eD
+    module U = Unfolding x A e s g eqA (NamedCtx.imports Γ) (NamedCtx.sig Γ) (NamedCtx.polys Γ) noImp eD
     r₀ : U.SR false (NamedCtx.named Γ) (NamedCtx.debruijn Γ)
     r₀ = record { noX = λ _ → noLocal ; yesX = λ () ; clr = clear }
 

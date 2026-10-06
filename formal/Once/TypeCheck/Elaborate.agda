@@ -1253,7 +1253,7 @@ ext-arrow-info ctx alias name π bA bB = arrow-info (Once.Type.mk-kind Once.Type
 -- lookup de-with above). Without this the `with` is opaque to external proofs.
 inferElabV-RQualified-arrow-aux :
   ∀ (ctx : NamedCtx) (name alias : String) {A B : Type} {π : Once.Type.Purity}
-  → lookupImport (NamedCtx.imports ctx) (alias ++ "." ++ name)
+  → lookupImport (NamedCtx.sig ctx) (alias ++ "." ++ name)
       ≡ just (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B)
   → (mbA : Maybe (IsBaseType A)) → isBaseType? A ≡ mbA
   → (mcB : Maybe (IsBaseType B)) → isBaseType? B ≡ mcB
@@ -1274,7 +1274,7 @@ inferElabV-RQualified-arrow-aux ctx name alias {A} {B} {π} eq (just _) _ nothin
 -- Non-arrow-Many value refs: DE-WITH the single `isConcrete? ty` decision.
 inferElabV-RQualified-value-aux :
   ∀ (ctx : NamedCtx) (name alias : String) (ty : Type)
-  → lookupImport (NamedCtx.imports ctx) (alias ++ "." ++ name) ≡ just ty
+  → lookupImport (NamedCtx.sig ctx) (alias ++ "." ++ name) ≡ just ty
   → (mc : Maybe (IsConcrete ty)) → isConcrete? ty ≡ mc
   → VerifiedInferResult ctx (Raw.RQualified name alias)
 inferElabV-RQualified-value-aux ctx name alias ty eq (just conc) _ =
@@ -1288,7 +1288,7 @@ inferElabV-RQualified-value-aux ctx name alias ty eq nothing _ =
 -- without `with...in` opacity.
 inferElabV-RQualified-aux :
   ∀ (ctx : NamedCtx) (name alias : String) (lhs : Maybe Type)
-  → lookupImport (NamedCtx.imports ctx) (alias ++ "." ++ name) ≡ lhs
+  → lookupImport (NamedCtx.sig ctx) (alias ++ "." ++ name) ≡ lhs
   → VerifiedInferResult ctx (Raw.RQualified name alias)
 -- Aux helper bodies (placed after all main mutual members so that the
 -- `... | pat` continuations of inferElabV/checkElabV clauses don't
@@ -1342,22 +1342,17 @@ ext-resolved-info {A} {B} ctx cn π bA cB =
   -- the realize-agrees masquerade folds both with one case-split.
   ext-resolved-info-aux cn π (Once.Type.isVoid? B) (Once.Type.isUnit? B) bA cB
 
--- D248: a resolved reference to the OWN module (`canonical [x]`, the resolver's
--- `rv-own`/`name@this`) names a module entry, so it is a CALL of that entry
--- (D246), exactly as a bare reference is. Only a reference into ANOTHER module
--- (a path of two or more parts, an inlined FFI signature) is a SigOp.
+-- D274: a resolved reference found in Σ is a generator — a SigOp, own or not.
 resolvedArrowTerm : ∀ {A B} (ctx : NamedCtx) → CanonicalName → (π : Purity)
                   → IsBaseType A → IsBaseType B
                   → Surface.Expr (NamedCtx.debruijn ctx) Surface.zeroUsage
                                  (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B)
-resolvedArrowTerm ctx (own x) π bA cB = Surface.closure x
-{-# CATCHALL #-}
 resolvedArrowTerm ctx cn π bA cB =
   Surface.lift-morphism {π = π} (IR.SigOp (ext-resolved-info ctx cn π bA cB))
 
 inferElabV-RResolved-arrow-aux :
   ∀ (ctx : NamedCtx) (cn : CanonicalName) → NotGenerator cn → ∀ {A B : Type} {π : Once.Type.Purity}
-  → lookupImport (NamedCtx.imports ctx) (showCanonical cn)
+  → lookupImport (NamedCtx.sig ctx) (showCanonical cn)
       ≡ just (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B)
   → (mbA : Maybe (IsBaseType A)) → isBaseType? A ≡ mbA
   → (mcB : Maybe (IsBaseType B)) → isBaseType? B ≡ mcB
@@ -1376,13 +1371,11 @@ inferElabV-RResolved-arrow-aux ctx cn ng {A} {B} {π} eq (just _) _ nothing _ =
             (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B)) , tt
 
 resolvedValueTerm : ∀ {n} {Γ : Surface.Ctx n} {A} → CanonicalName → IsConcrete A → Surface.Expr Γ Surface.zeroUsage A
-resolvedValueTerm (own x) conc = Surface.closure x
-{-# CATCHALL #-}
 resolvedValueTerm cn conc = Surface.sigOp cn conc
 
 inferElabV-RResolved-value-aux :
   ∀ (ctx : NamedCtx) (cn : CanonicalName) → NotGenerator cn → ∀ (ty : Type)
-  → lookupImport (NamedCtx.imports ctx) (showCanonical cn) ≡ just ty
+  → lookupImport (NamedCtx.sig ctx) (showCanonical cn) ≡ just ty
   → (mc : Maybe (IsConcrete ty)) → isConcrete? ty ≡ mc
   → VerifiedInferResult ctx (Raw.RResolved cn)
 inferElabV-RResolved-value-aux ctx cn ng ty eq (just conc) _ =
@@ -1390,10 +1383,24 @@ inferElabV-RResolved-value-aux ctx cn ng ty eq (just conc) _ =
 inferElabV-RResolved-value-aux ctx cn ng ty eq nothing _ =
   failure (NonConcreteSigOpType (showCanonical cn) ty) , tt
 
+-- D248/D274: not in Σ — an OWN reference (`own x`) may name a monomorphic
+-- definition, and is then a CALL of it (D246).
+inferElabV-RResolved-def : ∀ (ctx : NamedCtx) (cn : CanonicalName) → lookupImport (NamedCtx.sig ctx) (showCanonical cn) ≡ nothing
+                         → VerifiedInferResult ctx (Raw.RResolved cn)
+inferElabV-RResolved-own-aux :
+  ∀ (ctx : NamedCtx) (x : String) → lookupImport (NamedCtx.sig ctx) x ≡ nothing → (lhs : Maybe Type)
+  → lookupImport (NamedCtx.imports ctx) x ≡ lhs
+  → VerifiedInferResult ctx (Raw.RResolved (own x))
+inferElabV-RResolved-own-value-aux :
+  ∀ (ctx : NamedCtx) (x : String) → lookupImport (NamedCtx.sig ctx) x ≡ nothing → (ty : Type)
+  → lookupImport (NamedCtx.imports ctx) x ≡ just ty
+  → (mc : Maybe (IsConcrete ty)) → isConcrete? ty ≡ mc
+  → VerifiedInferResult ctx (Raw.RResolved (own x))
+
 -- Plan 0.50: resolved-ref lookup, keyed by the canonical dotted path.
 inferElabV-RResolved-aux :
   ∀ (ctx : NamedCtx) (cn : CanonicalName) → NotGenerator cn → (lhs : Maybe Type)
-  → lookupImport (NamedCtx.imports ctx) (showCanonical cn) ≡ lhs
+  → lookupImport (NamedCtx.sig ctx) (showCanonical cn) ≡ lhs
   → VerifiedInferResult ctx (Raw.RResolved cn)
 inferElabV-RResolved-aux ctx cn ng
   (just (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B)) eq =
@@ -1401,8 +1408,17 @@ inferElabV-RResolved-aux ctx cn ng
 {-# CATCHALL #-}
 inferElabV-RResolved-aux ctx cn ng (just ty) eq =
   inferElabV-RResolved-value-aux ctx cn ng ty eq (isConcrete? ty) refl
-inferElabV-RResolved-aux ctx cn ng nothing _ =
-  failure (UnboundVariable (showCanonical cn)) , tt
+inferElabV-RResolved-aux ctx cn ng nothing eq = inferElabV-RResolved-def ctx cn eq
+
+inferElabV-RResolved-def ctx (own x) ns = inferElabV-RResolved-own-aux ctx x ns (lookupImport (NamedCtx.imports ctx) x) refl
+{-# CATCHALL #-}
+inferElabV-RResolved-def ctx cn _ = failure (UnboundVariable (showCanonical cn)) , tt
+inferElabV-RResolved-own-aux ctx x ns (just ty) eq = inferElabV-RResolved-own-value-aux ctx x ns ty eq (isConcrete? ty) refl
+inferElabV-RResolved-own-aux ctx x ns nothing _ = failure (UnboundVariable x) , tt
+inferElabV-RResolved-own-value-aux ctx x ns ty eq (just conc) _ =
+  success ty _ (Surface.closure x) 0 (NamedCtx.freshCounter ctx) , t-var-own ns eq conc
+inferElabV-RResolved-own-value-aux ctx x ns ty eq nothing _ =
+  failure (NonConcreteSigOpType x ty) , tt
 
 -- Plan 0.58: DE-WITH the import-value concreteness decision.
 -- D136: the reserved-word decision is DE-WITHED like the concreteness one,

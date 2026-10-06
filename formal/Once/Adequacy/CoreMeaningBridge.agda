@@ -43,12 +43,13 @@ open import Once.Postulates using (extensionality)
 open import Once.Denotation.GradedDomain using (⟦_⟧ᵛ; M; bindM; returnM; subM; _>>=ᵖ_; >>=ᵖ-β; >>=ᵖ-assoc; >>=ᵖ-idʳ; bindM-idˡ)
 open import Once.Denotation.TraceMonad using (T; interp; sig; impl)
 open import Once.TypeCheck.Classify using (NamedCtx; lookupImport; lookupPolyPrefix; ctxWithImportsAndPolys; Imports; PolyCtx)
+open import Data.String using (String)
 open import Once.TypeCheck.Judgment
 open import Once.Denotation.DefEnv using (defAt; impAt)
 open import Once.Denotation.Meaning using (⟦_⟧ᶜ; ⟦_⟧ᵢ; ⟦_⟧ᵈ; MeaningsOf; Meanings; defs; entries; returnᵖ; world; decl-qual; decl-res)
 open import Once.Denotation.GradedOps using (sigOpRefᵛ; cata-semᵛ; ana-semᵛ; ⟦_⟧<:ᵛ)
 import Once.Spec.Core.Meaning S as GM
-open import Once.Spec.Elaboration S using (Views; View; ImportAt; ffi; def; InstanceOf; elabᶜ; elabᵢ; elabᵈ; Elab; subE; lift1; closeE)
+open import Once.Spec.Elaboration S using (Views; View; ImportAt; Declared; def; InstanceOf; elabᶜ; elabᵢ; elabᵈ; Elab; subE; lift1; closeE)
 open View
 
 ------------------------------------------------------------------------
@@ -59,15 +60,13 @@ open View
 refSem : ∀ (δ : GM.DefSem) {d : Fin s} {U : Type} → InstanceOf d U → ⟦ U ⟧ᵛ
 refSem δ {d} (τ , r , eq) = subst (λ X → ⟦ X ⟧ᵛ) eq (GM.defs δ d τ r)
 
--- …and of an import (an FFI declaration is its contract).
-impSem : ∀ (δ : GM.DefSem) {U : Type} (c : CanonicalName) → IsConcrete U → ImportAt (showCanonical c) U → ⟦ U ⟧ᵛ
-impSem δ c k (ffi _ _ m) = sigOpRefᵛ fmt (sigOf S) (GM.impl δ) c k m
-impSem δ c k (def d i) = refSem δ i
-
--- D248: a canonical name that is not an own-module entry's (`own x`).
+-- …and of a definition in scope (D274: an FFI declaration is not one — it is
+-- in Σ, and its reference is the SigOp).
+impSem : ∀ (δ : GM.DefSem) {x : String} {U : Type} → ImportAt x U → ⟦ U ⟧ᵛ
+impSem δ (def d i) = refSem δ i
 
 -- `ρ` agrees with `δ` at every reference the View resolves.
-record Agree {imps : Imports} {polys : PolyCtx} (V : View imps polys) (ρ : Meanings polys imps) (δ : GM.DefSem) : Set where
+record Agree {imps sg : Imports} {polys : PolyCtx} (V : View imps sg polys) (ρ : Meanings polys imps sg) (δ : GM.DefSem) : Set where
   field
     agree-inst : ∀ {x sc body prefix U} (lp : lookupPolyPrefix polys x ≡ just (sc , body , prefix))
                    (ng : ¬ Ground sc) (ki : KindedInstance sc U)
@@ -76,17 +75,16 @@ record Agree {imps : Imports} {polys : PolyCtx} (V : View imps polys) (ρ : Mean
                      (g : Ground sc)
                  → defAt polys x (defs ρ) lp (extractGround sc g) (ground-kinded sc g)
                    ≡ refSem δ (ground V lp g)
-    agree-import : ∀ {x U} (lk : lookupImport imps x ≡ just U) (k : IsConcrete U)
-                 → impAt imps x (entries ρ) lk ≡ impSem δ (bare x) k (imported V lk)
-    -- a qualified or resolved reference names another module's FFI entry: the
-    -- View classifies it as FFI, so it means the contract.
-    agree-qualified : ∀ {name alias U} (lk : lookupImport imps (alias ++ "." ++ name) ≡ just U) (k : IsConcrete U)
-                    → impSem δ (bare (alias ++ "." ++ name)) k (imported V lk)
+    agree-import : ∀ {x U} (lk : lookupImport imps x ≡ just U)
+                 → impAt imps x (entries ρ) lk ≡ impSem δ (imported V lk)
+    -- a qualified or resolved reference names a generator of Σ: both meanings
+    -- read the same declaration in the same world.
+    agree-qualified : ∀ {name alias U} (lk : lookupImport sg (alias ++ "." ++ name) ≡ just U) (k : IsConcrete U)
+                    → sigOpRefᵛ fmt (sigOf S) (GM.impl δ) (bare (alias ++ "." ++ name)) k (Declared.member (declares V lk))
                       ≡ sigOpRefᵛ fmt (sig (world ρ)) (impl (world ρ)) (bare (alias ++ "." ++ name)) k (decl-qual ρ {name = name} {alias = alias} lk)
-    -- D248: only a path of two or more parts (another module's inlined FFI
-    -- signature); an own-module name is a call (`agree-import`).
-    agree-resolved : ∀ {cn U} (no : NotOwn cn) → (lk : lookupImport imps (showCanonical cn) ≡ just U) (k : IsConcrete U)
-                   → impSem δ cn k (imported V lk) ≡ sigOpRefᵛ fmt (sig (world ρ)) (impl (world ρ)) cn k (decl-res ρ {cn = cn} no lk)
+    agree-resolved : ∀ {cn U} (lk : lookupImport sg (showCanonical cn) ≡ just U) (k : IsConcrete U)
+                   → sigOpRefᵛ fmt (sigOf S) (GM.impl δ) cn k (Declared.member (declares V lk))
+                     ≡ sigOpRefᵛ fmt (sig (world ρ)) (impl (world ρ)) cn k (decl-res ρ {cn = cn} lk)
     -- Plan 0.105: both meanings run in the same world — the core's signatures
     -- with its implementation.
     agree-world : world ρ ≡ interp (sigOf S) (GM.impl δ)
@@ -423,23 +421,10 @@ module _ {δ : GM.DefSem} where
   bridge-i V ag t-unit dγ = refl
   bridge-i V ag t-unit-var dγ = refl
   bridge-i V ag (t-var-local {eV = Once.Surface.Context.svar i} _) dγ = refl
-  bridge-i V ag (t-var-qualified {name = name} {alias = alias} lk k) dγ with imported V lk | Agree.agree-qualified ag {name = name} {alias = alias} lk k
-  ... | ffi h g m | eq = sym eq
-  ... | def d′ i′ | eq = trans (sym eq) (refSem-⊢ i′ dγ)
-  bridge-i V ag (t-var-resolved {cn = own x} _ lk k) dγ with imported V lk | Agree.agree-import ag {x = x} lk k
-  ... | ffi h g m | eq = eq
-  ... | def d′ i′ | eq = trans eq (refSem-⊢ i′ dγ)
-  bridge-i V ag (t-var-resolved {cn = canonical []} _ lk k) dγ
-    with imported V lk | Agree.agree-resolved ag {cn = canonical []} tt lk k
-  ... | ffi h g m | eq = sym eq
-  ... | def d′ i′ | eq = trans (sym eq) (refSem-⊢ i′ dγ)
-  bridge-i V ag (t-var-resolved {cn = canonical (a ∷ b ∷ rest)} _ lk k) dγ
-    with imported V lk | Agree.agree-resolved ag {cn = canonical (a ∷ b ∷ rest)} tt lk k
-  ... | ffi h g m | eq = sym eq
-  ... | def d′ i′ | eq = trans (sym eq) (refSem-⊢ i′ dγ)
-  bridge-i V ag (t-var-import {x = x} _ _ lk k) dγ with imported V lk | Agree.agree-import ag {x = x} lk k
-  ... | ffi h g m | eq = eq
-  ... | def d′ i′ | eq = trans eq (refSem-⊢ i′ dγ)
+  bridge-i V ag (t-var-qualified {name = name} {alias = alias} lk k) dγ = sym (Agree.agree-qualified ag {name = name} {alias = alias} lk k)
+  bridge-i V ag (t-var-resolved {cn = cn} _ lk k) dγ = sym (Agree.agree-resolved ag {cn = cn} lk k)
+  bridge-i V ag (t-var-own _ lk k) dγ = trans (Agree.agree-import ag lk) (refSem-⊢ (ImportAt.instOf (imported V lk)) dγ)
+  bridge-i V ag (t-var-import _ _ lk k) dγ = trans (Agree.agree-import ag lk) (refSem-⊢ (ImportAt.instOf (imported V lk)) dγ)
   bridge-i V ag (t-var-poly-instantiate-infer {g = g} _ _ lp _ refl) dγ =
     trans (Agree.agree-ground ag lp g) (refSem-⊢ (ground V lp g) dγ)
   bridge-i V ag (t-annot _ d) dγ = bridge-c V ag d dγ

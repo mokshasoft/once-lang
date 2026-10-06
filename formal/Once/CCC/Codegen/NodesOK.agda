@@ -15,10 +15,11 @@
 
 module Once.CCC.Codegen.NodesOK where
 
-open import Data.List using (List; []; _∷_)
+open import Data.List using (List; []; _∷_; _++_)
+open import Data.List.Relation.Unary.All.Properties using (++⁻)
 open import Data.List.Relation.Unary.All using (All)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Product using (_×_; _,_)
+open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.String using (String)
 open import Data.Unit using (⊤; tt)
 
@@ -63,6 +64,56 @@ SigLeaves P (out-μ _)        = ⊤
 SigLeaves P (Out _)          = ⊤
 SigLeaves P (in-ν _)         = ⊤
 SigLeaves P (const _ _)      = ⊤
+
+-- plan 0.107 §9 2D: the symbols an IR's SigOp leaves call, leaf by leaf — what
+-- the file declares external (minus its own blocks).
+leaf-syms : ∀ {A B} → IR A B → List String
+leaf-syms (g ∘ f)          = leaf-syms g ++ leaf-syms f
+leaf-syms ⟨ f , g ⟩        = leaf-syms f ++ leaf-syms g
+leaf-syms (case f g)       = leaf-syms f ++ leaf-syms g
+leaf-syms (curry f)        = leaf-syms f
+leaf-syms (Cata _ alg)     = leaf-syms alg
+leaf-syms (Ana _ coalg)    = leaf-syms coalg
+leaf-syms (SigOp si)       = sigop-syms si (cmp-of (sem si))
+leaf-syms (Call _)         = []
+leaf-syms id               = []
+leaf-syms fst              = []
+leaf-syms snd              = []
+leaf-syms inl              = []
+leaf-syms inr              = []
+leaf-syms terminal         = []
+leaf-syms initial          = []
+leaf-syms apply            = []
+leaf-syms (In _)           = []
+leaf-syms (out-μ _)        = []
+leaf-syms (Out _)          = []
+leaf-syms (in-ν _)         = []
+leaf-syms (const _ _)      = []
+
+-- A property of every collected symbol is one of every SigOp leaf's.
+leaf-syms-leaves : ∀ {G : String → Set} {A B} (ir : IR A B) → All G (leaf-syms ir)
+                 → SigLeaves (λ si → All G (sigop-syms si (cmp-of (sem si)))) ir
+leaf-syms-leaves (g ∘ f)       a = leaf-syms-leaves g (proj₁ (++⁻ (leaf-syms g) a)) , leaf-syms-leaves f (proj₂ (++⁻ (leaf-syms g) a))
+leaf-syms-leaves ⟨ f , g ⟩     a = leaf-syms-leaves f (proj₁ (++⁻ (leaf-syms f) a)) , leaf-syms-leaves g (proj₂ (++⁻ (leaf-syms f) a))
+leaf-syms-leaves (case f g)    a = leaf-syms-leaves f (proj₁ (++⁻ (leaf-syms f) a)) , leaf-syms-leaves g (proj₂ (++⁻ (leaf-syms f) a))
+leaf-syms-leaves (curry f)     a = leaf-syms-leaves f a
+leaf-syms-leaves (Cata _ alg)  a = leaf-syms-leaves alg a
+leaf-syms-leaves (Ana _ cg)    a = leaf-syms-leaves cg a
+leaf-syms-leaves (SigOp si)    a = a
+leaf-syms-leaves (Call _)      a = tt
+leaf-syms-leaves id            a = tt
+leaf-syms-leaves fst           a = tt
+leaf-syms-leaves snd           a = tt
+leaf-syms-leaves inl           a = tt
+leaf-syms-leaves inr           a = tt
+leaf-syms-leaves terminal      a = tt
+leaf-syms-leaves initial       a = tt
+leaf-syms-leaves apply         a = tt
+leaf-syms-leaves (In _)        a = tt
+leaf-syms-leaves (out-μ _)     a = tt
+leaf-syms-leaves (Out _)       a = tt
+leaf-syms-leaves (in-ν _)      a = tt
+leaf-syms-leaves (const _ _)   a = tt
 
 module _ (G : String → Set) where
 

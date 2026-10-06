@@ -92,7 +92,7 @@ uncurry-app : ∀ {D E : IRTy} (ρ : CallEnv) (ir : IR Once.IRTy.Unit (D Once.IR
 uncurry-app ρ ir a = >>=T-assoc (evalᴰ fmt ρ ir tt) (λ c → returnT (c , a)) (λ p → proj₁ p (proj₂ p))
 
 abi : ∀ (U : Type) (x : _) (es : List IRFun) (ir : IR ⌊ Unit ⌋ ⌊ U ⌋)
-    → evalᴰ fmt (tableEnv fmt φ (irFunOf (C.mkCompiledFun (bare x) U ir false) ∷ es)) (refIR U (bare x)) tt
+    → evalᴰ fmt (tableEnv fmt φ (irFunOf (C.mkCompiledFun (bare x) U ir) ∷ es)) (refIR U (bare x)) tt
       ≡ abiT U (evalᴰ fmt (tableEnv fmt φ es) ir tt)
 abi (A ⇒[ mk-kind Zero π ] B) x es ir =
   cong returnT (extensionality λ u →

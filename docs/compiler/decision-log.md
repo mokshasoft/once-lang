@@ -16752,3 +16752,62 @@ BlockRuns premise `CoalgRuns` speaks of the pair seed.
 **Consequence.** `LetIsDef`'s converse obstruction is gone (`ana` coalgebras scope lexically, so
 `Unfold`'s algebra-position flag is constant `false`). Exit test `ana-capture` (41): a captured
 `k` and a `let`-bound `b`, each forced through a re-suspension. Apex green.
+
+## D274 — AN FFI DECLARATION EXTENDS THE PROGRAM'S SIGNATURE Σ; IT IS NOT A DEFINITION (2026-10-06)
+
+**Relates**: D009/D061/D071 (an FFI reference IS the interpretation's operation), D246 and D249
+(amended here, for FFI declarations), D248 (`own x`), D257 + amendment 2 (`Impl (sigOf tp)`),
+plan 0.107 §9 (option A, user-approved 2026-10-06), plan 0.111 (the ABI half, not here).
+
+**Found** (plan 0.107 §9, measured on `apply-eff-closure.once`, x86-64). Every signature of
+every imported interface became a table entry with code: named by the dotted `bare` string, its
+body calling ITSELF, called by nothing. They exist because since D246/D249 an FFI declaration is
+ALSO a module entry: `Spec.Module`'s `ffi` step put it in the definitions scope (`addImp`), the
+import environment gave its call the contract, and the IR table got `irFunOf (primCF …)`. Only
+the lexer (no dotted identifiers) kept a plain-name call away from the imported ones; an OWN
+`signature` (`examples/threads.once`) WAS reached by a call (`own x ↦ closure x`), so its
+program called the self-calling wrapper.
+
+**Decided.** A program is a morphism of the free CCC on a signature Σ. A `signature`
+declaration is a GENERATOR of Σ (assumed; it means something only under a model, the
+interpretation); a definition is BUILT from generators. The denotation already separated them
+(`Spec.Core.Meaning`: `DefSem = defs × impl : Impl (sigOf S)`; `Spec.Core.Translate` never made
+an FFI declaration a core `def`). The module level and the typing context now agree with it:
+
+* `Spec.Module.Scope` has a `sig` part. The `ffi` step extends `sig`, never `imps` (the
+  definitions). Σ of a typed module is still `teleSig` (= `entrySig`).
+* The typing context (`NamedCtx`) carries Σ in scope (`sig`) beside the definitions
+  (`imports`). A reference to a generator reads Σ: `t-var-qualified`, and `t-var-resolved` for
+  EVERY canonical name, own or not; its meaning is the SigOp (`sigOpRefᵛ`, `sigop`). A
+  reference to an own DEFINITION is the new rule `t-var-own` (`RResolved (own x)` found in
+  `imports`), and a bare one `t-var-import`; both are calls (D246, unchanged for definitions).
+  `t-var-own` carries `lookupImport (sig ctx) x ≡ nothing`: Σ is read first, exactly as the
+  elaborator does, so the judgment stays syntax-directed (`ModeAgreement`, `RouteBuild`) without
+  leaning on D249's guard.
+* The Spec's import environment (D246) and the elaboration `View` hold definitions only.
+  `Spec.Elaboration.ImportAt` loses its `ffi` case; a reference to Σ is `View.declared`.
+* The compiler adds no `CompiledFun` for an FFI declaration: the function table holds built
+  definitions only, the image has no FFI code, and the dead wrappers disappear from every
+  binary. A reference to an own `signature` is the SigOp `own x` (symbol `once_<x>`), an extern.
+
+**As built (2026-10-06).** `NamedCtx` gains `sig`; the top-level context is one value
+`TopCtx = (Σ, definitions)` (`ctxWithImportsAndPolys : TopCtx → PolyCtx → NamedCtx`), so a
+telescope entry's declaration scope (where the resolver re-elaborates its body) carries Σ too.
+`Spec.Core.Translate` gains `SigSig Fs sg` (each generator in scope is in the program's
+signatures, honest and ground) beside `ImpSig` (definitions only; `i-ffi` is gone). The
+adequacy walks (`TeleWalk`, `ProgramLinked`, `CoreEnv`) lose their FFI-entry case and gain
+"Σ grows", and the scaffolding that told an FFI key from a definition by its spelling
+(`DefsValid`, `lookup-ffi`, `notOwn-invalid`, `TeleEntry.ffi-entry`, `FunBundle.primCF`,
+`CompiledFun.cfIsPrimitive`) is deleted: Σ's lookup gives the declaration directly. The file's
+externs are `Compile.externs-of p`: the SigOp symbols the rewritten program calls that are not
+its blocks, so `ImageWF.prog-sigops` — a postulate KNOWN FALSE since plan 0.107 §7 — is a
+theorem. Rigid substitution needs Σ ground as well as the definitions (`RigidSubst.TopRF`).
+
+**Amends** D246 ("a module entry's reference is a call", "the compiled function table includes
+the FFI entries"): an FFI declaration is not a module entry. D249's distinct-names guard is KEPT:
+names stay pairwise distinct across definitions AND signatures, so `t-var-resolved` and
+`t-var-own` never compete for a well-guarded module.
+
+**Once.Spec header** gains the THREE TIMES (D061/D257): building the compiler = proving
+`correct`, `∀ I`; compiling a program = `compile` and `sigOf tp` (Σ is a function of the
+program); an interpretation, offline = an `Impl (sigOf tp)`.

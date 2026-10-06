@@ -41,7 +41,7 @@ open import Once.TypeCheck.Raw as Raw
   using (RawExpr; RVar; RQualified; RResolved; RInt; RStringLit; RUnit; RAnnot; RPair;
          ClosedLiftShape; cls-var; cls-qual; cls-res; cls-let; cls-destr;
          cls-unit; cls-str; cls-annot; cls-binop)
-open import Once.CanonicalName using (CanonicalName; showCanonical; gen; gen≢bare; NotGenerator; GenWord; genWord?; genWord?-no)
+open import Once.CanonicalName using (CanonicalName; showCanonical; gen; own; bare-NotGenerator; gen≢bare; NotGenerator; GenWord; genWord?; genWord?-no)
 open import Once.TypeCheck.ElaborateProofs
   using (NamedCtx; inferElab; checkElab; InferElabResult; CheckElabResult;
          success; failure; lookupLocal; lookupImport; inferElabV; checkElabV;
@@ -288,6 +288,8 @@ given-infer-route {ctx} (t-var-local {x = x} _) A π (_ , _ , _ , ok) = var-rout
 given-infer-route (t-var-qualified _ _) A π _ = refl
 given-infer-route {ctx} (t-var-resolved {cn = cn} ng _ _) A π _ =
   leaf-route ctx cn A π (inferElabV ctx (RResolved cn)) ng (classifyAppHeadView (RResolved cn))
+given-infer-route {ctx} (t-var-own {x = x} _ _ _) A π _ =
+  leaf-route ctx (own x) A π (inferElabV ctx (RResolved (own x))) (bare-NotGenerator x) (classifyAppHeadView (RResolved (own x)))
 given-infer-route {ctx} (t-var-import {x = x} _ _ _ _) A π (_ , _ , _ , ok) = var-route ctx x A π (inferElabV ctx (RVar x)) ok
 given-infer-route {ctx} (t-var-poly-instantiate-infer {x = x} _ _ _ _ _) A π (_ , _ , _ , ok) = var-route ctx x A π (inferElabV ctx (RVar x)) ok
 given-infer-route (t-annot _ _) A π _ = refl
@@ -660,6 +662,9 @@ mutual
   iFromInferSub {ctx} (t-var-resolved {cn = cn} {T = T} ng eqImp conc) sb =
     let (_ , _ , _ , eqI) = infer-complete {ctx} (t-var-resolved ng eqImp conc)
     in checkElab-fallback-RResolved {ctx} cn T eqI sb
+  iFromInferSub {ctx} (t-var-own {x = x} {T = T} ns eqImp conc) sb =
+    let (_ , _ , _ , eqI) = infer-complete {ctx} (t-var-own ns eqImp conc)
+    in checkElab-fallback-RResolved {ctx} (own x) T eqI sb
   iFromInferSub {ctx} (t-var-import {x = x} {T = T} ¬gw eqLoc eqImp conc) sb =
     let (_ , _ , _ , eqI) = infer-complete {ctx} (t-var-import ¬gw eqLoc eqImp conc)
     in checkElab-fallback-RVar {ctx} x T eqI sb
@@ -762,6 +767,8 @@ mutual
     infer-complete-RQualified {ctx} {name} {alias} eqImp conc
   infer-complete {ctx} (t-var-resolved {cn = cn} ng eqImp conc) =
     infer-complete-RResolved {ctx} {cn} ng eqImp conc
+  infer-complete {ctx} (t-var-own ns eqImp conc) =
+    infer-complete-RResolved-own {ctx} ns eqImp conc
   infer-complete {ctx} (t-var-import {x = x} ¬gw eqLoc eqImp conc) =
     infer-complete-RVar-import {ctx} x ¬gw eqLoc eqImp conc
   -- Plan 0.58 / D071: infer-mode ground telescope reference — matching the

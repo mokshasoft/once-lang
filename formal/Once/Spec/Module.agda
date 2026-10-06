@@ -45,7 +45,7 @@ open import Once.Type.Honest using (HonestFFI)
 open import Once.Surface.Context using (zeroUsage)
 import Once.Compile as C
 import Once.Parser.Module.Core as P
-open import Once.TypeCheck.Classify using (NamedCtx; ctxWithImportsAndPolys)
+open import Once.TypeCheck.Classify using (NamedCtx; ctxWithImportsAndPolys; topCtx)
 open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_)
 
 open C.FunInfo using (funName; funBody; funType; funIsPrimitive)
@@ -60,38 +60,46 @@ open C.PolyFunInfo using (pfunName; pfunType; pfunBody)
 -- `Tele` (D239), and elaborates into it entry by entry.
 ------------------------------------------------------------------------
 
--- The definitions declared before an entry, latest first.
+-- What is in scope at an entry, latest first. D274: the program's SIGNATURE Σ
+-- (its FFI declarations — generators, assumed) is kept apart from its
+-- DEFINITIONS (built from them): a reference to Σ is a SigOp, a reference to a
+-- definition is a call of it.
 record Scope : Set where
   constructor scope
   field
-    imps : C.FunCtx              -- FFI declarations and monomorphic definitions
+    sig  : ISig                  -- the signatures declared so far (Σ)
+    imps : C.FunCtx              -- monomorphic definitions
     tele : List C.PolyFunInfo    -- telescope definitions
 
 emptyScope : Scope
-emptyScope = scope C.emptyFunCtx []
+emptyScope = scope [] C.emptyFunCtx []
 
 ctxOf : Scope → NamedCtx
-ctxOf sc = ctxWithImportsAndPolys (Scope.imps sc) (C.buildPolyCtx (Scope.tele sc))
+ctxOf sc = ctxWithImportsAndPolys (topCtx (Scope.sig sc) (Scope.imps sc)) (C.buildPolyCtx (Scope.tele sc))
+
+addSig : Scope → String → Type → Scope
+addSig sc x ty = scope ((x , ty) ∷ Scope.sig sc) (Scope.imps sc) (Scope.tele sc)
 
 addImp : Scope → String → Type → Scope
-addImp sc x ty = scope (C.extendFunCtx (Scope.imps sc) x ty) (Scope.tele sc)
+addImp sc x ty = scope (Scope.sig sc) (C.extendFunCtx (Scope.imps sc) x ty) (Scope.tele sc)
 
 addPoly : Scope → C.PolyFunInfo → Scope
-addPoly sc p = scope (Scope.imps sc) (p ∷ Scope.tele sc)
+addPoly sc p = scope (Scope.sig sc) (Scope.imps sc) (p ∷ Scope.tele sc)
 
 data ModTele : Scope → List C.Entry → Set where
   []   : ∀ {sc} → ModTele sc []
   -- An FFI declaration: its type, CONCRETE — a SigOp is a first-order
   -- contract (D061/D071) — HONEST (D231: `pure` means no side effects), and
-  -- GROUND (D243: it cannot mention a definition's parameter). No body.
+  -- GROUND (D243: it cannot mention a definition's parameter). No body: it
+  -- is a GENERATOR, and extends the signature Σ, not the definitions (D274).
   ffi  : ∀ {sc fi ty es}
        → funIsPrimitive fi ≡ true → funType fi ≡ just ty → IsConcrete ty → HonestFFI ty → RigidFree ty
-       → ModTele (addImp sc (funName fi) ty) es
+       → ModTele (addSig sc (funName fi) ty) es
        → ModTele sc (C.e-fun fi ∷ es)
   -- A monomorphic definition, typed at its (declared or inferred) type.
   mono : ∀ {sc fi ty es Ψ}
        → funIsPrimitive fi ≡ false
-       → C.resolveFunType (Scope.imps sc) (C.buildPolyCtx (Scope.tele sc)) (funType fi) (funBody fi) ≡ inj₂ ty
+       → C.resolveFunType (topCtx (Scope.sig sc) (Scope.imps sc)) (C.buildPolyCtx (Scope.tele sc)) (funType fi) (funBody fi) ≡ inj₂ ty
        → RigidFree ty                    -- D243: a monomorphic type is GROUND
        → ctxOf sc ⊢ᶜ funBody fi ∶ ty ⨾ Ψ
        → ModTele (addImp sc (funName fi) ty) es

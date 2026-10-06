@@ -147,7 +147,7 @@ inl-check-Int : ∀ (ctx : NamedCtx) (arg : RawExpr) {err : TypeError}
 inl-check-Int ctx arg refl = refl
 qualified-not-found-is-UnboundQualified :
   ∀ (ctx : NamedCtx) (name alias : String) {err : TypeError}
-  → lookupImport (NamedCtx.imports ctx) (alias ++ "." ++ name) ≡ nothing
+  → lookupImport (NamedCtx.sig ctx) (alias ++ "." ++ name) ≡ nothing
   → inferElab ctx (RQualified name alias) ≡ failure err
   → err ≡ UnboundQualified name alias
 qualified-not-found-is-UnboundQualified ctx name alias eqLookup eqOuter =
@@ -155,9 +155,9 @@ qualified-not-found-is-UnboundQualified ctx name alias eqLookup eqOuter =
   where
     open Once.TypeCheck.Elaborate using (inferElabV-RQualified-aux)
     helper : ∀ (lhs : Maybe Type)
-           → (eq' : lookupImport (NamedCtx.imports ctx) (alias ++ "." ++ name) ≡ lhs)
+           → (eq' : lookupImport (NamedCtx.sig ctx) (alias ++ "." ++ name) ≡ lhs)
            → inferElabV-RQualified-aux ctx name alias
-               (lookupImport (NamedCtx.imports ctx) (alias ++ "." ++ name)) refl
+               (lookupImport (NamedCtx.sig ctx) (alias ++ "." ++ name)) refl
              ≡ inferElabV-RQualified-aux ctx name alias lhs eq'
     helper _ refl = refl
     go : ∀ {err} → failure (UnboundQualified name alias) ≡ failure err

@@ -120,7 +120,7 @@ mutual
 ρ̂N (b ∷ Γ) = mkBinding (name b) (ρ̂ (type b)) (quantity b) ∷ ρ̂N Γ
 
 ρ̂C : NamedCtx → NamedCtx
-ρ̂C (mkCtx n Γ D fr imps polys) = mkCtx n (ρ̂N Γ) (ρ̂S D) fr imps polys
+ρ̂C (mkCtx n Γ D fr imps polys sg) = mkCtx n (ρ̂N Γ) (ρ̂S D) fr imps polys sg
 
 lookup-ρ̂ : ∀ {n} (Γ : SCtx n) (i : Fin n) → Surface.lookup (ρ̂S Γ) i ≡ ρ̂ (Surface.lookup Γ i)
 lookup-ρ̂ (Γ S, A ^ q) zero    = refl
@@ -152,7 +152,7 @@ lk-nothing {suc n} x (b ∷ Γ) (D S, B ^ q) eq | no _ | nothing rewrite lk-noth
 lk-nothing {suc n} x (b ∷ Γ) (D S, B ^ q) () | no _ | just (_ , _ , svar _)
 
 lkL-nothing : ∀ (ctx : NamedCtx) (x : String) → lookupLocal ctx x ≡ nothing → lookupLocal (ρ̂C ctx) x ≡ nothing
-lkL-nothing (mkCtx n Γ D fr imps polys) x = lk-nothing x Γ D
+lkL-nothing (mkCtx n Γ D fr imps polys sg) x = lk-nothing x Γ D
 
 ------------------------------------------------------------------------
 -- The scope's imports are ground.
@@ -160,6 +160,10 @@ lkL-nothing (mkCtx n Γ D fr imps polys) x = lk-nothing x Γ D
 
 ImportsRF : Imports → Set
 ImportsRF imps = ∀ {x T} → lookupImport imps x ≡ just T → RigidFree T
+
+-- D274: the definitions AND the signature Σ in scope are ground.
+TopRF : Imports → Imports → Set
+TopRF imps sg = ImportsRF imps × ImportsRF sg
 
 ------------------------------------------------------------------------
 -- THE LEMMA: a structural map over the three judgments.
@@ -175,29 +179,30 @@ _⇝ᶜ_ : ∀ {ctx e A B Ψ} → A ≡ B → ctx ⊢ᶜ e ∶ A ⨾ Ψ → ctx 
 refl ⇝ᶜ d = d
 
 mutual
-  subst-i : ∀ {ctx e A Ψ} → ImportsRF (NamedCtx.imports ctx) → ctx ⊢ᵢ e ∶ A ⨾ Ψ → ρ̂C ctx ⊢ᵢ e ∶ ρ̂ A ⨾ Ψ
-  subst-i {mkCtx n Γ D fr imps polys} ir d = subst-i′ ir d
+  subst-i : ∀ {ctx e A Ψ} → TopRF (NamedCtx.imports ctx) (NamedCtx.sig ctx) → ctx ⊢ᵢ e ∶ A ⨾ Ψ → ρ̂C ctx ⊢ᵢ e ∶ ρ̂ A ⨾ Ψ
+  subst-i {mkCtx n Γ D fr imps polys sg} ir d = subst-i′ ir d
 
-  subst-c : ∀ {ctx e A Ψ} → ImportsRF (NamedCtx.imports ctx) → ctx ⊢ᶜ e ∶ A ⨾ Ψ → ρ̂C ctx ⊢ᶜ e ∶ ρ̂ A ⨾ Ψ
-  subst-c {mkCtx n Γ D fr imps polys} ir d = subst-c′ ir d
+  subst-c : ∀ {ctx e A Ψ} → TopRF (NamedCtx.imports ctx) (NamedCtx.sig ctx) → ctx ⊢ᶜ e ∶ A ⨾ Ψ → ρ̂C ctx ⊢ᶜ e ∶ ρ̂ A ⨾ Ψ
+  subst-c {mkCtx n Γ D fr imps polys sg} ir d = subst-c′ ir d
 
-  subst-d : ∀ {ctx e A π B Ψ} → ImportsRF (NamedCtx.imports ctx) → ctx ⊢ᵈ e ∶ A ⇒[ π ]↦ B ⨾ Ψ
+  subst-d : ∀ {ctx e A π B Ψ} → TopRF (NamedCtx.imports ctx) (NamedCtx.sig ctx) → ctx ⊢ᵈ e ∶ A ⇒[ π ]↦ B ⨾ Ψ
           → ρ̂C ctx ⊢ᵈ e ∶ ρ̂ A ⇒[ π ]↦ ρ̂ B ⨾ Ψ
-  subst-d {mkCtx n Γ D fr imps polys} ir d = subst-d′ ir d
+  subst-d {mkCtx n Γ D fr imps polys sg} ir d = subst-d′ ir d
 
   -- At a context in constructor form, so `ρ̂C` and `extendNamedCtx` reduce.
-  subst-i′ : ∀ {n Γ D fr imps polys e A Ψ} → ImportsRF imps
-           → mkCtx n Γ D fr imps polys ⊢ᵢ e ∶ A ⨾ Ψ → mkCtx n (ρ̂N Γ) (ρ̂S D) fr imps polys ⊢ᵢ e ∶ ρ̂ A ⨾ Ψ
+  subst-i′ : ∀ {n Γ D fr imps polys sg e A Ψ} → TopRF imps sg
+           → mkCtx n Γ D fr imps polys sg ⊢ᵢ e ∶ A ⨾ Ψ → mkCtx n (ρ̂N Γ) (ρ̂S D) fr imps polys sg ⊢ᵢ e ∶ ρ̂ A ⨾ Ψ
   subst-i′ ir (t-int k)            = t-int k
   subst-i′ ir (t-float i f l p)    = t-float i f l p
   subst-i′ ir t-unit               = t-unit
   subst-i′ ir t-unit-var           = t-unit-var
   subst-i′ {Γ = Γ} {D = D} ir (t-var-local {x = x} {eV = svar i} eq) =
     lookup-ρ̂ D i ⇝ᵢ t-var-local (lk-just x Γ D i eq)
-  subst-i′ ir (t-var-qualified li c) = sym (ρ̂-rf (ir li)) ⇝ᵢ t-var-qualified li c
-  subst-i′ ir (t-var-resolved ng li c) = sym (ρ̂-rf (ir li)) ⇝ᵢ t-var-resolved ng li c
+  subst-i′ ir (t-var-qualified li c) = sym (ρ̂-rf (proj₂ ir li)) ⇝ᵢ t-var-qualified li c
+  subst-i′ ir (t-var-resolved ng li c) = sym (ρ̂-rf (proj₂ ir li)) ⇝ᵢ t-var-resolved ng li c
+  subst-i′ ir (t-var-own ns li c) = sym (ρ̂-rf (proj₁ ir li)) ⇝ᵢ t-var-own ns li c
   subst-i′ {Γ = Γ} {D = D} ir (t-var-import {x = x} gw ln li c) =
-    sym (ρ̂-rf (ir li)) ⇝ᵢ t-var-import gw (lk-nothing x Γ D ln) li c
+    sym (ρ̂-rf (proj₁ ir li)) ⇝ᵢ t-var-import gw (lk-nothing x Γ D ln) li c
   subst-i′ {Γ = Γ} {D = D} ir (t-var-poly-instantiate-infer {x = x} {schema = s} {g = g} ln li lp gr refl) =
     sym (ρ̂-rf (extractGround-rf s g)) ⇝ᵢ t-var-poly-instantiate-infer {g = g} (lk-nothing x Γ D ln) li lp gr refl
   subst-i′ ir (t-annot {T = T} rf d) = sym (ρ̂-rf rf) ⇝ᵢ t-annot rf (ρ̂-rf rf ⇝ᶜ subst-c′ ir d)
@@ -226,8 +231,8 @@ mutual
   subst-i′ ir (t-effApp h df dx)     = t-effApp h (subst-i′ ir df) (subst-c′ ir dx)
   subst-i′ ir (t-app-spine h da df)  = t-app-spine h (subst-i′ ir da) (subst-d′ ir df)
 
-  subst-c′ : ∀ {n Γ D fr imps polys e A Ψ} → ImportsRF imps
-           → mkCtx n Γ D fr imps polys ⊢ᶜ e ∶ A ⨾ Ψ → mkCtx n (ρ̂N Γ) (ρ̂S D) fr imps polys ⊢ᶜ e ∶ ρ̂ A ⨾ Ψ
+  subst-c′ : ∀ {n Γ D fr imps polys sg e A Ψ} → TopRF imps sg
+           → mkCtx n Γ D fr imps polys sg ⊢ᶜ e ∶ A ⨾ Ψ → mkCtx n (ρ̂N Γ) (ρ̂S D) fr imps polys sg ⊢ᶜ e ∶ ρ̂ A ⨾ Ψ
   subst-c′ ir t-id-check             = t-id-check
   subst-c′ ir t-fst-check            = t-fst-check
   subst-c′ ir t-snd-check            = t-snd-check
@@ -258,9 +263,9 @@ mutual
   subst-c′ {Γ = Γ} {D = D} ir (t-var-poly-instantiate {x = x} {schema = sch} ln li lp ng ki) =
     t-var-poly-instantiate (lk-nothing x Γ D ln) li lp ng (ρ̂-ki {sch} ki)
 
-  subst-d′ : ∀ {n Γ D fr imps polys e A π B Ψ} → ImportsRF imps
-           → mkCtx n Γ D fr imps polys ⊢ᵈ e ∶ A ⇒[ π ]↦ B ⨾ Ψ
-           → mkCtx n (ρ̂N Γ) (ρ̂S D) fr imps polys ⊢ᵈ e ∶ ρ̂ A ⇒[ π ]↦ ρ̂ B ⨾ Ψ
+  subst-d′ : ∀ {n Γ D fr imps polys sg e A π B Ψ} → TopRF imps sg
+           → mkCtx n Γ D fr imps polys sg ⊢ᵈ e ∶ A ⇒[ π ]↦ B ⨾ Ψ
+           → mkCtx n (ρ̂N Γ) (ρ̂S D) fr imps polys sg ⊢ᵈ e ∶ ρ̂ A ⇒[ π ]↦ ρ̂ B ⨾ Ψ
   subst-d′ ir (d-infer w p g)      = d-infer (subst-i′ ir w) (ρ̂-<: p) g
   subst-d′ {Γ = Γ} {D = D} ir (d-poly {x = x} {schema = sch} ln li lp ng as cv ki g) =
     d-poly (lk-nothing x Γ D ln) li lp ng as cv (ρ̂-ki {sch} ki) g

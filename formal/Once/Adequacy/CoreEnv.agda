@@ -44,7 +44,7 @@ open C.PolyFunInfo using (pfunName; pfunType)
 open import Once.Type using (Type)
 open import Once.Type.Rigid using (KindedInstance; ground-kinded)
 open import Once.Functor.Translate using (IsConcrete; IsConcrete-irrelevant)
-open import Once.CanonicalName using (CanonicalName; canonical; own; bare; showCanonical; NotOwn)
+open import Once.CanonicalName using (CanonicalName; canonical; own; bare; showCanonical)
 open import Once.TypeCheck.Classify using (lookupImport; lookupPolyPrefix)
 open import Once.Parser using (validIdentB; validCharsB; allIdentContinue)
 open import Once.Adequacy.EntriesValid using (dot-invalid)
@@ -55,18 +55,9 @@ open import Once.Denotation.TraceMonad using (T)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ)
 import Once.Spec.Core.Meaning S as GM
 import Once.Spec.Core.Translate as TR
-open TR using (ImpSig; TeleSig; mono-inst; poly-inst; telFind; viewOf) renaming (impAt to sigAt)
-open import Once.Spec.Elaboration S using (ImportAt; ffi; def)
+open TR using (SigSig; ImpSig; TeleSig; mono-inst; poly-inst; telFind; viewOf) renaming (impAt to impView; sigAt to sigView)
+open import Once.Spec.Elaboration S using (ImportAt; Declared; def)
 open import Once.Adequacy.CoreMeaningBridge fmt S using (refSem; impSem; Agree)
-
-------------------------------------------------------------------------
--- Names that are not identifiers
-------------------------------------------------------------------------
-
--- Nor is a canonical name that is not an own-module entry's.
-notOwn-invalid : ∀ (cn : CanonicalName) → NotOwn cn → validIdentB (showCanonical cn) ≡ false
-notOwn-invalid (canonical [])            _ = refl
-notOwn-invalid (canonical (a ∷ b ∷ rest)) _ = dot-invalid a (showCanonical (canonical (b ∷ rest)))
 
 ------------------------------------------------------------------------
 -- The environment of a scope, from the core's
@@ -76,7 +67,6 @@ module _ (δ : GM.DefSem) where
 
   impEnv : ∀ {imps} → ImpSig S imps → ImpMeanings imps
   impEnv TR.[]                                = tt
-  impEnv (TR.i-ffi {x = x} {T = U} c _ _ m is) = sigOpRefᵛ fmt (sigOf S) (GM.impl δ) (bare x) c m , impEnv is
   impEnv (TR.i-def d e is)                    = refSem δ (mono-inst {S = S} e) , impEnv is
 
   defEnv : ∀ {ps} → TeleSig S ps → DefMeanings (C.buildPolyCtx ps)
@@ -88,17 +78,13 @@ module _ (δ : GM.DefSem) where
   -- Agreement
   ----------------------------------------------------------------------
 
-  agree-imp : ∀ {imps} (is : ImpSig S imps) {x U} (lk : lookupImport imps x ≡ just U) (k : IsConcrete U)
-            → impAt imps x (impEnv is) lk ≡ impSem δ (bare x) k (sigAt {S = S} is lk)
-  agree-imp TR.[] () k
-  agree-imp {(n , T₀) ∷ rest} (TR.i-ffi c h g m is) {x} lk k with StrProp._≟_ n x
-  ... | yes refl with lk
-  ...   | refl = cong (λ c′ → sigOpRefᵛ fmt (sigOf S) (GM.impl δ) (bare x) c′ m) (IsConcrete-irrelevant c k)
-  agree-imp {(n , T₀) ∷ rest} (TR.i-ffi c h g m is) {x} lk k | no _ = agree-imp is lk k
-  agree-imp {(n , T₀) ∷ rest} (TR.i-def d e is) {x} lk k with StrProp._≟_ n x
+  agree-imp : ∀ {imps} (is : ImpSig S imps) {x U} (lk : lookupImport imps x ≡ just U)
+            → impAt imps x (impEnv is) lk ≡ impSem δ (impView {S = S} is lk)
+  agree-imp TR.[] ()
+  agree-imp {(n , T₀) ∷ rest} (TR.i-def d e is) {x} lk with StrProp._≟_ n x
   ... | yes refl with lk
   ...   | refl = refl
-  agree-imp {(n , T₀) ∷ rest} (TR.i-def d e is) {x} lk k | no _ = agree-imp is lk k
+  agree-imp {(n , T₀) ∷ rest} (TR.i-def d e is) {x} lk | no _ = agree-imp is lk
 
   agree-def : ∀ {ps} (ts : TeleSig S ps) {x sc body prefix U}
                 (lp : lookupPolyPrefix (C.buildPolyCtx ps) x ≡ just (sc , body , prefix)) (ki : KindedInstance sc U)
@@ -109,57 +95,22 @@ module _ (δ : GM.DefSem) where
   ...   | refl = refl
   agree-def {C.mkPolyFunInfo n ty b ∷ ps} (TR.t-def d e ts) {x} lp ki | no _ = agree-def ts lp ki
 
-  -- Every definition of the scope has an identifier for a name.
-  DefsValid : ∀ {imps} → ImpSig S imps → Set
-  DefsValid TR.[]                        = ⊤
-  DefsValid (TR.i-ffi _ _ _ _ is)        = DefsValid is
-  DefsValid (TR.i-def {x = x} _ _ is)    = (validIdentB x ≡ true) × DefsValid is
-
-  IsFFI : ∀ {x U} → ImportAt x U → Set
-  IsFFI (ffi _ _ _) = ⊤
-  IsFFI (def _ _)   = ⊥
-
-  lookup-ffi : ∀ {imps} (is : ImpSig S imps) → DefsValid is → ∀ {q U} → validIdentB q ≡ false
-             → (lk : lookupImport imps q ≡ just U) → IsFFI (sigAt {S = S} is lk)
-  lookup-ffi TR.[] _ _ ()
-  lookup-ffi {(n , T₀) ∷ rest} (TR.i-ffi c h g m is) dv {q} nv lk with StrProp._≟_ n q
-  ... | yes refl with lk
-  ...   | refl = tt
-  lookup-ffi {(n , T₀) ∷ rest} (TR.i-ffi c h g m is) dv {q} nv lk | no _ = lookup-ffi is dv nv lk
-  lookup-ffi {(n , T₀) ∷ rest} (TR.i-def d e is) (v , dv) {q} nv lk with StrProp._≟_ n q
-  ... | yes refl with trans (sym v) nv
-  ...   | ()
-  lookup-ffi {(n , T₀) ∷ rest} (TR.i-def d e is) (v , dv) {q} nv lk | no _ = lookup-ffi is dv nv lk
-
-  -- An FFI entry's declaration.
-  ffi-mem : ∀ {x U} (i : ImportAt x U) → IsFFI i → (x , U) ∈ sigOf S
-  ffi-mem (ffi _ _ m) _ = m
-
   -- Plan 0.105 (D257 amendment 2): the scope's environment runs in the core's
-  -- world — its signatures with its implementation — and a qualified or
-  -- resolved key, which no definition can have, finds an FFI entry, whose
-  -- declaration it reads.
-  envOf : ∀ {imps ps} (is : ImpSig S imps) → TeleSig S ps → DefsValid is → Meanings (C.buildPolyCtx ps) imps
-  envOf is ts dv = meanings (defEnv ts) (impEnv is) (interp (sigOf S) (GM.impl δ))
-    (λ {name} {alias} lk → ffi-mem (sigAt {S = S} is lk) (lookup-ffi is dv (dot-invalid alias name) lk))
-    (λ {cn} no lk → ffi-mem (sigAt {S = S} is lk) (lookup-ffi is dv (notOwn-invalid cn no) lk))
+  -- world — its signatures with its implementation. D274: a reference to Σ
+  -- reads the declaration the scope's signature correspondence records.
+  envOf : ∀ {sg imps ps} → SigSig (sigOf S) sg → ImpSig S imps → TeleSig S ps → Meanings (C.buildPolyCtx ps) imps sg
+  envOf ss is ts = meanings (defEnv ts) (impEnv is) (interp (sigOf S) (GM.impl δ))
+    (λ lk → Declared.member (sigView {S = S} ss lk))
+    (λ lk → Declared.member (sigView {S = S} ss lk))
 
   -- THE AGREEMENT, by construction.
-  private
-    ffi-sem : ∀ {U} (c : CanonicalName) (k : IsConcrete U) (i : ImportAt (showCanonical c) U) (fi : IsFFI i)
-            → impSem δ c k i ≡ sigOpRefᵛ fmt (sigOf S) (GM.impl δ) c k (ffi-mem i fi)
-    ffi-sem c k (ffi _ _ m) _ = refl
-
-  -- THE AGREEMENT, by construction.
-  agree : ∀ {imps ps} (is : ImpSig S imps) (ts : TeleSig S ps) (dv : DefsValid is)
-        → Agree (viewOf {S = S} is ts) (envOf is ts dv) δ
-  agree is ts dv = record
+  agree : ∀ {sg imps ps} (ss : SigSig (sigOf S) sg) (is : ImpSig S imps) (ts : TeleSig S ps)
+        → Agree (viewOf {S = S} ss is ts) (envOf ss is ts) δ
+  agree ss is ts = record
     { agree-inst      = λ lp ng ki → agree-def ts lp ki
     ; agree-ground    = λ {x} {sc} lp g → agree-def ts lp (ground-kinded sc g)
-    ; agree-import    = λ lk k → agree-imp is lk k
-    ; agree-qualified = λ {name} {alias} lk k →
-        ffi-sem _ k (sigAt {S = S} is lk) (lookup-ffi is dv (dot-invalid alias name) lk)
-    ; agree-resolved  = λ {cn} no lk k →
-        ffi-sem cn k (sigAt {S = S} is lk) (lookup-ffi is dv (notOwn-invalid cn no) lk)
+    ; agree-import    = λ lk → agree-imp is lk
+    ; agree-qualified = λ lk k → refl
+    ; agree-resolved  = λ lk k → refl
     ; agree-world     = refl
     }

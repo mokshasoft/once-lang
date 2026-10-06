@@ -89,7 +89,7 @@ open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_;
   t-case-copair-check; t-pair-morph-check;
   t-curry-check; t-cata-check; t-ana-check;
   t-int; t-float; t-unit; t-unit-var; t-var-local; t-var-qualified;
-  t-var-resolved; t-var-import; t-annot; t-pair; t-neg; t-neg-float; t-binop-arith-float; t-binop-arith-float-il; t-binop-arith-float-ir; t-let; t-case;
+  t-var-resolved; t-var-own; t-var-import; t-annot; t-pair; t-neg; t-neg-float; t-binop-arith-float; t-binop-arith-float-il; t-binop-arith-float-ir; t-let; t-case;
   t-binop-arith; t-binop-cmp; t-id-app; t-fst-app; t-snd-app;
   t-terminal-app; t-apply-app-infer; t-apply-eff-app-infer; t-Out-app-infer; t-Out-eff-app-infer; t-app; t-effApp;
   t-sub; t-lam; t-pair-lit-check;
@@ -698,12 +698,11 @@ bridge-i {ctx = ctx} (t-var-local {eV = svar i} _) re er =
 -- Named value references — the sigop-reference leaf (dispatch on result type).
 bridge-i {ctx = ctx} (t-var-qualified {name = name} {alias = alias} {T = A} lk conc) {ρ = ρ} {dγ₂ = dγ₂} re er =
   sigop-ref-bridge {Γ = NamedCtx.debruijn ctx} {A = A} (world ρ) _ conc (decl-qual ρ {name = name} {alias = alias} lk) dγ₂ (proj₂ (proj₂ er))
--- D248: an own-module resolved reference is a call of the entry, as a bare one.
-bridge-i {ctx = ctx} (t-var-resolved {cn = own x} _ lk _) re er = imprel-at (NamedCtx.imports ctx) x (proj₁ (proj₂ er)) lk
-bridge-i {ctx = ctx} (t-var-resolved {cn = canonical L.[]} {T = A} _ lk conc) {ρ = ρ} {dγ₂ = dγ₂} re er =
-  sigop-ref-bridge {Γ = NamedCtx.debruijn ctx} {A = A} (world ρ) _ conc (decl-res ρ {cn = canonical L.[]} tt lk) dγ₂ (proj₂ (proj₂ er))
-bridge-i {ctx = ctx} (t-var-resolved {cn = canonical (a L.∷ b L.∷ rest)} {T = A} _ lk conc) {ρ = ρ} {dγ₂ = dγ₂} re er =
-  sigop-ref-bridge {Γ = NamedCtx.debruijn ctx} {A = A} (world ρ) _ conc (decl-res ρ {cn = canonical (a L.∷ b L.∷ rest)} tt lk) dγ₂ (proj₂ (proj₂ er))
+-- D274: a resolved reference names a generator of Σ — the sigop-reference leaf.
+bridge-i {ctx = ctx} (t-var-resolved {cn = cn} {T = A} _ lk conc) {ρ = ρ} {dγ₂ = dγ₂} re er =
+  sigop-ref-bridge {Γ = NamedCtx.debruijn ctx} {A = A} (world ρ) _ conc (decl-res ρ {cn = cn} lk) dγ₂ (proj₂ (proj₂ er))
+-- D248: an own-module DEFINITION's reference is a call of it, as a bare one.
+bridge-i {ctx = ctx} (t-var-own {x = x} _ lk _) re er = imprel-at (NamedCtx.imports ctx) x (proj₁ (proj₂ er)) lk
 -- D246: a module entry's reference is a CALL of it on the SD side and the
 -- entry's meaning on the Spec side — related by the import half of the
 -- environment relation.

@@ -23,10 +23,11 @@ open import Once.TypeCheck.Classify using (Imports; PolyCtx)
 
 open import Once.Spec.Contract using (ISig)
 module Once.Adequacy.ElabCommute {Fs : ISig} {s : ℕ} (S : Sig Fs s) {m : ℕ} (Δ : KCtx m) (τ : GSub m) (r : Respects Δ τ)
-  (sg : Abs.SigGround S) {imps : Imports} {polys : PolyCtx} (V : El.View S imps polys)
-  (nat : VN.Natural S Δ τ r V) (ir : RSm.ImportsRF Δ τ r imps) where
+  (sg : Abs.SigGround S) {imps sigs : Imports} {polys : PolyCtx} (V : El.View S imps sigs polys)
+  (nat : VN.Natural S Δ τ r V) (ir : RSm.TopRF Δ τ r imps sigs) where
 
 import Once.CanonicalName
+import Data.String
 
 open import Data.Nat using (suc)
 open import Data.Fin using (Fin; zero; suc)
@@ -50,7 +51,7 @@ open GT using (_⊢[_]_∷_!_)
 open import Once.Spec.Core.PolyTy using (_!!_; arity; kinds; type; _⟪_⟫)
 import Once.Spec.Core.Rename S as RN
 import Once.Spec.Core.DerivedTyping S as DT
-open El S using (View; elabᶜ; elabᵢ; elabᵈ; ImportAt; ffi; def; importE; refE; InstanceOf)
+open El S using (View; elabᶜ; elabᵢ; elabᵈ; ImportAt; Declared; def; importE; sigE; refE; InstanceOf)
 open RSm Δ τ r using (ρ̂; ρ̂S; ρ̂N; ρ̂-<:; ρ̂-wf; ρ̂-⟦⟧; ρ̂-rf; ρ̂-ki; lookup-ρ̂; lk-just;
   subst-c′; subst-i′; subst-d′; _⇝ᵢ_; _⇝ᶜ_)
 import Once.Adequacy.CoreInst S Δ τ r as CI
@@ -65,13 +66,13 @@ open View V
 ------------------------------------------------------------------------
 
 private
-  ⇝ᵢ-tm : ∀ {n Γ D fr e A B Ψ} (q : A ≡ B) (d : mkCtx n Γ D fr imps polys ⊢ᵢ e ∶ A ⨾ Ψ) → proj₁ (elabᵢ V (q ⇝ᵢ d)) ≡ proj₁ (elabᵢ V d)
+  ⇝ᵢ-tm : ∀ {n Γ D fr e A B Ψ} (q : A ≡ B) (d : mkCtx n Γ D fr imps polys sigs ⊢ᵢ e ∶ A ⨾ Ψ) → proj₁ (elabᵢ V (q ⇝ᵢ d)) ≡ proj₁ (elabᵢ V d)
   ⇝ᵢ-tm refl d = refl
-  ⇝ᵢ-dr : ∀ {n Γ D fr e A B Ψ} (q : A ≡ B) (d : mkCtx n Γ D fr imps polys ⊢ᵢ e ∶ A ⨾ Ψ) → proj₂ (elabᵢ V (q ⇝ᵢ d)) ≅ proj₂ (elabᵢ V d)
+  ⇝ᵢ-dr : ∀ {n Γ D fr e A B Ψ} (q : A ≡ B) (d : mkCtx n Γ D fr imps polys sigs ⊢ᵢ e ∶ A ⨾ Ψ) → proj₂ (elabᵢ V (q ⇝ᵢ d)) ≅ proj₂ (elabᵢ V d)
   ⇝ᵢ-dr refl d = H.refl
-  ⇝ᶜ-tm : ∀ {n Γ D fr e A B Ψ} (q : A ≡ B) (d : mkCtx n Γ D fr imps polys ⊢ᶜ e ∶ A ⨾ Ψ) → proj₁ (elabᶜ V (q ⇝ᶜ d)) ≡ proj₁ (elabᶜ V d)
+  ⇝ᶜ-tm : ∀ {n Γ D fr e A B Ψ} (q : A ≡ B) (d : mkCtx n Γ D fr imps polys sigs ⊢ᶜ e ∶ A ⨾ Ψ) → proj₁ (elabᶜ V (q ⇝ᶜ d)) ≡ proj₁ (elabᶜ V d)
   ⇝ᶜ-tm refl d = refl
-  ⇝ᶜ-dr : ∀ {n Γ D fr e A B Ψ} (q : A ≡ B) (d : mkCtx n Γ D fr imps polys ⊢ᶜ e ∶ A ⨾ Ψ) → proj₂ (elabᶜ V (q ⇝ᶜ d)) ≅ proj₂ (elabᶜ V d)
+  ⇝ᶜ-dr : ∀ {n Γ D fr e A B Ψ} (q : A ≡ B) (d : mkCtx n Γ D fr imps polys sigs ⊢ᶜ e ∶ A ⨾ Ψ) → proj₂ (elabᶜ V (q ⇝ᶜ d)) ≅ proj₂ (elabᶜ V d)
   ⇝ᶜ-dr refl d = H.refl
 
   ≅ref : ∀ {n} {Γ : C.Ctx n} {d} {τ₁ τ₂ : GSub (arity (S !! d))} {r₁ r₂} → τ₁ ≡ τ₂
@@ -92,17 +93,23 @@ private
     H.trans (rmA (λ X → X) e₁)
       (H.trans (≅ref h) (H.sym (H.trans (ρ̂ᶜ-sA (λ X → X) e₀) (rmA (λ X → X) (sym (ρ̂-ref d τ₀))))))
 
-  -- An import's reference: an FFI contract is ground; a definition at its
-  -- ground instance is fixed.
-  imp-tm : ∀ {n} {Γ : C.Ctx n} {T} (cn : Once.CanonicalName.CanonicalName) k (ia : ImportAt (Once.CanonicalName.showCanonical cn) T) → VN.NatImp S Δ τ r ia
-         → proj₁ (importE {Γ = ρ̂S Γ} cn k ia) ≡ ρ̂ₜ (proj₁ (importE {Γ = Γ} cn k ia))
-  imp-tm cn k (ffi h g m) _  = refl
-  imp-tm cn k (def d i) ni = cong (G.ref d) (sym ni)
+  -- A generator's reference: its contract is ground (D274).
+  sig-tm : ∀ {n} {Γ : C.Ctx n} {T} (cn : Once.CanonicalName.CanonicalName) k (dc : Declared (Once.CanonicalName.showCanonical cn) T)
+         → proj₁ (sigE {Γ = ρ̂S Γ} cn k dc) ≡ ρ̂ₜ (proj₁ (sigE {Γ = Γ} cn k dc))
+  sig-tm cn k dc = refl
 
-  imp-dr : ∀ {n} {Γ : C.Ctx n} {T} (cn : Once.CanonicalName.CanonicalName) k (ia : ImportAt (Once.CanonicalName.showCanonical cn) T) → VN.NatImp S Δ τ r ia
-         → proj₂ (importE {Γ = ρ̂S Γ} cn k ia) ≅ ρ̂ᶜ (proj₂ (importE {Γ = Γ} cn k ia))
-  imp-dr cn k (ffi h g m) _  = H.sym (rmA (λ X → X) (sym (ρ̂-rf g)))
-  imp-dr {Γ = Γ} cn k (def d (τ′ , r′ , e′)) ni =
+  sig-dr : ∀ {n} {Γ : C.Ctx n} {T} (cn : Once.CanonicalName.CanonicalName) k (dc : Declared (Once.CanonicalName.showCanonical cn) T)
+         → proj₂ (sigE {Γ = ρ̂S Γ} cn k dc) ≅ ρ̂ᶜ (proj₂ (sigE {Γ = Γ} cn k dc))
+  sig-dr cn k dc = H.sym (rmA (λ X → X) (sym (ρ̂-rf (Declared.rigid dc))))
+
+  -- A definition's reference, at its ground instance, is fixed.
+  imp-tm : ∀ {n} {Γ : C.Ctx n} {x T} (ia : ImportAt x T) → VN.NatImp S Δ τ r ia
+         → proj₁ (importE {Γ = ρ̂S Γ} ia) ≡ ρ̂ₜ (proj₁ (importE {Γ = Γ} ia))
+  imp-tm (def d i) ni = cong (G.ref d) (sym ni)
+
+  imp-dr : ∀ {n} {Γ : C.Ctx n} {x T} (ia : ImportAt x T) → VN.NatImp S Δ τ r ia
+         → proj₂ (importE {Γ = ρ̂S Γ} ia) ≅ ρ̂ᶜ (proj₂ (importE {Γ = Γ} ia))
+  imp-dr {Γ = Γ} (def d (τ′ , r′ , e′)) ni =
     H.trans (rmA (λ X → X) e′)
       (H.trans (≅ref (sym ni)) (H.sym (H.trans (ρ̂ᶜ-sA (λ X → X) e′) (rmA (λ X → X) (sym (ρ̂-ref d τ′))))))
 
@@ -134,16 +141,17 @@ private
 ------------------------------------------------------------------------
 
 mutual
-  tm-i : ∀ {n Γ D fr e A Ψ} (d : mkCtx n Γ D fr imps polys ⊢ᵢ e ∶ A ⨾ Ψ)
+  tm-i : ∀ {n Γ D fr e A Ψ} (d : mkCtx n Γ D fr imps polys sigs ⊢ᵢ e ∶ A ⨾ Ψ)
        → proj₁ (elabᵢ V (subst-i′ ir d)) ≡ ρ̂ₜ (proj₁ (elabᵢ V d))
   tm-i (t-int k)          = refl
   tm-i (t-float i f l p)  = refl
   tm-i t-unit             = refl
   tm-i t-unit-var         = refl
   tm-i {D = D} (t-var-local {eV = C.svar i} eq) = ⇝ᵢ-tm (lookup-ρ̂ D i) _
-  tm-i (t-var-qualified li c) = trans (⇝ᵢ-tm (sym (ρ̂-rf (ir li))) _) (imp-tm _ c (imported li) (nat-imp li))
-  tm-i (t-var-resolved ng li c) = trans (⇝ᵢ-tm (sym (ρ̂-rf (ir li))) _) (imp-tm _ c (imported li) (nat-imp li))
-  tm-i (t-var-import gw ln li c) = trans (⇝ᵢ-tm (sym (ρ̂-rf (ir li))) _) (imp-tm _ c (imported li) (nat-imp li))
+  tm-i {D = D} (t-var-qualified {name = nm} {alias = al} li c) = trans (⇝ᵢ-tm (sym (ρ̂-rf (proj₂ ir li))) _) (sig-tm {Γ = D} (Once.CanonicalName.bare (al Data.String.++ "." Data.String.++ nm)) c (declares li))
+  tm-i {D = D} (t-var-resolved {cn = cn} ng li c) = trans (⇝ᵢ-tm (sym (ρ̂-rf (proj₂ ir li))) _) (sig-tm {Γ = D} cn c (declares li))
+  tm-i {D = D} (t-var-own {x = x} ns li c) = trans (⇝ᵢ-tm (sym (ρ̂-rf (proj₁ ir li))) _) (imp-tm {Γ = D} {x = x} (imported li) (nat-imp li))
+  tm-i {D = D} (t-var-import {x = x} gw ln li c) = trans (⇝ᵢ-tm (sym (ρ̂-rf (proj₁ ir li))) _) (imp-tm {Γ = D} {x = x} (imported li) (nat-imp li))
   tm-i (t-var-poly-instantiate-infer {schema = sc} {g = g} ln li lp gr refl) =
     trans (⇝ᵢ-tm (sym (ρ̂-rf (extractGround-rf sc g))) _) (cong (G.ref (entry lp)) (sym (nat-ground lp g)))
   tm-i (t-annot rf d)     = trans (⇝ᵢ-tm (sym (ρ̂-rf rf)) _) (trans (⇝ᶜ-tm (ρ̂-rf rf) _) (tm-c d))
@@ -222,7 +230,7 @@ mutual
                                       (trans (cong G.wk (tm-c dx)) (sym (ρ̂ₜ-ren suc _)))
   tm-i (t-app-spine h da df) = cong₂ G.app (tm-d df) (tm-i da)
 
-  tm-c : ∀ {n Γ D fr e A Ψ} (d : mkCtx n Γ D fr imps polys ⊢ᶜ e ∶ A ⨾ Ψ)
+  tm-c : ∀ {n Γ D fr e A Ψ} (d : mkCtx n Γ D fr imps polys sigs ⊢ᶜ e ∶ A ⨾ Ψ)
        → proj₁ (elabᶜ V (subst-c′ ir d)) ≡ ρ̂ₜ (proj₁ (elabᶜ V d))
   tm-c t-id-check             = refl
   tm-c t-fst-check            = refl
@@ -254,7 +262,7 @@ mutual
   tm-c (t-var-poly-instantiate {schema = sc} ln li lp ng ki) =
     cong (G.ref (entry lp)) (nat-inst lp ng ki)
 
-  tm-d : ∀ {n Γ D fr e A π B Ψ} (d : mkCtx n Γ D fr imps polys ⊢ᵈ e ∶ A ⇒[ π ]↦ B ⨾ Ψ)
+  tm-d : ∀ {n Γ D fr e A π B Ψ} (d : mkCtx n Γ D fr imps polys sigs ⊢ᵈ e ∶ A ⇒[ π ]↦ B ⨾ Ψ)
        → proj₁ (elabᵈ V (subst-d′ ir d)) ≡ ρ̂ₜ (proj₁ (elabᵈ V d))
   tm-d (d-infer w p g)     = cong (G.coerce _ _) (tm-i w)
   tm-d (d-poly {schema = sc} ln li lp ng as cv ki g) =
@@ -271,7 +279,7 @@ mutual
   tm-d (d-cata {F = F} {A = A} {π = π} wf da) =
     cong (λ u → G.let′ u _) (trans (⇝ᵢ-tm (cong (λ X → X T.⇒[ mk-kind Many π ] ρ̂ A) (ρ̂-⟦⟧ F A)) _) (tm-i da))
 
-  dr-i : ∀ {n Γ D fr e A Ψ} (d : mkCtx n Γ D fr imps polys ⊢ᵢ e ∶ A ⨾ Ψ)
+  dr-i : ∀ {n Γ D fr e A Ψ} (d : mkCtx n Γ D fr imps polys sigs ⊢ᵢ e ∶ A ⨾ Ψ)
        → proj₂ (elabᵢ V (subst-i′ ir d)) ≅ ρ̂ᶜ (proj₂ (elabᵢ V d))
   dr-i (t-int k)          = H.refl
   dr-i (t-float i f l p)  = H.refl
@@ -279,9 +287,10 @@ mutual
   dr-i t-unit-var         = H.refl
   dr-i {D = D} (t-var-local {eV = C.svar i} eq) =
     H.trans (⇝ᵢ-dr (lookup-ρ̂ D i) _) (H.sym (rmA (λ X → X) (lookup-ρ̂ D i)))
-  dr-i (t-var-qualified li c) = H.trans (⇝ᵢ-dr (sym (ρ̂-rf (ir li))) _) (imp-dr _ c (imported li) (nat-imp li))
-  dr-i (t-var-resolved ng li c) = H.trans (⇝ᵢ-dr (sym (ρ̂-rf (ir li))) _) (imp-dr _ c (imported li) (nat-imp li))
-  dr-i (t-var-import gw ln li c) = H.trans (⇝ᵢ-dr (sym (ρ̂-rf (ir li))) _) (imp-dr _ c (imported li) (nat-imp li))
+  dr-i {D = D} (t-var-qualified {name = nm} {alias = al} li c) = H.trans (⇝ᵢ-dr (sym (ρ̂-rf (proj₂ ir li))) _) (sig-dr {Γ = D} (Once.CanonicalName.bare (al Data.String.++ "." Data.String.++ nm)) c (declares li))
+  dr-i {D = D} (t-var-resolved {cn = cn} ng li c) = H.trans (⇝ᵢ-dr (sym (ρ̂-rf (proj₂ ir li))) _) (sig-dr {Γ = D} cn c (declares li))
+  dr-i {D = D} (t-var-own {x = x} ns li c) = H.trans (⇝ᵢ-dr (sym (ρ̂-rf (proj₁ ir li))) _) (imp-dr {Γ = D} {x = x} (imported li) (nat-imp li))
+  dr-i {D = D} (t-var-import {x = x} gw ln li c) = H.trans (⇝ᵢ-dr (sym (ρ̂-rf (proj₁ ir li))) _) (imp-dr {Γ = D} {x = x} (imported li) (nat-imp li))
   dr-i (t-var-poly-instantiate-infer {schema = sc} {g = g} ln li lp gr refl) =
     H.trans (⇝ᵢ-dr (sym (ρ̂-rf (extractGround-rf sc g))) _)
             (refE-dr (entry lp) (ground lp g) (ground lp g) (sym (nat-ground lp g)))
@@ -395,7 +404,7 @@ mutual
     H.trans (≅2 _ _ DT.⊢effAppᶜ refl (tm-i df) (dr-i df) refl (tm-c dx) (dr-c dx)) (H.sym (c-effApp (proj₂ (elabᵢ V df)) (proj₂ (elabᶜ V dx))))
   dr-i (t-app-spine h da df) = ≅2 _ _ GT.⊢app refl (tm-d df) (dr-d df) refl (tm-i da) (dr-i da)
 
-  dr-c : ∀ {n Γ D fr e A Ψ} (d : mkCtx n Γ D fr imps polys ⊢ᶜ e ∶ A ⨾ Ψ)
+  dr-c : ∀ {n Γ D fr e A Ψ} (d : mkCtx n Γ D fr imps polys sigs ⊢ᶜ e ∶ A ⨾ Ψ)
        → proj₂ (elabᶜ V (subst-c′ ir d)) ≅ ρ̂ᶜ (proj₂ (elabᶜ V d))
   dr-c t-id-check             = H.refl
   dr-c t-fst-check            = H.refl
@@ -449,7 +458,7 @@ mutual
   dr-c (t-var-poly-instantiate {schema = sc} ln li lp ng ki) =
     refE-dr (entry lp) (inst lp ng (ρ̂-ki {sc} ki)) (inst lp ng ki) (nat-inst lp ng ki)
 
-  dr-d : ∀ {n Γ D fr e A π B Ψ} (d : mkCtx n Γ D fr imps polys ⊢ᵈ e ∶ A ⇒[ π ]↦ B ⨾ Ψ)
+  dr-d : ∀ {n Γ D fr e A π B Ψ} (d : mkCtx n Γ D fr imps polys sigs ⊢ᵈ e ∶ A ⇒[ π ]↦ B ⨾ Ψ)
        → proj₂ (elabᵈ V (subst-d′ ir d)) ≅ ρ̂ᶜ (proj₂ (elabᵈ V d))
   dr-d (d-infer w p g)     = ≅coerce (tm-i w) (dr-i w)
   dr-d (d-poly {schema = sc} ln li lp ng as cv ki g) =
@@ -486,6 +495,6 @@ private
   Σ≅ : ∀ {X : Set} {P : X → Set} {a₁ a₂ : X} {b₁ : P a₁} {b₂ : P a₂} → a₁ ≡ a₂ → b₁ ≅ b₂ → (a₁ , b₁) ≡ (a₂ , b₂)
   Σ≅ refl H.refl = refl
 
-elab-ρ̂ᶜ : ∀ {n Γ D fr e A Ψ} (d : mkCtx n Γ D fr imps polys ⊢ᶜ e ∶ A ⨾ Ψ)
+elab-ρ̂ᶜ : ∀ {n Γ D fr e A Ψ} (d : mkCtx n Γ D fr imps polys sigs ⊢ᶜ e ∶ A ⨾ Ψ)
         → elabᶜ V (subst-c′ ir d) ≡ (ρ̂ₜ (proj₁ (elabᶜ V d)) , ρ̂ᶜ (proj₂ (elabᶜ V d)))
 elab-ρ̂ᶜ d = Σ≅ (tm-c d) (dr-c d)

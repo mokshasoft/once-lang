@@ -14,6 +14,7 @@
 
 module Once.Adequacy.MainIRForm where
 
+open import Once.TypeCheck.Classify using (TopCtx)
 open import Data.Bool using (Bool; false; true)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
@@ -86,7 +87,7 @@ validateMain-EffUU ((ν-type _ _) ⇒[ k ] B)   ()
 -- (2) A successfully-compiled "main" has type EffUU.
 ------------------------------------------------------------------------
 
-compileFun-main-EffUU : ∀ (ctx : C.FunCtx) (polys : PolyCtx) (impsOf : C.String → C.FunCtx)
+compileFun-main-EffUU : ∀ (ctx : TopCtx) (polys : PolyCtx) (impsOf : C.String → TopCtx)
   (ty : Type) (body : RawExpr) (irFun : IR ⌊ Unit ⌋ ⌊ ty ⌋) →
   C.compileFun C.Heap false ctx polys impsOf "main" ty body ≡ inj₂ irFun →
   ty ≡ EffUU
@@ -98,14 +99,13 @@ compileFun-main-EffUU ctx polys impsOf ty body irFun eq with C.validateMain ty i
 -- (3) findMain dispatch helpers: a head whose name ≠ "main" is skipped.
 ------------------------------------------------------------------------
 
-findMain-here-no : ∀ (cf : C.CompiledFun) (b : Bool)
+findMain-here-no : ∀ (cf : C.CompiledFun)
   (mu : Maybe (C.CompiledFun.cfType cf ≡ EffUU)) (cont : Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋))
   (¬p : ¬ (C.CompiledFun.cfName cf ≡ bare "main")) →
-  findMain-here cf b (no ¬p) mu cont ≡ cont
-findMain-here-no cf false mu cont ¬p = refl
-findMain-here-no cf true  mu cont ¬p = refl
+  findMain-here cf (no ¬p) mu cont ≡ cont
+findMain-here-no cf mu cont ¬p = refl
 
-open C.CompiledFun using (cfType; cfName; cfIsPrimitive)
+open C.CompiledFun using (cfType; cfName)
 
 -- `bare` is injective (single-component CanonicalName), so a String name ≠
 -- "main" lifts to its CanonicalName ≠ `bare "main"`.
@@ -117,4 +117,4 @@ findMain-skip : ∀ (cf : C.CompiledFun) (rest : List C.CompiledFun) →
   ¬ (cfName cf ≡ bare "main") → findMain (cf ∷ rest) ≡ findMain rest
 findMain-skip cf rest ¬p with cfName cf ≟cn bare "main"
 ... | yes p  = ⊥-elim (¬p p)
-... | no ¬q  = findMain-here-no cf (cfIsPrimitive cf) (isEffUU? (cfType cf)) (findMain rest) ¬q
+... | no ¬q  = findMain-here-no cf (isEffUU? (cfType cf)) (findMain rest) ¬q

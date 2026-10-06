@@ -49,7 +49,7 @@ open import Once.Type as T using (Type; PolyType; Ground; extractGround; Quantit
 open import Once.TypeCheck.Raw using (RawExpr; RVar)
 open import Once.TypeCheck.Classify
   using (NamedCtx; mkCtx; Imports; PolyCtx; lookupLocal; lookupLocal-go; lookupImport;
-         lookupPoly; lookupPolyPrefix; lookupPolyPrefix⇒lookupPoly; ctxWithImportsAndPolys;
+         lookupPoly; lookupPolyPrefix; lookupPolyPrefix⇒lookupPoly; ctxWithImportsAndPolys; topCtx;
          extendNamedCtx)
 open import Once.TypeCheck.Context using (Ctx)
 open import Once.TypeCheck.Context as Context using () renaming (_,_∷_ to extendCtx)
@@ -64,16 +64,16 @@ open SC.Usage using () renaming (_∷_ to _∷ᵘ_)
 defineNamedCtx : NamedCtx → String → PolyType → RawExpr → NamedCtx
 defineNamedCtx Γ x s e =
   mkCtx (NamedCtx.size Γ) (NamedCtx.named Γ) (NamedCtx.debruijn Γ) (NamedCtx.freshCounter Γ)
-        (NamedCtx.imports Γ) ((x , s , e) List.∷ NamedCtx.polys Γ)
+        (NamedCtx.imports Γ) ((x , s , e) List.∷ NamedCtx.polys Γ) (NamedCtx.sig Γ)
   where import Data.List as List
 
 module Transfer
   (x : String) (A : Type) (e : RawExpr) (s : PolyType) (g : Ground s)
   (eqA : extractGround s g ≡ A)
-  (imps : Imports) (P : PolyCtx)
+  (imps : Imports) (sg : Imports) (P : PolyCtx)
   (noImp : lookupImport imps x ≡ nothing)
   (noPoly : lookupPoly P x ≡ nothing)
-  (eD : ctxWithImportsAndPolys imps P ⊢ᶜ e ∶ A ⨾ zeroUsage)
+  (eD : ctxWithImportsAndPolys (topCtx sg imps) P ⊢ᶜ e ∶ A ⨾ zeroUsage)
   where
 
   open import Data.List using (List; _∷_)
@@ -182,9 +182,9 @@ module Transfer
   ----------------------------------------------------------------------
   -- The transfer.
   Lc : ∀ {n} → Ctx → SC.Ctx n → ℕ → NamedCtx
-  Lc {n} G Δ fr = mkCtx n G Δ fr imps P
+  Lc {n} G Δ fr = mkCtx n G Δ fr imps P sg
   Dc : ∀ {n} → Ctx → SC.Ctx n → ℕ → NamedCtx
-  Dc {n} G Δ fr = mkCtx n G Δ fr imps P′
+  Dc {n} G Δ fr = mkCtx n G Δ fr imps P′ sg
 
   var-tr : ∀ {nL nD GL ΔL GD ΔD fr} (ld : LD {nL} {nD} GL ΔL GD ΔD) (y : String) {T U eV} r₁ r₂
          → LocRel ld y r₁ r₂ → r₁ ≡ just (T , U , eV) → lookupLocal-go y GD ΔD ≡ r₂
@@ -218,6 +218,7 @@ module Transfer
         var-tr ld y (lookupLocal-go y GL ΔL) (lookupLocal-go y GD ΔD) (loc-tr ld y) eq refl
     tr-i ld (t-var-qualified l c) = cᵢ (sym (drop-zero ld)) (t-var-qualified l c)
     tr-i ld (t-var-resolved ng l c) = cᵢ (sym (drop-zero ld)) (t-var-resolved ng l c)
+    tr-i ld (t-var-own ns l c) = cᵢ (sym (drop-zero ld)) (t-var-own ns l c)
     tr-i ld (t-var-import {x = y} ¬gw ln li c) = cᵢ (sym (drop-zero ld)) (t-var-import ¬gw (none-tr (loc-tr ld y) ln) li c)
     tr-i ld (t-var-poly-instantiate-infer {x = y} ln li lp gr eT) =
         cᵢ (sym (drop-zero ld)) (t-var-poly-instantiate-infer (none-tr (loc-tr ld y) ln) li (lpp-tr y lp) gr eT)
@@ -438,6 +439,7 @@ module Transfer
         var-tr⁻ ld y (lookupLocal-go y GL ΔL) (lookupLocal-go y GD ΔD) (loc-tr ld y) eq refl
     tr⁻-i ld (t-var-qualified l c) = rz (t-var-qualified l c)
     tr⁻-i ld (t-var-resolved ng l c) = rz (t-var-resolved ng l c)
+    tr⁻-i ld (t-var-own ns l c) = rz (t-var-own ns l c)
     tr⁻-i ld (t-var-import {x = y} ¬gw ln li c) = import-tr⁻ ld y (y StrProp.≟ x) ¬gw ln li c
     tr⁻-i ld (t-var-poly-instantiate-infer {x = y} ln li lp gr eT) =
         infer-tr⁻ ld y (y StrProp.≟ x) ln li lp gr eT
@@ -519,10 +521,10 @@ module _ {Γ : NamedCtx} {x : String} {A : Type} {e : RawExpr} {s : PolyType} {g
   (noLocal : lookupLocal Γ x ≡ nothing)
   (noImp : lookupImport (NamedCtx.imports Γ) x ≡ nothing)
   (noPoly : lookupPoly (NamedCtx.polys Γ) x ≡ nothing)
-  (eD : ctxWithImportsAndPolys (NamedCtx.imports Γ) (NamedCtx.polys Γ) ⊢ᶜ e ∶ A ⨾ zeroUsage)
+  (eD : ctxWithImportsAndPolys (topCtx (NamedCtx.sig Γ) (NamedCtx.imports Γ)) (NamedCtx.polys Γ) ⊢ᶜ e ∶ A ⨾ zeroUsage)
   where
   private
-    module Tr = Transfer x A e s g eqA (NamedCtx.imports Γ) (NamedCtx.polys Γ) noImp noPoly eD
+    module Tr = Transfer x A e s g eqA (NamedCtx.imports Γ) (NamedCtx.sig Γ) (NamedCtx.polys Γ) noImp noPoly eD
 
   let⇒defᵢ : ∀ {b B q Ψ} → extendNamedCtx Γ x A ⊢ᵢ b ∶ B ⨾ (q ∷ᵘ Ψ)
            → defineNamedCtx Γ x s e ⊢ᵢ b ∶ B ⨾ Ψ

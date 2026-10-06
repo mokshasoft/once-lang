@@ -12,7 +12,7 @@
 --
 --   * every symbol the image and its arith blocks define is defined once;
 --   * every symbol the image references is one of them, or an interpretation
---     symbol the module declares (`moduleExterns`).
+--     symbol the program calls (`externs-of`, D274).
 --
 -- RESIDUAL, class **deferred proof** — replacing `FileWF.file-wf`'s one
 -- statement over the per-arch FILE. A program's references are RESOLVED by
@@ -48,17 +48,20 @@ open import Once.Arith.SigOp.Block using (block-name)
 open import Once.Target.Symbol using (once-symbol-own)
 open import Once.Target.AsmSymbol using (AsmSym)
 open import Once.Compile using (Module; moduleToIR; moduleTable; image-of; program-blocks; rewrite-program;
-                                lib-image; lib-blocks; dedup-blocks)
-open import Once.Adequacy.EmitFile using (moduleExterns)
+                                lib-image; lib-blocks; lib-program; dedup-blocks; block-symbol; block-syms;
+                                calls-of; externs-of; is-extern?)
+open import Once.CCC.Codegen.NodesOK using (leaf-syms; leaf-syms-leaves)
+open import Once.Denotation.Program using (IRFun)
+open import Data.List.Relation.Unary.All using ([]; _∷_; tabulate)
+open import Data.List.Relation.Unary.All.Properties using (++⁻)
+open import Data.List.Relation.Unary.Any using (there)
+open import Data.List.Membership.Propositional.Properties using (∈-++⁺ʳ; ∈-filter⁺)
+open import Data.Product using (proj₂)
+open import Data.Sum using (inj₁; inj₂)
+open import Relation.Nullary using (yes; no)
+open import Data.List.Membership.DecPropositional Data.String._≟_ using () renaming (_∈?_ to _∈ˢ?_)
+import Data.String
 open import Once.CCC.Codegen.ImageSymbols using (heap-symbol; adefs; arefs)
-
--- An arith block's symbol — what every arch's `arith-block-symbol` is.
-block-symbol : ArithBlock → String
-block-symbol b = once-symbol-own (block-name (block-body b))
-
--- The file's block table, by symbol, once each (`Compile.blocks-<arch>`).
-block-syms : List ArithBlock → List String
-block-syms bs = map proj₁ (dedup-blocks (map (λ b → block-symbol b , b) bs))
 
 -- What a program's file defines: the heap, `_start`, the image's labels and
 -- entries, the arith blocks.
@@ -73,9 +76,9 @@ Resolved : List String → List String → List String → Set
 Resolved defs ext refs = All (λ s → s ∈ defs ⊎ s ∈ ext) refs
 
 -- What a program's SigOp may name: a symbol its file defines (its blocks), or an
--- interpretation symbol the module declares.
+-- interpretation symbol it calls (D274).
 ProgG : Module → IR ⌊ Unit ⌋ ⌊ Unit ⌋ → String → Set
-ProgG m ir s = s ∈ prog-defs (irProgram (moduleTable m) ir) ⊎ s ∈ moduleExterns m
+ProgG m ir s = s ∈ prog-defs (irProgram (moduleTable m) ir) ⊎ s ∈ externs-of (irProgram (moduleTable m) ir)
 
 ProgP : Module → IR ⌊ Unit ⌋ ⌊ Unit ⌋ → ∀ {A B} → SigOpInfo A B → Set
 ProgP m ir si = All (ProgG m ir) (sigop-syms si (cmp-of (sem si)))
@@ -83,22 +86,9 @@ ProgP m ir si = All (ProgG m ir) (sigop-syms si (cmp-of (sem si)))
 postulate
   prog-unique   : ∀ (m : Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) → moduleToIR m ≡ just ir
                 → Unique (prog-defs (irProgram (moduleTable m) ir))
-  -- every SigOp the rewritten program calls names one of its blocks (the
-  -- rewrite registered it — D264) or a declared interpretation symbol.
-  --
-  -- KNOWN FALSE (found 2026-10-05, plan 0.107 §7): an FFI reference keeps its
-  -- RESOLVED name — `main` calls `once_15Interpretations_5Linux_8Syscalls_4exit`,
-  -- the symbol the interpretation object defines — while `externsOf` (and the
-  -- primitive's own table entry) use `bare (funName fi)`, i.e.
-  -- `once_38InterpretationszdLinuxzdSyscallszdexit`. The block half holds (D264);
-  -- the extern half needs ONE name per FFI declaration (the open FFI-identity
-  -- decision: the import table keyed by `CanonicalName`).
-  prog-sigops   : ∀ (m : Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) → moduleToIR m ≡ just ir
-                → SigLeaves (ProgP m ir) (main (rewrite-program (irProgram (moduleTable m) ir)))
-                × All (λ e → SigLeaves (ProgP m ir) (fbody e)) (table (rewrite-program (irProgram (moduleTable m) ir)))
   lib-unique    : ∀ (m : Module) → moduleToIR m ≡ nothing → Unique (lib-defs m)
   lib-resolved  : ∀ (m : Module) → moduleToIR m ≡ nothing
-                → Resolved (lib-defs m) (moduleExterns m) (arefs (lib-image (moduleTable m)))
+                → Resolved (lib-defs m) (externs-of (lib-program (moduleTable m))) (arefs (lib-image (moduleTable m)))
   -- D272 / plan 0.107 §8 step 1: every symbol the file defines or declares
   -- external is an `as` symbol name. TRUE by construction: the symbols are
   -- `once-symbol-path` of lexer identifiers (z-encoded, so letters, digits, `_`)
@@ -108,4 +98,41 @@ postulate
   prog-defs-valid : ∀ (m : Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) → moduleToIR m ≡ just ir
                   → All AsmSym (prog-defs (irProgram (moduleTable m) ir))
   lib-defs-valid  : ∀ (m : Module) → moduleToIR m ≡ nothing → All AsmSym (lib-defs m)
-  externs-valid   : ∀ (m : Module) → All AsmSym (moduleExterns m)
+  prog-externs-valid : ∀ (m : Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) → moduleToIR m ≡ just ir
+                     → All AsmSym (externs-of (irProgram (moduleTable m) ir))
+  lib-externs-valid  : ∀ (m : Module) → moduleToIR m ≡ nothing
+                     → All AsmSym (externs-of (lib-program (moduleTable m)))
+
+------------------------------------------------------------------------
+-- D274 / plan 0.107 §9 2D: every SigOp the rewritten program calls names one of
+-- its blocks (the rewrite registered it — D264) or an interpretation symbol it
+-- declares external — BY CONSTRUCTION: the externs ARE the called symbols that
+-- are not blocks. (Was a postulate, KNOWN FALSE while an FFI declaration had two
+-- names, plan 0.107 §7.)
+------------------------------------------------------------------------
+
+private
+  calls-ok : ∀ (m : Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋)
+           → All (ProgG m ir) (calls-of (rewrite-program (irProgram (moduleTable m) ir)))
+  calls-ok m ir = tabulate (λ {s} s∈ → split s s∈ (s ∈ˢ? block-syms (program-blocks p)))
+    where
+      p = irProgram (moduleTable m) ir
+      split : ∀ s → s ∈ calls-of (rewrite-program p) → _ → ProgG m ir s
+      split s s∈ (yes b) = inj₁ (there (there (∈-++⁺ʳ (adefs (image-of p)) b)))
+      split s s∈ (no nb) = inj₂ (∈-filter⁺ (is-extern? p) s∈ nb)
+
+  table-ok : ∀ {G : String → Set} (es : List IRFun)
+           → All G (Data.List.concatMap (λ e → leaf-syms (fbody e)) es)
+           → All (λ e → SigLeaves (λ si → All G (sigop-syms si (cmp-of (sem si)))) (fbody e)) es
+  table-ok []       a = []
+  table-ok (e ∷ es) a = leaf-syms-leaves (fbody e) (proj₁ (++⁻ (leaf-syms (fbody e)) a))
+                      ∷ table-ok es (proj₂ (++⁻ (leaf-syms (fbody e)) a))
+
+prog-sigops : ∀ (m : Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) → moduleToIR m ≡ just ir
+            → SigLeaves (ProgP m ir) (main (rewrite-program (irProgram (moduleTable m) ir)))
+            × All (λ e → SigLeaves (ProgP m ir) (fbody e)) (table (rewrite-program (irProgram (moduleTable m) ir)))
+prog-sigops m ir _ =
+  leaf-syms-leaves (main rp) (proj₁ (++⁻ (leaf-syms (main rp)) (calls-ok m ir)))
+  , table-ok (table rp) (proj₂ (++⁻ (leaf-syms (main rp)) (calls-ok m ir)))
+  where rp = rewrite-program (irProgram (moduleTable m) ir)
+

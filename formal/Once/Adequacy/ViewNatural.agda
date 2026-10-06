@@ -23,15 +23,14 @@ open import Once.Type.Rigid using (KindedInstance)
 open import Once.Spec.Core.PolyTy using (KCtx; GSub; Respects)
 open import Once.TypeCheck.Classify using (Imports; PolyCtx; lookupPolyPrefix)
 import Once.TypeCheck.RigidSubst as RS
-open import Once.Spec.Elaboration S using (View; ImportAt; ffi; def)
+open import Once.Spec.Elaboration S using (View; ImportAt; def)
 
 module _ {m} (Δ : KCtx m) (τ : GSub m) (r : Respects Δ τ) where
   -- An imported definition is used at a ground instance, so it is fixed.
   NatImp : ∀ {x T} → ImportAt x T → Set
-  NatImp (ffi _ _ _) = ⊤
   NatImp (def d i) = (λ j → RS.ρ̂ Δ τ r (proj₁ i j)) ≡ proj₁ i
 
-  record Natural {imps : Imports} {polys : PolyCtx} (V : View imps polys) : Set where
+  record Natural {imps sigs : Imports} {polys : PolyCtx} (V : View imps sigs polys) : Set where
     field
       nat-inst : ∀ {x sc body prefix T} (lp : lookupPolyPrefix polys x ≡ Data.Maybe.just (sc , body , prefix))
                    (ng : ¬ Ground sc) (ki : KindedInstance sc T)

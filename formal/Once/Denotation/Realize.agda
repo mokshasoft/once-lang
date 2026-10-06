@@ -46,7 +46,7 @@ open import Once.TypeCheck.Judgment
          t-terminal-morph-check; t-initial-morph-check; t-inl-morph-check;
          t-inr-morph-check; t-compose-check-g; t-compose-check-f; d-infer; d-lam; d-compose; d-id; d-fst; d-snd; d-terminal; d-initial; d-case; d-pair; d-cata; t-case-copair-check;
          t-pair-morph-check; t-curry-check; t-cata-check; t-ana-check; t-int; t-float;
-         t-unit; t-unit-var; t-var-local; t-var-qualified; t-var-resolved;
+         t-unit; t-unit-var; t-var-local; t-var-qualified; t-var-resolved; t-var-own;
          t-var-import; t-annot; t-pair; t-neg; t-neg-float; t-let; t-case;
          t-binop-arith; t-binop-arith-float; t-binop-arith-float-il;
          t-binop-arith-float-ir; t-binop-cmp; t-id-app; t-fst-app; t-snd-app;
@@ -150,11 +150,10 @@ realize-infer (t-var-qualified {name = name} {alias = alias} _ conc) = sigOp (ba
 -- Plan 0.50: a resolved ref carries its canonical identity directly — the
 -- reference elaboration reads it with NO String render, so it agrees with
 -- the elaborator's `SigOpInfo.name` by construction.
--- D248: a reference to the OWN module's entry is a call of it (D246); only a
--- reference into another module (an inlined FFI signature) is a SigOp.
-realize-infer (t-var-resolved {cn = own x} _ _ conc) = closure x
-{-# CATCHALL #-}
+-- D274: a reference to a generator of Σ (an FFI declaration, own or not) is
+-- the SigOp; a reference to an own DEFINITION is a call of it (D246/D248).
 realize-infer (t-var-resolved {cn = cn} _ _ conc) = sigOp cn conc
+realize-infer (t-var-own {x = x} _ _ conc) = closure x
 -- D246: a module entry's reference is a call of the entry.
 realize-infer (t-var-import {x = x} _ _ _ conc) = closure x
 -- Plan 0.103 phase 1c: a ground telescope reference is a VARIABLE of the

@@ -191,30 +191,40 @@ record NamedCtx : Set where
     named       : Ctx
     debruijn    : SCtx size
     freshCounter : ℕ  -- For generating fresh type variables (α₀, α₁, α₂, ...)
-    imports     : Imports  -- Imported primitives (qualified names → types)
+    imports     : Imports  -- The module's monomorphic DEFINITIONS in scope (name → type)
     polys       : PolyCtx  -- User polymorphic definitions (plan 0.6.2)
+    sig         : Imports  -- D274: the program's SIGNATURE Σ in scope — its FFI
+                           -- declarations (generators), keyed by rendered path
 
 -- | Empty context
 emptyCtx : NamedCtx
-emptyCtx = mkCtx 0 ∅ S∅ 0 emptyImports emptyPolyCtx
+emptyCtx = mkCtx 0 ∅ S∅ 0 emptyImports emptyPolyCtx emptyImports
 
--- | Create context with imports
-ctxWithImports : Imports → NamedCtx
-ctxWithImports imps = mkCtx 0 ∅ S∅ 0 imps emptyPolyCtx
+-- | D274: what is in scope at the top level, outside the telescope: the
+-- program's signature Σ (its FFI declarations, generators) and its monomorphic
+-- definitions — kept apart, as `NamedCtx` keeps them.
+record TopCtx : Set where
+  constructor topCtx
+  field
+    tsig  : Imports
+    tdefs : Imports
 
--- | Create context with imports and polymorphic defs. Plan 0.6.2.
-ctxWithImportsAndPolys : Imports → PolyCtx → NamedCtx
-ctxWithImportsAndPolys imps polys = mkCtx 0 ∅ S∅ 0 imps polys
+emptyTopCtx : TopCtx
+emptyTopCtx = topCtx emptyImports emptyImports
+
+-- | Create a top-level context with polymorphic defs. Plan 0.6.2.
+ctxWithImportsAndPolys : TopCtx → PolyCtx → NamedCtx
+ctxWithImportsAndPolys tc polys = mkCtx 0 ∅ S∅ 0 (TopCtx.tdefs tc) polys (TopCtx.tsig tc)
 
 
 -- | Extend context with a new binding (preserves fresh counter, imports, polys)
 extendNamedCtx : NamedCtx → String → Type → NamedCtx
-extendNamedCtx (mkCtx n Γ Δ fresh imps polys) x A =
-  mkCtx (suc n) (extendCtx Γ x A) (Δ S, A) fresh imps polys
+extendNamedCtx (mkCtx n Γ Δ fresh imps polys sg) x A =
+  mkCtx (suc n) (extendCtx Γ x A) (Δ S, A) fresh imps polys sg
 
 -- | Bump fresh counter (for generating new type variables)
 bumpFresh : NamedCtx → NamedCtx
-bumpFresh (mkCtx n Γ Δ fresh imps polys) = mkCtx n Γ Δ (suc fresh) imps polys
+bumpFresh (mkCtx n Γ Δ fresh imps polys sg) = mkCtx n Γ Δ (suc fresh) imps polys sg
 
 -- | Generate fresh type variable name
 freshTVar : ℕ → String
@@ -281,7 +291,7 @@ inspectLookupImport ctx x with lookupImport (NamedCtx.imports ctx) x in eq
 
 -- | Find a local variable's de Bruijn position and declared quantity.
 findLocalVarUsage : (ctx : NamedCtx) → String → Maybe (Fin (NamedCtx.size ctx) × Quantity)
-findLocalVarUsage (mkCtx n Γ Δ _ _ _) x = go Γ Δ
+findLocalVarUsage (mkCtx n Γ Δ _ _ _ _) x = go Γ Δ
   where
     go : ∀ {m} → Ctx → SCtx m → Maybe (Fin m × Quantity)
     go [] S∅ = nothing

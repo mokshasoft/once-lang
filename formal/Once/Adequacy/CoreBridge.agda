@@ -64,8 +64,6 @@ open import Once.Denotation.TraceMonad using (projTrace)
 open import Data.Maybe using (just)
 import Once.Adequacy.TeleWalk as TW
 import Once.Adequacy.TeleWalk.Invariant as TWI
-import Once.Adequacy.EntriesValid as EV
-open EV using (valid-mod)
 import Once.Adequacy.TelePosition as TP
 import Once.Spec.Core.Translate as TR
 open import Once.Denotation.Program using (tableEnv; IRFun)
@@ -125,18 +123,18 @@ private
   runIRAt ι′ tbl n = projTrace ι′ (evalᴰ fmt (tableEnv fmt (pureHalf ι′) tbl) mainCall tt) n
 
   core-ef : ∀ (m : P.Module) (ef : String ⊎ List C.Entry) (mt : ModuleTyped-ef m ef) (hvm : HasValidMain-ef m ef mt)
-              {es} → ef ≡ inj₂ es → AllPairs _≢_ (map TP.entryName es) → All EV.MonoValid es
+              {es} → ef ≡ inj₂ es → AllPairs _≢_ (map TP.entryName es)
             → (b : FB.FunBundle C.emptyCScope es) (I : Impl (moduleSig-ef ef)) (n : ℕ)
             → runIRAt (interp (moduleSig-ef ef) I) (tableOf-go (FB.bundle→compiled b) []) n
               ≡ runProgram fmt (typedProgram-ef m ef mt hvm) (subst Impl (sym (typed-sig-ef m ef mt)) I) n
-  core-ef m .(inj₂ _) mt (_ , mi) refl dist vd b I n =
+  core-ef m .(inj₂ _) mt (_ , mi) refl dist b I n =
     trans (cong (λ ι′ → runIRAt ι′ (tableOf-go (FB.bundle→compiled b) []) n) (sym (interp-subst (teleSig≡entrySig mt) I)))
-          (TWm.walk mt b mi Tele.[] TR.[] TR.[] (λ ()) [] inv₀ (λ k → k) (dist , TP.none-in-empty _) vd n)
+          (TWm.walk mt b mi Tele.[] TR.[] TR.[] TR.[] (λ ()) [] inv₀ (λ k → k) (dist , TP.none-in-empty _) n)
     where
       I′ = subst Impl (sym (teleSig≡entrySig mt)) I
       module TWm = TW fmt (teleSig mt) I′
-      inv₀ : TWI.Inv fmt (teleSig mt) I′ C.emptyCScope Tele.[] TR.[] TR.[] []
-      inv₀ = record { valid = tt ; irf = λ () ; iself = [] ; rel = λ _ _ _ _ _ → tt , tt , refl }
+      inv₀ : TWI.Inv fmt (teleSig mt) I′ C.emptyCScope Tele.[] TR.[] TR.[] TR.[] []
+      inv₀ = record { irf = λ () ; irs = λ () ; iself = [] ; rel = λ _ _ _ _ _ → tt , tt , refl }
 
 ------------------------------------------------------------------------
 -- THE LINK: the compiled program means the core program.
@@ -152,7 +150,7 @@ program-core :
 program-core m mt hvm I ir mi n with FB.program-node m ir mi
 ... | es , ef , b , ceq =
   trans (cong₂ (λ tbl x → projTrace ι (evalᴰ fmt (tableEnv fmt (pureHalf ι) tbl) x tt) n) (cong tableOfResult ceq) ir≡)
-        (core-ef m (C.extractFunctions (C.extractAliases m) m) mt hvm ef (TP.entries-distinct m ef) (valid-mod m ef) b I n)
+        (core-ef m (C.extractFunctions (C.extractAliases m) m) mt hvm ef (TP.entries-distinct m ef) b I n)
   where
     ι = interp (moduleSig m) I
     ir≡ : ir ≡ mainCall

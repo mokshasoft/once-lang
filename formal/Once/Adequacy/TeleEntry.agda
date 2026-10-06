@@ -103,23 +103,3 @@ abi-rel Int          v M rel = rel
 abi-rel Float        v M rel = rel
 abi-rel (rigid k i)  v M rel = rel
 
-------------------------------------------------------------------------
--- An FFI entry
-------------------------------------------------------------------------
-
--- The call of an FFI entry (its compiled SigOp wrapper) means its contract —
--- at its declaration in the world's signatures.
-ffi-entry : ∀ (pre : List IRFun) (x : _) (U : Type) (c : IsConcrete U) (m : (x , U) ∈ sig ι)
-  → RelGM pure U (sigOpRefᵛ fmt (sig ι) (impl ι) (bare x) c m)
-           (subst T (cohᴰ U) (evalᴰ fmt (tableEnv fmt φ (irFunOf (C.mkCompiledFun (bare x) U
-                                  (elaborateFull C.Heap (Srf.sigOp {Γ = Srf.∅} (bare x) c)) true) ∷ pre))
-                                (refIR U (bare x)) tt))
-ffi-entry pre x U c m =
-  subst (RelGM pure U ref) (cong (subst T (cohᴰ U)) (sym (abi U x pre ir)))
-    (abi-rel U ref (evalᴰ fmt ρ ir tt)
-      (subst (RelGM pure U ref) (sym (SF.faithful∅ fmt ρ (Srf.sigOp {Γ = Srf.∅} (bare x) c)))
-             (MB.sigop-ref-bridge fmt (SD.internalDefs fmt ρ) {Γ = Srf.∅} {A = U} ι (bare x) c m tt refl)))
-  where
-    ref = sigOpRefᵛ fmt (sig ι) (impl ι) (bare x) c m
-    ρ  = tableEnv fmt φ pre
-    ir = elaborateFull C.Heap (Srf.sigOp {Γ = Srf.∅} (bare x) c)

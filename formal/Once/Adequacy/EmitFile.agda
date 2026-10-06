@@ -30,15 +30,7 @@ open import Once.Compile
   using ( Module; Entry; CompiledFun; Heap; compileFileFromModule; cfm-file-ef; cfm-file-gated
         ; emitFromCompiled; emitProgram; emitLibrary; FileOf; compileEntries; emptyCScope
         ; extractFunctions; extractAliases; compileResolvedModule; compileResolvedModule-aux
-        ; moduleToIR; moduleToIR-aux; moduleTable; tableOfResult; externsOf; findMain )
-
--- The interpretation symbols a module's compiled functions call.
-externsOfResult : String ⊎ List CompiledFun → List String
-externsOfResult (inj₁ _)    = []
-externsOfResult (inj₂ funs) = externsOf funs
-
-moduleExterns : Module → List String
-moduleExterns m = externsOfResult (compileResolvedModule Heap false m)
+        ; moduleToIR; moduleToIR-aux; moduleTable; tableOfResult; findMain )
 
 private
   inj₂-inj : ∀ {A B : Set} {x y : B} → inj₂ {A = A} x ≡ inj₂ y → x ≡ y
@@ -46,7 +38,7 @@ private
 
   at-funs : ∀ (arch : Arch) (r : String ⊎ List CompiledFun) (F : FileOf arch) ir
           → emitFromCompiled arch r ≡ inj₂ F → moduleToIR-aux r ≡ just ir
-          → F ≡ emitProgram arch (irProgram (tableOfResult r) ir) (externsOfResult r)
+          → F ≡ emitProgram arch (irProgram (tableOfResult r) ir)
   at-funs arch (inj₁ _)    F ir () _
   at-funs arch (inj₂ funs) F ir eq mi =
     trans (sym (inj₂-inj eq)) (cong (λ x → Once.Compile.emit-at arch funs x) mi)
@@ -56,7 +48,6 @@ private
           → cfm-file-gated Heap false arch m es d ≡ inj₂ F
           → moduleToIR-aux (compileEntries Heap false emptyCScope es) ≡ just ir
           → F ≡ emitProgram arch (irProgram (tableOfResult (compileEntries Heap false emptyCScope es)) ir)
-                             (externsOfResult (compileEntries Heap false emptyCScope es))
   at-gate arch m es (no _)  F ir () _
   at-gate arch m es (yes _) F ir eq mi = at-funs arch (compileEntries Heap false emptyCScope es) F ir eq mi
 
@@ -64,14 +55,13 @@ private
         → cfm-file-ef Heap false arch m ef ≡ inj₂ F
         → moduleToIR-aux (compileResolvedModule-aux Heap false m ef) ≡ just ir
         → F ≡ emitProgram arch (irProgram (tableOfResult (compileResolvedModule-aux Heap false m ef)) ir)
-                           (externsOfResult (compileResolvedModule-aux Heap false m ef))
   at-ef arch m (inj₁ _)  F ir () _
   at-ef arch m (inj₂ es) F ir eq mi = at-gate arch m es (admissibleM? arch m) F ir eq mi
 
   -- plan 0.107 phase d: the same three steps for a module WITHOUT `main`.
   lib-funs : ∀ (arch : Arch) (r : String ⊎ List CompiledFun) (F : FileOf arch)
            → emitFromCompiled arch r ≡ inj₂ F → moduleToIR-aux r ≡ nothing
-           → F ≡ emitLibrary arch (tableOfResult r) (externsOfResult r)
+           → F ≡ emitLibrary arch (tableOfResult r)
   lib-funs arch (inj₁ _)    F () _
   lib-funs arch (inj₂ funs) F eq mi =
     trans (sym (inj₂-inj eq)) (cong (λ x → Once.Compile.emit-at arch funs x) mi)
@@ -80,7 +70,6 @@ private
            → cfm-file-gated Heap false arch m es d ≡ inj₂ F
            → moduleToIR-aux (compileEntries Heap false emptyCScope es) ≡ nothing
            → F ≡ emitLibrary arch (tableOfResult (compileEntries Heap false emptyCScope es))
-                             (externsOfResult (compileEntries Heap false emptyCScope es))
   lib-gate arch m es (no _)  F () _
   lib-gate arch m es (yes _) F eq mi = lib-funs arch (compileEntries Heap false emptyCScope es) F eq mi
 
@@ -88,7 +77,6 @@ private
          → cfm-file-ef Heap false arch m ef ≡ inj₂ F
          → moduleToIR-aux (compileResolvedModule-aux Heap false m ef) ≡ nothing
          → F ≡ emitLibrary arch (tableOfResult (compileResolvedModule-aux Heap false m ef))
-                           (externsOfResult (compileResolvedModule-aux Heap false m ef))
   lib-ef arch m (inj₁ _)  F () _
   lib-ef arch m (inj₂ es) F eq mi = lib-gate arch m es (admissibleM? arch m) F eq mi
 
@@ -97,7 +85,7 @@ private
 file-is-emit : ∀ (arch : Arch) (m : Module) (F : FileOf arch) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋)
              → compileFileFromModule Heap false arch m ≡ inj₂ F
              → moduleToIR m ≡ just ir
-             → F ≡ emitProgram arch (irProgram (moduleTable m) ir) (moduleExterns m)
+             → F ≡ emitProgram arch (irProgram (moduleTable m) ir)
 file-is-emit arch m F ir eq mi =
   at-ef arch m (extractFunctions (extractAliases m) m) F ir eq mi
 
@@ -106,6 +94,6 @@ file-is-emit arch m F ir eq mi =
 file-is-lib : ∀ (arch : Arch) (m : Module) (F : FileOf arch)
             → compileFileFromModule Heap false arch m ≡ inj₂ F
             → moduleToIR m ≡ nothing
-            → F ≡ emitLibrary arch (moduleTable m) (moduleExterns m)
+            → F ≡ emitLibrary arch (moduleTable m)
 file-is-lib arch m F eq mi =
   lib-ef arch m (extractFunctions (extractAliases m) m) F eq mi

@@ -58,7 +58,7 @@ open import Once.TypeCheck.Raw as Raw
          RLam; RLet; RDestruct; RUnaryOp; RBinOp; OpNeg; UnaryOp;
          BinOp; isArithmeticOp; isFloatArithmeticOp; isComparisonOp;
          ClosedLiftShape)
-open import Once.CanonicalName using (CanonicalName; showCanonical; gen; NotGenerator; GenWord)
+open import Once.CanonicalName using (CanonicalName; showCanonical; gen; own; NotGenerator; GenWord)
 open import Once.TypeCheck.Classify
   using (NamedCtx; lookupLocal; lookupImport; lookupPoly; lookupPolyPrefix;
          removePoly;
@@ -143,8 +143,9 @@ mutual
                 → lookupLocal ctx x ≡ just (A , Ψ , eV)
                 → ctx ⊢ᵢ RVar x ∶ A ⨾ Ψ
 
+    -- D274: a qualified reference names a GENERATOR of the signature Σ.
     t-var-qualified : ∀ {ctx : NamedCtx} {name alias : String} {T : Type}
-                    → lookupImport (NamedCtx.imports ctx) (alias ++ "." ++ name) ≡ just T
+                    → lookupImport (NamedCtx.sig ctx) (alias ++ "." ++ name) ≡ just T
                     → IsConcrete T  -- Plan 0.58: FFI value reference is concrete
                     → ctx ⊢ᵢ RQualified name alias ∶ T ⨾ zeroUsage
 
@@ -160,11 +161,23 @@ mutual
     -- `Generators` namespace is compiler-owned, so a resolved reference into
     -- it is never a user import. Stated as a PROPERTY of the name (D134), not
     -- as `classifyGen cn ≡ gv-other`.
+    -- D274: a resolved reference to a GENERATOR of the program's signature Σ
+    -- (an FFI declaration, of another module or of this one) — a SigOp.
     t-var-resolved : ∀ {ctx : NamedCtx} {cn : CanonicalName} {T : Type}
                    → NotGenerator cn
-                   → lookupImport (NamedCtx.imports ctx) (showCanonical cn) ≡ just T
+                   → lookupImport (NamedCtx.sig ctx) (showCanonical cn) ≡ just T
                    → IsConcrete T  -- Plan 0.58: FFI value reference is concrete
                    → ctx ⊢ᵢ RResolved cn ∶ T ⨾ zeroUsage
+
+    -- D248/D274: a resolved reference to an OWN monomorphic DEFINITION
+    -- (`own x`, the resolver's `rv-own`/`name@this`) — a call of it (D246) —
+    -- when no generator of that name is in Σ (Σ is read first, so the rules
+    -- stay syntax-directed; D249's guard makes the names distinct anyway).
+    t-var-own : ∀ {ctx : NamedCtx} {x : String} {T : Type}
+              → lookupImport (NamedCtx.sig ctx) x ≡ nothing
+              → lookupImport (NamedCtx.imports ctx) x ≡ just T
+              → IsConcrete T
+              → ctx ⊢ᵢ RResolved (own x) ∶ T ⨾ zeroUsage
 
     -- D136: a RESERVED WORD is never a bare reference to an import or an
     -- own-module definition — it is the generator. This is the one rule that
