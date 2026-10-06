@@ -323,7 +323,7 @@ EVERY fuel, `--safe`, no postulates; the module checks in 7.8 s.
     signature cascade. If so, the fix is glued evaluation (folded and
     unfolded value forms; compare folded first; smalltt), which is E4's
     "references as projections" in practice.
-  - The profiling run (`tools/agda-profile.sh tmp/PwCoreS0n.agda`) was
+  - The profiling run (`tools/agda-profile.sh DirectedHoTT/Negative/PwCoreSort0.agda`) was
     stopped by the host's memory-pressure reaper. Rerun it on a quiet
     machine before designing E4.
 
