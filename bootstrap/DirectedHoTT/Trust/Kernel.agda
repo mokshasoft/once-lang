@@ -31,6 +31,8 @@ import DirectedHoTT.Algorithm.Check
 import DirectedHoTT.Algorithm.CheckA
 import DirectedHoTT.Algorithm.ConvCong
 import DirectedHoTT.Algorithm.ConvLazy
+import DirectedHoTT.Algorithm.ConvLazyNbE
+import DirectedHoTT.Algorithm.ConvNbE
 import DirectedHoTT.Algorithm.DecEq
 import DirectedHoTT.Algorithm.DecideConversion
 import DirectedHoTT.Algorithm.DecideConversionTyped
@@ -40,6 +42,7 @@ import DirectedHoTT.Algorithm.NbE
 import DirectedHoTT.Algorithm.NbERead
 import DirectedHoTT.Algorithm.NbEScope
 import DirectedHoTT.Algorithm.NbESound
+import DirectedHoTT.Algorithm.NbESoundTy
 import DirectedHoTT.Algorithm.Result
 import DirectedHoTT.Algorithm.SigBuild
 import DirectedHoTT.Algorithm.Surface

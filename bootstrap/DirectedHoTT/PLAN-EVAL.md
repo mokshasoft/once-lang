@@ -102,7 +102,7 @@
 | E0 | **Spike, `Algorithm/NbE` (untrusted).** Values, `eval`, `quote`, `whnf`; the term rules SigCore uses (λ, Σ/psplit, natrec, Fin/fcase, con/ielim, dpay/dih, descriptions, codes, Id/jsub, ref) | ① the parked `SigTravTest`/`SigSubKnotTest` pass with `nfOf` = NbE, each `refl` with its negative control; ② `SigCoreTest` agrees; ③ measured time/RSS vs `normLazy` | ✅ **2026-10-05** (§2a) |
 | E1 | **Full coverage + agreement oracle.** Every `head`/`headᵀ` rule; type evaluation; `Examples/NbETest`: `quote (eval t) ≡ nf t` (from `Algorithm/Eval`) on a corpus (Knot/Core entries, SigCore entries, ported OCP0009 programs: gcd facts, `div 0`, System T nested-natrec Ackermann), plus closed directed-former cases (`tr`/`ap`/`hrefl` at each code) | every corpus row green; a deliberately dropped rule turns a row red (control) | ✅ **2026-10-05** (§2b) |
 | E2 | **Use it where trust is not needed.** The elaborator's weak-head evaluator (`Elab.whTm`/`whTyₖ`) becomes NbE `whnf`; test files evaluate with it; Q1 (decoder form) re-judged with E0's measurements | Elab-driven entries (SigCore, Knot/Core) unchanged and faster | ⬜ |
-| E3 | **Certification** (design §2c). Soundness `t ≅ nbe t` by READING values as terms; then conversion decides by readback equality (yes: `≅`; no: distinct normal forms, Church–Rosser + `nf-uniqueᵀ`). CheckA/ConvLazy switch to it. Totality without fuel (ROADMAP Q4) later, from the LR's `wnorm`: typed NbE is forced for completeness (OCP0009 F3), and the LR already is typed | `decConvFast`/`convTm` replaced; `Knot/Core`, SigCore checking times no worse | 🟡 **terms proved 2026-10-06** (§2e); types + checker integration next |
+| E3 | **Certification** (design §2c). Soundness `t ≅ nbe t` by READING values as terms; then conversion decides by readback equality (yes: `≅`; no: distinct normal forms, Church–Rosser + `nf-uniqueᵀ`). CheckA/ConvLazy switch to it. Totality without fuel (ROADMAP Q4) later, from the LR's `wnorm`: typed NbE is forced for completeness (OCP0009 F3), and the LR already is typed | `decConvFast`/`convTm` replaced; `Knot/Core`, SigCore checking times no worse | 🟡 **terms proved 2026-10-06** (§2e); **types proved, conversion decided by NbE (`ConvNbE`, `ConvLazyNbE`) 2026-10-06** (§2f); CheckA integration being measured |
 | E4 | **Sharing = references as PROJECTIONS.** If E0–E2 measure repeated δ-unfolding: a GLOBAL environment of entry values (each entry evaluated once; `ref d` is a projection from it). This is the categorical reading the compiler adopted (its D071: `⟦ref x⟧Γ = Γ(x)`, ROADMAP Q5) | measured before built ([[slower-abstraction-profile-dont-discard]]) | ⬜ conditional |
 | E5 | **The CAM reading (feeds R5/R6).** Translate `RTm` to categorical combinators (Curien: `⟨_,_⟩`, `π₁`/`π₂`, `Λ`, `ev`) and prove `eval` factors through the machine; then the cost-instrumented variant per `NbEPLinCore` (allocation counts; dup-free ⇒ zero alloc) | written as PLAN-LINEAR / R6 when reached | 🔬 |
 
@@ -274,6 +274,58 @@ EVERY fuel, `--safe`, no postulates; the module checks in 7.8 s.
   then the checker's conversion by NbE (yes: `t ≅ nbe t`; no: distinct
   normal forms — `Nf` decided structurally, Church–Rosser + `nf-uniqueᵀ`),
   measured on SigCore / Knot/Core.
+
+### 2f. ★ E3 — types, and the checker's side (2026-10-06, night)
+
+- ✅ **`Algorithm/NbESoundTy.nbeᵀ-sound : A ≅ᵀ nbeᵀ k A`.** It holds at
+  every fuel, is `--safe`, uses no postulates, and checks in 5.5 s.
+  - The type level of the evaluator is a second layer over the terms, and
+    its proof is a second layer over `NbESound`: read type values as types,
+    one lemma per type-level function, each case a `_⟶ᵀ_` step
+    (El-⌜…⌝, Hom-…, DIh-…), a congruence, or the term lemma for the terms
+    inside.
+  - The scope (`ScT`) and fresh-level lemmas (`agreeᵀ`, `renᵀ`) mirror
+    `NbERead`.
+- ✅ **Conversion DECIDED by NbE (`Algorithm/ConvNbE`).**
+  - Normality is not a theorem about the evaluator (fuel, stuck rules),
+    but it is DECIDABLE on the output. `Eval`'s certificate `Nf`/`Nfᵀ` is
+    syntactic, so `nf?`/`nfᵀ?` check it in one pass.
+  - Certified normal forms decide conversion both ways: "yes" when they
+    are equal; "no" because two convertible normal forms are equal
+    (Church–Rosser, `nf-convᵀ`).
+- ✅ **Lazy conversion by NbE (`Algorithm/ConvLazyNbE`).** `ConvLazy`'s
+  strategy (syntactic, weak-head, fields), with the weak-head step being
+  the READING of the value (`S-eval`/`T-eval`).
+- ✅ **CheckA uses NbE (committed configuration).**
+  - `decTo`: the NbE decision first (yes/no), then the old procedures
+    (lazy, evaluation, derivation-driven) only when a readback is not
+    certified normal.
+  - `viewΠ`/`viewΣ`: the NbE-certified normal form first; `domΠ≅` needs
+    only `≅` and `Nfᵀ`. The evaluation route remains as the fallback.
+  - Clean timings (interfaces deleted):
+
+    | module | HEAD | committed |
+    |---|---|---|
+    | SigCore | 18.7 s | 20.2 s |
+    | SigMeth | 48 s / 3.3 GB | 40.9 s / 2.0 GB |
+
+- 🔬 **`ConvLazyNbE` before the decision: measured, not adopted.**
+  - On SigCore/SigMeth: 23.3 s / 55.6 s.
+  - On Pw's sort-0 rows (13 empty leaves): 90 s → 58 s. Naming
+    `SI₂`/`SD₂`/the telescope as entries brought it to 54 s.
+  - Kept as a proven module.
+- ⛔ **Pw's rows still cost about 3.6 s per EMPTY leaf.**
+  - Ruled out: the views (NbE 90 s against eval 99 s) and elaboration
+    (5.9 s ≈ the module baseline). The cost is in CheckA's rules.
+  - Hypothesis, unconfirmed: the rows' types contain `app KΣ s` at a
+    VARIABLE sort. NbE must unfold the quoted signature to apply it, so
+    every readback or reading of such a type prints the WHOLE stuck
+    signature cascade. If so, the fix is glued evaluation (folded and
+    unfolded value forms; compare folded first; smalltt), which is E4's
+    "references as projections" in practice.
+  - The profiling run (`tools/agda-profile.sh tmp/PwCoreS0n.agda`) was
+    stopped by the host's memory-pressure reaper. Rerun it on a quiet
+    machine before designing E4.
 
 **Fallback, recorded and not chosen.** If E0's gate fails because Agda's
 evaluator itself is the limit, run evaluation tests COMPILED (MAlonzo, a
