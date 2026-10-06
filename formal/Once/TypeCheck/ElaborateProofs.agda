@@ -13,6 +13,8 @@
 module Once.TypeCheck.ElaborateProofs where
 
 open import Once.TypeCheck.Elaborate public
+open import Once.Surface.Syntax using (zeroUsage)
+open import Data.Unit using (tt; ⊤)
 open import Once.Denotation.Realize using (realize)
 open import Once.TypeCheck.Classify using (emptyCtx)
 open import Once.TypeCheck.TargetView using (apply-at)
@@ -42,7 +44,7 @@ open import Once.Float.Dyadic using (Dyadic)
 open import Once.Float.Decimal using (decimalOf)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst; cong; cong₂; sym; trans)
 open import Once.Type
-open Once.Type using (showQuantity; showType) public
+open Once.Type using (showQuantity; showType)
 open import Once.IR as IR hiding (Unit; Void; _*_; _+_; μ-type; ν-type; Int; Float; K; Id; _⊕_; _⊗_)
 open import Once.IRTy.WF using (wf-⌊⌋)
 open import Once.SigOp.Info using (SigOpInfo; mk-info'; pureV; emitsV; haltsV)
@@ -58,7 +60,7 @@ open import Once.TypeCheck.Error using (TypeError; renderError;
   ApplicationTypeMismatch; TypeMismatch; NotFunction;
   UsageViolation; BuiltinTypeMismatch;
   BinOpLeftError; BinOpRightError;
-  UnboundVariable; UnboundQualified; NonConcreteSigOpType) public
+  UnboundVariable; UnboundQualified; NonConcreteSigOpType)
 open import Once.TypeCheck.Context using (Ctx; ∅)
 open Once.TypeCheck.Context.Binding using (name)
 open import Once.TypeCheck.Context as Context using () renaming (_,_∷_ to extendCtx)
@@ -67,7 +69,7 @@ open import Once.Surface.Syntax as Surface using (lookupUsage; tailUsage; _+ᵘ_
 open import Once.Surface.Thinning using (weaken; weakenFromEmpty)
 open import Once.Surface.Properties using (+ᵘ-identityˡ; +ᵘ-identityʳ; *ᵘ-zeroʳ)
 open import Once.Surface.Elaborate as Elab using (elaborate; intLit)
-open import Once.TypeCheck.Classify public
+open import Once.TypeCheck.Classify
 import Once.Functor.Translate
 open import Once.Functor.Translate using (IsConcrete; con-base; con-fun; IsBaseType)
 open import Once.Functor.Decide using (wellFormedF?; isConcrete?; isBaseType?;

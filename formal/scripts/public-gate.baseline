@@ -73,7 +73,7 @@ Once/CCC/Target/X86-64/File.agda 1
 Once/CCC/Target/X86-64/Layout.agda 3
 Once/CCC/Target/X86-64/RuntimeParams.agda 1
 Once/CanonicalName.agda 1
-Once/Compile.agda 11
+Once/Compile.agda 3
 Once/Compiler.agda 1
 Once/Denotation/DenotTrace.agda 2
 Once/Denotation/Program.agda 2
@@ -111,6 +111,5 @@ Once/Spike/RelSpike.agda 1
 Once/Surface/Syntax.agda 1
 Once/Target/Arch.agda 1
 Once/Type.agda 1
-Once/TypeCheck/Elaborate.agda 5
-Once/TypeCheck/ElaborateProofs.agda 4
-Once/Warnings.agda 1
+Once/TypeCheck/Elaborate.agda 2
+Once/TypeCheck/ElaborateProofs.agda 1

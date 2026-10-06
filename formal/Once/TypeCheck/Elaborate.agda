@@ -33,7 +33,7 @@ open import Data.Product using (_×_; _,_; ∃-syntax; Σ-syntax; Σ)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst; cong; cong₂; sym; trans)
 
 open import Once.Type
-open Once.Type using (showQuantity; showType) public
+open Once.Type using (showQuantity; showType)
 -- Plan 0.52 M2: IR re-exports the ungraded IRTy, whose Unit/K/μ-type/… clash
 -- with Once.Type's (opened above). Hide the IRTy object/functor constructors
 -- from the unqualified open (they stay available as `IR.*`); the surface-type
@@ -208,7 +208,7 @@ data CheckElabResult {n : ℕ} (Δ : SCtx n) (A : Type) : Set where
 -- of sync.
 ------------------------------------------------------------------------
 
-open import Data.Unit using (⊤; tt) public
+open import Data.Unit using (⊤; tt)
 
 -- Soundness witness type. `success` carries an infer-mode judgment;
 -- `failure` carries no obligation. The verified elaborator's `Σ`
@@ -355,7 +355,7 @@ embedOrSubsume ctx e T (success T' Ψ eE d fr , w) = embedOrSubsume-dec ctx e T 
 ------------------------------------------------------------------------
 
 -- Import usage operations from Surface.Syntax
-open Surface using (zeroUsage; singleUse; _+ᵘ_; _*ᵘ_) public
+open Surface using (zeroUsage; singleUse; _+ᵘ_; _*ᵘ_)
 
 ------------------------------------------------------------------------
 -- Per-Builtin Body Specializers

@@ -81,7 +81,7 @@ record ExactQ : Set where
     num : ℤ
     den : ℕ
 
-open ExactQ public
+open ExactQ
 
 ------------------------------------------------------------------------
 -- The warnings

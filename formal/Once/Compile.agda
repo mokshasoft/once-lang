@@ -47,7 +47,7 @@ open import Relation.Nullary.Decidable.Core using (¬?)
 open import Relation.Nullary.Negation.Core using (¬_)
 
 -- Re-export Surface IR
-open import Once.Surface.IR public
+open import Once.Surface.IR
   using (SurfaceIR; Let; SigOp)
   renaming
     ( id to S-id
@@ -67,16 +67,16 @@ open import Once.Surface.IR public
     )
 
 -- Re-export desugar transformation
-open import Once.Surface.Desugar public
+open import Once.Surface.Desugar
   using (desugar; desugar-default)
 
 -- Re-export optimizer (includes categorical laws + fusion rules)
-open import Once.Optimize public
+open import Once.Optimize
   using (optimize; optimize-once; optimize-n)
 
 -- Re-export Arith types and IR (OCP-0001: Orthogonal Arithmetic Compiler)
-open import Once.Arith.Type public
-open import Once.Arith.IR public
+open import Once.Arith.Type
+open import Once.Arith.IR
   hiding (_⊕_)  -- Avoid clash with Once.Type._⊕_ (Functor sum)
 
 -- Plan 0.20 Phase G: import the IR rewrite pass that lifts maximal
@@ -112,7 +112,7 @@ open import Once.CanonicalName using () renaming (_≟ᶜ_ to _≟cn_)
 
 -- Re-export Parser (for module loading)
 open import Once.Parser public
-open import Once.Parser.Module public
+open import Once.Parser.Module
 open FunInfo
 open PolyFunInfo
 
@@ -507,13 +507,13 @@ moduleSyms m doOpt mod = moduleSyms-aux (compileResolvedModule m doOpt mod)
 
 -- | Supported architectures — the single shared enum (re-exported so
 -- existing `C.Arch` references downstream are unchanged).
-open import Once.Target.Arch public
+open import Once.Target.Arch
 open import Once.Denotation.Admissible using (AdmissibleM; admissibleM?; firstBadLit)
 -- Plan 0.74 K4: the rounding-warning channel. Re-exported here — not threaded
 -- through `compile` — because warnings do not change what is compiled, and
 -- keeping them a separate OBSERVATION is what stops them leaking into
 -- `correct`. This re-export is also what puts them on the extraction path.
-open import Once.Warnings using (Warning; roundingWarnings; renderWarning; warningsFor) public
+open import Once.Warnings using (Warning; roundingWarnings; renderWarning; warningsFor)
 open import Data.Nat.Show renaming (show to showNat)
 open import Data.Integer using (ℤ)
 open import Data.Nat using (_∸_)
