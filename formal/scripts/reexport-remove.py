@@ -228,9 +228,11 @@ def drop_from_directives(path, facade, names):
     """Remove `names` from using/hiding lists of imports of `facade` in `path`."""
     L = open(path, encoding="utf-8").read().split("\n")
     changed = False
+    aliases = set(re.findall(r"import\s+" + re.escape(facade) + r"\s+as\s+(\S+)", "\n".join(L)))
     for i, l in enumerate(L):
         m = IMPORT.match(l)
-        if not (m and m.group(2) == facade): continue
+        mo = re.match(r"^\s*open\s+(\S+)", l)
+        if not ((m and m.group(2) == facade) or (not m and mo and mo.group(1) in aliases)): continue
         s, e = statement(L, i)
         text = "\n".join(L[s:e])
         def fix(mm):
@@ -263,6 +265,28 @@ def applied_importers(facade, imps):
             rest = " ".join(L[st:e]).split(facade, 1)[1].strip()
             if rest and not re.match(r"^(as\s+\S+\s*)?((using|hiding|renaming|public)\b.*)?$", rest):
                 out.append(m)
+    return out
+
+def declares(path, name):
+    """Does the module at `path` declare `name` (a signature, data/record, field,
+    or constructor line)?"""
+    if not os.path.exists(path): return False
+    pat = re.compile(r"^\s*(?:data\s+|record\s+|field\s+|constructor\s+)?" + re.escape(name) + r"\s+(?::|where|\{|\()|"
+                     r"^\s*(?:field|constructor)\s+" + re.escape(name) + r"\b", re.M)
+    return pat.search(open(path, encoding="utf-8").read()) is not None
+
+def directive_names(path, facade):
+    """Names listed in using/renaming directives of imports of `facade` in `path`."""
+    L = open(path, encoding="utf-8").read().split("\n")
+    out = set()
+    for i, m in imports_of(path):
+        if m != facade: continue
+        st, e = statement(L, i)
+        text = " ".join(L[st:e])
+        for mm in re.finditer(r"\busing\s*\(([^()]*)\)", text):
+            out |= {t.strip() for t in mm.group(1).split(";") if t.strip()}
+        for mm in re.finditer(r"\brenaming\s*\(([^()]*)\)", text):
+            out |= {t.split(" to ")[0].strip() for t in mm.group(1).split(";") if t.strip()}
     return out
 
 def run(targets):
@@ -329,6 +353,25 @@ def run(targets):
             skipped.append((f, ln, ", ".join(sorted(why))))
         else:
             plan.append((f, ln, fac, add, drop, stmt))
+    # PRE-FLIGHT: directive names no record placed (listed, never used)
+    by_fac = defaultdict(list)
+    for f, ln, fac, add, drop, stmt in plan: by_fac[fac].append((f, stmt))
+    for fac, sp in by_fac.items():
+        for m in imps:
+            p = modpath(m)
+            if m == fac or not os.path.exists(p): continue
+            for n in directive_names(p, fac):
+                if (fac, n) in target_of or declares(modpath(fac), n): continue
+                cands = {st for f, st in sp
+                         if st.startswith("open import ") and declares(modpath(st.split()[2]), n)}
+                if len(cands) != 1 and len(sp) == 1: cands = {sp[0][1]}
+                if len(cands) == 1:
+                    st = next(iter(cands))
+                    L = open(p, encoding="utf-8").read().split("\n")
+                    line0 = next(i for i, mm in imports_of(p) if mm == fac)
+                    for f, ln, fac2, add, drop, stmt in plan:
+                        if fac2 == fac and stmt == st:
+                            add[p][(line0, st)].add(n); drop[p].add(n); break
     for f, ln, why in skipped:
         print(f"  skipped {f}:{ln}: {why}")
     if not plan:
@@ -358,6 +401,9 @@ def run(targets):
             for f in backup: open(f, "w", encoding="utf-8").write(backup[f])
             sys.exit("verification run failed (tree restored):\n" + err)
         path, line, fac = m.group(1), int(m.group(2)), m.group(3)
+        if fac not in stmt_of:                       # Agda names it by the importer's alias
+            al = re.search(r"import\s+(\S+)\s+as\s+" + re.escape(fac) + r"\b", open(path, encoding="utf-8").read())
+            if al: fac = al.group(1)
         names = {l.strip().split(" ")[0] for l in m.group(4).splitlines() if l.strip()}
         where = {}
         for n in names:
