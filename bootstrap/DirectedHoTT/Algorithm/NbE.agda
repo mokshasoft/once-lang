@@ -990,9 +990,15 @@ rbᵀ₂ u (suc k) Γ c = rbᵀ u k ((Γ ∙) ∙)
 ------------------------------------------------------------------------
 
 -- the identity environment: variable i of Γ is its own level
+-- (the length passed down, as `lvlAt`: `idEnv (Γ ∙)` is still
+--  `idEnv Γ , vvar (len Γ)` definitionally)
+idEnvAt : (Γ : Cx) → ℕ → Env Γ
+idEnvAt ε     m       = []
+idEnvAt (Γ ∙) zero    = idEnvAt Γ zero , vvar zero
+idEnvAt (Γ ∙) (suc m) = idEnvAt Γ m , vvar m
+
 idEnv : (Γ : Cx) → Env Γ
-idEnv ε     = []
-idEnv (Γ ∙) = idEnv Γ , vvar (len Γ)
+idEnv Γ = idEnvAt Γ (len Γ)
 
 -- the value of an open term
 ⟦_⟧_ : RTm Γ → ℕ → Val

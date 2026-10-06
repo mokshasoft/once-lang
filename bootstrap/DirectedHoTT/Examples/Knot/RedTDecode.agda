@@ -45,6 +45,7 @@ open import DirectedHoTT.Examples.Knot.GenHelpers
 open import DirectedHoTT.Examples.Knot.RedIx
 open import DirectedHoTT.Examples.Knot.NestIx
 open import DirectedHoTT.Examples.Knot.Pw
+open import DirectedHoTT.Examples.Knot.PwCore using ( El-⌜Pw⌝ )
 open import DirectedHoTT.Examples.Knot.Preds
 open import DirectedHoTT.Examples.Knot.Red
 open import DirectedHoTT.Examples.Knot.RedT

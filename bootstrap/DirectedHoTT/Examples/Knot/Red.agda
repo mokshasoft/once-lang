@@ -42,7 +42,7 @@ open import DirectedHoTT.Examples.Knot.RedIx
 open import DirectedHoTT.Examples.Knot.NestIx
 open import DirectedHoTT.Lib.SynPat using ( module Pat )
 open import DirectedHoTT.Examples.Knot.JudgeCase using ( defRow₀ )
-open import DirectedHoTT.Examples.Knot.Pw using ( ⌜Pw⌝; ⊢⌜Pw⌝; ⌜Pw⌝-sub )
+open import DirectedHoTT.Examples.Knot.PwCore using ( ⌜Pw⌝; ⊢⌜Pw⌝; ⌜Pw⌝-sub )
 open import DirectedHoTT.Examples.Knot.Ref using ( rδ; okδ )
 
 private

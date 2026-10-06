@@ -27,7 +27,7 @@ open import DirectedHoTT.Examples.Knot.JudgeCase using ( toTm )
 open import DirectedHoTT.Examples.Knot.RedIx
 open import DirectedHoTT.Examples.Knot.Red using ( K⟶ )
 open import DirectedHoTT.Examples.Knot.Preds using ( El-⌜StkA⌝; El-⌜StkC⌝ )
-open import DirectedHoTT.Examples.Knot.Pw using ( El-⌜Pw⌝ )
+open import DirectedHoTT.Examples.Knot.PwCore using ( El-⌜Pw⌝ )
 open import DirectedHoTT.Examples.Knot.PredsAgree using ( ⊢stkAC; ⊢stkCC )
 open import DirectedHoTT.Examples.Knot.PwAgree using ( ⊢pwC )
 open import DirectedHoTT.Examples.Knot.OpAgree
