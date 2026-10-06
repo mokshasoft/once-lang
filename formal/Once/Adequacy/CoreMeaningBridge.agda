@@ -46,7 +46,8 @@ open import Once.TypeCheck.Classify using (NamedCtx; lookupImport; lookupPolyPre
 open import Data.String using (String)
 open import Once.TypeCheck.Judgment
 open import Once.Denotation.DefEnv using (defAt; impAt)
-open import Once.Denotation.Meaning using (⟦_⟧ᶜ; ⟦_⟧ᵢ; ⟦_⟧ᵈ; MeaningsOf; Meanings; defs; entries; returnᵖ; world; decl-qual; decl-res)
+open import Once.Denotation.Meaning using (⟦_⟧ᶜ; ⟦_⟧ᵢ; ⟦_⟧ᵈ; MeaningsOf; Meanings; returnᵖ)
+open Once.Denotation.Meaning.Meanings using (decl-qual; decl-res; defs; entries; world)
 open import Once.Denotation.GradedOps using (sigOpRefᵛ; cata-semᵛ; ana-semᵛ; ⟦_⟧<:ᵛ)
 import Once.Spec.Core.Meaning S as GM
 open import Once.Spec.Elaboration S using (Views; View; ImportAt; Declared; def; InstanceOf; elabᶜ; elabᵢ; elabᵈ; Elab; subE; lift1; closeE)

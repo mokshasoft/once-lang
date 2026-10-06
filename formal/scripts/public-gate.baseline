@@ -75,16 +75,12 @@ Once/CCC/Target/X86-64/RuntimeParams.agda 1
 Once/CanonicalName.agda 1
 Once/Compile.agda 11
 Once/Compiler.agda 1
-Once/Denotation/Behavior.agda 1
 Once/Denotation/DenotTrace.agda 2
-Once/Denotation/GradedDomain.agda 1
-Once/Denotation/Meaning.agda 1
 Once/Denotation/Program.agda 2
 Once/Denotation/SourceDenote.agda 1
 Once/Denotation/Trace.agda 1
 Once/Denotation/TraceMonad.agda 4
 Once/Denotation/ValueDomain.agda 1
-Once/Float/Arith.agda 1
 Once/Float/Decimal.agda 1
 Once/Float/Dyadic.agda 2
 Once/IR.agda 2
@@ -100,7 +96,6 @@ Once/Parser/Generic/PolyInst.agda 1
 Once/Parser/Module.agda 6
 Once/Parser/Module/Core.agda 20
 Once/Parser/Module/FunDef.agda 4
-Once/Semantics/Functor.agda 1
 Once/Semantics/Machine.agda 2
 Once/Semantics/Machine/Laws.agda 1
 Once/SigOp/Info.agda 1

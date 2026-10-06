@@ -83,7 +83,7 @@ record Bin : Set where
     sigB : ℤ
     expB : ℤ
 
-open Bin public
+open Bin
 
 -- | Align to the SMALLER exponent and add. Exact: both shifts are
 -- multiplications by a power of two, never a division, so nothing is lost.

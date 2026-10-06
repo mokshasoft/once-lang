@@ -106,7 +106,7 @@ record νᵖ (F : SFunctor) : Set where
   field
     forceᵖ : ⟦ F ⟧SF (νᵖ F)
 
-open νᵖ public
+open νᵖ
 
 ------------------------------------------------------------------------
 -- The graded value domain.

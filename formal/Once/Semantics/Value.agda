@@ -91,9 +91,8 @@ open import Once.Functor.Translate using (μ-sem; ν-sem; translateF; ⟦_,_⟧-
 open import Once.Functor.Translate
   using ( base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; base-rigid; wf-K; wf-Id; wf-Sum; wf-Prod)
 open import Once.Semantics.Functor
-  using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF; μS; ⟨_⟩; outS; νS; unfoldS;
-         sfmap; cataS; cataS-cong; sfmapCata; sfmapCata-is-sfmap; anaS; sfmapAna; sfmapAna-is-sfmap; fuseNatS; fuseNatW;
-         fold-unfoldS; unfold-foldS; cataS-computation; cataS-In-id)
+  using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF; μS; ⟨_⟩; outS; νS; sfmap; cataS; cataS-cong; sfmapCata; sfmapCata-is-sfmap; anaS; sfmapAna; sfmapAna-is-sfmap; fuseNatS; fuseNatW; fold-unfoldS; unfold-foldS; cataS-computation; cataS-In-id)
+open Once.Semantics.Functor.νS using (unfoldS)
 -- D062/0.47: the bisimulation machinery (⟦_⟧SF-rel, _∼S_, bisimS-to-eq, …) and
 -- the axiom-using identity laws moved to `Once.Semantics.Functor.Laws` /
 -- `Once.Semantics.Value.Laws`, so this module holds definitions only.

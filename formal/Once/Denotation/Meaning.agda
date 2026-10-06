@@ -229,7 +229,7 @@ record Meanings (polys : PolyCtx) (imps : Imports) (sg : Imports) : Set where
               → (alias ++ "." ++ name , T) ∈ sig world
     decl-res  : ∀ {cn T} → lookupImport sg (showCanonical cn) ≡ just T
               → (showCanonical cn , T) ∈ sig world
-open Meanings public
+open Meanings
 
 MeaningsOf : NamedCtx → Set
 MeaningsOf ctx = Meanings (NamedCtx.polys ctx) (NamedCtx.imports ctx) (NamedCtx.sig ctx)

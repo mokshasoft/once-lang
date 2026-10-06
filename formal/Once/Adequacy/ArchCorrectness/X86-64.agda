@@ -76,7 +76,8 @@ import Once.CCC.Target.X86-64.Semantics as X
 import Once.CCC.Target.X86-64.Syntax as XS
 open import Once.CCC.Label using (LabelId; thunk)
 open import Once.IR using (IR; Unit)  -- Plan 0.52 M2: IRTy Unit
-open import Once.Denotation.Behavior using (Behavior; at; silent)
+open import Once.Denotation.Behavior using (Behavior; silent)
+open Once.Denotation.Behavior.Behavior using (at)
 open import Once.Adequacy.CPU using (arch-semantics)
 open import Once.Target.Arch using (x86-64)
 open import Once.Adequacy.CPU.Interface using (ArchSemantics)

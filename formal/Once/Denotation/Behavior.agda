@@ -148,7 +148,7 @@ record Behavior : Set where
     -- asserted. Still no co-data and no completion.
     saturates : ∀ n → length (at n) < n → at (suc n) ≡ at n
 
-open Behavior public
+open Behavior
 
 -- The behaviour of a program that invokes no SigOp at any depth. Named here
 -- rather than rebuilt at each producer: a record-valued `Behavior` makes even

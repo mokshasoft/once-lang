@@ -99,8 +99,8 @@ open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_;
 open import Once.Denotation.Phase using (lookupᴰUsed; restrictᴰ; bindᴰ; bindᴰ0; env0)
 open import Once.Denotation.PhaseV using (lookupᵛUsed; restrictᵛ; bindᵛ; bindᵛ0) renaming (env0 to env0ᵛ)
 open import Once.Denotation.GradedDomain using (⟦_⟧ᵛ; M; _>>=ᵖ_; >>=ᵖ-β; returnM; bindM; subM)
-open import Once.Denotation.Meaning using (⟦_⟧ᶜ; ⟦_⟧ᵢ; ⟦_⟧ᵈ; seqᴰ; DefMeanings; ImpMeanings; MeaningsOf; defs; entries;
-  lookupᴰ; Env; EnvRun; cata-sem; sigOpValᴰ; sigOpRefᴰ; svarᴰ; in-value; named-sem; world; decl-qual; decl-res)
+open import Once.Denotation.Meaning using (⟦_⟧ᶜ; ⟦_⟧ᵢ; ⟦_⟧ᵈ; seqᴰ; DefMeanings; ImpMeanings; MeaningsOf; lookupᴰ; Env; EnvRun; cata-sem; sigOpValᴰ; sigOpRefᴰ; svarᴰ; in-value; named-sem)
+open Once.Denotation.Meaning.Meanings using (decl-qual; decl-res; defs; entries; world)
 open import Once.Adequacy.CataErased fmt (calls σ) using (liftFn-SigOp)
 open import Once.Adequacy.LiftFnReduce fmt (calls σ) using
   (liftFn-id; liftFn-fst; liftFn-snd; liftFn-terminal; liftFn-inl; liftFn-inr;
@@ -120,7 +120,8 @@ open import Once.Adequacy.GradedRelation fmt
   using (RelGV; RelGT; RelGM; RelGT-return; RelGT-bind; RelGᵖ-bind; RelGᵖᵉ-bind; RelGM-bind; RelGM-return; RelGM-ret;
          prjB-rel; injB-rel; injBᵍ-rel; _∼ᵖᵈ_; force-∼ᵖᵈ; embν-∼)
 open import Once.Denotation.GradedOps using (prjB; injB; cfᵛ; cf⁻¹ᵛ; in-valueᵛ; sigOpRefᵛ; out-semᵛ; fmapM; ⟦_⟧<:ᵛ; cata-semᵛ)
-open import Once.Denotation.GradedDomain using (forceᵖ)
+open import Once.Denotation.GradedDomain using ()
+open Once.Denotation.GradedDomain.νᵖ using (forceᵖ)
 open import Once.Semantics.Machine using (coerce-ν-out)
 open import Once.Denotation.ValueDomain using (coerce-functor⁻¹-D; coerce-functor-D; forgetᵇ; injectᵇ)
 open import Once.Functor.Translate using (translateF)

@@ -69,7 +69,8 @@ open import Data.Product using (proj₁)
 -- `moduleToIR` compiles the SAME (resolved) module the binary runs.
 open import Once.Parser using (parseStrict)
 open import Once.Parser.Module.Resolve using (resolveImports; ModuleMap)
-open import Once.Denotation.Behavior using (Source; Behavior; mkBehavior; silent; at)
+open import Once.Denotation.Behavior using (Source; Behavior; mkBehavior; silent)
+open Once.Denotation.Behavior.Behavior using (at)
 open import Once.Denotation.DenotTrace using (evalᴰ)
 -- Plan 0.73 (D113): the meaning is target-relative at `Float`, so the format
 -- is threaded in. An explicit ARGUMENT, not a module parameter — these are

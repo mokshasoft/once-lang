@@ -125,7 +125,7 @@ record νS (F : SFunctor) : Set where
   field
     unfoldS : Res (⟦ F ⟧SF (νS F))
 
-open νS public
+open νS
 
 ------------------------------------------------------------------------
 -- Catamorphism

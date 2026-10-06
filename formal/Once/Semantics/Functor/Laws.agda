@@ -21,6 +21,7 @@ open import Data.Unit using (⊤; tt)
 open import Once.Res using (Res; stopped; returns; Res-rel; rel-stopped; rel-returns)
 
 open import Once.Semantics.Functor
+open Once.Semantics.Functor.νS using (unfoldS)
 
 -- | Relational interpretation of semantic functors
 --

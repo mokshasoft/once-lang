@@ -63,7 +63,8 @@ open import Data.Nat using (ℕ)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
 open import Once.Adequacy
-open import Once.Denotation.Behavior using (Source; Behavior; at)
+open import Once.Denotation.Behavior using (Source; Behavior)
+open Once.Denotation.Behavior.Behavior using (at)
 open import Once.Denotation.TraceMonad using (Interp)
 open import Once.Adequacy.SourceTrace using (⟦_⟧)
 -- The driver is where the per-arch CPU semantics are INJECTED (D054

@@ -42,6 +42,7 @@ open import Once.Denotation.TraceMonad using (T; ret; returnT; _>>=T_; fmapT; pu
 open import Once.Denotation.ValueDomain using (νᵈ; forceᵈ; anaᵈ; seqF)
 open import Once.Denotation.DenotTrace using (sigOpT)
 open import Once.Denotation.GradedDomain
+open Once.Denotation.GradedDomain.νᵖ using (forceᵖ)
 open import Once.SigOp.Info using (FFIAnswers)
 open import Once.Arith.SigOp.Builders using (arrow-info)
 
