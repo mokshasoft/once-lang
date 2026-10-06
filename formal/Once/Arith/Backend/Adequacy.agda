@@ -48,4 +48,4 @@ record ArithEmitConfined (RC : RegConvention) : Set where
     -- subroutine cannot corrupt a register CCC keeps live across the call.
     confined : ∀ i → All (λ r → owner r ≢ ccc) (writes i)
 
-open ArithEmitConfined public
+open ArithEmitConfined

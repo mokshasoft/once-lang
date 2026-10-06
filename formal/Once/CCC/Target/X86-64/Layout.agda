@@ -28,7 +28,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym
 -- Import types for layout construction
 open import Once.Memory.MemoryLayoutSemantics as MLS
   using (MemoryLayout; RegionBounds; lower; upper; InRegion)
-open MLS using (Addr; lower; upper) public
+open MLS using (Addr; lower; upper)
 
 -- Import RuntimeContract and the X86-64 instance
 open import Once.Memory.RuntimeContract as RC using (RuntimeContract)
@@ -89,7 +89,7 @@ open import Once.Memory.FrameOps x86-layout x86-stack-growth public
 
 
 -- Re-export Memory operations
-open import Once.Memory.Memory using (Memory; Word; readMem; writeMem) public
+open import Once.Memory.Memory using (Memory; Word; readMem; writeMem)
 
 ------------------------------------------------------------------------
 -- X86-Specific Properties (lower = 0 is definitional)

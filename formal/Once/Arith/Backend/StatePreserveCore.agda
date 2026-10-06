@@ -30,7 +30,7 @@ record PreservesCCCState (fr : ℕ) (s s' : State) : Set where
   field
     regs≈ : AgreeCCC   (regs s)   (regs s')
     mem≈  : AgreeMemFrom fr (memory s) (memory s')
-open PreservesCCCState public
+open PreservesCCCState
 
 preserves-state-refl : ∀ fr s → PreservesCCCState fr s s
 preserves-state-refl fr s = mkPresState (agree-refl-ccc (regs s)) (AgreeMemFrom-refl fr (memory s))

@@ -36,18 +36,15 @@ Once/Allocator/AbstractInstance.agda 1
 Once/Allocator/Malloc.agda 1
 Once/Allocator/Mempool.agda 2
 Once/Allocator/Slab.agda 2
-Once/Arith/Backend/Adequacy.agda 1
 Once/Arith/Backend/RiscV64/MemPreserve.agda 1
 Once/Arith/Backend/RiscV64/Preserve.agda 2
 Once/Arith/Backend/RiscV64/RunTrace.agda 1
 Once/Arith/Backend/RiscV64/StatePreserve.agda 1
-Once/Arith/Backend/StatePreserveCore.agda 1
 Once/Arith/Backend/X86-32/RunTrace.agda 1
 Once/Arith/Backend/X86-64/MemPreserve.agda 1
-Once/Arith/Backend/X86-64/Preserve.agda 2
+Once/Arith/Backend/X86-64/Preserve.agda 1
 Once/Arith/Backend/X86-64/RunTrace.agda 1
 Once/Arith/Backend/X86-64/StatePreserve.agda 1
-Once/Arith/Machine/CompileCorrect.agda 1
 Once/CCC/Codegen/IRObsCorrect/Interface.agda 17
 Once/CCC/Codegen/IRObsCorrect/Machine.agda 2
 Once/CCC/Codegen/IRObsCorrect/Prelude.agda 45
@@ -75,7 +72,7 @@ Once/CCC/Target/X86-32/File.agda 1
 Once/CCC/Target/X86-32/Layout.agda 5
 Once/CCC/Target/X86-32/RuntimeParams.agda 1
 Once/CCC/Target/X86-64/File.agda 1
-Once/CCC/Target/X86-64/Layout.agda 5
+Once/CCC/Target/X86-64/Layout.agda 3
 Once/CCC/Target/X86-64/RuntimeParams.agda 1
 Once/CanonicalName.agda 1
 Once/Compile.agda 11
@@ -107,7 +104,6 @@ Once/Parser/Generic/PolyInst.agda 1
 Once/Parser/Module.agda 6
 Once/Parser/Module/Core.agda 20
 Once/Parser/Module/FunDef.agda 4
-Once/SPF.agda 1
 Once/Semantics/Functor.agda 1
 Once/Semantics/Functor/Laws.agda 1
 Once/Semantics/Machine.agda 2

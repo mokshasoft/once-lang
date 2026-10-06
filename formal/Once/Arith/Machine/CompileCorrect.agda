@@ -173,7 +173,7 @@ record CompileGoInv {sh n} (d : ℕ) (e : MArithIR sh n) (s : ArithAbsState sh) 
     input-eq  : input (run-abstract (compile-go d e) s) ≡ input s
     output-eq : output (run-abstract (compile-go d e) s) ≡ output s
 
-open CompileGoInv public
+open CompileGoInv
 
 run-abstract-app : ∀ {sh} (xs ys : List AbstractInstr) (s : ArithAbsState sh) →
   run-abstract (xs ++ ys) s ≡ run-abstract ys (run-abstract xs s)

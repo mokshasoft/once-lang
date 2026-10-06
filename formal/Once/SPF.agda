@@ -251,7 +251,7 @@ record ν (F : Functor) : Set where
   field
     unfold : ⟦ F ⟧F (ν F)
 
-open ν public
+open ν
 
 ------------------------------------------------------------------------
 -- Anamorphism (Unfold)

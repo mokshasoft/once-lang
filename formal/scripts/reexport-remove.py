@@ -64,9 +64,8 @@ def statement(lines, i):
         if j >= len(lines): break
         nxt = lines[j]
         if depth > 0: continue
-        s = nxt.strip()
-        if s and (len(nxt) - len(nxt.lstrip())) > ind and re.match(r"(using|hiding|renaming|public|;|\))", s):
-            continue
+        if nxt.strip() and (len(nxt) - len(nxt.lstrip())) > ind:
+            continue                         # layout: deeper indentation continues it
         break
     return i, j
 
@@ -137,10 +136,17 @@ def report(mods, out):
 def base(resolved):
     return resolved.rsplit(".", 1)[-1] if not resolved.endswith(".") else resolved
 
+def norm(m):
+    """`open import M args` names its application `.#M-<hash>`."""
+    return re.sub(r"-\d+$", "", m[2:]) if m.startswith(".#") else m
+
 def crossing(r, facade, target):
-    hops = [h["module"] for h in r.get("lineage", [])]
+    lin = r.get("lineage", [])
+    hops = [norm(h["module"]) for h in lin]
     for k in range(len(hops) - 1):
         if hops[k] == facade and hops[k + 1] == target:
+            if any(h["op"] == "applied" or h["module"] == "_" for h in lin[:k + 1]):
+                return "applied"            # an instance copy: the repair needs the arguments
             return "unqualified" if not r.get("qualifier") else "qualified"
     for q in r.get("qualifier", []):
         if q["resolved"] == facade and hops[:1] == [target]:
@@ -149,18 +155,40 @@ def crossing(r, facade, target):
 
 # --- edits -------------------------------------------------------------------------------
 
+def classify(path, line):
+    L = open(path, encoding="utf-8").read().split("\n")
+    s = statement_start(L, line - 1)
+    st, e = statement(L, s)
+    m = IMPORT.match(L[s])
+    if m:
+        rest = re.sub(r"\s+", " ", " ".join(L[st:e])).split(m.group(2), 1)[1].strip()
+        if not re.match(r"^(as \S+ ?)?((using|hiding|renaming|public)\b.*)?$", rest):
+            raise ValueError("module arguments (S4): " + L[s].strip())
+        return ("import", m.group(2))
+    m = re.match(r"^\s*open\s+([^\s(]+)\s*(using|hiding|renaming|public|$)", L[s])
+    if not m:
+        raise ValueError("cannot classify (module arguments?): " + L[s].strip())
+    return ("local", m.group(1))
+
 def remove_public(path, line):
     L = open(path, encoding="utf-8").read().split("\n")
-    s, e = statement(L, line - 1)
+    s, e = statement(L, statement_start(L, line - 1))
     for j in range(e - 1, s - 1, -1):
         if PUB.search(L[j]):
             L[j] = PUB.sub("", L[j]).rstrip()
             if L[j].strip() == "":
                 del L[j]
             break
+    else:
+        raise ValueError("no `public` in the statement at " + path + ":" + str(line))
     open(path, "w", encoding="utf-8").write("\n".join(L))
     m = IMPORT.match(L[s])
-    return m.group(2)
+    if m:
+        return ("import", m.group(2))
+    m = re.match(r"^\s*open\s+([^\s(]+)\s*(using|hiding|renaming|$)", L[s])
+    if not m:
+        raise ValueError("cannot classify (module arguments?): " + L[s].strip())
+    return ("local", m.group(1))
 
 def add_imports(path, additions):
     """additions: {(stmt_line0, target): set(names)} — insert `open import target
@@ -168,8 +196,9 @@ def add_imports(path, additions):
     L = open(path, encoding="utf-8").read().split("\n")
     for (line0, target), names in sorted(additions.items(), key=lambda kv: -kv[0][0]):
         s = statement_start(L, line0)
+        _, e = statement(L, s)              # AFTER it: a local open needs the facade bound
         ind = L[s][:len(L[s]) - len(L[s].lstrip())]
-        L.insert(s, ind + "open import " + target + " using (" + "; ".join(sorted(names)) + ")")
+        L.insert(e, ind + target + " using (" + "; ".join(sorted(names)) + ")")
     open(path, "w", encoding="utf-8").write("\n".join(L))
 
 def drop_from_directives(path, facade, names):
@@ -197,6 +226,22 @@ def signature(recs):
     return {m: [(r["written"], r["kind"], r["resolved"]) for r in rs if r["kind"] != "module"]
             for m, rs in recs.items()}
 
+def applied_importers(facade, imps):
+    """Importers that import `facade` APPLIED to arguments: its re-exports reach
+    them as instance copies, so a repair would need the arguments."""
+    out = []
+    for m in imps:
+        p = modpath(m)
+        if not os.path.exists(p): continue
+        L = open(p, encoding="utf-8").read().split("\n")
+        for i, mod in imports_of(p):
+            if mod != facade: continue
+            st, e = statement(L, i)
+            rest = " ".join(L[st:e]).split(facade, 1)[1].strip()
+            if rest and not re.match(r"^(as\s+\S+\s*)?((using|hiding|renaming|public)\b.*)?$", rest):
+                out.append(m)
+    return out
+
 def run(targets):
     spots = []
     for t in targets:
@@ -211,29 +256,45 @@ def run(targets):
     backup = {}
     def touch(p):
         if p not in backup: backup[p] = open(p, encoding="utf-8").read()
-    removed = []
+    # classify every spot against the snapshot BEFORE editing
+    plan = []
+    skipped = []
     for f, ln in spots:
-        touch(f)
-        removed.append((modname(f), remove_public(f, ln)))
-    adds = defaultdict(lambda: defaultdict(set)); drops = defaultdict(lambda: defaultdict(set))
-    manual = []
-    for m, rs in before.items():
-        for r in rs:
-            for fac, tgt in removed:
-                if m == fac: continue
-                c = crossing(r, fac, tgt)
+        try:
+            kind, x = classify(f, ln)
+        except ValueError as e:
+            skipped.append((f, ln, str(e))); continue
+        fac = modname(f)
+        ap = applied_importers(fac, imps)
+        if ap:
+            skipped.append((f, ln, "imported applied by " + ", ".join(ap))); continue
+        stmt = ("open import " + x) if kind == "import" else ("open " + fac + "." + x)
+        add = defaultdict(lambda: defaultdict(set)); drop = defaultdict(set); why = set()
+        for m, rs in before.items():
+            if m == fac: continue
+            for r in rs:
+                c = crossing(r, fac, x)
                 if not c: continue
                 b = base(r["resolved"])
-                if c == "qualified" or r["written"] != b:
-                    manual.append((m, r["line"], r["written"], r["resolved"], c)); continue
-                h0 = r["lineage"][0]
-                adds[modpath(m)][(h0["line"] - 1, tgt)].add(b)
-                drops[modpath(m)][fac].add(b)
-    if manual:
-        for f in backup: open(f, "w", encoding="utf-8").write(backup[f])
-        print("NEEDS A DECISION (not applied):")
-        for x in sorted(set(manual)): print("  ", x)
-        sys.exit(2)
+                if c != "unqualified" or r["written"] != b:
+                    why.add(c if c != "unqualified" else "renamed"); continue
+                add[modpath(m)][(r["lineage"][0]["line"] - 1, stmt)].add(b)
+                drop[modpath(m)].add(b)
+        if why:
+            skipped.append((f, ln, ", ".join(sorted(why))))
+        else:
+            plan.append((f, ln, fac, add, drop))
+    for f, ln, why in skipped:
+        print(f"  skipped {f}:{ln}: {why}")
+    if not plan:
+        sys.exit("nothing mechanical in this batch")
+    for f, ln, *_ in sorted(plan, key=lambda x: (x[0], -x[1])):   # bottom-up: removals shift lines
+        touch(f); remove_public(f, ln)
+    adds = defaultdict(lambda: defaultdict(set)); drops = defaultdict(lambda: defaultdict(set))
+    for f, ln, fac, add, drop in plan:
+        for p, d in add.items():
+            for k, ns in d.items(): adds[p][k] |= ns
+        for p, ns in drop.items(): drops[p][fac] |= ns
     for p in adds:
         touch(p)
         for fac, ns in drops[p].items(): drop_from_directives(p, fac, ns)
@@ -247,9 +308,33 @@ def run(targets):
     if bad:
         for f in backup: open(f, "w", encoding="utf-8").write(backup[f])
         sys.exit("names changed meaning in: " + ", ".join(bad) + " (tree restored)")
-    print("OK: " + str(len(spots)) + " public(s) removed; edited: " + ", ".join(sorted(backup)))
+    print("OK: " + str(len(plan)) + " public(s) removed; edited: " + ", ".join(sorted(backup)))
+
+def mechanical(path, i, L):
+    """A re-export the client can repair: at the file's top level, its module
+    written without arguments (`open import X … public`, `open R … public`)."""
+    s = i
+    while s >= 0 and not re.match(r"^\s*(open|import)\b", L[s]): s -= 1
+    if s < 0 or L[s] != L[s].lstrip(): return False      # nested in a module
+    m = re.match(r"^(open import|open)\s+([^\s(]+)\s*(.*)$", L[s])
+    if not m: return False
+    rest = m.group(3)
+    # after the module name only `as Q`, a directive, or `public` may follow
+    return re.match(r"^(as\s+\S+\s*)?((using|hiding|renaming)\b.*|public\s*)?$", rest) is not None
+
+def candidates():
+    rows = []
+    for p in all_modules():
+        L = open(p, encoding="utf-8").read().split("\n")
+        lines = [i + 1 for i, l in enumerate(L) if PUB.search(l) and mechanical(p, i, L)]
+        if lines:
+            rows.append((len(importers([modname(p)])), p, lines))
+    for n, p, lines in sorted(rows):
+        print(n, " ".join(p + ":" + str(x) for x in lines))
 
 if __name__ == "__main__":
+    if len(sys.argv) == 2 and sys.argv[1] == "candidates":
+        candidates(); sys.exit(0)
     if len(sys.argv) >= 3 and sys.argv[1] == "run":
         run(sys.argv[2:])
     elif len(sys.argv) >= 3 and sys.argv[1] == "importers":

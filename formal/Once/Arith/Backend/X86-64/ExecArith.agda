@@ -32,7 +32,8 @@ open import Once.CCC.Target.X86-64.Semantics
   using (State; mkstate; RegFile; Memory; readReg; writeMem; Word)
 open import Once.Target.X86-64.PhysReg using (Reg; rsp)
 open State
-open import Once.Arith.Backend.X86-64.Preserve using (step-of; step-of-preserves; a-rsp)
+open import Once.Arith.Backend.X86-64.Preserve using (step-of; step-of-preserves)
+open Once.Arith.Backend.X86-64.Preserve.AgreeCCC using (a-rsp)
 open import Once.Arith.Backend.X86-64.MemPreserve using (AgreeMemFrom; AgreeMemFrom-refl; writeMem-below-preserves)
 open import Once.Arith.Backend.X86-64.StatePreserve
   using (PreservesCCCState; mkPresState; preserves-state-refl; preserves-state-trans)
