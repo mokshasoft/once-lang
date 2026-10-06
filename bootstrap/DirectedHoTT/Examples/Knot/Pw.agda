@@ -241,17 +241,3 @@ module PwF = Pwₘ.FamilyT rowsPw
 KPw : RTm Δ → RTm Δ → RTm Δ → RTy Δ
 KPw d t u = PwF.KF (ixPw d t u)
 
--- ★ as a CODE (a premise of a higher stratum is a σ-field of it), OPAQUE
-opaque
-  ⌜Pw⌝ : RTm Δ → RTm Δ → RTm Δ → RTm Δ
-  ⌜Pw⌝ d t u = ⌜IMu⌝ Pwₘ.J PwF.DF (ixPw d t u)
-
-  ⊢⌜Pw⌝ : {Ξ : Ctx} {d t u : RTm ⌊ Ξ ⌋} → Ξ ⊢ d ∷ El ⌜Nat⌝ → Ξ ⊢ t ∷ K 1 d → Ξ ⊢ u ∷ K 1 (nsuc d) → Ξ ⊢ ⌜Pw⌝ d t u ∷ U
-  ⊢⌜Pw⌝ dd dt du = ⊢⌜IMu⌝ Pwₘ.⊢J PwF.⊢DF (⊢ixPw dd dt du)
-
-  ⌜Pw⌝-sub : (σ : Sub Δ Θ) (d t u : RTm Δ) → subTm σ (⌜Pw⌝ d t u) ≡ ⌜Pw⌝ (subTm σ d) (subTm σ t) (subTm σ u)
-  ⌜Pw⌝-sub σ d t u = cong₂ (λ I D → ⌜IMu⌝ I D (ixPw (subTm σ d) (subTm σ t) (subTm σ u))) (Pwₘ.J-sub σ) (PwF.DF-sub σ)
-
-  El-⌜Pw⌝ : {d t u : RTm Δ} → El (⌜Pw⌝ d t u) ≅ᵀ KPw d t u
-  El-⌜Pw⌝ = credᵀ El-⌜IMu⌝
-

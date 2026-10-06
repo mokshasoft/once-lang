@@ -39,7 +39,7 @@ open import DirectedHoTT.Examples.Knot.Preds using ( ⌜StkA⌝; ⊢⌜StkA⌝; 
 open import DirectedHoTT.Examples.Knot.RedIx
 open import DirectedHoTT.Examples.Knot.NestIx
 open import DirectedHoTT.Examples.Knot.JudgeIx using ( ⊢payK )
-open import DirectedHoTT.Examples.Knot.Pw using ( ⌜Pw⌝; ⊢⌜Pw⌝ )
+open import DirectedHoTT.Examples.Knot.PwCore using ( ⌜Pw⌝; ⊢⌜Pw⌝ )
 open import DirectedHoTT.Examples.Knot.Red
 
 con⟶app₃ : {Ξ : Ctx} {j f1 a0ᵢ0 : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ f1 ∷ K 1 j → Ξ ⊢ a0ᵢ0 ∷ K 1 (nsuc j) → 

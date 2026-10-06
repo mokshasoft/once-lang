@@ -723,11 +723,27 @@ tag rules key on it (`⊢fzero : Fin (suc n)`). After:
     (`Examples/NbEPwAgree.pw-is-pw`, with a negative control). The test
     module needs `unfolding PwF.FIBMₒ CP KR.wk JI.⌜Tm⌝`, because the
     Knot's pieces are Agda-opaque.
-  - ⬜ Next: P4. `Knot/PwCore` as the interface: `⌜Pw⌝` by `ref`,
-    `El-⌜Pw⌝` by `nbe-sound` (as `NbEKDTest.kd-conv`), consumers
-    repointed. Then P5 (measure). PwCore's 4.8 GB peak should come down
-    first (name `SI₂`/`SD₂`/the telescope as entries, as
-    `Negative/PwCoreSort0` does).
+  - ✅ **P4: `Examples/Knot/PwCore`** (71 s / 1.3 GB).
+    - The definition is `⌜Pw⌝ d t u = ⌜IMu⌝ (ref #PwJ) (ref #PwD) (ixPw d t u)`.
+    - `⌜Pw⌝-sub` is `refl`.
+    - `⊢⌜Pw⌝` is `⊢⌜IMu⌝` on `⊢ref` of the entries, typed by `PwCore.wf`
+      (`wf→ok`), with the index cast by a certified conversion.
+    - `El-⌜Pw⌝` is `El-⌜IMu⌝` followed by `cJ`/`cD`: closed `nbe-sound`
+      conversions with the Knot's `J`/`DF`, then weakened.
+    - `tools/gen-judge.py` has `CORE_CODE = {"Pw": …}`: the generated
+      `Knot/Pw` no longer emits a code, and its consumers (Red, RedAgree,
+      RedCompDecode, …) import the code interface from `Knot/PwCore`.
+    - Agda-cost lessons, each measured as more than 300 s or out of memory:
+      Agda compares two DIFFERENTLY WRITTEN forms of one erased body or
+      type by descending through the erasure, into every body it
+      references (here the rows' cascade). So:
+      - an entry's typing `wf→ok …` gets an INFERRED type;
+      - a reference's body is written exactly as that typing carries it
+        (`ref d (Sig.body S d)`);
+      - implicits hiding substituted terms are pinned.
+  - ⬜ Next: P5. Measure the lines a human writes (PwCore's rows
+    and entries, Knot/PwCore) against the generated Pw (256) + PwConGen
+    (86) + PwAgree (121). Bring PwCore's 4.8 GB peak down.
 
 **Then, the migration recipe** (each step is one family):
 - a schema becomes a CLOSED λ-entry; an instance becomes

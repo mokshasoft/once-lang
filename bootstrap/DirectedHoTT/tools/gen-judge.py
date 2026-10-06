@@ -1826,7 +1826,12 @@ PWRULES = {
                       ("id", ("Tm", "J+1"), "X", k("cHom", E(0), k("app", W1(F(1)), V0), k("app", W1(F(2)), V0)))])],
 }
 REDMOD = {"⟶": ("Red", "Redₘ"), "⟶ᵀ": ("RedT", "RedTₘ"), "Pw": ("Pw", "Pwₘ")}
-REDEXTRA = {"⟶": "open import DirectedHoTT.Examples.Knot.Pw using ( ⌜Pw⌝; ⊢⌜Pw⌝; ⌜Pw⌝-sub )\n"
+# ★ families whose CODE is the core's (PLAN-BIDI §3g P4): `Knot/<fam>Core`
+#   defines ⌜fam⌝ as a reference to the core entry, with ⊢⌜fam⌝, ⌜fam⌝-sub
+#   and El-⌜fam⌝ (a certified conversion to K<fam>)
+CORE_CODE = {"Pw": "DirectedHoTT.Examples.Knot.PwCore"}
+
+REDEXTRA = {"⟶": "open import DirectedHoTT.Examples.Knot.PwCore using ( ⌜Pw⌝; ⊢⌜Pw⌝; ⌜Pw⌝-sub )\n"
                   "open import DirectedHoTT.Examples.Knot.Ref using ( rδ; okδ )\n",
             "⟶ᵀ": "open import DirectedHoTT.Examples.Knot.Red using ( ⌜⟶⌝; ⊢⌜⟶⌝; ⌜⟶⌝-sub )\n", "Pw": ""}
 
@@ -1860,6 +1865,11 @@ def gen_red(fam, only=None):
     L.append("K%s : RTm Δ → RTm Δ → RTm Δ → RTy Δ" % fam)
     L.append("K%s d t u = %sF.KF (%s d t u)" % (fam, fam, ix))
     L.append("")
+    if fam in CORE_CODE:
+        # ★ the family's CODE is the core's (Knot/<fam>Core: a reference,
+        #   decoded to K<fam> by a certified conversion) — not emitted here
+        FAM, FAMKEY = FAMS["⊢"], "⊢"
+        return L
     L.append("-- ★ as a CODE (a premise of a higher stratum is a σ-field of it), OPAQUE")
     L.append("opaque")
     L.append("  ⌜%s⌝ : RTm Δ → RTm Δ → RTm Δ → RTm Δ" % fam)
@@ -2390,6 +2400,7 @@ open import DirectedHoTT.Examples.Knot.GenHelpers
 open import DirectedHoTT.Examples.Knot.RedIx
 open import DirectedHoTT.Examples.Knot.NestIx
 open import DirectedHoTT.Examples.Knot.Pw
+open import DirectedHoTT.Examples.Knot.PwCore using ( El-⌜Pw⌝ )
 open import DirectedHoTT.Examples.Knot.Preds
 open import DirectedHoTT.Examples.Knot.Red
 open import DirectedHoTT.Examples.Knot.RedT
@@ -2661,6 +2672,7 @@ open import DirectedHoTT.Examples.Knot.GenHelpers
 open import DirectedHoTT.Examples.Knot.RedIx
 open import DirectedHoTT.Examples.Knot.NestIx
 open import DirectedHoTT.Examples.Knot.Pw
+open import DirectedHoTT.Examples.Knot.PwCore using ( El-⌜Pw⌝ )
 open import DirectedHoTT.Examples.Knot.Preds
 open import DirectedHoTT.Examples.Knot.Red
 open import DirectedHoTT.Examples.Knot.RedT
@@ -3751,7 +3763,7 @@ open import DirectedHoTT.Examples.Knot.JudgeCase using ( toTm )
 open import DirectedHoTT.Examples.Knot.RedIx
 open import DirectedHoTT.Examples.Knot.Red using ( K⟶ )
 open import DirectedHoTT.Examples.Knot.Preds using ( El-⌜StkA⌝; El-⌜StkC⌝ )
-open import DirectedHoTT.Examples.Knot.Pw using ( El-⌜Pw⌝ )
+open import DirectedHoTT.Examples.Knot.PwCore using ( El-⌜Pw⌝ )
 open import DirectedHoTT.Examples.Knot.PredsAgree using ( ⊢stkAC; ⊢stkCC )
 open import DirectedHoTT.Examples.Knot.PwAgree using ( ⊢pwC )
 open import DirectedHoTT.Examples.Knot.OpAgree
@@ -3926,10 +3938,10 @@ open import DirectedHoTT.Examples.Knot.JudgeIx using ( ⊢payK )
 RCIMPORTS
 """
 RCIMPORTS = {
-  "⟶β": "open import DirectedHoTT.Examples.Knot.Pw using ( ⌜Pw⌝; ⊢⌜Pw⌝ )\nopen import DirectedHoTT.Examples.Knot.Red\n",
-  "⟶":  "open import DirectedHoTT.Examples.Knot.Pw using ( ⌜Pw⌝; ⊢⌜Pw⌝ )\nopen import DirectedHoTT.Examples.Knot.Red\n",
+  "⟶β": "open import DirectedHoTT.Examples.Knot.PwCore using ( ⌜Pw⌝; ⊢⌜Pw⌝ )\nopen import DirectedHoTT.Examples.Knot.Red\n",
+  "⟶":  "open import DirectedHoTT.Examples.Knot.PwCore using ( ⌜Pw⌝; ⊢⌜Pw⌝ )\nopen import DirectedHoTT.Examples.Knot.Red\n",
   "⟶ᵀ": "open import DirectedHoTT.Examples.Knot.Red using ( ⌜⟶⌝; ⊢⌜⟶⌝ )\nopen import DirectedHoTT.Examples.Knot.RedT\n",
-  "Pw":  "open import DirectedHoTT.Examples.Knot.Pw\n",
+  "Pw":  "open import DirectedHoTT.Examples.Knot.Pw\nopen import DirectedHoTT.Examples.Knot.PwCore using ( El-⌜Pw⌝ )\n",
 }
 
 if __name__ == "__main__":

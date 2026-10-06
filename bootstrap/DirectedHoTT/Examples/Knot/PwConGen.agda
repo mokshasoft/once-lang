@@ -40,6 +40,7 @@ open import DirectedHoTT.Examples.Knot.RedIx
 open import DirectedHoTT.Examples.Knot.NestIx
 open import DirectedHoTT.Examples.Knot.JudgeIx using ( ⊢payK )
 open import DirectedHoTT.Examples.Knot.Pw
+open import DirectedHoTT.Examples.Knot.PwCore using ( El-⌜Pw⌝ )
 
 conPwcPi : {Ξ : Ctx} {j f0 f1 : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ f0 ∷ K 1 j → Ξ ⊢ f1 ∷ K 1 (nsuc j) → 
   Ξ ⊢ conₗ 0 ((idrefl (⌜Tm⌝ (nsuc j)) f1) ,ₚ unit) ∷ IMu Pwₘ.J PwF.DF (ixPw j (kcPi f0 f1) (f1))
