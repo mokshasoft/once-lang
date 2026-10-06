@@ -76,6 +76,7 @@ import DirectedHoTT.Examples.Mutual
 import DirectedHoTT.Examples.Nat
 import DirectedHoTT.Examples.NbEAgree
 import DirectedHoTT.Examples.NbEKDTest
+import DirectedHoTT.Examples.NbEPwAgree
 import DirectedHoTT.Examples.NbESigCoreTest
 import DirectedHoTT.Examples.NbESigSubKnotTest
 import DirectedHoTT.Examples.NbESigTravTest
@@ -86,6 +87,7 @@ import DirectedHoTT.Examples.Overview
 import DirectedHoTT.Examples.PairC
 import DirectedHoTT.Examples.PairIx
 import DirectedHoTT.Examples.PairLib
+import DirectedHoTT.Examples.PwCore
 import DirectedHoTT.Examples.Scoped
 import DirectedHoTT.Examples.ScopedDepth
 import DirectedHoTT.Examples.ScopedSize

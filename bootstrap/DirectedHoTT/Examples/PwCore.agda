@@ -2,27 +2,23 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- OCP-0009 · PARKED (BLOCKED, not refuted) — Pw IN THE CORE (PLAN-BIDI
--- §3g, P3): a `SigExtend` segment over `Examples/SigMeth`.
+-- OCP-0009 · EXAMPLES — ★ Pw IN THE CORE (PLAN-BIDI §3g, P3): a
+-- `SigExtend` segment over `Examples/SigMeth`.
 --
 -- The convoy `#PwC`, the index `#PwJ`, the rows as the fibre method's
 -- LEAVES `#PwL` (kcPi, kcHom; every other constructor the empty row), the
--- description `#PwD` on `SigMeth.#methD`, and `⌜Pw⌝` as `#Pw`.  `#PwL`'s
--- kcHom row weakens by `SigMeth.#trav`, whose normal form IS the Knot's
--- `wk` (`Examples/NbETravAgree`), so `#PwD` is meant to be CONVERTIBLE
--- with `Knot/Pw.PwF.DF`.
+-- description `#PwD` on `SigMeth.#methD`, and `⌜Pw⌝` as `#Pw`.  The kcHom
+-- row weakens by `SigMeth.#trav`, whose normal form IS the Knot's `wk`.
+-- ★ `#PwD` has EXACTLY the normal form of the Knot's generated
+--   `Knot/Pw.PwF.DF` (`Examples/NbEPwAgree`).
 --
--- ⛔ BLOCKED (measured 2026-10-06): the checker runs out of memory on
---   `#PwL` (killed at the cap after 350–470 s), EVEN WITH EVERY ROW EMPTY —
---   the cost is the 52 dependently-typed cascade branches over the quoted
---   Knot signature, each converted by CheckA's SUBSTITUTION evaluators
---   (`Algorithm/Eval`, `ConvLazy`).  `#PwC`/`#PwJ` alone check in 6 s.
---   Unblocked by PLAN-EVAL E3: `nbeᵀ` soundness, then CheckA's conversion
---   by NbE.
+-- ⚠ Needs the COMPACTING COLLECTOR (`+RTS -c`): 144 s / 4.9 GB
+--   (2026-10-06, after CheckA's syntactic fast path; before it the checker
+--   ran out of memory on the 52-branch rows cascade).
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Negative.PwCore where
+module DirectedHoTT.Examples.PwCore where
 open import normalizer.Syntax.Types using ( _≡_; refl )
 open import Agda.Builtin.Nat using ( zero; suc; _-_; _+_ ) renaming ( Nat to ℕ )
 open import Agda.Builtin.List using ( List; []; _∷_ )

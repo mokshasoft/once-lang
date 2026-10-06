@@ -725,9 +725,17 @@ len (Γ ∙) = suc (len Γ)
 -- the variable at level `l`, if it is in scope
 -- (out of scope cannot happen for a well-scoped input; the fallback
 -- `absurd unit unit` makes such a bug visible in a test, never silent)
+-- ★ the length is computed ONCE and passed down (`lvlAt`): recomputing
+--   `len` at every level made each variable read quadratic in the depth
+--   (profiled 2026-10-06: `len` was 31% of all unfoldings on Pw's rows).
+--   `lvl (Γ ∙)` is still `bindL (len Γ) (lvl Γ)` DEFINITIONALLY.
+lvlAt : (Γ : Cx) → ℕ → ℕ → RTm Γ
+lvlAt ε       m       l = absurd unit unit
+lvlAt (Γ ∙)   zero    l = absurd unit unit
+lvlAt (Γ ∙)   (suc m) l = pickTm (l == m) (var vz) (wk (lvlAt Γ m l))
+
 lvl : (Γ : Cx) → ℕ → RTm Γ
-lvl ε       l = absurd unit unit
-lvl (Γ ∙) l = bindL (len Γ) (lvl Γ) l
+lvl Γ = lvlAt Γ (len Γ)
 
 rb  : Bool → ℕ → (Γ : Cx) → Val → RTm Γ
 rbᶜ : Bool → ℕ → (Γ : Cx) → Clo → RTm (Γ ∙)
