@@ -593,12 +593,13 @@ main-linked (FB.bcons {fi = fi} {ty = .EffUU} {irFun = irFun} _ _ _ _ _ rest) pr
 -- THE THEOREM
 ------------------------------------------------------------------------
 
-private
-  linv₀ : LInv σ C.emptyCScope []
-  linv₀ = record { irf = λ () ; irs = λ () ; iself = [] ; imp-ok = λ () ; tel-ok = λ _ _ {x} {A} pr _ → ⊥-elim (no-poly {x} {A} pr) ; ent-ok = [] ; sig-ok = λ () }
-    where no-poly : ∀ {x A} → PolyRef [] x A → ⊥
-          no-poly (_ , () , _)
+-- The walk's start: the empty scope.
+linv₀ : LInv σ C.emptyCScope []
+linv₀ = record { irf = λ () ; irs = λ () ; iself = [] ; imp-ok = λ () ; tel-ok = λ _ _ {x} {A} pr _ → ⊥-elim (no-poly {x} {A} pr) ; ent-ok = [] ; sig-ok = λ () }
+  where no-poly : ∀ {x A} → PolyRef [] x A → ⊥
+        no-poly (_ , () , _)
 
+private
   typed-ef : ∀ (m : P.Module) (ef : _) → ModuleTyped-ef m ef → ∀ {es} → ef ≡ inj₂ es → ModTele (AS.scopeOf C.emptyCScope) es
   typed-ef m .(inj₂ _) mt refl = mt
 

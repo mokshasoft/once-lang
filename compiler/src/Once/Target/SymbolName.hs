@@ -18,6 +18,7 @@ module Once.Target.SymbolName
   , mangleComponent
   ) where
 
+import Data.Char (isAlpha, isDigit, ord)
 import Data.List (intercalate)
 
 -- | z-encode a single character (mirrors @z-encode-char@): escape the few
@@ -30,7 +31,11 @@ zEncodeChar '*'  = "zt"
 zEncodeChar '!'  = "zb"
 zEncodeChar '?'  = "zh"
 zEncodeChar '.'  = "zd"
-zEncodeChar c    = [c]
+-- D275: total — a char `as` accepts inside a symbol stands for itself, any
+-- other takes the generic escape @zu<decimal code>_@.
+zEncodeChar c
+  | isAlpha c || isDigit c || c == '_' = [c]
+  | otherwise                          = "zu" ++ show (ord c) ++ "_"
 
 zEncode :: String -> String
 zEncode = concatMap zEncodeChar

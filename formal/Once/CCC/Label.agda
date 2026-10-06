@@ -50,7 +50,8 @@ open import Once.CanonicalName using (CanonicalName; canonical; parts; _≟ᶜ_)
 -- its definition are visibly one identity in the object file.
 open import Once.Target.Symbol using (once-symbol-path)
 open import Data.String using () renaming (_++_ to _++ˢ_)
-open import Data.Nat.Show using () renaming (show to showNat)
+-- D275: the decimal rendering whose chars are provably digits (`charsInBase`).
+open import Once.Target.Symbol using (showNat)
 open import Data.List using (foldr)
 
 ------------------------------------------------------------------------

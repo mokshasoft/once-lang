@@ -87,21 +87,6 @@ postulate
   prog-unique   : ∀ (m : Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) → moduleToIR m ≡ just ir
                 → Unique (prog-defs (irProgram (moduleTable m) ir))
   lib-unique    : ∀ (m : Module) → moduleToIR m ≡ nothing → Unique (lib-defs m)
-  lib-resolved  : ∀ (m : Module) → moduleToIR m ≡ nothing
-                → Resolved (lib-defs m) (externs-of (lib-program (moduleTable m))) (arefs (lib-image (moduleTable m)))
-  -- D272 / plan 0.107 §8 step 1: every symbol the file defines or declares
-  -- external is an `as` symbol name. TRUE by construction: the symbols are
-  -- `once-symbol-path` of lexer identifiers (z-encoded, so letters, digits, `_`)
-  -- and of arith-block names (letters, digits, `_`, `.`), `labelSym`s, and the
-  -- fixed `once_heap_base`/`_start`. Discharged with uniqueness (step 4), which
-  -- needs the same per-component identifier facts.
-  prog-defs-valid : ∀ (m : Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) → moduleToIR m ≡ just ir
-                  → All AsmSym (prog-defs (irProgram (moduleTable m) ir))
-  lib-defs-valid  : ∀ (m : Module) → moduleToIR m ≡ nothing → All AsmSym (lib-defs m)
-  prog-externs-valid : ∀ (m : Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) → moduleToIR m ≡ just ir
-                     → All AsmSym (externs-of (irProgram (moduleTable m) ir))
-  lib-externs-valid  : ∀ (m : Module) → moduleToIR m ≡ nothing
-                     → All AsmSym (externs-of (lib-program (moduleTable m)))
 
 ------------------------------------------------------------------------
 -- D274 / plan 0.107 §9 2D: every SigOp the rewritten program calls names one of

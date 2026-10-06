@@ -16,8 +16,8 @@
 module Once.CCC.Codegen.NodesOK where
 
 open import Data.List using (List; []; _∷_; _++_)
-open import Data.List.Relation.Unary.All.Properties using (++⁻)
-open import Data.List.Relation.Unary.All using (All)
+open import Data.List.Relation.Unary.All.Properties using (++⁻; ++⁺)
+open import Data.List.Relation.Unary.All using (All; [])
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.String using (String)
@@ -114,6 +114,31 @@ leaf-syms-leaves (out-μ _)     a = tt
 leaf-syms-leaves (Out _)       a = tt
 leaf-syms-leaves (in-ν _)      a = tt
 leaf-syms-leaves (const _ _)   a = tt
+
+-- …and a property of every SigOp leaf's symbols is one of every collected symbol.
+leaf-syms-all : ∀ {G : String → Set} → (∀ {A B} (si : SigOpInfo A B) → All G (sigop-syms si (cmp-of (sem si))))
+              → ∀ {A B} (ir : IR A B) → All G (leaf-syms ir)
+leaf-syms-all h (g ∘ f)       = ++⁺ (leaf-syms-all h g) (leaf-syms-all h f)
+leaf-syms-all h ⟨ f , g ⟩     = ++⁺ (leaf-syms-all h f) (leaf-syms-all h g)
+leaf-syms-all h (case f g)    = ++⁺ (leaf-syms-all h f) (leaf-syms-all h g)
+leaf-syms-all h (curry f)     = leaf-syms-all h f
+leaf-syms-all h (Cata _ alg)  = leaf-syms-all h alg
+leaf-syms-all h (Ana _ cg)    = leaf-syms-all h cg
+leaf-syms-all h (SigOp si)    = h si
+leaf-syms-all h (Call _)      = []
+leaf-syms-all h id            = []
+leaf-syms-all h fst           = []
+leaf-syms-all h snd           = []
+leaf-syms-all h inl           = []
+leaf-syms-all h inr           = []
+leaf-syms-all h terminal      = []
+leaf-syms-all h initial       = []
+leaf-syms-all h apply         = []
+leaf-syms-all h (In _)        = []
+leaf-syms-all h (out-μ _)     = []
+leaf-syms-all h (Out _)       = []
+leaf-syms-all h (in-ν _)      = []
+leaf-syms-all h (const _ _)   = []
 
 module _ (G : String → Set) where
 

@@ -20,11 +20,13 @@ module Once.Target.Symbol where
 
 open import Data.String using (String; _++_; toList; fromList)
 open import Data.List using (List; []; _∷_; map; concatMap; length)
-open import Data.Char using (Char)
+open import Data.Char using (Char; isAlpha; isDigit; toℕ)
+open import Data.Bool using (Bool; true; false; _∨_)
+import Data.List
 open import Data.Char.Properties using (_≟_)
 open import Relation.Nullary using (yes; no; Dec)
 open import Relation.Binary.PropositionalEquality using (_≡_)
-open import Data.Nat using (ℕ)
+open import Data.Nat using (ℕ; _≡ᵇ_)
 -- `showNat = showInBase 10`: same decimal output as `Data.Nat.Show.show`
 -- (definitionally equal on every concrete numeral — the format-checks below
 -- are unchanged) but built on `charsInBase`, which the stdlib proves INJECTIVE
@@ -67,23 +69,33 @@ once-prefix = "once_"
 -- the SAME `Dec` values — a literal-pattern catch-all is stuck on an
 -- abstract `c`. Output identical (the format-checks below are unchanged).
 -- `.` (dot) keeps single-component dotted names (arith.add.int) asm-safe.
+-- D275: the encoding is TOTAL. After the seven named escapes, a char `as`
+-- accepts inside a symbol (a letter, a digit, `_`) stands for itself; ANY other
+-- char takes the generic escape `zu<decimal code>_` — self-delimiting (a digit
+-- run, then `_`). So every component of every name encodes to a string `as`
+-- reads as part of a symbol, whatever the name (not only lexer identifiers).
+symbol-char? : Char → Bool
+symbol-char? c = isAlpha c ∨ isDigit c ∨ (toℕ c ≡ᵇ toℕ '_')
+
 z-encode-char-aux :
   (c : Char)
   → Dec (c ≡ 'z') → Dec (c ≡ '\'') → Dec (c ≡ '+') → Dec (c ≡ '*')
-  → Dec (c ≡ '!') → Dec (c ≡ '?') → Dec (c ≡ '.') → List Char
-z-encode-char-aux c (yes _) _ _ _ _ _ _ = 'z' ∷ 'z' ∷ []
-z-encode-char-aux c (no _) (yes _) _ _ _ _ _ = 'z' ∷ 'q' ∷ []
-z-encode-char-aux c (no _) (no _) (yes _) _ _ _ _ = 'z' ∷ 'p' ∷ []
-z-encode-char-aux c (no _) (no _) (no _) (yes _) _ _ _ = 'z' ∷ 't' ∷ []
-z-encode-char-aux c (no _) (no _) (no _) (no _) (yes _) _ _ = 'z' ∷ 'b' ∷ []
-z-encode-char-aux c (no _) (no _) (no _) (no _) (no _) (yes _) _ = 'z' ∷ 'h' ∷ []
-z-encode-char-aux c (no _) (no _) (no _) (no _) (no _) (no _) (yes _) = 'z' ∷ 'd' ∷ []
-z-encode-char-aux c (no _) (no _) (no _) (no _) (no _) (no _) (no _) = c ∷ []
+  → Dec (c ≡ '!') → Dec (c ≡ '?') → Dec (c ≡ '.') → Bool → List Char
+z-encode-char-aux c (yes _) _ _ _ _ _ _ _ = 'z' ∷ 'z' ∷ []
+z-encode-char-aux c (no _) (yes _) _ _ _ _ _ _ = 'z' ∷ 'q' ∷ []
+z-encode-char-aux c (no _) (no _) (yes _) _ _ _ _ _ = 'z' ∷ 'p' ∷ []
+z-encode-char-aux c (no _) (no _) (no _) (yes _) _ _ _ _ = 'z' ∷ 't' ∷ []
+z-encode-char-aux c (no _) (no _) (no _) (no _) (yes _) _ _ _ = 'z' ∷ 'b' ∷ []
+z-encode-char-aux c (no _) (no _) (no _) (no _) (no _) (yes _) _ _ = 'z' ∷ 'h' ∷ []
+z-encode-char-aux c (no _) (no _) (no _) (no _) (no _) (no _) (yes _) _ = 'z' ∷ 'd' ∷ []
+z-encode-char-aux c (no _) (no _) (no _) (no _) (no _) (no _) (no _) true = c ∷ []
+z-encode-char-aux c (no _) (no _) (no _) (no _) (no _) (no _) (no _) false =
+  'z' ∷ 'u' ∷ (toList (showNat (toℕ c)) Data.List.++ '_' ∷ [])
 
 z-encode-char : Char → List Char
 z-encode-char c =
   z-encode-char-aux c (c ≟ 'z') (c ≟ '\'') (c ≟ '+') (c ≟ '*')
-                      (c ≟ '!') (c ≟ '?') (c ≟ '.')
+                      (c ≟ '!') (c ≟ '?') (c ≟ '.') (symbol-char? c)
 
 z-encode : String → String
 z-encode s = fromList (concatMap z-encode-char (toList s))
@@ -131,4 +143,7 @@ private
   _ = refl
   -- literal "zp" escapes its z → zzp (≠ the encoding of `+`)
   _ : mangle-component "zp" ≡ "3zzp"
+  _ = refl
+  -- D275: any other char takes the generic escape (space = code 32)
+  _ : once-symbol-path (canonical ("a b" ∷ [])) ≡ "once_7azu32_b"
   _ = refl

@@ -16811,3 +16811,31 @@ names stay pairwise distinct across definitions AND signatures, so `t-var-resolv
 **Once.Spec header** gains the THREE TIMES (D061/D257): building the compiler = proving
 `correct`, `∀ I`; compiling a program = `compile` and `sigOf tp` (Σ is a function of the
 program); an interpretation, offline = an `Impl (sigOf tp)`.
+
+## D275 — THE SYMBOL ENCODING IS TOTAL: EVERY NAME RENDERS TO AN `as` SYMBOL (2026-10-06)
+
+**Relates**: D272 (`as-faithful` true as stated; `AsmWF.symbols-valid`), plan 0.50
+(`once-symbol-path`, z-encoding), plan 0.107 §8 step 4, D061 (an interpretation's symbol is
+the CLI's rename of the same mangling).
+
+**Found** (plan 0.107 §8 step 4, while discharging `ImageWF.{prog,lib}-externs-valid`). The two
+postulates said every extern the file declares is an `as` symbol name. They were FALSE: the
+residual quantifies over every resolved `Module`, and a module whose signature is named, say,
+`a b` typechecks a reference to it (`t-var-resolved`), realizes `sigOp (canonical ["a b"])`, and
+`z-encode` passed the space through, so the file declared `once_3a b`. Step 1's note "true by
+construction: symbols are `once-symbol-path` of lexer identifiers" held only for names that came
+from the lexer, and nothing in the residual said so.
+
+**Decided (make the model true, not the premise narrower).** The z-encoding is TOTAL. After the
+seven named escapes (`z q p t b h d`), a char `as` accepts inside a symbol — a letter
+(`isAlpha`), a digit, `_` — stands for itself; ANY other char takes the generic escape
+`zu<decimal code>_`, which is self-delimiting (a digit run closed by `_`) and starts with `z`, so
+the injectivity argument extends by one case. Names that are lexer identifiers or arith-block
+names encode exactly as before; nothing the compiler emits today changes.
+
+**Consequence.** `Target.SymbolValid.once-symbol-path-asm : ∀ cn → AsmSym (once-symbol-path cn)`
+holds for EVERY canonical name, so all four validity residuals are theorems with no premise
+(`Adequacy.ImageValid`): the defined symbols (labels, entries, blocks, `once_heap_base`,
+`_start`) and the externs. `Label`'s decimal rendering is `showInBase 10` (the digits-provable
+one; same output). The CLI's Haskell mirror (`Once.Target.SymbolName`) gets the same rule, with a
+golden vector on both sides (`["a b"] ↦ once_7azu32_b`).

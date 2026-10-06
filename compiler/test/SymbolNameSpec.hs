@@ -29,6 +29,8 @@ symbolNameTests = testGroup "Symbol mangling (mirrors Once.Target.Symbol)"
           onceSymbolPath ["arith.add.int"] @?= "once_15arithzdaddzdint"
       , testCase "mangleComponent z-escapes 'z'" $
           mangleComponent "zp" @?= "3zzp"
+      , testCase "D275: any other char takes the generic escape" $
+          onceSymbolPath ["a b"] @?= "once_7azu32_b"
       ]
   , testGroup "symbols the build aliases to"
       [ testCase "I.Test.Emit.emit" $

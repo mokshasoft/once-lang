@@ -57,7 +57,7 @@ open import Data.String.Unsafe using (toList-++; toList∘fromList)
 
 open import Once.Parser.Lexer using (isIdentStart; isIdentContinue; toNat)
 open import Once.Target.Symbol
-  using (z-encode-char; z-encode-char-aux; z-encode; showNat;
+  using (z-encode-char; z-encode-char-aux; z-encode; showNat; symbol-char?;
          mangle-component; join-us; once-prefix; once-symbol-path; once-symbol-own)
 open import Once.CanonicalName using (CanonicalName; canonical; parts)
 
@@ -127,30 +127,45 @@ unescape : Char → Char
 unescape t = unescape-aux t (t ≟ 'z') (t ≟ 'q') (t ≟ 'p') (t ≟ 't')
                             (t ≟ 'b') (t ≟ 'h') (t ≟ 'd')
 
--- Classification of one char's z-encoding, with the char recoverable.
+-- Classification of one char's z-encoding, with the char recoverable: a NAMED
+-- escape (`z` + a tag that is not `u`), the D275 GENERIC escape (`zu<code>_`),
+-- or the char itself (never `z`).
+TagEsc : Char → List Char → Set
+TagEsc c enc = Σ[ t ∈ Char ] (enc ≡ 'z' ∷ t ∷ []) × (unescape t ≡ c) × ¬ (t ≡ 'u')
+
+GenEsc : Char → List Char → Set
+GenEsc c enc = enc ≡ 'z' ∷ 'u' ∷ (charsInBase 10 (toℕ c) ++ '_' ∷ [])
+
+OrdChar : Char → List Char → Set
+OrdChar c enc = (enc ≡ c ∷ []) × ¬ (c ≡ 'z')
+
 ZClass : Char → List Char → Set
-ZClass c enc =
-  (Σ[ t ∈ Char ] (enc ≡ 'z' ∷ t ∷ []) × (unescape t ≡ c))
-  ⊎ ((enc ≡ c ∷ []) × ¬ (c ≡ 'z'))
+ZClass c enc = TagEsc c enc ⊎ (GenEsc c enc ⊎ OrdChar c enc)
+
+private
+  toList-showNat′ : ∀ (n : ℕ) → toList (showNat n) ≡ charsInBase 10 n
+  toList-showNat′ n = toList∘fromList (charsInBase 10 n)
 
 zec-class-aux :
   (c : Char)
   → (d1 : Dec (c ≡ 'z')) (d2 : Dec (c ≡ '\'')) (d3 : Dec (c ≡ '+'))
     (d4 : Dec (c ≡ '*')) (d5 : Dec (c ≡ '!')) (d6 : Dec (c ≡ '?'))
-    (d7 : Dec (c ≡ '.'))
-  → ZClass c (z-encode-char-aux c d1 d2 d3 d4 d5 d6 d7)
-zec-class-aux c (yes p) _ _ _ _ _ _ = inj₁ ('z' , refl , sym p)
-zec-class-aux c (no _) (yes p) _ _ _ _ _ = inj₁ ('q' , refl , sym p)
-zec-class-aux c (no _) (no _) (yes p) _ _ _ _ = inj₁ ('p' , refl , sym p)
-zec-class-aux c (no _) (no _) (no _) (yes p) _ _ _ = inj₁ ('t' , refl , sym p)
-zec-class-aux c (no _) (no _) (no _) (no _) (yes p) _ _ = inj₁ ('b' , refl , sym p)
-zec-class-aux c (no _) (no _) (no _) (no _) (no _) (yes p) _ = inj₁ ('h' , refl , sym p)
-zec-class-aux c (no _) (no _) (no _) (no _) (no _) (no _) (yes p) = inj₁ ('d' , refl , sym p)
-zec-class-aux c (no ¬z) (no _) (no _) (no _) (no _) (no _) (no _) = inj₂ (refl , ¬z)
+    (d7 : Dec (c ≡ '.')) (b : Bool)
+  → ZClass c (z-encode-char-aux c d1 d2 d3 d4 d5 d6 d7 b)
+zec-class-aux c (yes p) _ _ _ _ _ _ _ = inj₁ ('z' , refl , sym p , λ ())
+zec-class-aux c (no _) (yes p) _ _ _ _ _ _ = inj₁ ('q' , refl , sym p , λ ())
+zec-class-aux c (no _) (no _) (yes p) _ _ _ _ _ = inj₁ ('p' , refl , sym p , λ ())
+zec-class-aux c (no _) (no _) (no _) (yes p) _ _ _ _ = inj₁ ('t' , refl , sym p , λ ())
+zec-class-aux c (no _) (no _) (no _) (no _) (yes p) _ _ _ = inj₁ ('b' , refl , sym p , λ ())
+zec-class-aux c (no _) (no _) (no _) (no _) (no _) (yes p) _ _ = inj₁ ('h' , refl , sym p , λ ())
+zec-class-aux c (no _) (no _) (no _) (no _) (no _) (no _) (yes p) _ = inj₁ ('d' , refl , sym p , λ ())
+zec-class-aux c (no ¬z) (no _) (no _) (no _) (no _) (no _) (no _) true = inj₂ (inj₂ (refl , ¬z))
+zec-class-aux c (no ¬z) (no _) (no _) (no _) (no _) (no _) (no _) false =
+  inj₂ (inj₁ (cong (λ D → 'z' ∷ 'u' ∷ (D ++ '_' ∷ [])) (toList-showNat′ (toℕ c))))
 
 zec-class : (c : Char) → ZClass c (z-encode-char c)
 zec-class c = zec-class-aux c (c ≟ 'z') (c ≟ '\'') (c ≟ '+') (c ≟ '*')
-                              (c ≟ '!') (c ≟ '?') (c ≟ '.')
+                              (c ≟ '!') (c ≟ '?') (c ≟ '.') (symbol-char? c)
 
 ------------------------------------------------------------------------
 -- `zencL` (= `concatMap z-encode-char`, the char-list z-encoding) is
@@ -165,35 +180,6 @@ zencL = concatMap z-encode-char
 
 cons≢[] : ∀ {A : Set} {x : A} {xs : List A} → ¬ (x ∷ xs ≡ [])
 cons≢[] ()
-
-zenc++-nonempty : ∀ {y} → ZClass y (z-encode-char y)
-                → (rest : List Char) → ¬ (z-encode-char y ++ rest ≡ [])
-zenc++-nonempty (inj₁ (t , ex , _)) rest eq rewrite ex = cons≢[] eq
-zenc++-nonempty (inj₂ (ex , _))     rest eq rewrite ex = cons≢[] eq
-
--- One induction step: peel the leading component off both sides.
-consStep : ∀ {x y} (xs ys : List Char)
-  → ZClass x (z-encode-char x) → ZClass y (z-encode-char y)
-  → z-encode-char x ++ zencL xs ≡ z-encode-char y ++ zencL ys
-  → (x ≡ y) × (zencL xs ≡ zencL ys)
-consStep xs ys (inj₁ (tx , ex , dx)) (inj₁ (ty , ey , dy)) eq rewrite ex | ey =
-  let (_    , r1) = ∷-injective eq
-      (txty , zz) = ∷-injective r1
-  in trans (sym dx) (trans (cong unescape txty) dy) , zz
-consStep xs ys (inj₁ (tx , ex , dx)) (inj₂ (ey , ¬y)) eq rewrite ex | ey =
-  ⊥-elim (¬y (sym (proj₁ (∷-injective eq))))
-consStep xs ys (inj₂ (ex , ¬x)) (inj₁ (ty , ey , dy)) eq rewrite ex | ey =
-  ⊥-elim (¬x (proj₁ (∷-injective eq)))
-consStep xs ys (inj₂ (ex , ¬x)) (inj₂ (ey , ¬y)) eq rewrite ex | ey =
-  let (x≡y , zz) = ∷-injective eq in x≡y , zz
-
-zencL-inj : ∀ (xs ys : List Char) → zencL xs ≡ zencL ys → xs ≡ ys
-zencL-inj [] [] eq = refl
-zencL-inj [] (y ∷ ys) eq = ⊥-elim (zenc++-nonempty (zec-class y) (zencL ys) (sym eq))
-zencL-inj (x ∷ xs) [] eq = ⊥-elim (zenc++-nonempty (zec-class x) (zencL xs) eq)
-zencL-inj (x ∷ xs) (y ∷ ys) eq =
-  let (x≡y , zz) = consStep xs ys (zec-class x) (zec-class y) eq
-  in cong₂ _∷_ x≡y (zencL-inj xs ys zz)
 
 ------------------------------------------------------------------------
 -- Length-prefix self-delimiting machinery.
@@ -276,6 +262,59 @@ len-prefix-cancel (a ∷ A') (b ∷ B') s t leq eq =
 
 open import Data.Nat.Show.Properties using (charsInBase-injective)
 
+zenc++-nonempty : ∀ {y} → ZClass y (z-encode-char y)
+                → (rest : List Char) → ¬ (z-encode-char y ++ rest ≡ [])
+zenc++-nonempty (inj₁ (t , ex , _)) rest eq rewrite ex = cons≢[] eq
+zenc++-nonempty (inj₂ (inj₁ ex))    rest eq rewrite ex = cons≢[] eq
+zenc++-nonempty (inj₂ (inj₂ (ex , _))) rest eq rewrite ex = cons≢[] eq
+
+private
+  -- a generic escape's code is a digit run closed by `_`: equal escapes, equal codes
+  gen-split : ∀ (x y : Char) (r s : List Char)
+            → (charsInBase 10 (toℕ x) ++ '_' ∷ []) ++ r ≡ (charsInBase 10 (toℕ y) ++ '_' ∷ []) ++ s
+            → (x ≡ y) × (r ≡ s)
+  gen-split x y r s eq =
+    let eq′ = trans (sym (++-assoc (charsInBase 10 (toℕ x)) ('_' ∷ []) r))
+                    (trans eq (++-assoc (charsInBase 10 (toℕ y)) ('_' ∷ []) s))
+        (D≡ , rest≡) = digit-prefix-unique (charsInBase 10 (toℕ x)) (charsInBase 10 (toℕ y)) ('_' ∷ r) ('_' ∷ s)
+                         (charsInBase-all-digits (toℕ x)) (charsInBase-all-digits (toℕ y)) refl refl eq′
+    in charToℕ-injective x y (charsInBase-injective 10 (toℕ x) (toℕ y) D≡) , proj₂ (∷-injective rest≡)
+
+-- One induction step: peel the leading component off both sides.
+consStep : ∀ {x y} (xs ys : List Char)
+  → ZClass x (z-encode-char x) → ZClass y (z-encode-char y)
+  → z-encode-char x ++ zencL xs ≡ z-encode-char y ++ zencL ys
+  → (x ≡ y) × (zencL xs ≡ zencL ys)
+consStep xs ys (inj₁ (tx , ex , dx , _)) (inj₁ (ty , ey , dy , _)) eq rewrite ex | ey =
+  let (_    , r1) = ∷-injective eq
+      (txty , zz) = ∷-injective r1
+  in trans (sym dx) (trans (cong unescape txty) dy) , zz
+consStep xs ys (inj₁ (tx , ex , _ , nu)) (inj₂ (inj₁ ey)) eq rewrite ex | ey =
+  ⊥-elim (nu (proj₁ (∷-injective (proj₂ (∷-injective eq)))))
+consStep xs ys (inj₂ (inj₁ ex)) (inj₁ (ty , ey , _ , nu)) eq rewrite ex | ey =
+  ⊥-elim (nu (sym (proj₁ (∷-injective (proj₂ (∷-injective eq))))))
+consStep {x} {y} xs ys (inj₂ (inj₁ ex)) (inj₂ (inj₁ ey)) eq rewrite ex | ey =
+  gen-split x y (zencL xs) (zencL ys) (proj₂ (∷-injective (proj₂ (∷-injective eq))))
+consStep xs ys (inj₁ (tx , ex , _)) (inj₂ (inj₂ (ey , ¬y))) eq rewrite ex | ey =
+  ⊥-elim (¬y (sym (proj₁ (∷-injective eq))))
+consStep xs ys (inj₂ (inj₁ ex)) (inj₂ (inj₂ (ey , ¬y))) eq rewrite ex | ey =
+  ⊥-elim (¬y (sym (proj₁ (∷-injective eq))))
+consStep xs ys (inj₂ (inj₂ (ex , ¬x))) (inj₁ (ty , ey , _)) eq rewrite ex | ey =
+  ⊥-elim (¬x (proj₁ (∷-injective eq)))
+consStep xs ys (inj₂ (inj₂ (ex , ¬x))) (inj₂ (inj₁ ey)) eq rewrite ex | ey =
+  ⊥-elim (¬x (proj₁ (∷-injective eq)))
+consStep xs ys (inj₂ (inj₂ (ex , ¬x))) (inj₂ (inj₂ (ey , ¬y))) eq rewrite ex | ey =
+  let (x≡y , zz) = ∷-injective eq in x≡y , zz
+
+zencL-inj : ∀ (xs ys : List Char) → zencL xs ≡ zencL ys → xs ≡ ys
+zencL-inj [] [] eq = refl
+zencL-inj [] (y ∷ ys) eq = ⊥-elim (zenc++-nonempty (zec-class y) (zencL ys) (sym eq))
+zencL-inj (x ∷ xs) [] eq = ⊥-elim (zenc++-nonempty (zec-class x) (zencL xs) eq)
+zencL-inj (x ∷ xs) (y ∷ ys) eq =
+  let (x≡y , zz) = consStep xs ys (zec-class x) (zec-class y) eq
+  in cong₂ _∷_ x≡y (zencL-inj xs ys zz)
+
+
 ValidIdentChars : List Char → Set
 ValidIdentChars [] = ⊥
 ValidIdentChars (c ∷ cs) =
@@ -292,7 +331,8 @@ zencL-vic {c0 ∷ cs'} (isC0 , _) = go (zec-class c0)
     go : ZClass c0 (z-encode-char c0)
        → Σ[ h ∈ Char ] Σ[ t ∈ List Char ] (zencL (c0 ∷ cs') ≡ h ∷ t) × (isDigit h ≡ false)
     go (inj₁ (tag , ex , _)) = 'z' , tag ∷ zencL cs' , cong (_++ zencL cs') ex , refl
-    go (inj₂ (ex , _))       = c0 , zencL cs'        , cong (_++ zencL cs') ex , identStart⇒¬digit {c0} isC0
+    go (inj₂ (inj₁ ex))      = 'z' , _ , cong (_++ zencL cs') ex , refl
+    go (inj₂ (inj₂ (ex , _))) = c0 , zencL cs'        , cong (_++ zencL cs') ex , identStart⇒¬digit {c0} isC0
 
 zencL-suffix-headND : ∀ {cs} (suffix : List Char)
                     → ValidIdentChars cs → HeadNotDigit (zencL cs ++ suffix)

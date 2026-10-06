@@ -40,9 +40,9 @@ import Once.Compile as C
 open import Once.Adequacy.Compile using (AsmWF-of)
 open import Once.Adequacy.EmitFile using (file-is-emit; file-is-lib)
 open import Once.Adequacy.ImageWF
-  using (prog-defs; lib-defs; Resolved; prog-unique; lib-unique; lib-resolved;
-         prog-defs-valid; lib-defs-valid; prog-externs-valid; lib-externs-valid)
-open import Once.Adequacy.ImageResolved using (prog-resolved)
+  using (prog-defs; lib-defs; Resolved; prog-unique; lib-unique)
+open import Once.Adequacy.ImageValid using (prog-defs-valid; lib-defs-valid; externs-valid)
+open import Once.Adequacy.ImageResolved using (prog-resolved; lib-resolved)
 open import Once.CCC.Codegen.ImageSymbols using (adefs; arefs)
 open import Once.CCC.Machine.NoNested using (NoNested; no-nested-of-all)
 open import Once.CCC.Machine.FrameFree using (emittable-image)
@@ -83,8 +83,8 @@ module X8664W where
     { defined-once = subst Unique (sym defs≡) (prog-unique m ir mi)
     ; resolved     = resolved-at defs≡ refs≡ (prog-resolved m ir mi)
     ; entry-in     = s≤s z≤n
-    ; defs-valid    = subst (All AsmSym) (sym defs≡) (prog-defs-valid m ir mi)
-    ; externs-valid = prog-externs-valid m ir mi
+    ; defs-valid    = subst (All AsmSym) (sym defs≡) (prog-defs-valid (irProgram (C.moduleTable m) ir))
+    ; externs-valid = externs-valid (irProgram (C.moduleTable m) ir)
     }
     where
       p = irProgram (C.moduleTable m) ir
@@ -101,10 +101,10 @@ module X8664W where
          → F.AsmWF (C.emitLibrary x86-64 (C.moduleTable m))
   lib-wf m mi = record
     { defined-once = subst Unique (sym defs≡) (lib-unique m mi)
-    ; resolved     = resolved-at defs≡ refs≡ (lib-resolved m mi)
+    ; resolved     = resolved-at defs≡ refs≡ (lib-resolved m)
     ; entry-in     = tt
-    ; defs-valid    = subst (All AsmSym) (sym defs≡) (lib-defs-valid m mi)
-    ; externs-valid = lib-externs-valid m mi
+    ; defs-valid    = subst (All AsmSym) (sym defs≡) (lib-defs-valid m)
+    ; externs-valid = externs-valid (C.lib-program (C.moduleTable m))
     }
     where
       G = C.emitLibrary x86-64 (C.moduleTable m)
@@ -139,8 +139,8 @@ module X8632W where
     { defined-once = subst Unique (sym defs≡) (prog-unique m ir mi)
     ; resolved     = resolved-at defs≡ refs≡ (prog-resolved m ir mi)
     ; entry-in     = s≤s z≤n
-    ; defs-valid    = subst (All AsmSym) (sym defs≡) (prog-defs-valid m ir mi)
-    ; externs-valid = prog-externs-valid m ir mi
+    ; defs-valid    = subst (All AsmSym) (sym defs≡) (prog-defs-valid (irProgram (C.moduleTable m) ir))
+    ; externs-valid = externs-valid (irProgram (C.moduleTable m) ir)
     }
     where
       p = irProgram (C.moduleTable m) ir
@@ -157,10 +157,10 @@ module X8632W where
          → F.AsmWF (C.emitLibrary x86-32 (C.moduleTable m))
   lib-wf m mi = record
     { defined-once = subst Unique (sym defs≡) (lib-unique m mi)
-    ; resolved     = resolved-at defs≡ refs≡ (lib-resolved m mi)
+    ; resolved     = resolved-at defs≡ refs≡ (lib-resolved m)
     ; entry-in     = tt
-    ; defs-valid    = subst (All AsmSym) (sym defs≡) (lib-defs-valid m mi)
-    ; externs-valid = lib-externs-valid m mi
+    ; defs-valid    = subst (All AsmSym) (sym defs≡) (lib-defs-valid m)
+    ; externs-valid = externs-valid (C.lib-program (C.moduleTable m))
     }
     where
       G = C.emitLibrary x86-32 (C.moduleTable m)
@@ -195,8 +195,8 @@ module RiscV64W where
     { defined-once = subst Unique (sym defs≡) (prog-unique m ir mi)
     ; resolved     = resolved-at defs≡ refs≡ (prog-resolved m ir mi)
     ; entry-in     = s≤s z≤n
-    ; defs-valid    = subst (All AsmSym) (sym defs≡) (prog-defs-valid m ir mi)
-    ; externs-valid = prog-externs-valid m ir mi
+    ; defs-valid    = subst (All AsmSym) (sym defs≡) (prog-defs-valid (irProgram (C.moduleTable m) ir))
+    ; externs-valid = externs-valid (irProgram (C.moduleTable m) ir)
     }
     where
       p = irProgram (C.moduleTable m) ir
@@ -213,10 +213,10 @@ module RiscV64W where
          → F.AsmWF (C.emitLibrary riscv64 (C.moduleTable m))
   lib-wf m mi = record
     { defined-once = subst Unique (sym defs≡) (lib-unique m mi)
-    ; resolved     = resolved-at defs≡ refs≡ (lib-resolved m mi)
+    ; resolved     = resolved-at defs≡ refs≡ (lib-resolved m)
     ; entry-in     = tt
-    ; defs-valid    = subst (All AsmSym) (sym defs≡) (lib-defs-valid m mi)
-    ; externs-valid = lib-externs-valid m mi
+    ; defs-valid    = subst (All AsmSym) (sym defs≡) (lib-defs-valid m)
+    ; externs-valid = externs-valid (C.lib-program (C.moduleTable m))
     }
     where
       G = C.emitLibrary riscv64 (C.moduleTable m)
