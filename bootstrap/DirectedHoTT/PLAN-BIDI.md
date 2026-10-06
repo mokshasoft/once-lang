@@ -717,15 +717,17 @@ tag rules key on it (`⊢fzero : Fin (suc n)`). After:
       a negative control.
     - `#walk`/`#rnM`/old `#trav` are deleted. SigCore went from 34 entries
       in 43 s to 22 entries in 18.7 s.
-  - ⛔ **P3 is BLOCKED on PLAN-EVAL E3, measured.**
-    - `Negative/PwCore` (the rows as `#methD`'s leaves; `#PwD`; `#Pw`)
-      runs out of memory in the checker, killed at the cap after
-      350–470 s, EVEN WITH EVERY ROW EMPTY.
-    - The cost is the 52 dependently-typed cascade branches over the
-      quoted Knot signature, each converted by CheckA's SUBSTITUTION
-      evaluators. `#PwC`/`#PwJ` alone check in 6 s.
-    - Next, in order: `nbeᵀ` soundness, CheckA's conversion by NbE, then
-      un-park PwCore and run the `#PwD ≅ PwF.DF` normal-form test.
+  - ✅ **P3: `Examples/PwCore`** (144 s / 4.8 GB, compacting collector).
+    It was unblocked by E3 plus two checker fixes (PLAN-EVAL §2f).
+    ★ `#PwD` has EXACTLY the normal form of the Knot's generated `PwF.DF`
+    (`Examples/NbEPwAgree.pw-is-pw`, with a negative control). The test
+    module needs `unfolding PwF.FIBMₒ CP KR.wk JI.⌜Tm⌝`, because the
+    Knot's pieces are Agda-opaque.
+  - ⬜ Next: P4. `Knot/PwCore` as the interface: `⌜Pw⌝` by `ref`,
+    `El-⌜Pw⌝` by `nbe-sound` (as `NbEKDTest.kd-conv`), consumers
+    repointed. Then P5 (measure). PwCore's 4.8 GB peak should come down
+    first (name `SI₂`/`SD₂`/the telescope as entries, as
+    `Negative/PwCoreSort0` does).
 
 **Then, the migration recipe** (each step is one family):
 - a schema becomes a CLOSED λ-entry; an instance becomes

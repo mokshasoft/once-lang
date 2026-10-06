@@ -309,7 +309,14 @@ decToBy wΓ d B dB nothing        = decToLazy wΓ d B dB
 
 decTo : {t : ATm ⌊ Γ ⌋ᴬ} {A : ATy ⌊ Γ ⌋ᴬ} → ⊢ctx ⌈ Γ ⌉ᶜ → Γ ⊢ᴬ t ∷ A →
         (B : ATy ⌊ Γ ⌋ᴬ) → ⌈ Γ ⌉ᶜ ⊢ty ⌈ B ⌉ᵀ → Dec (Γ ⊢ᴬ t ∷ B)
-decTo {A = A} wΓ d B dB = decToBy wΓ d B dB (decConvNbE ⌈ A ⌉ᵀ ⌈ B ⌉ᵀ)
+decTo {A = A} wΓ d B dB = bySyntax (⌈ A ⌉ᵀ ≟Ty ⌈ B ⌉ᵀ)
+  where
+  -- ★ the inferred and the expected type are most often the SAME syntax
+  --   (profiled 2026-10-06: 4844 conversions on Pw's sort-0 rows, each
+  --   normalising both sides) — compared first, linearly
+  bySyntax : Dec (⌈ A ⌉ᵀ ≡ ⌈ B ⌉ᵀ) → Dec (_ ⊢ᴬ _ ∷ B)
+  bySyntax (yes e) = yes (⊢ᴬconv d (subst (λ Z → ⌈ A ⌉ᵀ ≅ᵀ Z) e crflᵀ))
+  bySyntax (no _)  = decToBy wΓ d B dB (decConvNbE ⌈ A ⌉ᵀ ⌈ B ⌉ᵀ)
 
 -- a check from an inference: a "no" there refutes every typing
 fromInf : {t : ATm ⌊ Γ ⌋ᴬ} → ⊢ctx ⌈ Γ ⌉ᶜ → Dec (Inf Γ t) →

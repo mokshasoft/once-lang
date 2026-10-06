@@ -314,18 +314,26 @@ EVERY fuel, `--safe`, no postulates; the module checks in 7.8 s.
   - On Pw's sort-0 rows (13 empty leaves): 90 s → 58 s. Naming
     `SI₂`/`SD₂`/the telescope as entries brought it to 54 s.
   - Kept as a proven module.
-- ⛔ **Pw's rows still cost about 3.6 s per EMPTY leaf.**
-  - Ruled out: the views (NbE 90 s against eval 99 s) and elaboration
-    (5.9 s ≈ the module baseline). The cost is in CheckA's rules.
-  - Hypothesis, unconfirmed: the rows' types contain `app KΣ s` at a
-    VARIABLE sort. NbE must unfold the quoted signature to apply it, so
-    every readback or reading of such a type prints the WHOLE stuck
-    signature cascade. If so, the fix is glued evaluation (folded and
-    unfolded value forms; compare folded first; smalltt), which is E4's
-    "references as projections" in practice.
-  - The profiling run (`tools/agda-profile.sh DirectedHoTT/Negative/PwCoreSort0.agda`) was
-    stopped by the host's memory-pressure reaper. Rerun it on a quiet
-    machine before designing E4.
+- ✅ **The profile (forked Agda, `--profile=reduction`) found the cost.**
+  It was not the stuck-signature hypothesis.
+  - 84M unfoldings in all, 31% of them `NbE.len`. `lvl` recomputed the
+    context length at every level, so every variable read was quadratic.
+    Fixed with `lvlAt`, which keeps `lvl (Γ ∙) = bindL …` definitional, so
+    no proof changed.
+  - ★ CheckA ran 4844 conversions on 13 leaves, each normalising BOTH
+    sides by NbE, while the inferred and expected types are mostly the
+    SAME SYNTAX. `decTo` now compares syntax first (linear `≟Ty`).
+  - Result:
+
+    | target | before | after |
+    |---|---|---|
+    | Pw sort 0 (13 empty leaves) | 73 s | 19.5 s |
+    | SigCore | — | 16.9 s |
+    | SigMeth | — | 32.8 s |
+    | full Pw segment | out of memory | 144 s / 4.8 GB |
+
+  - Lesson: count the CALLS to the expensive procedure before making it
+    cheaper (memory: profile-call-counts-first).
 
 **Fallback, recorded and not chosen.** If E0's gate fails because Agda's
 evaluator itself is the limit, run evaluation tests COMPILED (MAlonzo, a
