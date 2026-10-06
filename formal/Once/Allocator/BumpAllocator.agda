@@ -78,7 +78,7 @@ record AllocatorState : Set where
     end-valid : heap-end ≡ upper Regions.heap-bounds
     ptr-in-range : heap-start ≤ heap-ptr × heap-ptr ≤ heap-end
 
-open AllocatorState public
+open AllocatorState
 
 ------------------------------------------------------------------------
 -- Initial State
@@ -117,7 +117,7 @@ record Allocated (s : AllocatorState) (addr : Addr) (n : ℕ) : Set where
     -- Address is at or after heap start
     addr-after-start : heap-start s ≤ addr
 
-open Allocated public
+open Allocated
 
 ------------------------------------------------------------------------
 -- Allocation Result
@@ -130,7 +130,7 @@ record AllocResult (s : AllocatorState) (n : ℕ) : Set where
     new-state : AllocatorState
     witness : Allocated new-state addr n
 
-open AllocResult public
+open AllocResult
 
 ------------------------------------------------------------------------
 -- The Allocation Operation

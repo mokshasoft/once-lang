@@ -33,7 +33,6 @@ Once/Adequacy/CoherenceLaws.agda 1
 Once/Adequacy/GradedRelation.agda 1
 Once/Adequacy/MeaningBridge.agda 1
 Once/Allocator/AbstractInstance.agda 1
-Once/Allocator/BumpAllocator.agda 3
 Once/Allocator/Malloc.agda 1
 Once/Allocator/Mempool.agda 2
 Once/Allocator/Slab.agda 2
@@ -49,7 +48,6 @@ Once/Arith/Backend/X86-64/Preserve.agda 2
 Once/Arith/Backend/X86-64/RunTrace.agda 1
 Once/Arith/Backend/X86-64/StatePreserve.agda 1
 Once/Arith/Machine/CompileCorrect.agda 1
-Once/CCC/Codegen/EmittedWF.agda 1
 Once/CCC/Codegen/IRObsCorrect/Interface.agda 17
 Once/CCC/Codegen/IRObsCorrect/Machine.agda 2
 Once/CCC/Codegen/IRObsCorrect/Prelude.agda 45
@@ -123,7 +121,6 @@ Once/Spec/Parsing.agda 1
 Once/Spec/Syntax.agda 1
 Once/Spec/Type.agda 2
 Once/Spec/Typing.agda 1
-Once/Spike/ITree.agda 1
 Once/Spike/RelSpike.agda 1
 Once/Surface/Syntax.agda 1
 Once/Target/Arch.agda 1
@@ -131,5 +128,4 @@ Once/Type.agda 1
 Once/TypeCheck/Context.agda 1
 Once/TypeCheck/Elaborate.agda 5
 Once/TypeCheck/ElaborateProofs.agda 4
-Once/TypeCheck/Unfold.agda 1
 Once/Warnings.agda 1

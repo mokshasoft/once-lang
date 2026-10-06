@@ -439,7 +439,7 @@ module Unfolding
   (eD : ctxWithImportsAndPolys (topCtx sg imps) P ⊢ᶜ e ∶ A ⨾ zeroUsage)
   where
 
-  open Sub x (RAnnot e A) public
+  open Sub x (RAnnot e A)
   open Weaken imps sg P using (WK; wk-base; W-c)
 
   P′ : PolyCtx

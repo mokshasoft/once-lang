@@ -51,7 +51,7 @@ record Sig : Set₁ where
     Ans  : Op → Set
     HOp  : Set
     HArg : HOp → Set
-open Sig public
+open Sig
 
 module _ (S : Sig) where
 

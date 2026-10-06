@@ -208,7 +208,7 @@ record EmittedWF (at : AbstractTrace) : Set where
     -- `ld`: "undefined reference". Every jump/branch/code-address lands.
     labels-resolvable : All (_∈ labels-def at) (labels-ref at)
 
-open EmittedWF public
+open EmittedWF
 
 ------------------------------------------------------------------------
 -- D166: THE OTHER NAMESPACE — the `.globl` symbols the text CALLS.
