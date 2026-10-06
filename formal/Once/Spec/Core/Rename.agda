@@ -22,7 +22,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 open import Once.Type using (Type; Quantity; Zero; One; Many)
 open import Once.Surface.Context using (Ctx; ∅; _,_^_; lookup; Usage; _∷_; zeroUsage; singleUse; _+ᵘ_; _*ᵘ_; _⊔ᵘ_)
 open import Once.Surface.Thinning using (_⊆_; done; skip; keep; thin-var; thin-var-lookup; thin-usage;
-  thin-usage-+ᵘ; thin-usage-*ᵘ; thin-usage-⊔ᵘ; thin-usage-zeroUsage; thin-usage-singleUse; ⊆-wk)
+  thin-usage-+ᵘ; thin-usage-*ᵘ; thin-usage-⊑ᵘ; thin-usage-zeroUsage; thin-usage-singleUse; ⊆-wk)
 open import Once.Spec.Core.Syntax S
 open import Once.Spec.Core.Typing S
 
@@ -93,9 +93,9 @@ ren-⊢ θ (⊢fst d) = ⊢fst (ren-⊢ θ d)
 ren-⊢ θ (⊢snd d) = ⊢snd (ren-⊢ θ d)
 ren-⊢ θ (⊢inl d) = ⊢inl (ren-⊢ θ d)
 ren-⊢ θ (⊢inr d) = ⊢inr (ren-⊢ θ d)
-ren-⊢ {Δ = Δ} θ (⊢case {Ψs = Ψs} {Ψₗ = Ψₗ} {Ψᵣ = Ψᵣ} {A = A} {B = B} {C = C} {s = sc} {l = l} {r = r} ds dl dr) =
+ren-⊢ {Δ = Δ} θ (⊢case {Ψs = Ψs} {Ψ = Ψ} {A = A} {B = B} {C = C} {s = sc} {l = l} {r = r} ds dl dr) =
   subst (λ U → Δ ⊢[ U ] case (ren (thin-var θ) sc) (ren (extR (thin-var θ)) l) (ren (extR (thin-var θ)) r) ∷ C ! _)
-    (sym (trans (thin-usage-+ᵘ θ Ψs (Ψₗ ⊔ᵘ Ψᵣ)) (cong (thin-usage θ Ψs +ᵘ_) (thin-usage-⊔ᵘ θ Ψₗ Ψᵣ))))
+    (sym (thin-usage-+ᵘ θ Ψs Ψ))
     (⊢case (ren-⊢ θ ds)
        (subst (λ u → (Δ , A ^ Many) ⊢[ _ ] u ∷ C ! _) (ren-cong (keep-extR θ) l) (ren-⊢ (keep θ) dl))
        (subst (λ u → (Δ , B ^ Many) ⊢[ _ ] u ∷ C ! _) (ren-cong (keep-extR θ) r) (ren-⊢ (keep θ) dr)))
@@ -114,6 +114,7 @@ ren-⊢ {Δ = Δ} θ ⊢lit-float = subst (λ U → Δ ⊢[ U ] _ ∷ _ ! _) (sy
 ren-⊢ θ (⊢prim p d) = ⊢prim p (ren-⊢ θ d)
 ren-⊢ {Δ = Δ} θ (⊢sigop c k h g m) = subst (λ U → Δ ⊢[ U ] _ ∷ _ ! _) (sym (thin-usage-zeroUsage θ)) (⊢sigop c k h g m)
 ren-⊢ θ (⊢sub-eff g d) = ⊢sub-eff g (ren-⊢ θ d)
+ren-⊢ θ (⊢sub-use p d) = ⊢sub-use (thin-usage-⊑ᵘ θ p) (ren-⊢ θ d)
 ren-⊢ {Δ = Δ} θ (⊢ref d τ r) = subst (λ U → Δ ⊢[ U ] _ ∷ _ ! _) (sym (thin-usage-zeroUsage θ)) (⊢ref d τ r)
 
 -- The identity embedding renames as the identity.

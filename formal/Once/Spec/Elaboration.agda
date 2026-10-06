@@ -214,7 +214,7 @@ elabᵢ V (t-neg-float i f l p) = lit (lit-float (negate (decimalOf i f l))) , �
 elabᵢ V (t-let d₁ d₂)     = let (e , ⊢e) = elabᵢ V d₁ ; (b , ⊢b) = elabᵢ V d₂ in let′ e b , ⊢let ⊢e ⊢b
 elabᵢ V (t-case ds dl dr) =
   let (s , ⊢s) = elabᵢ V ds ; (l , ⊢l) = elabᵢ V dl ; (r , ⊢r) = elabᵢ V dr
-  in case s l r , ⊢case ⊢s ⊢l ⊢r
+  in case s l r , ⊢case⊔ ⊢s ⊢l ⊢r
 elabᵢ V (t-binop-arith {op = OpAdd} _ d₁ d₂) = bin p-add refl (elabᵢ V d₁) (elabᵢ V d₂)
 elabᵢ V (t-binop-arith {op = OpSub} _ d₁ d₂) = bin p-sub refl (elabᵢ V d₁) (elabᵢ V d₂)
 elabᵢ V (t-binop-arith {op = OpMul} _ d₁ d₂) = bin p-mul refl (elabᵢ V d₁) (elabᵢ V d₂)

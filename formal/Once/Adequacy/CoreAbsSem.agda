@@ -143,13 +143,13 @@ module _ {n : ℕ} {Γ' Γ : C.Ctx n} where
          → tr eΓ et eS (GT.⊢inr d) ≡ GT.⊢inr (tr eΓ eb eB d)
   tr-inr {eΓ = refl} {refl} {refl} refl refl d = refl
 
-  tr-case : ∀ {Ψs Ψₗ Ψᵣ qℓ qr π A' A B' B C' C} {s' s : G.Tm n} {l' l r' r : G.Tm (suc n)}
+  tr-case : ∀ {Ψs Ψ qℓ qr π A' A B' B C' C} {s' s : G.Tm n} {l' l r' r : G.Tm (suc n)}
               {eΓ : Γ' ≡ Γ} {et : G.case s' l' r' ≡ G.case s l r} {eC : C' ≡ C}
               (es : s' ≡ s) (eS : (A' T.+ B') ≡ (A T.+ B))
               (eΓA : (Γ' C., A') ≡ (Γ C., A)) (el : l' ≡ l) (eC₁ : C' ≡ C)
               (eΓB : (Γ' C., B') ≡ (Γ C., B)) (er : r' ≡ r) (eC₂ : C' ≡ C)
               (ds : Γ' ⊢[ Ψs ] s' ∷ A' T.+ B' ! π)
-              (dl : (Γ' C., A') ⊢[ qℓ ∷ Ψₗ ] l' ∷ C' ! π) (dr : (Γ' C., B') ⊢[ qr ∷ Ψᵣ ] r' ∷ C' ! π)
+              (dl : (Γ' C., A') ⊢[ qℓ ∷ Ψ ] l' ∷ C' ! π) (dr : (Γ' C., B') ⊢[ qr ∷ Ψ ] r' ∷ C' ! π)
           → tr eΓ et eC (GT.⊢case ds dl dr) ≡ GT.⊢case (tr eΓ es eS ds) (tr eΓA el eC₁ dl) (tr eΓB er eC₂ dr)
   tr-case {eΓ = refl} {refl} {refl} refl refl refl refl refl refl refl refl ds dl dr = refl
 
@@ -224,6 +224,11 @@ module _ {n : ℕ} {Γ' Γ : C.Ctx n} where
                  {eΓ : Γ' ≡ Γ} {et : t' ≡ t} {eA : A' ≡ A} (d : Γ' ⊢[ Ψ ] t' ∷ A' ! π)
              → tr eΓ et eA (GT.⊢sub-eff {π′ = π′} g d) ≡ GT.⊢sub-eff g (tr eΓ et eA d)
   tr-sub-eff {eΓ = refl} {refl} {refl} d = refl
+
+  tr-sub-use : ∀ {Ψ Ψ′ π A' A} {t' t : G.Tm n} {p}
+                 {eΓ : Γ' ≡ Γ} {et : t' ≡ t} {eA : A' ≡ A} (d : Γ' ⊢[ Ψ ] t' ∷ A' ! π)
+             → tr eΓ et eA (GT.⊢sub-use {Ψ′ = Ψ′} p d) ≡ GT.⊢sub-use p (tr eΓ et eA d)
+  tr-sub-use {eΓ = refl} {refl} {refl} d = refl
 
   tr-ref : ∀ {d} {τ' τ : GSub (arity (S !! d))} {r' r}
              {eΓ : Γ' ≡ Γ} {et : G.ref d τ' ≡ G.ref d τ} {eA : type (S !! d) ⟪ τ' ⟫ ≡ type (S !! d) ⟪ τ ⟫}
@@ -359,6 +364,7 @@ module RoundTrip (Δ : KCtx 0) (σ : GSub 0) (r : Respects Δ σ) (sg : SigGroun
   RT-id (GT.⊢sigop {A = A} c k h g m) =
     trans (tr-isubst {r = r} (sym (absTy-ground Δ g)) _) (trans (tr-subst (sym (⌈⌉-⟪⟫ A σ)) _) tr-sigop)
   RT-id (GT.⊢sub-eff g d) = trans (tr-sub-eff (RT d)) (cong (GT.⊢sub-eff g) (RT-id d))
+  RT-id (GT.⊢sub-use p d) = trans (tr-sub-use (RT d)) (cong (GT.⊢sub-use p) (RT-id d))
   RT-id (GT.⊢ref d τ k) =
     trans (tr-isubst {r = r} (sym (abs-⟪⟫ Δ τ (sg d))) _)
           (trans (tr-subst (sym (⟨⟩-⟪⟫ (type (S !! d)) (λ i → absTy Δ (τ i)) σ)) _)

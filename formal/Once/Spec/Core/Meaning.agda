@@ -36,8 +36,8 @@ open import Once.Target.Arch using (TargetNum; int-bits; float-format)
 open import Once.Type
   using (Type; Zero; One; Many; mk-kind; Purity; pure; eff)
 open import Once.Surface.Context
-  using ( Ctx; Usage; _↾_; _+ᵘ_; _*ᵘ_; _⊔ᵘ_; zeroUsage
-        ; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many )
+  using ( Ctx; Usage; _↾_; _+ᵘ_; _*ᵘ_; zeroUsage
+        ; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many )
   renaming (⟦_⟧ᶜ to ⟦_⟧ᶜᵗ)
 open import Once.Denotation.GradedDomain using (⟦_⟧ᵛ; M; returnM; bindM; subM)
 open import Once.Denotation.PhaseV using (restrictᵛ; bindᵛ; bindᵛ0; lookupᵛUsed)
@@ -147,10 +147,10 @@ primSem p-i2f fmt v = semP i2f-info int-prim fmt v
 
 ⟦ ⊢inl {π = π} d ⟧ fmt ρ dγ = bindM π (⟦ d ⟧ fmt ρ dγ) λ v → returnM π (inj₁ v)
 ⟦ ⊢inr {π = π} d ⟧ fmt ρ dγ = bindM π (⟦ d ⟧ fmt ρ dγ) λ v → returnM π (inj₂ v)
-⟦ ⊢case {Γ = Γ} {Ψs = Ψs} {Ψₗ = Ψₗ} {Ψᵣ = Ψᵣ} {qℓ = qℓ} {qr = qr} {π = π} {A = A} {B = B} ds dl dr ⟧ fmt ρ dγ =
-  bindM π (⟦ ds ⟧ fmt ρ (restrictᵛ {Γ = Γ} (⊑ᵘ-+ˡ Ψs (Ψₗ ⊔ᵘ Ψᵣ)) dγ)) λ v →
-  [ (λ a → ⟦ dl ⟧ fmt ρ (bindᵛ {Γ = Γ} {A = A} qℓ (restrictᵛ {Γ = Γ} (⊑ᵘ-⊔ˡ Ψₗ Ψᵣ) (restrictᵛ {Γ = Γ} (⊑ᵘ-+ʳ Ψs (Ψₗ ⊔ᵘ Ψᵣ)) dγ)) a))
-  , (λ b → ⟦ dr ⟧ fmt ρ (bindᵛ {Γ = Γ} {A = B} qr (restrictᵛ {Γ = Γ} (⊑ᵘ-⊔ʳ Ψₗ Ψᵣ) (restrictᵛ {Γ = Γ} (⊑ᵘ-+ʳ Ψs (Ψₗ ⊔ᵘ Ψᵣ)) dγ)) b))
+⟦ ⊢case {Γ = Γ} {Ψs = Ψs} {Ψ = Ψ} {qℓ = qℓ} {qr = qr} {π = π} {A = A} {B = B} ds dl dr ⟧ fmt ρ dγ =
+  bindM π (⟦ ds ⟧ fmt ρ (restrictᵛ {Γ = Γ} (⊑ᵘ-+ˡ Ψs Ψ) dγ)) λ v →
+  [ (λ a → ⟦ dl ⟧ fmt ρ (bindᵛ {Γ = Γ} {A = A} qℓ (restrictᵛ {Γ = Γ} (⊑ᵘ-+ʳ Ψs Ψ) dγ) a))
+  , (λ b → ⟦ dr ⟧ fmt ρ (bindᵛ {Γ = Γ} {A = B} qr (restrictᵛ {Γ = Γ} (⊑ᵘ-+ʳ Ψs Ψ) dγ) b))
   ]′ v
 
 ⟦ ⊢absurd {π = π} d ⟧ fmt ρ dγ = bindM π (⟦ d ⟧ fmt ρ dγ) λ v → ⊥-elim v
@@ -176,5 +176,8 @@ primSem p-i2f fmt v = semP i2f-info int-prim fmt v
 ⟦ ⊢sigop {A = A} c k _ _ m ⟧ fmt ρ dγ = sigOpRefᵛ {A = A} fmt (sigOf S) (impl ρ) c k m
 
 ⟦ ⊢sub-eff g d ⟧ fmt ρ dγ = subM g (⟦ d ⟧ fmt ρ dγ)
+
+-- D276: claiming more usage is the model's discard.
+⟦ ⊢sub-use {Γ = Γ} p d ⟧ fmt ρ dγ = ⟦ d ⟧ fmt ρ (restrictᵛ {Γ = Γ} p dγ)
 
 ⟦ ⊢ref d τ r ⟧ fmt ρ dγ = defs ρ d τ r

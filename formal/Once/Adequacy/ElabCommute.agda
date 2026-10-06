@@ -299,7 +299,7 @@ mutual
   dr-i (t-neg d)          = ≅1 _ _ (GT.⊢prim G.p-neg) refl (tm-i d) (dr-i d)
   dr-i (t-neg-float i f l p) = H.refl
   dr-i (t-let d₁ d₂)      = ≅let refl (tm-i d₁) (dr-i d₁) refl (tm-i d₂) (dr-i d₂)
-  dr-i (t-case ds dl dx)  = ≅case refl (tm-i ds) (dr-i ds) refl (tm-i dl) (dr-i dl) refl (tm-i dx) (dr-i dx)
+  dr-i (t-case ds dl dx)  = ≅case⊔ refl (tm-i ds) (dr-i ds) refl (tm-i dl) (dr-i dl) refl (tm-i dx) (dr-i dx)
   dr-i (t-binop-arith {op = OpAdd} o d₁ d₂) =
     ≅1 _ _ (GT.⊢prim G.p-add) refl (cong₂ G.pair (tm-i d₁) (tm-i d₂)) (≅2 _ _ GT.⊢pair refl (tm-i d₁) (dr-i d₁) refl (tm-i d₂) (dr-i d₂))
   dr-i (t-binop-arith {op = OpSub} o d₁ d₂) =

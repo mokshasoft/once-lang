@@ -23,6 +23,7 @@ open import Data.Fin using (Fin; zero; suc)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; subst; trans; sym)
 
 open import Once.Type
+open import Once.Surface.Context using (_⊑ᵘ_; ⊑[]; _⊑∷_; z≤z)
 open import Once.Surface.Syntax as Surface
   renaming (Ctx to SCtx; Expr to SExpr; ∅ to S∅; _,_ to _S,_; _,_^_ to _S,_^_)
 
@@ -141,6 +142,14 @@ thin-usage-⊔ᵘ (skip θ) Ψ₁ Ψ₂
   rewrite thin-usage-⊔ᵘ θ Ψ₁ Ψ₂             = refl
 thin-usage-⊔ᵘ (keep θ) (q₁ ∷ Ψ₁) (q₂ ∷ Ψ₂)
   rewrite thin-usage-⊔ᵘ θ Ψ₁ Ψ₂             = refl
+
+-- D276: thinning is monotone in the usage order (a skipped slot is `Zero`).
+thin-usage-⊑ᵘ : ∀ {n m} {Γ : SCtx n} {Δ : SCtx m}
+              → (θ : Γ ⊆ Δ) {Ψ Ψ′ : Usage n}
+              → Ψ ⊑ᵘ Ψ′ → thin-usage θ Ψ ⊑ᵘ thin-usage θ Ψ′
+thin-usage-⊑ᵘ done     ⊑[]       = ⊑[]
+thin-usage-⊑ᵘ (skip θ) p         = z≤z ⊑∷ thin-usage-⊑ᵘ θ p
+thin-usage-⊑ᵘ (keep θ) (q ⊑∷ p)  = q ⊑∷ thin-usage-⊑ᵘ θ p
 
 thin-usage-zeroUsage : ∀ {n m} {Γ : SCtx n} {Δ : SCtx m}
                      → (θ : Γ ⊆ Δ) → thin-usage θ (zeroUsage {n}) ≡ zeroUsage {m}

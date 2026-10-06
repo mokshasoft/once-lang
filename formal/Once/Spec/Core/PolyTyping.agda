@@ -42,7 +42,7 @@ open import Once.Type.Rigid using (RigidFree)
 open import Once.CanonicalName using (CanonicalName; showCanonical)
 open import Data.Product using () renaming (_,_ to _,ᵈ_)
 open import Data.List.Membership.Propositional using (_∈_)
-open import Once.Surface.Context as C using (Usage; _∷_; zeroUsage; singleUse; _+ᵘ_; _*ᵘ_; _⊔ᵘ_)
+open import Once.Surface.Context as C using (Usage; _∷_; zeroUsage; singleUse; _+ᵘ_; _*ᵘ_; _⊑ᵘ_)
 open import Once.Spec.Core.PolyTy
 import Once.Spec.Core.Syntax S as G
 open G using (Lit; lit-int; lit-float; Prim; primDom; primCod)
@@ -201,11 +201,12 @@ data _⊩_⊢[_]_∷_!_ {m} (Δ : KCtx m) : ∀ {n} → PCtx m n → Usage n →
         → Δ ⊩ Γ ⊢[ Ψ ] a ∷ A ! π → Δ ⊩ Γ ⊢[ Ψ ] inl a ∷ A + B ! π
   ⊢inr  : ∀ {n} {Γ : PCtx m n} {Ψ : Usage n} {π : Purity} {A B b}
         → Δ ⊩ Γ ⊢[ Ψ ] b ∷ B ! π → Δ ⊩ Γ ⊢[ Ψ ] inr b ∷ A + B ! π
-  ⊢case : ∀ {n} {Γ : PCtx m n} {Ψs Ψₗ Ψᵣ : Usage n} {qℓ qr : Quantity} {π : Purity} {A B C s l r}
+  -- D276: both arms at ONE usage (the join is derived via `⊢sub-use`).
+  ⊢case : ∀ {n} {Γ : PCtx m n} {Ψs Ψ : Usage n} {qℓ qr : Quantity} {π : Purity} {A B C s l r}
         → Δ ⊩ Γ ⊢[ Ψs ] s ∷ A + B ! π
-        → Δ ⊩ (Γ , A) ⊢[ qℓ ∷ Ψₗ ] l ∷ C ! π
-        → Δ ⊩ (Γ , B) ⊢[ qr ∷ Ψᵣ ] r ∷ C ! π
-        → Δ ⊩ Γ ⊢[ Ψs +ᵘ (Ψₗ ⊔ᵘ Ψᵣ) ] case s l r ∷ C ! π
+        → Δ ⊩ (Γ , A) ⊢[ qℓ ∷ Ψ ] l ∷ C ! π
+        → Δ ⊩ (Γ , B) ⊢[ qr ∷ Ψ ] r ∷ C ! π
+        → Δ ⊩ Γ ⊢[ Ψs +ᵘ Ψ ] case s l r ∷ C ! π
 
   ⊢absurd : ∀ {n} {Γ : PCtx m n} {Ψ : Usage n} {π : Purity} {A e}
           → Δ ⊩ Γ ⊢[ Ψ ] e ∷ Void ! π → Δ ⊩ Γ ⊢[ Ψ ] absurd e ∷ A ! π
@@ -250,6 +251,10 @@ data _⊩_⊢[_]_∷_!_ {m} (Δ : KCtx m) : ∀ {n} → PCtx m n → Usage n →
 
   ⊢sub-eff : ∀ {n} {Γ : PCtx m n} {Ψ : Usage n} {π π′ : Purity} {A t}
            → π ⊑π π′ → Δ ⊩ Γ ⊢[ Ψ ] t ∷ A ! π → Δ ⊩ Γ ⊢[ Ψ ] t ∷ A ! π′
+
+  -- D276: affine grades — claiming more usage.
+  ⊢sub-use : ∀ {n} {Γ : PCtx m n} {Ψ Ψ′ : Usage n} {π : Purity} {A t}
+           → Ψ ⊑ᵘ Ψ′ → Δ ⊩ Γ ⊢[ Ψ ] t ∷ A ! π → Δ ⊩ Γ ⊢[ Ψ′ ] t ∷ A ! π
 
   -- Plan 0.103 phase 4: a definition at an instance of its schema — the
   -- instantiation respects the schema's kinds (a base variable gets a type
@@ -308,6 +313,7 @@ instantiate {Γ = Γ} {Ψ = Ψ} {π = π} σ r (⊢prim {t = t} p d) =
 instantiate {Γ = Γ} σ r (⊢sigop {A = A} c k h g m) =
   subst (λ X → Γ ⟪ σ ⟫ᶜ GT.⊢[ zeroUsage ] G.sigop c A ∷ X ! pure) (sym (⌈⌉-⟪⟫ A σ)) (GT.⊢sigop c k h g m)
 instantiate σ r (⊢sub-eff g d) = GT.⊢sub-eff g (instantiate σ r d)
+instantiate σ r (⊢sub-use p d) = GT.⊢sub-use p (instantiate σ r d)
 instantiate {Γ = Γ} σ r (⊢ref d τ k) =
   subst (λ X → Γ ⟪ σ ⟫ᶜ GT.⊢[ zeroUsage ] G.ref d (λ i → τ i ⟪ σ ⟫) ∷ X ! pure)
         (sym (⟨⟩-⟪⟫ (type (S !! d)) τ σ))

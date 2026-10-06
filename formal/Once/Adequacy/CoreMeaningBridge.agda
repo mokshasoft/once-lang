@@ -197,7 +197,7 @@ module Comb {δ : GM.DefSem} where
   case-sem {Γ = Γ} {Ψ₁} {Ψ₂} {A} {B} {C} {π} df dg x =
     trans (RS.⟦⟧-substΨ E
                         (⊢let df (⊢let (wk-⊢′ _ dg)
-                          (⊢lam refl (⊢case (⊢var′ zero π)
+                          (⊢lam refl (⊢case⊔ (⊢var′ zero π)
                                             (⊢app (⊢var′ (suc (suc (suc zero))) π) (⊢var′ zero π))
                                             (⊢app (⊢var′ (suc (suc zero)) π) (⊢var′ zero π))))))
                         fmt δ x)
@@ -434,8 +434,18 @@ module _ {δ : GM.DefSem} where
   bridge-i V ag (t-let {q = Zero} d₁ d₂) dγ = bridge-i V ag d₂ _
   bridge-i V ag (t-let {q = One} d₁ d₂) dγ = bindC (bridge-i V ag d₁ _) (λ v → bridge-i V ag d₂ _)
   bridge-i V ag (t-let {q = Many} d₁ d₂) dγ = bindC (bridge-i V ag d₁ _) (λ v → bridge-i V ag d₂ _)
-  bridge-i V ag (t-case ds dl dr) dγ =
-    bindC (bridge-i V ag ds _) (λ { (inj₁ a) → bridge-i V ag dl _ ; (inj₂ b) → bridge-i V ag dr _ })
+  -- D276: the core arm runs at the join through `⊢sub-use`, i.e. restricted
+  -- after binding; the surface binds after restricting. Same environment.
+  bridge-i V ag (t-case {ctx = ctx} {A = A} {B = B} {qL = qL} {qR = qR} {Ψs = Ψs} {Ψₗ = Ψₗ} {Ψᵣ = Ψᵣ} ds dl dr) dγ =
+    bindC (bridge-i V ag ds _)
+      (λ { (inj₁ a) → trans (bridge-i V ag dl _)
+                            (cong (GM.⟦ proj₂ (elabᵢ V dl) ⟧ fmt δ)
+                                  (sym (EA.restrict-bind {Γ = Γc} {A = A} qL qL (⊑ᵘ-keep qL (Once.Surface.Context.⊑ᵘ-⊔ˡ Ψₗ Ψᵣ)) (Once.Surface.Context.⊑ᵘ-⊔ˡ Ψₗ Ψᵣ) x a)))
+         ; (inj₂ b) → trans (bridge-i V ag dr _)
+                            (cong (GM.⟦ proj₂ (elabᵢ V dr) ⟧ fmt δ)
+                                  (sym (EA.restrict-bind {Γ = Γc} {A = B} qR qR (⊑ᵘ-keep qR (Once.Surface.Context.⊑ᵘ-⊔ʳ Ψₗ Ψᵣ)) (Once.Surface.Context.⊑ᵘ-⊔ʳ Ψₗ Ψᵣ) x b))) })
+    where Γc = NamedCtx.debruijn ctx
+          x  = restrictᵛ {Γ = Γc} (⊑ᵘ-+ʳ Ψs (Ψₗ ⊔ᵘ Ψᵣ)) dγ
   bridge-i V ag (t-binop-arith {op = OpAdd} _ d₁ d₂) dγ = binK (bridge-i V ag d₁ _) (bridge-i V ag d₂ _)
   bridge-i V ag (t-binop-arith {op = OpSub} _ d₁ d₂) dγ = binK (bridge-i V ag d₁ _) (bridge-i V ag d₂ _)
   bridge-i V ag (t-binop-arith {op = OpMul} _ d₁ d₂) dγ = binK (bridge-i V ag d₁ _) (bridge-i V ag d₂ _)

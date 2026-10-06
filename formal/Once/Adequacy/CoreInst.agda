@@ -47,7 +47,8 @@ open import Once.Spec.Core.Abstract S using (SigGround; absCtx; absTm; abs-⊢; 
 import Once.TypeCheck.RigidSubst Δ τ r as RS
 open RS using (ρ̂; ρ̂F; ρ̂S; ρ̂-⟦⟧; ρ̂-wf; ρ̂-<:; ρ̂-rf; ρ̂-base; lookup-ρ̂)
 open import Once.Adequacy.CoreAbsSem S using (tr; tr-subst; tr-lam; tr-app; tr-let; tr-unit; tr-pair; tr-fst; tr-snd;
-  tr-inl; tr-inr; tr-case; tr-absurd; tr-roll; tr-fold; tr-unfold; tr-out; tr-coerce; tr-lit-int; tr-lit-float; tr-prim; tr-sigop; tr-sub-eff; tr-ref)
+  tr-inl; tr-inr; tr-case; tr-absurd; tr-roll; tr-fold; tr-unfold; tr-out; tr-coerce; tr-lit-int; tr-lit-float; tr-prim; tr-sigop; tr-sub-eff; tr-sub-use; tr-ref)
+open import Once.Denotation.EnvAlgebraV using (⊑ᵘ-unique)
 
 ρ̂ₜ : ∀ {n} → G.Tm n → G.Tm n
 ρ̂ₜ t = absTm Δ t ⟪ τ ⟫ₜ
@@ -100,6 +101,7 @@ module WithSG (sg : SigGround) where
   ρ̂ᶜ {Γ = Γ} (GT.⊢sigop {A = A} c k h g m) =
     subst (λ X → ρ̂S Γ ⊢[ C.zeroUsage ] G.sigop c A ∷ X ! pure) (sym (ρ̂-rf g)) (GT.⊢sigop c k h g m)
   ρ̂ᶜ (GT.⊢sub-eff g d) = GT.⊢sub-eff g (ρ̂ᶜ d)
+  ρ̂ᶜ (GT.⊢sub-use p d) = GT.⊢sub-use p (ρ̂ᶜ d)
   ρ̂ᶜ {Γ = Γ} (GT.⊢ref d τ′ k) =
     subst (λ X → ρ̂S Γ ⊢[ C.zeroUsage ] G.ref d (λ i → ρ̂ (τ′ i)) ∷ X ! pure) (sym (ρ̂-ref d τ′))
       (GT.⊢ref d (λ i → ρ̂ (τ′ i)) (λ i e → ρ̂-base (k i e)))
@@ -204,6 +206,7 @@ module WithSG (sg : SigGround) where
     trans (tr-isubst′ (sym (absTy-ground Δ g)) _)
       (trans (tr-subst (sym (⌈⌉-⟪⟫ A τ)) _) (close (ρ̂S-abs Γ) _ (sym (ρ̂-rf g)) tr-sigop))
   inst-abs (GT.⊢sub-eff g d) = trans (tr-sub-eff (IA d)) (cong (GT.⊢sub-eff g) (inst-abs d))
+  inst-abs (GT.⊢sub-use p d) = trans (tr-sub-use (IA d)) (cong (GT.⊢sub-use p) (inst-abs d))
   inst-abs {Γ = Γ} (GT.⊢ref d τ′ k) =
     trans (tr-isubst′ (sym (abs-⟪⟫ Δ τ′ (sg d))) _)
       (trans (tr-subst (sym (⟨⟩-⟪⟫ (type (S !! d)) (λ i → absTy Δ (τ′ i)) τ)) _)
@@ -332,13 +335,28 @@ module WithSG (sg : SigGround) where
              {db₁ : (Γ C., A) ⊢[ q C.∷ Ψ₂ ] b₁ ∷ B ! π} {db₂ : (Γ C., A) ⊢[ q C.∷ Ψ₂′ ] b₂ ∷ B ! π}
          → Ψ₁ ≡ Ψ₁′ → e₁ ≡ e₂ → de₁ ≅ de₂ → Ψ₂ ≡ Ψ₂′ → b₁ ≡ b₂ → db₁ ≅ db₂ → GT.⊢let de₁ db₁ ≅ GT.⊢let de₂ db₂
     ≅let refl refl H.refl refl refl H.refl = H.refl
-    ≅case : ∀ {A B C′ qℓ qr π Ψs Ψs′ Ψₗ Ψₗ′ Ψᵣ Ψᵣ′ s₁ s₂ l₁ l₂ r₁ r₂}
+    ≅case : ∀ {A B C′ qℓ qr π Ψs Ψs′ Ψ Ψ′ s₁ s₂ l₁ l₂ r₁ r₂}
+              {ds₁ : Γ ⊢[ Ψs ] s₁ ∷ A T.+ B ! π} {ds₂ : Γ ⊢[ Ψs′ ] s₂ ∷ A T.+ B ! π}
+              {dl₁ : (Γ C., A) ⊢[ qℓ C.∷ Ψ ] l₁ ∷ C′ ! π} {dl₂ : (Γ C., A) ⊢[ qℓ C.∷ Ψ′ ] l₂ ∷ C′ ! π}
+              {dr₁ : (Γ C., B) ⊢[ qr C.∷ Ψ ] r₁ ∷ C′ ! π} {dr₂ : (Γ C., B) ⊢[ qr C.∷ Ψ′ ] r₂ ∷ C′ ! π}
+          → Ψs ≡ Ψs′ → s₁ ≡ s₂ → ds₁ ≅ ds₂ → Ψ ≡ Ψ′ → l₁ ≡ l₂ → dl₁ ≅ dl₂ → r₁ ≡ r₂ → dr₁ ≅ dr₂
+          → GT.⊢case ds₁ dl₁ dr₁ ≅ GT.⊢case ds₂ dl₂ dr₂
+    ≅case refl refl H.refl refl refl H.refl refl H.refl = H.refl
+    -- …and the elaboration's `case`, whose arms are sub-used to the join (D276).
+    ≅case⊔ : ∀ {A B C′ qℓ qr π Ψs Ψs′ Ψₗ Ψₗ′ Ψᵣ Ψᵣ′ s₁ s₂ l₁ l₂ r₁ r₂}
               {ds₁ : Γ ⊢[ Ψs ] s₁ ∷ A T.+ B ! π} {ds₂ : Γ ⊢[ Ψs′ ] s₂ ∷ A T.+ B ! π}
               {dl₁ : (Γ C., A) ⊢[ qℓ C.∷ Ψₗ ] l₁ ∷ C′ ! π} {dl₂ : (Γ C., A) ⊢[ qℓ C.∷ Ψₗ′ ] l₂ ∷ C′ ! π}
               {dr₁ : (Γ C., B) ⊢[ qr C.∷ Ψᵣ ] r₁ ∷ C′ ! π} {dr₂ : (Γ C., B) ⊢[ qr C.∷ Ψᵣ′ ] r₂ ∷ C′ ! π}
           → Ψs ≡ Ψs′ → s₁ ≡ s₂ → ds₁ ≅ ds₂ → Ψₗ ≡ Ψₗ′ → l₁ ≡ l₂ → dl₁ ≅ dl₂ → Ψᵣ ≡ Ψᵣ′ → r₁ ≡ r₂ → dr₁ ≅ dr₂
-          → GT.⊢case ds₁ dl₁ dr₁ ≅ GT.⊢case ds₂ dl₂ dr₂
-    ≅case refl refl H.refl refl refl H.refl refl refl H.refl = H.refl
+          → GT.⊢case⊔ ds₁ dl₁ dr₁ ≅ GT.⊢case⊔ ds₂ dl₂ dr₂
+    ≅case⊔ refl refl H.refl refl refl H.refl refl refl H.refl = H.refl
+    -- D276: the order is proof-irrelevant, so only the indices matter.
+    ≅sub-use : ∀ {A π Ψ₁ Ψ₂ Ψ₁′ Ψ₂′ t₁ t₂} {p₁ : Ψ₁ C.⊑ᵘ Ψ₁′} {p₂ : Ψ₂ C.⊑ᵘ Ψ₂′}
+                 {d₁ : Γ ⊢[ Ψ₁ ] t₁ ∷ A ! π} {d₂ : Γ ⊢[ Ψ₂ ] t₂ ∷ A ! π}
+             → Ψ₁ ≡ Ψ₂ → Ψ₁′ ≡ Ψ₂′ → t₁ ≡ t₂ → d₁ ≅ d₂ → GT.⊢sub-use p₁ d₁ ≅ GT.⊢sub-use p₂ d₂
+    ≅sub-use {p₁ = p₁} {p₂} refl refl refl H.refl = irr (⊑ᵘ-unique p₁ p₂)
+      where irr : ∀ {d} → p₁ ≡ p₂ → GT.⊢sub-use p₁ d ≅ GT.⊢sub-use p₂ d
+            irr refl = H.refl
 
   -- THE LEMMA.
   ρ̂ᶜ-ren : ∀ {n k} {Γ : C.Ctx n} {D′ : C.Ctx k} (θ : Γ ⊆ D′) {Ψ t A π} (D : Γ ⊢[ Ψ ] t ∷ A ! π)
@@ -377,17 +395,16 @@ module WithSG (sg : SigGround) where
   ρ̂ᶜ-ren θ (GT.⊢snd {Ψ = Ψ} {p = p} d) = ≅1 _ _ GT.⊢snd (U≡ θ Ψ) (T≡ θ p) (ρ̂ᶜ-ren θ d)
   ρ̂ᶜ-ren θ (GT.⊢inl {Ψ = Ψ} {a = a} d) = ≅1 _ _ GT.⊢inl (U≡ θ Ψ) (T≡ θ a) (ρ̂ᶜ-ren θ d)
   ρ̂ᶜ-ren θ (GT.⊢inr {Ψ = Ψ} {b = b} d) = ≅1 _ _ GT.⊢inr (U≡ θ Ψ) (T≡ θ b) (ρ̂ᶜ-ren θ d)
-  ρ̂ᶜ-ren θ (GT.⊢case {Ψs = Ψs} {Ψₗ = Ψₗ} {Ψᵣ = Ψᵣ} {s = sc} {l = l} {r = x} ds dl dr) =
-    H.trans (ρ̂ᶜ-sU (sym (trans (TH.thin-usage-+ᵘ θ Ψs (Ψₗ C.⊔ᵘ Ψᵣ)) (cong (thin-usage θ Ψs C.+ᵘ_) (TH.thin-usage-⊔ᵘ θ Ψₗ Ψᵣ)))))
+  ρ̂ᶜ-ren θ (GT.⊢case {Ψs = Ψs} {Ψ = Ψ} {s = sc} {l = l} {r = x} ds dl dr) =
+    H.trans (ρ̂ᶜ-sU (sym (TH.thin-usage-+ᵘ θ Ψs Ψ)))
       (H.trans (≅case (U≡ θ Ψs) (T≡ θ sc) (ρ̂ᶜ-ren θ ds)
-                      (U≡ θ Ψₗ) (T≡e θ l)
+                      (U≡ θ Ψ) (T≡e θ l)
                       (H.trans (ρ̂ᶜ-st (RN.ren-cong (RN.keep-extR θ) l))
                         (H.trans (ρ̂ᶜ-ren (keep θ) dl) (H.sym (rmt (RN.ren-cong (RN.keep-extR (ρ̂θ θ)) (ρ̂ₜ l))))))
-                      (U≡ θ Ψᵣ) (T≡e θ x)
+                      (T≡e θ x)
                       (H.trans (ρ̂ᶜ-st (RN.ren-cong (RN.keep-extR θ) x))
                         (H.trans (ρ̂ᶜ-ren (keep θ) dr) (H.sym (rmt (RN.ren-cong (RN.keep-extR (ρ̂θ θ)) (ρ̂ₜ x)))))))
-               (H.sym (rmU (sym (trans (TH.thin-usage-+ᵘ (ρ̂θ θ) Ψs (Ψₗ C.⊔ᵘ Ψᵣ))
-                                       (cong (thin-usage (ρ̂θ θ) Ψs C.+ᵘ_) (TH.thin-usage-⊔ᵘ (ρ̂θ θ) Ψₗ Ψᵣ)))))))
+               (H.sym (rmU (sym (TH.thin-usage-+ᵘ (ρ̂θ θ) Ψs Ψ)))))
   ρ̂ᶜ-ren θ (GT.⊢absurd {Ψ = Ψ} {e = e} d) = ≅1 _ _ GT.⊢absurd (U≡ θ Ψ) (T≡ θ e) (ρ̂ᶜ-ren θ d)
   ρ̂ᶜ-ren θ (GT.⊢roll {Ψ = Ψ} {F = F} {t = t} wf d) =
     ≅1 _ _ (GT.⊢roll (ρ̂-wf wf)) (U≡ θ Ψ) (T≡ θ t)
@@ -424,6 +441,7 @@ module WithSG (sg : SigGround) where
       (H.trans (rmA (λ X → X) (sym (ρ̂-rf g)))
         (H.sym (H.trans (ren-sA (ρ̂θ θ) (λ X → X) (sym (ρ̂-rf g))) (rmU (sym (TH.thin-usage-zeroUsage (ρ̂θ θ)))))))
   ρ̂ᶜ-ren θ (GT.⊢sub-eff {Ψ = Ψ} {t = t} g d) = ≅1 _ _ (GT.⊢sub-eff g) (U≡ θ Ψ) (T≡ θ t) (ρ̂ᶜ-ren θ d)
+  ρ̂ᶜ-ren θ (GT.⊢sub-use {Ψ = Ψ} {Ψ′ = Ψ′} {t = t} p d) = ≅sub-use (U≡ θ Ψ) (U≡ θ Ψ′) (T≡ θ t) (ρ̂ᶜ-ren θ d)
   ρ̂ᶜ-ren θ (GT.⊢ref d τ′ k) =
     H.trans (ρ̂ᶜ-sU (sym (TH.thin-usage-zeroUsage θ)))
       (H.trans (rmA (λ X → X) (sym (ρ̂-ref d τ′)))

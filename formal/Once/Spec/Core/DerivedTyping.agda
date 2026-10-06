@@ -125,7 +125,7 @@ wk-⊢′ {Γ = Γ} {Ψ = Ψ} B d = subst (λ U → _ ⊢[ Zero ∷ U ] _ ∷ _ 
                                       (+ᵘ-identityˡ zeroUsage)))
                (cong (Ψ₁ +ᵘ_) (*ᵘ-identityˡ Ψ₂)))
         (⊢let df (⊢let (wk-⊢′ _ dg)
-          (⊢lam refl (⊢case (⊢var′ zero π)
+          (⊢lam refl (⊢case⊔ (⊢var′ zero π)
                             (⊢app (⊢var′ (suc (suc (suc zero))) π) (⊢var′ zero π))
                             (⊢app (⊢var′ (suc (suc zero)) π) (⊢var′ zero π))))))
 

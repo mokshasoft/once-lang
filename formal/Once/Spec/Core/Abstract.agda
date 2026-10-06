@@ -190,6 +190,7 @@ abs-⊢ Δ sg {Γ = Γ} {Ψ = Ψ} {π = π} (GT.⊢prim {t = t} p d) =
 abs-⊢ Δ sg {Γ = Γ} (GT.⊢sigop {A = A} c k h g m) =
   subst (λ X → Δ ⊩ absCtx Δ Γ ⊢[ C.zeroUsage ] sigop c A ∷ X ! T.pure) (sym (absTy-ground Δ g)) (⊢sigop c k h g m)
 abs-⊢ Δ sg (GT.⊢sub-eff g d) = ⊢sub-eff g (abs-⊢ Δ sg d)
+abs-⊢ Δ sg (GT.⊢sub-use p d) = ⊢sub-use p (abs-⊢ Δ sg d)
 abs-⊢ Δ sg {Γ = Γ} (GT.⊢ref d τ r) =
   subst (λ X → Δ ⊩ absCtx Δ Γ ⊢[ C.zeroUsage ] ref d (λ i → absTy Δ (τ i)) ∷ X ! T.pure)
         (sym (abs-⟪⟫ Δ τ (sg d)))

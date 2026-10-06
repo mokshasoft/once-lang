@@ -7,8 +7,9 @@
 -- SPEC. `Γ ⊢[ Ψ ] t ∷ A ! π`:
 --   * EXTRINSIC over the raw `Tm n` (OCP-0009's `_⊢_∷_` shape), one rule per
 --     former, no modes, no algorithm;
---   * GRADED by a usage vector `Ψ` — variable-based QTT, exact accounting
---     (the POC's `NbEPQTTJ`, the compiler's `Once.Surface.Context`);
+--   * GRADED by a usage vector `Ψ` — variable-based QTT over the ORDERED
+--     semiring `Zero ⊑ One ⊑ Many`, affine (D276): `⊢sub-use` (the POC's
+--     `NbEPQTTJ`, the compiler's `Once.Surface.Context`);
 --   * EFFECT-GRADED by `π` — D032's arrows read as a λ-calculus: effects
 --     live on arrows (`A ⇒[ q , π ] B`), a term's grade bounds what
 --     EVALUATING it may do, and applying an `eff` arrow is an `eff` term.
@@ -50,7 +51,8 @@ open import Once.CanonicalName using (CanonicalName; showCanonical)
 open import Data.Product using () renaming (_,_ to _,ᵈ_)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Once.Surface.Context
-  using (Ctx; _,_; lookup; Usage; _∷_; zeroUsage; singleUse; _+ᵘ_; _*ᵘ_; _⊔ᵘ_)
+  using (Ctx; _,_; lookup; Usage; _∷_; zeroUsage; singleUse; _+ᵘ_; _*ᵘ_; _⊑ᵘ_; _⊔ᵘ_
+        ; _⊑∷_; z≤z; o≤o; m≤m; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ)
 open import Once.Spec.Core.Syntax S
 
 ------------------------------------------------------------------------
@@ -98,12 +100,14 @@ data _⊢[_]_∷_!_ : ∀ {n} → Ctx n → Usage n → Tm n → Type → Purity
         → Γ ⊢[ Ψ ] a ∷ A ! π → Γ ⊢[ Ψ ] inl a ∷ A + B ! π
   ⊢inr  : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {π : Purity} {A B b}
         → Γ ⊢[ Ψ ] b ∷ B ! π → Γ ⊢[ Ψ ] inr b ∷ A + B ! π
-  -- Exactly one arm runs: the arms' usages JOIN (per position max).
-  ⊢case : ∀ {n} {Γ : Ctx n} {Ψs Ψₗ Ψᵣ : Usage n} {qℓ qr : Quantity} {π : Purity} {A B C s l r}
+  -- Exactly one arm runs, over ONE context usage `Ψ` (D276: the coproduct's
+  -- copairing; an arm that uses less is sub-used, `⊢sub-use`, so the
+  -- surface's per-position join is derived, not primitive).
+  ⊢case : ∀ {n} {Γ : Ctx n} {Ψs Ψ : Usage n} {qℓ qr : Quantity} {π : Purity} {A B C s l r}
         → Γ ⊢[ Ψs ] s ∷ A + B ! π
-        → (Γ , A) ⊢[ qℓ ∷ Ψₗ ] l ∷ C ! π
-        → (Γ , B) ⊢[ qr ∷ Ψᵣ ] r ∷ C ! π
-        → Γ ⊢[ Ψs +ᵘ (Ψₗ ⊔ᵘ Ψᵣ) ] case s l r ∷ C ! π
+        → (Γ , A) ⊢[ qℓ ∷ Ψ ] l ∷ C ! π
+        → (Γ , B) ⊢[ qr ∷ Ψ ] r ∷ C ! π
+        → Γ ⊢[ Ψs +ᵘ Ψ ] case s l r ∷ C ! π
 
   -- Ex falso: `Void` is initial.
   ⊢absurd : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {π : Purity} {A e}
@@ -165,6 +169,31 @@ data _⊢[_]_∷_!_ : ∀ {n} → Ctx n → Usage n → Tm n → Type → Purity
        → Respects (kinds (S !! d)) τ
        → Γ ⊢[ zeroUsage ] ref d τ ∷ type (S !! d) ⟪ τ ⟫ ! pure
 
+  -- D276: grades are AFFINE — a term may claim MORE usage than it makes
+  -- (`Zero ⊑ One ⊑ Many`); no term, the meaning discards (`restrictᵛ`).
+  ⊢sub-use : ∀ {n} {Γ : Ctx n} {Ψ Ψ′ : Usage n} {π : Purity} {A t}
+           → Ψ ⊑ᵘ Ψ′ → Γ ⊢[ Ψ ] t ∷ A ! π → Γ ⊢[ Ψ′ ] t ∷ A ! π
+
   -- D068: pure ⊑ eff is SUBSUMPTION — no term, identity meaning.
   ⊢sub-eff : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {π π′ : Purity} {A t}
            → π ⊑π π′ → Γ ⊢[ Ψ ] t ∷ A ! π → Γ ⊢[ Ψ ] t ∷ A ! π′
+
+------------------------------------------------------------------------
+-- D276: the JOIN is derived. The surface's `case` (each arm at its own usage,
+-- the conclusion at their per-position max) is `⊢case` with each arm sub-used
+-- to the join — no longer a primitive of the Spec.
+------------------------------------------------------------------------
+
+⊑ᵘ-keep : ∀ {n} (q : Quantity) {Ψ Ψ′ : Usage n} → Ψ ⊑ᵘ Ψ′ → (q ∷ Ψ) ⊑ᵘ (q ∷ Ψ′)
+⊑ᵘ-keep Zero p = z≤z ⊑∷ p
+⊑ᵘ-keep One  p = o≤o ⊑∷ p
+⊑ᵘ-keep Many p = m≤m ⊑∷ p
+
+⊢case⊔ : ∀ {n} {Γ : Ctx n} {Ψs Ψₗ Ψᵣ : Usage n} {qℓ qr : Quantity} {π : Purity} {A B C s l r}
+       → Γ ⊢[ Ψs ] s ∷ A + B ! π
+       → (Γ , A) ⊢[ qℓ ∷ Ψₗ ] l ∷ C ! π
+       → (Γ , B) ⊢[ qr ∷ Ψᵣ ] r ∷ C ! π
+       → Γ ⊢[ Ψs +ᵘ (Ψₗ ⊔ᵘ Ψᵣ) ] case s l r ∷ C ! π
+⊢case⊔ {Ψₗ = Ψₗ} {Ψᵣ} {qℓ} {qr} ds dl dr =
+  ⊢case ds (⊢sub-use (⊑ᵘ-keep qℓ (⊑ᵘ-⊔ˡ Ψₗ Ψᵣ)) dl) (⊢sub-use (⊑ᵘ-keep qr (⊑ᵘ-⊔ʳ Ψₗ Ψᵣ)) dr)
+

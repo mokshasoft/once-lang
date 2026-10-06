@@ -187,6 +187,7 @@ tsubst {Δ′ = Δ′} {Γ = Γ} {Ψ = Ψ} {π = π} σ r (⊢prim {t = t} p d) 
 tsubst {Δ′ = Δ′} {Γ = Γ} σ r (⊢sigop {A = A} c k h g m) =
   subst (λ X → Δ′ ⊩ Γ ⟨ σ ⟩ᶜ ⊢[ zeroUsage ] sigop c A ∷ X ! pure) (sym (⌈⌉-⟨⟩ A σ)) (⊢sigop c k h g m)
 tsubst σ r (⊢sub-eff g d) = ⊢sub-eff g (tsubst σ r d)
+tsubst σ r (⊢sub-use p d) = ⊢sub-use p (tsubst σ r d)
 tsubst {Δ′ = Δ′} {Γ = Γ} σ r (⊢ref d τ k) =
   subst (λ X → Δ′ ⊩ Γ ⟨ σ ⟩ᶜ ⊢[ zeroUsage ] ref d (λ i → τ i ⟨ σ ⟩) ∷ X ! pure)
         (sym (⟨⟩-∘ (type (S !! d)) τ σ))
