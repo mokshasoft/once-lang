@@ -18,6 +18,9 @@
 --   • `typechecker` — the `VerifiedTypeChecker` bundle (determinism ∧ totality
 --     ∧ error-preservation ∧ frontend identities, stated over the REAL
 --     `inferElab`/`checkElab`, so it cannot drift from the live elaborator).
+--   • `language` — the core's metatheory (plan 0.102 B, D276): its term model
+--     is a graded category and ⟦_⟧ a functor out of it — typed substitution,
+--     and `let x = u in t` ≡ `t[u/x]` for pure `u` (referential transparency).
 --
 -- Because both fields are stated over the actual entry points, a regression in
 -- either makes `once-certified` fail to type-check — the drift that let
@@ -85,11 +88,19 @@ open import Once.Compiler x86-64-heap-room x86-64-stack-room x86-64-call-room
        x86-32-reg-range x86-32-scratch-dec-guarded x86-32-addr-no-wrap x86-32-lit-fits
        using (once-compiler; BlockRunsHyp-x86-64; BlockRunsHyp-x86-32; BlockRunsHyp-riscv64)
 open import Once.TypeCheck.Verified using (VerifiedTypeChecker; verifiedTypeChecker)
+-- Plan 0.102 phase B (D276): the language's own metatheory, stated in the Spec.
+open import Once.Spec.Contract using (ISig)
+open import Once.Spec.Core.PolyTy using (Sig)
+import Once.Spec.Core.TermModel as TM
+open import Once.Adequacy.TermModel using (termModel)
 
 record CertifiedBuild : Set₁ where
   field
     correctness : CorrectCompiler       -- soundness + completeness (the minimal claim)
     typechecker : VerifiedTypeChecker    -- determinism ∧ totality ∧ errors ∧ identities
+    -- the term model is a graded category, ⟦_⟧ a functor out of it: substitution
+    -- is typed, and a pure term may replace its `let` (referential transparency)
+    language    : ∀ {Fs : ISig} {s : ℕ} (S : Sig Fs s) → TM.TermModel S
 
 -- plan 0.91 parallel track (2026-09-17) — THE ASSUMPTION IS NOW IN THE
 -- STATEMENT.
@@ -117,4 +128,5 @@ once-certified : BlockRunsHyp-x86-64 → BlockRunsHyp-x86-32 → BlockRunsHyp-ri
 once-certified b64 b32 brv = record
   { correctness = once-compiler b64 b32 brv
   ; typechecker = verifiedTypeChecker
+  ; language    = termModel
   }
