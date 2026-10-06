@@ -300,13 +300,19 @@ def run(targets):
     for f, ln in spots:
         try:
             kind, x = classify(f, ln)
+            alias_of = x
         except ValueError as e:
             skipped.append((f, ln, str(e))); continue
         fac = modname(f)
+        if kind == "local":
+            src = open(f, encoding="utf-8").read()
+            al = re.search(r"^\s*(?:open\s+)?import\s+(\S+)\s+as\s+" + re.escape(x) + r"\b", src, re.M)
+            if al:
+                kind, alias_of = "import", al.group(1)
         ap = applied_importers(fac, imps)
         if ap:
             skipped.append((f, ln, "imported applied by " + ", ".join(ap))); continue
-        stmt = ("open import " + x) if kind == "import" else ("open " + fac + "." + x)
+        stmt = ("open import " + (alias_of if kind == "import" and x != alias_of else x)) if kind == "import" else ("open " + fac + "." + x)
         add = defaultdict(lambda: defaultdict(set)); drop = defaultdict(set); why = set()
         for m, rs in before.items():
             if m == fac: continue
@@ -347,7 +353,7 @@ def run(targets):
         after, err = report(imps, STAGE + "/after.jsonl")
         if after is not None: break
         m = re.search(r"stage/formal/(Once/[^:\s]+\.agda):(\d+)\.\d+-\S*: warning: -W\[no\]ModuleDoesntExport\s*"
-                      r"The module (\S+) doesn't export the following:\s*\n((?:\s+\S.*\n)+?)when", err)
+                      r"The module\s+(\S+)\s+doesn't\s+export\s+the\s+following:\s*\n((?:\s+\S.*\n)+?)when", err)
         if not m:
             for f in backup: open(f, "w", encoding="utf-8").write(backup[f])
             sys.exit("verification run failed (tree restored):\n" + err)
