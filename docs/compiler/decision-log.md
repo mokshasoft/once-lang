@@ -67,7 +67,8 @@ Generators are represented as `EVar` nodes with reserved names. There are no spe
 ## D003: Quantity Type as Semiring
 
 **Date**: 2025-12-08
-**Status**: Accepted
+**Status**: Superseded by D276 (2026-10-06): the semiring stands; `One` means AT MOST once
+(affine), and the order `Zero ⊑ One ⊑ Omega` is part of the structure.
 
 ### Context
 QTT (Quantitative Type Theory) requires tracking resource usage with quantities.
@@ -16855,3 +16856,57 @@ holds for EVERY canonical name, so all four validity residuals are theorems with
 `_start`) and the externs. `Label`'s decimal rendering is `showInBase 10` (the digits-provable
 one; same output). The CLI's Haskell mirror (`Once.Target.SymbolName`) gets the same rule, with a
 golden vector on both sides (`["a b"] ↦ once_7azu32_b`).
+
+---
+
+## D276 — GRADES ARE AFFINE: `One` IS AT MOST ONCE; THE ORDER IS PART OF THE SEMIRING (SUPERSEDES D003) (2026-10-06)
+
+**Supersedes**: D003 (its semiring stands; its reading of `One` as "used exactly once" and its
+silence on the order do not). **Relates**: D143 (erasure is semantic), D232 (standard QTT
+scaling), D250 (pure is referential transparency), plan 0.102 §6–§7, the OCP-0009 linear-core
+direction (`bootstrap/poc/OCP0009/NbEPLinCore.agda`, `NbEPLinQTT.agda`).
+
+### Context
+Plan 0.102 phase B found the exact-usage substitution lemma FALSE in `Spec/Core`: `case` joins its
+arms' usages with `⊔`, the judgment has no sub-usaging, and `⊔` does not distribute over `+`
+(`case (inl unit) [x] [y]` with `y` substituted for `x`: the only derivable usage is `{y:1}`, the
+lemma claims `{y:ω}`). Categorically: the graded syntax does not form a category — composition
+(substitution) is not defined at the grade the model gives it.
+
+The fix needs an ORDER on grades, and D003 fixes none while saying `One` = "exactly once". The
+Spec as written is already affine: `case`'s `⊔` (with `Zero < One`) lets a grade-1 variable go
+unused in one arm, `⊢fst`/`⊢snd` discard a component, and `⊢lam` admits a body using its binder
+below the arrow's grade. D003's text and the rules disagree.
+
+### Decision
+1. **`One` means at most once (affine).** The order is `Zero ⊑ One ⊑ Omega` (`≤q'`, `_⊑ᵘ_`
+   pointwise), and it is part of the structure: `Quantity` is an ORDERED semiring.
+2. **`Spec/Core` gets sub-usaging**: `Γ ⊢[ Ψ ] t ∷ A ! π → Ψ ⊑ᵘ Ψ′ → Γ ⊢[ Ψ′ ] t ∷ A ! π`. Its
+   meaning is the model's discard, `restrictᵛ`.
+3. **`case` takes both arms at one usage.** The join is derived (each arm sub-used to `Ψₗ ⊔ Ψᵣ`).
+   The SURFACE judgment is unchanged: it stays syntax-directed and keeps `⊔`; the translation to
+   the core inserts the sub-uses.
+
+### Rationale
+- **The principle is "the order is the model's maps".** Affine (a semicartesian symmetric monoidal
+  category: the unit is terminal, every object can be discarded) and linear (a symmetric monoidal
+  category without discard) are both principled; what is not is an order that disagrees with the
+  rules. Once's rules discard, so the order is affine.
+- **It is what the OCP-0009 linear core is.** `NbEPLinCore` has `drop : LTm A One` at every `A`,
+  free (`df-drop`), next to `dup`; its `lcase` takes both arms over one context and reconciles
+  with `drop` — this decision's `case`. Its results (`𝟙` needs no `dup`, forced by `𝟙 + 𝟙 = ω`;
+  `dyn-linear`: dup-free code allocates nothing) are about duplication, which affine forbids too.
+- **Nothing the compiler wants is lost.** In-place update needs uniqueness (no duplication), not
+  consumption. GC-freedom holds with a compiler-inserted release at each discard. Only "must be
+  consumed" (a protocol step the compiler cannot perform for the program) needs linearity; if it
+  is ever wanted it is a per-type property (types without `drop`), which rejects nothing accepted
+  today, unlike a global switch to the linear order.
+- **The metatheory becomes exact.** Substitution at `Ψₜ +ᵘ q ·ᵘ Ψᵤ`, let = def and narrowing hold
+  as equalities, so the term model is a graded category and ⟦_⟧ a functor out of it (plan 0.102 §4 B).
+
+### Consequences
+- Accepted programs: unchanged (the surface judgment is today's).
+- `Spec/Core/Typing`: `⊢sub-use`, `⊢case` at one usage; `Spec/Core/Meaning`: one clause each.
+- The surface→core translation and the core bridges follow the red.
+- D003's "enables GC-free execution" now reads: GC-free with releases at discards.
+
