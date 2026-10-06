@@ -52,7 +52,7 @@ Once/Arith/Machine/CompileCorrect.agda 1
 Once/CCC/Codegen/EmittedWF.agda 1
 Once/CCC/Codegen/IRObsCorrect/Interface.agda 17
 Once/CCC/Codegen/IRObsCorrect/Machine.agda 2
-Once/CCC/Codegen/IRObsCorrect/Prelude.agda 46
+Once/CCC/Codegen/IRObsCorrect/Prelude.agda 45
 Once/CCC/Codegen/IRObsCorrectFlat.agda 14
 Once/CCC/Codegen/LabelSeg.agda 1
 Once/CCC/Codegen/ShapeTable.agda 1

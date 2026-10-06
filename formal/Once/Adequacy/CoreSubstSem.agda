@@ -47,7 +47,8 @@ open import Once.Denotation.PhaseV using (restrictᵛ; bindᵛ; bindᵛ0; lookup
 open import Once.Denotation.EnvAlgebraV using (Env; restrict-irr; restrict-refl; restrict-∘; restrict-≡; restrict-bind)
 open import Once.Spec.Core.Syntax S
 open import Once.Spec.Core.Typing S
-open import Once.Spec.Core.Subst S using (SubTy; rows; row; tailᴿ; ext-ty; retype)
+open import Once.Spec.Core.Subst S using (SubTy; rows; tailᴿ; ext-ty; retype)
+open SubTy using (row)
 import Once.Spec.Core.Meaning S as GM
 open import Once.Adequacy.CoreRenameSem S using (wk-sem; bindC)
 open import Once.Denotation.GradedDomain using (M; bindM; subM)

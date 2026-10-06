@@ -43,7 +43,7 @@ open import Once.Spec.Core.DerivedTyping S using (wk-⊢′)
 record SubTy {n m} (Δ : Ctx m) (σ : Sub n m) (Γ : Ctx n) (Φ : Grades n m) : Set where
   constructor rows
   field row : ∀ i → Δ ⊢[ Φ i ] σ i ∷ lookup Γ i ! pure
-open SubTy public
+open SubTy
 
 -- The rows after the first.
 tailᴿ : ∀ {n m} {Δ : Ctx m} {σ : Sub (suc n) m} {Γ : Ctx n} {A : Type} {r : Quantity} {Φ : Grades (suc n) m}
