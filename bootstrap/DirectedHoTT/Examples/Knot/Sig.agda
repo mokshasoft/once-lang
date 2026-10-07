@@ -227,7 +227,7 @@ sh-kcUnit = []ʰ
 
 -- ref
 sh-kref : Shape
-sh-kref = nat ∷ʰ cls 1 ∷ʰ []ʰ
+sh-kref = nat ∷ʰ []ʰ
 
 TyShs : Shapes 13
 TyShs = sh-kbase ∷ˢʰ sh-kU ∷ˢʰ sh-kPi ∷ˢʰ sh-kSg ∷ˢʰ sh-kEl ∷ˢʰ sh-kHom ∷ˢʰ sh-kUnit ∷ˢʰ sh-kNat ∷ˢʰ sh-kId ∷ˢʰ sh-kIMu ∷ˢʰ sh-kDesc ∷ˢʰ sh-kDIh ∷ˢʰ sh-kFin ∷ˢʰ []ˢʰ
@@ -342,7 +342,7 @@ ok-kcFin = fᵒʰ ((ok-rec (lt-s lt-z)) ∷ᶠ []ᶠ)
 ok-kcUnit : ShOK 2 sh-kcUnit
 ok-kcUnit = fᵒʰ ([]ᶠ)
 ok-kref : ShOK 2 sh-kref
-ok-kref = fᵒʰ ((ok-nat) ∷ᶠ (ok-cls (lt-s lt-z)) ∷ᶠ []ᶠ)
+ok-kref = fᵒʰ ((ok-nat) ∷ᶠ []ᶠ)
 
 KOK : SigOK 2 KSig
 KOK = (ok-kbase ∷ᵒˢ ok-kU ∷ᵒˢ ok-kPi ∷ᵒˢ ok-kSg ∷ᵒˢ ok-kEl ∷ᵒˢ ok-kHom ∷ᵒˢ ok-kUnit ∷ᵒˢ ok-kNat ∷ᵒˢ ok-kId ∷ᵒˢ ok-kIMu ∷ᵒˢ ok-kDesc ∷ᵒˢ ok-kDIh ∷ᵒˢ ok-kFin ∷ᵒˢ []ᵒˢ)
@@ -465,5 +465,5 @@ kcFin : {Γ : Cx} → RTm Γ → RTm Γ
 kcFin a0 = conₗ (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc zero)))))))))))))))))))))))))))))))))))) (a0 ,ₚ (unit))
 kcUnit : {Γ : Cx} → RTm Γ
 kcUnit = conₗ (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc zero))))))))))))))))))))))))))))))))))))) (unit)
-kref : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ
-kref a0 a1 = conₗ (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc zero)))))))))))))))))))))))))))))))))))))) (a0 ,ₚ a1 ,ₚ (unit))
+kref : {Γ : Cx} → RTm Γ → RTm Γ
+kref a0 = conₗ (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc zero)))))))))))))))))))))))))))))))))))))) (a0 ,ₚ (unit))
