@@ -295,6 +295,27 @@ that fires nothing (`RewritesNothing`), a moved name in a `using` list
 - Red islands outside the apex/compiler closure are not exempt: they stay red
   until fixed, as before.
 
+## 4e. Re-exports and imports (plan 0.92, D277)
+
+A `public` re-export scopes its names against every local import in every
+importer's cone; the cost lands on modules the author never looked at. So:
+
+- **`public-gate` must pass** (`formal/scripts/public-gate.sh`): the baseline of
+  `public` lines per module only goes DOWN. A new re-export needs D277's
+  justification (below) with a measurement, and its baseline line raised in the
+  same commit.
+- **Re-export only to avoid re-instantiating a parameterised module, and the Spec
+  door** (`Once.Spec` and its `public` closure, `scripts/spec-closure.py`), which
+  is the language definition's designed surface. Never to hide structure.
+- **Repairs are verified, not eyeballed.** A removed re-export is repaired with
+  `formal/scripts/reexport-remove.py` (plan 0.92 §9): the fork's
+  `--name-resolution-report` before and after, and every name in every importer
+  must resolve to the same definition, of the same kind. Dead imports are pruned
+  the same way (`reexport-remove.py prune`): a name listed in a directive that
+  never occurs in its module.
+- **The scope is apex-live code** (the `--write-ast` dump, `run-ast-dumps.sh`);
+  islands are left as they are, to be cleaned when they are hooked up.
+
 ## 5. Merge
 
 - Fast-forward or `--no-ff` per repo convention; do not squash away the

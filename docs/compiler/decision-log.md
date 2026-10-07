@@ -16910,3 +16910,36 @@ below the arrow's grade. D003's text and the rules disagree.
 - The surface→core translation and the core bridges follow the red.
 - D003's "enables GC-free execution" now reads: GC-free with releases at discards.
 
+---
+
+## D277 — RE-EXPORTS ARE FOR INSTANCE SHARING AND THE SPEC DOOR ONLY; REMOVALS AND DEAD IMPORTS ARE MACHINE-VERIFIED (2026-10-07)
+
+**Relates**: plan 0.92 (all of it), MERGE.md §1 (the Spec is a re-export closure) and §4e,
+the fork's `--name-resolution-report` (a2e94f6c53) and `--write-ast` (`run-ast-dumps.sh`).
+
+### Context
+A `public` re-export scopes its names against every local import in every importer's cone:
+adding two lines to `IRObsCorrect/Prelude` once broke unrelated modules with `[AmbiguousName]`
+1,600 lines away (plan 0.92 §1). By 2026-10-05 the tree carried 366 `public` lines; attempts to
+remove them by reading the red failed (constructors silently became pattern variables; aliases,
+renamings and module-name clashes defeated grep). Separately, thousands of imported names were
+listed but never used.
+
+### Decision
+1. **A `public` re-export is allowed only (a) to share the instantiation of a parameterised
+   module, with a measurement, or (b) as the Spec door** (`Once.Spec` and its `public` closure —
+   the language definition's designed surface, MERGE.md §1). Never to hide structure.
+2. **The surface only shrinks**: `scripts/public-gate.sh` and its baseline (MERGE.md §4e).
+3. **Removals and dead-import prunes are verified by name resolution**: `reexport-remove.py`
+   records, with the fork's `--name-resolution-report`, what every occurrence in every affected
+   module resolves to, edits, re-checks, and requires the same `(name, kind, resolved)` sequence
+   (qualifiers excepted where the edit requalifies). The real gate (apex, island backstop) follows.
+4. **Scope: apex-live code** (the `--write-ast` reachability dump). Islands are left as they are.
+
+### Consequences
+- Plan 0.92: 366 → see the plan's final count; 4,274 dead import names pruned in 344 modules.
+- What the client cannot do mechanically is a DECISION, listed in the plan: re-exports reached as
+  instance copies (importers apply the facade), and parameterised re-exports (S4, measured).
+- A proposal for the general tool, `--dead-imports`, lives in the Agda fork
+  (`DEAD_IMPORTS_PLAN.local.md`).
+

@@ -306,6 +306,22 @@ def directive_names(path, facade):
             out |= {t.split(" to ")[0].strip() for t in mm.group(1).split(";") if t.strip()}
     return out
 
+def spec_closure():
+    """The Spec is a RE-EXPORT CLOSURE (MERGE.md §1): Once.Spec and everything it
+    reaches through `public` imports. Its re-exports are Spec surface, not facades."""
+    pub = defaultdict(set)
+    for p in all_modules():
+        for line in open(p, encoding="utf-8", errors="replace"):
+            mm = re.match(r"\s*open\s+import\s+([A-Za-z0-9_.]+)(.*)$", line)
+            if mm and re.search(r"\bpublic\b", mm.group(2)):
+                pub[modname(p)].add(mm.group(1))
+    seen, fr = set(), ["Once.Spec"]
+    while fr:
+        m = fr.pop()
+        if m in seen: continue
+        seen.add(m); fr += list(pub[m])
+    return seen
+
 def run(targets):
     spots = []
     for t in targets:
@@ -348,7 +364,10 @@ def run(targets):
     skipped = []
     target_of = defaultdict(set)
     requal = {}
+    spec = spec_closure()
     for f, ln in spots:
+        if modname(f) in spec:
+            skipped.append((f, ln, "in the Spec's re-export closure (the Spec door)")); continue
         try:
             kind, x = classify(f, ln)
             alias_of = x
