@@ -12,9 +12,10 @@
 -- ★ `#PwD` has EXACTLY the normal form of the Knot's generated
 --   `Knot/Pw.PwF.DF` (`Examples/NbEPwAgree`).
 --
--- ⚠ Needs the COMPACTING COLLECTOR (`+RTS -c`): 144 s / 4.9 GB
---   (2026-10-06, after CheckA's syntactic fast path; before it the checker
---   ran out of memory on the 52-branch rows cascade).
+-- ⚠ Needs the COMPACTING COLLECTOR (`+RTS -c`): 84.5 s / 4.25 GB
+--   (2026-10-06, after `decTo` compares BY NAMES, `Algorithm/EraName`;
+--   144 s / 4.9 GB after CheckA's syntactic fast path; before that the
+--   checker ran out of memory on the 52-branch rows cascade).
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}

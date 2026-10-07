@@ -741,9 +741,48 @@ tag rules key on it (`⊢fzero : Fin (suc n)`). After:
       - a reference's body is written exactly as that typing carries it
         (`ref d (Sig.body S d)`);
       - implicits hiding substituted terms are pinned.
-  - ⬜ Next: P5. Measure the lines a human writes (PwCore's rows
-    and entries, Knot/PwCore) against the generated Pw (256) + PwConGen
-    (86) + PwAgree (121). Bring PwCore's 4.8 GB peak down.
+  - 🟡 **P5: measured (2026-10-06).**
+    - ★ **The planned comparison was the wrong one.** Pw (243) + PwConGen
+      (88) + PwAgree (120) are GENERATED; what a human writes for Pw on
+      the Lib route is the 5-line `PWRULES` table in `gen-judge.py`. On
+      the core route a human writes `Examples/PwCore` (187) +
+      `Knot/PwCore` (119), and nothing generated went away yet (`Knot/Pw`
+      still emits `KPw`/`PwF.DF`, the targets `El-⌜Pw⌝` converts to).
+    - Code lines of the core route, by kind:
+
+      | part | lines | kind |
+      |---|---|---|
+      | Pw's rows (cPi, cHom) | 11 | Pw-specific (the same rules: 5 in `PWRULES`) |
+      | Pw's entries (convoy, index, rows table, description, ⌜Pw⌝) | 15 | Pw-specific, mostly template |
+      | surface helpers (`lenC`, `λ⁺`, `_·_`, `app³`, `at`, …) | 36 | generic; copied in SigCore, SigMeth, PwCore |
+      | Knot signature frame, Knot syntax, `none`/`one`, motives | 50 | generic for every Knot family |
+      | entry numbering, assembly | 17 | boilerplate |
+      | `Knot/PwCore` | 63 | a per-family template (`IsYes`/`fromYes` are copied in 3 modules; `≡→≅` duplicates `NbESound`'s) |
+
+    - So ~26 lines are Pw's own, against 5; the rest is a library to
+      extract and a template to generate (`CORE_CODE`'s other side).
+      The rows are written in de Bruijn LEVEL arithmetic (`L (b + 3)`);
+      the generator's notation is far denser. ⬜ Extract the generic
+      parts, generate `Knot/<fam>Core`, then compare again.
+    - ★ **The peak: profiled, half the time removed.** All of PwCore's
+      cost is the checker run inside `wf` (403 GB allocated).
+      - ~40% was `≟Ty` in `decTo`'s syntactic fast path. Erasure inlines
+        a reference's BODY (`⌈ ref d ⌉ = ref d (δ d)`), and bodies nest,
+        so every comparison walked the Knot signature's bodies.
+        `Algorithm/EraName` compares the erasures with DUMMY bodies and
+        restores the real ones by name (`fill-era`, one clause per
+        constructor; `by-names`). PwCore: 146 s / 4.9 GB → 84.5 s /
+        4.25 GB; unfoldings 88.8M → 57.9M.
+      - Not the cost: the size of the elaborated rows. A probe measured
+        `#PwL` at 173k annotated nodes, 96% of them type annotations
+        (the largest, 28.8k nodes, the domain of the kcHom equation's
+        `lam`, holding the elaborated `con` payloads). Making the Knot's
+        constructors closed entries cut it to 116k nodes and `decTo`
+        calls by 29%, and the time not at all.
+      - ⬜ What remains is NbE (2503 conversions that differ
+        syntactically): `len` (15%; readback still computes the context
+        length per variable and per binder), `eval`, `refV` (every
+        conversion unfolds references through their bodies).
 
 **Then, the migration recipe** (each step is one family):
 - a schema becomes a CLOSED λ-entry; an instance becomes
