@@ -372,13 +372,44 @@ Next: Lib, then Examples, then the Knot.
   family's conversion premise is at `sigT t𝒮`, a redex: the family at a
   REDUCING parameter reduces (`Lib/SynFam.DF-⟶*`, `KF-⟶ᵀ*`, by substitution
   monotonicity).
-- ⚠ **Regression, being profiled.** Single-module checks against the P5
-  sweep: PredsCon 4 → 79 s, Red 12 → 579 s, RedT 11 → 189 s, JudgeRowsGen
-  13 → 259 s, RenAgree 4 → 3416 s. Not the new parameter (RenAgree does not
-  mention it).
-  - First hypothesis, acted on: per-module private abbreviations
-    (`𝓃`/`ok`/`refs`) made two instances of one library differ
-    syntactically. Every module now passes ONE global spelling
-    (`Metatheory/Entries.okᵂ`/`refsᵂ`; `planref.py`).
-  - That alone did NOT fix it (PredsCon 79 s), so it is now profiled
-    (`tools/agda-profile.sh`).
+- ⚠ **Compile time: Red and RedT regressed.**
+  - Rechecked one module per process, dependencies already built: Red
+    561 s (P5 sweep: 12 s), RedT 175 s (11 s). The rest is in line:
+    RenAgree 16 s, SubAgree 18 s, PredsCon 5.6 s, Pw/PwCore < 8 s.
+  - The 3416 s / 79 s figures measured earlier were dependency chains
+    rechecked in one process under memory pressure — not evidence
+    (`exit-143-is-not-evidence-about-cost`; time cold or not at all).
+  - Acted on regardless, as the principled form: the derived library
+    arguments have ONE global spelling (`Entries.okᵂ`/`refsᵂ`,
+    `Defs.size 𝒮`; `planref.py`) instead of per-module private
+    abbreviations.
+  - ⬜ Profile Red (`tools/agda-profile.sh`). A first profiling run was
+    stopped by the session's memory guard; it is to be rerun with the
+    user's go-ahead.
+- **State at 2026-10-08 morning** (one module per process, deps built):
+  - green through RedTConGen;
+  - still to check, in order: RedTAgree ConvAgree PredsDecode Unquote
+    QuoteSig PwDecode RedCompDecode RedDecodeXi RedDecode RedTDecodeXi
+    RedTDecode ConvDecode JudgeConGen ConvHead Core JudgeDecodeBase
+    JudgeDecodeHand LookupDecode JudgeDecodeTm JudgeDecodeTy JudgeDecode
+    Exact LookupAgree Sz TypingAgree (the K5 layer, all written);
+  - then K6 (the signature-building examples) and gen-trust + a sweep.
+  - Driver: one `check.sh` per module in topological order (a single
+    process rechecking a chain OOMs at the 5.5 G cap).
+  - Two background runs were stopped by the session's memory guard;
+    rerunning them needs the user's go-ahead.
+- **Real regression vs the cold sweep** (`sweep-cold.log`), one module
+  each: Red 148 → 561 s, RedT 40 → 175 s, RedXiConGen 58 → 870 s,
+  RedCompConGen 52 → 448 s, RedTConGen ~40 → 394 s, JudgeRowsGen
+  52 → 205 s, RedAgree 10 → 158 s; peaks 3.3–4.7 GB.
+  - Only the families with a NON-TRIVIAL parameter code (`⌜QSig⌝`,
+    `⌜TSig⌝`) regressed; the ones over `⌜Unit⌝` (Preds, Pw) did not.
+  - Hypothesis to profile: `subTm σ ⌜Unit⌝` COMPUTES to `⌜Unit⌝`, while
+    `subTm σ ⌜QSig⌝` is stuck on the opaque `⌜Ty⌝₀`/`⌜Tm⌝₀`. Every
+    substitution or weakening of the parameter (FIBM under the method's
+    binders, `wkQ`, the case modules) then goes through the `P-sub`
+    casts — the context-form-mismatch pattern.
+  - A principled candidate if confirmed: a parameter code that is CLOSED
+    BY CONSTRUCTION. A reference (to a core entry for `⌜QSig⌝`) is closed
+    under substitution definitionally (`⌜Pw⌝-sub` is `refl`), which is
+    the R4 direction anyway.

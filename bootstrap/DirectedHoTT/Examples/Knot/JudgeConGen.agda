@@ -50,6 +50,7 @@ open import DirectedHoTT.Examples.Knot.Conv 𝒮 wf core using ( ⌜≅ᵀ⌝ )
 open import DirectedHoTT.Examples.Knot.GenHelpers 𝒮 wf
 open import DirectedHoTT.Examples.Knot.JudgeRowsGen 𝒮 wf core
 open import DirectedHoTT.Examples.Knot.Judge 𝒮 wf core using ( D⊢; ⊢D⊢; fibK )
+open import DirectedHoTT.Examples.Knot.QSig 𝒮 wf using ( ⌜QSig⌝; ⌜TSig⌝; wkQ; wkT )
 
 con⊢tybase : {Ξ : Ctx} {qs j g : RTm ⌊ Ξ ⌋} → Ξ ⊢ qs ∷ El ⌜TSig⌝ → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ g ∷ KCtx j → 
   Ξ ⊢ conₗ 0 unit ∷ IMu JT (D⊢ qs) (tyIx j g (kbase))
