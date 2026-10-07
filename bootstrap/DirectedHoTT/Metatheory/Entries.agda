@@ -21,8 +21,8 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; <-here; <-there )
-module DirectedHoTT.Metatheory.Entries (𝒮 : KSig) where
+open import DirectedHoTT.Spec.Syntax using ( Defs; _<ˢ_; <-here; <-there )
+module DirectedHoTT.Metatheory.Entries (𝒮 : Defs) where
 open import normalizer.Syntax.Types using ( _,_ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.SigWf using ( WfUpTo )
@@ -41,7 +41,7 @@ sigOK (suc m) (w , e) <-here      = moveEntry m (suc m) <-there e
 sigOK (suc m) (w , e) (<-there p) = moveEntry m (suc m) <-there (sigOK m w p)
 
 -- the names below m are in the signature, so δ fires on each
-refsOK : (m : ℕ) → (∀ {d} → d <ˢ m → d <ˢ KSig.size 𝒮) → WfUpTo 𝒮 m → RefsOK m
+refsOK : (m : ℕ) → (∀ {d} → d <ˢ m → d <ˢ Defs.size 𝒮) → WfUpTo 𝒮 m → RefsOK m
 refsOK (suc m) inS (w , e) <-here x₀ =
   let r = F.fund 𝒮 m (sigOK m w) (refsOK m (λ p → inS (<-there p)) w) (Ty.okBody e) x₀ (F.⊩ˢ-ε 𝒮 m (sigOK m w) (refsOK m (λ p → inS (<-there p)) w)) in
   dfst r , exp₁ (dfst r) (snr-δ (inS <-here)) (dsnd r)

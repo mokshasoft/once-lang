@@ -23,10 +23,10 @@
 {-# OPTIONS --safe #-}
 open import normalizer.Syntax.Types using ( _≡_; subst; sym )
 open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
-open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; ref; εwkTm; εwkTy )
-module DirectedHoTT.Metatheory.SigExt (𝒮 𝒮' : KSig)
-  (inc   : ∀ {d} → d <ˢ KSig.size 𝒮 → d <ˢ KSig.size 𝒮')
-  (body≡ : ∀ {d} → d <ˢ KSig.size 𝒮 → KSig.body 𝒮 d ≡ KSig.body 𝒮' d) where
+open import DirectedHoTT.Spec.Syntax using ( Defs; _<ˢ_; ref; εwkTm; εwkTy )
+module DirectedHoTT.Metatheory.SigExt (𝒮 𝒮' : Defs)
+  (inc   : ∀ {d} → d <ˢ Defs.size 𝒮 → d <ˢ Defs.size 𝒮')
+  (body≡ : ∀ {d} → d <ˢ Defs.size 𝒮 → Defs.body 𝒮 d ≡ Defs.body 𝒮' d) where
 import DirectedHoTT.Spec.Reduction 𝒮 as A
 import DirectedHoTT.Spec.Reduction 𝒮' as B
 
@@ -188,7 +188,7 @@ ext≅ᵀ (A.ctrnᵀ x0 x1) = B.ctrnᵀ (ext≅ᵀ x0) (ext≅ᵀ x1)
 
 -- ★ derivations at bound n, whose references also agree on their types
 module Typed (n : ℕ)
-  (type≡ : ∀ {d} → d <ˢ n → KSig.type 𝒮 d ≡ KSig.type 𝒮' d) where
+  (type≡ : ∀ {d} → d <ˢ n → Defs.type 𝒮 d ≡ Defs.type 𝒮' d) where
   import DirectedHoTT.Spec.Typing 𝒮 n as TA
   import DirectedHoTT.Spec.Typing 𝒮' n as TB
 

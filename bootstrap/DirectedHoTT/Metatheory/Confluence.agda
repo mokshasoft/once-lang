@@ -35,8 +35,8 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; _<ˢ?_ )
-module DirectedHoTT.Metatheory.Confluence (𝒮 : KSig) where
+open import DirectedHoTT.Spec.Syntax using ( Defs; _<ˢ_; _<ˢ?_ )
+module DirectedHoTT.Metatheory.Confluence (𝒮 : Defs) where
 open import normalizer.Syntax.Types
   using ( _≡_; refl; sym; trans; subst; cong; cong₂; Σ; _,_; _×_; ⊥; ⊥-elim; Dec; yes; no )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
@@ -49,7 +49,7 @@ open import DirectedHoTT.Spec.Syntax
         ; subTm-renTm; subTm-cong; _ᵣ∘ₛ_; _ₛ∘ᵣ_; _∘ᵣ_; dι; dρ; con; IMu; ielim
         ; ⌜IMu⌝; εwkTm; RTy; ⌜Fin⌝; dσ; dpay; dih; fzero; fsuc; fcase; fcase0
         ; psplit; cong₄; cong₃
-        ; ref; εwkTm-ren; εwkTm-sub; KSig; _<ˢ_; _<ˢ?_
+        ; ref; εwkTm-ren; εwkTm-sub; Defs; _<ˢ_; _<ˢ?_
         ; εsub )
 open import DirectedHoTT.Spec.Variance
   using ( 𝔹; true; false; pw?; stkC?; stkA?; pwBody; pwShift; pw?-ren
@@ -264,7 +264,7 @@ data _⟹_ : {Γ : Cx} → RTm Γ → RTm Γ → Set where
   pref : {d : ℕ} → ref {Γ} d ⟹ ref d
   -- ★ δ unfolds a projection (PLAN-REF): the body is the SIGNATURE's, not a
   --   subterm, so the parallel step does not reduce inside it
-  pdelta : {d : ℕ} → d <ˢ KSig.size 𝒮 → ref {Γ} d ⟹ εwkTm (KSig.body 𝒮 d)
+  pdelta : {d : ℕ} → d <ˢ Defs.size 𝒮 → ref {Γ} d ⟹ εwkTm (Defs.body 𝒮 d)
 
 ⟹-refl : (t : RTm Γ) → t ⟹ t
 ⟹-refl ⌜Nat⌝      = p⌜Nat⌝
@@ -786,7 +786,7 @@ stkC?-⟹ {C = ⌜Unit⌝} p⌜Unit⌝ h = refl
         (pfcase-s (⟹-ren ρ pt) (⟹-ren (extR ρ) pb))
 ⟹-ren ρ (pfcase0 a) = pfcase0 (⟹-ren ρ a)
 ⟹-ren ρ pref = pref
-⟹-ren ρ (pdelta {d = d} p) = subst (λ z → ref d ⟹ z) (sym (εwkTm-ren ρ (KSig.body 𝒮 d))) (pdelta p)
+⟹-ren ρ (pdelta {d = d} p) = subst (λ z → ref d ⟹ z) (sym (εwkTm-ren ρ (Defs.body 𝒮 d))) (pdelta p)
 ⟹-ren ρ (ppsplit a b) = ppsplit (⟹-ren (extR (extR ρ)) a) (⟹-ren ρ b)
 ⟹-ren ρ (ppsplit-β {b = b} {b'} {x = x} {x'} {y = y} {y'} pb px py) =
   subst (λ z → renTm ρ (psplit b (pair x y)) ⟹ z)
@@ -969,7 +969,7 @@ pwBody-⟹ {C = ⌜Unit⌝} _ ()
         (pfcase-s (⟹-sub h pt) (⟹-sub (⟹-exts h) pb))
 ⟹-sub h (pfcase0 a) = pfcase0 (⟹-sub h a)
 ⟹-sub h pref = pref
-⟹-sub {σ' = σ'} h (pdelta {d = d} p) = subst (λ z → ref d ⟹ z) (sym (εwkTm-sub σ' (KSig.body 𝒮 d))) (pdelta p)
+⟹-sub {σ' = σ'} h (pdelta {d = d} p) = subst (λ z → ref d ⟹ z) (sym (εwkTm-sub σ' (Defs.body 𝒮 d))) (pdelta p)
 ⟹-sub h (ppsplit a b) = ppsplit (⟹-sub (⟹-exts (⟹-exts h)) a) (⟹-sub h b)
 ⟹-sub {σ = σ} {σ'} h (ppsplit-β {b = b} {b'} {x = x} {x'} {y = y} {y'} pb px py) =
   subst (λ z → subTm σ (psplit b (pair x y)) ⟹ z)
@@ -1372,8 +1372,8 @@ apK apCong    cB' b' p' = ap cB' b' p'
 --   (PLAN-REF): ONE δ step, the body not developed — its only parallel
 --   reducts are itself and that unfolding, so the triangle needs no
 --   recursion into the signature
-refDev : (d : ℕ) → Dec (d <ˢ KSig.size 𝒮) → RTm Γ
-refDev d (yes _) = εwkTm (KSig.body 𝒮 d)
+refDev : (d : ℕ) → Dec (d <ˢ Defs.size 𝒮) → RTm Γ
+refDev d (yes _) = εwkTm (Defs.body 𝒮 d)
 refDev d (no _)  = ref d
 
 -- ── the complete development ───────────────────────────────────────────
@@ -1383,7 +1383,7 @@ var x ⁺            = var x
 lam t ⁺            = lam (t ⁺)
 pair a b ⁺         = pair (a ⁺) (b ⁺)
 app t u ⁺          = appK (lamV t) (t ⁺) (u ⁺)
-ref d ⁺            = refDev d (d <ˢ? KSig.size 𝒮)
+ref d ⁺            = refDev d (d <ˢ? Defs.size 𝒮)
 fst p ⁺            = fstK (pairV p) (p ⁺)
 snd p ⁺            = sndK (pairV p) (p ⁺)
 ⌜Nat⌝ ⁺            = ⌜Nat⌝
@@ -1419,12 +1419,12 @@ fcase t a b ⁺      = fcK (finV t) (t ⁺) (a ⁺) (b ⁺)
 fcase0 t ⁺         = fcase0 (t ⁺)
 psplit b q ⁺       = psK (pairV q) (b ⁺) (q ⁺)
 
-tri-ref : (d : ℕ) (q : Dec (d <ˢ KSig.size 𝒮)) → ref {Γ} d ⟹ refDev d q
+tri-ref : (d : ℕ) (q : Dec (d <ˢ Defs.size 𝒮)) → ref {Γ} d ⟹ refDev d q
 tri-ref d (yes p) = pdelta p
 tri-ref d (no _)  = pref
 
-tri-δ : (d : ℕ) → d <ˢ KSig.size 𝒮 → (q : Dec (d <ˢ KSig.size 𝒮)) →
-        εwkTm {Γ} (KSig.body 𝒮 d) ⟹ refDev d q
+tri-δ : (d : ℕ) → d <ˢ Defs.size 𝒮 → (q : Dec (d <ˢ Defs.size 𝒮)) →
+        εwkTm {Γ} (Defs.body 𝒮 d) ⟹ refDev d q
 tri-δ d p (yes _) = ⟹-refl _
 tri-δ d p (no ¬p) = ⊥-elim (¬p p)
 
@@ -1589,8 +1589,8 @@ rootAp refl refl r = r
 ⟹-⁺ : {t u : RTm Γ} → t ⟹ u → u ⟹ t ⁺
 ⟹-⁺ (pvar x)               = pvar x
 ⟹-⁺ (plam p)               = plam (⟹-⁺ p)
-⟹-⁺ (pref {d = d})         = tri-ref d (d <ˢ? KSig.size 𝒮)
-⟹-⁺ (pdelta {d = d} p)     = tri-δ d p (d <ˢ? KSig.size 𝒮)
+⟹-⁺ (pref {d = d})         = tri-ref d (d <ˢ? Defs.size 𝒮)
+⟹-⁺ (pdelta {d = d} p)     = tri-δ d p (d <ˢ? Defs.size 𝒮)
 ⟹-⁺ (ppair p q)            = ppair (⟹-⁺ p) (⟹-⁺ q)
 ⟹-⁺ (papp {t = t} p q)     = tri-app (lamV t) p (⟹-⁺ p) (⟹-⁺ q)
 ⟹-⁺ (pβ p q)               = ⟹-sub (single-⟹ (⟹-⁺ q)) (⟹-⁺ p)

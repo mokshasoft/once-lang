@@ -52,14 +52,14 @@ No spikes, no compatibility layer, no old/new coexistence.
   and reduction both need it):
 
   ```agda
-  record KEntry : Set where       -- a declared closed type, a closed body
+  record Def : Set where       -- a declared closed type, a closed body
     field kType : RTy ε ; kBody : RTm ε
-  data KTele : Set where ∅ : KTele ; _▸_ : KTele → KEntry → KTele
-  record KSig : Set where field len : ℕ ; tele : KTele
+  data DefTele : Set where ∅ : DefTele ; _▸_ : DefTele → Def → DefTele
+  record Defs : Set where field len : ℕ ; tele : DefTele
   -- size, type d, body d by lookup (as Spec/Signature does today)
   ```
 
-### 1.2 Reduction and conversion (`Spec/Typing`, parameter `Σ : KSig`)
+### 1.2 Reduction and conversion (`Spec/Typing`, parameter `Σ : Defs`)
 
 - `δref : d <ˢ size Σ → ref {Δ} d ⟶ εwkTm (body Σ d)`.
   - The side condition is what makes reduction MONOTONE under signature
@@ -68,7 +68,7 @@ No spikes, no compatibility layer, no old/new coexistence.
 - Everything else is unchanged. δ still has no congruence and overlaps
   nothing.
 
-### 1.3 Typing (`Spec/Typing`, parameters `Σ : KSig` and `n : ℕ`)
+### 1.3 Typing (`Spec/Typing`, parameters `Σ : Defs` and `n : ℕ`)
 
 - `⊢ref : d <ˢ n → Γ ⊢ ref d ∷ εwkTy (type Σ d)`. No premise.
 - `n` is the number of names a derivation may USE; reduction is always at
@@ -123,7 +123,7 @@ substitution of the bodies for the names, by induction on the telescope.
 
 - **Annotated layer.** `⌈ ref d ⌉ = ref d`. `Era` loses its body parameter.
   `Spec/Signature` (the checker's view: annotated types, erased bodies)
-  becomes a view of `KSig`. `Metatheory/Erasure`'s `⊢ᴬref` case is `⊢ref`.
+  becomes a view of `Defs`. `Metatheory/Erasure`'s `⊢ᴬref` case is `⊢ref`.
 - **Algorithm.**
   - `DecEq`: `encTm (ref d) = node … (nat d)`.
   - `NbE`: `vref d`, forced through a VALUE TABLE: a data structure of the
@@ -177,7 +177,7 @@ Recorded so a failure is recognised, not explained away:
 
 ### 2026-10-07 — Spec and Metatheory green (branch `plan-ref`)
 
-- **Spec.** `ref d` has no body; `KSig` and `_<ˢ?_` in `Spec/Syntax`.
+- **Spec.** `ref d` has no body; `Defs` and `_<ˢ?_` in `Spec/Syntax`.
   `Spec/Typing` split three ways so each relation has exactly the
   parameters it depends on: `Spec/Base` (signature-free: substitutions,
   `Ctx`, `∋`), `Spec/Reduction 𝒮` (δ reads the body), `Spec/Typing 𝒮 n`
@@ -231,7 +231,7 @@ the `below` check), then Lib, Examples, the Knot and its generators.
   sound — every entry closed (`TblSc`) and read as `ref d` (`TblReads`);
   the soundness stack (`NbESound`, `NbESoundTy`, `ConvNbE`, `ConvLazyNbE`)
   takes it as a parameter, and `S-forceR`/`S-rb` at a reference are one
-  line each. `Algorithm/NbETable`: `mkTbl : KSig → Tbl` (entry m evaluated
+  line each. `Algorithm/NbETable`: `mkTbl : Defs → Tbl` (entry m evaluated
   at the table of the entries before it, the prefix passed as an argument)
   and `mkTbl-ok`, along the telescope.
 - **The table is SHARED.** `CheckA (S)(wfK)(tbl)(tok)` takes it as a

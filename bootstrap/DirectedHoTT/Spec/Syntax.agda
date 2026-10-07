@@ -1189,34 +1189,34 @@ subTm-id (ap c b p)    =
 --   is one walk down the telescope.
 ------------------------------------------------------------------------
 
-record KEntry : Set where
+record Def : Set where
   constructor ⟨_∣_⟩
   field
     kType : RTy ε
     kBody : RTm ε
-open KEntry public
+open Def public
 
-data KTele : Set where
-  ∅   : KTele
-  _▸_ : KTele → KEntry → KTele
+data DefTele : Set where
+  ∅   : DefTele
+  _▸_ : DefTele → Def → DefTele
 infixl 5 _▸_
 
 -- entry d of a telescope of length n (entries counted from the first);
 -- beyond the length, a junk entry that no well-formed use reaches
-pickK : Bool → KEntry → KEntry → KEntry
+pickK : Bool → Def → Def → Def
 pickK true  x y = x
 pickK false x y = y
 
-lookupK : ℕ → KTele → ℕ → KEntry
+lookupK : ℕ → DefTele → ℕ → Def
 lookupK (suc n) (T ▸ e) d = pickK (d == n) e (lookupK n T d)
 lookupK zero    _       d = ⟨ Unit ∣ unit ⟩
 lookupK (suc n) ∅       d = ⟨ Unit ∣ unit ⟩
 
-record KSig : Set where
+record Defs : Set where
   constructor mkK
   field
     len  : ℕ
-    tele : KTele
+    tele : DefTele
   size : ℕ
   size = len
   type : ℕ → RTy ε
@@ -1224,10 +1224,10 @@ record KSig : Set where
   body : ℕ → RTm ε
   body d = kBody (lookupK len tele d)
 
-∅ᴷ : KSig
+∅ᴷ : Defs
 ∅ᴷ = mkK 0 ∅
 
-_▸ᴷ_ : KSig → KEntry → KSig
+_▸ᴷ_ : Defs → Def → Defs
 mkK n T ▸ᴷ e = mkK (suc n) (T ▸ e)
 infixl 5 _▸ᴷ_
 

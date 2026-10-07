@@ -17,8 +17,8 @@
 
 {-# OPTIONS --safe #-}
 open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
-open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_ )
-module DirectedHoTT.Metatheory.SigMono (𝒮 : KSig) (m m' : ℕ)
+open import DirectedHoTT.Spec.Syntax using ( Defs; _<ˢ_ )
+module DirectedHoTT.Metatheory.SigMono (𝒮 : Defs) (m m' : ℕ)
   (inc : ∀ {d} → d <ˢ m → d <ˢ m') where
 import DirectedHoTT.Spec.Typing 𝒮 m as A
 import DirectedHoTT.Spec.Typing 𝒮 m' as B

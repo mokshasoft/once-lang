@@ -80,14 +80,14 @@ infixl 5 _▸ˢ_
 -- ★ The kernel's signature: the declared types erased.
 ------------------------------------------------------------------------
 
-kEntry : Entry → KEntry
+kEntry : Entry → Def
 kEntry e = ⟨ ⌈ eType e ⌉ᵀ ∣ eBody e ⟩
 
-kTele : Tele → KTele
+kTele : Tele → DefTele
 kTele ∅       = ∅
 kTele (T ▸ e) = kTele T ▸ kEntry e
 
-kernel : Sig → KSig
+kernel : Sig → Defs
 kernel S = mkK (len S) (kTele (tele S))
 
 -- a lookup in the kernel's view is the erased lookup
@@ -103,8 +103,8 @@ private
   lookup-k zero    (T ▸ e) d = refl
   lookup-k (suc n) ∅       d = refl
 
-kernel-type : (S : Sig) (d : ℕ) → KSig.type (kernel S) d ≡ ⌈ Sig.type S d ⌉ᵀ
+kernel-type : (S : Sig) (d : ℕ) → Defs.type (kernel S) d ≡ ⌈ Sig.type S d ⌉ᵀ
 kernel-type S d = cong kType (lookup-k (len S) (tele S) d)
 
-kernel-body : (S : Sig) (d : ℕ) → KSig.body (kernel S) d ≡ Sig.body S d
+kernel-body : (S : Sig) (d : ℕ) → Defs.body (kernel S) d ≡ Sig.body S d
 kernel-body S d = cong kBody (lookup-k (len S) (tele S) d)

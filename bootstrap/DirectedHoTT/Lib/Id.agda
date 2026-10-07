@@ -23,9 +23,9 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; _<ˢ?_ )
+open import DirectedHoTT.Spec.Syntax using ( Defs; _<ˢ_; _<ˢ?_ )
 open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
-module DirectedHoTT.Lib.Id (𝒮 : KSig) (n : ℕ) where
+module DirectedHoTT.Lib.Id (𝒮 : Defs) (n : ℕ) where
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; cong )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; RTm; El; U; var; vz; vs; jsub; Id; ⌜Id⌝; idrefl; ⌜Id⌝-cong₃

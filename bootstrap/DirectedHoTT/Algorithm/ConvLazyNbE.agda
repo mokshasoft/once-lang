@@ -18,10 +18,10 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; _<ˢ?_ )
+open import DirectedHoTT.Spec.Syntax using ( Defs; _<ˢ_; _<ˢ?_ )
 open import DirectedHoTT.Algorithm.NbE.Value using ( Tbl )
 import DirectedHoTT.Algorithm.NbE.TblOK as TO
-module DirectedHoTT.Algorithm.ConvLazyNbE (𝒮 : KSig) (tbl : Tbl) (tok : TO.TblOK 𝒮 tbl) where
+module DirectedHoTT.Algorithm.ConvLazyNbE (𝒮 : Defs) (tbl : Tbl) (tok : TO.TblOK 𝒮 tbl) where
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; Σ; _,_ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import Agda.Builtin.Maybe using ( Maybe; just; nothing )

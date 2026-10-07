@@ -23,10 +23,10 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; _<ˢ?_ )
+open import DirectedHoTT.Spec.Syntax using ( Defs; _<ˢ_; _<ˢ?_ )
 open import DirectedHoTT.Algorithm.NbE.Value using ( Tbl )
 import DirectedHoTT.Algorithm.NbE.TblOK as TO
-module DirectedHoTT.Algorithm.ConvNbE (𝒮 : KSig) (tbl : Tbl) (tok : TO.TblOK 𝒮 tbl) where
+module DirectedHoTT.Algorithm.ConvNbE (𝒮 : Defs) (tbl : Tbl) (tok : TO.TblOK 𝒮 tbl) where
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; Σ; _,_; _×_ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import Agda.Builtin.Maybe using ( Maybe; just; nothing )
@@ -70,7 +70,7 @@ private
 ------------------------------------------------------------------------
 
 -- a reference is normal exactly when it names no entry (PLAN-REF)
-refNf : {Γ : Cx} (d : ℕ) (q : Dec (d <ˢ KSig.size 𝒮)) → (d <ˢ? KSig.size 𝒮) ≡ q → Maybe (Nf (ref {Γ} d))
+refNf : {Γ : Cx} (d : ℕ) (q : Dec (d <ˢ Defs.size 𝒮)) → (d <ˢ? Defs.size 𝒮) ≡ q → Maybe (Nf (ref {Γ} d))
 refNf d (yes _) _ = nothing
 refNf d (no _)  e = just (nf-ref (cong (refHead d) e))
 
@@ -119,7 +119,7 @@ nf? (fsuc t)         = nf? t >>= λ x → just (nf-fsuc x)
 nf? (fcase t a b)    = nf? t >>= λ x → nf? a >>= λ y → nf? b >>= λ z → hd (fcase t a b) >>= λ h → just (nf-fcase x y z h)
 nf? (fcase0 t)       = nf? t >>= λ x → just (nf-fcase0 x)
 nf? (psplit b q)     = nf? b >>= λ x → nf? q >>= λ y → hd (psplit b q) >>= λ h → just (nf-psplit x y h)
-nf? (ref d)          = refNf d (d <ˢ? KSig.size 𝒮) refl
+nf? (ref d)          = refNf d (d <ˢ? Defs.size 𝒮) refl
 
 nfᵀ? base          = just nf-base
 nfᵀ? U             = just nf-U

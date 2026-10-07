@@ -33,8 +33,8 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; _<ˢ?_ )
-module DirectedHoTT.Metatheory.SubjectReductionBase (𝒮 : KSig) where
+open import DirectedHoTT.Spec.Syntax using ( Defs; _<ˢ_; _<ˢ?_ )
+module DirectedHoTT.Metatheory.SubjectReductionBase (𝒮 : Defs) where
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; subst; cong; cong₂ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
@@ -382,7 +382,7 @@ sub-comm2 {Γ} σ b x y =
   subst (λ z → fcase (fsuc (subTm σ t)) (subTm σ a) (subTm (extS σ) b) ⟶ z)
         (sym (sub-comm σ b t))
         (fcase-s _ _ _)
-⟶-sub σ (δref d p) = subst (λ z → ref d ⟶ z) (sym (εwkTm-sub σ (KSig.body 𝒮 d))) (δref d p)
+⟶-sub σ (δref d p) = subst (λ z → ref d ⟶ z) (sym (εwkTm-sub σ (Defs.body 𝒮 d))) (δref d p)
 ⟶-sub σ (psplit-β b x y) =
   subst (λ z → psplit (subTm (extS (extS σ)) b) (pair (subTm σ x) (subTm σ y)) ⟶ z)
         (sym (sub-comm2 σ b x y))

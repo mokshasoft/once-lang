@@ -28,8 +28,8 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; _<ˢ?_ )
-module DirectedHoTT.Metatheory.Fundamental.Indexed (𝒮 : KSig) where
+open import DirectedHoTT.Spec.Syntax using ( Defs; _<ˢ_; _<ˢ?_ )
+module DirectedHoTT.Metatheory.Fundamental.Indexed (𝒮 : Defs) where
 
 import DirectedHoTT.Metatheory.LogicalRelation 𝒮 as ᴵLogicalRelation
 open ᴵLogicalRelation using ( stablecd? )

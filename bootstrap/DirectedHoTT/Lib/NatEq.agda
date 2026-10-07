@@ -23,9 +23,9 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; _<ˢ?_ )
+open import DirectedHoTT.Spec.Syntax using ( Defs; _<ˢ_; _<ˢ?_ )
 open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
-module DirectedHoTT.Lib.NatEq (𝒮 : KSig) (n : ℕ) where
+module DirectedHoTT.Lib.NatEq (𝒮 : Defs) (n : ℕ) where
 open import DirectedHoTT.Spec.Syntax using ( Cx; RTm; natrec; nzero; Nat )
 open import DirectedHoTT.Spec.Typing 𝒮 n
   using ( Ctx; ⌊_⌋; _⊢_∷_; ⊢natrec; ⊢nzero; ty-Nat )

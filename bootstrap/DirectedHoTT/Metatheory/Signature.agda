@@ -117,10 +117,10 @@ private
   module Step (n : ℕ) (T : Tele) (S : Sig) (pre : Prefix n T S) where
     S₀ = mkSig n T
 
-    body≡ : ∀ {d} → d <ˢ n → KSig.body (kernel S₀) d ≡ KSig.body (kernel S) d
+    body≡ : ∀ {d} → d <ˢ n → Defs.body (kernel S₀) d ≡ Defs.body (kernel S) d
     body≡ {d} p = trans (kernel-body S₀ d) (trans (cong eBody (pagree pre p)) (sym (kernel-body S d)))
 
-    type≡ : ∀ {d} → d <ˢ n → KSig.type (kernel S₀) d ≡ KSig.type (kernel S) d
+    type≡ : ∀ {d} → d <ˢ n → Defs.type (kernel S₀) d ≡ Defs.type (kernel S) d
     type≡ {d} p = trans (kernel-type S₀ d) (trans (cong (λ x → ⌈ eType x ⌉ᵀ) (pagree pre p)) (sym (kernel-type S d)))
 
     open SigExt (kernel S₀) (kernel S) (pinc pre) body≡
@@ -136,9 +136,9 @@ entryK n T e S pre (b , (dA , (db , eq))) =
   open Step n T S (shrink pre) using ( S₀; ext⊢; ext⊢ty )
   here≡ : lookupE (len S) (tele S) n ≡ e
   here≡ = trans (sym (pagree pre <-here)) (lookup-here n T e)
-  tyS : KSig.type (kernel S) n ≡ ⌈ eType e ⌉ᵀ
+  tyS : Defs.type (kernel S) n ≡ ⌈ eType e ⌉ᵀ
   tyS = trans (kernel-type S n) (cong (λ x → ⌈ eType x ⌉ᵀ) here≡)
-  bodyS : KSig.body (kernel S) n ≡ eBody e
+  bodyS : Defs.body (kernel S) n ≡ eBody e
   bodyS = trans (kernel-body S n) (cong eBody here≡)
   subst₂ : {A B : Set} (P : A → B → Set) {a a' : A} {x x' : B} → a ≡ a' → x ≡ x' → P a x → P a' x'
   subst₂ P refl refl h = h

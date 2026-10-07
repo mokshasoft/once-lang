@@ -62,9 +62,9 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; _<ˢ?_ )
+open import DirectedHoTT.Spec.Syntax using ( Defs; _<ˢ_; _<ˢ?_ )
 open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
-module DirectedHoTT.Metatheory.TySub (𝒮 : KSig) (n : ℕ) where
+module DirectedHoTT.Metatheory.TySub (𝒮 : Defs) (n : ℕ) where
 open import normalizer.Syntax.Types
   using ( _≡_; refl; sym; trans; subst; cong; cong₂; Σ; _,_; _×_ ; ⊥ )
 open import Agda.Builtin.Nat using ( zero; suc; _+_ ) renaming ( Nat to ℕ )
@@ -288,7 +288,7 @@ ren-lemma {ρ = ρ} (⊢ap {cA = cA} {cB = cB} {b = b} {t = t} {u = u}
          (ren-lemma dt h) (ren-lemma du h) (ren-lemma dp h))
 ren-lemma (⊢trU dt du dp de) h =
   ⊢trU (ren-lemma dt h) (ren-lemma du h) (ren-lemma dp h) (ren-lemma de h)
-ren-lemma {ρ = ρ} (⊢ref {d = d} p) h = ⊢-cast (sym (εwk-ren ρ (KSig.type 𝒮 d))) (⊢ref p)
+ren-lemma {ρ = ρ} (⊢ref {d = d} p) h = ⊢-cast (sym (εwk-ren ρ (Defs.type 𝒮 d))) (⊢ref p)
 ren-lemma {ρ = ρ} (⊢conv d c) h = ⊢conv (ren-lemma d h) (≅ᵀ-ren ρ c)
 
 ⊢wk : {Γ : Ctx} {B : RTy ⌊ Γ ⌋} {t : RTm ⌊ Γ ⌋} {A : RTy ⌊ Γ ⌋} →
@@ -440,7 +440,7 @@ sub-lemma {σ = σ} (⊢ap {cA = cA} {cB = cB} {b = b} {t = t} {u = u}
          (sub-lemma dt h) (sub-lemma du h) (sub-lemma dp h))
 sub-lemma (⊢trU dt du dp de) h =
   ⊢trU (sub-lemma dt h) (sub-lemma du h) (sub-lemma dp h) (sub-lemma de h)
-sub-lemma {σ = σ} (⊢ref {d = d} p) h = ⊢-cast (sym (εwk-sub σ (KSig.type 𝒮 d))) (⊢ref p)
+sub-lemma {σ = σ} (⊢ref {d = d} p) h = ⊢-cast (sym (εwk-sub σ (Defs.type 𝒮 d))) (⊢ref p)
 sub-lemma {σ = σ} (⊢conv d c) h = ⊢conv (sub-lemma d h) (≅ᵀ-sub σ c)
 
 -- the single substitution AS a typed substitution — `⊢[]` is its

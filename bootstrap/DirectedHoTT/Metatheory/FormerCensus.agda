@@ -31,8 +31,8 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; _<ˢ?_ )
-module DirectedHoTT.Metatheory.FormerCensus (𝒮 : KSig) where
+open import DirectedHoTT.Spec.Syntax using ( Defs; _<ˢ_; _<ˢ?_ )
+module DirectedHoTT.Metatheory.FormerCensus (𝒮 : Defs) where
 open import Agda.Builtin.Reflection
 open import Agda.Builtin.List
 open import Agda.Builtin.Bool

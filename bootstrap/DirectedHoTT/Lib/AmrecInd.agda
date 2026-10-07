@@ -42,9 +42,9 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; _<ˢ?_ )
+open import DirectedHoTT.Spec.Syntax using ( Defs; _<ˢ_; _<ˢ?_ )
 open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
-module DirectedHoTT.Lib.AmrecInd (𝒮 : KSig) (n : ℕ) where
+module DirectedHoTT.Lib.AmrecInd (𝒮 : Defs) (n : ℕ) where
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂; subst )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; _∙; RTy; RTm; El; U; Nat; Hom; Π; var; vz; vs; Var; app; nsuc; nzero; natrec

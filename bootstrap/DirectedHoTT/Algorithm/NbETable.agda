@@ -41,15 +41,15 @@ extendAt : ℕ → Tbl → RTm ε → Tbl
 extendAt n t b = mkT (suc n) (ttele t ▸ᵗ NbE.eval t efuel 0 [] b)
 
 -- the table of a telescope, walked as `lookupK` walks it
-goT : ℕ → KTele → Tbl
+goT : ℕ → DefTele → Tbl
 goT zero    _       = mkT 0 ∅ᵗ
 goT (suc n) (T ▸ e) = extendAt n (goT n T) (kBody e)
 goT (suc n) ∅       = mkT (suc n) ∅ᵗ
 
 -- ★ the table of a signature — independent of anything but its telescope,
 --   so the table of an extension unfolds to `extendAt` of the old one
-mkTbl : KSig → Tbl
-mkTbl 𝒮 = goT (KSig.len 𝒮) (KSig.tele 𝒮)
+mkTbl : Defs → Tbl
+mkTbl 𝒮 = goT (Defs.len 𝒮) (Defs.tele 𝒮)
 
 ------------------------------------------------------------------------
 -- Soundness, along the telescope.
@@ -62,21 +62,21 @@ private
   ==-sound (suc m) zero    ()
   ==-sound (suc m) (suc n) e = cong suc (==-sound m n e)
 
-  tlen-goT : (n : ℕ) (T : KTele) → tlen (goT n T) ≡ n
+  tlen-goT : (n : ℕ) (T : DefTele) → tlen (goT n T) ≡ n
   tlen-goT zero    _       = refl
   tlen-goT (suc n) (T ▸ e) = refl
   tlen-goT (suc n) ∅       = refl
 
-module _ (𝒮 : KSig) where
+module _ (𝒮 : Defs) where
   open import DirectedHoTT.Spec.Reduction 𝒮 using ( _≅_; crfl; ctrn; cred; δref )
   open TO 𝒮 using ( TblOK; TblReads )
   
   -- the telescope (n , T) is a prefix of 𝒮's: its names are 𝒮's, with 𝒮's bodies
-  record KPrefix (n : ℕ) (T : KTele) : Set where
+  record KPrefix (n : ℕ) (T : DefTele) : Set where
     constructor kprefix
     field
-      kinc   : ∀ {d} → d <ˢ n → d <ˢ KSig.size 𝒮
-      kagree : ∀ {d} → d <ˢ n → kBody (lookupK n T d) ≡ KSig.body 𝒮 d
+      kinc   : ∀ {d} → d <ˢ n → d <ˢ Defs.size 𝒮
+      kagree : ∀ {d} → d <ˢ n → kBody (lookupK n T d) ≡ Defs.body 𝒮 d
   open KPrefix
 
   private
@@ -84,11 +84,11 @@ module _ (𝒮 : KSig) where
     ==-refl zero    = refl
     ==-refl (suc n) = ==-refl n
 
-    lookK-here : (n : ℕ) (T : KTele) (e : KEntry) → lookupK (suc n) (T ▸ e) n ≡ e
+    lookK-here : (n : ℕ) (T : DefTele) (e : Def) → lookupK (suc n) (T ▸ e) n ≡ e
     lookK-here n T e = subst (λ b → pickK b e (lookupK n T n) ≡ e) (sym (==-refl n)) refl
 
     -- lookups past the new entry
-    lookK-there : (n : ℕ) (T : KTele) (e : KEntry) {d : ℕ} → (d == n) ≡ false →
+    lookK-there : (n : ℕ) (T : DefTele) (e : Def) {d : ℕ} → (d == n) ≡ false →
                   lookupK (suc n) (T ▸ e) d ≡ lookupK n T d
     lookK-there n T e {d} f = subst (λ b → pickK b e (lookupK n T d) ≡ lookupK n T d) (sym f) refl
 
@@ -102,7 +102,7 @@ module _ (𝒮 : KSig) where
     pickV-false : {v w : Val} {b : Bool} → b ≡ false → pickV b v w ≡ w
     pickV-false refl = refl
 
-    shrinkK : {n : ℕ} {T : KTele} {e : KEntry} → KPrefix (suc n) (T ▸ e) → KPrefix n T
+    shrinkK : {n : ℕ} {T : DefTele} {e : Def} → KPrefix (suc n) (T ▸ e) → KPrefix n T
     shrinkK {n} {T} {e} (kprefix i a) =
       kprefix (λ p → i (<-there p))
               (λ {d} p → trans (sym (cong kBody (lookK-there n T e (<ˢ→≠ p)))) (a (<-there p)))
@@ -132,7 +132,7 @@ module _ (𝒮 : KSig) where
             down {a} {suc .(suc a)} <-here = <-there <-here
             down {a} {suc b} (<-there r) = <-there (down r)
 
-  okUpTo : (n : ℕ) (T : KTele) → KPrefix n T → TblOK (goT n T)
+  okUpTo : (n : ℕ) (T : DefTele) → KPrefix n T → TblOK (goT n T)
   okUpTo zero    _       _   = (λ d → tt) , (λ L d → crfl)
   okUpTo (suc n) ∅       _   = (λ d → tt) , (λ L d → crfl)
   okUpTo (suc n) (T ▸ e) pre = sc , rd
@@ -146,7 +146,7 @@ module _ (𝒮 : KSig) where
     Σfst₀ (c , _) = c
 
     -- the new entry is 𝒮's entry n
-    body≡ : kBody e ≡ KSig.body 𝒮 n
+    body≡ : kBody e ≡ Defs.body 𝒮 n
     body≡ = trans (sym (cong kBody (lookK-here n T e))) (kagree pre <-here)
 
 
@@ -176,4 +176,4 @@ module _ (𝒮 : KSig) where
         subst (λ w → ref d ≅ ⌊ w ⌋ L) (sym (trans (lookT-step n t v d len≡) (pickV-false eq))) (Σsnd ih L d)
 
   mkTbl-ok : TblOK (mkTbl 𝒮)
-  mkTbl-ok = okUpTo (KSig.len 𝒮) (KSig.tele 𝒮) (kprefix (λ p → p) (λ p → refl))
+  mkTbl-ok = okUpTo (Defs.len 𝒮) (Defs.tele 𝒮) (kprefix (λ p → p) (λ p → refl))

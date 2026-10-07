@@ -42,8 +42,8 @@
 
 {-# OPTIONS --safe #-}
 open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
-open import DirectedHoTT.Spec.Syntax using ( KSig )
-module DirectedHoTT.Spec.Typing (𝒮 : KSig) (n : ℕ) where
+open import DirectedHoTT.Spec.Syntax using ( Defs )
+module DirectedHoTT.Spec.Typing (𝒮 : Defs) (n : ℕ) where
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
@@ -55,7 +55,7 @@ open import DirectedHoTT.Spec.Syntax
         ; subTy-subTy; subTy-cong; renTy-subTy; subTm-renTm; subTm-id
         ; εwkTy; εwk-ren; εwk-sub; εwkTm
         ; IMu; Desc; DIh; Fin; ⌜IMu⌝; ⌜Fin⌝; con; ielim; dι; dσ; dρ; dpay; dih
-        ; fzero; fsuc; fcase; fcase0; psplit; ref; KSig; _<ˢ_ )
+        ; fzero; fsuc; fcase; fcase0; psplit; ref; Defs; _<ˢ_ )
 open import DirectedHoTT.Spec.Variance
   using ( 𝔹; true; false; occTm; pw?; stkC?; stkA?; flat?; pwBody; pwShift
         ; NoNatC; nnc-base; nnc-Unit; nnc-Π; nnc-Σ; nnc-Hom; nnc-Id )
@@ -268,7 +268,7 @@ data _⊢_∷_ where
   --   one shared proof per definition, weakened to every use
   -- ★ a reference is typed by its DECLARATION alone (PLAN-REF, D082): a
   --   projection from the signature, among the first n names
-  ⊢ref : ∀ {Γ d} → d <ˢ n → Γ ⊢ ref d ∷ εwkTy (KSig.type 𝒮 d)
+  ⊢ref : ∀ {Γ d} → d <ˢ n → Γ ⊢ ref d ∷ εwkTy (Defs.type 𝒮 d)
   ⊢conv : ∀ {Γ t A B}   → Γ ⊢ t ∷ A → A ≅ᵀ B → Γ ⊢ t ∷ B
 
 data _⊢ty_ where
@@ -366,8 +366,8 @@ conv-El d r = ⊢conv d (credᵀ (ξ-El r))
 record EntryOK (d : ℕ) : Set where
   constructor entryOK
   field
-    okTy   : ◇ ⊢ty KSig.type 𝒮 d
-    okBody : ◇ ⊢ KSig.body 𝒮 d ∷ KSig.type 𝒮 d
+    okTy   : ◇ ⊢ty Defs.type 𝒮 d
+    okBody : ◇ ⊢ Defs.body 𝒮 d ∷ Defs.type 𝒮 d
 open EntryOK public
 
 EntriesOK : Set

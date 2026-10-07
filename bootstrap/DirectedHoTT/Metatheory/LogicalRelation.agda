@@ -41,8 +41,8 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; _<ˢ?_ )
-module DirectedHoTT.Metatheory.LogicalRelation (𝒮 : KSig) where
+open import DirectedHoTT.Spec.Syntax using ( Defs; _<ˢ_; _<ˢ?_ )
+module DirectedHoTT.Metatheory.LogicalRelation (𝒮 : Defs) where
 open import normalizer.Syntax.Types
   using ( _≡_; refl; sym; trans; subst; cong; cong₂; ¬_; ⊥; ⊥-elim; Σ; _,_; _×_; ⊤; tt )
 
@@ -3436,7 +3436,7 @@ data SNRed {Γ} where
   snr-psplitᵍ : {b : RTm ((Γ ∙) ∙)} {q q' : RTm Γ} → SNRed q q' →
                 SNRed (psplit b q) (psplit b q')
   -- ★ a definition unfolds to its body (closed: nothing discarded)
-  snr-δ : {n : ℕ} → n <ˢ KSig.size 𝒮 → SNRed (ref n) (εwkTm (KSig.body 𝒮 n))
+  snr-δ : {n : ℕ} → n <ˢ Defs.size 𝒮 → SNRed (ref n) (εwkTm (Defs.body 𝒮 n))
   -- ★★ WF stage E: the order's five root rules, each discarding the
   -- material it drops as `SN` (the `snr-β` pattern), plus one ξ per
   -- BOUND.  Three scrutinees, so three ξ's — `p`/`q` are payload and

@@ -62,8 +62,8 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; _<ˢ?_ )
-module DirectedHoTT.Metatheory.TySub.Red (𝒮 : KSig) where
+open import DirectedHoTT.Spec.Syntax using ( Defs; _<ˢ_; _<ˢ?_ )
+module DirectedHoTT.Metatheory.TySub.Red (𝒮 : Defs) where
 open import normalizer.Syntax.Types
   using ( _≡_; refl; sym; trans; subst; cong; cong₂; Σ; _,_; _×_ ; ⊥ )
 open import Agda.Builtin.Nat using ( zero; suc; _+_ ) renaming ( Nat to ℕ )
@@ -489,7 +489,7 @@ occ-red {x = x} (fcase-s t a b) e = occ-sub h b (∨-false₂ (occTm x a) (∨-f
   h : ∀ y → eqv (vs x) y ≡ false → occTm x (single t y) ≡ false
   h vz     _ = ∨-false₁ (occTm x t) e
   h (vs z) q = q
-occ-red (δref d p) e = occ-εwkTm (KSig.body 𝒮 d)
+occ-red (δref d p) e = occ-εwkTm (Defs.body 𝒮 d)
 occ-red {x = x} (psplit-β b u v) e = occ-sub h b (∨-false₁ (occTm (vs (vs x)) b) e)
   where
   eu = ∨-false₁ (occTm x u) (∨-false₂ (occTm (vs (vs x)) b) e)

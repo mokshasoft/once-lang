@@ -31,10 +31,10 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; _<ˢ?_ )
+open import DirectedHoTT.Spec.Syntax using ( Defs; _<ˢ_; _<ˢ?_ )
 open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
 import DirectedHoTT.Spec.Typing as Ty
-module DirectedHoTT.Metatheory.Validity (𝒮 : KSig) (n : ℕ) (ok : Ty.EntriesOK 𝒮 n) where
+module DirectedHoTT.Metatheory.Validity (𝒮 : Defs) (n : ℕ) (ok : Ty.EntriesOK 𝒮 n) where
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; subst; Σ; _,_; _×_ )
 open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing 𝒮 n hiding ( _×_; _,,_ )
@@ -264,6 +264,6 @@ validity wΓ (⊢fcase0 dP dt) = exact (sub-ty dP (⊢single dt))
 validity wΓ (⊢psplit dA dB dP dq db) = exact (sub-ty dP (⊢single dq))
 -- a reference's declared type is well-formed in the empty context (the
 --   signature's context formation, `ok`), weakened
-validity wΓ (⊢ref {d = d} p) = wf (εwkTy (KSig.type 𝒮 d)) crflᵀ (sub-ty (okTy (ok p)) (λ ()))
+validity wΓ (⊢ref {d = d} p) = wf (εwkTy (Defs.type 𝒮 d)) crflᵀ (sub-ty (okTy (ok p)) (λ ()))
 validity wΓ (⊢conv d c) with validity wΓ d
 ... | wf A' c' dA' = wf A' (ctrnᵀ (csymᵀ c) c') dA'

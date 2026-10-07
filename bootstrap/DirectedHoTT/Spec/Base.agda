@@ -27,7 +27,7 @@ open import DirectedHoTT.Spec.Syntax
         ; subTy-subTy; subTy-cong; renTy-subTy; subTm-renTm; subTm-id
         ; εwkTy; εwk-ren; εwk-sub; εwkTm
         ; IMu; Desc; DIh; Fin; ⌜IMu⌝; ⌜Fin⌝; con; ielim; dι; dσ; dρ; dpay; dih
-        ; fzero; fsuc; fcase; fcase0; psplit; ref; KSig; _<ˢ_ )
+        ; fzero; fsuc; fcase; fcase0; psplit; ref; Defs; _<ˢ_ )
 open import DirectedHoTT.Spec.Variance
   using ( 𝔹; true; false; occTm; pw?; stkC?; stkA?; flat?; pwBody; pwShift
         ; NoNatC; nnc-base; nnc-Unit; nnc-Π; nnc-Σ; nnc-Hom; nnc-Id )

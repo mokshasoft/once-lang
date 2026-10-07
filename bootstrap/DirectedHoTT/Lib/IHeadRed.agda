@@ -45,10 +45,10 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; _<ˢ?_ )
+open import DirectedHoTT.Spec.Syntax using ( Defs; _<ˢ_; _<ˢ?_ )
 open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
 import DirectedHoTT.Spec.Typing as Ty
-module DirectedHoTT.Lib.IHeadRed (𝒮 : KSig) (n : ℕ) (ok : Ty.EntriesOK 𝒮 n) where
+module DirectedHoTT.Lib.IHeadRed (𝒮 : Defs) (n : ℕ) (ok : Ty.EntriesOK 𝒮 n) where
 open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax using ( Cx; RTm; ielim; app; dih; pair )
 open import DirectedHoTT.Spec.Typing 𝒮 n using ( _⟶*_ )

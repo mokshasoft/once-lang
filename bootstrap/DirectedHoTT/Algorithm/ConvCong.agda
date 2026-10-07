@@ -13,8 +13,8 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; _<ˢ?_ )
-module DirectedHoTT.Algorithm.ConvCong (𝒮 : KSig) where
+open import DirectedHoTT.Spec.Syntax using ( Defs; _<ˢ_; _<ˢ?_ )
+module DirectedHoTT.Algorithm.ConvCong (𝒮 : Defs) where
 open import Agda.Builtin.Nat using ( Nat )
 open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Reduction 𝒮 hiding ( _×_; _,,_ )
